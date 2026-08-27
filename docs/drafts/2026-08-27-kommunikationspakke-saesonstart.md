@@ -21,13 +21,13 @@ et pip her"*, og igen kl. 15:05: *"tænker mest på hvis der er nogle der sidder
 Der sidder altså formentlig spillere og venter på et go, et døgn inde i den ventetid, dagen
 før sæsonstart.
 
-**Ét forbehold du skal tage stilling til før du poster.** Kalenderen er ikke helt i mål. Jeg
-har målt at 526 af 529 løb kører sammenhængende som lovet, men de tre Grand Tours har hver to
-tomme løbsdage midt i løbet, og på præcis de seks dage ligger der seks andre D1-løb som derfor
-er spærret for GT-rytterne. Det er #4310. Det rammer lige præcis den beslutning D1-spillerne
-diskuterer lige nu, altså Tour eller klassikere. Udkastet nedenfor siger det ligeud. Vil du
-hellere holde det tilbage til det er rettet, så slet det midterste afsnit, men så bør du heller
-ikke skrive at kalenderen er færdig.
+**Én ting er værd at tage med, og den er ikke en fejl.** De tre Grand Tours har hver to
+løbsdage uden etape midt i løbet, altså hviledagene, og rytterne er bundet hen over dem. På
+præcis de seks dage ligger der seks andre D1-løb, som derfor ikke er tilgængelige for en
+GT-rytter. Det er den ønskede regel (#4217): er du udtaget til et etapeløb, er du bundet til
+det er slut. Men det kan man ikke se på fladen, og D1-spillerne sidder lige nu og vejer Tour
+op mod klassikerne. Udkastet nedenfor siger det som planlægnings-information, ikke som en
+undskyldning.
 
 ### Udkast (EN)
 
@@ -37,13 +37,14 @@ ikke skrive at kalenderen er færdig.
 > anything you set from now on stays. Sorry for the wait, and for the silence in here since
 > last night.
 >
-> One thing is still open, and it affects Division 1 planning. The three Grand Tours each have
-> two days in the middle where no stage runs, but your riders are still held by the race on
-> those days. That blocks them from six one day races that do run then: Klassieker van
-> Harelbeke, Klassieker van Brugge, La Classique Bretonne, De Vlaamse Ronde, Tour de la Loire
-> and La Classica d'Autunno. So if you are weighing a Grand Tour against the classics around
-> it, those six are not available to a rider inside the Tour, Giro or Vuelta. I am fixing it,
-> and I will post here when it is done.
+> One thing worth knowing before you plan Division 1. A Grand Tour holds your rider for the
+> whole race, rest days included. Each of the three has two rest days in the middle, and six
+> one day races fall on exactly those days: Klassieker van Harelbeke, Klassieker van Brugge,
+> La Classique Bretonne, De Vlaamse Ronde, Tour de la Loire and La Classica d'Autunno. A rider
+> inside the Tour, Giro or Vuelta cannot start any of them. That is deliberate, the same way it
+> works in real racing, but you cannot see it on the race card yet, so I am saying it here. If
+> you are weighing a Grand Tour against the classics around it, those six belong on the Grand
+> Tour side of the scale.
 >
 > Two things worth knowing before Friday:
 >
@@ -63,13 +64,14 @@ ikke skrive at kalenderen er færdig.
 > sætter fra nu af bliver stående. Undskyld ventetiden, og undskyld stilheden herinde siden
 > i går aftes.
 >
-> Én ting er stadig åben, og den betyder noget for planlægningen i 1. division. De tre Grand
-> Tours har hver to dage midt i løbet hvor der ikke køres en etape, men hvor dine ryttere
-> alligevel er bundet af løbet. Det spærrer dem fra seks endagsløb der faktisk kører de dage:
-> Klassieker van Harelbeke, Klassieker van Brugge, La Classique Bretonne, De Vlaamse Ronde,
-> Tour de la Loire og La Classica d'Autunno. Så hvis du sidder og vejer en Grand Tour op mod
-> klassikerne omkring den, er de seks ikke tilgængelige for en rytter der er inde i Touren,
-> Giroen eller Vueltaen. Jeg er i gang med at rette det og melder tilbage her når det er nede.
+> Én ting er værd at vide inden du planlægger 1. division. En Grand Tour binder din rytter i
+> hele løbet, hviledagene med. De tre har hver to hviledage midt i løbet, og der ligger seks
+> endagsløb på præcis de dage: Klassieker van Harelbeke, Klassieker van Brugge, La Classique
+> Bretonne, De Vlaamse Ronde, Tour de la Loire og La Classica d'Autunno. En rytter der er inde
+> i Touren, Giroen eller Vueltaen kan ikke stille op i nogen af dem. Det er med vilje, ligesom
+> i virkelighedens cykelsport, men det kan man ikke se på løbskortet endnu, så jeg siger det
+> her. Sidder du og vejer en Grand Tour op mod klassikerne omkring den, hører de seks til på
+> Grand Tour-siden af vægten.
 >
 > To ting det er værd at vide inden fredag:
 >
@@ -162,7 +164,6 @@ fordi grundlaget flyttede sig. Se advarslen nederst. Nævn den ikke endnu.
 > Seeing at a glance who is already riding. In planning there is currently no mark on a rider
 > who is already entered somewhere that day. That mark is coming.
 >
-> The three Grand Tours releasing their riders on the days they are not racing, as above.
 >
 > Form peaks that can actually be removed. Some of you have a rider who keeps defaulting back
 > to two peaks with no way to clear one. That is a real bug and it is on the list.
@@ -184,7 +185,6 @@ fordi grundlaget flyttede sig. Se advarslen nederst. Nævn den ikke endnu.
 > At se på ét blik hvem der allerede kører. I planlægning er der lige nu ingen markering på en
 > rytter der allerede er udtaget et sted den dag. Den markering er på vej.
 >
-> De tre Grand Tours skal slippe deres ryttere på de dage de ikke kører, som ovenfor.
 >
 > Formpeaks der rent faktisk kan fjernes. Nogle af jer har en rytter der bliver ved med at
 > falde tilbage til to peaks uden mulighed for at fjerne den ene. Det er en rigtig fejl og den
@@ -278,6 +278,13 @@ letteste er at linke til den frem for at skrive den om, medmindre du vil sige no
 [`docs/drafts/2026-08-27-minimum-6-ryttere-varsel.md`](2026-08-27-minimum-6-ryttere-varsel.md)
 siger *"Fra i morgen"* og *"From tomorrow's start"*. Reglen er holdt tilbage. Post det ikke som
 det står. Datoen skal enten rettes eller udkastet holdes tilbage.
+
+**egomadsens rapport om peak-mål er stadig uforklaret.** Han skrev i staff-chat 27/8 kl. 14:58:
+*"det eneste jeg er stødt på, er at inde under peak mål, der ser den ud til at trække på en
+ældre version af løbskalenderen på de tre GTs"*, med tre skærmbilleder. Jeg gættede først på en
+akse-forveksling i `game_day_start`, men den kolonne læses kun af kalender-generatoren og et
+Div4-værktøj, så den kan ikke være det. Der er altså ikke svaret på hans observation endnu, og
+den bør undersøges med udgangspunkt i hans billeder frem for i en teori.
 
 **Den gamle Discord-server er ikke lukket ned.** Guild 474142653529849886, "Cycling Career", har
 121 medlemmer mod 72 på den nye. Nyeste besked derinde er fra 27/7, hvor du henviste en spiller
