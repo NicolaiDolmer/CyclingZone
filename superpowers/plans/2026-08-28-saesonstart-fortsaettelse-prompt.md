@@ -165,5 +165,9 @@ køre. Bruger du preview-serveren, så verificér at den serverer worktree'et og
 - **13 worktrees** ligger tilbage, heraf 7 på branches merged og slettet på origin. Oprydning blev blokeret
   af auto-mode i dag; den kræver ejerens tilladelse eller hans egen hånd.
 - **`MEMORY.md` står på 3171 tokens** mod et loft på 3200. Nye HOT-entries kræver en demotering først.
+- **`frontend-smoke` er flaky og er en required check.** Den fejlede 27/8 på #4300 med
+  `useForumHighlights failed: Load failed`, en netværksfejl i testmiljøet på en hook PR'en slet ikke rører.
+  Verificér altid årsagen før du kalder den flaky, og gen-kør så jobbet i stedet for at ændre kode.
+  Den koster en gen-kørsel hver gang og fortjener sit eget issue.
 - **#4282** venter stadig på ejeren: et hold er transfer-frosset af renter alene.
 - **#4288**: de tre Grand Tours kører 17-18 etaper og er derfor umålte; båndet er forældet, ikke kalenderen.
