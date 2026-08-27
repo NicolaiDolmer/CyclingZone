@@ -88,6 +88,13 @@ jobs:
       - name: Lint frontend
         run: npm run lint
 
+      # Brohoved-typecheck. Spejler backend's "Type-check race engine v4"-step.
+      # Strict paa .ts/.tsx, JS passerer uroert, saa gaten koster ingen migrering.
+      # Fanger den bugklasse schema-column-guard blev haandbygget mod (#3586):
+      # en select mod en kolonne skemaet ikke har giver nu en typefejl i editoren.
+      - name: Type-check frontend
+        run: npm run typecheck
+
       - name: Run frontend tests
         run: npm test -- --test-reporter=spec
 
