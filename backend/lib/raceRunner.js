@@ -77,6 +77,7 @@ import { detectCareerFirsts } from "./careerFirsts.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
+import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
@@ -812,6 +813,14 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   const teamsWithEntries = new Set((existingEntries || []).map((e) => e.team_id));
   // Fase 0b: hold der har trukket sig fra løbet (frivillig deltagelse) udelades.
   const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
+  // #4200 (anden halvdel): hold der eksplicit har RYDDET denne enhed udelades også.
+  // #2599 gav sweepen den regel; løbs-tidens autofyld her var den sidste push-sti der
+  // stadig fyldte en bekræftet-tom trup ud igen. Ryddet er ikke det samme som "har
+  // ikke valgt": markeringen findes netop for at kunne skelne, og #4174's regel
+  // ("udtager du ikke, udtager assistenten") gælder kun den sidste gruppe. Markeringen
+  // forsvinder af sig selv i samme øjeblik spilleren udtager manuelt eller selv beder
+  // om auto-fill, så tilstanden er altid spillerens egen og altid omgørlig.
+  const clearedTeams = await loadClearedTeamIds({ supabase, raceId: race.id });
 
   // #1688 pulje-filter: kun hold i løbets pulje (når løbet har en). NB: DB-eq på
   // league_division_id kunne gøre dette server-side, men selectInChunks-/teams-stien
@@ -819,7 +828,8 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   // semantikken er eksplicit (service_role/bulk bypasser desuden RLS).
   const racePoolId = race?.league_division_id ?? null;
   let eligibleTeams = (teams || []).filter(
-    (t) => !t.is_frozen && !teamsWithEntries.has(t.id) && !withdrawnTeams.has(t.id)
+    (t) => !t.is_frozen && !teamsWithEntries.has(t.id)
+      && !withdrawnTeams.has(t.id) && !clearedTeams.has(t.id)
   );
   if (racePoolId != null) {
     eligibleTeams = eligibleTeams.filter((t) => t.league_division_id === racePoolId);

@@ -177,6 +177,42 @@ test("afmeldt hold autofyldes IKKE", async () => {
   assert.ok(entrants.filter((e) => e.team_id === "t1").length > 0, "t1 fyldes stadig");
 });
 
+// #4200 anden halvdel: løbs-tidens autofyld var den sidste push-sti der ignorerede
+// #2599's ryd-markering. Tre spillere rapporterede 24/8 at ryddede trupper kom tilbage;
+// #4222 lukkede den proaktive sweep, disse tre tests lukker raceRunner-stien.
+test("#4200: ryddet hold (race_entry_clears) autofyldes IKKE", async () => {
+  const state = baseState();
+  state.race_entry_clears = [{ race_id: "race1", team_id: "t2" }];
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
+  assert.equal(entrants.filter((e) => e.team_id === "t2").length, 0, "t2 har ryddet → ingen entries");
+  assert.ok(entrants.filter((e) => e.team_id === "t1").length > 0, "t1 fyldes stadig");
+});
+
+test("#4200: ryd-markering for et ANDET løb påvirker ikke dette løb", async () => {
+  const state = baseState();
+  state.race_entry_clears = [{ race_id: "raceOther", team_id: "t2" }];
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
+  assert.ok(entrants.filter((e) => e.team_id === "t2").length > 0, "markeringen hører til et andet løb");
+});
+
+test("#4200: ryd-markering blokerer ikke et hold der EFTERFØLGENDE har udtaget manuelt", async () => {
+  // Markeringen slettes normalt af raceSelection.js ved en manuel udtagelse, men en
+  // fejlet/forsinket sletning må aldrig kunne tømme en trup spilleren netop har gemt:
+  // hold MED entries røres slet ikke af autofyldet (teamsWithEntries-filteret vinder).
+  const state = baseState();
+  state.race_entry_clears = [{ race_id: "race1", team_id: "t2" }];
+  state.race_entries = [
+    { race_id: "race1", team_id: "t2", rider_id: "t2-r0", race_role: "captain", is_auto_filled: false, status: "committed" },
+    { race_id: "race1", team_id: "t2", rider_id: "t2-r1", race_role: "helper", is_auto_filled: false, status: "committed" },
+  ];
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
+  const t2 = entrants.filter((e) => e.team_id === "t2").map((e) => e.rider_id);
+  assert.deepEqual(t2.sort(), ["t2-r0", "t2-r1"], "den manuelle trup står urørt");
+});
+
 // #3076 (tredje lag af rod-årsagen i #3070): binding-nøglen game_day er SÆSON-RELATIV og
 // nulstilles hver sæson — i prod spænder både S1 og S2 game_day 0..~100000. Uden sæson-
 // filter så excludeBoundRiders en forrige-sæsons entry som aktiv binding og udelod

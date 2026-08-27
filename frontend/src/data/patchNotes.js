@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.199",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "A squad you cleared stays cleared",
+          "body": "When you used Clear day or Clear all and confirmed it, the assistant could still fill that squad back in when the race started. It now leaves it alone: a race you cleared starts with no riders from your team.\n\nClearing is still yours to undo. The moment you pick riders yourself, or ask for auto-fill, the assistant is free to help again."
+        },
+        "da": {
+          "title": "En trup du har ryddet, bliver ryddet",
+          "body": "Brugte du Ryd dag eller Ryd alt og bekræftede det, kunne assistenten stadig fylde truppen ud igen når løbet gik i gang. Det gør han ikke længere: et løb du har ryddet, starter uden ryttere fra dit hold.\n\nDet er stadig dig der bestemmer. I samme øjeblik du selv udtager ryttere, eller beder om automatisk udfyldning, må assistenten hjælpe igen."
+        },
+        "refs": [4200, 2599]
+      }
+    ]
+  },
+  {
     "version": "7.198",
     "date": "2026-08-27",
     "label": "Beta",
