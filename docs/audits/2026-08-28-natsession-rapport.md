@@ -8,18 +8,20 @@
 
 **Ingen prod-mutationer.** Alt mod prod var read-only SELECT.
 
-**Fem PR'er åbne, ingen merget.** Grunden er ikke tøven: `main` kræver en godkendt
-review (`reviewDecision: REVIEW_REQUIRED`), så selv docs-/CI-PR'er kan ikke merges
-uden dig. Mandatets "lav-risiko merges" er i praksis spærret af branch protection.
-Det er værd at vide — ikke noget jeg har omgået.
+**Tre PR'er merget, tre venter på dig.**
 
-| PR | Hvad | Risiko | Anbefaling |
-|---|---|---|---|
-| [#4285](https://github.com/NicolaiDolmer/CyclingZone/pull/4285) | #4200 anden halvdel — en ryddet trup bliver ryddet | Lav (fuld e2e: 561 passed) | **Merge før kl. 11** |
-| [#4286](https://github.com/NicolaiDolmer/CyclingZone/pull/4286) | #4233/#4183 — nye spillere kan lande i en pulje på 24 | Lav | **Merge før kl. 11** |
-| [#4287](https://github.com/NicolaiDolmer/CyclingZone/pull/4287) | #4261 — svar på løb-som-træning i Hjælp + svarudkast til dig | Ingen (docs) | Merge |
-| [#4289](https://github.com/NicolaiDolmer/CyclingZone/pull/4289) | #4281/#4258/#4274 + audit-workflowet | Lav (CI) | Merge |
-| [#4290](https://github.com/NicolaiDolmer/CyclingZone/pull/4290) | #4219/#4215 — scorecards måler nu prod, kalender-gate i CI | Lav | Merge |
+_Rettelse til min egen første version af denne rapport: jeg skrev at branch protection spærrede for alle merges, fordi PR'erne står som `REVIEW_REQUIRED`. Det viste sig at være rådgivende, ikke blokerende — merget gik igennem. Jeg har derfor merget netop dem mandatet dækker (docs- og CI-/vagt-PR'er med grøn CI) og ladet alle kode-PR'er stå._
+
+| PR | Hvad | Status |
+|---|---|---|
+| [#4285](https://github.com/NicolaiDolmer/CyclingZone/pull/4285) | #4200 anden halvdel — en ryddet trup bliver ryddet | **Venter på dig.** Kode-PR. Fuld e2e: 561 passed. **Merge før kl. 11** |
+| [#4286](https://github.com/NicolaiDolmer/CyclingZone/pull/4286) | #4233/#4183 — nye spillere kan lande i en pulje på 24 | **Venter på dig.** Kode-PR. **Merge før kl. 11** |
+| [#4291](https://github.com/NicolaiDolmer/CyclingZone/pull/4291) | #4260/#4184 — rå i18n-nøgler + vagtens typelister og målemetoder | **Venter på dig.** Rører spillervendt tekst |
+| [#4287](https://github.com/NicolaiDolmer/CyclingZone/pull/4287) | #4261 — svar på løb-som-træning i Hjælp | ✅ **Merget** (13ec1e839) |
+| [#4289](https://github.com/NicolaiDolmer/CyclingZone/pull/4289) | #4281/#4258/#4274 + audit-workflowet | ✅ **Merget** |
+| [#4290](https://github.com/NicolaiDolmer/CyclingZone/pull/4290) | #4219/#4215 — scorecards måler prod, kalender-gate i CI | ✅ **Merget** |
+
+Done-flip er sat på #4219 #4281 #4258 #4274 #4261. **#4215 er bevidst holdt på `claude:todo`**: kun 1 af #4176's 3 krævede kørsels-steder er leveret.
 
 **Din egen [#4284](https://github.com/NicolaiDolmer/CyclingZone/pull/4284) er urørt** som aftalt.
 Test-merget mod #4285: `raceRunner.js` merger **rent**. Eneste konflikt er
@@ -219,7 +221,10 @@ Tre issues beskrev noget der ikke længere passer. Verificeret før jeg skrev de
 2. Apply #4284's migration (`database/2026-08-27-4283-selection-guard-spaend.sql`).
 3. Kør §6-tjeklisten igen — særligt **query 3 kl. ~10:15**, som er den eneste der ikke
    kan køres på forhånd.
-4. #4287 (Hjælp) bør ud før kl. 11: fem spillere har ventet på de svar siden 25/8.
-   Svar-udkastene til Discord ligger i `docs/drafts/2026-08-27-4261-svarudkast-loeb-som-traening.md`
-   — **du poster dem selv.**
-5. Beslutning 3 (#4282, det rente-frosne hold) når der er ro.
+4. **Post svar-udkastene i Discord.** Hjælp/FAQ er allerede live (#4287 merget), men de
+   fem spillere har ventet på et svar siden 25/8, og jeg sender aldrig beskeder på dine
+   vegne. Udkastene ligger klar EN+DA i
+   `docs/drafts/2026-08-27-4261-svarudkast-loeb-som-traening.md`.
+5. **#4291** når du har set på den — den rører spillervendt tekst (finans-labels,
+   træningsfokus), så den hører til dit review, ikke mit.
+6. Beslutning 2 (#4233's FK) og beslutning 3 (#4282, det rente-frosne hold) når der er ro.
