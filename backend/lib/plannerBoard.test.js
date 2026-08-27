@@ -277,3 +277,18 @@ test("raceCardPeakOverlay: defensiv mod manglende ordinaler/tuning", () => {
   const out = raceCardPeakOverlay({ raceId: "race-x", raceOrdinal: 100, plans: [{ riderId: "r1", targetRaceId: "race-y", windowEndOrd: 97 }], tuning: { PEAK_PAYBACK_DAYS: 0 } });
   assert.deepEqual(out.paybackRiders, [], "payback-vindue på 0 dage kan ikke kollidere");
 });
+
+test("raceCardPeakOverlay: en forældreløs plan (målløb slettet) tegner hverken peak eller payback (#4294)", () => {
+  // targetRaceId=null matcher aldrig løbet, så uden guarden faldt rækken lige ned
+  // i payback-grenen og gav rytteren et formhul-chip han aldrig havde planlagt.
+  const out = raceCardPeakOverlay({
+    raceId: "race-x",
+    raceOrdinal: 100,
+    plans: [
+      { riderId: "r1", targetRaceId: null, windowEndOrd: 97 },
+      { riderId: "r2", targetRaceId: "race-x", windowEndOrd: 101 },
+    ],
+  });
+  assert.deepEqual(out.paybackRiders, [], "forældreløst vindue giver ingen payback");
+  assert.deepEqual(out.peakRiderIds, ["r2"], "den ægte peak er urørt");
+});
