@@ -96,13 +96,25 @@
       "withdrawn": "Afmeldt",
       "locked": "Trup låst"
     },
+    "day": {
+      "racingIn": "Kører {race}",
+      "busyIn": "Optaget i {race}",
+      "busyUnknown": "Optaget i et andet løb",
+      "dayClosed": "Intet løb er åbent i dag",
+      "injured": "Skadet",
+      "legendRacing": "Kører i dag",
+      "legendBlocked": "Kan ikke tilføjes",
+      "riderAria": "{name}. {state}"
+    },
     "pool": {
       "title": "Ledige ryttere · {count}-trup",
       "autofill": "Auto-udfyld",
       "fillMissing": "Udfyld manglende",
       "clearDay": "Ryd dag",
       "clearAllSeason": "Ryd alt",
-      "bound": "Kører allerede et overlappende løb",
+      "tallyFree": "{count} uden løb",
+      "tallyRacing": "{count} kører",
+      "tallyOut": "{count} utilgængelige",
       "loadShort": "{days}d",
       "loadTitle": "Sæson-belastning: {races, plural, one {# løb} other {# løb}}, {days, plural, one {# løbsdag} other {# løbsdage}} tilmeldt denne sæson",
       "clearDayTooltip": "Rydder {races, plural, one {# løb} other {# løb}} og fjerner {riders, plural, one {# rytter} other {# ryttere}} for denne dag"

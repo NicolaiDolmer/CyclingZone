@@ -1,7 +1,7 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, riderDayState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -204,6 +204,25 @@ test("riderColumnState: riding / overlap / available / locked (#1984)", () => {
   assert.equal(riderColumnState({ column: colChe, bindingMap, riderId: "yonas" }), "overlap");
   assert.equal(riderColumnState({ column: colMun, bindingMap, riderId: "yonas" }), "available");
   assert.equal(riderColumnState({ column: colDone, bindingMap, riderId: "yonas" }), "locked");
+});
+
+test("riderDayState: ruller riderColumnState op til out/riding/free/blocked (#4259)", () => {
+  const colBur = { id: "bur", name: "Burgalesa", bindingWindow: W(3), selection: { rider_ids: ["yonas"] } };
+  const colChe = { id: "che", name: "Chesapeake", bindingWindow: W(3), selection: { rider_ids: [] } };
+  const colMun = { id: "mun", name: "Münsterland", bindingWindow: W(5), selection: { rider_ids: [] } };
+  const colDone = { id: "done", name: "Started", bindingWindow: W(5), lineup_locked: true, selection: { rider_ids: [] } };
+  const columns = [colBur, colChe, colMun, colDone];
+  const bindingMap = draftBindingMap(columns);
+  // Yonas koerer allerede Burgalesa (riding slaar hans egen 'overlap' i Chesapeake).
+  assert.equal(riderDayState({ rider: { id: "yonas" }, columns, bindingMap }), "riding");
+  // Skadet vinder over ALT, ogsaa over en gemt udtagelse han allerede sidder i.
+  assert.equal(riderDayState({ rider: { id: "yonas", injured: true }, columns, bindingMap }), "out");
+  // Theo koerer ingen steder, men Münsterland (gd5) er stadig available for ham → free.
+  assert.equal(riderDayState({ rider: { id: "theo" }, columns, bindingMap }), "free");
+  // Kun en laast/afmeldt kolonne tilbage → blocked (ingen ledig plads, ingen navngiven grund her).
+  assert.equal(riderDayState({ rider: { id: "theo" }, columns: [colDone], bindingMap }), "blocked");
+  // Ingen loeb i dag overhovedet → free, ikke blocked (der er intet at laase mod).
+  assert.equal(riderDayState({ rider: { id: "theo" }, columns: [], bindingMap }), "free");
 });
 
 test("findSelectionOverlaps: én rytter i to overlappende løb → konflikt med begge navne (#1983/#1984)", () => {

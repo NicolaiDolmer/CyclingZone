@@ -30,7 +30,7 @@ import {
   SELECTION_ABILITY_SORT_KEYS,
 } from "../../lib/lineupInsight.js";
 import SortTh from "../rider/RiderSortTh.jsx";
-import { ArrowUpIcon, ArrowDownIcon, BlockedNote } from "../ui/index.js";
+import { ArrowUpIcon, ArrowDownIcon, BlockedNote, LockIcon, AlertTriangleIcon } from "../ui/index.js";
 import RiderMiniProfileModal from "../rider/RiderMiniProfileModal.jsx";
 import { useBlockedAction } from "../../lib/useBlockedAction.js";
 
@@ -331,6 +331,18 @@ export default function RaceSelectionPanel({
     }
   }
 
+  // #4259: samme 16px rende som Race Hub's pulje/kolonner, her med panelets egen
+  // (kortere) tilstands-tabel — checkboxen siger allerede "udtaget", så der er intet
+  // 'riding'/'free' at tegne. Præcedens: bound+checked (ægte overlap-fejl) > injured >
+  // bound (låst, ikke valgt) > intet. Ren omplacering af de eksisterende piller
+  // (selection.boundConflict/injured/boundIn), nul nye i18n-nøgler.
+  function railState(rider, bound, checked) {
+    if (bound && checked) return { icon: "triangle", danger: true, text: t("selection.boundConflict", { race: bound.bound_race_name ?? "" }) };
+    if (rider.injured) return { icon: "triangle", danger: true, text: t("selection.injured") };
+    if (bound && !checked) return { icon: "lock", danger: false, text: t("selection.boundIn", { race: bound.bound_race_name ?? "" }) };
+    return { icon: null, danger: false, text: null };
+  }
+
   return (
     <section data-testid="race-selection-panel" className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       {/* Header: titel + tæller */}
@@ -428,6 +440,7 @@ export default function RaceSelectionPanel({
           // allerede-udtaget skadet rytter sad permanent fast i truppen (Discord-bug).
           const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || busy;
           const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
+          const rail = railState(rider, bound, checked);
           return (
             <li key={rider.id} className={rider.injured || (bound && !checked) ? "opacity-60" : ""}>
               {/* #3520: checkboxen er den ENESTE vælger — labelen wrapper kun den, ikke
@@ -443,6 +456,12 @@ export default function RaceSelectionPanel({
                     className="accent-cz-accent disabled:cursor-not-allowed"
                   />
                 </label>
+                {/* #4259: 16px rende FØR navnet — placerer signalet ved en fast x-position
+                    i stedet for en pille der hopper med navnelængden. */}
+                <span className="w-4 shrink-0 flex items-center justify-center pt-0.5" aria-hidden="true">
+                  {rail.icon === "triangle" && <AlertTriangleIcon size={11} className="text-cz-danger" />}
+                  {rail.icon === "lock" && <LockIcon size={11} className="text-cz-3" />}
+                </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     {/* #3520: navnet åbner rytterens profil-popup — påvirker IKKE sel. */}
@@ -454,18 +473,6 @@ export default function RaceSelectionPanel({
                     >
                       {rider.name}
                     </button>
-                    {rider.injured && (
-                      <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
-                        {t("selection.injured")}
-                      </span>
-                    )}
-                    {bound && (
-                      <span className={`text-3xs px-2 py-0.5 rounded-full border ${checked
-                        ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"
-                        : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                        {t(checked ? "selection.boundConflict" : "selection.boundIn", { race: bound.bound_race_name ?? "" })}
-                      </span>
-                    )}
                     {checked && freeRoleSet.has(rider.id) && (
                       <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-subtle text-cz-accent-t border border-cz-accent/30">
                         {t("selection.freeRole")}
@@ -473,6 +480,9 @@ export default function RaceSelectionPanel({
                     )}
                     <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
                   </div>
+                  {rail.text && (
+                    <span className={`block text-3xs uppercase tracking-[.05em] ${rail.danger ? "text-cz-danger" : "text-cz-3"}`}>{rail.text}</span>
+                  )}
                   {/* #3809: mobil-listen viser enten dagens fit/form/træthed-linje,
                       eller (viewMode="abilities") et kompakt gitter med alle 15 evner. */}
                   {viewMode === "abilities" ? (
@@ -556,11 +566,12 @@ export default function RaceSelectionPanel({
               // #2637: se mobil-listen ovenfor — fjernelse af en allerede-udtaget skadet
               // rytter skal altid være muligt, kun tilføjelse af en NY skadet rytter blokeres.
               const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || busy;
+              const rail = railState(rider, bound, checked);
               return (
                 <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) ? "opacity-60" : ""}`}>
                   <td className="px-4 py-2.5">
                     {/* #3520: checkboxen er den ENESTE vælger — labelen wrapper kun den. */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <label className={`flex items-center ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                         <input
                           type="checkbox"
@@ -571,32 +582,33 @@ export default function RaceSelectionPanel({
                           className="accent-cz-accent disabled:cursor-not-allowed"
                         />
                       </label>
-                      {/* #3520: navnet åbner rytterens profil-popup — påvirker IKKE sel. */}
-                      <button
-                        type="button"
-                        onClick={() => setProfileRider(rider)}
-                        aria-label={t("selection.riderProfile.viewProfile", { name: rider.name })}
-                        className="text-cz-1 font-medium text-left hover:text-cz-accent-t hover:underline transition-colors"
-                      >
-                        {rider.name}
-                      </button>
-                      {rider.injured && (
-                        <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
-                          {t("selection.injured")}
+                      {/* #4259: 16px rende FØR navnet — placerer signalet ved en fast
+                          x-position i stedet for en pille der hopper med navnelængden. */}
+                      <span className="w-4 shrink-0 flex items-center justify-center pt-0.5" aria-hidden="true">
+                        {rail.icon === "triangle" && <AlertTriangleIcon size={11} className="text-cz-danger" />}
+                        {rail.icon === "lock" && <LockIcon size={11} className="text-cz-3" />}
+                      </span>
+                      <div className="min-w-0">
+                        <span className="flex items-center gap-2 flex-wrap">
+                          {/* #3520: navnet åbner rytterens profil-popup — påvirker IKKE sel. */}
+                          <button
+                            type="button"
+                            onClick={() => setProfileRider(rider)}
+                            aria-label={t("selection.riderProfile.viewProfile", { name: rider.name })}
+                            className="text-cz-1 font-medium text-left hover:text-cz-accent-t hover:underline transition-colors"
+                          >
+                            {rider.name}
+                          </button>
+                          {checked && freeRoleSet.has(rider.id) && (
+                            <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-subtle text-cz-accent-t border border-cz-accent/30 whitespace-nowrap">
+                              {t("selection.freeRole")}
+                            </span>
+                          )}
                         </span>
-                      )}
-                      {bound && (
-                        <span className={`text-3xs px-2 py-0.5 rounded-full border whitespace-nowrap ${checked
-                          ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"
-                          : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                          {t(checked ? "selection.boundConflict" : "selection.boundIn", { race: bound.bound_race_name ?? "" })}
-                        </span>
-                      )}
-                      {checked && freeRoleSet.has(rider.id) && (
-                        <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-subtle text-cz-accent-t border border-cz-accent/30 whitespace-nowrap">
-                          {t("selection.freeRole")}
-                        </span>
-                      )}
+                        {rail.text && (
+                          <span className={`block text-3xs uppercase tracking-[.05em] whitespace-nowrap ${rail.danger ? "text-cz-danger" : "text-cz-3"}`}>{rail.text}</span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-2.5">

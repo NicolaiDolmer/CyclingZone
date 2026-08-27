@@ -77,6 +77,21 @@ export function riderColumnState({ column, bindingMap, riderId }) {
   return "available";
 }
 
+// #4259: rulller riderColumnState op over ALLE dagens kolonner til én dags-tilstand pr.
+// rytter. Ingen femte vokabular: 'riding' og 'available' er riderColumnState's egne ord;
+// 'overlap' og 'locked' slaas sammen til 'blocked' fordi to næsten-ens låse er værre end
+// én lås plus en navngiven årsag; 'out' er rider.injured, som allerede ligger på wiren
+// (raceSelection.buildRiderRows) og som puljen aldrig har læst.
+// Præcedens: out > riding > free > blocked.
+export function riderDayState({ rider, columns = [], bindingMap }) {
+  if (rider?.injured) return "out";
+  if (!columns.length) return "free";
+  const s = columns.map((c) => riderColumnState({ column: c, bindingMap, riderId: rider.id }));
+  if (s.includes("riding")) return "riding";
+  if (s.includes("available")) return "free";
+  return "blocked";
+}
+
 // #1984/#1983: alle ægte overlap-konflikter i kladden — en rytter udtaget i to løb hvis game-dag-
 // vinduer overlapper. Driver den NAVNGIVNE gem-fejl (i stedet for backendens opake kode) + en
 // proaktiv advarsel. Returnerer [{ riderId, raceIds:[a,b], raceNames:[a,b] }] (afmeldte løb tæller ikke).

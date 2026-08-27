@@ -146,8 +146,13 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
             if (!r) return null;
             const role = roleOf(id);
             return (
-              <div key={id} className="w-full flex items-center justify-between gap-2 px-3 py-1.5">
-                <span className="text-xs text-cz-1 truncate">
+              <div key={id} className="w-full flex items-center gap-2 px-3 py-1.5">
+                {/* #4259: samme 16px rende som puljen, men KUN tilstand 'out' — hver anden
+                    række her ER 'riding' pr. definition, så et flueben ville blot gentage det. */}
+                <span className="w-4 shrink-0 flex items-center justify-center" aria-hidden="true">
+                  {r.injured && <AlertTriangleIcon size={11} className="text-cz-danger" />}
+                </span>
+                <span className="text-xs text-cz-1 truncate flex-1">
                   {r.name}
                   {role && <RoleBadge t={t} role={role} />}
                 </span>
@@ -177,15 +182,21 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
             return (
               <div key={id} className="relative">
                 {/* #1925: rækken kan trækkes til et andet løb (flyt) eller til puljen (fjern). */}
-                <div className="w-full flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-cz-subtle"
+                <div className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-cz-subtle"
                   draggable={!busy}
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", encodeDrag({ riderId: id, fromRaceId: column.id }))}>
+                  {/* #4259: samme 16px rende som puljen, men KUN tilstand 'out' — hver anden
+                      række her ER 'riding' pr. definition, så et flueben ville blot gentage det.
+                      Renden ligger FØR chevronen, så den er rækkens allerførste x-position. */}
+                  <span className="w-4 shrink-0 flex items-center justify-center" aria-hidden="true">
+                    {r.injured && <AlertTriangleIcon size={11} className="text-cz-danger" />}
+                  </span>
                   {/* #1919: rolle-tildeling lå skjult bag rytter-navnet uden nogen affordance
                       (Clarity: dead-clicks fordi navnet ikke så interaktivt ud). Chevron +
                       aria-haspopup + hover-farve gør nu tydeligt at navnet åbner rolle-menuen. */}
                   <button type="button" onClick={() => setRoleMenuFor(roleMenuFor === id ? null : id)} disabled={busy}
                     aria-haspopup="menu" aria-expanded={roleMenuFor === id}
-                    className="group/role flex items-center gap-1 text-left min-w-0 disabled:opacity-50">
+                    className="group/role flex items-center gap-1 text-left min-w-0 flex-1 disabled:opacity-50">
                     <span aria-hidden="true" className={`text-cz-3 text-3xs flex-shrink-0 transition-transform ${roleMenuFor === id ? "rotate-180" : ""}`}>▾</span>
                     <span className="text-xs text-cz-1 truncate transition-colors group-hover/role:text-cz-accent-t">{r.name}</span>
                     {role && <RoleBadge t={t} role={role} />}
