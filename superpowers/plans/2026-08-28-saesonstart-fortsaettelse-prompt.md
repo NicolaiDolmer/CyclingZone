@@ -9,7 +9,48 @@ og bedre end før kalender-rebuilden, når spillerne logger ind.
 
 ---
 
-## 1. Start her
+## 1. Start med spillerne, ikke med koden
+
+**Ejer-krav 27/8.** Før du rører en PR, gør du dette:
+
+**1a. Læs de sidste 24 timer i Discord.** MCP-værktøjerne `discord_read_messages` og
+`discord_get_forum_channels` er den direkte vej; `scripts/discord/` har read-only sweep-scripts hvis du skal
+have flere kanaler på én gang. Kanalerne der betyder noget: `#feedback-and-ideas`, `#the-roadbook`,
+`#staff-chat`, `#dansk-snak`. Læs også forum-tråde i appen hvis noget peger derhen.
+
+**1b. Foreslå hvad ejeren skal svare på.** Én liste, prioriteret, med et konkret udkast pr. punkt.
+**Du sender aldrig selv.** Udkast til copy-paste, ejeren poster. Tjek FØRST om han allerede har svaret,
+så du ikke foreslår noget der er overstået. EN først, DA under, æøå, ingen em-dash.
+
+**1c. Skriv patch notes til Discord for det der ER blevet færdigt**, så Discord-patch-noterne er ajour.
+De skal skrives til spillere, ikke til udviklere: hvad var galt, hvad sker der nu, hvad skal du selv gøre.
+Kort. Ejer-direktiv 13/8: markant kortere og lettere at læse end vi plejer.
+
+Råmaterialet fra 27/8, alt merged og live:
+
+| Version | Issue | Hvad spilleren mærker |
+|---|---|---|
+| 7.204 | #4293 | Træningssiden viste +0 på hver evne før sæsonen var begyndt. Den forklarer nu hvorfor og hvornår tællingen starter |
+| 7.205 | #4245 | Belastnings-tallet talte etaper og gamle sæsoner med. Snittet viste 18,1 hvor det sande var 4,9. Sponsor-teksten siger nu etape, ikke løbsdag. Ingen penge flyttet |
+| 7.206 | #4294 | Alle formpeaks fra den gamle kalender er ryddet. 812 planer der viste No peak uden at kunne fjernes. Peaks sat efter ombygningen er urørte |
+| 7.207 | #4165 | Planlægning blev helt blank når et kald fejlede. Siger nu hvad der gik galt, at intet er tabt, og har en Prøv igen-knap |
+
+**1d. Skriv hvad der er på tegnebrættet i dag og i morgen**, så spillerne ved hvad de kan forvente.
+Kun det spiller-vendte, og kun det du faktisk tror lander. Kandidater: #4296 (se hvilke løbsdage et løb
+spænder over, og hvilke løb det kolliderer med, før du klikker) · #4259 (se på ét blik hvem der allerede
+kører) · #4295 (minimum 6 for at stille op) · #4306 (afmeldte hold stiller ikke op) · #4307 (opfyldning
+af tynde trupper).
+
+> **ADVARSEL om minimum-6-udkastet.** [`docs/drafts/2026-08-27-minimum-6-ryttere-varsel.md`](../../docs/drafts/2026-08-27-minimum-6-ryttere-varsel.md)
+> siger "Fra i morgen" og "From tomorrow's start". **Reglen er holdt tilbage** (se afsnit 3), så udkastet er
+> forkert som det står. Ret datoen eller hold det tilbage, men post det ikke uændret.
+
+**1e. Opret det der mangler i GitHub.** Kommer der noget frem i Discord som ikke har et issue, så opret det
+med det samme, med spillerens ordrette citat og et link til beskeden. Søg efter dubletter først.
+
+---
+
+## 2. PR-tilstand
 
 ```bash
 gh pr list --state open --json number,title,mergeStateStatus
@@ -19,12 +60,13 @@ pwsh -File scripts/check-agent-token-hygiene.ps1
 Fire PR'er var i luften ved handoff. **Verificér deres tilstand før du rører dem**. Flere kan være merged,
 og to var i konflikt fordi #4302 landede først.
 
-| PR | Issue | Tilstand 27/8 ~13:30 | Næste skridt |
+| PR | Issue | Tilstand ved handoff | Næste skridt |
 |---|---|---|---|
-| [#4300](https://github.com/NicolaiDolmer/CyclingZone/pull/4300) | #4245 | Ejer-godkendt, 1 check i kø | Merge når grøn |
-| [#4303](https://github.com/NicolaiDolmer/CyclingZone/pull/4303) | #4165 | Ejer-godkendt visuelt, retterunde kørte på 7 fund | Gen-verificér, så merge |
-| [#4304](https://github.com/NicolaiDolmer/CyclingZone/pull/4304) | #4294 | Ejer-godkendt, **DIRTY**, retterunde kørte | Flet main ind, merge, **applyer migration** |
-| [#4301](https://github.com/NicolaiDolmer/CyclingZone/pull/4301) | #4295 | **DIRTY**, minimum-6-reglen blev bygget | Færdiggør, forelæg ejeren |
+| #4300 | #4245 | **MERGED** 27/8 | Færdig, issue markeret done |
+| #4302 | #4293 | **MERGED** 27/8 | Færdig, issue markeret done |
+| [#4303](https://github.com/NicolaiDolmer/CyclingZone/pull/4303) | #4165 | Syv fund rettet, seks verificeret lukket, CI grøn | Merge når CI er grøn efter sidste flet |
+| [#4304](https://github.com/NicolaiDolmer/CyclingZone/pull/4304) | #4294 | Rettet, main flettet ind | Bump patch note til 7.207, merge, **apply migration** |
+| [#4301](https://github.com/NicolaiDolmer/CyclingZone/pull/4301) | #4295 | **HOLDT TILBAGE med vilje** | Se afsnit 2b |
 
 **Konflikterne er altid `frontend/src/data/patchNotes.js`.** Løsningen er hver gang: behold **begge**
 versioner, løft din egen over mains top. Kast aldrig den ene væk. Ved flere commits der rører filen: brug
@@ -32,7 +74,36 @@ versioner, løft din egen over mains top. Kast aldrig den ene væk. Ved flere co
 
 ---
 
-## 2. Beslutninger ejeren traf 27/8. Genåbn dem ikke
+## 3. #4301 er holdt tilbage. Læs dette før du merger den
+
+Minimum-6-gulvet er bygget og teknisk færdigt, men den må **ikke** merges som den står. To grunde:
+
+**1. Et blokerende fund.** `partialSquadOutlook` returnerer `null` ved `selected === 0`
+(`frontend/src/lib/raceSelectionLogic.js:112`), på antagelsen om at assistenten så fylder en hel trup.
+Under gulvet gør den ikke det: den skriver intet hvis den ikke kan nå 6. Målt: **195 af 226 menneskehold
+har nul udtagelser lige nu**, og 128 af de 130 tabte starter rammer hold i præcis den tilstand. Reglen tager
+altså et løb fra 128 hold uden ét ord på nogen flade. Det skal fikses uanset hvad.
+
+**2. Grundlaget flyttede sig.** Ejeren traf beslutningen ud fra "21 menneskehold kan ikke fylde 6". Målt mod
+prod ved at simulere åbningsdagen løb for løb: **130 starter forsvinder, fordelt på 129 menneskehold**.
+Årsagen er at der kører tre løb samtidig i D1 til D3, så et hold skal stille 18 ryttere, eller 22 i D1.
+D3's medianhold har 9 raske. D3 alene mister 74 starter. Felter kollapser: Rund um Köln Neu 19 til 5.
+
+**Og trup-opfyldningen er ikke kørt siden 24. juni** (se #4307): 105 hold ligger under 12 ryttere, og en
+kørsel ville oprette 422 ryttere. Ejerens ord 27/8: *"De hold der er inaktive har vi jo aftalt, at disse hold
+skal have en opfyldning af ryttere i dag. Hvis der er aktive hold der ikke har nok ryttere, så er det jo
+deres eget valg."* Gulvets konsekvens afhænger direkte af den opfyldning.
+
+**Rækkefølgen er derfor:** afklar aktivitets-definitionen med ejeren, vis ham listen, kør opfyldningen med
+hans GO, **mål simuleringen igen**, og forelæg ham så det rigtige tal før #4301 merges.
+
+Løs ende i #4303 der ikke blev fikset: retry-knappen er inert på auth-grenen i Formplan-fanen
+(`usePlanner.js:44`, `refresh()` sætter aldrig `setLoading(true)`). Den blev IKKE rettet, fordi `refresh()`
+også er efter-mutation-genhentningen, så et `setLoading(true)` dér giver et spinner-blink hver gang man
+gemmer. Den rigtige rettelse er en separat retry-funktion. `SeasonView` har samme mønster rettet korrekt
+(`SeasonView.jsx:111`) og kan bruges som skabelon.
+
+## 4. Beslutninger ejeren traf 27/8. Genåbn dem ikke
 
 | # | Beslutning | Konsekvens |
 |---|---|---|
@@ -50,7 +121,7 @@ og **ejeren poster selv**.
 
 ---
 
-## 3. Fem ting den gamle prompt tog fejl af
+## 5. Fem ting den gamle prompt tog fejl af
 
 Verificeret mod kode og prod 27/8:
 
@@ -70,7 +141,7 @@ skrevet ned, i `CALENDAR_RULES.md:265`. SSOT'ens egen modsigelse 5 var forkert.
 
 ---
 
-## 4. Arbejdet der mangler, i rækkefølge
+## 6. Arbejdet der mangler, i rækkefølge
 
 ### Først: luk bølge 1
 De fire PR'er i tabellen ovenfor. **Migrationen i #4304 applies af dig efter merge**
@@ -112,7 +183,7 @@ Det er et åbent ejer-spørgsmål: hvilken skal være den **klikbare** celle-aks
 
 ---
 
-## 5. Process der beviste sit værd i dag. Dette er krav, ikke råd
+## 7. Process der beviste sit værd. Dette er krav, ikke råd
 
 **Adversarisk verifikation af hver PR, før merge.** Den fangede i dag, på tværs af fem PR'er:
 
@@ -144,7 +215,7 @@ køre. Bruger du preview-serveren, så verificér at den serverer worktree'et og
 
 ---
 
-## 6. Faste rammer
+## 8. Faste rammer
 
 - **Ét issue pr. PR.** `Refs #N`, aldrig `Closes`. PR-body efter `PULL_REQUEST_TEMPLATE` inkl. Brugerverifikation.
   `pwsh -File scripts/preflight-pr.ps1` før push.
@@ -160,7 +231,7 @@ køre. Bruger du preview-serveren, så verificér at den serverer worktree'et og
 - **Postmortem** i `.claude/learnings/` ved hver bugfix. **Patch notes + Hjælp** ved enhver brugerrettet ændring.
 - **Opfølgninger ejer du selv.** Fund bliver til issue plus egen worker i sessionen. Ingen chips til ejeren.
 
-## 7. Løse ender
+## 9. Løse ender
 
 - **13 worktrees** ligger tilbage, heraf 7 på branches merged og slettet på origin. Oprydning blev blokeret
   af auto-mode i dag; den kræver ejerens tilladelse eller hans egen hånd.
