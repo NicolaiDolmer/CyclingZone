@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.206",
+    "version": "7.207",
     "date": "2026-08-27",
     "label": "Beta",
     "changes": [
