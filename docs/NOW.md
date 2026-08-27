@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Sæsonstart-master-sessionen KØRER** (prompt: [`superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md`](superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md)). **Bølge 1 i gang:** #4294 · #4295 · #4245 · #4165 · #4293, hver i eget worktree m. adversarisk verifikation. **Derefter:** B (#4296 · #4259) på designpanelets specs, så A3 (#4201) og C (Z1, #1146). **Ejer-beslutninger truffet 27/8:** slet 812 forældreløse peaks (gjort) · løbsdage vises **1-baseret**. Rest på ejeren: apply #4284s migration · §6-tjeklisten · **post svar-udkastene i Discord** · **PR #4298**.
+> **🎯 Next action:** **Start naeste saesonstart-session** paa prompten [`superpowers/plans/2026-08-28-saesonstart-fortsaettelse-prompt.md`](superpowers/plans/2026-08-28-saesonstart-fortsaettelse-prompt.md). Den starter med **spillerne**: laes 24 timers Discord, foreslaa svar, skriv Discord-patch-notes for 7.204-7.207, og list hvad der er paa tegnebraettet. **Merget 27/8:** #4302 · #4300 · #4304 (migration applied) · #4303. **Holdt tilbage med vilje:** #4301 minimum-6 (blokerende fund + grundlaget flyttede sig, se prompten §3). **Derefter:** #4306 · spor B (#4296 · #4259) · #4201/#4212/#4271 · Z1. **Ejer-rest:** post Discord-varslet (RET datoen foerst) · #4307 aktivitets-definition.
 
 > **✅ PEAK-REPARATION 27/8 (ejer-GO kl. 09:2x):** kalender-regenereringen nullede `target_race_id` (FK er `ON DELETE SET NULL`) men lod vinduerne stå med den GAMLE kalenders datoer. **812** foraeldreløse planer, 731 med vinduer i den live sæson, **280 ryttere på 27 menneskehold ville stå i utilsigtet peak på åbningsdagen**. NOW.md's tidligere tal "237" var forkert. Backup `backup_4294_rider_peak_plans` (812 rækker), slettet, post-verify: 82 planer tilbage, alle med gyldigt målløb, 0 uden mål. Forward-guard (FK → CASCADE + filter i `loadPeakPlans`) i PR.
 
@@ -31,6 +31,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Working agent:** Claude Code (Opus 5) — sesonstart-master-session 27/8, workflow-baseret. Spor A+B+D (bølge 1) og C (bølge 2).
+> **🤖 Ingen aktiv session.**
 
 _Historik i git-log, issue-tråde + docs/audits/._
