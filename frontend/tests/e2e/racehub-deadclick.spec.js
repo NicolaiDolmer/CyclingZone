@@ -90,7 +90,10 @@ test("RaceColumn: klik på 'Løbsdag N' (ikke kun titlen) navigerer til løbet (
 
   // Klikket der før var dødt: dato-mærkatet (ikke titlen). #4187 erstattede
   // "Løbsdag 14" med løbets dato — samme placering, samme hit-target.
-  await board.getByText("2. sep.").click();
+  // #4296: scopet til `header` (RaceLink-ankeret), ikke hele `board` — ContextBand's
+  // to-akset readout viser nu SAMME dato ("2. sep.") for den fokuserede kalenderdag,
+  // så et bredt board-scoped substring-match ville ramme strict-mode-fejl (2 hits).
+  await header.getByText("2. sep.").click();
   await expect(page).toHaveURL(/\/races\/race-adriatique$/);
 });
 

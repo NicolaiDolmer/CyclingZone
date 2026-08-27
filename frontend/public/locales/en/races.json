@@ -126,7 +126,14 @@
       "peaksHere": "Peaking here: {names}",
       "paybackHere": "Payback dip here: {names} ({points} form)",
       "paybackHereNoPoints": "Payback dip here: {names}",
-      "clearSelection": "Clear selection"
+      "clearSelection": "Clear selection",
+      "sharesDay": "Shares race day {day} with {race}",
+      "sharesDays": "Shares race days {start}-{end} with {race}",
+      "sharesMany": "Shares race days with {count, plural, one {# other race} other {# other races}}",
+      "sharesItem": "Race day {day} · {race}",
+      "sharesItemDays": "Race days {start}-{end} · {race}",
+      "clash": "{rider} rides both on race day {day}",
+      "clashMany": "{count, plural, one {# rider rides} other {# riders ride}} both races"
     },
     "popover": {
       "title": "Add to which race?",

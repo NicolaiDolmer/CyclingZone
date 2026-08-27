@@ -4,7 +4,8 @@
 // vises read-only. Afmeld/deltag i footeren.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { computeColumnStatus, freshnessTier, raceDateRangeLabel } from "../../lib/raceHubLogic.js";
+import { computeColumnStatus, freshnessTier, raceDateRangeLabel, raceGameDayLabel } from "../../lib/raceHubLogic.js";
+import RaceDayOverlapRow from "./RaceDayOverlapRow.jsx";
 import { terrainBucket } from "../../lib/stageTerrain.js";
 import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
 import FitBar from "./FitBar.jsx";
@@ -36,7 +37,7 @@ function RoleBadge({ t, role }) {
 // #2819: dataTour sættes kun på brættets FØRSTE kolonne, så onboarding-touren
 // på /races har et stabilt anker at pege på (samme "kun første række"-mønster som
 // AuctionsPage's data-tour="auctions-bid-input").
-export default function RaceColumn({ column, onRemoveRider, onClearSelection, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false, paybackFormPoints = null, dataTour, boardState = null }) {
+export default function RaceColumn({ column, onRemoveRider, onClearSelection, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false, paybackFormPoints = null, dataTour, boardState = null, overlaps = [], clashes = [], onFocusRace, flash = false }) {
   const { t, i18n } = useTranslation("races");
   const [roleMenuFor, setRoleMenuFor] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: kolonne-drop-zone
@@ -75,6 +76,13 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
     endMs: column.window?.end,
     locale: i18n.language,
   });
+  // #4296 (Refs #4193): løbsdags-spændet er sandt igen siden #4217 gjorde
+  // bindingWindow.days til et sammenhængende start..end. DISPLAY-tallet kommer
+  // her UDELUKKENDE fra game_day/game_day_end (aldrig bindingWindow) - se hård
+  // invariant i raceHubLogic.js.
+  const gameDayLabel = raceGameDayLabel({
+    start: column.game_day, end: column.game_day_end, t,
+  });
   const status = locked
     ? { kind: "locked" }
     : computeColumnStatus({ selected: column.counts.selected, target: column.counts.target, max: column.size?.max, withdrawn: column.withdrawn });
@@ -87,8 +95,12 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   const acceptsDrop = !locked && !column.withdrawn;
   return (
     <div
+      id={`race-col-${column.id}`}
+      tabIndex={-1}
       data-tour={dataTour}
-      className={`border rounded-cz bg-cz-card flex flex-col transition-colors ${dragOver && acceptsDrop ? "border-cz-accent" : "border-cz-border"}`}
+      className={`border rounded-cz bg-cz-card flex flex-col transition-colors ${
+        dragOver && acceptsDrop ? "border-cz-accent" : flash ? "border-cz-2" : "border-cz-border"
+      }`}
       onDragOver={acceptsDrop ? (e) => { e.preventDefault(); setDragOver(true); } : undefined}
       onDragLeave={() => setDragOver(false)}
       onDrop={acceptsDrop ? (e) => { e.preventDefault(); setDragOver(false); onDropRider?.(e.dataTransfer.getData("text/plain")); } : undefined}
@@ -112,10 +124,14 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
           {locked && <LockIcon size={13} className="text-cz-3 mt-0.5 flex-shrink-0" aria-hidden="true" />}
         </div>
         <p className="text-2xs text-cz-3 mt-0.5">
-          {raceDayLabel && (
-            <span className="inline-block me-1.5 text-cz-accent-t font-medium">{raceDayLabel}</span>
+          {gameDayLabel && (
+            <span className="text-cz-2 font-medium tabular-nums">{gameDayLabel}</span>
           )}
-          {column.race_type === "stage_race" ? t("raceType.stages", { count: column.stages }) : t("raceType.oneDay")} · {t(`classOption.${column.race_class}`)}
+          {gameDayLabel && raceDayLabel && " · "}
+          {raceDayLabel}
+          {" · "}
+          {column.race_type === "stage_race" ? t("raceType.stages", { count: column.stages }) : t("raceType.oneDay")}
+          <span className="hidden sm:inline"> · {t(`classOption.${column.race_class}`)}</span>
         </p>
         <span className={`inline-block mt-2 text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border ${STATUS_CLASS[status.kind]}`}>
           {statusLabel}
@@ -138,6 +154,18 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
           </p>
         )}
       </RaceLink>
+
+      {/* #4296: et afmeldt løb binder ingenting (Rod A, #1823) - overlap-raekken
+          rendres derfor aldrig for withdrawn kolonner, selvom spændet stadig står
+          i meta-linjen ovenfor (det er en kendsgerning om løbet). */}
+      {!column.withdrawn && (
+        <RaceDayOverlapRow
+          overlaps={overlaps}
+          clashes={clashes}
+          ridersById={ridersById}
+          onFocusRace={onFocusRace}
+        />
+      )}
 
       {locked ? (
         <div className="py-1 flex-1">

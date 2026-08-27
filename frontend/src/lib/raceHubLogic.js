@@ -288,3 +288,72 @@ export function raceDateRangeLabel({ startMs, endMs, locale = "en" } = {}) {
   const end = fmt.format(new Date(endMs));
   return start === end ? start : `${start} – ${end}`;
 }
+
+// #4296: HÅRD INVARIANT, må IKKE brydes.
+// DISPLAY-tal kommer KUN fra column.game_day / column.game_day_end.
+// column.bindingWindow bruges KUN til den booleske overlap-test (windowsOverlap
+// ovenfor), ALDRIG til et tal.
+//
+// Grunden: raceBindingWindow (backend/lib/raceBinding.js:75-87) falder tilbage
+// til CET-dag-ordinaler (~20.000) når bare én schedule-række mangler game_day,
+// mens raceGameDaySpan (samme fil, :99-104) returnerer null i præcis den
+// situation. Blandes de to nøglerum, skriver fladen "Deler dagene 20123-20124".
+//
+// Ejer-beslutning 27/8: løbsdage vises 1-baserede. RACE_DAY_DISPLAY_OFFSET er
+// den ENESTE plads i frontenden hvor en 0-baseret game_day bliver et vist tal.
+// Ingen anden fil må skrive "+ 1" på en løbsdag.
+export const RACE_DAY_DISPLAY_OFFSET = 1;
+
+export function toDisplayRaceDay(gameDay) {
+  return Number.isFinite(gameDay) ? gameDay + RACE_DAY_DISPLAY_OFFSET : null;
+}
+
+// "Race day 6" | "Race days 6-7" | null. null når spændet mangler → kalderen
+// tegner intet (samme null-defensiv som raceGameDaySpan).
+export function raceGameDayLabel({ start, end, t }) {
+  const s = toDisplayRaceDay(start);
+  if (s == null) return null;
+  const e = toDisplayRaceDay(end) ?? s;
+  return e > s
+    ? t("racehub.raceDays", { start: s, end: e })
+    : t("racehub.raceDay", { day: s });
+}
+
+// Hvilke ANDRE kolonner på brættet deler løbsdage med denne? Prædikatet er
+// windowsOverlap på bindingWindow (spejler backend). TALLENE kommer fra
+// game_day/game_day_end. Aldrig omvendt — se HÅRD INVARIANT ovenfor.
+export function raceDayOverlaps({ columns = [], columnId }) {
+  const self = columns.find((c) => c?.id === columnId);
+  if (!self || self.withdrawn) return [];
+  const out = [];
+  for (const o of columns) {
+    if (!o || o.id === columnId || o.withdrawn) continue;
+    if (!windowsOverlap(self.bindingWindow, o.bindingWindow)) continue;
+    const aS = self.game_day, aE = self.game_day_end ?? self.game_day;
+    const bS = o.game_day, bE = o.game_day_end ?? o.game_day;
+    const known = [aS, aE, bS, bE].every(Number.isFinite);
+    const s = known ? Math.max(aS, bS) : null;
+    const e = known ? Math.min(aE, bE) : null;
+    out.push({
+      id: o.id,
+      name: o.name ?? null,
+      sharedStart: known && e >= s ? s : null,
+      sharedEnd: known && e >= s ? e : null,
+    });
+  }
+  return out.sort((a, b) =>
+    (a.sharedStart ?? Infinity) - (b.sharedStart ?? Infinity) ||
+    String(a.name ?? "").localeCompare(String(b.name ?? "")));
+}
+
+// Ægte clash: en rytter står i BEGGE løb i kladden. Bygger på den eksisterende
+// findSelectionOverlaps ovenfor, som allerede driver den navngivne gem-fejl.
+// Ingen ny overlap-logik.
+export function raceDayClashes({ columns = [], columnId }) {
+  return findSelectionOverlaps({ columns })
+    .filter((o) => o.raceIds.includes(columnId))
+    .map((o) => {
+      const otherIdx = o.raceIds[0] === columnId ? 1 : 0;
+      return { riderId: o.riderId, otherId: o.raceIds[otherIdx], otherName: o.raceNames[otherIdx] };
+    });
+}

@@ -4,7 +4,7 @@
 //   • "Optaget i overlappende løb" — løb han er låst fra, MED hvilket løb der binder ham (grunden)
 // Åbnes også for låste ryttere (kan ikke tilføjes nogen) → de ser stadig HVORFOR.
 import { useTranslation } from "react-i18next";
-import { canAddRiderToColumn, overlapConflictColumn, sameDayCompatibilityHint } from "../../lib/raceHubLogic.js";
+import { canAddRiderToColumn, overlapConflictColumn, sameDayCompatibilityHint, toDisplayRaceDay } from "../../lib/raceHubLogic.js";
 import { LockIcon } from "../ui";
 import FitBar from "./FitBar.jsx";
 
@@ -44,7 +44,7 @@ export default function AddRiderPopover({ rider, columns, bindingMap, onPick, on
             {compat && (
               <span className="block text-3xs text-cz-success truncate">
                 {Number.isFinite(compat.gameDay)
-                  ? t("racehub.popover.compatibleHint", { race: compat.name, day: compat.gameDay })
+                  ? t("racehub.popover.compatibleHint", { race: compat.name, day: toDisplayRaceDay(compat.gameDay) })
                   : t("racehub.popover.compatibleHintNoDay", { race: compat.name })}
               </span>
             )}

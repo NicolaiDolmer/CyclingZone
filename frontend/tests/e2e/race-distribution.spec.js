@@ -94,9 +94,14 @@ test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", asy
 
   // #1984/C: klik den låste chip → popoveren viser HVORFOR (optaget i overlappende løb)
   // + navngiver det konkrete blokerende løb (verificerer blockedReason-interpolationen).
+  // #4296: scopet til selve popoveren (.z-dropdown) — begge løb i denne fixture mangler
+  // game_day, så RaceDaySpan's overlap-række på race-b's KORT falder tilbage til samme
+  // genbrugte nøgle (racehub.popover.blockedReason) og skriver den samme sætning, hvilket
+  // ellers gør et board-bredt substring-match til en strict-mode-kollision (2 hits).
   await lockedChip.click();
-  await expect(board.getByText("Optaget i overlappende løb")).toBeVisible();
-  await expect(board.getByText("Overlapper Hamburger Klassiker")).toBeVisible();
+  const popover = board.locator(".z-dropdown");
+  await expect(popover.getByText("Optaget i overlappende løb")).toBeVisible();
+  await expect(popover.getByText("Overlapper Hamburger Klassiker")).toBeVisible();
 
   // En ledig rytter (ikke udtaget nogen steder) er klikbar i puljen.
   await expect(board.getByRole("button", { name: /Rider 5/ })).toBeEnabled();

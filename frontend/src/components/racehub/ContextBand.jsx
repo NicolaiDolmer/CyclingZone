@@ -4,7 +4,7 @@
 // day/scope + callbacks ned.
 import { useTranslation } from "react-i18next";
 
-export default function ContextBand({ scope, day, currentDay, timeline, onScopeChange, onDayChange }) {
+export default function ContextBand({ scope, day, currentDay, timeline, onScopeChange, onDayChange, raceDayLabel = null, dateLabel = null }) {
   const { t } = useTranslation("races");
   const days = timeline?.days ?? [];
   // #3107: ingen opdigtet 60-dages-fallback. Backend leverer altid sæsonens faktiske
@@ -67,7 +67,7 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
                 <button
                   key={d.day}
                   type="button"
-                  title={`${t("racehub.timeline.dayOf", { day: d.day, total })}${isToday ? ` — ${t("racehub.timeline.youAreHere")}` : ""}`}
+                  title={`${t("racehub.timeline.dayOf", { day: d.day, total })}${isToday ? ` · ${t("racehub.timeline.youAreHere")}` : ""}`}
                   aria-current={isFocus ? "true" : undefined}
                   // #1919: klik på den allerede-fokuserede dag er en no-op → dead click.
                   onClick={() => { if (d.day !== day) onDayChange(d.day); }}
@@ -79,10 +79,17 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
           <button type="button" aria-label={t("racehub.timeline.next")} disabled={day >= total}
             onClick={() => onDayChange(day + 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">›</button>
         </div>
-        <div className="flex justify-end mt-1.5">
-          <span className="text-xs text-cz-accent-t font-medium">
+        {/* #4296: de to akser mødes HER, ét sted i hele appen. Løbsdags-aksen
+            (venstre) siger altid "Race day"/"Løbsdag" limet til sit tal; kalender-
+            aksen (højre) siger altid en rigtig dato først og har altid "of {total}"
+            efter sig. Formen adskiller dem, ikke bare tallene. Venstre side udelades
+            helt når raceDayLabel er null (ingen gruppe på brættet har en løbsdag). */}
+        <div className="flex items-baseline justify-between gap-2 mt-1.5">
+          {raceDayLabel && <span className="text-2xs text-cz-3 tabular-nums">{raceDayLabel}</span>}
+          <span className="text-xs text-cz-2 font-medium tabular-nums ms-auto">
+            {dateLabel && <span className="text-cz-1">{dateLabel} · </span>}
             {t("racehub.timeline.dayOf", { day, total })}
-            {day === currentDay ? ` — ${t("racehub.timeline.youAreHere")}` : ""}
+            {day === currentDay ? ` · ${t("racehub.timeline.youAreHere")}` : ""}
           </span>
         </div>
         </>
