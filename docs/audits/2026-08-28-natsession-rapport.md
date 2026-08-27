@@ -192,9 +192,14 @@ Tre issues beskrev noget der ikke længere passer. Verificeret før jeg skrev de
 
 ## 7 · Ikke nået
 
-- **#4256** — forældreløs branch med 850 linjer #3570-arbejde inkl. et sikkerhedsfix.
-  Ikke rørt. Den kræver rebase + fuld verifikation, og e2e-slottet var optaget af
-  #4285's TIER FULL-kørsel (561 passed, 15,9 min).
+- **#4256** — forældreløs branch med 850 linjer #3570-arbejde. **Sikkerhedsspørgsmålet er
+  afklaret: hullet er ikke åbent.** `archetype_draw`-maskeringen står på main to steder
+  (`api.js:1060` og `:15545`, begge tagget #3570), og `lint-riders-column-grant.mjs:113`
+  har kolonnen opført som samme oracle-klasse som `potentiale` — den kan ikke stilfærdigt
+  blive eksponeret igen. Det var issuets stærkeste grund til hast, og den er væk.
+  Rebase + PR er **ikke** gjort: 850 linjer balance-kode der rører `riderTypes.js` og
+  `backfillCores.js` lander man ikke to dage før sæsonstart. `claude:todo` er fjernet
+  fra lukkede #3570.
 - **#4259** — ikon for "allerede udtaget i dag" i Planlægning. Ikke bygget. Det er en
   UI-PR, som alligevel ville stå og vente på dit review, og den konkurrerede med
   sæsonstart-kritisk arbejde.
