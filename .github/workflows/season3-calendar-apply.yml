@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload snapshot (saa det overlever runneren)
         if: inputs.mode == 'apply' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: s3-kalender-snapshot
           path: docs/snapshots/3546/
