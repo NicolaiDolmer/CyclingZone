@@ -112,7 +112,7 @@ test("parseRacePoolCsv — re-parse af samme CSV giver identisk external_id (ide
   assert.equal(a.rows[0].external_id, b.rows[0].external_id);
 });
 
-test("summarizePool — tæller løb og løbsdage per klasse", () => {
+test("summarizePool — tæller løb og etaper per klasse (#4245: ikke løbsdage)", () => {
   const pool = [
     { race_class: "Monuments", stages: 1 },
     { race_class: "Monuments", stages: 1 },
@@ -120,8 +120,8 @@ test("summarizePool — tæller løb og løbsdage per klasse", () => {
     { race_class: "ProSeries", stages: 1 },
   ];
   const summary = summarizePool(pool);
-  assert.deepEqual(summary.Monuments, { count: 2, raceDays: 2 });
-  assert.deepEqual(summary.ProSeries, { count: 2, raceDays: 6 });
+  assert.deepEqual(summary.Monuments, { count: 2, stages: 2 });
+  assert.deepEqual(summary.ProSeries, { count: 2, stages: 6 });
 });
 
 test("WORLD_TOUR_CLASSES dækker alle 6 WT-keys (alt undtagen ProSeries/Class1/Class2)", () => {

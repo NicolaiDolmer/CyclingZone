@@ -156,7 +156,7 @@
       "facility_upkeep": "Facility upkeep",
       "staff_salary": "Staff salaries",
       "parachute": "Relegation parachute",
-      "sponsor_race_day": "Sponsor race day bonus",
+      "sponsor_race_day": "Sponsor income per stage",
       "sponsor_signing_bonus": "Sponsor signing bonus",
       "sponsor_objective_bonus": "Sponsor objective bonus",
       "sponsor_result_bonus": "Sponsor result bonus",
@@ -268,7 +268,7 @@
         }
       }
     },
-    "footnote": "Settlement preview, not a guarantee. Prize money and race-day sponsor bonuses aren't included, since they depend on races not yet run, and neither is anything contingent, like emergency-loan interest if your balance goes negative, or a forced sale if your debt breaks the cap. Scout travel, transfers, facility purchases, staff changes, and academy signings aren't included either, since none of it is known ahead of time.",
+    "footnote": "Settlement preview, not a guarantee. Prize money and per-stage sponsor income aren't included, since they depend on races not yet run, and neither is anything contingent, like emergency-loan interest if your balance goes negative, or a forced sale if your debt breaks the cap. Scout travel, transfers, facility purchases, staff changes, and academy signings aren't included either, since none of it is known ahead of time.",
     "footnoteLink": "What exactly is included?",
     "salaryTable": {
       "title": "Salaries: current contract vs. next season",
@@ -341,7 +341,7 @@
       "transfer_purchase": "Transfer purchase",
       "transfer_sale": "Transfer sale",
       "swap_cash_delta": "Swap (cash difference)",
-      "sponsor_race_day": "Sponsor (race day)",
+      "sponsor_race_day": "Sponsor (per stage)",
       "rider_release_buyout": "Release fee",
       "loan_fee_paid": "Loan fee paid",
       "loan_fee_received": "Loan fee received",

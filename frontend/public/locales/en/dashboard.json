@@ -92,8 +92,8 @@
     },
     "ended": "Season has ended",
     "daysLeftSuffix": "days until season ends",
-    "raceDays": "{completed}/{total} race days",
-    "raceDaysLive": "{count} live",
+    "stages": "{completed}/{total} stages",
+    "stagesLive": "{count} live",
     "viewCalendar": "View calendar →"
   },
   "cards": {

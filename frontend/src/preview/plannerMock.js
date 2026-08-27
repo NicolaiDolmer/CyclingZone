@@ -56,11 +56,15 @@ function raceProfileSummary(strip) {
   return { stages: strip.length, summitFinishes: strip.filter((s) => s.summit).length };
 }
 
-function makeRace(id, name, terrain, date, isMine, stages, summits, division, rivalPeakCount) {
+// #4245: raceDays (LØBSDAGE = distinkte game_day) er sit eget felt, ikke etapetallet.
+// Default = ét løb, én etape pr. løbsdag, som langt de fleste løb er. Sæt det lavere
+// end `stages` for et løb med to etaper på samme løbsdag. Det er præcis den forskel
+// belastnings-chippen skal vise, og den kan ellers ikke ses på preview.
+function makeRace(id, name, terrain, date, isMine, stages, summits, division, rivalPeakCount, raceDays = stages) {
   const strip = stages > 1 ? mountainStages(stages, summits) : [{ stage: 1, terrain, summit: terrain === "mountain" }];
   return {
     id, name, raceClass: stages > 1 ? "WorldTour" : "ProSeries", division, isMine,
-    date, gameDayStart: ord(date), gameDayEnd: ord(date) + (stages - 1), stages, terrain,
+    date, gameDayStart: ord(date), gameDayEnd: ord(date) + (raceDays - 1), stages, raceDays, terrain,
     // #3102 PR 2 (hul 2): det vindue en peak mod løbet ville få. I prod snappes det
     // server-side om median-etapedagen (snapPeakWindow); mocken centrerer om start-
     // datoen — SAMME center som makePeak nedenfor, så dropdown-risikoen og
@@ -83,7 +87,11 @@ const RACES = [
   // dagen selv under den nye regel. Dropdown-advarslen ("låser med det samme")
   // dækker netop dette sjældnere, men stadig reelle, tilfælde.
   makeRace("r-imminent", "City Criterium", "sprint", "2026-06-02", true, 1, 0, 3, 0),
-  makeRace("r-alpine", "Alpine Classic", "mountain", "2026-06-14", true, 6, 2, 3, 3),
+  // #4245: 6 etaper, men kun 5 LØBSDAGE. To af etaperne deler en løbsdag (en
+  // formiddags-prolog og en eftermiddags-etape). Belastnings-chippen skal vise 5,
+  // ikke 6. Uden dette løb i mocken kan forskellen ikke ses på preview overhovedet,
+  // for al prod-data har lige nu én etape pr. løbsdag.
+  makeRace("r-alpine", "Alpine Classic", "mountain", "2026-06-14", true, 6, 2, 3, 3, 5),
   makeRace("r-nat", "Nationals TT", "itt", "2026-06-25", false, 1, 0, 2, 0),
   // #3086: ligger 3 dage inde i r-alpine's payback-vindue (vindue slutter 16/6),
   // og rd-verm er tilmeldt det. Uden et loeb i hullet kunne payback-kollisionen

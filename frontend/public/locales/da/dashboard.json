@@ -92,8 +92,8 @@
     },
     "ended": "Sæsonslut passeret",
     "daysLeftSuffix": "dage til sæsonslut",
-    "raceDays": "{completed}/{total} løbsdage",
-    "raceDaysLive": "{count} i gang",
+    "stages": "{completed}/{total} etaper",
+    "stagesLive": "{count} i gang",
     "viewCalendar": "Se kalender →"
   },
   "cards": {
