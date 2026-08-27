@@ -5,9 +5,15 @@
 ## Symptom
 
 ez4prebren i Discord 23/8 kl. 21:05 CEST: *"Er jeg den eneste, der ikke kan komme
-ind i planlægningen pt?"* Fra mobilen. bobby2106 foreslog en genindlæsning, og
-svaret var det afgørende spor: *"Kommer bare frem med det samme."* Genindlæsning
-hjalp ikke. Fem minutter senere: *"Det er kun planlægning, alt andet virker."*
+ind i planlægningen pt?"* Fra mobilen. Fem minutter senere: *"Det er kun
+planlægning, alt andet virker."*
+
+Om en genindlæsning hjalp, siger tråden to forskellige ting, og det er ikke
+afgjort. bobby2106 (21:09): *"Du skal bare genindlæse, og så er den der done"*, og
+issuets egen titel siger "fejler på mobil **indtil** hard-reload" med *"På desktop
+løser CTRL+F5 det"* i brødteksten. ez4prebrens svar til bobby, *"Kommer bare frem
+med det samme"*, læses nemmest som at fejlen kom igen straks, men det er en
+tolkning, ikke en måling. Der er ingen evidens der afgør det.
 
 Issuet stod fire dage senere stadig med "Skal undersøges: hvad fejler konkret?".
 
@@ -36,21 +42,28 @@ sammen: *feature-flag off* (legitim, boardet skal være skjult) og *kaldet
 lykkedes ikke* (fejl, manageren skal vide det). Uden fejl-state falder begge ned
 i samme gren. Resultatet er en flade uden spinner, uden besked og uden retry.
 
-Derfor hjalp genindlæsning ikke: den kørte det samme fejlende kald igen og tegnede
-det samme intet. En genindlæsning kan ikke reparere en tilstand hvor fejlen
-allerede er kastet væk.
+Bemærk hvad denne rodårsag gør ved reload-spørgsmålet: er fejlen deterministisk
+(401 på en død session, 400 "No team found"), kan en genindlæsning ikke reparere
+noget, for den kører det samme fejlende kald igen og tegner det samme intet. Er
+fejlen derimod transient eller en stale chunk, virker et reload. Fladen så ens ud
+i begge tilfælde, og det er præcis derfor hændelsen ikke kan afgøres bagudrettet.
 
-Samme mønster fandtes i `StrategyPage.jsx` og `DivisionStartLists.jsx`, så tre af
-hubbens fire indgange kunne blanke samtidig. Kontrasten beviser det: Formplan-
-fanen fik en rigtig fejl-gren i #2849 bølge 6 (`usePlanner.js` setError
-http/network → ErrorState + retry) og ville have vist manageren hvad der var galt.
+Samme mønster fandtes i `StrategyPage.jsx` og `DivisionStartLists.jsx`. Formplan-
+fanen fik http/network-grenene lukket i #2849 bølge 6 (`usePlanner.js` setError →
+ErrorState + retry), men dens **auth**-gren returnerede stadig tavst, og det samme
+gjorde sæson-visningen på Holdudtagelses-fanen (`SeasonView.jsx`). De to faldt
+derfor igennem til hver sin tom-state, *"Sæsonplanlæggeren er ikke live endnu"* og
+*"Ingen løb på kalenderen endnu"* - en fejlet hentning der påstår at være en
+legitim tom flade. Talt op: alle fem indgange i hubben kunne lyve, tre ved at vise
+intet og to ved at vise en tom tilstand.
 
 ## Hvorfor det ikke blev opdaget
 
 Tre lag svigtede samtidig.
 
 1. **Ingen test dækkede fejl-halvdelen.** Der fandtes hverken unit- eller e2e-
-   dækning for `!res.ok` eller netværksfejl i nogen af de tre flader. Preview-
+   dækning for `!res.ok` eller netværksfejl i nogen af de tre tavse flader, og
+   ingen af de fem dækkede auth-grenen overhovedet. Preview-
    mocken svarer altid 200 på `/api/races/distribution`, så halvdelen af
    kontrakten var utestet by design.
 2. **Backenden loggede ikke sine egne afvisninger.** 401 fra `requireAuth` og
@@ -69,10 +82,17 @@ beviser at gælden koster i produktion. Et dokumenteret fund er ikke en løsning
 
 ## Fix
 
-Alle tre flader fik den fejl-kontrakt Formplanen allerede havde: `loadError` for
-de tre grene (auth/http/network), `setLoading(false)` i `finally`, og en kanonisk
-ErrorState med secondary retry. Fejl-grenen ligger FØR flag-grenen, og
-`!data?.enabled → null` er bevaret uændret som den legitime flag-off-tilstand.
+De tre tavse flader fik den fejl-kontrakt Formplanen allerede havde for
+http/network: `loadError` for alle tre grene (auth/http/network),
+`setLoading(false)` i `finally`, og en kanonisk ErrorState med secondary retry.
+Fejl-grenen ligger FØR flag-grenen, og `!data?.enabled → null` er bevaret uændret
+som den legitime flag-off-tilstand.
+
+De to øvrige flader fik deres auth-gren lukket i samme rækkefølge-kontrakt:
+`usePlanner.js` sætter nu `setError("auth")` (så SeasonPlannerPages fejl-gren, der
+ligger før `!enabled`, rent faktisk rammes), og `SeasonView.jsx`s `failed` bærer nu
+en kind i stedet for et boolean, så en død session får sin egen besked frem for
+"ingen løb på kalenderen endnu". Begge tom-tilstande er bevaret som legitime.
 
 Instrumentering, så næste rapport kan diagnosticeres:
 
@@ -99,6 +119,16 @@ og 400 været logget i forvejen, havde denne session taget minutter i stedet for
 en hel kortlægning. Det billigste tidspunkt at gøre en fejl observerbar er før
 nogen leder efter den.
 
-**"Genindlæsning hjælper ikke" er diagnostisk information.** Det udelukker stale
-chunks og cache, og peger direkte på en deterministisk fejl i selve kaldet. Den
-replik var i tråden fra dag ét.
+**"Hjalp en genindlæsning?" er det mest diagnostiske spørgsmål i tråden, og
+netop derfor må svaret ikke gættes.** Hjælper et reload ikke, udelukker det stale
+chunks og cache og peger på en deterministisk fejl i kaldet; hjælper det, peger
+det den stik modsatte vej (og den klasse er allerede dækket af #881's
+`lazyWithRetry`). Her siger tråden begge dele, og første udkast af denne
+postmortem valgte den ene læsning og skrev den videre som fastslået - helt ind i
+patch-noten til spillerne. En tolkning af en Discord-replik er ikke en måling.
+Skriv "ikke afgjort" og lad instrumenteringen svare næste gang.
+
+**En tom tilstand er en påstand på linje med en fejlbesked.** "Ingen løb på
+kalenderen endnu" og "Sæsonplanlæggeren er ikke live endnu" ligner uskyldig
+tomhed, men de fortæller manageren noget konkret om spillets tilstand. Nås de af
+en fejlet hentning, lyver de mere overbevisende end en blank side gør.

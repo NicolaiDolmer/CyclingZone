@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.201",
+    "version": "7.206",
     "date": "2026-08-27",
     "label": "Beta",
     "changes": [
@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Planning",
         "en": {
           "title": "Planning now tells you when a view could not be loaded",
-          "body": "If Team selection, Strategy or Start lists failed to load, the page went blank with no message and nothing to click, and reloading did not help. All three now say what happened and give you a Try again button."
+          "body": "When a planning view failed to load, it went blank or claimed to be empty, with no message and nothing to click. Team selection, Form plan, Strategy and Start lists now say what happened and give you a Try again button."
         },
         "da": {
           "title": "Planlægning siger nu til når en visning ikke kunne hentes",
-          "body": "Hvis Holdudtagelse, Strategi eller Startlister ikke kunne hentes, gik siden blank uden besked og uden noget at klikke på, og en genindlæsning hjalp ikke. Alle tre siger nu hvad der skete og giver dig en Prøv igen-knap."
+          "body": "Når en planlægningsvisning ikke kunne hentes, gik den blank eller påstod at den var tom, uden besked og uden noget at klikke på. Holdudtagelse, Formplan, Strategi og Startlister siger nu hvad der skete og giver dig en Prøv igen-knap."
         },
         "refs": [4165]
       }
