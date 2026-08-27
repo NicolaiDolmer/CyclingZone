@@ -84,3 +84,52 @@ test("Proev igen henter board'et igen og fjerner fejlen", async ({ page }) => {
   await expect(page.getByRole("alert")).toHaveCount(0);
   expect(calls.count).toBeGreaterThan(1);
 });
+
+// Sæson-visningen på SAMME fane (?view=season). Vær præcis om hvad den her spec
+// beviser: HTTP-grenen viste allerede en ErrorState før fixet, så testen fanger
+// ikke den oprindelige tavshed. Den fejler mod pre-fix-koden på `role="alert"`,
+// som fixet tilføjede - altså at fejlen nu også ANNONCERES, ikke kun tegnes.
+//
+// Den gren der faktisk var tavs her, var AUTH-grenen: uden token returnerede
+// effekten uden at sætte noget, og render-grenen sagde "Ingen løb på kalenderen
+// endnu". Den kan ikke nås i e2e (fladen ligger bag ProtectedRoute, så App
+// redirecter før komponenten mounter), og er derfor kildeguardet i
+// silentFailureContract.4165.test.js i stedet. Assertionen på den tomme tilstand
+// nedenfor er alligevel den rigtige regression-guard: den pinner at fejl-grenen
+// ligger før den tomme gren, uanset hvilken gren der satte fejlen.
+function mockCalendar(page, { failures, status = 500 }) {
+  const calls = { count: 0 };
+  page.route("**/api/races/calendar**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    calls.count += 1;
+    if (calls.count <= failures) {
+      return route.fulfill({
+        status,
+        contentType: "application/json",
+        headers: corsHeaders(request),
+        body: JSON.stringify({ error: "boom" }),
+      });
+    }
+    return route.continue();
+  });
+  return calls;
+}
+
+test("fejlet kalender-hentning i saeson-visningen viser en fejl, ikke en tom kalender", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  mockCalendar(page, { failures: 99 });
+
+  await login(page);
+  await page.goto("/planning?view=season");
+
+  const alert = page.getByRole("alert");
+  await expect(alert).toBeVisible();
+  await expect(alert.getByText("Sæsonkalenderen kunne ikke hentes", { exact: false })).toBeVisible();
+  await expect(alert.getByRole("button", { name: "Prøv igen" })).toBeVisible();
+  // Kernen i fundet: den tomme tilstand må IKKE være det manageren ser.
+  await expect(page.getByText("Ingen løb på kalenderen endnu")).toHaveCount(0);
+});
