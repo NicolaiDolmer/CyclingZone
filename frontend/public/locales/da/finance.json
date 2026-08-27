@@ -156,7 +156,7 @@
       "facility_upkeep": "Facilitets-vedligehold",
       "staff_salary": "Stab-løn",
       "parachute": "Nedrykningsfaldskærm",
-      "sponsor_race_day": "Sponsor løbsdag-bonus",
+      "sponsor_race_day": "Sponsorindtægt pr. etape",
       "sponsor_signing_bonus": "Sponsor signing-bonus",
       "sponsor_objective_bonus": "Sponsor sæsonmål-bonus",
       "sponsor_result_bonus": "Sponsor resultatbonus",
@@ -268,7 +268,7 @@
         }
       }
     },
-    "footnote": "Afregningen er en forhåndsvisning, ikke en garanti. Præmiepenge og løbsdags-sponsorbonusser er ikke med, da de afhænger af løb der endnu ikke er kørt, og det samme gælder alt kontingent, fx nødlåns-rente hvis din balance går i minus, eller et tvangssalg hvis din gæld bryder loftet. Spejder-rejser, transfers, facilitets-køb, stabsændringer og akademi-underskrifter er heller ikke med, da intet af det er kendt på forhånd.",
+    "footnote": "Afregningen er en forhåndsvisning, ikke en garanti. Præmiepenge og sponsorindtægt pr. etape er ikke med, da de afhænger af løb der endnu ikke er kørt, og det samme gælder alt kontingent, fx nødlåns-rente hvis din balance går i minus, eller et tvangssalg hvis din gæld bryder loftet. Spejder-rejser, transfers, facilitets-køb, stabsændringer og akademi-underskrifter er heller ikke med, da intet af det er kendt på forhånd.",
     "footnoteLink": "Hvad er præcis med?",
     "salaryTable": {
       "title": "Løn: nuværende kontrakt vs. næste sæson",
@@ -341,7 +341,7 @@
       "transfer_purchase": "Transfer-køb",
       "transfer_sale": "Transfer-salg",
       "swap_cash_delta": "Bytte (kontant-difference)",
-      "sponsor_race_day": "Sponsor (løbsdag)",
+      "sponsor_race_day": "Sponsor (pr. etape)",
       "rider_release_buyout": "Opsigelsesgebyr",
       "loan_fee_paid": "Lejegebyr betalt",
       "loan_fee_received": "Lejegebyr modtaget",

@@ -74,6 +74,12 @@ Der findes i dag tre indgange til auto-udfyld (dagsboardet, `PlannerAssistantCar
 
 Rute-match som fladedækkende linse er fravalgt: kalender-svaret bærer hverken evner eller demand-vektorer.
 
+**Belastnings-linsen, præcist (#4245).** `load.raceDays` tæller de distinkte `race_stage_schedule.game_day` rytteren er tilmeldt, kun i den AKTIVE sæson (`race_entries` er ikke sæson-scopet i sig selv). Løb uden brugbare `game_day`-rækker falder tilbage til løbets etapetal, mindst 1, og det fallback deles af både Race Hub'en og planner-boardet, så de to chips aldrig kan divergere.
+
+Belastning er ikke binding: bindingen er hele spændet `min(game_day)..max(game_day)` og er tilsigtet (ejer-direktiv 25/8, [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217), `docs/CALENDAR_RULES.md` §2b + §8). Belastningen er de løbsdage rytteren faktisk kører på. For et løb med spring i serien er de to tal forskellige, og det er meningen.
+
+**Ordet "løbsdag" (ejer-beslutning 27/8).** En løbsdag er BINDINGS-enheden (`game_day`), som i `docs/CALENDAR_RULES.md` §0. Sponsor-økonomien lånte samme ord i `help.json` og `finance.json` for sin betalings-enhed; den hedder nu ETAPE / stage i al spiller-vendt tekst. Økonomien er uændret, kun ordene.
+
 ---
 
 ## 6. Komponenter der allerede findes

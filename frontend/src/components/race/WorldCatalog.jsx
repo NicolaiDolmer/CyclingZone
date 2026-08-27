@@ -66,7 +66,7 @@ export default function WorldCatalog() {
               >
                 <span className="truncate">{t(`classOption.${opt.value}`)}</span>
                 <span className="text-cz-3 text-xs whitespace-nowrap ms-2">
-                  {t("world.classSummary", { count: s.count, days: s.raceDays })}
+                  {t("world.classSummary", { count: s.count, stages: s.stages })}
                 </span>
               </button>
             );
