@@ -4382,6 +4382,8 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
 
     // Roster + evner (samme kilder som getSelectionContext, raceSelection.js) +
     // rute-match-demand pr. løb (aggregateDemandVector — delt med peak-plans/board).
+    // pagination-safe: ét holds ryttere er maks ~30 (samme grænse som getSelectionContext
+    // dokumenterer), langt under PostgREST's 1000-rækkers cap.
     const { data: teamRidersRaw, error: ridersErr } = await applyRiderEligibilityFilter(
       supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type").eq("team_id", req.team.id)
     );
