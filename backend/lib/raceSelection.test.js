@@ -1,7 +1,7 @@
 // backend/lib/raceSelection.test.js
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateSelection, buildRiderRows, getSelectionContext, saveSelection } from "./raceSelection.js";
+import { validateSelection, buildRiderRows, getSelectionContext, saveSelection, prepareSelectionChange, saveSelectionBulk } from "./raceSelection.js";
 
 // Ejer 28/6 (afløser #1906): delvis trup tilladt — kun OVER feltstørrelsen afvises.
 const base = {
@@ -146,6 +146,183 @@ test("saveSelection: uden removalOnly (default) afvises et igangværende løb st
       riderIds: ["r1", "r2", "r3"], captainId: "r1", sprintCaptainId: null, hunterId: null, freeRoleIds: [],
     }),
     (err) => err.code === "race_lineup_frozen"
+  );
+});
+
+// #1146 — prepareSelectionChange: fælles pr.-løb-validering udtrukket af PUT /:raceId/
+// selection, genbrugt af BÅDE single- og bulk-endpointet (PUT /races/selection/bulk).
+// Genbruger makeSelectionSupabase (funktionserklæring, hoisted i modulet — defineret
+// nedenfor, men tilgængelig her ved kørsel).
+test("prepareSelectionChange: gyldig ændring passerer og returnerer riderIds/isRemovalOnly/ctx", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+  };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.riderIds, ids);
+  assert.equal(result.captainId, "r1");
+  assert.equal(result.isRemovalOnly, false);
+  assert.ok(result.ctx, "skal returnere getSelectionContext-resultatet (bruges af binding-tjekket i kalderen)");
+});
+
+test("prepareSelectionChange: løb der ikke er 'scheduled' afvises med 409 selection_race_not_open", async () => {
+  const race = { id: "race1", status: "completed", stages_completed: 8, league_division_id: "d1" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase({}), race, teamId: "t1", teamDivisionId: "d1", body: {},
+  });
+  assert.deepEqual(result, { ok: false, status: 409, error: "selection_race_not_open" });
+});
+
+test("prepareSelectionChange: forkert pulje afvises med 409 selection_wrong_pool", async () => {
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "pool-A" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase({}), race, teamId: "t1", teamDivisionId: "pool-B", body: {},
+  });
+  assert.deepEqual(result, { ok: false, status: 409, error: "selection_wrong_pool" });
+});
+
+test("prepareSelectionChange: ugyldigt body (rider_ids ikke et array) afvises med 400 selection_invalid_body", async () => {
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase({}), race, teamId: "t1", teamDivisionId: "d1",
+    body: { rider_ids: "r1,r2" },
+  });
+  assert.deepEqual(result, { ok: false, status: 400, error: "selection_invalid_body" });
+});
+
+// "for stor trup": SELECTION_SIZE.Class2 = {min:6,max:6} (raceAutopick.js) — 7 ryttere
+// overskrider feltstørrelsen.
+test("prepareSelectionChange: for stor trup afvises med 400 selection_wrong_size", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6", "r7"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+  };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 400);
+  assert.equal(result.error, "selection_wrong_size");
+});
+
+// "ukendt rolle": sprint_captain_id peger på en rytter der ikke er i den valgte trup.
+test("prepareSelectionChange: rolle-reference uden for truppen afvises med 400 selection_role_not_selected", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: [...ids, "r9"].map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+  };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1", sprint_captain_id: "r9" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 400);
+  assert.equal(result.error, "selection_role_not_selected");
+});
+
+test("prepareSelectionChange: frosset løb afviser en tilføjelse (409), men tillader ren fjernelse (#2637)", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [],
+    race_entries: ids.map((id) => ({
+      race_id: "race1", team_id: teamId, rider_id: id, race_role: id === "r1" ? "captain" : "helper", is_auto_filled: false,
+    })),
+    rider_derived_abilities: [], rider_condition: [],
+  };
+  const race = { id: "race1", status: "scheduled", stages_completed: 2, league_division_id: "d1", race_class: "Class2" };
+
+  const blocked = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" }, // uændret trup, ingen fjernelse → stadig frosset
+  });
+  assert.deepEqual(blocked, { ok: false, status: 409, error: "selection_race_started" });
+
+  const allowed = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids.slice(0, 4), captain_id: "r1" }, // ægte delmængde → ren fjernelse
+  });
+  assert.equal(allowed.ok, true);
+  assert.equal(allowed.isRemovalOnly, true);
+});
+
+// #1146 — saveSelectionBulk: atomisk RPC-kald for HELE batchen. Den ægte alt-eller-intet-
+// garanti (advisory-lås + deferred constraint) ligger i SQL-transaktionen (database/2026-
+// 08-27-1146-selection-bulk-rpc.sql) og kan ikke udøves uden en live Postgres — disse tests
+// dækker JS-kontrakten: ÉT rpc-kald pr. bulk-request (uanset N ændringer, samme "ÉN
+// marketWriteLimiter-hit pr. kald"-pointe som ruten), og at en RPC-fejl kaster for HELE
+// kaldet (ingen delvis JS-side håndtering der kunne skjule et delvist resultat).
+test("saveSelectionBulk: bygger replace_race_selection_bulk-kaldet med p_team_id/p_changes/p_auto_releases", async () => {
+  let rpcArgs = null;
+  const supabase = { rpc: (name, args) => { rpcArgs = { name, args }; return Promise.resolve({ error: null }); } };
+  const changes = [{ race_id: "race1", rider_ids: ["r1", "r2"], roles: ["captain", "helper"] }];
+  const autoReleases = [{ race_id: "race9", rider_id: "r5" }];
+  await saveSelectionBulk({ supabase, teamId: "t1", changes, autoReleases });
+  assert.equal(rpcArgs.name, "replace_race_selection_bulk");
+  assert.equal(rpcArgs.args.p_team_id, "t1");
+  assert.deepEqual(rpcArgs.args.p_changes, changes);
+  assert.deepEqual(rpcArgs.args.p_auto_releases, autoReleases);
+});
+
+test("saveSelectionBulk: autoReleases er valgfri (default tomt array)", async () => {
+  let rpcArgs = null;
+  const supabase = { rpc: (name, args) => { rpcArgs = { name, args }; return Promise.resolve({ error: null }); } };
+  await saveSelectionBulk({ supabase, teamId: "t1", changes: [] });
+  assert.deepEqual(rpcArgs.args.p_auto_releases, []);
+});
+
+test("saveSelectionBulk: ÉT RPC-kald for HELE batchen uanset antal ændringer (atomicitet + cap-pointe, #1146)", async () => {
+  let callCount = 0;
+  const supabase = { rpc: () => { callCount += 1; return Promise.resolve({ error: null }); } };
+  const changes = [
+    { race_id: "race1", rider_ids: ["r1"], roles: ["captain"] },
+    { race_id: "race2", rider_ids: ["r2"], roles: ["captain"] },
+    { race_id: "race3", rider_ids: ["r3"], roles: ["captain"] },
+  ];
+  await saveSelectionBulk({ supabase, teamId: "t1", changes });
+  assert.equal(callCount, 1, "N ændringer skal blive til ÉT RPC-kald, ikke N separate skrivninger");
+});
+
+test("saveSelectionBulk: en fejl midt i batchen kaster for HELE kaldet (ingen delvis JS-håndtering)", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: { code: "XX000", message: "constraint violation mid-batch" } }) };
+  const changes = [
+    { race_id: "race1", rider_ids: ["r1"], roles: ["captain"] },
+    { race_id: "race2", rider_ids: ["r2"], roles: ["captain"] },
+  ];
+  await assert.rejects(() => saveSelectionBulk({ supabase, teamId: "t1", changes }));
+});
+
+test("saveSelectionBulk: rå 23505 fra no_rider_double_booking_day klassificeres som selection_rider_bound", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: {
+    code: "23505",
+    message: 'duplicate key value violates unique constraint "no_rider_double_booking_day"',
+  } }) };
+  await assert.rejects(
+    () => saveSelectionBulk({ supabase, teamId: "t1", changes: [{ race_id: "race1", rider_ids: [], roles: [] }] }),
+    (err) => err.code === "selection_rider_bound"
+  );
+});
+
+test("saveSelectionBulk: en URELATERET RPC-fejl får IKKE selection_rider_bound-koden", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: { code: "XX000", message: "connection reset" } }) };
+  await assert.rejects(
+    () => saveSelectionBulk({ supabase, teamId: "t1", changes: [{ race_id: "race1", rider_ids: [], roles: [] }] }),
+    (err) => err.code === undefined && /connection reset/.test(err.message)
   );
 });
 
