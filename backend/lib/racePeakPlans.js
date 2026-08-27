@@ -318,8 +318,33 @@ export async function loadStageDayOrdinals({ supabase, raceId }) {
  * Overrides). window_start/end konverteres til ordinaler her, så racePeaks får
  * rene dag-ints. Ugyldige datoer → planen udelades.
  *
+ * FORÆLDRELØSE VINDUER UDELADES (#4294). En række her bærer BÅDE et anker
+ * (target_race_id) og et AFLEDT resultat (window_start/end, snappet om målløbets
+ * etaper). Kun ankeret har en FK, så da kalender-regenereringen 27/8 slettede
+ * sæson 3's races, nullede `ON DELETE SET NULL` ankeret mens vinduet blev stående
+ * med den GAMLE kalenders datoer: 812 planer der pegede på ingenting, hvoraf 731
+ * overlappede den nye kalender. Uden dette filter ville motoren give +6..+29
+ * formpoint på løbsdage ingen spiller havde valgt eller overhovedet kunne se.
+ *
+ * NULL er ILLEGITIM her, og det er verificeret på skrivesiden, ikke antaget:
+ * alle tre skriveveje (POST /peak-plans, POST /peak-plans/bulk, PATCH
+ * /peak-plans/:id i backend/routes/api.js) afviser et target_race_id der ikke er
+ * en ikke-tom streng med 400 FØR de rører DB'en, og skriver derefter altid en
+ * valideret ikke-null værdi. Der findes ingen kodesti der med vilje gemmer en
+ * plan uden mål. En NULL kan derfor kun opstå ved at FK'en nulstiller ankeret.
+ * Det er præcis den modsatte situation af #4299, hvor `binding_span IS NULL` var
+ * en af FIRE grene funktionen bevidst returnerer (bl.a. "holdet er afmeldt"), og
+ * hvor en NOT NULL-constraint ville have gjort legitime tilstande urepræsen-
+ * terbare. Reglen fra den postmortem er fulgt her: skrivesiden er læst først, og
+ * dens legitime tomme grene er udelukket — der er ingen.
+ *
+ * Migrationen database/2026-08-27-4294-peak-plan-cascade.sql fjerner kilden
+ * (ON DELETE SET NULL → CASCADE), så en plan dør sammen med sit målløb. Dette
+ * filter bliver derefter en vagt uden arbejde, hvilket er den rigtige tilstand:
+ * det er motorens fail-safe, ikke oprydningen.
+ *
  * @param {{supabase, seasonId: string, riderIds: string[]}} args
- * @returns {Promise<Map<string, Array<{start:number,end:number,targetRaceId:string|null}>>>}
+ * @returns {Promise<Map<string, Array<{start:number,end:number,targetRaceId:string}>>>}
  */
 export async function loadPeakPlans({ supabase, seasonId, riderIds }) {
   const out = new Map();
@@ -331,14 +356,20 @@ export async function loadPeakPlans({ supabase, seasonId, riderIds }) {
       .from("rider_peak_plans")
       .select("rider_id, window_start, window_end, target_race_id")
       .eq("season_id", seasonId)
-      .in("rider_id", slice);
+      .in("rider_id", slice)
+      // Lag 1: hent dem aldrig. Lag 2 er række-tjekket nedenfor.
+      .not("target_race_id", "is", null);
     if (error) throw new Error(`rider_peak_plans: ${error.message}`);
     for (const row of data || []) {
+      // Samme fail-safe som datovalideringen: et vindue uden anker er per
+      // definition ikke et spillervalg, så motoren må ikke se det — også hvis
+      // query-filteret ovenfor en dag refaktoreres væk.
+      if (!row.target_race_id) continue;
       const start = dateStringToOrdinal(row.window_start);
       const end = dateStringToOrdinal(row.window_end);
       if (start == null || end == null) continue;
       if (!out.has(row.rider_id)) out.set(row.rider_id, []);
-      out.get(row.rider_id).push({ start, end, targetRaceId: row.target_race_id ?? null });
+      out.get(row.rider_id).push({ start, end, targetRaceId: row.target_race_id });
     }
   }
   return out;

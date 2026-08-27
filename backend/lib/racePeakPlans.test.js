@@ -104,20 +104,26 @@ test("aggregateDemandVector: ingen gyldige profiler → null", () => {
 
 // ── Fake supabase (samme mønster som raceFatigue.test.js) ─────────────────────
 // Bygger en thenable query-builder; det sidste led i kæden resolves med { data }.
+// Fake'en HÅNDHÆVER ikke filtrene (eq/in/not er no-ops der returnerer alle rækker)
+// — den REGISTRERER dem i `notFilters`. Det er bevidst: så kan én test bevise at
+// query'en beder DB'en om det rigtige, og en anden bevise at JS-siden alligevel
+// smider rækken væk hvis den slipper igennem. To lag, to assertions (#4294).
 function makeSupabase(tables = {}) {
+  const notFilters = [];
   function from(table) {
     const rows = tables[table] ?? [];
     const b = {
       select() { return b; },
       eq() { return b; },
       in() { return b; },
+      not(column, operator, value) { notFilters.push({ table, column, operator, value }); return b; },
       then(resolve, reject) {
         return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
       },
     };
     return b;
   }
-  return { from };
+  return { from, notFilters };
 }
 
 // ── loadStageDayOrdinals ──────────────────────────────────────────────────────
@@ -153,7 +159,7 @@ test("loadPeakPlans: grupperer pr. rytter, konverterer datoer → ordinaler", as
     rider_peak_plans: [
       { rider_id: "r1", window_start: "2026-07-10", window_end: "2026-07-14", target_race_id: "tdf" },
       { rider_id: "r1", window_start: "2026-08-01", window_end: "2026-08-05", target_race_id: "vuelta" },
-      { rider_id: "r2", window_start: "2026-07-12", window_end: "2026-07-16", target_race_id: null },
+      { rider_id: "r2", window_start: "2026-07-12", window_end: "2026-07-16", target_race_id: "giro" },
     ],
   });
   const map = await loadPeakPlans({ supabase, seasonId: "s1", riderIds: ["r1", "r2"] });
@@ -163,7 +169,7 @@ test("loadPeakPlans: grupperer pr. rytter, konverterer datoer → ordinaler", as
     end: dateStringToOrdinal("2026-07-14"),
     targetRaceId: "tdf",
   });
-  assert.equal(map.get("r2")[0].targetRaceId, null);
+  assert.equal(map.get("r2")[0].targetRaceId, "giro");
 });
 
 test("loadPeakPlans: tom sæson/rytterliste → tom map (ingen DB-kald nødvendigt)", async () => {
@@ -174,10 +180,43 @@ test("loadPeakPlans: tom sæson/rytterliste → tom map (ingen DB-kald nødvendi
 
 test("loadPeakPlans: ugyldig dato på en plan → planen udelades", async () => {
   const supabase = makeSupabase({
-    rider_peak_plans: [{ rider_id: "r1", window_start: "kaputt", window_end: "2026-07-14", target_race_id: null }],
+    // Gyldigt målløb, så det ER datoen der udelader rækken og ikke #4294-filteret.
+    rider_peak_plans: [{ rider_id: "r1", window_start: "kaputt", window_end: "2026-07-14", target_race_id: "tdf" }],
   });
   const map = await loadPeakPlans({ supabase, seasonId: "s1", riderIds: ["r1"] });
   assert.equal(map.has("r1"), false);
+});
+
+// ── #4294: forældreløse vinduer må ALDRIG nå motoren ──────────────────────────
+// Et vindue uden målløb kan kun opstå ved at FK'ens ON DELETE SET NULL nulstiller
+// ankeret når kalenderen regenereres. Alle tre skriveveje afviser et tomt
+// target_race_id med 400, så NULL er aldrig et spillervalg. Testene her erstatter
+// den gamle assertion om at en NULL-række TALTE MED — den kodificerede netop den
+// adfærd der gav 280 ryttere en usynlig peak på sæsonens åbningsdag.
+
+test("loadPeakPlans: en plan uden målløb udelades (forældreløst vindue, #4294)", async () => {
+  const supabase = makeSupabase({
+    rider_peak_plans: [
+      { rider_id: "r1", window_start: "2026-07-10", window_end: "2026-07-14", target_race_id: "tdf" },
+      // Samme rytter, gammel kalender: ankeret er væk, vinduet står tilbage.
+      { rider_id: "r1", window_start: "2026-08-23", window_end: "2026-08-27", target_race_id: null },
+      // Rytter hvis ENESTE plan er forældreløs → må slet ikke optræde i map'et,
+      // for en tom liste ville stadig give ham peak-felter på simEntrant'en.
+      { rider_id: "r2", window_start: "2026-08-24", window_end: "2026-08-28", target_race_id: null },
+    ],
+  });
+  const map = await loadPeakPlans({ supabase, seasonId: "s1", riderIds: ["r1", "r2"] });
+  assert.equal(map.get("r1").length, 1, "kun vinduet med et gyldigt målløb overlever");
+  assert.equal(map.get("r1")[0].targetRaceId, "tdf");
+  assert.equal(map.has("r2"), false, "rytter uden ét eneste gyldigt vindue er slet ikke i map'et");
+});
+
+test("loadPeakPlans: query'en beder DB'en om at udelade NULL-mål (#4294)", async () => {
+  const supabase = makeSupabase({ rider_peak_plans: [] });
+  await loadPeakPlans({ supabase, seasonId: "s1", riderIds: ["r1"] });
+  assert.deepEqual(supabase.notFilters, [
+    { table: "rider_peak_plans", column: "target_race_id", operator: "is", value: null },
+  ]);
 });
 
 // ── serializePeakInputs (checksum-determinisme) ───────────────────────────────

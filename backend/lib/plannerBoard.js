@@ -131,6 +131,13 @@ export function findPaybackCollisions({ windows = [], otherRaces = [], tuning = 
  * formhul kan teoretisk overlappe, men på løbsdagen er det bumpet der definerer
  * hans tilstand — to modsatrettede chips på samme kort ville kun forvirre).
  *
+ * FORÆLDRELØSE PLANER UDELADES (#4294, samme fejlklasse som loadPeakPlans).
+ * targetRaceId=null matcher aldrig et rigtigt raceId, så en plan hvis målløb er
+ * slettet ville falde lige ned i payback-grenen og tegne et formhul-chip ud fra
+ * et vindue der er snappet om en kalender der ikke findes mere. Rytteren har
+ * aldrig haft en peak at betale tilbage for. Se racePeakPlans.loadPeakPlans for
+ * hvorfor NULL her er illegitim og ikke en legitim tom gren.
+ *
  * @param {object} args
  * @param {string} args.raceId
  * @param {number|null} args.raceOrdinal  løbets start-dag (CET-ordinal)
@@ -144,6 +151,7 @@ export function raceCardPeakOverlay({ raceId, raceOrdinal, plans = [], tuning = 
   const paybackByRider = new Map();
   for (const p of plans) {
     if (!p?.riderId) continue;
+    if (!p.targetRaceId) continue;
     if (p.targetRaceId === raceId) {
       peakRiderIds.push(p.riderId);
       continue;
