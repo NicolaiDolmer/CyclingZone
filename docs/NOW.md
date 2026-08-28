@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action — ejer-frister:** **#4213** spørg igen **lør 29/8** (pakken klar, venter kun på de to tekster; flet main ind først, #4248 rørte 70 spec-filer) · **#4098** spørg igen **senest søn 31/8** (unge ryttere står færdige 65 pt før loftet, 124 hold ramt) · **#4176** SSOT for kalenderreglerne **senest 4/9 OG før S4-kalenderen**. **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + trup-linje + RET "Fra i morgen"-varslet · **#886** Sentry-token → Infisical · **#4361** beslut 10 stars (anbefalet) vs PAT · **Z1 #1146** PR #4323 grøn, spillertest på preview før merge. Derefter: #4317 · #4259 · #4355 · #4367.
+> **🎯 Next action — ejer-frister:** **LØR 29/8 = ejer-session** (ejer 28/8: alt der kræver ham samles der): **#4213** de to tekster (pakken klar; flet main ind først, #4248 rørte 70 spec-filer) + **den ryddede NUA-kø** (19 venter, ældste fra juni — jeg luger de forældede ud først) · **#4098** spørg igen **senest søn 31/8** (unge ryttere står færdige 65 pt før loftet, 124 hold ramt) · **#4176** SSOT for kalenderreglerne **senest 4/9 OG før S4-kalenderen**. **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + trup-linje + RET "Fra i morgen"-varslet · **#886** Sentry-token → Infisical · **#4361** beslut 10 stars (anbefalet) vs PAT · **Z1 #1146** PR #4323 grøn, spillertest på preview før merge. Derefter: #4317 · #4259 · #4355 · #4367.
 
 > **✅ 28/8 leveret:** sæsonen startede kl. 11 (deploy-verify grøn 11:36, motorflag armeret). #4307 opfyldning (411 ryttere/89 hold) · #4311 · #4306 · **#4301/#4295 minimum-6 LIVE** (gulvets pris: 42 starter) · auth-klyngen (PR #4368) · #4324 kanal-funnel · #4334 typecheck-gate · **#4248 e2e-fejlguard merged** (PR #4371) · **#4350 session-afvisning merged** (PR #4372, patch 7.218 — appen opdager nu en afvist session og sender til login; to værn mod fejl-udlogning, rod-årsag udskilt som **#4369**). Sentry ikke ren: **#4213** (278 stale intake).
 
@@ -20,7 +20,7 @@
 
 > **⚠️ Katalog-lofter + åbent valg (#4272):** D1 brosten 4,5 % (mål 6) · D4 ITT 8,1 % · D4 trækker 5/6 `summit_tour` → 16 % højbjerg og 41,9 % opad. Kræver arketype-LOFT eller flere flade Class1/2-etapeløb. **Spildesign-valg, afventer ejer. To regenereringer er forbudt.**
 
-> **⚖️ Ejer-beslutninger 26/8:** løbsdage i træk ("løbsdag 4-5-6-7, ikke 3-5-7-12") · GT = **2** hviledage der OPTAGER løbsdagen · **monument-eksklusiviteten ophævet** (0 delte ryttere målt i alle 9 kombinationer efter #4217 — gevinsten var væk, hullerne blev betalt) · #4174: alle hold udtages ens, assistenten 1 t før.
+> **⚖️ Ejer-beslutninger 26/8:** løbsdage i træk · GT = **2** hviledage der OPTAGER løbsdagen · **monument-eksklusiviteten ophævet** (0 delte ryttere i alle 9 kombinationer efter #4217) · #4174: alle hold udtages ens, assistenten 1 t før.
 
 > **💰 Værdier/løn S3 (låst, intet udestående flip):** base_value = model(c 0,811 + type-dæmpning k=100, #4000 flippet 23/8 i PR #4135) · CPV dæmpet · løn = CPV × 0,35, frosset FØR transitionen · `wage_deduction_mode = season_upfront` · upkeep 220k/70k/20k/0.
 
@@ -35,6 +35,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Working agent:** Claude Code (Opus 5) — session 28/8 aften — #4248 merged, audit kørt. Næste: planlægning sammen med ejeren.
+> **🤖 Working agent:** Ingen aktiv session.
 
 _Historik i git-log, issue-tråde + docs/audits/._
