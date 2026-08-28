@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **#4213 KLAR — venter kun ejer-go paa tekster:** pakken (guard + selv-heal + reconcile-cron; 278→rejected) bygget+testet i worktree `fix-4213-academy-ownership-guard`, note 7.217. Ved go: e2e → push → merge → Sentry-verify. **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + trup-linje + RET "Fra i morgen"-varslet. **#886:** Sentry-token → Infisical. **Z1 #1146:** PR #4323 groen — spillertest paa preview foer merge. **Beslut #4361:** 10 stars (anbefalet) vs PAT. Derefter: #4317 · #4259 · #4355 · #4367.
+> **🎯 Next action — ejer-frister:** **#4213** spørg igen **lør 29/8** (pakken klar, venter kun på de to tekster; flet main ind først, #4248 rørte 70 spec-filer) · **#4098** spørg igen **senest søn 31/8** (unge ryttere står færdige 65 pt før loftet, 124 hold ramt) · **#4176** SSOT for kalenderreglerne **senest 4/9 OG før S4-kalenderen**. **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + trup-linje + RET "Fra i morgen"-varslet · **#886** Sentry-token → Infisical · **#4361** beslut 10 stars (anbefalet) vs PAT · **Z1 #1146** PR #4323 grøn, spillertest på preview før merge. Derefter: #4317 · #4259 · #4355 · #4367.
 
 > **✅ 28/8 leveret:** sæsonen startede kl. 11 (deploy-verify grøn 11:36, motorflag armeret). #4307 opfyldning (411 ryttere/89 hold) · #4311 · #4306 · **#4301/#4295 minimum-6 LIVE** (gulvets pris: 42 starter) · auth-klyngen (PR #4368) · #4324 kanal-funnel · #4334 typecheck-gate · **#4248 e2e-fejlguard merged** (PR #4371) · **#4350 session-afvisning merged** (PR #4372, patch 7.218 — appen opdager nu en afvist session og sender til login; to værn mod fejl-udlogning, rod-årsag udskilt som **#4369**). Sentry ikke ren: **#4213** (278 stale intake).
 
@@ -14,7 +14,7 @@
 
 > **⚠️ Aabne fra 27/8:** #4288 (de 3 GT'er koerer 17-18 etaper, baandet kraever 21 = umaalte) · #4282 (hold transfer-frosset af renter alene, ejer-beslutning) · #4318 (to flader siger "Race day" om to forskellige tal).
 
-> **✅ S3-KALENDEREN LIVE:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
+> **✅ S3 kører:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Løbsdags-udvikling (#4277) er **off** i S3, retur i S4.
 
 > **⚠️ Invariant-fund:** #4146 (24 hold over trupgrænse) · #4204 (verify-invariants tager 20 min).
 
