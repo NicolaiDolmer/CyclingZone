@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer-rest:** post kommunikationspakken ([`drafts/2026-08-27-kommunikationspakke-saesonstart.md`](drafts/2026-08-27-kommunikationspakke-saesonstart.md)) + linje om trup-opfyldning + RET "Fra i morgen" i minimum-6-varslet (gulvet er LIVE). **PR #4359 MERGED 28/8** (peak-kontrakt, patch 7.214; #4212+#3088 lukket, #4271-kernen leveret). **#4201 nedskrevet** (PLANNING_CENTER_RULES §4 laast; kode-rest til P3). **Naeste session starter med:** #4317 ContextBand-tallene + #4259 udtaget-ikonet; derefter #4355 · #4308/#4309 · Z1 #1146.
+> **🎯 Next action:** **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + linje om trup-opfyldning + RET "Fra i morgen" i minimum-6-varslet (gulvet er LIVE). **28/8:** #4316 grøn (4 fejl rettet) — **afventer ejer-merge**, bærer migration. **Beslut #4361:** auto-review død siden 14/8 (292 PR'er urevideret); bot-trigger afvist (#4362 draft) → **10 stars** (anbefalet) vs **PAT**. **Naeste session starter med:** #4317 ContextBand-tallene + #4259 udtaget-ikonet; derefter #4355 · #4308/#4309 · Z1 #1146.
 
 > **✅ Sæsonstart-dagen 28/8, alt merged+deployet:** #4307 opfyldning KOERT (411 ryttere/89 inaktive hold) · #4311 fyld-klemme + datareparation (PR #4354) · #4306 afmeldt-hold-fix (PR #4360, patch 7.211) · **#4301/#4295 minimum-6-gulvet LIVE** (PR #4301, patch 7.212-7.213; gulvets pris i dag: 42 starter, genmaalt efter opfyldning). Motorflag verificeret armeret, Sentry ren, deploy-verify groen 11:36.
 
