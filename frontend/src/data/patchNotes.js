@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.210",
+    "date": "2026-08-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Racing",
+        "en": {
+          "title": "Naming a second captain for a stage quietly took protection off the first",
+          "body": "Stage tactics let you set two captains on the same stage. Three or more were rejected, two went through without a word, and the race engine then protected whichever of them it happened to read last. Picking a new captain for a stage now moves the role: the previous captain becomes a helper, and a line tells you who changed. Same for sprint captain."
+        },
+        "da": {
+          "title": "En kaptajn nummer to på en etape tog stille beskyttelsen fra den første",
+          "body": "Etape-taktikken lod dig sætte to kaptajner på samme etape. Tre eller flere blev afvist, to gik igennem uden en lyd, og løbsmotoren beskyttede så den af dem den tilfældigvis læste sidst. Vælger du nu en ny kaptajn til en etape, flytter rollen: den forrige kaptajn bliver hjælper, og en linje fortæller dig hvem der blev ændret. Samme for spurtkaptajn."
+        },
+        "refs": [4344]
+      }
+    ]
+  },
+  {
     "version": "7.209",
     "date": "2026-08-27",
     "label": "Beta",

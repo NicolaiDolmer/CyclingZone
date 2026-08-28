@@ -24,6 +24,7 @@ import { VALID_RACE_ROLES, VALID_EFFORTS } from "./raceRoles.js";
  *   stageCount: number,
  *   stagesCompleted: number,
  *   teamRiderIds: Set<string>,
+ *   baseRoleByRider: Map<string, string|null>,
  * }} args
  * @returns {{ok: boolean, errors: string[]}}
  */
@@ -33,6 +34,7 @@ export function validateStageRoleOverrides({
   stageCount = 0,
   stagesCompleted = 0,
   teamRiderIds = new Set(),
+  baseRoleByRider = new Map(),
 }) {
   if (raceCompleted) return { ok: false, errors: ["stage_roles_race_completed"] };
   if (!Array.isArray(overrides)) return { ok: false, errors: ["stage_roles_invalid_body"] };
@@ -56,14 +58,35 @@ export function validateStageRoleOverrides({
     if (!VALID_EFFORTS.includes(o?.effort)) { errors.push("stage_roles_invalid_effort"); break; }
   }
 
-  // >1 captain eller >1 sprint_captain pr. etape for holdet.
-  const countByStageRole = new Map();
-  for (const o of overrides) {
-    if (o?.race_role !== "captain" && o?.race_role !== "sprint_captain") continue;
-    const key = `${o.stage_number}:${o.race_role}`;
-    countByStageRole.set(key, (countByStageRole.get(key) || 0) + 1);
-  }
-  if ([...countByStageRole.values()].some((c) => c > 1)) errors.push("stage_roles_role_overlap");
+  // >1 captain eller >1 sprint_captain pr. etape for holdet — talt på den
+  // EFFEKTIVE rolle (override → basis-rolle), ikke på bodyens rækker alene.
+  //
+  // #4344: bodyen indeholder per kontrakt KUN celler der afviger fra basis-
+  // rollen (frontendens diffToOverrides), så en urørt basis-kaptajn er aldrig
+  // med i den. En tælling over bodyen alene så derfor præcis 1 kaptajn i det
+  // ene tilfælde hvor der reelt var 2: basis-kaptajnen urørt + én forfremmet
+  // hjælper. 3+ kaptajner blev afvist korrekt (2+ overrides), 2 slap igennem.
+  // Motoren tog så den sidste af de to (raceSimulator.buildTeamContext) og gav
+  // beskyttelsen til en rytter spilleren ikke havde valgt.
+  //
+  // Kun etaper der optræder i bodyen kan overhovedet få en ny leder: en etape
+  // uden overrides falder tilbage til race_entries alene, hvor de partielle
+  // unique-indexes (uq_race_entries_captain/_sprint_captain) allerede
+  // garanterer højst én af hver pr. (løb, hold).
+  const stagesInBody = [...new Set(overrides.map((o) => o?.stage_number))];
+  const roleOverlap = stagesInBody.some((stageNumber) => {
+    const rowsForStage = overrides.filter((o) => o?.stage_number === stageNumber);
+    const overriddenRiders = new Set(rowsForStage.map((o) => o?.rider_id));
+    return ["captain", "sprint_captain"].some((role) => {
+      let count = rowsForStage.filter((o) => o?.race_role === role).length;
+      // Ryttere UDEN override på etapen beholder deres basis-rolle.
+      for (const riderId of teamRiderIds) {
+        if (!overriddenRiders.has(riderId) && baseRoleByRider.get(riderId) === role) count += 1;
+      }
+      return count > 1;
+    });
+  });
+  if (roleOverlap) errors.push("stage_roles_role_overlap");
 
   // Dublet (stage, rider) i body.
   const keys = overrides.map((o) => `${o?.stage_number}:${o?.rider_id}`);
@@ -125,6 +148,10 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
     riders,
     overrides,
     teamRiderIds: new Set(riderIds),
+    // #4344: basis-rollen pr. rytter (race_entries.race_role) — validatoren
+    // skal kunne tælle EFFEKTIVE roller, ikke kun bodyens. Samme felt som
+    // raceTeamOrdersApi.getTeamOrdersContext returnerer.
+    baseRoleByRider: new Map(riders.map((r) => [r.rider_id, r.race_role])),
   };
 }
 
