@@ -8,11 +8,11 @@
 
 **Ejeren valgte: "Gør den kørende sæson god."** Fortrinsret: fejl der rammer spillere nu · #428-rytmen (viger aldrig) · en motor der kører rent.
 
-**Grundreglerne (spor B, B2, C) er udskudt til efter 27/9.** Lander de midt i en sæson, planlægger spillerne efter ét regelsæt og måles efter et andet. Mandatet 13/8 gjaldt FØR start; S3 kører med den bestand den har. **Undtagelse:** en grundregel må rettes hvis den er en ren FEJL der rammer spillere nu (#4098) — ikke hvis den er en forbedring.
+**Grundreglerne (spor B, B2, C) er udskudt til efter 27/9** — lander de midt i en sæson, måles spillerne efter andre regler end dem de planlagde efter. Mandatet 13/8 gjaldt FØR start. **Undtagelse:** en ren FEJL i en grundregel må rettes (#4098); en forbedring må ikke.
 
 ## Kø i S3-vinduet (ejer-godkendt 27/8, trimmet 28/8)
 
-0. **FØRST (ejer 28/8): #2758** Discord-triage → issues (dagligt) + **#4269** daglig Supabase-kontrol. Køen herunder skal fyldes af det spillerne møder og det basen melder — ikke af AI-vurdering. Begge er ejer-direktiver (20/7 og 25/8).
+0. **FØRST (ejer 28/8): #2758** Discord-triage → issues (dagligt) + **#4269** daglig Supabase-kontrol. Køen herunder skal fyldes af det spillerne møder og det basen melder — ikke af AI-vurdering. Begge er ejer-direktiver (20/7 og 25/8). **Dertil (ejer 28/8): ryd ejer-køen** — 19 `needs-user-action` venter, ældste fra juni. Jeg finder de forældede/løste, så ejeren kun får ægte spørgsmål.
 1. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren · **#4355** juni-fyldkuldets taktik-læk.
 2. **#4098** unge markeret færdige 65 pt under loftet — ejeren spørges igen senest 31/8.
 3. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først. **Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
