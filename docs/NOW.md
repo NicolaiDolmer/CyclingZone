@@ -4,7 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer-rest:** post kommunikationspakken ([`drafts/2026-08-27-kommunikationspakke-saesonstart.md`](drafts/2026-08-27-kommunikationspakke-saesonstart.md)) — ejer siger "senere" 28/8; tilfoej linje om trup-opfyldningen. **#4307 KOERT 28/8** (411 ryttere, 89 inaktive hold, 30-dages-graense, post-verify OK — se issue-kommentar; genmaaling: gulvets egen pris nu 42 starter). **#4212 BESLUTTET 28/8:** retning B "kortet som kontrakt" (se issue-kommentarer, daekker #4271-kernen). **#4301 (draft) blokerende fund rettet:** `partialSquadOutlook` sagde intet ved 0 udtagne (195/226 hold, 128/130 tabte starter). Afventer ejer-visuelt-go paa previewen foer merge. **Naeste build:** #4317 · #4259 · Z1 #1146.
+> **🎯 Next action:** **Ejer-rest:** post kommunikationspakken ([`drafts/2026-08-27-kommunikationspakke-saesonstart.md`](drafts/2026-08-27-kommunikationspakke-saesonstart.md)) + linje om trup-opfyldning + RET "Fra i morgen" i minimum-6-varslet (gulvet er LIVE i dag). **PR #4359 (peak-kontrakt, #4212/#4271):** alle e2e groenne, foer/efter forelagt — afventer ejer-svar, merges derefter. **Naeste build:** #4317 · #4259 · Z1 #1146 · #4355 (juni-fyldkuldets taktik-laek).
+
+> **✅ Sæsonstart-dagen 28/8, alt merged+deployet:** #4307 opfyldning KOERT (411 ryttere/89 inaktive hold) · #4311 fyld-klemme + datareparation (PR #4354) · #4306 afmeldt-hold-fix (PR #4360, patch 7.211) · **#4301/#4295 minimum-6-gulvet LIVE** (PR #4301, patch 7.212-7.213; gulvets pris i dag: 42 starter, genmaalt efter opfyldning). Motorflag verificeret armeret, Sentry ren, deploy-verify groen 11:36.
 
 > **🧱 Nyt spor (efter fredag, MASTERPLAN pkt. 16):** PR **#4334** taender frontend-typecheck + regenererer skematyper (`database.types.ts` daekkede 46 af 143 tabeller). Afventer ejer. Opfoelgning #4326-#4333.
 
