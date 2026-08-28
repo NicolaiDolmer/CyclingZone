@@ -371,7 +371,8 @@ import { buildCustomerRows, summarizeNps } from "../lib/growthSnapshot.js";
 import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches, findConsecutiveTierBreaches } from "../lib/balanceDriftMetrics.js";
 import { isBotUserAgent } from "../lib/botDetection.js";
 import { computeVisitHash, dayString } from "../lib/visitHash.js";
-import { aggregateTraffic } from "../lib/trafficMetrics.js";
+import { aggregateTraffic, aggregateChannelFunnel } from "../lib/trafficMetrics.js";
+import { sanitizeCollectChannel } from "../lib/trafficChannel.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
 import {
   UCI_MEN_RACE_CLASSES,
@@ -8575,6 +8576,10 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
 // POST /api/collect — anonym, consent-uafhængig web-telemetri (#2040). Storage-less
 // dedup via visit_hash; bots flagges men tælles. Fire-and-forget; må aldrig fejle
 // for klienten. INGEN PII gemmes (ingen rå IP/UA, intet bruger-id).
+//
+// #4320: gemmer også kanal-kontekst (referrer + UTM). referrer_host udledes
+// SERVER-side af den rå referrer frem for at blive modtaget fra klienten, så
+// værten altid er udledt med samme regel og ikke kan sættes vilkårligt udefra.
 router.post("/collect", collectLimiter, async (req, res) => {
   res.status(204).end(); // svar straks; resten er best-effort
   try {
@@ -8582,12 +8587,14 @@ router.post("/collect", collectLimiter, async (req, res) => {
     if (!COLLECT_EVENTS.has(event)) return;
     const ua = req.headers["user-agent"] || "";
     const ip = req.ip || "";
+    const channel = sanitizeCollectChannel(req.body);
     await supabase.from("traffic_events").insert({
       event,
       path: typeof evPath === "string" ? evPath.slice(0, 200) : null,
       device: typeof deviceType === "string" ? deviceType.slice(0, 20) : null,
       is_bot: isBotUserAgent(ua),
       visit_hash: computeVisitHash({ ip, ua, day: dayString(), secret: TRAFFIC_SALT }),
+      ...channel,
     });
   } catch (e) {
     console.error("[collect] insert fejlede:", e?.message);
@@ -8612,7 +8619,24 @@ router.get("/admin/metrics", requireAdmin, async (req, res) => {
       .eq("event_name", "signup")
       .gte("created_at", since);
 
-    res.json({ days, traffic, signups: signups || 0 });
+    // #4320: kanal-funnellen. Signup-siden hentes fra signup_attribution (ikke
+    // player_events), fordi det er den eneste kilde der bærer kanal-felter, og
+    // fordi den er consent-uafhængig ligesom traffic_events. De to tællinger
+    // kan derfor afvige lidt fra `signups` ovenfor, som er consent-gated.
+    const { data: signupRows, error: sErr } = await supabase
+      .from("signup_attribution")
+      .select("utm_source, referrer")
+      .gte("signed_up_at", since);
+    if (sErr) throw sErr;
+    const channelFunnel = aggregateChannelFunnel(visitRows || [], signupRows || []);
+
+    res.json({
+      days,
+      traffic,
+      signups: signups || 0,
+      channelFunnel,
+      attributedSignups: (signupRows || []).length,
+    });
   } catch (e) {
     console.error("[admin/metrics] fejl:", e?.message);
     res.status(500).json({ error: "metrics_failed" });

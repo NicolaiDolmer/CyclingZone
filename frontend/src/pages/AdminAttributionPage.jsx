@@ -102,6 +102,61 @@ function BreakdownCard({ title, items, total, max = 12 }) {
   );
 }
 
+// Konverterings-funnel per kanal (#4320). Den tabel hele issuet handler om:
+// besøg og signups i SAMME række, så "mere Reddit, mindre X" kan afgøres på tal
+// i stedet for ved at holde to systemer op mod hinanden i hovedet.
+function ChannelFunnelCard({ rows, days }) {
+  const list = Array.isArray(rows) ? rows : [];
+  return (
+    <Card className="overflow-hidden">
+      <div className="px-4 py-3 border-b border-cz-border">
+        <p className="text-cz-3 text-xs uppercase tracking-wide">
+          Konvertering pr. kanal (seneste {days}d) — #4320
+        </p>
+        <p className="text-cz-3 text-xs mt-1">
+          Besøg er bot-ekskluderede og dedup&apos;es pr. enhed og dag. Brug raten til at
+          rangere kanaler indbyrdes, ikke som en absolut sandsynlighed.
+        </p>
+      </div>
+      {list.length === 0 ? (
+        <div className="p-4">
+          <EmptyState
+            title="Ingen kanal-data endnu"
+            description="Kanal-felterne opsamles fra og med #4320. Tabellen fyldes op efterhånden som ny trafik kommer ind."
+          />
+        </div>
+      ) : (
+        <Table data-sort-exempt="Kanal-funnel, server-aggregeret og sorteret efter signups">
+          <thead>
+            <Tr>
+              <Th>Kanal</Th>
+              <Th numeric>Besøg</Th>
+              <Th numeric>Engaged</Th>
+              <Th numeric>Signups</Th>
+              <Th numeric>Konvertering</Th>
+            </Tr>
+          </thead>
+          <tbody>
+            {list.map((r) => (
+              <Tr key={r.channel}>
+                <Td className="max-w-[220px] truncate" title={r.channel}>{r.channel}</Td>
+                <Td numeric>{r.visits}</Td>
+                <Td numeric>
+                  {r.engagedRate == null ? "—" : `${Math.round(r.engagedRate * 100)}%`}
+                </Td>
+                <Td numeric>{r.signups}</Td>
+                <Td numeric>
+                  {r.conversionRate == null ? "—" : `${(r.conversionRate * 100).toFixed(1)}%`}
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </Table>
+      )}
+    </Card>
+  );
+}
+
 export function AttributionContent() {
   const { getAuth } = useAdminAuth();
   const [data, setData] = useState(null);
@@ -223,6 +278,10 @@ export function AttributionContent() {
             <KpiCard label="Signups" value={metrics.signups} sub={`seneste ${metrics.days}d`} />
           </div>
         </div>
+      )}
+
+      {metrics && (
+        <ChannelFunnelCard rows={metrics.channelFunnel} days={metrics.days} />
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
