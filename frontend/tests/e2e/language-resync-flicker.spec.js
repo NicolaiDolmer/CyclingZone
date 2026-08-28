@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json } from "./fixtures.js";
 
 // #2045: in-app sprog-flimmer — teksten skifter flere gange ved sprog-skift

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders } from "./fixtures.js";
 
 // Race Hub S4 — kommende-løb-detalje (#1834/#1747): etape-stribe + valgt-etape-panel

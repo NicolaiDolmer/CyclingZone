@@ -4,7 +4,7 @@
 // SortTh: klik sorterer rækkerne alfabetisk på sælgernavn ("AI" for frie
 // agenter/AI-hold, ellers holdnavnet). Verificerer BÅDE den faktiske
 // rækkefølge-ændring og fanger evidensen som screenshot.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, collectBrowserErrors, evidenceShotPath } from "./fixtures.js";
 
 const RIDER_ALPHA = { id: "rider-sort-a", firstname: "Alpha", lastname: "Rider", team_id: "team-alpine", nationality_code: "dk", birthdate: "1998-01-01", base_value: 500000, market_value: 500000, salary: 40000, contract_length: 2, contract_end_season: 3, is_u25: false, primary_type: "rouleur", secondary_type: null, team: { id: "team-alpine", name: "Alpine Racing" } };

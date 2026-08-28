@@ -3,7 +3,7 @@
 // hurtigt frem, var eneste udvej at lukke wizard'en og starte forfra (alle valg
 // tabt). Denne spec verificerer hele tilbage-kæden UDEN tab af valg:
 //   mål 2 → mål 1 (forhandlet-state bevaret) → trin 1 → genoptag på samme mål.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
 const EXPIRED_BOARD = {

@@ -2,7 +2,7 @@
 // core-smoke's board-fixture er baseline-fase (interaktivt board-UI rendres ikke), så
 // denne spec mocker en non-baseline board-status for at åbne en rigtig dialog og
 // verificere role/aria-modal/aria-labelledby + mærket luk-knap + Escape-luk + focus-restore.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
 const NON_BASELINE_BOARD = {

@@ -10,7 +10,7 @@
 // Dækker begge løbstyper modulet kan vise, fordi de linker forskelligt:
 //   endagsløb / samlet vinder → /races/:id
 //   etapevinder på etapeløb   → /races/:id?stage=N (etape-fanen, jf. #2526)
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { corsHeaders, installNetworkMocks, json, login, stabilizePage } from "./fixtures.js";
 
 // Formen er backend-kontrakten fra GET /api/dashboard/recent-results

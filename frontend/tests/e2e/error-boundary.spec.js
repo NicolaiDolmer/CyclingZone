@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage } from "./fixtures.js";
 
 // Verificér at den altid-aktive boundary (#671 Plan 3) fanger en render-fejl i

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import {
   installNetworkMocks, login, stabilizePage, json,
   ACTIVE_SEASON, TEST_TEAM,

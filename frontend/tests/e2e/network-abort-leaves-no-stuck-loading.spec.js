@@ -13,7 +13,7 @@
 // allerede den rigtige vej. Her når svaret aldrig frem, og det var netop den
 // gren der manglede.
 import { readFileSync } from "node:fs";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { evidenceShotPath, installNetworkMocks, installBoardStatusMock, login, makeBoardStatus, stabilizePage } from "./fixtures.js";
 
 // Teksten læses fra locale-filen i stedet for at være hardkodet — samme grund som

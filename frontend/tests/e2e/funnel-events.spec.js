@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders } from "./fixtures.js";
 
 // #1583: aktiverings-funnellen skal kunne AFLÆSES direkte — dvs. de eksplicitte

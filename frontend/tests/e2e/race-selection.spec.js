@@ -9,7 +9,7 @@
 //
 // Mønster følger race-detail.spec.js: stabilizePage → installNetworkMocks →
 // spec-specifikke overrides (LIFO, senest registrerede matcher først) → login → goto.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks,
   login,

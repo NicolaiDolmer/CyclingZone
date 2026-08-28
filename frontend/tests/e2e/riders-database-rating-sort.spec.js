@@ -7,7 +7,7 @@
 // sorteringen (#2403, mergeSalarySortedIds). Denne test beviser BÅDE at
 // klikket faktisk ændrer rækkefølgen (ikke bare tilføjer en død header) og at
 // rækkefølgen matcher den viste rating, ikke API-arrival-orden.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, collectBrowserErrors, evidenceShotPath } from "./fixtures.js";
 
 // Alle fem sprinter-evner sat til SAMME tal → riderOverallRating (vægtet snit

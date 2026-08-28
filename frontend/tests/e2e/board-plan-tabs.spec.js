@@ -4,7 +4,7 @@
 // non-baseline board-status med rigtige plan-data — det "non-baseline board-fixture"
 // testhul som board-auditen (Pakke 4) bad om at lukke. Verificerer: fane-bar med 3
 // faner, kvalitativ standing-label skifter ved fane-skift, #818-forhandlingsrækkefølge.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
 const plan5yr = {

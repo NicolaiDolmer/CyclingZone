@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json } from "./fixtures.js";
 
 // Race Engine (#676) — renderer-regression for evner + fysiologi på rytter-profilen

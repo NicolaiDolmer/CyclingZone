@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json } from "./fixtures.js";
 import { MOUNTAIN_TIMELINE, MOUNTAIN_STAGE_PROFILE } from "../../src/lib/stageTimelineFixtures.js";
 

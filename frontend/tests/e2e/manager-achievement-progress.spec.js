@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { stabilizePage, installNetworkMocks, login, json, corsHeaders, TEST_USER, TEST_TEAM } from "./fixtures.js";
 
 // #1008: progress mod næste mål på låste, tæller-baserede achievements (fx "40/50").

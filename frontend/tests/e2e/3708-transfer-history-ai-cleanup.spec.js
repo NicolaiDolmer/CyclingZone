@@ -12,7 +12,7 @@
 //   3. History (Players) — buyerFallback for et garanteret AI-salg viste
 //      "Unknown". Skal nu vise "AI team" (symmetrisk med den eksisterende
 //      sellerFallbackAi).
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import {
   installNetworkMocks,
   login,

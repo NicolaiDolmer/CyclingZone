@@ -4,7 +4,7 @@
 // This spec asserts the row gets a real accent tint while the regular stat rows
 // stay transparent, so a future double-modifier slip fails CI instead of shipping
 // an invisible highlight.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
 test("compare potential row renders an accent tint, not a transparent/no-op background", async ({ page }) => {

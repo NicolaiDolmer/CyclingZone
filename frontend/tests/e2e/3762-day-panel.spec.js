@@ -7,7 +7,7 @@
 //   3) Fladen må sende DAGEN til serveren, ikke en intensitet — ellers kan den
 //      bede om et par modellen ikke tilbyder.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, TEST_USER, TEST_TEAM, RIDERS, json, corsHeaders } from "./fixtures.js";
 
 const squad = [

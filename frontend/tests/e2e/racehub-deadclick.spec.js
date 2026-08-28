@@ -9,7 +9,7 @@
 // Denne test klikker specifikt på det FØR var dødt (raceDayLabel / type-klasse-
 // linjen) — ikke titlen, som allerede virkede — og forventer navigation. Mønster
 // lånt fra transfers-deadclick.spec.js (#1421).
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { corsHeaders, installNetworkMocks, json, login, stabilizePage } from "./fixtures.js";
 
 const DISTRIBUTION = {

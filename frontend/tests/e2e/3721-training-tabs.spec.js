@@ -18,7 +18,7 @@
 // (samme fixture-rytter som training-report.spec.js bruger), som har et fuldt
 // prognose-bånd i SEED_SCOUT_ESTIMATES (now:29, prog:{lo:40,hi:48}, loft:93).
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage, login, json, corsHeaders, TEST_TEAM } from "./fixtures.js";
 
 const TRAINING_ME = {

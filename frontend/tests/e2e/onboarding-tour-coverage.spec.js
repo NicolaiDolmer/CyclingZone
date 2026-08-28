@@ -11,7 +11,7 @@
 //
 // Kører i alle projekter, altså også mobile-chromium/mobile-webkit: touren skal virke
 // på mobil, hvor over halvdelen af trafikken er.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks, stabilizePage, login, json, corsHeaders, TEST_TEAM, makeBoardStatus,
 } from "./fixtures.js";

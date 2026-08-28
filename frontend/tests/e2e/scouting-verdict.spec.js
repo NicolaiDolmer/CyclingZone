@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage, login, collectBrowserErrors, evidenceShotPath } from "./fixtures.js";
 
 // #3667 — Scouting-fanen på rytterprofilen havde INGEN e2e-dækning overhovedet.

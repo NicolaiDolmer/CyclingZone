@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, TEST_USER } from "./fixtures.js";
 
 // #2745 · season_ended var en "død hook": frontend havde fuld rendering for

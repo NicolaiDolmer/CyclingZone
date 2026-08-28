@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
 // #2719 · Autobud-loftet: knappen "Gem" var `disabled` så snart beløbet lå under
