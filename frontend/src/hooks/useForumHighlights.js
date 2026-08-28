@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { selectForumHighlights } from "../lib/forumHighlights.js";
 
 // Forum-synlighed (#3199, variant B): data-hentning for dashboardets
@@ -24,19 +24,13 @@ import { selectForumHighlights } from "../lib/forumHighlights.js";
 const API = import.meta.env.VITE_API_URL;
 const HIGHLIGHT_COUNT = 2;
 
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : null;
-}
-
 export default function useForumHighlights() {
   const [state, setState] = useState({ status: "loading", threads: [] });
 
   const load = useCallback(async () => {
     setState((s) => ({ ...s, status: "loading" }));
     try {
-      const headers = await authHeaders();
+      const headers = await authHeaders({ json: false }); // ren GET, ingen body
       if (!headers || !API) throw new Error("no session");
       const res = await fetch(`${API}/api/forum/posts?limit=${HIGHLIGHT_COUNT}`, { headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

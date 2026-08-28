@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch.js";
 import {
   Button, PageHeader, Section, SectionStack, SectionHeader, EmptyState, ErrorState,
@@ -36,12 +36,6 @@ const REASON_MAX = 500;
 // FORUM_REPORT_REASON_MIN_LENGTH i backend/lib/forum.js.
 const REASON_MIN = 10;
 const FORUM_POST_TABLES = ["forum_replies", "forum_posts"];
-
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : null;
-}
 
 function AuthorLine({ author, createdAt, language, t }) {
   return (

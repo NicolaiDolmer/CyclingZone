@@ -4,16 +4,9 @@
 // ingen mutations. Spejler useAcademy's fetch-mønster.
 
 import { useState, useEffect, useCallback } from "react";
-import { getSession } from "./supabase.js";
+import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}` };
-}
 
 export function useAcademyPnl() {
   const [data, setData] = useState(null);
@@ -22,7 +15,7 @@ export function useAcademyPnl() {
   const [error, setError] = useState(null);
 
   const refresh = useCallback(async () => {
-    const headers = await authHeaders();
+    const headers = await authHeaders({ json: false }); // ren GET, ingen body
     if (!headers) { setLoading(false); return; }
     try {
       const res = await fetch(`${API}/api/academy/pnl`, { headers });

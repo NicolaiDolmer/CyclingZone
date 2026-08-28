@@ -3,17 +3,10 @@
 // præcis som useAcademy's 409). Eksponerer upgrade/hire/fire + candidates-loader.
 // Backend er eneste flag-kilde → nav + side gater på `enabled` uden dobbelt-flag.
 import { useState, useEffect, useCallback } from "react";
-import { getSession } from "./supabase.js";
+import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { logEvent } from "./logEvent.js";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export function useFacilities() {
   const [enabled, setEnabled] = useState(false);

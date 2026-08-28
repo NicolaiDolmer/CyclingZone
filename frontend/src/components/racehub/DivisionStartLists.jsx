@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { getSession } from "../../lib/supabase";
+import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import ContextBand from "./ContextBand.jsx";
 import PoolPicker from "./PoolPicker.jsx";
 import StartListColumn from "./StartListColumn.jsx";
@@ -13,12 +13,6 @@ import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { Spinner, EmptyState, ErrorState, FlagIcon, LockIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : null;
-}
 
 export default function DivisionStartLists({ scope, onScopeChange }) {
   const { t } = useTranslation("races");

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
+import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../lib/actionTelemetry.js";
 import { PageLoader, EmptyState, ErrorState, Button, Select, Checkbox, Modal, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
 import TerrainGlyph from "../components/calendar/TerrainGlyph.jsx";
@@ -33,15 +33,6 @@ function copenhagenTodayISO() {
   }).format(new Date());
 }
 
-// #4165: returnerede før `Bearer undefined` når sessionen var væk, så en død
-// session blev til et 401 vi alligevel ikke læste. Null er det ærlige svar -
-// kalderen har så en auth-gren at vise, i stedet for at bruge et kald på et svar
-// den på forhånd ved bliver afvist. Samme form som de fire øvrige hub-flader.
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  return token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : null;
-}
 
 export default function CalendarPage() {
   const { t, i18n } = useTranslation(["calendar", "common"]);

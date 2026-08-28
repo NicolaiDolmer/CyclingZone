@@ -26,19 +26,12 @@
 // samler ids i en kort timer-vindue og sender ÉT request pr. side-load.
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getSession } from "./supabase";
+import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
 import { daysUntil } from "./scoutingCentralDisplay.js";
 
 const API = import.meta.env.VITE_API_URL;
 const BATCH_DELAY_MS = 25;
 const BATCH_MAX = 400; // server capper på 500 — hold os under med margin
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export function useScouting() {
   const [slots, setSlots] = useState(null);     // { total, used, remaining } | null

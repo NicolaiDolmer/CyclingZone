@@ -9,16 +9,9 @@
 // /api/scouting/assignments[/:id/cancel] — rå potentiale forlader aldrig serveren
 // her (getScoutState returnerer kun assignment-rækker, ingen riders.potentiale).
 import { useState, useEffect, useCallback } from "react";
-import { getSession } from "./supabase.js";
+import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export function useScoutingCentral() {
   const [enabled, setEnabled] = useState(false);

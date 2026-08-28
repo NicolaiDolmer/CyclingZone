@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { getSession } from "../../lib/supabase";
+import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
@@ -21,12 +21,6 @@ import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : null;
-}
 
 // Er en kolonnes kladde forskellig fra server-sandheden? (ugemte ændringer). Pure → delt af
 // dirty-tælleren (UI) og beforeunload-vagten, så de aldrig divergerer.

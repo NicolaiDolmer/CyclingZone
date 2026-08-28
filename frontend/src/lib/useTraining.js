@@ -5,17 +5,10 @@
 // Spejler useScouting (#1138). Effekten lander ved sæson-skift (gated bag #1137).
 
 import { useState, useEffect, useCallback } from "react";
-import { getSession } from "./supabase";
+import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
 import { logEvent } from "./logEvent";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export function useTraining() {
   const [slots, setSlots] = useState(null);       // { total, used, remaining } | null
