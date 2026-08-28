@@ -1,5 +1,22 @@
 export const PATCHES = [
   {
+    "version": "7.210",
+    "date": "2026-08-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "internal",
+        "topic": "Auth",
+        "en": {
+          "title": "Dead sessions no longer send a placeholder token every minute",
+          "body": "Four copies of the frontend's auth-header helper interpolated the access token without checking it existed, so an expired session produced the literal string \"Bearer undefined\". The server's empty-token guard let it through, and the Layout heartbeat repeated it every 60 seconds until the tab was closed. The online counter also read the rejection body as a valid response and displayed 0. All four copies now return null when there is no session, and the 24 call sites skip instead. A source-wide test fails if any future copy drops the check. Players are still not logged out on a dead session; that half of the bug is tracked separately."
+        },
+        "refs": [4347, 4348]
+      }
+    ]
+  },
+  {
     "version": "7.209",
     "date": "2026-08-27",
     "label": "Beta",

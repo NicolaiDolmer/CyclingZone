@@ -211,9 +211,18 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
   ];
 }
 
+// #4347: `session?.access_token` blev til `undefined` når sessionen var død, og
+// headeren blev dermed strengen "Bearer undefined". Serverens `if (!token)`-værn
+// (backend/routes/api.js) fanger den ikke — "undefined" er en ikke-tom streng —
+// så kaldet nåede getUser() og blev til en 401 `bad_jwt` i Railway-loggen, hvert
+// 60. sekund fra heartbeatet nedenfor. null = "ingen session, lad være med at
+// kalde", samme kontrakt som de 22 øvrige authHeaders-kopier. Samling af alle
+// 26 kopier ét sted: #4348.
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
-  return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
+  const token = session?.access_token;
+  if (!token) return null;
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 }
 
 // #64: tæl ulæste notifikationer via head-count (ingen rows hentet) i stedet for
@@ -469,6 +478,11 @@ export default function Layout() {
     if (!API) return;
     try {
       const h = headers || await authHeaders();
+      // #4347: uden session sprang det her kald før igennem med "Bearer undefined",
+      // og 401-kroppen ({ error: "Invalid token" }) blev parset som et gyldigt svar
+      // — `data.count` var undefined, så spilleren fik skrevet "0 online" på skærmen.
+      // Ingen session ⇒ lad sidst kendte tal stå.
+      if (!h) return;
       const res = await fetch(`${API}/api/online-count`, { headers: h });
       const data = await res.json();
       setOnlineCount(data.count || 0);
@@ -525,6 +539,10 @@ export default function Layout() {
         if (metaTeamName && metaManagerName && API) {
           try {
             const h = await authHeaders();
+            // #4347: vi kom kun hertil fordi der VAR en session ovenfor, så at den
+            // er væk nu er en ægte undtagelse — lad den eksisterende catch logge
+            // fallback'en til SetupWizard i stedet for at PUT'e "Bearer undefined".
+            if (!h) throw new Error("ingen session ved auto-bootstrap");
             const res = await fetch(`${API}/api/teams/my`, {
               method: "PUT",
               headers: h,
@@ -566,6 +584,11 @@ export default function Layout() {
 
       if (!API) { console.error("VITE_API_URL is not set — presence/streak calls skipped"); return; }
       const h = await authHeaders();
+      // #4347: resten af effekten er fire kald der alle kræver et token. Uden
+      // session ville de før ryge afsted med "Bearer undefined" og alle fire
+      // returnere 401. fetchForumUnread tog allerede højde for null-headers —
+      // nu gør resten det også.
+      if (!h) return;
       fetchForumUnread(h).then((hasUnread) => { if (hasUnread != null) setForumUnread(hasUnread); });
       // Akademi-nav-synlighed (#1308): bestem via /api/academy/me, men fejl LUKKER
       // ikke punktet. Kun 200/409 er autoritative (opdater state + cache); 401
@@ -685,6 +708,15 @@ export default function Layout() {
     heartbeatRef.current = setInterval(async () => {
       if (!API) return;
       const h = await authHeaders();
+      // #4347: DEN HER var kilden til 401-støjen i Railway-loggen. Når sessionen
+      // dør, bliver `session`-state hængende (intet her rydder den), så
+      // intervallet kørte videre og sendte "Bearer undefined" hvert 60. sekund
+      // indtil fanen blev lukket. Nu holder det op af sig selv.
+      //
+      // Bemærk: dette stopper støjen, men logger ikke spilleren ud — fanen ser
+      // stadig indlogget ud med frosne tal. Det er #4347's punkt 2 og ligger
+      // stadig åbent.
+      if (!h) return;
       fetch(`${API}/api/presence`, { method: "POST", headers: h }).catch(e => console.error("heartbeat:", e));
       fetchOnlineCount(h);
     }, 60000);

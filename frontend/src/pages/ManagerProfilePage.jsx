@@ -46,9 +46,13 @@ const MANAGER_RIDER_ACCESSORS = {
   ...Object.fromEntries(ABILITY_STATS.map(({ key }) => [key, (r) => r[key] ?? 0])),
 };
 
+// #4347: null = "ingen session" — før blev headeren strengen "Bearer undefined",
+// som serveren afviste med 401. Samling af alle 26 kopier ét sted: #4348.
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
-  return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
+  const token = session?.access_token;
+  if (!token) return null;
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 }
 
 function AchievementBadge({ achievement }) {
@@ -140,6 +144,11 @@ export default function ManagerProfilePage() {
     setLoading(true);
     try {
       const h = await authHeaders();
+      // #4347: uden session gav kaldet før en 401, `json` blev fejlkroppen og
+      // `data` forblev null — spilleren endte i fejl-tilstanden med retry-knap,
+      // men først efter et unødvendigt kald. Nu springes kaldet over; samme
+      // sluttilstand, uden 401'eren. (finally sætter fortsat loading=false.)
+      if (!h) return;
       const res = await fetch(`${API}/api/managers/${teamId}`, { headers: h });
       const json = await res.json().catch(() => null);
       if (res.ok && json) setData(json);

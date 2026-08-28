@@ -97,9 +97,15 @@ async function fetchAllRiderSeasonRows(riderId) {
   return { rows, failed: false };
 }
 
+// #4347: null = "ingen session" — før blev headeren strengen "Bearer undefined",
+// som serveren afviste med 401. Alle kald-steder nedenfor er non-kritiske
+// side-effekter der i forvejen fejler stille, så de springer bare over.
+// Samling af alle 26 kopier ét sted: #4348.
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
-  return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
+  const token = session?.access_token;
+  if (!token) return null;
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 }
 
 // Hero-handlingsrækkens trigger-knapper (ejer-feedback 3/7): kompakte, auto-
@@ -935,6 +941,7 @@ export default function RiderStatsPage() {
     (async () => {
       try {
         const h = await authHeaders();
+        if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
         const res = await fetch(`${API}/api/physiology/division-benchmark?division=${division}`, { headers: h });
         if (res.ok && !cancelled) setPhysBenchmark(await res.json());
       } catch { /* non-kritisk: fanen falder tilbage til egne tal uden sammenligning */ }
@@ -959,6 +966,7 @@ export default function RiderStatsPage() {
     watchlistCountFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/riders/${fetchId}/watchlist-count`, { headers: h });
       const data = await res.json();
       if (watchlistCountFetchIdRef.current !== fetchId) return;
@@ -975,6 +983,7 @@ export default function RiderStatsPage() {
     setVisits(null);
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/riders/${fetchId}/view-count`, { headers: h });
       const data = await res.json();
       if (visitsFetchIdRef.current !== fetchId) return;
@@ -991,6 +1000,7 @@ export default function RiderStatsPage() {
     setAnnouncedRetirement(false);
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/riders/${fetchId}/retirement-status`, { headers: h });
       const data = await res.json();
       if (retirementStatusFetchIdRef.current !== fetchId) return;
@@ -1025,11 +1035,15 @@ export default function RiderStatsPage() {
       }
       setOnWatchlist(true); setWatchlistId(data?.id);
       // Achievement check
+      // #4347: `if (h)` og ikke `if (!h) return` — en tidlig retur ville springe
+      // loadWatchlistCount() nedenfor over, og den skal køre uanset.
       const h = await authHeaders();
-      fetch(`${API}/api/achievements/check`, {
-        method: "POST", headers: h,
-        body: JSON.stringify({ context: "watchlist_add" }),
-      }).catch(() => {});
+      if (h) {
+        fetch(`${API}/api/achievements/check`, {
+          method: "POST", headers: h,
+          body: JSON.stringify({ context: "watchlist_add" }),
+        }).catch(() => {});
+      }
     }
     loadWatchlistCount();
   }
@@ -1043,6 +1057,7 @@ export default function RiderStatsPage() {
     setHistory(null);
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/riders/${fetchId}/history`, { headers: h });
       // Fejl må ikke ligne "ingen handelshistorik" (#1338-princippet) — fanen
       // viser en eksplicit kunne-ikke-hentes-tilstand i stedet for tom liste.
@@ -1062,6 +1077,7 @@ export default function RiderStatsPage() {
     setInterest(null);
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/riders/${fetchId}/interest`, { headers: h });
       // Fejl må ikke ligne "ingen interesse" (#1338-princippet) — fanen viser
       // en eksplicit kunne-ikke-hentes-tilstand i stedet for nuller.
@@ -1084,6 +1100,7 @@ export default function RiderStatsPage() {
     bidTimelineFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/riders/${fetchId}/bid-timeline`, { headers: h });
       const data = res.ok ? await res.json() : { auction_id: null, status: null };
       if (bidTimelineFetchIdRef.current !== fetchId) return;
@@ -1107,6 +1124,7 @@ export default function RiderStatsPage() {
     setStatHistory(null);
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/riders/${fetchId}/development`, { headers: h });
       const data = res.ok ? await res.json() : [];
       if (developmentFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
@@ -1126,6 +1144,7 @@ export default function RiderStatsPage() {
     setProjection(null);
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/riders/${fetchId}/development-projection`, { headers: h });
       const data = res.ok ? await res.json() : null;
       if (projectionFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
@@ -1144,6 +1163,7 @@ export default function RiderStatsPage() {
     valueTrendFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/riders/${fetchId}/value-trend`, { headers: h });
       const data = res.ok ? await res.json() : null;
       if (valueTrendFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
@@ -1161,6 +1181,7 @@ export default function RiderStatsPage() {
     levelCorrectionReceiptFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/riders/${fetchId}/level-correction-receipt`, { headers: h });
       const data = res.ok ? await res.json() : null;
       if (levelCorrectionReceiptFetchIdRef.current !== fetchId) return; // stale svar
@@ -1326,13 +1347,15 @@ export default function RiderStatsPage() {
     // Fyrer én gang pr. profil-mount (useEffect [id]) — ikke pr. re-render.
     if (riderRes.data?.id) {
       const h = await authHeaders();
-      fetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
+      // #4347: besøgs-logning er non-kritisk — uden session droppes den bare.
+      if (h) fetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
     }
   }
 
   async function loadDdStatus() {
     try {
       const h = await authHeaders();
+      if (!h) return;  // #4347: ingen session -> spring det non-kritiske kald over
       const res = await fetch(`${API}/api/deadline-day/status`, { headers: h });
       if (res.ok) {
         const data = await res.json();
