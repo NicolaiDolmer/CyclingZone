@@ -12,7 +12,6 @@ const base = {
   teamRiderIds: new Set(["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9"]),
   injuredRiderIds: new Set(),
   sizeRule: { min: 6, max: 6 },
-  availableCount: 9,
 };
 
 test("gyldig (fuld) udtagelse passerer", () => {

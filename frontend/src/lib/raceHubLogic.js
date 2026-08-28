@@ -50,6 +50,18 @@ export function canAddRiderToColumn({ column, bindingMap, riderId }) {
   return !isRiderBound({ bindingMap, riderId, forRaceId: column.id, forWindow: column.bindingWindow });
 }
 
+// #4295: hvor mange af holdets ryttere er FRIE til netop dette løb — raske, ikke bundet i
+// et overlappende kolonne-løb, ikke allerede i denne kolonne. Det er tallet der afgør om
+// assistenten kan løfte en delvis trup op til gulvet (6) ved løbstid, og dermed om holdet
+// overhovedet stiller op. `availableCount` fra selection-endpointet duer IKKE til det: den
+// er hele den raske trup og trækker aldrig bundne ryttere fra (den utætte antagelse
+// #4175's escape-ventil hvilede på). Genbruger canAddRiderToColumn, så puljen, popoveren
+// og denne optælling ikke kan blive uenige om hvem der er ledig.
+export function freeRiderCountForColumn({ column, roster = [], bindingMap }) {
+  if (!column) return 0;
+  return roster.filter((r) => !r.injured && canAddRiderToColumn({ column, bindingMap, riderId: r.id })).length;
+}
+
 // #1984: hvilket ANDET kolonne-løb blokerer rytteren fra `column` (det overlappende løb han
 // allerede er i)? Returnerer kolonnen {id, name, ...} eller null. Bruges af popover/pulje til
 // at sige HVORFOR en rytter er optaget — ikke bare at han er det.

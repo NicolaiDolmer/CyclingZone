@@ -201,3 +201,33 @@ test("fillMissingTeamEntries: uden race.league_division_id (ingen pulje) — fel
   const teamIds = new Set(rows.map((r) => r.team_id));
   assert.equal(teamIds.size, POOL_TARGET_SIZE, "felt-cap gælder selv uden pulje-akse");
 });
+
+// #4295: felt-cap'et skærer i hvem der TILFØJES feltet. Et hold der ligger under gulvet
+// er allerede i feltet med sine egne manuelle picks, så det må aldrig kunne cappes væk —
+// det ville skære manageren ud af hans eget løb. Det svageste hold i puljen er her netop
+// det hold, så testen fejler hvis rednings-hold blandes ind i cap-sorteringen.
+test("#4295: et hold under gulvet med egne picks cappes ALDRIG væk af felt-cap'et", async () => {
+  const poolId = 100;
+  const teamsInPool = Array.from({ length: 26 }, (_, i) => ({ id: `t-${i}`, base_value: 1000 + i * 100 }));
+  const state = buildPoolState({ poolId, teamsInPool });
+  // t-0 er puljens svageste hold OG har tre manuelt udtagne ryttere (under gulvet på 6).
+  const t0Riders = state.riders.filter((r) => r.team_id === "t-0").slice(0, 3);
+  const existingEntries = t0Riders.map((r) => ({ race_id: "race-cap-rescue", rider_id: r.id, team_id: "t-0" }));
+  const supabase = makeSupabase(state);
+
+  const rows = await fillMissingTeamEntries({
+    supabase,
+    race: { id: "race-cap-rescue", league_division_id: poolId },
+    stages: [],
+    existingEntries,
+    persist: false,
+  });
+
+  const t0Rows = rows.filter((r) => r.team_id === "t-0");
+  assert.equal(t0Rows.length, 3, "redningen fylder de 3 manglende op til gulvet, hverken mere eller mindre");
+  assert.ok(t0Rows.every((r) => r.race_role === "helper"), "redningen sætter aldrig en ny kaptajn");
+  // Cap'et rammer stadig de TOMME hold: 25 tomme hold i puljen cappes til 24.
+  const emptyTeamIds = new Set(rows.filter((r) => r.team_id !== "t-0").map((r) => r.team_id));
+  assert.equal(emptyTeamIds.size, POOL_TARGET_SIZE, "de tomme hold cappes stadig til target");
+  assert.ok(!emptyTeamIds.has("t-1"), "svageste TOMME hold cappes væk, som før");
+});

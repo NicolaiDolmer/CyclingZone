@@ -11,6 +11,7 @@ import {
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled } from "./raceEngineFlag.js";
 import { PRIZE_PER_POINT } from "./economyConstants.js";
 import { ABILITY_KEYS, stableSeed } from "./raceSimulator.js";
+import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
 const ALLOWED_RESULT_TYPES = new Set([
@@ -38,6 +39,54 @@ const ENTRANTS = [
   entrant("b3", "B", { punch: 64, climbing: 50 }, false),
   entrant("b4", "B", { endurance: 55, recovery: 52 }, false),
 ];
+
+// #4295 (ejer-beslutning 27/8): et hold skal have MINDST 6 ryttere i feltet for at stille
+// op, håndhævet i loadEntrantsForRace. ENTRANTS ovenfor (4+4) er beholdt uændret som den
+// RENE buildRaceResults-fixtur — den funktion kender ikke gulvet og skal blive ved med at
+// regne på præcis de 8. Motor-stierne (loadEntrantsForRace/simulateRace) går derimod
+// gennem gulvet, så deres DB-mock skal bære et lovligt felt: 6 pr. hold.
+const FIELD_ENTRANTS = [
+  ...ENTRANTS,
+  entrant("a5", "A", { endurance: 58, climbing: 48 }, false),
+  entrant("a6", "A", { punch: 56, positioning: 50 }, false),
+  entrant("b5", "B", { endurance: 57, recovery: 49 }, false),
+  entrant("b6", "B", { sprint: 51, acceleration: 47 }, false),
+];
+// De tre canned-tabeller et felt kræver, afledt af én entrant-liste (holder fixturerne
+// i sync: rider_id, team_id og abilities kan ikke drive fra hinanden).
+function cannedField(entrants = FIELD_ENTRANTS) {
+  return {
+    race_entries: entrants.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: entrants.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: entrants.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+  };
+}
+
+// #4295: mange mocks nedenfor handler om NOGET ANDET end antal (berigelse, skade-filter,
+// condition-merge, snapshot-frysning) og blev skrevet med 1-3 ryttere. Gulvet ville skubbe
+// hele holdet ud af feltet og gøre dem grønne af den forkerte grund. `padToFloor` lægger
+// anonyme fyld-ryttere ind til holdet når gulvet, uden at røre det testen faktisk måler;
+// `padRoster` gør det samme for en TRUP uden entries (auto-fyld-stien), hvor assistenten
+// selv skal kunne finde 6 kandidater.
+function padToFloor(canned, teamId, prefix = "pad", to = MIN_RACE_ENTRIES) {
+  const have = (canned.race_entries || []).filter((e) => e.team_id === teamId).length;
+  const ids = Array.from({ length: Math.max(0, to - have) }, (_, i) => `${prefix}${i + 1}`);
+  return {
+    ...canned,
+    race_entries: [...(canned.race_entries || []), ...ids.map((id) => ({ rider_id: id, team_id: teamId }))],
+    riders: [...(canned.riders || []), ...ids.map((id) => ({ id, team_id: teamId, firstname: id, lastname: "", is_u25: false }))],
+    rider_derived_abilities: [...(canned.rider_derived_abilities || []), ...ids.map((id) => ({ rider_id: id, ...abil() }))],
+  };
+}
+function padRoster(canned, teamId, prefix = "pad", to = MIN_RACE_ENTRIES) {
+  const have = (canned.riders || []).filter((r) => r.team_id === teamId).length;
+  const ids = Array.from({ length: Math.max(0, to - have) }, (_, i) => `${prefix}${i + 1}`);
+  return {
+    ...canned,
+    riders: [...(canned.riders || []), ...ids.map((id) => ({ id, team_id: teamId, firstname: id, lastname: "", is_u25: false }))],
+    rider_derived_abilities: [...(canned.rider_derived_abilities || []), ...ids.map((id) => ({ rider_id: id, ...abil() }))],
+  };
+}
 
 const STAGE_RACE = { id: "race-stage-1", race_type: "stage_race", race_class: "ProSeries", season_id: "s1" };
 const STAGES_3 = [
@@ -424,7 +473,7 @@ test("v3-flag: true KUN når app_config.value === true|'on'; ellers false (defau
 
 // ── loadEntrantsForRace ───────────────────────────────────────────────────────
 test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async () => {
-  const supabase = makeSupabase({
+  const supabase = makeSupabase(padToFloor({
     race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T1" }],
     riders: [
       { id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: true },
@@ -434,9 +483,9 @@ test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async 
       { rider_id: "r1", ...abil({ climbing: 80 }) },
       { rider_id: "r2", ...abil({ sprint: 80 }) },
     ],
-  });
+  }, "T1"));
   const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
-  assert.equal(entrants.length, 2);
+  assert.equal(entrants.length, MIN_RACE_ENTRIES);
   const r1 = entrants.find((e) => e.rider_id === "r1");
   assert.equal(r1.rider_name, "Anna Berg");
   assert.equal(r1.is_u25, true);
@@ -470,7 +519,7 @@ test("deriveIsU25FromBirthdate: robust ved manglende birthdate/referenceår", ()
 // Kernefix #2073: en 16-årig med det STALE is_u25=false skal alligevel være U25 i
 // startfeltet, fordi motoren udleder fra birthdate + sæsonens referenceår.
 test("loadEntrantsForRace: is_u25 sæson-afledt fra birthdate (overstyrer stale flag)", async () => {
-  const supabase = makeSupabase({
+  const supabase = makeSupabase(padToFloor({
     seasons: [{ start_date: "2026-06-22" }],
     race_entries: [{ rider_id: "young", team_id: "T1" }, { rider_id: "old", team_id: "T1" }],
     riders: [
@@ -483,7 +532,7 @@ test("loadEntrantsForRace: is_u25 sæson-afledt fra birthdate (overstyrer stale 
       { rider_id: "young", ...abil() },
       { rider_id: "old", ...abil() },
     ],
-  });
+  }, "T1"));
   const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x", season_id: "s1" } });
   assert.equal(entrants.find((e) => e.rider_id === "young").is_u25, true, "16-årig med stale flag=false skal være U25");
   assert.equal(entrants.find((e) => e.rider_id === "old").is_u25, false, "36-årig med stale flag=true må ikke være U25");
@@ -492,12 +541,12 @@ test("loadEntrantsForRace: is_u25 sæson-afledt fra birthdate (overstyrer stale 
 // Degraderende: kan sæson-referenceåret ikke læses (intet seasons-row), falder vi
 // tilbage til det lagrede is_u25-flag frem for at blokere finalization.
 test("loadEntrantsForRace: falder tilbage til lagret is_u25 når sæson-år mangler", async () => {
-  const supabase = makeSupabase({
+  const supabase = makeSupabase(padToFloor({
     // Ingen seasons-canned → maybeSingle giver null → fallback til lagret flag.
     race_entries: [{ rider_id: "r1", team_id: "T1" }],
     riders: [{ id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: true, birthdate: "1990-06-15" }],
     rider_derived_abilities: [{ rider_id: "r1", ...abil() }],
-  });
+  }, "T1"));
   const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x", season_id: "s1" } });
   // Trods 36 år bevares det lagrede flag=true, fordi sæson-året ikke kunne læses.
   assert.equal(entrants.find((e) => e.rider_id === "r1").is_u25, true);
@@ -506,7 +555,7 @@ test("loadEntrantsForRace: falder tilbage til lagret is_u25 når sæson-år mang
 // #1993: entrants beriges med team_name (holdets navn på løbstidspunktet) så
 // buildRaceResults kan snapshotte det. Navnet hentes fra teams, ikke fra rytteren.
 test("#1993 loadEntrantsForRace: beriger entrants med team_name fra teams", async () => {
-  const supabase = makeSupabase({
+  const supabase = makeSupabase(padToFloor(padToFloor({
     race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T2" }],
     riders: [
       { id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: false },
@@ -520,7 +569,7 @@ test("#1993 loadEntrantsForRace: beriger entrants med team_name fra teams", asyn
       { id: "T1", name: "Team Alpha" },
       { id: "T2", name: "Team Bravo" },
     ],
-  });
+  }, "T1", "padA"), "T2", "padB"));
   const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
   const r1 = entrants.find((e) => e.rider_id === "r1");
   const r2 = entrants.find((e) => e.rider_id === "r2");
@@ -537,12 +586,12 @@ test("#1993 loadEntrantsForRace: beriger entrants med team_name fra teams", asyn
 // matcher entry'ens team_id for at overleve, så de holdes konsistente her; selve
 // snapshot-bindingen vises ved at output-team_id === race_entries-værdien.)
 test("#1993/#1844 loadEntrantsForRace: entrant.team_id + team_name kommer fra race_entries-snapshot", async () => {
-  const supabase = makeSupabase({
+  const supabase = makeSupabase(padToFloor({
     race_entries: [{ rider_id: "r1", team_id: "T_SNAPSHOT" }],
     riders: [{ id: "r1", team_id: "T_SNAPSHOT", firstname: "Frozen", lastname: "Rider", is_u25: false }],
     rider_derived_abilities: [{ rider_id: "r1", ...abil() }],
     teams: [{ id: "T_SNAPSHOT", name: "Snapshot Squad" }],
-  });
+  }, "T_SNAPSHOT"));
   const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
   const r1 = entrants.find((e) => e.rider_id === "r1");
   // Snapshot vinder: team_id frosset til race_entries-værdien.
@@ -552,21 +601,23 @@ test("#1993/#1844 loadEntrantsForRace: entrant.team_id + team_name kommer fra ra
 });
 
 test("loadEntrantsForRace: tomt felt → auto-fill skriver race_entries", async () => {
-  const supabase = makeSupabase({
+  // #4295: assistenten skal kunne finde mindst 6 kandidater, ellers stiller holdet
+  // ikke op og der er ikke noget at auto-fylde — derfor en trup på gulvet, ikke én rytter.
+  const supabase = makeSupabase(padRoster({
     race_entries: [], // tomt → auto-fill
     teams: [{ id: "T1", is_test_account: false, is_frozen: false }, { id: "T2", is_test_account: false, is_frozen: true }],
     riders: [{ id: "r1", team_id: "T1", firstname: "A", lastname: "A", is_u25: false }],
     rider_derived_abilities: [{ rider_id: "r1", ...abil() }],
-  });
+  }, "T1"));
   const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
   const inserted = supabase.__writes.find((w) => w.table === "race_entries" && w.op === "insert");
   assert.ok(inserted, "auto-fill skrev ikke race_entries");
-  assert.ok(entrants.length >= 1);
+  assert.ok(entrants.length >= MIN_RACE_ENTRIES);
 });
 
 // ── loadEntrantsForRace: condition-merge (B2 #1306) ──────────────────────────
 test("loadEntrantsForRace: form/fatigue merges fra rider_condition når rækker findes", async () => {
-  const supabase = makeSupabase({
+  const supabase = makeSupabase(padToFloor({
     race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T1" }],
     riders: [
       { id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: false },
@@ -580,7 +631,7 @@ test("loadEntrantsForRace: form/fatigue merges fra rider_condition når rækker 
       { rider_id: "r1", form: 8, fatigue: 30 },
       // r2 har ingen condition-række
     ],
-  });
+  }, "T1"));
   const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
   const r1 = entrants.find((e) => e.rider_id === "r1");
   const r2 = entrants.find((e) => e.rider_id === "r2");
@@ -601,7 +652,10 @@ test("loadEntrantsForRace: form/fatigue merges fra rider_condition når rækker 
 // manager-udtaget, aktivt skadet rytter skal IKKE med i entrants, mens en rytter med
 // udløbet skade (eller ingen condition-række) stadig skal med.
 test("loadEntrantsForRace: skadet MANAGER-udtaget entry ekskluderes fra startfeltet; udløbet skade/ingen condition består", async () => {
-  const supabase = makeSupabase({
+  // #4295: gulvet måles EFTER skade-filteret, så holdet padder til 7 — trækkes den
+  // skadede fra, står der præcis 6 tilbage og holdet stiller stadig op. Dermed beviser
+  // testen eksklusionen og ikke bare at holdet røg ud af feltet.
+  const supabase = makeSupabase(padToFloor({
     race_entries: [
       { rider_id: "r-hurt", team_id: "T1" },
       { rider_id: "r-expired", team_id: "T1" },
@@ -625,7 +679,7 @@ test("loadEntrantsForRace: skadet MANAGER-udtaget entry ekskluderes fra startfel
       { rider_id: "r-expired", injured_until: "2020-01-01" }, // langt i fortiden → udløbet
       // r-none har bevidst ingen condition-række
     ],
-  });
+  }, "T1", "pad", MIN_RACE_ENTRIES + 1));
   const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-injured" } });
   const ids = entrants.map((e) => e.rider_id);
   assert.ok(!ids.includes("r-hurt"), "skadet manager-udtaget rytter må ikke stå i startfeltet");
@@ -639,7 +693,9 @@ test("fillMissingTeamEntries: skadede ryttere (injured_until >= i dag) udelukkes
   // kun den aktive skade i canned for at simulere DB's gte-filter. r-injured udelades
   // fra rider_derived_abilities så auto-fill-eksklusionen er den eneste guard der
   // testes (ingen abilities-fallback der ville skjule eventuel fejl i eksklusionen).
-  const supabase = makeSupabase({
+  // #4295: assistenten skal nå gulvet med de RASKE ryttere, ellers stiller holdet ikke
+  // op og der auto-fyldes intet. Trup på 7 → den skadede trukket fra giver præcis 6.
+  const supabase = makeSupabase(padRoster({
     race_entries: [], // tomt → auto-fill
     teams: [{ id: "T1", is_test_account: false, is_frozen: false }],
     riders: [
@@ -656,7 +712,7 @@ test("fillMissingTeamEntries: skadede ryttere (injured_until >= i dag) udelukkes
     ],
     // Kun r-injured returneres fra gte-query (simulerer DB-filter med >= i dag).
     rider_condition: [{ rider_id: "r-injured" }],
-  });
+  }, "T1", "pad", MIN_RACE_ENTRIES + 1));
   const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-y" } });
   const ids = entrants.map((e) => e.rider_id);
   // Skadet rytter (returneret af gte-query) udelukkes fra auto-fill → ikke i startfeltet.
@@ -671,9 +727,7 @@ test("fillMissingTeamEntries: skadede ryttere (injured_until >= i dag) udelukkes
 test("simulateRace: bygger rækker, sender stageNumbers til applyRaceResults (atomisk delete+insert, #3022), sætter completed", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
   });
   let appliedRows = null;
@@ -747,9 +801,7 @@ function withInjectedError(canned, table, op, message) {
 function simulateRaceCanned() {
   return {
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
   };
 }
@@ -842,9 +894,7 @@ test("#2974 simulateRace: happy path skriver stadig run-snapshot (fejltjekket æ
 test("simulateRace: v3=false (kill-switch off) — ingen race_simulation_rider_scores skrives", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
   });
   await simulateRace({
@@ -868,9 +918,7 @@ test("simulateRace: v3=false (kill-switch off) — ingen race_simulation_rider_s
 test("simulateRace: v3=true — race_simulation_rider_scores persisteres, run_id matcher runs-insert, engine_version=2", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
   });
   await simulateRace({
@@ -915,9 +963,7 @@ test("#2351 simulateRace: uden salt-env har race_simulation_runs-insert IKKE sal
   try {
     const supabase = makeSupabase({
       race_stage_profiles: STAGES_3,
-      race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-      riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-      rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+      ...cannedField(),
       race_points: [],
     });
     await simulateRace({
@@ -942,9 +988,7 @@ test("#2351 simulateRace: med salt-env sat har rows salt_version=1 og seedet afv
     process.env.RACE_ENGINE_SEED_SALT = "test-salt-for-raceRunner";
     const supabase = makeSupabase({
       race_stage_profiles: STAGES_3,
-      race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-      riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-      rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+      ...cannedField(),
       race_points: [],
     });
     await simulateRace({
@@ -971,9 +1015,7 @@ test("#2351 simulateRace: med salt-env sat har rows salt_version=1 og seedet afv
 test("simulateRace: kalder processBoardWeekend med prev/ny race-days (#1187)", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
   });
@@ -1004,9 +1046,7 @@ test("simulateRace: kalder processBoardWeekend med prev/ny race-days (#1187)", a
 test("simulateRace: refresher rangliste-matviews FØR notifyDiscord/notifyInApp (#3193)", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
   });
   const order = [];
@@ -1041,9 +1081,7 @@ test("simulateRace: refresher rangliste-matviews FØR notifyDiscord/notifyInApp 
 test("simulateRace: processBoardWeekend-fejl vælter ikke afviklingen (#1187)", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
   });
@@ -1061,9 +1099,7 @@ test("simulateRace: processBoardWeekend-fejl vælter ikke afviklingen (#1187)", 
 test("simulateRace dryRun: returnerer preview uden DB-writes", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
   });
@@ -1094,8 +1130,8 @@ test("simulateRace dryRun: tomt startfelt auto-fills i hukommelse uden insert (#
       { id: "T1", is_test_account: false, is_frozen: false },
       { id: "T2", is_test_account: false, is_frozen: false },
     ],
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.rider_id.startsWith("b") ? "T2" : "T1", firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    riders: FIELD_ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.rider_id.startsWith("b") ? "T2" : "T1", firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: FIELD_ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
   });
   const result = await simulateRace({
@@ -1120,9 +1156,7 @@ test("simulateRace dryRun: tomt startfelt auto-fills i hukommelse uden insert (#
 test("simulateRace: dryRun=true → applyFatigue kaldes IKKE", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
   });
   let fatigueCalls = 0;
@@ -1141,9 +1175,7 @@ test("simulateRace: dryRun=true → applyFatigue kaldes IKKE", async () => {
 test("simulateRace: persisted run → applyFatigue kaldt én gang pr. etape med korrekt profileType", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 5, race_days_total: 60 }],
   });
@@ -1164,7 +1196,7 @@ test("simulateRace: persisted run → applyFatigue kaldt én gang pr. etape med 
   const expectedProfiles = STAGES_3.map((s) => s.profile_type);
   assert.deepEqual(fatigueCalls.map((c) => c.profileType), expectedProfiles);
   // Alle entrant-ryttere er med i hvert kald.
-  const expectedIds = ENTRANTS.map((e) => e.rider_id).sort();
+  const expectedIds = FIELD_ENTRANTS.map((e) => e.rider_id).sort();
   for (const call of fatigueCalls) {
     assert.deepEqual(call.riderIds, expectedIds, "riderIds matcher ikke entrants");
   }
@@ -1173,9 +1205,7 @@ test("simulateRace: persisted run → applyFatigue kaldt én gang pr. etape med 
 test("simulateRace: applyFatigue-fejl vælter ikke afviklingen (#1306)", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
-    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    ...cannedField(),
     race_points: [],
   });
   const report = await simulateRace({

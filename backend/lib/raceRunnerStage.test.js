@@ -24,6 +24,12 @@ const ENTRANTS = [
   entrant("b2", "B", { sprint: 72, acceleration: 66 }, true),
   entrant("b3", "B", { punch: 64, climbing: 50 }, false),
   entrant("b4", "B", { endurance: 55, recovery: 52 }, false),
+  // #4295 (ejer-beslutning 27/8): et hold skal have mindst 6 ryttere for at stille op.
+  // Feltet var 4+4 og ville nu slet ikke starte, saa begge hold er fyldt op til gulvet.
+  entrant("a5", "A", { endurance: 58, climbing: 48 }, false),
+  entrant("a6", "A", { punch: 56, positioning: 50 }, false),
+  entrant("b5", "B", { endurance: 57, recovery: 49 }, false),
+  entrant("b6", "B", { sprint: 51, acceleration: 47 }, false),
 ];
 const STAGE_RACE = { id: "race-stage-1", race_type: "stage_race", race_class: "ProSeries", season_id: "s1", name: "Test GP", stages: 3 };
 const STAGES_3 = [
@@ -183,6 +189,12 @@ test("#2072: klassementer på mellem-etape = akkumulering af persisterede gaps +
     stageRow(1, "b1", 6, "+5:00"),
     stageRow(1, "b2", 7, "+5:00"),
     stageRow(1, "b3", 8, "+5:00"),
+    // #4295: feltet er 12 (6 pr. hold, gulvet) — den persisterede etape 1 skal dække
+    // hele feltet, ellers har de nye ryttere ingen etape-1-gap at akkumulere fra.
+    stageRow(1, "a5", 9, "+5:00"),
+    stageRow(1, "a6", 10, "+5:00"),
+    stageRow(1, "b5", 11, "+5:00"),
+    stageRow(1, "b6", 12, "+5:00"),
   ];
   const race = { ...STAGE_RACE, stages_completed: 1 };
   const supabase = cannedFor(race, STAGES_3, { race_results: prior });

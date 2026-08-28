@@ -108,7 +108,10 @@ async function updateRidersConcurrent(supabase, updates) {
 // ── Physiology + udledte abilities (fra backfillRacePhysiology.js) ────────────
 export async function runPhysiologyBackfill(supabase, { dryRun = true, physiologyOnly = false, now, log = noop } = {}) {
   const stamp = now || new Date().toISOString();
-  const select = ["id", "height", "weight", "birthdate", "potentiale", ...STAT_KEYS].join(", ");
+  // generation_tag med i selectet (#4311): fyld-ryttere ('fill_tail') skal have deres
+  // evner klemt AF deriveAbilities selv (abilityDerivation.js) ved enhver re-derive —
+  // uden taggen i rider-rækken kan deriveAbilities ikke se den.
+  const select = ["id", "height", "weight", "birthdate", "potentiale", "generation_tag", ...STAT_KEYS].join(", ");
   const riders = await fetchAllRows(() =>
     supabase.from("riders").select(select).order("id", { ascending: true }));
   log(`physiology: ${riders.length} ryttere`);
@@ -234,7 +237,11 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // #3570 fase 2: archetype_draw med i selectet — det TRUKNE ungdoms-anlæg (skrevet
   // af academyIntake.js ved rytter-insert). Ryttere UDEN et draw (alle voksne, PCM-
   // import, alt eksisterende) har NULL her → uændret bootstrap-adfærd (trin 2/3).
-  const select = ["id", "height", "weight", "birthdate", "potentiale", "valuation_type", "archetype_draw", ...STAT_KEYS].join(", ");
+  // generation_tag med i selectet (#4311): samme grund som runPhysiologyBackfill
+  // ovenfor — uden den her kan deriveAbilities ikke klemme et fyld-kulds evner ved
+  // en re-derive (fx starterSquadHealSweep/riderDeriveHealSweep), og en tidligere
+  // klemt tactics 57 kunne genopstaa.
+  const select = ["id", "height", "weight", "birthdate", "potentiale", "valuation_type", "archetype_draw", "generation_tag", ...STAT_KEYS].join(", ");
   const riders = await selectByIdsBatched(ids, (chunk) => fetchAllRows(() =>
     supabase.from("riders").select(select).in("id", chunk).order("id", { ascending: true })));
   log(`deriveForRiderIds: ${riders.length}/${ids.length} ryttere fundet`);

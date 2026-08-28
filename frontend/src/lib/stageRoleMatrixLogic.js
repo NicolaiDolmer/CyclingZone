@@ -65,6 +65,11 @@ export function isCellOverridden(cell, rider) {
   return cell.race_role !== baseRoleForRider(rider) || cell.effort !== DEFAULT_EFFORT;
 }
 
+// Roller der højst én rytter må have pr. etape. Spejler backendens guard
+// (raceStageRolesApi.validateStageRoleOverrides) og de partielle unique-
+// indexes på race_entries (uq_race_entries_captain/_sprint_captain).
+export const EXCLUSIVE_ROLES = new Set(["captain", "sprint_captain"]);
+
 // Ren opdatering af én celle — returnerer en NY matrix (muterer aldrig input).
 export function setCell(matrix, stageNumber, riderId, patch) {
   const stageCells = matrix[stageNumber] || {};
@@ -76,6 +81,36 @@ export function setCell(matrix, stageNumber, riderId, patch) {
       [riderId]: { ...current, ...patch },
     },
   };
+}
+
+// Fjern rollen fra alle ANDRE ryttere på etapen, så `riderId` står alene med
+// den. Returnerer den nye matrix + hvem der blev degraderet (komponenten viser
+// det — en tavs rolleændring på en rytter spilleren ikke rørte er værre end
+// ingen ændring).
+//
+// #4344: uden dette kunne draften bære to kaptajner. Bodyen indeholder kun
+// afvigelser fra basis-rollen, så en urørt basis-kaptajn var usynlig for
+// backendens gamle tælling, og to kaptajner nåede helt ud i motoren.
+export function demoteOtherHoldersOfRole({ matrix, stageNumber, riderId, role, demotedTo = DEFAULT_ROLE }) {
+  if (!EXCLUSIVE_ROLES.has(role)) return { matrix, demoted: [] };
+  const keep = String(riderId);
+  const demoted = [];
+  let next = matrix;
+  for (const [otherId, cell] of Object.entries(matrix?.[stageNumber] || {})) {
+    if (otherId === keep || cell?.race_role !== role) continue;
+    demoted.push(otherId);
+    next = setCell(next, stageNumber, otherId, { race_role: demotedTo });
+  }
+  return { matrix: next, demoted };
+}
+
+// setCell + rolle-eksklusivitet: sætter cellen OG rydder rollen hos enhver
+// anden rytter på samme etape. Eneste vej ind fra rolle-dropdownen.
+export function setCellWithRoleExclusivity({ matrix, stageNumber, riderId, patch }) {
+  const { matrix: cleared, demoted } = patch?.race_role
+    ? demoteOtherHoldersOfRole({ matrix, stageNumber, riderId, role: patch.race_role })
+    : { matrix, demoted: [] };
+  return { matrix: setCell(cleared, stageNumber, riderId, patch), demoted };
 }
 
 // Diff draft-matrixen → PUT-payloadens overrides-array. REPLACE-semantik: kun
@@ -148,12 +183,9 @@ export function applyJerseyCaptainShortcut({ matrix, leaderId, stageNumbers, sta
   const leaderKey = String(leaderId);
   let next = matrix;
   for (const sn of editableStages) {
-    const stageCells = next[sn] || {};
-    for (const [riderId, cell] of Object.entries(stageCells)) {
-      if (riderId !== leaderKey && cell.race_role === "captain") {
-        next = setCell(next, sn, riderId, { race_role: "helper" });
-      }
-    }
+    // #4344: samme degradering som rolle-dropdownen bruger — én kilde til
+    // reglen "kun én kaptajn pr. etape", ikke to der kan drifte fra hinanden.
+    next = demoteOtherHoldersOfRole({ matrix: next, stageNumber: sn, riderId: leaderKey, role: "captain" }).matrix;
     const leaderCell = next[sn]?.[leaderKey];
     next = setCell(next, sn, leaderKey, { race_role: "captain", effort: leaderCell?.effort || DEFAULT_EFFORT });
   }
