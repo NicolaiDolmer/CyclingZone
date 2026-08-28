@@ -21,7 +21,7 @@
 **Ejer-beslutninger 27-28/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt** (42 starter) · **to regenereringer er forbudt**.
 
 Ny gæld: #4288 · **#4278** (D4 opad 41,9 % mod bånd 25-32 %) · #4282/#4146 · #4292 · #4123 + #4215-rest · **#4370** (React #421 på forsiden).
-**UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølger · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4269.
+**UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølger · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4268 (#4269 er rykket til punkt 0).
 
 ## Grundreglerne — UDSKUDT til efter 27/9 (ejer 28/8)
 
@@ -34,7 +34,7 @@ Ny gæld: #4288 · **#4278** (D4 opad 41,9 % mod bånd 25-32 %) · #4282/#4146 �
 SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
 8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. #4123-invarianterne mangler CI-gate.
-9. **P0 + UI-gæld + Z1 kører i sæsonstart-sessionen** (ejer 25/8; spor B+C ovenfor). P0: #3990-rest · navne-dedup-guard · #3329 · #2791. UI-gæld: de fem fund i `PLANNING_CENTER_RULES.md` §7. Z1: bulk-endpoint + kladde + tre linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405) — monterer motorens kort, bygger det ikke. **P3** assistenten — gated på **#4201**, og #4246 (rolle vs ordre) skal afgøres FØR `TeamOrder` fryses.
+9. **P0 + UI-gæld + Z1** (ejer 25/8). P0: #3990-rest · navne-dedup-guard · #3329 · #2791. UI-gæld: de fem fund i `PLANNING_CENTER_RULES.md` §7. Z1: bulk-endpoint + kladde + tre linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405) — monterer motorens kort, bygger det ikke. **P3** assistenten — gated på **#4201**, og #4246 (rolle vs ordre) skal afgøres FØR `TeamOrder` fryses.
 
 ## D · Penge og vækst — gate: spor B leveret (ikke en dato)
 
@@ -44,20 +44,20 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 ## E · Løbende (aldrig hovedspor)
 
 12. 🔴 **Spiller-kommunikation, fast ugerytme (#428)** — ejer-mandat 22/8, viger aldrig. MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik + svar inden 48t. Tråd-bank **#4117**, løfte-audit **#4111**.
-13. Gæld: cutover-rest (besked 2 · Supabase-perf uge 35 m. #4010 · #3584) · done-men-åbne lukkes løbende · #3513 opsluger #2442/#2583/#2445. Ops: **#4016 halvt** (PR #4253 låser hovedmappen) · **#3486** · #2758 · #3487 · #691 · worktree-hygiejne (300+ døde).
+13. Gæld: cutover-rest (besked 2 · Supabase-perf uge 35 m. #4010 · #3584) · #3513 opsluger #2442/#2583/#2445. Ops: **#4016 halvt** · **#3486** · #3487 · #691 · worktree-hygiejne (300+ døde).
 14. 🔵 **Fair play (#3131):** prisloft valgt fra → #3138 ENESTE værn. Rest: retnings- + overbetalings-signal · flag-triage · #3438 · #3139.
 
-15. ⚪ **Forum** (SSOT: `FORUM_RULES.md`) — rest: #4252 · #4248 · #4255. Rolle mod Discord **15/9 (#4235)**.
+15. ⚪ **Forum** (SSOT: `FORUM_RULES.md`) — rest: #4252 · #4255. Rolle mod Discord **15/9 (#4235)**.
 
-16. ⚪ **Typelaget (efter fredag):** PR **#4334** + kæden #4326-#4333 (kontekst i #4325).
+16. ⚪ **Typelaget:** #4325/#4334 landet 28/8. Rest: #4326 (frisk-gate) · #4327 · #4328-#4333.
 
-## F · Backlog-bølger (#3154, 576 åbne — UDSKUDT til efter fredag)
+## F · Backlog-bølger (#3154, 616 åbne — UDSKUDT til efter 27/9)
 
 Lukkemandat: done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20. **Rest:** W8: 53 needs-decision · #4119 · #3944/#3945.
 
 ## E2 · Race-oplevelsen (SSOT: `RACE_ENGINE_RULES.md`)
 
-**#3855 v4: flippet er UDSKUDT** (ejer 25/8) — h2h-gaten rød (#4132), routes-gaten permanent rød (#4197). v3 er låst fallback; F6-flippet er ejer-only. **Rest:** #4246 rolle vs ordre FØR `TeamOrder` fryses · #3856 efter S3-bevis · #3864→S4. Efter fredag: #4070 + #4071.
+**#3855 v4: flippet er UDSKUDT** (ejer 25/8) — h2h-gaten rød (#4132), routes-gaten permanent rød (#4197). v3 er låst fallback; F6-flippet er ejer-only. **Rest:** #4246 rolle vs ordre FØR `TeamOrder` fryses · #3856 efter S3-bevis · #3864→S4. Efter 27/9: #4070 + #4071.
 
 ## Parkeret (genbesøges efter B og C)
 
