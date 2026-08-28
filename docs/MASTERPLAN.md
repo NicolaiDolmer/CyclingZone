@@ -12,6 +12,7 @@
 
 ## Kø i S3-vinduet (ejer-godkendt 27/8, trimmet 28/8)
 
+0. **FØRST (ejer 28/8): #2758** Discord-triage → issues (dagligt) + **#4269** daglig Supabase-kontrol. Køen herunder skal fyldes af det spillerne møder og det basen melder — ikke af AI-vurdering. Begge er ejer-direktiver (20/7 og 25/8).
 1. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren · **#4355** juni-fyldkuldets taktik-læk.
 2. **#4098** unge markeret færdige 65 pt under loftet — ejeren spørges igen senest 31/8.
 3. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først. **Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
