@@ -52,13 +52,17 @@ Uanset udfald vises **begge akser**: dato-kalenderen som ramme, løbsdags-stribe
 
 ---
 
-## 4. Assistenten
+## 4. Assistenten (LÅST regel — ejer-bekræftet, nedskrevet 28/8, #4201)
 
-**Åben ejer-beslutning:** [#4201](https://github.com/NicolaiDolmer/CyclingZone/issues/4201) — skal assistenten være opt-in eller sen-udfyldning i stedet for proaktiv auto-udtagelse?
+**Modellen er sen-udfyldning, ikke proaktiv udtagelse.** Fem regler:
 
-**Indtil den er truffet bygges der ingen ny proaktiv assistent-flade.** Det gælder også kortstakke, forslag-bannere og auto-accept-flows. Grunden er konkret: [#4200](https://github.com/NicolaiDolmer/CyclingZone/issues/4200) — assistenten genudfyldte trupper spillere havde ryddet og gemt, og det var én af de to ting der udskød sæson 3.
+1. **Ingen proaktiv præ-udfyldning.** Assistenten skriver aldrig udtagelser i forvejen, og genskaber aldrig noget spilleren har ryddet og gemt ([#4200](https://github.com/NicolaiDolmer/CyclingZone/issues/4200)-klassen — én af de to ting der udskød S3; den proaktive assistent blev slået fra 25/8). Ingen ny proaktiv assistent-flade må opstå — heller ikke kortstakke, forslag-bannere eller auto-accept-flows.
+2. **Sen redning ved afvikling, ens for alle hold** (ejer-beslutning 26/8, [#4174](https://github.com/NicolaiDolmer/CyclingZone/issues/4174)). Implementeret i `fillMissingTeamEntries` (kører ved etape 1-afvikling, [#4301](https://github.com/NicolaiDolmer/CyclingZone/pull/4301)): et hold med NUL udtagne får en fuld trup; et hold UNDER minimum-6-gulvet fyldes præcis op til 6 med hjælpere — spillerens egne picks og roller røres aldrig, og redningen sætter aldrig en anden kaptajn. Afmeldte og bevidst ryddede hold springes over, og der skrives intet hvis gulvet ikke kan nås.
+3. **Spilleren ser konsekvensen FØR klik** (`partialSquadOutlook`, én regel på begge flader) — også ved 0 udtagne. Copy-kontrakten står i PR #4301.
+4. **Forslag er aldrig beslutninger.** Peak-FORSLAG består (de skriver planer, ikke udtagelser), men optager aldrig en plads, tæller aldrig som peaks og forbliver afvist ([#4212](https://github.com/NicolaiDolmer/CyclingZone/issues/4212)/PR #4359).
+5. **Spiller-initieret udfyld er lovligt** via de tre eksisterende indgange (dagsboardet, `PlannerAssistantCard` for peaks, `/selection/auto`). En fjerde indgang må ikke opstå.
 
-Der findes i dag tre indgange til auto-udfyld (dagsboardet, `PlannerAssistantCard`, `/selection/auto`). En fjerde må ikke opstå før #4201.
+**Kendt rest (kode, hører til P3):** symmetriske kontroller (man kan rydde dag OG sæson, men kun udfylde en dag), én forklarende linje på boardet, Hjælp-afsnit (en+da). AI-holds autofill er uændret (felterne afhænger af den, jf. #2622-bindingen).
 
 ---
 
