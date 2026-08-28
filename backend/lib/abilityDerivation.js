@@ -89,6 +89,23 @@ export const HIDDEN_ABILITIES = Object.freeze(["hidden_potential"]);
 
 export const ALL_ABILITY_KEYS = Object.freeze([...VISIBLE_ABILITIES, ...HIDDEN_ABILITIES]);
 
+// #4311: fyld-ryttere (generation_tag='fill_tail', sat af buildWeakStarterPool i
+// starterSquadAllocator.js) faar stats klemt i bund FOER derivation, men to af de
+// seksten evner udledes slet ikke af stats (tactics = alder, hidden_potential =
+// potentiale) og sprang derfor uden om klemmen. En 32-aarig fyld-rytter fik taktik
+// 57 og laeste som en normal rytter (populationens bedste evne-snit 41; fyldets
+// bedste evne UDEN tactics 7). Loftet ligger HER (ikke kun i generator-scriptet),
+// saa en senere re-derive (deriveForRiderIds, riderDeriveHealSweep osv.) ikke kan
+// genoplive tactics 57 — klemmen gaelder for ENHVER rider_row der baerer taggen,
+// uanset hvilken kodesti der kalder deriveAbilities.
+export const FILL_TAIL_ABILITY_CAP = 15;
+export const FILL_TAIL_GENERATION_TAG = "fill_tail";
+// Ejer-beslutning 27/8 (#4311): fyld-rytteres potentiale klemmes til maks 2,5 —
+// forhindrer hidden_potential (afledt af potentiale, ikke stats) i at laekke over
+// evne-loftet. Bruges af buildWeakStarterPool (starterSquadAllocator.js) FOER
+// derivation; evne-loftet ovenfor er det UAFHAENGIGE sikkerhedsnet EFTER derivation.
+export const FILL_TAIL_MAX_POTENTIALE = 2.5;
+
 // Disciplin-evne → primær PCM-stat (§3 "Kilde"). Bruges kun i FALLBACK-stien
 // (ingen fysiologi). prolog FJERNET. Ren 50-85 → 1-99-mapping.
 // #3665: udledt af registrets `derivation: { source: "pcm", stat }`. De tre evner
@@ -214,6 +231,14 @@ export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CAL
   out.positioning = scoreFrac(0.50 * pcmFrac(riderRow.stat_fl) + 0.30 * pcmFrac(riderRow.stat_ned) + 0.20 * pcmFrac(riderRow.stat_ftr));
   out.tactics     = scoreFrac(0.55 * experience + 0.45 * aggressionFrac);
   out.hidden_potential = scoreFrac(0.60 * potential + 0.25 * youth + 0.15 * hashNoise(riderRow.id ?? physiology.rider_id));
+
+  // #4311: evne-loft EFTER afledning for fyld-ryttere. Ligger sidst saa den fanger
+  // ALLE seksten evner uanset kilde (fysiologi/PCM-fallback/skill-stat/alder/potentiale).
+  if (riderRow.generation_tag === FILL_TAIL_GENERATION_TAG) {
+    for (const k of ALL_ABILITY_KEYS) {
+      if (Number.isFinite(out[k])) out[k] = Math.min(out[k], FILL_TAIL_ABILITY_CAP);
+    }
+  }
 
   return out;
 }
