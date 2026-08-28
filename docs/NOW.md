@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + linje om trup-opfyldning + RET "Fra i morgen" i minimum-6-varslet (gulvet er LIVE). **#886 (ingen hast, paamindelse oensket):** Sentry-token m. write-scopes → Infisical; Claude tager alarmregel + auto-resolve bagefter. **28/8:** #4316 grøn (4 fejl rettet) — **afventer ejer-merge**, bærer migration. **Beslut #4361:** auto-review død siden 14/8 (292 PR'er urevideret); bot-trigger afvist (#4362 draft) → **10 stars** (anbefalet) vs **PAT**. **Naeste session starter med:** **#4213** (278 stale intake-tilbud mod menneskehold; RPC-guarden lukker dem igennem — stram guard FOER oprydning); derefter #4317 + #4259 · #4355 · #4308/#4309 · Z1 #1146.
+> **🎯 Next action:** **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + linje om trup-opfyldning + RET "Fra i morgen" i minimum-6-varslet (gulvet er LIVE). **#886 (ingen hast, paamindelse oensket):** Sentry-token m. write-scopes → Infisical; Claude tager alarmregel + auto-resolve bagefter. **28/8:** #4316 grøn (4 fejl rettet) — **afventer ejer-merge**, bærer migration. **PR #4324** (#4320 kanal-funnel pr. trafikkilde) grøn — **afventer ejer-review**, bærer migration. **Beslut #4361:** auto-review død siden 14/8 (292 PR'er urevideret); bot-trigger afvist (#4362 draft) → **10 stars** (anbefalet) vs **PAT**. **Naeste session starter med:** **#4213** (278 stale intake-tilbud mod menneskehold; RPC-guarden lukker dem igennem — stram guard FOER oprydning); derefter #4317 + #4259 · #4355 · #4308/#4309 · Z1 #1146.
 
 > **✅ Sæsonstart-dagen 28/8, alt merged+deployet:** #4307 opfyldning KOERT (411 ryttere/89 inaktive hold) · #4311 fyld-klemme + datareparation (PR #4354) · #4306 afmeldt-hold-fix (PR #4360, patch 7.211) · **#4301/#4295 minimum-6-gulvet LIVE** (PR #4301, patch 7.212-7.213; gulvets pris i dag: 42 starter, genmaalt efter opfyldning). Motorflag armeret, deploy-verify groen 11:36. Sentry IKKE ren: **#4213** (278 stale intake, genmaalt 14:20).
 
@@ -14,7 +14,7 @@
 
 > **⚠️ Aabne fra 27/8:** #4288 (de 3 GT'er koerer 17-18 etaper, baandet kraever 21 = umaalte) · #4282 (hold transfer-frosset af renter alene, ejer-beslutning) · #4318 (to flader siger "Race day" om to forskellige tal).
 
-> **✅ S3-KALENDEREN LIVE (regenereret 27/8, ejer-GO pr. skridt):** 529 løb / 1.239 etaper, 28/8 → søn 27/9. 0 løbsdage over flere datoer, mountain-nedad 27 % (før 64 %), scorecard 0 regelbrud. Udtagelser wiped m. backup (`backup_4236_*`). Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
+> **✅ S3-KALENDEREN LIVE:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
 
 > **⚠️ Invariant-fund (ikke kalender):** #4184 udvidet (typelister + monument-værn forældet efter ophævelsen), #4146 (24 hold over trupgrænse), **#4282 NY** (2 hold over gældsloft). #4204 (20 min-kørsel) bekræftet.
 
