@@ -1,5 +1,30 @@
 export const PATCHES = [
   {
+    "version": "7.214",
+    "date": "2026-08-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "A suggested peak no longer counts as one of your two",
+          "body": "An assistant suggestion you hadn't accepted yet could still take up one of a rider's two peak slots, block you from re-targeting a real peak, and count toward the season board's totals. Suggestions now show in their own dashed track and never occupy a slot until you accept them: a rider with one real peak and one suggestion reads as '1 peak + 1 suggestion', never '2 peaks'. The assistant can also now say a rider needs no further peak, with a one-line reason and a Keep one peak button. The peak card in the Form plan drawer shows its effect, the dip afterwards, and its lock date together."
+        },
+        "da": {
+          "title": "Et foreslået peak tæller ikke længere som ét af dine to",
+          "body": "Et assistent-forslag du ikke havde accepteret endnu kunne stadig optage en af en rytters to peak-pladser, blokere for at omflytte en rigtig peak, og tælle med i sæsonbrættets totaler. Forslag vises nu i eget stiplet spor og optager aldrig en plads før du accepterer dem: en rytter med én rigtig peak og ét forslag læser '1 peak + 1 forslag', aldrig '2 peaks'. Assistenten kan nu også sige at en rytter ikke har brug for flere peaks, med én linjes begrundelse og en Behold én peak-knap. Peak-kortet i formplan-skuffen viser effekt, dykket bagefter og låsedatoen samlet."
+        },
+        "refs": [
+          4212,
+          4271,
+          3088
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.213",
     "date": "2026-08-28",
     "label": "Beta",

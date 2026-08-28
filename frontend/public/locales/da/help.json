@@ -1197,6 +1197,10 @@
       "q": "Hvad er Sæsonplanlæggeren?",
       "a": "Sæsonplanlæggeren er hvor du planlægger form-toppe for hele holdet. Den åbner på fanen Trup: én række pr. rytter, med en menu hvor du vælger det løb han skal peake til. Fanen Sæson viser den samme plan som et bræt du kan trække i, og fanen Løb viser sæsonens kalender. Form tjenes gennem træning i optakten, så en peak du forbereder giver mere end en du overlader til tilfældet. Hver rytter kan peake mod op til to løb pr. sæson, og mål-løbet skal være i din divisions kalender."
     },
+    "peakWhatItDoes": {
+      "q": "Hvad gør en peak?",
+      "a": "En peak løfter én rytters form for det ene løbsvindue du vælger i Sæsonplanlæggeren. Den kører på en optakt du træner forinden og et dyk bagefter, så den er værd at sætte på et løb du reelt vil vinde, ikke en hel sæson. Hver rytter kan holde op til to peaks ad gangen. Se 'Hvordan virker peak-træning?' og 'Koster en peak mig noget bagefter?' nedenfor for præcis hvor meget og hvornår."
+    },
     "peakTraining": {
       "q": "Hvordan virker peak-træning?",
       "a": "Når du sætter en peak, foreslår planlæggeren en opbygningsuge og en taper-uge til optakten. Accepter en fra rytter-skuffen, så skrives den rytme til rytterens ugentlige træning. At træne det rigtige fokus for løbets profil, holde konsistensen og nå taperen udhvilet løfter alt sammen hvor meget af peaket du realiserer. En peak er fuldt redigerbar (flyt den, fjern den, eller sæt en peak nummer to) helt frem til dens vindue rent faktisk starter; når den dato indtræffer, låser den, fordi peaket så er i brug. Både Trup-fanen og rytter-skuffen viser præcis hvornår hver peak låser, og en lås-badge nævner altid dagen det skete."
