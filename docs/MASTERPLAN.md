@@ -18,7 +18,7 @@
 3. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først. **Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
 4. **#4176** kalender-SSOT — ejer-frist senest 4/9 OG før S4-kalenderen. Med #4254 (24 regler bagud, hard rule 30).
 
-**Ejer-beslutninger 27-28/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt** (pris målt efter opfyldning: 42 starter på 42 hold) · **to regenereringer af samme sæsonkalender er forbudt**.
+**Ejer-beslutninger 27-28/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt** (42 starter) · **to regenereringer er forbudt**.
 
 Ny gæld: #4288 · **#4278** (D4 opad 41,9 % mod bånd 25-32 %) · #4282/#4146 · #4292 · #4123 + #4215-rest · **#4370** (React #421 på forsiden).
 **UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølger · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4269.
