@@ -1,7 +1,7 @@
 export const PATCHES = [
   {
-    "version": "7.207",
-    "date": "2026-08-27",
+    "version": "7.212",
+    "date": "2026-08-28",
     "label": "Beta",
     "changes": [
       {
@@ -21,8 +21,8 @@ export const PATCHES = [
     ]
   },
   {
-    "version": "7.205",
-    "date": "2026-08-27",
+    "version": "7.211",
+    "date": "2026-08-28",
     "label": "Beta",
     "changes": [
       {
@@ -38,6 +38,160 @@ export const PATCHES = [
           "body": "Udtog du hold til et løb første gang, eller igen efter du havde ryddet løbet, kunne du stadig ikke gemme uden at fylde alle pladser. Nu kan du gemme et hvilket som helst antal ryttere op til feltstørrelsen.\n\nI stedet for at blokere dig fortæller panelet hvor mange pladser der står åbne. Har du ikke frie ryttere nok til at fylde dem, skriver det også hvor mange der reelt er frie til det løb. Assistenten fylder de åbne pladser når løbet køres."
         },
         "refs": [4295, 4175, 1906]
+      }
+    ]
+  },
+  {
+    "version": "7.210",
+    "date": "2026-08-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Racing",
+        "en": {
+          "title": "Naming a second captain for a stage quietly took protection off the first",
+          "body": "Stage tactics let you set two captains on the same stage. Three or more were rejected, two went through without a word, and the race engine then protected whichever of them it happened to read last. Picking a new captain for a stage now moves the role: the previous captain becomes a helper, and a line tells you who changed. Same for sprint captain."
+        },
+        "da": {
+          "title": "En kaptajn nummer to på en etape tog stille beskyttelsen fra den første",
+          "body": "Etape-taktikken lod dig sætte to kaptajner på samme etape. Tre eller flere blev afvist, to gik igennem uden en lyd, og løbsmotoren beskyttede så den af dem den tilfældigvis læste sidst. Vælger du nu en ny kaptajn til en etape, flytter rollen: den forrige kaptajn bliver hjælper, og en linje fortæller dig hvem der blev ændret. Samme for spurtkaptajn."
+        },
+        "refs": [4344]
+      }
+    ]
+  },
+  {
+    "version": "7.209",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Race cards show the days they run, and name the race they clash with",
+          "body": "A card only told you the day a race started, so the only way to find an overlap was to add a rider and see what happened. Cards now show the full span, and a line underneath names the race that shares those days. If the same rider is picked for both, that line turns red and says so. Race day numbers now start at 1."
+        },
+        "da": {
+          "title": "Løbskort viser de dage de kører, og navngiver det løb de støder sammen med",
+          "body": "Et kort fortalte kun hvilken dag et løb startede, så den eneste måde at opdage et overlap på var at sætte en rytter ind og se hvad der skete. Kortene viser nu hele spændet, og en linje nedenunder navngiver det løb der deler de dage. Er samme rytter udtaget til begge, bliver linjen rød og siger det. Løbsdags-numre starter nu fra 1."
+        },
+        "refs": [4296]
+      }
+    ]
+  },
+  {
+    "version": "7.208",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Stage races showed the wrong end date when picking a peak",
+          "body": "The peak target list stretched a stage race far past its real finish. The Vuelta read as ending 4 October, a week after the season ends, when it actually finishes 21 September. 98 of 206 stage races were affected, the three Grand Tours worst. Dates now come from the real stage schedule. Your peak plans were never wrong, only the dates next to them."
+        },
+        "da": {
+          "title": "Etapeløb viste forkert slutdato når du valgte et peak",
+          "body": "Listen over peak-mål strækkede etapeløb langt forbi deres rigtige slutning. Vueltaen stod til at slutte 4. oktober, en uge efter sæsonen slutter, selvom den er færdig 21. september. 98 af 206 etapeløb var ramt, de tre Grand Tours værst. Datoerne kommer nu fra den rigtige etapeplan. Dine formplaner har aldrig været forkerte, kun datoerne ved siden af dem."
+        },
+        "refs": [4312]
+      }
+    ]
+  },
+  {
+    "version": "7.207",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Planning now tells you when a view could not be loaded",
+          "body": "When a planning view failed to load, it went blank or claimed to be empty, with no message and nothing to click. Team selection, Form plan, Strategy, Start lists and the Calendar now say what happened and give you a Try again button. The day and pool selectors stay on screen, so a failed view is no longer a dead end."
+        },
+        "da": {
+          "title": "Planlægning siger nu til når en visning ikke kunne hentes",
+          "body": "Når en planlægningsvisning ikke kunne hentes, gik den blank eller påstod at den var tom, uden besked og uden noget at klikke på. Holdudtagelse, Formplan, Strategi, Startlister og Kalender siger nu hvad der skete og giver dig en Prøv igen-knap. Dag- og puljevælgerne bliver stående, så en fejlet visning ikke længere er en blindgyde."
+        },
+        "refs": [4165]
+      }
+    ]
+  },
+  {
+    "version": "7.206",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Form peaks left over from the old calendar have been cleared",
+          "body": "Rebuilding the season 3 calendar left 812 peak plans pointing at races that no longer exist, and ones already under way could not be removed. All are gone, so set your peaks again. A peak plan is now deleted with its race."
+        },
+        "da": {
+          "title": "Formpeaks tilbage fra den gamle kalender er ryddet",
+          "body": "Sæson 3-kalenderen blev bygget om, og 812 formplaner endte med at pege på løb der ikke findes. Dem der var i gang kunne ikke fjernes. Alle er væk, så sæt dine peaks igen. En formplan slettes nu sammen med sit løb."
+        },
+        "refs": [4294]
+      }
+    ]
+  },
+  {
+    "version": "7.205",
+    "date": "2026-08-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Season load chip counted stages, and old seasons too",
+          "body": "The load chip in the planning board's rider pool said race days but counted stages, and it counted races from earlier seasons on top. It now counts the race days a rider is entered for in the current season only. If a rider looked far busier than he is, that was why."
+        },
+        "da": {
+          "title": "Belastnings-chippen talte etaper, og gamle sæsoner med",
+          "body": "Belastnings-chippen i planlægnings-boardets rytter-pulje sagde løbsdage, men talte etaper, og den talte oven i købet løb med fra tidligere sæsoner. Den tæller nu kun de løbsdage rytteren er tilmeldt i den aktive sæson. Så hvis en rytter så langt mere travl ud end han er, var det derfor."
+        },
+        "refs": [4245]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Your sponsor pays per stage, and now says so",
+          "body": "Nothing about the money changed, only the word. A race day is the in-game day that binds a rider to one race. Your sponsor pays for every stage your team starts. Both were called race day, so the sponsor help and the finance labels now say stage."
+        },
+        "da": {
+          "title": "Din sponsor betaler pr. etape, og siger det nu",
+          "body": "Intet ved pengene er ændret, kun ordet. En løbsdag er den in-game-dag der binder rytteren til ét løb. Din sponsor betaler for hver etape dit hold stiller til start i. Begge dele hed løbsdag, så sponsor-hjælpen og finans-labels siger nu etape."
+        },
+        "refs": [4245]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Season progress and the world catalog now say stages",
+          "body": "The season bar on your dashboard and the class list in the world catalog added up stages but called them race days. They now say stages. The numbers are unchanged."
+        },
+        "da": {
+          "title": "Sæson-fremdrift og verdens-kataloget siger nu etaper",
+          "body": "Sæson-bjælken på dit dashboard og klasse-listen i verdens-kataloget lagde etaper sammen, men kaldte dem løbsdage. De siger nu etaper. Tallene er de samme."
+        },
+        "refs": [4245]
       }
     ]
   },

@@ -6,20 +6,23 @@
 
 ## SÆSONSTART fre 28/8 kl. 11 — holdudtagelse + planlægning (ejer-godkendt 27/8)
 
-Fredags-blokken **leveret**: #4284 · #4285 · #4286 · #4291 merged 27/8; kalender + motorer live. Rapport: `docs/audits/2026-08-28-natsession-rapport.md`.
+**Detalje: [`2026-08-28-saesonstart-fortsaettelse-prompt.md`](../superpowers/plans/2026-08-28-saesonstart-fortsaettelse-prompt.md).**
+**Rækkefølge herfra (ejer-godkendt 27/8):**
 
-20 spillerrettede issues 24.-27/8, tre fjerdedele samme tema. Workflow-master-session (design + build), fuld kontekst i prompten: [`superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md`](superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md).
+1. **#4311** → **#4307** trup-opfyldning (121 hold, 571 ryttere, rammer sat) → **#4301** minimum-6 (draft). Kæden skal tages i den rækkefølge.
+2. **#4306** afmeldt hold starter stadig løbet. Ejer-beslutning 27/8, ubygget. Rører `loadEntrantsForRace` som minimum-gulvet, så rækkefølgen tæller.
+3. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren.
+4. **Assistent + formplan:** #4212 (ejer-valg A/B/C, anbefaling A) · #4201 · #4271.
+5. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først.
+6. **Ops:** #4308 · #4309/#4305. Parallel-session 27/8 har dem.
 
-1. **Bølge 1 (parallelt) · A Holdudtagelsen (FØR kl. 11):** #4295 (klienten blokerer stadig delvis trup — strengere end serveren; kobler til #4174) · #4299 (entry uden `binding_span` + dag-rækker, begge værn blinde) · #4201 ("pull, ikke push" er ALLEREDE i koden — ratificér i SSOT + gør synlig).
-2. **Bølge 1 · D Formplanen (FØR kl. 11):** #4294 (låst "no peak" + fremstår peaket; ejer lovede fuld reset 26/8) · #4212 · #4293 · #4271.
-3. **Bølge 1 · B Overlap-læsbarhed — sessionens største designopgave:** #4296 (dagsspænd + konflikt på løbskortet) · #4259 (rytter-glyf) · #4245 (`raceDays` tæller etaper) · #4165 (mobil først).
-4. **Bølge 2 · C Z1-sæsonmatrixen (#1146):** aksen er FRI (#4236 lukket) → kolonner = 31 datoer. Bulk-endpoint · kladde + Gem plan · konfliktpanel · tre linser · `?view=`.
+**Ejer-beslutninger 27/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt**. NB: grundlaget var 21 hold; målt er **130 starter på 129 hold**. Genmål efter #4307.
 
-Ny gæld, **ikke** i sessionen: #4288 (GT-båndet kræver 21 etaper, S3 kører 17-18) · **#4278** (D4 opad 41,9 % mod bånd 25-32 % — ejer-valg) · #4282/#4146 (vagt-fejl, 0 brud) · #4292 · #4123 + #4215-rest.
+**Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
 
-**UDSKUDT (ejer-godkendt):** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølger · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4269.
-
-**SSOT-disciplin (hard rule 30):** citér områdets SSOT, opdatér den i samme PR. **24 regler bagud** — #4176 + #4254.
+Ny gæld: #4288 · **#4278** (D4 opad 41,9 % mod bånd 25-32 %) · #4282/#4146 (vagt-fejl) · #4292 · #4123 + #4215-rest.
+**UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølger · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4269.
+**SSOT-disciplin (hard rule 30):** citér SSOT, opdatér den i samme PR. 24 regler bagud (#4176 + #4254).
 
 ## B · Rytter-pakken (ALTOVERSKYGGENDE)
 
@@ -55,6 +58,8 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 14. 🔵 **Fair play (#3131):** prisloft valgt fra → #3138 ENESTE værn. Rest: retnings- + overbetalings-signal · flag-triage · #3438 · #3139.
 
 15. ⚪ **Forum** (SSOT: `FORUM_RULES.md`) — rest: #4252 · #4248 · #4255. Rolle mod Discord **15/9 (#4235)**.
+
+16. ⚪ **Typelaget (efter fredag):** PR **#4334** + kæden #4326-#4333 (kontekst i #4325).
 
 ## F · Backlog-bølger (#3154, 576 åbne — UDSKUDT til efter fredag)
 

@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
+import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 import SeasonDayToggle from "./SeasonDayToggle.jsx";
 import SeasonPicker, { neighborSeasons } from "./SeasonPicker.jsx";
@@ -81,7 +82,13 @@ export default function SeasonView({ onSwitchView }) {
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  // #4165: "kaldet fejlede" og "kalenderen er tom" er to forskellige tilstande.
+  // Var `failed` et boolean, og auth-grenen satte den slet ikke - en manglende
+  // session faldt igennem til EmptyState "ingen løb på kalenderen endnu", altså
+  // en fejlet hentning tegnet som en legitim tom flade. Nu bærer den en kind, så
+  // en udløbet session kan sige det med sine egne ord.
+  // null | "auth" | "load"
+  const [failed, setFailed] = useState(null);
   const [retryTick, setRetryTick] = useState(0);
   // #4102: sæson-listen + hvilken der er aktiv persisterer UD OVER den enkelte
   // fetch, så SeasonPicker'en ikke blinker væk mens en NY sæson hentes (den
@@ -96,21 +103,53 @@ export default function SeasonView({ onSwitchView }) {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const headers = await authHeaders();
-      if (!headers) { setLoading(false); return; }
+      // #4165: spinneren tændes FØR session-tjekket. Lå den efter, var "Prøv
+      // igen" på auth-grenen inert: retryTick genkørte effekten, men den satte
+      // kun setFailed("auth") til den SAMME værdi, React bailede ud, og intet på
+      // skærmen flyttede sig. Nu blinker spinneren, og sessionen bliver reelt
+      // læst igen - er man logget ind i en anden fane imens, lander visningen.
       setLoading(true);
-      setFailed(false);
+      setFailed(null);
+      const headers = await authHeaders();
+      if (!headers) {
+        // #4165: returnerede tavst -> data blev ved med at være null, og
+        // render-grenen nedenfor tegnede "ingen løb på kalenderen endnu".
+        setFailed("auth");
+        reportLoadFailure("racehub_season_view", { kind: "auth" });
+        setLoading(false);
+        return;
+      }
       const qs = Number.isFinite(seasonParam) ? `?season_number=${seasonParam}` : "";
       try {
         const res = await fetch(`${API}/api/races/calendar${qs}`, { headers });
-        if (!res.ok) throw new Error("calendar_failed");
-        const json = await res.json();
+        if (!res.ok) {
+          reportLoadFailure("racehub_season_view", { kind: "http", status: res.status });
+          throw new Error("calendar_failed");
+        }
+        // #4165: parsningen har sin EGEN gren. Lå res.json() i den ydre try,
+        // blev en malformet 200-krop tagget "network" i Sentry - altså en
+        // server- eller proxy-fejl fejlmeldt som spillerens forbindelse, i netop
+        // det signal triagen skal hvile på næste gang.
+        let json;
+        try {
+          json = await res.json();
+        } catch (cause) {
+          reportLoadFailure("racehub_season_view", { kind: "parse", status: res.status, cause });
+          // Sentinel-fejlen bærer den oprindelige parse-fejl som `cause`, så den
+          // ydre catch kan kende grenen på message'en UDEN at tabe stakken.
+          throw new Error("calendar_failed", { cause });
+        }
         if (!alive) return;
         setData(json);
         const activeNumber = (json.availableSeasons || []).find((s) => s.status === "active")?.number ?? null;
         setSeasonsMeta({ availableSeasons: json.availableSeasons || [], activeNumber });
-      } catch {
-        if (alive) { setData(null); setFailed(true); }
+      } catch (cause) {
+        // http- og parse-grenene har allerede rapporteret sig selv med deres
+        // egen kind; kun ægte netværksfejl skal tælles som "network" her.
+        if (cause?.message !== "calendar_failed") {
+          reportLoadFailure("racehub_season_view", { kind: "network", cause });
+        }
+        if (alive) { setData(null); setFailed("load"); }
       } finally {
         if (alive) setLoading(false);
       }
@@ -224,12 +263,20 @@ export default function SeasonView({ onSwitchView }) {
   );
 
   if (loading) return <div>{header}<div className="flex justify-center py-10"><Spinner size={20} /></div></div>;
+  // #4165: fejl-grenen SKAL ligge før den tomme gren nedenfor, ellers bliver en
+  // fejlet hentning igen tegnet som "ingen løb på kalenderen endnu".
   if (failed) {
     return (
-      <div>
+      <div role="alert">
         {header}
         <ErrorState
-          description={t("seasonView.error")}
+          // #4165: uden title faldt ErrorState tilbage på sin hardkodede
+          // engelske default ("Something went wrong"), så en dansk manager fik
+          // engelsk overskrift over dansk brødtekst. De fire øvrige flader
+          // sender alle en oversat titel - anatomien i PAGE_TEMPLATES.md
+          // forudsætter den.
+          title={t("seasonView.errorTitle")}
+          description={failed === "auth" ? t("seasonView.errorSession") : t("seasonView.error")}
           action={
             <Button size="sm" variant="secondary" onClick={() => setRetryTick((n) => n + 1)}>
               {t("seasonView.retry")}

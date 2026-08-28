@@ -14,6 +14,7 @@
 // deterministisk); "nulstil til blank" er et separat sæson-scoped write.
 import { useState, useEffect, useCallback } from "react";
 import { getSession } from "./supabase.js";
+import { reportLoadFailure } from "./actionTelemetry.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -42,7 +43,17 @@ export function usePlanner(seasonNumber = null) {
 
   const refresh = useCallback(async () => {
     const headers = await authHeaders();
-    if (!headers) { setLoading(false); return; }
+    // #4165: #2849 bølge 6 lukkede !res.ok og catch, men IKKE denne gren. Uden
+    // session returnerede den tavst, så `error` blev ved med at være null og
+    // `enabled` false - og SeasonPlannerPage tegnede "Sæsonplanlæggeren er ikke
+    // live endnu". En fejlet hentning præsenteret som slukket feature er præcis
+    // den fejlklasse #4165 handler om.
+    if (!headers) {
+      setError("auth");
+      reportLoadFailure("season_planner_board", { kind: "auth" });
+      setLoading(false);
+      return;
+    }
     try {
       const qs = seasonNumber != null ? `?season_number=${seasonNumber}` : "";
       const res = await fetch(`${API}/api/peak-plans/board${qs}`, { headers });
@@ -50,8 +61,21 @@ export function usePlanner(seasonNumber = null) {
       // `error` aldrig blev sat — planlæggeren degraderede til en tom side uden
       // besked (audit-fund F5, tavs degradering). Nu surfacer begge grene, så
       // sidens ErrorState + retry rent faktisk kan rendere.
-      if (!res.ok) { setError("http"); setLoading(false); return; }
-      const data = await res.json();
+      if (!res.ok) {
+        reportLoadFailure("season_planner_board", { kind: "http", status: res.status });
+        setError("http"); setLoading(false); return;
+      }
+      // #4165: parsningen har sin EGEN gren. Lå res.json() i den ydre try, blev
+      // en malformet 200-krop rapporteret som "network" - spillerens forbindelse
+      // - selvom fejlen kom fra serveren eller en proxy. Forkert triage i netop
+      // det signal instrumenteringen er bygget til at bære.
+      let data;
+      try {
+        data = await res.json();
+      } catch (cause) {
+        reportLoadFailure("season_planner_board", { kind: "parse", status: res.status, cause });
+        setError("parse"); setLoading(false); return;
+      }
       setEnabled(Boolean(data.enabled));
       if (data.enabled) {
         setBoard({
@@ -67,7 +91,8 @@ export function usePlanner(seasonNumber = null) {
         });
       }
       setError(null);
-    } catch {
+    } catch (cause) {
+      reportLoadFailure("season_planner_board", { kind: "network", cause });
       setError("network"); // behold tidligere board-state, men vis fejlen
     } finally {
       setLoading(false);

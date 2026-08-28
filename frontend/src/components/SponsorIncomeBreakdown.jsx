@@ -187,7 +187,7 @@ export default function SponsorIncomeBreakdown() {
         ))}
       </IncomeGroup>
 
-      {/* b. Race days */}
+      {/* b. Etaper (#4245: sponsor-enheden hedder etape, ikke løbsdag) */}
       <IncomeGroup
         title={t("income.group.raceDays.title")}
         total={breakdown.raceDays.total}

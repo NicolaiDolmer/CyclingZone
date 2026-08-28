@@ -11,12 +11,12 @@
   "offers": {
     "title": "Choose your sponsor",
     "subtitle": "Five sponsors, five ways to earn in season {season}.",
-    "unitDefinition": "1 race day = one stage your team starts. Not a calendar day.",
-    "unitCount": "Division {division} rides {count} stages in season {season}, so that is {count} race days you can earn on.",
+    "unitDefinition": "Your sponsor pays per stage your team starts. Not per calendar day, and not per race day.",
+    "unitCount": "Division {division} rides {count} stages in season {season}, and every one of them pays.",
     "unitPerDay": "They are spread over {days} calendar days, so most days carry about {perDay} stages.",
-    "divisionNote": "Your maximum payout stays the same no matter which division you pick above. Division only changes how many race days you have to earn it over, and that sets the rate per stage.",
+    "divisionNote": "Your maximum payout stays the same no matter which division you pick above. Division only changes how many stages you have to earn it over, and that sets the rate per stage.",
     "divisionPicker": "Preview rate for a division",
-    "divisionPill": "Division {division} · {count} race days",
+    "divisionPill": "Division {division} · {count} stages",
     "deadline": "Your choice locks when season {season} starts. If you don't choose, the club signs the 1-season safe deal for you.",
     "empty": "No offers are available right now. A new deal can be negotiated once the current contract is up for renewal.",
     "choose": "Choose",
@@ -26,7 +26,7 @@
     "signDeal": "Sign deal",
     "cancel": "Cancel",
     "guaranteedShare": "{pct}% of the deal is guaranteed",
-    "boardNote": "Board satisfaction adjusts the guaranteed part by up to ±20%. It does not touch race-day money or bonuses: those are paid in full, on top, as you earn them."
+    "boardNote": "Board satisfaction adjusts the guaranteed part by up to ±20%. It does not touch per-stage money or bonuses: those are paid in full, on top, as you earn them."
   },
   "variant": {
     "safe": "The safe deal",
@@ -48,8 +48,8 @@
   },
   "field": {
     "guaranteedBase": "Guaranteed at season start",
-    "perRaceDay": "Per race day",
-    "raceDayMath": "{count} race days × {rate} CZ$",
+    "perRaceDay": "Per stage",
+    "raceDayMath": "{count} stages × {rate} CZ$",
     "ifYouStartEveryStage": "If you start every stage",
     "bonusUpside": "Bonuses on top, if earned",
     "length": "Length",
@@ -89,8 +89,8 @@
         "row": "Season base (contract guarantee)"
       },
       "raceDays": {
-        "title": "Race days",
-        "row": "{raceName} · {days, plural, one {# day} other {# days}} at {rate} CZ$",
+        "title": "Stages",
+        "row": "{raceName} · {days, plural, one {# stage} other {# stages}} at {rate} CZ$",
         "unknownRace": "Race",
         "showAll": "Show all {count} races",
         "showLess": "Show less"
@@ -106,8 +106,8 @@
       }
     },
     "footer": {
-      "full": "Why you get paid: your contract guarantees a season base, pays per race day your team competes, and adds bonuses for stage wins and podiums.",
-      "noBonuses": "Why you get paid: your contract guarantees a season base and pays per race day your team competes."
+      "full": "Why you get paid: your contract guarantees a season base, pays per stage your team starts, and adds bonuses for stage wins and podiums.",
+      "noBonuses": "Why you get paid: your contract guarantees a season base and pays per stage your team starts."
     },
     "empty": {
       "title": "No sponsor income yet",

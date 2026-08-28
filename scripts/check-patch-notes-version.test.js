@@ -6,10 +6,14 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const {
   parseVersions,
   hasOptOutToken,
   arraysEqual,
+  importCheck,
 } = require("./check-patch-notes-version.js");
 
 const TOKEN = "[patch-notes-snapshot-ok]";
@@ -149,4 +153,31 @@ test("en note dateret i dag eller tidligere er i orden", () => {
 
 test("todayInCopenhagen giver en ISO-dato, ikke UTC-formatteret tekst", () => {
   assert.match(todayInCopenhagen(), /^\d{4}-\d{2}-\d{2}$/);
+});
+
+// #4308: importCheck fanger syntaksfejl i patchNotes.js som regex-parsingen
+// ovenfor ikke kan se (den læser rå tekst, ikke gyldig JS). .mjs-extension
+// bruges så fixturen altid importeres som ESM, uanset ambient package.json
+// "type" i den mappe testen kører fra.
+test("importCheck: gyldig ESM-data-fil giver ok:true", async () => {
+  const tmpFile = path.join(os.tmpdir(), `patch-notes-import-check-valid-${process.pid}-${Date.now()}.mjs`);
+  fs.writeFileSync(tmpFile, `export const PATCHES = [{ version: "1.0.0", date: "2026-01-01" }];\n`, "utf8");
+  try {
+    const result = await importCheck(tmpFile);
+    assert.equal(result.ok, true);
+  } finally {
+    fs.unlinkSync(tmpFile);
+  }
+});
+
+test("importCheck: fil med uafsluttet klamme giver ok:false og SyntaxError", async () => {
+  const tmpFile = path.join(os.tmpdir(), `patch-notes-import-check-broken-${process.pid}-${Date.now()}.mjs`);
+  fs.writeFileSync(tmpFile, `export const PATCHES = [{ version: "1.0.0", date: "2026-01-01" };\n`, "utf8");
+  try {
+    const result = await importCheck(tmpFile);
+    assert.equal(result.ok, false);
+    assert.ok(result.error instanceof SyntaxError, `expected SyntaxError, got ${result.error && result.error.constructor.name}`);
+  } finally {
+    fs.unlinkSync(tmpFile);
+  }
 });

@@ -184,6 +184,7 @@
     "generic": "Something went wrong. Try again.",
     "title": "Couldn't load the season planner",
     "description": "Nothing was lost. Your peaks and training plans are safe. Try again.",
+    "session": "Your session has ended. Sign in again to keep planning.",
     "retry": "Try again",
     "division_not_settled": "Your division for that season is decided at the season rollover, so peaks cannot be set yet."
   },

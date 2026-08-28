@@ -68,11 +68,17 @@ Der findes i dag tre indgange til auto-udfyld (dagsboardet, `PlannerAssistantCar
 |---|---|---|
 | Udtagelser | ja | gitterets eget indhold |
 | Kun problemer | ja | udtagelser + klassegrænser + binding, regnes i browseren |
-| Belastning | ja, efter fix | `load.raceDays` — se modsigelse 1 |
+| Belastning | ja | `load.raceDays` = distinkte `race_stage_schedule.game_day` pr. løb (#4245) |
 | Form og peak | senere | `peak_planner_enabled` er `on` i prod (koden defaulter off) |
 | Rute-match | kun ved celle-åbning | `frontend/src/lib/suitability.js`, ægte 0-100 mod demand-vektoren |
 
 Rute-match som fladedækkende linse er fravalgt: kalender-svaret bærer hverken evner eller demand-vektorer.
+
+**Belastnings-linsen, præcist (#4245).** `load.raceDays` tæller de distinkte `race_stage_schedule.game_day` rytteren er tilmeldt, kun i den AKTIVE sæson (`race_entries` er ikke sæson-scopet i sig selv). Løb uden brugbare `game_day`-rækker falder tilbage til løbets etapetal, mindst 1, og det fallback deles af både Race Hub'en og planner-boardet, så de to chips aldrig kan divergere.
+
+Belastning er ikke binding: bindingen er hele spændet `min(game_day)..max(game_day)` og er tilsigtet (ejer-direktiv 25/8, [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217), `docs/CALENDAR_RULES.md` §2b + §8). Belastningen er de løbsdage rytteren faktisk kører på. For et løb med spring i serien er de to tal forskellige, og det er meningen.
+
+**Ordet "løbsdag" (ejer-beslutning 27/8).** En løbsdag er BINDINGS-enheden (`game_day`), som i `docs/CALENDAR_RULES.md` §0. Sponsor-økonomien lånte samme ord i `help.json` og `finance.json` for sin betalings-enhed; den hedder nu ETAPE / stage i al spiller-vendt tekst. Økonomien er uændret, kun ordene.
 
 ---
 
@@ -101,7 +107,7 @@ Byg aldrig disse om. Verificeret mod koden 25/8.
 | 2 | Kalender-fanen har nul URL-tilstand | `CalendarPage.jsx:49-62` — `tab`, `division`, `pool` er ren `useState` |
 | 3 | Tilbage fra løb åbnet på boardet lander i Resultater | `RaceColumn.jsx:100` → #3954 |
 | 4 | Drag er ren HTML5, 0 touch-handlers; løb→løb har intet klik-alternativ | `raceHubDnd.js` |
-| 5 | Fem flader returnerer tavst `null` ved slukket flag ELLER fejlet kald | `StrategyPage.jsx:61` m.fl. |
+| 5 | **Hubben lukket 27/8 (#4165).** Alle **seks** flader skelner nu fejlet kald (ErrorState + retry) fra en legitim tom/slukket tilstand, og fejl-grenen ligger bindende FØR flag-/tom-grenen. Auth-grenen tæller med: et manglende token må ikke tegnes som "feature slukket", "kalenderen er tom" eller "ingen aktiv sæson". Tre tegnede intet (`RaceHubBoard`, `DivisionStartLists`, `StrategyPage`), tre tegnede en tom-tilstand der løj (`SeasonView`, `usePlanner`+`SeasonPlannerPage`, `CalendarPage`). Fejl-fladen skal desuden beholde sin navigation: et "Prøv igen" der gentager samme dag/pulje/scope er en blindgyde. **Uden for hubben er mønstret IKKE udtømmende talt op.** Fire er efterprøvet mod koden 27/8: `RaceSelectionPanel.jsx:126+129`, `StageRoleMatrix.jsx:87+90`, `useTraining.js:41+44` (tegner *"Daily training is currently paused"*) og `useScouting.js:77+80` (falder tilbage til "uscoutet"). Flere hooks deler den tavse **auth**-gren alene (`useAcademy`, `useFacilities`, `useScoutingCentral`, `useStaffDirectory`, `useTeamPublicProfile`, `BoardPage.jsx:2288`) har fejl-state for !res.ok, men ikke for et manglende token. En app-bred optælling er ikke lavet | `RaceHubBoard.jsx`, `StrategyPage.jsx`, `DivisionStartLists.jsx`, `SeasonView.jsx`, `usePlanner.js` + `SeasonPlannerPage.jsx`, `CalendarPage.jsx` |
 | 6 | Formplanen viser form, aldrig træthed, selvom API'et sender begge | `PlannerSquad.jsx`, `MasterCanvas.jsx` |
 
 ---
@@ -110,11 +116,12 @@ Byg aldrig disse om. Verificeret mod koden 25/8.
 
 | # | Modsigelse | Issue |
 |---|---|---|
-| 1 | `api.js:4444` lægger **etapetal** i et felt der hedder `raceDays`. Tallet er tilfældigt rigtigt efter #4161 og bliver forkert i samme sekund to etaper deler en løbsdag | denne fil §5 |
 | 2 | To gemme-modeller: boardet skriver straks, matrixen ved Gem — men spec'en siger "ét sted at gemme" | denne fil §1 |
 | 3 | Tre indgange til auto-udfyld; #4201 kan gøre alle tre forkerte | [#4201](https://github.com/NicolaiDolmer/CyclingZone/issues/4201) |
 | 4 | `?view=`-parameteren slettes af `SeasonView.jsx:202` og sættes aldrig, selvom regel 6 kræver den | [#1146](https://github.com/NicolaiDolmer/CyclingZone/issues/1146) |
 | 5 | ~~Trupgrænser pr. klasse er ikke skrevet ned noget sted~~ **Lukket** 27/8: de står i [`CALENDAR_RULES.md` §8](CALENDAR_RULES.md) (tilføjet 24/8 i #4176), som nu også dokumenterer default-fallbacken `{6,8}`, at en delvis trup er lovlig at gemme, og gulvet på 6 udtagne for at stille op | [#4295](https://github.com/NicolaiDolmer/CyclingZone/issues/4295) |
+
+Modsigelse 1 (`raceDays` bar etapetal) er lukket af [#4245](https://github.com/NicolaiDolmer/CyclingZone/issues/4245). Nummereringen står urørt, så henvisninger til modsigelse 2-5 andre steder stadig peger rigtigt.
 
 ---
 

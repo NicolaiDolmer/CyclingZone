@@ -30,7 +30,8 @@
       "none": "Ingen udtagelse endnu"
     },
     "empty": "Ingen løb på kalenderen endnu",
-    "error": "Sæsonkalenderen kunne ikke hentes. Intet er gået tabt. Prøv igen.",
+    "error": "Intet gik tabt. Denne visning er kun til læsning.",
+    "errorSession": "Din session er udløbet. Log ind igen for at planlægge videre.",
     "retry": "Prøv igen",
     "picker": {
       "ariaLabel": "Sæson",
@@ -52,9 +53,16 @@
       },
       "firstRaceDay": "Første løbsdag: tirsdag. Mandag er løbsfri.",
       "readMore": "Fuld forklaring i Hjælp"
-    }
+    },
+    "errorTitle": "Sæsonkalenderen kunne ikke hentes"
   },
   "racehub": {
+    "error": {
+      "title": "Holdudtagelsen kunne ikke hentes",
+      "body": "Intet gik tabt. Dine opstillinger er sikre.",
+      "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
+      "retry": "Prøv igen"
+    },
     "scope": {
       "mine": "Mine løb",
       "division": "Min division",
@@ -70,7 +78,7 @@
     "heading": "Trup-fordeling",
     "overlap": "{count} løb i dag",
     "raceDay": "Løbsdag {day}",
-    "raceDays": "Løbsdag {start}-{end}",
+    "raceDays": "Løbsdage {start}-{end}",
     "sameDayNote": "Samme rigtige dag, forskellige løbsdage. En rytter kan køre ét løb pr. løbsdag.",
     "learnReuse": {
       "title": "Genbrug af en rytter på tværs af løbsdage",
@@ -118,7 +126,14 @@
       "peaksHere": "Topper her: {names}",
       "paybackHere": "Payback-hul her: {names} ({points} form)",
       "paybackHereNoPoints": "Payback-hul her: {names}",
-      "clearSelection": "Ryd udtagelse"
+      "clearSelection": "Ryd udtagelse",
+      "sharesDay": "Deler løbsdag {day} med {race}",
+      "sharesDays": "Deler løbsdagene {start}-{end} med {race}",
+      "sharesMany": "Deler løbsdage med {count, plural, one {# andet løb} other {# andre løb}}",
+      "sharesItem": "Løbsdag {day} · {race}",
+      "sharesItemDays": "Løbsdagene {start}-{end} · {race}",
+      "clash": "{rider} kører begge på løbsdag {day}",
+      "clashMany": "{count, plural, one {# rytter kører} other {# ryttere kører}} begge løb"
     },
     "popover": {
       "title": "Tilføj til hvilket løb?",
@@ -306,7 +321,7 @@
   "world": {
     "loading": "Indlæser verdens-kalender…",
     "totalRaces": "{count} løb totalt på tværs af verdens-kalenderen",
-    "classSummary": "{count} løb · {days} dage",
+    "classSummary": "{count} løb · {stages} etaper",
     "filteredOn": "Filtreret på {class}.",
     "clearFilter": "Ryd filter",
     "thRace": "Løb",
@@ -515,6 +530,7 @@
     "jerseyShortcutHint": "{name} er din rytter i førertrøjen.",
     "jerseyShortcut": "Gør {name} til kaptajn for de resterende etaper",
     "unsaved": "Du har ikke-gemte ændringer",
+    "demoted": "Rollen flyttede: {rider} er nu {role} på etape {stage}.",
     "save": "Gem taktik",
     "saving": "Gemmer…",
     "saved": "Taktikken er gemt.",
@@ -625,6 +641,9 @@
     },
     "error": {
       "title": "Noget gik galt",
+      "loadTitle": "Holdstrategien kunne ikke hentes",
+      "loadBody": "Intet gik tabt. Din gemte strategi er sikker.",
+      "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
       "retry": "Prøv igen"
     }
   },
@@ -1113,6 +1132,12 @@
     "accumulatedSub": "Top ryttere efter samlede point på tværs af alle udgaver"
   },
   "browse": {
+    "error": {
+      "title": "Startlisterne kunne ikke hentes",
+      "body": "Denne visning er kun til læsning, så intet gik tabt.",
+      "session": "Din session er udløbet. Log ind igen for at planlægge videre.",
+      "retry": "Prøv igen"
+    },
     "readonly": "Skrivebeskyttet",
     "heading": "{division} · {pool}",
     "headingGeneric": "Startlister",

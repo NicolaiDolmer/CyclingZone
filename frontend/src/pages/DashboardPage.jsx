@@ -16,7 +16,7 @@ import { computeMyDivisionStandings } from "../lib/dashboardDivStandings.js";
 import { computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
-import { poolRaceDayTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
+import { poolStageTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { formatCountdown } from "../lib/stageScheduleConfig.js";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
@@ -142,7 +142,7 @@ export default function DashboardPage() {
   const [error, setError] = useState(null);
 
   const [seasonInfo, setSeasonInfo] = useState(null);
-  const [poolRaceDays, setPoolRaceDays] = useState(null); // #1829: per-pulje løbsdage-tæller
+  const [poolStages, setPoolStages] = useState(null); // #1829/#4245: per-pulje etape-tæller
   const [nextStageByRace, setNextStageByRace] = useState({}); // #1828: live-løb → næste etapes ms-tid
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [discordNudgeDismissed, setDiscordNudgeDismissed] = useState(
@@ -356,7 +356,7 @@ export default function DashboardPage() {
     setReservedBalance(reservedBalanceValue || 0);
     setSeasonInfo(activeSeason || null);
     setPools(poolsRes.data || []);
-    setPoolRaceDays(poolRaceDayTotals(poolRacesRes.data || []));
+    setPoolStages(poolStageTotals(poolRacesRes.data || []));
     setRiders(ridersRes.data || []);
     setPendingIncomingCount(squadCountInputs.pendingIncomingCount);
     setAllAuctions(auctionsRes.data || []);
@@ -1143,23 +1143,23 @@ export default function DashboardPage() {
                     );
                   })()}
 
-                  {/* #1829: per-pulje løbsdage (kørt inkl. igangværende / puljens total), ikke det
-                      sæson-globale tal. Falder bort hvis puljen ingen løb har (fx pulje-løst hold). */}
-                  {(poolRaceDays?.total || 0) > 0 && (
+                  {/* #1829/#4245: per-pulje ETAPER (kørt inkl. igangværende / puljens total), ikke det
+                      sæson-globale tal og ikke løbsdage. Falder bort hvis puljen ingen løb har (fx pulje-løst hold). */}
+                  {(poolStages?.total || 0) > 0 && (
                     <div className="flex items-center gap-2">
                       <span className="text-cz-3 text-xs whitespace-nowrap">
-                        {t("dashboard:seasonBanner.raceDays", { completed: poolRaceDays.completed, total: poolRaceDays.total })}
-                        {poolRaceDays.inProgress > 0 && (
-                          <span className="text-cz-accent-t ms-1">· {t("dashboard:seasonBanner.raceDaysLive", { count: poolRaceDays.inProgress })}</span>
+                        {t("dashboard:seasonBanner.stages", { completed: poolStages.completed, total: poolStages.total })}
+                        {poolStages.inProgress > 0 && (
+                          <span className="text-cz-accent-t ms-1">· {t("dashboard:seasonBanner.stagesLive", { count: poolStages.inProgress })}</span>
                         )}
                       </span>
                       <ProgressMeter
-                        value={poolRaceDays.completed}
-                        max={poolRaceDays.total}
+                        value={poolStages.completed}
+                        max={poolStages.total}
                         tone="accent"
                         className="w-20"
                         trackClassName="h-1.5"
-                        ariaLabel={t("dashboard:seasonBanner.raceDays", { completed: poolRaceDays.completed, total: poolRaceDays.total })}
+                        ariaLabel={t("dashboard:seasonBanner.stages", { completed: poolStages.completed, total: poolStages.total })}
                       />
                     </div>
                   )}

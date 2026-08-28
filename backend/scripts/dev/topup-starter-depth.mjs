@@ -10,6 +10,14 @@
 //   infisical run --env=prod -- node backend/scripts/dev/topup-starter-depth.mjs
 // Live (ejer-go): faktisk insert + derive + markør.
 //   infisical run --env=prod -- node backend/scripts/dev/topup-starter-depth.mjs --live
+//
+// --inactive-days=N (#4307, ejer-valg 28/8): begræns til hold hvis ejer IKKE har
+// logget ind i N dage (eller aldrig; AI-hold uden ejer tæller som inaktive).
+// Ejer-princip 27/8: "aktive hold der ikke har nok ryttere, så er det deres eget
+// valg". I denne tilstand ignoreres top-up-markøren i SELECTOREN (et inaktivt hold
+// der er faldet under 12 efter juni-kørslen fyldes igen — idempotensen bæres af
+// selve <12-tjekket, opfyldningen er additiv op til 12), og markøren sættes kun på
+// hold der faktisk modtog ryttere.
 import { createClient } from "@supabase/supabase-js";
 import { STARTER_SQUAD, STARTER_TAIL_STAT_WINDOW, buildWeakStarterPool, deriveTeamSeed } from "../../lib/starterSquadAllocator.js";
 import { deriveForRiderIds } from "../../lib/backfillCores.js";
@@ -18,6 +26,13 @@ import { foldNameNordic } from "../../lib/pcmRiderMatcher.js";
 import { LAUNCH_POPULATION } from "../../lib/fictionalLaunchPopulation.js";
 
 const LIVE = process.argv.includes("--live");
+const INACTIVE_DAYS = (() => {
+  const arg = process.argv.find((a) => a.startsWith("--inactive-days="));
+  if (!arg) return null;
+  const n = Number(arg.split("=")[1]);
+  if (!Number.isInteger(n) || n <= 0) { console.error("--inactive-days kræver et positivt heltal"); process.exit(1); }
+  return n;
+})();
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error("Mangler SUPABASE secrets (infisical run --env=prod)"); process.exit(1); }
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -30,12 +45,33 @@ const INSERT_BATCH = 500;
 // tal). Flere chained .or()-kald sender duplikate PostgREST or=-params hvis adfærd
 // er uspecificeret → kan stille-ignorere filtre; undgås her.
 const { data: teams, error: tErr } = await sb.from("teams")
-  .select("id, is_bank, is_frozen, is_test_account, starter_depth_topped_up_at")
+  .select("id, user_id, is_bank, is_frozen, is_test_account, starter_depth_topped_up_at")
   .or("is_test_account.is.null,is_test_account.eq.false");
 if (tErr) { console.error("teams:", tErr.message); process.exit(1); }
 const eligible = (teams || []).filter((t) => !t.is_bank && !t.is_frozen);
-const pending = eligible.filter((t) => !t.starter_depth_topped_up_at);
-console.log(`${LIVE ? "LIVE" : "DRY-RUN"} — ${pending.length}/${eligible.length} eligible hold uden top-up-markør\n`);
+
+// Inaktivitets-filter: sidste login pr. ejer via auth admin-API (auth-skemaet er
+// ikke eksponeret gennem PostgREST). NULL user_id / aldrig logget ind = inaktiv.
+let pending;
+if (INACTIVE_DAYS != null) {
+  const lastSignIn = new Map();
+  for (let page = 1; ; page++) {
+    const { data, error } = await sb.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) { console.error("listUsers:", error.message); process.exit(1); }
+    for (const u of data?.users || []) lastSignIn.set(u.id, u.last_sign_in_at || null);
+    if (!data?.users?.length || data.users.length < 1000) break;
+  }
+  const cutoff = Date.now() - INACTIVE_DAYS * 24 * 60 * 60 * 1000;
+  const isInactive = (t) => {
+    const ts = t.user_id ? lastSignIn.get(t.user_id) : null;
+    return !ts || new Date(ts).getTime() < cutoff;
+  };
+  pending = eligible.filter(isInactive);
+  console.log(`${LIVE ? "LIVE" : "DRY-RUN"} — inaktivitets-filter ${INACTIVE_DAYS} dage: ${pending.length}/${eligible.length} eligible hold er inaktive (markør ignoreret i selector)\n`);
+} else {
+  pending = eligible.filter((t) => !t.starter_depth_topped_up_at);
+  console.log(`${LIVE ? "LIVE" : "DRY-RUN"} — ${pending.length}/${eligible.length} eligible hold uden top-up-markør\n`);
+}
 
 // Nuværende rytter-antal pr. hold (ikke-pensioneret).
 const ids = pending.map((t) => t.id);
@@ -80,10 +116,13 @@ for (const { teamId, need } of plan) {
   await deriveForRiderIds(sb, insertedIds, { dryRun: false });
   added += insertedIds.length;
 }
-// Sæt markør på ALLE pending hold (også dem der allerede var ≥SIZE → markér no-op).
-for (const t of pending) {
+// Sæt markør: uden inaktivitets-filter på ALLE pending hold (også ≥SIZE → no-op,
+// juni-semantik). Med filter KUN på hold der faktisk modtog ryttere, så et aktivt
+// holds fremtidige fald under 12 ikke blokeres af en no-op-markør.
+const toMark = INACTIVE_DAYS != null ? pending.filter((t) => plan.some((p) => p.teamId === t.id)) : pending;
+for (const t of toMark) {
   const { error } = await sb.from("teams").update({ starter_depth_topped_up_at: nowIso }).eq("id", t.id);
   if (error) console.error(`markør ${t.id}:`, error.message);
 }
-console.log(`\nLIVE færdig: ${added} hale-ryttere tilføjet, ${pending.length} hold markeret.`);
+console.log(`\nLIVE færdig: ${added} hale-ryttere tilføjet, ${toMark.length} hold markeret.`);
 process.exit(0);

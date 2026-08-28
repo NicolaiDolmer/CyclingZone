@@ -42,42 +42,51 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
           </button>
         ))}
       </div>
-      <div className="flex items-center gap-2">
-        <button type="button" aria-label={t("racehub.timeline.prev")} disabled={day <= 1}
-          onClick={() => onDayChange(day - 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">‹</button>
-        <div className="flex gap-px flex-1" role="group" aria-label={t("racehub.timeline.dayOf", { day, total })}>
-          {days.map((d) => {
-            const isFocus = d.day === day;
-            const isToday = d.day === currentDay;
-            const base = isFocus
-              ? "bg-cz-accent"
-              : d.hasMyRace
-              ? "bg-cz-card hover:bg-cz-elevated"
-              : "bg-cz-card/40 hover:bg-cz-card";
-            // "I dag" markeres med inset-ring når den ikke i forvejen er den fokuserede dag.
-            const todayRing = isToday && !isFocus ? "ring-1 ring-inset ring-cz-accent-t/70" : "";
-            return (
-              <button
-                key={d.day}
-                type="button"
-                title={`${t("racehub.timeline.dayOf", { day: d.day, total })}${isToday ? ` — ${t("racehub.timeline.youAreHere")}` : ""}`}
-                aria-current={isFocus ? "true" : undefined}
-                // #1919: klik på den allerede-fokuserede dag er en no-op → dead click.
-                onClick={() => { if (d.day !== day) onDayChange(d.day); }}
-                className={`flex-1 h-4 rounded-sm transition-colors ${base} ${todayRing}`}
-              />
-            );
-          })}
+      {/* #4165: dag-rækken kræver en tidslinje. Uden dage ville den tegne en tom
+          stribe og skrive "Dag N af 0" - et opdigtet tal af præcis den slags
+          #3107 forbød. Fejl-fladerne monterer båndet UDEN tidslinje netop for at
+          beholde scope-skifteren (vejen tilbage til "Mine løb"), så her falder
+          dag-navigationen bare væk indtil et svar lander. */}
+      {days.length > 0 && (
+        <>
+        <div className="flex items-center gap-2">
+          <button type="button" aria-label={t("racehub.timeline.prev")} disabled={day <= 1}
+            onClick={() => onDayChange(day - 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">‹</button>
+          <div className="flex gap-px flex-1" role="group" aria-label={t("racehub.timeline.dayOf", { day, total })}>
+            {days.map((d) => {
+              const isFocus = d.day === day;
+              const isToday = d.day === currentDay;
+              const base = isFocus
+                ? "bg-cz-accent"
+                : d.hasMyRace
+                ? "bg-cz-card hover:bg-cz-elevated"
+                : "bg-cz-card/40 hover:bg-cz-card";
+              // "I dag" markeres med inset-ring når den ikke i forvejen er den fokuserede dag.
+              const todayRing = isToday && !isFocus ? "ring-1 ring-inset ring-cz-accent-t/70" : "";
+              return (
+                <button
+                  key={d.day}
+                  type="button"
+                  title={`${t("racehub.timeline.dayOf", { day: d.day, total })}${isToday ? ` · ${t("racehub.timeline.youAreHere")}` : ""}`}
+                  aria-current={isFocus ? "true" : undefined}
+                  // #1919: klik på den allerede-fokuserede dag er en no-op → dead click.
+                  onClick={() => { if (d.day !== day) onDayChange(d.day); }}
+                  className={`flex-1 h-4 rounded-sm transition-colors ${base} ${todayRing}`}
+                />
+              );
+            })}
+          </div>
+          <button type="button" aria-label={t("racehub.timeline.next")} disabled={day >= total}
+            onClick={() => onDayChange(day + 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">›</button>
         </div>
-        <button type="button" aria-label={t("racehub.timeline.next")} disabled={day >= total}
-          onClick={() => onDayChange(day + 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">›</button>
-      </div>
-      <div className="flex justify-end mt-1.5">
-        <span className="text-xs text-cz-accent-t font-medium">
-          {t("racehub.timeline.dayOf", { day, total })}
-          {day === currentDay ? ` — ${t("racehub.timeline.youAreHere")}` : ""}
-        </span>
-      </div>
+        <div className="flex justify-end mt-1.5">
+          <span className="text-xs text-cz-accent-t font-medium">
+            {t("racehub.timeline.dayOf", { day, total })}
+            {day === currentDay ? ` · ${t("racehub.timeline.youAreHere")}` : ""}
+          </span>
+        </div>
+        </>
+      )}
     </div>
   );
 }

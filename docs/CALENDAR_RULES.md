@@ -20,6 +20,18 @@ Pakkeren lægger flere hele løbsdage inden i hver kalenderdag — det er præci
 
 Fejlklassen har kostet to hændelser: [#4155](https://github.com/NicolaiDolmer/CyclingZone/issues/4155) skrev `game_day = dato − startdato − 1` og brød overlap-cap'en i alle fire divisioner på én gang ([#4161](https://github.com/NicolaiDolmer/CyclingZone/issues/4161)). [#4159](https://github.com/NicolaiDolmer/CyclingZone/issues/4159) foreslog at cementere den samme formel som DB-trigger.
 
+### 0b. Løbsdage vises 1-baseret, databasen er 0-baseret
+
+**Ejer-besluttet 27/8 ([#4296](https://github.com/NicolaiDolmer/CyclingZone/issues/4296)): "1-baseret, prisen er accepteret".**
+
+`race_stage_schedule.game_day` starter på **0**. Alle spiller-vendte flader viser **`game_day + 1`** via `RACE_DAY_DISPLAY_OFFSET` i `frontend/src/lib/raceHubLogic.js`.
+
+Det betyder at **UI'ets tal altid er databasens plus én**. Slår du et løb op i SQL, i et admin-værktøj eller i en logline, står der ét mindre end det spilleren ser. En spiller der skriver "mine ryttere er bundet på løbsdag 7" mener `game_day = 6`.
+
+Regn ALDRIG i display-tal. Konvertér ved kanten, med `toDisplayRaceDay`, og aldrig i den anden retning uden at det står eksplicit i koden.
+
+Bemærk at sæson-oversigten viser et ANDET tal under samme ord: `seasonDayOrdinal` er kalender-ordinalen, ikke `game_day`. Den konflikt er åben i [#4318](https://github.com/NicolaiDolmer/CyclingZone/issues/4318) og er ikke løst af offsettet.
+
 ---
 
 ## 1. Form og tæthed

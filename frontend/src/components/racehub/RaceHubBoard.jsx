@@ -13,11 +13,12 @@ import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
-import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay, shouldShowClearAllDialog } from "../../lib/raceHubLogic.js";
+import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay, shouldShowClearAllDialog, raceDayOverlaps, raceDayClashes, toDisplayRaceDay } from "../../lib/raceHubLogic.js";
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import ClearAllDialog from "./ClearAllDialog.jsx";
-import { Spinner, EmptyState, FlagIcon, Button } from "../ui";
+import { reportLoadFailure } from "../../lib/actionTelemetry.js";
+import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -67,21 +68,79 @@ export default function RaceHubBoard() {
   // kommende løb GET /clear-preview fandt; `now` fryses ved åbning så nedtællingerne i
   // dialogen ikke tikker mens man læser (statisk, ærligt snapshot af øjeblikket man klikkede).
   const [clearAllPreview, setClearAllPreview] = useState(null);
+  // #4165: hentningen af board'et havde INGEN fejl-state. Manglende token, et
+  // ikke-2xx svar og en netværksfejl returnerede alle tavst, og render-grenen
+  // `!data?.enabled → null` tegnede så en helt tom flade - uden spinner, uden
+  // besked, uden retry. Samme fejlklasse som usePlanner havde før #2849 bølge 6.
+  // { kind: "auth" | "http" | "parse" | "network", status? } | null
+  const [loadError, setLoadError] = useState(null);
+  // #4165: kontekstbåndets navigation (scope-pills + dag-tidslinje) må OVERLEVE
+  // en fejlet hentning. Lå den kun i success-grenen, efterlod et fejlet dag-skift
+  // manageren med én knap - "Prøv igen" - der gentager præcis det samme fejlende
+  // kald for den samme dag. Skallen holdes derfor uden for `data` og ryddes aldrig
+  // ved fejl. { currentDay, focusDay, timeline } | null
+  const [navShell, setNavShell] = useState(null);
+  // #4296: hoppe-maal for en overlap- eller clash-raekkes tap (kortets border flasher
+  // 1200ms). Hook'et skal staa FOER komponentens tidlige returns (loading/fejl/flag-
+  // off nedenfor). Rules of Hooks tillader ikke et betinget useState.
+  const [flashRaceId, setFlashRaceId] = useState(null);
 
   const load = useCallback(async (day) => {
     const headers = await authHeaders();
-    if (!headers) { setLoading(false); return; }
+    if (!headers) {
+      setLoadError({ kind: "auth" });
+      reportLoadFailure("racehub_board", { kind: "auth" });
+      setLoading(false);
+      return;
+    }
     // Path som egen literal (query konkateneres separat) — holder /api/races/distribution
     // matchbar for feature-liveness-auditens frontend-scan (ellers læses qs som path-segment).
     const url = `${API}/api/races/distribution`;
     try {
       const res = await fetch(Number.isFinite(day) ? `${url}?day=${day}` : url, { headers });
-      if (res.ok) setData(await res.json());
-    } catch {
-      /* netværk — board forbliver i forrige tilstand */
+      if (!res.ok) {
+        // Krop-koden (fx "No team found") kommer med i telemetrien, så en gentagelse
+        // kan diagnosticeres uden at gætte - den vises IKKE til manageren.
+        const body = await res.json().catch(() => ({}));
+        setLoadError({ kind: "http", status: res.status });
+        reportLoadFailure("racehub_board", { kind: "http", status: res.status, reason: body?.error });
+        return;
+      }
+      // #4165: parsningen har sin EGEN gren. Lå den i den ydre try, blev en
+      // malformet 200-krop tagget "network" i Sentry - altså en server- eller
+      // proxy-fejl fejlmeldt som spillerens forbindelse, og dermed en løgn i
+      // netop den triage instrumenteringen er bygget til.
+      let json;
+      try {
+        json = await res.json();
+      } catch (cause) {
+        setLoadError({ kind: "parse", status: res.status });
+        reportLoadFailure("racehub_board", { kind: "parse", status: res.status, cause });
+        return;
+      }
+      setData(json);
+      setNavShell({
+        currentDay: json.currentDay ?? null,
+        focusDay: json.focusDay ?? null,
+        timeline: json.timeline ?? null,
+      });
+      setLoadError(null);
+    } catch (cause) {
+      setLoadError({ kind: "network" });
+      reportLoadFailure("racehub_board", { kind: "network", cause });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
+
+  // Retry fra fejl-fladen: vis spinneren igen, så knappen har en synlig effekt.
+  // (load() sætter bevidst ikke loading=true selv - et dag-skift skal ikke rive
+  // board'et ned og erstatte det med en spinner.)
+  const retryLoad = () => {
+    setLoading(true);
+    setLoadError(null);
+    load(Number.isFinite(dayParam) ? dayParam : undefined);
+  };
 
   // Mine-board hentes kun i "mine"-scope; browse-scopes (division/others, S6) bruger
   // DivisionStartLists med sit eget read-only endpoint.
@@ -110,6 +169,40 @@ export default function RaceHubBoard() {
   if (scope !== "mine") return <DivisionStartLists scope={scope} onScopeChange={setScope} />;
 
   if (loading) return <div className="flex justify-center py-10"><Spinner size={20} /></div>;
+  // #4165: "kaldet fejlede" og "flaget er slukket" er to forskellige tilstande og
+  // må ikke dele render-gren. Fejl → kanonisk ErrorState + secondary retry (samme
+  // mønster som SeasonPlannerPage). Rækkefølgen er bindende: fejl-grenen skal ligge
+  // FØR flag-grenen, ellers bliver en fejl igen tegnet som en tom flade.
+  if (loadError) {
+    // #4165: kontekstbåndet bliver stående. Uden det var fejl-fladen en
+    // navigations-blindgyde: "Prøv igen" gentager SAMME dag og SAMME scope, så
+    // en dag hvis svar konsekvent fejler kunne ikke forlades herfra. Med båndet
+    // kan manageren skifte dag eller gå til en anden scope og komme videre.
+    // Har ingen hentning nogensinde lykkedes, er der ingen tidslinje at vise -
+    // så falder dag-rækken væk af sig selv (ContextBand), og scope-pillsene står
+    // tilbage. Bemærk: data-testid'en hører til det RIGTIGE board og må ikke
+    // sidde her, ellers ville "boardet er ikke tegnet" ikke længere kunne testes.
+    const navDay = Number.isFinite(dayParam) ? dayParam : (navShell?.focusDay ?? navShell?.currentDay ?? 1);
+    return (
+      <div>
+        <ContextBand
+          scope={scope}
+          day={navDay}
+          currentDay={navShell?.currentDay ?? null}
+          timeline={navShell?.timeline ?? null}
+          onScopeChange={setScope}
+          onDayChange={setDay}
+        />
+        <div role="alert" className="mx-auto max-w-xl py-6">
+          <ErrorState
+            title={t("racehub.error.title")}
+            description={loadError.kind === "auth" ? t("racehub.error.session") : t("racehub.error.body")}
+            action={<Button variant="secondary" size="sm" onClick={retryLoad}>{t("racehub.error.retry")}</Button>}
+          />
+        </div>
+      </div>
+    );
+  }
   if (!data?.enabled) return null; // flag OFF → board skjult (kalender-faner viser stadig)
 
   const day = Number.isFinite(dayParam) ? dayParam : (data.focusDay ?? data.currentDay);
@@ -445,6 +538,29 @@ export default function RaceHubBoard() {
   const dayGroups = groupColumnsByGameDay(effectiveColumns);
   const multiDay = dayGroups.filter((g) => g.gameDay != null).length > 1;
 
+  // #4296: hvilke ANDRE kolonner deler loebsdage med hver kolonne (neutral OVERLAP),
+  // og hvor er der en AEGTE clash (samme rytter i begge loeb i kladden)? O(n^2) paa
+  // hoejst en haandfuld kolonner, udledt i samme render som dayGroups saa
+  // kladde-aendringer slaar igennem oejeblikkeligt. Almindelig const, ikke useMemo:
+  // komponenten har tidlige returns ovenfor, saa et hook her ville vaere betinget.
+  const overlapsByColumn = new Map();
+  for (const c of effectiveColumns) {
+    overlapsByColumn.set(c.id, {
+      overlaps: raceDayOverlaps({ columns: effectiveColumns, columnId: c.id }),
+      clashes: raceDayClashes({ columns: effectiveColumns, columnId: c.id }),
+    });
+  }
+
+  // #4296: tap paa en overlap- eller clash-raekke hopper til modpartens kort.
+  const focusRace = (id) => {
+    const el = document.getElementById(`race-col-${id}`);
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    el?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+    el?.focus({ preventScroll: true });
+    setFlashRaceId(id);
+    setTimeout(() => setFlashRaceId((v) => (v === id ? null : v)), 1200);
+  };
+
   // #2195: engangs-læringsnote. Trigges første gang kladden har SAMME rytter i to løb på
   // forskellige (ikke-overlappende) spil-dage — netop det øjeblik hvor tvivlen "er det en bug?"
   // opstår. Dismissal huskes i localStorage, så den kun vises én gang pr. bruger.
@@ -539,38 +655,31 @@ export default function RaceHubBoard() {
               </button>
             </div>
           )}
-          {multiDay ? (
-            dayGroups.map((g, gi) => (
-              <div key={g.gameDay ?? "no-day"} className="mb-4">
-                {g.gameDay != null && (
-                  // Gruppen defineres af den delte binding-dag (start). Et etapeløbs fulde span
-                  // står på løbets egen chip; her holder vi headeren entydig = "Race day N".
-                  <p className="mb-2 text-xs font-semibold text-cz-accent-t">
-                    {t("racehub.raceDay", { day: g.gameDay })}
-                  </p>
-                )}
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {g.columns.map((c, ci) => (
-                    <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
-                      onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
-                      raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
-                      roster={roster} bindingMap={liveBindingMap}
-                      dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />
-                  ))}
-                </div>
+          {/* #4296: dayGroups mappes nu ALTID (ikke kun ved multiDay). Med een gruppe
+              rendrer det identisk til foer. Overskriften viser gruppens EGEN startdag,
+              1-baseret som kortene. Den maa IKKE vise g.gameDayEnd: grupperingen sker
+              paa STARTdagen og gameDayEnd er max over gruppen, saa et spaend her ville
+              love dage der tilhoerer andre grupper (#4317, fund 3). */}
+          {dayGroups.map((g, gi) => (
+            <div key={g.gameDay ?? "no-day"} className="mb-4">
+              {g.gameDay != null && (
+                <p className="mb-2 text-xs font-semibold text-cz-accent-t tabular-nums">
+                  {t("racehub.raceDay", { day: toDisplayRaceDay(g.gameDay) })}
+                </p>
+              )}
+              <div className="grid sm:grid-cols-2 gap-3">
+                {g.columns.map((c, ci) => (
+                  <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
+                    onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
+                    raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
+                    roster={roster} bindingMap={liveBindingMap}
+                    overlaps={overlapsByColumn.get(c.id)?.overlaps ?? []} clashes={overlapsByColumn.get(c.id)?.clashes ?? []}
+                    onFocusRace={focusRace} flash={flashRaceId === c.id}
+                    dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />
+                ))}
               </div>
-            ))
-          ) : (
-            <div className="grid sm:grid-cols-2 gap-3 mb-4">
-              {effectiveColumns.map((c, ci) => (
-                <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
-                  onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
-                  raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
-                  roster={roster} bindingMap={liveBindingMap}
-                  dataTour={ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />
-              ))}
             </div>
-          )}
+          ))}
           <AvailableRidersPool roster={roster} columns={effectiveColumns} bindingMap={liveBindingMap}
             seasonLoadByRider={data.seasonLoadByRider || {}} dayClearImpact={dayClearImpact}
             onAddRiderToRace={addRider} onRegenerate={regenerate} onClearSquad={clearSquad} busy={busy}

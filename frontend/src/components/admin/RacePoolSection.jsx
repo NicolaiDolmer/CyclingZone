@@ -141,8 +141,10 @@ export default function RacePoolSection({ getAuth, onMsg }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeasonId]);
 
-  const totalPoolRaceDays = useMemo(
-    () => Object.values(summary).reduce((sum, s) => sum + (s.raceDays || 0), 0),
+  // #4245: summen er ETAPER, ikke løbsdage — summarizePool lægger races.stages
+  // sammen, og en løbsdag er en in-game-dag der binder rytteren, ikke en etape.
+  const totalPoolStages = useMemo(
+    () => Object.values(summary).reduce((sum, s) => sum + (s.stages || 0), 0),
     [summary],
   );
 
@@ -153,16 +155,16 @@ export default function RacePoolSection({ getAuth, onMsg }) {
 
   const availableInIncluded = useMemo(() => {
     let races = 0;
-    let raceDays = 0;
+    let stages = 0;
     for (const key of includedClassKeys) {
       if (excludeWt && WORLD_TOUR_KEYS.has(key)) continue;
       const s = summary[key];
       if (s) {
         races += s.count;
-        raceDays += s.raceDays;
+        stages += s.stages;
       }
     }
-    return { races, raceDays };
+    return { races, stages };
   }, [summary, includedClassKeys, excludeWt]);
 
   function toggleClass(key) {
@@ -390,11 +392,11 @@ export default function RacePoolSection({ getAuth, onMsg }) {
       {/* Pool-overblik */}
       <div className="bg-cz-subtle rounded-cz p-4">
         <p className="text-cz-2 font-medium text-sm mb-3">
-          Verdens-kalender — {pool.length} løb · {totalPoolRaceDays} race-dage
+          Verdens-kalender — {pool.length} løb · {totalPoolStages} etaper
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm">
           {RACE_CLASSES.map((cls) => {
-            const s = summary[cls.key] || { count: 0, raceDays: 0 };
+            const s = summary[cls.key] || { count: 0, stages: 0 };
             const isWt = WORLD_TOUR_KEYS.has(cls.key);
             return (
               <div
@@ -410,7 +412,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
                   {isWt && <span className="ms-1 text-cz-3 text-xs">[WT]</span>}
                 </span>
                 <span className="text-cz-3 text-xs whitespace-nowrap ms-2">
-                  {s.count} løb · {s.raceDays} dage
+                  {s.count} løb · {s.stages} etaper
                 </span>
               </div>
             );
@@ -448,7 +450,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           <label className="block text-cz-3 text-xs mb-2">Klasser at vælge fra</label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
             {RACE_CLASSES.map((cls) => {
-              const s = summary[cls.key] || { count: 0, raceDays: 0 };
+              const s = summary[cls.key] || { count: 0, stages: 0 };
               const disabled = s.count === 0;
               return (
                 <label
@@ -465,7 +467,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
                   />
                   <span className="text-cz-2 truncate">{cls.label}</span>
                   <span className="text-cz-3 text-xs ms-auto">
-                    {s.count}/{s.raceDays}d
+                    {s.count}/{s.stages}e
                   </span>
                 </label>
               );
@@ -516,7 +518,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           <div className="text-sm self-end">
             <p className="text-cz-3 text-xs">Tilgængeligt i valg</p>
             <p className="text-cz-2 font-medium">
-              {availableInIncluded.races} løb · {availableInIncluded.raceDays} dage
+              {availableInIncluded.races} løb · {availableInIncluded.stages} etaper
             </p>
           </div>
         </div>

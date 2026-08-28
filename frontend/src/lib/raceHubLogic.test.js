@@ -1,7 +1,7 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel, raceGameDayLabel, toDisplayRaceDay, raceDayOverlaps, raceDayClashes, RACE_DAY_DISPLAY_OFFSET } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -125,35 +125,35 @@ test("deriveRaceStatus: robust mod manglende stages", () => {
   assert.equal(deriveRaceStatus("scheduled", 0, null), "scheduled");
 });
 
-// poolRaceDayTotals (#1829): per-pulje løbsdage-tæller. total = sum(stages);
-// completed = løbsdage faktisk kørt INKL. igangværende etaper; inProgress = de
-// løbsdage der hører til løb som stadig kører (ærligt mellemregnings-tal).
-test("poolRaceDayTotals: total = sum(stages); completed inkluderer igangværende etaper", () => {
+// poolStageTotals (#1829/#4245): per-pulje ETAPE-tæller. total = sum(stages);
+// completed = etaper faktisk kørt INKL. igangværende; inProgress = de
+// etaper der hører til løb som stadig kører (ærligt mellemregnings-tal).
+test("poolStageTotals: total = sum(stages); completed inkluderer igangværende etaper", () => {
   const races = [
     { status: "completed", stages: 1, stages_completed: 1 },  // endagsløb færdig → 1/1
     { status: "scheduled", stages: 7, stages_completed: 3 },  // etapeløb i gang → 3 af 7
     { status: "scheduled", stages: 5, stages_completed: 0 },  // ikke startet → 0 af 5
   ];
-  assert.deepEqual(poolRaceDayTotals(races), { completed: 4, total: 13, inProgress: 3 });
+  assert.deepEqual(poolStageTotals(races), { completed: 4, total: 13, inProgress: 3 });
 });
 
-test("poolRaceDayTotals: completed-løb tæller alle sine etaper selv hvis stages_completed mangler", () => {
-  assert.deepEqual(poolRaceDayTotals([{ status: "completed", stages: 21, stages_completed: 0 }]),
+test("poolStageTotals: completed-løb tæller alle sine etaper selv hvis stages_completed mangler", () => {
+  assert.deepEqual(poolStageTotals([{ status: "completed", stages: 21, stages_completed: 0 }]),
     { completed: 21, total: 21, inProgress: 0 });
 });
 
-test("poolRaceDayTotals: tom liste → nul", () => {
-  assert.deepEqual(poolRaceDayTotals([]), { completed: 0, total: 0, inProgress: 0 });
-  assert.deepEqual(poolRaceDayTotals(), { completed: 0, total: 0, inProgress: 0 });
+test("poolStageTotals: tom liste → nul", () => {
+  assert.deepEqual(poolStageTotals([]), { completed: 0, total: 0, inProgress: 0 });
+  assert.deepEqual(poolStageTotals(), { completed: 0, total: 0, inProgress: 0 });
 });
 
-test("poolRaceDayTotals: manglende stages → tæller som 1 (matcher DEFAULT 1)", () => {
-  assert.deepEqual(poolRaceDayTotals([{ status: "scheduled", stages: null, stages_completed: 0 }]),
+test("poolStageTotals: manglende stages → tæller som 1 (matcher DEFAULT 1)", () => {
+  assert.deepEqual(poolStageTotals([{ status: "scheduled", stages: null, stages_completed: 0 }]),
     { completed: 0, total: 1, inProgress: 0 });
 });
 
-test("poolRaceDayTotals: stages_completed klampes til [0, stages] (defensivt mod inkonsistent data)", () => {
-  assert.deepEqual(poolRaceDayTotals([{ status: "scheduled", stages: 7, stages_completed: 9 }]),
+test("poolStageTotals: stages_completed klampes til [0, stages] (defensivt mod inkonsistent data)", () => {
+  assert.deepEqual(poolStageTotals([{ status: "scheduled", stages: 7, stages_completed: 9 }]),
     { completed: 7, total: 7, inProgress: 0 });
 });
 
@@ -281,7 +281,7 @@ test("shouldShowClearAllDialog: tom/manglende liste → false; mindst ét løb �
   assert.equal(shouldShowClearAllDialog([{ id: "a", name: "Tour Belge", startAt: 1 }]), true);
 });
 
-// ── #4187: løbskortets mærkat skal vise datoer, ikke løbsdags-spændet ────────────
+// ── #4193: løbskortets mærkat skal vise datoer, ikke løbsdags-spændet ────────────
 
 test("raceDateRangeLabel: etapeløb over flere dage giver et datointerval", () => {
   const label = raceDateRangeLabel({
@@ -289,7 +289,7 @@ test("raceDateRangeLabel: etapeløb over flere dage giver et datointerval", () =
     endMs: Date.parse("2026-09-04T11:00:00Z"),
     locale: "en",
   });
-  assert.equal(label, "Aug 30 – Sep 4");
+  assert.equal(label, "Aug 30 - Sep 4");
 });
 
 test("raceDateRangeLabel: endagsløb giver ÉT datostykke, ikke 'x - x'", () => {
@@ -308,7 +308,9 @@ test("raceDateRangeLabel: dansk locale formaterer dansk", () => {
     locale: "da",
   });
   assert.ok(label.includes("30."), `forventede dansk datoform, fik: ${label}`);
-  assert.ok(label.includes("–"), `forventede interval, fik: ${label}`);
+  assert.ok(label.includes(" - "), `forventede interval, fik: ${label}`);
+  // #4296: bindestreg, ALDRIG en-dash eller em-dash i spiller-vendt copy.
+  assert.ok(!label.includes("–") && !label.includes("—"), `dash i copy: ${label}`);
 });
 
 test("raceDateRangeLabel: projiceres i Europe/Copenhagen, ikke UTC", () => {
@@ -320,4 +322,88 @@ test("raceDateRangeLabel: projiceres i Europe/Copenhagen, ikke UTC", () => {
 test("raceDateRangeLabel: ukendt start giver null, saa kortet skjuler maerkatet", () => {
   assert.equal(raceDateRangeLabel({ startMs: null, endMs: 123 }), null);
   assert.equal(raceDateRangeLabel({}), null);
+});
+
+// ── #4296: RaceDaySpan, spændet på kortet, modparten navngivet ─────────────
+// HÅRD INVARIANT: DISPLAY-tal kommer KUN fra game_day/game_day_end, ALDRIG fra
+// bindingWindow (som falder tilbage til CET-ordinaler ~20.000 når game_day mangler).
+
+const fakeT = (key, params) => {
+  if (key === "racehub.raceDay") return `Race day ${params.day}`;
+  if (key === "racehub.raceDays") return `Race days ${params.start}-${params.end}`;
+  return key;
+};
+
+test("raceGameDayLabel (T1/T2/T3): 1-baseret enkeltdag, spænd, og null når spændet mangler", () => {
+  assert.equal(raceGameDayLabel({ start: 0, end: 0, t: fakeT }), "Race day 1");
+  assert.equal(raceGameDayLabel({ start: 0, end: 19, t: fakeT }), "Race days 1-20");
+  assert.equal(raceGameDayLabel({ start: null, end: 5, t: fakeT }), null);
+});
+
+test("toDisplayRaceDay: RACE_DAY_DISPLAY_OFFSET er den eneste plads en løbsdag bliver +1", () => {
+  assert.equal(RACE_DAY_DISPLAY_OFFSET, 1);
+  assert.equal(toDisplayRaceDay(0), 1);
+  assert.equal(toDisplayRaceDay(19), 20);
+  assert.equal(toDisplayRaceDay(null), null);
+  assert.equal(toDisplayRaceDay(undefined), null);
+});
+
+test("raceDayOverlaps (T4, FORWARD-GUARD): for ethvert par med endelige game_day-spænd er raceDayOverlaps-medlemskab === windowsOverlap på bindingWindow", () => {
+  const pairs = [
+    // deler dage 6-7 (endeligt spænd begge sider) → overlap
+    [{ id: "a", game_day: 5, game_day_end: 7, bindingWindow: { start: 5, end: 7 } },
+     { id: "b", game_day: 6, game_day_end: 9, bindingWindow: { start: 6, end: 9 } }],
+    // ingen fælles dage → intet overlap
+    [{ id: "a", game_day: 1, game_day_end: 2, bindingWindow: { start: 1, end: 2 } },
+     { id: "b", game_day: 10, game_day_end: 12, bindingWindow: { start: 10, end: 12 } }],
+    // samme enkeltdag → overlap
+    [{ id: "a", game_day: 4, game_day_end: 4, bindingWindow: { start: 4, end: 4 } },
+     { id: "b", game_day: 4, game_day_end: 4, bindingWindow: { start: 4, end: 4 } }],
+    // rørende ender (a slutter hvor b starter) → overlap
+    [{ id: "a", game_day: 1, game_day_end: 5, bindingWindow: { start: 1, end: 5 } },
+     { id: "b", game_day: 5, game_day_end: 8, bindingWindow: { start: 5, end: 8 } }],
+    // lige ved siden af, ingen fælles dag → intet overlap
+    [{ id: "a", game_day: 1, game_day_end: 4, bindingWindow: { start: 1, end: 4 } },
+     { id: "b", game_day: 5, game_day_end: 8, bindingWindow: { start: 5, end: 8 } }],
+  ];
+  for (const [a, b] of pairs) {
+    const columns = [a, b];
+    const actual = raceDayOverlaps({ columns, columnId: a.id }).some((x) => x.id === b.id);
+    const expected = windowsOverlap(a.bindingWindow, b.bindingWindow);
+    assert.equal(actual, expected, `mismatch for ${a.id}/${b.id}: raceDayOverlaps=${actual} windowsOverlap=${expected}`);
+  }
+});
+
+test("raceDayOverlaps (T5): CET-ordinal-bindingWindow uden game_day overlapper → posten findes, men INGEN femcifret dagtal (sharedStart/sharedEnd null)", () => {
+  const columns = [
+    { id: "a", game_day: null, game_day_end: null, bindingWindow: { start: 20123, end: 20124 } },
+    { id: "b", game_day: null, game_day_end: null, bindingWindow: { start: 20123, end: 20125 } },
+  ];
+  const out = raceDayOverlaps({ columns, columnId: "a" });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, "b");
+  assert.equal(out[0].sharedStart, null);
+  assert.equal(out[0].sharedEnd, null);
+});
+
+test("raceDayOverlaps (T6): withdrawn kolonne → tom liste både som SELV og som modpart", () => {
+  const columns = [
+    { id: "a", withdrawn: true, game_day: 5, game_day_end: 5, bindingWindow: { start: 5, end: 5 } },
+    { id: "b", game_day: 5, game_day_end: 5, bindingWindow: { start: 5, end: 5 } },
+  ];
+  assert.deepEqual(raceDayOverlaps({ columns, columnId: "a" }), []);
+  assert.deepEqual(raceDayOverlaps({ columns, columnId: "b" }), []);
+});
+
+test("raceDayClashes: bygger på findSelectionOverlaps, kun overlap MED en delt rytter tæller som clash", () => {
+  const columns = [
+    { id: "a", name: "Le Mur de Huy", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1"] } },
+    { id: "b", name: "Amstel Gold", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1", "r2"] } },
+    { id: "c", name: "La Flèche", bindingWindow: { start: 100, end: 100 }, selection: { rider_ids: ["r1"] } },
+  ];
+  const clashes = raceDayClashes({ columns, columnId: "a" });
+  assert.equal(clashes.length, 1);
+  assert.equal(clashes[0].riderId, "r1");
+  assert.equal(clashes[0].otherId, "b");
+  assert.equal(clashes[0].otherName, "Amstel Gold");
 });

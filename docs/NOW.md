@@ -4,11 +4,13 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Sæsonstart-master-sessionen KØRER** (prompt: [`superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md`](superpowers/plans/2026-08-28-saesonstart-planlaegning-master-session-prompt.md)). **Bølge 1 i gang:** #4294 · #4295 · #4245 · #4165 · #4293, hver i eget worktree m. adversarisk verifikation. **Derefter:** B (#4296 · #4259) på designpanelets specs, så A3 (#4201) og C (Z1, #1146). **Ejer-beslutninger truffet 27/8:** slet 812 forældreløse peaks (gjort) · løbsdage **1-baseret** · **gulv: 6 udtagne for at stille op** (#4295, 21 hold rammes). Rest på ejeren: apply #4284s migration · §6-tjeklisten · **post svar-udkast + 6-varslet i Discord** · **PR #4298**.
+> **🎯 Next action:** **Ejer-rest:** post kommunikationspakken ([`drafts/2026-08-27-kommunikationspakke-saesonstart.md`](drafts/2026-08-27-kommunikationspakke-saesonstart.md)) — ejer siger "senere" 28/8; tilfoej linje om trup-opfyldningen. **#4307 KOERT 28/8** (411 ryttere, 89 inaktive hold, 30-dages-graense, post-verify OK — se issue-kommentar; genmaaling: gulvets egen pris nu 42 starter). **#4212 BESLUTTET 28/8:** retning B "kortet som kontrakt" (se issue-kommentarer, daekker #4271-kernen). **#4301 (draft) blokerende fund rettet:** `partialSquadOutlook` sagde intet ved 0 udtagne (195/226 hold, 128/130 tabte starter). Afventer ejer-visuelt-go paa previewen foer merge. **Naeste build:** #4317 · #4259 · Z1 #1146.
 
-> **✅ PEAK-REPARATION 27/8 (ejer-GO kl. 09:2x):** kalender-regenereringen nullede `target_race_id` (FK er `ON DELETE SET NULL`) men lod vinduerne stå med den GAMLE kalenders datoer. **812** foraeldreløse planer, 731 med vinduer i den live sæson, **280 ryttere på 27 menneskehold ville stå i utilsigtet peak på åbningsdagen**. Backup `backup_4294_rider_peak_plans` (812 rækker), slettet, post-verify: 82 planer tilbage, alle med gyldigt målløb, 0 uden mål. Forward-guard (FK → CASCADE + filter i `loadPeakPlans`) i PR.
+> **🧱 Nyt spor (efter fredag, MASTERPLAN pkt. 16):** PR **#4334** taender frontend-typecheck + regenererer skematyper (`database.types.ts` daekkede 46 af 143 tabeller). Afventer ejer. Opfoelgning #4326-#4333.
 
-> **✅ NATSESSION 27/8:** 5 PR'er, 0 prod-mutationer. Prod read-only: overlap pr. løbsdag **0**, alle motor-flag **on** (`race_day_development` off). Assistenten er **pull, ikke push** (24.615 af 24.724 S3-udtagelser på AI-hold). **Åbent:** #4288 (de 3 GT'er er umålte, båndet er forældet) · #4282 (hold transfer-frosset af renter alene, ejer-beslutning).
+> **✅ #4344 lukket fremad (28/8):** etape-taktikken kunne gemme 2 kaptajner (guarden talte kun payloaden, ikke basis-rollen). PR **#4353** merged 28/8 (ejer-go, 24/24 checks). Udskilt: **#4356** (ejer-beslutning: de 34 allerede koerte etaper, re-sim eller staa ved dem) · **#4357** (`loadEntrantsForRace` mangler ORDER BY; tie-breaket er bevidst uroert indtil #4356 er afgjort).
+
+> **⚠️ Aabne fra 27/8:** #4288 (de 3 GT'er koerer 17-18 etaper, baandet kraever 21 = umaalte) · #4282 (hold transfer-frosset af renter alene, ejer-beslutning) · #4318 (to flader siger "Race day" om to forskellige tal).
 
 > **✅ S3-KALENDEREN LIVE (regenereret 27/8, ejer-GO pr. skridt):** 529 løb / 1.239 etaper, 28/8 → søn 27/9. 0 løbsdage over flere datoer, mountain-nedad 27 % (før 64 %), scorecard 0 regelbrud. Udtagelser wiped m. backup (`backup_4236_*`). Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
 
@@ -31,6 +33,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Working agent:** Claude Code (Opus 5) — sesonstart-master-session 27/8, workflow-baseret. Spor A+B+D (bølge 1) og C (bølge 2).
+> **🤖 Working agent:** Session 28/8 formiddag (Claude Code, DOLMERPC): #4307 (koert) + 3 worktree-spor i gang: #4306 (fix/4306-afmeldt-hold-starter), #4311 (fix/4311-fyld-klemme), #4212+#4271 fase B (fix/4212-peak-kontrakt). Roerer IKKE #4344 (anden session) eller saesonmatrix #1146.
 
 _Historik i git-log, issue-tråde + docs/audits/._

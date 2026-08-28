@@ -190,10 +190,10 @@ import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetai
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { applyRiderEligibilityFilter, isRiderInjured } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
-import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
+import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "../lib/raceCalendar.js";
-import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
+import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
@@ -684,14 +684,28 @@ async function createRaceRecord(payload) {
 
 async function requireAuth(req, res, next) {
   const token = req.headers.authorization?.replace("Bearer ", "");
+  // Ingen log her med vilje: vores egen SPA sender ALDRIG et request uden token
+  // (authHeaders() returnerer null og kaldet udebliver), så denne gren er stort
+  // set kun scannere/probes. Logges den, drukner de interessante 401'ere i støj.
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
   const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return res.status(401).json({ error: "Invalid token" });
+  if (error || !user) {
+    // #4165: DENNE gren var usynlig i alle tre observations-lag - ingen log,
+    // ingen Sentry, og klienten kastede svaret væk. Da en spiller ikke kunne
+    // komme ind i planlægningen, kunne udløseren derfor ikke bestemmes
+    // bagudrettet. En kort warn-linje gør et afvist token synligt i Railway-
+    // loggen. Kun fejl-KODEN logges, aldrig selve token'et eller headeren
+    // (hard rule: dump aldrig secret-værdier), og stien uden query-streng.
+    console.warn(
+      `[auth] 401 invalid_token ${req.method} ${req.originalUrl.split("?")[0]} (${error?.code || error?.name || "no_user"})`,
+    );
+    return res.status(401).json({ error: "Invalid token" });
+  }
 
   // Fetch team for this user
   // #3722: onboarding opretter holdet asynkront efter signup, så "ingen række
-  // endnu" er en LOVLIG tilstand her — IKKE en fejl. .single() svarede med en
+  // endnu" er en LOVLIG tilstand her - IKKE en fejl. .single() svarede med en
   // rigtig PostgREST-fejl (406) i det tilfælde, som druknede målbare 406'ere
   // fra ægte fejl i logstøj (17 × 406 på /rest/v1/teams i ét 700 ms-vindue
   // 14/8, alle fra normal onboarding-timing). .maybeSingle() giver data=null
@@ -3630,6 +3644,14 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
       fetchAllScheduleRowsWithGameDay(supabase, allRaceIds),
       fetchAllStageProfiles(supabase, allRaceIds, "race_id, stage_number, profile_type, finale_type, demand_vector"),
     ]);
+    // #4245: løbsdage pr. løb = distinkte game_day. Afledt af de allerede hentede
+    // scheduleRows, intet ekstra DB-kald. Går med i racesOut nedenfor, så
+    // formplanens belastnings-chip læser samme tal som Race Hub'ens — SAMME
+    // fallback også (stagesByRaceId), så et delvist backfillet løb ikke viser
+    // ét tal her og et andet på Race Hub'en.
+    const raceDaysByRaceId = raceDaysByRace(scheduleRows || [], {
+      stagesByRaceId: new Map(raceList.map((r) => [r.id, r.stages])),
+    });
 
     const model = buildCalendarModel({
       races: raceList,
@@ -3739,9 +3761,26 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           // kan vise payback-risiko pr. løb FØR valget uden at klienten har sin egen
           // vindue-formel (to formler for samme tal er #3071-fejlklassen).
           peakWindow: snapPeakWindow(stageDatesByRaceId.get(e.id) || []),
+          // #4312: ÆGTE sidste etapedato ("YYYY-MM-DD" CET). Uden den regnede
+          // frontenden slutdatoen som `date + (gameDayEnd - gameDayStart)`, altså
+          // LØBSDAGE lagt oven i en KALENDERDATO. De to er ikke samme enhed
+          // (docs/CALENDAR_RULES.md §1: "game_day kan ALDRIG udledes af
+          // scheduled_at"; pakkeren lægger flere hele løbsdage inden i hver
+          // kalenderdag, D1 kører 75-103 løbsdage over 27-28 datoer). Målt 27/8:
+          // 98 af 206 flerdagsløb i S3 fik forkert slutdato, værst de tre Grand
+          // Tours med +13 til +14 dage. Vueltaens mærkat sluttede 4. oktober,
+          // en uge efter sæsonen. Samme kilde som peakWindow ovenfor, så de to
+          // tal kan ikke drifte fra hinanden. Intet ekstra DB-kald.
+          dateEnd: lastStageDate(stageDatesByRaceId.get(e.id)),
           gameDayStart: e.gameDayStart,
           gameDayEnd: e.gameDayEnd,
           stages: e.stages,
+          // #4245: LØBSDAGE pr. løb (distinkte game_day), så formplanens belastnings-
+          // chip ikke summerer etaper klient-side. Må ALDRIG regnes som gameDayEnd -
+          // gameDayStart + 1: det spænd er BINDINGEN (ejer-direktiv 25/8, #4217,
+          // docs/CALENDAR_RULES.md §2b + §8), ikke de dage rytteren faktisk kører.
+          // Fallback for løb uden game_day-rækker ligger i raceDaysByRace ovenfor.
+          raceDays: raceDaysByRaceId.get(e.id) ?? 1,
           terrain: e.terrain,
           stageProfiles: strip,
           profileSummary: raceProfileSummary(strip),
@@ -4251,7 +4290,15 @@ router.get("/races/calendar", requireAuth, cached({
 // kolonner + holdets trup + binding-map + sæson-tidslinje. Saves går stadig via
 // PUT /races/:raceId/selection (guards bevares). flag OFF → enabled:false.
 router.get("/races/distribution", requireAuth, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
+  if (!req.team) {
+    // #4165: den anden usynlige fejl-gren bag den tomme planlægnings-flade.
+    // Warn-linje, IKKE Sentry: onboarding opretter holdet asynkront efter signup
+    // (#3722), så "ingen række endnu" er en LOVLIG tilstand - et Sentry-issue pr.
+    // forekomst ville være samme falske positiv som #4299. user_id er en UUID
+    // uden PII (samme linje som setSentryUser, #621).
+    console.warn(`[races/distribution] 400 no_team user=${req.user?.id}`);
+    return res.status(400).json({ error: "No team found" });
+  }
   try {
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
@@ -4435,19 +4482,27 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       nameByRace: new Map((races || []).map((r) => [r.id, r.name])),
     });
 
-    // #2772: sæson-belastning pr. rytter — antal løb + løbsdage (etaper) rytteren
-    // er tilmeldt henover HELE sæsonen, auto-fyldte inklusive (rytteren stiller
-    // til start uanset hvem der satte ham på listen). Afledt af de allerede
-    // hentede eligible entries (ghosts/udlånte tæller ikke, #1906) — intet ekstra
-    // DB-kald. Løbsdage = løbets etape-antal (1 rytter = 1 løb/dag er ejer-design).
-    const stagesByRaceId = new Map((races || []).map((r) => [r.id, r.stages ?? 1]));
-    const seasonLoadByRider = {};
-    for (const e of teamEntries || []) {
-      const cur = seasonLoadByRider[e.rider_id] || { races: 0, raceDays: 0 };
-      cur.races += 1;
-      cur.raceDays += stagesByRaceId.get(e.race_id) ?? 1;
-      seasonLoadByRider[e.rider_id] = cur;
-    }
+    // #2772: sæson-belastning pr. rytter: antal løb + løbsdage rytteren er tilmeldt
+    // henover HELE sæsonen, auto-fyldte inklusive (rytteren stiller til start uanset
+    // hvem der satte ham på listen). Afledt af de allerede hentede eligible entries
+    // (ghosts/udlånte tæller ikke, #1906) + schedRows (hentet MED game_day ovenfor):
+    // intet ekstra DB-kald.
+    // #4245: LØBSDAGE = distinkte game_day pr. løb (docs/CALENDAR_RULES.md §0), IKKE
+    // etape-antal. To etaper på samme løbsdag er én løbsdag for rytteren. Den gamle
+    // regel ("løbsdage = løbets etape-antal") var kun tilfældigt rigtig så længe
+    // pakkeren gav hver etape sin egen game_day. Fallback for løb uden game_day-
+    // rækker: løbets etapetal (samme kilde som planner-boardet, se raceDaysByRace).
+    const raceDaysByRaceId = raceDaysByRace(schedRows || [], {
+      stagesByRaceId: new Map((races || []).map((r) => [r.id, r.stages])),
+    });
+    // #4245 rework: chippens copy siger "tilmeldt denne sæson", men race_entries er
+    // ikke sæson-scopet — uden `seasonRaceIds` tælles entries fra tidligere sæsoner
+    // med. `raceIds` er allerede sæson-scopet (races er hentet på season_id).
+    const seasonLoad = seasonLoadByRider({
+      entries: teamEntries || [],
+      raceDaysByRaceId,
+      seasonRaceIds: new Set(raceIds),
+    });
 
     const timeline = await buildTimeline({
       supabase, races: withWindow, schedByRace,
@@ -4463,7 +4518,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       // #3102 PR 2 / #2772: payback-dybden i formpoint (afledt af motorens
       // konstanter, aldrig hardkodet i copy) + sæson-belastning pr. rytter.
       paybackFormPoints: peakValueFormPoints({}).payback,
-      seasonLoadByRider,
+      seasonLoadByRider: seasonLoad,
     });
   } catch (err) {
     captureException(err);
@@ -4989,6 +5044,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
       stageCount: ctx.stage_count,
       stagesCompleted: ctx.stages_completed,
       teamRiderIds: ctx.teamRiderIds,
+      baseRoleByRider: ctx.baseRoleByRider,
     });
     if (!result.ok) {
       const status = result.errors[0] === "stage_roles_race_completed" ? 409 : 400;
@@ -13255,7 +13311,18 @@ router.get("/admin/cron-runs", requireAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/admin/races/:raceId — slet løb (cascader til race_results)
+// DELETE /api/admin/races/:raceId : slet løb.
+//
+// SPRÆNGRADIUS. Sletningen cascader til `race_results` OG, siden #4294
+// (database/2026-08-27-4294-peak-plan-cascade.sql), til `rider_peak_plans`
+// via `target_race_id`. Sletter du ét løb, sletter du samtidig HVERT holds
+// formplan for det løb, tavst og uden ejer-bekræftelse. Planerne kan ikke
+// gendannes herfra; managerens valg af peak-vindue er væk.
+//
+// Det er den ønskede adfærd (et vindue uden sit målløb er meningsløst i alle tre
+// lag, se migrationens hoved), men den er ikke synlig fra kaldstedet. Skal du
+// slette løb i bulk, fx ved en kalender-regenerering, så tag backup af
+// `rider_peak_plans` FØRST. Køreplan: docs/runbooks/2026-08-27-s3-kalender-regenerering.md.
 router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { raceId } = req.params;

@@ -59,18 +59,28 @@ export function formatOrdinalShort(ord, monthsLabels) {
 
 // Kompakt dato-label for et løb: enkelt dag "12 Aug", eller datospænd for et
 // etapeløb "12-15 Aug" (samme måned) / "29 Jul - 2 Aug" (måned-skift). #2519.
-// Beregnet ren frontend-side fra `date` (kalenderdag for gameDayStart) +
-// gameDayEnd-gameDayStart — game-day-indeks mapper 1:1 til kalenderdage i denne
-// sæson-motor (dayDateMap i backend/lib/raceCalendar.js), så spændet er præcist
-// selv når etaper har en hviledag imellem. Boardet leverer ikke et separat
-// etape-slutdato-felt i dag, og dette er frontend-only arbejde (rør ikke API'et).
+//
+// HÅRD REGEL (#4312): begge datoer kommer fra ÆGTE etapedatoer, `race.date` og
+// `race.dateEnd`, som boardet leverer. Læg ALDRIG et løbsdags-spænd oven i en
+// kalenderdato. Det gjorde denne funktion indtil 27/8
+// (`endOrd = startOrd + (gameDayEnd - gameDayStart)`) på den antagelse at
+// game_day mapper 1:1 til kalenderdage. Det gør den ikke: pakkeren lægger flere
+// hele løbsdage inden i hver kalenderdag, og D1 kører 75-103 løbsdage over 27-28
+// datoer (docs/CALENDAR_RULES.md §1: "game_day kan ALDRIG udledes af
+// scheduled_at"). Kun D4 har 1:1, og det er formentlig derfor fejlen overlevede.
+//
+// Målt i prod 27/8: 98 af 206 flerdagsløb i S3 fik forkert slutdato. Værst de tre
+// Grand Tours: Vueltaens mærkat sagde "16 Sep - 4 Oct" mens løbet slutter 21.
+// september og sæsonen slutter 27. Fejlen fandtes også i S1 (157/165) og S2
+// (93/189), så 1:1-præmissen har aldrig holdt.
+//
+// Mangler `dateEnd` (gammelt board-svar, uplanlagt løb), viser vi startdatoen
+// alene. Én sand dato er bedre end et opdigtet spænd.
 export function formatRaceDateLabel(race, monthsLabels) {
   const startOrd = dateToOrdinal(race?.date);
   if (startOrd == null) return "";
-  const rawSpan = (race?.gameDayEnd ?? race?.gameDayStart ?? 0) - (race?.gameDayStart ?? 0);
-  const spanDays = Number.isFinite(rawSpan) && rawSpan > 0 ? rawSpan : 0;
-  if (spanDays === 0) return formatOrdinalShort(startOrd, monthsLabels);
-  const endOrd = startOrd + spanDays;
+  const endOrd = dateToOrdinal(race?.dateEnd);
+  if (endOrd == null || endOrd <= startOrd) return formatOrdinalShort(startOrd, monthsLabels);
   const p1 = ordinalToParts(Math.round(startOrd));
   const p2 = ordinalToParts(Math.round(endOrd));
   const m1 = monthsLabels?.[p1.monthIndex] ?? "";
