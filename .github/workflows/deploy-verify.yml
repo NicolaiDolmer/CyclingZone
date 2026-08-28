@@ -190,7 +190,7 @@ jobs:
         # endnu, springes step (uden at fejle deploy-verify). Tilfoej alle 3 secrets for
         # at aktivere guarden mod stille source-map upload-fejl.
         # Kun relevant når Vercel faktisk byggede — backend-only commits har ingen
-        # ny frontend-release, så et 404 dér er forventet, ikke en upload-fejl.
+        # ny frontend-release, så en manglende bundle dér er forventet.
         if: steps.required.outputs.need_vercel == 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -198,38 +198,62 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SHA: ${{ steps.pr.outputs.sha }}
         run: |
+          # Et skip skal kunne SES. Guarden stod "success" i tre måneder mens den i
+          # virkeligheden aldrig kørte, fordi det tidlige exit 0 kun efterlod en
+          # annotation ingen kigger på (#4335). Derfor job-summary på hver udgang.
+          note() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+
           if [[ -z "$SENTRY_AUTH_TOKEN" || -z "$SENTRY_ORG" || -z "$SENTRY_PROJECT" ]]; then
             echo "::warning::Sentry source-map guard skipped — add SENTRY_AUTH_TOKEN/SENTRY_ORG/SENTRY_PROJECT secrets to enable (#621 item 3)"
+            note "⏭️ **Sentry source-map guard: SPRUNGET OVER** — secrets mangler i Actions, source-map-upload er uovervåget (#4335)."
             echo "result=skipped" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # Sentry release name = git SHA (per frontend/vite.config.js sentryVitePlugin release.name)
-          HTTP_CODE=$(curl -s -o /tmp/sentry-files.json -w "%{http_code}" \
+          # Sentry release name = git SHA (per frontend/vite.config.js sentryVitePlugin release.name).
+          #
+          # VIGTIGT: @sentry/vite-plugin v5 uploader source maps som ARTIFACT BUNDLES
+          # (debug-id-baseret), ikke som legacy release-files. Det gamle endpoint
+          # releases/<sha>/files/ returnerer derfor [] SELV NÅR uploaden er lykkedes.
+          # Målt mod prod 28/8: release c9ce695 gav en fuldt symboliseret stacktrace,
+          # men havde 0 legacy files og 1 artifact bundle med 357 filer. Havde guarden
+          # været tændt med det gamle kald, var deploy-verify gået rød på hvert
+          # frontend-deploy. Se #4335.
+          HTTP_CODE=$(curl -s -o /tmp/sentry-bundles.json -w "%{http_code}" \
             -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
             -H "Accept: application/json" \
-            "https://sentry.io/api/0/projects/$SENTRY_ORG/$SENTRY_PROJECT/releases/$SHA/files/?per_page=1")
-
-          if [[ "$HTTP_CODE" == "404" ]]; then
-            echo "::error::Sentry release ${SHA:0:7} findes ikke (404). Source-map upload fejlede stille — tjek Vercel build-log for sentryVitePlugin output."
-            echo "result=missing-release" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
+            "https://sentry.io/api/0/projects/$SENTRY_ORG/$SENTRY_PROJECT/files/artifact-bundles/?query=$SHA&per_page=1")
 
           if [[ "$HTTP_CODE" != "200" ]]; then
             echo "::error::Sentry API returnerede $HTTP_CODE — tjek SENTRY_AUTH_TOKEN scope (project:releases)"
+            note "❌ **Sentry source-map guard: API-fejl $HTTP_CODE.**"
             echo "result=api-error" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
-          FILE_COUNT=$(jq 'length' /tmp/sentry-files.json)
+          FILE_COUNT=$(jq '[.[].fileCount] | add // 0' /tmp/sentry-bundles.json)
+
+          # Fallback: releases uploadet ad den gamle vej har ingen bundle, men har files.
+          # Beholdt så guarden ikke fejler falsk hvis upload-metoden skifter tilbage.
           if [[ "$FILE_COUNT" -eq 0 ]]; then
-            echo "::error::Sentry release ${SHA:0:7} har 0 source-map files. Vercel sentryVitePlugin skippede upload — tjek SENTRY_AUTH_TOKEN/ORG/PROJECT i Vercel project env."
+            LEGACY_CODE=$(curl -s -o /tmp/sentry-files.json -w "%{http_code}" \
+              -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+              -H "Accept: application/json" \
+              "https://sentry.io/api/0/projects/$SENTRY_ORG/$SENTRY_PROJECT/releases/$SHA/files/?per_page=1")
+            if [[ "$LEGACY_CODE" == "200" ]]; then
+              FILE_COUNT=$(jq 'length' /tmp/sentry-files.json)
+            fi
+          fi
+
+          if [[ "$FILE_COUNT" -eq 0 ]]; then
+            echo "::error::Sentry release ${SHA:0:7} har 0 source-map files — hverken artifact bundle eller legacy files. Vercel sentryVitePlugin skippede upload — tjek SENTRY_AUTH_TOKEN/ORG/PROJECT i Vercel project env."
+            note "❌ **Sentry source-map guard: 0 filer for ${SHA:0:7}** — upload fejlede stille."
             echo "result=empty-release" >> "$GITHUB_OUTPUT"
             exit 1
           fi
 
-          echo "Sentry release ${SHA:0:7} har source-map files uploaded (>=1)"
+          echo "Sentry release ${SHA:0:7} har $FILE_COUNT source-map files uploaded"
+          note "✅ Sentry source-map guard: ${SHA:0:7} har $FILE_COUNT filer uploadet."
           echo "result=success" >> "$GITHUB_OUTPUT"
 
       - name: Comment success on merged PR
