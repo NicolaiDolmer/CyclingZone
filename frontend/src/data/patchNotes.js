@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.211",
+    "date": "2026-08-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Withdrawing from a race now actually keeps your team out of it",
+          "body": "A team that withdrew from a race could still start it, and a saved selection could still be sent to a race you had withdrawn from. Withdrawing now keeps your team out for good, and the column tells you your team is voluntarily not starting."
+        },
+        "da": {
+          "title": "At afmelde sig fra et løb holder nu rent faktisk holdet ude af det",
+          "body": "Et hold der havde afmeldt sig fra et løb, kunne stadig starte det, og en gemt udtagelse kunne stadig sendes ind i et løb du havde afmeldt dig fra. Afmelding holder nu holdet ude for godt, og kolonnen viser at holdet frivilligt ikke stiller op."
+        },
+        "refs": [
+          4306
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.210",
     "date": "2026-08-28",
     "label": "Beta",
