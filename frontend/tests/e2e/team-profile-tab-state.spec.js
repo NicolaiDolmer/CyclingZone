@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, TEST_TEAM, RIVAL_TEAM } from "./fixtures.js";
 
 // #3916 — to defekter paa "andres hold"-siden (TeamProfilePage.jsx):

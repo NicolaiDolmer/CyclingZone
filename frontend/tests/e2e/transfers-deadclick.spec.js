@@ -3,7 +3,7 @@
 // SÅ klikbare ud. Rytternavnene linkede allerede, men de store rytter-data-arealer
 // (TransferCard-stats-grid, SwapCard-rytter-celle) var døde. Denne test fastholder
 // at de arealer nu navigerer til rytterprofilen — ikke bare bærer cursor-affordance.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { corsHeaders, installNetworkMocks, json, login, stabilizePage } from "./fixtures.js";
 
 const FULL_STATS = {

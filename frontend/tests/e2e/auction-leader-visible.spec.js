@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, AUCTIONS } from "./fixtures.js";
 
 // #3099 · Hvem fører auktionen? Desktop-tabellen bar fører-holdnavnet i en

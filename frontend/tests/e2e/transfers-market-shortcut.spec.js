@@ -3,7 +3,7 @@
 // (2) /transfers uden param stadig lander på "Modtagne tilbud" (default),
 // (3) sidebar-genvejen "Transferliste" findes og navigerer korrekt (desktop —
 //     på mobile er sidebaren en drawer og dækkes ikke her).
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, corsHeaders, json } from "./fixtures.js";
 
 // Fixture-mocks: /api/transfers → [], så markeds-fanen viser sin empty-state.

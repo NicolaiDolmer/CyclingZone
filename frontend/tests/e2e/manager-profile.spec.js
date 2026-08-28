@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { stabilizePage, installNetworkMocks, login, TEST_TEAM, RIVAL_TEAM } from "./fixtures.js";
 
 // #2917: managerprofilen havde ingen mock-handler i den DELTE mock (mockHandlers.js),

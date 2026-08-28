@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, evidenceShotPath } from "./fixtures.js";
 
 // #251 · Ønskelisten skal vise et "I auktion"-mærke for ryttere der allerede er

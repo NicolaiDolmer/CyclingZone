@@ -5,7 +5,7 @@
 // overlappende løb som kolonner + en 12-trup-pulje hvor en udtaget rytter er låst.
 // Mønster følger race-selection.spec.js: stabilizePage (sætter cz_lang=da) →
 // installNetworkMocks → spec-override (LIFO) → login → goto.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, corsHeaders } from "./fixtures.js";
 
 const ROSTER = Array.from({ length: 12 }, (_, i) => ({

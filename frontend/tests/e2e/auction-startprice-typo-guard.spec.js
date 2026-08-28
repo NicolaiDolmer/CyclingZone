@@ -4,7 +4,7 @@
 // market_value 1.680.000 — se seedData.js) og at begge veje ud af dialogen
 // virker: "Fix price" retter feltet uden at submitte, "No, intentional"
 // fortsætter den oprindelige (lave) pris uændret.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath } from "./fixtures.js";
 
 test.describe("Auction start-price typo guard (#3184)", () => {

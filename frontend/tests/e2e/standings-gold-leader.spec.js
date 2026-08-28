@@ -3,7 +3,7 @@
 // standings rows never render — this spec injects a populated division so the
 // gold-leader chip + the neutral (non-gold) "you" marker are actually exercised.
 // Guards against a regression back to "you = gold" (which made gold mean two things).
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, TEST_TEAM } from "./fixtures.js";
 
 // Six human teams in division 2 (TEST_TEAM's division). RIVAL is the leader;

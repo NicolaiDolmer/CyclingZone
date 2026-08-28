@@ -5,7 +5,7 @@
 // ryttere + 1 pending graduate), og at #2796-fladen faktisk er der: signeringspris,
 // udløbsfrist, ryttertype og sorterbare roster-kolonner.
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import {
   installNetworkMocks,
   login,

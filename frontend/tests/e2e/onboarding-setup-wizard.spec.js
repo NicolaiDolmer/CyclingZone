@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, json, login, stabilizePage, TEST_TEAM } from "./fixtures.js";
 
 // Regression for #792: hvis team-create-requesten fejler (CORS, backend nede,

@@ -5,7 +5,7 @@
 // en udløbet plan + et forslag hvor mål 0 KAN forhandles og mål 1 IKKE kan, og
 // verificerer at knappen er aktiveret for mål 0 og tydeligt deaktiveret ("Kan ikke
 // forhandles") for mål 1 — altså at hvert klik-mål altid giver feedback.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
 const EXPIRED_BOARD = {

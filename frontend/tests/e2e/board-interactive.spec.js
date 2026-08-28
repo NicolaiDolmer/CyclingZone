@@ -8,7 +8,7 @@
 //   - bonus-tilbud (lag 6) inkl. accept-flow    - auto-accept countdown
 //   - DNA-valg (sæson 2-onboarding)             - bestyrelse-feed
 // Wizard-flowet er allerede dækket af board-wizard-back/-negotiate-deadclick.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks,
   installBoardStatusMock,

@@ -12,7 +12,7 @@
 // Testen kører hele spillerens vej: forlæng en rytter der har 1 forlængelse
 // tilbage, og kræv at knappen er LÅST bagefter (og at tælleren står 3/3).
 // Uden fixet er knappen enabled her, og testen fejler.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { corsHeaders, installNetworkMocks, json, login, stabilizePage } from "./fixtures.js";
 
 const RIDER = "rider-1"; // hører til TEST_TEAM → egen-rytter-handlingerne rendres

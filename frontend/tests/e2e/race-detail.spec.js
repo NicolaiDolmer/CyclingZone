@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, evidenceShotPath } from "./fixtures.js";
 
 // #959 Etape-resultater V1 — renderer-regression for /races/:raceId.

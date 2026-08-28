@@ -3,7 +3,7 @@
 // now hides no_sale events by default (filterTransferHistoryNoSale) with a
 // toggle to reveal them. Mock data (SEED_TRANSFER_HISTORY, seedData.js) has one
 // real auction sale, one no_sale auction, and one real transfer purchase.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, collectBrowserErrors, evidenceShotPath } from "./fixtures.js";
 
 const CONSOLE_NOISE = [/WebSocket connection to .*supabase\.co.*failed/i, /ERR_NAME_NOT_RESOLVED/i];

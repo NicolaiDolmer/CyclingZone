@@ -7,7 +7,7 @@
 // at klienten selv retter rækkefølgen til dato-orden, uanset hvad API'et
 // sender. Screenshots dokumenterer default-sortering + omvendt (klik på
 // Dato-headeren igen → ældste øverst).
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks,
   login,

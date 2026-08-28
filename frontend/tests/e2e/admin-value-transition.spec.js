@@ -4,7 +4,7 @@
 // gate-måling, (3) løn-fanen viser forventet S3-løn, (4) sortérbar DataTable.
 // Backend-gaten (requireOwner) testes separat i
 // backend/routes/valueTransitionAdminRoute.test.js.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath } from "./fixtures.js";
 
 const PREVIEW_ROWS = [

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
 // #960: the reset button used to be hidden entirely until a filter was active,

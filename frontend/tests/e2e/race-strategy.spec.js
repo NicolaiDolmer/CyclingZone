@@ -4,7 +4,7 @@
 // Mocker GET /api/races/strategy (aggregat-endpointet) så fladen renderer A-kæde,
 // faste roller, kaptajn 1/2/3-board (med bucket-suitability) og mål-løb. Mønster
 // følger race-distribution.spec.js: stabilizePage → installNetworkMocks → mock → login → goto.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, corsHeaders } from "./fixtures.js";
 
 const ROSTER = Array.from({ length: 8 }, (_, i) => ({

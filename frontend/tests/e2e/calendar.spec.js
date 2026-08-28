@@ -3,7 +3,7 @@
 // uafhængigt af race-engine-flaget. Stabiliseret med DA-locale (login-fixturen).
 // #3102 etape 3 (PR 3): kalenderen er Kalender-fanen i Planlægnings-hubben
 // (/planning?tab=calendar); /calendar redirecter (dækket i race-distribution).
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
 async function gotoCalendar(page) {

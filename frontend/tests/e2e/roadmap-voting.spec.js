@@ -2,7 +2,7 @@
 // Guards: (1) items fra roadmap_items erstatter de statiske i18n-bullets,
 // (2) der gemmes FØRST når begge akser er sat (upsert på user_id,item_id),
 // (3) eksisterende stemme pre-selecter knapperne, (4) "Gemt"-kvittering vises.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks,
   login,

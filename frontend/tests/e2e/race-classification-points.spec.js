@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, evidenceShotPath } from "./fixtures.js";
 
 // #3519 — to uafhængige spillerønsker: (a) synlige point pr. waypoint på

@@ -11,7 +11,7 @@
 // Mønster: stabilizePage (sætter cz_lang=da) → installNetworkMocks → spec-
 // override (LIFO) → login → goto, samme som race-distribution.spec.js. Copyen
 // der assertes på er derfor den danske.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, corsHeaders } from "./fixtures.js";
 
 const OK_BODY = {

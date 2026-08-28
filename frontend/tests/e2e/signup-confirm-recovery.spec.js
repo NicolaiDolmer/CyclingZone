@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage, json, corsHeaders } from "./fixtures.js";
 
 // #2826 — bekræftelses-skærmen er der frafaldet sker. Målt mod prod 2026-07-25:

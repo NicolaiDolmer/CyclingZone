@@ -3,7 +3,7 @@
 // holdsiden) og bud-plads-gaten (#2701-flowet fra AuctionsPage.jsx). Begge
 // dele kunne føre til at spilleren sendte en handling serveren garanteret
 // afviste, uden at have set forklaringen først.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceShotPath } from "./fixtures.js";
 
 test.describe("Rider profile auction UX (#3786 + #3066)", () => {
