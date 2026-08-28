@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.218",
+    "date": "2026-08-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auth",
+        "en": {
+          "title": "An expired session no longer looks like a working one",
+          "body": "If the server stopped accepting your session, the tab kept looking logged in with numbers that never moved. You are now sent to the login page and told why."
+        },
+        "da": {
+          "title": "En udløbet session ligner ikke længere en der virker",
+          "body": "Hvis serveren holdt op med at acceptere din session, blev fanen stående som indlogget med tal der aldrig flyttede sig. Du bliver nu sendt til login-siden og får at vide hvorfor."
+        },
+        "refs": [4350]
+      }
+    ]
+  },
+  {
     "version": "7.216",
     "date": "2026-08-28",
     "label": "Beta",
