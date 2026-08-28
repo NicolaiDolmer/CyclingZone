@@ -4716,6 +4716,17 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
 
+    // #4306: samme gate som auto-endpointet (linje ~4891-4897) — et bevidst afmeldt
+    // hold må ikke få en manuel udtagelse skrevet ind i et løb det har trukket sig fra.
+    // Uden denne gate overlevede Race Hub-kladden et afmeld-klik og kunne stadig
+    // "Gem"'es, hvilket skrev spiller-initierede entries ind i et afmeldt løb med
+    // NULL-binding (samme fingeraftryk som #4299).
+    const { data: withdrawal, error: wErr } = await supabase
+      .from("race_withdrawals").select("race_id")
+      .eq("race_id", race.id).eq("team_id", req.team.id).maybeSingle();
+    if (wErr) return res.status(500).json({ error: wErr.message });
+    if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
+
     // #2376: free_role_ids accepteres UANSET race_engine_v3_scoring-flagets tilstand —
     // gemmes blot (harmløst; motor-ADFÆRD er v3-gated i raceSimulator.buildTeamContext,
     // ikke selection-kontrakten). UI'et skjuler valgmuligheden bag flaget, men et gem
