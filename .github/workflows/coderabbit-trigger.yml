@@ -1,0 +1,76 @@
+# CodeRabbit auto-trigger (#4361)
+#
+# HVORFOR. CodeRabbits OSS-tier auto-reviewer kun public repos med >=10 stars
+# (https://docs.coderabbit.ai/management/plans). CyclingZone har 0, saa alle PR'er siden
+# 14/8 har faaet "This repository does not receive automatic reviews..." i stedet for et
+# review — 292 PR'er merget urevideret, uden fallback siden Claude-auto-review blev
+# pensioneret (#1870). MANUEL trigger virker derimod fuldt ud: verificeret paa #4316 (28/8),
+# hvor `@coderabbitai review` gav 6 line-level findings, walkthrough og pre-merge checks paa
+# ~8 minutter. Dette workflow trykker paa den knap automatisk.
+#
+# RATE LIMIT ER DEN STYRENDE BEGRAENSNING. OSS under 10 stars faar ~1 review/time. Filtrene
+# nedenfor er derfor ikke pynt — uden dem fortraenger dependabot-boelger og docs-commits de
+# kode-PR'er der faktisk skal ses paa. Naar repoet naar 10 stars haeves loftet til op mod
+# 10/time og filtrene kan loesnes.
+#
+# ADVISORY, ALDRIG BLOKERENDE. Samme princip som .coderabbit.yaml: de haarde merge-gates er
+# de deterministiske CI-checks. Dette workflow poster en kommentar og skal ALDRIG faa en PR
+# til at fejle — derfor `continue-on-error` paa selve trigger-steppet.
+#
+# Refs #4361 #1870 #4316
+name: CodeRabbit auto-trigger
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+    branches: [main]
+    # Docs-only diffs braender en review/time uden at give noget igen. Bemaerk at
+    # paths-ignore kun springer over naar ALLE aendrede filer matcher — en PR der roerer
+    # baade docs og kode trigger stadig.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".claude/learnings/**"
+      - ".claude/audits/**"
+
+# Mindste privilegium: skal kunne skrive EN kommentar, intet andet.
+permissions:
+  pull-requests: write
+
+# En PR der aabnes og hurtigt markeres ready kan fyre to gange; annuller den foerste.
+concurrency:
+  group: coderabbit-trigger-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    # Dependabot: auto-merges allerede via dependabot-auto-merge.yml, saa et review naar
+    # aldrig at blive laest — og 5 af 8 aabne PR'er var dependabot da dette blev skrevet.
+    # Drafts: matcher .coderabbit.yaml's egen auto_review.drafts: false. `ready_for_review`
+    # daekker overgangen draft -> klar, saa ingen PR falder mellem de to.
+    if: >-
+      github.event.pull_request.draft == false
+      && github.actor != 'dependabot[bot]'
+      && github.event.pull_request.user.login != 'dependabot[bot]'
+    steps:
+      - name: Ask CodeRabbit to review
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # Idempotens: `ready_for_review` kan ramme en PR der allerede er trigget (aabnet
+          # som ikke-draft, sat til draft, sat tilbage). En ekstra trigger er harmloes for
+          # CodeRabbit (den re-reviewer ikke allerede reviewede commits), men den braender
+          # en plads i rate limitet, saa spring over hvis vi allerede har spurgt.
+          if gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" \
+               --json comments --jq '.comments[].body' \
+             | grep -qF '@coderabbitai review'; then
+            echo "Allerede trigget paa #$PR_NUMBER — springer over."
+            exit 0
+          fi
+
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body '@coderabbitai review'
+          echo "CodeRabbit-review trigget paa #$PR_NUMBER."
