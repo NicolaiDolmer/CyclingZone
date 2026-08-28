@@ -28,6 +28,24 @@ export function selectionSizeForRace(race) {
   return SELECTION_SIZE[race?.race_class] || SELECTION_SIZE.default;
 }
 
+// #4295 (ejer-beslutning 27/8): et hold skal have MINDST 6 udtagne ryttere for at
+// stille op i et løb. Fladt gulv — tallet er UAFHÆNGIGT af SELECTION_SIZE ovenfor,
+// som varierer pr. klasse. For Class1/Class2/ProSeries falder gulv og feltstørrelse
+// sammen (6/6); for WorldTour + Monumenter (7) og Grand Tours (8) ligger gulvet
+// LAVERE end feltet, så en trup på 6 til en Grand Tour er lovlig og starter.
+//
+// Gulvet ligger på DELTAGELSEN, ikke på Gem-knappen: validateSelection afviser stadig
+// kun for-mange (> sizeRule.max) og manglende kaptajn, så en manager frit kan gemme
+// 3 ryttere. Konsekvensen indtræder ved afvikling (loadEntrantsForRace) — er holdet
+// stadig under gulvet når løbet køres, er det ikke i startfeltet. Sen-redningen i
+// raceRunner.fillMissingTeamEntries fylder først op til netop dette tal.
+//
+// FORVEKSL IKKE med marketUtils.MIN_RIDERS_FOR_RACE (8). Det er transfer-markedets
+// TRUP-gulv (du må ikke sælge dig under 8 ryttere i truppen); dette er antallet af
+// ryttere der skal stå på startlisten til ét løb. To forskellige tal, to lag.
+// SSOT-prosa: docs/CALENDAR_RULES.md §8.
+export const MIN_RACE_ENTRIES = 6;
+
 const AUTOPICK_FATIGUE_DAMPING = 0.3; // træthed 100 → egnethed × 0.7
 
 export function suitabilityScore(abilities, stages) {

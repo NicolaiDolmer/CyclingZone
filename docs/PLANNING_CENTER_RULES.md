@@ -119,7 +119,7 @@ Byg aldrig disse om. Verificeret mod koden 25/8.
 | 2 | To gemme-modeller: boardet skriver straks, matrixen ved Gem — men spec'en siger "ét sted at gemme" | denne fil §1 |
 | 3 | Tre indgange til auto-udfyld; #4201 kan gøre alle tre forkerte | [#4201](https://github.com/NicolaiDolmer/CyclingZone/issues/4201) |
 | 4 | `?view=`-parameteren slettes af `SeasonView.jsx:202` og sættes aldrig, selvom regel 6 kræver den | [#1146](https://github.com/NicolaiDolmer/CyclingZone/issues/1146) |
-| 5 | Trupgrænser pr. klasse er ikke skrevet ned noget sted — de findes kun i kode | denne fil |
+| 5 | ~~Trupgrænser pr. klasse er ikke skrevet ned noget sted~~ **Lukket** 27/8: de står i [`CALENDAR_RULES.md` §8](CALENDAR_RULES.md) (tilføjet 24/8 i #4176), som nu også dokumenterer default-fallbacken `{6,8}`, at en delvis trup er lovlig at gemme, og gulvet på 6 udtagne for at stille op | [#4295](https://github.com/NicolaiDolmer/CyclingZone/issues/4295) |
 
 Modsigelse 1 (`raceDays` bar etapetal) er lukket af [#4245](https://github.com/NicolaiDolmer/CyclingZone/issues/4245). Nummereringen står urørt, så henvisninger til modsigelse 2-5 andre steder stadig peger rigtigt.
 

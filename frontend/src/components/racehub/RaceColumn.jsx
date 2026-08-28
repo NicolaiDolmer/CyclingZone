@@ -4,7 +4,8 @@
 // vises read-only. Afmeld/deltag i footeren.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { computeColumnStatus, freshnessTier, raceDateRangeLabel, raceGameDayLabel } from "../../lib/raceHubLogic.js";
+import { computeColumnStatus, freshnessTier, raceDateRangeLabel, raceGameDayLabel, freeRiderCountForColumn } from "../../lib/raceHubLogic.js";
+import { partialSquadOutlook } from "../../lib/raceSelectionLogic.js";
 import RaceDayOverlapRow from "./RaceDayOverlapRow.jsx";
 import { terrainBucket } from "../../lib/stageTerrain.js";
 import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
@@ -37,7 +38,7 @@ function RoleBadge({ t, role }) {
 // #2819: dataTour sættes kun på brættets FØRSTE kolonne, så onboarding-touren
 // på /races har et stabilt anker at pege på (samme "kun første række"-mønster som
 // AuctionsPage's data-tour="auctions-bid-input").
-export default function RaceColumn({ column, onRemoveRider, onClearSelection, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false, paybackFormPoints = null, dataTour, boardState = null, overlaps = [], clashes = [], onFocusRace, flash = false }) {
+export default function RaceColumn({ column, onRemoveRider, onClearSelection, onToggleWithdraw, onSetRole, busy, onDropRider, raceV3Enabled = false, paybackFormPoints = null, dataTour, boardState = null, roster = [], bindingMap = null, overlaps = [], clashes = [], onFocusRace, flash = false }) {
   const { t, i18n } = useTranslation("races");
   const [roleMenuFor, setRoleMenuFor] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: kolonne-drop-zone
@@ -100,6 +101,18 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   const statusLabel = status.kind === "locked"
     ? t("racehub.status.locked")
     : t(`racehub.status.${status.kind}`, { selected: status.selected, target: status.target });
+  // #4295: gulvet (6 udtagne for at stille op) skal stå HER og ikke kun i løbssidens panel
+  // — brættet er hvor dagens udtagelse faktisk foregår. Samme rene regel som panelet
+  // (partialSquadOutlook), så de to flader ikke kan sige hver sit om samme løb. Kun
+  // konsekvensen vises her; "assistenten fylder pladserne" er allerede dækket af
+  // status-chippens tal, og kolonnen er for smal til begge.
+  const outlook = column.withdrawn ? null : partialSquadOutlook({
+    selected: selectedIds.length,
+    free: freeRiderCountForColumn({ column, roster, bindingMap }),
+    fieldMax: column.size?.max,
+    raceLive: locked,
+  });
+  const willNotStart = outlook?.kind === "willNotStart" ? outlook : null;
 
   // #1925: kolonnen er en drop-zone — slip en rytter her for at tilføje/flytte ham hertil.
   // Frosne/afmeldte løb tager ikke imod drops (forælderen validerer også via dropAction).
@@ -147,6 +160,13 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
         <span className={`inline-block mt-2 text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border ${STATUS_CLASS[status.kind]}`}>
           {statusLabel}
         </span>
+        {/* Konsekvens, ikke fejl: text-cz-warning som "mangler ryttere"-chippen, aldrig
+            text-cz-danger — en delvis trup er stadig lovlig at gemme. */}
+        {willNotStart && (
+          <p data-testid="column-will-not-start" className="mt-1.5 text-3xs text-cz-warning">
+            {t("selection.willNotStartShort", willNotStart)}
+          </p>
+        )}
         {/* #3102 PR 2: peaks/payback fra formplanen, synligt hvor udtagelsen sker. */}
         {peakNames.length > 0 && (
           <p className="mt-1.5 flex items-start gap-1 text-3xs text-cz-accent-t">

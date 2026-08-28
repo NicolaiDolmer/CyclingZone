@@ -4762,7 +4762,6 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
       injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
       sizeRule: ctx.size,
-      availableCount: ctx.availableCount,
     });
     if (!result.ok) return res.status(400).json({ error: result.errors[0], errors: result.errors });
 

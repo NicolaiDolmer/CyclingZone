@@ -1152,7 +1152,7 @@
       "label": "Holdudtagelse",
       "what": {
         "title": "Udtag din løbstrup",
-        "text": "Hvert løb kræver en komplet opstilling: den fulde feltstørrelse for løbets klasse (6 i de fleste løb, 7 i de større World Tour-løb og Monumenter, 8 i Grand Tours). Gå til løbssiden og brug panelet Holdudtagelse. Du kan ikke gemme en delvis trup. Vil du stå over et løb, så afmeld dig det; mangler du raske ryttere, så hent fri-agenter til at fylde pladserne. Vælger du ikke selv, fylder din assistent automatisk en fuld opstilling fra dine tilgængelige ryttere, så du aldrig misser et løb."
+        "text": "Hvert løb har en feltstørrelse bestemt af sin klasse: 6 i de fleste løb, 7 i de større World Tour-løb og Monumenter, 8 i Grand Tours. Gå til løbssiden og brug panelet Holdudtagelse. Du kan gemme færre ryttere end feltet rummer, og Gem bliver aldrig blokeret. Men dit hold skal have mindst 6 ryttere i opstillingen for at stille op, i alle løb, uanset feltstørrelsen. Er I færre end 6, stiller holdet ikke op, og så får I hverken resultat eller løbsdags-indtægt fra det. Lader du et løb stå tomt eller under 6, fylder din assistent op til 6 ved løbstid med de ryttere du har frie, og den springer løb over som du har afmeldt dig fra eller ryddet med vilje. Panelet fortæller dig, før du forlader siden, om dit hold stiller op. Vil du stå over et løb, så afmeld dig det; vil du have flere ryttere at vælge imellem, så hent fri-agenter."
       },
       "seasonOverview": {
         "title": "Sæson-visningen på planlægnings-boardet",

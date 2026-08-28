@@ -1152,7 +1152,7 @@
       "label": "Team selection",
       "what": {
         "title": "Picking your race squad",
-        "text": "Every race needs a complete lineup: the full field size for its class (6 in most races, 7 in the bigger World Tour races and Monuments, 8 in Grand Tours). Open the race page and use the Team selection panel. You can't save a partial squad. To sit a race out, withdraw from it; if you're short on healthy riders, sign free agents to fill the gaps. If you don't pick, your assistant auto-fills a full lineup from your available riders, so you never miss a race."
+        "text": "Each race has a field size set by its class: 6 in most races, 7 in the bigger World Tour races and Monuments, 8 in Grand Tours. Open the race page and use the Team selection panel. You can save fewer riders than the field holds, and saving is never blocked. But your team needs at least 6 riders in the line-up to start the race, in every race, whatever the field size. Fewer than 6 and your team does not start, so no result and no race day earnings from it. If you leave a race empty or below 6, your assistant fills it up to 6 at race time from the riders you have free, and it skips races you have withdrawn from or cleared on purpose. The panel tells you before you leave the page whether your team will start. To sit a race out, withdraw from it; if you want more riders to choose from, sign free agents."
       },
       "seasonOverview": {
         "title": "Season view on the planning board",

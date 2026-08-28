@@ -686,6 +686,7 @@ export default function RaceHubBoard() {
                   <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
                     onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
                     raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
+                    roster={roster} bindingMap={liveBindingMap}
                     overlaps={overlapsByColumn.get(c.id)?.overlaps ?? []} clashes={overlapsByColumn.get(c.id)?.clashes ?? []}
                     onFocusRace={focusRace} flash={flashRaceId === c.id}
                     dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />

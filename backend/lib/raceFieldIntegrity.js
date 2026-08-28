@@ -11,6 +11,7 @@
 //   ryttere (142 dobbeltbookinger 25/6). excludeBoundRiders genbruger raceBinding-kernen.
 
 import { findRiderBindingConflicts } from "./raceBinding.js";
+import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 
 /**
  * Lås et etapeløbs felt til start-feltet (etape-1-snapshot). Ryttere der IKKE var med
@@ -73,4 +74,46 @@ export function filterEntriesToRaceDivision({ entries = [], teamDivisionById = n
     if (!teamDivisionById.has(e.team_id)) return true; // ukendt division → behold (konservativt)
     return teamDivisionById.get(e.team_id) === raceDivisionId;
   });
+}
+
+/**
+ * #4295 (ejer-beslutning 27/8): et hold skal have MINDST `minEntries` (6) ryttere på
+ * startlisten for at stille op. Ligger det under, starter det ikke — som et hold der
+ * har afmeldt sig eller ryddet sin trup: det har simpelthen ingen ryttere i feltet.
+ * Det er den eksisterende "starter ikke"-mekanik i motoren (et hold uden entries er
+ * ikke i feltet), ikke en ny tilstand, så resultater/point/klassementer behøver intet
+ * nyt begreb — holdet optræder bare ikke.
+ *
+ * Gulvet er FLADT og uafhængigt af feltstørrelsen pr. klasse (raceAutopick.SELECTION_SIZE):
+ * 6 i alle løb, også dem hvor feltet er 7 eller 8.
+ *
+ * Delvist hold = hele holdet ud. Et hold med 4 ryttere skal ikke køre med 4 — det er
+ * netop den mellemting beslutningen fjerner.
+ *
+ * Kaldes FØRST efter at sen-redningen (fillMissingTeamEntries) har haft sin chance for
+ * at fylde op til gulvet, og KUN ved løbets start (loadEntrantsForRace's allowAutofill).
+ * Et igangværende etapeløb må aldrig miste et hold der faktisk startede, fordi en rytter
+ * bliver skadet undervejs.
+ *
+ * @param {{ entries: Array<{team_id:string, rider_id:string}>, minEntries?: number }} args
+ * @returns {{ kept: object[], droppedTeamIds: string[] }}
+ *   kept           = entries fra hold der har mindst minEntries ryttere
+ *   droppedTeamIds = team_id for hold der ikke stiller op (stabil rækkefølge: første forekomst)
+ */
+export function filterTeamsBelowMinimumEntries({ entries = [], minEntries = MIN_RACE_ENTRIES }) {
+  if (!entries.length || !Number.isFinite(minEntries) || minEntries <= 0) {
+    return { kept: entries, droppedTeamIds: [] };
+  }
+  // Tæl UNIKKE ryttere pr. hold: en dublet-række må ikke kunne løfte et hold over gulvet.
+  const ridersByTeam = new Map();
+  for (const e of entries) {
+    if (!ridersByTeam.has(e.team_id)) ridersByTeam.set(e.team_id, new Set());
+    ridersByTeam.get(e.team_id).add(e.rider_id);
+  }
+  const droppedTeamIds = [...ridersByTeam.entries()]
+    .filter(([, riderIds]) => riderIds.size < minEntries)
+    .map(([teamId]) => teamId);
+  if (!droppedTeamIds.length) return { kept: entries, droppedTeamIds: [] };
+  const droppedSet = new Set(droppedTeamIds);
+  return { kept: entries.filter((e) => !droppedSet.has(e.team_id)), droppedTeamIds };
 }
