@@ -19,7 +19,7 @@ import {
   ROLE_LETTER, buildDraftsFromEntries, roleOf, dirtyRaceIds, roleBadgeClass,
   buildDayColumns, buildDateBands, buildRaceHeaderGroups, buildRiderRowSegments, countProblems,
   raceCurrentCount, riderLoadDays, emptyRaceDraft, raceForDay, selectableRacesForDay,
-  setRiderRole, removeRiderFromRace,
+  setRiderRole, removeRiderFromRace, conflictingEntryForRace,
 } from "../../lib/seasonMatrix.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -442,6 +442,10 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
           const race = raceById.get(popover.raceId);
           if (!race) return null;
           const currentRole = roleOf(draftByRace.get(race.id), rider.id);
+          // Fixed celle = rytterens EGET løb — samme løb er altid lovligt
+          // (rolle-skift), ingen konflikt mulig her (conflictingEntryForRace
+          // udelader eksplicit `race` selv). blocked-guarden kaldes alligevel,
+          // så onSelectRole altid går gennem samme kode-sti som empty-cellen.
           return (
             <SeasonMatrixCellPopover
               anchorEl={popoverAnchor}
@@ -451,13 +455,21 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
               fixed
               currentRole={currentRole}
               lockedReasonText={readOnly ? t("seasonView.readOnlyHint") : null}
-              onSelectRole={(raceId, role) => { setRaceDraft(raceId, (d) => setRiderRole(d, rider.id, role)); closeCellPopover(); }}
+              onSelectRole={(raceId, role) => {
+                const conflict = conflictingEntryForRace(rider.id, raceById.get(raceId), races, draftByRace);
+                setRaceDraft(raceId, (d) => setRiderRole(d, rider.id, role, !!conflict));
+                closeCellPopover();
+              }}
               onRemove={(raceId) => { setRaceDraft(raceId, (d) => removeRiderFromRace(d, rider.id)); closeCellPopover(); }}
             />
           );
         }
         const candidates = selectableRacesForDay(races, popover.day);
         if (!candidates.length) return null;
+        // Refutations-fund #4323 (27/8): et kandidatløb hvis spænd overlapper
+        // rytterens EKSISTERENDE udtagelse et andet sted skal vises låst med
+        // navngivet årsag i stedet for tavst at kunne vælges (kontrakt #6).
+        const conflictsByRaceId = new Map(candidates.map((c) => [c.id, conflictingEntryForRace(rider.id, c, races, draftByRace)]));
         return (
           <SeasonMatrixCellPopover
             anchorEl={popoverAnchor}
@@ -467,7 +479,12 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             fixed={false}
             currentRole={null}
             lockedReasonText={readOnly ? t("seasonView.readOnlyHint") : null}
-            onSelectRole={(raceId, role) => { setRaceDraft(raceId, (d) => setRiderRole(d, rider.id, role)); closeCellPopover(); }}
+            conflictsByRaceId={conflictsByRaceId}
+            onSelectRole={(raceId, role) => {
+              const conflict = conflictingEntryForRace(rider.id, raceById.get(raceId), races, draftByRace);
+              setRaceDraft(raceId, (d) => setRiderRole(d, rider.id, role, !!conflict));
+              closeCellPopover();
+            }}
             onRemove={undefined}
           />
         );

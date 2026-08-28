@@ -20,6 +20,11 @@
 //    med mere end ét dækkende løb), de fem roller (ROLE_ORDER), fjern-fra-løb
 //    og rute-match. Kun geometrien/kladde-logikken bor her — popoverens IO/UI
 //    bor i komponentfilen.
+// 6. Et løb i løbsvælgeren der overlapper rytterens EKSISTERENDE udtagelse et
+//    andet sted (conflictingEntryForRace) vises LÅST med navngivet årsag —
+//    refutations-fund #4323 (27/8): selectableRacesForDay filtrerer kun på
+//    dagens dækning, ikke på om rytteren allerede sidder i et overlappende
+//    løb. setRiderRole har en `blocked`-guard som sidste forsvarslinje.
 
 // Rollerækkefølgen i celle-popoverens rollevælger (#4323, ejer-beslutning
 // 27/8 — erstatter den blinde klik-cyklus, som forvirrede ejeren: klik åbnede
@@ -84,9 +89,18 @@ function clearRole(draft, riderId) {
  * nedgradering som cyklussen havde: overtager rytteren en besat eksklusiv
  * rolle (captain/sprint_captain/hunter), degraderes den forrige indehaver til
  * helper i stedet for at forsvinde fra truppen.
+ *
+ * `blocked` (defense-in-depth, refutations-fund #4323 27/8 — se
+ * conflictingEntryForRace nedenfor): kaldes rollesætningen alligevel for et
+ * løb der overlapper rytterens eksisterende udtagelse et andet sted, er
+ * kaldet et NO-OP — draften returneres uændret. Popoveren tjekker allerede
+ * FØR den kalder herind (UI-låsen), men denne guard er den sidste linje hvis
+ * en fremtidig kode-sti springer den tjek over.
  */
-export function setRiderRole(draft, riderId, role) {
-  let next = clearRole(draft || emptyRaceDraft(), riderId);
+export function setRiderRole(draft, riderId, role, blocked = false) {
+  const base = draft || emptyRaceDraft();
+  if (blocked) return base;
+  let next = clearRole(base, riderId);
   if (!next.rider_ids.includes(riderId)) next = { ...next, rider_ids: [...next.rider_ids, riderId] };
   if (role === "captain") { if (next.captain_id) next = clearRole(next, next.captain_id); next.captain_id = riderId; }
   else if (role === "sprint_captain") { if (next.sprint_captain_id) next = clearRole(next, next.sprint_captain_id); next.sprint_captain_id = riderId; }
@@ -114,6 +128,32 @@ export function selectableRacesForDay(races, day) {
   return (races || []).filter(
     (r) => Number.isFinite(r.gameDayStart) && Number.isFinite(r.gameDayEnd) && day >= r.gameDayStart && day <= r.gameDayEnd
   );
+}
+
+/**
+ * Rytterens eksisterende kladde-udtagelse i et ANDET løb, hvis dets game_day-
+ * spænd overlapper `race`s spænd — refutations-fund #4323 (27/8, reproduceret
+ * empirisk): selectableRacesForDay ovenfor tilbød et løb som "valgbart" uden
+ * at tjekke om rytteren allerede sad i et overlappende løb et andet sted
+ * (GT dag 1-10 + endagsløb dag 5 — rytteren endte i BEGGE, tavst, og først
+ * serverens deferred constraint stoppede det ved gem). Samme spænd-overlap
+ * som countProblems' peerConflicts (fulde spænd, ikke kun den viste dag —
+ * DB-constraint no_rider_double_booking_day er spænd-baseret: dækker to løbs
+ * spænd samme dag NOGET sted, kan rytteren ikke sidde i begge). Samme løb er
+ * ALTID lovligt (rolle-skift) og udelades derfor eksplicit. Returnerer det
+ * konfliktende races[]-objekt (har .name til popoverens årsagstekst) eller
+ * null.
+ */
+export function conflictingEntryForRace(riderId, race, races, draftByRace) {
+  if (!race || !Number.isFinite(race.gameDayStart) || !Number.isFinite(race.gameDayEnd)) return null;
+  for (const other of races || []) {
+    if (other.id === race.id) continue;
+    if (!Number.isFinite(other.gameDayStart) || !Number.isFinite(other.gameDayEnd)) continue;
+    if (roleOf(draftByRace.get(other.id), riderId) == null) continue;
+    const overlap = race.gameDayStart <= other.gameDayEnd && other.gameDayStart <= race.gameDayEnd;
+    if (overlap) return other;
+  }
+  return null;
 }
 
 /**

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   emptyRaceDraft, buildDraftsFromEntries, roleOf, setRiderRole, removeRiderFromRace, raceDraftDirty, dirtyRaceIds,
   buildDayColumns, buildDateBands, buildRiderRowSegments, raceForDay, countProblems,
-  buildRaceHeaderGroups, riderLoadDays, selectableRacesForDay, roleBadgeClass,
+  buildRaceHeaderGroups, riderLoadDays, selectableRacesForDay, roleBadgeClass, conflictingEntryForRace,
 } from "./seasonMatrix.js";
 
 test("buildDraftsFromEntries: grupperer entries pr. løb og udleder rolle-felter", () => {
@@ -68,6 +68,61 @@ test("selectableRacesForDay: alle løb hvis spænd dækker dagen, ikke kun det f
   assert.deepEqual(selectableRacesForDay(races, 3).map((r) => r.id), ["gt", "oneDay"]);
   assert.deepEqual(selectableRacesForDay(races, 1).map((r) => r.id), ["gt"]);
   assert.deepEqual(selectableRacesForDay(races, 9), []);
+});
+
+test("conflictingEntryForRace (refutations-fund #4323, 27/8): finder løbet rytteren allerede sidder i, naar dets spaend overlapper kandidatloebets — repro fra fundet (GT dag 1-10 + endagsloeb dag 5)", () => {
+  const races = [
+    { id: "r_A", name: "GT", gameDayStart: 1, gameDayEnd: 10 },
+    { id: "r_B", name: "Endagsloeb", gameDayStart: 5, gameDayEnd: 5 },
+  ];
+  // Rytteren er allerede captain i r_B (dag 5) — r_A's spaend (1-10) daekker
+  // dag 5, saa r_A skal vises som konflikt naar rytteren proever at vaelge den.
+  const draftByRace = new Map([
+    ["r_A", emptyRaceDraft()],
+    ["r_B", { ...emptyRaceDraft(), rider_ids: ["rider1"], captain_id: "rider1" }],
+  ]);
+  const conflict = conflictingEntryForRace("rider1", races[0], races, draftByRace);
+  assert.equal(conflict?.id, "r_B");
+  assert.equal(conflict?.name, "Endagsloeb");
+});
+
+test("conflictingEntryForRace: ikke-overlappende loeb giver ingen konflikt", () => {
+  const races = [
+    { id: "r1", name: "Loeb 1", gameDayStart: 1, gameDayEnd: 3 },
+    { id: "r2", name: "Loeb 2", gameDayStart: 4, gameDayEnd: 6 },
+  ];
+  const draftByRace = new Map([
+    ["r1", emptyRaceDraft()],
+    ["r2", { ...emptyRaceDraft(), rider_ids: ["rider1"], captain_id: "rider1" }],
+  ]);
+  assert.equal(conflictingEntryForRace("rider1", races[0], races, draftByRace), null);
+});
+
+test("conflictingEntryForRace: samme loeb er ALDRIG en konflikt (rolle-skift er lovligt)", () => {
+  const races = [{ id: "r1", name: "Loeb 1", gameDayStart: 1, gameDayEnd: 3 }];
+  const draftByRace = new Map([["r1", { ...emptyRaceDraft(), rider_ids: ["rider1"], captain_id: "rider1" }]]);
+  assert.equal(conflictingEntryForRace("rider1", races[0], races, draftByRace), null);
+});
+
+test("conflictingEntryForRace: rytteren har ingen anden udtagelse -> ingen konflikt", () => {
+  const races = [
+    { id: "r1", name: "Loeb 1", gameDayStart: 1, gameDayEnd: 3 },
+    { id: "r2", name: "Loeb 2", gameDayStart: 2, gameDayEnd: 4 },
+  ];
+  const draftByRace = new Map([["r1", emptyRaceDraft()], ["r2", emptyRaceDraft()]]);
+  assert.equal(conflictingEntryForRace("rider1", races[0], races, draftByRace), null);
+});
+
+test("setRiderRole: blocked-guarden (defense-in-depth, #4323) er et no-op — draften returneres uaendret", () => {
+  const d = emptyRaceDraft();
+  const result = setRiderRole(d, "rider1", "captain", true);
+  assert.equal(result, d, "blocked skal returnere PRAECIS samme draft-reference, ingen mutation");
+  assert.equal(roleOf(result, "rider1"), null);
+});
+
+test("setRiderRole: blocked=false (default) opfoerer sig som foer — ingen regression", () => {
+  const d = setRiderRole(emptyRaceDraft(), "rider1", "captain", false);
+  assert.equal(roleOf(d, "rider1"), "captain");
 });
 
 test("roleBadgeClass: kaptajn/sprint-kaptajn faar gold-tint, resten neutral", () => {

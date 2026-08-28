@@ -147,6 +147,23 @@ test.describe("Sæsonmatrix (#1146)", () => {
     // Rytteren sidder nu i Ocean Road Classic, ikke i GT'en, på dag 15.
     await expect(page.getByTitle(/Bo Madsen, Ocean Road Classic: Kaptajn/)).toHaveCount(1);
     await expect(page.getByTitle(/Bo Madsen, Tour des Hauts Plateaux: ikke udtaget/)).toHaveCount(3);
+
+    // Refutations-fund (#4323, 27/8, reproduceret empirisk): Bo sidder nu i
+    // Ocean Road Classic (dag 15), hvis spænd overlapper GT'ens spænd
+    // (dag 14-17). Åbner man en ANDEN tom GT-celle (dag 14), skal GT'en vises
+    // LÅST med navngivet årsag — IKKE tilbydes tavst, som den gamle bug gjorde
+    // (rytteren endte i BEGGE løb med overlap, opdaget først af serverens
+    // deferred constraint ved gem).
+    const gtDay14Cell = page.getByTitle(/Bo Madsen, Tour des Hauts Plateaux: ikke udtaget/).first();
+    await gtDay14Cell.click();
+    const lockedPopover = page.getByRole("dialog");
+    await expect(lockedPopover).toBeVisible();
+    await expect(lockedPopover.getByText("Ocean Road Classic")).toBeVisible();
+    await expect(lockedPopover.getByRole("listbox", { name: "Rolle" })).toHaveCount(0);
+
+    // Låst betyder låst: intet klik i den låste popover må ændre kladden.
+    await expect(page.getByRole("button", { name: "Gem plan" })).toBeVisible();
+    await expect(page.getByTitle(/Bo Madsen, Tour des Hauts Plateaux: ikke udtaget/)).toHaveCount(3);
   });
 
   test("mobil 375px: vandret scroll + sticky rytter-kolonne, dag-kolonne-headeren har et tap-mål ≥24px", async ({ page }, testInfo) => {

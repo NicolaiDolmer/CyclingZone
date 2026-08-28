@@ -86,7 +86,8 @@
     "cellPopover": {
       "raceChoice": "Hvilket løb",
       "roleChoice": "Rolle",
-      "remove": "Fjern fra løbet"
+      "remove": "Fjern fra løbet",
+      "raceLocked": "Kører {race} de dage"
     }
   },
   "racehub": {

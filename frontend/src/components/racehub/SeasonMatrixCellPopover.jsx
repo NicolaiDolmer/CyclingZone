@@ -13,6 +13,13 @@
 // tekst som SeasonView's read-only-banner (seasonView.readOnlyHint) — der
 // findes ingen anden "hvorfor er cellen låst"-tekst i dag (ingen per-celle
 // hviledag/binding-årsag i /races/selection/season-payloaden endnu).
+//
+// Låst KANDIDAT-løb (refutations-fund #4323, 27/8 — reproduceret empirisk):
+// et løb i løbsvælgeren hvis spænd overlapper rytterens eksisterende
+// udtagelse et andet sted (conflictingEntryForRace, seasonMatrix.js) vises
+// låst med navngivet årsag (matrix.cellPopover.raceLocked) i stedet for at
+// kunne vælges tavst — den gamle bug lod rytteren ende i to overlappende løb
+// på én gang, opdaget først af serverens deferred constraint ved gem.
 import { useCallback, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -25,8 +32,11 @@ import FitBar from "./FitBar.jsx";
 const GAP = 6;
 const PANEL_WIDTH = 240;
 
+const NO_CONFLICTS = new Map();
+
 export default function SeasonMatrixCellPopover({
   anchorEl, onClose, rider, candidates, fixed, currentRole, lockedReasonText, onSelectRole, onRemove,
+  conflictsByRaceId = NO_CONFLICTS,
 }) {
   const { t } = useTranslation("races");
   const [chosenRaceId, setChosenRaceId] = useState(candidates[0]?.id ?? null);
@@ -84,7 +94,13 @@ export default function SeasonMatrixCellPopover({
       ? t("matrix.cellFilledAria", { rider: rider.name, race: race.name, role: t(`tacticsOrders.roleLabel.${currentRole}`) })
       : t("matrix.cellEmptyAria", { rider: rider.name, race: race.name });
 
-  const fit = race?.demandVector && rider.abilities ? riderSuitability(rider.abilities, race.demandVector).score : null;
+  // Refutations-fund #4323 (27/8): det VALGTE løb kan selv være låst (dets
+  // spænd overlapper rytterens eksisterende udtagelse et andet sted) — da
+  // vises årsagen i stedet for rollevalget, uanset om der var ét eller flere
+  // kandidatløb at vælge imellem (kontrakt #6, conflictingEntryForRace).
+  const conflict = !fixed ? conflictsByRaceId.get(race?.id) ?? null : null;
+
+  const fit = !conflict && race?.demandVector && rider.abilities ? riderSuitability(rider.abilities, race.demandVector).score : null;
 
   return createPortal(
     <div
@@ -118,45 +134,76 @@ export default function SeasonMatrixCellPopover({
               vælger, kun løbsnavnet i headeren ovenfor. */}
           {!fixed && candidates.length > 1 && (
             <div role="listbox" aria-label={t("matrix.cellPopover.raceChoice")} className="mb-2 flex flex-col gap-1">
-              {candidates.map((c) => (
+              {candidates.map((c) => {
+                const cConflict = conflictsByRaceId.get(c.id);
+                if (cConflict) {
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      role="option"
+                      aria-selected={false}
+                      disabled
+                      title={t("matrix.cellPopover.raceLocked", { race: cConflict.name })}
+                      className="w-full cursor-not-allowed rounded-cz border border-transparent px-2 py-1 text-left text-cz-3 opacity-60"
+                    >
+                      <span className="flex items-center gap-1.5 truncate text-xs">
+                        <LockIcon size={11} className="shrink-0" aria-hidden="true" />
+                        <span className="truncate">{c.name}</span>
+                      </span>
+                      <span className="block truncate pl-[18px] text-3xs">{t("matrix.cellPopover.raceLocked", { race: cConflict.name })}</span>
+                    </button>
+                  );
+                }
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    role="option"
+                    aria-selected={c.id === race.id}
+                    onClick={() => setChosenRaceId(c.id)}
+                    className={`w-full truncate rounded-cz border px-2 py-1 text-left text-xs transition-colors ${
+                      c.id === race.id ? "border-cz-accent bg-cz-accent/10 text-cz-1" : "border-transparent text-cz-2 hover:bg-cz-subtle"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Det VALGTE løb er selv låst (kontrakt #6) — vis årsagen i stedet
+              for rollevalget; der er intet lovligt rollevalg at tilbyde. */}
+          {conflict ? (
+            <p className="flex items-start gap-1.5 rounded-cz bg-cz-subtle px-2 py-1.5 text-xs text-cz-3">
+              <LockIcon size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{t("matrix.cellPopover.raceLocked", { race: conflict.name })}</span>
+            </p>
+          ) : (
+            /* De fem roller, fulde navne (kontrakt 2b) — genbruger de eksisterende
+               tacticsOrders.roleLabel-i18n-nøgler, ikke nye ord. */
+            <div role="listbox" aria-label={t("matrix.cellPopover.roleChoice")} className="flex flex-col gap-1">
+              {ROLE_ORDER.map((role) => (
                 <button
-                  key={c.id}
+                  key={role}
                   type="button"
                   role="option"
-                  aria-selected={c.id === race.id}
-                  onClick={() => setChosenRaceId(c.id)}
-                  className={`w-full truncate rounded-cz border px-2 py-1 text-left text-xs transition-colors ${
-                    c.id === race.id ? "border-cz-accent bg-cz-accent/10 text-cz-1" : "border-transparent text-cz-2 hover:bg-cz-subtle"
+                  aria-selected={role === currentRole}
+                  onClick={() => onSelectRole(race.id, role)}
+                  className={`flex w-full items-center gap-2 rounded-cz border px-2 py-1.5 text-left transition-colors ${
+                    role === currentRole ? "border-cz-accent bg-cz-accent/10" : "border-transparent hover:bg-cz-subtle"
                   }`}
                 >
-                  {c.name}
+                  <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-3xs font-semibold ${roleBadgeClass(role)}`}>
+                    {ROLE_LETTER[role]}
+                  </span>
+                  <span className="flex-1 text-xs text-cz-1">{t(`tacticsOrders.roleLabel.${role}`)}</span>
+                  {role === currentRole && <CheckIcon size={13} className="shrink-0 text-cz-accent-t" aria-hidden="true" />}
                 </button>
               ))}
             </div>
           )}
-
-          {/* De fem roller, fulde navne (kontrakt 2b) — genbruger de eksisterende
-              tacticsOrders.roleLabel-i18n-nøgler, ikke nye ord. */}
-          <div role="listbox" aria-label={t("matrix.cellPopover.roleChoice")} className="flex flex-col gap-1">
-            {ROLE_ORDER.map((role) => (
-              <button
-                key={role}
-                type="button"
-                role="option"
-                aria-selected={role === currentRole}
-                onClick={() => onSelectRole(race.id, role)}
-                className={`flex w-full items-center gap-2 rounded-cz border px-2 py-1.5 text-left transition-colors ${
-                  role === currentRole ? "border-cz-accent bg-cz-accent/10" : "border-transparent hover:bg-cz-subtle"
-                }`}
-              >
-                <span className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-3xs font-semibold ${roleBadgeClass(role)}`}>
-                  {ROLE_LETTER[role]}
-                </span>
-                <span className="flex-1 text-xs text-cz-1">{t(`tacticsOrders.roleLabel.${role}`)}</span>
-                {role === currentRole && <CheckIcon size={13} className="shrink-0 text-cz-accent-t" aria-hidden="true" />}
-              </button>
-            ))}
-          </div>
 
           {/* Fjern fra løbet (kontrakt 2c) — kun når rytteren reelt er udtaget. */}
           {fixed && currentRole != null && (

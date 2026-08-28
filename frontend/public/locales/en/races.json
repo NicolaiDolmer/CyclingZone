@@ -86,7 +86,8 @@
     "cellPopover": {
       "raceChoice": "Which race",
       "roleChoice": "Role",
-      "remove": "Remove from race"
+      "remove": "Remove from race",
+      "raceLocked": "Riding {race} those days"
     }
   },
   "racehub": {
