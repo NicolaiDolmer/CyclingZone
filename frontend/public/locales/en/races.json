@@ -527,6 +527,7 @@
     "jerseyShortcutHint": "{name} is your rider in the leader's jersey.",
     "jerseyShortcut": "Make {name} captain for the remaining stages",
     "unsaved": "You have unsaved changes",
+    "demoted": "{rider} is now a helper on stage {stage}. Only one rider can hold that role per stage.",
     "save": "Save tactics",
     "saving": "Saving…",
     "saved": "Tactics saved.",
