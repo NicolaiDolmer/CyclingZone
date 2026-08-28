@@ -10,8 +10,6 @@
 
 **Grundreglerne (spor B, B2, C) er udskudt til efter 27/9.** Lander de midt i en sæson, planlægger spillerne efter ét regelsæt og måles efter et andet. Mandatet 13/8 gjaldt FØR start; S3 kører med den bestand den har. **Undtagelse:** en grundregel må rettes hvis den er en ren FEJL der rammer spillere nu (#4098) — ikke hvis den er en forbedring.
 
-**Åben konflikt:** #4000 (type-dæmpning i værdiformlen) er ejer-godkendt 20/8 til flip med #3449 **tidligst 30/8** — to dage inde i sæsonen. Peger imod rammen. **Afventer ejer.**
-
 ## Kø i S3-vinduet (ejer-godkendt 27/8, trimmet 28/8)
 
 1. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren · **#4355** juni-fyldkuldets taktik-læk.
