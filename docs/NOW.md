@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer-rest:** post kommunikationspakken ([`drafts/2026-08-27-kommunikationspakke-saesonstart.md`](drafts/2026-08-27-kommunikationspakke-saesonstart.md)) + linje om trup-opfyldning + RET "Fra i morgen" i minimum-6-varslet (gulvet er LIVE). **PR #4359 MERGED 28/8** (peak-kontrakt, patch 7.214; #4212+#3088 lukket, #4271-kernen leveret). **Sessionens rest:** #4201-nedskrivning + eftersyn af kl. 14-18-loebene under de nye regler. **Naeste build:** #4317 · #4259 · Z1 #1146 · #4355.
+> **🎯 Next action:** **Ejer-rest:** post kommunikationspakken ([`drafts/2026-08-27-kommunikationspakke-saesonstart.md`](drafts/2026-08-27-kommunikationspakke-saesonstart.md)) + linje om trup-opfyldning + RET "Fra i morgen" i minimum-6-varslet (gulvet er LIVE). **PR #4359 MERGED 28/8** (peak-kontrakt, patch 7.214; #4212+#3088 lukket, #4271-kernen leveret). **#4201 nedskrevet** (PLANNING_CENTER_RULES §4 laast; kode-rest til P3). **Naeste session starter med:** #4317 ContextBand-tallene + #4259 udtaget-ikonet; derefter #4355 · #4308/#4309 · Z1 #1146.
 
 > **✅ Sæsonstart-dagen 28/8, alt merged+deployet:** #4307 opfyldning KOERT (411 ryttere/89 inaktive hold) · #4311 fyld-klemme + datareparation (PR #4354) · #4306 afmeldt-hold-fix (PR #4360, patch 7.211) · **#4301/#4295 minimum-6-gulvet LIVE** (PR #4301, patch 7.212-7.213; gulvets pris i dag: 42 starter, genmaalt efter opfyldning). Motorflag verificeret armeret, Sentry ren, deploy-verify groen 11:36.
 
@@ -35,6 +35,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Working agent:** Session 28/8 (Claude Code, DOLMERPC): saesonstart-leverancerne (se ✅-linjen) + PR #4359 afventer ejer. Roerer IKKE #4344-udloeberne (#4356/#4357) eller Z1 #1146.
+> **🤖 Working agent:** Ingen aktiv session. NB: planlagt engangs-tjek 28/8 kl. 14.30 (scheduled task `saesonstart-eftersyn-kl1430`) verificerer Kuurne/gulv/Sentry og opretter selv issues ved regression.
 
 _Historik i git-log, issue-tråde + docs/audits/._
