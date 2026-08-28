@@ -63,3 +63,13 @@ Hint-linjen fra dette fix blev derfor udvidet i stedet for erstattet. Den siger 
 ## Åbent efter fixet
 
 Dashboard-nudgen (`raceSquadSelectionStatus.js:20`), Race Centre-kortet, board-status-pillen og notifikations-sweepet måler alle "komplet" som antal `== size.max`. Et hold der beviseligt ikke kan fylde feltet står derfor permanent som "Holdudtagelse mangler" med en notifikation der ikke kan handles på. Samme forkerte præmis, ny flade. Ejer-spørgsmål, ikke rettet her.
+
+## Efterskrift 2 (28/8): det samme mønster, tredje gang, i den nye kode selv
+
+Adversarisk gennemgang af draft-PR #4301 (før merge) fandt at `partialSquadOutlook` gjorde PRÆCIS den fejl efterskriftet ovenfor advarede imod: `selected === 0` returnerede bevidst `null`, på antagelsen om at assistenten altid fylder en hel trup når manageren intet har valgt.
+
+Antagelsen holdt ikke under det nye gulv. `fillMissingTeamEntries` (den sene redning) skriver **intet** hvis den ikke kan nå 6 — den fylder aldrig et halvt hold og lader det stå. Målt mod ægte data: **195 af 226 menneskehold har nul udtagelser**, og **128 af 130 tabte starter** rammer hold i præcis den tilstand. Reglen tog et løb fra dem uden ét ord på nogen flade — den blokerende variant af den samme "et urørt tal betyder ikke det jeg tror"-fejl, blot i en gren jeg selv skrev samme dag.
+
+**Fix:** `selected === 0` er nu to udfald, ikke ét — samme skelnen som den delvise gren allerede havde: nok frie ryttere til gulvet (`assistantFills`, `emptySelection: true`) eller ej (`willNotStart`, `emptySelection: true`). Se `frontend/src/lib/raceSelectionLogic.js:107-129`.
+
+**Læring oveni læringen:** "urørt/tomt input → null, der er intet at sige" er en konklusion, ikke en standardværdi. Den skal bevises for HVER regel der lægges oveni bagefter (her: gulvet), ikke arves fra en tidligere version af funktionen hvor den var sand. Samme fejlmønster som `availableCount` ovenfor — et navn/en antagelse der var korrekt i en ældre kontekst, aldrig genbekræftet da konteksten ændrede sig.

@@ -142,9 +142,32 @@ test("partialSquadOutlook: gulvet er fladt — 6 til en Grand Tour stiller op", 
   assert.equal(partialSquadOutlook({ selected: 6, free: 0, fieldMax: 6 }), null, "fuld trup → intet at sige");
 });
 
-test("partialSquadOutlook: urørt panel og igangværende løb siger ingenting", () => {
-  assert.equal(partialSquadOutlook({ selected: 0, free: 10, fieldMax: 7 }), null,
-    "vælger du ikke, udtager assistenten en hel trup — der mangler intet");
+test("partialSquadOutlook: igangværende løb siger ingenting, uanset udtagelse", () => {
   assert.equal(partialSquadOutlook({ selected: 2, free: 0, fieldMax: 7, raceLive: true }), null,
     "et løb i gang top-fyldes aldrig (#1825), og startfeltet er afgjort");
+  assert.equal(partialSquadOutlook({ selected: 0, free: 10, fieldMax: 7, raceLive: true }), null,
+    "samme guard gælder en tom trup — et løb i gang ændrer ikke på det");
+});
+
+// #4295 opfølgning (blokerende fund #4301, målt 27/8): et urørt panel (selected === 0)
+// returnerede tidligere bevidst null, på antagelsen om at assistenten altid fylder en
+// hel trup. Under gulvet holder den antagelse ikke — se kommentaren over funktionen.
+test("partialSquadOutlook: 0 valgt MED frie ryttere nok til gulvet → assistenten fylder en hel trup", () => {
+  const out = partialSquadOutlook({ selected: 0, free: 10, fieldMax: 7 });
+  assert.equal(out.kind, "assistantFills");
+  assert.equal(out.emptySelection, true);
+  assert.equal(out.min, 6);
+});
+
+test("partialSquadOutlook: 0 valgt UDEN frie ryttere nok til gulvet → holdet stiller ikke op", () => {
+  const out = partialSquadOutlook({ selected: 0, free: 5, fieldMax: 7 });
+  assert.equal(out.kind, "willNotStart");
+  assert.equal(out.emptySelection, true);
+  assert.equal(out.min, 6);
+});
+
+test("partialSquadOutlook: 0 valgt, præcis gulvet frie riders → assistenten fylder (grænseværdi)", () => {
+  const out = partialSquadOutlook({ selected: 0, free: 6, fieldMax: 8 });
+  assert.equal(out.kind, "assistantFills");
+  assert.equal(out.emptySelection, true);
 });

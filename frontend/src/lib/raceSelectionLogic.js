@@ -104,13 +104,30 @@ export const MIN_RACE_ENTRIES = 6;
 // (#1825), så hverken løftet om et auto-fyld eller gulvet gælder dér — gulvet afgør hvem
 // der STILLER OP, og det er afgjort da løbet startede.
 //
-// selected === 0 giver bevidst null: har manageren intet valgt, udtager assistenten en
-// hel trup (#1307/#4174), så et urørt løb hverken mangler noget eller udebliver.
+// selected === 0 — RETTET (#4295 opfølgning, blokerende fund på #4301, målt 27/8):
+// funktionen returnerede tidligere bevidst null her, på ANTAGELSEN om at assistenten
+// altid fylder en hel trup når manageren intet har valgt. Det holder ikke under gulvet:
+// fillMissingTeamEntries (raceRunner.js) skriver INTET hvis den ikke kan nå 6, så et
+// urørt løb med for få frie ryttere endte uden ét ord på nogen flade. Målt: 195 af 226
+// menneskehold har nul udtagelser, og 128 af 130 tabte starter rammer hold i præcis den
+// tilstand. To udfald, samme som ved en delvis udtagelse:
+//   assistantFills (emptySelection: true) — nok frie ryttere til at NÅ EN HEL TRUP
+//                                            (uændret adfærd, #1307/#4174).
+//   willNotStart   (emptySelection: true) — færre frie ryttere end gulvet; redningen
+//                                            kan ikke nå 6, og holdet stiller ikke op.
+// `emptySelection` lader panelet/kolonnen vælge den rigtige sætning uden at duplikere
+// gulv-logikken — selve reglen (er der ryttere nok) er identisk med den delvise gren.
 export function partialSquadOutlook({ selected, free = 0, fieldMax, raceLive = false }) {
   if (raceLive) return null;
   const picked = Number(selected) || 0;
-  if (picked <= 0) return null;
   const freeLeft = Math.max(0, Number(free) || 0);
+  if (picked <= 0) {
+    const open = Math.max(0, Number(fieldMax) || 0);
+    if (freeLeft < MIN_RACE_ENTRIES) {
+      return { kind: "willNotStart", open, free: freeLeft, min: MIN_RACE_ENTRIES, emptySelection: true };
+    }
+    return { kind: "assistantFills", open, free: freeLeft, min: MIN_RACE_ENTRIES, emptySelection: true };
+  }
   const open = Math.max(0, (Number(fieldMax) || picked) - picked);
   if (picked < MIN_RACE_ENTRIES && picked + freeLeft < MIN_RACE_ENTRIES) {
     return { kind: "willNotStart", open, free: freeLeft, min: MIN_RACE_ENTRIES };

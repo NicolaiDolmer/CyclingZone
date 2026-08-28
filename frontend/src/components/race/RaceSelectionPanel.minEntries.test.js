@@ -45,7 +45,24 @@ test("#4295 panelet viser konsekvensen som en linje i panelet, aldrig som en toa
     /outlook\.kind === "willNotStart" \? "text-cz-warning" : "text-cz-3"/,
     "konsekvens er text-cz-warning (ikke text-cz-danger: en delvis trup er stadig lovlig at gemme)",
   );
-  assert.match(panel, /t\(`selection\.\$\{outlook\.kind === "willNotStart" \? "willNotStart"/);
+  assert.match(panel, /t\(`selection\.\$\{outlook\.kind === "willNotStart"/);
+});
+
+// #4295 opfølgning (blokerende fund #4301, målt 27/8): 195 af 226 hold har nul
+// udtagelser, og partialSquadOutlook sagde intet for dem. Panelet skal route de to nye
+// emptySelection-udfald til deres EGNE sætninger, ikke til "N pladser åbne" (tomt for 0
+// valgte) eller den generiske willNotStart (som ikke siger "fri" og "til dette løb").
+test("#4295 0-valgt routes til dedikerede assistantFillsEmpty/willNotStartEmpty-nøgler", () => {
+  assert.match(
+    panel,
+    /outlook\.emptySelection \? "willNotStartEmpty" : "willNotStart"/,
+    "0 valgt + for få frie ryttere må ikke genbruge den delvise willNotStart-tekst",
+  );
+  assert.match(
+    panel,
+    /outlook\.emptySelection \? "assistantFillsEmpty" : "partialHint"/,
+    "0 valgt + nok frie ryttere må ikke sige 'N pladser åbne' (meningsløst ved 0 valgt)",
+  );
 });
 
 test("#4295 linjen går ALDRIG i clientErrors — Gem forbliver aktiv under gulvet", () => {

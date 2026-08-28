@@ -222,9 +222,15 @@ export default function RaceSelectionPanel({
   const outlook = partialSquadOutlook({
     selected: sel.riderIds.length, free: freeLeft, fieldMax: size.max, raceLive,
   });
+  // #4295 opfølgning: en 0-valgt trup er IKKE det samme udsagn som en delvis trup — se
+  // partialSquadOutlook. `emptySelection` vælger de to dedikerede sætninger i stedet for
+  // "N pladser åbne", som ville være tomt/misvisende når intet er valgt endnu.
   const partialHint = outlook
-    ? t(`selection.${outlook.kind === "willNotStart" ? "willNotStart"
-      : outlook.kind === "assistantFills" ? "partialHint" : "partialHintShort"}`, outlook)
+    ? t(`selection.${outlook.kind === "willNotStart"
+      ? (outlook.emptySelection ? "willNotStartEmpty" : "willNotStart")
+      : outlook.kind === "assistantFills"
+        ? (outlook.emptySelection ? "assistantFillsEmpty" : "partialHint")
+        : "partialHintShort"}`, outlook)
     : null;
   const saving = status === "saving";
   // #3310 quality-fix: Auto-select kører en server-mutation (delete+insert) på samme
