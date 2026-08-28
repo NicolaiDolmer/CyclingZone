@@ -418,6 +418,9 @@ const FAQ_KEYS = [
   "flatCobblesHardTrainingFaq",
   "fatigueInjuryThresholdFaq",
   "seasonPlanner",
+  // #4212/#4271: kort overbliks-svar FØR de tre detalje-svar nedenfor (hvad,
+  // hvornår, pris i én kort tekst — detaljerne bor stadig i de tre der følger).
+  "peakWhatItDoes",
   "peakTraining",
   // #3086: konsekvensen af en peak (spænd + payback) var indtil nu usynlig for
   // spilleren — den stod hverken i UI'et eller i hjælpen, selvom motoren har

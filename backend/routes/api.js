@@ -197,7 +197,7 @@ import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, seriali
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
-import { suggestPeaksForRider } from "../lib/peakSuggestions.js";
+import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
@@ -3848,6 +3848,16 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           leadupDays: leadup,
           windowRadiusDays: PEAK_WINDOW_RADIUS_DAYS,
         });
+
+        // #3088/#4212 (ejer-beslutning 28/8): assistenten kan anbefale INTET
+        // (yderligere) peak — se peakSuggestions.js's topkommentar for
+        // roden. Genbruger samme dismiss-mekanisme (peak_suggestions_
+        // dismissed_season_id) som en almindelig forslags-afvisning —
+        // "Behold én peak" i skuffen kalder dismiss-suggestions.
+        if (shouldRecommendNoPeak({ suggestions, existingPeakCount: rd.peaks.length })) {
+          rd.peaks.push(buildNoPeakSuggestion({ riderId: rd.id, seasonId: season.id }));
+          continue;
+        }
 
         for (const s of suggestions) {
           const targetRace = raceById.get(s.targetRaceId);

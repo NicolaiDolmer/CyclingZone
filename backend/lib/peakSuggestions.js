@@ -177,3 +177,61 @@ export function suggestPeaksForRider({
   }
   return out;
 }
+
+// ── #3088/#4212 (ejer-beslutning 28/8, retning B): assistenten kan anbefale
+// INTET (yderligere) peak ────────────────────────────────────────────────────
+//
+// suggestPeaksForRider returnerer i dag tavst en tom liste når den ikke finder
+// noget at foreslå — hverken fordi rytteren allerede har assistentens fulde
+// program (maxPeaks er 0, se suggestedPeakCount) eller fordi kalenderen ikke
+// har et egnet løb tilbage (spacing/allerede-udtømt). Roden til #4212: fjerner
+// manageren den ene af to peaks på en rytter hvis alders-loft ER netop den ene
+// (fx en ung rytter, YOUNG_RIDER_PEAK_COUNT=1), var der intet der fortalte ham
+// at DET var meningen — pladsen så bare tom og uforklaret ud.
+//
+// Kun meningsfuldt for en rytter der allerede har mindst én ÆGTE peak-plan:
+// uden nogen har han bare tomme pladser at vælge fra, ikke en beslutning
+// assistenten aktivt har fravalgt at anbefale.
+
+/**
+ * @param {{suggestions:Array<object>, existingPeakCount:number}} args
+ * @returns {boolean}
+ */
+export function shouldRecommendNoPeak({ suggestions, existingPeakCount }) {
+  return (suggestions || []).length === 0 && Number(existingPeakCount) > 0;
+}
+
+/**
+ * Byg noPeak-ghost-anbefalingen der sendes til klienten. Intet mål-løb, intet
+ * vindue, ingen værdi at vise — en rent informativ ghost-anbefaling, ALDRIG en
+ * rider_peak_plans-række (samme regel som de almindelige forslag ovenfor).
+ * "Behold én peak" i skuffen afviser den via samme sæson-scopede
+ * dismiss-mekanisme (peak_suggestions_dismissed_season_id) som et normalt
+ * forslag — ingen ny persisteringsvej.
+ *
+ * @param {{riderId:string, seasonId:string}} args
+ * @returns {object}
+ */
+export function buildNoPeakSuggestion({ riderId, seasonId }) {
+  return {
+    id: `sugg-nopeak:${riderId}`,
+    riderId,
+    seasonId,
+    targetRaceId: null,
+    targetRaceName: null,
+    windowStart: null,
+    windowEnd: null,
+    lockedAt: null,
+    locked: false,
+    createdAt: null,
+    trainingQuality: null,
+    status: "pending",
+    value: null,
+    paybackCollisions: [],
+    recommendedFocus: null,
+    suggestedTrainingBlock: null,
+    isSuggestion: true,
+    isNoPeakSuggestion: true,
+    suggestionReason: "noPeak",
+  };
+}
