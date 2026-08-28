@@ -233,6 +233,16 @@ const FLAG_GATED_EMPTY_TABLES = new Map([
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
 // Match-form: HTTP method + path-pattern (samme som routes-listen).
 const WHITELIST_ORPHANED_ENDPOINTS = new Set([
+  // Bulk-gem til saesonmatrixens kladde-model (#1146, PR #4316): API-first.
+  // UI-kalderen (Save plan i SeasonMatrix.jsx) lander i matrix-PR'en paa
+  // feat/1146-season-matrix-grid, der reviewes sammen med denne. Fjern entry'en
+  // naar matrix-PR'en er merged — grep efter "selection/bulk" i frontend/src.
+  "PUT /races/selection/bulk",
+  // Season-read til saesonmatrixen (#1146): API-first, samme spor som bulk-
+  // endpointet ovenfor. UI-kalderen ligger i matrix-PR'en (#4323) og testes af
+  // spillere paa Vercel-preview mod prod-backenden foer UI-merge. Fjern begge
+  // entries naar matrix-PR'en er merged.
+  "GET /races/selection/season",
   // #2455 planner-assistent (PR #2506): HAR en frontend-kalder — usePlanner.js:96
   // kalder mutate("/dismiss-suggestions", "POST") hvor helperen prefikser
   // /peak-plans, så den statiske path-scan kan ikke matche det fulde endpoint.

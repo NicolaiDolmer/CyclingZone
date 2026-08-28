@@ -181,7 +181,7 @@ import { RACE_DAY_ENGINE_FLAG_KEY } from "../lib/raceDayEngineFlag.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
-import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
+import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked } from "../lib/raceTeamOrdersApi.js";
@@ -192,7 +192,7 @@ import { applyRiderEligibilityFilter, isRiderInjured } from "../lib/riderEligibi
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
-import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "../lib/raceCalendar.js";
+import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate, buildGameDayDateMap } from "../lib/raceCalendar.js";
 import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
@@ -371,7 +371,8 @@ import { buildCustomerRows, summarizeNps } from "../lib/growthSnapshot.js";
 import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches, findConsecutiveTierBreaches } from "../lib/balanceDriftMetrics.js";
 import { isBotUserAgent } from "../lib/botDetection.js";
 import { computeVisitHash, dayString } from "../lib/visitHash.js";
-import { aggregateTraffic } from "../lib/trafficMetrics.js";
+import { aggregateTraffic, aggregateChannelFunnel } from "../lib/trafficMetrics.js";
+import { sanitizeCollectChannel } from "../lib/trafficChannel.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
 import {
   UCI_MEN_RACE_CLASSES,
@@ -417,6 +418,7 @@ import {
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
 import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
+import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
 import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory } from "../lib/myTeamLatestResult.js";
@@ -4295,6 +4297,161 @@ router.get("/races/calendar", requireAuth, cached({
   }
 }));
 
+// Holdets gemte udtagelser (rider_id + race_role) i en liste egen-pulje-løb. Chunket
+// (#1307-mønster, selectInChunks) — en fuld sæson kan runde IN_CHUNK_SIZE=200 løb.
+async function fetchTeamRaceEntriesWithRider(supabase, teamId, raceIds) {
+  if (!raceIds.length) return [];
+  const { data, error } = await selectInChunks({
+    supabase, table: "race_entries", columns: "race_id, rider_id, race_role",
+    inColumn: "race_id", ids: raceIds, extra: (q) => q.eq("team_id", teamId),
+  });
+  if (error) throw new Error(`race_entries (selection/season): ${error.message}`);
+  return data;
+}
+
+// #1146: GET /api/races/selection/season — read-only aggregat til sæsonmatrixen
+// (rytter × løbsdag) i /planning?tab=selection&view=season. Egen-pulje-løb som
+// løbsdags-spænd (raceGameDaySpan-semantikken — HARD INVARIANT: display kommer
+// KUN herfra, ALDRIG fra bindingWindow, som falder tilbage til CET-ordinaler og
+// ville vise ~20000 i UI'et), holdets gemte udtagelser i disse løb, roster m.
+// evner + rute-match-demand-vektor (aggregateDemandVector — samme funktion som
+// peak-plans/board bruger, så "Route match"-linsen (frontend/src/lib/suitability.js)
+// regner på PRÆCIS samme grundlag), trupstørrelse pr. løb (selectionSizeForRace)
+// og en game_day→dato-mapping for date-bånd-headeren (buildGameDayDateMap, dækker
+// ALLE puljers schedule — som kalenderen — så en hviledag i EGEN pulje stadig kan
+// vise en dato, hvis en anden puljes løb kører den game_day).
+//
+// Read-only: gem sker via PUT /races/selection/bulk (#4316, endnu ikke merged —
+// se PR-beskrivelsen). ?season_number= browser en anden sæson read-only (samme
+// mønster som kalenderen/#4102).
+router.get("/races/selection/season", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false });
+
+    const seasonNumberRaw = req.query?.season_number;
+    const seasonNumber = Number(seasonNumberRaw);
+    const wantsExplicitSeason =
+      Number.isFinite(seasonNumber) && seasonNumberRaw !== undefined && seasonNumberRaw !== "";
+    const seasonQuery = supabase.from("seasons").select("id, number");
+    const [{ data: season, error: seasonErr }, { data: activeSeasonRow, error: activeErr }] = await Promise.all([
+      wantsExplicitSeason ? seasonQuery.eq("number", seasonNumber).maybeSingle() : seasonQuery.eq("status", "active").maybeSingle(),
+      supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
+    ]);
+    if (seasonErr) throw new Error(`seasons (selection/season): ${seasonErr.message}`);
+    if (activeErr) throw new Error(`seasons (active check, selection/season): ${activeErr.message}`);
+    const ownPoolId = req.team?.league_division_id ?? null;
+    if (!season) {
+      return res.json({ enabled: true, season: null, ownPoolId, readOnly: false, races: [], riders: [], entries: [], dayDates: [] });
+    }
+    const readOnly = activeSeasonRow != null && season.number !== activeSeasonRow.number;
+
+    const { data: raceRows, error: racesErr } = await supabase
+      .from("races")
+      .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id")
+      .eq("season_id", season.id);
+    if (racesErr) throw new Error(`races (selection/season): ${racesErr.message}`);
+    const allRaceIds = (raceRows || []).map((r) => r.id);
+
+    // ALLE puljers schedule (som kalenderen) — kun sådan kan en hviledag i egen pulje
+    // få en dato, når det er en ANDEN puljes løb der kører netop den game_day.
+    const scheduleRows = await fetchAllScheduleRowsWithGameDay(supabase, allRaceIds);
+    const dayDateMap = buildGameDayDateMap(scheduleRows);
+    const scheduleByRace = new Map();
+    for (const row of scheduleRows) {
+      if (!scheduleByRace.has(row.race_id)) scheduleByRace.set(row.race_id, []);
+      scheduleByRace.get(row.race_id).push(row);
+    }
+
+    const ownRaceRows = (raceRows || []).filter((r) => ownPoolId != null && r.league_division_id === ownPoolId);
+    const races = [];
+    for (const race of ownRaceRows) {
+      const rows = scheduleByRace.get(race.id) || [];
+      // HARD INVARIANT (#1146 kontrakt-punkt 2): display-tal KUN fra raceGameDaySpan.
+      // Et delvist-backfillet løb (mangler game_day på nogen rækker) → null → skjules,
+      // ALDRIG et bindingWindow-fallback-tal (~20000 CET-ordinal) i UI'et.
+      const span = raceGameDaySpan(rows);
+      if (!span) continue;
+      const scheduledDays = new Set(rows.map((r) => r.game_day).filter((d) => Number.isFinite(d)));
+      // GT-hviledage (#3470/#4217): huller i spændet uden egen etape den dag.
+      const restGameDays = [];
+      if (span.end > span.start) {
+        for (let gd = span.start; gd <= span.end; gd++) if (!scheduledDays.has(gd)) restGameDays.push(gd);
+      }
+      const sizeRule = selectionSizeForRace(race);
+      races.push({
+        id: race.id, name: race.name, raceClass: race.race_class, stages: race.stages ?? 1,
+        status: race.status, stagesCompleted: race.stages_completed ?? 0,
+        gameDayStart: span.start, gameDayEnd: span.end, restGameDays,
+        sizeMin: sizeRule.min, sizeMax: sizeRule.max,
+      });
+    }
+    races.sort((a, b) => a.gameDayStart - b.gameDayStart || a.name.localeCompare(b.name));
+    const ownRaceIds = races.map((r) => r.id);
+
+    // Roster + evner (samme kilder som getSelectionContext, raceSelection.js) +
+    // rute-match-demand pr. løb (aggregateDemandVector — delt med peak-plans/board).
+    // pagination-safe: ét holds ryttere er maks ~30 (samme grænse som getSelectionContext
+    // dokumenterer), langt under PostgREST's 1000-rækkers cap.
+    const { data: teamRidersRaw, error: ridersErr } = await applyRiderEligibilityFilter(
+      supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type").eq("team_id", req.team.id)
+    );
+    if (ridersErr) throw new Error(`riders (selection/season): ${ridersErr.message}`);
+    const teamRiders = teamRidersRaw || [];
+    const riderIds = teamRiders.map((r) => r.id);
+    const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
+    const [abilitiesRes, conditionRes, profileRows] = await Promise.all([
+      riderIds.length ? supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", riderIds) : Promise.resolve({ data: [] }),
+      riderIds.length ? supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", riderIds) : Promise.resolve({ data: [] }),
+      fetchAllStageProfiles(supabase, ownRaceIds, "race_id, stage_number, demand_vector"),
+    ]);
+    if (abilitiesRes.error) throw new Error(`rider_derived_abilities (selection/season): ${abilitiesRes.error.message}`);
+    if (conditionRes.error) throw new Error(`rider_condition (selection/season): ${conditionRes.error.message}`);
+    const abilityByRider = new Map((abilitiesRes.data || []).map((a) => [a.rider_id, a]));
+    const conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));
+    const todayStr = copenhagenDateString();
+
+    const profByRace = new Map();
+    for (const row of profileRows) {
+      if (!profByRace.has(row.race_id)) profByRace.set(row.race_id, []);
+      profByRace.get(row.race_id).push(row);
+    }
+    for (const race of races) {
+      race.demandVector = aggregateDemandVector(profByRace.get(race.id) || []);
+    }
+
+    const riders = teamRiders.map((r) => {
+      const ab = abilityByRider.get(r.id);
+      return {
+        id: r.id,
+        name: [r.firstname, r.lastname].filter(Boolean).join(" "),
+        primaryType: r.primary_type ?? null,
+        secondaryType: r.secondary_type ?? null,
+        abilities: ab ? Object.fromEntries(RACE_SIM_ABILITY_KEYS.map((k) => [k, ab[k] ?? null])) : null,
+        injured: isRiderInjured(conditionByRider.get(r.id)?.injured_until ?? null, todayStr),
+      };
+    });
+
+    const entries = await fetchTeamRaceEntriesWithRider(supabase, req.team.id, ownRaceIds);
+
+    res.json({
+      enabled: true,
+      season: { id: season.id, number: season.number },
+      ownPoolId,
+      readOnly,
+      races,
+      riders,
+      entries: entries.map((e) => ({ raceId: e.race_id, riderId: e.rider_id, raceRole: e.race_role })),
+      dayDates: [...dayDateMap.entries()].map(([gameDay, date]) => ({ gameDay, date })),
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Race Hub Fase 1 — GET /api/races/distribution?day=N
 // Aggregat-læsning til trup-fordeling-board'et: dagens egne-pulje overlap-løb som
 // kolonner + holdets trup + binding-map + sæson-tidslinje. Saves går stadig via
@@ -4717,63 +4874,36 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     if (error) return res.status(500).json({ error: error.message });
     if (!raceRow) return res.status(404).json({ error: "race_not_found" });
     race = raceRow;
-    if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
 
-    // Race-hub pulje-binding: et hold må kun udtage til løb i sin egen pulje. Backend-
-    // håndhævelse så hverken UI-fejl (#1801/#1802) eller direkte API-kald kan plante en
-    // fremmed-pulje-entry, der overlever autofill-pulje-filteret (#1798-incident-klasse).
-    if (!teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id })) {
-      return res.status(409).json({ error: "selection_wrong_pool" });
-    }
-
-    // #4306: samme gate som auto-endpointet (linje ~4891-4897). Et bevidst afmeldt
-    // hold må ikke få en manuel udtagelse skrevet ind i et løb det har trukket sig fra.
-    // Uden denne gate overlevede Race Hub-kladden et afmeld-klik og kunne stadig
-    // "Gem"'es, hvilket skrev spiller-initierede entries ind i et afmeldt løb med
-    // NULL-binding (samme fingeraftryk som #4299).
+    // #4306: samme gate som auto-endpointet. Et bevidst afmeldt hold må ikke få en
+    // manuel udtagelse skrevet ind i et løb det har trukket sig fra. Uden denne gate
+    // overlevede Race Hub-kladden et afmeld-klik og kunne stadig "Gem"'es, hvilket
+    // skrev spiller-initierede entries ind i et afmeldt løb med NULL-binding (samme
+    // fingeraftryk som #4299). Spejlet i bulk-endpointet nedenfor, samme fejlkode.
     const { data: withdrawal, error: wErr } = await supabase
       .from("race_withdrawals").select("race_id")
       .eq("race_id", race.id).eq("team_id", req.team.id).maybeSingle();
     if (wErr) return res.status(500).json({ error: wErr.message });
     if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
 
+    // #1146: pulje-binding, body-shape, frys/fjernelse-undtagelse (#2637) og
+    // validateSelection er udtrukket til prepareSelectionChange (raceSelection.js), delt
+    // med bulk-endpointet (PUT /races/selection/bulk) længere nede, samme regler begge veje.
     // #2376: free_role_ids accepteres UANSET race_engine_v3_scoring-flagets tilstand —
     // gemmes blot (harmløst; motor-ADFÆRD er v3-gated i raceSimulator.buildTeamContext,
     // ikke selection-kontrakten). UI'et skjuler valgmuligheden bag flaget, men et gem
     // fra en allerede-åben kladde (flippet OFF undervejs) skal ikke fejle.
-    const { rider_ids: riderIdsBody = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null, free_role_ids: freeRoleIds = [] } = req.body || {};
-
-    if (!Array.isArray(riderIdsBody) || !Array.isArray(freeRoleIds)) {
-      return res.status(400).json({ error: "selection_invalid_body" });
-    }
-    riderIds = riderIdsBody;
-
-    ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
-
-    // Frys (#1825): når et etapeløb er i gang (≥1 etape kørt, ikke alle) må truppen som
-    // udgangspunkt IKKE ændres — buildRaceResults re-simulerer fra etape 1 med faste
-    // seeds, så et ændret startfelt gør viste etaperesultater inkonsistente. status
-    // forbliver 'scheduled' hele afviklingen, så vi gater på stages_completed.
-    // service_role-autofill (raceRunner, stageIndex=0) rammer ikke dette endpoint.
-    //
-    // #2637: ÉN undtagelse — en ren FJERNELSE (den nye rytter-liste er en ægte delmængde
-    // af den allerede gemte trup, ingen tilføjelser) er altid tilladt, også midt i et
-    // aktivt etapeløb. Root-cause: en skadet rytter blev fastlåst i en auto-udtaget
-    // etapeløbs-trup uden nogen vej ud, fordi denne freeze blokerede ALLE ændringer.
-    // Tilføjelser (og dermed en ny/større trup) er stadig hårdt frosset som før.
-    const currentRiderIds = new Set(ctx.selection?.rider_ids || []);
-    const isRemovalOnly = riderIds.length < currentRiderIds.size && riderIds.every((id) => currentRiderIds.has(id));
-    if ((race.stages_completed ?? 0) > 0 && !isRemovalOnly) {
-      return res.status(409).json({ error: "selection_race_started" });
-    }
-
-    const result = validateSelection({
-      riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
-      teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
-      injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
-      sizeRule: ctx.size,
+    const prepared = await prepareSelectionChange({
+      supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, body: req.body,
     });
-    if (!result.ok) return res.status(400).json({ error: result.errors[0], errors: result.errors });
+    if (!prepared.ok) {
+      return res.status(prepared.status).json(
+        prepared.errors ? { error: prepared.error, errors: prepared.errors } : { error: prepared.error }
+      );
+    }
+    const { captainId, sprintCaptainId, hunterId, freeRoleIds, isRemovalOnly } = prepared;
+    riderIds = prepared.riderIds;
+    ctx = prepared.ctx;
 
     // Race-hub Fase 0a: håndhæv overlap-binding — en rytter må ikke være udtaget i
     // et tidsoverlappende løb (et etapeløb binder hele sit vindue).
@@ -4870,6 +5000,189 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         }
       }
       return res.status(409).json({ error: "selection_rider_bound" });
+    }
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// #1146: sæsonmatrixens "Gem plan"-knap sender HELE kladdens diff i ét kald i stedet for
+// ét PUT /:raceId/selection pr. rørt løb. Ejer-beslutning 25/8 (kommentar #1146): cellen
+// ændrer en kladde, ÉN knap gemmer alt — dels fordi marketWriteLimiter kun tillader 30
+// skrivninger/60s (40 celler ville fejle midtvejs), dels fordi en LOVLIG swap (en rytter
+// flyttes fra løb A til løb B i samme kladde) er rækkefølge-afhængig hvis A og B gemmes i
+// to separate kald (B's pre-check ville stadig se A's endnu ikke-slettede entry).
+const SELECTION_BULK_MAX = 60;
+
+// PUT /api/races/selection/bulk — atomisk gem af N løbs udtagelse i ÉT kald.
+// Ikke brugervendt endnu (intet UI kalder det pr. 27/8) — sæsonmatrixen (#1146) er den
+// planlagte forbruger. INGEN ny valideringssemantik: hver ændring genbruger PRÆCIS samme
+// regler som PUT /:raceId/selection (prepareSelectionChange, raceSelection.js) — kun
+// binding-konflikt-tjekket er udvidet til også at se PEER-ændringer i samme batch (se
+// nedenfor), fordi single-endpointets loadTeamBindingContext kun kender ÉT løb ad gangen.
+router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const { changes } = req.body || {};
+  if (!Array.isArray(changes) || changes.length === 0) {
+    return res.status(400).json({ error: "selection_invalid_body" });
+  }
+  if (changes.length > SELECTION_BULK_MAX) {
+    return res.status(400).json({ error: "selection_bulk_too_large", max: SELECTION_BULK_MAX });
+  }
+  const raceIds = changes.map((c) => c?.raceId);
+  if (raceIds.some((id) => typeof id !== "string" || !id)) {
+    return res.status(400).json({ error: "selection_invalid_body" });
+  }
+  // Ét cell-diff pr. løb pr. kald — en dublet raceId er et klient-bug (to modstridende
+  // ønsker for samme løb i samme kladde), ikke noget vi kan gætte os til en rækkefølge for.
+  if (new Set(raceIds).size !== raceIds.length) {
+    return res.status(400).json({ error: "selection_duplicate_race" });
+  }
+
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+
+    const { data: raceRows, error: racesErr } = await supabase
+      .from("races")
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
+      .in("id", raceIds);
+    if (racesErr) return res.status(500).json({ error: racesErr.message });
+    const raceById = new Map((raceRows || []).map((r) => [r.id, r]));
+    for (const raceId of raceIds) {
+      if (!raceById.has(raceId)) return res.status(404).json({ error: "race_not_found", race_id: raceId });
+    }
+
+    // #4306, spejlet fra single-endpointet: et bevidst afmeldt hold må ikke få en
+    // udtagelse skrevet ind i et løb det har trukket sig fra — heller ikke ad bulk-vejen,
+    // ellers ville matrixens "Gem plan" omgå gaten. Ét samlet opslag for hele batchen.
+    const { data: withdrawnRows, error: wErr } = await supabase
+      .from("race_withdrawals").select("race_id")
+      .in("race_id", raceIds).eq("team_id", req.team.id);
+    if (wErr) return res.status(500).json({ error: wErr.message });
+    if (withdrawnRows?.length) {
+      return res.status(409).json({ error: "selection_withdrawn", race_id: withdrawnRows[0].race_id });
+    }
+
+    // Pas 1: pr.-løb-validering (samme prepareSelectionChange som single-endpointet) +
+    // indlæs hvert løbs binding-vindue/andre-løb. INGEN DB-SKRIVNING her — fejler ÉN
+    // ændring, afvises HELE kaldet uden at røre race_entries (alt-eller-intet er dermed
+    // allerede garanteret af selve rute-laget; RPC'ens deferred constraint-tjek
+    // nedenfor er kun et backstop mod en SAMTIDIG skriver fra en anden session).
+    const batchRaceIds = new Set(raceIds);
+    const prepared = new Map(); // raceId -> prepareSelectionChange-resultat
+    const windowByRace = new Map(); // raceId -> thisWindow
+    const otherRacesByRace = new Map(); // raceId -> DB-otherRaces MED batch-fæller udelukket
+
+    for (const change of changes) {
+      const race = raceById.get(change.raceId);
+      const result = await prepareSelectionChange({
+        supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, body: change,
+      });
+      if (!result.ok) {
+        return res.status(result.status).json({
+          ...(result.errors ? { error: result.error, errors: result.errors } : { error: result.error }),
+          race_id: change.raceId,
+        });
+      }
+      prepared.set(change.raceId, result);
+
+      const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
+      windowByRace.set(change.raceId, binding.thisWindow);
+      // Batch-fæller ekskluderes her — deres AKTUELLE (endnu ikke overskrevne) entries må
+      // ikke tælle som "optaget"; de valideres i stedet som peer-konflikter nedenfor, mod
+      // deres NYE ønskede trup (ikke deres gamle DB-tilstand).
+      otherRacesByRace.set(change.raceId, binding.otherRaces.filter((o) => !batchRaceIds.has(o.raceId)));
+    }
+
+    // Pas 2: binding-konflikter. To slags, klassificeret af den rene, direkte testede
+    // classifyBulkSelectionConflicts (backend/lib/raceSelection.js, udtrukket #4310-
+    // refutation FUND 3 — lå tidligere inline her, kun dækket af kildetekst-regex):
+    //  · Peer (mod en ANDEN ændring i SAMME kald): altid blokerende — vi kan ikke gætte
+    //    hvilket af to samtidige manuelle ønsker der skal vige. Spilleren må selv rydde
+    //    kladden. (En ægte swap mellem to celler i SAMME kald er IKKE en peer-konflikt her,
+    //    fordi den fjernede rytter simpelthen ikke optræder i den anden celles rider_ids.)
+    //  · DB (mod et løb UDENFOR denne batch): klassificeres akkurat som single-endpointet
+    //    (#2637) — auto-udtaget + ikke-startet løb frigives automatisk, alt andet afvises
+    //    navngivet. Selve resolvable/blocking-opdelingen kræver et DB-opslag
+    //    (resolveBindingConflictDetails) og bliver derfor her i route-laget.
+    const bulkChanges = changes.map((c) => ({
+      raceId: c.raceId, riderIds: prepared.get(c.raceId).riderIds, window: windowByRace.get(c.raceId),
+    }));
+    const classifications = classifyBulkSelectionConflicts({ changes: bulkChanges, otherRacesByRace });
+    const autoReleases = []; // { race_id, rider_id } — udføres INDE i bulk-RPC'en, samme transaktion.
+
+    for (const result of classifications) {
+      if (result.kind === "peer_conflict") {
+        return res.status(409).json({ error: "selection_rider_bound", race_id: result.race_id, conflicts: result.conflicts });
+      }
+      if (result.kind === "db_conflict") {
+        const raceId = result.race_id;
+        const { ctx } = prepared.get(raceId);
+        const thisWindow = windowByRace.get(raceId);
+        const dbOthers = otherRacesByRace.get(raceId);
+        const { resolvable, blocking } = await resolveBindingConflictDetails({
+          supabase, teamId: req.team.id, boundRiderIds: result.boundRiderIds, thisWindow, otherRaces: dbOthers, riders: ctx.riders,
+        });
+        if (blocking.length) {
+          return res.status(409).json({ error: "selection_rider_bound", race_id: raceId, bound_rider_ids: result.boundRiderIds, conflicts: blocking });
+        }
+        for (const r of resolvable) autoReleases.push({ race_id: r.race_id, rider_id: r.rider_id });
+      }
+    }
+
+    // Alt valideret — byg RPC-payloaden (genbruger selectionRoleFor, samme rolle-mapping
+    // som single-endpointets saveSelection) og skriv ATOMISK: advisory-lås pr. hold,
+    // dobbeltbooking-check udskudt til batchens afslutning (database/2026-08-27-1146-
+    // selection-bulk-rpc.sql — samme mønster som apply_race_entry_unit_batch, #3934).
+    const rpcChanges = changes.map((c) => {
+      const { riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds } = prepared.get(c.raceId);
+      const freeRoleIdSet = new Set(freeRoleIds);
+      return {
+        race_id: c.raceId,
+        rider_ids: riderIds,
+        roles: riderIds.map((riderId) => selectionRoleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet })),
+      };
+    });
+
+    await saveSelectionBulk({ supabase, teamId: req.team.id, changes: rpcChanges, autoReleases });
+
+    // #2599-oprydning pr. løb (samme som single-endpointet): en manuel udtagelse med ≥1
+    // rytter gør en evt. tidligere "Ryd dag/alt"-markering forældet. Best-effort — gemningen
+    // ovenfor er allerede lykkedes, en oprydningsfejl her må aldrig blive en 500.
+    for (const change of changes) {
+      const { riderIds } = prepared.get(change.raceId);
+      if (riderIds.length > 0) {
+        const { error: clearErr } = await supabase.from("race_entry_clears")
+          .delete().eq("race_id", change.raceId).eq("team_id", req.team.id);
+        if (clearErr) captureException(new Error(`race_entry_clears cleanup (bulk save, ${change.raceId}): ${clearErr.message}`));
+      }
+    }
+
+    res.json({ ok: true, saved: changes.length });
+  } catch (err) {
+    // #2256/#4283-mønsteret: RPC'ens deferred binding-backstop tabte kapløbet for os (en
+    // SAMTIDIG skriver fra en anden session, i mellemrummet mellem vores pre-flight ovenfor
+    // og denne transaktions commit). Ingen forsøg på at genskabe HVILKET løb/rytter her —
+    // pre-flighten ovenfor er den primære, navngivne vej; dette er kun nået hvis en anden
+    // skriver ramte i selve TOCTOU-vinduet, og en frisk 409 lader klienten selv gen-hente
+    // og prøve igen.
+    if (err?.code === "selection_rider_bound") {
+      return res.status(409).json({ error: "selection_rider_bound" });
+    }
+    // #2074/#4310: RPC'ens egen forward-guard (database/2026-08-27-1146-selection-bulk-
+    // rpc.sql) fangede et løb der blev frosset/afsluttet MELLEM app-lagets prepareSelectionChange
+    // ovenfor og denne transaktions commit — samme fejlkode som prepareSelectionChange
+    // bruger for den almindelige (ikke-TOCTOU) sti.
+    if (err?.code === "selection_race_started") {
+      return res.status(409).json({ error: "selection_race_started" });
+    }
+    // RPC'ens anden forward-guard-regel (status <> 'scheduled'): loebet blev FINALISERET i
+    // TOCTOU-vinduet. Samme 409-kontrakt som de tre oevrige call-sites (:5011, :5329,
+    // raceSelection.js:132) — ikke en serverfejl.
+    if (err?.code === "selection_race_not_open") {
+      return res.status(409).json({ error: "selection_race_not_open" });
     }
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -8263,6 +8576,10 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
 // POST /api/collect — anonym, consent-uafhængig web-telemetri (#2040). Storage-less
 // dedup via visit_hash; bots flagges men tælles. Fire-and-forget; må aldrig fejle
 // for klienten. INGEN PII gemmes (ingen rå IP/UA, intet bruger-id).
+//
+// #4320: gemmer også kanal-kontekst (referrer + UTM). referrer_host udledes
+// SERVER-side af den rå referrer frem for at blive modtaget fra klienten, så
+// værten altid er udledt med samme regel og ikke kan sættes vilkårligt udefra.
 router.post("/collect", collectLimiter, async (req, res) => {
   res.status(204).end(); // svar straks; resten er best-effort
   try {
@@ -8270,12 +8587,14 @@ router.post("/collect", collectLimiter, async (req, res) => {
     if (!COLLECT_EVENTS.has(event)) return;
     const ua = req.headers["user-agent"] || "";
     const ip = req.ip || "";
+    const channel = sanitizeCollectChannel(req.body);
     await supabase.from("traffic_events").insert({
       event,
       path: typeof evPath === "string" ? evPath.slice(0, 200) : null,
       device: typeof deviceType === "string" ? deviceType.slice(0, 20) : null,
       is_bot: isBotUserAgent(ua),
       visit_hash: computeVisitHash({ ip, ua, day: dayString(), secret: TRAFFIC_SALT }),
+      ...channel,
     });
   } catch (e) {
     console.error("[collect] insert fejlede:", e?.message);
@@ -8300,7 +8619,24 @@ router.get("/admin/metrics", requireAdmin, async (req, res) => {
       .eq("event_name", "signup")
       .gte("created_at", since);
 
-    res.json({ days, traffic, signups: signups || 0 });
+    // #4320: kanal-funnellen. Signup-siden hentes fra signup_attribution (ikke
+    // player_events), fordi det er den eneste kilde der bærer kanal-felter, og
+    // fordi den er consent-uafhængig ligesom traffic_events. De to tællinger
+    // kan derfor afvige lidt fra `signups` ovenfor, som er consent-gated.
+    const { data: signupRows, error: sErr } = await supabase
+      .from("signup_attribution")
+      .select("utm_source, referrer")
+      .gte("signed_up_at", since);
+    if (sErr) throw sErr;
+    const channelFunnel = aggregateChannelFunnel(visitRows || [], signupRows || []);
+
+    res.json({
+      days,
+      traffic,
+      signups: signups || 0,
+      channelFunnel,
+      attributedSignups: (signupRows || []).length,
+    });
   } catch (e) {
     console.error("[admin/metrics] fejl:", e?.message);
     res.status(500).json({ error: "metrics_failed" });

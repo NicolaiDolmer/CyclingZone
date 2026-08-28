@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.215",
+    "date": "2026-08-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Privacy",
+        "en": {
+          "title": "Anonymous visit counts now include which channel a visit came from",
+          "body": "We already counted page views without cookies and without storing anything that identifies you. Those counts now also record the referring link and any campaign tag in the address, so we can tell whether people find the game through Reddit, a search engine or somewhere else. It describes the link, not you, and none of it is tied to your account. The privacy policy has been updated."
+        },
+        "da": {
+          "title": "Anonyme besøgstal viser nu hvilken kanal besøget kom fra",
+          "body": "Vi talte allerede sidevisninger uden cookies og uden at gemme noget der identificerer dig. De tal registrerer nu også det henvisende link og et eventuelt kampagne-tag i adressen, så vi kan se om folk finder spillet via Reddit, en søgemaskine eller et andet sted. Det beskriver linket, ikke dig, og intet af det kobles til din konto. Privatlivspolitikken er opdateret."
+        },
+        "refs": [4320]
+      }
+    ]
+  },
+  {
     "version": "7.214",
     "date": "2026-08-28",
     "label": "Beta",
