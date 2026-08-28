@@ -1,7 +1,7 @@
 // backend/lib/raceSelection.test.js
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateSelection, buildRiderRows, getSelectionContext, saveSelection } from "./raceSelection.js";
+import { validateSelection, buildRiderRows, getSelectionContext, saveSelection, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts } from "./raceSelection.js";
 
 // Ejer 28/6 (afløser #1906): delvis trup tilladt — kun OVER feltstørrelsen afvises.
 const base = {
@@ -146,6 +146,286 @@ test("saveSelection: uden removalOnly (default) afvises et igangværende løb st
     }),
     (err) => err.code === "race_lineup_frozen"
   );
+});
+
+// #1146 — prepareSelectionChange: fælles pr.-løb-validering udtrukket af PUT /:raceId/
+// selection, genbrugt af BÅDE single- og bulk-endpointet (PUT /races/selection/bulk).
+// Genbruger makeSelectionSupabase (funktionserklæring, hoisted i modulet — defineret
+// nedenfor, men tilgængelig her ved kørsel).
+test("prepareSelectionChange: gyldig ændring passerer og returnerer riderIds/isRemovalOnly/ctx", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+  };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.riderIds, ids);
+  assert.equal(result.captainId, "r1");
+  assert.equal(result.isRemovalOnly, false);
+  assert.ok(result.ctx, "skal returnere getSelectionContext-resultatet (bruges af binding-tjekket i kalderen)");
+});
+
+test("prepareSelectionChange: løb der ikke er 'scheduled' afvises med 409 selection_race_not_open", async () => {
+  const race = { id: "race1", status: "completed", stages_completed: 8, league_division_id: "d1" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase({}), race, teamId: "t1", teamDivisionId: "d1", body: {},
+  });
+  assert.deepEqual(result, { ok: false, status: 409, error: "selection_race_not_open" });
+});
+
+test("prepareSelectionChange: forkert pulje afvises med 409 selection_wrong_pool", async () => {
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "pool-A" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase({}), race, teamId: "t1", teamDivisionId: "pool-B", body: {},
+  });
+  assert.deepEqual(result, { ok: false, status: 409, error: "selection_wrong_pool" });
+});
+
+test("prepareSelectionChange: ugyldigt body (rider_ids ikke et array) afvises med 400 selection_invalid_body", async () => {
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase({}), race, teamId: "t1", teamDivisionId: "d1",
+    body: { rider_ids: "r1,r2" },
+  });
+  assert.deepEqual(result, { ok: false, status: 400, error: "selection_invalid_body" });
+});
+
+// "for stor trup": SELECTION_SIZE.Class2 = {min:6,max:6} (raceAutopick.js) — 7 ryttere
+// overskrider feltstørrelsen.
+test("prepareSelectionChange: for stor trup afvises med 400 selection_wrong_size", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6", "r7"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+  };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 400);
+  assert.equal(result.error, "selection_wrong_size");
+});
+
+// "ukendt rolle": sprint_captain_id peger på en rytter der ikke er i den valgte trup.
+test("prepareSelectionChange: rolle-reference uden for truppen afvises med 400 selection_role_not_selected", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: [...ids, "r9"].map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+  };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1", sprint_captain_id: "r9" },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 400);
+  assert.equal(result.error, "selection_role_not_selected");
+});
+
+test("prepareSelectionChange: frosset løb afviser en tilføjelse (409), men tillader ren fjernelse (#2637)", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [],
+    race_entries: ids.map((id) => ({
+      race_id: "race1", team_id: teamId, rider_id: id, race_role: id === "r1" ? "captain" : "helper", is_auto_filled: false,
+    })),
+    rider_derived_abilities: [], rider_condition: [],
+  };
+  const race = { id: "race1", status: "scheduled", stages_completed: 2, league_division_id: "d1", race_class: "Class2" };
+
+  const blocked = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" }, // uændret trup, ingen fjernelse → stadig frosset
+  });
+  assert.deepEqual(blocked, { ok: false, status: 409, error: "selection_race_started" });
+
+  const allowed = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids.slice(0, 4), captain_id: "r1" }, // ægte delmængde → ren fjernelse
+  });
+  assert.equal(allowed.ok, true);
+  assert.equal(allowed.isRemovalOnly, true);
+});
+
+// #1146 — saveSelectionBulk: atomisk RPC-kald for HELE batchen. Den ægte alt-eller-intet-
+// garanti (advisory-lås + deferred constraint) ligger i SQL-transaktionen (database/2026-
+// 08-27-1146-selection-bulk-rpc.sql) og kan ikke udøves uden en live Postgres — disse tests
+// dækker JS-kontrakten: ÉT rpc-kald pr. bulk-request (uanset N ændringer, samme "ÉN
+// marketWriteLimiter-hit pr. kald"-pointe som ruten), og at en RPC-fejl kaster for HELE
+// kaldet (ingen delvis JS-side håndtering der kunne skjule et delvist resultat).
+test("saveSelectionBulk: bygger replace_race_selection_bulk-kaldet med p_team_id/p_changes/p_auto_releases", async () => {
+  let rpcArgs = null;
+  const supabase = { rpc: (name, args) => { rpcArgs = { name, args }; return Promise.resolve({ error: null }); } };
+  const changes = [{ race_id: "race1", rider_ids: ["r1", "r2"], roles: ["captain", "helper"] }];
+  const autoReleases = [{ race_id: "race9", rider_id: "r5" }];
+  await saveSelectionBulk({ supabase, teamId: "t1", changes, autoReleases });
+  assert.equal(rpcArgs.name, "replace_race_selection_bulk");
+  assert.equal(rpcArgs.args.p_team_id, "t1");
+  assert.deepEqual(rpcArgs.args.p_changes, changes);
+  assert.deepEqual(rpcArgs.args.p_auto_releases, autoReleases);
+});
+
+test("saveSelectionBulk: autoReleases er valgfri (default tomt array)", async () => {
+  let rpcArgs = null;
+  const supabase = { rpc: (name, args) => { rpcArgs = { name, args }; return Promise.resolve({ error: null }); } };
+  await saveSelectionBulk({ supabase, teamId: "t1", changes: [] });
+  assert.deepEqual(rpcArgs.args.p_auto_releases, []);
+});
+
+test("saveSelectionBulk: ÉT RPC-kald for HELE batchen uanset antal ændringer (atomicitet + cap-pointe, #1146)", async () => {
+  let callCount = 0;
+  const supabase = { rpc: () => { callCount += 1; return Promise.resolve({ error: null }); } };
+  const changes = [
+    { race_id: "race1", rider_ids: ["r1"], roles: ["captain"] },
+    { race_id: "race2", rider_ids: ["r2"], roles: ["captain"] },
+    { race_id: "race3", rider_ids: ["r3"], roles: ["captain"] },
+  ];
+  await saveSelectionBulk({ supabase, teamId: "t1", changes });
+  assert.equal(callCount, 1, "N ændringer skal blive til ÉT RPC-kald, ikke N separate skrivninger");
+});
+
+test("saveSelectionBulk: en fejl midt i batchen kaster for HELE kaldet (ingen delvis JS-håndtering)", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: { code: "XX000", message: "constraint violation mid-batch" } }) };
+  const changes = [
+    { race_id: "race1", rider_ids: ["r1"], roles: ["captain"] },
+    { race_id: "race2", rider_ids: ["r2"], roles: ["captain"] },
+  ];
+  await assert.rejects(() => saveSelectionBulk({ supabase, teamId: "t1", changes }));
+});
+
+test("saveSelectionBulk: rå 23505 fra no_rider_double_booking_day klassificeres som selection_rider_bound", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: {
+    code: "23505",
+    message: 'duplicate key value violates unique constraint "no_rider_double_booking_day"',
+  } }) };
+  await assert.rejects(
+    () => saveSelectionBulk({ supabase, teamId: "t1", changes: [{ race_id: "race1", rider_ids: [], roles: [] }] }),
+    (err) => err.code === "selection_rider_bound"
+  );
+});
+
+test("saveSelectionBulk: en URELATERET RPC-fejl får IKKE selection_rider_bound-koden", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: { code: "XX000", message: "connection reset" } }) };
+  await assert.rejects(
+    () => saveSelectionBulk({ supabase, teamId: "t1", changes: [{ race_id: "race1", rider_ids: [], roles: [] }] }),
+    (err) => err.code === undefined && /connection reset/.test(err.message)
+  );
+});
+
+// #4310-refutation FUND 1 (SQL-niveau forward-guard i replace_race_selection_bulk):
+// RPC'ens egen 'selection_race_started'-fejl (TOCTOU-backstop mod et løb der blev
+// frosset/afsluttet MELLEM app-lagets prepareSelectionChange og transaktionens commit)
+// skal klassificeres med samme fejlkode som prepareSelectionChange bruger for den
+// almindelige sti, så api.js kan svare 409 ens uanset hvilket lag der fangede det.
+test("saveSelectionBulk: rå 'selection_race_started' fra RPC'ens forward-guard klassificeres korrekt (#4310 FUND 1)", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: {
+    code: "check_violation",
+    message: "selection_race_started",
+  } }) };
+  await assert.rejects(
+    () => saveSelectionBulk({ supabase, teamId: "t1", changes: [{ race_id: "race1", rider_ids: ["r1"], roles: ["captain"] }] }),
+    (err) => err.code === "selection_race_started"
+  );
+});
+
+// CodeRabbit-review af PR #4316: forward-guarden har TO regler, men kun den ene fejlkode var
+// mappet. Et løb der blev FINALISERET (status <> 'scheduled') i TOCTOU-vinduet gav
+// err.code = undefined, så api.js's catch faldt igennem til 500 + Sentry-alarm i stedet for
+// den 409 de tre øvrige call-sites allerede svarer for præcis den tilstand.
+test("saveSelectionBulk: rå 'selection_race_not_open' fra RPC'ens forward-guard klassificeres korrekt", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: {
+    code: "check_violation",
+    message: "selection_race_not_open",
+  } }) };
+  await assert.rejects(
+    () => saveSelectionBulk({ supabase, teamId: "t1", changes: [{ race_id: "race1", rider_ids: ["r1"], roles: ["captain"] }] }),
+    (err) => err.code === "selection_race_not_open"
+  );
+});
+
+// #4310-refutation FUND 3: classifyBulkSelectionConflicts er den rene funktion der GØR en
+// swap mellem to (eller flere) celler i SAMME bulk-kald rækkefølge-uafhængig — udtrukket af
+// PUT /races/selection/bulk (api.js), hvor den tidligere lå inline og kun var dækket af
+// kildetekst-regex (0% reel adfærdsdækning, jf. #4310's verdict). Testene nedenfor beviser
+// selve egenskaben: resultatet for et givet race afhænger KUN af mængden af ændringer i
+// batchen, ikke af deres rækkefølge i `changes`-arrayet.
+const win = (start, end) => ({ start, end, days: Array.from({ length: end - start + 1 }, (_, i) => start + i) });
+
+test("classifyBulkSelectionConflicts: 2-vejs swap (rytter flyttes fra race A til race B) er rækkefølge-uafhængig — begge 'clear'", () => {
+  const a = { raceId: "A", riderIds: [], window: win(1, 3) };
+  const b = { raceId: "B", riderIds: ["r1"], window: win(2, 4) }; // overlapper A, men A har IKKE r1 længere
+  for (const changes of [[a, b], [b, a]]) {
+    const results = classifyBulkSelectionConflicts({ changes, otherRacesByRace: new Map() });
+    const byRace = new Map(results.map((r) => [r.race_id, r]));
+    assert.equal(byRace.get("A").kind, "clear", `A skal være clear (rækkefølge: ${changes.map((c) => c.raceId)})`);
+    assert.equal(byRace.get("B").kind, "clear", `B skal være clear (rækkefølge: ${changes.map((c) => c.raceId)})`);
+  }
+});
+
+test("classifyBulkSelectionConflicts: 3-vejs rotation (r1: A→B, r2: B→C, r3: C→A, alle vinduer overlapper) er rækkefølge-uafhængig — alle 'clear'", () => {
+  const a = { raceId: "A", riderIds: ["r3"], window: win(1, 5) }; // A afgiver r1, modtager r3 (fra C)
+  const b = { raceId: "B", riderIds: ["r1"], window: win(1, 5) }; // B afgiver r2, modtager r1 (fra A)
+  const c = { raceId: "C", riderIds: ["r2"], window: win(1, 5) }; // C afgiver r3, modtager r2 (fra B)
+  const permutations = [[a, b, c], [c, b, a], [b, a, c], [c, a, b]];
+  for (const changes of permutations) {
+    const results = classifyBulkSelectionConflicts({ changes, otherRacesByRace: new Map() });
+    for (const r of results) {
+      assert.equal(r.kind, "clear", `${r.race_id} skal være clear (rækkefølge: ${changes.map((c) => c.raceId)})`);
+    }
+  }
+});
+
+test("classifyBulkSelectionConflicts: ÆGTE peer-konflikt (samme rytter ønsket i to overlappende races i SAMME batch) blokerer altid, uanset rækkefølge", () => {
+  const a = { raceId: "A", riderIds: ["r1"], window: win(1, 3) };
+  const b = { raceId: "B", riderIds: ["r1"], window: win(2, 4) }; // overlapper A, BEGGE vil have r1 → ægte kollision
+  for (const changes of [[a, b], [b, a]]) {
+    const results = classifyBulkSelectionConflicts({ changes, otherRacesByRace: new Map() });
+    const byRace = new Map(results.map((r) => [r.race_id, r]));
+    assert.equal(byRace.get("A").kind, "peer_conflict");
+    assert.equal(byRace.get("B").kind, "peer_conflict");
+    assert.deepEqual(byRace.get("A").conflicts, [{ rider_id: "r1", race_id: "A", conflict_race_id: "B" }]);
+    assert.deepEqual(byRace.get("B").conflicts, [{ rider_id: "r1", race_id: "B", conflict_race_id: "A" }]);
+  }
+});
+
+test("classifyBulkSelectionConflicts: IKKE-overlappende vinduer med samme rytter i to races er IKKE en konflikt", () => {
+  const a = { raceId: "A", riderIds: ["r1"], window: win(1, 3) };
+  const b = { raceId: "B", riderIds: ["r1"], window: win(10, 12) }; // samme rytter, men ingen dag-overlap
+  const results = classifyBulkSelectionConflicts({ changes: [a, b], otherRacesByRace: new Map() });
+  for (const r of results) assert.equal(r.kind, "clear");
+});
+
+test("classifyBulkSelectionConflicts: DB-konflikt (mod et løb UDENFOR batchen) klassificeres som db_conflict, ikke peer_conflict", () => {
+  const a = { raceId: "A", riderIds: ["r1", "r2"], window: win(1, 3) };
+  const otherRacesByRace = new Map([
+    ["A", [{ raceId: "Z", window: win(2, 5), riderIds: ["r1"] }]], // Z er UDENFOR batchen
+  ]);
+  const [result] = classifyBulkSelectionConflicts({ changes: [a], otherRacesByRace });
+  assert.equal(result.kind, "db_conflict");
+  assert.deepEqual(result.boundRiderIds, ["r1"]);
+});
+
+test("classifyBulkSelectionConflicts: peer-konflikt tjekkes FØR DB-konflikt (samme rytter rammer begge slags samtidig)", () => {
+  const a = { raceId: "A", riderIds: ["r1"], window: win(1, 3) };
+  const b = { raceId: "B", riderIds: ["r1"], window: win(1, 3) }; // peer-kollision på r1
+  const otherRacesByRace = new Map([
+    ["A", [{ raceId: "Z", window: win(1, 3), riderIds: ["r1"] }]], // ville OGSÅ være en db-konflikt
+  ]);
+  const [resultA] = classifyBulkSelectionConflicts({ changes: [a, b], otherRacesByRace });
+  assert.equal(resultA.kind, "peer_conflict", "peer-konflikten skal vinde (blokerende under alle omstændigheder)");
 });
 
 // Rod B (#1800/#1742): getSelectionContext må kun vise/tælle løbs-berettigede ryttere.

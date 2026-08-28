@@ -56,10 +56,21 @@ test("PUT /races/:raceId/selection: withdrawal-gaten ligger FØR saveSelection (
   assert.ok(gateIdx < saveIdx, "withdrawal-gaten skal afvise FØR saveSelection kaldes");
 });
 
-test("PUT /races/:raceId/selection: withdrawal-gaten ligger EFTER pulje-gaten (samme rækkefølge som auto-endpointet)", () => {
+// #1146 aendrede denne test: pulje-gaten (selection_wrong_pool) er flyttet ud af
+// handleren til den DELTE prepareSelectionChange (backend/lib/raceSelection.js), som
+// baade single- og bulk-endpointet kalder. Den oprindelige raekkefoelge-assertion
+// (pool FOER withdrawn, spejlet fra auto-endpointet) kan derfor ikke laengere maales i
+// handler-blokken — og den var reelt uobserverbar: et hold kan kun afmelde loeb i sin
+// egen pulje, saa selection_wrong_pool og selection_withdrawn kan aldrig vaere sande
+// samtidig. Det #4306 faktisk kraever bevares og testes her: gaten findes, den afviser
+// FOER der valideres/skrives, og pulje-gaten bestaar i den delte funktion.
+test("PUT /races/:raceId/selection: withdrawal-gaten ligger FØR den delte validering, og pulje-gaten består i prepareSelectionChange", () => {
   const putBlock = routeBlock('router.put("/races/:raceId/selection"');
-  const poolIdx = putBlock.indexOf('res.status(409).json({ error: "selection_wrong_pool" })');
   const withdrawnIdx = putBlock.indexOf('res.status(409).json({ error: "selection_withdrawn" })');
-  assert.ok(poolIdx !== -1 && withdrawnIdx !== -1);
-  assert.ok(poolIdx < withdrawnIdx);
+  const preparedIdx = putBlock.indexOf("await prepareSelectionChange(");
+  assert.ok(withdrawnIdx !== -1 && preparedIdx !== -1, "begge markører skal findes i PUT-blokken");
+  assert.ok(withdrawnIdx < preparedIdx, "withdrawal-gaten skal afvise FØR den delte validering kaldes");
+
+  const selectionSource = readFileSync(resolve(__dirname, "raceSelection.js"), "utf8");
+  assert.match(selectionSource, /selection_wrong_pool/, "pulje-gaten skal bestå i den delte prepareSelectionChange");
 });
