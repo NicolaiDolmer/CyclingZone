@@ -12,17 +12,24 @@
 import { dateToOrdinal } from "./plannerShared.js";
 
 /**
- * Rytterens peak-pladser: de faktiske peaks (ægte + assistent-forslag) fulgt af
- * tomme pladser op til sæsonens loft. Ét fast antal rækker pr. rytter, så listen
- * har samme højde uanset hvor langt manageren er nået — en tom plads er en
- * INVITATION (stiplet "No peak"), ikke et hul.
+ * Rytterens peak-pladser: de faktiske ÆGTE peaks fulgt af tomme pladser op til
+ * sæsonens loft. Ét fast antal rækker pr. rytter, så listen har samme højde
+ * uanset hvor langt manageren er nået — en tom plads er en INVITATION (stiplet
+ * "No peak"), ikke et hul.
+ *
+ * #4212 (retning B, ejer-beslutning 28/8): et assistent-forslag (isSuggestion)
+ * optager IKKE en plads her — en plads er kontrakten manageren selv har
+ * indgået. Forslag hentes i stedet via `riderPendingSuggestions` og vises
+ * ADSKILT (stiplet/ghost), aldrig som en af de {maxPerRider} pladser — ellers
+ * ser en rytter med 1 ægte peak + 1 uaccepteret forslag ud som om han allerede
+ * har 2 peaks, præcis den fejlklasse #4212 handler om.
  *
  * @param {{peaks?:Array<object>}} rider
  * @param {number} maxPerRider
  * @returns {Array<{key:string, peak:object|null, index:number}>}
  */
 export function squadSlots(rider, maxPerRider) {
-  const peaks = (rider?.peaks || []).slice().sort((a, b) => {
+  const peaks = (rider?.peaks || []).filter((p) => !p?.isSuggestion).slice().sort((a, b) => {
     const ao = dateToOrdinal(a?.windowStart) ?? 0;
     const bo = dateToOrdinal(b?.windowStart) ?? 0;
     return ao - bo;
@@ -34,6 +41,23 @@ export function squadSlots(rider, maxPerRider) {
     slots.push({ key: peak ? String(peak.id) : `empty:${rider?.id}:${i}`, peak, index: i });
   }
   return slots;
+}
+
+/**
+ * Rytterens uaccepterede assistent-forslag MED et mål-løb, kronologisk — det
+ * ghost-spor Squad-fanen viser ved siden af (aldrig inde i) de faste pladser
+ * fra `squadSlots`. En "intet peak"-anbefaling (#3088, `isNoPeakSuggestion`,
+ * intet `targetRaceId`) hører hjemme i skuffen, ikke her (samme filter som
+ * `pendingSuggestionPairs`).
+ *
+ * @param {{peaks?:Array<object>}} rider
+ * @returns {Array<object>}
+ */
+export function riderPendingSuggestions(rider) {
+  return (rider?.peaks || [])
+    .filter((p) => p?.isSuggestion && p.targetRaceId)
+    .slice()
+    .sort((a, b) => (dateToOrdinal(a.windowStart) ?? 0) - (dateToOrdinal(b.windowStart) ?? 0));
 }
 
 /**
@@ -265,12 +289,14 @@ export function pendingSuggestionPairs(riders) {
 }
 
 /**
- * Antal ryttere der har mindst ét uaccepteret forslag — handlingskortets
- * "N peaks for M ryttere".
+ * Antal ryttere der har mindst ét uaccepteret forslag MED et mål-løb —
+ * handlingskortets "N peaks for M ryttere". En "intet peak"-anbefaling
+ * (#3088, intet `targetRaceId`) er ikke noget "Accept all" kan udkaste, så
+ * den tæller ikke med her (samme filter som `pendingSuggestionPairs`).
  *
  * @param {Array<object>} riders
  * @returns {number}
  */
 export function ridersWithSuggestions(riders) {
-  return (riders || []).filter((r) => (r?.peaks || []).some((p) => p.isSuggestion)).length;
+  return (riders || []).filter((r) => (r?.peaks || []).some((p) => p.isSuggestion && p.targetRaceId)).length;
 }

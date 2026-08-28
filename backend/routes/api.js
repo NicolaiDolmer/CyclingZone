@@ -197,7 +197,7 @@ import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, seriali
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
-import { suggestPeaksForRider } from "../lib/peakSuggestions.js";
+import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
@@ -3850,6 +3850,16 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           windowRadiusDays: PEAK_WINDOW_RADIUS_DAYS,
         });
 
+        // #3088/#4212 (ejer-beslutning 28/8): assistenten kan anbefale INTET
+        // (yderligere) peak — se peakSuggestions.js's topkommentar for
+        // roden. Genbruger samme dismiss-mekanisme (peak_suggestions_
+        // dismissed_season_id) som en almindelig forslags-afvisning —
+        // "Behold én peak" i skuffen kalder dismiss-suggestions.
+        if (shouldRecommendNoPeak({ suggestions, existingPeakCount: rd.peaks.length })) {
+          rd.peaks.push(buildNoPeakSuggestion({ riderId: rd.id, seasonId: season.id }));
+          continue;
+        }
+
         for (const s of suggestions) {
           const targetRace = raceById.get(s.targetRaceId);
           const recommendedFocus = recommendFocusForDemand(demandByRace.get(s.targetRaceId));
@@ -4717,6 +4727,17 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
 
+    // #4306: samme gate som auto-endpointet (linje ~4891-4897). Et bevidst afmeldt
+    // hold må ikke få en manuel udtagelse skrevet ind i et løb det har trukket sig fra.
+    // Uden denne gate overlevede Race Hub-kladden et afmeld-klik og kunne stadig
+    // "Gem"'es, hvilket skrev spiller-initierede entries ind i et afmeldt løb med
+    // NULL-binding (samme fingeraftryk som #4299).
+    const { data: withdrawal, error: wErr } = await supabase
+      .from("race_withdrawals").select("race_id")
+      .eq("race_id", race.id).eq("team_id", req.team.id).maybeSingle();
+    if (wErr) return res.status(500).json({ error: wErr.message });
+    if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
+
     // #2376: free_role_ids accepteres UANSET race_engine_v3_scoring-flagets tilstand —
     // gemmes blot (harmløst; motor-ADFÆRD er v3-gated i raceSimulator.buildTeamContext,
     // ikke selection-kontrakten). UI'et skjuler valgmuligheden bag flaget, men et gem
@@ -4752,7 +4773,6 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
       injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
       sizeRule: ctx.size,
-      availableCount: ctx.availableCount,
     });
     if (!result.ok) return res.status(400).json({ error: result.errors[0], errors: result.errors });
 
@@ -5046,6 +5066,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
       stageCount: ctx.stage_count,
       stagesCompleted: ctx.stages_completed,
       teamRiderIds: ctx.teamRiderIds,
+      baseRoleByRider: ctx.baseRoleByRider,
     });
     if (!result.ok) {
       const status = result.errors[0] === "stage_roles_race_completed" ? 409 : 400;

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   squadSlots, targetableRacesFor, peakNeedsAction, plannerStatusSummary,
   pendingSuggestionPairs, ridersWithSuggestions, paybackRiskRaceIds, riderSeasonLoad,
-  locksImmediatelyRaceIds,
+  locksImmediatelyRaceIds, riderPendingSuggestions,
 } from "./plannerSquadModel.js";
 
 const race = (id, date, isMine = true) => ({ id, name: `Race ${id}`, date, isMine });
@@ -40,6 +40,48 @@ test("squadSlots: rytter uden peaks får tomme pladser, ikke en tom liste", () =
   assert.equal(slots.length, 2);
   assert.ok(slots.every((s) => s.peak === null));
   assert.notEqual(slots[0].key, slots[1].key, "nøglerne skal være unikke");
+});
+
+// ── #4212 (retning B): et forslag optager ALDRIG en plads ────────────────────
+
+test("squadSlots: et assistent-forslag optager IKKE en plads — pladsen forbliver tom", () => {
+  const rider = { id: "rd1", peaks: [peak({ targetRaceId: "a", isSuggestion: true })] };
+  const slots = squadSlots(rider, 2);
+  assert.equal(slots.length, 2);
+  assert.ok(slots.every((s) => s.peak === null), "et forslag er ikke en kontrakt manageren har indgået");
+});
+
+test("squadSlots: 1 ægte peak + 1 forslag giver 1 fyldt plads og 1 tom, aldrig 2 fyldte", () => {
+  const rider = {
+    id: "rd1",
+    peaks: [
+      peak({ targetRaceId: "a", isSuggestion: false }),
+      peak({ targetRaceId: "b", isSuggestion: true }),
+    ],
+  };
+  const slots = squadSlots(rider, 2);
+  assert.equal(slots.filter((s) => s.peak).length, 1);
+  assert.equal(slots[0].peak.targetRaceId, "a");
+  assert.equal(slots[1].peak, null);
+});
+
+test("riderPendingSuggestions: kun uaccepterede forslag MED mål-løb, kronologisk", () => {
+  const rider = {
+    id: "rd1",
+    peaks: [
+      peak({ targetRaceId: "a", isSuggestion: false }),
+      peak({ targetRaceId: "c", isSuggestion: true, windowStart: "2026-09-01" }),
+      peak({ targetRaceId: "b", isSuggestion: true, windowStart: "2026-06-01" }),
+      peak({ targetRaceId: null, isSuggestion: true, windowStart: "2026-05-01" }), // noPeak-anbefaling — hører til skuffen, ikke her
+    ],
+  };
+  const out = riderPendingSuggestions(rider);
+  assert.deepEqual(out.map((p) => p.targetRaceId), ["b", "c"]);
+});
+
+test("riderPendingSuggestions: rytter uden forslag giver tom liste", () => {
+  assert.deepEqual(riderPendingSuggestions({ id: "rd1", peaks: [] }), []);
+  assert.deepEqual(riderPendingSuggestions({ id: "rd1", peaks: [peak({ isSuggestion: false })] }), []);
 });
 
 test("targetableRacesFor: kun egne fremtidige løb, kronologisk", () => {
@@ -119,6 +161,14 @@ test("pendingSuggestionPairs + ridersWithSuggestions: kun uaccepterede forslag",
 test("pendingSuggestionPairs: forslag uden mål-løb sendes aldrig videre", () => {
   const riders = [{ id: "a", peaks: [peak({ targetRaceId: null, isSuggestion: true })] }];
   assert.deepEqual(pendingSuggestionPairs(riders), []);
+});
+
+test("ridersWithSuggestions: en noPeak-anbefaling (intet mål-løb) tæller ikke med (#3088)", () => {
+  const riders = [
+    { id: "a", peaks: [peak({ targetRaceId: null, isSuggestion: true })] },
+    { id: "b", peaks: [peak({ targetRaceId: "r1", isSuggestion: true })] },
+  ];
+  assert.equal(ridersWithSuggestions(riders), 1);
 });
 
 // ── #3102 PR 2 (hul 2): payback-risiko pr. løb i dropdownen, FØR valget ───────

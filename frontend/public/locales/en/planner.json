@@ -76,11 +76,15 @@
     "acceptedAll": "{count, plural, one {# peak set} other {# peaks set}}. Change any of them in the list.",
     "acceptedPartial": "{created} set, {skipped} could not be. The list shows what stuck.",
     "badge": "Assistant suggestion",
+    "badgeMixed": "{real, plural, one {# peak} other {# peaks}} + {count, plural, one {# suggestion} other {# suggestions}}",
     "accept": "Accept",
     "reset": "Reset to blank",
     "resetDone": "Suggestion cleared. Pick a target race whenever you're ready.",
     "reasonRegistered": "Matches a race you've already entered them for.",
-    "reasonSuitability": "Best type match on your calendar."
+    "reasonSuitability": "Best type match on your calendar.",
+    "reasonNoPeak": "The assistant isn't suggesting another peak for this rider right now.",
+    "noPeakTitle": "No further peak recommended",
+    "keepOnePeak": "Keep one peak"
   },
   "filter": {
     "mine": "My races",

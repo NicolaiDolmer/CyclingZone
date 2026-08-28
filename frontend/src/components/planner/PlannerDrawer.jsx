@@ -18,7 +18,11 @@ import {
   Section, StarIcon, ExternalLinkIcon, ChartLineIcon, ChevronUpIcon, ChevronDownIcon,
   XIcon, CheckIcon, ArrowUpIcon, ArrowDownIcon, BlockedNote,
 } from "../ui";
-import { formatOrdinalShort, formatRaceDateLabel, statusMeta, riderShortName, dateToOrdinal } from "./plannerShared";
+import { formatOrdinalShort, formatRaceDateLabel, riderShortName, dateToOrdinal } from "./plannerShared";
+// #4212/#4271 "kortet som kontrakt": genbrug PRÆCIS samme værdi-linje som
+// Trup-fanen (effekt/dip/vindue/lås) — to formler for samme tal er
+// #3071-fejlklassen.
+import { PeakValue } from "./PlannerSquad";
 
 // #3012: egen komponent — useBlockedAction er et hook og kan ikke kaldes
 // betinget inde i .map()/en renderet-gren uden at bryde rules-of-hooks. Hver
@@ -204,7 +208,7 @@ function AbilityBars({ abilities }) {
   );
 }
 
-function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, onRemovePeak, onAccept, onAcceptSuggestion, onDismissSuggestion, busy }) {
+function RiderDrawer({ rider, races, maxPerRider, months, today, paybackDays, onCreatePeak, onRemovePeak, onAccept, onAcceptSuggestion, onDismissSuggestion, busy }) {
   const { t } = useTranslation("planner");
   const ovr = riderOverallRating({ ...rider.abilities, primary_type: rider.primaryType });
   // #2455: kun ÆGTE peaks tæller mod maks — uaccepterede forslag fylder ikke
@@ -241,7 +245,26 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
       <div className="mt-4 flex flex-col gap-3">
         {(rider.peaks || []).length === 0 && <div className="text-2xs text-cz-2">{t("drawer.rider.noPeak")}</div>}
         {(rider.peaks || []).map((p) => {
-          const meta = statusMeta(p.status);
+          // #3088/#4212: assistenten kan anbefale INTET (yderligere) peak —
+          // en rent informativ, stiplet ghost-anbefaling uden mål-løb. "Behold
+          // én peak" genbruger PRÆCIS samme dismiss-mekanisme (sæson-scoped,
+          // peak_suggestions_dismissed_season_id) som "Nulstil til blank" nedenfor.
+          if (p.isNoPeakSuggestion) {
+            return (
+              <div key={p.id} className="rounded-cz border border-dashed border-cz-accent-t p-3">
+                <div className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-medium text-cz-1">
+                  <StarIcon size={12} className="shrink-0 text-cz-accent-t" aria-hidden="true" />
+                  {t("assistant.noPeakTitle")}
+                </div>
+                <div className="mb-2 text-3xs text-cz-3">{t("assistant.reasonNoPeak")}</div>
+                <button
+                  className="text-3xs border border-cz-border rounded-cz px-2.5 py-1.5 hover:bg-cz-subtle disabled:opacity-40"
+                  disabled={busy}
+                  onClick={() => onDismissSuggestion(rider.id)}
+                >{t("assistant.keepOnePeak")}</button>
+              </div>
+            );
+          }
           const block = p.suggestedTrainingBlock;
           const focus = block?.recommendedFocus;
           // #2455: et FORSLAG er hverken låst, redigerbart via accept-training
@@ -278,19 +301,18 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
                   </button>
                 )}
               </div>
-              <div className="text-3xs text-cz-2 mb-2">
-                {t("drawer.rider.windowLabel", { start: formatOrdinalShort(dateToOrdinal(p.windowStart), months), end: formatOrdinalShort(dateToOrdinal(p.windowEnd), months) })}
-                {/* #2447: "var(--text-accent-t, ...)" var en ikke-eksisterende CSS-var
-                    (rigtig token er kanal-formatet --accent-t, brugt via rgb()) — den
-                    faldt derfor altid tilbage til den neutrale --text-2, så "peak i
-                    fare" aldrig fik sin advarselsfarve i noget tema. */}
-                {!p.isSuggestion && <>{" · "}<span style={{ color: meta.tone === "warn" ? "rgb(var(--accent-t))" : undefined }}>{meta.glyph} {t(`status.${meta.key}`)}</span></>}
-                {/* #3094: forudsigeligt FØR det sker — samme information som
-                    lås-badgen, blot udtrykt som "hvornår" i stedet for "hvorfor". */}
-                {!p.isSuggestion && !p.locked && p.windowStart && (
-                  <>{" · "}{t("squad.locksOn", { date: formatOrdinalShort(dateToOrdinal(p.windowStart), months) })}</>
-                )}
-              </div>
+              {p.isSuggestion ? (
+                <div className="text-3xs text-cz-2 mb-2">
+                  {t("drawer.rider.windowLabel", { start: formatOrdinalShort(dateToOrdinal(p.windowStart), months), end: formatOrdinalShort(dateToOrdinal(p.windowEnd), months) })}
+                </div>
+              ) : (
+                // #4212/#4271 "kortet som kontrakt": effekt (+X form i vinduet),
+                // dip efter vinduet, vindue + låsedato — SAMME komponent og
+                // SAMME tal som Trup-fanen, aldrig en anden formel for samme ting.
+                <div className="mb-2">
+                  <PeakValue peak={p} paybackDays={paybackDays} months={months} />
+                </div>
+              )}
               {p.isSuggestion && (
                 <div className="text-3xs text-cz-3 mb-2">
                   {t(p.suggestionReason === "registered" ? "assistant.reasonRegistered" : "assistant.reasonSuitability")}
@@ -335,7 +357,7 @@ function RiderDrawer({ rider, races, maxPerRider, months, today, onCreatePeak, o
   );
 }
 
-export default function PlannerDrawer({ mode, race, rider, riders, races, maxPerRider, months, today, onClose, onCreatePeak, onRemovePeak, onAccept, onAcceptSuggestion, onDismissSuggestion, busy, divisionPending }) {
+export default function PlannerDrawer({ mode, race, rider, riders, races, maxPerRider, months, today, paybackDays, onClose, onCreatePeak, onRemovePeak, onAccept, onAcceptSuggestion, onDismissSuggestion, busy, divisionPending }) {
   const { t } = useTranslation("planner");
   return (
     <Section className="relative">
@@ -345,7 +367,7 @@ export default function PlannerDrawer({ mode, race, rider, riders, races, maxPer
       {mode === "race" && race && <RaceDrawer race={race} riders={riders} maxPerRider={maxPerRider} onCreatePeak={onCreatePeak} busy={busy} divisionPending={divisionPending} />}
       {mode === "rider" && rider && (
         <RiderDrawer
-          rider={rider} races={races} maxPerRider={maxPerRider} months={months} today={today}
+          rider={rider} races={races} maxPerRider={maxPerRider} months={months} today={today} paybackDays={paybackDays}
           onCreatePeak={onCreatePeak} onRemovePeak={onRemovePeak} onAccept={onAccept}
           onAcceptSuggestion={onAcceptSuggestion} onDismissSuggestion={onDismissSuggestion}
           busy={busy}

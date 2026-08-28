@@ -74,62 +74,47 @@ Et halvt løfte du kan holde er bedre end et helt du må bryde i morgen.
 
 ---
 
-## B. #patch-notes, det der er blevet færdigt i dag
+## B. #patch-notes, alt der er blevet færdigt i dag
 
-Fire ting landede i dag, alle live. Skrevet til spillere, ikke til udviklere.
+Seks ting landede 27/8, versionerne 7.204 til 7.209. Alle gennemgået og godkendt af ejeren enkeltvis. Ét samlet opslag, skrevet til spillere.
+
+Tallene herunder er målt i prod 27/8: 812 planer, 320 låste, 98 af 206 etapeløb, 41,7 mod 9,2.
 
 ### Udkast (EN)
 
-> **Today: four fixes to planning and training**
+> **Today: six fixes to planning, training and the numbers you plan by**
 >
-> Form peaks left over from the old calendar are gone. Rebuilding the season 3 calendar left
-> 812 peak plans pointing at races that no longer exist, and the ones already under way could
-> not be removed. All cleared. Set your peaks again. From now on a peak plan is deleted along
-> with its race.
+> **Set your form peaks again.** Rebuilding the calendar left 812 peak plans pointing at races that no longer exist, and 320 of them were locked so you could not remove them. All are cleared. A peak plan is now deleted along with its race.
 >
-> The training page no longer shows +0 on every ability. Before the season starts there is
-> nothing to count yet. It now says so, and says when counting begins, instead of showing a
-> row of zeros that looked like a bug.
+> **Peak target dates were wrong for stage races.** The Vuelta read as ending 4 October, a week after the season ends, when it finishes 21 September. 98 of 206 stage races were affected. Your peak plans were never wrong, only the dates beside them.
 >
-> The load chip counted the wrong thing. In the planning board's rider pool it said race days
-> but counted stages, and it counted races from earlier seasons on top. It now counts race days
-> in the current season only. If a rider looked far busier than he is, that was why.
+> **Race cards now show the days they run.** A card only told you the day a race started, so the only way to spot an overlap was to add a rider and see what happened. Cards show the full span now, and a line underneath names the race that shares those days. If the same rider is picked for both, that line turns red. Race day numbers start at 1.
 >
-> Planning tells you when something failed to load. A failed view used to go blank or claim to
-> be empty, with nothing to click. Team selection, Form plan, Strategy, Start lists and the
-> Calendar now say what went wrong, confirm that nothing was lost, and give you a Try again
-> button.
+> **Planning tells you when something failed.** A failed view used to go blank or claim to be empty. Team selection, Form plan, Strategy, Start lists and the Calendar now say what happened, confirm nothing was lost, and give you a Try again button.
 >
-> One wording change with no money attached: your sponsor pays per stage, and the finance
-> labels now say stage instead of race day. Nothing about the payment changed, only the word.
+> **Training no longer shows +0 before the season starts.** Between two seasons the receipt read the new season as zero points gained. It now says when the season starts, and training before then still counts toward each rider's next point.
+>
+> **The load chip counted the wrong thing.** It said race days but counted stages, and it added up earlier seasons too. On average it read 41.7 where the true number is 9.2. It now counts race days in the current season only.
+>
+> One wording change with no money attached: your sponsor pays per stage, not per race day, and the labels now say so. The payment itself is unchanged.
 
 ### Udkast (DA)
 
-> **I dag: fire rettelser til planlægning og træning**
+> **I dag: seks rettelser til planlægning, træning og de tal du planlægger efter**
 >
-> Formpeaks tilbage fra den gamle kalender er væk. Sæson 3-kalenderen blev bygget om, og 812
-> formplaner endte med at pege på løb der ikke findes mere. Dem der allerede var i gang kunne
-> ikke fjernes. Alle er ryddet. Sæt dine peaks igen. Fra nu af slettes en formplan sammen med
-> sit løb.
+> **Sæt dine formpeaks igen.** Kalender-ombygningen efterlod 812 formplaner der pegede på løb der ikke findes mere, og 320 af dem var låst så du ikke kunne fjerne dem. Alle er ryddet. En formplan slettes nu sammen med sit løb.
 >
-> Træningssiden viser ikke længere +0 på hver evne. Før sæsonen er begyndt er der ikke noget at
-> tælle endnu. Den siger det nu, og siger hvornår tællingen går i gang, i stedet for at vise en
-> række nuller der lignede en fejl.
+> **Peak-mål viste forkerte datoer for etapeløb.** Vueltaen stod til at slutte 4. oktober, en uge efter sæsonen slutter, selvom den er færdig 21. september. 98 af 206 etapeløb var ramt. Dine formplaner har aldrig været forkerte, kun datoerne ved siden af dem.
 >
-> Belastnings-tallet talte det forkerte. I planlægnings-boardets rytterpulje stod der løbsdage,
-> men den talte etaper, og den talte oven i købet løb med fra tidligere sæsoner. Den tæller nu
-> kun løbsdage i den aktive sæson. Hvis en rytter så langt mere travl ud end han er, var det
-> derfor.
+> **Løbskort viser nu de dage de kører.** Et kort fortalte kun hvilken dag et løb startede, så den eneste måde at opdage et overlap på var at sætte en rytter ind og se hvad der skete. Kortene viser nu hele spændet, og en linje nedenunder navngiver det løb der deler de dage. Er samme rytter udtaget til begge, bliver linjen rød. Løbsdage tælles fra 1.
 >
-> Planlægning siger til når noget ikke kunne hentes. En fejlet visning gik før blank eller
-> påstod den var tom, uden noget at klikke på. Holdudtagelse, Formplan, Strategi, Startlister
-> og Kalender siger nu hvad der gik galt, bekræfter at intet er tabt, og giver dig en Prøv
-> igen-knap.
+> **Planlægning siger til når noget fejler.** En fejlet visning gik før blank eller påstod den var tom. Holdudtagelse, Formplan, Strategi, Startlister og Kalender siger nu hvad der skete, bekræfter at intet er tabt, og giver dig en Prøv igen-knap.
 >
-> Én sproglig ændring uden penge i: din sponsor betaler per etape, og teksterne under økonomi
-> siger nu etape i stedet for løbsdag. Selve betalingen er uændret, kun ordet er skiftet.
-
----
+> **Træning viser ikke længere +0 før sæsonen er startet.** Mellem to sæsoner læste kvitteringen den nye sæson som nul point opnået. Den siger nu hvornår sæsonen starter, og træning inden da tæller stadig med mod hver rytters næste point.
+>
+> **Belastnings-tallet talte det forkerte.** Der stod løbsdage, men den talte etaper, og den lagde tidligere sæsoner oveni. I snit viste den 41,7 hvor det sande tal er 9,2. Den tæller nu kun løbsdage i den aktive sæson.
+>
+> Én sproglig ændring uden penge i: din sponsor betaler pr. etape, ikke pr. løbsdag, og teksterne siger det nu. Selve betalingen er uændret.
 
 ## C. Hvad der er på tegnebrættet
 
