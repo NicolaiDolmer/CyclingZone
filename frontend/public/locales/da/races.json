@@ -121,6 +121,7 @@
       "add": "Tilføj fra ledige",
       "withdraw": "Afmeld",
       "reenter": "Deltag igen",
+      "withdrawnNote": "Dit hold stiller frivilligt ikke op i dette løb",
       "remove": "Fjern rytter",
       "openRace": "Åbn {name}",
       "peaksHere": "Topper her: {names}",

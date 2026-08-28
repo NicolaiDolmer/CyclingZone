@@ -121,6 +121,7 @@
       "add": "Add from available",
       "withdraw": "Withdraw",
       "reenter": "Re-enter",
+      "withdrawnNote": "Your team is voluntarily not starting this race",
       "remove": "Remove rider",
       "openRace": "Open {name}",
       "peaksHere": "Peaking here: {names}",

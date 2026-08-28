@@ -11,7 +11,7 @@ import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
 import FitBar from "./FitBar.jsx";
 import RoleCard from "./RoleCard.jsx";
 import RaceLink from "../RaceLink.jsx";
-import { LockIcon, StarIcon, AlertTriangleIcon } from "../ui";
+import { LockIcon, StarIcon, AlertTriangleIcon, InfoIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";
 
 const STATUS_CLASS = {
@@ -249,7 +249,16 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
             );
           })}
         </div>
-      ) : null}
+      ) : (
+        // #4306 (ejer-direktiv 27/8): et afmeldt hold stiller FRIVILLIGT ikke op — den
+        // tilstand skal være synlig, ikke bare et tomt kort. Udtagne ryttere skjules
+        // fortsat (de kører ikke, #4283/loadEntrantsForRace), men fladen skal sige
+        // HVORFOR feltet er tomt i stedet for at ligne en fejl eller et glemt løb.
+        <div className="flex-1 flex items-start gap-2 px-3 py-4 text-xs text-cz-3">
+          <InfoIcon size={14} className="flex-shrink-0 mt-px" aria-hidden="true" />
+          <span>{t("racehub.column.withdrawnNote")}</span>
+        </div>
+      )}
 
       <div className="p-2 border-t border-cz-border flex items-center justify-between gap-2">
         {/* #3428: "Ryd udtagelse" manglede pr. løb — kun × pr. rytter fandtes. Kun kladde-
