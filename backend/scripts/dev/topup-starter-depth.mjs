@@ -24,6 +24,7 @@ import { deriveForRiderIds } from "../../lib/backfillCores.js";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
 import { foldNameNordic } from "../../lib/pcmRiderMatcher.js";
 import { LAUNCH_POPULATION } from "../../lib/fictionalLaunchPopulation.js";
+import { seasonReferenceYear } from "../../lib/riderSeasonAge.js";
 
 const LIVE = process.argv.includes("--live");
 const INACTIVE_DAYS = (() => {
@@ -97,12 +98,21 @@ if (!LIVE) {
   process.exit(0);
 }
 
+// Generér mod den AKTIVE sæsons referenceår, ikke launch-årets (#4307-fund 28/8):
+// v4-værdimodellen forankrer alder i sæsonen (ageForSeason = launch-år + sæson-1),
+// så en rytter født mod launch-referencen kan være >40 i sæson-termer — over
+// karriere-NPV'ens hårde aldersgrænse → base_value null → derive kaster.
+const { data: activeSeason, error: sErr } = await sb.from("seasons").select("number").eq("status", "active").maybeSingle();
+if (sErr) { console.error("seasons:", sErr.message); process.exit(1); }
+const referenceYear = seasonReferenceYear(activeSeason?.number ?? 1) ?? LAUNCH_POPULATION.referenceYear;
+console.log(`Referenceår for generering: ${referenceYear} (sæson ${activeSeason?.number ?? 1})`);
+
 const nowIso = new Date().toISOString();
 let added = 0;
 for (const { teamId, need } of plan) {
   const tailSeed = deriveTeamSeed((LAUNCH_POPULATION.seed + 1487 + 7) >>> 0, teamId);
   const payload = buildWeakStarterPool({
-    count: need, seed: tailSeed, referenceYear: LAUNCH_POPULATION.referenceYear,
+    count: need, seed: tailSeed, referenceYear,
     existingFoldedNames, window: STARTER_TAIL_STAT_WINDOW,
   }).map((r) => ({ ...r, team_id: teamId }));
 
