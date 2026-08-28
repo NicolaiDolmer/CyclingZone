@@ -342,6 +342,21 @@ test("saveSelectionBulk: rå 'selection_race_started' fra RPC'ens forward-guard 
   );
 });
 
+// CodeRabbit-review af PR #4316: forward-guarden har TO regler, men kun den ene fejlkode var
+// mappet. Et løb der blev FINALISERET (status <> 'scheduled') i TOCTOU-vinduet gav
+// err.code = undefined, så api.js's catch faldt igennem til 500 + Sentry-alarm i stedet for
+// den 409 de tre øvrige call-sites allerede svarer for præcis den tilstand.
+test("saveSelectionBulk: rå 'selection_race_not_open' fra RPC'ens forward-guard klassificeres korrekt", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: {
+    code: "check_violation",
+    message: "selection_race_not_open",
+  } }) };
+  await assert.rejects(
+    () => saveSelectionBulk({ supabase, teamId: "t1", changes: [{ race_id: "race1", rider_ids: ["r1"], roles: ["captain"] }] }),
+    (err) => err.code === "selection_race_not_open"
+  );
+});
+
 // #4310-refutation FUND 3: classifyBulkSelectionConflicts er den rene funktion der GØR en
 // swap mellem to (eller flere) celler i SAMME bulk-kald rækkefølge-uafhængig — udtrukket af
 // PUT /races/selection/bulk (api.js), hvor den tidligere lå inline og kun var dækket af

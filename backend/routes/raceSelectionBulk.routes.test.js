@@ -118,7 +118,12 @@ test("PUT /races/selection/bulk validerer ALLE ændringer FØR den skriver noget
 test("PUT /races/selection/bulk er registreret FØR /races/:raceId/selection/auto (ingen param-kollision)", () => {
   const bulkIdx = apiSource.indexOf(MARKER);
   const autoIdx = apiSource.indexOf('router.post("/races/:raceId/selection/auto"');
-  assert.ok(bulkIdx !== -1 && autoIdx !== -1);
+  assert.ok(bulkIdx !== -1 && autoIdx !== -1, "begge ruter skal findes i api.js");
+  // Selve paastanden i testnavnet. Uden denne assertion bestod testen for ENHVER
+  // raekkefoelge og gav dermed falsk tryghed om praecis den param-kollision den
+  // findes for: registreres /races/:raceId/selection/auto foerst, matcher :raceId
+  // strengen "selection" og sluger bulk-ruten.
+  assert.ok(bulkIdx < autoIdx, "bulk-ruten skal registreres FØR /races/:raceId/selection/auto");
 });
 
 test("raceSelection.js eksporterer prepareSelectionChange + saveSelectionBulk + classifyBulkSelectionConflicts + roleFor", () => {

@@ -4978,6 +4978,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     if (err?.code === "selection_race_started") {
       return res.status(409).json({ error: "selection_race_started" });
     }
+    // RPC'ens anden forward-guard-regel (status <> 'scheduled'): loebet blev FINALISERET i
+    // TOCTOU-vinduet. Samme 409-kontrakt som de tre oevrige call-sites (:5011, :5329,
+    // raceSelection.js:132) — ikke en serverfejl.
+    if (err?.code === "selection_race_not_open") {
+      return res.status(409).json({ error: "selection_race_not_open" });
+    }
     captureException(err);
     res.status(500).json({ error: err.message });
   }

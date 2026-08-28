@@ -256,6 +256,15 @@ export async function saveSelectionBulk({ supabase, teamId, changes, autoRelease
       // for den almindelige (ikke-TOCTOU) sti, så klienten ser én kontrakt uanset hvilken
       // af de to steder der fangede det.
       err.code = "selection_race_started";
+    } else if (msg.includes("selection_race_not_open")) {
+      // Samme kontrakt-argument som grenen ovenfor, for RPC'ens ANDEN forward-guard-regel
+      // (status <> 'scheduled', rpc.sql:186). Koden manglede her, saa et loeb der blev
+      // FINALISERET i TOCTOU-vinduet gav err.code = undefined -> api.js's catch faldt
+      // igennem til captureException + 500, i stedet for den 409 de tre oevrige call-sites
+      // (api.js:5011, api.js:5329, raceSelection.js:132) allerede svarer for praecis den
+      // tilstand. Spilleren fik en generisk serverfejl + en stoej-alarm i Sentry for noget
+      // der er en normal, forklarlig afvisning.
+      err.code = "selection_race_not_open";
     }
     throw err;
   }
