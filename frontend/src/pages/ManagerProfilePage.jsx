@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { ageBadgeKey } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import OnlineBadge from "../components/OnlineBadge";
@@ -45,11 +45,6 @@ const MANAGER_RIDER_ACCESSORS = {
   value: (r) => r.market_value ?? 0,
   ...Object.fromEntries(ABILITY_STATS.map(({ key }) => [key, (r) => r[key] ?? 0])),
 };
-
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
-}
 
 function AchievementBadge({ achievement }) {
   const { t } = useTranslation("achievements");
@@ -140,6 +135,11 @@ export default function ManagerProfilePage() {
     setLoading(true);
     try {
       const h = await authHeaders();
+      // #4347/#4348: uden session gav kaldet før en 401, `json` blev fejlkroppen
+      // og `data` forblev null — spilleren endte i fejl-tilstanden med retry-knap,
+      // men først efter et unødvendigt kald. Nu springes kaldet over; samme
+      // sluttilstand, uden 401'eren (finally sætter fortsat loading=false).
+      if (!h) return;
       const res = await fetch(`${API}/api/managers/${teamId}`, { headers: h });
       const json = await res.json().catch(() => null);
       if (res.ok && json) setData(json);

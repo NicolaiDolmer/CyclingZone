@@ -219,6 +219,7 @@
     "auction_end_too_late": "An auction can't run for more than {maxHours} hours",
     "auction_end_outside_window": "Auctions can only end while the market is open, between {openHour} and {closeHour}",
     "auction_end_crosses_season_transition": "Auctions can't end after the season change ({boundaryAt})",
-    "season_end_already_claimed": "Season end already in progress or already completed"
+    "season_end_already_claimed": "Season end already in progress or already completed",
+    "session_expired": "Your session has expired. Log in again"
   }
 }

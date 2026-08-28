@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo } from "../lib/marketValues.js";
 import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
@@ -95,11 +95,6 @@ async function fetchAllRiderSeasonRows(riderId) {
     if (data.length < PAGE) break;
   }
   return { rows, failed: false };
-}
-
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
 // Hero-handlingsrækkens trigger-knapper (ejer-feedback 3/7): kompakte, auto-
@@ -935,6 +930,7 @@ export default function RiderStatsPage() {
     (async () => {
       try {
         const h = await authHeaders();
+        if (!h) return; // #4347/#4348: ingen session — fanen falder tilbage til egne tal
         const res = await fetch(`${API}/api/physiology/division-benchmark?division=${division}`, { headers: h });
         if (res.ok && !cancelled) setPhysBenchmark(await res.json());
       } catch { /* non-kritisk: fanen falder tilbage til egne tal uden sammenligning */ }
@@ -959,6 +955,7 @@ export default function RiderStatsPage() {
     watchlistCountFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) return; // #4347/#4348: ingen session — tallet forbliver 0
       const res = await fetch(`${API}/api/riders/${fetchId}/watchlist-count`, { headers: h });
       const data = await res.json();
       if (watchlistCountFetchIdRef.current !== fetchId) return;
@@ -975,6 +972,7 @@ export default function RiderStatsPage() {
     setVisits(null);
     try {
       const h = await authHeaders();
+      if (!h) return; // #4347/#4348: ingen session — visits forbliver null
       const res = await fetch(`${API}/api/riders/${fetchId}/view-count`, { headers: h });
       const data = await res.json();
       if (visitsFetchIdRef.current !== fetchId) return;
@@ -991,6 +989,7 @@ export default function RiderStatsPage() {
     setAnnouncedRetirement(false);
     try {
       const h = await authHeaders();
+      if (!h) return; // #4347/#4348: ingen session — banneret vises bare ikke
       const res = await fetch(`${API}/api/riders/${fetchId}/retirement-status`, { headers: h });
       const data = await res.json();
       if (retirementStatusFetchIdRef.current !== fetchId) return;
@@ -1026,6 +1025,7 @@ export default function RiderStatsPage() {
       setOnWatchlist(true); setWatchlistId(data?.id);
       // Achievement check
       const h = await authHeaders();
+      if (!h) return; // #4347/#4348: ingen session — spring den bonus-agtige check over
       fetch(`${API}/api/achievements/check`, {
         method: "POST", headers: h,
         body: JSON.stringify({ context: "watchlist_add" }),
@@ -1043,6 +1043,9 @@ export default function RiderStatsPage() {
     setHistory(null);
     try {
       const h = await authHeaders();
+      // #4347/#4348: ingen session — samme eksplicitte fejl-tilstand som et
+      // afvist svar ville have givet, i stedet for at hænge i loading for evigt.
+      if (!h) { if (historyFetchIdRef.current === fetchId) setHistory({ error: true }); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/history`, { headers: h });
       // Fejl må ikke ligne "ingen handelshistorik" (#1338-princippet) — fanen
       // viser en eksplicit kunne-ikke-hentes-tilstand i stedet for tom liste.
@@ -1062,6 +1065,7 @@ export default function RiderStatsPage() {
     setInterest(null);
     try {
       const h = await authHeaders();
+      if (!h) { if (interestFetchIdRef.current === fetchId) setInterest({ error: true }); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/interest`, { headers: h });
       // Fejl må ikke ligne "ingen interesse" (#1338-princippet) — fanen viser
       // en eksplicit kunne-ikke-hentes-tilstand i stedet for nuller.
@@ -1084,6 +1088,7 @@ export default function RiderStatsPage() {
     bidTimelineFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) { if (bidTimelineFetchIdRef.current === fetchId) setBidTimeline({ auction_id: null, status: null }); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/bid-timeline`, { headers: h });
       const data = res.ok ? await res.json() : { auction_id: null, status: null };
       if (bidTimelineFetchIdRef.current !== fetchId) return;
@@ -1107,6 +1112,7 @@ export default function RiderStatsPage() {
     setStatHistory(null);
     try {
       const h = await authHeaders();
+      if (!h) { if (developmentFetchIdRef.current === fetchId) setStatHistory([]); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/development`, { headers: h });
       const data = res.ok ? await res.json() : [];
       if (developmentFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
@@ -1126,6 +1132,7 @@ export default function RiderStatsPage() {
     setProjection(null);
     try {
       const h = await authHeaders();
+      if (!h) { if (projectionFetchIdRef.current === fetchId) setProjection(null); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/development-projection`, { headers: h });
       const data = res.ok ? await res.json() : null;
       if (projectionFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
@@ -1144,6 +1151,7 @@ export default function RiderStatsPage() {
     valueTrendFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) { if (valueTrendFetchIdRef.current === fetchId) setValueTrend(null); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/value-trend`, { headers: h });
       const data = res.ok ? await res.json() : null;
       if (valueTrendFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
@@ -1161,6 +1169,7 @@ export default function RiderStatsPage() {
     levelCorrectionReceiptFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) { if (levelCorrectionReceiptFetchIdRef.current === fetchId) setLevelCorrectionReceipt(null); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/level-correction-receipt`, { headers: h });
       const data = res.ok ? await res.json() : null;
       if (levelCorrectionReceiptFetchIdRef.current !== fetchId) return; // stale svar
@@ -1326,13 +1335,14 @@ export default function RiderStatsPage() {
     // Fyrer én gang pr. profil-mount (useEffect [id]) — ikke pr. re-render.
     if (riderRes.data?.id) {
       const h = await authHeaders();
-      fetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
+      if (h) fetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
     }
   }
 
   async function loadDdStatus() {
     try {
       const h = await authHeaders();
+      if (!h) return; // #4347/#4348: ingen session — banneret falder tilbage til inaktiv
       const res = await fetch(`${API}/api/deadline-day/status`, { headers: h });
       if (res.ok) {
         const data = await res.json();

@@ -14,7 +14,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { getSession } from "../../lib/supabase";
+import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { terrainBucket } from "../../lib/stageTerrain.js";
 import { LockIcon } from "../ui/index.js";
 import {
@@ -66,13 +66,6 @@ const EFFORT_HELP_KEY = {
   normal: "stageTactics.effortHelp.normal",
   save: "stageTactics.effortHelp.save",
 };
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = [] }) {
   const { t } = useTranslation("races");

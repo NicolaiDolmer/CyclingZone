@@ -5,16 +5,10 @@ import Modal from "./ui/Modal.jsx";
 import Field from "./ui/Field.jsx";
 import Textarea from "./ui/Textarea.jsx";
 import Button from "./ui/Button.jsx";
-import { getSession } from "../lib/supabase";
+import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { FEEDBACK_CATEGORIES, FEEDBACK_MESSAGE_MAX_LENGTH, validateFeedback, captureContext } from "../lib/feedbackForm.js";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : null;
-}
 
 // #2602: in-game feedback/bug-report/idea-modal — de eneste veje ind for spillere
 // uden Discord. Åbnes fra samme sted som Help i sidebar/bottom-nav (Layout.jsx),

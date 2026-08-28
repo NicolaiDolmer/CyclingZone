@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { getSession } from "../../lib/supabase";
+import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 import SeasonDayToggle from "./SeasonDayToggle.jsx";
@@ -45,12 +45,6 @@ function copenhagenTodayISO() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Copenhagen", year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date());
-}
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : null;
 }
 
 /** Kalender-entries (egen pulje) → bænde til tidslinjen. Ren, testbar via props. */

@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getSession } from "../../lib/supabase";
+import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { toggleRider, validateSelectionClient, partialSquadOutlook } from "../../lib/raceSelectionLogic.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
@@ -41,13 +41,6 @@ const API = import.meta.env.VITE_API_URL;
 // gem fra dette panel ikke wiper free_role'r sat af boardet. Panelet har intet fuldt
 // redigerings-UI for rollen (rollens editor er boardets rollekort); den vises kun som badge.
 const EMPTY_SELECTION = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null, freeRoleIds: [] };
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export default function RaceSelectionPanel({
   raceId,

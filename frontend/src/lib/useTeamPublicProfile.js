@@ -3,16 +3,9 @@
 // auth-/enabled-mønster som useFacilities.js/useStaffDirectory.js (getSession() →
 // Bearer-token; 403 facilities_disabled → enabled=false, IKKE en fejl).
 import { useState, useEffect, useCallback } from "react";
-import { getSession } from "./supabase.js";
+import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export function useTeamPublicProfile(teamId) {
   const [staff, setStaff] = useState([]);

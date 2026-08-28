@@ -13,17 +13,10 @@
 // createPeak-kald som en manuel peak (serveren genskaber præcis samme vindue,
 // deterministisk); "nulstil til blank" er et separat sæson-scoped write.
 import { useState, useEffect, useCallback } from "react";
-import { getSession } from "./supabase.js";
+import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "./actionTelemetry.js";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 // #3018: divisionPending = holdets division for DEN VALGTE sæson er ikke afgjort
 // endnu (sæsonen er 'upcoming'; op/nedrykning sker ved sæsonskiftet). Så er intet

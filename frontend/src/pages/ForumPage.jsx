@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch.js";
 import {
   Button, PageHeader, Section, SectionStack, SectionHeader, EmptyState, ErrorState,
@@ -24,12 +24,6 @@ const TITLE_MAX = 120;
 const BODY_MAX = 4000;
 // Modul-konstant: en inline-array ville re-subscribe Realtime-kanalen hver render.
 const FORUM_TABLES = ["forum_posts", "forum_replies"];
-
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : null;
-}
 
 export function formatForumDate(iso, language) {
   if (!iso) return "";

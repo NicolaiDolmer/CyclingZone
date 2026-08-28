@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.216",
+    "date": "2026-08-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auth",
+        "en": {
+          "title": "Online count no longer shows 0 by mistake",
+          "body": "A rejected background request could briefly show the online count as 0. It now keeps the last known number."
+        },
+        "da": {
+          "title": "Online-tallet viser ikke længere 0 ved en fejl",
+          "body": "Et afvist baggrundskald kunne kortvarigt vise online-tallet som 0. Det beholder nu sidst kendte værdi."
+        },
+        "refs": [4347, 4348, 4351]
+      }
+    ]
+  },
+  {
     "version": "7.215",
     "date": "2026-08-28",
     "label": "Beta",

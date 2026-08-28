@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
@@ -209,11 +209,6 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
       ],
     },
   ];
-}
-
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
 // #64: tæl ulæste notifikationer via head-count (ingen rows hentet) i stedet for
@@ -469,7 +464,13 @@ export default function Layout() {
     if (!API) return;
     try {
       const h = headers || await authHeaders();
+      // #4347/#4348: uden session sprang det her kald før igennem med "Bearer
+      // undefined" i stedet for at blive sprunget over.
+      if (!h) return;
       const res = await fetch(`${API}/api/online-count`, { headers: h });
+      // #4351: en 401/5xx (fx en afvist session) blev læst som et gyldigt svar,
+      // og `data.count || 0` skrev "0 online". Behold sidst kendte tal i stedet.
+      if (!res.ok) return;
       const data = await res.json();
       setOnlineCount(data.count || 0);
     } catch (e) { console.error("online-count:", e); }
@@ -525,6 +526,10 @@ export default function Layout() {
         if (metaTeamName && metaManagerName && API) {
           try {
             const h = await authHeaders();
+            // #4347/#4348: vi kom kun hertil fordi der VAR en session ovenfor, så
+            // at den er væk nu er en ægte undtagelse — lad den eksisterende catch
+            // logge fallback'en til SetupWizard i stedet for at PUT'e uden token.
+            if (!h) throw new Error("ingen session ved auto-bootstrap");
             const res = await fetch(`${API}/api/teams/my`, {
               method: "PUT",
               headers: h,
@@ -566,6 +571,10 @@ export default function Layout() {
 
       if (!API) { console.error("VITE_API_URL is not set — presence/streak calls skipped"); return; }
       const h = await authHeaders();
+      // #4347/#4348: resten af effekten er fire kald der alle kræver et token.
+      // Uden session ville de før ryge afsted med "Bearer undefined" og alle
+      // fire returnere 401.
+      if (!h) return;
       fetchForumUnread(h).then((hasUnread) => { if (hasUnread != null) setForumUnread(hasUnread); });
       // Akademi-nav-synlighed (#1308): bestem via /api/academy/me, men fejl LUKKER
       // ikke punktet. Kun 200/409 er autoritative (opdater state + cache); 401
@@ -619,6 +628,7 @@ export default function Layout() {
     return subscribeAuthedChannel("layout-forum-unread", channel => {
       const refetch = async () => {
         const h = await authHeaders();
+        if (!h) return;
         const hasUnread = await fetchForumUnread(h);
         if (hasUnread != null) setForumUnread(hasUnread);
       };
@@ -636,6 +646,7 @@ export default function Layout() {
     if (!session) return;
     async function handleForumRead() {
       const h = await authHeaders();
+      if (!h) return;
       const hasUnread = await fetchForumUnread(h);
       if (hasUnread != null) setForumUnread(hasUnread);
     }
@@ -685,6 +696,14 @@ export default function Layout() {
     heartbeatRef.current = setInterval(async () => {
       if (!API) return;
       const h = await authHeaders();
+      // #4347: DEN HER var kilden til 401-støjen i Railway-loggen. Når sessionen
+      // dør, bliver `session`-state hængende (intet her rydder den), så
+      // intervallet kørte videre og sendte "Bearer undefined" hvert 60. sekund
+      // indtil fanen blev lukket. Nu holder det op af sig selv.
+      //
+      // Bemærk: dette stopper støjen, men logger ikke spilleren ud — fanen ser
+      // stadig indlogget ud med frosne tal. Det er #4350, deprioriteret 28/8.
+      if (!h) return;
       fetch(`${API}/api/presence`, { method: "POST", headers: h }).catch(e => console.error("heartbeat:", e));
       fetchOnlineCount(h);
     }, 60000);
