@@ -1103,6 +1103,22 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
       entries: existingEntries, injuredUntilByRider, todayStr: copenhagenDateString(),
     });
   }
+  // #4306: hold der har trukket sig fra løbet (Fase 0b, frivillig deltagelse) deltager
+  // ikke, heller ikke med BEVAREDE entries fra før afmeldingen. loadWithdrawnTeamIds
+  // kaldtes hidtil kun fra fillMissingTeamEntries (sen redning); et afmeldt holds
+  // committede race_entries blev derfor aldrig fjernet, og holdet startede løbet med
+  // en NULL-binding (race_entries_binding_span forudsætter bevidst at et afmeldt hold
+  // heller ikke STARTER, se database/2026-08-21-4075-monument-normal-gameday.sql).
+  // Filtreres HER, FØR autopick/minimum-gulv nedenfor, så et afmeldt hold aldrig kan
+  // "reddes" op til feltet af sen-rednings- eller minimum-logikken (koordination #4295).
+  // Et hold uden entries er ikke i feltet, ingen ny tilstand, samme mekanik som
+  // division/ghost/skade-filtrene ovenfor.
+  if (existingEntries.length) {
+    const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
+    if (withdrawnTeams.size) {
+      existingEntries = existingEntries.filter((e) => !withdrawnTeams.has(e.team_id));
+    }
+  }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
   // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).
   const autopicked = allowAutofill

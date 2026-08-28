@@ -12,7 +12,7 @@ import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
 import FitBar from "./FitBar.jsx";
 import RoleCard from "./RoleCard.jsx";
 import RaceLink from "../RaceLink.jsx";
-import { LockIcon, StarIcon, AlertTriangleIcon } from "../ui";
+import { LockIcon, StarIcon, AlertTriangleIcon, InfoIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";
 
 const STATUS_CLASS = {
@@ -88,7 +88,14 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   const gameDayLabel = raceGameDayLabel({
     start: column.game_day, end: column.game_day_end, t,
   });
-  const status = locked
+  // #4306 fix (Refs #4306): withdrawn skal have FORRANG over locked. Et hold der
+  // afmeldte sig FØR et etapeløb startede skal blive ved med at vise "afmeldt"
+  // efter etape 1 er kørt - lineup_locked er sand for HELE løbet uafhængigt af
+  // holdets egen withdrawn-status, så den gamle rækkefølge lod "locked" overtrumfe
+  // "withdrawn" fra og med etape 1.
+  const status = column.withdrawn
+    ? { kind: "withdrawn", selected: column.counts.selected, target: column.counts.target }
+    : locked
     ? { kind: "locked" }
     : computeColumnStatus({ selected: column.counts.selected, target: column.counts.target, max: column.size?.max, withdrawn: column.withdrawn });
   const statusLabel = status.kind === "locked"
@@ -191,7 +198,17 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
         />
       )}
 
-      {locked ? (
+      {column.withdrawn ? (
+        // #4306 (ejer-direktiv 27/8, Refs #4306): withdrawn har FORRANG over locked -
+        // et hold der afmeldte sig FØR løbsstart skal blive ved med at vise denne note
+        // gennem hele afviklingen, ikke kun frem til etape 1. lineup_locked er sand for
+        // HELE løbet uafhængigt af holdets egen withdrawn-status (se status-precedence
+        // ovenfor), så denne gren skal ligge FØR "locked"-grenen, ikke efter.
+        <div className="flex-1 flex items-start gap-2 px-3 py-4 text-xs text-cz-3">
+          <InfoIcon size={14} className="flex-shrink-0 mt-px" aria-hidden="true" />
+          <span>{t("racehub.column.withdrawnNote")}</span>
+        </div>
+      ) : locked ? (
         <div className="py-1 flex-1">
           {selectedIds.map((id) => {
             const r = ridersById.get(id);
@@ -207,7 +224,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
                   <FitBar score={r.suitability} />
                   {/* #2637: en igangværende trup er ellers helt read-only, men fjernelse
                       skal ALTID være muligt (fx en rytter der bliver skadet midt i et
-                      etapeløb) — kun tilføjelse er frosset. Backend accepterer en ren
+                      etapeløb) - kun tilføjelse er frosset. Backend accepterer en ren
                       fjernelse (ingen nye ryttere) selv når stages_completed>0. */}
                   <button type="button" onClick={() => onRemoveRider(column.id, id)} disabled={busy}
                     aria-label={t("racehub.column.remove")}
@@ -218,7 +235,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
           })}
           <p className="px-3 py-2 text-3xs text-cz-3">{t("racehub.lineupLocked.note")}</p>
         </div>
-      ) : !column.withdrawn ? (
+      ) : (
         <div className="py-1 flex-1">
           {selectedIds.length > 0 && <p className="px-3 pt-1 pb-0.5 text-3xs text-cz-3">{t("racehub.role.hint")}</p>}
           {selectedIds.map((id) => {
@@ -269,7 +286,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
             );
           })}
         </div>
-      ) : null}
+      )}
 
       <div className="p-2 border-t border-cz-border flex items-center justify-between gap-2">
         {/* #3428: "Ryd udtagelse" manglede pr. løb — kun × pr. rytter fandtes. Kun kladde-

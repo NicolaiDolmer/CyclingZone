@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.212",
+    "version": "7.213",
     "date": "2026-08-28",
     "label": "Beta",
     "changes": [
@@ -16,12 +16,15 @@ export const PATCHES = [
           "title": "En opstilling skal have 6 ryttere for at stille op",
           "body": "Dit hold skal nu have mindst 6 ryttere i en opstilling for at stille op i løbet. Er I færre end 6, stiller holdet ikke op.\n\nDu kan stadig gemme en mindre opstilling: assistenten fylder op til 6 ved løbstid, hvis du har frie ryttere."
         },
-        "refs": [4295, 4174]
+        "refs": [
+          4295,
+          4174
+        ]
       }
     ]
   },
   {
-    "version": "7.211",
+    "version": "7.212",
     "date": "2026-08-28",
     "label": "Beta",
     "changes": [
@@ -37,7 +40,34 @@ export const PATCHES = [
           "title": "Du kan gemme en trup der ikke er fuld",
           "body": "Udtog du hold til et løb første gang, eller igen efter du havde ryddet løbet, kunne du stadig ikke gemme uden at fylde alle pladser. Nu kan du gemme et hvilket som helst antal ryttere op til feltstørrelsen.\n\nI stedet for at blokere dig fortæller panelet hvor mange pladser der står åbne. Har du ikke frie ryttere nok til at fylde dem, skriver det også hvor mange der reelt er frie til det løb. Assistenten fylder de åbne pladser når løbet køres."
         },
-        "refs": [4295, 4175, 1906]
+        "refs": [
+          4295,
+          4175,
+          1906
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.211",
+    "date": "2026-08-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Withdrawing from a race now actually keeps your team out of it",
+          "body": "A team that withdrew from a race could still start it, and a saved selection could still be sent to a race you had withdrawn from. Withdrawing now keeps your team out for good, and the column tells you your team is voluntarily not starting."
+        },
+        "da": {
+          "title": "At afmelde sig fra et løb holder nu rent faktisk holdet ude af det",
+          "body": "Et hold der havde afmeldt sig fra et løb, kunne stadig starte det, og en gemt udtagelse kunne stadig sendes ind i et løb du havde afmeldt dig fra. Afmelding holder nu holdet ude for godt, og kolonnen viser at holdet frivilligt ikke stiller op."
+        },
+        "refs": [
+          4306
+        ]
       }
     ]
   },
@@ -58,7 +88,9 @@ export const PATCHES = [
           "title": "En kaptajn nummer to på en etape tog stille beskyttelsen fra den første",
           "body": "Etape-taktikken lod dig sætte to kaptajner på samme etape. Tre eller flere blev afvist, to gik igennem uden en lyd, og løbsmotoren beskyttede så den af dem den tilfældigvis læste sidst. Vælger du nu en ny kaptajn til en etape, flytter rollen: den forrige kaptajn bliver hjælper, og en linje fortæller dig hvem der blev ændret. Samme for spurtkaptajn."
         },
-        "refs": [4344]
+        "refs": [
+          4344
+        ]
       }
     ]
   },
@@ -79,7 +111,9 @@ export const PATCHES = [
           "title": "Løbskort viser de dage de kører, og navngiver det løb de støder sammen med",
           "body": "Et kort fortalte kun hvilken dag et løb startede, så den eneste måde at opdage et overlap på var at sætte en rytter ind og se hvad der skete. Kortene viser nu hele spændet, og en linje nedenunder navngiver det løb der deler de dage. Er samme rytter udtaget til begge, bliver linjen rød og siger det. Løbsdags-numre starter nu fra 1."
         },
-        "refs": [4296]
+        "refs": [
+          4296
+        ]
       }
     ]
   },
@@ -100,7 +134,9 @@ export const PATCHES = [
           "title": "Etapeløb viste forkert slutdato når du valgte et peak",
           "body": "Listen over peak-mål strækkede etapeløb langt forbi deres rigtige slutning. Vueltaen stod til at slutte 4. oktober, en uge efter sæsonen slutter, selvom den er færdig 21. september. 98 af 206 etapeløb var ramt, de tre Grand Tours værst. Datoerne kommer nu fra den rigtige etapeplan. Dine formplaner har aldrig været forkerte, kun datoerne ved siden af dem."
         },
-        "refs": [4312]
+        "refs": [
+          4312
+        ]
       }
     ]
   },
@@ -121,7 +157,9 @@ export const PATCHES = [
           "title": "Planlægning siger nu til når en visning ikke kunne hentes",
           "body": "Når en planlægningsvisning ikke kunne hentes, gik den blank eller påstod at den var tom, uden besked og uden noget at klikke på. Holdudtagelse, Formplan, Strategi, Startlister og Kalender siger nu hvad der skete og giver dig en Prøv igen-knap. Dag- og puljevælgerne bliver stående, så en fejlet visning ikke længere er en blindgyde."
         },
-        "refs": [4165]
+        "refs": [
+          4165
+        ]
       }
     ]
   },
@@ -142,7 +180,9 @@ export const PATCHES = [
           "title": "Formpeaks tilbage fra den gamle kalender er ryddet",
           "body": "Sæson 3-kalenderen blev bygget om, og 812 formplaner endte med at pege på løb der ikke findes. Dem der var i gang kunne ikke fjernes. Alle er væk, så sæt dine peaks igen. En formplan slettes nu sammen med sit løb."
         },
-        "refs": [4294]
+        "refs": [
+          4294
+        ]
       }
     ]
   },
@@ -163,7 +203,9 @@ export const PATCHES = [
           "title": "Belastnings-chippen talte etaper, og gamle sæsoner med",
           "body": "Belastnings-chippen i planlægnings-boardets rytter-pulje sagde løbsdage, men talte etaper, og den talte oven i købet løb med fra tidligere sæsoner. Den tæller nu kun de løbsdage rytteren er tilmeldt i den aktive sæson. Så hvis en rytter så langt mere travl ud end han er, var det derfor."
         },
-        "refs": [4245]
+        "refs": [
+          4245
+        ]
       },
       {
         "category": "improved",
@@ -177,7 +219,9 @@ export const PATCHES = [
           "title": "Din sponsor betaler pr. etape, og siger det nu",
           "body": "Intet ved pengene er ændret, kun ordet. En løbsdag er den in-game-dag der binder rytteren til ét løb. Din sponsor betaler for hver etape dit hold stiller til start i. Begge dele hed løbsdag, så sponsor-hjælpen og finans-labels siger nu etape."
         },
-        "refs": [4245]
+        "refs": [
+          4245
+        ]
       },
       {
         "category": "improved",
@@ -191,7 +235,9 @@ export const PATCHES = [
           "title": "Sæson-fremdrift og verdens-kataloget siger nu etaper",
           "body": "Sæson-bjælken på dit dashboard og klasse-listen i verdens-kataloget lagde etaper sammen, men kaldte dem løbsdage. De siger nu etaper. Tallene er de samme."
         },
-        "refs": [4245]
+        "refs": [
+          4245
+        ]
       }
     ]
   },
@@ -212,7 +258,9 @@ export const PATCHES = [
           "title": "Træning: sæson-kolonnen viser ikke længere +0 før sæsonen er startet",
           "body": "Mellem to sæsoner er den nye sæson sat op før den er begyndt, og kvitteringen læste det som nul point opnået. Den siger nu hvornår sæsonen starter, og træning inden da tæller stadig med mod hver rytters næste point. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
         },
-        "refs": [4293]
+        "refs": [
+          4293
+        ]
       }
     ]
   },
@@ -233,7 +281,9 @@ export const PATCHES = [
           "title": "Finans-historikken viser ikke længere rå koder for enkelte transaktioner",
           "body": "En håndfuld transaktionstyper i din finans-historik (nedrykningsfaldskærm, sponsor løbsdag-bonus, facilitetsopgraderinger, fratrædelsesgodtgørelse, spejder-rejse og et par til) manglede deres tekst og faldt tilbage til det interne type-navn. De viser nu en rigtig label."
         },
-        "refs": [4260]
+        "refs": [
+          4260
+        ]
       },
       {
         "category": "fixed",
@@ -247,7 +297,9 @@ export const PATCHES = [
           "title": "Fyring af en rytter viser ikke længere en rå kode i historik-linjen",
           "body": "Frigivelse af en seniorrytter mod et buyout-gebyr skrev en finans-postering uden oversat tekst, så historik-linjen faldt tilbage til en generisk label. Den beskriver nu fyringen korrekt."
         },
-        "refs": [4260]
+        "refs": [
+          4260
+        ]
       },
       {
         "category": "fixed",
@@ -261,7 +313,9 @@ export const PATCHES = [
           "title": "Træning 'Tempo' viser ikke længere en rå kode",
           "body": "Trænings-passet Tempo manglede sin tekst-label og viste det interne navn i stedet, både på Træning-siden og i en rytters træningshistorik. Det viser nu 'Tempo' ligesom alle andre pas."
         },
-        "refs": [4260]
+        "refs": [
+          4260
+        ]
       }
     ]
   },
@@ -282,7 +336,10 @@ export const PATCHES = [
           "title": "En trup du har ryddet, bliver ryddet",
           "body": "Brugte du Ryd dag eller Ryd alt og bekræftede det, kunne assistenten stadig fylde truppen ud igen når løbet gik i gang. Det gør han ikke længere: et løb du har ryddet, starter uden ryttere fra dit hold.\n\nDet er stadig dig der bestemmer. I samme øjeblik du selv udtager ryttere, eller beder om automatisk udfyldning, må assistenten hjælpe igen."
         },
-        "refs": [4200, 2599]
+        "refs": [
+          4200,
+          2599
+        ]
       }
     ]
   },
@@ -303,7 +360,9 @@ export const PATCHES = [
           "title": "Løbsdags-FAQ: træthed, intensitet, akademi",
           "body": "Tilføjet klare svar i Hjælp på de spørgsmål der kom efter sæson 2's løbsdags-regler vendte tilbage. Lægger trætheden sig oven i hinanden når du kører løb og træner samme dag: ja. Betyder din intensitet stadig noget: ja, præcis som på enhver anden dag. Skal dit pas matche etapens terræn: nej, ikke denne sæson. Kan det betale sig at køre løb med unge akademi-talenter: ja, ingen udviklings-straf, kun ekstra træthed at styre. Og hvorfor Fladt og Brosten ikke har en Hård session i dag."
         },
-        "refs": [4261]
+        "refs": [
+          4261
+        ]
       }
     ]
   },
@@ -324,7 +383,9 @@ export const PATCHES = [
           "title": "Klarere besked når en rytter allerede er optaget",
           "body": "Hvis du prøvede at udtage en rytter der var optaget af et andet løb, og det eneste sammenfald var en hviledag i et etapeløb, kunne gemningen fejle med en teknisk fejl. Du får nu den normale besked der fortæller hvilket løb rytteren er i."
         },
-        "refs": [4283]
+        "refs": [
+          4283
+        ]
       },
       {
         "category": "fixed",
@@ -338,7 +399,9 @@ export const PATCHES = [
           "title": "Assistenten frigiver ryttere fra løb du har forladt",
           "body": "Når du meldte dit hold fra et løb, regnede assistenten stadig de udtagne ryttere som optaget på de dage og kunne udelade dem fra andre løb. Ryttere fra et afmeldt løb tæller nu som ledige igen."
         },
-        "refs": [4283]
+        "refs": [
+          4283
+        ]
       }
     ]
   },
@@ -359,7 +422,9 @@ export const PATCHES = [
           "title": "Løbsdage følger igen sæson 2-reglerne",
           "body": "Løb udvikler ikke dine ryttere i sæson 3. En rytter der kører løb gennemfører stadig det pas du har planlagt den dag, præcis som før, og løbet lægger sin egen træthed oven i. Udviklingen kommer fra træningen.\n\nDen version der blev annonceret til sæson 3, hvor løbet erstattede dagens pas og byggede de evner etapen krævede, er slukket igen. Den krævede for meget af dig: det pas du havde valgt afgjorde hvad du fik ud af løbet, en rytter sat til Hvile fik ingenting, og reglerne var svære at gennemskue. Den vender tilbage i sæson 4 i en enklere form.\n\nHar du rykket unge ryttere op på seniorholdet på grund af det her, kan du frit rykke dem tilbage til Akademiet."
         },
-        "refs": [4277]
+        "refs": [
+          4277
+        ]
       }
     ]
   },
@@ -380,7 +445,10 @@ export const PATCHES = [
           "title": "Dashboardet flyder ikke længere ud til siden på telefon",
           "body": "På telefon blev dashboardet tegnet bredere end skærmen, så hele siden kom ud zoomet ned og kunne trækkes til siden. Menuer der er forankret i højre kant, blandt andet sprogvælgeren, blev skåret af. Siden følger nu bredden på din skærm."
         },
-        "refs": [4275, 787]
+        "refs": [
+          4275,
+          787
+        ]
       }
     ]
   },
@@ -401,7 +469,10 @@ export const PATCHES = [
           "title": "Bjergetaper slutter nu opad",
           "body": "Bjergetaper sluttede før på en nedkørsel omkring to tredjedele af gangene, hvilket er det modsatte af virkelig cykelsport. De slutter nu opad i de fleste tilfælde, og en nedkørselsfinale er den undtagelse den bør være. Bakkeetaper har fået samme behandling, så en division ikke længere får sin egen tilfældige blanding. Klatrere og punchere har mere at køre efter, og ændringen gælder i alle fire divisioner."
         },
-        "refs": [4272, 3426]
+        "refs": [
+          4272,
+          3426
+        ]
       },
       {
         "category": "fixed",
@@ -415,7 +486,10 @@ export const PATCHES = [
           "title": "Et løbs dage ligger nu i forlængelse af hinanden",
           "body": "Et firedages løb kunne før havne på løbsdag 3, 5, 7 og 12 med huller imellem, og en enkelt løbsdag kunne strække sig over to kalenderdatoer. Begge dele er væk. Et etapeløb kører nu på løbsdage i træk, og hver løbsdag ligger på én dato. Det gør også rytterbindingen korrekt: en rytter er bundet præcis de dage løbet faktisk kører."
         },
-        "refs": [4236, 4190]
+        "refs": [
+          4236,
+          4190
+        ]
       }
     ]
   },
@@ -436,7 +510,9 @@ export const PATCHES = [
           "title": "Dashboardet viser nu hvad der er nyt på forummet",
           "body": "Et lille kort viser de to seneste aktive tråde, med samme ulæst-prik og svar-antal som forummet selv. Det sidder ved siden af dine kommende løb, så du ser det uden at forlade dashboardet. Forum er også rykket op i menuen, lige efter Indbakke."
         },
-        "refs": [3199]
+        "refs": [
+          3199
+        ]
       },
       {
         "category": "improved",
@@ -450,7 +526,9 @@ export const PATCHES = [
           "title": "Dashboardet er lagt om i to kolonner",
           "body": "Dashboardet stablede tidligere 16 moduler i fuld bredde før to-kolonne-layoutet begyndte. Trup- og kontraktadvarsler står nu øverst, over dagens etaper, fordi det er de eneste ting på siden der koster point hvis de overses. Dit seneste resultat, næste træk, holdudtagelse, sæsonstatus og økonomiprognosen står nu to og to side om side i stedet for hver deres fulde række. Intet er fjernet, kun flyttet."
         },
-        "refs": [4249]
+        "refs": [
+          4249
+        ]
       }
     ]
   },
@@ -471,7 +549,9 @@ export const PATCHES = [
           "title": "En rytter er nu bundet et helt etapeløb igennem",
           "body": "En rytter i et etapeløb kunne udtages til et andet løb på en dag hvor hans eget løb ikke kørte en etape. Han forlod altså sit løb midtvejs, kørte et andet sted og kom tilbage. Rytteren holdes nu fra første etape til sidste og kan ikke dukke op andre steder undervejs. Udtagelser der brød reglen er fjernet, og de frigjorte pladser står tomme til du selv fylder dem."
         },
-        "refs": [4217]
+        "refs": [
+          4217
+        ]
       },
       {
         "category": "improved",
@@ -485,7 +565,11 @@ export const PATCHES = [
           "title": "Assistenten udtager ikke længere for dig",
           "body": "Assistenten fyldte trupper ud på dine vegne, også trupper du bevidst havde ryddet og gemt. Flere af jer mistede over en times planlægning på den. Den rører nu ikke hold der har en manager. Din egen auto-udtag-knap virker præcis som før, så du kan stadig bede om et forslag når du vil have et. AI-hold fyldes fortsat automatisk, ellers ville deres løb starte tomme."
         },
-        "refs": [4217, 4200, 4201]
+        "refs": [
+          4217,
+          4200,
+          4201
+        ]
       },
       {
         "category": "improved",
@@ -499,7 +583,9 @@ export const PATCHES = [
           "title": "Sæson 3 kører 28. august til 27. september, med løb hver dag",
           "body": "Sæsonen blev bygget om da starten rykkede til fredag 28. august. Den kører nu 31 løbsdage mod de 27 der oprindeligt var planlagt, og hver division har løb på hver eneste dag. Alle udtagelser blev ryddet i ombygningen, så alle udtager deres hold forfra."
         },
-        "refs": [4218]
+        "refs": [
+          4218
+        ]
       },
       {
         "category": "new",
@@ -513,7 +599,12 @@ export const PATCHES = [
           "title": "Forum-tråde viser nu hvad der faktisk er nyt",
           "body": "Trådlisten sorterer efter seneste svar i stedet for hvornår tråden blev oprettet, så en gammel tråd med et frisk svar rykker op igen. Ulæste tråde får en lille prik, og den samme prik vises ved \"Forum\" i menuen, når der er ulæst aktivitet. Svarer du på en andens tråd, får de en notifikation der peger direkte på den (aldrig ved eget svar). At rapportere et opslag eller svar kræver nu en kort begrundelse."
         },
-        "refs": [4118, 3451, 3517, 3452]
+        "refs": [
+          4118,
+          3451,
+          3517,
+          3452
+        ]
       },
       {
         "category": "new",
@@ -527,7 +618,9 @@ export const PATCHES = [
           "title": "Bak et indlæg op og citér et svar",
           "body": "Du kan nu bakke et indlæg eller et svar op, så du kan give nogen ret uden at skrive et helt svar. Hvert indlæg viser hvor mange managere der har bakket op. Du kan også citere et bestemt svar, hvilket viser et kort uddrag over dit eget svar og giver den anden manager besked om at du har svaret."
         },
-        "refs": [3517]
+        "refs": [
+          3517
+        ]
       }
     ]
   },
@@ -548,7 +641,9 @@ export const PATCHES = [
           "title": "Rytterranglisten indlæser igen mellem sæsoner",
           "body": "Ranglisten fejlede i stedet for at vise noget. Den bad om den sæson der er markeret aktiv, og mellem sæson 2's slutning og sæson 3's start findes der ingen aktiv sæson. Den viser nu sidste afsluttede sæson indtil den nye har kørt sin første løbsdag, mærket så du kan se hvilken sæson du kigger på. Rytternes alder på siden følger den kommende sæson, ligesom alle andre steder."
         },
-        "refs": [4225]
+        "refs": [
+          4225
+        ]
       }
     ]
   },
@@ -569,7 +664,9 @@ export const PATCHES = [
           "title": "Rytternes alder er tilbage",
           "body": "Mellem to sæsoner viste hver rytter en streg i stedet for en alder, U23- og U25-mærkerne forsvandt, og pensionsadvarslen på bud var tavs. Alderen blev hentet fra den sæson der er markeret aktiv, og mellem sæson 2's slutning og sæson 3's start findes der ingen aktiv sæson. Alderen følger nu den kommende sæson, så den står rigtigt i mellemrummet og ikke hopper når sæsonen går i gang."
         },
-        "refs": [4223]
+        "refs": [
+          4223
+        ]
       }
     ]
   },
@@ -590,7 +687,9 @@ export const PATCHES = [
           "title": "At gemme et hold omskriver ikke længere hele bindingstabellen",
           "body": "Hver gemning byggede alle løbets rytter-dage op forfra, én gang pr. rytter i holdet. En udtagelse med syv ryttere skrev de samme 49 rækker syv gange. Nu skrives kun det der faktisk har ændret sig, så et uændret hold slet ikke skriver noget. Selve udtagelsen opfører sig præcis som før; den holder bare op med at belaste databasen uden grund."
         },
-        "refs": [4191]
+        "refs": [
+          4191
+        ]
       }
     ]
   },
@@ -611,7 +710,10 @@ export const PATCHES = [
           "title": "Monumenterne er flyttet ud af Grand Tour-vinduerne",
           "body": "Fire af de fem Monumenter lå på en hviledag i en Grand Tour, så de samme ryttere kunne stille op til et Monument midt i deres Grand Tour. Et Monument ligger nu aldrig inde i en Grand Tour. Milano-Riviera rykker til 29. august, De Vlaamse Ronde til 5. september, L'Enfer du Nord til 7. september og La Doyenne des Ardennes til 10. september. La Classica d'Autunno er uændret. Fire mindre endagsløb overtager de ledige datoer, så ingen løbsdag står tom: Le Mur de Huy 31. august, La Classique Bretonne 3. september, Taunus-Klassiker 14. september, Grand Prix du Saint-Laurent 19. september. Udtagelser der kolliderede med en ny dato er ryddet, så tjek din trup til de otte løb."
         },
-        "refs": [4203, 4173]
+        "refs": [
+          4203,
+          4173
+        ]
       }
     ]
   },
@@ -632,7 +734,9 @@ export const PATCHES = [
           "title": "Nye hold lander ikke længere i en pulje der allerede er fuld",
           "body": "Hver pulje rummer præcis 24 hold. Et frosset hold optager stadig sin plads, men tilmeldingen talte det ikke med, så to Division 3-puljer så ud til at have plads uden at have det. Tre hold der tilmeldte sig i dag blev placeret oveni en fuld pulje. Tællingen er rettet, og de berørte hold er flyttet til en pulje med plads. Intet andet på de hold er ændret."
         },
-        "refs": [4183]
+        "refs": [
+          4183
+        ]
       }
     ]
   },
@@ -653,7 +757,10 @@ export const PATCHES = [
           "title": "Løbskortene viser datoer i stedet for et løbsdags-interval der ikke passede",
           "body": "Et etapeløb stod som \"Løbsdag 10-28\" selvom løbet kun kørte på syv af de dage, så det så ud som om dine ryttere var låst i tre uger. Låsen var altid rigtig, mærkatet var ikke. Kortene viser nu løbets datoer, og løbsdags-tallet bliver stående på brættets dags-overskrifter, hvor ét tal betyder én dag."
         },
-        "refs": [4193, 4190]
+        "refs": [
+          4193,
+          4190
+        ]
       }
     ]
   },
@@ -674,7 +781,10 @@ export const PATCHES = [
           "title": "Hjælp svarer nu på hvad en løbsdag gør ved en rytter",
           "body": "To spørgsmål blev ved med at dukke op, og Hjælp havde intet svar. Et løb erstatter dagens træningspas i stedet for at lægge sig oven i det, og det gøres op én gang om dagen: seks etaper på én dato udvikler rytteren præcis lige så meget som én, selvom hver etape lægger sin egen træthed på. Og et etapeløb kan være færdigt på færre datoer end det har etaper, fordi en division kører flere etaper om dagen, mens hver etape stadig får sin egen løbsdag. Begge dele står nu under Daglig træning og Løbsudtagelse."
         },
-        "refs": [4162, 4164]
+        "refs": [
+          4162,
+          4164
+        ]
       }
     ]
   },
@@ -695,7 +805,11 @@ export const PATCHES = [
           "title": "Monumenterne får løbsdagen for sig selv",
           "body": "Et monument skal have sin løbsdag alene, så alle ryttere kan stille op. I 1. division delte alle fem monumenter dagen med et etapeløb, hvilket udelukkede alle der kørte Giroen, Vueltaen eller Touren. Hvert monument står nu alene på sin egen løbsdag. Intet har flyttet dato: kalenderdatoer og starttider er uændrede, kun løbsdags-numrene i 1. division rykker."
         },
-        "refs": [4075, 4159, 4176]
+        "refs": [
+          4075,
+          4159,
+          4176
+        ]
       }
     ]
   },
@@ -716,7 +830,9 @@ export const PATCHES = [
           "title": "Du kan gemme en opstilling selvom du ikke kan fylde den",
           "body": "Havde du ikke nok ledige ryttere til et fuldt startfelt, blev gemningen blokeret helt, så du endte med slet ikke at stille op. Nu kan du gemme de ryttere du har, og assistenten fylder resten op ved løbstid. Vælger du færre end et fuldt hold når du faktisk har rytterne, bliver du stadig bedt om at fylde op."
         },
-        "refs": [4175]
+        "refs": [
+          4175
+        ]
       },
       {
         "category": "fixed",
@@ -730,7 +846,11 @@ export const PATCHES = [
           "title": "Ryttere låses kun på de dage de faktisk kører",
           "body": "Et etapeløb med en hviledag låste før også rytterne på hviledagen, så de var blokeret fra alle andre løb i perioden. Ryttere bindes nu kun på de dage de faktisk kører, så en hviledag betyder en ledig rytter. Løbsdags-mærkerne i kalenderen er også repareret, og ingen pulje overskrider sit loft for samtidige løb."
         },
-        "refs": [4173, 4161, 4162]
+        "refs": [
+          4173,
+          4161,
+          4162
+        ]
       }
     ]
   },
@@ -751,7 +871,9 @@ export const PATCHES = [
           "title": "Sæson 3-kalenderen repareret før første løb",
           "body": "En fejl i kalender-genereringen lod samme rytter være tilmeldt to løb på samme dag, og den strakte fire 1. divisions-etapeløb over 8-10 rigtige dage. Rettet før første start: 1. division kører nu 5 eller 6 etaper hver eneste dag, de fire udstrakte løb er komprimeret (5-6 dage), og tre endagsløb er flyttet for at fylde huller sidst på sæsonen (Westkust Klassieker og Limburgse Klassieker til 12/9, Prijs van de Schelde til 15/9). Alle automatiske opstillinger er genopbygget, så ingen rytter kører to løb samme dag. Et lille antal manuelle udtagelser der brød den regel er nulstillet, så tjek dine opstillinger for de kommende dage."
         },
-        "refs": [4155]
+        "refs": [
+          4155
+        ]
       }
     ]
   },
@@ -772,7 +894,11 @@ export const PATCHES = [
           "title": "Sæson 3 er i gang",
           "body": "De 24 bedste hold kører nu i 1. division, og alle hold er placeret efter sæson 2-slutstillingen. Lønnen følger de rettede rytterværdier fra sæsonstart. Divisions-upkeep er halveret (D1 220.000 / D2 70.000 / D3 20.000), så oprykkede hold ikke starter i gæld. 27 løbsdage, første løb tirsdag kl. 11:00."
         },
-        "refs": [3901, 1155, 3645]
+        "refs": [
+          3901,
+          1155,
+          3645
+        ]
       }
     ]
   },
@@ -793,7 +919,11 @@ export const PATCHES = [
           "title": "Rytterværdier rettet til det markedet faktisk betaler",
           "body": "Alle rytterværdier er sat ned med samme faktor (0,81), målt mod forhandlede handler de sidste 30 dage. Ryttertypen fylder nu langt mindre i værdien: en puncheur var prissat til ni gange en enkeltstartsrytter med samme evne, det spænd er nu 1,6x, og den del ændrer ikke spillets samlede værdi. Lønnen genberegnes ud fra de rettede værdier før sæsonskiftet i aften, så sæson 3-kontrakterne følger de nye tal. Værdierne gennemgås hver søndag fremover."
         },
-        "refs": [3449, 4000, 4120]
+        "refs": [
+          3449,
+          4000,
+          4120
+        ]
       }
     ]
   },
@@ -814,7 +944,9 @@ export const PATCHES = [
           "title": "Ruteprofiler forudsiger ikke længere at udbruddet vinder",
           "body": "Før et løb hedder finalen nu Udbrudsvenlig og beskriver terrænet, ikke udfaldet. Om et udbrud holder hjem, afgøres på vejen. De tre monumenter der havde etiketten er rettet til reduceret spurt eller bjergfinale."
         },
-        "refs": [4106]
+        "refs": [
+          4106
+        ]
       }
     ]
   },
@@ -835,7 +967,11 @@ export const PATCHES = [
           "title": "Ruteprofiler tegnet om",
           "body": "Hver etapes ruteprofil bruger nu en fast højdeskala pr. terræntype (flad, bakket, bjerg, high mountain), så en kort stigning ser kort ud og en high-mountain-etape ser høj ud, i stedet for at hver etape strækkes til at fylde sin egen ramme. Stigninger farves efter deres faktiske gradient i fem bånd fra grøn til mørkerød. Samme graf, i samme skala, vises nu alle steder en rute-miniature bruges."
         },
-        "refs": [4107, 4108, 3958]
+        "refs": [
+          4107,
+          4108,
+          3958
+        ]
       }
     ]
   },
@@ -856,7 +992,9 @@ export const PATCHES = [
           "title": "Sæson 3's etapesammensætning jævnet ud på tværs af divisioner",
           "body": "Enkeltstarter, brostensetaper og højbjergsetaper var spredt meget ujævnt mellem divisionerne: nogle divisioner havde næsten ingen af én type, andre havde alt for mange. Hver division kører nu 10% enkeltstarter, 5% brosten og 12% højbjerge. Kun etaper inde i etapeløb er ændret; endagsløb, løbsnavne, datoer og antal etaper er urørt."
         },
-        "refs": [4103]
+        "refs": [
+          4103
+        ]
       }
     ]
   },
@@ -877,7 +1015,9 @@ export const PATCHES = [
           "title": "Mere naturlig etaperækkefølge i sæson 3's korte etapeløb",
           "body": "Etaperækkefølgen i sæson 3's korte etapeløb er nu mere naturlig: maks to bjergetaper i træk."
         },
-        "refs": [3371]
+        "refs": [
+          3371
+        ]
       }
     ]
   },
@@ -898,7 +1038,9 @@ export const PATCHES = [
           "title": "Sæson 3 slutter nu på en søndag",
           "body": "Sæson 3 slutter nu søndag 20. september. De 25 endagsløb der lå mandag 21. september er flyttet til tidligere dage, og de etapeløb der sluttede den mandag (inkl. Vueltaen og Touren, så to Grand Tours aldrig deler en dag) starter en dag tidligere. Nogle dage har nu ét ekstra løb. Intet løb er fjernet."
         },
-        "refs": [4131]
+        "refs": [
+          4131
+        ]
       }
     ]
   },
@@ -919,7 +1061,12 @@ export const PATCHES = [
           "title": "Bladr i næste sæsons løbsprogram, og et tydeligere planlægningsboard",
           "body": "Sæson-visningen har nu en vælger til at bladre i næste sæsons kalender, før den går live, plus en kort boks om hvad der ændrer sig ved sæsonskiftet (alder, form, træthed, skader, løn). Tilbage fra et løb lander nu på den dag du kom fra. Hvert løb har desuden sin egen Ryd udtagelse-knap."
         },
-        "refs": [4102, 4124, 3954, 3428]
+        "refs": [
+          4102,
+          4124,
+          3954,
+          3428
+        ]
       }
     ]
   },
@@ -940,7 +1087,9 @@ export const PATCHES = [
           "title": "Grand Tours proppes ikke længere ind på enkeltdage",
           "body": "En dag kan ikke længere fyldes helt af ét Grand Tour. Tre dage i Division 1 havde alle fem etaper fra samme løb, og så var der ikke plads til andet. Hvert Grand Tour kører nu højst fire etaper om dagen, inden for et vindue på maks seks dage. Giroen var trukket over elleve dage og er nu seks, så den føles som et Grand Tour i stedet for baggrundsstøj. Ellers kører de samme løb på de samme dage, og kun spredningen er ændret."
         },
-        "refs": [4103]
+        "refs": [
+          4103
+        ]
       },
       {
         "category": "improved",
@@ -954,7 +1103,9 @@ export const PATCHES = [
           "title": "Monumenterne er nu spillets længste løb",
           "body": "De var de korteste. L'Enfer du Nord var på 155 km, kortere end alle andre endagsløb i Division 1, og kortere end klassikerne i Division 4. De fem monumenter kører nu 255 til 290 km, som de løb de er bygget over. Ruterne er bygget om, så stigninger, spurter og brostenssektorer passer til den nye længde."
         },
-        "refs": [4104]
+        "refs": [
+          4104
+        ]
       }
     ]
   },
@@ -975,7 +1126,9 @@ export const PATCHES = [
           "title": "To skjulte auktions-hjælpetekster",
           "body": "Hjælpeteksterne om vurderingen ved siden af et bud og om anonym budgivning vises nu i auktionsafsnittet."
         },
-        "refs": [4064]
+        "refs": [
+          4064
+        ]
       }
     ]
   },
@@ -996,7 +1149,9 @@ export const PATCHES = [
           "title": "Sæson-visning på planlægnings-boardet",
           "body": "Holdudtagelsen har fået en ny Sæson/Dag-knap. Sæson-visningen viser hele din gruppes kalender på én tidslinje: Grand Tours som lange bjælker, monumentet på sin egen eksklusive løbsdag, og en guldtone på hvert løb hvor din udtagelse allerede er gemt. Klik på et løb for at hoppe direkte til dets dags-board. Kalender-fanen er uændret."
         },
-        "refs": [1146]
+        "refs": [
+          1146
+        ]
       }
     ]
   },
@@ -1017,7 +1172,10 @@ export const PATCHES = [
           "title": "Sæson 3-kalenderen er bygget om: én Giro, én Tour, én Vuelta",
           "body": "Sæson 3-kalenderen er regenereret fra et oprydt løbskatalog. Der er nu præcis tre Grand Tours (Giro 18 etaper, Tour og Vuelta 17), og intet løb optræder to gange. Division 1 vokser fra 18 til 33 løb, så næsten hver dag byder på et reelt valg mellem løb. Monumenter ligger nu på deres egen løbsdag i deres eget tidsslot, så alle ryttere kan stille op. Grand Tour-etaperne er også blandet ordentligt: højst to ens etapeprofiler i træk, med bjergblokke og spurtchancer fordelt gennem løbet. Fire lange ProSeries-løb er kortet ned til fem etaper. Kalenderen låses inden sæsonstarten tirsdag."
         },
-        "refs": [4075, 3547]
+        "refs": [
+          4075,
+          3547
+        ]
       }
     ]
   },
@@ -1038,7 +1196,9 @@ export const PATCHES = [
           "title": "Et praj før du byder, og længere fri-agent-auktioner",
           "body": "Hvis en auktion afsluttes efter søndagens værdi-opdatering, siger bud-bekræftelsen det nu tydeligt. Værdi og evner kan ændre sig inden auktionen lukker, og dit bud står stadig ved magt uanset hvad. Auktioner kan ikke længere oprettes så de løber forbi sæsonskiftet, så et salg ikke kan blive fanget midt i det. Fri-agent-auktioner (fra banken eller ungdomsmarkedet) løber nu i mindst 12 timer i stedet for 1, så du ikke går glip af et ungt talent bare fordi du sov eller var på arbejde."
         },
-        "refs": [4004]
+        "refs": [
+          4004
+        ]
       }
     ]
   },
@@ -1059,7 +1219,9 @@ export const PATCHES = [
           "title": "Træningsudbyttet er justeret op, tydeligst for unge ryttere med højt potentiale",
           "body": "Efter feedback om at træningsfremgang føltes for langsom har vi hævet hvor hurtigt evner vokser mod deres potentiale. Løftet er størst for unge ryttere med højt potentiale, så fremgangen bør føles tydeligere uge for uge."
         },
-        "refs": [3966]
+        "refs": [
+          3966
+        ]
       }
     ]
   },
@@ -1080,7 +1242,11 @@ export const PATCHES = [
           "title": "Scout-vurdering med ord, og ærlige lofter",
           "body": "Scouting-fanen skriver nu vurderingen som en sætning: hvor din spejder ser rytteren lande, og hvad rollens loft er. For ryttere forbi deres peak markeres loftet forbi peak, så det ikke længere ligner et mål de stadig klatrer imod. Hjælpen svarer også ærligt på om scout-intervallet er en garanti: det er det ikke."
         },
-        "refs": [4039, 3979, 3714]
+        "refs": [
+          4039,
+          3979,
+          3714
+        ]
       },
       {
         "category": "improved",
@@ -1094,7 +1260,11 @@ export const PATCHES = [
           "title": "Hjælpen dækker nu ryttertyper, træningstider og aldersnedgang",
           "body": "Tre ofte stillede spørgsmål har fået rigtige svar: hvad de 8 ryttertyper dækker og hvordan de trænes, hvornår daglig træning kører (efter kl. 22 dansk tid) og hvad Arbejd gør, samt hvornår aldersnedgang starter og hvilke evner den rammer. Udtagelsesskærmen fik også en lille forklaring til indsats-kolonnen."
         },
-        "refs": [3623, 3456, 3412]
+        "refs": [
+          3623,
+          3456,
+          3412
+        ]
       },
       {
         "category": "new",
@@ -1108,7 +1278,9 @@ export const PATCHES = [
           "title": "Watchlisten viser auktionsstatus og hvis interesse det er",
           "body": "Ryttere på din watchlist har nu ikoner for på auktion og sat til salg, og Interesse-visningen skelner dine egne handlinger fra rivalernes i stedet for at vise alt som en anonym rival."
         },
-        "refs": [4036]
+        "refs": [
+          4036
+        ]
       },
       {
         "category": "new",
@@ -1122,7 +1294,9 @@ export const PATCHES = [
           "title": "Akademi-ryttere kan fyres",
           "body": "Akademi-ryttere kan nu fyres som alle andre ryttere, med et bekræftelsestrin. Før var den eneste udvej at vente på gradueringsvinduet."
         },
-        "refs": [4009]
+        "refs": [
+          4009
+        ]
       },
       {
         "category": "improved",
@@ -1136,7 +1310,9 @@ export const PATCHES = [
           "title": "Sortér på evner i holdudtagelsen",
           "body": "Evne-visningen i holdudtagelsen kan nu sorteres på enhver evne-kolonne, på samme måde som rytterdatabasen."
         },
-        "refs": [3898]
+        "refs": [
+          3898
+        ]
       },
       {
         "category": "fixed",
@@ -1150,7 +1326,9 @@ export const PATCHES = [
           "title": "Skadede ryttere kan ikke længere starte løb",
           "body": "En rytter udtaget som rask, der siden blev skadet før løbet, kunne stadig starte og endda vinde. Skadesstatus tjekkes nu ens alle steder: udtagelse, auto-udfyldning og selve løbsmotoren."
         },
-        "refs": [3896]
+        "refs": [
+          3896
+        ]
       },
       {
         "category": "fixed",
@@ -1164,7 +1342,9 @@ export const PATCHES = [
           "title": "Fyring af en rytter på auktion giver ikke længere bagslag",
           "body": "Fyrede du en rytter mens hans auktion stadig kørte, kunne du ende som vindende byder på din egen tidligere rytter uden at have budt. Fyring blokeres nu mens en auktion er aktiv, og en ejerløs auktion ender usolgt."
         },
-        "refs": [3963]
+        "refs": [
+          3963
+        ]
       },
       {
         "category": "fixed",
@@ -1178,7 +1358,10 @@ export const PATCHES = [
           "title": "Endagssejre tæller med i bestyrelsens sejrs-mål",
           "body": "Bestyrelsens sejrs-mål talte kun etapesejre, så endagssejre rykkede det aldrig. De tæller nu, og målet hedder sejre i stedet for etapesejre. Stjernerytter-tallene på bestyrelsessiden matcher også popularitets-scoren som vises andre steder."
         },
-        "refs": [4034, 3983]
+        "refs": [
+          4034,
+          3983
+        ]
       },
       {
         "category": "fixed",
@@ -1192,7 +1375,10 @@ export const PATCHES = [
           "title": "Rytterdatabasen: rating-sortering virker og søgning ignorerer accenter",
           "body": "Rating-kolonnen kan nu faktisk sorteres, og navnesøgning finder ryttere uanset accenter, så Lopez også finder López."
         },
-        "refs": [4035, 4031]
+        "refs": [
+          4035,
+          4031
+        ]
       },
       {
         "category": "fixed",
@@ -1206,7 +1392,10 @@ export const PATCHES = [
           "title": "Prognosen behandler lånerente som non-cash",
           "body": "Kapitaliseret lånerente blev talt som kontanter i forventet netto, selvom den aldrig forlader din saldo. Prognosen og sæsonskifte-kvitteringen behandler den nu ens som non-cash, og fodnoten nævner den faktiske sæson i stedet for en hardcodet."
         },
-        "refs": [4023, 4024]
+        "refs": [
+          4023,
+          4024
+        ]
       },
       {
         "category": "fixed",
@@ -1220,7 +1409,9 @@ export const PATCHES = [
           "title": "Ikke flere falske vælg dine ryttere-varsler",
           "body": "Påmindelsen om manglende udtagelse blev også sendt til trupper der allerede var fuldt udfyldte. Den tjekker nu den faktiske trupstørrelse i stedet for kun manuelle valg."
         },
-        "refs": [4038]
+        "refs": [
+          4038
+        ]
       }
     ]
   },
@@ -1241,7 +1432,10 @@ export const PATCHES = [
           "title": "Etape-vægtene summer nu til 100 procent",
           "body": "Terræn-DNA-baren på etape-fanen viste før kun de største faktorer, så tallene stoppede ved 88 eller helt nede ved 62 procent. Nu summer den altid til 100 med en andel til Andre faktorer, og en note fortæller når nedkørsel og positionering afgør finalen."
         },
-        "refs": [3149, 4029]
+        "refs": [
+          3149,
+          4029
+        ]
       }
     ]
   },
@@ -1382,21 +1576,21 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
-      "category": "new",
-      "audience": "player",
-      "topic": "Rider development",
-      "en": {
-      "title": "The ceiling stays visible next to the forecast",
-      "body": "Nothing disappears with the new view. The profile, the scouting tab and the rider tables keep showing the role ceiling right next to the new projected level. For most riders the ceiling was raised, and riders who looked finished can train again.\n\nA one time panel on your dashboard shows each of your riders with ceiling before, ceiling now and the new forecast, so you can see exactly what changed for your team."
-      },
-      "da": {
-      "title": "Loftet bliver stående ved siden af prognosen",
-      "body": "Intet forsvinder med den nye visning. Profilen, scouting-fanen og ryttertabellerne viser fortsat rollens loft lige ved siden af det nye forventede niveau. For de fleste ryttere er loftet hævet, og ryttere der så færdige ud, kan trænes igen.\n\nEt engangspanel på dit dashboard viser hver af dine ryttere med loft før, loft nu og den nye prognose, så du kan se præcis hvad der ændrede sig for dit hold."
-      },
-      "refs": [
-      3746,
-      3803
-      ]
+        "category": "new",
+        "audience": "player",
+        "topic": "Rider development",
+        "en": {
+          "title": "The ceiling stays visible next to the forecast",
+          "body": "Nothing disappears with the new view. The profile, the scouting tab and the rider tables keep showing the role ceiling right next to the new projected level. For most riders the ceiling was raised, and riders who looked finished can train again.\n\nA one time panel on your dashboard shows each of your riders with ceiling before, ceiling now and the new forecast, so you can see exactly what changed for your team."
+        },
+        "da": {
+          "title": "Loftet bliver stående ved siden af prognosen",
+          "body": "Intet forsvinder med den nye visning. Profilen, scouting-fanen og ryttertabellerne viser fortsat rollens loft lige ved siden af det nye forventede niveau. For de fleste ryttere er loftet hævet, og ryttere der så færdige ud, kan trænes igen.\n\nEt engangspanel på dit dashboard viser hver af dine ryttere med loft før, loft nu og den nye prognose, så du kan se præcis hvad der ændrede sig for dit hold."
+        },
+        "refs": [
+          3746,
+          3803
+        ]
       },
       {
         "category": "improved",
@@ -1410,7 +1604,10 @@ export const PATCHES = [
           "title": "Potentiale betyder nu fart, ikke højde",
           "body": "Alle evner har nu det samme loft for alle ryttere i samme rolle. Det potentiale afgør er hvor HURTIGT en rytter klatrer mod det. Et toptalent der trænes rigtigt bevæger sig cirka tre gange hurtigere end et beskedent talent, og det tager en hel karriere med gode valg at nå helt til tops.\n\nDine ryttere beholder hvert eneste point de har. Nogle overtagne ryttere ligger over deres nye loft på et par evner; de bliver bare stående der."
         },
-        "refs": [3746, 3709]
+        "refs": [
+          3746,
+          3709
+        ]
       },
       {
         "category": "improved",
@@ -1424,7 +1621,14 @@ export const PATCHES = [
           "title": "Profilen viser nu en prognose, ikke et loft",
           "body": "Scouting-tallene viser hvor en rytter realistisk er på vej hen med den træning du giver ham: bunden af båndet er jævnt men ufokuseret arbejde, toppen er dedikeret fokus hver dag. En bedre chefscout gør båndet skarpere. Det er et estimat, ikke en garanti."
         },
-        "refs": [3746, 3651, 3787, 3679, 1162, 3714]
+        "refs": [
+          3746,
+          3651,
+          3787,
+          3679,
+          1162,
+          3714
+        ]
       },
       {
         "category": "new",
@@ -1438,7 +1642,9 @@ export const PATCHES = [
           "title": "Nyt træningsfokus: Løbslære",
           "body": "Positioning, taktik og aggression kan nu trænes. Løbslære er en færdighedsdag: lav belastning, jævn fremgang, samme tempo for alle ryttere."
         },
-        "refs": [3746]
+        "refs": [
+          3746
+        ]
       },
       {
         "category": "improved",
@@ -1452,7 +1658,9 @@ export const PATCHES = [
           "title": "Træningssiden fik faner, og rytterne står øverst",
           "body": "Træn i dag, Ugeplan, Udvikling og Historik er nu fire faner. Dine ryttere ligger øverst på den første, og forklaringerne er flyttet bag ét enkelt link.\n\nDen nye Udviklings-fane viser hver rytter som én bjælke: niveau i dag, forventet niveau og rollens loft, med fokusvælgeren lige på rækken."
         },
-        "refs": [3721]
+        "refs": [
+          3721
+        ]
       },
       {
         "category": "new",
@@ -1466,7 +1674,10 @@ export const PATCHES = [
           "title": "Gårsdagens fremgang på ét blik",
           "body": "Træn i dag åbner nu med én linje: hvor mange ryttere trænede mod deres fokus, hvor mange hvilede, og hvor mange point der landede. Fold den ud for én almindelig sætning pr. rytter, som \"Hviledag. Frisk igen, træthed 24 til 9.\"\n\nFremdriftsbaren ved hver evne får også et mørkere guld-segment for gårsdagens pas, så en hård træningsdag altid kan ses, også de mange dage den ikke lander et helt point."
         },
-        "refs": [3924, 3988]
+        "refs": [
+          3924,
+          3988
+        ]
       },
       {
         "category": "improved",
@@ -1480,7 +1691,10 @@ export const PATCHES = [
           "title": "En Udviklings-fane på holdsiden",
           "body": "Holdsiden har fået en ny sorterbar tabel: rating i dag, forventet niveau og loft for hver rytter, side om side. Rytterprofilens Overblik-fane viser nu rene evne-tal; sæsonens fremgang bor på Trænings-fanen, hvor den altid har hørt hjemme."
         },
-        "refs": [3721, 3979]
+        "refs": [
+          3721,
+          3979
+        ]
       }
     ]
   },
@@ -1778,96 +1992,96 @@ export const PATCHES = [
         ]
       },
       {
-              "category": "fixed",
-              "audience": "player",
-              "topic": "Races",
-              "en": {
-                      "title": "Points and mountains standings now show jersey points",
-                      "body": "The points and mountains classification tables highlighted prize points instead of the actual jersey points. The jersey total is now the clearly labelled main column, prize points moved to a quieter spot."
-              },
-              "da": {
-                      "title": "Point- og bjergklassement viser nu troejepoint",
-                      "body": "Point- og bjergklassementets tabeller fremhaevede praemiepoint i stedet for de faktiske troejepoint. Troeje-totalen er nu den tydeligt maerkede hovedkolonne, praemiepoint staar mere diskret."
-              },
-              "refs": [
-                      3913
-              ]
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Points and mountains standings now show jersey points",
+          "body": "The points and mountains classification tables highlighted prize points instead of the actual jersey points. The jersey total is now the clearly labelled main column, prize points moved to a quieter spot."
+        },
+        "da": {
+          "title": "Point- og bjergklassement viser nu troejepoint",
+          "body": "Point- og bjergklassementets tabeller fremhaevede praemiepoint i stedet for de faktiske troejepoint. Troeje-totalen er nu den tydeligt maerkede hovedkolonne, praemiepoint staar mere diskret."
+        },
+        "refs": [
+          3913
+        ]
       },
       {
-              "category": "new",
-              "audience": "player",
-              "topic": "Dashboard",
-              "en": {
-                      "title": "Today's stages at the top of your dashboard",
-                      "body": "A new strip at the top of the dashboard shows your races today: stage, terrain, start time in your local time, live status or winner, and your overall position. Tap a card to jump straight to the race."
-              },
-              "da": {
-                      "title": "Dagens etaper oeverst paa dit dashboard",
-                      "body": "En ny stribe oeverst paa dashboardet viser dine loeb i dag: etape, terraen, starttid i din lokale tid, live-status eller vinder, og din samlede placering. Tryk paa et kort for at hoppe direkte til loebet."
-              },
-              "refs": [
-                      3915
-              ]
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Today's stages at the top of your dashboard",
+          "body": "A new strip at the top of the dashboard shows your races today: stage, terrain, start time in your local time, live status or winner, and your overall position. Tap a card to jump straight to the race."
+        },
+        "da": {
+          "title": "Dagens etaper oeverst paa dit dashboard",
+          "body": "En ny stribe oeverst paa dashboardet viser dine loeb i dag: etape, terraen, starttid i din lokale tid, live-status eller vinder, og din samlede placering. Tryk paa et kort for at hoppe direkte til loebet."
+        },
+        "refs": [
+          3915
+        ]
       },
       {
-              "category": "new",
-              "audience": "player",
-              "topic": "Dashboard",
-              "en": {
-                      "title": "See which way your division standing is moving",
-                      "body": "Your division standing on the dashboard now shows movement since the last race day: position change and points change, with the same arrows used elsewhere in the game."
-              },
-              "da": {
-                      "title": "Se hvilken vej din divisionsplacering bevaeger sig",
-                      "body": "Din divisionsstilling paa dashboardet viser nu bevaegelse siden sidste loebsdag: placerings- og point-aendring, med de samme pile som resten af spillet."
-              },
-              "refs": []
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "See which way your division standing is moving",
+          "body": "Your division standing on the dashboard now shows movement since the last race day: position change and points change, with the same arrows used elsewhere in the game."
+        },
+        "da": {
+          "title": "Se hvilken vej din divisionsplacering bevaeger sig",
+          "body": "Din divisionsstilling paa dashboardet viser nu bevaegelse siden sidste loebsdag: placerings- og point-aendring, med de samme pile som resten af spillet."
+        },
+        "refs": []
       },
       {
-              "category": "new",
-              "audience": "player",
-              "topic": "Market",
-              "en": {
-                      "title": "Outbid? Now you can see it",
-                      "body": "Being outbid used to show only as a 4 second toast. Auctions where you are outbid now stay marked until you act, and the auction history marks real bidding wars with 2 or more bidders."
-              },
-              "da": {
-                      "title": "Overbudt? Nu kan du se det",
-                      "body": "At blive overbudt blev kun vist som en 4 sekunders toast. Auktioner hvor du er overbudt er nu markeret indtil du reagerer, og auktionshistorikken markerer aegte budkrige med 2 eller flere budgivere."
-              },
-              "refs": []
+        "category": "new",
+        "audience": "player",
+        "topic": "Market",
+        "en": {
+          "title": "Outbid? Now you can see it",
+          "body": "Being outbid used to show only as a 4 second toast. Auctions where you are outbid now stay marked until you act, and the auction history marks real bidding wars with 2 or more bidders."
+        },
+        "da": {
+          "title": "Overbudt? Nu kan du se det",
+          "body": "At blive overbudt blev kun vist som en 4 sekunders toast. Auktioner hvor du er overbudt er nu markeret indtil du reagerer, og auktionshistorikken markerer aegte budkrige med 2 eller flere budgivere."
+        },
+        "refs": []
       },
       {
-              "category": "fixed",
-              "audience": "player",
-              "topic": "Teams",
-              "en": {
-                      "title": "Other teams' pages open on the squad tab again",
-                      "body": "Visiting another team could land you on the tab you used on the previous team, and the back button forgot your tab. Team pages now open on the squad tab, and your tab choice sticks in the address bar."
-              },
-              "da": {
-                      "title": "Andre holds sider aabner paa trup-fanen igen",
-                      "body": "Et besoeg paa et andet hold kunne lande paa fanen fra det forrige hold, og tilbage-knappen glemte dit fanevalg. Holdsider aabner nu paa trup-fanen, og dit fanevalg huskes i adresselinjen."
-              },
-              "refs": [
-                      3916
-              ]
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Teams",
+        "en": {
+          "title": "Other teams' pages open on the squad tab again",
+          "body": "Visiting another team could land you on the tab you used on the previous team, and the back button forgot your tab. Team pages now open on the squad tab, and your tab choice sticks in the address bar."
+        },
+        "da": {
+          "title": "Andre holds sider aabner paa trup-fanen igen",
+          "body": "Et besoeg paa et andet hold kunne lande paa fanen fra det forrige hold, og tilbage-knappen glemte dit fanevalg. Holdsider aabner nu paa trup-fanen, og dit fanevalg huskes i adresselinjen."
+        },
+        "refs": [
+          3916
+        ]
       },
       {
-              "category": "improved",
-              "audience": "player",
-              "topic": "UI",
-              "en": {
-                      "title": "Cleaner sidebar header",
-                      "body": "The sidebar corner now shows only the Cycling Zone wordmark. Your team name already lives on the dashboard and My Team, so it no longer doubles up next to the logo."
-              },
-              "da": {
-                      "title": "Renere sidebar-header",
-                      "body": "Sidebar-hjoernet viser nu kun Cycling Zone-wordmarket. Dit holdnavn findes allerede paa dashboardet og Mit Hold, saa det staar ikke laengere dobbelt ved siden af logoet."
-              },
-              "refs": [
-                      2181
-              ]
+        "category": "improved",
+        "audience": "player",
+        "topic": "UI",
+        "en": {
+          "title": "Cleaner sidebar header",
+          "body": "The sidebar corner now shows only the Cycling Zone wordmark. Your team name already lives on the dashboard and My Team, so it no longer doubles up next to the logo."
+        },
+        "da": {
+          "title": "Renere sidebar-header",
+          "body": "Sidebar-hjoernet viser nu kun Cycling Zone-wordmarket. Dit holdnavn findes allerede paa dashboardet og Mit Hold, saa det staar ikke laengere dobbelt ved siden af logoet."
+        },
+        "refs": [
+          2181
+        ]
       },
       {
         "category": "fixed",
@@ -2049,7 +2263,9 @@ export const PATCHES = [
           "title": "Mere ensartet udseende på auktioner, dashboard og rytterprofiler",
           "body": "Tre af de mest brugte sider følger nu de samme designregler: én tydelig primærknap pr. side, ens hjørner og ikoner overalt, rigtige progress-bars og tom-tilstande, og nye \"Viser X af Y\"-linjer under auktions- og markedslisterne."
         },
-        "refs": [2849]
+        "refs": [
+          2849
+        ]
       }
     ]
   },
@@ -2070,7 +2286,9 @@ export const PATCHES = [
           "title": "Race Centre: dagens løb ét sted",
           "body": "Ny side under løb. Dine egne løb står øverst: live-løb viser seneste aktion og en Watch live-knap, kommende løb viser nedtælling og din opstillings-status, færdige løb viser podiet og din bedste rytter. Nedenunder en stribe med dagens resultater fra de andre divisioner."
         },
-        "refs": [3858]
+        "refs": [
+          3858
+        ]
       },
       {
         "category": "fixed",
@@ -2084,7 +2302,9 @@ export const PATCHES = [
           "title": "Fastlåste opstillinger heler sig selv igen",
           "body": "Når to af dine løb overlappede samme dag, kunne den automatiske opstillings-reparation vælge en rytter der allerede kørte det andet løb, og opstillingen sad fast. Reparationen tjekker nu dine andre løb først."
         },
-        "refs": [3906]
+        "refs": [
+          3906
+        ]
       },
       {
         "category": "fixed",
@@ -2098,7 +2318,9 @@ export const PATCHES = [
           "title": "Et salg kan ikke længere efterlade sælgeren under 8 ryttere",
           "body": "Trup-minimum blev kun tjekket da auktionen blev oprettet, ikke da den lukkede. Har sælgeren mistet ryttere i mellemtiden, annulleres salget nu i stedet for at efterlade holdet ude af stand til at stille op, og begge parter får besked."
         },
-        "refs": [2836]
+        "refs": [
+          2836
+        ]
       }
     ]
   },
@@ -2119,7 +2341,9 @@ export const PATCHES = [
           "title": "Se rytterens popularitet før du køber",
           "body": "Rytter-popularitet (0 til 100) vises nu på rytterprofilen og som sortérbar kolonne i markedet. Bestyrelsen stiller popularitetsmål, og nu kan du faktisk handle efter dem."
         },
-        "refs": [3622]
+        "refs": [
+          3622
+        ]
       },
       {
         "category": "fixed",
@@ -2133,7 +2357,10 @@ export const PATCHES = [
           "title": "Accepterede bonus-tilbud kan ikke længere forsvinde",
           "body": "Accept af et bonus-tilbud fra bestyrelsen er nu ét sikkert skridt. Fire hold ramte den gamle fejl og har hver fået de manglende 200.000 godskrevet."
         },
-        "refs": [3578, 3655]
+        "refs": [
+          3578,
+          3655
+        ]
       },
       {
         "category": "fixed",
@@ -2147,7 +2374,9 @@ export const PATCHES = [
           "title": "Nye hold beholder deres starttrup",
           "body": "Starter-kontrakter løber nu altid 2 til 3 sæsoner. Et hold oprettet sent i en sæson mister ikke længere størstedelen af truppen ved førstkommende sæsonslut."
         },
-        "refs": [3037]
+        "refs": [
+          3037
+        ]
       },
       {
         "category": "fixed",
@@ -2161,7 +2390,9 @@ export const PATCHES = [
           "title": "En byttet akademi-rytter kan ikke længere presse sig forbi din 8-plads-cap",
           "body": "Byttede du dig til en modstanders akademi-rytter, fulgte hans akademi-flag råt med, så han kunne lande i din trup selvom akademiet var fuldt: ét hold endte med 9 ryttere på 8 pladser. En byttet akademi-rytter graduerer nu til senior ved ankomsten, ligesom et salg på transfermarkedet allerede gør, så et bytte aldrig kan skubbe dig over loftet."
         },
-        "refs": [2797]
+        "refs": [
+          2797
+        ]
       },
       {
         "category": "improved",
@@ -2175,7 +2406,9 @@ export const PATCHES = [
           "title": "Renere transferhistorik",
           "body": "Auktioner uden bud fylder ikke længere historikken, og AI-hold navngives i stedet for en streg eller Unknown."
         },
-        "refs": [3708]
+        "refs": [
+          3708
+        ]
       },
       {
         "category": "fixed",
@@ -2189,7 +2422,9 @@ export const PATCHES = [
           "title": "Gamle frie ungdomsryttere rekalibreret",
           "body": "139 uejede ungdomsryttere fra gamle akademi-kuld bar stats fra en forældet kalibrering. De matcher nu ungdomsbåndet, med tilsvarende værdier."
         },
-        "refs": [3614]
+        "refs": [
+          3614
+        ]
       },
       {
         "category": "improved",
@@ -2203,7 +2438,11 @@ export const PATCHES = [
           "title": "Små forbedringer",
           "body": "Notifikations-badgen tæller nu op til 99+. Sæson-datoer viser ikke længere dagen før for spillere vest for UTC. Appen loader mærkbart hurtigere ved første besøg."
         },
-        "refs": [3439, 3724, 3697]
+        "refs": [
+          3439,
+          3724,
+          3697
+        ]
       },
       {
         "category": "fixed",
@@ -2217,7 +2456,11 @@ export const PATCHES = [
           "title": "Under motorhjelmen",
           "body": "En vagt på database-niveau gør dobbeltbooking af ryttere umulig, tvangssalg gennemføres sikkert efter afbrydelser, og akademi-salg tæller fremadrettet korrekt i akademi-overblikket."
         },
-        "refs": [3420, 2982, 2793]
+        "refs": [
+          3420,
+          2982,
+          2793
+        ]
       }
     ]
   },
@@ -2238,7 +2481,9 @@ export const PATCHES = [
           "title": "Den sidste kilometer følger den etape-fane du er på",
           "body": "At åbne en tidligere etapes fane afspillede før stadig den seneste kørte etapes mål. Nu afspiller den etapens eget mål."
         },
-        "refs": [3396]
+        "refs": [
+          3396
+        ]
       }
     ]
   },
@@ -2259,7 +2504,11 @@ export const PATCHES = [
           "title": "Scouting-missioner du kan sigte med",
           "body": "Missioner kan nu målrettes en ryttertype, og alle ryttere på shortlisten får en gratis niveau 1-rapport, ikke kun topfundet. Missioner tager 1 dag i stedet for 2. Din klub beholder også sin egen scouting-historik, så en rytter du har spejdet kan findes igen."
         },
-        "refs": [3657, 3652, 2721]
+        "refs": [
+          3657,
+          3652,
+          2721
+        ]
       },
       {
         "category": "new",
@@ -2273,7 +2522,9 @@ export const PATCHES = [
           "title": "Sælg akademi-ryttere direkte",
           "body": "Akademi-ryttere kan nu sættes på transferlisten eller på auktion mens de stadig er på akademiet. Køberen modtager dem som seniorer med kontrakt og løn uændret."
         },
-        "refs": [3650]
+        "refs": [
+          3650
+        ]
       },
       {
         "category": "new",
@@ -2287,7 +2538,10 @@ export const PATCHES = [
           "title": "To staff pr. rolle",
           "body": "Hver staff-rolle har nu to pladser, så du kan have to spejdere eller to trænere samtidigt. Den stærkeste af de to driver din bonus. Kandidater er altid synlige, og du skal kun fyre nogen når begge pladser er fyldt."
         },
-        "refs": [3489, 3658]
+        "refs": [
+          3489,
+          3658
+        ]
       },
       {
         "category": "new",
@@ -2301,7 +2555,9 @@ export const PATCHES = [
           "title": "Pensions-advarsel før du byder",
           "body": "Bud-bekræftelsen advarer dig nu når en rytter er i pensionsvinduet (36-40 år) eller stopper med sikkerhed (40+), alle steder du kan byde."
         },
-        "refs": [2700]
+        "refs": [
+          2700
+        ]
       },
       {
         "category": "fixed",
@@ -2315,7 +2571,9 @@ export const PATCHES = [
           "title": "Kommende løb er dine løb",
           "body": "Dashboardet tæller ikke længere ned til løb dit hold ikke er tilmeldt. Nye hold så det mest."
         },
-        "refs": [3751]
+        "refs": [
+          3751
+        ]
       },
       {
         "category": "fixed",
@@ -2329,7 +2587,9 @@ export const PATCHES = [
           "title": "Potentiale sorterer som det læses",
           "body": "Sortering på potentiale følger nu det bånd du faktisk ser, i stedet for tavst at falde tilbage til markedsværdi."
         },
-        "refs": [3787]
+        "refs": [
+          3787
+        ]
       },
       {
         "category": "fixed",
@@ -2343,7 +2603,11 @@ export const PATCHES = [
           "title": "Knapper forklarer sig selv",
           "body": "Deaktiverede knapper siger nu hvorfor, afviste handlinger viser en fejl i stedet for ingenting, udtagelses-fejl navngiver altid rytter og løb, og rundvisningens tooltip dækker ikke længere det den peger på, på små skærme."
         },
-        "refs": [3012, 3098, 3008]
+        "refs": [
+          3012,
+          3098,
+          3008
+        ]
       }
     ]
   },
@@ -2364,7 +2628,12 @@ export const PATCHES = [
           "title": "Indbakkens beskeder fører dig det rigtige sted hen",
           "body": "Et klik på et transfertilbud lander nu på selve beslutningen, og en rytter med et åbent tilbud viser en genvej på sin profil. Scout-rapporter åbner rapporten direkte. Etape-beskeder handler om dine egne ryttere. At vinde sin egen gensalgs-auktion giver ikke længere to beskeder."
         },
-        "refs": [3496, 3493, 3491, 3549]
+        "refs": [
+          3496,
+          3493,
+          3491,
+          3549
+        ]
       },
       {
         "category": "improved",
@@ -2378,7 +2647,11 @@ export const PATCHES = [
           "title": "Marked-oprydning",
           "body": "Sælger-kolonnen på auktioner kan sorteres. Transferhistorikken skjuler auktioner uden salg som standard, med en knap der viser dem. Proxy-bud på ungdomsauktioner accepterer nu en ledig akademiplads, ligesom almindelige bud."
         },
-        "refs": [3067, 2400, 3826]
+        "refs": [
+          3067,
+          2400,
+          3826
+        ]
       },
       {
         "category": "fixed",
@@ -2392,7 +2665,10 @@ export const PATCHES = [
           "title": "Skadedage er enige med sig selv, og 11 kontrakter repareret",
           "body": "Skadedage viste forskellige tal tre steder; alle tre bruger nu samme beregning. Vi har også repareret 11 ryttere hvis kontrakter mistede et år under en akademi-forfremmelses-fejl i slutningen af juli: 5 fik deres lovede sæson tilbage, 6 fik rettet et bogholderi-tal."
         },
-        "refs": [3541, 3715]
+        "refs": [
+          3541,
+          3715
+        ]
       },
       {
         "category": "improved",
@@ -2406,7 +2682,10 @@ export const PATCHES = [
           "title": "Hjælpen forklarer hvor ryttere kommer fra og sæsonens økonomi",
           "body": "Nye hjælpe-afsnit dækker hvor auktions- og frie-agent-ryttere kommer fra, og hvad der sker med løn og sponsorpenge ved sæsonskiftet. Vi har også rettet forældede påstande om at AI-ryttere kan komme på auktion eller modtage direkte bud."
         },
-        "refs": [3551, 2889]
+        "refs": [
+          3551,
+          2889
+        ]
       }
     ]
   },
@@ -2427,7 +2706,12 @@ export const PATCHES = [
           "title": "Auktioner er lettere at bruge",
           "body": "Auktioner kan nu sorteres på mobil, og sortering efter løn følger endelig de tal du ser på skærmen. Starter du en auktion fra rytterprofilen, kan du vælge varigheden, og bud-panelet siger på forhånd når din trup er fuld i stedet for at lade serveren afvise buddet."
         },
-        "refs": [3783, 2403, 3786, 3066]
+        "refs": [
+          3783,
+          2403,
+          3786,
+          3066
+        ]
       },
       {
         "category": "new",
@@ -2441,7 +2725,11 @@ export const PATCHES = [
           "title": "Mere at se på dine holdsider",
           "body": "Ryttere du har sat til salg viser et badge med udbudsprisen på holdsiden. Holdudtagelsen har fået en knap der viser alle 15 evner. Sæsonplanlæggeren viser løbets klasse når du vælger mål-løb."
         },
-        "refs": [3810, 3809, 3807]
+        "refs": [
+          3810,
+          3809,
+          3807
+        ]
       },
       {
         "category": "fixed",
@@ -2455,7 +2743,10 @@ export const PATCHES = [
           "title": "Akademi-dialogen fortæller sandheden",
           "body": "Flyt af en senior til akademiet viste en forkert løn; dialogen spørger nu serveren om det præcise tal. Den siger også ærligt at rytteren udgår af igangværende løb."
         },
-        "refs": [3805, 3784]
+        "refs": [
+          3805,
+          3784
+        ]
       },
       {
         "category": "fixed",
@@ -2469,7 +2760,9 @@ export const PATCHES = [
           "title": "Præmier sorteres efter dato",
           "body": "Præmielisten under Økonomi viser nyeste præmier først, og kolonnerne kan sorteres."
         },
-        "refs": [3808]
+        "refs": [
+          3808
+        ]
       },
       {
         "category": "new",
@@ -2483,7 +2776,9 @@ export const PATCHES = [
           "title": "En prik viser ulæste patch notes",
           "body": "Menuen viser en lille prik når der er patch notes du ikke har læst. Den forsvinder når du åbner siden."
         },
-        "refs": [3811]
+        "refs": [
+          3811
+        ]
       }
     ]
   },
@@ -3008,7 +3303,9 @@ export const PATCHES = [
           "title": "Scouting-rapporten sagde 'Høj tillid' om et bånd der var 10 point bredt",
           "body": "Chippen ved siden af din spejders vurdering sagde Høj tillid, Middel tillid eller Lav tillid. Den målte aldrig tillid. Den målte hvor fuldstændigt du havde scoutet rytteren: dine egne ryttere og enhver rival du havde scoutet til sidste niveau fik alle Høj tillid, uanset hvem din spejder var. To linjer længere nede sagde det samme kort, at loft-båndet afspejler din nuværende spejders præcision. Begge udsagn stod på samme kort og modsagde hinanden. Med standard-spejderen er loft-båndet omkring 10 rating-point bredt; med en topratet spejder er det omkring 6. De blev alle mærket Høj tillid. Chippen siger nu hvad den faktisk måler: Fuldt scoutet, Delvist scoutet eller Knap nok scoutet, og holder du musen over den, forklarer den at hvor smalt båndet er afhænger af din spejders rating, ikke af chippen. Selve vurderingen har også fået en linje der siger at den er din spejders aflæsning frem for en kendsgerning. Den bygger på hans loft-estimat, og det estimat er bevidst personligt for dit hold, så en anden managers spejder kan nå en anden konklusion om samme rytter. Vi målte hvor tit det rent faktisk sker: på tværs af 300 ryttere set af 120 forskellige simulerede managere fik 4,7 procent af rytterne en forskellig vurdering afhængigt af hvem der kiggede. Det er ikke almindeligt, men det er ikke nul, og intet på kortet sagde det. Intet ved scouting, lofter eller selve båndene er ændret."
         },
-        "refs": [3667]
+        "refs": [
+          3667
+        ]
       }
     ]
   },
@@ -3029,7 +3326,9 @@ export const PATCHES = [
           "title": "Scout-knappen lover ikke længere en præcision den ikke kan levere",
           "body": "Tooltippet på scout-knappen sagde at det at scoute en rytter indsnævrer hans potentiale-estimat. Det passer for de første trin, men ikke for det sidste. Din egen spejders rating sætter et hårdt gulv for hvor smalt et estimat overhovedet kan blive, og for et hold med standard-spejderen er det gulv allerede nået på næstsidste niveau: at betale for sidste niveau ændrer båndet med ingenting. 149 af spillets 202 managerhold har ikke ansat en chefspejder og står præcis der. Ingen har dog reelt tabt penge på det endnu. Alle 15 opgaver der hidtil er købt til sidste niveau kom fra hold der havde ansat en spejder, så de fik alle en smule forbedring, selvom den er lille for en lavt ratet spejder. Tooltips og scouting-hjælpen siger nu ligeud at sidste niveau afhænger af din spejders rating. Selve gulvet er et rigtigt designproblem, ikke bare en formulering, og det bliver målt om som en del af rating-arbejdet; denne ændring handler kun om ikke længere at love noget spillet ikke gør."
         },
-        "refs": [3667]
+        "refs": [
+          3667
+        ]
       },
       {
         "category": "fixed",
@@ -3043,7 +3342,9 @@ export const PATCHES = [
           "title": "To hjælpe-svar sagde noget der ikke var sandt",
           "body": "Scouting-hjælpen sagde at potentiale altid vises som stjerner og en vurdering, aldrig som et tal. Det passer ikke: Scouting-fanen på hver rytterprofil har vist tal pr. ryttertype i et stykke tid nu, et nuværende niveau og et loft-bånd. Det siger hjælpen nu, og den siger også hvordan båndet skal læses. Et loft-bånd er et interval som rytterens loft ligger et sted inde i. Det er ikke et tal han kan nå, og især den øverste kant er ikke et mål: båndet er med vilje tegnet bredere end sandheden, så det præcise loft ikke kan aflæses på skærmen. Derudover påstod FAQ'en om rating-skalaen at rekalibreringen var en engangs-rettelse, og at en rytters tal ligger fast medmindre hans egne evner ændrer sig. Det var forkert. Skalaen er forankret i rytterpuljen, så et gen-fit af de ankre kan flytte hver eneste rytters tal uden at en eneste evne har ændret sig. Det siger FAQ'en nu, og den lover en patch note hver gang det sker. Ingen rytter, evne, loft eller tal ændrede sig i dag. Kun hvad vi fortæller jer om dem."
         },
-        "refs": [3667]
+        "refs": [
+          3667
+        ]
       }
     ]
   },
@@ -3064,7 +3365,10 @@ export const PATCHES = [
           "title": "516 ryttere har fået rettet deres udviklingslofter",
           "body": "Hver rytter har to typer, en hovedtype og en bitype, og begge former hvor højt hver af hans evner nogensinde kan nå. En gruppe ryttere skabt mellem 25. juli og 12. august fik aldrig deres bitype skrevet ind i deres stamdata ved fødslen. Spillet viste dem en bitype, men koden der regner lofterne ud kunne ikke se den, så den regnede som om de ingen havde. Deres lofter er nu bygget om med begge typer, præcis som alle andre ryttere i spillet altid er blevet behandlet. 453 ryttere kom ud med et højere loft og 63 med et lavere. 511 af dem er frie agenter på markedet og 5 sidder på spilleres hold. Ingen mistede en evne han allerede havde. Et loft kan aldrig falde under rytterens nuværende evne, så et lavere loft betyder mindre plads tilbage at vokse i, ikke en rytter der blev dårligere. Ingen rytter skiftede type, og ingen markedsværdi flyttede sig. Undrer du dig over hvorfor et loft gik ned: en bitype siger lige så meget hvad en rytter ikke er, som hvad han er. En baroudeur med rouleur som bitype er en rytter spillet nu siger ligeud aldrig bliver klatrer."
         },
-        "refs": [3593, 3591]
+        "refs": [
+          3593,
+          3591
+        ]
       }
     ]
   },
@@ -3085,7 +3389,9 @@ export const PATCHES = [
           "title": "Træningen siger nu til når en evne har nået sit loft",
           "body": "Flere af jer meldte at klatring ikke ville stige, uanset hvor meget VO2max-træning en rytter fik. I havde ret, og siden skjulte det. Et fokus træner mere end én evne ad gangen, og hver evne har sit eget livstidsloft, sat af rytterens type og potentiale. Når en evne først har nået det loft, stiger den aldrig igen. Men progress-baren viste kun den evne der var tættest på sit næste point, så en rytter hvis klatring var færdig, mens tempo stadig steg, så helt normal ud. Lige nu står 892 ryttere i spillet i præcis den tilstand, og 142 står i et fokus hvor hver eneste evne er toppet, så træningsdagen producerer ingenting overhovedet. Fra i dag navngiver siden den evne der har nået sit loft, og fokus-listen markerer et fokus der intet har tilbage at give, før du vælger det. Intet ved hvordan træning virker er ændret. Du kan nu se det."
         },
-        "refs": [3639]
+        "refs": [
+          3639
+        ]
       }
     ]
   },
@@ -3106,7 +3412,9 @@ export const PATCHES = [
           "title": "Et bud afgivet på en tabt forbindelse siger nu selv at det fejlede",
           "body": "Faldt din forbindelse væk i det sekund du bekræftede et bud eller gemte et autobud-loft, blev knappen stående i sin loading-tilstand, og der skete ikke mere. Ingen fejl, ingen bekræftelse, og ingen måde at se om buddet var gået igennem, så det eneste tilbage var at genindlæse siden og kigge efter. Det ramte især på mobil. Begge handlinger stopper nu, siger at serveren ikke kunne nås, og stiller sig tilbage, så du kan prøve igen. At fjerne et autobud-loft virkede allerede sådan."
         },
-        "refs": [3619]
+        "refs": [
+          3619
+        ]
       }
     ]
   },
@@ -3148,7 +3456,10 @@ export const PATCHES = [
           "title": "Nye akademi-emner fødes nu med begge deres ryttertyper",
           "body": "Hver rytter har en hovedtype og en anden type. Indtil nu blev kun cirka hvert syvende emne født med den anden type fastlagt. For resten aflæste spillet den i stedet ud fra rytterens evner og kunne aflæse den anderledes næste gang det regnede efter, så den anden type på kortet aldrig rigtig var hans at beholde. Fra nu af fødes hvert nyt akademi-emne med begge typer sat, og begge bliver stående. Emnets start-evner hælder samtidig en anelse mod den anden type, så kortet og rytteren passer sammen fra dag ét. Ryttere der allerede er i spillet, beholder alt hvad de har; der er ikke taget noget fra nogen."
         },
-        "refs": [3632, 3593]
+        "refs": [
+          3632,
+          3593
+        ]
       }
     ]
   },
@@ -3169,7 +3480,9 @@ export const PATCHES = [
           "title": "Ryttere på 22 år og opefter har nu samme rettede identitet som dine yngre ryttere",
           "body": "Identitets-rettelsen der korrigerede dine spiller-ejede ryttere under 22 natten til 9. august, er nu kørt for alle ryttere i spillet. I alt fik 7.998 ryttere skrevet en fast primær og sekundær type ud fra det anlæg de blev født med, og 5.814 af dem endte med en anden synlig type, heraf 2.691 af dine 3.451 spiller-ejede ryttere. Baroudeur, som den gamle løkke havde presset op til 76,7 procent af dine spiller-ejede ryttere, er nede på 11,5 procent (397 af 3.451), og for spiller-ejede ryttere på 22 år og opefter faldt det samlede gab mellem spillets typefordeling og dens mål, lagt sammen på tværs af alle otte typer, fra 127,9 til 23,7. Rytternes værdi og løn er ikke rørt på noget tidspunkt i processen, og alt blev sikkerhedskopieret før noget blev skrevet, så ændringen kan rulles tilbage om nødvendigt."
         },
-        "refs": [3570]
+        "refs": [
+          3570
+        ]
       },
       {
         "category": "improved",
@@ -3183,7 +3496,10 @@ export const PATCHES = [
           "title": "Klatre-lofterne fulgte med for dine ældre ryttere også",
           "body": "7.708 ryttere fik nye evne-lofter, der matcher deres rettede type. For spiller-ejede ryttere blev klatre-loftet hævet for 32,9 procent og sænket for 7,2 procent; som med rettelsen for dine yngre ryttere viser den fremgang det låser op for, sig først ved din næste træningskørsel, ikke med det samme."
         },
-        "refs": [3450, 3570]
+        "refs": [
+          3450,
+          3570
+        ]
       }
     ]
   },
@@ -3204,7 +3520,10 @@ export const PATCHES = [
           "title": "Jeres manglende kuld er leveret, plus to ekstra",
           "body": "Søndagens akademi-optag lavede kandidater der var alt for stærke, så de blev fjernet. Det efterlod de fleste akademier tomme, og nogle af jer fik en mail om et kuld der ikke var der. Begge dele var vores fejl. Alle akademier har nu fået de to kandidater søndagen skulle have givet, plus to ekstra som undskyldning. Var du et af de tre hold der faktisk fik et kuld i søndags, har du de to ekstra. Det er 762 nye emner fordelt på alle 192 akademier, lavet med den rettede kalibrering: en 16-årig starter nu reelt fra bunden omkring evne 2 og når graduerings-niveau omkring 12 som 20-årig i stedet for at ankomme færdigudviklet. Ryttertyperne er også fordelt ordentligt igen. Sprintere var stort set forsvundet fra akademi-kuldene med under én procent, mens udbryderryttere tog to tredjedele af hvert kuld; begge er tilbage på deres tilsigtede andel af cirka én type ud af otte."
         },
-        "refs": [3576, 3561]
+        "refs": [
+          3576,
+          3561
+        ]
       },
       {
         "category": "fixed",
@@ -3218,7 +3537,9 @@ export const PATCHES = [
           "title": "Akademi-emner blev født et år ældre for hver sæson",
           "body": "En akademi-kandidat skal ankomme mellem 16 og 21 år. Det gjorde han også, målt mod det kalenderår sæsonen startede i, men resten af spillet aflæser en rytters alder ud fra sæsonnummeret i stedet. De to passede sammen i sæson 1 og er drevet et år fra hinanden for hver sæson siden, fordi alle sæsoner indtil nu er startet inden for samme kalenderår. I sæson 2 betød det at de yngste emner allerede stod som 17 og de ældste som 22, hvilket er over akademiets egen aldersgrænse. I sæson 3 ville det have været 18 til 23, og cirka hvert sjette emne ville være født helt uden for akademi-alderen, klassificeret som voksen og uden ungdomsbonussen på sin værdi. Generatoren aflæser nu samme alder som resten af spillet. Eksisterende ryttere er urørte; det gælder emner født fra nu af."
         },
-        "refs": [3611]
+        "refs": [
+          3611
+        ]
       },
       {
         "category": "fixed",
@@ -3232,7 +3553,9 @@ export const PATCHES = [
           "title": "Fjorten emner der blev født for stærke er sat tilbage i niveau",
           "body": "Fjorten kandidater der stadig lå i akademier var lavet under en ældre kalibrering og kom ud langt over hvad en ung rytter skal være. Det mest ekstreme tilfælde var en 19-årig med bedste evne 39, hvilket er over en gennemsnitlig voksen prof. De er sat tilbage i ungdomsniveauet. De beholder navn, nationalitet, alder, potentiale og ryttertype, så det er den samme rytter på det samme kort; kun det nuværende evneniveau er ændret, og det lander nu hvor deres alder tilsiger. Ingen havde betalt for nogen af dem, og ingen af dem lå på en auktion med bud. Ryttere der allerede tilhører et hold blev ikke rørt, og det gjorde de igangværende auktioner heller ikke."
         },
-        "refs": [2699]
+        "refs": [
+          2699
+        ]
       },
       {
         "category": "fixed",
@@ -3246,7 +3569,9 @@ export const PATCHES = [
           "title": "Akademi-mailen venter nu til emnerne rent faktisk findes",
           "body": "Beskeden om at nyt akademi-talent var ankommet blev sendt mens kandidaterne stadig blev bygget. Gik noget galt i sekunderne efter, fik du en mail der pegede på ryttere som ikke var klar, eller slet ikke var der. Det var det flere af jer løb ind i søndag. Notifikationen sendes nu først når hver eneste kandidat i kuldet er færdig, og fejler kuldet, går der ingen besked ud overhovedet."
         },
-        "refs": [3576]
+        "refs": [
+          3576
+        ]
       }
     ]
   },
@@ -3267,7 +3592,11 @@ export const PATCHES = [
           "title": "Ryttertyper omskrev sig selv hver nat, og den løkke er nu lukket",
           "body": "Den 5. august ændrede vi måden en rytters type afgøres på, så den beskrev hvad han kunne blive frem for hans nuværende form. Den ændring står i v7.95, og den indførte et problem vi ikke fik øje på: rytterens type blev brugt til at bygge hans langsigtede lofter, og næste nat blev netop de lofter brugt til at afgøre hans type igen. Udregningen fodrede sig selv. Når en rytter først var gledet i én retning, blev han skubbet videre samme vej hver nat, af sig selv, og ingen rettelse vi lavede kunne holde. Sådan endte cirka tre ud af fire spiller-ejede unge ryttere som fightere uanset deres faktiske profil, og derfor kunne klassementstalenter slet ikke komme ud af akademiet. Det var ikke din træning, og det var ikke tilfældigheder. Løkken blev lukket om aftenen den 9. august. En rytter har nu én fast type, og spillet kan ikke længere ændre den af sig selv. Dine unge ryttere blev rettet samme nat: andelen af fightere blandt spiller-ejede ryttere under 22 gik fra 74 procent til 16 procent, og deres lofter fulgte med inden for et døgn. To ting følger af det, og de er værd at sige rent. For det første er din rytters type ikke længere en beskrivelse af hvad han er god til i dag. Det er hvad han blev født med, og det er den form hans langsigtede lofter er bygget efter, så en rytter kan sagtens være stærk i noget uden for sin type. For det andet læser løbsmotoren slet ikke ryttertype, så en forkert type har aldrig kostet dig en placering i et løb. Den kostede formen på de lofter rytteren kunne vokse op i. Ryttere på 22 år og opefter blev ramt af den samme løkke og er ikke rettet endnu. Den korrektion er under forberedelse og bliver annonceret før den kører. Fra den 16. august beholder en ny akademi-rytter den profil han blev født med."
         },
-        "refs": [3570, 3588, 3590]
+        "refs": [
+          3570,
+          3588,
+          3590
+        ]
       },
       {
         "category": "fixed",
@@ -3281,7 +3610,10 @@ export const PATCHES = [
           "title": "Klatretræning giver fremgang igen for dine unge ryttere",
           "body": "Flere af jer meldte at bjergtræning holdt op med at give fremgang i klatring efter jeres ryttere skiftede type, og nogle af jer lagde træningen væk fra bjergene af den grund. Det var ægte, og det havde samme rodårsag som løkken ovenfor: en rytter der blev omklassificeret væk fra klatring fik sit klatre-loft sænket, så det passede til hans nye type, og dermed var der ikke mere at vokse op i. For jeres unge ryttere er det allerede vendt. Da lofterne fulgte med de rettede typer, blev klatre-loftet hævet for 222 spiller-ejede ryttere under 22, med op til 48 point, og det blev sænket for ingen af dem. De eneste evner der blev strammet, er aggression og punch, altså den gamle fighter-signatur der beskæres væk fra ryttere der aldrig havde anlæg for den. Har du lagt din træning væk fra bjergene, kan du roligt lægge den tilbage. Ryttere på 22 år og opefter er dækket af den korrektion der er nævnt ovenfor, og som ikke er kørt endnu."
         },
-        "refs": [3450, 3570]
+        "refs": [
+          3450,
+          3570
+        ]
       },
       {
         "category": "improved",
@@ -3295,7 +3627,9 @@ export const PATCHES = [
           "title": "Nogle ryttere ser stadig ustabile ud, og her er præcis hvorfor",
           "body": "Et par stykker har set en rytter skifte type to gange inden for 48 timer og spurgt om typerne stadig flytter sig. Det gør de ikke, men der er en reel grund til at en rytter kan se ustabil ud. Fire par af ryttertyper ligner i øjeblikket hinanden for meget til at spillet kan skelne dem pålideligt, fordi den ene types styrker er en delmængde af den andens: tidskører og klassementsrytter, puncheur og klatrer, rouleur og brostensrytter, samt rouleur og baroudeur. En rytter der ligger mellem to af dem, kan læses som begge. Det er et visnings- og klassifikationsproblem, ikke et løbsproblem: løbsmotoren bedømmer en rytter på hans evner og på hvad etapen faktisk kræver, så en bakket afslutning og en bjergafslutning belønner allerede forskellige ryttere korrekt. Vi ved præcis hvorfor det sker nu, og det står på listen til at blive rettet ordentligt."
         },
-        "refs": [3592]
+        "refs": [
+          3592
+        ]
       }
     ]
   },
@@ -3316,7 +3650,11 @@ export const PATCHES = [
           "title": "Det daglige løbs-resume kunne udeblive uden en fejl",
           "body": "Den daglige opsummering af dine løb på Discord og mail afgjorde om den skulle sendes ved at tjekke om klokken lå inde i et smalt vindue. Hvis serveren tilfældigvis genstartede mens det vindue var åbent, blev tjekket aldrig kørt, og dagens resume blev simpelthen aldrig sendt. Der kom ingen fejl og intet nyt forsøg, så det eneste symptom var en dag helt uden resume. Den sender nu når tidspunktet er passeret i stedet for kun i et præcist vindue, og den noterer hvad den allerede har sendt, så en genstart heller ikke kan give en dublet. Det er samme type fejl som bestyrelses-påmindelserne der holdt op med at komme, og det er forklaringen på at resumeet manglede nogle dage siden det kom 6. august."
         },
-        "refs": [3475, 3476, 2725]
+        "refs": [
+          3475,
+          3476,
+          2725
+        ]
       },
       {
         "category": "fixed",
@@ -3330,7 +3668,10 @@ export const PATCHES = [
           "title": "Fornyelse og udløb af abonnement opdaterede ikke altid din kontostatus",
           "body": "Betalings-events for fornyelse, genoptaget abonnement, mislykket betaling og udløb blev ikke alle håndteret, så en konto kunne blive ved med at vise forkert status efter en af de hændelser. Alle fire håndteres nu. En separat regel blev strammet samtidig: kun et førstekøb kan give en founder-plads, så en fornyelse ændrer aldrig den status i nogen retning."
         },
-        "refs": [3408, 2736]
+        "refs": [
+          3408,
+          2736
+        ]
       }
     ]
   },
@@ -3666,7 +4007,9 @@ export const PATCHES = [
           "title": "Ryttertype-bedømmelser kan nu sammenlignes på tværs af roller",
           "body": "De otte type-bedømmelser i scoutrapporten blev tidligere beregnet på otte forskellige skalaer, så en helt gennemsnitlig rytter kunne stå med 37 som sprinter men 56 som puncheur. Skalaerne er nu rekalibreret til én fælles skala: samme tal betyder samme niveau i alle roller, så du endelig kan sammenligne en rytters roller side om side. Dine rytteres evner, typer og potentiale er urørte. De viste tal flyttede sig én gang med denne rekalibrering og bevæger sig fremover kun, når rytteren selv udvikler sig."
         },
-        "refs": [3458]
+        "refs": [
+          3458
+        ]
       },
       {
         "category": "new",
@@ -3680,7 +4023,9 @@ export const PATCHES = [
           "title": "Scout en vilkårlig divisions kalender, og fold en hel dag ud",
           "body": "Kalenderens Divisioner-fane har nu en gruppe-vælger når en division har mere end én pulje (for eksempel pulje A og B i Division 2), så du kan gennemse en anden divisions fulde løbsprogram før op- eller nedrykning, ikke kun hele tieren samlet. En dag med mere end 4 løb blev før afskåret ved '+N flere' uden noget at klikke på; den tekst er nu en knap der åbner dagens fulde program."
         },
-        "refs": [2756]
+        "refs": [
+          2756
+        ]
       },
       {
         "category": "improved",
@@ -3694,7 +4039,9 @@ export const PATCHES = [
           "title": "Etape-afslutnings-badges forklarer nu hvad de betyder",
           "body": "'Bjergfinale' og 'Nedkørselsfinale' var selvforklarende, men 'Udbrud' var det ikke. Ethvert etape-afslutnings-badge (massespurt, reduceret spurt, stikfinale, bjergfinale, nedkørselsfinale, soloenkeltstart, udbrud) har nu et tooltip der forklarer hvad det betyder, og hele listen står i Hjælp under Sæson."
         },
-        "refs": [2756]
+        "refs": [
+          2756
+        ]
       }
     ]
   },
@@ -3715,7 +4062,10 @@ export const PATCHES = [
           "title": "Forummet: snak med de andre managere i spillet",
           "body": "Et nyt Forum bor i Klubhus-menuen. Skriv opslag i to kategorier (Generelt og Feedback & idéer), svar i tråde, og stem i afstemninger som admin vedhæfter fastgjorte opslag. En rapportér-knap på hvert opslag og svar sender alt der ikke hører hjemme direkte til admin."
         },
-        "refs": [3199, 3201]
+        "refs": [
+          3199,
+          3201
+        ]
       }
     ]
   },
@@ -3736,7 +4086,9 @@ export const PATCHES = [
           "title": "Falsk 'ændring seneste 14 dage' på rytterværdier efter ryttertype-rekalibreringen",
           "body": "'Ændring seneste 14 dage' på en rytters værdi kunne vise et stort spring eller fald der aldrig er sket, fordi den historiske sammenligning brugte den nye ryttertype fra rekalibreringen 5/8, mens den nuværende værdi brugte den fastfrosne. Selve værdien har aldrig flyttet sig; kun sammenligningen var forkert. Begge ender bruger nu samme grundlag."
         },
-        "refs": [3441]
+        "refs": [
+          3441
+        ]
       }
     ]
   },
@@ -3757,7 +4109,9 @@ export const PATCHES = [
           "title": "Det førende hold vises direkte i auktionsrækken",
           "body": "I live-auktioner vises det aktuelt førende hold nu direkte i selve rækken i stedet for kun at dukke op ved hover, så du kan skimme hele tavlen med ét blik på både desktop og mobil."
         },
-        "refs": [3099]
+        "refs": [
+          3099
+        ]
       },
       {
         "category": "new",
@@ -3771,7 +4125,9 @@ export const PATCHES = [
           "title": "Første-bud-hint forklarer det anbefalede startbud",
           "body": "Nye budgivere i auktioner får nu et hint der forklarer hvorfor det anbefalede startbud er som det er, og det peger på én rytter dit budget reelt har råd til, så dit første bud er en beslutning i stedet for et gæt."
         },
-        "refs": [3007]
+        "refs": [
+          3007
+        ]
       },
       {
         "category": "fixed",
@@ -3785,7 +4141,9 @@ export const PATCHES = [
           "title": "Sæson-peaks kan redigeres og fjernes igen",
           "body": "Sæson-peaks kan nu redigeres eller fjernes igen efter de er sat. Det retter en fejl hvor et peak låste i samme sekund det blev placeret, uden varsel, forklaring eller fortryd."
         },
-        "refs": [3094]
+        "refs": [
+          3094
+        ]
       },
       {
         "category": "fixed",
@@ -3799,7 +4157,9 @@ export const PATCHES = [
           "title": "Manuelle trupper dobbeltbookes ikke længere i overlappende løb",
           "body": "Rettede en fejl hvor en rytter i en fuldt manuel trup stadig kunne blive auto-udtaget til endnu et, overlappende løb på de samme løbsdage."
         },
-        "refs": [3377]
+        "refs": [
+          3377
+        ]
       },
       {
         "category": "fixed",
@@ -3813,7 +4173,9 @@ export const PATCHES = [
           "title": "Alle bestyrelser kalibrerer nu deres formations-mål",
           "body": "Rettede en fejl hvor 12 ud af 21 hold aldrig fik deres bestyrelses formations-mål kalibreret, fordi en forespørgsel stille tolkede store trupper som tomme."
         },
-        "refs": [2022]
+        "refs": [
+          2022
+        ]
       },
       {
         "category": "fixed",
@@ -3827,7 +4189,9 @@ export const PATCHES = [
           "title": "Handlede ryttere kan ikke længere sidde fast i overførsels-limbo",
           "body": "Rettede en fejl hvor en rytter købt midt i et etapeløb kunne sidde permanent fast mellem to hold hvis løbet aldrig blev korrekt afsluttet. En reel handel sad fast i over 40 dage, rapporteret af en spiller på Discord; et dagligt heal-sweep leverer nu fastlåste ryttere og advarer os hvis en overførsel parkerer i mere end 48 timer."
         },
-        "refs": [3330]
+        "refs": [
+          3330
+        ]
       },
       {
         "category": "fixed",
@@ -3841,7 +4205,9 @@ export const PATCHES = [
           "title": "Afsluttede løb sorteres korrekt på tværs af sæsoner",
           "body": "Rettede sorteringen i listen over afsluttede løb på Resultat-siden, som kunne rangere et løb fra en gammel sæson over et nyere, fordi den kun sammenlignede dag og måned og ikke sæson."
         },
-        "refs": [3312]
+        "refs": [
+          3312
+        ]
       },
       {
         "category": "fixed",
@@ -3855,7 +4221,9 @@ export const PATCHES = [
           "title": "Sponsorbonusser vises på dit sprog og i Sponsor-filteret",
           "body": "Sponsor-bonusudbetalinger vises nu på dit eget sprog i finanshistorikken (danske spillere så tidligere rå engelsk tekst), og sponsorbonusser dukker nu korrekt op når man filtrerer historikken på Sponsor."
         },
-        "refs": [3260]
+        "refs": [
+          3260
+        ]
       },
       {
         "category": "improved",
@@ -3869,7 +4237,9 @@ export const PATCHES = [
           "title": "Faciliteter og scout-rejser får egne udgiftskategorier",
           "body": "Facilitetskøb og scout-rejseudgifter vises nu som deres egne kategorier i finanssidens udgiftsopdeling, i stedet for begge at blive puttet i et umærket Andet."
         },
-        "refs": [3261]
+        "refs": [
+          3261
+        ]
       },
       {
         "category": "improved",
@@ -3883,7 +4253,9 @@ export const PATCHES = [
           "title": "Globale ranglister afgør uafgjort på resultater, ikke holdnavne",
           "body": "Globale hold-ranglister afgør nu uafgjorte placeringer ud fra faktiske løbsresultater (klassementssejre, etapepodier, bedste placeringer) før holdnavnet, i stedet for reelt at afgøre tætte opgør alfabetisk."
         },
-        "refs": [3210]
+        "refs": [
+          3210
+        ]
       },
       {
         "category": "fixed",
@@ -3897,7 +4269,9 @@ export const PATCHES = [
           "title": "Gamle kalender-links lander på Kalender-fanen igen",
           "body": "Gamle bogmærker og links til løbskalenderen lander nu korrekt på Kalender-fanen inde i Planlægnings-hubben, i stedet for at efterlade dig på standard-fanen Holdudtagelse."
         },
-        "refs": [3298]
+        "refs": [
+          3298
+        ]
       }
     ]
   },
@@ -3918,7 +4292,9 @@ export const PATCHES = [
           "title": "Auktioner får ansigter: se budkrigen efter hammerslaget",
           "body": "Afsluttede auktioner har nu en Se budkrigen-knap der åbner hele kampens historie: hvilke hold der bød, hvornår og med hvor meget, i rækkefølge, med det vindende bud markeret. Taber du en auktion, får du også at vide hvem der slog dig og med hvor meget. Live-auktioner er præcis lige så anonyme som før: intet afsløres før auktionen er lukket, og automatiske bud-lofter vises aldrig for nogen."
         },
-        "refs": [3401]
+        "refs": [
+          3401
+        ]
       },
       {
         "category": "new",
@@ -3932,7 +4308,9 @@ export const PATCHES = [
           "title": "Sæsondokumentaren: en skriftlig opsummering af din sæson",
           "body": "Efter en afsluttet sæson viser /seasons nu en dokumentar-sektion under din sæsonopsummering: din største signing, dit bedste resultat, din bedste dag og din tætteste rival i slutstillingen, skrevet som en kort fortælling bygget af dine egne verificerede tal. Den genereres én gang pr. hold, og alle læser samme tekst. En Download delekort-knap ved siden af eksporterer et screenshot-klart billede med dit holdnavn og sæsonens vigtigste tal."
         },
-        "refs": [3402]
+        "refs": [
+          3402
+        ]
       }
     ]
   },
@@ -3953,7 +4331,9 @@ export const PATCHES = [
           "title": "Karriere-førstegange er nu øjeblikke: første sejre, første podier, første trøjer",
           "body": "Spillet lægger nu mærke til når noget sker for første gang. En rytters første professionelle sejr, første podium, første klassifikationstrøje og hver 25. sejr i din klubs farver opdages i det øjeblik et løb afsluttes, fejres på dit dashboard og på løbssiden, og stemples permanent ind i rytterens karriere, så du kan finde dem igen sæsoner senere. Og løbene fejrer endelig mere end transfermarkedet: vinder din egen rytter et løb eller en samlet klassifikation, udløser det nu den samme fejring der indtil i dag kun fyrede når du vandt en auktion."
         },
-        "refs": [3398]
+        "refs": [
+          3398
+        ]
       },
       {
         "category": "new",
@@ -3967,7 +4347,9 @@ export const PATCHES = [
           "title": "Hero & Agony: ét personligt øjeblik fra hver etape, klar til at dele",
           "body": "Efter hver etape udvælger dit dashboard nu det mest dramatiske der skete for dit hold, og siger det ligeud: \"Din rytter førte udbruddet i 142 km, hentet 600 m før stregen.\" Nederlag tæller lige så meget som triumf, for et nærved-øjeblik er en bedre historie end en stille 14.-plads. Hvert kort kan eksporteres som et rent billede med ét klik, i Discord-format, så øjeblikket kan forlade spillet sammen med dig. Hver linje er bygget af hvad der faktisk skete i simulationen: intet er opdigtet."
         },
-        "refs": [3397]
+        "refs": [
+          3397
+        ]
       },
       {
         "category": "improved",
@@ -3981,7 +4363,10 @@ export const PATCHES = [
           "title": "Resultat-notifikationer fortæller historien, og Discord får et dagligt løbs-resumé",
           "body": "\"Race result is in\" er pensioneret. Resultat-notifikationer leder nu med hvad der faktisk skete (det afgørende træk, og hvordan dine ryttere placerede sig), med samme løbsrapport-motor som skriver historien på løbssiden. Og har du koblet Discord, får du nu én direkte besked om dagen (kl. 20, aldrig flere) der opsummerer hvordan dit hold kørte, med link direkte til resultaterne. Hver rubrik er bygget af de gemte løbsdata, aldrig opdigtet."
         },
-        "refs": [3399, 3400]
+        "refs": [
+          3399,
+          3400
+        ]
       }
     ]
   },
@@ -4002,7 +4387,9 @@ export const PATCHES = [
           "title": "Den sidste kilometer: en 90-sekunders målgangs-genafspilning",
           "body": "Åbn et løb med en kørt etape, og toppen af siden afspiller nu dets sidste stykke: en stor nedtælling tikker ned mod stregen, og ryttere klikker derefter ind i målrækkefølgen én ad gangen, med en fotofinish-markering når gabet er under et sekund. Den er bygget udelukkende af resultatdata der allerede er på siden (tidsgab, udbruds-flag), så den virker for både etapeløb og endagsløb, og en Afspil igen-knap lader dig se den om, selv timer efter at løbet sluttede. Mangler et løb den ældre udbruds- eller momentdata, eller foretrækker din enhed reduceret bevægelse, ser du bare slutresultatet direkte."
         },
-        "refs": [3396]
+        "refs": [
+          3396
+        ]
       }
     ]
   },
@@ -4023,7 +4410,9 @@ export const PATCHES = [
           "title": "Løbene i \"Seneste resultater\" kan klikkes igen",
           "body": "Et tryk på et løb i dashboardets \"Seneste resultater\" åbner nu løbets resultatside, og viser rækken en etapevinder, åbner den præcis dén etape. Modulet blev bygget før løbslinks fandtes, og de senere runder med at gøre løb klikbare nåede rytterprofilen og planlægnings-hubben, men kom aldrig tilbage over dashboardet. Rækken så klikbar ud og var det halvt: alt om rytteren virkede, alt om løbet var dødt. Rapporteret af @smukkethomsen."
         },
-        "refs": [3373]
+        "refs": [
+          3373
+        ]
       },
       {
         "category": "fixed",
@@ -4037,7 +4426,9 @@ export const PATCHES = [
           "title": "Divisionsbonus-tekst, og to fejl i bonustabellerne",
           "body": "Sæson-slut-bonussen satte to bare tal ved siden af hinanden (\"Division 3, plads 1\"), og det læste mere end én manager som en placering. Nu står placeringen med ord: \"Sluttede som nr. 1 i Division 3\". Mens vi var der: bonustabellerne i Hjælp og Regler vendte hver sin vej, så begge læses nu ens (rækker er din slutplacering, kolonner er den division du kørte i), og begge har fået en kort linje om hvordan man læser dem. Hjælp lovede desuden en bonus for 5. plads som spillet aldrig har udbetalt, og ingen af siderne nævnte Division 4, selv om Division 4-hold har fået bonusser lige siden divisionen blev tilføjet. Der er ikke ændret noget i hvad der faktisk udbetales."
         },
-        "refs": [3100]
+        "refs": [
+          3100
+        ]
       },
       {
         "category": "new",
@@ -4051,7 +4442,9 @@ export const PATCHES = [
           "title": "Et bekræftelsestrin før et lån der æder halvdelen af dit gældsloft",
           "body": "Et lån der vil skubbe din gæld til 50 % eller mere af divisionens loft viser nu et bekræftelsestrin med de præcise tal: din nye samlede gæld, hvor stor en andel af loftet det er, og hvad næste sæsons rente lægger oveni hvis du ikke betaler af. Ethvert lånebeløb viser nu også den sæsonpris direkte i låneformularen, og \"Brug max\" er tonet ned fra en fremtrædende knap til almindelig tekst. Intet blokeres, og intet loft er sænket: du kan stadig låne det fulde beløb, nu med tallene foran dig. Tærsklen er hvor meget gæld du påtager dig, ikke hvor nyt dit hold er, så en erfaren manager der bevidst gearer op ser præcis samme dialog som en spiller på sin første dag."
         },
-        "refs": [2815]
+        "refs": [
+          2815
+        ]
       }
     ]
   },
@@ -4072,7 +4465,10 @@ export const PATCHES = [
           "title": "Ryttertype viser nu potentiale, ikke kun dagens form",
           "body": "Ryttertypen (labelen på profilen og rytteroversigten, fx klatrer, sprinter, GC) bygger nu på rytterens langsigtede loft i stedet for de nuværende stats. Det gør labelen stabil resten af karrieren og retter en fejl hvor stort set alle unge ryttere blev vist som klatrer eller tempo uanset hvad de reelt egnede sig til. Dine rytteres stats er uændrede, og det er markedsværdien også: kun nogle af type-labelerne flytter sig, priserne er upåvirkede af denne opdatering."
         },
-        "refs": [3325, 3345]
+        "refs": [
+          3325,
+          3345
+        ]
       },
       {
         "category": "improved",
@@ -4086,7 +4482,9 @@ export const PATCHES = [
           "title": "Etapeløbs-generatoren vælger en finale-stil i stedet for altid at klatre til mål",
           "body": "Generatoren der bygger et etapeløbs terræn sorterede før alle løb ens: sprint-etaper først, bjerge altid sidst. Sådan fungerer rigtige WorldTour-løb ikke. Kalibreret mod en struktureret optælling af 41 rigtige WorldTour-etapeløb (407 etaper, 2024-2026), vælger generatoren nu én af fire finale-stile pr. ikke-grand-tour-løb (kuperet kredsløb, bjerg-top, sprint, enkeltstart), vægtet mod den faktiske fordeling (kuperede kredsløb er den mest almindelige finale, ikke spurter), og giver løb en reel, overvejende ikke-flad åbningsetape. Grand tours får deres egen ordning: hårdeste terræn næstsidst, flad eller enkeltstart-afslutning, da ingen af de rigtige grand tours i undersøgelsen sluttede på en bjergetape. Ingen synlig effekt før næste sæsons kalender bygges."
         },
-        "refs": [3326]
+        "refs": [
+          3326
+        ]
       },
       {
         "category": "improved",
@@ -4100,7 +4498,10 @@ export const PATCHES = [
           "title": "Division 2 får en rigtig klassiker-scene, fra næste sæson",
           "body": "Division 2 var to tredjedele etapeløb med næsten ingen brosten: ét løb pr. gruppe for hele sæsonen. Fra næste sæsons kalender-generering sigter kalenderen mod en nogenlunde jævn fordeling mellem endagsløb og etapeløb, brostens-klassikere får en reel tilstedeværelse, og etapeløbs-længde følger nu klassen: ProSeries forbliver kort (3-5 dage), WorldTour-løb kører længere (6-8 dage) og betaler mere pr. løbsdag. Det ændrer HVORDAN kalenderen bygges, ikke den igangværende sæson, så du ser det næste gang din divisions kalender genereres."
         },
-        "refs": [3327, 3328]
+        "refs": [
+          3327,
+          3328
+        ]
       },
       {
         "category": "fixed",
@@ -4114,7 +4515,9 @@ export const PATCHES = [
           "title": "Forfremmede akademiryttere beholder den kontrakt de allerede havde",
           "body": "Når du forfremmede en rytter ud af dit akademi, overskrev spillet hans eksisterende kontrakt med en kortere: tre sæsoner blev til to, og lønnen blev genberegnet. Det er rettet, og vi fandt den samme fejl gemt et sted mere. Vi har også repareret de ryttere den allerede nåede at ramme: 32 kontrakter er tilbage på deres rigtige længde. Uden den reparation ville de være blevet frigivet som fri agenter ved sæsonskiftet, selvom du troede du havde dem en sæson mere. Én ting kunne vi ikke genskabe: den overskrevne løn er ikke gemt nogen steder, så den bliver stående."
         },
-        "refs": [2881]
+        "refs": [
+          2881
+        ]
       },
       {
         "category": "fixed",
@@ -4128,7 +4531,9 @@ export const PATCHES = [
           "title": "Løbsrapporter går ikke længere tabt når stillingen hikker",
           "body": "Hvis genberegningen af stillingen fejlede efter en etape, røg hele etapens løbsrapport med i faldet: overskrift, badges og de momenter der afgjorde dagen. Tyve etaper fordelt på femten løb nåede at blive ramt, og dem kan vi ikke få tilbage. Fremover overlever rapporten, også hvis stillingen skal prøve igen."
         },
-        "refs": [2877]
+        "refs": [
+          2877
+        ]
       },
       {
         "category": "fixed",
@@ -4142,7 +4547,13 @@ export const PATCHES = [
           "title": "Resultat-tabellen kan nu håndhæve sin egen korrekthed",
           "body": "Resultat-tabellen havde ingen regel mod at samme deltager optrådte to gange i en etape, og en skrivning kunne efterlade et halvt resultat hvis den fejlede undervejs. Den har nu en unikhedsregel og skriver alt-eller-intet. Verificeret mod alle 710.397 eksisterende rækker uden en eneste konflikt. Også landet: et checked-in register over baggrundsjobbenes overvågning, tre flere scorecards dækket af exit-code-vagten, og et udviklings-script der ikke længere printer en login-token i terminalen."
         },
-        "refs": [3022, 1847, 2892, 3009, 3342]
+        "refs": [
+          3022,
+          1847,
+          2892,
+          3009,
+          3342
+        ]
       },
       {
         "category": "fixed",
@@ -4156,7 +4567,9 @@ export const PATCHES = [
           "title": "Igangværende etapeløb vises nu på Resultat-hubben",
           "body": "Et etapeløb der havde kørt flere etaper, men ikke var helt færdigt, var usynligt på Resultat-hubbens Seneste-fane, fordi den kun kiggede efter løb markeret afsluttet. Igangværende etapeløb vises nu også der, tydeligt markeret Live med en \"Etape X af Y\"-linje, og den aktuelle top 3 mens løbet stadig kører."
         },
-        "refs": [3333]
+        "refs": [
+          3333
+        ]
       },
       {
         "category": "fixed",
@@ -4170,7 +4583,10 @@ export const PATCHES = [
           "title": "Sæsonprognosen medregner nu facilitets-, staff- og akademi-omkostninger",
           "body": "Sæsonprognosen på Finanser-siden talte tidligere kun sponsorindtægt og præmiepenge minus rytterløn og lånerenter, og udelod helt facilitets-vedligehold, stab-lønninger, upkeep og akademi-drift. For hold der havde investeret i faciliteter eller et akademi, var det gamle tal for optimistisk med omkring det halve: det lovede et langt større overskud end holdene faktisk fik. Prognosen medregner nu alle disse omkostninger, beregnet med præcis samme formler som den faktiske sæson-start-opkrævning, og hjælpeteksten er omskrevet så den siger præcist hvad der er (og ikke er) dækket."
         },
-        "refs": [3236, 3332]
+        "refs": [
+          3236,
+          3332
+        ]
       },
       {
         "category": "new",
@@ -4184,7 +4600,9 @@ export const PATCHES = [
           "title": "AI-hold fornyer nu selv deres udløbende kontrakter",
           "body": "AI-hold kunne ikke handle på en udløbende kontrakt sådan som du kan, så deres trupper ville være blevet tyndet automatisk ved sæsonskiftet: op til 80 af dem ville falde til 3-5 ryttere, under det antal der skal til for overhovedet at stille op. AI-ejede rytteres kontrakter fornys nu automatisk før skiftet. Din egen trup er upåvirket: en udløbende kontrakt betyder stadig at du forlænger fra rytterens profil, ellers mister du ham som fri agent. Dashboardet varsler dig nu også når nogle af dine rytteres kontrakter udløber ved sæsonskiftet, ikke kun badgen på din holdside."
         },
-        "refs": [1150]
+        "refs": [
+          1150
+        ]
       },
       {
         "category": "new",
@@ -4198,7 +4616,10 @@ export const PATCHES = [
           "title": "Scoutingrapporter siger nu hvem der har vurderet dem",
           "body": "En scoutingrapport viser nu hvilken af dine spejdere der lavede den og med hvilken tier, og forklarer at loft-båndet genberegnes hver gang du skifter chefscout, mens rytterens faktiske evner aldrig ændrer sig. Ansætter du en ny chefscout, får du en indbakke-besked der siger det samme. Det kom fra en spiller der skiftede chefscout, så et loft-tal flytte sig, og med god grund troede hendes rytter var blevet dårligere. Det var han ikke. Scouting-centralen har også fået en liste over alle ryttere dit hold har spejdet, uanset hvilken spejder der gjorde det, og rytterprofilens Trænings-fane siger nu \"Færdigudviklet i dette fokus\" i stedet for at vise en flad progress-bar."
         },
-        "refs": [3334, 2721]
+        "refs": [
+          3334,
+          2721
+        ]
       },
       {
         "category": "new",
@@ -4212,7 +4633,10 @@ export const PATCHES = [
           "title": "Sæson-recappen kører på din rigtige sæson",
           "body": "Sæson-recappen bygger nu på dine faktiske resultater i stedet for pladsholder-data, og dashboardet peger dig derhen når en sæson lukker."
         },
-        "refs": [2752, 2361]
+        "refs": [
+          2752,
+          2361
+        ]
       },
       {
         "category": "fixed",
@@ -4226,7 +4650,9 @@ export const PATCHES = [
           "title": "Sproget hopper ikke længere tilbage når du skifter det",
           "body": "Et sprogskift kunne hoppe direkte tilbage til det forrige, fordi appen genlæste dit gemte sprog fra databasen før dit eget skift var færdiggemt. Værre: den forkerte værdi blev så stående, så samme hop gentog sig ved næste sideload. Begge dele er rettet."
         },
-        "refs": [2045]
+        "refs": [
+          2045
+        ]
       }
     ]
   },
@@ -4247,7 +4673,9 @@ export const PATCHES = [
           "title": "Kollaps-badgen nævner nu den rigtige årsag",
           "body": "Når din etapefavorit sluttede uden for top 15, sagde Kollaps-badgen altid \"havde en dårlig dag\", selv når den rigtige årsag var et styrt eller en holdkammerat-ofring. Den viser nu den faktiske årsag. Også tilføjet til Hjælp-siden: badgen kan kun ramme etapens stærkeste rytter på papiret, aldrig en hjælperytter."
         },
-        "refs": [3336]
+        "refs": [
+          3336
+        ]
       }
     ]
   },
@@ -4268,7 +4696,9 @@ export const PATCHES = [
           "title": "Byd-knapper låses når nedtællingen rammer nul",
           "body": "Man kunne klikke Byd lige efter en auktion var udløbet og få en fejl. Byd- og autobud-knapperne deaktiveres nu i samme øjeblik nedtællingen rammer nul, og et sent klik viser en klar besked om at auktionen er slut i stedet."
         },
-        "refs": [3110]
+        "refs": [
+          3110
+        ]
       }
     ]
   },
@@ -4289,7 +4719,10 @@ export const PATCHES = [
           "title": "Dit første løb får nu rampelyset",
           "body": "Dashboardet fremhæver holdets første resultat indtil du har set det, løbs-notifikationer åbner selve løbet, og udtagelses-varsler linker direkte til panelet med et nyt et-kliks Auto-udtag."
         },
-        "refs": [3310, 2180]
+        "refs": [
+          3310,
+          2180
+        ]
       }
     ]
   },
@@ -4310,7 +4743,9 @@ export const PATCHES = [
           "title": "Nye hold midt i sæsonen får en sponsor med det samme",
           "body": "Hold der oprettes efter en sæson allerede er startet, kom tidligere til at spille hele deres første sæson uden sponsorindtægt, fordi et valgt tilbud først aktiverede ved næste sæsonskifte. Sponsor-tilbud dukker nu op med det samme, og accepterer du et, aktiveres aftalen straks: løbsdags-penge og bonusklausuler tæller fra det øjeblik. Den engangs-garanterede base udbetales stadig først ved næste rigtige sæsonstart, som den plejer."
         },
-        "refs": [3316]
+        "refs": [
+          3316
+        ]
       },
       {
         "category": "fixed",
@@ -4324,7 +4759,9 @@ export const PATCHES = [
           "title": "Etapeløbs-sponsorbonusser tæller nu alle resultater",
           "body": "En pagineringsfejl i sponsorbonus-beregningen kunne stille droppe etapesejre og podier for løb med over 1000 resultater, så flerdags-sponsorkontrakter nogle gange underbetalte etapesejr- og podiebonusser. Alle resultater tælles korrekt nu."
         },
-        "refs": [3315]
+        "refs": [
+          3315
+        ]
       },
       {
         "category": "new",
@@ -4338,7 +4775,9 @@ export const PATCHES = [
           "title": "Få besked når din sponsor betaler ud",
           "body": "Sponsorindtægt sender nu en notifikation: sæsonstart-udbetalinger, løbsdags-indkomst plus evt. resultatbonus (samlet i én besked pr. løb), underskriftsbonusser og sæsonmåls-bonusser vises alle i din indbakke med beløbet."
         },
-        "refs": [3315]
+        "refs": [
+          3315
+        ]
       }
     ]
   },
@@ -4359,7 +4798,10 @@ export const PATCHES = [
           "title": "Etaperne fortæller nu deres historie",
           "body": "Hver kørt etape får en skrevet løbsrapport: en rubrik, hvordan løbet udviklede sig, og de momenter der afgjorde det. Ryttere der tømte tanken får et GAV ALT-mærke, ryttere der tydeligt sparede benene nævnes også, og når et angreb var et gratis forsøg på venligt terræn, siger rapporten det. Ældre løb beholder det gamle referat."
         },
-        "refs": [2356, 3115]
+        "refs": [
+          2356,
+          3115
+        ]
       },
       {
         "category": "new",
@@ -4373,7 +4815,9 @@ export const PATCHES = [
           "title": "Se hvem der passer til etapen, før du udtager",
           "body": "Udtagelsesskærmen viser nu et lille info-ikon pr. rytter, der med almindelige ord forklarer hvor godt han matcher etapens terræn, og hvad hans aggressivitet betyder for udbruds-chancen. Ikonet vises kun hvor det er relevant for etapetypen."
         },
-        "refs": [3115]
+        "refs": [
+          3115
+        ]
       },
       {
         "category": "new",
@@ -4387,7 +4831,9 @@ export const PATCHES = [
           "title": "Din sæson, pakket ind",
           "body": "Sæsonsiden får en opsummerings-sektion for afsluttede sæsoner, der viser hvor du endte og hvad der definerede dit år, og dashboardet bygger bro til den nye sæson med et mål-kort. Sæsonsiden åbner nu også på den sæson du lige har afsluttet i stedet for en tom ny."
         },
-        "refs": [2752]
+        "refs": [
+          2752
+        ]
       },
       {
         "category": "new",
@@ -4401,7 +4847,10 @@ export const PATCHES = [
           "title": "Hjælp, regler, patch notes og roadmap kræver ikke længere login",
           "body": "Fire sider er nu åbne for alle, så du kan sende en ven direkte til reglerne eller roadmappet. Al spildata ligger stadig bag login. Resultattabeller i hele appen fik samtidig sorterbare kolonne-overskrifter."
         },
-        "refs": [2042, 3188]
+        "refs": [
+          2042,
+          3188
+        ]
       },
       {
         "category": "new",
@@ -4415,7 +4864,9 @@ export const PATCHES = [
           "title": "Akademi-økonomien er endelig synlig",
           "body": "Sælger du en rytter du selv har udviklet i akademiet, vises det nu som et rigtigt salg med rigtig fortjeneste: akademisiden lister salget, og transferhistorikken parrer salget med det du oprindeligt betalte for at signe ham. Historiske signinger hvor prisen ikke kunne spores, er ærligt markeret som ukendt."
         },
-        "refs": [2793]
+        "refs": [
+          2793
+        ]
       },
       {
         "category": "new",
@@ -4442,7 +4893,10 @@ export const PATCHES = [
           "title": "Ikke mere Race day 100000",
           "body": "Monument-løb brugte et internt pladsholder-tal, der kunne sive ud i løbs-headeren som en absurd løbsdag. Tallet holder sig nu internt. Auktions-rundvisningen på desktop peger også på det rigtige budfelt igen i stedet for et tomt hjørne."
         },
-        "refs": [3107, 3007]
+        "refs": [
+          3107,
+          3007
+        ]
       },
       {
         "category": "fixed",
@@ -4456,7 +4910,10 @@ export const PATCHES = [
           "title": "Dashboardet viser din verden som standard",
           "body": "Dashboard-moduler som form og stillinger åbner nu på din egen division og gruppe i stedet for 1. division. Nye managere får også en glattere vej fra oprettelse til deres første løbsresultat, og sponsorbonus-transaktioner viser ordentlig tekst på begge sprog."
         },
-        "refs": [2182, 3243]
+        "refs": [
+          2182,
+          3243
+        ]
       },
       {
         "category": "fixed",
@@ -4470,7 +4927,10 @@ export const PATCHES = [
           "title": "Træthed kan sorteres på telefonen igen",
           "body": "Portræt-fixet på trænings-siden bragte træning tilbage til mobilen, men træthed-kolonnen, den du sorterer efter for at se hvem der skal have hvile, var stadig skjult bag de desktop-only kolonne-headers. En sorterings-dropdown lader dig nu vælge træthed (eller form) i portræt, uden at skulle rotere til landskab."
         },
-        "refs": [3299, 3194]
+        "refs": [
+          3299,
+          3194
+        ]
       },
       {
         "category": "fixed",
@@ -4484,7 +4944,9 @@ export const PATCHES = [
           "title": "Akademi-kandidatnavne fører ikke længere til en blindgyde",
           "body": "Klik på en kandidats navn på akademiets intake-skærm kunne vise \"rytter ikke fundet\": kandidaten er endnu ikke synlig i rytterdatabasen, fordi han ikke er optaget i dit akademi. Navnet er nu almindelig tekst, indtil du signer eller afviser ham; signeringspris, potentiale og de øvrige detaljer på kortet er uændret."
         },
-        "refs": [3142]
+        "refs": [
+          3142
+        ]
       }
     ]
   },
@@ -4505,7 +4967,9 @@ export const PATCHES = [
           "title": "Et praj når et løb stadig mangler din udtagelse",
           "body": "Hvis et løb starter om mindre end 36 timer og du ikke selv har sat din udtagelse, lander der nu en notifikation i din indbakke. Assistenten kan også udfylde netop dét løb for dig med ét klik, efter samme regler som løbs-hubbens auto-udfyld, så den aldrig dobbeltbooker en rytter samme dag og aldrig vælger en skadet."
         },
-        "refs": [2180]
+        "refs": [
+          2180
+        ]
       },
       {
         "category": "new",
@@ -4519,7 +4983,9 @@ export const PATCHES = [
           "title": "Nye hold får en ordentlig velkomst",
           "body": "Når du opretter dit hold, lander der nu en velkomstbesked i din indbakke der peger dig direkte mod auktionshuset. Indtil nu stirrede en helt ny konto på en tom indbakke, indtil den første hændelse tilfældigvis ramte den."
         },
-        "refs": [2822]
+        "refs": [
+          2822
+        ]
       },
       {
         "category": "fixed",
@@ -4533,7 +4999,9 @@ export const PATCHES = [
           "title": "Fyret personale sniger sig ikke længere tilbage på kandidatlisten",
           "body": "Når du fyrede et personalemedlem, kunne næste kandidat-opdatering tilbyde præcis samme person igen, ofte som topkandidat. Kandidatgenereringen husker nu hvem du har ladet gå, og holder dem ude permanent."
         },
-        "refs": [2887]
+        "refs": [
+          2887
+        ]
       }
     ]
   },
@@ -4554,7 +5022,9 @@ export const PATCHES = [
           "title": "Resultater åbner nu i din egen verden, med datoer der giver mening",
           "body": "Resultatsiden har nu vælgere for sæson, division og gruppe, og den åbner som standard på indeværende sæson og din egen division og gruppe. Valget ligger i linket, så du kan dele eller bogmærke en visning. Vi har samtidig erstattet de forvirrende datoer på løbskortene: de var rå kalenderstrenge fra løbsimporten uden forbindelse til spillet, og de viser nu den dato løbet faktisk blev kørt."
         },
-        "refs": [3197]
+        "refs": [
+          3197
+        ]
       },
       {
         "category": "fixed",
@@ -4568,7 +5038,9 @@ export const PATCHES = [
           "title": "Træningsfokus-etiketterne taler nu sandt",
           "body": "Begrænset- og Blokeret-etiketterne på træningsfokus blev beregnet med en forældet model der kun så på rytterens primære type, mens motoren også tæller den sekundære type. Nogle ryttere viste Begrænset på et fokus der reelt træner tæt på fuld effekt. Etiketterne følger nu samme model som motoren, og tooltippet viser de rigtige tal: fuld effekt ved match på primær type, 82 procent ved sekundært match, 45 procent neutralt og 12 procent modsat. Selve træningen har hele tiden været beregnet korrekt, kun etiketten var forkert."
         },
-        "refs": [3195]
+        "refs": [
+          3195
+        ]
       },
       {
         "category": "new",
@@ -4582,7 +5054,9 @@ export const PATCHES = [
           "title": "Transferlisten viser nu hvordan priserne ligger i forhold til vurderingen",
           "body": "Hver rytter på transferlisten har nu samme mærke som du kender fra auktionerne, der viser hvor langt udbudsprisen ligger over eller under den estimerede værdi, og du kan filtrere på procenten. Tak til manageren der bad om paritet mellem markedets to sider."
         },
-        "refs": [3191]
+        "refs": [
+          3191
+        ]
       },
       {
         "category": "new",
@@ -4596,7 +5070,9 @@ export const PATCHES = [
           "title": "Din chefspejder har nu en historik-fane",
           "body": "Spejderens profil viser nu hvilke ryttere vedkommende tidligere har undersøgt, med dato, rapportniveau og links til både rytteren og rapporten, nyeste først. Det blev lovet i Discord tilbage i juli, og nu er det her."
         },
-        "refs": [3203]
+        "refs": [
+          3203
+        ]
       },
       {
         "category": "improved",
@@ -4610,7 +5086,9 @@ export const PATCHES = [
           "title": "At tage en sponsor-risiko betaler sig nu faktisk",
           "body": "Resultatbaserede sponsorer endte før med at betale omtrent det samme som de sikre flade, så der var ingen grund til nogensinde at tage risikoen. Fremtidige sponsortilbud bærer nu en ægte risikopræmie: ambitions-arketypen betaler klart over flad hvis du rammer en strammet top 40 procent-betingelse, og resultat-arketypen bliver spillets bedste aftale for hold der ender i den øverste fjerdedel. Tegnede kontrakter beholder deres nuværende vilkår. Tak til manageren der påpegede det."
         },
-        "refs": [3192]
+        "refs": [
+          3192
+        ]
       },
       {
         "category": "improved",
@@ -4624,7 +5102,9 @@ export const PATCHES = [
           "title": "Løbskort kan nu klikkes overalt på kortet",
           "body": "På løbstavlerne var det før kun løbsnavnet der var et link, mens resten af kortet (løbsdag, type, status) lignede noget klikbart men intet gjorde. En optagelse viste en manager klikke 129 gange på et kort på seks minutter. Hele kortet er nu ét link med tydelig hover-tilstand og tastaturunderstøttelse, både på Mine løb og i visningen af andre divisioner."
         },
-        "refs": [3187]
+        "refs": [
+          3187
+        ]
       },
       {
         "category": "improved",
@@ -4638,7 +5118,9 @@ export const PATCHES = [
           "title": "Holdsiden lader ikke længere døde felter ligne knapper",
           "body": "Dit holdnavn øverst på holdsiden er nu et rigtigt link til din offentlige holdprofil med dens resultat- og palmares-faner. Den aktive trup-fane viser ikke længere klik-markør når endnu et klik intet ville gøre, og senior- og akademi-filtergruppen har fået sin egen ramme så klik lander hvor du forventer."
         },
-        "refs": [3188]
+        "refs": [
+          3188
+        ]
       },
       {
         "category": "improved",
@@ -4652,7 +5134,9 @@ export const PATCHES = [
           "title": "Tre spillerspørgsmål besvaret i FAQ'en, direkte fra motoren",
           "body": "Spar kræfter reducerer reelt den træthed en rytter tager med til næste etape og næste løb, så det giver fuld mening på en sidste etape uden noget at vinde. Form bæres i dag med mellem sæsoner (kun træthed nulstilles), og om den bør gøre det behandler vi som et åbent designspørgsmål. Og med både en kaptajn og en sprinterkaptajn sat arbejder holdet for sprinterkaptajnen på flade etaper og for kaptajnen på alle andre etapetyper. Alle tre svar er verificeret i motorkoden før de blev skrevet."
         },
-        "refs": [3202]
+        "refs": [
+          3202
+        ]
       }
     ]
   },
@@ -4673,7 +5157,9 @@ export const PATCHES = [
           "title": "Mit Hold har en ny Stats-fane med sæsontal pr. rytter",
           "body": "Ved siden af Overblik og Evner finder du nu Stats: løbsdage, sejre, point og præmiepenge for hver rytter i din trup, for indeværende sæson. Tabellen kan sorteres, så du med det samme kan se hvem der faktisk leverer. Tallene kommer fra samme kilde som ranglisterne og sæson-opsummeringen, de var bare aldrig samlet ét sted før. Tak til manageren der foreslog det."
         },
-        "refs": [3190]
+        "refs": [
+          3190
+        ]
       },
       {
         "category": "improved",
@@ -4687,7 +5173,10 @@ export const PATCHES = [
           "title": "Global Rank tæller nu kun menneskelige managere",
           "body": "AI-udfyldningshold optræder ikke længere i Global Rank og optager ikke pladser i den: din placering betyder nu det den skal, din rang blandt rigtige managere. Alle rykker et par pladser op i forhold til sidste uge, det hop er AI-holdene der forlader listen, ikke andre managere der overhaler dig. Vi har samtidig rettet en timing-fejl hvor Global Rank kortvarigt kunne vise ældre tal end stillings-siden lige efter et løb var afgjort; begge sider opdateres nu sammen."
         },
-        "refs": [2792, 3193]
+        "refs": [
+          2792,
+          3193
+        ]
       },
       {
         "category": "improved",
@@ -4701,7 +5190,9 @@ export const PATCHES = [
           "title": "Kontraktforlængelser viser nu hvor mange du har tilbage",
           "body": "Rytter-siden og holdsiden viser nu altid en 'Forlængelser brugt: X/3'-tæller, så du kender din status før du handler. Når loftet er nået, er knappen slået fra med en forklaring i stedet for at lade dig klikke og få afslag. Vi har samtidig lukket et hul hvor knappen på langsomme forbindelser kortvarigt stadig kunne trykkes mens tjekket kørte."
         },
-        "refs": [3186]
+        "refs": [
+          3186
+        ]
       },
       {
         "category": "improved",
@@ -4715,7 +5206,9 @@ export const PATCHES = [
           "title": "Et tastefejl-værn fanger nu mistænkelige auktions-startpriser",
           "body": "Hvis din startpris ligner et tabt ciffer, for eksempel 21.100 for en rytter vurderet til 211.007, beder spillet dig nu bekræfte før auktionen oprettes, og viser præcis hvor langt under den estimerede værdi du ligger. Bevidst lave startpriser virker præcis som før, det er ét ekstra klik kun når pris-mønstret ligner en tastefejl. To sælgere har for nylig mistet rigtige penge på den måde, det sker ikke stille igen."
         },
-        "refs": [3184]
+        "refs": [
+          3184
+        ]
       },
       {
         "category": "improved",
@@ -4729,7 +5222,10 @@ export const PATCHES = [
           "title": "Nye hjælpe-svar om træning af færdigudviklede ryttere og scouting af egen trup",
           "body": "To spørgsmål fra fællesskabet har nu præcise svar i Hjælp: om Hvile slår træning når en rytter er færdigudviklet i sit fokus (ja, træning giver intet dér men bygger stadig træthed), og hvad en bedre chefscout gør for hvordan du ser dine egne ryttere (missioner rører aldrig din egen trup, men hans rating skærper de potentiale-intervaller du ser på dem)."
         },
-        "refs": [3151, 3148]
+        "refs": [
+          3151,
+          3148
+        ]
       }
     ]
   },
@@ -4750,7 +5246,9 @@ export const PATCHES = [
           "title": "Privatlivspolitikken beskriver nu vores fair play-logning",
           "body": "Siden slutningen af juli registrerer vi tekniske signaler (IP-adresse, browser-oplysninger, sprog og tidszone) ved kontooprettelse og ved værdibærende handlinger som accepterede transfers, auktionsbud og lån. Det findes af én grund: at opdage og dokumentere snyd med flere konti. Privatlivspolitikken siger det nu eksplicit, inklusive hvad vi gemmer, at andre spillere aldrig ser det, og at alt slettes automatisk efter 180 dage, eller med det samme hvis du sletter din konto."
         },
-        "refs": [3132]
+        "refs": [
+          3132
+        ]
       }
     ]
   },
@@ -4771,7 +5269,9 @@ export const PATCHES = [
           "title": "Din chefspejder-rating skærper nu faktisk de potentiale-intervaller du ser",
           "body": "At hyre en bedre chefspejder skulle altid have strammet potentiale-estimaterne på Scouting-fanen, og det står der også i hjælpen. I praksis skete det ikke: intervallerne blev altid tegnet med standard-spejderens præcision, uanset hvem du havde hyret. Den kobling er nu rettet. Med en hyret spejder er stjerne-intervallet og loft-båndene pr. ryttertype på dine egne ryttere og på fuldt scoutede mål nu så smalle som hans rating tillader, og de strammer til næste gang du åbner en rytter. Hold uden hyret chefspejder ser ingen ændring, og delvist scoutede rivaler ser ud som før: en spejders præcision slår først igennem når han kender en rytter fuldt ud. Hans øvrige arbejde, kapacitet og missions-shortlists, har altid virket og er urørt."
         },
-        "refs": [3213]
+        "refs": [
+          3213
+        ]
       }
     ]
   },
@@ -4792,7 +5292,9 @@ export const PATCHES = [
           "title": "Daglig træning kan bruges på telefonen igen",
           "body": "Siden slutningen af juli kunne rytterkolonnen på træningssiden æde næsten hele skærmen i portræt, så Fokus og Intensitet var klemt ude i en strimmel der dårligt kunne scrolles. Synderen var den lille type/form/træthed-linje under hvert rytternavn: den nægtede at ombryde, så den fastlåste navnekolonne voksede til sin længste linjes bredde. Nu ombrydes den til to korte linjer i stedet, navnekolonnen forbliver smal, og kolonnerne du faktisk redigerer har plads at arbejde på. Landskab og desktop var aldrig ramt. Tak til de to managere der meldte det ind fra iPhone og Android."
         },
-        "refs": [3194]
+        "refs": [
+          3194
+        ]
       }
     ]
   },
@@ -4813,7 +5315,9 @@ export const PATCHES = [
           "title": "Indstillingerne siger ikke længere \"Discord tilsluttet\" når botten reelt ikke kan nå dig",
           "body": "Havde du forladt Cycling Zones Discord-server, mistede botten retten til at sende dig private beskeder. Dine indstillinger viste stadig koblingen som aktiv, notifikations-knapperne stod tændt, og der kom aldrig en besked igen. Intet fortalte dig det, og det rettede ikke sig selv. Nu frigives koblingen automatisk efter tre fejlede leveringer i træk, og indstillingerne skriver det: \"Discord frakoblet\", med årsagen og hvad du gør ved det. Gå ind på serveren igen, tilføj dit ID, så kører beskederne videre. En enkelt fejlet levering ændrer ingenting. Tælleren udløser kun ved tre i træk, og enhver leveret besked nulstiller den."
         },
-        "refs": [3130]
+        "refs": [
+          3130
+        ]
       }
     ]
   },
@@ -4834,7 +5338,9 @@ export const PATCHES = [
           "title": "Løbskalenderen bor nu inde i Planlægnings-hubben",
           "body": "Kalenderen er den fjerde fane i Planlægnings-hubben, ved siden af Holdudtagelse, Formplan og Strategi, så alt du bruger til at planlægge din sæson står på én side. Menugruppen Planlægning er nede på ét enkelt punkt. Intet i selve kalenderen er ændret: samme måneds-grid, samme sæson- og divisionsvælgere, samme klikbare løbs-chips. Det gamle /calendar-link og alle knapper der pegede derhen sendes automatisk videre til den nye fane."
         },
-        "refs": [3102]
+        "refs": [
+          3102
+        ]
       }
     ]
   },
@@ -4855,7 +5361,10 @@ export const PATCHES = [
           "title": "Peaks, payback og sæson-belastning vises nu dér hvor du træffer beslutningen",
           "body": "Planlægnings-hubbens flader taler nu sammen. I Formplanen advarer løbs-dropdownen om payback-risiko pr. løb allerede før du vælger et mål: hvis en peak mod et løb ville lægge formhullet oven på et andet løb på rytterens program, eller løbet selv ligger i hullet efter en af hans andre peaks, står det i valgmuligheden. Payback-advarsler tæller nu også auto-udfyldte tilmeldinger med, ikke kun løb du selv har udtaget til. På Holdudtagelses-boardet viser hvert løbskort hvilke af dine ryttere der topper i netop det løb, og hvem der betaler for en tidligere peak dér, og hver rytter viser sin sæson-belastning (tilmeldte løbsdage), så det er synligt når en peak rammer en overbelastet rytter."
         },
-        "refs": [3102, 2772]
+        "refs": [
+          3102,
+          2772
+        ]
       }
     ]
   },
@@ -4876,7 +5385,9 @@ export const PATCHES = [
           "title": "Én Planlægnings-hub: Holdudtagelse, Formplan og Strategi under ét menupunkt",
           "body": "De tre planlægnings-flader bor nu sammen på én side med faner: Holdudtagelse (løbs-boardet, uændret), Formplan (sæsonplanlæggeren) og Strategi. Menugruppen Planlægning skrumper fra fire punkter til to (Planlægning og Kalender). Den gamle Løb-side er opløst: verdens-løbskataloget og resultat-panelet med afsluttede løb er flyttet til Resultat-hubben (under henholdsvis Arkiv og Seneste). Alle gamle links og bogmærker (/races, /planner, strategisiden) sendes automatisk videre til den rigtige fane, og intet i måden boardet virker på er ændret."
         },
-        "refs": [3102]
+        "refs": [
+          3102
+        ]
       }
     ]
   },
@@ -4897,7 +5408,9 @@ export const PATCHES = [
           "title": "En mere overskuelig menu: én Ranglister-hub, Personale ind i Klub, Min Aktivitet ind i Indbakken",
           "body": "Tre sjældent besøgte menupunkter er flyttet ind hos de sider spillerne faktisk bruger, så menuen er kortere uden at miste noget. Liga & rangliste, Rytterrangliste og Global Rank er nu ét punkt, 'Ranglister', med tre faner. Personale-oversigten bor som fane på Klub-siden. Min Aktivitet (dine auktioner, tilbud og markedshistorik) er nu en fane i din Indbakke, ved siden af 'Skal handles'. Alle gamle links og bogmærker sendes automatisk videre til de nye steder."
         },
-        "refs": [3104]
+        "refs": [
+          3104
+        ]
       }
     ]
   },
@@ -4918,7 +5431,11 @@ export const PATCHES = [
           "title": "Tre bestyrelses-rettelser: umuligt klassiker-mål fjernet, ens stjernerytter-optælling, reaktioner kun på egne løb",
           "body": "Seks hold i Division 3/4 havde accepteret et 5-års-plan-mål om podie i en klassiker (et klub-DNA-traditionsmål), som var matematisk umuligt: de løbsklasser køres aldrig i deres division. Målet er fjernet fra de ramte planer og kan ikke længere tilbydes hvor det ikke kan opnås. Bestyrelsens 5-års-plan talte desuden 'stjerneryttere' med en anden tærskel end bestyrelsens eget stjernerytter-kort, så en rytter bestyrelsen selv kaldte en stjerne kunne blive ignoreret af planen; begge bruger nu samme kombinerede omdømme/UCI-point-score. Endelig viser bestyrelses-tidslinjen ikke længere bestyrelsen 'reagere' på løb fra divisioner dit hold ikke er i."
         },
-        "refs": [3095, 3141, 3144]
+        "refs": [
+          3095,
+          3141,
+          3144
+        ]
       }
     ]
   },
@@ -4939,7 +5456,9 @@ export const PATCHES = [
           "title": "Forlæng kontrakt-knappen fortæller nu på forhånd når en rytter er på loftet",
           "body": "Ryttere på kontrakt-forlængelses-loftet (sæsonnummer + 3, se forrige rettelse) viste stadig en helt normal 'Forlæng kontrakt'-knap: klikket fejlede først EFTER forsøget, uden varsel på forhånd. Knappen er nu deaktiveret med en forklaring ('Kontrakt på maksimal længde') når en rytter ikke kan forlænges yderligere, både på rytterprofilen og holdsidens administrationspanel, så du aldrig klikker dig ind i et forsøg der altid var dømt til at blive afvist."
         },
-        "refs": [3164]
+        "refs": [
+          3164
+        ]
       }
     ]
   },
@@ -4960,7 +5479,9 @@ export const PATCHES = [
           "title": "Handelsbetingelser, købs-samtykke og selvbetjent opsigelse for CZ Pro",
           "body": "CZ Pro kunne købes uden handelsbetingelser, uden oplyst fortrydelsesret og uden en måde at opsige inde i spillet. Det er rettet før køb genåbnes: de fulde vilkår ligger nu på /handelsbetingelser (dansk) og /terms (engelsk), linket fra login-siden og footere; checkout kræver en eksplicit checkbox der accepterer vilkårene og samtykker til straks-levering, og din accept (version + tidspunkt) gemmes; og Pro-konti får en 'Administrér abonnement'-knap i kontoindstillinger der åbner betalingsudbyderens selvbetjeningsportal, hvor du kan opsige, se kvitteringer og opdatere kort. Køb er fortsat pauset indtil de sidste go-live-tjek er på plads."
         },
-        "refs": [2813]
+        "refs": [
+          2813
+        ]
       }
     ]
   },
@@ -4981,7 +5502,9 @@ export const PATCHES = [
           "title": "Gentagne kontraktforlængelser kan ikke længere skubbe en rytters kontrakt årevis frem",
           "body": "At forlænge en rytters kontrakt fra profilsiden lagde en sæson til og genforhandlede lønnen, men intet stoppede dig i at gøre det igen og igen i samme session, så en lav løn blev låst mange sæsoner frem. Forlængelser har nu et loft: en kontrakts udløbssæson kan aldrig rykkes mere end 3 sæsoner forbi den nuværende. Forsøger du at forlænge forbi loftet, blokeres det nu med en tydelig besked i stedet for stille at lykkes."
         },
-        "refs": [3143]
+        "refs": [
+          3143
+        ]
       },
       {
         "category": "fixed",
@@ -4995,7 +5518,9 @@ export const PATCHES = [
           "title": "Din holdside viser nu hvilke ryttere der tæller mod 8-rytter-salgsspærren",
           "body": "Salg, frigivelse eller auktion af din egen rytter blokeres hvis det ville efterlade dit hold under de 8 ryttere der kræves for at stille til start, når kontraktudløb og pensionsrisiko ved næste sæsonskifte tælles med, men holdsiden gav intet fingerpeg om hvilke ryttere der talte, så et blokeret salg virkede vilkårligt. Din rytterliste viser nu en 'kontrakt udløber'- eller 'pensionsrisiko'-badge ud for hver rytter der tæller, og et blokeret salg navngiver de konkrete ryttere i fejlbeskeden i stedet for bare et tal. Selve reglen er uændret: dette gør den blot synlig, før du forsøger at sælge."
         },
-        "refs": [3097]
+        "refs": [
+          3097
+        ]
       }
     ]
   },
@@ -5016,7 +5541,9 @@ export const PATCHES = [
           "title": "Udmattede autobud annullerer nu sig selv og frigiver din reserverede saldo",
           "body": "Når nogen overbød dit autobud over dets loft, blev autobuddet liggende på auktionen som en død række: det kunne aldrig byde igen, men det holdt en del af din saldo reserveret indtil du selv slettede det, og blev du sprunget over uden nogensinde at føre, fik du slet ingen besked. Et overbudt autobud annulleres nu automatisk, reservationen frigives med det samme, og du får altid en notifikation om det."
         },
-        "refs": [230]
+        "refs": [
+          230
+        ]
       }
     ]
   },
@@ -5037,7 +5564,9 @@ export const PATCHES = [
           "title": "Rytter-stats forsvinder ikke længere når du holder telefonen oprejst",
           "body": "Rytter-tabeller tabte deres tal i portræt. Rytterdatabasen var værst: oprejst fik du navn, nationalitet, type, hold og alder, og intet andet; vippede du telefonen, kom stats frem. My team, Akademi, Wishlist og Daily training havde samme hul. Alle fem følger nu samme regel: navnekolonnen bliver stående når du scroller sidelæns, og de kolonner der ikke er plads til, foldes ind på en anden linje under rytterens navn i stedet for at forsvinde. Du får type, alder, rating og værdi uden at dreje noget."
         },
-        "refs": [3045]
+        "refs": [
+          3045
+        ]
       }
     ]
   },
@@ -5058,7 +5587,9 @@ export const PATCHES = [
           "title": "Rytter- og staff-tal er nu farvet efter det rigtige felt",
           "body": "Farveskalaen bag alle evner og ratings var ankret til tal der ikke længere passede til spillet. Grøn betød \"solid\" fra 42 og op, men en median rytterevne er 12, og kun de øverste 3 % kommer over 53, så næsten alle ryttere på et menneskehold stod i samme grå, og farven fortalte dig ingenting. Skalaen er nu ankret til den faktiske population: grå er typisk, grøn er øverste fjerdedel, gul er øverste tiendedel, guld er øverste 3 %. Staff har fået deres egen skala, fordi staff-tal kommer fra en anden model og lå alt for højt på rytter-skalaen. Toppen af skalaen er rav i stedet for rød, så en elite-rytter ikke længere deler farve med fejl og advarsler. Ingen rytter eller ansat har ændret sig, kun farven de vises med."
         },
-        "refs": [2890]
+        "refs": [
+          2890
+        ]
       }
     ]
   },
@@ -5079,7 +5610,9 @@ export const PATCHES = [
           "title": "Løbsdage passer nu med kalenderen",
           "body": "En løbsdag i Løbs-hubben var et rullende døgn talt fra sæsonens allerførste etape, ikke en rigtig dag. Fordi løbsblokken kører hen over eftermiddagen og aftenen, faldt alt tidligt på dagen i gårsdagens bøtte, så en dag blandede den ene aften med den næste formiddag, og 61 % af sæsonens etaper stod under den forkerte dag. En løbsdag er en rigtig kalenderdag nu. Dags-links peger på den dag de siger, tidslinjen tæller sæsonens faktiske dage i stedet for faste 60, og \"i dag\"-markøren rykker ved midnat i stedet for midt om eftermiddagen."
         },
-        "refs": [3107]
+        "refs": [
+          3107
+        ]
       }
     ]
   },
@@ -5100,7 +5633,9 @@ export const PATCHES = [
           "title": "Resultater viser faktisk resultater nu",
           "body": "Resultatsiden var en side med links til andre sider. Den åbner på Seneste nu: de løb, der er kørt færdigt i din division, hvert med sit podie og en vej direkte ind i hele resultatet. Løbsbiblioteket og point- og præmietabellerne er flyttet ind som faner, så Resultater er ét sted med tre faner: Seneste, Arkiv, Point og præmier. Gamle links virker stadig."
         },
-        "refs": [3102]
+        "refs": [
+          3102
+        ]
       },
       {
         "category": "fixed",
@@ -5114,7 +5649,9 @@ export const PATCHES = [
           "title": "Et løbs historik er ikke længere en blindgyde",
           "body": "Åbnede du et løb fra arkivet, kunne du se hver udgave og hvem der vandt den, men der var ingen vej derfra og ind i selve løbet. Hver sæson i udgavelisten er et link nu, direkte til den udgaves fulde resultat."
         },
-        "refs": [3102]
+        "refs": [
+          3102
+        ]
       }
     ]
   },
@@ -5135,7 +5672,9 @@ export const PATCHES = [
           "title": "Klubhus-menuen står i den rækkefølge du faktisk åbner den i",
           "body": "Menuen var vokset i den rækkefølge tingene blev bygget, ikke i den rækkefølge du bruger dem. Din indbakke er den tredje mest åbnede side i spillet og lå nummer ti på listen. Økonomi lå under bestyrelsen selv om den har mere end dobbelt så meget trafik. Klubhus står nu: Dashboard, Indbakke, Mit Hold, Daglig træning, Økonomi, Akademi, Bestyrelse, Spejder, Klub, Personale. Din managerprofil er flyttet ned til Indstillinger, hvor de andre personlige sider ligger. Intet er omdøbt, og ingen side er flyttet."
         },
-        "refs": [3104]
+        "refs": [
+          3104
+        ]
       }
     ]
   },
@@ -5156,7 +5695,9 @@ export const PATCHES = [
           "title": "Alt du planlægger med ligger nu i én menugruppe",
           "body": "Holdudtagelse lå under Sæson & Resultater, sæsonplanlæggeren lå i Klubhuset, og holdstrategi havde slet ingen indgang i menuen. De tre er nu gruppen Planlægning i sidemenuen, i den rækkefølge du bruger dem: holdudtagelse, sæsonplanlægger, holdstrategi, kalender. Resultater beholder det du går derind for at læse: overblik, løb, ranglisten, rytterrangliste, global rank og sæson-snapshot. Intet er flyttet inde på selve siderne, så holdudtagelse åbner præcis hvor den plejer."
         },
-        "refs": [3102]
+        "refs": [
+          3102
+        ]
       },
       {
         "category": "new",
@@ -5170,7 +5711,9 @@ export const PATCHES = [
           "title": "Holdstrategi er endelig i menuen",
           "body": "Dine stående præferencer afgør hvordan assistenten bygger hver opstilling, men den eneste vej ind var et lille link på trup-brættet. Holdstrategi har nu sin egen indgang under Planlægning. Linket på brættet virker stadig."
         },
-        "refs": [3102]
+        "refs": [
+          3102
+        ]
       }
     ]
   },
@@ -5191,7 +5734,10 @@ export const PATCHES = [
           "title": "Sæsonplanlæggeren er en liste du udfylder, ikke et bræt du trækker i",
           "body": "At sætte en peak krævede før at man trak en bracket hen over en tidslinje, og næsten ingen fandt ud af det. Planlæggeren åbner nu på fanen Trup: én række pr. rytter, med en menu hvor du vælger det løb han skal peake til. Brættet og løbslisten har fået hver sin fane, og trækket virker stadig dér. En statuslinje ligger over alle tre, så hvor mange peaks der er planlagt, og hvor mange der kræver noget af dig, er det første du ser."
         },
-        "refs": [3086, 2905]
+        "refs": [
+          3086,
+          2905
+        ]
       },
       {
         "category": "new",
@@ -5205,7 +5751,10 @@ export const PATCHES = [
           "title": "Du kan se hvad en peak er værd, før du binder dig til den",
           "body": "Hver peak viser nu hvad den gør ved rytterens form på dagen, i de samme point du allerede læser i truppen: fra +6 for en sjusket optakt til +29 for en perfekt, og strammet til ét tal så snart optakten køres. Den viser også regningen. En peak koster form i dagene efter, og falder et af rytterens andre løb i det hul, siger planlæggeren hvilket løb det er, og hvor mange dage efter det ligger."
         },
-        "refs": [3086, 2905]
+        "refs": [
+          3086,
+          2905
+        ]
       },
       {
         "category": "new",
@@ -5219,7 +5768,10 @@ export const PATCHES = [
           "title": "Acceptér hele assistentens plan med ét klik",
           "body": "Assistenten udkastede allerede et peak-program til hver rytter, men den eneste måde at tage imod var én peak ad gangen. Banneret er nu et kort der siger hvor mange peaks den har udkastet og hvorfor den valgte netop de løb, med en knap der accepterer det hele. Ret dem enkeltvis i listen bagefter."
         },
-        "refs": [3086, 2455]
+        "refs": [
+          3086,
+          2455
+        ]
       }
     ]
   },
@@ -5240,7 +5792,9 @@ export const PATCHES = [
           "title": "Assistentens valg låser dig ikke længere ude af din egen trup",
           "body": "Da sæson 2 åbnede, havde assistenten allerede meldt dine ryttere til løb i hele sæsonen. De automatiske valg spærrede så for dig: forsøgte du at sætte en rytter i et andet løb samme dag, stod han som optaget af et valg du aldrig havde truffet. Nu binder kun dine egne manuelle valg og løb der allerede er i gang. Assistenten foreslår, den bestemmer ikke."
         },
-        "refs": [3041]
+        "refs": [
+          3041
+        ]
       },
       {
         "category": "fixed",
@@ -5254,7 +5808,10 @@ export const PATCHES = [
           "title": "Ryttere holdes ikke længere af sidste sæsons løb",
           "body": "Efter oprykningen stod ryttere som optaget af løb fra sæson 1, ofte i den division du lige havde forladt, og truppen kunne slet ikke gemmes. Løbsdage tælles fra hver sæsons start, så sidste sæsons dag 4 og denne sæsons dag 4 blev læst som samme dag. Et løb holder nu kun en rytter inden for sin egen sæson. Startfelter fyldes efter samme regel, så ingen udelades af et felt på grund af et løb han kørte sidste år."
         },
-        "refs": [3070, 3076]
+        "refs": [
+          3070,
+          3076
+        ]
       },
       {
         "category": "fixed",
@@ -5268,7 +5825,9 @@ export const PATCHES = [
           "title": "Ryttere viser deres rigtige alder igen",
           "body": "Alle blev et år ældre da sæson 2 begyndte, og træning og værdier fulgte med, men alderen på skærmen blev stående på sidste sæsons tal. Unge talenter kunne stå som 30 og derover på markedet, og pensionsadvarslen pegede på de forkerte ryttere. Alder, U23- og U25-mærkerne og aldersfiltrene følger nu sæsonen."
         },
-        "refs": [3071]
+        "refs": [
+          3071
+        ]
       },
       {
         "category": "fixed",
@@ -5282,7 +5841,9 @@ export const PATCHES = [
           "title": "Rydder du din trup, får du nu at vide hvilke løb det melder dig fra",
           "body": "\"Ryd alt\" fjernede dine ryttere fra alle planlagte løb resten af sæsonen bag en almindelig bekræftelsesboks, så et hold kunne ende uden for løb uden at vide det. Den viser nu hvilke løb du meldes fra, hvor længe der er til hvert af dem starter, og gør det nemme svar til at beholde truppen."
         },
-        "refs": [3061]
+        "refs": [
+          3061
+        ]
       },
       {
         "category": "fixed",
@@ -5296,7 +5857,9 @@ export const PATCHES = [
           "title": "Dashboardet siger ikke længere at truppen mangler, når den er fuld",
           "body": "Påmindelsen talte kun ryttere du selv havde valgt, så en trup assistenten havde fyldt helt op stod stadig som ufuldstændig. Den læser nu den samme trup som løbssiden gør."
         },
-        "refs": [3042]
+        "refs": [
+          3042
+        ]
       },
       {
         "category": "fixed",
@@ -5310,7 +5873,9 @@ export const PATCHES = [
           "title": "Mellemsprinterne er flyttet væk fra stigningerne",
           "body": "Nogle etaper lagde deres mellemsprint et stykke oppe ad en kategoriseret stigning, hvor en spurter ingen chance har, og klatrerne tog pointene i stedet. Spurterne ligger nu på den længste strækning uden stigning, tættest på midten af etapen. Sæson 2's kalender er rettet på 137 etaper, før der blev uddelt et eneste point."
         },
-        "refs": [3048]
+        "refs": [
+          3048
+        ]
       },
       {
         "category": "improved",
@@ -5324,7 +5889,9 @@ export const PATCHES = [
           "title": "Sponsorkortet siger nu ligeud at loftet er det samme i alle divisioner",
           "body": "Divisionsvælgeren på et sponsortilbud så ud som om den ændrede hvad du kunne tjene i alt. Det gør den ikke i sæson 2: kun raten pr. løbsdag er forskellig. Det står der nu, i stedet for at du selv skal regne det ud."
         },
-        "refs": [3020]
+        "refs": [
+          3020
+        ]
       },
       {
         "category": "fixed",
@@ -5338,7 +5905,9 @@ export const PATCHES = [
           "title": "Achievements er på engelsk, når spillet er på engelsk",
           "body": "Alle 46 achievement-titler og -beskrivelser lå kun på dansk, så engelske spillere læste dansk tekst på deres profil. De er nu oversat alle sammen."
         },
-        "refs": [3044]
+        "refs": [
+          3044
+        ]
       },
       {
         "category": "improved",
@@ -5352,7 +5921,10 @@ export const PATCHES = [
           "title": "Rytternavne i scoutingrapporter og holdnavnet på en profil er links igen",
           "body": "En scoutingrapport nævnte rytteren den handlede om uden en vej til at åbne ham. Og holdnavnet i baren øverst på en rytterprofil var ren tekst, selv om det samme navn lige nedenunder var et link. Begge fører nu hen hvor du forventer."
         },
-        "refs": [3046, 3047]
+        "refs": [
+          3046,
+          3047
+        ]
       }
     ]
   },
@@ -5373,7 +5945,9 @@ export const PATCHES = [
           "title": "Hjælpesiderne beskriver ikke længere regler spillet ikke har",
           "body": "Trænings-hjælpen påstod at du kun har 3 trænings-fokus-slots pr. sæson. I virkeligheden kan du sætte fokus på så mange ryttere du vil, og det har du altid kunnet. Divisions-tabellen i hjælpen viste desuden kun Division 1-3; pyramiden har fire divisioner, og tabellen viser nu dem alle."
         },
-        "refs": [1914]
+        "refs": [
+          1914
+        ]
       }
     ]
   },
@@ -5394,7 +5968,9 @@ export const PATCHES = [
           "title": "Sæsonplanlæggeren viser ikke længere din gamle divisions kalender",
           "body": "Skiftede dit hold division ved sæsonskiftet, blev planlæggeren ved med at vise den forrige divisions kalender for den nye sæson, så næsten alle op- og nedrykkede hold planlagde mod løb de aldrig skulle køre. Planlæggeren opløser nu kalenderen for den sæson du rent faktisk kigger på. Er en sæsons op- og nedrykninger ikke afgjort endnu, siger den det ligeud i stedet for at gætte."
         },
-        "refs": [3018]
+        "refs": [
+          3018
+        ]
       },
       {
         "category": "improved",
@@ -5408,7 +5984,9 @@ export const PATCHES = [
           "title": "Sponsorkortet viser nu regnestykket bag en løbsdag",
           "body": "Hvert sponsor-tilbudskort viste en rate pr. løbsdag og et enkelt \"Maks\"-tal, hvilket lod dig gætte hvad raten faktisk løber op i over en sæson og fik alle tilbud til at ligne hinanden. Kortet deler nu regnestykket op: hvad der er garanteret ved sæsonstart, din divisions løbsdage gange raten, og hvad det bliver til i alt hvis du starter hver etape, med eventuelle betingede bonusser vist separat i stedet for lagt ind i maks-tallet."
         },
-        "refs": [2862]
+        "refs": [
+          2862
+        ]
       },
       {
         "category": "new",
@@ -5422,7 +6000,9 @@ export const PATCHES = [
           "title": "Sæson-siden viser nu sæsonens bedste ryttere",
           "body": "Sæson-siden lister topspillerne når en sæson slutter: flest point og flest sejre, med nr. 2 til 5 under hver. Det er en optælling, ikke en kåring, da rigtige internationale mesterskaber er planlagt separat, så labels er \"Flest point\" og \"Flest sejre\" i stedet for en titel. Mens sæsonen stadig kører, ser du samme tavle markeret som foreløbig."
         },
-        "refs": [2863]
+        "refs": [
+          2863
+        ]
       },
       {
         "category": "new",
@@ -5436,7 +6016,9 @@ export const PATCHES = [
           "title": "Alle ryttere starter den nye sæson friske",
           "body": "Ved sæsonskiftet nulstilles hele din trups træthed nu til nul, i stedet for at bære den belastning rytterne havde bygget op i den foregående sæson videre. Alle ryttere, på alle hold, starter den nye sæson lige friske."
         },
-        "refs": [2910]
+        "refs": [
+          2910
+        ]
       },
       {
         "category": "fixed",
@@ -5450,7 +6032,9 @@ export const PATCHES = [
           "title": "Sæson-achievements virker nu",
           "body": "Tretten sæson-achievements, herunder top 10, divisionsvinder, oprykning, nedrykning og tre sæsoner i træk i pengene, var synlige på din profil, men intet i spillet kunne nogensinde tildele dem. De kan nu låses op fremadrettet, og sæson 1 er tildelt med tilbagevirkende kraft."
         },
-        "refs": [2917]
+        "refs": [
+          2917
+        ]
       },
       {
         "category": "fixed",
@@ -5464,7 +6048,9 @@ export const PATCHES = [
           "title": "Sæsonhistorikken viser nu hvor du rent faktisk sluttede",
           "body": "Sæsonhistorik-tabellen viste altid en streg i placerings-kolonnen, uanset hvordan sæsonen faktisk gik. Den viser nu hvor du rent faktisk sluttede, som #1 eller #2, så en sæson du vandt også fremstår som vundet."
         },
-        "refs": [2917]
+        "refs": [
+          2917
+        ]
       },
       {
         "category": "fixed",
@@ -5478,7 +6064,9 @@ export const PATCHES = [
           "title": "Kalender-siden loader nu på under et sekund i stedet for op til 13",
           "body": "Da sæsonen voksede forbi omkring 400 løb, fejlede et af kalenderens baggrundskald i stilhed hver eneste gang, hvilket lagde omkring 8 sekunder til hver sidevisning uden at vise nogen fejl. Det kald er nu væk, de resterende kører parallelt, og siden henter kun de felter den rent faktisk viser. Server-svartiden faldt fra op til 9,4 sekunder til under 0,7, og første visning på mobil fra op til 13 sekunder til omkring 5 ved en kold indlæsning."
         },
-        "refs": [2861]
+        "refs": [
+          2861
+        ]
       },
       {
         "category": "fixed",
@@ -5492,7 +6080,9 @@ export const PATCHES = [
           "title": "Den guidede \"Vis mig hvordan\"-rundvisning dækker nu alle 4 onboarding-trin",
           "body": "Dashboardets onboarding-kort tilbød kun en guidet rundvisning på to af sine fire trin; de andre to, daglig træning og holdudtagelse, havde ingen forklaring og hjælpe-knappen dukkede simpelthen ikke op. Alle fire trin åbner nu en rundvisning, inklusive træningsfokus-siden og holdudtagelsen, hvor de fleste nye managere rent faktisk sad fast."
         },
-        "refs": [2819]
+        "refs": [
+          2819
+        ]
       },
       {
         "category": "fixed",
@@ -5506,7 +6096,9 @@ export const PATCHES = [
           "title": "Tilmelding med en ubekræftet email giver dig nu en vej videre",
           "body": "Gennemførte du tilmeldingen men bekræftede aldrig din email, var der ingen vej tilbage: den eneste knap førte til et login der var garanteret at fejle. Bekræftelsesskærmen foreslår nu en rettelse hvis din adresse ser forkert tastet ud (som et manglende bogstav i gmail.com), viser en nedtælling i stedet for en rate-limit-fejl når du sender igen, og lader dig rette din email uden at miste det holdnavn og managernavn du allerede har tastet."
         },
-        "refs": [2826]
+        "refs": [
+          2826
+        ]
       },
       {
         "category": "new",
@@ -5520,7 +6112,9 @@ export const PATCHES = [
           "title": "Feedback du sender kan nu få et svar",
           "body": "Beskeder sendt via feedback-formularen i appen forsvandt tidligere ind i en kø som ingen læste. De havner nu i en admin-indbakke hvor de kan triageres og besvares, og får du et svar, lander det som en notifikation i spillet, på samme måde som andre beskeder."
         },
-        "refs": [2842]
+        "refs": [
+          2842
+        ]
       }
     ]
   },
@@ -5541,7 +6135,9 @@ export const PATCHES = [
           "title": "\"How your team did\" viser nu mere end det seneste løb",
           "body": "Dashboard-kortet lister nu holdets tidligere løb i denne sæson med bedste placering, point og præmiepenge for hvert løb, plus en løbende sæson-total for point, præmiepenge og antal løb. De fem seneste løb vises som standard, med en knap til at se resten."
         },
-        "refs": [2886]
+        "refs": [
+          2886
+        ]
       },
       {
         "category": "fixed",
@@ -5555,7 +6151,9 @@ export const PATCHES = [
           "title": "Dine træningsplaner videreføres nu mellem sæsoner",
           "body": "Når en ny sæson startede, blev alle rytteres træningsplan tidligere nulstillet tavst til et automatisk standardprogram, selvom du selv havde sat fokus og intensitet. Træningsplaner videreføres nu intakt, så længe rytteren stadig er på din trup."
         },
-        "refs": [2916]
+        "refs": [
+          2916
+        ]
       },
       {
         "category": "fixed",
@@ -5569,7 +6167,9 @@ export const PATCHES = [
           "title": "Tvangssalg ved ubetalt gæld sker ikke længere i stilhed",
           "body": "Bliver din gæld ved med at ligge over din divisions loft to sæsoner i træk, sælger bestyrelsen din mest værdifulde rytter for at lukke hullet, og indtil nu skete det salg uden et ord. Du får nu en advarsel sæsonen før det kan ske, og gennemføres salget, navngiver en besked den solgte rytter, hvad det indbragte, og hvor din gæld står bagefter."
         },
-        "refs": [2976]
+        "refs": [
+          2976
+        ]
       },
       {
         "category": "fixed",
@@ -5583,7 +6183,9 @@ export const PATCHES = [
           "title": "Manager-profilsider fejler ikke længere ved manglende data",
           "body": "En managers profilside, herunder sider for AI-styrede hold du når via transfer-historikken, kunne fejle ved indlæsning hvis noget af holdets data manglede. Den viser nu siden normalt, med en tom-tilstand hvor data mangler."
         },
-        "refs": [2876]
+        "refs": [
+          2876
+        ]
       },
       {
         "category": "fixed",
@@ -5597,7 +6199,10 @@ export const PATCHES = [
           "title": "Knapper der nægtede at virke fortæller nu hvorfor",
           "body": "Byd-knappen og Gem-knappen i autobud-boksen blev grå og tavse hvis dit beløb lå under det aktuelle minimumsbud. Intet forklarede det, så klikket så bare ud som om det ikke gjorde noget. Det skete oftest når du åbnede autobud-boksen igen på en auktion hvor prisen var steget forbi det loft du gemte tidligere, fordi boksen udfylder dit gamle loft. Begge knapper kan nu klikkes og viser præcis hvilket beløb du skal op på. At fjerne et autobud-loft viser nu også at det er i gang, og siger til hvis det fejlede i stedet for at lade loftet blive stående i stilhed."
         },
-        "refs": [2719, 2254]
+        "refs": [
+          2719,
+          2254
+        ]
       },
       {
         "category": "fixed",
@@ -5611,7 +6216,9 @@ export const PATCHES = [
           "title": "Forlængelse af en kontrakt viser nu at den arbejder",
           "body": "Når du åbnede forlæng-panelet på en rytter, hentede appen den genforhandlede løn i baggrunden mens bekræft-knappen stod grå uden et ord. Var hentningen langsom, så knappen klar ud men gjorde ingenting. Panelet viser nu en spinner og fortæller om det er vilkårene der hentes eller forlængelsen der kører, knappen kan ikke udløses to gange, og vilkårene hentes forfra næste gang så du aldrig bekræfter mod en gammel løn. Samme rettelse er lavet på trup-siden."
         },
-        "refs": [2718]
+        "refs": [
+          2718
+        ]
       },
       {
         "category": "fixed",
@@ -5625,7 +6232,10 @@ export const PATCHES = [
           "title": "Et facilitetskøb eller en planfornyelse der fejler siger nu til",
           "body": "Køb eller opgradering af en facilitet lukkede dialogen uanset om købet gik igennem, så et afvist køb så præcis ud som et gennemført. Fornyelse af en bestyrelsesplan havde samme problem og slet ingen indikator for at den arbejdede. Begge holder dig nu orienteret: dialogen bliver stående med årsagen hvis købet afvises, og forny-knappen viser at den kører og melder fejl i stedet for at tie."
         },
-        "refs": [2718, 2719]
+        "refs": [
+          2718,
+          2719
+        ]
       }
     ]
   },
@@ -5646,7 +6256,9 @@ export const PATCHES = [
           "title": "Fire sikkerhedsadvarsler lukket i appens afhængigheder",
           "body": "Routing-biblioteket er opgraderet fra React Router 6 til 7, hvilket lukker tre advarsler: to open-redirect-problemer og ét om vilkårlig constructor-injektion. Pakken `react-router-dom` er væk, fordi v7 eksporterer alt fra `react-router`, og det fjerner en advarsel som slet ikke havde en rettelse i 6.x-linjen. I backenden er et ubrugt regneark-bibliotek fjernet og et mønster-udfoldnings-bibliotek patchet, hvilket tog det projekt fra ni høj-alvorlige fund til nul. Navigationen opfører sig præcis som før. Admin-fladens catch-all-redirect er gjort absolut, fordi v7 opløser relative paths inde i catch-all-routes anderledes end v6 gjorde."
         },
-        "refs": [2960]
+        "refs": [
+          2960
+        ]
       },
       {
         "category": "new",
@@ -5660,7 +6272,9 @@ export const PATCHES = [
           "title": "Din sæsonslut-besked er nu personlig",
           "body": "Når en sæson slutter, er beskeden ikke længere ens for alle. Din fortæller nu hvor du sluttede i din division (for eksempel: plads 4 ud af 24 i Division 3), dine point, dine præmiepenge for sæsonen og din bedst scorende rytter. Kan noget af det ikke beregnes, får du blot den generelle besked i stedet."
         },
-        "refs": [2924]
+        "refs": [
+          2924
+        ]
       },
       {
         "category": "new",
@@ -5674,7 +6288,9 @@ export const PATCHES = [
           "title": "Sæsonstart: ét kort samler de fire beslutninger der venter på dig",
           "body": "Når en ny sæson begynder, viser dashboardet et kom-i-gang-kort den første uge: byg din trup, læg træningsplanen, forhandl med bestyrelsen og tag stilling til din akademi-årgang. Hvert punkt linker direkte til den rigtige side og får et flueben når det er klaret. Du kan afvise kortet når som helst; det vender tilbage ved næste sæsonskifte."
         },
-        "refs": [2925]
+        "refs": [
+          2925
+        ]
       },
       {
         "category": "new",
@@ -5688,7 +6304,9 @@ export const PATCHES = [
           "title": "Du får besked når en scouting-rapport er klar",
           "body": "Både en målrettet rytter-undersøgelse og en spejdermission giver dig nu besked i det øjeblik rapporten er klar, med link direkte til Scouting-siden. En mission uden matchende ryttere siger det også, i stedet for at være tavs."
         },
-        "refs": [2945]
+        "refs": [
+          2945
+        ]
       },
       {
         "category": "new",
@@ -5702,7 +6320,9 @@ export const PATCHES = [
           "title": "Auktioner advarer dig om ryttere i pensionsalderen",
           "body": "Ryttere på 35 år eller ældre bærer nu et tydeligt pensionsrisiko-mærke i auktionslisten og på deres profil: ryttere stopper typisk mellem 36 og 40 år, så et vindende bud køber dig måske kun en sæson eller to. Mærket er til information; bud blokeres aldrig."
         },
-        "refs": [2943]
+        "refs": [
+          2943
+        ]
       },
       {
         "category": "fixed",
@@ -5716,7 +6336,11 @@ export const PATCHES = [
           "title": "Gældsfrysninger er mere fair, og du får besked når de sker",
           "body": "Sæsonslut-gældstjekket målte din gæld efter sæsonens rente var lagt til, så renten i sig selv kunne skubbe et hold over loftet og fryse dets transfers uden et ord. Loftet vurderes nu før renten lander, den strengeste frysning vinder altid inden for en kørsel, og dit hold får en besked i det øjeblik en frysning træder i kraft. Et tvangssalg kan heller ikke længere bogføres to gange."
         },
-        "refs": [2912, 2919, 2920]
+        "refs": [
+          2912,
+          2919,
+          2920
+        ]
       },
       {
         "category": "fixed",
@@ -5730,7 +6354,10 @@ export const PATCHES = [
           "title": "Trup-tabellen viser alt på én gang",
           "body": "Holdsidens trup-tabel er bygget om: ratings vises som farvede tal, en Evner-visning sætter alle 15 evne-værdier side om side uden scroll, rækkerne er lavere så flere ryttere er på skærmen, og navnekolonnen viser navnet og intet andet. På mobil folder tabellen pænt i stedet for at knække."
         },
-        "refs": [2888, 2906]
+        "refs": [
+          2888,
+          2906
+        ]
       },
       {
         "category": "fixed",
@@ -5744,7 +6371,9 @@ export const PATCHES = [
           "title": "Resultat-opslag på Discord forsvinder ikke længere",
           "body": "Når flere puljer blev færdige samtidig, kunne Discords rate-begrænsning tavst sluge en puljes resultat-opslag. Opslag til samme kanal sendes nu ét ad gangen og prøves høfligt igen, og et opslag der stadig fejler logges tydeligt så det bliver rettet."
         },
-        "refs": [2882]
+        "refs": [
+          2882
+        ]
       },
       {
         "category": "fixed",
@@ -5758,7 +6387,9 @@ export const PATCHES = [
           "title": "Hall of Fame tæller hver sæson korrekt",
           "body": "Hall of Fame-siden læste højst 1.000 tabelrækker, hvilket stille ville afkorte divisionshistorikken efterhånden som sæsonerne samler sig. Nu læses det hele, så hæderslisten forbliver ærlig."
         },
-        "refs": [2962]
+        "refs": [
+          2962
+        ]
       }
     ]
   },
@@ -5779,7 +6410,11 @@ export const PATCHES = [
           "title": "Sponsorvalg 2.0: fem aftaler, fem måder at tjene på",
           "body": "Sponsorforhandlingen er bygget om. Fem sponsorer sidder nu ved bordet i stedet for tre næsten ens tilbud: en sikker aftale (92 % garanteret, 1 sæson), en loyal aftale (3 sæsoner med underskriftsbonus udbetalt med det samme), en løbsaftale (lav base, høj løbsdags-sats), en resultataftale (bonus pr. etapesejr og podieplads, under et loft) og en ambitionsaftale (sæsonslut-bonus for at slutte i øverste halvdel af din division). Tilbudskortene definerer nu enheden (1 løbsdag = én etape dit hold stiller til start i), viser projiceret indtjening pr. division ud fra den faktiske kalender, viser deadlinen og beder dig gennemgå og underskrive før valget låses. Sponsor-fanen på Finanser-siden viser kontraktens klausuler og hvad aftalen faktisk har indbragt dig."
         },
-        "refs": [2948, 2862, 1778]
+        "refs": [
+          2948,
+          2862,
+          1778
+        ]
       },
       {
         "category": "fixed",
@@ -5793,7 +6428,10 @@ export const PATCHES = [
           "title": "Løbsdags-sponsorindtægt beregnes nu mod din divisions faktiske kalender",
           "body": "Den variable del af en sponsoraftale blev beregnet mod 28 kalenderdage men udbetalt pr. etape, hvilket ville have overbetalt 2-5 gange afhængigt af division. Satsen pr. løbsdag sættes nu mod antallet af etaper i din divisions sæsonkalender når kontrakten aktiveres, så aftalens maksimum matcher det kortene lover. Og vælger du ikke en sponsor, underskriver klubben nu den sikre 1-sæsons aftale for dig i stedet for en 3-sæsoners binding."
         },
-        "refs": [2913, 2914]
+        "refs": [
+          2913,
+          2914
+        ]
       }
     ]
   },
@@ -5814,7 +6452,11 @@ export const PATCHES = [
           "title": "Ryttere midt i et skifte kan ikke længere vælges til en udtagelse",
           "body": "En rytter du lige havde solgt eller byttet væk kunne stadig vælges til et kommende løb mens skiftet faldt på plads, og forsvandt så fra feltet. Kvalifikations-tjekket gælder nu ensartet på tværs af taktik-siderne og trup-kontrollerne. Rettelsen gik live 18. juli og noteres her for fuldstændighedens skyld."
         },
-        "refs": [2579, 2616, 2617]
+        "refs": [
+          2579,
+          2616,
+          2617
+        ]
       },
       {
         "category": "fixed",
@@ -5828,7 +6470,9 @@ export const PATCHES = [
           "title": "Etapedata forsvinder ikke længere efter en timeout",
           "body": "En database-timeout kunne permanent afbryde en etapes rute-berigelse, så resultatet stod uden fortællingen, øjeblikkene og træthedsdetaljerne bag det. Jobbet prøver nu automatisk igen i stedet for at give op."
         },
-        "refs": [2877]
+        "refs": [
+          2877
+        ]
       },
       {
         "category": "fixed",
@@ -5842,7 +6486,10 @@ export const PATCHES = [
           "title": "Nye holds startertrup kommer nu med fulde kontrakter",
           "body": "Når et nyt hold fik sin startertrup, ankom rytterne uden kontraktdetaljer, hvilket kunne efterlade tomme løn- og kontraktfelter indtil en senere reparation. Nye hold får nu løn og kontraktlængde sat fra dag ét."
         },
-        "refs": [2894, 2902]
+        "refs": [
+          2894,
+          2902
+        ]
       }
     ]
   },
@@ -5863,7 +6510,9 @@ export const PATCHES = [
           "title": "Terrænnavne vises som ord igen, ikke rå koder",
           "body": "Det mest almindelige terræn i sæson 2-kalenderen blev vist som den rå kode terrain.sprint i sæsonplanlæggeren, og en nyere løbstype viste en rå kode på rytteres resultatlister. Begge oversættes nu korrekt, og et nyt automatisk tjek sammenligner spillets terræntyper med oversættelserne, så den slags huller ikke kan slippe igennem igen."
         },
-        "refs": [2896]
+        "refs": [
+          2896
+        ]
       },
       {
         "category": "fixed",
@@ -5877,7 +6526,9 @@ export const PATCHES = [
           "title": "Faste sidehoveder lægger sig ikke længere over mobilmenuen og popups",
           "body": "Appen havde to konkurrerende lag-systemer, så fast sideindhold kunne tegne sig oven på mobilnavigationen og dialogvinduer. Alt ligger nu på én fælles lag-skala: menuer over sideindhold, dialoger over menuer, notifikationer øverst. Rapporteret af tre managere på to dage, og tak for det."
         },
-        "refs": [2880]
+        "refs": [
+          2880
+        ]
       },
       {
         "category": "improved",
@@ -5891,7 +6542,9 @@ export const PATCHES = [
           "title": "Sæsonplanlæggeren fortæller dig når næste sæson åbner for planlægning",
           "body": "Flere managere kunne ikke finde vej til at planlægge sæson 2. Planlæggeren viser nu et tydeligt banner når næste sæson er klar, med ét-kliks skift, og sæson-vælgeren har fået en synlig label. En tavs datafejl der helt kunne skjule sæson-vælgeren er også rettet og overvåges."
         },
-        "refs": [2883]
+        "refs": [
+          2883
+        ]
       },
       {
         "category": "improved",
@@ -5905,7 +6558,9 @@ export const PATCHES = [
           "title": "Hjælpen forklarer nu hvad der sker med dine penge ved sæsonskiftet",
           "body": "Et nyt FAQ-punkt gennemgår pengestrømmen ved sæsonskiftet: sponsor-fornyelse først, så sponsor-udbetaling, derefter lønninger, lånerenter og driftsomkostninger, alt sammen ved den nye sæsons start. En hjælpetekst der sagde at bund 2 rykker ned pr. pulje er også rettet: det er bund 4."
         },
-        "refs": [2889]
+        "refs": [
+          2889
+        ]
       },
       {
         "category": "fixed",
@@ -5919,7 +6574,9 @@ export const PATCHES = [
           "title": "Auktioner på pensionerede ryttere annulleres nu i stedet for at gennemføres",
           "body": "En auktion på en rytter der pensionerer sig ved sæsonskiftet kunne stadig gennemføres, så køberen betalte for en rytter der aldrig kan køre løb. Sådanne auktioner annulleres nu automatisk, ingen bliver trukket, og begge parter får besked."
         },
-        "refs": [2918]
+        "refs": [
+          2918
+        ]
       }
     ]
   },
@@ -5940,7 +6597,9 @@ export const PATCHES = [
           "title": "Engangsændring mellem sæson 1 og 2: pyramiden komprimeres",
           "body": "Mellem sæson 1 og 2 komprimeres pyramiden: de 48 bedste managerhold fylder Division 2 og de næste 96 fylder Division 3, baseret på de samlede sæson 1-point på tværs af alle puljer. Normal op- og nedrykning (top 2 op, bund 4 ned pr. pulje) genoptages fra sæson 2. Division 1 røres ikke og fyldes fra Division 2 ved næste sæsonskifte."
         },
-        "refs": [2851]
+        "refs": [
+          2851
+        ]
       },
       {
         "category": "fixed",
@@ -5954,7 +6613,9 @@ export const PATCHES = [
           "title": "Sæson-oversigten viser nu alle fire divisioner",
           "body": "Sæson-oversigten viste kun Division 1 til 3 og grupperede hold efter den division de blev flyttet til efter sæsonen, så 57 hold ikke kunne finde sig selv på præcis den side sæson-slut-notifikationen linker til. Den viser nu alle divisioner, inklusive Division 4, og grupperer hold efter den division de faktisk kørte i under den afsluttede sæson."
         },
-        "refs": [2908]
+        "refs": [
+          2908
+        ]
       },
       {
         "category": "fixed",
@@ -5968,7 +6629,9 @@ export const PATCHES = [
           "title": "Pulje-faner på stillingssiden viser data igen",
           "body": "Valg af en pulje-underfane (Pulje A, B, C eller D) på stillingssiden viste Ingen data, selvom antallet af hold ovenover var korrekt. Pulje-filteret matcher nu hold pålideligt igen."
         },
-        "refs": [2879]
+        "refs": [
+          2879
+        ]
       },
       {
         "category": "fixed",
@@ -5982,7 +6645,9 @@ export const PATCHES = [
           "title": "Sponsor-fornyelser krediterer nu din forrige sæson efter et divisionsskifte",
           "body": "Når en sponsorkontrakt auto-fornyede for et hold der lige havde skiftet division, blev holdets forrige sæson ikke krediteret, og fornyelsen faldt tilbage til den laveste multiplikator, låst i op til 3 sæsoner. Fornyelser bruger nu dine resultater fra den division du faktisk kørte i."
         },
-        "refs": [2909]
+        "refs": [
+          2909
+        ]
       },
       {
         "category": "fixed",
@@ -5996,7 +6661,9 @@ export const PATCHES = [
           "title": "Sæsonslut-løn og bestyrelsens dom dækker nu alle hold",
           "body": "En grænse i data-indlæsningen betød at ryttere ud over de første 1.000 indlæste stille kunne blive udeladt af sæsonslut-lønudbetalinger og bestyrelsens sæsonevaluering. Alle ryttere indlæses nu side for side, så alle hold er fuldt med."
         },
-        "refs": [2907]
+        "refs": [
+          2907
+        ]
       },
       {
         "category": "fixed",
@@ -6010,7 +6677,9 @@ export const PATCHES = [
           "title": "Bestyrelsens ugentlige opdateringer ser nu hele din trup",
           "body": "Den samme grænse i data-indlæsningen kunne udelade ryttere fra bestyrelsens ugentlige tilfredsheds-opdateringer efter løbsweekender. Den ugentlige evaluering indlæser nu alle ryttere, så bestyrelsen dømmer dit hold på hele truppen."
         },
-        "refs": [2932]
+        "refs": [
+          2932
+        ]
       },
       {
         "category": "fixed",
@@ -6024,7 +6693,9 @@ export const PATCHES = [
           "title": "Promovering af en akademirytter rører ikke længere en eksisterende kontrakt",
           "body": "Promovering af en rytter fra dit akademi kunne forkorte en eksisterende kontrakt og overskrive lønnen. Promovering tildeler nu kun en ny kontrakt til ryttere der ikke allerede har én."
         },
-        "refs": [2881]
+        "refs": [
+          2881
+        ]
       }
     ]
   },
@@ -6045,7 +6716,9 @@ export const PATCHES = [
           "title": "De sidste sider er flyttet over på det fælles layout, og fem markeringer der aldrig blev vist er rettet",
           "body": "Bestyrelse, Indbakke, Sæsonplanlægger, Spejder, Klub, Sammenlign ryttere, Roadmap, Taktik, Akademi og privatlivssiderne bruger nu samme sidehoved, kort, indlæsning og fejlbeskeder som resten af appen. Sammenlign ryttere havde slet ingen indlæsningsskærm, og flere sider fejlede tavst i stedet for at fortælle dig at noget gik galt. Fem markeringer var også i stilhed i stykker og virker nu: den gyldne fremhævning på en auktion du fører, den gyldne kant på et bytte-tilbud der venter på dit svar, ikonerne i sæsonplanlæggeren, motor-ikonerne i roadmap-historikken og en række knapper i admin-panelet. Statusfarver er nu én farve i hele appen i stedet for at hver side blander sin egen. Evne-kolonnerne på Ryttere og Mit Hold står tættere, så flere af dem er på skærmen ad gangen, sæsonplanlæggeren viser flere ryttere på én gang, og truppen har droppet værdi-pilen og potentiale-teksten for at give plads til det man reelt skanner efter."
         },
-        "refs": [2849]
+        "refs": [
+          2849
+        ]
       }
     ]
   },
@@ -6066,7 +6739,9 @@ export const PATCHES = [
           "title": "Sæson-opsamlingen henter nu på et øjeblik i stedet for at hakke",
           "body": "Sæsonsiden hentede før hvert eneste løbsresultat fra hele sæsonen ned i din browser, før den kunne vise noget. Det blev langsommere jo længere ind i sæsonen vi kom, og kunne give op helt på en fuld sæson. Nu regnes tallene ud på serveren og sendes som én lille opsummering. Samme stilling, samme præmiefører, samme etapesejrskonge, samme udviklingsgraf, bare hurtigt. Det betyder mest lige efter sæsonen slutter, hvor alle åbner opsamlingen på én gang."
         },
-        "refs": [2891]
+        "refs": [
+          2891
+        ]
       }
     ]
   },
@@ -6087,7 +6762,9 @@ export const PATCHES = [
           "title": "Modtilbud på en byttehandel sendte pengene den forkerte vej",
           "body": "Hvis nogen tilbød dig en byttehandel, og du svarede med et modtilbud, blev kontantbeløbet vendt om på vej ud. Feltet siger at positivt betyder at du modtager, men tilbuddet der nåede frem til den anden manager sagde at du ville betale beløbet i stedet. Det ramte kun modtilbud fra den part der havde modtaget det oprindelige tilbud, og kun retningen, aldrig beløbet. Nu sendes præcis det feltet siger. Tak til den manager der rapporterede det gennem feedback-knappen i spillet og opdagede det, før handlen blev gennemført."
         },
-        "refs": [2843]
+        "refs": [
+          2843
+        ]
       }
     ]
   },
@@ -6108,7 +6785,9 @@ export const PATCHES = [
           "title": "Profilsiderne har fået et nyt topkort, og rytterfiltrene matcher resten af appen",
           "body": "Rytter-, hold-, manager-, staff- og løbssiderne åbner nu med samme topkort: en guldlinje øverst, navnet i toppen, nøgletal med det samme og faner lige under. Rytterens rating har nu samme farveskala som evne-tallene. Rytterfilter-panelet på markedssiderne bruger appens fælles felter og chips, og et par løsrevne emoji er fjernet fra knapper. Intet i sidernes funktion er ændret."
         },
-        "refs": [2849]
+        "refs": [
+          2849
+        ]
       }
     ]
   },
@@ -6129,7 +6808,9 @@ export const PATCHES = [
           "title": "Trænings-, hjælp-, regel-, patch note- og Pro-siderne deler nu samme visuelle sprog",
           "body": "De sidste sider uden for det fælles design følger nu samme sideopbygning som resten af appen: én header-stil, én kort-stil og tydelige indlæsnings- og fejltilstande. Hjælp og regler har fået en sektionsmenu der virker på mobil, træningstabellerne scroller i deres egen boks på små skærme, og sideafstanden er nu ens i hele appen. Intet i sidernes funktion er ændret."
         },
-        "refs": [2849]
+        "refs": [
+          2849
+        ]
       }
     ]
   },
@@ -6150,7 +6831,9 @@ export const PATCHES = [
           "title": "Sæson- og resultatsiderne deler nu samme visuelle sprog",
           "body": "Resultater, kalender, global rangliste, løbshistorik, løbspoint, sæsonoverblik og løbets detaljeside følger nu samme sideopbygning som resten af appen. Løbets detaljeside har fået et nyt topbånd med nøgletal, brede tabeller scroller nu i deres egen boks på mobil i stedet for at strække siden, og alle sider viser en tydelig besked med en prøv-igen-knap hvis data ikke kan hentes. Intet i sidernes funktion er ændret."
         },
-        "refs": [2849]
+        "refs": [
+          2849
+        ]
       }
     ]
   },
@@ -6171,7 +6854,9 @@ export const PATCHES = [
           "title": "Markedssiderne deler nu samme visuelle sprog",
           "body": "Ryttere, transfers, ønskeliste, aktivitet, auktionshistorik, rytterrangliste og personale-oversigten følger nu samme sideopbygning som resten af appen: én header-stil, én tabel-stil med fastlåst navnekolonne der folder ekstra kolonner ind på mobil, og tydeligere beskeder når en liste er tom eller ikke kan hentes. Intet i sidernes funktion er ændret."
         },
-        "refs": [2849]
+        "refs": [
+          2849
+        ]
       }
     ]
   },
@@ -6192,7 +6877,9 @@ export const PATCHES = [
           "title": "Dashboard, stilling, hold, auktioner og løb deler nu ét visuelt sprog",
           "body": "De fem mest brugte sider følger nu samme sideopbygning: én header-stil, én kort-stil og én tabel-stil med fastlåst navnekolonne, der fungerer bedre på mobil. Op- og nedrykningszoner i stillingen er lettere at læse, og intet i sidernes funktion er ændret."
         },
-        "refs": [2849]
+        "refs": [
+          2849
+        ]
       }
     ]
   },
@@ -6213,7 +6900,9 @@ export const PATCHES = [
           "title": "Pænere tomme-, fejl- og loading-tilstande",
           "body": "Tomme- og fejlbeskeder i hele appen deler nu ét roligere udtryk, og fejlbeskeder fortæller dig hvad der er sikkert. Det er første skridt i en visuel gennemgang, der får alle sider til at føles som ét spil."
         },
-        "refs": [2849]
+        "refs": [
+          2849
+        ]
       }
     ]
   },
@@ -6234,7 +6923,9 @@ export const PATCHES = [
           "title": "Du får nu en besked når sæsonen slutter",
           "body": "Når sæsonen er slut, får du en besked i indbakken med direkte link til den endelige stilling, oprykning og nedrykning for den netop afsluttede sæson. Den første kommer når sæson 1 lukkes."
         },
-        "refs": [2745]
+        "refs": [
+          2745
+        ]
       },
       {
         "category": "fixed",
@@ -6248,7 +6939,10 @@ export const PATCHES = [
           "title": "Oprykningsbeskeden på dit eget sprog, og Sæson 0 ryddet op",
           "body": "Oprykningsbeskeden var låst til dansk for alle; nu følger den dit sprog, ligesom nedrykningsbeskeden altid har gjort. Vi har også fjernet et efterladt 'Sæson 0' fra tre sæson-vælgere."
         },
-        "refs": [2833, 2763]
+        "refs": [
+          2833,
+          2763
+        ]
       },
       {
         "category": "fixed",
@@ -6262,7 +6956,9 @@ export const PATCHES = [
           "title": "Alle ryttere viser nu en løn i truppen",
           "body": "Omkring halvdelen af alle ryttere på managerhold havde ingen løn gemt, så truppen viste et tomt felt, og lønningsdagen trak for lidt. Deres løn er nu sat med samme formel som spillet bruger, når en rytter signeres, og den kommende sæsons payroll trækker de rigtige beløb."
         },
-        "refs": [2746]
+        "refs": [
+          2746
+        ]
       }
     ]
   },
@@ -6283,7 +6979,9 @@ export const PATCHES = [
           "title": "Bjergklassikere kommer til Division 2 og 3",
           "body": "Fire af de hårdeste bakkede endagsløb er opgraderet til ægte bjergklassikere: Limburgse Klassieker i Division 2 samt Brabantse Klassieker, Trofeo Ligure og Classique de la Drôme i Division 3. Alle divisioner har nu en bjergklassiker i hver pulje, så klatrere uden for den bedste række endelig har et endagsløb at bygge sæsonen om. De nye ruter gælder fra sæson 2."
         },
-        "refs": [2755]
+        "refs": [
+          2755
+        ]
       },
       {
         "category": "new",
@@ -6297,7 +6995,10 @@ export const PATCHES = [
           "title": "Salg blokeres hvis de ville efterlade dig ude af stand til at stille hold",
           "body": "Før du sælger, frigiver eller sætter en rytter på auktion, tjekker spillet nu din trups værste tilfælde: udløbende kontrakter og pensionsrisiko regnes sammen, og en handel der kunne efterlade dit hold under de 8 ryttere der kræves for at stille til start, blokeres med en klar forklaring. Over den grænse handler du lige så frit som før."
         },
-        "refs": [2700, 2748]
+        "refs": [
+          2700,
+          2748
+        ]
       }
     ]
   },
@@ -6318,7 +7019,9 @@ export const PATCHES = [
           "title": "Ryttere der stopper karrieren forlader nu truppen",
           "body": "Når en rytter indstiller karrieren ved sæsonskiftet, bliver hans plads i truppen fri med det samme. Indtil nu blev han kun markeret som pensioneret: han kunne aldrig køre løb igen, men han optog stadig en af dine 30 pladser og talte stadig med i din trupstørrelse. Fra dette sæsonskifte bliver han frigivet ordentligt, og beskeden fortæller dig at pladsen er fri, så du kan hente en afløser. Det er rytterne sidst i trediverne der er i risiko, og risikoen vokser hvert år, indtil den er en sikkerhed. Et karrierestop kan ikke forhindres, så planlæg afløseren i stedet for redningen."
         },
-        "refs": [2748]
+        "refs": [
+          2748
+        ]
       },
       {
         "category": "new",
@@ -6332,7 +7035,9 @@ export const PATCHES = [
           "title": "Udløbne kontrakter frigiver rytteren ved sæsonskiftet",
           "body": "En rytter hvis kontrakt er løbet ud, forlader nu din trup som fri agent når sæsonen skifter, i stedet for at blive hængende på en kontrakt ingen håndhævede. Du får et varsel før skiftet, og du kan forlænge en kontrakt fra rytterens profil helt frem til det. Efter skiftet ligger han i fri-agent-puljen som alle andre, og du er velkommen til at hente ham tilbage."
         },
-        "refs": [2744]
+        "refs": [
+          2744
+        ]
       }
     ]
   },
@@ -6353,7 +7058,9 @@ export const PATCHES = [
           "title": "Endagsløb viser ikke længere point der aldrig blev uddelt",
           "body": "Ruteprofilerne for endagsløb viste bjerg- og sprintpoint ved stigningerne, men de point blev aldrig uddelt. Adfærden var rigtig. Det var visningen der var forkert: bjerg- og pointkonkurrencer findes kun i etapeløb, hvor de bygges op over flere dage. Et endagsløb har en vinder, ikke en trøje. Stigningerne og mellemsprinten står der stadig på profilen, bare uden et pointløfte hæftet på. Etapeløb er uændrede."
         },
-        "refs": [2818]
+        "refs": [
+          2818
+        ]
       }
     ]
   },
@@ -6374,7 +7081,9 @@ export const PATCHES = [
           "title": "Etapeprofiler",
           "body": "Hver etape viser nu sin rigtige rute: stigningerne med deres længde og hældning, de kategoriserede toppe og hvad de er værd i bjergklassementet, mellemsprinten, brostenssektorer, og om målstregen ligger på toppen af en stigning eller efter en nedkørsel. Tryk på en markør for at se hvad der er på spil der, eller hvem der tog den, når etapen er kørt."
         },
-        "refs": [2448]
+        "refs": [
+          2448
+        ]
       },
       {
         "category": "improved",
@@ -6388,7 +7097,9 @@ export const PATCHES = [
           "title": "Akademi-siden fortæller dig hvad du beslutter",
           "body": "Kandidatkortene viser nu ryttertype, markedsværdi og signeringspris før du signerer, plus hvor mange dage der er tilbage af tilbuddet. Et tilbud løber i syv dage, og når det udløber, ryger rytteren på 24-timers ungdomsauktion. Ryttere der forlader akademiet, viser type, værdi og løn, så ryk op, sælg eller fyr ikke længere er et blindt valg. Akademiholdet er nu en rigtig sorterbar tabel med kolonnerne Nation, Type og Værdi, og du kan sortere på potentiale, værdi, løn, alder eller kontrakt. Den kvalitative potentiale-tekst er flyttet til et tooltip, så stjernerne står alene."
         },
-        "refs": [2796]
+        "refs": [
+          2796
+        ]
       },
       {
         "category": "fixed",
@@ -6402,7 +7113,9 @@ export const PATCHES = [
           "title": "Ryk op-dialogen viste den samme løn for alle ryttere",
           "body": "Bekræftelsesboksen for at rykke en akademirytter op i senior-truppen viste altid 161 CZ$ som ny senior-løn, uanset hvem du rykkede op. Den viser nu den rigtige projicerede løn for netop den rytter i din division. Hvis du ikke har råd til signeringsprisen, står der nu det i stedet for en generisk fejl, og en fejlet sideindlæsning læses ikke længere som \"Akademiet kommer snart\"."
         },
-        "refs": [2796]
+        "refs": [
+          2796
+        ]
       },
       {
         "category": "fixed",
@@ -6416,7 +7129,9 @@ export const PATCHES = [
           "title": "Dansk ord tilbage i den engelske grænseflade",
           "body": "Akademiets driftsomkostning stod som \"Drift paid\" på engelsk, med det danske ord for upkeep, og finanslogget kaldte samme postering \"Academy drift\". Begge siger nu upkeep, ligesom Regler- og Hjælp-siderne."
         },
-        "refs": [2796]
+        "refs": [
+          2796
+        ]
       },
       {
         "category": "fixed",
@@ -6430,7 +7145,9 @@ export const PATCHES = [
           "title": "Udholdenhed tæller nu den rigtige vej i sæson 1's løb",
           "body": "En fejl i løbsmotoren fik sæson 1's etaper til at opføre sig som om de var ekstremt korte. Det tændte lange-dage-effekten med det forkerte fortegn, så ryttere med høj udholdenhed i det stille blev straffet, mens ryttere med lav udholdenhed blev belønnet. Træthed vejede samtidig omkring 15 procent for lidt. Sæson 2's løb var aldrig påvirket, fordi de har rigtige rutedata. Rettelsen genopretter den tilsigtede adfærd på de resterende sæson 1-etaper, dem der afgør op- og nedrykning."
         },
-        "refs": [2804]
+        "refs": [
+          2804
+        ]
       }
     ]
   },
@@ -6451,7 +7168,9 @@ export const PATCHES = [
           "title": "Sæson 1-stillinger genoprettet efter en kortvarig pointfejl",
           "body": "I nogle timer i dag blev det nye system med mellemsprints og bjergpoint ved en fejl brugt på sæson 1's etapeløb. Det skal først køre fra sæson 2, hvor ruterne har rigtige stigninger og spurter. Der blev uddelt point og bonussekunder på etaper uden rutedata, hvilket flyttede tider i klassementet og stillingerne i dagstrøjerne i 25 igangværende etapeløb. Fejlen er rettet, og stillingerne er genoprettet til de korrekte værdier. Etapeplaceringer og sluttider var aldrig påvirket, og allerede udbetalte præmier bliver hos de ryttere der modtog dem."
         },
-        "refs": [2786]
+        "refs": [
+          2786
+        ]
       }
     ]
   },
@@ -6472,7 +7191,9 @@ export const PATCHES = [
           "title": "Høj-bjergsetaper har altid en hors categorie-stigning",
           "body": "Hver høj-bjergsetape slutter nu over en hors categorie-stigning, den hårdeste kategori der findes. Før blev kategorien for hver stigning trukket tilfældigt, så en høj-bjergsetape kunne ende helt uden hors categorie-stigninger, mens en anden stablede fire oven på hinanden. Et grand tour i sæson 2 havde kun én hors categorie-stigning på tværs af alle 21 etaper. Gælder nygenererede løbsruter."
         },
-        "refs": [2781]
+        "refs": [
+          2781
+        ]
       }
     ]
   },
@@ -6493,7 +7214,9 @@ export const PATCHES = [
           "title": "Ruter styrer nu løbet",
           "body": "Topmål åbner nu ægte tidsforskelle, mens dalmål lader feltet samle sig igen på nedkørslen. Lange etaper slider på rytterne og belønner udholdenhed, tekniske finaler belønner cykelhåndtering og positionering, og store etapeløb kan åbne med en kort prolog-enkeltstart. Tidsforskelle i enkeltstarter skalerer nu med distancen. Gælder løb med rutedata fra sæson 2."
         },
-        "refs": [2771]
+        "refs": [
+          2771
+        ]
       }
     ]
   },
@@ -6514,7 +7237,9 @@ export const PATCHES = [
           "title": "Dybere løbskonkurrencer: KOM, spurter og bonussekunder",
           "body": "Kategoriserede stigninger giver nu KOM-point efter virkelighedens skalaer, med dobbelt point på topmål, og mellemsprinter giver point til det grønne trøje-regnskab plus 3/2/1 bonussekunder. Etapemål giver også 10/6/4 bonussekunder til GC-regnskabet. Ryttere i udbruddet kan føre over stigninger og spurter, så en udbrudsrytter kan vinde bjergtrøjen. Gælder løb fra sæson 2."
         },
-        "refs": [2770]
+        "refs": [
+          2770
+        ]
       }
     ]
   },
@@ -6535,7 +7260,10 @@ export const PATCHES = [
           "title": "Sæsonplanlæggeren er nu live for alle",
           "body": "Planlæg form-peaks for hele dit hold ét sted. Sigt en rytter mod et vigtigt løb, så bygger planlæggeren en optakt der løfter formen til den dag, og assistenten udkaster et start-program du kan acceptere eller lave om. Hver rytter kan peake mod op til to løb pr. sæson, og formen tjenes gennem træning i optakten. En ny liste over sæsonens løb viser hvert løb i din kalender med dato og terræn i overblik og linker direkte til løbssiden, så det er nemt at se hvilke løb du planlægger mod. Åbn den under Sæsonplanlægger i Klubhus-menuen."
         },
-        "refs": [2568, 2426]
+        "refs": [
+          2568,
+          2426
+        ]
       }
     ]
   },
@@ -6556,7 +7284,9 @@ export const PATCHES = [
           "title": "Bud fortæller dig nu på forhånd, når du ikke har plads",
           "body": "Har du ikke plads til en rytter, er bud-knappen nu deaktiveret med en kort forklaring, i stedet for at lade dig byde og annullere salget bagefter. For en ungdomsrytter kan du stadig byde, så længe enten din senior-trup eller dit akademi har plads. Vundne ungdomsryttere ryger nu på din senior-trup først, når der er plads (og først i akademiet, når senior-truppen er fuld), så en vundet rytter er klar til løb med det samme. Hver auktion viser, hvor rytteren lander."
         },
-        "refs": [2701]
+        "refs": [
+          2701
+        ]
       }
     ]
   },
@@ -6577,7 +7307,10 @@ export const PATCHES = [
           "title": "Vandt en ungdomsrytter med fyldt akademi? Han ryger nu på senior-truppen",
           "body": "Før blev en vundet ungdomsauktion annulleret hvis dit akademi var fuldt (8 pladser), og du mistede rytteren. Nu ryger rytteren i stedet på din senior-trup hvis der er plads, så en vundet auktion aldrig annulleres mens dit hold stadig har plads et sted. Auktionen annulleres kun hvis både dit akademi og din senior-trup er fulde (eller du ikke har råd til det vindende bud)."
         },
-        "refs": [2754, 2701]
+        "refs": [
+          2754,
+          2701
+        ]
       }
     ]
   },
@@ -6598,7 +7331,10 @@ export const PATCHES = [
           "title": "Op-/nedrykningsregler rettet: aktiv fra sæson 1",
           "body": "Regel-siden og bekræftelsesteksten ved sæsonafslutning antydede fejlagtigt at op- og nedrykning først startede i en senere sæson. Det har faktisk været aktivt siden sæson 1: ved hver sæsons afslutning rykker de øverste hold i hver division op, og de nederste rykker ned. Vi har også tilføjet et admin-sikkerhedstjek der forhindrer at et sæsonskifte ved en fejl springer disse resultater og divisionsbonusserne over."
         },
-        "refs": [2361, 1783]
+        "refs": [
+          2361,
+          1783
+        ]
       }
     ]
   },
@@ -6619,7 +7355,9 @@ export const PATCHES = [
           "title": "Nedrykningsfaldskærm dæmper faldet fra Division 1 eller 2",
           "body": "Bliver dit hold nedrykket fra Division 1 eller Division 2, får du nu en nedrykningsfaldskærm ved starten af din næste sæson: halvdelen af den sponsorindtægt du mister ved at rykke en division ned, udbetalt én gang. Division 3 til 4 er upåvirket: Division 4 har ingen driftsomkostninger, så der er intet at dæmpe der."
         },
-        "refs": [1980]
+        "refs": [
+          1980
+        ]
       }
     ]
   },
@@ -6640,7 +7378,9 @@ export const PATCHES = [
           "title": "Planlæg forud: Sæson 2's løbskalender er nu synlig",
           "body": "Hele Sæson 2-programmet er nu tilgængeligt for alle fire divisioner, så du kan se hvert løb før sæsonen begynder og bygge dit hold efter det. Åbn Kalenderen og brug sæson-vælgeren til at skifte til Sæson 2."
         },
-        "refs": [2449]
+        "refs": [
+          2449
+        ]
       }
     ]
   },
@@ -6661,7 +7401,9 @@ export const PATCHES = [
           "title": "De første 50 abonnenter bliver permanente Founders",
           "body": "Pro-siden viser nu en live pladstæller. De første 50 betalende abonnenter får et permanent Founder-badge, som bevares selv hvis abonnementet senere udløber. Når alle 50 pladser er taget, får nye abonnenter stadig fuld Pro."
         },
-        "refs": [1903]
+        "refs": [
+          1903
+        ]
       }
     ]
   },
@@ -6703,7 +7445,9 @@ export const PATCHES = [
           "title": "Spejder-rapporter viser ikke længere ryttere du ikke kan finde",
           "body": "Spejder-mission-rapporter kunne pege på en rytter ejet af et AI-hold, men den rytter er skjult som default i rytterdatabasen, så navnet førte ingen steder hen. Rapporter ekskluderer nu AI-holds ryttere, samme måde de allerede ekskluderede ryttere midt i en handel eller med et uafklaret akademi-tilbud."
         },
-        "refs": [2581]
+        "refs": [
+          2581
+        ]
       }
     ]
   },
@@ -6724,7 +7468,9 @@ export const PATCHES = [
           "title": "Se dine rytteres aktive auktioner på holdsiden",
           "body": "Når en af dine egne ryttere er på auktion, viser holdsiden det nu direkte: et badge på rytteren med det aktuelle højeste bud og tid tilbage, med link til auktionen. Du opdager ikke længere for sent at din rytter var under hammeren."
         },
-        "refs": [2183]
+        "refs": [
+          2183
+        ]
       },
       {
         "category": "fixed",
@@ -6738,7 +7484,10 @@ export const PATCHES = [
           "title": "Én klar besked når en rytter sælges på auktion",
           "body": "Et auktionssalg udløste før flere overlappende beskeder. Køber og sælger får nu hver én klar besked pr. salg, og dubletter grupperes væk."
         },
-        "refs": [2401, 2208]
+        "refs": [
+          2401,
+          2208
+        ]
       },
       {
         "category": "fixed",
@@ -6752,7 +7501,9 @@ export const PATCHES = [
           "title": "Trænere viser det rigtige speciale igen",
           "body": "Trænere hyret før U23-ændringen kunne vise et forkert speciale som \"senior\" i stedet for deres reelt stærkeste færdighed. Overskriften kigger nu kun på ægte færdigheder, ikke alders-bånd. Ren visningsfejl, ingen træner er reelt ændret."
         },
-        "refs": [2695]
+        "refs": [
+          2695
+        ]
       },
       {
         "category": "improved",
@@ -6766,7 +7517,9 @@ export const PATCHES = [
           "title": "Alle staff-medlemmer har nu unikke navne",
           "body": "Staff-navne genereres nu fra en langt større kombination af for- og efternavne, og eksisterende dubletter er omdøbt. Oplevelsen af \"samme person\" ansat på flere hold samtidig er væk."
         },
-        "refs": [2657]
+        "refs": [
+          2657
+        ]
       },
       {
         "category": "fixed",
@@ -6780,7 +7533,9 @@ export const PATCHES = [
           "title": "Etapeløbs-resultater linker nu til den rigtige etapeside",
           "body": "På rytterprofilens Resultater-fane havde etapeløbs-rækker døde links, og løbsnavnet pegede det forkerte sted hen. Løbsnavnet åbner nu løbet, og hvert etape-resultat linker direkte til den etapes side. Kun chevronen folder rækken ud."
         },
-        "refs": [2526]
+        "refs": [
+          2526
+        ]
       },
       {
         "category": "improved",
@@ -6794,7 +7549,9 @@ export const PATCHES = [
           "title": "Rytter-ranglisten på dashboardet loader hurtigere",
           "body": "Top-5-ranglisten på dit dashboard beregnes nu i ét hug i stedet for at bladre gennem hvert eneste resultat i din division. Kortet dukker mærkbart hurtigere op, og tallene er de samme."
         },
-        "refs": [2692]
+        "refs": [
+          2692
+        ]
       },
       {
         "category": "fixed",
@@ -6808,7 +7565,9 @@ export const PATCHES = [
           "title": "Holdklassementet kræver nu mindst 3 gennemførende ryttere",
           "body": "Et hold kunne vinde holdklassementet med kun én eller to gennemførende ryttere. Holdklassementet kræver nu mindst 3 gennemførende ryttere for at blive rangeret, som i rigtig cykling. Hold under den grænse vises ikke længere."
         },
-        "refs": [2694]
+        "refs": [
+          2694
+        ]
       }
     ]
   },
@@ -6829,7 +7588,9 @@ export const PATCHES = [
           "title": "Renere, mere kompakt auktionsliste",
           "body": "Rytternavnet i auktionslisten er nu bare navnet - land og alders-badges (U23/U25/Ungdom) er flyttet til egne Nation- og Status-kolonner, som på rytterdatabasen, og en ny Type-kolonne (Sprinter/Klatrer/osv.) sidder lige efter Status. En stjerne vises nu ved navnet når rytteren er på din ønskeliste. Rækkerne er markant lavere: bud-input, Byd-knap og autobud-knap sidder nu på én kompakt linje, minimumsbuddet vises som en tooltip på input-feltet i stedet for sin egen tekstlinje, og det førende holds navn ved Højeste bud er også flyttet til en tooltip, mens vurderings-noten nu står inline ved beløbet i stedet for stablet under. En ny Værdi-kolonne sidder lige ved siden af Højeste bud, og kolonnerækkefølgen starter nu med Navn, Alder, Løn, Højeste bud og Tid tilbage. Stat-kolonnerne er uændrede og slås stadig til/fra med den eksisterende knap. Fanen 'Min situation' hedder nu 'Mine auktioner'."
         },
-        "refs": [228]
+        "refs": [
+          228
+        ]
       }
     ]
   },
@@ -6850,7 +7611,9 @@ export const PATCHES = [
           "title": "Nye akademi-kandidater ankommer hver søndag",
           "body": "Dit akademi modtager nu friske kandidater hver søndag. Signér dem du tror på, eller afvis dem - ubesvarede tilbud udløber efter 7 dage. Det er første skridt i sæson-årgangsmodellen, hvor sæsonens sidste søndag bliver den store intake-dag."
         },
-        "refs": [2064]
+        "refs": [
+          2064
+        ]
       },
       {
         "category": "fixed",
@@ -6864,7 +7627,9 @@ export const PATCHES = [
           "title": "18 skrevne FAQ-svar dukker nu faktisk op på Hjælp-siden",
           "body": "En stribe FAQ-svar var skrevet men aldrig koblet på Hjælp-siden, så de var usynlige: rytterens samlede rating, Udviklings-fanens loft-projektion, dagsform og styrt i løb, løbstilmelding og klassifikationer, skadesrisiko ved træning, økonomi-guiden til nye spillere, syv svar om bestyrelsens transparens-features og tre om Sæson 1-relanceringen. Alle 18 er nu live i FAQ'en. To svar er samtidig rettet så de matcher spillet: tilfredshed flytter sig højst 5 point ned eller 8 point op pr. løbsweekend, og den sorterbare rating-kolonne ligger på Auktioner-siden."
         },
-        "refs": [2693]
+        "refs": [
+          2693
+        ]
       }
     ]
   },
@@ -6885,7 +7650,9 @@ export const PATCHES = [
           "title": "Forlæng en akademi-rytters kontrakt uden at rykke dem op først",
           "body": "Du kan nu forlænge en akademi-rytters kontrakt direkte fra deres profil eller din holdside, til samme genforhandlede løn som en senior-rytter. Tidligere var den eneste måde at forny en akademi-rytters kontrakt på at rykke dem op i seniortruppen, forlænge, og flytte dem ned igen. At frigive en akademi-rytter går stadig via akademi-flowet."
         },
-        "refs": [2179]
+        "refs": [
+          2179
+        ]
       }
     ]
   },
@@ -6906,7 +7673,10 @@ export const PATCHES = [
           "title": "Rytterværdier afspejler nu hvad ryttere faktisk præsterer",
           "body": "Rytternes markedsværdier styres nu af en ny værdimodel. En rytters værdi er den produktion han forventes at levere resten af karrieren, målt ved at simulere spillets egen sæsonkalender: præmiepenge, løbsprogram og hvordan hans evner udvikler sig og falder med alderen. Unge talenter er mere værd på grund af sæsonerne foran dem, veteraner prissættes på det de har tilbage, og spillets allerbedste ryttere har nu stjernepriser langt over ethvert holds budget. At udvikle en elite-rytter selv er den realistiske vej til at eje en. De fleste rytteres værdier ændrer sig kun moderat, men topryttere og unge talenter kan flytte sig meget."
         },
-        "refs": [2594, 2428]
+        "refs": [
+          2594,
+          2428
+        ]
       },
       {
         "category": "new",
@@ -6920,7 +7690,10 @@ export const PATCHES = [
           "title": "Nyt lønsystem: betal for det rytteren leverer nu",
           "body": "Lønninger er ikke længere en fast procent af rytterens markedsværdi. En rytters løn baseres nu på hvad han forventes at producere denne sæson, så et ungt talent med en lys fremtid er billigt at have på lønningslisten, mens en etableret stjerne får en løn der matcher hans niveau. Lønnen fryses stadig når du signer en rytter og ændres kun ved kontraktforlængelse. Eksisterende kontrakter beholder deres nuværende løn, så intet ændrer sig for ryttere du allerede ejer, før du forlænger dem."
         },
-        "refs": [2594, 2433]
+        "refs": [
+          2594,
+          2433
+        ]
       },
       {
         "category": "improved",
@@ -6934,7 +7707,9 @@ export const PATCHES = [
           "title": "Præmiepenge dobbelttæller ikke længere i markedsværdien",
           "body": "Tidligere blev en rytters opsamlede præmiebonus lagt oven i hans markedsværdi. Den nye værdimodel prissætter allerede forventet præmieproduktion, så den separate bonus talte det samme to gange. Markedsværdien er nu modellens værdi alene. Præmiestatistik registreres og vises stadig på rytterprofilen."
         },
-        "refs": [2594]
+        "refs": [
+          2594
+        ]
       }
     ]
   },
@@ -6955,7 +7730,9 @@ export const PATCHES = [
           "title": "Langt færre staff-kandidater deler navn på tværs af hold",
           "body": "Puljen af staff-kandidatnavne er vokset fra 40 til 150. Med den gamle pulje endte de fleste ligaer med samme navn ansat hos flere hold på én gang, hvilket kunne ligne én person med to jobs. Hver staff har altid været en separat person med sin egen profil, men kandidater der tilbydes fremover trækkes fra den langt større pulje, så navnesammenfald på tværs af hold bliver undtagelsen frem for reglen. Allerede ansat staff beholder deres navne."
         },
-        "refs": [2643]
+        "refs": [
+          2643
+        ]
       },
       {
         "category": "new",
@@ -6969,7 +7746,9 @@ export const PATCHES = [
           "title": "Opsig staff, mod et opsigelsesgebyr",
           "body": "Du kan nu opsige dit eget staff (sportsdirektør, chefscout, holdlæge, akademichef, kommerciel direktør) fra staff-profilen eller personale-oversigten. Opsigelse afslutter ansættelsen med det samme og frigiver pladsen til ny-hyring med det samme, men det er ikke gratis: du betaler et opsigelsesgebyr på 4 ugers løn, som trækkes i det øjeblik du bekræfter. Bekræftelses-dialogen viser altid det præcise gebyr, før du bekræfter."
         },
-        "refs": [2649]
+        "refs": [
+          2649
+        ]
       },
       {
         "category": "new",
@@ -6983,7 +7762,9 @@ export const PATCHES = [
           "title": "Vælg hvem dine spejder-missioner målretter",
           "body": "At starte en spejder-mission lader dig nu vælge hvem din spejder leder efter: kontraktfrie ryttere (uden kontrakt, anbefalet, du kan hente dem med det samme), eller ryttere på andre hold (talent ejet af en anden manager, hvor hentning kræver bud eller forhandling). Kontraktfrie er stadig default. Hver rapport indeholder stadig kun ryttere der findes og kan søges frem."
         },
-        "refs": [2644]
+        "refs": [
+          2644
+        ]
       }
     ]
   },
@@ -7004,7 +7785,9 @@ export const PATCHES = [
           "title": "Skadede ryttere kan nu altid fjernes fra en trup, og omfordeling er nemmere",
           "body": "Tre relaterede rettelser. Assistenten auto-udtager ikke længere en skadet rytter til noget løb. En allerede udtaget skadet rytter kan nu altid fjernes fra en trup, også midt i et etapeløb, hvor truppen tidligere var helt låst. Og at vælge en rytter til et etapeløb bliver ikke længere stille blokeret af et auto-udtaget endagsløb et andet sted i vinduet: er det stadig bare assistentens forslag, ryddes det automatisk; er det et manuelt valg, eller er løbet allerede i gang, får du en klar fejl der navngiver rytteren og det konfliktende løb i stedet for en umærket fejl."
         },
-        "refs": [2637]
+        "refs": [
+          2637
+        ]
       },
       {
         "category": "improved",
@@ -7018,7 +7801,9 @@ export const PATCHES = [
           "title": "Udløbne akademi-intake-tilbud betaler dig nu tilbage, hvis rytteren sælges",
           "body": "Udløber dit akademi-intake-tilbud fordi du hverken underskrev eller afviste det (se forrige note), beholder du stadig en fordel: ender ungdomsauktionen med et salg, modtager du hele det vindende bud som kompensation. Byder ingen, forbliver rytteren blot i spillet som fri agent, som i dag."
         },
-        "refs": [2648]
+        "refs": [
+          2648
+        ]
       },
       {
         "category": "fixed",
@@ -7032,7 +7817,9 @@ export const PATCHES = [
           "title": "Rettede en forkert \"Nærmer sig loftet\"-besked på unge ryttere langt fra deres potentiale",
           "body": "En rytters Udvikling-fane kunne vise \"Nærmer sig loftet\", selvom niveauet i dag var langt fra potentialet, for eksempel evne 29 mod et loft på 90+. Det skete, når 6-sæsons-vækstprognosen ikke fandt et tidspunkt inden for vinduet, uanset hvor stort det reelle gab var. Beskeden vises nu kun når rytterens niveau reelt er tæt på loftet; ryttere med lang vej endnu tilbage får i stedet en ærlig \"Stort spring til loftet\"-linje, så alders- og loft-udsigterne aldrig modsiger hinanden."
         },
-        "refs": [2645]
+        "refs": [
+          2645
+        ]
       },
       {
         "category": "improved",
@@ -7046,7 +7833,10 @@ export const PATCHES = [
           "title": "Spejder-missioner target'er nu kun kontraktfrie ryttere, og en målrettet undersøgelse svarer på ~30 minutter",
           "body": "Missioner target'er kontraktfrie ryttere du kan hente med det samme, så en mission aldrig kommer tilbage med en rytter der sidder på et andet menneske-holds trup. En målrettet enkelt-rytter-undersøgelse svarer nu på cirka 30 minutter uanset spejder-niveau, ned fra op til 3 dage før. Rapporter kan heller ikke længere referere en rytter der siden er blevet utilgængelig (et uafklaret akademi-tilbud eller en ventende handel): tjekket kører friskt hver gang du åbner Spejder-siden, og hver rytters rapport viser nu deres nuværende status (kontraktfri, eller hvilket hold der hentede dem)."
         },
-        "refs": [2644, 2623]
+        "refs": [
+          2644,
+          2623
+        ]
       }
     ]
   },
@@ -7067,7 +7857,9 @@ export const PATCHES = [
           "title": "Akademi-intake-tilbud udløber nu efter 7 dage",
           "body": "Et åbent akademi-intake-tilbud stod tidligere for evigt, hvis du hverken underskrev eller afviste det. Det udløber nu automatisk efter 7 dage, så et gammelt tilbud aldrig holder en kandidat skjult for resten af spillet. Udløber dit tilbud, sættes rytteren på auktion for alle andre klubber i en ungdomsauktion, der løber et helt døgn. Usolgte ryttere bliver i spillet som frie agenter."
         },
-        "refs": [2627]
+        "refs": [
+          2627
+        ]
       }
     ]
   },
@@ -7088,7 +7880,9 @@ export const PATCHES = [
           "title": "Ryddede trupper forbliver ryddet, og \"Genopbyg alt\" overskriver ikke længere dig",
           "body": "Assistenten fyldte proaktivt løb-trupper ud for resten af sæsonen ved hvert deploy, og en trup du manuelt havde ryddet kunne komme tilbage ved næste auto-udfyld, fordi en tom udtagelse og \"aldrig rørt\" så identiske ud for systemet. Der er nu dedikerede \"Ryd dag\"- og \"Ryd alt\"-knapper (med bekræftelse), der markerer et løb som ryddet for godt, indtil du selv beder om auto-udfyld eller udtager manuelt. \"Genopbyg alt\" erstatter ikke længere dine valg med nye AI-forslag på egen hånd; den rydder dagen i stedet, så du vælger hvad der sker næst."
         },
-        "refs": [2599]
+        "refs": [
+          2599
+        ]
       }
     ]
   },
@@ -7109,7 +7903,9 @@ export const PATCHES = [
           "title": "\"Nyt\"-badge på dit resultat-kort følger nu din konto",
           "body": "\"Nyt\"-badget på \"Sådan gik det for dit hold\" huskede kun hvilket løb du havde set i din browser, så det nulstillede sig hver gang du skiftede enhed, og med over halvdelen af besøg på mobil betød det \"Nyt\" igen for et resultat du allerede havde tjekket. Det følger nu din konto på tværs af alle enheder."
         },
-        "refs": [2593]
+        "refs": [
+          2593
+        ]
       }
     ]
   },
@@ -7130,7 +7926,9 @@ export const PATCHES = [
           "title": "Nyt: send feedback og fejlrapporter uden Discord",
           "body": "En Kontakt-knap sidder nu nederst i menuen, ved siden af Hjælp. Åbn den for at sende feedback, melde en fejl eller dele en idé direkte til udvikleren, uden behov for en Discord-konto. Fejlrapporter inkluderer automatisk hvilken side du var på, så de er lettere at spore."
         },
-        "refs": [2602]
+        "refs": [
+          2602
+        ]
       }
     ]
   },
@@ -7151,7 +7949,9 @@ export const PATCHES = [
           "title": "Se andre holds staff og faciliteter",
           "body": "Alle holds side har nu en Staff & faciliteter-fane, så du kan spejde efter hvad en konkurrent har bygget uden at gætte blindt. Den viser samme detaljeniveau som når du sammenligner ansættelseskandidater (navne, roller og niveauer), aldrig deres løn eller opgraderingspriser."
         },
-        "refs": [2601]
+        "refs": [
+          2601
+        ]
       }
     ]
   },
@@ -7172,7 +7972,9 @@ export const PATCHES = [
           "title": "Holdets resultat-fane viser nu hele løbshistorikken",
           "body": "Resultat-fanen på din holdside viste kun pointgivende resultater, hvilket skjulte 92% af holdets løbshistorik, herunder til tider netop det løb som dashboardets \"Sådan gik det for dit hold\"-kort lige havde linket til. Den viser nu alle resultater, med de pointgivende rækker stadig fremhævet."
         },
-        "refs": [2593]
+        "refs": [
+          2593
+        ]
       }
     ]
   },
@@ -7193,7 +7995,9 @@ export const PATCHES = [
           "title": "Værdi-trend-pile er nu tilbage på holdlisten",
           "body": "Den lille pil op/ned ved siden af hver rytters værdi (deres 7/14-dages prisbevægelse) manglede stille og roligt på holdlisten fordi bulk-forespørgslen bag den havde forkert form og blev droppet. Den matcher nu rytterprofil-siden, og en regressionstest låser begge forespørgsler til samme form, så det ikke kan gå i stykker igen uden varsel."
         },
-        "refs": [2597]
+        "refs": [
+          2597
+        ]
       }
     ]
   },
@@ -7214,7 +8018,9 @@ export const PATCHES = [
           "title": "Brosten har nu sit eget kalender-ikon",
           "body": "Kalenderens terræn-legend viser nu et distinkt brosten-ikon mellem Sprint og Kuperet, så brostens-løb ikke længere ligner en flad sprint-etape ved et hurtigt blik. Enkeltstart og holdstart beholder også hver deres eget ikon."
         },
-        "refs": [2605]
+        "refs": [
+          2605
+        ]
       }
     ]
   },
@@ -7235,7 +8041,9 @@ export const PATCHES = [
           "title": "Scouting Network: rapporter peger nu kun på ryttere du faktisk kan slå op",
           "body": "Nogle spejder-mission-rapporter nævnte ryttere du ikke kunne finde nogen steder. Rodårsag: shortlisten kunne indeholde en rytter der lige nu står i et uafklaret akademi-intake-tilbud hos et andet hold, hvilket skjuler ham for alle indtil det hold accepterer eller afviser tilbuddet, eller (sjældent) en rytter der allerede er på din egen trup. Missioner springer nu begge tilfælde over, så hvert navn i en rapport er en ægte, søgbar rytter."
         },
-        "refs": [2581]
+        "refs": [
+          2581
+        ]
       }
     ]
   },
@@ -7256,7 +8064,9 @@ export const PATCHES = [
           "title": "Scouting Network: tydeligere kapacitet, ingen tabte opgaver",
           "body": "Dit spejder-kort forklarer nu at en 2. samtidig opgave kræver en chefspejder med en overall omkring 80, ikke bare en ansat spejder eller en bygget Scouting Network. Vi har også bekræftet (og låst med en regressionstest) at en mission eller målrettet opgave startet FØR du opgraderer faciliteten eller ansætter en spejder aldrig bliver slettet eller annulleret: den forbliver i køen og rapporterer til tiden, og rejseomkostningen var aldrig i fare."
         },
-        "refs": [2580]
+        "refs": [
+          2580
+        ]
       },
       {
         "category": "fixed",
@@ -7270,7 +8080,9 @@ export const PATCHES = [
           "title": "Sæson-vælgeren viser ikke længere en \"Sæson 0\" der ikke findes",
           "body": "Sæson-vælgeren på Kalender- og Sæsonplanlægger-siderne kunne vise \"Sæson 0\", en efterladt bogførings-sæson fra åben beta uden nogen løb, som aldrig var tænkt til at kunne vælges. Den er nu filtreret fra, så vælgeren kun tilbyder rigtige, spillebare sæsoner."
         },
-        "refs": [2600]
+        "refs": [
+          2600
+        ]
       }
     ]
   },
@@ -7291,7 +8103,9 @@ export const PATCHES = [
           "title": "Trænings-fremgang er nu ærlig om lofter og dagens gevinster",
           "body": "To ting forvirrede managere efter gårsdagens trænings-omlægning: en fremskridtslinje der lige har udbetalt +1 starter forfra nær nul (hvilket lignede tabt fremgang), og ryttere der har nået deres livstidsloft stod med en frossen linje uden forklaring. Trænings-siden viser nu et \"+N i dag\"-mærkat på hver rytter der har vundet hele evne-point i dagens session, og ryttere hvis valgte fokus er færdigudviklet viser en tydelig \"Færdigudviklet i dette fokus\"-markering i stedet for en død linje. Hjælp-sektionen forklarer begge dele."
         },
-        "refs": [2578]
+        "refs": [
+          2578
+        ]
       }
     ]
   },
@@ -7312,7 +8126,9 @@ export const PATCHES = [
           "title": "Blødere auktioner og rangliste",
           "body": "Små bevægelses-detaljer på de levende flader: overbudt-beskeden glider nu ind i stedet for at poppe op, guld-markeringen på det førende bud toner blødt når føringen skifter, auktioner viser en nedtællingsring de sidste 10 sekunder (rød de sidste 3), ranglistens rækker glider til deres nye pladser når point opdateres, og førertrøje-chippen pulserer kort når den lander på et nyt hold. Alle animationer respekterer dit systems indstilling for reduceret bevægelse."
         },
-        "refs": [2577]
+        "refs": [
+          2577
+        ]
       }
     ]
   },
@@ -7333,7 +8149,9 @@ export const PATCHES = [
           "title": "Global Rank: én rangliste for alle managere",
           "body": "En ny rangliste dækker alle managere på tværs af divisionerne. Du tjener point fra løbsresultater vægtet efter løbets prestige, og alle point halveres ved hvert sæsonskifte, så aktivitet altid slår gammel storhed. Siden viser din egen placering med ugentlige bevægelsespile, sæsonens største klatrere og de bedste nye managere. Et lille dashboard-kort holder din placering synlig."
         },
-        "refs": [2453]
+        "refs": [
+          2453
+        ]
       },
       {
         "category": "new",
@@ -7347,7 +8165,10 @@ export const PATCHES = [
           "title": "Sæson 2 bliver synlig til planlægning",
           "body": "Kalenderen og sæsonplanlæggeren kan nu skifte mellem sæson 1 og sæson 2, så du kan planlægge form og trupper mod næste sæsons løb, så snart sæson 2-kalenderen er offentliggjort."
         },
-        "refs": [2449, 2518]
+        "refs": [
+          2449,
+          2518
+        ]
       },
       {
         "category": "new",
@@ -7361,7 +8182,10 @@ export const PATCHES = [
           "title": "Bulk-prisredigering og filter på udbudspris",
           "body": "Du kan nu markere flere af dine listede ryttere og justere deres priser på én gang, inklusive relative ændringer som +10% på alle markerede, med live før- og efter-preview. Transferlisten har også fået et min/max-filter på udbudspris."
         },
-        "refs": [2451, 2522]
+        "refs": [
+          2451,
+          2522
+        ]
       },
       {
         "category": "new",
@@ -7375,7 +8199,10 @@ export const PATCHES = [
           "title": "Personale-oversigt på tværs af alle hold",
           "body": "En ny side viser alt personale i spillet med hold, rolle og stats, med søgning, filtrering og klikbar profil. Træner-niveaubåndene er samtidig forenklet: youth og junior er nu én U23-gruppe, forklaret direkte i UI'et."
         },
-        "refs": [2450, 2529]
+        "refs": [
+          2450,
+          2529
+        ]
       },
       {
         "category": "improved",
@@ -7389,7 +8216,10 @@ export const PATCHES = [
           "title": "Etape-for-etape-opdateringer og ønskeliste-beskeder",
           "body": "Under etapeløb får du nu en besked efter hver etape med din bedste rytters resultat, ikke kun efter den sidste. Og forlader en rytter på din ønskeliste spillet, får du besked i stedet for at rytteren bare forsvinder."
         },
-        "refs": [2523, 2524]
+        "refs": [
+          2523,
+          2524
+        ]
       },
       {
         "category": "improved",
@@ -7403,7 +8233,9 @@ export const PATCHES = [
           "title": "Tættere løb i toppen",
           "body": "Løbssimulationen er rekalibreret mod den aktuelle rytter-population: favoritterne vinder stadig mest, men ikke længere lige så forudsigeligt. Forvent mere åbne finaler. En natlig vagt overvåger nu balancen mod ægte resultater, så skævheder fanges automatisk."
         },
-        "refs": [2557]
+        "refs": [
+          2557
+        ]
       },
       {
         "category": "fixed",
@@ -7417,7 +8249,12 @@ export const PATCHES = [
           "title": "Hurtigere sider, planner i fuld bredde, klikbare resultater",
           "body": "Dashboardet og liga-overblikket loader mærkbart hurtigere. Sæsonplanlæggeren bruger nu hele skærmbredden. Løbsnavne på rytterprofilens resultat-faner linker til løbssiden. Kom i gang-kortet dukker ikke længere op igen for etablerede hold."
         },
-        "refs": [2444, 2568, 2526, 2439]
+        "refs": [
+          2444,
+          2568,
+          2526,
+          2439
+        ]
       }
     ]
   },
@@ -7438,7 +8275,9 @@ export const PATCHES = [
           "title": "Bestyrelses-beskeder når nu frem på Discord",
           "body": "Hvis du har Discord-DM'er slået til, blev bestyrelses-opdateringer og bestyrelses-advarsler aldrig leveret. Beskederne blev bygget og derefter tabt, før de blev sendt, så knappen for bestyrelses-opdateringer i dine profilindstillinger reelt ingen effekt havde. De når nu frem som tiltænkt. Bestyrelses-notifikationer inde i spillet var ikke berørt og virkede hele tiden."
         },
-        "refs": [2569]
+        "refs": [
+          2569
+        ]
       }
     ]
   },
@@ -7459,7 +8298,9 @@ export const PATCHES = [
           "title": "Dine individuelle rytter-indstillinger vinder nu over den ugentlige rutine",
           "body": "Sætter du en rytter til let træning eller hvile, vinder det valg nu over holdets ugentlige rutine. Rutinen er standard for ryttere uden egen indstilling. Siden for daglig træning viser også præcis hvad hver rytter træner i dag og hvor beslutningen kommer fra, så de to skærme ikke længere modsiger hinanden."
         },
-        "refs": [2438]
+        "refs": [
+          2438
+        ]
       },
       {
         "category": "fixed",
@@ -7473,7 +8314,9 @@ export const PATCHES = [
           "title": "Daglig træning bruger hele skærmbredden",
           "body": "Siden for daglig træning skærer ikke længere kolonner af i højre side, mens der samtidig er ubrugt plads. Den bruger nu hele bredden, og rytternavn-kolonnen bliver stående når du scroller sidelæns på mindre skærme."
         },
-        "refs": [2446]
+        "refs": [
+          2446
+        ]
       },
       {
         "category": "fixed",
@@ -7487,7 +8330,9 @@ export const PATCHES = [
           "title": "Kontraktforlængelser fejler ikke længere stille ved maks-længde",
           "body": "At forlænge en rytter der allerede var på den længst tilladte kontrakt kunne fejle uden nogen besked. Forlængelsen gennemføres nu korrekt og holder kontrakten inden for det tilladte interval."
         },
-        "refs": [2424]
+        "refs": [
+          2424
+        ]
       }
     ]
   },
@@ -7508,7 +8353,9 @@ export const PATCHES = [
           "title": "Scouting er meget hurtigere nu",
           "body": "Spejder-missioner tager nu 2 dage i stedet for 14, og en målrettet rytter-undersøgelse tager 1 dag pr. niveau i stedet for 3. Send din spejder ud i dag, og rapporten er klar i overmorgen. Spejderens kapacitet, rejseomkostninger og shortlist-reglerne er uændrede. Missioner der allerede er i gang, er omdateret til det nye tempo, så ventende rapporter lander tidligere."
         },
-        "refs": [2458]
+        "refs": [
+          2458
+        ]
       }
     ]
   },
@@ -7529,7 +8376,9 @@ export const PATCHES = [
           "title": "Din bestyrelse i sæson 1 læser nu dine resultater",
           "body": "I din første sæson stod bestyrelsens tilfredshed før fast på 50 hele vejen igennem. Intet du gjorde på ruten flyttede den. Den følger nu dine resultater (placering blandt de andre rigtige hold i din gruppe) og klubbens økonomi løb for løb, og reagerer inden for et interval på 30-75. Din sponsor-modifier holdes stadig neutral på 1,0x hele sæson 1, og der er endnu ingen hårde konsekvenser. Bestyrelsen observerer kun."
         },
-        "refs": [2521]
+        "refs": [
+          2521
+        ]
       }
     ]
   },
@@ -7550,7 +8399,9 @@ export const PATCHES = [
           "title": "Scouting-netværket er nu åbent",
           "body": "Du kan nu bygge og opgradere Scouting-netværket på Klub-siden, ligesom Træningscenteret. Hvert tier låser op for at ansætte en højere-tier chefscout: en bedre spejder indsnævrer sine rytter-estimater yderligere, og når hans samlede rating når omkring 80, kan han køre to spejder-opgaver ad gangen i stedet for én."
         },
-        "refs": [2530]
+        "refs": [
+          2530
+        ]
       }
     ]
   },
@@ -7571,7 +8422,9 @@ export const PATCHES = [
           "title": "Discord-feeds taler nu engelsk",
           "body": "Auktions-, transfer-, løbsresultat- og bestyrelses-webhooks i Discord-serveren blev postet på dansk. Alle spillervendte Discord-beskeder (kanal-feeds og direkte beskeder til managers) er nu på engelsk."
         },
-        "refs": [2520]
+        "refs": [
+          2520
+        ]
       }
     ]
   },
@@ -7592,7 +8445,9 @@ export const PATCHES = [
           "title": "Manager-online-status følger nu dit sprog",
           "body": "Online-badget ved siden af en managers navn på hold- og managerprofiler viste altid dansk tekst, også med engelsk valgt. Det viser nu 'Online now', 'Never' og relative tider på dit valgte sprog."
         },
-        "refs": [2508]
+        "refs": [
+          2508
+        ]
       }
     ]
   },
@@ -7613,7 +8468,10 @@ export const PATCHES = [
           "title": "Bestyrelsen giver dig nu et reelt forhandlingsvindue",
           "body": "Bestyrelsesplaner der ventede på din forhandling kunne blive afgjort af bestyrelsen inden for timer, ofte uden varsel. Hver plan får nu et fuldt vindue på 5 dage fra det øjeblik den åbner, med en påmindelse på dag 2 og en sidste advarsel på dag 4, før bestyrelsen vælger for dig. Det gælder også helt nye hold."
         },
-        "refs": [2463, 2514]
+        "refs": [
+          2463,
+          2514
+        ]
       },
       {
         "category": "fixed",
@@ -7627,7 +8485,10 @@ export const PATCHES = [
           "title": "Slut med at sidde fast i bestyrelsens opsætnings-wizard",
           "body": "Hvis bestyrelsens forslag ikke kunne hentes under førstegangsopsætning af planer, viste wizarden en fejl uden nogen vej ud. Den tilbyder nu altid en vej tilbage til oversigten når noget går galt, og genåbner ikke sig selv efter du har lukket den."
         },
-        "refs": [2463, 2513]
+        "refs": [
+          2463,
+          2513
+        ]
       }
     ]
   },
@@ -7648,7 +8509,9 @@ export const PATCHES = [
           "title": "Hvorfor endte din rytter, hvor han gjorde?",
           "body": "Løbsresultater kommer nu med en why-rapport, der forklarer hvad der formede rytterens placering, med story-tags som Outsider, Off day, Sacrifice og Crash direkte på resultatsiden."
         },
-        "refs": [2355]
+        "refs": [
+          2355
+        ]
       },
       {
         "category": "new",
@@ -7662,7 +8525,9 @@ export const PATCHES = [
           "title": "Sådan gik det for dit hold: løbsresultater på dit dashboard",
           "body": "Efter hvert afsluttet løb med dine ryttere viser et nyt dashboard-kort dine placeringer, præmiepenge og et kort referat af hvordan løbet udviklede sig, med link til det fulde resultat. Du går ikke længere glip af hvordan din taktik spillede ud."
         },
-        "refs": [2466]
+        "refs": [
+          2466
+        ]
       },
       {
         "category": "new",
@@ -7676,7 +8541,9 @@ export const PATCHES = [
           "title": "Se hvor en rytters værdi er på vej hen",
           "body": "Rytterens markedsværdi viser nu bevægelsen (ændringen de seneste 7 og 14 dage) på rytterprofilen og i din trup-oversigt, så du kan se hvem der stiger eller falder, før du køber eller sælger."
         },
-        "refs": [2499]
+        "refs": [
+          2499
+        ]
       },
       {
         "category": "new",
@@ -7690,7 +8557,9 @@ export const PATCHES = [
           "title": "En daglig historie fra træningen, ikke kun tal",
           "body": "Dit trænings-check-in starter nu med én kurateret historie fra rytterens seneste træningsdag, et gennembrud, at nærme sig et mål, eller topform, i stedet for en væg af tal."
         },
-        "refs": [2484]
+        "refs": [
+          2484
+        ]
       },
       {
         "category": "new",
@@ -7704,7 +8573,9 @@ export const PATCHES = [
           "title": "Se om udvikl-og-sælg rent faktisk betaler sig",
           "body": "En ny akademi-regnskabsflade stiller dine driftsomkostninger og akademi-løn op mod salgsindtægter, så du endelig kan se om din udvikl-og-sælg-strategi betaler sig."
         },
-        "refs": [2485]
+        "refs": [
+          2485
+        ]
       },
       {
         "category": "improved",
@@ -7718,7 +8589,9 @@ export const PATCHES = [
           "title": "Ungdomstalent kommer nu gennem dit eget akademi",
           "body": "Listen over frie ungdomsryttere er væk: nye talenter kommer via dit sæson-intake og ungdomsauktioner. Et prospekt ingen byder på forlader sporten for altid, så at afvise en kandidat er nu en ægte beslutning."
         },
-        "refs": [2456]
+        "refs": [
+          2456
+        ]
       },
       {
         "category": "new",
@@ -7732,7 +8605,9 @@ export const PATCHES = [
           "title": "Dit holds historie, sæson for sæson",
           "body": "Holdsiden har nu en palmarès-fane: sæson-for-sæson-historik med division, placering, point og sejre, plus op- og nedrykning, sammen med en fuld æresliste."
         },
-        "refs": [1997]
+        "refs": [
+          1997
+        ]
       },
       {
         "category": "improved",
@@ -7746,7 +8621,9 @@ export const PATCHES = [
           "title": "Vurdér et auktionsbud på ét blik",
           "body": "Auktioner viser nu hvordan det aktuelle bud ligger i forhold til rytterens estimerede markedsværdi (under eller over vurdering), plus rytterens samlede rating, type og fem nøgle-evner som standard. På mobil er filterpanelet foldet sammen, indtil du skal bruge det. Vurderingen er et modelestimat tænkt som reference, ikke en garanteret pris."
         },
-        "refs": [2464]
+        "refs": [
+          2464
+        ]
       },
       {
         "category": "improved",
@@ -7760,7 +8637,9 @@ export const PATCHES = [
           "title": "Sæsonplanlæggeren viser nu ryttere som du kender dem",
           "body": "Rytter-rating, nationalitetsflag og ryttertype vises nu i Sæsonplanlæggeren ligesom resten af spillet, og attribut-farverne er læselige i dark mode."
         },
-        "refs": [2447]
+        "refs": [
+          2447
+        ]
       },
       {
         "category": "fixed",
@@ -7774,7 +8653,9 @@ export const PATCHES = [
           "title": "Bestyrelsesforhandlinger vurderer dig nu ens",
           "body": "At bede bestyrelsen om nye mål kunne blive vurderet med mindre kontekst end bestyrelses-statussiden viste, og auto-accepterede forslag mistede trade-off-detaljer. Alle bestyrelsesbeslutninger bruger nu det samme fulde billede af din sæson."
         },
-        "refs": [2469]
+        "refs": [
+          2469
+        ]
       },
       {
         "category": "improved",
@@ -7788,7 +8669,9 @@ export const PATCHES = [
           "title": "Handlinger fortæller dig, når noget går galt",
           "body": "Træning, scouting og gem af strategi fejler ikke længere i stilhed, du får nu en fejlbesked, når noget går galt. Etape-roller har også fået korte forklaringer."
         },
-        "refs": [2465]
+        "refs": [
+          2465
+        ]
       },
       {
         "category": "fixed",
@@ -7802,7 +8685,9 @@ export const PATCHES = [
           "title": "Småfixes på tværs af appen",
           "body": "Founder-sidens CTA scroller nu til waitlisten, hjælp-deep-links virker korrekt, watchlist-bekræftelser bruger en toast i stedet for en browser-alert, og et internt survey-banner er fjernet."
         },
-        "refs": [2467]
+        "refs": [
+          2467
+        ]
       }
     ]
   },
@@ -7823,7 +8708,10 @@ export const PATCHES = [
           "title": "Akademi-træning går ikke længere i stå midt i sæsonen",
           "body": "Unge ryttere (16-21 år) i dit akademi fik næsten ingen fremgang, når sæsonen var kommet i gang, selv med masser af træningsdage tilbage. Akademi-træning giver nu jævn fremgang hele sæsonen igennem i stedet for næsten at gå i stå undervejs. Det er en midlertidig løsning, mens en langsigtet akademi-udviklingsmodel designes."
         },
-        "refs": [2437, 2202]
+        "refs": [
+          2437,
+          2202
+        ]
       }
     ]
   },
@@ -7844,7 +8732,9 @@ export const PATCHES = [
           "title": "Planlæg dine sæson-peaks",
           "body": "Den nye Sæsonplanlægger lader dig sigte mod nøgleløb og bygge hver rytter op mod en form-top på den dag der tæller. Form tjenes i optakten, så træn det rigtige fokus og taper ind mod løbet. Hver rytter kan peake mod op til to løb pr. sæson."
         },
-        "refs": [2224]
+        "refs": [
+          2224
+        ]
       }
     ]
   },
@@ -7865,7 +8755,9 @@ export const PATCHES = [
           "title": "Påmindelse om holdudtagelse til næste løb virker nu",
           "body": "Dashboardets påmindelse om at dit næste løb stadig mangler en holdudtagelse blev ikke vist. Den dukker nu korrekt op, hver gang du har et kommende løb, du endnu ikke har udtaget et hold til."
         },
-        "refs": [2420]
+        "refs": [
+          2420
+        ]
       },
       {
         "category": "fixed",
@@ -7879,13 +8771,12 @@ export const PATCHES = [
           "title": "Løbsdags-træthed gemmes nu pålideligt",
           "body": "En sjælden fejl kunne forhindre, at løbsdags-træthed blev gemt for nogle ryttere efter et løb. Træthed registreres nu altid korrekt."
         },
-        "refs": [2421]
+        "refs": [
+          2421
+        ]
       }
     ]
   },
-  // FLIP-PAKKE (#2376): merges af ejeren SAMMEN med at race_engine_v3_scoring flippes 'on'.
-  // Ved flip: justér version/date hvis 6.97 er taget, og brug [patch-notes-snapshot-ok]
-  // i merge-commit (eller refresh snapshots) jf. scripts/check-patch-notes-version.js.
   {
     "version": "6.97",
     "date": "2026-07-13",
@@ -7903,7 +8794,10 @@ export const PATCHES = [
           "title": "Ryttere har gode og dårlige dage",
           "body": "Hver rytter får nu en dagsform for hver løbsdag: nogle dage er benene fremragende, andre dage er de tunge. På sjældne dage kan en rytter knække helt, og det kan også ramme favoritten. Ryttere i god form knækker sjældnere, så formarbejde køber nu både fart og forsikring. Forvent færre løb der er afgjort på forhånd og flere resultater der er værd at diskutere."
         },
-        "refs": [2224, 2353]
+        "refs": [
+          2224,
+          2353
+        ]
       },
       {
         "category": "new",
@@ -7917,7 +8811,10 @@ export const PATCHES = [
           "title": "Holdarbejde har en pris, og den køber ægte beskyttelse",
           "body": "Hjælpere bruger nu kræfter på at arbejde for deres kaptajn og taber selv placeringer på det, mens kaptajnen får et markant stærkere boost fra stærke, friske hjælpere. En ny Fri rolle lader en rytter droppe holdarbejdet og køre sit eget løb, uden arbejdsomkostning og uden kaptajnstøtte. At vælge hvem der arbejder, hvem der beskyttes, og hvem der kører frit, er nu en ægte beslutning."
         },
-        "refs": [2352, 2376]
+        "refs": [
+          2352,
+          2376
+        ]
       },
       {
         "category": "new",
@@ -7931,7 +8828,9 @@ export const PATCHES = [
           "title": "Etapeløb: planlæg roller og indsats etape for etape",
           "body": "I etapeløb kan du nu sætte roller pr. etape og ændre taktik mens løbet køres: kørte etaper er låst, kommende etaper er åbne. Hver rytter får også en indsats pr. etape: Arbejd giver alt for holdet i dag men bygger ekstra træthed, Spar kræfter holder igen og restituerer mere til i morgen. Tager din rytter førertrøjen, gør ét klik ham til kaptajn for de resterende etaper."
         },
-        "refs": [2034]
+        "refs": [
+          2034
+        ]
       },
       {
         "category": "new",
@@ -7945,7 +8844,9 @@ export const PATCHES = [
           "title": "Styrt, mekaniske defekter og opgivelser",
           "body": "Ryttere kan nu styrte eller få en mekanisk defekt undervejs på en etape. De fleste taber tid i resultatet; enkelte må udgå af løbet og skal bruge et par dage på at komme sig. Uheld er sjældne, rammer hektiske finaler og brosten hårdest, og ryttere med god feltplacering rammes sjældnere. Udgåede vises på løbssiden, og løbs-recap'en fortæller historien når et styrt ødelagde nogens dag."
         },
-        "refs": [1176]
+        "refs": [
+          1176
+        ]
       }
     ]
   },
@@ -7966,7 +8867,9 @@ export const PATCHES = [
           "title": "Rytter-palmarès: karriereresultater, trofæskab og sæson-æresliste",
           "body": "Alle rytterprofiler har nu en Palmarès-fane. Se karriereresultater grupperet pr. sæson med holdet de blev kørt hjem for, et trofæskab med GC-sejre, endagssejre, etapesejre, endelige trøjer og dage i trøje, plus karrieretotaler som win rate, ranglistepoint og præmiepenge."
         },
-        "refs": [1997]
+        "refs": [
+          1997
+        ]
       },
       {
         "category": "improved",
@@ -7980,7 +8883,10 @@ export const PATCHES = [
           "title": "Hjælp og FAQ opdateret efter jeres spørgsmål",
           "body": "Fem nye FAQ-punkter dækker de mest almindelige spørgsmål fra nye managere: løbstilmelding, hvordan GC- og endagssejre tælles, startbudget og gældsloft, akademi-indtag og scouting-pladser, samt træthedsgrænsen for skadesrisiko. Auktions-teksten beskriver nu præcist hvordan sene bud ruller ind i næste auktionsvindue."
         },
-        "refs": [2150, 2184]
+        "refs": [
+          2150,
+          2184
+        ]
       },
       {
         "category": "fixed",
@@ -7994,7 +8900,10 @@ export const PATCHES = [
           "title": "Mere pålidelig løbsafvikling",
           "body": "Løbs-scheduleren springer nu et problematisk løb over og fortsætter med resten i stedet for at prøve igen med støj, og interne alarmer fyrer kun når en etape reelt sidder fast. Fundamentet for at holde hver divisionsgruppe på præcis 24 hold er også på plads."
         },
-        "refs": [2251, 2187]
+        "refs": [
+          2251,
+          2187
+        ]
       }
     ]
   },
@@ -8015,7 +8924,9 @@ export const PATCHES = [
           "title": "Rytter-lejeaftaler fjernet",
           "body": "Udlåns-featuren (at leje en rytter ud til et andet hold) er fjernet. Den blev aldrig brugt, og dens point-kreditering var misvisende. Køb, sælg, auktionér og byt ryttere som normalt. Giver et bedre designet leje-system mening senere, kan det vende tilbage."
         },
-        "refs": [1994]
+        "refs": [
+          1994
+        ]
       }
     ]
   },
@@ -8036,7 +8947,9 @@ export const PATCHES = [
           "title": "Hall of Fame gør plads til den kommende verdenshistorik",
           "body": "Hall of Fame-siden er ikke længere linket fra navigationen; direkte links sender dig nu til Standings i stedet. Den afløses senere af en rigtig verdenshistorik-feature."
         },
-        "refs": [2359]
+        "refs": [
+          2359
+        ]
       },
       {
         "category": "improved",
@@ -8050,7 +8963,9 @@ export const PATCHES = [
           "title": "Byttehandler er flyttet til rytterprofilen",
           "body": "Den separate Swaps-fane på Transfers-siden er væk. Foreslå i stedet en byttehandel direkte fra en rytters profilside (\"⇄ Foreslå byttehandel\"). Åbne bytteforslag vises stadig under Modtagne tilbud og Sendte tilbud, hvor du kan acceptere, give modbud eller trække dem tilbage som før."
         },
-        "refs": [2358]
+        "refs": [
+          2358
+        ]
       }
     ]
   },
@@ -8071,7 +8986,10 @@ export const PATCHES = [
           "title": "Byg din klub: faciliteter og staff",
           "body": "Brug dit overskud på fem facilitets-spor (træning, scouting, medicinsk, akademi og kommerciel), hver med fem tiers, og ansæt en chef for hvert spor. Priser vises i CZ$ og i sæsoners overskud, så du kan se den reelle pris. Faciliteter opsuger din gevinst og låser effekter op efterhånden som hver motor lander, med træning først. Hver chef har en klikbar profil med en samlet rating og evne-kolonner, så du kan sammenligne kandidater på styrke og specialisering før du ansætter, og en sæson-omkostnings-stribe på klub-fladen viser drift og lønninger op mod din saldo."
         },
-        "refs": [1441, 2357]
+        "refs": [
+          1441,
+          2357
+        ]
       },
       {
         "category": "new",
@@ -8085,7 +9003,10 @@ export const PATCHES = [
           "title": "Mød din talentspejder: Scouting-centralen er live",
           "body": "Scouting rykker fra enkelt-klik til en rigtig spejder du styrer. På den nye Scouting-central sender du din talentspejder på målrettede opgaver på en bestemt rytter eller på bredere søge-missioner, følger opgavekøen og får færdige rapporter tilbage i et shortlist-feed. Rapporter indsnævrer en rytters skjulte potentiale-interval, ligesom scouting gjorde før, og al din eksisterende scouting-fremgang følger med."
         },
-        "refs": [2244, 2357]
+        "refs": [
+          2244,
+          2357
+        ]
       }
     ]
   },
@@ -8106,7 +9027,9 @@ export const PATCHES = [
           "title": "Tydeligere klikbare områder på forsiden og rytterprofilen",
           "body": "Ryddet op et par steder hvor noget så klikbart ud uden at være det, eller var svært at ramme: \"open beta\"-mærket på forsiden viser ikke længere en tekst-markør som var det en knap, og Sammenlign-knappen på en rytters profil har nu et større klik-område, så den er lettere at ramme på touch-skærme."
         },
-        "refs": [2254]
+        "refs": [
+          2254
+        ]
       }
     ]
   },
@@ -8127,7 +9050,9 @@ export const PATCHES = [
           "title": "Lånebetalinger viser nu hvor meget der gik til rente vs. hovedstol",
           "body": "Når du afdrager på et lån, viser transaktionen i din finanshistorik nu en lille opdeling under beløbet: hvor meget af betalingen der dækkede påløbet rente, og hvor meget der nedbragte hovedstolen. Betalinger dækker rente først, derefter hovedstol, og lånets \"påløbet rente\"-tal falder tilsvarende. Ældre betalings-poster fra før denne ændring viser bare ikke opdelingen."
         },
-        "refs": [2326]
+        "refs": [
+          2326
+        ]
       }
     ]
   },
@@ -8148,7 +9073,9 @@ export const PATCHES = [
           "title": "Sortér din auktions-historik på pris eller tid",
           "body": "Auktions-historikkens tabel har nu sorterbare kolonne-headers for Pris og Tid, med samme sorterings-udseende som resten af appen. Sortering hopper tilbage til side 1, så rækkefølgen altid matcher det der vises."
         },
-        "refs": [2293]
+        "refs": [
+          2293
+        ]
       }
     ]
   },
@@ -8169,7 +9096,9 @@ export const PATCHES = [
           "title": "Højde, vægt og Sammenlign er tilbage på rytterprofilen",
           "body": "Rytterprofilen viser igen højde og vægt ved siden af nationalitet og division, og en \"Sammenlign\"-knap ved siden af stjernen sender igen en rytter direkte ind i sammenligningsværktøjet. Begge dele forsvandt ved profil-redesignet og er nu genindført, matchet til resten af den redesignede side."
         },
-        "refs": [2266]
+        "refs": [
+          2266
+        ]
       }
     ]
   },
@@ -8190,7 +9119,9 @@ export const PATCHES = [
           "title": "Ensartede sorterings-pile på rangliste, resultater og transferhistorik",
           "body": "De sorterbare kolonne-headers på rytter-ranglisten, et holds resultat-fane og dets transferhistorik-fane bruger nu samme pil-ikon og fremhævnings-stil som resten af appen, i stedet for at hver tabel havde sit eget look. Ingen ændring i hvad eller hvordan du kan sortere, bare et mere ensartet udtryk når du sammenligner kolonner."
         },
-        "refs": [2295]
+        "refs": [
+          2295
+        ]
       }
     ]
   },
@@ -8211,7 +9142,9 @@ export const PATCHES = [
           "title": "Sæt en ugentlig træningsrytme for hele holdet",
           "body": "Du kan nu sætte en ønsket intensitet pr. ugedag (man-søn) i det nye \"Ugentlig rytme\"-panel på Træningssiden. Hver rytter træner stadig sit eget fokus, og \"Træn i dag\" kræver stadig dit klik for konsistens-bonussen, men rytmen styrer hvor hård dagen er uden du skal røre hver rytter enkeltvis. Hold der ikke sætter en rytme er upåvirkede: ryttere følger stadig deres sæson-intensitet hver dag, præcis som før. Roster-rækker viser en lille note når dagens rytme ændrer en rytters intensitet for dagen."
         },
-        "refs": [1895]
+        "refs": [
+          1895
+        ]
       },
       {
         "category": "new",
@@ -8225,7 +9158,9 @@ export const PATCHES = [
           "title": "Sæt en individuel ugeplan for de ryttere du mikro-styrer",
           "body": "Hver rytters række på Træningssiden har nu en \"Individuel ugeplan\"-knap, der åbner en pr-rytter-version af ugerytmen: din egen ønskede intensitet pr. ugedag, kun for netop den rytter. Den vinder over holdets ugentlige rytme for netop denne rytter, og fokus røres aldrig. Ryttere med egen plan viser et lille \"Egen plan\"-mærkat i rosteret, så du hurtigt kan se hvem der kører sit eget program. Ryttere uden en er upåvirkede: de følger bare holdets rytme (eller sæson-intensiteten, præcis som før)."
         },
-        "refs": [1895]
+        "refs": [
+          1895
+        ]
       }
     ]
   },
@@ -8246,7 +9181,9 @@ export const PATCHES = [
           "title": "Ryttere uden trænings-fokus træner nu efter typen som standard",
           "body": "Ryttere uden et valgt fokus trænede tidligere altid Udholdenhed uanset type, så en spurter uden plan stille byggede de forkerte evner. Assistenten vælger nu et fokus der passer til rytterens type i stedet, og fokus-feltet viser en lille \"Assistent: ...(auto)\"-note når det gælder. Anvend-på-valgte-bjælken fik også en \"Smart fokus (efter ryttertype)\"-mulighed, der giver hver valgt rytter sit eget type-matchede fokus i én omgang, og springer ryttere der allerede har et fokus over: din egen beslutning vinder altid."
         },
-        "refs": [1894]
+        "refs": [
+          1894
+        ]
       }
     ]
   },
@@ -8267,7 +9204,9 @@ export const PATCHES = [
           "title": "Fokus-mulighederne viser nu hvorfor et fokus passer eller ikke passer til en rytter",
           "body": "At sætte et træningsfokus der clasher med en rytters type så tidligere identisk ud med ét der passer, så et spurt-fokus på en ren klatrer stille rykkede ingenting uden nogen forklaring. Fokus-dropdownen mærker nu hver mulighed, og en rytter hvis nuværende fokus passer dårligt får en lille besked ved siden af feltet, der forklarer at ryttertype og skjult potentiale sætter et loft pr. evne. Hjælpeguiden og fokus-guiden på siden forklarer den samme gating i almindeligt sprog. Præcise lofter og skjulte potentiale-værdier forbliver skjulte, kun det grove match vises."
         },
-        "refs": [1974]
+        "refs": [
+          1974
+        ]
       }
     ]
   },
@@ -8288,7 +9227,9 @@ export const PATCHES = [
           "title": "Tre unge frie agenter kunne ikke sættes på auktion",
           "body": "Tre unge ryttere i fri agent-puljen (17, 18 og 20 år) nægtede at komme på auktion med en forvirrende besked om akademier. De var efterladt fra et lukket hold og stod stadig markeret som akademi-ryttere, selvom de ikke havde noget hold. De tre ryttere er repareret og kan auktioneres normalt, oprydningsrutinerne nulstiller nu akademi-markeringen når en rytter frigives, og et automatisk tjek overvåger at tilstanden ikke opstår igen. Der er ingen aldersgrænse på auktioner, og det har der aldrig været."
         },
-        "refs": [2264]
+        "refs": [
+          2264
+        ]
       },
       {
         "category": "fixed",
@@ -8302,7 +9243,9 @@ export const PATCHES = [
           "title": "Auktions-knappen vises ikke længere på AI-ejede ryttere",
           "body": "Ryttere på AI-styrede hold kunne ikke længere auktioneres fra slutningen af juni, men rytter-siden viste stadig en start auktion-knap der kun gav en fejl. Knappen er nu skjult for AI- og system-ryttere, og fejlbeskeden er korrekt oversat hvis du skulle møde den andre steder."
         },
-        "refs": [2264]
+        "refs": [
+          2264
+        ]
       }
     ]
   },
@@ -8323,7 +9266,9 @@ export const PATCHES = [
           "title": "Nødlån: maks ét pr. sæson, og gentagen brug har nu konsekvenser",
           "body": "Et sjældent tidsplan-hikke kunne give et hold det samme nødlån mere end én gang ved sæsonstart, hvilket skabte penge ud af ingenting og lagde ekstra gæld oveni. Et hold kan nu højst modtage ét nødlån pr. sæson, garanteret på database-niveau. At læne sig op ad nødlån sæson efter sæson er heller ikke længere gratis: to sæsoner i træk udløser en transfer-fryse og en besked fra bestyrelsen, i stedet for at gælden stille vokser for evigt."
         },
-        "refs": [2301]
+        "refs": [
+          2301
+        ]
       },
       {
         "category": "fixed",
@@ -8337,7 +9282,9 @@ export const PATCHES = [
           "title": "Lån-afdrag behandles nu atomisk",
           "body": "At afdrage på et lån opdaterede tidligere gælden og trak pengene i to separate trin. I sjældne tilfælde (en fejlet hævning, eller to afdrag der landede i samme øjeblik) kunne det slette gæld uden en tilsvarende betaling. Afdrag sker nu som én samlet, låst operation: gælden falder kun når pengene faktisk forlader din konto."
         },
-        "refs": [2302]
+        "refs": [
+          2302
+        ]
       },
       {
         "category": "fixed",
@@ -8351,7 +9298,9 @@ export const PATCHES = [
           "title": "Bestyrelsens tilfredshed beregnes nu ens overalt",
           "body": "Bestyrelsens tilfredshed blev beregnet tre steder (bestyrelsessiden, weekend-evalueringen og sæsonfinalen), og de fik ikke alle de samme input, så resultat-baserede forventninger kunne blive målt mod et mindre felt end det du faktisk kører i. Alle tre bruger nu identiske input. Et bonus-mål knyttet til din profilrytter var desuden matematisk umuligt at ramme; det kræver nu det, det hele tiden var meningen."
         },
-        "refs": [2308]
+        "refs": [
+          2308
+        ]
       }
     ]
   },
@@ -8372,7 +9321,9 @@ export const PATCHES = [
           "title": "Sortér transfermarkedet ved at klikke på en kolonneoverskrift",
           "body": "Tabellen med ryttere til salg, din transferhistorik og din transferprofit-opsummering kan nu sorteres ved at klikke på en hvilken som helst kolonneoverskrift, ikke kun sorteringsknapperne over markedstabellen. Klik på overskrifter og de eksisterende sorteringsknapper deler samme sortering, så de altid er enige om hvad der er sorteret."
         },
-        "refs": [2329]
+        "refs": [
+          2329
+        ]
       }
     ]
   },
@@ -8393,7 +9344,9 @@ export const PATCHES = [
           "title": "Rytterranglisten på forsiden loader igen",
           "body": "Ranglistekortet hentede resultater for alle sæsonens løb på tværs af alle divisioner i stedet for kun din egen, hvilket fik det til at timeoute stille og efterlade kortet tomt. Det henter nu på samme måde som \"seneste resultater\"-kortet allerede gjorde, afgrænset til din division."
         },
-        "refs": [2328]
+        "refs": [
+          2328
+        ]
       },
       {
         "category": "fixed",
@@ -8407,7 +9360,9 @@ export const PATCHES = [
           "title": "\"Kommende løb\"-kortet viser nu de rigtige løb",
           "body": "Kortet valgte sine tre løb ud fra en intern kalenderdato, før det kendte den ægte tidsplan, hvilket kunne vise løb i forkert rækkefølge. Det sorterer nu efter den ægte etapetidsplan, så dagens etaper vises først, og næste dags løb overtager når dagens er kørt."
         },
-        "refs": [2328]
+        "refs": [
+          2328
+        ]
       },
       {
         "category": "fixed",
@@ -8421,7 +9376,9 @@ export const PATCHES = [
           "title": "Holdudtagelses-knappen linker nu til det løb der faktisk mangler det",
           "body": "\"Vælg din trup\"-kortet linkede til det tidligst planlagte løb, selv hvis du allerede havde udtaget til det. Det linker nu direkte til det næste løb hvor du stadig mangler at lave en udtagelse."
         },
-        "refs": [2328]
+        "refs": [
+          2328
+        ]
       },
       {
         "category": "fixed",
@@ -8435,7 +9392,9 @@ export const PATCHES = [
           "title": "Din egen placering vises altid i divisionstabellen",
           "body": "Divisionsstillingen viste kun top 5 hold, så du ikke kunne se din egen placering hvis du lå udenfor. Din egen række vises nu altid, adskilt nederst hvis du ikke er i top 5."
         },
-        "refs": [2328]
+        "refs": [
+          2328
+        ]
       },
       {
         "category": "fixed",
@@ -8449,7 +9408,9 @@ export const PATCHES = [
           "title": "\"Se kalender\"-knappen fører nu til kalenderen",
           "body": "Sæsonbannerets \"Se kalender\"-link pegede på Race Hub i stedet for kalendersiden. Det fører nu det rigtige sted hen."
         },
-        "refs": [2328]
+        "refs": [
+          2328
+        ]
       }
     ]
   },
@@ -8470,7 +9431,9 @@ export const PATCHES = [
           "title": "Lånerente tælles ikke længere dobbelt i din sæsonrapport",
           "body": "Rente der blev lagt oveni et lån du ikke afdrog på, blev tidligere vist som en kontant udgift i din sæsonrapports net-tal, selvom der reelt ikke forsvandt penge fra din konto, og den samme rente blev talt med igen når du senere betalte lånet af. Rente der lægges oveni et låns gæld vises nu som en separat, tydeligt markeret \"ikke-kontant\"-linje i stedet for at blande sig ind i dit netto-cashflow, og hvert aktivt lån viser nu præcis hvor meget rente der er lagt oveni, både under Finance → Lån og på gældskortet."
         },
-        "refs": [2304]
+        "refs": [
+          2304
+        ]
       }
     ]
   },
@@ -8491,7 +9454,9 @@ export const PATCHES = [
           "title": "Tvangssalg ved gældsbrud afdrager nu faktisk din gæld",
           "body": "Når holdets gæld ligger over divisionens loft to sæsoner i træk, tvangssælger bestyrelsen dine mest værdifulde ryttere. De penge afdrager nu dine lån direkte (ældste lån først) i stedet for bare at indgå i et internt bestyrelses-tal, så et tvangssalg reelt sænker din gæld, og bruddet gentager sig ikke automatisk næste sæson på de samme tal. Din transaktionshistorik viser også disse afdrag adskilt fra dem du selv foretager."
         },
-        "refs": [2303]
+        "refs": [
+          2303
+        ]
       }
     ]
   },
@@ -8512,7 +9477,9 @@ export const PATCHES = [
           "title": "Bestyrelsen forklarer nu sig selv fuldt ud",
           "body": "Hvert plan-kort viser en retnings-pil under tilfredsheds-tallet (\"på vej mod 71%\"), en linje i klart sprog for den passive sponsor-modifier, en afstand til næste bonustilbud, og en advarsel når endnu ét skuffende plan-udløb ville udskifte formanden. Godkendte bestyrelses-forespørgsler der låser en pris for din næste plan, vises nu direkte på kortet, og et klik på et bestyrelsesmedlems avatar viser hvilke feedback-kategorier de vægter mest."
         },
-        "refs": [2310]
+        "refs": [
+          2310
+        ]
       },
       {
         "category": "improved",
@@ -8526,7 +9493,9 @@ export const PATCHES = [
           "title": "Transaktionshistorik: sæsonfilter gælder nu listen, plus kategorifilter og pagination",
           "body": "Finance > Historik viste tidligere altid dine seneste 30 transaktioner uanset hvilken sæson du havde valgt, hvilket var forvirrende sammen med sæsonrapporten ovenover. Sæsonvælgeren filtrerer nu også transaktionslisten (med en ny \"Alle sæsoner\"-mulighed som default), kategori-chips lader dig indsnævre til løn, præmier, lån, transfers/auktioner, sponsor eller øvrige, og en \"Vis flere\"-knap henter ældre historik 30 rækker ad gangen i stedet for at afskære den."
         },
-        "refs": [2306]
+        "refs": [
+          2306
+        ]
       }
     ]
   },
@@ -8547,7 +9516,9 @@ export const PATCHES = [
           "title": "Bestyrelsen reagerer nu hurtigere på gode resultater",
           "body": "Bestyrelsens tilfredshed flyttede sig tidligere langsomt uanset hvad der skete på landevejen. Den stiger nu hurtigere efter stærke løbsweekender, mens dårlige weekender ikke rammer hårdere end før. Bestyrelsens forventninger er også re-kalibreret, så færre hold sidder fast i konsekvenser de ikke realistisk kunne undgå, og det kræver nu færre gode weekender at komme ud af en tilfredsheds-krise."
         },
-        "refs": [2309]
+        "refs": [
+          2309
+        ]
       },
       {
         "category": "improved",
@@ -8561,7 +9532,9 @@ export const PATCHES = [
           "title": "Præmiepenge-kortet viser nu indeværende sæson, med en all-time-total under",
           "body": "Præmiepenge-kortet på Finance > Oversigt lagde tidligere alle præmier og bonusser du nogensinde havde tjent sammen, uden at vise tidsrammen. Det er nu tydeligt mærket med den aktuelle sæson, viser sæsonens præmiesum og antal løb, og listen nedenunder viser kun denne sæsons løbspræmier. En lille linje under totalen viser stadig dine samlede præmieindtægter på tværs af alle sæsoner. Tallene beregnes nu også på serveren, så siden forbliver hurtig efterhånden som din karriere vokser."
         },
-        "refs": [2305]
+        "refs": [
+          2305
+        ]
       }
     ]
   },
@@ -8582,7 +9555,9 @@ export const PATCHES = [
           "title": "Bestyrelsens budget-multiplier stemmer nu overalt, og tilfredsheds-bånd er korrekte",
           "body": "Sponsor-budget-multiplieren på bestyrelsessiden og på dashboardets bestyrelseskort kunne vise let forskellige tal for samme plan. Begge viser nu altid det samme, officielle tal. Forklaringen af tilfredsheds-bånd angav også den forkerte tærskel for hvornår bonussen slår ind (den sagde 70%+, den reelle tærskel er 60%+); teksten er nu korrekt og oversat. Bestyrelses-feedet, sæson-historik-tabellen på mobil og mål-fremgangsbjælkerne fik også mindre korrektheds- og tilgængeligheds-rettelser, og bestyrelsessiden viser nu en tydelig fejl med en prøv igen-knap hvis den ikke kan indlæses, i stedet for at forblive tom."
         },
-        "refs": [2307]
+        "refs": [
+          2307
+        ]
       },
       {
         "category": "fixed",
@@ -8596,7 +9571,9 @@ export const PATCHES = [
           "title": "Tre transaktionstyper viser ikke længere en rå kode i din historik",
           "body": "Poster for akademi-drift, facilitets-vedligehold og stab-løn i Finance > Transaktionshistorik viste tidligere deres rå interne navn i stedet for en læsbar tekst. De viser nu ordentlig tekst, ligesom alle andre transaktionstyper."
         },
-        "refs": [2300]
+        "refs": [
+          2300
+        ]
       }
     ]
   },
@@ -8617,7 +9594,9 @@ export const PATCHES = [
           "title": "Kom i gang sporer nu hvad du faktisk gør",
           "body": "Kom i gang-tjeklisten på dit dashboard markerede tidligere de fleste trin som gennemført fra det øjeblik du registrerede dig, så den fortalte dig næsten intet. Den sporer nu fire ægte handlinger: afgiv dit første bud, kør din første træningsdag, udtag din trup til et løb, og forhandl en bestyrelsesplan. Næste træk på dashboardet har også fået tre nye punkter til præcis de mangler: en manglende holdudtagelse linker direkte til det løbs udtagelses-panel, en sprunget træningsdag linker til Træning, og ingen bestyrelsesplan linker til Bestyrelsen. Holdudtagelses-knappen på dashboardet lander dig nu direkte på udtagelses-panelet i stedet for øverst på løbssiden. Tomme kort (auktioner, transfers, løb, stilling, resultater) har nu et link til det næste skridt i stedet for bare blank tekst, og din saldo i headeren har en tydeligere hover-effekt og pil, så det er åbenlyst at den er klikbar. Seneste resultater viser nu også kun løb fra din egen division og gruppe. Mens onboarding stadig er i gang, holder survey- og Discord-bannerne sig væk, så tjeklisten har toppen af skærmen for sig selv."
         },
-        "refs": [2288]
+        "refs": [
+          2288
+        ]
       }
     ]
   },
@@ -8638,7 +9617,9 @@ export const PATCHES = [
           "title": "Klik på en kolonne for at sortere din træningstrup, hold og løbslister",
           "body": "Flere tabeller kan nu sorteres ved at klikke på kolonne-overskrifterne. På træningssiden kan du sortere dine ryttere efter form eller træthed, så du med ét blik ser hvem der trænger til hvile, samt efter navn eller type. Et rivaliserende holds trup på deres managerprofil sorteres efter værdi eller en hvilken som helst af de 15 evner. Løbsbiblioteket og verdenskalenderen sorteres efter navn, sæson, klasse og etaper. Klik på en overskrift én gang for at sortere, klik igen for at vende retningen, og tomme celler ligger altid nederst."
         },
-        "refs": [2290]
+        "refs": [
+          2290
+        ]
       }
     ]
   },
@@ -8653,13 +9634,15 @@ export const PATCHES = [
         "topic": "Scouting",
         "en": {
           "title": "The scout slots are gone: meet your talent scout",
-          "body": "Scouting is no longer a per-season pool of slots. Every team now has a talent scout (a real staff member, or a default scout if you have not hired one) who takes on real jobs: send him after a specific rider for a report in a few days, or send him on a longer mission to cover a division, a country, U23 riders, or a national championship for a shortlist of prospects. Jobs cost travel money and take time, and your scout can only run one or two jobs at once depending on his rating. A better scout narrows his estimates further, but nobody, not even the best scout in the game, ever reaches 100% certainty. That includes your own riders: their potential is now shown as a narrow range instead of an exact number, same as everyone else's, just tighter. A new Scouting page lists your scout, his active jobs, and the shortlists his missions bring back.",
+          "body": "Scouting is no longer a per-season pool of slots. Every team now has a talent scout (a real staff member, or a default scout if you have not hired one) who takes on real jobs: send him after a specific rider for a report in a few days, or send him on a longer mission to cover a division, a country, U23 riders, or a national championship for a shortlist of prospects. Jobs cost travel money and take time, and your scout can only run one or two jobs at once depending on his rating. A better scout narrows his estimates further, but nobody, not even the best scout in the game, ever reaches 100% certainty. That includes your own riders: their potential is now shown as a narrow range instead of an exact number, same as everyone else's, just tighter. A new Scouting page lists your scout, his active jobs, and the shortlists his missions bring back."
         },
         "da": {
           "title": "Scout-slots er væk: mød din talentspejder",
-          "body": "Scouting er ikke længere en pulje af slots pr. sæson. Alle hold har nu en talentspejder (en rigtig staff-person, eller en standard-spejder hvis du ikke har ansat en), som tager rigtige opgaver: send ham efter en bestemt rytter for en rapport om få dage, eller send ham på en længere mission for at dække en division, et land, U23-ryttere eller et nationalt mesterskab for en shortlist af emner. Opgaver koster rejsepenge og tager tid, og din spejder kan kun have én eller to opgaver kørende ad gangen afhængigt af hans rating. En bedre spejder giver et snævrere estimat, men ingen, heller ikke spillets bedste spejder, når nogensinde 100% sikkerhed. Det gælder også dine egne ryttere: deres potentiale vises nu som et smalt bånd i stedet for et eksakt tal, ligesom alle andres, blot snævrere. En ny Spejder-side viser din spejder, hans aktive opgaver og de shortlister hans missioner bringer hjem.",
+          "body": "Scouting er ikke længere en pulje af slots pr. sæson. Alle hold har nu en talentspejder (en rigtig staff-person, eller en standard-spejder hvis du ikke har ansat en), som tager rigtige opgaver: send ham efter en bestemt rytter for en rapport om få dage, eller send ham på en længere mission for at dække en division, et land, U23-ryttere eller et nationalt mesterskab for en shortlist af emner. Opgaver koster rejsepenge og tager tid, og din spejder kan kun have én eller to opgaver kørende ad gangen afhængigt af hans rating. En bedre spejder giver et snævrere estimat, men ingen, heller ikke spillets bedste spejder, når nogensinde 100% sikkerhed. Det gælder også dine egne ryttere: deres potentiale vises nu som et smalt bånd i stedet for et eksakt tal, ligesom alle andres, blot snævrere. En ny Spejder-side viser din spejder, hans aktive opgaver og de shortlister hans missioner bringer hjem."
         },
-        "refs": [2244]
+        "refs": [
+          2244
+        ]
       }
     ]
   },
@@ -8680,7 +9663,9 @@ export const PATCHES = [
           "title": "Division 4 har fået en helt ny, fair løbskalender",
           "body": "Division 4 blev ved en fejl seedet med løb der hører til i Division 1, herunder de fem monumenter og to World Tour-etapeløb, og grupperne delte ikke samme kalender. Det var unfair over for Division 3 og imod designet: de største løb hører til i Division 1, og alle grupper i en division skal køre den samme kalender. Vi har genopbygget Division 4 fuldstændigt: alle otte grupper deler nu en identisk kalender af Class 1- og Class 2-løb med tre etaper om dagen frem til sæsonfinalen 26. juli. Resultater og præmiepenge fra de fejlplanlagte løb er rullet præcist tilbage pr. hold, og ingen er endt med negativ saldo."
         },
-        "refs": [2276]
+        "refs": [
+          2276
+        ]
       }
     ]
   },
@@ -8701,7 +9686,10 @@ export const PATCHES = [
           "title": "Optagede ryttere gråtones nu alle steder hvor du sætter en trup",
           "body": "En rytter kan kun køre ét løb pr. løbsdag. Løbssidens udtagelsespanel gråtoner nu ryttere der allerede er committet til et overlappende løb og viser hvilket løb der holder dem, præcis som Race Hub-brættet. Brættet genkender også ryttere der er committet til løb uden for den dag du kigger på. Gem er samtidig beskyttet mod sjælden dobbeltbooking: serveren gentjekker overlap i samme øjeblik din trup gemmes, så to næsten-samtidige gem ikke længere kan booke samme rytter i to overlappende løb."
         },
-        "refs": [2256, 2265]
+        "refs": [
+          2256,
+          2265
+        ]
       }
     ]
   },
@@ -8722,7 +9710,9 @@ export const PATCHES = [
           "title": "Færre fejlskærme forårsaget af browser-auto-oversættelse",
           "body": "Browser-oversættelsesværktøjer (som Google Translate) omskrev til tider sidens live-tekst i det skjulte på en måde der forvirrede React og fik siden til at crashe. Auto-oversættelse er nu kun slået fra på de crash-udsatte dynamiske sider (login, dashboard, profil, rytterprofiler, stillinger og løbsresultater). Alle andre steder virker browser-oversættelse som før, så du stadig kan oversætte Cycling Zone til andre sprog end engelsk og dansk."
         },
-        "refs": [2253]
+        "refs": [
+          2253
+        ]
       }
     ]
   },
@@ -8743,7 +9733,9 @@ export const PATCHES = [
           "title": "Division 4-kalenderen repareret: ikke flere Grand Tours i kælderen",
           "body": "En kalenderfejl havde lagt to fulde 21-etapers Grand Tours i hver Division 4-gruppe, oven i hinanden. Det låste næsten alle ryttere i de grupper, så andre løb ikke kunne fylde deres startlister, og flere løb gik i stå eller kørte med minifelter. De forkert tilføjede Grand Tours er fjernet sammen med deres resultater og point, rytter-træthed fra de etaper er nulstillet, og resten af Division 4-kalenderen er genopbygget med løb i normal størrelse frem til sæsonafslutningen. Alle divisioner slutter stadig samme dag."
         },
-        "refs": [2251]
+        "refs": [
+          2251
+        ]
       }
     ]
   },
@@ -8764,7 +9756,9 @@ export const PATCHES = [
           "title": "Udvikling-fanen projicerer nu mod rytterens loft",
           "body": "Udvikling-fanen tegner nu en projektion: en stiplet linje fra hvor rytteren er i dag mod et skraveret loft-bånd, plus cirka hvor mange sæsoner og i hvilken alder han sandsynligvis når det. Som alt om potentiale er det et interval, aldrig et eksakt tal, og det er skjult for fremmede ryttere du ikke har scoutet."
         },
-        "refs": [2100]
+        "refs": [
+          2100
+        ]
       }
     ]
   },
@@ -8785,7 +9779,9 @@ export const PATCHES = [
           "title": "Rytterprofiler har nu en rigtig Scouting-fane",
           "body": "Scouting-fanen på rytterprofilerne er live. Den viser din spejders vurdering i klart sprog med et tillidsniveau og begrundelserne bag, rytterens potentiale pr. ryttertype som nuværende niveau med et skraveret loft-bånd, og en værdi-sammenligning mellem hans markedsværdi og hvad tallene antyder han er værd. Scouter du rytteren igen, indsnævres båndene."
         },
-        "refs": [1543]
+        "refs": [
+          1543
+        ]
       },
       {
         "category": "improved",
@@ -8799,7 +9795,9 @@ export const PATCHES = [
           "title": "Potentiale er nu altid et interval, for alle",
           "body": "Ingen spejder kender længere en rytters præcise loft, og det gælder også dine egne ryttere. Fuldt scoutede ryttere og din egen trup viser nu et smalt potentiale-interval i stedet for en eksakt stjerneværdi, og hver spejders vurdering er en anelse forskellig, så to managers kan bedømme samme talent forskelligt. At finde ud af hvem der havde ret er dét, løbene er til for."
         },
-        "refs": [1543]
+        "refs": [
+          1543
+        ]
       }
     ]
   },
@@ -8820,7 +9818,9 @@ export const PATCHES = [
           "title": "Bestyrelsens løncap er nu reelt bindende",
           "body": "Når bestyrelsen sætter et løncap efter en tilfredshedskrise, blev det frosset til lige præcis den lønsum du havde i det øjeblik (nogle gange næsten 0), og blev kun tjekket ved signering af en rytter via transfer eller auktion. Det stoppede dig ikke fra at vokse forbi det via kontraktforlængelser. Cappen giver nu reelt vækstrum (1,5x din lønsum), strammes aldrig under et niveau den allerede har været på, og blokerer nu også kontraktforlængelser der ville sende dig over det. Den er også mildere på vej ind: den udløses aldrig af en enkelt dårlig periode (tilfredsheden skal være under 40% to evalueringer i træk), og den kan slet ikke ramme i dit holds første 30 dage."
         },
-        "refs": [2237]
+        "refs": [
+          2237
+        ]
       }
     ]
   },
@@ -8841,7 +9841,9 @@ export const PATCHES = [
           "title": "Rytterdatabasen skjuler nu AI-holdenes ryttere som standard",
           "body": "Rytterdatabasen var fyldt med ryttere på AI-hold, som du ikke kan købe eller byde på. Den skjuler dem nu som standard, så listen viser de ryttere du reelt kan hente: fri agenter og ryttere på rigtige manager-hold. Et 'Vis AI-hold'-filter i filtrene henter dem frem igen, når du vil se hele feltet."
         },
-        "refs": [2238]
+        "refs": [
+          2238
+        ]
       }
     ]
   },
@@ -8862,7 +9864,9 @@ export const PATCHES = [
           "title": "Etaperesultater har nu klassement-faner, plus et holdfilter",
           "body": "Hver etape-fane lader dig nu skifte mellem Etape, Samlet, Point, Bjerg, Ungdom og Hold, så du kan se stillingen efter den etape uden at vente på at løbet slutter. Et holdfilter (alle hold, dit hold, eller et bestemt hold) fremhæver de rækker der betyder noget, og følger med når du skifter etape, og lange resultattabeller viser nu top 10 med en 'Vis alle'-knap i stedet for én lang liste. Løbsbiblioteket sorterer nu også nyeste-først, med et 'Kun min division'-filter så du hurtigt kan finde det du kørte i dag."
         },
-        "refs": [2081]
+        "refs": [
+          2081
+        ]
       }
     ]
   },
@@ -8883,7 +9887,9 @@ export const PATCHES = [
           "title": "Rytterranglisten viser nu alle ryttere",
           "body": "Den fulde rytterrangliste hentede kun en del af feltet, og de topplacerede ryttere kunne forsvinde helt. Den viser nu alle ryttere med resultater i denne sæson. Samme rettelse genskaber også styrke-visningen i holdstillingen og points-progressionsgrafen, som stille manglede data for nogle hold."
         },
-        "refs": [2206]
+        "refs": [
+          2206
+        ]
       }
     ]
   },
@@ -8904,7 +9910,10 @@ export const PATCHES = [
           "title": "Løb på samme eftermiddag viser nu tydeligt deres løbsdag",
           "body": "Når to løb lå på samme rigtige eftermiddag men på forskellige in-game løbsdage, kunne trup-brættet fejlagtigt vise en rytter som låst fra det andet løb, selv om han frit kunne køre begge. Hvert løb viser nu sin løbsdag (for eksempel Løbsdag 11), samme-dags-løb grupperes efter løbsdag, og en rytter du allerede bruger et andet sted markeres som kompatibel når dagene ikke reelt overlapper. At genbruge en rytter på tværs af to løbsdage er tilladt, men han bærer stadig træthed med ind i det senere løb."
         },
-        "refs": [1984, 2195]
+        "refs": [
+          1984,
+          2195
+        ]
       }
     ]
   },
@@ -8925,7 +9934,10 @@ export const PATCHES = [
           "title": "Akademi-ryttere udvikler sig nu i et mere realistisk tempo",
           "body": "Akademi-emner fik evne-point meget hurtigere end tilsigtet, nogle gange flere point i en signatur-evne fra én enkelt træningsdag. Udviklingen følger nu et tempo pr. sæson tilpasset dit emnes potentiale, så lovende 16-19-årige vokser støt mod deres loft over flere sæsoner i stedet for næsten øjeblikkeligt at nå deres maksimum."
         },
-        "refs": [2082, 1938]
+        "refs": [
+          2082,
+          1938
+        ]
       }
     ]
   },
@@ -8946,7 +9958,9 @@ export const PATCHES = [
           "title": "Din indbakke og økonomi-side bliver nu på dit sprog",
           "body": "Med spillet sat til engelsk dukkede nogle beskeder stadig op på dansk: transfer-, auktions-, bytte- og leje-notifikationer i indbakken, 'opsigelsesgebyr'- og 'andet'-linjerne på økonomi-siden, samt et par bestyrelses-tekster. Alt det følger nu dit sprogvalg, så engelsk forbliver engelsk og dansk forbliver dansk."
         },
-        "refs": [2174]
+        "refs": [
+          2174
+        ]
       }
     ]
   },
@@ -8967,7 +9981,9 @@ export const PATCHES = [
           "title": "Gem af holdudtagelser til flere løb fejler ikke længere i stilhed",
           "body": "Når du satte holdudtagelser til mere end ét løb og trykkede Gem, kunne ét af dem stille og roligt fejle mens de andre gik igennem, uden en fejl der fortalte dig det. Nu gemmes hver udtagelse som én alt-eller-intet-skrivning, og hvis en udtagelse ikke kan gemmes, får du en tydelig besked der navngiver præcis hvilke løb der ikke blev gemt, mens dine ændringer bevares så du kan prøve igen."
         },
-        "refs": [2173]
+        "refs": [
+          2173
+        ]
       }
     ]
   },
@@ -8988,7 +10004,9 @@ export const PATCHES = [
           "title": "Gamle pladsholder-løbsdatoer er væk",
           "body": "Løbskort viste tidligere efterladte datoer som 3/10 eller 5/9, der ikke passede med noget i spillet og forvirrede nye managere. De datoer er fjernet alle de steder, de optrådte (dashboard, løbssider, holdudtagelse og sæsonkalenderen). Løb identificeres nu via spillets kalender og nedtællingen til næste etape, så dashboardet viser hvor længe der er til et løb starter i stedet for en dato, der ikke betød noget."
         },
-        "refs": [2171]
+        "refs": [
+          2171
+        ]
       }
     ]
   },
@@ -9009,7 +10027,9 @@ export const PATCHES = [
           "title": "Rytterrangliste og rangliste loader nu hurtigt",
           "body": "Rytterranglisten og liga-ranglisten kunne være lang tid om at loade og satte sig nogle gange fast i en spinner, der aldrig blev færdig. Begge sider loader nu hurtigt, og hvis noget alligevel går galt, viser de en tydelig fejl med en 'Prøv igen'-knap i stedet for at spinne i det uendelige."
         },
-        "refs": [2175]
+        "refs": [
+          2175
+        ]
       },
       {
         "category": "improved",
@@ -9023,7 +10043,9 @@ export const PATCHES = [
           "title": "Rating er fjernet fra rytterranglisten",
           "body": "Rytterranglisten viser ikke længere en rating-kolonne. Ranglisten handler om resultater opnået på landevejen (point, sejre, podier), og en rytters evne-rating er et andet mål, så den ligger ikke længere i resultattabellen."
         },
-        "refs": [2175]
+        "refs": [
+          2175
+        ]
       }
     ]
   },
@@ -9038,13 +10060,15 @@ export const PATCHES = [
         "topic": "Sign-up",
         "en": {
           "title": "A clearer way out if your confirmation link stopped working",
-          "body": "If your email confirmation link had already expired, you could get stuck: login kept saying your account was not confirmed, and it was not obvious how to get a working link. Now the expired-link screen has a 'Send a fresh link' button right there, and the resend option on login is more reliable, so a new confirmation email is always one click away.",
+          "body": "If your email confirmation link had already expired, you could get stuck: login kept saying your account was not confirmed, and it was not obvious how to get a working link. Now the expired-link screen has a 'Send a fresh link' button right there, and the resend option on login is more reliable, so a new confirmation email is always one click away."
         },
         "da": {
           "title": "En tydeligere vej ud hvis dit bekræftelseslink holdt op med at virke",
-          "body": "Hvis dit bekræftelseslink allerede var udløbet, kunne du sidde fast: login blev ved med at sige at din konto ikke var bekræftet, og det var uklart hvordan du fik et virkende link. Nu har udløbet-link-skærmen en 'Send et nyt link'-knap med det samme, og send-igen-muligheden ved login er mere pålidelig, så en ny bekræftelsesmail altid er ét klik væk.",
+          "body": "Hvis dit bekræftelseslink allerede var udløbet, kunne du sidde fast: login blev ved med at sige at din konto ikke var bekræftet, og det var uklart hvordan du fik et virkende link. Nu har udløbet-link-skærmen en 'Send et nyt link'-knap med det samme, og send-igen-muligheden ved login er mere pålidelig, så en ny bekræftelsesmail altid er ét klik væk."
         },
-        "refs": [2172]
+        "refs": [
+          2172
+        ]
       }
     ]
   },
@@ -9059,13 +10083,15 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Scheduled races that were failing to start now run again",
-          "body": "Some scheduled races could silently fail to start: the game mistakenly counted every rider as already committed to another race, so no field could be assembled and the race stalled. Those races now start and run on schedule.",
+          "body": "Some scheduled races could silently fail to start: the game mistakenly counted every rider as already committed to another race, so no field could be assembled and the race stalled. Those races now start and run on schedule."
         },
         "da": {
           "title": "Planlagte løb der ikke kunne starte, kører nu igen",
-          "body": "Nogle planlagte løb kunne stille og roligt fejle ved start: spillet talte fejlagtigt alle ryttere som allerede bundet til et andet løb, så der ikke kunne samles et felt, og løbet gik i stå. De løb starter og kører nu som planlagt.",
+          "body": "Nogle planlagte løb kunne stille og roligt fejle ved start: spillet talte fejlagtigt alle ryttere som allerede bundet til et andet løb, så der ikke kunne samles et felt, og løbet gik i stå. De løb starter og kører nu som planlagt."
         },
-        "refs": [2167]
+        "refs": [
+          2167
+        ]
       }
     ]
   },
@@ -9080,13 +10106,16 @@ export const PATCHES = [
         "topic": "Notifications",
         "en": {
           "title": "You now get a notification when one of your races has been run",
-          "body": "The in-app notification telling you that a race you took part in had finished was never being delivered. It now works: after a race you competed in wraps up, you get a 'Race result is in' notification that links straight to the result.",
+          "body": "The in-app notification telling you that a race you took part in had finished was never being delivered. It now works: after a race you competed in wraps up, you get a 'Race result is in' notification that links straight to the result."
         },
         "da": {
           "title": "Du får nu en notifikation, når et af dine løb er kørt",
-          "body": "Den in-app-notifikation, der fortæller dig, at et løb du deltog i, var afviklet, blev aldrig leveret. Den virker nu: når et løb du var med i, er kørt færdigt, får du en 'Løbsresultat klar'-notifikation, der linker direkte til resultatet.",
+          "body": "Den in-app-notifikation, der fortæller dig, at et løb du deltog i, var afviklet, blev aldrig leveret. Den virker nu: når et løb du var med i, er kørt færdigt, får du en 'Løbsresultat klar'-notifikation, der linker direkte til resultatet."
         },
-        "refs": [2158, 1952]
+        "refs": [
+          2158,
+          1952
+        ]
       },
       {
         "category": "fixed",
@@ -9094,13 +10123,16 @@ export const PATCHES = [
         "topic": "Finance",
         "en": {
           "title": "You now get warned when an emergency loan can't fully cover your wages",
-          "body": "When your team couldn't pay wages and an emergency loan hit your division's debt ceiling, the warning that some wages were left uncovered was never delivered. It now reaches you, so you know to sell riders or cut costs.",
+          "body": "When your team couldn't pay wages and an emergency loan hit your division's debt ceiling, the warning that some wages were left uncovered was never delivered. It now reaches you, so you know to sell riders or cut costs."
         },
         "da": {
           "title": "Du advares nu, når et nødlån ikke kan dække hele din lønudgift",
-          "body": "Når dit hold ikke kunne betale løn, og et nødlån ramte din divisions gældsloft, blev advarslen om, at en del af lønnen stod udækket, aldrig leveret. Den når nu frem, så du ved, at du skal sælge ryttere eller skære i omkostningerne.",
+          "body": "Når dit hold ikke kunne betale løn, og et nødlån ramte din divisions gældsloft, blev advarslen om, at en del af lønnen stod udækket, aldrig leveret. Den når nu frem, så du ved, at du skal sælge ryttere eller skære i omkostningerne."
         },
-        "refs": [2158, 1464]
+        "refs": [
+          2158,
+          1464
+        ]
       }
     ]
   },
@@ -9115,13 +10147,15 @@ export const PATCHES = [
         "topic": "Transfers",
         "en": {
           "title": "Riders traded mid-stage race now finish the race for their old team",
-          "body": "Buying or selling a rider in the middle of an active stage race no longer splits the race between two teams. The deal and payment complete immediately, but the rider finishes his current stage race for the selling team and joins his new team right after the finish. His profile shows the upcoming team until then. Races that haven't started yet are unaffected: the rider moves instantly.",
+          "body": "Buying or selling a rider in the middle of an active stage race no longer splits the race between two teams. The deal and payment complete immediately, but the rider finishes his current stage race for the selling team and joins his new team right after the finish. His profile shows the upcoming team until then. Races that haven't started yet are unaffected: the rider moves instantly."
         },
         "da": {
           "title": "Ryttere handlet midt i et etapeløb kører nu løbet færdigt for deres gamle hold",
-          "body": "Køb eller salg af en rytter midt i et aktivt etapeløb splitter ikke længere løbet mellem to hold. Handlen og betalingen gennemføres med det samme, men rytteren kører sit igangværende etapeløb færdigt for det sælgende hold og skifter til sit nye hold lige efter målstregen. Hans profil viser det kommende hold indtil da. Løb der endnu ikke er startet, påvirkes ikke: rytteren skifter med det samme.",
+          "body": "Køb eller salg af en rytter midt i et aktivt etapeløb splitter ikke længere løbet mellem to hold. Handlen og betalingen gennemføres med det samme, men rytteren kører sit igangværende etapeløb færdigt for det sælgende hold og skifter til sit nye hold lige efter målstregen. Hans profil viser det kommende hold indtil da. Løb der endnu ikke er startet, påvirkes ikke: rytteren skifter med det samme."
         },
-        "refs": [1995]
+        "refs": [
+          1995
+        ]
       }
     ]
   },
@@ -9136,11 +10170,11 @@ export const PATCHES = [
         "topic": "Discord",
         "en": {
           "title": "Choose which Discord DMs you receive",
-          "body": "You can now pick exactly which events send you a Discord DM, instead of one all-or-nothing switch. In your profile's Discord section, toggle each event on or off: outbid, auction won, a watchlisted rider going up for auction, transfer offers, replies to your offers, and board updates. Two of these (a watchlisted rider going up for auction, and board updates) are new to Discord DMs. The master switch still turns everything off at once, and every event stays on by default.",
+          "body": "You can now pick exactly which events send you a Discord DM, instead of one all-or-nothing switch. In your profile's Discord section, toggle each event on or off: outbid, auction won, a watchlisted rider going up for auction, transfer offers, replies to your offers, and board updates. Two of these (a watchlisted rider going up for auction, and board updates) are new to Discord DMs. The master switch still turns everything off at once, and every event stays on by default."
         },
         "da": {
           "title": "Vælg hvilke Discord-DM'er du får",
-          "body": "Du kan nu vælge præcis hvilke begivenheder der sender dig en Discord-DM, i stedet for én alt-eller-intet-knap. I Discord-sektionen på din profil kan du slå hver begivenhed til eller fra: overbudt, auktion vundet, en ønskeliste-rytter der sættes på auktion, transfertilbud, svar på dine tilbud og bestyrelsesopdateringer. To af dem (en ønskeliste-rytter der sættes på auktion, og bestyrelsesopdateringer) er nye på Discord-DM. Master-knappen slår stadig alt fra på én gang, og hver begivenhed er tændt som standard.",
+          "body": "Du kan nu vælge præcis hvilke begivenheder der sender dig en Discord-DM, i stedet for én alt-eller-intet-knap. I Discord-sektionen på din profil kan du slå hver begivenhed til eller fra: overbudt, auktion vundet, en ønskeliste-rytter der sættes på auktion, transfertilbud, svar på dine tilbud og bestyrelsesopdateringer. To af dem (en ønskeliste-rytter der sættes på auktion, og bestyrelsesopdateringer) er nye på Discord-DM. Master-knappen slår stadig alt fra på én gang, og hver begivenhed er tændt som standard."
         },
         "refs": []
       }
@@ -9157,13 +10191,15 @@ export const PATCHES = [
         "topic": "Transfers",
         "en": {
           "title": "Loans and buy-options now complete instantly instead of waiting for a transfer window",
-          "body": "Accepting a loan or exercising a buy option could leave the deal parked until the transfer window opened. But the transfer window was retired, so it never opened and the deal stayed stuck. Loans and buy-options now register immediately, just like transfers and auctions. The market is always open.",
+          "body": "Accepting a loan or exercising a buy option could leave the deal parked until the transfer window opened. But the transfer window was retired, so it never opened and the deal stayed stuck. Loans and buy-options now register immediately, just like transfers and auctions. The market is always open."
         },
         "da": {
           "title": "Lejeaftaler og købsoptioner gennemføres nu med det samme i stedet for at vente på et transfervindue",
-          "body": "At acceptere en lejeaftale eller udnytte en købsoption kunne efterlade handlen parkeret, indtil transfervinduet åbnede. Men transfervinduet er afskaffet, så det åbnede aldrig, og handlen sad fast. Lejeaftaler og købsoptioner registreres nu med det samme, ligesom transfers og auktioner. Markedet er altid åbent.",
+          "body": "At acceptere en lejeaftale eller udnytte en købsoption kunne efterlade handlen parkeret, indtil transfervinduet åbnede. Men transfervinduet er afskaffet, så det åbnede aldrig, og handlen sad fast. Lejeaftaler og købsoptioner registreres nu med det samme, ligesom transfers og auktioner. Markedet er altid åbent."
         },
-        "refs": [1996]
+        "refs": [
+          1996
+        ]
       }
     ]
   },
@@ -9178,13 +10214,15 @@ export const PATCHES = [
         "topic": "Stability",
         "en": {
           "title": "Leaving a page mid-load no longer triggers an unwanted reload",
-          "body": "The automatic recovery that reloads the game after an update could mistake an interrupted page load for a broken one. If you navigated away or refreshed while a page was still loading, that reload could cut in and hijack the navigation you had just started. Recovery now waits a moment and stands down when the page is closing, so it only steps in for genuinely broken loads.",
+          "body": "The automatic recovery that reloads the game after an update could mistake an interrupted page load for a broken one. If you navigated away or refreshed while a page was still loading, that reload could cut in and hijack the navigation you had just started. Recovery now waits a moment and stands down when the page is closing, so it only steps in for genuinely broken loads."
         },
         "da": {
           "title": "At forlade en side midt i en indlæsning udløser ikke længere et uønsket reload",
-          "body": "Den automatiske gendannelse, der genindlæser spillet efter en opdatering, kunne forveksle en afbrudt sideindlæsning med en ødelagt en. Hvis du navigerede væk eller genindlæste, mens en side stadig var ved at loade, kunne det reload skære ind og kapre den navigation, du lige havde startet. Gendannelsen venter nu et øjeblik og trækker sig, når siden er ved at lukke, så den kun griber ind ved reelt ødelagte indlæsninger.",
+          "body": "Den automatiske gendannelse, der genindlæser spillet efter en opdatering, kunne forveksle en afbrudt sideindlæsning med en ødelagt en. Hvis du navigerede væk eller genindlæste, mens en side stadig var ved at loade, kunne det reload skære ind og kapre den navigation, du lige havde startet. Gendannelsen venter nu et øjeblik og trækker sig, når siden er ved at lukke, så den kun griber ind ved reelt ødelagte indlæsninger."
         },
-        "refs": [2145]
+        "refs": [
+          2145
+        ]
       },
       {
         "category": "improved",
@@ -9192,13 +10230,15 @@ export const PATCHES = [
         "topic": "Academy",
         "en": {
           "title": "Academy riders now sit in your main squad table, with a filter",
-          "body": "Academy riders used to live in a separate section on your team page. They now appear in the same table as your senior riders, marked with an Academy badge in the status column. A filter at the top lets you show or hide seniors and academy riders independently, and the full squad shows by default. Academy riders still develop separately and never count toward the senior squad cap.",
+          "body": "Academy riders used to live in a separate section on your team page. They now appear in the same table as your senior riders, marked with an Academy badge in the status column. A filter at the top lets you show or hide seniors and academy riders independently, and the full squad shows by default. Academy riders still develop separately and never count toward the senior squad cap."
         },
         "da": {
           "title": "Akademiryttere ligger nu i din hovedtrup-tabel, med et filter",
-          "body": "Akademiryttere lå tidligere i en separat sektion på holdsiden. De vises nu i samme tabel som dine senior-ryttere, markeret med et Akademi-badge i status-kolonnen. Et filter i toppen lader dig vise eller skjule seniorer og akademiryttere uafhængigt, og hele truppen vises som standard. Akademiryttere udvikles fortsat separat og tæller aldrig med i senior-truppens cap.",
+          "body": "Akademiryttere lå tidligere i en separat sektion på holdsiden. De vises nu i samme tabel som dine senior-ryttere, markeret med et Akademi-badge i status-kolonnen. Et filter i toppen lader dig vise eller skjule seniorer og akademiryttere uafhængigt, og hele truppen vises som standard. Akademiryttere udvikles fortsat separat og tæller aldrig med i senior-truppens cap."
         },
-        "refs": [1929]
+        "refs": [
+          1929
+        ]
       },
       {
         "category": "fixed",
@@ -9206,13 +10246,15 @@ export const PATCHES = [
         "topic": "Academy",
         "en": {
           "title": "Youth and academy wages now use the same rate as the rest of the squad",
-          "body": "Academy and youth contracts used a separate, higher wage rate than senior contracts, a leftover from before the wage rate was recalibrated. They now use the same rate as the rest of your squad, so an academy rider's wage lines up with what an equivalent senior would cost. This lowers academy wages to the standard rate.",
+          "body": "Academy and youth contracts used a separate, higher wage rate than senior contracts, a leftover from before the wage rate was recalibrated. They now use the same rate as the rest of your squad, so an academy rider's wage lines up with what an equivalent senior would cost. This lowers academy wages to the standard rate."
         },
         "da": {
           "title": "Ungdoms- og akademiløn bruger nu samme rate som resten af truppen",
-          "body": "Akademi- og ungdomskontrakter brugte en separat, højere lønrate end senior-kontrakter, en rest fra før lønraten blev rekalibreret. De bruger nu samme rate som resten af din trup, så en akademirytters løn passer med hvad en tilsvarende senior ville koste. Det sænker akademiløn til standard-raten.",
+          "body": "Akademi- og ungdomskontrakter brugte en separat, højere lønrate end senior-kontrakter, en rest fra før lønraten blev rekalibreret. De bruger nu samme rate som resten af din trup, så en akademirytters løn passer med hvad en tilsvarende senior ville koste. Det sænker akademiløn til standard-raten."
         },
-        "refs": [2083]
+        "refs": [
+          2083
+        ]
       },
       {
         "category": "improved",
@@ -9220,13 +10262,15 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Daily training shows when it ran and when your changes take effect",
-          "body": "The training page now shows the exact time today's training ran, and makes clear it runs once per day. If you change a rider's focus or intensity after today's training has already run, a note explains the change takes effect at the next training tomorrow, and that form and fatigue only update at the daily training rather than continuously.",
+          "body": "The training page now shows the exact time today's training ran, and makes clear it runs once per day. If you change a rider's focus or intensity after today's training has already run, a note explains the change takes effect at the next training tomorrow, and that form and fatigue only update at the daily training rather than continuously."
         },
         "da": {
           "title": "Daglig træning viser hvornår den kørte, og hvornår dine ændringer gælder",
-          "body": "Træningssiden viser nu det præcise tidspunkt dagens træning kørte, og gør tydeligt at den kører én gang om dagen. Hvis du ændrer en rytters fokus eller intensitet efter dagens træning allerede er kørt, forklarer en besked at ændringen først træder i kraft ved næste træning i morgen, og at form og træthed kun opdateres ved den daglige træning frem for løbende.",
+          "body": "Træningssiden viser nu det præcise tidspunkt dagens træning kørte, og gør tydeligt at den kører én gang om dagen. Hvis du ændrer en rytters fokus eller intensitet efter dagens træning allerede er kørt, forklarer en besked at ændringen først træder i kraft ved næste træning i morgen, og at form og træthed kun opdateres ved den daglige træning frem for løbende."
         },
-        "refs": [1936]
+        "refs": [
+          1936
+        ]
       },
       {
         "category": "fixed",
@@ -9234,13 +10278,15 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "U25 and U23 status now follows the season, not today's date",
-          "body": "A rider's under-25 and under-23 status was worked out from today's calendar date instead of the season being played, so a young rider could drift in and out of the age brackets at the wrong moment. It is now derived from the season's reference year, so the brackets stay correct all season.",
+          "body": "A rider's under-25 and under-23 status was worked out from today's calendar date instead of the season being played, so a young rider could drift in and out of the age brackets at the wrong moment. It is now derived from the season's reference year, so the brackets stay correct all season."
         },
         "da": {
           "title": "U25- og U23-status følger nu sæsonen, ikke dagens dato",
-          "body": "En rytters U25- og U23-status blev regnet ud fra dagens kalenderdato i stedet for den sæson der spilles, så en ung rytter kunne glide ind og ud af aldersgrupperne på det forkerte tidspunkt. Den afledes nu af sæsonens referenceår, så grupperne holder hele sæsonen.",
+          "body": "En rytters U25- og U23-status blev regnet ud fra dagens kalenderdato i stedet for den sæson der spilles, så en ung rytter kunne glide ind og ud af aldersgrupperne på det forkerte tidspunkt. Den afledes nu af sæsonens referenceår, så grupperne holder hele sæsonen."
         },
-        "refs": [2032]
+        "refs": [
+          2032
+        ]
       },
       {
         "category": "new",
@@ -9248,13 +10294,15 @@ export const PATCHES = [
         "topic": "Auctions",
         "en": {
           "title": "Auction history shows how contested each sale was",
-          "body": "Each row in the auction history now shows how many bids were placed and how many different teams took part, so you can see at a glance which riders sparked a bidding war.",
+          "body": "Each row in the auction history now shows how many bids were placed and how many different teams took part, so you can see at a glance which riders sparked a bidding war."
         },
         "da": {
           "title": "Auktionshistorik viser hvor omkæmpet hver handel var",
-          "body": "Hver række i auktionshistorikken viser nu hvor mange bud der blev afgivet og hvor mange forskellige hold der deltog, så du med et blik kan se hvilke ryttere der udløste en budkrig.",
+          "body": "Hver række i auktionshistorikken viser nu hvor mange bud der blev afgivet og hvor mange forskellige hold der deltog, så du med et blik kan se hvilke ryttere der udløste en budkrig."
         },
-        "refs": [256]
+        "refs": [
+          256
+        ]
       },
       {
         "category": "improved",
@@ -9262,13 +10310,15 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "Type exact numbers into the rider filters",
-          "body": "Every ability filter now has a number field next to its slider, so you can type an exact minimum and maximum instead of nudging the handles. The field and slider stay in sync, and the slider is still there if you prefer dragging.",
+          "body": "Every ability filter now has a number field next to its slider, so you can type an exact minimum and maximum instead of nudging the handles. The field and slider stay in sync, and the slider is still there if you prefer dragging."
         },
         "da": {
           "title": "Skriv præcise tal i rytterfiltrene",
-          "body": "Hvert evne-filter har nu et talfelt ved siden af slideren, så du kan skrive et præcist minimum og maksimum i stedet for at flytte håndtagene. Feltet og slideren følges ad, og slideren er der stadig hvis du hellere vil trække.",
+          "body": "Hvert evne-filter har nu et talfelt ved siden af slideren, så du kan skrive et præcist minimum og maksimum i stedet for at flytte håndtagene. Feltet og slideren følges ad, og slideren er der stadig hvis du hellere vil trække."
         },
-        "refs": [261]
+        "refs": [
+          261
+        ]
       },
       {
         "category": "improved",
@@ -9276,13 +10326,15 @@ export const PATCHES = [
         "topic": "Calendar",
         "en": {
           "title": "Time trials have their own shape on the calendar",
-          "body": "Individual and team time trials used to share the flat glyph of a sprint stage, so you could not spot them at a glance. They now have their own distinct calendar glyph, with a matching legend entry.",
+          "body": "Individual and team time trials used to share the flat glyph of a sprint stage, so you could not spot them at a glance. They now have their own distinct calendar glyph, with a matching legend entry."
         },
         "da": {
           "title": "Enkeltstart har sin egen form på kalenderen",
-          "body": "Enkeltstart og holdtidskørsel delte tidligere den flade glyf med en spurtetape, så du ikke kunne se dem med det samme. De har nu deres egen tydelige kalender-glyf, med en tilhørende signaturforklaring.",
+          "body": "Enkeltstart og holdtidskørsel delte tidligere den flade glyf med en spurtetape, så du ikke kunne se dem med det samme. De har nu deres egen tydelige kalender-glyf, med en tilhørende signaturforklaring."
         },
-        "refs": [1953]
+        "refs": [
+          1953
+        ]
       },
       {
         "category": "improved",
@@ -9290,13 +10342,15 @@ export const PATCHES = [
         "topic": "Navigation",
         "en": {
           "title": "Team names are clickable across the app",
-          "body": "Team names that used to be plain text, on rider profiles, start lists, the compare drawer and interest lists, are now links straight to the team page.",
+          "body": "Team names that used to be plain text, on rider profiles, start lists, the compare drawer and interest lists, are now links straight to the team page."
         },
         "da": {
           "title": "Holdnavne er klikbare i hele appen",
-          "body": "Holdnavne der før var almindelig tekst, på rytterprofiler, startlister, sammenlignings-panelet og interesselister, er nu links direkte til holdsiden.",
+          "body": "Holdnavne der før var almindelig tekst, på rytterprofiler, startlister, sammenlignings-panelet og interesselister, er nu links direkte til holdsiden."
         },
-        "refs": [260]
+        "refs": [
+          260
+        ]
       },
       {
         "category": "improved",
@@ -9304,13 +10358,15 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Finished races are sorted newest first",
-          "body": "The list of completed races sat in an inconsistent order. It now shows the most recent race first, matching the upcoming list.",
+          "body": "The list of completed races sat in an inconsistent order. It now shows the most recent race first, matching the upcoming list."
         },
         "da": {
           "title": "Afsluttede løb sorteres nyeste først",
-          "body": "Listen over afsluttede løb lå i en inkonsekvent rækkefølge. Den viser nu det seneste løb først, ligesom listen over kommende løb.",
+          "body": "Listen over afsluttede løb lå i en inkonsekvent rækkefølge. Den viser nu det seneste løb først, ligesom listen over kommende løb."
         },
-        "refs": [1930]
+        "refs": [
+          1930
+        ]
       },
       {
         "category": "improved",
@@ -9318,13 +10374,15 @@ export const PATCHES = [
         "topic": "Accessibility",
         "en": {
           "title": "Chart colours are easier to tell apart for colour-blind players",
-          "body": "Two of the colours in the stats charts sat too close together for players with red-green colour blindness, so the amber and yellow series were hard to separate. We pushed them apart and locked in a minimum perceptual distance under both deuteranopia and protanopia.",
+          "body": "Two of the colours in the stats charts sat too close together for players with red-green colour blindness, so the amber and yellow series were hard to separate. We pushed them apart and locked in a minimum perceptual distance under both deuteranopia and protanopia."
         },
         "da": {
           "title": "Grafernes farver er lettere at skelne for farveblinde",
-          "body": "To af farverne i statistik-graferne lå for tæt for spillere med rød-grøn farveblindhed, så de gule og ravgule serier var svære at skille ad. Vi skubbede dem fra hinanden og låste en minimums-afstand under både deuteranopi og protanopi.",
+          "body": "To af farverne i statistik-graferne lå for tæt for spillere med rød-grøn farveblindhed, så de gule og ravgule serier var svære at skille ad. Vi skubbede dem fra hinanden og låste en minimums-afstand under både deuteranopi og protanopi."
         },
-        "refs": [2033]
+        "refs": [
+          2033
+        ]
       },
       {
         "category": "fixed",
@@ -9332,13 +10390,15 @@ export const PATCHES = [
         "topic": "General",
         "en": {
           "title": "More error messages now appear in your language",
-          "body": "A number of error messages from the server, mostly around signing in and acting on riders, were sent as raw text that could not be translated, so some players saw them in the wrong language. They now carry a proper code and show up translated.",
+          "body": "A number of error messages from the server, mostly around signing in and acting on riders, were sent as raw text that could not be translated, so some players saw them in the wrong language. They now carry a proper code and show up translated."
         },
         "da": {
           "title": "Flere fejlbeskeder vises nu på dit sprog",
-          "body": "En række fejlbeskeder fra serveren, mest omkring login og handlinger på ryttere, blev sendt som rå tekst der ikke kunne oversættes, så nogle spillere så dem på det forkerte sprog. De bærer nu en korrekt kode og vises oversat.",
+          "body": "En række fejlbeskeder fra serveren, mest omkring login og handlinger på ryttere, blev sendt som rå tekst der ikke kunne oversættes, så nogle spillere så dem på det forkerte sprog. De bærer nu en korrekt kode og vises oversat."
         },
-        "refs": [1665]
+        "refs": [
+          1665
+        ]
       },
       {
         "category": "improved",
@@ -9346,13 +10406,15 @@ export const PATCHES = [
         "topic": "Performance",
         "en": {
           "title": "The landing page loads a little faster",
-          "body": "The flag icons used by the language switcher were loaded on every visit, even before they were needed. They now load only when the switcher is opened, trimming the initial page load.",
+          "body": "The flag icons used by the language switcher were loaded on every visit, even before they were needed. They now load only when the switcher is opened, trimming the initial page load."
         },
         "da": {
           "title": "Landingssiden loader lidt hurtigere",
-          "body": "Flag-ikonerne som sprogskifteren bruger blev loadet ved hvert besøg, selv før de var nødvendige. De loader nu først når skifteren åbnes, hvilket trimmer den første sideindlæsning.",
+          "body": "Flag-ikonerne som sprogskifteren bruger blev loadet ved hvert besøg, selv før de var nødvendige. De loader nu først når skifteren åbnes, hvilket trimmer den første sideindlæsning."
         },
-        "refs": [2047]
+        "refs": [
+          2047
+        ]
       },
       {
         "category": "fixed",
@@ -9360,13 +10422,15 @@ export const PATCHES = [
         "topic": "Racing",
         "en": {
           "title": "Stages now always run on their scheduled day",
-          "body": "During the results catch-up, a few stages ran earlier than scheduled as a one-time side effect. That can no longer happen: a guard makes sure a stage only runs on its own scheduled day, so races always follow the calendar.",
+          "body": "During the results catch-up, a few stages ran earlier than scheduled as a one-time side effect. That can no longer happen: a guard makes sure a stage only runs on its own scheduled day, so races always follow the calendar."
         },
         "da": {
           "title": "Etaper kører nu altid på deres planlagte dag",
-          "body": "Under resultat-indhentningen kørte nogle få etaper tidligere end planlagt som en engangs-bivirkning. Det kan ikke længere ske: en kontrol sikrer at en etape kun kører på sin egen planlagte dag, så løb altid følger kalenderen.",
+          "body": "Under resultat-indhentningen kørte nogle få etaper tidligere end planlagt som en engangs-bivirkning. Det kan ikke længere ske: en kontrol sikrer at en etape kun kører på sin egen planlagte dag, så løb altid følger kalenderen."
         },
-        "refs": [2090]
+        "refs": [
+          2090
+        ]
       },
       {
         "category": "fixed",
@@ -9374,13 +10438,15 @@ export const PATCHES = [
         "topic": "Racing",
         "en": {
           "title": "Grand tours no longer stack up on time trials",
-          "body": "The race generator could hand a grand tour too many individual time trials, so one three-week race ended up with five. Time trials are now capped per stage race, keeping grand tours to a realistic mix of terrain.",
+          "body": "The race generator could hand a grand tour too many individual time trials, so one three-week race ended up with five. Time trials are now capped per stage race, keeping grand tours to a realistic mix of terrain."
         },
         "da": {
           "title": "Grand tours har ikke længere for mange enkeltstarter",
-          "body": "Løbs-generatoren kunne give en grand tour for mange enkeltstarter, så ét treugers-løb endte med fem. Enkeltstarter er nu loftet pr. etapeløb, så grand tours holder en realistisk blanding af terræn.",
+          "body": "Løbs-generatoren kunne give en grand tour for mange enkeltstarter, så ét treugers-løb endte med fem. Enkeltstarter er nu loftet pr. etapeløb, så grand tours holder en realistisk blanding af terræn."
         },
-        "refs": [2029]
+        "refs": [
+          2029
+        ]
       },
       {
         "category": "improved",
@@ -9388,13 +10454,15 @@ export const PATCHES = [
         "topic": "Teams",
         "en": {
           "title": "AI teams have more varied nationalities and rider types",
-          "body": "Computer-controlled teams could end up with one nationality dominating the roster. Their squads now draw from a broader range of nationalities and keep a healthier spread of rider types.",
+          "body": "Computer-controlled teams could end up with one nationality dominating the roster. Their squads now draw from a broader range of nationalities and keep a healthier spread of rider types."
         },
         "da": {
           "title": "AI-hold har mere varierede nationaliteter og ryttertyper",
-          "body": "Computerstyrede hold kunne ende med at én nationalitet dominerede truppen. Deres trupper trækker nu fra et bredere udvalg af nationaliteter og holder en sundere spredning af ryttertyper.",
+          "body": "Computerstyrede hold kunne ende med at én nationalitet dominerede truppen. Deres trupper trækker nu fra et bredere udvalg af nationaliteter og holder en sundere spredning af ryttertyper."
         },
-        "refs": [2067]
+        "refs": [
+          2067
+        ]
       },
       {
         "category": "fixed",
@@ -9402,13 +10470,15 @@ export const PATCHES = [
         "topic": "Auctions",
         "en": {
           "title": "Danish auction wording fixed",
-          "body": "In Danish, the badge shown when you hold the top bid in an auction now reads 'Du fører' instead of the awkward 'Du leder'.",
+          "body": "In Danish, the badge shown when you hold the top bid in an auction now reads 'Du fører' instead of the awkward 'Du leder'."
         },
         "da": {
           "title": "Dansk auktions-tekst rettet",
-          "body": "På dansk viser badget, når du har det højeste bud i en auktion, nu 'Du fører' i stedet for det akavede 'Du leder'.",
+          "body": "På dansk viser badget, når du har det højeste bud i en auktion, nu 'Du fører' i stedet for det akavede 'Du leder'."
         },
-        "refs": [2070]
+        "refs": [
+          2070
+        ]
       }
     ]
   },
@@ -9423,13 +10493,15 @@ export const PATCHES = [
         "topic": "Managers",
         "en": {
           "title": "Manager profiles show season history again",
-          "body": "Opening a manager's profile always showed an empty season history, even for teams that had raced whole seasons. The page asked the database to sort the history by a column that doesn't exist, the query failed quietly, and the profile just showed nothing. The history now loads correctly, newest season first.",
+          "body": "Opening a manager's profile always showed an empty season history, even for teams that had raced whole seasons. The page asked the database to sort the history by a column that doesn't exist, the query failed quietly, and the profile just showed nothing. The history now loads correctly, newest season first."
         },
         "da": {
           "title": "Manager-profiler viser sæsonhistorik igen",
-          "body": "Åbnede du en managers profil, var sæsonhistorikken altid tom, selv for hold der havde kørt hele sæsoner. Siden bad databasen sortere historikken efter en kolonne der ikke findes, queryen fejlede i stilhed, og profilen viste bare ingenting. Historikken loader nu korrekt, nyeste sæson først.",
+          "body": "Åbnede du en managers profil, var sæsonhistorikken altid tom, selv for hold der havde kørt hele sæsoner. Siden bad databasen sortere historikken efter en kolonne der ikke findes, queryen fejlede i stilhed, og profilen viste bare ingenting. Historikken loader nu korrekt, nyeste sæson først."
         },
-        "refs": [2111]
+        "refs": [
+          2111
+        ]
       }
     ]
   },
@@ -9444,13 +10516,15 @@ export const PATCHES = [
         "topic": "Onboarding",
         "en": {
           "title": "An expired confirmation link no longer dumps you on a blank page",
-          "body": "If you clicked your email confirmation link too late, it had expired - and the app just landed you silently on the front page with no explanation, while login kept saying your account wasn't confirmed. Now an expired or invalid link takes you straight to the login screen with a clear message: log in with your email and, if your account still needs confirming, we'll offer to send you a fresh link.",
+          "body": "If you clicked your email confirmation link too late, it had expired - and the app just landed you silently on the front page with no explanation, while login kept saying your account wasn't confirmed. Now an expired or invalid link takes you straight to the login screen with a clear message: log in with your email and, if your account still needs confirming, we'll offer to send you a fresh link."
         },
         "da": {
           "title": "Et udløbet bekræftelseslink smider dig ikke længere af på en blank side",
-          "body": "Hvis du klikkede på dit bekræftelseslink for sent, var det udløbet - og appen landede dig bare tavst på forsiden uden forklaring, mens login blev ved med at sige at din konto ikke var bekræftet. Nu sender et udløbet eller ugyldigt link dig direkte til login-skærmen med en klar besked: log ind med din email, og hvis din konto stadig mangler bekræftelse, tilbyder vi at sende dig et nyt link.",
+          "body": "Hvis du klikkede på dit bekræftelseslink for sent, var det udløbet - og appen landede dig bare tavst på forsiden uden forklaring, mens login blev ved med at sige at din konto ikke var bekræftet. Nu sender et udløbet eller ugyldigt link dig direkte til login-skærmen med en klar besked: log ind med din email, og hvis din konto stadig mangler bekræftelse, tilbyder vi at sende dig et nyt link."
         },
-        "refs": [2078]
+        "refs": [
+          2078
+        ]
       }
     ]
   },
@@ -9465,13 +10539,15 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "The rider profile has been rebuilt from the ground up",
-          "body": "The rider page is now the decision surface it should be: who is he, what can he do, what is he becoming, and who else wants him. A new header shows rating, potential stars, market value and contract at a glance, with prev/next arrows (and your keyboard's arrow keys) to flip through the whole roster. Below it, eight tabs: Overview (all 15 abilities with training progress, plus a rider-type radar), Physiology (watt curve, power zones and critical power vs your division), Training and Development (the recorded season-by-season growth), History (every auction, bid, transfer, swap and loan in one compact table), Results (PCS-style: season totals on top, and stage races unfold to show every stage), and Interest (who follows him, profile views with trend, and - for your own riders - which rivals have spent scout slots on him). The Scouting tab is on its way; until it lands it links to the roadmap, where you can vote on what gets built first. Viewing a rival still hides what scouting should hide.",
+          "body": "The rider page is now the decision surface it should be: who is he, what can he do, what is he becoming, and who else wants him. A new header shows rating, potential stars, market value and contract at a glance, with prev/next arrows (and your keyboard's arrow keys) to flip through the whole roster. Below it, eight tabs: Overview (all 15 abilities with training progress, plus a rider-type radar), Physiology (watt curve, power zones and critical power vs your division), Training and Development (the recorded season-by-season growth), History (every auction, bid, transfer, swap and loan in one compact table), Results (PCS-style: season totals on top, and stage races unfold to show every stage), and Interest (who follows him, profile views with trend, and - for your own riders - which rivals have spent scout slots on him). The Scouting tab is on its way; until it lands it links to the roadmap, where you can vote on what gets built first. Viewing a rival still hides what scouting should hide."
         },
         "da": {
           "title": "Rytterprofilen er bygget op fra bunden",
-          "body": "Ryttersiden er nu den beslutningsflade den bør være: hvem er han, hvad kan han, hvad er han på vej til at blive, og hvem ellers vil have ham. En ny header viser rating, potentiale-stjerner, markedsværdi og kontrakt med det samme, med frem/tilbage-pile (og tastaturets piletaster) til at bladre gennem hele truppen. Under den otte faner: Overblik (alle 15 evner med træningsfremgang plus en ryttertype-radar), Fysiologi (watt-kurve, powerzoner og critical power mod din division), Træning og Udvikling (den registrerede vækst sæson for sæson), Historik (hver auktion, hvert bud, transfer, bytte og leje i én kompakt tabel), Resultater (PCS-stil: sæson-totaler øverst, og etapeløb foldes ud så du ser hver etape) og Interesse (hvem følger ham, profilvisninger med trend, og - for dine egne ryttere - hvilke rivaler der har brugt scout-slots på ham). Scouting-fanen er på vej; indtil den lander linker den til roadmappet, hvor du kan stemme på hvad der bygges først. Kigger du på en rivals rytter, er det scouting bør skjule stadig skjult.",
+          "body": "Ryttersiden er nu den beslutningsflade den bør være: hvem er han, hvad kan han, hvad er han på vej til at blive, og hvem ellers vil have ham. En ny header viser rating, potentiale-stjerner, markedsværdi og kontrakt med det samme, med frem/tilbage-pile (og tastaturets piletaster) til at bladre gennem hele truppen. Under den otte faner: Overblik (alle 15 evner med træningsfremgang plus en ryttertype-radar), Fysiologi (watt-kurve, powerzoner og critical power mod din division), Træning og Udvikling (den registrerede vækst sæson for sæson), Historik (hver auktion, hvert bud, transfer, bytte og leje i én kompakt tabel), Resultater (PCS-stil: sæson-totaler øverst, og etapeløb foldes ud så du ser hver etape) og Interesse (hvem følger ham, profilvisninger med trend, og - for dine egne ryttere - hvilke rivaler der har brugt scout-slots på ham). Scouting-fanen er på vej; indtil den lander linker den til roadmappet, hvor du kan stemme på hvad der bygges først. Kigger du på en rivals rytter, er det scouting bør skjule stadig skjult."
         },
-        "refs": [2000]
+        "refs": [
+          2000
+        ]
       }
     ]
   },
@@ -9486,13 +10562,15 @@ export const PATCHES = [
         "topic": "Onboarding",
         "en": {
           "title": "Your very first login no longer shows an empty game",
-          "body": "Right after confirming your email, the app creates your team in the background - but the dashboard could load a split second earlier, find no team yet, and then just sit there empty: no riders, no league, nothing, even though the top bar showed your team name. Logging out and back in fixed it, which is a terrible first impression. The app now refreshes itself once your team is ready, so your first look at the game is the real thing.",
+          "body": "Right after confirming your email, the app creates your team in the background - but the dashboard could load a split second earlier, find no team yet, and then just sit there empty: no riders, no league, nothing, even though the top bar showed your team name. Logging out and back in fixed it, which is a terrible first impression. The app now refreshes itself once your team is ready, so your first look at the game is the real thing."
         },
         "da": {
           "title": "Dit allerførste login viser ikke længere et tomt spil",
-          "body": "Lige efter du bekræfter din email, opretter appen dit hold i baggrunden - men dashboardet kunne nå at loade et splitsekund tidligere, finde intet hold endnu, og så bare stå tomt: ingen ryttere, ingen liga, ingenting, selvom topbaren viste dit holdnavn. Log ud og ind igen løste det, hvilket er et elendigt førstehåndsindtryk. Appen genindlæser nu sig selv når dit hold er klar, så dit første kig på spillet er det rigtige.",
+          "body": "Lige efter du bekræfter din email, opretter appen dit hold i baggrunden - men dashboardet kunne nå at loade et splitsekund tidligere, finde intet hold endnu, og så bare stå tomt: ingen ryttere, ingen liga, ingenting, selvom topbaren viste dit holdnavn. Log ud og ind igen løste det, hvilket er et elendigt førstehåndsindtryk. Appen genindlæser nu sig selv når dit hold er klar, så dit første kig på spillet er det rigtige."
         },
-        "refs": [2102]
+        "refs": [
+          2102
+        ]
       }
     ]
   },
@@ -9507,13 +10585,15 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "La Corsa dei Due Mari (Division 1) restarts with a real start field",
-          "body": "The first two stages of La Corsa dei Due Mari were produced by a stray simulation with placeholder riders that do not exist in the game - none of the Division 1 squads actually rode them, and the race then stalled because the engine refused to continue from a start list it never built. We have removed the phantom results and reset the race, so it starts over from stage 1 with the real Division 1 field. Standings recalculate automatically. The engine also reports this kind of inconsistency much more precisely now, so a stuck race gets caught and fixed faster.",
+          "body": "The first two stages of La Corsa dei Due Mari were produced by a stray simulation with placeholder riders that do not exist in the game - none of the Division 1 squads actually rode them, and the race then stalled because the engine refused to continue from a start list it never built. We have removed the phantom results and reset the race, so it starts over from stage 1 with the real Division 1 field. Standings recalculate automatically. The engine also reports this kind of inconsistency much more precisely now, so a stuck race gets caught and fixed faster."
         },
         "da": {
           "title": "La Corsa dei Due Mari (Division 1) starter forfra med et ægte startfelt",
-          "body": "De første to etaper af La Corsa dei Due Mari kom fra en vildfaren simulering med pladsholder-ryttere der ikke findes i spillet - ingen af Division 1-holdene kørte dem faktisk, og løbet gik derefter i stå fordi motoren nægtede at fortsætte fra et startfelt den aldrig selv havde bygget. Vi har fjernet fantom-resultaterne og nulstillet løbet, så det starter forfra fra etape 1 med det rigtige Division 1-felt. Stillingerne genberegnes automatisk. Motoren rapporterer også denne slags uoverensstemmelser langt mere præcist nu, så et fastlåst løb bliver fanget og rettet hurtigere.",
+          "body": "De første to etaper af La Corsa dei Due Mari kom fra en vildfaren simulering med pladsholder-ryttere der ikke findes i spillet - ingen af Division 1-holdene kørte dem faktisk, og løbet gik derefter i stå fordi motoren nægtede at fortsætte fra et startfelt den aldrig selv havde bygget. Vi har fjernet fantom-resultaterne og nulstillet løbet, så det starter forfra fra etape 1 med det rigtige Division 1-felt. Stillingerne genberegnes automatisk. Motoren rapporterer også denne slags uoverensstemmelser langt mere præcist nu, så et fastlåst løb bliver fanget og rettet hurtigere."
         },
-        "refs": [2103]
+        "refs": [
+          2103
+        ]
       }
     ]
   },
@@ -9528,13 +10608,15 @@ export const PATCHES = [
         "topic": "Board",
         "en": {
           "title": "New teams choose their club DNA before the board plan wizard",
-          "body": "If you created a brand-new team, the Board page could throw you straight into the 5-year-plan wizard - with the start button locked behind the club DNA requirement and no way to close the window. The DNA choice now comes first, and the plan wizard opens right after you have picked it. The board also no longer decides your DNA and long-term plans for you minutes after signup: brand-new teams get their own 5-day negotiation window before the board steps in.",
+          "body": "If you created a brand-new team, the Board page could throw you straight into the 5-year-plan wizard - with the start button locked behind the club DNA requirement and no way to close the window. The DNA choice now comes first, and the plan wizard opens right after you have picked it. The board also no longer decides your DNA and long-term plans for you minutes after signup: brand-new teams get their own 5-day negotiation window before the board steps in."
         },
         "da": {
           "title": "Nye hold vælger deres klub-DNA før bestyrelsens plan-wizard",
-          "body": "Oprettede du et helt nyt hold, kunne Bestyrelses-siden kaste dig direkte ind i 5-årsplan-wizarden - med start-knappen låst bag klub-DNA-kravet og ingen mulighed for at lukke vinduet. DNA-valget kommer nu først, og plan-wizarden åbner lige efter du har valgt. Bestyrelsen beslutter heller ikke længere dit DNA og dine langsigtede planer for dig få minutter efter signup: helt nye hold får deres eget 5-dages forhandlingsvindue før bestyrelsen tager over.",
+          "body": "Oprettede du et helt nyt hold, kunne Bestyrelses-siden kaste dig direkte ind i 5-årsplan-wizarden - med start-knappen låst bag klub-DNA-kravet og ingen mulighed for at lukke vinduet. DNA-valget kommer nu først, og plan-wizarden åbner lige efter du har valgt. Bestyrelsen beslutter heller ikke længere dit DNA og dine langsigtede planer for dig få minutter efter signup: helt nye hold får deres eget 5-dages forhandlingsvindue før bestyrelsen tager over."
         },
-        "refs": [2104]
+        "refs": [
+          2104
+        ]
       }
     ]
   },
@@ -9549,13 +10631,16 @@ export const PATCHES = [
         "topic": "Onboarding",
         "en": {
           "title": "Signing up now finishes cleanly after you confirm your email",
-          "body": "A few of you hit a wall right after signup: click the confirmation link, and instead of landing in the game you were asked to type your team and manager name all over again. That's fixed - your team is now created automatically the moment you confirm, using exactly what you entered when you signed up. If your first confirmation email doesn't show up, there's now a \"Send it again\" link on the confirmation screen and on the login error when it says your email isn't confirmed yet.",
+          "body": "A few of you hit a wall right after signup: click the confirmation link, and instead of landing in the game you were asked to type your team and manager name all over again. That's fixed - your team is now created automatically the moment you confirm, using exactly what you entered when you signed up. If your first confirmation email doesn't show up, there's now a \"Send it again\" link on the confirmation screen and on the login error when it says your email isn't confirmed yet."
         },
         "da": {
           "title": "Oprettelse af konto afsluttes nu rent efter du bekræfter din email",
-          "body": "Nogle af jer ramte en mur lige efter signup: klik på bekræftelseslinket, og i stedet for at lande i spillet blev I bedt om at skrive hold- og managernavn igen. Det er rettet - dit hold oprettes nu automatisk i det øjeblik du bekræfter, med præcis det du skrev ved signup. Kommer din første bekræftelsesmail ikke frem, er der nu et \"Send den igen\"-link på bekræftelsesskærmen og ved login-fejlen når den siger din email ikke er bekræftet endnu.",
+          "body": "Nogle af jer ramte en mur lige efter signup: klik på bekræftelseslinket, og i stedet for at lande i spillet blev I bedt om at skrive hold- og managernavn igen. Det er rettet - dit hold oprettes nu automatisk i det øjeblik du bekræfter, med præcis det du skrev ved signup. Kommer din første bekræftelsesmail ikke frem, er der nu et \"Send den igen\"-link på bekræftelsesskærmen og ved login-fejlen når den siger din email ikke er bekræftet endnu."
         },
-        "refs": [2068, 2069]
+        "refs": [
+          2068,
+          2069
+        ]
       }
     ]
   },
@@ -9570,13 +10655,15 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Stage-race GC now always matches the published stage results",
-          "body": "Some of you did the maths on Vuelta Burgalesa and caught a real bug: the final GC could contradict the stage results we had already published. The engine used to re-simulate the whole race on every stage day, so the final overall standings came from a different simulation than the stage results you saw. That is fixed: the overall standings are now calculated by adding up the published stage gaps, exactly the way you would check it yourself. A rider who leaves the game mid-race keeps the results and prize money already earned, but no longer appears in the final classifications. Already-finished races keep their published results. Thanks to the managers who double-checked our numbers - that is exactly the scrutiny the game needs.",
+          "body": "Some of you did the maths on Vuelta Burgalesa and caught a real bug: the final GC could contradict the stage results we had already published. The engine used to re-simulate the whole race on every stage day, so the final overall standings came from a different simulation than the stage results you saw. That is fixed: the overall standings are now calculated by adding up the published stage gaps, exactly the way you would check it yourself. A rider who leaves the game mid-race keeps the results and prize money already earned, but no longer appears in the final classifications. Already-finished races keep their published results. Thanks to the managers who double-checked our numbers - that is exactly the scrutiny the game needs."
         },
         "da": {
           "title": "Etapeløbs samlede stilling matcher nu altid de publicerede etaperesultater",
-          "body": "Nogle af jer regnede efter på Vuelta Burgalesa og fangede en ægte fejl: den endelige samlede stilling kunne modsige de etaperesultater vi allerede havde publiceret. Motoren re-simulerede før hele løbet på hver etapedag, så slutstillingen kom fra en anden simulation end de etaperesultater I så. Det er rettet: den samlede stilling beregnes nu ved at lægge de publicerede etape-gaps sammen, præcis som I selv ville tjekke det. En rytter der forlader spillet midt i et løb beholder de resultater og præmiepenge han allerede har kørt hjem, men optræder ikke længere i slutklassementerne. Allerede afsluttede løb beholder deres publicerede resultater. Tak til de managers der regnede efter - det er præcis den vagtsomhed spillet har brug for.",
+          "body": "Nogle af jer regnede efter på Vuelta Burgalesa og fangede en ægte fejl: den endelige samlede stilling kunne modsige de etaperesultater vi allerede havde publiceret. Motoren re-simulerede før hele løbet på hver etapedag, så slutstillingen kom fra en anden simulation end de etaperesultater I så. Det er rettet: den samlede stilling beregnes nu ved at lægge de publicerede etape-gaps sammen, præcis som I selv ville tjekke det. En rytter der forlader spillet midt i et løb beholder de resultater og præmiepenge han allerede har kørt hjem, men optræder ikke længere i slutklassementerne. Allerede afsluttede løb beholder deres publicerede resultater. Tak til de managers der regnede efter - det er præcis den vagtsomhed spillet har brug for."
         },
-        "refs": [2072]
+        "refs": [
+          2072
+        ]
       },
       {
         "category": "new",
@@ -9584,13 +10671,15 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Follow the overall standings while a stage race is running",
-          "body": "You no longer have to wait for the final stage to see who leads a stage race. The race page now shows the full running standings after each stage: GC with time gaps, the points, mountains and youth competitions, and the team classification. Open any race in progress and the Overall tab shows the standings after the latest completed stage, clearly marked so you know the race is not finished yet.",
+          "body": "You no longer have to wait for the final stage to see who leads a stage race. The race page now shows the full running standings after each stage: GC with time gaps, the points, mountains and youth competitions, and the team classification. Open any race in progress and the Overall tab shows the standings after the latest completed stage, clearly marked so you know the race is not finished yet."
         },
         "da": {
           "title": "Følg den samlede stilling mens et etapeløb er i gang",
-          "body": "Du skal ikke længere vente på sidste etape for at se hvem der fører et etapeløb. Løbssiden viser nu den fulde løbende stilling efter hver etape: GC med tidsgab, point-, bjerg- og ungdomskonkurrencen samt holdkonkurrencen. Åbn et igangværende løb, så viser Samlet-fanen stillingen efter den senest kørte etape, tydeligt markeret så du ved at løbet ikke er slut endnu.",
+          "body": "Du skal ikke længere vente på sidste etape for at se hvem der fører et etapeløb. Løbssiden viser nu den fulde løbende stilling efter hver etape: GC med tidsgab, point-, bjerg- og ungdomskonkurrencen samt holdkonkurrencen. Åbn et igangværende løb, så viser Samlet-fanen stillingen efter den senest kørte etape, tydeligt markeret så du ved at løbet ikke er slut endnu."
         },
-        "refs": [2081]
+        "refs": [
+          2081
+        ]
       }
     ]
   },
@@ -9611,7 +10700,10 @@ export const PATCHES = [
           "title": "Løbsresultater, rangliste og præmiepenge kører igen",
           "body": "Fra 30. juni til 2. juli stoppede en backend-fejl løb i at blive gjort ordentligt færdige: kørte løb blev ikke markeret som afsluttede, præmiepenge blev ikke udbetalt, og holdranglisten frøs fast. Fejlen er rettet, og alt er indhentet automatisk. Alle tilbageholdte præmiepenge (ca. 1,7M) er udbetalt, ranglisten tæller nu alle resultater med, og 13 fastlåste løb inklusive Vuelta Burgalesa er finaliseret. Vi har også tilføjet overvågning, så en fejl som denne alarmerer os på minutter i stedet for dage. Tak til de managers der meldte det ind."
         },
-        "refs": [2071, 2087]
+        "refs": [
+          2071,
+          2087
+        ]
       },
       {
         "category": "fixed",
@@ -9625,7 +10717,10 @@ export const PATCHES = [
           "title": "Nemmere oprettelse: gensend bekræftelsesmailen og slip for dobbelt opsætning",
           "body": "Hvis din bekræftelsesmail ikke dukker op, kan du nu trykke Send den igen på oprettelsesskærmen eller ved login. Og når du bekræfter din e-mail, oprettes dit hold automatisk ud fra det du indtastede ved oprettelsen, så du ikke længere skal skrive manager- og holdnavn en gang til."
         },
-        "refs": [2068, 2069]
+        "refs": [
+          2068,
+          2069
+        ]
       }
     ]
   },
@@ -9646,7 +10741,9 @@ export const PATCHES = [
           "title": "Få besked når et af dine løb er kørt",
           "body": "Når et løb dit hold deltog i er afviklet, får du nu en notifikation i appen, så du ved der er et resultat at se på. Åbn den for at hoppe direkte til løbets resultat. Indtil nu var det eneste tegn på et kørt løb at du selv opdagede det på dashboardet eller resultatsiden."
         },
-        "refs": [1952]
+        "refs": [
+          1952
+        ]
       },
       {
         "category": "improved",
@@ -9660,7 +10757,9 @@ export const PATCHES = [
           "title": "Se hvilke ryttere der er din klubs stjerneryttere",
           "body": "Din bestyrelses stjerneprofil-felt fortalte før hvor mange stjerneryttere du har, men ikke hvem de var. Det viser dem nu ved navn, med en kort note om hvordan de vælges (rytter-popularitet plus UCI-point). Har du ingen stjerneryttere endnu, står det tydeligt."
         },
-        "refs": [1889]
+        "refs": [
+          1889
+        ]
       },
       {
         "category": "improved",
@@ -9674,7 +10773,9 @@ export const PATCHES = [
           "title": "Rytter-potentiale vises nu på akademi-siden",
           "body": "Akademi-siden viser nu hver rytters potentiale ved siden af dem, både i din signerede akademi-trup og blandt de frie ungdomsryttere. Ryttere du ejer viser deres præcise potentiale; ryttere du endnu ikke ejer viser det spejdede spænd, som det fungerer andre steder."
         },
-        "refs": [1978]
+        "refs": [
+          1978
+        ]
       },
       {
         "category": "improved",
@@ -9688,7 +10789,9 @@ export const PATCHES = [
           "title": "Sortér dine ryttere når du udtager til et løb",
           "body": "På udtagelses-board'et kan du nu sortere dine ryttere efter navn, type, rute-match, form og træthed, så det er nemmere at finde den rigtige rytter til løbet. Klik en kolonneoverskrift på desktop, eller brug sorterings-menuen på mobil."
         },
-        "refs": [1951]
+        "refs": [
+          1951
+        ]
       },
       {
         "category": "improved",
@@ -9702,7 +10805,9 @@ export const PATCHES = [
           "title": "Sortér transfermarkedet efter rytter-evne",
           "body": "Transfermarkedet kan nu sorteres efter enhver rytter-evne, samt efter værdi, oven på den eksisterende sortering på pris, alder og nyeste. Vælg en evne i den nye dropdown for at lægge de stærkeste ryttere i den evne øverst."
         },
-        "refs": [2031]
+        "refs": [
+          2031
+        ]
       },
       {
         "category": "fixed",
@@ -9716,7 +10821,9 @@ export const PATCHES = [
           "title": "Transferhistorik viser nu akademi-signeringer og den rigtige sæson",
           "body": "Din transferhistorik manglede alle akademi-signeringer og lagde handler fra sæsonens første dag under den forkerte sæson. Akademi-ryttere du har signeret vises nu i historikken, og handler lavet på sæsonens første dag ligger nu under den rigtige sæson i stedet for den tomme sæson før."
         },
-        "refs": [1776]
+        "refs": [
+          1776
+        ]
       },
       {
         "category": "fixed",
@@ -9730,7 +10837,9 @@ export const PATCHES = [
           "title": "Tilbage-knappen bevarer din auktions-fane",
           "body": "Når du åbnede en rytterprofil fra auktionssiden og trykkede tilbage, landede du før altid på fanen 'Min situation'. Auktionssiden husker nu hvilken fane du var på, så tilbage fører dig hen hvor du forventer, og du kan dele eller bogmærke en bestemt fane."
         },
-        "refs": [1777]
+        "refs": [
+          1777
+        ]
       },
       {
         "category": "fixed",
@@ -9744,7 +10853,9 @@ export const PATCHES = [
           "title": "Ensartet sortering af rytternavne på tværs af sider",
           "body": "Rytterlister sorteret efter navn kunne ordne navne med dobbelt-a forskelligt fra side til side. Navnesortering bruger nu den samme regel overalt, så de samme ryttere sorteres ens på alle sider."
         },
-        "refs": [1950]
+        "refs": [
+          1950
+        ]
       },
       {
         "category": "fixed",
@@ -9758,7 +10869,9 @@ export const PATCHES = [
           "title": "Rettet et crash når browseren auto-oversætter spillet",
           "body": "Hvis din browser tilbød at oversætte siden (typisk i Chrome når sidens sprog ikke matchede din browser), kunne spillet crashe til en blank skærm. Appen fortæller nu browseren sit rigtige sprog og er modstandsdygtig over for oversættelses-værktøjer, så auto-oversæt ikke længere ødelægger siden."
         },
-        "refs": [2039]
+        "refs": [
+          2039
+        ]
       },
       {
         "category": "improved",
@@ -9772,7 +10885,9 @@ export const PATCHES = [
           "title": "Delte links til ryttere og løb rammer ikke længere en blank login-væg",
           "body": "Et direkte link til en rytter eller et løb åbnede før en tom login-skærm hvis man ikke var logget ind. De dybe links viser nu en ordentlig kontekst-bevidst login, så et delt eller bogmærket link fører et brugbart sted hen i stedet for en blindgyde."
         },
-        "refs": [2042]
+        "refs": [
+          2042
+        ]
       },
       {
         "category": "new",
@@ -9807,7 +10922,9 @@ export const PATCHES = [
           "title": "Auto-valgt løbskaptajn er nu din stærkeste rytter",
           "body": "Når en kaptajn skal udfyldes for dig på udtagelses-board'et (fordi du fjernede din kaptajn eller aldrig satte en), vælger board'et nu din stærkeste rytter til løbet i stedet for tilfældigvis den første i listen. Før kunne det stille give kaptajnsbindet til en svagere rytter og skubbe din tiltænkte leder til side. En kaptajn du selv har valgt, bevares altid. Bemærk: roller låses stadig når et løb er i gang, så dette gælder kun kommende løb."
         },
-        "refs": [2028]
+        "refs": [
+          2028
+        ]
       }
     ]
   },
@@ -9828,7 +10945,9 @@ export const PATCHES = [
           "title": "Skift dit klub-DNA i din første sæson",
           "body": "Du kan nu skifte dit klub-DNA når som helst i din første sæson, ikke kun i det øjeblik du først vælger det. Åbn din bestyrelse, fold 'Skift klub-DNA' ud og vælg en anden identitet. Dine bestyrelsesmedlemmer og målvægtning opdateres til at passe. Når din første sæson slutter, låses valget som før. Det retter også en forkert besked der fortalte nyere hold at de skulle 'afslutte sæson 1' før de kunne vælge DNA, selvom bestyrelsen er klar fra dag ét."
         },
-        "refs": [2022]
+        "refs": [
+          2022
+        ]
       }
     ]
   },
@@ -9849,7 +10968,9 @@ export const PATCHES = [
           "title": "Din bestyrelses trup-størrelses-mål passer nu til dit faktiske hold",
           "body": "Når du starter et nyt hold, sætter din bestyrelse nu sine forventninger ud fra din faktiske trup i stedet for et fast tal. Nye hold fik før et mål om mindst 15 ryttere, som en 8-rytters start-trup aldrig kunne nå, og det trak stille bestyrelsens tilfredshed ned uden du kunne gøre noget ved det. Trup-størrelses-målet følger nu divisionens normale spænd, så det er opnåeligt fra dag ét. Eksisterende hold der stadig havde det gamle faste mål er også opdateret."
         },
-        "refs": [2022]
+        "refs": [
+          2022
+        ]
       }
     ]
   },
@@ -9870,7 +10991,10 @@ export const PATCHES = [
           "title": "Håndtér dine ryttere direkte fra deres profil",
           "body": "Du kan nu forlænge en kontrakt, fyre en rytter og flytte en rytter mellem din senior-trup og dit akademi direkte fra rytterprofilen, ved siden af auktion, transferliste og bud som allerede lå der. Alt hvad en manager kan gøre ved en rytter ligger nu ét sted, så du ikke længere skal tilbage til holdsiden for at håndtere en kontrakt. Akademi-ryttere viser korrekt kun op-rykning."
         },
-        "refs": [2007, 2000]
+        "refs": [
+          2007,
+          2000
+        ]
       }
     ]
   },
@@ -9891,7 +11015,10 @@ export const PATCHES = [
           "title": "Udvikling-fanen følger nu din rytters rating i hver ryttertype",
           "body": "Rytterens Udvikling-fane viser nu hvor god han er i hver af de otte ryttertyper (spurter, klatrer, GC og resten) på samme 1 til 99-skala som hans samlede rating, og hvordan det bevæger sig over tid. Brug type-filteret til at fokusere på de typer du går op i, eller vis dem alle på én gang. Grafen bygges op efterhånden som rytteren træner fra dag til dag og udvikler sig over sæsoner, og erstatter den gamle færdighedshistorik."
         },
-        "refs": [2000, 918]
+        "refs": [
+          2000,
+          918
+        ]
       }
     ]
   },
@@ -9912,7 +11039,10 @@ export const PATCHES = [
           "title": "Rytter-rating: ét 1-99-tal for hvor god en rytter er",
           "body": "Hver rytter har nu en samlet rating fra 1 til 99, vist som en farvet cirkel på rytterprofilen og som en sorterbar kolonne i rytter-ranglisten. Ratingen blander hvor stærk rytteren er i sin bedste type (klatrer, spurter, GC og så videre) med hans alsidighed, og bruger samme model som den viste type og værdi, så de tre hænger sammen. Skalaen er ankret mod hele rytterfeltet, så de allerbedste ryttere ligger tæt på 99, og resten spreder sig nedenunder."
         },
-        "refs": [2006, 2000]
+        "refs": [
+          2006,
+          2000
+        ]
       }
     ]
   },
@@ -9933,7 +11063,10 @@ export const PATCHES = [
           "title": "Klarere holdudtagelse når løb overlapper samme dag",
           "body": "Når to løb ligger samme dag, viser listen af ledige ryttere nu pr. rytter hvilke af dagens løb han kan køre, og hvilke der er låst fordi han allerede kører et overlappende løb, med det blokerende løb navngivet. Klikker du en låst rytter, forklares hvorfor nu i stedet for ingenting, og overlap-fejlen navngiver rytter og løb, så du kan rette den. Ryttere kan stadig bruges i samme-dags-løb der ikke reelt overlapper."
         },
-        "refs": [1984, 1983]
+        "refs": [
+          1984,
+          1983
+        ]
       },
       {
         "category": "fixed",
@@ -9947,7 +11080,9 @@ export const PATCHES = [
           "title": "Løbsresultater bevarer det hold du vandt dem med",
           "body": "Hvert løbsresultat gemmer nu navnet på det hold du kørte for på løbstidspunktet, taget i det øjeblik resultatet registreres. Før hang resultatet kun på et live-link til holdet, så hvis et hold senere blev slettet, mistede resultatet al hold-tilknytning, og dets præmiepenge blev sprunget over uden besked. Eksisterende resultater er fyldt bagud, så en rytters historik korrekt viser hvilket hold han vandt hvert resultat med, også efter trup-ændringer."
         },
-        "refs": [1993]
+        "refs": [
+          1993
+        ]
       }
     ]
   },
@@ -9968,7 +11103,9 @@ export const PATCHES = [
           "title": "Se hvem der vandt holdkonkurrencen i løbsresultaterne",
           "body": "Afsluttede løb viser nu holdkonkurrencens vinder ved navn, fremhævet øverst i holdklassementet. Holdkonkurrencen blev allerede afgjort, men det vindende hold blev ikke vist, så man kunne ikke se hvem der havde vundet den."
         },
-        "refs": [1485]
+        "refs": [
+          1485
+        ]
       },
       {
         "category": "new",
@@ -9982,7 +11119,9 @@ export const PATCHES = [
           "title": "Løbsreferater: en kort fortælling om hvordan løbet udspillede sig",
           "body": "Hvert afsluttet løb og hver etape åbner nu med et kort referat der trækker nøglemomenterne ud af resultatet: hvordan vinderen tog den, om et udbrud holdt hjem eller blev hentet, og hvilket hold der havde den bedste dag. Det bygger på de eksisterende løbsdata, så der er ingen ændring i hvordan løb afgøres."
         },
-        "refs": [1311]
+        "refs": [
+          1311
+        ]
       },
       {
         "category": "fixed",
@@ -9996,7 +11135,9 @@ export const PATCHES = [
           "title": "Fjernet det misvisende \"bedste evne\"-felt fra rytterprofilen",
           "body": "Rytterprofilens øverste højre hjørne viste en \"Bedste: …\"-linje der stadig var udledt af de gamle evne-tal, ikke de nuværende Cycling Zone-evner, så den kunne være forældet og misvisende. Vi har fjernet linjen helt (Evner-fanen er den korrekte kilde) uden erstatning, så profilen ikke bliver overfyldt."
         },
-        "refs": [1781]
+        "refs": [
+          1781
+        ]
       },
       {
         "category": "fixed",
@@ -10010,7 +11151,9 @@ export const PATCHES = [
           "title": "Hjælp-siden viser nu kun de nuværende rytter-evner",
           "body": "Rytter-sektionen på hjælp-siden listede stadig de gamle 14 evne-forkortelser (FL, BJ, KB …) oven over de 15 nuværende Cycling Zone-evner, hvilket var forvirrende. Vi har fjernet den forældede liste: hjælp-siden forklarer nu kun de 15 evner spillet faktisk bruger."
         },
-        "refs": [1832]
+        "refs": [
+          1832
+        ]
       },
       {
         "category": "fixed",
@@ -10024,7 +11167,9 @@ export const PATCHES = [
           "title": "Hviledage ligner ikke længere et tabt træningsfokus",
           "body": "I den daglige træningsrapport blev ryttere på en hviledag vist som \"Intet fokus valgt\" i Næste +1-kolonnen, selvom et fokus stadig var valgt. Det fik det til at se ud som om fokusset var gået tabt. Hviledage står nu som \"Hviledag\" der, og fokus-kolonnen viser fortsat det valgte fokus."
         },
-        "refs": [1937]
+        "refs": [
+          1937
+        ]
       },
       {
         "category": "fixed",
@@ -10038,7 +11183,9 @@ export const PATCHES = [
           "title": "Løb i andre divisioner tilbyder ikke længere en opstilling der fejler ved gem",
           "body": "Når man åbnede et planlagt løb i en anden division, viste det et fuldt udtageligt opstillings-panel der først fejlede når man forsøgte at gemme. Sådan et løb viser nu en kort read-only besked om at det hører til en anden division, så du ikke bygger en opstilling der ikke kan gemmes."
         },
-        "refs": [1954]
+        "refs": [
+          1954
+        ]
       }
     ]
   },
@@ -10059,7 +11206,9 @@ export const PATCHES = [
           "title": "Løbskategorier omdøbt så de passer til Cycling Zones egen verden",
           "body": "Løbsklasse-kategorierne låner ikke længere navne fra rigtige løb. \"Tour de France\" hedder nu \"Grand Tour\" og \"Giro / Vuelta\" hedder nu \"Major Tour\" på tværs af kalenderen, løbsbiblioteket og point & præmier. Point, præmier og hvilke løb der ligger i hver klasse er uændrede, kun etiketterne."
         },
-        "refs": [1780]
+        "refs": [
+          1780
+        ]
       },
       {
         "category": "improved",
@@ -10101,7 +11250,10 @@ export const PATCHES = [
           "title": "Hvert løb har nu en rute der passer, ens for alle grupper i en division",
           "body": "Hvert løb følger nu et parcours der passer til dets virkelige karakter. Brosten-klassikerne køres på brosten, bjerg-rundene klatrer, og de flade sprinter-uger forbliver flade, mens etapeløb bygger op mod bjergene. Og inden i en division kører hver gruppe nu nøjagtig samme rute i det samme løb, så stillingen afgøres af dit holds styrke i stedet for hvilken gruppe du blev placeret i. Ruterne varierer også fra sæson til sæson inden for hvert løbs karakter."
         },
-        "refs": [1962, 1963]
+        "refs": [
+          1962,
+          1963
+        ]
       }
     ]
   },
@@ -10122,7 +11274,9 @@ export const PATCHES = [
           "title": "Klik ind på et hvilket som helst løb: etaper vises nu pr. dag og tidspunkt",
           "body": "Hvert løb i kalenderen er nu klikbart: tryk på et løb for at åbne dets planlægningsside. Etapeløb er delt ud over de dage de køres, og hver etape vises på sin egen dag med sit starttidspunkt (for eksempel \"1. etape · 12:00\", \"2. etape · 15:00\"), så du kan se præcis hvornår hver etape køres og planlægge din trup til den."
         },
-        "refs": [1945]
+        "refs": [
+          1945
+        ]
       },
       {
         "category": "improved",
@@ -10136,7 +11290,9 @@ export const PATCHES = [
           "title": "Strammere, mere varieret løbsprogram pr. division",
           "body": "Hver divisions sæson-program har nu et præcist antal løbsdage der skalerer ned ad pyramiden, med mere racing og flere overlappende løb i Division 3, så der altid er noget at køre. Grand Tour-løbene kører som en spredt rygrad med andre løb ved siden af, og monumenterne er frie at stille til: dine bedste ryttere er aldrig låst inde i et etapeløb, når et monument dukker op."
         },
-        "refs": [1945]
+        "refs": [
+          1945
+        ]
       }
     ]
   },
@@ -10157,7 +11313,9 @@ export const PATCHES = [
           "title": "Løbskalenderne er bygget om: ét fælles program pr. division",
           "body": "Hver division kører nu sit eget sæson-program, ens på tværs af dens puljer og dato-synkroniseret med de andre divisioner. Top-divisionerne har Grand Tour-løbene som en spredt rygrad med klassikere ovenpå, og intet løb optræder længere i to divisioner. Sæson 1's løb genstarter mandag 29. juni. Åbn den nye Kalender for at se hele programmet og planlægge din trup i forvejen."
         },
-        "refs": [1945]
+        "refs": [
+          1945
+        ]
       }
     ]
   },
@@ -10178,7 +11336,9 @@ export const PATCHES = [
           "title": "Auktioner kører nu 08:00 til 24:00 alle dage",
           "body": "Det aktive auktionsvindue er nu 08:00 til 24:00 alle dage, op fra 10:00 til 22:00. En auktion tæller stadig én aktiv time, men kan nu køre længere ud på aftenen, og de eneste døde timer er 00:00 til 08:00. En auktion startet kl. 23:30 slutter for eksempel kl. 08:30 næste morgen."
         },
-        "refs": [1904]
+        "refs": [
+          1904
+        ]
       }
     ]
   },
@@ -10199,7 +11359,9 @@ export const PATCHES = [
           "title": "Flyt ryttere mellem løb ved at trække",
           "body": "På desktop kan du nu trække en rytter direkte fra ét løb til et andet, eller til og fra puljen af ledige ryttere. Det løb du flytter ham ud af, vises som underbemandet indtil du fylder det igen, og assistentens Auto-udfyld gør det hurtigt. På mobil gør tap-flowet det samme, og en rytter kan ikke længere sidde fast i et løb du allerede har flyttet ham ud af."
         },
-        "refs": [1925]
+        "refs": [
+          1925
+        ]
       }
     ]
   },
@@ -10220,7 +11382,9 @@ export const PATCHES = [
           "title": "Stil et fuldt hold til hvert løb",
           "body": "Du udtager nu en komplet opstilling til hvert løb, du stiller op i. Vil du hellere stå over, så afmeld dig løbet; mangler du ryttere, så hent fri-agenter til at fylde pladserne. Det holder alle startlister fulde, og assistentens auto-udfyld er den hurtige vej til et fuldt hold."
         },
-        "refs": [1906]
+        "refs": [
+          1906
+        ]
       },
       {
         "category": "fixed",
@@ -10234,7 +11398,10 @@ export const PATCHES = [
           "title": "Opstillinger gemmes pålideligt igen",
           "body": "Solgte, frigivne, pensionerede eller udlånte ryttere kunne efterlade en forældet tilmelding i et overlappende løb, der fejlagtigt låste en ægte rytter og forhindrede dig i at gemme din opstilling. De tilmeldinger ryddes nu automatisk, så det at gemme en trup og assistentens auto-udfyld virker som forventet."
         },
-        "refs": [1823, 1800]
+        "refs": [
+          1823,
+          1800
+        ]
       }
     ]
   },
@@ -10255,7 +11422,9 @@ export const PATCHES = [
           "title": "Se hvad hvert træningsfokus udvikler",
           "body": "Siden Daglig træning og Hjælp-sektionen viser nu præcis hvilke evner hvert fokus træner: VO2max (Klatring, Punch, Tempo), Tærskel/TT (Enkeltstart, Tempo), Spurt (Spurt, Acceleration), Udholdenhed (Udholdenhed, Restitution, Modstandskraft), Teknik (Nedkørsel, Positionering, Brosten) og Aero (Enkeltstart, Fladt). Dine øvrige evner forbedres stadig en smule langsommere, så ryttere udvikler sig bredt, bare hurtigst i den valgte retning."
         },
-        "refs": [1908]
+        "refs": [
+          1908
+        ]
       }
     ]
   },
@@ -10276,7 +11445,10 @@ export const PATCHES = [
           "title": "Rettet forældede tal i in-game-hjælpen",
           "body": "Et par tal i Hjælp & Regler var rester fra ældre indstillinger. Startbudgettet står nu korrekt som 500.000 CZ$ (ikke 800.000), relaunch-truppen beskrives som 12 ryttere (ikke 8), og præmie-afsnittet matcher nu den faktiske udbetaling på 75 CZ$ per point: eksemplerne (fx en Tour de France-sejr) og 'point × 1.500'-linjen viste stadig de gamle beløb, der var 20× for høje. Selve spillet var altid korrekt; kun hjælpeteksten var forkert."
         },
-        "refs": [1907, 1819]
+        "refs": [
+          1907,
+          1819
+        ]
       }
     ]
   },
@@ -10297,7 +11469,9 @@ export const PATCHES = [
           "title": "Akademirytteres alder matcher nu resten af spillet",
           "body": "En ung rytters alder kunne stå ét år lavere på Akademi-siden end på rytterprofilen, fordi Akademi-siden talte alder anderledes. Akademiet bruger nu samme alder som alle andre skærme (og som akademiets aldersregler), så en rytter viser samme alder overalt."
         },
-        "refs": [1831]
+        "refs": [
+          1831
+        ]
       }
     ]
   },
@@ -10318,7 +11492,9 @@ export const PATCHES = [
           "title": "Dashboardet viser nu din egen divisions næste løb",
           "body": "'Næste løb'-kortet på dashboardet listede løb fra alle divisioner, så det kunne vise løb du slet ikke er tilmeldt, og det var uenigt med holdudtagelse-siden om hvilke løb der var på vej. Det filtrerer nu til din egen pulje, så dashboard og holdudtagelse altid er enige om dine næste løb."
         },
-        "refs": [1906]
+        "refs": [
+          1906
+        ]
       }
     ]
   },
@@ -10339,7 +11515,9 @@ export const PATCHES = [
           "title": "Fjernet resterne af transfervindue-mærkater og Deadline Day-siden",
           "body": "Handel i Cycling Zone har været altid-åben et stykke tid, men nogle skærme viste stadig 'transfervindue åbent/lukket'-mærkater og en Deadline Day-side, der ikke længere gjorde noget. Vi har fjernet de rester på tværs af dashboard, transfers, dit hold og ryttersiderne, så intet fortæller dig at vinduet er lukket, når du frit kan handle. Din trup-cap er en hård grænse: en handel der ville bringe dig over divisionens max, bliver simpelthen afvist, uden buffer eller bøde."
         },
-        "refs": [1898]
+        "refs": [
+          1898
+        ]
       }
     ]
   },
@@ -10360,7 +11538,9 @@ export const PATCHES = [
           "title": "Scout modstandernes startlister på tværs af alle divisioner",
           "body": "Du kan nu skifte race hub'en til 'Min division' eller 'Andre divisioner' og se enhver puljes kommende startlister, skrivebeskyttet. Startlister åbner syv dage før hvert løb og viser kun bruttotrupper (hvilke ryttere et hold har meldt til), så du kan scoute det forventede felt og planlægge taktisk. Roller, form og træthed forbliver skjult, og løb længere ude er låst, indtil deres startliste åbner."
         },
-        "refs": [1835]
+        "refs": [
+          1835
+        ]
       }
     ]
   },
@@ -10381,7 +11561,9 @@ export const PATCHES = [
           "title": "Ryttere du har vundet på auktion vises ikke længere som om du sælger dem",
           "body": "Når du starter en auktion for at købe en ledig rytter, lægger du selv åbningsbuddet. Efter du havde vundet, dukkede de ryttere kortvarigt op under 'Sælger', selvom du havde købt dem. Auktions-skærmen skelner nu korrekt mellem at købe og sælge, så en rytter du har vundet, aldrig fremstår som en du sælger."
         },
-        "refs": [1886]
+        "refs": [
+          1886
+        ]
       },
       {
         "category": "fixed",
@@ -10395,7 +11577,9 @@ export const PATCHES = [
           "title": "Sæt træning op for hele truppen på én gang",
           "body": "At anvende et træningsfokus på en stor trup kunne fejle halvvejs uden besked, så de sidste ryttere stod uden en plan. Bulk-træning sender nu én forespørgsel for alle valgte ryttere, så du kan sætte hele truppen op i ét trin, uanset hvor stor den er."
         },
-        "refs": [1885]
+        "refs": [
+          1885
+        ]
       },
       {
         "category": "improved",
@@ -10409,7 +11593,9 @@ export const PATCHES = [
           "title": "Trup-tælleren viser nu senior-ryttere mod cap'en, med akademi opført separat",
           "body": "Din holdheader talte før akademi-ryttere med i totalen, hvilket kunne ligne at du var over 30-rytter-cap'en, selvom du ikke var. Den viser nu dine senior-ryttere mod cap'en (for eksempel 29/30) og opfører akademi-ryttere separat, da akademi-ryttere aldrig tæller mod senior-cap'en."
         },
-        "refs": [1886]
+        "refs": [
+          1886
+        ]
       }
     ]
   },
@@ -10430,7 +11616,11 @@ export const PATCHES = [
           "title": "Trup-redigering til overlappende løb virker igen: byt ryttere frit, ingen spøgelses-ryttere",
           "body": "Det var låst at redigere truppen til løb på samme dag: man kunne ikke bytte en rytter, afmelding frigjorde ingen, og ledige ryttere kunne ikke tilføjes. Du kan nu redigere frit mens du bygger truppen: fjern og tilføj ryttere selv når et løb er fuldt; det gemmes bare ikke under minimum, før du fylder op igen. Afmelder du det ene af to overlappende løb, frigøres rytterne nu til det andet løb. Og ryttere der har forladt holdet (solgt, frigivet, pensioneret eller flyttet til akademiet) optræder ikke længere som blanke, låste pladser i din trup eller bliver auto-valgt af assistenten."
         },
-        "refs": [1823, 1800, 1742]
+        "refs": [
+          1823,
+          1800,
+          1742
+        ]
       }
     ]
   },
@@ -10451,7 +11641,9 @@ export const PATCHES = [
           "title": "Ryk akademi-ryttere op, eller flyt U23-seniorer ned i akademiet",
           "body": "Du kan nu flytte ryttere mellem dit akademi og din senior-trup når som helst. På Akademi-siden kan du rykke en akademi-rytter op i senior-truppen: rytteren optager en senior-plads og -kontrakt, og lønnen bliver senior-lønnen. På din holdside kan du flytte en senior-rytter på 22 år eller derunder ned i akademiet: rytteren frigør en senior-plads, falder til ungdomsløn og fjernes fra alle kommende løb, vedkommende var udtaget til. Begge handlinger viser hele effekten (trup-pladser, løn, ryddede løb) i en bekræftelse, før du udfører dem."
         },
-        "refs": [932]
+        "refs": [
+          932
+        ]
       }
     ]
   },
@@ -10472,7 +11664,9 @@ export const PATCHES = [
           "title": "Sæt rytter-roller med taktik-kort der forklarer terrænet",
           "body": "Rolle-tildeling er nu kort i stedet for en dropdown. Hvert kort fortæller hvorfor en rolle passer løbets terræn: hvem din beskyttede kaptajn fører an, hvornår en sprint-kaptajn betyder noget, og hvad udbrudsjægeren gør. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem her, og løb-detalje-siden forklarer nu jæger-rollen og rangerer dine bedste jægere efter aggression."
         },
-        "refs": [1747]
+        "refs": [
+          1747
+        ]
       }
     ]
   },
@@ -10514,7 +11708,9 @@ export const PATCHES = [
           "title": "Din indbakke advarer dig nu, når en rytters kontrakt er ved at udløbe",
           "body": "Du får en indbakke-notifikation, når en af dine rytteres kontrakter er ved at løbe ud: ved sæsonskift for enhver rytter hvis aftale slutter næste sæson, og lige efter du henter en rytter hvis kontrakt udløber i denne sæson."
         },
-        "refs": [1836]
+        "refs": [
+          1836
+        ]
       },
       {
         "category": "new",
@@ -10528,7 +11724,9 @@ export const PATCHES = [
           "title": "En hurtig feedback-prompt efter et løb-resultat",
           "body": "En sjælden gang, efter du har set et løb-resultat, spørger vi nu med en hurtig 0 til 10-prompt hvor sandsynligt det er at du vil anbefale Cycling Zone, plus en valgfri begrundelse. Den er nem at lukke, vises højst én gang hver 90. dag, og kun hvis du har accepteret Analytics-cookiekategorien."
         },
-        "refs": [940]
+        "refs": [
+          940
+        ]
       }
     ]
   },
@@ -10549,7 +11747,10 @@ export const PATCHES = [
           "title": "Klik et løb for at se rute, terræn og din opstilling",
           "body": "Løbsnavne er nu klikbare overalt. Hvert løb åbner en detalje-visning: resultater hvis det er kørt, ellers ruteprofilen pr. etape med en terræn-DNA-opdeling af hvad hver etape belønner, plus din opstillings rute-match pr. etape. Etaper navigeres med én visuel etape-stribe på både kommende og kørte løb."
         },
-        "refs": [1834, 1747]
+        "refs": [
+          1834,
+          1747
+        ]
       }
     ]
   },
@@ -10570,7 +11771,9 @@ export const PATCHES = [
           "title": "Skift e-mail og brugernavn fra konto-indstillinger",
           "body": "Du kan nu selv skifte din e-mailadresse og dit brugernavn fra konto-indstillingerne på din profil, uden at kontakte support. Brugernavne tjekkes, så to managere ikke deler det samme."
         },
-        "refs": [1746]
+        "refs": [
+          1746
+        ]
       },
       {
         "category": "fixed",
@@ -10584,7 +11787,9 @@ export const PATCHES = [
           "title": "Auktioner viser nu det rigtige U23-badge",
           "body": "Ryttere under 23 viser nu et U23-badge i auktioner, ryttere på 23 til 24 viser U25, og ryttere på 25 og derover viser intet alders-badge. Tidligere manglede U23-ryttere deres badge."
         },
-        "refs": [1824]
+        "refs": [
+          1824
+        ]
       },
       {
         "category": "fixed",
@@ -10598,7 +11803,9 @@ export const PATCHES = [
           "title": "Ryttertype-filteret tømmer ikke længere listen",
           "body": "At vælge en ryttertype i filteret på transferlisten og i auktioner filtrerer nu korrekt i stedet for at få alle ryttere til at forsvinde."
         },
-        "refs": [1826]
+        "refs": [
+          1826
+        ]
       },
       {
         "category": "fixed",
@@ -10612,7 +11819,9 @@ export const PATCHES = [
           "title": "Løn-filteret medtager nu frie agenter",
           "body": "At sætte en maks-løn og filtrere på frie agenter henter nu de tusindvis af tilgængelige frie agenter, ikke kun de få der allerede er på et hold. Filteret bruger nu hver rytters viste løn, inklusive frie agenter hvis løn er estimeret ud fra deres værdi."
         },
-        "refs": [1827]
+        "refs": [
+          1827
+        ]
       },
       {
         "category": "fixed",
@@ -10626,7 +11835,9 @@ export const PATCHES = [
           "title": "Akademiryttere kan ikke længere sættes på auktion eller til salg",
           "body": "Ryttere i et akademi kan ikke længere sættes på auktion eller til salg. De styres i dit akademi, indtil du rykker dem op til din seniortrup."
         },
-        "refs": [1824]
+        "refs": [
+          1824
+        ]
       },
       {
         "category": "fixed",
@@ -10640,7 +11851,9 @@ export const PATCHES = [
           "title": "Kontraktforlængelse hænger ikke længere for akademiryttere",
           "body": "At åbne forlæng-fanen for en akademirytter viser nu en tydelig forklaring i stedet for at hænge i indlæsning på den nye løn. Seniorryttere med kontrakt ind i en fremtidig sæson viser deres nye løn korrekt."
         },
-        "refs": [1779]
+        "refs": [
+          1779
+        ]
       },
       {
         "category": "fixed",
@@ -10654,7 +11867,9 @@ export const PATCHES = [
           "title": "Sponsortilbud-kortet er nu klikbart på hele kortet",
           "body": "På Bestyrelse-siden åbner hele sponsortilbud-kortet nu tilbuddet, ikke kun knappen på det."
         },
-        "refs": [1795]
+        "refs": [
+          1795
+        ]
       },
       {
         "category": "fixed",
@@ -10668,7 +11883,9 @@ export const PATCHES = [
           "title": "Klik hvor som helst på en rytters række for at åbne profilen",
           "body": "På Mit Hold åbner et klik hvor som helst på en rytters række nu profilen, ikke kun navnet. Navne-linket og Sælg- eller Auktion-knappen gør stadig som før."
         },
-        "refs": [1796]
+        "refs": [
+          1796
+        ]
       },
       {
         "category": "fixed",
@@ -10682,7 +11899,9 @@ export const PATCHES = [
           "title": "Holdtilfredshed stemmer nu overens på Dashboard og Bestyrelse",
           "body": "Holdtilfredshed viser nu samme procent på Dashboard og Bestyrelse-siden. Tidligere kunne de to afvige, for eksempel 65 procent mod 67 procent, fordi de blev beregnet forskelligt."
         },
-        "refs": [1830]
+        "refs": [
+          1830
+        ]
       },
       {
         "category": "improved",
@@ -10696,7 +11915,9 @@ export const PATCHES = [
           "title": "Tilbagevendende besøgende genkendes nu på tværs af sessioner",
           "body": "Vores anonyme analytics genkender nu tilbagevendende besøgende på tværs af sessioner, så vi kan måle hvordan folk kommer tilbage over tid. Intet nyt spores, det forbliver anonymt, og det kører kun efter du har accepteret Analytics-cookiekategorien."
         },
-        "refs": [1797]
+        "refs": [
+          1797
+        ]
       }
     ]
   },
@@ -10717,7 +11938,9 @@ export const PATCHES = [
           "title": "Holdstrategi: fortæl din assistent hvordan hver opstilling bygges",
           "body": "En ny Holdstrategi-side lader dig sætte stående præferencer din assistent følger, når den auto-udfylder kalenderen: en rangordnet A-kæde af kerne-ryttere, faste roller pr. rytter (altid kaptajn, eller altid sprint-kaptajn når udtaget), kaptajner rangordnet 1/2/3 for hver terræntype (flad, bakke, bjerg, brosten, enkeltstart) med ægte egnethedsdata og auto-foreslå, og hvilke løb der er dine mål. Din A-kæde prioriteres til mål-løbene. Se præcis hvordan din strategi ændrer udtagelserne, før du gemmer, og generér så forslag igen. Manuelle udtagelser overskrives aldrig."
         },
-        "refs": [1802]
+        "refs": [
+          1802
+        ]
       }
     ]
   },
@@ -10738,7 +11961,9 @@ export const PATCHES = [
           "title": "Auto-udfyld sætter ikke længere samme rytter i to overlappende løb",
           "body": "Når to af dine løb lå på samme dag, kunne assistenten vælge de samme ryttere til begge, så kun halvdelen af din trup blev brugt. Løb på samme dag tæller nu som overlappende, så hver rytter sættes i højst ét af dem, og hver plads fyldes med en forskellig rytter. Du kan også fjerne ryttere og skifte kaptajn efter auto-udfyld, og hvis et gem afvises, ser du nu årsagen i stedet for en tavs fejl."
         },
-        "refs": [1823]
+        "refs": [
+          1823
+        ]
       },
       {
         "category": "improved",
@@ -10752,7 +11977,10 @@ export const PATCHES = [
           "title": "Løb i gang vises nu som I gang",
           "body": "Et etapeløb der er startet men ikke afsluttet vises nu som I gang med etape-fremdrift, for eksempel etape 3 af 7, i stedet for stadig at stå som Kommende. Når et løb starter, låses dets trup, så feltet er det samme gennem alle etaper."
         },
-        "refs": [1828, 1825]
+        "refs": [
+          1828,
+          1825
+        ]
       },
       {
         "category": "fixed",
@@ -10766,7 +11994,9 @@ export const PATCHES = [
           "title": "Løbsdage-tælleren følger nu din egen division",
           "body": "Løbsdage-tælleren på dit dashboard tæller nu de løbsdage der er kørt i din egen division, inklusive et etapeløb der er i gang lige nu, i stedet for et sæson-bredt samlet tal."
         },
-        "refs": [1829]
+        "refs": [
+          1829
+        ]
       }
     ]
   },
@@ -10787,7 +12017,9 @@ export const PATCHES = [
           "title": "Akademi-menuen forsvinder ikke længere efter et forbindelses-hikke",
           "body": "Akademi-linket i menuen til venstre kunne forsvinde, hvis det ene tjek der henter det fejlede præcis da siden åbnede, for eksempel mens din session blev fornyet. Det viser nu akademiet videre, når du først har set det, og skjuler kun linket ved et tydeligt signal om at funktionen er slået fra, så et kortvarigt netværks- eller login-hikke ikke længere skjuler et fungerende akademi."
         },
-        "refs": [1792]
+        "refs": [
+          1792
+        ]
       }
     ]
   },
@@ -10808,7 +12040,9 @@ export const PATCHES = [
           "title": "Fordel din trup på tværs af overlappende løb",
           "body": "Løb på samme dag overlapper nu, og en rytter kan kun køre ét løb ad gangen. Den nye trup-fordeling på Løb-siden viser dine overlappende løb side om side, så du kan fordele din 12-rytters trup mellem dem. Ryttere der allerede kører, er låst fra de andre løb, du kan afmelde dig et løb du vil springe over, og assistenten kan udfylde dine opstillinger igen med ét klik."
         },
-        "refs": [1802]
+        "refs": [
+          1802
+        ]
       }
     ]
   },
@@ -10829,7 +12063,9 @@ export const PATCHES = [
           "title": "Hold starter nu med en dybere trup på 12 ryttere",
           "body": "Hold starter nu med en dybere trup på 12 ryttere, så du kan stille hold til overlappende løb. De ekstra ryttere er bevidst svage domestiques, du vil opgradere."
         },
-        "refs": [1798]
+        "refs": [
+          1798
+        ]
       }
     ]
   },
@@ -10850,7 +12086,9 @@ export const PATCHES = [
           "title": "Præmiepenge rebalanceret til et supplement, ikke hovedindtægten",
           "body": "Præmiepenge udbetalte alt for meget: et stærkt hold kunne tjene flere gange sin sponsorindtægt på resultater alene, hvilket gjorde sponsorindtægt og driftsomkostninger næsten ligegyldige. Præmie per point er nu sænket med en faktor 20, så resultater giver en meningsfuld bonus oven på din sponsorindtægt i stedet for at dominere økonomien. Sponsorindtægt er nu din primære indtægt, og præmier belønner at køre godt. Præmiepenge der allerede er tjent denne sæson, er skaleret ned med samme faktor, så alle balancer afspejler det nye niveau. Ingen hold blev sendt i minus af justeringen."
         },
-        "refs": [1816]
+        "refs": [
+          1816
+        ]
       }
     ]
   },
@@ -10894,7 +12132,9 @@ export const PATCHES = [
           "title": "Sider crasher ikke længere hvis dit login udløber under indlæsning",
           "body": "Hvis dit login udløb mens en side stadig indlæste (oftest på mobil efter appen havde stået åben et stykke tid), kunne siden fejle. Du sendes nu til login-skærmen i stedet, så du bare kan logge ind igen."
         },
-        "refs": [1792]
+        "refs": [
+          1792
+        ]
       }
     ]
   },
@@ -10915,7 +12155,9 @@ export const PATCHES = [
           "title": "Sider hopper ikke længere mens de loader",
           "body": "Overalt i spillet holder siderne nu deres plads mens data hentes, så indholdet ikke længere skubbes ned i det øjeblik det dukker op. Det forhindrer at klik lander forkert lige efter en side er åbnet."
         },
-        "refs": [1794]
+        "refs": [
+          1794
+        ]
       }
     ]
   },
@@ -10936,7 +12178,11 @@ export const PATCHES = [
           "title": "Op- og nedrykning er nu live",
           "body": "Ved hver sæsonafslutning rykker hver puljes top 2 hold en division op, og de 4 nederste rykker ned. Liga & rangliste markerer nu op- og nedrykningszonerne pr. pulje, med et resumé af hvor mange hold der rykker i din aktuelle visning. Division 1 har ingen oprykning, og den nederste division har ingen nedrykning. Division 4 åbner gradvist, så en Division 3-puljes nedrykning aktiveres når dens Division 4-puljer åbner."
         },
-        "refs": [1152, 1745, 1760]
+        "refs": [
+          1152,
+          1745,
+          1760
+        ]
       }
     ]
   },
@@ -10992,7 +12238,9 @@ export const PATCHES = [
           "title": "Ryttere restituerer træthed hver dag",
           "body": "Træthed falder nu en smule hver dag omkring midnat, så den ikke længere sidder fast på fuld. Hvile- og rolige dage restituerer mest, normal træning lander på et bæredygtigt niveau, og hård træning bygger stadig træthed op. Daglig træning-siden og Hjælp forklarer nu hvornår og hvordan energien vender tilbage."
         },
-        "refs": [1676]
+        "refs": [
+          1676
+        ]
       },
       {
         "category": "improved",
@@ -11006,7 +12254,9 @@ export const PATCHES = [
           "title": "Holdudtagelse viser ryttertyper og forklarer egnethedstallet",
           "body": "Når du udtager dit hold til et løb, ser du nu hver rytters type, og egnethedstallet (0 til 100) forklares som hvor godt en rytter passer til løbets terræn. Du kan også skjule skadede ryttere mens du vælger."
         },
-        "refs": [1747]
+        "refs": [
+          1747
+        ]
       },
       {
         "category": "improved",
@@ -11020,7 +12270,9 @@ export const PATCHES = [
           "title": "Rytter-lister sorterer ens overalt",
           "body": "Hver sorterbar kolonne virker nu på samme måde på alle rytter-tabeller, og ønskelisten og andre holds trupper viser nu rytterens alder og type. Transfer-markedet kan også sorteres på alder."
         },
-        "refs": [1755]
+        "refs": [
+          1755
+        ]
       },
       {
         "category": "improved",
@@ -11034,7 +12286,9 @@ export const PATCHES = [
           "title": "Transferhistorik viser om en rytter blev købt eller solgt",
           "body": "Transferhistorikken viser nu en tydelig retning for hvert skifte, så du straks kan se om en rytter blev købt, solgt eller byttet."
         },
-        "refs": [1741]
+        "refs": [
+          1741
+        ]
       },
       {
         "category": "fixed",
@@ -11048,7 +12302,10 @@ export const PATCHES = [
           "title": "Bestyrelsens forhandlingsmål vises nu korrekt",
           "body": "Forhandlingsmål på den engelske side vises nu på engelsk i stedet for at lække dansk, og holdidentitets-kortet forklarer hvordan bestyrelsens læsning af din trup hænger sammen med dit valgte klub-DNA."
         },
-        "refs": [1738, 1750]
+        "refs": [
+          1738,
+          1750
+        ]
       },
       {
         "category": "fixed",
@@ -11062,7 +12319,9 @@ export const PATCHES = [
           "title": "Pensionerede ryttere optræder ikke længere blandt frie ungdomsryttere",
           "body": "Pensionerede ryttere står ikke længere på listen over frie ungdomsryttere i akademiet."
         },
-        "refs": [1742]
+        "refs": [
+          1742
+        ]
       },
       {
         "category": "fixed",
@@ -11076,7 +12335,9 @@ export const PATCHES = [
           "title": "Skjulte achievements afslører ikke længere detaljer for tidligt",
           "body": "Titel og beskrivelse på en skjult achievement du ikke har låst op, sendes ikke længere til browseren, så hemmelige achievements ikke kan spoiles."
         },
-        "refs": [1666]
+        "refs": [
+          1666
+        ]
       },
       {
         "category": "improved",
@@ -11090,7 +12351,9 @@ export const PATCHES = [
           "title": "Bredere layout på transferlisten og andre holds sider",
           "body": "Transferlisten og andre managers holdsider bruger nu den fulde bredde som rytter-markedet, så der er mindre spildt plads."
         },
-        "refs": [1675]
+        "refs": [
+          1675
+        ]
       }
     ]
   },
@@ -11111,7 +12374,9 @@ export const PATCHES = [
           "title": "En rytter på en aktiv auktion kan ikke længere købes via transfer",
           "body": "En rytter er nu låst til én anskaffelsesvej ad gangen. Mens en rytter er på en aktiv auktion, kan du ikke samtidig købe eller byde på ham via transfer, og en rytter solgt på auktion fjernes fra akademiet, så han ikke kan hentes to gange."
         },
-        "refs": [1748]
+        "refs": [
+          1748
+        ]
       },
       {
         "category": "fixed",
@@ -11125,7 +12390,9 @@ export const PATCHES = [
           "title": "Ikke flere falske overbudt-beskeder når dit autobud genvinder føringen",
           "body": "Hvis dit autobud straks overbyder en anden igen, får du ikke længere en \"du er blevet overbudt\"-besked. Du får kun besked, når du rent faktisk ender overbudt."
         },
-        "refs": [1740]
+        "refs": [
+          1740
+        ]
       },
       {
         "category": "fixed",
@@ -11139,7 +12406,9 @@ export const PATCHES = [
           "title": "Akademi-prospekter er skjult fra rytterdatabasen indtil du henter dem",
           "body": "Spejder-prospekter optræder ikke længere i rytterdatabasen med fulde stats før du henter dem. Du ser kun det spejderne afslører, indtil de kommer på dit akademi."
         },
-        "refs": [1743]
+        "refs": [
+          1743
+        ]
       }
     ]
   },
@@ -11160,7 +12429,9 @@ export const PATCHES = [
           "title": "Skadesdage tælles nu korrekt på træningssiden",
           "body": "En rytter på sidste skadedag viste \"0 dage tilbage\". Den tæller nu de resterende skadesdage korrekt, inklusiv sidste dag."
         },
-        "refs": [1672]
+        "refs": [
+          1672
+        ]
       },
       {
         "category": "new",
@@ -11174,7 +12445,9 @@ export const PATCHES = [
           "title": "Akademi-køb viser nu prisen og beder om bekræftelse",
           "body": "At signere en ungdomsrytter for penge viser nu prisen tydeligt plus en bekræftelse med din saldo før og efter, så du aldrig bruger penge ved et uheld."
         },
-        "refs": [1744]
+        "refs": [
+          1744
+        ]
       },
       {
         "category": "new",
@@ -11188,7 +12461,10 @@ export const PATCHES = [
           "title": "Rytterens alder vises flere steder, og tabeller kan sorteres på alder",
           "body": "En rytters alder vises nu på dit hold, i rytterdatabasen og på transfermarkedet, ikke kun på ryttersiden. Du kan også sortere på alder på dit hold, i rytterdatabasen og på auktionens \"Alle\"-fane."
         },
-        "refs": [1674, 1671]
+        "refs": [
+          1674,
+          1671
+        ]
       }
     ]
   },
@@ -11209,7 +12485,9 @@ export const PATCHES = [
           "title": "Fuldt hold blokerer nu nye bud i stedet for at du taber auktionen",
           "body": "Når dit hold er fuldt, kan du ikke længere byde på en ny rytter, og du får en klar besked om at sælge en rytter først. Før kunne du blive ved med at byde og så tabe en auktion du førte, fordi pladsen forsvandt da auktionen blev gjort op. En rytter du vinder, bliver aldrig afvist når der er plads."
         },
-        "refs": [1694]
+        "refs": [
+          1694
+        ]
       },
       {
         "category": "fixed",
@@ -11223,7 +12501,9 @@ export const PATCHES = [
           "title": "Pris på vundet rytter vises i CZ$",
           "body": "Beskeden når du vinder en auktion viser nu prisen i CZ$ i stedet for \"pts\"."
         },
-        "refs": [1693]
+        "refs": [
+          1693
+        ]
       }
     ]
   },
@@ -11244,7 +12524,10 @@ export const PATCHES = [
           "title": "Frigiv ryttere og forlæng kontrakter",
           "body": "Du kan nu frigive en rytter fra din trup mod et buyout-gebyr, eller forlænge en rytters kontrakt med lønnen genforhandlet til den aktuelle markedsværdi. Begge dele findes i rytter-handlingsmenuen på din holdside."
         },
-        "refs": [1719, 1720]
+        "refs": [
+          1719,
+          1720
+        ]
       },
       {
         "category": "fixed",
@@ -11258,7 +12541,9 @@ export const PATCHES = [
           "title": "Det koster nu at signere frie ungdomsryttere",
           "body": "At signere en fri ungdomsrytter til dit akademi koster nu den viste værdi og blokeres, hvis du ikke har råd, i stedet for at være gratis."
         },
-        "refs": [1713]
+        "refs": [
+          1713
+        ]
       },
       {
         "category": "improved",
@@ -11272,7 +12557,9 @@ export const PATCHES = [
           "title": "Hvert løb køres kun én gang per sæson",
           "body": "Hvert løb optræder nu kun én gang i hele sæsonen, så intet løb går igen mellem divisioner. Hver division får sit eget unikke sæt af løb."
         },
-        "refs": [1714]
+        "refs": [
+          1714
+        ]
       },
       {
         "category": "fixed",
@@ -11286,7 +12573,9 @@ export const PATCHES = [
           "title": "Division 1 og 2 viser nu deres hold",
           "body": "Ranglisten for Division 1 og 2 viser nu deres hold, inklusive AI-hold, så de øverste divisioner ikke længere står tomme."
         },
-        "refs": [1718]
+        "refs": [
+          1718
+        ]
       },
       {
         "category": "improved",
@@ -11300,7 +12589,9 @@ export const PATCHES = [
           "title": "Startkapitalen er nu 500.000 CZ$",
           "body": "Hvert hold starter nu sæsonen med 500.000 CZ$, ned fra 800.000, for en strammere tidlig-sæson-økonomi."
         },
-        "refs": [1717]
+        "refs": [
+          1717
+        ]
       }
     ]
   },
@@ -11321,7 +12612,9 @@ export const PATCHES = [
           "title": "Sæson 1 er genstartet",
           "body": "Sæson 1 er genstartet som en frisk, permanent sæson. Du starter med en ny trup i en verden af originale ryttere og løb, og sæsonen kører videre herfra."
         },
-        "refs": [1105]
+        "refs": [
+          1105
+        ]
       },
       {
         "category": "new",
@@ -11335,7 +12628,9 @@ export const PATCHES = [
           "title": "Hver division kører sin egen kalender",
           "body": "Hver division kører nu sin egen løbskalender, med de største løb i toppen af pyramiden og Continental-cirkusets Klasse 1 og Klasse 2 længere nede. Løbene afvikles efter en fast daglig plan."
         },
-        "refs": [1704]
+        "refs": [
+          1704
+        ]
       }
     ]
   },
@@ -11356,7 +12651,9 @@ export const PATCHES = [
           "title": "Ranglisten dækker nu alle fire divisioner",
           "body": "Ranglisten dækker nu alle fire divisioner, med sub-faner for hver pulje i en division. AI-hold fylder race-felterne ud, så hver pulje har rigtig konkurrence, og de viger automatisk når menneske-managere kommer til."
         },
-        "refs": [1688]
+        "refs": [
+          1688
+        ]
       },
       {
         "category": "improved",
@@ -11370,7 +12667,9 @@ export const PATCHES = [
           "title": "Holdudtagelse er lettere at finde",
           "body": "Holdudtagelse er nu lettere at finde. Et nyt menupunkt og en genvej på dashboardet fører dig direkte til at udtage holdet til næste løb."
         },
-        "refs": [1681]
+        "refs": [
+          1681
+        ]
       },
       {
         "category": "improved",
@@ -11384,7 +12683,10 @@ export const PATCHES = [
           "title": "Onboarding strømlinet",
           "body": "Onboarding er strømlinet: én Kom-godt-i-gang-guide på dashboardet, og tomme sider guider dig nu videre. Auktioner og transfers åbner på de faner hvor der er ryttere, og en tom trup linker til markedet."
         },
-        "refs": [1569, 1140]
+        "refs": [
+          1569,
+          1140
+        ]
       },
       {
         "category": "improved",
@@ -11398,7 +12700,9 @@ export const PATCHES = [
           "title": "Handl når som helst: transfervinduet er væk",
           "body": "Ryttere kan nu skifte hold når som helst i sæsonen. Der er ikke længere et transfervindue, så alle handler registreres med det samme, og du kan købe og sælge når det passer din plan. Er din trup fuld, så sælg en rytter før du henter en ny."
         },
-        "refs": [1310]
+        "refs": [
+          1310
+        ]
       },
       {
         "category": "new",
