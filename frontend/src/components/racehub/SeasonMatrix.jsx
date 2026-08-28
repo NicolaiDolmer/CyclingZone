@@ -14,10 +14,12 @@ import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { riderSuitability } from "../../lib/suitability.js";
 import { fitTier } from "../../lib/raceHubLogic.js";
 import { Spinner, EmptyState, ErrorState, Button, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
+import SeasonMatrixCellPopover from "./SeasonMatrixCellPopover.jsx";
 import {
-  ROLE_LETTER, buildDraftsFromEntries, roleOf, advanceCell, dirtyRaceIds,
+  ROLE_LETTER, buildDraftsFromEntries, roleOf, dirtyRaceIds, roleBadgeClass,
   buildDayColumns, buildDateBands, buildRaceHeaderGroups, buildRiderRowSegments, countProblems,
-  raceCurrentCount, riderLoadDays, emptyRaceDraft, raceForDay,
+  raceCurrentCount, riderLoadDays, emptyRaceDraft, raceForDay, selectableRacesForDay,
+  setRiderRole, removeRiderFromRace,
 } from "../../lib/seasonMatrix.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -45,6 +47,14 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [peakPlans, setPeakPlans] = useState(null); // Map<riderId, plan[]> | null (lazy, kun formPeak-linsen)
+  // Celle-popover (#4323) — erstatter klik-cyklussen. `popover` er `{ kind: "empty",
+  // day, riderId } | { kind: "filled", raceId, riderId } | null`. `popoverAnchor`
+  // holder DEN celleknap der blev klikket, til positionering — state (ikke en ref)
+  // fordi den læses under render (JSX'en nedenfor); react-hooks/refs forbyder at
+  // læse ref.current under render (#3556-lint). Fokus-retur er useModalA11y's eget
+  // ansvar — den fanger document.activeElement, som ER cellen, ved åbning.
+  const [popover, setPopover] = useState(null);
+  const [popoverAnchor, setPopoverAnchor] = useState(null);
 
   const load = useCallback(async () => {
     const headers = await authHeaders();
@@ -172,10 +182,15 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
     });
   }
 
-  function handleCellClick(raceId, riderId) {
-    if (readOnly) return;
+  // Åbner celle-popoveren i stedet for den fjernede klik-cyklus (#4323). Åbner
+  // OGSÅ i read-only tilstand — popoveren viser da kun årsagen (kontrakt 2e).
+  function openCellPopover(e, info) {
+    setPopoverAnchor(e.currentTarget);
     setSaveError(null);
-    setRaceDraft(raceId, (d) => advanceCell(d, riderId));
+    setPopover(info);
+  }
+  function closeCellPopover() {
+    setPopover(null);
   }
 
   async function saveAll() {
@@ -360,10 +375,10 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                           >
                             <button
                               type="button"
-                              disabled={readOnly || !race}
-                              onClick={() => race && handleCellClick(race.id, rider.id)}
+                              disabled={!race}
+                              onClick={(e) => race && openCellPopover(e, { kind: "empty", day: seg.day, riderId: rider.id })}
                               title={[race ? t("matrix.cellEmptyAria", { rider: rider.name, race: race.name }) : null, peakTitle(peak)].filter(Boolean).join(" · ") || undefined}
-                              className={`w-full h-7 flex items-center justify-center text-3xs tabular-nums ${race && !readOnly ? "hover:bg-cz-subtle cursor-pointer" : ""} ${fit != null ? FIT_TEXT[fitTier(fit)] : "text-transparent"}`}
+                              className={`w-full h-7 flex items-center justify-center text-3xs tabular-nums ${race ? "hover:bg-cz-subtle cursor-pointer" : ""} ${fit != null ? FIT_TEXT[fitTier(fit)] : "text-transparent"}`}
                             >
                               {fit != null ? fit : "·"}
                             </button>
@@ -385,19 +400,18 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                         >
                           <button
                             type="button"
-                            disabled={readOnly}
-                            onClick={() => handleCellClick(race.id, rider.id)}
+                            onClick={(e) => openCellPopover(e, { kind: "filled", raceId: race.id, riderId: rider.id })}
                             title={[t("matrix.cellFilledAria", { rider: rider.name, race: race.name, role: t(`tacticsOrders.roleLabel.${role}`) }), peakInfo].filter(Boolean).join(" · ")}
-                            className={`w-full h-7 flex ${!readOnly ? "cursor-pointer hover:opacity-90" : ""}`}
+                            className="w-full h-7 flex cursor-pointer hover:opacity-90"
                           >
                             {lens === "routeMatch" ? (
-                              <span className={`flex-1 flex items-center justify-center gap-1 text-3xs font-semibold ${roleBg(role)}`}>
+                              <span className={`flex-1 flex items-center justify-center gap-1 text-3xs font-semibold ${roleBadgeClass(role)}`}>
                                 <span>{ROLE_LETTER[role]}</span>
                                 {fit != null && <span className={`tabular-nums font-normal ${FIT_TEXT[fitTier(fit)]}`}>{fit}</span>}
                               </span>
                             ) : (
                               days.map((d, i) => (
-                                <span key={d} className={`flex-1 flex items-center justify-center ${roleBg(role)} ${i === 0 ? "" : "border-l border-cz-card/40"}`}>
+                                <span key={d} className={`flex-1 flex items-center justify-center ${roleBadgeClass(role)} ${i === 0 ? "" : "border-l border-cz-card/40"}`}>
                                   {restSet.has(d) ? <LockIcon size={10} className="opacity-70" /> : (i === 0 ? <span className="text-3xs font-semibold">{ROLE_LETTER[role]}</span> : null)}
                                 </span>
                               ))
@@ -420,6 +434,44 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
           <span className="text-cz-danger">{t("matrix.problemsCount", { count: problems.count })}</span>
         )}
       </div>
+
+      {popover && (() => {
+        const rider = riders.find((r) => r.id === popover.riderId);
+        if (!rider) return null;
+        if (popover.kind === "filled") {
+          const race = raceById.get(popover.raceId);
+          if (!race) return null;
+          const currentRole = roleOf(draftByRace.get(race.id), rider.id);
+          return (
+            <SeasonMatrixCellPopover
+              anchorEl={popoverAnchor}
+              onClose={closeCellPopover}
+              rider={rider}
+              candidates={[race]}
+              fixed
+              currentRole={currentRole}
+              lockedReasonText={readOnly ? t("seasonView.readOnlyHint") : null}
+              onSelectRole={(raceId, role) => { setRaceDraft(raceId, (d) => setRiderRole(d, rider.id, role)); closeCellPopover(); }}
+              onRemove={(raceId) => { setRaceDraft(raceId, (d) => removeRiderFromRace(d, rider.id)); closeCellPopover(); }}
+            />
+          );
+        }
+        const candidates = selectableRacesForDay(races, popover.day);
+        if (!candidates.length) return null;
+        return (
+          <SeasonMatrixCellPopover
+            anchorEl={popoverAnchor}
+            onClose={closeCellPopover}
+            rider={rider}
+            candidates={candidates}
+            fixed={false}
+            currentRole={null}
+            lockedReasonText={readOnly ? t("seasonView.readOnlyHint") : null}
+            onSelectRole={(raceId, role) => { setRaceDraft(raceId, (d) => setRiderRole(d, rider.id, role)); closeCellPopover(); }}
+            onRemove={undefined}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -435,12 +487,4 @@ function raceGroupTint(race) {
   if (race.raceClass === "Monuments") return "bg-cz-accent/10 text-cz-accent-t";
   if (race.raceClass === "TourFrance" || race.raceClass === "GiroVuelta") return "bg-cz-sidebar text-cz-sidebar-1";
   return "text-cz-2";
-}
-
-// Rolle-baggrund i entries-cellen — kaptajn/sprint-kaptajn skiller sig ud (gold-tint),
-// resten neutral accent-tint. Gold er RATIONERET til ÉN primary-knap pr. view (kontrakt
-// #8) — dette er en tint, ikke en knap, så den regel er ikke i spil her.
-function roleBg(role) {
-  if (role === "captain" || role === "sprint_captain") return "bg-cz-accent/25 text-cz-accent-t";
-  return "bg-cz-accent/10 text-cz-1";
 }
