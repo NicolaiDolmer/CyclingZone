@@ -105,6 +105,34 @@ begin
   -- #2637-frigivelser (auto-udtagne ryttere i IKKE-berørte løb) FØR selve erstatningen,
   -- så de nye p_changes-rækker aldrig midlertidigt mangler deres frigjorte plads.
   for v_release in select * from jsonb_array_elements(coalesce(p_auto_releases, '[]'::jsonb)) loop
+    -- FUND3 (CodeRabbit-review af denne PR, verificeret mod app-laget): forward-guard for
+    -- FRIGIVELSER. Spejler classifyBindingConflicts (backend/lib/raceBinding.js:225) 1:1 —
+    -- en #2637-frigivelse er kun `resolvable` naar entryen er auto-udtaget OG loebet IKKE er
+    -- startet (`isAutoFilled && !raceAlreadyStarted`); alt andet er `blocking`. DELETE'ens
+    -- WHERE nedenfor haandhaevede kun den foerste halvdel: `stages_completed` blev aldrig
+    -- tjekket her, saa et loeb der startede MELLEM app-lagets klassifikation og denne
+    -- transaktion fik en rytter fjernet fra en allerede laast lineup. Praecis samme TOCTOU-
+    -- hul som FUND1's forward-guard lukker for p_changes-loekken — frigivelserne var bare
+    -- aldrig daekket, fordi guarden ligger INDE i den anden loekke.
+    --
+    -- Fejlkoden er `selection_rider_bound` (ikke `selection_race_started`): app-laget ville
+    -- have lagt praecis denne konflikt i `blocking` og svaret 409 selection_rider_bound, saa
+    -- klienten ser samme kontrakt uanset hvilket lag der fangede den. saveSelectionBulk
+    -- (raceSelection.js:249) mapper allerede den kode.
+    --
+    -- Bemaerk: samme laase-niveau som FUND1-guarden (rent praedikat, ingen FOR SHARE paa
+    -- races-raekken). Holdets advisory-laas serialiserer ikke mod stage_scheduler, saa
+    -- vinduet lukkes ikke fuldstaendigt — det smalnes fra "hele batch-forberedelsen" til
+    -- "inden for denne transaktion". En raekkelaas her alene ville vaere inkonsistent med
+    -- FUND1 og introducere en ny deadlock-flade mod scheduleren.
+    if exists (
+      select 1 from public.races r
+       where r.id = (v_release->>'race_id')::uuid
+         and coalesce(r.stages_completed, 0) > 0
+    ) then
+      raise exception 'selection_rider_bound' using errcode = 'check_violation';
+    end if;
+
     delete from public.race_entries
      where race_id = (v_release->>'race_id')::uuid
        and team_id = p_team_id
@@ -168,7 +196,19 @@ begin
         from public.race_entries
        where race_id = v_race_id and team_id = p_team_id;
 
-      if not (v_rider_ids <@ v_current_rider_ids) then
+      -- FUND4 (CodeRabbit-review af denne PR, verificeret mod app-laget): `<@` alene er
+      -- INKLUSIV — et uaendret ryttersaet er sin egen delmaengde og slap derfor igennem.
+      -- Nedenfor sletter og genindsaetter vi holdets entries med de nye ROLLER, saa en
+      -- ren rolleaendring (samme ryttere) kunne omskrive en lineup i et loeb der allerede
+      -- koerer. Regel 2 ovenfor siger "kun REN FJERNELSE", og app-laget haandhaever netop
+      -- det med BEGGE led (raceSelection.js:150):
+      --     riderIds.length < currentRiderIds.size && riderIds.every(id => currentRiderIds.has(id))
+      -- Guarden paastod at spejle app-laget 1:1 men manglede kardinalitets-leddet.
+      -- cardinality() (ikke array_length) fordi tomt array skal give 0, ikke NULL.
+      if not (
+        cardinality(v_rider_ids) < cardinality(v_current_rider_ids)
+        and v_rider_ids <@ v_current_rider_ids
+      ) then
         raise exception 'selection_race_started' using errcode = 'check_violation';
       end if;
     end if;

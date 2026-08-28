@@ -196,6 +196,94 @@ test("FUND 1: afviser en TILFØJELSE til et frosset løb selv når nogle ryttere
   );
 });
 
+// ── FUND 4: `<@` alene tillod en ROLLEÆNDRING i et frosset løb ──────────────────────
+
+test("FUND 4: afviser en ren ROLLEÆNDRING (uændret ryttersæt) mod et frosset løb — `<@` alene er inklusiv", async () => {
+  const teamId = "11111111-1111-1111-1111-111111111111";
+  const riderX = "22222222-2222-2222-2222-222222222222";
+  const riderY = "33333333-3333-3333-3333-333333333333";
+  const { raceId } = await makeRace({ stagesCompleted: 0 });
+  await callBulk({ teamId, changes: [{ race_id: raceId, rider_ids: [riderX, riderY], roles: ["captain", "helper"] }] });
+  await db.query("UPDATE races SET stages_completed = 1 WHERE id = $1", [raceId]);
+
+  // SAMME ryttere, byttede roller. Er en delmængde af sig selv, så den gamle guard
+  // (`v_rider_ids <@ v_current_rider_ids`) slap den igennem — og linje-181-delete'en
+  // genindsatte derefter feltet med de nye roller, dvs. et kaptajnsskifte midt i et løb.
+  await assert.rejects(
+    () => callBulk({ teamId, changes: [{ race_id: raceId, rider_ids: [riderX, riderY], roles: ["helper", "captain"] }] }),
+    /selection_race_started/,
+  );
+
+  // Rollerne skal være uændrede — intet delvist skriv.
+  const { rows } = await db.query(
+    "SELECT rider_id, race_role FROM race_entries WHERE race_id = $1 ORDER BY rider_id",
+    [raceId],
+  );
+  assert.deepEqual(rows, [
+    { rider_id: riderX, race_role: "captain" },
+    { rider_id: riderY, race_role: "helper" },
+  ]);
+});
+
+// ── FUND 3: frigivelser havde ingen forward-guard overhovedet ───────────────────────
+
+test("FUND 3: afviser en #2637-frigivelse mod et løb der er STARTET (selection_rider_bound) — guarden lå kun i p_changes-løkken", async () => {
+  const teamId = "11111111-1111-1111-1111-111111111111";
+  const riderX = "22222222-2222-2222-2222-222222222222";
+  const { raceId: releasedRace } = await makeRace({ gameDays: [5, 6] });
+  const { raceId: otherRace } = await makeRace({ gameDays: [10] });
+
+  // riderX er auto-udtaget i releasedRace (uden for batchen), som app-laget klassificerede
+  // som `resolvable` mens det stadig var ikke-startet.
+  await db.query(
+    "INSERT INTO race_entries (race_id, rider_id, team_id, race_role, is_auto_filled) VALUES ($1, $2, $3, 'helper', true)",
+    [releasedRace, riderX, teamId],
+  );
+  // TOCTOU: løbet starter MELLEM klassifikationen og denne transaktion.
+  await db.query("UPDATE races SET stages_completed = 1 WHERE id = $1", [releasedRace]);
+
+  await assert.rejects(
+    () => callBulk({
+      teamId,
+      changes: [{ race_id: otherRace, rider_ids: [riderX], roles: ["captain"] }],
+      autoReleases: [{ race_id: releasedRace, rider_id: riderX }],
+    }),
+    /selection_rider_bound/,
+  );
+
+  // Den låste lineup skal være urørt, og HELE batchen rullet tilbage.
+  const { rows: kept } = await db.query(
+    "SELECT count(*)::int AS n FROM race_entries WHERE race_id = $1 AND rider_id = $2",
+    [releasedRace, riderX],
+  );
+  assert.equal(kept[0].n, 1, "den frigivne rytter må ikke være fjernet fra det startede løb");
+  const { rows: other } = await db.query("SELECT count(*)::int AS n FROM race_entries WHERE race_id = $1", [otherRace]);
+  assert.equal(other[0].n, 0, "batchens øvrige ændring skal være rullet tilbage");
+});
+
+test("FUND 3: TILLADER stadig en frigivelse mod et IKKE-startet løb (stages_completed=0)", async () => {
+  const teamId = "11111111-1111-1111-1111-111111111111";
+  const riderX = "22222222-2222-2222-2222-222222222222";
+  const { raceId: releasedRace } = await makeRace({ gameDays: [5, 6] });
+  const { raceId: otherRace } = await makeRace({ gameDays: [10] });
+  await db.query(
+    "INSERT INTO race_entries (race_id, rider_id, team_id, race_role, is_auto_filled) VALUES ($1, $2, $3, 'helper', true)",
+    [releasedRace, riderX, teamId],
+  );
+
+  await callBulk({
+    teamId,
+    changes: [{ race_id: otherRace, rider_ids: [riderX], roles: ["captain"] }],
+    autoReleases: [{ race_id: releasedRace, rider_id: riderX }],
+  });
+
+  const { rows } = await db.query(
+    "SELECT count(*)::int AS n FROM race_entries WHERE race_id = $1 AND rider_id = $2",
+    [releasedRace, riderX],
+  );
+  assert.equal(rows[0].n, 0, "frigivelsen skal stadig virke for et ikke-startet løb");
+});
+
 // ── FUND 2: race_entry_days-oprydning (ingen forældreløse rækker) ───────────────────
 
 test("FUND 2: et løbs entries tømmes (v_len=0) i et bulk-kald — INGEN forældreløse race_entry_days-rækker bagefter", async () => {
