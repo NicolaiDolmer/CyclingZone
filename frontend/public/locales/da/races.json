@@ -528,6 +528,7 @@
     "jerseyShortcutHint": "{name} er din rytter i førertrøjen.",
     "jerseyShortcut": "Gør {name} til kaptajn for de resterende etaper",
     "unsaved": "Du har ikke-gemte ændringer",
+    "demoted": "Rollen flyttede: {rider} er nu {role} på etape {stage}.",
     "save": "Gem taktik",
     "saving": "Gemmer…",
     "saved": "Taktikken er gemt.",

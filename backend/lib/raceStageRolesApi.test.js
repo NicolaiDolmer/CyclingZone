@@ -96,6 +96,58 @@ test(">1 sprint_captain på SAMME etape for holdet → stage_roles_role_overlap"
   assert.ok(result.errors.includes("stage_roles_role_overlap"));
 });
 
+// ── #4344: overlap skal tælles på EFFEKTIVE roller, ikke på bodyens rækker ────
+//
+// Bodyen indeholder per kontrakt kun celler der AFVIGER fra basis-rollen
+// (frontendens diffToOverrides), så en urørt basis-kaptajn er aldrig med i den.
+// Den gamle tælling så derfor kun 1 kaptajn præcis når der reelt var 2.
+
+const BASE_ROLES = new Map([["r1", "captain"], ["r2", "helper"], ["r3", "helper"]]);
+
+test("#4344: urørt basis-kaptajn + forfremmet hjælper på samme etape → overlap", () => {
+  const result = ok(
+    [{ stage_number: 3, rider_id: "r2", race_role: "captain", effort: "normal" }],
+    { baseRoleByRider: BASE_ROLES },
+  );
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.includes("stage_roles_role_overlap"));
+});
+
+test("#4344: basis-kaptajn degraderet i SAMME body → ok (det UI'et nu sender)", () => {
+  const result = ok(
+    [
+      { stage_number: 3, rider_id: "r1", race_role: "helper", effort: "normal" },
+      { stage_number: 3, rider_id: "r2", race_role: "captain", effort: "normal" },
+    ],
+    { baseRoleByRider: BASE_ROLES },
+  );
+  assert.deepEqual(result, { ok: true, errors: [] });
+});
+
+test("#4344: samme hul for sprint_captain", () => {
+  const result = ok(
+    [{ stage_number: 4, rider_id: "r3", race_role: "sprint_captain", effort: "normal" }],
+    { baseRoleByRider: new Map([["r1", "sprint_captain"], ["r2", "helper"], ["r3", "helper"]]) },
+  );
+  assert.ok(result.errors.includes("stage_roles_role_overlap"));
+});
+
+test("#4344: basis-kaptajn der IKKE er rørt på etapen giver ingen falsk positiv", () => {
+  const result = ok(
+    [{ stage_number: 4, rider_id: "r2", race_role: "hunter", effort: "normal" }],
+    { baseRoleByRider: BASE_ROLES },
+  );
+  assert.deepEqual(result, { ok: true, errors: [] });
+});
+
+test("#4344: basis-kaptajn sat til captain igen på etapen tæller ÉN gang", () => {
+  const result = ok(
+    [{ stage_number: 3, rider_id: "r1", race_role: "captain", effort: "protect" }],
+    { baseRoleByRider: BASE_ROLES },
+  );
+  assert.deepEqual(result, { ok: true, errors: [] });
+});
+
 test("captain PÅ FORSKELLIGE etaper → INTET overlap (roller er per-etape-scopede)", () => {
   const result = ok([
     { stage_number: 3, rider_id: "r1", race_role: "captain", effort: "normal" },

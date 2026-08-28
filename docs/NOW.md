@@ -4,9 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer-rest foerst:** post kommunikationspakken ([`drafts/2026-08-27-kommunikationspakke-saesonstart.md`](drafts/2026-08-27-kommunikationspakke-saesonstart.md)) med patch notes 7.204-7.209 (gennemgaaet + godkendt enkeltvis), tegnebraettet og 7 enkeltsvar m. citat. Kalender-go'et ER postet. **Beslut #4212** (A/B/C, anbefaling A: behold modellen, goer udvejen synlig, laeg den under #4271). **Merget 27/8 aften:** #4298 · #4312 peak-maal-datoer (98/206 etapeloeb havde forkert slutdato) · #4296 loebskortets spaend + overlap-navngivning. **Blokeret-kaede:** #4301 (draft) ← #4307 trup-opfyldning ← #4311 taktik springer fyld-klemmen over. **Naeste build:** #4306 · #4317 ContextBand-aksen (4 forkerte tal) · #4259 (byg FORFRA, se refutations-kommentar) · #4271 · Z1 #1146.
+> **🎯 Next action:** **Ejer-rest:** post kommunikationspakken ([`drafts/2026-08-27-kommunikationspakke-saesonstart.md`](drafts/2026-08-27-kommunikationspakke-saesonstart.md)) — ejer siger "senere" 28/8; tilfoej linje om trup-opfyldningen. **#4307 KOERT 28/8** (411 ryttere, 89 inaktive hold, 30-dages-graense, post-verify OK — se issue-kommentar; genmaaling: gulvets egen pris nu 42 starter). **#4212 BESLUTTET 28/8:** retning B "kortet som kontrakt" (se issue-kommentarer, daekker #4271-kernen). **Blokeret:** #4301 (draft) ← #4311-reparation af dagens kuld (taktik-laek, 205 m. potentiale >2,5 — PR paa vej). **Naeste build:** #4317 · #4259 · Z1 #1146.
 
 > **🧱 Nyt spor (efter fredag, MASTERPLAN pkt. 16):** PR **#4334** taender frontend-typecheck + regenererer skematyper (`database.types.ts` daekkede 46 af 143 tabeller). Afventer ejer. Opfoelgning #4326-#4333.
+
+> **✅ #4344 lukket fremad (28/8):** etape-taktikken kunne gemme 2 kaptajner (guarden talte kun payloaden, ikke basis-rollen). PR **#4353** merged 28/8 (ejer-go, 24/24 checks). Udskilt: **#4356** (ejer-beslutning: de 34 allerede koerte etaper, re-sim eller staa ved dem) · **#4357** (`loadEntrantsForRace` mangler ORDER BY; tie-breaket er bevidst uroert indtil #4356 er afgjort).
 
 > **⚠️ Aabne fra 27/8:** #4288 (de 3 GT'er koerer 17-18 etaper, baandet kraever 21 = umaalte) · #4282 (hold transfer-frosset af renter alene, ejer-beslutning) · #4318 (to flader siger "Race day" om to forskellige tal).
 
@@ -31,6 +33,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Working agent:** Parallel-session 27/8 (Claude Code, DOLMERPC): saesonmatrix #1146 + #4246 + ops #4308/#4309. Roerer IKKE #4296/#4259/#4212/peak-undersoegelsen (anden session).
+> **🤖 Working agent:** Session 28/8 formiddag (Claude Code, DOLMERPC): #4307 (koert) + 3 worktree-spor i gang: #4306 (fix/4306-afmeldt-hold-starter), #4311 (fix/4311-fyld-klemme), #4212+#4271 fase B (fix/4212-peak-kontrakt). Roerer IKKE #4344 (anden session) eller saesonmatrix #1146.
 
 _Historik i git-log, issue-tråde + docs/audits/._

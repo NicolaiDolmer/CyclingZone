@@ -7,6 +7,8 @@ import {
   buildDraftMatrix,
   isCellOverridden,
   setCell,
+  setCellWithRoleExclusivity,
+  demoteOtherHoldersOfRole,
   diffToOverrides,
   isDirty,
   jerseyLeaderId,
@@ -104,6 +106,73 @@ test("jerseyLeaderId: føreren er min rytter → hans id; ellers null", () => {
   assert.equal(jerseyLeaderId({ gcRows, myRiderIds: ["x", "b"] }), "x");
   assert.equal(jerseyLeaderId({ gcRows: [], myRiderIds: ["a"] }), null, "ingen klassement endnu");
   assert.equal(jerseyLeaderId({ gcRows: [{ rank: 1, rider_id: null }], myRiderIds: ["a"] }), null);
+});
+
+// ── #4344: rolle-eksklusivitet pr. etape ─────────────────────────────────────
+
+test("#4344: ny kaptajn degraderer den forrige på samme etape og navngiver hvem", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3, 4], stagesCompleted: 2 });
+  // a er basis-kaptajn. Spilleren gør b til kaptajn på etape 3.
+  const { matrix: next, demoted } = setCellWithRoleExclusivity({
+    matrix, stageNumber: 3, riderId: "b", patch: { race_role: "captain" },
+  });
+  assert.equal(next[3].b.race_role, "captain");
+  assert.equal(next[3].a.race_role, "helper", "den forrige kaptajn mister rollen");
+  assert.deepEqual(demoted, ["a"], "komponenten skal kunne navngive hvem der blev degraderet");
+  assert.equal(next[4].a.race_role, "captain", "andre etaper er urørte");
+});
+
+test("#4344: diffToOverrides sender nu BEGGE ændringer, så guarden kan se dem", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  const { matrix: next } = setCellWithRoleExclusivity({
+    matrix, stageNumber: 3, riderId: "b", patch: { race_role: "captain" },
+  });
+  const overrides = diffToOverrides({ matrix: next, riders: RIDERS });
+  assert.deepEqual(
+    overrides.map((o) => [o.rider_id, o.race_role]),
+    [["a", "helper"], ["b", "captain"]],
+    "basis-kaptajnens degradering er en afvigelse og kommer derfor MED i payloaden",
+  );
+});
+
+test("#4344: ikke-eksklusive roller degraderer ingen", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  const { matrix: next, demoted } = setCellWithRoleExclusivity({
+    matrix, stageNumber: 3, riderId: "b", patch: { race_role: "hunter" },
+  });
+  assert.deepEqual(demoted, []);
+  assert.equal(next[3].a.race_role, "captain", "kaptajnen rører man ikke ved et hunter-valg");
+  assert.equal(next[3].c.race_role, "hunter", "to hunters er tilladt");
+});
+
+test("#4344: effort-only patch rører hverken roller eller degraderer", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  const { matrix: next, demoted } = setCellWithRoleExclusivity({
+    matrix, stageNumber: 3, riderId: "b", patch: { effort: "save" },
+  });
+  assert.deepEqual(demoted, []);
+  assert.deepEqual(next[3].b, { race_role: "helper", effort: "save" });
+  assert.equal(next[3].a.race_role, "captain");
+});
+
+test("#4344: sprint_captain er lige så eksklusiv som captain", () => {
+  const riders = [
+    { rider_id: "a", name: "Anna", race_role: "sprint_captain" },
+    { rider_id: "b", name: "Bo", race_role: null },
+  ];
+  const matrix = buildDraftMatrix({ riders, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  const { matrix: next, demoted } = setCellWithRoleExclusivity({
+    matrix, stageNumber: 3, riderId: "b", patch: { race_role: "sprint_captain" },
+  });
+  assert.equal(next[3].a.race_role, "helper");
+  assert.deepEqual(demoted, ["a"]);
+});
+
+test("#4344: demoteOtherHoldersOfRole er ren — muterer ikke input", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  const snapshot = JSON.parse(JSON.stringify(matrix));
+  demoteOtherHoldersOfRole({ matrix, stageNumber: 3, riderId: "b", role: "captain" });
+  assert.deepEqual(matrix, snapshot);
 });
 
 test("applyJerseyCaptainShortcut: sætter kaptajn på alle kommende etaper + demoterer anden kaptajn", () => {

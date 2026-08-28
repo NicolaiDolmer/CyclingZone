@@ -22,7 +22,7 @@ import {
   resolveCell,
   buildDraftMatrix,
   isCellOverridden,
-  setCell,
+  setCellWithRoleExclusivity,
   diffToOverrides,
   isDirty,
   jerseyLeaderId,
@@ -81,6 +81,10 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
   const [initialMatrix, setInitialMatrix] = useState({});
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorKey, setErrorKey] = useState(null);
+  // #4344: sidste automatiske degradering (rytter mistede kaptajn-/spurtkaptajn-
+  // rollen fordi en anden fik den). Vises som stille linje - en tavs
+  // rolleaendring paa en rytter spilleren ikke roerte er vaerre end ingen.
+  const [demotion, setDemotion] = useState(null);
 
   const load = useCallback(async () => {
     const headers = await authHeaders();
@@ -136,11 +140,18 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
 
   function applyJerseyShortcut() {
     setDraftMatrix((m) => applyJerseyCaptainShortcut({ matrix: m, leaderId, stageNumbers, stagesCompleted }));
+    setDemotion(null); // genvejen er et eksplicit valg - ingen overraskelse at forklare
     if (status !== "idle") setStatus("idle");
   }
 
   function updateCell(stageNumber, riderId, patch) {
-    setDraftMatrix((m) => setCell(m, stageNumber, riderId, patch));
+    // #4344: kaptajn og spurtkaptajn er eksklusive pr. etape. Sætter spilleren
+    // rollen på en ny rytter, mister den forrige den her — i stedet for at
+    // draften bærer to ledere og gemningen afvises med en fejl spilleren ikke
+    // kan handle på (matrixen er 8 ryttere × alle kommende etaper).
+    const { matrix, demoted } = setCellWithRoleExclusivity({ matrix: draftMatrix, stageNumber, riderId, patch });
+    setDraftMatrix(matrix);
+    setDemotion(demoted.length ? { stageNumber, riderIds: demoted } : null);
     if (status !== "idle") setStatus("idle");
   }
 
@@ -163,6 +174,7 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
         return;
       }
       setStatus("saved");
+      setDemotion(null);
       await load(); // #2034 punkt 5: re-fetch efter succesfuldt gem.
     } catch {
       setStatus("error");
@@ -316,6 +328,20 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
           )}
           {status === "idle" && dirty && (
             <p className="text-xs text-cz-2">{t("stageTactics.unsaved")}</p>
+          )}
+          {demotion && (
+            <p className="text-xs text-cz-2">
+              {t("stageTactics.demoted", {
+                rider: demotion.riderIds
+                  .map((id) => (data?.riders ?? []).find((r) => r.rider_id === id)?.name)
+                  .filter(Boolean)
+                  .join(", "),
+                stage: demotion.stageNumber,
+                // Genbrug dropdownens EGET label, saa beskeden og rollevaelgeren
+                // aldrig kan sige to forskellige ord om samme rolle.
+                role: t(ROLE_LABEL_KEY.helper),
+              })}
+            </p>
           )}
         </div>
         <button

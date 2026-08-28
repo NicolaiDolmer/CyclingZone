@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.210",
+    "version": "7.211",
     "date": "2026-08-28",
     "label": "Beta",
     "changes": [
@@ -16,7 +16,30 @@ export const PATCHES = [
           "title": "At afmelde sig fra et løb holder nu rent faktisk holdet ude af det",
           "body": "Et hold der havde afmeldt sig fra et løb, kunne stadig starte det, og en gemt udtagelse kunne stadig sendes ind i et løb du havde afmeldt dig fra. Afmelding holder nu holdet ude for godt, og kolonnen viser at holdet frivilligt ikke stiller op."
         },
-        "refs": [4306]
+        "refs": [
+          4306
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.210",
+    "date": "2026-08-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Racing",
+        "en": {
+          "title": "Naming a second captain for a stage quietly took protection off the first",
+          "body": "Stage tactics let you set two captains on the same stage. Three or more were rejected, two went through without a word, and the race engine then protected whichever of them it happened to read last. Picking a new captain for a stage now moves the role: the previous captain becomes a helper, and a line tells you who changed. Same for sprint captain."
+        },
+        "da": {
+          "title": "En kaptajn nummer to på en etape tog stille beskyttelsen fra den første",
+          "body": "Etape-taktikken lod dig sætte to kaptajner på samme etape. Tre eller flere blev afvist, to gik igennem uden en lyd, og løbsmotoren beskyttede så den af dem den tilfældigvis læste sidst. Vælger du nu en ny kaptajn til en etape, flytter rollen: den forrige kaptajn bliver hjælper, og en linje fortæller dig hvem der blev ændret. Samme for spurtkaptajn."
+        },
+        "refs": [4344]
       }
     ]
   },
