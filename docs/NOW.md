@@ -6,9 +6,9 @@
 
 > **🎯 Next action:** **#4213 KLAR — venter kun ejer-go paa tekster:** pakken (guard + selv-heal + reconcile-cron; 278→rejected) bygget+testet i worktree `fix-4213-academy-ownership-guard`, note 7.217. Ved go: e2e → push → merge → Sentry-verify. **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + trup-linje + RET "Fra i morgen"-varslet. **#886:** Sentry-token → Infisical. **Z1 #1146:** PR #4323 groen — spillertest paa preview foer merge. **Beslut #4361:** 10 stars (anbefalet) vs PAT. Derefter: #4317 · #4259 · #4355 · #4367.
 
-> **✅ Sæsonstart-dagen 28/8, alt merged+deployet:** #4307 opfyldning KOERT (411 ryttere/89 inaktive hold) · #4311 fyld-klemme + datareparation (PR #4354) · #4306 afmeldt-hold-fix (PR #4360, patch 7.211) · **#4301/#4295 minimum-6-gulvet LIVE** (PR #4301, patch 7.212-7.213; gulvets pris i dag: 42 starter, genmaalt efter opfyldning). Motorflag armeret, deploy-verify groen 11:36. Sentry IKKE ren: **#4213** (278 stale intake, genmaalt 14:20).
+> **✅ 28/8 leveret:** sæsonen startede kl. 11 (deploy-verify grøn 11:36, motorflag armeret). #4307 opfyldning (411 ryttere/89 hold) · #4311 · #4306 · **#4301/#4295 minimum-6 LIVE** (gulvets pris: 42 starter) · auth-klyngen (PR #4368) · #4324 kanal-funnel · #4334 typecheck-gate · **#4248 e2e-fejlguard merged** (PR #4371, 38 checks grønne). Sentry ikke ren: **#4213** (278 stale intake).
 
-> **✅ 28/8 aften-session:** auth-klyngen loest (PR #4368: #4347 Bearer-undefined + #4348 26 kopier→1 kanonisk + #4351 online-taeller; #4349 lukket som erstattet) · #4324 kanal-funnel merged, migration applied+verificeret · #4334 typecheck-gate merged (opfoelgning #4326-#4333) · 5 dependabot · #4366 patch-note-trim. NYT: #4367 (ejerskabs-trigger, rod-vaern fra #4213 skridt 5).
+> **🧹 Audit + SSOT-gæld 28/8:** 642→615 åbne, done-pukkel 32→5 (27 lukket, evidens på #627). **#4103 bar et falsk done-flag** — højbjergs-målet er brudt i alle fire divisioner, nu åben igen. **#4176 ejer-frist: senest 4/9 OG før S4-kalenderne bygges** — de tre beslutninger der kun står her (regenererings-forbud, tie-break, katalog-lofter) skal ind i SSOT'erne. NYT: **#4370** React #421 på forsiden + SEO-ruterne, fundet af #4248's guard på første kørsel.
 
 > **⚠️ Udskilt af #4344 (PR #4353 merged 28/8):** **#4356** ejer-beslutning: de 34 allerede koerte etaper, re-sim eller staa ved dem · **#4357** `loadEntrantsForRace` mangler ORDER BY (tie-break bevidst uroert indtil #4356 er afgjort).
 
@@ -16,7 +16,7 @@
 
 > **✅ S3-KALENDEREN LIVE:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
 
-> **⚠️ Invariant-fund (ikke kalender):** #4184 udvidet (typelister + monument-værn forældet efter ophævelsen), #4146 (24 hold over trupgrænse), **#4282 NY** (2 hold over gældsloft). #4204 (20 min-kørsel) bekræftet.
+> **⚠️ Invariant-fund:** #4146 (24 hold over trupgrænse) · #4204 (verify-invariants tager 20 min).
 
 > **⚠️ Katalog-lofter + åbent valg (#4272):** D1 brosten 4,5 % (mål 6) · D4 ITT 8,1 % · D4 trækker 5/6 `summit_tour` → 16 % højbjerg og 41,9 % opad. Kræver arketype-LOFT eller flere flade Class1/2-etapeløb. **Spildesign-valg, afventer ejer. To regenereringer er forbudt.**
 
@@ -26,7 +26,7 @@
 
 > **⚖️ Fair play:** #3818 + #4154 eksekveret 23-24/8. **Prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord-forklaring.
 
-> **📣 Forum:** L1 (#4238), dashboard-kort (#4249), opbakning (#4250) live. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235). Rest: #4252 · #4248 · #4255.
+> **📣 Forum:** L1 (#4238), dashboard-kort (#4249), opbakning (#4250) live. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235). Rest: #4252 · #4255.
 
 ## Standing context (forever-relaunch)
 
@@ -35,6 +35,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Working agent:** Claude Code (Opus 5) — session 28/8 aften, pick-up af #4213-go.
+> **🤖 Working agent:** Claude Code (Opus 5) — session 28/8 aften — #4248 merged, audit kørt. Næste: planlægning sammen med ejeren.
 
 _Historik i git-log, issue-tråde + docs/audits/._
