@@ -30,12 +30,12 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Privacy",
         "en": {
-          "title": "Anonymous visit counts now include which channel a visit came from",
-          "body": "We already counted page views without cookies and without storing anything that identifies you. Those counts now also record the referring link and any campaign tag in the address, so we can tell whether people find the game through Reddit, a search engine or somewhere else. It describes the link, not you, and none of it is tied to your account. The privacy policy has been updated."
+          "title": "Privacy policy updated",
+          "body": "Anonymous visit stats now note which site a visit came from. Nothing is tied to your account."
         },
         "da": {
-          "title": "Anonyme besøgstal viser nu hvilken kanal besøget kom fra",
-          "body": "Vi talte allerede sidevisninger uden cookies og uden at gemme noget der identificerer dig. De tal registrerer nu også det henvisende link og et eventuelt kampagne-tag i adressen, så vi kan se om folk finder spillet via Reddit, en søgemaskine eller et andet sted. Det beskriver linket, ikke dig, og intet af det kobles til din konto. Privatlivspolitikken er opdateret."
+          "title": "Privatlivspolitikken er opdateret",
+          "body": "Anonyme besøgstal noterer nu hvilken side et besøg kom fra. Intet kobles til din konto."
         },
         "refs": [4320]
       }
