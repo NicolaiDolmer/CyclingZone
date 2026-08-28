@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   clearSessionExpiredFlash,
+  isDefinitiveAuthDenial,
   markSessionExpired,
   peekSessionExpiredFlash,
   shouldDeclareExpired,
@@ -89,4 +90,35 @@ test("#4350 storage der kaster (private mode) må ikke vælte udlogningen", () =
   assert.equal(markSessionExpired(throwing), false);
   assert.equal(peekSessionExpiredFlash(throwing), false);
   assert.doesNotThrow(() => clearSessionExpiredFlash(throwing));
+});
+
+test("#4350 en levende bruger er aldrig en afvisning", () => {
+  assert.equal(isDefinitiveAuthDenial({ user: { id: "u1" }, error: null }), false);
+  assert.equal(isDefinitiveAuthDenial({ user: { id: "u1" }, error: { status: 401 } }), false);
+});
+
+test("#4350 Supabase svarede, og der er ingen bruger = entydig afvisning", () => {
+  assert.equal(isDefinitiveAuthDenial({ user: null, error: null }), true);
+  assert.equal(isDefinitiveAuthDenial({ user: null, error: { status: 401 } }), true);
+  assert.equal(isDefinitiveAuthDenial({ user: null, error: { status: 403 } }), true);
+});
+
+// Kernen: uden denne gren logger et Supabase-udfald ALLE spillere ud, fordi
+// supabase-js svarer user=null med en netværksfejl i stedet for at kaste.
+// Det er samme fejlklasse som #4369, og den må ikke flytte ét lag ned.
+test("#4350 'kunne ikke naa Supabase' er IKKE en afvisning", () => {
+  const cases = [
+    { name: "AuthRetryableFetchError", status: 0 },
+    { name: "AuthRetryableFetchError" },
+    { status: 500 },
+    { status: 502 },
+    { message: "Failed to fetch" },
+  ];
+  for (const error of cases) {
+    assert.equal(
+      isDefinitiveAuthDenial({ user: null, error }),
+      false,
+      `${JSON.stringify(error)} maa ikke logge spilleren ud`,
+    );
+  }
 });

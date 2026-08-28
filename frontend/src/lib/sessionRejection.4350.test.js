@@ -67,18 +67,23 @@ test("#4350 to uafhængige kilder skal være enige før noget ryddes", () => {
     layout.indexOf("async function expireSessionIfRejected"),
     layout.indexOf("export default function Layout"),
   );
-  assert.match(fn, /getAuthedUser()/, "Supabase skal spørges direkte, ikke kun vores egen backends 401");
-  const askIdx = fn.indexOf("getAuthedUser()");
+  assert.match(fn, /supabase.auth.getUser()/, "Supabase skal spørges direkte, ikke kun vores egen backends 401");
+  assert.match(
+    fn,
+    /isDefinitiveAuthDenial/,
+    "svaret skal gennem entydigheds-reglen - user=null betyder ogsaa kunne-ikke-naa-Supabase",
+  );
+  const askIdx = fn.indexOf("supabase.auth.getUser()");
   const signOutIdx = fn.indexOf("signOut()");
   assert.ok(askIdx > -1 && signOutIdx > -1, "begge trin skal findes");
   assert.ok(
     askIdx < signOutIdx,
     "den anden kilde skal spørges FØR sessionen ryddes — ellers er værnet dekoration",
   );
-  const guardBlock = fn.slice(fn.indexOf("if (user)"), fn.indexOf("if (user)") + 200);
+  const guardBlock = fn.slice(fn.indexOf("if (!denied)"), fn.indexOf("if (!denied)") + 260);
   assert.ok(
     guardBlock.includes("return false;"),
-    "kender Supabase stadig brugeren, skal vi lade sessionen være",
+    "bekraefter Supabase ikke afvisningen, skal sessionen staa uroert",
   );
 });
 

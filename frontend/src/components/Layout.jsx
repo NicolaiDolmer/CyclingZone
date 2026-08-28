@@ -3,11 +3,11 @@ import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import {
+  isDefinitiveAuthDenial,
   markSessionExpired,
   shouldDeclareExpired,
   tokenFromAuthHeaders,
 } from "../lib/sessionExpiry"; // #4350
-import { getAuthedUser } from "../lib/getAuthedUser.js"; // #4350: anden kilde
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
@@ -458,10 +458,22 @@ async function expireSessionIfRejected(res, sentHeaders, source) {
   // Kan vi ikke nå Supabase, kaster getAuthedUser(), og kaldstedernes catch
   // fanger den: intet sker. Hver usikkerhed peger samme vej, mod at lade
   // spilleren være.
-  const user = await getAuthedUser();
-  if (user) {
+  // Vi spørger Supabase direkte i stedet for getAuthedUser(), fordi vi har brug
+  // for `error`: helperen kaster fejlen væk, og uden den kan et netværksudfald
+  // ikke skelnes fra en ægte afvisning. getUser() svarer user=null MED en
+  // AuthRetryableFetchError ved udfald i stedet for at kaste — læses det som en
+  // afvisning, logger et Supabase-udfald alle spillere ud.
+  let denied;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    denied = isDefinitiveAuthDenial({ user: data?.user ?? null, error });
+  } catch {
+    // Kunne slet ikke spørge. Så ved vi det ikke, og så gør vi ingenting.
+    return false;
+  }
+  if (!denied) {
     console.warn(
-      `[auth] 401 from ${source}, but Supabase still knows the session - leaving it alone`,
+      `[auth] 401 from ${source}, but Supabase did not confirm it - leaving the session alone`,
     );
     return false;
   }

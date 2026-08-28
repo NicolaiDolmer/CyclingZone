@@ -138,3 +138,23 @@ export function clearSessionExpiredFlash(storage) {
     /* private mode: intet at rydde */
   }
 }
+
+// ── Var det et svar, eller bare et manglende svar? ───────────────────────────
+//
+// Anden-kilde-opslaget mod Supabase har samme faldgrube som backendens 401
+// (#4369): `user: null` betyder BÅDE "brugeren findes ikke" og "jeg kunne ikke
+// nå Supabase til at spørge". supabase-js returnerer et tomt user-felt med en
+// AuthRetryableFetchError ved netværksudfald i stedet for at kaste.
+//
+// Læses det tomme svar som en afvisning, logger et Supabase-udfald ALLE
+// spillere ud. Det er værre end bugget vi fikser, og det er præcis den
+// sammenblanding fixet handler om — den må ikke bare flytte ét lag ned.
+//
+// Derfor: kun et entydigt svar tæller. Ingen fejl (Supabase svarede, og der er
+// ingen bruger) eller en ægte auth-afvisning (401/403). Alt andet — netværk,
+// timeout, 5xx, ukendt — betyder "ved ikke", og "ved ikke" gør ingenting.
+export function isDefinitiveAuthDenial({ user, error }) {
+  if (user) return false;
+  if (!error) return true;
+  return error.status === 401 || error.status === 403;
+}
