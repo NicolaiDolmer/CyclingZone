@@ -6,7 +6,7 @@
 
 > **🎯 Next action:** **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + linje om trup-opfyldning + RET "Fra i morgen" i minimum-6-varslet (gulvet er LIVE). **#886 (ingen hast, paamindelse oensket):** Sentry-token m. write-scopes → Infisical; Claude tager alarmregel + auto-resolve bagefter. **28/8:** #4316 grøn (4 fejl rettet) — **afventer ejer-merge**, bærer migration. **Beslut #4361:** auto-review død siden 14/8 (292 PR'er urevideret); bot-trigger afvist (#4362 draft) → **10 stars** (anbefalet) vs **PAT**. **Naeste session starter med:** #4317 ContextBand-tallene + #4259 udtaget-ikonet; derefter #4355 · #4308/#4309 · Z1 #1146.
 
-> **✅ Sæsonstart-dagen 28/8, alt merged+deployet:** #4307 opfyldning KOERT (411 ryttere/89 inaktive hold) · #4311 fyld-klemme + datareparation (PR #4354) · #4306 afmeldt-hold-fix (PR #4360, patch 7.211) · **#4301/#4295 minimum-6-gulvet LIVE** (PR #4301, patch 7.212-7.213; gulvets pris i dag: 42 starter, genmaalt efter opfyldning). Motorflag verificeret armeret, Sentry ren, deploy-verify groen 11:36.
+> **✅ Sæsonstart-dagen 28/8, alt merged+deployet:** #4307 opfyldning KOERT (411 ryttere/89 inaktive hold) · #4311 fyld-klemme + datareparation (PR #4354) · #4306 afmeldt-hold-fix (PR #4360, patch 7.211) · **#4301/#4295 minimum-6-gulvet LIVE** (PR #4301, patch 7.212-7.213; gulvets pris i dag: 42 starter, genmaalt efter opfyldning). Motorflag armeret, deploy-verify groen 11:36. Sentry IKKE ren: **#4213** (278 stale intake, genmaalt 14:20).
 
 > **🧱 Nyt spor (efter fredag, MASTERPLAN pkt. 16):** PR **#4334** taender frontend-typecheck + regenererer skematyper (`database.types.ts` daekkede 46 af 143 tabeller). Afventer ejer. Opfoelgning #4326-#4333.
 
@@ -35,6 +35,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Working agent:** Ingen aktiv session. NB: planlagt engangs-tjek 28/8 kl. 14.30 (scheduled task `saesonstart-eftersyn-kl1430`) verificerer Kuurne/gulv/Sentry og opretter selv issues ved regression.
+> **🤖 Working agent:** Ingen aktiv session. NB: engangs-tjek kl. 14.30 (`saesonstart-eftersyn-kl1430`) koerer selv.
 
 _Historik i git-log, issue-tråde + docs/audits/._
