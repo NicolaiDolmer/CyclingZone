@@ -16,7 +16,9 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write --ignore-unknown .",
-    "format:check": "prettier --check --ignore-unknown ."
+    "format:check": "prettier --check --ignore-unknown .",
+    "typecheck": "tsc -p tsconfig.json",
+    "types:gen": "supabase gen types typescript --project-id ghwvkxzhsbbltzfnuhhz > src/types/database.types.ts"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",
@@ -51,6 +53,7 @@
     "postcss": "^8.5.26",
     "prettier": "^3.9.6",
     "tailwindcss": "^3.4.14",
+    "typescript": "^7.0.2",
     "vite": "^8.2.2"
   }
 }
