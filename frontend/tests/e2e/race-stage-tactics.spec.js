@@ -12,6 +12,7 @@ import {
   installNetworkMocks,
   login,
   stabilizePage,
+  evidenceShotPath,
   json,
   corsHeaders,
 } from "./fixtures.js";
@@ -174,7 +175,7 @@ test("etape-taktik-matrix: låst kørt etape + redigerbare etaper + førertrøje
 // #4344: rolle-dropdownen — den vej hullet faktisk gik. Basis-kaptajnen (Rider
 // One) er urørt, spilleren gør Rider Two til kaptajn på etape 2. Før fixet blev
 // KUN Rider Two sendt, backendens tælling så 1 kaptajn, og motoren fik 2.
-test("#4344: ny kaptajn via dropdownen degraderer den forrige og sender begge rækker", async ({ page }) => {
+test("#4344: ny kaptajn via dropdownen degraderer den forrige og sender begge rækker", async ({ page }, testInfo) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
   const getBody = await mockTacticsRace(page);
@@ -201,7 +202,9 @@ test("#4344: ny kaptajn via dropdownen degraderer den forrige og sender begge r�
   await expect(riderOneRow.getByRole("combobox").nth(2)).toHaveValue("captain");
 
   // Ændringen er ikke tavs — spilleren får at vide hvem der mistede rollen.
-  await expect(matrix.getByText(/Rider One er nu hjælper på etape 2/i)).toBeVisible();
+  await expect(matrix.getByText(/Rollen flyttede: Rider One er nu Kun rytter på etape 2/i)).toBeVisible();
+
+  await matrix.screenshot({ path: evidenceShotPath(`pr-screens/4344-captain-moves-not-duplicates-${testInfo.project.name}.png`) });
 
   const saveBtn = matrix.getByRole("button", { name: /gem taktik/i });
   await expect(saveBtn).toBeEnabled();

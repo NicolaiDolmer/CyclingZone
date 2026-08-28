@@ -337,6 +337,9 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
                   .filter(Boolean)
                   .join(", "),
                 stage: demotion.stageNumber,
+                // Genbrug dropdownens EGET label, saa beskeden og rollevaelgeren
+                // aldrig kan sige to forskellige ord om samme rolle.
+                role: t(ROLE_LABEL_KEY.helper),
               })}
             </p>
           )}
