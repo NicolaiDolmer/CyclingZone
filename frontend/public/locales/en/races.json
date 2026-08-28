@@ -82,7 +82,12 @@
     "loadSuffix": "{count, plural, one {# race day} other {# race days}}",
     "peakWindow": "Peak window · targeting {race}",
     "peakWindowNoTarget": "Peak window",
-    "peakLocked": "locked"
+    "peakLocked": "locked",
+    "cellPopover": {
+      "raceChoice": "Which race",
+      "roleChoice": "Role",
+      "remove": "Remove from race"
+    }
   },
   "racehub": {
     "error": {

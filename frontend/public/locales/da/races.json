@@ -82,7 +82,12 @@
     "loadSuffix": "{count, plural, one {# løbsdag} other {# løbsdage}}",
     "peakWindow": "Peak-vindue · sigter mod {race}",
     "peakWindowNoTarget": "Peak-vindue",
-    "peakLocked": "låst"
+    "peakLocked": "låst",
+    "cellPopover": {
+      "raceChoice": "Hvilket løb",
+      "roleChoice": "Rolle",
+      "remove": "Fjern fra løbet"
+    }
   },
   "racehub": {
     "error": {
