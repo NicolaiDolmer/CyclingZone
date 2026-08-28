@@ -14,10 +14,17 @@
 //    optager løbsdagen og vises inde i samme spænd, låst.
 // 4. Kladde: celle-redigering ændrer en kladde pr. løb; "Save plan" sender hele
 //    diffen i ét PUT /races/selection/bulk-kald.
+// 5. Celle-klik åbner en POPOVER (SeasonMatrixCellPopover.jsx), ikke en klik-
+//    cyklus (#4323, ejer 27/8 — cyklussen C→S→H→F→D uden forklaring blev fundet
+//    uforståelig). Popoveren dækker løbsvalg (selectableRacesForDay, for dage
+//    med mere end ét dækkende løb), de fem roller (ROLE_ORDER), fjern-fra-løb
+//    og rute-match. Kun geometrien/kladde-logikken bor her — popoverens IO/UI
+//    bor i komponentfilen.
 
-// Rækkefølgen klik-cyklussen går igennem for én celle: tom → helper → captain →
-// sprint_captain → hunter → free_role → tom (næste klik starter forfra).
-export const ROLE_CYCLE = ["helper", "captain", "sprint_captain", "hunter", "free_role"];
+// Rollerækkefølgen i celle-popoverens rollevælger (#4323, ejer-beslutning
+// 27/8 — erstatter den blinde klik-cyklus, som forvirrede ejeren: klik åbnede
+// C→S→H→F→D uden forklaring). IKKE cyklus-rækkefølge — dette er visningsorden.
+export const ROLE_ORDER = ["captain", "sprint_captain", "hunter", "free_role", "helper"];
 
 // Rollebogstaver til cellen (#4246 ejer-valg A).
 export const ROLE_LETTER = {
@@ -58,9 +65,9 @@ export function roleOf(draft, riderId) {
   return "helper";
 }
 
-// Fjern rytteren fra en eksklusiv rolle-slot (bruges både ved cyklus-fremgang og
-// ved en anden rytter der OVERTAGER slottet — den forrige indehaver degraderes
-// til helper, aldrig til at forsvinde fra truppen).
+// Fjern rytteren fra en eksklusiv rolle-slot (bruges både når rytteren selv
+// skifter/fjernes og ved en anden rytter der OVERTAGER slottet — den forrige
+// indehaver degraderes til helper, aldrig til at forsvinde fra truppen).
 function clearRole(draft, riderId) {
   const d = { ...draft, free_role_ids: draft.free_role_ids.filter((id) => id !== riderId) };
   if (d.captain_id === riderId) d.captain_id = null;
@@ -70,30 +77,55 @@ function clearRole(draft, riderId) {
 }
 
 /**
- * Fremad ét skridt i klik-cyklussen for én rytter i én løbs-kladde. Ren funktion,
- * returnerer en NY draft (muterer aldrig input). En eksklusiv rolle (captain/
- * sprint_captain/hunter) der allerede er besat af en ANDEN rytter degraderes
- * automatisk til helper, så kladden aldrig får to captains.
+ * Sætter rytterens rolle DIREKTE i én løbs-kladde — celle-popoverens rollevalg
+ * (#4323, kontrakt 2b). Erstatter den fjernede klik-cyklus (advanceCell):
+ * spilleren vælger rollen han vil have, i stedet for at klikke sig forbi de
+ * roller han ikke vil have. Ren funktion, ny draft. Samme eksklusivitets-
+ * nedgradering som cyklussen havde: overtager rytteren en besat eksklusiv
+ * rolle (captain/sprint_captain/hunter), degraderes den forrige indehaver til
+ * helper i stedet for at forsvinde fra truppen.
  */
-export function advanceCell(draft, riderId) {
-  const base = draft || emptyRaceDraft();
-  const current = roleOf(base, riderId);
-  if (current == null) {
-    // Tom celle → tilføj som helper.
-    return { ...base, rider_ids: [...base.rider_ids, riderId] };
-  }
-  const nextIdx = ROLE_CYCLE.indexOf(current) + 1;
-  if (nextIdx >= ROLE_CYCLE.length) {
-    // Sidste trin (free_role) → fjern helt.
-    return clearRole({ ...base, rider_ids: base.rider_ids.filter((id) => id !== riderId) }, riderId);
-  }
-  const nextRole = ROLE_CYCLE[nextIdx];
-  let next = clearRole(base, riderId);
-  if (nextRole === "captain") { if (next.captain_id) next = clearRole(next, next.captain_id); next.captain_id = riderId; }
-  else if (nextRole === "sprint_captain") { if (next.sprint_captain_id) next = clearRole(next, next.sprint_captain_id); next.sprint_captain_id = riderId; }
-  else if (nextRole === "hunter") { if (next.hunter_id) next = clearRole(next, next.hunter_id); next.hunter_id = riderId; }
-  else if (nextRole === "free_role") next.free_role_ids = [...next.free_role_ids, riderId];
+export function setRiderRole(draft, riderId, role) {
+  let next = clearRole(draft || emptyRaceDraft(), riderId);
+  if (!next.rider_ids.includes(riderId)) next = { ...next, rider_ids: [...next.rider_ids, riderId] };
+  if (role === "captain") { if (next.captain_id) next = clearRole(next, next.captain_id); next.captain_id = riderId; }
+  else if (role === "sprint_captain") { if (next.sprint_captain_id) next = clearRole(next, next.sprint_captain_id); next.sprint_captain_id = riderId; }
+  else if (role === "hunter") { if (next.hunter_id) next = clearRole(next, next.hunter_id); next.hunter_id = riderId; }
+  else if (role === "free_role") next.free_role_ids = [...next.free_role_ids, riderId];
   return next;
+}
+
+/** Fjerner rytteren helt fra én løbs-kladde — celle-popoverens "Fjern fra løbet" (kontrakt 2c). */
+export function removeRiderFromRace(draft, riderId) {
+  const base = draft || emptyRaceDraft();
+  return clearRole({ ...base, rider_ids: base.rider_ids.filter((id) => id !== riderId) }, riderId);
+}
+
+/**
+ * Valgbare løb for (rytter, dag): løb hvis game_day-spænd dækker dagen
+ * (celle-popoverens løbsvælger, #4323 kontrakt 2a). En tom celle skal kunne
+ * pege på ETHVERT løb der dækker dagen, ikke kun det første i races[] — det
+ * er præcis bug'en ejeren fandt (et endagsløb inde i et GT-spænd kunne aldrig
+ * nås, fordi den gamle races.find()-opslag altid ramte GT'en først). For en
+ * "empty"-række-segment (buildRiderRowSegments) har rytteren pr. definition
+ * ingen rolle i NOGEN af disse løb endnu, så alle kandidater er reelt valgbare.
+ */
+export function selectableRacesForDay(races, day) {
+  return (races || []).filter(
+    (r) => Number.isFinite(r.gameDayStart) && Number.isFinite(r.gameDayEnd) && day >= r.gameDayStart && day <= r.gameDayEnd
+  );
+}
+
+/**
+ * Rolle-baggrund til en rolle-badge (celle-popoverens rollevælger + gitterets
+ * egne celler, #4323 — flyttet hertil fra SeasonMatrix.jsx's lokale roleBg for
+ * at undgå at duplikere den i celle-popoveren). Kaptajn/sprint-kaptajn skiller
+ * sig ud (gold-tint), resten neutral accent-tint. Gold er RATIONERET til ÉN
+ * primary-knap pr. view (kontrakt #8) — dette er en tint, ikke en knap.
+ */
+export function roleBadgeClass(role) {
+  if (role === "captain" || role === "sprint_captain") return "bg-cz-accent/25 text-cz-accent-t";
+  return "bg-cz-accent/10 text-cz-1";
 }
 
 /** Er en løbs-kladde forskellig fra server-sandheden? (samme princip som RaceHubBoard.selectionDirty) */

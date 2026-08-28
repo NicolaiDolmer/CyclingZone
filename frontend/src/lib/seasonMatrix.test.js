@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  emptyRaceDraft, buildDraftsFromEntries, roleOf, advanceCell, raceDraftDirty, dirtyRaceIds,
+  emptyRaceDraft, buildDraftsFromEntries, roleOf, setRiderRole, removeRiderFromRace, raceDraftDirty, dirtyRaceIds,
   buildDayColumns, buildDateBands, buildRiderRowSegments, raceForDay, countProblems,
-  buildRaceHeaderGroups, riderLoadDays,
+  buildRaceHeaderGroups, riderLoadDays, selectableRacesForDay, roleBadgeClass,
 } from "./seasonMatrix.js";
 
 test("buildDraftsFromEntries: grupperer entries pr. løb og udleder rolle-felter", () => {
@@ -25,25 +25,56 @@ test("roleOf: helper når rytteren er i rider_ids uden noget rolle-felt", () => 
   assert.equal(roleOf(d, "z"), null);
 });
 
-test("advanceCell: cyklus tom→helper→captain→sprint_captain→hunter→free_role→tom", () => {
+test("setRiderRole: sætter rollen direkte (celle-popoverens rollevalg, #4323) — tilføjer ryttereren hvis han ikke allerede er i truppen", () => {
   let d = emptyRaceDraft();
-  d = advanceCell(d, "a"); assert.equal(roleOf(d, "a"), "helper");
-  d = advanceCell(d, "a"); assert.equal(roleOf(d, "a"), "captain");
-  d = advanceCell(d, "a"); assert.equal(roleOf(d, "a"), "sprint_captain");
-  d = advanceCell(d, "a"); assert.equal(roleOf(d, "a"), "hunter");
-  d = advanceCell(d, "a"); assert.equal(roleOf(d, "a"), "free_role");
-  d = advanceCell(d, "a"); assert.equal(roleOf(d, "a"), null);
-  assert.equal(d.rider_ids.includes("a"), false);
+  d = setRiderRole(d, "a", "hunter");
+  assert.equal(roleOf(d, "a"), "hunter");
+  assert.equal(d.rider_ids.includes("a"), true);
 });
 
-test("advanceCell: overtagelse af en eksklusiv rolle degraderer den forrige indehaver til helper (aldrig to captains)", () => {
+test("setRiderRole: skift fra én rolle til en anden for samme rytter (ingen dublet i rider_ids/free_role_ids)", () => {
   let d = emptyRaceDraft();
-  d = advanceCell(d, "a"); d = advanceCell(d, "a"); // a → captain
+  d = setRiderRole(d, "a", "free_role");
+  d = setRiderRole(d, "a", "captain");
   assert.equal(roleOf(d, "a"), "captain");
-  d = advanceCell(d, "b"); d = advanceCell(d, "b"); // b → captain (overtager)
+  assert.deepEqual(d.free_role_ids, []);
+  assert.deepEqual(d.rider_ids, ["a"]);
+});
+
+test("setRiderRole: overtagelse af en eksklusiv rolle degraderer den forrige indehaver til helper (aldrig to captains)", () => {
+  let d = emptyRaceDraft();
+  d = setRiderRole(d, "a", "captain");
+  assert.equal(roleOf(d, "a"), "captain");
+  d = setRiderRole(d, "b", "captain"); // b overtager
   assert.equal(roleOf(d, "b"), "captain");
   assert.equal(roleOf(d, "a"), "helper", "a skal degraderes til helper, ikke forsvinde fra truppen");
   assert.equal(d.rider_ids.includes("a"), true);
+});
+
+test("removeRiderFromRace: fjerner rytteren helt fra kladden (celle-popoverens 'Fjern fra løbet')", () => {
+  let d = emptyRaceDraft();
+  d = setRiderRole(d, "a", "captain");
+  d = removeRiderFromRace(d, "a");
+  assert.equal(roleOf(d, "a"), null);
+  assert.equal(d.rider_ids.includes("a"), false);
+  assert.equal(d.captain_id, null);
+});
+
+test("selectableRacesForDay: alle løb hvis spænd dækker dagen, ikke kun det første i races[] (#4323 fund — endagsløb inde i et GT-spænd)", () => {
+  const races = [
+    { id: "gt", gameDayStart: 1, gameDayEnd: 6 },
+    { id: "oneDay", gameDayStart: 3, gameDayEnd: 3 },
+  ];
+  assert.deepEqual(selectableRacesForDay(races, 3).map((r) => r.id), ["gt", "oneDay"]);
+  assert.deepEqual(selectableRacesForDay(races, 1).map((r) => r.id), ["gt"]);
+  assert.deepEqual(selectableRacesForDay(races, 9), []);
+});
+
+test("roleBadgeClass: kaptajn/sprint-kaptajn faar gold-tint, resten neutral", () => {
+  assert.match(roleBadgeClass("captain"), /accent\/25/);
+  assert.match(roleBadgeClass("sprint_captain"), /accent\/25/);
+  assert.match(roleBadgeClass("hunter"), /accent\/10/);
+  assert.match(roleBadgeClass("helper"), /accent\/10/);
 });
 
 test("raceDraftDirty + dirtyRaceIds: kun reelt ændrede løb rapporteres", () => {
