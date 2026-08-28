@@ -23,7 +23,7 @@ import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
 import { Section, SectionHeader, StarIcon, FlagIcon, AlertTriangleIcon, LockIcon, XIcon, ChevronRightIcon } from "../ui";
 import { formatOrdinalShort, formatRaceDateLabel, riderShortName, dateToOrdinal, statusMeta } from "./plannerShared";
-import { squadSlots, targetableRacesFor, paybackRiskRaceIds, locksImmediatelyRaceIds, riderSeasonLoad } from "./plannerSquadModel";
+import { squadSlots, riderPendingSuggestions, targetableRacesFor, paybackRiskRaceIds, locksImmediatelyRaceIds, riderSeasonLoad } from "./plannerSquadModel";
 
 // Tabellen bliver til en kort-liste under md. Cellerne beholder deres semantik
 // (<td>), så en skærmlæser stadig læser rækken som en række.
@@ -33,7 +33,10 @@ const ROW = "block md:table-row border-t border-cz-border md:border-t-0 py-3 md:
 // Hvad peaken er værd, i formpoint. `current` findes først når optakten er redet
 // (#3083) — indtil da står spændet gulv..loft alene, hvilket er den ærlige
 // tilstand på det tidspunkt beslutningen faktisk træffes (ejer-valg: option C).
-function PeakValue({ peak, paybackDays, months }) {
+// Eksporteret: PlannerDrawer's rytter-skuffe genbruger PRÆCIS samme kort-linje
+// (#4212/#4271 "kortet som kontrakt") — to formler for samme tal er
+// #3071-fejlklassen, så tallene skal komme fra ét sted.
+export function PeakValue({ peak, paybackDays, months }) {
   const { t } = useTranslation("planner");
   const value = peak?.value;
   if (!value || value.ceiling == null) return null;
@@ -203,9 +206,41 @@ function PeakSlot({ rider, slot, races, todayOrd, months, paybackDays, busy, dis
   );
 }
 
+// #4212 (retning B): et uaccepteret assistent-forslag optager ALDRIG en af de
+// faste pladser fra `squadSlots` — det vises i stedet i sit eget stiplede
+// ghost-spor herunder, tydeligt adskilt fra de pladser manageren selv har
+// besat. Accept = samme createPeak-kald som en manuel peak (forslaget har
+// ingen egen plan-id); "Nulstil til blank" fjerner ALLE rytterens forslag
+// denne sæson (samme dismiss-mekanisme som rytter-skuffen).
+function SuggestionGhostRow({ rider, suggestion, busy, disabled, onAcceptSuggestion, onDismissSuggestion }) {
+  const { t } = useTranslation("planner");
+  const months = t("months", { returnObjects: true });
+  return (
+    <div className="flex items-center gap-1.5 rounded-cz border border-dashed border-cz-accent-t bg-cz-subtle px-2 py-1.5">
+      <StarIcon size={12} className="shrink-0 text-cz-accent-t" aria-hidden="true" />
+      <span className="min-w-0 flex-1 truncate text-2xs text-cz-2">
+        {formatOrdinalShort(dateToOrdinal(suggestion.windowStart), months)} · {suggestion.targetRaceName || "—"}
+      </span>
+      <button
+        type="button"
+        className="shrink-0 text-3xs text-cz-accent-t hover:underline disabled:opacity-40"
+        disabled={busy || disabled}
+        onClick={() => onAcceptSuggestion(rider.id, suggestion.targetRaceId)}
+      >{t("assistant.accept")}</button>
+      <button
+        type="button"
+        className="shrink-0 text-3xs text-cz-3 hover:text-cz-1 disabled:opacity-40"
+        disabled={busy || disabled}
+        onClick={() => onDismissSuggestion(rider.id)}
+      >{t("assistant.reset")}</button>
+    </div>
+  );
+}
+
 export default function PlannerSquad({
   riders, races, maxPerRider, months, today, paybackDays, busy, divisionPending,
   onCreatePeak, onRetarget, onRemovePeak, onSelectRider, selectedRiderId,
+  onAcceptSuggestion, onDismissSuggestion,
 }) {
   const { t } = useTranslation("planner");
   const todayOrd = dateToOrdinal(today);
@@ -241,6 +276,7 @@ export default function PlannerSquad({
         <tbody className="block md:table-row-group">
           {rows.map(({ rider, ovr, load }) => {
             const slots = squadSlots(rider, maxPerRider);
+            const suggestions = riderPendingSuggestions(rider);
             const selected = rider.id === selectedRiderId;
             return (
               <tr key={rider.id} className={`${ROW} ${selected ? "bg-cz-subtle" : ""}`}>
@@ -293,6 +329,15 @@ export default function PlannerSquad({
                         rider={rider} slot={slot} races={races} todayOrd={todayOrd} months={months}
                         paybackDays={paybackDays} busy={busy} disabled={divisionPending}
                         onCreatePeak={onCreatePeak} onRetarget={onRetarget} onRemovePeak={onRemovePeak}
+                      />
+                    ))}
+                    {/* #4212: forslag i eget stiplet spor, ALDRIG inde i en plads
+                        ovenfor — se squadSlots' topkommentar. */}
+                    {suggestions.map((s) => (
+                      <SuggestionGhostRow
+                        key={s.id}
+                        rider={rider} suggestion={s} busy={busy} disabled={divisionPending}
+                        onAcceptSuggestion={onAcceptSuggestion} onDismissSuggestion={onDismissSuggestion}
                       />
                     ))}
                   </div>

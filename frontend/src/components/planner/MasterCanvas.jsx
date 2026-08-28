@@ -86,7 +86,9 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
     if (plan && !plan.locked) {
       // Egnede løb: samme filter-synlige løb, ikke rytterens nuværende mål, ikke et
       // løb rytteren allerede topper (duplikat afvises server-side alligevel).
-      const taken = new Set(rider.peaks.map((p) => p.targetRaceId));
+      // #4212: kun ÆGTE peak-mål blokerer — et andet uaccepteret forslag må
+      // ALDRIG forhindre en retarget (forslaget har ingen bindende plads endnu).
+      const taken = new Set(rider.peaks.filter((p) => !p.isSuggestion).map((p) => p.targetRaceId));
       const eligible = visRaces.filter((r) => r.id !== plan.targetRaceId && !taken.has(r.id));
       let best = null, bestD = Infinity;
       for (const r of eligible) { const d = Math.abs(r.ord - drag.previewOrd); if (d < bestD) { bestD = d; best = r; } }
@@ -109,7 +111,8 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
     const dragRider = (riders || []).find((r) => r.id === drag.riderId);
     const dragPlan = dragRider?.peaks.find((p) => p.id === drag.planId);
     if (dragPlan) {
-      const taken = new Set(dragRider.peaks.map((p) => p.targetRaceId));
+      // #4212: samme regel som dragEnd — et forslags mål blokerer ikke.
+      const taken = new Set(dragRider.peaks.filter((p) => !p.isSuggestion).map((p) => p.targetRaceId));
       const eligible = visRaces.filter((r) => r.id !== dragPlan.targetRaceId && !taken.has(r.id));
       let best = null, bestD = Infinity;
       for (const r of eligible) { const d = Math.abs(r.ord - drag.previewOrd); if (d < bestD) { bestD = d; best = r; } }
@@ -156,7 +159,9 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
       {/* Løb-markører: klikbare + tastatur-fokuserbare hit-områder + terræn-glyf */}
       {visRaces.map((r, i) => {
         const rx = x(r.ord);
-        const targeted = (riders || []).some((rd) => rd.peaks.some((p) => p.targetRaceId === r.id));
+        // #4212: et forslag er ikke manageren mål endnu — kun ÆGTE peaks tegner
+        // løbet som "targeted" (gyldne markør).
+        const targeted = (riders || []).some((rd) => rd.peaks.some((p) => !p.isSuggestion && p.targetRaceId === r.id));
         const gap = i === 0 || rx - x(visRaces[i - 1].ord) > 34;
         const active = r.id === selectedRaceId;
         return (
@@ -232,6 +237,11 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
           startO: dateToOrdinal(p.windowStart),
           endO: dateToOrdinal(p.windowEnd),
         })).filter((p) => p.startO != null && p.endO != null);
+        // #4212 (retning B): et forslag er stadig VIST (bracket, stiplet/ghost —
+        // se rendering nedenfor), men tæller ALDRIG som en af de {maxPerRider}
+        // rigtige peak-pladser. Kurven, used-tælleren og token-prikkerne
+        // afspejler kun kontrakter manageren selv har indgået.
+        const realPeaks = peaks.filter((p) => !p.isSuggestion);
         const ovr = riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType });
         // #2447: ryttertype-label kommer nu fra samme riderTypes-i18n-namespace som
         // RiderTypeBadge (kanonisk kilde) i stedet for plannerens egen (dengang
@@ -241,20 +251,27 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
           : (rd.primaryType || "");
         const laneSelected = rd.id === selectedRiderId;
 
-        // Kurve-samples.
-        const curve = peaks.length
-          ? sampleFormCurves({ baseline, peaks: peaks.map((p) => ({ windowStartOrd: p.startO, windowEndOrd: p.endO, trainingQuality: p.trainingQuality })), startOrd, endOrd, samples: 90 })
+        // Kurve-samples — #4212: kun ÆGTE peaks, et uaccepteret forslag må ikke
+        // tegne en form-top manageren ikke har valgt endnu.
+        const curve = realPeaks.length
+          ? sampleFormCurves({ baseline, peaks: realPeaks.map((p) => ({ windowStartOrd: p.startO, windowEndOrd: p.endO, trainingQuality: p.trainingQuality })), startOrd, endOrd, samples: 90 })
           : null;
         const toPath = (arr) => curve.ordinals.map((o, i) => `${i ? "L" : "M"}${x(o).toFixed(1)} ${yFor(arr[i]).toFixed(1)}`).join(" ");
         const areaPath = curve ? `${toPath(curve.realized)} L${x(curve.ordinals[curve.ordinals.length - 1]).toFixed(1)} ${bot} L${x(curve.ordinals[0]).toFixed(1)} ${bot} Z` : "";
 
-        const used = peaks.length;
-        const risky = peaks.some((p) => p.status === "at_risk");
-        const chip = statusMeta(risky ? "at_risk" : (peaks.some((p) => p.status === "on_track") ? "on_track" : "pending"));
+        // #4212: kun ÆGTE peaks tæller/afgør status — et forslag er ikke en
+        // kontrakt manageren har indgået, og skal derfor ikke tælle med i "brugt af
+        // {max}" eller afgøre on_track/at_risk-chippen.
+        const used = realPeaks.length;
+        const risky = realPeaks.some((p) => p.status === "at_risk");
+        const chip = statusMeta(risky ? "at_risk" : (realPeaks.some((p) => p.status === "on_track") ? "on_track" : "pending"));
         // #2455: mens der findes MINDST ét assistent-forslag i lanen, erstatter
         // forslags-badgen den normale status-chip — ellers opdager manageren
         // aldrig at noget her er et forslag, ikke hans eget valg (issue-krav 3).
-        const hasSuggestion = peaks.some((p) => p.isSuggestion);
+        // #4212: badgen skelner nu "kun forslag" fra "ægte peak + forslag" —
+        // "1 peak + 1 suggestion", aldrig "2 peaks".
+        const suggestionCount = peaks.filter((p) => p.isSuggestion).length;
+        const hasSuggestion = suggestionCount > 0;
         const rx0 = VBW - RRAIL + 8;
 
         return (
@@ -300,10 +317,17 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
                 {peaks.map((p) => (
                   <rect key={`b${p.id}`} x={x(p.startO - leadupDays)} y={top} width={Math.max(0, x(p.startO) - x(p.startO - leadupDays))} height={bot - top} fill={CZ.ink} opacity="0.08" />
                 ))}
-                {/* Realiseret areal + potentiel (stiplet) + realiseret (fyldt streg) */}
-                <path d={areaPath} fill={CZ.ink} opacity="0.15" />
-                <path d={toPath(curve.potential)} fill="none" stroke={CZ.goldDeep} strokeWidth="1.4" strokeDasharray="4 2.5" opacity="0.9" />
-                <path d={toPath(curve.realized)} fill="none" stroke={CZ.ink} strokeWidth="2" />
+                {/* Realiseret areal + potentiel (stiplet) + realiseret (fyldt streg) —
+                    #4212: kun når der findes mindst én ÆGTE peak (curve er null for
+                    en rytter med kun et uaccepteret forslag: en flad baseline er den
+                    ærlige tilstand, forslaget har ikke sat noget i træningen endnu). */}
+                {curve && (
+                  <>
+                    <path d={areaPath} fill={CZ.ink} opacity="0.15" />
+                    <path d={toPath(curve.potential)} fill="none" stroke={CZ.goldDeep} strokeWidth="1.4" strokeDasharray="4 2.5" opacity="0.9" />
+                    <path d={toPath(curve.realized)} fill="none" stroke={CZ.ink} strokeWidth="2" />
+                  </>
+                )}
                 {/* Peak-brackets (trækbare hvis ulåst) — #2455: et forslag tegnes
                     stiplet + med hule (ufyldte) håndtag og et ✦-mærke, så det er
                     synligt forskelligt fra en peak manageren selv har sat, indtil
@@ -346,16 +370,16 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
               </>
             )}
 
-            {/* Højre skinne: peak-tokens + status-chip (forslag: stiplet/hult token + assistent-badge, jf. issue-krav 3) */}
+            {/* Højre skinne: peak-tokens (#4212: udelukkende ÆGTE peaks — et
+                forslag optager ALDRIG en af de to pladser her, den samme regel
+                som squadSlots) + status-chip. */}
             {[0, 1].map((k) => {
-              const tp = peaks[k];
               const filled = k < used;
               return (
                 <circle
                   key={k} cx={rx0 + k * 15} cy={y0 + 22} r="5"
-                  fill={filled && !tp?.isSuggestion ? CZ.gold : "none"}
+                  fill={filled ? CZ.gold : "none"}
                   stroke={filled ? CZ.goldDeep : CZ.t3} strokeWidth="1.4"
-                  strokeDasharray={tp?.isSuggestion ? "1.5 1.2" : undefined}
                 />
               );
             })}
@@ -374,7 +398,12 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
                       display: "flex", alignItems: "center", gap: "3px", height: "100%",
                       paddingLeft: "9px", fontFamily: "'DM Sans', sans-serif", fontSize: "10px", color: CZ.goldDeep,
                     }}>
-                      <StarIcon size={10} aria-hidden="true" />{t("assistant.badge")}
+                      <StarIcon size={10} aria-hidden="true" />
+                      {/* #4212: "1 peak + 1 suggestion", aldrig "2 peaks" — kun når
+                          der reelt findes en ægte peak VED SIDEN AF forslaget. */}
+                      {used > 0
+                        ? t("assistant.badgeMixed", { real: used, count: suggestionCount })
+                        : t("assistant.badge")}
                     </div>
                   </foreignObject>
                 ) : (

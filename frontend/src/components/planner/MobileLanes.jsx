@@ -60,12 +60,16 @@ export default function MobileLanes({ riders, races, filter, today, selectedRace
         {(riders || []).map((rd) => {
           const ovr = riderOverallRating({ ...rd.abilities, primary_type: rd.primaryType });
           const peaks = rd.peaks || [];
-          const used = peaks.length;
-          const risky = peaks.some((p) => p.status === "at_risk");
-          const chip = used ? statusMeta(risky ? "at_risk" : (peaks.some((p) => p.status === "on_track") ? "on_track" : "pending")) : null;
+          // #4212 (retning B): et forslag er ikke en kontrakt manageren har
+          // indgået — samme regel som desktop master-canvasset og squadSlots.
+          const realPeaks = peaks.filter((p) => !p.isSuggestion);
+          const used = realPeaks.length;
+          const risky = realPeaks.some((p) => p.status === "at_risk");
+          const chip = used ? statusMeta(risky ? "at_risk" : (realPeaks.some((p) => p.status === "on_track") ? "on_track" : "pending")) : null;
           // #2455: mobil-first — samme "forslag indtil accepteret"-signal som
           // desktop master-canvasset, ellers opdages featuren aldrig på mobil.
-          const hasSuggestion = peaks.some((p) => p.isSuggestion);
+          const suggestionCount = peaks.filter((p) => p.isSuggestion).length;
+          const hasSuggestion = suggestionCount > 0;
           const laneSelected = rd.id === selectedRiderId;
           return (
             <button
@@ -92,15 +96,17 @@ export default function MobileLanes({ riders, races, filter, today, selectedRace
                 )}
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
+                {/* #4212: prikkerne repræsenterer udelukkende ÆGTE peak-pladser
+                    — et forslag optager ingen af de to, samme regel som desktop
+                    master-canvasset og squadSlots. */}
                 {[0, 1].map((k) => {
-                  const tp = peaks[k];
                   const filled = k < used;
                   return (
                     <span
                       key={k} className="w-2.5 h-2.5 rounded-full"
                       style={{
-                        background: filled && !tp?.isSuggestion ? "rgb(var(--accent))" : "transparent",
-                        border: `1.4px ${tp?.isSuggestion ? "dashed" : "solid"} ${filled ? "rgb(var(--accent-t))" : "var(--text-3)"}`,
+                        background: filled ? "rgb(var(--accent))" : "transparent",
+                        border: `1.4px solid ${filled ? "rgb(var(--accent-t))" : "var(--text-3)"}`,
                       }}
                     />
                   );
@@ -109,9 +115,13 @@ export default function MobileLanes({ riders, races, filter, today, selectedRace
               {/* #2447: on_track/at_risk brugte tidligere samme farve i begge grene
                   (kopiér-fejl) — "god" status skal ikke råbe lige så meget som "risiko".
                   #2455: et forslag erstatter status-glyffen med ✦ (samme princip som
-                  desktop) indtil manageren har accepteret/ændret mindst én peak. */}
+                  desktop) indtil manageren har accepteret/ændret mindst én peak.
+                  #4212: "1 peak + 1 suggestion", aldrig "2 peaks" i title'en. */}
               {hasSuggestion ? (
-                <span className="shrink-0 text-cz-accent-t" title={t("assistant.badge")}>
+                <span
+                  className="shrink-0 text-cz-accent-t"
+                  title={used > 0 ? t("assistant.badgeMixed", { real: used, count: suggestionCount }) : t("assistant.badge")}
+                >
                   <StarIcon size={11} aria-hidden="true" />
                 </span>
               ) : chip && (
