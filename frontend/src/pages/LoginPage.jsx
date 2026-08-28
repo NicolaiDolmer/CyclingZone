@@ -15,6 +15,7 @@ import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
 import { getAttribution } from "../lib/attribution";
 import { markPendingSignup } from "../lib/logEvent";
 import { safeNextPath } from "../lib/safeNextPath.js";
+import { clearSessionExpiredFlash, peekSessionExpiredFlash } from "../lib/sessionExpiry.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -78,6 +79,11 @@ export default function LoginPage() {
   // genopstå ved hvert reload af /login i samme session. Vi rydder derfor
   // router-state (nedenfor), mens den lokale kopi holder beskeden synlig.
   const [authLinkError] = useState(() => location.state?.authLinkError || null);
+  // #4350: spilleren blev sendt hertil af ProtectedRoute fordi serveren afviste
+  // hans session — ikke fordi han selv loggede ud. Uden en besked ser det ud
+  // som et vilkårligt spark tilbage til login. Læses ÉN gang ved mount (samme
+  // engangs-form som authLinkError ovenfor), så et reload ikke genopliver den.
+  const [sessionExpired] = useState(() => peekSessionExpiredFlash());
   // #672: landing kan deep-linke til signup-mode via ?mode=signup (Opret bruger-CTA).
   const [searchParams] = useSearchParams();
   // #2042: cold deep-link-trafik ankommer med ?next= → default til signup-mode
@@ -130,6 +136,13 @@ export default function LoginPage() {
       navigate(location.pathname + location.search, { replace: true, state: null });
     }
   }, [location, navigate]);
+
+  // #4350: ryd flaget EFTER mount, ikke i useState-initializeren. StrictMode
+  // dobbelt-kalder initializere for at afsløre bivirkninger — en rydning der
+  // ligger der, spiser sin egen besked, og banneret vises aldrig.
+  useEffect(() => {
+    if (sessionExpired) clearSessionExpiredFlash();
+  }, [sessionExpired]);
 
   // #2826: tik nedtællingen ned mens en cooldown er aktiv. Intervallet rydder
   // sig selv når der ikke er mere tilbage, så vi ikke holder en timer i live på
@@ -462,6 +475,17 @@ export default function LoginPage() {
         </div>
 
         <Card className="p-6">
+          {/* #4350: eksisterende tekst (errors:supabase.sessionMissing) — ingen
+              ny copy at oversætte. Kort på fladen; forklaringen hører hjemme i
+              handlingen, ikke i en prosa-blok. */}
+          {sessionExpired && !success && (
+            <div
+              role="status"
+              className="mb-4 rounded-cz border border-cz-border bg-cz-subtle px-4 py-3 text-left"
+            >
+              <p className="text-sm font-semibold text-cz-1">{t("errors:supabase.sessionMissing")}</p>
+            </div>
+          )}
           {authLinkError && !success && (
             <div
               role="status"

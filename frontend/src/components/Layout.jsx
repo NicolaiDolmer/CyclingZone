@@ -2,6 +2,12 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
+import {
+  markSessionExpired,
+  shouldDeclareExpired,
+  tokenFromAuthHeaders,
+} from "../lib/sessionExpiry"; // #4350
+import { getAuthedUser } from "../lib/getAuthedUser.js"; // #4350: anden kilde
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
@@ -411,6 +417,63 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
   );
 }
 
+// #4350 — detektoren der mangler for at den EKSISTERENDE udlognings-kæde kan
+// starte. Kæden (SIGNED_OUT → App.jsx rydder session → ProtectedRoute sender til
+// /login?next=) virker allerede; den udløses bare aldrig når serveren afviser et
+// token som supabase-js lokalt stadig tror på. Derfor logger vi ikke ud her —
+// vi kalder signOut(), som fyrer SIGNED_OUT og lader kæden gøre sit arbejde med
+// deep-linket bevaret.
+//
+// Ligger på modul-niveau, ikke i komponenten: den rører ingen React-state, og
+// et 401-svar kan lande efter at fanen er navigeret væk.
+async function expireSessionIfRejected(res, sentHeaders, source) {
+  if (res.status !== 401) return false;
+  // Sessionens token NU — ikke det vi sendte. Forskellen er hele værnet mod at
+  // smide en rask spiller ud midt i en normal token-fornyelse.
+  const { data } = await supabase.auth.getSession();
+  const expired = shouldDeclareExpired({
+    status: res.status,
+    sentToken: tokenFromAuthHeaders(sentHeaders),
+    currentToken: data?.session?.access_token ?? null,
+  });
+  if (!expired) return false;
+
+  // ── Anden kilde, før vi rører noget ────────────────────────────────────────
+  //
+  // Vores egen backend svarer 401 i TO forskellige situationer (requireAuth i
+  // routes/api.js): tokenet blev afvist, ELLER backenden kunne ikke få fat i
+  // Supabase til at tjekke det —
+  //
+  //   const { data: { user }, error } = await supabase.auth.getUser(token);
+  //   if (error || !user) return res.status(401)...
+  //
+  // `error` dækker også et netværksudfald mellem backend og Supabase. De to
+  // tilstande ser ens ud herfra, men betyder stik modsat: den ene er en død
+  // session, den anden er en rask spiller midt i et kortvarigt udfald.
+  //
+  // Derfor spørger vi autoriteten selv i stedet for at tro på 401'eren alene.
+  // Først når BEGGE kilder er enige — backenden afviste tokenet, og Supabase
+  // heller ikke kender brugeren — rydder vi noget.
+  //
+  // Kan vi ikke nå Supabase, kaster getAuthedUser(), og kaldstedernes catch
+  // fanger den: intet sker. Hver usikkerhed peger samme vej, mod at lade
+  // spilleren være.
+  const user = await getAuthedUser();
+  if (user) {
+    console.warn(
+      `[auth] 401 from ${source}, but Supabase still knows the session - leaving it alone`,
+    );
+    return false;
+  }
+
+  // Samme form som backendens "[auth] 401 invalid_token" (routes/api.js): kun
+  // kaldstedet, aldrig token eller header.
+  console.warn(`[auth] session rejected by BOTH sources (${source}) - clearing it`);
+  markSessionExpired();
+  await supabase.auth.signOut();
+  return true;
+}
+
 export default function Layout() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
@@ -468,6 +531,10 @@ export default function Layout() {
       // undefined" i stedet for at blive sprunget over.
       if (!h) return;
       const res = await fetch(`${API}/api/online-count`, { headers: h });
+      // #4350: 401 afgøres FØR !res.ok-grenen nedenfor. Den gren bevarer sidst
+      // kendte tal — præcis den frosne-tal-tilstand bugget handler om — så en
+      // afvist session skal fanges her i stedet for at blive slugt der.
+      if (await expireSessionIfRejected(res, h, "online-count")) return;
       // #4351: en 401/5xx (fx en afvist session) blev læst som et gyldigt svar,
       // og `data.count || 0` skrev "0 online". Behold sidst kendte tal i stedet.
       if (!res.ok) return;
@@ -591,7 +658,9 @@ export default function Layout() {
           if (res.status === 200 || res.status === 409) writeCachedAcademyNav(visible);
         })
         .catch(() => { /* netværksfejl: behold sidst kendte (state uændret) */ });
-      fetch(`${API}/api/presence`,     { method: "POST", headers: h }).catch(e => console.error("presence:", e));
+      fetch(`${API}/api/presence`,     { method: "POST", headers: h })
+        .then(res => expireSessionIfRejected(res, h, "presence"))
+        .catch(e => console.error("presence:", e));
       // Login-streak power-mekanik fjernet (#1139) — ingen daglig login-tvang.
       // Achievements-check kører fortsat (kosmetiske unlocks), uafhængigt af streak.
       fetch(`${API}/api/achievements/check`, {
@@ -701,10 +770,13 @@ export default function Layout() {
       // intervallet kørte videre og sendte "Bearer undefined" hvert 60. sekund
       // indtil fanen blev lukket. Nu holder det op af sig selv.
       //
-      // Bemærk: dette stopper støjen, men logger ikke spilleren ud — fanen ser
-      // stadig indlogget ud med frosne tal. Det er #4350, deprioriteret 28/8.
+      // #4350 lukkede den anden halvdel: her ER der et token, men serveren kan
+      // afvise det. Uden svar-tjekket nedenfor kørte intervallet videre mod en
+      // død session i det uendelige, og fanen så indlogget ud med frosne tal.
       if (!h) return;
-      fetch(`${API}/api/presence`, { method: "POST", headers: h }).catch(e => console.error("heartbeat:", e));
+      fetch(`${API}/api/presence`, { method: "POST", headers: h })
+        .then(res => expireSessionIfRejected(res, h, "heartbeat"))
+        .catch(e => console.error("heartbeat:", e));
       fetchOnlineCount(h);
     }, 60000);
     return () => clearInterval(heartbeatRef.current);
