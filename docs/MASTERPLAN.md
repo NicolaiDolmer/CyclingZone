@@ -9,14 +9,14 @@
 **Detalje: [`2026-08-28-saesonstart-fortsaettelse-prompt.md`](../superpowers/plans/2026-08-28-saesonstart-fortsaettelse-prompt.md).**
 **Rækkefølge herfra (ejer-godkendt 27/8):**
 
-1. **#4311** → **#4307** trup-opfyldning (121 hold, 571 ryttere, rammer sat) → **#4301** minimum-6 (draft). Kæden skal tages i den rækkefølge.
-2. **#4306** afmeldt hold starter stadig løbet. Ejer-beslutning 27/8, ubygget. Rører `loadEntrantsForRace` som minimum-gulvet, så rækkefølgen tæller.
+1. ✅ **DONE 28/8:** #4311 fyld-klemme (PR #4354 + datareparation) · #4307 opfyldning KØRT (411 ryttere/89 inaktive hold; kæden blev taget baglæns — postmortem 28/8) · #4301/#4295 minimum-6 LIVE (PR #4301) · #4306 afmeldt-hold-fix LIVE (PR #4360). Rest: #4355 (juni-fyldkuldets læk).
+2. 🟠 **#4212/#4271 retning B "kortet som kontrakt"** (ejer-valgt 28/8): PR #4359 bygget, alle e2e grønne — afventer ejer-svar på før/efter.
 3. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren.
-4. **Assistent + formplan:** #4212 (ejer-valg A/B/C, anbefaling A) · #4201 · #4271.
+4. **#4201** (model besluttet, mangler nedskrivning i `PLANNING_CENTER_RULES.md` §4).
 5. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først.
 6. **Ops:** #4308 · #4309/#4305. Parallel-session 27/8 har dem.
 
-**Ejer-beslutninger 27/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt**. NB: grundlaget var 21 hold; målt er **130 starter på 129 hold**. Genmål efter #4307.
+**Ejer-beslutninger 27/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt**. Genmålt 28/8 EFTER opfyldning: gulvets egen pris = **42 starter på 42 hold**.
 
 **Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
 
