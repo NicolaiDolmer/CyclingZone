@@ -96,7 +96,10 @@ test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", asy
   // + navngiver det konkrete blokerende løb (verificerer blockedReason-interpolationen).
   await lockedChip.click();
   await expect(board.getByText("Optaget i overlappende løb")).toBeVisible();
-  await expect(board.getByText("Overlapper Hamburger Klassiker")).toBeVisible();
+  // #4296: scopet til POPOVEREN. Loebskortets nye overlap-raekke genbruger bevidst
+  // samme streng (racehub.popover.blockedReason), saa et bredt board.getByText
+  // matcher nu to elementer. Testen handler om popoverens grund, ikke om raekken.
+  await expect(board.locator(".z-dropdown").getByText("Overlapper Hamburger Klassiker")).toBeVisible();
 
   // En ledig rytter (ikke udtaget nogen steder) er klikbar i puljen.
   await expect(board.getByRole("button", { name: /Rider 5/ })).toBeEnabled();

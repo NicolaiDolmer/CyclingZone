@@ -51,7 +51,7 @@ Refs #
 ## Close-out (efter merge til main)
 <!-- Tjekliste der gælder både @claude-bot OG manuel session. Drop punkter der ikke gælder. -->
 
-- [ ] **PatchNotesPage.jsx** opdateret med ny version — påkrævet ved enhver brugerrettet ændring (ellers note hvorfor ikke i PR-body)
+- [ ] **Patch notes** (`frontend/src/data/patchNotes.js`) opdateret med ny version — påkrævet ved enhver brugerrettet ændring (ellers note hvorfor ikke i PR-body)
 - [ ] **`docs/NOW.md`** opdateret: tilføj entry i "Senest leveret", flyt issue ud af "Næste session" hvis listet, hold filen ≤ 30 linjer (arkivér til `docs/archive/` ved behov)
 - [ ] **`docs/FEATURE_STATUS.md`** opdateret hvis kontrakter, runtime-state eller features ændret
 - [ ] **`.claude/learnings/<dato>-<slug>.md`** oprettet hvis denne PR fixer en bug (root cause + fix + læring)

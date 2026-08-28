@@ -4,17 +4,21 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Start naeste saesonstart-session** paa prompten [`superpowers/plans/2026-08-28-saesonstart-fortsaettelse-prompt.md`](superpowers/plans/2026-08-28-saesonstart-fortsaettelse-prompt.md). Den starter med **spillerne**: laes 24 timers Discord, foreslaa svar, skriv Discord-patch-notes for 7.204-7.207, og list hvad der er paa tegnebraettet. **Merget 27/8:** #4302 · #4300 · #4304 (migration applied) · #4303. **Holdt tilbage med vilje:** #4301 minimum-6 (blokerende fund + grundlaget flyttede sig, se prompten §3). **Derefter:** #4306 · spor B (#4296 · #4259) · #4201/#4212/#4271 · Z1. **Ejer-rest:** post Discord-varslet (RET datoen foerst) · #4307 aktivitets-definition.
+> **🎯 Next action:** **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + linje om trup-opfyldning + RET "Fra i morgen" i minimum-6-varslet (gulvet er LIVE). **#886 (ingen hast, paamindelse oensket):** Sentry-token m. write-scopes → Infisical; Claude tager alarmregel + auto-resolve bagefter. **28/8:** #4316 grøn (4 fejl rettet) — **afventer ejer-merge**, bærer migration. **PR #4324** (#4320 kanal-funnel pr. trafikkilde) grøn — **afventer ejer-review**, bærer migration. **Beslut #4361:** auto-review død siden 14/8 (292 PR'er urevideret); bot-trigger afvist (#4362 draft) → **10 stars** (anbefalet) vs **PAT**. **Naeste session starter med:** **#4213** (278 stale intake-tilbud mod menneskehold; RPC-guarden lukker dem igennem — stram guard FOER oprydning); derefter #4317 + #4259 · #4355 · #4308/#4309 · Z1 #1146.
 
-> **✅ PEAK-REPARATION 27/8 (ejer-GO kl. 09:2x):** kalender-regenereringen nullede `target_race_id` (FK er `ON DELETE SET NULL`) men lod vinduerne stå med den GAMLE kalenders datoer. **812** foraeldreløse planer, 731 med vinduer i den live sæson, **280 ryttere på 27 menneskehold ville stå i utilsigtet peak på åbningsdagen**. NOW.md's tidligere tal "237" var forkert. Backup `backup_4294_rider_peak_plans` (812 rækker), slettet, post-verify: 82 planer tilbage, alle med gyldigt målløb, 0 uden mål. Forward-guard (FK → CASCADE + filter i `loadPeakPlans`) i PR.
+> **✅ Sæsonstart-dagen 28/8, alt merged+deployet:** #4307 opfyldning KOERT (411 ryttere/89 inaktive hold) · #4311 fyld-klemme + datareparation (PR #4354) · #4306 afmeldt-hold-fix (PR #4360, patch 7.211) · **#4301/#4295 minimum-6-gulvet LIVE** (PR #4301, patch 7.212-7.213; gulvets pris i dag: 42 starter, genmaalt efter opfyldning). Motorflag armeret, deploy-verify groen 11:36. Sentry IKKE ren: **#4213** (278 stale intake, genmaalt 14:20).
 
-> **✅ NATSESSION 27/8:** 5 PR'er, 0 prod-mutationer. Prod read-only: overlap pr. løbsdag **0**, alle motor-flag **on** (`race_day_development` off). Assistenten er **pull, ikke push** (24.615 af 24.724 S3-udtagelser på AI-hold). **Åbent:** #4288 (de 3 GT'er er umålte, båndet er forældet) · #4282 (hold transfer-frosset af renter alene, ejer-beslutning).
+> **🧱 Nyt spor (efter fredag, MASTERPLAN pkt. 16):** PR **#4334** taender frontend-typecheck + regenererer skematyper (`database.types.ts` daekkede 46 af 143 tabeller). Afventer ejer. Opfoelgning #4326-#4333.
 
-> **✅ S3-KALENDEREN LIVE (regenereret 27/8, ejer-GO pr. skridt):** 529 løb / 1.239 etaper, 28/8 → søn 27/9. 0 løbsdage over flere datoer, mountain-nedad 27 % (før 64 %), scorecard 0 regelbrud. Udtagelser wiped m. backup (`backup_4236_*`). Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
+> **⚠️ Udskilt af #4344 (PR #4353 merged 28/8):** **#4356** ejer-beslutning: de 34 allerede koerte etaper, re-sim eller staa ved dem · **#4357** `loadEntrantsForRace` mangler ORDER BY (tie-break bevidst uroert indtil #4356 er afgjort).
+
+> **⚠️ Aabne fra 27/8:** #4288 (de 3 GT'er koerer 17-18 etaper, baandet kraever 21 = umaalte) · #4282 (hold transfer-frosset af renter alene, ejer-beslutning) · #4318 (to flader siger "Race day" om to forskellige tal).
+
+> **✅ S3-KALENDEREN LIVE:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
 
 > **⚠️ Invariant-fund (ikke kalender):** #4184 udvidet (typelister + monument-værn forældet efter ophævelsen), #4146 (24 hold over trupgrænse), **#4282 NY** (2 hold over gældsloft). #4204 (20 min-kørsel) bekræftet.
 
-> **⚠️ TO KATALOG-LOFTER + ÉT ÅBENT VALG (#4272).** D1's brosten nåede 2,6→**4,5 %** (6 % kræver flere brostens-løb; ved 8 reservationer falder D3 under sit gulv). D4's enkeltstart 4,8→**8,1 %** (kun 3 fritstående ITT-løb i Class1/Class2). **Uløst:** D4 trækker 5 af 6 `summit_tour`, hver med 2 garanterede højbjergs-etaper → 16 % højbjerg mod D1's 8 %, og samlet opad 41,9 %. Kræver arketype-**loft** (reservationer er gulve) eller flere flade Class1/Class2-etapeløb. **Spildesign-valg, afventer ejer.** **To regenereringer er forbudt.**
+> **⚠️ Katalog-lofter + åbent valg (#4272):** D1 brosten 4,5 % (mål 6) · D4 ITT 8,1 % · D4 trækker 5/6 `summit_tour` → 16 % højbjerg og 41,9 % opad. Kræver arketype-LOFT eller flere flade Class1/2-etapeløb. **Spildesign-valg, afventer ejer. To regenereringer er forbudt.**
 
 > **⚖️ Ejer-beslutninger 26/8:** løbsdage i træk ("løbsdag 4-5-6-7, ikke 3-5-7-12") · GT = **2** hviledage der OPTAGER løbsdagen · **monument-eksklusiviteten ophævet** (0 delte ryttere målt i alle 9 kombinationer efter #4217 — gevinsten var væk, hullerne blev betalt) · #4174: alle hold udtages ens, assistenten 1 t før.
 
@@ -31,6 +35,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Working agent:** Parallel-session 27/8 (Claude Code, DOLMERPC): saesonmatrix #1146 + #4246 + ops #4308/#4309. Roerer IKKE #4296/#4259/#4212/peak-undersoegelsen (anden session).
+> **🤖 Working agent:** Ingen aktiv session.
 
 _Historik i git-log, issue-tråde + docs/audits/._

@@ -77,6 +77,12 @@ test("PUT /races/selection/bulk genbruger prepareSelectionChange (samme valideri
   assert.match(block, /prepareSelectionChange\(\{/);
 });
 
+test("PUT /races/selection/bulk spejler #4306-withdrawal-gaten (afmeldt hold kan ikke gemme ad bulk-vejen)", () => {
+  const block = handlerBlock();
+  assert.match(block, /race_withdrawals/);
+  assert.match(block, /selection_withdrawn/);
+});
+
 test("PUT /races/selection/bulk skriver ATOMISK via saveSelectionBulk (replace_race_selection_bulk-RPC'en)", () => {
   const block = handlerBlock();
   assert.match(block, /saveSelectionBulk\(\{/);

@@ -142,7 +142,13 @@ export default function useTodayStages(teamId) {
 
       setState({ loading: false, cards });
     } catch (e) {
-      console.error("useTodayStages failed:", e?.message || e);
+      // Kortet fejler bevidst stille på UI'en (samme idiom som
+      // useForumHighlights/useHeroAgonyMoment). console.warn, ikke
+      // console.error: e2e-suitens collectBrowserErrors (fixtures.js)
+      // eskalerer console.error til hård test-fejl, så en harmløs
+      // netværksfejl her gjorde en flaky mobile-webkit-fejl til en falsk
+      // rød suite. Refs #4309/#4305.
+      console.warn("useTodayStages failed:", e?.message || e);
       setState({ loading: false, cards: [] });
     }
   }, [teamId]);

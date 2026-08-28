@@ -76,11 +76,15 @@
     "acceptedAll": "{count, plural, one {# peak sat} other {# peaks sat}}. Ret dem enkeltvis i listen.",
     "acceptedPartial": "{created} sat, {skipped} kunne ikke sættes. Listen viser hvad der landede.",
     "badge": "Assistentens forslag",
+    "badgeMixed": "{real, plural, one {# peak} other {# peaks}} + {count, plural, one {# forslag} other {# forslag}}",
     "accept": "Acceptér",
     "reset": "Nulstil til blank",
     "resetDone": "Forslag ryddet. Vælg et mål-løb når du er klar.",
     "reasonRegistered": "Matcher et løb du allerede har tilmeldt rytteren.",
-    "reasonSuitability": "Bedste type-match i kalenderen."
+    "reasonSuitability": "Bedste type-match i kalenderen.",
+    "reasonNoPeak": "Assistenten foreslår ikke endnu en peak til denne rytter lige nu.",
+    "noPeakTitle": "Ingen yderligere peak anbefalet",
+    "keepOnePeak": "Behold én peak"
   },
   "filter": {
     "mine": "Mine løb",

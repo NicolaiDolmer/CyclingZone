@@ -27,7 +27,7 @@ import { LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
-import { deriveAbilities } from "./abilityDerivation.js";
+import { deriveAbilities, FILL_TAIL_GENERATION_TAG, FILL_TAIL_MAX_POTENTIALE } from "./abilityDerivation.js";
 import { computeRiderTypes, resolveRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";
@@ -407,9 +407,18 @@ export function buildWeakStarterPool({
   const clamped = riders.map((r) => {
     const stats = {};
     for (const k of STAT_KEYS) stats[k] = Math.max(window.lo, Math.min(window.hi, r[k]));
-    return { ...r, ...stats };
+    // #4311 (ejer-beslutning 27/8): klem ogsaa potentiale — hidden_potential afledes
+    // af potentiale, ikke stats, og ville ellers laekke uden om stat-klemmen ovenfor.
+    const potentiale = Number.isFinite(r.potentiale)
+      ? Math.min(FILL_TAIL_MAX_POTENTIALE, r.potentiale)
+      : r.potentiale;
+    return { ...r, ...stats, potentiale };
   });
-  return toInsertPayload(clamped);
+  const payload = toInsertPayload(clamped);
+  // #4311: generation_tag markoerer fyld-ryttere saa deriveAbilities (abilityDerivation.js)
+  // kan klemme de evner der IKKE er stat-drevne (tactics = alder, hidden_potential =
+  // potentiale). toInsertPayload kender ikke feltet (kun archetype_draw) — saet EFTER.
+  return payload.map((r) => ({ ...r, generation_tag: FILL_TAIL_GENERATION_TAG }));
 }
 
 // Navne-unikhed mod ALLE eksisterende ryttere (den svage pulje genereres separat

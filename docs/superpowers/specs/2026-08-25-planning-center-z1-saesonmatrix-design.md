@@ -67,7 +67,7 @@ Kladden må ikke tabes ved fane-skift. Det er UI-gæld fund 1 fra fase 2-spec'en
 
 Fase 2-spec'en siger "ét sted at gemme en udtagelse". Dagsboardet skriver stadig med det samme, matrixen ved Gem. Ejeren valgte 25/8 at lade boardet stå. **Forskellen skal derfor være synlig for spilleren** — matrixen viser eksplicit at der er ugemte ændringer, og hvor mange.
 
-## 5. Beslutning: tre linser i v1 (ejer 25/8)
+## 5. Beslutning: linser i v1 (ejer 25/8, revideret 27/8)
 
 | Linse | I v1 | Hvorfor |
 |---|---|---|
@@ -75,7 +75,7 @@ Fase 2-spec'en siger "ét sted at gemme en udtagelse". Dagsboardet skriver stadi
 | **Kun problemer** | ja | Utilgængelige ryttere der er sat på, og løb over trupgrænsen. Regnes i browseren af udtagelser + klassegrænser + binding. Ingen ny server-data |
 | Belastning | ja, efter fix | Se 5.1 |
 | Form og peak | hvis der er tid | Rækkestribe, ikke celle-opslag. `peak_planner_enabled` er `on` i prod (koden defaulter til off) |
-| Rute-match | nej | Kun ved celle-åbning, som fase 2-spec'en allerede besluttede. Kalender-svaret bærer hverken evner eller demand-vektorer |
+| Rute-match | **ja (ejer 27/8)** | 25/8 sagde nej (kun ved celle-åbning). Ejeren godkendte 27/8 det visuelle matrix-design MED Route match som linse, og bekræftede eksplicit valget da konflikten med denne tabel blev forelagt (refutations-fund i PR #4323). Datalaget er ægte 0-100 via `suitability.js` + demand-vektoren fra det nye season-read-endpoint, så 25/8-forbeholdet om at kalender-svaret ikke bar demand-vektorer gælder ikke længere |
 
 "Kun problemer" kommer fra spillerprototypen og er den eneste linse der finder noget spilleren ikke vidste han skulle lede efter.
 

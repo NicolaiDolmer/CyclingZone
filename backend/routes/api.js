@@ -193,11 +193,11 @@ import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/season
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate } from "../lib/raceCalendar.js";
-import { snapPeakWindow, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
+import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
 import { RACE_V3_TUNING } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
-import { suggestPeaksForRider } from "../lib/peakSuggestions.js";
+import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
@@ -3761,6 +3761,17 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           // kan vise payback-risiko pr. løb FØR valget uden at klienten har sin egen
           // vindue-formel (to formler for samme tal er #3071-fejlklassen).
           peakWindow: snapPeakWindow(stageDatesByRaceId.get(e.id) || []),
+          // #4312: ÆGTE sidste etapedato ("YYYY-MM-DD" CET). Uden den regnede
+          // frontenden slutdatoen som `date + (gameDayEnd - gameDayStart)`, altså
+          // LØBSDAGE lagt oven i en KALENDERDATO. De to er ikke samme enhed
+          // (docs/CALENDAR_RULES.md §1: "game_day kan ALDRIG udledes af
+          // scheduled_at"; pakkeren lægger flere hele løbsdage inden i hver
+          // kalenderdag, D1 kører 75-103 løbsdage over 27-28 datoer). Målt 27/8:
+          // 98 af 206 flerdagsløb i S3 fik forkert slutdato, værst de tre Grand
+          // Tours med +13 til +14 dage. Vueltaens mærkat sluttede 4. oktober,
+          // en uge efter sæsonen. Samme kilde som peakWindow ovenfor, så de to
+          // tal kan ikke drifte fra hinanden. Intet ekstra DB-kald.
+          dateEnd: lastStageDate(stageDatesByRaceId.get(e.id)),
           gameDayStart: e.gameDayStart,
           gameDayEnd: e.gameDayEnd,
           stages: e.stages,
@@ -3837,6 +3848,16 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           leadupDays: leadup,
           windowRadiusDays: PEAK_WINDOW_RADIUS_DAYS,
         });
+
+        // #3088/#4212 (ejer-beslutning 28/8): assistenten kan anbefale INTET
+        // (yderligere) peak — se peakSuggestions.js's topkommentar for
+        // roden. Genbruger samme dismiss-mekanisme (peak_suggestions_
+        // dismissed_season_id) som en almindelig forslags-afvisning —
+        // "Behold én peak" i skuffen kalder dismiss-suggestions.
+        if (shouldRecommendNoPeak({ suggestions, existingPeakCount: rd.peaks.length })) {
+          rd.peaks.push(buildNoPeakSuggestion({ riderId: rd.id, seasonId: season.id }));
+          continue;
+        }
 
         for (const s of suggestions) {
           const targetRace = raceById.get(s.targetRaceId);
@@ -4697,6 +4718,17 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     if (!raceRow) return res.status(404).json({ error: "race_not_found" });
     race = raceRow;
 
+    // #4306: samme gate som auto-endpointet. Et bevidst afmeldt hold må ikke få en
+    // manuel udtagelse skrevet ind i et løb det har trukket sig fra. Uden denne gate
+    // overlevede Race Hub-kladden et afmeld-klik og kunne stadig "Gem"'es, hvilket
+    // skrev spiller-initierede entries ind i et afmeldt løb med NULL-binding (samme
+    // fingeraftryk som #4299). Spejlet i bulk-endpointet nedenfor, samme fejlkode.
+    const { data: withdrawal, error: wErr } = await supabase
+      .from("race_withdrawals").select("race_id")
+      .eq("race_id", race.id).eq("team_id", req.team.id).maybeSingle();
+    if (wErr) return res.status(500).json({ error: wErr.message });
+    if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
+
     // #1146: pulje-binding, body-shape, frys/fjernelse-undtagelse (#2637) og
     // validateSelection er udtrukket til prepareSelectionChange (raceSelection.js), delt
     // med bulk-endpointet (PUT /races/selection/bulk) længere nede, samme regler begge veje.
@@ -4863,6 +4895,17 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     const raceById = new Map((raceRows || []).map((r) => [r.id, r]));
     for (const raceId of raceIds) {
       if (!raceById.has(raceId)) return res.status(404).json({ error: "race_not_found", race_id: raceId });
+    }
+
+    // #4306, spejlet fra single-endpointet: et bevidst afmeldt hold må ikke få en
+    // udtagelse skrevet ind i et løb det har trukket sig fra — heller ikke ad bulk-vejen,
+    // ellers ville matrixens "Gem plan" omgå gaten. Ét samlet opslag for hele batchen.
+    const { data: withdrawnRows, error: wErr } = await supabase
+      .from("race_withdrawals").select("race_id")
+      .in("race_id", raceIds).eq("team_id", req.team.id);
+    if (wErr) return res.status(500).json({ error: wErr.message });
+    if (withdrawnRows?.length) {
+      return res.status(409).json({ error: "selection_withdrawn", race_id: withdrawnRows[0].race_id });
     }
 
     // Pas 1: pr.-løb-validering (samme prepareSelectionChange som single-endpointet) +
@@ -5178,6 +5221,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
       stageCount: ctx.stage_count,
       stagesCompleted: ctx.stages_completed,
       teamRiderIds: ctx.teamRiderIds,
+      baseRoleByRider: ctx.baseRoleByRider,
     });
     if (!result.ok) {
       const status = result.errors[0] === "stage_roles_race_completed" ? 409 : 400;

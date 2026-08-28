@@ -85,7 +85,7 @@ done <<EOF
 $all_ranges
 EOF
 
-if echo "$all_changed" | grep -q '^frontend/src/pages/PatchNotesPage.jsx$'; then
+if echo "$all_changed" | grep -Eq '^frontend/src/(pages/PatchNotesPage\.jsx|data/patchNotes\.js)$'; then
   echo "-> Pre-push: checking PatchNotes versions..."
   (cd "$repo_root" && node scripts/check-patch-notes-version.js) || exit_code=1
 fi

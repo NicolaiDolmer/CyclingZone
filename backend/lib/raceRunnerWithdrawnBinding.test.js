@@ -44,6 +44,9 @@ function makeFilterAwareSupabase(canned = {}) {
   return { from, rpc: () => Promise.resolve({ error: null }) };
 }
 
+// #4295: 8 ryttere, så holdet kan nå gulvet (6) også når r1+r2 er bundet væk.
+const RIDER_IDS = ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"];
+
 const ABIL = {
   sprint: 60, climbing: 60, time_trial: 60, one_day: 60, gc: 60,
   hills: 60, cobbles: 60, aggression: 60,
@@ -54,16 +57,11 @@ const ABIL = {
 function canned({ withdrawn }) {
   return {
     teams: [{ id: "T1", is_test_account: false, is_frozen: false, league_division_id: 9 }],
-    riders: [
-      { id: "r1", team_id: "T1", base_value: 100, is_academy: false, is_retired: false },
-      { id: "r2", team_id: "T1", base_value: 100, is_academy: false, is_retired: false },
-      { id: "r3", team_id: "T1", base_value: 100, is_academy: false, is_retired: false },
-    ],
-    rider_derived_abilities: [
-      { rider_id: "r1", ...ABIL },
-      { rider_id: "r2", ...ABIL },
-      { rider_id: "r3", ...ABIL },
-    ],
+    // #4295: truppen er 8 (ikke 3). Gulvet kræver 6 for at et hold stiller op, så en
+    // 3-mands-trup ville aldrig give rækker og testen ville blive grøn af den forkerte
+    // grund. r1+r2 er stadig de eneste bundne — det er dem testen måler.
+    riders: RIDER_IDS.map((id) => ({ id, team_id: "T1", base_value: 100, is_academy: false, is_retired: false })),
+    rider_derived_abilities: RIDER_IDS.map((id) => ({ rider_id: id, ...ABIL })),
     rider_condition: [],
     race_entries: [
       { race_id: "race-o", team_id: "T1", rider_id: "r1" },
@@ -93,7 +91,7 @@ test("fillMissingTeamEntries: entries i et AFMELDT overlappende løb binder ikke
     supabase, race: RACE_X, stages: STAGES_1, existingEntries: [], persist: false,
   });
   const ids = rows.map((r) => r.rider_id).sort();
-  assert.deepEqual(ids, ["r1", "r2", "r3"], "alle tre ryttere er frie når race-o er afmeldt");
+  assert.deepEqual(ids, [...RIDER_IDS].sort(), "hele truppen er fri når race-o er afmeldt");
 });
 
 test("fillMissingTeamEntries: samme entries UDEN afmelding binder stadig (kontrol — #1845 uændret)", async () => {
@@ -102,5 +100,6 @@ test("fillMissingTeamEntries: samme entries UDEN afmelding binder stadig (kontro
     supabase, race: RACE_X, stages: STAGES_1, existingEntries: [], persist: false,
   });
   const ids = rows.map((r) => r.rider_id).sort();
-  assert.deepEqual(ids, ["r3"], "r1+r2 er bundet af race-o's spænd (game_day 3..7 dækker 5)");
+  assert.deepEqual(ids, RIDER_IDS.filter((id) => id !== "r1" && id !== "r2").sort(),
+    "r1+r2 er bundet af race-o's spænd (game_day 3..7 dækker 5)");
 });

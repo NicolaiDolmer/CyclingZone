@@ -13,7 +13,7 @@ import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
-import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay, shouldShowClearAllDialog } from "../../lib/raceHubLogic.js";
+import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay, shouldShowClearAllDialog, raceDayOverlaps, raceDayClashes, toDisplayRaceDay } from "../../lib/raceHubLogic.js";
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import ClearAllDialog from "./ClearAllDialog.jsx";
@@ -80,6 +80,10 @@ export default function RaceHubBoard() {
   // kald for den samme dag. Skallen holdes derfor uden for `data` og ryddes aldrig
   // ved fejl. { currentDay, focusDay, timeline } | null
   const [navShell, setNavShell] = useState(null);
+  // #4296: hoppe-maal for en overlap- eller clash-raekkes tap (kortets border flasher
+  // 1200ms). Hook'et skal staa FOER komponentens tidlige returns (loading/fejl/flag-
+  // off nedenfor). Rules of Hooks tillader ikke et betinget useState.
+  const [flashRaceId, setFlashRaceId] = useState(null);
 
   const load = useCallback(async (day) => {
     const headers = await authHeaders();
@@ -223,23 +227,29 @@ export default function RaceHubBoard() {
 
   // Fælles mutations-wrapper: tjek res.ok, surfacér fejlkode (+ evt. params til ICU-
   // beskeden, fx min/max ved selection_wrong_size), re-hent (rollback) bagefter.
+  // Returnerer true når kaldet lykkedes. #4306: toggleWithdraw skal kun rydde
+  // kolonnens kladde ved et FAKTISK gennemført afmeld, ikke ved en fejlet én.
   async function mutate(req, errParams = {}) {
     const headers = await authHeaders();
-    if (!headers) return;
+    if (!headers) return false;
     setBusy(true);
     setError(null);
+    let ok = true;
     try {
       const res = await req(headers);
       if (res && !res.ok) {
+        ok = false;
         const body = await res.json().catch(() => ({}));
         setError({ code: body.error || "generic", params: errParams });
       }
     } catch {
+      ok = false;
       setError({ code: "generic", params: errParams });
     } finally {
       await load(day);
       setBusy(false);
     }
+    return ok;
   }
 
   // Kladden for en kolonne: lokal redigering hvis den findes, ellers server-sandheden.
@@ -451,8 +461,16 @@ export default function RaceHubBoard() {
     commitDraft(col, { rider_ids: riderIds, captain_id: captain, sprint_captain_id: sprint, hunter_id: hunter, free_role_ids: freeRoleIds });
   }
 
+  // #4306: en lykkedes afmelding rydder ALTID kolonnens lokale kladde bagefter, ellers
+  // kunne "Gem" stadig sende den overlevende kladde ind i det løb man netop har afmeldt
+  // sig fra (Race Hub-kladden overlevede tidligere et afmeld-klik uændret). Kun ved
+  // withdraw=true (afmelding, ikke gen-deltag) og kun ved et FAKTISK gennemført kald:
+  // en fejlet afmelding (fx løbet allerede startet) skal ikke koste manageren kladden.
   const toggleWithdraw = (raceId, withdraw) =>
-    mutate((headers) => fetch(`${API}/api/races/${raceId}/withdrawal`, { method: withdraw ? "POST" : "DELETE", headers }));
+    mutate((headers) => fetch(`${API}/api/races/${raceId}/withdrawal`, { method: withdraw ? "POST" : "DELETE", headers }))
+      .then((ok) => {
+        if (ok && withdraw) setDrafts((d) => { const next = { ...d }; delete next[raceId]; return next; });
+      });
 
   function regenerate(mode) {
     // "all" overskriver alle (også manuelle) → bekræft. "missing" bevarer manuelle.
@@ -533,6 +551,29 @@ export default function RaceHubBoard() {
   // dermed hvorfor en rytter må genbruges) er synlig i stedet for at ligne en glitch.
   const dayGroups = groupColumnsByGameDay(effectiveColumns);
   const multiDay = dayGroups.filter((g) => g.gameDay != null).length > 1;
+
+  // #4296: hvilke ANDRE kolonner deler loebsdage med hver kolonne (neutral OVERLAP),
+  // og hvor er der en AEGTE clash (samme rytter i begge loeb i kladden)? O(n^2) paa
+  // hoejst en haandfuld kolonner, udledt i samme render som dayGroups saa
+  // kladde-aendringer slaar igennem oejeblikkeligt. Almindelig const, ikke useMemo:
+  // komponenten har tidlige returns ovenfor, saa et hook her ville vaere betinget.
+  const overlapsByColumn = new Map();
+  for (const c of effectiveColumns) {
+    overlapsByColumn.set(c.id, {
+      overlaps: raceDayOverlaps({ columns: effectiveColumns, columnId: c.id }),
+      clashes: raceDayClashes({ columns: effectiveColumns, columnId: c.id }),
+    });
+  }
+
+  // #4296: tap paa en overlap- eller clash-raekke hopper til modpartens kort.
+  const focusRace = (id) => {
+    const el = document.getElementById(`race-col-${id}`);
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    el?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
+    el?.focus({ preventScroll: true });
+    setFlashRaceId(id);
+    setTimeout(() => setFlashRaceId((v) => (v === id ? null : v)), 1200);
+  };
 
   // #2195: engangs-læringsnote. Trigges første gang kladden har SAMME rytter i to løb på
   // forskellige (ikke-overlappende) spil-dage — netop det øjeblik hvor tvivlen "er det en bug?"
@@ -628,36 +669,31 @@ export default function RaceHubBoard() {
               </button>
             </div>
           )}
-          {multiDay ? (
-            dayGroups.map((g, gi) => (
-              <div key={g.gameDay ?? "no-day"} className="mb-4">
-                {g.gameDay != null && (
-                  // Gruppen defineres af den delte binding-dag (start). Et etapeløbs fulde span
-                  // står på løbets egen chip; her holder vi headeren entydig = "Race day N".
-                  <p className="mb-2 text-xs font-semibold text-cz-accent-t">
-                    {t("racehub.raceDay", { day: g.gameDay })}
-                  </p>
-                )}
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {g.columns.map((c, ci) => (
-                    <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
-                      onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
-                      raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
-                      dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />
-                  ))}
-                </div>
+          {/* #4296: dayGroups mappes nu ALTID (ikke kun ved multiDay). Med een gruppe
+              rendrer det identisk til foer. Overskriften viser gruppens EGEN startdag,
+              1-baseret som kortene. Den maa IKKE vise g.gameDayEnd: grupperingen sker
+              paa STARTdagen og gameDayEnd er max over gruppen, saa et spaend her ville
+              love dage der tilhoerer andre grupper (#4317, fund 3). */}
+          {dayGroups.map((g, gi) => (
+            <div key={g.gameDay ?? "no-day"} className="mb-4">
+              {g.gameDay != null && (
+                <p className="mb-2 text-xs font-semibold text-cz-accent-t tabular-nums">
+                  {t("racehub.raceDay", { day: toDisplayRaceDay(g.gameDay) })}
+                </p>
+              )}
+              <div className="grid sm:grid-cols-2 gap-3">
+                {g.columns.map((c, ci) => (
+                  <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
+                    onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
+                    raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
+                    roster={roster} bindingMap={liveBindingMap}
+                    overlaps={overlapsByColumn.get(c.id)?.overlaps ?? []} clashes={overlapsByColumn.get(c.id)?.clashes ?? []}
+                    onFocusRace={focusRace} flash={flashRaceId === c.id}
+                    dataTour={gi === 0 && ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />
+                ))}
               </div>
-            ))
-          ) : (
-            <div className="grid sm:grid-cols-2 gap-3 mb-4">
-              {effectiveColumns.map((c, ci) => (
-                <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onClearSelection={clearColumnSelection} onSetRole={setRole}
-                  onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)}
-                  raceV3Enabled={!!data.race_v3_enabled} paybackFormPoints={data.paybackFormPoints ?? null}
-                  dataTour={ci === 0 ? "races-column" : undefined} boardState={{ day, scope }} />
-              ))}
             </div>
-          )}
+          ))}
           <AvailableRidersPool roster={roster} columns={effectiveColumns} bindingMap={liveBindingMap}
             seasonLoadByRider={data.seasonLoadByRider || {}} dayClearImpact={dayClearImpact}
             onAddRiderToRace={addRider} onRegenerate={regenerate} onClearSquad={clearSquad} busy={busy}

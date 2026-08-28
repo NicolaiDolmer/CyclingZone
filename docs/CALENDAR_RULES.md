@@ -20,6 +20,18 @@ Pakkeren lægger flere hele løbsdage inden i hver kalenderdag — det er præci
 
 Fejlklassen har kostet to hændelser: [#4155](https://github.com/NicolaiDolmer/CyclingZone/issues/4155) skrev `game_day = dato − startdato − 1` og brød overlap-cap'en i alle fire divisioner på én gang ([#4161](https://github.com/NicolaiDolmer/CyclingZone/issues/4161)). [#4159](https://github.com/NicolaiDolmer/CyclingZone/issues/4159) foreslog at cementere den samme formel som DB-trigger.
 
+### 0b. Løbsdage vises 1-baseret, databasen er 0-baseret
+
+**Ejer-besluttet 27/8 ([#4296](https://github.com/NicolaiDolmer/CyclingZone/issues/4296)): "1-baseret, prisen er accepteret".**
+
+`race_stage_schedule.game_day` starter på **0**. Alle spiller-vendte flader viser **`game_day + 1`** via `RACE_DAY_DISPLAY_OFFSET` i `frontend/src/lib/raceHubLogic.js`.
+
+Det betyder at **UI'ets tal altid er databasens plus én**. Slår du et løb op i SQL, i et admin-værktøj eller i en logline, står der ét mindre end det spilleren ser. En spiller der skriver "mine ryttere er bundet på løbsdag 7" mener `game_day = 6`.
+
+Regn ALDRIG i display-tal. Konvertér ved kanten, med `toDisplayRaceDay`, og aldrig i den anden retning uden at det står eksplicit i koden.
+
+Bemærk at sæson-oversigten viser et ANDET tal under samme ord: `seasonDayOrdinal` er kalender-ordinalen, ikke `game_day`. Den konflikt er åben i [#4318](https://github.com/NicolaiDolmer/CyclingZone/issues/4318) og er ikke løst af offsettet.
+
 ---
 
 ## 1. Form og tæthed
@@ -264,7 +276,19 @@ Scorecardet markerer med `✗` når en andel ligger uden for det **rå** bånd, 
 | En rytter kan køre | 1 løb pr. **løbsdag** | [#3420](https://github.com/NicolaiDolmer/CyclingZone/issues/3420) |
 | Håndhæves af | `no_rider_double_booking` (EXCLUDE, DEFERRABLE) | [#3934](https://github.com/NicolaiDolmer/CyclingZone/issues/3934) / [#4163](https://github.com/NicolaiDolmer/CyclingZone/issues/4163) |
 | Startfelt pr. klasse | ProSeries/Class1/Class2 6 · WorldTour + Monumenter 7 · GT 8 | `raceAutopick.js` |
+| Default-fallback | `{min:6, max:8}`, uopnåelig for ægte sæsonløb, `race_class`-CHECK'en tillader kun de 9 navngivne klasser | `raceAutopick.js` / `2026-05-09-race-pool.sql` |
+| **Startgulv (deltagelse)** | **6 udtagne ryttere** — fladt, uafhængigt af feltstørrelsen | `raceAutopick.js` (`MIN_RACE_ENTRIES`) |
 | Trup-loft | 30 (32 i åbent vindue) | `marketUtils.js` |
+
+> ⚠ **Gulvet og loftet er to forskellige tal, og de sidder to forskellige steder.**
+>
+> **Loftet (feltstørrelsen, 6/7/8)** sidder på **Gem**. `validateSelection` afviser `riderIds.length > sizeRule.max` og manglende kaptajn — intet andet. Antal blokerer ALDRIG et gem nedad: du kan gemme 1 rytter til en Grand Tour. Ejer-beslutning 28/6 (`docs/superpowers/specs/2026-06-28-racehub-save-ux-redesign-design.md`, låst beslutning 3: "Gem accepterer delvis trup"), shippet i [#1961](https://github.com/NicolaiDolmer/CyclingZone/pull/1961). Klienten fortsatte med at håndhæve det gamle gulv fra [#1906](https://github.com/NicolaiDolmer/CyclingZone/issues/1906) ("hård fuld opstilling") en måned efter backenden havde droppet det; spillerne meldte det i [#4175](https://github.com/NicolaiDolmer/CyclingZone/issues/4175), og [#4295](https://github.com/NicolaiDolmer/CyclingZone/issues/4295) fjernede det, så klienten nu spejler backendens regel præcist.
+>
+> **Gulvet (6) sidder på DELTAGELSEN**, ikke på Gem. Ejer-beslutning 27/8 ([#4295](https://github.com/NicolaiDolmer/CyclingZone/issues/4295)): *et hold skal have mindst 6 udtagne ryttere for at stille op i et løb.* Fladt, ingen undtagelse. For ProSeries/Class1/Class2 falder gulv og feltstørrelse sammen (6); for WorldTour + Monumenter (7) og Grand Tours (8) ligger gulvet lavere, så 6 til en Grand Tour er lovligt og starter. Ejeren fik forelagt at 21 menneskehold (14 i D3, 7 i D4) har færre end 6 raske ryttere i alt og dermed ikke kan starte et eneste løb, og valgte det flade gulv alligevel.
+>
+> Håndhævelsen ligger i `raceRunner.loadEntrantsForRace`: et hold under gulvet ryger HELT ud af feltet — samme tilstand som et afmeldt eller ryddet hold, altså "ingen ryttere på startlisten", ikke et hold der kører med fire. Den måles KUN ved løbets start, så et igangværende etapeløb ikke mister et hold midtvejs fordi en rytter bliver skadet.
+>
+> **Sen redning:** ligger et hold under gulvet ved race-tid, fylder `raceRunner.fillMissingTeamEntries` op til 6 fra holdets frie ryttere (managerens egne picks og roller står; de tilføjede er hjælpere). Uden det ville det være bedre at gemme nul end at gemme tre. Redningen springer afmeldte og ryddede hold over ([#4200](https://github.com/NicolaiDolmer/CyclingZone/issues/4200)/[#4285](https://github.com/NicolaiDolmer/CyclingZone/pull/4285)) og skriver intet hvis gulvet alligevel ikke kan nås. Et løb der allerede er i gang top-fyldes aldrig (`stages_completed > 0` fryses, [#1825](https://github.com/NicolaiDolmer/CyclingZone/issues/1825)).
 
 > ✅ **`binding_span` er et INTERVAL `[min(game_day), max(game_day)]`, og det er TILSIGTET.** Ejer-direktiv 25/8 ([#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217)): *"På en IRL dag, må en rytter gerne køre mere end et løb. På en løbsdag må en rytter ikke køre mere end et løb"* og *"de skal altså ikke kunne deltage i noget andet undervejs"*. Er du udtaget til et etapeløb, er du bundet indtil det er slut, også på pausedage. [#4173](https://github.com/NicolaiDolmer/CyclingZone/issues/4173) gjorde 24/8 bindingen til mængden af faktiske etape-dage; det åbnede en større fejl, hvor en rytter kunne forlade et etapeløb midt i og køre et andet løb i springet. Se `backend/lib/raceBinding.js:50-52`.
 >

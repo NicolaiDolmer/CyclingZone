@@ -6,6 +6,7 @@ import {
   PEAK_LOCK_LEAD_DAYS,
   MAX_PEAK_PLANS_PER_SEASON,
   snapPeakWindow,
+  lastStageDate,
   isPlanLocked,
   recommendFocusForDemand,
   buildSuggestedTrainingBlock,
@@ -199,4 +200,36 @@ test("TRAINING_FOCUSES-nøgler er gyldige fokus-anbefalinger", () => {
   // Guard: recommendFocusForDemand må kun returnere kendte fokus-nøgler.
   const demand = { climbing: 1 };
   assert.ok(Object.prototype.hasOwnProperty.call(TRAINING_FOCUSES, recommendFocusForDemand(demand)));
+});
+
+// ── lastStageDate (#4312) ────────────────────────────────────────────────────
+test("lastStageDate: sidste etapedato, uanset raekkefoelgen i input", () => {
+  // DB-raekkefoelgen er ikke garanteret sorteret, saa vi tager max, ikke sidste element.
+  assert.equal(lastStageDate(["2026-09-07", "2026-09-12", "2026-09-09"]), "2026-09-12");
+  assert.equal(lastStageDate(["2026-09-12", "2026-09-07"]), "2026-09-12");
+});
+
+test("lastStageDate: endagsloeb giver sin egen dato", () => {
+  assert.equal(lastStageDate(["2026-09-02"]), "2026-09-02");
+});
+
+test("lastStageDate: tomt eller ugyldigt input giver null", () => {
+  assert.equal(lastStageDate([]), null);
+  assert.equal(lastStageDate(null), null);
+  assert.equal(lastStageDate(undefined), null);
+  assert.equal(lastStageDate(["ikke-en-dato"]), null);
+});
+
+test("lastStageDate: ugyldige poster springes over, gyldige taeller stadig", () => {
+  assert.equal(lastStageDate([null, "2026-09-07", "vroevl", "2026-09-12"]), "2026-09-12");
+});
+
+// Forward-guard: lastStageDate og snapPeakWindow skal laese SAMME input, saa de to
+// tal ikke kan drifte fra hinanden. Tour de l'Hexagone i S3 koerer 7.-12. september
+// over loebsdag 28-46; slutdatoen er en KALENDERDATO og maa aldrig afhaenge af spaendet.
+test("lastStageDate: slutdatoen kommer fra etapedatoerne, ikke fra loebsdags-spaendet (#4312)", () => {
+  const tourStageDates = ["2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-12"];
+  assert.equal(lastStageDate(tourStageDates), "2026-09-12");
+  const win = snapPeakWindow(tourStageDates);
+  assert.ok(win && win.window_start && win.window_end, "samme input foeder ogsaa peak-vinduet");
 });

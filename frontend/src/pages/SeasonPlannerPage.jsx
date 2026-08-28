@@ -227,7 +227,9 @@ export default function SeasonPlannerPage() {
   // først findes tilstanden "tomt bræt, ingen peaks" ikke, så nudget kunne aldrig
   // vises. Dets ene unikke spilregel (maks {max} peaks pr. rytter) er flyttet ind
   // i handlingskortet, ikke slettet.
-  const suggestionCount = (riders || []).reduce((n, r) => n + (r.peaks || []).filter((p) => p.isSuggestion).length, 0);
+  // #4212: en noPeak-anbefaling (#3088, intet targetRaceId) er ikke et forslag
+  // "Accept all" kan udkaste — tæl den ikke med i handlingskortets antal.
+  const suggestionCount = (riders || []).reduce((n, r) => n + (r.peaks || []).filter((p) => p.isSuggestion && p.targetRaceId).length, 0);
   const suggestionRiderCount = ridersWithSuggestions(riders);
   const statusSummary = plannerStatusSummary({ riders, today, leadupDays });
   // #2518: sæsonen findes (er oprettet), men kalenderen (#2449) er ikke genereret
@@ -343,6 +345,8 @@ export default function SeasonPlannerPage() {
                 onRetarget={onRetarget}
                 onRemovePeak={onRemovePeak}
                 onSelectRider={(id) => setSelected({ mode: "rider", id })}
+                onAcceptSuggestion={onAcceptSuggestion}
+                onDismissSuggestion={onDismissSuggestion}
               />
             </TabPanel>
 
@@ -398,6 +402,7 @@ export default function SeasonPlannerPage() {
                 mode={selectedRace ? "race" : "rider"}
                 race={selectedRace} rider={selectedRider}
                 riders={riders} races={races} maxPerRider={maxPerRider} months={months} today={today}
+                paybackDays={paybackDays}
                 busy={busy} divisionPending={divisionPending}
                 onClose={() => setSelected(null)}
                 onCreatePeak={onCreatePeak}
