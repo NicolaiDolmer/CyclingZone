@@ -9,12 +9,12 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auth",
         "en": {
-          "title": "Online count no longer drops to 0 on a rejected request",
-          "body": "The online-player count in the menu could briefly show 0 when a background request was rejected, because the error response was read as if it were valid. It now keeps the last known number instead. Actions and background checks that fail because your session is gone also skip silently instead of retrying with a broken token."
+          "title": "Online count no longer shows 0 by mistake",
+          "body": "A rejected background request could briefly show the online count as 0. It now keeps the last known number."
         },
         "da": {
-          "title": "Online-tallet viser ikke længere 0 ved et afvist kald",
-          "body": "Antal spillere online i menuen kunne kortvarigt vise 0, når et baggrundskald blev afvist, fordi fejlsvaret blev læst som gyldigt. Nu beholdes sidst kendte tal i stedet. Handlinger og baggrundstjek der fejler fordi din session er væk, springer nu også stille over i stedet for at prøve igen med et ubrugeligt token."
+          "title": "Online-tallet viser ikke længere 0 ved en fejl",
+          "body": "Et afvist baggrundskald kunne kortvarigt vise online-tallet som 0. Det beholder nu sidst kendte værdi."
         },
         "refs": [4347, 4348, 4351]
       }
