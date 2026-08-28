@@ -1,11 +1,11 @@
-// #4306 — "man kan gemme en udtagelse til et løb man har afmeldt sig fra". PUT
+// #4306 - "man kan gemme en udtagelse til et løb man har afmeldt sig fra". PUT
 // /races/:raceId/selection manglede den samme race_withdrawals-gate som auto-
 // endpointet (POST /races/:raceId/selection/auto) allerede havde (409
 // selection_withdrawn). Uden gaten kunne en manager afmelde, redigere kladden,
 // og "Gem" ind i et løb holdet netop har trukket sig fra.
 //
 // Route-wiring dækkes via kilde-scanning (samme mønster som
-// apiTrainingMeRaceDay.routes.test.js/silentFailureContract-testene) — der er
+// apiTrainingMeRaceDay.routes.test.js/silentFailureContract-testene) - der er
 // ingen supertest-harness i denne kodebase til at eksekvere Express-handlere
 // direkte mod en mocket supabase-klient.
 
@@ -28,7 +28,7 @@ test("PUT /races/:raceId/selection har samme race_withdrawals-gate som POST .../
   const putBlock = routeBlock('router.put("/races/:raceId/selection"');
   const autoBlock = routeBlock('router.post("/races/:raceId/selection/auto"');
 
-  // Auto-endpointets eksisterende gate — kontrol for at markøren rammer rigtigt.
+  // Auto-endpointets eksisterende gate - kontrol for at markøren rammer rigtigt.
   assert.match(
     autoBlock,
     /if \(withdrawal\) return res\.status\(409\)\.json\(\{ error: "selection_withdrawn" \}\);/,

@@ -1,5 +1,5 @@
-// #4306 — et afmeldt hold starter stadig løbet. loadEntrantsForRace filtrerede kun på
-// division (#1846), ghost-eligibility (#1742) og skade (#3896) — ikke på
+// #4306: et afmeldt hold starter stadig løbet. loadEntrantsForRace filtrerede kun på
+// division (#1846), ghost-eligibility (#1742) og skade (#3896), ikke på
 // race_withdrawals. loadWithdrawnTeamIds kaldtes hidtil KUN fra fillMissingTeamEntries
 // (den sene redning), så et afmeldt holds BEVAREDE committede entries blev aldrig
 // fjernet, og holdet startede med en NULL-binding (den forudsætter bevidst at holdet
@@ -91,7 +91,7 @@ test("loadEntrantsForRace: uden afmelding starter begge hold (kontrol)", async (
 // #4295-koordinering: filteret skal ligge FØR autopick/minimum-gulv, så et afmeldt
 // holds egne bevarede entries ikke kan "reddes" tilbage i feltet af den sene redning.
 // fillMissingTeamEntries ekskluderer selv withdrawnTeams fra autopick-kandidaterne
-// (raceRunner.js:829) — testen her dækker at loadEntrantsForRace IKKE lægger holdets
+// (raceRunner.js:829), testen her dækker at loadEntrantsForRace IKKE lægger holdets
 // egne committede entries oven i det bagefter.
 test("loadEntrantsForRace: afmeldt hold får IKKE sine bevarede entries tilbage via autofill", async () => {
   const supabase = makeFilterAwareSupabase({

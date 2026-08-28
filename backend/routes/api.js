@@ -4716,7 +4716,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
 
-    // #4306: samme gate som auto-endpointet (linje ~4891-4897) — et bevidst afmeldt
+    // #4306: samme gate som auto-endpointet (linje ~4891-4897). Et bevidst afmeldt
     // hold må ikke få en manuel udtagelse skrevet ind i et løb det har trukket sig fra.
     // Uden denne gate overlevede Race Hub-kladden et afmeld-klik og kunne stadig
     // "Gem"'es, hvilket skrev spiller-initierede entries ind i et afmeldt løb med

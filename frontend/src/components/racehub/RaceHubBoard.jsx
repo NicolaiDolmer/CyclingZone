@@ -227,7 +227,7 @@ export default function RaceHubBoard() {
 
   // Fælles mutations-wrapper: tjek res.ok, surfacér fejlkode (+ evt. params til ICU-
   // beskeden, fx min/max ved selection_wrong_size), re-hent (rollback) bagefter.
-  // Returnerer true når kaldet lykkedes — #4306: toggleWithdraw skal kun rydde
+  // Returnerer true når kaldet lykkedes. #4306: toggleWithdraw skal kun rydde
   // kolonnens kladde ved et FAKTISK gennemført afmeld, ikke ved en fejlet én.
   async function mutate(req, errParams = {}) {
     const headers = await authHeaders();
@@ -461,10 +461,10 @@ export default function RaceHubBoard() {
     commitDraft(col, { rider_ids: riderIds, captain_id: captain, sprint_captain_id: sprint, hunter_id: hunter, free_role_ids: freeRoleIds });
   }
 
-  // #4306: en lykkedes afmelding rydder ALTID kolonnens lokale kladde bagefter — ellers
+  // #4306: en lykkedes afmelding rydder ALTID kolonnens lokale kladde bagefter, ellers
   // kunne "Gem" stadig sende den overlevende kladde ind i det løb man netop har afmeldt
   // sig fra (Race Hub-kladden overlevede tidligere et afmeld-klik uændret). Kun ved
-  // withdraw=true (afmelding, ikke gen-deltag) og kun ved et FAKTISK gennemført kald —
+  // withdraw=true (afmelding, ikke gen-deltag) og kun ved et FAKTISK gennemført kald:
   // en fejlet afmelding (fx løbet allerede startet) skal ikke koste manageren kladden.
   const toggleWithdraw = (raceId, withdraw) =>
     mutate((headers) => fetch(`${API}/api/races/${raceId}/withdrawal`, { method: withdraw ? "POST" : "DELETE", headers }))
