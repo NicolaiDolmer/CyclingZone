@@ -8,6 +8,8 @@
 
 > **🧱 Nyt spor (efter fredag, MASTERPLAN pkt. 16):** PR **#4334** taender frontend-typecheck + regenererer skematyper (`database.types.ts` daekkede 46 af 143 tabeller). Afventer ejer. Opfoelgning #4326-#4333.
 
+> **✅ #4344 lukket fremad (28/8):** etape-taktikken kunne gemme 2 kaptajner (guarden talte kun payloaden, ikke basis-rollen). PR **#4353** groen (573/588 e2e, 3 projekter) — **afventer ejer-go, UI-adfaerd**. Udskilt: **#4356** (ejer-beslutning: de 34 allerede koerte etaper, re-sim eller staa ved dem) · **#4357** (`loadEntrantsForRace` mangler ORDER BY; tie-breaket er bevidst uroert indtil #4356 er afgjort).
+
 > **⚠️ Aabne fra 27/8:** #4288 (de 3 GT'er koerer 17-18 etaper, baandet kraever 21 = umaalte) · #4282 (hold transfer-frosset af renter alene, ejer-beslutning) · #4318 (to flader siger "Race day" om to forskellige tal).
 
 > **✅ S3-KALENDEREN LIVE (regenereret 27/8, ejer-GO pr. skridt):** 529 løb / 1.239 etaper, 28/8 → søn 27/9. 0 løbsdage over flere datoer, mountain-nedad 27 % (før 64 %), scorecard 0 regelbrud. Udtagelser wiped m. backup (`backup_4236_*`). Løbsdags-udvikling har eget flag (#4277) og er **off** i S3 — S2-regler, retur i S4.
