@@ -2,41 +2,33 @@
 
 > **Ejer-godkendt 13/8** (#3662; spørg før omprioritering). 🔴 brand · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. ≤1.500 tok. [Visuel udgave](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635).
 
-**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Alt viger for spor B undtagen det dato-bundne. **Målt:** 576 åbne issues · 232 brugere, 1 abo. **Hard regel 23/8:** ingen prod-mutation uden ejerens "GO" på netop det skridt.
+**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Gjaldt FØR S3 startede — **afløst i S3-vinduet af rammen nedenfor** (ejer 28/8); genoptages efter 27/9. **Målt 28/8:** 616 åbne issues · 232 brugere, 1 abo. **Hard regel 23/8:** ingen prod-mutation uden ejerens "GO" på netop det skridt.
 
-## SÆSONSTART fre 28/8 kl. 11 — holdudtagelse + planlægning (ejer-godkendt 27/8)
+## S3 KØRER 28/8 → 27/9 — rammen (ejer-beslutning 28/8)
 
-**Detalje: [`2026-08-28-saesonstart-fortsaettelse-prompt.md`](../superpowers/plans/2026-08-28-saesonstart-fortsaettelse-prompt.md).**
-**Rækkefølge herfra (ejer-godkendt 27/8):**
+**Ejeren valgte: "Gør den kørende sæson god."** Fortrinsret: fejl der rammer spillere nu · #428-rytmen (viger aldrig) · en motor der kører rent.
 
-1. ✅ **DONE 28/8:** #4311 fyld-klemme + datareparation · #4307 opfyldning kørt (411 ryttere/89 hold) · #4301/#4295 minimum-6 LIVE · #4306 afmeldt-fix LIVE · #4212/#3088 peak-kontrakt LIVE (PR #4359). Rest: #4355.
-2. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren.
-3. #4201 nedskrevet 28/8 (kode-rest i PLANNING_CENTER_RULES par. 4 -> P3).
-4. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først.
-5. **Ops:** #4308 · #4309/#4305. Parallel-session 27/8 har dem.
+**Grundreglerne (spor B, B2, C) er udskudt til efter 27/9.** Lander de midt i en sæson, planlægger spillerne efter ét regelsæt og måles efter et andet. Mandatet 13/8 gjaldt FØR start; S3 kører med den bestand den har. **Undtagelse:** en grundregel må rettes hvis den er en ren FEJL der rammer spillere nu (#4098) — ikke hvis den er en forbedring.
 
-**Ejer-beslutninger 27/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt**. Genmålt 28/8 EFTER opfyldning: gulvets egen pris = **42 starter på 42 hold**.
+**Åben konflikt:** #4000 (type-dæmpning i værdiformlen) er ejer-godkendt 20/8 til flip med #3449 **tidligst 30/8** — to dage inde i sæsonen. Peger imod rammen. **Afventer ejer.**
 
-**Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
+## Kø i S3-vinduet (ejer-godkendt 27/8, trimmet 28/8)
 
-Ny gæld: #4288 · **#4278** (D4 opad 41,9 % mod bånd 25-32 %) · #4282/#4146 (vagt-fejl) · #4292 · #4123 + #4215-rest.
+1. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren · **#4355** juni-fyldkuldets taktik-læk.
+2. **#4098** unge markeret færdige 65 pt under loftet — ejeren spørges igen senest 31/8.
+3. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først. **Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
+4. **#4176** kalender-SSOT — ejer-frist senest 4/9 OG før S4-kalenderen. Med #4254 (24 regler bagud, hard rule 30).
+
+**Ejer-beslutninger 27-28/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt** (pris målt efter opfyldning: 42 starter på 42 hold) · **to regenereringer af samme sæsonkalender er forbudt**.
+
+Ny gæld: #4288 · **#4278** (D4 opad 41,9 % mod bånd 25-32 %) · #4282/#4146 · #4292 · #4123 + #4215-rest · **#4370** (React #421 på forsiden).
 **UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølger · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4269.
-**SSOT-disciplin (hard rule 30):** citér SSOT, opdatér den i samme PR. 24 regler bagud (#4176 + #4254).
 
-## B · Rytter-pakken (ALTOVERSKYGGENDE)
+## Grundreglerne — UDSKUDT til efter 27/9 (ejer 28/8)
 
-SSOT: `PROGRESSION_RULES.md`. Samling #3664; design LÅST 13/8.
-
-6. **#3512** (arketype-prior, PR fra 17/8, rebase+verify) · **#4039** trin 7 fast-follow · **#4098** unge "done" langt fra rolleloftet (353 ryttere, ~65 pt gab) + **#4128** · **#3668 → #3512 = ét spor**.
-
-## B2 · Værdi og løn (SSOT: `ECONOMY_RULES.md`)
-
-- Løn-rest: ⚪ #3755 · ⚪ #3756 · 🔴 #3732 · #4001.
-- **Kalibrerings-session mandag:** #3719 (+#4103 præmier pr. division) · #3720 · #3987 · løn-sats på MÅLT D1-indtægt · #3966 · gradvis aldersnedgang · #3442/#3656.
-
-## C · Talent-kanalen (rest)
-
-7. 🟠 **#3854 staff-rest** (per-scout kapacitet, routing, harness-rekalibrering FØR flag-flip). **#3550** flag-flip; fremtid #3970. ⚪ **#3853**.
+- **B · Rytter-pakken** (`PROGRESSION_RULES.md`, låst 13/8, samling #3664): #3512 · #4039 · #4098 + #4128 · #3668.
+- **B2 · Værdi og løn** (`ECONOMY_RULES.md`): #3755 · #3756 · #3732 · #4001 · #3719 (+#4103) · #3720 · #3987 · #3966 · #3442/#3656.
+- **C · Talent-kanalen:** #3854 (harness-rekalibrering FØR flag-flip) · #3550 flag-flip · #3853 · #3970.
 
 ## P · Planning Center + kalenderen (NYT spor 22/8)
 
