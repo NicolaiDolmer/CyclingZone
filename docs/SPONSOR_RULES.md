@@ -117,10 +117,20 @@ tillæg = 0,5 × ( SPONSOR_INCOME_BY_DIVISION[nuværende division]
   `start_season`, læst fra `season_standings` — virker ikke. Målt 29/8: **23 af 230 hold har ingen
   standing i den sæson**, alle oprettet efter 27/7, altså midt i en sæson. For dem er
   rekonstruktionen udefineret, og en udefineret prissætnings-division gør tillægget uberegneligt.
-  **Backfill af eksisterende rækker:** brug standingen hvor den findes; hvor den ikke gør, sæt
-  `signed_division` = holdets nuværende division. Det er korrekt for netop de 23, fordi et hold der
-  kom ind midt i en sæson ikke har nået at skifte division — tillægget bliver 0, hvilket er det
-  rigtige svar. **Fallback i drift:** manglende `signed_division` → tillæg 0, aldrig et gæt.
+  **Backfill af eksisterende rækker må IKKE bruge standingen alene.** Det var første udkast, og
+  det er forkert for **38 af 230** aktive kontrakter (målt 29/8). Grunden er sekvensen ved et
+  sæsonskifte: komprimeringen skriver den nye division **før** `expireAndRenewContracts` genererer
+  default-aftaler, så en transitions-skabt kontrakt er prissat mod holdets NYE division mens dets
+  standing fra forrige sæson stadig peger på den gamle. Målt eksempel: et hold med
+  `guaranteed_base` 772.800 (= target 840.000 = D1 × 1,40) fik standings-division 3, hvilket ville
+  have udløst +130.000 til et hold der allerede er korrekt baseret.
+
+  **Reglen der bruges i stedet** er invarianten fra §1: `target` skal ligge i
+  `[base[d] ; base[d] × 1,40]`. Find alle divisioner der opfylder båndet; er holdets
+  standings-division blandt dem, vinder den; ellers vinder en entydig enekandidat; ellers **NULL**.
+  Et tvetydigt bånd (target 400.000 passer både D2 × 1,00, D3 × 1,18 og D4 × 1,27) er ikke noget at
+  gætte på. Målt: 209 af 230 opløses, 21 forbliver NULL.
+  **Fallback i drift:** manglende `signed_division` → tillæg 0, aldrig et gæt.
 
 **Symmetrien med faldskærmen er ikke tilfældig — den er hele designet.** `PARACHUTE_FACTOR = 0,5`
 (#1980, ejer-låst 5/7) udbetaler `0,5 × (base[gammel] − base[ny])` ved nedrykning. Tillæggets

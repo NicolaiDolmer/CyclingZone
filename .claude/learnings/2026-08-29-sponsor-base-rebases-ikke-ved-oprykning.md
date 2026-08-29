@@ -59,6 +59,34 @@ faldskærm for et sponsor-fald deres låste aftale forhindrede i at ske.
   `season_standings` i sæsonen før `start_season` — er udefineret for 23 af 230 hold, fordi de blev
   oprettet midt i en sæson. En rekonstruktion der virker for 90 % er en fejl der venter.
 
+## Efterspil: rekonstruktionen var ikke bare ufuldstændig, den var forkert
+
+Backfillen i migrationen brugte den samme standings-rekonstruktion — og den er **forkert for 38 af
+230 aktive kontrakter**, ikke bare tom for 23. Årsagen er sekvensen ved et sæsonskifte:
+komprimeringen skriver den nye division **før** `expireAndRenewContracts` genererer default-aftaler.
+En transitions-skabt kontrakt er derfor prissat mod holdets NYE division, mens dets standing fra
+forrige sæson stadig peger på den gamle.
+
+Konkret: et hold med `guaranteed_base` 772.800 — altså target 840.000, som kun kan komme fra
+D1 × 1,40 — fik standings-division 3. Backfillen ville have udløst +130.000 til et hold der
+allerede var korrekt baseret. På tværs af populationen: ~924.000 CZ$ udbetalt til hold uden noget
+misforhold, og forskellen mellem 79 og 54 berørte hold.
+
+**Hvordan det blev fundet:** ikke af en test. Ejeren bad om en gennemgang af hvordan tillægget
+rammer de mest aktive hold, og i den tabel stod et hold med en sponsorudbetaling på 927.360 — et
+tal der kun kan opstå fra en D1-base — ved siden af kolonnen "prissat i D3". De to tal kunne ikke
+begge være sande.
+
+**Læren, som er skarpere end den ovenfor:** en rekonstruktion fra en anden tabel er en *hypotese om
+en historisk tilstand*, ikke en måling af den. Den skal valideres mod noget rækken selv bærer.
+Her fandtes valideringen allerede — invarianten `base[d] ≤ target ≤ base[d] × 1,40` stod i
+`SPONSOR_RULES.md` §1, skrevet samme dag. Jeg brugte den bare ikke på min egen backfill.
+Reglen er nu: kandidat-divisioner fra båndet, standingen vinder kun hvis den er blandt dem,
+entydig enekandidat ellers, og NULL frem for et gæt.
+
+**Og den generelle:** at bede om en gennemgang af hvem der rammes er ikke rapportering — det er
+verifikation. Tabellen fandt en fejl to tests og en grøn preflight ikke fandt.
+
 ## Den generaliserbare lære
 
 **Et område uden SSOT producerer regler der kun findes som hensigter.** Den samme audit fandt fem
