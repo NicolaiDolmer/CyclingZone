@@ -55,10 +55,13 @@ export const PARACHUTE_FACTOR = 0.5;
 // kurve-kalibrering mod målt S3-data: #3720 (S4-satserne sættes dér).
 export const UPKEEP_BY_DIVISION = { 1: 220000, 2: 70000, 3: 20000, 4: 0 };
 
-// #1441 Fase 1 — FINAL sponsor-payout-loft (post board_modifier × pullout).
-// S2+ = D1 750k gross × 1.2 = 900k; S1/intro = D1 600k gross × 1.2 = 720k.
-// Forward-guard mod board-modifier-bypass; ingen DB-default spejler dette.
-export const FINAL_SPONSOR_PAYOUT_CEILING = Object.freeze({ S1: 720000, S2_PLUS: 900000 });
+// #1441 Fase 1's flade FINAL_SPONSOR_PAYOUT_CEILING (720k/900k) er FJERNET 2026-08-29.
+// Den blev afløst af det kontrakt-bevidste loft i #1663 (ceiling = guaranteed_base ×
+// MAX_BOARD_MODIFIER) og havde derefter intet kaldested i backend — men den levede videre
+// i frontendens rulesNumbers.js og blev vist som prosa på /rules i begge sprog:
+// "den endelige udbetaling er loftet til 720.000/900.000 CZ$". Spillerne fik altså en regel
+// spillet ikke har. Samme fejlklasse som academySalaryPct (ECONOMY_RULES §8, fund 2).
+// Fundet i sponsor-SSOT-auditten 29/8; se docs/SPONSOR_RULES.md §8.
 
 // Maks board-satisfaction-modifier (bekræftet boardEvaluation.js satisfactionToModifier:
 // ≥80 satisfaction → 1.20). Bruges som kontrakt-bevidst sponsor-loft-faktor (#1663):
@@ -352,6 +355,9 @@ export const FINANCE_REASON = Object.freeze({
   SEASON_START_UPKEEP: "season_start_upkeep",
   // #1980 · nedrykningsfaldskærm — engangsudbetaling ved sæson-start efter nedrykning.
   SEASON_START_PARACHUTE: "season_start_parachute",
+  // #4376 · divisions-tillæg — korrektion når holdets division ikke er den aftalen blev
+  // prissat mod. Spejler faldskærmen med modsat fortegn (docs/SPONSOR_RULES.md §3).
+  SEASON_START_DIVISION_ADJUSTMENT: "season_start_division_adjustment",
   // #3730 · forholdsmæssig sponsor til et hold der oprettes MIDT i en sæson. Sponsoren
   // udbetales ellers kun ved sæsonstart, så et hold oprettet undervejs fik nul resten af
   // sæsonen (målt sæson 2: 43 af 43 nye hold, median-indtægt 31.125 mod 326.596 for de

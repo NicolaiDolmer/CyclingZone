@@ -15,10 +15,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { RULES_NUMBERS, RULES_NUMBERS_RUNTIME_CONFIG_KEYS } from "./rulesNumbers.js";
+import { DIVISION_ADJUSTMENT_FACTOR } from "../../../backend/lib/divisionAdjustment.js";
 import {
   INITIAL_BALANCE,
   SPONSOR_INCOME_BY_DIVISION,
-  FINAL_SPONSOR_PAYOUT_CEILING,
   SALARY_RATE_PRODUCTION,
   NEGATIVE_BALANCE_INTEREST_RATE,
   DEBT_CEILING_BY_DIVISION,
@@ -58,8 +58,8 @@ test("economy numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.sponsorD1, SPONSOR_INCOME_BY_DIVISION[1]);
   assert.equal(RULES_NUMBERS.sponsorD2, SPONSOR_INCOME_BY_DIVISION[2]);
   assert.equal(RULES_NUMBERS.sponsorD3, SPONSOR_INCOME_BY_DIVISION[3]);
-  assert.equal(RULES_NUMBERS.sponsorCeilingS1, FINAL_SPONSOR_PAYOUT_CEILING.S1);
-  assert.equal(RULES_NUMBERS.sponsorCeilingS2, FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS);
+  assert.equal(RULES_NUMBERS.sponsorD4, SPONSOR_INCOME_BY_DIVISION[4]);
+  assert.equal(RULES_NUMBERS.divisionAdjustmentPct, DIVISION_ADJUSTMENT_FACTOR * 100);
   // #4479: pinned to SALARY_RATE_PRODUCTION, the rate that actually freezes a
   // contract (computeFrozenSalary / resolveRiderSalary), NOT the legacy
   // market_value-based SALARY_RATE. Pinning to a dead constant is a green check

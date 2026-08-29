@@ -651,6 +651,9 @@ function buildSponsorPreviewRow(
     activeContract: contracts.activeContract ?? null,
     pendingContract: contracts.pendingContract ?? null,
     renownTargetValue,
+    // #4376: previewets default-aftale skal baere samme signed_division som
+    // fornyelsen skriver, ellers viser previewet et divisions-tillaeg der ikke opstaar.
+    teamDivision: team.division ?? null,
   });
 
   const breakdown = computeSponsorForSeason({

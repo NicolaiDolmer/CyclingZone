@@ -131,6 +131,9 @@ export async function ensureMidSeasonSponsor({
       guaranteed_fraction: chosen.guaranteedFraction,
       race_day_share: chosen.raceDayShare,
       bonus_clauses: chosen.clauses,
+      // #4376: aftalen prissaettes mod holdets division HER og nu. Et hold der oprettes
+      // midt i en saeson har ingen standing at rekonstruere fra, saa vaerdien skal lagres.
+      signed_division: team.division ?? null,
     })
     .select()
     .single();

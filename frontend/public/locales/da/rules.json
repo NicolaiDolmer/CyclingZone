@@ -34,7 +34,7 @@
         },
         "sponsor": {
           "title": "Sponsorindtægt",
-          "text": "Sæson-1-sponsorindtægt skaleres med division, så et kompetent hold er bæredygtigt: Division 1 {sponsorD1} CZ$, Division 2 {sponsorD2} CZ$, Division 3 {sponsorD3} CZ$. Den endelige udbetaling er loftet til {sponsorCeilingS1} CZ$ i sæson 1 og {sponsorCeilingS2} CZ$ fra sæson 2 og frem (efter bestyrelses-modifikatorer)."
+          "text": "Sponsorindtægt skaleres med division, så et kompetent hold er bæredygtigt: Division 1 {sponsorD1} CZ$, Division 2 {sponsorD2} CZ$, Division 3 {sponsorD3} CZ$, Division 4 {sponsorD4} CZ$. Din underskrevne aftale beholder sin garanterede base hele løbetiden. Skifter du division mens den løber, udbetales et separat divisions-tillæg på {divisionAdjustmentPct} procent af forskellen mellem de to divisioner oveni, hver sæson forskellen findes."
         },
         "upkeep": {
           "title": "Driftsomkostning",

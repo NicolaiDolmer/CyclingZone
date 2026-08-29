@@ -52,6 +52,9 @@ export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.SEASON_START_UPKEEP]: "Upkeep & maintenance",
   // #1980 · nedrykningsfaldskærm — engangs-sponsor-kompensation ved sæson-start.
   [FINANCE_REASON.SEASON_START_PARACHUTE]: "Relegation parachute",
+  // #4376: egen label, ikke slået sammen med "Sponsor" — hele pointen med tillægget er
+  // at manageren kan se korrektionen for sig selv, adskilt fra selve aftalen.
+  [FINANCE_REASON.SEASON_START_DIVISION_ADJUSTMENT]: "Division adjustment",
   [FINANCE_REASON.SEASON_START_ACADEMY_DRIFT]: "Academy drift",
   // #1441 Fase 3 A1: facilitets-upkeep + staff-sæsonløn (payroll gold sinks)
   [FINANCE_REASON.SEASON_START_FACILITY_UPKEEP]: "Facility upkeep",

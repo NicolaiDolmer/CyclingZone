@@ -220,6 +220,9 @@ export function resolveContractForNewSeason({
   pendingContract = null,
   renownTargetValue = 0,
   calendarDays = FULL_CALENDAR_DAYS,
+  // #4376: den division default-aftalen ville blive prissat mod. Preview og udfoerelse
+  // skal skrive samme vaerdi, ellers viser previewet et divisions-tillaeg der ikke opstaar.
+  teamDivision = null,
 } = {}) {
   if (contractCoversSeason(activeContract, newSeasonNumber)) {
     return { source: "locked", contract: activeContract };
@@ -250,6 +253,7 @@ export function resolveContractForNewSeason({
       guaranteed_fraction: chosen.guaranteedFraction,
       race_day_share: chosen.raceDayShare,
       bonus_clauses: chosen.clauses,
+      signed_division: Number.isInteger(teamDivision) ? teamDivision : null,
       // Markør: rækken findes ikke i DB endnu — den OPRETTES af
       // expireAndRenewContracts ved skiftet. Kun til preview/rapportering.
       simulated: true,
@@ -310,6 +314,22 @@ export async function getPendingContract({ supabase, teamId }) {
     .maybeSingle();
   if (error) throw error;
   return data || null;
+}
+
+// #4376: holdets division NU — den værdi et tilbud prissættes mod. Skrives på
+// kontrakten som `signed_division` ved signering. Eksporteret så preview-stien og
+// tests kan bruge nøjagtig samme opslag som forhandlingen.
+// `.single()` (ikke `.maybeSingle()`) med vilje: vi er midt i at skrive en kontrakt for
+// holdet, så et manglende hold er en reel fejl der skal kastes — og det er samme
+// query-form som loadRenownTargetValue lige har brugt til at prissætte tilbuddet.
+export async function loadTeamDivision({ supabase, teamId }) {
+  const { data, error } = await supabase
+    .from("teams")
+    .select("id, division")
+    .eq("id", teamId)
+    .single();
+  if (error) throw error;
+  return Number.isInteger(data?.division) ? data.division : null;
 }
 
 // Beregner holdets renownTarget for en kommende sæson ud fra forrige sæsons
@@ -449,6 +469,12 @@ export async function acceptOffer({ supabase, teamId, upcomingSeasonNumber, vari
   const chosen = offers.find((o) => o.variant === variant);
   if (!chosen) throw new Error(`Ukendt variant: ${variant}`);
 
+  // #4376: den division tilbuddet blev prissat mod. Det er PRAECIS den vaerdi
+  // loadRenownTargetValue lige har laest i getOffers ovenfor — den lagres her frem for
+  // at blive rekonstrueret senere, fordi rekonstruktionen er udefineret for hold uden
+  // standing i den forrige saeson (23 af 230 maalt 29/8). Se docs/SPONSOR_RULES.md §3.
+  const signedDivision = await loadTeamDivision({ supabase, teamId });
+
   // Flip en evt. eksisterende pending til 'replaced' FØR insert (delvist UNIQUE
   // index tillader kun én pending pr. hold).
   const { error: updateError } = await supabase
@@ -471,6 +497,7 @@ export async function acceptOffer({ supabase, teamId, upcomingSeasonNumber, vari
     guaranteed_fraction: chosen.guaranteedFraction,
     race_day_share: chosen.raceDayShare,
     bonus_clauses: chosen.clauses,
+    signed_division: signedDivision,
   };
   const { data, error } = await supabase
     .from("sponsor_contracts")
@@ -545,6 +572,9 @@ export async function acceptOfferImmediately({ supabase, teamId, seasonNumber, v
     guaranteed_fraction: chosen.guaranteedFraction,
     race_day_share: chosen.raceDayShare,
     bonus_clauses: chosen.clauses,
+    // #4376: den division tilbuddet blev prissat mod. loadRenownTargetValue laeste
+    // netop denne vaerdi da tilbuddet blev genereret ovenfor.
+    signed_division: teamRow?.division ?? null,
     activated_at: new Date().toISOString(),
   };
   const { data, error } = await supabase
@@ -811,6 +841,10 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
       guaranteed_fraction: chosen.guaranteedFraction,
       race_day_share: chosen.raceDayShare,
       bonus_clauses: chosen.clauses,
+      // #4376: default-fornyelsen genererer tilbuddet mod holdets NYE division
+      // (komprimeringen har koert foer transitionen), saa den er ogsaa prissaetnings-
+      // divisionen — og tillaegget bliver dermed korrekt 0 for disse hold.
+      signed_division: teamById.get(teamId)?.division ?? null,
     };
     const { error } = await supabase
       .from("sponsor_contracts")

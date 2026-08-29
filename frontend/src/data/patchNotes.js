@@ -1,5 +1,40 @@
 export const PATCHES = [
   {
+    "version": "7.227",
+    "date": "2026-09-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Your sponsor deal now reacts when you change division",
+          "body": "A sponsor deal is priced for the division you were in when you signed it. If you were promoted, you paid the new division's upkeep from day one while the deal still paid the old amount. Your signed deal is unchanged, and it stays unchanged: instead, a separate division adjustment of half the difference between the two divisions is paid on top, every season the difference lasts. Promotion from Division 3 to Division 1 is 130,000 CZ$ per season. Every offer now shows what the adjustment would be before you sign. Season 3 is already under way, so only the upward half applies this season; if you were relegated you keep your relegation payment exactly as before."
+        },
+        "da": {
+          "title": "Din sponsoraftale reagerer nu når du skifter division",
+          "body": "En sponsoraftale er prissat til den division du var i da du skrev under. Rykkede du op, betalte du den nye divisions upkeep fra dag ét mens aftalen stadig udbetalte det gamle beløb. Din underskrevne aftale er uændret, og den forbliver uændret: i stedet udbetales et separat divisions-tillæg på halvdelen af forskellen mellem de to divisioner oveni, hver sæson forskellen findes. Oprykning fra Division 3 til Division 1 giver 130.000 CZ$ pr. sæson. Alle tilbud viser nu hvad tillægget ville være, før du skriver under. Sæson 3 er allerede i gang, så kun den opadgående halvdel gælder i denne sæson; er du rykket ned, beholder du din nedrykningsbetaling uændret."
+        },
+        "refs": [4376]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rules",
+        "en": {
+          "title": "The rules page promised a sponsor cap that does not exist",
+          "body": "The rules page said your sponsor payout was capped at 720,000 CZ$ in season 1 and 900,000 CZ$ from season 2. That cap was replaced long ago and no longer runs anywhere in the game. The page now describes the cap that actually applies, and lists Division 4's sponsor base, which was missing."
+        },
+        "da": {
+          "title": "Regelsiden lovede et sponsorloft der ikke findes",
+          "body": "Regelsiden sagde at din sponsorudbetaling var loftet til 720.000 CZ$ i sæson 1 og 900.000 CZ$ fra sæson 2. Det loft blev afløst for længe siden og kører ikke længere nogen steder i spillet. Siden beskriver nu det loft der faktisk gælder, og viser Division 4's sponsorbase, som manglede."
+        },
+        "refs": [4376]
+      }
+    ]
+  },
+  {
     "version": "7.226",
     "date": "2026-09-01",
     "label": "Beta",

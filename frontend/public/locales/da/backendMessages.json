@@ -60,7 +60,8 @@
       "bonus": "Divisionsbonus",
       "interest": "Renter",
       "adminAdjustment": "Admin justering"
-    }
+    },
+    "divisionAdjustment": "Divisions-tillæg · aftale prissat til Division {signedDivision}, kører i Division {currentDivision}"
   },
   "forecast": {
     "warning": {

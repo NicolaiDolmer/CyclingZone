@@ -79,7 +79,7 @@ Der findes ingen CI-gate eller prod-vagt der fanger det i dag — se §8.
 
 | Tidspunkt | Hvad der skrives | Hvad der genberegnes |
 |---|---|---|
-| **Valg** (`acceptOffer`) | `guaranteed_base`, `guaranteed_fraction`, `race_day_share`, `length_seasons`, `bonus_clauses` (frosset i **kroner**, ikke andele), `sponsor_name` | — |
+| **Valg** (`acceptOffer`) | `guaranteed_base`, `guaranteed_fraction`, `race_day_share`, `length_seasons`, `bonus_clauses` (frosset i **kroner**, ikke andele), `sponsor_name`, `signed_division` | — |
 | **Aktivering** (`expireAndRenewContracts`, pending → active) | `status`, signing-bonus krediteres | **KUN `per_race_day_rate`**, mod holdets faktiske etapetal (#2913) |
 | **Hver sæsonstart derefter** | — | Intet. Basen bæres uændret med, hele løbetiden |
 | **Udløb** | `status = 'expired'` | Nye tilbud genereres mod da-aktuel division + renown |
@@ -92,7 +92,7 @@ afhænge af et live-driftende `renownTarget` — det var lektien fra #2589.
 
 ---
 
-## 3. Divisions-tillægget (ejer-besluttet 29/8 — IKKE bygget endnu)
+## 3. Divisions-tillægget (ejer-besluttet 29/8 · bygget 29/8, afventer merge + apply)
 
 Aftalen er prissat mod den division holdet var i da det valgte. Rykker holdet op, betaler det den
 nye divisions upkeep fra dag ét mod en sponsor prissat til den gamle. Rykker det ned, beholder det
@@ -148,8 +148,24 @@ veje uden undtagelse. Konsekvensen i S3: de 10 D2→D3-hold med løbende aftale 
 base og faldskærmen på 30.000 — én sæsons overkompensation, bevidst accepteret.
 
 **Beslutningsgrundlaget** (spiller-vendt, EN+DA): artefakt `4c8ed4bc-62c7-47e8-9beb-72c5787d4d08`.
-Sporet i #4376. **Design-go: ejer 29/8** — hard rule 25's design-gate er dermed opfyldt for
-implementeringen; PR-body skal referere denne dato.
+Sporet i #4376. **Design-go: ejer 29/8** — hard rule 25's design-gate er dermed opfyldt.
+
+### 3.2 Hvor det er implementeret
+
+| Enhed | Ansvar |
+|---|---|
+| `backend/lib/divisionAdjustment.js` | Ren kerne: faktor, overgangsregel, modifier-loft, idempotency-nøgle. Ingen I/O |
+| `sponsor_contracts.signed_division` | Den prissatte division. Skrives af `acceptOffer`, `acceptOfferImmediately`, `expireAndRenewContracts` (default-grenen) og `midSeasonSponsor` |
+| `economyEngine.processSeasonStart` | Krediterer tillægget som egen `division_adjustment`-transaktion, efter faldskærmen |
+| `financeForecast.js` | `projected_division_adjustment` — fuldt modellérbart, indgår i `projected_net` |
+| `SponsorOfferModal.jsx` | Viser beløbet pr. division **før** underskrift (spillerens forbehold) |
+| `scripts/creditDivisionAdjustment-4376.mjs` | Éngangs-efterbetaling for S3, samme funktioner og samme idempotency-nøgle som motoren |
+
+**Invarianten der holder designet sammen** er en test, ikke en kommentar:
+`divisionAdjustment.test.js` fejler hvis `DIVISION_ADJUSTMENT_FACTOR ≠ PARACHUTE_FACTOR`, og hvis
+fradrag + faldskærm ikke summer til nul for D1→D2 og D2→D3. `divisionAdjustmentParity.test.js`
+fejler hvis frontendens projektion afviger fra motoren for nogen kombination af divisioner —
+uden den kunne en spiller se ét beløb i modalen og få et andet udbetalt (#4345's fejlklasse).
 
 ---
 
@@ -235,7 +251,7 @@ Klausul-typen `top_half` (før 3/8) og `top_40pct` (efter) lever side om side i
 | 1 | **Ingen invariant fanger et target uden for båndet.** 36 af 230 hold lå under gulvet 29/8 og ingen vagt sagde noget. Fejlen levede fra 23/8 til den blev fundet i en Discord-triage | §1 |
 | 2 | **Løbsdags-raten er sat mod et etapetal der ikke gælder.** D1 brugte divisor 140 mod 155 faktiske, D2 112 mod 124, D4 56 mod 62 for 47 hold. 102 hold tjener ca. 10,7 % mere race-day-penge end `race_day_share × target`. Kalibrerings-invarianten i spec §4.1 holder ikke | målt 29/8 |
 | 3 | **Tilbuds-modalen viser en rate op til 2,6× for høj når den kommende sæsons kalender ikke findes endnu.** `loadSeasonStageCounts` falder tilbage på `FULL_CALENDAR_DAYS = 60`; D1 kører 155. En spiller så 5.800 og ville få 2.245. Rod-årsag til [#4345](https://github.com/NicolaiDolmer/CyclingZone/issues/4345) | verificeret mod spiller-rapport 28/8 |
-| 4 | **`/rules` lover et sponsor-loft der ikke findes.** `FINAL_SPONSOR_PAYOUT_CEILING` (720k/900k) har intet kaldested i backend, men står som prosa på `/rules` i begge sprog og som levende regel i `GAME_INVARIANTS.md:30`. Det reelle loft er `guaranteed_base × 1,20` | grep + locale |
+| 4 | ~~`/rules` lover et sponsor-loft der ikke findes~~ — **LØST 29/8.** `FINAL_SPONSOR_PAYOUT_CEILING` er slettet fra `economyConstants.js` og `rulesNumbers.js`, prosaen på `/rules` (en+da) beskriver nu det kontrakt-bevidste loft, og `GAME_INVARIANTS.md` er rettet. D4's sponsor-base manglede også på `/rules` og er tilføjet | PR #4376 |
 | 5 | **Spec 21/6 §4.3 siger `per_race_day_rate` er låst.** #2913 gjorde den om til noget der genberegnes ved aktivering. Bevidst ændring, spec aldrig opdateret — SSOT-gæld, ikke fejl | §2 |
 | 6 | **Sponsoren kører på omdømme-proxy v1** (division + resultat-historik), eksplicit markeret midlertidig i spec §9 indtil #1099 lander. Der findes **ingen aftalt udgang**: ingen dato, intet issue der ejer hvad der sker med løbende kontrakter den dag den rigtige motor kommer | §8, inventaret §5 |
 | 7 | **Renown-multiplieren mætter i praksis.** Alle 24 D1-hold har `resultsScore = 1,0` → multiplier 1,40, fordi de alle blev forfremmet og derfor lå i toppen af deres pulje. Proxy'en giver nul differentiering inden for den øverste division | målt 29/8 |
