@@ -251,6 +251,8 @@ export default function AcademyPage() {
     // #2796: begge faldt før igennem til den generiske besked (+ Sentry-500).
     if (err === "insufficient_balance") return t("error.insufficientBalance");
     if (err === "already_assigned") return t("error.alreadyAssigned");
+    // #4213: stale tilbud — rytteren er i mellemtiden ejet af et andet hold.
+    if (err === "rider_owned") return t("error.riderOwned");
     if (err === "squad_cap_violation") return t("error.squadFull");
     // #4009: fyr-specifikke fejl fra /api/riders/:id/academy-release.
     if (err === "rider_on_auction_release") return t("error.riderOnAuction");

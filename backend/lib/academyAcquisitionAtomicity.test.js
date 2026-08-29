@@ -84,8 +84,13 @@ function makeAcademyWorld({
             return { data: { ok: false, code: "insufficient_balance" }, error: null };
           }
 
-          // (c) guarded rider-update
+          // (c) guarded rider-update. #4213: guard'en er team-bundet —
+          // (team_id IS NULL OR (team_id = p_team_id AND is_academy = false)).
           const rider = state.riders[params.p_rider_id];
+          const ownedByOther = rider && rider.team_id != null && rider.team_id !== teamId;
+          if (ownedByOther) {
+            return { data: { ok: false, code: "rider_owned" }, error: null };
+          }
           const alreadyAssigned = rider && rider.team_id != null && rider.is_academy === true;
           if (alreadyAssigned) {
             return { data: { ok: false, code: "already_assigned" }, error: null };

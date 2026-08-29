@@ -74,6 +74,7 @@
     "notOffered": "Denne rytter har ikke fået tilbudt en plads.",
     "insufficientBalance": "Du har ikke råd til signeringsprisen.",
     "alreadyAssigned": "Rytteren er allerede optaget i et akademi.",
+    "riderOwned": "Rytteren er lige nu på et andet hold, så tilbuddet kan ikke gennemføres endnu. Vi er i gang med at rette det, og dit tilbud bliver stående.",
     "squadFull": "Senior-truppen er fuld. Frigør en plads for at rykke op, eller sælg eller fyr i stedet.",
     "riderOnAuction": "Rytteren er på en aktiv auktion og kan ikke fyres, før den slutter.",
     "cannotAffordRelease": "Du har ikke råd til fyrings-gebyret for denne rytter.",
