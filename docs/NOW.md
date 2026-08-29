@@ -6,9 +6,9 @@
 
 > **🎯 Next action — ejer-frister:** **#4376 divisions-tillægget: PR #4388 klar, DU merger** (migration + balance). Så applier jeg migrationen + dry-run af efterbetalingen → **GO** (~79 hold, +4,8 mio CZ$) · **#3494 blokerer #4265** — sponsor-vækstmålet er matematisk umuligt (`teams.sponsor_income` = 240.000 for ALLE 230 hold) · **#4265 vs MASTERPLAN** stadig åben · **#4213** de to tekster (nu en LØST sag: 153 managere fik virkende kort igen) + **den ryddede NUA-kø** (19 venter) · **#4098** senest **søn 31/8** (124 hold ramt) · **#4176** kalender-SSOT **senest 4/9 OG før S4**. **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + trup-linje + RET "Fra i morgen"-varslet · **#886** Sentry-token → Infisical · **#4361** 10 stars vs PAT · **Z1 #1146** PR #4323 grøn, spillertest før merge. Derefter: #4317 · #4259 · #4355 · #4367.
 
-> **✅ 29/8 leveret:** Discord-sweep → 10 issues (**#4373-#4382**) + 3 evidens-kommentarer. **#4213 lukket:** guards #4383+#4384 live, 166 ryttere frigivet, **153 managere har virkende kort igen**. **Rest: 105 udskudte** — kør `repair4213AcademyOffers.mjs --live` når deres 14 etapeløb er kørt.
+> **📦 Backlog-bølge 29-30/8 — 24 PR'er klar, 0 merget.** #4389-#4401 (backend/ops) · #4402-#4412 (spiller-synligt) · **#4413 patch note 7.221, merges SIDST**. Alle grønne. **Blokeret af [#4404](https://github.com/NicolaiDolmer/CyclingZone/issues/4404): auto-merge-labelen er død** — required code-owner-review kan ikke opfyldes på egne PR'er, så kun admin-bypass virker. Ejer merger. **Efter merge af #4398: apply `database/2026-08-29-4204-race-result-duplicate-rpc.sql`.** #4390/#4391/#4392/#4399 vil ejer se først (auth, admin-tal, spiller-UI). Lukket uden kode: #227, #3944, #3945, #4252 (alle allerede leveret). #3427 står åbent — koden siger den virker, men preview-mock når ikke indloggede sider ([#3430](https://github.com/NicolaiDolmer/CyclingZone/issues/3430)), så den kræver en rigtig telefon.
 
-> **✅ 29/8 SSOT-session:** `SPONSOR_RULES.md` + `BOARD_RULES.md` skrevet og registreret i hard rule 30 (**#4266**: 2 af 10 dækket; FORUM/DASHBOARD manglede også og er tilføjet). [Beslutnings-inventar](audits/2026-08-29-sponsor-board-decision-inventory.md), 8 fund — bl.a. at `/rules` lover et sponsor-loft der ikke findes, og #4345's rod-årsag. Nye: **#4385** (ejer: upkeep → løbende udgift pr. løbsdag) · **#4386** · **#4387**. Spiller-side EN/DA: artefakt `4c8ed4bc`.
+
 
 > **⚠️ Åbne fra 28/8:** **#4103** falsk done-flag (højbjerg brudt i alle 4 divisioner) · **#4370** React #421 på forsiden · **#4369** rod-årsag bag session-afvisningen.
 
@@ -37,6 +37,6 @@
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
 - **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
 
-> **🤖 Working agent:** Claude Code (Opus 5) — backlog-boelge: ~25 verificerede issues i parallelle worktrees, startet 29/8 ~20.00. Patch notes samles til SIDST i én PR (ejer 29/8).
+> **🤖 Working agent:** Ingen aktiv session.
 
 _Historik i git-log, issue-tråde + docs/audits/._
