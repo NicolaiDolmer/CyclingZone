@@ -65,13 +65,15 @@ const offered = await fetchAllRows(() =>
   sb.from("academy_intake").select("id, team_id, rider_id, created_at")
     .eq("status", "offered").order("id"));
 
+// #3331: pagineret. Et raat .in()-select mod riders/race_entries er ubundet og
+// kan ramme PostgREST's 1000-raekkers loft og stille-afkorte resultatet — hvilket
+// her ville betyde at vi overser brud og rapporterer for lave tal.
 const riderIds = [...new Set(offered.map((r) => r.rider_id))];
 const riderRows = [];
 for (let i = 0; i < riderIds.length; i += 100) {
-  const { data, error } = await sb.from("riders")
-    .select("id, team_id, pending_team_id, is_retired").in("id", riderIds.slice(i, i + 100));
-  if (error) { console.error("riders:", error.message); process.exit(1); }
-  riderRows.push(...(data || []));
+  const chunk = riderIds.slice(i, i + 100);
+  riderRows.push(...await fetchAllRows(() => sb.from("riders")
+    .select("id, team_id, pending_team_id, is_retired").in("id", chunk).order("id")));
 }
 const riderById = new Map(riderRows.map((r) => [r.id, r]));
 
@@ -123,18 +125,18 @@ const clearableEntries = [];
 for (let i = 0; i < work.length; i += 100) {
   const chunk = work.slice(i, i + 100).map((b) => b.riderId);
 
-  const { data: all, error: allErr } = await sb.from("race_entries")
-    .select("race_id, rider_id").in("rider_id", chunk);
-  if (allErr) { console.error("race_entries:", allErr.message); process.exit(1); }
-  allEntries.push(...(all || []));
+  // Pagineret med stabil totalordning (rider_id, race_id) — noeglen i tabellen.
+  // 271 ryttere gav 1.741 entries (~6,4 pr. rytter), saa en chunk paa 100 ligger
+  // taet nok paa 1000-loftet til at et raat select ville kunne afkorte.
+  allEntries.push(...await fetchAllRows(() => sb.from("race_entries")
+    .select("race_id, rider_id").in("rider_id", chunk).order("rider_id").order("race_id")));
 
-  const { data: clearable, error: clrErr } = await sb.from("race_entries")
+  clearableEntries.push(...await fetchAllRows(() => sb.from("race_entries")
     .select("race_id, rider_id, races!inner(status, stages_completed)")
     .in("rider_id", chunk)
     .eq("races.status", "scheduled")
-    .eq("races.stages_completed", 0);
-  if (clrErr) { console.error("race_entries (clearable):", clrErr.message); process.exit(1); }
-  clearableEntries.push(...(clearable || []));
+    .eq("races.stages_completed", 0)
+    .order("rider_id").order("race_id")));
 }
 const nonScheduled = allEntries.length - clearableEntries.length;
 
