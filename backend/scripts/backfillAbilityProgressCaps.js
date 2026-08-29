@@ -34,16 +34,20 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { VISIBLE_ABILITIES, CALIBRATION } from "../lib/abilityDerivation.js";
 import { buildCapsForRider, buildProgressInit } from "../lib/riderProgression.js";
+import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WRITE_CONCURRENCY = 25;
 
-// Rytter-alder fra birthdate (asOfYear − fødselsår). Spejler abilityDerivation.ageFrom-
-// modellen (kun året tæller til akademi-gaten). null hvis birthdate mangler/ugyldig.
+// Rytter-alder fra birthdate (asOfYear − fødselsår), til akademi-gaten. asOfYear er
+// abilityDerivation.ageFrom-modellens parameter: et KALENDERÅR, ikke et sæsonnummer
+// (den bruges bl.a. med et fremtidigt/hypotetisk år ved dry-run-kalibrering). SSOT'en
+// (riderSeasonAge.ageForSeason) tager et sæsonnummer, så vi regner kalenderåret om til
+// sæson (LAUNCH_REFERENCE_YEAR = sæson 1) FØR vi kalder den — samme formel
+// (asOfYear − fødselsår), genbrugt frem for duplikeret (#3089). Ingen 16-45-clamp her
+// (kun abilityDerivation.ageFrom clamper, denne funktion aldrig gjorde det).
 function ageFromBirthdate(birthdate, asOfYear = CALIBRATION.asOfYear) {
-  const year = birthdate ? new Date(birthdate).getFullYear() : null;
-  if (!Number.isFinite(year)) return null;
-  return asOfYear - year;
+  return ageForSeason(birthdate, asOfYear - LAUNCH_REFERENCE_YEAR + 1);
 }
 
 // REN orkestrering (DB injiceres) — testbar uden createClient.
