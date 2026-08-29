@@ -12,8 +12,7 @@ export default function LeaderBadge({ className = "" }) {
   return (
     <span
       className={`inline-flex items-center gap-1 text-3xs font-bold uppercase tracking-wide
-        px-1.5 py-0.5 rounded-full ${className}`}
-      style={{ backgroundColor: "#e8c547", color: "#1a1f38" }}
+        px-1.5 py-0.5 rounded-full bg-cz-accent text-cz-on-accent ${className}`}
       title={t("leaderBadge")}
     >
       <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor" aria-hidden="true">
