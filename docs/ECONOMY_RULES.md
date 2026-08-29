@@ -67,6 +67,14 @@ Begge 14/8-specs (`vaerdi-og-loen-fundament-design.md` §5, `oekonomi-designkrit
 
 ## 3. Sponsor, upkeep, gæld, præmie
 
+> **Sponsoren har fået sit eget SSOT-dokument 29/8: [`SPONSOR_RULES.md`](SPONSOR_RULES.md).** Kontrakternes
+> tilstandsmaskine, de fem arketyper, divisions-tillægget (ejer-besluttet 29/8) og de seks op-/nedryknings-tilfælde
+> står dér, ikke her. Dette afsnit dækker kun konstanterne.
+>
+> **Upkeep er under omlægning:** ejer-direktiv 29/8 ([#4385](https://github.com/NicolaiDolmer/CyclingZone/issues/4385))
+> siger at den flade sæsonstart-opkrævning skal blive en løbende rejse-, bus- og personaleudgift pr. løbsdag.
+> Designes nu, shippes efter 27/9. `UPKEEP_BY_DIVISION` er dermed eksplicit midlertidig.
+
 Disse konstanter bor i `backend/lib/economyConstants.js` og er dokumenteret i `docs/GAME_INVARIANTS.md` — **denne fil duplikerer dem ikke**. To afvigelser fundet ved verifikation 25/8, begge nyere end GAME_INVARIANTS' tekst:
 
 | Konstant | GAME_INVARIANTS.md siger | Kode siger i dag |
@@ -107,6 +115,14 @@ Disse konstanter bor i `backend/lib/economyConstants.js` og er dokumenteret i `d
 ---
 
 ## 6. Bestyrelsens økonomiske dele (Mandat-modellen)
+
+> **Bestyrelsen har fået sit eget SSOT-dokument 29/8: [`BOARD_RULES.md`](BOARD_RULES.md)** — inkl.
+> adskillelses-kontrakten mellem bestyrelse og sponsor (§5), som er forudsætningen for
+> [#4265](https://github.com/NicolaiDolmer/CyclingZone/issues/4265). Tabellen herunder er stadig gyldig,
+> men den fulde ansvarsfordeling og konsekvens-lagenes tærskler står dér.
+>
+> **Verificeret 29/8 (var åbent i §6's sidste linje):** `board_mandate_model_enabled = 'off'` i prod
+> siden 17/8 12:35. Migrationen kørte alligevel 23/8, og skyggetabellerne har ikke været opdateret siden.
 
 Kun de dele af `2026-08-07-board-mandate-rework-design.md` der rører penge:
 

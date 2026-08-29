@@ -239,6 +239,66 @@ forkerte på en måde der er direkte forårsaget af fejlen.
 
 ---
 
+## 4c. Den fremadrettede kø (leverance 4 — forslag, ejeren ejer rækkefølgen)
+
+MASTERPLAN'ens S3-ramme (ejer 28/8): *"en ren FEJL i en grundregel må rettes; en forbedring må ikke"*
+indtil 27/9. Kolonnen "S3?" er den test, ikke en prioritering.
+
+### Nu — korrekthed, tilladt i S3
+
+| # | Hvad | S3? | Hvorfor her |
+|---|---|---|---|
+| 1 | **#3494** sponsor-vækstmålet peger på det døde felt | ✅ ren fejl | Målet kan matematisk aldrig opfyldes (fund D). Det er også kobling #4 i adskillelses-kontrakten, så #4265 er blokeret bag den. Billigst af alt på listen |
+| 2 | **#4376 → divisions-tillægget** | ✅ ejer-undtagelse 29/8 | Formelt en ny mekanik, ikke en fejlrettelse. Ejeren gav undtagelsen eksplicit: opad i S3, nedad fra S4 |
+| 3 | **#4345** + fund G | ✅ ren fejl | Tilbuds-modalen viser en rate op til 2,6× for høj når næste sæsons kalender ikke findes. Rammer enhver der forhandler nu |
+| 4 | **Fund F** `/rules` lover et loft der ikke findes | ✅ ren fejl | Player-facing tekst der beskriver en regel koden ikke har. Ren tekst- eller konstant-rettelse |
+| 5 | **Fund B-invariant som CI-gate** | ✅ værn | `base[div] ≤ renownTarget ≤ base[div] × 1,40`. Fejlen levede seks dage og blev fundet af en spiller, ikke af os. Uden gaten sker det igen |
+| 6 | **#4377** flerårsmåls-tællere ignorerer historik | ✅ ren fejl | Trøje-delen er ikke verificeret endnu; sponsor-delen er #3494 |
+| 7 | **Fund H** raten sat mod forkert etapetal | ⚠️ rettes ved næste aktivering | 102 hold tjener 10,7 % for meget. Til spillernes fordel, så ingen hast — men rettes ikke midt i sæsonen, det ville tage penge |
+
+### Nu — dokumentation, uden for balance-forbuddet
+
+| # | Hvad | S3? | Hvorfor her |
+|---|---|---|---|
+| 8 | **#4382** 3- og 5-årsplanens livscyklus er udokumenteret | ✅ docs | Tre erfarne spillere kunne ikke svare hinanden 28/8. `BOARD_RULES.md` dækker mekanikken, ikke plan-livscyklussen |
+| 9 | **#4125** upkeep for andre divisioner kan ikke ses | ✅ ux | Oprykning kan ikke prissættes. Ændrer form når **#4385** lander, så byg den enkleste version nu |
+
+### Efter 27/9 — designes nu, shippes senere
+
+| # | Hvad | Hvorfor blokeret |
+|---|---|---|
+| 10 | **#4385** upkeep → løbende rejse-/personaleudgift pr. løbsdag | Ejer-direktiv 29/8. Grundregel, balance-følsom. Ændrer forudsætningen for divisions-tillæggets form (§3.1 valg 3) |
+| 11 | **#3987** base + race-day skalerer med global ranking/løbsdage | Forbedring af en grundregel |
+| 12 | **#3595** sponsormål kan ignoreres uden konsekvens | Forbedring. Kræver først en beslutning om hvad et mislykket mål koster |
+| 13 | **#3147** race-day som klumpsum ved sæsonslut | Forbedring, og direkte i modstrid med #4385's retning (mere løbende, ikke mindre). Genbesøg efter #4385 |
+| 14 | **#3542** D2 opleves som økonomisk straf | Kan ikke måles rent før divisions-tillægget er live — det er formentlig samme rod-årsag |
+| 15 | **#2753** transition-preview viser gross, ikke faktisk payout | Lav prioritet, men den skal med i samme runde som divisions-tillægget, ellers viser previewet igen et forkert tal |
+| 16 | **#3514 fase 2** Boardroom + årsmøde | Skyggemodellen er frosset siden 23/8. Skal genopbygges før flaget kan flippes. Ejer-beslutning påkrævet |
+| 17 | **#4265** UI-adskillelsen | Blokeret bag #3494 (kobling 4) og sponsorens egen flade (kobling 5) |
+
+### Bestyrelses-gæld uden for de to spor
+
+**#3574** (bonus-tilbuddets ekstra-mål er auto-opfyldt i samme sekund det tilføjes) er en ren fejl og
+hører i gruppe 1. **#3575** · **#2022** · **#3335** · **#2261** · **#1237** · **#103** er UX og
+korrekthed omkring plan-livscyklussen — de bør samles i ét spor sammen med #4382, fordi de alle er
+symptomer på at planernes regler aldrig er skrevet ned. **#3152** (tilfredshed opleves som
+humør-dræber) og **#1141** (instrumentering) er designspor der forudsætter Mandat-modellen.
+**#3511** (perf) og **#3515** (kode-arkæologi) er fase 0b og bør ligge foran fase 2, ikke bagved.
+
+### Planlagt til senere, som designet skal kunne bære
+
+| Landing | Hvad det gør ved sponsor-kontrakten | Svar |
+|---|---|---|
+| **#1099** fuld omdømme-motor | Erstatter proxy v1. `renownMultiplier` får en ny, bredere kilde | Kontrakter er frosne i kroner, så **ingen løbende aftale flytter sig**. Kun nye tilbud rammes. Divisions-tillægget rører kun `SPONSOR_INCOME_BY_DIVISION`, som #1099 ikke ændrer. **Designet holder** |
+| **#1113 → #2222** fans og merchandise | Ny indtægtskilde skaleret af omdømme | Ligger uden for sponsorkontrakten. Risiko er inflation, ikke kontraktbrud. **Holder**, men pengemængde-invarianten skal måles igen |
+| **#930/#2217/#2218** staff som lønudgift | Ny fast udgift | Rammer break-even-kalibreringen, ikke sponsor-reglerne. **Holder**, men upkeep-kurven (#3720) og #4385 skal regnes sammen med den |
+| **#2492** tre-tier klubstruktur | Egne kalendere pr. tier | **Bryder.** Divisions-tillægget antager ét `division`-felt pr. hold. Har et hold tre hold med hver sin division, er "den division du skrev under i" ikke længere veldefineret. Skal afklares før #2492 designes færdig |
+| Kontraktudløb → tvangsauktion | Rytterkontrakter, ikke sponsor | Ingen berøring. **Holder** |
+| **#3050** venskabsløb | Tæller de som løbsdage i sponsorens pulje? | **Uafklaret og vigtigt.** Gør de det, kan et hold selv generere sponsor-indtægt ved at oprette løb. Svaret bør være nej, men det skal stå i #3050 før den bygges |
+| **#1441** gold sinks og "rigtige sponsorer" | Epic-niveau | For løst defineret til at vurdere |
+
+---
+
 ## 5. Hvad jeg IKKE kunne verificere
 
 1. **Hvornår omdømme-proxy v1 skal afløses.** Spec 21/6 §9 kalder den midlertidig. Der findes
@@ -258,3 +318,56 @@ forkerte på en måde der er direkte forårsaget af fejlen.
    At et hold er underbetalt på sponsoren er ikke det samme som at det er i knibe.
 6. **Om nogen relegerede hold nogensinde HAR båret en for høj base.** Målingen 29/8 finder nul over
    loftet, men S3 er den eneste sæson med fire tiers. Jeg har ikke rullet målingen tilbage over S2.
+
+---
+
+## 6. Kritik af mit eget arbejde
+
+Jeg gennemgik de to SSOT-filer efter de var skrevet og ledte efter regler jeg havde formuleret uden
+faktisk at have verificeret dem. Fem fund. To viste sig at holde, tre gjorde ikke.
+
+**Holdt ved efterprøvning:**
+- *"Højst én `active` og én `pending` pr. hold, håndhævet af to delvise UNIQUE-indekser."* Jeg havde
+  taget den fra en kodekommentar. Verificeret mod `pg_indexes`: `idx_sponsor_contracts_team_active`
+  og `idx_sponsor_contracts_team_pending` findes begge som partielle UNIQUE-indekser.
+- *"Sæson-1-sponsor springes over ved uberørt startkapital."* Verificeret:
+  `SEASON1_SKIP_SPONSOR_IF_STARTING_CAPITAL = true`.
+
+**Rettet, fordi de ikke holdt:**
+
+1. **"Alle bevægelser logges i `board_satisfaction_events`."** Jeg skrev et designprincip fra
+   Mandat-spec'en som om det var en egenskab ved den kørende model. Tabellen skrives af
+   `boardWeekendFinalization.js`, men hverken `boardEvaluation.js` eller `economyEngine.js` nævner
+   den — sæson-slut-stien er ikke bekræftet som logget. Nedgraderet til det målte:
+   1.313 events for 217 hold 23/8, 270 for 94 hold 29/8.
+
+2. **Divisions-tillæggets prissætnings-division var udefineret for 23 hold.** Jeg definerede den som
+   "holdets division i sæsonen før `start_season`" — den rekonstruktion jeg selv havde brugt i SQL.
+   Målt: **23 af 230 hold har ingen standing i den sæson**, alle oprettet efter 27/7. For dem er
+   reglen ikke bare upræcis, den er ubegregnelig. Reglen er skrevet om: divisionen **lagres på
+   kontrakten** ved signering, backfilles hvor den kan udledes, og falder ellers til holdets
+   nuværende division — hvilket giver tillæg 0, som er det rigtige svar for et hold der ikke har
+   nået at flytte sig.
+
+3. **"Simulér-før-ship-harness" stod som håndhævelses-niveau.** `sponsorChoiceScorecard.js` er en
+   manuel praksis, ikke en gate. Intet i CI kræver at den er kørt. Rettet til at sige det.
+
+**Adskillelses-sætningen, testet mod spørgsmålet "kan en spiller forudsige hvor pengene kommer fra?"**
+
+Den gamle formulering — *"sponsor = penge, bestyrelse = tillid"* — fejler testen. En spiller der tror
+på den, kan ikke forklare hvorfor to hold med identisk kontrakt får forskellige beløb udbetalt.
+Præcis den forvirring står i forum-tråden 28/8, hvor en spiller med to hold spørger hvorfor
+*"identical schemes"* gav 240.000 og 195.000.
+
+Den nye — *"Sponsoren bestemmer aftalens størrelse. Bestyrelsen bestemmer om du får mere eller mindre
+end aftalt, op til 20 % hver vej"* — består testen: den forudsiger både forskellen mellem to
+identiske kontrakter og retningen. Prisen er at den opgiver den rene, smukke opdeling. Den var
+alligevel ikke sand.
+
+**Hvad jeg ikke nåede at verificere** — ud over §5's seks punkter:
+- Hverken `SPONSOR_RULES.md` eller `BOARD_RULES.md` er testet mod en frisk læser. De er skrevet af
+  den samme der lavede målingerne, så de kan indeholde antagelser jeg ikke selv kan se.
+- Trøje-tælleren i #4377 er ikke undersøgt. Jeg har kun verificeret sponsor-delen af det issue og
+  antaget fælles rod-årsag uden bevis.
+- Jeg har ikke målt om `board_relations`' frosne værdier faktisk afviger mærkbart fra
+  `board_profiles` i dag — kun at de ikke er blevet opdateret. Afstanden kan være nul.
