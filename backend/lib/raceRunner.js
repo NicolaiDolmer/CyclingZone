@@ -463,6 +463,9 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       const effortByRider = new Map(stageEntrants.filter((e) => e.effort != null).map((e) => [e.rider_id, e.effort]));
       stageMoments = extractStageMoments({
         stageNumber, isFinal, isStageRace,
+        // #4373: etapens profil skal med, ellers kan narrativet ikke skelne en
+        // enkeltstart fra en massespurt (den bar kun gap-sekunder ind før).
+        profileType: stage.profile_type ?? null,
         ranked, roleByRider, formByRider, effortByRider, breakawayStatus,
         incidentsForStage: incidents,
         gc: isStageRace ? gc : null,
@@ -2038,6 +2041,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const effortByRider = new Map(simEntrants.filter((e) => e.effort != null).map((e) => [e.rider_id, e.effort]));
   const stageMoments = v3 ? extractStageMoments({
     stageNumber, isFinal, isStageRace: true,
+    profileType: thisStage.profile_type ?? null, // #4373, se buildRaceResults' note
     ranked, roleByRider, formByRider, effortByRider, breakawayStatus,
     incidentsForStage: stampedIncidents,
     gc, previousGcLeaderId,

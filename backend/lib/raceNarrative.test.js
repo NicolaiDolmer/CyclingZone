@@ -408,3 +408,69 @@ test("isStoryTagKey: skelner tag_-momenter fra beats", () => {
   assert.ok(!isStoryTagKey("sprint_win"));
   for (const k of STORY_TAG_KEYS) assert.ok(isStoryTagKey(k));
 });
+
+// ── #4373: tidskørsler får deres EGEN vindernøgle ──────────────────────────
+// Regressionen: en prolog (itt) med et par sekunder til nr. 2 blev klassificeret
+// som "sprint_win" og vist som "vinder massespurten" — seks spillere læste det
+// som at spillet favoriserer sprintere på enkeltstarter.
+
+const SPRINT_FIELD_WIN_KEYS = ["sprint_win", "close_win", "solo_win"];
+
+test("#4373 itt: lille gap giver itt_win, ALDRIG sprint_win", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, gap: 0, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 2, gap: 1 }),
+  ];
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "itt", ranked });
+  const m = findMoment(moments, "itt_win");
+  assert.ok(m, "forventede itt_win");
+  assert.equal(m.rider_ids[0], "r1");
+  assert.equal(m.params.gapSeconds, 1, "gap bæres stadig med i params");
+  for (const k of SPRINT_FIELD_WIN_KEYS) {
+    assert.equal(findMoment(moments, k), undefined, `itt må aldrig udsende ${k}`);
+  }
+});
+
+test("#4373 ttt: holdtidskørsel får sin EGEN nøgle, ikke enkeltstartens", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, gap: 0, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 2, gap: 2 }),
+  ];
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "ttt", ranked });
+  assert.ok(findMoment(moments, "ttt_win"), "forventede ttt_win");
+  assert.equal(findMoment(moments, "itt_win"), undefined, "ttt og itt deler ikke nøgle");
+  for (const k of SPRINT_FIELD_WIN_KEYS) {
+    assert.equal(findMoment(moments, k), undefined, `ttt må aldrig udsende ${k}`);
+  }
+});
+
+test("#4373 itt: stort gap giver STADIG itt_win (ikke solo_win — man kører altid alene)", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, gap: 0, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 2, gap: 90 }),
+  ];
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "itt", ranked });
+  assert.ok(findMoment(moments, "itt_win"));
+  assert.equal(findMoment(moments, "solo_win"), undefined);
+});
+
+test("#4373 itt: kun én rytter (intet gap) giver itt_win, ikke solo_win", () => {
+  const ranked = [riderRow({ id: "r1", rank: 1, gap: 0, components: { terrain: 0.9 } })];
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "itt", ranked });
+  const m = findMoment(moments, "itt_win");
+  assert.ok(m);
+  assert.equal(m.params.gapSeconds, null);
+  assert.equal(findMoment(moments, "solo_win"), undefined);
+});
+
+test("#4373: ukendt/manglende profil er UÆNDRET (flad etape spurter stadig)", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, gap: 0, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 2, gap: 1 }),
+  ];
+  for (const profileType of [null, undefined, "flat", "mountain"]) {
+    const moments = extractStageMoments({ stageNumber: 1, profileType, ranked });
+    assert.ok(findMoment(moments, "sprint_win"), `${profileType} skal stadig give sprint_win`);
+    assert.equal(findMoment(moments, "itt_win"), undefined);
+  }
+});
