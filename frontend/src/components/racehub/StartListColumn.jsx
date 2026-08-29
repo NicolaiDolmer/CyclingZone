@@ -13,7 +13,7 @@ function riderLabel(r) {
   return `${initial}${r.lastname ?? ""}`.trim();
 }
 
-export default function StartListColumn({ column }) {
+export default function StartListColumn({ column, myTeamId = null }) {
   const { t } = useTranslation("races");
   const typeLabel = column.race_type === "stage_race"
     ? t("raceType.stages", { count: column.stages })
@@ -59,21 +59,31 @@ export default function StartListColumn({ column }) {
       <div className="py-1 flex-1">
         {column.teams.length === 0 ? (
           <p className="px-3 py-2 text-2xs text-cz-3">{t("browse.noEntries")}</p>
-        ) : column.teams.map((g) => (
-          <div key={g.team.id} className="px-3 py-1.5 border-b border-cz-border/50 last:border-0">
-            <p className="text-2xs font-medium text-cz-2 mb-1 truncate">
-              <TeamLink id={g.team.id} className="hover:text-cz-accent-t transition-colors">{g.team.name ?? t("browse.unknownTeam")}</TeamLink>
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {g.riders.map((r) => (
-                <span key={r.id} className="inline-flex items-center gap-1 text-2xs text-cz-1 bg-cz-subtle rounded-full px-2 py-0.5">
-                  {r.nationality_code && <Flag code={r.nationality_code} />}
-                  {riderLabel(r)}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
+        ) : column.teams.map((g) => {
+            // #2795 — samme --me-ring-token som Standings/Global Rank/Dashboard/
+            // RaceDetailPage/RiderRankingsPage, så eget hold er markeret her også
+            // (denne browse-flade viser bl.a. egen pulje som default).
+            const isMine = myTeamId != null && String(g.team.id) === String(myTeamId);
+            return (
+              <div
+                key={g.team.id}
+                className="px-3 py-1.5 border-b border-cz-border/50 last:border-0"
+                style={isMine ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
+              >
+                <p className="text-2xs font-medium text-cz-2 mb-1 truncate">
+                  <TeamLink id={g.team.id} className="hover:text-cz-accent-t transition-colors">{g.team.name ?? t("browse.unknownTeam")}</TeamLink>
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {g.riders.map((r) => (
+                    <span key={r.id} className="inline-flex items-center gap-1 text-2xs text-cz-1 bg-cz-subtle rounded-full px-2 py-0.5">
+                      {r.nationality_code && <Flag code={r.nationality_code} />}
+                      {riderLabel(r)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
       </div>
 
       <div className="p-2 border-t border-cz-border">
