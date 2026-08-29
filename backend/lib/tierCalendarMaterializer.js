@@ -29,6 +29,7 @@ import { computeSeasonSpan, parseRaceDateText, seasonFraction } from "./seasonPh
 import { grandTourRestDayCount } from "./grandTourRestDays.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { captureException } from "./sentry.js";
+import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 
 export { TIER_CLASS_WHITELIST };
 
@@ -737,12 +738,18 @@ export async function reconcilePoolCalendarOnActivation({
   // #3327/#3328 pass-through til materialize() — se materializeTierCalendars for defaults
   // + opt-out-konvention (tests af FØR-#3327-mekanik sender tomme objekter).
   coverageOverrides = {},
+  // #2743: injectable til tests, mirrorer stageScheduler.js/raceEntryGeneratorSweep.js.
+  captureExceptionFn,
 } = {}) {
   if (poolId == null) return { skipped: "no-pool" };
 
-  const { data: season, error: sErr } = await supabase
-    .from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
-  if (sErr) throw new Error(`seasons: ${sErr.message}`);
+  // #2743: order+limit+maybeSingle (i stedet for et rent maybeSingle) + separat
+  // fler-aktiv-alarm — se activeSeasonLookup.js.
+  const season = await loadSingleActiveSeason(supabase, {
+    select: "id, number, start_date",
+    tag: "reconcile-pool-calendar-on-activation",
+    captureExceptionFn,
+  });
   if (!season) return { skipped: "no-active-season" };
 
   const { data: existingRaces, error: rErr } = await supabase

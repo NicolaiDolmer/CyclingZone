@@ -20,6 +20,7 @@ import { copenhagenMidnightUTC } from "./copenhagenTime.js";
 import { captureException } from "./sentry.js";
 import { detectInFlightRacesWithoutEntries } from "./raceActiveGuard.js";
 import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
+import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 
 // Daglig afviklings-cap (loop-prævention, Beslutning D). Cap'et er en runaway-BACKSTOP
 // (mod cron-loop-incidenten 2026-05-21), IKKE throughput-styring — den PRIMÆRE styring er
@@ -94,9 +95,10 @@ export async function runStageScheduler({
     return { ran: 0, errors: 0, skipped: "engine_off" };
   }
 
-  const { data: season, error: sErr } = await supabase
-    .from("seasons").select("id").eq("status", "active").maybeSingle();
-  if (sErr) throw new Error(`seasons: ${sErr.message}`);
+  // #2743: order+limit+maybeSingle (i stedet for et rent maybeSingle) + separat
+  // fler-aktiv-alarm — se activeSeasonLookup.js. En delvist fejlet sæson-transition
+  // (2 rækker med status='active') skal ikke længere dø hvert tick.
+  const season = await loadSingleActiveSeason(supabase, { tag: "stage-scheduler", captureExceptionFn });
   if (!season) return { ran: 0, errors: 0, skipped: "no_active_season" };
 
   // #2074 forward-guard (DETEKTION): alarmér hvis et igangværende løb har mistet sit
