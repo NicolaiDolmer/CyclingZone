@@ -161,6 +161,10 @@
     "fairPlay": {
       "label": "Fair play",
       "blocks": {
+        "onePerPerson": {
+          "title": "Ét hold pr. person",
+          "text": "Hver spiller må kun have ét hold på én konto. At drive flere hold via ekstra konti tæller som snyd og overvåges via de konto- og login-signaler der er beskrevet i privatlivspolitikken."
+        },
         "starProtection": {
           "title": "Stjernerytter-beskyttelse",
           "text": "En rytter hvis markedsværdi er mindst {starValue} CZ$ tæller som en stjerne og er beskyttet mod tvangssalg. Det er den samme værdi du ser i rytterens profil."
