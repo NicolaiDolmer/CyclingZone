@@ -175,9 +175,27 @@ test.describe("#2948 sponsor UI", () => {
     // division? Fordi divisionen kun omfordeler den samme pulje over flere etaper.
     // #3020 (ejer-beslutning 27/7): eksplicit copy-fix — maks-udbetalingen er den
     // samme uanset valgt division, kun raten pr. etape ændrer sig.
+    // #4376 omformulerede denne linje: sætningen var sand om AFTALEN, men blev
+    // misvisende da divisions-tillægget kom til (der ER nu noget der ændrer sig med
+    // divisionen — det ligger bare uden for aftalen). Ejer-beslutningen bag #3020
+    // står ved magt og er stadig det denne assertion vogter: svaret på cuchiets
+    // spørgsmål skal være på skærmen.
     await expect(
-      page.getByText(/Din maksimale udbetaling ændrer sig ikke, uanset hvilken division du vælger/)
+      page.getByText(/udbetaler det samme maksimum uanset hvilken division du vælger/)
     ).toBeVisible();
+
+    // #4376: tillægget må ikke vises når den valgte division ER holdets egen (D3 her),
+    // fordi der så ingen forskel er at korrigere for.
+    // (Regexet rammer BELØBS-linjen, ikke forklaringen i divisionNote som selv
+    // nævner tillægget — derfor "på ... CZ$" og ikke bare ordet.)
+    await expect(page.getByText(/divisions-tillæg på .* CZ\$/)).toHaveCount(0);
+
+    // ... men skifter man til D2, skal beløbet stå der FØR underskrift — det var
+    // spillerens eksplicitte forbehold da reglen blev valgt. D3→D2 er
+    // 0,5 × (400.000 − 340.000) = 30.000.
+    await page.getByRole("button", { name: "Division 2 · 112 etaper" }).click();
+    await expect(page.getByText(/divisions-tillæg på 30\.000 CZ\$/)).toBeVisible();
+    await page.getByRole("button", { name: "Division 3 · 84 etaper" }).click();
 
     // cuchiet 25/7 spørgsmål 2: rører bestyrelsens modifier etape-pengene? Nej.
     await expect(
@@ -233,6 +251,18 @@ test.describe("#2948 sponsor UI", () => {
       await modalTop.scrollIntoViewIfNeeded();
       await page.screenshot({ path: evidenceShotPath("frontend/tests/screenshots/sponsor-offer-modal-360.png"), fullPage: true });
       await page.setViewportSize({ width: 1280, height: 800 });
+
+      // #4376: divisions-tillægget er kun synligt når den valgte division IKKE er
+      // holdets egen, så det kræver sit eget artefakt — ellers har ejeren ingen
+      // måde at se den nye linje på uden at klikke sig frem selv (hard rule 26).
+      await page.getByRole("button", { name: "Division 2 · 112 etaper" }).click();
+      await expect(page.getByText(/divisions-tillæg på 30\.000 CZ\$/)).toBeVisible();
+      await modalTop.scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: evidenceShotPath("frontend/tests/screenshots/sponsor-offer-modal-division-adjustment.png"),
+        fullPage: true,
+      });
+      await page.getByRole("button", { name: "Division 3 · 84 etaper" }).click();
     }
 
     // ── Ingen uncaught fejl undervejs ───────────────────────────────────────

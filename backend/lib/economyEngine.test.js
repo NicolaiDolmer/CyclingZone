@@ -3461,6 +3461,133 @@ test("#1980: processSeasonStart betaler 30000 parachute ved D2→D3-nedrykning",
   assert.equal(outcome.parachute.total, expected);
 });
 
+// ─── #4376 · Divisions-tillægget, motor-koblingen ────────────────────────────
+// divisionAdjustment.test.js dækker matematikken. Disse to dækker at motoren rent
+// faktisk kalder den, med den rigtige kontrakt, den rigtige modifier og den rigtige
+// idempotency-nøgle — uden dem kunne kernen være korrekt og udbetalingen udeblive.
+
+test("#4376: processSeasonStart krediterer divisions-tillæg til et oprykket hold med låst aftale", async () => {
+  const seasonId = "season-divadj-up";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 3 },
+    prevSeasonId: "season-2",
+    prevStandings: [
+      { team_id: "team-up", division: 3, rank_in_division: 1, total_points: 400 },
+    ],
+    team: {
+      id: "team-up",
+      name: "Promoted CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 1, // ny_div — sat af processDivisionEnd før transitionen
+      balance: 500_000,
+      sponsor_income: 240_000,
+      board_profiles: [],
+    },
+    activeContract: {
+      id: "contract-up",
+      team_id: "team-up",
+      sponsor_name: "Alta Cycles",
+      guaranteed_base: 170_000,
+      guaranteed_fraction: 0.5,
+      race_day_share: 0.58,
+      per_race_day_rate: 1409,
+      length_seasons: 1,
+      start_season: 3,
+      expires_after_season: 3,
+      status: "active",
+      variant: "racing",
+      // Aftalen blev prissat mens holdet lå i D3 — det er hele fejlen #4376 retter.
+      signed_division: 3,
+    },
+  });
+
+  const outcome = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const expected = Math.round(
+    PARACHUTE_FACTOR * (SPONSOR_INCOME_BY_DIVISION[1] - SPONSOR_INCOME_BY_DIVISION[3])
+  );
+  assert.equal(expected, 130000, "sanity: D3→D1 er 130.000");
+
+  const row = supabase.state.financeRows.find((r) => r.type === "division_adjustment");
+  assert.ok(row, "Ingen division_adjustment finance-row fundet");
+  assert.equal(row.amount, expected, "uden bestyrelsesplaner er modifieren 1,0");
+  assert.equal(row.metadata.code, "tx.divisionAdjustment");
+  assert.deepEqual(row.metadata.params, { signedDivision: 3, currentDivision: 1 });
+  assert.equal(row.reason_code, FINANCE_REASON.SEASON_START_DIVISION_ADJUSTMENT);
+  assert.equal(row.idempotency_key, `division_adjustment:team-up:${seasonId}`);
+
+  assert.equal(outcome.divisionAdjustment.count, 1);
+  assert.equal(outcome.divisionAdjustment.total, expected);
+
+  // Aftalen selv er URØRT: sponsor-udbetalingen er stadig den låste base.
+  const sponsorRow = supabase.state.financeRows.find((r) => r.type === "sponsor");
+  assert.ok(sponsorRow, "Ingen sponsor-row fundet");
+  assert.equal(sponsorRow.amount, 170_000, "guaranteed_base må ikke være rørt af tillægget");
+});
+
+test("#4376: fradrag + faldskærm går i nul for et nedrykket hold med løbende aftale (sæson 4)", async () => {
+  // Designets bærende egenskab, målt gennem HELE motoren og ikke kun i den rene funktion:
+  // et nedrykket hold beholder sin høje base, og faldskærmen bliver derfor netop ophævet.
+  const seasonId = "season-divadj-down";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 4 },
+    prevSeasonId: "season-3",
+    prevStandings: [
+      { team_id: "team-down", division: 1, rank_in_division: 20, total_points: 30 },
+    ],
+    team: {
+      id: "team-down",
+      name: "Relegated Locked CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 2,
+      balance: 500_000,
+      sponsor_income: 240_000,
+      board_profiles: [],
+    },
+    activeContract: {
+      id: "contract-down",
+      team_id: "team-down",
+      sponsor_name: "Meridian Bank",
+      guaranteed_base: 552_000,
+      guaranteed_fraction: 0.92,
+      race_day_share: 0.08,
+      per_race_day_rate: 300,
+      length_seasons: 3,
+      start_season: 3,
+      expires_after_season: 5, // stadig låst i sæson 4
+      status: "active",
+      variant: "loyal",
+      signed_division: 1,
+    },
+  });
+
+  const outcome = await processSeasonStart(seasonId, {
+    supabase,
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const parachuteRow = supabase.state.financeRows.find((r) => r.type === "parachute");
+  const adjustmentRow = supabase.state.financeRows.find((r) => r.type === "division_adjustment");
+  assert.ok(parachuteRow, "faldskærmen skal stadig udbetales");
+  assert.ok(adjustmentRow, "fradraget skal stadig bogføres");
+  assert.equal(parachuteRow.amount, 100000);
+  assert.equal(adjustmentRow.amount, -100000);
+  assert.equal(
+    parachuteRow.amount + adjustmentRow.amount,
+    0,
+    "de to skal ophæve hinanden EKSAKT — bryder dette, er faktoren afkoblet fra PARACHUTE_FACTOR"
+  );
+
+  // Begge står som deres egne linjer, så manageren kan se hvorfor nettoet er nul.
+  assert.equal(outcome.parachute.total, 100000);
+  assert.equal(outcome.divisionAdjustment.total, -100000);
+});
+
 test("#1980: processSeasonStart betaler INGEN parachute ved D3→D4-nedrykning (bevidst ekskluderet — D4-upkeep=0)", async () => {
   const seasonId = "season-parachute-d3d4";
   const supabase = createSeasonStartSupabase({
