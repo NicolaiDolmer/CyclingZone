@@ -4,7 +4,7 @@ import process from "node:process";
 
 const budgets = [
   { name: "backend", cwd: "backend", maxWarnings: 0 },
-  { name: "frontend", cwd: "frontend", maxWarnings: 26 },
+  { name: "frontend", cwd: "frontend", maxWarnings: 0 },
 ];
 
 let failed = false;

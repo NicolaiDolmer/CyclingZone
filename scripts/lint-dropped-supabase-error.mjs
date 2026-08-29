@@ -196,10 +196,10 @@ const BASELINE = {
   "backend/lib/discordNotifier.js": 6,
   "backend/lib/loanEngine.js": 6,
   "backend/lib/proxyBidding.js": 6,
-  "backend/lib/raceRunner.js": 5,
+  "backend/lib/raceRunner.js": 4,
   "backend/lib/academyTransfer.js": 3,
   "backend/lib/academyGraduation.js": 3,
-  "backend/lib/aiTeamGenerator.js": 3,
+  "backend/lib/aiTeamGenerator.js": 1,
   "backend/lib/deadlineDayReport.js": 3,
   "backend/lib/economyEngine.js": 2,
   "backend/lib/riderBidTimeline.js": 3,
@@ -213,7 +213,7 @@ const BASELINE = {
   "backend/lib/adminSimulateRace.js": 1,
   "backend/lib/aluntaWebhook.js": 1,
   "backend/lib/marketPause.js": 1,
-  "backend/lib/prizePayoutEngine.js": 1,
+  "backend/lib/prizePayoutEngine.js": 0,
   "backend/lib/squadEnforcement.js": 1,
 };
 
