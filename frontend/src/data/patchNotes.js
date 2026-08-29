@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.220",
+    "date": "2026-08-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "An academy offer can no longer take a rider off another team",
+          "body": "Accepting an offer on a rider who had since joined another team would have moved him without a transfer or a fee. That is now blocked, and you get a clear message instead. Your offer stays open."
+        },
+        "da": {
+          "title": "Et akademitilbud kan ikke længere tage en rytter fra et andet hold",
+          "body": "Hvis du sagde ja til et tilbud på en rytter der i mellemtiden var kommet på et andet hold, ville han skifte uden handel og uden betaling. Det er nu blokeret, og du får en tydelig besked i stedet. Dit tilbud bliver stående."
+        },
+        "refs": [4213]
+      }
+    ]
+  },
+  {
     "version": "7.219",
     "date": "2026-08-29",
     "label": "Beta",

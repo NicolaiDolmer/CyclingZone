@@ -16189,6 +16189,11 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     // larmede i Sentry. Begge er forventede bruger-tilstande, ikke fejl.
     if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
     if (msg === "already_assigned") return res.status(409).json({ error: "already_assigned" });
+    // #4213: rytteren er i mellemtiden ejet af et andet hold — forventet
+    // bruger-tilstand ved et stale tilbud, ikke en fejl. Tilbuddet bevares
+    // bevidst (se signAcademyCandidate), så spilleren kan tage rytteren når
+    // han er frigivet igen.
+    if (msg === "rider_owned") return res.status(409).json({ error: "rider_owned" });
     captureException(err);
     res.status(500).json({ error: msg });
   }

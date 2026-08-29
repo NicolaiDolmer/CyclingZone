@@ -556,6 +556,8 @@ function makeSignRejectSupabase({
   notifyError = null,
   currentProductionValue, // #3550: undefined bevarer eksisterende adfærd (feltet udelades)
   division = 1,
+  riderTeamId = null, // #4213: rytterens nuværende ejer (null = fri)
+  rpcCode = null, // #4213: tving RPC'en til at returnere { ok:false, code }
 } = {}) {
   const riderUpdates = [];
   const intakeUpdates = [];
@@ -600,6 +602,7 @@ function makeSignRejectSupabase({
                 return Promise.resolve({
                   data: {
                     id: "rider-X", firstname: "Sander", lastname: "Akademi",
+                    team_id: riderTeamId, // #4213: ejerskabs-precheck læser feltet
                     market_value: riderBaseValue, base_value: riderBaseValue, prize_earnings_bonus: 0,
                     ...(currentProductionValue !== undefined ? { current_production_value: currentProductionValue } : {}),
                   },
@@ -655,6 +658,10 @@ function makeSignRejectSupabase({
     rpc(_name, _args) {
       rpcCalls.push({ _name, _args });
       assert.equal(_name, "finalize_academy_acquisition");
+      // #4213: lad tests simulere RPC-guardens afvisningskoder (fx rider_owned).
+      if (rpcCode) {
+        return Promise.resolve({ data: { ok: false, code: rpcCode }, error: null });
+      }
       const price = Number(_args.p_price);
       if (teamAcademyCount >= 8) {
         return Promise.resolve({ data: { ok: false, code: "academy_full" }, error: null });
@@ -681,6 +688,46 @@ function makeSignRejectSupabase({
 
   return supabase;
 }
+
+// #4213: stale tilbud — rytteren er i mellemtiden ejet af et ANDET hold.
+// Precheck'en afviser FØR RPC-kaldet, og TILBUDDET BEVARES (ejer-beslutning
+// 29/8: rytteren frigives, så kortet skal virke om få dage — ikke forsvinde).
+test("signAcademyCandidate (#4213): rytter ejet af andet hold → rider_owned, ingen RPC, tilbuddet bevares", async () => {
+  const supabase = makeSignRejectSupabase({ riderTeamId: "team-B" });
+
+  await assert.rejects(
+    () => signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 }),
+    /rider_owned/,
+  );
+
+  assert.equal(supabase._rpcCalls.length, 0, "ingen RPC — precheck'en afviser først");
+  assert.equal(supabase._riderUpdates.length, 0, "ingen rider-update");
+  assert.equal(supabase._intakeUpdates.length, 0,
+    "tilbuddet må IKKE afvises — manageren skal kunne tage rytteren når han er frigivet");
+});
+
+// Forward-guard mod at self-healet sniger sig ind igen: også når RPC'en er den
+// der afviser (racen precheck→RPC), skal intake-rækken stå urørt.
+test("signAcademyCandidate (#4213): RPC svarer rider_owned → tilbuddet bevares", async () => {
+  const supabase = makeSignRejectSupabase({ rpcCode: "rider_owned" });
+
+  await assert.rejects(
+    () => signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 }),
+    /rider_owned/,
+  );
+
+  assert.equal(supabase._rpcCalls.length, 1, "RPC'en blev kaldt");
+  assert.equal(supabase._intakeUpdates.length, 0, "tilbuddet står urørt");
+});
+
+// #4213: samme rytter ejet af HOLDET SELV (fx allerede optaget) må ikke ramme
+// precheck'en — den sti afgøres af RPC'ens egen guard (already_assigned).
+test("signAcademyCandidate (#4213): rytter ejet af holdet selv → precheck'en griber ikke ind (RPC afgør)", async () => {
+  const supabase = makeSignRejectSupabase({ riderTeamId: "team-A" });
+  const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
+  assert.equal(result.riderId, "rider-X");
+  assert.equal(supabase._rpcCalls.length, 1, "RPC'en kaldes som normalt");
+});
 
 test("signAcademyCandidate: opdaterer rytter med is_academy=true, team_id, salary, contract_length=1 (#3550 punkt 3), contract_end_season=seasonNumber", async () => {
   const supabase = makeSignRejectSupabase({ riderBaseValue: 100000, teamAcademyCount: 0 });
