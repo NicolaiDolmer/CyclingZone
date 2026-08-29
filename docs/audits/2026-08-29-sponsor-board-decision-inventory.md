@@ -148,6 +148,42 @@ Reelt: loftet er `guaranteed_base × 1,20`. For S3's tre korrekt-baserede D1-hol
 **Samme fejlklasse som `academySalaryPct` (ECONOMY_RULES §8, fund 2): et player-facing tal der
 driver fra den formel der faktisk kører, uden nogen gate der fanger det.**
 
+### Fund G — tilbuds-modalen viser en per-etape-rate der er 2,6× for høj (#4345)
+Fra forum-tråden "Financial Punishment?" 28/8: *"I had to pick my sponsor in the beginning of div 3.
+Gave me 1.406 pr race. Picking today in div 1 it is 5.800 for same type. Explain this."*
+
+Begge tal er reproduceret eksakt:
+- **1.406** ≈ hans nuværende `racing`-kontrakt: target 340.000 (D3-anker), pulje 0,58 × 340.000 =
+  197.200, divisor 140 → **1.409**.
+- **5.800** = et FRISKT `racing`-tilbud for S4: target 600.000 (D1-anker × 1,00), pulje 348.000,
+  divisor **60** → **5.800**. Eksakt.
+
+Divisoren 60 er `FULL_CALENDAR_DAYS`-fallbacken. `loadSeasonStageCounts` finder ingen `seasons`-række
+for sæson 4 (den findes ikke endnu), returnerer `byTier = {}` og `fallbackDays = 60`, og modalen
+falder tilbage på 60. D1 kører reelt **155 etaper**. Ved aktivering genberegnes raten til
+348.000 / 155 = **2.245**.
+
+**Spilleren bliver altså vist 5.800 pr. etape og får 2.245.** Totalen (`certain` = base + pulje)
+er korrekt hele vejen — kun rate-linjen er forkert, og det er præcis den linje #4345 handler om.
+Modalen selv er i orden (#2862 fikserede den til at projicere mod divisionens etapetal); fejlen er
+at der ikke findes etapetal for en sæson hvis kalender ikke er genereret endnu.
+
+### Fund H — den aktiverede rate er sat mod et etapetal der ikke længere gælder
+Implicit divisor pr. aktiv kontrakt tegnet til S3, mod sæsonens faktiske etapetal:
+
+| Division | Divisor brugt | Faktisk etapetal | Afvigelse | Hold |
+|---|---|---|---|---|
+| D1 | 140 | 155 | **+10,7 %** | 19 |
+| D2 | 112 | 124 | **+10,7 %** | 36 |
+| D3 | 84 | 85 | +1,2 % | 85 |
+| D4 | 56 | 62 | **+10,7 %** | 47 |
+| D4 | 62 | 62 | 0 % | 14 |
+
+Ved fuld deltagelse tjener 102 hold ca. 10,7 % mere i race-day-penge end `race_day_share × target`.
+Kalibrerings-invarianten i spec §4.1 (*"ved fuld kalender gælder base + rate × dage ≈ target"*)
+holder altså ikke. Retningen er til spillernes fordel, så det haster ikke — men det er en
+uafhængig regel-drift der skal stå i SSOT'en.
+
 ---
 
 ## 4. Bestyrelse — beslutningerne
@@ -180,6 +216,26 @@ driver fra den formel der faktisk kører, uden nogen gate der fanger det.**
 
 Punkt 5 og 6 er den direkte, mekaniske årsag til at spillerne blander systemerne sammen:
 sponsoren har ingen egen flade, og bestyrelsen forklarer sig selv i sponsor-valuta.
+
+---
+
+## 4b. Hvad spillerne selv foreslår (forum-tråden "Financial Punishment?", 28/8)
+
+Kilde: `scripts/discord/.sweep-daily-2026-08-29.md` linje 538-720 (forum-relay i #ops) +
+#staff-chat 28/8. Mindst fem spillere.
+
+| Udsagn | Min vurdering |
+|---|---|
+| *"Your sponsor should be according to the division you're in, not the division you're from."* | **Det er A1.** Formuleret af en spiller der ikke selv er ramt, uimodsagt i tråden. |
+| *"I got Div 1 expenses and Div 3 income. The division upkeep is 150k more in Div 1 than Div 3. So the sponsor payout barely covers that difference."* | Korrekt regnet. Upkeep-springet D3→D1 er 200.000 (20k → 220k), og hans sponsor-total er 367.200. |
+| *"You basically earn the same in division 1 as division 4"* · *"the sponsors pay the same"* | **Forkert — men de læser data korrekt.** 36 hold bærer et anker fra en anden division, så den observerbare spredning mellem divisionerne er kollapset. Fejlen har lært spillerne en forkert regel. |
+| *"I find it unreasonable that we get the same amount from sponsors across all divisions. I don't remember seeing a reply."* | Samme misforståelse, men det er et ubesvaret spørgsmål fra en tidligere lejlighed. Det er fejlen der har skabt indtrykket. |
+| *"It is the same CZ$ in total, the reason for the difference is a higher amount of stages"* | Forklaringen er rigtig i princippet (#2913) men dækker ikke tallene her — 1.406 mod 5.800 er 4,1×, og etapeforskellen D3→D1 er 1,8×. Se fund G. |
+| *"Hvis der ikke er forskel på basen mellem divisionerne på sponsorer, så få det fjernet fra hjælp"* (#staff-chat) | Hjælpen har ret, koden har uret. Rettelsen hører i koden, ikke i hjælpen. |
+
+**Konklusion:** der er ingen konkurrerende spiller-forslag at vælge imellem. Det eneste forslag der
+er formuleret som en regel er A1, og de øvrige udsagn er beskrivelser af symptomet — flere af dem
+forkerte på en måde der er direkte forårsaget af fejlen.
 
 ---
 
