@@ -29,6 +29,7 @@ import RiderTypeBadge from "../RiderTypeBadge";
 import ScoutablePotentiale from "../ScoutablePotentiale";
 import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
 import RiderBadges from "../RiderBadges";
+import ValueDeltaBadge from "../ValueDeltaBadge.jsx";
 import { retirementRiskBadgeKey } from "../../../lib/riderAge";
 import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon } from "../../ui";
 
@@ -99,9 +100,15 @@ function StatusBanner({ banner }) {
   if (!text) return null;
 
   return (
-    <div className={`mt-4 flex items-center gap-2 rounded-cz border px-3.5 py-2.5 text-sm ${tone}`}>
+    <div className={`mt-4 flex items-center gap-2 rounded-cz border px-3.5 py-2.5 text-sm tabular-nums ${tone}`}>
       {banner.kind === "expiry" && <AlertTriangleIcon size={16} aria-hidden="true" className="flex-shrink-0" />}
       <span>{text}</span>
+      {/* #3490: samme "X% under/over vurdering"-indikator som Transferlisten/
+          Auktioner (ValueDeltaBadge) — kun for "listed" og kun når rytterens
+          markedsværdi kunne beregnes (computeBidValueDelta → null skjuler den). */}
+      {banner.kind === "listed" && (
+        <ValueDeltaBadge valueDelta={banner.valueDelta} ns="transfers" className="text-xs" />
+      )}
     </div>
   );
 }
