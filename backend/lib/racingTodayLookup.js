@@ -5,11 +5,13 @@
 // race_entries (holdets startfelt) JOIN race_stage_schedule (dagens etaper,
 // scheduled_at i dagens danske kalenderdøgn) JOIN races (navn).
 //
-// Kun kaldt af GET /api/training/me når race_day_engine_enabled er on (kald-stedet
-// gater query'en helt — flag off = ingen ekstra DB-belastning, samme mønster som
-// dailyTrainingEngine's raceDayEngineOn-gate). Fail-safe by construction: ALDRIG
-// throw — enhver fejl giver {} (ingen badge for nogen rytter) i stedet for at
-// vælte hele /api/training/me-responsen for én best-effort-berigelse.
+// Kun kaldt af GET /api/training/me når race_day_development_enabled er on
+// (kald-stedet gater query'en helt - flag off = ingen ekstra DB-belastning, samme
+// mønster som dailyTrainingEngine's raceDayDevelopmentOn-gate på D1-lookuppet;
+// #4375 rettede kald-stedet fra motor-flagget til udviklings-flagget efter #4277
+// splittede dem). Fail-safe by construction: ALDRIG throw, enhver fejl giver {}
+// (ingen badge for nogen rytter) i stedet for at vælte hele
+// /api/training/me-responsen for én best-effort-berigelse.
 
 import { copenhagenMidnightUTC } from "./copenhagenTime.js";
 
