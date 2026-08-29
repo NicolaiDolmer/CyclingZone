@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.219",
+    "date": "2026-08-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy offers pointing at riders who were already taken",
+          "body": "Some academy candidates had quietly been signed by AI teams, so the offer on your academy page could not actually be accepted. Those riders are free again, and the offers have a fresh deadline so you have time to decide."
+        },
+        "da": {
+          "title": "Akademitilbud på ryttere der allerede var taget",
+          "body": "Nogle akademikandidater var stille blevet hentet af AI-hold, så tilbuddet på din akademiside ikke reelt kunne tages imod. De ryttere er frie igen, og tilbuddene har fået en frisk frist, så du har tid til at beslutte dig."
+        },
+        "refs": [4213]
+      }
+    ]
+  },
+  {
     "version": "7.218",
     "date": "2026-08-28",
     "label": "Beta",

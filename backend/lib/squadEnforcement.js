@@ -43,6 +43,7 @@ import {
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace, shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
+import { fetchLiveAcademyOffers, filterOutPromisedAcademyRiders } from "./academyOfferProtection.js";
 
 // #1309: aktiv sæson-number til contract_end_season-beregning.
 // Spejler transferExecution.fetchActiveSeasonNumber — default 1 som edge-case.
@@ -102,7 +103,7 @@ function pickRidersToSell(ownedRiders, count) {
   return sorted.slice(0, count);
 }
 
-async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
+async function findCheapestAvailableRiders(supabase, count, excludedTeamIds, acquiringTeamId = null) {
   // Tilgængelige = ingen team_id, eller ejet af AI-team. Begge kategorier kan auto-købes.
   // #2748 forward-guard: pensionerede ryttere er IKKE tilgængelige. Fra og med
   // retirementRelease.js lander de i fri-agent-poolen (team_id=null) — uden dette
@@ -150,8 +151,23 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
     pool = pool.concat(aiOwned || []);
   }
 
-  pool.sort((a, b) => (a.market_value || 0) - (b.market_value || 0));
-  return pool.slice(0, count);
+  // #4213: en akademi-intake-kandidat ER en fri agent (team_id null, is_academy
+  // false — academyGenerator.js:152) og er derfor allerede med i `freeAgents`
+  // ovenfor. Han er samtidig lovet væk til et menneskehold i et levende tilbud.
+  // Uden dette filter køber auto-købet rytteren væk under manageren, og
+  // akademikortet bliver stående med en signeringsknap der stjæler ham tilbage
+  // (#4213's egentlige skade). Filteret sidder EFTER hentningen, ikke som et
+  // .not()-prædikat i queryen, fordi markøren bor i en ANDEN tabel.
+  //
+  // Sorteringen nedenfor er `market_value` stigende, og akademikandidater er
+  // systematisk de billigste ryttere i spillet (median 4.925 mod 37.956 for
+  // almindelige frie agenter, målt 29/8) — de ligger altså i toppen af netop
+  // denne liste. Uden filteret rammer auto-købet dem FØRST, ikke sjældent.
+  const liveOffers = await fetchLiveAcademyOffers(supabase);
+  const { kept } = filterOutPromisedAcademyRiders(pool, liveOffers, acquiringTeamId);
+
+  kept.sort((a, b) => (a.market_value || 0) - (b.market_value || 0));
+  return kept.slice(0, count);
 }
 
 // ─── Effekter pr. rytter ──────────────────────────────────────────────────────
@@ -404,7 +420,8 @@ export async function enforceTeamSquadCompliance({
     const candidates = await findCheapestAvailableRiders(
       supabase,
       deviatingCount,
-      ownedTeamIds
+      ownedTeamIds,
+      teamId
     );
 
     if (candidates.length < deviatingCount) {
