@@ -385,8 +385,11 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
         <ScoutablePotentiale rider={r} scouting={scouting} showScout />
       </td>
 
-      {/* Sælger — lige før stats */}
-      <td className="px-3 py-1.5 text-left text-cz-2 text-xs whitespace-nowrap hidden xl:table-cell">
+      {/* Sælger — lige før stats. data-testid, fordi auction-seller-sort-spec'en
+          tidligere hentede cellen med td:nth-child(12); den knak i det sekund
+          #3956 indsatte popularitets-kolonnen før den. Et stabilt hook gør
+          kolonne-rækkefølgen fri igen. */}
+      <td data-testid="auction-seller" className="px-3 py-1.5 text-left text-cz-2 text-xs whitespace-nowrap hidden xl:table-cell">
         <span className="truncate max-w-[120px] inline-block">{getAuctionSellerLabel(auction)}</span>
       </td>
 

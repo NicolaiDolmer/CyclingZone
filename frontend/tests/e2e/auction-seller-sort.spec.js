@@ -51,7 +51,9 @@ test.describe("Auctions Sælger-kolonne er sorterbar (#3067)", () => {
     const sellerHeader = page.getByRole("columnheader", { name: /Sælger|Seller/ });
     await expect(sellerHeader).toBeVisible();
 
-    const sellerCells = page.locator("table tbody tr td:nth-child(12)");
+    // Stabilt hook i stedet for td:nth-child(N): den positionelle selector knak
+    // da #3956 indsatte popularitets-kolonnen foran Saelger.
+    const sellerCells = page.locator('table tbody tr td[data-testid="auction-seller"]');
     await expect(sellerCells).toHaveCount(3);
 
     if (capture) {
