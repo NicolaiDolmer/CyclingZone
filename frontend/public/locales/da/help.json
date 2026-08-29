@@ -224,8 +224,8 @@
         "text": "Tilbud er private. Kun du og sælger kan se jeres forhandling. Andre managers kan ikke se hvem der har budt på samme rytter."
       },
       "archiveCompleted": {
-        "title": "Arkivér afsluttede tilbud",
-        "text": "Tilbud der er afvist, trukket tilbage eller på anden vis afsluttet kan arkiveres fra Transfers-siden. Arkivering fjerner dem fra aktive lister, så igangværende forhandlinger altid er nemme at finde."
+        "title": "Arkivér afsluttede forhandlinger",
+        "text": "Tilbud og bytteforslag der er afvist, trukket tilbage eller på anden vis afsluttet kan arkiveres fra Transfers-siden. Arkivering fjerner dem fra aktive lister, så igangværende forhandlinger altid er nemme at finde."
       }
     },
     "managers": {

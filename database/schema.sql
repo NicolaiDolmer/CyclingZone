@@ -364,6 +364,9 @@ CREATE TABLE swap_offers (
   message TEXT,
   proposing_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
   receiving_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+  -- #3492: per-side arkivering, samme kontrakt som transfer_offers ovenfor.
+  proposing_archived_at TIMESTAMPTZ,
+  receiving_archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

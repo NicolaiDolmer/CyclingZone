@@ -95,6 +95,7 @@
     "offer_not_found": "Offer not found",
     "not_involved_offer": "You're not involved in this offer",
     "only_closed_offers_archivable": "Only closed offers can be archived",
+    "only_closed_swaps_archivable": "Only closed swaps can be archived",
     "buyer_cannot_afford": "The buyer can't afford this",
     "cannot_afford": "You can't afford this",
     "deal_locked_both_confirmed": "The deal has been accepted by both parties and can't be cancelled by a manager",

@@ -961,7 +961,10 @@ export function apiResponse(pathname, search = "") {
   if (pathname.endsWith("/api/transfers/my-offers")) {
     return { sent: [], received: [], archivedSent: [], archivedReceived: [] };
   }
-  if (pathname.endsWith("/api/transfers/swaps")) return { sent: [], received: [] };
+  // #3492: byttetilbud har samme arkiv-form som transfertilbud ovenfor.
+  if (pathname.endsWith("/api/transfers/swaps")) {
+    return { sent: [], received: [], archivedSent: [], archivedReceived: [] };
+  }
   // NB: i preview-interceptoren (installPreviewMock) fanges /api/me/onboarding-
   // progress + /api/training/me af #2819-blokken FØR denne linje, så onboarding-
   // kortet har rigtige trin og /training har en roster at vise touren på. Denne

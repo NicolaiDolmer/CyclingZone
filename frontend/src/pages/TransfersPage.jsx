@@ -11,6 +11,7 @@ import { ConfettiModal } from "../components/ConfettiModal";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue, getRiderSalary, computeBidValueDelta, computeValueDeviationPct } from "../lib/marketValues.js";
+import { getEffectiveOfferAmount, isCounterAmount } from "../lib/offerAmount.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { sortRows } from "../lib/useTableSort.js";
@@ -175,7 +176,8 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
   const isAwaiting = offer.status === "awaiting_confirmation";
   const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(offer.status);
   const cfg = statusCfg(t, offer.status);
-  const priceNum = offer.counter_amount || offer.offer_amount;
+  // #4156: ét beløb, én kilde — samme regel som backend afregner efter.
+  const priceNum = getEffectiveOfferAmount(offer);
   const price = priceNum != null ? formatNumber(priceNum) : "";
 
   async function doAction(action, extra = {}) {
@@ -221,11 +223,14 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
       <div className="bg-cz-subtle rounded-cz px-4 py-3 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
+          {/* #4156: etiket OG beløb følger den samme værdi-baserede regel. Den
+              gamle status-betingelse viste det oprindelige bud igen, så snart et
+              modbud blev accepteret (status skifter væk fra "countered"). */}
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">
-            {offer.status === "countered" ? t("offerCard.counterLabel") : t("offerCard.offerLabel")}
+            {isCounterAmount(offer) ? t("offerCard.counterLabel") : t("offerCard.offerLabel")}
           </p>
           <p className="text-cz-accent-t font-mono font-bold text-xl">
-            {formatNumber(offer.status === "countered" ? offer.counter_amount : offer.offer_amount)} CZ$
+            {formatNumber(priceNum)} CZ$
           </p>
         </div>
         <div className="sm:text-right">
@@ -339,8 +344,17 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
   const isActive = isCountered || isPending || isAwaiting;
   const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(offer.status);
   const cfg = statusCfg(t, offer.status);
-  const priceNum = offer.counter_amount || offer.offer_amount;
+  // #4156: ét beløb, én kilde — samme regel som backend afregner efter.
+  const priceNum = getEffectiveOfferAmount(offer);
   const price = priceNum != null ? formatNumber(priceNum) : "";
+  // Mens modbuddet STÅR ÅBENT (status "countered") er de to beløb konkurrerende
+  // forslag, og begge vises side om side. I alle andre tilstande er der kun ét
+  // beløb i spil — det effektive. Før #4156 viste kortet altid det rå
+  // offer_amount, så et ACCEPTERET modbud lignede en handel til dit eget bud.
+  const primaryAmount = isCountered ? offer.offer_amount : priceNum;
+  const primaryLabel = isCountered || !isCounterAmount(offer)
+    ? t("offerCard.yourBidLabel")
+    : t("offerCard.counterAmountLabel");
 
   async function doAction(action, extra = {}) {
     setLoading(true);
@@ -380,12 +394,14 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       <div className="bg-cz-subtle rounded-cz px-4 py-3 mb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">{t("offerCard.yourBidLabel")}</p>
-            <p className="text-cz-1 font-mono font-bold text-lg">{formatNumber(offer.offer_amount)} CZ$</p>
+            <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">{primaryLabel}</p>
+            <p className="text-cz-1 font-mono font-bold text-lg">{formatNumber(primaryAmount)} CZ$</p>
           </div>
           {isCountered && offer.counter_amount && (
             <div className="sm:text-right">
-              <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">{t("offerCard.counterLabel")}</p>
+              {/* Modbuddet kommer fra SÆLGER her — "Dit modbud" (counterLabel)
+                  hører til sælgerens eget kort. #4156. */}
+              <p className="text-cz-3 text-xs uppercase tracking-wider mb-0.5">{t("offerCard.counterAmountLabel")}</p>
               <p className="text-cz-warning font-mono font-bold text-lg">{formatNumber(offer.counter_amount)} CZ$</p>
             </div>
           )}
@@ -480,7 +496,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
 }
 
 // ── Swap offer card ──────────────────────────────────────────────────────────
-function SwapCard({ swap, myTeamId, onAction }) {
+function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
   const { t } = useTranslation("transfers");
   const [counterCash, setCounterCash] = useState(swap.counter_cash ?? swap.cash_adjustment ?? 0);
   const [mode, setMode] = useState(null);
@@ -491,6 +507,9 @@ function SwapCard({ swap, myTeamId, onAction }) {
   const isPending       = swap.status === "pending";
   const isCountered     = swap.status === "countered";
   const isAwaiting      = swap.status === "awaiting_confirmation";
+  // #3492: samme arkiv-affordance som transfertilbud har haft siden 30/4 —
+  // uden den voksede Forhandlinger-fanen monotont med afsluttede bytteforslag.
+  const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(swap.status);
   const cfg = statusCfg(t, swap.status);
 
   const effectiveCash = isCountered ? swap.counter_cash : swap.cash_adjustment;
@@ -664,6 +683,13 @@ function SwapCard({ swap, myTeamId, onAction }) {
             {t("swapCard.buttons.cancelSwap")}
           </button>
         </div>
+      )}
+
+      {canArchive && (
+        <Button variant="secondary" size="sm" fullWidth className="mt-3"
+          onClick={() => doAction("archive")} disabled={loading}>
+          {t("swapCard.buttons.archive")}
+        </Button>
       )}
     </Section>
   );
@@ -1096,6 +1122,8 @@ export default function TransfersPage() {
   const [archivedReceivedOffers, setArchivedReceivedOffers] = useState([]);
   const [sentSwaps, setSentSwaps] = useState([]);
   const [receivedSwaps, setReceivedSwaps] = useState([]);
+  const [archivedSentSwaps, setArchivedSentSwaps] = useState([]);
+  const [archivedReceivedSwaps, setArchivedReceivedSwaps] = useState([]);
   const [myTeamId, setMyTeamId] = useState(null);
   const [myBalance, setMyBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -1170,6 +1198,8 @@ export default function TransfersPage() {
       setArchivedReceivedOffers((offersRes.archivedReceived || []).map(flatRider));
       setSentSwaps((swapsRes.sent || []).map(flatSwap));
       setReceivedSwaps((swapsRes.received || []).map(flatSwap));
+      setArchivedSentSwaps((swapsRes.archivedSent || []).map(flatSwap));
+      setArchivedReceivedSwaps((swapsRes.archivedReceived || []).map(flatSwap));
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
     } finally {
@@ -1190,10 +1220,12 @@ export default function TransfersPage() {
       archivedReceivedOffers.length === 0 &&
       archivedSentOffers.length === 0 &&
       receivedSwaps.length === 0 &&
-      sentSwaps.length === 0;
+      sentSwaps.length === 0 &&
+      archivedReceivedSwaps.length === 0 &&
+      archivedSentSwaps.length === 0;
     didDefaultTabRef.current = true;
     if (allTradeTabsEmpty) setTab("market");
-  }, [loading, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loading, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps, archivedReceivedSwaps, archivedSentSwaps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function getHeaders() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -1330,6 +1362,7 @@ export default function TransfersPage() {
             reject:         t("toast.swapRejected"),
             counter:        t("toast.counterSent"),
             withdraw:       t("toast.proposalWithdrawn"),
+            archive:        t("toast.swapArchived"),
           };
           showMsg(msgs[action] || t("toast.updated"));
         }
@@ -1355,12 +1388,17 @@ export default function TransfersPage() {
     s.status === "countered" || (s.status === "awaiting_confirmation" && !s.proposing_confirmed)
   ).length;
 
+  // #3492: arkiv-tælleren dækker BÅDE tilbud og bytteforslag — de deler fane.
+  const archivedCount =
+    archivedReceivedOffers.length + archivedSentOffers.length +
+    archivedReceivedSwaps.length + archivedSentSwaps.length;
+
   // #58: pr-fane label + badge, delt af mode-båndet og sub-fane-båndet. Nøglerne
   // matcher VALID_TABS; rækkefølgen styres af TAB_MODES.
   const tabMeta = {
     received: { label: t("tabs.received"), badge: pendingReceived },
     sent:     { label: t("tabs.sent"),     badge: pendingSent },
-    archive:  { label: t("tabs.archive",  { count: archivedReceivedOffers.length + archivedSentOffers.length }) },
+    archive:  { label: t("tabs.archive",  { count: archivedCount }) },
     market:   { label: t("tabs.market",   { count: listings.length }) },
   };
   // #58: aktivt mode udledes af den aktive fane (som stadig lever i ?tab=). Klik på
@@ -1621,7 +1659,7 @@ export default function TransfersPage() {
 
           {tab === "archive" && (
             <div className="flex flex-col gap-4 max-w-3xl">
-              {archivedReceivedOffers.length + archivedSentOffers.length === 0 ? (
+              {archivedCount === 0 ? (
                 <Section>
                   <EmptyState
                     icon={<InboxIcon size={28} aria-hidden="true" />}
@@ -1646,6 +1684,28 @@ export default function TransfersPage() {
                       <div className="flex flex-col gap-3">
                         {archivedSentOffers.map(o => (
                           <SentOfferCard key={o.id} offer={o} onAction={handleOfferAction} showArchive={false} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* #3492: arkiverede bytteforslag bor i samme fane som de
+                      arkiverede tilbud — de vises også sammen i received/sent. */}
+                  {archivedReceivedSwaps.length > 0 && (
+                    <div>
+                      <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.archivedReceivedProposals")}</p>
+                      <div className="flex flex-col gap-3">
+                        {archivedReceivedSwaps.map(s => (
+                          <SwapCard key={s.id} swap={s} myTeamId={myTeamId} onAction={handleSwapAction} showArchive={false} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {archivedSentSwaps.length > 0 && (
+                    <div>
+                      <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("sections.archivedSentProposals")}</p>
+                      <div className="flex flex-col gap-3">
+                        {archivedSentSwaps.map(s => (
+                          <SwapCard key={s.id} swap={s} myTeamId={myTeamId} onAction={handleSwapAction} showArchive={false} />
                         ))}
                       </div>
                     </div>
