@@ -71,6 +71,8 @@
       "potentialTitle": "The projected rating range he's realistically heading toward with your training. Not the same as the role's ceiling (the theoretical highest for his role) - hover the number for both.",
       "badges": "Status",
       "age": "Age",
+      "popularity": "Popularity",
+      "popularityTitle": "Fan popularity (0-100). Used by the board's 5-year plan star-rider goal.",
       "type": "Type",
       "contract": "Contract",
       "contractValue": "Expires after S{season}",

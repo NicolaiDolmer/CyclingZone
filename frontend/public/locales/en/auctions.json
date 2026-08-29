@@ -113,6 +113,8 @@
     "age": "Age",
     "salary": "Salary",
     "potential": "Potential",
+    "popularity": "Popularity",
+    "popularityTitle": "Fan popularity (0-100). Used by the board's 5-year plan star-rider goal.",
     "seller": "Seller",
     "bid": "Bid",
     "ovr": "OVR",
@@ -126,6 +128,7 @@
     "contractExpires": "Exp. after s.{season}",
     "seller": "Seller",
     "potential": "Potential",
+    "popularity": "Pop.",
     "ageYears": "{age} yrs",
     "estValue": "Est. value",
     "ovrTitle": "The weighted average of the abilities his own role needs. The same number means the same level in any role."
