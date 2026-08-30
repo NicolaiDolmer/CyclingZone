@@ -78,7 +78,7 @@ export default function useTodayStages(teamId) {
         // pagination-safe: afgrænset til MINE dagens race_id'er (0-2 løb) — hele
         // løbets leader/team/stage-rækker for de par løb er langt under 1000.
         supabase.from("race_results")
-          .select("race_id, stage_number, result_type, rank, team_id, rider_name")
+          .select("race_id, stage_number, result_type, rank, team_id, rider_name, finish_time")
           .in("race_id", ownRaceIds)
           .in("result_type", ["leader", "team", "stage"]),
       ]);
