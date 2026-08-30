@@ -85,6 +85,7 @@ import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
 import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../lib/supabasePagination.js";
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
+import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
 import {
@@ -691,8 +692,24 @@ async function requireAuth(req, res, next) {
   // set kun scannere/probes. Logges den, drukner de interessante 401'ere i støj.
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) {
+  // #4369: `error` fra getUser() dækker BÅDE et ægte afvist token og "kunne
+  // ikke nå Supabase". Før svarede begge 401, og siden #4350 handler klienten
+  // på en 401 (rydder sessionen), så et Supabase-udfald ville logge raske
+  // spillere ud. Afgørelsen ligger nu i lib/authTokenVerification.js, hvor den
+  // kan unit-testes; her oversættes den kun til et svar.
+  const verdict = await verifyBearerToken(supabase, token);
+
+  if (verdict.outcome === "unavailable") {
+    // Vi kunne ikke verificere tokenet. Requestet afvises stadig, men med en
+    // distinkt kode så klienten ikke læser det som en død session.
+    console.warn(
+      `[auth] 503 auth_unavailable ${req.method} ${req.originalUrl.split("?")[0]} (${verdict.reason})`,
+    );
+    const unavailable = AUTH_FAILURE_RESPONSES.unavailable;
+    return res.status(unavailable.status).json(unavailable.body);
+  }
+
+  if (verdict.outcome !== "authenticated") {
     // #4165: DENNE gren var usynlig i alle tre observations-lag - ingen log,
     // ingen Sentry, og klienten kastede svaret væk. Da en spiller ikke kunne
     // komme ind i planlægningen, kunne udløseren derfor ikke bestemmes
@@ -700,10 +717,13 @@ async function requireAuth(req, res, next) {
     // loggen. Kun fejl-KODEN logges, aldrig selve token'et eller headeren
     // (hard rule: dump aldrig secret-værdier), og stien uden query-streng.
     console.warn(
-      `[auth] 401 invalid_token ${req.method} ${req.originalUrl.split("?")[0]} (${error?.code || error?.name || "no_user"})`,
+      `[auth] 401 invalid_token ${req.method} ${req.originalUrl.split("?")[0]} (${verdict.reason})`,
     );
-    return res.status(401).json({ error: "Invalid token" });
+    const rejected = AUTH_FAILURE_RESPONSES.rejected;
+    return res.status(rejected.status).json(rejected.body);
   }
+
+  const user = verdict.user;
 
   // Fetch team for this user
   // #3722: onboarding opretter holdet asynkront efter signup, så "ingen række

@@ -441,16 +441,27 @@ async function expireSessionIfRejected(res, sentHeaders, source) {
 
   // ── Anden kilde, før vi rører noget ────────────────────────────────────────
   //
-  // Vores egen backend svarer 401 i TO forskellige situationer (requireAuth i
+  // Vores egen backend svarede 401 i TO forskellige situationer (requireAuth i
   // routes/api.js): tokenet blev afvist, ELLER backenden kunne ikke få fat i
   // Supabase til at tjekke det —
   //
   //   const { data: { user }, error } = await supabase.auth.getUser(token);
   //   if (error || !user) return res.status(401)...
   //
-  // `error` dækker også et netværksudfald mellem backend og Supabase. De to
-  // tilstande ser ens ud herfra, men betyder stik modsat: den ene er en død
+  // `error` dækkede også et netværksudfald mellem backend og Supabase. De to
+  // tilstande så ens ud herfra, men betyder stik modsat: den ene er en død
   // session, den anden er en rask spiller midt i et kortvarigt udfald.
+  //
+  // #4369 rettede signalet ved kilden: backenden svarer nu 503
+  // {error:"auth_unavailable"} når den ikke kunne verificere, og 401 kun på en
+  // ægte afvisning. Vi når altså kun hertil på et 401-svar der allerede betyder
+  // det det siger.
+  //
+  // Anden-kilde-opslaget bliver alligevel stående. Det koster ét kald pr.
+  // afvisning og dækker de tilfælde backendens skel ikke kan se: et 401-svar
+  // fra en ældre backend-version midt i et deploy, eller et proxy-lag der
+  // svarer 401 uden at have spurgt nogen. Prisen er lav, og fejlen den værner
+  // mod - alle spillere logget ud under et udfald - er den dyre af de to.
   //
   // Derfor spørger vi autoriteten selv i stedet for at tro på 401'eren alene.
   // Først når BEGGE kilder er enige — backenden afviste tokenet, og Supabase
