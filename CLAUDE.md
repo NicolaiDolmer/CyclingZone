@@ -1,51 +1,51 @@
 # CLAUDE.md
 
-> **GitHub-first start-rutine** ([#70](https://github.com/NicolaiDolmer/CyclingZone/issues/70)). Token-budget-master: se nederst.
+> **GitHub-first start-rutine** (#70). Token-budget-master: se nederst.
 
 ## Hard rules (fælles — fuld tekst i AGENTS.md)
 
-Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér repo-root (`git rev-parse --show-toplevel`) før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før du lister noget som TODO/bug · spørg ved tvivl (70-95%) · patch notes ved enhver brugerrettet ændring · auto-push efter commit · **commit kun bag `guard-commit-branch.sh`** (hard rule 18) · SQL/migrationer: Claude applier selv post-merge under [#2642](https://github.com/NicolaiDolmer/CyclingZone/issues/2642)-rammer (idempotent + post-verify; destruktive klasser ejer-gated) — hard rule 9 i `AGENTS.md` · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst + slice-close-out-reglen: [`AGENTS.md`](AGENTS.md) (lean core). Cross-PC-detaljer, session-rytme-signaler + loops-quick-ref: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md) (WARM, on-demand — split per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).
+Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér repo-root (`git rev-parse --show-toplevel`) før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før du lister noget som TODO/bug · spørg ved tvivl (70-95%) · patch notes ved enhver brugerrettet ændring · auto-push efter commit · **commit kun bag `guard-commit-branch.sh`** (hard rule 18) · SQL/migrationer: Claude applier selv post-merge under #2642-rammer (idempotent + post-verify; destruktive klasser ejer-gated) — hard rule 9 i `AGENTS.md` · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst + slice-close-out-reglen: [`AGENTS.md`](AGENTS.md) (lean core). Cross-PC-detaljer, session-rytme-signaler + loops-quick-ref: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md) (WARM, on-demand — split per #733).
 
 ## Page templates (binding — ejer-godkendt 23/7, #2849)
 
-Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/PAGE_TEMPLATES.md`](docs/design/PAGE_TEMPLATES.md): T1 standard content (max-w-4xl), T2 wide data (cap 1600px), T3 profile/detail (hero + tabs, max-w-5xl). Opfind ALDRIG nyt sidehoved, container-bredde, card-padding eller loading/empty/error-markup — komponér opskrifterne derfra. Én gold primary-knap pr. view, hairline-borders (ingen skygger), 5px card-radius, tabular figures på al numerik, stroke-ikoner (aldrig emoji). Artboards: `docs/design/design_handoff_page_templates/`.
+Enhver manager-app-side bruger én af de 3 kanoniske skabeloner (T1 standard content · T2 wide data · T3 profile/detail) i [`docs/design/PAGE_TEMPLATES.md`](docs/design/PAGE_TEMPLATES.md) — læs den FØR du bygger eller ændrer en side. Opfind ALDRIG eget sidehoved, container-bredde, padding, radius, typografi-trin eller loading/empty/error-markup: alle bindende værdier og forbud står der.
 
 ## Auto-loaded (intet at gøre)
 
-- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory. Gate: `check-agent-token-hygiene.ps1` fejler >3.200 tok / >54 linjer. Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
-- `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue via `scripts/session-prefetch-issue.sh`. Ikke source of truth.
+- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory. Gate: `check-agent-token-hygiene.ps1` fejler >3.200 tok / >54 linjer. Tier-disciplin: `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md`.
+- `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue (`scripts/session-prefetch-issue.sh`). Ikke source of truth.
 
 ## Start (eksplicit)
 
-1. Læs `docs/NOW.md` — kort status (**🎯 Next action** + **🤖 Working agent** øverst i "Aktiv styring", aktiv slice + næste session-noter). Hvis "Working agent" viser en anden aktiv session → STOP + spørg brugeren før pick-up (multi-AI claim, [#559](https://github.com/NicolaiDolmer/CyclingZone/issues/559)).
-2. **Aktivt issue:** kan læses fra `SESSION_CONTEXT.md`, men sandheden er GitHub + `docs/NOW.md`. Stale eller mangler? `gh issue list --label "claude:todo" --state open --limit 10`
-3. `docs/GUARDRAILS_CORE.md` læses KUN hvis issue-labels indeholder `needs-contract` eller `shared-refactor` (~80% af sessioner skipper).
-4. **PR-preflight (alle PR'er):** `pwsh -File scripts/preflight-pr.ps1` FØR push — spejler CI-vagterne lokalt; PR-body-krav står i scriptets header. **Frontend/i18n-PR pre-flight:** build + warning-budget + i18n-keys + **frontend unit-tests (`node --test` i `frontend/`)** + **HELE e2e-suiten `npm run test:e2e`** (alle 3 projekter; ejer-krav 7/8, CI kører ALLE specs) lokalt FØR push. **Lagdelt verifikation (#3556, ejer-godkendt 8/8):** små UI-diffs → `node scripts/verify-affected.mjs` finder targeted specs lokalt; CI bærer fuld suite. TIER FULL (backend/delt-lib-hooks/i18n/config/>6 filer) kræver stadig fuld lokal suite. Genvej: `scripts/verify-local.ps1` (backend+frontend-tests+build i ét). **Frontend `node --test` er obligatorisk** — Vite/esbuild tilgiver extensionless imports, Node's ESM-loader (CI) gør ikke, så en manglende `.js` fejler først i CI ([#803](https://github.com/NicolaiDolmer/CyclingZone/issues/803)). Visuelle ændringer/snapshot-refresh: kør ALLE 3 playwright-projekter (CI fejler ellers på mobile, #536 21/5). Loop-guard: 2 CI-fails på samme symptom → STOP + spørg. Se `.claude/learnings/2026-05-17-symptom-patching-loop-vs-root-cause.md`.
-5. **Efter `git pull` der rør ved en `*package-lock.json`** → kør `npm run sync-deps` (eller `npm run doctor` → tjek `install-parity` row). `npm install` kan lyve med "up to date" mens direct deps er bagud lockfile (#616/#618). `npm ci` er eneste pålidelige sync.
+1. Læs `docs/NOW.md` — kort status (**🎯 Next action** + **🤖 Working agent** øverst, aktiv slice + session-noter). Viser "Working agent" en anden aktiv session → STOP + spørg brugeren før pick-up (#559).
+2. **Aktivt issue:** `SESSION_CONTEXT.md` er cache; sandheden er GitHub + `docs/NOW.md`. Stale? `gh issue list --label "claude:todo" --state open --limit 10`
+3. `docs/GUARDRAILS_CORE.md` læses KUN ved labels `needs-contract` eller `shared-refactor` (~80% af sessioner skipper).
+4. **PR-preflight (alle PR'er):** `pwsh -File scripts/preflight-pr.ps1` FØR push; PR-body-krav står i scriptets header. Rørte du `frontend/`: også `npm run lint`, `node --test` (i `frontend/`) og build — genvej `scripts/verify-local.ps1`. Frontend/i18n → HELE `npm run test:e2e` lokalt; små UI-diffs → `node scripts/verify-affected.mjs`. Loop-guard: 2 CI-fails på samme symptom → STOP + spørg. Tier-tabel, e2e-krav og begrundelser: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md#pr-preflight-og-verifikations-tiers).
+5. **Efter `git pull` der rør ved en `*package-lock.json`** → `npm run sync-deps`; kun `npm ci` synker pålideligt ([hvorfor](docs/AI_OPS_REFERENCE.md#dependency-sync-efter-git-pull)).
 
 ## On-demand docs
 
-Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-3 hits:
-- `docs/GAME_INVARIANTS.md` — Economy-konstanter, finalization-paths, upload-grænser
+Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-hits:
+- `docs/GAME_INVARIANTS.md` — economy-konstanter, finalization-paths, upload-grænser
+- `docs/GITHUB_WORKFLOW.md` — issue-state-maskine, close-protocol, Refs vs Closes
+- `docs/AGENT_ARCHITECTURE.md` — parallel-session safety, cross-agent failure-modes
+- `docs/WORKTREE_WORKFLOW.md` — parallelle sessioner via `scripts/new-worktree.ps1`
+- `docs/NIGHT_WAVE_RUNBOOK.md` — natbølge-protokol. Læs FØR enhver natbølge.
+- `docs/AI_CHANNEL_ROUTING.md` — kanal-til-task-matrix; læs ved tvivl
+- `docs/AI_OPS_SCALING_ROADMAP.md` — AI/Ops- + skalerings-roadmap
 - `docs/AI_OPS_DISABLE_PLAYBOOK.md` — MCP/skills disable-handlinger
-- `docs/GITHUB_WORKFLOW.md` — Workflow, agent-loops, close-protocol
-- `docs/AGENT_ARCHITECTURE.md` — Parallel-session safety, cross-agent failure-modes (auto-gen)
-- `docs/WORKTREE_WORKFLOW.md` — Parallelle Claude Code-sessioner via git worktrees (`scripts/new-worktree.ps1`)
-- `docs/NIGHT_WAVE_RUNBOOK.md` — Natbølge: `preflight-night-wave.ps1 -Fix` (GO/NO-GO), launch i samme tur som ejer-go, launch-bevis, merge-protokol, recovery. Læs FØR enhver natbølge.
-- `docs/AI_CHANNEL_ROUTING.md` — Kanal-til-task-matrix (Code vs chat vs Cowork vs Dispatch); læs ved tvivl
-- `docs/AI_OPS_SCALING_ROADMAP.md` — AI/Ops + skalerings-roadmap (Track A vs Epic #323); læs før AI-ops/cross-PC/scaling-issues
 - `database/schema-snapshot.json` — kolonnenavne i `relations.<tabel>.columns`. Slå op FØR ad-hoc SQL via MCP; gæt fylder prod-loggen (#3769). `riders`: `firstname`/`lastname`/`birthdate`, ikke `name`/`age`.
 
 ## Close-out (per session)
 
-1. **Issue:** `gh issue comment N --body "..."` eller `gh issue close N --reason completed` hvis verificeret. Bruger lukker selv per label-state-maskine i `GITHUB_WORKFLOW.md`.
-2. **NOW.md:** opdatér hvis aktiv slice ændrer sig — budget **maks ~1.200 tokens** (primær gate, jf. #1275; ≤30 linjer sekundært — lange linjer tæller!). Trim gamle close-out-blokke **direkte** (historik bevares i git-log + issue-tråde); opret IKKE separate `docs/archive/NOW-*.md` — mappen er hard-beskyttet af #684-deny ([#750](https://github.com/NicolaiDolmer/CyclingZone/issues/750)). **Obligatorisk:** opdatér **🎯 Next action** (peg på næste session-kandidat eller nulstil) + nulstil **🤖 Working agent** til "Ingen aktiv session" ([#558](https://github.com/NicolaiDolmer/CyclingZone/issues/558)/[#559](https://github.com/NicolaiDolmer/CyclingZone/issues/559)).
-3. **MASTERPLAN.md:** opdatér status i `docs/MASTERPLAN.md` hvis den prioriterede kø ændrede sig (budget ≤1.500 tok; rækkefølgen er ejer-godkendt — spørg før omprioritering). **FEATURE_STATUS.md:** opdatér hvis kontrakter eller features ændret.
-4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke). **Hjælp/FAQ samme rutine** (#1171): ny/ændret spilmekanik → opdatér `help.json` (en+da) eller skriv hvorfor ikke.
+1. **Issue:** `gh issue comment N --body "..."` eller `gh issue close N --reason completed` hvis verificeret. Label-state-maskinen står i `GITHUB_WORKFLOW.md`.
+2. **NOW.md:** opdatér hvis aktiv slice ændrer sig — budget **maks ~1.200 tok** (primær gate #1275; ≤30 linjer sekundært, lange linjer tæller). Trim gamle close-out-blokke **direkte**; historikken ligger i git-log + issue-tråde. Opret IKKE `docs/archive/NOW-*.md` (hard-beskyttet af #684-deny, #750). **Obligatorisk:** opdatér **🎯 Next action** + nulstil **🤖 Working agent** til "Ingen aktiv session" (#558/#559).
+3. **MASTERPLAN.md:** opdatér hvis den prioriterede kø ændrede sig (budget ≤1.500 tok; rækkefølgen er ejer-godkendt — spørg før omprioritering). **FEATURE_STATUS.md:** opdatér ved ændrede kontrakter/features.
+4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke). Samme rutine for `help.json` (en+da) ved ny/ændret spilmekanik (#1171).
 5. **Postmortem:** ved bugfix → `.claude/learnings/<dato>-<slug>.md`.
-6. **Token-hygiejne (obligatorisk ved close-out):** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` — den `exit 1`'er hvis MEMORY.md/NOW.md/docs er over budget. Tilføjede du HOT-memory denne session, demotér lav-frekvens-entries til `MEMORY_REFERENCE.md` FØR du lukker. (`scripts/hooks/check-memory-budget.sh` surfacer MEMORY.md-status ved session-start når wiret ind i SessionStart-hooken.)
+6. **Token-hygiejne (obligatorisk):** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` — den `exit 1`'er hvis MEMORY.md/NOW.md/docs er over budget. Demotér nye lav-frekvens-HOT-entries til `MEMORY_REFERENCE.md` FØR du lukker.
 
-Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal være i GitHub (`docs/NOW.md`, issues, slice-docs) eller OneDrive-context. Lokale transcripts, Codex memories og `.codex.local/SESSION_CONTEXT.md` er caches/pointers.
+Ingen lokal-only handoff: state, beslutninger og næste skridt skal ligge i GitHub (`docs/NOW.md`, issues, slice-docs) eller OneDrive-context; transcripts, Codex memories og `SESSION_CONTEXT.md` er caches.
 
 ## Session-rytme
 
@@ -55,6 +55,4 @@ Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal vær
 
 ## Token-budget
 
-Master (baseline + targets): [`docs/AI_OPS_TOKEN_BUDGET.md`](docs/AI_OPS_TOKEN_BUDGET.md) + [#605](https://github.com/NicolaiDolmer/CyclingZone/issues/605).
-
-Per-PC harness-snapshot: `docs/metrics/harness-snapshot-<COMPUTERNAME>.json`. Refresh ved connector/plugin-ændring.
+Master: [`docs/AI_OPS_TOKEN_BUDGET.md`](docs/AI_OPS_TOKEN_BUDGET.md) + #605. Per-PC harness-snapshot: `docs/metrics/harness-snapshot-<COMPUTERNAME>.json` — refresh ved connector/plugin-ændring.

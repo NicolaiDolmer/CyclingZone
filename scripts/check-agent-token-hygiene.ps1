@@ -48,7 +48,11 @@ $results = New-Object System.Collections.Generic.List[object]
 # Begge regnes til Codex cold-start; kun !CodexOnly regnes til Claude cold-start.
 # Ref: #382 maalings-fix. Codex auto-loader AGENTS.md (OpenAI Codex-konvention); Claude Code loader CLAUDE.md.
 $contextFiles = @(
-  @{ Name = "CLAUDE.md"; Path = "CLAUDE.md"; Warn = 1200; Fail = 2000 },
+  # Forward-guard (#2682): Fail sænket 2000 -> 1700 da CLAUDE.md blev trimmet 1.999 -> ~1.460 tok.
+  # Den gamle grænse på 2000 lod filen drive 194 tok opad mellem 19/7 og 30/8 uden at gaten bed;
+  # den stod til sidst 1 token fra FAIL. 1700 giver ~240 tok arbejdsluft og fanger drift TIDLIGT
+  # i stedet for når filen allerede er ubrugelig. Warn 1200 er fortsat det egentlige mål.
+  @{ Name = "CLAUDE.md"; Path = "CLAUDE.md"; Warn = 1200; Fail = 1700 },
   @{ Name = "AGENTS.md"; Path = "AGENTS.md"; Warn = 4500; Fail = 6500; CodexOnly = $true },
   # NOW.md's PRIMÆRE budget er TOKENS mod ~1.200 (CLAUDE.md close-out punkt 2, #1275).
   # Linjer (now-md-budget herunder: warn 30 / fail 40) er sekundær. Gaten stod tidligere
