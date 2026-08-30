@@ -18,12 +18,13 @@
 //      før alle in-game-dage på dato D+1. Uden det ville "Race Day N" læse forkert.
 //   4. Inden for en dato følger rækkefølgen tidsslottet (11:00 før 13:00 osv.), så den
 //      tidligste etape på dagen også er den laveste in-game-dag.
-//   5. Et monument har sin EGEN, EKSKLUSIVE in-game-dag (#4075, ejer-låst 21/8): ingen
-//      modløb på samme game_day, så alle ryttere kan stille op. KalenderDATOEN må det
-//      derimod gerne dele — de øvrige løb ligger blot i datoens andre tidsslots.
-//      Pakkeren (raceCalendarLanePacker.js, B2) har bygget reglen ind fra start; denne
-//      afledning kendte den ikke, og #4161-reparationen 24/8 klappede derfor de fem
-//      D1-monumenter sammen med deres nabo-løb. Se #4176.
+//
+// Regel 5 var indtil 31/8 "et monument har sin EGEN, EKSKLUSIVE in-game-dag" (#4075,
+// låst 21/8). Ejeren OPHÆVEDE den 26/8 (#4236): #4217 gjorde bindingen spænd-baseret,
+// og målingen mod prod fandt 0 delte ryttere i alle 9 monument/etapeløb-kombinationer —
+// gevinsten var væk, mens det eksklusive indskud stadig rev hul i fem D1-etapeløbs
+// løbsdage. Afledningen behandler derfor et monument som ethvert andet løb, hvilket er
+// præcis den adfærd den havde før #4075. Se docs/CALENDAR_RULES.md §4 og #4465.
 //
 // REN + deterministisk (ingen DB, ingen Date, ingen random).
 
@@ -33,18 +34,14 @@
  *   `scheduleRows` = ÉN pulje (league_division_id). `scheduled_at` skal være en
  *   ISO-streng i UTC; datodelen udledes i Europe/Copenhagen af kalderen og sendes med
  *   som `local_date` hvis den afviger (ellers bruges de første 10 tegn).
- *   `monumentRaceIds` = de race_id'er der er monumenter (race_class = 'Monuments').
- *   Udelades den, opfører afledningen sig præcis som før #4075-reglen blev tilføjet.
  * @returns {{ rows: Array<{race_id, stage_number, scheduled_at, old_game_day, game_day}>,
  *             gameDayCount: number, dateCount: number, gameDaysPerDate: object,
- *             changed: number, monumentDayCount: number }}
+ *             changed: number }}
  */
 export function deriveGameDayAxis({
-  scheduleRows = [], overlapCap = 2, startGameDay = 0, monumentRaceIds = null,
+  scheduleRows = [], overlapCap = 2, startGameDay = 0,
 } = {}) {
   const cap = Math.max(1, overlapCap);
-  const monuments = monumentRaceIds instanceof Set ? monumentRaceIds : new Set(monumentRaceIds ?? []);
-  const isMonument = (raceId) => monuments.has(raceId);
 
   const byDate = new Map();
   for (const row of scheduleRows) {
@@ -56,7 +53,6 @@ export function deriveGameDayAxis({
   const out = [];
   const gameDaysPerDate = {};
   let nextGameDay = startGameDay;
-  let monumentDayTotal = 0;
 
   for (const date of [...byDate.keys()].sort()) {
     const stages = byDate.get(date).slice().sort((a, b) => {
@@ -71,40 +67,21 @@ export function deriveGameDayAxis({
     // indeholder dens løb i forvejen eller allerede er fuld (cap forskellige løb).
     // Fordi listen er tidssorteret, får den tidligste etape den laveste sub-dag, og et
     // løbs etaper fordeles automatisk på stigende sub-dage i etape-rækkefølge.
-    //
-    // #4075: monumenter pakkes IKKE med. Hvert monument får sin egen sub-dag, og de
-    // flettes bagefter ind på deres tidsplads. Fordi `stages` er tidssorteret, er de
-    // pakkede sub-dages første tidspunkt ikke-aftagende med indekset, så en stabil
-    // fletning på tidspunkt bevarer regel 4.
-    const subDays = [];      // { races: Set(race_id), t: string, monument: boolean }[]
-    const monumentDays = []; // samme form, én pr. monument-etape
+    // Monumenter pakkes med som ethvert andet løb — den eksklusive monument-løbsdag
+    // (#4075) blev ophævet 26/8 (#4236), se filens hoved.
+    const subDays = []; // { races: Set(race_id), t: string }[]
     for (const st of stages) {
-      if (isMonument(st.race_id)) {
-        monumentDays.push({ races: new Set([st.race_id]), t: String(st.scheduled_at), monument: true });
-        continue;
-      }
       let idx = subDays.findIndex((s) => !s.races.has(st.race_id) && s.races.size < cap);
       if (idx === -1) {
-        subDays.push({ races: new Set(), t: String(st.scheduled_at), monument: false });
+        subDays.push({ races: new Set(), t: String(st.scheduled_at) });
         idx = subDays.length - 1;
       }
       subDays[idx].races.add(st.race_id);
     }
 
-    // Stabil fletning: en pakket sub-dag vinder ved samme tidspunkt, så monumentet lander
-    // efter de løb der starter samtidig — deterministisk, og monumentet beholder sin dato.
-    const merged = [];
-    let i = 0, j = 0;
-    while (i < subDays.length || j < monumentDays.length) {
-      if (j >= monumentDays.length) merged.push(subDays[i++]);
-      else if (i >= subDays.length) merged.push(monumentDays[j++]);
-      else if (subDays[i].t <= monumentDays[j].t) merged.push(subDays[i++]);
-      else merged.push(monumentDays[j++]);
-    }
-
     const indexOfRace = new Map(); // race_id -> sub-dag-indeks, i etape-rækkefølge
-    for (let k = 0; k < merged.length; k++) {
-      for (const raceId of merged[k].races) {
+    for (let k = 0; k < subDays.length; k++) {
+      for (const raceId of subDays[k].races) {
         if (!indexOfRace.has(raceId)) indexOfRace.set(raceId, []);
         indexOfRace.get(raceId).push(k);
       }
@@ -125,9 +102,8 @@ export function deriveGameDayAxis({
       });
     }
 
-    monumentDayTotal += monumentDays.length;
-    gameDaysPerDate[date] = merged.length;
-    nextGameDay += merged.length;
+    gameDaysPerDate[date] = subDays.length;
+    nextGameDay += subDays.length;
   }
 
   return {
@@ -136,6 +112,5 @@ export function deriveGameDayAxis({
     dateCount: byDate.size,
     gameDaysPerDate,
     changed: out.filter((r) => r.old_game_day !== r.game_day).length,
-    monumentDayCount: monumentDayTotal,
   };
 }

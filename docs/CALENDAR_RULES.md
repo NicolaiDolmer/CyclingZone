@@ -114,7 +114,11 @@ Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no day
 | Etapeløbs-spænd | hård grænse | etaper + 3 kalenderdage | | | | 17/8 | [#3546 H](https://github.com/NicolaiDolmer/CyclingZone/issues/3546) |
 | Monumenter | **ingen eksklusiv løbsdag** — deler som ethvert andet løb | | | | | 26/8 | [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236) |
 
-**Monument-reglen, præcist (ejer 26/8, [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)).** Et monument har **ikke** længere sin egen eksklusive løbsdag. Reglen kom 21/8 for at sikre fulde felter i sæsonens fem største endagsløb, men holdt op med at levere da [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217) gjorde bindingen spænd-baseret 24 timer før: rytteren er bundet hele etapeløbets spænd, også hen over monumentets løbsdag. Målt mod prod 26/8: **0 delte ryttere i alle 9 monument/etapeløb-kombinationer** — gevinsten var væk. Prisen blev betalt alligevel, for det eksklusive indskud rev hul i løbsdagene hos fem D1-etapeløb og var eneste årsag til at kronologi-reglen var brudt. Det der stadig gælder er at monumenterne ligger **spredt over sæsonen**; det måles i `raceCalendarLanePackerInvariants.test.js`.
+**Monument-reglen, præcist (ejer 26/8, [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)).** Et monument har **ikke** længere sin egen eksklusive løbsdag. Reglen kom 21/8 for at sikre fulde felter i sæsonens fem største endagsløb, men holdt op med at levere da [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217) gjorde bindingen spænd-baseret 24 timer før: rytteren er bundet hele etapeløbets spænd, også hen over monumentets løbsdag. Målt mod prod 26/8: **0 delte ryttere i alle 9 monument/etapeløb-kombinationer** — gevinsten var væk. Prisen blev betalt alligevel, for det eksklusive indskud rev hul i løbsdagene hos fem D1-etapeløb og var eneste årsag til at kronologi-reglen var brudt. Det der stadig gælder er at monumenterne ligger **spredt over sæsonen**.
+
+**Spredningen er IKKE FASTLAGT (åbent ejer-spørgsmål, [#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465)).** Der findes ingen låst minimumsafstand mellem to monumenter. Det eneste der håndhæver noget i dag er `raceCalendarLanePackerInvariants.test.js`, og den måler **det samlede spænd** mellem første og sidste monument (`>= 14` løbsdage på fixturen) — ikke afstanden mellem to naboer. Målt mod prod 30/8 (#4465, ikke efterprøvet siden) ligger D1's fem monumenter på game_day 11, 24, 44, 55 og 69, altså med **13, 20, 11 og 14 løbsdages** mellemrum.
+
+> **Det ene spørgsmål ejeren skal svare på:** hvad er minimumsafstanden mellem to monumenter — og måles den i løbsdage (`game_day`) eller i kalenderdage? Indtil det er låst, gættes tallet ikke på plads, og der kommer ingen `verify-invariants`-gate på spredningen. Den nuværende kalender ville holde et krav på ≤ 11 løbsdage.
 
 > **Andelen måles på ANTAL LØB, ikke på løbsdage.** Det er et bevidst valg (#3327) og står i kodens overskrift. Målt på løbsdage ville D1 være 14 % — målt på løb er den 61 %.
 
@@ -313,17 +317,12 @@ Det tredje niveau er dét der manglede da #4155 brød overlap-cap'en. Tre invari
 - `calendar_overlap_within_tier_cap`
 - `calendar_one_stage_per_race_per_game_day`
 - `calendar_game_day_axis_not_collapsed`
-- `calendar_monument_exclusive_game_day` ([#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075), tilføjet 24/8)
 
-Monument-reglen er den første der har alle tre niveauer samtidigt:
+Overlap-cap'en (§8) er tættest på: niveau 1 (`calendarOverlapInvariant.test.js`, `raceCalendarLanePacker.test.js`) og niveau 3 (`calendar_overlap_within_tier_cap`) er på plads. Niveau 2 er IKKE verificeret: `detectCalendarViolations` tjekker GT-rygrad og klasse-whitelist, ikke cap'en — pakkeren får cap'en med som input, men preflighten måler den ikke bagefter. Ingen regel i denne fil er derfor bekræftet på alle tre niveauer. Se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176).
 
-| Niveau | Hvor |
-|---|---|
-| CI mod pakkerens output | `calendarGameDayRepair.test.js`, `calendarOverlapInvariant.test.js`, `tierCalendarMaterializer.test.js` |
-| Sæsonskifte-preflight | `detectCalendarViolations` (invariant 6) → `seasonCalendarGate.gatePlan` |
-| `verify-invariants` mod prod | `calendar_monument_exclusive_game_day` |
+**Fjernet 31/8 ([#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465)): `calendar_monument_exclusive_game_day`.** Den håndhævede #4075's eksklusive monument-løbsdag, som ejeren ophævede 26/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236), se §4). Reglen forsvandt fra tabellen i §4, men gaten fulgte ikke med, og nat-vagten stod derfor rød 27/8, 28/8 og 29/8 på noget der er tilladt. Læringen er led (c) i hard rule 30: ophæver du en regel, skal SSOT, generator og gate ændres i SAMME PR — ellers vogter gaten en regel der ikke findes.
 
-Og vagten kører nu af sig selv: `.github/workflows/calendar-invariant-audit.yml` måler kalender-invarianterne + den kritiske constraint-form (`scripts/constraint-form-audit.sql`, [#4163](https://github.com/NicolaiDolmer/CyclingZone/issues/4163)) mod prod hver nat 03:50 UTC og åbner et tracking-issue ved brud. Før det kørte `verify-invariants` kun når nogen huskede det i hånden — og begge hændelser (#4155, #4161) opstod i DATA, ikke i kode.
+Og vagten kører af sig selv: `.github/workflows/calendar-invariant-audit.yml` måler kalender-invarianterne + den kritiske constraint-form (`scripts/constraint-form-audit.sql`, [#4163](https://github.com/NicolaiDolmer/CyclingZone/issues/4163)) mod prod hver nat 03:50 UTC og åbner et tracking-issue ved brud. Før det kørte `verify-invariants` kun når nogen huskede det i hånden — og begge hændelser (#4155, #4161) opstod i DATA, ikke i kode. Vagten fejler nu hårdt hvis `invariants.json` er tom eller ugyldig ([#4463](https://github.com/NicolaiDolmer/CyclingZone/issues/4463)): forskellen på "intet brud" og "intet målt" skal være synlig.
 
 Resten af tabellerne i denne fil har endnu ikke alle tre. Se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176).
 
