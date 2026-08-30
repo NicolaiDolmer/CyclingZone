@@ -24,7 +24,7 @@
 // rette dem ville forfalske historikken, ikke fjerne gæld.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
