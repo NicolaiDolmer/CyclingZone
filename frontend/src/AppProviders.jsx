@@ -1,6 +1,7 @@
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 import { ThemeProvider } from "./lib/theme.jsx";
+import { UserProfileProvider } from "./lib/userProfile.jsx";
 import { ConsentProvider } from "./lib/consent.jsx";
 import { LanguageProvider } from "./lib/language.jsx";
 import { SentryBoundary } from "./lib/sentry.jsx";
@@ -17,14 +18,22 @@ import { SentryBoundary } from "./lib/sentry.jsx";
 // EN under landing-hydrationen og beder provideven skifte til den besøgendes
 // faktiske sprog EFTER mount. Prerender-entry (entry-server.jsx) sender den ikke
 // (undefined → null), så server-render og klientens hydrerings-render matcher 1:1.
+//
+// #3034: UserProfileProvider ligger OVER ConsentProvider/LanguageProvider —
+// de to læser brugerens `users`-række (consent_preferences/language) fra dens
+// context i stedet for hver at lave sit eget Supabase-opslag. Ren
+// context-provider ligesom de andre (kun effekter, intet SSR-markup), så den
+// er sikker at dele med prerender-entry'en.
 export function AppProviders({ children, deferredLanguage = null }) {
   return (
     <SentryBoundary>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider>
-          <ConsentProvider>
-            <LanguageProvider deferredLanguage={deferredLanguage}>{children}</LanguageProvider>
-          </ConsentProvider>
+          <UserProfileProvider>
+            <ConsentProvider>
+              <LanguageProvider deferredLanguage={deferredLanguage}>{children}</LanguageProvider>
+            </ConsentProvider>
+          </UserProfileProvider>
         </ThemeProvider>
       </I18nextProvider>
     </SentryBoundary>
