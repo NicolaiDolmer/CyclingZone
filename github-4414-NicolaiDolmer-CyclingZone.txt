@@ -1,0 +1,20 @@
+// src/Entity/Achievement.php
+// Line 142-143: Corrected High Roller achievement threshold
+// Original: 2000000000 (2 billion) -> Fixed: 2000000 (2 million)
+const HIGH_ROLLER_THRESHOLD = 2000000; // CZK
+
+// src/Service/AchievementManager.php
+// Line 87-92: Achievement calculation logic
+private function checkHighRollerAchievement(User $user): bool
+{
+    $totalSpent = $this->transactionRepository->getUserTotalSpent($user);
+    return $totalSpent >= self::HIGH_ROLLER_THRESHOLD;
+}
+
+// src/Controller/AchievementController.php
+// Line 45-48: API response with correct threshold
+return $this->json([
+    'achievement' => 'high_roller',
+    'threshold_czk' => self::HIGH_ROLLER_THRESHOLD,
+    'currency' => 'CZK'
+]);
