@@ -172,3 +172,17 @@ test("ukendt moment_key ignoreres (forward-compat), aldrig kast", () => {
   const moments = [moment({ moment_key: "some_future_key_2027", rider_ids: ["r1"] })];
   assert.deepEqual(buildHeroAgonyCandidates({ moments, stageResultRows: [], myTeamId: TEAM_A }), []);
 });
+
+// #4373: uden itt_win/ttt_win i kandidat-switchen forsvandt helte-kortet helt
+// på en enkeltstart i stedet for at få den rigtige tekst.
+test("#4373: itt_win/ttt_win giver en triumf-kandidat for mit hold", () => {
+  for (const key of ["itt_win", "ttt_win"]) {
+    const rows = [stageRow({ rider_id: "r1", team_id: TEAM_A, rider_name: "Lei Lin", rank: 1 })];
+    const moments = [moment({ moment_key: key, rider_ids: ["r1"], params: { gapSeconds: 2 } })];
+    const candidates = buildHeroAgonyCandidates({ moments, stageResultRows: rows, myTeamId: TEAM_A });
+    const win = candidates.find((c) => c.kind === key);
+    assert.ok(win, `forventede en ${key}-kandidat`);
+    assert.equal(win.tone, "triumph");
+    assert.equal(win.dramaScore, DRAMA_SCORE[key]);
+  }
+});

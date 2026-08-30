@@ -333,7 +333,7 @@ export default function RidersPage() {
     }
   }
 
-  useEffect(() => { loadRiders(); }, [filters, seasonYear]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadRiders(); }, [filters, seasonYear]); // eslint-disable-line react-hooks/exhaustive-deps -- loadRiders er lokal funktion (ny ref hver render) — kun filters/seasonYear skal udløse refetch
 
   // #916: realtime — opdatér listen når en rytter skifter hold (fx solgt til AI-
   // hold), så TeamCell ikke bliver ved at vise "Fri" på stale data.

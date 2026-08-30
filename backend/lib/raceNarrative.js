@@ -40,6 +40,15 @@
 
 const SPRINT_GAP_S = 3;
 const CLOSE_GAP_S = 10;
+// #4373: enkeltstart/holdtidskørsel afgøres mod uret — rytterne starter enkeltvis
+// (itt) eller holdvis (ttt) og møder aldrig hinanden på vejen. Gap-tærsklerne
+// ovenfor beskriver et FELT der kommer til stregen sammen; anvendt på en prolog
+// gjorde de en solo-enkeltstart til en "massespurt" (seks spillere læste teksten
+// som at sprintere favoriseres i enkeltstarter). Vindermomentet får derfor sin
+// EGEN nøgle pr. disciplin — itt og ttt er to forskellige ting og deler ikke
+// formulering. Gap-tallet bæres stadig med i params (allerede offentligt i
+// resultat-tabellen), så copy senere kan bruge marginen uden en ny nøgle.
+export const TIME_TRIAL_WIN_KEY = Object.freeze({ itt: "itt_win", ttt: "ttt_win" });
 const FAVORITE_OFF_DAY_RANK = 15;
 const HELPER_SHIFT_CAPTAIN_RANK = 5;
 const HELPER_SHIFT_HELPER_MIN_COUNT = 2;
@@ -88,6 +97,7 @@ export function isStoryTagKey(momentKey) {
 function significanceFor(key, boost = 0) {
   const base = {
     sprint_win: 50, close_win: 50, solo_win: 55,
+    itt_win: 55, ttt_win: 55,
     breakaway_survived: 55, breakaway_caught: 35,
     team_day: 45, gc_takeover: 70, final_gc: 80,
     helper_shift: 60, favorite_off_day: 65, form_peak: 40,
@@ -139,6 +149,10 @@ function dominantReason({ rider, incidentByRider, roleByRider }) {
  * @param {object} args
  * @param {boolean} [args.isFinal=false]
  * @param {boolean} [args.isStageRace=false]
+ * @param {string|null} [args.profileType]  etapens profile_type (samme felt
+ *   raceSimulator/raceTimeline læser). #4373: 'itt'/'ttt' bytter vindermomentets
+ *   nøgle ud med itt_win/ttt_win, så feltbaseret sprint-copy ALDRIG kan lande på
+ *   en tidskørsel. Manglende/ukendt profil → uændret sprint/close/solo-adfærd.
  * @param {Array<{rider_id, team_id, rank, stageGap, components}>} args.ranked  fra simulateStage
  * @param {Map<string,string>} [args.roleByRider]  rider_id → race_role (denne etapes resolved rolle)
  * @param {Map<string,number>} [args.formByRider]  rider_id → form-snapshot (0-100)
@@ -155,6 +169,7 @@ function dominantReason({ rider, incidentByRider, roleByRider }) {
 export function extractStageMoments({
   isFinal = false,
   isStageRace = false,
+  profileType = null,
   ranked = [],
   roleByRider = new Map(),
   formByRider = new Map(),
@@ -173,13 +188,17 @@ export function extractStageMoments({
   const incidentByRider = new Map((incidentsForStage || []).map((inc) => [inc.rider_id, inc]));
 
   // ── Tier 0: finish-orden, udbrud, hold, GC-skifte ────────────────────────
+  // #4373: tidskørsler klassificeres IKKE på gap-tærsklerne — på en enkeltstart
+  // betyder to sekunder til nr. 2 ikke at de spurtede mod hinanden.
+  const timeTrialWinKey = TIME_TRIAL_WIN_KEY[profileType] ?? null;
   if (winner) {
     const gap2 = second?.stageGap ?? null;
     if (gap2 != null) {
-      const key = gap2 < SPRINT_GAP_S ? "sprint_win" : gap2 < CLOSE_GAP_S ? "close_win" : "solo_win";
+      const key = timeTrialWinKey
+        ?? (gap2 < SPRINT_GAP_S ? "sprint_win" : gap2 < CLOSE_GAP_S ? "close_win" : "solo_win");
       push(moments, { key, params: { riderId: winner.rider_id, gapSeconds: gap2 }, riderIds: [winner.rider_id], teamIds: [winner.team_id] });
     } else {
-      push(moments, { key: "solo_win", params: { riderId: winner.rider_id, gapSeconds: null }, riderIds: [winner.rider_id], teamIds: [winner.team_id] });
+      push(moments, { key: timeTrialWinKey ?? "solo_win", params: { riderId: winner.rider_id, gapSeconds: null }, riderIds: [winner.rider_id], teamIds: [winner.team_id] });
     }
 
     const winnerBw = breakawayStatus.get(winner.rider_id);

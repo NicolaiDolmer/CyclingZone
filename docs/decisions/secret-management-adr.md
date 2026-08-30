@@ -1,11 +1,21 @@
 # ADR: Professional secret management for CyclingZone
 
-**Status:** Proposed technical direction — Infisical selected; manual dashboard setup still pending
+**Status:** Accepted — Infisical is the canonical secret-management system; backend runs via runtime-injection, frontend materializes a local `.env` file
 **Date:** 2026-05-12  
-**Last verified:** 2026-05-14
+**Last verified:** 2026-08-30
 **Owner:** Manus AI  
 **Issue:** [#327](https://github.com/NicolaiDolmer/CyclingZone/issues/327)  
 **Parent:** [#323](https://github.com/NicolaiDolmer/CyclingZone/issues/323)
+
+---
+
+## 2026-08-30 acceptance (#725)
+
+The ADR is accepted as written. Phase 5 (runtime-injection) and Phase 6 (local bootstrap replacement) are done in practice — `docs/CROSS_PC_SETUP.md` documents `infisical run --env=dev` as the canonical local path and `backend/package.json`'s `dev` script already wraps `infisical run --env=dev --recursive`. This session closed the remaining drift: `scripts/setup-new-pc.ps1` still told new machines to run `infisical export --env=dev > backend/.env`, contradicting the doc it links to.
+
+One nuance the original decision glossed over: **backend and frontend are not symmetric.** Backend's `npm run dev` already runs through `infisical run`, so secrets are injected at process start and `backend/.env` is unnecessary. Frontend's `npm run dev`/`npm run build` invoke bare `vite`, with no `infisical run` wrapper — Vite's own `loadEnv` reads `VITE_*` values from a `.env` file (or from `VITE_*`-prefixed vars already present in the process environment) at dev/build time, so **frontend genuinely still needs a materialized `frontend/.env`** until the frontend scripts are themselves wrapped in `infisical run`. That wrapper change is out of scope for #725; this ADR update and the setup-script fix only stop new machines from being told to create an unnecessary `backend/.env`.
+
+`scripts/agent-doctor.ps1` now has a non-blocking `stale-backend-env` check: it WARNs (never fails) when `backend/.env` still holds a value for `SUPABASE_URL` or `SUPABASE_SERVICE_KEY` while `.infisical.json` is present, since that combination means a machine is carrying a stale pre-Phase-5 file. The check reports only whether a field is set, never the value.
 
 ---
 

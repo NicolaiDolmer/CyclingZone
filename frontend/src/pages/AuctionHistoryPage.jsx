@@ -240,7 +240,7 @@ export default function AuctionHistoryPage() {
   }
 
   useEffect(() => { loadMyTeam(); }, []);
-  useEffect(() => { loadAuctions(); loadStats(); }, [filter, page, sort, sortDir, myTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAuctions(); loadStats(); }, [filter, page, sort, sortDir, myTeamId]); // eslint-disable-line react-hooks/exhaustive-deps -- loadAuctions/loadStats er lokale funktioner (ny ref hver render) — kun filter/side/sortering skal udløse refetch
 
   // #246: hold pagination-state synkron med filter — uden dette kunne man stå
   // på side 5 i "Alle" og skifte til "Købt" som kun har 1 side, og lande på

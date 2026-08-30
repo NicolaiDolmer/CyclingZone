@@ -15,6 +15,7 @@ import { mergeStandings } from "../lib/standingsMerge";
 import { computeMyDivisionStandings } from "../lib/dashboardDivStandings.js";
 import { computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { formatNumber } from "../lib/intl";
+import { getEffectiveOfferAmount } from "../lib/offerAmount.js";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { poolStageTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { formatCountdown } from "../lib/stageScheduleConfig.js";
@@ -464,7 +465,7 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
 
   // #1828 + #2171: for "Kommende løb"-kortet henter vi den ægte kalender-tid for
@@ -1368,7 +1369,7 @@ export default function DashboardPage() {
                         : t("dashboard:cards.transfers.to", { name: o.seller?.name })}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-cz-accent-t font-mono text-sm">{formatNumber(o.counter_amount || o.offer_amount)} CZ$</p>
+                      <p className="text-cz-accent-t font-mono text-sm">{formatNumber(getEffectiveOfferAmount(o))} CZ$</p>
                       <span className={`text-3xs ${needsAction ? "text-cz-warning" : "text-cz-3"}`}>
                         {needsAction
                           ? t("dashboard:cards.transfers.needsAction")

@@ -130,11 +130,20 @@ function RaceDrawer({ race, riders, maxPerRider, onCreatePeak, busy, divisionPen
           {showProfiles && (
             <div className="grid gap-1.5 mb-3" style={{ gridTemplateColumns: `repeat(${Math.min(6, race.stageProfiles.length)}, minmax(0, 1fr))` }}>
               {race.stageProfiles.slice(0, 12).map((s) => (
-                <div key={s.stage} className={`rounded-cz p-1.5 text-center ${s.summit ? "bg-cz-subtle border border-cz-accent-t" : "bg-cz-body border border-cz-border"}`}>
+                <Link
+                  key={s.stage}
+                  to={`/races/${race.id}?stage=${s.stage}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={t("drawer.race.openStage", { stage: s.stage })}
+                  aria-label={t("drawer.race.openStage", { stage: s.stage })}
+                  className={`group relative block rounded-cz p-1.5 text-center cursor-pointer hover:border-cz-accent-t ${s.summit ? "bg-cz-subtle border border-cz-accent-t" : "bg-cz-body border border-cz-border"}`}
+                >
+                  <ExternalLinkIcon size={10} aria-hidden="true" className="absolute top-1 right-1 text-cz-3 opacity-0 group-hover:opacity-100" />
                   <div className="font-mono text-3xs text-cz-3">S{s.stage}</div>
                   <StageMini terrain={s.terrain} summit={s.summit} />
                   <div className={`text-3xs ${s.summit ? "text-cz-accent-t" : "text-cz-2"}`}>{t(`terrain.${s.terrain}`)}</div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

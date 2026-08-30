@@ -113,6 +113,8 @@
     "age": "Alder",
     "salary": "Løn",
     "potential": "Potentiale",
+    "popularity": "Popularitet",
+    "popularityTitle": "Fan-popularitet (0-100). Bruges af bestyrelsens 5-års-plan-mål om stjerneryttere.",
     "seller": "Sælger",
     "bid": "Byd",
     "ovr": "OVR",
@@ -126,6 +128,7 @@
     "contractExpires": "Udl. efter s.{season}",
     "seller": "Sælger",
     "potential": "Potentiale",
+    "popularity": "Pop.",
     "ageYears": "{age} år",
     "estValue": "Vurdering",
     "ovrTitle": "Det vægtede snit af de evner hans egen rolle bruger. Samme tal betyder samme niveau i alle roller."

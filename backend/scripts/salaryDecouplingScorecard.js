@@ -25,6 +25,7 @@ import {
   wageBillContinuityGate, talentFixGate, runawayGate,
 } from "../lib/salaryDecoupling.js";
 import { SPONSOR_INCOME_BASE } from "../lib/economyConstants.js";
+import { ageForSeason } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -39,14 +40,6 @@ const OUT_PATH = argVal("out");
 const OLD_RATE = 0.067;                 // nuværende SALARY_RATE (kobling til market_value)
 const SPONSOR = SPONSOR_INCOME_BASE;    // 240_000 — talent-løn skal ligge under dette
 const HIGH_POTENTIALE = 5;              // potentiale er 1-6 (verificeret #2428)
-
-// ageForSeason spejler riderProgressionEngine.js (inlinet, jf. fitRiderValuationV4.js).
-const LAUNCH_REFERENCE_YEAR = 2026;
-function ageForSeason(birthdate, seasonNumber) {
-  if (!birthdate || !Number.isFinite(seasonNumber)) return null;
-  const birthYear = new Date(birthdate).getFullYear();
-  return Number.isFinite(birthYear) ? LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) - birthYear : null;
-}
 
 async function main() {
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;

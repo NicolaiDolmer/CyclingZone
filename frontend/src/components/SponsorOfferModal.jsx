@@ -113,23 +113,26 @@ export default function SponsorOfferModal({
   function projections(offer) {
     // Nye tilbud (#2948) bærer frosne andele → projicér mod valgt divisions
     // etapetal. Legacy-payloads uden andele viser blot den lagrede rate.
+    const clauses = offer.clauses || [];
+    const signing = Number(clauses.find((c) => c.type === "signing")?.amount) || 0;
     const fraction = Number(offer.guaranteedFraction);
     const share = Number(offer.raceDayShare);
     if (!(fraction > 0) || !Number.isFinite(share) || !(Number(raceDays) > 0)) {
-      return { rate: offer.perRaceDayRate ?? 0, raceDayPool: null, certain: null, upside: 0 };
+      return { rate: offer.perRaceDayRate ?? 0, raceDayPool: null, certain: null, signing, upside: 0 };
     }
     const target = Math.round(offer.guaranteedBase / fraction);
     const raceDayPool = Math.round(target * share);
-    const clauses = offer.clauses || [];
-    const signing = Number(clauses.find((c) => c.type === "signing")?.amount) || 0;
     const cap = Number(clauses.find((c) => c.type === "results_cap")?.amount) || 0;
     const objective = Number(clauses.find((c) => c.type === "season_objective")?.amount) || 0;
     return {
       rate: Math.round(raceDayPool / Number(raceDays)),
       raceDayPool,
-      // Det holdet får hvis det bare stiller til start hver etape — underskrifts-
-      // bonussen hører med, den betales ved aktivering uanset resultater.
-      certain: offer.guaranteedBase + raceDayPool + signing,
+      // Det holdet faktisk får løbende ved at stille til start hver etape.
+      // Underskriftsbonussen er en engangsbetaling ved aktivering og vises som
+      // sin egen linje i stedet — den må ikke blandes ind her, for spilleren
+      // læste totalen som en løbende udbetaling (#4416).
+      certain: offer.guaranteedBase + raceDayPool,
+      signing,
       // Betinget top: resultatloft + sæsonmål. Holdes UDE af "certain" så kortet
       // ikke lover penge der kræver sejre (den gamle "Maks"-linje blandede dem).
       upside: cap + objective,
@@ -225,7 +228,7 @@ export default function SponsorOfferModal({
           {offers.map((offer) => {
             const selected = pendingVariant === offer.variant;
             const Icon = VARIANT_ICONS[offer.variant] ?? BriefcaseIcon;
-            const { rate, raceDayPool, certain, upside } = projections(offer);
+            const { rate, raceDayPool, certain, signing, upside } = projections(offer);
             const lines = clauseLines(offer.clauses, t);
             const fractionPct = Number(offer.guaranteedFraction) > 0
               ? Math.round(Number(offer.guaranteedFraction) * 100)
@@ -296,6 +299,14 @@ export default function SponsorOfferModal({
                       <dt className="text-cz-2">{t("field.ifYouStartEveryStage")}</dt>
                       <dd className="whitespace-nowrap font-mono tabular-nums font-semibold text-cz-1">
                         {formatNumber(certain)} CZ$
+                      </dd>
+                    </div>
+                  )}
+                  {signing > 0 && (
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="text-cz-3">{t("field.signingBonus")}</dt>
+                      <dd className="whitespace-nowrap font-mono tabular-nums text-cz-2">
+                        +{formatNumber(signing)} CZ$
                       </dd>
                     </div>
                   )}

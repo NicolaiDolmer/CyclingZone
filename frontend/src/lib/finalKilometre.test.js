@@ -158,3 +158,24 @@ test("countdownAt: lineær nedtælling der rammer 0/0 præcis ved countdownMs", 
   const mid = countdownAt(COUNTDOWN_MS / 2);
   assert.equal(mid.distanceM, 1500);
 });
+
+// ── #4373: "The Final Kilometre"-badget må ikke sige "Bunch sprint" på en itt ──
+test("#4373: itt/ttt-profil styrer winType når momenterne mangler (ældre løb)", () => {
+  const rows = [
+    riderRow({ id: "1", rank: 1, finish_time: "+0:00" }),
+    riderRow({ id: "2", rank: 2, finish_time: "+0:02" }),
+  ];
+  assert.equal(buildFinalKilometrePlayback({ rows, moments: [], stageNumber: 1, profileType: "itt" }).winType, "itt_win");
+  assert.equal(buildFinalKilometrePlayback({ rows, moments: [], stageNumber: 1, profileType: "ttt" }).winType, "ttt_win");
+  // Uden profil er fallbacken uændret.
+  assert.equal(buildFinalKilometrePlayback({ rows, moments: [], stageNumber: 1 }).winType, "sprint_win");
+});
+
+test("#4373: itt_win-momentet vinder over gap-fallbacken", () => {
+  const rows = [
+    riderRow({ id: "1", rank: 1, finish_time: "+0:00" }),
+    riderRow({ id: "2", rank: 2, finish_time: "+0:01" }),
+  ];
+  const moments = [{ stage_number: 1, moment_key: "itt_win", params: {} }];
+  assert.equal(buildFinalKilometrePlayback({ rows, moments, stageNumber: 1 }).winType, "itt_win");
+});

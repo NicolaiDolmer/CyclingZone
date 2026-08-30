@@ -16,7 +16,7 @@ import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
 import { useScouting } from "../lib/useScouting.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
-import { ageForSeason } from "../lib/riderAge.js";
+import { ageForSeason, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
 import { riderStatRating } from "../lib/riderRating.js";
 import { TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
@@ -72,7 +72,10 @@ const TRAINING_TABS = ["today", "weekplan", "development", "history"];
 
 // Roster-tabellen sorterer på navn/type (tekst, asc-først) + form/træthed/status
 // (tal, desc-først: "hvem er mest træt/i bedst form / hvem er akademi?" med ét klik).
-const ROSTER_DESC_FIRST = new Set(["form", "fatigue", "status"]);
+// #3815: alder er ligeledes numerisk og følger derfor samme desc-først-konvention.
+// Spørgsmålet man stiller kolonnen her er "hvem er for gammel til at investere
+// hård træning i?", så ét klik skal give de ældste øverst.
+const ROSTER_DESC_FIRST = new Set(["age", "form", "fatigue", "status"]);
 
 // #3706: Status-kolonnens comparator. Overskriften var et bart <th> uden
 // SortTh, så et klik gjorde bogstavelig talt ingenting (@cybersimon, Discord
@@ -264,6 +267,9 @@ function RosterMobileSortControl({ sort, sortDir, onSort, t }) {
   const options = [
     { key: "name", label: t("colRider") },
     { key: "primary_type", label: t("colType") },
+    // #3815: alderen er sorterbar på desktop — kontrollen skal eksponere
+    // PRÆCIS de samme nøgler som desktop-headerne (samme krav som #3706).
+    { key: "age", label: t("colAge") },
     { key: "form", label: t("form") },
     { key: "fatigue", label: t("fatigue") },
     // #3706: Status blev sorterbar — kontrollen skal blive ved med at eksponere
@@ -345,6 +351,11 @@ export default function TrainingPage() {
   // relevante her — kun requestEstimates + estimateFor bruges.
   const { requestEstimates, estimateFor } = useScouting();
   const seasonYear = useActiveSeasonYear();
+  // #3761: kontrakt-udløb sammenlignes mod sæson-NUMMERET (contract_end_season er
+  // et nummer, ikke et år). seasonNumberFromReferenceYear er den eksakte inverse
+  // af seasonReferenceYear, så nummeret udledes af det år vi allerede har hentet
+  // til alders-visningen — ingen ekstra kald. Samme mønster som TeamPage.jsx.
+  const activeSeasonNumber = seasonNumberFromReferenceYear(seasonYear);
 
   const training = useTraining();
   const {
@@ -491,9 +502,13 @@ export default function TrainingPage() {
         // ABILITY_KEYS og forlader aldrig serveren (#1162).
         // #3721: + birthdate — Development-fanens navn+alder-række har brug for
         // det (samme ageForSeason-helper som rytterprofilen). Ingen ny query.
+        // #3815: birthdate bærer nu OGSÅ roster-tabellens alders-kolonne.
+        // #3761: + contract_end_season — Status-cellens contractExpiring-badge
+        // (samme kolonne TeamPage allerede henter). Read-only felt på riders,
+        // ingen migration og ingen ny query.
         const { data } = await supabase
           .from("riders")
-          .select(`id, firstname, lastname, birthdate, primary_type, secondary_type, is_academy, ${ABILITY_SELECT}`)
+          .select(`id, firstname, lastname, birthdate, contract_end_season, primary_type, secondary_type, is_academy, ${ABILITY_SELECT}`)
           .eq("team_id", myTeam.id)
           .order("lastname");
         setRiders((data || []).map(flattenAbilities));
@@ -665,7 +680,8 @@ export default function TrainingPage() {
   // colSpan på gruppe-header-rækker.
   // #3300-rework: +1 kolonne (individuel ugeplan-knap flyttet ud af navne-cellen
   // og ind i sin egen kolonne, jf. ejer-feedback).
-  const ROSTER_COLS = 10;
+  // #3815: +1 kolonne (Alder).
+  const ROSTER_COLS = 11;
 
   // Accessors til roster-sortering. form/fatigue bor i condition-map'et (ikke på
   // rytteren), så closure over condition — useMemo holder referencen stabil pr.
@@ -673,6 +689,10 @@ export default function TrainingPage() {
   const rosterAccessors = useMemo(() => ({
     name: (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`.trim(),
     primary_type: (r) => r.primary_type ?? "",
+    // #3815: sæson-alderen som tal, samme helper som cellen selv viser, så
+    // rækkefølgen ikke kan drive fra det man læser. Uden sæson-år giver
+    // ageForSeason null, og sortRows lægger null'er sidst uanset retning.
+    age: (r) => ageForSeason(r.birthdate, seasonYear),
     form: (r) => condition[r.id]?.form ?? null,
     fatigue: (r) => condition[r.id]?.fatigue ?? null,
     // #3706: samme to badges som Status-cellen viser, som ét sorterbart tal.
@@ -680,7 +700,7 @@ export default function TrainingPage() {
     // ikke drive fra det man ser.
     status: (r) => (r.is_academy ? STATUS_ACADEMY_WEIGHT : 0)
       + (injuryDaysLeft(condition[r.id]?.injured_until, today) > 0 ? STATUS_INJURED_WEIGHT : 0),
-  }), [condition, today]);
+  }), [condition, today, seasonYear]);
   const rosterAccessor = rosterSort.sort ? rosterAccessors[rosterSort.sort] : null;
   const sortRoster = (list) => sortRows(list, rosterAccessor, rosterSort.sortDir);
 
@@ -740,9 +760,10 @@ export default function TrainingPage() {
       gainsToday: todayRowByRider[rider.id]?.gains ?? null,
     });
 
-    // #3459 V3: løbsdags-badge — feltet findes KUN når race_day_engine_enabled er
-    // on (backend udelader det helt ellers, se useTraining.js), så tilstedeværelse
-    // alene er hele gaten. Planen (fokus/intensitet) RØRES ALDRIG her — kun visning.
+    // #3459 V3 / #4375: løbsdags-badge - feltet findes KUN når
+    // race_day_development_enabled er on (backend udelader det helt ellers, se
+    // useTraining.js), så tilstedeværelse alene er hele gaten. Planen
+    // (fokus/intensitet) RØRES ALDRIG her - kun visning.
     const raceToday = racingToday[rider.id] ?? null;
 
     // #1895 PR 2: rytterens EGEN ugeplan-override, hvis sat — vinder over holdets
@@ -824,6 +845,11 @@ export default function TrainingPage() {
                   ? `${tTypes(`types.${rider.primary_type}`)}/${tTypes(`types.${rider.secondary_type}`)}`
                   : tTypes(`types.${rider.primary_type}`))
                 : null,
+              // #3815: alderen følger samme portræt-fold som Type/Form/Træthed —
+              // kolonnen er skjult ≤640px, så tallet står her i stedet. Uden
+              // dette ville ønsket ("alder under Daglig træning") kun være
+              // opfyldt på desktop, og fladen bruges også i portræt.
+              `${t("colAge")} ${ageForSeason(rider.birthdate, seasonYear) ?? "—"}`,
               `${t("form")} ${cond.form ?? "—"}`,
               `${t("fatigue")} ${cond.fatigue ?? "—"}`,
             ].filter(Boolean).join(" · ")}
@@ -833,6 +859,15 @@ export default function TrainingPage() {
         {/* Ryttertype */}
         <td className={`${tdClass({})} hidden sm:table-cell`}>
           <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
+        </td>
+
+        {/* #3815: Alder. Sæson-alderen (ageForSeason, ikke wall-clock — #3071),
+            samme tal som rytterprofilen og Development-fanen viser. "—" når
+            sæson-året endnu ikke er hentet; en manglende alder er bedre end en
+            forkert. tabular-nums via numeric-recipen, så cifrene flugter
+            lodret ned gennem truppen. */}
+        <td className={`${tdClass({ numeric: true, compact: true })} hidden sm:table-cell`}>
+          <span className="text-cz-2">{ageForSeason(rider.birthdate, seasonYear) ?? "—"}</span>
         </td>
 
         {/* #3721: fokus-vælgeren er et panel, ikke en <select> (ejer-godkendt
@@ -981,7 +1016,19 @@ export default function TrainingPage() {
             vandret som resten af tabellen. */}
         <td className={tdClass({})}>
           <div className="flex flex-wrap gap-1">
-            <RiderBadges badges={[rider.is_academy && "academy"]} />
+            {/* #3761: Status-cellen viste ÉN af de badges rytteren kan bære.
+                De to der mangler er præcis dem der afgør om træningen
+                overhovedet er en investering værd: kontrakten udløber ved
+                næste sæsonskifte, eller rytteren er i/lige før pensions-
+                vinduet. Begge er allerede beregnede helpers (riderAge.js) og
+                vises på TeamPage — samme kald-form her, ingen ny mekanik.
+                is_academy udelades fra begge, ligesom på TeamPage: squad-risk-
+                spærren (#2748) tæller kun senior-ryttere. */}
+            <RiderBadges badges={[
+              rider.is_academy && "academy",
+              !rider.is_academy && retirementRiskBadgeKey(rider, seasonYear),
+              !rider.is_academy && contractExpiringBadgeKey(rider, activeSeasonNumber),
+            ]} />
             {injured && (
               <span className="text-3xs px-2 py-0.5 rounded-cz-pill bg-cz-danger-bg text-cz-danger border border-cz-danger/30">
                 {daysLeft === 1
@@ -1374,6 +1421,20 @@ export default function TrainingPage() {
                       <SortTh sortKey="primary_type" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
                         className={`${thClass({})} hidden sm:table-cell`}>
                         {t("colType")}
+                      </SortTh>
+                      {/* #3815: alderen er den vigtigste enkeltvariabel når man
+                          vælger hvem der skal trænes hårdt — ung rytter har
+                          hovedrum, ældre har ikke — og den manglede netop dér
+                          hvor valget træffes (@knud_r_flink, Discord 15/8).
+                          #1674 lukkede hullet på rytteroverblik + transferliste,
+                          men ikke her. Kompakt numerisk kolonne (samme
+                          numeric+compact-recipe som TeamPages alders-kolonne),
+                          og samme portræt-kontrakt som Type/Form/Træthed
+                          (#3045): foldet ind i navne-underlinjen ≤640px, så
+                          Dag + Skift dag beholder pladsen i portræt. */}
+                      <SortTh sortKey="age" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                        className={`${thClass({ numeric: true, compact: true })} hidden sm:table-cell`}>
+                        {t("colAge")}
                       </SortTh>
                       {/* #3762: kolonnerne hedder nu det de indeholder. Før stod
                           der "Fokus" og "Intensitet" — to akser der kunne modsige

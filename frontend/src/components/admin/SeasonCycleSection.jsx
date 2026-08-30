@@ -50,10 +50,17 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
 
   useEffect(() => {
     reloadPreview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reloadPreview er lokal funktion (ny ref hver render) — kun mount-fetch
   }, []);
 
   const gate = summarizeTransitionReadiness(readiness);
+  // #2753: sponsor_base_total er den GARANTEREDE base før bestyrelses-modifier,
+  // sponsor-pullout og kontraktloft. Det tal der faktisk rammer holdenes balance er
+  // sponsor_payout_total. Fallback holder UI'et sandfærdigt mod en ældre backend
+  // (frontend og backend deployes hver for sig).
+  const sponsorPayoutTotal = preview
+    ? preview.sponsor_payout_total ?? preview.sponsor_base_total
+    : 0;
 
   async function executeTransition() {
     if (!preview) return;
@@ -67,7 +74,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
       `Dette vil:\n` +
       `  • Markere sæson ${preview.from_season.number} som færdig\n` +
       `  • Oprette sæson ${preview.to_season.number} (status='active')\n` +
-      `  • Udbetale ${formatCz(preview.sponsor_base_total)} i sponsor til ${preview.teams_affected} hold\n` +
+      `  • Udbetale ${formatCz(sponsorPayoutTotal)} i sponsor til ${preview.teams_affected} hold\n` +
       `  • Lukke sæson ${preview.from_season.number}'s transfervindue\n` +
       `  • Logge handlingen i admin-loggen\n\n` +
       `Er du sikker?`;
@@ -148,9 +155,19 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
           <Row label="Hold påvirket" value={preview.teams_affected.toString()} />
           <Row
             label="Sponsor-udbetaling i alt"
-            value={formatCz(preview.sponsor_base_total)}
-            sub={`(${formatCz(preview.sponsor_base_total / Math.max(preview.teams_affected, 1))} pr. hold)`}
+            value={formatCz(sponsorPayoutTotal)}
+            sub={`(${formatCz(sponsorPayoutTotal / Math.max(preview.teams_affected, 1))} pr. hold)`}
           />
+          {/* #2753: basen er IKKE det der udbetales når bestyrelses-modifier eller
+              sponsor-pullout er i spil - previewet skal vise det tal der rammer
+              holdenes balance, med basen som reference. */}
+          {sponsorPayoutTotal !== preview.sponsor_base_total && (
+            <Row
+              label="Garanteret base før modifier"
+              value={formatCz(preview.sponsor_base_total)}
+              sub="Bestyrelses-modifier, sponsor-pullout og kontraktloft er trukket fra i udbetalingen"
+            />
+          )}
         </div>
 
         {preview.already_transitioned && (
@@ -181,7 +198,9 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
                   <tr key={row.team_id} className="border-t border-cz-border">
                     <td className="py-1 pr-2 text-cz-1">{row.team_name}</td>
                     <td className="py-1 pr-2 text-cz-2">D{row.division}</td>
-                    <td className="py-1 text-right text-cz-1">{formatCz(row.sponsor_base)}</td>
+                    <td className="py-1 text-right text-cz-1">
+                      {formatCz(row.sponsor_payout ?? row.sponsor_base)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

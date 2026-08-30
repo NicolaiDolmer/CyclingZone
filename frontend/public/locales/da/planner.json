@@ -139,6 +139,7 @@
       "rivalCount": "{count, plural, =0 {Ingen rivaler topper her} one {# rival topper også her} other {# rivaler topper også her}}",
       "viewProfiles": "Vis etape-profiler",
       "hideProfiles": "Skjul etape-profiler",
+      "openStage": "Åbn etape {stage} i en ny fane",
       "setPeak": "Sæt peak",
       "demands": "Dette løb kræver",
       "alreadyPeaking": "Topper her",

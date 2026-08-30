@@ -1,0 +1,6 @@
+{
+  "$comment": "Kendte auth-gated ruter (requireAuth/requireAdmin) uden rate-limit-daekning (ratchet - maa kun skrumpe). Hovedparten er GET-ruter (#530's audit: ~76 ikke-admin GET-ruter uden nogen limiter, hverken inline eller global). Genereret af scripts/check-rate-limit-coverage.mjs --update-baseline. Nye overtraedelser maa IKKE tilfoejes her - tilfoej en <x>Limiter fra backend/lib/rateLimiters.js paa selve ruten, eller monter en router.use(<prefix>, <x>Limiter). Refs #530.",
+  "files": {
+    "backend/routes/api.js": 88
+  }
+}

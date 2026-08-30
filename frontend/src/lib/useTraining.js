@@ -23,7 +23,7 @@ export function useTraining() {
   const [smartDefaultFocus, setSmartDefaultFocus] = useState({}); // { <rider_id>: <focus> } — type-matchet default (#1894)
   const [weekPlan, setWeekPlanState] = useState(null); // holdets ugerytme { mon:{intensity}, ..., sun:{intensity} } | null (#1895)
   const [riderWeekPlans, setRiderWeekPlansState] = useState({}); // { <rider_id>: {mon:{intensity},...} } — pr-rytter-override (#1895 PR 2)
-  const [racingToday, setRacingToday] = useState({}); // { <rider_id>: { race } } — #3459 V3, leveres kun bag race_day_engine_enabled
+  const [racingToday, setRacingToday] = useState({}); // { <rider_id>: { race } } - #3459 V3, leveres kun bag race_day_development_enabled (#4375)
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -48,9 +48,9 @@ export function useTraining() {
         setSmartDefaultFocus(data.smartDefaultFocus ?? {});
         setWeekPlanState(data.weekPlan ?? null);
         setRiderWeekPlansState(data.riderWeekPlans ?? {});
-        // #3459 V3: feltet er kun til stede når race_day_engine_enabled er on for
-        // brugeren (api.js udelader det helt ellers) — `?? {}` giver samme "ingen
-        // badge for nogen" tomme-state uanset om feltet mangler eller er tomt.
+        // #3459 V3 / #4375: feltet er kun til stede når race_day_development_enabled
+        // er on for brugeren (api.js udelader det helt ellers) - `?? {}` giver samme
+        // "ingen badge for nogen" tomme-state uanset om feltet mangler eller er tomt.
         setRacingToday(data.racingToday ?? {});
       }
     } catch {

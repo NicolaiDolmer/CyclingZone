@@ -52,6 +52,7 @@
     "squadCriticalSent": "🚨 Seller below min.",
     "offerLabel": "Offer",
     "counterLabel": "Your counter",
+    "counterAmountLabel": "Counter offer",
     "yourBidLabel": "Your bid",
     "value": "Value",
     "salary": "Salary",
@@ -100,7 +101,8 @@
       "withdraw": "Withdraw proposal",
       "rejectShort": "Reject",
       "confirmSwap": "✓ Confirm swap",
-      "cancelSwap": "Cancel deal"
+      "cancelSwap": "Cancel deal",
+      "archive": "Archive"
     },
     "form": {
       "cashReceiveLabel": "Cash payment (CZ$) · positive = you receive, negative = you pay",
@@ -171,14 +173,16 @@
     "archivedReceived": "Archived received offers",
     "archivedSent": "Archived sent offers",
     "receivedProposals": "Received proposals",
-    "sentProposals": "Sent proposals"
+    "sentProposals": "Sent proposals",
+    "archivedReceivedProposals": "Archived received proposals",
+    "archivedSentProposals": "Archived sent proposals"
   },
   "empty": {
     "received": "No received offers",
     "receivedHint": "Other managers can send offers on your riders from the rider's page",
     "sent": "You haven't sent any offers yet",
     "sentHint": "Find a rider and click \"Send transfer offer\" on their page",
-    "archive": "No archived offers",
+    "archive": "Nothing archived yet",
     "marketNoListings": "No riders for sale",
     "marketNoMatches": "No riders match the filter"
   },
@@ -201,6 +205,7 @@
     "swapCancelled": "Swap cancelled",
     "swapRejected": "Swap rejected",
     "proposalWithdrawn": "Proposal withdrawn",
+    "swapArchived": "Proposal archived",
     "priceUpdated": "✅ Asking price updated",
     "priceUpdateFailed": "Could not update the price"
   },

@@ -36,6 +36,7 @@ import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
 import { useActionSummary } from "../hooks/useActionSummary";
+import { useUserProfile } from "../lib/userProfile.jsx"; // #3034
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -514,7 +515,10 @@ export default function Layout() {
   // Patch Notes, men serverdrevet (forumUnread kommer fra
   // GET /api/forum/unread-status, ikke en lokal dato-sammenligning).
   const [forumUnread, setForumUnread]                   = useState(false);
-  const [isAdmin, setIsAdmin]               = useState(false);
+  // #3034: role kommer fra den delte UserProfileProvider (ét Supabase-kald pr.
+  // session) i stedet for Layouts eget `.from("users").select("role, username")`.
+  const { profile } = useUserProfile();
+  const isAdmin = profile?.role === "admin";
   const [isOwner, setIsOwner]               = useState(false); // #3750 ejer-only-menupunkter
   const [mobileOpen, setMobileOpen]         = useState(false);
   const [feedbackOpen, setFeedbackOpen]     = useState(false);
@@ -577,25 +581,33 @@ export default function Layout() {
     setMobileOpen(false);
   }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled]);
 
+  // #3034: ejer-check afhænger af `isAdmin`, som nu kommer asynkront fra den
+  // delte UserProfileProvider i stedet for at blive afgjort synkront inde i
+  // mount-effekten nedenfor (som tidligere gjorde sit eget role-opslag). Egen
+  // effekt, keyed på isAdmin+session, så check'et stadig kun kører når begge
+  // er kendt (uanset hvilken der bliver klar sidst).
+  useEffect(() => {
+    if (!isAdmin || !session) { setIsOwner(false); return; }
+    let cancelled = false;
+    (async () => {
+      // #3750: kun ejeren (OWNER_USER_IDS) ser ejer-only-punkter. Fail-closed: fejl ⇒ skjult.
+      try {
+        const r = await fetch(`${API}/api/admin/owner-check`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const d = r.ok ? await r.json() : null;
+        if (!cancelled) setIsOwner(Boolean(d?.isOwner));
+      } catch {
+        // best-effort: ejer-check er kun menu-synlighed; backend håndhæver selve gaten.
+        if (!cancelled) setIsOwner(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAdmin, session]);
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return;
       setSession(session);
 
-      const { data: userData } = await supabase.from("users")
-        .select("role, username").eq("id", session.user.id).single();
-      setIsAdmin(userData?.role === "admin");
-      if (userData?.role === "admin") {
-        // #3750: kun ejeren (OWNER_USER_IDS) ser ejer-only-punkter. Fail-closed: fejl ⇒ skjult.
-        try {
-          const r = await fetch(`${API}/api/admin/owner-check`, { headers: { Authorization: `Bearer ${session.access_token}` } });
-          const d = r.ok ? await r.json() : null;
-          setIsOwner(Boolean(d?.isOwner));
-        } catch {
-          // best-effort: ejer-check er kun menu-synlighed; backend håndhæver selve gaten.
-          setIsOwner(false);
-        }
-      }
       const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).single();
       if (teamData) {
         setTeam(teamData);

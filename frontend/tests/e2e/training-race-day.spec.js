@@ -3,8 +3,9 @@ import {
   installNetworkMocks, stabilizePage, login, json, corsHeaders, TEST_TEAM, evidenceShotPath,
 } from "./fixtures.js";
 
-// #3459 V3 — løbsdags-badge på trænings-siden (ejer-godkendt mockup 7/8, bag
-// race_day_engine_enabled). Flag er OFF i prod (flip 23/8) — racingToday-feltet
+// #3459 V3 - løbsdags-badge på trænings-siden (ejer-godkendt mockup 7/8, bag
+// race_day_development_enabled efter #4277/#4375). Flaget er OFF i prod for S3,
+// så racingToday-feltet
 // mockes direkte her (samme teknik som training-report.spec.js) fordi
 // /api/training/me kun leverer feltet når flaget er on server-side; testen
 // verificerer derfor den fulde UI-kontrakt uden at afhænge af live flag-state.

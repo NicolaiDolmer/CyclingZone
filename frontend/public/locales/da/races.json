@@ -134,7 +134,7 @@
       "sharesItem": "Løbsdag {day} · {race}",
       "sharesItemDays": "Løbsdagene {start}-{end} · {race}",
       "clash": "{rider} kører begge på løbsdag {day}",
-      "clashMany": "{count, plural, one {# rytter kører} other {# ryttere kører}} begge løb"
+      "clashMany": "{count, plural, one {# rytter kører} other {# ryttere kører}} flere løb samme dag"
     },
     "popover": {
       "title": "Tilføj til hvilket løb?",
@@ -793,7 +793,9 @@
       "winType": {
         "sprint_win": "Massespurt",
         "close_win": "Tæt finish",
-        "solo_win": "Solosejr"
+        "solo_win": "Solosejr",
+        "itt_win": "Hurtigste tid",
+        "ttt_win": "Hurtigste holdtid"
       }
     },
     "film": {
@@ -809,6 +811,8 @@
       "feedEmpty": "Scrub fremad for at se hvad der skete.",
       "event": {
         "stage_start": "{count} ryttere ruller ud på {distance} km.",
+        "stage_start_itt": "{count} ryttere sendes af sted én ad gangen over {distance} km mod uret.",
+        "stage_start_ttt": "Holdene sendes af sted ét ad gangen over {distance} km mod uret.",
         "breakaway_formed": "{riders} rykker væk fra feltet.",
         "kom_passage": "{name} (kat. {category}): {rider} fører over toppen.",
         "intermediate_sprint": "{name}: {rider} tager mellemsprinten.",
@@ -816,6 +820,7 @@
         "breakaway_survived": "Udbruddet holder feltet fra livet helt til stregen.",
         "incident": "{kind, select, mechanical {{rider} går ned med en mekanisk fejl.} other {{rider} vælter.}}",
         "favorite_crack": "{rider} sprækker og mister kontakten til front.",
+        "favorite_crack_tt": "{rider} falder fra hinanden på anden halvdel og taber tid.",
         "finale_attack": "{rider} angriber i finalen.",
         "sprint_decided": "Det bliver tæt mellem {rider} og forfølgerne.",
         "sprint_decided_photo": "Fotofinish: det er tæt for {rider}.",
@@ -823,6 +828,8 @@
         "finish_sprint_win": "{rider} vinder massespurten.",
         "finish_close_win": "{rider} vinder en tæt finish.",
         "finish_solo_win": "{rider} soloer til etapesejr.",
+        "finish_itt_win": "{rider} sætter dagens hurtigste tid.",
+        "finish_ttt_win": "{rider} fører dagens hurtigste hold i mål.",
         "gc_change": "{rider} overtager den samlede føring fra {previousLeader}."
       }
     },
@@ -831,6 +838,8 @@
       "win": "{rider} tog sejren.",
       "soloWin": "{rider} kørte solo og vandt med {marginText}.",
       "sprintWin": "{rider} vandt spurten.",
+      "ittWin": "{rider} satte den hurtigste tid.",
+      "tttWin": "{rider} førte det hurtigste hold i mål.",
       "breakawaySurvived": "{count, plural, one {En enkelt rytter holdt hjem til mål.} other {Et udbrud på # ryttere holdt hjem til mål.}}",
       "breakawayCaught": "{count, plural, one {Den udbrudte rytter blev hentet før stregen.} other {Udbruddet (# ryttere) blev hentet før stregen.}}",
       "teamDay": "{team} førte holdkonkurrencen med {count} ryttere i top 10.",
@@ -907,6 +916,14 @@
           "v2": "{rider} er hurtigst i massespurten",
           "v3": "Spurten går til {rider}"
         },
+        "itt_win": {
+          "v1": "{rider} sætter den hurtigste tid",
+          "v2": "Ingen slår {rider} mod uret"
+        },
+        "ttt_win": {
+          "v1": "{rider} fører det hurtigste hold i mål",
+          "v2": "Den hurtigste holdtid går til {team}"
+        },
         "close_win": {
           "v1": "{rider} vinder med {marginText}",
           "v2": "{rider} holder hjem og vinder"
@@ -936,6 +953,13 @@
         },
         "reduced_sprint": {
           "v1": "En hård finale splittede feltet, og {rider} vandt frontgruppens spurt for {team}."
+        },
+        "time_trial": {
+          "v1": "Alle kørte alene mod uret. {rider} satte dagens hurtigste tid for {team}.",
+          "v2": "Kun rytteren, vejen og uret. Ingen kørte hurtigere end {rider} fra {team}."
+        },
+        "team_time_trial": {
+          "v1": "Holdene kørte ruten ét ad gangen mod uret. {team} var hurtigst, med {rider} først over stregen."
         },
         "solo": {
           "v1": "{rider} efterlod feltet og kom alene over stregen, {marginText} foran.",

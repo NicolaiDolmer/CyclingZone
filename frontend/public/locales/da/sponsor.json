@@ -51,6 +51,7 @@
     "perRaceDay": "Pr. etape",
     "raceDayMath": "{count} etaper × {rate} CZ$",
     "ifYouStartEveryStage": "Hvis du starter hver etape",
+    "signingBonus": "Underskriftsbonus",
     "bonusUpside": "Bonusser oveni, hvis de opnås",
     "length": "Længde",
     "seasons": "{count, plural, one {# sæson} other {# sæsoner}}"
@@ -68,7 +69,7 @@
     "earningsTitle": "Tjent på denne kontrakt",
     "earningsBase": "Sæsonstart",
     "earningsSigning": "Underskriftsbonus",
-    "earningsRaceDays": "Løbsdage",
+    "earningsRaceDays": "Etaper",
     "earningsResults": "Resultatbonusser",
     "earningsObjective": "Sæsonmål",
     "earningsTotal": "I alt"

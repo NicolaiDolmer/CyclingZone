@@ -66,6 +66,12 @@ const MAX_CURATED_FIELD_EVENTS = 3; // forbedring 1: kuratér-kollaps-loft
 const FLAT_PROFILES = new Set(["flat"]);
 const MOUNTAIN_PROFILES = new Set(["mountain", "high_mountain"]);
 const FLAT_INCIDENT_PROFILES = new Set(["flat", "rolling"]);
+// #4373: tidskørsler har intet felt at spurte i, splitte eller angribe fra —
+// rytterne (itt) eller holdene (ttt) kører hver for sig mod uret. Samme kort som
+// raceNarrative.js's TIME_TRIAL_WIN_KEY (holdt som egen konstant af samme grund
+// som SPRINT_GAP_S/CLOSE_GAP_S duplikeres: de to filer klassificerer af samme
+// grund, men skal kunne tunes hver for sig).
+const TIME_TRIAL_WIN_KEY = Object.freeze({ itt: "itt_win", ttt: "ttt_win" });
 
 function rngFor(seed, name) {
   return makeRng(stableSeed(`${seed}:${name}`));
@@ -176,6 +182,9 @@ export function buildStageTimeline({
   if (!ranked.length) return { timeline_version: TIMELINE_VERSION, events };
 
   const distance = effectiveDistance(stageProfile);
+  // #4373: ét sted der afgør om DENNE etape er en tidskørsel — læses af
+  // favorite_crack, peloton_splits og finale-klassificeringen nedenfor.
+  const timeTrialWinKey = TIME_TRIAL_WIN_KEY[stageProfile.profile_type] ?? null;
   // Alle km-mærker clampes HER til [0, distance] FØR de rundes/pushes — én
   // fælles grænse (konsistensregel 4), uanset hvilken syntese-gren der producerede dem.
   const emit = (km, type, params) => pushEvent(events, clampKm(km, distance), type, params);
@@ -337,7 +346,15 @@ export function buildStageTimeline({
   const keptCandidates = jourSansCandidates.slice(0, MAX_CURATED_FIELD_EVENTS);
   const collapsedCount = jourSansCandidates.length - keptCandidates.length;
   for (const c of keptCandidates) {
-    emit(finaleKm, "favorite_crack", { rider_id: c.riderId, reason: c.reason });
+    // #4373: "mister kontakten til front" er feltsprog. På en tidskørsel er der
+    // ingen front at miste kontakten til — rytteren taber tid mod uret. Disciplin
+    // threades med som param, så tekst-laget kan vælge den rigtige formulering
+    // uden selv at kende etapeprofilen (describeEvent ser kun ÉT event ad gangen).
+    emit(finaleKm, "favorite_crack", {
+      rider_id: c.riderId,
+      reason: c.reason,
+      ...(timeTrialWinKey ? { discipline: "time_trial" } : {}),
+    });
   }
   if (collapsedCount > 0) {
     emit(finaleKm, "field_fading", { count: collapsedCount });
@@ -346,13 +363,18 @@ export function buildStageTimeline({
   // ── finale-klassificering (sprint/close/solo) — direkte fra ranked, IKKE
   // fra moments, så finish/sprint_decided/finale_attack/leadout altid emitterer
   // selv når v3=false (moments/incidents tomme). ──────────────────────────
+  // #4373: itt/ttt får deres EGEN win_type og hverken sprint_decided,
+  // finale_attack eller leadout — ingen af de tre findes i en tidskørsel.
   const gap2 = second ? second.stageGap : null;
-  let winType = "solo_win";
-  if (gap2 != null) {
+  let winType = timeTrialWinKey ?? "solo_win";
+  if (!timeTrialWinKey && gap2 != null) {
     winType = gap2 < SPRINT_GAP_S ? "sprint_win" : gap2 < CLOSE_GAP_S ? "close_win" : "solo_win";
   }
 
-  if (winType === "sprint_win" && winner && second) {
+  if (timeTrialWinKey) {
+    // Ingen finale-begivenhed: tidskørslens historie er tiderne selv (finish-
+    // eventet nedenfor bærer win_type + top-10 med gaps).
+  } else if (winType === "sprint_win" && winner && second) {
     emit(distance, "sprint_decided", {
       rider_ids: [winner.rider_id, second.rider_id],
       photo_finish: gap2 < 1,
@@ -393,8 +415,10 @@ export function buildStageTimeline({
   // "Feltet splitter reelt" = mindst to klynger, og mindst én klynge UD OVER den
   // første er en ægte gruppe (≥2 ryttere) — ellers er det bare spredte enkelt-
   // ryttere (fx en jævnt spredt bjergetape), ikke en synlig feltsprængning.
+  // #4373: et felt der splitter forudsætter et felt. På itt/ttt er "grupper" bare
+  // ryttere med tilfældigt ens sluttid — aldrig en feltsprængning.
   const hasRealSecondaryGroup = clusters.slice(1).some((c) => c.riders.length >= 2);
-  if (clusters.length >= 2 && hasRealSecondaryGroup) {
+  if (!timeTrialWinKey && clusters.length >= 2 && hasRealSecondaryGroup) {
     emit(distance, "peloton_splits", { groups: clusters.map((c) => c.riders.length) });
   }
 

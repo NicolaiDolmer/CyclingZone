@@ -95,6 +95,7 @@
     "offer_not_found": "Tilbud ikke fundet",
     "not_involved_offer": "Ikke involveret i dette tilbud",
     "only_closed_offers_archivable": "Kun afsluttede tilbud kan arkiveres",
+    "only_closed_swaps_archivable": "Kun afsluttede byttehandler kan arkiveres",
     "buyer_cannot_afford": "Køber har ikke råd",
     "cannot_afford": "Du har ikke råd",
     "deal_locked_both_confirmed": "Handlen er accepteret af begge parter og kan ikke annulleres af manager",

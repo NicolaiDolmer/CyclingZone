@@ -71,6 +71,8 @@
       "potentialTitle": "Det forventede niveau han realistisk er på vej mod med din træning. Ikke det samme som rollens loft (det teoretisk højeste for hans rolle) - hold musen over tallet for begge.",
       "badges": "Status",
       "age": "Alder",
+      "popularity": "Popularitet",
+      "popularityTitle": "Fan-popularitet (0-100). Bruges af bestyrelsens 5-års-plan-mål om stjerneryttere.",
       "type": "Type",
       "contract": "Kontrakt",
       "contractValue": "Udløber efter S{season}",
