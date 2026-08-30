@@ -56,6 +56,11 @@ try {
   node scripts/lint-schema-columns.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "schema-column-guard" }
 
+  # WARN, ikke FAIL — refresh kraever infisical+prod-adgang, som preflight ikke
+  # har, og som ikke skal blokere en usaerlig PR (#4142).
+  Write-Host "== schema-snapshot-staleness (migrationer nyere end snapshot, #4142) ==" -ForegroundColor Cyan
+  node scripts/check-schema-snapshot-staleness.mjs
+
   Write-Host "== constraint-form-guard (drop/recreate der taber DEFERRABLE, #4163) ==" -ForegroundColor Cyan
   node scripts/lint-constraint-form.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "constraint-form-guard" }
