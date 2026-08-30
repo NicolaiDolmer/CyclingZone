@@ -325,14 +325,6 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // koden. Intentional orphaned, ikke drift.
   "GET /email/unsubscribe",
   "POST /email/unsubscribe",
-  // Faciliteter/staff (#1441 Fase 3 A1): backend-fundament shippet FØR UI'en —
-  // alt er dødt bag FACILITIES_ENABLED=false; Klub-UI'en lander i bølge A3 og
-  // fjerner disse fra whitelisten. Intentional orphaned indtil da, ikke drift.
-  "GET /club/facilities",
-  "POST /club/facilities/upgrade",
-  "GET /club/staff/candidates",
-  "POST /club/staff/hire",
-  "POST /club/staff/fire",
   // Race v3 S5 peak-planer (#2224, PR #2419): CRUD-API'et shippet FØR Planner-
   // cockpittet (næste slice wirer UI'et mod disse endpoints). Desuden launch-gated
   // bag peak_planner_enabled=OFF — ingen kalder dem endnu by design. Intentional
