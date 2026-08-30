@@ -7935,22 +7935,41 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
 router.get("/transfers/swaps", requireAuth, async (req, res) => {
   const fields = `id, cash_adjustment, counter_cash, status, message,
     proposing_confirmed, receiving_confirmed, created_at, updated_at,
+    proposing_archived_at, receiving_archived_at,
     offered:offered_rider_id(id, firstname, lastname, market_value, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
     requested:requested_rider_id(id, firstname, lastname, market_value, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
     proposing:proposing_team_id(id, name),
     receiving:receiving_team_id(id, name)`;
 
-  const [sentRes, receivedRes] = await Promise.all([
+  // #3492: arkiverede byttetilbud skilles fra de aktive, præcis som
+  // transfer_offers gør det i /transfers/my-offers ovenfor. Uden opdelingen
+  // voksede Forhandlinger-fanen monotont med døde rækker.
+  const [sentRes, receivedRes, archivedSentRes, archivedReceivedRes] = await Promise.all([
     supabase.from("swap_offers").select(fields)
       .eq("proposing_team_id", req.team.id)
       .not("status", "eq", "withdrawn")
+      .is("proposing_archived_at", null)
       .order("updated_at", { ascending: false }),
     supabase.from("swap_offers").select(fields)
       .eq("receiving_team_id", req.team.id)
       .not("status", "eq", "withdrawn")
+      .is("receiving_archived_at", null)
       .order("updated_at", { ascending: false }),
+    supabase.from("swap_offers").select(fields)
+      .eq("proposing_team_id", req.team.id)
+      .not("proposing_archived_at", "is", null)
+      .order("proposing_archived_at", { ascending: false }),
+    supabase.from("swap_offers").select(fields)
+      .eq("receiving_team_id", req.team.id)
+      .not("receiving_archived_at", "is", null)
+      .order("receiving_archived_at", { ascending: false }),
   ]);
-  res.json({ sent: sentRes.data || [], received: receivedRes.data || [] });
+  res.json({
+    sent: sentRes.data || [],
+    received: receivedRes.data || [],
+    archivedSent: archivedSentRes.data || [],
+    archivedReceived: archivedReceivedRes.data || [],
+  });
 });
 
 // POST /api/transfers/swaps — propose a swap
@@ -8059,6 +8078,26 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
   const isReceiving  = swap.receiving_team_id === req.team.id;
   if (!isProposing && !isReceiving)
     return res.status(403).json({ error: "Ikke involveret i denne byttehandel", errorCode: "not_involved_swap" });
+
+  // ARCHIVE — #3492: spejler transfer_offers-grenen i PATCH /transfers/offers/:id.
+  // Samme tilstands-gate (kun afsluttede tilbud) og samme per-side kontrakt:
+  // hver manager arkiverer KUN sin egen visning, modparten beholder sin.
+  if (action === "archive") {
+    if (!["accepted", "rejected", "withdrawn"].includes(swap.status)) {
+      return res.status(400).json({ error: "Kun afsluttede byttehandler kan arkiveres", errorCode: "only_closed_swaps_archivable" });
+    }
+
+    const archiveField = isProposing ? "proposing_archived_at" : "receiving_archived_at";
+    // #2974: fejlen bindes. En tavst fejlet arkivering ville svare "arkiveret"
+    // til klienten, hvorefter rækken dukker op igen ved næste load — præcis den
+    // "knappen gør ingenting"-oplevelse #3492 handler om.
+    const { error: swapArchiveError } = await supabase.from("swap_offers")
+      .update({ [archiveField]: new Date().toISOString() })
+      .eq("id", swap.id);
+    if (swapArchiveError) return res.status(500).json({ error: swapArchiveError.message });
+
+    return res.json({ success: true, action: "archived" });
+  }
 
   // ACCEPT — receiving team accepts → awaiting proposing confirmation
   if (action === "accept" && isReceiving && swap.status === "pending") {

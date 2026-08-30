@@ -224,8 +224,8 @@
         "text": "Offers are private. Only you and the seller can see your negotiation. Other managers cannot see who has bid on the same rider."
       },
       "archiveCompleted": {
-        "title": "Archive completed offers",
-        "text": "Offers that are rejected, withdrawn or otherwise completed can be archived from the Transfers page. Archiving removes them from active lists, so ongoing negotiations are always easy to find."
+        "title": "Archive completed negotiations",
+        "text": "Offers and swap proposals that are rejected, withdrawn or otherwise completed can be archived from the Transfers page. Archiving removes them from active lists, so ongoing negotiations are always easy to find."
       }
     },
     "managers": {

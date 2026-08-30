@@ -52,6 +52,7 @@
     "squadCriticalSent": "🚨 Sælger under min.",
     "offerLabel": "Tilbud",
     "counterLabel": "Dit modbud",
+    "counterAmountLabel": "Modbud",
     "yourBidLabel": "Dit bud",
     "value": "Værdi",
     "salary": "Løn",
@@ -100,7 +101,8 @@
       "withdraw": "Træk forslag tilbage",
       "rejectShort": "Afvis",
       "confirmSwap": "✓ Bekræft byttehandel",
-      "cancelSwap": "Annuller handel"
+      "cancelSwap": "Annuller handel",
+      "archive": "Arkivér"
     },
     "form": {
       "cashReceiveLabel": "Kontantbetaling (CZ$) · positiv = du modtager, negativ = du betaler",
@@ -171,14 +173,16 @@
     "archivedReceived": "Arkiverede modtagne tilbud",
     "archivedSent": "Arkiverede sendte tilbud",
     "receivedProposals": "Modtagne forslag",
-    "sentProposals": "Sendte forslag"
+    "sentProposals": "Sendte forslag",
+    "archivedReceivedProposals": "Arkiverede modtagne forslag",
+    "archivedSentProposals": "Arkiverede sendte forslag"
   },
   "empty": {
     "received": "Ingen modtagne tilbud",
     "receivedHint": "Andre managers kan sende tilbud på dine ryttere fra rytterens side",
     "sent": "Du har ikke sendt nogen tilbud endnu",
     "sentHint": "Find en rytter og klik \"Send transfertilbud\" på deres side",
-    "archive": "Ingen arkiverede tilbud",
+    "archive": "Intet arkiveret endnu",
     "marketNoListings": "Ingen ryttere til salg",
     "marketNoMatches": "Ingen ryttere matcher filteret"
   },
@@ -201,6 +205,7 @@
     "swapCancelled": "Byttehandel annulleret",
     "swapRejected": "Byttehandel afvist",
     "proposalWithdrawn": "Forslag trukket tilbage",
+    "swapArchived": "Forslag arkiveret",
     "priceUpdated": "✅ Pris opdateret",
     "priceUpdateFailed": "Kunne ikke opdatere prisen"
   },
