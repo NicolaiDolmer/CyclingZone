@@ -173,6 +173,11 @@ export const ALL_CRON_MONITORS = [
   // UNMONITORED_CRON_TICKS: den forskel er en tidligere designbeslutning, ikke
   // en regel om at søndags-gatede jobs aldrig kan monitoreres).
   ["market-value-level-correction-gate", CRON_MONITOR_60MIN],
+  // #4419: søndagens værdi-pipeline (v4-refresh + markedsblend). Samme
+  // begrundelse som gaten ovenfor. Tikket kalder gennem hver time og
+  // returnerer normalt (ran:false, skipped:"not_sunday"/"before_window") uden
+  // for vinduet, så en 60min-monitor er ærlig hele ugen.
+  ["sunday-value-refresh", CRON_MONITOR_60MIN],
 ];
 
 // ─── UNMONITORED_CRON_TICKS ────────────────────────────────────────────────

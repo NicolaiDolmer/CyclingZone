@@ -179,7 +179,6 @@ import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
-import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
 import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
@@ -2657,9 +2656,11 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
       return res.status(409).json({ error: "already_trained_today", tickDate: result.tickDate });
     }
 
-    // #1364: opdatér base_value for holdets ryttere hvis træningen hævede en evne.
-    try { await refreshChangedRiderValues(supabase, { teamId: req.team.id }); }
-    catch (err) { captureException(err); } // feedback-only — må ikke vælte træningen
+    // #4419 (ejer-beslutning 30/8): træning ændrer KUN evner her. Værdien følger
+    // med ved søndagens værdi-job (sundayValueSweep.js, fra kl. 06 dansk tid).
+    // Det tidligere refreshChangedRiderValues-kald (#1364, 25/7) er fjernet: det
+    // var ældre end søndags-kadencen fra #3448 (6/8) og var den ene vej hvor
+    // værdier stadig flyttede sig midt i ugen, kun for de hold der trykkede.
 
     res.json({ ok: true, tickDate: result.tickDate, report: result.report });
   } catch (err) {

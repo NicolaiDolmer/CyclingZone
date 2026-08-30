@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.221",
+    "date": "2026-08-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Rider values now update Sunday morning",
+          "body": "Values are recalculated once a week, on Sunday from 06:00 CET. They used to update late Sunday evening. Training a rider no longer changes his value on the spot. His abilities change right away, the value follows on Sunday. Same rule for everyone, no matter when you train."
+        },
+        "da": {
+          "title": "Rytterværdier opdateres nu søndag morgen",
+          "body": "Værdier bliver genberegnet én gang om ugen, søndag fra kl. 06. Før skete det sent søndag aften. At træne en rytter ændrer ikke længere hans værdi med det samme. Evnerne ændrer sig straks, værdien følger med om søndagen. Samme regel for alle, uanset hvornår du træner."
+        },
+        "refs": [4419]
+      }
+    ]
+  },
+  {
     "version": "7.220",
     "date": "2026-08-29",
     "label": "Beta",
