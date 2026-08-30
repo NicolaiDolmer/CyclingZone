@@ -117,6 +117,78 @@ run "block-archived: absolute path under docs/archive blocked" \
   "{\"tool_name\":\"Edit\",\"tool_input\":{\"file_path\":\"$(pwd)/docs/archive/foo.md\",\"old_string\":\"a\",\"new_string\":\"b\"}}" \
   2 "" "BLOCKED"
 
+# ---- block-blocking-shell-commands.sh (#3423) ----
+
+run "block-blocking-shell: non-Bash tool ignored" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Edit","tool_input":{"file_path":"foo.md"}}' \
+  0 "" ""
+
+run "block-blocking-shell: unrelated Bash command passes" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"ls -la"}}' \
+  0 "" ""
+
+run "block-blocking-shell: bare git log blocked" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"git log"}}' \
+  2 "" "BLOCKED"
+
+run "block-blocking-shell: bare git diff blocked" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"git diff HEAD~1"}}' \
+  2 "" "BLOCKED"
+
+run "block-blocking-shell: bare git branch listing blocked" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"git branch -a"}}' \
+  2 "" "BLOCKED"
+
+run "block-blocking-shell: bare python REPL blocked" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"python"}}' \
+  2 "" "BLOCKED"
+
+run "block-blocking-shell: jq with only a filter blocked" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"jq .data"}}' \
+  2 "" "BLOCKED"
+
+run "block-blocking-shell: git --no-pager log allowed" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"git --no-pager log --oneline -5"}}' \
+  0 "" ""
+
+run "block-blocking-shell: git diff --no-pager elsewhere in command allowed" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"git diff --no-pager"}}' \
+  0 "" ""
+
+run "block-blocking-shell: git branch --show-current commit-guard chain allowed" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"git branch --show-current && git add docs/NOW.md && git commit -F msg.txt"}}' \
+  0 "" ""
+
+run "block-blocking-shell: git branch -D delete allowed" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"git branch -D feat/old-branch"}}' \
+  0 "" ""
+
+run "block-blocking-shell: python with a script file allowed" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"python script.py"}}' \
+  0 "" ""
+
+run "block-blocking-shell: jq with a file argument allowed" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"jq -r .a file.json"}}' \
+  0 "" ""
+
+run "block-blocking-shell: jq fed via pipe allowed" \
+  scripts/hooks/block-blocking-shell-commands.sh \
+  '{"tool_name":"Bash","tool_input":{"command":"curl -s https://example.com | jq ."}}' \
+  0 "" ""
+
 # ---- ensure-scheduled-tasks.sh (auto-install on new PC) ----
 
 SCHED_DIR="$HOME/.claude/scheduled-tasks/weekly-memory-audit"
