@@ -316,6 +316,33 @@ jobs:
       - name: Run fetchAllRows order guard
         run: node scripts/check-fetchallrows-order.mjs
 
+  rls-classification-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #4440 forward-guard: en tabel der er NAEVNT i
+    # docs/decisions/rls-no-policy-classification.md skal ogsaa vaere
+    # KLASSIFICERET der - egen sektion med mindst een fil:linje-reference for
+    # hvem der tilgaar den, eller en eksplicit konstatering af at ingen kodesti
+    # goer. #4439 listede 26 driftstabeller uden at klassificere nogen af dem;
+    # regnestykket gik op, dokumentet saa faerdigt ud, og det tog et
+    # selvstaendigt issue at opdage. Vagten er ren dokument-intern konsistens
+    # (ingen DB-adgang), saa den kan koere paa enhver PR.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test RLS classification guard
+        run: node --test scripts/check-rls-classification-coverage.test.mjs
+
+      - name: Run RLS classification guard
+        run: node scripts/check-rls-classification-coverage.mjs
+
   rate-limit-coverage-guard:
     runs-on: ubuntu-latest
     permissions:
