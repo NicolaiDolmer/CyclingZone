@@ -372,3 +372,12 @@ export function raceDayClashes({ columns = [], columnId }) {
       return { riderId: o.riderId, otherId: o.raceIds[otherIdx], otherName: o.raceNames[otherIdx] };
     });
 }
+
+// #4317: raceDayClashes() returnerer med vilje én post pr. (riderId, modløb)-par
+// (så RaceDayOverlapRow kan gruppere pr. modløb via otherId). Men en rytter der
+// clasher med 3 modløb er stadig ÉN rytter i konflikt, ikke tre. UI-summeringer
+// (fx "N ryttere i konflikt") skal bruge DENNE - tæl distinkte riderId'er, aldrig
+// clashes.length direkte.
+export function countDistinctClashRiders(clashes = []) {
+  return new Set(clashes.map((c) => c.riderId)).size;
+}

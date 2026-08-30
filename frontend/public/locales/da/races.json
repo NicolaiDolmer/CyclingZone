@@ -134,7 +134,7 @@
       "sharesItem": "Løbsdag {day} · {race}",
       "sharesItemDays": "Løbsdagene {start}-{end} · {race}",
       "clash": "{rider} kører begge på løbsdag {day}",
-      "clashMany": "{count, plural, one {# rytter kører} other {# ryttere kører}} begge løb"
+      "clashMany": "{count, plural, one {# rytter kører} other {# ryttere kører}} flere løb samme dag"
     },
     "popover": {
       "title": "Tilføj til hvilket løb?",

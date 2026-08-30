@@ -17,7 +17,7 @@
 // ville den betyde "disse løb overlapper", og det er ikke samme udsagn.
 import { useTranslation } from "react-i18next";
 import { ChevronRightIcon, ChevronDownIcon, AlertTriangleIcon } from "../ui";
-import { toDisplayRaceDay } from "../../lib/raceHubLogic.js";
+import { toDisplayRaceDay, countDistinctClashRiders } from "../../lib/raceHubLogic.js";
 
 function overlapLabel(t, o) {
   if (o.sharedStart == null) return t("racehub.popover.blockedReason", { race: o.name });
@@ -43,7 +43,7 @@ function clashLabel(t, o, riderClashes, ridersById) {
     const rider = ridersById.get(riderClashes[0].riderId)?.name ?? "?";
     if (day != null) return t("racehub.column.clash", { rider, day });
   }
-  return t("racehub.column.clashMany", { count: riderClashes.length });
+  return t("racehub.column.clashMany", { count: countDistinctClashRiders(riderClashes) });
 }
 
 export default function RaceDayOverlapRow({ overlaps = [], clashes = [], ridersById = new Map(), onFocusRace }) {
@@ -82,7 +82,9 @@ export default function RaceDayOverlapRow({ overlaps = [], clashes = [], ridersB
     );
   }
 
-  const totalClashRiders = clashes.length;
+  // #4317: `clashes` er én post pr. (riderId, modløb)-par (findSelectionOverlaps).
+  // En rytter i konflikt med 3 modløb giver 3 poster - tæl DISTINKTE ryttere, ikke par.
+  const totalClashRiders = countDistinctClashRiders(clashes);
   const summaryLabel = hasClash
     ? t("racehub.column.clashMany", { count: totalClashRiders })
     : t("racehub.column.sharesMany", { count: overlaps.length });
