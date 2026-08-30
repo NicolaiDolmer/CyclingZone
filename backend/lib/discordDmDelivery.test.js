@@ -5,6 +5,8 @@ import {
   classifyDmFailure,
   parseRetryAfterMs,
   attemptDmDelivery,
+  isPermanentRecipientFailure,
+  PERMANENT_RECIPIENT_FAILURE_REASONS,
 } from "./discordDmDelivery.js";
 
 // ── classifyDmFailure ────────────────────────────────────────────────────────
@@ -21,6 +23,27 @@ test("classifyDmFailure — fejl-matrix (#1115)", () => {
   assert.deepEqual(classifyDmFailure(undefined), { kind: "retryable", reason: "network" });
   // Ukendte koder → retryable (hellere prøve igen end droppe)
   assert.equal(classifyDmFailure(418).kind, "retryable");
+});
+
+// ── isPermanentRecipientFailure (#3483) ──────────────────────────────────────
+
+test("isPermanentRecipientFailure — 403 og 400/404 er modtager-fejl, 401 er ikke", () => {
+  // Begge permanente modtager-grene tæller på dead-connection-tælleren (#3130).
+  assert.equal(isPermanentRecipientFailure(classifyDmFailure(403).reason), true);
+  assert.equal(isPermanentRecipientFailure(classifyDmFailure(400).reason), true);
+  assert.equal(isPermanentRecipientFailure(classifyDmFailure(404).reason), true);
+  // 401 er VORES bot-token, ikke modtageren — må aldrig afkoble spillere i flok.
+  assert.equal(isPermanentRecipientFailure(classifyDmFailure(401).reason), false);
+  // Retryable-reasons og ukendt/manglende input tæller heller ikke.
+  assert.equal(isPermanentRecipientFailure(classifyDmFailure(429).reason), false);
+  assert.equal(isPermanentRecipientFailure(classifyDmFailure(500).reason), false);
+  assert.equal(isPermanentRecipientFailure(undefined), false);
+  assert.equal(isPermanentRecipientFailure(null), false);
+});
+
+test("PERMANENT_RECIPIENT_FAILURE_REASONS er frosset og indeholder ikke token-invalid", () => {
+  assert.deepEqual([...PERMANENT_RECIPIENT_FAILURE_REASONS], ["recipient-blocked", "bad-request"]);
+  assert.equal(Object.isFrozen(PERMANENT_RECIPIENT_FAILURE_REASONS), true);
 });
 
 // ── parseRetryAfterMs ────────────────────────────────────────────────────────

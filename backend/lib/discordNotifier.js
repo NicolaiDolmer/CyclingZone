@@ -10,7 +10,7 @@ import { fileURLToPath } from "url";
 import { config } from "dotenv";
 import { resolveDmTargetFromInput } from "./discordDmTarget.js";
 import { assertDiscordWebhookUrl } from "./urlSafety.js";
-import { attemptDmDelivery } from "./discordDmDelivery.js";
+import { attemptDmDelivery, isPermanentRecipientFailure } from "./discordDmDelivery.js";
 import { enqueueDm, processDmOutboxDrain } from "./discordDmOutbox.js";
 import { recordPermanentDmFailure, clearDmFailureCount } from "./discordDeadConnection.js";
 import { captureException as sentryCapture } from "./sentry.js";
@@ -470,7 +470,10 @@ export async function sendDM(discordId, payload) {
     // forladt vores Discord-server. Tæl op og afkobl efter N i træk, så han ser
     // "genforbind" i indstillingerne i stedet for tavshed — og vi holder op med
     // at brænde et spildt API-kald pr. notifikation.
-    if (result.failure?.reason === "recipient-blocked") {
+    // #3483: 'bad-request' (400/404, kode 50033 "Invalid Recipient(s)") er samme
+    // døde kobling og skal tælle på samme tæller. 'token-invalid' (401) ryger
+    // aldrig hertil (håndteres i if-grenen ovenfor) — det er vores eget token.
+    if (isPermanentRecipientFailure(result.failure?.reason)) {
       await recordDeadConnection(discordId);
     }
   }
@@ -478,7 +481,7 @@ export async function sendDM(discordId, payload) {
 }
 
 /**
- * Tæl en permanent recipient-blocked-fejl op og log en auto-afkobling.
+ * Tæl en permanent modtager-fejl op og log en auto-afkobling.
  * Fælles for direkte sendDM og outbox-drain, som rammer samme tilstand.
  *
  * Bevidst kun console.warn ved afkobling — ikke en Sentry-error. #2189 fjernede
@@ -520,10 +523,10 @@ export async function drainDiscordDmOutbox({ now = new Date() } = {}) {
     sendWebhookFn: sendOpsWebhook,
     getDefaultWebhookFn: getOpsWebhook,
     captureExceptionFn: sentryCapture,
-    // #3130: en outbox-række der dør på recipient-blocked er samme døde kobling
-    // som direkte sendDM ser — tæl den med, ellers når en bruger der kun rammes
-    // via outbox'en aldrig tærsklen.
-    onRecipientBlocked: recordDeadConnection,
+    // #3130/#3483: en outbox-række der dør på en permanent modtager-fejl (403
+    // eller 400/404) er samme døde kobling som direkte sendDM ser — tæl den med,
+    // ellers når en bruger der kun rammes via outbox'en aldrig tærsklen.
+    onPermanentRecipientFailure: recordDeadConnection,
     now,
   });
 }

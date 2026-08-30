@@ -15,6 +15,8 @@
  *   - 401  → permanent (token roteret/ugyldigt) — INGEN retry, skal alarmere.
  *   - 403  → permanent (modtager har lukket DMs / deler ikke server) — data,
  *            ikke infra; ingen alarm-spam.
+ *   - 400/404 → permanent (ugyldigt modtager-id, Discord-kode 50033) — samme
+ *            slags døde kobling som 403, se PERMANENT_RECIPIENT_FAILURE_REASONS.
  * Vedvarende retryable-fejl ender i discord_dm_outbox (se discordDmOutbox.js)
  * så DM'en overlever IP-ban-vinduer og deploy-restarts i stedet for at forsvinde.
  */
@@ -39,6 +41,31 @@ export function classifyDmFailure(status) {
   if (status == null) return { kind: "retryable", reason: "network" };
   // Ukendte koder: behandl som retryable så vi hellere prøver igen end dropper.
   return { kind: "retryable", reason: `http-${status}` };
+}
+
+/**
+ * Permanente fejl-reasons der peger på MODTAGEREN, ikke på vores infrastruktur.
+ *
+ * #3483: 'recipient-blocked' (403) og 'bad-request' (400/404, Discord-kode 50033
+ * "Invalid Recipient(s)") er begge døde koblinger set fra spillerens side — han
+ * får aldrig en DM igen, uanset hvilken af de to Discord svarer med. Begge skal
+ * derfor tælle på den samme dead-connection-tæller (#3130). 400-grenen er den
+ * farligste af de to: 403 selvhelbreder, fordi clearDmFailureCount nulstiller
+ * ved næste vellykkede levering, mens en 400-kobling hverken kunne tælle op
+ * eller nulstilles og derfor stod som "tilsluttet" for evigt.
+ *
+ * 'token-invalid' (401) holdes bevidst UDENFOR: det er vores egen bot-token der
+ * er roteret eller ugyldig, ikke modtageren. Talte den med, ville ét dødt token
+ * afkoble alle spillere i flok efter tre notifikationer.
+ */
+export const PERMANENT_RECIPIENT_FAILURE_REASONS = Object.freeze([
+  "recipient-blocked",
+  "bad-request",
+]);
+
+/** True hvis en permanent fejl-reason betyder "denne modtager er død for os". */
+export function isPermanentRecipientFailure(reason) {
+  return PERMANENT_RECIPIENT_FAILURE_REASONS.includes(reason);
 }
 
 /** Parse Discords retry_after (sekunder, kan være decimal) → ms, ellers null. */
