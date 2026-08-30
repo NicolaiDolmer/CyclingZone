@@ -12,10 +12,24 @@
  * uden at trigge SupabaseClient-init (Node ESM + supabase-realtime websocket-factory).
  */
 
-/** @returns {string|null} rå mention-streng (fx "<@123>") eller null hvis usat. */
+/**
+ * @returns {string|null} rå mention-streng (fx "<@123>") eller null hvis usat.
+ *
+ * Normaliserer en bar numerisk Discord-ID (fx "12345") til
+ * bruger-mention-format "<@id>" (#2739). Uden normalisering sender Discord
+ * det rå tal som ren tekst i stedet for at pinge nogen, så ops-alarmer
+ * aldrig når frem som notifikation.
+ *
+ * Allerede-formaterede mentions ("<@id>", "<@&id>" for en rolle, "@here",
+ * "@everyone") røres ikke. Vi kan ikke afgøre ud fra et bart tal om det er
+ * en bruger eller en rolle, så default er bruger-format; skal det være en
+ * rolle, skal DISCORD_OPS_MENTION sættes eksplicit til "<@&id>".
+ */
 export function getOpsMention() {
   const raw = (process.env.DISCORD_OPS_MENTION || "").trim();
-  return raw || null;
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return `<@${raw}>`;
+  return raw;
 }
 
 /**

@@ -39,6 +39,30 @@ test("getOpsMention — usat → null; sat (m. whitespace) → trimmet", async (
   });
 });
 
+test("getOpsMention — bar numerisk ID normaliseres til bruger-mention", async () => {
+  await withEnv({ DISCORD_OPS_MENTION: "12345" }, () => {
+    assert.equal(getOpsMention(), "<@12345>");
+  });
+  await withEnv({ DISCORD_OPS_MENTION: "  999  " }, () => {
+    assert.equal(getOpsMention(), "<@999>");
+  });
+});
+
+test("getOpsMention — allerede <@&id> (rolle) røres ikke", async () => {
+  await withEnv({ DISCORD_OPS_MENTION: "<@&123>" }, () => {
+    assert.equal(getOpsMention(), "<@&123>");
+  });
+});
+
+test("getOpsMention — @here og @everyone røres ikke", async () => {
+  await withEnv({ DISCORD_OPS_MENTION: "@here" }, () => {
+    assert.equal(getOpsMention(), "@here");
+  });
+  await withEnv({ DISCORD_OPS_MENTION: "@everyone" }, () => {
+    assert.equal(getOpsMention(), "@everyone");
+  });
+});
+
 test("getOpsWebhookUrl — eksplicit ops-URL vinder over default", async () => {
   await withEnv({ DISCORD_OPS_WEBHOOK_URL: "https://discord.example/ops" }, async () => {
     const url = await getOpsWebhookUrl(async () => "https://discord.example/default");
