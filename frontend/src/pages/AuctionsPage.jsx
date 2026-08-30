@@ -336,6 +336,12 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
         {formatNumber(getRiderMarketValue(r))}
       </td>
 
+      {/* Popularitet — #3956: samme rå riders.popularity-kolonne + plain-tal-
+          visning som RidersPage (#3622-mønsteret). */}
+      <td className="px-2 py-1.5 text-right text-cz-2 font-mono text-xs">
+        {Number.isFinite(r?.popularity) ? r.popularity : "—"}
+      </td>
+
       {/* Højeste bud — #3099: fører-holdnavnet er tilbage som synlig sub-linje
           under beløbet (#228 v2 flyttede det til en title-tooltip, som hverken
           er synlig uden mus eller findes på touch). Vurderings-delta forbliver
@@ -379,8 +385,11 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
         <ScoutablePotentiale rider={r} scouting={scouting} showScout />
       </td>
 
-      {/* Sælger — lige før stats */}
-      <td className="px-3 py-1.5 text-left text-cz-2 text-xs whitespace-nowrap hidden xl:table-cell">
+      {/* Sælger — lige før stats. data-testid, fordi auction-seller-sort-spec'en
+          tidligere hentede cellen med td:nth-child(12); den knak i det sekund
+          #3956 indsatte popularitets-kolonnen før den. Et stabilt hook gør
+          kolonne-rækkefølgen fri igen. */}
+      <td data-testid="auction-seller" className="px-3 py-1.5 text-left text-cz-2 text-xs whitespace-nowrap hidden xl:table-cell">
         <span className="truncate max-w-[120px] inline-block">{getAuctionSellerLabel(auction)}</span>
       </td>
 
@@ -617,6 +626,14 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
               <RiderBadges badges={[ageBadgeKey(r, seasonYear), retirementRiskBadgeKey(r, seasonYear)]} />
               {auction.is_youth && <span className="text-3xs uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded-cz-pill">{t("auctions:badge.youth")}</span>}
               {age && <span className="text-cz-3 text-xs">{t("auctions:card.ageYears", { age })}</span>}
+              {/* #3956: popularitet var slet ikke synlig på mobil (kunne kun findes
+                  på markedet) — inline badge her, samme mønster som alderen lige
+                  ovenfor, i stedet for endnu et grid-tile. */}
+              {Number.isFinite(r?.popularity) && (
+                <span className="text-cz-3 text-xs font-mono" title={t("auctions:table.popularityTitle")}>
+                  {t("auctions:card.popularity")} {r.popularity}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -1038,7 +1055,7 @@ export default function AuctionsPage() {
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash, is_youth,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, market_value, is_u25, team_id, birthdate, nationality_code,
-            prize_earnings_bonus, salary, current_production_value, primary_type, secondary_type, contract_length, contract_end_season, ${ABILITY_SELECT}),
+            prize_earnings_bonus, salary, current_production_value, primary_type, secondary_type, contract_length, contract_end_season, popularity, ${ABILITY_SELECT}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)
         .in("status", ["active", "extended"])
@@ -1836,6 +1853,15 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
         <SortTh sortKey="value" sort={activeSort("value") ? "value" : riderFiltersSort}
           sortDir={activeSortDir("value")} onSort={handleSort}
           className={`px-2 py-3 text-right ${TH_BASE}`}>{t("table.value")}</SortTh>
+        {/* #3956: popularitet manglede helt på auktionssiden — en spiller
+            påpegede direkte at netop auktionen er det mest oplagte sted at se
+            tallet (samme rå riders.popularity som RidersPage/#3622). Generisk
+            sort-gren i riderColumnSort.js (a[filters.sort]) dækker allerede
+            plain numeriske felter, så ingen ny sort-case nødvendig. */}
+        <SortTh sortKey="popularity" sort={activeSort("popularity") ? "popularity" : riderFiltersSort}
+          sortDir={activeSortDir("popularity")} onSort={handleSort}
+          title={t("table.popularityTitle")}
+          className={`px-2 py-3 text-right ${TH_BASE}`}>{t("table.popularity")}</SortTh>
         <SortTh sortKey="current_price"
           sort={auctionSort.key} sortDir={auctionSort.dir} onSort={handleSort}
           className={`px-3 py-3 text-right whitespace-nowrap ${TH_BASE}`}>
@@ -1898,6 +1924,7 @@ function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, rid
     { key: "birthdate", label: t("table.age") },
     { key: "salary", label: t("table.salary") },
     { key: "value", label: t("table.value") },
+    { key: "popularity", label: t("table.popularity") },
     { key: "_ovr", label: t("table.ovr") },
     { key: "_scoutMid", label: t("table.potential") },
     ...visibleStatsArr.map((key) => ({ key, label: STAT_LABEL_BY_KEY[key] })),
