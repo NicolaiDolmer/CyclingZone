@@ -10,7 +10,9 @@ import { fileURLToPath } from "node:url";
 import {
   countDisableDirectives,
   scanRepo,
+  scanUnjustified,
   compareAgainstBaseline,
+  findUnjustifiedDirectives,
 } from "./check-eslint-disable-count.mjs";
 
 test("countDisableDirectives flags eslint-disable-next-line", () => {
@@ -114,6 +116,55 @@ test("nul NYE eslint-disable-fund paa nuvaerende traae mod committet baseline", 
     newViolations.length,
     0,
     `Nye eslint-disable-direktiver (kør \`node scripts/check-eslint-disable-count.mjs\` for detaljer):\n${newViolations.join("\n")}`
+  );
+});
+
+// --- Begrundelses-kravet (#4332-gennemgangen, 30/8) ------------------------
+
+test("findUnjustifiedDirectives flags a directive with no -- reason", () => {
+  assert.deepEqual(
+    findUnjustifiedDirectives("// eslint-disable-next-line react-hooks/exhaustive-deps\nuseEffect();"),
+    [1]
+  );
+});
+
+test("findUnjustifiedDirectives accepts a directive with a -- reason", () => {
+  assert.deepEqual(
+    findUnjustifiedDirectives("// eslint-disable-next-line react-hooks/exhaustive-deps -- kun mount-fetch"),
+    []
+  );
+});
+
+test("findUnjustifiedDirectives accepts a block-comment directive with a reason", () => {
+  assert.deepEqual(
+    findUnjustifiedDirectives("useEffect(() => { load(); /* eslint-disable-line react-hooks/exhaustive-deps -- kun mount */ }, []);"),
+    []
+  );
+});
+
+test("findUnjustifiedDirectives rejects an empty -- reason", () => {
+  assert.deepEqual(
+    findUnjustifiedDirectives("// eslint-disable-next-line react-hooks/exhaustive-deps -- "),
+    [1]
+  );
+});
+
+test("findUnjustifiedDirectives ignores prose and a decrement before the directive", () => {
+  assert.deepEqual(findUnjustifiedDirectives("// vi genindfoerer et eslint-disable."), []);
+  // `i--` staar FOER direktivet, saa den maa ikke tælle som begrundelse.
+  assert.deepEqual(
+    findUnjustifiedDirectives("i--; // eslint-disable-line no-console"),
+    [1]
+  );
+});
+
+test("nul ubegrundede direktiver paa nuvaerende traae", () => {
+  const hits = scanUnjustified();
+  const total = Object.values(hits).reduce((s, l) => s + l.length, 0);
+  assert.equal(
+    total,
+    0,
+    `eslint-disable uden \`-- begrundelse\`:\n${Object.entries(hits).map(([f, l]) => `${f}: ${l.join(", ")}`).join("\n")}`
   );
 });
 

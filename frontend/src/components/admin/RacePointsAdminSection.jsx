@@ -55,7 +55,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- getAuth/onMsg/t bruges kun i fetch- og fejlstien — kun mode skal udløse refetch
   }, [mode]);
 
   // ── Lookups ──────────────────────────────────────────────────────────────

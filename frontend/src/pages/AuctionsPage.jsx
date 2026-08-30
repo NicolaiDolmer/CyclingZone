@@ -920,7 +920,7 @@ export default function AuctionsPage() {
     });
     didDefaultFilterRef.current = true; // kør kun denne auto-default én gang
     if (!mySituation && filter === "my-situation") setFilter("all");
-  }, [loading, auctions, myTeamId, filter, tabParam]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loading, auctions, myTeamId, filter, tabParam]); // eslint-disable-line react-hooks/exhaustive-deps -- setFilter er en lokal funktion, ikke en useState-setter; effekten er én-skuds via didDefaultFilterRef
   // Stats toggle (persisted i localStorage) — #2464: nøgle-evner synlige som
   // default (se AUCTION_DEFAULT_VISIBLE_STATS); samme opt-out-mønster som
   // RidersPage (#1006), hvor man klikker stats FRA i stedet for TIL.

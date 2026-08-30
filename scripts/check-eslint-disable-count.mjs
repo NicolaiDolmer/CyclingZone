@@ -7,13 +7,23 @@
 // paa en NY fil med >0 direktiver, eller flere direktiver i en kendt fil end
 // baseline tillader.
 //
-// Naerpunkt (#4332, verificeret 30/8): 42 direktiver i frontend/src (alle
-// `eslint-disable-next-line react-hooks/exhaustive-deps` linje-scopede) + 1 i
-// backend (backend/lib/proxyBidding.js, no-unused-vars). Ingen file-wide/
-// blanket-disables. DENNE guard laaser blot det nuvaerende tal — den
-// gennemgaar IKKE om nogen af de 42 exhaustive-deps-disables skjuler en
-// reel dependency-bug. Den gennemgang er sit eget stykke arbejde (se #4332)
-// og udestaar bevidst her.
+// Naerpunkt (#4332, gennemgang gennemfoert 30/8): 41 direktiver i frontend/src
+// (alle `react-hooks/exhaustive-deps`, linje-scopede) + 1 i backend
+// (backend/lib/proxyBidding.js, no-unused-vars). Ingen file-wide/blanket-
+// disables.
+//
+// Gennemgangen: alle 42 oprindelige exhaustive-deps-disables blev holdt op mod
+// ESLint's egen melding (direktiverne midlertidigt strippet, `eslint -f json`
+// koert). 1 var en reel fejl — NotificationsPage brugte `[userIdRef.current]`
+// som dependency, hvilket ESLint kalder *unnecessary*, ikke *missing*: en ref
+// udloeser ingen re-render, saa realtime-subscriptionen etablerede sig kun
+// fordi loadNotifications tilfaeldigvis altid kaldte en setState EFTER
+// ref-skrivningen. Rettet til rigtig state. De oevrige 41 var legitime (lokale
+// fetch-funktioner, stabile streng-proxies for arrays, bevidste engangs-
+// effekter) og baerer nu hver sin `-- begrundelse`.
+//
+// Guarden haandhaever derfor TO ting: (1) antallet maa kun skrumpe, og (2) et
+// direktiv uden `-- begrundelse` fejler.
 //
 // Kun REELLE direktiver taeller (`eslint-disable`, `eslint-disable-line`,
 // `eslint-disable-next-line` i direktiv-position foerst i en kommentar).
@@ -69,6 +79,33 @@ export function countDisableDirectives(src) {
   return n;
 }
 
+/**
+ * Returnerer linjenumre for direktiver UDEN en `-- begrundelse`.
+ *
+ * #4332-gennemgangen (30/8) gik alle 42 exhaustive-deps-disables igennem: 1 var
+ * en reel fejl (NotificationsPage brugte `[userIdRef.current]` som dependency —
+ * en ref udloeser ingen re-render, saa subscriptionen afhang af at en urelateret
+ * setState tilfaeldigvis fulgte efter ref-skrivningen), resten var legitime og
+ * har nu hver sin skrevne begrundelse. Denne guard fastholder det: en disable
+ * uden begrundelse er ikke laengere et valg, den fejler.
+ *
+ * @param {string} src
+ * @returns {number[]} 1-indekserede linjenumre
+ */
+export function findUnjustifiedDirectives(src) {
+  const lines = src.split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    DIRECTIVE_RE.lastIndex = 0;
+    const m = DIRECTIVE_RE.exec(lines[i]);
+    if (!m) continue;
+    // Alt efter direktiv-noegleordet er kommentar-tekst, saa et ` -- ` dér er
+    // ESLint's begrundelses-syntaks og ikke en decrement-operator i kode.
+    if (!/\s--\s\S/.test(lines[i].slice(m.index))) out.push(i + 1);
+  }
+  return out;
+}
+
 // --- Fuld-repo-scan --------------------------------------------------------
 
 function walk(dir, acc = []) {
@@ -109,6 +146,19 @@ export function scanRepo() {
   return counts;
 }
 
+// Returnér { "<rel-sti>": [linjenr, ...] } for direktiver uden `-- begrundelse`.
+export function scanUnjustified() {
+  const hits = {};
+  for (const dir of SCAN_DIRS) {
+    for (const file of walk(join(ROOT, dir))) {
+      const rel = relative(ROOT, file).replaceAll("\\", "/");
+      const lines = findUnjustifiedDirectives(readFileSync(file, "utf8"));
+      if (lines.length) hits[rel] = lines;
+    }
+  }
+  return hits;
+}
+
 // --- Baseline-ratchet (kun stigninger fejler) ------------------------------
 
 export function compareAgainstBaseline(findings, baseline) {
@@ -136,7 +186,7 @@ function buildBaseline(findings) {
   for (const file of Object.keys(findings).sort()) files[file] = findings[file];
   return {
     $comment:
-      "Kendte eslint-disable-direktiver (ratchet — maa kun skrumpe). Genereret af scripts/check-eslint-disable-count.mjs --update-baseline. Refs #4332. Nye direktiver maa IKKE tilfoejes her uden en begrundelse i selve koden (hvorfor kan afhaengigheden ikke rettes i stedet) — den er som udgangspunkt et forward-guard, ikke en godkendelse af de eksisterende 42+1. Gennemgangen af om de eksisterende exhaustive-deps-disables skjuler en reel bug staar stadig aaben (#4332).",
+      "Kendte eslint-disable-direktiver (ratchet — maa kun skrumpe). Genereret af scripts/check-eslint-disable-count.mjs --update-baseline. Refs #4332. Gennemgangen er GENNEMFOERT 30/8: alle 42 exhaustive-deps-disables blev vurderet enkeltvis mod ESLint's egen melding. 1 var en reel fejl (NotificationsPage's `[userIdRef.current]`-dependency, rettet til rigtig state), de oevrige 41 var legitime og baerer nu hver sin `-- begrundelse` i koden. Guarden haandhaever nu BEGGE dele: antallet maa kun skrumpe, og et direktiv uden begrundelse fejler.",
     files,
   };
 }
@@ -177,9 +227,29 @@ Baseline maa IKKE udvides stiltiende (ratchet, Refs #4332).`);
     process.exit(1);
   }
 
+  // Begrundelses-krav (#4332): efter gennemgangen 30/8 baerer HVERT direktiv en
+  // `-- hvorfor`. Uden den kan naeste laeser ikke skelne "verificeret sikker"
+  // fra "ingen gad kigge" — praecis den tvetydighed gennemgangen ryddede op i.
+  const unjustified = scanUnjustified();
+  const unjustifiedCount = Object.values(unjustified).reduce((s, l) => s + l.length, 0);
+  if (unjustifiedCount) {
+    console.error(`\n❌ ${unjustifiedCount} eslint-disable-direktiv(er) uden begrundelse:`);
+    for (const [file, lines] of Object.entries(unjustified)) {
+      console.error(`   - ${file}: linje ${lines.join(", ")}`);
+    }
+    console.error(`
+Fix:
+  Skriv hvorfor undtagelsen er noedvendig direkte i direktivet:
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadAll er lokal
+    // funktion (ny ref hver render); som dependency ville den refetche i loop
+  Kan du ikke skrive en begrundelse, er undtagelsen formentlig ikke den rigtige
+  loesning — ret den underliggende advarsel i stedet. Refs #4332.`);
+    process.exit(1);
+  }
+
   const total = Object.values(findings).reduce((s, c) => s + c, 0);
   const knownFiles = Object.keys(baseline.files || {}).length;
-  console.log(`\n✅ eslint-disable-guard: ingen nye direktiver (${total} i alt, ${knownFiles} kendte baseline-filer).`);
+  console.log(`\n✅ eslint-disable-guard: ingen nye direktiver (${total} i alt, ${knownFiles} kendte baseline-filer), alle med begrundelse.`);
 }
 
 function isMain() {

@@ -114,7 +114,7 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
     if (deferredLanguage && i18n.language !== deferredLanguage) {
       i18n.changeLanguage(deferredLanguage);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bevidst engangs-hint fra boot; må ikke genkøre ved sprogskift (se #2045-noten nedenfor)
   }, []);
 
   // #2045 (in-app sprog-flimmer — rod-årsag): denne effekt kørte FØR med

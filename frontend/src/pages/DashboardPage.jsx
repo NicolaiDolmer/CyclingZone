@@ -465,7 +465,7 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
 
   // #1828 + #2171: for "Kommende løb"-kortet henter vi den ægte kalender-tid for

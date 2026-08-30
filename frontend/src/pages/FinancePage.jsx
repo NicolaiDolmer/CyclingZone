@@ -359,7 +359,7 @@ export default function FinancePage() {
   useEffect(() => {
     if (!team?.id) return;
     fetchTxPage(0, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTxPage er lokal funktion (ny ref hver render) — kun hold/sæson/kategori skal nulstille til side 0
   }, [team?.id, historySeasonId, txCategory]);
 
   function loadMoreTransactions() {

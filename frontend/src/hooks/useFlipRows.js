@@ -34,7 +34,7 @@ export default function useFlipRows(deps) {
       });
     }
     prev.current = next;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deps er en parameter til hooken; ESLint kan ikke statisk verificere et dynamisk array
   }, deps);
   return (id) => (el) => { el ? refs.current.set(id, el) : refs.current.delete(id); };
 }

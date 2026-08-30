@@ -1,5 +1,5 @@
 {
-  "$comment": "Kendte eslint-disable-direktiver (ratchet — maa kun skrumpe). Genereret af scripts/check-eslint-disable-count.mjs --update-baseline. Refs #4332. Nye direktiver maa IKKE tilfoejes her uden en begrundelse i selve koden (hvorfor kan afhaengigheden ikke rettes i stedet) — den er som udgangspunkt et forward-guard, ikke en godkendelse af de eksisterende 42+1. Gennemgangen af om de eksisterende exhaustive-deps-disables skjuler en reel bug staar stadig aaben (#4332).",
+  "$comment": "Kendte eslint-disable-direktiver (ratchet — maa kun skrumpe). Genereret af scripts/check-eslint-disable-count.mjs --update-baseline. Refs #4332. Gennemgangen er GENNEMFOERT 30/8: alle 42 exhaustive-deps-disables blev vurderet enkeltvis mod ESLint's egen melding. 1 var en reel fejl (NotificationsPage's `[userIdRef.current]`-dependency, rettet til rigtig state), de oevrige 41 var legitime og baerer nu hver sin `-- begrundelse` i koden. Guarden haandhaever nu BEGGE dele: antallet maa kun skrumpe, og et direktiv uden begrundelse fejler.",
   "files": {
     "backend/lib/proxyBidding.js": 1,
     "frontend/src/components/TeamDevelopmentTab.jsx": 1,
@@ -23,7 +23,7 @@
     "frontend/src/pages/BoardPage.jsx": 1,
     "frontend/src/pages/DashboardPage.jsx": 1,
     "frontend/src/pages/FinancePage.jsx": 1,
-    "frontend/src/pages/NotificationsPage.jsx": 2,
+    "frontend/src/pages/NotificationsPage.jsx": 1,
     "frontend/src/pages/ProfilePage.jsx": 1,
     "frontend/src/pages/RaceDetailPage.jsx": 1,
     "frontend/src/pages/RiderStatsPage.jsx": 2,
