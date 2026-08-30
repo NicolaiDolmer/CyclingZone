@@ -10,9 +10,13 @@
 //
 // Evidence (30/8): the issue's own title (46 of 143 tables covered) was
 // already stale — database.types.ts was regenerated 27/8 (commit e7c972de0,
-// PR #4334) and now covers ~202 tables/views. But schema-snapshot.json
+// PR #4334) and covered ~210 tables/views. But schema-snapshot.json
 // (generatedAt 2026-08-25) and database.types.ts had already drifted apart
 // again within days: relations present in one but not the other.
+//
+// Update (#4333, 31/8): every single one of those drifting relations turned
+// out to be an operational backup table. With backups filtered out of both
+// sides, the two mirrors match exactly (144 = 144) and the guard reports OK.
 //
 // This script is a WARN, not a FAIL, for the same reason #4142's sibling
 // guard (check-schema-snapshot-staleness.mjs) is advisory: refreshing
@@ -29,12 +33,15 @@
 // Supabase CLI with a stable 2-space-per-level layout), not a TS/AST parse —
 // good enough for a name-drift check, not for verifying column shape.
 //
-// Note on backup_* relations: database/ has ~53 `backup_*_*` relations from
-// past incident cleanups (tracked separately in #4333, paused pending owner
-// input on whether to drop them from the snapshot). This script does NOT
-// filter them out — see #4333 for that decision — but groups them in the
-// report so the signal for genuinely new/removed tables isn't buried under
-// ~50 backup-table lines.
+// Note on backup relations: `public` holds 66 operational backup tables left
+// behind by past incident cleanups (measured against prod 30/8/2026 via
+// information_schema: 207 relations, 141 real). Since #4333 they are filtered
+// out of BOTH sides of this comparison via the shared classifier in
+// scripts/lib/operational-backup-relations.mjs, the same one that keeps them
+// out of database.types.ts and schema-snapshot.json in the first place. The
+// number skipped on each side is still printed, so a sudden change stays
+// visible. The tables themselves are untouched in prod; dropping them is a
+// destructive class, owner-gated under #2259.
 //
 // Usage:
 //   node scripts/check-database-types-drift.mjs
@@ -46,13 +53,14 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { isOperationalBackupRelation } from './lib/operational-backup-relations.mjs';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 const snapshotPath = join(root, 'database', 'schema-snapshot.json');
 const typesPath = join(root, 'frontend', 'src', 'types', 'database.types.ts');
 
 const REFRESH_CMD = 'npm run types:gen   (koeres i frontend/, kraever et Supabase-projekt-login)';
-const BACKUP_PREFIX = /^backup_/;
 
 /**
  * Extract the top-level keys of one section ("Tables" or "Views") inside the
@@ -84,10 +92,20 @@ export function extractTypeSectionKeys(source, sectionName) {
   return keys;
 }
 
-function groupBackup(keys) {
-  const backup = keys.filter((k) => BACKUP_PREFIX.test(k)).sort();
-  const rest = keys.filter((k) => !BACKUP_PREFIX.test(k)).sort();
-  return { backup, rest };
+/**
+ * Drop operational backup relations (#4333) from a list of relation names.
+ *
+ * @param {Iterable<string>} names
+ * @returns {{ kept: Set<string>, skipped: number }}
+ */
+function withoutBackups(names) {
+  const kept = new Set();
+  let skipped = 0;
+  for (const name of names) {
+    if (isOperationalBackupRelation(name)) skipped++;
+    else kept.add(name);
+  }
+  return { kept, skipped };
 }
 
 function main() {
@@ -99,7 +117,7 @@ function main() {
     return;
   }
 
-  const snapshotKeys = new Set(Object.keys(snapshot.relations ?? {}));
+  const { kept: snapshotKeys, skipped: snapshotBackups } = withoutBackups(Object.keys(snapshot.relations ?? {}));
   if (snapshotKeys.size === 0) {
     console.warn('WARN database-types-drift: schema-snapshot.json har ingen "relations" — springer tjek over.');
     return;
@@ -120,16 +138,20 @@ function main() {
     return;
   }
 
-  const typesKeys = new Set([...tableKeys, ...viewKeys]);
+  const { kept: typesKeys, skipped: typesBackups } = withoutBackups([...tableKeys, ...viewKeys]);
 
-  const onlyInSnapshot = [...snapshotKeys].filter((k) => !typesKeys.has(k));
-  const onlyInTypes = [...typesKeys].filter((k) => !snapshotKeys.has(k));
+  const onlyInSnapshot = [...snapshotKeys].filter((k) => !typesKeys.has(k)).sort();
+  const onlyInTypes = [...typesKeys].filter((k) => !snapshotKeys.has(k)).sort();
+
+  const backupNote = `  Backup-relationer udeladt (#4333): ${snapshotBackups} i schema-snapshot.json, `
+    + `${typesBackups} i database.types.ts.`;
 
   if (onlyInSnapshot.length === 0 && onlyInTypes.length === 0) {
     console.log(
       `database-types-drift: OK — ${snapshotKeys.size} relationer i schema-snapshot.json matcher `
       + `${typesKeys.size} Tables/Views-noegler i database.types.ts.`,
     );
+    if (snapshotBackups > 0 || typesBackups > 0) console.log(backupNote);
     return;
   }
 
@@ -140,22 +162,16 @@ function main() {
   );
   console.warn(`  schema-snapshot.json generatedAt: ${snapshot.generatedAt ?? '(mangler)'}`);
 
+  console.warn(backupNote);
+
   if (onlyInSnapshot.length > 0) {
-    const { backup, rest } = groupBackup(onlyInSnapshot);
     console.warn(`  Kun i schema-snapshot.json (${onlyInSnapshot.length}):`);
-    for (const name of rest) console.warn(`    - ${name}`);
-    if (backup.length > 0) {
-      console.warn(`    - (+ ${backup.length} backup_*-relationer, se #4333 — paused, ejer-input mangler, IKKE filtreret her)`);
-    }
+    for (const name of onlyInSnapshot) console.warn(`    - ${name}`);
   }
 
   if (onlyInTypes.length > 0) {
-    const { backup, rest } = groupBackup(onlyInTypes);
     console.warn(`  Kun i database.types.ts (${onlyInTypes.length}):`);
-    for (const name of rest) console.warn(`    - ${name}`);
-    if (backup.length > 0) {
-      console.warn(`    - (+ ${backup.length} backup_*-relationer, se #4333 — paused, ejer-input mangler, IKKE filtreret her)`);
-    }
+    for (const name of onlyInTypes) console.warn(`    - ${name}`);
   }
 
   console.warn('  De to filer er uafhaengige, manuelt-genererede spejle af samme live schema, og driver');
@@ -165,4 +181,9 @@ function main() {
   console.warn('');
 }
 
-main();
+// Only run when invoked directly. The test in
+// strip-backup-tables-from-types.test.mjs imports extractTypeSectionKeys and
+// must not trigger a full drift report as a side effect (#4333).
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main();
+}
