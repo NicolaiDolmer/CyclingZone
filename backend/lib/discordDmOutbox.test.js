@@ -306,3 +306,10 @@ test("drain — 404 bad-request tæller også op (#3483)", async () => {
 test("drain — 401 token-invalid tæller IKKE (vores token, ikke modtageren)", async () => {
   assert.deepEqual(await drainWithPermanentFailure({ status: 401, reason: "token-invalid" }), []);
 });
+
+// #3483-review: en 400 fra postDm er VORES embed der blev afvist (kode 50035),
+// ikke en død kobling. Den rammer alle modtagere i samme runde, så tælles den
+// med, afkobler tre notifikationer hver eneste tilknyttet spiller.
+test("drain — 400 payload-rejected tæller IKKE (vores payload, ikke modtageren)", async () => {
+  assert.deepEqual(await drainWithPermanentFailure({ status: 400, reason: "payload-rejected" }), []);
+});

@@ -14,6 +14,7 @@
 
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
 import { isPermanentRecipientFailure } from "./discordDmDelivery.js";
+import { clampEmbedPayload } from "./discordEmbedLimits.js";
 
 // Backoff-skema pr. attempt-nummer (1-indekseret). Sidste værdi genbruges.
 // Samlet horisont ≈ 27 timer — dækker selv lange Cloudflare-IP-ban-vinduer.
@@ -165,7 +166,11 @@ export async function processDmOutboxDrain({
       .join(", ");
     const url = getDefaultWebhookFn ? await getDefaultWebhookFn() : null;
     if (url && sendWebhookFn) {
-      await sendWebhookFn(url, {
+      // clampEmbedPayload: `summary` vokser lineært med batch-størrelsen og kan
+      // sprænge Discords description-grænse på 4096 tegn. Netop dét svar (400,
+      // kode 50035) er den fejlklasse #3483-reviewet fandt — alarmen om døde
+      // DM'er må ikke selv dø af den.
+      await sendWebhookFn(url, clampEmbedPayload({
         embeds: [
           {
             title: "🚨 Discord-DMs kunne ikke leveres",
@@ -176,7 +181,7 @@ export async function processDmOutboxDrain({
             timestamp: now.toISOString(),
           },
         ],
-      });
+      }));
     }
     captureExceptionFn?.(
       new Error(`Discord DM-outbox: ${deadRows.length} DM(s) markeret dead — ${summary}`),
