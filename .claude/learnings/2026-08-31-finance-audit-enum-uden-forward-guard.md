@@ -43,6 +43,30 @@ Ejeren flaggede præcis dette i audit-kommentaren 7/8 på #1464.
 - Den håndholdte finance-liste er pensioneret. I stedet står en test der håndhæver at
   `schema.sql` er en **delmængde** af det autoritative CHECK, så baselinen aldrig igen
   bliver forvekslet med en autoritet.
+- `rider_ownership_events` (#3582) er med i registret af samme grund: tabellen har sine
+  egne reason-, actor_type- og related_entity_type-CHECKs, og `RIDER_OWNERSHIP_REASON`
+  i `backend/lib/riderOwnershipAudit.js` er endnu et frosset konstant-objekt (10
+  værdier) som intet håndhævede.
+
+### Rettelser efter adversarisk review af PR #4458 (samme dag)
+
+- **Måltabel-attribution.** Første udgave af rå-literal-discovery greb enhver
+  `actorType: "..."` i `backend/{lib,routes,scripts}` og målte den mod
+  `finance_transactions`' CHECK. Målt 31/8: af 16 rå literaler i træet skriver **14**
+  til `rider_ownership_events` via `recordRiderOwnershipEvent()`; kun de **2** i
+  `backend/scripts/dev/reset-division-3.mjs` (payloaden til
+  `incrementBalanceWithAudit` og `createLoan`'s auditCtx) er finance-payloads.
+  Guarden var grøn ved et **held**: de to tabellers CHECKs er identiske i dag. Nu
+  attribueres hver literal til nærmeste omsluttende write-sink (`ENUM_WRITE_SINKS`,
+  afgrænset af kaldets eget balancerede argument-udtryk), og en literal uden kendt sink
+  fejler guarden i stedet for at blive tilskrevet en tilfældig tabel.
+- **Tidsindstillet assert fjernet.** `assert.ok(baseline.size < authoritative.size)`
+  gjorde `schema.sql`'s forældelse til en invariant: testen ville fejle i samme sekund
+  nogen bragte baselinen i sync med migrationerne — hvilket PR #4388 gør lige nu.
+  Delmængde-invarianten var allerede dækket af orphaned-tjekket.
+- **Negativ kontrol kalder nu den ægte funktion.** Kontrollen re-implementerede
+  sammenligningen inline, så `missing`-grenen i `collectAuditEnumDrift()` — den kode
+  CI faktisk kører — var udækket. Begge suiter kalder nu funktionen selv.
 
 ## Læring
 
@@ -56,14 +80,25 @@ Ejeren flaggede præcis dette i audit-kommentaren 7/8 på #1464.
 3. **En grøn test der matcher to forældede lister er værre end ingen test.** Verificér
    at begge sider af en paritetstest er levende. Her var facit et enkelt SELECT mod
    `pg_constraint` — 18 mod 30.
+4. **En scanner skal vide hvilken tabel den måler mod.** To tabeller med tilfældigvis
+   identiske enum-værdier skjuler en forkert attribution fuldstændigt: guarden er grøn,
+   men den tjekker det forkerte constraint. Bind altid discovery til måltabellen, og lad
+   et fund uden kendt måltabel fejle højlydt frem for at gætte.
+5. **Skriv aldrig en assert der gør en kendt forældelse til en invariant.** "A er i dag
+   mindre end B" fossilerer A's efterslæb: den næste, der gør det rigtige og bringer A i
+   sync, får en rød test i hovedet. Assert kun den relation der stadig skal gælde når
+   gælden er betalt.
 
 ## Forward-guard
 
 `node --test backend/lib/financeTypeConstraintGuard.test.js` og
 `node --test scripts/lint-finance-types.test.mjs` fejler nu hvis en ny værdi i
-`FINANCE_ACTOR_TYPE` / `FINANCE_RELATED_ENTITY` (eller en rå literal på de nøgler)
-mangler i sit CHECK. Begge suiter har en negativ kontrol med en fiktiv værdi, så det er
-bevist at guarden bider og ikke bare er grøn.
+`FINANCE_ACTOR_TYPE` / `FINANCE_RELATED_ENTITY` / `RIDER_OWNERSHIP_REASON` (eller en rå
+literal på de nøgler) mangler i sit CHECK. Begge suiter har en negativ kontrol der
+kalder `collectAuditEnumDrift()` selv med en fiktiv værdi i en ægte write-sink-form, så
+det er bevist at guarden bider — og at fejl-grenen i den funktion CI kører er dækket.
+Begge suiter har desuden en attributions-test der låser fast at en
+`recordRiderOwnershipEvent()`-literal ALDRIG måles mod finance-tabellens CHECK.
 
 ## Rest (ikke løst her)
 
@@ -74,3 +109,7 @@ bevist at guarden bider og ikke bare er grøn.
   bevidst ikke gjort her.
 - Notifikations-halvdelen af `financeNotificationContract.test.js` læser stadig
   `database/schema.sql`. Samme audit-punkt, andet spor.
+- Guarden ser kun JS-side literaler og konstant-objekter. En bespoke SQL-funktion der
+  hardkoder en enum-værdi direkte i sin INSERT (som `repay_loan_atomic` gør for
+  `type`) er stadig et strukturelt blindt punkt — dokumenteret i scriptets header,
+  ikke løst her.

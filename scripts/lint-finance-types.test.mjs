@@ -29,6 +29,8 @@ import {
   loadNamedCheckValues,
   extractConstantValues,
   extractLiteralEnumValues,
+  extractReferencedConstantValues,
+  collectUnattributedEnumLiterals,
   collectAuditEnumDrift,
 } from "./lint-finance-types.mjs";
 
@@ -248,6 +250,24 @@ test("loadNamedCheckValues() parser begge audit-enum-constraints fra database/*.
   );
 });
 
+test("loadNamedCheckValues() parser rider_ownership_events' 'IS NULL OR ... IN (...)'-form", () => {
+  // Den formen adskiller sig fra finance-constraintets rene `col IN (...)` — hvis
+  // parseren ikke klarer den, ville tabellen se ud som om den slet ikke har et CHECK.
+  const reason = loadNamedCheckValues("rider_ownership_events_reason_check");
+  assert.ok(reason.source, "fandt ingen rider_ownership_events_reason_check-definition");
+  assert.equal(reason.values.size, 10, `forventede 10 reason-værdier, fandt ${reason.values.size}`);
+  assert.ok(reason.values.has("stage_race_deferred_flush"));
+
+  const actor = loadNamedCheckValues("rider_ownership_events_actor_type_check");
+  assert.deepEqual([...actor.values].sort(), ["admin", "api", "cron", "migration", "system"]);
+
+  const related = loadNamedCheckValues("rider_ownership_events_related_entity_type_check");
+  assert.deepEqual(
+    [...related.values].sort(),
+    ["auction", "loan", "manual", "race", "season", "swap", "transfer"],
+  );
+});
+
 test("extractConstantValues() læser de frosne konstant-objekter i economyConstants.js", () => {
   const actor = extractConstantValues("FINANCE_ACTOR_TYPE");
   assert.ok(actor.size >= 5, `forventede mindst 5 FINANCE_ACTOR_TYPE-værdier, fandt ${actor.size}`);
@@ -273,14 +293,119 @@ test("extractLiteralEnumValues() fanger rå literaler der springer konstanten ov
     "utf8",
   );
 
-  const actorLiterals = extractLiteralEnumValues([file], ["actor_type", "actorType"]);
+  const actorLiterals = extractLiteralEnumValues([file], ["actor_type", "actorType"], "finance_transactions");
   assert.deepEqual([...actorLiterals.keys()], ["cron"]);
 
-  const relatedLiterals = extractLiteralEnumValues([file], ["related_entity_type", "relatedEntityType"]);
+  const relatedLiterals = extractLiteralEnumValues(
+    [file],
+    ["related_entity_type", "relatedEntityType"],
+    "finance_transactions",
+  );
   assert.deepEqual([...relatedLiterals.keys()], ["loan"]);
 
   // `type:` må IKKE lække ind i audit-enum-discovery (den har sin egen guard).
   assert.ok(!actorLiterals.has("salary"), "type-literalen må ikke tælles som actor_type");
+});
+
+// --- Måltabel-attribution (review-fund på PR #4458) --------------------------
+//
+// Den oprindelige rå-literal-discovery greb ENHVER `actorType: "..."` i
+// backend/{lib,routes,scripts} og målte den mod finance_transactions' CHECK. Målt
+// 31/8 skriver 14 af de 16 rå literaler i træet til rider_ownership_events via
+// recordRiderOwnershipEvent(); kun de 2 i backend/scripts/dev/reset-division-3.mjs er
+// finance-payloads. Guarden var kun grøn fordi de to tabellers CHECKs tilfældigvis er
+// identiske i dag. Testene herunder låser attributionen fast.
+
+test("literaler i recordRiderOwnershipEvent() tilskrives rider_ownership_events, ikke finance", () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-enum-attr-"));
+  const file = join(dir, "fixture.js");
+  writeFileSync(
+    file,
+    [
+      "await recordRiderOwnershipEvent(supabase, {",
+      "  riderId: rider.id,",
+      "  reason: RIDER_OWNERSHIP_REASON.TRADE,",
+      '  relatedEntityType: "transfer",',
+      '  actorType: "api",',
+      "});",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const keys = ["actor_type", "actorType", "related_entity_type", "relatedEntityType"];
+  assert.equal(
+    extractLiteralEnumValues([file], keys, "finance_transactions").size,
+    0,
+    "en ownership-literal må ALDRIG måles mod finance_transactions' CHECK",
+  );
+  assert.deepEqual(
+    [...extractLiteralEnumValues([file], keys, "rider_ownership_events").keys()].sort(),
+    ["api", "transfer"],
+  );
+});
+
+test("den ægte backend-attribution: reset-division-3 → finance, alle andre → ownership", () => {
+  const files = collectScanFiles();
+  const keys = ["actor_type", "actorType", "related_entity_type", "relatedEntityType"];
+
+  const finance = extractLiteralEnumValues(files, keys, "finance_transactions");
+  const financeLocations = [...finance.values()].flat();
+  assert.ok(financeLocations.length > 0, "forventede mindst én ægte finance-literal");
+  assert.ok(
+    financeLocations.every((loc) => loc.includes("reset-division-3.mjs")),
+    `kun reset-division-3.mjs skriver rå finance-audit-literaler i dag, fandt: ${financeLocations.join(", ")}`,
+  );
+
+  const ownership = extractLiteralEnumValues(files, keys, "rider_ownership_events");
+  assert.ok(
+    [...ownership.values()].flat().length >= 10,
+    "forventede mange ownership-literaler — recordRiderOwnershipEvent-ankeret er sandsynligvis brudt",
+  );
+});
+
+test("extractReferencedConstantValues() fanger KUN konstant-medlemmer inde i et sink-vindue", () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-enum-ref-"));
+  const file = join(dir, "fixture.js");
+  writeFileSync(
+    file,
+    [
+      "await recordRiderOwnershipEvent(supabase, {",
+      "  riderId: rider.id,",
+      "  actorType: FINANCE_ACTOR_TYPE.CRON,",
+      "});",
+      "",
+      "// Uden for ethvert write-sink-vindue — må ikke tælles:",
+      "const fallbackActor = FINANCE_ACTOR_TYPE.MIGRATION;",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const refs = extractReferencedConstantValues([file], ["FINANCE_ACTOR_TYPE"], "rider_ownership_events");
+  assert.deepEqual([...refs.keys()], ["cron"]);
+  assert.equal(
+    extractReferencedConstantValues([file], ["FINANCE_ACTOR_TYPE"], "finance_transactions").size,
+    0,
+  );
+});
+
+test("collectUnattributedEnumLiterals(): ingen huller i ENUM_WRITE_SINKS i dag", () => {
+  const orphans = collectUnattributedEnumLiterals();
+  assert.deepEqual(
+    orphans.map((o) => `${o.key}: '${o.value}' i ${o.location}`),
+    [],
+    "audit-enum-literal(er) uden kendt write-sink — guarden ved ikke hvilken tabels CHECK de hører til",
+  );
+});
+
+test("collectUnattributedEnumLiterals() fanger en literal uden kendt write-sink", () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-enum-orphan-"));
+  const file = join(dir, "fixture.js");
+  writeFileSync(file, 'await writeSomeUnknownAuditRow({ actorType: "worker" });\n', "utf8");
+
+  const orphans = collectUnattributedEnumLiterals([file]);
+  assert.equal(orphans.length, 1, "en literal uden anker skal rapporteres, ikke tilskrives en tabel");
+  assert.equal(orphans[0].value, "worker");
+  assert.equal(orphans[0].key, "actorType");
 });
 
 test("HVER kode-skrevet audit-enum-værdi har en CHECK-constraint-værdi i dag (#1464 forward-guard)", () => {
@@ -292,45 +417,68 @@ test("HVER kode-skrevet audit-enum-værdi har en CHECK-constraint-værdi i dag (
       report.source,
       `fandt ingen CHECK-definition for ${report.constraint} — parser sandsynligvis brudt`,
     );
-    // Sanity: falder discovery til ~0 er parseren (ikke koden) brudt.
+    // Sanity: falder discovery under kolonnens gulv er parseren (ikke koden) brudt.
     assert.ok(
-      report.codeValues.size >= 5,
-      `forventede mange kode-skrevne ${report.column}-værdier, fandt kun ${report.codeValues.size}`,
+      report.codeValues.size >= report.minCodeValues,
+      `forventede mindst ${report.minCodeValues} kode-skrevne ${report.table}.${report.column}-værdier, `
+        + `fandt kun ${report.codeValues.size}`,
     );
     assert.deepEqual(
       report.missing.map((x) => x.value),
       [],
-      `finance_transactions.${report.column}-værdi(er) brugt i backend-koden uden CHECK-dækning `
+      `${report.table}.${report.column}-værdi(er) brugt i backend-koden uden CHECK-dækning `
         + `(database/${report.source}): `
         + report.missing.map((x) => `'${x.value}' i ${x.locations.join(", ")}`).join("; "),
     );
   }
 });
 
-test("negativ kontrol: en fiktiv audit-enum-værdi flages som manglende i CHECK'et", () => {
+// Negativ kontrol gennem den ÆGTE funktion CI kører (review-fund 3 på PR #4458: den
+// tidligere udgave re-implementerede sammenligningen inline, så missing-grenen i
+// collectAuditEnumDrift() var udækket — man kunne slette den og alt forblev grønt).
+// Fixturen er en midlertidig fil med en opdigtet actor i en ægte write-sink-form;
+// konstant-objekterne læses fra de RIGTIGE filer, så det eneste fund er det fiktive.
+test("negativ kontrol: collectAuditEnumDrift() flager en fiktiv audit-enum-værdi", () => {
   const FAKE_ACTOR = "scout_bot_never_shipped_negative_control";
   const dir = mkdtempSync(join(tmpdir(), "cz-enum-neg-"));
-  const constantsFile = join(dir, "economyConstants.js");
+  const file = join(dir, "fixture.js");
   writeFileSync(
-    constantsFile,
+    file,
     [
-      "export const FINANCE_ACTOR_TYPE = Object.freeze({",
-      '  CRON: "cron",',
-      `  SCOUT_BOT: "${FAKE_ACTOR}",`,
-      "});",
+      "await incrementBalanceWithAudit(client, { teamId, delta, payload: {",
+      '  type: "salary",',
+      `  actor_type: "${FAKE_ACTOR}",`,
+      "} });",
     ].join("\n"),
     "utf8",
   );
 
-  const codeValues = extractConstantValues("FINANCE_ACTOR_TYPE", constantsFile);
-  assert.ok(codeValues.has(FAKE_ACTOR), "fixturen blev ikke læst — testen tester ingenting");
-
   const { values: allowed } = loadNamedCheckValues("finance_transactions_actor_type_check");
   assert.ok(!allowed.has(FAKE_ACTOR), "den fiktive actor findes uventet i CHECK'et — vælg en anden");
 
-  const missing = [...codeValues.keys()].filter((v) => !allowed.has(v));
+  const reports = collectAuditEnumDrift([file]);
+  const financeActor = reports.find(
+    (r) => r.table === "finance_transactions" && r.column === "actor_type",
+  );
+  assert.ok(financeActor, "ingen rapport for finance_transactions.actor_type");
   console.log(
     `[negativ kontrol] guarden ville fejle CI med: finance_transactions.actor_type = '${FAKE_ACTOR}' uden CHECK-dækning.`,
   );
-  assert.deepEqual(missing, [FAKE_ACTOR]);
+  assert.deepEqual(financeActor.missing.map((x) => x.value), [FAKE_ACTOR]);
+  assert.ok(
+    financeActor.missing[0].locations.some((loc) => loc.includes("fixture.js")),
+    "fundet skal pege på fixturens callsite",
+  );
+
+  // Kontrol-gruppe: de øvrige kolonner er stadig rene, så fejlen kommer fra fixturen
+  // og ikke fra en generelt brudt sammenligning.
+  for (const other of reports.filter((r) => r !== financeActor)) {
+    assert.deepEqual(other.missing.map((x) => x.value), [], `${other.table}.${other.column} skulle være ren`);
+  }
+});
+
+test("extractConstantValues() slår konstant-filen op ud fra navnet (RIDER_OWNERSHIP_REASON)", () => {
+  const reasons = extractConstantValues("RIDER_OWNERSHIP_REASON");
+  assert.equal(reasons.size, 10, `forventede 10 RIDER_OWNERSHIP_REASON-værdier, fandt ${reasons.size}`);
+  assert.equal(reasons.get("auction_win"), "AUCTION_WIN");
 });
