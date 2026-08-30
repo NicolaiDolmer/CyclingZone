@@ -62,6 +62,8 @@
     "test:lint-pagination-guard": "node --test scripts/lint-pagination-guard.test.mjs",
     "lint:fetchallrows-order": "node scripts/check-fetchallrows-order.mjs",
     "test:lint-fetchallrows-order": "node --test scripts/check-fetchallrows-order.test.mjs",
+    "lint:rate-limit-coverage": "node scripts/check-rate-limit-coverage.mjs",
+    "test:lint-rate-limit-coverage": "node --test scripts/check-rate-limit-coverage.test.mjs",
     "verify:affected": "node scripts/verify-affected.mjs",
     "test:verify-affected": "node --test scripts/verify-affected.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
