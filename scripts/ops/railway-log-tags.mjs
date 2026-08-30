@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Cycling Zone — inventar over strukturerede log-tags i backendens runtime (#4453)
+ * Cycling Zone - inventar over strukturerede log-tags i backendens runtime (#4453)
  * ================================================================================
  * Scanner backendens runtime-kode for `console.warn("[tag] ...")` /
  * `console.error("[tag] ...")` og returnerer de distinkte tags.
@@ -13,7 +13,7 @@
  * `railway-log-thresholds.json`.
  *
  * Kun runtime-mapper scannes. `backend/scripts/` koerer via CLI/GitHub Actions
- * og naar aldrig Railways logstroem — fx findes `[fatal]` KUN der (issue-teksten
+ * og naar aldrig Railways logstroem - fx findes `[fatal]` KUN der (issue-teksten
  * paastod at det var et runtime-signal; det er maalt forkert).
  *
  * Usage:

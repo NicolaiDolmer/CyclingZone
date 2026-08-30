@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Cycling Zone — Railway logstroem-vagt (#4453)
+ * Cycling Zone - Railway logstroem-vagt (#4453)
  * ==============================================
  * Sidestykke til `scripts/ops/supabase-log-watch.mjs` (#4014). Samme fejlmaade
  * paa den anden logflade: backenden skriver strukturerede `[tag]`-linjer til
@@ -17,7 +17,7 @@
  *   (backend/lib, backend/routes, backend/middleware, backend/server.js).
  *   Tael selv: node scripts/ops/railway-log-tags.mjs
  *
- * READ-ONLY — kalder kun `railway deployment list` og `railway logs`. Ingen
+ * READ-ONLY - kalder kun `railway deployment list` og `railway logs`. Ingen
  * mutationer, ingen secret-vaerdier printes nogensinde.
  *
  * Railway-specifik forskel fra #4014: logs er DEPLOYMENT-scopede, ikke
@@ -26,18 +26,18 @@
  * henter logs fra hver af dem.
  *
  * Env:
- *   RAILWAY_TOKEN / RAILWAY_API_TOKEN  (paakraevet i CI) — project- eller
+ *   RAILWAY_TOKEN / RAILWAY_API_TOKEN  (paakraevet i CI) - project- eller
  *                                       account-token. Lokalt raekker
  *                                       `railway login` + `railway link`.
- *   RAILWAY_PROJECT_ID   (valgfri) — noedvendig hvis mappen ikke er linket
+ *   RAILWAY_PROJECT_ID   (valgfri) - noedvendig hvis mappen ikke er linket
  *                                    og token'et ikke er project-scoped.
- *   RAILWAY_LOG_SERVICE  (valgfri) — default 'CyclingZone'.
- *   RAILWAY_LOG_ENVIRONMENT (valgfri) — default 'production'.
- *   RAILWAY_CLI_BIN      (valgfri) — default 'railway'.
+ *   RAILWAY_LOG_SERVICE  (valgfri) - default 'CyclingZone'.
+ *   RAILWAY_LOG_ENVIRONMENT (valgfri) - default 'production'.
+ *   RAILWAY_CLI_BIN      (valgfri) - default 'railway'.
  *
  * Taerskler pr. tag: scripts/ops/railway-log-thresholds.json (samme rolle som
  * supabase-advisor-allowlist.json). En vagt der raaber ved hver 401 bliver
- * slaaet fra i loebet af en uge — derfor er taersklerne per-tag og ikke én
+ * slaaet fra i loebet af en uge - derfor er taersklerne per-tag og ikke én
  * global.
  *
  * Usage:
@@ -85,7 +85,7 @@ function isMain() {
 export const TAG_RE = /^\[([a-zA-Z0-9_:.\- ]{1,40})\]\s*/;
 
 /**
- * Fortsaettelseslinjer fra `console.error("[tag]", obj)` — Node udskriver
+ * Fortsaettelseslinjer fra `console.error("[tag]", obj)` - Node udskriver
  * objektet paa egne linjer (`  key: 'value',`, `}`). De er selvstaendige
  * log-entries hos Railway og ville ellers fylde `(untagged)`-spanden.
  */
@@ -153,7 +153,7 @@ function toKey(row) {
 }
 
 /**
- * Ren klassifikationslogik — spejler computeFindings i supabase-log-watch.mjs,
+ * Ren klassifikationslogik - spejler computeFindings i supabase-log-watch.mjs,
  * men med taerskel PR. TAG i stedet for én global. `[fatal]` og
  * `[alunta-webhook]` er aldrig normale (taerskel 1); `[auth] 401` fra scannere
  * er normal i småt tal.
@@ -185,7 +185,7 @@ export function computeFindings(current, previous, config = {}) {
 }
 
 /**
- * Totaler pr. tag — svarer paa acceptkriteriet i #4453: "hvor mange
+ * Totaler pr. tag - svarer paa acceptkriteriet i #4453: "hvor mange
  * [auth] 401-linjer producerer prod paa et doegn, og er tallet stigende?"
  * @param {{tag:string, bucket:string, cnt:number}[]} current
  * @param {{tag:string, bucket:string, cnt:number}[]} previous
@@ -414,7 +414,7 @@ async function main() {
     }
   }
 
-  // GitHub Actions output-kontrakt — identisk med supabase-log-watch.mjs.
+  // GitHub Actions output-kontrakt - identisk med supabase-log-watch.mjs.
   if (process.env.GITHUB_OUTPUT) {
     fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_findings=${hasFindings}\n`);
     const body = [];
