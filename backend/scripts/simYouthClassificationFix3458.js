@@ -29,6 +29,7 @@ import { seedPhysiologyFromLegacy } from "../lib/physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { buildCapsForRider, buildYouthCaps } from "../lib/riderProgression.js";
 import { computeRiderTypes, NEUTRAL_BASELINE, RIDER_TYPE_KEYS, ABILITY_KEYS } from "../lib/riderTypes.js";
+import { ageForSeason } from "../lib/riderSeasonAge.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -54,7 +55,7 @@ const rows = candidates.map((c, i) => {
   const bootstrap = computeRiderTypes(abilities, NEUTRAL_BASELINE);
   const baseline = {};
   for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) baseline[k] = Number(abilities[k]);
-  const age = 2026 - Number(String(riderRow.birthdate).slice(0, 4));
+  const age = ageForSeason(riderRow.birthdate, 1);
   const caps = buildCapsForRider(baseline, { potentiale: riderRow.potentiale, age }, bootstrap.primary.key, bootstrap.secondary.key);
   // B: det UTAPEREDE potentiale-loft = rytterens færdige (voksen-ækvivalente) profil.
   const matureCaps = buildYouthCaps(riderRow.potentiale, bootstrap.primary.key, bootstrap.secondary.key);

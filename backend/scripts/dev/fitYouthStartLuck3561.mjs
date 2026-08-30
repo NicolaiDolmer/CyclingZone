@@ -8,6 +8,7 @@ import { generateAcademyCandidates, YOUTH_GEN_CONFIG } from "../../lib/academyGe
 import { makeRng } from "../../lib/fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "../../lib/physiologySeeding.js";
 import { deriveAbilities } from "../../lib/abilityDerivation.js";
+import { ageForSeason } from "../../lib/riderSeasonAge.js";
 const PHYS=["climbing","time_trial","flat","tempo","sprint","acceleration","punch","endurance","recovery","durability"];
 const med=(a)=>{const s=[...a].sort((x,y)=>x-y);return s.length%2?s[s.length>>1]:(s[(s.length>>1)-1]+s[s.length>>1])/2;};
 
@@ -20,7 +21,7 @@ for (const sl of [1.2, 1.0, 0.8, 0.6, 0.5, 0.4]) {
   for (const c of cands) {
     const rr = { id:"s", ...c.rider };
     const ab = deriveAbilities(seedPhysiologyFromLegacy(rr), rr);
-    const age = 2026 - Number(String(rr.birthdate).slice(0,4));
+    const age = ageForSeason(rr.birthdate, 1);
     if (age <= 17) { const v = PHYS.map(k=>ab[k]); y.push({ pot: rr.potentiale, best: Math.max(...v), core: med(v) }); }
   }
   const top = y.filter(r=>r.best>=12);

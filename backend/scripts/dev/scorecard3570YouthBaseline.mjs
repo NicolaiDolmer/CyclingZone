@@ -25,6 +25,7 @@ import { seedPhysiologyFromLegacy } from "../../lib/physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
 import { buildCapsForRider } from "../../lib/riderProgression.js";
 import { computeRiderTypes, NEUTRAL_BASELINE, RIDER_TYPE_KEYS } from "../../lib/riderTypes.js";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const adultBaseline = JSON.parse(readFileSync(join(__dirname, "../../lib/riderTypesBaseline.json"), "utf8"));
@@ -36,7 +37,7 @@ function arg(name, def) {
 }
 const N = parseInt(arg("n", "3000"), 10);
 const SEED = parseInt(arg("seed", "2026"), 10);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 // Ejer-defineret knaphedsmål (#3564-kæden, se opgavebeskrivelsen for #3570).
 const SCARCITY_TARGET_PCT = Object.freeze({

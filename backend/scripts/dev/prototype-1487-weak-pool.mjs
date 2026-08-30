@@ -35,6 +35,7 @@ import { predictBaseValue } from "../../lib/riderValuation.js";
 import {
   allocateStarterSquads, STARTER_SQUAD, STARTER_POOL_STAT_WINDOW, computeAge, deriveTeamSeed,
 } from "../../lib/starterSquadAllocator.js";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const baseline = JSON.parse(readFileSync(join(__dirname, "../../lib/riderTypesBaseline.json"), "utf8"));
@@ -42,7 +43,7 @@ const model = JSON.parse(readFileSync(join(__dirname, "../../lib/riderValuationM
 
 const SEED = 14_870;          // eget seed til prototypen (ikke launch-2026)
 const POOL_COUNT = 240;       // ≥200 så 176 kan allokeres med 4 youth/4 dom pr. hold
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 const TEAMS = 22;
 const SQUAD = STARTER_SQUAD.CORE_SIZE; // 8 → 22×8 = 176 (allocateStarterSquads = kernen)
 

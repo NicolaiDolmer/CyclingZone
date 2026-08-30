@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 
 import { LAUNCH_POPULATION, LAUNCH_VALUE_BANDS, checkLaunchTypeMix } from "../lib/fictionalLaunchPopulation.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -28,7 +29,7 @@ function arg(name, def) {
 const COUNT = parseInt(arg("count", "800"), 10);
 const SEED = parseInt(arg("seed", "2026"), 10);
 const SAMPLE = parseInt(arg("sample", "15"), 10);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));

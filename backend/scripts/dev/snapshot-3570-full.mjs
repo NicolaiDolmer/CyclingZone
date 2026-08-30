@@ -19,6 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
+import { ageForSeason } from "../../lib/riderSeasonAge.js";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
@@ -111,7 +112,7 @@ const rows = ridersRaw.map((r) => {
     birthdate: r.birthdate,
     // SÆSON-alder (produktionens konvention, riderSeasonAge.ageForSeason). Feltet
     // hedder `age`, fordi det er den alder alle motor-stier bruger.
-    age: r.birthdate ? 2026 + (activeSeason.number - 1) - new Date(r.birthdate).getUTCFullYear() : null,
+    age: ageForSeason(r.birthdate, activeSeason.number),
     age_wallclock: wallClockAge(r.birthdate, measuredAt),
     potentiale: r.potentiale != null ? Number(r.potentiale) : null,
     archetype_draw: r.archetype_draw,
