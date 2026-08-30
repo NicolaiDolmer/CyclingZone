@@ -317,6 +317,78 @@ tr:hover .auction-rider-cell-winning {
 .sticky-name-cell {
   background-color: var(--bg-card);
 }
+
+/* "Dig"-markering paa tabelraekker (#2795-opfoelgning).
+   Markeringen laa foer som `inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)` paa
+   selve <tr>. To ting gjorde den naesten usynlig, og hverken farve eller alpha
+   var det ene af dem:
+     1. box-shadow paa en <tr> males ikke paalideligt i en border-collapse-tabel.
+     2. .sticky-name-cell ovenfor maler sin EGEN ugennemsigtige baggrund, saa
+        praecis den kant man kigger efter i venstre margen forsvandt.
+   Koden vidste det allerede - StandingsPage's egen kommentar noterer at
+   zone-tinten sidder paa <td> "og maler derfor OVEN PAA <tr>'ens baggrund".
+   Markeringen hoerer derfor paa cellerne.
+
+   .cz-me      = venstrekant + svag fladetoning (ejer-valg 30/8, variant F)
+   .cz-me-bar  = kun venstrekant, til raekker der allerede baerer en anden
+                 fladetoning (leder-guld, op-/nedryknings-zone) som toningen
+                 ellers ville daekke. */
+tr.cz-me > td,
+tr.cz-me > th {
+  background-color: rgb(var(--me-ring) / 0.05);
+}
+tr.cz-me > td:first-child,
+tr.cz-me > th:first-child,
+tr.cz-me-bar > td:first-child,
+tr.cz-me-bar > th:first-child {
+  box-shadow: inset 3px 0 0 0 rgb(var(--me-ring));
+}
+
+/* Op-/nedryknings-zone (SeasonEndPage). Laa som `inset 3px 0 0` paa <tr> og
+   ramte praecis samme defekt som me-ringen: usynlig bag cellernes baggrund. */
+tr.cz-zone-up > td:first-child,
+tr.cz-zone-up > th:first-child {
+  box-shadow: inset 3px 0 0 0 rgb(var(--success));
+}
+tr.cz-zone-down > td:first-child,
+tr.cz-zone-down > th:first-child {
+  box-shadow: inset 3px 0 0 0 rgb(var(--danger));
+}
+
+/* Dig OG en zone paa samme raekke. Zonen ejer de yderste 3px og beholder sin
+   fladefarve; "dig" laegger sig som en 3px navy stribe lige indenfor. Foerste
+   skygge i listen males oeverst, saa zonen skal staa sidst. Fladetoningen
+   droppes her - den ville daekke zonens egen baggrund. */
+tr.cz-me.cz-zone-up > td,
+tr.cz-me.cz-zone-up > th,
+tr.cz-me.cz-zone-down > td,
+tr.cz-me.cz-zone-down > th {
+  background-color: transparent;
+}
+tr.cz-me.cz-zone-up > td:first-child,
+tr.cz-me.cz-zone-up > th:first-child {
+  box-shadow: inset 6px 0 0 0 rgb(var(--me-ring)), inset 3px 0 0 0 rgb(var(--success));
+}
+tr.cz-me.cz-zone-down > td:first-child,
+tr.cz-me.cz-zone-down > th:first-child {
+  box-shadow: inset 6px 0 0 0 rgb(var(--me-ring)), inset 3px 0 0 0 rgb(var(--danger));
+}
+
+/* Sammenlign-valgt (StandingsPage). Samme defekt som me-ringen: laa som en
+   box-shadow paa <tr> og var lige saa usynlig. Hoejre kant, saa den kan ses
+   samtidig med "dig"-kanten i venstre margen. */
+tr.cz-compare > td:last-child,
+tr.cz-compare > th:last-child {
+  box-shadow: inset -3px 0 0 0 rgb(var(--accent));
+}
+
+/* Blok-varianten: samme udtryk paa kort og div-raekker (dashboard-stillingen,
+   startliste-kort, eget-placerings-baandet paa Global Rank), saa markeringen
+   ser ens ud uanset om fladen er en tabel eller ej. */
+.cz-me-block {
+  box-shadow: inset 3px 0 0 0 rgb(var(--me-ring));
+  background-color: rgb(var(--me-ring) / 0.05);
+}
 tr:hover .sticky-name-cell {
   background-color: var(--bg-subtle);
 }

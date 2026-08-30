@@ -828,12 +828,16 @@ export default function SeasonEndPage() {
                       const isRelegation = isCompleted && i >= divStandings.length - 2 && div < RULES_NUMBERS.maxDivision;
                       const isLeader = i === 0;
                       const prog = pointsByTeam[s.team_id] || [];
-                      // Zone bar + neutral "you" ring co-exist; gold = the leader chip (PF2 B).
-                      const bars = [];
-                      if (isPromotion) bars.push("inset 3px 0 0 rgb(var(--success))");
-                      else if (isRelegation) bars.push("inset 3px 0 0 rgb(var(--danger))");
-                      if (isMe) bars.push("inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)");
-                      const rowStyle = bars.length ? { boxShadow: bars.join(", ") } : {};
+                      // #2795-opfoelgning: baade zone-bjaelken og "dig"-ringen laa som
+                      // box-shadow paa <tr> og blev malet under cellernes egen
+                      // baggrund - begge var i praksis usynlige. De sidder nu paa
+                      // cellerne (index.css). Zonen ejer venstre margen, saa "dig"
+                      // faar fladetoningen i stedet naar de moedes.
+                      const marks = [];
+                      if (isPromotion) marks.push("cz-zone-up");
+                      else if (isRelegation) marks.push("cz-zone-down");
+                      if (isMe) marks.push(isLeader ? "cz-me-bar" : "cz-me");
+                      const rowMarks = marks.join(" ");
                       return (
                         <Fragment key={s.id}>
                           {/* Separator before relegation zone */}
@@ -845,8 +849,7 @@ export default function SeasonEndPage() {
                             </tr>
                           )}
                           <tr
-                            style={rowStyle}
-                            className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle cursor-pointer transition-colors
+                            className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle cursor-pointer transition-colors ${rowMarks}
                               ${isLeader ? "bg-cz-accent/[0.08]" : isPromotion ? "bg-cz-success-bg" : isRelegation ? "bg-cz-danger-bg" : ""}`}
                             onClick={() => navigate(`/teams/${s.team_id}`)}>
                             <Td>

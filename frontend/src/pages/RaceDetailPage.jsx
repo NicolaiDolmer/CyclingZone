@@ -1616,8 +1616,7 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                   const isMine = myOwnTeamId != null && String(rowTeamId) === String(myOwnTeamId);
                   return (
                   <tr key={r.id}
-                    className={`transition-colors ${isWinner ? "bg-cz-accent/10" : isMyTeam ? "bg-cz-accent/5" : "hover:bg-cz-subtle"}`}
-                    style={isMine ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
+                    className={`transition-colors ${isWinner ? "bg-cz-accent/10" : isMyTeam ? "bg-cz-accent/5" : "hover:bg-cz-subtle"}${isMine ? ((isWinner || isMyTeam) ? " cz-me-bar" : " cz-me") : ""}`}
                   >
                     <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                     <td className="px-2 py-2">
