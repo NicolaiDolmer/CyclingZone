@@ -1382,7 +1382,7 @@ export default function RiderStatsPage() {
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDevelopmentProjection(); loadValueTrend(); loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); loadRetirementStatus(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDevelopmentProjection(); loadValueTrend(); loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); loadRetirementStatus(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps -- alle load*-funktionerne er lokale (ny ref hver render) — kun rytter-id skal udløse hentning
 
   function pushOverbidToast({ riderName, amount }) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1455,7 +1455,7 @@ export default function RiderStatsPage() {
       })
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [bidTimeline?.auction_id, bidTimeline?.status, rider]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [bidTimeline?.auction_id, bidTimeline?.status, rider]); // eslint-disable-line react-hooks/exhaustive-deps -- loadActiveAuctionFull/loadBidTimeline/t er lokale — kun auktions-id/status/rytter skal gen-subscribe
 
   // #254: bid-handlers — POST /bid, PATCH /proxy, DELETE /proxy.
   // Re-bruger samme endpoints som AuctionsPage; #194 race-confirm modtages

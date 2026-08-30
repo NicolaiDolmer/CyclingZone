@@ -50,7 +50,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
 
   useEffect(() => {
     reloadPreview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reloadPreview er lokal funktion (ny ref hver render) — kun mount-fetch
   }, []);
 
   const gate = summarizeTransitionReadiness(readiness);

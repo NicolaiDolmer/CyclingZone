@@ -151,7 +151,7 @@ export function SprintMetricsContent() {
     loadMetrics();
     const id = setInterval(loadMetrics, REFRESH_MS);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMetrics er lokal funktion (ny ref hver render) — kun mount-fetch
   }, [windowChoice]);
 
   const kpis = useMemo(() => {

@@ -76,7 +76,7 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- getAuth/onMsg/t bruges kun i fetch- og fejlstien — de må ikke udløse refetch
   }, []);
 
   // ── Lookups ──────────────────────────────────────────────────────────────
