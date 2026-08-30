@@ -71,8 +71,40 @@ function isMissingTableError(error) {
   return error?.code === "42P01" || /does not exist|schema cache/i.test(msg);
 }
 
+// FAIL-CLOSED MODEL-GUARD (#3750). Sweepen er den ENESTE runtime-sti der skriver
+// markedsblendede værdier, og indtil nu kunne den læse et hvilket som helst
+// artefakt, også v1.1, der er fittet på 1.027 handler hvor tre fjerdedele af
+// bankens kroner clearede på nøjagtig startprisen (målt 30/8: 981 salg /
+// 68,29 mio. / 73,0 % af kronerne på 0-1 budgiver, gennemsnitligt prisløft
+// 1,003). Det er præcis den konstant #3750 blev åbnet for at få ud af modellen.
+//
+// Guarden er en VAGT, ikke et modelvalg: den kræver at artefaktet BÆRER en
+// `evidence_filter`-blok (fit-scriptet skriver den, jf. fitMarketValueModelV2.js'
+// buildQualifiedSales), så et ufiltreret artefakt ikke kan glide ind ad bagdøren
+// den dag kill-switchen flippes til `on`. HVILKEN model der skal være live
+// (v1.1 vs. v2) er en ejer-beslutning og hører til i #3449, så denne guard rører
+// IKKE MODEL_PATH.
+export function assertQualifiedEvidenceModel(model, { source = MODEL_PATH } = {}) {
+  const filter = model?.evidence_filter;
+  if (!filter || typeof filter !== "object" || Array.isArray(filter)) {
+    throw new Error(
+      `market-value-sunday-sweep: modellen i ${source} mangler en 'evidence_filter'-blok og er derfor ` +
+      "ikke fittet på kvalificeret evidens (#3750). Sweepen fail-closer frem for at skrive base_value " +
+      "ud fra et artefakt der kan være trænet på mekaniske bank-salg. Fit et nyt artefakt med " +
+      "scripts/fitMarketValueModelV2.js, eller peg MODEL_PATH på et filtreret artefakt (ejer-beslutning, #3449)."
+    );
+  }
+  if (!Array.isArray(filter.criteria) || filter.criteria.length === 0) {
+    throw new Error(
+      `market-value-sunday-sweep: 'evidence_filter' i ${source} har ingen 'criteria', ` +
+      "så blokken dokumenterer ingen filtrering (#3750)."
+    );
+  }
+  return model;
+}
+
 function defaultLoadModel() {
-  return JSON.parse(readFileSync(MODEL_PATH, "utf8"));
+  return assertQualifiedEvidenceModel(JSON.parse(readFileSync(MODEL_PATH, "utf8")));
 }
 
 async function defaultFetchActiveSeasonNumber({ supabase }) {
@@ -241,6 +273,13 @@ export async function runMarketValueSundaySweep({
   const enabled = await isEnabled(supabase);
   if (!enabled) return { ran: false, skipped: "flag_off" };
 
+  // MODEL-GUARD FØR CLAIM (#3750). To grunde til at den ligger her og ikke efter
+  // claim'et: (1) et ufiltreret artefakt må ikke brænde dagens claim, så en rettet
+  // model stadig kan køre samme søndag, og (2) guarden kører på RESULTATET af
+  // `loadModel`, ikke kun i defaultLoadModel, fordi `loadModel` er en injicerbar
+  // test-seam og en vagt der kan omgås ved at injicere et artefakt er ingen vagt.
+  const model = assertQualifiedEvidenceModel(loadModel());
+
   // CLAIM FØR MUTATION — se defaultClaimSweepDate for hvorfor rækkefølgen er
   // kritisk (dobbelt cap-anvendelse ved gentagelse samme søndag).
   const sweepDate = copenhagenDateString(now);
@@ -251,7 +290,6 @@ export async function runMarketValueSundaySweep({
   const seasonNumber = await fetchActiveSeasonNumber({ supabase });
   if (seasonNumber == null) return { ran: false, skipped: "no_active_season" };
 
-  const model = loadModel();
   const [globalWeight, weeklyCap] = await Promise.all([
     readGlobalWeight(supabase),
     readWeeklyCap(supabase),
