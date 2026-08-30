@@ -148,6 +148,31 @@ jobs:
       - name: Run anti-drift guard
         run: node scripts/lint-ui-slop.mjs
 
+  eslint-disable-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #4332 forward-guard: ratchet mod stille vaekst i antallet af
+    # eslint-disable-direktiver. Fejler KUN paa flere direktiver end
+    # scripts/eslint-disable-baseline.json tillader (ratchet — maa kun
+    # skrumpe) eller en ny fil med direktiver. Laaser blot det nuvaerende
+    # tal (42 frontend/src + 1 backend) — gennemgangen af om de 42
+    # exhaustive-deps-disables skjuler en reel dependency-bug staar aaben.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test eslint-disable guard
+        run: node --test scripts/check-eslint-disable-count.test.mjs
+
+      - name: Run eslint-disable guard
+        run: node scripts/check-eslint-disable-count.mjs
+
   t2-container-guard:
     runs-on: ubuntu-latest
     permissions:
