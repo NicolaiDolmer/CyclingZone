@@ -404,6 +404,7 @@ import {
 import {
   adminWriteLimiter,
   bidLimiter,
+  billingLimiter,
   boardWriteLimiter,
   marketWriteLimiter,
   presencePulseLimiter,
@@ -466,6 +467,56 @@ function captureApiRouteError(e, req) {
     },
   });
 }
+
+// #4446 — grov DoS-guard på HELE API-fladen, mountet før enhver rute.
+//
+// Nulpunktet før dette: der var ingen global limiter. `requireAuth` laver et
+// `supabase.auth.getUser()`-netværkskald pr. request, så enhver — også uden
+// gyldigt token — kunne tvinge ét Supabase auth-kald pr. request i det uendelige.
+// Det er præcis CWE-770-risikoen, og den ramte alt der ikke lå under /admin.
+//
+// Samme mønster som adminApiLimiter nedenfor: bevidst et direkte rateLimit()-kald
+// og ikke buildLimiter-factory'en, fordi CodeQL's js/missing-rate-limiting ikke
+// kan spore factory-byggede limitere. Mountet FØR requireAuth, så nøglen er
+// klient-IP (req.user findes først efter auth) — det er det rigtige her, da
+// pointen netop er at dæmpe hammering mod selve auth-laget.
+//
+// 600/min pr. IP er identisk med admin-guarden. En aktiv spiller topper langt
+// under 200/min inkl. polling, så to spillere bag samme NAT har stadig rigelig
+// plads. De stramme per-rute-limitere gælder uændret oveni. Break-glass:
+// RATE_LIMIT_DISABLED=1 slår alle limitere fra.
+const apiBaselineLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 600,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: userOrIpKey,
+  skip: () => process.env.RATE_LIMIT_DISABLED === "1",
+  handler: (req, res) => {
+    // Observabilitet er hele pointen med denne linje. Baselinen er sat 4-20x
+    // over målt spidsbelastning (30 sidevisninger/min for HELE spillet, 7
+    // samtidige besøg, målt over 14 dage), så en 429 herfra betyder ét af to:
+    // enten et løbsk klient-loop (som #4347's hjerteslag mod en død session),
+    // eller at spillerbasen er vokset ud af tallet. Begge dele skal vi opdage
+    // af os selv og ikke via en spiller der klager. Kun sti uden query-streng
+    // logges - aldrig token eller header (hard rule: dump aldrig secret-værdier).
+    console.warn(
+      `[rate-limit] 429 api-baseline ${req.method} ${req.originalUrl.split("?")[0]}`,
+    );
+    res.set("Retry-After", "60");
+    res.status(429).json({
+      // EN fallback (#1068): den spiller-vendte tekst kommer fra frontendens
+      // errors:api.rate_request. adminApiLimiter under har stadig en dansk
+      // streng — den er i i18n-leak-baselinen og røres ikke her.
+      error: "Too many requests in a short time. Wait a moment.",
+      errorCode: "rate_request",
+      code: "rate_limited",
+      limiter: "api-baseline",
+      retry_after_seconds: 60,
+    });
+  },
+});
+router.use(apiBaselineLimiter);
 
 // Grov DoS-guard på hele /admin-fladen, mountet FØR requireAdmin — nøglen er
 // derfor klient-IP, så uautoriseret hammering mod selve auth-laget også dæmpes.
@@ -775,9 +826,9 @@ async function requireOwner(req, res, next) {
 const billingCheckout = createCheckoutHandler({ supabase });
 const billingPortal = createPortalHandler({ supabase });
 router.post("/billing/alunta-webhook", (req, res) => handleAluntaWebhook({ req, res, supabase }));
-router.post("/billing/checkout", requireAuth, (req, res) => billingCheckout(req, res));
+router.post("/billing/checkout", requireAuth, billingLimiter, (req, res) => billingCheckout(req, res));
 // #2813: self-service opsigelse — signeret auto-login-link til Alunta-portalen.
-router.post("/billing/portal", requireAuth, (req, res) => billingPortal(req, res));
+router.post("/billing/portal", requireAuth, billingLimiter, (req, res) => billingPortal(req, res));
 // Offentligt (ikke-sensitivt) — live seat-counter til /pro-siden (#1903).
 router.get("/billing/founder-seats", async (req, res) => {
   try {
@@ -1146,7 +1197,7 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
 // Scouting-centralen skal vise navne for op til ~100 rider-ids (aktive target-jobs
 // + shortlists); ét kald i stedet for N enkelt-GETs. Payload er KUN {id, name} —
 // potentiale/abilities forlader aldrig serveren her, så ingen admin-maskering nødvendig.
-router.post("/riders/names", requireAuth, async (req, res) => {
+router.post("/riders/names", requireAuth, presencePulseLimiter, async (req, res) => {
   const ids = req.body?.ids;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ error: "ids must be a non-empty array" });
@@ -1973,7 +2024,7 @@ router.get("/scouting/me", requireAuth, async (req, res) => {
 // Egne ryttere + fuldt scoutede er eksakte (lo == hi). Rytter uden potentiale → null.
 // VIGTIGT: skal være registreret FØR POST /scouting/:riderId (ellers fanges
 // "estimates" som riderId).
-router.post("/scouting/estimates", requireAuth, async (req, res) => {
+router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const ids = Array.isArray(req.body?.riderIds)
     ? [...new Set(req.body.riderIds.filter((id) => typeof id === "string" && id))]
@@ -2150,7 +2201,7 @@ router.get("/development/transition", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/development/transition/dismiss", requireAuth, async (req, res) => {
+router.post("/development/transition/dismiss", requireAuth, presencePulseLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     const { error } = await supabase
@@ -9282,7 +9333,7 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
 // at genopstå ved næste nye fane/browser (det session-scopede sessionStorage-
 // dismiss fra #1569, som var rod-årsagen til at kortet "spammede" etablerede
 // spillere). Graceful degradation hvis migrationen ikke er anvendt endnu.
-router.post("/me/onboarding-progress/dismiss", requireAuth, async (req, res) => {
+router.post("/me/onboarding-progress/dismiss", requireAuth, presencePulseLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const { error } = await supabase
     .from("teams")
@@ -12034,7 +12085,7 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
 // men billig at lukke). Idempotent: gentagne kald med samme race_id er en no-op
 // (samme UPDATE-værdi). Graceful degradation hvis kolonnen mangler (42703),
 // samme mønster som /me/onboarding-progress/dismiss.
-router.post("/dashboard/my-latest-result/seen", requireAuth, async (req, res) => {
+router.post("/dashboard/my-latest-result/seen", requireAuth, presencePulseLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   const raceId = req.body?.race_id;
   if (!raceId) return res.status(400).json({ error: "race_id required" });
@@ -12301,7 +12352,7 @@ router.get("/sponsor/offers", requireAuth, async (req, res) => {
 // #3316: hold UDEN aktiv kontrakt (state.immediate) aktiveres straks for
 // INDEVÆRENDE sæson; hold der forhandler en fornyelse gemmes stadig som
 // 'pending' og aktiveres først ved sæson-skiftet (uændret semantik).
-router.post("/sponsor/offers/accept", requireAuth, async (req, res) => {
+router.post("/sponsor/offers/accept", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const variant = req.body?.variant;
@@ -12340,7 +12391,7 @@ router.get("/club/facilities", requireAuth, async (req, res) => {
 });
 
 // POST /api/club/facilities/upgrade — body { track }. Domænefejl → 400 (flag off → 403).
-router.post("/club/facilities/upgrade", requireAuth, async (req, res) => {
+router.post("/club/facilities/upgrade", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
@@ -12370,7 +12421,7 @@ router.get("/club/staff/candidates", requireAuth, async (req, res) => {
 });
 
 // POST /api/club/staff/hire — body { role, candidateName }. role_occupied → 409.
-router.post("/club/staff/hire", requireAuth, async (req, res) => {
+router.post("/club/staff/hire", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
@@ -12386,7 +12437,7 @@ router.post("/club/staff/hire", requireAuth, async (req, res) => {
 
 // POST /api/club/staff/fire — body { role, staffId? }. #3489: staffId er
 // valgfri (op til 2 aktive staff pr. rolle nu) — no_active_staff → 404.
-router.post("/club/staff/fire", requireAuth, async (req, res) => {
+router.post("/club/staff/fire", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
@@ -12437,7 +12488,7 @@ router.get("/club/staff/:id/scouting-history", requireAuth, async (req, res) => 
 // POST /api/club/staff/:id/release — opsig EGET staff mod severance (4×ugentlig
 // løn, #2649 — ejer-godkendt gebyr-model). staff_not_found → 404 (ukendt/ikke-
 // ejet); already_released → 409 (dobbelt-klik-guard); insufficient_funds → 400.
-router.post("/club/staff/:id/release", requireAuth, async (req, res) => {
+router.post("/club/staff/:id/release", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
