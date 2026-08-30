@@ -16,9 +16,10 @@ import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue } from "../lib/riderValuation.js";
 import { buildCaps, developRiderSeason } from "../lib/riderProgression.js";
 import { ACADEMY } from "../lib/academyFlag.js";
+import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 const SEASONS = (() => {
   const hit = process.argv.find((a) => a.startsWith("--seasons="));
   return hit ? Math.max(1, parseInt(hit.split("=")[1], 10) || 4) : 4;
@@ -42,7 +43,7 @@ function main() {
     const abilities = deriveAbilities({}, { ...r, id: `fic-${i}` }, { asOfYear: REFERENCE_YEAR });
     // computeRiderTypes(abilities, baseline) — fittet baseline (matcher live-systemet)
     const { primary } = computeRiderTypes(abilities, baseline);
-    const age = r._meta?.age ?? (REFERENCE_YEAR - new Date(r.birthdate).getFullYear());
+    const age = r._meta?.age ?? ageForSeason(r.birthdate, 1);
 
     // Filtrer abilities til kun VISIBLE_ABILITIES (som developRiderSeason forventer)
     const visibleAbilities = {};
