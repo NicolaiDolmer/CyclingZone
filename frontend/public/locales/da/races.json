@@ -836,7 +836,7 @@
       "teamDay": "{team} førte holdkonkurrencen med {count} ryttere i top 10.",
       "teamWon": "{team} vandt holdkonkurrencen.",
       "jerseys": "Trøjeførere: {points} i point, {mountain} i bjerg.",
-      "abandon": "{kind, select, crash {{rider} udgik efter styrt.} mechanical {{rider} udgik med mekanisk defekt.} other {{rider} udgik.}}",
+      "abandon": "{kind, select, crash {{rider} udgik efter styrt.} mechanical {{rider} udgik med mekanisk defekt.} injury {{rider} stillede ikke til start: skadet.} other {{rider} udgik.}}",
       "notableCrash": "{rider} styrtede og tabte {marginText}."
     },
     "incidents": {

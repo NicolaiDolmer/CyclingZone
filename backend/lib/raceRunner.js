@@ -66,7 +66,7 @@ import {
 } from "./racePeakPlans.js";
 // S4 (#1176): styrt/mekaniske uheld + DNF — abandon-state (cross-invokation) +
 // persistens co-locates i raceIncidents.js (ren roll-logik + DB-loader).
-import { loadAbandonedRiderIds } from "./raceIncidents.js";
+import { loadAbandonedRiderIds, persistInjuryWithdrawals } from "./raceIncidents.js";
 // S6 (#2355): why-rapport + story-tags — ren afledning af de samme komponenter
 // (ranked[].components) der allerede persisteres til race_simulation_rider_scores.
 import { extractStageMoments } from "./raceNarrative.js";
@@ -81,7 +81,7 @@ import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
-import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
@@ -1311,6 +1311,19 @@ async function persistRuns({ supabase, race, runs, source = null }) {
   }
 }
 
+// #4418: injured_until for en lille, kendt maengde ryttere (de "forsvundne" fra
+// #1844-frysningen — typisk 0, sjaeldent over en haandfuld). Kaldes KUN naar der
+// faktisk er forsvundne, saa den normale etape betaler ingen ekstra query.
+async function loadInjuredUntilByRider({ supabase, riderIds = [] }) {
+  if (!riderIds.length) return new Map();
+  const { data, error } = await selectInChunks({
+    supabase, table: "rider_condition", columns: "rider_id, injured_until",
+    inColumn: "rider_id", ids: [...new Set(riderIds)],
+  });
+  if (error) throw new Error(`rider_condition (injured_until): ${error.message}`);
+  return new Map((data || []).map((c) => [c.rider_id, c.injured_until]));
+}
+
 // Beregn injured_until-dato: dateStr (YYYY-MM-DD) + days → YYYY-MM-DD. Noon UTC
 // undgår DST-kanttilfælde ved dato-aritmetik. Duplikeret fra dailyTrainingEngine.js
 // (ikke eksporteret derfra) — samme lille helper, samme begrundelse som fnv1a32-
@@ -2206,6 +2219,9 @@ export async function simulateStageByIndex({
   let moments = [];
   let timelines = [];
   let applied = { rowsImported: 0 };
+  // #4418: start-felt-ryttere der ikke kunne stille til start paa DENNE etape fordi
+  // de var skadet. Samles ved frysningen nedenfor, skrives efter persistIncidents.
+  let injuryWithdrawals = [];
 
   if (!finalizationPending) {
     // #1844: auto-fyld KUN ved etape 1. Senere etaper må ikke tilføje nye ryttere.
@@ -2248,7 +2264,33 @@ export async function simulateStageByIndex({
         console.error(`  ⚠️  race ${race.id} etape ${stageNumber}: ${added.length} mid-race-rytter(e) ekskluderet fra GC (#1844): ${added.slice(0, 5).join(",")}${added.length > 5 ? "…" : ""}`);
       }
       if (missing.length) {
-        console.error(`  ⚠️  race ${race.id} etape ${stageNumber}: ${missing.length} start-felt-rytter(e) forsvundet (#1844/#1847): ${missing.slice(0, 5).join(",")}${missing.length > 5 ? "…" : ""}`);
+        // #4418: skeln de to aarsager. Skadefilteret (#3896) tager helt bevidst en
+        // rytter ud af et loeb han er skadet i (ejer-beslutning 30/8) — det er ikke
+        // et brud, men det efterlod hidtil intet spor, saa spilleren saa rytteren
+        // forsvinde uden forklaring og advarslen gentog sig paa hver resterende
+        // etape. De registreres som udgaaelse nedenfor. Alt ANDET der forsvinder
+        // (solgt, akademi-kontrakt midt i loebet, pensioneret) er stadig
+        // uforklaret og skal blive ved med at larme.
+        const injuredUntilByRider = await loadInjuredUntilByRider({ supabase, riderIds: missing });
+        const { injured, unexplained } = partitionMissingByInjury({
+          missing, injuredUntilByRider, todayStr: copenhagenDateString(),
+        });
+        injuryWithdrawals = injured;
+        if (injured.length) {
+          console.log(`  🩹 race ${race.id} etape ${stageNumber}: ${injured.length} start-felt-rytter(e) kunne ikke starte pga. skade — registreres som udgaaet (#4418)`);
+        }
+        if (unexplained.length) {
+          console.error(`  ⚠️  race ${race.id} etape ${stageNumber}: ${unexplained.length} start-felt-rytter(e) forsvundet UDEN skade (#1844/#1847/#4418): ${unexplained.slice(0, 5).join(",")}${unexplained.length > 5 ? "…" : ""}`);
+          captureException(
+            new Error(`Start-felt-rytter forsvundet uden forklaring: ${unexplained.length} paa etape ${stageNumber} (#1844/#4418)`),
+            {
+              tags: { flow: "race-run", stage: "start-field-frozen" },
+              fingerprint: ["start-field-rider-vanished"],
+              raceId: race.id, stageNumber,
+              extra: { count: unexplained.length, sample: unexplained.slice(0, 20) },
+            }
+          );
+        }
       }
       entrants = frozen;
     }
@@ -2398,6 +2440,12 @@ export async function simulateStageByIndex({
     // røres ikke (samme idempotens-mønster som persistRuns/apply_stage_result).
     if (v3 && incidents.length) {
       await persistIncidents({ supabase, race, incidents, stageNumbers: [stageNumber] });
+    }
+    // #4418: EFTER persistIncidents — den scoper sit delete-then-insert til hele
+    // etapen, saa raekkerne her ville blive slettet igen hvis de blev skrevet foer.
+    // Kun v3: det er loadAbandonedRiderIds (v3-gated ovenfor) der forbruger dem.
+    if (v3) {
+      await persistInjuryWithdrawals({ supabase, raceId: race.id, stageNumber, riderIds: injuryWithdrawals });
     }
     // S6 (#2355): samme scoping-mønster (denne etape alene).
     if (v3 && moments.length) {

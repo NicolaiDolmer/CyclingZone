@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.222",
+    "date": "2026-08-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "An injured rider now shows as a non-starter instead of vanishing",
+          "body": "A rider who gets injured while a stage race is running cannot start the remaining stages. That was already the case, but he simply disappeared from the results with no explanation. He is now listed as a non-starter, so you can see what happened and why."
+        },
+        "da": {
+          "title": "En skadet rytter vises nu som ikke-startende i stedet for bare at forsvinde",
+          "body": "En rytter der bliver skadet mens et etapeløb kører, kan ikke starte de resterende etaper. Sådan har det hele tiden været, men han forsvandt bare ud af resultaterne uden forklaring. Nu står han som ikke-startende, så du kan se hvad der skete og hvorfor."
+        },
+        "refs": [4418]
+      }
+    ]
+  },
+  {
     "version": "7.220",
     "date": "2026-08-29",
     "label": "Beta",

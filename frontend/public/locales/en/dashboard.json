@@ -171,7 +171,7 @@
         "tag_peak_day": "{rider} timed his form to peak for this stage.",
         "tag_jour_sans": "{rider} just didn't have the legs today.",
         "tag_crash_ruined": "{rider}'s stage was wrecked by a {kind, select, crash {crash} mechanical {mechanical problem} other {incident}}.",
-        "incident_abandon": "{rider} abandoned the stage after a {kind, select, crash {crash} mechanical {mechanical problem} other {incident}}.",
+        "incident_abandon": "{kind, select, crash {{rider} abandoned the stage after a crash.} mechanical {{rider} abandoned the stage after a mechanical problem.} injury {{rider} did not start the stage: injured.} other {{rider} abandoned the stage after an incident.}}",
         "incident_time_loss": "{rider} lost {seconds, plural, one {# second} other {# seconds}} to a {kind, select, crash {crash} mechanical {mechanical problem} other {incident}}.",
         "incident_time_loss_generic": "{rider} lost time to a {kind, select, crash {crash} mechanical {mechanical problem} other {incident}}.",
         "tag_outsider_win": "{rider} won without being the strongest rider on paper.",
