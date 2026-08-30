@@ -1285,9 +1285,34 @@ export async function awaitCronsIdle(timeoutMs = 30_000) {
   return cronInFlight === 0;
 }
 
+// #4150 — stop nye ticks ved SIGTERM. Railways nedlukningsvindue er hævet til
+// drainingSeconds=150 (backend/railway.json), og i HELE det vindue kører den
+// gamle og den nye proces samtidig (Railway sender først SIGTERM når det nye
+// deploy er aktivt). Uden denne vagt ville den gamle proces blive ved med at
+// fyre setInterval-ticks mens den "lukker ned" — 1-min-auktionstikket alene
+// ville nå 2 ekstra kørsler pr. deploy, parallelt med den nye proces' egne.
+// Med Railways hidtidige default (drainingSeconds=0, SIGTERM → SIGKILL uden
+// ophold) var vinduet så kort at problemet var usynligt; derfor skal vagten på
+// plads FØR vinduet forlænges. awaitCronsIdle() venter fortsat på de ticks der
+// allerede var i gang — der afbrydes intet, der startes bare intet nyt.
+//
+// Intervallerne selv ryddes bevidst ikke (process.exit(0) gør det alligevel):
+// vagten sidder ét sted i trackedTick i stedet for at holde ~30 interval-
+// handles ved lige, og dækker samtidig boot-run-kaldene i startCron().
+let cronSchedulingStopped = false;
+
+export function stopCronScheduling() {
+  cronSchedulingStopped = true;
+}
+
+export function isCronSchedulingStopped() {
+  return cronSchedulingStopped;
+}
+
 export function trackedTick(label, fn, deps = {}) {
   const capture = deps.captureException ?? sentryCapture;
   return async () => {
+    if (cronSchedulingStopped) return; // nedlukning i gang — start ikke nye ticks
     cronInFlight++;
     try {
       await fn();
