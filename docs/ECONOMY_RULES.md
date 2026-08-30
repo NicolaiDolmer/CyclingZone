@@ -142,11 +142,13 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 | Niveau | Hvad det fanger | Hvor |
 |---|---|---|
 | DB-constraint / GENERATED-kolonne | `market_value` kan ikke afvige fra `base_value + prize_earnings_bonus` | `database/2026-06-10-value-cutover-base-value.sql` |
-| Frontend/backend paritets-test | Løn-satsen kan ikke drifte mellem de to codebaser | `frontend/src/lib/salaryRateParity.test.js` |
+| Frontend/backend paritets-test | Løn-satsen kan ikke drifte mellem de to codebaser | `frontend/src/lib/salaryRateParity.test.js` (bygget 31/8, #4479 — tabellen lovede den fra #3989 og frem, men filen fandtes ikke) |
+| /rules- og /help-tallenes drift-guard | Player-facing lønprocent er pinnet til `SALARY_RATE_PRODUCTION`, altså den konstant der faktisk fryser kontrakten | `frontend/src/lib/rulesNumbers.test.js` (#4479 repinnede den fra legacy-`SALARY_RATE`) |
+| Løftede-vagter-guard | Ingen SSOT-doc eller kodekommentar må navngive en testfil der ikke findes | `backend/lib/promisedTestFilesExist.test.js` (#4479) |
 | Route-gate | Auktions-startpris uden for [gulv,loft] afvises | `auctionRules.getAuctionStartPriceIssue` |
 | Fail-safe app_config-læsning | DB-fejl på et økonomi-flag falder ALTID til den nuværende, ikke en ny, adfærd | `wageDeductionConfig.js`, `transferPriceBand.js`, `marketValueSweepConfig.js` — samme mønster i alle tre |
 | Simulér-før-ship-harness | Ingen løn-/værdiændring ships uden dry-run scorecard mod ægte population | `salaryDecouplingScorecard.js`-mønsteret, gentaget for hver økonomi-ændring siden |
-| Intet i dag | Der findes **ingen** CI/prod-invariant der fanger at et player-facing tal (fx `academySalaryPct`) driver fra den formel der faktisk kører — det er §10.2-fundet | — |
+| ~~Intet i dag~~ | ~~Der findes **ingen** CI/prod-invariant der fanger at et player-facing tal (fx `academySalaryPct`) driver fra den formel der faktisk kører~~ — **lukket 31/8 (#4479)** for løn-tallene: `salaryRatePct` og `academySalaryPct` er nu pinnet til `SALARY_RATE_PRODUCTION`. Gapet består stadig for de player-facing tal der slet ikke ligger i `RULES_NUMBERS` | `rulesNumbers.test.js` |
 
 ---
 
@@ -155,7 +157,7 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 | # | Modsigelse | Hvor |
 |---|---|---|
 | 1 | `SEASON_VALUE_RECALC_ENABLED = false` — GAME_INVARIANTS.md siger værdier genberegnes ved sæson-slut OG præmie-udbetaling; kun det sidste er sandt i dag | `economyConstants.js:198`, `economyEngine.js:1429` |
-| 2 | `/rules` og `/help` viser `academySalaryPct = 6.7` — den formel akademi-signering faktisk bruger siden #3989 er `CPV × 0,35`, ikke `market_value × 0,067` | `rulesNumbers.js`, `academyTransfer.js` |
+| 2 | ~~`/rules` og `/help` viser `academySalaryPct = 6.7` — den formel akademi-signering faktisk bruger siden #3989 er `CPV × 0,35`, ikke `market_value × 0,067`~~ — **lukket 31/8 (#4479):** både `salaryRatePct` og `academySalaryPct` er sat til 35 og pinnet til `SALARY_RATE_PRODUCTION`, og `rules.json` (en+da) siger nu "current production value" / "nuværende produktionsværdi" i stedet for markedsværdi. Rod-årsagen var at drift-guarden pinnede til den døde `SALARY_RATE` og derfor var grøn hele vejen | `rulesNumbers.js`, `academyTransfer.js` |
 | 3 | `UPKEEP_BY_DIVISION` i GAME_INVARIANTS.md er den gamle værdi fra før 23/8-halveringen | `economyConstants.js:51` |
 | 4 | To 14/8-specs (`vaerdi-og-loen-fundament`, `oekonomi-designkritik`) foreslår hver sin `market_value`-baserede lønformel; ingen af dem er den der endte med at ship'e (#3989 valgte CPV, ikke market_value) | §2 |
 | 5 | Egen-rytter-auktionsloftet (1× værdi) findes stadig, selvom designkritikken (§3.1) kalder det roden til at "spillerdrevne værdier" ikke kan opstå — intet ejer-svar fundet i kode eller commits på om 5×-forslaget er accepteret eller afvist | `auctionRules.js` |
