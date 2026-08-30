@@ -12,7 +12,8 @@
 > Sponsorsiden bor i [`SPONSOR_RULES.md`](SPONSOR_RULES.md). Grænsen mellem de to er §5, og den er
 > selve grunden til at begge filer findes. Økonomiens øvrige regler: [`ECONOMY_RULES.md`](ECONOMY_RULES.md).
 >
-> Verificeret mod kode og prod 29/8. Beslutnings-arkæologi:
+> Verificeret mod kode og prod 29/8; §1.1, §4's checkpoint-afsnit og §7 række 9 er verificeret på ny
+> 31/8 under [#4382](https://github.com/NicolaiDolmer/CyclingZone/issues/4382). Beslutnings-arkæologi:
 > [`audits/2026-08-29-sponsor-board-decision-inventory.md`](audits/2026-08-29-sponsor-board-decision-inventory.md).
 
 ---
@@ -32,8 +33,32 @@ forekomster af kontekst-drift og tæller-mismatch siden maj (#2469 → #2592 →
 - **Bestyrelsen fyrer aldrig.** Ingen game-over-tilstand (ejer 7/7, #2237).
 - **Blød kalibrering.** Konsekvenser strammer, de dræber ikke.
 - **Manager-only.** AI-hold har ingen bestyrelsesrelation.
-- **Sæson 1 er observationsår.** Ingen konsekvenser, kun referat.
 - **Styrke straffes aldrig** — gælder også her.
+
+**Rettet 31/8 (#4382):** bulletten "Sæson 1 er observationsår. Ingen konsekvenser, kun referat" stod
+her indtil nu og er forkert. `economyEngine.js:1632-1642` bærer ejer-beslutning #1721 af 22/6:
+**sæson 1 er IKKE en observations-sæson.** Rigtige planer (5yr/3yr/1yr) evalueres fuldt fra sæson 1,
+satisfaction bevæger sig og `budget_modifier` afledes med fuld effekt. Kun `is_baseline`-profiler
+springes over. Den eneste reelle sæson-1-beskyttelse der findes i koden er lag 2's 30-dages grace for
+nye managere (`NEW_MANAGER_SALARY_CAP_GRACE_DAYS`), som er distinkt fra #1721.
+
+### 1.1 Plan-livscyklussen
+
+Verificeret mod kode og prod 31/8 under #4382. Dette var det hul §7 række 8 pegede på.
+
+| Fase | Hvad sker der | Kode |
+|---|---|---|
+| Løbetid | Planen løber `getPlanDuration(plan_type)` sæsoner (1/3/5). `seasons_completed` tælles op ved hver sæson-slut, og `cumulative_stage_wins` / `cumulative_gc_wins` akkumulerer på tværs af planens sæsoner | `boardGoals.js:29`, `economyEngine.js:1659-1661` |
+| Midtvejs-review | `isMidReview = !planIsComplete && seasons_completed === Math.floor(planDuration / 2)` → 3yr efter 1 sæson, 5yr efter 2. Sender én notifikation (`notif.boardMidReview.*`). **Ingen konsekvens knyttet til** | `economyEngine.js:1664, 1851-1879` |
+| Udløb | `planIsComplete = seasons_completed >= planDuration` → planen **udsættes ikke**. `negotiation_status` sættes til `pending`, `seasons_completed` og begge cumulative-tællere nulstilles, og plan-vinduet rulles frem | `economyEngine.js:1663, 1761-1776` |
+| Genforhandling | Obligatorisk. En `pending` plan tæller **ikke** med i `computeBoardBaseModifier`, der kun midler `completed`-planer, så en overset flerårsplan falder ud af sponsor-modifierens gennemsnit | `sponsorEngine.js:193-202` |
+
+**De tre planer er uafhængige.** `board_profiles` har præcis én række pr. (team, plan_type). Målt
+31/8: 236 × 1yr, 222 × 3yr, 223 × 5yr, med `count(distinct team_id)` lig `count(*)` for hver type.
+Forhandlingsstien tager `board.plan_type` som parameter (`boardRequests.js:131, 516`), så en
+1-årsforhandling kan ikke røre 3- eller 5-årsmålene.
+
+**Genforhandlings-pukkel målt 31/8:** 44 × 1yr, 9 × 3yr, 6 × 5yr står i `pending`.
 
 ---
 
@@ -99,8 +124,12 @@ for én sæson).
 
 ## 4. De seks konsekvens-lag
 
-Lag 1 lever i `board_profiles.budget_modifier`. Lag 2-6 lever i `board_consequences` og evalueres
-ved sæson-slut.
+Lag 1 lever i `board_profiles.budget_modifier`. Lag 2-6 lever i `board_consequences` og evalueres på
+**to** checkpoints, ikke ét: ved mid-season-checkpointet
+(`boardWeekendFinalization.js:471-473` kalder `evaluateAndApplyConsequences` når
+`race_days_completed` netop har krydset `floor(race_days_total / 2)`) og igen ved sæson-slut
+(`economyEngine.js`). Rettet 31/8 under #4382: den gamle formulering "evalueres ved sæson-slut" er
+grunden til at bonustilbuddets timing føles tilfældig for spillerne.
 
 | Lag | Konsekvens | Udløser | Detalje |
 |---|---|---|---|
@@ -109,7 +138,7 @@ ved sæson-slut.
 | 3 | Signerings-restriktion | < 30 | Køb over **300.000 CZ$** kræver bestyrelsens godkendelse |
 | 4 | Tvangslistning | < 15 | Beskytter ryttere med popularitet ≥ 70 eller stjerne-værdi |
 | 5 | Sponsor-pullout | < 10 **eller** 2× planudløb i træk under 30 % | Faktor **0,90**, stacker multiplikativt med lag 1. Varer én sæson |
-| 6 | Bonustilbud | ≥ 75 **og** mindst 75 % af mål nået | **200.000 CZ$**. Bestyrelsens eneste egne penge |
+| 6 | Bonustilbud | **> 75** (strengt, `isBonusOfferEligible` afviser `satisfaction <= 75`) **og** mindst 75 % af mål nået | **200.000 CZ$**. Bestyrelsens eneste egne penge. Berettigelsen tjekkes **pr. plan**, så alle tre plantyper kan udløse tilbuddet, men højst ét pr. hold pr. sæson (`expires_at_season_id`-guard). Det accepterede ekstra-mål lægges **altid** på 1-årsplanen, uanset hvilken plan der udløste tilbuddet (`api.js:15125-15145`) |
 
 Lag 2-3 håndhæves i transfer- og auktions-routes via `assertSigningAllowed`. Lag 5 hookes ind i
 `processSeasonStart`s modifier-stak og udløber automatisk ved sæsonskifte.
@@ -212,7 +241,8 @@ kun i tillid.** Penge forbliver i lag 6 og modifieren.
 | 5 | **Tre satisfaction-tal, ét gennemsnit.** Spillerne ser tre tal på bestyrelsessiden og ét i økonomien. Rod-årsag til mindst 8 rapporterede fejl | §1 |
 | 6 | **`domestic_dominance` er et dødt skelet** der stadig kan genereres | §3 |
 | 7 | **#4377 er ubesvaret:** flerårsmåls-tællere ignorerer historik (trøjer 0/2, sponsor 0/8 → 0/12). Formodet fælles rod-årsag med #1, men ikke verificeret for trøje-delen | #4377 |
-| 8 | **#4382:** 3- og 5-årsplanens regler for udsættelse, genforhandling og antal bonustilbud er udokumenterede. Tre erfarne spillere kunne ikke svare hinanden 28/8. Denne fil dækker mekanikken, men ikke plan-livscyklussen — det hul står stadig åbent | #4382 |
+| 8 | ~~**#4382:** plan-livscyklussen er udokumenteret~~ **Lukket 31/8:** livscyklussen står nu i §1.1, og spiller-siden i `help.json` → `sections.board.multiYearLifecycle` (EN+DA). Afsnittet skal opdateres ved #3514 fase 2, jf. #3522 | §1.1, #4382 |
+| 9 | **`expireSeasonScopedConsequences` er død kode.** Funktionen findes i `boardConsequences.js:167` og testes i `boardConsequences.test.js:968`, men kaldes **ingen steder** i produktionsstien. Lag 5 udløber via en separat inline-update (`economyEngine.js:471`); **lag 6 udløber aldrig**. Målt 31/8: 37 bonustilbud står stadig `active` på sæson 1 og 2, som begge er `completed`. Et hold kan i princippet stadig indløse et to sæsoner gammelt tilbud til 200.000 CZ$. Ikke rettet her: et fix fjerner penge fra 37 hold og er en ejer-beslutning | `boardConsequences.js:167`, målt 31/8 |
 
 ---
 
