@@ -33,6 +33,7 @@ import { fitProductionModel } from "../lib/riderValuationFitV4.js";
 import { predictBaseValueV4 } from "../lib/riderCareerNpv.js";
 import { riderOverall } from "../lib/riderValuation.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
+import { ageForSeason } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -90,17 +91,6 @@ function quantile(arr, q) {
   const a = [...arr].sort((x, y) => x - y);
   if (!a.length) return 0;
   return a[Math.min(a.length - 1, Math.floor(q * a.length))];
-}
-
-// LAUNCH_REFERENCE_YEAR/ageForSeason spejler riderProgressionEngine.js PRÆCIST
-// (bevidst inlinet, jf. simulateSeasonProduction.js — undgår at trække den tunge
-// DB-orchestrator-modulkæde ind for én formel).
-const LAUNCH_REFERENCE_YEAR = 2026;
-function ageForSeason(birthdate, seasonNumber) {
-  if (!birthdate || !Number.isFinite(seasonNumber)) return null;
-  const birthYear = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(birthYear)) return null;
-  return LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) - birthYear;
 }
 
 async function main() {
