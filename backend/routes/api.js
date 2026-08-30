@@ -358,7 +358,7 @@ import { getResultWebhooksAndLabel, sendWebhook } from "../lib/discordNotifier.j
 import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
 import { getRaceEngineStatus, runAdminSimulateRace, runAdminSimulateStage, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
 import { ensureSeasonStandings as ensureSeasonStandingsShared } from "../lib/seasonStandingsBootstrap.js";
-import { generateRaceStageProfiles, GENERATOR_VERSION } from "../lib/raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, toStageProfileRow } from "../lib/raceStageProfileGenerator.js";
 import { checkAchievements, getAchievementProgressMap } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
@@ -10853,22 +10853,10 @@ router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) =>
     let stageProfilesCreated = 0;
     try {
       const profiles = generateRaceStageProfiles(createdRace);
-      const rows = profiles.map((p) => ({
-        race_id: createdRace.id,
-        stage_number: p.stage_number,
-        profile_type: p.profile_type,
-        finale_type: p.finale_type,
-        demand_vector: p.demand_vector,
-        // v4 F1 (#3855): segments + weather skrives med når generatoren har dem
-        // (samme mønster som de øvrige generator-write-sites). Rute-felterne
-        // (distance_km/climbs/sprints/sectors) er FORTSAT ikke skrevet her — det
-        // er en pre-eksisterende afgrænsning for denne ad-hoc-oprettelsessti, uden
-        // for scope for #3855 F1.
-        segments: p.segments,
-        weather: p.weather,
-        generator_version: GENERATOR_VERSION,
-        is_manual: false,
-      }));
+      // #2812: toStageProfileRow (raceStageProfileGenerator.js) er den delte row-shaper
+      // for alle tre skrivesites — inkluderer nu ogsaa rute-felterne (distance_km/
+      // elevation_gain_m/climbs/sprints/sectors), som tidligere manglede her.
+      const rows = profiles.map((p) => toStageProfileRow(createdRace.id, p));
       const { error: profileError } = await supabase.from("race_stage_profiles").insert(rows);
       if (profileError) throw new Error(profileError.message);
       stageProfilesCreated = rows.length;
