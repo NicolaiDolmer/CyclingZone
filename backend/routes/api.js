@@ -492,7 +492,17 @@ const apiBaselineLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: userOrIpKey,
   skip: () => process.env.RATE_LIMIT_DISABLED === "1",
-  handler: (_req, res) => {
+  handler: (req, res) => {
+    // Observabilitet er hele pointen med denne linje. Baselinen er sat 4-20x
+    // over målt spidsbelastning (30 sidevisninger/min for HELE spillet, 7
+    // samtidige besøg, målt over 14 dage), så en 429 herfra betyder ét af to:
+    // enten et løbsk klient-loop (som #4347's hjerteslag mod en død session),
+    // eller at spillerbasen er vokset ud af tallet. Begge dele skal vi opdage
+    // af os selv og ikke via en spiller der klager. Kun sti uden query-streng
+    // logges - aldrig token eller header (hard rule: dump aldrig secret-værdier).
+    console.warn(
+      `[rate-limit] 429 api-baseline ${req.method} ${req.originalUrl.split("?")[0]}`,
+    );
     res.set("Retry-After", "60");
     res.status(429).json({
       // EN fallback (#1068): den spiller-vendte tekst kommer fra frontendens
