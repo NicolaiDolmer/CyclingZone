@@ -164,3 +164,28 @@ test("tynde data: manglende finish_time → generisk 'win'; tom → []", () => {
   assert.deepEqual(buildRaceRecap({ results: [], race: {}, scope: { type: "overall" } }), []);
   assert.deepEqual(buildRaceRecap({}), []);
 });
+
+// ── #4373: v1-recappen må heller ikke kalde en enkeltstart en spurt ────────
+test("#4373: itt/ttt-profil giver disciplinens egen sejrslinje, ikke sprintWin/soloWin", () => {
+  const rows = [
+    { id: "1", result_type: "gc", stage_number: 1, rank: 1, rider_id: "r1", rider: { id: "r1", firstname: "Lei", lastname: "Lin" }, team_id: "tA", finish_time: "+0:00" },
+    { id: "2", result_type: "gc", stage_number: 1, rank: 2, rider_id: "r2", rider: { id: "r2", firstname: "Jonas", lastname: "Holm" }, team_id: "tB", finish_time: "+0:02" },
+  ];
+  const itt = buildRaceRecap({ results: rows, scope: { type: "overall" }, profileType: "itt" });
+  assert.ok(keys(itt).includes("ittWin"));
+  assert.equal(keys(itt).includes("sprintWin"), false);
+
+  const ttt = buildRaceRecap({ results: rows, scope: { type: "overall" }, profileType: "ttt" });
+  assert.ok(keys(ttt).includes("tttWin"));
+  assert.equal(keys(ttt).includes("sprintWin"), false);
+
+  // Stort gab må heller ikke blive til "soloWin" — man kører altid alene.
+  const bigGap = [rows[0], { ...rows[1], finish_time: "+1:30" }];
+  const ittBig = buildRaceRecap({ results: bigGap, scope: { type: "overall" }, profileType: "itt" });
+  assert.ok(keys(ittBig).includes("ittWin"));
+  assert.equal(keys(ittBig).includes("soloWin"), false);
+
+  // Uden profil (ældre/PCM-løb) er adfærden uændret.
+  const noProfile = buildRaceRecap({ results: rows, scope: { type: "overall" } });
+  assert.ok(keys(noProfile).includes("sprintWin"));
+});

@@ -103,7 +103,15 @@ export function eventsPlayedUpTo(feedEvents, scrubKm) {
   return played.slice().reverse();
 }
 
-const WIN_TYPE_KEY = { sprint_win: "sprint_win", close_win: "close_win", solo_win: "solo_win" };
+// #4373: itt_win/ttt_win er tidskørslernes EGNE win_types (backend/lib/
+// raceTimeline.js) — uden dem faldt en enkeltstart tilbage på "finish" eller,
+// før fixet, på "wins the bunch sprint".
+const WIN_TYPE_KEY = {
+  sprint_win: "sprint_win", close_win: "close_win", solo_win: "solo_win",
+  itt_win: "itt_win", ttt_win: "ttt_win",
+};
+// #4373: tidskørsels-varianter af de linjer der ellers taler om et felt.
+const TIME_TRIAL_STAGE_START_KEY = { itt: "stage_start_itt", ttt: "stage_start_ttt" };
 
 // #4026: manglende opslag returnerer null — ALDRIG det rå id. Race Centre-live-
 // kortene viste rå rytter-UUID'er ("Hui J. Feng, a2ffc9c9-… rykker væk") fordi
@@ -160,7 +168,10 @@ export function describeEvent(event, { riderNameById } = {}) {
   };
   switch (event.type) {
     case "stage_start":
-      return { key: "stage_start", params: { count: p.field_count ?? 0, distance: p.distance_km ?? 0 } };
+      return {
+        key: TIME_TRIAL_STAGE_START_KEY[p.profile_type] ?? "stage_start",
+        params: { count: p.field_count ?? 0, distance: p.distance_km ?? 0 },
+      };
     case "breakaway_formed": {
       const params = breakawayParams();
       return params ? { key: "breakaway_formed", params } : null;
@@ -191,7 +202,11 @@ export function describeEvent(event, { riderNameById } = {}) {
     case "favorite_crack": {
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
-      return { key: "favorite_crack", params: { rider, reason: p.reason || "unexplained" } };
+      // #4373: på en tidskørsel er der ingen front at miste kontakten til.
+      return {
+        key: p.discipline === "time_trial" ? "favorite_crack_tt" : "favorite_crack",
+        params: { rider, reason: p.reason || "unexplained" },
+      };
     }
     case "finale_attack": {
       const rider = riderName(p.rider_id, riderNameById);

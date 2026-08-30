@@ -210,3 +210,54 @@ test("buildRaceReport: determinisme — samme input giver bit-identisk plan", ()
   const b = buildRaceReport({ raceId: "race-det", stageNumber: 1, moments });
   assert.deepEqual(a, b);
 });
+
+// ── #4373: tidskørsler har egen rubrik + lede ──────────────────────────────
+// Regressionen: en itt-etape havde intet vindermoment raceReport kendte, så
+// panelet faldt tilbage til v1-recappen — som selv kaldte enkeltstarten en spurt.
+
+test("#4373: itt_win/ttt_win genkendes som vindermoment (rapporten degraderer ikke til v1)", () => {
+  for (const [key, ledeKey] of [["itt_win", "time_trial"], ["ttt_win", "team_time_trial"]]) {
+    const win = m({ key, riderIds: ["r1"], teamIds: ["t1"], significance: 55, params: { riderId: "r1", gapSeconds: 2 } });
+    const report = buildRaceReport({ raceId: "race-1", stageNumber: 1, moments: [win] });
+    assert.ok(report, `${key} skal give en rapport`);
+    assert.equal(report.headline.moment.moment_key, key);
+    assert.equal(report.lede.key, ledeKey);
+  }
+});
+
+test("#4373: ledeKeyForWinMoment sender ALDRIG en tidskørsel til en spurt-lede", () => {
+  const itt = m({ key: "itt_win", riderIds: ["r1"], params: { riderId: "r1", gapSeconds: 1 } });
+  const ttt = m({ key: "ttt_win", riderIds: ["r1"], params: { riderId: "r1", gapSeconds: 1 } });
+  assert.equal(ledeKeyForWinMoment(itt, [itt]), "time_trial");
+  assert.equal(ledeKeyForWinMoment(ttt, [ttt]), "team_time_trial");
+  // Selv hvis et udbruds-moment skulle findes på etapen, vinder disciplinen.
+  const survived = m({ key: "breakaway_survived", riderIds: ["r1"] });
+  assert.equal(ledeKeyForWinMoment(itt, [itt, survived]), "time_trial");
+});
+
+test("#4373: tidskørsels-copy nævner hverken spurt eller felt (en+da)", () => {
+  const forbidden = { en: [/sprint/i, /bunch/i, /peloton/i], da: [/spurt/i, /massespurt/i, /feltet/i] };
+  for (const [lang, doc] of [["en", enRaces], ["da", daRaces]]) {
+    const texts = [
+      ...Object.values(doc.detail.report.headline.itt_win),
+      ...Object.values(doc.detail.report.headline.ttt_win),
+      ...Object.values(doc.detail.report.lede.time_trial),
+      ...Object.values(doc.detail.report.lede.team_time_trial),
+      doc.detail.film.event.finish_itt_win,
+      doc.detail.film.event.finish_ttt_win,
+      doc.detail.film.event.stage_start_itt,
+      doc.detail.film.event.stage_start_ttt,
+      doc.detail.film.event.favorite_crack_tt,
+      doc.detail.recap.ittWin,
+      doc.detail.recap.tttWin,
+      doc.detail.finalKm.winType.itt_win,
+      doc.detail.finalKm.winType.ttt_win,
+    ];
+    for (const text of texts) {
+      assert.ok(typeof text === "string" && text.length > 0, `${lang}: tom tidskørsels-tekst`);
+      for (const pattern of forbidden[lang]) {
+        assert.equal(pattern.test(text), false, `${lang}: "${text}" bruger feltsprog (${pattern})`);
+      }
+    }
+  }
+});

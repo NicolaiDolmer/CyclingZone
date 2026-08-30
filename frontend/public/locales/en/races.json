@@ -793,7 +793,9 @@
       "winType": {
         "sprint_win": "Bunch sprint",
         "close_win": "Close finish",
-        "solo_win": "Solo victory"
+        "solo_win": "Solo victory",
+        "itt_win": "Fastest time",
+        "ttt_win": "Fastest team time"
       }
     },
     "film": {
@@ -809,6 +811,8 @@
       "feedEmpty": "Scrub forward to see what happened.",
       "event": {
         "stage_start": "{count} riders roll out for {distance} km.",
+        "stage_start_itt": "{count} riders go off one by one over {distance} km against the clock.",
+        "stage_start_ttt": "The teams go off one by one over {distance} km against the clock.",
         "breakaway_formed": "{riders} {count, plural, one {goes} other {go}} clear off the front.",
         "kom_passage": "{name} (cat. {category}): {rider} leads over the top.",
         "intermediate_sprint": "{name}: {rider} takes the intermediate sprint.",
@@ -816,6 +820,7 @@
         "breakaway_survived": "The breakaway holds off the bunch all the way to the line.",
         "incident": "{kind, select, mechanical {{rider} goes down with a mechanical.} other {{rider} goes down in a crash.}}",
         "favorite_crack": "{rider} cracks and loses contact with the front.",
+        "favorite_crack_tt": "{rider} fades in the second half and bleeds time.",
         "finale_attack": "{rider} attacks in the finale.",
         "sprint_decided": "It comes down to the wire between {rider} and the chasers.",
         "sprint_decided_photo": "Photo finish: it comes down to the wire for {rider}.",
@@ -823,6 +828,8 @@
         "finish_sprint_win": "{rider} wins the bunch sprint.",
         "finish_close_win": "{rider} wins in a close finish.",
         "finish_solo_win": "{rider} solos to the stage win.",
+        "finish_itt_win": "{rider} sets the fastest time of the day.",
+        "finish_ttt_win": "{rider} leads home the fastest team of the day.",
         "gc_change": "{rider} takes over the overall lead from {previousLeader}."
       }
     },
@@ -831,6 +838,8 @@
       "win": "{rider} took the win.",
       "soloWin": "{rider} soloed clear to win by {marginText}.",
       "sprintWin": "{rider} won the sprint.",
+      "ittWin": "{rider} set the fastest time.",
+      "tttWin": "{rider} led home the fastest team.",
       "breakawaySurvived": "{count, plural, one {A lone rider stayed away to the finish.} other {A #-rider breakaway stayed away to the finish.}}",
       "breakawayCaught": "{count, plural, one {The lone breakaway rider was caught before the line.} other {The breakaway (# riders) was caught before the line.}}",
       "teamDay": "{team} led the team classification with {count} riders in the top 10.",
@@ -907,6 +916,14 @@
           "v2": "{rider} is fastest in the bunch sprint",
           "v3": "The sprint goes to {rider}"
         },
+        "itt_win": {
+          "v1": "{rider} sets the fastest time",
+          "v2": "Nobody beats {rider} against the clock"
+        },
+        "ttt_win": {
+          "v1": "{rider} leads home the fastest team",
+          "v2": "The fastest team time goes to {team}"
+        },
         "close_win": {
           "v1": "{rider} wins by {marginText}",
           "v2": "{rider} holds on to win"
@@ -936,6 +953,13 @@
         },
         "reduced_sprint": {
           "v1": "A hard finale split the field, and {rider} won the sprint from the front group for {team}."
+        },
+        "time_trial": {
+          "v1": "Every rider went off alone against the clock. {rider} posted the fastest time of the day for {team}.",
+          "v2": "Just the rider, the road and the clock. Nobody went faster than {rider} of {team}."
+        },
+        "team_time_trial": {
+          "v1": "The teams rode the course one by one against the clock. {team} was fastest, with {rider} first across the line."
         },
         "solo": {
           "v1": "{rider} left the field behind and crossed the line alone, {marginText} clear.",
