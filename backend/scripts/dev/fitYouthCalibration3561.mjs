@@ -6,7 +6,7 @@ import { generateAcademyCandidates, YOUTH_GEN_CONFIG } from "../../lib/academyGe
 import { makeRng } from "../../lib/fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "../../lib/physiologySeeding.js";
 import { deriveAbilities } from "../../lib/abilityDerivation.js";
-import { ageForSeason } from "../../lib/riderSeasonAge.js";
+import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const PHYS = ["climbing","time_trial","flat","tempo","sprint","acceleration","punch","endurance","recovery","durability"];
 // Reference (prod, aldrig trænet): { alder: [bedsteEvne, gab] }
@@ -15,7 +15,7 @@ const REF = { 16:[5.2,1.25], 17:[7.4,1.96], 18:[9.6,1.57], 19:[11.8,0.98], 20:[1
 function measure(patch, n = 2500) {
   const cfg = Object.freeze({ ...YOUTH_GEN_CONFIG, ...patch });
   const rng = makeRng(777);
-  const cands = generateAcademyCandidates({ rng, referenceYear: 2026, existingNames: new Set(), countOverride: n, genCfg: cfg });
+  const cands = generateAcademyCandidates({ rng, referenceYear: LAUNCH_REFERENCE_YEAR, existingNames: new Set(), countOverride: n, genCfg: cfg });
   const byAge = {};
   for (const c of cands) {
     const rr = { id: "f", ...c.rider };

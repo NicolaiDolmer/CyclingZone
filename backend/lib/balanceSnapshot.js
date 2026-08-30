@@ -28,6 +28,7 @@ import { simulateStage, stableSeed, NOISE_SD_SCALE } from "./raceSimulator.js";
 import { buildRaceResults } from "./raceRunner.js";
 import { buildCaps, developRiderSeason } from "./riderProgression.js";
 import { abilityRankSensitivity, breakawayParticipationGapByAggression } from "./raceSensitivity.js";
+import { LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -42,7 +43,7 @@ export const BALANCE_SNAPSHOT_DEFAULTS = Object.freeze({
   fieldSize: 140,
   gtField: 176,
   seasons: 6,
-  referenceYear: 2026,
+  referenceYear: LAUNCH_REFERENCE_YEAR,
 });
 
 const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "classic"];

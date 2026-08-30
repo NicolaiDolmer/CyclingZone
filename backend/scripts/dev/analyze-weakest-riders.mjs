@@ -7,12 +7,13 @@ import { fileURLToPath } from "node:url";
 import { buildFictionalPopulationPreview } from "../../lib/fictionalPopulationPreview.js";
 import { LAUNCH_POPULATION } from "../../lib/fictionalLaunchPopulation.js";
 import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const baseline = JSON.parse(readFileSync(join(__dirname, "../../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../../lib/riderValuationModel.json"), "utf8"));
 
-const { riders } = buildFictionalPopulationPreview({ count: LAUNCH_POPULATION.count, seed: 2026, referenceYear: 2026, baseline, model });
+const { riders } = buildFictionalPopulationPreview({ count: LAUNCH_POPULATION.count, seed: 2026, referenceYear: LAUNCH_REFERENCE_YEAR, baseline, model });
 const withTop = riders.map((r) => ({ r, top: Math.max(...VISIBLE_ABILITIES.map((k) => r.abilities[k])) }));
 withTop.sort((a, b) => a.top - b.top);
 console.log("8 SVAGESTE ryttere (laveste top-evne) — seed 2026:");

@@ -18,7 +18,7 @@ import { seedPhysiologyFromLegacy } from "../lib/physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { buildCapsForRider } from "../lib/riderProgression.js";
 import { computeRiderTypes, NEUTRAL_BASELINE, RIDER_TYPES, RIDER_TYPE_KEYS, ABILITY_KEYS } from "../lib/riderTypes.js";
-import { ageForSeason } from "../lib/riderSeasonAge.js";
+import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -36,7 +36,7 @@ const N = parseInt(arg("n", "1200"), 10);
 
 const cfg = Object.freeze({ ...YOUTH_GEN_CONFIG, signatureBoostPerWeight: BOOST, statCeilBoosted: CEIL });
 const rng = makeRng(2026);
-const candidates = generateAcademyCandidates({ rng, referenceYear: 2026, existingNames: new Set(), countOverride: N, genCfg: cfg });
+const candidates = generateAcademyCandidates({ rng, referenceYear: LAUNCH_REFERENCE_YEAR, existingNames: new Set(), countOverride: N, genCfg: cfg });
 
 const rows = candidates.map((c, i) => {
   const riderRow = { id: `diag-${i}`, ...c.rider };

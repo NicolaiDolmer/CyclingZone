@@ -6,11 +6,12 @@ import { deriveAbilities } from "./abilityDerivation.js";
 import { computeRiderTypes } from "./riderTypes.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
+import { LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 
 export function buildFictionalPopulationPreview({
   count = LAUNCH_POPULATION.count,
   seed = 2026,
-  referenceYear = 2026,
+  referenceYear = LAUNCH_REFERENCE_YEAR,
   baseline,
   model,
 } = {}) {

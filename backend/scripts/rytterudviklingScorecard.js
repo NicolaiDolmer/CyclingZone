@@ -33,6 +33,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...r] = a.replace(/^--/, "").split("=");
@@ -135,7 +136,7 @@ function byggKuld(n, seed) {
   const ud = [];
   while (ud.length < n) {
     const batch = generateAcademyCandidates({
-      rng, referenceYear: 2026, existingNames, countOverride: Math.min(50, n - ud.length),
+      rng, referenceYear: LAUNCH_REFERENCE_YEAR, existingNames, countOverride: Math.min(50, n - ud.length),
     });
     for (const c of batch) {
       // generateAcademyCandidates returnerer { is_serious, archetypeDraw, rider } —
