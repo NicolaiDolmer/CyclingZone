@@ -6,7 +6,7 @@
 
 > **🎯 Next action — ejer-frister:** **#4376 divisions-tillægget: PR #4388 klar, DU merger** (migration + balance). Så applier jeg migrationen + dry-run → **GO** (~79 hold, +4,8 mio CZ$) · **#3494 blokerer #4265** — sponsor-vækstmålet er umuligt (`sponsor_income` = 240.000 for ALLE 230 hold) · **#4265 vs MASTERPLAN** stadig åben · **#4213** de to tekster + NUA-køen (19 venter) · **#4098** senest **søn 31/8** (124 hold ramt) · **#4176** kalender-SSOT **senest 4/9 OG før S4**. **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + trup-linje + RET "Fra i morgen"-varslet · **#886** Sentry-token → Infisical · **#4361** 10 stars vs PAT · **Z1 #1146** PR #4323 grøn, spillertest før merge. Derefter: #4317 · #4259 · #4355 · #4367.
 
-> **📦 Backlog-bølge 29-30/8 — 20 af 24 merget.** Tilbage: **#4390, #4392, #4399** (auth, admin-tal, spiller-UI — ejer vil se dem først) + **#4413 patch note 7.221, merges SIDST**. Auto-merge-labelen er stadig død ([#4404](https://github.com/NicolaiDolmer/CyclingZone/issues/4404)): required code-owner-review kan ikke opfyldes på egne PR'er, kun admin-bypass. Ejer merger. #3427 står åbent — koden virker, men preview-mock når ikke indloggede sider ([#3430](https://github.com/NicolaiDolmer/CyclingZone/issues/3430)), så den kræver en rigtig telefon.
+> **📦 Backlog-bølger.** 29-30/8-bølgen: 20 af 24 merget, rest **#4390, #4392, #4399** (auth, admin-tal, spiller-UI) + **#4413 patch note**. **Ny autonom bølge 30/8 (i gang):** 4 CI/docs-PR'er merget selv (#4427 #4430 #4431 #4432), øvrige PR'er venter på dig. 8 issues lukket som allerede løst. Auto-merge-labelen er stadig død ([#4404](https://github.com/NicolaiDolmer/CyclingZone/issues/4404)), kun admin-bypass.
 
 > **🩹 Triage-fund 30/8 — ryttere forsvandt ud af KØRENDE etapeløb.** [#4418](https://github.com/NicolaiDolmer/CyclingZone/issues/4418): 5 ryttere væk fra 3 igangværende S3-løb, alle menneskehold. To årsager. **A skade** — udtagelsen er KORREKT (ejer 30/8), manglede bare at blive registreret → **PR #4422 klar, DU merger** (migration + rører motoren mens løb kører). **B akademikontrakt midt i løbet** → [#4423](https://github.com/NicolaiDolmer/CyclingZone/issues/4423), stadig åben fejl. **Ejer-valg B truffet:** træningsskader på løbsdage får LOV at stå i S3, løses strukturelt i S4 hvor træning flytter til løbsdage ([#3459](https://github.com/NicolaiDolmer/CyclingZone/issues/3459)). De 5 ramte ryttere: afgøres sammen med #4356. E2E-flake noteret: [#4424](https://github.com/NicolaiDolmer/CyclingZone/issues/4424).
 
@@ -24,7 +24,7 @@
 
 > **⚖️ Fair play:** #3818 + #4154 eksekveret 23-24/8. **Prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord-forklaring.
 
-> **📣 Forum:** L1 (#4238), dashboard-kort (#4249), opbakning (#4250) live. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235). Rest: #4252 · #4255.
+> **📣 Forum:** L1 (#4238), dashboard-kort (#4249), opbakning (#4250) live. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235). Rest: ingen åbne.
 
 ## Standing context (forever-relaunch)
 
