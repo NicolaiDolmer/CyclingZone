@@ -5,6 +5,66 @@ import { buildRaceResultNarrative, buildStageResultNarrative, buildPersonalResul
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+// ─── #3434 · Kortlivet per-sweep cache for notifyTeamOwner ──────────────────
+// Prod-loggen viste hundredvis af enkeltvise `teams.user_id`-opslag pr.
+// notifikations-sweep, inkl. samme team_id slået op to gange inden for samme
+// sekund-vindue. Denne cache genbruger opslaget for gentagne kald med samme
+// teamId, uden at ændre kaldersignaturer (#3434-anbefaling, laveste risiko).
+//
+// Sikkerhed (vigtigste egenskab): cachen må ALDRIG give en manager en anden
+// managers notifikation, hvis et hold skifter ejer (fx akademi-overtagelse)
+// mellem to kald. Den er derfor bevidst IKKE en ubegrænset proces-levetid-
+// cache — hvert opslag har en kort TTL, så den udløber i sig selv og aldrig
+// kan lække data på tværs af sweeps (som typisk kører med minutters mellemrum
+// eller længere). TTL'en baseres på `now`-parameteren (business-tid), som i
+// produktion er `new Date()` pr. kald — dvs. reelt vægur-tid — men gør cachen
+// deterministisk testbar uden at mocke Date.
+//
+// Nøglen er (supabase-klient-instans, teamId) via en WeakMap, ikke bare
+// teamId — ellers ville to helt urelaterede kald der begge bruger fx
+// "team-1" (typisk i tests, hvor hver test bygger sin egen mock-supabase med
+// sit eget team-1) kunne dele cache-bucket og læse en anden kontekst/klients
+// data. Produktionens ægte supabase-klient er én langlevet instans pr. proces,
+// så det ændrer ikke opførslen der — kun isolerer korrekt mellem forskellige
+// klient-instanser (tests, eller fremtidige per-request klienter).
+const TEAM_OWNER_CACHE_TTL_MS = 5000;
+let teamOwnerCacheBySupabase = new WeakMap(); // supabase -> Map<teamId, { userId, expiresAt }>
+
+function getCachedTeamOwnerId(supabase, teamId, nowMs) {
+  const cache = teamOwnerCacheBySupabase.get(supabase);
+  if (!cache) return undefined;
+  const entry = cache.get(teamId);
+  if (!entry) return undefined;
+  if (entry.expiresAt <= nowMs) {
+    cache.delete(teamId);
+    return undefined;
+  }
+  return entry.userId;
+}
+
+function setCachedTeamOwnerId(supabase, teamId, userId, nowMs) {
+  let cache = teamOwnerCacheBySupabase.get(supabase);
+  if (!cache) {
+    cache = new Map();
+    teamOwnerCacheBySupabase.set(supabase, cache);
+  }
+  cache.set(teamId, { userId, expiresAt: nowMs + TEAM_OWNER_CACHE_TTL_MS });
+}
+
+/**
+ * Test-/drift-hjælper: tøm team-ejer-cachen eksplicit. Ikke nødvendig i normal
+ * drift (TTL'en + per-klient-nøglen rydder selv op), men gør tests
+ * deterministiske. Uden argument nulstilles ALT (ny WeakMap); med en
+ * `supabase`-instans ryddes kun den klients bucket.
+ */
+export function resetTeamOwnerCache(supabase) {
+  if (supabase) {
+    teamOwnerCacheBySupabase.delete(supabase);
+  } else {
+    teamOwnerCacheBySupabase = new WeakMap();
+  }
+}
+
 function buildRecentDuplicateLookup({
   supabase,
   userId,
@@ -117,19 +177,27 @@ export async function notifyTeamOwner({
     return { delivered: false, deduped: false, reason: "missing_team" };
   }
 
-  const { data: team, error } = await supabase
-    .from("teams")
-    .select("user_id")
-    .eq("id", teamId)
-    .single();
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  let userId = getCachedTeamOwnerId(supabase, teamId, nowMs);
 
-  if (error) {
-    throw error;
+  if (userId === undefined) {
+    const { data: team, error } = await supabase
+      .from("teams")
+      .select("user_id")
+      .eq("id", teamId)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    userId = team?.user_id ?? null;
+    setCachedTeamOwnerId(supabase, teamId, userId, nowMs);
   }
 
   return notifyUser({
     supabase,
-    userId: team?.user_id ?? null,
+    userId,
     type,
     title,
     message,
