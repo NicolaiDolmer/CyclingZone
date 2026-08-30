@@ -125,6 +125,17 @@ test("forward-guard: launch-referenceåret erklæres kun ét sted (backend/lib +
     //     LAUNCH_YEAR/REF_YEAR er alle sammen dukket op med 2026 hårdkodet.
     const alias = code.match(/(?:^|\n)\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*YEAR)\s*=\s*2026\s*[;,\n]/);
     if (alias) offenders.push(`${rel} (${alias[1]} = 2026)`);
+    // (c) Samme konstant som OBJEKT-PROPERTY eller DEFAULT-PARAMETER. Første runde af
+    //     #4455 så kun erklæringsformen, så `asOfYear: 2026` i abilityDerivation.js's
+    //     CALIBRATION slap forbi — den FEMTE kopi, og den eneste i den KØRENDE backend
+    //     (deriveAbilities kaldes uden asOfYear fra backfillCores/starterSquadAllocator).
+    //     Et nøglenavn der ender på "Year"/"YEAR" er et årstal, ikke et seed: `seed: 2026`
+    //     og `makeRng(2026)` er bevidst urørte og må ikke fældes.
+    const prop = code.match(/\b([A-Za-z_$][A-Za-z0-9_$]*(?:Year|YEAR))\s*[:=]\s*2026\b/);
+    if (prop) offenders.push(`${rel} (${prop[1]}: 2026)`);
+    // (d) `|| 2026` — fallback-formen, fx når et årstal ikke kunne parses ud af
+    //     season.start_date (academyIntake.js/seasonAcademyIntake.js).
+    if (/\|\|\s*2026\b/.test(code)) offenders.push(`${rel} (|| 2026 som fallback)`);
   }
   assert.deepEqual(offenders, [],
     `Launch-referenceåret skal importeres fra lib/riderSeasonAge.js, ikke erklæres på ny. ` +
@@ -134,13 +145,39 @@ test("forward-guard: launch-referenceåret erklæres kun ét sted (backend/lib +
 // Konstanten alene er ikke nok: formlen kan også inlines med årstallet skrevet
 // direkte ind (`2026 - fødselsår`, `2026 + (n-1) - fødselsår`). Det var præcis
 // mønsteret i seks scripts #4455 ryddede op i.
-test("forward-guard: ingen inlinet alders-formel med hårdkodet årstal i backend/scripts", () => {
-  // Et 4-cifret årstal, evt. med et sæson-offset, minus et fødselsår-udtryk.
-  const INLINE_AGE = /\b20\d\d\b[^\n;]{0,40}?-\s*(?:new\s+Date\([^)]*birthdate|Number\(String\([^)]*birthdate)/;
+// Et 4-cifret årstal, evt. med et sæson-offset, minus et fødselsår-udtryk — alt sammen
+// på ÉN linje.
+const INLINE_AGE = /\b20\d\d\b[^\n;]{0,40}?-\s*(?:new\s+Date\([^)]*birthdate|Number\(String\([^)]*birthdate)/;
+
+// Den FLERLINJEDE form, som INLINE_AGE ikke kan se: fødselsåret trækkes ud i en lokal
+// variabel på én linje og bruges i formlen på en anden. #4455's review afslørede at
+// præcis den form — careerCurveSimulation.js's `ageInSeason1` — slap forbi guarden,
+// selvom PR'en selv fjernede den. Den blev kun fanget indirekte, fordi dens
+// `const SEASON1_YEAR = 2026` faldt i alias-guarden; havde konstanten heddet noget
+// andet, var kopien gået lige igennem.
+const BIRTH_YEAR_LOCAL = /(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*[^;\n]*birthdate[^;\n]*(?:getUTCFullYear|getFullYear|slice\s*\(\s*0\s*,\s*4\s*\))/g;
+
+function multilineAgeOffence(code) {
+  for (const m of code.matchAll(BIRTH_YEAR_LOCAL)) {
+    const navn = m[1];
+    // Et årstal eller en *YEAR-konstant minus netop den lokale = alders-formlen.
+    const brug = new RegExp(`(?:\\b20\\d\\d\\b|[A-Za-z_$][A-Za-z0-9_$]*(?:Year|YEAR))\\s*-\\s*${navn}\\b`);
+    if (brug.test(code)) return navn;
+  }
+  return null;
+}
+
+test("forward-guard: ingen inlinet alders-formel med hårdkodet årstal i backend/lib + backend/scripts", () => {
   const offenders = [];
-  for (const path of sourceFilesUnder(SCRIPTS_DIR)) {
+  // #4455-review: guarden dækker nu OGSÅ backend/lib. Den femte kopi lå netop dér,
+  // i den kørende backend — at kun scripts blev scannet var selve hullet.
+  for (const path of [...sourceFilesUnder(LIB_DIR), ...sourceFilesUnder(SCRIPTS_DIR)]) {
+    if (path === join(LIB_DIR, "riderSeasonAge.js")) continue; // SSOT'en selv
     const code = codeOf(path);
-    if (INLINE_AGE.test(code)) offenders.push(relative(BACKEND_DIR, path).replace(/\\/g, "/"));
+    const rel = relative(BACKEND_DIR, path).replace(/\\/g, "/");
+    if (INLINE_AGE.test(code)) offenders.push(`${rel} (årstal inline på én linje)`);
+    const navn = multilineAgeOffence(code);
+    if (navn) offenders.push(`${rel} (fødselsår i lokal '${navn}', formel på næste linje)`);
   }
   assert.deepEqual(offenders, [],
     `Alders-formlen skal komme fra lib/riderSeasonAge.ageForSeason(birthdate, seasonNumber), ` +
@@ -157,7 +194,6 @@ test("forward-guard: guarderne er ikke tavse no-ops", () => {
   // Guarderne skal fælde de præcise linjer #4455 fjernede. Uden det kunne et regex
   // stille og roligt holde op med at matche, og guarden ville bestå på ingenting.
   const ALIAS = /(?:^|\n)\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*YEAR)\s*=\s*2026\s*[;,\n]/;
-  const INLINE_AGE = /\b20\d\d\b[^\n;]{0,40}?-\s*(?:new\s+Date\([^)]*birthdate|Number\(String\([^)]*birthdate)/;
   for (const line of [
     "const LAUNCH_YEAR = 2026;",
     "const SEASON1_YEAR = 2026;",
@@ -176,4 +212,48 @@ test("forward-guard: guarderne er ikke tavse no-ops", () => {
   }
   // Og den må ikke fælde den korrekte kaldeform.
   assert.doesNotMatch("const age = ageForSeason(r.birthdate, season.number);", INLINE_AGE);
+
+  // #4455-review, FUND 2: objekt-property- og fallback-formen. `asOfYear: 2026` var
+  // den femte kopi, og den slap forbi begge de oprindelige guards.
+  const PROP = /\b([A-Za-z_$][A-Za-z0-9_$]*(?:Year|YEAR))\s*[:=]\s*2026\b/;
+  for (const line of [
+    "  asOfYear: 2026,",
+    "  referenceYear: 2026,",
+    "  referenceYear = 2026,",
+    "  launchYear: 2026,",
+    "const LAUNCH_REFERENCE_YEAR = 2026;",
+  ]) {
+    assert.match(line, PROP, `property-guarden fanger ikke længere: ${line}`);
+  }
+  // Seeds er IKKE årstal og må aldrig fældes — de er bevidst hårdkodede.
+  for (const line of ["  seed: 2026,", "const rng = makeRng(2026);", "  count: 2026,"]) {
+    assert.doesNotMatch(line, PROP, `property-guarden fælder et seed: ${line}`);
+  }
+  assert.match("  ?? (parseInt(x, 10) || 2026);", /\|\|\s*2026\b/);
+
+  // #4455-review, FUND 3: den FLERLINJEDE form. Dette er careerCurveSimulation.js's
+  // `ageInSeason1` ORDRET som den stod før denne PR fjernede den. Den oprindelige
+  // guard 2 matchede den IKKE — PR-bodyens påstand om det modsatte var forkert.
+  const FJERNET_FRA_CAREER_CURVE = [
+    "function ageInSeason1(birthdate) {",
+    "  const birthYear = new Date(birthdate).getFullYear();",
+    "  return Number.isFinite(birthYear) ? SEASON1_YEAR - birthYear : null;",
+    "}",
+  ].join("\n");
+  assert.doesNotMatch(FJERNET_FRA_CAREER_CURVE, INLINE_AGE,
+    "forudsætningen er ændret: en-linje-guarden matcher nu den flerlinjede form");
+  assert.equal(multilineAgeOffence(FJERNET_FRA_CAREER_CURVE), "birthYear",
+    "flerlinje-guarden fanger ikke længere careerCurveSimulation.js's fjernede formel");
+
+  // Samme form med de to andre år-udtræk, så guarden ikke kun kender én stavemåde.
+  for (const variant of [
+    "const by = new Date(r.birthdate).getUTCFullYear();\nconst age = 2026 - by;",
+    "let bY = Number(String(row.birthdate).slice(0, 4));\nconst age = REFERENCE_YEAR - bY;",
+  ]) {
+    assert.notEqual(multilineAgeOffence(variant), null, `flerlinje-guarden fanger ikke: ${variant}`);
+  }
+
+  // Den korrekte kaldeform og SSOT'ens egen delte helper må ikke fældes.
+  assert.equal(multilineAgeOffence("const age = ageForSeason(r.birthdate, n);"), null);
+  assert.equal(multilineAgeOffence("const year = birthYearFrom(birthdate);\nreturn clamp(asOfYear - year, 16, 45);"), null);
 });

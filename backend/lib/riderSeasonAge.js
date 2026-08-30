@@ -75,6 +75,23 @@ export function ageForSeason(birthdate, seasonNumber) {
 }
 
 /**
+ * Sæson-alder ud fra et REFERENCEÅR i stedet for et sæsonnummer. Præcis samme
+ * formel — generatorer, snapshots og allokatorer arbejder i årstal, ikke i
+ * sæsonnumre, og duplikerede derfor `referenceYear − fødselsår` hver for sig
+ * (#4455: balanceSnapshot.js og starterSquadAllocator.js var kopi seks og syv).
+ *
+ * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
+ * @param {number|null|undefined} referenceYear  kalenderåret alderen måles mod
+ * @returns {number|null}  null ved manglende/ugyldigt input (aldrig et gæt)
+ */
+export function ageForReferenceYear(birthdate, referenceYear) {
+  if (!Number.isFinite(referenceYear)) return null;
+  const birthYear = birthYearFrom(birthdate);
+  if (birthYear === null) return null;
+  return referenceYear - birthYear;
+}
+
+/**
  * Referenceåret for en sæson — samme formel, men uden en fødselsdato. Bruges hvor
  * et årstal skal videregives (fx academyTransfer's p_season_start_year).
  *
