@@ -55,7 +55,7 @@ export default function ProfilePage() {
   // Mount: load profile once. loadProfile is a hoisted function declaration, so
   // calling it here is runtime-safe; disable the compiler's declaration-order
   // check for the hoisted call (and exhaustive-deps for the intentional one-shot).
-  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/immutability
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/immutability -- loadProfile er en hoisted lokal funktion; bevidst engangs-mount-fetch
   useEffect(() => { loadProfile(); }, []);
 
   async function loadProfile() {

@@ -173,8 +173,15 @@ export const ALL_CRON_MONITORS = [
   // UNMONITORED_CRON_TICKS: den forskel er en tidligere designbeslutning, ikke
   // en regel om at søndags-gatede jobs aldrig kan monitoreres).
   ["market-value-level-correction-gate", CRON_MONITOR_60MIN],
+  // #2892: egen cron-heartbeat-vagt (backup for Sentrys kvote-begrænsede
+  // monitorer). Wrappet i monitorCron ligesom alle andre jobs herover, så den
+  // selv får et check-in i cron_checkins — ren ensartethed, ikke fordi Sentry-
+  // kvoten reelt tillader flere aktive monitorer. Vagten overvåger IKKE sig
+  // selv (dør hele cron-processen, fyrer ingen tick — samme blinde vinkel som
+  // stall-watchdog'en har for sin egen død).
+  ["cron-heartbeat-sweep", CRON_MONITOR_5MIN],
   // #4419: søndagens værdi-pipeline (v4-refresh + markedsblend). Samme
-  // begrundelse som gaten ovenfor. Tikket kalder gennem hver time og
+  // begrundelse som market-value-level-correction-gate ovenfor: tikket kalder gennem hver time og
   // returnerer normalt (ran:false, skipped:"not_sunday"/"before_window") uden
   // for vinduet, så en 60min-monitor er ærlig hele ugen.
   ["sunday-value-refresh", CRON_MONITOR_60MIN],

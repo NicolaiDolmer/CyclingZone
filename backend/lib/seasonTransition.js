@@ -40,9 +40,12 @@ import { notifySeasonEvent as defaultNotifySeasonEvent } from "./discordNotifier
 import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import {
   buildSponsorStandingsContext,
+  computeBoardBaseModifier,
   computeSponsorForSeason,
+  resolveSponsorPayout,
   FIRST_VARIABLE_SPONSOR_SEASON,
 } from "./sponsorEngine.js";
+import { isBoardTestModeActive } from "./boardTestMode.js";
 import { notifyUser, emitContractExpiringNotifications } from "./notificationService.js";
 import {
   expireAndRenewContracts as defaultExpireAndRenewContracts,
@@ -485,8 +488,12 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
   // tælle med i teams_affected og sponsor_base_total — 159 hold i prod-preview
   // 25/7 mod korrekte 156. Diskriminatoren bor nu ét sted (humanTeamFilter.js),
   // så den ikke kan drive fra notifikations-/board-stierne igen.
+  // #2753 · board_profiles embeddes med (samme join som processSeasonStart), fordi
+  // previewet nu regner den FAKTISKE payout - ikke bare den garanterede base.
   const { data: humanTeams, error: teamsError } = await applyHumanTeamFilter(
-    supabase.from("teams").select("id, name, sponsor_income, division")
+    supabase
+      .from("teams")
+      .select("id, name, sponsor_income, division, board_profiles(budget_modifier, negotiation_status)")
   );
   if (teamsError) throw new Error(`Could not load teams: ${teamsError.message}`);
   const sponsorStandingsContext = await loadSponsorPreviewStandings({
@@ -495,10 +502,15 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     toSeasonNumber,
   });
   const contractsByTeamId = await loadSponsorContractStock({ supabase });
+  const pulloutFactorByTeamId = await loadSponsorPulloutFactors({ supabase });
+  const boardTestMode = await isBoardTestModeActive(supabase);
 
-  // Sponsor-preview viser den GARANTEREDE base før board/pullout-modifier —
-  // altså præcis det beløb processSeasonStart udbetaler efter at
-  // expireAndRenewContracts har gjort én kontrakt aktiv pr. hold (#2926).
+  // #2926 · sponsor_base er den GARANTEREDE base: præcis den kontrakt-base
+  // processSeasonStart regner på efter at expireAndRenewContracts har gjort én
+  // kontrakt aktiv pr. hold.
+  // #2753 · sponsor_payout er det der FAKTISK krediteres: base × board-modifier
+  // × pullout, cappet af kontraktloftet - samme regnestykke som udbetalingen
+  // (resolveSponsorPayout). Det er payout-tallet ejeren planlægger skiftet på.
   const sponsorPreview = (humanTeams || []).map((team) => ({
     team_id: team.id,
     team_name: team.name,
@@ -507,7 +519,11 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
       team,
       toSeasonNumber,
       sponsorStandingsContext,
-      contractsByTeamId.get(team.id) || {}
+      contractsByTeamId.get(team.id) || {},
+      {
+        pulloutFactor: pulloutFactorByTeamId.get(team.id) ?? 1.0,
+        boardTestMode,
+      }
     ),
   }));
 
@@ -529,8 +545,13 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
     },
     already_transitioned: Boolean(existingTo),
     teams_affected: sponsorPreview.length,
-    // Udbetales ved sæsonstart (board-modifier lægges oveni i processSeasonStart).
+    // Kontrakternes garanterede base, FØR board-modifier/pullout. Reference-tal -
+    // ikke det der rammer holdenes balance.
     sponsor_base_total: sponsorPreview.reduce((s, p) => s + p.sponsor_base, 0),
+    // #2753 · det faktiske sponsor-cashflow ved skiftet (modifier × pullout × loft).
+    // Dette er tallet admin-UI'et og dry-run-scripts skal vise.
+    sponsor_payout_total: sponsorPreview.reduce((s, p) => s + p.sponsor_payout, 0),
+    sponsor_board_test_mode: boardTestMode,
     // Udbetales ÉN gang ved aktivering af et pending valg (loyal-arketypen, #2948).
     sponsor_signing_bonus_total: sponsorPreview.reduce((s, p) => s + p.sponsor_signing_bonus, 0),
     // IKKE en udbetaling ved skiftet: den variable puljes samlede størrelse, som
@@ -564,6 +585,27 @@ async function loadSponsorContractStock({ supabase }) {
   return byTeamId;
 }
 
+/**
+ * #2753 · Lag 5 sponsor-pullout, samme kilde som processSeasonStart læser lige
+ * før udbetalingen: aktive board_consequences på lag 5. Pullouten er oprettet ved
+ * forrige sæsons slut og rammer PRÆCIS den kommende sæsons sponsor-payment, så
+ * previewet skal regne med den.
+ */
+async function loadSponsorPulloutFactors({ supabase }) {
+  const { data, error } = await supabase
+    .from("board_consequences")
+    .select("team_id, severity, id")
+    .eq("layer", 5)
+    .eq("status", "active");
+  if (error) throw new Error(`Could not load active sponsor-pullouts: ${error.message}`);
+  const byTeamId = new Map();
+  for (const row of data || []) {
+    if (!row?.team_id) continue;
+    byTeamId.set(row.team_id, (row.severity || 1000) / 1000);
+  }
+  return byTeamId;
+}
+
 async function loadSponsorPreviewStandings({ supabase, fromSeasonId, toSeasonNumber }) {
   if (toSeasonNumber < FIRST_VARIABLE_SPONSOR_SEASON) {
     return buildSponsorStandingsContext([]);
@@ -584,7 +626,13 @@ async function loadSponsorPreviewStandings({ supabase, fromSeasonId, toSeasonNum
  * sæsonstartens pengeinjektion markant. Her resolves den kontrakt der FAKTISK vil
  * være aktiv, via samme rene regel som fornyelsen bruger.
  */
-function buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext, contracts = {}) {
+function buildSponsorPreviewRow(
+  team,
+  toSeasonNumber,
+  sponsorStandingsContext,
+  contracts = {},
+  modifierContext = {}
+) {
   const lastSeasonStanding = sponsorStandingsContext.standingByTeamId.get(team.id) || null;
   const divisionStandings = lastSeasonStanding
     ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
@@ -613,8 +661,24 @@ function buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext, c
     activeContract: contract,
   });
 
+  // #2753 · samme regnestykke som processSeasonStart udbetaler på.
+  const payout = resolveSponsorPayout({
+    grossSponsor: breakdown.gross_sponsor,
+    activeContract: contract,
+    baseModifier: computeBoardBaseModifier(team.board_profiles || []),
+    pulloutFactor: modifierContext.pulloutFactor ?? 1.0,
+    boardTestMode: Boolean(modifierContext.boardTestMode),
+  });
+
   return {
     sponsor_base: breakdown.gross_sponsor,
+    // Det beløb der faktisk krediteres holdet ved sæson-start.
+    sponsor_payout: payout.payout,
+    sponsor_modifier: payout.modifier,
+    sponsor_board_modifier: payout.base_modifier,
+    sponsor_pullout_factor: payout.pullout_factor,
+    sponsor_payout_ceiling: payout.ceiling,
+    sponsor_payout_capped: payout.capped_by_ceiling,
     sponsor_mode: breakdown.mode,
     sponsor_variable: breakdown.variable,
     sponsor_formula_base: breakdown.base,
@@ -837,6 +901,9 @@ async function writeAdminLog(supabase, payload) {
         transition_at: transitionAtIso,
         teams_affected: plan.teams_affected,
         sponsor_base_total: plan.sponsor_base_total,
+        // #2753 · den faktiske udbetaling (modifier × pullout × loft) logges ved
+        // siden af den garanterede base, så admin-loggen kan revideres bagefter.
+        sponsor_payout_total: plan.sponsor_payout_total,
       },
       created_at: transitionAtIso,
     })

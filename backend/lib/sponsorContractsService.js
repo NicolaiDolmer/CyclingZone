@@ -19,6 +19,7 @@
 //   seasons.number er sæson-heltallet; season_standings keyer på season_id (UUID FK
 //     til seasons.id), IKKE et nummer → resolv forrige sæsons id først.
 import { renownTarget } from "./renownEngine.js";
+import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { generateOffers, FULL_CALENDAR_DAYS, guaranteedFractionForLength } from "./sponsorOffers.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
@@ -712,11 +713,14 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
   // Ét opslag for divisorer + holdenes nye pulje/tier (komprimeringen har kørt
   // FØR transitionen, jf. drejebogen — teams bærer S2-værdierne her).
   const stageCounts = await loadSeasonStageCounts({ supabase, seasonNumber: newSeasonNumber });
-  const { data: teamRows, error: teamRowsError } = await supabase
+  // #3014 · teamIds er ALLE menneske-hold i spillet (kaldes ved hver
+  // sæson-transition, seasonTransition.js) — vokser med spillerbasen ligesom
+  // sæsonens løb gjorde. Chunket for at undgå samme PostgREST URL-længde-cap.
+  const teamRows = await fetchAllRowsChunkedIn(teamIds, (chunk) => supabase
     .from("teams")
     .select("id, division, league_division_id")
-    .in("id", teamIds);
-  if (teamRowsError) throw teamRowsError;
+    .in("id", chunk)
+    .order("id"));
   const teamById = new Map((teamRows || []).map((t) => [t.id, t]));
 
   for (const teamId of teamIds) {

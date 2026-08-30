@@ -142,9 +142,12 @@ export function clearSessionExpiredFlash(storage) {
 // ── Var det et svar, eller bare et manglende svar? ───────────────────────────
 //
 // Anden-kilde-opslaget mod Supabase har samme faldgrube som backendens 401
-// (#4369): `user: null` betyder BÅDE "brugeren findes ikke" og "jeg kunne ikke
-// nå Supabase til at spørge". supabase-js returnerer et tomt user-felt med en
-// AuthRetryableFetchError ved netværksudfald i stedet for at kaste.
+// havde før #4369: `user: null` betyder BÅDE "brugeren findes ikke" og "jeg
+// kunne ikke nå Supabase til at spørge". supabase-js returnerer et tomt
+// user-felt med en AuthRetryableFetchError ved netværksudfald i stedet for at
+// kaste. (Backenden skelner nu selv - den svarer 503 auth_unavailable, som
+// shouldDeclareExpired aldrig kalder en død session. Her i klienten står vi
+// stadig med det rå getUser()-svar, så reglen nedenfor er uændret nødvendig.)
 //
 // Læses det tomme svar som en afvisning, logger et Supabase-udfald ALLE
 // spillere ud. Det er værre end bugget vi fikser, og det er præcis den

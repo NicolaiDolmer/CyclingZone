@@ -47,7 +47,11 @@ test("401 Invalid token efterlader en log-linje med metode, sti og fejlkode", ()
   const body = requireAuthBody();
   assert.match(body, /console\.warn\(/, "det afviste token skal være synligt i Railway-loggen");
   assert.match(body, /\[auth\] 401 invalid_token \$\{req\.method\}/);
-  assert.match(body, /error\?\.code \|\| error\?\.name \|\| "no_user"/);
+  // #4369 flyttede selve udledningen af fejlkoden til lib/authTokenVerification.js
+  // (authFailureReason), fordi 401-grenen skulle kunne skelnes fra 503-grenen.
+  // Log-linjen skal stadig BÆRE koden - det låses her, og udledningen selv er
+  // pinnet i lib/authTokenVerification.test.js.
+  assert.match(body, /\(\$\{verdict\.reason\}\)/);
 });
 
 test("401-loggen indeholder ALDRIG token'et eller authorization-headeren", () => {

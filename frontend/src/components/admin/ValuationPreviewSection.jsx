@@ -36,7 +36,7 @@ export default function ValuationPreviewSection({ getAuth, onMsg }) {
     }
   }
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- load er lokal funktion (ny ref hver render) — kun mount-fetch
 
   const rows = useMemo(() => {
     if (!data?.riders) return [];

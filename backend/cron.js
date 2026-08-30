@@ -89,7 +89,15 @@ import { createAluntaClient } from "./lib/alunta.js"; // #2736
 import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
 import { isAluntaReconcileEnabled } from "./lib/aluntaReconcileFlag.js"; // #2736
 import { runFairplayScoringSweep } from "./lib/fairplayFlagsCron.js"; // #3138
-import { captureException as sentryCapture, monitorCron, captureCheckIn } from "./lib/sentry.js";
+import { captureException as sentryCapture, monitorCron, captureCheckIn, setCronHeartbeatRecorder } from "./lib/sentry.js";
+// #2892 — egen cron-heartbeat-vagt (backup for Sentrys kvote-begrænsede
+// cron-monitorer, se lib/cronHeartbeat.js for den fulde forklaring).
+import {
+  recordCronCheckIn,
+  primeCronHeartbeatCheckIns,
+  cadenceSecondsFromConfig,
+  runCronHeartbeatSweepCron,
+} from "./lib/cronHeartbeat.js";
 // #2892 — cron-monitor-registret (config-cadences + ALL_CRON_MONITORS) er
 // udtrukket til lib/cronMonitorRegistry.js, så det kan importeres direkte af
 // backend/cron.monitorCoverage.test.js i stedet for regex-parses som rå
@@ -107,6 +115,18 @@ const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+// #2892 — kobl den egne cron-heartbeat-vagt ind i monitorCron (lib/sentry.js).
+// DI i stedet for at kopiere et check-in-kald ind i hvert af de ~40
+// monitorCron(...)-kaldsteder herunder — se cronHeartbeat.js's fil-header.
+setCronHeartbeatRecorder((monitorSlug, monitorConfig) =>
+  recordCronCheckIn({
+    supabase,
+    jobSlug: monitorSlug,
+    cadenceSeconds: cadenceSecondsFromConfig(monitorConfig),
+    captureExceptionFn: sentryCapture,
+  })
+);
 const aluntaClient = createAluntaClient(); // #2736 — lazy: kaster først ved faktisk kald hvis ALUNTA_API_TOKEN mangler
 
 const XP_REWARDS = {
@@ -1248,6 +1268,27 @@ async function runFairplayScoringCron() {
   );
 }
 
+// ─── Cron-heartbeat-sweep (#2892) ─────────────────────────────────────────────
+// Egen backup for Sentrys kvote-begrænsede cron-monitorer. Læs cron_checkins,
+// sammenlign mod ALL_CRON_MONITORS' kadence+margin, alarmér Discord #ops ved
+// overskridelse. Read-only mod alle andre tabeller end cron_checkins/
+// ops_alert_state selv. Se lib/cronHeartbeat.js for den fulde forklaring +
+// anti-spam-mekanismen (edge-triggered dedup via ops_alert_state).
+async function runCronHeartbeatSweepCronTick() {
+  const result = await runCronHeartbeatSweepCron({
+    supabase,
+    sendWebhookFn: sendOpsWebhook,
+    getOpsWebhookFn: getOpsWebhook,
+    captureExceptionFn: sentryCapture,
+  });
+  if (result.overdue.length > 0) {
+    console.warn(
+      `  ⚠️ cron-heartbeat-sweep: ${result.overdue.length} job(s) overskredet (${result.overdue.map((o) => o.slug).join(", ")})` +
+        (result.alerted ? " — Discord #ops alarmeret" : " — allerede alarmeret (uændret sæt)")
+    );
+  }
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -1319,6 +1360,15 @@ export function startCron() {
   // #2440: prime ALLE monitor-check-ins FØRST, før noget interval sættes op —
   // se boot-priming-kommentaren ovenfor.
   primeCronMonitorCheckIns();
+  // #2892: samme boot-priming-idé for vores EGEN check-in-tabel (cron_checkins)
+  // — nulstiller last_checkin_at for ALLE jobs ved hver proces-boot, så en
+  // deploy-KLYNGE ikke lader et job stå med et gammelt check-in længe nok til
+  // at cron-heartbeat-sweepen fejlagtigt melder det overskredet. Fire-and-
+  // forget: startCron() er bevidst IKKE async (se cron.monitorCoverage.test.js'
+  // rå streng-match på "export function startCron() {"); funktionen swallower +
+  // logger internt og re-throw'er aldrig (recordCronCheckIn), så der er intet
+  // unhandled-rejection-scenarie at fange her.
+  primeCronHeartbeatCheckIns({ supabase, captureExceptionFn: sentryCapture });
 
   // Every 60 seconds: finalize auctions
   setInterval(
@@ -1679,6 +1729,14 @@ export function startCron() {
   setInterval(
     trackedTick("fairplay scoring-sweep", monitorCron("fairplay-scoring", runFairplayScoringCron, CRON_MONITOR_24H)),
     24 * 60 * 60 * 1000
+  );
+
+  // #2892 — cron-heartbeat-sweepen selv. 5-min-kadence: hyppig nok til at
+  // opdage en død 5-min-cron inden for CRON_MONITOR_5MIN's egen margin (10
+  // min) plus ét sweep-interval, uden at spamme Discord-webhooken unødigt.
+  setInterval(
+    trackedTick("cron heartbeat sweep", monitorCron("cron-heartbeat-sweep", runCronHeartbeatSweepCronTick, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
   );
 
   // #3448/#4419: markedsblendet har BEVIDST ingen selvstændig tick. Det køres

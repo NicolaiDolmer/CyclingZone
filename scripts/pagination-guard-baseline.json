@@ -102,9 +102,9 @@
       "riders": 1
     },
     "backend/routes/api.js": {
-      "riders": 19,
+      "riders": 18,
       "race_stage_schedule": 2,
-      "race_entries": 7,
+      "race_entries": 6,
       "race_stage_profiles": 2
     },
     "backend/scripts/boardIdentityBackfillDryRun.js": {

@@ -1207,7 +1207,7 @@ export default function TransfersPage() {
     }
   }
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
 
   // #1569: én-skuds default-til-'market' når alle handels-faner er tomme.
   // Gates på: data loadet, intet eksplicit ?tab= i URL'en, og alle handels-
@@ -1225,7 +1225,7 @@ export default function TransfersPage() {
       archivedSentSwaps.length === 0;
     didDefaultTabRef.current = true;
     if (allTradeTabsEmpty) setTab("market");
-  }, [loading, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps, archivedReceivedSwaps, archivedSentSwaps]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loading, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps, archivedReceivedSwaps, archivedSentSwaps]); // eslint-disable-line react-hooks/exhaustive-deps -- setTab er en lokal funktion, ikke en useState-setter; effekten er én-skuds via didDefaultTabRef
 
   async function getHeaders() {
     const { data: { session } } = await supabase.auth.getSession();

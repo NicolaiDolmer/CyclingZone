@@ -106,7 +106,7 @@ export function useAuctionBidding({
 
   useEffect(() => {
     if (proxyExpanded) setProxyInput(myProxy || bidAmount || minBid);
-  }, [proxyExpanded]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [proxyExpanded]); // eslint-disable-line react-hooks/exhaustive-deps -- myProxy/bidAmount/minBid læses bevidst på åbnings-tidspunktet; som dependencies ville de nulstille brugerens indtastning undervejs
 
   function handleBid() {
     const availableForBid = computeAvailableForBid({

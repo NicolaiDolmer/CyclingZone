@@ -1,4 +1,4 @@
-import { SPONSOR_INCOME_BASE, SPONSOR_INCOME_BY_DIVISION } from "./economyConstants.js";
+import { MAX_BOARD_MODIFIER, SPONSOR_INCOME_BASE, SPONSOR_INCOME_BY_DIVISION } from "./economyConstants.js";
 
 export const FIRST_VARIABLE_SPONSOR_SEASON = 2;
 // Sæson 2+ sponsor: division-skaleret base (samme SPONSOR_INCOME_BY_DIVISION som
@@ -171,5 +171,78 @@ export function computeSponsorForSeason({
     performance_score: computed.performance_score,
     rank_factor: computed.rank_factor,
     points_factor: computed.points_factor,
+  };
+}
+
+// ─── Faktisk sæson-start-payout (#2753) ───────────────────────────────────────
+//
+// Gross-tallet fra computeSponsorForSeason er IKKE det holdet får udbetalt: lag 1
+// (board budget_modifier) og lag 5 (sponsor-pullout) stacker multiplikativt oveni,
+// og resultatet cappes af kontraktens loft. Beregningen boede kun i
+// economyEngine.processSeasonStart, mens transition-previewet viste den rå gross
+// base - ejeren planlagde derfor sæsonskifte på et tal der ikke holdt (#2753).
+// Nu ejer denne fil regnestykket, og begge stier kalder det samme.
+
+/**
+ * Lag 1 board-modifier: gennemsnittet af budget_modifier over holdets
+ * FÆRDIGFORHANDLEDE bestyrelsesplaner. Ingen completed plan → neutral 1.0.
+ *
+ * @param {Array<{negotiation_status?: string, budget_modifier?: number}>} boardProfiles
+ * @returns {number}
+ */
+export function computeBoardBaseModifier(boardProfiles = []) {
+  const activeBoards = (boardProfiles || []).filter(
+    (board) => board?.negotiation_status === "completed"
+  );
+  if (activeBoards.length === 0) return 1.0;
+  return (
+    activeBoards.reduce((sum, board) => sum + (board.budget_modifier ?? 1.0), 0) /
+    activeBoards.length
+  );
+}
+
+/**
+ * Den faktiske sponsor-udbetaling ved sæson-start.
+ *
+ *   modifier = board-modifier × pullout-faktor   (board test-mode → 1.0)
+ *   ceiling  = round(kontraktens guaranteed_base ?? gross × MAX_BOARD_MODIFIER)
+ *   payout   = min(round(gross × modifier), ceiling)
+ *
+ * Loftet (#1663) capper board-modifier-bypass, ikke legitim renown-skalering.
+ *
+ * @param {object} args
+ * @param {number} args.grossSponsor       computeSponsorForSeason().gross_sponsor
+ * @param {object|null} args.activeContract  kontrakten der er/bliver aktiv i sæsonen
+ * @param {number} args.baseModifier       lag 1 (computeBoardBaseModifier)
+ * @param {number} args.pulloutFactor      lag 5 (severity / 1000), 1.0 = ingen pullout
+ * @param {boolean} args.boardTestMode     #805 - neutraliserer board-økonomien
+ * @returns {{gross_sponsor:number, base_modifier:number, pullout_factor:number,
+ *            modifier:number, ceiling:number, payout:number, capped_by_ceiling:boolean}}
+ */
+export function resolveSponsorPayout({
+  grossSponsor = 0,
+  activeContract = null,
+  baseModifier = 1.0,
+  pulloutFactor = 1.0,
+  boardTestMode = false,
+} = {}) {
+  const gross = Number(grossSponsor) || 0;
+  const resolvedBaseModifier = Number.isFinite(Number(baseModifier)) ? Number(baseModifier) : 1.0;
+  const resolvedPulloutFactor = Number.isFinite(Number(pulloutFactor)) ? Number(pulloutFactor) : 1.0;
+  // Lag 5 stacker MULTIPLIKATIVT med lag 1 (budget_modifier).
+  const modifier = boardTestMode ? 1.0 : resolvedBaseModifier * resolvedPulloutFactor;
+  const ceilingBase = activeContract?.guaranteed_base ?? gross;
+  const ceiling = Math.round(Number(ceilingBase) * MAX_BOARD_MODIFIER);
+  const modified = Math.round(gross * modifier);
+  const payout = Math.min(modified, ceiling);
+
+  return {
+    gross_sponsor: gross,
+    base_modifier: resolvedBaseModifier,
+    pullout_factor: resolvedPulloutFactor,
+    modifier,
+    ceiling,
+    payout,
+    capped_by_ceiling: modified > ceiling,
   };
 }

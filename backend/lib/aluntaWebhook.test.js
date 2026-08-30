@@ -87,11 +87,29 @@ before(async () => {
 });
 after(async () => { if (db) await db.close(); });
 
-async function withServer(fn) {
+// #2817: `handlerOpts` lader tests injicere `captureExceptionFn` (spy) og/eller
+// tvinge en upsert-fejl for én tabel (`failUpsertForTable`), uden at røre nogen
+// af de eksisterende kald (bagudkompatibelt — begge felter er optional).
+async function withServer(fn, handlerOpts = {}) {
+  const { captureExceptionFn, failUpsertForTable, ...restHandlerOpts } = handlerOpts;
   const app = express();
   const supabase = pgliteSupabase(db);
+  if (failUpsertForTable) {
+    const originalFrom = supabase.from.bind(supabase);
+    supabase.from = (table) => {
+      const base = originalFrom(table);
+      if (table !== failUpsertForTable) return base;
+      return {
+        ...base,
+        // Simulerer en Postgres/PostgREST-fejl, ikke en JS-throw — supabase-js
+        // returnerer altid { data, error }, kaster aldrig (se lint-dropped-
+        // supabase-error.mjs's filhoved-kommentar).
+        upsert: async () => ({ error: { message: "simuleret upsert-fejl (#2817-test)", code: "23505" } }),
+      };
+    };
+  }
   app.post("/api/billing/alunta-webhook", express.raw({ type: "*/*" }), async (req, res) => {
-    await handleAluntaWebhook({ req, res, supabase, secret: "shh" });
+    await handleAluntaWebhook({ req, res, supabase, secret: "shh", captureExceptionFn, ...restHandlerOpts });
   });
   const server = http.createServer(app);
   server.listen(0); await once(server, "listening");
@@ -508,4 +526,121 @@ test("events uden timestamp faar stadig lov (fail-open) naar der ikke er en lagr
     const { rows } = await db.query("SELECT status FROM public.subscriptions WHERE team_id=$1", [teamId]);
     assert.equal(rows[0].status, "active");
   });
+});
+
+// ── Observability (#2817) — tavse fejl-exits skal logge/capture'e ────────────
+// Rod-årsag: alle fejl-exits var før dette 100 % tavse (hverken console.warn,
+// captureException eller Sentry). Testene her verificerer BÅDE at der nu logges/
+// capture'es, OG (sikkerhedskravet) at det ALDRIG er payload/signatur/headers/
+// secret der havner i loggen — kun ikke-følsomme felter som event-type/team-id.
+
+test("#2817: ugyldig signatur logger via console.warn, uden at logge signatur/body", async (t) => {
+  const warnCalls = [];
+  t.mock.method(console, "warn", (...args) => { warnCalls.push(args); });
+  await withServer(async (base) => {
+    const res = await fireWebhook(base, { event: "checkout.completed", data: { secret_field: "should-never-leak" } }, "wrong-secret");
+    assert.equal(res.status, 401);
+  });
+  assert.equal(warnCalls.length, 1);
+  assert.equal(warnCalls[0].length, 1); // kun én statisk besked — intet data-argument der kunne bære payload/signatur
+  assert.match(warnCalls[0][0], /signatur/i);
+  assert.doesNotMatch(warnCalls[0][0], /should-never-leak|wrong-secret/);
+});
+
+test("#2817: malformed JSON-body logger via console.warn, uden at logge selve body'en", async (t) => {
+  const warnCalls = [];
+  t.mock.method(console, "warn", (...args) => { warnCalls.push(args); });
+  await withServer(async (base) => {
+    const body = "{ not valid json, super-secret-customer-data: 12345";
+    const signature = createHmac("sha256", "shh").update(body, "utf8").digest("hex");
+    const res = await fetch(`${base}/api/billing/alunta-webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Signature: signature },
+      body,
+    });
+    assert.equal(res.status, 400);
+  });
+  assert.equal(warnCalls.length, 1);
+  assert.equal(warnCalls[0].length, 1);
+  assert.match(warnCalls[0][0], /pars/i);
+  assert.doesNotMatch(warnCalls[0][0], /super-secret-customer-data/);
+});
+
+test("#2817: manglende event/team_id logger event-type + team-id (ikke-foelsomme felter)", async (t) => {
+  const warnCalls = [];
+  t.mock.method(console, "warn", (...args) => { warnCalls.push(args); });
+  await withServer(async (base) => {
+    const res = await fireWebhook(base, { event: "checkout.completed", data: {} }); // ingen external_customer_id
+    assert.equal(res.status, 200);
+  });
+  assert.equal(warnCalls.length, 1);
+  assert.match(warnCalls[0][0], /event|team/i);
+  assert.deepEqual(warnCalls[0][1], { event: "checkout.completed", teamId: null });
+});
+
+test("#2817: ukendt event-type logger event-type + team-id", async (t) => {
+  const warnCalls = [];
+  t.mock.method(console, "warn", (...args) => { warnCalls.push(args); });
+  const teamId = "00000000-0000-0000-0000-000000000041";
+  await withServer(async (base) => {
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'UnknownEvent') ON CONFLICT DO NOTHING", [teamId]);
+    const res = await fireWebhook(base, { event: "some.unknown.event", data: { external_customer_id: teamId } });
+    assert.equal(res.status, 200);
+  });
+  assert.equal(warnCalls.length, 1);
+  assert.deepEqual(warnCalls[0][1], { event: "some.unknown.event", teamId });
+});
+
+test("#2817: DB-upsert-fejl paa hovedflowet (checkout.completed) trigger captureExceptionFn og returnerer 500", async () => {
+  const captured = [];
+  const teamId = "00000000-0000-0000-0000-000000000042";
+  await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'UpsertFailMain') ON CONFLICT DO NOTHING", [teamId]);
+  await withServer(async (base) => {
+    const res = await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_fail", customer_uuid: "cus_fail",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    assert.equal(res.status, 500); // Alunta retry'er
+  }, {
+    captureExceptionFn: (err, ctx) => captured.push({ err, ctx }),
+    failUpsertForTable: "subscriptions",
+  });
+  assert.equal(captured.length, 1);
+  assert.match(captured[0].err.message, /simuleret upsert-fejl/);
+  assert.equal(captured[0].ctx.tags.flow, "billing");
+  assert.equal(captured[0].ctx.tags.stage, "webhook-upsert");
+  assert.equal(captured[0].ctx.teamId, teamId);
+  assert.equal(captured[0].ctx.event, "checkout.completed");
+});
+
+test("#2817: DB-upsert-fejl paa tier_changed-flowet trigger captureExceptionFn og returnerer 500", async () => {
+  const captured = [];
+  const teamId = "00000000-0000-0000-0000-000000000043";
+  await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'UpsertFailTier') ON CONFLICT DO NOTHING", [teamId]);
+  // Forudgaaende aktiv periode uden fejl-injektion, saa raekken findes til tier_changed-stien.
+  await withServer(async (base) => {
+    await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_tier_fail", customer_uuid: "cus_tier_fail",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+  });
+  await withServer(async (base) => {
+    const res = await fireWebhook(base, {
+      event: "subscription.tier_changed",
+      data: { external_customer_id: teamId, plan_interval: "semiannual" },
+    });
+    assert.equal(res.status, 500);
+  }, {
+    captureExceptionFn: (err, ctx) => captured.push({ err, ctx }),
+    failUpsertForTable: "subscriptions",
+  });
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0].ctx.tags.stage, "webhook-upsert");
+  assert.equal(captured[0].ctx.event, "subscription.tier_changed");
 });
