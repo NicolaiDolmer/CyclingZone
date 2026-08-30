@@ -6,7 +6,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { LAUNCH_REFERENCE_YEAR, ageForSeason, seasonReferenceYear } from "./riderSeasonAge.js";
+import { LAUNCH_REFERENCE_YEAR, ageForSeason, seasonReferenceYear, birthYearFrom } from "./riderSeasonAge.js";
 import { ageForSeason as fromProgression } from "./riderProgressionEngine.js";
 import { ageForSeason as fromSquadGuard } from "./squadRiskGuard.js";
 import { ageForSeason as fromPeakSuggestions } from "./peakSuggestions.js";
@@ -51,6 +51,34 @@ test("ageForSeason: manglende eller ugyldigt input → null, aldrig et gæt", ()
   assert.equal(ageForSeason("2001-03-01", null), null);
   assert.equal(ageForSeason("2001-03-01", Number.NaN), null);
   assert.equal(ageForSeason("ikke-en-dato", 2), null);
+});
+
+// #4455 FUND 4: fødselsåret må ikke afhænge af serverens tidszone. "YYYY-MM-DD"
+// parses som UTC-midnat, så `new Date(bd).getFullYear()` ruller 1. januar et år
+// tilbage vest for UTC. Prod har 9 ryttere født 1/1 (målt 31/8), og de gamle
+// script-varianter (getUTCFullYear / slice(0,4)) var begge tidszone-uafhængige —
+// SSOT'en skal matche DEM, ikke lokaltiden.
+test("birthYearFrom: dato-kun-strenge er tidszone-uafhængige", () => {
+  assert.equal(birthYearFrom("2001-01-01"), 2001);
+  assert.equal(birthYearFrom("2001-12-31"), 2001);
+  assert.equal(birthYearFrom(" 1996-06-15 "), 1996); // trimmes
+  // Samme svar som de to gamle tidszone-uafhængige varianter, for hele årgangen.
+  for (let year = 1975; year <= 2012; year++) {
+    for (const md of ["01-01", "06-15", "12-31"]) {
+      const bd = `${year}-${md}`;
+      assert.equal(birthYearFrom(bd), new Date(bd).getUTCFullYear(), `getUTCFullYear-variant divergerer for ${bd}`);
+      assert.equal(birthYearFrom(bd), Number(String(bd).slice(0, 4)), `slice(0,4)-variant divergerer for ${bd}`);
+    }
+  }
+});
+
+test("birthYearFrom: manglende eller ugyldigt input → null", () => {
+  assert.equal(birthYearFrom(null), null);
+  assert.equal(birthYearFrom(undefined), null);
+  assert.equal(birthYearFrom(""), null);
+  assert.equal(birthYearFrom("ikke-en-dato"), null);
+  // Ikke dato-kun-formen → falder tilbage på Date, så et fuldt timestamp stadig virker.
+  assert.equal(birthYearFrom("1996-06-15T12:00:00Z"), new Date("1996-06-15T12:00:00Z").getFullYear());
 });
 
 test("seasonReferenceYear: sæson N er launch-året plus N−1", () => {
