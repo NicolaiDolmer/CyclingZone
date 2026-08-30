@@ -111,6 +111,18 @@
       "midSeasonCheck": {
         "title": "Mid-season check",
         "text": "Midt i sæsonen (halvdelen af race-days gennemført) tjekker bestyrelsen automatisk din plan-status. Hvis tilfredshed <50% eller mindst halvdelen af målbare mål er 'behind', modtager du en 'Skal handles'-notif i Indbakken. Mid-season-punktet er også det første hårde checkpoint: er tilfredsheden faldet under konsekvens-tærsklerne på det tidspunkt, anvender bestyrelsen de tilsvarende konsekvens-lag (det andet checkpoint er sæson-slut). Mellem checkpoints bevæger tilfredsheden sig frit uden at udløse hårde konsekvenser."
+      },
+      "multiYearLifecycle": {
+        "title": "Sådan kører 3- og 5-årsplanen",
+        "text": "Dine tre planer kører parallelt og er helt adskilte: hver har sine egne mål, sin egen tilfredshed og sin egen fornyelses-kadence. At forhandle 1-årsplanen ændrer aldrig 3- eller 5-årsmålene.",
+        "steps": [
+          "En plan løber sin fulde længde, 1, 3 eller 5 sæsoner. Ved hver sæsons slutning evaluerer bestyrelsen den, og kumulative mål (etapesejre, GC-sejre) tæller videre på tværs af planens sæsoner.",
+          "Midtvejs i en flerårsplan, efter 1 gennemført sæson på en 3-årsplan og 2 på en 5-årsplan, sender bestyrelsen et midtvejs-review til din indbakke. Det er en status på hvordan planen går, uden konsekvens knyttet til.",
+          "Når en plan når sin fulde længde, udløber den. Den bliver ikke bare forlænget indtil du endelig klarer målene: bestyrelsen laver sin afsluttende vurdering, de kumulative tællere nulstilles, og planen sættes til afventer forhandling.",
+          "En udløbet plan gør ingenting før du forhandler en ny på Bestyrelse-siden. Mens den venter, tælles den ikke med i gennemsnittet af dine signerede planer der sætter din sponsor-modifier, så modifieren afgøres alene af de planer du faktisk har underskrevet.",
+          "Alle tre planer kan udløse bonustilbuddet, ikke kun 1-årsplanen. Berettigelsen tjekkes pr. plan, så en stærk 3-årsplan kan udløse tilbuddet selv når 1-årsplanen ikke kan.",
+          "Bestyrelsen giver højst ét bonustilbud pr. sæson uanset hvor mange planer der kvalificerer sig, og det tjekkes ved de samme to hårde checkpoints som de øvrige konsekvens-lag: midtvejs i sæsonen og ved sæsonens slutning. Det er derfor tilbuddet kan lande midtvejs i én sæson og først helt til sidst i en anden."
+        ]
       }
     },
     "auctions": {
@@ -1483,7 +1495,7 @@
     },
     "bonusOffer": {
       "q": "Hvad er bonus-tilbuddet jeg lige fik fra bestyrelsen?",
-      "a": "Når tilfredsheden er over 75% OG mindst 75% af dine plan-mål er nået, kan bestyrelsen tilbyde dig +200K CZ$ til balancen mod ét ekstra-mål. Hvis dit fokus er star_signing, vil målet være 'Sign 1 stjerne (popularity ≥75)'; ellers vil det være 'Top-3 i mindst 1 monument'. Du kan acceptere eller afvise. Acceptér og budgettet krediteres straks via en bonus-finance-tx, og målet tilføjes til din 1-årsplan og evalueres ved sæsonens slutning. Bestyrelsen tilbyder kun ét bonus pr. sæson, så afslår du, kommer chancen først igen næste sæson hvis kriterierne stadig er opfyldt."
+      "a": "Når tilfredsheden er over 75% OG mindst 75% af dine plan-mål er nået, kan bestyrelsen tilbyde dig +200K CZ$ til balancen mod ét ekstra-mål. Berettigelsen tjekkes pr. plan, så tilbuddet kan lige så vel komme fra din 3- eller 5-årsplan som fra 1-årsplanen. Hvis dit fokus er star_signing, vil målet være 'Sign 1 stjerne (popularity ≥75)'; ellers vil det være 'Top-3 i mindst 1 monument'. Du kan acceptere eller afvise. Acceptér og budgettet krediteres straks via en bonus-finance-tx, og ekstra-målet lægges altid på din 1-årsplan og evalueres ved sæsonens slutning, uanset hvilken plan tilbuddet kom fra. Bestyrelsen tilbyder kun ét bonus pr. sæson, så afslår du, kommer chancen først igen næste sæson hvis kriterierne stadig er opfyldt. Se 'Sådan kører 3- og 5-årsplanen' under Bestyrelse for hele plan-livscyklussen."
     },
     "boardSatisfactionArrow": {
       "q": "Hvad betyder pilen/prognosen under mit tilfredsheds-tal?",

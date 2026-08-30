@@ -65,6 +65,10 @@ const SECTION_DEFS = [
       { id: "consequenceTiers", kind: "rows" },
       { id: "requestsAndLocks", kind: "text" },
       { id: "midSeasonCheck", kind: "text" },
+      // #4382 · flerarsplanens livscyklus samlet ET sted (udloeb + nulstilling,
+      // midtvejs-review, obligatorisk genforhandling, bonustilbud fra alle tre
+      // plantyper). Flages til opdatering ved #3514 fase 2, jf. #3522.
+      { id: "multiYearLifecycle", kind: "textSteps" },
     ],
   },
   {
@@ -530,6 +534,15 @@ function buildSections(t, vars) {
             title,
             text: t(`${blockBase}.text`, vars),
             rows: interpolateHelp(t(`${blockBase}.rows`, { returnObjects: true }), vars),
+          };
+        }
+        // #4382: same shape as "textRows" for a numbered list — a framing line
+        // above the steps, so a lifecycle list is not read as a to-do list.
+        if (block.kind === "textSteps") {
+          return {
+            title,
+            text: t(`${blockBase}.text`, vars),
+            steps: interpolateHelp(t(`${blockBase}.steps`, { returnObjects: true }), vars),
           };
         }
         if (block.kind === "textCta") {

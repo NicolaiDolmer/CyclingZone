@@ -111,6 +111,18 @@
       "midSeasonCheck": {
         "title": "Mid-season check",
         "text": "Midway through the season (half of race days completed) the board automatically checks your plan status. If satisfaction is below 50% or at least half of measurable targets are 'behind', you get an 'Action required' notification in your inbox. The mid-season point is also the first hard checkpoint: if satisfaction has dropped below the consequence thresholds by then, the board applies the matching consequence layers (the second checkpoint is season end). Between checkpoints satisfaction moves freely without triggering hard consequences."
+      },
+      "multiYearLifecycle": {
+        "title": "How the 3-year and 5-year plans run",
+        "text": "Your three plans run in parallel and are fully separate: each has its own targets, its own satisfaction and its own renewal cadence. Negotiating the 1-year plan never changes the 3-year or 5-year targets.",
+        "steps": [
+          "A plan runs for its full length, 1, 3 or 5 seasons. At every season end the board evaluates it, and cumulative targets (stage wins, GC wins) keep counting across the seasons of that plan.",
+          "Halfway through a multi-year plan, after 1 completed season on a 3-year plan and 2 on a 5-year plan, the board sends a mid-plan review to your inbox. It is a status message on how the plan is going, with no consequence attached.",
+          "When a plan reaches its full length it expires. It is not simply extended until you finally clear the targets: the board makes its closing assessment, the cumulative counters reset to zero and the plan is set to awaiting negotiation.",
+          "An expired plan does nothing until you negotiate a new one on the Board page. While it waits, it is left out of the average of your signed plans that sets your sponsor modifier, so the modifier is decided only by the plans you have actually signed.",
+          "All three plans can trigger the bonus offer, not just the 1-year plan. Eligibility is checked per plan, so a strong 3-year plan can produce the offer even when the 1-year plan cannot.",
+          "The board gives at most one bonus offer per season no matter how many plans qualify, and it is checked at the same two hard checkpoints as the other consequence layers: mid-season and season end. That is why the offer can land midway through one season and only at the very end of another."
+        ]
       }
     },
     "auctions": {
@@ -1483,7 +1495,7 @@
     },
     "bonusOffer": {
       "q": "What is the bonus offer I just got from the board?",
-      "a": "When satisfaction is above 75% AND at least 75% of your plan targets are met, the board can offer you +200K CZ$ to the balance against one extra target. If your focus is star_signing, the target will be 'Sign 1 star (popularity ≥75)'; otherwise it will be 'Top-3 in at least 1 monument'. You can accept or decline. Accept and the budget is credited immediately via a bonus finance tx, and the target is added to your 1-year plan and evaluated at season end. The board only offers one bonus per season, so if you decline, the chance comes again next season only if the criteria are still met."
+      "a": "When satisfaction is above 75% AND at least 75% of your plan targets are met, the board can offer you +200K CZ$ to the balance against one extra target. Eligibility is checked per plan, so the offer can come from your 3-year or 5-year plan just as well as from the 1-year plan. If your focus is star_signing, the target will be 'Sign 1 star (popularity ≥75)'; otherwise it will be 'Top-3 in at least 1 monument'. You can accept or decline. Accept and the budget is credited immediately via a bonus finance tx, and the extra target is always added to your 1-year plan and evaluated at season end, whichever plan the offer came from. The board only offers one bonus per season, so if you decline, the chance comes again next season only if the criteria are still met. See 'How the 3-year and 5-year plans run' under Board for the full plan lifecycle."
     },
     "boardSatisfactionArrow": {
       "q": "What is the arrow/prognosis under my satisfaction number?",
