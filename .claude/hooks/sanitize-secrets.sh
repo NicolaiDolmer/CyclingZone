@@ -408,7 +408,21 @@ What to do (agent):
 4. If you genuinely need the value (rotation, debugging): ask the user to
    read it from the dashboard directly and paste only what's needed.
 
-Refs: #634 (denne hook), #296 + #620 (tidligere leaks).
+Known false positives — you did NOT leak anything (#3024):
+- types=high-entropy ONLY, while reading a .jsonl agent transcript from
+  .claude/projects/: the long base64 strings in each thinking block's
+  "signature" field are integrity signatures over the model's own
+  reasoning. They are not credentials, grant no access and never rotate.
+  Do not report a leak. Re-read the transcript with a narrower slice
+  (jq/python that prints only the fields you need) instead of raw file
+  content.
+- types=high-entropy ONLY, on a localhost:5173/5174 URL: see table H in
+  docs/SECRET_LEAK_VECTORS.md — a real key match would show as
+  jwt-supabase-legacy or supabase-publishable, not high-entropy.
+Any named type (jwt*, sb_secret_, ghp_, AKIA, sentry-dsn, ...) is a REAL
+match and the rules above still apply.
+
+Refs: #634 (denne hook), #296 + #620 (tidligere leaks), #3024 (FP-noter).
 EOF
 
 exit 2

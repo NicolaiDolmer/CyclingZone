@@ -188,6 +188,23 @@ Klassen adskiller sig fra A-G: de vektorer handler om kommandoer der *beder om* 
 | get-test-token.mjs: sikker default-kanal (fil, ikke stdout) | ✅ Bygget #3342 | [`scripts/get-test-token.mjs`](../scripts/get-test-token.mjs) — `--print` for gammel adfærd, advarsel i `--help` |
 | PreToolUse: get-test-token.mjs --print + output-fil-read block | ✅ Bygget #3342 | samme hook — `--print`-flag + `.codex.local/test-token*.json` (cat/Get-Content/Read/Grep) |
 | Test-fixture: block-dangerous-secret-commands.sh | ✅ Bygget #3342 | [`scripts/test-block-dangerous-secret-commands.sh`](../scripts/test-block-dangerous-secret-commands.sh) |
+| Hook-besked: kendte falske positiver forklaret | ✅ Bygget #3024 | `sanitize-secrets.sh` — stderr-sektion "Known false positives" |
+| Test-fixture: named patterns slår igennem i signature-felt | ✅ Bygget #3024 | `scripts/test-sanitize-secrets.sh` — 2 `#3024 guard`-cases |
+
+## Kendte falske positiver i `sanitize-secrets.sh`
+
+`HIGH_ENTROPY`-fallbacken er en ren entropi-heuristik uden kontekst: URL-safe base64, 40+ tegn, blandet case + cifre. Hver gang en ny, legitim base64-lignende datatype passerer et tool-output, koster den et blokeret tool-kald indtil den skrives ind. **Alle undtagelser gælder KUN fallbacken** — named patterns (`sb_secret_`, `eyJ...`, `ghp_`, `AKIA`, Sentry, Discord, Stripe) kører før og fuld-blokerer, så ingen af dem kan bruges som smuglerrute for en kendt-præfikset secret.
+
+| Falsk positiv | Status | Ref |
+|---|---|---|
+| Base64-billeddata fra screenshots (241 + 587 fragmenter pr. kald) | ✅ Lukket — image-mode springer fallbacken over | #666 |
+| Flade fil-stier og worktree-/session-navne (`C--Dev-CyclingZone-...`) | ✅ Lukket — `looks_like_path_or_identifier` | [#752](https://github.com/NicolaiDolmer/CyclingZone/issues/752) |
+| ISO-timestamp-suffiksede backup-filnavne fra repair-scripts | ✅ Lukket — `looks_like_iso_timestamp_filename` | [#3317](https://github.com/NicolaiDolmer/CyclingZone/issues/3317) |
+| Vercel-/Supabase-bottens `[vc]:`/`[supa]:` PR-kommentar-metadata | ✅ Lukket — `BOT_METADATA_RE` | [#3128](https://github.com/NicolaiDolmer/CyclingZone/issues/3128) |
+| **Thinking-signaturer i `.jsonl`-agent-transcripts** (`"signature"`-feltet) | ⚠️ **Delvist** — hook-beskeden forklarer den nu, men fallbacken blokerer stadig. Målt 30/8 2026: 4.431 felter i 40/40 nyeste transcripts, 69.408 fragmenter, korteste felt 352 tegn. Signaturen er en integritets-signatur over modellens eget ræsonnement — ingen adgang, ingen rotation, ikke en credential. **Undtagelse i fallbacken afventer ejer-go**, se postmortem. | [#3024](https://github.com/NicolaiDolmer/CyclingZone/issues/3024) + [`.claude/learnings/2026-08-31-sanitizer-falsk-positiv-paa-thinking-signaturer.md`](../.claude/learnings/2026-08-31-sanitizer-falsk-positiv-paa-thinking-signaturer.md) |
+| Egne test-fixtures i `scripts/test-sanitize-secrets.sh` (`...FIXTUREDoNotUse...`) | ⚠️ Åben — `ALLOW`-markøren er `FIXTURE_DO_NOT_USE`, fixturerne skriver `FIXTUREDoNotUse`, og `ALLOW` bruger `.match()` (anker i start) mens markøren står midt i strengen. At læse testfilen blokerer derfor sit eget output. Kosmetisk, ingen sikkerhedsrisiko. | opdaget under [#3024](https://github.com/NicolaiDolmer/CyclingZone/issues/3024) |
+
+**Når du rammer en ny:** blokér-beskeden er korrekt indtil andet er bevist. Verificér typen — `types=high-entropy` ALENE kan være en FP, mens ethvert named type (`jwt*`, `sb_secret_`, `ghp_`, `AKIA`, `sentry-dsn`, ...) er et ægte fund. Tilføj derefter en række her + en undtagelse med et eksplicit rækkefølge-argument + en "still blocks"-test der planter en syntetisk secret netop dér hvor undtagelsen gælder.
 
 ## Når en ny vektor opdages
 

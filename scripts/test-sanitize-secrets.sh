@@ -226,6 +226,41 @@ run "real jwt beside vercel-bot-comment still blocks (#3128 guard)" \
   "Comment body: $(mk_vercel_bot_comment) leaked token: $(mk_jwt_legacy) $PAD" \
   2 "jwt-supabase-legacy"
 
+# ===== #3024: thinking-signature-felter i agent-transcripts =====
+
+# Baggrund: .claude/projects/**/*.jsonl indeholder et "signature"-felt paa hver
+# thinking-blok — en meget lang base64-streng (maalt 30/8 2026: 4.431 felter i
+# de 40 nyeste transcripts, korteste 352 tegn, 69.408 high-entropy-fragmenter
+# inde i dem). Den er ikke en credential. I dag blokerer hooken alligevel hele
+# outputtet naar en agent laeser et transcript; #3024 leverede foreloebig kun
+# en forklarende linje i hook-beskeden, ikke en undtagelse.
+#
+# DISSE TO TESTS ER FORWARD-GUARDEN: tilfoejer nogen senere en rigtig
+# signature-undtagelse i high-entropy-fallback'en, SKAL begge stadig passere.
+# De beviser at undtagelsen ikke kan bruges som smuglerrute for en aegte,
+# kendt-praefikset secret der er plantet i netop det felt. Named patterns
+# koeres FOER fallback'en; falder de to her, er den orden braekket.
+
+mk_signature_field() {
+  # $1 = payload der plantes inde i signature-vaerdien.
+  # Padding-segmenterne er splittet i <40-tegns bidder saa denne KILDEFIL ikke
+  # selv trigger high-entropy naar den Read'es/Edit'es/Grep'es.
+  printf '{"type":"thinking","%s":"%s%s%s%s"}' \
+    'signature' \
+    'EqQBCkYIBxgCKkCx9Kd2mHfLpQwXyZ0aBc' \
+    'DeFgHiJkLmNoPqRsTuVwXyZ012345678' \
+    "$1" \
+    'AbCdEfGhIjKlMnOpQrStUvWxYz01234='
+}
+
+run "real jwt inside signature-field still blocks (#3024 guard)" \
+  "Transcript line: $(mk_signature_field "$(mk_jwt_legacy)") $PAD" \
+  2 "jwt-supabase-legacy"
+
+run "supabase-secret inside signature-field still blocks (#3024 guard)" \
+  "Transcript line: $(mk_signature_field "$(mk_supabase_secret)") $PAD" \
+  2 "supabase-secret"
+
 # ===== Performance optimization tests =====
 
 # <100 char input skipper hook scan (perf opt). Selv match-streng slipper.
