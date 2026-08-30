@@ -19,6 +19,15 @@ Principper:
 - Gruppér kun tæt relaterede fixes, fx transfer/window_pending samlet eller auction-regler samlet.
 - Docs-only ændringer kræver normalt ikke testkørsel; backend runtime-fix kræver målrettet backend-test; frontend route/UI-fix kræver mindst build.
 
+## Værktøjsregler (shell)
+
+Gælder alle sessioner, uanset slice - forebygger hængende agenter (bidt 3x: 3/7, 25/7, 25/8):
+- Brug `git --no-pager diff|log|show|branch` i stedet for de bare kommandoer. Uden `--no-pager` kan git starte en pager der venter evigt på en bruger der ikke findes i en ikke-interaktiv session.
+- Undgå bare `python`/`python3` og `jq` som blokerende kald der venter på stdin. Giv `python` et script eller `-c "..."`; giv `jq` en fil (`jq '.filter' fil.json`) eller pipe input ind (`cmd | jq '.filter'`).
+- Sæt altid en outputgrænse på kommandoer der kan give langt output (`head`, `--limit`, `-First N`, `tail -n`).
+
+Håndhæves delvist af `scripts/hooks/block-blocking-shell-commands.sh` (blokerer git-pager- og python/jq-stdin-kald). Den bredere klasse "stalled generation" - hvor en agent ikke er blokeret af en kommando, men bare holder op med at producere - dækkes ikke af en prompt-regel eller hook, men af den generaliserede watchdog `scripts/agent-stall-watch.ps1`. Se #3423.
+
 ## Slice Prompt
 
 ```text
