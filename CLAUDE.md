@@ -8,7 +8,7 @@ Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér r
 
 ## Page templates (binding — ejer-godkendt 23/7, #2849)
 
-Enhver manager-app-side bruger én af de 3 kanoniske skabeloner (T1 standard content · T2 wide data · T3 profile/detail) i [`docs/design/PAGE_TEMPLATES.md`](docs/design/PAGE_TEMPLATES.md) — læs den FØR du bygger eller ændrer en side. Opfind ALDRIG eget sidehoved, container-bredde, padding, radius, typografi-trin eller loading/empty/error-markup: alle bindende værdier og forbud står der.
+Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/PAGE_TEMPLATES.md`](docs/design/PAGE_TEMPLATES.md) — læs den FØR du bygger eller ændrer en side: T1 standard content (max-w-4xl), T2 wide data (cap 1600px), T3 profile/detail (hero + tabs, max-w-5xl). Opfind ALDRIG eget sidehoved, container-bredde, padding, radius, typografi-trin eller loading/empty/error-markup. Bindende: én gold primary-knap pr. view, hairline-borders (ingen skygger), 5px card-radius, tabular figures på al numerik, stroke-ikoner (aldrig emoji). Artboards: `docs/design/design_handoff_page_templates/`.
 
 ## Auto-loaded (intet at gøre)
 
@@ -20,7 +20,7 @@ Enhver manager-app-side bruger én af de 3 kanoniske skabeloner (T1 standard con
 1. Læs `docs/NOW.md` — kort status (**🎯 Next action** + **🤖 Working agent** øverst, aktiv slice + session-noter). Viser "Working agent" en anden aktiv session → STOP + spørg brugeren før pick-up (#559).
 2. **Aktivt issue:** `SESSION_CONTEXT.md` er cache; sandheden er GitHub + `docs/NOW.md`. Stale? `gh issue list --label "claude:todo" --state open --limit 10`
 3. `docs/GUARDRAILS_CORE.md` læses KUN ved labels `needs-contract` eller `shared-refactor` (~80% af sessioner skipper).
-4. **PR-preflight (alle PR'er):** `pwsh -File scripts/preflight-pr.ps1` FØR push; PR-body-krav står i scriptets header. Rørte du `frontend/`: også `npm run lint`, `node --test` (i `frontend/`) og build — genvej `scripts/verify-local.ps1`. Frontend/i18n → HELE `npm run test:e2e` lokalt; små UI-diffs → `node scripts/verify-affected.mjs`. Loop-guard: 2 CI-fails på samme symptom → STOP + spørg. Tier-tabel, e2e-krav og begrundelser: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md#pr-preflight-og-verifikations-tiers).
+4. **PR-preflight (alle PR'er):** `pwsh -File scripts/preflight-pr.ps1` FØR push; PR-body-krav står i scriptets header. Rørte du `frontend/`: også `npm run lint`, `node --test` (i `frontend/`) og build. **TIER FULL — backend, delte lib-hooks, i18n, config eller >6 filer — kræver fuld lokal suite (`scripts/verify-local.ps1`).** Frontend/i18n → HELE `npm run test:e2e` lokalt; visuelle ændringer/snapshot-refresh → ALLE 3 playwright-projekter (CI fejler ellers på mobile, #536); små UI-diffs → `node scripts/verify-affected.mjs`. Loop-guard: 2 CI-fails på samme symptom → STOP + spørg. Tier-tabel, e2e-krav og begrundelser: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md#pr-preflight-og-verifikations-tiers).
 5. **Efter `git pull` der rør ved en `*package-lock.json`** → `npm run sync-deps`; kun `npm ci` synker pålideligt ([hvorfor](docs/AI_OPS_REFERENCE.md#dependency-sync-efter-git-pull)).
 
 ## On-demand docs
@@ -38,7 +38,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-hits:
 
 ## Close-out (per session)
 
-1. **Issue:** `gh issue comment N --body "..."` eller `gh issue close N --reason completed` hvis verificeret. Label-state-maskinen står i `GITHUB_WORKFLOW.md`.
+1. **Issue:** `gh issue comment N --body "..."` eller `gh issue close N --reason completed` hvis verificeret. Bruger lukker selv per label-state-maskinen i `GITHUB_WORKFLOW.md`.
 2. **NOW.md:** opdatér hvis aktiv slice ændrer sig — budget **maks ~1.200 tok** (primær gate #1275; ≤30 linjer sekundært, lange linjer tæller). Trim gamle close-out-blokke **direkte**; historikken ligger i git-log + issue-tråde. Opret IKKE `docs/archive/NOW-*.md` (hard-beskyttet af #684-deny, #750). **Obligatorisk:** opdatér **🎯 Next action** + nulstil **🤖 Working agent** til "Ingen aktiv session" (#558/#559).
 3. **MASTERPLAN.md:** opdatér hvis den prioriterede kø ændrede sig (budget ≤1.500 tok; rækkefølgen er ejer-godkendt — spørg før omprioritering). **FEATURE_STATUS.md:** opdatér ved ændrede kontrakter/features.
 4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke). Samme rutine for `help.json` (en+da) ved ny/ændret spilmekanik (#1171).
