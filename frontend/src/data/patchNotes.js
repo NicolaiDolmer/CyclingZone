@@ -1,5 +1,54 @@
 export const PATCHES = [
   {
+    "version": "7.222",
+    "date": "2026-08-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Your overall position in Today's Stages was wrong",
+          "body": "The card sorted teams alphabetically instead of by time, so your place in a stage race could be far off. It now shows your real position."
+        },
+        "da": {
+          "title": "Din samlede placering i Dagens etaper var forkert",
+          "body": "Kortet sorterede holdene alfabetisk i stedet for på tid, så din placering i et etapeløb kunne være helt ved siden af. Den viser nu den rigtige placering."
+        },
+        "refs": [4378]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Race Hub counted the same rider more than once",
+          "body": "A rider entered in three overlapping races was counted as three riders in the clash warning. He now counts as one."
+        },
+        "da": {
+          "title": "Race Hub talte den samme rytter flere gange",
+          "body": "En rytter udtaget til tre overlappende løb blev talt som tre ryttere i konflikt-advarslen. Han tæller nu som én."
+        },
+        "refs": [4317]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Signing bonus no longer hides inside the season total",
+          "body": "The offer card added the one-off signing bonus to what you earn across the season. It now has its own line. The contract row that said Race days now says Stages, because it shows an amount and not a number of days."
+        },
+        "da": {
+          "title": "Underskriftsbonussen gemmer sig ikke længere i sæsontotalen",
+          "body": "Tilbudskortet lagde engangsbonussen oven i det du tjener hen over sæsonen. Den har nu sin egen linje. Kontraktrækken der hed Løbsdage hedder nu Etaper, fordi den viser et beløb og ikke et antal dage."
+        },
+        "refs": [4416, 4345]
+      }
+    ]
+  },
+  {
     "version": "7.220",
     "date": "2026-08-29",
     "label": "Beta",
