@@ -1845,7 +1845,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       throwIfSupabaseError(boardUpdateError, `Could not update active board plan for ${team.name}`);
 
       if (isMidReview) {
-        const midMessageKey = newSatisfaction >= 60
+        const midMsgKey = newSatisfaction >= 60
           ? "notif.boardMidMessage.good"
           : newSatisfaction >= 40
           ? "notif.boardMidMessage.moderate"
@@ -1866,7 +1866,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
             titleParams: {},
             messageCode: "notif.boardMidReview.message",
             messageParams: {
-              midMessageKey,
+              midMsgKey,
               summary: feedback.summary,
               satisfaction: newSatisfaction,
             },
