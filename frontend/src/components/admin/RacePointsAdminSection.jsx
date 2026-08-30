@@ -55,8 +55,9 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- getAuth/onMsg/t bruges kun i fetch- og fejlstien — kun mode skal udløse refetch
-  }, [mode]);
+    // #4448: getAuth/onMsg kommer fra useAdminAuth og er begge useCallback(…, [])
+    // — permanent stabile, så effekten kører fortsat kun når mode skifter.
+  }, [mode, getAuth, onMsg, t]);
 
   // ── Lookups ──────────────────────────────────────────────────────────────
   const rowByKey = useMemo(() => {

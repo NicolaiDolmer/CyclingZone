@@ -76,8 +76,9 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- getAuth/onMsg/t bruges kun i fetch- og fejlstien — de må ikke udløse refetch
-  }, []);
+    // #4448: getAuth/onMsg er useCallback(…, []) i useAdminAuth — permanent
+    // stabile, så effekten forbliver reelt mount-only uden at slå reglen fra.
+  }, [getAuth, onMsg, t]);
 
   // ── Lookups ──────────────────────────────────────────────────────────────
   const masterByRt = useMemo(() => {
