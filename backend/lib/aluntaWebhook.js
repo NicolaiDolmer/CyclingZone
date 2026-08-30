@@ -67,6 +67,7 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { FOUNDER_SEAT_CAP, getFounderSeats } from "./founderSeats.js";
+import { captureException } from "./sentry.js";
 
 export function verifyWebhookSignature(req, secret) {
   if (!secret) return false;
@@ -105,8 +106,21 @@ function parseEventTimestamp(raw) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export async function handleAluntaWebhook({ req, res, supabase, secret = process.env.ALUNTA_WEBHOOK_SECRET }) {
-  if (!verifyWebhookSignature(req, secret)) return res.sendStatus(401);
+export async function handleAluntaWebhook({
+  req,
+  res,
+  supabase,
+  secret = process.env.ALUNTA_WEBHOOK_SECRET,
+  // Testbarheds-seam, samme mønster som activeSeasonLookup.js/aluntaSubscriptionReconcile.js
+  // m.fl.: defaulter til den ægte Sentry-capture, tests kan injicere en spy.
+  captureExceptionFn = captureException,
+}) {
+  // #2817: forventet-men-interessant afvisning — console.warn, ikke captureException.
+  // Logger ALDRIG payload/signatur/headers/secret, kun at det skete.
+  if (!verifyWebhookSignature(req, secret)) {
+    console.warn("[alunta-webhook] afvist: ugyldig eller manglende signatur");
+    return res.sendStatus(401);
+  }
 
   let payload;
   try {
@@ -114,16 +128,26 @@ export async function handleAluntaWebhook({ req, res, supabase, secret = process
     else if (typeof req.body === "string") payload = JSON.parse(req.body);
     else payload = req.body;
   } catch {
+    // #2817: parse-fejl på en allerede signatur-verificeret body er usædvanligt —
+    // log at det skete, men ALDRIG selve den ikke-parsbare body (kan indeholde kundedata).
+    console.warn("[alunta-webhook] afvist: body kunne ikke parses som JSON");
     return res.sendStatus(400);
   }
 
   const { event, data } = payload || {};
   const teamId = data?.external_customer_id;
-  if (!event || !teamId) return res.sendStatus(200); // intet at gøre — undgå retries
+  if (!event || !teamId) {
+    // #2817: kun event-type + team-id (UUID, ikke-følsomt) logges — ALDRIG resten af data.
+    console.warn("[alunta-webhook] ignoreret: mangler event eller team_id", { event: event ?? null, teamId: teamId ?? null });
+    return res.sendStatus(200); // intet at gøre — undgå retries
+  }
 
   const isTierChange = event === TIER_CHANGE_EVENT;
   const status = STATUS_BY_EVENT[event] ?? null;
-  if (!status && !isTierChange) return res.sendStatus(200); // ukendt/irrelevant event-type — ignorér roligt
+  if (!status && !isTierChange) {
+    console.warn("[alunta-webhook] ignoreret: ukendt eller irrelevant event-type", { event, teamId });
+    return res.sendStatus(200); // ukendt/irrelevant event-type — ignorér roligt
+  }
 
   // Samme select bruges til: replay/out-of-order-guard, founder-bevarelse OG
   // felt-bevarelse (se filhovedet). Fejler kolonnen last_event_at ikke at
@@ -158,7 +182,13 @@ export async function handleAluntaWebhook({ req, res, supabase, secret = process
       { team_id: teamId, plan_interval: data.plan_interval, last_event_id: eventId, last_event_at: lastEventAt },
       { onConflict: "team_id" }
     );
-    if (error) return res.sendStatus(500); // Alunta retry'er
+    if (error) {
+      // #2817: DB-upsert-fejl er omsætningskritisk (Alunta retry'er, men fejlen var
+      // usynlig indtil nu). error er Postgres/PostgREST's egen fejlbesked (fx
+      // constraint-navn), aldrig webhook-payloaden — samme mønster som billingCheckout.js.
+      captureExceptionFn(error, { tags: { flow: "billing", stage: "webhook-upsert" }, teamId, event });
+      return res.sendStatus(500); // Alunta retry'er
+    }
     return res.sendStatus(200);
   }
 
@@ -191,7 +221,11 @@ export async function handleAluntaWebhook({ req, res, supabase, secret = process
   }
 
   const { error } = await supabase.from("subscriptions").upsert(row, { onConflict: "team_id" });
-  if (error) return res.sendStatus(500); // Alunta retry'er
+  if (error) {
+    // #2817: se kommentar ved tier_changed-upserten ovenfor — samme rationale.
+    captureExceptionFn(error, { tags: { flow: "billing", stage: "webhook-upsert" }, teamId, event });
+    return res.sendStatus(500); // Alunta retry'er
+  }
 
   return res.sendStatus(200);
 }
