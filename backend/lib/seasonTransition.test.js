@@ -51,6 +51,8 @@ function createMockSupabase(initialState = {}) {
     // falder korrekt tilbage til den beløbsfrie besked når intet findes.
     finance_transactions: initialState.finance_transactions ? [...initialState.finance_transactions] : [],
     sponsor_contracts: initialState.sponsor_contracts ? [...initialState.sponsor_contracts] : [],
+    // #2753 · previewets pullout-opslag (lag 5) - tom = ingen aktive pullouts.
+    board_consequences: initialState.board_consequences ? [...initialState.board_consequences] : [],
     app_config: initialState.app_config ? [...initialState.app_config] : [],
     // #2916 · carry-over-fasen læser disse tabeller. De defaulter til tomme
     // arrays så den ægte fase kan køre igennem i alle transition-tests (i stedet

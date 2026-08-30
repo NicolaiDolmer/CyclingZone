@@ -478,7 +478,7 @@ export default function SeasonEndPage() {
     // i et kort vindue efter transitionen, ellers uændret adfærd (aktiv sæson).
     if (!target) target = pickDefaultSeason(seasons);
     if (target && target.id !== selectedSeason?.id) loadSeason(target);
-  }, [urlSeasonId, seasons]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [urlSeasonId, seasons]); // eslint-disable-line react-hooks/exhaustive-deps -- selectedSeason?.id er bevidst udeladt: den sættes AF loadSeason, så en dependency ville give en løkke
 
   // #2849 bølge 3 — canonisk retry: kører PRÆCIS den samme fetch der fejlede
   // (loadInit for sæson-listen, loadSeason(season) for den valgte sæsons data).

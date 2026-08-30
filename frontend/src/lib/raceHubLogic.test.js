@@ -1,7 +1,7 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel, raceGameDayLabel, toDisplayRaceDay, raceDayOverlaps, raceDayClashes, RACE_DAY_DISPLAY_OFFSET } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel, raceGameDayLabel, toDisplayRaceDay, raceDayOverlaps, raceDayClashes, countDistinctClashRiders, RACE_DAY_DISPLAY_OFFSET } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -406,4 +406,37 @@ test("raceDayClashes: bygger på findSelectionOverlaps, kun overlap MED en delt 
   assert.equal(clashes[0].riderId, "r1");
   assert.equal(clashes[0].otherId, "b");
   assert.equal(clashes[0].otherName, "Amstel Gold");
+});
+
+// #4317: raceDayClashes() returnerer med vilje én post pr. (riderId, modløb)-par
+// (RaceDayOverlapRow grupperer pr. modløb via otherId). Men tælles disse poster
+// direkte som "antal ryttere i konflikt" (clashes.length), tælles én rytter der
+// clasher med flere modløb flere gange. countDistinctClashRiders retter det.
+test("countDistinctClashRiders: én rytter i konflikt med to modløb tæller som 1, ikke 2", () => {
+  const columns = [
+    { id: "a", name: "Le Mur de Huy", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1"] } },
+    { id: "b", name: "Amstel Gold", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1"] } },
+    { id: "c", name: "La Flèche", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1"] } },
+  ];
+  const clashes = raceDayClashes({ columns, columnId: "a" });
+  // r1 clasher med BÅDE b og c -> to par i den rå liste ...
+  assert.equal(clashes.length, 2);
+  // ... men det er stadig kun ÉN rytter i konflikt.
+  assert.equal(countDistinctClashRiders(clashes), 1);
+});
+
+test("countDistinctClashRiders: to forskellige ryttere i konflikt med hver sit modløb tæller som 2", () => {
+  const columns = [
+    { id: "a", name: "Le Mur de Huy", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1", "r2"] } },
+    { id: "b", name: "Amstel Gold", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1"] } },
+    { id: "c", name: "La Flèche", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r2"] } },
+  ];
+  const clashes = raceDayClashes({ columns, columnId: "a" });
+  assert.equal(clashes.length, 2);
+  assert.equal(countDistinctClashRiders(clashes), 2);
+});
+
+test("countDistinctClashRiders: tom liste giver 0", () => {
+  assert.equal(countDistinctClashRiders([]), 0);
+  assert.equal(countDistinctClashRiders(), 0);
 });

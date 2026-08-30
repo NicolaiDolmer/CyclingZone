@@ -134,7 +134,7 @@
       "sharesItem": "Race day {day} · {race}",
       "sharesItemDays": "Race days {start}-{end} · {race}",
       "clash": "{rider} rides both on race day {day}",
-      "clashMany": "{count, plural, one {# rider rides} other {# riders ride}} both races"
+      "clashMany": "{count, plural, one {# rider rides} other {# riders ride}} more than one race on the same day"
     },
     "popover": {
       "title": "Add to which race?",

@@ -240,6 +240,27 @@ Add-Check "local-hooks" ($(if ($hooksText -eq ".githooks") { "OK" } else { "WARN
 $trackedSecrets = Try-Run @("git", "ls-files", ".mcp.json", "*.env", ".codex.local/*")
 Add-Check "tracked-secrets" ($(if ([string]::IsNullOrWhiteSpace($trackedSecrets.Text)) { "OK" } else { "FAIL" })) ($(if ($trackedSecrets.Text) { $trackedSecrets.Text -replace "`n", ", " } else { "none" }))
 
+# stale-backend-env (#725) — kanonisk vej er runtime-injection via `infisical run --env=dev`
+# ('npm run dev:backend'); backend behoever ikke laengere en backend/.env-fil (Phase 5, #327).
+# WARN'er (blokerer ikke) hvis der stadig ligger rigtige vaerdier i backend/.env SAMTIDIG med
+# at .infisical.json findes — det er tegn paa en foraeldet fil der boer slettes.
+# Printer KUN om feltet er sat, ALDRIG selve vaerdien (repoet har haft to secret-laek).
+$backendEnvPath = Join-Path $root "backend/.env"
+if ((Test-Path $backendEnvPath) -and (Test-Path (Join-Path $root ".infisical.json"))) {
+  $backendEnvContent = Get-Content -Raw $backendEnvPath
+  $staleKeys = @()
+  foreach ($key in @("SUPABASE_URL", "SUPABASE_SERVICE_KEY")) {
+    if ($backendEnvContent -match "(?m)^\s*$key\s*=\s*\S") { $staleKeys += $key }
+  }
+  if ($staleKeys.Count -gt 0) {
+    Add-Check "stale-backend-env" "WARN" "backend/.env has a value set for: $($staleKeys -join ', ') while .infisical.json is present — canonical path is 'infisical run --env=dev' (#725); consider deleting backend/.env"
+  } else {
+    Add-Check "stale-backend-env" "OK" "backend/.env present but no value set for SUPABASE_URL/SUPABASE_SERVICE_KEY"
+  }
+} else {
+  Add-Check "stale-backend-env" "OK" "backend/.env not present, or Infisical not linked"
+}
+
 $frontendEnvKeys = Try-Run @("node", "scripts/check-frontend-env-keys.mjs")
 Add-Check "frontend-env-keys" ($(if ($frontendEnvKeys.Ok) { "OK" } else { "FAIL" })) (($frontendEnvKeys.Text -split "`n" | Where-Object { $_.Trim() }) -join " | ")
 

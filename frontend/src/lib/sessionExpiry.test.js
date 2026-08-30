@@ -23,8 +23,12 @@ test("#4350 tokenFromAuthHeaders er null-sikker — authHeaders() returnerer nul
   assert.equal(tokenFromAuthHeaders({ Authorization: "Bearer undefined" }), null);
 });
 
-test("#4350 kun 401 tæller — 200/403/5xx er ikke en afvist session", () => {
-  for (const status of [200, 204, 403, 404, 500, 502]) {
+// 503 er med vilje i listen: #4369 gav backendens requireAuth en egen kode for
+// "kunne ikke nå Supabase til at tjekke tokenet" (503 auth_unavailable). Det
+// signal må aldrig kunne logge en rask spiller ud - det er hele grunden til at
+// det blev skilt ud fra 401.
+test("#4350/#4369 kun 401 tæller — 200/403/5xx (inkl. 503 auth_unavailable) er ikke en afvist session", () => {
+  for (const status of [200, 204, 403, 404, 500, 502, 503, 504]) {
     assert.equal(
       shouldDeclareExpired({ status, sentToken: "t1", currentToken: "t1" }),
       false,

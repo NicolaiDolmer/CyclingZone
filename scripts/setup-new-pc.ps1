@@ -239,8 +239,11 @@ Write-Host "       Hvis OneDrive ikke var synket endnu: kor 'pwsh -File scripts/
 Write-Host ""
 Write-Host "    2. PRODUKTIONSSECRETS via Infisical (se docs/CROSS_PC_SETUP.md):" -ForegroundColor Yellow
 Write-Host "         a. infisical login"
-Write-Host "         b. infisical export --env=dev > backend/.env"
-Write-Host "         c. infisical export --env=dev > frontend/.env"
+Write-Host "         b. Backend: ingen .env-fil noedvendig. 'npm run dev:backend' koerer 'infisical run --env=dev'"
+Write-Host "            og injicerer secrets ved runtime (#327 Phase 5) - opret IKKE backend/.env."
+Write-Host "         c. Frontend: infisical export --env=dev > frontend/.env"
+Write-Host "            (Vite laeser VITE_*-variabler fra en .env-fil ved dev/build-tid, saa frontend"
+Write-Host "            har fortsat brug for filen, i modsaetning til backend)"
 Write-Host "         d. pwsh -File scripts/setup-discord-mcp.ps1  # genererer .mcp.json"
 Write-Host ""
 Write-Host "    3. Delt handoff ligger i GitHub/OneDrive, ikke lokale agent-caches"

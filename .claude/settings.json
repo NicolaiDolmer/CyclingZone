@@ -161,6 +161,11 @@
           {
             "type": "command",
             "command": "bash scripts/hooks/check-preflight-before-push.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash scripts/hooks/block-blocking-shell-commands.sh",
+            "timeout": 10
           }
         ]
       },

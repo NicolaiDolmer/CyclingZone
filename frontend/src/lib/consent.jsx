@@ -1,5 +1,16 @@
+// ConsentProvider — Refs #3034.
+//
+// #3034: userId og consent_preferences kommer nu fra UserProfileProvider
+// (delt context, ét Supabase-kald pr. session, se lib/userProfile.jsx) i
+// stedet for providerens egen `.from("users").select("consent_preferences")`-
+// opslag + egen onAuthStateChange-lytter. Skrivningerne (saveConsent, samt
+// "upload local til DB"-grenen nedenfor) sker stadig direkte til DB som før,
+// men opdaterer bagefter den delte cache via updateProfile() så andre
+// forbrugere ikke sidder med en stale værdi.
+
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
+import { useUserProfile } from "./userProfile.jsx";
 
 const STORAGE_KEY = "cz_consent_v1";
 const CONSENT_VERSION = 1;
@@ -50,48 +61,31 @@ const ConsentContext = createContext(null);
 export function ConsentProvider({ children }) {
   const [consent, setConsent] = useState(readStored);
   const [bannerOpen, setBannerOpen] = useState(() => readStored() === null);
-  const [userId, setUserId] = useState(null);
-
-  useEffect(() => {
-    let active = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!active) return;
-      setUserId(data?.user?.id ?? null);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id ?? null);
-    });
-    return () => {
-      active = false;
-      sub?.subscription?.unsubscribe?.();
-    };
-  }, []);
+  // #3034: userId + consent_preferences kommer fra den delte
+  // UserProfileProvider i stedet for providerens egen session-lytter og eget
+  // users-opslag (se filens toppe-kommentar).
+  const { userId, profile, updateProfile } = useUserProfile();
 
   useEffect(() => {
     if (!userId) return;
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("users")
-        .select("consent_preferences")
-        .eq("id", userId)
-        .single();
-      if (cancelled || error) return;
-      const remote = normalize(data?.consent_preferences);
-      const local = readStored();
-      if (remote) {
-        setConsent(remote);
-        writeStored(remote);
-        setBannerOpen(false);
-      } else if (local) {
-        await supabase
+    const remote = normalize(profile?.consent_preferences);
+    const local = readStored();
+    if (remote) {
+      setConsent(remote);
+      writeStored(remote);
+      setBannerOpen(false);
+    } else if (local) {
+      let cancelled = false;
+      (async () => {
+        const { error } = await supabase
           .from("users")
           .update({ consent_preferences: local })
           .eq("id", userId);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [userId]);
+        if (!cancelled && !error) updateProfile({ consent_preferences: local });
+      })();
+      return () => { cancelled = true; };
+    }
+  }, [userId, profile?.consent_preferences, updateProfile]);
 
   const saveConsent = useCallback(async (partial) => {
     const next = normalize({ ...(consent || DEFAULT_DENIED), ...partial, updated_at: nowIso() });
@@ -99,13 +93,16 @@ export function ConsentProvider({ children }) {
     writeStored(next);
     setBannerOpen(false);
     if (userId) {
-      await supabase
+      const { error } = await supabase
         .from("users")
         .update({ consent_preferences: next })
         .eq("id", userId);
+      // #3034 krav 3: eksplicit ændring — invalidér den delte cache med det
+      // samme i stedet for at vente på næste auth-event/refetch.
+      if (!error) updateProfile({ consent_preferences: next });
     }
     return next;
-  }, [consent, userId]);
+  }, [consent, userId, updateProfile]);
 
   const acceptAll = useCallback(() => saveConsent({ analytics: true, marketing: true, email_marketing: true }), [saveConsent]);
   const rejectAll = useCallback(() => saveConsent({ analytics: false, marketing: false, email_marketing: false }), [saveConsent]);

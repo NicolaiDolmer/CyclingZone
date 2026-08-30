@@ -22,7 +22,7 @@ export default function BoardTestModeSection({ getAuth, onMsg }) {
     } catch { /* status er best-effort */ }
   }
 
-  useEffect(() => { loadStatus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadStatus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadStatus er lokal funktion (ny ref hver render) — kun mount-fetch
 
   async function handleBoardTest(action, confirmMsg) {
     if (!confirm(confirmMsg)) return;

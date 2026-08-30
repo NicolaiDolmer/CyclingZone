@@ -1,0 +1,40 @@
+# Template for new workflows (#530).
+#
+# Copy this file to .github/workflows/<name>.yml, rename the job, fill in the
+# real trigger + steps, and delete this comment block. The one thing every
+# workflow in this repo MUST have is an explicit `permissions:` block — GitHub
+# defaults an unset one to read/write on the GITHUB_TOKEN, which is broader
+# than almost every workflow here needs. Scope it to the minimum the steps
+# actually use (usually just `contents: read`; add `pull-requests: write` /
+# `issues: write` / etc. only for steps that need them).
+#
+# This file is a .example so it is never picked up as a real workflow by
+# GitHub Actions itself.
+
+name: Template workflow name
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+# Minimum-privilege default. Widen ONLY the specific permission a step needs,
+# and only at the job level if just one job needs it — never repo-wide.
+permissions:
+  contents: read
+
+jobs:
+  example-job:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Run your check
+        run: echo "Replace this with the real step(s)."

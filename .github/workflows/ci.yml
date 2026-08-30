@@ -148,6 +148,31 @@ jobs:
       - name: Run anti-drift guard
         run: node scripts/lint-ui-slop.mjs
 
+  eslint-disable-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #4332 forward-guard: ratchet mod stille vaekst i antallet af
+    # eslint-disable-direktiver. Fejler KUN paa flere direktiver end
+    # scripts/eslint-disable-baseline.json tillader (ratchet — maa kun
+    # skrumpe) eller en ny fil med direktiver. Laaser blot det nuvaerende
+    # tal (42 frontend/src + 1 backend) — gennemgangen af om de 42
+    # exhaustive-deps-disables skjuler en reel dependency-bug staar aaben.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test eslint-disable guard
+        run: node --test scripts/check-eslint-disable-count.test.mjs
+
+      - name: Run eslint-disable guard
+        run: node scripts/check-eslint-disable-count.mjs
+
   t2-container-guard:
     runs-on: ubuntu-latest
     permissions:
@@ -290,6 +315,33 @@ jobs:
 
       - name: Run fetchAllRows order guard
         run: node scripts/check-fetchallrows-order.mjs
+
+  rate-limit-coverage-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard (#530): every requireAuth/requireAdmin route must have
+    # rate-limit coverage — an inline <x>Limiter middleware, or fall under a
+    # router.use(<prefix>, <x>Limiter) mount (e.g. the /admin-wide
+    # adminApiLimiter). Audit found 88 currently-uncovered routes (76 GET + 12
+    # POST, none of them under /admin — the 39 admin GET routes ARE already
+    # covered by the /admin mount) — too many to fix in one PR, so a baseline
+    # ratchet grandfathers them; only NEW uncovered routes fail the build. Not
+    # added to required status checks yet — owner decision, see PR body.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test rate-limit coverage guard
+        run: node --test scripts/check-rate-limit-coverage.test.mjs
+
+      - name: Run rate-limit coverage guard
+        run: node scripts/check-rate-limit-coverage.mjs
 
   getuser-guard:
     runs-on: ubuntu-latest

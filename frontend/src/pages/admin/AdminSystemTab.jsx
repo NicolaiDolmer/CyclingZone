@@ -62,7 +62,7 @@ export default function AdminSystemTab() {
     });
   }
 
-  useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadData er lokal funktion (ny ref hver render) — kun mount-fetch
 
   async function pauseMarket(level) {
     const scopeText = level === "all" ? "HELE markedet (auktioner + transfers + bytter + lejeaftaler + bank-lån)" : "alle auktioner";

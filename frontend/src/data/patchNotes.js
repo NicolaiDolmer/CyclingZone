@@ -1,5 +1,215 @@
 export const PATCHES = [
   {
+    "version": "7.222",
+    "date": "2026-08-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Your overall position in Today's Stages was wrong",
+          "body": "The card sorted teams alphabetically instead of by time, so your place in a stage race could be far off. It now shows your real position."
+        },
+        "da": {
+          "title": "Din samlede placering i Dagens etaper var forkert",
+          "body": "Kortet sorterede holdene alfabetisk i stedet for på tid, så din placering i et etapeløb kunne være helt ved siden af. Den viser nu den rigtige placering."
+        },
+        "refs": [4378]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Race Hub counted the same rider more than once",
+          "body": "A rider entered in three overlapping races was counted as three riders in the clash warning. He now counts as one."
+        },
+        "da": {
+          "title": "Race Hub talte den samme rytter flere gange",
+          "body": "En rytter udtaget til tre overlappende løb blev talt som tre ryttere i konflikt-advarslen. Han tæller nu som én."
+        },
+        "refs": [4317]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Signing bonus no longer hides inside the season total",
+          "body": "The offer card added the one-off signing bonus to what you earn across the season. It now has its own line. The contract row that said Race days now says Stages, because it shows an amount and not a number of days."
+        },
+        "da": {
+          "title": "Underskriftsbonussen gemmer sig ikke længere i sæsontotalen",
+          "body": "Tilbudskortet lagde engangsbonussen oven i det du tjener hen over sæsonen. Den har nu sin egen linje. Kontraktrækken der hed Løbsdage hedder nu Etaper, fordi den viser et beløb og ikke et antal dage."
+        },
+        "refs": [4416, 4345]
+      }
+    ]
+  },
+  {
+    "version": "7.221",
+    "date": "2026-08-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Time trials are no longer called bunch sprints",
+          "body": "An individual time trial was described as won in a bunch sprint, which read as if sprinters were favoured there. Time trials and team time trials now get their own stage story."
+        },
+        "da": {
+          "title": "Enkeltstarter kaldes ikke l\u00e6ngere massespurter",
+          "body": "En enkeltstart blev beskrevet som vundet i en massespurt, hvilket l\u00e6ste som om sprintere blev favoriseret. Enkeltstart og holdtidsk\u00f8rsel har nu hver deres egen etapehistorie."
+        },
+        "refs": [4373]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "The race day message no longer appears when race day development is off",
+          "body": "Training worked, but the page still showed the race day message and greyed out riders. Both are gone while the feature is off."
+        },
+        "da": {
+          "title": "L\u00f8bsdags-beskeden vises ikke l\u00e6ngere n\u00e5r l\u00f8bsdags-udvikling er sl\u00e5et fra",
+          "body": "Tr\u00e6ningen virkede, men siden viste stadig l\u00f8bsdags-beskeden og gjorde ryttere gr\u00e5. Begge dele er v\u00e6k mens funktionen er sl\u00e5et fra."
+        },
+        "refs": [4375]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "An accepted counter offer shows the amount you agreed to",
+          "body": "The offer view kept showing the original bid after a counter offer was accepted, so the price on screen was not the price that was paid."
+        },
+        "da": {
+          "title": "Et accepteret modbud viser det bel\u00f8b du aftalte",
+          "body": "Tilbudsvisningen blev ved med at vise det oprindelige bud efter et accepteret modbud, s\u00e5 prisen p\u00e5 sk\u00e6rmen ikke var den der blev betalt."
+        },
+        "refs": [4156]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Mid-season board reviews show the actual message",
+          "body": "The halfway review notification showed a raw placeholder code instead of the text."
+        },
+        "da": {
+          "title": "Bestyrelsens halvvejsevaluering viser den rigtige besked",
+          "body": "Halvvejsevalueringen viste en r\u00e5 placeholder-kode i stedet for teksten."
+        },
+        "refs": [4157]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Swap proposals can be archived",
+          "body": "Rejected and accepted swap proposals stayed in Negotiations forever. They can now be archived, just like ordinary transfer offers."
+        },
+        "da": {
+          "title": "Bytteforslag kan arkiveres",
+          "body": "Afviste og accepterede bytteforslag blev st\u00e5ende i Forhandlinger for altid. De kan nu arkiveres, ligesom almindelige tilbud."
+        },
+        "refs": [3492]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Age, expiring contracts and retirement risk on daily training",
+          "body": "The roster now shows each rider's age as a sortable column, and flags riders whose contract is running out or who are at risk of retiring."
+        },
+        "da": {
+          "title": "Alder, udl\u00f8bende kontrakter og pensionsrisiko p\u00e5 daglig tr\u00e6ning",
+          "body": "Truppen viser nu rytterens alder som en sorterbar kolonne, og markerer ryttere hvis kontrakt er ved at l\u00f8be ud, eller som er i risiko for at stoppe."
+        },
+        "refs": [3761, 3815]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Popularity is visible on your squad and in auctions",
+          "body": "Popularity could only be found on the rider market. It is now on the squad list and in auctions, including on mobile."
+        },
+        "da": {
+          "title": "Popularitet er synlig p\u00e5 din trup og i auktioner",
+          "body": "Popularitet kunne kun findes p\u00e5 ryttermarkedet. Det st\u00e5r nu p\u00e5 truppen og i auktioner, ogs\u00e5 p\u00e5 mobil."
+        },
+        "refs": [3956]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "The asking price is shown on the rider's own page",
+          "body": "You had to find the rider on the transfer list to see what he costs. If he is listed for sale, the asking price now sits on his own page."
+        },
+        "da": {
+          "title": "Udbudsprisen st\u00e5r p\u00e5 rytterens egen side",
+          "body": "Man skulle finde rytteren p\u00e5 transferlisten for at se hvad han koster. Er han sat til salg, st\u00e5r udbudsprisen nu p\u00e5 hans egen side."
+        },
+        "refs": [3490]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Your own riders are highlighted in rankings and start lists",
+          "body": "Finding your own riders in a long list meant reading every row. They now carry the same marker used elsewhere in the game."
+        },
+        "da": {
+          "title": "Dine egne ryttere fremh\u00e6ves i ranglister og startlister",
+          "body": "At finde sine egne ryttere i en lang liste kr\u00e6vede at man l\u00e6ste hver r\u00e6kke. De har nu samme markering som andre steder i spillet."
+        },
+        "refs": [2795]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Open a stage profile straight from Season Planner",
+          "body": "Stage minicards in the planner now open the race in a new tab, so you can look at a profile without losing your planning."
+        },
+        "da": {
+          "title": "\u00c5bn en etapeprofil direkte fra Season Planner",
+          "body": "Etape-minikort i planl\u00e6ggeren \u00e5bner nu l\u00f8bet i en ny fane, s\u00e5 du kan se en profil uden at miste din planl\u00e6gning."
+        },
+        "refs": [4343]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "One team per person is now stated in the rules",
+          "body": "The rule only appeared in the privacy policy. It is now where the rules are."
+        },
+        "da": {
+          "title": "Et hold pr. person st\u00e5r nu i reglerne",
+          "body": "Reglen stod kun i privatlivspolitikken. Den st\u00e5r nu der hvor reglerne er."
+        },
+        "refs": [4379]
+      }
+    ]
+  },
+  {
     "version": "7.220",
     "date": "2026-08-29",
     "label": "Beta",
