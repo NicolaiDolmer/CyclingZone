@@ -67,6 +67,13 @@ try {
   Write-Host "== database-types-drift (schema-snapshot.json vs database.types.ts, #4326) ==" -ForegroundColor Cyan
   node scripts/check-database-types-drift.mjs
 
+  # FAIL, i modsaetning til de to ovenfor: dette er et rent fil-tjek uden
+  # DB-adgang. Backup-relationer maa ikke sive tilbage i de genererede typer
+  # efter en `npm run types:gen` uden strip-trinnet (#4333).
+  Write-Host "== backup-tables-out-of-types (backup-relationer i database.types.ts, #4333) ==" -ForegroundColor Cyan
+  node scripts/strip-backup-tables-from-types.mjs --check
+  if ($LASTEXITCODE -ne 0) { $failed += "backup-tables-out-of-types" }
+
   Write-Host "== constraint-form-guard (drop/recreate der taber DEFERRABLE, #4163) ==" -ForegroundColor Cyan
   node scripts/lint-constraint-form.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "constraint-form-guard" }
