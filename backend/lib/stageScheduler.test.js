@@ -19,6 +19,7 @@ function makeSupabase(tables = {}) {
       gt(c, v) { state.gtes.push([c, v]); return b; },
       in() { return b; },
       order() { return b; },
+      limit() { return b; },
       // fetchAllRows-forbrugere (emptyPoolPolicy.js): sidevis udsnit.
       range(from, to) {
         const rows = resolve(table, state);
@@ -276,6 +277,27 @@ test("ingen aktiv sæson → skip", async () => {
     runStageFn: async () => { throw new Error("burde ikke kaldes"); },
   });
   assert.equal(r.skipped, "no_active_season");
+});
+
+// #2743: en delvist fejlet sæson-transition (S2→active FØR S1→completed,
+// seasonTransition.js) kan efterlade 2 rækker med status='active'. Det gamle
+// .eq("status","active").maybeSingle() KASTEDE hårdt her og dræbte scheduleren hvert
+// tick. Nu skal den fortsætte med nyeste sæson og alarmere separat (activeSeasonLookup.js).
+test("#2743: to aktive sæsoner → kaster IKKE, kører videre med nyeste + alarmerer via captureExceptionFn", async () => {
+  const supabase = makeSupabase({ seasons: [{ id: "s2" }, { id: "s1" }], races: [], race_simulation_runs: [] });
+  const captured = [];
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async () => { throw new Error("burde ikke kaldes (ingen due løb)"); },
+    captureExceptionFn: (err, ctx) => captured.push({ err, ctx }),
+  });
+  assert.equal(r.ran, 0);
+  assert.equal(r.errors, 0);
+  const alarm = captured.find((c) => /Flere aktive sæsoner fundet/.test(c.err.message));
+  assert.ok(alarm, "forventede en fler-aktiv-alarm");
+  assert.match(alarm.err.message, /\(2\)/);
+  assert.equal(alarm.ctx.tags.cron, "stage-scheduler");
 });
 
 test("én løbs-fejl isolerer ikke de andre (per-løb try/catch)", async () => {
