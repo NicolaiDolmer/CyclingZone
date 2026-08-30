@@ -51,6 +51,7 @@
     "perRaceDay": "Per stage",
     "raceDayMath": "{count} stages × {rate} CZ$",
     "ifYouStartEveryStage": "If you start every stage",
+    "signingBonus": "Signing bonus",
     "bonusUpside": "Bonuses on top, if earned",
     "length": "Length",
     "seasons": "{count, plural, one {# season} other {# seasons}}"
@@ -68,7 +69,7 @@
     "earningsTitle": "Earned on this contract",
     "earningsBase": "Season start",
     "earningsSigning": "Signing bonus",
-    "earningsRaceDays": "Race days",
+    "earningsRaceDays": "Stages",
     "earningsResults": "Result bonuses",
     "earningsObjective": "Season objective",
     "earningsTotal": "Total"
