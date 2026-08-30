@@ -1,4 +1,4 @@
-// LanguageProvider — Refs #410.
+// LanguageProvider — Refs #410, #3034.
 //
 // Centraliserer brugerens UI-sprog: les fra DB (users.language) ved login,
 // persisterer i localStorage så pre-login (Login/Signup) sider også
@@ -14,6 +14,13 @@
 //   • Skriver DB hvis logged in (Postgres-trigger synker til auth-meta)
 //   • Skriver localStorage (overlever logout)
 //   • i18n.changeLanguage(lng) (live, ingen reload)
+//
+// #3034: DB-værdien og userId kommer nu fra UserProfileProvider (delt
+// context, ét Supabase-kald pr. session, se lib/userProfile.jsx) i stedet
+// for et selvstændigt `.from("users").select("language")`-opslag + egen
+// onAuthStateChange-lytter her. setLanguage() skriver stadig direkte til DB
+// (uændret), men opdaterer bagefter den delte cache via updateProfile() så
+// andre forbrugere af contexten ikke sidder med en stale værdi.
 
 import {
   createContext,
@@ -37,6 +44,7 @@ import {
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { supabase } from "./supabase";
+import { useUserProfile } from "./userProfile.jsx";
 
 const STORAGE_KEY = "cz_lang";
 const SUPPORTED = ["en", "da"];
@@ -75,7 +83,10 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
   // hydration-fejlen: stabil identitet i deps-arrays, bevaret abonnement.
   useTranslation();
   const [language, setLanguageState] = useState(() => normalizeLang(i18n.language));
-  const [userId, setUserId] = useState(null);
+  // #3034: userId + DB-sprogværdi kommer fra den delte UserProfileProvider
+  // (ét Supabase-kald + én onAuthStateChange-lytter for hele app-træet) i
+  // stedet for providerens egen session-lytter og eget users-opslag.
+  const { userId, profile, updateProfile } = useUserProfile();
 
   // Hold providerens sprog i sync med i18next — også når skiftet kommer udefra
   // (main.jsx's deferred switch, pseudo-locale, direkte i18n.changeLanguage). Så
@@ -128,49 +139,24 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
   // med DB → samme flip gentog sig ved NÆSTE sideload også.
   //
   // Fix: (a) importér den ÆGTE stabile i18n-singleton (ovenfor) i stedet for
-  // hookens wrapper, og (b) lad denne effekt afhænge af `[]` — den skal kun
-  // køre ved mount og ved faktiske Supabase auth-events (login/logout/
-  // token-refresh, håndteret af onAuthStateChange-abonnementet nedenfor),
-  // aldrig som reaktion på sit eget resultat. `i18n.language` læses LIVE
-  // inde i syncFromSession (ikke React-state `language` fra en closure), så
-  // ingen af de to var nødvendige som dependency for korrekthed.
+  // hookens wrapper, og (b) lad denne effekt afhænge af den DB-værdi den
+  // faktisk bruger — den skal kun køre ved mount og ved faktiske ændringer i
+  // den delte profil-cache (login/logout/token-refresh, eller en anden
+  // fanes/kildes sprogskift bagefter afspejlet via updateProfile), aldrig som
+  // reaktion på sit eget resultat.
+  //
+  // #3034: DB-opslaget selv (og auth-lytningen der udløser det) er flyttet
+  // til UserProfileProvider — denne effekt reagerer nu blot på
+  // `profile.language`, som er den samme værdi som `row?.language` var før.
   useEffect(() => {
-    let cancelled = false;
-
-    async function syncFromSession() {
-      const { data } = await supabase.auth.getSession();
-      const uid = data?.session?.user?.id ?? null;
-      if (cancelled) return;
-      setUserId(uid);
-      if (!uid) return;
-
-      const { data: row } = await supabase
-        .from("users")
-        .select("language")
-        .eq("id", uid)
-        .single();
-      if (cancelled) return;
-      const dbLang = row?.language;
-      if (dbLang && SUPPORTED.includes(dbLang) && dbLang !== normalizeLang(i18n.language)) {
-        setLanguageState(dbLang);
-        writeStored(dbLang);
-        i18n.changeLanguage(dbLang);
-      }
+    if (!userId) return;
+    const dbLang = profile?.language;
+    if (dbLang && SUPPORTED.includes(dbLang) && dbLang !== normalizeLang(i18n.language)) {
+      setLanguageState(dbLang);
+      writeStored(dbLang);
+      i18n.changeLanguage(dbLang);
     }
-
-    syncFromSession();
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      const uid = session?.user?.id ?? null;
-      setUserId(uid);
-      if (uid) syncFromSession();
-    });
-
-    return () => {
-      cancelled = true;
-      sub?.subscription?.unsubscribe();
-    };
-  }, []);
+  }, [userId, profile?.language]);
 
   // #2039: bind <html lang> til det aktive UI-sprog APP-BREDT. Uden dette beholdt
   // app-ruterne (som ikke kalder useDocumentHead) index.html's statiske default
@@ -196,10 +182,14 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
           .eq("id", userId);
         if (error && import.meta.env.DEV) {
           console.warn("[language] DB-update failed:", error.message);
+        } else if (!error) {
+          // #3034 krav 3: eksplicit ændring — invalidér den delte cache med
+          // det samme i stedet for at vente på næste auth-event/refetch.
+          updateProfile({ language: lng });
         }
       }
     },
-    [userId]
+    [userId, updateProfile]
   );
 
   return (
