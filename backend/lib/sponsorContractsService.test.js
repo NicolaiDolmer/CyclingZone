@@ -52,7 +52,7 @@ function makeSupabase({
   skipRpcKeys = new Set(),    // idempotency_keys der skal simulere 23505 (skip)
   failNotificationForUserIds = [], // #3315: simulerer en fejlende notifications-insert
 } = {}) {
-  const state = { updates: [], inserts: [], rpcCalls: [], notificationInserts: [] };
+  const state = { updates: [], inserts: [], rpcCalls: [], notificationInserts: [], teamsInChunkSizes: [] };
   const failNotify = new Set(failNotificationForUserIds);
   const teamsById = {
     [team.id]: { id: team.id, division: team.division, league_division_id: null },
@@ -83,6 +83,10 @@ function makeSupabase({
 
   function teamsBuilder() {
     const ctx = {};
+    const rowsForInVals = () =>
+      (ctx.inVals || []).map(
+        (id) => teamsById[id] || { id, division: null, league_division_id: null },
+      );
     const b = {
       select: () => b,
       eq: (col, val) => {
@@ -91,15 +95,18 @@ function makeSupabase({
       },
       in: (_col, vals) => {
         ctx.inVals = vals;
+        state.teamsInChunkSizes.push(vals.length);
         return b;
       },
+      // #3014: expireAndRenewContracts henter nu teams via fetchAllRowsChunkedIn
+      // (.in(chunk).order("id") pr. chunk, derefter .range() pr. side).
+      // order() er en no-op her (rowsForInVals følger allerede ids-rækkefølgen,
+      // og hver chunk er langt under 1000 rækker), range() spejler fetchAllRows'
+      // .range(from,to)-kontrakt så den delte helper virker uændret mod mocken.
+      order: () => b,
+      range: (from, to) => Promise.resolve({ data: rowsForInVals().slice(from, to + 1), error: null }),
       single: () => Promise.resolve({ data: team, error: null }),
-      then: (resolve) => {
-        const rows = (ctx.inVals || []).map(
-          (id) => teamsById[id] || { id, division: null, league_division_id: null },
-        );
-        return resolve({ data: rows, error: null });
-      },
+      then: (resolve) => resolve({ data: rowsForInVals(), error: null }),
     };
     return b;
   }
@@ -939,6 +946,38 @@ test("expireAndRenewContracts beholder en stadig-låst kontrakt", async () => {
   await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
 
   // Ingen update, ingen insert, ingen rpc — kontrakten er låst.
+  assert.equal(supabase.state.updates.length, 0);
+  assert.equal(supabase.state.inserts.length, 0);
+  assert.equal(supabase.state.rpcCalls.length, 0);
+});
+
+test("expireAndRenewContracts: #3014 — chunker teams.in() når teamIds overstiger URL-cap-grænsen (250 hold → 3 chunks af maks 100)", async () => {
+  const teamIds = Array.from({ length: 250 }, (_, i) => `t${i}`);
+  const activeContractByTeam = Object.fromEntries(
+    teamIds.map((id) => [id, {
+      id: `c-${id}`,
+      team_id: id,
+      status: "active",
+      expires_after_season: 99, // langt over newSeasonNumber → alle forbliver låst, ingen ekstra queries
+    }]),
+  );
+  const teamsById = Object.fromEntries(
+    teamIds.map((id) => [id, { id, division: 2, league_division_id: null }]),
+  );
+  const supabase = makeSupabase({
+    team: { id: teamIds[0], division: 2 },
+    activeContractByTeam,
+    teamsById,
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds });
+
+  assert.deepEqual(
+    supabase.state.teamsInChunkSizes,
+    [100, 100, 50],
+    "250 hold skal chunkes i 2×100 + 1×50, ikke ét samlet .in() med 250 id'er",
+  );
+  // Alle 250 var stadig-låste — ingen update/insert/rpc, ligesom enkelt-holds-testen ovenfor.
   assert.equal(supabase.state.updates.length, 0);
   assert.equal(supabase.state.inserts.length, 0);
   assert.equal(supabase.state.rpcCalls.length, 0);

@@ -83,7 +83,7 @@ import {
 } from "../lib/seasonTransitionPhaseLog.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { deleteRiderWithCleanup } from "../lib/riderCleanupDeletion.js";
-import { fetchAllRows } from "../lib/supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "../lib/supabasePagination.js";
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
@@ -868,6 +868,28 @@ export async function claimSeasonEndOrReject(supabaseClient, seasonId, res) {
     return false;
   }
   return true;
+}
+
+// #3014 · en sæson kan have op til 455 løb (S2) — én samlet
+// .in("race_id", raceIds) ville URL-encode hele id-listen ind i PostgREST-
+// request-linjen og ramme gatewayens ~16 KB URL-længde-cap (SUPABASE_IN_CHUNK_SIZE-
+// kommentaren i supabasePagination.js: ~430 UUID'er). Samme fejlklasse som ramte
+// assessSeasonEndBlockers lige nedenfor i denne route (#3038/bf5edfcb1). Chunk
+// id-listen og summer pending-count per chunk i stedet for at stole på én query.
+// Exported for unit-testing (api.test.js).
+export async function countPendingRaceResults(supabaseClient, raceIds, { chunkSize = SUPABASE_IN_CHUNK_SIZE } = {}) {
+  let pendingCount = 0;
+  for (let i = 0; i < raceIds.length; i += chunkSize) {
+    const chunk = raceIds.slice(i, i + chunkSize);
+    const { count, error } = await supabaseClient
+      .from("pending_race_results")
+      .select("id", { count: "exact", head: true })
+      .in("race_id", chunk)
+      .eq("status", "pending");
+    if (error) throw error;
+    pendingCount += count || 0;
+  }
+  return pendingCount;
 }
 
 // ── Fair-play prisbånd (#3133) — delt fejlsvar ───────────────────────────────
@@ -1943,15 +1965,17 @@ router.post("/scouting/estimates", requireAuth, async (req, res) => {
     // ikke beregnes for tabel- og kort-fladerne — de fik kun stjerne-enheder, og
     // rating-point-båndet fandtes udelukkende på de to enkelt-rytter-endpoints.
     // Caps forlader stadig ALDRIG serveren (#1162): kun det maskerede bånd gør.
-    const [{ state }, scout, { data: riders, error }, { data: abilityRows, error: abErr }, seasonNumber] = await Promise.all([
+    // #3014 · ids kan have op til 500 rytter-ids (grænsen ovenfor) — 500 UUID'er
+    // ≈ 18,5 KB, over PostgRESTs ~16 KB URL-længde-cap. Chunket via fetchAllRowsChunkedIn.
+    const [{ state }, scout, riders, abilityRows, seasonNumber] = await Promise.all([
       loadScoutState(req.team.id),
       loadScout(req.team.id, supabase),
-      supabase.from("riders").select("id, potentiale, birthdate, team_id, primary_type, secondary_type").in("id", ids),
-      supabase.from("rider_derived_abilities").select("*").in("rider_id", ids),
+      fetchAllRowsChunkedIn(ids, (chunk) => supabase
+        .from("riders").select("id, potentiale, birthdate, team_id, primary_type, secondary_type").in("id", chunk).order("id")),
+      fetchAllRowsChunkedIn(ids, (chunk) => supabase
+        .from("rider_derived_abilities").select("*").in("rider_id", chunk).order("rider_id")),
       getActiveSeasonNumber(),
     ]);
-    if (error) throw new Error(error.message);
-    if (abErr) throw new Error(abErr.message);
     const abilitiesByRider = new Map((abilityRows ?? []).map((row) => [row.rider_id, row]));
     // #3213: holdets ægte spejder driver rest-båndets gulv (#2244) — uden den
     // faldt beregningen tavst tilbage til DEFAULT_SCOUT for alle hold.
@@ -8716,10 +8740,13 @@ router.get("/admin/attribution", requireAdmin, async (req, res) => {
     const userIds = (rows || []).map(r => r.user_id);
     let teamByUser = {};
     if (userIds.length) {
-      const { data: teams } = await supabase
+      // #3014 · limit clamper til 500 — 500 UUID'er ≈ 18,5 KB, over PostgRESTs
+      // ~16 KB URL-længde-cap. Chunket for at holde den margin.
+      const teams = await fetchAllRowsChunkedIn(userIds, (chunk) => supabase
         .from("teams")
         .select("user_id, name, manager_name, division")
-        .in("user_id", userIds);
+        .in("user_id", chunk)
+        .order("user_id"));
       teamByUser = Object.fromEntries((teams || []).map(t => [t.user_id, t]));
     }
 
@@ -8874,11 +8901,13 @@ router.get("/admin/growth/nps", requireAdmin, async (req, res) => {
     const userIds = (rows || []).map(r => r.user_id);
     let teamByUser = {};
     if (userIds.length) {
-      const { data: teams, error: teamsErr } = await supabase
+      // #3014 · limit clamper til 500 — 500 UUID'er ≈ 18,5 KB, over PostgRESTs
+      // ~16 KB URL-længde-cap. Chunket for at holde den margin.
+      const teams = await fetchAllRowsChunkedIn(userIds, (chunk) => supabase
         .from("teams")
         .select("user_id, name")
-        .in("user_id", userIds);
-      if (teamsErr) throw teamsErr;
+        .in("user_id", chunk)
+        .order("user_id"));
       teamByUser = Object.fromEntries((teams || []).map(t => [t.user_id, t]));
     }
 
@@ -10416,13 +10445,9 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
 
     const raceIds = (seasonRaces || []).map(race => race.id);
     if (raceIds.length > 0) {
-      const { count: pendingCount, error: pendingError } = await supabase
-        .from("pending_race_results")
-        .select("id", { count: "exact", head: true })
-        .in("race_id", raceIds)
-        .eq("status", "pending");
-      if (pendingError) return res.status(500).json({ error: pendingError.message });
-      if ((pendingCount || 0) > 0) {
+      // Kaster ved DB-fejl — fanges af routens ydre try/catch (captureApiRouteError).
+      const pendingCount = await countPendingRaceResults(supabase, raceIds);
+      if (pendingCount > 0) {
         return res.status(400).json({ error: "Der er stadig afventende løbsresultater i sæsonen" });
       }
     }
@@ -11464,11 +11489,15 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
       return res.status(400).json({ error: "Kan ikke ændre kalender på en afsluttet sæson" });
     }
 
-    const { data: poolRaces, error: poolError } = await supabase
+    // #3014 · pool_race_ids kan dække en hel sæsons kalender (op til 455 løb i
+    // S2) — chunket via fetchAllRowsChunkedIn (samme id-URL-længde-cap som
+    // countPendingRaceResults i denne fil). Kaster ved DB-fejl — fanges af
+    // routens ydre try/catch (captureApiRouteError) ligesom resten af routen.
+    const poolRaces = await fetchAllRowsChunkedIn(pool_race_ids, (chunk) => supabase
       .from("race_pool")
       .select("id, name, race_class, race_type, stages")
-      .in("id", pool_race_ids);
-    if (poolError) return res.status(500).json({ error: poolError.message });
+      .in("id", chunk)
+      .order("id"));
 
     let replacedCount = 0;
     if (replace) {
@@ -11483,22 +11512,33 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
       const existingRaceIds = (existingRaces || []).map((r) => r.id);
       if (existingRaceIds.length > 0) {
         // Sikkerhedstjek: nægter at slette løb der allerede har resultater (data-tab).
-        const { count: resultsCount, error: resultsError } = await supabase
-          .from("race_results")
-          .select("id", { count: "exact", head: true })
-          .in("race_id", existingRaceIds);
-        if (resultsError) return res.status(500).json({ error: resultsError.message });
-        if ((resultsCount || 0) > 0) {
+        // #3014 · eksisterende pool-bound races kan også være hele sæsonens
+        // kalender — chunk id-listen for BÅDE count- og delete-kaldet. Begge
+        // kaster ved DB-fejl — fanges af routens ydre try/catch.
+        let resultsCount = 0;
+        for (let i = 0; i < existingRaceIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+          const chunk = existingRaceIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+          const { count, error } = await supabase
+            .from("race_results")
+            .select("id", { count: "exact", head: true })
+            .in("race_id", chunk);
+          if (error) throw error;
+          resultsCount += count || 0;
+        }
+        if (resultsCount > 0) {
           return res.status(409).json({
             error: `Kan ikke erstatte: ${resultsCount} race_results findes på ${existingRaceIds.length} eksisterende løb. Slet resultaterne først eller brug 'tilføj' i stedet for 'erstat'.`,
           });
         }
 
-        const { error: deleteError } = await supabase
-          .from("races")
-          .delete()
-          .in("id", existingRaceIds);
-        if (deleteError) return res.status(500).json({ error: deleteError.message });
+        for (let i = 0; i < existingRaceIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+          const chunk = existingRaceIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+          const { error } = await supabase
+            .from("races")
+            .delete()
+            .in("id", chunk);
+          if (error) throw error;
+        }
         replacedCount = existingRaceIds.length;
       }
     }
