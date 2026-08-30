@@ -23,7 +23,7 @@ import helmet from "helmet";
 import { createClient } from "@supabase/supabase-js";
 import { isAllowedOrigin } from "./lib/corsOrigin.js";
 import apiRoutes from "./routes/api.js";
-import { startCron, awaitCronsIdle, getCronInFlight } from "./cron.js";
+import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -101,13 +101,26 @@ const server = app.listen(PORT, () => { console.log(`🚴 Cycling Zone Manager A
 // Graceful shutdown — Railway sender SIGTERM før dyno-kill ved deploy. Uden
 // denne handler kunne en cron-tick midt i en sæson-transition afbrydes (cron.js
 // håndhæver idempotens per fase, men shutdown bør stadig vente).
-const SHUTDOWN_TIMEOUT_MS = 30_000;
+//
+// #4150: 30s var kosmetik. Railways drainingSeconds havde default 0 — SIGTERM
+// blev fulgt af SIGKILL uden ophold, så ventetiden herunder nåede aldrig at
+// betyde noget (deployment e230f2c3, jf. #4147). Begge halvdele er nu hævet:
+// backend/railway.json sætter drainingSeconds=150, og vinduet her er 120s, så
+// et løb (90-110s at afslutte) kan nå at blive færdigt. De 30s luft mellem de
+// to tal sikrer at processens eget process.exit(0) altid vinder over SIGKILL,
+// så "[shutdown] alle cron-ticks afsluttet" faktisk når i deploy-loggen.
+// backend/railway.deployConfig.test.js håndhæver at de to tal følges ad.
+const SHUTDOWN_TIMEOUT_MS = 120_000;
 let shuttingDown = false;
 async function gracefulShutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`[shutdown] ${signal} received — stopper accept af nye requests`);
   server.close(() => console.log("[shutdown] HTTP server lukket"));
+  // #4150: stop planlægning af NYE cron-ticks før vi venter. Den gamle og den
+  // nye proces kører side om side i hele drain-vinduet, og uden dette ville
+  // den gamle blive ved med at fyre ticks parallelt med den nye i op til 150s.
+  stopCronScheduling();
   const inFlight = getCronInFlight();
   if (inFlight > 0) {
     console.log(`[shutdown] venter på ${inFlight} cron-tick(s) (timeout ${SHUTDOWN_TIMEOUT_MS}ms)`);
