@@ -15,7 +15,15 @@
 --
 -- DRY-RUN er default. Sæt v_apply := true for at slette.
 --
--- Refs #4217 #4173 #4209 #4200 #4201
+-- EFTER BEGGE SCRIPTS SKAL FUNKTIONEN KALDES. Denne fil sletter kun de tabende
+-- race_entries-rækker. Den bygger IKKE race_entry_days om, og
+-- 2026-08-25-4217-spaend-binding.sql's create or replace gør det heller ikke af sig
+-- selv (den ændrer kun funktionsdefinitionen, se dens header). De overlevende
+-- udtagelser får derfor først rækker i hele spændet når race_entry_days_rebuild()
+-- KALDES eksplicit for hvert (løb, hold)-par. Manglende sidste skridt kostede 20
+-- dag-rækker ved anvendelsen 25/8 (#4243).
+--
+-- Refs #4217 #4173 #4209 #4200 #4201 #4243
 
 do $$
 declare
