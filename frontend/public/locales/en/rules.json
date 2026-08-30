@@ -161,6 +161,10 @@
     "fairPlay": {
       "label": "Fair play",
       "blocks": {
+        "onePerPerson": {
+          "title": "One team per person",
+          "text": "Each player may hold one team on one account. Running multiple teams through extra accounts counts as cheating and is monitored through the account and login signals described in the privacy policy."
+        },
         "starProtection": {
           "title": "Star-rider protection",
           "text": "A rider whose market value is at least {starValue} CZ$ counts as a star and is protected from forced sales. This is the same value you see in the rider's profile."
