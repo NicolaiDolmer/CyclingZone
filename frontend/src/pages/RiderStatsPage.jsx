@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { getAuthedUser } from "../lib/getAuthedUser.js";
-import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo } from "../lib/marketValues.js";
+import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo, computeBidValueDelta } from "../lib/marketValues.js";
 import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
 import { riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
@@ -279,7 +279,7 @@ function DirectOfferButton({ rider, seasonYear }) {
 // POSTer /api/transfers. Genbruger PATCH/DELETE /api/transfers/:id fra
 // transferlistens egne kort. Fjern bruger in-app confirm (ikke window.confirm
 // — upålidelig i mobile in-app-browsere).
-function TransferListButton({ rider }) {
+function TransferListButton({ rider, onChanged }) {
   const { t } = useTranslation("rider");
   const [show, setShow]       = useState(false);
   const [listing, setListing] = useState(null);
@@ -333,6 +333,10 @@ function TransferListButton({ rider }) {
         setListing(listing ? { ...listing, asking_price: price } : data);
         setShow(false);
         flashResult(true, listing ? t("sellRider.toast.priceUpdated") : t("sellRider.toast.listed"));
+        // #3490: siden viser nu udbudsprisen i hero-banneret uanset ejerskab —
+        // hold det i sync med det man lige listede/ændrede, uden at vente på et
+        // fuldt loadRider() (som TransferListButton ellers ikke selv trigger'er).
+        onChanged?.();
       } else {
         flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t)}`);
       }
@@ -357,6 +361,7 @@ function TransferListButton({ rider }) {
         setPrice(getRiderMarketValue(rider));
         setShow(false);
         flashResult(true, t("sellRider.toast.removed"));
+        onChanged?.(); // #3490: hero-banneret skal forsvinde med det samme
       } else {
         flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t)}`);
       }
@@ -854,6 +859,10 @@ export default function RiderStatsPage() {
   const [seniorCount, setSeniorCount]       = useState(null);
   const [academyCount, setAcademyCount]     = useState(null);
   const [activeAuction, setActiveAuction]   = useState(null);
+  // #3490: rytterens egen åbne transfer-listing (uanset ejerskab) — hero-
+  // banneret viser udbudspris + værdi-afvigelse når rytteren FAKTISK er til
+  // salg. null = ingen åben listing (banner-grenen renderer da slet ikke).
+  const [transferListing, setTransferListing] = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
   // #3012: separat fra auctionError da watchlist-toggle og auktionsbud er to
   // uafhængige handlinger på siden — en watchlist-fejl skal ikke overskrive
@@ -897,6 +906,7 @@ export default function RiderStatsPage() {
   const watchlistCountFetchIdRef = useRef(null);
   const retirementStatusFetchIdRef = useRef(null); // #2748 samme stale-guard-mønster
   const riderFetchIdRef = useRef(null);
+  const transferListingFetchIdRef = useRef(null); // #3490 samme stale-guard-mønster
   useEffect(() => { activeAuctionRef.current = activeAuction; }, [activeAuction]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
 
@@ -1266,6 +1276,27 @@ export default function RiderStatsPage() {
     return auctionData;
   }
 
+  // #3490: rytterens EGEN åbne transferlisting, uanset ejerskab — samme
+  // "vis markedstilstand på rytterens profil"-idé som loadActiveAuctionFull
+  // ovenfor, blot for transferlisten. RLS'en giver public read på
+  // transfer_listings ("Public read transfer_listings" USING (true)), så et
+  // direkte select er nok — ingen join, ingen ejerskabs-check nødvendig.
+  // status='open' er MARKEDETS definition af "faktisk til salg" (samme filter
+  // som GET /api/transfers' default og TransfersPage's markedsvisning).
+  async function loadTransferListing() {
+    const fetchId = id;
+    transferListingFetchIdRef.current = fetchId;
+    try {
+      const { data } = await supabase.from("transfer_listings")
+        .select("id, asking_price")
+        .eq("rider_id", id).eq("status", "open").maybeSingle();
+      if (transferListingFetchIdRef.current !== fetchId) return; // stale svar
+      setTransferListing(data || null);
+    } catch {
+      if (transferListingFetchIdRef.current === fetchId) setTransferListing(null);
+    }
+  }
+
   async function loadRider() {
     // Race-engine-fundamentet (#676) hentes fejl-tolerant ved siden af rytteren, så
     // en manglende tabel/profil (fx i deploy-vinduet før migrationen er kørt, eller
@@ -1325,7 +1356,7 @@ export default function RiderStatsPage() {
     setSeasonRows(seasonRowsAll.rows);
     setSeasonRowsFailed(seasonRowsAll.failed);
 
-    await loadActiveAuctionFull(riderRes.data);
+    await Promise.all([loadActiveAuctionFull(riderRes.data), loadTransferListing()]);
     if (riderFetchIdRef.current !== fetchId) return;
     setLoading(false);
     loadWatchlistCount();
@@ -1678,10 +1709,14 @@ export default function RiderStatsPage() {
   const salaryText = rider.contract_length != null
     ? `${formatNumber(rider.salary)} CZ$`
     : `~${formatNumber(getRiderSalary(rider))} CZ$`;
-  // Status-banner: auktion > sidste sæson (pension) > akademi > kontrakt-udløb
-  // (egne ryttere). #2748: "finalSeason" er DEFINITIVT (ikke kun risiko) og
-  // synligt for ALLE viewere — en køber skal kunne se det FØR et bud/handel,
-  // ikke kun ejeren (derfor ingen isMyRider-gate her, i modsætning til expiry).
+  // Status-banner: auktion > transfer-listing > sidste sæson (pension) >
+  // akademi > kontrakt-udløb (egne ryttere). #2748: "finalSeason" er
+  // DEFINITIVT (ikke kun risiko) og synligt for ALLE viewere — en køber skal
+  // kunne se det FØR et bud/handel, ikke kun ejeren (derfor ingen isMyRider-
+  // gate her, i modsætning til expiry). #3490: "listed" er samme slags
+  // markeds-tilstand som "auction" — synlig for ALLE, ejer inklusive, uanset
+  // om rytteren i øvrigt er akademi/har udløbende kontrakt (markeds-tilstanden
+  // er mere aktuel end de statiske info-bannere den ellers ville vise).
   let statusBanner = null;
   if (activeAuction) {
     const diff = new Date(activeAuction.calculated_end) - new Date();
@@ -1691,6 +1726,15 @@ export default function RiderStatsPage() {
       kind: "auction",
       endsIn: diff > 0 ? (h > 0 ? `${h}t ${m}m` : `${m}m`) : "—",
       highBid: formatNumber(activeAuction.current_price),
+    };
+  } else if (transferListing) {
+    statusBanner = {
+      kind: "listed",
+      price: formatNumber(transferListing.asking_price),
+      // #3191-mønster: unsigned pct+direction til VISNING (ValueDeltaBadge),
+      // samme indikator som Transferlisten/Auktioner — null (rytter mangler
+      // markedsværdi) skjuler badget stille i stedet for at vise noget forkert.
+      valueDelta: computeBidValueDelta(transferListing.asking_price, rider),
     };
   } else if (announcedRetirement) {
     statusBanner = { kind: "finalSeason", season: seasonNumberFromReferenceYear(seasonYear) };
@@ -1867,7 +1911,7 @@ export default function RiderStatsPage() {
                           på auktion direkte — salget graduerer dem atomisk til
                           senior hos køberen ved handlens gennemførelse (backend:
                           executeTransferOffer / auctionFinalization.js). */}
-                      {isMyRider && <TransferListButton rider={rider} />}
+                      {isMyRider && <TransferListButton rider={rider} onChanged={loadTransferListing} />}
                       {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
                     </>
                   }
