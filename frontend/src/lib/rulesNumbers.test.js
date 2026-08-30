@@ -19,7 +19,7 @@ import {
   INITIAL_BALANCE,
   SPONSOR_INCOME_BY_DIVISION,
   FINAL_SPONSOR_PAYOUT_CEILING,
-  SALARY_RATE,
+  SALARY_RATE_PRODUCTION,
   NEGATIVE_BALANCE_INTEREST_RATE,
   DEBT_CEILING_BY_DIVISION,
   PRIZE_PER_POINT,
@@ -60,8 +60,12 @@ test("economy numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.sponsorD3, SPONSOR_INCOME_BY_DIVISION[3]);
   assert.equal(RULES_NUMBERS.sponsorCeilingS1, FINAL_SPONSOR_PAYOUT_CEILING.S1);
   assert.equal(RULES_NUMBERS.sponsorCeilingS2, FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS);
-  // SALARY_RATE is a fraction (0.067); the page shows a percentage.
-  assert.equal(RULES_NUMBERS.salaryRatePct, Math.round(SALARY_RATE * 1000) / 10);
+  // #4479: pinned to SALARY_RATE_PRODUCTION, the rate that actually freezes a
+  // contract (computeFrozenSalary / resolveRiderSalary), NOT the legacy
+  // market_value-based SALARY_RATE. Pinning to a dead constant is a green check
+  // that verifies nothing — the /rules page drifted for free behind it.
+  // SALARY_RATE_PRODUCTION is a fraction (0.35); the page shows a percentage.
+  assert.equal(RULES_NUMBERS.salaryRatePct, Math.round(SALARY_RATE_PRODUCTION * 1000) / 10);
   assert.equal(RULES_NUMBERS.negativeInterestPct, NEGATIVE_BALANCE_INTEREST_RATE * 100);
   assert.equal(RULES_NUMBERS.debtD1, DEBT_CEILING_BY_DIVISION[1]);
   assert.equal(RULES_NUMBERS.debtD2, DEBT_CEILING_BY_DIVISION[2]);
@@ -113,7 +117,12 @@ test("academy numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.academySlots, ACADEMY.SLOTS);
   assert.equal(RULES_NUMBERS.academyMinAge, ACADEMY.MIN_AGE);
   assert.equal(RULES_NUMBERS.academyMaxAge, ACADEMY.MAX_AGE);
-  assert.equal(RULES_NUMBERS.academySalaryPct, ACADEMY.SALARY_RATE * 100);
+  // #4479: academy signing (academyIntake.js) and promote (academyTransfer.js)
+  // both call computeFrozenSalary, i.e. the shared senior formula since #3989.
+  // ACADEMY.SALARY_RATE still points at the legacy market_value rate and is not
+  // what any signing path charges, so the page number is pinned to the live one.
+  assert.equal(RULES_NUMBERS.academySalaryPct, Math.round(SALARY_RATE_PRODUCTION * 1000) / 10);
+  assert.equal(RULES_NUMBERS.academySalaryPct, RULES_NUMBERS.salaryRatePct);
   assert.equal(RULES_NUMBERS.academyContractLength, ACADEMY.CONTRACT_LENGTH);
   assert.equal(RULES_NUMBERS.academyDrift, ACADEMY.DRIFT_PER_SEASON);
   assert.equal(RULES_NUMBERS.academySigningFeePct, ACADEMY.SIGNING_FEE_RATE * 100);
