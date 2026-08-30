@@ -99,13 +99,19 @@ export async function resolveGraduation(supabase, {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!VALID_ACTIONS.has(action)) throw new Error("invalid_action");
 
-  const { data: grad } = await supabase.from("academy_graduation")
+  // #2997: kontraktsti. Uden `error` bundet blev en fejlet læsning til de
+  // sentinel-kast nedenfor — manageren fik "not_pending"/"rider_not_found" mens
+  // rækken lå der fint, og fejlen nåede aldrig Sentry. Kast med den ægte årsag;
+  // funktionen muterer først EFTER begge opslag, så et kast her fejler lukket.
+  const { data: grad, error: gradError } = await supabase.from("academy_graduation")
     .select("id, status").eq("team_id", teamId).eq("rider_id", riderId).maybeSingle();
+  if (gradError) throw new Error(`resolveGraduation graduation lookup: ${gradError.message}`);
   if (!grad || grad.status !== "pending") throw new Error("not_pending");
 
-  const { data: rider } = await supabase.from("riders")
+  const { data: rider, error: riderError } = await supabase.from("riders")
     .select("id, team_id, firstname, lastname, base_value, prize_earnings_bonus, current_production_value, market_value, salary, contract_length, contract_end_season")
     .eq("id", riderId).maybeSingle();
+  if (riderError) throw new Error(`resolveGraduation rider lookup: ${riderError.message}`);
   if (!rider) throw new Error("rider_not_found");
 
   if (action === "promote") {
@@ -247,7 +253,16 @@ async function createGraduateAuction(supabase, { teamId, rider, now = new Date()
 }
 
 async function resolveAuctionConfig(supabase) {
-  const { data } = await supabase.from("auction_timing_config").select("*").eq("id", 1).single();
+  // #2997: DEFAULT_AUCTION_CONFIG-fallbacken er designet til at dække en
+  // MANGLENDE config-række (auctionEngine.js), ikke en fejlet læsning. Uden
+  // `error` bundet blev de to tilfælde ens, og en graduate-auktion kunne få en
+  // helt anden varighed end den konfigurerede — en kontrakt manageren ikke kan
+  // rulle tilbage bagefter. PGRST116 = ingen række → behold fallbacken; alt
+  // andet kaster, og da kaldet ligger FØR insert'et fejler vi lukket.
+  const { data, error } = await supabase.from("auction_timing_config").select("*").eq("id", 1).single();
+  if (error && error.code !== "PGRST116") {
+    throw new Error(`resolveAuctionConfig: could not read auction_timing_config: ${error.message}`);
+  }
   return data || DEFAULT_AUCTION_CONFIG;
 }
 
