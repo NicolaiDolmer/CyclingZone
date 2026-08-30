@@ -139,6 +139,7 @@
       "rivalCount": "{count, plural, =0 {No rivals peak here} one {# rival also peaks here} other {# rivals also peak here}}",
       "viewProfiles": "View stage profiles",
       "hideProfiles": "Hide stage profiles",
+      "openStage": "Open stage {stage} in a new tab",
       "setPeak": "Set peak",
       "demands": "This race demands",
       "alreadyPeaking": "Peaking here",
