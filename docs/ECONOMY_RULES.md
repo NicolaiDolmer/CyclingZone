@@ -192,7 +192,7 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 
 **Bygget** (#3448/#3449, merged 23/8): blend-sweep med support-guard pr. rytter og ugentligt ændringsloft, kill-switch, dato-dedup. `marketValueModelV1.json` er den fittede markedsmodel.
 
-**Ikke tændt.** Verificeret i prod 30/8:
+**Ikke tændt endnu. Ejer-go 30/8: tændes søndag 6/9 med 15 % global markedsvægt**, uændret ugeloft ±25 %, derefter i skridt med scorecard + ejer-go pr. skridt. Eksekvering: [#4449](https://github.com/NicolaiDolmer/CyclingZone/issues/4449). Tilstand verificeret i prod 30/8, altså før flippet:
 
 | Nøgle | Værdi |
 |---|---|
@@ -203,7 +203,7 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 
 **De to målte grunde til at "bare tænde den" ikke er svaret** (begge fra `docs/superpowers/specs/2026-08-14-vaerdi-og-loen-fundament-design.md`, målt mod prod):
 
-1. Markedsmodel v1.1 ramte faktiske handler DÅRLIGERE end den simuleringsbaserede v4 (MAE 38.176 vs. 28.968 CZ$ på tidsbaseret holdout 10/8). Mere marked ville her have betydet mindre præcision.
+1. Markedsmodel v1.1 ramte faktiske handler DÅRLIGERE end den simuleringsbaserede v4 (MAE 38.176 vs. 28.968 CZ$ på tidsbaseret holdout 10/8). Mere marked ville her have betydet mindre præcision. **Rensningen af datagrundlaget hjalp, men vendte det ikke:** v2-artefaktets eget holdout (78 handler, 17/8) giver v4 20.572 CZ$ / 14,5 % MAPE mod markedsmodellens 29.831 / 33,8 %.
 2. Der er 128,9 mio. CZ$ i kontanter mod 360,3 mio. i rytterværdi (målt 14/8). Et marked med for få penge finder ikke den rigtige pris, det finder loftet for hvad nogen kan betale.
 
 **Skelnen der løser det** (ejerens egen ramme 14/8): spillerdata er stærke til *præferencer* (rangorden, nationalitet, ryttertype) og svage til *kroneniveauet*. Markedsvægten bør derfor styre relativ prissætning, mens niveauet forbliver forankret.
@@ -225,8 +225,9 @@ Læsningen 30/8: den forhandlede kanal ligger nu meget tæt på 1,0 mod de korri
 
 | Issue | Hvad | Status 30/8 |
 |---|---|---|
-| [#3448](https://github.com/NicolaiDolmer/CyclingZone/issues/3448) | Markedsdrevne værdier: blend-kadence og vej mod 100 % spillerdrevet | **Åben, afventer ejer-beslutning.** Issuets tekst (50/50, 100 % ved sæsonskiftet) modsiger den offentlige udmelding 11/8 (75/25, gradvist uden dato). Ejeren udskød afklaringen 12/8 til en dedikeret session. Den session er stadig ikke holdt |
-| [#3750](https://github.com/NicolaiDolmer/CyclingZone/issues/3750) | 739 bank-salg til mekanisk 25 % indgår som "markedsevidens", så modellen trænes delvist på sit eget tal | Åben. Værktøjer + forhåndsvisning merged (PR #4096, 22/8). Selve rensningen af datagrundlaget udestår, og den bør ske FØR markedsvægten hæves |
+| [#3448](https://github.com/NicolaiDolmer/CyclingZone/issues/3448) | Markedsdrevne værdier: blend-kadence og vej mod 100 % spillerdrevet | **Afklaret 30/8.** Modsigelsen mellem issuets 50/50 og udmeldingen 11/8 (75/25) er afgjort: **15 % global vægt fra søndag 6/9**, derefter i skridt, ingen dato for 100 %. Eksekvering i #4449 |
+| [#4449](https://github.com/NicolaiDolmer/CyclingZone/issues/4449) | Tænd markedsblendet 6/9 med 15 % vægt | Åben. Blokkerende før flip: runtime skal læse v2-artefaktet (evidensvægt `Z = n/(n+K)`, kvalificeret evidens, `type_column`), tørkørsel mod prod, ejer-go på selve flippet, spillerkommunikation |
+| [#3750](https://github.com/NicolaiDolmer/CyclingZone/issues/3750) | 739 bank-salg til mekanisk 25 % indgår som "markedsevidens", så modellen trænes delvist på sit eget tal | Åben, men **datasiden er løst**: `marketValueModelV2.json` (fittet 17/8) trænes kun på kvalificeret evidens, 391 af 1.288 handler overlevede filteret. Det der udestår er at RUNTIME bruger artefaktet, se #4449 |
 | [#3353](https://github.com/NicolaiDolmer/CyclingZone/issues/3353) | Re-fit af v4 mod den caps-baserede ryttertype-klassifikation, fjerner #3345's frysning | Åben |
 | [#4000](https://github.com/NicolaiDolmer/CyclingZone/issues/4000) | Typen skal fylde mindre i værdiformlen (regulariseret offset-tabel + alpha) | `claude:done`, flippet 23/8 sammen med niveaukorrektionen (PR #4135) |
 | [#4195](https://github.com/NicolaiDolmer/CyclingZone/issues/4195) | Værdimodellen er så stejl i toppen at ét overall-point giver +20 mio.; 40-mio.-loftet brydes på 44 % af seeds | Åben, `needs-decision` |
