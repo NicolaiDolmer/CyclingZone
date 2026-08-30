@@ -181,9 +181,13 @@ af 4.589 planer flyttede opad og 1.085 af de ryttere allerede havde træthed ≥
 | recovery | 217 | 9,1 % |
 | normal | 139 | 5,8 % |
 
-Næsten hver tredje aktive plan står på Hvile. Det er samme population som #4192's fund (1.520
-ryttere på 103 hold sat til Hvile OG tilmeldt et S3-løb) og er forudsætningen for at forstå
-§6.2.
+Næsten hver tredje aktive plan står på Hvile, og det er forudsætningen for at forstå §6.2.
+
+> **Ikke samme tal som #4192.** #4192 målte 1.520 ryttere på 103 hold 24/8 på en **bredere
+> definition**. Snittet her (`training_plans.intensity = 'rest'` i aktiv sæson, krydset mod mindst
+> ét S3-løb) giver 656 pr. 30/8, genmålt til 657 pr. 31/8. Forskellen er en faktor 2,3, så de to
+> tal må ikke bruges i flæng. Skal §8 punkt 5 afgøres på et tal, er det snittet her, fordi
+> definitionen står skrevet.
 
 ---
 

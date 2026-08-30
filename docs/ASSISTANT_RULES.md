@@ -46,7 +46,7 @@ ikke en.**
 
 ## 1. Grundreglen: pull, ikke push
 
-> Ejer 25/8 2026, ordret i `raceEntryGenerator.js:160-163`:
+> Ejer 25/8 2026, ordret i `raceEntryGenerator.js:209-210`:
 > *"Vil du være sød at lade være med hele tiden at lave nye udtagelser på vegne af spillerne?
 > ... De vil hellere selv udtage."*
 
@@ -280,9 +280,9 @@ afvejning.
 | 3 | **Ryddet** (`race_entry_clears`) | at en bekræftet-tom trup fyldes ud igen | `raceRunner.js:857`, `raceEntryGenerator.js:286-300`, semantik i `raceEntryClears.js` |
 | 4 | **Manuel udtagelse findes** → `409 selection_already_exists` | at A overskriver en kurateret trup | `api.js:5335-5337` |
 | 5 | **Frosset startfelt** (`stages_completed > 0`) | at et igangværende løbs felt genskrives | `api.js:5318`, `:5787`, `raceEntryGenerator.js:152` |
-| 6 | **Løbet skal være `scheduled`** | udtagelse i et afsluttet løb | `api.js:5317` |
+| 6 | **Løbet skal være `scheduled`** | udtagelse i et afsluttet løb | `api.js:5316` |
 | 7 | **Pulje** (`teamInRacePool`) | hold fra anden pulje i feltet | `api.js:5319-5321`, `raceRunner.js:868-870` |
-| 8 | **Skade** (kanonisk `isRiderInjured`) | at en skadet rytter auto-udtages | `api.js:5352-5355`, `:5750-5753`, `raceRunner.js:917-922`, `raceEntryGenerator.js:344-357` |
+| 8 | **Skade** (kanonisk `isRiderInjured`) | at en skadet rytter auto-udtages | `api.js:5362-5365`, `:5750-5753`, `raceRunner.js:917-922`, `raceEntryGenerator.js:344-357` |
 | 9 | **Eligibility** (ikke akademi, ikke pensioneret, ikke parkeret salg) | akademiryttere i senior-felt ([#1742](https://github.com/NicolaiDolmer/CyclingZone/issues/1742)/[#1800](https://github.com/NicolaiDolmer/CyclingZone/issues/1800)) | `applyRiderEligibilityFilter`, alle fire stier |
 | 10 | **Binding: 1 rytter = 1 løb pr. `game_day`** | dobbeltbooking på tværs af løb | `excludeBoundRiders` + `loadFieldBindingContext`, `raceRunner.js:962-968`; `assignTeamAcrossRaces`, `raceEntryGenerator.js:47-51` |
 | 11 | **DB-backstop** `no_rider_double_booking` | at en overset konflikt skrives alligevel | `isRiderDayInvariantViolation`, `raceRunner.js:1001-1005`, `api.js:5401-5405` |
@@ -378,10 +378,10 @@ Pinnede værdier fra testen: `sprinter → sprint` · `climber → vo2max` · `t
 
 | Regel | Værdi | Fil |
 |---|---|---|
-| Sweep kører fra | **kl. 22 dansk tid** (`SWEEP_FROM_HOUR = 22`) | `backend/lib/trainingSweep.js:18` |
+| Sweep kører fra | **kl. 22 dansk tid** (`SWEEP_FROM_HOUR = 22`) | `backend/lib/trainingSweep.js:17` |
 | Bonus når manageren selv trykker | `bonusMult` = **1,25** | `dailyTraining.js:15` |
 | Bonus når assistenten kører | **ingen** (`bonus = executedBy === "manager"`) | `backend/lib/dailyTrainingEngine.js:130` |
-| Hold-diskriminator | ikke AI, ikke bank, ikke frosset, ikke testkonto | `trainingSweep.js:5-7` |
+| Hold-diskriminator | ikke bank, ikke frosset, ikke testkonto. **`is_ai`-filteret fjernes** så længe `race_day_engine_enabled` er on, så AI-hold sweepes i dag (flaget målt on i prod 31/8) | `trainingSweep.js:78-82`. Filens header-kommentar på linje 5-7 siger stadig "ikke AI" og er forældet. Ejeren af denne regel er [`TRAINING_RULES.md`](TRAINING_RULES.md) §1 |
 | Idempotens | `UNIQUE(team_id, tick_date)` som mutex | `trainingSweep.js:2-3` |
 
 **Prisen for at lade assistenten køre er præcis 25 % af dagens udbytte** - ikke et dårligere
@@ -490,7 +490,7 @@ aktive sæson; **656 af dem (87,5 %) er tilmeldt mindst ét S3-løb.**
 
 `select count(distinct p.rider_id), count(distinct p.rider_id) filter (where exists (select 1 from race_entries e join races r on r.id=e.race_id and r.season_id=(select id from seasons where status='active') where e.rider_id=p.rider_id)) from training_plans p where p.season_id=(select id from seasons where status='active') and p.intensity='rest'`
 
-Fælden ejes af #4192 og `TRAINING_RULES.md` (endnu ikke skrevet). Den står her fordi
+Fælden ejes af #4192 og [`TRAINING_RULES.md`](TRAINING_RULES.md) §3. Den står her fordi
 assistentens udvælgelseskriterium er den ene halvdel af koblingen.
 
 ### 11.4 Fjerde indgang på strategi-siden
@@ -580,9 +580,9 @@ have ét sted den bor.
   **Overordnet denne fil for alt der rører fladen.**
 - [`CALENDAR_RULES.md`](CALENDAR_RULES.md) §2b + §8 - binding, `game_day`, trupgrænser, gulvet på 6.
 - [`RACE_ENGINE_RULES.md`](RACE_ENGINE_RULES.md) §1 - rolle-vokabularet (fem værdier).
-- `TRAINING_RULES.md` - **findes ikke endnu**; leverance 1 i
-  [#4192](https://github.com/NicolaiDolmer/CyclingZone/issues/4192). §9 og §11.3 her skal flytte
-  eller pege derhen når den skrives.
+- [`TRAINING_RULES.md`](TRAINING_RULES.md) - træningsmaskinen: tick, dagstyper, restitution,
+  sweepens hold-diskriminator. Oprettet i samme PR som denne fil (#4266). §9 og §11.3 her holder
+  **assistent-vinklen**; er reglen om selve maskinen, ejes den dér.
 - `backend/lib/raceAutopick.js` - udvælgelseskernen. Topkommentaren er den mest præcise
   eksisterende prosa om assistenten og bør ikke slettes.
 - `backend/lib/raceEntryClears.js` - ryd-markeringens semantik, ét sted.

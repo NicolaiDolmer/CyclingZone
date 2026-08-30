@@ -148,8 +148,9 @@ from (select round(extract(epoch from (calculated_end - created_at))/60) as dur_
         and created_at >= '2026-08-22') s;
 ```
 
-**Resultat: 161 i alt · 113 kørte under 12 timer · 106 af dem havde et spiller-valgt
-sluttidspunkt · korteste varighed 60 minutter.**
+**Resultat: 161 i alt · 113 kørte under 12 timer · korteste varighed 60 minutter.**
+
+> **106 er udledt, ikke målt.** Tallet kommer af at `calculated_end` lander på hele sekunder (`extract(second from calculated_end) = 0`), hvilket er en heuristik for et manuelt valgt sluttidspunkt. `auctions` har **ingen kolonne** der registrerer om sælgeren valgte sluttiden. De 113 under 12 timer er derimod hårdt målt. Bærer man §14 punkt 1 (skal `CUSTOM_END_MIN_HOURS` hæves fra 1 til 12?) på de 106, skal forbeholdet med.
 
 **Det rigtige tal at skrive i copy er derfor ikke "45 minutter" og ikke "12 timer".**
 Sandheden pr. 30/8:
@@ -531,6 +532,8 @@ det daglige scoring-sweep.
 | Engangs-mail-styrke | 0,55 (kendt domæne) / 0,30 (regex-match) | `fairplayFlagsCron.js:44-50` |
 
 **Ingen automatisk sanktion.** Systemet flagger; ejeren afgør (#3138 eksplicit ikke-mål).
+
+> **Kommende ændringer (åben PR).** Tallene i tabellen ovenfor er målt mod `main` 30/8. PR [#4473](https://github.com/NicolaiDolmer/CyclingZone/pull/4473) (`#3818`) rører præcis `fairplayScoring.js` og `fairplayFlagsCron.js` og ændrer tre af dem: den tilføjer et retningssignal `directional_value_flow`, giver identitets-komponenten et gulv i værdi-multiplikatoren, og retter et join i `normalizeTransactions` der gjorde at detektoren **aldrig så direkte handler** (141 af 141 accepterede direkte handler i 90-dages-vinduet blev sprunget over). Lander #4473, skal denne tabel måles om i samme PR, jf. hard rule 30 led (c).
 
 **Målt tilstand 30/8:** `fairplay_flags` indeholder **28 flag, heraf 24 med status `new`**;
 seneste flag oprettet **28/8 15:49 dansk tid**. Cron'en tjekkede ind samme dag 22:21 dansk

@@ -407,9 +407,16 @@ synlige for spilleren, og har **ingen unlock-logik nogen steder i backenden**. V
 `grep -rn "<id>" backend/ --include=*.js | grep -v test` som gav **0 hits** for alle tre.
 
 Det er nøjagtigt samme fejlklasse som #817 (`season_first_result`) og #2917 (13 sæson-achievements
-uden motor). Den er nu opstået tredje gang. De øvrige fem uopnåede definitioner
-(`auction_high_roller`, `season_5_seasons`, `season_div1_winner`, `season_3_top3`, `transfer_30`)
-**har** logik og er blot ikke nået endnu i sæson 3, hvilket er en anden ting.
+uden motor). Den er nu opstået tredje gang.
+
+**`auction_high_roller` er en fjerde forekomst, ikke en frikendt.** Den HAR logik, men tærsklen kan ikke nås:
+`backend/lib/achievementEngine.js:327` kræver `bid.amount > 2000000000` mens copy'en lover 500.000 CZ$,
+en faktor 4.000. Bekræftet bug, spiller-rapporteret 29/8: [#4414](https://github.com/NicolaiDolmer/CyclingZone/issues/4414),
+PR #4466. **En grep efter achievement-id'et kan ikke afgøre om en tærskel er opnåelig, kun om der findes kode** -
+det er præcis den metodefejl der lod den stå på den frikendte liste i første udkast af dette dokument.
+
+De øvrige fire uopnåede definitioner (`season_5_seasons`, `season_div1_winner`, `season_3_top3`, `transfer_30`)
+har logik med nåelige tærskler og er blot ikke nået endnu i sæson 3, hvilket er en anden ting.
 
 ---
 
