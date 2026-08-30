@@ -37,6 +37,8 @@ import {
   loadCheckAllowedTypes,
   collectScanFiles,
   extractCodeWrittenTypes,
+  collectAuditEnumDrift,
+  AUDIT_ENUM_COLUMNS,
 } from "../../scripts/lint-finance-types.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -107,4 +109,56 @@ test("HVER kode-skrevet finance_transactions.type har en CHECK-constraint-værdi
           `(additiv DROP IF EXISTS + re-ADD, jf. database/2026-06-19-finance-forced-debt-sale-type.sql). ` +
           `Ejeren applier migrationen (auto-applies ved merge).`,
   );
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// #1464-udvidelse (2026-08-31): `type` var kun ÉN af tre CHECK-begrænsede
+// enum-kolonner på finance_transactions. De samme write-sinks sætter også
+// `actor_type` og `related_entity_type`, hvis værdier kommer fra de frosne
+// konstant-objekter FINANCE_ACTOR_TYPE / FINANCE_RELATED_ENTITY i
+// backend/lib/economyConstants.js. Den fils egen kommentar påstod allerede at de
+// "MUST matche database CHECK constraints" — men INTET håndhævede påstanden, så en
+// ny nøgle i et af objekterne ville slippe grøn gennem CI og først fejle med
+// check_violation (23514) på første ægte prod-INSERT. Samme bug-klasse som
+// #1463/#1465/#2948, bare i nabokolonnen. Målt mod live-skemaet 2026-08-31:
+// actor_type = 5 tilladte værdier, related_entity_type = 7, ingen drift i dag.
+// ────────────────────────────────────────────────────────────────────────────
+test("HVER kode-skrevet finance_transactions-audit-enum har en CHECK-constraint-værdi (#1464 forward-guard)", () => {
+  const reports = collectAuditEnumDrift(collectScanFiles(backendRoot));
+  assert.equal(
+    reports.length,
+    AUDIT_ENUM_COLUMNS.length,
+    "collectAuditEnumDrift() rapporterede ikke for alle registrerede audit-enum-kolonner",
+  );
+
+  for (const report of reports) {
+    assert.ok(
+      report.source,
+      `fandt ingen ${report.constraint}-definition i database/*.sql — parser sandsynligvis brudt`,
+    );
+    // Sanity: falder discovery til ~0 er parseren (ikke koden) brudt.
+    assert.ok(
+      report.codeValues.size >= 5,
+      `forventede mange kode-skrevne ${report.column}-værdier, fandt kun ${report.codeValues.size} — ` +
+        `konstant-parseren i economyConstants.js er sandsynligvis brudt`,
+    );
+
+    assert.deepEqual(
+      report.missing.map((x) => x.value),
+      [],
+      report.missing.length === 0
+        ? ""
+        : `finance_transactions.${report.column}-værdi(er) brugt i backend-koden UDEN en ` +
+            `tilsvarende CHECK-constraint-værdi (en ægte prod-INSERT ville fejle med ` +
+            `check_violation 23514).\n` +
+            `Autoritativ CHECK parset fra: database/${report.source}\n` +
+            `Manglende:\n` +
+            report.missing
+              .map((x) => `  - '${x.value}'  skrevet i: ${x.locations.join(", ")}`)
+              .join("\n") +
+            `\nFix: tilføj værdien til ${report.constraint} i en NY database/*.sql-migration ` +
+            `(additiv DROP IF EXISTS + re-ADD, jf. database/2026-05-09-audit-log-foundation.sql). ` +
+            `Ejeren applier migrationen (auto-applies ved merge).`,
+    );
+  }
 });

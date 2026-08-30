@@ -271,6 +271,166 @@ export function extractCodeWrittenTypes(files) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// 3. Audit-enum-kolonner på finance_transactions (#1464-udvidelse, 2026-08-31)
+//
+// `type` er ikke den eneste CHECK-begrænsede enum-kolonne på finance_transactions.
+// De samme write-sinks sætter også `actor_type` og `related_entity_type`, og begge
+// har en rigtig CHECK-constraint i prod (verificeret mod live-skemaet 2026-08-31:
+// finance_transactions_actor_type_check = cron/api/admin/system/migration,
+// finance_transactions_related_entity_type_check = auction/loan/transfer/swap/race/
+// season/manual). Værdierne kommer fra to frosne konstant-objekter i
+// backend/lib/economyConstants.js — FINANCE_ACTOR_TYPE og FINANCE_RELATED_ENTITY —
+// hvis egen kommentar allerede SIGER "MUST matche database CHECK constraints", men
+// indtil nu håndhævede INTET den påstand. En ny nøgle i et af de objekter (fx en
+// "scout"-actor eller en "facility"-relation) ville derfor slippe grøn gennem CI og
+// først fejle med check_violation (23514) på den første ægte INSERT i prod — præcis
+// #1463/#1465/#2948-bug-klassen, bare i nabokolonnen.
+//
+// Kilden til de kode-skrevne værdier er todelt:
+//   1. de frosne konstant-objekter (kanonisk vej — næsten alle callsites bruger dem)
+//   2. rå string-literaler på `actor_type:` / `actorType:` / `related_entity_type:` /
+//      `relatedEntityType:` i backend/{lib,routes,scripts} (fx
+//      stageRaceTransferDefer.js's `actorType: "cron"`), så en callsite der springer
+//      konstanten over stadig dækkes.
+//
+// #4328-NOTE (CHECK → rigtig Postgres-enum): når constraintet konverteres til en
+// enum-type, er det KUN loadNamedCheckValues() der skal pege et andet sted hen —
+// registret nedenfor og hele sammenligningen er uændret. Tilføj en `enumName` til
+// posten i AUDIT_ENUM_COLUMNS og lad parseren falde tilbage på
+// `CREATE TYPE <enumName> AS ENUM (...)` når constraint-formen ikke findes.
+// ────────────────────────────────────────────────────────────────────────────
+
+const ECONOMY_CONSTANTS_FILE = join(BACKEND_DIR, "lib", "economyConstants.js");
+
+/**
+ * Registret over CHECK-begrænsede enum-kolonner der udledes af et frosset
+ * konstant-objekt. `type` står bevidst IKKE her — den har sin egen write-sink-
+ * baserede discovery ovenfor, fordi typerne skrives som inline-literaler.
+ */
+export const AUDIT_ENUM_COLUMNS = [
+  {
+    column: "actor_type",
+    constraint: "finance_transactions_actor_type_check",
+    constant: "FINANCE_ACTOR_TYPE",
+    literalKeys: ["actor_type", "actorType"],
+  },
+  {
+    column: "related_entity_type",
+    constraint: "finance_transactions_related_entity_type_check",
+    constant: "FINANCE_RELATED_ENTITY",
+    literalKeys: ["related_entity_type", "relatedEntityType"],
+  },
+];
+
+/**
+ * Parse værdierne i en navngiven CHECK-constraint fra database/*.sql. Samme
+ * "seneste filnavn vinder"-regel som loadCheckAllowedTypes(): constraintet DROP'es
+ * + ADD'es på ny i hver migration der rører det, så den nyeste redefinition er den
+ * autoritative.
+ * @param {string} constraintName
+ * @returns {{values: Set<string>, source: string|null}}
+ */
+export function loadNamedCheckValues(constraintName) {
+  const sqlFiles = readdirSync(DATABASE_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+
+  const RE = new RegExp(
+    `ADD CONSTRAINT ${constraintName}\\s+CHECK\\s*\\(([\\s\\S]*?)\\)\\s*;`,
+    "i",
+  );
+
+  let found = null;
+  for (const file of sqlFiles) {
+    const src = readFileSync(join(DATABASE_DIR, file), "utf8");
+    const m = src.match(RE);
+    if (m) found = { file, values: parseTypeInList(m[1]) };
+  }
+
+  return found
+    ? { values: new Set(found.values), source: found.file }
+    : { values: new Set(), source: null };
+}
+
+/**
+ * Læs værdierne ud af et `export const X = Object.freeze({ KEY: "value", ... })`
+ * i backend/lib/economyConstants.js.
+ * @param {string} constantName
+ * @returns {Map<string, string>} value -> KEY
+ */
+export function extractConstantValues(constantName, file = ECONOMY_CONSTANTS_FILE) {
+  const src = readFileSync(file, "utf8");
+  const block = src.match(
+    new RegExp(`export const ${constantName}\\s*=\\s*Object\\.freeze\\(\\{([\\s\\S]*?)\\}\\)`),
+  );
+  const values = new Map();
+  if (!block) return values;
+  for (const m of block[1].matchAll(/([A-Z0-9_]+)\s*:\s*"([a-z_]+)"/g)) {
+    values.set(m[2], m[1]);
+  }
+  return values;
+}
+
+/**
+ * Find rå string-literaler skrevet direkte på en audit-enum-nøgle (uden om
+ * konstant-objektet), fx `actorType: "cron"`.
+ * @param {string[]} files
+ * @param {string[]} literalKeys
+ * @returns {Map<string, string[]>} value -> locations
+ */
+export function extractLiteralEnumValues(files, literalKeys) {
+  const found = new Map();
+  for (const file of files) {
+    const src = readFileSync(file, "utf8");
+    const label = relative(ROOT, file).replace(/\\/g, "/");
+    const RE = new RegExp(`\\b(?:${literalKeys.join("|")})\\s*:\\s*"([a-z_]+)"`, "g");
+    let m;
+    while ((m = RE.exec(src)) !== null) {
+      const value = m[1];
+      if (!found.has(value)) found.set(value, []);
+      found.get(value).push(`${label}:${lineAt(src, m.index)}`);
+    }
+  }
+  return found;
+}
+
+/**
+ * Kør paritets-tjekket for alle audit-enum-kolonner i AUDIT_ENUM_COLUMNS.
+ * @param {string[]} [files]
+ * @returns {{column: string, constraint: string, source: string|null, allowed: Set<string>, codeValues: Map<string, string[]>, missing: {value: string, locations: string[]}[]}[]}
+ */
+export function collectAuditEnumDrift(files = collectScanFiles()) {
+  return AUDIT_ENUM_COLUMNS.map((spec) => {
+    const { values: allowed, source } = loadNamedCheckValues(spec.constraint);
+
+    /** @type {Map<string, string[]>} */
+    const codeValues = new Map();
+    for (const [value, key] of extractConstantValues(spec.constant)) {
+      codeValues.set(value, [`backend/lib/economyConstants.js (${spec.constant}.${key})`]);
+    }
+    for (const [value, locations] of extractLiteralEnumValues(files, spec.literalKeys)) {
+      if (!codeValues.has(value)) codeValues.set(value, []);
+      codeValues.get(value).push(...locations);
+    }
+
+    const missing = [];
+    for (const [value, locations] of codeValues) {
+      if (!allowed.has(value)) missing.push({ value, locations });
+    }
+    missing.sort((a, b) => (a.value < b.value ? -1 : 1));
+
+    return {
+      column: spec.column,
+      constraint: spec.constraint,
+      source,
+      allowed,
+      codeValues,
+      missing,
+    };
+  });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // CLI
 // ────────────────────────────────────────────────────────────────────────────
 function isMain() {
@@ -329,6 +489,48 @@ function main() {
     process.stdout.write(
       `ℹ CHECK tillader ${unused.length} værdi(er) uden fundet kode-callsite (ikke en fejl — ` +
         `kan være SQL-seedet/kun-SQL-skrevet/legacy): ${unused.join(", ")}\n`
+    );
+  }
+
+  // Audit-enum-kolonnerne (#1464): actor_type + related_entity_type.
+  const auditReports = collectAuditEnumDrift(files);
+  const brokenParsers = auditReports.filter((r) => !r.source || r.allowed.size === 0);
+  if (brokenParsers.length > 0) {
+    process.stderr.write(
+      `🔴 finance-type-guard: fandt ingen CHECK-definition for ` +
+        `${brokenParsers.map((r) => r.constraint).join(", ")} i database/*.sql — parser sandsynligvis brudt.\n`
+    );
+    process.exit(1);
+  }
+
+  const auditDrift = auditReports.filter((r) => r.missing.length > 0);
+  if (auditDrift.length > 0) {
+    process.stderr.write(
+      `🔴 finance-type-guard blocked: audit-enum-værdi(er) brugt i backend-koden UDEN en tilsvarende CHECK-constraint-værdi.\n\n` +
+        auditDrift
+          .map(
+            (r) =>
+              `finance_transactions.${r.column} (autoritativ CHECK: database/${r.source})\n` +
+              r.missing
+                .map((x) => `  - '${x.value}'\n      skrevet i: ${x.locations.join(", ")}`)
+                .join("\n")
+          )
+          .join("\n\n") +
+        `\n\nSamme bug-klasse som #1463/#1465/#2948, bare i en audit-kolonne: en ægte ` +
+        `prod-INSERT ville fejle med check_violation (23514) første gang netop den ` +
+        `actor/relation bruges.\n\n` +
+        `Fix: tilføj værdien til constraintet i en NY database/*.sql-migration ` +
+        `(DROP CONSTRAINT IF EXISTS + re-ADD, jf. database/2026-05-09-audit-log-foundation.sql). ` +
+        `Ejeren applier migrationen efter merge (#2642-rammer).\n\n` +
+        `Refs #1464.\n`
+    );
+    process.exit(1);
+  }
+
+  for (const r of auditReports) {
+    process.stdout.write(
+      `✅ finance-type-guard: finance_transactions.${r.column} — ${r.codeValues.size} kode-skrevet værdi(er), ` +
+        `alle i CHECK'et (database/${r.source}).\n`
     );
   }
 }

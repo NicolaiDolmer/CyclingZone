@@ -17,11 +17,19 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   loadCheckAllowedTypes,
   extractTypesFromSource,
   collectScanFiles,
   extractCodeWrittenTypes,
+  AUDIT_ENUM_COLUMNS,
+  loadNamedCheckValues,
+  extractConstantValues,
+  extractLiteralEnumValues,
+  collectAuditEnumDrift,
 } from "./lint-finance-types.mjs";
 
 // --- loadCheckAllowedTypes() -------------------------------------------------
@@ -211,4 +219,118 @@ test("negativ kontrol: en fiktiv finance-type flages som manglende i CHECK'et", 
     `[negativ kontrol] guarden ville fejle CI med: '${FAKE_TYPE}' skrevet i fixture.js:5 (incrementBalanceWithAudit), ikke i CHECK'et.`
   );
   assert.deepEqual(missing, [FAKE_TYPE]);
+});
+
+// ============================================================================
+// #1464-udvidelse: audit-enum-kolonnerne actor_type + related_entity_type.
+//
+// `type` var kun én af tre CHECK-begrænsede enum-kolonner på finance_transactions.
+// FINANCE_ACTOR_TYPE og FINANCE_RELATED_ENTITY i backend/lib/economyConstants.js
+// påstod i en kommentar at de "MUST matche database CHECK constraints" uden at
+// noget håndhævede det. Testene herunder håndhæver det.
+// ============================================================================
+
+test("loadNamedCheckValues() parser begge audit-enum-constraints fra database/*.sql", () => {
+  const actor = loadNamedCheckValues("finance_transactions_actor_type_check");
+  assert.ok(actor.source, "fandt ingen finance_transactions_actor_type_check-definition");
+  assert.deepEqual(
+    [...actor.values].sort(),
+    ["admin", "api", "cron", "migration", "system"],
+    "actor_type-CHECK'et matcher ikke live-skemaet (verificeret mod prod 2026-08-31)",
+  );
+
+  const related = loadNamedCheckValues("finance_transactions_related_entity_type_check");
+  assert.ok(related.source, "fandt ingen finance_transactions_related_entity_type_check-definition");
+  assert.deepEqual(
+    [...related.values].sort(),
+    ["auction", "loan", "manual", "race", "season", "swap", "transfer"],
+    "related_entity_type-CHECK'et matcher ikke live-skemaet (verificeret mod prod 2026-08-31)",
+  );
+});
+
+test("extractConstantValues() læser de frosne konstant-objekter i economyConstants.js", () => {
+  const actor = extractConstantValues("FINANCE_ACTOR_TYPE");
+  assert.ok(actor.size >= 5, `forventede mindst 5 FINANCE_ACTOR_TYPE-værdier, fandt ${actor.size}`);
+  assert.equal(actor.get("cron"), "CRON");
+
+  const related = extractConstantValues("FINANCE_RELATED_ENTITY");
+  assert.ok(related.size >= 7, `forventede mindst 7 FINANCE_RELATED_ENTITY-værdier, fandt ${related.size}`);
+  assert.equal(related.get("auction"), "AUCTION");
+});
+
+test("extractLiteralEnumValues() fanger rå literaler der springer konstanten over", () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-enum-lit-"));
+  const file = join(dir, "fixture.js");
+  writeFileSync(
+    file,
+    [
+      'await incrementBalanceWithAudit(client, { teamId, delta, payload: {',
+      '  type: "salary",',
+      '  actorType: "cron",',
+      '  related_entity_type: "loan",',
+      "} });",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const actorLiterals = extractLiteralEnumValues([file], ["actor_type", "actorType"]);
+  assert.deepEqual([...actorLiterals.keys()], ["cron"]);
+
+  const relatedLiterals = extractLiteralEnumValues([file], ["related_entity_type", "relatedEntityType"]);
+  assert.deepEqual([...relatedLiterals.keys()], ["loan"]);
+
+  // `type:` må IKKE lække ind i audit-enum-discovery (den har sin egen guard).
+  assert.ok(!actorLiterals.has("salary"), "type-literalen må ikke tælles som actor_type");
+});
+
+test("HVER kode-skrevet audit-enum-værdi har en CHECK-constraint-værdi i dag (#1464 forward-guard)", () => {
+  const reports = collectAuditEnumDrift();
+  assert.equal(reports.length, AUDIT_ENUM_COLUMNS.length);
+
+  for (const report of reports) {
+    assert.ok(
+      report.source,
+      `fandt ingen CHECK-definition for ${report.constraint} — parser sandsynligvis brudt`,
+    );
+    // Sanity: falder discovery til ~0 er parseren (ikke koden) brudt.
+    assert.ok(
+      report.codeValues.size >= 5,
+      `forventede mange kode-skrevne ${report.column}-værdier, fandt kun ${report.codeValues.size}`,
+    );
+    assert.deepEqual(
+      report.missing.map((x) => x.value),
+      [],
+      `finance_transactions.${report.column}-værdi(er) brugt i backend-koden uden CHECK-dækning `
+        + `(database/${report.source}): `
+        + report.missing.map((x) => `'${x.value}' i ${x.locations.join(", ")}`).join("; "),
+    );
+  }
+});
+
+test("negativ kontrol: en fiktiv audit-enum-værdi flages som manglende i CHECK'et", () => {
+  const FAKE_ACTOR = "scout_bot_never_shipped_negative_control";
+  const dir = mkdtempSync(join(tmpdir(), "cz-enum-neg-"));
+  const constantsFile = join(dir, "economyConstants.js");
+  writeFileSync(
+    constantsFile,
+    [
+      "export const FINANCE_ACTOR_TYPE = Object.freeze({",
+      '  CRON: "cron",',
+      `  SCOUT_BOT: "${FAKE_ACTOR}",`,
+      "});",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const codeValues = extractConstantValues("FINANCE_ACTOR_TYPE", constantsFile);
+  assert.ok(codeValues.has(FAKE_ACTOR), "fixturen blev ikke læst — testen tester ingenting");
+
+  const { values: allowed } = loadNamedCheckValues("finance_transactions_actor_type_check");
+  assert.ok(!allowed.has(FAKE_ACTOR), "den fiktive actor findes uventet i CHECK'et — vælg en anden");
+
+  const missing = [...codeValues.keys()].filter((v) => !allowed.has(v));
+  console.log(
+    `[negativ kontrol] guarden ville fejle CI med: finance_transactions.actor_type = '${FAKE_ACTOR}' uden CHECK-dækning.`,
+  );
+  assert.deepEqual(missing, [FAKE_ACTOR]);
 });
