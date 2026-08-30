@@ -760,9 +760,10 @@ export default function TrainingPage() {
       gainsToday: todayRowByRider[rider.id]?.gains ?? null,
     });
 
-    // #3459 V3: løbsdags-badge — feltet findes KUN når race_day_engine_enabled er
-    // on (backend udelader det helt ellers, se useTraining.js), så tilstedeværelse
-    // alene er hele gaten. Planen (fokus/intensitet) RØRES ALDRIG her — kun visning.
+    // #3459 V3 / #4375: løbsdags-badge - feltet findes KUN når
+    // race_day_development_enabled er on (backend udelader det helt ellers, se
+    // useTraining.js), så tilstedeværelse alene er hele gaten. Planen
+    // (fokus/intensitet) RØRES ALDRIG her - kun visning.
     const raceToday = racingToday[rider.id] ?? null;
 
     // #1895 PR 2: rytterens EGEN ugeplan-override, hvis sat — vinder over holdets
