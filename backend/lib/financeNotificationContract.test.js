@@ -101,8 +101,8 @@ function extractAllowedValues(table, column) {
 
 // Erstatter den pensionerede finance-test: håndhæver at ingen fremtidig test i denne
 // fil igen bruger database/schema.sql som autoritet for finance_transactions.type.
-// schema.sql-baselinen er bevidst en STALE delmængde af det levende constraint (18 af
-// 30 værdier målt 2026-08-31); den korrekte autoritet er den nyeste
+// schema.sql-baselinen er i dag en delmængde af det levende constraint (18 af 30
+// værdier målt 2026-08-31); den korrekte autoritet er den nyeste
 // constraint-redefinition i database/*.sql, parset af scripts/lint-finance-types.mjs.
 test("database/schema.sql er en delmængde af det autoritative finance-CHECK, ikke en autoritet i sig selv", async () => {
   const { loadCheckAllowedTypes } = await import("../../scripts/lint-finance-types.mjs");
@@ -120,11 +120,12 @@ test("database/schema.sql er en delmængde af det autoritative finance-CHECK, ik
       + `(database/${source}) ikke gør: ${orphaned.join(", ")}. Baselinen er redigeret i hånden `
       + `eller en migration er gået tabt.`,
   );
-  assert.ok(
-    baseline.size < authoritative.size,
-    "schema.sql-baselinen er nu på højde med migrationerne — hvis den vedligeholdes bevidst, "
-      + "kan denne test erstattes af en ægte lighedstest.",
-  );
+  // BEVIDST ingen `baseline.size < authoritative.size`-assert: den ville gøre
+  // schema.sql's forældelse til en invariant og fejle i samme sekund nogen bringer
+  // baselinen i sync med migrationerne (PR #4388 gør præcis det, så en frisk DB
+  // matcher prod). Delmængde-invarianten er allerede fuldt dækket af orphaned-tjekket
+  // ovenfor — en baseline på højde med migrationerne er et gyldigt slutresultat, ikke
+  // en regression.
 });
 
 test("runtime notification types are allowed by the schema contract", () => {
