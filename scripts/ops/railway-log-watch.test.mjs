@@ -3,6 +3,8 @@
 // Run: node --test scripts/ops/railway-log-watch.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import {
   aggregate,
   classifyLine,
@@ -10,10 +12,12 @@ import {
   loadThresholds,
   normalizeBucket,
   selectDeployments,
+  selectDeploymentsDetailed,
   tagTotals,
   UNTAGGED,
+  windowCoverageError,
 } from "./railway-log-watch.mjs";
-import { collectRuntimeTags } from "./railway-log-tags.mjs";
+import { collectRuntimeTags, REPO_ROOT, RUNTIME_PATHS } from "./railway-log-tags.mjs";
 
 // ── classifyLine ────────────────────────────────────────────────────────────
 
@@ -69,7 +73,14 @@ test("aggregates identical signals into one row with a count", () => {
 
 // ── computeFindings ─────────────────────────────────────────────────────────
 
-const CONFIG = { default: 25, newClassThreshold: 5, tags: { auth: 300, "alunta-webhook": 1 }, ignore: ["shutdown"] };
+const CONFIG = {
+  default: 25,
+  newClassThreshold: 5,
+  growthMultiplier: 3,
+  growthMinimum: 100,
+  tags: { auth: 300, "alunta-webhook": 1 },
+  ignore: ["shutdown"],
+};
 
 test("no findings when everything is below its per-tag threshold", () => {
   const current = [{ tag: "auth", bucket: "401 invalid_token", cnt: 120 }];
@@ -124,6 +135,38 @@ test("keys new-class detection on (tag, bucket), not bucket alone", () => {
   assert.equal(result.newClasses[0].tag, "forum");
 });
 
+test("catches a wide outage that keeps every single bucket under its threshold", () => {
+  // Review af PR #4469: normalizeBucket beholder request-stien, saa et auth-udfald
+  // der rammer 30 ruter med 250 linjer hver giver 7.500 [auth]-linjer og NUL
+  // taerskel-brud under den rene per-spand-regel. Vaekstreglen paa tag-totalen
+  // er det led der fanger den.
+  const current = Array.from({ length: 30 }, (_, i) => ({ tag: "auth", bucket: `401 invalid_token GET /api/r${i}`, cnt: 250 }));
+  const previous = Array.from({ length: 30 }, (_, i) => ({ tag: "auth", bucket: `401 invalid_token GET /api/r${i}`, cnt: 20 }));
+  const result = computeFindings(current, previous, CONFIG);
+  assert.equal(result.spikes.length, 0, "ingen enkelt spand naar 300 - det er hele pointen");
+  assert.equal(result.growth.length, 1);
+  assert.equal(result.growth[0].cnt, 7500);
+  assert.equal(result.growth[0].previousCnt, 600);
+  assert.equal(result.hasFindings, true);
+});
+
+test("growth rule stays quiet on normal day-to-day drift", () => {
+  const current = [{ tag: "auth", bucket: "401", cnt: 700 }];
+  const previous = [{ tag: "auth", bucket: "401", cnt: 650 }];
+  assert.equal(computeFindings(current, previous, CONFIG).growth.length, 0);
+});
+
+test("growth rule respects the volume floor so a 2 -> 20 tag stays quiet", () => {
+  const result = computeFindings([{ tag: "forum", bucket: "timeout", cnt: 20 }], [{ tag: "forum", bucket: "timeout", cnt: 2 }], CONFIG);
+  assert.equal(result.growth.length, 0);
+});
+
+test("growth rule never fires on an ignored tag", () => {
+  const result = computeFindings([{ tag: "shutdown", bucket: "SIGTERM", cnt: 9000 }], [{ tag: "shutdown", bucket: "SIGTERM", cnt: 10 }], CONFIG);
+  assert.equal(result.growth.length, 0);
+  assert.equal(result.hasFindings, false);
+});
+
 // ── tagTotals ───────────────────────────────────────────────────────────────
 
 test("tagTotals answers the acceptance question in #4453: volume per tag, this window vs the last", () => {
@@ -166,14 +209,54 @@ test("excludes deployments created after the window ended", () => {
   assert.deepEqual(ids, ["d1", "d0"]);
 });
 
-test("respects the max-deployments cap", () => {
+test("respects the max-deployments cap and keeps the newest ones", () => {
   const ids = selectDeployments(DEPLOYMENTS, "2026-08-01T00:00:00.000Z", "2026-08-31T00:00:00.000Z", 2);
-  assert.equal(ids.length, 2);
+  assert.deepEqual(ids, ["d3", "d2"]);
+});
+
+test("SIGNALS truncation instead of silently dropping the oldest hours of the window", () => {
+  // Listen er nyest-foerst, saa loftet skaerer de AELDSTE timer vaek. En
+  // undertaelling der lander under alle taerskler ser ud som et sundt doegn -
+  // derfor skal afkortningen ud af scriptet og videre til Actions-outputtet.
+  const capped = selectDeploymentsDetailed(DEPLOYMENTS, "2026-08-01T00:00:00.000Z", "2026-08-31T00:00:00.000Z", 2);
+  assert.equal(capped.truncated, true);
+  assert.equal(capped.overlapping, 4);
+  assert.equal(capped.ids.length, 2);
+
+  const full = selectDeploymentsDetailed(DEPLOYMENTS, "2026-08-01T00:00:00.000Z", "2026-08-31T00:00:00.000Z", 50);
+  assert.equal(full.truncated, false);
+  assert.equal(full.ids.length, 4);
 });
 
 test("ignores rows with an unparseable createdAt instead of throwing", () => {
   const ids = selectDeployments([{ id: "bad", createdAt: "not-a-date" }, ...DEPLOYMENTS], "2026-08-30T19:00:00.000Z", "2026-08-30T21:00:00.000Z");
   assert.equal(ids.includes("bad"), false);
+});
+
+// ── windowCoverageError: ingen data maa aldrig ligne "alt er fint" ──────────
+
+test("an empty deployment list is an error, not a healthy zero", () => {
+  // Review af PR #4469: opgraderes @railway/cli (workflowet installerer den
+  // upinnet) og pakker JSON i et objekt, bliver listen tom, entries tomme,
+  // hasFindings false og jobbet groent - uden at have set en eneste linje.
+  const err = windowCoverageError({ deploymentTotal: 0, selectedCount: 0 });
+  assert.match(String(err), /nul deployments/);
+});
+
+test("a full deployment list with nothing selected is an error too (renamed createdAt)", () => {
+  const err = windowCoverageError({
+    deploymentTotal: 37, selectedCount: 0, startIso: "2026-08-30T00:00:00.000Z", endIso: "2026-08-31T00:00:00.000Z",
+  });
+  assert.match(String(err), /ingen af de 37 deployments overlapper vinduet/);
+});
+
+test("all fetches failing is an error, but a partial failure still returns data", () => {
+  assert.match(String(windowCoverageError({ deploymentTotal: 12, selectedCount: 12, failedCount: 12, lastError: "401" })), /ingen af de 12 deployments kunne hentes/);
+  assert.equal(windowCoverageError({ deploymentTotal: 50, selectedCount: 50, failedCount: 49 }), null);
+});
+
+test("full coverage returns no error", () => {
+  assert.equal(windowCoverageError({ deploymentTotal: 15, selectedCount: 3, failedCount: 0 }), null);
 });
 
 // ── Forward-guard: intet runtime-tag maa staa uden modtager ─────────────────
@@ -185,7 +268,20 @@ test("FORWARD-GUARD: every structured runtime tag has a threshold or an explicit
   // uden at tage stilling til taerskel eller ignore, fejler CI her.
   const config = loadThresholds();
   const known = new Set([...Object.keys(config.tags ?? {}), ...(config.ignore ?? [])]);
-  const missing = collectRuntimeTags().map((t) => t.tag).filter((tag) => !known.has(tag));
+  const found = collectRuntimeTags();
+  // Uden denne assertion er guarden tandloes: en scanner der finder NUL tags
+  // sammenligner en tom liste mod en fyldt og melder groent. Bevist i review af
+  // PR #4469 - de fire filer koert i et traee uden backend/ gav 25/25 groent.
+  // Nulpunkt maalt 31/8-2026: 52 tags. Gulvet er sat lavere end nulpunktet, saa
+  // det er en sanity-check paa at der blev scannet noget, ikke et laas paa
+  // antallet.
+  assert.ok(
+    found.length >= 40,
+    `Tag-scanneren fandt kun ${found.length} runtime-tags (nulpunkt 31/8-2026: 52). `
+    + "Enten er RUNTIME_PATHS i railway-log-tags.mjs bagud i forhold til hvor backend-koden ligger, "
+    + "eller ogsaa scanner den ikke det den tror. Guarden nedenfor er vaerdiloes uden dette.",
+  );
+  const missing = found.map((t) => t.tag).filter((tag) => !known.has(tag));
   assert.deepEqual(
     missing,
     [],
@@ -209,4 +305,23 @@ test("thresholds file keeps the zero-tolerance tags from #4453 at 1", () => {
   const config = loadThresholds();
   assert.equal(config.tags["alunta-webhook"], 1);
   assert.equal(config.tags.fatal, 1);
+});
+
+test("FORWARD-GUARD: every RUNTIME_PATHS entry exists, so nothing is scanned in silence", () => {
+  // backend/middleware stod paa listen indtil 31/8 uden at findes i repoet, og
+  // walk() slugte fejlen. En sti der ikke findes skal fejle synligt her frem for
+  // at goere inventaret mindre end nogen tror.
+  const missing = RUNTIME_PATHS.filter((rel) => !fs.existsSync(path.join(REPO_ROOT, rel)));
+  assert.deepEqual(missing, [], `RUNTIME_PATHS peger paa stier der ikke findes: ${missing.join(", ")}`);
+});
+
+test("FORWARD-GUARD: the scanner sees every console level, not just warn and error", () => {
+  // classifyLine bucketer enhver linje der starter med [tag] uanset niveau, saa
+  // en scanner der kun ser warn/error melder groent for tags der fint kan
+  // udloese et fund. [discord-dm:stdout] (console.log) og [discord-dm:muted]
+  // (console.info) var praecis den blinde vinkel indtil 31/8.
+  const tags = new Set(collectRuntimeTags().map((t) => t.tag));
+  for (const tag of ["discord-dm:stdout", "discord-dm:muted", "discord-dm:no-recipient"]) {
+    assert.ok(tags.has(tag), `${tag} emitteres via console.log/info og skal vaere synlig for scanneren`);
+  }
 });

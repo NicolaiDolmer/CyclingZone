@@ -11,10 +11,12 @@
  * #4165 (`[auth] 401 invalid_token`), #4369 (`[auth] 503 auth_unavailable`)
  * og #4451 (`[rate-limit] 429 api-baseline`).
  *
- * Maalt nulpunkt 30/8-2026 (issue-teksten sagde ~25, tallet var foraeldet):
- *   832 console.warn/error-kald i backend/ (issuet sagde 787), heraf 89 med et
- *   struktureret [tag]-praefiks fordelt paa 49 distinkte tags i runtime-koden
- *   (backend/lib, backend/routes, backend/middleware, backend/server.js).
+ * Maalt nulpunkt 31/8-2026 (issue-teksten sagde ~25, tallet var foraeldet):
+ *   99 kaldsteder med et struktureret [tag]-praefiks fordelt paa 52 distinkte
+ *   tags i runtime-koden (backend/lib, backend/routes, backend/server.js,
+ *   backend/cron.js, backend/instrument.mjs). Foerste maaling 30/8 sagde 89/49,
+ *   fordi scanneren dengang kun saa console.warn/error; classifyLine taeller
+ *   alle niveauer, saa scanneren gaar nu ogsaa efter log/info/debug.
  *   Tael selv: node scripts/ops/railway-log-tags.mjs
  *
  * READ-ONLY - kalder kun `railway deployment list` og `railway logs`. Ingen
@@ -38,7 +40,14 @@
  * Taerskler pr. tag: scripts/ops/railway-log-thresholds.json (samme rolle som
  * supabase-advisor-allowlist.json). En vagt der raaber ved hver 401 bliver
  * slaaet fra i loebet af en uge - derfor er taersklerne per-tag og ikke én
- * global.
+ * global. De bider pr. (tag, fejlklasse-spand); tag-TOTALEN daekkes af
+ * vaekstreglen (growthMultiplier/growthMinimum), saa et udfald der spreder sig
+ * over mange endpoints ikke kan gemme sig under per-spand-taersklen.
+ *
+ * Ufuldstaendig daekning er sit eget signal: kunne en del af logstroemmen ikke
+ * hentes, eller blev den skaaret af et loft, saettes `degraded` i Actions-
+ * outputtet og workflowet aabner issue paa lige fod med et fund. En vagt der
+ * kun saa halvdelen af doegnet og melder groent er ingen vagt.
  *
  * Usage:
  *   node scripts/ops/railway-log-watch.mjs            # menneskelig output
@@ -158,13 +167,22 @@ function toKey(row) {
  * `[alunta-webhook]` er aldrig normale (taerskel 1); `[auth] 401` fra scannere
  * er normal i småt tal.
  *
+ * Taersklen i `tags` bider pr. (tag, bucket) - bucketen indeholder request-stien,
+ * saa `auth: 300` betyder 300 linjer for EN rute+metode. Et bredt udfald (30
+ * ruter x 250 linjer) holder derfor hver spand under taersklen. Derfor bider
+ * `growth` paa tag-TOTALEN: er tagget mindst `growthMultiplier` gange stoerre
+ * end i det foregaaende vindue og over `growthMinimum`, er det et fund. Det er
+ * ogsaa den regel der besvarer acceptkriteriet i #4453: "er tallet stigende?"
+ *
  * @param {{tag:string, bucket:string, cnt:number}[]} current
  * @param {{tag:string, bucket:string, cnt:number}[]} previous
- * @param {{default?:number, newClassThreshold?:number, tags?:Record<string,number>, ignore?:string[]}} config
+ * @param {{default?:number, newClassThreshold?:number, growthMultiplier?:number, growthMinimum?:number, tags?:Record<string,number>, ignore?:string[]}} config
  */
 export function computeFindings(current, previous, config = {}) {
   const defaultThreshold = config.default ?? 25;
   const newClassThreshold = config.newClassThreshold ?? 5;
+  const growthMultiplier = config.growthMultiplier ?? 3;
+  const growthMinimum = config.growthMinimum ?? 100;
   const perTag = config.tags ?? {};
   const ignored = new Set(config.ignore ?? []);
 
@@ -181,7 +199,18 @@ export function computeFindings(current, previous, config = {}) {
     .map((r) => ({ ...r, previousCnt: 0 }))
     .sort((a, b) => b.cnt - a.cnt);
 
-  return { spikes, newClasses, hasFindings: spikes.length > 0 || newClasses.length > 0 };
+  const growth = tagTotals(current, previous)
+    .filter((t) => !ignored.has(t.tag))
+    .filter((t) => t.cnt >= growthMinimum && t.cnt >= growthMultiplier * t.previousCnt)
+    .map((t) => ({ ...t, multiplier: growthMultiplier, minimum: growthMinimum }))
+    .sort((a, b) => b.cnt - a.cnt);
+
+  return {
+    spikes,
+    newClasses,
+    growth,
+    hasFindings: spikes.length > 0 || newClasses.length > 0 || growth.length > 0,
+  };
 }
 
 /**
@@ -208,30 +237,46 @@ export function tagTotals(current, previous) {
  * deployments, saa vinduet skal oversaettes til et saet deployment-id'er.
  * En deployment daekker [createdAt, naeste-nyere-deployments createdAt).
  *
+ * Trunkering ved `max` skal SIGNALERES, ikke skjules: listen er nyest-foerst, saa
+ * det er de aeldste timer af vinduet der falder ud, og en undertaelling der
+ * lander under alle taerskler ser ud som et sundt doegn. Derfor returnerer
+ * selectDeploymentsDetailed et `truncated`-flag.
+ *
  * @param {{id:string, createdAt:string}[]} deployments  nyeste foerst
  * @param {string} startIso
  * @param {string} endIso
  * @param {number} [max]
- * @returns {string[]}
+ * @returns {{ids:string[], truncated:boolean, overlapping:number}}
  */
-export function selectDeployments(deployments, startIso, endIso, max = 40) {
+export function selectDeploymentsDetailed(deployments, startIso, endIso, max = 40) {
   const start = Date.parse(startIso);
   const end = Date.parse(endIso);
   const sorted = [...deployments]
     .filter((d) => d && d.id && Number.isFinite(Date.parse(d.createdAt)))
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
 
-  const selected = [];
+  const overlapping = [];
   for (let i = 0; i < sorted.length; i += 1) {
     const from = Date.parse(sorted[i].createdAt);
     // Nyeste deployment koerer stadig; aeldre sluttede da den naeste startede.
     const until = i === 0 ? Number.POSITIVE_INFINITY : Date.parse(sorted[i - 1].createdAt);
     if (from >= end) continue;   // startede efter vinduet
     if (until <= start) break;   // sluttede foer vinduet (og resten er aeldre)
-    selected.push(sorted[i].id);
-    if (selected.length >= max) break;
+    overlapping.push(sorted[i].id);
   }
-  return selected;
+  return {
+    ids: overlapping.slice(0, max),
+    truncated: overlapping.length > max,
+    overlapping: overlapping.length,
+  };
+}
+
+/**
+ * Bekvemmelighedsindpakning naar kun id'erne er interessante.
+ * @returns {string[]}
+ */
+export function selectDeployments(deployments, startIso, endIso, max = 40) {
+  return selectDeploymentsDetailed(deployments, startIso, endIso, max).ids;
 }
 
 // ── CLI-kald (netvaerk) ─────────────────────────────────────────────────────
@@ -297,34 +342,86 @@ function fetchDeploymentLogs(bin, ctx, deploymentId, startIso, endIso, lines) {
     { allowFail: true, projectId: ctx.projectId, wantStatus: true },
   );
   const entries = [];
+  let jsonLines = 0;
   for (const line of res.stdout.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed.startsWith("{")) continue;
+    jsonLines += 1;
     try { entries.push(JSON.parse(trimmed)); } catch { /* ikke-JSON stoej fra CLI'en */ }
   }
-  return { entries, ok: res.status === 0, stderr: res.stderr };
+  // Rammer vi loftet praecist, har CLI'en efter al sandsynlighed skaaret aeldre
+  // linjer af. Paa en stille weekend daekker ét deployment hele doegnet, og saa
+  // er --lines loftet for en hel dags logstroem - undertaelling der ligner ro.
+  return { entries, ok: res.status === 0, stderr: res.stderr, lineCapHit: jsonLines >= lines };
 }
 
 export function loadThresholds(file = THRESHOLDS_PATH) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
+/**
+ * Et tomt maaleresultat maa ALDRIG kunne fremstaa som et sundt nul. Tre veje til
+ * "groent med nul data", alle tre lukket her:
+ *  - listen er tom: Railway har altid mindst ét deployment i drift, saa nul
+ *    raekker betyder at CLI'ens JSON-form har aendret sig (pakket i et objekt,
+ *    createdAt omdoebt) - ikke at backenden ikke koerte. Workflowet installerer
+ *    @railway/cli upinnet, saa den dag kommer.
+ *  - listen er fyldt, men INTET blev valgt: samme aarsag, blot fanget i
+ *    selectDeployments' createdAt-filter.
+ *  - alle hentninger fejlede: "nul fund" er saa en loegn, ikke et resultat.
+ *
+ * @returns {string|null} fejlbesked, eller null hvis daekningen er brugbar.
+ */
+export function windowCoverageError({ deploymentTotal, selectedCount, failedCount = 0, startIso = "", endIso = "", lastError = "" }) {
+  if (deploymentTotal === 0) {
+    return "'railway deployment list --json' returnerede nul deployments. "
+      + "Enten er service/environment forkert, eller CLI'ens JSON-form er aendret. "
+      + "Tjek med: railway deployment list --service CyclingZone --environment production --json";
+  }
+  if (selectedCount === 0) {
+    return `ingen af de ${deploymentTotal} deployments overlapper vinduet ${startIso} -> ${endIso}. `
+      + "Feltet 'createdAt' mangler eller kan ikke parses paa alle raekker - vagten ville ellers "
+      + "rapportere nul fund uden at have set en eneste linje.";
+  }
+  if (failedCount === selectedCount) {
+    return `ingen af de ${selectedCount} deployments kunne hentes. Sidste fejl: ${String(lastError).slice(0, 300)}`;
+  }
+  return null;
+}
+
 function collectWindow(bin, ctx, config, startIso, endIso) {
   const deployments = listDeployments(bin, ctx, config.deploymentListLimit ?? 100);
-  const ids = selectDeployments(deployments, startIso, endIso, config.maxDeployments ?? 40);
+  const { ids, truncated, overlapping } = selectDeploymentsDetailed(
+    deployments, startIso, endIso, config.maxDeployments ?? 40,
+  );
+  const selectionError = windowCoverageError({
+    deploymentTotal: deployments.length, selectedCount: ids.length, startIso, endIso,
+  });
+  if (selectionError) throw new Error(selectionError);
+
   const entries = [];
   let failed = 0;
+  let lineCapHits = 0;
   let lastError = "";
   for (const id of ids) {
     const res = fetchDeploymentLogs(bin, ctx, id, startIso, endIso, config.linesPerDeployment ?? 5000);
     entries.push(...res.entries);
     if (!res.ok) { failed += 1; lastError = res.stderr || lastError; }
+    if (res.lineCapHit) lineCapHits += 1;
   }
-  // Fejler ALLE hentninger, er "nul fund" en loegn - ikke et resultat.
-  if (ids.length > 0 && failed === ids.length) {
-    throw new Error(`ingen af de ${ids.length} deployments kunne hentes. Sidste fejl: ${lastError.slice(0, 300)}`);
-  }
-  return { entries, deploymentCount: ids.length, failedDeployments: failed };
+  const fetchError = windowCoverageError({
+    deploymentTotal: deployments.length, selectedCount: ids.length, failedCount: failed, startIso, endIso, lastError,
+  });
+  if (fetchError) throw new Error(fetchError);
+  return {
+    entries,
+    deploymentCount: ids.length,
+    failedDeployments: failed,
+    // Delvis daekning: baade afskaarne deployments og afskaarne logstroemme.
+    // Surfaces i GITHUB_OUTPUT som degraded - se main().
+    truncatedDeployments: truncated ? overlapping - ids.length : 0,
+    lineCapHits,
+  };
 }
 
 async function main() {
@@ -359,7 +456,7 @@ async function main() {
   const currentStart = new Date(now.getTime() - windowMs);
   const previousStart = new Date(now.getTime() - 2 * windowMs);
 
-  let current, previous, deploymentCount, failedDeployments;
+  let current, previous, deploymentCount, failedDeployments, truncatedDeployments, lineCapHits;
   try {
     const cur = collectWindow(bin, ctx, config, currentStart.toISOString(), now.toISOString());
     const prev = collectWindow(bin, ctx, config, previousStart.toISOString(), currentStart.toISOString());
@@ -367,6 +464,8 @@ async function main() {
     previous = aggregate(prev.entries);
     deploymentCount = cur.deploymentCount + prev.deploymentCount;
     failedDeployments = cur.failedDeployments + prev.failedDeployments;
+    truncatedDeployments = cur.truncatedDeployments + prev.truncatedDeployments;
+    lineCapHits = cur.lineCapHits + prev.lineCapHits;
   } catch (err) {
     console.error(`[railway-log-watch] FAIL: ${err.message}`);
     console.error("  Lokalt: 'railway login' + 'railway link -p <projekt> -e production -s CyclingZone'.");
@@ -374,18 +473,28 @@ async function main() {
     process.exit(1);
   }
 
-  const { spikes, newClasses, hasFindings } = computeFindings(current, previous, config);
+  const { spikes, newClasses, growth, hasFindings } = computeFindings(current, previous, config);
   const totals = tagTotals(current, previous);
+
+  // Delvis daekning er sit eget alarmsignal. Fejler 49 af 50 hentninger, summerer
+  // tallene til naesten ingenting, ingen taerskel brydes og jobbet ville ellers
+  // vaere groent - praecis den tavse fejlmaade #4453 blev oprettet for.
+  const degradations = [];
+  if (failedDeployments > 0) degradations.push(`${failedDeployments} af ${deploymentCount} deployments kunne ikke hentes`);
+  if (truncatedDeployments > 0) degradations.push(`${truncatedDeployments} overlappende deployments faldt ud af maxDeployments-loftet (${config.maxDeployments ?? 40})`);
+  if (lineCapHits > 0) degradations.push(`${lineCapHits} deployments ramte linje-loftet (${config.linesPerDeployment ?? 5000}) og er sandsynligvis afkortet`);
+  const degraded = degradations.length > 0;
 
   if (asJson) {
     console.log(JSON.stringify({
-      hasFindings, spikes, newClasses, totals, deploymentCount, failedDeployments,
+      hasFindings, degraded, degradations, spikes, newClasses, growth, totals,
+      deploymentCount, failedDeployments, truncatedDeployments, lineCapHits,
       window: { start: currentStart.toISOString(), end: now.toISOString() },
     }, null, 2));
   } else {
     console.log(`[railway-log-watch] Vindue: ${currentStart.toISOString()} -> ${now.toISOString()} (${hours}t, ${deploymentCount} deployments)`);
-    if (failedDeployments > 0) {
-      console.log(`[railway-log-watch] ADVARSEL: ${failedDeployments} af ${deploymentCount} deployments kunne ikke hentes - tallene nedenfor er ufuldstaendige.`);
+    for (const note of degradations) {
+      console.log(`[railway-log-watch] ADVARSEL: ${note} - tallene nedenfor er ufuldstaendige.`);
     }
     console.log(`[railway-log-watch] Taerskler: default ${config.default}/vindue, ny-klasse ${config.newClassThreshold}, ${Object.keys(config.tags ?? {}).length} tag-specifikke, ${(config.ignore ?? []).length} ignorerede`);
 
@@ -400,12 +509,16 @@ async function main() {
       }
     }
 
-    if (!hasFindings) {
-      console.log("\n[railway-log-watch] OK - ingen taerskel-brud, ingen nye fejlklasser.");
+    if (!hasFindings && !degraded) {
+      console.log("\n[railway-log-watch] OK - ingen taerskel-brud, ingen nye fejlklasser, fuld daekning af vinduet.");
     } else {
       if (spikes.length) {
-        console.log("\n== Taerskel-brud ==");
+        console.log("\n== Taerskel-brud (pr. tag + fejlklasse) ==");
         for (const s of spikes) console.log(`  ${String(s.cnt).padStart(6)} (>= ${s.threshold}, foreg. ${s.previousCnt})  [${s.tag}] ${s.bucket}`);
+      }
+      if (growth.length) {
+        console.log("\n== Vaekst paa tag-totalen (bredt udfald spredt over mange spande) ==");
+        for (const g of growth) console.log(`  ${String(g.cnt).padStart(6)} (foreg. ${g.previousCnt}, >= ${g.multiplier}x og >= ${g.minimum})  [${g.tag}]`);
       }
       if (newClasses.length) {
         console.log(`\n== Nye fejlklasser (saas ikke i foregaaende vindue, >= ${config.newClassThreshold}) ==`);
@@ -414,13 +527,27 @@ async function main() {
     }
   }
 
-  // GitHub Actions output-kontrakt - identisk med supabase-log-watch.mjs.
+  // GitHub Actions output-kontrakt - som supabase-log-watch.mjs, plus
+  // degraded/failed_deployments. Workflowet reagerer paa BEGGE: en vagt der kun
+  // rapporterer fund, men tier om at den kun saa halvdelen af logstroemmen, er
+  // stadig en tavs vagt.
   if (process.env.GITHUB_OUTPUT) {
     fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_findings=${hasFindings}\n`);
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, `degraded=${degraded}\n`);
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, `failed_deployments=${failedDeployments}\n`);
+    fs.appendFileSync(process.env.GITHUB_OUTPUT, `deployment_count=${deploymentCount}\n`);
     const body = [];
+    if (degradations.length) {
+      body.push("UFULDSTAENDIG DAEKNING (tallene nedenfor er undertaellinger):");
+      for (const note of degradations) body.push(`- ${note}`);
+    }
     if (spikes.length) {
-      body.push("Taerskel-brud:");
+      body.push("Taerskel-brud (pr. tag + fejlklasse):");
       for (const s of spikes.slice(0, 15)) body.push(`- ${s.cnt} (taerskel ${s.threshold}, foreg. ${s.previousCnt}) | [${s.tag}] | ${s.bucket}`);
+    }
+    if (growth.length) {
+      body.push("Vaekst paa tag-totalen:");
+      for (const g of growth.slice(0, 15)) body.push(`- ${g.cnt} (foreg. ${g.previousCnt}, >= ${g.multiplier}x og >= ${g.minimum}) | [${g.tag}]`);
     }
     if (newClasses.length) {
       body.push(`Nye fejlklasser (>= ${config.newClassThreshold}):`);

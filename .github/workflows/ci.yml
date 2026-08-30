@@ -626,7 +626,11 @@ jobs:
         run: node --test scripts/ops/supabase-advisor-sweep.test.mjs
 
       # Indeholder forward-guarden fra #4453: fejler hvis et nyt
-      # console.warn("[tag]") i backendens runtime hverken har en taerskel
+      # console.<niveau>("[tag]") i backendens runtime hverken har en taerskel
       # eller staar paa ignore-listen i railway-log-thresholds.json.
+      # Bemaerk: supabase-ops-scripts staar IKKE blandt main's required status
+      # checks, saa guarden er raadgivende - den goer jobbet roedt, men
+      # blokerer ikke merge. Skal den blokere, tilfoej jobbet til
+      # branch-protection og til scripts/ci-required-checks.json.
       - name: Test railway-log-watch classification + tag coverage
         run: node --test scripts/ops/railway-log-watch.test.mjs

@@ -64,11 +64,17 @@ jobs:
           HOURS: ${{ github.event.inputs.hours || '24' }}
         run: node scripts/ops/railway-log-watch.mjs --hours "$HOURS"
 
+      # BEGGE signaler aabner issue. degraded=true betyder at vagten kun saa en
+      # del af logstroemmen (hentefejl eller loft ramt); melder vi groent der,
+      # er tallene en undertaelling der ligner ro - samme tavse fejlmaade som
+      # #4453 blev oprettet for.
       - name: Open or update issue on findings
-        if: steps.check.outputs.has_findings == 'true'
+        if: steps.check.outputs.has_findings == 'true' || steps.check.outputs.degraded == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           FINDINGS: ${{ steps.check.outputs.findings }}
+          FAILED: ${{ steps.check.outputs.failed_deployments }}
+          TOTAL: ${{ steps.check.outputs.deployment_count }}
         run: |
           set -euo pipefail
           TITLE="[railway-log-watch] Taerskel-brud eller ny fejlklasse i backendens logstroem"
@@ -78,6 +84,7 @@ jobs:
             echo "$FINDINGS"
             echo ""
             echo "Kilde: Railway deploy-logs for service CyclingZone (production), seneste 24t vs. foregaaende 24t."
+            echo "Daekning: ${FAILED:-0} af ${TOTAL:-0} deployments kunne ikke hentes."
             echo "Taerskler: scripts/ops/railway-log-thresholds.json"
             echo "Workflow: .github/workflows/railway-log-watch.yml"
           } > railway-log-watch-body.md
@@ -91,7 +98,7 @@ jobs:
           fi
 
       - name: Notify Discord on findings
-        if: steps.check.outputs.has_findings == 'true'
+        if: steps.check.outputs.has_findings == 'true' || steps.check.outputs.degraded == 'true'
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |

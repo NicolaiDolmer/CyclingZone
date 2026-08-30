@@ -2,8 +2,13 @@
 /**
  * Cycling Zone - inventar over strukturerede log-tags i backendens runtime (#4453)
  * ================================================================================
- * Scanner backendens runtime-kode for `console.warn("[tag] ...")` /
- * `console.error("[tag] ...")` og returnerer de distinkte tags.
+ * Scanner backendens runtime-kode for `console.<niveau>("[tag] ...")` og
+ * returnerer de distinkte tags. ALLE console-niveauer taeller: `classifyLine` i
+ * railway-log-watch.mjs bucketer enhver linje der starter med `[tag]` uanset
+ * niveau, saa en scanner der kun saa warn/error ville melde groent for tags der
+ * fint kan udloese et fund. Review af PR #4469 fandt praecis den blinde vinkel:
+ * `[discord-dm:stdout]` (console.log) og `[discord-dm:muted]` (console.info)
+ * var usynlige for guarden og havde hverken taerskel eller ignore.
  *
  * Formaal (forward-guard): #4453 blev oprettet fordi flere issues investerede i
  * at goere en tavs fejlgren SYNLIG (#2817, #4165, #4369, #4451) og alle landede
@@ -28,24 +33,51 @@ import { fileURLToPath } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
 
-/** Mapper/filer hvis output faktisk havner i Railways logstroem. */
+/**
+ * Mapper/filer hvis output faktisk havner i Railways logstroem.
+ * `backend/railway.json` starter processen som
+ * `node --import ./instrument.mjs server.js`, og server.js importerer
+ * `startCron` fra ./cron.js - begge filers output gaar direkte i logstroemmen.
+ * Hver post SKAL findes; se assertRuntimePathsExist.
+ */
 export const RUNTIME_PATHS = [
   path.join("backend", "lib"),
   path.join("backend", "routes"),
-  path.join("backend", "middleware"),
   path.join("backend", "server.js"),
+  path.join("backend", "cron.js"),
+  path.join("backend", "instrument.mjs"),
 ];
 
 /**
- * `console.warn(` / `console.error(` efterfulgt af en streng der starter med
- * `[tag]`. `[\s\S]*?` daekker at praefikset ofte staar paa naeste linje efter
- * et linjebrud fra prettier.
+ * `console.<niveau>(` efterfulgt af en streng-literal der starter med `[tag]`.
+ * `\s*` daekker at praefikset ofte staar paa naeste linje efter et linjebrud
+ * fra prettier. Bemaerk: KUN en streng-literal som FOERSTE argument fanges -
+ * `console.warn(PREFIX, "[tag] ...")` er usynlig for scanneren, saa skriv
+ * altid tagget direkte i foerste argument.
  */
-const CALL_RE = /console\.(?:warn|error)\(\s*[`'"]\[([a-zA-Z0-9_:.\- ]{1,40})\]/g;
+const CALL_RE = /console\.(?:warn|error|log|info|debug)\(\s*[`'"]\[([a-zA-Z0-9_:.\- ]{1,40})\]/g;
+
+/**
+ * En sti der ikke findes gav foer nul filer i stilhed, og en tom liste af tags
+ * fik forward-guarden i railway-log-watch.test.mjs til at melde groent uden at
+ * have scannet noget (bevist i review af PR #4469: de fire filer koert i et
+ * traee uden backend/ gav 25/25 groent). Samme fejlklasse som resten af #4453:
+ * et tomt maaleresultat maa aldrig kunne fremstaa som et sundt nul.
+ * @param {string} root
+ */
+function assertRuntimePathsExist(root) {
+  const missing = RUNTIME_PATHS.filter((rel) => !fs.existsSync(path.join(root, rel)));
+  if (missing.length) {
+    throw new Error(
+      `RUNTIME_PATHS peger paa stier der ikke findes under ${root}: ${missing.join(", ")}. `
+      + "Er backend-koden flyttet, saa opdatér RUNTIME_PATHS i scripts/ops/railway-log-tags.mjs - "
+      + "ellers scanner tag-guarden mindre end den tror.",
+    );
+  }
+}
 
 function walk(target, out) {
-  let stat;
-  try { stat = fs.statSync(target); } catch { return out; }
+  const stat = fs.statSync(target);
   if (stat.isFile()) {
     if (/\.(mjs|js)$/.test(target) && !/\.test\.(mjs|js)$/.test(target)) out.push(target);
     return out;
@@ -62,6 +94,7 @@ function walk(target, out) {
  * @returns {{tag:string, count:number}[]} sorteret efter antal kaldsteder
  */
 export function collectRuntimeTags(root = REPO_ROOT) {
+  assertRuntimePathsExist(root);
   const files = RUNTIME_PATHS.flatMap((rel) => walk(path.join(root, rel), []));
   const counts = new Map();
   for (const file of files) {
