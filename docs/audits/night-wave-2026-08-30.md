@@ -2,13 +2,13 @@
 
 | Metrik | Værdi |
 |---|---|
-| Start/slut (lokal tid) | 22:17 → 01:00 |
+| Start/slut (lokal tid) | 22:17 → 01:15 |
 | Workflows / agenter launched | 12 / 58 |
 | Agenter fuldført / døde eller stoppet | 46 / 12 |
 | Issues triageret og målt | 48 |
 | Issues lukket som allerede løst | 9 |
-| PR'er åbnet / merged | 21 / **0** |
-| Nye issues oprettet på fund | 3 (#4463, #4465, #4479) |
+| PR'er åbnet / merged | 24 / **0** |
+| Nye issues oprettet på fund | 4 (#4463, #4465, #4479, #4482) |
 | gh-401-retries | preflight 0 (1. forsøg grønt); bølgen: ingen blokerende |
 | Recoveries | 1 (uncommitted arbejde reddet i #4333's worktree) |
 | Preflight | GO kl. 22:19 (`.codex.local/night-wave-preflight.json`) |
@@ -20,17 +20,73 @@ Ejeren gav ikke merge-go. Bølgen kørte på et generelt mandat om at arbejde, i
 1. **#4456 ændrer CI.** Brækker `static-guards` på `main`, går alle bølgens øvrige PR'er røde samtidig. Blast-radius under en aktiv bølge er hele køen.
 2. **#4457 ændrer deploy-adfærd.** Forkerte watch paths betyder at backenden holder op med at deploye, og acceptkriterierne kan først verificeres efter merge.
 
-Køen er derfor 21 PR'er om morgenen. Det er over orkestrator-reglens loft på 5, og det er en reel omkostning: `patchNotes.js` er holdt fri (orkestratoren skrev én samlet udkast-note i `drafts/`), men `help.json`, `ci.yml` og `backend/routes/api.js` har flere PR'er på sig. Merge-rækkefølgen står i morgenoplægget.
+Køen er derfor 24 PR'er om morgenen. Det er over orkestrator-reglens loft på 5, og det er en reel omkostning: `patchNotes.js` er holdt fri (orkestratoren skrev én samlet udkast-note i `drafts/`), men `help.json`, `ci.yml` og `backend/routes/api.js` har flere PR'er på sig. Merge-rækkefølgen står i morgenoplægget.
+
+## Merge-kø
+
+Ingen PR er merget. Rækkefølgen nedenfor er bindende hvor der står **efter**: to par har tekstkonflikt i samme fil.
+
+### 1. Merg først, lav risiko, reviewet
+
+| PR | Issue | Hvad | Note |
+|---|---|---|---|
+| #4471 | #2997 | 27 droppede supabase-errors i seks kolde filer | Ikke reviewet |
+| #4472 | #3145 | Ingen falske ofrings-tekster på enkeltstarter | Spillervendt, patch note |
+| #4466 | #4414 | High Roller-tærsklen retter sig efter sin copy | Spillervendt, patch note |
+| #4475 | #3750, #1819 | Fail-closed model-load + målt præmie i scorecard | Rejser et balance-spørgsmål, se nedenfor |
+| #4464 | #2671 | RLS-policy-funktioner uden EXECUTE | MINOR_ISSUES, to en-linjers rettelser foreslået |
+| #4470 | #4440 | 26 RLS-drifttabeller klassificeret | **Review døde**, ikke gennemgået |
+| #4468 | #3410 | Låse-årsag udledt eksplicit | Kun logik-laget; visningen venter på at racehub-PR'erne lander |
+| #4459 | #4455 | Ét launch-referenceår | **Efter** #3512, ellers genindføres konstanten |
+| #4458 | #1464 | Forward-guard for finance-enums | **Før** #4388 synkroniserer `schema.sql`, ellers brækker en assert |
+
+### 2. Docs og SSOT, deadline-drevet
+
+| PR | Issue | Frist |
+|---|---|---|
+| #4462 | #4266 | **1/9** - fire nye SSOT-dokumenter |
+| #4474 | #4176 | **4/9 OG før S4-kalenderen** - kalender-konsolidering |
+| #4480 | #4266 | Drift-audit, ingen frist |
+| #4476 | #4382 | Bestyrelsens flerårsplan i hjælpen. Spillervendt |
+| #4461 | #2682 | CLAUDE.md-trim. Reviewet fandt at en bindende regel var forsvundet; rettet |
+| #4481 | #3024 | Vite-dev-serveren som leak-vektor |
+| #4483 | #4479 | Lønsats-paritetsvagten der aldrig blev bygget |
+
+### 3. CI og deploy, rækkefølgen er bindende
+
+1. **#4469** (#4453) Railway-logvagt - først, den redigerer en jobblok #4456 sletter
+2. **#4470** - tilføjer et job i den region #4456 sletter
+3. **#4456** (#4330) CI-konsolidering - **efter** 1 og 2, og tag begge deres guard-steps med ind i `static-guards` ved rebase
+4. **#4477** (#4463, #4465) Kalender-vagtens sandhed - **dens `audit`-check er rød med vilje.** Det er beviset for at guarden bider. Merges den, er nat-vagten ærligt rød hver nat indtil #4204's RPC-timeout er løst
+5. **#4457** (#4150) Watch paths - bekræft på første deploy at Railway faktisk læser `backend/railway.json`
+6. **#4478** (#4333) Backup-tabeller ude af genererede typer
+
+### 4. Kræver din beslutning før merge
+
+| PR | Hvad du skal gøre |
+|---|---|
+| **#4473** (#3818) | Kør `node scripts/fairplayScoringDryRun.js` med service-nøglen **først**. Fixet tredobler detektorens datagrundlag, så hele feltet skal scores om i en rigtig kørsel |
+| **#4467** | Spam fra ekstern bot (NEXAITECHAU, påstået "$500 bounty", to tomme leverance-filer). Luk eller rapportér |
+| **#4482** | Skal lag 6-bonustilbud udløbe? 37 aktive tilbud på afsluttede sæsoner. Anbefaling: luk hullet fremadrettet, lad de 37 stå (ingen mister noget for en fejl vi selv lavede) |
+| **#4483** | Lønsats-paritetsvagten er nu bygget (#4479). Er frontend og backend faktisk uenige om satsen i dag, står svaret i PR-bodyen |
+
+## Beslutninger der venter på dig
+
+Alle ligger som kommentarer på deres issue med målte tal og en anbefaling. De tre der haster:
+
+1. **#4098** - frist i dag 31/8. Målt: 323 unge ryttere på 103 af 350 hold står `done` i en evne der i snit ligger 67 point under rytterens eget loft.
+2. **#4269** - den daglige Supabase-rutine du bad om 25/8 har fejlet fem dage i træk, fordi `SUPABASE_ACCESS_TOKEN` aldrig blev sat som repo-secret. Kun du kan lave det token.
+3. **#4272** - brosten-målet er 5 % eller 6 %. Begge tal lever i koden. Ved 5 % er kun D3 brudt, ved 6 % kun D1. Valget afgør hvilke katalog-lofter der overhovedet er reelle, og det blokerer de syv øvrige kalender-spørgsmål.
 
 ## Faserne
 
 | Fase | Agenter | Hvad | Udbytte |
 |---|---|---|---|
 | 1. Triage | 10 | Mål præmissen på 50 kandidat-issues mod live kode og prod | 9 lukket, 14 klar til byg, 21 ejer-gatede med færdige beslutningsoplæg |
-| 2. Byg | 21 | Kun de issues triagen havde verificeret | 21 PR'er |
+| 2. Byg | 21 | Kun de issues triagen havde verificeret | 24 PR'er |
 | 3. SSOT | 8 | Ejer-direktiv #4266 (frist 1/9) + planlagt drift-audit | 4 nye SSOT-dokumenter, kalender-konsolidering, 2 drift-rapporter |
 | 4. Review | 10 | Adversarisk: forsøg at modbevise bølgens egne PR'er | 5 NEEDS_FIX, 4 MINOR, 0 SOLID |
-| 5. Rettelse | 7 | Ret review-fundene på de eksisterende branches | 4 PR'er rettet |
+| 5. Rettelse | 7 | Ret review-fundene på de eksisterende branches | 6 PR'er rettet, 1 ny (#4483) |
 
 ## De fund der betyder noget
 
@@ -45,6 +101,10 @@ Køen er derfor 21 PR'er om morgenen. Det er over orkestrator-reglens loft på 5
 **Achievementen der var umulig.** High Roller lovede et bud over 500.000 CZ$ og krævede 2.000.000.000. Højeste bud i spillets historie er 1.087.224. 21 hold havde kvalificeret sig (#4414, PR #4466).
 
 **616 falske ofrings-tekster på enkeltstarter.** Seneste skrevet 19:00 samme aften. 607 af de 616 taggede ryttere havde `work_cost = 0`. Spillerne rapporterede teksten tre gange (#3145, PR #4472).
+
+**Lag 6-bonustilbud udløber aldrig.** `expireSeasonScopedConsequences` er skrevet, testet og eksporteret, men kaldes ingen steder i produktionsstien. 37 bonustilbud står `active` på sæson 1 og 2, som begge er `completed`. Et hold kan i princippet indløse et to sæsoner gammelt tilbud til 200.000 CZ$ (#4482, ejer-beslutning).
+
+**To guards mere der ikke bed, fundet af rettelses-fasen.** #4469's forward-guard scannede `backend/middleware`, som ikke findes, og `walk()` slugte fejlen, så den målte nul og var grøn. #4461's token-gate talte CRLF som indhold, så et "FAIL" var en line-ending-artefakt. Begge er rettet i kilden. Det bringer klassen "grønt flueben der intet verificerer" op på **fire** forekomster på én nat.
 
 ## Tal i gamle issues, systematisk
 

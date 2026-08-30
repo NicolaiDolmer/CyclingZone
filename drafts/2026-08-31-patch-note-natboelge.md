@@ -1,4 +1,4 @@
-# Patch note-udkast 7.223 — natbølgen 30-31/8
+# Patch note-udkast 7.223 - natbølgen 30-31/8
 
 > **Ikke skrevet ind i `patchNotes.js` endnu, og det er med vilje.** Ingen af bølgens PR'er er merget. En patch note der beskriver noget der ikke er live, lyver for spillerne. Skriv den ind når PR'erne lander, og fjern de punkter hvis PR ikke merges.
 >
@@ -8,7 +8,7 @@ Fem spillervendte ændringer. Alle EN først, DA under.
 
 ---
 
-## 1. Achievements — `fixed`
+## 1. Achievements - `fixed`
 
 **PR #4466, Refs #4414. Rapporteret af thelamba 29/8.**
 
@@ -19,7 +19,7 @@ Fem spillervendte ændringer. Alle EN først, DA under.
 
 ---
 
-## 2. Race results — `fixed`
+## 2. Race results - `fixed`
 
 **PR #4472, Refs #3145. Rapporteret tre gange af spillere.**
 
@@ -30,7 +30,7 @@ Fem spillervendte ændringer. Alle EN først, DA under.
 
 ---
 
-## 3. Race Hub — `fixed`
+## 3. Race Hub - `fixed`
 
 **PR #4468, Refs #3410. Rapporteret af thelamba 5/8.**
 
@@ -41,7 +41,7 @@ Fem spillervendte ændringer. Alle EN først, DA under.
 
 ---
 
-## 4. Help — `improved`
+## 4. Help - `improved`
 
 **PR #4476, Refs #4382. Spørgsmål fra egomadsen og thelamba.**
 
@@ -52,7 +52,7 @@ Fem spillervendte ændringer. Alle EN først, DA under.
 
 ---
 
-## 5. Discord — `fixed`
+## 5. Discord - `fixed`
 
 **PR #4460, Refs #3483.**
 
