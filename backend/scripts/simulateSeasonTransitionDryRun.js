@@ -59,10 +59,13 @@ console.log(`  Hold påvirket:       ${plan.teams_affected}`);
 // (expireAndRenewContracts) kører FØR sponsor-payouten, så processSeasonStart
 // udbetaler kontrakternes guaranteed_base — ikke den kontraktfri division-base.
 const src = plan.sponsor_contract_sources || { locked: 0, pending: 0, default: 0 };
-console.log(`  Sponsor GARANTERET total (udbetales ved sæsonstart): ${money(plan.sponsor_base_total)} pts`);
+console.log(`  Sponsor GARANTERET base (før modifier):              ${money(plan.sponsor_base_total)} pts`);
 console.log(`     kontrakt-kilder: ${src.locked} låst · ${src.pending} managervalg aktiveres · ${src.default} auto-default ('safe')`);
+// #2753 · payout-tallet er det der FAKTISK krediteres: base x board-modifier x
+// pullout, cappet af kontraktloftet. Basen ovenfor er kun reference.
+console.log(`  Sponsor FAKTISK payout (udbetales ved sæsonstart):   ${money(plan.sponsor_payout_total)} pts${plan.sponsor_board_test_mode ? "  (board test-mode: modifier neutraliseret)" : ""}`);
 console.log(`  Signing-bonusser (engangs, ved aktivering):           ${money(plan.sponsor_signing_bonus_total)} pts`);
-console.log(`  → Samlet pengeinjektion ved SELVE skiftet:            ${money(plan.sponsor_base_total + plan.sponsor_signing_bonus_total)} pts`);
+console.log(`  → Samlet pengeinjektion ved SELVE skiftet:            ${money(plan.sponsor_payout_total + plan.sponsor_signing_bonus_total)} pts`);
 console.log(`  Variabel pulje (pr. etape HEN OVER sæsonen, ikke nu): ${money(plan.sponsor_race_day_pool_total)} pts`);
 
 // ── 3. Invariant-rapport ─────────────────────────────────────────────────────

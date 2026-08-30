@@ -74,10 +74,12 @@ console.log(`  Allerede transitioneret? ${plan.already_transitioned ? "ja (resum
 // #2926 · kontrakt-bevidst: tallet er summen af de guaranteed_base'r
 // processSeasonStart faktisk udbetaler efter fase 5b (kontrakt-fornyelsen).
 const src = plan.sponsor_contract_sources || { locked: 0, pending: 0, default: 0 };
-console.log(`  Sponsor garanteret total: ${money(plan.sponsor_base_total)} pts  (${src.locked} låst · ${src.pending} valgt · ${src.default} auto-default)`);
+console.log(`  Sponsor garanteret base:  ${money(plan.sponsor_base_total)} pts  (${src.locked} låst · ${src.pending} valgt · ${src.default} auto-default)`);
+// #2753 · det tal der faktisk rammer holdenes balance (modifier x pullout x loft).
+console.log(`  Sponsor faktisk payout:   ${money(plan.sponsor_payout_total)} pts`);
 console.log(`  + signing-bonusser:       ${money(plan.sponsor_signing_bonus_total)} pts`);
-const rows = [...plan.sponsor_breakdown].sort((a, b) => b.sponsor_base - a.sponsor_base).slice(0, 5);
-for (const r of rows) console.log(`     ${String(r.team_name).padEnd(26)} div ${r.division}  ${money(r.sponsor_base).padStart(7)}  ${r.sponsor_mode}/${r.sponsor_contract_source}`);
+const rows = [...plan.sponsor_breakdown].sort((a, b) => b.sponsor_payout - a.sponsor_payout).slice(0, 5);
+for (const r of rows) console.log(`     ${String(r.team_name).padEnd(26)} div ${r.division}  ${money(r.sponsor_payout).padStart(7)}  ${r.sponsor_mode}/${r.sponsor_contract_source}`);
 
 if (EXECUTE && result.log) {
   console.log(`\n── FASE-LOG (rigtig kørsel) ───────────────────────────────────────`);

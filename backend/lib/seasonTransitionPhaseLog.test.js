@@ -148,6 +148,8 @@ function createTransitionMock({ adminLogFails = false } = {}) {
     admin_log: [],
     notifications: [],
     sponsor_contracts: [],
+    // #2753 · previewets pullout-opslag (board_consequences lag 5).
+    board_consequences: [],
     app_config: [],
   };
 
