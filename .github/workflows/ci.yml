@@ -631,10 +631,12 @@ jobs:
     permissions:
       contents: read
     # Unit-tests for scripts/ops/*.mjs (#4014 logflade-vagt + #3978 advisor-
-    # sweep) — ren klassifikationslogik (spike/ny-fejlklasse-deteketion,
-    # allowlist-diff), ingen netvaerkskald. De to workflows der bruger
-    # scripterne (supabase-log-watch.yml, supabase-advisor-sweep.yml) kalder
-    # Supabase Management-API'et med SUPABASE_ACCESS_TOKEN og koeres ikke her.
+    # sweep + #4453 Railway-logstroem-vagt) — ren klassifikationslogik
+    # (spike/ny-fejlklasse-detektion, allowlist-diff, tag-daekning), ingen
+    # netvaerkskald. De workflows der bruger scripterne
+    # (supabase-log-watch.yml, supabase-advisor-sweep.yml,
+    # railway-log-watch.yml) kalder Supabase Management-API'et hhv. Railway
+    # CLI'en med egne tokens og koeres ikke her.
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -649,3 +651,13 @@ jobs:
 
       - name: Test advisor-sweep allowlist diff
         run: node --test scripts/ops/supabase-advisor-sweep.test.mjs
+
+      # Indeholder forward-guarden fra #4453: fejler hvis et nyt
+      # console.<niveau>("[tag]") i backendens runtime hverken har en taerskel
+      # eller staar paa ignore-listen i railway-log-thresholds.json.
+      # Bemaerk: supabase-ops-scripts staar IKKE blandt main's required status
+      # checks, saa guarden er raadgivende - den goer jobbet roedt, men
+      # blokerer ikke merge. Skal den blokere, tilfoej jobbet til
+      # branch-protection og til scripts/ci-required-checks.json.
+      - name: Test railway-log-watch classification + tag coverage
+        run: node --test scripts/ops/railway-log-watch.test.mjs
