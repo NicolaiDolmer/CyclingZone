@@ -28,6 +28,41 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 
 ---
 
+## PR-preflight og verifikations-tiers
+
+_Flyttet hertil fra `CLAUDE.md` 2026-08-31 per [#2682](https://github.com/NicolaiDolmer/CyclingZone/issues/2682) (token-trim). Reglerne er uændrede — CLAUDE.md holder den korte version og peger herhen._
+
+**Altid, på alle PR'er:** `pwsh -File scripts/preflight-pr.ps1` FØR push. Den spejler CI's billige vagter lokalt (i18n-keys, swallowed-catch, dropped-supabase-error, unchecked-mutation, unguarded-fetch); PR-body-kravene står i scriptets header.
+
+**Rørte du `frontend/`:** build + warning-budget + i18n-keys + `npm run lint` + frontend unit-tests (`node --test` kørt i `frontend/`). Genvej for backend+frontend-tests+build i ét: `scripts/verify-local.ps1`.
+
+- `node --test` i `frontend/` er **obligatorisk**: Vite/esbuild tilgiver extensionless imports, Node's ESM-loader (som CI bruger) gør ikke, så en manglende `.js` fejler først i CI ([#803](https://github.com/NicolaiDolmer/CyclingZone/issues/803)).
+- `npm run lint` er også obligatorisk: hverken `verify-local` eller vite-build kører ESLint, men CI's frontend-build gør (react-hooks/purity + refs), oveni warning-budget, perf-gate (bundle) og `check-verification`.
+
+**Verifikations-tiers (#3556, ejer-godkendt 8/8) — lagdelt, ikke valgfrit:**
+
+| Tier | Hvornår | Lokalt krav |
+|---|---|---|
+| TARGETED | Små UI-diffs | `node scripts/verify-affected.mjs` finder de relevante specs; CI bærer den fulde suite |
+| FULL | Backend, delte lib-hooks, i18n, config eller >6 filer | Fuld lokal suite |
+| E2E FULD | Frontend/i18n-PR'er | HELE `npm run test:e2e` (alle 3 projekter) lokalt før push — ejer-krav 7/8, CI kører ALLE specs |
+
+Visuelle ændringer eller snapshot-refresh: kør ALLE 3 Playwright-projekter, ellers fejler CI på mobile (#536, 21/5).
+
+**Loop-guard:** 2 CI-fails på samme symptom → STOP + spørg brugeren. Se `.claude/learnings/2026-05-17-symptom-patching-loop-vs-root-cause.md`.
+
+**Natbølger:** der er ét serielt e2e-slot pr. maskine, og orkestratoren ejer det — parallelle workers kører aldrig fuld lokal suite samtidig.
+
+---
+
+## Dependency-sync efter git pull
+
+_Flyttet hertil fra `CLAUDE.md` 2026-08-31 per [#2682](https://github.com/NicolaiDolmer/CyclingZone/issues/2682)._
+
+Efter et `git pull` der rører ved en `*package-lock.json`: kør `npm run sync-deps` (eller `npm run doctor` → tjek `install-parity`-rækken). `npm install` kan lyve med "up to date" mens direkte dependencies er bagud lockfilen ([#616](https://github.com/NicolaiDolmer/CyclingZone/issues/616)/[#618](https://github.com/NicolaiDolmer/CyclingZone/issues/618)); `npm ci` er den eneste pålidelige sync.
+
+---
+
 ## Rolle-fordeling mellem AI-assistenter — RETIRED (2026-06-25)
 
 > **Solo Claude-operation siden 2026-06-12.** Ingen Codex, ingen Manus. Claude ejer alle
@@ -186,4 +221,4 @@ Quick reference:
 
 ---
 
-_Sidst opdateret: 2026-05-29 — oprettet ved split af `AGENTS.md` per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733). Indhold flyttet fra AGENTS.md (delt context-disciplin: GitHub/OneDrive er sandhed, lokale agent-filer er kun caches)._
+_Sidst opdateret: 2026-08-31 — PR-preflight/verifikations-tiers + dependency-sync flyttet hertil fra `CLAUDE.md` per [#2682](https://github.com/NicolaiDolmer/CyclingZone/issues/2682) (token-trim). Oprettet 2026-05-29 ved split af `AGENTS.md` per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733); indhold flyttet fra AGENTS.md (delt context-disciplin: GitHub/OneDrive er sandhed, lokale agent-filer er kun caches)._

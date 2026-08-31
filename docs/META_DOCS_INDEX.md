@@ -37,7 +37,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/AI_COUNCIL.md` | **RETIRED 2026-06-25** — gravsten. 3-AI-council (Claude/Codex/Manus) udfaset; solo Claude-operation, Claude ejer alle beslutninger. |
 | `docs/DISPATCH_PLAYBOOK.md` | Før mobil→PC agentic dispatch (scheduled-tasks, Claude mobile app Dispatch, RemoteTrigger) · safe/forbidden tasks · pre-flight checklist · verification on return |
 | `docs/AI_OPS_SCALING_ROADMAP.md` | Konsolideret AI/Ops + skalerings-roadmap (Track A token-reduktion + cross-PC vs Track B Epic #323) · overlap-mapping · anbefalet eksekvering |
-| `docs/AI_OPS_REFERENCE.md` | WARM-tier udfasning af `AGENTS.md` (split [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)) · cross-PC setup-detaljer · session-rytme-signaler + close-out-tjeklister · token-effektiv kontekst-tabel · loops quick-ref A-I (rolle-fordeling/AI-ejerskab udfaset 2026-06-25 — solo Claude) |
+| `docs/AI_OPS_REFERENCE.md` | WARM-tier udfasning af `AGENTS.md` (split [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)) · cross-PC setup-detaljer · session-rytme-signaler + close-out-tjeklister · token-effektiv kontekst-tabel · PR-preflight + verifikations-tiers · dependency-sync efter `git pull` · loops quick-ref A-I (rolle-fordeling/AI-ejerskab udfaset 2026-06-25 — solo Claude) |
 | `docs/AI_OPS_DISABLE_PLAYBOOK.md` | MCP/skills audit + disable-handlinger |
 | `docs/AI_OPS_QUALITY_CANARIES.md` | Regression-tjek efter token-reduktion |
 | `docs/AI_OPS_TOKEN_BUDGET.md` | Token-budget regler + tier-system |
