@@ -13,7 +13,7 @@ import { computeFrozenSalary } from "./contractSeed.js";
 import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { deriveForRiderIds } from "./backfillCores.js";
-import { seasonReferenceYear } from "./riderSeasonAge.js";
+import { seasonReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 
 // Deterministisk 32-bit hash (FNV-1a) — samme algoritme som
 // starterSquadAllocator.hashStringToSeed, bevidst dupliceret (få linjer) for ikke
@@ -103,7 +103,7 @@ export async function fetchActiveSeason(supabase) {
 // kunne drifte fra hinanden i første omgang (jf. #3089).
 export function referenceYearForSeason(season) {
   return seasonReferenceYear(season?.number)
-    ?? (parseInt(String(season?.start_date).slice(0, 4), 10) || 2026);
+    ?? (parseInt(String(season?.start_date).slice(0, 4), 10) || LAUNCH_REFERENCE_YEAR);
 }
 
 // #1584-markør: "fik dette hold nogensinde sit FØRSTE akademi-kuld?"

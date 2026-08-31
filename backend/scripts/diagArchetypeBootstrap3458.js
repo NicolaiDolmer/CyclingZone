@@ -17,6 +17,7 @@ import { generateAcademyCandidates, YOUTH_GEN_CONFIG } from "../lib/academyGener
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "../lib/physiologySeeding.js";
 import { deriveAbilities } from "../lib/abilityDerivation.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 import { computeRiderTypes, NEUTRAL_BASELINE, RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 
 function arg(name, def) {
@@ -30,7 +31,7 @@ const N = parseInt(arg("n", "1200"), 10);
 const cfg = Object.freeze({ ...YOUTH_GEN_CONFIG, signatureBoostPerWeight: BOOST, statCeilBoosted: CEIL });
 const rng = makeRng(2026);
 const candidates = generateAcademyCandidates({
-  rng, referenceYear: 2026, existingNames: new Set(), countOverride: N, genCfg: cfg,
+  rng, referenceYear: LAUNCH_REFERENCE_YEAR, existingNames: new Set(), countOverride: N, genCfg: cfg,
 });
 
 const rows = candidates.map((c, i) => {

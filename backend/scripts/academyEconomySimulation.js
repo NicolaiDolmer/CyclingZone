@@ -46,6 +46,7 @@ import {
 } from "../lib/riderProgression.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { generateFictionalRiders } from "../lib/fictionalRiderGenerator.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 // ---------------------------------------------------------------------------
 // CLI-args
@@ -338,7 +339,7 @@ function simulateYouthUplift() {
 // ---------------------------------------------------------------------------
 
 function simulatePeakAge() {
-  const REFERENCE_YEAR = 2026;
+  const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
   // Generér population — brug PEAK_COHORT_COUNT ryttere med seed
   const { riders: raw } = generateFictionalRiders({

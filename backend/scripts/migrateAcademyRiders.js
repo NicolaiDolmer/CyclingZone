@@ -8,8 +8,7 @@ import { generateYouthStats } from "../lib/academyGenerator.js";
 import { seedPhysiologyFromLegacy } from "../lib/physiologySeeding.js";
 import { deriveAbilities } from "../lib/abilityDerivation.js";
 import { deriveForRiderIds } from "../lib/backfillCores.js";
-
-const ASOF_YEAR = 2026;
+import { ageForSeason } from "../lib/riderSeasonAge.js";
 const PHYS = ["climbing","time_trial","flat","tempo","sprint","acceleration","punch","endurance","recovery","durability"];
 
 // Deterministisk seed pr. rytter (FNV-1a på id) — reproducerbar migrering.
@@ -42,7 +41,7 @@ async function main() {
 
   // Beregn foreslåede nye stats + (lokalt afledte) nye evner — INGEN writes.
   const rows = riders.map((r) => {
-    const age = ASOF_YEAR - new Date(r.birthdate).getFullYear();
+    const age = ageForSeason(r.birthdate, 1);
     const archetypeType = ARCHETYPE_BY_TYPE[r.primary_type] ? r.primary_type : "rouleur";
     const { stats } = generateYouthStats({ rng: makeRng(hashSeed(r.id)), age, potentiale: r.potentiale, archetypeType });
     const proposedRider = { ...r, ...stats };

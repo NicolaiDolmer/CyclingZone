@@ -43,6 +43,7 @@ import { seedPhysiologyFromLegacy } from "../lib/physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { buildCapsForRider } from "../lib/riderProgression.js";
 import { computeRiderTypes, NEUTRAL_BASELINE, ABILITY_KEYS, RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_PATH = join(__dirname, "../lib/riderTypesBaselineYouth.json");
@@ -57,7 +58,7 @@ const N = parseInt(arg("n", "20000"), 10);
 // Fast seed (2026 — samme konvention som simYouthClassificationFix3458.js). Ingen
 // relation til kalenderåret; determinisme er hele pointen.
 const SEED = parseInt(arg("seed", "2026"), 10);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 // Genskaber ÉN akademi-kandidats caps PRÆCIS som produktionens deriveForRiderIds
 // (backend/lib/backfillCores.js, trin 1-3): physiology → abilities → BOOTSTRAP-type
