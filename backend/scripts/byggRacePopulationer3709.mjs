@@ -23,6 +23,7 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...r] = a.replace(/^--/, "").split("=");
@@ -72,7 +73,7 @@ const rng = makeRng(SEED);
 const navne = new Set();
 const kuld = [];
 while (kuld.length < N) {
-  for (const c of generateAcademyCandidates({ rng, referenceYear: 2026, existingNames: navne, countOverride: 50 })) {
+  for (const c of generateAcademyCandidates({ rng, referenceYear: LAUNCH_REFERENCE_YEAR, existingNames: navne, countOverride: 50 })) {
     const rr = c.rider;
     const ab = deriveAbilities(seedPhysiologyFromLegacy(rr), rr);
     const rene = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, Number(ab?.[k] ?? 0)]));

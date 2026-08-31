@@ -74,6 +74,7 @@ import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.js";
 import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449
+import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
@@ -897,6 +898,28 @@ async function runMarketValueLevelCorrectionGateSweepCron() {
   }
 }
 
+// ─── Søndagens værdi-pipeline (#4419) ─────────────────────────────────────────
+// v4-refresh (base_value/CPV/typer følger udviklede evner) + markedsblendet
+// (#3448) i ét ordnet flow, søndag fra kl. 06 dansk tid. Selv-gated (søndag +
+// vindue + persisteret dato-claim), så timelig polling + boot-run er sikre.
+// Ejer-beslutning 30/8: værdier flytter sig én gang om ugen, om morgenen,
+// ikke kl. 22 som da genberegningen hang på trænings-sweepen.
+async function runSundayValueSweepCron() {
+  try {
+    const r = await runSundayValueSweep({ supabase, now: new Date() });
+    if (r.ran) {
+      const v = r.valueRefresh;
+      console.log(
+        `💰 Søndags-værdier (${r.runDate}): ${v?.scanned ?? 0} scannet · ${v?.changed ?? 0} ændret` +
+        (r.marketValueSweep?.ran ? ` · markedsblend ${r.marketValueSweep.written ?? 0} skrevet` : " · markedsblend slukket")
+      );
+    }
+  } catch (err) {
+    console.error("Cron error (sunday-value-refresh):", err.message);
+    sentryCapture(err, { tags: { cron: "sunday-value-refresh" } });
+  }
+}
+
 // ─── Auto-prize: udbetal udestående præmier for completede løb (#WS1) ─────────
 // Gated bag runtime-flag auto_prize_enabled (fail-safe OFF) — er flaget ikke tændt,
 // returnerer sweep'en straks { skipped: "flag_off" } uden side-effekter.
@@ -1285,9 +1308,34 @@ export async function awaitCronsIdle(timeoutMs = 30_000) {
   return cronInFlight === 0;
 }
 
+// #4150 — stop nye ticks ved SIGTERM. Railways nedlukningsvindue er hævet til
+// drainingSeconds=150 (backend/railway.json), og i HELE det vindue kører den
+// gamle og den nye proces samtidig (Railway sender først SIGTERM når det nye
+// deploy er aktivt). Uden denne vagt ville den gamle proces blive ved med at
+// fyre setInterval-ticks mens den "lukker ned" — 1-min-auktionstikket alene
+// ville nå 2 ekstra kørsler pr. deploy, parallelt med den nye proces' egne.
+// Med Railways hidtidige default (drainingSeconds=0, SIGTERM → SIGKILL uden
+// ophold) var vinduet så kort at problemet var usynligt; derfor skal vagten på
+// plads FØR vinduet forlænges. awaitCronsIdle() venter fortsat på de ticks der
+// allerede var i gang — der afbrydes intet, der startes bare intet nyt.
+//
+// Intervallerne selv ryddes bevidst ikke (process.exit(0) gør det alligevel):
+// vagten sidder ét sted i trackedTick i stedet for at holde ~30 interval-
+// handles ved lige, og dækker samtidig boot-run-kaldene i startCron().
+let cronSchedulingStopped = false;
+
+export function stopCronScheduling() {
+  cronSchedulingStopped = true;
+}
+
+export function isCronSchedulingStopped() {
+  return cronSchedulingStopped;
+}
+
 export function trackedTick(label, fn, deps = {}) {
   const capture = deps.captureException ?? sentryCapture;
   return async () => {
+    if (cronSchedulingStopped) return; // nedlukning i gang — start ikke nye ticks
     cronInFlight++;
     try {
       await fn();
@@ -1632,6 +1680,17 @@ export function startCron() {
     60 * 60 * 1000
   );
 
+  // Every 60 minutes: søndagens værdi-pipeline (#4419): v4-refresh + markedsblend
+  // i ét ordnet flow. Modulet er selv søndags-gated (fra kl. 06 dansk tid) og
+  // claim-idempotent pr. dato, så en times cadence bare fylder søndagens vindue op.
+  // Samme monitor-begrundelse som market-value-level-correction-gate ovenfor:
+  // tikket returnerer normalt (ran:false) på ikke-søndage, så CRON_MONITOR_60MIN
+  // false-positiver ikke resten af ugen.
+  setInterval(
+    trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_60MIN)),
+    60 * 60 * 1000
+  );
+
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
   // aktive sæson løbende, ikke kun ved sæson-transition. Generatoren er idempotent
   // (dry-safe re-runs), så en times cadence er rigelig — mirror auto-prize/stage-
@@ -1705,12 +1764,11 @@ export function startCron() {
     5 * 60 * 1000
   );
 
-  // #3448 — markedsdrevet værdi-eftersyn har BEVIDST ingen selvstændig tick her.
-  // Den køres som sidste skridt i søndagens værdi-pipeline inde i
-  // trainingSweep.js (efter refreshChangedRiderValues), fordi en uafhængig
-  // timeligt tick tidligere på søndagen ville få kl.-22-v4-refresh'en til at
-  // skrive markedsblendet væk igen. Se marketValueSundaySweep.js's
-  // "RÆKKEFØLGE PÅ SØNDAGE" og trainingSweep.js's kald.
+  // #3448/#4419: markedsblendet har BEVIDST ingen selvstændig tick. Det køres
+  // som SIDSTE skridt i søndagens værdi-pipeline (sundayValueSweep.js, tick-et
+  // ovenfor), efter v4-refresh-en. En uafhængig tick ville lade v4-refresh-en
+  // skrive markedsblendet væk igen. Se marketValueSundaySweep.js s
+  // "RÆKKEFØLGE PÅ SØNDAGE".
 
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
@@ -1758,6 +1816,7 @@ export function startCron() {
   trackedTick("fairplay scoring-sweep", runFairplayScoringCron)();
   trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
   trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN))(); // boot-run: samme, ren måling
+  trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_60MIN))(); // boot-run: claim-idempotent, søndags- + kl.-06-gated
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  HIGH_ROLLER_BID_THRESHOLD,
   checkAchievements,
   getAchievementUnlocks,
   computeAchievementProgress,
@@ -133,7 +134,8 @@ test("checkAchievements derives auction and transfer unlocks from live-history t
     rider_watchlist: Array.from({ length: 50 }, (_, index) => ({ id: `watch-${index}`, user_id: "user-1" })),
     // #1205: bargain måles mod market_value — offer 40 < 100/2.
     riders: [{ id: "rider-bargain", market_value: 100, team_id: "other-team" }],
-    auction_bids: [{ id: "bid-1", team_id: "team-1", amount: 2000000001 }],
+    // #4414: high roller måles mod copy'ens 500.000 CZ$ (før: 2 mia. — uopnåeligt).
+    auction_bids: [{ id: "bid-1", team_id: "team-1", amount: HIGH_ROLLER_BID_THRESHOLD + 1 }],
     auctions: [],
     transfer_offers: [
       ...Array.from({ length: 10 }, (_, index) => ({
@@ -177,6 +179,47 @@ test("checkAchievements derives auction and transfer unlocks from live-history t
     ]
   );
   assert.equal(supabase.state.inserts.length, 8);
+});
+
+// #4414: copy'en lover et bud "over 500.000", så grænsen er streng — 500.000
+// blankt tæller ikke, 500.001 gør.
+test("checkAchievements unlocks auction_high_roller foerst over taersklen", async () => {
+  const buildSupabase = (amount) => createAchievementSupabase({
+    achievements: [{ id: "auction_high_roller" }],
+    teams: [{ id: "team-1", user_id: "user-1" }],
+    users: [{ id: "user-1", login_streak: 0 }],
+    auction_bids: [{ id: "bid-1", team_id: "team-1", amount }],
+  });
+
+  const atThreshold = await checkAchievements({
+    supabase: buildSupabase(HIGH_ROLLER_BID_THRESHOLD),
+    userId: "user-1",
+  });
+  assert.deepEqual(atThreshold.map(achievement => achievement.id), []);
+
+  const overThreshold = await checkAchievements({
+    supabase: buildSupabase(HIGH_ROLLER_BID_THRESHOLD + 1),
+    userId: "user-1",
+  });
+  assert.deepEqual(overThreshold.map(achievement => achievement.id), ["auction_high_roller"]);
+});
+
+// #4414: backfill af de 21 hold sker ved næste evaluering, ikke via datareparation.
+// Gen-tjekket skal derfor være idempotent for hold der allerede HAR achievementen.
+test("checkAchievements gentildeler ikke auction_high_roller til en eksisterende unlock", async () => {
+  const supabase = createAchievementSupabase({
+    achievements: [{ id: "auction_high_roller" }],
+    manager_achievements: [{ user_id: "user-1", achievement_id: "auction_high_roller" }],
+    teams: [{ id: "team-1", user_id: "user-1" }],
+    users: [{ id: "user-1", login_streak: 0 }],
+    // Højeste bud i prod pr. 30/8 2026.
+    auction_bids: [{ id: "bid-1", team_id: "team-1", amount: 1_087_224 }],
+  });
+
+  const unlocked = await checkAchievements({ supabase, userId: "user-1" });
+
+  assert.deepEqual(unlocked, []);
+  assert.equal(supabase.state.inserts.length, 0);
 });
 
 test("checkAchievements unlocks team and board achievements and cascades team_5_achievements", async () => {

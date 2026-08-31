@@ -19,6 +19,7 @@ import { computeRiderTypes } from "../../lib/riderTypes.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const youthBaseline = JSON.parse(readFileSync(join(__dirname, "../../lib/riderTypesBaselineYouth.json"), "utf8"));
@@ -33,7 +34,7 @@ const genCfg = { ...YOUTH_GEN_CONFIG, gcTimeTrialBoostRatio: gcTt, gcClimbingBoo
 
 const N = 3000;
 const rng = makeRng(2026);
-const cands = generateAcademyCandidates({ rng, referenceYear: 2026, existingNames: new Set(), countOverride: N, genCfg });
+const cands = generateAcademyCandidates({ rng, referenceYear: LAUNCH_REFERENCE_YEAR, existingNames: new Set(), countOverride: N, genCfg });
 
 let drawnGc = 0, finalGc = 0;
 const finalForDrawnGc = {};

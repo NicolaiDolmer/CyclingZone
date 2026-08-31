@@ -37,6 +37,7 @@ import {
 } from "./lib/progressionGates3564.mjs";
 import { buildCapsForRider, buildYouthCaps } from "../../lib/riderProgression.js";
 import { simulateLifecyclePopulation } from "./lib/lifecycleSim3564.mjs";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const typesBaseline = JSON.parse(readFileSync(join(__dirname, "..", "..", "lib", "riderTypesBaseline.json"), "utf8"));
@@ -58,7 +59,7 @@ function buildF1() {
   // ERSTATTER hele config-objektet, den fletter ikke selv (samme mønster som
   // checkYouthBand2064.mjs's `{ ...YOUTH_GEN_CONFIG, ...patch }`).
   const genCfg = Object.freeze({ ...YOUTH_GEN_CONFIG, ...F1_DEFECT_GENCFG_PATCH });
-  return deriveCohort({ rng, referenceYear: 2026, count: 3000, genCfg, typesBaseline, idPrefix: "f1" });
+  return deriveCohort({ rng, referenceYear: LAUNCH_REFERENCE_YEAR, count: 3000, genCfg, typesBaseline, idPrefix: "f1" });
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -66,7 +67,7 @@ function buildF1() {
 // ════════════════════════════════════════════════════════════════════════════════
 function buildF2() {
   const rng = makeRng(20260810);
-  return deriveCohort({ rng, referenceYear: 2026, count: 3000, typesBaseline, idPrefix: "f2" }); // genCfg udeladt = default
+  return deriveCohort({ rng, referenceYear: LAUNCH_REFERENCE_YEAR, count: 3000, typesBaseline, idPrefix: "f2" }); // genCfg udeladt = default
 }
 
 // ════════════════════════════════════════════════════════════════════════════════

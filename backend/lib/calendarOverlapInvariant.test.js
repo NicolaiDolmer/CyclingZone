@@ -109,40 +109,34 @@ test("pakkerens eget Div 1-output består invarianten (cap 3, 1 etape pr. løb p
   assert.ok(r.gameDayCount > 28, `pakkeren skal bruge FLERE game_days (${r.gameDayCount}) end kalenderdage (28) — ellers er aksen fladet`);
 });
 
-// ── #4075: monumentet skal have sin in-game-dag for sig selv ──────────────────────
+// ── #4236/#4465: den eksklusive monument-loebsdag er OPHAEVET ─────────────────────
+//
+// #4075 (laast 21/8) gav monumentet sin egen loebsdag. Ejeren ophaevede reglen 26/8
+// (#4236) da #4217's spaend-baserede binding havde fjernet gevinsten. Taellingen blev
+// tilbage i tre doegn og gjorde nat-gaten roed paa noget der er tilladt. Denne test
+// laaser tilbagerulningen fast: et monument der deler loebsdag er IKKE et brud, og
+// vagten maa ikke faa en monument-akse tilbage uden en ny ejer-beslutning.
 
-test("monument der deler in-game-dag med et andet loeb er et brud (#4075)", () => {
-  const rows = [
-    row("mon", 1, 5), row("gt", 12, 5),   // monument + GT-etape paa samme loebsdag
-    row("gt", 13, 6),
-  ];
+test("monument der deler in-game-dag er IKKE et brud laengere (#4236/#4465)", () => {
   const r = checkCalendarOverlapInvariants({
-    scheduleRows: rows, tier: 1, monumentRaceIds: new Set(["mon"]),
+    scheduleRows: [row("mon", 1, 5), row("gt", 12, 5), row("gt", 13, 6)],
+    tier: 1,
   });
-  assert.equal(r.monumentSharedDayViolationCount, 1);
-  assert.equal(r.monumentSharedDayViolations[0].game_day, 5);
-  assert.deepEqual(r.monumentSharedDayViolations[0].other_race_ids, ["gt"]);
-  // Cap'en er IKKE brudt — 2 loeb < cap 3. Det er praecis derfor reglen kraever sin egen taelling.
-  assert.equal(r.overlapViolationCount, 0);
+  assert.equal(r.overlapViolationCount, 0, "2 loeb < cap 3 — ingen cap-brud");
+  assert.equal(r.stageRepeatViolationCount, 0);
+  assert.equal(
+    r.monumentSharedDayViolationCount, undefined,
+    "monument-taellingen er fjernet — kommer den tilbage, er en ophaevet regel genindfoert"
+  );
+  assert.equal(r.monumentSharedDayViolations, undefined);
 });
 
-test("monument alene paa sin loebsdag er intet brud, og to monumenter samme dag ER (#4075)", () => {
-  const rent = checkCalendarOverlapInvariants({
-    scheduleRows: [row("mon", 1, 5), row("gt", 12, 4), row("gt", 13, 6)],
-    tier: 1, monumentRaceIds: new Set(["mon"]),
-  });
-  assert.equal(rent.monumentSharedDayViolationCount, 0);
-
-  const to = checkCalendarOverlapInvariants({
-    scheduleRows: [row("mon-a", 1, 5), row("mon-b", 1, 5)],
-    tier: 1, monumentRaceIds: new Set(["mon-a", "mon-b"]),
-  });
-  assert.equal(to.monumentSharedDayViolationCount, 1, "to monumenter paa samme loebsdag er ogsaa et brud");
-});
-
-test("uden monumentRaceIds taelles nul brud (bagudkompatibelt)", () => {
+test("monument-loebsdage taeller stadig med i cap'en som ethvert andet loeb (#4236)", () => {
+  // Cap 3 i D1: fire loeb paa samme loebsdag er et brud, uanset at det ene er et monument.
   const r = checkCalendarOverlapInvariants({
-    scheduleRows: [row("mon", 1, 5), row("gt", 12, 5)], tier: 1,
+    scheduleRows: [row("mon", 1, 5), row("a", 1, 5), row("b", 1, 5), row("c", 1, 5)],
+    tier: 1,
   });
-  assert.equal(r.monumentSharedDayViolationCount, 0);
+  assert.equal(r.overlapViolationCount, 1);
+  assert.equal(r.overlapViolations[0].races, 4);
 });

@@ -1,37 +1,32 @@
-# NOW — Aktuel arbejdsstatus
+# NOW - Aktuel arbejdsstatus
 
-> **Kompas:** [Living World Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) · **Rækkefølge-SSOT:** [MASTERPLAN.md](MASTERPLAN.md) · **Områdernes SSOT'er:** hard rule 30 i AGENTS.md — læs dit områdes fil FØR du rører noget.
+> **Kompas:** [Living World Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) · **Rækkefølge-SSOT:** [MASTERPLAN.md](MASTERPLAN.md) · **Områdernes SSOT'er:** hard rule 30 i AGENTS.md - læs dit områdes fil FØR du rører noget.
 
 ## Aktiv styring
 
-> **🎯 Next action — ejer-frister:** **#4376 divisions-tillægget: PR #4388 UDSKUDT til 31/8 — ejer 30/8, må IKKE merges før han har overvejet den** (migration + balance). Ved go: jeg applier migrationen + dry-run (~79 hold, +4,8 mio CZ$) · **#3494 blokerer #4265** — sponsor-vækstmålet er umuligt (`sponsor_income` = 240.000 for ALLE 230 hold) · **#4265 vs MASTERPLAN** stadig åben · **#4213** de to tekster + NUA-køen (19 venter) · **#4098** senest **søn 31/8** (124 hold ramt) · **#4176** kalender-SSOT **senest 4/9 OG før S4**. **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + trup-linje + RET "Fra i morgen"-varslet · **#886** Sentry-token → Infisical · **#4361** 10 stars vs PAT · **Z1 #1146** PR #4323 grøn, spillertest før merge. Derefter: #4259 · #4355 · #4367. **Klar til merge:** PR #4450 (#4448 exhaustive-deps → useCallback, e2e 592/0, ren refaktor).
+> **🎯 Next action:** **Spor D AKTIVT (ejer 31/8):** #2853-mailtekster til godkendelse + /pro #4074. Audit 31/8: 602→561 åbne, 41 closes, alt klassificeret ([dashboard](audits/backlog-priorities-2026-08-31.md), evidens #627). Natbølge trin 3 + #4503 merget; patch note-udkast i `drafts/` mangler i PatchNotesPage.
 
-> **📦 Backlog-bølge 30/8 — AFSLUTTET, alt merget.** 19 issues leveret, 8 lukket som allerede løst, 3 nye (#4433 #4440 #4446). Patch notes 7.221 + 7.222. Migration #2892 applied + verificeret (`cron_checkins` live, 46 job, 0 overskredne). Screenshots i `pr-screens/wave-30aug/`.
+> **⛔ Venter på DIN beslutning:** **PR #4483** (#4479) er parkeret 31/8 og må IKKE merges. `/rules` fortæller spillerne at lønnen fryses ved **6,7 % af markedsværdien**; koden bruger **35 % af `current_production_value`** (`contractSeed.js:38-42`, verificeret 31/8). Både sats og grundlag er forkert, og drift-guarden var grøn fordi den pinnede til `SALARY_RATE`, død siden #3989. **Åbent spørgsmål:** skal afvigelsen måles på faktisk signerede kontrakter før patch noten skrives? · **#4482** skal lag 6-bonustilbud udløbe (37 aktive på afsluttede sæsoner).
 
-> **🩹 Triage-fund 30/8 — ryttere forsvandt ud af KØRENDE etapeløb.** [#4418](https://github.com/NicolaiDolmer/CyclingZone/issues/4418): 5 ryttere væk fra 3 igangværende S3-løb, alle menneskehold. To årsager. **A skade** — udtagelsen er KORREKT (ejer 30/8), manglede bare at blive registreret → **PR #4422 klar, DU merger** (migration + rører motoren mens løb kører). **B akademikontrakt midt i løbet** → [#4423](https://github.com/NicolaiDolmer/CyclingZone/issues/4423), stadig åben fejl. **Ejer-valg B truffet:** træningsskader på løbsdage får LOV at stå i S3, løses strukturelt i S4 hvor træning flytter til løbsdage ([#3459](https://github.com/NicolaiDolmer/CyclingZone/issues/3459)). De 5 ramte ryttere: afgøres sammen med #4356. E2E-flake noteret: [#4424](https://github.com/NicolaiDolmer/CyclingZone/issues/4424).
+> **⏳ Ejer-frister:** **#4376** PR #4388 må IKKE merges før du har overvejet den · **#4098** senest søn 31/8 (målt: 323 unge ryttere på 103 af 350 hold) · **#3494 blokerer #4265** (`sponsor_income` = 240.000 for ALLE 230 hold) · **#4213** de to tekster + NUA-køen (19 venter). **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + trup-linje + RET "Fra i morgen"-varslet · **#886** Sentry-token → Infisical · **#4361** 10 stars vs PAT · **Z1 #1146** PR #4323 grøn, spillertest før merge.
 
-> **⚠️ Åbne fra 28/8:** **#4103** falsk done-flag (højbjerg brudt i alle 4 divisioner) · **#4370** React #421 på forsiden.
+> **🔴 Nye fund 31/8** (alle med målinger i issuetråden): **#4463** nat-vagt grøn uden at måle · **#4465** ophævet kalenderregel håndhævet 5 steder (begge PR #4477) · **#4479** lønsats-vagten fandtes ikke (se blokken ovenfor) · **#4502** AGENTS.md brød token-loftet (PR #4503) · **#4493** sanitize-secrets falsk positiv · **#4484** graduerings-sweep (PR #4494) · **#4495** 8 ryttere 22-23 år sidder fast på 6 hold, ejer-gated · **#4496** CI-vagt · **#4485** ungdomsklassement inkluderer 26-årige. **Åbent:** genberegnes S3's kørte `young`-rækker?
 
-> **⚠️ Udskilt af #4344 (PR #4353 merged 28/8):** **#4356** ejer-beslutning: de 34 allerede koerte etaper, re-sim eller staa ved dem · **#4357** `loadEntrantsForRace` mangler ORDER BY (tie-break bevidst uroert indtil #4356 er afgjort).
+> **🩹 Åbne fra 30/8:** **#4423** akademikontrakt midt i løb (PR #4422 = del A, DU merger) · **#4356** de 34 allerede kørte etaper: re-sim eller stå ved dem · **#4357** `loadEntrantsForRace` mangler ORDER BY (bevidst urørt til #4356 er afgjort) · **#4103** falsk done-flag - målt 31/8 er højbjerg brudt i **3 af 4** divisioner (D1 7,7 % · D2 5,6 % · D4 16,1 %; D3 10,6 % består), ikke alle fire · **#4370** React #421 på forsiden · **#4146** 24 hold over trupgrænse · **#4204** verify-invariants timer ud mod prod og er nu **blokerende** for kalender-vagten.
 
 > **✅ S3 kører:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Løbsdags-udvikling (#4277) er **off** i S3, retur i S4.
 
-> **⚠️ Invariant-fund:** #4146 (24 hold over trupgrænse) · #4204 (verify-invariants tager 20 min).
-
-> **⚠️ Katalog-lofter + åbent valg (#4272):** D1 brosten 4,5 % (mål 6) · D4 ITT 8,1 % · D4 trækker 5/6 `summit_tour` → 16 % højbjerg og 41,9 % opad. Kræver arketype-LOFT eller flere flade Class1/2-etapeløb. **Spildesign-valg, afventer ejer. To regenereringer er forbudt.**
-
-> **💰 Værdier/løn S3 (låst, intet udestående flip):** base_value = model(c 0,811 + type-dæmpning k=100, #4000 flippet 23/8 i PR #4135) · CPV dæmpet · løn = CPV × 0,35, frosset FØR transitionen · `wage_deduction_mode = season_upfront` · upkeep 220k/70k/20k/0.
-
-> **⚖️ Fair play:** #3818 + #4154 eksekveret 23-24/8. **Prisloft sættes IKKE** → #3138 er eneste værn. Løs ende: Wheelbarrels banned uden Discord-forklaring.
-
-> **📣 Forum:** L1 (#4238), dashboard-kort (#4249), opbakning (#4250) live. SSOT: `FORUM_RULES.md` · `DASHBOARD_RULES.md`. Rolle mod Discord afgøres 15/9 (#4235). Rest: ingen åbne.
+> **⚖️ Åbent spildesign-valg (#4272):** brosten-målet er 5 % ELLER 6 % - begge tal lever i koden. Målt: D1 3,9 % · D2 4,8 % · D3 7,1 % · D4 4,8 %. D4 trækker 5/6 `summit_tour` → 16,1 % højbjerg. Kræver arketype-LOFT eller flere flade Class1/2-etapeløb. **To regenereringer af samme kalender er forbudt.** Reglerne bor nu i [`CALENDAR_RULES.md`](CALENDAR_RULES.md) via PR #4474.
 
 ## Standing context (forever-relaunch)
 
 - **Liga:** 4-divisions-pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
 - **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag**. **Pension:** måles på AFSLUTTET sæsons alder.
 - **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
-- **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben, plus **#4256** (forældreløs branch med sikkerhedsfix, urørt). **#4446 merget 30/8** (PR #4451): global 600/min-limiter på /api + 12 skrive-ruter, verificeret live, tæller pr. IP. De 164 code-scanning-alarmer var et navne-artefakt fra #4392 — **bekræft de falder væk i CodeQL på main**. **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117.
+- **Økonomi/værdier S3:** låst, intet udestående flip. Detaljer i [`ECONOMY_RULES.md`](ECONOMY_RULES.md).
+- **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **0 åbne CodeQL-alarmer på main** (verificeret 31/8 via API; alarm #353, ufuldstændig shell-escape i railway-log-watch fra #4453, lukket af PR #4506).
+- **Fair play:** #3818 + #4154 eksekveret. Prisloft sættes IKKE. Målt 31/8: kun **ét** aktivt værn - prisbåndet #3133 står disabled i prod, auktionsgebyret #2452 er ikke bygget, og 24 af 28 flag står ubehandlet.
+- **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117. Patch note-udkast for bølgen: [`drafts/2026-08-31-patch-note-natboelge.md`](../drafts/2026-08-31-patch-note-natboelge.md) - skriv den først ind når PR'erne er merget.
 
 > **🤖 Working agent:** Ingen aktiv session.
 

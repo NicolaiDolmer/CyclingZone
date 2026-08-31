@@ -18,7 +18,7 @@
     "format": "prettier --write --ignore-unknown .",
     "format:check": "prettier --check --ignore-unknown .",
     "typecheck": "tsc -p tsconfig.json",
-    "types:gen": "supabase gen types typescript --project-id ghwvkxzhsbbltzfnuhhz > src/types/database.types.ts"
+    "types:gen": "supabase gen types typescript --project-id ghwvkxzhsbbltzfnuhhz > src/types/database.types.ts && node ../scripts/strip-backup-tables-from-types.mjs"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",

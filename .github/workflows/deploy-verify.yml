@@ -99,7 +99,11 @@ jobs:
           SHA: ${{ steps.pr.outputs.sha }}
           NEED_VERCEL: ${{ steps.required.outputs.need_vercel }}
           NEED_RAILWAY: ${{ steps.required.outputs.need_railway }}
+        shell: bash
         run: |
+          # #4463: uden pipefail sluger `jq` gh's exit-kode, saa et fejlsvar fra
+          # API'et ville laese som "ingen deployments" i stedet for som en fejl.
+          set -o pipefail
           DEADLINE=$(($(date +%s) + 600))  # 10 min timeout
           while [[ "$(date +%s)" -lt "$DEADLINE" ]]; do
             DEPLOYMENTS=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20")

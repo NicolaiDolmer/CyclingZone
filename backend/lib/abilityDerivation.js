@@ -1,6 +1,9 @@
 import {
   REGISTRY_ABILITY_KEYS, REGISTRY_CONTRAST_KEYS, REGISTRY_PRIMARY_STAT,
 } from "./abilityRegistry.js";
+// SSOT for launch-referenceåret + fødselsår-udtrækket. riderSeasonAge.js er bevidst
+// dependency-fri, så denne rene derivations-fil ikke trækker I/O med sig (#4455).
+import { LAUNCH_REFERENCE_YEAR, birthYearFrom } from "./riderSeasonAge.js";
 
 // Evne-system v3 (#1122 / #1101-kæden) — fysiske evner afledes nu fra fysiologi-profiler
 // (rider_physiology_profiles); tekniske/mentale forbliver skill-stat-drevne.
@@ -19,7 +22,11 @@ export const FORMULA_VERSION = 3;
 export const CALIBRATION = Object.freeze({
   pcmFloor: 50,   // PCM-stat der mapper til spil-1
   pcmCeil: 85,    // PCM-stat der mapper til spil-99 (stats >85 clampes til 99)
-  asOfYear: 2026, // alder = asOfYear − fødselsår (til aggression/tactics/hidden)
+  // alder = asOfYear − fødselsår (til aggression/tactics/hidden). #4455: dette var
+  // den FEMTE kopi af launch-referenceåret, og den eneste i den KØRENDE backend —
+  // deriveAbilities() kaldes uden asOfYear fra backfillCores.js og
+  // starterSquadAllocator.js, så literalen her var den faktiske default i prod.
+  asOfYear: LAUNCH_REFERENCE_YEAR,
 });
 
 // ── Evne-niveau KONTRAST-FORSTÆRKNING (§5-B, #1122 — "A+B") ───────────────────
@@ -136,10 +143,14 @@ function hashNoise(id) {
   return (h >>> 0) / 4294967296;
 }
 
+// Bevidst en ANDEN semantik end riderSeasonAge.ageForSeason: clampet til [16,45] og
+// med snit-alder 25 som fallback i stedet for null, fordi evne-derivationen skal give
+// et tal uanset hvad. Kun selve fødselsår-UDTRÆKKET deles (#4455), så de to ikke kan
+// divergere på tidszone — se birthYearFrom's kommentar i riderSeasonAge.js.
 function ageFrom(birthdate, asOfYear) {
   if (!birthdate) return 25; // snit-alder fallback
-  const year = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(year)) return 25;
+  const year = birthYearFrom(birthdate);
+  if (year === null) return 25;
   return clamp(asOfYear - year, 16, 45);
 }
 

@@ -180,6 +180,11 @@ export const ALL_CRON_MONITORS = [
   // selv (dør hele cron-processen, fyrer ingen tick — samme blinde vinkel som
   // stall-watchdog'en har for sin egen død).
   ["cron-heartbeat-sweep", CRON_MONITOR_5MIN],
+  // #4419: søndagens værdi-pipeline (v4-refresh + markedsblend). Samme
+  // begrundelse som market-value-level-correction-gate ovenfor: tikket kalder gennem hver time og
+  // returnerer normalt (ran:false, skipped:"not_sunday"/"before_window") uden
+  // for vinduet, så en 60min-monitor er ærlig hele ugen.
+  ["sunday-value-refresh", CRON_MONITOR_60MIN],
 ];
 
 // ─── UNMONITORED_CRON_TICKS ────────────────────────────────────────────────

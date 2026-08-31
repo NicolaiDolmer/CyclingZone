@@ -74,28 +74,40 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        shell: bash
         run: |
+          set -o pipefail
           SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
           SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
           export SUPABASE_URL SUPABASE_SERVICE_KEY
-          # verify-invariants exit 1'er hvis EN VILKAARLIG invariant fejler; gaten
-          # nedenfor skelner mellem kalender-brud (blokerende her) og oevrige.
-          node backend/scripts/verify-invariants.js --json > invariants.json || true
-          # --input-type=module: eksplicit modul-type, saa blokken ikke afhaenger af
-          # om repo-roden er CJS eller ESM (den ville ellers skifte under os).
-          node --input-type=module - <<'NODE' | tee invariants.txt
-            import { readFileSync, appendFileSync } from 'node:fs';
-            const d = JSON.parse(readFileSync('invariants.json', 'utf8'));
-            const rows = Object.entries(d.checks);
-            const kalenderBrud = rows.filter(([n, c]) => n.startsWith('calendar_') && !c.ok);
-            const oevrigeBrud = rows.filter(([n, c]) => !n.startsWith('calendar_') && !c.ok);
-            for (const [n, c] of rows) console.log(`${c.ok ? '[ok]  ' : '[FEJL]'} ${n}: ${c.detail}`);
-            for (const [, c] of kalenderBrud) {
-              for (const v of c.violations ?? []) console.log('   ' + JSON.stringify(v));
-            }
-            appendFileSync(process.env.GITHUB_OUTPUT,
-              `kalender_brud=${kalenderBrud.length}\noevrige_brud=${oevrigeBrud.length}\n`);
-          NODE
+
+          # #4463: her stod `... --json > invariants.json || true` efterfulgt af en
+          # inline heredoc-parser skrevet `node ... | tee invariants.txt`. Da
+          # verify-invariants doede paa en RPC-timeout 30/8, blev invariants.json
+          # TOM, parseren kastede SyntaxError - og `tee`'s exit 0 gjorde steppet
+          # GROENT. `kalender_brud` naaede aldrig GITHUB_OUTPUT, saa baade
+          # tracking-issuet og fail-steppet blev SKIPPED. En vagt der ikke maalte
+          # noget rapporterede success.
+          #
+          # Nu: exit-koden gemmes i stedet for at blive slugt, og parseren er en
+          # rigtig, unit-testet fil (scripts/summarize-invariant-report.mjs) hvis
+          # exit-kode ingen pipe kan maskere. verify-invariants exit 1'er BAADE
+          # naar en invariant fejler (normalt roedt signal; gaten nedenfor
+          # skelner kalender-brud fra oevrige) og naar maalingen selv doer - de
+          # to skelnes af om rapporten faktisk INDEHOLDER maalinger.
+          verify_exit=0
+          node backend/scripts/verify-invariants.js --json > invariants.json || verify_exit=$?
+          echo "verify-invariants afsluttede med exit $verify_exit"
+
+          # Fejler haardt paa tom, ugyldig eller maalingsloes rapport: forskellen
+          # paa "intet brud" og "intet maalt" skal vaere synlig.
+          summary_exit=0
+          node scripts/summarize-invariant-report.mjs invariants.json > invariants.txt || summary_exit=$?
+          cat invariants.txt || true
+          if [ "$summary_exit" -ne 0 ]; then
+            echo "::error::Kalender-invariant-audit MAALTE INTET (verify-invariants exit $verify_exit). Vagten er ude af drift indtil det er fikset - se #4463."
+            exit 1
+          fi
 
       - name: Verify SUPABASE_DB_URL is configured
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
@@ -112,7 +124,11 @@ jobs:
         id: constraints
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        shell: bash
         run: |
+          # #4463: uden pipefail sluger `sed` psql's exit-kode, og en DB-fejl ville
+          # blive laest som "nul fund" i stedet for "ikke maalt".
+          set -o pipefail
           FINDINGS=$(psql "$DB_URL" -tA -F '|' -v ON_ERROR_STOP=1 -f scripts/constraint-form-audit.sql | sed '/^$/d')
           printf '%s\n' "$FINDINGS" | sed '/^$/d' > constraint-form.txt
           COUNT=$(printf '%s' "$FINDINGS" | sed '/^$/d' | wc -l | tr -d ' ')
@@ -128,7 +144,11 @@ jobs:
         id: entrydays
         env:
           DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        shell: bash
         run: |
+          # #4463: uden pipefail sluger `sed` psql's exit-kode, og en DB-fejl ville
+          # blive laest som "nul fund" i stedet for "ikke maalt".
+          set -o pipefail
           FINDINGS=$(psql "$DB_URL" -tA -F '|' -v ON_ERROR_STOP=1 -f scripts/race-entry-days-drift-audit.sql | sed '/^$/d')
           printf '%s\n' "$FINDINGS" | sed '/^$/d' > race-entry-days-drift.txt
           COUNT=$(printf '%s' "$FINDINGS" | sed '/^$/d' | wc -l | tr -d ' ')
@@ -218,8 +238,22 @@ jobs:
               });
             }
 
+      # #4463: `maalt`-betingelsen er belt-and-braces. Maale-steppet fejler nu selv
+      # paa en tom rapport, men 30/8 viste at et step KAN melde success uden at
+      # have skrevet sine outputs - og saa blev netop dette step sprunget over.
+      # Et manglende `maalt` er derfor i sig selv en fejl: vagten skal vaere roed
+      # naar den ikke ved om der er brud, ikke groen.
       - name: Fail if calendar or constraint findings
-        if: steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0'
+        if: >-
+          !cancelled() &&
+          (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]') &&
+          (steps.invariants.outputs.maalt == ''
+            || steps.invariants.outputs.kalender_brud != '0'
+            || steps.constraints.outputs.count != '0')
         run: |
-          echo "::error::Kalender-invariant-audit: ${{ steps.invariants.outputs.kalender_brud }} kalender-brud, ${{ steps.constraints.outputs.count }} constraint-form-brud."
+          if [ -z "${{ steps.invariants.outputs.maalt }}" ]; then
+            echo "::error::Kalender-invariant-audit maalte INTET - ingen invariant-taelling naaede frem. Et groent flueben her ville vaere en loegn (#4463)."
+            exit 1
+          fi
+          echo "::error::Kalender-invariant-audit: ${{ steps.invariants.outputs.kalender_brud }} kalender-brud, ${{ steps.constraints.outputs.count }} constraint-form-brud (${{ steps.invariants.outputs.maalt }} invarianter maalt)."
           exit 1

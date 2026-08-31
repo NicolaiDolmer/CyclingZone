@@ -5,6 +5,7 @@ import {
   isRetirementRisk, retirementRiskBadgeKey, RETIREMENT_WARNING_AGE, LAUNCH_REFERENCE_YEAR,
   seasonNumberFromReferenceYear, isContractExpiringAtTransition, contractExpiringBadgeKey,
   retirementBidWarningTier, RETIREMENT_WINDOW_START_AGE, RETIREMENT_GUARANTEED_AGE,
+  birthYearFrom,
 } from "./riderAge.js";
 
 // #3071: sæson 1 (launch-året) = LAUNCH_REFERENCE_YEAR selv, så de fleste ældre
@@ -284,4 +285,33 @@ test("contractExpiringBadgeKey — 'contractExpiring' når kontrakten udløber v
   assert.equal(contractExpiringBadgeKey({ contract_end_season: 3 }, 1), null);
   assert.equal(contractExpiringBadgeKey({ contract_end_season: null }, 1), null);
   assert.equal(contractExpiringBadgeKey(null, 1), null);
+});
+
+// #4455: denne fil kører i SPILLERENS browser, så tidszonen er ukendt. "YYYY-MM-DD"
+// parses som UTC-midnat, og `new Date(bd).getFullYear()` læste lokal tid — vest for
+// UTC rullede 1. januar et år tilbage, og en manager i Amerika så en anden alder end
+// backend regnede med på de 9 ryttere født 1/1. Spejler backend's birthYearFrom().
+test("birthYearFrom — fødselsåret er tidszone-uafhængigt for dato-kun-strenge", () => {
+  assert.equal(birthYearFrom("2001-01-01"), 2001);
+  assert.equal(birthYearFrom("2001-12-31"), 2001);
+  assert.equal(birthYearFrom(" 1996-06-15 "), 1996);
+  for (let year = 1975; year <= 2012; year++) {
+    for (const md of ["01-01", "06-15", "12-31"]) {
+      const bd = `${year}-${md}`;
+      assert.equal(birthYearFrom(bd), new Date(bd).getUTCFullYear(), `divergerer for ${bd}`);
+    }
+  }
+});
+
+test("birthYearFrom — manglende/ugyldigt input giver null, aldrig et gæt", () => {
+  assert.equal(birthYearFrom(null), null);
+  assert.equal(birthYearFrom(undefined), null);
+  assert.equal(birthYearFrom(""), null);
+  assert.equal(birthYearFrom("ikke-en-dato"), null);
+});
+
+test("ageForSeason — 1. januar giver samme alder som 15. juni i samme årgang", () => {
+  // Kernen i tidszone-fejlen: de to skal være ens i ENHVER tidszone.
+  assert.equal(ageForSeason("2001-01-01", S2), ageForSeason("2001-06-15", S2));
+  assert.equal(ageForSeason("2001-01-01", S1), S1 - 2001);
 });
