@@ -155,16 +155,13 @@ async function main() {
     const tier = div?.tier;
     const cap = TIER_OVERLAP_CAP[tier] ?? 2;
 
-    // #4075 (ejer-laast 21/8): et monument har sin EGEN loebsdag - ingen modloeb, saa alle
-    // ryttere kan stille op. Kalenderdatoen deles fortsat. Afledningen kendte ikke reglen
-    // foer #4176, og koerslen 24/8 klappede derfor D1's fem monumenter sammen med naboloeb.
-    const monumentRaceIds = new Set(
-      rows.map((r) => r.race_id).filter((id) => raceById.get(id)?.race_class === "Monuments")
-    );
-
-    const foer = checkCalendarOverlapInvariants({ scheduleRows: rows, overlapCap: cap, monumentRaceIds });
-    const derived = deriveGameDayAxis({ scheduleRows: rows, overlapCap: cap, monumentRaceIds });
-    const efter = checkCalendarOverlapInvariants({ scheduleRows: derived.rows, overlapCap: cap, monumentRaceIds });
+    // #4465: koerslen 24/8 gav hvert monument sin EGEN eksklusive loebsdag (#4075,
+    // laast 21/8). Ejeren OPHAEVEDE reglen 26/8 (#4236), saa en gen-koersel af dette
+    // script maa IKKE laegge det eksklusive indskud ind igen - det var netop dét der
+    // rev hul i fem D1-etapeloebs loebsdage. Monumenter pakkes nu som ethvert andet loeb.
+    const foer = checkCalendarOverlapInvariants({ scheduleRows: rows, overlapCap: cap });
+    const derived = deriveGameDayAxis({ scheduleRows: rows, overlapCap: cap });
+    const efter = checkCalendarOverlapInvariants({ scheduleRows: derived.rows, overlapCap: cap });
 
     for (const r of derived.rows) if (r.old_game_day !== r.game_day) updates.push(r);
 
@@ -192,13 +189,6 @@ async function main() {
       maxSamtidigeFoer: foer.maxOverlap, maxSamtidigeEfter: efter.maxOverlap,
       capBrudFoer: foer.overlapViolationCount, capBrudEfter: efter.overlapViolationCount,
       dubletterFoer: foer.stageRepeatViolationCount, dubletterEfter: efter.stageRepeatViolationCount,
-      monumenter: monumentRaceIds.size,
-      monBrudFoer: foer.monumentSharedDayViolationCount, monBrudEfter: efter.monumentSharedDayViolationCount,
-      monBrudDetalje: foer.monumentSharedDayViolations.map((v) => ({
-        loebsdag: v.game_day,
-        monument: v.monument_race_ids.map((id) => raceById.get(id)?.name ?? id),
-        modloeb: v.other_race_ids.map((id) => raceById.get(id)?.name ?? id),
-      })),
       aendret: derived.changed,
     });
   }
@@ -212,19 +202,9 @@ async function main() {
       `${String(r.kalenderdage).padStart(13)}` +
       `${String(r.maxSamtidigeFoer).padStart(10)} → ${String(r.maxSamtidigeEfter)}` +
       `${String(r.capBrudFoer).padStart(9)} → ${String(r.capBrudEfter)}` +
-      `${String(r.monBrudFoer).padStart(9)} → ${String(r.monBrudEfter)}` +
       `${String(r.aendret).padStart(8)}`
     );
   }
-
-  const monBrudFoer = rapport.reduce((s, r) => s + r.monBrudFoer, 0);
-  const monBrudEfter = rapport.reduce((s, r) => s + r.monBrudEfter, 0);
-  for (const r of rapport) {
-    for (const v of r.monBrudDetalje) {
-      console.log(`  [monument-brud] ${r.pulje} loebsdag ${v.loebsdag}: ${v.monument.join(", ")} deler dagen med ${v.modloeb.join(", ")}`);
-    }
-  }
-  console.log(`  Monument-loebsdage der deles med andre loeb (#4075): foer ${monBrudFoer} -> efter ${monBrudEfter}.`);
 
   const restCap = rapport.reduce((s, r) => s + r.capBrudEfter, 0);
   const restDub = rapport.reduce((s, r) => s + r.dubletterEfter, 0);

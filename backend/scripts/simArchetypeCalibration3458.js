@@ -29,6 +29,7 @@ import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js"
 import { buildCapsForRider, buildYouthCaps } from "../lib/riderProgression.js";
 import { computeRiderTypes, NEUTRAL_BASELINE, RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 import { ratingFromAbilities } from "../lib/scoutingReport.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,7 +43,7 @@ function arg(name, def) {
 }
 const N = parseInt(arg("n", "1500"), 10);
 const SEED = parseInt(arg("seed", "2026"), 10);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 function buildPercentileFn(sortedAsc) {
   return (v) => {

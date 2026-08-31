@@ -25,6 +25,7 @@ import { fetchAllRows } from "../lib/supabasePagination.js";
 import { VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { buildYouthCaps, buildCaps, buildCapsForRider, PROGRESSION_CONFIG } from "../lib/riderProgression.js";
 import { repoRoot } from "./lib/repoRoot.mjs";
+import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -36,7 +37,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 }
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-const SEASON1_YEAR = 2026; // jf. riderProgressionEngine.LAUNCH_REFERENCE_YEAR (sæson 1)
+const SEASON1_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 const POT_STEPS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6];
 const sum = (o) => VISIBLE_ABILITIES.reduce((a, k) => a + (Number(o?.[k]) || 0), 0);
 
@@ -108,7 +109,7 @@ async function main() {
     for (const k of VISIBLE_ABILITIES) if (abRow[k] != null) abilities[k] = Number(abRow[k]);
     if (Object.keys(abilities).length !== VISIBLE_ABILITIES.length) continue;
 
-    const age = SEASON1_YEAR - new Date(r.birthdate).getFullYear();
+    const age = ageForSeason(r.birthdate, 1);
     // pot pr. option: alle bruger rytterens nuværende potentiale undtagen A', der
     // re-deriverer det — ordningen SKAL måles mod det potentiale spilleren ser.
     const rec = { pot: Number(r.potentiale), age, cur: sum(abilities), caps: {}, overCap: {}, potBy: {}, headroom: {} };

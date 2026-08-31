@@ -43,6 +43,7 @@ import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js"
 import { buildCapsForRider } from "../lib/riderProgression.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { selectTypesBaseline } from "../lib/riderTypesBaselineSelect.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const arg = (navn, fallback) => {
@@ -52,7 +53,7 @@ const arg = (navn, fallback) => {
 
 const N = arg("n", 3000);
 const SEED = arg("seed", 20260816);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 const typesBaseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const youthTypesBaseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaselineYouth.json"), "utf8"));

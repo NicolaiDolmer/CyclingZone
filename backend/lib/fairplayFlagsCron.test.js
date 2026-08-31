@@ -152,6 +152,51 @@ test("normalizeTransactions: swap-flow og begge ben-ratioer (#2221-swappen)", ()
   assert.ok(tx.swapLegRatios[0] < 0.01 && tx.swapLegRatios[1] > 150);
 });
 
+// FORWARD-GUARD (#3818): transfer_listings-rækken slettes når handlen
+// gennemføres, så listing-joinet er tomt for ALLE gennemførte handler (målt
+// mod prod 30/8 2026: 141 af 141 accepterede handler i 90-dages-vinduet).
+// Læses seller/rider kun gennem joinet, forsvinder hele den direkte
+// handelskanal ud af detektoren. Testen fejler hvis fallbacken rulles tilbage.
+test("normalizeTransactions: gennemført handel uden listing-række tælles stadig med (#3818)", () => {
+  const txs = normalizeTransactions({
+    transfers: [
+      {
+        buyer_team_id: "team-b",
+        seller_team_id: "team-a",
+        offer_amount: 292_000,
+        updated_at: "2026-08-10T12:21:36Z",
+        rider: { base_value: 4111, market_value: 4111, firstname: "Marvin", lastname: "Hoffmann" },
+        listing: null, // rækken er slettet ved gennemførsel
+      },
+    ],
+    auctions: [],
+    swaps: [],
+  });
+  assert.equal(txs.length, 1);
+  assert.equal(txs[0].fromTeam, "team-a");
+  assert.equal(txs[0].toTeam, "team-b");
+  assert.equal(txs[0].price, 292_000);
+  assert.equal(txs[0].marketValue, 4111);
+});
+
+test("normalizeTransactions: listing-joinet bruges stadig som fallback for gamle rækker", () => {
+  const txs = normalizeTransactions({
+    transfers: [
+      {
+        buyer_team_id: "team-b",
+        offer_amount: 50_000,
+        updated_at: "2026-07-01T00:00:00Z",
+        listing: { seller_team_id: "team-a", rider: { base_value: 90_000, market_value: 80_000 } },
+      },
+    ],
+    auctions: [],
+    swaps: [],
+  });
+  assert.equal(txs.length, 1);
+  assert.equal(txs[0].fromTeam, "team-a");
+  assert.equal(txs[0].riderValue, 90_000);
+});
+
 test("normalizeTransactions: selv-handler udelukkes (auto_squad_purchase-bogføring)", () => {
   const txs = normalizeTransactions({
     transfers: [],

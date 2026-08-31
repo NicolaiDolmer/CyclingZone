@@ -505,14 +505,14 @@ export default function RiderRankingsPage() {
           sortDir={sortAsc ? "asc" : "desc"}
           onSort={handleSort}
           rowProps={(rider) => {
-            // #2795 — samme --me-ring-token som Standings/Global Rank/Dashboard/
-            // RaceDetailPage, så egne ryttere er markeret uden at et hold-filter
-            // skal slås til (og uden at skjule resten af feltet).
+            // #2795 — egne ryttere markeret uden at et hold-filter skal slås til.
+            // Markeringen er .cz-me (celle-niveau), ikke en box-shadow på <tr>:
+            // rækkens skygge blev malet under cellernes egen baggrund og var i
+            // praksis usynlig. Se index.css.
             const isMine = myTeamId != null && String(rider.team?.id) === String(myTeamId);
             return {
               onClick: () => navigate(`/riders/${rider.id}`),
-              className: "cursor-pointer",
-              style: isMine ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined,
+              className: `cursor-pointer${isMine ? " cz-me" : ""}`,
             };
           }}
           count={

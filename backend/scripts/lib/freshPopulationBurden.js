@@ -9,9 +9,10 @@ import { computeRiderTypes } from "../../lib/riderTypes.js";
 import { predictBaseValue } from "../../lib/riderValuation.js";
 import { allocateStarterSquads, STARTER_SQUAD } from "../../lib/starterSquadAllocator.js";
 import { computeFrozenSalary } from "../../lib/contractSeed.js";
+import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 // ── ASSUMPTION: roster-størrelse pr. hold ved relaunch ──────────────────────────
 // Autoritativ kilde: starterSquadAllocator.STARTER_SQUAD. Den fulde start-trup er nu
@@ -48,7 +49,7 @@ export function computeFreshSalaryBurden() {
     for (const k of VISIBLE_ABILITIES) if (abilities[k] != null) visible[k] = abilities[k];
     // base_value === market_value ved seed (prize_earnings_bonus = 0).
     const base_value = Math.round(predictBaseValue({ primary_type: primary.key }, visible, model) ?? 0);
-    const age = r._meta?.age ?? (REFERENCE_YEAR - new Date(r.birthdate).getFullYear());
+    const age = r._meta?.age ?? ageForSeason(r.birthdate, 1);
     pool.push({ id: `fic-${i}`, age, potentiale: Number(r.potentiale), base_value });
   }
 

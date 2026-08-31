@@ -102,3 +102,52 @@ Brug `-Sha <commit>` hvis en ældre production-commit skal verificeres eksplicit
 - Vercel fortæller typisk hurtigst, om frontend-committen er live
 - Railway skal verificeres separat; en vellykket Vercel-deploy er ikke bevis for at backend-fixet er live
 - For backend-bugfixes bør en live deploy først betragtes som verificeret, når Railway svarer som forventet
+
+---
+
+## Hvornår Railway deployer (watch paths, #4150)
+
+Alt styres fra `backend/railway.json`. Før 30/8 stod der ingen filtrering, så **hver** commit på main rev backenden ned og byggede den igen. Målt på de 25 seneste produktions-deploys 30/8 rørte 16 af dem ikke én fil under `backend/`.
+
+`build.watchPatterns` er gitignore-lignende mønstre. De evalueres fra **repo-roden**, også selvom servicens root directory er `/backend` (Railways egen dokumentation: "if a Root Directory is provided, patterns still operate from `/`").
+
+| Mønster | Betydning |
+|---------|-----------|
+| `**` | Deploy på alt. Skal stå **først** |
+| `!/docs/**` | Ikke deploy på docs |
+| `!/pr-screens/**` | Ikke deploy på PR-screenshots |
+| `!/superpowers/**` | Ikke deploy på planer og specs |
+| `!/.claude/**` | Ikke deploy på agent-config og learnings |
+| `!/*.md` | Ikke deploy på markdown i repo-roden (AGENTS.md, CLAUDE.md, README.md ...) |
+
+To regler der ikke må brydes:
+
+1. **`**` skal blive stående som første mønster.** Railway: "negations will only work if you include files in a preceding rule". Fjernes den, matcher intet, og backenden deployer aldrig igen.
+2. **Exclude-listen udvides kun med stier der beviseligt ikke læses af backend-runtime.** Er du i tvivl, så lad være. En manglende deploy koster mere end en overflødig. Frontend-ændringer er bevidst **ikke** ekskluderet.
+
+Begge regler er testdækket i `backend/railway.deployConfig.test.js`, som også afviser mønster-former den ikke kender.
+
+### Hvis en deploy udebliver
+
+Symptom: en backend-ændring er merget til main, men Railway viser ingen ny deployment.
+
+1. Se om der overhovedet er en ny deployment (Railway, service CyclingZone, fanen Deployments). Ingen ny betyder at watch paths har filtreret den fra.
+2. Rollback: fjern `build`-blokken fra `backend/railway.json` og push. Så er adfærden præcis som før 30/8, altså deploy på alt.
+3. Hastende alternativ uden kode-ændring: tryk Redeploy på servicen i Railway. Dashboard-feltet Settings, Build, Watch Paths bruges kun når `railway.json` ikke sætter feltet, så det skal ikke bruges til at overstyre.
+
+---
+
+## Nedlukningsvindue ved deploy (#4150)
+
+Ved et deploy sender Railway SIGTERM til den gamle proces, så snart den nye er aktiv. To tal styrer hvor længe den gamle må gøre sit arbejde færdigt:
+
+| Tal | Sted | Værdi |
+|-----|------|-------|
+| `deploy.drainingSeconds` | `backend/railway.json` | 150 sekunder, fra SIGTERM til SIGKILL |
+| `SHUTDOWN_TIMEOUT_MS` | `backend/server.js` | 120 sekunder, hvor længe koden venter på cron-ticks |
+
+Railways default for drain er **0 sekunder**: SIGTERM blev fulgt af SIGKILL uden ophold, så de 30 sekunder server.js ventede på cron-ticks aldrig nåede at betyde noget. Et løb tager 90 til 110 sekunder at afslutte, derfor 120 i koden, og 150 hos Railway så processens eget `process.exit(0)` altid vinder over SIGKILL. Beviset i deploy-loggen er linjen `[shutdown] alle cron-ticks afsluttet`.
+
+De 150 sekunder er samtidig et vindue hvor den gamle og den nye proces kører side om side. Derfor stopper `gracefulShutdown` planlægningen af nye cron-ticks (`stopCronScheduling()` i `backend/cron.js`) **før** den venter. Igangværende ticks gøres færdige, nye startes ikke. Rækkefølgen er testdækket i `backend/cron.shutdownGuard.test.js`.
+
+**Kendt gæld:** Railways config-as-code (`railway.json`) er markeret deprecated med udløb 2026-12-01 til fordel for Infrastructure as Code. Begge felter ovenfor skal migreres inden da, ellers falder de tilbage til dashboard-værdierne.

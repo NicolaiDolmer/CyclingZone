@@ -39,11 +39,20 @@ import {
 // Kalibrerings-override (sponsor + upkeep): default = prod-konstanterne, så denne gate
 // stadig gælder prod ved baseline. Sat via env/--config → re-tjek fresh-population ved
 // de sweep-anbefalede sponsor-tal UDEN at røre prod (task 4: fresh må ikke regressere).
-// NB: ppp/flatten påvirker IKKE denne linse — præmien her er et fast estimat (det BLØDESTE
-// input), ikke den målte kurve; det er prizeDistributionScorecard der måler præmie-niveau.
+// NB: ppp/flatten påvirker IKKE denne linse. Præmien her er et fast NIVEAU pr. division
+// (målt på sæson 2, #1819), ikke fordelingskurven; det er prizeDistributionScorecard der
+// måler hvordan præmien fordeler sig inden for en division.
 import { resolveOverrides, renownSponsorFor } from "./lib/economyCalibrationOverrides.js";
 import { computeFreshSalaryBurden } from "./lib/freshPopulationBurden.js";
 import { gateExitCode } from "./lib/scorecardExitCode.js";
+// #1819: præmie-niveauet er MÅLT (sæson 2), ikke længere et gæt. Se filens header
+// for attribution, D1-forbeholdet og hvorfor gennemsnittet er det rigtige tal her.
+import {
+  PRIZE_MEASURED_BY_DIVISION,
+  PRIZE_MEDIAN_BY_DIVISION,
+  MEASURED_PRIZE_SEASON2,
+  prizeProvenanceLine,
+} from "./lib/measuredPrizeByDivision.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const fmt = (n) => (n == null ? "—" : Math.round(n).toLocaleString("da-DK"));
@@ -52,13 +61,19 @@ const median = (arr) => {
   return a.length ? a[Math.floor(a.length / 2)] : 0;
 };
 
-// ── ASSUMPTION: per-division præmie-estimat (det BLØDESTE input) ────────────────
-// Præmie = Σ(race_points × PRIZE_PER_POINT) fordelt på løbsresultater — kan ikke
-// udledes fra live-DB (0 prize-transaktioner: ledgeren er nulstillet i pre-relaunch-state).
-// Proxy: economyContractSimulation.js' repræsentative "kompetent mid-table"-præmie pr.
-// division (ejer-reviewet for #1309-sim'en). Dette er en MODEL-input, ikke målt; nettoen
-// er FØLSOM for dette tal (prize=0 → alle divisioner dybt negative; se sensitivitet i output).
-const PRIZE_ESTIMATE_BY_DIVISION = { 1: 160000, 2: 70000, 3: 25000 };
+// ── MÅLT: per-division præmie-indkomst (#1819) ──────────────────────────────────
+// Var indtil 30/8 et gæt mærket "(IKKE målt)": D1 160.000 / D2 70.000 / D3 25.000,
+// arvet fra economyContractSimulation.js' "kompetent mid-table"-proxy. Præcis den
+// slags gæt var rod-årsagen bag #1816 (den antagne præmie var 14x for lav), og
+// gættet stod stadig i filen efter at præmien blev reskaleret ÷20.
+//
+// Nu måles det. Sæson 2 er afsluttet og udbetalt, så præmien kan aflæses direkte.
+// Fuld provenance, attributions-valget (division = den løbet blev kørt i, ikke
+// holdets nuværende) og D1-forbeholdet står i lib/measuredPrizeByDivision.js.
+//
+// Nettoen er stadig FØLSOM for dette tal, så sensitivitets-rækken (×0..×2) i
+// outputtet bliver stående: den viser hvor hårdt gaten hænger på præmie-niveauet.
+const PRIZE_ESTIMATE_BY_DIVISION = PRIZE_MEASURED_BY_DIVISION;
 
 // ════════════════════════════════════════════════════════════════════════════════
 // FOREVER-RELAUNCH 4-DIVISIONS-MODEL (#1663 forever-frys, Task 8) — FORSLAG
@@ -90,14 +105,20 @@ const TIERS4_PROPOSED = Object.freeze({
   bonuses: [50000, 25000, 10000],
 });
 
-// ── ASSUMPTION: per-tier præmie-estimat i 4-division-modellen (det BLØDESTE input) ─
-// D1-D3 = uændret fra 3-division-modellen. Tier 4 (bunden) får et LAVERE estimat end
-// D3: i en 4-lags-pyramide flytter de svageste hold ned i tier 4 og scorer få/ingen
-// point → repræsentativ præmie ≈ 10.000 (under D3's 25.000). Dette er en ANTAGELSE —
-// præmie-input er det blødeste led; sensitiviteten (×0..×2) udskrives så ejeren ser
-// hvor robust nettoen er (prize=0-grenen beviser at selv et nul-scorende hold ikke
-// går konkurs — det er det kritiske krav for indgangs-tieren).
-const TIERS4_PRIZE_ESTIMATE_BY_DIVISION = { 1: 160000, 2: 70000, 3: 25000, 4: 10000 };
+// ── MÅLT: per-tier præmie-indkomst i 4-division-modellen (#1819) ────────────────
+// Var et gæt hele vejen igennem: D1-D3 arvet fra 3-division-antagelsen, tier 4 sat
+// til 10.000 fordi bunden blev ANTAGET at score få/ingen point. Vi har nu fire rigtige
+// divisioner i drift, så alle fire tiers kan måles. Bunden viser sig at tjene 52.915
+// pr. hold i sæson 2, altså 5x det antagne, mens den stadig er den fattigste tier.
+//
+// FORBEHOLD ved at bruge sæson-2-tallene på 4-tier-FORSLAGET: forslaget er en
+// 15-pulje-pyramide (1/2/4/8) til 100 managers, mens sæson 2 kørte 1/1/1/1 puljer.
+// Præmie-NIVEAUET pr. hold er en egenskab ved kalenderen og udbetalingskurven, ikke
+// ved antallet af puljer, så tallene er brugbare; men flere puljer pr. tier betyder
+// flere hold om den samme kalendertype, og det er ikke modelleret her.
+// Sensitiviteten (×0..×2) udskrives stadig, og prize=0-grenen beviser at selv et
+// nul-scorende hold i indgangs-tieren ikke går konkurs.
+const TIERS4_PRIZE_ESTIMATE_BY_DIVISION = PRIZE_MEASURED_BY_DIVISION;
 
 async function fetchAll(supabase, table, select, build = (q) => q) {
   const pageSize = 1000;
@@ -130,8 +151,10 @@ function printSyntheticSection(fresh, overrides) {
   console.log(`                              division-BLIND allokering → samme lønbyrde i alle divisioner`);
   console.log(`  • Lønrate                 : ${SALARY_RATE} × market_value (= base_value ved seed; frossen ved signering)`);
   console.log(`  • Manager-hold ved launch : ${fresh.teamCount} (relaunch-rehearsal 2026-06-11)`);
-  console.log(`  • Præmie-estimat (BLØDT)  : D1 ${fmt(PRIZE_ESTIMATE_BY_DIVISION[1])} / D2 ${fmt(PRIZE_ESTIMATE_BY_DIVISION[2])} / D3 ${fmt(PRIZE_ESTIMATE_BY_DIVISION[3])}`);
-  console.log(`                              proxy: contract-sim repræsentativ kompetent-hold-præmie (IKKE målt)`);
+  console.log(`  • Præmie pr. hold (MÅLT)  : D1 ${fmt(PRIZE_ESTIMATE_BY_DIVISION[1])} / D2 ${fmt(PRIZE_ESTIMATE_BY_DIVISION[2])} / D3 ${fmt(PRIZE_ESTIMATE_BY_DIVISION[3])}`);
+  console.log(`                              ${prizeProvenanceLine()}`);
+  console.log(`                              median (mid-table): D1 ${fmt(PRIZE_MEDIAN_BY_DIVISION[1])} / D2 ${fmt(PRIZE_MEDIAN_BY_DIVISION[2])} / D3 ${fmt(PRIZE_MEDIAN_BY_DIVISION[3])}`);
+  console.log(`                              D1: ${MEASURED_PRIZE_SEASON2[1].note}`);
   console.log();
 
   console.log(`Fresh lønbyrde pr. hold (${fresh.populationSize} ryttere, ${fresh.leftToMarket} til markedet):`);
@@ -180,19 +203,23 @@ function printSyntheticSection(fresh, overrides) {
   }
   console.log("─────────────────────────────────────────────────────────────────────");
 
-  // §2.1 sanity: median-balance ≤ 1,3× start ved sæson 5 (balance vokser med net/sæson).
+  // §2.1 sanity: median-balance ∈ [0, 1,3×] start ved sæson 5 (balance vokser med net/sæson).
+  // NEDRE GRÆNSE TILFØJET (#1819): checken var `ratio <= 1.3` alene, så en balance på
+  // -3,5 mio. (ratio -7,05) bestod som ✅. Den skulle fange inflation og gav grønt lys til
+  // konkurs. Samme false-green-klasse som #3009's "FAIL men exit 0".
   console.log("\n§2.1 sanity — balance-trajektorie (balance += net/sæson, 4 transitioner til S5):");
   let trajPass = true;
   for (const d of [1, 2, 3]) {
     const bal5 = INITIAL_BALANCE + 4 * nets[d];
     const ratio = bal5 / INITIAL_BALANCE;
-    const ok = ratio <= 1.3;
+    const ok = ratio >= 0 && ratio <= 1.3;
     if (!ok) trajPass = false;
-    console.log(`  D${d}: balance@S5 ≈ ${fmt(bal5)} (${ratio.toFixed(2)}× start) ${ok ? "✅" : "❌ >1,3×"}`);
+    const why = ratio < 0 ? "❌ NEGATIV balance (konkurs)" : ratio > 1.3 ? "❌ >1,3×" : "✅";
+    console.log(`  D${d}: balance@S5 ≈ ${fmt(bal5)} (${ratio.toFixed(2)}× start) ${why}`);
   }
 
-  // Sensitivitet på det bløde præmie-input.
-  console.log("\nSensitivitet — præmie-estimat (det blødeste input):");
+  // Sensitivitet på præmie-niveauet: målt, men stadig det led nettoen er mest følsom for.
+  console.log("\nSensitivitet — præmie-niveauet (målt, men stadig det input nettoen hænger hårdest på):");
   for (const mult of [0, 0.5, 1, 1.5, 2]) {
     const row = [1, 2, 3].map((d) => {
       const net = (SPONSOR_INCOME_BY_DIVISION[d] || 0) + (PRIZE_ESTIMATE_BY_DIVISION[d] || 0) * mult - salary - (UPKEEP_BY_DIVISION[d] || 0);
@@ -221,8 +248,8 @@ function printSyntheticSection(fresh, overrides) {
 // kompetent-roster (ikke ved populationsstørrelsen): vi genbruger derfor den SAMME
 // kalibrerede burdenMedian som 3-division-gaten, så div-4-forslaget er direkte
 // sammenligneligt med den allerede ejer-godkendte D1-D3-kalibrering (kun sponsor/
-// upkeep/præmie varierer pr. tier). Det BLØDESTE input er præmie-estimatet (tier 4
-// = 10k, antaget under D3) — sensitiviteten udskrives så ejeren ser robustheden.
+// upkeep/præmie varierer pr. tier). Præmien er MÅLT på sæson 2 (#1819), ikke antaget;
+// sensitiviteten udskrives stadig så ejeren ser hvor hårdt nettoen hænger på niveauet.
 function printTiers4Section(fresh, overrides) {
   // D1-D3 = prod-konstanterne (evt. override); D4 = FORSLAGET.
   const sponsorByDiv = {
@@ -259,8 +286,9 @@ function printTiers4Section(fresh, overrides) {
   console.log(`  • Lønbyrde (repræsentativ): ${fmt(salary)}/hold — SAMME kalibrerede model som D1-D3-gaten`);
   console.log(`                             (egenskab ved kompetent-roster, IKKE ved populationsstørrelse)`);
   console.log(`  • Lønrate                : ${SALARY_RATE} × market_value`);
-  console.log(`  • Præmie-estimat (BLØDT) : D1 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[1])} / D2 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[2])} / D3 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[3])} / D4 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[4])}`);
-  console.log(`                             tier 4 (bunden) ANTAGET under D3 (få/ingen point i bunden)`);
+  console.log(`  • Præmie pr. hold (MÅLT) : D1 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[1])} / D2 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[2])} / D3 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[3])} / D4 ${fmt(TIERS4_PRIZE_ESTIMATE_BY_DIVISION[4])}`);
+  console.log(`                             ${prizeProvenanceLine()}`);
+  console.log(`                             tier 4 er fattigst som antaget, men tjener 5x det gamle gæt (10.000)`);
   console.log();
 
   console.log("FORSLAG — div-4 net-konstanter (granit-frys-kandidat):");
@@ -323,19 +351,21 @@ function printTiers4Section(fresh, overrides) {
     console.log(`  → INGEN garanteret konkurs ${seasonsToZero >= 5 ? "✅" : "❌ for kort buffer"} (krav: kompetent hold overlever uden point).`);
   }
 
-  // §2.1 sanity: balance-trajektorie (4 transitioner til S5).
+  // §2.1 sanity: balance-trajektorie (4 transitioner til S5). Nedre grænse som i
+  // 3-divisions-gaten: en negativ balance er konkurs, ikke et bestået inflations-tjek (#1819).
   console.log("\n§2.1 sanity — balance-trajektorie (balance += net/sæson, 4 transitioner til S5):");
   let trajPass = true;
   for (const d of [1, 2, 3, 4]) {
     const bal5 = INITIAL_BALANCE + 4 * nets[d];
     const ratio = bal5 / INITIAL_BALANCE;
-    const ok = ratio <= 1.3;
+    const ok = ratio >= 0 && ratio <= 1.3;
     if (!ok) trajPass = false;
-    console.log(`  D${d}: balance@S5 ≈ ${fmt(bal5)} (${ratio.toFixed(2)}× start) ${ok ? "✅" : "❌ >1,3×"}`);
+    const why = ratio < 0 ? "❌ NEGATIV balance (konkurs)" : ratio > 1.3 ? "❌ >1,3×" : "✅";
+    console.log(`  D${d}: balance@S5 ≈ ${fmt(bal5)} (${ratio.toFixed(2)}× start) ${why}`);
   }
 
   // Sensitivitet på det bløde præmie-input (specielt tier 4).
-  console.log("\nSensitivitet — præmie-estimat (det blødeste input):");
+  console.log("\nSensitivitet — præmie-niveauet (målt, men stadig det input nettoen hænger hårdest på):");
   for (const mult of [0, 0.5, 1, 1.5, 2]) {
     const row = [1, 2, 3, 4].map((d) => {
       const net = sponsorByDiv[d] + TIERS4_PRIZE_ESTIMATE_BY_DIVISION[d] * mult - salary - upkeepByDiv[d];

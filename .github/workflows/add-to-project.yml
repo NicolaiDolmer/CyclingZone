@@ -24,7 +24,7 @@ jobs:
       # Fejlen forsvinder ikke, den flyttes: step-outputtet viser stadig årsagen, og
       # #3553 står åbent som sporet indtil en ny PAT med `project`-scope er lagt i
       # secret'en. Ryk ALDRIG continue-on-error over på en gate der beskytter korrekthed.
-      - uses: actions/add-to-project@v2.0.0
+      - uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd # v2.0.0
         continue-on-error: true
         with:
           project-url: https://github.com/users/NicolaiDolmer/projects/2

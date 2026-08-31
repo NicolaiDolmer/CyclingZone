@@ -1,7 +1,12 @@
 // Tests for marketValueSundaySweep.js (#3448)
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { runMarketValueSundaySweep, MARKET_VALUE_SWEEP_LOG_TABLE } from "./marketValueSundaySweep.js";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { runMarketValueSundaySweep, MARKET_VALUE_SWEEP_LOG_TABLE, assertQualifiedEvidenceModel } from "./marketValueSundaySweep.js";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 // 2026-08-09 = søndag (dansk tid). 2026-08-08 = lørdag.
 const SUNDAY = new Date("2026-08-09T10:00:00Z"); // 12:00 CEST
@@ -14,6 +19,12 @@ const TEST_MODEL = {
     offset: { gc: 0.136, baroudeur: 0 },
   },
   guard: { K: 12, O_window: 5, age_window: 3 },
+  // #3750: sweepen fail-closer på artefakter uden evidens-filter, så også
+  // test-modellen skal bære blokken (den er en vagt, ikke en formalitet).
+  evidence_filter: {
+    description: "test-fixture",
+    criteria: ["auktion: mindst 2 FORSKELLIGE budgivere OG current_price > starting_price"],
+  },
 };
 
 function makeSupabase({ updateCalls = [] } = {}) {
@@ -92,6 +103,66 @@ describe("runMarketValueSundaySweep — gates", () => {
       ...baseDeps({ fetchActiveSeasonNumber: async () => null }),
     });
     assert.deepEqual(result, { ran: false, skipped: "no_active_season" });
+  });
+});
+
+// ── #3750: fail-closed model-guard ─────────────────────────────────────────────
+// Sweepen er den eneste runtime-sti der skriver markedsblendede værdier. Uden
+// denne vagt kunne den køre videre på et artefakt fittet på de mekaniske
+// bank-salg (v1.1, n=1027) den dag kill-switchen flippes til `on`.
+describe("assertQualifiedEvidenceModel — fail-closed model-guard (#3750)", () => {
+  it("kaster på et artefakt UDEN evidence_filter", () => {
+    assert.throws(
+      () => assertQualifiedEvidenceModel({ coefficients: {}, guard: {} }, { source: "test.json" }),
+      /mangler en 'evidence_filter'-blok/
+    );
+  });
+
+  it("kaster hvis evidence_filter er tom (ingen criteria)", () => {
+    assert.throws(
+      () => assertQualifiedEvidenceModel({ evidence_filter: { description: "tom" } }, { source: "test.json" }),
+      /har ingen 'criteria'/
+    );
+  });
+
+  it("kaster hvis evidence_filter er en array (forkert form)", () => {
+    assert.throws(
+      () => assertQualifiedEvidenceModel({ evidence_filter: [] }, { source: "test.json" }),
+      /mangler en 'evidence_filter'-blok/
+    );
+  });
+
+  it("passerer et artefakt MED evidence_filter og criteria", () => {
+    const model = { evidence_filter: { criteria: ["mindst 2 forskellige budgivere"] } };
+    assert.equal(assertQualifiedEvidenceModel(model, { source: "test.json" }), model);
+  });
+
+  it("det filtrerede v2-artefakt passerer guarden, det ufiltrerede v1-artefakt gør ikke", () => {
+    const v2 = JSON.parse(readFileSync(join(HERE, "marketValueModelV2.json"), "utf8"));
+    assert.equal(assertQualifiedEvidenceModel(v2, { source: "marketValueModelV2.json" }), v2);
+
+    const v1 = JSON.parse(readFileSync(join(HERE, "marketValueModelV1.json"), "utf8"));
+    assert.throws(
+      () => assertQualifiedEvidenceModel(v1, { source: "marketValueModelV1.json" }),
+      /mangler en 'evidence_filter'-blok/
+    );
+  });
+
+  it("sweepen fail-closer FØR den claimer dagen (en rettet model kan stadig køre samme søndag)", async () => {
+    const supabase = makeSupabase();
+    let claims = 0;
+    await assert.rejects(
+      () => runMarketValueSundaySweep({
+        supabase, now: SUNDAY,
+        ...baseDeps({
+          loadModel: () => ({ coefficients: {}, guard: {} }),
+          claimSweepDate: async () => { claims += 1; return { claimed: true, tableMissing: false }; },
+        }),
+      }),
+      /mangler en 'evidence_filter'-blok/
+    );
+    assert.equal(claims, 0, "dagens claim må ikke brændes af et afvist artefakt");
+    assert.equal(supabase.updateCalls.length, 0, "ingen rytter må være skrevet");
   });
 });
 

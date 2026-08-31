@@ -209,8 +209,8 @@ test("form_peak: vinderens form >= 75", () => {
 test("helper_shift + tag_helper_sacrifice: kaptajn i top-5 modtog hjælp, >=2 hjælpere uden for top-25", () => {
   const ranked = [
     riderRow({ id: "captain", team: "t1", rank: 3, components: { terrain: 0.7, team: 0.05 } }),
-    riderRow({ id: "helper1", team: "t1", rank: 40 }),
-    riderRow({ id: "helper2", team: "t1", rank: 60 }),
+    riderRow({ id: "helper1", team: "t1", rank: 40, components: { work_cost: -0.04 } }),
+    riderRow({ id: "helper2", team: "t1", rank: 60, components: { work_cost: -0.03 } }),
     riderRow({ id: "rival", team: "t2", rank: 1, components: { terrain: 0.9 } }),
   ];
   const roleByRider = new Map([
@@ -234,6 +234,66 @@ test("helper_shift udebliver når kaptajnens team-komponent ikke er positiv (ing
   const roleByRider = new Map([["captain", "captain"], ["helper1", "helper"], ["helper2", "helper"]]);
   const moments = extractStageMoments({ stageNumber: 1, ranked, roleByRider });
   assert.ok(!findMoment(moments, "helper_shift"));
+});
+
+// ── #3145: falske ofrings-tekster på enkeltstarter ──────────────────────────
+// Tre spillere rapporterede "ryttere ofres" på en solo-enkeltstart. Prod 30/8:
+// 616 tag_helper_sacrifice + 166 helper_shift over 71 ITT-etapeinstanser, hvor
+// 607 af de taggede ryttere havde work_cost = 0 — et offer der intet kostede.
+
+test("#3145 itt: hjælpere med work_cost 0 giver HVERKEN helper_shift eller tag_helper_sacrifice", () => {
+  const ranked = [
+    riderRow({ id: "captain", team: "t1", rank: 3, components: { terrain: 0.7, team: 0.05 } }),
+    riderRow({ id: "helper1", team: "t1", rank: 40, components: { work_cost: 0 } }),
+    riderRow({ id: "helper2", team: "t1", rank: 60, components: { work_cost: 0 } }),
+  ];
+  const roleByRider = new Map([["captain", "captain"], ["helper1", "helper"], ["helper2", "helper"]]);
+  for (const profileType of ["itt", "itt_hilly"]) {
+    const moments = extractStageMoments({ stageNumber: 1, profileType, ranked, roleByRider });
+    assert.equal(findMoment(moments, "helper_shift"), undefined, `${profileType} må ikke udsende helper_shift`);
+    assert.equal(findMoments(moments, "tag_helper_sacrifice").length, 0, `${profileType} må ikke tagge ofre`);
+  }
+});
+
+test("#3145 itt: heller ikke en 'hunter' med negativ work_cost kan ofres på en enkeltstart", () => {
+  // WORK_COST_HUNTER er profil-uafhængig og negativ på ALLE profiler
+  // (raceRoles.js baseWorkCost) — 3 af de 616 taggede prod-ryttere var netop
+  // hunters. Work-cost-guarden alene ville lade dem slippe igennem.
+  const ranked = [
+    riderRow({ id: "captain", team: "t1", rank: 3, components: { terrain: 0.7, team: 0.05 } }),
+    riderRow({ id: "hunter1", team: "t1", rank: 40, components: { work_cost: -0.05 } }),
+    riderRow({ id: "hunter2", team: "t1", rank: 60, components: { work_cost: -0.05 } }),
+  ];
+  const roleByRider = new Map([["captain", "captain"], ["hunter1", "hunter"], ["hunter2", "hunter"]]);
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "itt", ranked, roleByRider });
+  assert.equal(findMoment(moments, "helper_shift"), undefined);
+  assert.equal(findMoments(moments, "tag_helper_sacrifice").length, 0);
+});
+
+test("#3145 mountain: ægte etape-offer med negativ work_cost tagges STADIG", () => {
+  const ranked = [
+    riderRow({ id: "captain", team: "t1", rank: 3, components: { terrain: 0.7, team: 0.05 } }),
+    riderRow({ id: "helper1", team: "t1", rank: 40, components: { work_cost: -0.06 } }),
+    riderRow({ id: "helper2", team: "t1", rank: 60, components: { work_cost: -0.06 } }),
+  ];
+  const roleByRider = new Map([["captain", "captain"], ["helper1", "helper"], ["helper2", "helper"]]);
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "mountain", ranked, roleByRider });
+  const shift = findMoment(moments, "helper_shift");
+  assert.ok(shift, "et bjergetape-offer er stadig en ægte fortælling");
+  assert.deepEqual(shift.params.helperIds.sort(), ["helper1", "helper2"]);
+  assert.equal(findMoments(moments, "tag_helper_sacrifice").length, 2);
+});
+
+test("#3145: work-cost-guarden gælder ALLE profiler — ingen hjælper betalte, intet offer", () => {
+  const ranked = [
+    riderRow({ id: "captain", team: "t1", rank: 3, components: { terrain: 0.7, team: 0.05 } }),
+    riderRow({ id: "helper1", team: "t1", rank: 40, components: { work_cost: 0 } }),
+    riderRow({ id: "helper2", team: "t1", rank: 60, components: { work_cost: 0 } }),
+  ];
+  const roleByRider = new Map([["captain", "captain"], ["helper1", "helper"], ["helper2", "helper"]]);
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "flat", ranked, roleByRider });
+  assert.equal(findMoment(moments, "helper_shift"), undefined);
+  assert.equal(findMoments(moments, "tag_helper_sacrifice").length, 0);
 });
 
 test("tag_jour_sans: fyrer når komponenten er forskellig fra 0", () => {

@@ -36,6 +36,7 @@ import { POTENTIALE_TIERS } from "../lib/academyGenerator.js";
 import { makeRng, gaussian } from "../lib/fictionalRiderGenerator.js";
 import { ABILITY_KEYS } from "../lib/riderTypes.js";
 import { fetchAllPaged, selectInChunks } from "../lib/dbChunk.js";
+import { ageForSeason } from "../lib/riderSeasonAge.js";
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
 const argv = new Map(
@@ -449,11 +450,10 @@ async function runAcademySection() {
 
   const w = await loadAcademyWorld();
   const nextSeason = (w.season?.number ?? 1) + 1;
-  const LAUNCH_YEAR = 2026;
   const ageCounts = new Map();
   const byTeam = new Map(w.teams.map((t) => [t.id, []]));
   for (const r of w.academy) {
-    const age = LAUNCH_YEAR + (nextSeason - 1) - new Date(r.birthdate).getFullYear();
+    const age = ageForSeason(r.birthdate, nextSeason);
     ageCounts.set(age, (ageCounts.get(age) || 0) + 1);
     if (byTeam.has(r.team_id)) byTeam.get(r.team_id).push(age);
   }

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate, NavLink } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -99,7 +99,40 @@ export default function AuctionHistoryPage() {
     if (t) setMyTeamId(t.id);
   }
 
-  async function loadAuctions() {
+  // #256: hent bud-rækker for de synlige auktioner og aggregér client-side til
+  // antal bud + antal forskellige hold pr. auktion. auction_bids har public-read
+  // RLS (SELECT qual=true), så anon/authenticated får rækkerne uden service_role.
+  // Kun én ekstra query pr. side (afgrænset af de max 30 synlige auction-ids).
+  const loadBidStats = useCallback(async (auctionIds) => {
+    if (!auctionIds || auctionIds.length === 0) {
+      setBidStats({});
+      return;
+    }
+    const { data, error } = await supabase
+      .from("auction_bids")
+      .select("auction_id, team_id")
+      .in("auction_id", auctionIds);
+    if (error || !data) {
+      setBidStats({});
+      return;
+    }
+    const agg = {};
+    for (const bid of data) {
+      const entry = agg[bid.auction_id] || (agg[bid.auction_id] = { bids: 0, bidders: new Set() });
+      entry.bids += 1;
+      if (bid.team_id) entry.bidders.add(bid.team_id);
+    }
+    const next = {};
+    for (const [auctionId, entry] of Object.entries(agg)) {
+      next[auctionId] = { bids: entry.bids, bidders: entry.bidders.size };
+    }
+    setBidStats(next);
+  }, []);
+
+  // #4448: memoized så effekten nedenfor kan liste den — ESLint holder nu
+  // selv øje med at filter/sortering/side er komplette. loadBidStats er
+  // flyttet op over denne for at kunne stå i dependency-arrayet.
+  const loadAuctions = useCallback(async () => {
     if (!myTeamId) return;
     setLoading(true);
     setLoadError(false);
@@ -149,37 +182,8 @@ export default function AuctionHistoryPage() {
     setTotal(count || 0);
     setLoading(false);
     loadBidStats(rows.map(a => a.id));
-  }
+  }, [myTeamId, filter, sort, sortDir, page, loadBidStats]);
 
-  // #256: hent bud-rækker for de synlige auktioner og aggregér client-side til
-  // antal bud + antal forskellige hold pr. auktion. auction_bids har public-read
-  // RLS (SELECT qual=true), så anon/authenticated får rækkerne uden service_role.
-  // Kun én ekstra query pr. side (afgrænset af de max 30 synlige auction-ids).
-  async function loadBidStats(auctionIds) {
-    if (!auctionIds || auctionIds.length === 0) {
-      setBidStats({});
-      return;
-    }
-    const { data, error } = await supabase
-      .from("auction_bids")
-      .select("auction_id, team_id")
-      .in("auction_id", auctionIds);
-    if (error || !data) {
-      setBidStats({});
-      return;
-    }
-    const agg = {};
-    for (const bid of data) {
-      const entry = agg[bid.auction_id] || (agg[bid.auction_id] = { bids: 0, bidders: new Set() });
-      entry.bids += 1;
-      if (bid.team_id) entry.bidders.add(bid.team_id);
-    }
-    const next = {};
-    for (const [auctionId, entry] of Object.entries(agg)) {
-      next[auctionId] = { bids: entry.bids, bidders: entry.bidders.size };
-    }
-    setBidStats(next);
-  }
 
   // #3401 post-hammerslag-reveal: fuld budhistorik MED holdnavne for ÉN
   // afsluttet auktion, hentet on-demand når manageren åbner "Se budkrigen".
@@ -213,7 +217,7 @@ export default function AuctionHistoryPage() {
   // #244: self-purchases (sælger=køber) tæller som Win OG Sale i counters
   // (begge dele er sande), men ekskluderes fra Brugt/Tjent — der er intet
   // reelt nettoflow når manageren køber sin egen rytter tilbage.
-  async function loadStats() {
+  const loadStats = useCallback(async () => {
     if (!myTeamId) return;
     const [wonRes, soldRes] = await Promise.all([
       supabase
@@ -237,10 +241,10 @@ export default function AuctionHistoryPage() {
       .filter(a => a.current_bidder_id !== myTeamId)
       .reduce((s, a) => s + (a.current_price || 0), 0);
     setStats({ wins, sales, spent, earned });
-  }
+  }, [myTeamId]);
 
   useEffect(() => { loadMyTeam(); }, []);
-  useEffect(() => { loadAuctions(); loadStats(); }, [filter, page, sort, sortDir, myTeamId]); // eslint-disable-line react-hooks/exhaustive-deps -- loadAuctions/loadStats er lokale funktioner (ny ref hver render) — kun filter/side/sortering skal udløse refetch
+  useEffect(() => { loadAuctions(); loadStats(); }, [loadAuctions, loadStats]);
 
   // #246: hold pagination-state synkron med filter — uden dette kunne man stå
   // på side 5 i "Alle" og skifte til "Købt" som kun har 1 side, og lande på

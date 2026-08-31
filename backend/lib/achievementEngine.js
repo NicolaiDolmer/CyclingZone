@@ -7,7 +7,21 @@ import {
   computeSeasonAchievementStats,
 } from "./seasonAchievements.js";
 
-const AUCTION_WIN_THRESHOLDS = [
+// #4414: player-facing tal der IKKE ligger i en tærskel-tabel. Hvert tal står
+// ordret i achievements.json (EN+DA), og achievementCopyContract.test.js binder de
+// to sammen, så en konstant ikke kan drive fra sin copy igen. High Roller stod på
+// 2.000.000.000 CZ$ mens copy'en lovede 500.000 — højeste bud i spillets historie
+// er 1.087.224 CZ$, så achievementen var uopnåelig fra dag ét (0 tildelinger).
+// Samme klasse som #1205 (bargain/star mod uci_points) og #2917.
+export const HIGH_ROLLER_BID_THRESHOLD = 500_000;
+export const NEGOTIATOR_MIN_ROUNDS = 3;
+export const YOUTH_U25_SHARE = 0.5;
+export const WATCHLIST_SCOUT_TARGET = 50;
+export const BOARD_SATISFACTION_TARGET = 100;
+export const TRANSFER_SIDE_TARGET = 10;
+export const TROPHY_CASE_TARGET = 5;
+
+export const AUCTION_WIN_THRESHOLDS = [
   ["auction_first_win", 1],
   ["auction_5_wins", 5],
   ["auction_10_wins", 10],
@@ -15,34 +29,34 @@ const AUCTION_WIN_THRESHOLDS = [
   ["auction_50_wins", 50],
 ];
 
-const TRANSFER_THRESHOLDS = [
+export const TRANSFER_THRESHOLDS = [
   ["transfer_first", 1],
   ["transfer_5", 5],
   ["transfer_15", 15],
   ["transfer_30", 30],
 ];
 
-const TEAM_SIZE_THRESHOLDS = [
+export const TEAM_SIZE_THRESHOLDS = [
   ["team_15_riders", 15],
   ["team_20_riders", 20],
   ["team_25_riders", 25],
   ["team_30_riders", 30],
 ];
 
-const LOGIN_STREAK_THRESHOLDS = [
+export const LOGIN_STREAK_THRESHOLDS = [
   ["secret_streak_7", 7],
   ["secret_streak_30", 30],
 ];
 
 // #2917: "gennemfør N sæsoner" er en tæller på tværs af sæsoner, ikke en placering.
-const SEASON_COUNT_THRESHOLDS = [
+export const SEASON_COUNT_THRESHOLDS = [
   ["season_2_seasons", 2],
   ["season_5_seasons", 5],
 ];
 
 // #2917: placerings-achievements. Alle måles på holdets BEDSTE rang i en AFSLUTTET
 // sæson (rank_in_division = rangen i puljen). Sorteret fra bredest til smallest.
-const SEASON_RANK_THRESHOLDS = [
+export const SEASON_RANK_THRESHOLDS = [
   ["season_top10", 10],
   ["season_top5", 5],
   ["season_top3", 3],
@@ -50,7 +64,7 @@ const SEASON_RANK_THRESHOLDS = [
 ];
 
 // #2917: divisionsspecifikke sejre — "vind Division N" (rank 1 i en pulje i tier N).
-const SEASON_DIVISION_WINNER_ACHIEVEMENTS = [
+export const SEASON_DIVISION_WINNER_ACHIEVEMENTS = [
   ["season_div1_winner", 1],
   ["season_div3_winner", 3],
 ];
@@ -67,12 +81,14 @@ const PROGRESS_GROUPS = [
   { thresholds: SEASON_COUNT_THRESHOLDS, statKey: "seasonsCompleted" },
 ];
 
-const SINGLE_PROGRESS = [
-  ["transfer_buyer_10", 10, "transferBuyerCount"],
-  ["transfer_seller_10", 10, "transferSellerCount"],
-  ["secret_watchlist_50", 50, "watchlistCount"],
-  ["season_board_100", 100, "boardSatisfaction"],
-  ["team_5_achievements", 5, "__achievementCount"],
+// #4414: tallene deles nu med unlock-kaldene via konstanterne ovenfor — før stod
+// samme tærskel to steder (her og i unlock(...)) og kunne drive fra hinanden.
+export const SINGLE_PROGRESS = [
+  ["transfer_buyer_10", TRANSFER_SIDE_TARGET, "transferBuyerCount"],
+  ["transfer_seller_10", TRANSFER_SIDE_TARGET, "transferSellerCount"],
+  ["secret_watchlist_50", WATCHLIST_SCOUT_TARGET, "watchlistCount"],
+  ["season_board_100", BOARD_SATISFACTION_TARGET, "boardSatisfaction"],
+  ["team_5_achievements", TROPHY_CASE_TARGET, "__achievementCount"],
 ];
 
 function toNumber(value) {
@@ -151,8 +167,8 @@ export function getAchievementUnlocks({
     thresholds: TRANSFER_THRESHOLDS,
     value: stats.transferCount || 0,
   });
-  unlock("transfer_buyer_10", (stats.transferBuyerCount || 0) >= 10);
-  unlock("transfer_seller_10", (stats.transferSellerCount || 0) >= 10);
+  unlock("transfer_buyer_10", (stats.transferBuyerCount || 0) >= TRANSFER_SIDE_TARGET);
+  unlock("transfer_seller_10", (stats.transferSellerCount || 0) >= TRANSFER_SIDE_TARGET);
   unlock("transfer_negotiator", Boolean(stats.hasNegotiatorTransfer));
   unlock("transfer_bargain", Boolean(stats.hasBargainTransfer));
 
@@ -161,7 +177,7 @@ export function getAchievementUnlocks({
     thresholds: TEAM_SIZE_THRESHOLDS,
     value: stats.riderCount || 0,
   });
-  unlock("team_youth", (stats.riderCount || 0) > 0 && (stats.u25RiderCount || 0) / stats.riderCount >= 0.5);
+  unlock("team_youth", (stats.riderCount || 0) > 0 && (stats.u25RiderCount || 0) / stats.riderCount >= YOUTH_U25_SHARE);
   unlock("team_star", Boolean(stats.hasStarRider));
 
   addThresholdUnlocks({
@@ -169,8 +185,8 @@ export function getAchievementUnlocks({
     thresholds: LOGIN_STREAK_THRESHOLDS,
     value: stats.loginStreak || 0,
   });
-  unlock("secret_watchlist_50", (stats.watchlistCount || 0) >= 50);
-  unlock("season_board_100", (stats.boardSatisfaction || 0) >= 100);
+  unlock("secret_watchlist_50", (stats.watchlistCount || 0) >= WATCHLIST_SCOUT_TARGET);
+  unlock("season_board_100", (stats.boardSatisfaction || 0) >= BOARD_SATISFACTION_TARGET);
   // #817: definitionen fandtes i achievements-tabellen, men engine'en havde
   // ingen unlock-logik — kunne aldrig tildeles.
   unlock("season_first_result", Boolean(stats.hasRaceResult));
@@ -198,7 +214,7 @@ export function getAchievementUnlocks({
   unlock("season_grand_tour_rider", Boolean(stats.hasGrandTourRider));
 
   // This meta-achievement should consider any achievements unlocked earlier in the same sync.
-  unlock("team_5_achievements", unlockedIds.size >= 5);
+  unlock("team_5_achievements", unlockedIds.size >= TROPHY_CASE_TARGET);
 
   return newlyUnlocked;
 }
@@ -324,7 +340,7 @@ async function loadAuctionStats({ supabase, teamId }) {
 
   return {
     auctionBidCount: bids.length,
-    hasHighRollerBid: bids.some(bid => toNumber(bid.amount) > 2000000000),
+    hasHighRollerBid: bids.some(bid => toNumber(bid.amount) > HIGH_ROLLER_BID_THRESHOLD),
     auctionWinCount: wins.length,
     hasAuctionSniper: wins.some(auction => toNumber(auction.current_price) === toNumber(auction.starting_price)),
     hasAuctionLastSecond: wins.some(auction => toNumber(auction.extension_count) > 0),
@@ -376,7 +392,7 @@ async function loadTransferStats({ supabase, teamId }) {
     transferCount: transferIds.size,
     transferBuyerCount: buyerTransfers.length,
     transferSellerCount: sellerTransfers.length,
-    hasNegotiatorTransfer: [...buyerTransfers, ...sellerTransfers].some(transfer => toNumber(transfer.round) >= 3),
+    hasNegotiatorTransfer: [...buyerTransfers, ...sellerTransfers].some(transfer => toNumber(transfer.round) >= NEGOTIATOR_MIN_ROUNDS),
     // #1205: kup = købt for under halvdelen af rytterens nuværende market_value
     // (før: CZ$ mod rå uci_points — reelt dødt efter 4000x-skaleringen).
     hasBargainTransfer: buyerTransfers.some(transfer => {

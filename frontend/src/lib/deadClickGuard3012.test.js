@@ -18,11 +18,18 @@ import { fileURLToPath } from "node:url";
 const dir = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(join(dir, p), "utf8");
 
+// #4448: endMarker kan vaere en liste af alternativer — load*-funktioner findes
+// baade som `async function loadX(` og som `const loadX = useCallback(` efter
+// exhaustive-deps-oprydningen. Samme tilgang som FinancePage.loadStates.test.js.
 function body(source, startMarker, endMarker, label) {
   const start = source.indexOf(startMarker);
   assert.ok(start >= 0, `fandt ikke "${startMarker}" i ${label}`);
-  const end = source.indexOf(endMarker, start + startMarker.length);
-  assert.ok(end > start, `fandt ikke "${endMarker}" efter "${startMarker}" i ${label}`);
+  const markers = Array.isArray(endMarker) ? endMarker : [endMarker];
+  const end = markers
+    .map((m) => source.indexOf(m, start + startMarker.length))
+    .filter((i) => i > start)
+    .sort((a, b) => a - b)[0];
+  assert.ok(end > start, `fandt ingen af ${JSON.stringify(markers)} efter "${startMarker}" i ${label}`);
   return source.slice(start, end);
 }
 
@@ -30,7 +37,7 @@ function body(source, startMarker, endMarker, label) {
 
 test("RidersPage.toggleWatchlist læser { error } fra begge writes", () => {
   const src = read("../pages/RidersPage.jsx");
-  const fn = body(src, "async function toggleWatchlist(", "async function loadRiders(", "RidersPage.toggleWatchlist");
+  const fn = body(src, "async function toggleWatchlist(", ["async function loadRiders(", "const loadRiders = useCallback("], "RidersPage.toggleWatchlist");
   assert.match(fn, /const \{ error \} = await supabase\.from\("rider_watchlist"\)\.delete\(\)/);
   assert.match(fn, /const \{ error \} = await supabase\.from\("rider_watchlist"\)\.insert\(/);
   assert.match(fn, /if \(error\) \{/);
@@ -55,7 +62,7 @@ test("ActivityPage.removeFromWatchlist læser { error }", () => {
 
 test("RiderStatsPage.toggleWatchlist læser { error } fra begge writes", () => {
   const src = read("../pages/RiderStatsPage.jsx");
-  const fn = body(src, "async function toggleWatchlist(", "async function loadHistory(", "RiderStatsPage.toggleWatchlist");
+  const fn = body(src, "async function toggleWatchlist(", ["async function loadHistory(", "const loadHistory = useCallback("], "RiderStatsPage.toggleWatchlist");
   assert.match(fn, /const \{ error \} = await supabase\.from\("rider_watchlist"\)\.delete\(\)/);
   assert.match(fn, /const \{ data, error \} = await supabase\.from\("rider_watchlist"\)/);
   assert.match(fn, /if \(error\) \{/);

@@ -342,7 +342,8 @@ export type EngineState = {
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────
 //
 // Kontrakt: REN funktion, (state, ctx) -> nyt state + events (ingen mutation af
-// input-state — determinisme-testene i segmentLoop.test.ts forudsaetter dette).
+// input-state — determinisme-testene i index.test.ts og rng.test.ts forudsaetter
+// dette; #4479: her stod en segmentLoop-testfil der ikke findes).
 // F2 leverer default-implementeringer (climbSelection.ts/descent.ts/finale.ts's
 // no-op-varianter) der ingenting goer: returnerer samme state, ingen events.
 

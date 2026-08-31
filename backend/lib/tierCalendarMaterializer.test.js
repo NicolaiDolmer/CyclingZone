@@ -18,7 +18,8 @@ const LEGACY_MIX = {
   oneDayShareMin: {}, terrainFamilyMin: {}, mountainFreeMin: {},
 };
 
-// Mock-supabase (samme mønster som seasonCalendarMaterializer.test.js): insert().select()
+// Mock-supabase (samme mønster som resten af materializer-testene; #4479: her
+// stod seasonCalendarMaterializer, filens navn før omdøbningen): insert().select()
 // returnerer HELE den indsatte række, så materializeren får pool_race_id + name/stages.
 function makeSupabase(initial = {}) {
   let idSeq = 1;

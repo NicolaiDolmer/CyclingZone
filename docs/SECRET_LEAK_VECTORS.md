@@ -148,6 +148,28 @@ Anbefaling: #634 ships nu. #563 prioriteres i sprint 18 maj-17 juni som "P1 sikk
 |---|---|---|---|
 | Clipboard-read med value | `powershell.exe -Command "Get-Clipboard"` (hvis bruger lige har kopieret secret) | Ingen kendt, men risiko-vektor | Brugen skal kontekstualiseres: hvis bruger kopierer secret OG agent læser clipboard → leak. Sanitizer fanger output. |
 
+### H. Lokal dev-/preview-server (HTTP-hentede Vite-moduler)
+
+Klassen adskiller sig fra A-G: de vektorer handler om kommandoer der *beder om* hemmeligheder. Her er lækagen en bivirkning af at læse frontend-kode. **Vite injicerer `import.meta.env` i hvert eneste modul den serverer**, og `frontend/src/lib/supabase.ts:4-5` læser `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` derfra. Ethvert HTTP-svar fra dev-serveren (5173) eller preview-serveren (5174) kan derfor bære nøglen inline — uanset hvilket modul der hentes, og uanset hvor harmløs hensigten er.
+
+| Vector | Eksempel-command (FARLIG) | Sidste leak | Mitigation |
+|---|---|---|---|
+| HTTP-hentning af et Vite-modul | `curl http://localhost:5173/src/lib/supabase.ts`, `Invoke-WebRequest http://localhost:5174/src/main.jsx` | **2026-07-26 ([#3024](https://github.com/NicolaiDolmer/CyclingZone/issues/3024))** — agent curl'ede en Vite-dev-URL under [#3018](https://github.com/NicolaiDolmer/CyclingZone/issues/3018)-arbejde for at inspicere et modul. Sanitizer blokerede outputtet, incident logget. Ingen rotation (publishable anon-key). | **Hent ALDRIG et Vite-modul råt over HTTP.** Læs kildefilen fra disk i stedet: `Read('frontend/src/lib/supabase.ts')` — på disk står `import.meta.env.VITE_*` som *navne*, ikke som værdier. Skal du kun vide OM noget findes i det serverede modul: `curl -s <url> \| grep -c '<mønster>'` (printer kun et tal, aldrig indhold). |
+| HTTP-hentning af dev-bundles / transformerede chunks | `curl http://localhost:5173/@vite/client`, `curl http://localhost:5173/node_modules/.vite/deps/<dep>.js` | Ingen kendt | Samme regel — **enhver** sti på dev-/preview-serveren kan bære det injicerede env-objekt. Der findes ingen "sikker" dev-server-URL. |
+| Browser-tool der returnerer et dev-modul som TEKST | `javascript_tool`/`browser_evaluate` med `await fetch('/src/lib/supabase.ts').then(r => r.text())` mod localhost:5173 | Ingen kendt | Omgår ikke vektoren — teksten lander i tool-output på præcis samme måde som `curl`. Brug `read_page` (a11y-træ, intet script-indhold) eller et screenshot til UI-verifikation, og disk-læsning til kode-inspektion. |
+
+#### Er dev-server-output overhovedet en hændelse? (afklaring, [#3024](https://github.com/NicolaiDolmer/CyclingZone/issues/3024) acceptkriterium 3)
+
+**Afgørende er nøgleformatet, ikke afsenderen.** Dokumentet fastslår allerede ovenfor at `sb_publishable_...` ikke er en secret per Supabases model. Den samme nøgle hentet gennem dev-serveren bliver ikke farligere af at komme derfra. Klassificeringen er derfor:
+
+| Nøgleformat i dev-output | Blokeres af sanitizer? | Er det en hændelse? | Rotation? |
+|---|---|---|---|
+| Legacy anon-key (`eyJ...`, JWT) | **Ja** — `jwt-supabase-legacy` + `jwt` | **Ja, log den.** Ikke fordi anon-nøglen i sig selv er farlig, men fordi en anon-JWT og en service_role-JWT har identisk header og kun adskiller sig i den base64-kodede payload. Regexen kan ikke skelne dem uden at afkode, og et fejlskøn den anden vej koster en rotation. | Nej ved bekræftet anon-rolle. Blast radius = det browseren allerede udleverer. |
+| Nyt publishable-format (`sb_publishable_...`) | Ja — `supabase-publishable` (bevidst konsistens-valg fra #634) | Nej. Log-linjen er støj-niveau: nøglen er public per design. | Nej. |
+| Service-key (`sb_secret_...`) eller service_role-JWT | Ja | **Ja, ægte hændelse.** Må aldrig kunne nå en `VITE_*`-variabel; sker det, er root cause en fejlkonfigureret `.env`, ikke dev-serveren. | Ja, straks. |
+
+**Konsekvens for guarden:** sanitizeren slækkes **ikke** for dev-server-output. Den kan ikke skelne anon fra service_role på JWT-formatet alene, og et falsk negativ koster en rotation mens et falsk positiv kun koster et tool-kald. Det der ændres er *triagen*: en incidents-log-linje med `jwt-supabase-legacy` fra en localhost-URL betyder "du ramte en kendt vektor, brug disk-læsning i stedet" — ikke "rotér nu". Et skifte til `sb_publishable_`-formatet ville fjerne tvetydigheden helt; det er ikke verificeret hvilket format repoet kører i dag, fordi `.env`-læsning er blokeret af Lag A og skal måles af ejeren udenfor Claude Code.
+
 ## Tooling-status (post-#634)
 
 | Guard | Status | Reference |
@@ -166,10 +188,27 @@ Anbefaling: #634 ships nu. #563 prioriteres i sprint 18 maj-17 juni som "P1 sikk
 | get-test-token.mjs: sikker default-kanal (fil, ikke stdout) | ✅ Bygget #3342 | [`scripts/get-test-token.mjs`](../scripts/get-test-token.mjs) — `--print` for gammel adfærd, advarsel i `--help` |
 | PreToolUse: get-test-token.mjs --print + output-fil-read block | ✅ Bygget #3342 | samme hook — `--print`-flag + `.codex.local/test-token*.json` (cat/Get-Content/Read/Grep) |
 | Test-fixture: block-dangerous-secret-commands.sh | ✅ Bygget #3342 | [`scripts/test-block-dangerous-secret-commands.sh`](../scripts/test-block-dangerous-secret-commands.sh) |
+| Hook-besked: kendte falske positiver forklaret | ✅ Bygget #3024 | `sanitize-secrets.sh` — stderr-sektion "Known false positives" |
+| Test-fixture: named patterns slår igennem i signature-felt | ✅ Bygget #3024 | `scripts/test-sanitize-secrets.sh` — 2 `#3024 guard`-cases |
+
+## Kendte falske positiver i `sanitize-secrets.sh`
+
+`HIGH_ENTROPY`-fallbacken er en ren entropi-heuristik uden kontekst: URL-safe base64, 40+ tegn, blandet case + cifre. Hver gang en ny, legitim base64-lignende datatype passerer et tool-output, koster den et blokeret tool-kald indtil den skrives ind. **Alle undtagelser gælder KUN fallbacken** — named patterns (`sb_secret_`, `eyJ...`, `ghp_`, `AKIA`, Sentry, Discord, Stripe) kører før og fuld-blokerer, så ingen af dem kan bruges som smuglerrute for en kendt-præfikset secret.
+
+| Falsk positiv | Status | Ref |
+|---|---|---|
+| Base64-billeddata fra screenshots (241 + 587 fragmenter pr. kald) | ✅ Lukket — image-mode springer fallbacken over | #666 |
+| Flade fil-stier og worktree-/session-navne (`C--Dev-CyclingZone-...`) | ✅ Lukket — `looks_like_path_or_identifier` | [#752](https://github.com/NicolaiDolmer/CyclingZone/issues/752) |
+| ISO-timestamp-suffiksede backup-filnavne fra repair-scripts | ✅ Lukket — `looks_like_iso_timestamp_filename` | [#3317](https://github.com/NicolaiDolmer/CyclingZone/issues/3317) |
+| Vercel-/Supabase-bottens `[vc]:`/`[supa]:` PR-kommentar-metadata | ✅ Lukket — `BOT_METADATA_RE` | [#3128](https://github.com/NicolaiDolmer/CyclingZone/issues/3128) |
+| **Thinking-signaturer i `.jsonl`-agent-transcripts** (`"signature"`-feltet) | ⚠️ **Delvist** — hook-beskeden forklarer den nu, men fallbacken blokerer stadig. Målt 30/8 2026: 4.431 felter i 40/40 nyeste transcripts, 69.408 fragmenter, korteste felt 352 tegn. Signaturen er en integritets-signatur over modellens eget ræsonnement — ingen adgang, ingen rotation, ikke en credential. **Undtagelse i fallbacken afventer ejer-go**, se postmortem. | [#3024](https://github.com/NicolaiDolmer/CyclingZone/issues/3024) + [`.claude/learnings/2026-08-31-sanitizer-falsk-positiv-paa-thinking-signaturer.md`](../.claude/learnings/2026-08-31-sanitizer-falsk-positiv-paa-thinking-signaturer.md) |
+| Egne test-fixtures i `scripts/test-sanitize-secrets.sh` (`...FIXTUREDoNotUse...`) | ⚠️ Åben — `ALLOW`-markøren er `FIXTURE_DO_NOT_USE`, fixturerne skriver `FIXTUREDoNotUse`, og `ALLOW` bruger `.match()` (anker i start) mens markøren står midt i strengen. At læse testfilen blokerer derfor sit eget output. Kosmetisk, ingen sikkerhedsrisiko. | opdaget under [#3024](https://github.com/NicolaiDolmer/CyclingZone/issues/3024) |
+
+**Når du rammer en ny:** blokér-beskeden er korrekt indtil andet er bevist. Verificér typen — `types=high-entropy` ALENE kan være en FP, mens ethvert named type (`jwt*`, `sb_secret_`, `ghp_`, `AKIA`, `sentry-dsn`, ...) er et ægte fund. Tilføj derefter en række her + en undtagelse med et eksplicit rækkefølge-argument + en "still blocks"-test der planter en syntetisk secret netop dér hvor undtagelsen gælder.
 
 ## Når en ny vektor opdages
 
-1. Tilføj en række i den relevante tabel (A-G) ovenfor.
+1. Tilføj en række i den relevante tabel (A-H) ovenfor.
 2. Hvis vektor er en CLI-command der printer values: opdatér `block-dangerous-secret-commands.sh` med ny pattern.
 3. Hvis vektor er en ny secret-format (fx ny provider): opdatér regex i `sanitize-secrets.sh` + `sanitize-secrets.ps1` + `.github/workflows/secret-scan.yml` (eller gitleaks-config).
 4. Hvis vektor blev fanget i en real session: log incident i `.claude/learnings/<dato>-secret-leak-<provider>.md` med post-mortem.

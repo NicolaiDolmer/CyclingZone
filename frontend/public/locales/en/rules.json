@@ -42,7 +42,7 @@
         },
         "salary": {
           "title": "Rider salary",
-          "text": "A rider's salary is frozen when you sign them at {salaryRatePct}% of their market value at that moment, and does not change automatically afterwards. Academy riders use a separate youth rate (see Academy)."
+          "text": "A rider's salary is frozen when you sign them at {salaryRatePct}% of their current production value at that moment, and does not change automatically afterwards. Production value is what the game expects him to deliver this season at his current abilities, not what he is worth on the market. The share is the same for every team in every division, and academy riders use it too."
         },
         "negativeInterest": {
           "title": "Negative-balance interest",
@@ -150,7 +150,7 @@
         },
         "salary": {
           "title": "Youth salary & contracts",
-          "text": "Academy riders are paid {academySalaryPct}% of their market value and sign {academyContractLength}-season youth contracts."
+          "text": "Academy riders are paid {academySalaryPct}% of their current production value, the same share as senior riders, and sign {academyContractLength}-season youth contracts."
         },
         "drift": {
           "title": "Upkeep",
