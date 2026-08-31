@@ -21,6 +21,10 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/PLANNING_CENTER_RULES.md` | Holdudtagelse og sæsonplanlægning: IA'en Z1-Z4, skrivevejen og dens rate limit, linserne, assistent-gaten |
 | `docs/ECONOMY_RULES.md` | Økonomi, værdi og løn |
 | `docs/PROGRESSION_RULES.md` | Rytterudvikling, træning, potentiale, lofter, rating, ryttertyper |
+| `docs/ASSISTANT_RULES.md` | **SSOT for assistenten:** auto-udtagelse, sen redning ved afvikling, peak-forslag, automatisk træningsfokus · hvad den ikke må bryde · kendte afvigelser (#3957, #3743) |
+| `docs/TRAINING_RULES.md` | **SSOT for træningsmaskinen:** det daglige tick, dagstyper, ugerytme, restitution, træner- og facilitets-effekt, løbsdages forhold til træning. Lofter og rating bor i PROGRESSION_RULES |
+| `docs/TRANSFER_MARKET_RULES.md` | **SSOT for transfermarkedet:** auktionens livscyklus og timere, bud og autobud, frie agenter, annullering, finalisering, lån, udskudte holdskifter, trup-lofter, misbrugs-gates |
+| `docs/SOCIAL_RULES.md` | **SSOT for de sociale features:** Discord-kobling og rollesync, DM-udsendelse og præferencer, notifikationer, achievements, holdprofiler, ranglister. Forummets indhold bor i FORUM_RULES |
 | `docs/GAME_INVARIANTS.md` | Game-balance konstanter (sponsor/balance/gældsloft/upload-grænser) |
 | `docs/RIDER_GENERATION.md` | SSOT for hvordan ryttere SKABES: determinisme, navne-pools, trupstørrelser, AI-fyld-politik, derive-kæden. Skal opdateres ved enhver ændring i generationen (#4178) |
 | `docs/ALUNTA_OPS.md` | Alunta webhook/reconcile-opsætning · Infisical-nøgler · hvilke dashboard-events skal slås til · pre-fornyelses-tjekliste (#2736) |
