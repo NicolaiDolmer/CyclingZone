@@ -30,6 +30,8 @@
 // ingen kode-sti skriver endnu, fx 'starting_budget' der seedes via SQL.)
 
 import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -37,6 +39,9 @@ import {
   loadCheckAllowedTypes,
   collectScanFiles,
   extractCodeWrittenTypes,
+  collectAuditEnumDrift,
+  extractLiteralEnumValues,
+  AUDIT_ENUM_COLUMNS,
 } from "../../scripts/lint-finance-types.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -106,5 +111,132 @@ test("HVER kode-skrevet finance_transactions.type har en CHECK-constraint-værdi
           `\nFix: tilføj værdien til finance_transactions_type_check i en NY database/*.sql-migration ` +
           `(additiv DROP IF EXISTS + re-ADD, jf. database/2026-06-19-finance-forced-debt-sale-type.sql). ` +
           `Ejeren applier migrationen (auto-applies ved merge).`,
+  );
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// #1464-udvidelse (2026-08-31): `type` var kun ÉN af tre CHECK-begrænsede
+// enum-kolonner på finance_transactions. De samme write-sinks sætter også
+// `actor_type` og `related_entity_type`, hvis værdier kommer fra de frosne
+// konstant-objekter FINANCE_ACTOR_TYPE / FINANCE_RELATED_ENTITY i
+// backend/lib/economyConstants.js. Den fils egen kommentar påstod allerede at de
+// "MUST matche database CHECK constraints" — men INTET håndhævede påstanden, så en
+// ny nøgle i et af objekterne ville slippe grøn gennem CI og først fejle med
+// check_violation (23514) på første ægte prod-INSERT. Samme bug-klasse som
+// #1463/#1465/#2948, bare i nabokolonnen. Målt mod live-skemaet 2026-08-31:
+// actor_type = 5 tilladte værdier, related_entity_type = 7, ingen drift i dag.
+//
+// rider_ownership_events (#3582) er med af samme grund: RIDER_OWNERSHIP_REASON i
+// backend/lib/riderOwnershipAudit.js er endnu et frosset konstant-objekt (10 værdier)
+// der skal matche rider_ownership_events_reason_check, plus tabellens egne actor_type-
+// og related_entity_type-CHECKs.
+// ────────────────────────────────────────────────────────────────────────────
+test("HVER kode-skrevet audit-enum-værdi har en CHECK-constraint-værdi (#1464 forward-guard)", () => {
+  const reports = collectAuditEnumDrift(collectScanFiles(backendRoot));
+  assert.equal(
+    reports.length,
+    AUDIT_ENUM_COLUMNS.length,
+    "collectAuditEnumDrift() rapporterede ikke for alle registrerede audit-enum-kolonner",
+  );
+
+  for (const report of reports) {
+    assert.ok(
+      report.source,
+      `fandt ingen ${report.constraint}-definition i database/*.sql — parser sandsynligvis brudt`,
+    );
+    // Sanity: falder discovery under kolonnens gulv er parseren (ikke koden) brudt.
+    assert.ok(
+      report.codeValues.size >= report.minCodeValues,
+      `forventede mindst ${report.minCodeValues} kode-skrevne ${report.table}.${report.column}-værdier, ` +
+        `fandt kun ${report.codeValues.size} — konstant-/literal-parseren er sandsynligvis brudt`,
+    );
+
+    assert.deepEqual(
+      report.missing.map((x) => x.value),
+      [],
+      report.missing.length === 0
+        ? ""
+        : `${report.table}.${report.column}-værdi(er) brugt i backend-koden UDEN en ` +
+            `tilsvarende CHECK-constraint-værdi (en ægte prod-INSERT ville fejle med ` +
+            `check_violation 23514).\n` +
+            `Autoritativ CHECK parset fra: database/${report.source}\n` +
+            `Manglende:\n` +
+            report.missing
+              .map((x) => `  - '${x.value}'  skrevet i: ${x.locations.join(", ")}`)
+              .join("\n") +
+            `\nFix: tilføj værdien til ${report.constraint} i en NY database/*.sql-migration ` +
+            `(additiv DROP IF EXISTS + re-ADD, jf. database/2026-05-09-audit-log-foundation.sql). ` +
+            `Ejeren applier migrationen (auto-applies ved merge).`,
+    );
+  }
+});
+
+// Negativ kontrol i DENNE suite også (den kører i `npm test --prefix backend`, altså i
+// den lokale pre-flight): beviser at forward-guarden faktisk bider, ikke bare at den
+// er grøn. Fixturen er en midlertidig fil med en opdigtet actor i en ægte
+// write-sink-form; konstant-objekterne læses fra de rigtige filer.
+test("negativ kontrol: collectAuditEnumDrift() flager en fiktiv audit-enum-værdi", () => {
+  const FAKE_ACTOR = "scout_bot_never_shipped_negative_control";
+  const dir = mkdtempSync(join(tmpdir(), "cz-enum-neg-backend-"));
+  const file = join(dir, "fixture.js");
+  writeFileSync(
+    file,
+    [
+      "await incrementBalanceWithAudit(client, { teamId, delta, payload: {",
+      '  type: "salary",',
+      `  actor_type: "${FAKE_ACTOR}",`,
+      "} });",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const reports = collectAuditEnumDrift([file]);
+  const financeActor = reports.find(
+    report => report.table === "finance_transactions" && report.column === "actor_type",
+  );
+  assert.ok(financeActor, "ingen rapport for finance_transactions.actor_type");
+  assert.ok(
+    !financeActor.allowed.has(FAKE_ACTOR),
+    "den fiktive actor findes uventet i CHECK'et — vælg en anden fiktiv streng",
+  );
+  assert.deepEqual(financeActor.missing.map(x => x.value), [FAKE_ACTOR]);
+
+  // Kontrol-gruppe: de øvrige kolonner er stadig rene, så fundet stammer fra fixturen
+  // og ikke fra en generelt brudt sammenligning.
+  for (const other of reports.filter(report => report !== financeActor)) {
+    assert.deepEqual(
+      other.missing.map(x => x.value),
+      [],
+      `${other.table}.${other.column} skulle være ren`,
+    );
+  }
+});
+
+// Måltabel-attribution (review-fund på PR #4458): rå-literal-discovery må ikke tilskrive
+// en rider_ownership_events-literal til finance_transactions' CHECK. De to tabellers
+// CHECKs er identiske i dag, så fejlen ville være usynlig indtil de skiller sig.
+test("audit-enum-literaler måles mod deres EGEN tabels CHECK (#4458-review)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "cz-enum-attr-backend-"));
+  const file = join(dir, "fixture.js");
+  writeFileSync(
+    file,
+    [
+      "await recordRiderOwnershipEvent(supabase, {",
+      "  riderId: rider.id,",
+      '  actorType: "api",',
+      "});",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const keys = ["actor_type", "actorType"];
+  assert.equal(
+    extractLiteralEnumValues([file], keys, "finance_transactions").size,
+    0,
+    "en ownership-literal må ALDRIG måles mod finance_transactions' CHECK",
+  );
+  assert.deepEqual(
+    [...extractLiteralEnumValues([file], keys, "rider_ownership_events").keys()],
+    ["api"],
   );
 });
