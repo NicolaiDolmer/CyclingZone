@@ -12,7 +12,7 @@ import {
   tiltFactorFor, deriveUniformTierTilt, TIER_UNIFORM_TILT_BY_TIER,
   tiltFillerForUniformTargets, applyUniformTierTilt,
 } from "./tierUniformFillerTilt.js";
-import { TIER_UNIFORM_TARGET_FRACTIONS, TIER_UNIFORM_TARGET_CATEGORIES } from "./calendarCompositionTargets.js";
+import { TIER_UNIFORM_TARGET_CATEGORIES } from "./calendarCompositionTargets.js";
 import { ARCHETYPE_PROFILES } from "./raceStageProfileGenerator.js";
 
 // ── tiltFactorFor ────────────────────────────────────────────────────────────────
