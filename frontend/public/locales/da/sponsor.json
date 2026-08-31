@@ -42,7 +42,7 @@
     "signing": "{amount} CZ$ underskriftsbonus, udbetales med det samme",
     "stageWin": "{amount} CZ$ pr. etapesejr",
     "podium": "{amount} CZ$ pr. podieplads (2.–3.)",
-    "podiumCapped": "{amount} CZ$ pr. podieplads (2.–3.). Bonusloft: {cap} CZ$",
+    "podiumCapped": "{amount} CZ$ pr. podieplads (2.–3.). Bonusloft: {cap} CZ$ pr. sæson",
     "seasonObjective": "Slut i øverste halvdel af din division: {amount} CZ$ ved sæsonafslutning",
     "seasonObjectiveTop40": "Slut i top-40% af din division: {amount} CZ$ ved sæsonafslutning"
   },
@@ -103,7 +103,7 @@
         "signing": "Underskriftsbonus",
         "objective": "Sæsonmål-bonus",
         "generic": "Resultatbonus · {raceName}",
-        "capLine": "Resultatbonus-loft: {used} af {limit} brugt"
+        "capLine": "Resultatbonus-loft denne sæson: {used} af {limit} brugt"
       }
     },
     "footer": {
