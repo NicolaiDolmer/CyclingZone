@@ -10,11 +10,27 @@ import {
   computeActivityStrength,
   computeLoanFunnelStrength,
   computeLifecycleComponent,
+  computeDirectionalStrength,
   scorePairIncident,
   scoreFunnelIncident,
 } from "./fairplayScoring.js";
 
 const THRESHOLD = FAIRPLAY_DEFAULTS.flagThreshold;
+
+// De otte højest scorende UTRIAGEREDE flag 30/8 2026 lå på 0,917-1,430 og havde
+// alle NUL identitets-signaler (målt mod prod, #3818-triagen). Et par med
+// korroboreret identitet skal ligge over toppen af den støjklasse.
+const IDENTITYLESS_TOP_SCORE = 1.43;
+
+// n handler på fortløbende dage, alle samme vej på nær `exceptions` stykker.
+function directedRun({ count, towardHi = true, startDay = 1, exceptions = 0, sameDay = false }) {
+  return Array.from({ length: count }, (_, i) => ({
+    at: sameDay
+      ? `2026-08-${String(startDay).padStart(2, "0")}T${String(8 + i).padStart(2, "0")}:00:00Z`
+      : `2026-08-${String(startDay + i).padStart(2, "0")}T12:00:00Z`,
+    towardHi: i < exceptions ? !towardHi : towardHi,
+  }));
+}
 
 // ── Komponenter ──────────────────────────────────────────────────────────────
 
@@ -216,6 +232,157 @@ test("FUNNEL: almindelig ny spiller (kun ét mildt signal) flagges ikke", () => 
   const r = scoreFunnelIncident({
     amount: 120_000,
     lifecycleSignals: [{ name: "account_age_at_tx", strength: computeAccountAgeStrength(30) }],
+  });
+  assert.equal(r.score, 0);
+});
+
+// ── Retnings-signal (#3818) ─────────────────────────────────────────────────
+
+test("DIRECTIONAL #3818-parret (12 af 12 samme vej over 5 dage, fan-out 1): fuld styrke", () => {
+  // Målt mod prod 30/8 2026: Nickstar Rockets ↔ The Wheelbarrels har 12 handler
+  // i 90-dages-vinduet, ALLE med værdioverskuddet samme vej, fordelt på 5 dage.
+  // The Wheelbarrels har handlet med præcis ét andet hold.
+  const s = computeDirectionalStrength({
+    transactions: directedRun({ count: 12, towardHi: false, startDay: 10 }),
+    counterpartiesLo: 9,
+    counterpartiesHi: 1,
+  });
+  assert.equal(s, 1);
+});
+
+test("DIRECTIONAL #4154-parret (20 af 21 samme vej over 6 dage, fan-out 1): nær fuld styrke", () => {
+  const s = computeDirectionalStrength({
+    transactions: directedRun({ count: 21, startDay: 6, exceptions: 1 }),
+    counterpartiesLo: 1,
+    counterpartiesHi: 7,
+  });
+  assert.ok(s > 0.9, `forventede > 0.9, fik ${s}`);
+});
+
+test("DIRECTIONAL fan-out-guard: ensrettet mønster mod et hold med mange modparter = 0", () => {
+  // BPTrain ↔ Lidl-Leffe 30/8: 4 af 4 samme vej over 3 dage, men modparts-tal
+  // 10 og 29. Det er markedsaktivitet, ikke en kanal.
+  const s = computeDirectionalStrength({
+    transactions: directedRun({ count: 4, startDay: 6 }),
+    counterpartiesLo: 10,
+    counterpartiesHi: 29,
+  });
+  assert.equal(s, 0);
+});
+
+test("DIRECTIONAL dags-guard: samlet holdkøb på ÉN dag er én begivenhed, ikke fire", () => {
+  // LEGO-Vestas ↔ Reynolds Team 30/8: 4 af 4 samme vej, men alle inden for
+  // samme minut. Fan-out ville slippe det igennem — dags-guarden stopper det.
+  const s = computeDirectionalStrength({
+    transactions: directedRun({ count: 4, startDay: 27, sameDay: true }),
+    counterpartiesLo: 28,
+    counterpartiesHi: 2,
+  });
+  assert.equal(s, 0);
+});
+
+test("DIRECTIONAL ensretnings-guard: almindelig tovejs-handel (skiftevis hver vej) = 0", () => {
+  // LEGO-Vestas ↔ Wander Riders-profilen: 6 handler, 3 hver vej. Bemærk at
+  // guarden er en VINDUES-egenskab: et rent ensrettet forløb på 3+ dage inde i
+  // en ellers blandet historik kvalificerer bevidst til MINIMUM styrke (0,5) —
+  // det er stadig gatet af værdistrøm og af fan-out.
+  const s = computeDirectionalStrength({
+    transactions: Array.from({ length: 6 }, (_, i) => ({
+      at: `2026-08-0${i + 2}T12:00:00Z`,
+      towardHi: i % 2 === 0,
+    })),
+    counterpartiesLo: 1,
+    counterpartiesHi: 2,
+  });
+  assert.equal(s, 0);
+});
+
+test("DIRECTIONAL under 3 handler = 0, og mønster spredt ud over vinduet = 0", () => {
+  assert.equal(
+    computeDirectionalStrength({
+      transactions: directedRun({ count: 2, startDay: 1 }),
+      counterpartiesLo: 1,
+      counterpartiesHi: 1,
+    }),
+    0
+  );
+  // 3 handler samme vej, men 40+ dage mellem hver — uden for 30-dages-vinduet.
+  assert.equal(
+    computeDirectionalStrength(
+      {
+        transactions: [
+          { at: "2026-06-01T12:00:00Z", towardHi: true },
+          { at: "2026-07-15T12:00:00Z", towardHi: true },
+          { at: "2026-08-28T12:00:00Z", towardHi: true },
+        ],
+        counterpartiesLo: 1,
+        counterpartiesHi: 1,
+      },
+      FAIRPLAY_DEFAULTS
+    ),
+    0
+  );
+});
+
+// ── Kalibrering #3818: rangeringen skal vende ──────────────────────────────────
+
+test("KALIBRERING #3818 vægtnings-gulv: parret på det beløb detektoren FAKTISK så", () => {
+  // Før fixet så detektoren kun 1 af parrets handler (listing-joinet var tomt),
+  // så nettostrømmen var 64.194 → værdi-komponent 0,257 → score 0,571, nr. 13
+  // af 23. Signalsummen var 2,225. Gulvet i multiplikatoren skal alene løfte
+  // sagen over den identitetsløse støjklasse, UDEN retnings-signalet.
+  const r = scorePairIncident({
+    netFlowAbs: 64_194,
+    identitySignals: { first_seen_at_match: true, ip_exact_low_fanout: true },
+    priceOutlierStrengths: [computePriceOutlierStrength(71.03)],
+    lifecycleSignals: [{ name: "low_activity_profile", strength: 0.85 }],
+  });
+  assert.ok(
+    r.score > IDENTITYLESS_TOP_SCORE,
+    `forventede > ${IDENTITYLESS_TOP_SCORE}, fik ${r.score}`
+  );
+  assert.equal(r.components.value, 0.257, "værdi-komponenten er uændret — kun multiplikatoren ændrer sig");
+});
+
+test("KALIBRERING #3818 fuld profil: retnings-signal + korrekt beløb scorer højest af alt utriageret", () => {
+  // Efter transfer-synligheds-fixet ser detektoren alle 12 handler:
+  // nettostrøm 505.507 (mætter), 71x-handlen giver fuld prisafvigelse.
+  const r = scorePairIncident({
+    netFlowAbs: 505_507,
+    identitySignals: { first_seen_at_match: true, ip_exact_low_fanout: true },
+    priceOutlierStrengths: [computePriceOutlierStrength(77.04)],
+    lifecycleSignals: [{ name: "low_activity_profile", strength: 0.85 }],
+    directionalStrength: computeDirectionalStrength({
+      transactions: directedRun({ count: 12, towardHi: false, startDay: 10 }),
+      counterpartiesLo: 9,
+      counterpartiesHi: 1,
+    }),
+  });
+  assert.ok(r.score > IDENTITYLESS_TOP_SCORE, `forventede > ${IDENTITYLESS_TOP_SCORE}, fik ${r.score}`);
+  const names = r.signals.map((s) => s.name);
+  assert.ok(names.includes("directional_value_flow"), `retnings-signalet mangler i nedbrydningen: ${names}`);
+});
+
+test("KALIBRERING #3818: gulvet må ALDRIG løfte identitet-alene over tærsklen", () => {
+  // Beers & Gears ↔ Guaracha (CGNAT-sammenfald, 76.678 strøm, ingen andre
+  // signaler) er den skarpeste grænse-case: gulvet kræver korroboration.
+  const r = scorePairIncident({
+    netFlowAbs: 76_678,
+    identitySignals: { ip_exact_low_fanout: true },
+  });
+  assert.ok(r.score < THRESHOLD, `forventede < ${THRESHOLD}, fik ${r.score}`);
+  assert.equal(r.components.multiplier, r.components.value, "uden korroboration er multiplikatoren værdien rå");
+});
+
+test("KALIBRERING #3818: ingen værdistrøm slår stadig ALT — også med retnings-signal", () => {
+  // Den bindende designregel (ejer 30/7, #3131) må ikke kunne omgås af de nye
+  // komponenter: gaten ligger før multiplikator-gulvet.
+  const r = scorePairIncident({
+    netFlowAbs: 0,
+    identitySignals: { first_seen_at_match: true, ip_exact_low_fanout: true },
+    priceOutlierStrengths: [1],
+    lifecycleSignals: [{ name: "loan_then_value_loss", strength: 1 }],
+    directionalStrength: 1,
   });
   assert.equal(r.score, 0);
 });

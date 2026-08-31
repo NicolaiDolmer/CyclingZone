@@ -21,6 +21,7 @@ import {
   FAIRPLAY_DEFAULTS,
   computeAccountAgeStrength,
   computeActivityStrength,
+  computeDirectionalStrength,
   computeLoanFunnelStrength,
   computePriceOutlierStrength,
   scoreFunnelIncident,
@@ -162,8 +163,14 @@ export function computePairIdentitySignals(pa, pb) {
 export function normalizeTransactions({ transfers, auctions, swaps }) {
   const txs = [];
   for (const t of transfers) {
-    const seller = t.listing?.seller_team_id;
-    const rider = t.listing?.rider;
+    // #3818: seller/rider læses fra transfer_offers' EGNE denormaliserede
+    // kolonner, ikke gennem listing-joinet. transfer_listings-rækken slettes
+    // når handlen gennemføres, så joinet gav null for 141 af 141 accepterede
+    // handler i de sidste 90 dage (målt mod prod 30/8 2026) — hele den direkte
+    // handelskanal var usynlig for detektoren, inklusive 71x-handlen i #3818.
+    // Listing-joinet beholdes som fallback for rækker fra før kolonnerne fandtes.
+    const seller = t.seller_team_id ?? t.listing?.seller_team_id;
+    const rider = t.rider ?? t.listing?.rider;
     if (!seller || !t.buyer_team_id || seller === t.buyer_team_id) continue;
     const price = t.counter_amount ?? t.offer_amount;
     txs.push({
@@ -276,6 +283,18 @@ export function buildFairplayReport({
     pairs.get(key).push(tx);
   }
 
+  // Modparts-tælling pr. hold (#3818's fan-out-guard): hvor mange FORSKELLIGE
+  // menneskehold har holdet handlet med i vinduet. Bygges fra pairs-nøglerne,
+  // så den ser præcis det samme datagrundlag som scoringen.
+  const counterparties = new Map();
+  for (const key of pairs.keys()) {
+    const [a, b] = key.split("|");
+    if (!counterparties.has(a)) counterparties.set(a, new Set());
+    if (!counterparties.has(b)) counterparties.set(b, new Set());
+    counterparties.get(a).add(b);
+    counterparties.get(b).add(a);
+  }
+
   const teamName = (id) => humanTeams.get(id)?.name ?? id;
   const flags = [];
   let candidatesEvaluated = 0;
@@ -289,11 +308,19 @@ export function buildFairplayReport({
     const userHi = humanTeams.get(hi).user;
     const identitySignals = computePairIdentitySignals(profiles.get(userLo.id), profiles.get(userHi.id));
 
-    // Netto-værdistrøm mod hi (3135-konventionen), + prisafvigelser pr. handel
+    // Netto-værdistrøm mod hi (3135-konventionen), + prisafvigelser pr. handel.
+    // directedTxs bærer RETNINGEN af hver enkelt handels værdioverskud (#3818)
+    // — ikke hvem der fik rytteren, men hvilken vej overskuddet flyttede.
     let netFlowTowardHi = 0;
     const priceOutlierStrengths = [];
+    const directedTxs = [];
     for (const tx of pairTxs) {
       netFlowTowardHi += tx.toTeam === hi ? tx.flowToRecipient : -tx.flowToRecipient;
+      const recipientIsHi = tx.toTeam === hi;
+      directedTxs.push({
+        at: tx.at,
+        towardHi: tx.flowToRecipient >= 0 ? recipientIsHi : !recipientIsHi,
+      });
       if (tx.type === "swap") {
         for (const r of tx.swapLegRatios ?? []) priceOutlierStrengths.push(computePriceOutlierStrength(r, config));
       } else if (tx.marketValue > 0) {
@@ -328,8 +355,23 @@ export function buildFairplayReport({
     }
     const lifecycleSignals = [...lifecycleByName.values()];
 
+    const directionalStrength = computeDirectionalStrength(
+      {
+        transactions: directedTxs,
+        counterpartiesLo: counterparties.get(lo)?.size ?? 0,
+        counterpartiesHi: counterparties.get(hi)?.size ?? 0,
+      },
+      config
+    );
+
     const pairResult = scorePairIncident(
-      { netFlowAbs: Math.abs(netFlowTowardHi), identitySignals, priceOutlierStrengths, lifecycleSignals },
+      {
+        netFlowAbs: Math.abs(netFlowTowardHi),
+        identitySignals,
+        priceOutlierStrengths,
+        lifecycleSignals,
+        directionalStrength,
+      },
       config
     );
 
@@ -358,6 +400,11 @@ export function buildFairplayReport({
           net_flow_direction: netFlowTowardHi >= 0 ? teamName(hi) : teamName(lo),
           n_transactions: pairTxs.length,
           window_days: 90,
+          // #3818: hvor ensrettet mønstret er, og hvor lukket parret er.
+          n_transactions_toward_direction: directedTxs.filter((t) => t.towardHi === (netFlowTowardHi >= 0))
+            .length,
+          counterparties_lo: counterparties.get(lo)?.size ?? 0,
+          counterparties_hi: counterparties.get(hi)?.size ?? 0,
           components: pairResult.components,
           transactions: txEvidence,
           market_value_is_current_proxy: true,
@@ -476,7 +523,7 @@ export async function runFairplayScoringSweep({ supabase, now = new Date(), dryR
       supabase
         .from("transfer_offers")
         .select(
-          "id, buyer_team_id, offer_amount, counter_amount, created_at, updated_at, listing:listing_id(seller_team_id, rider:rider_id(base_value, market_value, firstname, lastname))"
+          "id, buyer_team_id, seller_team_id, offer_amount, counter_amount, created_at, updated_at, rider:rider_id(base_value, market_value, firstname, lastname), listing:listing_id(seller_team_id, rider:rider_id(base_value, market_value, firstname, lastname))"
         )
         .eq("status", "accepted")
         .gte("updated_at", sinceIso)
