@@ -96,15 +96,31 @@ const TYPE_LABELS = {
   race_result_digest: "🚴 Race Results",
 };
 
+// #2997: supabase-js KASTER ikke — en fejlet routing-læsning returnerer bare
+// { data: null, error }, og uden `error` bundet ser den ud PRÆCIS som "ingen
+// kanal konfigureret". Beskeden falder så tilbage til default-webhooken (eller
+// forsvinder helt) uden en linje nogen steder — samme fejlklasse som #2861.
+// RETNING: Discord-routing er en NOTIFIKATIONS-sti. En tabt config-læsning må
+// aldrig vælte den spilhandling der udløste beskeden, så vi rapporterer og
+// falder tilbage — vi kaster ikke. Opslagene bruger maybeSingle() (samme mønster
+// som getResultWebhooksAndLabel nedenfor), så "ingen række konfigureret" ikke
+// bliver til en PGRST116-fejl vi rapporterer som støj.
+function reportDiscordConfigReadError(error, table, extra = {}) {
+  if (!error) return;
+  console.error(`[discord-config] ${table} lookup failed:`, error.message);
+  sentryCapture(error, { tags: { flow: "discord", stage: "config-read", table }, ...extra });
+}
+
 /**
  * Get the default webhook URL from settings
  */
 export async function getDefaultWebhook() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("discord_settings")
     .select("webhook_url")
     .eq("is_default", true)
-    .single();
+    .maybeSingle();
+  reportDiscordConfigReadError(error, "discord_settings", { lookup: "default-webhook" });
   return data?.webhook_url || process.env.DISCORD_WEBHOOK_URL || null;
 }
 
@@ -112,12 +128,13 @@ export async function getDefaultWebhook() {
  * Get webhook URL by type (e.g. 'transfer_history'), falls back to default
  */
 async function getWebhookByType(type) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("discord_settings")
     .select("webhook_url")
     .eq("webhook_type", type)
     .limit(1)
-    .single();
+    .maybeSingle();
+  reportDiscordConfigReadError(error, "discord_settings", { lookup: "webhook-by-type", webhookType: type });
   return data?.webhook_url || await getDefaultWebhook();
 }
 
@@ -147,28 +164,31 @@ export async function getResultWebhooksAndLabel(leagueDivisionId) {
   let summaryUrl = null;
   let label = null;
   if (leagueDivisionId) {
-    const { data: group } = await supabase
+    const { data: group, error: groupError } = await supabase
       .from("discord_settings")
       .select("webhook_url")
       .eq("league_division_id", leagueDivisionId)
       .limit(1)
       .maybeSingle();
+    reportDiscordConfigReadError(groupError, "discord_settings", { lookup: "group-webhook", leagueDivisionId });
     groupUrl = group?.webhook_url || null;
 
-    const { data: ld } = await supabase
+    const { data: ld, error: ldError } = await supabase
       .from("league_divisions")
       .select("tier, label")
       .eq("id", leagueDivisionId)
       .maybeSingle();
+    reportDiscordConfigReadError(ldError, "league_divisions", { lookup: "division-label", leagueDivisionId });
     label = ld?.label || null;
     if (ld?.tier != null) {
-      const { data: summary } = await supabase
+      const { data: summary, error: summaryError } = await supabase
         .from("discord_settings")
         .select("webhook_url")
         .eq("tier", ld.tier)
         .eq("is_summary", true)
         .limit(1)
         .maybeSingle();
+      reportDiscordConfigReadError(summaryError, "discord_settings", { lookup: "summary-webhook", tier: ld.tier });
       summaryUrl = summary?.webhook_url || null;
     }
   }
@@ -327,11 +347,15 @@ export function getBotToken() {
 async function resolveDmTarget(teamId) {
   let isTestAccount = false;
   if (teamId) {
-    const { data: team } = await supabase
+    // #2997: en tabt læsning her ville give isTestAccount=false, altså DM til den
+    // ÆGTE manager fra et smoke-test-run. Rapportér, men fald tilbage til den
+    // eksisterende default frem for at kaste — retningen for hele denne fil.
+    const { data: team, error: teamError } = await supabase
       .from("teams")
       .select("is_test_account")
       .eq("id", teamId)
-      .single();
+      .maybeSingle();
+    reportDiscordConfigReadError(teamError, "teams", { lookup: "dm-target-test-account", teamId });
     isTestAccount = !!team?.is_test_account;
   }
   return resolveDmTargetFromInput({
