@@ -626,6 +626,23 @@ jobs:
       - name: Run schema-column guard
         run: node scripts/lint-schema-columns.mjs
 
+      # Forward-guard for #4333: public rummer 66 operationelle backup-tabeller
+      # fra tidligere haendelses-oprydninger (maalt mod prod 31/8/2026: 207
+      # relationer i information_schema.tables + 4 materialiserede views = 211,
+      # heraf 66 backups og 145 aegte). De holdes ude af de genererede typer,
+      # frontend/src/types/database.types.ts. De bliver med vilje BEVARET i
+      # database/schema-snapshot.json, fordi schema-column-guarden ovenfor skal
+      # kunne verificere de backend-scripts der faktisk selecter fra dem -
+      # se doc-blokken i scripts/lib/operational-backup-relations.mjs. Testen
+      # fejler hvis en `supabase gen types typescript` bliver committet uden
+      # strip-trinnet som `npm run types:gen` nu kaeder paa. Tabellerne selv
+      # roeres ikke: drop er destruktiv klasse, ejer-gated under #2259.
+      - name: Test backup-tables-out-of-types guard
+        run: node --test scripts/strip-backup-tables-from-types.test.mjs
+
+      - name: Run backup-tables-out-of-types guard
+        run: node scripts/strip-backup-tables-from-types.mjs --check
+
   supabase-ops-scripts:
     runs-on: ubuntu-latest
     permissions:
