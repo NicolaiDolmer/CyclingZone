@@ -650,7 +650,9 @@ async function runGraduationSweepCron() {
     // #2389 A2: aggregeret capture pr. tick (mirror entry-generator-mønstret).
     sentryCapture(new Error(`graduation sweep: ${result.failed} ryttere fejlede`), {
       tags: { cron: "graduation sweep" },
-      extra: { resolved: result.resolved, failed: result.failed },
+      // #4484: errors med — uden dem viser Sentry-kortet kun et tal, og en
+      // fastlåst rytter kræver en DB-udgravning for at findes.
+      extra: { resolved: result.resolved, failed: result.failed, errors: result.errors },
     });
   }
 }

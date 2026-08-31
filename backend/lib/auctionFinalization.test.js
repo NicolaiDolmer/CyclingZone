@@ -479,21 +479,21 @@ function createFinalizeAuctionSupabase({
       // akademi-rytter graduerer via et direkte salg (#3650/#3845). Simplere
       // fixture-styret mock: default ingen pending row (no-op).
       if (table === "academy_graduation") {
+        // #4484: opslaget scoper nu på status='pending' + order/limit (én række
+        // pr. rytter PR. SÆSON, så team_id+rider_id alene kan ramme flere).
+        // Mocken skal bære hele kæden, ellers kaster findPendingGraduation og
+        // den best-effort-catch sluger fejlen — præcis den stilhed #4484 var.
         return {
           select() {
-            return {
-              eq() {
-                return {
-                  eq() {
-                    return {
-                      maybeSingle() {
-                        return Promise.resolve({ data: academyGraduationRow, error: null });
-                      },
-                    };
-                  },
-                };
+            const api = {
+              eq() { return api; },
+              order() { return api; },
+              limit() { return api; },
+              maybeSingle() {
+                return Promise.resolve({ data: academyGraduationRow, error: null });
               },
             };
+            return api;
           },
           update(payload) {
             return {

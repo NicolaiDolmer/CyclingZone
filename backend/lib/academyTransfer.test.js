@@ -59,20 +59,35 @@ function makeSupabase(cfg = {}) {
         };
       }
       if (table === "academy_graduation") {
+        // #4484: opslaget scoper nu på status='pending' + order/limit, og
+        // opdateringen rammer ÉN række på dens id (før: team_id+rider_id, som
+        // ville stemple begge sæsoners rækker for en rytter med akademi-ophold
+        // over to sæsoner). gradSelects bevarer filter-sporet så testene kan
+        // låse scopet fast.
+        const rows = cfg.gradRows ?? (cfg.gradRow ? [cfg.gradRow] : []);
         return {
           select() {
+            const filters = [];
+            let desc = false, cap = Infinity;
             const api = {
-              eq(col, val) { rec.gradSelects.push([col, val]); return api; },
-              maybeSingle() { return Promise.resolve({ data: cfg.gradRow ?? null, error: null }); },
+              eq(col, val) { rec.gradSelects.push([col, val]); filters.push([col, val]); return api; },
+              order(col, opts) { desc = opts?.ascending === false; return api; },
+              limit(n) { cap = n; return api; },
+              maybeSingle() {
+                let matched = rows.filter((r) => filters.every(([col, val]) => !(col in r) || r[col] === val));
+                if (desc) matched = [...matched].reverse();
+                matched = matched.slice(0, cap);
+                if (matched.length > 1) {
+                  return Promise.resolve({ data: null, error: { code: "PGRST116", message: "multiple rows returned" } });
+                }
+                return Promise.resolve({ data: matched[0] ?? null, error: null });
+              },
             };
             return api;
           },
           update(payload) {
             return {
-              eq() {
-                const chain = { eq() { rec.gradUpdates.push(payload); return Promise.resolve({ error: null }); } };
-                return chain;
-              },
+              eq(col, val) { rec.gradUpdates.push({ ...payload, __eq: [col, val] }); return Promise.resolve({ error: null }); },
             };
           },
         };
@@ -214,6 +229,25 @@ test("promote: resolver pending academy_graduation-row til 'promoted'", async ()
   assert.equal(rec.gradUpdates.length, 1, "pending grad-row blev resolved");
   assert.equal(rec.gradUpdates[0].status, "promoted");
   assert.ok(rec.gradUpdates[0].resolved_at, "resolved_at sat");
+  assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g1"], "#4484: opdaterer på række-id, ikke team_id+rider_id");
+});
+
+// #4484: en rytter med akademi-ophold over to sæsoner har to grad-rækker
+// (UNIQUE(rider_id, season_id)). Før scopede opslaget kun på team_id+rider_id →
+// PostgREST svarede med fejl + data=null → promote sprang oprydningen stille
+// over og efterlod en pending række som sweepet siden hen låste sig fast på.
+test("promote: #4484 — to grad-rækker over to sæsoner → kun den pending resolves", async () => {
+  const { supabase, rec } = makeSupabase({
+    rider: ACADEMY_RIDER,
+    gradRows: [
+      { id: "g-s2", team_id: "t1", rider_id: "r1", status: "sold", created_at: "2026-07-26T19:30:44Z" },
+      { id: "g-s3", team_id: "t1", rider_id: "r1", status: "pending", created_at: "2026-08-23T18:32:01Z" },
+    ],
+  });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
+  await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 3, getMarketState, notify: spyNotify() });
+  assert.equal(rec.gradUpdates.length, 1, "kun ÉN række rørt");
+  assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g-s3"], "den pending række fra i år");
 });
 
 test("promote: ingen grad-row → ingen grad-update (men promote lykkes)", async () => {

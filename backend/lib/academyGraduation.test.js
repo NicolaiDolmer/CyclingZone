@@ -36,21 +36,45 @@ function makeSupabase(cfg = {}) {
         };
       }
       if (table === "academy_graduation") {
+        // #4484: maybeSingle() modelleres nu som PostgREST FAKTISK opfører sig —
+        // matcher filtrene MERE end én række, svarer den med en fejl (PGRST116)
+        // og data=null, ikke med "den første række". Den gamle mock returnerede
+        // cfg.gradRow uanset filtre og kunne derfor aldrig fange #4484, hvor to
+        // grad-rækker for samme (hold, rytter) over to sæsoner låste både
+        // sweepet og managerens egen knap fast.
+        //
+        // eq-filtre håndhæves kun på kolonner fixturen faktisk bærer, så de
+        // eksisterende {id, status}-fixtures forbliver gyldige.
+        const rows = cfg.gradRows ?? (cfg.gradRow ? [cfg.gradRow] : []);
         return {
           select() {
+            const filters = [];
+            let desc = false, cap = Infinity;
             const api = {
-              eq() { return api; },
-              order() { return api; },
+              eq(col, val) { filters.push([col, val]); return api; },
+              order(col, opts) { desc = opts?.ascending === false; return api; },
+              limit(n) { cap = n; return api; },
               range() {
                 return Promise.resolve({ data: (cfg.existingGradRiderIds || []).map((rider_id) => ({ rider_id })), error: null });
               },
-              maybeSingle() { return Promise.resolve({ data: cfg.gradRow ?? null, error: null }); },
+              maybeSingle() {
+                let matched = rows.filter((r) => filters.every(([col, val]) => !(col in r) || r[col] === val));
+                if (desc) matched = [...matched].reverse();
+                matched = matched.slice(0, cap);
+                if (matched.length > 1) {
+                  return Promise.resolve({
+                    data: null,
+                    error: { code: "PGRST116", message: "JSON object requested, multiple (or no) rows returned" },
+                  });
+                }
+                return Promise.resolve({ data: matched[0] ?? null, error: null });
+              },
             };
             return api;
           },
           insert(row) { rec.gradInserts.push(row); return Promise.resolve({ error: null }); },
           update(payload) {
-            return { eq() { rec.gradUpdates.push(payload); return Promise.resolve({ error: null }); } };
+            return { eq(col, val) { rec.gradUpdates.push({ ...payload, __eq: [col, val] }); return Promise.resolve({ error: null }); } };
           },
         };
       }
@@ -276,6 +300,59 @@ test("resolveGraduation: afviser hvis ingen pending grad-row", async () => {
     () => resolveGraduation(supabase, { teamId: "t1", riderId: "r1", action: "promote", seasonNumber: 1, notify: spyNotify() }),
     /not_pending/,
   );
+});
+
+// #4484 regression: academy_graduation er UNIQUE(rider_id, season_id) — én
+// række pr. rytter PR. SÆSON. En rytter med akademi-ophold over to sæsoner på
+// samme hold har derfor to rækker, og det gamle opslag (team_id + rider_id,
+// ingen status/sæson-scope) ramte dem begge → PostgREST svarede med fejl +
+// data=null → kalderen læste "ingen række" → 'not_pending'.
+//
+// Målt i prod 31/8: én rytter (S2 'sold' + S3 'pending') fik graduerings-
+// sweepet til at fejle 23 gange på én nat, og manageren fik 409 på sin egen
+// promovér/sælg/slip-knap. Låser fast at opslaget nu rammer PENDING-rækken.
+const SOLD_GRAD_PREV_SEASON = { id: "g-s2", team_id: "t1", rider_id: "r1", status: "sold", created_at: "2026-07-26T19:30:44Z" };
+const PENDING_GRAD_THIS_SEASON = { id: "g-s3", team_id: "t1", rider_id: "r1", status: "pending", created_at: "2026-08-23T18:32:01Z" };
+
+test("resolveGraduation: #4484 — rytter med grad-række i to sæsoner resolveres (rammer den pending, ikke begge)", async () => {
+  const { supabase, rec } = makeSupabase({
+    gradRows: [SOLD_GRAD_PREV_SEASON, PENDING_GRAD_THIS_SEASON],
+    rider: RIDER,
+  });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  const res = await resolveGraduation(supabase, { teamId: "t1", riderId: "r1", action: "promote", seasonNumber: 3, getMarketState, notify: spyNotify() });
+  assert.equal(res.action, "promoted");
+  assert.equal(rec.gradUpdates.length, 1, "kun ÉN grad-række rørt");
+  assert.equal(rec.gradUpdates[0].status, "promoted");
+  assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g-s3"], "opdaterer den pending række fra i år, ikke sidste sæsons solgte");
+});
+
+test("defaultResolveGraduate: #4484 — sweep-stien fejler ikke længere på en to-sæsoners rytter", async () => {
+  const { supabase, rec } = makeSupabase({
+    gradRows: [SOLD_GRAD_PREV_SEASON, PENDING_GRAD_THIS_SEASON],
+    rider: RIDER,
+  });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  const res = await defaultResolveGraduate(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 3, getMarketState, notify: spyNotify() });
+  assert.equal(res.action, "promoted");
+  assert.equal(rec.riderUpdates[0].is_academy, false);
+});
+
+// Forsvar i dybden: skulle to rækker begge stå 'pending' (fx en sæson hvor
+// sweepet aldrig nåede at resolve den gamle), tager opslaget den NYESTE —
+// den aktive sæsons — i stedet for at fejle igen.
+test("resolveGraduation: #4484 — to PENDING rækker → nyeste vinder, ingen fejl", async () => {
+  const { supabase, rec } = makeSupabase({
+    gradRows: [
+      { ...SOLD_GRAD_PREV_SEASON, status: "pending" },
+      PENDING_GRAD_THIS_SEASON,
+    ],
+    rider: RIDER,
+  });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  const res = await resolveGraduation(supabase, { teamId: "t1", riderId: "r1", action: "promote", seasonNumber: 3, getMarketState, notify: spyNotify() });
+  assert.equal(res.action, "promoted");
+  assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g-s3"], "nyeste (aktive sæsons) række");
 });
 
 test("resolveGraduation: afviser ugyldig action", async () => {

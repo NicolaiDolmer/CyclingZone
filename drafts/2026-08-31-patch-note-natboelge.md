@@ -4,7 +4,7 @@
 >
 > **Rækkefølge (bidt 30/8):** entryen indsættes ØVERST i `PATCHES`-arrayet. Er der en anden uindsat patch note på vej, så afklar rækkefølgen først i stedet for at udlede den.
 
-Fem spillervendte ændringer. Alle EN først, DA under.
+Seks spillervendte ændringer. Alle EN først, DA under.
 
 ---
 
@@ -60,6 +60,17 @@ Fem spillervendte ændringer. Alle EN først, DA under.
   A connection that permanently fails releases itself instead of staying silent, so you get a reconnect prompt in settings.
 - **DA:** "En død Discord-forbindelse siger nu til"
   En forbindelse der permanent fejler kobler sig selv fra i stedet for at tie, så du får en genforbind-besked i indstillingerne.
+
+---
+
+## 6. Academy - `fixed`
+
+**PR (#4484), Refs #4484. Fundet af den daglige Sentry/Railway-triage 31/8.**
+
+- **EN:** "An academy graduate could get stuck with no way to resolve them"
+  A rider who spent time in your academy across two seasons could end up impossible to promote, sell or release: the button returned an error, and the nightly auto-resolve failed on them too. They are now resolved normally.
+- **DA:** "En akademi-graduerende kunne sætte sig fast uden vej videre"
+  En rytter der havde været i dit akademi over to sæsoner kunne ende umulig at promovere, sælge eller frigive: knappen svarede med en fejl, og den natlige auto-afgørelse fejlede også på ham. Han afgøres nu normalt.
 
 ---
 
