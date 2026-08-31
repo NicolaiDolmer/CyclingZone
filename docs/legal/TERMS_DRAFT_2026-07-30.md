@@ -3,9 +3,10 @@
 > **Status: Ejer-svar 30/7 indarbejdet** (sælger = Dolmer Digital CVR 46524861; fortrydelses-
 > model A = straks-leverings-waiver). **IKKE live.** Næste skridt: byg `/handelsbetingelser`
 > (DA) + `/terms` (EN) som sider, link fra footer/login/checkout, accept-flow (checkbox +
-> version + tidspunkt gemt på `subscriptions`-rækken), opsigelsessti. **Go-live-krav der
-> stadig mangler:** dedikeret support-e-mail (Hjælp-siden henviser i dag til en e-mail der
-> ikke findes i appen) + moms/merchant-of-record-verifikation mod Alunta.
+> version + tidspunkt gemt på `subscriptions`-rækken). Accept-flow og opsigelsessti ER bygget
+> pr. 31/8. **Go-live-krav der stadig mangler:** dedikeret support-e-mail (Hjælp-siden
+> henviser i dag til en e-mail der ikke findes i appen) + ejer-gennemgang af selve teksten.
+> Moms/merchant-of-record er verificeret 31/8 — se "Åbne verifikationer" nederst.
 
 ---
 
@@ -82,14 +83,15 @@ Behandling af persondata er beskrevet i [privatlivspolitikken](/privatlivspoliti
 2. **What you buy:** CZ Pro is a voluntary supporter subscription for the browser game
    Cycling Zone. Pro adds depth, comfort and cosmetic features — never a competitive
    advantage. The free game remains fully playable and competitive.
-3. **Price and payment:** DKK 49/month or DKK 265/6 months, incl. Danish VAT. Payment is
+3. **Price and payment:** DKK 49/month or DKK 295/6 months, incl. Danish VAT. Payment is
    handled by our payment provider Alunta; we never store your card details.
 4. **Automatic renewal:** The subscription renews automatically each period until you
    cancel. You receive a receipt by e-mail for every charge. Price changes are announced
    at least 30 days in advance and always give you the right to cancel first.
-5. **Cancellation:** Cancel anytime, effective at the end of the current paid period. No
-   lock-in beyond the period. Paid periods are not refunded, but Pro features remain active
-   until the period ends.
+5. **Cancellation:** Cancel anytime via "Cancel subscription" in your account settings, which
+   takes you to our billing portal; you can also e-mail us and we cancel the same day.
+   Effective at the end of the current paid period, with no lock-in beyond it. Paid periods
+   are not refunded, but Pro features remain active until the period ends.
 6. **Right of withdrawal:** EU consumers have a 14-day right of withdrawal. CZ Pro is
    digital content delivered immediately; by purchasing you expressly consent to immediate
    delivery and acknowledge that the right of withdrawal lapses for the started period.

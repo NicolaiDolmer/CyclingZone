@@ -31,12 +31,16 @@ Spiller → /pro → POST /api/billing/checkout → Alunta /checkout-sessions
 
 | Plan | UUID | Gemt (øre, ekskl. moms) | Kunden betaler | I checkout |
 |---|---|---|---|---|
-| CZ Pro Monthly | `253975d0-…3aaab` | 4900 | **61,25 kr.** | nej |
+| CZ Pro 1 month | `0cd45c7f-…5989a8` | 3920 | **49,00 kr.** | ja |
 | CZ Pro 6 Months | `298f32cf-…69111` | 23600 | **295,00 kr.** | nej |
 
 Alle planer: `auto_renewal: true`, `charge_vat: true`, låst til Stripe (`payment_provider_restricted`).
 
-⚠️ **Priserne er ikke konsistente lige nu.** Halvårsplanen er repriset til 49-beslutningen (#4005: 49 kr. inkl.), månedsplanen står stadig på den gamle 61,25. En tredje plan ("Pro", 3920 øre = 49,00 inkl.) ramte den rigtige pris, men blev slettet 31/8. Se §8.
+Begge rammer ejer-beslutningen 31/8 (#4005: 49 kr. **inkl.** moms). Halvåret giver ~17% rabat mod 6 × 49.
+
+Den gamle `CZ Pro Monthly` (4900 øre = 61,25 inkl.) er arkiveret 31/8. Den eneste abonnent havde et **planskift planlagt til 1/9** over på `CZ Pro 1 month` — se afsnittet om planskift nedenfor for hvorfor det ikke kan aflæses i MCP-fladen.
+
+Drift mod denne tabel fanges af `backend/scripts/alunta-setup-plans.js` (§9a).
 
 ### Priser er ekskl. moms ✅
 
@@ -286,11 +290,17 @@ Begge MCP-forbindelser er `local scope`: kun denne bruger, kun dette projekt, in
 | [#2816](https://github.com/NicolaiDolmer/CyclingZone/issues/2816) | Dobbeltkøb overskriver abonnement | Bør før go-live |
 | [#2806](https://github.com/NicolaiDolmer/CyclingZone/issues/2806) | /pro ikke linket, isPro gater intet | Efter |
 
-### Kendte inkonsistenser der skal ryddes
+### Ryddet 31/8
 
-1. **Månedsplanen er 61,25 inkl., beslutningen er 49 inkl.** Ny plan til 3920 øre skal oprettes, Railway-env opdateres, Rasmus flyttes, gammel plan arkiveres.
-2. **`alunta-setup-plans.js` er forældet** — dens `PLANS`-array står på 4900/26500 (gamle priser) og er idempotent *på navn*, så en gen-kørsel hverken retter priser eller opdager afvigelsen.
-3. **Én kunde uden accept-log** — `terms_version` og `terms_accepted_at` er null på den eneste abonnent.
+1. ~~Månedsplanen er 61,25 inkl.~~ — `CZ Pro 1 month` (3920 øre) oprettet, Railway-env opdateret, planskift til 1/9 lagt ind, gammel plan arkiveret.
+2. ~~`alunta-setup-plans.js` er forældet~~ — rapporterer nu drift i stedet for at springe over (PR #4513).
+3. ~~Ingen vagt på ubetalte fakturaer~~ — `aluntaOverdueWatch.js` kører dagligt (PR #4516).
+
+### Stadig åbent
+
+1. **Kortet trækkes aldrig.** Kunden har `has_valid_payment_card: true`, faktureringsmetoden står på Automatisk, planen er kort-only — og der findes præcis **én** betaling i kontoens historik (checkout-betalingen 25/7). Automatisk korttræk har aldrig kørt. Indstillingen der blokerer det findes hverken i MCP-fladen eller i REST-API'et (hele OpenAPI-specen gennemgået 31/8). Se #4514.
+2. **Én kunde uden accept-log** — `terms_version` og `terms_accepted_at` er null på den eneste abonnent (købte 25/7, før flowet fandtes). Se #2813.
+3. **`invoice_due_days: 0`** — fakturaer forfalder på selve fakturadatoen. Nul betalingsvindue, så enhver faktura er teknisk forfalden i samme sekund den dannes.
 
 ## 9. Faldgruber — kort liste
 
