@@ -93,6 +93,33 @@ Den udokumenterede envelope på checkout-sessions bed ved første testkøb: `und
 
 **Regel: mål svaret før du læser felter af det.** Begge postmortems handler om præcis denne fejl.
 
+### Planskift sker ved næste fornyelse — og ses kun via REST ✅
+
+Et skift af abonnementstype træder i kraft **ved næste fornyelse**, ikke med det samme. Indtil da kører abonnementet videre på den gamle plan og den gamle pris.
+
+> ⚠️ **MCP-fladen viser IKKE planlagte planskift.** Hverken `get_customer_financial_summary`, `get_customer_subscription_overview` eller `list_subscription_customers` har feltet. MRR viser den *nuværende* pris, og `pending_mrr` dækker kun fremtidig start, prøveperiode og pause — ikke et planskift.
+
+Et planlagt skift kan derfor kun bekræftes via REST:
+
+```
+GET /subscriptions  →  data[].scheduled_plan_change
+```
+
+```json
+"scheduled_plan_change": {
+  "effective_date": "2026-09-01",
+  "source_plan": { "name": "CZ Pro Monthly" },
+  "target_plan": { "name": "CZ Pro 1 month" },
+  "standard_price": 3920,
+  "status": "scheduled",
+  "failure_code": null
+}
+```
+
+**Konklusionen "abonnementet er ikke flyttet" må aldrig drages af MCP-data alene** — fraværet af bevis er her ikke bevis for fravær. Denne fejl blev begået 31/8: uændret MRR blev læst som en mislykket flytning, mens skiftet lå korrekt planlagt. Tjek `scheduled_plan_change` før du konkluderer.
+
+Beslægtet: `scheduled_price_changes[]` findes på samme objekt og er ligeledes usynlig i MCP'en.
+
 ### Kundeportalen 📄
 
 `POST /portal-link/{uuid}` giver et signeret auto-login-link. Kunden kan skifte kort og opsige. **Udløber efter 15 min og behandles som en credential** — logges aldrig, gemmes aldrig. Uden gyldigt UUID returneres portalens login-side (magic link på e-mail) — den vej virker for kunder uden `alunta_customer_id` hos os.
@@ -277,6 +304,7 @@ Begge MCP-forbindelser er `local scope`: kun denne bruger, kun dette projekt, in
 8. **Reconcile er daglig, ikke øjeblikkelig.**
 9. **Et 2xx fra en gateway er ikke bevis for at der er flyttet penge.**
 10. **MCP og REST bruger forskellige feltnavne for samme data.** `prices[]/amount_minor` mod `renewal_intervals[]/price`. Mål svaret før du læser felter af det.
+11. **MCP'en viser ikke alt.** Planlagte planskift og prisændringer findes kun i REST'ens `scheduled_plan_change` / `scheduled_price_changes`. Konkludér aldrig "det skete ikke" fordi MCP'en ikke viser det — vælg en kilde der *kan* vise fænomenet, før du læser noget ud af dens tavshed.
 
 ## 9a. Drift-tjek af planer
 
