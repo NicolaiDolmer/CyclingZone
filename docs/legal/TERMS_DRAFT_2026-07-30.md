@@ -28,9 +28,8 @@ Gratis-spillet er og bliver fuldt spilbart og konkurrencedygtigt uden Pro.
 
 **3. Pris og betaling**
 - Månedligt abonnement: 49 kr. pr. måned.
-- 6-måneders abonnement: 265 kr. pr. 6 måneder.
-- Alle priser er i danske kroner og inkl. moms. [**EJER/verifikation**: afventer bekræftelse
-  af momsansvar/merchant of record hos Alunta — se afsnittet "Åbne verifikationer" nederst.]
+- 6-måneders abonnement: 295 kr. pr. 6 måneder.
+- Alle priser er i danske kroner og inkl. moms.
 - Betaling sker via vores betalingsudbyder Alunta. Vi opbevarer aldrig dine kortoplysninger.
 
 **4. Automatisk fornyelse**
@@ -41,10 +40,10 @@ dig altid ret til at opsige inden den nye pris gælder.
 
 **5. Opsigelse**
 Du kan opsige når som helst med virkning fra udløbet af den igangværende betalte periode —
-der er ingen binding ud over perioden. Opsigelse sker [via "Opsig abonnement" i dine
-kontoindstillinger / Alunta-portalen — bygges i #2813; indtil da: skriv til kontakt-e-mailen,
-så opsiger vi manuelt samme dag]. Allerede betalte perioder refunderes ikke ved opsigelse,
-men Pro-funktionerne virker perioden ud.
+der er ingen binding ud over perioden. Opsigelse sker via "Opsig abonnement" under dine
+kontoindstillinger, som fører dig til vores betalingsportal. Du kan også skrive til
+kontakt-e-mailen, så opsiger vi manuelt samme dag. Allerede betalte perioder refunderes ikke
+ved opsigelse, men Pro-funktionerne virker perioden ud.
 
 **6. Fortrydelsesret**
 Du har som forbruger 14 dages fortrydelsesret ved køb på nettet. **Bemærk:** CZ Pro er
@@ -108,15 +107,31 @@ Behandling af persondata er beskrevet i [privatlivspolitikken](/privatlivspoliti
 
 ## Åbne verifikationer (før go-live, del af #2813)
 
-1. **Moms/merchant of record — DELVIST verificeret 30/7 (OpenAPI):** Merchant of record er
-   **Dolmer Digital, ikke Alunta** (Alunta fakturerer på jeres vegne via jeres egne
-   betalingsudbydere og udsteder kvitteringer automatisk). Plan-priser i Alunta er i øre
-   **ekskl. moms** med `charge_vat` default `true`. **Ejer-tjek udestår:** (a) er Dolmer
-   Digital momsregistreret? (b) står CZ Pro-planerne i Alunta-dashboardet med
-   `charge_vat=false` + 4900/26500 øre, så kunden faktisk betaler 49/265 kr.?
-   Pkt. 3's moms-formulering låses når (a)+(b) er svaret — FØR checkout genåbnes.
-2. **Opsigelsessti — VERIFICERET 30/7:** `POST /portal-link/{uuid}` bekræftet i OpenAPI
-   (signeret auto-login-URL, default 15 min udløb; self-service opsigelse findes —
-   `customer_cancellation` er dokumenteret cancel-årsag). Bygges i #2813-PR'en.
-3. **Accept-log:** checkbox-accept ved checkout skal gemme tidspunkt + vilkårs-version på
-   `subscriptions`-rækken. Bygges i #2813-PR'en.
+1. **Moms/merchant of record — LUKKET 31/8.** Merchant of record er **Dolmer Digital, ikke
+   Alunta** (Alunta fakturerer på vores vegne via vores egne betalingsudbydere).
+   (a) Dolmer Digital **er momsregistreret** (ejer-bekræftet 31/8; CVR 46524861 står på
+   Alunta-teamet, og fakturaerne opkræver 25% dansk moms bogført på konto 1000 "m/moms").
+   (b) Planerne står med `charge_vat=true`, ikke `false` — antagelsen i den oprindelige
+   formulering holdt ikke. Alunta gemmer beløb **ekskl. moms** og lægger momsen oveni, så
+   den rigtige konfiguration for 49 kr. inkl. er **3920 øre**, ikke 4900. Målt 31/8:
+   `CZ Pro 1 month` = 3920 øre (49,00 inkl.), `CZ Pro 6 Months` = 23600 øre (295,00 inkl.).
+   Pkt. 3 er opdateret i overensstemmelse hermed (295 kr., ikke 265).
+2. **Opsigelsessti — LUKKET 31/8.** `POST /portal-link/{uuid}` verificeret 30/7 og
+   **bygget** i `backend/lib/billingPortal.js` (signeret auto-login-URL, 15 min udløb,
+   behandles som credential). Pkt. 5 navngiver nu portal-stien.
+3. **Accept-log — BYGGET.** Checkbox-accept gemmer `terms_version` + `terms_accepted_at` på
+   `subscriptions`-rækken før checkout; backend afviser `terms_not_accepted` og
+   `terms_version_mismatch`. **Restpunkt:** den eneste eksisterende kunde har begge felter
+   `null` (købte 25/7, før flowet fandtes) — ejer beslutter om accept indhentes med
+   tilbagevirkende kraft. Se #2813.
+
+### Tilføjet efter 30/7
+
+4. **Moms på EU-privatkunder (#4511) — ÅBEN.** Dinero-opsætningen bogfører EU-linjer
+   momsfrit på konto 1050. Korrekt for EU-virksomheder med momsnummer, forkert for
+   privatpersoner under 10.000 EUR-tærsklen, hvor der skal opkræves 25% dansk moms.
+   Kræver revisor-bekræftelse før salg til EU-kunder.
+5. **Betalingsovervågning (#4514) — ÅBEN.** Alle Aluntas betalings-notifikationer er slået
+   fra, og der findes ingen vagt der opdager en forfalden faktura. En kunde havde ubetalt
+   faktura i 23 dage med fuld Pro-adgang uden at nogen fik besked. Skal lukkes før salget
+   åbnes for flere kunder.
