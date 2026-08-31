@@ -42,7 +42,13 @@ function pickTimelineBid(bid) {
 
 export async function buildRiderBidTimeline(supabase, riderId) {
   // Find seneste auktion for rytter — prioritér aktiv/extended; ellers seneste completed.
-  const { data: liveAuction } = await supabase
+  // #2997: filen er bygget på "returnér aldrig misvisende data" (privacy-
+  // assertions ovenfor). Uden `error` bundet faldt en fejlet live-læsning
+  // igennem til completed-opslaget, og rytterprofilen viste en AFSLUTTET auktion
+  // mens en live kørte — netop det billede en manager byder ud fra. Derfor kast:
+  // routen (GET /api/riders/:id/bid-timeline) mapper det til 500, så frontend
+  // viser en fejl frem for et forkert bud-billede.
+  const { data: liveAuction, error: liveError } = await supabase
     .from("auctions")
     .select("id, status, current_price, calculated_end, actual_end, seller:seller_team_id(id, name), winner:current_bidder_id(id, name)")
     .eq("rider_id", riderId)
@@ -50,11 +56,12 @@ export async function buildRiderBidTimeline(supabase, riderId) {
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (liveError) throw new Error(`buildRiderBidTimeline: could not load live auction for rider ${riderId}: ${liveError.message}`);
 
   let auction = liveAuction;
 
   if (!auction) {
-    const { data: completedAuction } = await supabase
+    const { data: completedAuction, error: completedError } = await supabase
       .from("auctions")
       .select("id, status, current_price, calculated_end, actual_end, seller:seller_team_id(id, name), winner:current_bidder_id(id, name)")
       .eq("rider_id", riderId)
@@ -62,6 +69,7 @@ export async function buildRiderBidTimeline(supabase, riderId) {
       .order("actual_end", { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (completedError) throw new Error(`buildRiderBidTimeline: could not load completed auction for rider ${riderId}: ${completedError.message}`);
     auction = completedAuction;
   }
 
@@ -85,7 +93,10 @@ export async function buildRiderBidTimeline(supabase, riderId) {
   }
 
   // Aktiv eller extended → hent bud-timeline
-  const { data: bids } = await supabase
+  // #2997: en tabt fejl her gav en TOM timeline på en auktion der har bud —
+  // frontend viser "ingen bud endnu" på en auktion i fuld gang. Samme retning:
+  // kast frem for at vise noget usandt.
+  const { data: bids, error: bidsError } = await supabase
     .from("auction_bids")
     .select("amount, bid_time, is_proxy, team:team_id(id, name)")
     .eq("auction_id", auction.id)
@@ -94,6 +105,7 @@ export async function buildRiderBidTimeline(supabase, riderId) {
     // proxy/cascade-bud det udløser får samme timestamp). amount stigende her →
     // frontend reverser timelinen til visning → højeste bud øverst ved tie.
     .order("amount", { ascending: true });
+  if (bidsError) throw new Error(`buildRiderBidTimeline: could not load bids for auction ${auction.id}: ${bidsError.message}`);
 
   const timeline = (bids || []).map(pickTimelineBid);
   for (const entry of timeline) {

@@ -6,19 +6,29 @@ import { resolve, join } from "node:path";
 const repoRoot = resolve(import.meta.dirname, "../..");
 const schema = readFileSync(resolve(repoRoot, "database/schema.sql"), "utf8");
 
-const RUNTIME_FINANCE_TYPES = [
-  "admin_adjustment",
-  "emergency_loan",
-  "interest",
-  "loan_interest",
-  "loan_received",
-  "loan_repayment",
-  "prize",
-  "salary",
-  "sponsor",
-  "transfer_in",
-  "transfer_out",
-];
+// FINANCE-HALVDELEN ER PENSIONERET (#1464, 2026-08-31).
+//
+// Her stod tidligere en HÅNDHOLDT RUNTIME_FINANCE_TYPES-liste (11 typer) matchet mod
+// den inline CHECK i database/schema.sql. Begge sider var forældede, så testen var
+// grøn af den forkerte grund — falsk tryghed, jf. ejer-auditen 7/8 på #1464.
+//
+// Målt 2026-08-31: schema.sql's inline finance_transactions-CHECK tillader 18 værdier;
+// den autoritative migration (database/2026-07-25-sponsor-choice-2.sql, verificeret
+// identisk med live-skemaet) tillader 30. De 12 der manglede i schema.sql:
+// facility_purchase, facility_upkeep, forced_debt_sale, parachute, scout_travel,
+// sponsor_objective_bonus, sponsor_race_day, sponsor_result_bonus,
+// sponsor_signing_bonus, staff_salary, staff_severance, upkeep. En ny finance-type
+// kunne altså tilføjes uden at denne test blinkede.
+//
+// Den ægte, ikke-håndholdte paritetstest er backend/lib/financeTypeConstraintGuard.test.js
+// (via scripts/lint-finance-types.mjs): kode-siden udledes med directory-walk over
+// backend/{lib,routes,scripts} — ingen allowlist — og DB-siden fra den NYESTE
+// constraint-redefinition i database/*.sql, ikke fra schema.sql-baselinen. Den dækker
+// nu også audit-enum-kolonnerne actor_type + related_entity_type. Tilføj intet
+// finance-specifikt her; udvid guarden i stedet.
+//
+// NB: notifikations-halvdelen nedenfor læser stadig database/schema.sql. Det er en
+// kendt, separat svaghed (samme audit-punkt) og hører til notifikations-sporet.
 
 // #1464 forward-guard: opdag de notifikationstyper backend'en FAKTISK dispatcher
 // direkte fra kildekoden, i stedet for en håndholdt liste der driver bagud (den
@@ -89,10 +99,33 @@ function extractAllowedValues(table, column) {
   return new Set([...constraint.matchAll(/'([^']+)'/g)].map(match => match[1]));
 }
 
-test("runtime finance transaction types are allowed by the schema contract", () => {
-  const allowed = extractAllowedValues("finance_transactions", "type");
-  const missing = RUNTIME_FINANCE_TYPES.filter(type => !allowed.has(type));
-  assert.deepEqual(missing, []);
+// Erstatter den pensionerede finance-test: håndhæver at ingen fremtidig test i denne
+// fil igen bruger database/schema.sql som autoritet for finance_transactions.type.
+// schema.sql-baselinen er i dag en delmængde af det levende constraint (18 af 30
+// værdier målt 2026-08-31); den korrekte autoritet er den nyeste
+// constraint-redefinition i database/*.sql, parset af scripts/lint-finance-types.mjs.
+test("database/schema.sql er en delmængde af det autoritative finance-CHECK, ikke en autoritet i sig selv", async () => {
+  const { loadCheckAllowedTypes } = await import("../../scripts/lint-finance-types.mjs");
+  const { values: authoritative, source } = loadCheckAllowedTypes();
+  const baseline = extractAllowedValues("finance_transactions", "type");
+
+  assert.ok(source, "fandt ingen autoritativ finance_transactions_type_check-migration");
+  // Drift den anden vej (en værdi i schema.sql som INGEN migration tillader) ville
+  // betyde at baselinen er blevet redigeret i hånden — fang det eksplicit.
+  const orphaned = [...baseline].filter(value => !authoritative.has(value)).sort();
+  assert.deepEqual(
+    orphaned,
+    [],
+    `database/schema.sql tillader finance-type(r) som den autoritative migration `
+      + `(database/${source}) ikke gør: ${orphaned.join(", ")}. Baselinen er redigeret i hånden `
+      + `eller en migration er gået tabt.`,
+  );
+  // BEVIDST ingen `baseline.size < authoritative.size`-assert: den ville gøre
+  // schema.sql's forældelse til en invariant og fejle i samme sekund nogen bringer
+  // baselinen i sync med migrationerne (PR #4388 gør præcis det, så en frisk DB
+  // matcher prod). Delmængde-invarianten er allerede fuldt dækket af orphaned-tjekket
+  // ovenfor — en baseline på højde med migrationerne er et gyldigt slutresultat, ikke
+  // en regression.
 });
 
 test("runtime notification types are allowed by the schema contract", () => {

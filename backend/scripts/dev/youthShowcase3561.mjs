@@ -16,8 +16,9 @@ import { deriveAbilities, VISIBLE_ABILITIES } from "../../lib/abilityDerivation.
 import { buildCapsForRider, YOUTH_PROGRESSION_CONFIG } from "../../lib/riderProgression.js";
 import { computeRiderTypes, NEUTRAL_BASELINE } from "../../lib/riderTypes.js";
 import { dailyAbilityDelta, DAILY_TRAINING_CONFIG, DEFAULT_PROGRAM } from "../../lib/dailyTraining.js";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
-const REF_YEAR = 2026;
+const REF_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 const PHYS = ["climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch", "endurance", "recovery", "durability"];
 
 // ── De fire kalibreringer der sammenlignes ──────────────────────────────────────

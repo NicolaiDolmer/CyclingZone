@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveDmTargetFromInput } from "./discordDmTarget.js";
-import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback, sendWebhook, isLiveDiscordAllowed, getBotToken } from "./discordNotifier.js";
+import { notifyBoardUpdateDM, notifyAuctionWon, notifyDiscordDM, notifyPlayerFeedback, sendWebhook, isLiveDiscordAllowed, getBotToken, __buildEmbedForTests } from "./discordNotifier.js";
+import { DISCORD_EMBED_LIMITS } from "./discordEmbedLimits.js";
 import { flushDmRunGuard, __resetDmRunGuardForTests } from "./discordDmRateGuard.js";
 import { __resetWebhookQueueForTests } from "./discordWebhookQueue.js";
 
@@ -545,4 +546,42 @@ test("live-guard — getBotToken returnerer null i ikke-prod-miljø (DM/rolle-sy
     process.env.SUPABASE_URL = savedUrl;
     if (savedToken === undefined) delete process.env.DISCORD_BOT_TOKEN; else process.env.DISCORD_BOT_TOKEN = savedToken;
   }
+});
+
+// ── Embed-grænser i DM-payloaden (#3483, review af PR #4460) ─────────────────
+// buildEmbed interpolerer rytter- og holdnavne direkte ind i title/description,
+// og felt-værdier kommer fra kaldere der ikke kender Discords grænser. Sprænges
+// en grænse svarer Discord 400 med kode 50035 — og fejlen rammer ALLE modtagere
+// af den notifikation samtidig, ikke én bruger. Uden klipningen her var det en
+// åben flok-afkoblings-vej ind i dead-connection-tælleren (#3130).
+test("buildEmbed — klipper title, description og felter til Discords grænser (#3483)", () => {
+  const { embeds } = __buildEmbedForTests(
+    "auction_won",
+    "R".repeat(500),
+    "D".repeat(9000),
+    [
+      { name: "N".repeat(500), value: "V".repeat(5000) },
+      ...Array.from({ length: 40 }, (_, i) => ({ name: `f${i}`, value: `v${i}` })),
+    ]
+  );
+
+  const embed = embeds[0];
+  assert.equal(embed.title.length, DISCORD_EMBED_LIMITS.title);
+  assert.equal(embed.description.length, DISCORD_EMBED_LIMITS.description);
+  assert.equal(embed.fields.length, DISCORD_EMBED_LIMITS.fields);
+  assert.equal(embed.fields[0].name.length, DISCORD_EMBED_LIMITS.fieldName);
+  assert.equal(embed.fields[0].value.length, DISCORD_EMBED_LIMITS.fieldValue);
+  // Farve, footer og timestamp overlever klipningen uændret.
+  assert.equal(embed.footer.text, "Cycling Zone");
+  assert.equal(typeof embed.color, "number");
+  assert.ok(embed.timestamp);
+});
+
+test("buildEmbed — normale længder passerer helt urørt (#3483)", () => {
+  const { embeds } = __buildEmbedForTests("auction_won", "Tadej Pogacar", "Du vandt budrunden", [
+    { name: "Price", value: "1.200.000 CZ$" },
+  ]);
+  assert.ok(embeds[0].title.endsWith("Tadej Pogacar"));
+  assert.equal(embeds[0].description, "Du vandt budrunden");
+  assert.deepEqual(embeds[0].fields, [{ name: "Price", value: "1.200.000 CZ$", inline: true }]);
 });

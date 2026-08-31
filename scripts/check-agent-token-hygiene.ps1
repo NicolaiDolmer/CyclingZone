@@ -19,7 +19,13 @@ $ErrorActionPreference = "Stop"
 function Get-ApproxTokens {
   param([string]$Path)
   if (-not (Test-Path $Path)) { return 0 }
-  $chars = (Get-Content $Path -Raw).Length
+  # Normalisér CRLF -> LF FØR divisionen (#2682-review). core.autocrlf=true betyder at samme
+  # blob har forskellig laengde alt efter checkout, og hvert CR taeller med i .Length. Konkret
+  # maalte docs/NOW.md 1193 tok (WARN) i et LF-checkout og 1203 tok (FAIL) i et CRLF-worktree
+  # UDEN at indholdet var aendret. Gaten skal doemme paa indhold, ikke paa line endings.
+  $raw = (Get-Content $Path -Raw)
+  if ($null -eq $raw) { return 0 }
+  $chars = ($raw -replace "`r`n", "`n").Length
   return [math]::Ceiling($chars / 4)
 }
 
@@ -48,7 +54,15 @@ $results = New-Object System.Collections.Generic.List[object]
 # Begge regnes til Codex cold-start; kun !CodexOnly regnes til Claude cold-start.
 # Ref: #382 maalings-fix. Codex auto-loader AGENTS.md (OpenAI Codex-konvention); Claude Code loader CLAUDE.md.
 $contextFiles = @(
-  @{ Name = "CLAUDE.md"; Path = "CLAUDE.md"; Warn = 1200; Fail = 2000 },
+  # Forward-guard (#2682): Fail sænket 2000 -> 1750 da CLAUDE.md blev trimmet 1.999 -> ~1.566 tok.
+  # Den gamle grænse på 2000 lod filen drive 194 tok opad mellem 19/7 og 30/8 uden at gaten bed;
+  # den stod til sidst 1 token fra FAIL. Første trim ramte 1.460, men review viste at det var sket
+  # ved at fjerne BINDENDE regler (TIER FULL, playwright-3-projekter, page-template-værdierne) og
+  # ikke kun begrundelser - de er skrevet tilbage, så det reelle gulv er ~1.566. 1750 giver ~185 tok
+  # arbejdsluft og fanger drift TIDLIGT. Warn 1200 er fortsat det egentlige mål.
+  # Reglerne selv er dækket af claude-md-required-rules-vagten længere nede: en fremtidig trim kan
+  # ikke længere købe tokens ved at slette et krav uden at gaten exit 1'er.
+  @{ Name = "CLAUDE.md"; Path = "CLAUDE.md"; Warn = 1200; Fail = 1750 },
   @{ Name = "AGENTS.md"; Path = "AGENTS.md"; Warn = 4500; Fail = 6500; CodexOnly = $true },
   # NOW.md's PRIMÆRE budget er TOKENS mod ~1.200 (CLAUDE.md close-out punkt 2, #1275).
   # Linjer (now-md-budget herunder: warn 30 / fail 40) er sekundær. Gaten stod tidligere
@@ -187,6 +201,74 @@ foreach ($hot in $hotFiles) {
     $hotLines = (Get-Content $hot.Path | Measure-Object -Line).Lines
     $hotStatus = if ($hotLines -gt $hot.FailLines) { "FAIL" } elseif ($hotLines -gt $hot.WarnLines) { "WARN" } else { "OK" }
     Add-Result $results $hot.Name $hotStatus "$($hot.Path) $hotLines lines (target <$($hot.WarnLines), fail >$($hot.FailLines))"
+  }
+}
+
+# Forward-guard (#2682-review): et token-trim af CLAUDE.md fjernede en BINDENDE regel
+# (TIER FULL-kravet) og ikke bare en begrundelse - reglen overlevede kun i en on-demand-doc,
+# saa en backend-PR havde ingen lokal test-forpligtelse i den fil agenten faktisk auto-loader.
+# Denne vagt holder de bindende ankre i live. Ankrene er bevidst KORTE noegleord, ikke hele
+# saetninger: en omskrivning maa gerne passere, en SLETNING skal fejle.
+$claudeMdAnchors = @(
+  @{ Anchor = "guard-commit-branch"; Rule = "commit kun bag guard-commit-branch (hard rule 18)" },
+  @{ Anchor = "Working agent"; Rule = "multi-AI claim ved session-start (#559)" },
+  @{ Anchor = "preflight-pr\.ps1"; Rule = "PR-preflight foer push" },
+  @{ Anchor = "TIER FULL"; Rule = "fuld lokal suite ved backend/lib-hooks/i18n/config/>6 filer" },
+  @{ Anchor = "playwright"; Rule = "alle 3 playwright-projekter ved visuelle aendringer (#536)" },
+  @{ Anchor = "PAGE_TEMPLATES\.md"; Rule = "bindende page templates (#2849)" },
+  @{ Anchor = "PatchNotesPage\.jsx"; Rule = "patch notes ved brugerrettet aendring" },
+  @{ Anchor = "check-agent-token-hygiene\.ps1"; Rule = "token-hygiejne ved close-out" },
+  @{ Anchor = "schema-snapshot\.json"; Rule = "slaa kolonnenavne op foer ad-hoc SQL (#3769)" }
+)
+if (Test-Path "CLAUDE.md") {
+  $claudeMdRaw = (Get-Content "CLAUDE.md" -Raw)
+  $missingAnchors = @($claudeMdAnchors | Where-Object { $claudeMdRaw -notmatch $_.Anchor })
+  if ($missingAnchors.Count -gt 0) {
+    $missingDetail = ($missingAnchors | ForEach-Object { $_.Rule }) -join "; "
+    Add-Result $results "claude-md-required-rules" "FAIL" "$($missingAnchors.Count) bindende regel(er) mangler i CLAUDE.md: $missingDetail"
+  } else {
+    Add-Result $results "claude-md-required-rules" "OK" "$($claudeMdAnchors.Count) bindende ankre til stede"
+  }
+}
+
+# Samme vagt for AGENTS.md (#4502). AGENTS.md brød sin FAIL-graense 31/8 da fire nye
+# SSOT-omraader (#4266) og dev-server-linjen (#3024) landede samme morgen: 6.309 -> 6.574
+# mod loftet 6.500. Rettelsen flyttede hver regels HAENDELSES-blok til
+# NIGHT_WAVE_RUNBOOK.md og lod reglerne selv blive. Denne vagt er det der goer det trim
+# sikkert: en fremtidig trim kan ikke koebe tokens ved at slette en regel.
+# Ankrene er KORTE noegleord - en omskrivning maa passere, en SLETNING skal fejle.
+$agentsMdAnchors = @(
+  @{ Anchor = "TaskStop"; Rule = "10 terminal-tilstand du har SET" },
+  @{ Anchor = "positiv observation"; Rule = "11 paastand om systemtilstand" },
+  @{ Anchor = "maks 5 aabne PR|maks 5 åbne PR"; Rule = "12 loft paa igangvaerende arbejde" },
+  @{ Anchor = "GENMAALES|GENMÅLES"; Rule = "13 ingen paastand uden maaling" },
+  @{ Anchor = "Isolation er infrastruktur"; Rule = "14 isolation foer skala" },
+  @{ Anchor = "Mennesket beslutter"; Rule = "15 AI fremskaffer beviset" },
+  @{ Anchor = "vaegur-tiden|vægur-tiden"; Rule = "16 test maa ikke laese vaegur" },
+  @{ Anchor = "Offentlighedspolitik for balance-tal"; Rule = "17 balance-tal er private" },
+  @{ Anchor = "guard-commit-branch"; Rule = "18 commit bag branch-guard" },
+  @{ Anchor = "skip-logik paa prod-deploy|skip-logik på prod-deploy"; Rule = "19 main bygger altid" },
+  @{ Anchor = "Deploy-verify"; Rule = "20 deploy-verify er del af merge" },
+  @{ Anchor = "Per-agent-timeout"; Rule = "21 timeout skaleres med samtidighed" },
+  @{ Anchor = "Dispatch-forfilter"; Rule = "22 forfilter foer hver spawn" },
+  @{ Anchor = "Post-merge guard-tjek"; Rule = "23 verificer main efter salve" },
+  @{ Anchor = "e2e-slottet"; Rule = "24 orkestratoren ejer e2e-slottet" },
+  @{ Anchor = "Design-gate foer build|Design-gate før build"; Rule = "25 design-gate foer build" },
+  @{ Anchor = "Visuelt bevis foer release|Visuelt bevis før release"; Rule = "26 visuelt bevis foer release" },
+  @{ Anchor = "beslutningskort"; Rule = "27 spoergsmaal med anbefaling foerst" },
+  @{ Anchor = "Testplan er en del af designet"; Rule = "28 testplan hoerer til designet" },
+  @{ Anchor = "enhver udtalelse om projektets tilstand"; Rule = "29 NOW.md foer udtalelse om tilstand" },
+  @{ Anchor = "Omraadets SSOT|Områdets SSOT"; Rule = "30 SSOT laeses og opdateres i samme PR" },
+  @{ Anchor = "Et gulv er aldrig en godkendelse"; Rule = "30b gulv er ikke godkendelse" }
+)
+if (Test-Path "AGENTS.md") {
+  $agentsMdRaw = (Get-Content "AGENTS.md" -Raw)
+  $missingAgentsAnchors = @($agentsMdAnchors | Where-Object { $agentsMdRaw -notmatch $_.Anchor })
+  if ($missingAgentsAnchors.Count -gt 0) {
+    $missingAgentsDetail = ($missingAgentsAnchors | ForEach-Object { $_.Rule }) -join "; "
+    Add-Result $results "agents-md-required-rules" "FAIL" "$($missingAgentsAnchors.Count) bindende regel(er) mangler i AGENTS.md: $missingAgentsDetail"
+  } else {
+    Add-Result $results "agents-md-required-rules" "OK" "$($agentsMdAnchors.Count) bindende ankre til stede"
   }
 }
 

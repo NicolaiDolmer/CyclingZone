@@ -19,7 +19,10 @@
 // Tabellen klassificerer altså NUL eksisterende ryttere og er kun fallback for
 // ryttere der fødes uden et træk. Efter en uge hvor spillerne så typer flakke
 // frem og tilbage er den vigtigste egenskab pakken kan have, at ingen rytters
-// type kan bevæge sig. `classifierWeightsFrozen.test.js` håndhæver det.
+// type kan bevæge sig. Håndhæves af sha256-hash-pinnen i
+// `weightTableSplit.test.js` ("#3665: classifierWeights er FROSSET"). #4479:
+// her stod en `classifierWeightsFrozen`-testfil der aldrig har eksisteret
+// — vagten er reel, men kommentaren pegede på et navn ingen kunne slå op.
 //
 // Betydning: positiv = speciale, negativ = modsat (straffes).
 // ARRAY-RÆKKEFØLGEN er tie-break-prioritet (markante specialister først, brede

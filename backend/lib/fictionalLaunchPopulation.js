@@ -22,11 +22,12 @@
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
+import { LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 
 export const LAUNCH_POPULATION = Object.freeze({
   seed: 2026,
   count: 800,
-  referenceYear: 2026,
+  referenceYear: LAUNCH_REFERENCE_YEAR,
 });
 
 // Launch-pyramide-bånd (CZ$) — ejer-spec 2026-06-07. Superstjerne-grænsen ER

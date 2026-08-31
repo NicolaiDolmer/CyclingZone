@@ -19,6 +19,7 @@ import { generateAcademyCandidates, YOUTH_GEN_CONFIG } from "../../lib/academyGe
 import { makeRng } from "../../lib/fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "../../lib/physiologySeeding.js";
 import { deriveAbilities } from "../../lib/abilityDerivation.js";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 import {
   PHYSICAL_ABILITIES, median, percentile,
   gateT3M1TwoSidedBands, gateI3GraduationLevelTail, BAND_2A_TARGETS,
@@ -47,8 +48,8 @@ function buildLightRecords(cands, referenceYear) {
 function run(patch, label) {
   const cfg = Object.freeze({ ...YOUTH_GEN_CONFIG, ...patch });
   const rng = makeRng(31337);
-  const cands = generateAcademyCandidates({ rng, referenceYear: 2026, existingNames: new Set(), countOverride: 4000, genCfg: cfg });
-  const records = buildLightRecords(cands, 2026);
+  const cands = generateAcademyCandidates({ rng, referenceYear: LAUNCH_REFERENCE_YEAR, existingNames: new Set(), countOverride: 4000, genCfg: cfg });
+  const records = buildLightRecords(cands, LAUNCH_REFERENCE_YEAR);
 
   console.log(`\n=== ${label} ===`);
 

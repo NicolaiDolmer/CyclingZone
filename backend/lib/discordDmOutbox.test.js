@@ -262,3 +262,54 @@ test("drain — ingen webhook konfigureret: Sentry-capture sker stadig ved dead"
   assert.equal(deps._webhookCalls.length, 0);
   assert.equal(deps._captures.length, 1);
 });
+
+// ── onPermanentRecipientFailure (#3130/#3483) ────────────────────────────────
+//
+// Regression: drain-stien kaldte kun callbacken på 'recipient-blocked' (403), så
+// en 400/404-kobling ('bad-request', Discord-kode 50033) kunne dø i outbox'en
+// igen og igen uden nogensinde at røre dead-connection-tælleren. Fire cases:
+// 403 uændret, 400 og 404 tæller nu op, 401 tæller stadig IKKE.
+
+async function drainWithPermanentFailure({ status, reason }) {
+  const { supabase } = makeSupabaseMock({
+    pendingRows: [{ id: "r1", discord_id: "u1", payload: {}, attempts: 1 }],
+  });
+  const notified = [];
+  await processDmOutboxDrain({
+    supabase,
+    deliverFn: async () => ({
+      ok: false,
+      status,
+      failure: { kind: "permanent", reason },
+      error: `openDm ${status}`,
+    }),
+    onPermanentRecipientFailure: async (discordId) => notified.push(discordId),
+    ...makeDrainDeps(),
+  });
+  return notified;
+}
+
+test("drain — 403 recipient-blocked tæller på dead-connection-tælleren (#3130)", async () => {
+  assert.deepEqual(await drainWithPermanentFailure({ status: 403, reason: "recipient-blocked" }), [
+    "u1",
+  ]);
+});
+
+test("drain — 400 bad-request tæller også op (#3483)", async () => {
+  assert.deepEqual(await drainWithPermanentFailure({ status: 400, reason: "bad-request" }), ["u1"]);
+});
+
+test("drain — 404 bad-request tæller også op (#3483)", async () => {
+  assert.deepEqual(await drainWithPermanentFailure({ status: 404, reason: "bad-request" }), ["u1"]);
+});
+
+test("drain — 401 token-invalid tæller IKKE (vores token, ikke modtageren)", async () => {
+  assert.deepEqual(await drainWithPermanentFailure({ status: 401, reason: "token-invalid" }), []);
+});
+
+// #3483-review: en 400 fra postDm er VORES embed der blev afvist (kode 50035),
+// ikke en død kobling. Den rammer alle modtagere i samme runde, så tælles den
+// med, afkobler tre notifikationer hver eneste tilknyttet spiller.
+test("drain — 400 payload-rejected tæller IKKE (vores payload, ikke modtageren)", async () => {
+  assert.deepEqual(await drainWithPermanentFailure({ status: 400, reason: "payload-rejected" }), []);
+});
