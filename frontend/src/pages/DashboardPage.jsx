@@ -1480,8 +1480,12 @@ export default function DashboardPage() {
                     {s._isOwnRowBreak && (
                       <div className="border-t border-cz-border my-1" aria-hidden="true" />
                     )}
+                    {/* #2795-opfoelgning: er egen raekke ogsaa leder, bruges kun
+                        kanten - fladetoningen ville ellers ligge oven paa
+                        leder-guldet. Samme opdeling som .cz-me / .cz-me-bar i
+                        tabellerne, saa dashboardet ser ud som /standings. */}
                     <Link to="/standings"
-                      className={`${isMe ? "cz-me-block " : ""}flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
+                      className={`${isMe ? (isLeader ? "cz-me-block-bar " : "cz-me-block ") : ""}flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
                       <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
                       {/* vk-movement-signals — divisionsplacerings-bevægelse siden
                           sidste løbsdag, KUN på egen række. null/0 = ingen løbsdag endnu
