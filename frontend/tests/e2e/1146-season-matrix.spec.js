@@ -3,7 +3,7 @@
 // Egen route-override for GET /api/races/selection/season (endpointet findes
 // endnu ikke i den delte preview-mock, #1146 er den første forbruger) — samme
 // LIFO-override-mønster som 4165-planning-load-error.spec.js.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js"; // #4248: auto-fixture for uncaught JS-fejl
 import { installNetworkMocks, login, stabilizePage, corsHeaders, evidenceShotPath } from "./fixtures.js";
 
 const ABILITIES = Object.fromEntries(
@@ -43,13 +43,14 @@ const SEASON_MATRIX_BODY = {
   ],
 };
 
-// #4323: endagsløb inde i et GT-spænd (samme form som mockHandlers.js's Ocean
-// Road Classic på Giro della Penisolas dag 3) — dag 15 ligger inde i r2's
-// spænd (14-17), så en tom celle den dag skal tilbyde BEGGE løb, ikke kun r2
-// (den gamle bug: races.find() ramte altid det første/"primære" løb). Egen
-// body (ikke i SEASON_MATRIX_BODY) — at lægge et overlap ind i det DELTE seed
-// ville lane-pakke header'en om (2 lanes i stedet for 1) og knække de andre
-// tests' `thead tr:nth-child(3)`-antagelse.
+// #4323-opfølgning (akse-konvertering, ejer-låst 27-28/8, spillertest-punkt 6):
+// endagsløb inde i et GT-spænd (samme form som mockHandlers.js's Ocean Road
+// Classic på Giro della Penisolas dag 3) — dag 15 ligger inde i r2's spænd
+// (14-17) OG r4's egen (15-15). Efter akse-konverteringen bliver det to
+// ADSKILTE kolonner side om side (ikke længere ét delt "hvilket løb"-valg),
+// så gitteret får ÉN kolonne mere end de øvrige tests' seed. Egen body (ikke
+// i SEASON_MATRIX_BODY), samme grund som før: et overlap i det DELTE seed
+// ville ændre kolonnetallet og knække de andre tests' antagelser.
 const MULTI_RACE_DAY_BODY = {
   ...SEASON_MATRIX_BODY,
   races: [
@@ -122,48 +123,51 @@ test.describe("Sæsonmatrix (#1146)", () => {
     await expect(page.getByTitle(/Cecilie Holm, Giro Veneto: Kaptajn/)).toBeVisible();
   });
 
-  test("flerløbs-dag: en tom celle med to dækkende løb tilbyder et løbsvalg, og vælger man det sekundære løb, gemmes rytteren DÉR (ikke i dagens primære GT)", async ({ page }) => {
+  test("flerløbs-dag (akse-konvertering, kontrakt #7): to løb der deler en kalenderdag vises som ADSKILTE kolonner — en tom celle peger entydigt på sit eget løb, ingen løbsvælger", async ({ page }) => {
     await mockSelectionSeason(page, MULTI_RACE_DAY_BODY); // LIFO-override af beforeEach's default body
     await login(page);
     await page.goto("/planning?view=season");
     await expect(page.getByRole("heading", { name: "Udtagelsesmatrix" })).toBeVisible();
 
-    // Bo Madsen er ikke udtaget til Tour des Hauts Plateaux (r2, dag 14-17).
-    // Alle fire dage er derfor "tomme" celler med samme title (races.find()
-    // rammer r2 som første dækkende løb) — dag 15 er indeks 1 i den række, og
-    // er den ENESTE af de fire der OGSÅ dækkes af Ocean Road Classic (r4).
+    // Bo Madsen er ikke udtaget til Tour des Hauts Plateaux (r2, dag 14-17) —
+    // fire ADSKILTE tomme celler, én pr. løbsdag (kontrakt #7: ingen delt
+    // kolonne længere, uanset at dag 15 også dækkes af Ocean Road Classic).
     const gtEmptyCells = page.getByTitle(/Bo Madsen, Tour des Hauts Plateaux: ikke udtaget/);
     await expect(gtEmptyCells).toHaveCount(4);
-    await gtEmptyCells.nth(1).click();
+    // Ocean Road Classic (r4, dag 15) er sin EGEN, adskilte tomme celle.
+    const oceanEmptyCell = page.getByTitle(/Bo Madsen, Ocean Road Classic: ikke udtaget/);
+    await expect(oceanEmptyCell).toHaveCount(1);
 
+    // Klik på Ocean Road Classics egen celle åbner DENS popover direkte —
+    // ingen "hvilket løb"-vælger (den er væk sammen med de delte kolonner).
+    await oceanEmptyCell.click();
     const popover = page.getByRole("dialog");
     await expect(popover).toBeVisible();
-    const raceChoice = popover.getByRole("listbox", { name: "Hvilket løb" });
-    await expect(raceChoice).toBeVisible();
-    await raceChoice.getByRole("option", { name: "Ocean Road Classic" }).click();
+    await expect(popover.getByText("Ocean Road Classic")).toBeVisible();
+    await expect(popover.getByRole("listbox", { name: "Hvilket løb" })).toHaveCount(0);
     await popover.getByRole("option", { name: "C Kaptajn" }).click();
 
     await expect(page.getByRole("button", { name: "Gem plan" })).toBeVisible();
-    // Rytteren sidder nu i Ocean Road Classic, ikke i GT'en, på dag 15.
+    // Rytteren sidder nu i Ocean Road Classic, ikke i GT'en.
     await expect(page.getByTitle(/Bo Madsen, Ocean Road Classic: Kaptajn/)).toHaveCount(1);
-    await expect(page.getByTitle(/Bo Madsen, Tour des Hauts Plateaux: ikke udtaget/)).toHaveCount(3);
+    await expect(page.getByTitle(/Bo Madsen, Tour des Hauts Plateaux: ikke udtaget/)).toHaveCount(4);
 
-    // Refutations-fund (#4323, 27/8, reproduceret empirisk): Bo sidder nu i
-    // Ocean Road Classic (dag 15), hvis spænd overlapper GT'ens spænd
-    // (dag 14-17). Åbner man en ANDEN tom GT-celle (dag 14), skal GT'en vises
-    // LÅST med navngivet årsag — IKKE tilbydes tavst, som den gamle bug gjorde
-    // (rytteren endte i BEGGE løb med overlap, opdaget først af serverens
-    // deferred constraint ved gem).
+    // Refutations-fund (#4323, 27/8, still gyldig efter akse-konverteringen):
+    // Bo sidder nu i Ocean Road Classic (dag 15), hvis spænd overlapper GT'ens
+    // spænd (dag 14-17). Åbner man en GT-celle (dag 14, GT's EGEN kolonne),
+    // skal GT'en vises LÅST med navngivet årsag — spillertest-punkt 2+3:
+    // årsagen er popoverens HOVEDINDHOLD (samme i18n-nøgle som rytterpuljens
+    // #3410-fix), ikke skjult undertekst under et forvirrende kandidat-navn.
     const gtDay14Cell = page.getByTitle(/Bo Madsen, Tour des Hauts Plateaux: ikke udtaget/).first();
     await gtDay14Cell.click();
     const lockedPopover = page.getByRole("dialog");
     await expect(lockedPopover).toBeVisible();
-    await expect(lockedPopover.getByText("Ocean Road Classic")).toBeVisible();
+    await expect(lockedPopover.getByText("Låst · kører Ocean Road Classic")).toBeVisible();
     await expect(lockedPopover.getByRole("listbox", { name: "Rolle" })).toHaveCount(0);
 
     // Låst betyder låst: intet klik i den låste popover må ændre kladden.
     await expect(page.getByRole("button", { name: "Gem plan" })).toBeVisible();
-    await expect(page.getByTitle(/Bo Madsen, Tour des Hauts Plateaux: ikke udtaget/)).toHaveCount(3);
+    await expect(page.getByTitle(/Bo Madsen, Tour des Hauts Plateaux: ikke udtaget/)).toHaveCount(4);
   });
 
   test("mobil 375px: vandret scroll + sticky rytter-kolonne, dag-kolonne-headeren har et tap-mål ≥24px", async ({ page }, testInfo) => {

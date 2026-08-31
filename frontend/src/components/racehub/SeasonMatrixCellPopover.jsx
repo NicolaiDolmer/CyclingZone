@@ -14,32 +14,38 @@
 // findes ingen anden "hvorfor er cellen låst"-tekst i dag (ingen per-celle
 // hviledag/binding-årsag i /races/selection/season-payloaden endnu).
 //
-// Låst KANDIDAT-løb (refutations-fund #4323, 27/8 — reproduceret empirisk):
-// et løb i løbsvælgeren hvis spænd overlapper rytterens eksisterende
-// udtagelse et andet sted (conflictingEntryForRace, seasonMatrix.js) vises
-// låst med navngivet årsag (matrix.cellPopover.raceLocked) i stedet for at
+// #4323-opfølgning (akse-konvertering, seasonMatrix.js kontrakt #7, ejer-låst
+// 27-28/8): hver kolonne tilhører nu ENTYDIGT ét løb, så popoveren tager
+// `race` direkte (ikke længere en `candidates`-liste + løbsvælger — se
+// seasonMatrix.js's fil-header for hvorfor den vælger blev overflødig).
+//
+// Låst løb (refutations-fund #4323, 27/8 — reproduceret empirisk, still
+// gyldig efter akse-konverteringen): overlapper `race`s spænd rytterens
+// eksisterende udtagelse et andet sted (conflictingEntryForRace,
+// seasonMatrix.js), vises løbet låst med navngivet årsag i stedet for at
 // kunne vælges tavst — den gamle bug lod rytteren ende i to overlappende løb
 // på én gang, opdaget først af serverens deferred constraint ved gem.
+// Årsagsteksten (`conflict` → seasonMatrix.js's raceLockLabel) er PRÆCIS
+// samme i18n-nøgler som rytterpuljens #3410-fix (racehub.boundNamed/
+// lockBoundUnnamed) — ikke en matrix-egen formulering (spillertest-punkt 2+3,
+// Discord 29/8: den gamle tekst var utydelig subtekst under et forvirrende
+// kandidat-navn; nu er årsagen selve popoverens hovedindhold).
 import { useCallback, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useModalA11y } from "../../hooks/useModalA11y.js";
 import { riderSuitability } from "../../lib/suitability.js";
-import { ROLE_LETTER, ROLE_ORDER, roleBadgeClass } from "../../lib/seasonMatrix.js";
+import { ROLE_LETTER, ROLE_ORDER, roleBadgeClass, raceLockLabel } from "../../lib/seasonMatrix.js";
 import { LockIcon, CheckIcon, XIcon } from "../ui";
 import FitBar from "./FitBar.jsx";
 
 const GAP = 6;
 const PANEL_WIDTH = 240;
 
-const NO_CONFLICTS = new Map();
-
 export default function SeasonMatrixCellPopover({
-  anchorEl, onClose, rider, candidates, fixed, currentRole, lockedReasonText, onSelectRole, onRemove,
-  conflictsByRaceId = NO_CONFLICTS,
+  anchorEl, onClose, rider, race, fixed, currentRole, lockedReasonText, conflict, onSelectRole, onRemove,
 }) {
   const { t } = useTranslation("races");
-  const [chosenRaceId, setChosenRaceId] = useState(candidates[0]?.id ?? null);
   const [coords, setCoords] = useState(null);
   const panelRef = useModalA11y(onClose, true);
 
@@ -84,8 +90,6 @@ export default function SeasonMatrixCellPopover({
   }, [anchorEl, panelRef, onClose]);
 
   if (typeof document === "undefined" || !anchorEl) return null;
-
-  const race = candidates.find((c) => c.id === chosenRaceId) ?? candidates[0];
   if (!race && !lockedReasonText) return null;
 
   const ariaLabel = lockedReasonText
@@ -93,12 +97,6 @@ export default function SeasonMatrixCellPopover({
     : fixed
       ? t("matrix.cellFilledAria", { rider: rider.name, race: race.name, role: t(`tacticsOrders.roleLabel.${currentRole}`) })
       : t("matrix.cellEmptyAria", { rider: rider.name, race: race.name });
-
-  // Refutations-fund #4323 (27/8): det VALGTE løb kan selv være låst (dets
-  // spænd overlapper rytterens eksisterende udtagelse et andet sted) — da
-  // vises årsagen i stedet for rollevalget, uanset om der var ét eller flere
-  // kandidatløb at vælge imellem (kontrakt #6, conflictingEntryForRace).
-  const conflict = !fixed ? conflictsByRaceId.get(race?.id) ?? null : null;
 
   const fit = !conflict && race?.demandVector && rider.abilities ? riderSuitability(rider.abilities, race.demandVector).score : null;
 
@@ -126,59 +124,21 @@ export default function SeasonMatrixCellPopover({
         <>
           <div className="mb-2 border-b border-cz-border pb-1.5">
             <p className="truncate text-xs font-semibold text-cz-1">{rider.name}</p>
-            {(fixed || candidates.length === 1) && <p className="truncate text-3xs text-cz-3">{race.name}</p>}
+            <p className="truncate text-3xs text-cz-3">{race.name}</p>
           </div>
 
-          {/* Løbsvalg (kontrakt 2a) — kun når dagen reelt har mere end ét
-              valgbart løb (fx et endagsløb inde i et GT-spænd). Ét løb → ingen
-              vælger, kun løbsnavnet i headeren ovenfor. */}
-          {!fixed && candidates.length > 1 && (
-            <div role="listbox" aria-label={t("matrix.cellPopover.raceChoice")} className="mb-2 flex flex-col gap-1">
-              {candidates.map((c) => {
-                const cConflict = conflictsByRaceId.get(c.id);
-                if (cConflict) {
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      role="option"
-                      aria-selected={false}
-                      disabled
-                      title={t("matrix.cellPopover.raceLocked", { race: cConflict.name })}
-                      className="w-full cursor-not-allowed rounded-cz border border-transparent px-2 py-1 text-left text-cz-3 opacity-60"
-                    >
-                      <span className="flex items-center gap-1.5 truncate text-xs">
-                        <LockIcon size={11} className="shrink-0" aria-hidden="true" />
-                        <span className="truncate">{c.name}</span>
-                      </span>
-                      <span className="block truncate pl-[18px] text-3xs">{t("matrix.cellPopover.raceLocked", { race: cConflict.name })}</span>
-                    </button>
-                  );
-                }
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    role="option"
-                    aria-selected={c.id === race.id}
-                    onClick={() => setChosenRaceId(c.id)}
-                    className={`w-full truncate rounded-cz border px-2 py-1 text-left text-xs transition-colors ${
-                      c.id === race.id ? "border-cz-accent bg-cz-accent/10 text-cz-1" : "border-transparent text-cz-2 hover:bg-cz-subtle"
-                    }`}
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Det VALGTE løb er selv låst (kontrakt #6) — vis årsagen i stedet
-              for rollevalget; der er intet lovligt rollevalg at tilbyde. */}
+          {/* Løbet er selv låst (kontrakt #6, spillertest-punkt 2+3): overlapper
+              dets spænd rytterens EKSISTERENDE udtagelse et andet sted, vises
+              årsagen HER — som popoverens hovedindhold, ikke skjult som
+              undertekst under et forvirrende kandidat-navn (den gamle bug,
+              Discord 29/8) — i stedet for rollevalget; der er intet lovligt
+              rollevalg at tilbyde. Samme i18n-nøgler som rytterpuljens
+              #3410-fix (raceLockLabel, seasonMatrix.js), ikke en matrix-egen
+              formulering. */}
           {conflict ? (
-            <p className="flex items-start gap-1.5 rounded-cz bg-cz-subtle px-2 py-1.5 text-xs text-cz-3">
-              <LockIcon size={12} className="mt-0.5 shrink-0" aria-hidden="true" />
-              <span>{t("matrix.cellPopover.raceLocked", { race: conflict.name })}</span>
+            <p className="flex items-start gap-1.5 rounded-cz bg-cz-subtle px-2 py-1.5 text-xs text-cz-1">
+              <LockIcon size={13} className="mt-0.5 shrink-0 text-cz-3" aria-hidden="true" />
+              <span>{raceLockLabel(conflict, t)}</span>
             </p>
           ) : (
             /* De fem roller, fulde navne (kontrakt 2b) — genbruger de eksisterende
@@ -190,7 +150,7 @@ export default function SeasonMatrixCellPopover({
                   type="button"
                   role="option"
                   aria-selected={role === currentRole}
-                  onClick={() => onSelectRole(race.id, role)}
+                  onClick={() => onSelectRole(role)}
                   className={`flex w-full items-center gap-2 rounded-cz border px-2 py-1.5 text-left transition-colors ${
                     role === currentRole ? "border-cz-accent bg-cz-accent/10" : "border-transparent hover:bg-cz-subtle"
                   }`}

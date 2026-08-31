@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   emptyRaceDraft, buildDraftsFromEntries, roleOf, setRiderRole, removeRiderFromRace, raceDraftDirty, dirtyRaceIds,
-  buildDayColumns, buildDateBands, buildRiderRowSegments, raceForDay, countProblems,
-  buildRaceHeaderGroups, riderLoadDays, selectableRacesForDay, roleBadgeClass, conflictingEntryForRace,
+  buildDayColumns, buildDateBands, buildRiderRowSegments, countProblems,
+  buildRaceHeaderGroups, riderLoadDays, roleBadgeClass, conflictingEntryForRace, raceLockLabel, buildSaveError,
 } from "./seasonMatrix.js";
 
 test("buildDraftsFromEntries: grupperer entries pr. løb og udleder rolle-felter", () => {
@@ -58,16 +58,6 @@ test("removeRiderFromRace: fjerner rytteren helt fra kladden (celle-popoverens '
   assert.equal(roleOf(d, "a"), null);
   assert.equal(d.rider_ids.includes("a"), false);
   assert.equal(d.captain_id, null);
-});
-
-test("selectableRacesForDay: alle løb hvis spænd dækker dagen, ikke kun det første i races[] (#4323 fund — endagsløb inde i et GT-spænd)", () => {
-  const races = [
-    { id: "gt", gameDayStart: 1, gameDayEnd: 6 },
-    { id: "oneDay", gameDayStart: 3, gameDayEnd: 3 },
-  ];
-  assert.deepEqual(selectableRacesForDay(races, 3).map((r) => r.id), ["gt", "oneDay"]);
-  assert.deepEqual(selectableRacesForDay(races, 1).map((r) => r.id), ["gt"]);
-  assert.deepEqual(selectableRacesForDay(races, 9), []);
 });
 
 test("conflictingEntryForRace (refutations-fund #4323, 27/8): finder løbet rytteren allerede sidder i, naar dets spaend overlapper kandidatloebets — repro fra fundet (GT dag 1-10 + endagsloeb dag 5)", () => {
@@ -132,6 +122,20 @@ test("roleBadgeClass: kaptajn/sprint-kaptajn faar gold-tint, resten neutral", ()
   assert.match(roleBadgeClass("helper"), /accent\/10/);
 });
 
+// #3410-genbrug (spillertest-punkt 2+3, Discord 29/8): SAMME i18n-nøgler som
+// rytterpuljens fix — raceLockLabel duplikerer ikke matrixens egen formulering.
+test("raceLockLabel: navngivet konflikt bruger racehub.boundNamed (samme nøgle som rytterpuljen)", () => {
+  const calls = [];
+  const t = (key, params) => { calls.push([key, params]); return `T:${key}`; };
+  const label = raceLockLabel({ id: "r2", name: "Ocean Road Classic" }, t);
+  assert.equal(label, "T:racehub.boundNamed");
+  assert.deepEqual(calls, [["racehub.boundNamed", { race: "Ocean Road Classic" }]]);
+});
+
+test("raceLockLabel: null konflikt -> null (ingen tekst)", () => {
+  assert.equal(raceLockLabel(null, () => "x"), null);
+});
+
 test("raceDraftDirty + dirtyRaceIds: kun reelt ændrede løb rapporteres", () => {
   const server = new Map([["r1", { ...emptyRaceDraft(), rider_ids: ["a"] }]]);
   const draft = new Map([
@@ -142,13 +146,29 @@ test("raceDraftDirty + dirtyRaceIds: kun reelt ændrede løb rapporteres", () =>
   assert.deepEqual(dirtyRaceIds(draft, server), ["r2"]);
 });
 
-test("buildDayColumns: unionen af alle løbs [gameDayStart,gameDayEnd], sorteret, HARD INVARIANT-felter", () => {
+// Akse-konvertering (kontrakt #7, ejer-låst 27-28/8, spillertest-punkt 6): ÉN
+// kolonne pr. (løb, løbsdag) — ikke pr. delt game_day.
+test("buildDayColumns: én kolonne pr. (løb, løbsdag), race-relativt 1-baseret stageIndex", () => {
   const races = [
     { id: "r1", gameDayStart: 3, gameDayEnd: 5 },
-    { id: "r2", gameDayStart: 5, gameDayEnd: 5 },
     { id: "r3", gameDayStart: 10, gameDayEnd: 11 },
   ];
-  assert.deepEqual(buildDayColumns(races), [3, 4, 5, 10, 11]);
+  const cols = buildDayColumns(races);
+  assert.deepEqual(cols.map((c) => [c.raceId, c.gameDay, c.stageIndex]), [
+    ["r1", 3, 1], ["r1", 4, 2], ["r1", 5, 3],
+    ["r3", 10, 1], ["r3", 11, 2],
+  ]);
+});
+
+test("buildDayColumns: to løb der deler en kalenderdag (D1-normalen) bliver to ADSKILTE kolonner, ikke én fælles", () => {
+  const races = [
+    { id: "r1", gameDayStart: 5, gameDayEnd: 5 },
+    { id: "r2", gameDayStart: 5, gameDayEnd: 5 },
+  ];
+  const cols = buildDayColumns(races);
+  assert.equal(cols.length, 2, "to loeb paa samme dag = to kolonner, ikke en delt kolonne");
+  assert.deepEqual(cols.map((c) => c.raceId), ["r1", "r2"]);
+  assert.deepEqual(cols.map((c) => c.gameDay), [5, 5]);
 });
 
 test("buildDayColumns: løb uden gyldigt spænd (mangler game_day) bidrager intet", () => {
@@ -156,19 +176,36 @@ test("buildDayColumns: løb uden gyldigt spænd (mangler game_day) bidrager inte
   assert.deepEqual(buildDayColumns(races), []);
 });
 
-test("buildDateBands: grupperer sammenhængende dage med samme dato under ét bånd", () => {
+test("buildDateBands: grupperer sammenhængende kolonner med samme dato OG samme løb under ét bånd", () => {
+  const races = [{ id: "r1", gameDayStart: 3, gameDayEnd: 5 }];
+  const cols = buildDayColumns(races);
   const dayDates = new Map([[3, "2027-01-05"], [4, "2027-01-05"], [5, "2027-01-06"]]);
-  const bands = buildDateBands([3, 4, 5], dayDates);
-  assert.deepEqual(bands, [
-    { date: "2027-01-05", days: [3, 4] },
-    { date: "2027-01-06", days: [5] },
+  const bands = buildDateBands(cols, dayDates);
+  assert.deepEqual(bands.map((b) => [b.date, b.raceId, b.days.length]), [
+    ["2027-01-05", "r1", 2],
+    ["2027-01-06", "r1", 1],
   ]);
 });
 
+test("buildDateBands: to løb der deler en kalenderdag bryder båndet, selv med samme dato (ingen sammensmeltning på tværs af løb)", () => {
+  const races = [
+    { id: "r1", gameDayStart: 5, gameDayEnd: 5 },
+    { id: "r2", gameDayStart: 5, gameDayEnd: 5 },
+  ];
+  const cols = buildDayColumns(races);
+  const dayDates = new Map([[5, "2027-01-05"]]);
+  const bands = buildDateBands(cols, dayDates);
+  assert.equal(bands.length, 2, "samme dato men FORSKELLIGT loeb -> to baand");
+  assert.deepEqual(bands.map((b) => b.raceId), ["r1", "r2"]);
+  assert.ok(bands.every((b) => b.date === "2027-01-05"));
+});
+
 test("buildDateBands: en løbsdag uden kendt dato arver forrige bånds dato (ingen dato-gæt)", () => {
+  const races = [{ id: "r1", gameDayStart: 3, gameDayEnd: 4 }];
+  const cols = buildDayColumns(races);
   const dayDates = new Map([[3, "2027-01-05"]]);
-  const bands = buildDateBands([3, 4], dayDates);
-  assert.deepEqual(bands, [{ date: "2027-01-05", days: [3, 4] }]);
+  const bands = buildDateBands(cols, dayDates);
+  assert.deepEqual(bands.map((b) => [b.date, b.days.length]), [["2027-01-05", 2]]);
 });
 
 test("buildRiderRowSegments: ét spænd pr. holdudtag (kontrakt #3), tomme celler ellers", () => {
@@ -176,7 +213,7 @@ test("buildRiderRowSegments: ét spænd pr. holdudtag (kontrakt #3), tomme celle
     { id: "gt", gameDayStart: 2, gameDayEnd: 6 },
     { id: "oneDay", gameDayStart: 8, gameDayEnd: 8 },
   ];
-  const dayColumns = buildDayColumns(races); // [2..6, 8]
+  const dayColumns = buildDayColumns(races);
   const draftByRace = new Map([
     ["gt", { ...emptyRaceDraft(), rider_ids: ["rider1"], captain_id: "rider1" }],
     ["oneDay", emptyRaceDraft()],
@@ -184,38 +221,38 @@ test("buildRiderRowSegments: ét spænd pr. holdudtag (kontrakt #3), tomme celle
   const segs = buildRiderRowSegments(dayColumns, races, draftByRace, "rider1");
   assert.equal(segs.length, 2);
   assert.deepEqual(segs[0], { kind: "entry", race: races[0], role: "captain", days: [2, 3, 4, 5, 6], colSpan: 5 });
-  assert.deepEqual(segs[1], { kind: "empty", day: 8 });
+  assert.deepEqual(segs[1], { kind: "empty", day: 8, raceId: "oneDay" });
 });
 
-test("buildRiderRowSegments (fund 1, #4323): defensiv guard klipper et senere overlappende spænd i stedet for at forskyde raekken", () => {
+test("buildRiderRowSegments: to løb der deler en dag giver TO adskilte segmenter for rytteren (ingen klip/forskydning — kolonnerne er nu adskilte)", () => {
   // Ulovlig kladde-tilstand (DB-constraint no_rider_double_booking_day skulle
   // forhindre den, men gitteret må aldrig krakelere hvis den alligevel opstår):
-  // rytteren er "udtaget" til A(1-2) OG B(2-3), som overlapper på dag 2.
+  // rytteren er "udtaget" til A(1-2) OG B(2-3), som overlapper på dag 2. Efter
+  // akse-konverteringen (kontrakt #7) er A's og B's kolonner ADSKILTE, så begge
+  // udtagelser vises som deres EGET segment i stedet for at konkurrere om én
+  // delt kolonne.
   const races = [
     { id: "A", gameDayStart: 1, gameDayEnd: 2 },
     { id: "B", gameDayStart: 2, gameDayEnd: 3 },
     { id: "C", gameDayStart: 4, gameDayEnd: 4 },
   ];
-  const dayColumns = buildDayColumns(races); // [1,2,3,4]
+  const dayColumns = buildDayColumns(races);
   const draftByRace = new Map([
     ["A", { ...emptyRaceDraft(), rider_ids: ["rider1"], captain_id: "rider1" }],
     ["B", { ...emptyRaceDraft(), rider_ids: ["rider1"] }],
     ["C", { ...emptyRaceDraft(), rider_ids: ["rider1"] }],
   ]);
   const segs = buildRiderRowSegments(dayColumns, races, draftByRace, "rider1");
-  // A (længst, tidligst) vinder dag 1-2 uklippet. B klippes til KUN dag 3 (dag 2
-  // er allerede konsumeret af A) — spændet forskydes aldrig, og rækken summer
-  // stadig til nøjagtigt antallet af kolonner.
-  assert.deepEqual(segs.map((s) => ({ race: s.race.id, days: s.days, colSpan: s.colSpan })), [
-    { race: "A", days: [1, 2], colSpan: 2 },
-    { race: "B", days: [3], colSpan: 1 },
-    { race: "C", days: [4], colSpan: 1 },
+  assert.deepEqual(segs.map((s) => ({ kind: s.kind, race: s.race?.id ?? null, colSpan: s.colSpan ?? 1 })), [
+    { kind: "entry", race: "A", colSpan: 2 },
+    { kind: "entry", race: "B", colSpan: 2 },
+    { kind: "entry", race: "C", colSpan: 1 },
   ]);
-  const totalCols = segs.reduce((n, s) => n + s.colSpan, 0);
+  const totalCols = segs.reduce((n, s) => n + (s.colSpan ?? 1), 0);
   assert.equal(totalCols, dayColumns.length);
 
   // Uafhængigt: countProblems() opdager og tæller konflikten (peer-conflict),
-  // så den forbliver synlig i problemtælleren selvom rækken ikke forskydes.
+  // så den forbliver synlig i problemtælleren.
   const problems = countProblems(races, draftByRace);
   assert.ok(problems.peerConflicts.some((c) => c.riderId === "rider1" && [c.raceIdA, c.raceIdB].includes("A") && [c.raceIdA, c.raceIdB].includes("B")));
   assert.ok(problems.affectedRiderIds.has("rider1"));
@@ -235,12 +272,6 @@ test("dirtyRaceIds: taeller PRAECIS det antal Gem plan-knappen skal vise", () =>
   const ids = dirtyRaceIds(draft, server);
   assert.equal(ids.length, 2, "kun r2 og r3 er reelt dirty");
   assert.deepEqual([...ids].sort(), ["r2", "r3"]);
-});
-
-test("raceForDay: finder løbet der dækker en given løbsdag", () => {
-  const races = [{ id: "r1", gameDayStart: 2, gameDayEnd: 6 }];
-  assert.equal(raceForDay(races, 4).id, "r1");
-  assert.equal(raceForDay(races, 9), null);
 });
 
 test("countProblems: overfyldt løb tælles med", () => {
@@ -266,63 +297,51 @@ test("countProblems: samme rytter i to overlappende løb i kladden er en peer-ko
   assert.ok(p.affectedRiderIds.has("a"));
 });
 
-test("buildRaceHeaderGroups: ikke-overlappende løb ligger i én lane, colSpan summerer til alle kolonner", () => {
+test("countProblems: ingen problemer → 'No problems'-tilstanden (count 0, tomme sæt)", () => {
+  const races = [{ id: "r1", gameDayStart: 1, gameDayEnd: 1, sizeMin: 6, sizeMax: 6 }];
+  const draftByRace = new Map([["r1", { ...emptyRaceDraft(), rider_ids: ["a"] }]]);
+  const p = countProblems(races, draftByRace);
+  assert.equal(p.count, 0);
+});
+
+test("buildRaceHeaderGroups: efter akse-konverteringen er hver kolonne entydigt ét løb — altid ÉN lane, colSpan summerer til alle kolonner", () => {
   const races = [
     { id: "gt", gameDayStart: 2, gameDayEnd: 4 },
     { id: "one", gameDayStart: 6, gameDayEnd: 6 },
   ];
   const dayColumns = buildDayColumns(races);
-  const lanes = buildRaceHeaderGroups(dayColumns, races);
+  const lanes = buildRaceHeaderGroups(dayColumns);
   assert.equal(lanes.laneCount, 1);
   assert.equal(lanes.length, 1);
   const groups = lanes[0];
   assert.equal(groups.length, 2);
-  assert.equal(groups[0].race.id, "gt");
+  assert.equal(groups[0].raceId, "gt");
   assert.deepEqual(groups[0].days, [2, 3, 4]);
   assert.equal(groups[0].colSpan, 3);
-  assert.equal(groups[1].race.id, "one");
+  assert.equal(groups[1].raceId, "one");
   const totalCols = groups.reduce((n, g) => n + g.colSpan, 0);
   assert.equal(totalCols, dayColumns.length);
 });
 
-test("buildRaceHeaderGroups (fund 1, #4323): overlappende løb (D1-normalen) lane-pakkes i stedet for at sprænge colSpan-summen", () => {
-  // A og B deler løbsdag 2 (D1-normalen: op til 3 løb samme dag); C er et
-  // enkeltstående løb oveni på dag 4. Reproducerer den rapporterede bug:
-  // dayColumns = [1,2,3,4] (4 kolonner), men A+B's colSpan-sum alene ville
-  // være 2+2=4 i ÉN række — plus C ville sprænge til 5 samlet.
+test("buildRaceHeaderGroups: to løb der deler en dag (D1-normalen) giver to ADSKILTE grupper i samme lane, ikke en lane-konflikt", () => {
+  // A og B deler løbsdag 2 (D1-normalen: op til 5 løb samme dag). Før akse-
+  // konverteringen krævede dette lane-pakning (packRaceLanes, nu fjernet) — nu
+  // er A's dag-2-kolonne og B's dag-2-kolonne simpelthen to FORSKELLIGE
+  // kolonner side om side, så begge grupper ligger problemfrit i lane 0.
   const races = [
     { id: "A", gameDayStart: 1, gameDayEnd: 2 },
     { id: "B", gameDayStart: 2, gameDayEnd: 3 },
     { id: "C", gameDayStart: 4, gameDayEnd: 4 },
   ];
   const dayColumns = buildDayColumns(races);
-  assert.deepEqual(dayColumns, [1, 2, 3, 4]);
+  assert.equal(dayColumns.length, 5, "A(2)+B(2)+C(1) = 5 adskilte kolonner, ikke 4 delte dage");
 
-  const lanes = buildRaceHeaderGroups(dayColumns, races);
-  // A og B overlapper (dag 2) → kan IKKE dele lane. C er kortest/senest sorteret
-  // ind hvor der er plads (lane 0, efter A).
-  assert.equal(lanes.laneCount, 2);
-
-  // HVER lane-række summer colSpan til PRÆCIS antallet af kolonner (kernebeviset).
-  for (const laneGroups of lanes) {
-    const sum = laneGroups.reduce((n, g) => n + g.colSpan, 0);
-    assert.equal(sum, dayColumns.length, "hver lane-raekke skal summe colSpan til alle kolonner");
-  }
-
-  // A og B ligger i FORSKELLIGE lanes (ellers ville de visuelt overlappe).
-  const laneOfRace = (id) => lanes.findIndex((laneGroups) => laneGroups.some((g) => g.race?.id === id));
-  assert.notEqual(laneOfRace("A"), laneOfRace("B"));
-
-  // A's egen gruppe har det korrekte spænd/colSpan uafhængigt af B.
-  const laneA = lanes[laneOfRace("A")];
-  const groupA = laneA.find((g) => g.race?.id === "A");
-  assert.deepEqual(groupA.days, [1, 2]);
-  assert.equal(groupA.colSpan, 2);
-
-  const laneB = lanes[laneOfRace("B")];
-  const groupB = laneB.find((g) => g.race?.id === "B");
-  assert.deepEqual(groupB.days, [2, 3]);
-  assert.equal(groupB.colSpan, 2);
+  const lanes = buildRaceHeaderGroups(dayColumns);
+  assert.equal(lanes.laneCount, 1);
+  const groups = lanes[0];
+  assert.deepEqual(groups.map((g) => g.raceId), ["A", "B", "C"]);
+  const sum = groups.reduce((n, g) => n + g.colSpan, 0);
+  assert.equal(sum, dayColumns.length);
 });
 
 test("riderLoadDays: summerer løbsdage over ALLE løb rytteren er udtaget til i kladden", () => {
@@ -338,9 +357,54 @@ test("riderLoadDays: summerer løbsdage over ALLE løb rytteren er udtaget til i
   assert.equal(riderLoadDays(races, draftByRace, "z"), 0);
 });
 
-test("countProblems: ingen problemer → 'No problems'-tilstanden (count 0, tomme sæt)", () => {
-  const races = [{ id: "r1", gameDayStart: 1, gameDayEnd: 1, sizeMin: 6, sizeMax: 6 }];
-  const draftByRace = new Map([["r1", { ...emptyRaceDraft(), rider_ids: ["a"] }]]);
-  const p = countProblems(races, draftByRace);
-  assert.equal(p.count, 0);
+// Spillertest-punkt 1 (Discord 29/8): PUT /races/selection/bulk's fejlsvar
+// oversat/navngivet, ikke en generisk "prøv igen".
+const RACES = [
+  { id: "r1", name: "Grand Prix de Namur" },
+  { id: "r2", name: "Tour des Hauts Plateaux" },
+];
+const RIDERS = [{ id: "rider-1", name: "Ada Pedersen" }, { id: "rider-2", name: "Bo Madsen" }];
+
+test("buildSaveError: pr.-løb-validering (fx trupløft) navngiver det ramte løb", () => {
+  const err = buildSaveError({ error: "selection_wrong_size", race_id: "r1", max: 6 }, RACES, RIDERS);
+  assert.equal(err.code, "selection_wrong_size");
+  assert.equal(err.raceId, "r1");
+  assert.equal(err.raceName, "Grand Prix de Namur");
+  assert.deepEqual(err.params, {});
+});
+
+test("buildSaveError: selection_rider_bound (db_conflict) er allerede navngivet af serveren (rider_name/race_name)", () => {
+  const body = {
+    error: "selection_rider_bound", race_id: "r1",
+    conflicts: [{ rider_id: "rider-1", rider_name: "Ada Pedersen", race_id: "r2", race_name: "Tour des Hauts Plateaux" }],
+  };
+  const err = buildSaveError(body, RACES, RIDERS);
+  assert.equal(err.code, "selection_rider_bound_named");
+  assert.equal(err.raceId, "r1");
+  assert.equal(err.raceName, "Grand Prix de Namur");
+  assert.deepEqual(err.params, { rider: "Ada Pedersen", race: "Tour des Hauts Plateaux" });
+});
+
+test("buildSaveError: selection_rider_bound (peer_conflict) leverer kun raa ids — slaas op mod races/riders client-side", () => {
+  const body = {
+    error: "selection_rider_bound", race_id: "r1",
+    conflicts: [{ rider_id: "rider-1", race_id: "r1", conflict_race_id: "r2" }],
+  };
+  const err = buildSaveError(body, RACES, RIDERS);
+  assert.equal(err.code, "selection_rider_bound_named");
+  assert.deepEqual(err.params, { rider: "Ada Pedersen", race: "Tour des Hauts Plateaux" });
+});
+
+test("buildSaveError: selection_bulk_too_large bærer max, intet berørt løb", () => {
+  const err = buildSaveError({ error: "selection_bulk_too_large", max: 60 }, RACES, RIDERS);
+  assert.equal(err.code, "selection_bulk_too_large");
+  assert.equal(err.raceId, null);
+  assert.deepEqual(err.params, { max: 60 });
+});
+
+test("buildSaveError: ukendt/manglende body falder tilbage til generic uden at kaste", () => {
+  const err = buildSaveError({}, RACES, RIDERS);
+  assert.equal(err.code, "generic");
+  assert.equal(err.raceId, null);
+  assert.equal(err.raceName, null);
 });

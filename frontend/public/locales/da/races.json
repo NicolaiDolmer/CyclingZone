@@ -68,7 +68,7 @@
     "save": "Gem plan",
     "saveCount": "{count, plural, one {Gem plan · # ændring} other {Gem plan · # ændringer}}",
     "saving": "Gemmer...",
-    "saveError": "Intet gik tabt. Prøv at gemme igen.",
+    "saveErrorNamed": "Kunne ikke gemme {race}: {reason}",
     "noProblems": "Ingen problemer",
     "problemsCount": "{count, plural, one {# problem} other {# problemer}}",
     "leaveUnsaved": "Du har ugemte ændringer i matrixen. Forlad alligevel?",
@@ -83,11 +83,10 @@
     "peakWindow": "Peak-vindue · sigter mod {race}",
     "peakWindowNoTarget": "Peak-vindue",
     "peakLocked": "låst",
+    "backToMatrix": "Tilbage til sæsonmatrix",
     "cellPopover": {
-      "raceChoice": "Hvilket løb",
       "roleChoice": "Rolle",
-      "remove": "Fjern fra løbet",
-      "raceLocked": "Kører {race} de dage"
+      "remove": "Fjern fra løbet"
     }
   },
   "racehub": {
@@ -535,6 +534,10 @@
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",
       "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
       "selection_wrong_pool": "Du kan kun deltage i løb i din egen division.",
+      "selection_withdrawn": "Du er afmeldt dette løb, så der kan ikke gemmes en trup til det.",
+      "selection_duplicate_race": "Kunne ikke gemme: samme løb var med to gange. Prøv igen.",
+      "selection_bulk_too_large": "Du kan højst gemme {max} ændrede løb ad gangen. Gem nogle nu, og resten bagefter.",
+      "race_not_found": "Dette løb findes ikke længere. Genindlæs og prøv igen.",
       "strategy_invalid_body": "Din strategi kunne ikke gemmes: ugyldige data.",
       "strategy_flag_disabled": "Løbs-hubben er ikke aktiv endnu.",
       "generic": "Udtagelsen kunne ikke gemmes. Prøv igen.",

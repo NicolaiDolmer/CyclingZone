@@ -9,7 +9,7 @@
 // geometri/kladde-logik bor DER (ren, testet); denne fil er render + IO.
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { getSession } from "../../lib/supabase";
+import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { riderSuitability } from "../../lib/suitability.js";
 import { fitTier } from "../../lib/raceHubLogic.js";
@@ -18,19 +18,13 @@ import SeasonMatrixCellPopover from "./SeasonMatrixCellPopover.jsx";
 import {
   ROLE_LETTER, buildDraftsFromEntries, roleOf, dirtyRaceIds, roleBadgeClass,
   buildDayColumns, buildDateBands, buildRaceHeaderGroups, buildRiderRowSegments, countProblems,
-  raceCurrentCount, riderLoadDays, emptyRaceDraft, raceForDay, selectableRacesForDay,
-  setRiderRole, removeRiderFromRace, conflictingEntryForRace,
+  raceCurrentCount, riderLoadDays, emptyRaceDraft,
+  setRiderRole, removeRiderFromRace, conflictingEntryForRace, buildSaveError,
 } from "../../lib/seasonMatrix.js";
 
 const API = import.meta.env.VITE_API_URL;
 const LENSES = ["entries", "routeMatch", "formPeak", "load"];
 const FIT_TEXT = { strong: "text-cz-accent-t", average: "text-cz-2", poor: "text-cz-3" };
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : null;
-}
 
 // Chunket save (defensivt — bulk-endpointets cap er 60 ændringer/kald, #4316).
 const BULK_CHUNK = 60;
@@ -45,14 +39,22 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   const [lens, setLens] = useState("entries");
   const [problemsOnly, setProblemsOnly] = useState(false);
   const [saving, setSaving] = useState(false);
+  // saveError: { code, raceId, raceName, params } | null — spillertest-punkt 1
+  // (Discord 29/8, begge testere ramte en tavs generisk fejl). buildSaveError
+  // (seasonMatrix.js) navngiver ALTID det berørte løb når svaret leverer et
+  // race_id, så banneret nedenfor OG den markerede kolonne (errorRaceId) peger
+  // på PRÆCIS samme løb — ingen tavse fejl.
   const [saveError, setSaveError] = useState(null);
   const [peakPlans, setPeakPlans] = useState(null); // Map<riderId, plan[]> | null (lazy, kun formPeak-linsen)
   // Celle-popover (#4323) — erstatter klik-cyklussen. `popover` er `{ kind: "empty",
-  // day, riderId } | { kind: "filled", raceId, riderId } | null`. `popoverAnchor`
-  // holder DEN celleknap der blev klikket, til positionering — state (ikke en ref)
-  // fordi den læses under render (JSX'en nedenfor); react-hooks/refs forbyder at
-  // læse ref.current under render (#3556-lint). Fokus-retur er useModalA11y's eget
-  // ansvar — den fanger document.activeElement, som ER cellen, ved åbning.
+  // raceId, riderId } | { kind: "filled", raceId, riderId } | null` — akse-
+  // konverteringen (kontrakt #7, seasonMatrix.js) gør en kolonne entydig ét løb,
+  // så popoveren adresserer raceId direkte i BEGGE grene (ingen "day" længere).
+  // `popoverAnchor` holder DEN celleknap der blev klikket, til positionering —
+  // state (ikke en ref) fordi den læses under render (JSX'en nedenfor);
+  // react-hooks/refs forbyder at læse ref.current under render (#3556-lint).
+  // Fokus-retur er useModalA11y's eget ansvar — den fanger document.activeElement,
+  // som ER cellen, ved åbning.
   const [popover, setPopover] = useState(null);
   const [popoverAnchor, setPopoverAnchor] = useState(null);
 
@@ -81,13 +83,16 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
 
   const races = useMemo(() => data?.races ?? [], [data]);
   const riders = useMemo(() => [...(data?.riders ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [data]);
+  const raceById = useMemo(() => new Map(races.map((r) => [r.id, r])), [races]);
+  // Akse-konvertering (kontrakt #7, ejer-låst 27-28/8, spillertest-punkt 6): ÉN
+  // kolonne pr. (løb, løbsdag) — se seasonMatrix.js's fil-header for begrundelsen.
   const dayColumns = useMemo(() => buildDayColumns(races), [races]);
   const dayDatesMap = useMemo(() => new Map((data?.dayDates ?? []).map((d) => [d.gameDay, d.date])), [data]);
   const dateBands = useMemo(() => buildDateBands(dayColumns, dayDatesMap), [dayColumns, dayDatesMap]);
-  // Race-navn-headeren er lane-pakket (#4323 fund 1) — races[] overlapper hyppigt
-  // i game_day-spænd (op til 3 løb samme løbsdag i D1), så én header-række kan
-  // ikke rumme dem alle uden at colSpan-summen sprænger antal kolonner.
-  const raceLanes = useMemo(() => buildRaceHeaderGroups(dayColumns, races), [dayColumns, races]);
+  // Race-navn-headeren: efter akse-konverteringen er hver kolonne entydigt ét
+  // løb, så en enkelt header-række altid rækker (buildRaceHeaderGroups' egen
+  // fil-header forklarer hvorfor den tidligere lane-pakning er fjernet).
+  const raceLanes = useMemo(() => buildRaceHeaderGroups(dayColumns), [dayColumns]);
   const problems = useMemo(() => countProblems(races, draftByRace), [races, draftByRace]);
   const dirtyIds = useMemo(() => dirtyRaceIds(draftByRace, serverByRace), [draftByRace, serverByRace]);
   const dirtyIdSet = useMemo(() => new Set(dirtyIds), [dirtyIds]);
@@ -127,7 +132,6 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
     })();
   }, [lens, peakPlans, seasonNumber]);
 
-  const raceById = useMemo(() => new Map(races.map((r) => [r.id, r])), [races]);
   // Form & peak-linsen: tooltip-tekst for en dag inde i rytterens peak-vindue
   // (målløbets navn hvis kendt, ellers en generisk label; +"låst" hvis vinduet
   // rent faktisk er begyndt, #3094-semantikken fra riderPeakPlans.js).
@@ -193,6 +197,11 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
     setPopover(null);
   }
 
+  // Spillertest-punkt 1 (Discord 29/8, begge testere): en afvist "Gem plan"
+  // skal forklare HVORFOR pr. berørt løb, ikke vise en generisk "prøv igen".
+  // buildSaveError (seasonMatrix.js) oversætter/navngiver svaret; banneret
+  // nedenfor OG den ramte kolonnes header (errorRaceId, i JSX'en) peger begge
+  // på PRÆCIS samme løb.
   async function saveAll() {
     setSaving(true);
     setSaveError(null);
@@ -213,14 +222,14 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          setSaveError(body.error || "generic");
+          setSaveError(buildSaveError(body, races, riders));
           setSaving(false);
           return;
         }
       }
       await load();
     } catch {
-      setSaveError("generic");
+      setSaveError({ code: "generic", raceId: null, raceName: null, params: {} });
     } finally {
       setSaving(false);
     }
@@ -263,7 +272,16 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         </div>
         {!readOnly && (
           <div className="flex items-center gap-2">
-            {saveError && <span className="text-2xs text-cz-danger">{t("matrix.saveError")}</span>}
+            {saveError && (
+              <span className="text-2xs text-cz-danger">
+                {saveError.raceName
+                  ? t("matrix.saveErrorNamed", {
+                      race: saveError.raceName,
+                      reason: t([`selection.errors.${saveError.code}`, "selection.errors.generic"], saveError.params),
+                    })
+                  : t([`selection.errors.${saveError.code}`, "selection.errors.generic"], saveError.params)}
+              </span>
+            )}
             {isDirty && (
               <Button size="sm" variant="primary" loading={saving} onClick={saveAll}>
                 {t("matrix.saveCount", { count: dirtyIds.length })}
@@ -285,7 +303,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
               gitteret. */}
           <colgroup>
             <col style={{ width: 148 }} />
-            {dayColumns.map((day) => <col key={day} style={{ width: colWidth }} />)}
+            {dayColumns.map((col) => <col key={col.key} style={{ width: colWidth }} />)}
           </colgroup>
           <thead>
             <tr>
@@ -305,41 +323,49 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             </tr>
             {raceLanes.map((laneGroups, laneIdx) => (
               <tr key={`lane-${laneIdx}`}>
-                {laneGroups.map((g, i) => (
-                  <th
-                    key={i}
-                    colSpan={g.colSpan}
-                    title={g.race?.name}
-                    className={`border-b border-cz-border px-1 py-1 text-3xs font-medium overflow-hidden whitespace-nowrap ${g.race ? raceGroupTint(g.race) : ""}`}
-                  >
-                    {g.race ? (
-                      <span className="flex items-center justify-between gap-1">
-                        <span className="truncate">{g.race.name}</span>
-                        <span className="tabular-nums text-cz-3 shrink-0">
-                          {t("matrix.squadCount", { count: raceCurrentCount(draftByRace, g.race.id), max: g.race.sizeMax })}
+                {laneGroups.map((g) => {
+                  const race = raceById.get(g.raceId);
+                  // Spillertest-punkt 1: den kolonne "Gem plan" afviste for, markeret
+                  // direkte i gitteret — ikke kun i banneret ovenfor.
+                  const hasError = saveError?.raceId === g.raceId;
+                  return (
+                    <th
+                      key={g.raceId}
+                      colSpan={g.colSpan}
+                      title={race?.name}
+                      className={`border-b px-1 py-1 text-3xs font-medium overflow-hidden whitespace-nowrap ${
+                        hasError ? "border-cz-danger bg-cz-danger/10 text-cz-danger" : `border-cz-border ${race ? raceGroupTint(race) : ""}`
+                      }`}
+                    >
+                      {race ? (
+                        <span className="flex items-center justify-between gap-1">
+                          {hasError && <AlertTriangleIcon size={10} className="shrink-0" aria-hidden="true" />}
+                          <span className="truncate">{race.name}</span>
+                          <span className="tabular-nums text-cz-3 shrink-0">
+                            {t("matrix.squadCount", { count: raceCurrentCount(draftByRace, race.id), max: race.sizeMax })}
+                          </span>
                         </span>
-                      </span>
-                    ) : null}
-                  </th>
-                ))}
+                      ) : null}
+                    </th>
+                  );
+                })}
               </tr>
             ))}
             <tr>
-              {dayColumns.map((day) => {
-                // Etape-nummer INDEN i løbet (ikke en global kolonne-tæller) — samme
-                // semantik som før lane-fixet, nu udledt af races[] direkte, så den er
-                // uafhængig af hvilken lane løbet endte i.
-                const race = raceForDay(races, day);
-                const idx = race ? day - race.gameDayStart : 0;
+              {dayColumns.map((col) => {
+                // Etape-nummer INDEN i løbet, 1-baseret (kontrakt #7: col.stageIndex
+                // er allerede udledt entydigt af KOLONNENS EGET løb — ingen races.find()-
+                // opslag her længere, så tallet kan ikke længere tilhøre "det forkerte"
+                // af flere løb der deler en kalenderdag).
                 return (
-                  <th key={day} className="border-b border-cz-border p-0" style={{ width: colWidth, minWidth: colWidth }}>
+                  <th key={col.key} className="border-b border-cz-border p-0" style={{ width: colWidth, minWidth: colWidth }}>
                     <button
                       type="button"
-                      onClick={() => { const d = dayDatesMap.get(day); if (d) onOpenDay?.(d); }}
-                      title={t("matrix.dayAria", { index: idx + 1, date: dayDatesMap.get(day) ?? "?" })}
+                      onClick={() => { const d = dayDatesMap.get(col.gameDay); if (d) onOpenDay?.(d); }}
+                      title={t("matrix.dayAria", { index: col.stageIndex, date: dayDatesMap.get(col.gameDay) ?? "?" })}
                       className="w-full h-6 flex items-center justify-center text-3xs font-mono tabular-nums text-cz-3 hover:text-cz-accent-t hover:bg-cz-subtle"
                     >
-                      {idx + 1}
+                      {col.stageIndex}
                     </button>
                   </th>
                 );
@@ -363,20 +389,26 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                     </td>
                     {segments.map((seg) => {
                       if (seg.kind === "empty") {
-                        const race = races.find((r) => seg.day >= r.gameDayStart && seg.day <= r.gameDayEnd);
+                        // Kontrakt #7: kolonnen er entydigt ét løb (seg.raceId), intet
+                        // races.find()-opslag nødvendigt længere.
+                        const race = raceById.get(seg.raceId);
                         const peak = peakDays?.get(seg.day);
                         const fit = lens === "routeMatch" && race && rider.abilities ? riderSuitability(rider.abilities, race.demandVector).score : null;
                         const isDraftCell = race && dirtyIdSet.has(race.id);
+                        const hasError = race && saveError?.raceId === race.id;
                         return (
                           <td
                             key={seg.day}
-                            className={`border-b border-cz-border p-0 ${peak ? "bg-cz-accent/10" : ""} ${isDraftCell ? "outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : ""}`}
+                            className={`border-b p-0 ${peak ? "bg-cz-accent/10" : ""} ${
+                              hasError ? "border-cz-danger outline outline-1 outline-offset-[-1px] outline-cz-danger"
+                                : isDraftCell ? "border-cz-border outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : "border-cz-border"
+                            }`}
                             style={{ width: colWidth }}
                           >
                             <button
                               type="button"
                               disabled={!race}
-                              onClick={(e) => race && openCellPopover(e, { kind: "empty", day: seg.day, riderId: rider.id })}
+                              onClick={(e) => race && openCellPopover(e, { kind: "empty", raceId: race.id, riderId: rider.id })}
                               title={[race ? t("matrix.cellEmptyAria", { rider: rider.name, race: race.name }) : null, peakTitle(peak)].filter(Boolean).join(" · ") || undefined}
                               className={`w-full h-7 flex items-center justify-center text-3xs tabular-nums ${race ? "hover:bg-cz-subtle cursor-pointer" : ""} ${fit != null ? FIT_TEXT[fitTier(fit)] : "text-transparent"}`}
                             >
@@ -391,11 +423,15 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                       const peakHit = days.find((d) => peakDays?.has(d));
                       const peakInfo = peakHit ? peakTitle(peakDays.get(peakHit)) : null;
                       const isDraftCell = dirtyIdSet.has(race.id);
+                      const hasError = saveError?.raceId === race.id;
                       return (
                         <td
                           key={race.id}
                           colSpan={seg.colSpan}
-                          className={`border-b border-cz-border p-0 ${peakInfo ? "ring-1 ring-inset ring-cz-accent/60" : ""} ${isDraftCell ? "outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : ""}`}
+                          className={`border-b p-0 ${peakInfo ? "ring-1 ring-inset ring-cz-accent/60" : ""} ${
+                            hasError ? "border-cz-danger outline outline-1 outline-offset-[-1px] outline-cz-danger"
+                              : isDraftCell ? "border-cz-border outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : "border-cz-border"
+                          }`}
                           style={{ width: colWidth * seg.colSpan }}
                         >
                           <button
@@ -437,55 +473,37 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
 
       {popover && (() => {
         const rider = riders.find((r) => r.id === popover.riderId);
-        if (!rider) return null;
-        if (popover.kind === "filled") {
-          const race = raceById.get(popover.raceId);
-          if (!race) return null;
-          const currentRole = roleOf(draftByRace.get(race.id), rider.id);
-          // Fixed celle = rytterens EGET løb — samme løb er altid lovligt
-          // (rolle-skift), ingen konflikt mulig her (conflictingEntryForRace
-          // udelader eksplicit `race` selv). blocked-guarden kaldes alligevel,
-          // så onSelectRole altid går gennem samme kode-sti som empty-cellen.
-          return (
-            <SeasonMatrixCellPopover
-              anchorEl={popoverAnchor}
-              onClose={closeCellPopover}
-              rider={rider}
-              candidates={[race]}
-              fixed
-              currentRole={currentRole}
-              lockedReasonText={readOnly ? t("seasonView.readOnlyHint") : null}
-              onSelectRole={(raceId, role) => {
-                const conflict = conflictingEntryForRace(rider.id, raceById.get(raceId), races, draftByRace);
-                setRaceDraft(raceId, (d) => setRiderRole(d, rider.id, role, !!conflict));
-                closeCellPopover();
-              }}
-              onRemove={(raceId) => { setRaceDraft(raceId, (d) => removeRiderFromRace(d, rider.id)); closeCellPopover(); }}
-            />
-          );
-        }
-        const candidates = selectableRacesForDay(races, popover.day);
-        if (!candidates.length) return null;
-        // Refutations-fund #4323 (27/8): et kandidatløb hvis spænd overlapper
-        // rytterens EKSISTERENDE udtagelse et andet sted skal vises låst med
-        // navngivet årsag i stedet for tavst at kunne vælges (kontrakt #6).
-        const conflictsByRaceId = new Map(candidates.map((c) => [c.id, conflictingEntryForRace(rider.id, c, races, draftByRace)]));
+        const race = raceById.get(popover.raceId);
+        if (!rider || !race) return null;
+        const fixed = popover.kind === "filled";
+        const currentRole = roleOf(draftByRace.get(race.id), rider.id);
+        // Akse-konvertering (kontrakt #7): popoveren adresserer raceId direkte —
+        // ingen "hvilket løb"-vælger/candidates-liste længere (seasonMatrix.js's
+        // fil-header forklarer hvorfor en kolonne nu entydigt er ét løb).
+        // Fixed celle = rytterens EGET løb — samme løb er altid lovligt
+        // (rolle-skift), ingen konflikt mulig her (conflictingEntryForRace
+        // udelader eksplicit `race` selv). blocked-guarden kaldes alligevel,
+        // så onSelectRole altid går gennem samme kode-sti som empty-cellen.
+        // Refutations-fund #4323 (27/8, spillertest-punkt 2+3): for en TOM
+        // celle vises løbet LÅST med navngivet årsag i stedet for tavst at
+        // kunne vælges, hvis det overlapper rytterens eksisterende udtagelse
+        // et andet sted (kontrakt #6).
+        const conflict = !fixed ? conflictingEntryForRace(rider.id, race, races, draftByRace) : null;
         return (
           <SeasonMatrixCellPopover
             anchorEl={popoverAnchor}
             onClose={closeCellPopover}
             rider={rider}
-            candidates={candidates}
-            fixed={false}
-            currentRole={null}
+            race={race}
+            fixed={fixed}
+            currentRole={currentRole}
             lockedReasonText={readOnly ? t("seasonView.readOnlyHint") : null}
-            conflictsByRaceId={conflictsByRaceId}
-            onSelectRole={(raceId, role) => {
-              const conflict = conflictingEntryForRace(rider.id, raceById.get(raceId), races, draftByRace);
-              setRaceDraft(raceId, (d) => setRiderRole(d, rider.id, role, !!conflict));
+            conflict={conflict}
+            onSelectRole={(role) => {
+              setRaceDraft(race.id, (d) => setRiderRole(d, rider.id, role, !!conflict));
               closeCellPopover();
             }}
-            onRemove={undefined}
+            onRemove={fixed ? () => { setRaceDraft(race.id, (d) => removeRiderFromRace(d, rider.id)); closeCellPopover(); } : undefined}
           />
         );
       })()}
