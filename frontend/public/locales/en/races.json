@@ -849,7 +849,7 @@
       "teamDay": "{team} led the team classification with {count} riders in the top 10.",
       "teamWon": "{team} won the team classification.",
       "jerseys": "Jersey leaders: {points} in points, {mountain} in the mountains.",
-      "abandon": "{kind, select, crash {{rider} abandoned after a crash.} mechanical {{rider} abandoned with a mechanical.} other {{rider} abandoned.}}",
+      "abandon": "{kind, select, crash {{rider} abandoned after a crash.} mechanical {{rider} abandoned with a mechanical.} injury {{rider} did not start: injured.} other {{rider} abandoned.}}",
       "notableCrash": "{rider} crashed and lost {marginText}."
     },
     "incidents": {

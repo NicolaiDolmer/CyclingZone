@@ -45,6 +45,28 @@ export function isEligibleRider(rider, { teamId = null } = {}) {
 // (b) er berettiget for entry'ens eget team_id. ridersById = Map<rider_id, riderRow>
 // med mindst { id, team_id, is_academy, is_retired }. En entry uden rytter-row
 // droppes (slettet rytter). Pure + deterministisk; bevarer rækkefølgen.
+// #4418: opdel "forsvundne" start-felt-ryttere efter aarsag. En rytter der er
+// forsvundet fra et igangvaerende etapeloeb FORDI han er skadet, er taget ud helt
+// bevidst (skadefilteret, #3896 — ejer-beslutning 30/8: skadet = kan ikke koere
+// loeb). Den udtagelse skal registreres som en udgaaelse, saa spilleren kan se
+// hvorfor rytteren er vaek, og saa advarslen ikke gentages paa hver resterende
+// etape. Er han forsvundet af en ANDEN grund (solgt, akademi-kontrakt midt i
+// loebet, pensioneret), er det stadig et uforklaret brud der skal blive ved med
+// at larme — derfor to spande, ikke én.
+//
+// Ren + deterministisk; bevarer raekkefoelgen i `missing`.
+//   missing            = rider_ids fra freezeEntrantsToStartField
+//   injuredUntilByRider = Map<rider_id, injured_until|null>
+export function partitionMissingByInjury({ missing = [], injuredUntilByRider, todayStr }) {
+  const injured = [];
+  const unexplained = [];
+  for (const riderId of missing) {
+    if (isRiderInjured(injuredUntilByRider?.get(riderId) ?? null, todayStr)) injured.push(riderId);
+    else unexplained.push(riderId);
+  }
+  return { injured, unexplained };
+}
+
 export function filterEligibleEntries({ entries = [], ridersById }) {
   return entries.filter((e) =>
     isEligibleRider(ridersById.get(e.rider_id), { teamId: e.team_id }));
