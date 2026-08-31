@@ -1,8 +1,19 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "watchPatterns": [
+      "**",
+      "!/docs/**",
+      "!/pr-screens/**",
+      "!/superpowers/**",
+      "!/.claude/**",
+      "!/*.md"
+    ]
+  },
   "deploy": {
     "startCommand": "node --import ./instrument.mjs server.js",
     "healthcheckPath": "/health",
-    "healthcheckTimeout": 60
+    "healthcheckTimeout": 60,
+    "drainingSeconds": 150
   }
 }
