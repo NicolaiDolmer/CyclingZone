@@ -88,6 +88,7 @@ import { runSeasonDocumentarySweep } from "./lib/seasonDocumentarySweep.js"; // 
 import { createAluntaClient } from "./lib/alunta.js"; // #2736
 import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
 import { isAluntaReconcileEnabled } from "./lib/aluntaReconcileFlag.js"; // #2736
+import { runAluntaOverdueWatch } from "./lib/aluntaOverdueWatch.js"; // #4514
 import { runFairplayScoringSweep } from "./lib/fairplayFlagsCron.js"; // #3138
 import { captureException as sentryCapture, monitorCron, captureCheckIn, setCronHeartbeatRecorder } from "./lib/sentry.js";
 // #2892 — egen cron-heartbeat-vagt (backup for Sentrys kvote-begrænsede
@@ -1253,6 +1254,27 @@ async function runAluntaSubscriptionReconcileCron() {
   }
 }
 
+// ─── Forfalds-vagt (#4514) ────────────────────────────────────────────────────
+// Den eneste betalende kunde havde en ubetalt faktura i 23 dage og beholdt fuld
+// Pro-adgang. Ingen fik besked: Aluntas betalings-notifikationer var slået fra,
+// og selv tændt havde de ikke fanget sagen — `payment_failed` udløses når et
+// KORT AFVISES, og her blev der aldrig forsøgt et træk. Alunta har ingen
+// "faktura forfalden"-notifikation. En faktura hvor der ikke forsøges betaling
+// producerer ingen event overhovedet.
+//
+// Vagten spørger derfor direkte: er der fakturaer der er forfaldne? Det er et
+// spørgsmål ingen event kan besvare. Den er BEVIDST ikke gated bag et
+// app_config-flag — en vagt der er slukket som default er præcis den fejl den
+// findes for at fange. Den skriver intet, hverken i Alunta eller i vores DB.
+async function runAluntaOverdueWatchCron() {
+  const r = await runAluntaOverdueWatch({ supabase, client: aluntaClient, captureExceptionFn: sentryCapture });
+  if (r.alerted) {
+    console.log(
+      `🚨 Betalings-vagt: ${r.overdue.length} ubetalt(e) faktura(er), ${r.stale.length} entitlement-afvigelse(r) af ${r.invoicesChecked} tjekkede (#4514)`
+    );
+  }
+}
+
 // ─── Fair-play scoring-sweep (#3138) ─────────────────────────────────────────
 // Dagligt sweep der kombinerer detektorernes signaler (#3135/#3136/#3137) til
 // én vægtet score pr. par og upserter mistænkte hændelser i fairplay_flags —
@@ -1745,6 +1767,16 @@ export function startCron() {
     ),
     24 * 60 * 60 * 1000
   );
+
+  // #4514 — daglig forfalds-vagt. Boot-run nedenfor gør 24h-monitoren ærlig
+  // (jf. #2389/B5: intervallet nulstilles ved hvert deploy) og betyder samtidig
+  // at en ubetalt faktura opdages ved næste deploy, ikke først et døgn efter.
+  // Read-only, så en boot-run er gratis og risikofri.
+  setInterval(
+    trackedTick("alunta forfalds-vagt", monitorCron("alunta-overdue-watch", runAluntaOverdueWatchCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
+  void trackedTick("alunta forfalds-vagt (boot)", runAluntaOverdueWatchCron)();
 
   // #3138 — dagligt fair-play scoring-sweep. Read-only analyse (upsert i
   // service-role-only fairplay_flags); skipper roligt indtil migrationen er
