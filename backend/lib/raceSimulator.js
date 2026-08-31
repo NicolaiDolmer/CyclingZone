@@ -255,7 +255,7 @@ function assignProtectedRole({ teamCtx, field, entrant, captureExceptionFn, race
   }
   if (teamCtx[field] === entrant.rider_id) return; // samme rytter nævnt 2 gange — ikke en konflikt
   captureExceptionFn(
-    new Error(`buildTeamContext: dobbelt ${raceRoleLabel} på samme hold/etape`),
+    new Error(`buildTeamContext: duplicate ${raceRoleLabel} on same team/stage`),
     {
       tags: { flow: "race-simulator", stage: "build-team-context" },
       teamId: entrant.team_id,

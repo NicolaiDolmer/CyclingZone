@@ -116,7 +116,7 @@ test("buildTeamContext: dobbelt captain rapporterer til Sentry (captureException
     captureExceptionFn: (err, context) => reports.push({ message: err.message, context }),
   });
   assert.equal(reports.length, 1, "præcis ét signal pr. konflikt");
-  assert.match(reports[0].message, /dobbelt captain/);
+  assert.match(reports[0].message, /duplicate captain/);
   assert.equal(reports[0].context.teamId, "a");
   assert.equal(reports[0].context.keptRiderId, "a1");
   assert.equal(reports[0].context.droppedRiderId, "a2");
