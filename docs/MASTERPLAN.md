@@ -12,7 +12,7 @@
 
 ## Kø i S3-vinduet (ejer-godkendt 27/8, trimmet 28/8)
 
-0. **FØRST (ejer 28/8): #2758** Discord-triage → issues (dagligt) + **#4269** daglig Supabase-kontrol. Køen herunder skal fyldes af det spillerne møder og det basen melder — ikke af AI-vurdering. Begge er ejer-direktiver (20/7 og 25/8). **Dertil (ejer 28/8): ryd ejer-køen** — 19 `needs-user-action` venter, ældste fra juni. Jeg finder de forældede/løste, så ejeren kun får ægte spørgsmål.
+0. **FØRST (ejer 28/8): #2758** Discord-triage → issues (dagligt) + **#4269** daglig Supabase-kontrol (fejler på manglende secret — se nøgle-listen i NUA-auditten 31/8). Køen fyldes af det spillerne møder og det basen melder — ikke af AI-vurdering. Ejer-køen er audit-renset 31/8: alle 21 NUA er ægte.
 1. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren · **#4355** juni-fyldkuldets taktik-læk.
 2. **#4098** unge markeret færdige 65 pt under loftet — ejeren spørges igen senest 31/8.
 3. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først. **Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
@@ -20,7 +20,7 @@
 
 **Ejer-beslutninger 27-28/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt** (42 starter) · **to regenereringer er forbudt**.
 
-Ny gæld: #4288 · **#4278** (D4 opad 41,9 % mod bånd 25-32 %) · #4282/#4146 · #4292 · #4123 + #4215-rest · **#4370** (React #421, forsiden).
+Ny gæld: #4288 · **#4278** (D4 opad 41,9 %) · #4282/#4146 · #4292 · #4123 + #4215-rest · **#4370** (React #421).
 **UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265/#4267/#4268. **⚠️ #4265 S3-bundet — ejeren afgør.**
 
 ## Grundreglerne — UDSKUDT til efter 27/9 (ejer 28/8)
