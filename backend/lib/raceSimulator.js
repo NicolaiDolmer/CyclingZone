@@ -49,7 +49,11 @@ async function captureException(err, ctx) {
   if (!captureExceptionLazy) {
     try {
       captureExceptionLazy = (await import("./sentry.js")).captureException;
-    } catch {
+    } catch (err) {
+      // best-effort: sentry er valgfri i dette modul - det importeres også af
+      // frontendens drift-guards uden backend-deps, og en fejl i selve
+      // rapporterings-opsætningen må aldrig vælte race-simuleringen.
+      console.error("raceSimulator: sentry-import fejlede (best-effort):", err?.message);
       captureExceptionLazy = () => {};
     }
   }
