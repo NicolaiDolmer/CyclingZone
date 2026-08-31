@@ -10,7 +10,8 @@ import { fileURLToPath } from "url";
 import { config } from "dotenv";
 import { resolveDmTargetFromInput } from "./discordDmTarget.js";
 import { assertDiscordWebhookUrl } from "./urlSafety.js";
-import { attemptDmDelivery } from "./discordDmDelivery.js";
+import { attemptDmDelivery, isPermanentRecipientFailure } from "./discordDmDelivery.js";
+import { clampEmbedPayload } from "./discordEmbedLimits.js";
 import { enqueueDm, processDmOutboxDrain } from "./discordDmOutbox.js";
 import { recordPermanentDmFailure, clearDmFailureCount } from "./discordDeadConnection.js";
 import { captureException as sentryCapture } from "./sentry.js";
@@ -468,41 +469,53 @@ export async function sendDM(discordId, payload) {
     return false;
   }
 
-  // Permanent fejl: 401 = infra (token roteret/ugyldigt) → error + Sentry-alarm.
-  // 403/400/404 = data (modtager har lukket DMs / ugyldigt id / recipient-blocked) →
-  // warn, IKKE error: det er en forventet, ikke-actionable tilstand pr. bruger.
-  // error-severity druknede ægte fejl i loggen + Sentry (#2189, samme mønster som #2169).
-  if (result.failure?.reason === "token-invalid") {
+  // Permanent fejl deler sig i to: er den VORES ('token-invalid' = token roteret,
+  // 'payload-rejected' = embed afvist af Discord) → error + Sentry-alarm, for den
+  // er actionable og rammer alle modtagere samtidig. Er den modtagerens
+  // (403/400 fra openDm) → warn, IKKE error: forventet og ikke-actionable pr.
+  // bruger, og error-severity druknede ægte fejl i loggen + Sentry (#2189, samme
+  // mønster som #2169).
+  //
+  // Betingelsen er bevidst det NEGEREDE modtager-prædikat og ikke en hardkodet
+  // reason: da 'payload-rejected' blev tilføjet, ville en `=== "token-invalid"`
+  // have sendt vores egen payload-fejl ned i modtager-grenen og afkoblet spillere
+  // for en bug i vores kode. Forward-guarden i
+  // discordDeadConnectionCallSites.test.js håndhæver det.
+  if (!isPermanentRecipientFailure(result.failure?.reason)) {
     console.error("[discord-dm:error] sendDM failed permanent (infra)", {
       discordId,
       status: result.status,
       reason: result.failure?.reason,
+      step: result.failure?.step,
       error: result.error,
     });
-    sentryCapture(new Error(`Discord DM fejlede permanent (token-invalid): ${result.error}`), {
+    sentryCapture(new Error(`Discord DM fejlede permanent (${result.failure?.reason ?? "ukendt"}): ${result.error}`), {
       tags: { component: "discord-dm" },
-      extra: { status: result.status },
+      extra: { status: result.status, step: result.failure?.step },
     });
   } else {
     console.warn("[discord-dm:undeliverable] modtager kan ikke modtage DM — dropper", {
       discordId,
       status: result.status,
       reason: result.failure?.reason,
+      step: result.failure?.step,
       error: result.error,
     });
     // #3130: 'recipient-blocked' (403/kode 50278) betyder typisk at spilleren har
     // forladt vores Discord-server. Tæl op og afkobl efter N i træk, så han ser
     // "genforbind" i indstillingerne i stedet for tavshed — og vi holder op med
     // at brænde et spildt API-kald pr. notifikation.
-    if (result.failure?.reason === "recipient-blocked") {
-      await recordDeadConnection(discordId);
-    }
+    // #3483: 'bad-request' (400/404 fra openDm, kode 50033 "Invalid Recipient(s)")
+    // er samme døde kobling og tæller på samme tæller. Vores egne permanente
+    // fejl ('token-invalid', 'payload-rejected') når aldrig hertil — de tages i
+    // if-grenen ovenfor, netop så en bug hos os ikke afkobler spillere.
+    await recordDeadConnection(discordId);
   }
   return false;
 }
 
 /**
- * Tæl en permanent recipient-blocked-fejl op og log en auto-afkobling.
+ * Tæl en permanent modtager-fejl op og log en auto-afkobling.
  * Fælles for direkte sendDM og outbox-drain, som rammer samme tilstand.
  *
  * Bevidst kun console.warn ved afkobling — ikke en Sentry-error. #2189 fjernede
@@ -544,10 +557,10 @@ export async function drainDiscordDmOutbox({ now = new Date() } = {}) {
     sendWebhookFn: sendOpsWebhook,
     getDefaultWebhookFn: getOpsWebhook,
     captureExceptionFn: sentryCapture,
-    // #3130: en outbox-række der dør på recipient-blocked er samme døde kobling
-    // som direkte sendDM ser — tæl den med, ellers når en bruger der kun rammes
-    // via outbox'en aldrig tærsklen.
-    onRecipientBlocked: recordDeadConnection,
+    // #3130/#3483: en outbox-række der dør på en permanent modtager-fejl (403
+    // eller 400/404) er samme døde kobling som direkte sendDM ser — tæl den med,
+    // ellers når en bruger der kun rammes via outbox'en aldrig tærsklen.
+    onPermanentRecipientFailure: recordDeadConnection,
     now,
   });
 }
@@ -663,9 +676,15 @@ export async function sendTestDM(discordId) {
 
 /**
  * Build a Discord embed message (kanal-broadcast — uden @mention)
+ *
+ * clampEmbedPayload er ikke pynt: rytter-, hold- og brugernavne interpoleres
+ * direkte ind i title/description, og felt-værdier kommer fra kaldere der ikke
+ * kender Discords grænser. Sprænges en grænse svarer Discord 400 (kode 50035),
+ * og fejlen rammer ALLE modtagere af den notifikation på én gang — se
+ * discordEmbedLimits.js for hvorfor det var en flok-afkoblings-risiko (#3483).
  */
 function buildEmbed(type, title, description, fields = []) {
-  return {
+  return clampEmbedPayload({
     embeds: [{
       title: `${TYPE_LABELS[type] || type}: ${title}`,
       description,
@@ -674,8 +693,12 @@ function buildEmbed(type, title, description, fields = []) {
       footer: { text: "Cycling Zone" },
       timestamp: new Date().toISOString(),
     }],
-  };
+  });
 }
+
+// Kun til test: buildEmbed er intern, men grænse-klipningen er sikkerhedskritisk
+// (se #3483-review) og fortjener en direkte assertion frem for kun en indirekte.
+export { buildEmbed as __buildEmbedForTests };
 
 // ── Public notification functions ─────────────────────────────────────────────
 
