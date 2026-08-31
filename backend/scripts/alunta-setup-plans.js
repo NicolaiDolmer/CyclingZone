@@ -35,7 +35,7 @@ const APPLY = process.argv.includes("--create-missing");
 // amount = øre EKSKL. moms. inclVat er kun til menneskelig kontrol i outputtet.
 const PLANS = [
   {
-    name: "CZ Pro Monthly 49",
+    name: "CZ Pro 1 month",
     amount: 3920,
     inclVat: "49,00",
     currency: "DKK",
