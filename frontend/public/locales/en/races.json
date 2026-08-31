@@ -56,6 +56,39 @@
     },
     "errorTitle": "Season calendar could not be loaded"
   },
+  "matrix": {
+    "heading": "Selection matrix",
+    "lens": {
+      "entries": "Entries",
+      "routeMatch": "Route match",
+      "formPeak": "Form & peak",
+      "load": "Load"
+    },
+    "problemsOnly": "Problems only",
+    "save": "Save plan",
+    "saveCount": "{count, plural, one {Save plan · # change} other {Save plan · # changes}}",
+    "saving": "Saving...",
+    "saveErrorNamed": "Couldn't save {race}: {reason}",
+    "noProblems": "No problems",
+    "problemsCount": "{count, plural, one {# problem} other {# problems}}",
+    "leaveUnsaved": "You have unsaved changes in the matrix. Leave anyway?",
+    "errorTitle": "Selection matrix could not be loaded",
+    "empty": "No races this season yet",
+    "restDay": "Rest day",
+    "dayAria": "Race day {index}, {date}. Open its day board.",
+    "cellEmptyAria": "{rider}, {race}: not selected. Click to add.",
+    "cellFilledAria": "{rider}, {race}: {role}. Click to change.",
+    "squadCount": "{count}/{max}",
+    "loadSuffix": "{count, plural, one {# race day} other {# race days}}",
+    "peakWindow": "Peak window · targeting {race}",
+    "peakWindowNoTarget": "Peak window",
+    "peakLocked": "locked",
+    "backToMatrix": "Back to season matrix",
+    "cellPopover": {
+      "roleChoice": "Role",
+      "remove": "Remove from race"
+    }
+  },
   "racehub": {
     "error": {
       "title": "Team selection could not be loaded",
@@ -501,6 +534,10 @@
       "selection_flag_disabled": "Team selection isn't active yet.",
       "selection_invalid_body": "Couldn't save the selection. Try again.",
       "selection_wrong_pool": "You can only enter races in your own division.",
+      "selection_withdrawn": "You've withdrawn from this race, so a lineup can't be saved for it.",
+      "selection_duplicate_race": "Couldn't save: the same race was included twice. Try again.",
+      "selection_bulk_too_large": "You can save at most {max} changed races at once. Save some now, then the rest.",
+      "race_not_found": "This race no longer exists. Refresh and try again.",
       "strategy_invalid_body": "Couldn't save your strategy: invalid data.",
       "strategy_flag_disabled": "The race hub isn't active yet.",
       "generic": "Couldn't save the selection. Try again.",

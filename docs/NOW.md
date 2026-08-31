@@ -14,7 +14,7 @@
 
 > **💳 Betaling 31/8:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md) + forfalds-vagt live (#4510/#4514 merget); planer ryddet. **🔴 Rod-årsag ÅBEN:** kortet trækkes aldrig trods gyldigt kort — **ÉN** betaling i historikken, og indstillingen findes ikke i API'et. Måles ved fornyelsen 1/9. · **#4512** dunning (ejer) · **#4511** EU-moms.
 
-> **🩹 Åbne fra 30/8:** **#4423** akademikontrakt midt i løb (PR #4422 = del A, DU merger) · **#4356** de 34 allerede kørte etaper: re-sim eller stå ved dem · **#4357** `loadEntrantsForRace` mangler ORDER BY (bevidst urørt til #4356 er afgjort) · **#4103** falsk done-flag - målt 31/8: højbjerg brudt i **3 af 4** divisioner; brosten-målet er 5 % ELLER 6 %, begge tal lever i koden (tal i tråden). **To regenereringer af samme kalender er forbudt** ([`CALENDAR_RULES.md`](CALENDAR_RULES.md)) · **#4370** React #421 på forsiden · **#4146** 24 hold over trupgrænse.
+> **🩹 Åbne fra 30/8:** **#4423** akademikontrakt midt i løb (PR #4422 = del A, DU merger) · **#4356** de 34 allerede kørte etaper: re-sim eller stå ved dem · **#4357** `loadEntrantsForRace` mangler ORDER BY (bevidst urørt til #4356 er afgjort) · **#4103** S4-forberedelse leveret 31/8 (valg A): S3 urørt (højbjerg-brud i 3/4 divisioner står), brosten afgjort **5 %** (6 %-konstanten fjernet), §6b's mål koblet ind i filler-vægtene som opt-in pr.-tier-tilt (`tierUniformFillerTilt.js`) klar til S4. **To regenereringer af samme kalender er forbudt** ([`CALENDAR_RULES.md`](CALENDAR_RULES.md)) · **#4370** React #421 på forsiden · **#4146** 24 hold over trupgrænse.
 
 > **✅ S3 kører:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Løbsdags-udvikling (#4277) er **off** i S3, retur i S4.
 

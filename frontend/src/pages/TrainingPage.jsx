@@ -36,6 +36,8 @@ import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
 import FocusPanel from "../components/training/FocusPanel.jsx";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
+import AssistantSuggestionsPanel from "../components/training/AssistantSuggestionsPanel.jsx";
+import { buildAssistantSuggestions, countSuggestionsWithoutPlan, filterAssistantSuggestions } from "../lib/assistantTrainingSuggestions.js";
 import DevelopmentGlyph from "../components/development/DevelopmentGlyph.jsx";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
@@ -43,7 +45,7 @@ import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Button, Select, Checkbox,
   PageLoader, EmptyState, ChevronDownIcon, TeamIcon,
-  ArrowUpIcon, ArrowDownIcon, FlagIcon,
+  ArrowUpIcon, ArrowDownIcon, FlagIcon, StarIcon,
   Tabs, TabList, Tab, TabPanel, CollapsibleSection,
 } from "../components/ui";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
@@ -344,6 +346,35 @@ export default function TrainingPage() {
       setScrollToRosterPending(false);
     }
   }, [activeTab, scrollToRosterPending]);
+
+  // #4522 (ejer-direktiv 31/8): "Get suggestions from the assistant"-panelet.
+  // Header-knappen kan klikkes fra enhver fane, så vi skifter til "today" +
+  // scroller panelet i syne — samme mønster som handleGoToRoster ovenfor,
+  // fordi TabPanel unmounter inaktive faner (panelet lever kun i "today").
+  const assistantPanelRef = useRef(null);
+  const [assistantPanelOpen, setAssistantPanelOpen] = useState(false);
+  const [assistantOnlyNoPlan, setAssistantOnlyNoPlan] = useState(false);
+  const [assistantSelected, setAssistantSelected] = useState(() => new Set());
+  const [assistantMsg, setAssistantMsg] = useState(null);
+  const [scrollToAssistantPending, setScrollToAssistantPending] = useState(false);
+
+  function handleOpenAssistantPanel() {
+    setAssistantMsg(null);
+    setAssistantPanelOpen(true);
+    setScrollToAssistantPending(true);
+    setTab("today");
+  }
+  function handleDismissAssistantPanel() {
+    setAssistantPanelOpen(false);
+    setAssistantSelected(new Set());
+    setAssistantMsg(null);
+  }
+  useEffect(() => {
+    if (activeTab === "today" && scrollToAssistantPending) {
+      assistantPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setScrollToAssistantPending(false);
+    }
+  }, [activeTab, scrollToAssistantPending]);
 
   // #3721: Development-fanens prognose-bånd — samme kilde som spejder-fladerne
   // (POST /api/scouting/estimates via useScouting). Egne ryttere er altid et
@@ -1168,6 +1199,69 @@ export default function TrainingPage() {
     }
   }
 
+  // #4522: assistent-forslagene til panelet. Ren afledning af data siden
+  // allerede har (riders + planFor + smartDefaultFocus) — se
+  // lib/assistantTrainingSuggestions.js for logikken (unit-testet).
+  const assistantSuggestionRows = useMemo(
+    () => buildAssistantSuggestions({ riders, smartDefaultFocusByRider: smartDefaultFocus, planFor }),
+    [riders, smartDefaultFocus, planFor],
+  );
+  const assistantNoPlanCount = useMemo(
+    () => countSuggestionsWithoutPlan(assistantSuggestionRows),
+    [assistantSuggestionRows],
+  );
+  const assistantVisibleRows = useMemo(
+    () => filterAssistantSuggestions(assistantSuggestionRows, assistantOnlyNoPlan),
+    [assistantSuggestionRows, assistantOnlyNoPlan],
+  );
+
+  function handleToggleAssistantOnlyNoPlan(checked) {
+    setAssistantOnlyNoPlan(checked);
+    // Nulstil valget ved filter-skift — undgår at "Accept selected" tæller
+    // ryttere der netop blev filtreret ud af synet.
+    setAssistantSelected(new Set());
+  }
+  function toggleAssistantSelect(riderId) {
+    setAssistantSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(riderId)) next.delete(riderId);
+      else next.add(riderId);
+      return next;
+    });
+  }
+
+  // Accept skriver via DEN EKSISTERENDE smart-bulk-sti (setPlanBulk med
+  // session="smart") — nøjagtig samme kald som roster-værktøjslinjens "Smart
+  // focus"-bulk-valg (handleBulkApply ovenfor). Serveren springer ryttere med
+  // en eksisterende plan over uanset hvad panelet viste (§9.3,
+  // docs/ASSISTANT_RULES.md) — INTET assistent-forslag overskriver en
+  // managers eget valg.
+  async function applyAssistantSuggestions(ids) {
+    setAssistantMsg(null);
+    if (ids.length === 0) return;
+    const result = await setPlanBulk(ids, "training", "smart");
+    const skippedHasPlan = result.skippedHasPlan ?? [];
+    if (result.failed.length === 0) {
+      const text = skippedHasPlan.length > 0
+        ? `${t("bulkApplied", { n: result.applied })} ${t("bulkSmartSkippedHasPlan", { n: skippedHasPlan.length })}`
+        : t("bulkApplied", { n: result.applied });
+      setAssistantMsg({ type: skippedHasPlan.length > 0 ? "partial" : "ok", text });
+      setAssistantSelected(new Set());
+    } else {
+      setAssistantMsg({
+        type: "partial",
+        text: t("bulkPartial", { applied: result.applied, total: ids.length, failed: result.failed.length }),
+      });
+      setAssistantSelected(new Set(result.failed.map((f) => f.riderId)));
+    }
+  }
+  function handleAcceptAssistantSelected() {
+    applyAssistantSuggestions([...assistantSelected]);
+  }
+  function handleAcceptAssistantAll() {
+    applyAssistantSuggestions(assistantVisibleRows.map((row) => row.riderId));
+  }
+
   // Sidehoved-status (T2 PageHeader subtitle) — samme 3 tilstande som før, nu i
   // ÉT sted i stedet for inline i JSX'en. Ren tekst/farve-mapping, ingen ny logik.
   const headerStatus = todayRun
@@ -1192,19 +1286,35 @@ export default function TrainingPage() {
         title={t("title")}
         subtitle={headerStatus}
         actions={
-          /* #2819: tour-anker på dagens knap. Wrapper-span frem for data-tour på
-             <Button>, så ankeret overlever uanset om Button videresender data-*. */
-          <span data-tour="training-run-today" className="inline-flex">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* #4522: "Get suggestions from the assistant" — sekundær, stroke-ikon
+                (aldrig gold). Åbner gennemsyns-panelet; intet anvendes før accept. */}
             <Button
               type="button"
-              variant="primary"
+              variant="secondary"
               size="sm"
-              onClick={handleRunToday}
-              disabled={!enabled || !!todayRun || running}
+              iconLeft={<StarIcon size={14} aria-hidden="true" />}
+              onClick={handleOpenAssistantPanel}
             >
-              {running ? t("loading") : t("trainToday")}
+              {t("assistantSuggestions.openButton")}
             </Button>
-          </span>
+            {/* #2819: tour-anker på dagens knap. Wrapper-span frem for data-tour på
+                <Button>, så ankeret overlever uanset om Button videresender data-*.
+                #4522: mens forslags-panelet er åbent bærer panelets "Accept selected"
+                sidens ENE gold primary (én gold pr. view) — denne knap dæmpes til
+                secondary så længe panelet er åbent. */}
+            <span data-tour="training-run-today" className="inline-flex">
+              <Button
+                type="button"
+                variant={assistantPanelOpen ? "secondary" : "primary"}
+                size="sm"
+                onClick={handleRunToday}
+                disabled={!enabled || !!todayRun || running}
+              >
+                {running ? t("loading") : t("trainToday")}
+              </Button>
+            </span>
+          </div>
         }
       />
 
@@ -1221,6 +1331,28 @@ export default function TrainingPage() {
 
       <TabPanel value="today">
       <div className="space-y-6">
+        {/* #4522 (ejer-direktiv 31/8): assistent-forslagspanelet — øverst i
+            indholdet, som mockuppen kræver. Card med accent-hairline-border
+            (samme opskrift som PlannerAssistantCard, #3086's peak-forslag). */}
+        {assistantPanelOpen && (
+          <div ref={assistantPanelRef}>
+            <AssistantSuggestionsPanel
+              rows={assistantSuggestionRows}
+              visibleRows={assistantVisibleRows}
+              noPlanCount={assistantNoPlanCount}
+              onlyWithoutPlan={assistantOnlyNoPlan}
+              onToggleOnlyWithoutPlan={handleToggleAssistantOnlyNoPlan}
+              selected={assistantSelected}
+              onToggleSelect={toggleAssistantSelect}
+              onAcceptSelected={handleAcceptAssistantSelected}
+              onAcceptAll={handleAcceptAssistantAll}
+              onDismiss={handleDismissAssistantPanel}
+              busy={bulkApplying}
+              message={assistantMsg}
+            />
+          </div>
+        )}
+
         {runError && (
           <p className="text-cz-danger text-sm">{runError}</p>
         )}

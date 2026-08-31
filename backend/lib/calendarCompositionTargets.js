@@ -41,6 +41,17 @@
 // kuperet 30 → 32 (de resterende 2 pp; kuperet er virkelighedens største segment og
 // K-B afbøder det allerede nedad, så det er den mindst forvridende placering).
 // Flaget i ACTIVE_TARGET er ÉT sted at skifte tilbage når TTT-motoren findes.
+//
+// ── Brosten rettet 6 → 5 (ejer-beslutning 31/8, #4103 punkt "valg A") ──────────────
+// §11 punkt 6 i CALENDAR_RULES.md dokumenterede at to KONKURRERENDE brosten-mål levede
+// i denne fil samtidig: K-B's egen 6 % ovenfor og #4103's uniforme pr.-division-mål på
+// 5 % (TIER_UNIFORM_TARGET_FRACTIONS.cobbles nedenfor, ejer-beslutning 23/8). Ejeren
+// afgjorde det 31/8: 5 % gælder — for BEGGE systemer, ikke kun #4103's. Den tabte
+// procentpoint lægges på kuperet (30 → 31 / 32 → 33), samme "kuperet er den mindst
+// forvridende placering"-begrundelse som TTT-omfordelingen ovenfor bruger — ikke en ny
+// balance-beslutning, samme princip anvendt igen. Den gamle "brosten 4 → 6"-forhøjelse
+// (linje 21 ovenfor) er dermed reduceret til "brosten 4 → 5"; researchgrundlaget (4,2 %)
+// ændrer sig ikke, kun hvor meget K-B løftede den fra det.
 
 // Løbsdags-kategorier. Rækkefølgen er rapport-rækkefølgen.
 export const COMPOSITION_CATEGORIES = Object.freeze(["flat", "hilly", "mountain", "itt", "cobbles", "ttt"]);
@@ -72,11 +83,12 @@ export function compositionCategory(profileType) {
   return PROFILE_TO_CATEGORY[profileType] ?? null;
 }
 
-// Ejerens fulde K-B-beslutning (% af løbsdage). Summer til 100.
-export const KB_TARGET_FULL = Object.freeze({ flat: 24, hilly: 30, mountain: 28, itt: 8, cobbles: 6, ttt: 4 });
+// Ejerens fulde K-B-beslutning (% af løbsdage), brosten rettet 6 → 5 31/8 (se docstring
+// ovenfor; +1 pp lagt på kuperet). Summer til 100.
+export const KB_TARGET_FULL = Object.freeze({ flat: 24, hilly: 31, mountain: 28, itt: 8, cobbles: 5, ttt: 4 });
 
 // Interim indtil race-motoren understøtter ægte holdtidskørsel (se docstring). Summer til 100.
-export const KB_TARGET_INTERIM = Object.freeze({ flat: 24, hilly: 32, mountain: 28, itt: 10, cobbles: 6, ttt: 0 });
+export const KB_TARGET_INTERIM = Object.freeze({ flat: 24, hilly: 33, mountain: 28, itt: 10, cobbles: 5, ttt: 0 });
 
 // ÉT sted at flippe når TTT-motoren lander. Sæt til KB_TARGET_FULL sammen med at
 // "ttt"-filleren genindføres i ARCHETYPE_PROFILES (raceStageProfileGenerator.js).
@@ -272,10 +284,14 @@ export function detectCompositionViolations({
 //
 // SCOPE: dette er en MÅLE-/scorecard-kontrakt (bruges af
 // scripts/dev/recomposeSeason3Stages4103.mjs's dry-run-rapport og kan genbruges af en
-// fremtidig efterverifikation). Den er IKKE koblet ind i ARCHETYPE_PROFILES's
-// filler-vægte endnu — at kalibrere generatoren så FREMTIDIGE sæsoner rammer disse tal
-// af sig selv (uden en engangs-DB-patch som #4103's) er en opfølgende opgave, ikke
-// del af denne fils scope.
+// fremtidig efterverifikation). Den ER nu koblet ind i ARCHETYPE_PROFILES's filler-vægte
+// (ejer-beslutning 31/8, #4103 "valg A" — se `backend/lib/tierUniformFillerTilt.js`) —
+// opt-in via `materializeTierCalendars({ useUniformTierTilt: true })`, default FRA så S3
+// (allerede materialiseret) ikke røres. S4-genereringen skal eksplicit slå den til.
+//
+// BROSTEN-MODSIGELSEN (§11 punkt 6 i CALENDAR_RULES.md) er lukket samme dag: KB_TARGET
+// ovenfor brugte 6 %, denne tabel 5 % — ejeren valgte 5 % for BEGGE, så tallet herunder
+// er nu det ENESTE brosten-mål i filen (se KB_TARGET_FULL/INTERIM's docstring ovenfor).
 export const TIER_UNIFORM_TARGET_CATEGORIES = Object.freeze(["itt", "cobbles", "high_mountain"]);
 
 // Fraktion (0-1) af divisionens løbsdage, samme for alle tiers (ejer-beslutning 23/8).

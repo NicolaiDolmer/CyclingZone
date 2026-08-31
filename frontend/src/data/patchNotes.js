@@ -1,9 +1,37 @@
 export const PATCHES = [
   {
-    "version": "7.223",
+    "version": "7.224",
     "date": "2026-08-31",
     "label": "Beta",
     "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Get suggestions from the assistant",
+          "body": "Daily Training has a new 'Get suggestions from the assistant' button that opens a review panel: a type-matched focus for every rider, with a 'No plan' marker for riders who aren't trained yet. Tick the riders you want and accept selected, or accept all in one go. Nothing is applied until you accept, and it never overwrites a rider who already has their own focus set."
+        },
+        "da": {
+          "title": "Modtag forslag fra assistenten",
+          "body": "Daglig træning har en ny 'Modtag forslag fra assistenten'-knap, der åbner et gennemsyns-panel: et type-matchet fokus til hver rytter, med en 'Ingen plan'-markering for ryttere der endnu ikke er trænet. Markér de ryttere du vil have, og accepter valgte, eller accepter alle på én gang. Intet anvendes før du accepterer, og det overskriver aldrig en rytter der allerede har sit eget fokus sat."
+        },
+        "refs": [4522]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Season matrix: your whole selection in one grid",
+          "body": "Team selection's season view now has a rider-by-race-day grid. Each race has its own columns, one per race day. Click a cell to assign a role, switch lenses to see route match, load or problems only, and jump to a day's board and back. Built on tester feedback: save errors now explain themselves, and a locked rider tells you the real reason."
+        },
+        "da": {
+          "title": "Sæsonmatrix: hele din udtagelse i ét gitter",
+          "body": "Holdudtagelsens sæsonvisning har nu et gitter med ryttere gange løbsdage. Hvert løb har sine egne kolonner, én pr. løbsdag. Klik på en celle for at tildele en rolle, skift linse for at se rutematch, belastning eller kun problemer, og hop til en dags board og tilbage igen. Bygget på tester-feedback: gem-fejl forklarer nu sig selv, og en låst rytter fortæller den rigtige årsag."
+        },
+        "refs": [1146]
+      },
       {
         "category": "fixed",
         "audience": "player",
@@ -17,6 +45,27 @@ export const PATCHES = [
           "body": "Ungdoms(U25)-klassementet målte alder mod det kalenderår en sæson tilfældigvis startede i, ikke sæsonens eget referenceår. Fra sæson 3 og frem drev det væk fra din rytters reelle sæson-alder, så ryttere der allerede var 26 efter sæsonens cykel-alderskonvention stadig kunne stå i ungdomsklassementet. Det bruger nu præcis samme referenceår som alderen på din rytters profil."
         },
         "refs": [4485]
+      }
+    ]
+  },
+  {
+    "version": "7.223",
+    "date": "2026-08-31",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy signing no longer pulls a rider out of a race in progress",
+          "body": "Signing an Academy candidate who was already racing for your senior squad removed him from the field on the next stage, with no notice. Signing him now waits until his current stage race is finished if that happens; the contract and fee are still set immediately, and he keeps racing for your senior squad in the meantime."
+        },
+        "da": {
+          "title": "Akademi-signing fjerner ikke længere en rytter fra et løb i gang",
+          "body": "At signe en akademikandidat der allerede kørte for din seniortrup fjernede ham fra feltet på næste etape, uden varsel. Signeringen venter nu til hans etapeløb er kørt færdigt, hvis det sker; kontrakt og gebyr sættes stadig med det samme, og han fortsætter med at køre for din seniortrup i mellemtiden."
+        },
+        "refs": [4423]
       },
       {
         "category": "fixed",
