@@ -32,6 +32,7 @@ import { getTeamMarketState } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
 import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
 import { countOngoingRaceEntries } from "./raceEntryCleanup.js";
+import { findPendingGraduation } from "./academyGraduation.js";
 
 /**
  * Demote-løn (#2594): samme delte formel som al anden løn —
@@ -95,12 +96,15 @@ export async function promote(supabase, {
   if (error) throw new Error(`promote update: ${error.message}`);
 
   // Resolver en evt. pending graduerings-row så sweepet ikke kører den igen.
-  const { data: grad } = await supabase.from("academy_graduation")
-    .select("id, status").eq("team_id", teamId).eq("rider_id", riderId).maybeSingle();
-  if (grad && grad.status === "pending") {
+  // #4484: opslaget SKAL scopes til den pending række (findPendingGraduation),
+  // og opdateringen ramme netop dens id — en rytter med akademi-ophold over to
+  // sæsoner har flere rækker, og det gamle team_id+rider_id-update ville have
+  // stemplet BEGGE sæsoners rækker som 'promoted'.
+  const grad = await findPendingGraduation(supabase, { teamId, riderId });
+  if (grad) {
     const { error: gradErr } = await supabase.from("academy_graduation")
       .update({ status: "promoted", resolved_at: now.toISOString() })
-      .eq("team_id", teamId).eq("rider_id", riderId);
+      .eq("id", grad.id);
     if (gradErr) throw new Error(`promote grad resolve: ${gradErr.message}`);
   }
 

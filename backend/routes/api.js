@@ -203,7 +203,7 @@ import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
-import { resolveGraduation } from "../lib/academyGraduation.js";
+import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, demoteSalary } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
@@ -1901,10 +1901,11 @@ router.post("/riders/:id/academy-release", requireAuth, marketWriteLimiter, asyn
   // fejl her logges og sluges bevidst (best-effort, samme mønster som
   // resolvePendingGraduationOnSale i academyGraduation.js).
   try {
-    const { data: grad, error: gradErr } = await supabase.from("academy_graduation") // best-effort
-      .select("id, status").eq("team_id", req.team.id).eq("rider_id", rider.id).maybeSingle();
-    if (gradErr) throw new Error(gradErr.message);
-    if (grad && grad.status === "pending") {
+    // #4484: scopet til den pending række — et opslag på team_id+rider_id alene
+    // rammer flere rækker for en rytter med akademi-ophold over to sæsoner, og
+    // maybeSingle() svarede da med en fejl der læste som "ingen række".
+    const grad = await findPendingGraduation(supabase, { teamId: req.team.id, riderId: rider.id });
+    if (grad) {
       await supabase.from("academy_graduation") // best-effort
         .update({ status: "released", resolved_at: new Date().toISOString() })
         .eq("id", grad.id);
