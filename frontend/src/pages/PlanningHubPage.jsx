@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { PageHeader, Tabs, TabList, Tab } from "../components/ui";
+import { PageHeader, Tabs, TabList, Tab, ChevronLeftIcon } from "../components/ui";
 import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
 import SeasonView from "../components/racehub/SeasonView.jsx";
 import SeasonDayToggle from "../components/racehub/SeasonDayToggle.jsx";
@@ -71,6 +71,9 @@ export default function PlanningHubPage() {
       params.delete("view");
       // #1146: sæson-browse-parametret hører til Season-visningen alene.
       params.delete("season");
+      // #4323 spillertest-punkt 4: samme grund som view/season ovenfor —
+      // retur-stien til matrixen hører kun til Holdudtagelse-fanens dags-board.
+      params.delete("returnView");
       return params;
     }, { replace: true });
   }
@@ -82,8 +85,26 @@ export default function PlanningHubPage() {
   function changeSelectionView(next) {
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
-      if (next === "season") params.set("view", "season");
-      else { params.delete("view"); params.delete("season"); }
+      if (next === "season") { params.set("view", "season"); params.delete("day"); }
+      else params.delete("view");
+      params.delete("season");
+      params.delete("returnView");
+      return params;
+    }, { replace: true });
+  }
+
+  // #4323 spillertest-punkt 4 (Discord 29/8): klik på et løb i sæsonmatrixen
+  // navigerede til dags-boardet uden vej tilbage. `returnView=season` sættes
+  // af SeasonView.openDay (bevares SEPARAT fra `view`, som ville vise
+  // sæson-visningen i stedet for dags-boardet) — findes den, viser dags-
+  // boardet en "Tilbage til sæsonmatrix"-knap der genindsætter `view=season`.
+  const returnView = tab === "selection" && searchParams.get("returnView") === "season" ? "season" : null;
+  function backToSeasonView() {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      params.set("view", "season");
+      params.delete("day");
+      params.delete("returnView");
       return params;
     }, { replace: true });
   }
@@ -110,8 +131,20 @@ export default function PlanningHubPage() {
           <SeasonView onSwitchView={changeSelectionView} />
         ) : (
           <>
-            <div className="mb-4">
+            <div className="mb-4 flex flex-wrap items-center gap-2.5">
               <SeasonDayToggle view="day" onChange={changeSelectionView} />
+              {/* #4323 spillertest-punkt 4: retur-sti til sæsonmatrixen, kun
+                  synlig når dags-boardet reelt blev åbnet DERFRA. */}
+              {returnView === "season" && (
+                <button
+                  type="button"
+                  onClick={backToSeasonView}
+                  className="inline-flex items-center gap-1 text-2xs uppercase tracking-wide px-2.5 py-1 rounded-full border border-cz-border text-cz-2 hover:bg-cz-subtle"
+                >
+                  <ChevronLeftIcon size={12} aria-hidden="true" />
+                  {t("matrix.backToMatrix")}
+                </button>
+              )}
             </div>
             <RaceHubBoard />
           </>

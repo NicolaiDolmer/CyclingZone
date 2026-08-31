@@ -605,10 +605,69 @@ export function forumPostDetail(postId) {
   };
 }
 
+// #1146: seed til saesonmatrixen (GET /api/races/selection/season). Formen er
+// endpoint-kontrakten fra tests/e2e/1146-season-matrix.spec.js. Loebsnavne og
+// dag/dato-fordelingen spejler den rigtige S3 D1-aabningsuge (28/8-31/8, maalt
+// 27/8: to loebsdage pr. dato, fem paa 31/8, Giro-hviledag paa dag 10), saa
+// preview viser samme kolonne-taethed og lane-overlap som prod ville.
+const MATRIX_ABILITIES = (over = {}) => Object.fromEntries(
+  ["climbing", "time_trial", "sprint", "punch", "endurance", "cobblestone", "acceleration",
+    "recovery", "tactics", "positioning", "flat", "tempo", "durability", "aggression", "descending"]
+    .map((k) => [k, over[k] ?? 58]),
+);
+const SEASON_MATRIX_SEED = {
+  enabled: true,
+  season: { id: "season-preview-3", number: 3 },
+  ownPoolId: 1,
+  readOnly: false,
+  races: [
+    { id: "smx-giro", name: "Giro della Penisola", raceClass: "GiroVuelta", stages: 18, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 1, gameDayEnd: 11, restGameDays: [10], sizeMin: 8, sizeMax: 8,
+      demandVector: { climbing: 0.5, tempo: 0.3, recovery: 0.2 } },
+    { id: "smx-tsa", name: "Tour of South Australia", raceClass: "OtherWorldTourA", stages: 6, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 1, gameDayEnd: 6, restGameDays: [], sizeMin: 7, sizeMax: 7,
+      demandVector: { sprint: 0.5, flat: 0.5 } },
+    { id: "smx-open", name: "De Openingsklassieker", raceClass: "OtherWorldTourC", stages: 1, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 1, gameDayEnd: 1, restGameDays: [], sizeMin: 6, sizeMax: 6,
+      demandVector: { sprint: 0.7, positioning: 0.3 } },
+    { id: "smx-ocean", name: "Ocean Road Classic", raceClass: "OtherWorldTourC", stages: 1, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 3, gameDayEnd: 3, restGameDays: [], sizeMin: 6, sizeMax: 6,
+      demandVector: { cobblestone: 0.6, punch: 0.4 } },
+    { id: "smx-harel", name: "Klassieker van Harelbeke", raceClass: "OtherWorldTourB", stages: 1, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 10, gameDayEnd: 10, restGameDays: [], sizeMin: 6, sizeMax: 6,
+      demandVector: { punch: 0.8, climbing: 0.2 } },
+  ],
+  riders: [
+    { id: "smx-r1", name: "Seungho Hong", primaryType: "gc", secondaryType: null, abilities: MATRIX_ABILITIES({ climbing: 74, recovery: 70 }), injured: false },
+    { id: "smx-r2", name: "Lei Wu", primaryType: "gc", secondaryType: null, abilities: MATRIX_ABILITIES({ sprint: 66, flat: 68 }), injured: false },
+    { id: "smx-r3", name: "Jack Marsh", primaryType: "climber", secondaryType: null, abilities: MATRIX_ABILITIES({ climbing: 71 }), injured: false },
+    { id: "smx-r4", name: "Tao Han", primaryType: "tt", secondaryType: null, abilities: MATRIX_ABILITIES({ time_trial: 76, punch: 63 }), injured: false },
+    { id: "smx-r5", name: "Mathis Dumas", primaryType: "brostensrytter", secondaryType: null, abilities: MATRIX_ABILITIES({ cobblestone: 75, punch: 66 }), injured: false },
+    { id: "smx-r6", name: "Pieter Vermeulen", primaryType: "rouleur", secondaryType: null, abilities: MATRIX_ABILITIES({ tempo: 69, flat: 67 }), injured: false },
+  ],
+  entries: [
+    { raceId: "smx-giro", riderId: "smx-r1", raceRole: "captain" },
+    { raceId: "smx-giro", riderId: "smx-r5", raceRole: "helper" },
+    { raceId: "smx-tsa", riderId: "smx-r2", raceRole: "captain" },
+    { raceId: "smx-tsa", riderId: "smx-r6", raceRole: "helper" },
+    { raceId: "smx-ocean", riderId: "smx-r4", raceRole: "free_role" },
+  ],
+  dayDates: [
+    { gameDay: 1, date: "2026-08-28" }, { gameDay: 2, date: "2026-08-28" },
+    { gameDay: 3, date: "2026-08-29" }, { gameDay: 4, date: "2026-08-29" },
+    { gameDay: 5, date: "2026-08-30" }, { gameDay: 6, date: "2026-08-30" },
+    { gameDay: 7, date: "2026-08-31" }, { gameDay: 8, date: "2026-08-31" },
+    { gameDay: 9, date: "2026-08-31" }, { gameDay: 10, date: "2026-08-31" },
+    { gameDay: 11, date: "2026-08-31" },
+  ],
+};
+
 // `search` er valgfri (default "") så eksisterende kaldesteder — Playwright-
 // fixtures og de øvrige preview-ruter — er uændrede. Kun ruter der faktisk
 // filtrerer server-side (feedback-indbakken) læser den.
 export function apiResponse(pathname, search = "") {
+  if (pathname.endsWith("/api/races/selection/season")) return SEASON_MATRIX_SEED;
+
   // Før de generiske endsWith-grene: managerprofilen bærer et id i pathen.
   const managerMatch = pathname.match(/\/api\/managers\/([^/]+)$/);
   if (managerMatch) return managerProfile(decodeURIComponent(managerMatch[1]));

@@ -19,6 +19,7 @@ import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
 import SeasonDayToggle from "./SeasonDayToggle.jsx";
 import SeasonPicker, { neighborSeasons } from "./SeasonPicker.jsx";
 import SeasonChangeoverNote from "./SeasonChangeoverNote.jsx";
+import SeasonMatrix from "./SeasonMatrix.jsx";
 import {
   seasonRange,
   spanToRect,
@@ -88,6 +89,11 @@ export default function SeasonView({ onSwitchView }) {
   // fetch, så SeasonPicker'en ikke blinker væk mens en NY sæson hentes (den
   // hører til navigationen, ikke til det enkelte kalender-svar).
   const [seasonsMeta, setSeasonsMeta] = useState(null); // { availableSeasons, activeNumber } | null
+  // #1146: sæsonmatrixens ugemte-ændringer-flag bobler op hertil, så et sæson-skift
+  // eller et view-toggle-klik guardes (samme boardDirty-mønster som RaceHubBoard.jsx,
+  // IKKE StrategyPage-mønsteret, som er kendt defekt — StrategyPage.jsx:114).
+  const [matrixDirty, setMatrixDirty] = useState(false);
+  const confirmLeaveMatrixIfDirty = () => !matrixDirty || window.confirm(t("matrix.leaveUnsaved"));
 
   // B7 (spec): næste sæson må browses read-only så snart kalenderen findes.
   // ?season=N viser en eksplicit sæson; er den ikke den aktive, er visningen
@@ -162,6 +168,7 @@ export default function SeasonView({ onSwitchView }) {
   const viewedSeasonNumber = data?.season?.number ?? (Number.isFinite(seasonParam) ? seasonParam : seasonsMeta?.activeNumber ?? null);
 
   function selectSeason(number) {
+    if (!confirmLeaveMatrixIfDirty()) return;
     setParams((prev) => {
       const p = new URLSearchParams(prev);
       if (seasonsMeta?.activeNumber != null && number === seasonsMeta.activeNumber) p.delete("season");
@@ -226,8 +233,17 @@ export default function SeasonView({ onSwitchView }) {
 
   // Klik på et løb → dets dag på dags-boardet. En igangværende GT åbner DAGENS
   // etape (klamp til [start, slut]), ikke løbets første dag.
+  //
+  // Spillertest-punkt 4 (Discord 29/8): dette var en envejs-navigation — intet
+  // på dags-boardet førte tilbage til sæson-konteksten spilleren kom fra.
+  // `returnView=season` bevares som en SEPARAT parameter (ikke `view=season`
+  // selv, som ville få PlanningHubPage til at vise sæson-visningen I STEDET
+  // FOR dags-boardet) — PlanningHubPage læser den og viser en "Tilbage til
+  // sæsonmatrix"-knap på dags-boardet, der genindsætter `view=season` og
+  // rydder `day`/`returnView`.
   function openDay(iso) {
     if (!model || model.readOnly || !model.seasonFirstIso) return;
+    if (!confirmLeaveMatrixIfDirty()) return;
     const ordinal = seasonDayOrdinal(iso, model.seasonFirstIso);
     if (!Number.isFinite(ordinal)) return;
     setParams((prev) => {
@@ -235,16 +251,18 @@ export default function SeasonView({ onSwitchView }) {
       p.delete("view");
       p.delete("season");
       p.set("day", String(ordinal));
+      p.set("returnView", "season");
       return p;
     }, { replace: true });
   }
   const clampToRunning = (b) => (b.startDate <= todayIso && todayIso <= b.endDate ? todayIso : b.startDate);
+  const guardedSwitchView = (next) => { if (confirmLeaveMatrixIfDirty()) onSwitchView(next); };
 
   // Header-raden (toggle + evt. sæson-vælger) er den samme uanset loading/fejl/
   // tom-tilstand, så sæson-skiftet aldrig forsvinder mens en anden sæsons data hentes.
   const header = (
     <div className="mb-4 flex flex-wrap items-center gap-2.5">
-      <SeasonDayToggle view="season" onChange={onSwitchView} />
+      <SeasonDayToggle view="season" onChange={guardedSwitchView} />
       {pickerSeasons.length > 1 && (
         <SeasonPicker
           seasons={pickerSeasons}
@@ -309,7 +327,7 @@ export default function SeasonView({ onSwitchView }) {
       {/* Toggle + sæson-vælger + sæson-meta + klik-hint (jf. mockup) */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div className="flex flex-wrap items-center gap-2.5 min-w-0">
-          <SeasonDayToggle view="season" onChange={onSwitchView} />
+          <SeasonDayToggle view="season" onChange={guardedSwitchView} />
           {pickerSeasons.length > 1 && (
             <SeasonPicker
               seasons={pickerSeasons}
@@ -437,6 +455,11 @@ export default function SeasonView({ onSwitchView }) {
           </div>
         </div>
       </div>
+
+      {/* #1146 P1: rytter × løbsdag-gitteret. Egen data-hentning/kladde/gem — Z1 v0's
+          tidslinje ovenfor forbliver urørt. Read-only-tilstanden er indbygget i
+          gitterets eget svar (samme sæson-aktiv-tjek som denne visning). */}
+      <SeasonMatrix seasonNumber={data.season.number} onOpenDay={openDay} onDirtyChange={setMatrixDirty} />
 
       {/* #4124: sæsonskiftets tidslinje, kort + collapsible (fuld forklaring i Hjælp). */}
       <SeasonChangeoverNote className="mt-4" />
