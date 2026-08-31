@@ -24,7 +24,6 @@ function harness(overrides = {}) {
     claimRunDate: async () => { calls.claim++; return { claimed: true, tableMissing: false }; },
     releaseRunDate: async () => { calls.release++; },
     completeRun: async ({ summary }) => { calls.complete.push(summary); },
-    trainingEnabled: async () => true,
     captureExceptionFn: () => {},
   };
   return { calls, args: { ...base, ...overrides } };
@@ -78,16 +77,26 @@ describe("runSundayValueSweep, gates", () => {
     assert.equal(calls.refresh, 1);
   });
 
-  it("respekterer ejerens nødbremse: daily_training_enabled off → ingen værdi-mutation", async () => {
-    // Værdi-refresh'en lå før BAG trainingSweep.js's flag-gate. Flytningen til
-    // eget job må ikke gøre nødbremsen smallere (review 31/8).
-    const { calls, args } = harness({ trainingEnabled: async () => false });
+  it("FORWARD GUARD: træning og værdiopdatering er afkoblet — jobbet kører selv med daily_training_enabled slukket", async () => {
+    // Ejer-beslutning 31/8: der skal kunne trænes hver dag, og værdier skal
+    // opdateres hver søndag, uafhængigt af hinanden. Et review koblede dem
+    // engang, fordi værdi-refresh'en historisk lå bag trainingSweep.js's
+    // flag-gate. Genindfører nogen den kobling, fælder denne test.
+    //
+    // daily_training_enabled bor i app_config (se dailyTrainingFlag.js), så
+    // ethvert opslag i den tabel afslører en flag-gate der er sneget sig ind.
+    const seen = [];
+    const { calls, args } = harness({
+      supabase: { from: (tbl) => { seen.push(tbl); return supabase.from(tbl); } },
+    });
     const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
-    assert.equal(r.ran, false);
-    assert.equal(r.skipped, "flag_off");
-    assert.equal(calls.refresh, 0);
-    assert.equal(calls.market, 0);
-    assert.equal(calls.claim, 0, "et claim mens flaget er slukket ville stjæle søndagen efter et flip");
+    assert.equal(r.ran, true, "søndagens værdiopdatering må ikke afhænge af træningsflaget");
+    assert.equal(calls.refresh, 1);
+    assert.equal(calls.claim, 1);
+    assert.ok(
+      !seen.includes("app_config"),
+      "jobbet slog app_config op — er der sneget en flag-gate ind igen?",
+    );
   });
 
   it("kræver eksplicit `now` (AGENTS.md hard rule 16)", async () => {

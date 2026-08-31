@@ -25,12 +25,20 @@
 // En værdi-mutation af hele populationen uden dedup-anker er farligere end en
 // søndag uden opdatering.
 //
-// KILL-SWITCH: daily_training_enabled gælder også her (review 31/8). Værdi-
-// refresh'en lå før BAG trainingSweep.js's flag-gate, så ejerens nødbremse
-// frøs værdierne sammen med træningen. Flytningen til eget job må ikke gøre
-// nødbremsen smallere end den var: slukker ejeren træningen fordi motoren
-// udvikler forkert, skal værdierne heller ikke prissættes oven på præcis de
-// evner. Ingen flag-ændring var en del af ejer-beslutningen 30/8, kun tidspunkt.
+// INGEN TRÆNINGS-GATE (ejer-beslutning 31/8). Træning og værdiopdatering er
+// to uafhængige systemer: der skal kunne trænes hver dag, og værdier skal
+// opdateres hver søndag - aldrig andre dage - uanset træningens tilstand.
+// Et tidligere review koblede dem, fordi værdi-refresh'en historisk lå BAG
+// trainingSweep.js's flag-gate. Den kobling var et artefakt af hvor koden lå, ikke
+// en spilregel, og ejeren afviste den eksplicit. daily_training_enabled må
+// derfor ikke genindføres her.
+//
+// (På sigt skal træningsscoren indgå i selve værdiberegningen, men den score
+// er ikke bygget endnu. Det er en input-afhængighed i modellen, ikke en gate
+// på om jobbet kører.)
+//
+// marketValueSundaySweep har fortsat sit EGET flag (market_value_sweep) - det
+// er den sweeps egen nødbremse og har intet med træning at gøre.
 //
 // no_active_season er derimod BEVIDST ikke en gate her (samme review). Den var
 // et biprodukt af at refresh'en hang på en sweep der havde brug for sæsonen til
@@ -40,7 +48,6 @@
 // hullet mellem "Afslut sæson" og transitionen, uden at beskytte noget.
 
 import { copenhagenDateString, copenhagenHour, copenhagenWeekdayKey } from "./copenhagenTime.js";
-import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { refreshChangedRiderValues } from "./riderValueRefresh.js";
 import { runMarketValueSundaySweep } from "./marketValueSundaySweep.js";
 import { captureException } from "./sentry.js";
@@ -113,7 +120,7 @@ async function defaultCompleteRun({ supabase, runDate, summary }) {
 
 /**
  * Kør søndagens værdi-pipeline. No-op hvis: ikke søndag (dansk tid), før
- * kl. 06, daily_training_enabled er slukket, log-tabellen mangler, eller dagen
+ * kl. 06, log-tabellen mangler, eller dagen
  * allerede er kørt. Fejler v4-refresh'en, frigives dagens claim igen, og
  * jobbet svarer skipped:"value_refresh_failed", så næste tick prøver forfra.
  *
@@ -134,7 +141,6 @@ export async function runSundayValueSweep({
   claimRunDate = defaultClaimRunDate,
   releaseRunDate = defaultReleaseRunDate,
   completeRun = defaultCompleteRun,
-  trainingEnabled = isDailyTrainingEnabled,
   log = noop,
   captureExceptionFn = captureException,
 } = {}) {
@@ -148,10 +154,6 @@ export async function runSundayValueSweep({
   const runDate = copenhagenDateString(now);
   if (copenhagenWeekdayKey(runDate) !== "sun") return { ran: false, skipped: "not_sunday" };
   if (copenhagenHour(now) < SUNDAY_VALUE_FROM_HOUR) return { ran: false, skipped: "before_window" };
-
-  // Kill-switch FØR claim'et: er træningen slukket, må dagen ikke tælle som
-  // brugt — ellers ville et tick før et flag-flip stjæle søndagen.
-  if (!(await trainingEnabled(supabase))) return { ran: false, skipped: "flag_off" };
 
   const { claimed, tableMissing } = await claimRunDate({ supabase, runDate });
   if (tableMissing) {
