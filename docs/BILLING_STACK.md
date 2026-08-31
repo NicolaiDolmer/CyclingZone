@@ -70,6 +70,29 @@ Det giver en meget nyttig diagnostik:
 
 To tilfælde trækkes aldrig på eget kort: abonnementer dækket af en betaler (forhandler-modulet), og perioder som en rabat bringer til nul.
 
+### API-svarformer — MCP og REST er ikke ens ✅
+
+Samme data, forskellige feltnavne. Læses den ene form af på den anden, får man `null` og en falsk konklusion (skete under opbygningen af drift-tjekket 31/8).
+
+| Data | MCP (`get_plan_catalog`) | REST (`GET /plans`) |
+|---|---|---|
+| Pris-array | `prices[]` | `renewal_intervals[]` |
+| Interval | `interval_months` | `interval` |
+| Beløb | `amount_minor` | `price` |
+
+Envelope-formen er heller ikke ensartet i REST-API'et:
+
+| Endpoint | Form |
+|---|---|
+| `GET /me` | **Fladt** — `{team_uuid, team_name, scopes, base_currency, timezone}` |
+| `GET /plans` | `{data: [...]}` |
+| `POST /checkout-sessions` | `{data: {id, checkout_url}}` |
+| `POST /portal-link/{uuid}` | `{data: {url}}` |
+
+Den udokumenterede envelope på checkout-sessions bed ved første testkøb: `undefined checkout_url` sendte frontend til `/undefined`. `alunta.js` læser derfor defensivt (`session?.data?.checkout_url ?? session?.checkout_url`).
+
+**Regel: mål svaret før du læser felter af det.** Begge postmortems handler om præcis denne fejl.
+
 ### Kundeportalen 📄
 
 `POST /portal-link/{uuid}` giver et signeret auto-login-link. Kunden kan skifte kort og opsige. **Udløber efter 15 min og behandles som en credential** — logges aldrig, gemmes aldrig. Uden gyldigt UUID returneres portalens login-side (magic link på e-mail) — den vej virker for kunder uden `alunta_customer_id` hos os.
@@ -253,6 +276,17 @@ Begge MCP-forbindelser er `local scope`: kun denne bruger, kun dette projekt, in
 7. **`CHECKOUT_PAUSED` findes to steder.**
 8. **Reconcile er daglig, ikke øjeblikkelig.**
 9. **Et 2xx fra en gateway er ikke bevis for at der er flyttet penge.**
+10. **MCP og REST bruger forskellige feltnavne for samme data.** `prices[]/amount_minor` mod `renewal_intervals[]/price`. Mål svaret før du læser felter af det.
+
+## 9a. Drift-tjek af planer
+
+```bash
+infisical run --env=dev -- node scripts/alunta-setup-plans.js
+```
+
+Køres fra `backend/`. Sammenligner Aluntas faktiske planer mod den forventede opsætning, rapporterer afvigelser og udfasede planer der stadig er aktive, og exit'er 1 ved drift. **Retter aldrig en pris** — en plan med aktive abonnenter kan alligevel ikke reprises. `--create-missing` opretter manglende planer.
+
+Erstatter den tidligere adfærd, hvor scriptet stiltiende sprang eksisterende planer over på navn og dermed lod en forkert pris overleve enhver gen-kørsel.
 
 ## 10. Relateret
 
