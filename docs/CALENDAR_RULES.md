@@ -516,13 +516,13 @@ Fixene, i rækkefølge:
 | `MAX_GT_SPAN_DAYS` = 6 | findes (R8) | mangler | **kan bygges** |
 | `MAX_GT_STAGES_PER_DAY` = 4 | findes (R7) | mangler | **kan bygges** |
 | To GT'er deler ikke kalenderdag | findes | mangler | **kan bygges** |
-| Etapeløbs-spænd ≤ etaper + 3 | findes (`…LanePackerInvariants.test.js:141`) | mangler | **kan bygges** |
+| Etapeløbs-spænd ≤ etaper + 3 | findes (`raceCalendarLanePackerInvariants.test.js:141`) | mangler | **kan bygges** |
 | `TIER_DENSITY` som etaper pr. kalenderdag | mangler | mangler | **kan bygges**, group by dato |
 | Løb hver kalenderdag i alle divisioner | mangler | mangler | **kan bygges**, én SQL: `count(distinct dato) = race_days_total` pr. pulje |
 | Sæsonen slutter søndag | mangler | findes (`regenSeason3Calendar.mjs:197`) | **kan bygges**, `extract(dow)` |
 | `GRAND_TOUR_REST_DAYS` = 2 | mangler | mangler | **kan bygges**: spænd skal være `etaper + 2`, verificeret sand for alle 3 GT'er |
 | Kvote-opfyldelse (§1b) | mangler | mangler | **kan bygges når gulvet er sat** (§11 punkt 4) — skal være et INTERVAL, ikke en lighed |
-| Monument-spredning | delvist (`…LanePackerInvariants.test.js:125`) | mangler | **først når løbsdags-tallet er sat** (§11 punkt 5) |
+| Monument-spredning | delvist (`raceCalendarLanePackerInvariants.test.js:125`) | mangler | **først når løbsdags-tallet er sat** (§11 punkt 5) |
 | K-B-komposition pr. division ±2 pp | findes med de LØSE tal | findes med de LØSE tal | **først når §6's modsigelse er ryddet** — vil være rød på 7 akser i dag |
 | §6b's uniforme mål | mangler | mangler | **kan bygges** — vil være rød på 6 akser i dag |
 | Startfelt pr. klasse, startgulv 6 | findes (ved gem/afvikling) | ikke relevant | ikke relevant |
