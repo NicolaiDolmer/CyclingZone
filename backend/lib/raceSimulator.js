@@ -39,7 +39,22 @@ import { peakComponentForStage } from "./racePeaks.js";
 // #4357: kun brugt til at RAPPORTERE en dobbelt-kaptajn-konflikt i buildTeamContext
 // (telemetri, no-op når Sentry ikke er initialiseret) — ændrer intet ved funktionens
 // egen determinisme (samme seed+input → samme output, uanset om kaldet fejler/no-op'er).
-import { captureException } from "./sentry.js";
+// #4357: LAZY sentry-import. Frontendens drift-guards (raceSelectionLogic.test.js)
+// importerer dette modul direkte for at sammenligne konstanter 1:1, og frontend-CI
+// har ikke backend-deps (@sentry/node) installeret - en top-level import ville
+// vaelte modul-load. Fejl-stien er sjaelden (dobbelt kaptajn), saa dynamisk import
+// dér koster intet.
+let captureExceptionLazy = null;
+async function captureException(err, ctx) {
+  if (!captureExceptionLazy) {
+    try {
+      captureExceptionLazy = (await import("./sentry.js")).captureException;
+    } catch {
+      captureExceptionLazy = () => {};
+    }
+  }
+  return captureExceptionLazy(err, ctx);
+}
 
 export const ENGINE_VERSION = 1;
 // Race v3 S1 (#2352): motor-version stemplet på runs når `race_engine_v3_scoring`
