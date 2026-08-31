@@ -84,6 +84,57 @@ test("buildTeamContext: helperSupport ∈ [0,1], hold uden kaptajn udelades", ()
   assert.ok(a.helperSupport >= 0 && a.helperSupport <= 1);
 });
 
+// ── #4357: dobbelt-kaptajn-determinisme (regression for last-write-wins) ──────
+test("buildTeamContext: to captains på samme hold → FØRSTE i rækkefølgen vinder, uanset hvilken rytter der kommer først", () => {
+  const cap1 = { rider_id: "a1", team_id: "a", race_role: "captain", abilities: ab(70) };
+  const cap2 = { rider_id: "a2", team_id: "a", race_role: "captain", abilities: ab(70) };
+  const terrainById = new Map([["a1", 0.5], ["a2", 0.5]]);
+
+  const ctxAB = buildTeamContext({ entrants: [cap1, cap2], terrainById, captureExceptionFn: () => {} });
+  assert.equal(ctxAB.get("a").captainId, "a1", "a1 kommer først → a1 vinder");
+
+  const ctxBA = buildTeamContext({ entrants: [cap2, cap1], terrainById, captureExceptionFn: () => {} });
+  assert.equal(ctxBA.get("a").captainId, "a2", "a2 kommer først i DENNE rækkefølge → a2 vinder, ikke a1");
+});
+
+test("buildTeamContext: to sprint_captains på samme hold → samme første-vinder-regel", () => {
+  const sc1 = { rider_id: "a1", team_id: "a", race_role: "sprint_captain", abilities: ab(70) };
+  const sc2 = { rider_id: "a2", team_id: "a", race_role: "sprint_captain", abilities: ab(70) };
+  const terrainById = new Map([["a1", 0.5], ["a2", 0.5]]);
+  const ctx = buildTeamContext({ entrants: [sc1, sc2], terrainById, captureExceptionFn: () => {} });
+  assert.equal(ctx.get("a").sprintCaptainId, "a1");
+});
+
+test("buildTeamContext: dobbelt captain rapporterer til Sentry (captureExceptionFn) i stedet for tavst at skifte vinder", () => {
+  const cap1 = { rider_id: "a1", team_id: "a", race_role: "captain", abilities: ab(70) };
+  const cap2 = { rider_id: "a2", team_id: "a", race_role: "captain", abilities: ab(70) };
+  const terrainById = new Map([["a1", 0.5], ["a2", 0.5]]);
+  const reports = [];
+  buildTeamContext({
+    entrants: [cap1, cap2],
+    terrainById,
+    captureExceptionFn: (err, context) => reports.push({ message: err.message, context }),
+  });
+  assert.equal(reports.length, 1, "præcis ét signal pr. konflikt");
+  assert.match(reports[0].message, /dobbelt captain/);
+  assert.equal(reports[0].context.teamId, "a");
+  assert.equal(reports[0].context.keptRiderId, "a1");
+  assert.equal(reports[0].context.droppedRiderId, "a2");
+});
+
+test("buildTeamContext: SAMME rytter to gange (ikke en konflikt) rapporterer intet til Sentry", () => {
+  const cap = { rider_id: "a1", team_id: "a", race_role: "captain", abilities: ab(70) };
+  const terrainById = new Map([["a1", 0.5]]);
+  const reports = [];
+  const ctx = buildTeamContext({
+    entrants: [cap, { ...cap }],
+    terrainById,
+    captureExceptionFn: (err, context) => reports.push({ err, context }),
+  });
+  assert.equal(reports.length, 0);
+  assert.equal(ctx.get("a").captainId, "a1");
+});
+
 test("sprint_captain fallback: captain-only hold på flat etape får stadig boost", () => {
   const entrants = team("a", ["captain", "helper"]);
   const flatP = { profile_type: "flat", demand_vector: demand };
