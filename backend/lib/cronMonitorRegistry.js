@@ -160,6 +160,9 @@ export const ALL_CRON_MONITORS = [
   ["email-retry-drain", CRON_MONITOR_5MIN],
   ["discord-race-digest", CRON_MONITOR_60MIN],
   ["alunta-subscription-reconcile", CRON_MONITOR_24H],
+  // #4514 — forfalds-vagt. Ikke gated bag et flag: en vagt der er slukket som
+  // default er præcis den fejl den findes for at fange. Den skriver intet.
+  ["alunta-overdue-watch", CRON_MONITOR_24H],
   // #3402: sæsondokumentar-sweep — polleren der fylder season_documentaries op
   // for de seneste completed sæsoner (60 min-kadence, samme som entry-generator/
   // discord-race-digest). Idempotent no-op når intet mangler.
