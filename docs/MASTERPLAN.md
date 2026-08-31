@@ -21,7 +21,7 @@
 **Ejer-beslutninger 27-28/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt** (42 starter) · **to regenereringer er forbudt**.
 
 Ny gæld: #4288 · **#4278** (D4 opad 41,9 % mod bånd 25-32 %) · #4282/#4146 · #4292 · #4123 + #4215-rest · **#4370** (React #421, forsiden).
-**UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølger · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4268 (#4269 → punkt 0). **⚠️ #4266 frist 1/9 + #4265 S3-bundet — ejeren afgør.**
+**UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265/#4267/#4268. **⚠️ #4265 S3-bundet — ejeren afgør.**
 
 ## Grundreglerne — UDSKUDT til efter 27/9 (ejer 28/8)
 
@@ -43,7 +43,7 @@ Rører ingen spilleregler; S3-køens spillerfejl går forrest.
 10. **#2853** e-mail-loop tændes (ejer: 3 tekster + 2 nøgler) → **#2760** win-back.
 11. **/pro:** #4074 → #4005 → flip + testkøb → #2813 → #2806 synligt link.
 12. **#4067** SEO-site S1 + **#2824** offentlige læse-ruter.
-13. **Kommunikationslinje:** AI laver søndag ugens 3 udkast (#428), ejer poster ~25 min/uge; #4117 afkrydses; #4111 månedlig løfte-audit.
+13. **Kommunikationslinje:** AI laver søndag ugens 3 udkast (#428), ejer poster; #4111 månedlig løfte-audit.
 
 ## E · Løbende (aldrig hovedspor)
 
@@ -57,7 +57,7 @@ Rører ingen spilleregler; S3-køens spillerfejl går forrest.
 
 ## F · Backlog-bølger (#3154; audit 31/8: 602→~561, alle klassificeret)
 
-Lukkemandat: done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20 (præsenteres i chat m. begrundelse pr. punkt). Klassifikation + beslutningsark: `docs/audits/*-2026-08-31.md`. **Rest:** 18 med-confidence dubletpar · done_cand-verify · W8 needs-decision · #4119 · #3944/#3945.
+Lukkemandat: done/dubletter/opslugte frit; won't-do i chat-bundter m. begrundelse. Klassifikation + beslutningsark: `docs/audits/*-2026-08-31.md`. **Rest:** 18 dubletpar · done_cand-verify · W8 · #4119 · #3944/#3945.
 
 ## E2 · Race-oplevelsen (SSOT: `RACE_ENGINE_RULES.md`)
 
