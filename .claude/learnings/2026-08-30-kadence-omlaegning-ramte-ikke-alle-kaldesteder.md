@@ -39,9 +39,14 @@ efter filen.** En kadence, et vindue eller en gate er en egenskab ved
 MUTATIONEN, ikke ved det ene sted du tilfaeldigvis stod da beslutningen blev
 truffet. Konkret:
 
-1. `grep -rn "<funktionsnavn>" backend/ --include="*.js" | grep -v test` FOER du
-   skriver gaten. Alle kaldesteder skal enten gates eller have en skreven
-   begrundelse for hvorfor de ikke skal.
+1. `grep -rn "<funktionsnavn>" . --include="*.js" --include="*.jsx" | grep -v node_modules`
+   FOER du skriver gaten. **Hele repoet, ikke kun `backend/`** (rettet 31/8, se
+   `2026-08-31-kadencen-flyttede-serveren-men-ikke-varslet.md`: denne regel
+   sagde selv `backend/`, og derfor blev frontendens kopi af klokkeslaettet
+   ikke fundet). Grep ogsaa efter selve TALLET eller vinduet, ikke kun efter
+   funktionsnavnet: en konstant kan staa et sted funktionen aldrig naar hen.
+   Alle kaldesteder skal enten gates eller have en skreven begrundelse for
+   hvorfor de ikke skal.
 2. Skriv testen paa reglen, ikke paa kaldestedet: "denne mutation kan ikke ske
    uden for sit vindue" er en anden test end "dette job kalder ikke mutationen".
 3. Flyt mutationen ud i sit eget modul med sin egen gate naar den har faaet en

@@ -174,7 +174,7 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 
 | # | Hvad | Hvornår | Kode | Status |
 |---|---|---|---|---|
-| 1 | **Søndagens værdi-pipeline**: v4-genberegning af `base_value`/CPV/typer for hele populationen, derefter markedsblendet | Søndag fra **kl. 06** dansk tid, ét persisteret dato-claim pr. søndag | `sundayValueSweep.js` (#4419) | Live |
+| 1 | **Søndagens værdi-pipeline**: v4-genberegning af `base_value`/CPV/typer for hele populationen, derefter markedsblendet | Søndag fra **kl. 06** dansk tid, ét persisteret dato-claim pr. søndag, gated af `daily_training_enabled` | `sundayValueSweep.js` (#4419) | Live |
 | 2 | `prize_earnings_bonus` (3-sæsons-vindue) genberegnes | Ved **præmie-udbetaling**, ubetinget, enhver ugedag | `prizePayoutEngine.js` | Live, se §1 |
 | 3 | Nye ryttere får `base_value` ved oprettelse | Akademi-intake, startrup-allokering | `academyIntakePull.js`, `starterSquadAllocator.js` | Live (oprettelse, ikke opdatering) |
 | 4 | Heal-sweep re-deriverer ryttere med `base_value` NULL | Løbende, kun strandede rækker | `riderDeriveHealSweep` (#1673) | Live |
@@ -185,6 +185,10 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 **Punkt 6 var reelt et hul i søndags-reglen.** Kaldet stammede fra #1364 (25/7), altså før søndags-kadencen blev besluttet 6/8 (#3448), og blev ikke omfattet af omlægningen. Med ca. 50 manuelle træninger i døgnet betød det at værdier stadig flyttede sig midt i ugen, men kun for de hold der trykkede på knappen.
 
 **Rækkefølgen i punkt 1 er en hard regel:** v4-refresh FØRST, markedsblend SIDST. Omvendt rækkefølge (eller en genstart der kører v4-refresh igen senere samme søndag) skriver blendet væk igen, tavst. Derfor claimes dagen i `rider_value_sunday_log` FØR første skrivning, og claimet dækker hele pipelinen.
+
+**Fejler v4-refresh'en, frigives dagens claim igen** (tilføjet efter review 31/8). Markedsblendet springes helt over i den gren, og næste times tick kører hele den ordnede pipeline forfra samme søndag. Uden frigivelsen ville ét statement-timeout koste en hel uges værdiopdatering, fordi næste tick blot fandt claim-rækken. Retry er sikker: refresh'en genberegner rent fra v4 og skriver kun de ryttere hvis værdi faktisk afviger.
+
+**Punkt 1 er også omfattet af `daily_training_enabled`.** Værdi-refresh'en lå før bag trænings-sweepens flag-gate, og ejerens nødbremse skal blive lige så bred efter omlægningen: slukkes træningen fordi motoren udvikler forkert, prissættes de evner heller ikke. `no_active_season` er derimod bevidst ikke en gate — refresh'en har eget korrekt sæson-anker (seneste completed sæson) siden cutover-fixet 23/8, og en gate ville koste en hel uges opdatering hver gang en søndag falder mellem "Afslut sæson" og transitionen.
 
 ### 9.2 Markedsdrevne værdier: hvad der er lovet, bygget og ikke tændt
 

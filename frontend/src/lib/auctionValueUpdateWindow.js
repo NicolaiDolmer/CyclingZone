@@ -19,6 +19,9 @@ import { GAME_TIMEZONE, utcToGameWallClock, gameWallClockToUTC } from "./auction
 export const VALUE_UPDATE_WEEKDAY = 0; // søndag (Date#getUTCDay()-konvention)
 export const VALUE_UPDATE_HOUR = 6;
 
+// pad2 gælder OGSÅ timetallet: gameWallClockToUTC kræver "YYYY-MM-DDTHH:mm", og
+// et etcifret "T6:00" giver Invalid Date. Med den gamle time (22) var det
+// usynligt, fordi tallet tilfældigvis var tocifret (#4419-review 31/8).
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
@@ -42,14 +45,14 @@ export function nextSundayValueUpdateUTC(now = new Date()) {
   const daysUntilSunday = (7 - dow) % 7;
   anchor.setUTCDate(anchor.getUTCDate() + daysUntilSunday);
 
-  const candidateWall = `${anchor.getUTCFullYear()}-${pad2(anchor.getUTCMonth() + 1)}-${pad2(anchor.getUTCDate())}T${VALUE_UPDATE_HOUR}:00`;
+  const candidateWall = `${anchor.getUTCFullYear()}-${pad2(anchor.getUTCMonth() + 1)}-${pad2(anchor.getUTCDate())}T${pad2(VALUE_UPDATE_HOUR)}:00`;
   let refreshUTC = gameWallClockToUTC(candidateWall);
 
   // I dag ER søndag OG klokken er allerede forbi kl. 06 dansk tid — den næste
   // reelle refresh er om en uge, ikke den der allerede er passeret.
   if (refreshUTC.getTime() <= now.getTime()) {
     anchor.setUTCDate(anchor.getUTCDate() + 7);
-    const nextWall = `${anchor.getUTCFullYear()}-${pad2(anchor.getUTCMonth() + 1)}-${pad2(anchor.getUTCDate())}T${VALUE_UPDATE_HOUR}:00`;
+    const nextWall = `${anchor.getUTCFullYear()}-${pad2(anchor.getUTCMonth() + 1)}-${pad2(anchor.getUTCDate())}T${pad2(VALUE_UPDATE_HOUR)}:00`;
     refreshUTC = gameWallClockToUTC(nextWall);
   }
   return refreshUTC;
