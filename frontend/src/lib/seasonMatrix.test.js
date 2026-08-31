@@ -395,6 +395,18 @@ test("buildSaveError: selection_rider_bound (peer_conflict) leverer kun raa ids 
   assert.deepEqual(err.params, { rider: "Ada Pedersen", race: "Tour des Hauts Plateaux" });
 });
 
+// #4534 (regression, live-fund 31/8): backend afviser nu OGSÅ fjernelser fra startede
+// løb med selection_race_started (samme fejlklasse som tilføjelser). Kataloget skal
+// navngive det ramte løb, så cellen/banneret forklarer sig selv — races.json har
+// allerede EN+DA-teksten ("This race has started, so the lineup is locked").
+test("buildSaveError: selection_race_started (afvist fjernelse, #4534) navngiver det ramte løb", () => {
+  const err = buildSaveError({ error: "selection_race_started", race_id: "r2" }, RACES, RIDERS);
+  assert.equal(err.code, "selection_race_started");
+  assert.equal(err.raceId, "r2");
+  assert.equal(err.raceName, "Tour des Hauts Plateaux");
+  assert.deepEqual(err.params, {});
+});
+
 test("buildSaveError: selection_bulk_too_large bærer max, intet berørt løb", () => {
   const err = buildSaveError({ error: "selection_bulk_too_large", max: 60 }, RACES, RIDERS);
   assert.equal(err.code, "selection_bulk_too_large");

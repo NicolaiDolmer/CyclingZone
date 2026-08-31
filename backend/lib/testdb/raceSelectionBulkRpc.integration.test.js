@@ -6,8 +6,9 @@
 // verificerer de to SQL-niveau-fund direkte mod den ÆGTE, committede RPC-fil (ikke en
 // re-typet kopi) + dens forudsætninger fra 2026-08-24-4173:
 //   FUND 1 — forward-guard: et løb hvis felt er LÅST (stages_completed>0) eller hvis
-//     status ikke er 'scheduled' må kun modtage en RENT FJERNENDE ændring. Beviser at
-//     guarden både AFVISER en tilføjelse til et frosset løb OG TILLADER en ren fjernelse.
+//     status ikke er 'scheduled' afvises. #4534 (live-fund 31/8) fjernede den tidligere
+//     fjernelses-undtagelse — guarden afviser nu ENHVER ændring af et frosset løb,
+//     inkl. ren fjernelse (2026-08-31-4534-selection-frozen-both-directions.sql).
 //   FUND 2 — race_entry_days-oprydning: verificerer at der IKKE efterlades forældreløse
 //     race_entry_days-rækker når et løbs ønskeliste bliver tom i et bulk-kald (uanset om
 //     det er via race_entry_days_entry_fkey's ON DELETE CASCADE eller det eksplicitte
@@ -83,6 +84,9 @@ before(async () => {
   await db.exec(loadMigration("2026-08-24-4173-rider-binding-per-game-day.sql"));
   // #1146: selve den RPC vi tester — den ÆGTE fil, ikke en kopi.
   await db.exec(loadMigration("2026-08-27-1146-selection-bulk-rpc.sql"));
+  // #4534: frys-guarden gælder begge retninger — SAMME apply-rækkefølge som prod
+  // (CREATE OR REPLACE oven på 1146-versionen), så det er den GÆLDENDE funktion vi tester.
+  await db.exec(loadMigration("2026-08-31-4534-selection-frozen-both-directions.sql"));
 });
 after(async () => {
   if (db) await db.close();
@@ -158,8 +162,8 @@ test("FUND 1: afviser også en REN FJERNELSE mod et 'completed'-løb (ingen remo
   const { raceId } = await makeRace({ stagesCompleted: 0 });
   await callBulk({ teamId, changes: [{ race_id: raceId, rider_ids: [riderX, riderY], roles: ["captain", "helper"] }] });
   await db.query("UPDATE races SET status = 'completed' WHERE id = $1", [raceId]);
-  // Ren fjernelse er tilladt for et frosset-men-åbent løb; for et afsluttet løb er der
-  // intet aktivt felt at redigere (raceActiveGuard.js:55-56, #2074).
+  // Et afsluttet løb har intet aktivt felt at redigere (#2074) — og siden #4534 er
+  // fjernelse i det hele taget aldrig tilladt på et låst løb.
   await assert.rejects(
     () => callBulk({ teamId, changes: [{ race_id: raceId, rider_ids: [riderX], roles: ["captain"] }] }),
     /selection_race_not_open/,
@@ -168,7 +172,10 @@ test("FUND 1: afviser også en REN FJERNELSE mod et 'completed'-løb (ingen remo
   assert.equal(rows[0].n, 2);
 });
 
-test("FUND 1: TILLADER en REN FJERNELSE fra et frosset løb (v_rider_ids ⊆ eksisterende entries)", async () => {
+// #4534 (live-fund 31/8, friisisch/Vidal): præcis denne sti — ren fjernelse fra et frosset
+// løb — var tilladt og lod en spiller trække sin kaptajn ud af en igangværende Giro.
+// Guarden afviser nu, med samme fejlklasse som tilføjelses-retningen.
+test("FUND 1/#4534: afviser en REN FJERNELSE fra et frosset løb (fjernelses-undtagelsen er fjernet)", async () => {
   const teamId = "11111111-1111-1111-1111-111111111111";
   const riderX = "22222222-2222-2222-2222-222222222222";
   const riderY = "33333333-3333-3333-3333-333333333333";
@@ -177,10 +184,14 @@ test("FUND 1: TILLADER en REN FJERNELSE fra et frosset løb (v_rider_ids ⊆ eks
   await callBulk({ teamId, changes: [{ race_id: raceId, rider_ids: [riderX, riderY], roles: ["captain", "helper"] }] });
   // Frys løbet (simulerer at etape 1 er kørt imellem de to bulk-kald).
   await db.query("UPDATE races SET stages_completed = 1 WHERE id = $1", [raceId]);
-  // Fjern riderY (skadet) — en RENT fjernende ændring, skal TILLADES selv om løbet er låst.
-  await callBulk({ teamId, changes: [{ race_id: raceId, rider_ids: [riderX], roles: ["captain"] }] });
-  const { rows } = await db.query("SELECT rider_id FROM race_entries WHERE race_id = $1", [raceId]);
-  assert.deepEqual(rows.map((r) => r.rider_id), [riderX]);
+  // Forsøg at fjerne riderY — en RENT fjernende ændring, skal nu AFVISES.
+  await assert.rejects(
+    () => callBulk({ teamId, changes: [{ race_id: raceId, rider_ids: [riderX], roles: ["captain"] }] }),
+    /selection_race_started/,
+  );
+  // Den låste lineup skal være urørt.
+  const { rows } = await db.query("SELECT rider_id FROM race_entries WHERE race_id = $1 ORDER BY rider_id", [raceId]);
+  assert.deepEqual(rows.map((r) => r.rider_id).sort(), [riderX, riderY].sort());
 });
 
 test("FUND 1: afviser en TILFØJELSE til et frosset løb selv når nogle ryttere beholdes (blandet tilføjelse+beholdelse er IKKE en ren fjernelse)", async () => {

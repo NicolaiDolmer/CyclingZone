@@ -4987,7 +4987,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     if (wErr) return res.status(500).json({ error: wErr.message });
     if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
 
-    // #1146: pulje-binding, body-shape, frys/fjernelse-undtagelse (#2637) og
+    // #1146: pulje-binding, body-shape, frys (#1825, begge retninger siden #4534) og
     // validateSelection er udtrukket til prepareSelectionChange (raceSelection.js), delt
     // med bulk-endpointet (PUT /races/selection/bulk) længere nede, samme regler begge veje.
     // #2376: free_role_ids accepteres UANSET race_engine_v3_scoring-flagets tilstand —
@@ -5002,7 +5002,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         prepared.errors ? { error: prepared.error, errors: prepared.errors } : { error: prepared.error }
       );
     }
-    const { captainId, sprintCaptainId, hunterId, freeRoleIds, isRemovalOnly } = prepared;
+    const { captainId, sprintCaptainId, hunterId, freeRoleIds } = prepared;
     riderIds = prepared.riderIds;
     ctx = prepared.ctx;
 
@@ -5053,7 +5053,6 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
 
     await saveSelection({
       supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
-      removalOnly: isRemovalOnly,
     });
     // #2599: en manuel udtagelse med ≥1 rytter er en aktiv genindtræden — en evt. tidligere
     // "Ryd dag/alt"-markering for netop dette (race,team)-par er nu forældet. Best-effort:
