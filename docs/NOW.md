@@ -4,31 +4,26 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **PR #4473 (fair play) + #4508 (bonustilbud) er grønne og afventer merge.** Derefter **#4507** - `verify_race_result_duplicates` timer ud mod prod og gør kalender-vagten rød HVER nat nu, hvor #4477 er merget. Så **#2813**, der blokerer CZ Pro-salget (`needs-decision`; verifikation 1+2 lukket 31/8, rest er din gennemgang af teksten). Spor D uændret aktivt (ejer 31/8): #2853-mailtekster + /pro #4074. **Handoff (ejer-bestilt 31/8):** start næste session med [`drafts/2026-09-01-session-prompt-oplaas-og-byg.md`](../drafts/2026-09-01-session-prompt-oplaas-og-byg.md) - A måler 8 blokerede beslutninger, B bygger, C merger, D rydder **17 åbne `claude:done`**.
+> **🎯 Next action:** **Start hotfix-sessionen med [`drafts/2026-09-01-session-prompt-planner-forbedringer.md`](../drafts/2026-09-01-session-prompt-planner-forbedringer.md).** Opgave 1 = **#4534** (matrixen kan FJERNE ryttere fra startede løb - live, game-breaking, ejer-bestilt straks) + Vidal-datareparation. Opgave 1b = **#4370** (React #421 stadig live på mobil-Safari: requestIdleCallback-fallbacken duer ikke i WebKit; når smoke er grøn merges også **PR #4533**, #4485-kodefixet, ejer-godkendt til merge). Derefter #4535 (tidsakse-mockup) + kø.
 
-> **⛔ Venter på DIN beslutning:** **#4482 er BESLUTTET (valg A, ejer 31/8)** - PR #4508 wirer udløbet ind; oprydningen af de **36** (ikke 37) eksisterende tilbud er IKKE kørt og kræver spillerbesked FØRST. Udkast + SQL ligger klar, `[DATO]`-felt skal udfyldes (anbefalet frist: 48 t). **Konsekvens du bør kende:** når beskeden er ude, har 36 hold en grund til at indløse 200.000 CZ$ hver indenfor fristen.
+> **⏳ Venter på DIN beslutning (parkeret 31/8 "i aften/i morgen", stil dem enkeltvist):** **#4495** 7 ryttere fanget i akademiet (minimal reparation, SQL vises først) · **PR #4388** (#4376 sponsor-base; nul S3-effekt, reel deadline FØR 27/9) · **#3494** sponsor-målet (anbefalet: pensionér sponsor_growth minimal) · **#4485-genberegning** af de 3 løb ([`docs/audits/4485-genberegning-foreslag.md`](audits/4485-genberegning-foreslag.md), anbefaling A: efterbetal uden clawback) · **#4098 blødt loft**: designforslag i tråden (rekalibrering, ingen ny motor), du valgte "dialog nu, beslut senere".
 
-> **⏳ Ejer-frister:** **#4376** PR #4388 må IKKE merges før du har overvejet den · **#4098** senest søn 31/8 · **#3494 blokerer #4265** (`sponsor_income` ens for alle hold) · **#4213** de to tekster + NUA-køen (19 venter). **Ejer-rest:** post [kommunikationspakken](drafts/2026-08-27-kommunikationspakke-saesonstart.md) + trup-linje + RET "Fra i morgen"-varslet · **#886** Sentry-token → Infisical · **#4361** 10 stars vs PAT · **Z1 #1146** PR #4323 grøn, spillertest før merge.
+> **✅ 31/8-bølgen (oplås-og-byg) leverede:** 8 beslutninger målt+verificeret ([beslutningsark](audits/beslutningsark-2026-08-31.md)) · **10 PR'er merget**: #4473 fair play · #4494 graduerings-sweep · #4508+#4524 bonustilbud **Regel A** (21 tilbud genskabt, post-verificeret; CI-uheldet → auto-migrate-guard + `database/manual/`, postmortem) · #4422 skade-DNS · #4525 #4507-vagten (3,6 s, prod-verificeret) · #4526 assistent-forslag (#4522, live) · #4527 hydrering (desktop; WebKit-hul åbent → Next action) · #4529 determinisme · #4528 kalender-vægte (brosten låst **5 %**, §6b-tilt klar til S4) · #4532 akademi-udskydelse · **PR #4323 sæsonmatrixen LIVE** (akse = løbsdage, ejer-låst; patch 7.223+7.224 ude; ejerens EN-opslag postet). Spillerfeedback samme aften → **#4534/#4535**; opfølgning #4530/#4531. #4479+#4482 lukket. Done-audit: 21 `claude:done` behandlet.
 
-> **🔴 Nye fund 31/8** (alle med målinger i issuetråden): **#4493** sanitize-secrets falsk positiv · **#4495** 8 ryttere 22-23 år sidder fast på 6 hold, ejer-gated · **#4496** CI-vagt · **#4485** ungdomsklassement inkluderer 26-årige. **Åbent:** genberegnes S3's kørte `young`-rækker?
+> **🔴 Åbne fund:** **#4534** (kritisk, se Next action) · **#4535** tidsakse · **#4146** beslutningsoplæg i tråden (mulighed A = ren omdøbning, kan bare bygges; balance venter på #4174-genmåling) · **#4493** sanitize falsk positiv · **#4496** CI-vagt.
 
-> **💳 Betaling 31/8:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md) + forfalds-vagt live (#4510/#4514 merget); planer ryddet. **🔴 Rod-årsag ÅBEN:** kortet trækkes aldrig trods gyldigt kort — **ÉN** betaling i historikken, og indstillingen findes ikke i API'et. Måles ved fornyelsen 1/9. · **#4512** dunning (ejer) · **#4511** EU-moms.
+> **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). **Rod-årsag ÅBEN:** kortet trækkes aldrig - måles ved fornyelsen 1/9 · #4512 dunning (ejer) · #4511 EU-moms. Spor D aktivt: #2853-mailtekster + /pro #4074 · #2813 (needs-decision).
 
-> **🩹 Åbne fra 30/8:** **#4423** akademikontrakt midt i løb (PR #4422 = del A, DU merger) · **#4356** de 34 allerede kørte etaper: re-sim eller stå ved dem · **#4357** `loadEntrantsForRace` mangler ORDER BY (bevidst urørt til #4356 er afgjort) · **#4103** S4-forberedelse leveret 31/8 (valg A): S3 urørt (højbjerg-brud i 3/4 divisioner står), brosten afgjort **5 %** (6 %-konstanten fjernet), §6b's mål koblet ind i filler-vægtene som opt-in pr.-tier-tilt (`tierUniformFillerTilt.js`) klar til S4. **To regenereringer af samme kalender er forbudt** ([`CALENDAR_RULES.md`](CALENDAR_RULES.md)) · **#4370** React #421 på forsiden · **#4146** 24 hold over trupgrænse.
-
-> **✅ S3 kører:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Løbsdags-udvikling (#4277) er **off** i S3, retur i S4.
-
+> **✅ S3 kører:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Nattens kalender-audit (05:50) = #4507-beviset - tjek den i næste session.
 
 ## Standing context (forever-relaunch)
 
 - **Liga:** 4-divisions-pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
-- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag**. **Pension:** måles på AFSLUTTET sæsons alder.
-- **Race engine:** v3 er låst fallback. v4-flippet (F6) er ejer-only. v4-gaten var rød 23/8 (#4132).
-- **Økonomi/værdier S3:** låst, intet udestående flip. Detaljer i [`ECONOMY_RULES.md`](ECONOMY_RULES.md).
-- **Sikkerhed:** kun [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) åben. **0 åbne CodeQL-alarmer på main** (verificeret 31/8 via API).
-- **Fair play:** #3818 i PR #4473 (afventer merge). Dry-run mod prod 31/8: detektoren så **121** handlende par før, **195** efter - alle 141 direkte handler var usynlige (sælger læst gennem slettet listing-række). Men **33 af 35 flag har nul identitets-signaler**: tærsklen 0,35 er et åbent justerings-spørgsmål. Admin-only. Prisloft sættes IKKE; #3133 disabled, #2452 ikke bygget.
-- **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik, svar inden 48t ([#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428)); tråd-bank #4117. Patch note-udkast for bølgen: [`drafts/2026-08-31-patch-note-natboelge.md`](../drafts/2026-08-31-patch-note-natboelge.md) - skriv den først ind når PR'erne er merget.
+- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag**. **Pension:** måles på AFSLUTTET sæsons alder. Alders-referenceår = `riderSeasonAge.js` SSOT (S3=2028; #4485-kodefix ligger i PR #4533).
+- **Race engine:** v3 låst fallback; v4-flip ejer-only. **Bonustilbud (Regel A, ejer 31/8): et tilbud lever præcis én sæson** - sæson-slut-tilbud indløses hele den følgende sæson.
+- **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
+- **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Ingen aktiv session. (Hotfix-sessionen er ejer-klareret til at starte på #4534/#4535/#4370 i eget worktree.)
 
 _Historik i git-log, issue-tråde + docs/audits/._

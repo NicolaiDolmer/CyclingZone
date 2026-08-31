@@ -13,9 +13,9 @@
 ## Kø i S3-vinduet (ejer-godkendt 27/8, trimmet 28/8)
 
 0. **FØRST (ejer 28/8): #2758** Discord-triage → issues (dagligt) + **#4269** daglig Supabase-kontrol (fejler på manglende secret — se nøgle-listen i NUA-auditten 31/8). Køen fyldes af det spillerne møder og det basen melder — ikke af AI-vurdering. Ejer-køen er audit-renset 31/8: alle 21 NUA er ægte.
-1. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren · **#4355** juni-fyldkuldets taktik-læk.
-2. **#4098** unge markeret færdige 65 pt under loftet — ejeren spørges igen senest 31/8.
-3. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først. **Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
+1. **#4534 KRITISK** matrixen kan fjerne ryttere fra startede løb (hotfix-session i gang) + **#4370** WebKit-#421 · **#4259** byg FORFRA, se refutations-kommentaren · **#4355** juni-fyldkuldets taktik-læk.
+2. **#4098** afgjort som grundregel 31/8; blødt-loft-designforslag ligger i tråden til ejer-beslutning (rekalibrering af svagheds-klassen, simulér-før-ship).
+3. **Spor C, Z1 (#1146): sæsonmatrixen er LIVE 31/8** (PR #4323). **Aksen er ejer-låst: én kolonne pr. løbsdag pr. løb.** Rest: #4535 tidsakse-præsentation · #4530 form-peak i popover · #4531 drag'n'drop (efter S3).
 4. **#4176** kalender-SSOT — ejer-frist senest 4/9 OG før S4-kalenderen. Med #4254 (24 regler bagud, hard rule 30).
 
 **Ejer-beslutninger 27-28/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt** (42 starter) · **to regenereringer er forbudt**.

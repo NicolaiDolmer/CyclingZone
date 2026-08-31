@@ -45,6 +45,16 @@ Ejerens retning (Discord 22:21): man skal ikke kunne udgå frivilligt endnu; fje
    og kør FØRST efter hans GO. Tjek også om andre spillere har ramt hullet siden launch
    (removals på startede løb siden 31/8 ~22:00).
 
+## Opgave 1b — #4370 WebKit-hullet (haster næsten lige så meget)
+
+PR #4527's hydrerings-fix dækker ikke Safari/WebKit: `requestIdleCallback` findes ikke dér, og
+`setTimeout(cb, 0)`-fallbacken i `frontend/src/lib/language.jsx:140-150` fyrer stadig midt i
+hydreringen → React #421 er LIVE på forsiden for mobil-Safari. Fuld diagnose i #4370-kommentaren
+31/8 ~23:00. Fix fallbacken med en reel efter-hydrering-garanti (ikke et gætte-timeout - læs filens
+egen kommentar om hvorfor). **Verifikations-fælde:** prerender-specs skippes i lokal e2e - beviset er
+CI-smokens mobile-webkit-projekt, IKKE lokal kørsel. Når smoke er grøn: **merge også PR #4533**
+(#4485-kodefixet - færdigbygget, kun blokeret af denne regression; ejer-godkendt til merge 31/8).
+
 ## Opgave 2 — #4535 tidsaksen (mockup FØRST)
 
 Datoer/løbsdage gentages pr. løbsgruppe efter akse-konverteringen, og overlap kan læse som ikke-overlap.
