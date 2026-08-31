@@ -510,14 +510,17 @@ export default function StandingsPage() {
     const isMe = s.team_id === myTeamId;
     const isSelected = selected.includes(s.team_id);
     const isLeader = lens === LENS_STANDINGS && i === 0;
-    const rings = [];
-    if (isMe) rings.push("inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)");
-    if (isSelected) rings.push("inset 0 0 0 1.5px rgb(var(--accent) / 0.6)");
+    // #2795-opfoelgning: begge markeringer laa som box-shadow paa <tr> og blev
+    // malet under cellernes egen baggrund. De sidder nu paa cellerne (index.css).
+    // Er raekken ogsaa leder, bruges kun kanten - fladetoningen ville ellers
+    // daekke leder-guldet.
+    const marks = [];
+    if (isMe) marks.push(isLeader ? "cz-me-bar" : "cz-me");
+    if (isSelected) marks.push("cz-compare");
     return {
       ref: rowRef(s.team_id),
       onClick: () => navigate(`/teams/${s.team_id}?tab=results`),
-      className: `cursor-pointer${isLeader ? " bg-cz-accent/[0.08]" : ""}`,
-      style: rings.length ? { boxShadow: rings.join(", ") } : undefined,
+      className: `cursor-pointer${isLeader ? " bg-cz-accent/[0.08]" : ""}${marks.length ? " " + marks.join(" ") : ""}`,
     };
   }
 

@@ -20,6 +20,7 @@ import { ABILITY_KEYS } from "../../lib/raceSimulator.js";
 import { planRaceSchedules } from "../backfillRaceScheduledFor.js";
 import { buildWeakStarterPool, hashStringToSeed } from "../../lib/starterSquadAllocator.js";
 import { deriveAbilities } from "../../lib/abilityDerivation.js";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error("Mangler SUPABASE secrets (infisical run --env=prod)"); process.exit(1); }
@@ -32,7 +33,7 @@ const TAIL_WINDOWS = [                          // hi=57 = uniform-kontrol (= nu
   { label: "[50,54]",         lo: 50, hi: 54 },
   { label: "[50,52]",         lo: 50, hi: 52 },
 ];
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 const MAX_N = Math.max(...TRUP_SIZES, 8);
 
 async function readAllIn(table, cols, inCol, ids, extra) {

@@ -47,11 +47,19 @@ const MAX_PROXY_ITERATIONS = 30;
 // finaliseret efter proxy blev sat), behandles proxy som udmattet. Worst-case
 // commitment ekskluderer denne auktion — autoBidAmount tæller separat.
 async function canAffordAutoBid(supabase, teamId, autoBidAmount, currentAuctionId) {
-  const { data: team } = await supabase
+  // #2997: en tabt læsefejl her blev til `!team` → return false → manageren
+  // tabte auktionen fordi hans autobud blev behandlet som udmattet, uden en
+  // eneste linje nogen steder. Det er en pengesti: kast, så cascaden fejler
+  // højlydt (api.js fanger og logger) i stedet for at afgøre auktionen forkert.
+  // PGRST116 (holdet findes ikke) er stadig den legitime false-sti.
+  const { data: team, error: teamError } = await supabase
     .from("teams")
     .select("balance")
     .eq("id", teamId)
     .single();
+  if (teamError && teamError.code !== "PGRST116") {
+    throw new Error(`canAffordAutoBid: could not load balance for team ${teamId}: ${teamError.message}`);
+  }
   if (!team) return false;
 
   const [leadingRes, proxiesRes] = await Promise.all([
@@ -149,11 +157,18 @@ export async function resolveProxyBids({
     : notifyTeamOwner;
 
   for (let i = 0; i < MAX_PROXY_ITERATIONS; i++) {
-    const { data: auction } = await supabase
+    // #2997: begge læsninger er cascadens fundament. En tabt fejl på auktionen
+    // blev til `break` (cascaden stopper halvvejs, prisen står forkert), og en
+    // tabt fejl på proxy-rækkerne blev til en TOM proxy-liste (alle autobud
+    // ignoreres → forkert vinder). Pengesti: kast.
+    const { data: auction, error: auctionError } = await supabase
       .from("auctions")
       .select("*, rider:rider_id(firstname, lastname, team_id)")
       .eq("id", auctionId)
       .single();
+    if (auctionError && auctionError.code !== "PGRST116") {
+      throw new Error(`resolveProxyBids: could not load auction ${auctionId}: ${auctionError.message}`);
+    }
 
     if (!auction || !["active", "extended"].includes(auction.status)) break;
     if (isAuctionExpired(auction.calculated_end)) break;
@@ -162,10 +177,13 @@ export async function resolveProxyBids({
     const currentWinner = auction.current_bidder_id;
     const minBid = getMinimumAuctionBid(currentPrice);
 
-    const { data: proxies } = await supabase
+    const { data: proxies, error: proxiesError } = await supabase
       .from("auction_proxy_bids")
       .select("*")
       .eq("auction_id", auctionId);
+    if (proxiesError) {
+      throw new Error(`resolveProxyBids: could not load proxy bids for auction ${auctionId}: ${proxiesError.message}`);
+    }
 
     const allProxies = proxies || [];
 
@@ -228,11 +246,21 @@ export async function resolveProxyBids({
       }).eq("id", auctionId);
 
       if (notifyTeamOwner) {
-        const { data: leaderTeam } = await supabase
+        // #2997: rent kosmetisk berigelse (holdnavn i beskeden). Rapportér, men
+        // fald tilbage til "Autobud" — en manglende label må aldrig vælte en
+        // cascade der allerede har flyttet føringen i databasen.
+        const { data: leaderTeam, error: leaderTeamError } = await supabase
           .from("teams")
           .select("name")
           .eq("id", previousLeader)
           .maybeSingle();
+        if (leaderTeamError) {
+          captureException(leaderTeamError, {
+            tags: { flow: "auction", stage: "proxy-team-name" },
+            auctionId,
+            teamId: previousLeader,
+          });
+        }
         const leaderName = leaderTeam?.name || "Autobud";
         await trackedNotify(
           currentWinner,
@@ -416,11 +444,21 @@ export async function resolveProxyBids({
     // #183: maybeSingle() returnerer { data: null } i stedet for error ved 0 rækker.
     // Slettet team midt i auktion (RLS-issue) ville pre-fix få .single() til at
     // returnere error → ydre try/catch swallow'ede den, men resterende iterationer mistedes.
-    const { data: bidderTeam } = await supabase
+    // #2997: samme kosmetiske berigelse som leaderTeam ovenfor — rapportér og
+    // behold "Autobud"-fallbacken; #183-beslutningen om at cascaden IKKE må
+    // vælte på et manglende holdnavn står ved magt.
+    const { data: bidderTeam, error: bidderTeamError } = await supabase
       .from("teams")
       .select("name")
       .eq("id", autoBidder)
       .maybeSingle();
+    if (bidderTeamError) {
+      captureException(bidderTeamError, {
+        tags: { flow: "auction", stage: "proxy-team-name" },
+        auctionId,
+        teamId: autoBidder,
+      });
+    }
     const bidderName = bidderTeam?.name || "Autobud";
 
     if (notifyTeamOwner) {
@@ -502,11 +540,18 @@ export async function resolveProxyBids({
   // #1740: returnér hvem der fører efter cascaden + hvilke teams cascaden allerede
   // har sendt en overbudt-notif til. Kalderen bruger dette til at undgå en FALSK
   // overbudt-besked til en fører hvis autobud genvandt føringen i denne cascade.
-  const { data: settled } = await supabase
+  // #2997: en tabt fejl her giver finalLeaderId=null, og så genindfører vi
+  // præcis den falske overbudt-besked #1740 fjernede. Kontraktsti for kalderen
+  // (api.js læser finalLeaderId direkte): kast frem for at returnere et tomt
+  // svar der ligner et gyldigt "ingen fører".
+  const { data: settled, error: settledError } = await supabase
     .from("auctions")
     .select("current_bidder_id")
     .eq("id", auctionId)
     .single();
+  if (settledError && settledError.code !== "PGRST116") {
+    throw new Error(`resolveProxyBids: could not read final leader for auction ${auctionId}: ${settledError.message}`);
+  }
   return {
     finalLeaderId: settled?.current_bidder_id ?? null,
     outbidNotified,

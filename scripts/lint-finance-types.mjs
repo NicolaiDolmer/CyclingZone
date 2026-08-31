@@ -271,6 +271,424 @@ export function extractCodeWrittenTypes(files) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// 3. Audit-enum-kolonner (#1464-udvidelse, 2026-08-31)
+//
+// `type` er ikke den eneste CHECK-begrænsede enum-kolonne på finance_transactions.
+// De samme write-sinks sætter også `actor_type` og `related_entity_type`, og begge
+// har en rigtig CHECK-constraint i prod (verificeret mod live-skemaet 2026-08-31:
+// finance_transactions_actor_type_check = cron/api/admin/system/migration,
+// finance_transactions_related_entity_type_check = auction/loan/transfer/swap/race/
+// season/manual). Værdierne kommer fra to frosne konstant-objekter i
+// backend/lib/economyConstants.js — FINANCE_ACTOR_TYPE og FINANCE_RELATED_ENTITY —
+// hvis egen kommentar allerede SIGER "MUST matche database CHECK constraints", men
+// indtil nu håndhævede INTET den påstand. En ny nøgle i et af de objekter (fx en
+// "scout"-actor eller en "facility"-relation) ville derfor slippe grøn gennem CI og
+// først fejle med check_violation (23514) på den første ægte INSERT i prod — præcis
+// #1463/#1465/#2948-bug-klassen, bare i nabokolonnen.
+//
+// rider_ownership_events (#3582) har NØJAGTIGT samme fejlklasse og er derfor med i
+// registret: tabellen har sine egne reason-, actor_type- og
+// related_entity_type-CHECKs (database/2026-08-18-3582-rider-ownership-audit.sql),
+// og RIDER_OWNERSHIP_REASON i backend/lib/riderOwnershipAudit.js er endnu et frosset
+// konstant-objekt (10 værdier) som intet håndhævede.
+//
+// MÅLTABEL-ATTRIBUTION (rettet efter review af PR #4458, 2026-08-31): rå-literal-
+// discovery MÅ ikke bare gribe enhver `actorType: "..."` i backend/{lib,routes,scripts}
+// og tilskrive den finance_transactions. Målt 31/8: af de 16 rå literaler i træet
+// skriver 14 til rider_ownership_events via recordRiderOwnershipEvent() — kun de 2 i
+// backend/scripts/dev/reset-division-3.mjs (incrementBalanceWithAudit-payloaden og
+// createLoan's auditCtx) er ægte finance-payloads. De to tabellers CHECKs er
+// tilfældigvis identiske i dag, så den forkerte attribution var grøn ved et held —
+// den ville blive falsk i samme sekund de to enum'er skiller sig. Hver literal
+// attribueres derfor til NÆRMESTE forudgående write-sink-anker (ENUM_WRITE_SINKS,
+// samme bounded-window-idiom som `type`-discovery ovenfor), og en literal uden anker
+// er et hul i registret — den fejler guarden i stedet for at blive tilskrevet en
+// tilfældig tabel. Ankeret afgrænses af sit eget balancerede argument-udtryk
+// (sinkExtent), ikke af et fast vindue, så en literal EFTER kaldets `)` ikke
+// fejlagtigt tilskrives det; WINDOW_CHARS er kun et loft.
+//
+// Kilden til de kode-skrevne værdier er todelt:
+//   1. de frosne konstant-objekter (kanonisk vej — næsten alle callsites bruger dem)
+//   2. rå string-literaler på kolonnens nøgler (fx stageRaceTransferDefer.js's
+//      `actorType: "cron"`), så en callsite der springer konstanten over stadig
+//      dækkes — attribueret til måltabellen som beskrevet ovenfor.
+//
+// #4328-NOTE (CHECK → rigtig Postgres-enum): når constraintet konverteres til en
+// enum-type, er det KUN loadNamedCheckValues() der skal pege et andet sted hen —
+// registret nedenfor og hele sammenligningen er uændret. Tilføj en `enumName` til
+// posten i AUDIT_ENUM_COLUMNS og lad parseren falde tilbage på
+// `CREATE TYPE <enumName> AS ENUM (...)` når constraint-formen ikke findes.
+// ────────────────────────────────────────────────────────────────────────────
+
+const ECONOMY_CONSTANTS_FILE = join(BACKEND_DIR, "lib", "economyConstants.js");
+const RIDER_OWNERSHIP_AUDIT_FILE = join(BACKEND_DIR, "lib", "riderOwnershipAudit.js");
+
+/** Hvilken fil et frosset konstant-objekt bor i. */
+const CONSTANT_SOURCE_FILES = {
+  FINANCE_ACTOR_TYPE: ECONOMY_CONSTANTS_FILE,
+  FINANCE_RELATED_ENTITY: ECONOMY_CONSTANTS_FILE,
+  RIDER_OWNERSHIP_REASON: RIDER_OWNERSHIP_AUDIT_FILE,
+};
+
+/**
+ * Write-sinks pr. måltabel: de call-shapes hvis argument-objekt ender som en række i
+ * `table`. Bruges til at afgøre HVILKEN tabels CHECK en rå enum-literal skal måles
+ * mod. Samme anker-filosofi som `type`-discovery: navngivne kald, ikke bare `type:`.
+ */
+export const ENUM_WRITE_SINKS = [
+  // finance_transactions
+  { table: "finance_transactions", sink: "incrementBalanceWithAudit", pattern: "incrementBalanceWithAudit\\s*\\(" },
+  { table: "finance_transactions", sink: "p_finance_payload", pattern: "p_finance_payload:\\s*\\{" },
+  {
+    table: "finance_transactions",
+    sink: "finance_transactions.insert",
+    pattern: "\\.from\\(\\s*[\"']finance_transactions[\"']\\s*\\)\\s*\\.insert\\(",
+  },
+  // createLoan(teamId, type, amount, client, auditCtx) forwarder auditCtx.actorType
+  // til incrementBalanceWithAudit's payload.actor_type (loanEngine.js) — literalen
+  // står i kalderens auditCtx-objekt, ikke i en payload, så den har sit eget anker.
+  { table: "finance_transactions", sink: "createLoan", pattern: "\\bcreateLoan\\s*\\(" },
+  // rider_ownership_events (#3582)
+  { table: "rider_ownership_events", sink: "recordRiderOwnershipEvent", pattern: "\\brecordRiderOwnershipEvent\\s*\\(" },
+];
+
+/**
+ * Nøgler hvis navn i sig selv er entydigt nok til at en IKKE-attribueret forekomst er
+ * et ægte hul i ENUM_WRITE_SINKS. `reason` står bevidst IKKE her: det er et generisk
+ * feltnavn overalt i backend'en (170 forekomster målt 31/8 — afvisnings-grunde,
+ * skip-rapporter, notifikationer), så en ikke-attribueret `reason: "..."` siger intet
+ * om audit-enum-dækning.
+ */
+const UNATTRIBUTED_WATCH_KEYS = ["actor_type", "actorType", "related_entity_type", "relatedEntityType"];
+
+/**
+ * Registret over CHECK-begrænsede enum-kolonner der udledes af et frosset
+ * konstant-objekt og/eller rå literaler. finance_transactions.`type` står bevidst IKKE
+ * her — den har sin egen write-sink-baserede discovery ovenfor, fordi typerne skrives
+ * som inline-literaler uden konstant-objekt.
+ *
+ * `constant`      — hele det frosne objekt skal være CHECK-dækket (objektets egen
+ *                   kommentar påstår det; her håndhæves påstanden).
+ * `literalKeys`   — rå literaler, kun talt inde i et write-sink-vindue for `table`.
+ * `minCodeValues` — gulv mod tavs regression: falder discovery under dette, er
+ *                   parseren (ikke koden) brudt.
+ */
+export const AUDIT_ENUM_COLUMNS = [
+  {
+    table: "finance_transactions",
+    column: "actor_type",
+    constraint: "finance_transactions_actor_type_check",
+    constant: "FINANCE_ACTOR_TYPE",
+    literalKeys: ["actor_type", "actorType"],
+    minCodeValues: 5,
+  },
+  {
+    table: "finance_transactions",
+    column: "related_entity_type",
+    constraint: "finance_transactions_related_entity_type_check",
+    constant: "FINANCE_RELATED_ENTITY",
+    literalKeys: ["related_entity_type", "relatedEntityType"],
+    minCodeValues: 7,
+  },
+  {
+    table: "rider_ownership_events",
+    column: "reason",
+    constraint: "rider_ownership_events_reason_check",
+    constant: "RIDER_OWNERSHIP_REASON",
+    // Ingen literalKeys: alle 5 callsites bruger RIDER_OWNERSHIP_REASON.X, og `reason`
+    // er for generisk et feltnavn til rå-literal-discovery (se UNATTRIBUTED_WATCH_KEYS).
+    literalKeys: [],
+    minCodeValues: 10,
+  },
+  {
+    table: "rider_ownership_events",
+    column: "actor_type",
+    constraint: "rider_ownership_events_actor_type_check",
+    // Ingen `constant`: ownership-callsites bruger FINANCE_ACTOR_TYPE.CRON, men det
+    // ville være for stramt at kræve at HELE finance-actor-enum'en også er tilladt
+    // her. De faktisk refererede konstant-medlemmer fanges via refConstants.
+    refConstants: ["FINANCE_ACTOR_TYPE"],
+    literalKeys: ["actor_type", "actorType"],
+    minCodeValues: 3,
+  },
+  {
+    table: "rider_ownership_events",
+    column: "related_entity_type",
+    constraint: "rider_ownership_events_related_entity_type_check",
+    refConstants: ["FINANCE_RELATED_ENTITY"],
+    literalKeys: ["related_entity_type", "relatedEntityType"],
+    minCodeValues: 4,
+  },
+];
+
+/**
+ * Parse værdierne i en navngiven CHECK-constraint fra database/*.sql. Samme
+ * "seneste filnavn vinder"-regel som loadCheckAllowedTypes(): constraintet DROP'es
+ * + ADD'es på ny i hver migration der rører det, så den nyeste redefinition er den
+ * autoritative.
+ * @param {string} constraintName
+ * @returns {{values: Set<string>, source: string|null}}
+ */
+export function loadNamedCheckValues(constraintName) {
+  const sqlFiles = readdirSync(DATABASE_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+
+  const RE = new RegExp(
+    `ADD CONSTRAINT ${constraintName}\\s+CHECK\\s*\\(([\\s\\S]*?)\\)\\s*;`,
+    "i",
+  );
+
+  let found = null;
+  for (const file of sqlFiles) {
+    const src = readFileSync(join(DATABASE_DIR, file), "utf8");
+    const m = src.match(RE);
+    if (m) found = { file, values: parseTypeInList(m[1]) };
+  }
+
+  return found
+    ? { values: new Set(found.values), source: found.file }
+    : { values: new Set(), source: null };
+}
+
+/**
+ * Læs værdierne ud af et `export const X = Object.freeze({ KEY: "value", ... })`.
+ * Filen slås op i CONSTANT_SOURCE_FILES ud fra konstantens navn (kan overstyres,
+ * fx af testenes fixtures).
+ * @param {string} constantName
+ * @returns {Map<string, string>} value -> KEY
+ */
+export function extractConstantValues(
+  constantName,
+  file = CONSTANT_SOURCE_FILES[constantName] ?? ECONOMY_CONSTANTS_FILE,
+) {
+  const src = readFileSync(file, "utf8");
+  const block = src.match(
+    new RegExp(`export const ${constantName}\\s*=\\s*Object\\.freeze\\(\\{([\\s\\S]*?)\\}\\)`),
+  );
+  const values = new Map();
+  if (!block) return values;
+  for (const m of block[1].matchAll(/([A-Z0-9_]+)\s*:\s*"([a-z_]+)"/g)) {
+    values.set(m[2], m[1]);
+  }
+  return values;
+}
+
+/**
+ * Slut-offset for det argument-udtryk et anker åbner: balancér ()/{}/[] frem til
+ * kaldets egen lukning, med strenge sprunget over. Skarpere end et fast vindue —
+ * en literal EFTER kaldets afsluttende `)` hører til nabo-koden, ikke til kaldet.
+ * Capped på WINDOW_CHARS, så en uparsbar konstruktion ikke løber løbsk.
+ * @param {string} src
+ * @param {number} openIndex offset for ankerets åbnende `(` eller `{`
+ * @returns {number}
+ */
+function sinkExtent(src, openIndex) {
+  const CLOSER = { "(": ")", "{": "}", "[": "]" };
+  const limit = Math.min(src.length, openIndex + WINDOW_CHARS);
+  const stack = [];
+  let quote = null;
+  for (let i = openIndex; i < limit; i++) {
+    const ch = src[i];
+    if (quote) {
+      if (ch === "\\") i++;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      quote = ch;
+      continue;
+    }
+    if (CLOSER[ch]) {
+      stack.push(CLOSER[ch]);
+      continue;
+    }
+    if (ch === ")" || ch === "}" || ch === "]") {
+      if (stack.length === 0) return i;
+      stack.pop();
+      if (stack.length === 0) return i;
+    }
+  }
+  return limit;
+}
+
+/**
+ * Alle write-sink-ankre i én kildefil, sorteret efter offset. Hvert anker bærer sin
+ * egen udstrækning (se sinkExtent), så attributionen er kald-præcis.
+ * @param {string} src
+ * @returns {{offset: number, end: number, table: string, sink: string}[]}
+ */
+function findSinkAnchors(src) {
+  const anchors = [];
+  for (const spec of ENUM_WRITE_SINKS) {
+    const RE = new RegExp(spec.pattern, "g");
+    let m;
+    while ((m = RE.exec(src)) !== null) {
+      anchors.push({
+        offset: m.index,
+        end: sinkExtent(src, m.index + m[0].length - 1),
+        table: spec.table,
+        sink: spec.sink,
+      });
+    }
+  }
+  return anchors.sort((a, b) => a.offset - b.offset);
+}
+
+/**
+ * NÆRMESTE write-sink-anker hvis argument-udtryk `offset` ligger inde i — dvs. det
+ * kald literalen faktisk står i. Indlejrede kald vinder over ydre (sidste match).
+ * @returns {{offset: number, end: number, table: string, sink: string}|null}
+ */
+function attributeToSink(anchors, offset) {
+  let best = null;
+  for (const anchor of anchors) {
+    if (anchor.offset > offset) break;
+    if (offset <= anchor.end) best = anchor;
+  }
+  return best;
+}
+
+/**
+ * Find rå string-literaler skrevet direkte på en audit-enum-nøgle (uden om
+ * konstant-objektet), fx `actorType: "cron"` — KUN dem der står inde i et
+ * write-sink-vindue for `table`, så en literal måles mod sin egen tabels CHECK.
+ * @param {string[]} files
+ * @param {string[]} literalKeys
+ * @param {string} table måltabel, fx "finance_transactions"
+ * @returns {Map<string, string[]>} value -> locations
+ */
+export function extractLiteralEnumValues(files, literalKeys, table) {
+  const found = new Map();
+  if (literalKeys.length === 0) return found;
+  for (const file of files) {
+    const src = readFileSync(file, "utf8");
+    const label = relative(ROOT, file).replace(/\\/g, "/");
+    const anchors = findSinkAnchors(src);
+    const RE = new RegExp(`\\b(?:${literalKeys.join("|")})\\s*:\\s*"([a-z_]+)"`, "g");
+    let m;
+    while ((m = RE.exec(src)) !== null) {
+      const anchor = attributeToSink(anchors, m.index);
+      if (!anchor || anchor.table !== table) continue;
+      const value = m[1];
+      if (!found.has(value)) found.set(value, []);
+      found.get(value).push(`${label}:${lineAt(src, m.index)} (${anchor.sink})`);
+    }
+  }
+  return found;
+}
+
+/**
+ * Find de konstant-MEDLEMMER (fx `FINANCE_ACTOR_TYPE.CRON`) der faktisk refereres
+ * inde i et write-sink-vindue for `table`, og slå deres værdi op i konstant-objektet.
+ * Bruges hvor det ville være for stramt at kræve at hele konstant-objektet er dækket
+ * af tabellens CHECK.
+ * @param {string[]} files
+ * @param {string[]} constantNames
+ * @param {string} table
+ * @returns {Map<string, string[]>} value -> locations
+ */
+export function extractReferencedConstantValues(files, constantNames, table) {
+  const found = new Map();
+  if (!constantNames || constantNames.length === 0) return found;
+  const byKey = new Map();
+  for (const name of constantNames) {
+    for (const [value, key] of extractConstantValues(name)) byKey.set(`${name}.${key}`, value);
+  }
+
+  for (const file of files) {
+    const src = readFileSync(file, "utf8");
+    const label = relative(ROOT, file).replace(/\\/g, "/");
+    const anchors = findSinkAnchors(src);
+    const RE = new RegExp(`\\b(?:${constantNames.join("|")})\\.([A-Z0-9_]+)\\b`, "g");
+    let m;
+    while ((m = RE.exec(src)) !== null) {
+      const anchor = attributeToSink(anchors, m.index);
+      if (!anchor || anchor.table !== table) continue;
+      const value = byKey.get(m[0]);
+      if (!value) continue;
+      if (!found.has(value)) found.set(value, []);
+      found.get(value).push(`${label}:${lineAt(src, m.index)} (${anchor.sink} via ${m[0]})`);
+    }
+  }
+  return found;
+}
+
+/**
+ * Rå enum-literaler der IKKE kunne attribueres til nogen registreret write-sink —
+ * dvs. et hul i ENUM_WRITE_SINKS: guarden ved ikke hvilken tabels CHECK de skal måles
+ * mod, så de er reelt uovervågede. Rapporteres som fejl frem for tavst at blive
+ * tilskrevet en tilfældig tabel (det var præcis review-fundet på PR #4458).
+ * @param {string[]} [files]
+ * @returns {{value: string, key: string, location: string}[]}
+ */
+export function collectUnattributedEnumLiterals(files = collectScanFiles()) {
+  const orphans = [];
+  const RE_SRC = `\\b(${UNATTRIBUTED_WATCH_KEYS.join("|")})\\s*:\\s*"([a-z_]+)"`;
+  for (const file of files) {
+    const src = readFileSync(file, "utf8");
+    const label = relative(ROOT, file).replace(/\\/g, "/");
+    const anchors = findSinkAnchors(src);
+    const RE = new RegExp(RE_SRC, "g");
+    let m;
+    while ((m = RE.exec(src)) !== null) {
+      if (attributeToSink(anchors, m.index)) continue;
+      orphans.push({ value: m[2], key: m[1], location: `${label}:${lineAt(src, m.index)}` });
+    }
+  }
+  return orphans;
+}
+
+/**
+ * Kør paritets-tjekket for alle audit-enum-kolonner i AUDIT_ENUM_COLUMNS.
+ * @param {string[]} [files]
+ * @returns {{table: string, column: string, constraint: string, minCodeValues: number, source: string|null, allowed: Set<string>, codeValues: Map<string, string[]>, missing: {value: string, locations: string[]}[]}[]}
+ */
+export function collectAuditEnumDrift(files = collectScanFiles()) {
+  return AUDIT_ENUM_COLUMNS.map((spec) => {
+    const { values: allowed, source } = loadNamedCheckValues(spec.constraint);
+
+    /** @type {Map<string, string[]>} */
+    const codeValues = new Map();
+    const addValue = (value, location) => {
+      if (!codeValues.has(value)) codeValues.set(value, []);
+      codeValues.get(value).push(location);
+    };
+
+    if (spec.constant) {
+      const constantFile = relative(ROOT, CONSTANT_SOURCE_FILES[spec.constant] ?? ECONOMY_CONSTANTS_FILE)
+        .replace(/\\/g, "/");
+      for (const [value, key] of extractConstantValues(spec.constant)) {
+        addValue(value, `${constantFile} (${spec.constant}.${key})`);
+      }
+    }
+    for (const [value, locations] of extractReferencedConstantValues(files, spec.refConstants, spec.table)) {
+      for (const location of locations) addValue(value, location);
+    }
+    for (const [value, locations] of extractLiteralEnumValues(files, spec.literalKeys, spec.table)) {
+      for (const location of locations) addValue(value, location);
+    }
+
+    const missing = [];
+    for (const [value, locations] of codeValues) {
+      if (!allowed.has(value)) missing.push({ value, locations });
+    }
+    missing.sort((a, b) => (a.value < b.value ? -1 : 1));
+
+    return {
+      table: spec.table,
+      column: spec.column,
+      constraint: spec.constraint,
+      minCodeValues: spec.minCodeValues,
+      source,
+      allowed,
+      codeValues,
+      missing,
+    };
+  });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // CLI
 // ────────────────────────────────────────────────────────────────────────────
 function isMain() {
@@ -329,6 +747,65 @@ function main() {
     process.stdout.write(
       `ℹ CHECK tillader ${unused.length} værdi(er) uden fundet kode-callsite (ikke en fejl — ` +
         `kan være SQL-seedet/kun-SQL-skrevet/legacy): ${unused.join(", ")}\n`
+    );
+  }
+
+  // Audit-enum-kolonnerne (#1464): actor_type + related_entity_type på
+  // finance_transactions, reason + actor_type + related_entity_type på
+  // rider_ownership_events.
+  const orphanLiterals = collectUnattributedEnumLiterals(files);
+  if (orphanLiterals.length > 0) {
+    process.stderr.write(
+      `🔴 finance-type-guard blocked: ${orphanLiterals.length} audit-enum-literal(er) kunne ikke ` +
+        `attribueres til en kendt write-sink — guarden ved ikke hvilken tabels CHECK de skal måles mod.\n\n` +
+        orphanLiterals
+          .map((o) => `  - ${o.key}: '${o.value}'  i ${o.location}`)
+          .join("\n") +
+        `\n\nFix: tilføj kaldets form til ENUM_WRITE_SINKS i scripts/lint-finance-types.mjs ` +
+        `(og måltabellens kolonner til AUDIT_ENUM_COLUMNS, hvis tabellen er ny). Uden det er ` +
+        `netop den callsite uovervåget — det var review-fundet på PR #4458.\n\nRefs #1464.\n`
+    );
+    process.exit(1);
+  }
+
+  const auditReports = collectAuditEnumDrift(files);
+  const brokenParsers = auditReports.filter((r) => !r.source || r.allowed.size === 0);
+  if (brokenParsers.length > 0) {
+    process.stderr.write(
+      `🔴 finance-type-guard: fandt ingen CHECK-definition for ` +
+        `${brokenParsers.map((r) => r.constraint).join(", ")} i database/*.sql — parser sandsynligvis brudt.\n`
+    );
+    process.exit(1);
+  }
+
+  const auditDrift = auditReports.filter((r) => r.missing.length > 0);
+  if (auditDrift.length > 0) {
+    process.stderr.write(
+      `🔴 finance-type-guard blocked: audit-enum-værdi(er) brugt i backend-koden UDEN en tilsvarende CHECK-constraint-værdi.\n\n` +
+        auditDrift
+          .map(
+            (r) =>
+              `${r.table}.${r.column} (autoritativ CHECK: database/${r.source})\n` +
+              r.missing
+                .map((x) => `  - '${x.value}'\n      skrevet i: ${x.locations.join(", ")}`)
+                .join("\n")
+          )
+          .join("\n\n") +
+        `\n\nSamme bug-klasse som #1463/#1465/#2948, bare i en audit-kolonne: en ægte ` +
+        `prod-INSERT ville fejle med check_violation (23514) første gang netop den ` +
+        `actor/relation bruges.\n\n` +
+        `Fix: tilføj værdien til constraintet i en NY database/*.sql-migration ` +
+        `(DROP CONSTRAINT IF EXISTS + re-ADD, jf. database/2026-05-09-audit-log-foundation.sql). ` +
+        `Ejeren applier migrationen efter merge (#2642-rammer).\n\n` +
+        `Refs #1464.\n`
+    );
+    process.exit(1);
+  }
+
+  for (const r of auditReports) {
+    process.stdout.write(
+      `✅ finance-type-guard: ${r.table}.${r.column} — ${r.codeValues.size} kode-skrevet værdi(er), ` +
+        `alle i CHECK'et (database/${r.source}).\n`
     );
   }
 }

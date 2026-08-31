@@ -317,6 +317,117 @@ tr:hover .auction-rider-cell-winning {
 .sticky-name-cell {
   background-color: var(--bg-card);
 }
+
+/* "Dig"-markering paa tabelraekker (#2795-opfoelgning).
+   Markeringen laa foer som `inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)` paa
+   selve <tr>. To ting gjorde den naesten usynlig, og hverken farve eller alpha
+   var det ene af dem:
+     1. box-shadow paa en <tr> males ikke paalideligt i en border-collapse-tabel.
+     2. cellerne maler deres EGEN baggrund oven paa raekkens - DataTables
+        sticky navnecelle er bevidst opak (`bg-cz-card`, dataTableStyles.js:75,
+        fordi kolonnerne scroller ind UNDER den), saa praecis den kant man
+        kigger efter i venstre margen forsvandt.
+   Koden vidste det allerede - StandingsPage's egen kommentar noterer at
+   zone-tinten sidder paa <td> "og maler derfor OVEN PAA <tr>'ens baggrund".
+   Markeringen hoerer derfor paa cellerne.
+
+   .cz-me      = venstrekant + svag fladetoning (ejer-valg 30/8, variant F)
+   .cz-me-bar  = kun venstrekant, til raekker der allerede baerer en anden
+                 fladetoning (leder-guld) som toningen ellers ville daekke.
+
+   TO ting er bevidste her, begge efter adversarisk review 31/8:
+
+   a) Fladetoningen er en inset box-shadow, IKKE en background-color. Cellernes
+      egen baggrund er Tailwind-utilities med specificitet (0,1,0) - den opake
+      sticky-celle, zone-tinten (bg-cz-success-bg/bg-cz-danger-bg), hover og
+      leder-guldet. En `tr.cz-me > td { background-color }` har (0,1,2) og
+      ERSTATTEDE dem derfor i stedet for at laegge sig ovenpaa: den pinnede
+      navnekolonne blev gennemsigtig, og egen raekke i en zone mistede sin
+      zone-farve. En inset skygge males over baggrunden og lader den staa.
+
+   b) Lagene ligger i variabler paa <tr>, saa "dig" og en zone kan staa paa
+      samme raekke uden at den enes box-shadow erstatter den andens (box-shadow
+      kaskaderer ikke sammen - den sidste regel vinder HELT). Foer det mistede
+      divisionslederen der er dig selv sin dig-markering paa saeson-afslutningen. */
+tr.cz-me {
+  --cz-mark-tint: inset 0 0 0 9999px rgb(var(--me-ring) / 0.05);
+  --cz-mark-me: inset 3px 0 0 0 rgb(var(--me-ring));
+}
+tr.cz-me-bar {
+  --cz-mark-me: inset 3px 0 0 0 rgb(var(--me-ring));
+}
+
+/* Op-/nedryknings-zone (SeasonEndPage). Laa som `inset 3px 0 0` paa <tr> og
+   ramte praecis samme defekt som me-ringen: usynlig bag cellernes baggrund. */
+tr.cz-zone-up {
+  --cz-mark-zone: inset 3px 0 0 0 rgb(var(--success));
+}
+tr.cz-zone-down {
+  --cz-mark-zone: inset 3px 0 0 0 rgb(var(--danger));
+}
+
+/* Dig OG en zone paa samme raekke: zonen ejer de yderste 3px, "dig" rykker 3px
+   ind og staar som en navy stribe lige indenfor. Gaelder BEGGE me-varianter -
+   lederen af en division er altid ogsaa i op-rykningszonen, saa `.cz-me-bar`
+   er netop den kombination der forekommer i praksis. */
+tr.cz-zone-up.cz-me,
+tr.cz-zone-up.cz-me-bar,
+tr.cz-zone-down.cz-me,
+tr.cz-zone-down.cz-me-bar {
+  --cz-mark-me: inset 6px 0 0 0 rgb(var(--me-ring));
+}
+
+/* Fladetoningen paa alle celler i raekken. */
+tr.cz-me > td,
+tr.cz-me > th,
+tr.cz-me-bar > td,
+tr.cz-me-bar > th,
+tr.cz-zone-up > td,
+tr.cz-zone-up > th,
+tr.cz-zone-down > td,
+tr.cz-zone-down > th {
+  box-shadow: var(--cz-mark-tint, 0 0 rgb(0 0 0 / 0));
+}
+
+/* Kanterne paa foerste celle. Foerste skygge i listen males OEVERST, saa zonen
+   (de yderste 3px) skal staa foer "dig" (0-6px), ellers daekker dig-striben
+   zone-bjaelken helt. */
+tr.cz-me > td:first-child,
+tr.cz-me > th:first-child,
+tr.cz-me-bar > td:first-child,
+tr.cz-me-bar > th:first-child,
+tr.cz-zone-up > td:first-child,
+tr.cz-zone-up > th:first-child,
+tr.cz-zone-down > td:first-child,
+tr.cz-zone-down > th:first-child {
+  box-shadow:
+    var(--cz-mark-zone, 0 0 rgb(0 0 0 / 0)),
+    var(--cz-mark-me, 0 0 rgb(0 0 0 / 0)),
+    var(--cz-mark-tint, 0 0 rgb(0 0 0 / 0));
+}
+
+/* Sammenlign-valgt (StandingsPage). Samme defekt som me-ringen: laa som en
+   box-shadow paa <tr> og var lige saa usynlig. Hoejre kant, saa den kan ses
+   samtidig med "dig"-kanten i venstre margen. Toningen skrives med, fordi den
+   her regel ellers vinder over toningsreglen paa raekkens sidste celle. */
+tr.cz-compare > td:last-child,
+tr.cz-compare > th:last-child {
+  box-shadow: inset -3px 0 0 0 rgb(var(--accent)), var(--cz-mark-tint, 0 0 rgb(0 0 0 / 0));
+}
+
+/* Blok-varianten: samme udtryk paa kort og div-raekker (dashboard-stillingen,
+   startliste-kort, eget-placerings-baandet paa Global Rank), saa markeringen
+   ser ens ud uanset om fladen er en tabel eller ej. Toningen er en skygge af
+   samme grund som i tabellerne: <Card> saetter sin egen `bg-cz-card`, og en
+   background-color her ville aede kortfladen i stedet for at tone den. */
+.cz-me-block {
+  box-shadow: inset 3px 0 0 0 rgb(var(--me-ring)), inset 0 0 0 9999px rgb(var(--me-ring) / 0.05);
+}
+/* Bar-varianten til blokke der allerede baerer en anden fladetoning - praecis
+   samme opdeling som .cz-me-bar i tabellerne (dashboardets leder-guld). */
+.cz-me-block-bar {
+  box-shadow: inset 3px 0 0 0 rgb(var(--me-ring));
+}
 tr:hover .sticky-name-cell {
   background-color: var(--bg-subtle);
 }

@@ -13,6 +13,8 @@
  */
 
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
+import { isPermanentRecipientFailure } from "./discordDmDelivery.js";
+import { clampEmbedPayload } from "./discordEmbedLimits.js";
 
 // Backoff-skema pr. attempt-nummer (1-indekseret). Sidste værdi genbruges.
 // Samlet horisont ≈ 27 timer — dækker selv lange Cloudflare-IP-ban-vinduer.
@@ -73,11 +75,12 @@ export async function enqueueDm({
  * @param {object} deps
  * @param {Function} deps.deliverFn  async ({ discordId, payload }) =>
  *   resultat fra attemptDmDelivery ({ ok, status, failure, error }).
- * @param {Function} [deps.onRecipientBlocked]  async (discordId) — kaldes når en
- *   række dør på en permanent 'recipient-blocked'-fejl (#3130). Drain-stien
- *   rammer samme døde kobling som direkte sendDM, så den skal tælle med i
- *   auto-afkoblingen; ellers kunne en bruger fejle i det uendelige via outbox'en
- *   uden nogensinde at nå tærsklen.
+ * @param {Function} [deps.onPermanentRecipientFailure]  async (discordId) — kaldes
+ *   når en række dør på en permanent MODTAGER-fejl (#3130/#3483: 403
+ *   'recipient-blocked' eller 400/404 'bad-request'). Drain-stien rammer samme
+ *   døde kobling som direkte sendDM, så den skal tælle med i auto-afkoblingen;
+ *   ellers kunne en bruger fejle i det uendelige via outbox'en uden nogensinde
+ *   at nå tærsklen. 401 'token-invalid' er vores eget token og tæller ikke med.
  * @returns {{ processed: number, sent: number, rescheduled: number, dead: number }}
  */
 export async function processDmOutboxDrain({
@@ -86,7 +89,7 @@ export async function processDmOutboxDrain({
   sendWebhookFn,
   getDefaultWebhookFn,
   captureExceptionFn,
-  onRecipientBlocked = null,
+  onPermanentRecipientFailure = null,
   now = new Date(),
   maxAttempts = MAX_OUTBOX_ATTEMPTS,
 }) {
@@ -139,8 +142,8 @@ export async function processDmOutboxDrain({
         })
         .eq("id", row.id);
       deadRows.push({ id: row.id, status: result.status, reason: result.failure?.reason });
-      if (result.failure?.reason === "recipient-blocked") {
-        await onRecipientBlocked?.(row.discord_id);
+      if (isPermanentRecipientFailure(result.failure?.reason)) {
+        await onPermanentRecipientFailure?.(row.discord_id);
       }
     } else {
       await supabase
@@ -163,7 +166,11 @@ export async function processDmOutboxDrain({
       .join(", ");
     const url = getDefaultWebhookFn ? await getDefaultWebhookFn() : null;
     if (url && sendWebhookFn) {
-      await sendWebhookFn(url, {
+      // clampEmbedPayload: `summary` vokser lineært med batch-størrelsen og kan
+      // sprænge Discords description-grænse på 4096 tegn. Netop dét svar (400,
+      // kode 50035) er den fejlklasse #3483-reviewet fandt — alarmen om døde
+      // DM'er må ikke selv dø af den.
+      await sendWebhookFn(url, clampEmbedPayload({
         embeds: [
           {
             title: "🚨 Discord-DMs kunne ikke leveres",
@@ -174,7 +181,7 @@ export async function processDmOutboxDrain({
             timestamp: now.toISOString(),
           },
         ],
-      });
+      }));
     }
     captureExceptionFn?.(
       new Error(`Discord DM-outbox: ${deadRows.length} DM(s) markeret dead — ${summary}`),

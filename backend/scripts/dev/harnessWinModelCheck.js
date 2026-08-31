@@ -19,6 +19,7 @@
 
 import { generateFictionalRiders, makeRng } from "../../lib/fictionalRiderGenerator.js";
 import { deriveAbilities } from "../../lib/abilityDerivation.js";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 import { riderOverall } from "../../lib/riderValuation.js";
 import { DEMAND_VECTORS } from "../../lib/raceStageProfileGenerator.js";
 import { simulateStage, stableSeed } from "../../lib/raceSimulator.js";
@@ -61,10 +62,10 @@ const SEASON = [
 ]; // = 30
 
 // ── 1. Generér rytter-pool via den ægte værdikæde ────────────────────────────
-const { riders: raw } = generateFictionalRiders({ count: 600, seed: SEED, referenceYear: 2026 });
+const { riders: raw } = generateFictionalRiders({ count: 600, seed: SEED, referenceYear: LAUNCH_REFERENCE_YEAR });
 const pool = raw.map((r, i) => {
   const id = `r${i}`;
-  const abilities = deriveAbilities({}, { ...r, id }, { asOfYear: 2026 });
+  const abilities = deriveAbilities({}, { ...r, id }, { asOfYear: LAUNCH_REFERENCE_YEAR });
   return { id, abilities, overall: riderOverall(abilities) };
 }).sort((a, b) => b.overall - a.overall);
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import RacePointModelSection from "./RacePointModelSection";
@@ -26,6 +26,13 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // #4448: t bruges KUN i load-effektens fejlsti. useTranslation giver t en ny
+  // identitet ved sprogskifte, så et direkte dependency ville refetche begge
+  // race-points-endpoints hver gang sproget skifter. Ref'en holder mode som den
+  // eneste reelle trigger (samme mønster som tRef i AuctionsPage).
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
+
   // ── Initial load ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (mode !== "manual") return; // manuel data hentes først når fanen åbnes
@@ -49,14 +56,16 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
         setResultTypes(rowsData.result_types || []);
         if (rowsData.race_classes?.length) setSelectedClass(rowsData.race_classes[0].key);
       } catch (e) {
-        onMsg(t("racePoints.loadError", { error: e.message }), "error");
+        onMsg(tRef.current("racePoints.loadError", { error: e.message }), "error");
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- getAuth/onMsg/t bruges kun i fetch- og fejlstien — kun mode skal udløse refetch
-  }, [mode]);
+    // #4448: getAuth/onMsg kommer fra useAdminAuth og er begge useCallback(…, [])
+    // — permanent stabile, og t læses gennem tRef. Effekten kører derfor fortsat
+    // kun når mode skifter.
+  }, [mode, getAuth, onMsg]);
 
   // ── Lookups ──────────────────────────────────────────────────────────────
   const rowByKey = useMemo(() => {

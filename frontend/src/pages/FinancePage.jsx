@@ -323,12 +323,22 @@ export default function FinancePage() {
   // #2306: transaktionslistens fetch er adskilt fra loadAll så sæson-/kategori-
   // filter + "vis flere"-pagination kan genkøre uden at re-hente hele resten af
   // Finance-siden (lån, forecast, præmie-kort m.v.).
-  async function fetchTxPage(page, append) {
-    if (!team?.id) return;
+  // #4448: memoized af samme grund som loadAll ovenfor — effekten nedenfor kan
+  // nu liste fetchTxPage i sit dependency-array, så ESLint selv holder øje med
+  // at filtrene er komplette (før var reglen slået fra her).
+  //
+  // teamId hives ud som en selvstændig værdi, så dependency'en er id-STRENGEN og
+  // ikke hele `team`-objektet: et reload (retry) laver et nyt objekt med samme
+  // id, og en objekt-dependency ville dermed give en ekstra transaktions-fetch
+  // som den håndholdte `[team?.id, ...]` ikke gav. React Compiler afviser
+  // `team?.id` direkte i arrayet, men en udtrukket const er den er tilfreds med.
+  const teamId = team?.id;
+  const fetchTxPage = useCallback(async (page, append) => {
+    if (!teamId) return;
     if (append) setTxLoadingMore(true);
     try {
       let query = supabase.from("finance_transactions").select("*")
-        .eq("team_id", team.id);
+        .eq("team_id", teamId);
       if (historySeasonId && historySeasonId !== ALL_SEASONS) query = query.eq("season_id", historySeasonId);
       if (txCategory !== "all") {
         const orFilter = buildCategoryOrFilter(txCategory);
@@ -353,14 +363,13 @@ export default function FinancePage() {
     } finally {
       if (append) setTxLoadingMore(false);
     }
-  }
+  }, [teamId, historySeasonId, txCategory]);
 
   // Nulstil til side 0 når team er klar, eller sæson-/kategori-filteret ændres.
   useEffect(() => {
-    if (!team?.id) return;
+    if (!teamId) return;
     fetchTxPage(0, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTxPage er lokal funktion (ny ref hver render) — kun hold/sæson/kategori skal nulstille til side 0
-  }, [team?.id, historySeasonId, txCategory]);
+  }, [fetchTxPage, teamId]);
 
   function loadMoreTransactions() {
     fetchTxPage(txPage + 1, true);

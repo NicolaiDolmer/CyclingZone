@@ -55,6 +55,7 @@ import {
   ITT_REFERENCE_KM, ITT_DISTANCE_EXPONENT, DESCENDING_FINALE_WEIGHT, TECHNICAL_FINALE_WEIGHT,
   VALLEY_MIN_DESCENT_KM, DESCENT_GAP_BUNCH, stageGapModel,
 } from "../lib/raceSimulator.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -67,7 +68,7 @@ function arg(name, def) {
 const SEEDS = String(arg("seeds", "2026,7,42")).split(",").map((s) => Number(s.trim())).filter(Number.isFinite);
 const FIELD = parseInt(arg("field", "140"), 10);
 const COUNT = parseInt(arg("count", "900"), 10);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 

@@ -2,6 +2,7 @@
 
 Status: **decided 2026-07-23** · header = Option A "App standard" · supersedes all 9 legacy header styles and all legacy container widths.
 Suggested repo location: `docs/design/PAGE_TEMPLATES.md`.
+Artboards (visual handoff for the 3 templates): `docs/design/design_handoff_page_templates/`.
 
 ## Add this to the repo's CLAUDE.md
 

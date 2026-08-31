@@ -12,10 +12,18 @@
  * 403-kald. Ejeren valgte vej A 3/8: afkobl automatisk efter N fejl i træk og
  * fortæl spilleren det, så tavsheden bliver til en handlingsanvisning.
  *
+ * #3483 udvidede tælleren til også at dække 400/404 ('bad-request', Discord-kode
+ * 50033 "Invalid Recipient(s)"). Det er samme døde kobling set fra spilleren,
+ * bare uden selvhelbredelse: 403 nulstilles af clearDmFailureCount ved næste
+ * vellykkede levering, mens en 400-kobling hverken kunne tælle op eller
+ * nulstilles og derfor stod som "tilsluttet" for evigt. Kilden til hvilke
+ * reasons der tæller er PERMANENT_RECIPIENT_FAILURE_REASONS i
+ * discordDmDelivery.js — 401 'token-invalid' er bevidst ikke med.
+ *
  * Modulet er pure (supabase injiceres) så node --test kan dække tælleren uden DB.
  *
  * Bevidst IKKE atomisk (læs → skriv i stedet for en RPC): kun permanente
- * recipient-blocked-fejl rører tælleren, og de forekommer i størrelsesordenen
+ * modtager-fejl rører tælleren, og de forekommer i størrelsesordenen
  * én gang i døgnet. To samtidige fejl på SAMME bruger kan i værste fald tabe ét
  * increment, hvilket kun udskyder afkoblingen én besked. Det er ikke værd at
  * betale en RPC + migration for.
@@ -25,7 +33,7 @@
 export const DEAD_CONNECTION_THRESHOLD = 3;
 
 /**
- * Registrér en permanent 'recipient-blocked'-fejl for et discord_id.
+ * Registrér en permanent modtager-fejl (403 eller 400/404) for et discord_id.
  *
  * Tæller op, og når tærsklen nås: nulstil discord_id (= afkobl), nulstil
  * tælleren og stempl discord_disconnected_at, så indstillingerne kan vise

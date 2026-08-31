@@ -1,5 +1,96 @@
 export const PATCHES = [
   {
+    "version": "7.223",
+    "date": "2026-08-31",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Achievements",
+        "en": {
+          "title": "High Roller could not be earned",
+          "body": "High Roller asked for a bid over 500,000 CZ$ in its description, but the code required a bid over 2,000,000,000. It now unlocks at 500,000 as promised, and every manager who already qualified gets it on their next visit."
+        },
+        "da": {
+          "title": "High Roller kunne ikke opnås",
+          "body": "High Roller lovede et bud over 500.000 CZ$ i sin beskrivelse, men koden krævede et bud over 2.000.000.000. Den låser nu op ved 500.000 som lovet, og alle managere der allerede kvalificerede sig får den ved næste besøg."
+        },
+        "refs": [4414]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Time trials no longer claim riders sacrificed themselves",
+          "body": "On an individual time trial nobody rides for anybody, so the helper sacrifice story beat is gone. On road stages it now only appears when a helper actually paid for the work."
+        },
+        "da": {
+          "title": "Enkeltstarter påstår ikke længere at ryttere ofrede sig",
+          "body": "På en enkeltstart kører ingen for nogen, så ofrings-teksten er væk. På landevejsetaper vises den nu kun når en hjælper faktisk har betalt for arbejdet."
+        },
+        "refs": [3145]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "The rider pool explained the wrong reason for a lock",
+          "body": "The note under the pool said a locked rider was busy in an overlapping race, even when the real reason was that every race shown had already started or you had withdrawn from it."
+        },
+        "da": {
+          "title": "Rytterpuljen forklarede den forkerte grund til en lås",
+          "body": "Noten under puljen sagde at en låst rytter var optaget i et overlappende løb, også når den reelle grund var at alle viste løb allerede var begyndt, eller at du havde meldt fra."
+        },
+        "refs": [3410]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The board's 3-year and 5-year plans are documented",
+          "body": "Help now covers the full lifecycle: when a multi-year plan expires and goes back to negotiation, that all three plan types can trigger a bonus offer, and why the timing of that offer varies."
+        },
+        "da": {
+          "title": "Bestyrelsens 3- og 5-årsplaner er dokumenteret",
+          "body": "Hjælp dækker nu hele forløbet: hvornår en flerårsplan udløber og går tilbage til forhandling, at alle tre plantyper kan udløse et bonustilbud, og hvorfor tidspunktet for tilbuddet varierer."
+        },
+        "refs": [4382]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Discord",
+        "en": {
+          "title": "A dead Discord connection now tells you",
+          "body": "A connection that permanently fails releases itself instead of staying silent, so you get a reconnect prompt in settings instead of simply never hearing from the bot again."
+        },
+        "da": {
+          "title": "En død Discord-forbindelse siger nu til",
+          "body": "En forbindelse der permanent fejler kobler sig selv fra i stedet for at tie, så du får en genforbind-besked i indstillingerne i stedet for bare aldrig at høre fra botten igen."
+        },
+        "refs": [3483]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Rider values now update Sunday morning",
+          "body": "Values used to move at 22:00 on Sunday, because the recalculation was bolted onto the nightly training run. It now runs from 06:00 on Sunday in its own job, so you have the whole day to act on the new numbers instead of finding them just before bed. Values still change once a week, on Sundays only."
+        },
+        "da": {
+          "title": "Rytterværdier opdateres nu søndag morgen",
+          "body": "Værdierne flyttede sig kl. 22 om søndagen, fordi genberegningen hang på den natlige træningskørsel. Den kører nu fra kl. 06 om søndagen i sit eget job, så du har hele dagen til at handle på de nye tal i stedet for at finde dem lige før sengetid. Værdier ændrer sig stadig én gang om ugen, kun om søndagen."
+        },
+        "refs": [4419]
+      }
+    ]
+  },
+  {
     "version": "7.222",
     "date": "2026-08-30",
     "label": "Beta",

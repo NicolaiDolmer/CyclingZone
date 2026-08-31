@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "./RiderLink";
@@ -190,6 +190,12 @@ export default function TeamTransferHistoryTab({ teamId }) {
   // en auktion ikke fandt en køber).
   const [showNoSale, setShowNoSale] = useState(false);
 
+  // #4448: t bruges kun til fejlbeskeden nedenfor. Som direkte dependency ville
+  // et sprogskifte hente transfer-historikken forfra — ref'en holder teamId som
+  // den eneste trigger uden at teksten hænger på gammelt sprog.
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -203,7 +209,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
           }),
           supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
         ]);
-        if (!historyRes.ok) throw new Error(t("history.loadError"));
+        if (!historyRes.ok) throw new Error(tRef.current("history.loadError"));
         const data = await historyRes.json();
         if (cancelled) return;
         setEvents(data);
@@ -216,7 +222,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
     }
     load();
     return () => { cancelled = true; };
-  }, [teamId, t]);
+  }, [teamId]);
 
   const availableSeasons = useMemo(() => {
     const set = new Set(events.map((e) => e.season_number).filter((n) => n != null));

@@ -2,7 +2,7 @@
 
 > **Ejer-godkendt 13/8** (#3662; spørg før omprioritering). 🔴 brand · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. ≤1.500 tok. [Visuel udgave](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635).
 
-**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Gjaldt FØR S3 startede — **afløst i S3-vinduet af rammen nedenfor** (ejer 28/8); genoptages efter 27/9. **Målt 28/8:** 616 åbne issues · 232 brugere, 1 abo. **Hard regel 23/8:** ingen prod-mutation uden ejerens "GO" på netop det skridt.
+**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Gjaldt FØR S3 — afløst i S3-vinduet af rammen nedenfor (ejer 28/8). **Målt 31/8:** 561 åbne · 232 brugere, 1 abo. **Hard regel 23/8:** ingen prod-mutation uden ejer-GO på netop det skridt.
 
 ## S3 KØRER 28/8 → 27/9 — rammen (ejer-beslutning 28/8)
 
@@ -12,7 +12,7 @@
 
 ## Kø i S3-vinduet (ejer-godkendt 27/8, trimmet 28/8)
 
-0. **FØRST (ejer 28/8): #2758** Discord-triage → issues (dagligt) + **#4269** daglig Supabase-kontrol. Køen herunder skal fyldes af det spillerne møder og det basen melder — ikke af AI-vurdering. Begge er ejer-direktiver (20/7 og 25/8). **Dertil (ejer 28/8): ryd ejer-køen** — 19 `needs-user-action` venter, ældste fra juni. Jeg finder de forældede/løste, så ejeren kun får ægte spørgsmål.
+0. **FØRST (ejer 28/8): #2758** Discord-triage → issues (dagligt) + **#4269** daglig Supabase-kontrol (fejler på manglende secret — se nøgle-listen i NUA-auditten 31/8). Køen fyldes af det spillerne møder og det basen melder — ikke af AI-vurdering. Ejer-køen er audit-renset 31/8: alle 21 NUA er ægte.
 1. **#4317** ContextBand-aksen (4 forkerte tal, kilder i issuet) · **#4259** byg FORFRA, se refutations-kommentaren · **#4355** juni-fyldkuldets taktik-læk.
 2. **#4098** unge markeret færdige 65 pt under loftet — ejeren spørges igen senest 31/8.
 3. **Spor C, Z1 (#1146):** `needs-contract`, kontrakten først. **Z1-aksen er ikke fri:** op til 5 løbsdage deler dato i D1, så 31 dato- og 86 løbsdags-kolonner er to akser. Klikbar akse = åbent ejer-valg.
@@ -20,8 +20,8 @@
 
 **Ejer-beslutninger 27-28/8 (genåbn dem ikke):** løbsdage **1-baseret** · afmeldt hold stiller **ikke** op · "løbsdag" = bindings-enheden, sponsor betaler pr. etape · **minimum 6, fladt** (42 starter) · **to regenereringer er forbudt**.
 
-Ny gæld: #4288 · **#4278** (D4 opad 41,9 % mod bånd 25-32 %) · #4282/#4146 · #4292 · #4123 + #4215-rest · **#4370** (React #421, forsiden).
-**UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · backlog-bølger · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265-#4268 (#4269 → punkt 0). **⚠️ #4266 frist 1/9 + #4265 S3-bundet — ejeren afgør.**
+Ny gæld: #4288 · **#4278** (D4 opad 41,9 %) · #4282/#4146 · #4292 · #4123 + #4215-rest · **#4370** (React #421).
+**UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · #4270 · #4264/#4262/#4263/#4177/#4297 · #4265/#4267/#4268. **⚠️ #4265 S3-bundet — ejeren afgør.**
 
 ## Grundreglerne — UDSKUDT til efter 27/9 (ejer 28/8)
 
@@ -36,10 +36,14 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. #4123-invarianterne mangler CI-gate.
 9. **P0 + UI-gæld + Z1** (ejer 25/8). P0: #3990-rest · navne-dedup-guard · #3329 · #2791. UI-gæld: de fem fund i `PLANNING_CENTER_RULES.md` §7. Z1: bulk-endpoint + kladde + tre linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405) — monterer motorens kort, bygger det ikke. **P3** assistenten — gated på **#4201**, og #4246 (rolle vs ordre) skal afgøres FØR `TeamOrder` fryses.
 
-## D · Penge og vækst — gate: spor B leveret (ikke en dato)
+## D · Penge og vækst — AKTIVT i S3-vinduet (ejer 31/8; eget ejer-go pr. skridt)
 
-10. **#2853** e-mail-loop (Resend-nøgle + 3 tekster) — største fastholdelses-håndtag. ⚪ **#4015** genmål efter #4013.
-11. **#3104 /pro LIVE** (køb pauset): **#4074 blokerer flip** + #4005 → flip + testkøb → #2813. **#4067** SEO-site.
+Rører ingen spilleregler; S3-køens spillerfejl går forrest.
+
+10. **#2853** e-mail-loop tændes (ejer: 3 tekster + 2 nøgler) → **#2760** win-back.
+11. **/pro:** #4074 → #4005 → flip + testkøb → #2813 → #2806 synligt link.
+12. **#4067** SEO-site S1 + **#2824** offentlige læse-ruter.
+13. **Kommunikationslinje:** AI laver søndag ugens 3 udkast (#428), ejer poster; #4111 månedlig løfte-audit.
 
 ## E · Løbende (aldrig hovedspor)
 
@@ -51,9 +55,9 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
 16. ⚪ **Typelaget:** #4325/#4334 landet 28/8. Rest: #4326 (frisk-gate) · #4327 · #4328-#4333.
 
-## F · Backlog-bølger (#3154, 616 åbne — UDSKUDT til efter 27/9)
+## F · Backlog-bølger (#3154; audit 31/8: 602→~561, alle klassificeret)
 
-Lukkemandat: done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20. **Rest:** W8: 53 needs-decision · #4119 · #3944/#3945.
+Lukkemandat: done/dubletter/opslugte frit; won't-do i chat-bundter m. begrundelse. Klassifikation + beslutningsark: `docs/audits/*-2026-08-31.md`. **Rest:** 18 dubletpar · done_cand-verify · W8 · #4119 · #3944/#3945.
 
 ## E2 · Race-oplevelsen (SSOT: `RACE_ENGINE_RULES.md`)
 

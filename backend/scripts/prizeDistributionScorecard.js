@@ -94,6 +94,7 @@ import { aggressionScore } from "../lib/raceSimulator.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { computeFrozenSalary } from "../lib/contractSeed.js";
 import { INITIAL_BALANCE } from "../lib/economyConstants.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 import {
   resolveOverrides,
   applyFlattenToPointRows,
@@ -106,7 +107,7 @@ import {
 // Sponsor/upkeep læses fra override (override-default = prod-konstanterne).
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 // ── args ────────────────────────────────────────────────────────────────────────
 function arg(name, def) {
