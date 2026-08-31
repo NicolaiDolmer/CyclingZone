@@ -192,6 +192,30 @@ export async function expireSeasonScopedConsequences(supabase, completedSeasonId
   return { expired: (data || []).length };
 }
 
+/**
+ * #4482 · Regel A-makkeren til expireSeasonScopedConsequences: sæson-slut-tilbud
+ * skabes med expires_at_season_id = NULL (den nye sæsons row fandtes ikke ved
+ * skabelsen, se evaluateAndApplyConsequences). Dette kald stempler dem med den
+ * netop oprettede sæson, så de kan indløses hele den og udløber ved dens
+ * afslutning. SKAL køre EFTER expireSeasonScopedConsequences i samme transition,
+ * ellers ville udløbet ramme de netop stemplede tilbud.
+ *
+ * Idempotent: andet kald finder ingen NULL-stemplede aktive lag 6-rows.
+ */
+export async function stampUnscopedBonusOffers(supabase, newSeasonId) {
+  ensureSupabase(supabase);
+  if (!newSeasonId) return { stamped: 0 };
+  const { data, error } = await supabase
+    .from("board_consequences")
+    .update({ expires_at_season_id: newSeasonId })
+    .eq("status", "active")
+    .eq("layer", CONSEQUENCE_LAYERS.BONUS_OFFER)
+    .is("expires_at_season_id", null)
+    .select("id");
+  if (error) throw new Error(`Could not stamp unscoped bonus offers: ${error.message}`);
+  return { stamped: (data || []).length };
+}
+
 // ─── Hard-block helpers (lag 2-3) ─────────────────────────────────────────────
 
 /**
@@ -420,6 +444,13 @@ export async function evaluateAndApplyConsequences({
   consecutiveLowExpirations = 0,
   boardTestMode = false,
   now = new Date(),
+  // #4482 · Regel A (ejer 31/8): et lag 6-tilbud optjent ved SÆSON-SLUT-evalueringen
+  // skal kunne indløses i hele den FØLGENDE sæson. Den følgende sæsons row findes
+  // ikke endnu når processTeamSeasonEnd kører (FK til seasons.id), så tilbuddet
+  // skabes med expires_at_season_id = NULL og re-stemples af sæsonskifte-hooket
+  // (stampUnscopedBonusOffers) når den nye sæson er oprettet. Mid-season-tilbud
+  // (boardWeekendFinalization) beholder default false = stemples med aktiv sæson.
+  bonusOfferRedeemableNextSeason = false,
 }) {
   ensureSupabase(supabase);
   if (!team?.id || !board?.id) {
@@ -655,7 +686,7 @@ export async function evaluateAndApplyConsequences({
           ...baseRow,
           layer: CONSEQUENCE_LAYERS.BONUS_OFFER,
           severity: BONUS_OFFER_AMOUNT,
-          expires_at_season_id: seasonId,
+          expires_at_season_id: bonusOfferRedeemableNextSeason ? null : seasonId,
           payload: {
             satisfaction: newSatisfaction,
             goals_met: goalsMet,

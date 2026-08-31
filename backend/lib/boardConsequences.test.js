@@ -16,6 +16,7 @@ import {
   declineBonusOffer,
   evaluateAndApplyConsequences,
   expireSeasonScopedConsequences,
+  stampUnscopedBonusOffers,
   getActiveConsequencesForTeam,
   getActiveSponsorPulloutFactor,
   getLayerLabel,
@@ -991,6 +992,63 @@ test("expireSeasonScopedConsequences udløber lag 6 for den afsluttede sæson �
     "active",
     "lag 5 må IKKE udløbes her — economyEngine gør det efter sponsorudbetalingen",
   );
+});
+
+test("#4482 Regel A: sæson-slut-tilbud skabes med NULL-stempel (bonusOfferRedeemableNextSeason)", async () => {
+  const supabase = makeFakeSupabase({ board_consequences: [] });
+
+  await evaluateAndApplyConsequences({
+    supabase,
+    team: makeBaseTeam(),
+    board: { id: "board-1", focus: "balanced" },
+    newSatisfaction: 85,
+    goalsMet: 4,
+    goalsTotal: 5,
+    planIsComplete: false,
+    seasonId: "season-3",
+    bonusOfferRedeemableNextSeason: true,
+  });
+
+  const offer = supabase.state.board_consequences.find((c) => c.layer === 6 && c.status === "active");
+  assert.ok(offer);
+  assert.equal(
+    offer.expires_at_season_id,
+    null,
+    "sæson-slut-tilbud må ikke stemples med den afsluttende sæson — hooket ville udløbe det i samme transition",
+  );
+});
+
+test("#4482 stampUnscopedBonusOffers stempler KUN aktive NULL-lag-6 — ikke andre lag eller allerede stemplede", async () => {
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "fresh-1", team_id: "team-1", layer: 6, status: "active", expires_at_season_id: null, payload: {} },
+      { id: "fresh-2", team_id: "team-2", layer: 6, status: "active", expires_at_season_id: null, payload: {} },
+      { id: "mid-1", team_id: "team-3", layer: 6, status: "active", expires_at_season_id: "season-3", payload: {} },
+      { id: "done-1", team_id: "team-4", layer: 6, status: "accepted", expires_at_season_id: null, payload: {} },
+      { id: "lag2-1", team_id: "team-5", layer: 2, status: "active", expires_at_season_id: null, payload: {} },
+    ],
+  });
+
+  const result = await stampUnscopedBonusOffers(supabase, "season-4");
+  const row = (id) => supabase.state.board_consequences.find((c) => c.id === id);
+
+  assert.equal(result.stamped, 2, "kun de to friske sæson-slut-tilbud");
+  assert.equal(row("fresh-1").expires_at_season_id, "season-4");
+  assert.equal(row("fresh-2").expires_at_season_id, "season-4");
+  assert.equal(row("mid-1").expires_at_season_id, "season-3", "mid-season-tilbud beholder sit stempel");
+  assert.equal(row("done-1").expires_at_season_id, null, "afgjorte tilbud røres ikke");
+  assert.equal(row("lag2-1").expires_at_season_id, null, "lag 2/3/4 bruger NULL som 'udløber aldrig' og må ALDRIG stemples");
+});
+
+test("#4482 stampUnscopedBonusOffers uden seasonId er en no-op", async () => {
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "fresh-1", team_id: "team-1", layer: 6, status: "active", expires_at_season_id: null, payload: {} },
+    ],
+  });
+  const result = await stampUnscopedBonusOffers(supabase, null);
+  assert.deepEqual(result, { stamped: 0 });
+  assert.equal(supabase.state.board_consequences[0].expires_at_season_id, null);
 });
 
 test("expireSeasonScopedConsequences er idempotent", async () => {

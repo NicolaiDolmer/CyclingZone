@@ -129,6 +129,20 @@ export const PATCHES = [
           "body": "En rytter der havde været i dit akademi over to sæsoner kunne ende umulig at promovere, sælge eller frigive: knappen svarede med en fejl, og den natlige auto-afgørelse fejlede også på ham. Han afgøres nu normalt."
         },
         "refs": [4484]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Season-end bonus offers are back and last the following season",
+          "body": "The cleanup of old bonus offers also removed the 21 offers earned at season 2's final evaluation, which you should have had all of season 3 to redeem. They are restored. The rule is now explicit: an offer earned at season end can be redeemed throughout the following season; a mid-season offer lasts the rest of its season."
+        },
+        "da": {
+          "title": "Sæson-slut-bonustilbud er tilbage og gælder den følgende sæson",
+          "body": "Oprydningen af gamle bonustilbud fjernede også de 21 tilbud fra sæson 2's afsluttende evaluering, som I skulle have haft hele sæson 3 til at indløse. De er genskabt. Reglen er nu udtrykkelig: et tilbud optjent ved sæson-slut kan indløses hele den følgende sæson; et midtvejstilbud gælder resten af sin sæson."
+        },
+        "refs": [4482]
       }
     ]
   },
