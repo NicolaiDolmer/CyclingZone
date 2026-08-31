@@ -85,8 +85,10 @@ Ejer-beslutning 13/8, "tredje vej": potentiale forbliver **1-6 internt**, UI vis
 |---|---|---|---|
 | Løb udvikler mere end det pas det erstatter, kun i løbets relevante evner | `RACE_DEV_CONFIG.devMult` | `backend/lib/dailyTraining.js` | ✅ |
 | Løbsprofil → hvilke evner der udvikles | `RACE_PROFILE_ABILITY_MAP` | `dailyTrainingEngine.js` | ✅ |
-| Motoren er styret af feature-flag | `race_day_engine_enabled` i `app_config` | — | ✅ on siden 7/8 |
-| Restitution justeres når flaget er on | `RACE_DAY_ENGINE_RECOVERY_CONFIG` | `backend/lib/riderCondition.js` | ✅ |
+| Restitution + AI-paritet (D3+D4) er styret af feature-flag | `race_day_engine_enabled` i `app_config` | — | ✅ on siden 7/8 |
+| Løbsdags-UDVIKLINGEN (D1+D2) er styret af sit EGET flag | `race_day_development_enabled` i `app_config` | `backend/lib/raceDayDevelopmentFlag.js` | ⛔ off for S3 (#4277), tilbage til S4 |
+| Restitution justeres når `race_day_engine_enabled` er on | `RACE_DAY_ENGINE_RECOVERY_CONFIG` | `backend/lib/riderCondition.js` | ✅ |
+| Trænings-UI'ets løbsdags-badge følger UDVIKLINGS-flaget, ikke motor-flaget | `racingToday` i `GET /api/training/me` | `backend/routes/api.js` | ✅ rettet i #4375 |
 | `rest`-intensitet giver ingen udvikling | `abilityMult(ability, {intensity:"rest"})` → 0 | `dailyTraining.js` | ✅ |
 
 > ⚠ **Kendt afvigelse fra spec (A4, ikke rettet endnu).** Spec 6/8 siger det planlagte pas ikke udføres på en løbsdag. Koden bruger i stedet det planlagte pas × `devMult` som løbets udbytte (`applyRaceDevelopmentTick`) — planen ER stadig input. Konsekvens: en rytter sat til Hvile eller Aktiv restitution som alligevel tilmeldes et løb får NUL udvikling af at køre, og disse to indstillinger har de højeste løbsandele af alle. Ejerens dom 24/8, ordret: *"Hvis man kører løb eller træner, så kan man ikke begge dele."* Hvad der SKAL bestemme udbyttet i stedet er en åben beslutning — se audit-fil, afsnit "Det vigtigste at kigge på" nr. 1.

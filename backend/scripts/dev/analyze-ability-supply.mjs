@@ -8,13 +8,14 @@ import { fileURLToPath } from "node:url";
 import { buildFictionalPopulationPreview } from "../../lib/fictionalPopulationPreview.js";
 import { LAUNCH_POPULATION } from "../../lib/fictionalLaunchPopulation.js";
 import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const baseline = JSON.parse(readFileSync(join(__dirname, "../../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../../lib/riderValuationModel.json"), "utf8"));
 
 for (const seed of [2026, 7, 42]) {
-  const { riders } = buildFictionalPopulationPreview({ count: LAUNCH_POPULATION.count, seed, referenceYear: 2026, baseline, model });
+  const { riders } = buildFictionalPopulationPreview({ count: LAUNCH_POPULATION.count, seed, referenceYear: LAUNCH_REFERENCE_YEAR, baseline, model });
   const topAbil = riders.map((r) => Math.max(...VISIBLE_ABILITIES.map((k) => r.abilities[k])));
   const ceilings = [10, 15, 20, 25, 30, 40, 50];
   console.log(`seed ${seed}: antal ryttere med top-evne <= loft (pop ${riders.length}; skal bruge 160 til 20 hold):`);

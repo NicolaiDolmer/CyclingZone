@@ -1,0 +1,6 @@
+{
+  "$comment": "Kendte auth-gated ruter (requireAuth/requireAdmin) uden PER-RUTE rate-limit-daekning (ratchet - maa kun skrumpe). De 76 tilbagevaerende er alle GET-ruter. #4446 mountede en global router.use(apiBaselineLimiter) (600/min pr. IP) der daekker dem groft, men dette script maaler bevidst KUN per-rute-daekning: ellers ville den globale mount goere ratchet'en blind for nye skrive-ruter uden egen limiter. Genereret af scripts/check-rate-limit-coverage.mjs --update-baseline. Nye overtraedelser maa IKKE tilfoejes her - tilfoej en <x>Limiter fra backend/lib/rateLimiters.js paa selve ruten, eller monter en router.use(<prefix>, <x>Limiter). Refs #530 #4446.",
+  "files": {
+    "backend/routes/api.js": 76
+  }
+}

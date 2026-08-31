@@ -159,6 +159,8 @@
         "close_win": "{rider} won by just {seconds, plural, one {# second} other {# seconds}}.",
         "close_win_generic": "{rider} held on for the win in the closest of finishes.",
         "solo_win": "{rider} rode clear and won alone off the front.",
+        "itt_win": "{rider} set the fastest time of the day.",
+        "ttt_win": "{rider} led home the fastest team of the day.",
         "breakaway_survived": "{rider} made the breakaway stick and won from out front.",
         "gc_takeover_won": "{rider} took over the race lead from {previousLeader}.",
         "gc_takeover_lost": "{rider} lost the race lead to {newLeader}.",

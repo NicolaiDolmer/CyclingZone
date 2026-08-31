@@ -303,3 +303,112 @@ test("timeline=true → buildRaceResults genererer PRÆCIS én tidslinje pr. eta
     assert.ok(Array.isArray(t.events) && t.events.length > 0);
   }
 });
+
+// ── 5. #4373: tidskørsler er ikke massespurter ─────────────────────────────
+// Regressionen: prologen i Giro della Penisola fik win_type "sprint_win", og
+// "The story of the stage" skrev at vinderen vandt massespurten. Feltbaserede
+// events (sprint_decided, leadout, finale_attack, peloton_splits) må slet ikke
+// kunne opstå på itt/ttt — der er intet felt.
+const FIELD_EVENT_TYPES = ["sprint_decided", "leadout", "finale_attack", "peloton_splits"];
+
+function timeTrialTimeline(profileType, extra = {}) {
+  const ranked = [
+    rider("a", 1, 0),
+    rider("b", 2, 1),   // 1 sekund → ramte den gamle SPRINT_GAP_S-tærskel
+    rider("c", 3, 1),   // samme sluttid som b → gammel peloton_splits-"gruppe"
+    rider("d", 4, 25),
+  ];
+  return buildStageTimeline({
+    ranked,
+    stageProfile: { profile_type: profileType, distance_km: 12, climbs: [] },
+    moments: [], incidents: [], passages: [],
+    breakawayStatus: deriveBreakawayStatus(ranked),
+    seed: stableSeed(`timeline-${profileType}`), isStageRace: false,
+    ...extra,
+  });
+}
+
+test("#4373 itt: win_type = itt_win, og ingen felt-events overhovedet", () => {
+  const { events } = timeTrialTimeline("itt");
+  const finish = events.find((e) => e.type === "finish");
+  assert.ok(finish, "finish-eventet skal stadig findes");
+  assert.equal(finish.params.win_type, "itt_win");
+  for (const type of FIELD_EVENT_TYPES) {
+    assert.equal(events.some((e) => e.type === type), false, `itt må aldrig udsende ${type}`);
+  }
+});
+
+test("#4373 ttt: egen win_type, ikke enkeltstartens og ikke spurtens", () => {
+  const { events } = timeTrialTimeline("ttt");
+  const finish = events.find((e) => e.type === "finish");
+  assert.equal(finish.params.win_type, "ttt_win");
+  for (const type of FIELD_EVENT_TYPES) {
+    assert.equal(events.some((e) => e.type === type), false, `ttt må aldrig udsende ${type}`);
+  }
+});
+
+test("#4373: flad etape med samme tal er UÆNDRET (sprint_decided + sprint_win)", () => {
+  const { events } = timeTrialTimeline("flat");
+  const finish = events.find((e) => e.type === "finish");
+  assert.equal(finish.params.win_type, "sprint_win");
+  assert.ok(events.some((e) => e.type === "sprint_decided"), "flad etape spurter stadig");
+});
+
+test("#4373: favorite_crack på itt markeres som tidskørsel (feltsprog gates i tekst-laget)", () => {
+  const ranked = [rider("a", 1, 0), rider("b", 2, 40), rider("c", 3, 90)];
+  const moments = [{ moment_key: "tag_jour_sans", params: { riderId: "c" }, significance: 30, rider_ids: ["c"] }];
+  const itt = buildStageTimeline({
+    ranked, stageProfile: { profile_type: "itt", distance_km: 12, climbs: [] },
+    moments, incidents: [], passages: [],
+    breakawayStatus: deriveBreakawayStatus(ranked),
+    seed: stableSeed("timeline-crack-itt"), isStageRace: false,
+  });
+  const ittCrack = itt.events.find((e) => e.type === "favorite_crack");
+  assert.ok(ittCrack);
+  assert.equal(ittCrack.params.discipline, "time_trial");
+
+  const hilly = buildStageTimeline({
+    ranked, stageProfile: { profile_type: "hilly", distance_km: 120, climbs: [] },
+    moments, incidents: [], passages: [],
+    breakawayStatus: deriveBreakawayStatus(ranked),
+    seed: stableSeed("timeline-crack-hilly"), isStageRace: false,
+  });
+  const hillyCrack = hilly.events.find((e) => e.type === "favorite_crack");
+  assert.ok(hillyCrack);
+  assert.equal(hillyCrack.params.discipline, undefined, "kun tidskørsler markeres");
+});
+
+// End-to-end gennem raceRunner: profilen SKAL nå hele vejen fra etape-rækken til
+// både moments og tidslinje. Fejler denne, er tråden knækket et sted i runneren.
+const ITT_STAGES = [
+  { stage_number: 1, profile_type: "itt", distance_km: 8, demand_vector: DEMAND_VECTORS.itt ?? DEMAND_VECTORS.flat },
+  { stage_number: 2, profile_type: "flat", demand_vector: DEMAND_VECTORS.flat },
+];
+
+test("#4373 end-to-end: buildRaceResults giver itt_win på etape 1 og spurt-nøgler på etape 2", () => {
+  const { moments, timelines } = buildRaceResults({
+    race: { id: "race-4373", race_type: "stage_race", season_id: "s1" },
+    stages: ITT_STAGES, entrants: FLAG_OFF_ENTRANTS, pointsLookup: {},
+    v3: true, timeline: true,
+  });
+
+  const stage1Moments = moments.filter((m) => m.stage_number === 1);
+  assert.ok(stage1Moments.some((m) => m.moment_key === "itt_win"), "etape 1 skal have itt_win");
+  for (const k of ["sprint_win", "close_win", "solo_win"]) {
+    assert.equal(stage1Moments.some((m) => m.moment_key === k), false, `etape 1 (itt) må ikke have ${k}`);
+  }
+
+  const stage1Timeline = timelines.find((t) => t.stage_number === 1);
+  assert.equal(stage1Timeline.events.find((e) => e.type === "finish").params.win_type, "itt_win");
+  for (const type of FIELD_EVENT_TYPES) {
+    assert.equal(stage1Timeline.events.some((e) => e.type === type), false, `etape 1 (itt) må ikke have ${type}`);
+  }
+
+  // Etape 2 er flad — den gamle klassificering skal stadig gælde der.
+  const stage2Moments = moments.filter((m) => m.stage_number === 2);
+  assert.equal(stage2Moments.some((m) => m.moment_key === "itt_win"), false);
+  assert.ok(
+    stage2Moments.some((m) => ["sprint_win", "close_win", "solo_win"].includes(m.moment_key)),
+    "etape 2 skal stadig klassificeres som spurt/tæt/solo",
+  );
+});

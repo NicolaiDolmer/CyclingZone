@@ -244,3 +244,50 @@ test("altitudeAtKm: manglende/tom serie degraderer til null, ikke et kast", () =
   assert.equal(altitudeAtKm(null, 50), null);
   assert.equal(altitudeAtKm({ xs: [], ys: [] }, 50), null);
 });
+
+// ── #4373: tekst-laget skal vælge tidskørsels-nøgler ───────────────────────
+// "The story of the stage" hentede sin linje herfra — finish med win_type
+// "sprint_win" blev til "{rider} wins the bunch sprint" på en prolog.
+test("#4373 describeEvent: finish med itt_win/ttt_win får sin egen nøgle", () => {
+  const names = new Map([["r1", "Lei Lin"]]);
+  const finish = (winType) => describeEvent(
+    { type: "finish", km: 12, params: { top: [{ rider_id: "r1", rank: 1 }], win_type: winType } },
+    { riderNameById: names },
+  );
+  assert.equal(finish("itt_win").key, "finish_itt_win");
+  assert.equal(finish("ttt_win").key, "finish_ttt_win");
+  assert.equal(finish("sprint_win").key, "finish_sprint_win");
+});
+
+test("#4373 describeEvent: stage_start og favorite_crack tilpasser sig disciplinen", () => {
+  const names = new Map([["r1", "Lei Lin"]]);
+  const start = (profileType) => describeEvent(
+    { type: "stage_start", km: 0, params: { field_count: 90, distance_km: 12, profile_type: profileType } },
+    { riderNameById: names },
+  );
+  assert.equal(start("itt").key, "stage_start_itt");
+  assert.equal(start("ttt").key, "stage_start_ttt");
+  assert.equal(start("flat").key, "stage_start");
+  assert.equal(start(null).key, "stage_start");
+
+  const crack = (discipline) => describeEvent(
+    { type: "favorite_crack", km: 9, params: { rider_id: "r1", reason: "jour_sans", ...(discipline ? { discipline } : {}) } },
+    { riderNameById: names },
+  );
+  assert.equal(crack("time_trial").key, "favorite_crack_tt");
+  assert.equal(crack(null).key, "favorite_crack");
+});
+
+test("#4373: alle nye event-nøgler findes i BEGGE locale-filer", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  const newKeys = ["finish_itt_win", "finish_ttt_win", "stage_start_itt", "stage_start_ttt", "favorite_crack_tt"];
+  for (const lang of ["en", "da"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    for (const key of newKeys) {
+      assert.ok(doc.detail.film.event[key], `${lang}: mangler detail.film.event.${key}`);
+    }
+  }
+});

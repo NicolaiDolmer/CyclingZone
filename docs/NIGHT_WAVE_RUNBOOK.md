@@ -73,7 +73,7 @@ Detektion: `git worktree list` + `gh pr list --head <branch>` pr. spor. Genopret
 
 1. **Keep-awake (rod-årsag).** `powercfg standby-timeout-ac=0` er IKKE nok på en S0-maskine. Kør `scripts/keep-awake.ps1` i sit EGET terminal-vindue for hele bølgens varighed (`SetThreadExecutionState(ES_SYSTEM_REQUIRED)` holder systemet vågent så længe processen kører). Preflightens `powercfg /a`-linje afslører om maskinen er S0 (Standby S0 Low Power Idle) — er den det, er keep-awake obligatorisk.
 2. **Chunking (blast-radius).** Launch fleet'et i **flere Workflow-kald på ~6-8 agenter hver**, ikke ét stort 21-agent-`parallel()`-barrier. Et hang fryser da kun sit eget chunk; de øvrige chunks fuldfører + notificerer, så orkestratoren ser resultater inden for minutter og kan genoprette det frosne chunk uden at hele bølgen står stille. Checkpoint mellem chunks.
-3. **Stall-watchdog (detektion).** Kør `scripts/night-wave-stall-watch.ps1` periodisk (hvert ~8-10 min) under bølgen. Den krydser to ground-truth-signaler: worktree-fremdrift (0 ahead + rent arbejdstræ = intet produceret) og transcript-mtime (frossen > StallMinutes). Flagede spor genoprettes per §Recovery **uden** at vente på barrieren. Auto-detekterer nyeste Workflow-run; `-Json` for maskinlæsbart output.
+3. **Stall-watchdog (detektion).** Kør `scripts/night-wave-stall-watch.ps1` periodisk (hvert ~8-10 min) under bølgen. Den krydser to ground-truth-signaler: worktree-fremdrift (0 ahead + rent arbejdstræ = intet produceret) og transcript-mtime (frossen > StallMinutes). Flagede spor genoprettes per §Recovery **uden** at vente på barrieren. Auto-detekterer nyeste Workflow-run; `-Json` for maskinlæsbart output. Er en tynd wrapper (#3423) om `scripts/agent-stall-watch.ps1`, som bruges direkte til at overvåge almindelige (ikke-natbølge) worktree-sessioner uden for `.claude/worktrees`.
 
 Kombinér: `status="running"` ≠ fremdrift (jf. memory `feedback_verify_background_progress`). En frossen transcript-mtime + 0 worktree-fremdrift = hang, ikke langsom agent.
 
@@ -110,3 +110,87 @@ Trend over tid = PR'er pr. bølge pr. wall-clock-time — bruges i [#605](https:
 ---
 
 _Refs #605. Se også: [`AGENT_ARCHITECTURE.md`](AGENT_ARCHITECTURE.md) (parallel-session-safety), [`WORKTREE_WORKFLOW.md`](WORKTREE_WORKFLOW.md), `.claude/learnings/` (natbølge-postmortems)._
+
+## Haendelserne bag hard rules 10-30 (#4502)
+
+> Flyttet hertil fra `AGENTS.md` 31/8. **Reglerne selv staar uaendret i AGENTS.md** og er laast af
+> `agents-md-required-rules`-vagten i `scripts/check-agent-token-hygiene.ps1`, som exit 1'er hvis en af
+> de 22 bindende regler forsvinder. Kun hændelses-begrundelserne er flyttet, fordi AGENTS.md brød sit
+> token-loft (6.574 mod 6.500) da fire nye SSOT-omraader og dev-server-linjen landede samme morgen.
+>
+> Hændelsen er ikke pynt: en regel uden den hændelse der udloeste den bliver til prosa der drifter.
+> Laes dem naar du skal forstaa HVORFOR en regel er skarp, eller naar du overvejer at boeje den.
+
+**Regel 5 - **
+
+- _LOOPS.md) håndhæver dette. **Samme rutine for Hjælp/FAQ** (#1171): ændrer eller tilføjer slicen en spilmekanik spillere skal forstå, opdatér `frontend/public/locales/{en,da}/help.json` (+ `HelpPage.jsx` SECTION_
+
+- _KEYS ved nye blokke) eller skriv hvorfor ikke. **i18n leak-guard (#1068):** `scripts/i18n-check-leaks.mjs` (CI-job `leak-check` + pre-commit via lint-staged) blokerer NYE danske strenge i EN-locale-værdier og player-facing kode. Kendte leaks ligger i `scripts/i18n-leaks-baseline.json` — en ratchet der kun må skrumpe: fix leaks og stram med `node scripts/i18n-check-leaks.mjs --update-baseline` i en dedikeret commit; udvid den ALDRIG med nye leaks. Legitimt dansk (admin-flader, dual-page privacy, PatchNotes-data, brand-termer) tilføjes i stedet til LOCALE_
+
+**Regel 8 - **
+
+- _CONTEXT.md` + `supabase-readonly.env` er HARDLINKEDE til `~/OneDrive/CyclingZone-context/`, ikke kopier. Edit-tool BRYDER hardlinket → drift på næste PC. Efter manuel edit af disse filer: kør `pwsh -File scripts/link-onedrive-context.ps1` for at re-etablere. Ved drift-konflikt: læs INDHOLDET af begge versioner — antag ikke "nyeste timestamp vinder". Pure additive → tag den længere; sletning → STOP og spørg bruger. Default: OneDrive vinder. **Produktionssecrets (`*.env`, `.mcp.json`) er IKKE længere OneDrive-hardlinked** — bootstrappes nu via Infisical (`infisical export --env=dev > backend/.env`); se `docs/decisions/secret-management-adr.md`. Detaljer: `docs/CROSS_
+
+**Regel 10 - Enhver agent har en terminal-tilstand du har SET**
+
+- _Natbølge 4.-5./8: fire agenter kørte videre i 10-12 timer efter deres arbejde var reddet manuelt. Over 1 mio. tokens brændt på spor der var færdige._
+
+**Regel 11 - Paastande om systemtilstand kraever en positiv observation**
+
+- _Samme nat: `TaskList` blev brugt til at konkludere at ingen agenter kørte. TaskList er todo-listen, ikke baggrundsopgaverne — forkert værktøj gav en forkert konklusion der holdt i timevis._
+
+**Regel 12 - Loft paa igangvaerende arbejde: maks 5 aabne PR'er**
+
+- _Køen nåede 23. Konflikterne i `patchNotes.js` voksede hurtigere end de blev lukket, fordi hver ny PR konfliktede med alle de foregående._
+
+**Regel 13 - Ingen paastand uden en maaling**
+
+- _Næsten hvert tal i natbølgens issues var forkert med faktor 10-1000: 247 → 225.947 NULL-rækker · 807 → 1.399 udløbende ryttere · "grøn" økonomi → 90× drift._
+
+**Regel 15 - Mennesket beslutter, AI'en fremskaffer beviset**
+
+- _Gennemgående mønster: beslutningsoplæg byggede på issue-tekster i stedet for på prod._
+
+**Regel 18 - Commit i hoved-checkoutet kun bag branch-guarden**
+
+- _Fejlklassen har bidt 5 gange (11/6, 12/6, 13/6, 6/8, 18/8). Sidste gang skiftede hoved-checkoutets branch tre gange inden for én session, mens en parallel session havde ucommitteret arbejde i træet. Se `.claude/learnings/2026-08-06-shared-checkout-cross-session-commit.md`._
+
+**Regel 19 - Aldrig skip-logik paa prod-deploy-grenen**
+
+- _To hændelser på to dage: 17/8 mistede prod-deploys (skip-logikken åd ægte ændringer); 18/8 stod alle prod-deploys i ERROR fordi `VERCEL_
+
+- _SHA` lå uden for Vercels shallow clone og exit 128 tolkes som deploy-fejl ([#3838](https://github.com/NicolaiDolmer/CyclingZone/issues/3838))._
+
+**Regel 21 - Per-agent-timeout dimensioneres efter samtidighed**
+
+- _Natbølge XL 18/8: 110 min klippede 15 af 32 agenter under 26+ samtidige; e-mail-kæden blev klippet to gange ved 110/150 og leverede på 16 min da maskinen var ledig._
+
+**Regel 22 - Dispatch-forfilter foer HVER spawn**
+
+- _Natbølgen 4.-5./8: fire spor allerede løst. 18/8 formiddag: #3682 lukket 3 dage før. 18/8 eftermiddag: #3066 stod som priority:high-punkt i sessionsprompten men var shipped+lukket 17/8 — ét kald sparede en hel worker._
+
+**Regel 24 - Orkestratoren ejer e2e-slottet**
+
+- _KS3 18/8: workers der selv valgte fuld suite spildte timer på et delt slot._
+
+**Regel 26 - **
+
+- _KEY` — i hvert modul den serverer, så `curl`/`fetch`/`Invoke-WebRequest` mod localhost:5173/5174 lækker nøglen til transcriptet uanset hvilket modul du henter. Screenshots og `read_
+
+**Regel 30 - Omraadets SSOT laeses, citeres og opdateres i samme PR**
+
+- _RULES.md) · holdudtagelse og sæsonplanlægning → [`docs/PLANNING_
+
+- _RULES.md) · **sponsor, kontrakter og arketyper → [`docs/SPONSOR_
+
+- _RULES.md)** · **bestyrelsen, mål og konsekvenser → [`docs/BOARD_
+
+- _RULES.md)** · rytterudvikling, træning og rating → [`docs/PROGRESSION_
+
+- _RULES.md)** · **transfermarked og auktioner → [`docs/TRANSFER_
+
+- _RULES.md` fandtes, var opdateret samme dag og indeholdt ordret advarslen "gulvene er regressionsværn, ikke kvalitetsmål". Linjen var læst. Alligevel blev "1 fritstående enkeltstart OK" rapporteret, hvor 1 kun var et gulv. Ejeren opdagede det selv — ingen gate gjorde. Samme dag blev et Z1-design tegnet med et rollesæt der ville have kollideret med `TeamOrder`-kontrakten, fordi motorens SSOT ikke fandtes endnu._
+
+**Regel 24 - Orkestratoren ejer e2e-slottet**
+
+- _REFERENCE.md` per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733) (token-reduktion; Codex cold-start). Indhold bevaret, kun flyttet._

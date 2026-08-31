@@ -19,6 +19,7 @@
 //   seasons.number er sæson-heltallet; season_standings keyer på season_id (UUID FK
 //     til seasons.id), IKKE et nummer → resolv forrige sæsons id først.
 import { renownTarget } from "./renownEngine.js";
+import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { generateOffers, FULL_CALENDAR_DAYS, guaranteedFractionForLength } from "./sponsorOffers.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
@@ -704,6 +705,34 @@ export async function evaluateSeasonObjectives({ supabase, finishedSeasonNumber 
   return { evaluated: withObjective.length, paid };
 }
 
+// #4515 · results_cap er et SÆSON-loft, ikke et kontrakt-loft.
+//
+// results_bonus_paid akkumulerer hver gang en sejr-/podie-bonus udbetales
+// (sponsorRaceDayIncome.js) og blev aldrig nulstillet. For 'results'-varianten,
+// der er toårig (sponsorOffers.js), betød det at et hold som brugte loftet op i
+// sit første år kørte hele det andet år uden en eneste resultat-bonus — mens
+// den garanterede base og løbsdagsraten blev fornyet per sæson som normalt.
+// Målt i prod 31/8: Team WolkerWessels havde brugt 238.000 af 238.000 i S2 og
+// fik 0 i S3; BPTrain havde 3.780 tilbage af 166.950.
+//
+// Loftet følger nu samme rytme som resten af kontrakten. Dette er det eneste
+// sted en flersæsons-kontrakt krydser en sæsongrænse — aktiverings- og
+// default-stierne nedenfor opretter altid en frisk række med forbrug 0.
+//
+// Betinget write: uden guarden ville hver sæsonovergang skrive en række pr.
+// låst kontrakt (200+ i prod) blot for at sætte 0 til 0.
+async function resetResultsBonusCap({ supabase, contract }) {
+  if (!contract?.id) return;
+  if (!(Number(contract.results_bonus_paid) > 0)) return;
+
+  const { error } = await supabase
+    .from("sponsor_contracts")
+    .update({ results_bonus_paid: 0 })
+    .eq("id", contract.id);
+  if (error) throw error;
+  contract.results_bonus_paid = 0;
+}
+
 // Sæson-skifte: for hvert hold — behold en stadig-låst kontrakt; ellers udløb den
 // gamle ('expired') og AKTIVÉR holdets pending valg (flip pending->active) med
 // per-etape-rate mod holdets reelle etape-divisor (#2913) + signing bonus. Hvis
@@ -712,17 +741,24 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
   // Ét opslag for divisorer + holdenes nye pulje/tier (komprimeringen har kørt
   // FØR transitionen, jf. drejebogen — teams bærer S2-værdierne her).
   const stageCounts = await loadSeasonStageCounts({ supabase, seasonNumber: newSeasonNumber });
-  const { data: teamRows, error: teamRowsError } = await supabase
+  // #3014 · teamIds er ALLE menneske-hold i spillet (kaldes ved hver
+  // sæson-transition, seasonTransition.js) — vokser med spillerbasen ligesom
+  // sæsonens løb gjorde. Chunket for at undgå samme PostgREST URL-længde-cap.
+  const teamRows = await fetchAllRowsChunkedIn(teamIds, (chunk) => supabase
     .from("teams")
     .select("id, division, league_division_id")
-    .in("id", teamIds);
-  if (teamRowsError) throw teamRowsError;
+    .in("id", chunk)
+    .order("id"));
   const teamById = new Map((teamRows || []).map((t) => [t.id, t]));
 
   for (const teamId of teamIds) {
     const active = await getActiveContract({ supabase, teamId });
-    // Kontrakten dækker stadig den nye sæson → behold (låst).
-    if (active && active.expires_after_season >= newSeasonNumber) continue;
+    // Kontrakten dækker stadig den nye sæson → behold (låst), men ryd
+    // resultat-loftets forbrug (#4515).
+    if (active && active.expires_after_season >= newSeasonNumber) {
+      await resetResultsBonusCap({ supabase, contract: active });
+      continue;
+    }
 
     // Udløb den gamle aktive FØR vi aktiverer pending (kun én aktiv pr. hold).
     if (active) {

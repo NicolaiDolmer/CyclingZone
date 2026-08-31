@@ -111,6 +111,18 @@
       "midSeasonCheck": {
         "title": "Mid-season check",
         "text": "Midway through the season (half of race days completed) the board automatically checks your plan status. If satisfaction is below 50% or at least half of measurable targets are 'behind', you get an 'Action required' notification in your inbox. The mid-season point is also the first hard checkpoint: if satisfaction has dropped below the consequence thresholds by then, the board applies the matching consequence layers (the second checkpoint is season end). Between checkpoints satisfaction moves freely without triggering hard consequences."
+      },
+      "multiYearLifecycle": {
+        "title": "How the 3-year and 5-year plans run",
+        "text": "Your three plans run in parallel and are fully separate: each has its own targets, its own satisfaction and its own renewal cadence. Negotiating the 1-year plan never changes the 3-year or 5-year targets.",
+        "steps": [
+          "A plan runs for its full length, 1, 3 or 5 seasons. At every season end the board evaluates it, and cumulative targets (stage wins, GC wins) keep counting across the seasons of that plan.",
+          "Halfway through a multi-year plan, after 1 completed season on a 3-year plan and 2 on a 5-year plan, the board sends a mid-plan review to your inbox. It is a status message on how the plan is going, with no consequence attached.",
+          "When a plan reaches its full length it expires. It is not simply extended until you finally clear the targets: the board makes its closing assessment, the cumulative counters reset to zero and the plan is set to awaiting negotiation.",
+          "An expired plan does nothing until you negotiate a new one on the Board page. While it waits, it does not count toward your sponsor modifier.",
+          "All three plans can trigger the bonus offer, not just the 1-year plan. Eligibility is checked per plan, so a strong 3-year plan can produce the offer even when the 1-year plan cannot.",
+          "The board gives at most one bonus offer per season, no matter how many plans qualify. It is checked at the season's two checkpoints, mid-season and season end, which is why the offer can arrive at different times from one season to the next."
+        ]
       }
     },
     "auctions": {
@@ -224,8 +236,8 @@
         "text": "Offers are private. Only you and the seller can see your negotiation. Other managers cannot see who has bid on the same rider."
       },
       "archiveCompleted": {
-        "title": "Archive completed offers",
-        "text": "Offers that are rejected, withdrawn or otherwise completed can be archived from the Transfers page. Archiving removes them from active lists, so ongoing negotiations are always easy to find."
+        "title": "Archive completed negotiations",
+        "text": "Offers and swap proposals that are rejected, withdrawn or otherwise completed can be archived from the Transfers page. Archiving removes them from active lists, so ongoing negotiations are always easy to find."
       }
     },
     "managers": {
@@ -727,7 +739,7 @@
       "label": "Riders",
       "valueAndPrice": {
         "title": "Value and price",
-        "text": "A rider's market value comes from the game's valuation model: it estimates the production the rider is expected to deliver for the rest of his career, measured against the game's own season calendar and adjusted for age, development and rider type. Young talents carry value for the seasons ahead of them; veterans are priced on what they have left; the game's absolute elite carry star prices far beyond any team's budget. The starting price on an auction must at minimum equal the rider's Value."
+        "text": "A rider's market value comes from the game's valuation model: it estimates the production the rider is expected to deliver for the rest of his career, measured against the game's own season calendar and adjusted for age, development and rider type. Young talents carry value for the seasons ahead of them; veterans are priced on what they have left; the game's absolute elite carry star prices far beyond any team's budget. The starting price on an auction must at minimum equal the rider's Value. Values are recalculated once a week, every Sunday from 06:00 CET, so a rider's value moves in weekly steps rather than day by day. Training changes his abilities right away; his value follows at the next Sunday update."
       },
       "salary": {
         "title": "Salary",
@@ -1387,7 +1399,7 @@
     },
     "sponsorNegotiation": {
       "q": "How do I negotiate my sponsor, and what do the offers mean?",
-      "a": "You choose your sponsor on the Board page before each new season, where five sponsors are at the table, each with its own way of paying you. The offers are shaped by your club's reputation: your division plus your results over recent seasons, so a strong, established club is offered larger deals than a fresh or low-standing one. Every deal has a guaranteed base, paid at season start and adjusted by board satisfaction by up to plus/minus 20 percent, and a per-stage rate: you earn it for every stage your team starts, and the rate is set against the number of stages in your division's calendar, credited as races finalize. On top of that, deals can carry bonus clauses: a signing bonus paid up front, a bonus per stage win or podium (under a shared cap), or a season objective that pays out at season end if you finish in the top 40 percent of your division. Contracts run 1 to 3 seasons depending on the deal. Your choice locks when the new season starts, and if you don't choose, the club signs the 1-season safe deal for you. The active contract, its clauses and what it has earned you so far are shown on the Finance page under the Sponsor tab; you negotiate again when it expires."
+      "a": "You choose your sponsor on the Board page before each new season, where five sponsors are at the table, each with its own way of paying you. The offers are shaped by your club's reputation: your division plus your results over recent seasons, so a strong, established club is offered larger deals than a fresh or low-standing one. Every deal has a guaranteed base, paid at season start and adjusted by board satisfaction by up to plus/minus 20 percent, and a per-stage rate: you earn it for every stage your team starts, and the rate is set against the number of stages in your division's calendar, credited as races finalize. On top of that, deals can carry bonus clauses: a signing bonus paid up front, a bonus per stage win or podium (under a shared cap that resets at every season change), or a season objective that pays out at season end if you finish in the top 40 percent of your division. Contracts run 1 to 3 seasons depending on the deal. Your choice locks when the new season starts, and if you don't choose, the club signs the 1-season safe deal for you. The active contract, its clauses and what it has earned you so far are shown on the Finance page under the Sponsor tab; you negotiate again when it expires."
     },
     "sponsorMidSeasonOnboarding": {
       "q": "I created my team mid-season, do I get a sponsor right away?",
@@ -1483,7 +1495,7 @@
     },
     "bonusOffer": {
       "q": "What is the bonus offer I just got from the board?",
-      "a": "When satisfaction is above 75% AND at least 75% of your plan targets are met, the board can offer you +200K CZ$ to the balance against one extra target. If your focus is star_signing, the target will be 'Sign 1 star (popularity ≥75)'; otherwise it will be 'Top-3 in at least 1 monument'. You can accept or decline. Accept and the budget is credited immediately via a bonus finance tx, and the target is added to your 1-year plan and evaluated at season end. The board only offers one bonus per season, so if you decline, the chance comes again next season only if the criteria are still met."
+      "a": "When satisfaction is above 75% AND at least 75% of your plan targets are met, the board can offer you +200K CZ$ to the balance against one extra target. Eligibility is checked per plan, so the offer can come from your 3-year or 5-year plan just as well as from the 1-year plan. If your focus is star_signing, the target will be 'Sign 1 star (popularity ≥75)'; otherwise it will be 'Top-3 in at least 1 monument'. You can accept or decline. Accept and the budget is credited immediately via a bonus finance tx, and the extra target is always added to your 1-year plan and evaluated at season end, whichever plan the offer came from. The board only offers one bonus per season, so if you decline, the chance comes again next season only if the criteria are still met. See 'How the 3-year and 5-year plans run' under Board for the full plan lifecycle."
     },
     "boardSatisfactionArrow": {
       "q": "What is the arrow/prognosis under my satisfaction number?",

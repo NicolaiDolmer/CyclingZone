@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { getRiderMarketValue } from "../lib/marketValues";
+import { getEffectiveOfferAmount } from "../lib/offerAmount.js";
 import WatchlistStar from "../components/WatchlistStar";
 import { formatNumber, formatDate, formatRelativeTime } from "../lib/intl";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
@@ -353,7 +354,7 @@ export default function ActivityPage() {
                         rider={`${o.rider?.firstname} ${o.rider?.lastname}`}
                         riderId={o.rider?.id}
                         detail={isSent ? t("detail.to", { name: counterpart }) : t("detail.from", { name: counterpart })}
-                        amount={o.counter_amount ?? o.offer_amount}
+                        amount={getEffectiveOfferAmount(o)}
                         time={formatRelativeTime(o.updated_at)}
                         onClick={() => navigate("/transfers")} />
                     );
@@ -457,7 +458,7 @@ export default function ActivityPage() {
                     rider={`${o.rider?.firstname} ${o.rider?.lastname}`}
                     riderId={o.rider?.id}
                     detail={t("detail.from", { name: o.buyer?.name })}
-                    amount={o.counter_amount ?? o.offer_amount}
+                    amount={getEffectiveOfferAmount(o)}
                     time={formatRelativeTime(o.updated_at)}
                     onClick={() => navigate("/transfers")} />
                 );
@@ -478,7 +479,7 @@ export default function ActivityPage() {
                     rider={`${o.rider?.firstname} ${o.rider?.lastname}`}
                     riderId={o.rider?.id}
                     detail={t("detail.to", { name: o.seller?.name })}
-                    amount={o.counter_amount ?? o.offer_amount}
+                    amount={getEffectiveOfferAmount(o)}
                     time={formatRelativeTime(o.updated_at)}
                     onClick={() => navigate("/transfers")} />
                 );

@@ -276,7 +276,7 @@ export default function KitchenSinkPage() {
             <Tr>
               <Td sticky>
                 <span className="inline-flex items-center gap-2">
-                  <JerseyDot color="#e8c547" title="Maillot jaune" /> Ada Pedersen
+                  <JerseyDot color="rgb(var(--jersey-leader-bg))" title="Maillot jaune" /> Ada Pedersen
                 </span>
               </Td>
               <Td><CategoryTag>GC</CategoryTag></Td>

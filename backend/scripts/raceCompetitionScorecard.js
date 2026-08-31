@@ -57,6 +57,7 @@ import { stableSeed } from "../lib/raceSimulator.js";
 import { autopickTeamSelection } from "../lib/raceAutopick.js";
 import { buildRaceResults } from "../lib/raceRunner.js";
 import { accumulateStageRows, rankByCumTimeAsc, filterCompletedEntrants } from "../lib/raceClassifications.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -72,7 +73,7 @@ const GTS = parseInt(arg("gts", "12"), 10);
 const COUNT = parseInt(arg("count", "800"), 10);
 const FIELD = parseInt(arg("field", "140"), 10);
 const ENFORCE = has("enforce");
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 const TEAM_SIZE = 8;
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));

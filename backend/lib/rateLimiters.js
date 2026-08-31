@@ -125,6 +125,19 @@ export const forumWriteLimiter = buildLimiter({
   errorCode: "rate_forum",
 });
 
+// Billing writes (#4446) — checkout-session og selvbetjenings-portal. Begge
+// kalder Alunta, så et hammer-loop koster os et eksternt kald pr. request og
+// ikke bare DB-tid. Det er en bevidst ét-klik-handling: 10 pr. 10 min rummer
+// rigeligt en fejlet betaling der prøves igen, og lukker scriptet.
+// EN `message` af samme grund som feedbackLimiter (#1068: ingen pre-i18n-kaldere).
+export const billingLimiter = buildLimiter({
+  name: "billing",
+  windowMs: 600_000,
+  max: 10,
+  message: "Too many billing actions in a short time. Try again shortly.",
+  errorCode: "rate_billing",
+});
+
 // Internal export for tests so they can exercise the same factory without
 // hard-coding production thresholds.
 export const __testing__ = { buildLimiter, userOrIpKey };

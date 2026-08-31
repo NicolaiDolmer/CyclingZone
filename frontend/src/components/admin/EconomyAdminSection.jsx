@@ -190,7 +190,7 @@ function HealthView({ getAuth, onMsg }) {
     }
   }
 
-  useEffect(() => { refresh(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { refresh(); /* eslint-disable-line react-hooks/exhaustive-deps -- refresh er lokal funktion (ny ref hver render) — kun mount-fetch */ }, []);
 
   if (!data) return <p className="text-cz-3 text-sm">{loading ? "Indlæser..." : "Ingen data."}</p>;
 
@@ -322,7 +322,7 @@ function OverviewView({ getAuth, onMsg }) {
     }
   }
 
-  useEffect(() => { refresh(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { refresh(); /* eslint-disable-line react-hooks/exhaustive-deps -- refresh er lokal funktion (ny ref hver render) — kun mount-fetch */ }, []);
 
   const totals = useMemo(() => {
     let bal = 0, debt = 0;
@@ -561,7 +561,7 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
   useEffect(() => {
     // initialFilters er kun "live" ved første render — drill-down genmounter via key prop.
     refresh(0);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- refresh er lokal funktion (ny ref hver render) — kun mount-fetch
 
   function applyFilters() { refresh(0); }
   function resetFilters() {
@@ -801,7 +801,7 @@ function AdminLogView({ getAuth, onMsg }) {
     }
   }
 
-  useEffect(() => { refresh(0); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { refresh(0); /* eslint-disable-line react-hooks/exhaustive-deps -- refresh er lokal funktion (ny ref hver render) — kun mount-fetch */ }, []);
 
   function applyFilters() { refresh(0); }
   function resetFilters() {
@@ -955,7 +955,7 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
     }
   }
 
-  useEffect(() => { refresh(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { refresh(); /* eslint-disable-line react-hooks/exhaustive-deps -- refresh er lokal funktion (ny ref hver render) — kun mount-fetch */ }, []);
 
   function drillIntoRun(run) {
     // Pre-fyld Transaktioner-view med actor_id + source_path + ±vindue om started_at..ended_at.
@@ -1119,7 +1119,7 @@ function LevelCorrectionView({ getAuth, onMsg }) {
     }
   }
 
-  useEffect(() => { refreshGate(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { refreshGate(); /* eslint-disable-line react-hooks/exhaustive-deps -- refreshGate er lokal funktion (ny ref hver render) — kun mount-fetch */ }, []);
 
   const statusInfo = gate ? (GATE_STATUS_LABEL[gate.gate_status] || GATE_STATUS_LABEL.red) : null;
 

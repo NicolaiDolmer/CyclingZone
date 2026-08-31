@@ -965,20 +965,52 @@ test("getActiveSponsorPulloutFactor returns 0.9 when pullout is active", async (
   assert.equal(factor, 0.9);
 });
 
-test("expireSeasonScopedConsequences expires only matching season's pullouts", async () => {
+test("expireSeasonScopedConsequences udløber lag 6 for den afsluttede sæson — og RØRER IKKE lag 5", async () => {
+  // #4482: lag 5 har sin EGEN udløbs-sti i economyEngine, som kører EFTER
+  // sponsorudbetalingen. Sæsonstart-hooks kører FØR payroll, så ville denne
+  // funktion tage lag 5 med, blev sponsor-exit'en udløbet før den ramte —
+  // altså en straf annulleret i stilhed. Filteret på lag 6 er load-bearing.
   const supabase = makeFakeSupabase({
     board_consequences: [
-      { id: "pull-1", team_id: "team-1", layer: 5, status: "active", expires_at_season_id: "season-1", payload: {} },
-      { id: "pull-2", team_id: "team-2", layer: 5, status: "active", expires_at_season_id: "season-1", payload: {} },
-      { id: "pull-3", team_id: "team-3", layer: 5, status: "active", expires_at_season_id: "season-2", payload: {} },
+      { id: "offer-1", team_id: "team-1", layer: 6, status: "active", expires_at_season_id: "season-1", payload: {} },
+      { id: "offer-2", team_id: "team-2", layer: 6, status: "active", expires_at_season_id: "season-1", payload: {} },
+      { id: "offer-3", team_id: "team-3", layer: 6, status: "active", expires_at_season_id: "season-2", payload: {} },
+      { id: "pull-1", team_id: "team-4", layer: 5, status: "active", expires_at_season_id: "season-1", payload: {} },
     ],
   });
 
   const result = await expireSeasonScopedConsequences(supabase, "season-1");
-  assert.equal(result.expired, 2);
-  assert.equal(supabase.state.board_consequences.find((c) => c.id === "pull-1").status, "expired");
-  assert.equal(supabase.state.board_consequences.find((c) => c.id === "pull-2").status, "expired");
-  assert.equal(supabase.state.board_consequences.find((c) => c.id === "pull-3").status, "active");
+  const row = (id) => supabase.state.board_consequences.find((c) => c.id === id);
+
+  assert.equal(result.expired, 2, "kun de to lag 6-tilbud fra season-1");
+  assert.equal(row("offer-1").status, "expired");
+  assert.equal(row("offer-2").status, "expired");
+  assert.equal(row("offer-3").status, "active", "en anden sæsons tilbud er urørt");
+  assert.equal(
+    row("pull-1").status,
+    "active",
+    "lag 5 må IKKE udløbes her — economyEngine gør det efter sponsorudbetalingen",
+  );
+});
+
+test("expireSeasonScopedConsequences er idempotent", async () => {
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "offer-1", team_id: "team-1", layer: 6, status: "active", expires_at_season_id: "season-1", payload: {} },
+    ],
+  });
+  assert.equal((await expireSeasonScopedConsequences(supabase, "season-1")).expired, 1);
+  assert.equal((await expireSeasonScopedConsequences(supabase, "season-1")).expired, 0, "andet kald må ikke røre noget");
+});
+
+test("expireSeasonScopedConsequences uden sæson-id er en no-op", async () => {
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "offer-1", team_id: "team-1", layer: 6, status: "active", expires_at_season_id: "season-1", payload: {} },
+    ],
+  });
+  assert.equal((await expireSeasonScopedConsequences(supabase, null)).expired, 0);
+  assert.equal(supabase.state.board_consequences[0].status, "active");
 });
 
 // =====================================================================

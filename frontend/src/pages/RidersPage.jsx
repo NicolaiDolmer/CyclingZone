@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import RiderFilters, { DEFAULT_FILTERS } from "../components/RiderFilters";
 import { fetchRidersPage } from "../lib/useRiderFilters";
@@ -301,7 +301,10 @@ export default function RidersPage() {
     }
   }
 
-  async function loadRiders({ silent = false } = {}) {
+  // #4448: memoized så mount-/filter-effekten kan liste den i sit dependency-
+  // array. Realtime-refetchen nedenfor bliver ved at gå gennem loadRidersRef —
+  // den må IKKE gen-subscribe hver gang filtrene ændrer sig.
+  const loadRiders = useCallback(async ({ silent = false } = {}) => {
     if (!silent) { setLoading(true); setError(null); }
     // Evnerne hentes via join + flades op på rytter-objektet i fetchRidersPage (#1529).
     // #3622: popularity tilføjet — samme rå kolonne som bestyrelsens star-score
@@ -331,9 +334,9 @@ export default function RidersPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [filters, seasonYear]);
 
-  useEffect(() => { loadRiders(); }, [filters, seasonYear]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadRiders(); }, [loadRiders]);
 
   // #916: realtime — opdatér listen når en rytter skifter hold (fx solgt til AI-
   // hold), så TeamCell ikke bliver ved at vise "Fri" på stale data.

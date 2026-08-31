@@ -42,7 +42,7 @@
         },
         "salary": {
           "title": "Rytterløn",
-          "text": "En rytters løn fryses når du signerer ham, til {salaryRatePct}% af hans markedsværdi på det tidspunkt, og ændres ikke automatisk bagefter. Akademiryttere bruger en separat ungdomssats (se Akademi)."
+          "text": "En rytters løn fryses når du signerer ham, til {salaryRatePct}% af hans nuværende produktionsværdi på det tidspunkt, og ændres ikke automatisk bagefter. Produktionsværdien er det spillet forventer han leverer i denne sæson med de evner han har nu, ikke hvad han er værd på markedet. Andelen er den samme for alle hold i alle divisioner, og akademiryttere bruger den også."
         },
         "negativeInterest": {
           "title": "Rente på negativ balance",
@@ -150,7 +150,7 @@
         },
         "salary": {
           "title": "Ungdomsløn & kontrakter",
-          "text": "Akademiryttere får {academySalaryPct}% af deres markedsværdi og signerer {academyContractLength}-sæsoners ungdomskontrakter."
+          "text": "Akademiryttere får {academySalaryPct}% af deres nuværende produktionsværdi, samme andel som seniorryttere, og signerer {academyContractLength}-sæsoners ungdomskontrakter."
         },
         "drift": {
           "title": "Drift",

@@ -1,0 +1,31 @@
+{
+  "$comment": "Kendte eslint-disable-direktiver (ratchet — maa kun skrumpe). Genereret af scripts/check-eslint-disable-count.mjs --update-baseline. Refs #4332. Gennemgangen er GENNEMFOERT 30/8: alle 42 exhaustive-deps-disables blev vurderet enkeltvis mod ESLint's egen melding. 1 var en reel fejl (NotificationsPage's `[userIdRef.current]`-dependency, rettet til rigtig state), de oevrige 41 var legitime og baerer nu hver sin `-- begrundelse` i koden. Guarden haandhaever nu BEGGE dele: antallet maa kun skrumpe, og et direktiv uden begrundelse fejler.",
+  "files": {
+    "backend/lib/proxyBidding.js": 1,
+    "frontend/src/components/TeamDevelopmentTab.jsx": 1,
+    "frontend/src/components/TeamStatsTab.jsx": 2,
+    "frontend/src/components/admin/DeadlineReadinessSection.jsx": 1,
+    "frontend/src/components/admin/EconomyAdminSection.jsx": 6,
+    "frontend/src/components/admin/RacePoolSection.jsx": 1,
+    "frontend/src/components/admin/SeasonCycleSection.jsx": 1,
+    "frontend/src/components/admin/ValuationPreviewSection.jsx": 1,
+    "frontend/src/components/admin/ValuationV4PreviewSection.jsx": 1,
+    "frontend/src/components/admin/sections/BoardTestModeSection.jsx": 1,
+    "frontend/src/hooks/useFlipRows.js": 1,
+    "frontend/src/hooks/useRiderNames.js": 1,
+    "frontend/src/lib/language.jsx": 1,
+    "frontend/src/lib/useAuctionBidding.js": 1,
+    "frontend/src/pages/AuctionsPage.jsx": 1,
+    "frontend/src/pages/BoardPage.jsx": 1,
+    "frontend/src/pages/DashboardPage.jsx": 1,
+    "frontend/src/pages/NotificationsPage.jsx": 1,
+    "frontend/src/pages/ProfilePage.jsx": 1,
+    "frontend/src/pages/RaceDetailPage.jsx": 1,
+    "frontend/src/pages/SeasonEndPage.jsx": 1,
+    "frontend/src/pages/TeamProfilePage.jsx": 1,
+    "frontend/src/pages/TransfersPage.jsx": 2,
+    "frontend/src/pages/admin/AdminDataTab.jsx": 1,
+    "frontend/src/pages/admin/AdminSeasonTab.jsx": 1,
+    "frontend/src/pages/admin/AdminSystemTab.jsx": 1
+  }
+}

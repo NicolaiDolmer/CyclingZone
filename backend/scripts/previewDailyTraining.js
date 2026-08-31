@@ -84,6 +84,7 @@ import {
 } from "../lib/riderCondition.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { isAcademyAge } from "../lib/academyFlag.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 // ── CLI-args (spejler simulateSeasonDryRun.js) ────────────────────────────────
 function arg(name, def) {
@@ -97,7 +98,7 @@ const SEED = parseInt(arg("seed", "2026"), 10);
 const SEASONS = parseInt(arg("seasons", "12"), 10);
 const COUNT = parseInt(arg("count", "400"), 10);
 const ENFORCE_TARGETS = !!arg("enforce-targets", false);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 const cfg = PROGRESSION_CONFIG;
 const trainCfg = DAILY_TRAINING_CONFIG;

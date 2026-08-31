@@ -20,6 +20,7 @@ import { fetchAllRows } from "../lib/supabasePagination.js";
 import { predictBaseValue } from "../lib/riderValuation.js";
 import { VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { RIDER_TYPES } from "../lib/riderTypes.js";
+import { ageForSeason } from "../lib/riderSeasonAge.js";
 import {
   PROGRESSION_CONFIG, buildCaps, developRiderSeason, peakAgeForType,
 } from "../lib/riderProgression.js";
@@ -31,7 +32,6 @@ const SEASONS = (() => {
   const i = process.argv.indexOf("--seasons");
   return i >= 0 ? Math.max(1, parseInt(process.argv[i + 1], 10) || 6) : 6;
 })();
-const AS_OF_YEAR = 2026; // start-sæsonens år (CALIBRATION.asOfYear)
 const MODEL_PATH = join(__dirname, "../lib/riderValuationModel.json");
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
@@ -76,8 +76,7 @@ async function main() {
   for (const r of riders) {
     if (r.is_retired) continue;
     if (!r.birthdate || r.potentiale == null || !r.primary_type) continue;
-    const birthYear = new Date(r.birthdate).getFullYear();
-    const startAge = AS_OF_YEAR - birthYear;
+    const startAge = ageForSeason(r.birthdate, 1);
     if (!(startAge >= 17 && startAge <= 42)) continue; // luk PCM-alders-glitches ude
     const ab = abilityByRider.get(r.id);
     if (!ab) continue;

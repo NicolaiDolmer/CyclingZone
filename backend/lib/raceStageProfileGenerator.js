@@ -48,6 +48,31 @@ import { attachSegmentsAndWeather } from "./routeSegments.js";
 // bevaret: samme seed + samme types-multisæt → samme rækkefølge.
 export const GENERATOR_VERSION = 5;
 
+// #2812: delt row-shaper for de tre skrivesites (tierCalendarMaterializer.js,
+// backfillRaceStageProfiles.js, admin POST /api/admin/races), så de ikke driver
+// fra hinanden om hvilke felter der persisteres. Ren mapping, ingen defaults/
+// null-coalescing — kalderen giver raceId, p kommer direkte fra
+// generateRaceStageProfiles(). is_manual er altid false her; håndredigerede
+// rækker sættes af en separat sti.
+export function toStageProfileRow(raceId, p) {
+  return {
+    race_id: raceId,
+    stage_number: p.stage_number,
+    profile_type: p.profile_type,
+    finale_type: p.finale_type,
+    demand_vector: p.demand_vector,
+    distance_km: p.distance_km,
+    elevation_gain_m: p.elevation_gain_m,
+    climbs: p.climbs,
+    sprints: p.sprints,
+    sectors: p.sectors,
+    segments: p.segments,
+    weather: p.weather,
+    generator_version: GENERATOR_VERSION,
+    is_manual: false,
+  };
+}
+
 // rider_derived_abilities-kolonnerne (scoring-dimensioner). demand_vector-nøgler
 // skal være ⊆ disse ∪ {"randomness"}.
 export const ABILITY_DIMENSIONS = Object.freeze([

@@ -27,6 +27,7 @@ import { auditValuationRows } from "../lib/valuationCutoverAudit.js";
 import { generateLaunchPopulation, LAUNCH_VALUE_BANDS } from "../lib/fictionalLaunchPopulation.js";
 import { foldNameNordic } from "../lib/pcmRiderMatcher.js";
 import { deriveAbilities } from "../lib/abilityDerivation.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue } from "../lib/riderValuation.js";
 
@@ -124,7 +125,7 @@ function chainBandCounts(existingFoldedNames = new Set()) {
   const counts = Object.fromEntries(LAUNCH_VALUE_BANDS.map((b) => [b.key, 0]));
   riders.forEach((r, i) => {
     const riderRow = { ...r, id: `mut-${i}` };
-    const abilities = deriveAbilities({}, riderRow, { asOfYear: 2026 });
+    const abilities = deriveAbilities({}, riderRow, { asOfYear: LAUNCH_REFERENCE_YEAR });
     const { primary } = computeRiderTypes(abilities, typesBaseline);
     const bv = predictBaseValue({ ...riderRow, primary_type: primary.key }, abilities, committedModel);
     const band = LAUNCH_VALUE_BANDS.find((b) => bv >= b.lo && bv < b.hi)?.key ?? "domestik";

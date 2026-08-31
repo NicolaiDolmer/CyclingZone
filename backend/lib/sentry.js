@@ -235,18 +235,38 @@ export function captureCheckIn(payload, monitorConfig) {
   return Sentry.captureCheckIn(payload, monitorConfig);
 }
 
+// #2892 — valgfri lokal heartbeat-recorder (egen cron_checkins-tabel,
+// lib/cronHeartbeat.js). Sentrys basisplan tillader kun 1 aktiv cron-monitor
+// (kvote, ikke en fejl); monitorCron er allerede det ENE sted alle ~40
+// periodiske jobs i cron.js passerer igennem med (slug, config), så det er
+// også det naturlige sted at skrive vores EGEN check-in — uden at kopiere
+// logik ind i hvert af cron.js' kaldsteder. Ren DI: sentry.js forbliver
+// supabase-fri, recorder-fn'en injiceres udefra af cron.js ved boot
+// (setCronHeartbeatRecorder). recordCronCheckIn swallower + logger internt og
+// re-throw'er ALDRIG, så der er bevidst ingen ekstra try/catch her.
+let cronHeartbeatRecorder = null;
+export function setCronHeartbeatRecorder(recorderFn) {
+  cronHeartbeatRecorder = recorderFn;
+}
+
 /**
  * Returnerer en wrapped async-fn der sender in_progress → ok/error check-ins omkring
  * `fn`. Fejl re-throwes (så trackedTick stadig captureExceptioner). Er Sentry
- * disabled, køres fn direkte uden overhead.
+ * disabled, køres fn direkte uden overhead (men heartbeat-recorderen kaldes
+ * stadig — den er Sentry-uafhængig med vilje, se #2892).
  */
 export function monitorCron(monitorSlug, fn, monitorConfig) {
   return async (...args) => {
-    if (!enabled || typeof Sentry.captureCheckIn !== "function") return fn(...args);
+    if (!enabled || typeof Sentry.captureCheckIn !== "function") {
+      const result = await fn(...args);
+      if (cronHeartbeatRecorder) await cronHeartbeatRecorder(monitorSlug, monitorConfig);
+      return result;
+    }
     const checkInId = Sentry.captureCheckIn({ monitorSlug, status: "in_progress" }, monitorConfig);
     try {
       const result = await fn(...args);
       Sentry.captureCheckIn({ checkInId, monitorSlug, status: "ok" }, monitorConfig);
+      if (cronHeartbeatRecorder) await cronHeartbeatRecorder(monitorSlug, monitorConfig);
       return result;
     } catch (err) {
       Sentry.captureCheckIn({ checkInId, monitorSlug, status: "error" }, monitorConfig);

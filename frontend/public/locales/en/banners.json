@@ -28,7 +28,7 @@
       },
       "analytics": {
         "label": "Analytics",
-        "desc": "We anonymously measure how the game is used: which buttons frustrate players (Microsoft Clarity) and where players come from (Google Analytics), so we can fix bad UX."
+        "desc": "We anonymously measure how the game is used: which buttons frustrate players (Microsoft Clarity), where players come from (Google Analytics) and page views (Vercel Web Analytics), so we can fix bad UX."
       },
       "marketing": {
         "label": "Marketing",

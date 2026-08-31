@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 
 import { SALARY_RATE_PRODUCTION, projectSeniorSalary, projectYouthSalary } from "./marketValues.js";
 
-// #3989 forward-guard (afløser salaryProjectionDivision.test.js).
+// #3989 forward-guard (afløser den tidligere salaryProjectionDivision-test, som
+// blev slettet sammen med de per-division-satser den dækkede).
 //
 // Historik: promote-dialogen på akademi-siden viste 161 CZ$ som senior-løn for
 // ENHVER rytter i uger (postmortem 2026-07-23, #2796). Årsagen var TO defaults

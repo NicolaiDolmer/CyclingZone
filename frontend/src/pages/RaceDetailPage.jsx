@@ -872,7 +872,9 @@ export default function RaceDetailPage() {
                   )}
                 </SectionStack>
                 <SectionStack>
-                  <RaceRecap results={results} scopeType="overall" incidents={incidents} />
+                  {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
+                      løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
+                  <RaceRecap results={results} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} />
                   <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
                   <DnfSection incidents={incidents} scopeType="overall" t={t} />
                 </SectionStack>
@@ -937,11 +939,11 @@ export default function RaceDetailPage() {
 // præsentation, ingen ny sim-mekanik). Renderer intet hvis intet kan udledes ærligt.
 // S4 (#1176): incidents er optional — [] (flag off/tabel ikke migreret) giver
 // samme output som før S4 (ingen abandon/notableCrash-momenter).
-function RaceRecap({ results, scopeType, stageNumber, incidents }) {
+function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null }) {
   const { t } = useTranslation("races");
   const moments = useMemo(
-    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents }),
-    [results, scopeType, stageNumber, incidents],
+    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents, profileType }),
+    [results, scopeType, stageNumber, incidents, profileType],
   );
   if (!moments.length) return null;
   return (
@@ -978,12 +980,15 @@ function formatMarginSeconds(sec) {
 // (opslået lokalt) + de samme allerede-offentlige numeriske felter WhyPanel/
 // StoryTagBadges/raceRecap.js allerede bruger (count, gapSeconds→marginText,
 // rank) — aldrig et rå komponent-tal.
-function headlineParamsFor(moment, { riderName, raceName }) {
+function headlineParamsFor(moment, { riderName, teamName, raceName }) {
   const p = moment.params || {};
   switch (moment.moment_key) {
     case "close_win":
     case "solo_win":
       return { rider: riderName(p.riderId), marginText: formatMarginSeconds(p.gapSeconds) };
+    // #4373: holdtidskørslen er holdets præstation, ikke rytterens alene.
+    case "ttt_win":
+      return { rider: riderName(p.riderId), team: teamName(moment.team_ids?.[0]) };
     case "final_gc": {
       const [first] = p.riderIds || [];
       return { rider: riderName(first), race: raceName || "" };
@@ -1030,7 +1035,7 @@ function beatParamsFor(moment, { riderName, teamName }) {
 // etapen; degraderer ærligt til v1 for gamle/PCM-løb (buildRaceReport → null,
 // spec A4 "v1-koden genbruges som fallback-udleder"). "Dit hold" er klient-side
 // personalisering — ingen ny persistering, ingen data forlader klienten.
-function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, t }) {
+function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, profileType = null, t }) {
   const report = useMemo(
     () => buildRaceReport({ raceId, stageNumber, moments }),
     [raceId, stageNumber, moments],
@@ -1063,7 +1068,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
   }, [results, moments, myTeamId, stageNumber, report]);
 
   if (!report) {
-    return <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} />;
+    return <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} profileType={profileType} />;
   }
 
   const ctx = { riderName, teamName, raceName };
@@ -1325,8 +1330,8 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
     [results, stage],
   );
   const finalKmPlayback = useMemo(
-    () => buildFinalKilometrePlayback({ rows: finalKmRows, moments, stageNumber: stage }),
-    [finalKmRows, moments, stage],
+    () => buildFinalKilometrePlayback({ rows: finalKmRows, moments, stageNumber: stage, profileType: profile?.profile_type ?? null }),
+    [finalKmRows, moments, stage, profile],
   );
 
   // #2081: dag-rækkerne er nu FULDE klassementer (rank 1..N pr. etape) — trøje-
@@ -1392,7 +1397,8 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
           <RaceReportPanel
             raceId={raceId} raceName={raceName} stageNumber={stage} moments={moments}
             results={results} incidents={incidents} myTeamId={myTeamId}
-            riderNameById={riderNameById} teamNameById={teamNameById} t={t}
+            riderNameById={riderNameById} teamNameById={teamNameById}
+            profileType={profile?.profile_type ?? null} t={t}
           />
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
@@ -1610,8 +1616,7 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                   const isMine = myOwnTeamId != null && String(rowTeamId) === String(myOwnTeamId);
                   return (
                   <tr key={r.id}
-                    className={`transition-colors ${isWinner ? "bg-cz-accent/10" : isMyTeam ? "bg-cz-accent/5" : "hover:bg-cz-subtle"}`}
-                    style={isMine ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
+                    className={`transition-colors ${isWinner ? "bg-cz-accent/10" : isMyTeam ? "bg-cz-accent/5" : "hover:bg-cz-subtle"}${isMine ? ((isWinner || isMyTeam) ? " cz-me-bar" : " cz-me") : ""}`}
                   >
                     <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                     <td className="px-2 py-2">

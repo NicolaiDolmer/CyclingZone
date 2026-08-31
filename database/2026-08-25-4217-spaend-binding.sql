@@ -32,21 +32,25 @@
 --   · Constrainten no_rider_double_booking_day (UNIQUE rider_id, season_id, game_day)
 --     er UÆNDRET. Det er kun ønske-mængden der vokser.
 --
--- KONFLIKT-RYDNING. Den nye mængde kan ikke skrives så længe der findes overlappende
--- udtagelser, så scriptet rydder dem først, efter en fast prioritet:
---     1. spillerens egne valg (is_auto_filled = false) slår assistentens
---     2. flest etaper vinder (GT > etapeløb > endagsløb)
---     3. tidligste løbsdag vinder
---     4. race_id som tie-break, så kørslen er deterministisk
--- Der genudfyldes IKKE. Ejer-direktiv 25/8: "ikke gå ind og spille spillet på vegne
--- af spillerne". Pladserne står tomme til spilleren selv udtager.
+-- DENNE FIL RØRER INGEN DATA. create or replace erstatter kun funktionsdefinitionen;
+-- scriptet selv indsætter og sletter intet. Nye race_entry_days-rækker opstår først
+-- næste gang funktionen KALDES for et (løb, hold)-par — allerede indsatte rækker fra
+-- FØR migrationen bliver IKKE automatisk genopbygget. Det kostede 20 manglende
+-- dag-rækker ved anvendelsen 25/8 (#4243); rettet ved manuelt at kalde funktionen for
+-- alle (løb, hold)-par i den aktive sæson efter migrationen.
 --
--- IDEMPOTENT. Funktionen er CREATE OR REPLACE; rydningen er et delete af rækker der
--- pr. definition ikke må findes; genopbygningen er #4191's diff. Kører scriptet to
--- gange, sletter anden kørsel nul rækker.
+-- KONFLIKT-RYDNING AF EKSISTERENDE OVERLAP HØRER IKKE HJEMME HER. Findes der allerede
+-- ryttere med overlappende udtagelser (fra tiden hvor bindingen kun dækkede kørte
+-- dage), skal de ryddes FØR funktionens nye ønske-mængde kan skrives konfliktfrit for
+-- dem. Det gør companion-scriptet
+-- database/2026-08-25-4217-ryd-overlappende-udtagelser.sql — inkl. prioritetsreglerne
+-- og dets eget DRY-RUN (v_apply). Se dets header.
 --
--- DRY-RUN. Sæt v_apply := false for kun at tælle. Scriptet ruller da tilbage og
--- rapporterer hvad det VILLE gøre.
+-- IDEMPOTENT (funktionens genopbygning, når den kaldes). Selve genopbygningen inde i
+-- funktionen er #4191's diff (want/gone/insert): kaldes den to gange for samme
+-- (løb, hold)-par uden mellemliggende udtagelses-ændring, ændrer anden kørsel nul
+-- rækker. Det er en egenskab ved funktionen — ikke ved at køre denne migrationsfil,
+-- som kun erstatter definitionen.
 --
 -- Refs #4217 #4173 #4209 #4200 #4201 #4191 #4190 #3420 #1823
 

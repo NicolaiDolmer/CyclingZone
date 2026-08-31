@@ -209,8 +209,8 @@ test("form_peak: vinderens form >= 75", () => {
 test("helper_shift + tag_helper_sacrifice: kaptajn i top-5 modtog hjælp, >=2 hjælpere uden for top-25", () => {
   const ranked = [
     riderRow({ id: "captain", team: "t1", rank: 3, components: { terrain: 0.7, team: 0.05 } }),
-    riderRow({ id: "helper1", team: "t1", rank: 40 }),
-    riderRow({ id: "helper2", team: "t1", rank: 60 }),
+    riderRow({ id: "helper1", team: "t1", rank: 40, components: { work_cost: -0.04 } }),
+    riderRow({ id: "helper2", team: "t1", rank: 60, components: { work_cost: -0.03 } }),
     riderRow({ id: "rival", team: "t2", rank: 1, components: { terrain: 0.9 } }),
   ];
   const roleByRider = new Map([
@@ -234,6 +234,66 @@ test("helper_shift udebliver når kaptajnens team-komponent ikke er positiv (ing
   const roleByRider = new Map([["captain", "captain"], ["helper1", "helper"], ["helper2", "helper"]]);
   const moments = extractStageMoments({ stageNumber: 1, ranked, roleByRider });
   assert.ok(!findMoment(moments, "helper_shift"));
+});
+
+// ── #3145: falske ofrings-tekster på enkeltstarter ──────────────────────────
+// Tre spillere rapporterede "ryttere ofres" på en solo-enkeltstart. Prod 30/8:
+// 616 tag_helper_sacrifice + 166 helper_shift over 71 ITT-etapeinstanser, hvor
+// 607 af de taggede ryttere havde work_cost = 0 — et offer der intet kostede.
+
+test("#3145 itt: hjælpere med work_cost 0 giver HVERKEN helper_shift eller tag_helper_sacrifice", () => {
+  const ranked = [
+    riderRow({ id: "captain", team: "t1", rank: 3, components: { terrain: 0.7, team: 0.05 } }),
+    riderRow({ id: "helper1", team: "t1", rank: 40, components: { work_cost: 0 } }),
+    riderRow({ id: "helper2", team: "t1", rank: 60, components: { work_cost: 0 } }),
+  ];
+  const roleByRider = new Map([["captain", "captain"], ["helper1", "helper"], ["helper2", "helper"]]);
+  for (const profileType of ["itt", "itt_hilly"]) {
+    const moments = extractStageMoments({ stageNumber: 1, profileType, ranked, roleByRider });
+    assert.equal(findMoment(moments, "helper_shift"), undefined, `${profileType} må ikke udsende helper_shift`);
+    assert.equal(findMoments(moments, "tag_helper_sacrifice").length, 0, `${profileType} må ikke tagge ofre`);
+  }
+});
+
+test("#3145 itt: heller ikke en 'hunter' med negativ work_cost kan ofres på en enkeltstart", () => {
+  // WORK_COST_HUNTER er profil-uafhængig og negativ på ALLE profiler
+  // (raceRoles.js baseWorkCost) — 3 af de 616 taggede prod-ryttere var netop
+  // hunters. Work-cost-guarden alene ville lade dem slippe igennem.
+  const ranked = [
+    riderRow({ id: "captain", team: "t1", rank: 3, components: { terrain: 0.7, team: 0.05 } }),
+    riderRow({ id: "hunter1", team: "t1", rank: 40, components: { work_cost: -0.05 } }),
+    riderRow({ id: "hunter2", team: "t1", rank: 60, components: { work_cost: -0.05 } }),
+  ];
+  const roleByRider = new Map([["captain", "captain"], ["hunter1", "hunter"], ["hunter2", "hunter"]]);
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "itt", ranked, roleByRider });
+  assert.equal(findMoment(moments, "helper_shift"), undefined);
+  assert.equal(findMoments(moments, "tag_helper_sacrifice").length, 0);
+});
+
+test("#3145 mountain: ægte etape-offer med negativ work_cost tagges STADIG", () => {
+  const ranked = [
+    riderRow({ id: "captain", team: "t1", rank: 3, components: { terrain: 0.7, team: 0.05 } }),
+    riderRow({ id: "helper1", team: "t1", rank: 40, components: { work_cost: -0.06 } }),
+    riderRow({ id: "helper2", team: "t1", rank: 60, components: { work_cost: -0.06 } }),
+  ];
+  const roleByRider = new Map([["captain", "captain"], ["helper1", "helper"], ["helper2", "helper"]]);
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "mountain", ranked, roleByRider });
+  const shift = findMoment(moments, "helper_shift");
+  assert.ok(shift, "et bjergetape-offer er stadig en ægte fortælling");
+  assert.deepEqual(shift.params.helperIds.sort(), ["helper1", "helper2"]);
+  assert.equal(findMoments(moments, "tag_helper_sacrifice").length, 2);
+});
+
+test("#3145: work-cost-guarden gælder ALLE profiler — ingen hjælper betalte, intet offer", () => {
+  const ranked = [
+    riderRow({ id: "captain", team: "t1", rank: 3, components: { terrain: 0.7, team: 0.05 } }),
+    riderRow({ id: "helper1", team: "t1", rank: 40, components: { work_cost: 0 } }),
+    riderRow({ id: "helper2", team: "t1", rank: 60, components: { work_cost: 0 } }),
+  ];
+  const roleByRider = new Map([["captain", "captain"], ["helper1", "helper"], ["helper2", "helper"]]);
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "flat", ranked, roleByRider });
+  assert.equal(findMoment(moments, "helper_shift"), undefined);
+  assert.equal(findMoments(moments, "tag_helper_sacrifice").length, 0);
 });
 
 test("tag_jour_sans: fyrer når komponenten er forskellig fra 0", () => {
@@ -407,4 +467,70 @@ test("isStoryTagKey: skelner tag_-momenter fra beats", () => {
   assert.ok(isStoryTagKey("tag_jour_sans"));
   assert.ok(!isStoryTagKey("sprint_win"));
   for (const k of STORY_TAG_KEYS) assert.ok(isStoryTagKey(k));
+});
+
+// ── #4373: tidskørsler får deres EGEN vindernøgle ──────────────────────────
+// Regressionen: en prolog (itt) med et par sekunder til nr. 2 blev klassificeret
+// som "sprint_win" og vist som "vinder massespurten" — seks spillere læste det
+// som at spillet favoriserer sprintere på enkeltstarter.
+
+const SPRINT_FIELD_WIN_KEYS = ["sprint_win", "close_win", "solo_win"];
+
+test("#4373 itt: lille gap giver itt_win, ALDRIG sprint_win", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, gap: 0, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 2, gap: 1 }),
+  ];
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "itt", ranked });
+  const m = findMoment(moments, "itt_win");
+  assert.ok(m, "forventede itt_win");
+  assert.equal(m.rider_ids[0], "r1");
+  assert.equal(m.params.gapSeconds, 1, "gap bæres stadig med i params");
+  for (const k of SPRINT_FIELD_WIN_KEYS) {
+    assert.equal(findMoment(moments, k), undefined, `itt må aldrig udsende ${k}`);
+  }
+});
+
+test("#4373 ttt: holdtidskørsel får sin EGEN nøgle, ikke enkeltstartens", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, gap: 0, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 2, gap: 2 }),
+  ];
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "ttt", ranked });
+  assert.ok(findMoment(moments, "ttt_win"), "forventede ttt_win");
+  assert.equal(findMoment(moments, "itt_win"), undefined, "ttt og itt deler ikke nøgle");
+  for (const k of SPRINT_FIELD_WIN_KEYS) {
+    assert.equal(findMoment(moments, k), undefined, `ttt må aldrig udsende ${k}`);
+  }
+});
+
+test("#4373 itt: stort gap giver STADIG itt_win (ikke solo_win — man kører altid alene)", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, gap: 0, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 2, gap: 90 }),
+  ];
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "itt", ranked });
+  assert.ok(findMoment(moments, "itt_win"));
+  assert.equal(findMoment(moments, "solo_win"), undefined);
+});
+
+test("#4373 itt: kun én rytter (intet gap) giver itt_win, ikke solo_win", () => {
+  const ranked = [riderRow({ id: "r1", rank: 1, gap: 0, components: { terrain: 0.9 } })];
+  const moments = extractStageMoments({ stageNumber: 1, profileType: "itt", ranked });
+  const m = findMoment(moments, "itt_win");
+  assert.ok(m);
+  assert.equal(m.params.gapSeconds, null);
+  assert.equal(findMoment(moments, "solo_win"), undefined);
+});
+
+test("#4373: ukendt/manglende profil er UÆNDRET (flad etape spurter stadig)", () => {
+  const ranked = [
+    riderRow({ id: "r1", rank: 1, gap: 0, components: { terrain: 0.9 } }),
+    riderRow({ id: "r2", rank: 2, gap: 1 }),
+  ];
+  for (const profileType of [null, undefined, "flat", "mountain"]) {
+    const moments = extractStageMoments({ stageNumber: 1, profileType, ranked });
+    assert.ok(findMoment(moments, "sprint_win"), `${profileType} skal stadig give sprint_win`);
+    assert.equal(findMoment(moments, "itt_win"), undefined);
+  }
 });

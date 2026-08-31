@@ -10,6 +10,10 @@ import { resultEntity } from "./raceResultEntity.js";
 
 // Solo vs. spurt-grænse: et gab på ≥10s til nr. 2 = en "solo"-fortælling.
 const SOLO_THRESHOLD_S = 10;
+// #4373: gab-grænsen ovenfor beskriver et FELT der kommer til stregen. På en
+// enkeltstart/holdtidskørsel mødes rytterne aldrig, så hverken "vandt spurten"
+// eller "kørte solo" er sandt — disciplinen får sin egen linje.
+const TIME_TRIAL_WIN_KEY = { itt: "ittWin", ttt: "tttWin" };
 const MAX_MOMENTS = 5;
 
 // S4 (#1176): styrt/mekaniske uheld (race_incidents). Cap på abandon-momenter
@@ -94,7 +98,7 @@ function jerseyWinnerName(results, type) {
   return first ? resultEntity(first).name : null;
 }
 
-export function buildRaceRecap({ results = [], scope, incidents = [] } = {}) {
+export function buildRaceRecap({ results = [], scope, incidents = [], profileType = null } = {}) {
   const sc = scope || { type: "overall" };
   const moments = [];
   const finish = selectFinishOrder(results, sc);
@@ -105,9 +109,12 @@ export function buildRaceRecap({ results = [], scope, incidents = [] } = {}) {
   const winnerName = resultEntity(first).name;
 
   // 1) Sejr + margin.
+  const timeTrialWinKey = TIME_TRIAL_WIN_KEY[profileType] ?? null;
   if (winnerName) {
     const marginS = second ? parseGapSeconds(second.finish_time) : null;
-    if (marginS == null) {
+    if (timeTrialWinKey) {
+      moments.push({ key: timeTrialWinKey, params: { rider: winnerName } });
+    } else if (marginS == null) {
       moments.push({ key: "win", params: { rider: winnerName } });
     } else if (marginS >= SOLO_THRESHOLD_S) {
       moments.push({ key: "soloWin", params: { rider: winnerName, marginText: formatMargin(second.finish_time) } });

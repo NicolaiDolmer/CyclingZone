@@ -111,6 +111,18 @@
       "midSeasonCheck": {
         "title": "Mid-season check",
         "text": "Midt i sæsonen (halvdelen af race-days gennemført) tjekker bestyrelsen automatisk din plan-status. Hvis tilfredshed <50% eller mindst halvdelen af målbare mål er 'behind', modtager du en 'Skal handles'-notif i Indbakken. Mid-season-punktet er også det første hårde checkpoint: er tilfredsheden faldet under konsekvens-tærsklerne på det tidspunkt, anvender bestyrelsen de tilsvarende konsekvens-lag (det andet checkpoint er sæson-slut). Mellem checkpoints bevæger tilfredsheden sig frit uden at udløse hårde konsekvenser."
+      },
+      "multiYearLifecycle": {
+        "title": "Sådan kører 3- og 5-årsplanen",
+        "text": "Dine tre planer kører parallelt og er helt adskilte: hver har sine egne mål, sin egen tilfredshed og sin egen fornyelses-kadence. At forhandle 1-årsplanen ændrer aldrig 3- eller 5-årsmålene.",
+        "steps": [
+          "En plan løber sin fulde længde, 1, 3 eller 5 sæsoner. Ved hver sæsons slutning evaluerer bestyrelsen den, og kumulative mål (etapesejre, GC-sejre) tæller videre på tværs af planens sæsoner.",
+          "Midtvejs i en flerårsplan, efter 1 gennemført sæson på en 3-årsplan og 2 på en 5-årsplan, sender bestyrelsen et midtvejs-review til din indbakke. Det er en status på hvordan planen går, uden konsekvens knyttet til.",
+          "Når en plan når sin fulde længde, udløber den. Den bliver ikke bare forlænget indtil du endelig klarer målene: bestyrelsen laver sin afsluttende vurdering, de kumulative tællere nulstilles, og planen sættes til afventer forhandling.",
+          "En udløbet plan gør ingenting før du forhandler en ny på Bestyrelse-siden. Mens den venter, tæller den ikke med i din sponsor-modifier.",
+          "Alle tre planer kan udløse bonustilbuddet, ikke kun 1-årsplanen. Berettigelsen tjekkes pr. plan, så en stærk 3-årsplan kan udløse tilbuddet selv når 1-årsplanen ikke kan.",
+          "Bestyrelsen giver højst ét bonustilbud pr. sæson, uanset hvor mange planer der kvalificerer sig. Det tjekkes ved sæsonens to checkpoints, midtvejs og ved slutningen, og derfor kan tilbuddet lande på forskellige tidspunkter fra sæson til sæson."
+        ]
       }
     },
     "auctions": {
@@ -224,8 +236,8 @@
         "text": "Tilbud er private. Kun du og sælger kan se jeres forhandling. Andre managers kan ikke se hvem der har budt på samme rytter."
       },
       "archiveCompleted": {
-        "title": "Arkivér afsluttede tilbud",
-        "text": "Tilbud der er afvist, trukket tilbage eller på anden vis afsluttet kan arkiveres fra Transfers-siden. Arkivering fjerner dem fra aktive lister, så igangværende forhandlinger altid er nemme at finde."
+        "title": "Arkivér afsluttede forhandlinger",
+        "text": "Tilbud og bytteforslag der er afvist, trukket tilbage eller på anden vis afsluttet kan arkiveres fra Transfers-siden. Arkivering fjerner dem fra aktive lister, så igangværende forhandlinger altid er nemme at finde."
       }
     },
     "managers": {
@@ -727,7 +739,7 @@
       "label": "Ryttere",
       "valueAndPrice": {
         "title": "Værdi og pris",
-        "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder, udvikling og ryttertype. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi."
+        "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder, udvikling og ryttertype. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi. Værdier genberegnes én gang om ugen, hver søndag fra kl. 06, så en rytters værdi bevæger sig i ugentlige spring frem for dag for dag. Træning ændrer hans evner med det samme; værdien følger med ved næste søndagsopdatering."
       },
       "salary": {
         "title": "Løn",
@@ -1387,7 +1399,7 @@
     },
     "sponsorNegotiation": {
       "q": "Hvordan forhandler jeg min sponsor, og hvad betyder tilbuddene?",
-      "a": "Du vælger din sponsor på Bestyrelse-siden før hver ny sæson, hvor fem sponsorer sidder ved bordet, hver med sin egen måde at betale dig på. Tilbuddene formes af din klubs omdømme: din division plus dine resultater over de seneste sæsoner, så en stærk, etableret klub tilbydes større aftaler end en ny klub eller en klub med lav anseelse. Hver aftale har en garanteret base, der udbetales ved sæsonstart og justeres af bestyrelsens tilfredshed med op til plus/minus 20 procent, og en sats pr. etape: du tjener den for hver etape dit hold stiller til start i, og satsen sættes ud fra antallet af etaper i din divisions kalender, krediteret efterhånden som løbene finaliseres. Oven i det kan aftaler bære bonusklausuler: en underskriftsbonus der udbetales med det samme, en bonus pr. etapesejr eller podieplads (under et fælles loft), eller et sæsonmål der udbetales ved sæsonafslutning hvis du slutter i top-40 % af din division. Kontrakter løber 1 til 3 sæsoner afhængigt af aftalen. Dit valg låses når den nye sæson starter, og vælger du ikke, underskriver klubben den sikre 1-sæsons aftale for dig. Den aktive kontrakt, dens klausuler og hvad den indtil videre har indbragt dig, vises på Finanser-siden under Sponsor-fanen; du forhandler igen når den udløber."
+      "a": "Du vælger din sponsor på Bestyrelse-siden før hver ny sæson, hvor fem sponsorer sidder ved bordet, hver med sin egen måde at betale dig på. Tilbuddene formes af din klubs omdømme: din division plus dine resultater over de seneste sæsoner, så en stærk, etableret klub tilbydes større aftaler end en ny klub eller en klub med lav anseelse. Hver aftale har en garanteret base, der udbetales ved sæsonstart og justeres af bestyrelsens tilfredshed med op til plus/minus 20 procent, og en sats pr. etape: du tjener den for hver etape dit hold stiller til start i, og satsen sættes ud fra antallet af etaper i din divisions kalender, krediteret efterhånden som løbene finaliseres. Oven i det kan aftaler bære bonusklausuler: en underskriftsbonus der udbetales med det samme, en bonus pr. etapesejr eller podieplads (under et fælles loft, der nulstilles ved hvert sæsonskifte), eller et sæsonmål der udbetales ved sæsonafslutning hvis du slutter i top-40 % af din division. Kontrakter løber 1 til 3 sæsoner afhængigt af aftalen. Dit valg låses når den nye sæson starter, og vælger du ikke, underskriver klubben den sikre 1-sæsons aftale for dig. Den aktive kontrakt, dens klausuler og hvad den indtil videre har indbragt dig, vises på Finanser-siden under Sponsor-fanen; du forhandler igen når den udløber."
     },
     "sponsorMidSeasonOnboarding": {
       "q": "Jeg oprettede mit hold midt i sæsonen, får jeg en sponsor med det samme?",
@@ -1483,7 +1495,7 @@
     },
     "bonusOffer": {
       "q": "Hvad er bonus-tilbuddet jeg lige fik fra bestyrelsen?",
-      "a": "Når tilfredsheden er over 75% OG mindst 75% af dine plan-mål er nået, kan bestyrelsen tilbyde dig +200K CZ$ til balancen mod ét ekstra-mål. Hvis dit fokus er star_signing, vil målet være 'Sign 1 stjerne (popularity ≥75)'; ellers vil det være 'Top-3 i mindst 1 monument'. Du kan acceptere eller afvise. Acceptér og budgettet krediteres straks via en bonus-finance-tx, og målet tilføjes til din 1-årsplan og evalueres ved sæsonens slutning. Bestyrelsen tilbyder kun ét bonus pr. sæson, så afslår du, kommer chancen først igen næste sæson hvis kriterierne stadig er opfyldt."
+      "a": "Når tilfredsheden er over 75% OG mindst 75% af dine plan-mål er nået, kan bestyrelsen tilbyde dig +200K CZ$ til balancen mod ét ekstra-mål. Berettigelsen tjekkes pr. plan, så tilbuddet kan lige så vel komme fra din 3- eller 5-årsplan som fra 1-årsplanen. Hvis dit fokus er star_signing, vil målet være 'Sign 1 stjerne (popularity ≥75)'; ellers vil det være 'Top-3 i mindst 1 monument'. Du kan acceptere eller afvise. Acceptér og budgettet krediteres straks via en bonus-finance-tx, og ekstra-målet lægges altid på din 1-årsplan og evalueres ved sæsonens slutning, uanset hvilken plan tilbuddet kom fra. Bestyrelsen tilbyder kun ét bonus pr. sæson, så afslår du, kommer chancen først igen næste sæson hvis kriterierne stadig er opfyldt. Se 'Sådan kører 3- og 5-årsplanen' under Bestyrelse for hele plan-livscyklussen."
     },
     "boardSatisfactionArrow": {
       "q": "Hvad betyder pilen/prognosen under mit tilfredsheds-tal?",

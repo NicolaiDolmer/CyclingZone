@@ -23,6 +23,32 @@ export const GRADUATION = Object.freeze({
 
 const VALID_ACTIONS = new Set(["promote", "sell", "release"]);
 
+/**
+ * Slå den AKTUELLE pending graduerings-række op for (hold, rytter).
+ *
+ * #4484: academy_graduation er UNIQUE(rider_id, season_id) — én række pr.
+ * rytter PR. SÆSON. En rytter der har været i akademiet over to sæsoner på
+ * samme hold har derfor FLERE rækker, og et opslag på team_id+rider_id alene
+ * rammer dem alle. PostgREST's maybeSingle() svarer da med en fejl + data=null,
+ * hvilket alle fire kaldsteder læste som "ingen række":
+ *   - resolveGraduation kastede 'not_pending' i evig løkke (graduerings-sweepet
+ *     fejlede 23 gange på én nat, og manageren fik 409 på sin egen knap),
+ *   - de tre best-effort-stier sprang stille deres oprydning over.
+ *
+ * Derfor: scope på status='pending' og tag den nyeste (den aktive sæsons).
+ * Kaster ved DB-fejl — en fejlet SELECT må ikke maskere sig som "ingen række".
+ */
+export async function findPendingGraduation(supabase, { teamId, riderId } = {}) {
+  const { data, error } = await supabase.from("academy_graduation")
+    .select("id, status")
+    .eq("team_id", teamId).eq("rider_id", riderId).eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`findPendingGraduation: ${error.message}`);
+  return data ?? null;
+}
+
 export function isGraduateAge(age) {
   return Number.isFinite(age) && age >= GRADUATION.GRADUATE_AGE;
 }
@@ -99,13 +125,15 @@ export async function resolveGraduation(supabase, {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!VALID_ACTIONS.has(action)) throw new Error("invalid_action");
 
-  const { data: grad } = await supabase.from("academy_graduation")
-    .select("id, status").eq("team_id", teamId).eq("rider_id", riderId).maybeSingle();
-  if (!grad || grad.status !== "pending") throw new Error("not_pending");
+  // #2997-intentionen (fejl må ikke blive til sentinel-kast) bor i helperen:
+  // findPendingGraduation kaster med ægte årsag ved læsefejl.
+  const grad = await findPendingGraduation(supabase, { teamId, riderId });
+  if (!grad) throw new Error("not_pending");
 
-  const { data: rider } = await supabase.from("riders")
+  const { data: rider, error: riderError } = await supabase.from("riders")
     .select("id, team_id, firstname, lastname, base_value, prize_earnings_bonus, current_production_value, market_value, salary, contract_length, contract_end_season")
     .eq("id", riderId).maybeSingle();
+  if (riderError) throw new Error(`resolveGraduation rider lookup: ${riderError.message}`);
   if (!rider) throw new Error("rider_not_found");
 
   if (action === "promote") {
@@ -247,7 +275,16 @@ async function createGraduateAuction(supabase, { teamId, rider, now = new Date()
 }
 
 async function resolveAuctionConfig(supabase) {
-  const { data } = await supabase.from("auction_timing_config").select("*").eq("id", 1).single();
+  // #2997: DEFAULT_AUCTION_CONFIG-fallbacken er designet til at dække en
+  // MANGLENDE config-række (auctionEngine.js), ikke en fejlet læsning. Uden
+  // `error` bundet blev de to tilfælde ens, og en graduate-auktion kunne få en
+  // helt anden varighed end den konfigurerede — en kontrakt manageren ikke kan
+  // rulle tilbage bagefter. PGRST116 = ingen række → behold fallbacken; alt
+  // andet kaster, og da kaldet ligger FØR insert'et fejler vi lukket.
+  const { data, error } = await supabase.from("auction_timing_config").select("*").eq("id", 1).single();
+  if (error && error.code !== "PGRST116") {
+    throw new Error(`resolveAuctionConfig: could not read auction_timing_config: ${error.message}`);
+  }
   return data || DEFAULT_AUCTION_CONFIG;
 }
 
@@ -275,10 +312,8 @@ export async function resolvePendingGraduationOnSale(supabase, { teamId, riderId
   try {
     // best-effort: en fejlet SELECT her er samme klasse fejl som resten af
     // funktionen (se docblok) — sluges bevidst af den ydre catch, aldrig kastet.
-    const { data: grad, error: selectError } = await supabase.from("academy_graduation")
-      .select("id, status").eq("team_id", teamId).eq("rider_id", riderId).maybeSingle();
-    if (selectError) throw new Error(selectError.message);
-    if (!grad || grad.status !== "pending") return;
+    const grad = await findPendingGraduation(supabase, { teamId, riderId });
+    if (!grad) return;
     const { error } = await supabase.from("academy_graduation")
       .update({ status: "sold", resolved_at: now.toISOString() })
       .eq("id", grad.id);

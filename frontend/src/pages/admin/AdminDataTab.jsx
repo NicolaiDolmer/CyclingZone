@@ -66,7 +66,7 @@ export default function AdminDataTab() {
     }
   }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData/loadEngineStatus er lokale funktioner (ny ref hver render) — kun mount-fetch
   useEffect(() => { loadData(); loadEngineStatus(); }, []);
 
   async function handleCreateRace(e) {

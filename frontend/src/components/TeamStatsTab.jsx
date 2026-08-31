@@ -91,7 +91,7 @@ export default function TeamStatsTab({ riders }) {
     return () => { cancelled = true; };
     // riderIdsKey er den stabile proxy for riderIds (nyt array-ref hver render) —
     // effekten skal kun genkøre når rytter-sættet eller reloadToken faktisk ændrer sig.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- riderIdsKey er den stabile streng-proxy for riderIds (nyt array-ref hver render)
   }, [riderIdsKey, reloadToken]);
 
   function handleSort(key) {
@@ -105,7 +105,7 @@ export default function TeamStatsTab({ riders }) {
       const diff = (b[sortKey] || 0) - (a[sortKey] || 0);
       return sortDir === "desc" ? diff : -diff;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- memoet læser kun id/navn/nationalitet fra riders — felter der ikke ændrer sig når riderIdsKey er uændret; tallene kommer fra statsByRider, som ER en dependency
   }, [riderIdsKey, statsByRider, sortKey, sortDir]);
 
   if (loading) return <SkeletonLines lines={6} />;

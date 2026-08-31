@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {
   Card, Button, Select, Table, Tr, Th, Td,
@@ -127,7 +127,9 @@ export function SprintMetricsContent() {
   const [error, setError] = useState(null);
   const [lastFetched, setLastFetched] = useState(null);
 
-  async function loadMetrics() {
+  // #4448: memoized så effekten kan liste den; identiteten skifter præcis
+  // når windowChoice skifter, altså samme kald-hyppighed som før.
+  const loadMetrics = useCallback(async () => {
     setLoading(true);
     setError(null);
     const [metricsRes, cohortRes] = await Promise.all([
@@ -145,14 +147,13 @@ export function SprintMetricsContent() {
       setCohorts(cohortRes.data?.cohorts ?? []);
     }
     setLoading(false);
-  }
+  }, [windowChoice]);
 
   useEffect(() => {
     loadMetrics();
     const id = setInterval(loadMetrics, REFRESH_MS);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowChoice]);
+  }, [loadMetrics]);
 
   const kpis = useMemo(() => {
     if (!metrics) return null;

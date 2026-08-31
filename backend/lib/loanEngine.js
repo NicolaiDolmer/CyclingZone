@@ -56,14 +56,22 @@ async function getDefaultSupabaseClient() {
 // 07d Fase B / #240: Slå aktiv sæson op, så api-callsites til createLoan/repayLoan
 // kan stamp'e season_id eksplicit i payload. DB-trigger fill_finance_tx_season()
 // er en safety-net, men callsites skal være selv-dokumenterende.
+// #2997: HELE denne fil er pengesti, så retningen er KAST. supabase-js kaster
+// ikke selv — en fejlet læsning returnerer { data: null, error }, og uden
+// `error` bundet bliver "kunne ikke læses" til en tom liste eller en nul-værdi
+// der ligner et gyldigt svar: 0 i gæld (gældsloftet åbner), ingen låneprodukter,
+// ingen sæson-stempling på finance_tx. Alle mutationerne herunder går gennem
+// *_atomic-RPC'er der selv re-validerer under lås, så et kast i pre-flight
+// fejler LUKKET uden delvis pengebevægelse.
 async function fetchActiveSeasonId(client) {
-  const { data } = await client
+  const { data, error } = await client
     .from("seasons")
     .select("id")
     .eq("status", "active")
     .order("number", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) throw new Error(`Could not load active season for loan stamping: ${error.message}`);
   return data?.id ?? null;
 }
 
@@ -71,18 +79,23 @@ async function fetchActiveSeasonId(client) {
 
 export async function getLoanConfig(teamId, supabaseClient = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
-  const { data: team } = await client.from("teams").select("division").eq("id", teamId).single();
-  const { data: configs } = await client.from("loan_config").select("*").eq("division", team.division);
+  const { data: team, error: teamError } = await client.from("teams").select("division").eq("id", teamId).single();
+  if (teamError) throw new Error(`Could not load team ${teamId} for loan config: ${teamError.message}`);
+  const { data: configs, error: configError } = await client.from("loan_config").select("*").eq("division", team.division);
+  if (configError) throw new Error(`Could not load loan_config for division ${team.division}: ${configError.message}`);
   return configs || [];
 }
 
 export async function getTotalDebt(teamId, supabaseClient = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
-  const { data: loans } = await client
+  // Kritisk: en tabt fejl her returnerer 0 i gæld, og så åbner gældsloftet i
+  // createLoan for et hold der reelt allerede er ved loftet.
+  const { data: loans, error } = await client
     .from("loans")
     .select("amount_remaining")
     .eq("team_id", teamId)
     .eq("status", "active");
+  if (error) throw new Error(`Could not load active loans for team ${teamId}: ${error.message}`);
   return (loans || []).reduce((sum, l) => sum + l.amount_remaining, 0);
 }
 
@@ -472,11 +485,21 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
   // actual mutation — repay_loan_atomic re-validates loan ownership/status/
   // balance itself, under an advisory lock + FOR UPDATE, so a concurrent
   // repay or a stale read here can never create money or double-spend debt.
-  const { data: loan } = await client.from("loans").select("*").eq("id", loanId).single();
+  // #2997: PGRST116 ("ingen række") ER den legitime not-found-sti lige nedenfor.
+  // Enhver ANDEN fejl er en reel læsefejl, og uden `error` bundet blev den
+  // maskeret som "Lån ikke fundet"/"Ikke nok midler" — en løgn til manageren og
+  // usynlig i Sentry.
+  const { data: loan, error: loanError } = await client.from("loans").select("*").eq("id", loanId).single();
+  if (loanError && loanError.code !== "PGRST116") {
+    throw new Error(`Could not load loan ${loanId}: ${loanError.message}`);
+  }
   if (!loan || loan.team_id !== teamId) throw new Error("Lån ikke fundet");
   if (loan.status === "paid_off") throw new Error("Lånet er allerede betalt");
 
-  const { data: team } = await client.from("teams").select("balance").eq("id", teamId).single();
+  const { data: team, error: teamError } = await client.from("teams").select("balance").eq("id", teamId).single();
+  if (teamError && teamError.code !== "PGRST116") {
+    throw new Error(`Could not load balance for team ${teamId}: ${teamError.message}`);
+  }
   if (!team || team.balance < amount) throw new Error("Ikke nok midler");
 
   // #44: penge låst i aktive bud/autobud kan ikke bruges til at betale gæld.

@@ -24,6 +24,7 @@ import { seedPhysiologyFromLegacy } from "../../lib/physiologySeeding.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
 import { buildCapsForRider, buildYouthCaps } from "../../lib/riderProgression.js";
 import { computeRiderTypes, NEUTRAL_BASELINE, RIDER_TYPE_KEYS, RIDER_TYPES, scoreRiderType, GUARDS } from "../../lib/riderTypes.js";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 import { gateI1CapsWithinPotentialLoft, gateI2YouthBandCeiling, gateI3GraduationLevelTail, PHYSICAL_ABILITIES } from "./lib/progressionGates3564.mjs";
 
 // ── LEGACY gc-guard (FØR #3570 fase 2 — SLETTET fra lib/riderTypes.js af denne PR) ──
@@ -60,7 +61,7 @@ function arg(name, def) {
 }
 const N = parseInt(arg("n", "3000"), 10);
 const SEED = parseInt(arg("seed", "2026"), 10);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 // Samme ejer-defineret knaphedsmål som scorecard3570YouthBaseline.mjs (#3564-kæden).
 const SCARCITY_TARGET_PCT = Object.freeze({

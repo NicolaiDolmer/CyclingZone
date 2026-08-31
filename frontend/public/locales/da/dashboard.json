@@ -159,6 +159,8 @@
         "close_win": "{rider} vandt med kun {seconds, plural, one {# sekund} other {# sekunder}}.",
         "close_win_generic": "{rider} holdt til sejr i den tætteste af finaler.",
         "solo_win": "{rider} kørte fra feltet og vandt alene forrest.",
+        "itt_win": "{rider} satte dagens hurtigste tid.",
+        "ttt_win": "{rider} førte dagens hurtigste hold i mål.",
         "breakaway_survived": "{rider} holdt udbruddet i mål og vandt forrest.",
         "gc_takeover_won": "{rider} overtog føringen fra {previousLeader}.",
         "gc_takeover_lost": "{rider} tabte føringen til {newLeader}.",

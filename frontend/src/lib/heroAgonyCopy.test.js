@@ -60,3 +60,9 @@ test("heroAgonyEyebrowKeyFor: tone → hero/agony/moment", () => {
   assert.equal(heroAgonyEyebrowKeyFor(moment({ tone: "neutral" })), "moment");
   assert.equal(heroAgonyEyebrowKeyFor(null), "moment");
 });
+
+// #4373: tidskørsels-sejre skal have deres egen tekst på Hero & Agony-kortet.
+test("#4373: itt_win/ttt_win mapper til egne nøgler (ikke sprint_win)", () => {
+  assert.equal(heroAgonyCopyFor(moment({ kind: "itt_win" })).key, "itt_win");
+  assert.equal(heroAgonyCopyFor(moment({ kind: "ttt_win" })).key, "ttt_win");
+});
