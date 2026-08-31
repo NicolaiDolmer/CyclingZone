@@ -864,10 +864,12 @@ test("FIX 1 recovery: finalization-pending løb re-kører finalization til compl
   });
   assert.equal(r.recovered, true, "recovery skal markeres");
   assert.equal(rpcCalled, 0, "recovery må IKKE kalde den atomære result-write-RPC");
-  // #1995: deferred-transfer-flushen læser race_entries (deltagerliste) ved
-  // finalization — også i recovery (idempotent). Præcis ÉN read er derfor OK;
-  // pointen er stadig at startfeltet ikke genindlæses til re-simulering (rpcCalled=0).
-  assert.equal(entriesLoaded, 1, "kun flushens deltager-read — ingen re-simulering af startfeltet");
+  // #1995 + #4423: BÅDE deferred-transfer-flushen OG deferred-academy-signing-
+  // flushen læser hver sin race_entries (deltagerliste) ved finalization — også
+  // i recovery (idempotent, samme diskriminator som normal-stien). To reads er
+  // derfor OK; pointen er stadig at startfeltet ikke genindlæses til
+  // re-simulering (rpcCalled=0).
+  assert.equal(entriesLoaded, 2, "kun de to flushs' deltager-reads — ingen re-simulering af startfeltet");
   assert.equal(recompute, 1, "recovery skal køre recompute");
   assert.equal(board, 1, "recovery skal køre board-weekend");
   assert.equal(discord, 0, "recovery må IKKE gen-sende Discord (dobbelt-send-guard)");

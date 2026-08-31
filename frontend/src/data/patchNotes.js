@@ -28,6 +28,20 @@ export const PATCHES = [
       {
         "category": "fixed",
         "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy signing no longer pulls a rider out of a race in progress",
+          "body": "Signing an Academy candidate who was already racing for your senior squad removed him from the field on the next stage, with no notice. Signing him now waits until his current stage race is finished if that happens; the contract and fee are still set immediately, and he keeps racing for your senior squad in the meantime."
+        },
+        "da": {
+          "title": "Akademi-signing fjerner ikke længere en rytter fra et løb i gang",
+          "body": "At signe en akademikandidat der allerede kørte for din seniortrup fjernede ham fra feltet på næste etape, uden varsel. Signeringen venter nu til hans etapeløb er kørt færdigt, hvis det sker; kontrakt og gebyr sættes stadig med det samme, og han fortsætter med at køre for din seniortrup i mellemtiden."
+        },
+        "refs": [4423]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
         "topic": "Sponsors",
         "en": {
           "title": "Result bonus cap now resets each season",
