@@ -30,7 +30,13 @@ export const RULES_NUMBERS = {
   sponsorD3: 340000, // SPONSOR_INCOME_BY_DIVISION[3]
   sponsorCeilingS1: 720000, // FINAL_SPONSOR_PAYOUT_CEILING.S1
   sponsorCeilingS2: 900000, // FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS
-  salaryRatePct: 6.7, // SALARY_RATE (0.067) × 100
+  // #4479: stod 6.7 og var pinnet til LEGACY-konstanten SALARY_RATE (0.067 ×
+  // market_value), som ingen signeringssti har brugt siden #3989. Den kørende
+  // formel er current_production_value × SALARY_RATE_PRODUCTION, så /rules og
+  // /help viste både forkert sats OG forkert grundlag — mens drift-guarden var
+  // grøn, fordi den pinnede til den døde konstant. Nu pinnet til den konstant
+  // der faktisk fryser lønnen (ECONOMY_RULES §8 modsigelse 2, lukket).
+  salaryRatePct: 35, // SALARY_RATE_PRODUCTION (0.35) × 100 — andel af current_production_value
   negativeInterestPct: 10, // NEGATIVE_BALANCE_INTEREST_RATE (0.10) × 100
   debtD1: 1200000, // DEBT_CEILING_BY_DIVISION[1]
   debtD2: 900000, // DEBT_CEILING_BY_DIVISION[2]
@@ -67,7 +73,12 @@ export const RULES_NUMBERS = {
   academySlots: 8, // ACADEMY.SLOTS
   academyMinAge: 16, // ACADEMY.MIN_AGE
   academyMaxAge: 21, // ACADEMY.MAX_AGE
-  academySalaryPct: 6.7, // ACADEMY.SALARY_RATE × 100 (#2083: ensrettet til den delte SALARY_RATE = salaryRatePct)
+  // #4479: stod 6.7 og var pinnet til ACADEMY.SALARY_RATE, som stadig peger på
+  // legacy-satsen. Akademi-signering (academyIntake.js) og promote
+  // (academyTransfer.js) kalder begge computeFrozenSalary — altså PRÆCIS samme
+  // formel som senior siden #3989. Der findes ikke længere en separat
+  // ungdomssats, så tallet er nu det samme som salaryRatePct og pinnes samme sted.
+  academySalaryPct: 35, // SALARY_RATE_PRODUCTION (0.35) × 100 — identisk med salaryRatePct (#2083/#3989)
   academyContractLength: 3, // ACADEMY.CONTRACT_LENGTH
   academyDrift: 5000, // ACADEMY.DRIFT_PER_SEASON
   academySigningFeePct: 25, // ACADEMY.SIGNING_FEE_RATE × 100 (#2796: prisen vises nu på kandidatkortet, så hjælpen skal kunne forklare tallet)
