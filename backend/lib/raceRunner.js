@@ -85,6 +85,8 @@ import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter,
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
+// #4423: flush udskudte akademi-optagelser ved løbs-finalisering (spejler #1995 ovenfor).
+import { flushDeferredAcademySigningsForRace } from "./academySigningDefer.js";
 import { refreshRankingMatviewsSafe } from "./refreshRankingMatviews.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 // #2072: klassements-kernen (ranking, tie-breaks, gap-parsing, akkumulering) er
@@ -119,6 +121,25 @@ async function flushDeferredTransfersSafe({ supabase, race }) {
     }
   } catch (err) {
     console.error(`  ⚠️  deferred-transfer flush fejlede for race ${race.id} (#1995, ikke-fatal):`, err.message);
+  }
+}
+
+// #4423: flush udskudte akademi-optagelser (pending_academy_signing → is_academy=true)
+// når et etapeløb er finaliseret. Samme mønster/robusthed som #1995's flush
+// ovenfor (idempotent, ingen finalizationPending-guard, fejl sluges).
+async function flushDeferredAcademySigningsSafe({ supabase, race }) {
+  try {
+    const notifyTeamOwner = (teamId, type, title, message, relatedId = null, metadata = null) =>
+      notifyTeamOwnerShared({ supabase, teamId, type, title, message, relatedId, metadata });
+    const { ridersFlushed } = await flushDeferredAcademySigningsForRace(supabase, race, { notifyTeamOwner });
+    if (ridersFlushed > 0) {
+      console.log(`  🎓 ${ridersFlushed} udskudt akademi-optagelse(r) flushet efter ${race.name || race.id} (#4423)`);
+    }
+  } catch (err) {
+    // Fejlen må ikke vælte finaliseringen, men den må heller ikke forsvinde:
+    // en fejlet flush efterlader rytteren permanent i pending-limbo.
+    console.error(`  ⚠️  deferred-academy-signing flush fejlede for race ${race.id} (#4423, ikke-fatal):`, err.message);
+    captureException(err, { tags: { flow: "race-run", stage: "deferred-academy-signing-flush" }, raceId: race.id });
   }
 }
 
@@ -1725,6 +1746,8 @@ export async function simulateRace({
 
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
   await flushDeferredTransfersSafe({ supabase, race });
+  // #4423: løbet er finaliseret → flush udskudte akademi-optagelser for deltagerne.
+  await flushDeferredAcademySigningsSafe({ supabase, race });
 
   // #1306 spec 6.4: løbsdage bygger træthed — én batch pr. simuleret etape, kun ved
   // persist (dry-run returnerer allerede ovenfor). Fejl sluges: træthed er additiv
@@ -2642,6 +2665,8 @@ export async function simulateStageByIndex({
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
   // Idempotent, så den kører også i recovery-genkørsel (ingen finalizationPending-guard).
   await flushDeferredTransfersSafe({ supabase, race });
+  // #4423: løbet er finaliseret → flush udskudte akademi-optagelser for deltagerne.
+  await flushDeferredAcademySigningsSafe({ supabase, race });
 
   // #3193: normal final-etape-afvikling refresher allerede tidligere i denne
   // funktion (lige efter updateStandings, isFinalStage-gated) — et kald her

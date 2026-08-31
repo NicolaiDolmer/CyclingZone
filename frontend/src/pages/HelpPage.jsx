@@ -300,6 +300,9 @@ const SECTION_DEFS = [
       // #4066: wired in — what trains a rider with no focus set follows the
       // "Train today" action it applies to.
       { id: "smartDefault", kind: "text" },
+      // #4522: the assistant-suggestions review panel documents itself right
+      // after the smart default it builds on.
+      { id: "assistantSuggestions", kind: "text" },
       { id: "formFatigue", kind: "text" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
@@ -412,6 +415,7 @@ const FAQ_KEYS = [
   "riderDevelopment",
   "academyIntakeScoutingFaq",
   "academyIntakeExpiryFaq",
+  "academySigningMidRaceFaq",
   "howToWinRace",
   "whyReportFaq",
   "riderAbilities",
