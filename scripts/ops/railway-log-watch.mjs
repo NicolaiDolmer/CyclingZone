@@ -283,13 +283,48 @@ export function selectDeployments(deployments, startIso, endIso, max = 40) {
 
 /**
  * Railway CLI'en installeres som en .cmd-shim paa Windows, og spawnSync uden
- * shell finder kun rene .exe'er. Vi koerer derfor gennem shell paa win32 og
- * citerer argumenter med mellemrum (service-navne kan have dem).
+ * shell finder kun rene .exe'er (Node naegter desuden at spawne .cmd/.bat uden
+ * shell siden 18.20.2). Vi koerer derfor hele kommandolinjen gennem shell paa
+ * win32 og citerer argumenter med mellemrum (service-navne kan have dem).
  */
 const NEEDS_SHELL = process.platform === "win32";
 
-function shellQuote(arg) {
-  return /[\s"]/.test(arg) ? `"${String(arg).replace(/"/g, '\\"')}"` : arg;
+/**
+ * Tegn der er ufarlige i baade cmd.exe og POSIX-shells. Bevidst UDEN % og !
+ * (variabel-ekspansion i cmd.exe sker ogsaa inde i citationstegn) og uden
+ * & | ^ < > ( ) ; $ ` (kommandoseparatorer/substitution).
+ */
+const SAFE_ARG_RE = /^[A-Za-z0-9 _.,:+@/-]+$/;
+/** Samme, men med backslash - kun til CLI-stien (RAILWAY_CLI_BIN paa Windows). */
+const SAFE_PATH_RE = /^[A-Za-z0-9 _.,:+@/\\-]+$/;
+
+/**
+ * Vi ESCAPER ikke argumenterne. Indtil CodeQL-alarm #353 gjorde vi det med
+ * `.replace(/"/g, '\\"')`, og den escape var ufuldstaendig: den daekkede
+ * citationstegnet, men ikke selve escape-tegnet, saa et argument der ender paa
+ * backslash braekkede citeringen. cmd.exe har desuden ingen paalidelig escape
+ * for %, ! eller ^, og et argument uden mellemrum blev slet ikke citeret.
+ *
+ * I stedet VALIDERER vi. Alt scriptet sender er kendte former: faste flag,
+ * service-/miljoenavn, deployment-uuid, ISO-tidsstempler, heltal og evt. en
+ * CLI-sti. En allowlist er baade snaevrere og lettere at raesonnere om end en
+ * escape - og efter validering kan et argument ikke indeholde tegn der kan
+ * bryde ud af citeringen.
+ *
+ * Valideringen koerer paa ALLE platforme (ogsaa hvor vi sender argv-array og
+ * ikke bruger shell), saa et forkert service-navn fejler ens i CI paa Linux og
+ * lokalt paa Windows - ikke foerst naar vagten koerer paa den anden platform.
+ */
+export function shellQuote(arg, { allowBackslash = false } = {}) {
+  const value = String(arg);
+  const pattern = allowBackslash ? SAFE_PATH_RE : SAFE_ARG_RE;
+  // En afsluttende backslash ville escape det lukkende citationstegn.
+  if (!pattern.test(value) || value.endsWith("\\")) {
+    throw new Error(
+      `[railway-log-watch] argument afvist (utilladte tegn): ${JSON.stringify(value.slice(0, 80))}`,
+    );
+  }
+  return /\s/.test(value) ? `"${value}"` : value;
 }
 
 function runRailway(bin, args, { allowFail = false, projectId, wantStatus = false } = {}) {
@@ -297,8 +332,10 @@ function runRailway(bin, args, { allowFail = false, projectId, wantStatus = fals
   // - `railway deployment list` har ingen --project-flag.
   const env = projectId ? { ...process.env, RAILWAY_PROJECT_ID: projectId } : process.env;
   const opts = { encoding: "utf8", maxBuffer: 128 * 1024 * 1024, env };
+  // Validér altid; citér kun naar vi faktisk bygger en shell-kommandolinje.
+  const quoted = [shellQuote(bin, { allowBackslash: true }), ...args.map((a) => shellQuote(a))];
   const res = NEEDS_SHELL
-    ? spawnSync([bin, ...args].map(shellQuote).join(" "), { ...opts, shell: true })
+    ? spawnSync(quoted.join(" "), { ...opts, shell: true })
     : spawnSync(bin, args, opts);
   const stderr = String(res.stderr ?? "");
   const missingCli = res.error?.code === "ENOENT" || /not recognized|command not found|No such file/i.test(stderr);

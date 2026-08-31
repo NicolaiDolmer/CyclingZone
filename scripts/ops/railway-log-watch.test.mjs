@@ -13,6 +13,7 @@ import {
   normalizeBucket,
   selectDeployments,
   selectDeploymentsDetailed,
+  shellQuote,
   tagTotals,
   UNTAGGED,
   windowCoverageError,
@@ -324,4 +325,44 @@ test("FORWARD-GUARD: the scanner sees every console level, not just warn and err
   for (const tag of ["discord-dm:stdout", "discord-dm:muted", "discord-dm:no-recipient"]) {
     assert.ok(tags.has(tag), `${tag} emitteres via console.log/info og skal vaere synlig for scanneren`);
   }
+});
+
+// ── shellQuote (CodeQL #353) ────────────────────────────────────────────────
+
+test("quotes an argument with spaces, leaves a plain one alone", () => {
+  assert.equal(shellQuote("CyclingZone"), "CyclingZone");
+  assert.equal(shellQuote("My Service"), '"My Service"');
+});
+
+test("passes the argument shapes the watch actually sends", () => {
+  // Faste flag, uuid, ISO-tidsstempel og heltal - alt hvad runRailway bygger.
+  for (const arg of [
+    "--service",
+    "eebd4f5f-e440-45bf-8adc-97a7355bc439",
+    "2026-08-31T04:00:00.000Z",
+    "1000",
+    "production",
+  ]) {
+    assert.equal(shellQuote(arg), arg);
+  }
+});
+
+test("REGRESSION #353: rejects shell metacharacters instead of passing them through unquoted", () => {
+  // Den gamle escape citerede kun ved mellemrum/citationstegn, saa 'svc&whoami'
+  // gik raat til cmd.exe hvor & er en kommandoseparator.
+  for (const bad of ["svc&whoami", "svc|more", "svc^x", "%PATH%", "!DELAYED!", "$(id)", "a`b", "svc;ls", "svc>out"]) {
+    assert.throws(() => shellQuote(bad), /argument afvist/, `${bad} skal afvises`);
+  }
+});
+
+test("REGRESSION #353: rejects a trailing backslash, which escaped the closing quote", () => {
+  // `"C:\tools\"` - den afsluttende backslash aad citationstegnet, og resten af
+  // kommandolinjen blev laest som noget andet end tiltaenkt.
+  assert.throws(() => shellQuote("C:\\tools\\", { allowBackslash: true }), /argument afvist/);
+  assert.throws(() => shellQuote('a"b'), /argument afvist/);
+});
+
+test("only the CLI path may contain backslashes", () => {
+  assert.equal(shellQuote("C:\\tools\\railway.cmd", { allowBackslash: true }), "C:\\tools\\railway.cmd");
+  assert.throws(() => shellQuote("C:\\tools\\railway.cmd"), /argument afvist/);
 });
