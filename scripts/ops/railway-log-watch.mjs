@@ -324,7 +324,11 @@ export function shellQuote(arg, { allowBackslash = false } = {}) {
       `[railway-log-watch] argument afvist (utilladte tegn): ${JSON.stringify(value.slice(0, 80))}`,
     );
   }
-  return /\s/.test(value) ? `"${value}"` : value;
+  // Citér ALTID. Allowlisten goer citeringen unoedvendig i dag, men "citér kun
+  // ved mellemrum" var praecis hul nr. 2 i #353: 'svc&whoami' matchede ikke
+  // /[\s"]/ og gik raat til cmd.exe. Citerer vi ubetinget, kan en senere
+  // udvidelse af allowlisten ikke genaabne det hul lydloest.
+  return `"${value}"`;
 }
 
 function runRailway(bin, args, { allowFail = false, projectId, wantStatus = false } = {}) {
@@ -505,8 +509,14 @@ async function main() {
     lineCapHits = cur.lineCapHits + prev.lineCapHits;
   } catch (err) {
     console.error(`[railway-log-watch] FAIL: ${err.message}`);
-    console.error("  Lokalt: 'railway login' + 'railway link -p <projekt> -e production -s CyclingZone'.");
-    console.error("  I CI: saet RAILWAY_TOKEN som GitHub-secret (aldrig i kode/logs).");
+    // Et afvist argument er en tastefejl i --service/--environment/RAILWAY_CLI_BIN,
+    // ikke en manglende login. Login-hintet ville sende fejlsoegningen forkert vej.
+    if (/argument afvist/.test(err.message)) {
+      console.error("  Tjek --service / --environment / RAILWAY_CLI_BIN: kun bogstaver, tal og _ . , : + @ / - er tilladt.");
+    } else {
+      console.error("  Lokalt: 'railway login' + 'railway link -p <projekt> -e production -s CyclingZone'.");
+      console.error("  I CI: saet RAILWAY_TOKEN som GitHub-secret (aldrig i kode/logs).");
+    }
     process.exit(1);
   }
 

@@ -329,8 +329,10 @@ test("FORWARD-GUARD: the scanner sees every console level, not just warn and err
 
 // ── shellQuote (CodeQL #353) ────────────────────────────────────────────────
 
-test("quotes an argument with spaces, leaves a plain one alone", () => {
-  assert.equal(shellQuote("CyclingZone"), "CyclingZone");
+test("quotes UNCONDITIONALLY, not only when the argument has spaces", () => {
+  // "citér kun ved mellemrum" var hul nr. 2 i #353. Ubetinget citering betyder
+  // at en senere udvidelse af allowlisten ikke kan genaabne hullet lydloest.
+  assert.equal(shellQuote("CyclingZone"), '"CyclingZone"');
   assert.equal(shellQuote("My Service"), '"My Service"');
 });
 
@@ -343,7 +345,7 @@ test("passes the argument shapes the watch actually sends", () => {
     "1000",
     "production",
   ]) {
-    assert.equal(shellQuote(arg), arg);
+    assert.equal(shellQuote(arg), `"${arg}"`);
   }
 });
 
@@ -363,6 +365,6 @@ test("REGRESSION #353: rejects a trailing backslash, which escaped the closing q
 });
 
 test("only the CLI path may contain backslashes", () => {
-  assert.equal(shellQuote("C:\\tools\\railway.cmd", { allowBackslash: true }), "C:\\tools\\railway.cmd");
+  assert.equal(shellQuote("C:\\tools\\railway.cmd", { allowBackslash: true }), '"C:\\tools\\railway.cmd"');
   assert.throws(() => shellQuote("C:\\tools\\railway.cmd"), /argument afvist/);
 });
