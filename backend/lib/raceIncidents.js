@@ -142,3 +142,51 @@ export async function loadAbandonedRiderIds({ supabase, raceId }) {
   if (error) throw new Error(`race_incidents (abandoned): ${error.message}`);
   return new Set((data || []).map((r) => r.rider_id));
 }
+
+/**
+ * #4418: registrér ryttere der IKKE kunne stille til start paa denne etape fordi
+ * de var skadet, som en udgaaelse (kind='injury', outcome='abandon').
+ *
+ * Hvorfor en egen skriver frem for persistIncidents:
+ *   1. persistIncidents upserter rider_condition.injury_cause='race_crash' for
+ *      hver abandon. Skaden her er opstaaet UDEN FOR loebet (typisk
+ *      training_overload) og ejes af rider_condition — den maa ikke overskrives.
+ *   2. persistIncidents' delete-then-insert daekker HELE etapen. Kaldes den efter
+ *      denne, forsvinder raekkerne her igen. Kald-stedet skriver derfor FOERST
+ *      simuleringens incidents, saa disse.
+ *
+ * Idempotent: scoped delete-then-insert paa (race_id, stage_number, kind='injury')
+ * alene, saa simuleringens crash/mechanical-raekker for samme etape er uroerte.
+ * time_loss_seconds/injury_days er null — rytteren tabte ikke tid i et loeb han
+ * ikke startede, og skadens laengde staar i rider_condition.
+ *
+ * @param {{supabase, raceId:string, stageNumber:number, riderIds:string[]}} args
+ * @returns {Promise<number>} antal skrevne raekker
+ */
+export async function persistInjuryWithdrawals({ supabase, raceId, stageNumber, riderIds = [] }) {
+  const { error: deleteError } = await supabase
+    .from("race_incidents")
+    .delete()
+    .eq("race_id", raceId)
+    .eq("stage_number", stageNumber)
+    .eq("kind", "injury");
+  if (deleteError) {
+    throw new Error(
+      `race_incidents (injury-withdrawal delete) race ${raceId} etape ${stageNumber}: ${deleteError.message}`
+    );
+  }
+  const unique = [...new Set(riderIds.filter(Boolean))];
+  if (!unique.length) return 0;
+  const rows = unique.map((riderId) => ({
+    race_id: raceId,
+    stage_number: stageNumber,
+    rider_id: riderId,
+    kind: "injury",
+    outcome: "abandon",
+    time_loss_seconds: null,
+    injury_days: null,
+  }));
+  const { error } = await supabase.from("race_incidents").insert(rows);
+  if (error) throw new Error(`race_incidents (injury-withdrawal insert): ${error.message}`);
+  return rows.length;
+}

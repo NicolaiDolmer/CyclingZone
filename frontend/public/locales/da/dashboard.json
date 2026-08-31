@@ -173,7 +173,7 @@
         "tag_peak_day": "{rider} timede sin form til at toppe denne etape.",
         "tag_jour_sans": "{rider} havde simpelthen ikke benene i dag.",
         "tag_crash_ruined": "{rider}s etape blev ødelagt af et {kind, select, crash {styrt} mechanical {mekanisk defekt} other {uheld}}.",
-        "incident_abandon": "{rider} udgik af etapen efter et {kind, select, crash {styrt} mechanical {mekanisk defekt} other {uheld}}.",
+        "incident_abandon": "{kind, select, crash {{rider} udgik af etapen efter et styrt.} mechanical {{rider} udgik af etapen efter en mekanisk defekt.} injury {{rider} stillede ikke til start: skadet.} other {{rider} udgik af etapen efter et uheld.}}",
         "incident_time_loss": "{rider} tabte {seconds, plural, one {# sekund} other {# sekunder}} til et {kind, select, crash {styrt} mechanical {mekanisk defekt} other {uheld}}.",
         "incident_time_loss_generic": "{rider} tabte tid til et {kind, select, crash {styrt} mechanical {mekanisk defekt} other {uheld}}.",
         "tag_outsider_win": "{rider} vandt uden at være den stærkeste rytter på papiret.",
