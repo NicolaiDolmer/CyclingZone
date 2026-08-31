@@ -67,8 +67,7 @@ export default function StartListColumn({ column, myTeamId = null }) {
             return (
               <div
                 key={g.team.id}
-                className="px-3 py-1.5 border-b border-cz-border/50 last:border-0"
-                style={isMine ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
+                className={`px-3 py-1.5 border-b border-cz-border/50 last:border-0${isMine ? " cz-me-block" : ""}`}
               >
                 <p className="text-2xs font-medium text-cz-2 mb-1 truncate">
                   <TeamLink id={g.team.id} className="hover:text-cz-accent-t transition-colors">{g.team.name ?? t("browse.unknownTeam")}</TeamLink>

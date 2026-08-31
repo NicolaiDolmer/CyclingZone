@@ -165,8 +165,9 @@ export default function GlobalRankPage() {
     const isLeader = row.global_rank === 1;
     return {
       onClick: () => navigate(`/teams/${row.team_id}?tab=results`),
-      className: `cursor-pointer${isLeader ? " bg-cz-accent/[0.08]" : ""}`,
-      style: isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined,
+      // #2795-opfoelgning: markeringen sidder paa cellerne (index.css), ikke som
+      // box-shadow paa <tr>. Leder-raekker faar kun kanten, saa guldet bevares.
+      className: `cursor-pointer${isLeader ? " bg-cz-accent/[0.08]" : ""}${isMe ? (isLeader ? " cz-me-bar" : " cz-me") : ""}`,
     };
   }
 
@@ -178,8 +179,7 @@ export default function GlobalRankPage() {
 
       {/* Egen placering — fastgjort bånd øverst, altid synlig uanset filter/side (godkendt mockup). */}
       {myRow && (
-        <Card className="mb-4 px-4 py-3.5 flex items-center gap-4 flex-wrap"
-          style={{ boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" }}>
+        <Card className="cz-me-block mb-4 px-4 py-3.5 flex items-center gap-4 flex-wrap">
           <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>
             {t("youBadge")}
