@@ -248,6 +248,40 @@ jobs:
       - name: Run required-ci-jobs guard
         run: node scripts/check-required-ci-jobs.mjs
 
+  workflow-output-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #4463 forward-guard: en vagt der gaar GROEN uden at maale noget. Nat-vagten
+    # calendar-invariant-audit rapporterede success 30/8 uden en eneste maalt
+    # invariant, fordi dens parser stod som `node ... | tee invariants.txt` uden
+    # pipefail: under bash -e taeller kun sidste kommandos exit-kode, `tee`
+    # returnerer 0, og de senere steps blev sprunget over fordi outputtet de
+    # betinger sig af aldrig blev skrevet. Anden gang samme fejlklasse rammer, se
+    # .claude/learnings/2026-08-28-groent-flueben-der-intet-verificerede.md.
+    # Guarden flagger ethvert step der skriver til GITHUB_OUTPUT og piper sin
+    # maaling uden pipefail.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test workflow-output guard
+        run: node --test scripts/lint-workflow-output-masking.test.mjs
+
+      - name: Run workflow-output guard
+        run: node scripts/lint-workflow-output-masking.mjs
+
+      # #4463: samme familie. Guarden ovenfor sikrer at maalingens exit-kode NAAR
+      # frem; denne sikrer at rapporten den producerer faktisk INDEHOLDER
+      # maalinger - forskellen paa "intet brud" og "intet maalt".
+      - name: Test invariant-rapportens parser
+        run: node --test scripts/summarize-invariant-report.test.mjs
+
   postgrest-cap-guard:
     runs-on: ubuntu-latest
     permissions:

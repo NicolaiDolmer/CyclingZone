@@ -118,52 +118,45 @@ test("pakkerens Div 1-layout kan genskabes fra datoerne alene og bestaar invaria
   }
 });
 
-// ── #4075: monumentet faar sin EGEN loebsdag, men beholder sin kalenderdato ───────
+// ── #4236/#4465: monumentet faar IKKE laengere sin egen loebsdag ──────────────────
+//
+// #4075 (laast 21/8) reserverede en eksklusiv loebsdag til hvert monument. Ejeren
+// ophaevede reglen 26/8 (#4236): #4217's spaend-baserede binding havde fjernet
+// gevinsten (0 delte ryttere i alle 9 monument/etapeloeb-kombinationer, maalt mod
+// prod), mens det eksklusive indskud stadig rev hul i fem D1-etapeloebs loebsdage.
+// Afledningen pakker derfor monumenter som ethvert andet loeb.
 
-test("monument faar egen eksklusiv in-game-dag paa en dato det deler med andre loeb (#4075)", () => {
-  const rows = [
-    { race_id: "gt", stage_number: 4, scheduled_at: at("2026-08-31", "11:00"), game_day: 13 },
-    { race_id: "mon", stage_number: 1, scheduled_at: at("2026-08-31", "13:00"), game_day: 13 },
-    { race_id: "owt", stage_number: 2, scheduled_at: at("2026-08-31", "15:00"), game_day: 13 },
-  ];
-  const r = deriveGameDayAxis({
-    scheduleRows: rows, overlapCap: 3, monumentRaceIds: new Set(["mon"]),
-  });
-  const gdOf = (id) => r.rows.find((x) => x.race_id === id).game_day;
-  assert.equal(r.monumentDayCount, 1);
-  assert.notEqual(gdOf("mon"), gdOf("gt"));
-  assert.notEqual(gdOf("mon"), gdOf("owt"));
-
-  // Kalenderdatoen deles fortsat — kun loebsdagen er eksklusiv.
-  for (const x of r.rows) assert.equal(String(x.scheduled_at).slice(0, 10), "2026-08-31");
-
-  const check = checkCalendarOverlapInvariants({
-    scheduleRows: r.rows, overlapCap: 3, monumentRaceIds: new Set(["mon"]),
-  });
-  assert.equal(check.monumentSharedDayViolationCount, 0);
-  assert.equal(check.overlapViolationCount, 0);
-});
-
-test("monumentets loebsdag foelger tidsslottet — tidligere loeb faar lavere loebsdag (#4075)", () => {
-  const rows = [
-    { race_id: "a", stage_number: 1, scheduled_at: at("2026-08-31", "09:00"), game_day: 0 },
-    { race_id: "mon", stage_number: 1, scheduled_at: at("2026-08-31", "17:00"), game_day: 0 },
-  ];
-  const r = deriveGameDayAxis({ scheduleRows: rows, overlapCap: 3, monumentRaceIds: ["mon"] });
-  const gdOf = (id) => r.rows.find((x) => x.race_id === id).game_day;
-  assert.ok(gdOf("a") < gdOf("mon"), "det tidligste loeb skal have den laveste loebsdag");
-  assert.equal(r.gameDayCount, 2);
-});
-
-test("uden monumentRaceIds er afledningen BIT-IDENTISK med foer #4075-reglen", () => {
+test("monument pakkes som ethvert andet loeb — ingen reserveret loebsdag (#4236/#4465)", () => {
   const rows = [
     { race_id: "gt", stage_number: 4, scheduled_at: at("2026-08-31", "11:00"), game_day: 13 },
     { race_id: "mon", stage_number: 1, scheduled_at: at("2026-08-31", "13:00"), game_day: 13 },
     { race_id: "owt", stage_number: 2, scheduled_at: at("2026-08-31", "15:00"), game_day: 13 },
     { race_id: "gt", stage_number: 5, scheduled_at: at("2026-09-01", "11:00"), game_day: 14 },
   ];
+  const r = deriveGameDayAxis({ scheduleRows: rows, overlapCap: 3 });
+  assert.equal(r.gameDayCount, 2, "3 loeb paa dato 1 (cap 3) + 1 paa dato 2");
+  assert.deepEqual(r.rows.map((x) => x.game_day), [0, 0, 0, 1]);
+  assert.equal(
+    r.monumentDayCount, undefined,
+    "monument-taellingen er fjernet — kommer den tilbage, er en ophaevet regel genindfoert"
+  );
+
+  // Ingen etape har flyttet dato, og aksen holder stadig cap + etape-reglen.
+  for (const x of r.rows) {
+    assert.ok(["2026-08-31", "2026-09-01"].includes(String(x.scheduled_at).slice(0, 10)));
+  }
+  const check = checkCalendarOverlapInvariants({ scheduleRows: r.rows, overlapCap: 3 });
+  assert.equal(check.overlapViolationCount, 0);
+  assert.equal(check.stageRepeatViolationCount, 0);
+});
+
+test("et efterladt monumentRaceIds-argument kan ikke genoplive reglen (#4465)", () => {
+  const rows = [
+    { race_id: "a", stage_number: 1, scheduled_at: at("2026-08-31", "09:00"), game_day: 0 },
+    { race_id: "mon", stage_number: 1, scheduled_at: at("2026-08-31", "17:00"), game_day: 0 },
+  ];
   const uden = deriveGameDayAxis({ scheduleRows: rows, overlapCap: 3 });
-  assert.equal(uden.gameDayCount, 2, "3 loeb paa dato 1 (cap 3) + 1 paa dato 2");
-  assert.equal(uden.monumentDayCount, 0);
-  assert.deepEqual(uden.rows.map((x) => x.game_day), [0, 0, 0, 1]);
+  const med = deriveGameDayAxis({ scheduleRows: rows, overlapCap: 3, monumentRaceIds: ["mon"] });
+  assert.deepEqual(med.rows, uden.rows);
+  assert.equal(uden.gameDayCount, 1, "begge loeb deler nu loebsdag — cap 3 er ikke naaet");
 });

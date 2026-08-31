@@ -179,7 +179,7 @@ Spændet er i alle tre tilfælde præcis `etaper + 2`, hvilket bekræfter `GRAND
 
 **Monument-reglen, præcist (ejer 26/8, [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)).** Et monument har **ikke** længere sin egen eksklusive løbsdag. Reglen kom 21/8 for at sikre fulde felter i sæsonens fem største endagsløb, men holdt op med at levere da [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217) gjorde bindingen spænd-baseret 24 timer før: rytteren er bundet hele etapeløbets spænd, også hen over monumentets løbsdag. Målt mod prod 26/8: **0 delte ryttere i alle 9 monument/etapeløb-kombinationer** — gevinsten var væk. Prisen blev betalt alligevel, for det eksklusive indskud rev hul i løbsdagene hos fem D1-etapeløb og var eneste årsag til at kronologi-reglen var brudt. Det der stadig gælder er at monumenterne ligger **spredt over sæsonen**; det måles i `raceCalendarLanePackerInvariants.test.js:125` med to konkrete tal: mindst **2 kalenderdage** mellem to nabomonumenter og mindst **14 kalenderdages** samlet spredning fra første til sidste.
 
-> ⚠ **Prod-invarianten håndhæver stadig den ophævede regel.** `backend/scripts/verify-invariants.js` kører fortsat `calendar_monument_exclusive_game_day` mod prod og fejler når et monument deler løbsdag — ordret *"et monument skal have dagen for sig selv (#4075/#4176)"*. Målt i prod 30/8 deler **3 af 5 monumenter** løbsdag, præcis som #4236 tillader: Milano-Riviera (`game_day` 11, med Giro della Penisola) · La Doyenne des Ardennes (24, med La Course au Soleil + Tour des Volcans d'Auvergne) · L'Enfer du Nord (55, med Tour du Hedjaz + Vuelta Ibérica). Nat-audit-kørslerne 27/8, 28/8 og 29/8 fejlede alle tre af den grund. Rettes i [#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465): invarianten skal enten fjernes sammen med reglen eller vendes om til at måle **spredningen**, som er det der er tilbage. Målt 30/8 ligger de fem på `game_day` 11, 24, 44, 55, 69. Tallet for "spredt" på løbsdags-aksen er ikke fastlagt — se §11 punkt 5.
+> **Det ene spørgsmål ejeren skal svare på:** hvad er minimumsafstanden mellem to monumenter **på løbsdags-aksen (`game_day`)**, og skal den håndhæves mod prod? Testen ovenfor måler i KALENDERDAGE mod en fixture (`>= 2` mellem naboer, `>= 14` i samlet spredning) — der findes ingen tilsvarende gate mod prod og intet låst tal på løbsdags-aksen. Målt mod prod 30/8 ligger D1's fem monumenter på game_day 11, 24, 44, 55 og 69, altså med 13, 20, 11 og 14 løbsdages mellemrum; et krav på ≤ 11 løbsdage ville den nuværende kalender holde. Indtil tallet er låst, gættes det ikke på plads, og der kommer ingen `verify-invariants`-gate på spredningen ([#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465)).
 
 > **Andelen måles på ANTAL LØB, ikke på løbsdage.** Det er et bevidst valg (#3327) og står i kodens overskrift. Målt på løbsdage ville D1 være 14 % — målt på løb er den 61 %.
 
@@ -472,19 +472,12 @@ Det tredje niveau er dét der manglede da #4155 brød overlap-cap'en. Tre invari
 - `calendar_overlap_within_tier_cap`
 - `calendar_one_stage_per_race_per_game_day`
 - `calendar_game_day_axis_not_collapsed`
-- `calendar_monument_exclusive_game_day` ([#4075](https://github.com/NicolaiDolmer/CyclingZone/issues/4075), tilføjet 24/8)
 
-Monument-reglen var den første der havde alle tre niveauer samtidigt:
+Overlap-cap'en (§8) er tættest på: niveau 1 (`calendarOverlapInvariant.test.js`, `raceCalendarLanePacker.test.js`) og niveau 3 (`calendar_overlap_within_tier_cap`) er på plads. Niveau 2 er IKKE verificeret: `detectCalendarViolations` tjekker GT-rygrad og klasse-whitelist, ikke cap'en — pakkeren får cap'en med som input, men preflighten måler den ikke bagefter. Ingen regel i denne fil er derfor bekræftet på alle tre niveauer. Se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176).
 
-| Niveau | Hvor |
-|---|---|
-| CI mod pakkerens output | `calendarGameDayRepair.test.js`, `calendarOverlapInvariant.test.js`, `tierCalendarMaterializer.test.js` |
-| Sæsonskifte-preflight | `detectCalendarViolations` (invariant 6) → `seasonCalendarGate.gatePlan` |
-| `verify-invariants` mod prod | `calendar_monument_exclusive_game_day` |
+**Fjernet 31/8 ([#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465)): `calendar_monument_exclusive_game_day`.** Den håndhævede #4075's eksklusive monument-løbsdag, som ejeren ophævede 26/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236), se §4). Reglen forsvandt fra tabellen i §4, men gaten fulgte ikke med, og nat-vagten stod derfor rød 27/8, 28/8 og 29/8 på noget der er tilladt. Læringen er led (c) i hard rule 30: ophæver du en regel, skal SSOT, generator og gate ændres i SAMME PR — ellers vogter gaten en regel der ikke findes.
 
-> ⚠ **Og den håndhæver en regel ejeren ophævede 26/8.** Se advarslen i §4. Den eneste regel med fuld dækning er altså den eneste regel der ikke længere gælder. Rettes i [#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465).
-
-Vagten kører af sig selv: `.github/workflows/calendar-invariant-audit.yml` måler kalender-invarianterne + den kritiske constraint-form (`scripts/constraint-form-audit.sql`, [#4163](https://github.com/NicolaiDolmer/CyclingZone/issues/4163)) mod prod hver nat 03:50 UTC og åbner et tracking-issue ved brud. Før det kørte `verify-invariants` kun når nogen huskede det i hånden — og begge hændelser (#4155, #4161) opstod i DATA, ikke i kode.
+Og vagten kører af sig selv: `.github/workflows/calendar-invariant-audit.yml` måler kalender-invarianterne + den kritiske constraint-form (`scripts/constraint-form-audit.sql`, [#4163](https://github.com/NicolaiDolmer/CyclingZone/issues/4163)) mod prod hver nat 03:50 UTC og åbner et tracking-issue ved brud. Før det kørte `verify-invariants` kun når nogen huskede det i hånden — og begge hændelser (#4155, #4161) opstod i DATA, ikke i kode. Vagten fejler nu hårdt hvis `invariants.json` er tom eller ugyldig ([#4463](https://github.com/NicolaiDolmer/CyclingZone/issues/4463)): forskellen på "intet brud" og "intet målt" skal være synlig.
 
 ### 9b. Nat-vagten kan gå grøn uden at have målt noget
 
@@ -523,13 +516,13 @@ Fixene, i rækkefølge:
 | `MAX_GT_SPAN_DAYS` = 6 | findes (R8) | mangler | **kan bygges** |
 | `MAX_GT_STAGES_PER_DAY` = 4 | findes (R7) | mangler | **kan bygges** |
 | To GT'er deler ikke kalenderdag | findes | mangler | **kan bygges** |
-| Etapeløbs-spænd ≤ etaper + 3 | findes (`…LanePackerInvariants.test.js:141`) | mangler | **kan bygges** |
+| Etapeløbs-spænd ≤ etaper + 3 | findes (`raceCalendarLanePackerInvariants.test.js:141`) | mangler | **kan bygges** |
 | `TIER_DENSITY` som etaper pr. kalenderdag | mangler | mangler | **kan bygges**, group by dato |
 | Løb hver kalenderdag i alle divisioner | mangler | mangler | **kan bygges**, én SQL: `count(distinct dato) = race_days_total` pr. pulje |
 | Sæsonen slutter søndag | mangler | findes (`regenSeason3Calendar.mjs:197`) | **kan bygges**, `extract(dow)` |
 | `GRAND_TOUR_REST_DAYS` = 2 | mangler | mangler | **kan bygges**: spænd skal være `etaper + 2`, verificeret sand for alle 3 GT'er |
 | Kvote-opfyldelse (§1b) | mangler | mangler | **kan bygges når gulvet er sat** (§11 punkt 4) — skal være et INTERVAL, ikke en lighed |
-| Monument-spredning | delvist (`…LanePackerInvariants.test.js:125`) | mangler | **først når løbsdags-tallet er sat** (§11 punkt 5) |
+| Monument-spredning | delvist (`raceCalendarLanePackerInvariants.test.js:125`) | mangler | **først når løbsdags-tallet er sat** (§11 punkt 5) |
 | K-B-komposition pr. division ±2 pp | findes med de LØSE tal | findes med de LØSE tal | **først når §6's modsigelse er ryddet** — vil være rød på 7 akser i dag |
 | §6b's uniforme mål | mangler | mangler | **kan bygges** — vil være rød på 6 akser i dag |
 | Startfelt pr. klasse, startgulv 6 | findes (ved gem/afvikling) | ikke relevant | ikke relevant |

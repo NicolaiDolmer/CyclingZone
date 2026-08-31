@@ -356,15 +356,17 @@ async function main() {
   const calendarOverlapViolations = [];
   const calendarStageRepeatViolations = [];
   const calendarCollapsedPools = [];
-  const calendarMonumentSharedDays = [];
   let calendarPoolsChecked = 0;
   if (activeSeason) {
-    const seasonRaces = await fetch_("races", "id,league_division_id,season_id,name,race_class", { season_id: `eq.${activeSeason.id}` });
+    // #4465: `race_class` blev tidligere hentet her for at udpege monumenterne til
+    // #4075-invarianten (et monument skulle have sin in-game-dag for sig selv).
+    // Ejeren OPHÆVEDE den regel 26/8 (#4236) — et monument deler nu løbsdag som
+    // ethvert andet løb — men gaten fulgte ikke med og stod rød 27/8, 28/8 og 29/8
+    // på en ikke-fejl. Kolonnen hentes ikke længere: ingen invariant her bruger den.
+    const seasonRaces = await fetch_("races", "id,league_division_id,season_id,name", { season_id: `eq.${activeSeason.id}` });
     const raceIds = new Set(seasonRaces.map((r) => r.id));
     const divisionOfRace = new Map(seasonRaces.map((r) => [r.id, r.league_division_id]));
     const nameOfRace = new Map(seasonRaces.map((r) => [r.id, r.name]));
-    // #4075: monumentet skal have sin in-game-dag for sig selv (ejer-låst 21/8).
-    const monumentRaceIds = new Set(seasonRaces.filter((r) => r.race_class === "Monuments").map((r) => r.id));
     const allStageRows = await fetch_("race_stage_schedule", "race_id,stage_number,scheduled_at,game_day", undefined, "race_id");
 
     const rowsByPool = new Map();
@@ -381,7 +383,7 @@ async function main() {
       const tier = div?.tier ?? null;
       if (tier == null) continue;
       calendarPoolsChecked += 1;
-      const r = checkCalendarOverlapInvariants({ scheduleRows: rows, tier, monumentRaceIds });
+      const r = checkCalendarOverlapInvariants({ scheduleRows: rows, tier });
       const label = div?.label ?? `pulje ${poolId}`;
       for (const v of r.overlapViolations) {
         calendarOverlapViolations.push({
@@ -393,13 +395,6 @@ async function main() {
         calendarStageRepeatViolations.push({
           pool: label, tier, race: nameOfRace.get(v.race_id) ?? v.race_id,
           game_day: v.game_day, stages_same_day: v.stages, stage_numbers: v.stage_numbers,
-        });
-      }
-      for (const v of r.monumentSharedDayViolations) {
-        calendarMonumentSharedDays.push({
-          pool: label, tier, game_day: v.game_day,
-          monumenter: v.monument_race_ids.map((id) => nameOfRace.get(id) ?? id),
-          modloeb: v.other_race_ids.map((id) => nameOfRace.get(id) ?? id),
         });
       }
       if (r.axisLooksCollapsed) {
@@ -523,15 +518,13 @@ async function main() {
           : `${calendarStageRepeatViolations.length} løb kører 2+ etaper på SAMME in-game-dag — pakker-kontrakten er 1 etape = 1 game-dag (#4161)`,
       calendarStageRepeatViolations.slice(0, 50)
     ),
-    calendar_monument_exclusive_game_day: check(
-      calendarMonumentSharedDays.length === 0,
-      !activeSeason
-        ? "OK — ingen aktiv sæson at kontrollere"
-        : calendarMonumentSharedDays.length === 0
-          ? `OK — hvert monument har sin in-game-dag for sig selv i alle ${calendarPoolsChecked} pulje(r)`
-          : `${calendarMonumentSharedDays.length} monument-løbsdag(e) deles med andre løb — et monument skal have dagen for sig selv (#4075/#4176)`,
-      calendarMonumentSharedDays.slice(0, 50)
-    ),
+    // #4465: `calendar_monument_exclusive_game_day` stod her indtil 31/8. Reglen den
+    // håndhævede (#4075, låst 21/8) blev OPHÆVET af ejeren 26/8 (#4236), fordi #4217's
+    // spænd-baserede binding havde fjernet gevinsten: 0 delte ryttere i alle 9
+    // monument/etapeløb-kombinationer, målt mod prod. Invarianten blev tilbage og gjorde
+    // gaten rød tre døgn i træk på noget der er tilladt. Den regel der ER tilbage —
+    // monumenterne spredt over sæsonen — er IKKE kvantificeret og kan derfor ikke gates;
+    // se docs/CALENDAR_RULES.md §4. Tilføj den her når ejeren har låst et minimum.
     calendar_game_day_axis_not_collapsed: check(
       calendarCollapsedPools.length === 0,
       !activeSeason
