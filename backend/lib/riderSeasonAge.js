@@ -29,6 +29,35 @@
  */
 export const LAUNCH_REFERENCE_YEAR = 2026;
 
+// Dato-KUN-strenge ("YYYY-MM-DD") parses af ECMAScript som UTC-midnat, mens
+// `getFullYear()` læser LOKAL tid. Vest for UTC (hele Amerika) ruller 1. januar
+// dermed et år tilbage — "2001-01-01" bliver fødselsår 2000, og rytteren står
+// et år for gammel. Der er 9 ryttere født 1. januar i prod, og `riders.birthdate`
+// er en ren DATE-kolonne uden klokkeslæt, så feltet har ALTID dato-kun-formen.
+//
+// Året læses derfor direkte ud af strengen. Det er samtidig præcis den adfærd de
+// script-varianter #4455 samlede havde (`getUTCFullYear()` og `String(bd).slice(0,4)`
+// er begge tidszone-uafhængige), så SSOT'en er nu identisk med dem i ENHVER tidszone
+// og ikke længere kun i Europe/Copenhagen og UTC. Alt andet end dato-kun-formen
+// falder tilbage på `Date`, så et evt. fuldt timestamp stadig kan læses.
+const DATE_ONLY = /^(\d{4})-\d{2}-\d{2}$/;
+
+/**
+ * Fødselsåret bag en fødselsdato — tidszone-uafhængigt for dato-kun-strenge.
+ * Eksporteret så konsumenter med en ANDEN alders-semantik (fx abilityDerivation's
+ * clampede `ageFrom` med fallback 25) kan dele år-udtrækket uden at duplikere det.
+ *
+ * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
+ * @returns {number|null}  null ved manglende/ugyldigt input (aldrig et gæt)
+ */
+export function birthYearFrom(birthdate) {
+  if (!birthdate) return null;
+  const dateOnly = typeof birthdate === "string" ? DATE_ONLY.exec(birthdate.trim()) : null;
+  if (dateOnly) return Number(dateOnly[1]);
+  const year = new Date(birthdate).getFullYear();
+  return Number.isFinite(year) ? year : null;
+}
+
 /**
  * Sæson-alder: cykelsportens konvention, hvor en rytter er "den alder han fylder
  * i sæsonens kalenderår", uafhængigt af fødselsdag. Wall-clock må ALDRIG bruges
@@ -40,9 +69,26 @@ export const LAUNCH_REFERENCE_YEAR = 2026;
  */
 export function ageForSeason(birthdate, seasonNumber) {
   if (!birthdate || !Number.isFinite(seasonNumber)) return null;
-  const birthYear = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(birthYear)) return null;
+  const birthYear = birthYearFrom(birthdate);
+  if (birthYear === null) return null;
   return LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) - birthYear;
+}
+
+/**
+ * Sæson-alder ud fra et REFERENCEÅR i stedet for et sæsonnummer. Præcis samme
+ * formel — generatorer, snapshots og allokatorer arbejder i årstal, ikke i
+ * sæsonnumre, og duplikerede derfor `referenceYear − fødselsår` hver for sig
+ * (#4455: balanceSnapshot.js og starterSquadAllocator.js var kopi seks og syv).
+ *
+ * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
+ * @param {number|null|undefined} referenceYear  kalenderåret alderen måles mod
+ * @returns {number|null}  null ved manglende/ugyldigt input (aldrig et gæt)
+ */
+export function ageForReferenceYear(birthdate, referenceYear) {
+  if (!Number.isFinite(referenceYear)) return null;
+  const birthYear = birthYearFrom(birthdate);
+  if (birthYear === null) return null;
+  return referenceYear - birthYear;
 }
 
 /**

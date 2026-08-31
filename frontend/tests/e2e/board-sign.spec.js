@@ -10,7 +10,7 @@
 //      under førstegangs-setup, viser wizarden en fejlbesked med INGEN udgang (før
 //      #2463-fixet). Verificerer at luk-knappen nu er synlig + lukker wizarden, og
 //      at wizarden ikke genåbner sig selv (auto-open-guard, se BoardPage.jsx).
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, installBoardStatusMock, login, makeBoardStatus, stabilizePage } from "./fixtures.js";
 
 // Samme fixture-form som board-wizard-back.spec.js (#1240): udløbet 5yr-plan →

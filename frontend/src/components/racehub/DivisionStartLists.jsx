@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { getSession } from "../../lib/supabase";
+import { authHeaders, supabase } from "../../lib/supabase"; // #4348: kanonisk kopi
 import ContextBand from "./ContextBand.jsx";
 import PoolPicker from "./PoolPicker.jsx";
 import StartListColumn from "./StartListColumn.jsx";
@@ -13,12 +13,6 @@ import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { Spinner, EmptyState, ErrorState, FlagIcon, LockIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : null;
-}
 
 export default function DivisionStartLists({ scope, onScopeChange }) {
   const { t } = useTranslation("races");
@@ -37,6 +31,21 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
   // holdes derfor uden for `data` og ryddes aldrig ved fejl (heller ikke af
   // retry'ets setData(null)). { pools, ownPoolId, currentDay, timeline } | null
   const [navShell, setNavShell] = useState(null);
+  // #2795 — brugerens eget hold, til --me-ring-markeringen på rytterrækkerne i
+  // StartListColumn. Uafhængig af browse-hentningen ovenfor: et fejlende/
+  // langsomt team-opslag må aldrig blokere selve startlisterne.
+  const [myTeamId, setMyTeamId] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
+      if (!cancelled) setMyTeamId(myTeam?.id ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const load = useCallback(async (pool, day) => {
     const headers = await authHeaders();
@@ -173,7 +182,7 @@ export default function DivisionStartLists({ scope, onScopeChange }) {
         <EmptyState icon={<FlagIcon size={24} />} title={t("browse.empty")} />
       ) : (
         <div className="grid sm:grid-cols-2 gap-3">
-          {columns.map((c) => <StartListColumn key={c.id} column={c} />)}
+          {columns.map((c) => <StartListColumn key={c.id} column={c} myTeamId={myTeamId} />)}
         </div>
       )}
     </div>

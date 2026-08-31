@@ -341,7 +341,7 @@ export default function AdminSeasonTab() {
                   disabled={loading[`dd_${mode}`] || active}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all disabled:cursor-default
                     ${active
-                      ? "bg-cz-sidebar text-white border-[#1a1f38]"
+                      ? "bg-cz-sidebar text-white border-cz-sidebar"
                       : "bg-cz-card text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
                   {labels[mode]}
                 </button>

@@ -48,7 +48,7 @@ export default function DeadlineReadinessSection({ getAuth, onMsg }) {
     fetchReadiness();
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchReadiness er lokal funktion (ny ref hver render) — kun mount-fetch
   }, []);
 
   if (loading && !data) return <p className="text-cz-3 text-sm">Indlæser…</p>;

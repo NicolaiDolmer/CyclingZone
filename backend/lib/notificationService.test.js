@@ -6,6 +6,7 @@ import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 const {
   notifyUser,
   notifyTeamOwner,
+  resetTeamOwnerCache,
   emitRaceResultNotifications,
   RACE_RESULT_TYPE,
   defaultFetchFirstTimeManagers,
@@ -26,6 +27,14 @@ const {
   FORUM_THREAD_REPLY_TYPE,
 } = await import("./notificationService.js");
 
+// #3434: notifyTeamOwner har en kortlivet TTL-cache (teamId -> user_id).
+// Ryd den før hver test, så tests i denne fil aldrig kan påvirke hinanden via
+// et delt modul-niveau-cache-hit (fx to tests der begge bruger "team-1" men
+// forventer forskellige ejere inden for samme TTL-vindue).
+test.beforeEach(() => {
+  resetTeamOwnerCache();
+});
+
 function createNotificationSupabase({
   teams = [],
   existingNotifications = [],
@@ -35,6 +44,7 @@ function createNotificationSupabase({
     notifications: existingNotifications.map(notification => ({ ...notification })),
     inserts: [],
     lookups: [],
+    teamLookups: [],
   };
 
   return {
@@ -49,6 +59,7 @@ function createNotificationSupabase({
                 assert.equal(column, "id");
                 return {
                   single() {
+                    state.teamLookups.push(value);
                     const team = state.teams.find(candidate => candidate.id === value) || null;
                     return Promise.resolve({ data: team, error: null });
                   },
@@ -179,6 +190,89 @@ test("notifyTeamOwner resolves the team owner and inserts a fresh notification",
       related_id: "auction-1",
     },
   ]);
+});
+
+// ─── #3434 · kortlivet per-sweep cache i notifyTeamOwner ──────────────────────
+
+test("notifyTeamOwner genbruger team->ejer-opslaget for gentagne kald med samme teamId (cache-hit)", async () => {
+  resetTeamOwnerCache();
+  const supabase = createNotificationSupabase({
+    teams: [{ id: "team-cache-1", user_id: "user-cache-1" }],
+  });
+
+  const sweepNow = new Date("2026-08-01T18:00:00.000Z");
+
+  const first = await notifyTeamOwner({
+    supabase,
+    teamId: "team-cache-1",
+    type: "auction_won",
+    title: "Auktion afsluttet",
+    message: "Du vandt auktionen (1)",
+    relatedId: "auction-cache-1",
+    now: sweepNow,
+  });
+  const second = await notifyTeamOwner({
+    supabase,
+    teamId: "team-cache-1",
+    type: "auction_won",
+    title: "Auktion afsluttet",
+    message: "Du vandt auktionen (2)",
+    relatedId: "auction-cache-2",
+    now: new Date(sweepNow.getTime() + 500), // samme sweep, 500ms senere
+  });
+
+  assert.equal(first.delivered, true);
+  assert.equal(second.delivered, true);
+  // Kernen i #3434-fixet: ét DB-opslag af team_id->user_id, ikke to.
+  assert.deepEqual(supabase.state.teamLookups, ["team-cache-1"]);
+  // Begge notifikationer gik stadig til den korrekte ejer.
+  assert.equal(supabase.state.inserts[0].user_id, "user-cache-1");
+  assert.equal(supabase.state.inserts[1].user_id, "user-cache-1");
+});
+
+test("notifyTeamOwner-cachen laekker ikke paa tvaers af sweeps naar ejerskab skifter (TTL-udloeb)", async () => {
+  resetTeamOwnerCache();
+  const supabase = createNotificationSupabase({
+    teams: [{ id: "team-cache-2", user_id: "user-old-owner" }],
+  });
+
+  const sweepOneNow = new Date("2026-08-01T18:00:00.000Z");
+
+  const first = await notifyTeamOwner({
+    supabase,
+    teamId: "team-cache-2",
+    type: "auction_won",
+    title: "Auktion afsluttet",
+    message: "Sweep 1",
+    relatedId: "auction-sweep-1",
+    now: sweepOneNow,
+  });
+  assert.equal(first.delivered, true);
+  assert.equal(supabase.state.inserts[0].user_id, "user-old-owner");
+
+  // Holdet skifter ejer (fx akademi-overtagelse) mellem to sweeps.
+  supabase.state.teams[0].user_id = "user-new-owner";
+
+  // Næste sweep starter markant senere end TTL'en (5s) — skal IKKE genbruge
+  // det gamle cache-hit, ellers ville den nye ejer aldrig få notifikationen
+  // og den gamle ejer ville fejlagtigt blive ved med at få den.
+  const sweepTwoNow = new Date(sweepOneNow.getTime() + 60_000);
+
+  const second = await notifyTeamOwner({
+    supabase,
+    teamId: "team-cache-2",
+    type: "auction_won",
+    title: "Auktion afsluttet",
+    message: "Sweep 2",
+    relatedId: "auction-sweep-2",
+    now: sweepTwoNow,
+  });
+
+  assert.equal(second.delivered, true);
+  // Cachen udløb: to reelle DB-opslag, ét pr. sweep.
+  assert.deepEqual(supabase.state.teamLookups, ["team-cache-2", "team-cache-2"]);
+  // Og vigtigst: den nye ejer fik notifikationen, ikke den gamle.
+  assert.equal(supabase.state.inserts[1].user_id, "user-new-owner");
 });
 
 // ─── #1952 · emitRaceResultNotifications ──────────────────────────────────────

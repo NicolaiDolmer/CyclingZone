@@ -7,11 +7,12 @@
 //
 // Mønster følger race-selection.spec.js: stabilizePage → installNetworkMocks →
 // spec-specifikke overrides (LIFO) → login → goto.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks,
   login,
   stabilizePage,
+  evidenceShotPath,
   json,
   corsHeaders,
 } from "./fixtures.js";
@@ -50,10 +51,10 @@ const STAGE_ROLES_OVERRIDES = [
   { stage_number: 1, rider_id: "r1", race_role: "captain", effort: "protect" },
 ];
 
-test("etape-taktik-matrix: låst kørt etape + redigerbare etaper + førertrøje-genvej + gem", async ({ page }) => {
-  await stabilizePage(page);
-  await installNetworkMocks(page);
-
+// Faelles mock-opsaetning for begge tests: samme live 3-etapes loeb, samme
+// stage-roles-kontekst. Returnerer en getter til den sidst opfangede PUT-body.
+async function mockTacticsRace(page) {
+  let capturedBody = null;
   await page.route("**/rest/v1/races**", (route) => {
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? LIVE_STAGE_RACE : [LIVE_STAGE_RACE]);
@@ -65,7 +66,6 @@ test("etape-taktik-matrix: låst kørt etape + redigerbare etaper + førertrøje
   // Selection-panel er ikke denne tests fokus — falder tilbage til fixtures'
   // generiske SEED_SELECTION (matcher enhver /api/races/:id/selection).
 
-  let capturedBody = null;
   await page.route(`**/api/races/${RACE_ID}/stage-roles`, async (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") {
@@ -98,6 +98,15 @@ test("etape-taktik-matrix: låst kørt etape + redigerbare etaper + førertrøje
       }),
     });
   });
+
+  return () => capturedBody;
+}
+
+test("etape-taktik-matrix: låst kørt etape + redigerbare etaper + førertrøje-genvej + gem", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  const getBody = await mockTacticsRace(page);
 
   await login(page);
   await page.goto(`/races/${RACE_ID}`);
@@ -153,11 +162,59 @@ test("etape-taktik-matrix: låst kørt etape + redigerbare etaper + førertrøje
 
   // PUT-payload: KUN afvigelser fra basis-rolle (REPLACE-semantik, #2034
   // kontrakt) — 4 rækker (r1+r2 × etape 2+3), sorteret stage asc, rider_id asc.
+  const capturedBody = getBody();
   expect(capturedBody).not.toBeNull();
   expect(capturedBody.overrides).toEqual([
     { stage_number: 2, rider_id: "r1", race_role: "helper", effort: "normal" },
     { stage_number: 2, rider_id: "r2", race_role: "captain", effort: "normal" },
     { stage_number: 3, rider_id: "r1", race_role: "helper", effort: "normal" },
     { stage_number: 3, rider_id: "r2", race_role: "captain", effort: "normal" },
+  ]);
+});
+
+// #4344: rolle-dropdownen — den vej hullet faktisk gik. Basis-kaptajnen (Rider
+// One) er urørt, spilleren gør Rider Two til kaptajn på etape 2. Før fixet blev
+// KUN Rider Two sendt, backendens tælling så 1 kaptajn, og motoren fik 2.
+test("#4344: ny kaptajn via dropdownen degraderer den forrige og sender begge rækker", async ({ page }, testInfo) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  const getBody = await mockTacticsRace(page);
+
+  await login(page);
+  await page.goto(`/races/${RACE_ID}`);
+  await page.locator("summary", { hasText: "Etape-taktik" }).click();
+
+  const matrix = page.getByTestId("stage-role-matrix");
+  await expect(matrix).toBeVisible();
+
+  const riderOneRow = matrix.locator("tr", { hasText: "Rider One" });
+  const riderTwoRow = matrix.locator("tr", { hasText: "Rider Two" });
+
+  // Udgangspunkt: Rider One er basis-kaptajn på begge redigerbare etaper.
+  await expect(riderOneRow.getByRole("combobox").nth(0)).toHaveValue("captain");
+
+  // Spilleren vælger Rider Two som kaptajn på etape 2 (første rolle-select i rækken).
+  await riderTwoRow.getByRole("combobox").nth(0).selectOption("captain");
+
+  // Rollen FLYTTER: Rider One er nu hjælper på etape 2, men urørt på etape 3.
+  await expect(riderTwoRow.getByRole("combobox").nth(0)).toHaveValue("captain");
+  await expect(riderOneRow.getByRole("combobox").nth(0)).toHaveValue("helper");
+  await expect(riderOneRow.getByRole("combobox").nth(2)).toHaveValue("captain");
+
+  // Ændringen er ikke tavs — spilleren får at vide hvem der mistede rollen.
+  await expect(matrix.getByText(/Rollen flyttede: Rider One er nu Kun rytter på etape 2/i)).toBeVisible();
+
+  await matrix.screenshot({ path: evidenceShotPath(`pr-screens/4344-captain-moves-not-duplicates-${testInfo.project.name}.png`) });
+
+  const saveBtn = matrix.getByRole("button", { name: /gem taktik/i });
+  await expect(saveBtn).toBeEnabled();
+  await saveBtn.click();
+  await expect(matrix.getByText(/taktikken er gemt/i)).toBeVisible();
+
+  // Kernen i fixet: BEGGE rækker er nu i payloaden, så backendens guard kan se
+  // at der kun er én kaptajn tilbage på etapen.
+  expect(getBody().overrides).toEqual([
+    { stage_number: 2, rider_id: "r1", race_role: "helper", effort: "normal" },
+    { stage_number: 2, rider_id: "r2", race_role: "captain", effort: "normal" },
   ]);
 });

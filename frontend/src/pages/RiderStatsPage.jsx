@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { getAuthedUser } from "../lib/getAuthedUser.js";
-import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo } from "../lib/marketValues.js";
+import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo, computeBidValueDelta } from "../lib/marketValues.js";
 import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
 import { riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
@@ -95,11 +95,6 @@ async function fetchAllRiderSeasonRows(riderId) {
     if (data.length < PAGE) break;
   }
   return { rows, failed: false };
-}
-
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
 // Hero-handlingsrækkens trigger-knapper (ejer-feedback 3/7): kompakte, auto-
@@ -284,7 +279,7 @@ function DirectOfferButton({ rider, seasonYear }) {
 // POSTer /api/transfers. Genbruger PATCH/DELETE /api/transfers/:id fra
 // transferlistens egne kort. Fjern bruger in-app confirm (ikke window.confirm
 // — upålidelig i mobile in-app-browsere).
-function TransferListButton({ rider }) {
+function TransferListButton({ rider, onChanged }) {
   const { t } = useTranslation("rider");
   const [show, setShow]       = useState(false);
   const [listing, setListing] = useState(null);
@@ -338,6 +333,10 @@ function TransferListButton({ rider }) {
         setListing(listing ? { ...listing, asking_price: price } : data);
         setShow(false);
         flashResult(true, listing ? t("sellRider.toast.priceUpdated") : t("sellRider.toast.listed"));
+        // #3490: siden viser nu udbudsprisen i hero-banneret uanset ejerskab —
+        // hold det i sync med det man lige listede/ændrede, uden at vente på et
+        // fuldt loadRider() (som TransferListButton ellers ikke selv trigger'er).
+        onChanged?.();
       } else {
         flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t)}`);
       }
@@ -362,6 +361,7 @@ function TransferListButton({ rider }) {
         setPrice(getRiderMarketValue(rider));
         setShow(false);
         flashResult(true, t("sellRider.toast.removed"));
+        onChanged?.(); // #3490: hero-banneret skal forsvinde med det samme
       } else {
         flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t)}`);
       }
@@ -859,6 +859,10 @@ export default function RiderStatsPage() {
   const [seniorCount, setSeniorCount]       = useState(null);
   const [academyCount, setAcademyCount]     = useState(null);
   const [activeAuction, setActiveAuction]   = useState(null);
+  // #3490: rytterens egen åbne transfer-listing (uanset ejerskab) — hero-
+  // banneret viser udbudspris + værdi-afvigelse når rytteren FAKTISK er til
+  // salg. null = ingen åben listing (banner-grenen renderer da slet ikke).
+  const [transferListing, setTransferListing] = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
   // #3012: separat fra auctionError da watchlist-toggle og auktionsbud er to
   // uafhængige handlinger på siden — en watchlist-fejl skal ikke overskrive
@@ -902,8 +906,15 @@ export default function RiderStatsPage() {
   const watchlistCountFetchIdRef = useRef(null);
   const retirementStatusFetchIdRef = useRef(null); // #2748 samme stale-guard-mønster
   const riderFetchIdRef = useRef(null);
+  const transferListingFetchIdRef = useRef(null); // #3490 samme stale-guard-mønster
   useEffect(() => { activeAuctionRef.current = activeAuction; }, [activeAuction]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
+  // #4448: t bruges KUN inde i realtime-channel-callbacken (celebration-teksten).
+  // useTranslation giver t en ny identitet ved sprogskifte, så et direkte
+  // dependency ville rive supabase-kanalen ned og gen-abonnere. Samme tRef-
+  // mønster som AuctionsPage bruger til sin auktions-kanal.
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
 
   // #2000: hent det VISTE holds trup til switcher-baren (prev/next + index).
   // Non-kritisk — fejler stille (switcheren skjules bare hvis rosteret mangler).
@@ -935,6 +946,7 @@ export default function RiderStatsPage() {
     (async () => {
       try {
         const h = await authHeaders();
+        if (!h) return; // #4347/#4348: ingen session — fanen falder tilbage til egne tal
         const res = await fetch(`${API}/api/physiology/division-benchmark?division=${division}`, { headers: h });
         if (res.ok && !cancelled) setPhysBenchmark(await res.json());
       } catch { /* non-kritisk: fanen falder tilbage til egne tal uden sammenligning */ }
@@ -942,16 +954,16 @@ export default function RiderStatsPage() {
     return () => { cancelled = true; };
   }, [tab, rider?.team?.division, physBenchmark?.division]);
 
-  async function loadWatchlistStatus() {
+  const loadWatchlistStatus = useCallback(async () => {
     const user = await getAuthedUser();
     if (!user) return;
     const { data } = await supabase.from("rider_watchlist")
       .select("id").eq("user_id", user.id).eq("rider_id", id).maybeSingle();
     if (data) { setOnWatchlist(true); setWatchlistId(data.id); }
     else      { setOnWatchlist(false); setWatchlistId(null); }
-  }
+  }, [id]);
 
-  async function loadWatchlistCount() {
+  const loadWatchlistCount = useCallback(async () => {
     // Reset kun ved rytter-skift (toggleWatchlist genkalder for SAMME rytter —
     // et ubetinget reset ville flashe tallet). Stale-guard mod sene svar.
     const fetchId = id;
@@ -959,44 +971,47 @@ export default function RiderStatsPage() {
     watchlistCountFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) return; // #4347/#4348: ingen session — tallet forbliver 0
       const res = await fetch(`${API}/api/riders/${fetchId}/watchlist-count`, { headers: h });
       const data = await res.json();
       if (watchlistCountFetchIdRef.current !== fetchId) return;
       setWatchlistCount(data.count || 0);
     } catch { /* non-critical: tallet forbliver 0 for den nye rytter */ }
-  }
+  }, [id]);
 
   // Popularitet (#957): unikke besøgende 24t/7d + trend. Non-critical — fejler
   // stille, men reset + stale-guard sikrer at Interesse-fanen aldrig viser
   // forrige rytters visningstal/trend.
-  async function loadVisits() {
+  const loadVisits = useCallback(async () => {
     const fetchId = id;
     visitsFetchIdRef.current = fetchId;
     setVisits(null);
     try {
       const h = await authHeaders();
+      if (!h) return; // #4347/#4348: ingen session — visits forbliver null
       const res = await fetch(`${API}/api/riders/${fetchId}/view-count`, { headers: h });
       const data = await res.json();
       if (visitsFetchIdRef.current !== fetchId) return;
       setVisits(data);
     } catch { /* non-critical: TrendSub/summary håndterer visits=null */ }
-  }
+  }, [id]);
 
   // #2748: definitivt pensions-varsel — synligt for ALLE viewere (ikke kun
   // ejeren), samme stale-guard-mønster som loadVisits ovenfor. Non-critical:
   // en fejl skal ikke brække resten af profilen, banneret vises bare ikke.
-  async function loadRetirementStatus() {
+  const loadRetirementStatus = useCallback(async () => {
     const fetchId = id;
     retirementStatusFetchIdRef.current = fetchId;
     setAnnouncedRetirement(false);
     try {
       const h = await authHeaders();
+      if (!h) return; // #4347/#4348: ingen session — banneret vises bare ikke
       const res = await fetch(`${API}/api/riders/${fetchId}/retirement-status`, { headers: h });
       const data = await res.json();
       if (retirementStatusFetchIdRef.current !== fetchId) return;
       setAnnouncedRetirement(Boolean(data.announced_retirement));
     } catch { /* non-critical: banneret vises bare ikke for den nye rytter */ }
-  }
+  }, [id]);
 
   // #3012: begge writes ignorerede tidligere { error } — en afvist
   // insert/delete lod stjernen (og watchlistId) stå i en tilstand serveren
@@ -1026,6 +1041,7 @@ export default function RiderStatsPage() {
       setOnWatchlist(true); setWatchlistId(data?.id);
       // Achievement check
       const h = await authHeaders();
+      if (!h) return; // #4347/#4348: ingen session — spring den bonus-agtige check over
       fetch(`${API}/api/achievements/check`, {
         method: "POST", headers: h,
         body: JSON.stringify({ context: "watchlist_add" }),
@@ -1034,7 +1050,7 @@ export default function RiderStatsPage() {
     loadWatchlistCount();
   }
 
-  async function loadHistory() {
+  const loadHistory = useCallback(async () => {
     // Reset up-front + stale-guard (samme mønster som loadDevelopmentHistory):
     // et rytter-skift må hverken vise forrige rytters historik eller lade et
     // sent svar overskrive den nyes.
@@ -1043,6 +1059,9 @@ export default function RiderStatsPage() {
     setHistory(null);
     try {
       const h = await authHeaders();
+      // #4347/#4348: ingen session — samme eksplicitte fejl-tilstand som et
+      // afvist svar ville have givet, i stedet for at hænge i loading for evigt.
+      if (!h) { if (historyFetchIdRef.current === fetchId) setHistory({ error: true }); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/history`, { headers: h });
       // Fejl må ikke ligne "ingen handelshistorik" (#1338-princippet) — fanen
       // viser en eksplicit kunne-ikke-hentes-tilstand i stedet for tom liste.
@@ -1052,9 +1071,9 @@ export default function RiderStatsPage() {
     } catch {
       if (historyFetchIdRef.current === fetchId) setHistory({ error: true });
     }
-  }
+  }, [id]);
 
-  async function loadInterest() {
+  const loadInterest = useCallback(async () => {
     // #2000 Interesse: scoutet-af + aktivitetsfeed (backend aggregerer +
     // håndhæver privacy — team-navne kun til ejeren). Samme stale-guard.
     const fetchId = id;
@@ -1062,6 +1081,7 @@ export default function RiderStatsPage() {
     setInterest(null);
     try {
       const h = await authHeaders();
+      if (!h) { if (interestFetchIdRef.current === fetchId) setInterest({ error: true }); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/interest`, { headers: h });
       // Fejl må ikke ligne "ingen interesse" (#1338-princippet) — fanen viser
       // en eksplicit kunne-ikke-hentes-tilstand i stedet for nuller.
@@ -1071,9 +1091,9 @@ export default function RiderStatsPage() {
     } catch {
       if (interestFetchIdRef.current === fetchId) setInterest({ error: true });
     }
-  }
+  }, [id]);
 
-  async function loadBidTimeline() {
+  const loadBidTimeline = useCallback(async () => {
     // Bud-rækkerne flettes ind i Historik-tabellen (review-fund): reset ved
     // rytter-skift + stale-guard, så forrige rytters bud aldrig optræder i den
     // nyes handelshistorik. Reset er BETINGET — realtime-callbacks genkalder
@@ -1084,6 +1104,7 @@ export default function RiderStatsPage() {
     bidTimelineFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) { if (bidTimelineFetchIdRef.current === fetchId) setBidTimeline({ auction_id: null, status: null }); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/bid-timeline`, { headers: h });
       const data = res.ok ? await res.json() : { auction_id: null, status: null };
       if (bidTimelineFetchIdRef.current !== fetchId) return;
@@ -1091,9 +1112,9 @@ export default function RiderStatsPage() {
     } catch {
       if (bidTimelineFetchIdRef.current === fetchId) setBidTimeline({ auction_id: null, status: null });
     }
-  }
+  }, [id]);
 
-  async function loadDevelopmentHistory() {
+  const loadDevelopmentHistory = useCallback(async () => {
     // #2000 Part 2 / #918: evnevektor-snapshots fra det RLS-lukkede datalag
     // (rider_derived_ability_history) via backend-endpoint — erstatter den døde
     // PCM rider_stat_history-feed. Type-ratingen pr. ryttertype beregnes i
@@ -1107,6 +1128,7 @@ export default function RiderStatsPage() {
     setStatHistory(null);
     try {
       const h = await authHeaders();
+      if (!h) { if (developmentFetchIdRef.current === fetchId) setStatHistory([]); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/development`, { headers: h });
       const data = res.ok ? await res.json() : [];
       if (developmentFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
@@ -1115,9 +1137,9 @@ export default function RiderStatsPage() {
       // non-critical: Udvikling-tabben falder tilbage til empty-state
       if (developmentFetchIdRef.current === fetchId) setStatHistory([]);
     }
-  }
+  }, [id]);
 
-  async function loadDevelopmentProjection() {
+  const loadDevelopmentProjection = useCallback(async () => {
     // #2100: fuzzy loft-projektion til Udvikling-fanen. Backend maskerer alt (hidden for
     // uscoutede rivaler, capsMissing hvis ingen caps) → null her betyder bare "vis den
     // rene registrerede kurve". Samme stale-guard som development-historikken.
@@ -1126,6 +1148,7 @@ export default function RiderStatsPage() {
     setProjection(null);
     try {
       const h = await authHeaders();
+      if (!h) { if (projectionFetchIdRef.current === fetchId) setProjection(null); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/development-projection`, { headers: h });
       const data = res.ok ? await res.json() : null;
       if (projectionFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
@@ -1133,9 +1156,9 @@ export default function RiderStatsPage() {
     } catch {
       if (projectionFetchIdRef.current === fetchId) setProjection(null);
     }
-  }
+  }, [id]);
 
-  async function loadValueTrend() {
+  const loadValueTrend = useCallback(async () => {
     // #2499: værdi-bevægelse skal kunne SES — on-demand delta (7/14 dage) ved
     // siden af market_value i hero'en. Non-critical (samme mønster som de
     // andre sekundære profil-fetches): en fejl skjuler bare deltaet, brækker
@@ -1144,6 +1167,7 @@ export default function RiderStatsPage() {
     valueTrendFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) { if (valueTrendFetchIdRef.current === fetchId) setValueTrend(null); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/value-trend`, { headers: h });
       const data = res.ok ? await res.json() : null;
       if (valueTrendFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
@@ -1151,9 +1175,9 @@ export default function RiderStatsPage() {
     } catch {
       if (valueTrendFetchIdRef.current === fetchId) setValueTrend(null);
     }
-  }
+  }, [id]);
 
-  async function loadLevelCorrectionReceipt() {
+  const loadLevelCorrectionReceipt = useCallback(async () => {
     // #3733 trin 1: den seneste niveau-korrektions-kvittering for DENNE rytter,
     // eller null (ingen korrektion har kørt for ham endnu) — non-critical,
     // samme mønster som loadValueTrend ovenfor.
@@ -1161,6 +1185,7 @@ export default function RiderStatsPage() {
     levelCorrectionReceiptFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
+      if (!h) { if (levelCorrectionReceiptFetchIdRef.current === fetchId) setLevelCorrectionReceipt(null); return; }
       const res = await fetch(`${API}/api/riders/${fetchId}/level-correction-receipt`, { headers: h });
       const data = res.ok ? await res.json() : null;
       if (levelCorrectionReceiptFetchIdRef.current !== fetchId) return; // stale svar
@@ -1168,9 +1193,9 @@ export default function RiderStatsPage() {
     } catch {
       if (levelCorrectionReceiptFetchIdRef.current === fetchId) setLevelCorrectionReceipt(null);
     }
-  }
+  }, [id]);
 
-  async function loadMyTeam() {
+  const loadMyTeam = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) return;
@@ -1219,13 +1244,13 @@ export default function RiderStatsPage() {
       }
       setMyReservedBalance(computeWorstCaseReservation(committedAuctions, t.id));
     }
-  }
+  }, []);
 
   // #254: Henter aktiv auktion på rytteren med ALLE felter bid-panelet skal bruge
   // (current_bidder, seller, min_increment, is_flash) + manager's eget proxy_max
   // og højeste bud. Kaldes initialt fra loadRider og igen fra realtime-channel
   // når et nyt bud lander eller auktionen opdateres.
-  async function loadActiveAuctionFull(riderObj) {
+  const loadActiveAuctionFull = useCallback(async (riderObj) => {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: auctionData } = await supabase.from("auctions")
       .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash, is_youth,
@@ -1255,9 +1280,30 @@ export default function RiderStatsPage() {
     }
     setActiveAuction(auctionData);
     return auctionData;
-  }
+  }, [id]);
 
-  async function loadRider() {
+  // #3490: rytterens EGEN åbne transferlisting, uanset ejerskab — samme
+  // "vis markedstilstand på rytterens profil"-idé som loadActiveAuctionFull
+  // ovenfor, blot for transferlisten. RLS'en giver public read på
+  // transfer_listings ("Public read transfer_listings" USING (true)), så et
+  // direkte select er nok — ingen join, ingen ejerskabs-check nødvendig.
+  // status='open' er MARKEDETS definition af "faktisk til salg" (samme filter
+  // som GET /api/transfers' default og TransfersPage's markedsvisning).
+  const loadTransferListing = useCallback(async () => {
+    const fetchId = id;
+    transferListingFetchIdRef.current = fetchId;
+    try {
+      const { data } = await supabase.from("transfer_listings")
+        .select("id, asking_price")
+        .eq("rider_id", id).eq("status", "open").maybeSingle();
+      if (transferListingFetchIdRef.current !== fetchId) return; // stale svar
+      setTransferListing(data || null);
+    } catch {
+      if (transferListingFetchIdRef.current === fetchId) setTransferListing(null);
+    }
+  }, [id]);
+
+  const loadRider = useCallback(async () => {
     // Race-engine-fundamentet (#676) hentes fejl-tolerant ved siden af rytteren, så
     // en manglende tabel/profil (fx i deploy-vinduet før migrationen er kørt, eller
     // for ryttere uden backfill) aldrig brækker rytter-siden — preview vises bare ikke.
@@ -1316,7 +1362,7 @@ export default function RiderStatsPage() {
     setSeasonRows(seasonRowsAll.rows);
     setSeasonRowsFailed(seasonRowsAll.failed);
 
-    await loadActiveAuctionFull(riderRes.data);
+    await Promise.all([loadActiveAuctionFull(riderRes.data), loadTransferListing()]);
     if (riderFetchIdRef.current !== fetchId) return;
     setLoading(false);
     loadWatchlistCount();
@@ -1326,22 +1372,35 @@ export default function RiderStatsPage() {
     // Fyrer én gang pr. profil-mount (useEffect [id]) — ikke pr. re-render.
     if (riderRes.data?.id) {
       const h = await authHeaders();
-      fetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
+      if (h) fetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
     }
-  }
+  }, [id, loadActiveAuctionFull, loadTransferListing, loadWatchlistCount]);
 
-  async function loadDdStatus() {
+  const loadDdStatus = useCallback(async () => {
     try {
       const h = await authHeaders();
+      if (!h) return; // #4347/#4348: ingen session — banneret falder tilbage til inaktiv
       const res = await fetch(`${API}/api/deadline-day/status`, { headers: h });
       if (res.ok) {
         const data = await res.json();
         setDdActive(data.active === true);
       }
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
-  }
+  }, []);
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDevelopmentProjection(); loadValueTrend(); loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); loadRetirementStatus(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // #4448: alle load*-funktionerne er nu useCallback([id]), så listen herunder
+  // er komplet og ESLint-verificeret. Effekten kører fortsat præcis når rytter-
+  // id'et skifter — identiteterne er en ren funktion af `id`.
+  useEffect(() => {
+    loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory();
+    loadDevelopmentHistory(); loadDevelopmentProjection(); loadValueTrend();
+    loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline(); loadVisits();
+    loadInterest(); loadRetirementStatus();
+  }, [
+    loadRider, loadMyTeam, loadWatchlistStatus, loadHistory, loadDevelopmentHistory,
+    loadDevelopmentProjection, loadValueTrend, loadLevelCorrectionReceipt, loadDdStatus,
+    loadBidTimeline, loadVisits, loadInterest, loadRetirementStatus,
+  ]);
 
   function pushOverbidToast({ riderName, amount }) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1402,8 +1461,8 @@ export default function RiderStatsPage() {
           const mergedForLeader = { ...(prev || {}), ...updated, rider: prev?.rider };
           if (myTeam && getAuctionLeaderId(mergedForLeader) === myTeam) {
             setCelebration({
-              title: t("celebration.title"),
-              subtitle: t("celebration.subtitle"),
+              title: tRef.current("celebration.title"),
+              subtitle: tRef.current("celebration.subtitle"),
               amount: updated.current_price,
             });
           }
@@ -1414,7 +1473,11 @@ export default function RiderStatsPage() {
       })
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [bidTimeline?.auction_id, bidTimeline?.status, rider]); // eslint-disable-line react-hooks/exhaustive-deps
+    // #4448: loadActiveAuctionFull/loadBidTimeline er useCallback([id]), så de
+    // skifter kun ved rytter-skift, og t læses gennem tRef. Kanalen rives derfor
+    // fortsat kun ned ved auktions-id/status/rytter-skift — samme gen-subscribe-
+    // hyppighed som med den fjernede disable.
+  }, [bidTimeline?.auction_id, bidTimeline?.status, rider, loadActiveAuctionFull, loadBidTimeline]);
 
   // #254: bid-handlers — POST /bid, PATCH /proxy, DELETE /proxy.
   // Re-bruger samme endpoints som AuctionsPage; #194 race-confirm modtages
@@ -1668,10 +1731,14 @@ export default function RiderStatsPage() {
   const salaryText = rider.contract_length != null
     ? `${formatNumber(rider.salary)} CZ$`
     : `~${formatNumber(getRiderSalary(rider))} CZ$`;
-  // Status-banner: auktion > sidste sæson (pension) > akademi > kontrakt-udløb
-  // (egne ryttere). #2748: "finalSeason" er DEFINITIVT (ikke kun risiko) og
-  // synligt for ALLE viewere — en køber skal kunne se det FØR et bud/handel,
-  // ikke kun ejeren (derfor ingen isMyRider-gate her, i modsætning til expiry).
+  // Status-banner: auktion > transfer-listing > sidste sæson (pension) >
+  // akademi > kontrakt-udløb (egne ryttere). #2748: "finalSeason" er
+  // DEFINITIVT (ikke kun risiko) og synligt for ALLE viewere — en køber skal
+  // kunne se det FØR et bud/handel, ikke kun ejeren (derfor ingen isMyRider-
+  // gate her, i modsætning til expiry). #3490: "listed" er samme slags
+  // markeds-tilstand som "auction" — synlig for ALLE, ejer inklusive, uanset
+  // om rytteren i øvrigt er akademi/har udløbende kontrakt (markeds-tilstanden
+  // er mere aktuel end de statiske info-bannere den ellers ville vise).
   let statusBanner = null;
   if (activeAuction) {
     const diff = new Date(activeAuction.calculated_end) - new Date();
@@ -1681,6 +1748,15 @@ export default function RiderStatsPage() {
       kind: "auction",
       endsIn: diff > 0 ? (h > 0 ? `${h}t ${m}m` : `${m}m`) : "—",
       highBid: formatNumber(activeAuction.current_price),
+    };
+  } else if (transferListing) {
+    statusBanner = {
+      kind: "listed",
+      price: formatNumber(transferListing.asking_price),
+      // #3191-mønster: unsigned pct+direction til VISNING (ValueDeltaBadge),
+      // samme indikator som Transferlisten/Auktioner — null (rytter mangler
+      // markedsværdi) skjuler badget stille i stedet for at vise noget forkert.
+      valueDelta: computeBidValueDelta(transferListing.asking_price, rider),
     };
   } else if (announcedRetirement) {
     statusBanner = { kind: "finalSeason", season: seasonNumberFromReferenceYear(seasonYear) };
@@ -1857,7 +1933,7 @@ export default function RiderStatsPage() {
                           på auktion direkte — salget graduerer dem atomisk til
                           senior hos køberen ved handlens gennemførelse (backend:
                           executeTransferOffer / auctionFinalization.js). */}
-                      {isMyRider && <TransferListButton rider={rider} />}
+                      {isMyRider && <TransferListButton rider={rider} onChanged={loadTransferListing} />}
                       {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
                     </>
                   }

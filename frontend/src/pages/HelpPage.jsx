@@ -59,6 +59,15 @@ const SECTION_DEFS = [
       { id: "whatBoard", kind: "text" },
       { id: "season1Baseline", kind: "text" },
       { id: "season2Onboarding", kind: "steps" },
+      // #4382 · flerarsplanens livscyklus samlet ET sted (udloeb + nulstilling,
+      // midtvejs-review, obligatorisk genforhandling, bonustilbud fra alle tre
+      // plantyper). Flages til opdatering ved #3514 fase 2, jf. #3522.
+      //
+      // Placeringen er bevidst: planerne INTRODUCERES i season2Onboarding lige
+      // ovenfor, saa deres forloeb hoerer umiddelbart efter. Ejer-beslutning 31/8 -
+      // foerste udkast tilfoejede blokken sidst i sektionen, hvor en spiller med
+      // netop dette spoergsmaal skulle forbi seks urelaterede blokke foerst.
+      { id: "multiYearLifecycle", kind: "textSteps" },
       { id: "strategicDashboard", kind: "text" },
       { id: "namedMembers", kind: "text" },
       { id: "clubDna", kind: "text" },
@@ -291,6 +300,9 @@ const SECTION_DEFS = [
       // #4066: wired in — what trains a rider with no focus set follows the
       // "Train today" action it applies to.
       { id: "smartDefault", kind: "text" },
+      // #4522: the assistant-suggestions review panel documents itself right
+      // after the smart default it builds on.
+      { id: "assistantSuggestions", kind: "text" },
       { id: "formFatigue", kind: "text" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
@@ -418,6 +430,9 @@ const FAQ_KEYS = [
   "flatCobblesHardTrainingFaq",
   "fatigueInjuryThresholdFaq",
   "seasonPlanner",
+  // #4212/#4271: kort overbliks-svar FØR de tre detalje-svar nedenfor (hvad,
+  // hvornår, pris i én kort tekst — detaljerne bor stadig i de tre der følger).
+  "peakWhatItDoes",
   "peakTraining",
   // #3086: konsekvensen af en peak (spænd + payback) var indtil nu usynlig for
   // spilleren — den stod hverken i UI'et eller i hjælpen, selvom motoren har
@@ -479,6 +494,7 @@ const FAQ_KEYS = [
   "season0To1Special",
   "season1RaceCalendarFaq",
   "overlappingRaces",
+  "stageRaceLockout",
   "autoSelect",
   "teamStrategyFaq",
   "relaunchTeamMoney",
@@ -526,6 +542,15 @@ function buildSections(t, vars) {
             title,
             text: t(`${blockBase}.text`, vars),
             rows: interpolateHelp(t(`${blockBase}.rows`, { returnObjects: true }), vars),
+          };
+        }
+        // #4382: same shape as "textRows" for a numbered list — a framing line
+        // above the steps, so a lifecycle list is not read as a to-do list.
+        if (block.kind === "textSteps") {
+          return {
+            title,
+            text: t(`${blockBase}.text`, vars),
+            steps: interpolateHelp(t(`${blockBase}.steps`, { returnObjects: true }), vars),
           };
         }
         if (block.kind === "textCta") {

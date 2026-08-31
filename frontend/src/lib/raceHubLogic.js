@@ -44,10 +44,26 @@ export function isRiderBound({ bindingMap, riderId, forRaceId, forWindow }) {
 
 // Kan rytteren tilføjes kolonne-løbet? (ikke afmeldt/låst, ikke allerede udtaget, ikke
 // game-dag-bundet i et andet kolonne-løb). Delt af puljen (lås-tilstand) + popover (mål-liste).
+//
+// #3410: betingelserne stod DUPLIKERET her og i riderColumnState nedenfor. Puljens lås kom fra
+// denne (fire mulige grunde), mens forklaringsteksten kom fra en helt anden udledning der kun
+// dækkede overlap — derfor kunne en rytter renderes låst uden en eneste begrundelse. Nu er
+// riderColumnState den ENESTE klassifikator, og denne er dens boolske skygge: tilføjbar ==
+// "available". Rør ikke den ækvivalens uden at rette begge (raceHubLogic.test.js vogter den).
 export function canAddRiderToColumn({ column, bindingMap, riderId }) {
-  if (!column || column.withdrawn || column.lineup_locked) return false;
-  if ((column.selection?.rider_ids || []).includes(riderId)) return false;
-  return !isRiderBound({ bindingMap, riderId, forRaceId: column.id, forWindow: column.bindingWindow });
+  return riderColumnState({ column, bindingMap, riderId }) === "available";
+}
+
+// #4295: hvor mange af holdets ryttere er FRIE til netop dette løb — raske, ikke bundet i
+// et overlappende kolonne-løb, ikke allerede i denne kolonne. Det er tallet der afgør om
+// assistenten kan løfte en delvis trup op til gulvet (6) ved løbstid, og dermed om holdet
+// overhovedet stiller op. `availableCount` fra selection-endpointet duer IKKE til det: den
+// er hele den raske trup og trækker aldrig bundne ryttere fra (den utætte antagelse
+// #4175's escape-ventil hvilede på). Genbruger canAddRiderToColumn, så puljen, popoveren
+// og denne optælling ikke kan blive uenige om hvem der er ledig.
+export function freeRiderCountForColumn({ column, roster = [], bindingMap }) {
+  if (!column) return 0;
+  return roster.filter((r) => !r.injured && canAddRiderToColumn({ column, bindingMap, riderId: r.id })).length;
 }
 
 // #1984: hvilket ANDET kolonne-løb blokerer rytteren fra `column` (det overlappende løb han
@@ -75,6 +91,60 @@ export function riderColumnState({ column, bindingMap, riderId }) {
   if (column.withdrawn || column.lineup_locked) return "locked";
   if (isRiderBound({ bindingMap, riderId, forRaceId: column.id, forWindow: column.bindingWindow })) return "overlap";
   return "available";
+}
+
+// #3410: HVORFOR er rytteren låst i puljen? Puljen låser en chip når rytteren ikke kan tilføjes
+// NOGEN kolonne, og det kan skyldes fire ting (afmeldt løb, startet løb, allerede udtaget,
+// overlap). Forklaringen blev før udledt af et løbsnavn, som kun overlap-grenen kunne levere —
+// ramte låsen "alle dagens løb er startet" eller "alle er afmeldt", stod chippen låst uden tekst
+// (@thelamba, Discord 5/8). Her udledes årsagen af NØJAGTIG de samme kolonne-tilstande som
+// låsen selv, så pulje, popover og freeRiderCountForColumn ikke kan blive uenige.
+//
+// Returnerer null når rytteren IKKE er låst, ellers { code, raceId, raceName }:
+//   "bound_overlap"        — optaget i et løb der overlapper (raceName når løbet har et navn)
+//   "all_races_started"    — alle dagens løb er begyndt (lineup_locked)
+//   "all_races_withdrawn"  — holdet har meldt fra alle dagens løb
+//   "all_races_unavailable"— blandet startet/afmeldt, eller ingen løb på brættet
+//
+// Afmeldte løb navngives ALDRIG som årsag (Rod A, #1823: de låser ikke, og draftBindingMap
+// springer dem over) — derfor kigger navne-opslaget kun på ikke-afmeldte kolonner.
+export function riderLockReason({ riderId, columns = [], bindingMap }) {
+  const states = columns.map((column) => ({ column, state: riderColumnState({ column, bindingMap, riderId }) }));
+  if (states.some((s) => s.state === "available")) return null;
+
+  // Det løb han faktisk er udtaget i er den mest handlingsbare forklaring.
+  const riding = states.find((s) => s.state === "riding" && !s.column?.withdrawn);
+  if (riding) return { code: "bound_overlap", raceId: riding.column.id ?? null, raceName: riding.column.name ?? null };
+
+  // Ellers: bundet af et overlappende løb — kolonne eller ekstern binding (#2256).
+  const overlap = states.find((s) => s.state === "overlap");
+  if (overlap) {
+    const hit = overlapConflictColumn({ column: overlap.column, columns, bindingMap, riderId });
+    return { code: "bound_overlap", raceId: hit?.id ?? null, raceName: hit?.name ?? null };
+  }
+
+  // Ingen binding i spil: så er kolonnerne utilgængelige i sig selv. Samme prædikat som
+  // riderColumnState's "locked"-gren, blot delt i sine to grunde.
+  const withdrawn = states.filter((s) => s.column?.withdrawn).length;
+  const started = states.filter((s) => s.column && !s.column.withdrawn && s.column.lineup_locked).length;
+  if (started > 0 && withdrawn === 0) return { code: "all_races_started", raceId: null, raceName: null };
+  if (withdrawn > 0 && started === 0) return { code: "all_races_withdrawn", raceId: null, raceName: null };
+  return { code: "all_races_unavailable", raceId: null, raceName: null };
+}
+
+// #3410: låse-årsag → færdig tekst. Samme mønster som raceGameDayLabel ovenfor (kalderen sender
+// sin `t`), så nøglevalget er unit-testet ét sted og ikke kan drive fra hinanden mellem pulje og
+// popover. null ind → null ud (ikke låst → ingen tekst).
+export function riderLockLabel({ reason, t }) {
+  if (!reason || typeof t !== "function") return null;
+  if (reason.code === "bound_overlap") {
+    return reason.raceName
+      ? t("racehub.boundNamed", { race: reason.raceName })
+      : t("racehub.lockBoundUnnamed");
+  }
+  if (reason.code === "all_races_started") return t("racehub.lockAllStarted");
+  if (reason.code === "all_races_withdrawn") return t("racehub.lockAllWithdrawn");
+  return t("racehub.lockUnavailable");
 }
 
 // #1984/#1983: alle ægte overlap-konflikter i kladden — en rytter udtaget i to løb hvis game-dag-
@@ -265,7 +335,7 @@ export function mergeBindingMaps(base = {}, extra = {}) {
   return map;
 }
 
-// #4187: løbskortets mærkat viste "Løbsdag {start}-{end}" — et SPÆND, ikke de dage
+// #4193: løbskortets mærkat viste "Løbsdag {start}-{end}", altså et SPÆND, ikke de dage
 // løbet faktisk binder. Et 7-etapers løb på løbsdag 10, 13, 17, 20, 23, 27, 28 læste
 // som "Løbsdag 10-28", altså 19 dages binding hvor der reelt er 7. Bindingen har
 // været korrekt siden #4173 (dag-mængde); kun teksten løj, og spillerne planlagde
@@ -286,5 +356,86 @@ export function raceDateRangeLabel({ startMs, endMs, locale = "en" } = {}) {
   const start = fmt.format(new Date(startMs));
   if (!Number.isFinite(endMs)) return start;
   const end = fmt.format(new Date(endMs));
-  return start === end ? start : `${start} – ${end}`;
+  // Bindestreg, ikke en-dash. Ingen em- eller en-dash i spiller-vendt copy
+  // (ejer-regel). tone-check-em-dash.mjs scanner kun locales og prosa-sider,
+  // ikke komponent-JSX, saa denne stod live indtil #4296.
+  return start === end ? start : `${start} - ${end}`;
+}
+
+// #4296: HÅRD INVARIANT, må IKKE brydes.
+// DISPLAY-tal kommer KUN fra column.game_day / column.game_day_end.
+// column.bindingWindow bruges KUN til den booleske overlap-test (windowsOverlap
+// ovenfor), ALDRIG til et tal.
+//
+// Grunden: raceBindingWindow (backend/lib/raceBinding.js:75-87) falder tilbage
+// til CET-dag-ordinaler (~20.000) når bare én schedule-række mangler game_day,
+// mens raceGameDaySpan (samme fil, :99-104) returnerer null i præcis den
+// situation. Blandes de to nøglerum, skriver fladen "Deler dagene 20123-20124".
+//
+// Ejer-beslutning 27/8: løbsdage vises 1-baserede. RACE_DAY_DISPLAY_OFFSET er
+// den ENESTE plads i frontenden hvor en 0-baseret game_day bliver et vist tal.
+// Ingen anden fil må skrive "+ 1" på en løbsdag.
+export const RACE_DAY_DISPLAY_OFFSET = 1;
+
+export function toDisplayRaceDay(gameDay) {
+  return Number.isFinite(gameDay) ? gameDay + RACE_DAY_DISPLAY_OFFSET : null;
+}
+
+// "Race day 6" | "Race days 6-7" | null. null når spændet mangler → kalderen
+// tegner intet (samme null-defensiv som raceGameDaySpan).
+export function raceGameDayLabel({ start, end, t }) {
+  const s = toDisplayRaceDay(start);
+  if (s == null) return null;
+  const e = toDisplayRaceDay(end) ?? s;
+  return e > s
+    ? t("racehub.raceDays", { start: s, end: e })
+    : t("racehub.raceDay", { day: s });
+}
+
+// Hvilke ANDRE kolonner på brættet deler løbsdage med denne? Prædikatet er
+// windowsOverlap på bindingWindow (spejler backend). TALLENE kommer fra
+// game_day/game_day_end. Aldrig omvendt, se HÅRD INVARIANT ovenfor.
+export function raceDayOverlaps({ columns = [], columnId }) {
+  const self = columns.find((c) => c?.id === columnId);
+  if (!self || self.withdrawn) return [];
+  const out = [];
+  for (const o of columns) {
+    if (!o || o.id === columnId || o.withdrawn) continue;
+    if (!windowsOverlap(self.bindingWindow, o.bindingWindow)) continue;
+    const aS = self.game_day, aE = self.game_day_end ?? self.game_day;
+    const bS = o.game_day, bE = o.game_day_end ?? o.game_day;
+    const known = [aS, aE, bS, bE].every(Number.isFinite);
+    const s = known ? Math.max(aS, bS) : null;
+    const e = known ? Math.min(aE, bE) : null;
+    out.push({
+      id: o.id,
+      name: o.name ?? null,
+      sharedStart: known && e >= s ? s : null,
+      sharedEnd: known && e >= s ? e : null,
+    });
+  }
+  return out.sort((a, b) =>
+    (a.sharedStart ?? Infinity) - (b.sharedStart ?? Infinity) ||
+    String(a.name ?? "").localeCompare(String(b.name ?? "")));
+}
+
+// Ægte clash: en rytter står i BEGGE løb i kladden. Bygger på den eksisterende
+// findSelectionOverlaps ovenfor, som allerede driver den navngivne gem-fejl.
+// Ingen ny overlap-logik.
+export function raceDayClashes({ columns = [], columnId }) {
+  return findSelectionOverlaps({ columns })
+    .filter((o) => o.raceIds.includes(columnId))
+    .map((o) => {
+      const otherIdx = o.raceIds[0] === columnId ? 1 : 0;
+      return { riderId: o.riderId, otherId: o.raceIds[otherIdx], otherName: o.raceNames[otherIdx] };
+    });
+}
+
+// #4317: raceDayClashes() returnerer med vilje én post pr. (riderId, modløb)-par
+// (så RaceDayOverlapRow kan gruppere pr. modløb via otherId). Men en rytter der
+// clasher med 3 modløb er stadig ÉN rytter i konflikt, ikke tre. UI-summeringer
+// (fx "N ryttere i konflikt") skal bruge DENNE - tæl distinkte riderId'er, aldrig
+// clashes.length direkte.
+export function countDistinctClashRiders(clashes = []) {
+  return new Set(clashes.map((c) => c.riderId)).size;
 }

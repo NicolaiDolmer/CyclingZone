@@ -12,17 +12,19 @@
 // røres aldrig) + binding-bevidst, så gentagne ticks er harmløse.
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
 import { runRaceEntryGenerator } from "./raceEntryGenerator.js";
+import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 
 export async function runRaceEntryGeneratorSweep({
   supabase,
   isEnabled = isAutoEntryGeneratorEnabled,
   runGeneratorFn = runRaceEntryGenerator,
+  captureExceptionFn,
 } = {}) {
   if (!(await isEnabled(supabase))) return { ran: false, reason: "flag_off" };
 
-  const { data: season, error } = await supabase
-    .from("seasons").select("id").eq("status", "active").maybeSingle();
-  if (error) throw new Error(`seasons: ${error.message}`);
+  // #2743: order+limit+maybeSingle (i stedet for et rent maybeSingle) + separat
+  // fler-aktiv-alarm — se activeSeasonLookup.js.
+  const season = await loadSingleActiveSeason(supabase, { tag: "race-entry-generator-sweep", captureExceptionFn });
   if (!season) return { ran: false, reason: "no_active_season" };
 
   const result = await runGeneratorFn({ supabase, seasonId: season.id, dryRun: false });

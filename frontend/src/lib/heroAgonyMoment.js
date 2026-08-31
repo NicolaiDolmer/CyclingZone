@@ -50,6 +50,8 @@ export const DRAMA_SCORE = Object.freeze({
   sprint_win: 85,
   close_win: 85,
   solo_win: 85,
+  itt_win: 85,   // #4373
+  ttt_win: 85,   // #4373
   breakaway_survived: 85,
   incident_abandon: 85,
   favorite_off_day: 75,
@@ -126,6 +128,8 @@ export function buildHeroAgonyCandidates({ moments = [], stageResultRows = [], m
       case "sprint_win":
       case "close_win":
       case "solo_win":
+      case "itt_win": // #4373: tidskørslernes egne vindermomenter — uden dem
+      case "ttt_win": // forsvandt helte-kortet helt på en enkeltstart.
       case "breakaway_survived": {
         const riderId = m.rider_ids?.[0] ?? p.riderId ?? null;
         if (mine(riderId)) {

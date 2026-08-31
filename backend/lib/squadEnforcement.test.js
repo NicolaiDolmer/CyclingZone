@@ -32,6 +32,10 @@ function createMockSupabase(initialState) {
     // i executeAutoPurchase (samme #1995-mekanik som transfer/swap/auktion).
     races: [...(initialState.races || [])],
     raceEntries: [...(initialState.raceEntries || [])],
+    // #4213: levende akademitilbud. Default TOM = "ingen rytter er lovet væk",
+    // hvilket bevarer alle eksisterende forventninger uændret — filteret i
+    // findCheapestAvailableRiders må ikke ændre adfærd når der intet tilbud er.
+    academyIntake: [...(initialState.academyIntake || [])],
     financeTransactions: [],
     notifications: [],
     riderUpdates: [],
@@ -59,6 +63,7 @@ function createMockSupabase(initialState) {
     if (table === "seasons") return seasonsTable();
     if (table === "races") return racesTable();
     if (table === "race_entries") return raceEntriesTable();
+    if (table === "academy_intake") return academyIntakeTable();
     throw new Error(`Unexpected table: ${table}`);
   }
 
@@ -391,6 +396,28 @@ function createMockSupabase(initialState) {
               Object.entries(filters).every(([k, v]) => v.includes(e[k]))
             );
             resolve({ data: rows, error: null });
+          },
+        };
+        return builder;
+      },
+    };
+  }
+
+  // #4213: læses af fetchLiveAcademyOffers gennem fetchAllRows
+  // (select → eq → order → range), altså samme pagineringsform som de øvrige
+  // fetchAllRows-kaldere i koden.
+  function academyIntakeTable() {
+    return {
+      select(_cols) {
+        const filters = {};
+        const builder = {
+          eq(col, val) { filters[col] = val; return builder; },
+          order() { return builder; },
+          range(from, to) {
+            const rows = state.academyIntake.filter(r =>
+              Object.entries(filters).every(([k, v]) => r[k] === v)
+            );
+            return Promise.resolve({ data: rows.slice(from, to + 1), error: null });
           },
         };
         return builder;
@@ -1512,4 +1539,97 @@ test("#2617: ALLE overskuds-kandidater i aktivt løb → intet salg dette vindue
   // Bøden håndhæves stadig for hele afvigelsen.
   assert.equal(result.fineAmount, 100_000);
   assert.equal(result.penaltyPoints, 200);
+});
+
+// ─── #4213: akademi-lovede ryttere må ikke auto-købes ────────────────────────
+//
+// Regressionen fra 24/8: akademi-intake-kandidater ER frie agenter (team_id null,
+// is_academy false — academyGenerator.js:152) og er SYSTEMATISK de billigste
+// ryttere i spillet. Auto-købet sorterer netop pris stigende, så uden filteret
+// ligger de øverst i købslisten og bliver taget FØRST — væk under den manager
+// der har fået tilbuddet. Fixturen spejler de målte prod-værdier 29/8
+// (akademi-median 4.925 mod almindelig fri agent 37.956).
+test("#4213: auto-køb springer ryttere med levende akademitilbud over", async () => {
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", name: "Test", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: [
+      ...Array.from({ length: 5 }, (_, i) => ({
+        id: `r${i}`, firstname: "Owned", lastname: `R${i}`, team_id: "t1",
+        market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+      })),
+      // Lovet væk til et ANDET hold — billigst i poolen, altså først i køen.
+      { id: "akademi1", firstname: "Lovet", lastname: "Vaek1", team_id: null, market_value: 1_281, ai_team_id: null },
+      { id: "akademi2", firstname: "Lovet", lastname: "Vaek2", team_id: null, market_value: 4_925, ai_team_id: null },
+      // Almindelige frie agenter, dyrere.
+      { id: "fa1", firstname: "Fri", lastname: "Agent1", team_id: null, market_value: 37_956, ai_team_id: null },
+      { id: "fa2", firstname: "Fri", lastname: "Agent2", team_id: null, market_value: 38_000, ai_team_id: null },
+      { id: "fa3", firstname: "Fri", lastname: "Agent3", team_id: null, market_value: 38_100, ai_team_id: null },
+    ],
+    academyIntake: [
+      { rider_id: "akademi1", team_id: "human-anden", status: "offered" },
+      { rider_id: "akademi2", team_id: "human-tredje", status: "offered" },
+    ],
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => { throw new Error("Should not be called"); },
+    now: new Date("2026-08-29T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.purchases.length, 3);
+
+  const bought = result.purchases.map(p => p.riderName);
+  assert.deepEqual(bought, ["Fri Agent1", "Fri Agent2", "Fri Agent3"],
+    "de tre dyrere frie agenter købes — akademikandidaterne må ikke røres");
+
+  for (const navn of ["Lovet Vaek1", "Lovet Vaek2"]) {
+    assert.ok(!bought.includes(navn), `${navn} er lovet væk og må ikke auto-købes`);
+  }
+  // Rytterne står stadig frie, klar til at manageren siger ja til tilbuddet.
+  assert.equal(supabase.state.riders.find(r => r.id === "akademi1").team_id, null);
+  assert.equal(supabase.state.riders.find(r => r.id === "akademi2").team_id, null);
+});
+
+// Modstykket: et tilbud til holdet SELV må ikke blokere. Ellers ville værnet
+// ramme signeringen — præcis den handling akademiet findes for.
+test("#4213: et tilbud til holdet selv blokerer ikke holdets eget auto-køb", async () => {
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", name: "Test", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: `r${i}`, firstname: "Owned", lastname: `R${i}`, team_id: "t1",
+        market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+      })),
+      { id: "egen", firstname: "Egen", lastname: "Kandidat", team_id: null, market_value: 1_281, ai_team_id: null },
+      { id: "fa1", firstname: "Fri", lastname: "Agent1", team_id: null, market_value: 37_956, ai_team_id: null },
+    ],
+    academyIntake: [{ rider_id: "egen", team_id: "t1", status: "offered" }],
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => { throw new Error("Should not be called"); },
+    now: new Date("2026-08-29T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.purchases.length, 1);
+  assert.equal(result.purchases[0].riderName, "Egen Kandidat",
+    "holdets egen akademikandidat er billigst og må godt tages af holdet selv");
 });

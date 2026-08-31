@@ -70,6 +70,15 @@ jobs:
 
           while IFS= read -r file; do
             [ -z "$file" ] && continue
+            # #4482-incident 31/8: et script markeret "KØRES IKKE AUTOMATISK" lå i
+            # auto-globben og blev kørt mod prod uden ejerens go. Manuelle scripts
+            # hører hjemme i database/manual/ (uden for globben) — men fejl hårdt
+            # hvis markøren alligevel dukker op her, i stedet for at køre scriptet.
+            if grep -qiE 'K(Ø|OE)RES IKKE AUTOMATISK|MANUAL[- ]ONLY' "$file"; then
+              echo "❌ $file er markeret manuel-only men ligger i auto-migrate-globben."
+              echo "   Flyt den til database/manual/ eller fjern markøren hvis den SKAL auto-køres."
+              exit 1
+            fi
             echo "▶️  Applying $file"
             psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$file"
             psql "$DB_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO schema_migrations (filename) VALUES ('$file') ON CONFLICT DO NOTHING;"

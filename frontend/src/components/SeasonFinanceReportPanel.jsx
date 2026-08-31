@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { supabase } from "../lib/supabase";
@@ -290,6 +290,12 @@ export default function SeasonFinanceReportPanel({ seasonId, teamId, onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // #4448: t bruges kun i fejlstien nedenfor. Som direkte dependency ville et
+  // sprogskifte hente hele sæsonrapporten forfra — ref'en holder seasonId/teamId
+  // som de eneste triggere uden at fejlteksten hænger på gammelt sprog.
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
+
   useEffect(() => {
     if (!seasonId || !teamId) return undefined;
     let cancelled = false;
@@ -301,7 +307,7 @@ export default function SeasonFinanceReportPanel({ seasonId, teamId, onBack }) {
           data: { session },
         } = await supabase.auth.getSession();
         if (!session) {
-          if (!cancelled) setError(t("report.mustLogin"));
+          if (!cancelled) setError(tRef.current("report.mustLogin"));
           return;
         }
         const url = `${API}/api/teams/${teamId}/finance-report?seasonId=${seasonId}`;
@@ -311,18 +317,18 @@ export default function SeasonFinanceReportPanel({ seasonId, teamId, onBack }) {
         if (cancelled) return;
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          setError(body.error || t("report.errorStatus", { status: res.status }));
+          setError(body.error || tRef.current("report.errorStatus", { status: res.status }));
           return;
         }
         const data = await res.json().catch(() => null);
         if (cancelled) return;
         if (!data) {
-          setError(t("report.errorStatus", { status: res.status }));
+          setError(tRef.current("report.errorStatus", { status: res.status }));
           return;
         }
         setReport(data);
       } catch {
-        if (!cancelled) setError(t("auth:error.connectionFailed"));
+        if (!cancelled) setError(tRef.current("auth:error.connectionFailed"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -331,7 +337,7 @@ export default function SeasonFinanceReportPanel({ seasonId, teamId, onBack }) {
     return () => {
       cancelled = true;
     };
-  }, [seasonId, teamId, t]);
+  }, [seasonId, teamId]);
 
   if (loading) {
     return (

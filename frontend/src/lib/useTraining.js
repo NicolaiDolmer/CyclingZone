@@ -5,17 +5,10 @@
 // Spejler useScouting (#1138). Effekten lander ved sæson-skift (gated bag #1137).
 
 import { useState, useEffect, useCallback } from "react";
-import { getSession } from "./supabase";
+import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
 import { logEvent } from "./logEvent";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export function useTraining() {
   const [slots, setSlots] = useState(null);       // { total, used, remaining } | null
@@ -30,7 +23,7 @@ export function useTraining() {
   const [smartDefaultFocus, setSmartDefaultFocus] = useState({}); // { <rider_id>: <focus> } — type-matchet default (#1894)
   const [weekPlan, setWeekPlanState] = useState(null); // holdets ugerytme { mon:{intensity}, ..., sun:{intensity} } | null (#1895)
   const [riderWeekPlans, setRiderWeekPlansState] = useState({}); // { <rider_id>: {mon:{intensity},...} } — pr-rytter-override (#1895 PR 2)
-  const [racingToday, setRacingToday] = useState({}); // { <rider_id>: { race } } — #3459 V3, leveres kun bag race_day_engine_enabled
+  const [racingToday, setRacingToday] = useState({}); // { <rider_id>: { race } } - #3459 V3, leveres kun bag race_day_development_enabled (#4375)
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -55,9 +48,9 @@ export function useTraining() {
         setSmartDefaultFocus(data.smartDefaultFocus ?? {});
         setWeekPlanState(data.weekPlan ?? null);
         setRiderWeekPlansState(data.riderWeekPlans ?? {});
-        // #3459 V3: feltet er kun til stede når race_day_engine_enabled er on for
-        // brugeren (api.js udelader det helt ellers) — `?? {}` giver samme "ingen
-        // badge for nogen" tomme-state uanset om feltet mangler eller er tomt.
+        // #3459 V3 / #4375: feltet er kun til stede når race_day_development_enabled
+        // er on for brugeren (api.js udelader det helt ellers) - `?? {}` giver samme
+        // "ingen badge for nogen" tomme-state uanset om feltet mangler eller er tomt.
         setRacingToday(data.racingToday ?? {});
       }
     } catch {

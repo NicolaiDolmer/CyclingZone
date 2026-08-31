@@ -15,6 +15,7 @@ import { mergeStandings } from "../lib/standingsMerge";
 import { computeMyDivisionStandings } from "../lib/dashboardDivStandings.js";
 import { computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { formatNumber } from "../lib/intl";
+import { getEffectiveOfferAmount } from "../lib/offerAmount.js";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { poolStageTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { formatCountdown } from "../lib/stageScheduleConfig.js";
@@ -464,7 +465,7 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
 
   // #1828 + #2171: for "Kommende løb"-kortet henter vi den ægte kalender-tid for
@@ -1368,7 +1369,7 @@ export default function DashboardPage() {
                         : t("dashboard:cards.transfers.to", { name: o.seller?.name })}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-cz-accent-t font-mono text-sm">{formatNumber(o.counter_amount || o.offer_amount)} CZ$</p>
+                      <p className="text-cz-accent-t font-mono text-sm">{formatNumber(getEffectiveOfferAmount(o))} CZ$</p>
                       <span className={`text-3xs ${needsAction ? "text-cz-warning" : "text-cz-3"}`}>
                         {needsAction
                           ? t("dashboard:cards.transfers.needsAction")
@@ -1479,9 +1480,12 @@ export default function DashboardPage() {
                     {s._isOwnRowBreak && (
                       <div className="border-t border-cz-border my-1" aria-hidden="true" />
                     )}
+                    {/* #2795-opfoelgning: er egen raekke ogsaa leder, bruges kun
+                        kanten - fladetoningen ville ellers ligge oven paa
+                        leder-guldet. Samme opdeling som .cz-me / .cz-me-bar i
+                        tabellerne, saa dashboardet ser ud som /standings. */}
                     <Link to="/standings"
-                      style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
-                      className={`flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
+                      className={`${isMe ? (isLeader ? "cz-me-block-bar " : "cz-me-block ") : ""}flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
                       <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
                       {/* vk-movement-signals — divisionsplacerings-bevægelse siden
                           sidste løbsdag, KUN på egen række. null/0 = ingen løbsdag endnu

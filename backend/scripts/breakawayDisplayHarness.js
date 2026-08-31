@@ -33,6 +33,7 @@ import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue, riderOverall, riderSpecialty } from "../lib/riderValuation.js";
 import { DEMAND_VECTORS, finaleFor } from "../lib/raceStageProfileGenerator.js";
 import { simulateStage, stableSeed, deriveBreakawayStatus } from "../lib/raceSimulator.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -47,7 +48,7 @@ const SEED = parseInt(arg("seed", "2026"), 10);
 const RACES = parseInt(arg("races", "300"), 10);
 const FIELD = parseInt(arg("field", "140"), 10);
 const COUNT = parseInt(arg("count", "800"), 10);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 const MIX = arg("mix", "default");
 const mixOverride = resolveMix(MIX);
 

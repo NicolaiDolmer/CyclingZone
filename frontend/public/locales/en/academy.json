@@ -74,6 +74,7 @@
     "notOffered": "This rider has not been offered a place.",
     "insufficientBalance": "You cannot afford the signing fee.",
     "alreadyAssigned": "This rider has already joined an academy.",
+    "riderOwned": "This rider is currently on another team, so the offer cannot be completed right now. We are working on it, and your offer stays open.",
     "squadFull": "Senior squad is full. Free a spot to promote, or sell or release instead.",
     "riderOnAuction": "This rider is on an active auction and can't be released until it ends.",
     "cannotAffordRelease": "You can't afford the buyout fee for this rider.",

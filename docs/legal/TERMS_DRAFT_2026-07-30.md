@@ -3,9 +3,10 @@
 > **Status: Ejer-svar 30/7 indarbejdet** (sælger = Dolmer Digital CVR 46524861; fortrydelses-
 > model A = straks-leverings-waiver). **IKKE live.** Næste skridt: byg `/handelsbetingelser`
 > (DA) + `/terms` (EN) som sider, link fra footer/login/checkout, accept-flow (checkbox +
-> version + tidspunkt gemt på `subscriptions`-rækken), opsigelsessti. **Go-live-krav der
-> stadig mangler:** dedikeret support-e-mail (Hjælp-siden henviser i dag til en e-mail der
-> ikke findes i appen) + moms/merchant-of-record-verifikation mod Alunta.
+> version + tidspunkt gemt på `subscriptions`-rækken). Accept-flow og opsigelsessti ER bygget
+> pr. 31/8. **Go-live-krav der stadig mangler:** dedikeret support-e-mail (Hjælp-siden
+> henviser i dag til en e-mail der ikke findes i appen) + ejer-gennemgang af selve teksten.
+> Moms/merchant-of-record er verificeret 31/8 — se "Åbne verifikationer" nederst.
 
 ---
 
@@ -28,9 +29,8 @@ Gratis-spillet er og bliver fuldt spilbart og konkurrencedygtigt uden Pro.
 
 **3. Pris og betaling**
 - Månedligt abonnement: 49 kr. pr. måned.
-- 6-måneders abonnement: 265 kr. pr. 6 måneder.
-- Alle priser er i danske kroner og inkl. moms. [**EJER/verifikation**: afventer bekræftelse
-  af momsansvar/merchant of record hos Alunta — se afsnittet "Åbne verifikationer" nederst.]
+- 6-måneders abonnement: 295 kr. pr. 6 måneder.
+- Alle priser er i danske kroner og inkl. moms.
 - Betaling sker via vores betalingsudbyder Alunta. Vi opbevarer aldrig dine kortoplysninger.
 
 **4. Automatisk fornyelse**
@@ -41,10 +41,10 @@ dig altid ret til at opsige inden den nye pris gælder.
 
 **5. Opsigelse**
 Du kan opsige når som helst med virkning fra udløbet af den igangværende betalte periode —
-der er ingen binding ud over perioden. Opsigelse sker [via "Opsig abonnement" i dine
-kontoindstillinger / Alunta-portalen — bygges i #2813; indtil da: skriv til kontakt-e-mailen,
-så opsiger vi manuelt samme dag]. Allerede betalte perioder refunderes ikke ved opsigelse,
-men Pro-funktionerne virker perioden ud.
+der er ingen binding ud over perioden. Opsigelse sker via "Opsig abonnement" under dine
+kontoindstillinger, som fører dig til vores betalingsportal. Du kan også skrive til
+kontakt-e-mailen, så opsiger vi manuelt samme dag. Allerede betalte perioder refunderes ikke
+ved opsigelse, men Pro-funktionerne virker perioden ud.
 
 **6. Fortrydelsesret**
 Du har som forbruger 14 dages fortrydelsesret ved køb på nettet. **Bemærk:** CZ Pro er
@@ -83,14 +83,15 @@ Behandling af persondata er beskrevet i [privatlivspolitikken](/privatlivspoliti
 2. **What you buy:** CZ Pro is a voluntary supporter subscription for the browser game
    Cycling Zone. Pro adds depth, comfort and cosmetic features — never a competitive
    advantage. The free game remains fully playable and competitive.
-3. **Price and payment:** DKK 49/month or DKK 265/6 months, incl. Danish VAT. Payment is
+3. **Price and payment:** DKK 49/month or DKK 295/6 months, incl. Danish VAT. Payment is
    handled by our payment provider Alunta; we never store your card details.
 4. **Automatic renewal:** The subscription renews automatically each period until you
    cancel. You receive a receipt by e-mail for every charge. Price changes are announced
    at least 30 days in advance and always give you the right to cancel first.
-5. **Cancellation:** Cancel anytime, effective at the end of the current paid period. No
-   lock-in beyond the period. Paid periods are not refunded, but Pro features remain active
-   until the period ends.
+5. **Cancellation:** Cancel anytime via "Cancel subscription" in your account settings, which
+   takes you to our billing portal; you can also e-mail us and we cancel the same day.
+   Effective at the end of the current paid period, with no lock-in beyond it. Paid periods
+   are not refunded, but Pro features remain active until the period ends.
 6. **Right of withdrawal:** EU consumers have a 14-day right of withdrawal. CZ Pro is
    digital content delivered immediately; by purchasing you expressly consent to immediate
    delivery and acknowledge that the right of withdrawal lapses for the started period.
@@ -108,15 +109,31 @@ Behandling af persondata er beskrevet i [privatlivspolitikken](/privatlivspoliti
 
 ## Åbne verifikationer (før go-live, del af #2813)
 
-1. **Moms/merchant of record — DELVIST verificeret 30/7 (OpenAPI):** Merchant of record er
-   **Dolmer Digital, ikke Alunta** (Alunta fakturerer på jeres vegne via jeres egne
-   betalingsudbydere og udsteder kvitteringer automatisk). Plan-priser i Alunta er i øre
-   **ekskl. moms** med `charge_vat` default `true`. **Ejer-tjek udestår:** (a) er Dolmer
-   Digital momsregistreret? (b) står CZ Pro-planerne i Alunta-dashboardet med
-   `charge_vat=false` + 4900/26500 øre, så kunden faktisk betaler 49/265 kr.?
-   Pkt. 3's moms-formulering låses når (a)+(b) er svaret — FØR checkout genåbnes.
-2. **Opsigelsessti — VERIFICERET 30/7:** `POST /portal-link/{uuid}` bekræftet i OpenAPI
-   (signeret auto-login-URL, default 15 min udløb; self-service opsigelse findes —
-   `customer_cancellation` er dokumenteret cancel-årsag). Bygges i #2813-PR'en.
-3. **Accept-log:** checkbox-accept ved checkout skal gemme tidspunkt + vilkårs-version på
-   `subscriptions`-rækken. Bygges i #2813-PR'en.
+1. **Moms/merchant of record — LUKKET 31/8.** Merchant of record er **Dolmer Digital, ikke
+   Alunta** (Alunta fakturerer på vores vegne via vores egne betalingsudbydere).
+   (a) Dolmer Digital **er momsregistreret** (ejer-bekræftet 31/8; CVR 46524861 står på
+   Alunta-teamet, og fakturaerne opkræver 25% dansk moms bogført på konto 1000 "m/moms").
+   (b) Planerne står med `charge_vat=true`, ikke `false` — antagelsen i den oprindelige
+   formulering holdt ikke. Alunta gemmer beløb **ekskl. moms** og lægger momsen oveni, så
+   den rigtige konfiguration for 49 kr. inkl. er **3920 øre**, ikke 4900. Målt 31/8:
+   `CZ Pro 1 month` = 3920 øre (49,00 inkl.), `CZ Pro 6 Months` = 23600 øre (295,00 inkl.).
+   Pkt. 3 er opdateret i overensstemmelse hermed (295 kr., ikke 265).
+2. **Opsigelsessti — LUKKET 31/8.** `POST /portal-link/{uuid}` verificeret 30/7 og
+   **bygget** i `backend/lib/billingPortal.js` (signeret auto-login-URL, 15 min udløb,
+   behandles som credential). Pkt. 5 navngiver nu portal-stien.
+3. **Accept-log — BYGGET.** Checkbox-accept gemmer `terms_version` + `terms_accepted_at` på
+   `subscriptions`-rækken før checkout; backend afviser `terms_not_accepted` og
+   `terms_version_mismatch`. **Restpunkt:** den eneste eksisterende kunde har begge felter
+   `null` (købte 25/7, før flowet fandtes) — ejer beslutter om accept indhentes med
+   tilbagevirkende kraft. Se #2813.
+
+### Tilføjet efter 30/7
+
+4. **Moms på EU-privatkunder (#4511) — ÅBEN.** Dinero-opsætningen bogfører EU-linjer
+   momsfrit på konto 1050. Korrekt for EU-virksomheder med momsnummer, forkert for
+   privatpersoner under 10.000 EUR-tærsklen, hvor der skal opkræves 25% dansk moms.
+   Kræver revisor-bekræftelse før salg til EU-kunder.
+5. **Betalingsovervågning (#4514) — ÅBEN.** Alle Aluntas betalings-notifikationer er slået
+   fra, og der findes ingen vagt der opdager en forfalden faktura. En kunde havde ubetalt
+   faktura i 23 dage med fuld Pro-adgang uden at nogen fik besked. Skal lukkes før salget
+   åbnes for flere kunder.

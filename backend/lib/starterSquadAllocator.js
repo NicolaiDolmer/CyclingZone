@@ -27,13 +27,14 @@ import { LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
-import { deriveAbilities } from "./abilityDerivation.js";
+import { deriveAbilities, FILL_TAIL_GENERATION_TAG, FILL_TAIL_MAX_POTENTIALE } from "./abilityDerivation.js";
 import { computeRiderTypes, resolveRiderTypes, NEUTRAL_BASELINE } from "./riderTypes.js";
 import { selectTypesBaseline } from "./riderTypesBaselineSelect.js";
 import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { computeFrozenSalary, pickStarterContractLength, computeContractEndSeason } from "./contractSeed.js";
 import { applyTypeDampening } from "./riderValuationTypeDampening.js";
+import { birthYearFrom } from "./riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
@@ -272,9 +273,13 @@ export function generateAiRiderBatchWithCap({
   return toInsertPayload(accepted.slice(0, count));
 }
 
+// #4455: fødselsår-udtrækket kommer fra SSOT'en, så denne kopi ikke kan divergere.
+// Returværdien er BEVIDST NaN (ikke null) ved ugyldig fødselsdato: `age` bruges i
+// numeriske gates herover, og `NaN <= x` er false mens `null <= x` er true — et skift
+// til null ville lydløst lukke ugyldige ryttere gennem alders-gaten.
 export function computeAge(birthdate, referenceYear) {
-  const year = Number(String(birthdate).slice(0, 4));
-  return referenceYear - year;
+  const year = birthYearFrom(birthdate);
+  return year === null ? Number.NaN : referenceYear - year;
 }
 
 // Deterministisk 32-bit hash af en streng (FNV-1a). Bruges til at udlede et
@@ -407,9 +412,18 @@ export function buildWeakStarterPool({
   const clamped = riders.map((r) => {
     const stats = {};
     for (const k of STAT_KEYS) stats[k] = Math.max(window.lo, Math.min(window.hi, r[k]));
-    return { ...r, ...stats };
+    // #4311 (ejer-beslutning 27/8): klem ogsaa potentiale — hidden_potential afledes
+    // af potentiale, ikke stats, og ville ellers laekke uden om stat-klemmen ovenfor.
+    const potentiale = Number.isFinite(r.potentiale)
+      ? Math.min(FILL_TAIL_MAX_POTENTIALE, r.potentiale)
+      : r.potentiale;
+    return { ...r, ...stats, potentiale };
   });
-  return toInsertPayload(clamped);
+  const payload = toInsertPayload(clamped);
+  // #4311: generation_tag markoerer fyld-ryttere saa deriveAbilities (abilityDerivation.js)
+  // kan klemme de evner der IKKE er stat-drevne (tactics = alder, hidden_potential =
+  // potentiale). toInsertPayload kender ikke feltet (kun archetype_draw) — saet EFTER.
+  return payload.map((r) => ({ ...r, generation_tag: FILL_TAIL_GENERATION_TAG }));
 }
 
 // Navne-unikhed mod ALLE eksisterende ryttere (den svage pulje genereres separat

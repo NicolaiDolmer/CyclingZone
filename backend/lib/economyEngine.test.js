@@ -6719,6 +6719,87 @@ test("#2976 · en fejlende bestyrelses-besked afbryder ikke sæson-slut for de �
   assert.equal(captured[0].context.tags.notification_type, "board_update");
 });
 
+test("#4157 · boardMidReview messageParams-nøgler matcher backendMessages-skabelonens placeholders", async () => {
+  // #4157: messageParams-nøglen hed "midMessageKey" — frontend's formatBackendParams
+  // strimler kun suffikset "Key" af (midMessageKey → midMessage), men skabelonens
+  // placeholder hedder {midMsg}. Resultatet var en ubrugt "midMessage"-param og et
+  // aldrig-udfyldt {midMsg} synligt for spilleren. Denne test kører den ægte
+  // sæson-slut-kode og verificerer GENERISK — for enhver *Key-param — at
+  // stripped-navnet rent faktisk optræder som {placeholder} i BÅDE en og da
+  // skabelonen for den udsendte messageCode, så klassen af fejl ikke kan gentages.
+  const { readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+
+  const teamId = "team-mid";
+  const teams = [{
+    id: teamId, name: "Mid Review FC", is_ai: false, user_id: "user-mid",
+    balance: 500, sponsor_income: 200, division: 3,
+  }];
+  const boards = [{
+    id: "board-mid", team_id: teamId, plan_type: "3yr", focus: "balanced",
+    satisfaction: 50, budget_modifier: 1.0, current_goals: [],
+    seasons_completed: 0, // → seasonsCompleted 1 = floor(3/2) → mid-review
+    cumulative_stage_wins: 0, cumulative_gc_wins: 0,
+    plan_start_sponsor_income: 200,
+  }];
+  const standings = [{
+    season_id: "season-5", team_id: teamId, division: 3, league_division_id: null,
+    total_points: 50, rank_in_division: 2, stage_wins: 0, gc_wins: 0,
+    team: { id: teamId, is_ai: false },
+  }];
+
+  const ctx = createMultiTeamSeasonEndSupabase({ teams, boards, standings, failNotificationForUserIds: [] });
+
+  await processSeasonEnd("season-5", {
+    supabase: ctx.supabase,
+    ...baseDeps(),
+    boardTestMode: false,
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    captureException: () => {},
+  });
+
+  assert.equal(ctx.notifications.length, 1, "holdet skal have fået sin halvvejsevaluering");
+  const notif = ctx.notifications[0];
+  const messageCode = notif.metadata.messageCode;
+  const messageParams = notif.metadata.messageParams;
+  assert.equal(messageCode, "notif.boardMidReview.message");
+
+  // Nøglen skal være "midMsgKey" (ikke det gamle "midMessageKey").
+  assert.ok(
+    Object.prototype.hasOwnProperty.call(messageParams, "midMsgKey"),
+    "messageParams skal indeholde midMsgKey",
+  );
+  assert.ok(
+    typeof messageParams.midMsgKey === "string" && messageParams.midMsgKey.startsWith("notif.boardMidMessage."),
+    "midMsgKey skal pege på en gyldig notif.boardMidMessage.*-nøgle",
+  );
+
+  const LOCALES = join(import.meta.dirname, "..", "..", "frontend", "public", "locales");
+  const getTemplate = (lang, code) => {
+    const root = JSON.parse(readFileSync(join(LOCALES, lang, "backendMessages.json"), "utf8"));
+    return code.split(".").reduce((o, k) => (o == null ? o : o[k]), root);
+  };
+
+  for (const lang of ["en", "da"]) {
+    const template = getTemplate(lang, messageCode);
+    assert.ok(typeof template === "string", `${lang}: ${messageCode} skal findes som en streng-skabelon`);
+
+    // Generisk regressions-guard: for enhver "*Key"-param skal det strimlede
+    // basenavn (fx midMsgKey → midMsg) rent faktisk optræde som {placeholder}
+    // i skabelonen. Havde nøglen stadig heddet "midMessageKey", ville denne
+    // assertion fejle (skabelonen har {midMsg}, ikke {midMessage}).
+    for (const key of Object.keys(messageParams)) {
+      if (key.endsWith("Key") && key.length > 3) {
+        const base = key.slice(0, -3);
+        assert.ok(
+          template.includes(`{${base}}`),
+          `${lang}.${messageCode}: skabelonen mangler {${base}} for param-nøglen "${key}" (fandt: ${template})`,
+        );
+      }
+    }
+  }
+});
+
 test("#2976 · en fejlende oprykkerbesked må ikke efterlade pyramiden halvt flyttet", async () => {
   // To puljer i div 2, hver med 3 hold → top 2 rykker op fra hver pulje (4 i alt).
   // Beskeden fejler for den første oprykker. Uden notifyManagerSafe ville de tre

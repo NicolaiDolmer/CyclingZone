@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage } from "./fixtures.js";
 
 // #1404/#1405 — hver public route skal have sin egen <title> + canonical/robots

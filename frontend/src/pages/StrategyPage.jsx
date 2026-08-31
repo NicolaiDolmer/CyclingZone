@@ -7,7 +7,7 @@
 // tilbage-link udgik.
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getSession } from "../lib/supabase";
+import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../lib/actionTelemetry.js";
 import { PageLoader, SectionStack, EmptyState, ErrorState, Button } from "../components/ui";
 import AChainEditor from "../components/racehub/strategy/AChainEditor.jsx";
@@ -17,12 +17,6 @@ import TargetRacePicker from "../components/racehub/strategy/TargetRacePicker.js
 import PreviewDiff from "../components/racehub/strategy/PreviewDiff.jsx";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : null;
-}
 
 export default function StrategyPage() {
   const { t } = useTranslation("races");

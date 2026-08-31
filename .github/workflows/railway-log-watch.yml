@@ -1,0 +1,111 @@
+name: Railway Log Watch
+
+# Dagligt tjek af backendens Railway-logstroem (#4453). Sidestykke til
+# supabase-log-watch.yml (#4014): backenden skriver strukturerede [tag]-linjer
+# til stdout/stderr som ingen laeser. Sentry ser kun exceptions i vores egen
+# kode, og flere af signalerne er bevidst undtaget fra Sentry - #2817
+# ([alunta-webhook]), #4165 ([auth] 401), #4369 ([auth] 503) og #4451
+# ([rate-limit] 429) producerer derfor korrekte signaler uden modtager.
+#
+# scripts/ops/railway-log-watch.mjs aggregerer pr. (tag, fejlklasse) over de
+# seneste 24t og sammenligner mod det foregaaende doegn. Taerskler pr. tag
+# staar i scripts/ops/railway-log-thresholds.json.
+#
+# Kraever RAILWAY_TOKEN som GitHub-secret (Railway Dashboard -> Account
+# Settings -> Tokens, eller et project-token paa 'fantastic-connection'). Uden
+# den fejler jobbet tidligt med en klar besked i stedet for at fejle stille -
+# en tavs vagt er praecis den fejlmaade issuet handler om.
+
+on:
+  schedule:
+    - cron: '40 5 * * *'   # dagligt 05:40 UTC, 20 min efter supabase-log-watch
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: 'Vinduets laengde i timer (default 24)'
+        required: false
+        default: '24'
+
+concurrency:
+  group: railway-log-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Verify RAILWAY_TOKEN is configured
+        env:
+          TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::RAILWAY_TOKEN secret mangler. Opret et token i Railway Dashboard -> Account Settings -> Tokens (eller et project-token paa 'fantastic-connection') og saet det med 'gh secret set RAILWAY_TOKEN'. Se scripts/ops/railway-log-watch.mjs header."
+            exit 1
+          fi
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Run log watch
+        id: check
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          HOURS: ${{ github.event.inputs.hours || '24' }}
+        run: node scripts/ops/railway-log-watch.mjs --hours "$HOURS"
+
+      # BEGGE signaler aabner issue. degraded=true betyder at vagten kun saa en
+      # del af logstroemmen (hentefejl eller loft ramt); melder vi groent der,
+      # er tallene en undertaelling der ligner ro - samme tavse fejlmaade som
+      # #4453 blev oprettet for.
+      - name: Open or update issue on findings
+        if: steps.check.outputs.has_findings == 'true' || steps.check.outputs.degraded == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINDINGS: ${{ steps.check.outputs.findings }}
+          FAILED: ${{ steps.check.outputs.failed_deployments }}
+          TOTAL: ${{ steps.check.outputs.deployment_count }}
+        run: |
+          set -euo pipefail
+          TITLE="[railway-log-watch] Taerskel-brud eller ny fejlklasse i backendens logstroem"
+          {
+            echo "Automatisk logstroem-vagt (scripts/ops/railway-log-watch.mjs, #4453) fandt:"
+            echo ""
+            echo "$FINDINGS"
+            echo ""
+            echo "Kilde: Railway deploy-logs for service CyclingZone (production), seneste 24t vs. foregaaende 24t."
+            echo "Daekning: ${FAILED:-0} af ${TOTAL:-0} deployments kunne ikke hentes."
+            echo "Taerskler: scripts/ops/railway-log-thresholds.json"
+            echo "Workflow: .github/workflows/railway-log-watch.yml"
+          } > railway-log-watch-body.md
+          EXISTING=$(gh issue list --state open --search "railway-log-watch in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "${EXISTING:-}" ] && [ "$EXISTING" != "null" ]; then
+            echo "Aabent issue #$EXISTING findes - tilfoejer kommentar."
+            gh issue comment "$EXISTING" --body-file railway-log-watch-body.md
+          else
+            echo "Opretter nyt issue."
+            gh issue create --title "$TITLE" --body-file railway-log-watch-body.md --label "claude:todo"
+          fi
+
+      - name: Notify Discord on findings
+        if: steps.check.outputs.has_findings == 'true' || steps.check.outputs.degraded == 'true'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK er ikke konfigureret; sprang notifikation over."
+            exit 0
+          fi
+          curl -X POST -H "Content-Type: application/json" \
+            -d '{"content": "⚠️ **Railway log-watch fandt noget** (#4453)\nSe issue eller kør selv: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+            "$DISCORD_WEBHOOK"

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, TEST_USER, evidenceShotPath } from "./fixtures.js";
 
 // #4036 (spiller-rapport 20/8): Interesse-fanen på en RIVAL-rytter må aldrig

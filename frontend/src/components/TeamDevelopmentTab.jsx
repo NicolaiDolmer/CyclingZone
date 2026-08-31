@@ -42,7 +42,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
   // selv bede om estimaterne for hele truppen når fanen mountes.
   useEffect(() => {
     if (riderIds.length > 0) scouting.requestEstimates(riderIds);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- riderIdsKey er den stabile streng-proxy for riderIds (nyt array-ref hver render); scouting-context'et er stabilt
   }, [riderIdsKey]);
 
   function handleSort(key) {

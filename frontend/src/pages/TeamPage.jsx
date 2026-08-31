@@ -677,8 +677,10 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // rating er det primære "hvor god er han"-signal). Type foldes BEVIDST IKKE
   // her (se nameColumn/typeColumn-kommentarerne — ejer 25/7: "navnet er
   // helligt", typen skal altid stå i sin egen kolonne). Fold-sættet på denne
-  // side er derfor nation+alder+rating, ikke rating+type+værdi som de andre
-  // fire rytterflader — se PR-beskrivelsen for afvejningen.
+  // side er derfor nation+alder+rating+popularitet (#3956 tilføjede popularitet
+  // til foldet — spillere kunne slet ikke finde tallet på mobil), ikke
+  // rating+type+værdi som de andre fire rytterflader — se PR-beskrivelsen for
+  // afvejningen.
   const ratingColumn = {
     key: "rating",
     header: <span title={t("squad.headers.ratingTitle")}>{t("squad.headers.rating")}</span>,
@@ -760,6 +762,24 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
       numeric: true,
       compact: true,
       render: (r) => <span className="text-cz-2">{formatNumber(r.salary || 0)}</span>,
+    },
+    // #3956: popularitet var kun synlig på markedet/rytterprofilen (#3622) —
+    // spillere efterspurgte den på holdoversigten (samme rå riders.popularity-
+    // kolonne, samme kompakte visning som RidersPage). fold:true fordi mobil er
+    // halvdelen af issuet: uden det kan tallet slet ikke findes på mobil.
+    {
+      key: "popularity",
+      header: <span title={t("squad.headers.popularityTitle")}>{t("squad.headers.popularity")}</span>,
+      sortKey: "popularity",
+      numeric: true,
+      compact: true,
+      fold: true,
+      foldValue: (r) => Number.isFinite(r.popularity) ? String(r.popularity) : "—",
+      render: (r) => (
+        <span className="text-cz-2 font-mono text-xs">
+          {Number.isFinite(r.popularity) ? r.popularity : "—"}
+        </span>
+      ),
     },
     // #1482: Status — alder + ind-/udgående som skanbare badges.
     // #1531: skade-badge når rytteren er skadet (injured_until i fremtiden).
@@ -1158,12 +1178,12 @@ export function TeamPage() {
     // i vinduet mellem pensionering og frigivelse.
     const [ridersRes, pendingRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", myTeam.id)
         .eq("is_retired", false)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, current_production_value, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, popularity, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", myTeam.id)
         .eq("is_retired", false)
         .order("market_value", { ascending: false }),

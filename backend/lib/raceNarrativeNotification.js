@@ -96,7 +96,7 @@ function formatMarginSeconds(sec) {
 
 // De momenter selectHeadlineMoment kan modtage som "vinder-momentet" for
 // etapen — identisk med raceReport.js's WIN_MOMENT_KEYS.
-export const WIN_MOMENT_KEYS = Object.freeze(["sprint_win", "close_win", "solo_win"]);
+export const WIN_MOMENT_KEYS = Object.freeze(["sprint_win", "close_win", "solo_win", "itt_win", "ttt_win"]);
 
 function byKey(moments, key) {
   return moments.find((m) => m.moment_key === key) || null;
@@ -139,6 +139,10 @@ export function selectHeadlineMoment(stageMoments) {
 function headlineTemplate(momentKey) {
   switch (momentKey) {
     case "sprint_win": return "{rider} takes the sprint";
+    // #4373: tidskørsler har egne rubrikker — ordret fra races.json's
+    // detail.report.headline.itt_win.v1 / ttt_win.v1.
+    case "itt_win": return "{rider} sets the fastest time";
+    case "ttt_win": return "{rider} leads home the fastest team";
     case "close_win": return "{rider} wins by {marginText}";
     case "solo_win": return "{rider} rides away from the field";
     case "breakaway_survived": return "The breakaway makes it: {rider} wins";

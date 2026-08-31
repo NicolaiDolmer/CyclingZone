@@ -210,22 +210,28 @@ function Test-SentrySourceMaps {
   }
 
   $release = $script:Sha
-  $uri = "https://sentry.io/api/0/projects/$org/$project/releases/$release/files/?per_page=1"
   $headers = @{
     "Authorization" = "Bearer $authToken"
     "Accept" = "application/json"
     "User-Agent" = "CyclingZone-deploy-verify"
   }
 
+  # @sentry/vite-plugin v5 uploader source maps som ARTIFACT BUNDLES (debug-id-baseret),
+  # ikke som legacy release-files. releases/<sha>/files/ returnerer derfor en tom liste
+  # SELV NAAR uploaden er lykkedes. Maalt mod prod 28/8: release c9ce695 gav en fuldt
+  # symboliseret stacktrace, men havde 0 legacy files og 1 artifact bundle med 357 filer.
+  # Se #4335.
+  $count = 0
   try {
+    $uri = "https://sentry.io/api/0/projects/$org/$project/files/artifact-bundles/?query=$release&per_page=1"
     $response = Invoke-WebRequest -Uri $uri -Headers $headers -TimeoutSec 30 -UseBasicParsing
+    $bundles = @($response.Content | ConvertFrom-Json)
+    $count = ($bundles | Measure-Object -Property fileCount -Sum).Sum
+    if (-not $count) { $count = 0 }
   } catch {
     $statusCode = $null
     if ($_.Exception.Response) {
       $statusCode = [int]$_.Exception.Response.StatusCode
-    }
-    if ($statusCode -eq 404) {
-      throw "Sentry release '$($release.Substring(0,7))' findes ikke (404) i $org/$project. Source-map upload fejlede stille - tjek Vercel build-log for sentryVitePlugin output."
     }
     if ($statusCode -eq 401 -or $statusCode -eq 403) {
       throw "Sentry source-map check unauthorized ($statusCode). SENTRY_AUTH_TOKEN mangler 'project:releases' scope eller er udloebet."
@@ -233,17 +239,22 @@ function Test-SentrySourceMaps {
     throw "Sentry source-map check fejlede ($statusCode): $($_.Exception.Message)"
   }
 
-  # Sentry returns array. Tom array = 0 files = source-map upload failed silently.
-  $body = $response.Content | ConvertFrom-Json
-  $count = @($body).Count
-
-  # If we got items, also check X-Hits header (Sentry returns total via Link header in pagination)
-  # but counting the result of per_page=1 is enough: 0 = leak detected, >=1 = at least some uploaded.
+  # Fallback: releases uploadet ad den gamle vej har ingen bundle, men har files.
   if ($count -eq 0) {
-    throw "Sentry release '$($release.Substring(0,7))' har 0 source-map files. Vercel build skippede sentryVitePlugin - source-maps mangler i prod. Tjek SENTRY_AUTH_TOKEN/ORG/PROJECT i Vercel project env."
+    try {
+      $legacyUri = "https://sentry.io/api/0/projects/$org/$project/releases/$release/files/?per_page=1"
+      $legacy = Invoke-WebRequest -Uri $legacyUri -Headers $headers -TimeoutSec 30 -UseBasicParsing
+      $count = @($legacy.Content | ConvertFrom-Json).Count
+    } catch {
+      # 404 her betyder blot at releasen ikke findes ad legacy-vejen. Bundle-tallet staar.
+    }
   }
 
-  Write-Host "[ok] Sentry release $($release.Substring(0,7)) har source-map files uploaded (>=1 file)"
+  if ($count -eq 0) {
+    throw "Sentry release '$($release.Substring(0,7))' har 0 source-map files - hverken artifact bundle eller legacy files. Vercel build skippede sentryVitePlugin - source-maps mangler i prod. Tjek SENTRY_AUTH_TOKEN/ORG/PROJECT i Vercel project env."
+  }
+
+  Write-Host "[ok] Sentry release $($release.Substring(0,7)) har $count source-map files uploaded"
 }
 
 $script:RepoRoot = (Resolve-Path (Split-Path -Parent $PSScriptRoot)).Path

@@ -14,7 +14,7 @@ import { poolHasCalendar } from "./divisionCalendarGenerator.js";
 import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLASS_WHITELIST } from "./tierRaceSelection.js";
 import { packLaneCalendar, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
-import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, toStageProfileRow } from "./raceStageProfileGenerator.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import {
@@ -29,6 +29,7 @@ import { computeSeasonSpan, parseRaceDateText, seasonFraction } from "./seasonPh
 import { grandTourRestDayCount } from "./grandTourRestDays.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { captureException } from "./sentry.js";
+import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 
 export { TIER_CLASS_WHITELIST };
 
@@ -650,14 +651,7 @@ export async function materializeTierCalendars({
         // dæknings-verifikationen og realisme-scorecardet bruger.
         const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant };
         for (const p of generateRaceStageProfiles(seedRace)) {
-          profileRows.push({
-            race_id: race.id, stage_number: p.stage_number, profile_type: p.profile_type,
-            finale_type: p.finale_type, demand_vector: p.demand_vector,
-            distance_km: p.distance_km, elevation_gain_m: p.elevation_gain_m,
-            climbs: p.climbs, sprints: p.sprints, sectors: p.sectors,
-            segments: p.segments, weather: p.weather,
-            generator_version: GENERATOR_VERSION, is_manual: false,
-          });
+          profileRows.push(toStageProfileRow(race.id, p));
         }
       }
       for (let i = 0; i < profileRows.length; i += INSERT_BATCH) {
@@ -737,12 +731,18 @@ export async function reconcilePoolCalendarOnActivation({
   // #3327/#3328 pass-through til materialize() — se materializeTierCalendars for defaults
   // + opt-out-konvention (tests af FØR-#3327-mekanik sender tomme objekter).
   coverageOverrides = {},
+  // #2743: injectable til tests, mirrorer stageScheduler.js/raceEntryGeneratorSweep.js.
+  captureExceptionFn,
 } = {}) {
   if (poolId == null) return { skipped: "no-pool" };
 
-  const { data: season, error: sErr } = await supabase
-    .from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
-  if (sErr) throw new Error(`seasons: ${sErr.message}`);
+  // #2743: order+limit+maybeSingle (i stedet for et rent maybeSingle) + separat
+  // fler-aktiv-alarm — se activeSeasonLookup.js.
+  const season = await loadSingleActiveSeason(supabase, {
+    select: "id, number, start_date",
+    tag: "reconcile-pool-calendar-on-activation",
+    captureExceptionFn,
+  });
   if (!season) return { skipped: "no-active-season" };
 
   const { data: existingRaces, error: rErr } = await supabase

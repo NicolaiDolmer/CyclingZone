@@ -136,7 +136,7 @@
       "fillMissing": "Fill gaps",
       "clearDay": "Clear day",
       "clearAllSeason": "Clear all",
-      "bound": "Already racing in an overlapping race",
+      "bound": "Locked riders cannot be added to any race shown today",
       "loadShort": "{days}d",
       "loadTitle": "Season load: {races, plural, one {# race} other {# races}}, {days, plural, one {# race day} other {# race days}} entered this season",
       "clearDayTooltip": "Clears {races, plural, one {# race} other {# races}} and removes {riders, plural, one {# rider} other {# riders}} for this day"
@@ -155,12 +155,20 @@
       "add": "Add from available",
       "withdraw": "Withdraw",
       "reenter": "Re-enter",
+      "withdrawnNote": "Your team is voluntarily not starting this race",
       "remove": "Remove rider",
       "openRace": "Open {name}",
       "peaksHere": "Peaking here: {names}",
       "paybackHere": "Payback dip here: {names} ({points} form)",
       "paybackHereNoPoints": "Payback dip here: {names}",
-      "clearSelection": "Clear selection"
+      "clearSelection": "Clear selection",
+      "sharesDay": "Shares race day {day} with {race}",
+      "sharesDays": "Shares race days {start}-{end} with {race}",
+      "sharesMany": "Shares race days with {count, plural, one {# other race} other {# other races}}",
+      "sharesItem": "Race day {day} · {race}",
+      "sharesItemDays": "Race days {start}-{end} · {race}",
+      "clash": "{rider} rides both on race day {day}",
+      "clashMany": "{count, plural, one {# rider rides} other {# riders ride}} more than one race on the same day"
     },
     "popover": {
       "title": "Add to which race?",
@@ -257,6 +265,10 @@
       "poor": "Poor"
     },
     "boundNamed": "Locked · racing in {race}",
+    "lockBoundUnnamed": "Locked · already racing in an overlapping race",
+    "lockAllStarted": "Locked · every race today has already started",
+    "lockAllWithdrawn": "Locked · you have withdrawn from every race today",
+    "lockUnavailable": "Locked · no race today can be changed",
     "lineupLocked": {
       "title": "Lineup locked",
       "note": "This race has started. The lineup is final."
@@ -438,6 +450,12 @@
     "title": "Team selection",
     "subtitle": "Pick up to {max} riders for this race. You can save a partial team, and your assistant fields the rest when the race runs. No penalty.",
     "count": "{count}/{max} selected",
+    "partialHint": "{open, plural, one {1 spot open. Your assistant fills it when the race runs.} other {# spots open. Your assistant fills them when the race runs.}}",
+    "partialHintShort": "{open, plural, one {1 spot open} other {# spots open}}, {free, plural, one {1 rider free} other {# riders free}} for this race. Your assistant fills what it can.",
+    "assistantFillsEmpty": "No riders selected. Your assistant picks the squad when the race runs.",
+    "willNotStart": "Fewer than {min} riders. Your team will not start this race.",
+    "willNotStartEmpty": "Fewer than {min} riders free for this race. Your team will not start.",
+    "willNotStartShort": "Under {min} riders. Does not start.",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
     "hunter": "Breakaway hunter (optional)",
@@ -497,7 +515,6 @@
     },
     "errors": {
       "selection_wrong_size": "You can pick at most {max} riders.",
-      "selection_insufficient_riders": "You don't have enough available riders for a full team. Withdraw from this race or sign free agents.",
       "move_target_full": "That race is already full. Remove a rider there first.",
       "move_target_locked": "That race has started, so its lineup is locked.",
       "move_wrong_pool": "You can only enter races in your own division.",
@@ -554,6 +571,7 @@
     "jerseyShortcutHint": "{name} is your rider in the leader's jersey.",
     "jerseyShortcut": "Make {name} captain for the remaining stages",
     "unsaved": "You have unsaved changes",
+    "demoted": "The role moved: {rider} is now {role} on stage {stage}.",
     "save": "Save tactics",
     "saving": "Saving…",
     "saved": "Tactics saved.",
@@ -813,7 +831,9 @@
       "winType": {
         "sprint_win": "Bunch sprint",
         "close_win": "Close finish",
-        "solo_win": "Solo victory"
+        "solo_win": "Solo victory",
+        "itt_win": "Fastest time",
+        "ttt_win": "Fastest team time"
       }
     },
     "film": {
@@ -829,6 +849,8 @@
       "feedEmpty": "Scrub forward to see what happened.",
       "event": {
         "stage_start": "{count} riders roll out for {distance} km.",
+        "stage_start_itt": "{count} riders go off one by one over {distance} km against the clock.",
+        "stage_start_ttt": "The teams go off one by one over {distance} km against the clock.",
         "breakaway_formed": "{riders} {count, plural, one {goes} other {go}} clear off the front.",
         "kom_passage": "{name} (cat. {category}): {rider} leads over the top.",
         "intermediate_sprint": "{name}: {rider} takes the intermediate sprint.",
@@ -836,6 +858,7 @@
         "breakaway_survived": "The breakaway holds off the bunch all the way to the line.",
         "incident": "{kind, select, mechanical {{rider} goes down with a mechanical.} other {{rider} goes down in a crash.}}",
         "favorite_crack": "{rider} cracks and loses contact with the front.",
+        "favorite_crack_tt": "{rider} fades in the second half and bleeds time.",
         "finale_attack": "{rider} attacks in the finale.",
         "sprint_decided": "It comes down to the wire between {rider} and the chasers.",
         "sprint_decided_photo": "Photo finish: it comes down to the wire for {rider}.",
@@ -843,6 +866,8 @@
         "finish_sprint_win": "{rider} wins the bunch sprint.",
         "finish_close_win": "{rider} wins in a close finish.",
         "finish_solo_win": "{rider} solos to the stage win.",
+        "finish_itt_win": "{rider} sets the fastest time of the day.",
+        "finish_ttt_win": "{rider} leads home the fastest team of the day.",
         "gc_change": "{rider} takes over the overall lead from {previousLeader}."
       }
     },
@@ -851,12 +876,14 @@
       "win": "{rider} took the win.",
       "soloWin": "{rider} soloed clear to win by {marginText}.",
       "sprintWin": "{rider} won the sprint.",
+      "ittWin": "{rider} set the fastest time.",
+      "tttWin": "{rider} led home the fastest team.",
       "breakawaySurvived": "{count, plural, one {A lone rider stayed away to the finish.} other {A #-rider breakaway stayed away to the finish.}}",
       "breakawayCaught": "{count, plural, one {The lone breakaway rider was caught before the line.} other {The breakaway (# riders) was caught before the line.}}",
       "teamDay": "{team} led the team classification with {count} riders in the top 10.",
       "teamWon": "{team} won the team classification.",
       "jerseys": "Jersey leaders: {points} in points, {mountain} in the mountains.",
-      "abandon": "{kind, select, crash {{rider} abandoned after a crash.} mechanical {{rider} abandoned with a mechanical.} other {{rider} abandoned.}}",
+      "abandon": "{kind, select, crash {{rider} abandoned after a crash.} mechanical {{rider} abandoned with a mechanical.} injury {{rider} did not start: injured.} other {{rider} abandoned.}}",
       "notableCrash": "{rider} crashed and lost {marginText}."
     },
     "incidents": {
@@ -927,6 +954,14 @@
           "v2": "{rider} is fastest in the bunch sprint",
           "v3": "The sprint goes to {rider}"
         },
+        "itt_win": {
+          "v1": "{rider} sets the fastest time",
+          "v2": "Nobody beats {rider} against the clock"
+        },
+        "ttt_win": {
+          "v1": "{rider} leads home the fastest team",
+          "v2": "The fastest team time goes to {team}"
+        },
         "close_win": {
           "v1": "{rider} wins by {marginText}",
           "v2": "{rider} holds on to win"
@@ -956,6 +991,13 @@
         },
         "reduced_sprint": {
           "v1": "A hard finale split the field, and {rider} won the sprint from the front group for {team}."
+        },
+        "time_trial": {
+          "v1": "Every rider went off alone against the clock. {rider} posted the fastest time of the day for {team}.",
+          "v2": "Just the rider, the road and the clock. Nobody went faster than {rider} of {team}."
+        },
+        "team_time_trial": {
+          "v1": "The teams rode the course one by one against the clock. {team} was fastest, with {rider} first across the line."
         },
         "solo": {
           "v1": "{rider} left the field behind and crossed the line alone, {marginText} clear.",

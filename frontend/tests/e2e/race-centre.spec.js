@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, TEST_TEAM } from "./fixtures.js";
 
 // #3858 — Race Centre: dagens løb som sendeflade. Dækker ALLE tre kort-tilstande

@@ -100,7 +100,7 @@ export default function TeamProfilePage() {
   // skift (det håndteres af changeTab nedenfor, som selv skriver til URL'en).
   useEffect(() => {
     setActiveTab(resolveTeamProfileTab(searchParams.get("tab")));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bevidst kun keyet på id: hold-skift skal nulstille fanen, faneskift skal ikke
   }, [id]);
 
   // #3916 defekt 2: fane-valget spejles nu i URL'en (?tab=), med replace-

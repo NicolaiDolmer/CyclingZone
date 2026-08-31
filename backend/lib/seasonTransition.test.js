@@ -51,6 +51,8 @@ function createMockSupabase(initialState = {}) {
     // falder korrekt tilbage til den beløbsfrie besked når intet findes.
     finance_transactions: initialState.finance_transactions ? [...initialState.finance_transactions] : [],
     sponsor_contracts: initialState.sponsor_contracts ? [...initialState.sponsor_contracts] : [],
+    // #2753 · previewets pullout-opslag (lag 5) - tom = ingen aktive pullouts.
+    board_consequences: initialState.board_consequences ? [...initialState.board_consequences] : [],
     app_config: initialState.app_config ? [...initialState.app_config] : [],
     // #2916 · carry-over-fasen læser disse tabeller. De defaulter til tomme
     // arrays så den ægte fase kan køre igennem i alle transition-tests (i stedet
@@ -593,8 +595,20 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   // #1980: +season_parachute; #2744-B: +contract_expiry_release;
   // #2748: +retirement_release; #2948: +sponsor_season_objectives;
   // #2916: +manager_setup_carry_over; #3043: +squad_below_minimum_check;
-  // #1150: +ai_contract_auto_renewal = 19
-  assert.equal(result.log.length, 19);
+  // #1150: +ai_contract_auto_renewal = 19; #4482: +board_bonus_offer_expiry = 20
+  // og +board_bonus_offer_stamp = 21 (Regel A: sæson-slut-tilbud re-stemples til
+  // den nye sæson). Begge #4482-faser er IKKE flag-gatede og står ALTID i loggen —
+  // de lukker et hul (bonustilbud der aldrig udløb), og "hullet er åbent" må ikke
+  // kunne blive en tilstand nogen rammer ved et uheld.
+  assert.equal(result.log.length, 21);
+  assert.ok(
+    result.log.some((l) => l.phase === "board_bonus_offer_expiry"),
+    "#4482-fasen skal være i den rigtige transition, ikke kun i hook-modulets egen test",
+  );
+  assert.ok(
+    result.log.some((l) => l.phase === "board_bonus_offer_stamp"),
+    "#4482 Regel A: stamp-fasen skal også køre i den rigtige transition",
+  );
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -632,17 +646,27 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   // (kontraktudløb + pension) og FØR carry-over.
   assert.equal(result.log[13].phase, "squad_below_minimum_check");
   assert.equal(result.log[13].belowMinimum, 0);
+  // #4482 · bonus-udløbet er sæsonstart-hookenes eneste ALTID-loggede fase, så
+  // den falder her, hvor hookene kaldes, og skubber resten én plads. Placeringen
+  // er load-bearing: hookene kører FØR season-payroll, og netop derfor må
+  // expireSeasonScopedConsequences kun tage lag 6 — lag 5 (sponsor-exit) skal
+  // udløbe EFTER sponsorudbetalingen, hvilket economyEngine allerede gør.
+  assert.equal(result.log[14].phase, "board_bonus_offer_expiry");
+  // #4482 · Regel A: stamp-fasen re-stempler sæson-slut-tilbud til den nye
+  // sæson og SKAL ligge lige efter udløbet — omvendt rækkefølge ville udløbe
+  // de netop stemplede tilbud i samme transition.
+  assert.equal(result.log[15].phase, "board_bonus_offer_stamp");
   // #2916 · carry-over kører EFTER trup-frigivelserne og FØR admin_log.
-  assert.equal(result.log[14].phase, "manager_setup_carry_over");
-  assert.equal(result.log[14].error, undefined, "carry-over må ikke fejle i en tom mock");
-  assert.deepEqual(result.log[14].handler_drift, []);
-  assert.equal(result.log[14].carried_total, 0);
-  assert.equal(result.log[15].phase, "admin_log");
-  assert.equal(result.log[15].inserted, true);
-  assert.equal(result.log[16].phase, "discord_broadcast");
-  assert.equal(result.log[16].sent, true);
-  assert.equal(result.log[17].phase, "season_started_notifications");
-  assert.equal(result.log[18].phase, "contract_expiring_notifications");
+  assert.equal(result.log[16].phase, "manager_setup_carry_over");
+  assert.equal(result.log[16].error, undefined, "carry-over må ikke fejle i en tom mock");
+  assert.deepEqual(result.log[16].handler_drift, []);
+  assert.equal(result.log[16].carried_total, 0);
+  assert.equal(result.log[17].phase, "admin_log");
+  assert.equal(result.log[17].inserted, true);
+  assert.equal(result.log[18].phase, "discord_broadcast");
+  assert.equal(result.log[18].sent, true);
+  assert.equal(result.log[19].phase, "season_started_notifications");
+  assert.equal(result.log[20].phase, "contract_expiring_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 

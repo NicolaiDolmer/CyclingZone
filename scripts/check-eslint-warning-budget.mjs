@@ -4,7 +4,7 @@ import process from "node:process";
 
 const budgets = [
   { name: "backend", cwd: "backend", maxWarnings: 0 },
-  { name: "frontend", cwd: "frontend", maxWarnings: 26 },
+  { name: "frontend", cwd: "frontend", maxWarnings: 0 },
 ];
 
 let failed = false;
@@ -14,6 +14,11 @@ for (const budget of budgets) {
     cwd: budget.cwd,
     encoding: "utf8",
     shell: true,
+    // spawnSync's default maxBuffer er 1 MB; backends json-rapport passerede
+    // 1 MB 27/8 (PR #4316), hvorefter output trunkeres og JSON.parse fejler
+    // med "Unterminated string". Rapporten vokser med antal filer, saa loftet
+    // skal ligge langt over det naturlige niveau.
+    maxBuffer: 64 * 1024 * 1024,
   });
 
   const output = result.stdout?.trim();

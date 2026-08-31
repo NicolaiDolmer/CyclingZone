@@ -54,7 +54,7 @@ import {
   effortByRiderForStage,
   serializeStageRoleOverrides,
 } from "./raceStageRoles.js";
-import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
+import { autopickTeamSelection, selectionSizeForRace, MIN_RACE_ENTRIES } from "./raceAutopick.js";
 // S5 (#2224): form-peaks — I/O-loadere (peak-planer + stage-datoer) +
 // traeningskvalitet-seam. KUN kaldt når v3=true (flag-off skal forblive bit-
 // identisk); peak-inputs går ind på entrants/stages via de samme v3-gates som S3.
@@ -66,7 +66,7 @@ import {
 } from "./racePeakPlans.js";
 // S4 (#1176): styrt/mekaniske uheld + DNF — abandon-state (cross-invokation) +
 // persistens co-locates i raceIncidents.js (ren roll-logik + DB-loader).
-import { loadAbandonedRiderIds } from "./raceIncidents.js";
+import { loadAbandonedRiderIds, persistInjuryWithdrawals } from "./raceIncidents.js";
 // S6 (#2355): why-rapport + story-tags — ren afledning af de samme komponenter
 // (ranked[].components) der allerede persisteres til race_simulation_rider_scores.
 import { extractStageMoments } from "./raceNarrative.js";
@@ -80,8 +80,8 @@ import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation } from "./raceBinding.js";
-import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
-import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries } from "./riderEligibility.js";
+import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
+import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
@@ -463,6 +463,9 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       const effortByRider = new Map(stageEntrants.filter((e) => e.effort != null).map((e) => [e.rider_id, e.effort]));
       stageMoments = extractStageMoments({
         stageNumber, isFinal, isStageRace,
+        // #4373: etapens profil skal med, ellers kan narrativet ikke skelne en
+        // enkeltstart fra en massespurt (den bar kun gap-sekunder ind før).
+        profileType: stage.profile_type ?? null,
         ranked, roleByRider, formByRider, effortByRider, breakawayStatus,
         incidentsForStage: incidents,
         gc: isStageRace ? gc : null,
@@ -822,7 +825,26 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   } catch (teamErr) {
     throw new Error(`teams: ${teamErr.message}`, { cause: teamErr });
   }
-  const teamsWithEntries = new Set((existingEntries || []).map((e) => e.team_id));
+  // #4295 (ejer-godkendt 27/8): redningen fylder op til GULVET, ikke kun fra nul.
+  // Før talte ethvert hold med mindst én entry som "har valgt" og blev sprunget over.
+  // Med et fladt gulv på 6 gjorde det den forkerte handling billigst: gemte du nul,
+  // udtog assistenten en fuld trup til dig; gemte du tre, stod du med tre og startede
+  // ikke. Nu er "har valgt" = har mindst MIN_RACE_ENTRIES ryttere i feltet; ligger
+  // holdet under, fylder assistenten forskellen fra holdets frie ryttere.
+  // Afmeldte (Fase 0b) og ryddede (#4285/#4200) hold springes fortsat over — begge
+  // markeringer er spillerens egen udtalte beslutning om ikke at stille op.
+  const riderIdsByTeam = new Map();
+  for (const e of existingEntries || []) {
+    if (!riderIdsByTeam.has(e.team_id)) riderIdsByTeam.set(e.team_id, new Set());
+    riderIdsByTeam.get(e.team_id).add(e.rider_id);
+  }
+  const entryCountByTeam = new Map([...riderIdsByTeam].map(([teamId, ids]) => [teamId, ids.size]));
+  // Hold der allerede er PÅ eller OVER gulvet røres ikke (uændret #1307-adfærd for dem).
+  const teamsAtOrAboveFloor = new Set(
+    [...entryCountByTeam].filter(([, count]) => count >= MIN_RACE_ENTRIES).map(([teamId]) => teamId)
+  );
+  // Ryttere der allerede står i feltet må aldrig fyldes ind igen (dublet-entry).
+  const alreadyEnteredRiderIds = new Set((existingEntries || []).map((e) => e.rider_id));
   // Fase 0b: hold der har trukket sig fra løbet (frivillig deltagelse) udelades.
   const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
   // #4200 (anden halvdel): hold der eksplicit har RYDDET denne enhed udelades også.
@@ -840,7 +862,7 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   // semantikken er eksplicit (service_role/bulk bypasser desuden RLS).
   const racePoolId = race?.league_division_id ?? null;
   let eligibleTeams = (teams || []).filter(
-    (t) => !t.is_frozen && !teamsWithEntries.has(t.id)
+    (t) => !t.is_frozen && !teamsAtOrAboveFloor.has(t.id)
       && !withdrawnTeams.has(t.id) && !clearedTeams.has(t.id)
   );
   if (racePoolId != null) {
@@ -862,22 +884,31 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   // stærkeste på aggregeret roster-base_value. Beregnes FØR skade-/abilities-
   // filtrering, så cap'et følger holdets reelle styrke (ikke det tilfældige antal
   // skadede den dag). Deterministisk tie-break på team_id, så samme felt hver gang.
-  if (missingTeamIds.length > POOL_TARGET_SIZE) {
-    const strengthByTeam = new Map(missingTeamIds.map((id) => [id, 0]));
+  //
+  // #4295: cap'et gælder kun hold der TILFØJES feltet, altså dem uden en eneste entry.
+  // Et hold der ligger under gulvet er allerede i feltet med sine egne manuelle picks;
+  // at cappe det væk ville betyde at manageren blev skåret ud af sit eget løb, og
+  // strength-summen ville desuden være undervurderet for netop dem (deres udtagne
+  // ryttere er filtreret ud af `riders` ovenfor).
+  const rescueTeamIds = missingTeamIds.filter((id) => (entryCountByTeam.get(id) || 0) > 0);
+  let emptyTeamIds = missingTeamIds.filter((id) => !(entryCountByTeam.get(id) || 0));
+  if (emptyTeamIds.length > POOL_TARGET_SIZE) {
+    const strengthByTeam = new Map(emptyTeamIds.map((id) => [id, 0]));
     for (const r of riders || []) {
       if (strengthByTeam.has(r.team_id)) {
         strengthByTeam.set(r.team_id, strengthByTeam.get(r.team_id) + (r.base_value || 0));
       }
     }
     const keptIds = new Set(
-      [...missingTeamIds]
+      [...emptyTeamIds]
         .sort((a, b) => {
           const diff = (strengthByTeam.get(b) || 0) - (strengthByTeam.get(a) || 0);
           return diff !== 0 ? diff : (a < b ? -1 : a > b ? 1 : 0);
         })
         .slice(0, POOL_TARGET_SIZE),
     );
-    missingTeamIds = missingTeamIds.filter((id) => keptIds.has(id));
+    emptyTeamIds = emptyTeamIds.filter((id) => keptIds.has(id));
+    missingTeamIds = [...emptyTeamIds, ...rescueTeamIds];
   }
   const keptTeamSet = new Set(missingTeamIds);
 
@@ -891,7 +922,11 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   const injuredIds = new Set((injured || []).map((r) => r.rider_id));
   // #1688: riders blev hentet for hele pre-cap-sættet — behold kun ryttere på de
   // hold der overlevede felt-cap'et, så cappede hold ikke smutter ind i feltet.
-  const candidates = (riders || []).filter((r) => !injuredIds.has(r.id) && keptTeamSet.has(r.team_id));
+  // #4295: en rytter der ALLEREDE står i feltet (holdets egne manuelle picks) må ikke
+  // fyldes ind igen af redningen — det ville give en dublet-entry for samme (race, rider).
+  const candidates = (riders || []).filter(
+    (r) => !injuredIds.has(r.id) && keptTeamSet.has(r.team_id) && !alreadyEnteredRiderIds.has(r.id)
+  );
   if (!candidates.length) return [];
 
   const candidateIds = candidates.map((r) => r.id);
@@ -931,8 +966,27 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
     const available = excludeBoundRiders({
       riders: teamRiders, thisWindow, otherRaces: otherRacesByTeam.get(teamId) || [],
     });
-    for (const pick of autopickTeamSelection({ riders: available, stages, sizeRule })) {
-      rows.push({ race_id: race.id, rider_id: pick.rider_id, team_id: teamId, race_role: pick.race_role, is_auto_filled: true });
+    // #4295: to forskellige jobs bag samme løkke.
+    //   0 entries  → uændret #1307-autopick: assistenten udtager en HEL trup (sizeRule)
+    //                med kaptajn og spurt-kaptajn, fordi manageren intet har valgt.
+    //   1..5 entries → SEN REDNING: fyld præcis op til gulvet (6), ikke op til feltet.
+    //                Managerens egne picks og roller står; de tilføjede er hjælpere, så
+    //                redningen aldrig sætter en anden kaptajn end den han selv valgte.
+    const existingCount = entryCountByTeam.get(teamId) || 0;
+    const isRescue = existingCount > 0;
+    const rule = isRescue
+      ? { min: MIN_RACE_ENTRIES - existingCount, max: MIN_RACE_ENTRIES - existingCount }
+      : sizeRule;
+    const picks = autopickTeamSelection({ riders: available, stages, sizeRule: rule });
+    // Rækker kun hvis holdet FAKTISK når gulvet. Kan det ikke (for få frie ryttere),
+    // stiller det ikke op alligevel — og så skal der ikke skrives auto-entries der
+    // binder rytterne på løbsdagen for et startfelt de aldrig kommer i.
+    if (existingCount + picks.length < MIN_RACE_ENTRIES) continue;
+    for (const pick of picks) {
+      rows.push({
+        race_id: race.id, rider_id: pick.rider_id, team_id: teamId,
+        race_role: isRescue ? "helper" : pick.race_role, is_auto_filled: true,
+      });
     }
   }
 
@@ -1052,12 +1106,46 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
       entries: existingEntries, injuredUntilByRider, todayStr: copenhagenDateString(),
     });
   }
+  // #4306: hold der har trukket sig fra løbet (Fase 0b, frivillig deltagelse) deltager
+  // ikke, heller ikke med BEVAREDE entries fra før afmeldingen. loadWithdrawnTeamIds
+  // kaldtes hidtil kun fra fillMissingTeamEntries (sen redning); et afmeldt holds
+  // committede race_entries blev derfor aldrig fjernet, og holdet startede løbet med
+  // en NULL-binding (race_entries_binding_span forudsætter bevidst at et afmeldt hold
+  // heller ikke STARTER, se database/2026-08-21-4075-monument-normal-gameday.sql).
+  // Filtreres HER, FØR autopick/minimum-gulv nedenfor, så et afmeldt hold aldrig kan
+  // "reddes" op til feltet af sen-rednings- eller minimum-logikken (koordination #4295).
+  // Et hold uden entries er ikke i feltet, ingen ny tilstand, samme mekanik som
+  // division/ghost/skade-filtrene ovenfor.
+  if (existingEntries.length) {
+    const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
+    if (withdrawnTeams.size) {
+      existingEntries = existingEntries.filter((e) => !withdrawnTeams.has(e.team_id));
+    }
+  }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
   // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).
   const autopicked = allowAutofill
     ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist })
     : [];
-  const entries = [...existingEntries, ...autopicked];
+  let entries = [...existingEntries, ...autopicked];
+  // #4295 (ejer-beslutning 27/8): GULVET. Et hold skal have mindst 6 ryttere for at
+  // stille op. Kører EFTER redningen ovenfor, så et hold der kunne fyldes op til 6 er
+  // fyldt op FØR gulvet måles — ellers ville et hold med 3 gemte ryttere ryge ud af et
+  // felt assistenten lige havde reddet.
+  //
+  // Kun ved løbets start (allowAutofill = stageIndex 0, raceRunner.js:2127). Et
+  // igangværende etapeløb må ikke miste et hold midtvejs fordi skade-filteret ovenfor
+  // har taget en rytter fra en trup der startede med præcis 6: gulvet gælder hvem der
+  // STILLER OP, ikke hvem der stadig er i løbet på etape 4.
+  if (allowAutofill) {
+    const { kept, droppedTeamIds } = filterTeamsBelowMinimumEntries({ entries });
+    if (droppedTeamIds.length) {
+      console.log(
+        `[race ${race.id}] ${droppedTeamIds.length} hold stiller ikke op: under ${MIN_RACE_ENTRIES} udtagne ryttere (#4295)`
+      );
+    }
+    entries = kept;
+  }
   if (!entries.length) return [];
 
   const teamByRider = new Map(entries.map((e) => [e.rider_id, e.team_id]));
@@ -1224,6 +1312,19 @@ async function persistRuns({ supabase, race, runs, source = null }) {
       if (scoreErr) throw new Error(`race_simulation_rider_scores: ${scoreErr.message}`);
     }
   }
+}
+
+// #4418: injured_until for en lille, kendt maengde ryttere (de "forsvundne" fra
+// #1844-frysningen — typisk 0, sjaeldent over en haandfuld). Kaldes KUN naar der
+// faktisk er forsvundne, saa den normale etape betaler ingen ekstra query.
+async function loadInjuredUntilByRider({ supabase, riderIds = [] }) {
+  if (!riderIds.length) return new Map();
+  const { data, error } = await selectInChunks({
+    supabase, table: "rider_condition", columns: "rider_id, injured_until",
+    inColumn: "rider_id", ids: [...new Set(riderIds)],
+  });
+  if (error) throw new Error(`rider_condition (injured_until): ${error.message}`);
+  return new Map((data || []).map((c) => [c.rider_id, c.injured_until]));
 }
 
 // Beregn injured_until-dato: dateStr (YYYY-MM-DD) + days → YYYY-MM-DD. Noon UTC
@@ -1953,6 +2054,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const effortByRider = new Map(simEntrants.filter((e) => e.effort != null).map((e) => [e.rider_id, e.effort]));
   const stageMoments = v3 ? extractStageMoments({
     stageNumber, isFinal, isStageRace: true,
+    profileType: thisStage.profile_type ?? null, // #4373, se buildRaceResults' note
     ranked, roleByRider, formByRider, effortByRider, breakawayStatus,
     incidentsForStage: stampedIncidents,
     gc, previousGcLeaderId,
@@ -2121,6 +2223,9 @@ export async function simulateStageByIndex({
   let moments = [];
   let timelines = [];
   let applied = { rowsImported: 0 };
+  // #4418: start-felt-ryttere der ikke kunne stille til start paa DENNE etape fordi
+  // de var skadet. Samles ved frysningen nedenfor, skrives efter persistIncidents.
+  let injuryWithdrawals = [];
 
   if (!finalizationPending) {
     // #1844: auto-fyld KUN ved etape 1. Senere etaper må ikke tilføje nye ryttere.
@@ -2163,7 +2268,33 @@ export async function simulateStageByIndex({
         console.error(`  ⚠️  race ${race.id} etape ${stageNumber}: ${added.length} mid-race-rytter(e) ekskluderet fra GC (#1844): ${added.slice(0, 5).join(",")}${added.length > 5 ? "…" : ""}`);
       }
       if (missing.length) {
-        console.error(`  ⚠️  race ${race.id} etape ${stageNumber}: ${missing.length} start-felt-rytter(e) forsvundet (#1844/#1847): ${missing.slice(0, 5).join(",")}${missing.length > 5 ? "…" : ""}`);
+        // #4418: skeln de to aarsager. Skadefilteret (#3896) tager helt bevidst en
+        // rytter ud af et loeb han er skadet i (ejer-beslutning 30/8) — det er ikke
+        // et brud, men det efterlod hidtil intet spor, saa spilleren saa rytteren
+        // forsvinde uden forklaring og advarslen gentog sig paa hver resterende
+        // etape. De registreres som udgaaelse nedenfor. Alt ANDET der forsvinder
+        // (solgt, akademi-kontrakt midt i loebet, pensioneret) er stadig
+        // uforklaret og skal blive ved med at larme.
+        const injuredUntilByRider = await loadInjuredUntilByRider({ supabase, riderIds: missing });
+        const { injured, unexplained } = partitionMissingByInjury({
+          missing, injuredUntilByRider, todayStr: copenhagenDateString(),
+        });
+        injuryWithdrawals = injured;
+        if (injured.length) {
+          console.log(`  🩹 race ${race.id} etape ${stageNumber}: ${injured.length} start-felt-rytter(e) kunne ikke starte pga. skade — registreres som udgaaet (#4418)`);
+        }
+        if (unexplained.length) {
+          console.error(`  ⚠️  race ${race.id} etape ${stageNumber}: ${unexplained.length} start-felt-rytter(e) forsvundet UDEN skade (#1844/#1847/#4418): ${unexplained.slice(0, 5).join(",")}${unexplained.length > 5 ? "…" : ""}`);
+          captureException(
+            new Error(`Start-felt-rytter forsvundet uden forklaring: ${unexplained.length} paa etape ${stageNumber} (#1844/#4418)`),
+            {
+              tags: { flow: "race-run", stage: "start-field-frozen" },
+              fingerprint: ["start-field-rider-vanished"],
+              raceId: race.id, stageNumber,
+              extra: { count: unexplained.length, sample: unexplained.slice(0, 20) },
+            }
+          );
+        }
       }
       entrants = frozen;
     }
@@ -2313,6 +2444,12 @@ export async function simulateStageByIndex({
     // røres ikke (samme idempotens-mønster som persistRuns/apply_stage_result).
     if (v3 && incidents.length) {
       await persistIncidents({ supabase, race, incidents, stageNumbers: [stageNumber] });
+    }
+    // #4418: EFTER persistIncidents — den scoper sit delete-then-insert til hele
+    // etapen, saa raekkerne her ville blive slettet igen hvis de blev skrevet foer.
+    // Kun v3: det er loadAbandonedRiderIds (v3-gated ovenfor) der forbruger dem.
+    if (v3) {
+      await persistInjuryWithdrawals({ supabase, raceId: race.id, stageNumber, riderIds: injuryWithdrawals });
     }
     // S6 (#2355): samme scoping-mønster (denne etape alene).
     if (v3 && moments.length) {

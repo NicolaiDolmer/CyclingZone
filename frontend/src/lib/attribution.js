@@ -6,7 +6,9 @@
 // the analytics-consent gate by design: first-touch happens before the cookie
 // banner is answered, and nothing is persisted until the user creates an account.
 const STORAGE_KEY = "cz_attribution_v1"; // gitleaks:allow — localStorage-nøglenavn, ikke en secret
-const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
+// Exported so trafficBeacon.js reads the same key list (#4320). Only the constant
+// is shared — the beacon stays storage-less and never calls captureFirstTouch.
+export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
 
 // Runs on every load but writes ONCE — the first visit wins. Args are injectable
 // for unit-testing; defaults read the real browser context.

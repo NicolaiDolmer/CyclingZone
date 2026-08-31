@@ -87,7 +87,12 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        shell: bash
         run: |
+          # #4463: `set -o pipefail` er IKKE default i GitHub's bash. Uden den
+          # sluger `tee` auditens exit-kode, saa en halvfaerdig rapport ser groen
+          # ud mens `total` nedenfor alligevel skrives til GITHUB_OUTPUT.
+          set -o pipefail
           # Declare-and-assign-separately satisfies shellcheck SC2155
           # (return value of $() would otherwise be masked by export's exit code).
           SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')

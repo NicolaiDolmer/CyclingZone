@@ -40,6 +40,15 @@
 
 const SPRINT_GAP_S = 3;
 const CLOSE_GAP_S = 10;
+// #4373: enkeltstart/holdtidskørsel afgøres mod uret — rytterne starter enkeltvis
+// (itt) eller holdvis (ttt) og møder aldrig hinanden på vejen. Gap-tærsklerne
+// ovenfor beskriver et FELT der kommer til stregen sammen; anvendt på en prolog
+// gjorde de en solo-enkeltstart til en "massespurt" (seks spillere læste teksten
+// som at sprintere favoriseres i enkeltstarter). Vindermomentet får derfor sin
+// EGEN nøgle pr. disciplin — itt og ttt er to forskellige ting og deler ikke
+// formulering. Gap-tallet bæres stadig med i params (allerede offentligt i
+// resultat-tabellen), så copy senere kan bruge marginen uden en ny nøgle.
+export const TIME_TRIAL_WIN_KEY = Object.freeze({ itt: "itt_win", ttt: "ttt_win" });
 const FAVORITE_OFF_DAY_RANK = 15;
 const HELPER_SHIFT_CAPTAIN_RANK = 5;
 const HELPER_SHIFT_HELPER_MIN_COUNT = 2;
@@ -49,6 +58,12 @@ const FORM_PEAK_THRESHOLD = 75;
 const CRASH_RUINED_FAVORITE_TERRAIN_RANK = 5;
 const CAPTAIN_ROLES = new Set(["captain", "sprint_captain"]);
 const HELPER_ROLES = new Set(["helper", "hunter"]);
+// #3145: enkeltstart-profiler — rytterne kører hver for sig mod uret, så der
+// findes ingen hjælper-mekanik at fortælle om. raceRoles.js baseWorkCost()
+// giver netop derfor 'helper' prisen 0 på disse profiler (kun GC_RELEVANT_
+// PROFILES og FLAT_LEADOUT_PROFILES koster noget). En "prolog" i spillet
+// genereres som profile_type 'itt' — der findes ingen separat prologue-værdi.
+const SOLO_EFFORT_PROFILES = new Set(["itt", "itt_hilly"]);
 // #3115: "typematch/terræn passer"-tjekket for tag_aggression_no_cost nedenfor —
 // øvre halvdel af FELTETS terræn-rangering (samme rangering favorite_off_day
 // allerede bruger, ALDRIG den rå terrain-værdi). Skelner "en rytter det gav
@@ -88,6 +103,7 @@ export function isStoryTagKey(momentKey) {
 function significanceFor(key, boost = 0) {
   const base = {
     sprint_win: 50, close_win: 50, solo_win: 55,
+    itt_win: 55, ttt_win: 55,
     breakaway_survived: 55, breakaway_caught: 35,
     team_day: 45, gc_takeover: 70, final_gc: 80,
     helper_shift: 60, favorite_off_day: 65, form_peak: 40,
@@ -139,6 +155,12 @@ function dominantReason({ rider, incidentByRider, roleByRider }) {
  * @param {object} args
  * @param {boolean} [args.isFinal=false]
  * @param {boolean} [args.isStageRace=false]
+ * @param {string|null} [args.profileType]  etapens profile_type (samme felt
+ *   raceSimulator/raceTimeline læser). #4373: 'itt'/'ttt' bytter vindermomentets
+ *   nøgle ud med itt_win/ttt_win, så feltbaseret sprint-copy ALDRIG kan lande på
+ *   en tidskørsel. Manglende/ukendt profil → uændret sprint/close/solo-adfærd.
+ *   #3145: 'itt'/'itt_hilly' slår desuden helper_shift/tag_helper_sacrifice helt
+ *   fra — på en enkeltstart findes der ingen hjælper-mekanik at fortælle om.
  * @param {Array<{rider_id, team_id, rank, stageGap, components}>} args.ranked  fra simulateStage
  * @param {Map<string,string>} [args.roleByRider]  rider_id → race_role (denne etapes resolved rolle)
  * @param {Map<string,number>} [args.formByRider]  rider_id → form-snapshot (0-100)
@@ -155,6 +177,7 @@ function dominantReason({ rider, incidentByRider, roleByRider }) {
 export function extractStageMoments({
   isFinal = false,
   isStageRace = false,
+  profileType = null,
   ranked = [],
   roleByRider = new Map(),
   formByRider = new Map(),
@@ -173,13 +196,17 @@ export function extractStageMoments({
   const incidentByRider = new Map((incidentsForStage || []).map((inc) => [inc.rider_id, inc]));
 
   // ── Tier 0: finish-orden, udbrud, hold, GC-skifte ────────────────────────
+  // #4373: tidskørsler klassificeres IKKE på gap-tærsklerne — på en enkeltstart
+  // betyder to sekunder til nr. 2 ikke at de spurtede mod hinanden.
+  const timeTrialWinKey = TIME_TRIAL_WIN_KEY[profileType] ?? null;
   if (winner) {
     const gap2 = second?.stageGap ?? null;
     if (gap2 != null) {
-      const key = gap2 < SPRINT_GAP_S ? "sprint_win" : gap2 < CLOSE_GAP_S ? "close_win" : "solo_win";
+      const key = timeTrialWinKey
+        ?? (gap2 < SPRINT_GAP_S ? "sprint_win" : gap2 < CLOSE_GAP_S ? "close_win" : "solo_win");
       push(moments, { key, params: { riderId: winner.rider_id, gapSeconds: gap2 }, riderIds: [winner.rider_id], teamIds: [winner.team_id] });
     } else {
-      push(moments, { key: "solo_win", params: { riderId: winner.rider_id, gapSeconds: null }, riderIds: [winner.rider_id], teamIds: [winner.team_id] });
+      push(moments, { key: timeTrialWinKey ?? "solo_win", params: { riderId: winner.rider_id, gapSeconds: null }, riderIds: [winner.rider_id], teamIds: [winner.team_id] });
     }
 
     const winnerBw = breakawayStatus.get(winner.rider_id);
@@ -304,17 +331,30 @@ export function extractStageMoments({
   // og kaptajnens team-komponent viser hun/han faktisk modtog hjælp (>0, dvs.
   // hjælper-arbejdet lykkedes — ikke bare tilstede). Offentligt bevisbart via
   // rollerne (allerede synlige i StageRoleMatrix) + finish-positionerne.
+  //
+  // #3145: to guards mere, begge nødvendige — tre spillere har rapporteret
+  // "ryttere ofres" på enkeltstarter som forkert, og målingen mod prod 30/8 gav
+  // 616 tag_helper_sacrifice + 166 helper_shift over 71 ITT-etapeinstanser:
+  //   1) SOLO-profilen slår beatet helt fra. Uden den ville en 'hunter' stadig
+  //      kunne udløse det: WORK_COST_HUNTER er profil-uafhængig og negativ på
+  //      ALLE profiler (raceRoles.js baseWorkCost) — 3 af de 616.
+  //   2) mindst én af de udpegede hjælpere skal faktisk HAVE betalt for det
+  //      (work_cost < 0) — præcis det bevis dominantReason() ovenfor allerede
+  //      kræver for at kalde en nedtur "helper_work". 607 af de 616 taggede
+  //      ryttere havde work_cost = 0, altså et "offer" der aldrig kostede noget.
+  const soloEffortProfile = SOLO_EFFORT_PROFILES.has(profileType);
   const byTeam = new Map();
   for (const r of ranked) {
     if (r.team_id == null) continue;
     if (!byTeam.has(r.team_id)) byTeam.set(r.team_id, []);
     byTeam.get(r.team_id).push(r);
   }
-  for (const [teamId, teamRiders] of byTeam) {
+  for (const [teamId, teamRiders] of soloEffortProfile ? [] : byTeam) {
     const captain = teamRiders.find((r) => CAPTAIN_ROLES.has(roleByRider.get(r.rider_id)) && r.rank <= HELPER_SHIFT_CAPTAIN_RANK);
     if (!captain || !(Number(captain.components?.team) > 0)) continue;
     const helpers = teamRiders.filter((r) => HELPER_ROLES.has(roleByRider.get(r.rider_id)) && r.rank > HELPER_SHIFT_HELPER_OUTSIDE_RANK);
     if (helpers.length < HELPER_SHIFT_HELPER_MIN_COUNT) continue;
+    if (!helpers.some((h) => Number(h.components?.work_cost) < 0)) continue;
     push(moments, {
       key: "helper_shift",
       params: { captainId: captain.rider_id, helperIds: helpers.map((h) => h.rider_id), teamId },

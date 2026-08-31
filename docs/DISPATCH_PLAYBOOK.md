@@ -29,7 +29,7 @@ Konsekvens: dispatch er kun for tasks hvor (a) hele kæden er low-risk eller ide
 | Task-type | Eksempel | Hvorfor safe |
 |---|---|---|
 | **Read-only audits** | `agent-doctor` ugentlig sundheds-rapport (#346), memory-drift audit (#78), cross-PC forensic audit | Ingen writes til prod, ingen sletninger, output er en rapport eller GitHub-comment. |
-| **Scheduled report-jobs** | `time-tracker-weekly-report.json` søndag 21:00, `weekly-memory-audit.json` mandag 09:00 | Cron-baseret, idempotent, output går til GitHub issue eller stdout. Skader intet ved re-run. |
+| **Scheduled report-jobs** | `weekly-memory-audit.json` mandag 09:00, `worktree-cleanup-weekly.json` | Cron-baseret, idempotent, output går til GitHub issue eller stdout. Skader intet ved re-run. |
 | **External data-fetches** | Hent UCI race-resultater til CSV i `data/`, scrape Vercel deployment-status, pull Discord-feedback fra kanal | Read-only mod 3.-parts API; lokal write til ikke-kritisk fil; ingen DB-mutation. |
 | **Test-runs uden commit** | `npm test`, `npx playwright test core-smoke.spec.js`, lint-runs, type-check | Output er pass/fail; ingen state ændres; resultater kan postes til issue-comment. |
 | **Docs-only forslag-draft** | Generér første udkast til en archive-doc eller patch-notes-draft til review | Skriver til ny fil eller til en branch; bruger reviewer FØR merge. |

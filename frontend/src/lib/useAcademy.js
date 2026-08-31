@@ -4,18 +4,11 @@
 // + pillar-events academy_sign / academy_reject. Spejler useTraining.
 
 import { useState, useEffect, useCallback } from "react";
-import { getSession, supabase } from "./supabase.js";
+import { authHeaders, supabase } from "./supabase.js"; // #4348: kanonisk kopi
 import { getAuthedUser } from "./getAuthedUser.js";
 import { logEvent } from "./logEvent.js";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export function useAcademy() {
   const [enabled, setEnabled]   = useState(false);

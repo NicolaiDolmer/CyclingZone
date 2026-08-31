@@ -9,7 +9,7 @@
 // Testen dækker de tre veje spilleren kan gå: standardforslaget, et afvist
 // nat-tidspunkt, og et afvist tidspunkt for langt frem. I alle afviste
 // tilfælde skal Start-knappen være spærret, så fejlen fanges før POST'en.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, evidenceShotPath } from "./fixtures.js";
 
 const SELL_BUTTON = /^(Sell \/ Auction|Sælg \/ Auktion)$/;

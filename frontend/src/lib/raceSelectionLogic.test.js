@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { toggleRider, validateSelectionClient, pickFallbackCaptain } from "./raceSelectionLogic.js";
+import { toggleRider, validateSelectionClient, pickFallbackCaptain, partialSquadOutlook, MIN_RACE_ENTRIES } from "./raceSelectionLogic.js";
+import { MIN_RACE_ENTRIES as BACKEND_MIN_RACE_ENTRIES } from "../../../backend/lib/raceAutopick.js";
 
 test("toggleRider: tilføjer/fjerner og respekterer max + rydder roller for fjernet rytter", () => {
   const s0 = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null };
@@ -13,81 +14,73 @@ test("toggleRider: tilføjer/fjerner og respekterer max + rydder roller for fjer
   assert.equal(toggleRider(full, "i", 8), full, "max nået → uændret state");
 });
 
-test("validateSelectionClient: spejl af backend-koderne (#1906 fuld opstilling)", () => {
-  // Fuld trup (8 på {6,8}) + kaptajn → ingen fejl.
-  const ok = validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 });
-  assert.deepEqual(ok, []);
-  // Delvis trup (6 af 8 pladser) → wrong_size.
-  assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_wrong_size"));
-  // #4175: for få raske ryttere (kun 5 til 8 pladser) → holdet KAN ikke fylde, og
-  // gemningen blokeres derfor IKKE længere. Backenden har tilladt delvis trup siden
-  // 28/6, og det er netop paa de dage hvor kalenderen kraever flere ryttere end truppen
-  // har (#4174) at manageren er noedt til at moede op med det han har.
-  assert.deepEqual(
-    validateSelectionClient({ riderIds: ["a","b","c","d","e"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 5 }),
-    [],
-    "kan holdet ikke fylde, maa en delvis trup gemmes"
-  );
-  assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: null, sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_captain_required"));
-  assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: "a", sprintCaptainId: "a", hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_role_overlap"));
-});
-
-// #2637: requireFull=false — en skadet rytter skal altid kunne fjernes fra en allerede
-// gemt/auto-udtaget trup, selv når det efterlader en delvis trup. Backend tillader en
-// delvis trup for ethvert efterfølgende gem (ejer 28/6, afløser #1906); requireFull=true
-// forbliver default så en FØRSTEGANGS-udtagelse stadig guides mod en fuld trup.
-test("validateSelectionClient: requireFull=false tillader en delvis trup (#2637, fjernelse af skadet rytter)", () => {
-  const partial = validateSelectionClient({
-    riderIds: ["a", "b", "c", "d", "e"], captainId: "a", sprintCaptainId: null, hunterId: null,
-    size: { min: 6, max: 8 }, availableCount: 10, requireFull: false,
-  });
-  assert.ok(!partial.includes("selection_wrong_size"), "delvis trup er OK når requireFull=false");
-  assert.ok(!partial.includes("selection_insufficient_riders"));
-  // Stadig over feltstørrelsen → afvist uanset requireFull.
-  const overMax = validateSelectionClient({
-    riderIds: ["a", "b", "c", "d", "e", "f", "g", "h", "i"], captainId: "a", sprintCaptainId: null, hunterId: null,
-    size: { min: 6, max: 8 }, availableCount: 10, requireFull: false,
-  });
-  assert.ok(overMax.includes("selection_wrong_size"), "over feltstørrelsen afvises stadig");
-  // requireFull udeladt (default true) → uændret #1906-adfærd.
-  const defaultBehavior = validateSelectionClient({
-    riderIds: ["a", "b", "c", "d", "e"], captainId: "a", sprintCaptainId: null, hunterId: null,
-    size: { min: 6, max: 8 }, availableCount: 10,
-  });
-  assert.ok(defaultBehavior.includes("selection_wrong_size"), "default (requireFull=true) kræver stadig fuld trup");
-});
-
-// #4175 (spiller-rapport 24/8): tre managere kunne ikke gemme en udtagelse paa de dage
-// hvor kalenderen kraever flere ryttere end truppen har. Klienten var strengere end
-// backenden, som har tilladt delvis trup siden 28/6.
-test("validateSelectionClient: #4175 kan holdet IKKE fylde, blokeres en delvis trup ikke", () => {
-  // 5 ledige ryttere til et 7-mands felt: alt hvad manageren kan gemme skal kunne gemmes.
-  for (const antal of [1, 3, 5]) {
-    const ids = ["a", "b", "c", "d", "e"].slice(0, antal);
-    const fejl = validateSelectionClient({
-      riderIds: ids, captainId: ids[0], sprintCaptainId: null, hunterId: null,
-      size: { min: 7, max: 7 }, availableCount: 5,
-    });
-    assert.deepEqual(fejl, [], `${antal} af 7 skal kunne gemmes naar kun 5 er ledige`);
+// #4295: klienten må ALDRIG afvise et gem serveren accepterer. Backendens
+// validateSelection (backend/lib/raceSelection.js:25) afviser kun `riderIds.length >
+// sizeRule.max`. Der er intet minimum nogen steder i gem-stien. Disse tests er
+// kontrakten mod den regel.
+test("validateSelectionClient: ANTAL blokerer kun opad (spejl af backend raceSelection.js:25)", () => {
+  // Enhver trupstørrelse fra 1 til size.max er lovlig, i alle tre feltstørrelser.
+  const alle = ["a", "b", "c", "d", "e", "f", "g", "h"];
+  for (const max of [6, 7, 8]) {
+    for (let antal = 1; antal <= max; antal++) {
+      const ids = alle.slice(0, antal);
+      assert.deepEqual(
+        validateSelectionClient({ riderIds: ids, captainId: ids[0], sprintCaptainId: null, hunterId: null, size: { min: max, max } }),
+        [],
+        `${antal} af ${max} skal kunne gemmes`
+      );
+    }
+    // Én over feltstørrelsen er den ENESTE antals-fejl der er tilbage.
+    const forMange = alle.slice(0, max).concat("x");
+    assert.ok(
+      validateSelectionClient({ riderIds: forMange, captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: max, max } }).includes("selection_wrong_size"),
+      `${max + 1} af ${max} skal afvises`
+    );
   }
 });
 
-test("validateSelectionClient: #4175 nudgen bevares naar holdet FAKTISK kan fylde", () => {
-  // Samme delvise trup, men nu er der ryttere nok — saa er det et valg, ikke en noed,
-  // og #1906-nudgen mod fuld trup gaelder stadig.
-  const fejl = validateSelectionClient({
-    riderIds: ["a", "b", "c"], captainId: "a", sprintCaptainId: null, hunterId: null,
-    size: { min: 7, max: 7 }, availableCount: 12,
-  });
-  assert.ok(fejl.includes("selection_wrong_size"), "kan holdet fylde, guides det stadig mod fuld trup");
+// #4295 (spiller-rapport 27/8, knud_r_flink: "I still cant save a team less than the
+// total number of riders"): #4175's escape-ventil hvilede på `availableCount`, som er
+// hele den raske trup og aldrig trækker bundne ryttere fra. Et hold med ryttere nok på
+// papiret ramte derfor stadig blokeringen ved en FØRSTEGANGS-udtagelse (requireFull:
+// !data.selection), altså præcis tilstanden efter "Ryd alt" eller en kalender-rebuild.
+// Begge argumenter er væk. Denne test låser at de ikke kan snige sig ind igen.
+test("validateSelectionClient: #4295 gamle requireFull/availableCount-argumenter kan ikke blokere", () => {
+  const delvis = {
+    riderIds: ["a", "b", "c", "d"], captainId: "a", sprintCaptainId: null, hunterId: null,
+    size: { min: 7, max: 7 },
+  };
+  // Præcis spillerens case: 4 valgte til et 7-mands felt, 29 ryttere i truppen, ingen
+  // gemt udtagelse endnu. Skal kunne gemmes.
+  assert.deepEqual(validateSelectionClient(delvis), [], "delvis trup ved førstegangs-udtagelse er lovlig");
+  // Sendes de gamle argumenter alligevel (gammel kalder, uopdateret test), ignoreres de.
+  assert.deepEqual(
+    validateSelectionClient({ ...delvis, availableCount: 29, requireFull: true }),
+    [],
+    "requireFull/availableCount må ALDRIG genindføre en antals-blokering"
+  );
 });
 
-test("validateSelectionClient: #4175 over feltstoerrelsen afvises uanset hvor faa der er ledige", () => {
-  const fejl = validateSelectionClient({
-    riderIds: ["a", "b", "c", "d", "e", "f", "g", "h"], captainId: "a", sprintCaptainId: null, hunterId: null,
-    size: { min: 7, max: 7 }, availableCount: 5,
-  });
-  assert.ok(fejl.includes("selection_wrong_size"), "flere end feltstoerrelsen er stadig ugyldigt");
+test("validateSelectionClient: kaptajn og rolle-overlap er uændret", () => {
+  const fuld = { riderIds: ["a","b","c","d","e","f","g","h"], size: { min: 6, max: 8 } };
+  assert.ok(validateSelectionClient({ ...fuld, captainId: null, sprintCaptainId: null, hunterId: null }).includes("selection_captain_required"));
+  assert.ok(validateSelectionClient({ ...fuld, captainId: "a", sprintCaptainId: "a", hunterId: null }).includes("selection_role_overlap"));
+  assert.ok(validateSelectionClient({ ...fuld, captainId: "a", sprintCaptainId: "b", hunterId: "b" }).includes("selection_role_overlap"));
+  assert.deepEqual(validateSelectionClient({ ...fuld, captainId: "a", sprintCaptainId: "b", hunterId: "c" }), []);
+});
+
+// #4295: `selection_insufficient_riders` er slettet fra begge locales i samme PR. Ingen
+// kodesti udsender den længere, så en assert på at den ikke dukker op igen holder
+// i18n-nøglen og koden i takt.
+test("validateSelectionClient: selection_insufficient_riders udsendes aldrig", () => {
+  for (const antal of [0, 1, 4, 7, 9]) {
+    const ids = ["a", "b", "c", "d", "e", "f", "g", "h", "i"].slice(0, antal);
+    const fejl = validateSelectionClient({
+      riderIds: ids, captainId: ids[0] ?? null, sprintCaptainId: null, hunterId: null,
+      size: { min: 7, max: 7 },
+    });
+    assert.ok(!fejl.includes("selection_insufficient_riders"), `${antal} ryttere må ikke give en død fejlkode`);
+  }
 });
 
 test("pickFallbackCaptain: vælger højest suitability, ekskl. sprint/jæger (#2028)", () => {
@@ -109,4 +102,72 @@ test("pickFallbackCaptain: alle kandidater har anden rolle → fald tilbage til 
 test("pickFallbackCaptain: tom trup → null; manglende suitability → deterministisk (id asc)", () => {
   assert.equal(pickFallbackCaptain({ riderIds: [], suitabilityOf: () => 0 }), null);
   assert.equal(pickFallbackCaptain({ riderIds: ["b", "a"], suitabilityOf: () => undefined }), "a");
+});
+
+// ── #4295: gulvet (ejer-beslutning 27/8) ──────────────────────────────────────
+// Drift-guard: frontend og backend er separate npm-pakker og kan ikke dele et
+// build-time-import, så tallet er duplikeret. Ændrer backenden gulvet, fejler
+// denne test indtil frontenden følger med — samme mønster som rulesNumbers.test.js.
+test("MIN_RACE_ENTRIES matcher backendens gulv (drift-guard)", () => {
+  assert.equal(MIN_RACE_ENTRIES, BACKEND_MIN_RACE_ENTRIES);
+  assert.equal(MIN_RACE_ENTRIES, 6, "ejer-beslutning 27/8: fladt gulv på 6");
+});
+
+test("partialSquadOutlook: under gulvet UDEN frie ryttere nok → holdet stiller ikke op", () => {
+  // 4 valgte til et 7-mands-felt, ingen frie ryttere tilbage: assistenten kan ikke
+  // løfte truppen til 6, så konsekvensen er at holdet ikke starter.
+  const out = partialSquadOutlook({ selected: 4, free: 0, fieldMax: 7 });
+  assert.equal(out.kind, "willNotStart");
+  assert.equal(out.min, 6);
+});
+
+test("partialSquadOutlook: under gulvet MED frie ryttere nok → assistenten fylder, holdet starter", () => {
+  // Samme 4 valgte, men 3 frie: 4+3 = 7 ≥ gulvet, så holdet stiller op. At sige
+  // 'stiller ikke op' her ville være løgn — det er præcis den fejl #4295 lukkede.
+  const out = partialSquadOutlook({ selected: 4, free: 3, fieldMax: 7 });
+  assert.equal(out.kind, "assistantFills");
+  assert.equal(out.open, 3);
+});
+
+test("partialSquadOutlook: over gulvet men under feltet → færre frie end pladser er stadig en start", () => {
+  // Grand Tour (8): 6 valgte er på gulvet, 1 fri til 2 åbne pladser.
+  const out = partialSquadOutlook({ selected: 6, free: 1, fieldMax: 8 });
+  assert.equal(out.kind, "assistantFillsWhatItCan");
+  assert.equal(out.open, 2);
+  assert.equal(out.free, 1);
+});
+
+test("partialSquadOutlook: gulvet er fladt — 6 til en Grand Tour stiller op", () => {
+  assert.equal(partialSquadOutlook({ selected: 6, free: 0, fieldMax: 8 }).kind, "assistantFillsWhatItCan");
+  assert.equal(partialSquadOutlook({ selected: 6, free: 0, fieldMax: 6 }), null, "fuld trup → intet at sige");
+});
+
+test("partialSquadOutlook: igangværende løb siger ingenting, uanset udtagelse", () => {
+  assert.equal(partialSquadOutlook({ selected: 2, free: 0, fieldMax: 7, raceLive: true }), null,
+    "et løb i gang top-fyldes aldrig (#1825), og startfeltet er afgjort");
+  assert.equal(partialSquadOutlook({ selected: 0, free: 10, fieldMax: 7, raceLive: true }), null,
+    "samme guard gælder en tom trup — et løb i gang ændrer ikke på det");
+});
+
+// #4295 opfølgning (blokerende fund #4301, målt 27/8): et urørt panel (selected === 0)
+// returnerede tidligere bevidst null, på antagelsen om at assistenten altid fylder en
+// hel trup. Under gulvet holder den antagelse ikke — se kommentaren over funktionen.
+test("partialSquadOutlook: 0 valgt MED frie ryttere nok til gulvet → assistenten fylder en hel trup", () => {
+  const out = partialSquadOutlook({ selected: 0, free: 10, fieldMax: 7 });
+  assert.equal(out.kind, "assistantFills");
+  assert.equal(out.emptySelection, true);
+  assert.equal(out.min, 6);
+});
+
+test("partialSquadOutlook: 0 valgt UDEN frie ryttere nok til gulvet → holdet stiller ikke op", () => {
+  const out = partialSquadOutlook({ selected: 0, free: 5, fieldMax: 7 });
+  assert.equal(out.kind, "willNotStart");
+  assert.equal(out.emptySelection, true);
+  assert.equal(out.min, 6);
+});
+
+test("partialSquadOutlook: 0 valgt, præcis gulvet frie riders → assistenten fylder (grænseværdi)", () => {
+  const out = partialSquadOutlook({ selected: 0, free: 6, fieldMax: 8 });
+  assert.equal(out.kind, "assistantFills");
+  assert.equal(out.emptySelection, true);
 });

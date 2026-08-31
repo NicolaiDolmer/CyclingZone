@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { supabase } from "../lib/supabase";
@@ -50,6 +50,12 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
   const nps = useNpsPrompt();
   const { markRaceResultSeen } = nps;
 
+  // #4448: t bruges kun i fejlstien nedenfor. Som direkte dependency ville et
+  // sprogskifte kalde den paginerede race_results-hentning forfra (op til fem
+  // .range()-runder for et etableret hold) — ref'en holder teamId som trigger.
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -75,14 +81,14 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
         setResults(rows || []);
         setCurrentSeason(seasonRes?.data?.number ?? null);
       } catch {
-        if (!cancelled) setError(t("results.loadError"));
+        if (!cancelled) setError(tRef.current("results.loadError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
     load();
     return () => { cancelled = true; };
-  }, [teamId, t]);
+  }, [teamId]);
 
   // first_race_result_viewed (funnel, #940): fyrer FØRSTE gang en bruger ser et
   // af sine EGNE holds løbsresultater (kun isOwnTeam, kun når der findes mindst ét

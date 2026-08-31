@@ -40,3 +40,9 @@ Sikkert: `is_admin()` → false for anon (auth.uid() er NULL); `is_offered_intak
 ## Regel fremad (skærpelse af 2026-05-31-reglen)
 
 Når du **REVOKEr EXECUTE fra en rolle** på en funktion: grep ikke kun efter `.rpc('fn')`-kaldssteder — tjek OGSÅ `pg_policy` (`pg_get_expr(polqual, polrelid) LIKE '%fn%'`) for RLS-policies der kalder funktionen, og kør `SET LOCAL role <rolle>`-smoke-test mod hver berørt tabel. En policy-kaldt funktion rammes af ALLE roller der kan læse tabellen, uanset om de nogensinde kalder funktionen direkte.
+
+## Automatiseret 31/8 2026 (#2671)
+
+Reglen håndhæves nu af `scripts/security-rls-policy-fn-grants.sql`, kørt hver 6. time mod prod fra `.github/workflows/security-grants-audit.yml`. Se [2026-08-31-rls-policy-fn-execute-forward-guard.md](2026-08-31-rls-policy-fn-execute-forward-guard.md).
+
+**Beslutningen på denne side er whitelistet** i det script (`riders` / `"Public read riders"` / `is_offered_intake_rider` / `anon`). Gives anon-grantet alligevel, går tjekket rødt på en forældet whitelist-post: fjern posten fra scriptet i samme PR som `GRANT EXECUTE`.

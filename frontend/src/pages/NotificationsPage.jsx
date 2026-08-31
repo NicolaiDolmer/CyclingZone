@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
@@ -244,7 +244,11 @@ export default function NotificationsPage() {
   const [mineFilter, setMineFilter] = useState("all");
   const [markingAll, setMarkingAll] = useState(false);
   const [expandedAggregates, setExpandedAggregates] = useState(() => new Set());
-  const userIdRef = useRef(null);
+  // #4332: userId er STATE, ikke en ref. Realtime-effekten nedenfor skal
+  // gen-subscribe når bruger-id'et lander, og en ref udløser ingen re-render —
+  // den gamle `[userIdRef.current]`-dependency virkede kun fordi
+  // loadNotifications tilfældigvis altid kaldte en setState EFTER ref-skrivningen.
+  const [userId, setUserId] = useState(null);
   // #3012: markRead/markManyRead/deleteMany/deleteNotif/deleteAllRead
   // ignorerede tidligere { error } — optimistiske opdateringer der divergerede
   // fra serveren i stilhed indtil næste reload. markAllRead (nedenfor) gjorde
@@ -277,18 +281,18 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (tab === "ligaen" && !feedLoaded) loadFeed();
-  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps -- feedLoaded er bevidst udeladt: feedet hentes ved faneskift, ikke når flaget sættes
 
   // Realtime: personlige notifikationer
   useEffect(() => {
-    if (!userIdRef.current) return;
+    if (!userId) return;
     return subscribeAuthedChannel("notifs-page-v2", channel =>
       channel.on("postgres_changes", {
         event: "INSERT", schema: "public", table: "notifications",
-        filter: `user_id=eq.${userIdRef.current}`,
+        filter: `user_id=eq.${userId}`,
       }, payload => setNotifications(prev => [payload.new, ...prev]))
     );
-  }, [userIdRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   // Realtime: aktivitetsfeed. #4010: session-gatet — uden gaten connectede den
   // med den opake api-nøgle og blev afvist med MalformedJWT.
@@ -305,7 +309,7 @@ export default function NotificationsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) { setNotifLoading(false); return; }
-    userIdRef.current = user.id;
+    setUserId(user.id);
     const { data, error } = await supabase
       .from("notifications")
       .select("*")
@@ -377,14 +381,14 @@ export default function NotificationsPage() {
   }
 
   async function markAllRead() {
-    if (!userIdRef.current) return;
+    if (!userId) return;
     setMarkingAll(true);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     // #4017: kun ULÆSTE rækker — uden is_read-filteret omskrev hvert klik samtlige
     // notifikationer brugeren nogensinde har haft (målt: 251 klik → 92.560 rækker),
     // og hver omskrevet række RLS-tjekkes efterfølgende én for én af Realtime.
     const { error } = await supabase.from("notifications")
-      .update({ is_read: true }).eq("user_id", userIdRef.current).eq("is_read", false);
+      .update({ is_read: true }).eq("user_id", userId).eq("is_read", false);
     if (error) await loadNotifications();
     setMarkingAll(false);
   }
@@ -407,7 +411,7 @@ export default function NotificationsPage() {
     const prev = notifications;
     setNotifications(p => p.filter(n => !n.is_read));
     const { error } = await supabase.from("notifications").delete()
-      .eq("user_id", userIdRef.current).eq("is_read", true);
+      .eq("user_id", userId).eq("is_read", true);
     if (error) {
       setNotifications(prev);
       notifyMutationFailed("notification_delete_all_read", error, { count: readIds.length });

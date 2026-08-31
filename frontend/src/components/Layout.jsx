@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
-import { supabase } from "../lib/supabase";
+import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
+import {
+  isDefinitiveAuthDenial,
+  markSessionExpired,
+  shouldDeclareExpired,
+  tokenFromAuthHeaders,
+} from "../lib/sessionExpiry"; // #4350
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
@@ -30,6 +36,7 @@ import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
 import { useActionSummary } from "../hooks/useActionSummary";
+import { useUserProfile } from "../lib/userProfile.jsx"; // #3034
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -209,11 +216,6 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
       ],
     },
   ];
-}
-
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
 // #64: tæl ulæste notifikationer via head-count (ingen rows hentet) i stedet for
@@ -416,6 +418,86 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
   );
 }
 
+// #4350 — detektoren der mangler for at den EKSISTERENDE udlognings-kæde kan
+// starte. Kæden (SIGNED_OUT → App.jsx rydder session → ProtectedRoute sender til
+// /login?next=) virker allerede; den udløses bare aldrig når serveren afviser et
+// token som supabase-js lokalt stadig tror på. Derfor logger vi ikke ud her —
+// vi kalder signOut(), som fyrer SIGNED_OUT og lader kæden gøre sit arbejde med
+// deep-linket bevaret.
+//
+// Ligger på modul-niveau, ikke i komponenten: den rører ingen React-state, og
+// et 401-svar kan lande efter at fanen er navigeret væk.
+async function expireSessionIfRejected(res, sentHeaders, source) {
+  if (res.status !== 401) return false;
+  // Sessionens token NU — ikke det vi sendte. Forskellen er hele værnet mod at
+  // smide en rask spiller ud midt i en normal token-fornyelse.
+  const { data } = await supabase.auth.getSession();
+  const expired = shouldDeclareExpired({
+    status: res.status,
+    sentToken: tokenFromAuthHeaders(sentHeaders),
+    currentToken: data?.session?.access_token ?? null,
+  });
+  if (!expired) return false;
+
+  // ── Anden kilde, før vi rører noget ────────────────────────────────────────
+  //
+  // Vores egen backend svarede 401 i TO forskellige situationer (requireAuth i
+  // routes/api.js): tokenet blev afvist, ELLER backenden kunne ikke få fat i
+  // Supabase til at tjekke det —
+  //
+  //   const { data: { user }, error } = await supabase.auth.getUser(token);
+  //   if (error || !user) return res.status(401)...
+  //
+  // `error` dækkede også et netværksudfald mellem backend og Supabase. De to
+  // tilstande så ens ud herfra, men betyder stik modsat: den ene er en død
+  // session, den anden er en rask spiller midt i et kortvarigt udfald.
+  //
+  // #4369 rettede signalet ved kilden: backenden svarer nu 503
+  // {error:"auth_unavailable"} når den ikke kunne verificere, og 401 kun på en
+  // ægte afvisning. Vi når altså kun hertil på et 401-svar der allerede betyder
+  // det det siger.
+  //
+  // Anden-kilde-opslaget bliver alligevel stående. Det koster ét kald pr.
+  // afvisning og dækker de tilfælde backendens skel ikke kan se: et 401-svar
+  // fra en ældre backend-version midt i et deploy, eller et proxy-lag der
+  // svarer 401 uden at have spurgt nogen. Prisen er lav, og fejlen den værner
+  // mod - alle spillere logget ud under et udfald - er den dyre af de to.
+  //
+  // Derfor spørger vi autoriteten selv i stedet for at tro på 401'eren alene.
+  // Først når BEGGE kilder er enige — backenden afviste tokenet, og Supabase
+  // heller ikke kender brugeren — rydder vi noget.
+  //
+  // Kan vi ikke nå Supabase, kaster getAuthedUser(), og kaldstedernes catch
+  // fanger den: intet sker. Hver usikkerhed peger samme vej, mod at lade
+  // spilleren være.
+  // Vi spørger Supabase direkte i stedet for getAuthedUser(), fordi vi har brug
+  // for `error`: helperen kaster fejlen væk, og uden den kan et netværksudfald
+  // ikke skelnes fra en ægte afvisning. getUser() svarer user=null MED en
+  // AuthRetryableFetchError ved udfald i stedet for at kaste — læses det som en
+  // afvisning, logger et Supabase-udfald alle spillere ud.
+  let denied;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    denied = isDefinitiveAuthDenial({ user: data?.user ?? null, error });
+  } catch {
+    // Kunne slet ikke spørge. Så ved vi det ikke, og så gør vi ingenting.
+    return false;
+  }
+  if (!denied) {
+    console.warn(
+      `[auth] 401 from ${source}, but Supabase did not confirm it - leaving the session alone`,
+    );
+    return false;
+  }
+
+  // Samme form som backendens "[auth] 401 invalid_token" (routes/api.js): kun
+  // kaldstedet, aldrig token eller header.
+  console.warn(`[auth] session rejected by BOTH sources (${source}) - clearing it`);
+  markSessionExpired();
+  await supabase.auth.signOut();
+  return true;
+}
+
 export default function Layout() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
@@ -433,7 +515,10 @@ export default function Layout() {
   // Patch Notes, men serverdrevet (forumUnread kommer fra
   // GET /api/forum/unread-status, ikke en lokal dato-sammenligning).
   const [forumUnread, setForumUnread]                   = useState(false);
-  const [isAdmin, setIsAdmin]               = useState(false);
+  // #3034: role kommer fra den delte UserProfileProvider (ét Supabase-kald pr.
+  // session) i stedet for Layouts eget `.from("users").select("role, username")`.
+  const { profile } = useUserProfile();
+  const isAdmin = profile?.role === "admin";
   const [isOwner, setIsOwner]               = useState(false); // #3750 ejer-only-menupunkter
   const [mobileOpen, setMobileOpen]         = useState(false);
   const [feedbackOpen, setFeedbackOpen]     = useState(false);
@@ -469,7 +554,17 @@ export default function Layout() {
     if (!API) return;
     try {
       const h = headers || await authHeaders();
+      // #4347/#4348: uden session sprang det her kald før igennem med "Bearer
+      // undefined" i stedet for at blive sprunget over.
+      if (!h) return;
       const res = await fetch(`${API}/api/online-count`, { headers: h });
+      // #4350: 401 afgøres FØR !res.ok-grenen nedenfor. Den gren bevarer sidst
+      // kendte tal — præcis den frosne-tal-tilstand bugget handler om — så en
+      // afvist session skal fanges her i stedet for at blive slugt der.
+      if (await expireSessionIfRejected(res, h, "online-count")) return;
+      // #4351: en 401/5xx (fx en afvist session) blev læst som et gyldigt svar,
+      // og `data.count || 0` skrev "0 online". Behold sidst kendte tal i stedet.
+      if (!res.ok) return;
       const data = await res.json();
       setOnlineCount(data.count || 0);
     } catch (e) { console.error("online-count:", e); }
@@ -486,25 +581,33 @@ export default function Layout() {
     setMobileOpen(false);
   }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled]);
 
+  // #3034: ejer-check afhænger af `isAdmin`, som nu kommer asynkront fra den
+  // delte UserProfileProvider i stedet for at blive afgjort synkront inde i
+  // mount-effekten nedenfor (som tidligere gjorde sit eget role-opslag). Egen
+  // effekt, keyed på isAdmin+session, så check'et stadig kun kører når begge
+  // er kendt (uanset hvilken der bliver klar sidst).
+  useEffect(() => {
+    if (!isAdmin || !session) { setIsOwner(false); return; }
+    let cancelled = false;
+    (async () => {
+      // #3750: kun ejeren (OWNER_USER_IDS) ser ejer-only-punkter. Fail-closed: fejl ⇒ skjult.
+      try {
+        const r = await fetch(`${API}/api/admin/owner-check`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const d = r.ok ? await r.json() : null;
+        if (!cancelled) setIsOwner(Boolean(d?.isOwner));
+      } catch {
+        // best-effort: ejer-check er kun menu-synlighed; backend håndhæver selve gaten.
+        if (!cancelled) setIsOwner(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAdmin, session]);
+
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) return;
       setSession(session);
 
-      const { data: userData } = await supabase.from("users")
-        .select("role, username").eq("id", session.user.id).single();
-      setIsAdmin(userData?.role === "admin");
-      if (userData?.role === "admin") {
-        // #3750: kun ejeren (OWNER_USER_IDS) ser ejer-only-punkter. Fail-closed: fejl ⇒ skjult.
-        try {
-          const r = await fetch(`${API}/api/admin/owner-check`, { headers: { Authorization: `Bearer ${session.access_token}` } });
-          const d = r.ok ? await r.json() : null;
-          setIsOwner(Boolean(d?.isOwner));
-        } catch {
-          // best-effort: ejer-check er kun menu-synlighed; backend håndhæver selve gaten.
-          setIsOwner(false);
-        }
-      }
       const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).single();
       if (teamData) {
         setTeam(teamData);
@@ -525,6 +628,10 @@ export default function Layout() {
         if (metaTeamName && metaManagerName && API) {
           try {
             const h = await authHeaders();
+            // #4347/#4348: vi kom kun hertil fordi der VAR en session ovenfor, så
+            // at den er væk nu er en ægte undtagelse — lad den eksisterende catch
+            // logge fallback'en til SetupWizard i stedet for at PUT'e uden token.
+            if (!h) throw new Error("ingen session ved auto-bootstrap");
             const res = await fetch(`${API}/api/teams/my`, {
               method: "PUT",
               headers: h,
@@ -566,6 +673,10 @@ export default function Layout() {
 
       if (!API) { console.error("VITE_API_URL is not set — presence/streak calls skipped"); return; }
       const h = await authHeaders();
+      // #4347/#4348: resten af effekten er fire kald der alle kræver et token.
+      // Uden session ville de før ryge afsted med "Bearer undefined" og alle
+      // fire returnere 401.
+      if (!h) return;
       fetchForumUnread(h).then((hasUnread) => { if (hasUnread != null) setForumUnread(hasUnread); });
       // Akademi-nav-synlighed (#1308): bestem via /api/academy/me, men fejl LUKKER
       // ikke punktet. Kun 200/409 er autoritative (opdater state + cache); 401
@@ -582,7 +693,9 @@ export default function Layout() {
           if (res.status === 200 || res.status === 409) writeCachedAcademyNav(visible);
         })
         .catch(() => { /* netværksfejl: behold sidst kendte (state uændret) */ });
-      fetch(`${API}/api/presence`,     { method: "POST", headers: h }).catch(e => console.error("presence:", e));
+      fetch(`${API}/api/presence`,     { method: "POST", headers: h })
+        .then(res => expireSessionIfRejected(res, h, "presence"))
+        .catch(e => console.error("presence:", e));
       // Login-streak power-mekanik fjernet (#1139) — ingen daglig login-tvang.
       // Achievements-check kører fortsat (kosmetiske unlocks), uafhængigt af streak.
       fetch(`${API}/api/achievements/check`, {
@@ -619,6 +732,7 @@ export default function Layout() {
     return subscribeAuthedChannel("layout-forum-unread", channel => {
       const refetch = async () => {
         const h = await authHeaders();
+        if (!h) return;
         const hasUnread = await fetchForumUnread(h);
         if (hasUnread != null) setForumUnread(hasUnread);
       };
@@ -636,6 +750,7 @@ export default function Layout() {
     if (!session) return;
     async function handleForumRead() {
       const h = await authHeaders();
+      if (!h) return;
       const hasUnread = await fetchForumUnread(h);
       if (hasUnread != null) setForumUnread(hasUnread);
     }
@@ -685,7 +800,18 @@ export default function Layout() {
     heartbeatRef.current = setInterval(async () => {
       if (!API) return;
       const h = await authHeaders();
-      fetch(`${API}/api/presence`, { method: "POST", headers: h }).catch(e => console.error("heartbeat:", e));
+      // #4347: DEN HER var kilden til 401-støjen i Railway-loggen. Når sessionen
+      // dør, bliver `session`-state hængende (intet her rydder den), så
+      // intervallet kørte videre og sendte "Bearer undefined" hvert 60. sekund
+      // indtil fanen blev lukket. Nu holder det op af sig selv.
+      //
+      // #4350 lukkede den anden halvdel: her ER der et token, men serveren kan
+      // afvise det. Uden svar-tjekket nedenfor kørte intervallet videre mod en
+      // død session i det uendelige, og fanen så indlogget ud med frosne tal.
+      if (!h) return;
+      fetch(`${API}/api/presence`, { method: "POST", headers: h })
+        .then(res => expireSessionIfRejected(res, h, "heartbeat"))
+        .catch(e => console.error("heartbeat:", e));
       fetchOnlineCount(h);
     }, 60000);
     return () => clearInterval(heartbeatRef.current);

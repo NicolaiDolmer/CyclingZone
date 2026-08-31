@@ -18,6 +18,15 @@
 //
 // Vigtigt: vi rører IKKE ALTER TABLE der tilføjer kolonner/constraints — kun den
 // specifikke ENABLE/DISABLE ROW LEVEL SECURITY-variant fjernes.
+//
+// Rewrite-listen (statementet BEVARES, men omskrives):
+//   - CREATE INDEX CONCURRENTLY → CREATE INDEX  (#4507). CONCURRENTLY må ikke
+//     køre inde i en transaktion, og PGlite's db.exec sender en hel fil som ÉN
+//     multi-statement query, hvilket Postgres altid pakker i en implicit
+//     transaktion — CONCURRENTLY ville derfor altid fejle, uanset filens egne
+//     BEGIN/COMMIT-blokke. Vi dropper KUN nøgleordet, ikke hele statementet:
+//     indekset skal stadig oprettes i test-DB'en, så et efterfølgende
+//     kontrakt-tjek (findes indekset, matcher dets kolonner) er muligt.
 
 /**
  * Split rå SQL i top-level statements på `;`, men respektér single-quote-literaler
@@ -142,6 +151,19 @@ function shouldStrip(stmt) {
   return false;
 }
 
+// CREATE [UNIQUE] INDEX CONCURRENTLY ... → CREATE [UNIQUE] INDEX ...
+// Kun selve nøgleordet fjernes (plus det efterfølgende whitespace); resten af
+// statementet (IF NOT EXISTS, kolonner, INCLUDE, WHERE) er uændret.
+const CONCURRENTLY_RE = /(CREATE\s+(?:UNIQUE\s+)?INDEX\s+)CONCURRENTLY\s+/i;
+
+/**
+ * @param {string} stmt et enkelt statement (uden afsluttende `;`)
+ * @returns {string} samme statement, uden et evt. CONCURRENTLY-nøgleord
+ */
+function stripConcurrently(stmt) {
+  return stmt.replace(CONCURRENTLY_RE, "$1");
+}
+
 /**
  * Strip Supabase-/PGlite-inkompatible statements fra en SQL-streng, mens al
  * strukturel DDL bevares. Ren funktion — muterer ikke input.
@@ -157,7 +179,7 @@ export function sanitizeForPglite(sql) {
   for (const stmt of splitStatements(sql)) {
     if (stmt.trim() === "") continue;
     if (shouldStrip(stmt)) continue;
-    kept.push(stmt.trim());
+    kept.push(stripConcurrently(stmt.trim()));
   }
   // Afslut hvert statement med `;` igen så db.exec kan køre dem i serie.
   return kept.map((s) => `${s};`).join("\n");

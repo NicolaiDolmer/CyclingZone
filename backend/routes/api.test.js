@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import router, { assertTeamNotTransferFrozen, claimSeasonEndOrReject } from "./api.js";
+import router, { assertTeamNotTransferFrozen, claimSeasonEndOrReject, countPendingRaceResults } from "./api.js";
 
 // Minimal fake res der opfanger status + json
 function fakeRes() {
@@ -174,4 +174,102 @@ test("PUT/DELETE /training/week-plan/:riderId registreres FØR POST/DELETE /trai
   assert.notEqual(deleteWeekPlanRiderIdx, -1, "DELETE week-plan/:riderId skal være registreret");
   assert.ok(putWeekPlanRiderIdx < postRiderIdIdx, "PUT week-plan/:riderId skal stå før POST :riderId");
   assert.ok(deleteWeekPlanRiderIdx < deleteRiderIdIdx, "DELETE week-plan/:riderId skal stå før DELETE :riderId");
+});
+
+// ── countPendingRaceResults (#3014 — URL-længde-cap ved mange løb) ───────────
+// Minimal fake supabase der spejler .from("pending_race_results").select(...,
+// {count,head}).in("race_id", chunk).eq("status", "pending") og tracker hvor
+// stor hver .in()-chunk var.
+function fakeSupabaseForPendingCount(countsPerChunk) {
+  const chunkSizes = [];
+  let call = 0;
+  return {
+    chunkSizes,
+    client: {
+      from(table) {
+        assert.equal(table, "pending_race_results");
+        return {
+          select() {
+            return {
+              in(column, ids) {
+                assert.equal(column, "race_id");
+                chunkSizes.push(ids.length);
+                const count = countsPerChunk[call] ?? 0;
+                call += 1;
+                return {
+                  eq(statusColumn, status) {
+                    assert.equal(statusColumn, "status");
+                    assert.equal(status, "pending");
+                    return Promise.resolve({ count, error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+}
+
+test("countPendingRaceResults — chunker id-listen (455 løb → 5 chunks af maks 100) og summer count", async () => {
+  const raceIds = Array.from({ length: 455 }, (_, i) => `race-${i}`);
+  const { client, chunkSizes } = fakeSupabaseForPendingCount([1, 0, 2, 0, 0]);
+
+  const total = await countPendingRaceResults(client, raceIds);
+
+  assert.deepEqual(chunkSizes, [100, 100, 100, 100, 55], "455 løb skal chunkes i 4×100 + 1×55");
+  assert.equal(total, 3, "summen af pending-count på tværs af alle chunks");
+});
+
+test("countPendingRaceResults — under én chunk-størrelse giver ét kald", async () => {
+  const raceIds = ["race-1", "race-2", "race-3"];
+  const { client, chunkSizes } = fakeSupabaseForPendingCount([0]);
+
+  const total = await countPendingRaceResults(client, raceIds);
+
+  assert.deepEqual(chunkSizes, [3]);
+  assert.equal(total, 0);
+});
+
+test("countPendingRaceResults — tom id-liste kalder aldrig supabase", async () => {
+  const { client, chunkSizes } = fakeSupabaseForPendingCount([]);
+
+  const total = await countPendingRaceResults(client, []);
+
+  assert.deepEqual(chunkSizes, []);
+  assert.equal(total, 0);
+});
+
+test("countPendingRaceResults — DB-fejl i en chunk kaster (kaldstedet svarer 500)", async () => {
+  const raceIds = Array.from({ length: 150 }, (_, i) => `race-${i}`);
+  let call = 0;
+  const client = {
+    from(table) {
+      assert.equal(table, "pending_race_results");
+      return {
+        select() {
+          return {
+            in() {
+              const thisCall = call;
+              call += 1;
+              return {
+                eq() {
+                  if (thisCall === 1) {
+                    return Promise.resolve({ count: null, error: { message: "boom" } });
+                  }
+                  return Promise.resolve({ count: 0, error: null });
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+
+  await assert.rejects(
+    () => countPendingRaceResults(client, raceIds),
+    (err) => err.message === "boom",
+  );
 });

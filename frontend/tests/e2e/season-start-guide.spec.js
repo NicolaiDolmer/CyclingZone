@@ -8,7 +8,7 @@
 // Dækning: vinduet åbner, alle fire punkter deep-linker rigtigt, "udført"-
 // markeringen følger data, og dismiss får kortet til at forsvinde.
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, TEST_TEAM, evidenceShotPath } from "./fixtures.js";
 
 const SEASON_2 = {

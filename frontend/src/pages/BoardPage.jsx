@@ -2278,7 +2278,7 @@ export default function BoardPage() {
 
     loadPreview();
     return () => { ignore = true; };
-  }, [wizardPlanType, wizardFocus, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [wizardPlanType, wizardFocus, loading]); // eslint-disable-line react-hooks/exhaustive-deps -- fetchBoardProposal/t bruges kun i fetch- og fejlstien — kun wizard-valget skal udløse refetch
 
   async function loadAll() {
     setLoading(true);

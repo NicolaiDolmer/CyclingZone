@@ -10,6 +10,12 @@ import { loadCheckAllowedTypes } from "../../scripts/lint-finance-types.mjs";
 import { NOTIFICATION_TYPES } from "../lib/notificationTypes.js";
 import { MAX_SQUAD_SIZE } from "../lib/marketUtils.js";
 import { DEBT_CEILING_BY_DIVISION } from "../lib/economyConstants.js";
+import {
+  RACE_RESULT_DUPLICATE_RPC,
+  RACE_RESULT_VIOLATION_LIMIT,
+  computeRaceResultDuplicates,
+  normalizeRaceResultDuplicatesRpc,
+} from "../lib/raceResultDuplicateInvariant.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ENV = path.resolve(SCRIPT_DIR, "../.env");
@@ -111,6 +117,58 @@ function check(ok, detail, violations = []) {
   return { ok, detail, ...(violations.length ? { violations } : {}) };
 }
 
+// #4204: POST /rest/v1/rpc/<navn>. Holder scriptet dependency-frit (samme
+// built-in fetch som fetchAll) og flytter aggregeringen ned i Postgres.
+async function callRpc(baseUrl, apiKey, fn, body = {}) {
+  const res = await fetch(`${baseUrl}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      apikey: apiKey,
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    const err = new Error(`rpc ${fn}: HTTP ${res.status} - ${text}`);
+    err.status = res.status;
+    err.body = text;
+    throw err;
+  }
+  return text === "" ? null : JSON.parse(text);
+}
+
+// PostgREST svarer 404 + PGRST202 når funktionen ikke findes i schema-cachen.
+// Det er præcis tilstanden i vinduet mellem merge og apply af migrationen.
+function isMissingRpc(err) {
+  if (err?.status === 404) return true;
+  return typeof err?.body === "string" && err.body.includes("PGRST202");
+}
+
+// #4204: ét aggregeret RPC-kald i stedet for ~1.130 sider a 1000 rækker.
+// Fallback til den originale in-memory-optælling hvis RPC'en ikke er applied
+// endnu, så den daglige vagt ikke bliver rød i vinduet mellem merge og apply.
+// De to veje giver bevisligt samme svar (se raceResultDuplicateInvariant.js).
+async function loadRaceResultDuplicates(baseUrl, apiKey, fetch_) {
+  try {
+    const payload = await callRpc(baseUrl, apiKey, RACE_RESULT_DUPLICATE_RPC, {
+      p_limit: RACE_RESULT_VIOLATION_LIMIT,
+    });
+    return normalizeRaceResultDuplicatesRpc(payload);
+  } catch (err) {
+    if (!isMissingRpc(err)) throw err;
+    // stderr, ikke stdout: --json-outputtet skal blive ved med at være ren JSON.
+    console.error(
+      `[advarsel] RPC ${RACE_RESULT_DUPLICATE_RPC} findes ikke i databasen endnu ` +
+        `(database/2026-08-29-4204-race-result-duplicate-rpc.sql er ikke applied). ` +
+        `Falder tilbage til fuldt træk af race_results - forvent ~20 min. Refs #4204`,
+    );
+    const rows = await fetch_("race_results", "race_id,stage_number,result_type,rider_id,rank");
+    return computeRaceResultDuplicates(rows, { limit: RACE_RESULT_VIOLATION_LIMIT });
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   loadEnv(args.envPath);
@@ -121,7 +179,7 @@ async function main() {
 
   const fetch_ = (table, select, filters, orderBy) => fetchAll(baseUrl, apiKey, table, select, filters, orderBy);
 
-  const [teams, riders, activeRiders, derivedRows, activeAuctions, openListings, openSwaps, financeRows, notifRows, activeLoans, raceResultRows, activeSeasons, leagueDivisions] = await Promise.all([
+  const [teams, riders, activeRiders, derivedRows, activeAuctions, openListings, openSwaps, financeRows, notifRows, activeLoans, raceResultDuplicates, activeSeasons, leagueDivisions] = await Promise.all([
     fetch_("teams", "id,division,is_ai,is_frozen,is_bank"),
     fetch_("riders", "id,team_id,is_academy,is_retired"),
     // #1673: aktive (ikke-retired) ryttere + deres derive-laget, til invariant-check.
@@ -134,8 +192,9 @@ async function main() {
     fetch_("finance_transactions", "type"),
     fetch_("notifications", "type"),
     fetch_("loans", "team_id,amount_remaining,accrued_interest,loan_type", { status: "eq.active" }),
-    // #2974/#2898: hele race_results til duplikat-invarianten nedenfor.
-    fetch_("race_results", "race_id,stage_number,rider_id,result_type,rank,points_earned"),
+    // #2974/#2898: duplikat-invarianterne. #4204: aggregeret i Postgres i stedet
+    // for et fuldt træk af ~1,1 mio. rækker (det tog alene ~20 min over PostgREST).
+    loadRaceResultDuplicates(baseUrl, apiKey, fetch_),
     // #4161: kalender-akse + overlap-cap pr. pulje for den AKTIVE saeson.
     fetch_("seasons", "id,number,status,start_date", { status: "eq.active" }),
     fetch_("league_divisions", "id,tier,label"),
@@ -268,56 +327,23 @@ async function main() {
     .filter(r => !r.team_id && r.is_academy && !r.is_retired)
     .map(r => ({ riderId: r.id }));
 
-  // Check 10 (#2974/#2898): Ingen dublerede race_results.
+  // Check 10 (#2974/#2898) + Check 11 (#2898): dublerede race_results.
   //
-  // Rodårsagen: persist-laget bruger et idempotent delete-then-insert. supabase-js
-  // KASTER ikke — fejler deletet tavst (fx statement timeout under samtidige
-  // etaper), kører insertet alligevel og lægger de nye rækker OVEN PÅ de gamle.
-  // Konsekvens: dublerede points_earned og DOBBELT prize_money (prizePayoutEngine
-  // betaler pr. point-række). Direkte spillervendt: forkerte stillinger og penge
-  // udbetalt to gange. #2974 tilføjede fejltjek på kaldestederne; DENNE invariant
-  // er detektionen der fanger det hvis mønstret alligevel slipper igennem.
+  // Rodårsagen bag check 10: persist-laget bruger et idempotent delete-then-insert.
+  // supabase-js KASTER ikke, men fejler deletet tavst (fx statement timeout under
+  // samtidige etaper), kører insertet alligevel og lægger de nye rækker OVEN PÅ de
+  // gamle. Konsekvens: dublerede points_earned og DOBBELT prize_money
+  // (prizePayoutEngine betaler pr. point-række). Direkte spillervendt: forkerte
+  // stillinger og penge udbetalt to gange. #2974 tilføjede fejltjek på kaldestederne;
+  // DENNE invariant er detektionen der fanger det hvis mønstret alligevel slipper
+  // igennem. Check 11 fanger den variant hvor dubletten IKKE er rytter-identisk (fx
+  // en genafvikling med et ændret felt oven på et fejlet delete).
   //
-  // Nøgle: (race_id, stage_number, result_type, rider_id) — én rytter kan ikke
-  // optræde to gange i samme klassement på samme etape. Det er præcis den form
-  // en dublet fra et fejlet delete tager.
-  //
-  // rider_id IS NULL er UDELADT — og det er ikke kosmetik. Målt mod prod 26/7 er
-  // 43.288 af 487.377 rækker rytterløse: hold-klassementerne (`team`, `team_day`)
-  // har per design ingen rytter, og historiske PCM-importer efterlod rækker hvor
-  // rytteren ikke kunne matches. Grupperer man dem med, samler SQL/Map alle
-  // NULL-rytter-rækker i ét løb i ÉN nøgle og rapporterer 2.336 "dubletter" på
-  // 410 løb — rent støj. Med filteret: 0 dubletter i prod.
-  const raceResultKeyCount = new Map();
-  for (const r of raceResultRows) {
-    if (r.rider_id == null) continue;
-    const key = `${r.race_id}|${r.stage_number}|${r.result_type}|${r.rider_id}`;
-    raceResultKeyCount.set(key, (raceResultKeyCount.get(key) || 0) + 1);
-  }
-  const duplicateRaceResults = [];
-  for (const [key, n] of raceResultKeyCount.entries()) {
-    if (n <= 1) continue;
-    const [raceId, stageNumber, resultType, riderId] = key.split("|");
-    duplicateRaceResults.push({ raceId, stageNumber: Number(stageNumber), resultType, riderId, rows: n });
-  }
-  const duplicateRaces = new Set(duplicateRaceResults.map(d => d.raceId));
-
-  // Check 11 (#2898): Samme rang tildelt to gange i samme klassement på samme
-  // etape. Fanger den variant hvor dubletten IKKE er rytter-identisk (fx en
-  // genafvikling med et ændret felt oven på et fejlet delete). NULL-rang er
-  // udeladt: ikke-scorende rækker bærer rank=null i massevis og er ikke dubletter.
-  const rankKeyCount = new Map();
-  for (const r of raceResultRows) {
-    if (r.rank == null) continue;
-    const key = `${r.race_id}|${r.stage_number}|${r.result_type}|${r.rank}`;
-    rankKeyCount.set(key, (rankKeyCount.get(key) || 0) + 1);
-  }
-  const duplicateRanks = [];
-  for (const [key, n] of rankKeyCount.entries()) {
-    if (n <= 1) continue;
-    const [raceId, stageNumber, resultType, rank] = key.split("|");
-    duplicateRanks.push({ raceId, stageNumber: Number(stageNumber), resultType, rank: Number(rank), rows: n });
-  }
+  // #4204: begge tælles nu af Postgres (RPC verify_race_result_duplicates) i stedet
+  // for i hukommelsen over et fuldt træk af ~1,1 mio. rækker. Nøgler, NULL-filtre og
+  // rapporterings-rækkefølge er uændrede: se backend/lib/raceResultDuplicateInvariant.js,
+  // hvor den gamle optælling ligger som reference/fallback og er bevist ækvivalent med
+  // SQL'en mod en ægte Postgres-motor.
 
   // ---- #4161: kalender-akse + overlap-cap pr. pulje (aktiv saeson) ----
   // `game_day` er den IN-GAME dag der binder en rytter (raceBinding.js), IKKE kalenderdagen.
@@ -330,15 +356,17 @@ async function main() {
   const calendarOverlapViolations = [];
   const calendarStageRepeatViolations = [];
   const calendarCollapsedPools = [];
-  const calendarMonumentSharedDays = [];
   let calendarPoolsChecked = 0;
   if (activeSeason) {
-    const seasonRaces = await fetch_("races", "id,league_division_id,season_id,name,race_class", { season_id: `eq.${activeSeason.id}` });
+    // #4465: `race_class` blev tidligere hentet her for at udpege monumenterne til
+    // #4075-invarianten (et monument skulle have sin in-game-dag for sig selv).
+    // Ejeren OPHÆVEDE den regel 26/8 (#4236) — et monument deler nu løbsdag som
+    // ethvert andet løb — men gaten fulgte ikke med og stod rød 27/8, 28/8 og 29/8
+    // på en ikke-fejl. Kolonnen hentes ikke længere: ingen invariant her bruger den.
+    const seasonRaces = await fetch_("races", "id,league_division_id,season_id,name", { season_id: `eq.${activeSeason.id}` });
     const raceIds = new Set(seasonRaces.map((r) => r.id));
     const divisionOfRace = new Map(seasonRaces.map((r) => [r.id, r.league_division_id]));
     const nameOfRace = new Map(seasonRaces.map((r) => [r.id, r.name]));
-    // #4075: monumentet skal have sin in-game-dag for sig selv (ejer-låst 21/8).
-    const monumentRaceIds = new Set(seasonRaces.filter((r) => r.race_class === "Monuments").map((r) => r.id));
     const allStageRows = await fetch_("race_stage_schedule", "race_id,stage_number,scheduled_at,game_day", undefined, "race_id");
 
     const rowsByPool = new Map();
@@ -355,7 +383,7 @@ async function main() {
       const tier = div?.tier ?? null;
       if (tier == null) continue;
       calendarPoolsChecked += 1;
-      const r = checkCalendarOverlapInvariants({ scheduleRows: rows, tier, monumentRaceIds });
+      const r = checkCalendarOverlapInvariants({ scheduleRows: rows, tier });
       const label = div?.label ?? `pulje ${poolId}`;
       for (const v of r.overlapViolations) {
         calendarOverlapViolations.push({
@@ -367,13 +395,6 @@ async function main() {
         calendarStageRepeatViolations.push({
           pool: label, tier, race: nameOfRace.get(v.race_id) ?? v.race_id,
           game_day: v.game_day, stages_same_day: v.stages, stage_numbers: v.stage_numbers,
-        });
-      }
-      for (const v of r.monumentSharedDayViolations) {
-        calendarMonumentSharedDays.push({
-          pool: label, tier, game_day: v.game_day,
-          monumenter: v.monument_race_ids.map((id) => nameOfRace.get(id) ?? id),
-          modloeb: v.other_race_ids.map((id) => nameOfRace.get(id) ?? id),
         });
       }
       if (r.axisLooksCollapsed) {
@@ -457,18 +478,18 @@ async function main() {
       unanchoredIdentity.slice(0, 50)
     ),
     no_duplicate_race_results: check(
-      duplicateRaceResults.length === 0,
-      duplicateRaceResults.length === 0
-        ? `OK — ${raceResultKeyCount.size} rytter-nøgler af ${raceResultRows.length} race_results-rækker, ingen dubletter`
-        : `${duplicateRaceResults.length} dubleret(e) race_results-nøgle(r) fordelt på ${duplicateRaces.size} løb — dublerede point/præmier (#2974/#2898)`,
-      duplicateRaceResults.slice(0, 50)
+      raceResultDuplicates.duplicateKeyCount === 0,
+      raceResultDuplicates.duplicateKeyCount === 0
+        ? `OK — ${raceResultDuplicates.riderKeyCount} rytter-nøgler af ${raceResultDuplicates.totalRows} race_results-rækker, ingen dubletter`
+        : `${raceResultDuplicates.duplicateKeyCount} dubleret(e) race_results-nøgle(r) fordelt på ${raceResultDuplicates.duplicateRaceCount} løb — dublerede point/præmier (#2974/#2898)`,
+      raceResultDuplicates.duplicateKeys
     ),
     no_duplicate_race_result_ranks: check(
-      duplicateRanks.length === 0,
-      duplicateRanks.length === 0
+      raceResultDuplicates.duplicateRankCount === 0,
+      raceResultDuplicates.duplicateRankCount === 0
         ? "OK — ingen rang tildelt to gange i samme klassement"
-        : `${duplicateRanks.length} rang(e) tildelt 2+ gange i samme (løb, etape, klassement) (#2898)`,
-      duplicateRanks.slice(0, 50)
+        : `${raceResultDuplicates.duplicateRankCount} rang(e) tildelt 2+ gange i samme (løb, etape, klassement) (#2898)`,
+      raceResultDuplicates.duplicateRanks
     ),
     // #4229 — SKAL stå før kalender-invarianterne herunder. De fire svarer alle
     // "OK — ingen aktiv sæson at kontrollere" når der ingen aktiv sæson er, så
@@ -497,15 +518,13 @@ async function main() {
           : `${calendarStageRepeatViolations.length} løb kører 2+ etaper på SAMME in-game-dag — pakker-kontrakten er 1 etape = 1 game-dag (#4161)`,
       calendarStageRepeatViolations.slice(0, 50)
     ),
-    calendar_monument_exclusive_game_day: check(
-      calendarMonumentSharedDays.length === 0,
-      !activeSeason
-        ? "OK — ingen aktiv sæson at kontrollere"
-        : calendarMonumentSharedDays.length === 0
-          ? `OK — hvert monument har sin in-game-dag for sig selv i alle ${calendarPoolsChecked} pulje(r)`
-          : `${calendarMonumentSharedDays.length} monument-løbsdag(e) deles med andre løb — et monument skal have dagen for sig selv (#4075/#4176)`,
-      calendarMonumentSharedDays.slice(0, 50)
-    ),
+    // #4465: `calendar_monument_exclusive_game_day` stod her indtil 31/8. Reglen den
+    // håndhævede (#4075, låst 21/8) blev OPHÆVET af ejeren 26/8 (#4236), fordi #4217's
+    // spænd-baserede binding havde fjernet gevinsten: 0 delte ryttere i alle 9
+    // monument/etapeløb-kombinationer, målt mod prod. Invarianten blev tilbage og gjorde
+    // gaten rød tre døgn i træk på noget der er tilladt. Den regel der ER tilbage —
+    // monumenterne spredt over sæsonen — er IKKE kvantificeret og kan derfor ikke gates;
+    // se docs/CALENDAR_RULES.md §4. Tilføj den her når ejeren har låst et minimum.
     calendar_game_day_axis_not_collapsed: check(
       calendarCollapsedPools.length === 0,
       !activeSeason

@@ -32,7 +32,11 @@ const SOLO_THRESHOLD_S = 10;
 const STEP_MIN_MS = 450;
 const STEP_MAX_MS = 1800;
 
-const WIN_MOMENT_KEYS = new Set(["sprint_win", "close_win", "solo_win"]);
+const WIN_MOMENT_KEYS = new Set(["sprint_win", "close_win", "solo_win", "itt_win", "ttt_win"]);
+// #4373: fallback-klassificeringen nedenfor kender kun gaps, og på en prolog er
+// et par sekunder til nr. 2 helt normalt — den kaldte derfor enkeltstarter
+// "sprint_win" (label: "Bunch sprint"). Profilen afgør nu disciplinen først.
+const TIME_TRIAL_WIN_TYPE = { itt: "itt_win", ttt: "ttt_win" };
 
 // Kompressions-funktion: reelt gab (sekunder) mellem to på hinanden følgende
 // ryttere → afspilnings-ms mellem deres "klik ind i mål"-øjeblikke. Ukendt gap
@@ -59,11 +63,15 @@ function breakawayBeatFor(finishers) {
   return null;
 }
 
-function winTypeFor(finishers, moments, stageNumber) {
+function winTypeFor(finishers, moments, stageNumber, profileType) {
   const moment = (moments || []).find(
     (m) => (m.stage_number ?? 1) === stageNumber && WIN_MOMENT_KEYS.has(m.moment_key)
   );
   if (moment) return moment.moment_key;
+
+  // #4373: tidskørsler klassificeres på disciplinen, aldrig på gappet.
+  const timeTrialWinType = TIME_TRIAL_WIN_TYPE[profileType];
+  if (timeTrialWinType) return timeTrialWinType;
 
   // Fallback uden moments (S6-tabellen ikke migreret/tom for ældre løb):
   // samme 2-tier-grænse som raceRecap.js's soloWin/sprintWin.
@@ -78,7 +86,7 @@ function winTypeFor(finishers, moments, stageNumber) {
  * rows = de "stage"-resultat-rækker (rytter-niveau) for DEN etape/dag der skal
  * dramatiseres — RaceDetailPage sender allerede-hentede race_results uden nyt kald.
  */
-export function buildFinalKilometrePlayback({ rows, moments = [], stageNumber = null } = {}) {
+export function buildFinalKilometrePlayback({ rows, moments = [], stageNumber = null, profileType = null } = {}) {
   const finishers = (rows || [])
     .filter((r) => resultEntity(r).kind === "rider")
     .slice()
@@ -141,7 +149,7 @@ export function buildFinalKilometrePlayback({ rows, moments = [], stageNumber = 
     countdownMs: COUNTDOWN_MS,
     arrivalsMs: ARRIVALS_MS,
     countdownStartM: COUNTDOWN_START_M,
-    winType: winTypeFor(finishers, moments, stageNumber),
+    winType: winTypeFor(finishers, moments, stageNumber, profileType),
     photoFinishWin: winnerGap != null && winnerGap < PHOTO_FINISH_THRESHOLD_S,
     breakawayBeat: breakawayBeatFor(finishers),
     riders,

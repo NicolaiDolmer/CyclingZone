@@ -7,7 +7,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRiderEligibilityFilter, isRiderInjured } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
-import { isRiderDayInvariantViolation } from "./raceBinding.js";
+import { isRiderDayInvariantViolation, teamInRacePool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, freeRoleIds = [],
@@ -60,7 +60,9 @@ export function validateSelection({
   return { ok: errors.length === 0, errors };
 }
 
-function roleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet }) {
+// #1146: eksporteret så bulk-endpointets rpcChanges-bygger (api.js) kan genbruge PRÆCIS
+// samme rolle-mapping som saveSelection nedenfor — ingen anden kopi af denne switch.
+export function roleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet }) {
   if (riderId === captainId) return "captain";
   if (riderId === sprintCaptainId) return "sprint_captain";
   if (riderId === hunterId) return "hunter";
@@ -115,6 +117,157 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
     throw err;
   }
   return rows;
+}
+
+// #1146: fælles pr.-løb-validering — udtrukket af PUT /:raceId/selection (api.js) så
+// bulk-endpointet (PUT /races/selection/bulk) kan genbruge PRÆCIS samme regler i stedet
+// for at kopiere/divergere dem. Rører IKKE binding-konflikt-tjekket (loadTeamBindingContext
+// m.fl.) — det kræver kendskab til de ANDRE løb i et bulk-kald (peer-konflikter) og bliver
+// derfor liggende i kalder-laget (api.js), for begge endpoints.
+//
+// Returnerer { ok:false, status, error, errors? } ved afvisning (samme fejlkoder/rækkefølge
+// som den oprindelige inline-blok), ellers { ok:true, riderIds, captainId, sprintCaptainId,
+// hunterId, freeRoleIds, isRemovalOnly, ctx }.
+export async function prepareSelectionChange({ supabase, race, teamId, teamDivisionId, body }) {
+  if (race.status !== "scheduled") return { ok: false, status: 409, error: "selection_race_not_open" };
+
+  // Race-hub pulje-binding: et hold må kun udtage til løb i sin egen pulje (se #1146-
+  // kommentaren i api.js for den fulde begrundelse — uændret her).
+  if (!teamInRacePool({ teamDivisionId, racePoolId: race.league_division_id })) {
+    return { ok: false, status: 409, error: "selection_wrong_pool" };
+  }
+
+  const { rider_ids: riderIdsBody = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null, free_role_ids: freeRoleIds = [] } = body || {};
+  if (!Array.isArray(riderIdsBody) || !Array.isArray(freeRoleIds)) {
+    return { ok: false, status: 400, error: "selection_invalid_body" };
+  }
+  const riderIds = riderIdsBody;
+
+  const ctx = await getSelectionContext({ supabase, race, teamId });
+
+  // Frys (#1825), undtagen ren fjernelse (#2637) — se den fulde begrundelse i api.js.
+  const currentRiderIds = new Set(ctx.selection?.rider_ids || []);
+  const isRemovalOnly = riderIds.length < currentRiderIds.size && riderIds.every((id) => currentRiderIds.has(id));
+  if ((race.stages_completed ?? 0) > 0 && !isRemovalOnly) {
+    return { ok: false, status: 409, error: "selection_race_started" };
+  }
+
+  const result = validateSelection({
+    riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
+    teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
+    injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
+    sizeRule: ctx.size,
+    availableCount: ctx.availableCount,
+  });
+  if (!result.ok) return { ok: false, status: 400, error: result.errors[0], errors: result.errors };
+
+  return { ok: true, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, isRemovalOnly, ctx };
+}
+
+// #1146/#4310-refutation: binding-konflikt-klassifikationen for EN HEL bulk-batch — ren
+// funktion (ingen DB), udtrukket af PUT /races/selection/bulk (api.js) hvor den lå inline
+// i route-handleren og derfor kun var dækket af kildetekst-regex (FUND 3: nul reel
+// adfærdsdækning af selve "en swap er rækkefølge-uafhængig"-garantien). Dette er PRÆCIS
+// den logik der gør en peer-swap (to celler i samme batch bytter en rytter) lovlig og
+// en ægte peer-kollision (samme rytter ønsket i to overlappende løb i samme batch)
+// ulovlig — se raceSelection.test.js for testene der beviser rækkefølge-uafhængigheden.
+//
+// `changes`: [{ raceId, riderIds, window }] — window er raceBindingWindow-resultatet for
+// løbet (samme form som findRiderBindingConflicts/windowsOverlap forventer).
+// `otherRacesByRace`: Map<raceId, DB-otherRaces MED batch-fæller udelukket> (fra
+// loadTeamBindingContext i api.js, uændret af denne udtrækning).
+//
+// Returnerer ÉT resultat pr. race i `changes` (samme rækkefølge som input), af typen:
+//   { race_id, kind: "peer_conflict", conflicts: [{rider_id, race_id, conflict_race_id}] }
+//   { race_id, kind: "db_conflict", boundRiderIds: [uuid,...] }  — kalderen slår selv op
+//     om disse er resolvable (#2637 auto-release) eller blocking via
+//     resolveBindingConflictDetails (DB-kald, forbliver i api.js — ikke rent).
+//   { race_id, kind: "clear" }
+//
+// Rækkefølge-uafhængighed: peerRaces bygges ÉN gang for HELE `changes`-arrayet før nogen
+// klassificering sker, og hvert races eget peer-tjek udelukker kun SIG SELV (peerOthers) —
+// aldrig baseret på hvor i arrayet det andet race optræder. Resultatet for et givet race
+// afhænger dermed kun af MÆNGDEN af (raceId, window, riderIds)-tripler i `changes`, ikke
+// af deres rækkefølge.
+export function classifyBulkSelectionConflicts({ changes, otherRacesByRace }) {
+  const peerRaces = changes.map((c) => ({ raceId: c.raceId, window: c.window, riderIds: c.riderIds }));
+
+  return changes.map((change) => {
+    const { raceId, riderIds, window: thisWindow } = change;
+
+    // Peer (mod en ANDEN ændring i SAMME batch): altid blokerende — en ægte kollision
+    // mellem to samtidige manuelle ønsker kan ikke auto-løses (ingen af de to har
+    // forrang), i modsætning til en LOVLIG swap (den fjernede rytter optræder simpelthen
+    // ikke i den anden celles NYE riderIds og udløser derfor ingen konflikt her).
+    const peerOthers = peerRaces.filter((p) => p.raceId !== raceId);
+    const peerBound = findRiderBindingConflicts({ riderIds, thisWindow, otherRaces: peerOthers });
+    if (peerBound.length) {
+      const conflicts = peerBound.map((riderId) => {
+        const other = peerOthers.find(
+          (p) => windowsOverlap(thisWindow, p.window) && (p.riderIds || []).includes(riderId)
+        );
+        return { rider_id: riderId, race_id: raceId, conflict_race_id: other?.raceId ?? null };
+      });
+      return { race_id: raceId, kind: "peer_conflict", conflicts };
+    }
+
+    // DB (mod et løb UDENFOR denne batch): klassificeres akkurat som single-endpointet
+    // (#2637) — auto-udtaget+ikke-startet løb frigives automatisk, alt andet afvises
+    // navngivet. Selve resolvable/blocking-opdelingen kræver et DB-opslag
+    // (resolveBindingConflictDetails) og forbliver derfor i kalderen (api.js).
+    const dbOthers = otherRacesByRace.get(raceId) || [];
+    const dbBound = findRiderBindingConflicts({ riderIds, thisWindow, otherRaces: dbOthers });
+    if (dbBound.length) {
+      return { race_id: raceId, kind: "db_conflict", boundRiderIds: dbBound };
+    }
+
+    return { race_id: raceId, kind: "clear" };
+  });
+}
+
+// #1146: atomisk bulk-gem via replace_race_selection_bulk-RPC'en (database/2026-08-27-
+// 1146-selection-bulk-rpc.sql). ÉN transaktion, advisory-lås pr. hold, dobbeltbooking-
+// checket UDSKUDT til batchens afslutning (samme mønster som apply_race_entry_unit_batch,
+// #3934) — en lovlig swap mellem to `changes`-løb er rækkefølge-uafhængig, i modsætning til
+// at kalde saveSelection (replace_race_selection) N gange i separate kald.
+//
+// `changes`: [{ race_id, rider_ids, roles }] — pr.-løb-payloaden api.js allerede har bygget
+// via prepareSelectionChange + roleFor. `autoReleases`: [{ race_id, rider_id }] — #2637-
+// frigivelser i løb UDENFOR denne batch (klassificeret af api.js via
+// resolveBindingConflictDetails), udført i SAMME transaktion som selve erstatningen.
+export async function saveSelectionBulk({ supabase, teamId, changes, autoReleases = [] }) {
+  const { error: rpcErr } = await supabase.rpc("replace_race_selection_bulk", {
+    p_team_id: teamId,
+    p_changes: changes,
+    p_auto_releases: autoReleases,
+  });
+  if (rpcErr) {
+    // #2256/#4283-mønsteret: RPC'ens deferred binding-backstop tabte kapløbet for os (en
+    // SAMTIDIG skriver fra en anden session) — samme klassifikation som saveSelection.
+    const err = new Error(`replace_race_selection_bulk: ${rpcErr.message}`);
+    const msg = String(rpcErr.message || "");
+    if (msg.includes("selection_rider_bound") || isRiderDayInvariantViolation(rpcErr)) {
+      err.code = "selection_rider_bound";
+    } else if (msg.includes("selection_race_started")) {
+      // #2074/#4310: RPC'ens egen SQL-niveau forward-guard (database/2026-08-27-1146-
+      // selection-bulk-rpc.sql) tabte et TOCTOU-kapløb mod løbets stages_completed/status
+      // — løbet blev frosset/afsluttet MELLEM app-lagets prepareSelectionChange-læsning og
+      // denne transaktions commit. Samme fejlkode som prepareSelectionChange returnerer
+      // for den almindelige (ikke-TOCTOU) sti, så klienten ser én kontrakt uanset hvilken
+      // af de to steder der fangede det.
+      err.code = "selection_race_started";
+    } else if (msg.includes("selection_race_not_open")) {
+      // Samme kontrakt-argument som grenen ovenfor, for RPC'ens ANDEN forward-guard-regel
+      // (status <> 'scheduled', rpc.sql:186). Koden manglede her, saa et loeb der blev
+      // FINALISERET i TOCTOU-vinduet gav err.code = undefined -> api.js's catch faldt
+      // igennem til captureException + 500, i stedet for den 409 de tre oevrige call-sites
+      // (api.js:5011, api.js:5329, raceSelection.js:132) allerede svarer for praecis den
+      // tilstand. Spilleren fik en generisk serverfejl + en stoej-alarm i Sentry for noget
+      // der er en normal, forklarlig afvisning.
+      err.code = "selection_race_not_open";
+    }
+    throw err;
+  }
 }
 
 // Ren mapping af evner+kondition+profiler → riderRows (testbar uden DB).

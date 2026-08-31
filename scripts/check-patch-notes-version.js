@@ -3,6 +3,7 @@
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const PATCH_FILE = "frontend/src/data/patchNotes.js";
 const NOW_FILE = "docs/NOW.md";
@@ -123,10 +124,37 @@ function fail(message) {
   process.exitCode = 1;
 }
 
-function main() {
+// #4308: regex-parsingen ovenfor (parseVersions/parseDatedVersions) læser rå
+// tekst og opdager derfor ALDRIG en syntaksfejl (fx en uafsluttet klamme) i
+// patchNotes.js. Den slags brækker kun frontend-build senere i samme CI-run,
+// efter denne guard allerede har sagt "ok". Antagelse denne funktion bygger på:
+// filen er ren ESM-data uden sideeffekter (ingen DOM/network/env-afhængige
+// imports), så et dynamisk import() blot EKSEKVERER dens top-level-kode og
+// kaster SyntaxError hvis den ikke parser, uden at kræve en fuld testrunner.
+async function importCheck(absPath) {
+  try {
+    await import(pathToFileURL(absPath).href);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
+async function main() {
   const root = repoRoot();
   const baseRef = process.env.PATCH_NOTES_BASE_REF || "origin/main";
   const eventName = process.env.GITHUB_EVENT_NAME || "";
+  const patchFilePath = path.join(root, PATCH_FILE);
+
+  const importResult = await importCheck(patchFilePath);
+  if (!importResult.ok) {
+    fail(
+      `${PATCH_FILE} could not be imported (syntax error?): `
+      + `${importResult.error && importResult.error.message}`
+    );
+    return;
+  }
+
   const versions = parseVersions(readFile(root, PATCH_FILE));
 
   if (versions.length === 0) {
@@ -211,8 +239,12 @@ module.exports = {
   hasOptOutToken,
   arraysEqual,
   patchNotesRouteIsSnapshotted,
+  importCheck,
 };
 
 if (require.main === module) {
-  main();
+  main().catch((error) => {
+    console.error(`patch-notes-check: unexpected error: ${(error && error.stack) || error}`);
+    process.exitCode = 1;
+  });
 }

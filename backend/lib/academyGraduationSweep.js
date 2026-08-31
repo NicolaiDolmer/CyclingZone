@@ -25,6 +25,11 @@ export async function runAcademyGraduationSweep({
       .select("team_id, rider_id, deadline").eq("status", "pending").order("created_at"));
 
   let resolved = 0, failed = 0;
+  // #4484: fejlbeskederne SKAL med ud af sweepet. Den aggregerede Sentry-capture
+  // i cron.js bar kun tallet "1 ryttere fejlede", så en rytter der låste sweepet
+  // fast 23 nætter i træk krævede en DB-udgravning for at identificere. Spejler
+  // starterSquadHealSweep.js's errors[].
+  const errors = [];
   for (const g of pending) {
     if (new Date(g.deadline) > now) continue; // override-vinduet ikke udløbet endnu
     try {
@@ -32,8 +37,9 @@ export async function runAcademyGraduationSweep({
       resolved++;
     } catch (err) {
       failed++;
+      errors.push({ riderId: g.rider_id, teamId: g.team_id, message: err?.message || String(err) });
       console.error(`graduation sweep failed (${g.rider_id}):`, err.message);
     }
   }
-  return { processed: resolved + failed, resolved, failed };
+  return { processed: resolved + failed, resolved, failed, errors };
 }

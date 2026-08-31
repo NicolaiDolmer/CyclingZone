@@ -1,0 +1,31 @@
+{
+  // Brohoved-typecheck for frontend. Spejler backend/tsconfig.engine.json's
+  // strategi: strict paa .ts/.tsx, JS passerer uroert (allowJs + checkJs:false),
+  // saa de 872 eksisterende .js/.jsx-filer ikke skal konverteres for at faa
+  // vaerdi. Formaalet er at gore den TYPEDE Supabase-klient levende: siden
+  // frontend/src/lib/supabase.ts blev skrevet som createClient<Database> har
+  // intet nogensinde koert tsc paa frontend, saa de 2.746 linjer i
+  // src/types/database.types.ts har ikke fanget en eneste skema-fejl.
+  //
+  // Naar en fil konverteres til .ts/.tsx faar den fuld strict-daekning med det
+  // samme. Ingen big-bang-migrering.
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "types": ["vite/client"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

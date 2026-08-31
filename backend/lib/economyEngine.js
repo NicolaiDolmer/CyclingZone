@@ -42,7 +42,6 @@ import {
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
   FIRST_PROMOTION_RELEGATION_SEASON,
-  MAX_BOARD_MODIFIER,
   MAX_DIVISION,
   MIN_DIVISION,
   INITIAL_BALANCE,
@@ -71,7 +70,9 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { getFacilityUpkeepTotal } from "./facilityEngine.js";
 import {
   buildSponsorStandingsContext,
+  computeBoardBaseModifier,
   computeSponsorForSeason,
+  resolveSponsorPayout,
   FIRST_VARIABLE_SPONSOR_SEASON,
 } from "./sponsorEngine.js";
 import { getActiveContract } from "./sponsorContractsService.js";
@@ -286,13 +287,11 @@ export async function processSeasonStart(seasonId, deps = {}) {
 
   for (const team of teams || []) {
     const boards = team.board_profiles || [];
-    const activeBoards = boards.filter(b => b.negotiation_status === "completed");
-    const baseModifier = activeBoards.length > 0
-      ? activeBoards.reduce((sum, b) => sum + (b.budget_modifier ?? 1.0), 0) / activeBoards.length
-      : 1.0;
-    // Lag 5 stacker MULTIPLIKATIVT med lag 1 (budget_modifier).
+    // #2753 · modifier/loft-regnestykket bor i sponsorEngine, så transition-
+    // previewet (buildTransitionPlan) og denne udbetaling ikke kan drive fra
+    // hinanden igen.
+    const baseModifier = computeBoardBaseModifier(boards);
     const pulloutFactor = pulloutFactorByTeamId.get(team.id) ?? 1.0;
-    const modifier = boardTestMode ? 1.0 : baseModifier * pulloutFactor;
     const lastSeasonStanding = sponsorStandingsContext.standingByTeamId.get(team.id) || null;
     // #1663: en aktiv (forhandlet) kontrakt definerer den låste garanterede base.
     const activeContract = await getActiveContract({ supabase: supabaseClient, teamId: team.id });
@@ -306,10 +305,15 @@ export async function processSeasonStart(seasonId, deps = {}) {
       activeContract,
     });
     // #1663: loft afledt af den (låste) garanterede base × maks board-modifier — capper
-    // board-modifier-bypass, men ikke legitim renown-skalering.
-    const ceilingBase = activeContract?.guaranteed_base ?? sponsorBreakdown.gross_sponsor;
-    const ceiling = Math.round(Number(ceilingBase) * MAX_BOARD_MODIFIER);
-    const sponsorPayout = Math.min(Math.round(sponsorBreakdown.gross_sponsor * modifier), ceiling);
+    // board-modifier-bypass, men ikke legitim renown-skalering. Selve regnestykket
+    // (modifier × pullout × loft) er delt med previewet via resolveSponsorPayout.
+    const { modifier, payout: sponsorPayout } = resolveSponsorPayout({
+      grossSponsor: sponsorBreakdown.gross_sponsor,
+      activeContract,
+      baseModifier,
+      pulloutFactor,
+      boardTestMode,
+    });
 
     // #666: description holdes null for nye rows — frontend renderer fra
     // metadata via backendMessages-i18n. Legacy rows beholder DA-description
@@ -1845,7 +1849,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       throwIfSupabaseError(boardUpdateError, `Could not update active board plan for ${team.name}`);
 
       if (isMidReview) {
-        const midMessageKey = newSatisfaction >= 60
+        const midMsgKey = newSatisfaction >= 60
           ? "notif.boardMidMessage.good"
           : newSatisfaction >= 40
           ? "notif.boardMidMessage.moderate"
@@ -1866,7 +1870,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
             titleParams: {},
             messageCode: "notif.boardMidReview.message",
             messageParams: {
-              midMessageKey,
+              midMsgKey,
               summary: feedback.summary,
               satisfaction: newSatisfaction,
             },
@@ -1918,6 +1922,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         goalsTotal: goals.length,
         planIsComplete,
         seasonId,
+        // #4482 · Regel A: sæson-slut-tilbud indløses i den FØLGENDE sæson.
+        // Stemples NULL her og re-stemples af seasonStartHooks når den nye
+        // sæson findes (FK forhindrer at stemple en endnu-ikke-oprettet sæson).
+        bonusOfferRedeemableNextSeason: true,
         consecutiveLowExpirations: triggerDoublePlanLapse ? 2 : 0,
         boardTestMode,
         now: deps.now ?? new Date(),

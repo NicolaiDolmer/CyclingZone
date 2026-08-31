@@ -33,6 +33,26 @@ const SINCE_ISO = readSince();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 function readToken() { return process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN || null; }
 
+// HH:MM i dansk lokaltid (Europe/Copenhagen), ikke UTC — bruges kun til den synlige kørsel-separator.
+function nowHHmmCopenhagen(d) {
+  return new Intl.DateTimeFormat('da-DK', {
+    timeZone: 'Europe/Copenhagen',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d);
+}
+
+// To kørsler samme dag deler filnavn (.sweep-daily-<dato>.md). Findes filen allerede,
+// APPENDES der med en tydelig separator i stedet for at overskrive (#3440 — 24t vindue tabt 6/8).
+function writeSweepOutput(outPath, content, runTime) {
+  const existing = fs.existsSync(outPath) ? fs.readFileSync(outPath, 'utf8') : null;
+  const finalContent = existing
+    ? `${existing}\n\n---\n\n## Kørsel ${nowHHmmCopenhagen(runTime)} (Europe/Copenhagen)\n\n${content}`
+    : content;
+  fs.writeFileSync(outPath, finalContent, 'utf8');
+}
+
 // Discord snowflake -> ISO timestamp
 function snowflakeTs(id) {
   return new Date(Number((BigInt(id) >> 22n) + 1420070400000n)).toISOString();
@@ -141,7 +161,7 @@ async function main() {
     await sleep(300);
   }
 
-  fs.writeFileSync(OUT, out, 'utf8');
+  writeSweepOutput(OUT, out, now);
   fs.writeFileSync(STATE, JSON.stringify({ lastRunISO: now.toISOString(), lastOutput: OUT }, null, 2), 'utf8');
   console.log(`WROTE ${OUT} (${out.length} chars) · next cutoff = ${now.toISOString()}`);
 }

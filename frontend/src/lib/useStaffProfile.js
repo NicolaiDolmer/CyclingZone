@@ -10,17 +10,10 @@
 // tier), samme synlighed som staff-kandidater allerede viser før ansættelse. Status
 // "public" markerer denne begrænsede visning så UI kan skjule den fulde evne-matrix.
 import { useState, useEffect } from "react";
-import { getSession } from "./supabase.js";
+import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { useFacilities } from "./useFacilities.js";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export function useStaffProfile(staffId) {
   const facs = useFacilities(); // giver roster (facilities[].staff) til switcher

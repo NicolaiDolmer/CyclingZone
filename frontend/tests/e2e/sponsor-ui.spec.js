@@ -12,7 +12,7 @@
 //
 // Fixturen låser app'en til DA-locale (stabilizePage → cz_lang=da), så alle
 // assertions matcher de danske sponsor-strenge (public/locales/da/sponsor.json).
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import {
   installNetworkMocks,
   login,

@@ -44,9 +44,11 @@ export function variantIndex(raceId, stageNumber, key, variantCount) {
 // falder tilbage til v1 uden varsel.
 export const HEADLINE_VARIANT_COUNTS = Object.freeze({
   sprint_win: 3, close_win: 2, solo_win: 3, breakaway_survived: 2, gc_takeover: 2, final_gc: 2,
+  itt_win: 2, ttt_win: 2, // #4373
 });
 export const LEDE_VARIANT_COUNTS = Object.freeze({
   bunch_sprint: 2, reduced_sprint: 1, solo: 2, breakaway: 1, generic: 1,
+  time_trial: 2, team_time_trial: 1, // #4373
 });
 export const BEAT_VARIANT_COUNTS = Object.freeze({
   breakaway_caught: 2, breakaway_survived: 1, helper_shift: 2, form_peak: 2,
@@ -54,7 +56,10 @@ export const BEAT_VARIANT_COUNTS = Object.freeze({
   aggression_no_cost: 2, saved_effort: 2, gave_everything: 2,
 });
 
-const WIN_MOMENT_KEYS = ["sprint_win", "close_win", "solo_win"];
+// #4373: itt_win/ttt_win er tidskørslernes vindermomenter (backend/lib/
+// raceNarrative.js). Uden dem her fandt buildRaceReport intet vindermoment på en
+// enkeltstart og degraderede til v1-recappen, som selv kaldte det en spurt.
+const WIN_MOMENT_KEYS = ["sprint_win", "close_win", "solo_win", "itt_win", "ttt_win"];
 
 function byKey(moments, key) {
   return moments.find((m) => m.moment_key === key) || null;
@@ -64,6 +69,11 @@ function byKey(moments, key) {
 // hvilket moment der endte med at blive rubrikken — fx en gc_takeover-rubrik
 // beskriver STADIG en spurtsejr i leden).
 export function ledeKeyForWinMoment(winMoment, stageMoments) {
+  // #4373: enkeltstart og holdtidskørsel er to forskellige discipliner og deler
+  // ikke formulering. Ligger FØRST, fordi ingen af de øvrige grene (udbrud,
+  // spurt, solo) kan være sande på en tidskørsel.
+  if (winMoment.moment_key === "itt_win") return "time_trial";
+  if (winMoment.moment_key === "ttt_win") return "team_time_trial";
   if (winMoment.moment_key === "solo_win") return "solo";
   if (winMoment.moment_key === "close_win") return "reduced_sprint";
   const breakawaySurvived = byKey(stageMoments, "breakaway_survived");

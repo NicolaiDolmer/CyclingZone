@@ -18,7 +18,7 @@
 // består den 5/5. Forsinkelsen erstatter den langsommere CI-runner — på en hurtig
 // maskine committer den nye side tilfældigvis hurtigt nok til at gamle,
 // tidsbaserede guards holdt.
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 
 // Længere end BÅDE den udskudte reload (250 ms) og error-boundary'ens effect, så

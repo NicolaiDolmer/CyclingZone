@@ -67,6 +67,45 @@ test("#3601 specs samler browser-fejl via fixtures.js (eller er eksplicit undtag
   );
 });
 
+// ── #4248 · specs skal arve fejl-guarden fra e2e-base.js ───────────────────
+//
+// Fejlopsamlingen fandtes før (#3601/#3636), men var opt-in: målt 28/8 brugte
+// 9 af 70 specs den. De 61 øvrige var blinde for enhver uncaught fejl så længe
+// DOM'en renderede — og det gør den typisk, når fejlen sker i en useEffect.
+// Det var sådan #4244 slap forbi 561 grønne tests og ramte 17 spillere.
+//
+// Guarden er nu en auto-fixture i e2e-base.js. Denne test sikrer at ingen ny
+// spec kan falde udenom ved at importere `test` direkte fra @playwright/test.
+const PLAYWRIGHT_TEST_IMPORT = /^\s*import\s*\{[^}]*\btest\b[^}]*\}\s*from\s*["']@playwright\/test["']/m;
+
+test("#4248 specs importerer test fra ./e2e-base.js, ikke fra @playwright/test", () => {
+  const offenders = specFiles
+    .filter(({ source }) => PLAYWRIGHT_TEST_IMPORT.test(source))
+    .map(({ name }) => name);
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `Disse specs importerer \`test\` direkte fra @playwright/test:\n  ${offenders.join("\n  ")}\n\n` +
+      `Brug \`import { test, expect } from "./e2e-base.js";\` i stedet. Basen hænger ` +
+      `automatisk fejlopsamling (pageerror + unhandled rejections) på hver test, så en ` +
+      `uncaught fejl fælder testen i stedet for at gå ubemærket forbi.\n` +
+      `Fremprovokerer specen bevidst en fejl, så undtag den SMALT i specen selv:\n` +
+      `  test.use({ allowedPageErrors: [/…/] });`,
+  );
+});
+
+// Guarden ovenfor er værdiløs hvis e2e-base.js ikke faktisk installerer
+// opsamlingen. Denne kontrollerer kilden, så en fremtidig refaktor ikke kan
+// tømme basen og efterlade 70 specs der importerer en tom skal.
+test("#4248 e2e-base.js installerer fejl-guarden som auto-fixture", () => {
+  const base = fs.readFileSync(path.join(E2E_DIR, "e2e-base.js"), "utf8");
+
+  assert.match(base, /auto:\s*true/, "fejl-guarden i e2e-base.js skal være en auto-fixture");
+  assert.match(base, /page\.on\(\s*["']pageerror["']/, "e2e-base.js skal lytte på pageerror");
+  assert.match(base, /unhandledrejection/, "e2e-base.js skal fange unhandled promise rejections");
+});
+
 // ── #3554 · specs må ikke skrive til committede stier ───────────────────────
 //
 // Alt hvad `playwright test` skriver skal lande i test-results/ (gitignored)

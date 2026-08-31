@@ -2,16 +2,9 @@
 // staff-profil/-oversigt. Samme auth-mønster som useFacilities.js/useStaffProfile.js
 // (getSession() → Bearer-token, ingen delt apiFetch-util i repoet).
 import { useCallback, useState } from "react";
-import { getSession } from "./supabase.js";
+import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data } = await getSession();
-  const token = data?.session?.access_token;
-  if (!token) return null;
-  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-}
 
 export function useStaffRelease() {
   const [busy, setBusy] = useState(false);

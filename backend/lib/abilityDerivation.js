@@ -1,6 +1,9 @@
 import {
   REGISTRY_ABILITY_KEYS, REGISTRY_CONTRAST_KEYS, REGISTRY_PRIMARY_STAT,
 } from "./abilityRegistry.js";
+// SSOT for launch-referenceåret + fødselsår-udtrækket. riderSeasonAge.js er bevidst
+// dependency-fri, så denne rene derivations-fil ikke trækker I/O med sig (#4455).
+import { LAUNCH_REFERENCE_YEAR, birthYearFrom } from "./riderSeasonAge.js";
 
 // Evne-system v3 (#1122 / #1101-kæden) — fysiske evner afledes nu fra fysiologi-profiler
 // (rider_physiology_profiles); tekniske/mentale forbliver skill-stat-drevne.
@@ -19,7 +22,11 @@ export const FORMULA_VERSION = 3;
 export const CALIBRATION = Object.freeze({
   pcmFloor: 50,   // PCM-stat der mapper til spil-1
   pcmCeil: 85,    // PCM-stat der mapper til spil-99 (stats >85 clampes til 99)
-  asOfYear: 2026, // alder = asOfYear − fødselsår (til aggression/tactics/hidden)
+  // alder = asOfYear − fødselsår (til aggression/tactics/hidden). #4455: dette var
+  // den FEMTE kopi af launch-referenceåret, og den eneste i den KØRENDE backend —
+  // deriveAbilities() kaldes uden asOfYear fra backfillCores.js og
+  // starterSquadAllocator.js, så literalen her var den faktiske default i prod.
+  asOfYear: LAUNCH_REFERENCE_YEAR,
 });
 
 // ── Evne-niveau KONTRAST-FORSTÆRKNING (§5-B, #1122 — "A+B") ───────────────────
@@ -89,6 +96,23 @@ export const HIDDEN_ABILITIES = Object.freeze(["hidden_potential"]);
 
 export const ALL_ABILITY_KEYS = Object.freeze([...VISIBLE_ABILITIES, ...HIDDEN_ABILITIES]);
 
+// #4311: fyld-ryttere (generation_tag='fill_tail', sat af buildWeakStarterPool i
+// starterSquadAllocator.js) faar stats klemt i bund FOER derivation, men to af de
+// seksten evner udledes slet ikke af stats (tactics = alder, hidden_potential =
+// potentiale) og sprang derfor uden om klemmen. En 32-aarig fyld-rytter fik taktik
+// 57 og laeste som en normal rytter (populationens bedste evne-snit 41; fyldets
+// bedste evne UDEN tactics 7). Loftet ligger HER (ikke kun i generator-scriptet),
+// saa en senere re-derive (deriveForRiderIds, riderDeriveHealSweep osv.) ikke kan
+// genoplive tactics 57 — klemmen gaelder for ENHVER rider_row der baerer taggen,
+// uanset hvilken kodesti der kalder deriveAbilities.
+export const FILL_TAIL_ABILITY_CAP = 15;
+export const FILL_TAIL_GENERATION_TAG = "fill_tail";
+// Ejer-beslutning 27/8 (#4311): fyld-rytteres potentiale klemmes til maks 2,5 —
+// forhindrer hidden_potential (afledt af potentiale, ikke stats) i at laekke over
+// evne-loftet. Bruges af buildWeakStarterPool (starterSquadAllocator.js) FOER
+// derivation; evne-loftet ovenfor er det UAFHAENGIGE sikkerhedsnet EFTER derivation.
+export const FILL_TAIL_MAX_POTENTIALE = 2.5;
+
 // Disciplin-evne → primær PCM-stat (§3 "Kilde"). Bruges kun i FALLBACK-stien
 // (ingen fysiologi). prolog FJERNET. Ren 50-85 → 1-99-mapping.
 // #3665: udledt af registrets `derivation: { source: "pcm", stat }`. De tre evner
@@ -119,10 +143,14 @@ function hashNoise(id) {
   return (h >>> 0) / 4294967296;
 }
 
+// Bevidst en ANDEN semantik end riderSeasonAge.ageForSeason: clampet til [16,45] og
+// med snit-alder 25 som fallback i stedet for null, fordi evne-derivationen skal give
+// et tal uanset hvad. Kun selve fødselsår-UDTRÆKKET deles (#4455), så de to ikke kan
+// divergere på tidszone — se birthYearFrom's kommentar i riderSeasonAge.js.
 function ageFrom(birthdate, asOfYear) {
   if (!birthdate) return 25; // snit-alder fallback
-  const year = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(year)) return 25;
+  const year = birthYearFrom(birthdate);
+  if (year === null) return 25;
   return clamp(asOfYear - year, 16, 45);
 }
 
@@ -214,6 +242,14 @@ export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CAL
   out.positioning = scoreFrac(0.50 * pcmFrac(riderRow.stat_fl) + 0.30 * pcmFrac(riderRow.stat_ned) + 0.20 * pcmFrac(riderRow.stat_ftr));
   out.tactics     = scoreFrac(0.55 * experience + 0.45 * aggressionFrac);
   out.hidden_potential = scoreFrac(0.60 * potential + 0.25 * youth + 0.15 * hashNoise(riderRow.id ?? physiology.rider_id));
+
+  // #4311: evne-loft EFTER afledning for fyld-ryttere. Ligger sidst saa den fanger
+  // ALLE seksten evner uanset kilde (fysiologi/PCM-fallback/skill-stat/alder/potentiale).
+  if (riderRow.generation_tag === FILL_TAIL_GENERATION_TAG) {
+    for (const k of ALL_ABILITY_KEYS) {
+      if (Number.isFinite(out[k])) out[k] = Math.min(out[k], FILL_TAIL_ABILITY_CAP);
+    }
+  }
 
   return out;
 }

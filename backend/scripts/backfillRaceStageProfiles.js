@@ -22,7 +22,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { generateRaceStageProfiles, GENERATOR_VERSION, PROFILE_TYPES } from "../lib/raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, GENERATOR_VERSION, PROFILE_TYPES, toStageProfileRow } from "../lib/raceStageProfileGenerator.js";
 import { resolveVariantByRaceId } from "../lib/raceRouteRealismDraw.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -114,22 +114,7 @@ async function main() {
     if (!DRY_RUN) {
       const { error: delErr } = await supabase.from("race_stage_profiles").delete().eq("race_id", race.id);
       if (delErr) throw new Error(`delete ${race.id}: ${delErr.message}`);
-      const rows = profiles.map((p) => ({
-        race_id: race.id,
-        stage_number: p.stage_number,
-        profile_type: p.profile_type,
-        finale_type: p.finale_type,
-        demand_vector: p.demand_vector,
-        distance_km: p.distance_km,
-        elevation_gain_m: p.elevation_gain_m,
-        climbs: p.climbs,
-        sprints: p.sprints,
-        sectors: p.sectors,
-        segments: p.segments,
-        weather: p.weather,
-        generator_version: GENERATOR_VERSION,
-        is_manual: false,
-      }));
+      const rows = profiles.map((p) => toStageProfileRow(race.id, p));
       const { error: insErr } = await supabase.from("race_stage_profiles").insert(rows);
       if (insErr) throw new Error(`insert ${race.id}: ${insErr.message}`);
       stageRowsWritten += rows.length;

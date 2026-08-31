@@ -28,6 +28,7 @@ import { simulateStage, stableSeed, NOISE_SD_SCALE } from "./raceSimulator.js";
 import { buildRaceResults } from "./raceRunner.js";
 import { buildCaps, developRiderSeason } from "./riderProgression.js";
 import { abilityRankSensitivity, breakawayParticipationGapByAggression } from "./raceSensitivity.js";
+import { LAUNCH_REFERENCE_YEAR, ageForReferenceYear } from "./riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -42,7 +43,7 @@ export const BALANCE_SNAPSHOT_DEFAULTS = Object.freeze({
   fieldSize: 140,
   gtField: 176,
   seasons: 6,
-  referenceYear: 2026,
+  referenceYear: LAUNCH_REFERENCE_YEAR,
 });
 
 const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "classic"];
@@ -126,14 +127,13 @@ export function buildBalanceSnapshot(options = {}) {
     const id = `r${i}`;
     const abilities = deriveAbilities({}, { ...r, id }, { asOfYear: referenceYear });
     const derived = computeRiderTypes(abilities, baseline).primary?.key ?? "?";
-    const birthYear = Number(String(r.birthdate).slice(0, 4));
     return {
       id,
       name: `${r.firstname} ${r.lastname}`,
       bornAs: r._meta?.archetype ?? "?",
       derived,
       potentiale: r.potentiale,
-      startAge: Number.isFinite(birthYear) ? referenceYear - birthYear : null,
+      startAge: ageForReferenceYear(r.birthdate, referenceYear),
       is_u25: !!r.is_u25,
       overall: riderOverall(abilities),
       // rider-type-write-ok: 100 % in-memory balance-snapshot (deterministisk

@@ -59,6 +59,7 @@ import {
 import { nextFatigue, nextForm, conditionMultiplier } from "../lib/riderCondition.js";
 import { academySeasonFracForAge, isAcademyAge, ACADEMY } from "../lib/academyFlag.js";
 import { repoRoot } from "./lib/repoRoot.mjs";
+import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -71,7 +72,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // ── Konstanter ────────────────────────────────────────────────────────────────
-const SEASON1_YEAR = 2026;         // jf. lib/riderProgressionEngine.LAUNCH_REFERENCE_YEAR (sæson 1)
+const SEASON1_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 const MIN_AGE = 16, MAX_AGE_POP = 21, MAX_AGE_SIM = 36;
 // #2471: voksen-populationen. Øvre grænse = PROGRESSION_CONFIG.peakAge (28) — samme
 // "prePeak"-definition som capSemanticsComparison.js's 83→250-tal, så de kan krydstjekkes.
@@ -143,10 +144,9 @@ function deepCopyAbilities(ab) {
   return out;
 }
 
-// Alder ved sæson 1 (2026 − fødselsår), jf. lib/riderProgressionEngine.ageForSeason(bd,1).
+// Alder ved sæson 1, direkte fra SSOT'en (lib/riderSeasonAge.js).
 function ageInSeason1(birthdate) {
-  const birthYear = new Date(birthdate).getFullYear();
-  return Number.isFinite(birthYear) ? SEASON1_YEAR - birthYear : null;
+  return ageForSeason(birthdate, 1);
 }
 
 const fmt1 = (n) => (Number.isFinite(n) ? n.toFixed(1) : "-");

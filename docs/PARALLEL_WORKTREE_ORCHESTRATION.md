@@ -28,7 +28,7 @@ PreToolUse hard-block-hooks (`block-archived-edit`, `check-now-md-edit`, `block-
 - Lav-risk: `risk:low` eller `risk:med`
 
 ❌ **NEJ** når:
-- Issues rører samme filer (NOW.md, PatchNotesPage.jsx, MEMORY.md er typisk fælles)
+- Issues rører samme filer (NOW.md, frontend/src/data/patchNotes.js, MEMORY.md er typisk fælles)
 - Issues kræver `npm install` med forskellige deps (delte node_modules)
 - Issues har høj risiko / `risk:high`
 - Du har <3 candidates der opfylder constraints (brug normal sekventiel)
@@ -222,7 +222,7 @@ START med: `cd "<path>"` ELLER brug `git -C "<path>"`. Arbejd ALDRIG i C:\dev\Cy
 
 # DU MÅ IKKE
 - Rør docs/NOW.md (centralkoordineret af master-session)
-- Rør frontend/src/pages/PatchNotesPage.jsx (medmindre cat:user-feature)
+- Rør frontend/src/data/patchNotes.js. INGEN undtagelser, heller ikke cat:user-feature (ejer-beslutning 27/8 efter #4308: undtagelsen lod PR #4294 røre filen direkte og udløse konfliktkæden). Er ændringen brugervendt: aflever patch note-tekst (EN først, DA under) i din rapport/PR-body i stedet. Orkestratoren skriver ÉN samlet commit til filen efter bølgen (undgår merge-konflikter).
 - Rør MEMORY.md eller andre memory-filer
 - Bruge PowerShell heredoc — ALTID Write→fil + `git commit -F`
 - Arbejde i C:\dev\CyclingZone (main worktree)
@@ -233,6 +233,7 @@ START med: `cd "<path>"` ELLER brug `git -C "<path>"`. Arbejd ALDRIG i C:\dev\Cy
 - Commit-SHA
 - Hovedændringer
 - Status på tests/build
+- Patch note-tekst (EN+DA), hvis ændringen er brugervendt (se DU MÅ IKKE ovenfor)
 - Eventuelle out-of-scope-fund (skriv som issue-forslag, opret IKKE selv)
 ```
 

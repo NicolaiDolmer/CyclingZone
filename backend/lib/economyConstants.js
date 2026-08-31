@@ -417,3 +417,12 @@ export const FINANCE_REASON = Object.freeze({
   ADMIN_FORCE_PRIZE: "admin_force_prize",
   ADMIN_BETA_RESET: "admin_beta_reset",
 });
+
+// Timen (Europe/Copenhagen) hvor søndagens værdiopdatering tidligst må køre.
+// Bor HER og ikke i sundayValueSweep.js, fordi frontendens paritetstest skal
+// kunne importere tallet: sundayValueSweep.js trækker @sentry/node med sig, og
+// frontend-build-jobbet i CI installerer kun frontend/node_modules, så en import
+// derfra fejler i CI selvom den består lokalt. Denne fil har ingen imports.
+// Frontenden duplikerer tallet i auctionValueUpdateWindow.js (backend-kode må
+// ikke ind i bundlen); auctionValueUpdateWindow.parity.test.js holder de to i sync.
+export const SUNDAY_VALUE_FROM_HOUR = 6;

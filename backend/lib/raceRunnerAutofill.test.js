@@ -200,17 +200,42 @@ test("#4200: ryd-markering for et ANDET løb påvirker ikke dette løb", async (
 test("#4200: ryd-markering blokerer ikke et hold der EFTERFØLGENDE har udtaget manuelt", async () => {
   // Markeringen slettes normalt af raceSelection.js ved en manuel udtagelse, men en
   // fejlet/forsinket sletning må aldrig kunne tømme en trup spilleren netop har gemt:
-  // hold MED entries røres slet ikke af autofyldet (teamsWithEntries-filteret vinder).
+  // hold der er PÅ eller over gulvet røres slet ikke af autofyldet.
+  // #4295: truppen er 6 (gulvet), så testen måler præcis det den handler om — at
+  // ryd-markeringen ikke overskriver en gemt trup — og ikke gulvet.
   const state = baseState();
   state.race_entry_clears = [{ race_id: "race1", team_id: "t2" }];
-  state.race_entries = [
-    { race_id: "race1", team_id: "t2", rider_id: "t2-r0", race_role: "captain", is_auto_filled: false, status: "committed" },
-    { race_id: "race1", team_id: "t2", rider_id: "t2-r1", race_role: "helper", is_auto_filled: false, status: "committed" },
-  ];
+  const manual = ["t2-r0", "t2-r1", "t2-r2", "t2-r3", "t2-r4", "t2-r5"];
+  state.race_entries = manual.map((rider_id, i) => ({
+    race_id: "race1", team_id: "t2", rider_id,
+    race_role: i === 0 ? "captain" : "helper", is_auto_filled: false, status: "committed",
+  }));
   const supabase = makeSupabase(state);
   const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
   const t2 = entrants.filter((e) => e.team_id === "t2").map((e) => e.rider_id);
-  assert.deepEqual(t2.sort(), ["t2-r0", "t2-r1"], "den manuelle trup står urørt");
+  assert.deepEqual(t2.sort(), [...manual].sort(), "den manuelle trup står urørt");
+});
+
+// #4295 (ejer-beslutning 27/8): gulvet møder ryd-markeringen. Et hold der har ryddet
+// løbet og derefter gemt tre ryttere får IKKE en redning — markeringen er spillerens
+// egen udtalte beslutning om ikke at stille op (#4200/#4285), og tre er under gulvet,
+// så holdet står ikke i startfeltet. Autofyldet må hverken skrive rækker for det eller
+// smugle det i feltet ad bagvejen.
+test("#4295: ryddet hold under gulvet reddes ikke og stiller ikke op", async () => {
+  const state = baseState();
+  state.race_entry_clears = [{ race_id: "race1", team_id: "t2" }];
+  state.race_entries = ["t2-r0", "t2-r1", "t2-r2"].map((rider_id, i) => ({
+    race_id: "race1", team_id: "t2", rider_id,
+    race_role: i === 0 ? "captain" : "helper", is_auto_filled: false, status: "committed",
+  }));
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
+  assert.equal(entrants.filter((e) => e.team_id === "t2").length, 0, "t2 er under gulvet og stiller ikke op");
+  const insertedForT2 = supabase.__calls
+    .flatMap((c) => c.insert || [])
+    .filter((r) => r.team_id === "t2");
+  assert.deepEqual(insertedForT2, [], "ryd-markeringen holder redningen ude");
+  assert.ok(entrants.filter((e) => e.team_id === "t1").length >= 6, "t1 er upåvirket og stiller op");
 });
 
 // #3076 (tredje lag af rod-årsagen i #3070): binding-nøglen game_day er SÆSON-RELATIV og
@@ -262,4 +287,57 @@ test("#3076: entry i SAMME sæson binder stadig (1 rytter = 1 løb pr. in-game l
     !entrants.some((e) => e.rider_id === "t1-r0"),
     "samme-sæson-binding er uændret: rytteren må ikke dobbeltbookes"
   );
+});
+
+// ── #4295: sen redning op til gulvet (ejer-godkendt 27/8) ─────────────────────
+// Gulvet gør den forkerte handling billigst hvis redningen kun dækker nul-tilfældet:
+// gemmer du nul, udtager assistenten en fuld trup; gemmer du tre, står du med tre og
+// stiller ikke op. Redningen fylder derfor op til gulvet for et hold der ligger under.
+test("#4295: hold under gulvet fyldes op til 6 og stiller op", async () => {
+  const state = baseState();
+  state.race_entries = [
+    { race_id: "race1", rider_id: "t1-r9", team_id: "t1", race_role: "captain", is_auto_filled: false },
+    { race_id: "race1", rider_id: "t1-r8", team_id: "t1", race_role: "helper", is_auto_filled: false },
+    { race_id: "race1", rider_id: "t1-r7", team_id: "t1", race_role: "sprint_captain", is_auto_filled: false },
+  ];
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
+  const t1 = entrants.filter((e) => e.team_id === "t1");
+  assert.equal(t1.length, 6, "reddet præcis op til gulvet, ikke op til feltstørrelsen");
+  // Managerens egne tre står urørt, med deres roller.
+  assert.equal(t1.find((e) => e.rider_id === "t1-r9").race_role, "captain");
+  assert.equal(t1.find((e) => e.rider_id === "t1-r7").race_role, "sprint_captain");
+  // De tre tilføjede er hjælpere: redningen må aldrig sætte en anden kaptajn end hans egen.
+  const added = supabase.__calls.flatMap((c) => c.insert || []).filter((r) => r.team_id === "t1");
+  assert.equal(added.length, 3, "kun forskellen op til gulvet skrives");
+  assert.ok(added.every((r) => r.race_role === "helper"), "redningen tilføjer kun hjælpere");
+  assert.ok(added.every((r) => r.is_auto_filled === true));
+  // Ingen dubletter: en rytter der allerede står i feltet må ikke fyldes ind igen.
+  assert.equal(new Set(t1.map((e) => e.rider_id)).size, 6);
+});
+
+test("#4295: hold under gulvet UDEN frie ryttere nok stiller ikke op, og der skrives intet", async () => {
+  const state = baseState();
+  // t1 har kun 4 ryttere i alt (resten skadet) → gulvet kan ikke nås.
+  state.rider_condition = [0, 1, 2, 3, 4, 5].map((i) => ({ rider_id: `t1-r${i}`, injured_until: "2099-01-01" }));
+  state.race_entries = [
+    { race_id: "race1", rider_id: "t1-r9", team_id: "t1", race_role: "captain", is_auto_filled: false },
+    { race_id: "race1", rider_id: "t1-r8", team_id: "t1", race_role: "helper", is_auto_filled: false },
+  ];
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
+  assert.equal(entrants.filter((e) => e.team_id === "t1").length, 0, "t1 stiller ikke op");
+  const insertedForT1 = supabase.__calls.flatMap((c) => c.insert || []).filter((r) => r.team_id === "t1");
+  assert.deepEqual(insertedForT1, [], "ingen auto-entries til et hold der alligevel ikke starter");
+  assert.equal(entrants.filter((e) => e.team_id === "t2").length, 8, "t2 er upåvirket");
+});
+
+test("#4295: gulvet gælder også et hold uden entries — for få raske ryttere = ingen start", async () => {
+  const state = baseState();
+  // t1 har 4 raske ryttere og har slet ikke udtaget. Assistenten kan ikke nå gulvet.
+  state.rider_condition = [0, 1, 2, 3, 4, 5].map((i) => ({ rider_id: `t1-r${i}`, injured_until: "2099-01-01" }));
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
+  assert.equal(entrants.filter((e) => e.team_id === "t1").length, 0, "t1 stiller ikke op");
+  assert.equal(entrants.filter((e) => e.team_id === "t2").length, 8, "t2 er upåvirket");
 });

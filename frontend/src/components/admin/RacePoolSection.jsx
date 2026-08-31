@@ -87,7 +87,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
   useEffect(() => {
     fetchPool();
     fetchSeasons();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchPool/fetchSeasons er lokale funktioner (ny ref hver render) — kun mount-fetch
   }, []);
 
   useEffect(() => {
@@ -138,8 +138,9 @@ export default function RacePoolSection({ getAuth, onMsg }) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSeasonId]);
+    // #4448: getAuth er useCallback(…, []) i useAdminAuth — permanent stabil, så
+    // effekten kører fortsat kun når selectedSeasonId skifter.
+  }, [selectedSeasonId, getAuth]);
 
   // #4245: summen er ETAPER, ikke løbsdage — summarizePool lægger races.stages
   // sammen, og en løbsdag er en in-game-dag der binder rytteren, ikke en etape.

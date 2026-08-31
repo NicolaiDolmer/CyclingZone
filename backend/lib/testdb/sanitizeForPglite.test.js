@@ -91,6 +91,22 @@ test("BEVARER CREATE TABLE med CHECK-constraint og GENERATED-kolonne", () => {
   assert.match(out, /GENERATED ALWAYS AS/i);
 });
 
+test("omskriver CREATE INDEX CONCURRENTLY til CREATE INDEX (#4507), men bevarer resten af statementet", () => {
+  const sql = `
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_foo
+      ON public.race_results USING btree (race_id, rank)
+      INCLUDE (id)
+      WHERE rank IS NOT NULL;
+    CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS idx_bar ON t (a, b);
+  `;
+  const out = sanitizeForPglite(sql);
+  assert.doesNotMatch(out, /CONCURRENTLY/i);
+  assert.match(out, /CREATE INDEX IF NOT EXISTS idx_foo/i);
+  assert.match(out, /INCLUDE \(id\)/i);
+  assert.match(out, /WHERE rank IS NOT NULL/i);
+  assert.match(out, /CREATE UNIQUE INDEX IF NOT EXISTS idx_bar/i);
+});
+
 test("er ren funktion — muterer ikke input, returnerer streng", () => {
   const input = `CREATE POLICY p ON t USING (true);\nCREATE TABLE t (id int);`;
   const copy = String(input);

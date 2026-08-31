@@ -77,6 +77,14 @@ export function createAluntaClient({
     async listSubscriptions({ page = 1, perPage = 100 } = {}) {
       return call(`/subscriptions?page=${page}&per_page=${perPage}`);
     },
+    // #4514 — fakturaliste til den daglige forfalds-vagt. GET /invoices har
+    // INGEN status-filter (verificeret mod OpenAPI 31/8: kun per_page, page,
+    // customer_uuid, date_from, date_to), så forfaldne fakturaer må findes
+    // klient-side på `outstanding` + `due_date`. Returnerer det RÅ svar med
+    // data/meta-envelope; fetchAllAluntaInvoices håndterer pagineringen.
+    async listInvoices({ page = 1, perPage = 100 } = {}) {
+      return call(`/invoices?page=${page}&per_page=${perPage}`);
+    },
   };
 }
 

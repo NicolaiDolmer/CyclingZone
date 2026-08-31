@@ -22,6 +22,25 @@
 // stedet for at gætte med dags dato — en manglende alder er bedre end en forkert.
 export const LAUNCH_REFERENCE_YEAR = 2026;
 
+// #4455: fødselsåret læses ud af strengen, ikke af `new Date(bd).getFullYear()`.
+// Dato-kun-strenge ("YYYY-MM-DD") parses som UTC-midnat, mens `getFullYear()`
+// læser LOKAL tid — så vest for UTC ruller 1. januar et år tilbage og rytteren
+// står et år for gammel. Backend kører i UTC og ejeren i Europe/Copenhagen, hvor
+// det aldrig kunne ses, men DENNE fil kører i SPILLERENS browser: en manager i
+// Amerika så en anden alder end backend regnede med på de 9 ryttere født 1/1.
+// Præcis divergens-klassen #3071 kostede, blot i tidszone i stedet for wall-clock.
+// Spejler backend/lib/riderSeasonAge.js's birthYearFrom() — ændres den ene, SKAL
+// den anden med.
+const DATE_ONLY = /^(\d{4})-\d{2}-\d{2}$/;
+
+export function birthYearFrom(birthdate) {
+  if (!birthdate) return null;
+  const dateOnly = typeof birthdate === "string" ? DATE_ONLY.exec(birthdate.trim()) : null;
+  if (dateOnly) return Number(dateOnly[1]);
+  const year = new Date(birthdate).getFullYear();
+  return Number.isFinite(year) ? year : null;
+}
+
 // seasonNumber → referenceår, SAMME formel som backend's ageForSeason
 // (riderProgressionEngine.js:46: LAUNCH_REFERENCE_YEAR + (seasonNumber-1)).
 // Bruges af useActiveSeasonYear (hooks/useActiveSeasonYear.js) til at omsætte
@@ -52,8 +71,8 @@ export function seasonNumberFromReferenceYear(seasonYear) {
 // Returnerer null ved manglende fødselsdato eller ugyldigt referenceår.
 export function ageForSeason(birthdate, seasonYear) {
   if (!birthdate || !Number.isFinite(seasonYear)) return null;
-  const birthYear = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(birthYear)) return null;
+  const birthYear = birthYearFrom(birthdate);
+  if (birthYear === null) return null;
   return seasonYear - birthYear;
 }
 

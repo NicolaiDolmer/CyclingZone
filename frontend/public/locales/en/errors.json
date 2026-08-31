@@ -55,6 +55,7 @@
     "rate_board": "Too many board actions in a short time. Wait a moment.",
     "rate_request": "Too many requests in a short time. Wait a moment.",
     "rate_feedback": "Too many submissions in a short time. Try again shortly.",
+    "rate_billing": "Too many billing actions in a short time. Try again shortly.",
     "rider_not_owned": "You don't own this rider",
     "rider_is_academy": "Academy riders are managed in your academy. Graduate them to your senior squad first.",
     "rider_not_academy": "This rider isn't in your academy",
@@ -95,6 +96,7 @@
     "offer_not_found": "Offer not found",
     "not_involved_offer": "You're not involved in this offer",
     "only_closed_offers_archivable": "Only closed offers can be archived",
+    "only_closed_swaps_archivable": "Only closed swaps can be archived",
     "buyer_cannot_afford": "The buyer can't afford this",
     "cannot_afford": "You can't afford this",
     "deal_locked_both_confirmed": "The deal has been accepted by both parties and can't be cancelled by a manager",
@@ -219,6 +221,7 @@
     "auction_end_too_late": "An auction can't run for more than {maxHours} hours",
     "auction_end_outside_window": "Auctions can only end while the market is open, between {openHour} and {closeHour}",
     "auction_end_crosses_season_transition": "Auctions can't end after the season change ({boundaryAt})",
-    "season_end_already_claimed": "Season end already in progress or already completed"
+    "season_end_already_claimed": "Season end already in progress or already completed",
+    "session_expired": "Your session has expired. Log in again"
   }
 }

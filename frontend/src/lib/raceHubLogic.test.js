@@ -1,7 +1,9 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel } from "./raceHubLogic.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, riderLockReason, riderLockLabel, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel, raceGameDayLabel, toDisplayRaceDay, raceDayOverlaps, raceDayClashes, countDistinctClashRiders, RACE_DAY_DISPLAY_OFFSET } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -281,7 +283,7 @@ test("shouldShowClearAllDialog: tom/manglende liste → false; mindst ét løb �
   assert.equal(shouldShowClearAllDialog([{ id: "a", name: "Tour Belge", startAt: 1 }]), true);
 });
 
-// ── #4187: løbskortets mærkat skal vise datoer, ikke løbsdags-spændet ────────────
+// ── #4193: løbskortets mærkat skal vise datoer, ikke løbsdags-spændet ────────────
 
 test("raceDateRangeLabel: etapeløb over flere dage giver et datointerval", () => {
   const label = raceDateRangeLabel({
@@ -289,7 +291,7 @@ test("raceDateRangeLabel: etapeløb over flere dage giver et datointerval", () =
     endMs: Date.parse("2026-09-04T11:00:00Z"),
     locale: "en",
   });
-  assert.equal(label, "Aug 30 – Sep 4");
+  assert.equal(label, "Aug 30 - Sep 4");
 });
 
 test("raceDateRangeLabel: endagsløb giver ÉT datostykke, ikke 'x - x'", () => {
@@ -308,7 +310,9 @@ test("raceDateRangeLabel: dansk locale formaterer dansk", () => {
     locale: "da",
   });
   assert.ok(label.includes("30."), `forventede dansk datoform, fik: ${label}`);
-  assert.ok(label.includes("–"), `forventede interval, fik: ${label}`);
+  assert.ok(label.includes(" - "), `forventede interval, fik: ${label}`);
+  // #4296: bindestreg, ALDRIG en-dash eller em-dash i spiller-vendt copy.
+  assert.ok(!label.includes("–") && !label.includes("—"), `dash i copy: ${label}`);
 });
 
 test("raceDateRangeLabel: projiceres i Europe/Copenhagen, ikke UTC", () => {
@@ -320,4 +324,259 @@ test("raceDateRangeLabel: projiceres i Europe/Copenhagen, ikke UTC", () => {
 test("raceDateRangeLabel: ukendt start giver null, saa kortet skjuler maerkatet", () => {
   assert.equal(raceDateRangeLabel({ startMs: null, endMs: 123 }), null);
   assert.equal(raceDateRangeLabel({}), null);
+});
+
+// ── #4296: RaceDaySpan, spændet på kortet, modparten navngivet ─────────────
+// HÅRD INVARIANT: DISPLAY-tal kommer KUN fra game_day/game_day_end, ALDRIG fra
+// bindingWindow (som falder tilbage til CET-ordinaler ~20.000 når game_day mangler).
+
+const fakeT = (key, params) => {
+  if (key === "racehub.raceDay") return `Race day ${params.day}`;
+  if (key === "racehub.raceDays") return `Race days ${params.start}-${params.end}`;
+  return key;
+};
+
+test("raceGameDayLabel (T1/T2/T3): 1-baseret enkeltdag, spænd, og null når spændet mangler", () => {
+  assert.equal(raceGameDayLabel({ start: 0, end: 0, t: fakeT }), "Race day 1");
+  assert.equal(raceGameDayLabel({ start: 0, end: 19, t: fakeT }), "Race days 1-20");
+  assert.equal(raceGameDayLabel({ start: null, end: 5, t: fakeT }), null);
+});
+
+test("toDisplayRaceDay: RACE_DAY_DISPLAY_OFFSET er den eneste plads en løbsdag bliver +1", () => {
+  assert.equal(RACE_DAY_DISPLAY_OFFSET, 1);
+  assert.equal(toDisplayRaceDay(0), 1);
+  assert.equal(toDisplayRaceDay(19), 20);
+  assert.equal(toDisplayRaceDay(null), null);
+  assert.equal(toDisplayRaceDay(undefined), null);
+});
+
+test("raceDayOverlaps (T4, FORWARD-GUARD): for ethvert par med endelige game_day-spænd er raceDayOverlaps-medlemskab === windowsOverlap på bindingWindow", () => {
+  const pairs = [
+    // deler dage 6-7 (endeligt spænd begge sider) → overlap
+    [{ id: "a", game_day: 5, game_day_end: 7, bindingWindow: { start: 5, end: 7 } },
+     { id: "b", game_day: 6, game_day_end: 9, bindingWindow: { start: 6, end: 9 } }],
+    // ingen fælles dage → intet overlap
+    [{ id: "a", game_day: 1, game_day_end: 2, bindingWindow: { start: 1, end: 2 } },
+     { id: "b", game_day: 10, game_day_end: 12, bindingWindow: { start: 10, end: 12 } }],
+    // samme enkeltdag → overlap
+    [{ id: "a", game_day: 4, game_day_end: 4, bindingWindow: { start: 4, end: 4 } },
+     { id: "b", game_day: 4, game_day_end: 4, bindingWindow: { start: 4, end: 4 } }],
+    // rørende ender (a slutter hvor b starter) → overlap
+    [{ id: "a", game_day: 1, game_day_end: 5, bindingWindow: { start: 1, end: 5 } },
+     { id: "b", game_day: 5, game_day_end: 8, bindingWindow: { start: 5, end: 8 } }],
+    // lige ved siden af, ingen fælles dag → intet overlap
+    [{ id: "a", game_day: 1, game_day_end: 4, bindingWindow: { start: 1, end: 4 } },
+     { id: "b", game_day: 5, game_day_end: 8, bindingWindow: { start: 5, end: 8 } }],
+  ];
+  for (const [a, b] of pairs) {
+    const columns = [a, b];
+    const actual = raceDayOverlaps({ columns, columnId: a.id }).some((x) => x.id === b.id);
+    const expected = windowsOverlap(a.bindingWindow, b.bindingWindow);
+    assert.equal(actual, expected, `mismatch for ${a.id}/${b.id}: raceDayOverlaps=${actual} windowsOverlap=${expected}`);
+  }
+});
+
+test("raceDayOverlaps (T5): CET-ordinal-bindingWindow uden game_day overlapper → posten findes, men INGEN femcifret dagtal (sharedStart/sharedEnd null)", () => {
+  const columns = [
+    { id: "a", game_day: null, game_day_end: null, bindingWindow: { start: 20123, end: 20124 } },
+    { id: "b", game_day: null, game_day_end: null, bindingWindow: { start: 20123, end: 20125 } },
+  ];
+  const out = raceDayOverlaps({ columns, columnId: "a" });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].id, "b");
+  assert.equal(out[0].sharedStart, null);
+  assert.equal(out[0].sharedEnd, null);
+});
+
+test("raceDayOverlaps (T6): withdrawn kolonne → tom liste både som SELV og som modpart", () => {
+  const columns = [
+    { id: "a", withdrawn: true, game_day: 5, game_day_end: 5, bindingWindow: { start: 5, end: 5 } },
+    { id: "b", game_day: 5, game_day_end: 5, bindingWindow: { start: 5, end: 5 } },
+  ];
+  assert.deepEqual(raceDayOverlaps({ columns, columnId: "a" }), []);
+  assert.deepEqual(raceDayOverlaps({ columns, columnId: "b" }), []);
+});
+
+test("raceDayClashes: bygger på findSelectionOverlaps, kun overlap MED en delt rytter tæller som clash", () => {
+  const columns = [
+    { id: "a", name: "Le Mur de Huy", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1"] } },
+    { id: "b", name: "Amstel Gold", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1", "r2"] } },
+    { id: "c", name: "La Flèche", bindingWindow: { start: 100, end: 100 }, selection: { rider_ids: ["r1"] } },
+  ];
+  const clashes = raceDayClashes({ columns, columnId: "a" });
+  assert.equal(clashes.length, 1);
+  assert.equal(clashes[0].riderId, "r1");
+  assert.equal(clashes[0].otherId, "b");
+  assert.equal(clashes[0].otherName, "Amstel Gold");
+});
+
+// #4317: raceDayClashes() returnerer med vilje én post pr. (riderId, modløb)-par
+// (RaceDayOverlapRow grupperer pr. modløb via otherId). Men tælles disse poster
+// direkte som "antal ryttere i konflikt" (clashes.length), tælles én rytter der
+// clasher med flere modløb flere gange. countDistinctClashRiders retter det.
+test("countDistinctClashRiders: én rytter i konflikt med to modløb tæller som 1, ikke 2", () => {
+  const columns = [
+    { id: "a", name: "Le Mur de Huy", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1"] } },
+    { id: "b", name: "Amstel Gold", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1"] } },
+    { id: "c", name: "La Flèche", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1"] } },
+  ];
+  const clashes = raceDayClashes({ columns, columnId: "a" });
+  // r1 clasher med BÅDE b og c -> to par i den rå liste ...
+  assert.equal(clashes.length, 2);
+  // ... men det er stadig kun ÉN rytter i konflikt.
+  assert.equal(countDistinctClashRiders(clashes), 1);
+});
+
+test("countDistinctClashRiders: to forskellige ryttere i konflikt med hver sit modløb tæller som 2", () => {
+  const columns = [
+    { id: "a", name: "Le Mur de Huy", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1", "r2"] } },
+    { id: "b", name: "Amstel Gold", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r1"] } },
+    { id: "c", name: "La Flèche", bindingWindow: { start: 5, end: 6 }, selection: { rider_ids: ["r2"] } },
+  ];
+  const clashes = raceDayClashes({ columns, columnId: "a" });
+  assert.equal(clashes.length, 2);
+  assert.equal(countDistinctClashRiders(clashes), 2);
+});
+
+test("countDistinctClashRiders: tom liste giver 0", () => {
+  assert.equal(countDistinctClashRiders([]), 0);
+  assert.equal(countDistinctClashRiders(), 0);
+});
+
+// ---------------------------------------------------------------------------
+// #3410: låse-årsag i puljen. Puljens lås er "kan ikke tilføjes NOGEN kolonne";
+// den kunne udløses af fire grunde, mens forklaringen kun kunne komme fra én.
+// Nedenfor spejles puljens eget prædikat, så testene binder årsagen til den
+// FAKTISKE lås og ikke til en parallel udledning.
+// ---------------------------------------------------------------------------
+const poolIsLocked = (riderId, columns, bindingMap) =>
+  !columns.some((c) => canAddRiderToColumn({ column: c, bindingMap, riderId }));
+const keyOnly = (key) => key; // fake t: returnér nøglen, så nøglevalget kan asserteres
+
+test("riderLockReason: alle dagens løb er begyndt → all_races_started (#3410)", () => {
+  const cols = [
+    { id: "adr", name: "Adriatique", bindingWindow: W(3), lineup_locked: true, selection: { rider_ids: [] } },
+    { id: "chn", name: "South China", bindingWindow: W(4), lineup_locked: true, selection: { rider_ids: [] } },
+  ];
+  const bindingMap = draftBindingMap(cols);
+  // Rytteren er hverken udtaget eller bundet — han er låst udelukkende fordi løbene er startet.
+  assert.equal(poolIsLocked("sprinter", cols, bindingMap), true);
+  assert.deepEqual(riderLockReason({ riderId: "sprinter", columns: cols, bindingMap }),
+    { code: "all_races_started", raceId: null, raceName: null });
+  assert.equal(riderLockLabel({ reason: riderLockReason({ riderId: "sprinter", columns: cols, bindingMap }), t: keyOnly }),
+    "racehub.lockAllStarted");
+});
+
+test("riderLockReason: alle dagens løb afmeldt → all_races_withdrawn (#3410)", () => {
+  const cols = [
+    { id: "adr", name: "Adriatique", bindingWindow: W(3), withdrawn: true, selection: { rider_ids: [] } },
+    { id: "chn", name: "South China", bindingWindow: W(4), withdrawn: true, selection: { rider_ids: ["sprinter"] } },
+  ];
+  const bindingMap = draftBindingMap(cols);
+  assert.equal(poolIsLocked("sprinter", cols, bindingMap), true);
+  // Afmeldte løb navngives ALDRIG som årsag (Rod A, #1823) — heller ikke det han står i.
+  assert.deepEqual(riderLockReason({ riderId: "sprinter", columns: cols, bindingMap }),
+    { code: "all_races_withdrawn", raceId: null, raceName: null });
+});
+
+test("riderLockReason: blandet startet/afmeldt eller tomt bræt → all_races_unavailable (#3410)", () => {
+  const cols = [
+    { id: "adr", name: "Adriatique", bindingWindow: W(3), withdrawn: true, selection: { rider_ids: [] } },
+    { id: "chn", name: "South China", bindingWindow: W(4), lineup_locked: true, selection: { rider_ids: [] } },
+  ];
+  const bindingMap = draftBindingMap(cols);
+  assert.equal(riderLockReason({ riderId: "sprinter", columns: cols, bindingMap }).code, "all_races_unavailable");
+  assert.equal(riderLockReason({ riderId: "sprinter", columns: [], bindingMap: {} }).code, "all_races_unavailable");
+});
+
+test("riderLockReason: udtaget i et overlappende løb → bound_overlap med løbsnavn (#3410)", () => {
+  const cols = [
+    { id: "bur", name: "Burgalesa", bindingWindow: W(3), selection: { rider_ids: ["yonas"] } },
+    { id: "che", name: "Chesapeake", bindingWindow: W(3), selection: { rider_ids: [] } },
+  ];
+  const bindingMap = draftBindingMap(cols);
+  assert.equal(poolIsLocked("yonas", cols, bindingMap), true);
+  assert.deepEqual(riderLockReason({ riderId: "yonas", columns: cols, bindingMap }),
+    { code: "bound_overlap", raceId: "bur", raceName: "Burgalesa" });
+  assert.equal(riderLockLabel({ reason: riderLockReason({ riderId: "yonas", columns: cols, bindingMap }), t: (k, o) => `${k}:${o?.race}` }),
+    "racehub.boundNamed:Burgalesa");
+});
+
+test("riderLockReason: ekstern binding uden navn → bound_overlap uden løbsnavn (#3410/#2256)", () => {
+  const cols = [{ id: "che", name: "Chesapeake", bindingWindow: W(3), selection: { rider_ids: [] } }];
+  // Løb uden for brættet, hvor backend ikke har båret et navn med.
+  const bindingMap = { r1: [{ id: "ext", name: null, window: W(3) }] };
+  assert.equal(poolIsLocked("r1", cols, bindingMap), true);
+  assert.deepEqual(riderLockReason({ riderId: "r1", columns: cols, bindingMap }),
+    { code: "bound_overlap", raceId: "ext", raceName: null });
+  // Uden navn må teksten IKKE være den navngivne variant med et tomt hul i.
+  assert.equal(riderLockLabel({ reason: riderLockReason({ riderId: "r1", columns: cols, bindingMap }), t: keyOnly }),
+    "racehub.lockBoundUnnamed");
+});
+
+test("riderLockReason: en ledig kolonne → ikke låst → null (#3410)", () => {
+  const cols = [
+    { id: "bur", name: "Burgalesa", bindingWindow: W(3), selection: { rider_ids: ["yonas"] } },
+    { id: "mun", name: "Münsterland", bindingWindow: W(5), selection: { rider_ids: [] } },
+  ];
+  const bindingMap = draftBindingMap(cols);
+  assert.equal(poolIsLocked("yonas", cols, bindingMap), false);
+  assert.equal(riderLockReason({ riderId: "yonas", columns: cols, bindingMap }), null);
+  assert.equal(riderLockLabel({ reason: null, t: keyOnly }), null);
+});
+
+// FORWARD-GUARD 1 (#3410): låsen og årsagen må ALDRIG kunne blive uenige. Rod-årsagen var
+// præcis to udledninger side om side. canAddRiderToColumn er nu riderColumnState's boolske
+// skygge, og riderLockReason bygger på samme klassifikator — denne test fejler hvis nogen
+// splitter dem ad igen.
+test("riderLockReason: hver låst rytter får en årsag, hver ulåst får null (#3410)", () => {
+  const shapes = [
+    { id: "open", name: "Open", bindingWindow: W(3), selection: { rider_ids: [] } },
+    { id: "mine", name: "Mine", bindingWindow: W(3), selection: { rider_ids: ["r1"] } },
+    { id: "wd", name: "Withdrawn", bindingWindow: W(3), withdrawn: true, selection: { rider_ids: [] } },
+    { id: "started", name: "Started", bindingWindow: W(3), lineup_locked: true, selection: { rider_ids: [] } },
+    { id: "later", name: "Later", bindingWindow: W(9), selection: { rider_ids: [] } },
+    { id: "laterMine", name: "Later mine", bindingWindow: W(9), selection: { rider_ids: ["r1"] } },
+  ];
+  // Alle delmængder af brættet (64 bræt) × den delte binding-kladde.
+  for (let mask = 0; mask < 1 << shapes.length; mask++) {
+    const columns = shapes.filter((_, i) => mask & (1 << i));
+    const bindingMap = draftBindingMap(columns);
+    for (const riderId of ["r1", "r2"]) {
+      const locked = poolIsLocked(riderId, columns, bindingMap);
+      const reason = riderLockReason({ riderId, columns, bindingMap });
+      assert.equal(reason !== null, locked, `mask=${mask} rider=${riderId}: lås og årsag er uenige`);
+      // Ingen låst chip uden en synlig forklaring — det var HELE fejlen i #3410.
+      if (locked) {
+        const label = riderLockLabel({ reason, t: keyOnly });
+        assert.ok(label && label.length > 0, `mask=${mask} rider=${riderId}: låst uden tekst`);
+      }
+      // Og hver kolonne-tilstand skal matche det boolske svar, ellers er de to udledninger
+      // drevet fra hinanden igen.
+      for (const column of columns) {
+        assert.equal(
+          canAddRiderToColumn({ column, bindingMap, riderId }),
+          riderColumnState({ column, bindingMap, riderId }) === "available",
+          `mask=${mask} rider=${riderId} col=${column.id}: canAdd != state==="available"`,
+        );
+      }
+    }
+  }
+});
+
+// FORWARD-GUARD 2 (#3410): en årsagskode uden i18n-nøgle i BEGGE sprog ville rendere
+// som rå nøgle-tekst i UI'et — samme klasse af fejl som den vi lukker her.
+test("riderLockLabel: alle årsags-nøgler findes i både en og da (#3410)", () => {
+  const codes = ["bound_overlap", "all_races_started", "all_races_withdrawn", "all_races_unavailable"];
+  const keys = new Set(codes.map((code) => riderLockLabel({ reason: { code, raceName: null }, t: keyOnly })));
+  keys.add(riderLockLabel({ reason: { code: "bound_overlap", raceName: "Adriatique" }, t: keyOnly }));
+  assert.equal(keys.size, 5);
+  for (const lng of ["en", "da"]) {
+    const json = JSON.parse(readFileSync(fileURLToPath(new URL(`../../public/locales/${lng}/races.json`, import.meta.url)), "utf8"));
+    for (const key of keys) {
+      const value = key.split(".").reduce((node, part) => (node == null ? node : node[part]), json);
+      assert.equal(typeof value, "string", `${lng}: mangler i18n-nøgle ${key}`);
+      assert.ok(value.length > 0, `${lng}: tom i18n-nøgle ${key}`);
+    }
+  }
 });

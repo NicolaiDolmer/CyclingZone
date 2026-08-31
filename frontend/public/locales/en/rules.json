@@ -42,7 +42,7 @@
         },
         "salary": {
           "title": "Rider salary",
-          "text": "A rider's salary is frozen when you sign them at {salaryRatePct}% of their market value at that moment, and does not change automatically afterwards. Academy riders use a separate youth rate (see Academy)."
+          "text": "A rider's salary is frozen when you sign them at {salaryRatePct}% of their current production value at that moment, and does not change automatically afterwards. Production value is what the game expects him to deliver this season at his current abilities, not what he is worth on the market. The share is the same for every team in every division, and academy riders use it too."
         },
         "negativeInterest": {
           "title": "Negative-balance interest",
@@ -150,7 +150,7 @@
         },
         "salary": {
           "title": "Youth salary & contracts",
-          "text": "Academy riders are paid {academySalaryPct}% of their market value and sign {academyContractLength}-season youth contracts."
+          "text": "Academy riders are paid {academySalaryPct}% of their current production value, the same share as senior riders, and sign {academyContractLength}-season youth contracts."
         },
         "drift": {
           "title": "Upkeep",
@@ -161,6 +161,10 @@
     "fairPlay": {
       "label": "Fair play",
       "blocks": {
+        "onePerPerson": {
+          "title": "One team per person",
+          "text": "Each player may hold one team on one account. Running multiple teams through extra accounts counts as cheating and is monitored through the account and login signals described in the privacy policy."
+        },
         "starProtection": {
           "title": "Star-rider protection",
           "text": "A rider whose market value is at least {starValue} CZ$ counts as a star and is protected from forced sales. This is the same value you see in the rider's profile."

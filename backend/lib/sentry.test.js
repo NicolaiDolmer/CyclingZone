@@ -9,6 +9,7 @@ import {
   getEventGroupKey,
   createVolumeLimiter,
   normalizeEventMessages,
+  setCronHeartbeatRecorder,
 } from "./sentry.js";
 
 // I test-env er Sentry disabled (ingen SENTRY_DSN) → monitorCron skal være en ren
@@ -39,6 +40,43 @@ test("monitorCron (Sentry disabled) — re-thrower fn's fejl", async () => {
 
 test("captureCheckIn (Sentry disabled) — no-op, returnerer undefined", () => {
   assert.equal(captureCheckIn({ monitorSlug: "x", status: "ok" }), undefined);
+});
+
+// ── #2892: heartbeat-recorder-DI (egen cron_checkins-tabel, uafhængig af Sentry) ──
+
+test("monitorCron — kalder den injicerede heartbeat-recorder efter et vellykket tick", async () => {
+  const calls = [];
+  setCronHeartbeatRecorder(async (slug, config) => calls.push({ slug, config }));
+  try {
+    const config = { schedule: { type: "interval", value: 5, unit: "minute" } };
+    const wrapped = monitorCron("test-monitor", async () => "ok", config);
+    await wrapped();
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].slug, "test-monitor");
+    assert.equal(calls[0].config, config);
+  } finally {
+    setCronHeartbeatRecorder(null);
+  }
+});
+
+test("monitorCron — kalder IKKE heartbeat-recorderen når fn fejler", async () => {
+  const calls = [];
+  setCronHeartbeatRecorder(async (slug) => calls.push(slug));
+  try {
+    const wrapped = monitorCron("test-monitor", async () => {
+      throw new Error("boom");
+    });
+    await assert.rejects(() => wrapped(), /boom/);
+    assert.equal(calls.length, 0);
+  } finally {
+    setCronHeartbeatRecorder(null);
+  }
+});
+
+test("monitorCron — uden en registreret recorder er adfærden uændret (backward-compatible)", async () => {
+  setCronHeartbeatRecorder(null);
+  const wrapped = monitorCron("test-monitor", async () => 7);
+  assert.equal(await wrapped(), 7);
 });
 
 // ── toSentryError (#2389 A3): normalisér non-Errors før capture ─────────────────

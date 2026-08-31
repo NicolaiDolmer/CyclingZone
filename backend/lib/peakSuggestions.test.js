@@ -8,6 +8,8 @@ import {
   normalizedSuitability,
   pickTargetRaces,
   suggestPeaksForRider,
+  shouldRecommendNoPeak,
+  buildNoPeakSuggestion,
   YOUNG_AGE_THRESHOLD,
   YOUNG_RIDER_PEAK_COUNT,
   ADULT_RIDER_PEAK_COUNT,
@@ -256,4 +258,40 @@ test("#3081 forward-guard: peakSuggestions.js har ingen wall-clock alderskilde o
     /import \{[^}]*\bageForSeason\b[^}]*\} from "\.\/riderSeasonAge\.js"/,
     "peakSuggestions.js skal importere ageForSeason fra riderSeasonAge.js (SSOT) — ingen lokal alders-konvention",
   );
+});
+
+// ── #3088/#4212: assistenten kan anbefale INTET (yderligere) peak ────────────
+
+test("shouldRecommendNoPeak: tomme forslag + mindst én ægte peak → true", () => {
+  assert.equal(shouldRecommendNoPeak({ suggestions: [], existingPeakCount: 1 }), true);
+});
+
+test("shouldRecommendNoPeak: tomme forslag men INGEN ægte peak → false (intet at 'beholde')", () => {
+  assert.equal(shouldRecommendNoPeak({ suggestions: [], existingPeakCount: 0 }), false);
+});
+
+test("shouldRecommendNoPeak: der ER forslag → false, uanset eksisterende peaks", () => {
+  assert.equal(shouldRecommendNoPeak({ suggestions: [{ targetRaceId: "r1" }], existingPeakCount: 1 }), false);
+  assert.equal(shouldRecommendNoPeak({ suggestions: [{ targetRaceId: "r1" }], existingPeakCount: 0 }), false);
+});
+
+test("shouldRecommendNoPeak: defensiv mod manglende/underlige input", () => {
+  assert.equal(shouldRecommendNoPeak({ suggestions: null, existingPeakCount: 1 }), true);
+  assert.equal(shouldRecommendNoPeak({ suggestions: [], existingPeakCount: undefined }), false);
+});
+
+test("buildNoPeakSuggestion: intet mål-løb/vindue/værdi, men markeret isSuggestion + isNoPeakSuggestion", () => {
+  const s = buildNoPeakSuggestion({ riderId: "rd1", seasonId: "s1" });
+  assert.equal(s.riderId, "rd1");
+  assert.equal(s.seasonId, "s1");
+  assert.equal(s.targetRaceId, null);
+  assert.equal(s.windowStart, null);
+  assert.equal(s.windowEnd, null);
+  assert.equal(s.value, null);
+  assert.equal(s.locked, false);
+  assert.equal(s.isSuggestion, true);
+  assert.equal(s.isNoPeakSuggestion, true);
+  assert.equal(s.suggestionReason, "noPeak");
+  assert.deepEqual(s.paybackCollisions, []);
+  assert.match(s.id, /^sugg-nopeak:rd1$/, "ID'et er ALDRIG en ægte rider_peak_plans-række (spejler den almindelige sugg:-præfiks-konvention)");
 });

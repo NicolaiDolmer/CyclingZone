@@ -13,10 +13,11 @@ const src = readFileSync(join(__dirname, "TrainingPage.jsx"), "utf8");
 test("#1480.1 roster-query henter ryttertype-kolonnerne", () => {
   assert.match(
     src,
-    /\.select\(`id, firstname, lastname, birthdate, primary_type, secondary_type, is_academy, \$\{ABILITY_SELECT\}`\)/,
+    /\.select\(`id, firstname, lastname, birthdate, contract_end_season, primary_type, secondary_type, is_academy, \$\{ABILITY_SELECT\}`\)/,
     "querien skal hente primary_type/secondary_type så typen kan vises, + is_academy (#3300)"
       + " + evne-kolonnerne via det delte ABILITY_SELECT-embed (#3709 trin 1: kvitteringens 'nu'-tal)"
-      + " + birthdate (#3721: Development-fanens alders-kolonne)",
+      + " + birthdate (#3721 Development-fanen, #3815 roster-tabellens alders-kolonne)"
+      + " + contract_end_season (#3761: Status-cellens contractExpiring-badge)",
   );
   // #3709 trin 1: evnerne skal fladtgøres med den DELTE helper, ikke håndrulles,
   // så embed-formen (array vs objekt) håndteres ét sted.
@@ -36,7 +37,7 @@ test("#3300 roster-rækken viser akademi-status via den delte RiderBadges-recipe
   assert.match(src, /import RiderBadges from "\.\.\/components\/rider\/RiderBadges\.jsx"/);
   assert.match(
     src,
-    /<RiderBadges badges=\{\[rider\.is_academy && "academy"\]\} \/>/,
+    /<RiderBadges badges=\{\[[\s\S]*?rider\.is_academy && "academy",/,
     "skal genbruge den eksisterende academy-badge-nøgle, ikke en ny visuel",
   );
 
@@ -56,14 +57,84 @@ test("#3300 roster-rækken viser akademi-status via den delte RiderBadges-recipe
   const statusCellTdStart = src.indexOf("<td", statusCellStart);
   const statusCellEnd = src.indexOf("</td>", statusCellTdStart);
   const statusCellSrc = src.slice(statusCellTdStart, statusCellEnd);
-  assert.match(statusCellSrc, /<RiderBadges badges=\{\[rider\.is_academy && "academy"\]\} \/>/, "akademi-badgen skal stå i Status-kolonnen");
+  assert.match(statusCellSrc, /<RiderBadges badges=\{\[[\s\S]*?rider\.is_academy && "academy",/, "akademi-badgen skal stå i Status-kolonnen");
+});
+
+// #3761: Status-cellen viste kun akademi-badgen. Kontraktudløb + pensionsrisiko
+// er de to badges der afgør om træning på rytteren overhovedet er en
+// investering værd, og begge findes allerede som beregnede helpers i
+// riderAge.js (samme kald-form som TeamPage.jsx). Guarden låser at de sendes
+// ind i det EKSISTERENDE RiderBadges — ikke som ny håndrullet markup — og at
+// akademiryttere undtages, ligesom på TeamPage (squad-risk-spærren #2748
+// tæller kun senior-ryttere).
+test("#3761 Status-cellen viser kontraktudloeb + pensionsrisiko via de delte helpers", () => {
+  assert.match(
+    src,
+    /import \{ ageForSeason, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear \} from "\.\.\/lib\/riderAge\.js"/,
+    "badge-nøglerne skal komme fra den delte riderAge.js, ikke genberegnes lokalt",
+  );
+  assert.match(
+    src,
+    /const activeSeasonNumber = seasonNumberFromReferenceYear\(seasonYear\);/,
+    "contract_end_season er et sæson-NUMMER — nummeret udledes af det allerede hentede referenceår, ingen ekstra kald",
+  );
+
+  const statusCellStart = src.indexOf("Status: akademi");
+  const statusCellTdStart = src.indexOf("<td", statusCellStart);
+  const statusCellEnd = src.indexOf("</td>", statusCellTdStart);
+  const statusCellSrc = src.slice(statusCellTdStart, statusCellEnd);
+  assert.match(
+    statusCellSrc,
+    /!rider\.is_academy && retirementRiskBadgeKey\(rider, seasonYear\)/,
+    "pensionsrisiko-badgen skal stå i Status-kolonnen, og ikke på akademiryttere",
+  );
+  assert.match(
+    statusCellSrc,
+    /!rider\.is_academy && contractExpiringBadgeKey\(rider, activeSeasonNumber\)/,
+    "kontraktudløb-badgen skal stå i Status-kolonnen, og ikke på akademiryttere",
+  );
+});
+
+// #3815: alderen er den vigtigste enkeltvariabel når man vælger hvem der skal
+// trænes hårdt, og manglede på den flade hvor valget træffes (@knud_r_flink,
+// Discord 15/8). #1674 lukkede hullet på rytteroverblik + transferliste, men
+// ikke her. Kolonnen skal være sorterbar som de øvrige (SortTh +
+// rosterAccessors) og eksponeres i mobil-sortkontrollen, jf. #3706.
+test("#3815 roster-tabellen har en sorterbar Alder-kolonne", () => {
+  assert.match(src, /"colAge"/, "kolonnen skal have sin egen locale-nøgle");
+  assert.match(
+    src,
+    /<SortTh sortKey="age"/,
+    "alderen skal bruge den delte SortTh, ikke et bart <th> (samme fejl som #3706 rettede)",
+  );
+  assert.match(
+    src,
+    /age: \(r\) => ageForSeason\(r\.birthdate, seasonYear\),/,
+    "sorteringen skal bruge samme helper som cellen viser, så rækkefølgen ikke kan drive fra tallet",
+  );
+  assert.match(
+    src,
+    /\{ key: "age", label: t\("colAge"\) \}/,
+    "mobil-sortkontrollen skal eksponere præcis de samme nøgler som desktop-headerne (#3706)",
+  );
+  assert.match(
+    src,
+    /ageForSeason\(rider\.birthdate, seasonYear\) \?\? "—"/,
+    "cellen skal vise sæson-alderen med '—' når sæson-året mangler (#3071: aldrig et gættet tal)",
+  );
+  assert.match(
+    src,
+    /ROSTER_DESC_FIRST = new Set\(\["age",/,
+    "alder er numerisk og følger sidens desc-først-konvention: ét klik = de ældste øverst",
+  );
 });
 
 // #3300-rework: ugeplan-knappen får sin egen kolonne (ejer-feedback, samme
 // session som badge-flytningen ovenfor) — "colWeekPlan" er den nye header-nøgle.
 test("#3300-rework individuel ugeplan-knap har sin egen kolonne", () => {
   assert.match(src, /"colWeekPlan"/, "skal have en dedikeret kolonne-header for ugeplan-knappen");
-  assert.match(src, /const ROSTER_COLS = 10;/, "kolonnetal skal være opdateret til den nye kolonne");
+  // #3815 lagde Alder-kolonnen oveni, så tallet er 11.
+  assert.match(src, /const ROSTER_COLS = 11;/, "kolonnetal skal være opdateret til den nye kolonne");
 
   const weekPlanCellStart = src.indexOf("Individuel ugeplan — egen kolonne");
   assert.ok(weekPlanCellStart > -1, "ugeplan-kolonnens celle skal have sin egen kommentar");
@@ -200,7 +271,9 @@ test("#3706 Status-kolonnen er sorterbar via samme SortTh/useSortState-mønster 
   );
   assert.match(src, /status: \(r\) => \(r\.is_academy \? STATUS_ACADEMY_WEIGHT : 0\)/,
     "comparatoren skal vægte akademi-flaget, så akademi-rytterne samles");
-  assert.match(src, /ROSTER_DESC_FIRST = new Set\(\["form", "fatigue", "status"\]\)/,
+  // #3815 tilføjede "age" til samme sæt (numerisk kolonne, samme konvention);
+  // det afgørende her er at "status" stadig er desc-først.
+  assert.match(src, /ROSTER_DESC_FIRST = new Set\(\[(?:[^\]]*, )?"status"\]\)/,
     "første klik skal give akademi ØVERST (desc-først), som spilleren beskrev");
   assert.match(src, /key:\s*"status"/, "mobil-sort-kontrollen skal eksponere den samme nøgle");
 });

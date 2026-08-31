@@ -135,11 +135,26 @@ export default function RiderRankingsPage() {
   // mod division/pulje-URL-param'ene (resolveDivisionSelectionFromParams) —
   // fanens EGEN default forbliver "alle divisioner" uden param'ene.
   const [divisions, setDivisions] = useState([]);
+  // #2795 — brugerens eget hold, til --me-ring-markeringen nedenfor. Samme
+  // mønster som StandingsPage/RaceDetailPage: uafhængig af rangliste-data,
+  // så et fejlende/langsomt team-opslag aldrig blokerer selve ranglisten.
+  const [myTeamId, setMyTeamId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index")
       .then(({ data }) => { if (!cancelled) setDivisions(data || []); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
+      if (!cancelled) setMyTeamId(myTeam?.id ?? null);
+    })();
     return () => { cancelled = true; };
   }, []);
 
@@ -489,10 +504,17 @@ export default function RiderRankingsPage() {
           sort={sortKey}
           sortDir={sortAsc ? "asc" : "desc"}
           onSort={handleSort}
-          rowProps={(rider) => ({
-            onClick: () => navigate(`/riders/${rider.id}`),
-            className: "cursor-pointer",
-          })}
+          rowProps={(rider) => {
+            // #2795 — egne ryttere markeret uden at et hold-filter skal slås til.
+            // Markeringen er .cz-me (celle-niveau), ikke en box-shadow på <tr>:
+            // rækkens skygge blev malet under cellernes egen baggrund og var i
+            // praksis usynlig. Se index.css.
+            const isMine = myTeamId != null && String(rider.team?.id) === String(myTeamId);
+            return {
+              onClick: () => navigate(`/riders/${rider.id}`),
+              className: `cursor-pointer${isMine ? " cz-me" : ""}`,
+            };
+          }}
           count={
             <div className="flex flex-wrap items-center gap-4">
               <span>{t("rankings.legendStage")}</span>

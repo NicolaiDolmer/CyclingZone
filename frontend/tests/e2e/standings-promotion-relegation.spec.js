@@ -3,7 +3,7 @@
 // visning tog top-2/bund-2 af den samlede tier-liste; denne spec pinner per-pulje
 // top-2/bund-4, at antallet summer i "Alle" (N puljer × 2 op, N × 4 ned), at en enkelt
 // pulje kun viser sin egen zone, og at en dormant Div4 viser udskydelses-noten.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, TEST_TEAM } from "./fixtures.js";
 
 const POOL_A = "div3-pool-a";

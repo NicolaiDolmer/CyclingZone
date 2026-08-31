@@ -4,94 +4,192 @@
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
       "port": 5173,
       "autoPort": true
     },
     {
       "name": "frontend-preview",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:preview", "--prefix", "frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev:preview",
+        "--prefix",
+        "frontend"
+      ],
       "port": 5174,
       "autoPort": true
     },
     {
       "name": "z1-season",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "C:/Dev/CyclingZone/.claude/worktrees/z1-season-view/frontend", "--", "--port", "5173", "--strictPort"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone/.claude/worktrees/z1-season-view/frontend",
+        "--",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
       "port": 5173
     },
     {
       "name": "staging-backend",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["C:/Users/Nicolai/AppData/Local/Temp/claude/C--Dev-CyclingZone/88b91b68-3446-4802-ad82-e90eaf394c3d/scratchpad/start-staging-backend.mjs"],
+      "runtimeArgs": [
+        "C:/Users/Nicolai/AppData/Local/Temp/claude/C--Dev-CyclingZone/88b91b68-3446-4802-ad82-e90eaf394c3d/scratchpad/start-staging-backend.mjs"
+      ],
       "port": 3001
     },
     {
       "name": "staging-frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "C:/Dev/CyclingZone-worktrees/3746-trin7/frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone-worktrees/3746-trin7/frontend"
+      ],
       "port": 5173,
       "autoPort": true
     },
     {
       "name": "trin7-mock",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "C:/Dev/CyclingZone-worktrees/3746-trin7/frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone-worktrees/3746-trin7/frontend"
+      ],
       "port": 5205,
       "autoPort": true,
-      "env": { "VITE_PREVIEW_MOCK": "1" }
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
     },
     {
       "name": "frontend-mock",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
       "port": 5199,
       "autoPort": true,
-      "env": { "VITE_PREVIEW_MOCK": "1" }
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
     },
     {
       "name": "w6-mock",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "C:/Dev/CyclingZone-worktrees/feat-w6-indbakke/frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone-worktrees/feat-w6-indbakke/frontend"
+      ],
       "port": 5201,
       "autoPort": true,
-      "env": { "VITE_PREVIEW_MOCK": "1" }
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
     },
     {
       "name": "pro-mock",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "C:/Dev/CyclingZone/.claude/worktrees/agent-a5ccc8d2300c9a09a/frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone/.claude/worktrees/agent-a5ccc8d2300c9a09a/frontend"
+      ],
       "port": 5207,
       "autoPort": true,
-      "env": { "VITE_PREVIEW_MOCK": "1" }
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
     },
     {
       "name": "tactics-4030-mock",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
       "port": 5314,
       "autoPort": true,
-      "env": { "VITE_PREVIEW_MOCK": "1" }
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
     },
     {
       "name": "frontend-preview",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview", "--prefix", "frontend", "--", "--port", "4180", "--strictPort"],
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--prefix",
+        "frontend",
+        "--",
+        "--port",
+        "4180",
+        "--strictPort"
+      ],
       "port": 4180
     },
     {
       "name": "forum-synlighed-mock",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "frontend"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
       "port": 5210,
       "autoPort": true,
-      "env": { "VITE_PREVIEW_MOCK": "1" }
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
+    },
+    {
+      "name": "matrix-1146-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/dev/CyclingZone-worktrees/feat-1146-season-matrix-grid/frontend"
+      ],
+      "port": 5215,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
     },
     {
       "name": "brand",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--yes", "serve", "-l", "4173", "docs/brand"],
+      "runtimeArgs": [
+        "--yes",
+        "serve",
+        "-l",
+        "4173",
+        "docs/brand"
+      ],
       "port": 4173
     }
   ]

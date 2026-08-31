@@ -120,8 +120,10 @@ function FlagCard({ flag, onUpdate, busy }) {
           {ev.components && (
             <p className="text-cz-3 text-xs">
               Komponenter: værdi {ev.components.value} · identitet {ev.components.identity} · prisafvigelse{" "}
-              {ev.components.priceOutlier} · livscyklus {ev.components.lifecycle}. Rytterværdier er nutidige (ingen
-              historisk snapshot).
+              {ev.components.priceOutlier} · livscyklus {ev.components.lifecycle}
+              {ev.components.directional != null ? ` · retning ${ev.components.directional}` : ""}
+              {ev.components.multiplier != null ? ` · multiplikator ${ev.components.multiplier}` : ""}. Rytterværdier
+              er nutidige (ingen historisk snapshot).
             </p>
           )}
         </div>

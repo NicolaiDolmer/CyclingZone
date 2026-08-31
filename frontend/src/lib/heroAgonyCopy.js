@@ -16,6 +16,8 @@ export function heroAgonyCopyFor(moment) {
         ? { key: "close_win", params: { rider, seconds: params.gapSeconds } }
         : { key: "close_win_generic", params: { rider } };
     case "solo_win": return { key: "solo_win", params: { rider } };
+    case "itt_win": return { key: "itt_win", params: { rider } };   // #4373
+    case "ttt_win": return { key: "ttt_win", params: { rider } };   // #4373
     case "breakaway_survived": return { key: "breakaway_survived", params: { rider } };
     case "gc_takeover_won": return { key: "gc_takeover_won", params: { rider, previousLeader: params.previousLeaderName || "—" } };
     case "gc_takeover_lost": return { key: "gc_takeover_lost", params: { rider, newLeader: params.newLeaderName || "—" } };

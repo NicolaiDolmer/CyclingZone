@@ -22,7 +22,13 @@
 //   SENTRY_AUTH_TOKEN  (påkrævet)  — auth-token med event:read
 //   SENTRY_ORG         (default: cycling-zone)
 //   SENTRY_PROJECT_ID  (default: 4511389114105936)
-//   SENTRY_API_HOST    (default: https://sentry.io  — orgen er US-region; us.sentry.io virker også)
+//   SENTRY_API_HOST    (default: https://sentry.io — verificeret virksom for denne org 27/8)
+//                      NB: orgen ligger i EU-regionen — DSN'en er *.ingest.de.sentry.io og
+//                      Sentry opgiver region-URL https://de.sentry.io. sentry.io router
+//                      org-kaldet dertil, så defaulten er rigtig; men orgen er IKKE US-region,
+//                      og den påstand har allerede sendt én triage-session på vildspor.
+//                      Svarer sentry.io en dag 404 på org-endpointet, så sæt
+//                      SENTRY_API_HOST=https://de.sentry.io i stedet for at fejlsøge tokenet.
 //
 // EXIT-CODES:
 //   0 = issues hentet (0 eller flere)

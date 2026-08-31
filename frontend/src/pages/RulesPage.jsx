@@ -55,7 +55,7 @@ const SECTION_DEFS = [
   // is off we still render the section (numbers are final) with a "launches at
   // relaunch" note, per #1604.
   { key: "academy", icon: StarIcon, gated: true, blocks: ["slots", "age", "salary", "drift"] },
-  { key: "fairPlay", icon: LockIcon, blocks: ["starProtection", "noBoardForBots"] },
+  { key: "fairPlay", icon: LockIcon, blocks: ["onePerPerson", "starProtection", "noBoardForBots"] },
 ];
 
 // FAQ deep-links shown under the page intro — FAQ stays "how do I X" and points

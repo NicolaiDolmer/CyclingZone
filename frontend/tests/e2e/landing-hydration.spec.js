@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage } from "./fixtures.js";
 
 // Hydration-guard for den prerendrede landing (dist/index.html).

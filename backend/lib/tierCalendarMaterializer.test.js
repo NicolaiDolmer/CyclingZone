@@ -18,7 +18,8 @@ const LEGACY_MIX = {
   oneDayShareMin: {}, terrainFamilyMin: {}, mountainFreeMin: {},
 };
 
-// Mock-supabase (samme mønster som seasonCalendarMaterializer.test.js): insert().select()
+// Mock-supabase (samme mønster som resten af materializer-testene; #4479: her
+// stod seasonCalendarMaterializer, filens navn før omdøbningen): insert().select()
 // returnerer HELE den indsatte række, så materializeren får pool_race_id + name/stages.
 function makeSupabase(initial = {}) {
   let idSeq = 1;
@@ -33,12 +34,14 @@ function makeSupabase(initial = {}) {
     const filters = [];
     const matches = (row) => filters.every((f) =>
       f.t === "eq" ? row[f.c] === f.v : f.t === "in" ? f.v.includes(row[f.c]) : f.t === "is" ? (row[f.c] ?? null) === f.v : true);
+    let selectOpts = null;
     const builder = {
-      select() { return builder; },
+      select(_cols, opts) { selectOpts = opts || null; return builder; },
       eq(c, v) { filters.push({ t: "eq", c, v }); return builder; },
       in(c, v) { filters.push({ t: "in", c, v }); return builder; },
       is(c, v) { filters.push({ t: "is", c, v }); return builder; },
       order() { return builder; },
+      limit() { return builder; },
       // #2962 · materializeTierCalendars' teams-select pagineres nu via fetchAllRows
       // (.order("id").range()) — mocken slicer den filtrerede tabel som en enkelt side.
       range(from, to) { return Promise.resolve({ data: rows().filter(matches).slice(from, to + 1), error: null }); },
@@ -76,7 +79,14 @@ function makeSupabase(initial = {}) {
           then(res, rej) { return Promise.resolve({ data: null, error: null }).then(res, rej); },
         };
       },
-      then(res, rej) { return Promise.resolve({ data: rows().filter(matches), error: null }).then(res, rej); },
+      then(res, rej) {
+        // #2743: head:true count-queries (activeSeasonLookup.js' fler-aktiv-alarm) →
+        // returnér { count } i stedet for { data }, ligesom rigtig PostgREST.
+        if (selectOpts?.head) {
+          return Promise.resolve({ count: rows().filter(matches).length, data: null, error: null }).then(res, rej);
+        }
+        return Promise.resolve({ data: rows().filter(matches), error: null }).then(res, rej);
+      },
     };
     return builder;
   }
@@ -545,6 +555,33 @@ test("#2149 ingen aktiv sæson / ukendt pulje / null pulje: no-op uden kast", as
   const sb = makeSupabase(tier4ActivationState());
   assert.equal((await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 9999, now: FROM })).skipped, "unknown-pool");
   assert.equal((await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: null, now: FROM })).skipped, "no-pool");
+});
+
+// #2743: en delvist fejlet sæson-transition (S2→active FØR S1→completed,
+// seasonTransition.js) kan efterlade 2 rækker med status='active'. Det gamle
+// .eq("status","active").maybeSingle() KASTEDE hårdt her; nu skal reconcile fortsætte
+// med nyeste sæson og alarmere separat (activeSeasonLookup.js).
+test("#2743: to aktive sæsoner → reconcile kaster IKKE, bruger nyeste + alarmerer via captureExceptionFn", async () => {
+  const state = tier4ActivationState();
+  // Mocken implementerer ikke rigtig .order() (no-op passthrough) — array-rækkefølgen
+  // ER den "sorterede" rækkefølge her, ligesom andre tests i denne fil. s2 (højeste
+  // number) står derfor først, så testen reelt verificerer "tag nyeste".
+  state.seasons = [
+    { id: "s2", number: 2, status: "active", start_date: "2026-06-22" },
+    { id: "s1", number: 1, status: "active", start_date: "2026-01-01" },
+  ];
+  const sb = makeSupabase(state);
+  const captured = [];
+  const summary = await reconcilePoolCalendarOnActivation({
+    supabase: sb, poolId: 8, now: FROM, coverageOverrides: LEGACY_MIX,
+    captureExceptionFn: (err, ctx) => captured.push({ err, ctx }),
+  });
+
+  assert.equal(summary.skipped, null);
+  assert.ok(summary.racesInserted > 0, "reconcile skal stadig gennemføre materialiseringen (mod den nyeste sæson)");
+  assert.equal(captured.length, 1);
+  assert.match(captured[0].err.message, /Flere aktive sæsoner fundet \(2\)/);
+  assert.equal(captured[0].ctx.tags.cron, "reconcile-pool-calendar-on-activation");
 });
 
 test("#2149 midt-sæson-aktivering afkortes til de-facto sæson-slut (ingen etaper efter sidste eksisterende etape)", async () => {

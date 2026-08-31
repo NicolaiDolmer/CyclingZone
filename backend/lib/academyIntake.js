@@ -13,7 +13,7 @@ import { computeFrozenSalary } from "./contractSeed.js";
 import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { deriveForRiderIds } from "./backfillCores.js";
-import { seasonReferenceYear } from "./riderSeasonAge.js";
+import { seasonReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 
 // Deterministisk 32-bit hash (FNV-1a) — samme algoritme som
 // starterSquadAllocator.hashStringToSeed, bevidst dupliceret (få linjer) for ikke
@@ -103,7 +103,7 @@ export async function fetchActiveSeason(supabase) {
 // kunne drifte fra hinanden i første omgang (jf. #3089).
 export function referenceYearForSeason(season) {
   return seasonReferenceYear(season?.number)
-    ?? (parseInt(String(season?.start_date).slice(0, 4), 10) || 2026);
+    ?? (parseInt(String(season?.start_date).slice(0, 4), 10) || LAUNCH_REFERENCE_YEAR);
 }
 
 // #1584-markør: "fik dette hold nogensinde sit FØRSTE akademi-kuld?"
@@ -444,11 +444,27 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // 2. Hent rytterens markedsværdi og beregn løn + signing-fee.
   const { data: rider, error: riderErr } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, market_value, base_value, prize_earnings_bonus, current_production_value")
+    .select("id, team_id, firstname, lastname, market_value, base_value, prize_earnings_bonus, current_production_value")
     .eq("id", riderId)
     .maybeSingle();
   if (riderErr) throw new Error(`signAcademyCandidate rider lookup: ${riderErr.message}`);
   if (!rider) throw new Error(`signAcademyCandidate: rytter ${riderId} ikke fundet`);
+
+  // #4213: ejerskabs-tjek FØR RPC-kaldet. En 'offered'-række kan pege på en
+  // rytter der i mellemtiden er blevet ejet af et andet hold (stale intake).
+  // RPC-guarden afviser nu selv ('rider_owned'); tjekket her sparer bare det
+  // spildte kald. Racen tjek→RPC er ufarlig: RPC'en er den autoritative gate.
+  //
+  // TILBUDDET RØRES BEVIDST IKKE (ejer-beslutning 29/8). En tidligere version
+  // selv-healede rækken til 'rejected' her, så kortet forsvandt fra spillerens
+  // flade. Det er den stille tilbagetrækning ejeren valgte FRA: de resterende
+  // stale rækker er ryttere der ER på vej tilbage til fri agent-status
+  // (repair4213AcademyOffers.mjs, 105 udskudte mens deres etapeløb kører).
+  // Afviste vi tilbuddet nu, ville manageren miste et kort der virker om få
+  // dage. Han får i stedet en præcis besked og beholder tilbuddet.
+  if (rider.team_id && rider.team_id !== teamId) {
+    throw new Error("rider_owned");
+  }
 
   // #2594: løn = current_production_value × per-division-sats (holdets division).
   // Signing-fee er derimod en KØBSPRIS og bliver korrekt på markedsværdien.
@@ -516,6 +532,9 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   if (acq?.code === "academy_full") throw new Error("academy_full");
   if (acq?.code === "insufficient_balance") throw new Error("insufficient_balance");
   if (acq?.code === "already_assigned") throw new Error("already_assigned");
+  // #4213: RPC'ens ejerskabs-guard slog til (rytteren blev ejet i vinduet mellem
+  // precheck og RPC). Samme behandling som precheck'en: tilbuddet bevares.
+  if (acq?.code === "rider_owned") throw new Error("rider_owned");
   if (!acq?.ok) throw new Error(`finalize_academy_acquisition uventet svar: ${JSON.stringify(acq)}`);
 
   // 4. Opdatér academy_intake → signed. #2793: persistér signing-fee'en som
