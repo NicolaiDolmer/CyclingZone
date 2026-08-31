@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 const API = import.meta.env.VITE_API_URL;
@@ -54,6 +54,13 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // #4448: t bruges KUN i load-effektens fejlsti. useTranslation giver t en ny
+  // identitet ved sprogskifte, så et direkte dependency ville refetche modellen
+  // hver gang sproget skifter. Ref'en holder effekten mount-only (samme mønster
+  // som tRef i AuctionsPage) uden at fejlbeskeden kan hænge på gammelt sprog.
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
+
   // ── Load ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -70,15 +77,16 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
         setRaceClasses(data.race_classes || []);
         setResultTypes(data.result_types || []);
       } catch (e) {
-        onMsg(t("racePoints.model.loadError", { error: e.message }), "error");
+        onMsg(tRef.current("racePoints.model.loadError", { error: e.message }), "error");
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
     // #4448: getAuth/onMsg er useCallback(…, []) i useAdminAuth — permanent
-    // stabile, så effekten forbliver reelt mount-only uden at slå reglen fra.
-  }, [getAuth, onMsg, t]);
+    // stabile, og t læses gennem tRef. Effekten kører derfor kun ved mount,
+    // præcis som med den fjernede disable.
+  }, [getAuth, onMsg]);
 
   // ── Lookups ──────────────────────────────────────────────────────────────
   const masterByRt = useMemo(() => {

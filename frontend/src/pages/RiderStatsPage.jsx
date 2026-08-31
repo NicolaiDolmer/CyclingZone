@@ -909,6 +909,12 @@ export default function RiderStatsPage() {
   const transferListingFetchIdRef = useRef(null); // #3490 samme stale-guard-mønster
   useEffect(() => { activeAuctionRef.current = activeAuction; }, [activeAuction]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
+  // #4448: t bruges KUN inde i realtime-channel-callbacken (celebration-teksten).
+  // useTranslation giver t en ny identitet ved sprogskifte, så et direkte
+  // dependency ville rive supabase-kanalen ned og gen-abonnere. Samme tRef-
+  // mønster som AuctionsPage bruger til sin auktions-kanal.
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
 
   // #2000: hent det VISTE holds trup til switcher-baren (prev/next + index).
   // Non-kritisk — fejler stille (switcheren skjules bare hvis rosteret mangler).
@@ -1455,8 +1461,8 @@ export default function RiderStatsPage() {
           const mergedForLeader = { ...(prev || {}), ...updated, rider: prev?.rider };
           if (myTeam && getAuctionLeaderId(mergedForLeader) === myTeam) {
             setCelebration({
-              title: t("celebration.title"),
-              subtitle: t("celebration.subtitle"),
+              title: tRef.current("celebration.title"),
+              subtitle: tRef.current("celebration.subtitle"),
               amount: updated.current_price,
             });
           }
@@ -1468,8 +1474,10 @@ export default function RiderStatsPage() {
       .subscribe();
     return () => supabase.removeChannel(channel);
     // #4448: loadActiveAuctionFull/loadBidTimeline er useCallback([id]), så de
-    // skifter kun ved rytter-skift — samme gen-subscribe-hyppighed som før.
-  }, [bidTimeline?.auction_id, bidTimeline?.status, rider, loadActiveAuctionFull, loadBidTimeline, t]);
+    // skifter kun ved rytter-skift, og t læses gennem tRef. Kanalen rives derfor
+    // fortsat kun ned ved auktions-id/status/rytter-skift — samme gen-subscribe-
+    // hyppighed som med den fjernede disable.
+  }, [bidTimeline?.auction_id, bidTimeline?.status, rider, loadActiveAuctionFull, loadBidTimeline]);
 
   // #254: bid-handlers — POST /bid, PATCH /proxy, DELETE /proxy.
   // Re-bruger samme endpoints som AuctionsPage; #194 race-confirm modtages
