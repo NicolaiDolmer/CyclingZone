@@ -7,6 +7,20 @@ export const PATCHES = [
       {
         "category": "fixed",
         "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Result bonus cap now resets each season",
+          "body": "A two-season sponsor deal shared one bonus cap across both years. If you used it up in the first year, stage wins and podiums paid you nothing in the second, even though your guaranteed base and per-stage income renewed as normal. The cap now resets at every season change. Two teams were affected and have their cap back for this season."
+        },
+        "da": {
+          "title": "Resultatbonus-loftet nulstilles nu hver sæson",
+          "body": "En toårig sponsoraftale delte ét bonusloft mellem begge år. Havde du brugt det op i det første år, gav etapesejre og podiepladser ingenting i det andet, selvom din garanterede base og etapeindtægt blev fornyet som normalt. Loftet nulstilles nu ved hvert sæsonskifte. To hold var ramt og har fået deres loft tilbage for denne sæson."
+        },
+        "refs": [4515]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
         "topic": "Achievements",
         "en": {
           "title": "High Roller could not be earned",

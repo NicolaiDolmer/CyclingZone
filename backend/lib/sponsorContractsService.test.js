@@ -951,6 +951,56 @@ test("expireAndRenewContracts beholder en stadig-låst kontrakt", async () => {
   assert.equal(supabase.state.rpcCalls.length, 0);
 });
 
+// #4515 · resultat-loftet er et SÆSON-loft, ikke et kontrakt-loft. En 2-sæsoners
+// 'results'-kontrakt der brugte loftet op i sit første år gav 0 i resultat-bonus
+// hele det andet år, mens base og løbsdagsrate blev fornyet som normalt (målt i
+// prod 31/8: Team WolkerWessels, 238.000 af 238.000 brugt i S2 → 0 i S3).
+// Nulstillingen hører til her fordi det er det ENESTE sted en flersæsons-kontrakt
+// krydser en sæsongrænse — aktiverings-/default-stierne opretter altid en frisk
+// række med results_bonus_paid = 0.
+test("expireAndRenewContracts nulstiller resultat-loftets forbrug på en låst flersæsons-kontrakt (#4515)", async () => {
+  const stillLocked = {
+    id: "c-locked",
+    team_id: "t1",
+    status: "active",
+    expires_after_season: 4, // >= newSeasonNumber 3 → behold kontrakten
+    results_bonus_paid: 238000, // loftet brugt op i den forrige sæson
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    activeContractByTeam: { t1: stillLocked },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  assert.equal(supabase.state.updates.length, 1, "præcis én update — loft-nulstillingen");
+  assert.deepEqual(supabase.state.updates[0].payload, { results_bonus_paid: 0 });
+  assert.equal(supabase.state.updates[0].id, "c-locked", "rammer kontrakten via id");
+  // Kontrakten skal IKKE udløbes eller genoprettes — kun loftet ryddes.
+  assert.equal(supabase.state.inserts.length, 0);
+  assert.equal(supabase.state.rpcCalls.length, 0);
+});
+
+// Gør nulstillingen betinget: uden denne guard ville HVER sæsonovergang skrive en
+// række pr. låst kontrakt (200+ writes i prod) udelukkende for at sætte 0 til 0.
+test("expireAndRenewContracts skriver ikke når en låst kontrakt intet loft-forbrug har (#4515)", async () => {
+  const stillLocked = {
+    id: "c-locked",
+    team_id: "t1",
+    status: "active",
+    expires_after_season: 4,
+    results_bonus_paid: 0,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    activeContractByTeam: { t1: stillLocked },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  assert.equal(supabase.state.updates.length, 0, "intet at nulstille → ingen write");
+});
+
 test("expireAndRenewContracts: #3014 — chunker teams.in() når teamIds overstiger URL-cap-grænsen (250 hold → 3 chunks af maks 100)", async () => {
   const teamIds = Array.from({ length: 250 }, (_, i) => `t${i}`);
   const activeContractByTeam = Object.fromEntries(
