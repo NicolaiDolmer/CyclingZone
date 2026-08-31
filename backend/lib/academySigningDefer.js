@@ -135,7 +135,7 @@ export async function flushDeferredAcademySigningsForRace(supabase, race, { noti
         .order("id")
     );
   } catch (err) {
-    throw new Error(`flushDeferredAcademySigningsForRace: pending riders lookup failed: ${err.message}`);
+    throw new Error(`flushDeferredAcademySigningsForRace: pending riders lookup failed: ${err.message}`, { cause: err });
   }
   if (!pending || pending.length === 0) return empty;
 
