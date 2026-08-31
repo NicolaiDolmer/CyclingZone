@@ -1922,6 +1922,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         goalsTotal: goals.length,
         planIsComplete,
         seasonId,
+        // #4482 · Regel A: sæson-slut-tilbud indløses i den FØLGENDE sæson.
+        // Stemples NULL her og re-stemples af seasonStartHooks når den nye
+        // sæson findes (FK forhindrer at stemple en endnu-ikke-oprettet sæson).
+        bonusOfferRedeemableNextSeason: true,
         consecutiveLowExpirations: triggerDoublePlanLapse ? 2 : 0,
         boardTestMode,
         now: deps.now ?? new Date(),

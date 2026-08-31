@@ -143,6 +143,20 @@ export const PATCHES = [
           "body": "En rytter der bliver skadet mens et etapeløb kører, kan ikke starte de resterende etaper. Sådan har det hele tiden været, men han forsvandt bare ud af resultaterne uden forklaring. Nu står han som ikke-startende, så du kan se hvad der skete og hvorfor."
         },
         "refs": [4418]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Season-end bonus offers are back and last the following season",
+          "body": "The cleanup of old bonus offers also removed the 21 offers earned at season 2's final evaluation, which you should have had all of season 3 to redeem. They are restored. The rule is now explicit: an offer earned at season end can be redeemed throughout the following season; a mid-season offer lasts the rest of its season."
+        },
+        "da": {
+          "title": "Sæson-slut-bonustilbud er tilbage og gælder den følgende sæson",
+          "body": "Oprydningen af gamle bonustilbud fjernede også de 21 tilbud fra sæson 2's afsluttende evaluering, som I skulle have haft hele sæson 3 til at indløse. De er genskabt. Reglen er nu udtrykkelig: et tilbud optjent ved sæson-slut kan indløses hele den følgende sæson; et midtvejstilbud gælder resten af sin sæson."
+        },
+        "refs": [4482]
       }
     ]
   },

@@ -1319,6 +1319,9 @@ export async function transitionToNextSeason({
     // #4482: den netop afsluttede saesons id - bonustilbud scopet til DEN
     // saeson udloeber her. Se board_bonus_offer_expiry i seasonStartHooks.js.
     fromSeasonId,
+    // #4482 · Regel A: saeson-slut-tilbud blev skabt med NULL-stempel (den nye
+    // saeson fandtes ikke ved skabelsen) og stemples her til den nye saeson.
+    toSeasonId: plan.to_season.id,
   })));
   // ─── slut #2910 + #2911 ────────────────────────────────────────────────────
 

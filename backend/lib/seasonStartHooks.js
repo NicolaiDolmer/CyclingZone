@@ -27,7 +27,7 @@
 import { applySeasonFatigueReset } from "./seasonFatigueReset.js";
 import { applySeasonFormReset } from "./seasonFormReset.js";
 import { runSeasonAcademyIntake } from "./seasonAcademyIntake.js";
-import { expireSeasonScopedConsequences } from "./boardConsequences.js";
+import { expireSeasonScopedConsequences, stampUnscopedBonusOffers } from "./boardConsequences.js";
 import { captureException } from "./sentry.js";
 
 /**
@@ -39,6 +39,7 @@ export async function runSeasonStartHooks({
   now = new Date(),
   toSeasonNumber = null,
   fromSeasonId = null,
+  toSeasonId = null,
   deps = {},
 } = {}) {
   const log = [];
@@ -110,6 +111,23 @@ export async function runSeasonStartHooks({
     captureException(err, {
       tags: { phase: "board_bonus_offer_expiry" },
       extra: { toSeasonNumber, fromSeasonId },
+    });
+  }
+
+  // #4482 · Regel A, trin 2: sæson-slut-evalueringen (processTeamSeasonEnd, kørt
+  // FØR denne transition) skabte lag 6-tilbud med expires_at_season_id = NULL,
+  // fordi den nye sæsons row ikke fandtes endnu. Stempl dem nu med den nye
+  // sæson, så de kan indløses hele den. SKAL stå EFTER expiry-kaldet ovenfor:
+  // omvendt rækkefølge ville udløbe de netop stemplede tilbud i samme kørsel.
+  const stampFn = deps.stampUnscopedBonusOffers ?? stampUnscopedBonusOffers;
+  try {
+    const r = await stampFn(supabase, toSeasonId);
+    log.push({ phase: "board_bonus_offer_stamp", ...r });
+  } catch (err) {
+    log.push({ phase: "board_bonus_offer_stamp", error: err.message });
+    captureException(err, {
+      tags: { phase: "board_bonus_offer_stamp" },
+      extra: { toSeasonNumber, toSeasonId },
     });
   }
 
