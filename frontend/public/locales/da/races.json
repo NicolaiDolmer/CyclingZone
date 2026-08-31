@@ -102,7 +102,7 @@
       "fillMissing": "Udfyld manglende",
       "clearDay": "Ryd dag",
       "clearAllSeason": "Ryd alt",
-      "bound": "Kører allerede et overlappende løb",
+      "bound": "Låste ryttere kan ikke sættes på nogen af de viste løb i dag",
       "loadShort": "{days}d",
       "loadTitle": "Sæson-belastning: {races, plural, one {# løb} other {# løb}}, {days, plural, one {# løbsdag} other {# løbsdage}} tilmeldt denne sæson",
       "clearDayTooltip": "Rydder {races, plural, one {# løb} other {# løb}} og fjerner {riders, plural, one {# rytter} other {# ryttere}} for denne dag"
@@ -231,6 +231,10 @@
       "poor": "Svag"
     },
     "boundNamed": "Låst · kører {race}",
+    "lockBoundUnnamed": "Låst · kører allerede et overlappende løb",
+    "lockAllStarted": "Låst · alle dagens løb er allerede begyndt",
+    "lockAllWithdrawn": "Låst · du har meldt fra alle dagens løb",
+    "lockUnavailable": "Låst · ingen af dagens løb kan ændres",
     "lineupLocked": {
       "title": "Trup låst",
       "note": "Løbet er gået i gang. Truppen er endelig."
