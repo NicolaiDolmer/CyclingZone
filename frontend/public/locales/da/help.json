@@ -739,7 +739,7 @@
       "label": "Ryttere",
       "valueAndPrice": {
         "title": "Værdi og pris",
-        "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder, udvikling og ryttertype. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi."
+        "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder, udvikling og ryttertype. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi. Værdier genberegnes én gang om ugen, hver søndag fra kl. 06, så en rytters værdi bevæger sig i ugentlige spring frem for dag for dag. Træning ændrer hans evner med det samme; værdien følger med ved næste søndagsopdatering."
       },
       "salary": {
         "title": "Løn",

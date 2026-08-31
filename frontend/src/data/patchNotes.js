@@ -73,6 +73,20 @@ export const PATCHES = [
           "body": "En forbindelse der permanent fejler kobler sig selv fra i stedet for at tie, så du får en genforbind-besked i indstillingerne i stedet for bare aldrig at høre fra botten igen."
         },
         "refs": [3483]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Rider values now update Sunday morning",
+          "body": "Values used to move at 22:00 on Sunday, because the recalculation was bolted onto the nightly training run. It now runs from 06:00 on Sunday in its own job, so you have the whole day to act on the new numbers instead of finding them just before bed. Values still change once a week, on Sundays only."
+        },
+        "da": {
+          "title": "Rytterværdier opdateres nu søndag morgen",
+          "body": "Værdierne flyttede sig kl. 22 om søndagen, fordi genberegningen hang på den natlige træningskørsel. Den kører nu fra kl. 06 om søndagen i sit eget job, så du har hele dagen til at handle på de nye tal i stedet for at finde dem lige før sengetid. Værdier ændrer sig stadig én gang om ugen, kun om søndagen."
+        },
+        "refs": [4419]
       }
     ]
   },

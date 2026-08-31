@@ -14,9 +14,10 @@
 // segmentet konvergerer kontrolleret i stedet for at springe (se
 // marketValueModel.js for de fire rene byggesten).
 //
-// KADENCE: kun søndage (Europe/Copenhagen) — ejer-beslutning 6/8, se
-// trainingSweep.js's tilsvarende gate + dens kommentar for begrundelsen (værdier
-// skal fremadrettet KUN flytte sig søndagsvist, ikke daglige mikro-bevægelser).
+// KADENCE: kun søndage (Europe/Copenhagen) — ejer-beslutning 6/8. Tidspunktet
+// er søndag fra kl. 06 (ejer-beslutning 30/8, #4419); se sundayValueSweep.js's
+// gate + dens kommentar for begrundelsen (værdier skal KUN flytte sig
+// søndagsvist, ikke i daglige mikro-bevægelser).
 //
 // KILL-SWITCH: app_config.market_value_sweep_enabled, DEFAULT 'off'
 // (marketValueSweepConfig.js). Denne fil rører INTET i prod før ejeren selv
@@ -29,12 +30,15 @@
 // rytter-skrivning og opsummeres bagefter — se defaultClaimSweepDate.
 //
 // RÆKKEFØLGE PÅ SØNDAGE (kritisk): sweepen kaldes som SIDSTE trin i
-// trainingSweep.js's søndags-værdi-pipeline, EFTER refreshChangedRiderValues.
-// Kørte markedsblendet først, ville v4-refresh'en kl. 22 samme søndag genberegne
-// base_value rent fra v4 og dermed skrive blendet væk igen for præcis de ryttere
-// sweepen havde flyttet — featuren ville se ud til at virke og reelt være en
-// no-op. Derfor er der bevidst INGEN selvstændig timeligt cron-tick for denne
-// sweep; se trainingSweep.js's kald + cron.js.
+// sundayValueSweep.js's værdi-pipeline, EFTER refreshChangedRiderValues (før
+// #4419 lå den pipeline i trainingSweep.js og kørte kl. 22). Kørte
+// markedsblendet først, ville v4-refresh'en samme søndag genberegne base_value
+// rent fra v4 og dermed skrive blendet væk igen for præcis de ryttere sweepen
+// havde flyttet — featuren ville se ud til at virke og reelt være en no-op.
+// Derfor er der bevidst INGEN selvstændig timeligt cron-tick for denne sweep;
+// se sundayValueSweep.js's kald + cron.js. Af samme grund springes blendet
+// HELT over når v4-refresh'en fejlede: dagens claim frigives i stedet, og hele
+// den ordnede pipeline køres forfra på næste tick.
 //
 // SALESINDEX-FORENKLING (bevidst, dokumenteret afvigelse fra fit-scriptet):
 // fit-scriptet matcher hvert salg mod rytterens abilities PÅ SALGSTIDSPUNKTET
