@@ -231,6 +231,47 @@ if (Test-Path "CLAUDE.md") {
   }
 }
 
+# Samme vagt for AGENTS.md (#4502). AGENTS.md brød sin FAIL-graense 31/8 da fire nye
+# SSOT-omraader (#4266) og dev-server-linjen (#3024) landede samme morgen: 6.309 -> 6.574
+# mod loftet 6.500. Rettelsen flyttede hver regels HAENDELSES-blok til
+# NIGHT_WAVE_RUNBOOK.md og lod reglerne selv blive. Denne vagt er det der goer det trim
+# sikkert: en fremtidig trim kan ikke koebe tokens ved at slette en regel.
+# Ankrene er KORTE noegleord - en omskrivning maa passere, en SLETNING skal fejle.
+$agentsMdAnchors = @(
+  @{ Anchor = "TaskStop"; Rule = "10 terminal-tilstand du har SET" },
+  @{ Anchor = "positiv observation"; Rule = "11 paastand om systemtilstand" },
+  @{ Anchor = "maks 5 aabne PR|maks 5 åbne PR"; Rule = "12 loft paa igangvaerende arbejde" },
+  @{ Anchor = "GENMAALES|GENMÅLES"; Rule = "13 ingen paastand uden maaling" },
+  @{ Anchor = "Isolation er infrastruktur"; Rule = "14 isolation foer skala" },
+  @{ Anchor = "Mennesket beslutter"; Rule = "15 AI fremskaffer beviset" },
+  @{ Anchor = "vaegur-tiden|vægur-tiden"; Rule = "16 test maa ikke laese vaegur" },
+  @{ Anchor = "Offentlighedspolitik for balance-tal"; Rule = "17 balance-tal er private" },
+  @{ Anchor = "guard-commit-branch"; Rule = "18 commit bag branch-guard" },
+  @{ Anchor = "skip-logik paa prod-deploy|skip-logik på prod-deploy"; Rule = "19 main bygger altid" },
+  @{ Anchor = "Deploy-verify"; Rule = "20 deploy-verify er del af merge" },
+  @{ Anchor = "Per-agent-timeout"; Rule = "21 timeout skaleres med samtidighed" },
+  @{ Anchor = "Dispatch-forfilter"; Rule = "22 forfilter foer hver spawn" },
+  @{ Anchor = "Post-merge guard-tjek"; Rule = "23 verificer main efter salve" },
+  @{ Anchor = "e2e-slottet"; Rule = "24 orkestratoren ejer e2e-slottet" },
+  @{ Anchor = "Design-gate foer build|Design-gate før build"; Rule = "25 design-gate foer build" },
+  @{ Anchor = "Visuelt bevis foer release|Visuelt bevis før release"; Rule = "26 visuelt bevis foer release" },
+  @{ Anchor = "beslutningskort"; Rule = "27 spoergsmaal med anbefaling foerst" },
+  @{ Anchor = "Testplan er en del af designet"; Rule = "28 testplan hoerer til designet" },
+  @{ Anchor = "enhver udtalelse om projektets tilstand"; Rule = "29 NOW.md foer udtalelse om tilstand" },
+  @{ Anchor = "Omraadets SSOT|Områdets SSOT"; Rule = "30 SSOT laeses og opdateres i samme PR" },
+  @{ Anchor = "Et gulv er aldrig en godkendelse"; Rule = "30b gulv er ikke godkendelse" }
+)
+if (Test-Path "AGENTS.md") {
+  $agentsMdRaw = (Get-Content "AGENTS.md" -Raw)
+  $missingAgentsAnchors = @($agentsMdAnchors | Where-Object { $agentsMdRaw -notmatch $_.Anchor })
+  if ($missingAgentsAnchors.Count -gt 0) {
+    $missingAgentsDetail = ($missingAgentsAnchors | ForEach-Object { $_.Rule }) -join "; "
+    Add-Result $results "agents-md-required-rules" "FAIL" "$($missingAgentsAnchors.Count) bindende regel(er) mangler i AGENTS.md: $missingAgentsDetail"
+  } else {
+    Add-Result $results "agents-md-required-rules" "OK" "$($agentsMdAnchors.Count) bindende ankre til stede"
+  }
+}
+
 $hostname = $env:COMPUTERNAME
 $snapshotPath = "docs/metrics/harness-snapshot-$hostname.json"
 $harnessSource = "estimate"
