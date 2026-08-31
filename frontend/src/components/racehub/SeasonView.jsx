@@ -233,6 +233,14 @@ export default function SeasonView({ onSwitchView }) {
 
   // Klik på et løb → dets dag på dags-boardet. En igangværende GT åbner DAGENS
   // etape (klamp til [start, slut]), ikke løbets første dag.
+  //
+  // Spillertest-punkt 4 (Discord 29/8): dette var en envejs-navigation — intet
+  // på dags-boardet førte tilbage til sæson-konteksten spilleren kom fra.
+  // `returnView=season` bevares som en SEPARAT parameter (ikke `view=season`
+  // selv, som ville få PlanningHubPage til at vise sæson-visningen I STEDET
+  // FOR dags-boardet) — PlanningHubPage læser den og viser en "Tilbage til
+  // sæsonmatrix"-knap på dags-boardet, der genindsætter `view=season` og
+  // rydder `day`/`returnView`.
   function openDay(iso) {
     if (!model || model.readOnly || !model.seasonFirstIso) return;
     if (!confirmLeaveMatrixIfDirty()) return;
@@ -243,6 +251,7 @@ export default function SeasonView({ onSwitchView }) {
       p.delete("view");
       p.delete("season");
       p.set("day", String(ordinal));
+      p.set("returnView", "season");
       return p;
     }, { replace: true });
   }
