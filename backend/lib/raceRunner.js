@@ -1078,10 +1078,17 @@ async function loadSeasonReferenceYear({ supabase, seasonId }) {
 // persist=false (#1102 dryRun): auto-fill beregnes i hukommelsen — ingen DB-insert.
 // stages bruges af autopick til egnethedsscore (suitabilityScore pr. terrain).
 export async function loadEntrantsForRace({ supabase, race, stages = [], persist = true, allowAutofill = true }) {
+  // #4357: Postgres garanterer INGEN rækkefølge uden ORDER BY — kan skifte efter
+  // updates/vacuum/planændring. Selve motoren (buildTeamContext) er nu FØRSTE-
+  // vinder-deterministisk uafhængigt af denne rækkefølge (se raceSimulator.js), men
+  // en stabil rækkefølge her er billig, generel DB-hygiejne der eliminerer klassen
+  // af fremtidige rækkefølge-afhængige fejl i alt der konsumerer `entries` direkte.
   const { data: existing, error } = await supabase
     .from("race_entries")
     .select("rider_id, team_id, race_role")
-    .eq("race_id", race.id);
+    .eq("race_id", race.id)
+    .order("team_id", { ascending: true })
+    .order("rider_id", { ascending: true });
   if (error) throw new Error(`race_entries: ${error.message}`);
 
   let existingEntries = existing || [];

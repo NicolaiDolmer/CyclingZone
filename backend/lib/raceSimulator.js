@@ -36,6 +36,29 @@ import { rollIncidents } from "./raceIncidents.js";
 // traeningskvalitet), IKKE fra rng. Kaldes KUN når v3=true; ingen vinduer / ingen
 // peakDay → 0, så flag-off (og v3-løb uden peak-plan) er bit-identisk.
 import { peakComponentForStage } from "./racePeaks.js";
+// #4357: kun brugt til at RAPPORTERE en dobbelt-kaptajn-konflikt i buildTeamContext
+// (telemetri, no-op når Sentry ikke er initialiseret) — ændrer intet ved funktionens
+// egen determinisme (samme seed+input → samme output, uanset om kaldet fejler/no-op'er).
+// #4357: LAZY sentry-import. Frontendens drift-guards (raceSelectionLogic.test.js)
+// importerer dette modul direkte for at sammenligne konstanter 1:1, og frontend-CI
+// har ikke backend-deps (@sentry/node) installeret - en top-level import ville
+// vaelte modul-load. Fejl-stien er sjaelden (dobbelt kaptajn), saa dynamisk import
+// dér koster intet.
+let captureExceptionLazy = null;
+async function captureException(err, ctx) {
+  if (!captureExceptionLazy) {
+    try {
+      captureExceptionLazy = (await import("./sentry.js")).captureException;
+    } catch (err) {
+      // best-effort: sentry er valgfri i dette modul - det importeres også af
+      // frontendens drift-guards uden backend-deps, og en fejl i selve
+      // rapporterings-opsætningen må aldrig vælte race-simuleringen.
+      console.error("raceSimulator: sentry-import fejlede (best-effort):", err?.message);
+      captureExceptionLazy = () => {};
+    }
+  }
+  return captureExceptionLazy(err, ctx);
+}
 
 export const ENGINE_VERSION = 1;
 // Race v3 S1 (#2352): motor-version stemplet på runs når `race_engine_v3_scoring`
@@ -235,16 +258,47 @@ function finaleModifier(entrant, stageProfile) {
   return ((clamp(d, 0, 99) - 50) / 49) * DESCENDING_FINALE_WEIGHT;
 }
 
+// #4357: to entrants med SAMME beskyttede rolle (captain/sprint_captain) på samme
+// hold må aldrig afgøres af tavs sidste-skrivning — hverken loadEntrantsForRace's
+// DB-rækkefølge eller simulateStage's rider_id-sort (linje ~608, som findes af en
+// ANDEN grund: rng-determinisme) er en kontrakt denne funktion bør stole på for SIN
+// EGEN determinisme. FØRSTE forekomst i den modtagne `entrants`-rækkefølge vinder;
+// resten ignoreres og rapporteres til Sentry som et signal, ikke som et kast — en
+// dobbeltrolle må ikke fælde en hel etape-simulering. #4353 (28/8) forhindrer NYE
+// dobbeltkaptajner fra stage-tactics-UI'et, så en konflikt her er forsvar-i-dybden
+// mod legacy-data/direkte DB-skrivninger, ikke en forventet sti.
+function assignProtectedRole({ teamCtx, field, entrant, captureExceptionFn, raceRoleLabel }) {
+  if (teamCtx[field] == null) {
+    teamCtx[field] = entrant.rider_id;
+    return;
+  }
+  if (teamCtx[field] === entrant.rider_id) return; // samme rytter nævnt 2 gange — ikke en konflikt
+  captureExceptionFn(
+    new Error(`buildTeamContext: duplicate ${raceRoleLabel} on same team/stage`),
+    {
+      tags: { flow: "race-simulator", stage: "build-team-context" },
+      teamId: entrant.team_id,
+      keptRiderId: teamCtx[field],
+      droppedRiderId: entrant.rider_id,
+    }
+  );
+}
+
 // NB: tager ikke længere v3 — free_role-skippet nedenfor er ubetinget (#2376),
 // og intet andet her afhænger af flaget. Kaldere må gerne stadig sende v3 med.
-export function buildTeamContext({ entrants, terrainById }) {
+// captureExceptionFn (#4357): injicerbar til tests, default = ægte Sentry-capture
+// (no-op når ikke initialiseret) — se assignProtectedRole ovenfor.
+export function buildTeamContext({ entrants, terrainById, captureExceptionFn = captureException }) {
   const byTeam = new Map();
   for (const e of entrants) {
     if (!e.team_id || !e.race_role) continue;
     if (!byTeam.has(e.team_id)) byTeam.set(e.team_id, { captainId: null, sprintCaptainId: null, helpers: [] });
     const t = byTeam.get(e.team_id);
-    if (e.race_role === "captain") t.captainId = e.rider_id;
-    else if (e.race_role === "sprint_captain") t.sprintCaptainId = e.rider_id;
+    if (e.race_role === "captain") {
+      assignProtectedRole({ teamCtx: t, field: "captainId", entrant: e, captureExceptionFn, raceRoleLabel: "captain" });
+    } else if (e.race_role === "sprint_captain") {
+      assignProtectedRole({ teamCtx: t, field: "sprintCaptainId", entrant: e, captureExceptionFn, raceRoleLabel: "sprint_captain" });
+    }
     // Race v3 S1/#2376: free_role = "kør dit eget løb" — 0 holdbidrag, tæller ALDRIG
     // med i helperSupport, uanset v3-flagets tilstand. Oprindeligt kun udeladt når
     // v3=true (v1-data kunne dengang aldrig indeholde 'free_role', CHECK-constraint

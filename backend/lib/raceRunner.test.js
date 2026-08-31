@@ -493,6 +493,49 @@ test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async 
   assert.equal(r1.abilities.climbing, 80);
 });
 
+// #4357: Postgres garanterer ingen rækkefølge uden ORDER BY — regressionstest der
+// fælder hvis nogen fjerner .order()-kaldet på race_entries-forespørgslen. Bygger
+// sin egen mock (i stedet for makeSupabase, hvis order() er et no-op) netop for at
+// KUNNE se hvilke kolonner der blev bedt om order på.
+test("loadEntrantsForRace: race_entries-forespørgslen har eksplicit ORDER BY (team_id, rider_id)", async () => {
+  const orderCalls = [];
+  const rows = padToFloor({
+    race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T1" }],
+    riders: [
+      { id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: false },
+      { id: "r2", team_id: "T1", firstname: "Bo", lastname: "Dahl", is_u25: false },
+    ],
+    rider_derived_abilities: [
+      { rider_id: "r1", ...abil() },
+      { rider_id: "r2", ...abil() },
+    ],
+  }, "T1");
+  function from(table) {
+    const b = {
+      select() { return b; },
+      eq() { return b; },
+      in() { return b; },
+      or() { return b; },
+      is() { return b; },
+      order(col, opts) {
+        if (table === "race_entries") orderCalls.push([col, opts]);
+        return b;
+      },
+      gte() { return b; },
+      range(from, to) { return Promise.resolve({ data: (rows[table] || []).slice(from, to + 1), error: null }); },
+      maybeSingle() { return Promise.resolve({ data: (rows[table] || [])[0] ?? null, error: null }); },
+      then(resolve, reject) { return Promise.resolve({ data: rows[table] || [], error: null }).then(resolve, reject); },
+    };
+    return b;
+  }
+  const supabase = { from, rpc: () => Promise.resolve({ error: null }) };
+  await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
+  assert.deepEqual(orderCalls, [
+    ["team_id", { ascending: true }],
+    ["rider_id", { ascending: true }],
+  ]);
+});
+
 // ── U25 sæson-derivering (#109/#2073) ─────────────────────────────────────────
 // Den lagrede riders.is_u25 er statisk (DEFAULT FALSE) og re-deriveres aldrig →
 // 16-18-årige oprettet uden flag manglede i ungdomsklassementet. U25 udledes nu
