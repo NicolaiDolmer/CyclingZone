@@ -36,10 +36,14 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. #4123-invarianterne mangler CI-gate.
 9. **P0 + UI-gæld + Z1** (ejer 25/8). P0: #3990-rest · navne-dedup-guard · #3329 · #2791. UI-gæld: de fem fund i `PLANNING_CENTER_RULES.md` §7. Z1: bulk-endpoint + kladde + tre linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405) — monterer motorens kort, bygger det ikke. **P3** assistenten — gated på **#4201**, og #4246 (rolle vs ordre) skal afgøres FØR `TeamOrder` fryses.
 
-## D · Penge og vækst — gate: spor B leveret (ikke en dato)
+## D · Penge og vækst — AKTIVT i S3-vinduet (ejer 31/8; hvert skridt kræver eget ejer-go)
 
-10. **#2853** e-mail-loop (Resend-nøgle + 3 tekster) — største fastholdelses-håndtag. ⚪ **#4015** genmål efter #4013.
-11. **#3104 /pro LIVE** (køb pauset): **#4074 blokerer flip** + #4005 → flip + testkøb → #2813. **#4067** SEO-site.
+Ejer 31/8: *"noget af det markant vigtigste — vi skal begynde at tjene penge snarligt."* Rører ingen spilleregler; S3-køens spillerfejl går stadig forrest.
+
+10. **#2853** e-mail-loop tændes (ejer: 3 tekster + 2 nøgler) → **#2760** win-back til ~100 dormante. ⚪ **#4015** genmål efter #4013.
+11. **/pro-kæden:** #4074 valuta → #4005 moms/copy → flip + testkøb → #2813 handelsbetingelser → #2806 synligt link.
+12. **#4067** SEO-site S1 + **#2824** offentlige læse-ruter (kun 1 side indekseret i dag).
+13. **Kommunikations-produktionslinje:** AI genererer søndag ugens 3 udkast (#428-rytmen), ejer poster ~25 min/uge; #4117 afkrydses pr. opslag; #4111 løfte-audit som månedlig rutine.
 
 ## E · Løbende (aldrig hovedspor)
 
@@ -51,9 +55,9 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
 16. ⚪ **Typelaget:** #4325/#4334 landet 28/8. Rest: #4326 (frisk-gate) · #4327 · #4328-#4333.
 
-## F · Backlog-bølger (#3154, 616 åbne — UDSKUDT til efter 27/9)
+## F · Backlog-bølger (#3154; audit 31/8: 602→~561, alle klassificeret)
 
-Lukkemandat: done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20. **Rest:** W8: 53 needs-decision · #4119 · #3944/#3945.
+Lukkemandat: done/dubletter/opslugte lukkes frit; won't-do i bundter a 15-20 (præsenteres i chat m. begrundelse pr. punkt). Klassifikation + beslutningsark: `docs/audits/*-2026-08-31.md`. **Rest:** 18 med-confidence dubletpar · done_cand-verify · W8 needs-decision · #4119 · #3944/#3945.
 
 ## E2 · Race-oplevelsen (SSOT: `RACE_ENGINE_RULES.md`)
 

@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **23 PR'er i køen.** Trin 1+2 merget 31/8 (11 PR'er); main verificeret efter hver salve: guards exit 0, preflight grøn, 7.506 backend-tests grønne. **Næst:** trin 3, de fire spillervendte (#4466 #4472 #4468 #4476) - teksterne er vist og godkendt, mangler kun patch note ved merge (udkast i `drafts/`). Derefter #4503. Rækkefølge: [audit-doc](audits/night-wave-2026-08-30.md). **#4467** er spam, konto blokeret.
+> **🎯 Next action:** **Spor D er AKTIVT (ejer 31/8):** første skridt = #2853-mailteksterne til ejer-godkendelse + /pro #4074. Fuld-backlog-audit 31/8 udført: 602→~561 åbne, 41 closes, 9 done-flips, alle 602 klassificeret ([dashboard](audits/backlog-priorities-2026-08-31.md), [beslutningsark](audits/decision-briefs-2026-08-31.md), evidens #627). Natbølgens trin 3 + #4503 merget 08:26-08:39 — patch note-udkastet i `drafts/` mangler at komme i PatchNotesPage.
 
 > **⛔ Venter på DIN beslutning:** **PR #4483** (#4479) er parkeret 31/8 og må IKKE merges. `/rules` fortæller spillerne at lønnen fryses ved **6,7 % af markedsværdien**; koden bruger **35 % af `current_production_value`** (`contractSeed.js:38-42`, verificeret 31/8). Både sats og grundlag er forkert, og drift-guarden var grøn fordi den pinnede til `SALARY_RATE`, død siden #3989. **Åbent spørgsmål:** skal afvigelsen måles på faktisk signerede kontrakter før patch noten skrives? · **#4482** skal lag 6-bonustilbud udløbe (37 aktive på afsluttede sæsoner).
 
