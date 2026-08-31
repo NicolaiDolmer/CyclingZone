@@ -50,6 +50,7 @@ import {
   observeRace, aggregateObservations, winRateStats, giniOverWins, helperPlacementDeltas,
   helperCounterfactualDeltas, median, quantile, observeIncidents, aggregateIncidentObservations,
 } from "../lib/raceDominanceMetrics.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -65,7 +66,7 @@ const COUNT = parseInt(arg("count", "800"), 10);
 const RACES = parseInt(arg("races", "300"), 10);
 const FIELD = parseInt(arg("field", "140"), 10);
 const GT_FIELD = parseInt(arg("gtField", "176"), 10);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 const WRITE_HTML = !arg("no-html", false);
 // #4180: --metrics-json=<sti> skriver de MAALTE vaerdier (ikke kun bestaaet/fejlet)
 // maskinlaesbart, saa seed-variansen kan MAALES over mange seeds i stedet for at

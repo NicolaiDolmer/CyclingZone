@@ -58,6 +58,7 @@ import { createClient } from "@supabase/supabase-js";
 import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
 import { buildCapsForRider } from "../../lib/riderProgression.js";
 import { ratingFromAbilities } from "../../lib/scoutingReport.js";
+import { ageForSeason } from "../../lib/riderSeasonAge.js";
 
 const BACKUP_TABLE = "rider_caps_3591_backup_20260813";
 const APPLY = process.argv.includes("--apply");
@@ -139,7 +140,7 @@ const gulvBrud = [];
 for (const r of riders) {
   const d = derivedById.get(r.id);
   if (!d) continue; // strandet rytter — riderDeriveHealSweep ejer den, ikke os
-  const age = r.birthdate ? 2026 + (seasonNumber - 1) - new Date(r.birthdate).getUTCFullYear() : null;
+  const age = ageForSeason(r.birthdate, seasonNumber);
   const abilities = {};
   for (const k of VISIBLE_ABILITIES) if (d[k] != null) abilities[k] = Number(d[k]);
 

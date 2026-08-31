@@ -44,10 +44,14 @@ export function isRiderBound({ bindingMap, riderId, forRaceId, forWindow }) {
 
 // Kan rytteren tilføjes kolonne-løbet? (ikke afmeldt/låst, ikke allerede udtaget, ikke
 // game-dag-bundet i et andet kolonne-løb). Delt af puljen (lås-tilstand) + popover (mål-liste).
+//
+// #3410: betingelserne stod DUPLIKERET her og i riderColumnState nedenfor. Puljens lås kom fra
+// denne (fire mulige grunde), mens forklaringsteksten kom fra en helt anden udledning der kun
+// dækkede overlap — derfor kunne en rytter renderes låst uden en eneste begrundelse. Nu er
+// riderColumnState den ENESTE klassifikator, og denne er dens boolske skygge: tilføjbar ==
+// "available". Rør ikke den ækvivalens uden at rette begge (raceHubLogic.test.js vogter den).
 export function canAddRiderToColumn({ column, bindingMap, riderId }) {
-  if (!column || column.withdrawn || column.lineup_locked) return false;
-  if ((column.selection?.rider_ids || []).includes(riderId)) return false;
-  return !isRiderBound({ bindingMap, riderId, forRaceId: column.id, forWindow: column.bindingWindow });
+  return riderColumnState({ column, bindingMap, riderId }) === "available";
 }
 
 // #4295: hvor mange af holdets ryttere er FRIE til netop dette løb — raske, ikke bundet i
@@ -87,6 +91,60 @@ export function riderColumnState({ column, bindingMap, riderId }) {
   if (column.withdrawn || column.lineup_locked) return "locked";
   if (isRiderBound({ bindingMap, riderId, forRaceId: column.id, forWindow: column.bindingWindow })) return "overlap";
   return "available";
+}
+
+// #3410: HVORFOR er rytteren låst i puljen? Puljen låser en chip når rytteren ikke kan tilføjes
+// NOGEN kolonne, og det kan skyldes fire ting (afmeldt løb, startet løb, allerede udtaget,
+// overlap). Forklaringen blev før udledt af et løbsnavn, som kun overlap-grenen kunne levere —
+// ramte låsen "alle dagens løb er startet" eller "alle er afmeldt", stod chippen låst uden tekst
+// (@thelamba, Discord 5/8). Her udledes årsagen af NØJAGTIG de samme kolonne-tilstande som
+// låsen selv, så pulje, popover og freeRiderCountForColumn ikke kan blive uenige.
+//
+// Returnerer null når rytteren IKKE er låst, ellers { code, raceId, raceName }:
+//   "bound_overlap"        — optaget i et løb der overlapper (raceName når løbet har et navn)
+//   "all_races_started"    — alle dagens løb er begyndt (lineup_locked)
+//   "all_races_withdrawn"  — holdet har meldt fra alle dagens løb
+//   "all_races_unavailable"— blandet startet/afmeldt, eller ingen løb på brættet
+//
+// Afmeldte løb navngives ALDRIG som årsag (Rod A, #1823: de låser ikke, og draftBindingMap
+// springer dem over) — derfor kigger navne-opslaget kun på ikke-afmeldte kolonner.
+export function riderLockReason({ riderId, columns = [], bindingMap }) {
+  const states = columns.map((column) => ({ column, state: riderColumnState({ column, bindingMap, riderId }) }));
+  if (states.some((s) => s.state === "available")) return null;
+
+  // Det løb han faktisk er udtaget i er den mest handlingsbare forklaring.
+  const riding = states.find((s) => s.state === "riding" && !s.column?.withdrawn);
+  if (riding) return { code: "bound_overlap", raceId: riding.column.id ?? null, raceName: riding.column.name ?? null };
+
+  // Ellers: bundet af et overlappende løb — kolonne eller ekstern binding (#2256).
+  const overlap = states.find((s) => s.state === "overlap");
+  if (overlap) {
+    const hit = overlapConflictColumn({ column: overlap.column, columns, bindingMap, riderId });
+    return { code: "bound_overlap", raceId: hit?.id ?? null, raceName: hit?.name ?? null };
+  }
+
+  // Ingen binding i spil: så er kolonnerne utilgængelige i sig selv. Samme prædikat som
+  // riderColumnState's "locked"-gren, blot delt i sine to grunde.
+  const withdrawn = states.filter((s) => s.column?.withdrawn).length;
+  const started = states.filter((s) => s.column && !s.column.withdrawn && s.column.lineup_locked).length;
+  if (started > 0 && withdrawn === 0) return { code: "all_races_started", raceId: null, raceName: null };
+  if (withdrawn > 0 && started === 0) return { code: "all_races_withdrawn", raceId: null, raceName: null };
+  return { code: "all_races_unavailable", raceId: null, raceName: null };
+}
+
+// #3410: låse-årsag → færdig tekst. Samme mønster som raceGameDayLabel ovenfor (kalderen sender
+// sin `t`), så nøglevalget er unit-testet ét sted og ikke kan drive fra hinanden mellem pulje og
+// popover. null ind → null ud (ikke låst → ingen tekst).
+export function riderLockLabel({ reason, t }) {
+  if (!reason || typeof t !== "function") return null;
+  if (reason.code === "bound_overlap") {
+    return reason.raceName
+      ? t("racehub.boundNamed", { race: reason.raceName })
+      : t("racehub.lockBoundUnnamed");
+  }
+  if (reason.code === "all_races_started") return t("racehub.lockAllStarted");
+  if (reason.code === "all_races_withdrawn") return t("racehub.lockAllWithdrawn");
+  return t("racehub.lockUnavailable");
 }
 
 // #1984/#1983: alle ægte overlap-konflikter i kladden — en rytter udtaget i to løb hvis game-dag-

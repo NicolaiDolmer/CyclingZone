@@ -4,12 +4,14 @@
 // Run: node --test scripts/lint-dropped-supabase-error.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   findDroppedSupabaseErrors,
   topLevelKeys,
   collectFiles,
+  BASELINE,
 } from "./lint-dropped-supabase-error.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -140,6 +142,35 @@ test("topLevelKeys læser kun top-niveau-nøgler", () => {
 });
 
 // ── Scope: #2897's hele pointe var at api.js lå udenfor ──────────────────────
+
+// ── Forward-guard: de ryddede filer må ALDRIG få en baseline igen (#2997) ────
+//
+// De seks kolde filer blev ryddet til 0 den 31/8. Ratchet'en fanger allerede en
+// ny droppet error i dem (implicit baseline 0 → over baseline → CI fejler), men
+// den fanger IKKE at nogen "løser" den fejl ved at skrive filen ind i BASELINE
+// igen med et tal > 0. Denne test låser begge ender: filerne skal være ude af
+// tabellen, OG de skal faktisk stå på 0 fund i kilden.
+const CLEARED_2997 = [
+  "backend/lib/discordNotifier.js",
+  "backend/lib/loanEngine.js",
+  "backend/lib/proxyBidding.js",
+  "backend/lib/academyGraduation.js",
+  "backend/lib/deadlineDayReport.js",
+  "backend/lib/riderBidTimeline.js",
+  "backend/lib/prizePayoutEngine.js",
+];
+
+test("ryddede filer (#2997) står ikke i BASELINE og har 0 fund", () => {
+  for (const rel of CLEARED_2997) {
+    assert.equal(
+      BASELINE[rel],
+      undefined,
+      `${rel} blev ryddet i #2997 — den må ikke få en baseline-linje igen, ret fejlen i stedet`,
+    );
+    const src = readFileSync(join(ROOT, rel), "utf8");
+    assert.equal(findDroppedSupabaseErrors(src).length, 0, `${rel} har fået en droppet Supabase-error igen`);
+  }
+});
 
 test("scopet dækker backend/routes, backend/lib og cron.js — og ikke tests", () => {
   const files = collectFiles(ROOT).map((f) => f.slice(ROOT.length + 1).replace(/\\/g, "/"));

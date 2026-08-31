@@ -233,6 +233,21 @@ jobs:
       - name: Run constraint-form guard
         run: node scripts/lint-constraint-form.mjs
 
+      # #4330: forward-guard mod required check-navne der forsvinder. Et required
+      # navn kan forsvinde i en workflow-refaktor uden at noget faelder, og branch
+      # protection venter derefter i al evighed paa et check der aldrig rapporterer.
+      # Main kan ikke merges, og symptomet dukker foerst op paa NAESTE PR.
+      #
+      # Guarden bor HER og ikke i et advisory job, fordi migration-idempotency ER et
+      # required status check. Foerste udgave laa i et ikke-required job: den ville
+      # gaa roed OG merge alligevel, fordi auto-merge.yml kun venter paa
+      # `gh pr checks --required`. Det fund kom fra det adversariske review 31/8.
+      - name: Test required-ci-jobs guard
+        run: node --test scripts/check-required-ci-jobs.test.mjs
+
+      - name: Run required-ci-jobs guard
+        run: node scripts/check-required-ci-jobs.mjs
+
   postgrest-cap-guard:
     runs-on: ubuntu-latest
     permissions:
@@ -315,6 +330,33 @@ jobs:
 
       - name: Run fetchAllRows order guard
         run: node scripts/check-fetchallrows-order.mjs
+
+  rls-classification-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #4440 forward-guard: en tabel der er NAEVNT i
+    # docs/decisions/rls-no-policy-classification.md skal ogsaa vaere
+    # KLASSIFICERET der - egen sektion med mindst een fil:linje-reference for
+    # hvem der tilgaar den, eller en eksplicit konstatering af at ingen kodesti
+    # goer. #4439 listede 26 driftstabeller uden at klassificere nogen af dem;
+    # regnestykket gik op, dokumentet saa faerdigt ud, og det tog et
+    # selvstaendigt issue at opdage. Vagten er ren dokument-intern konsistens
+    # (ingen DB-adgang), saa den kan koere paa enhver PR.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test RLS classification guard
+        run: node --test scripts/check-rls-classification-coverage.test.mjs
+
+      - name: Run RLS classification guard
+        run: node scripts/check-rls-classification-coverage.mjs
 
   rate-limit-coverage-guard:
     runs-on: ubuntu-latest
@@ -599,15 +641,34 @@ jobs:
       - name: Run schema-column guard
         run: node scripts/lint-schema-columns.mjs
 
+      # Forward-guard for #4333: public rummer 66 operationelle backup-tabeller
+      # fra tidligere haendelses-oprydninger (maalt mod prod 31/8/2026: 207
+      # relationer i information_schema.tables + 4 materialiserede views = 211,
+      # heraf 66 backups og 145 aegte). De holdes ude af de genererede typer,
+      # frontend/src/types/database.types.ts. De bliver med vilje BEVARET i
+      # database/schema-snapshot.json, fordi schema-column-guarden ovenfor skal
+      # kunne verificere de backend-scripts der faktisk selecter fra dem -
+      # se doc-blokken i scripts/lib/operational-backup-relations.mjs. Testen
+      # fejler hvis en `supabase gen types typescript` bliver committet uden
+      # strip-trinnet som `npm run types:gen` nu kaeder paa. Tabellerne selv
+      # roeres ikke: drop er destruktiv klasse, ejer-gated under #2259.
+      - name: Test backup-tables-out-of-types guard
+        run: node --test scripts/strip-backup-tables-from-types.test.mjs
+
+      - name: Run backup-tables-out-of-types guard
+        run: node scripts/strip-backup-tables-from-types.mjs --check
+
   supabase-ops-scripts:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     # Unit-tests for scripts/ops/*.mjs (#4014 logflade-vagt + #3978 advisor-
-    # sweep) — ren klassifikationslogik (spike/ny-fejlklasse-deteketion,
-    # allowlist-diff), ingen netvaerkskald. De to workflows der bruger
-    # scripterne (supabase-log-watch.yml, supabase-advisor-sweep.yml) kalder
-    # Supabase Management-API'et med SUPABASE_ACCESS_TOKEN og koeres ikke her.
+    # sweep + #4453 Railway-logstroem-vagt) — ren klassifikationslogik
+    # (spike/ny-fejlklasse-detektion, allowlist-diff, tag-daekning), ingen
+    # netvaerkskald. De workflows der bruger scripterne
+    # (supabase-log-watch.yml, supabase-advisor-sweep.yml,
+    # railway-log-watch.yml) kalder Supabase Management-API'et hhv. Railway
+    # CLI'en med egne tokens og koeres ikke her.
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -622,3 +683,13 @@ jobs:
 
       - name: Test advisor-sweep allowlist diff
         run: node --test scripts/ops/supabase-advisor-sweep.test.mjs
+
+      # Indeholder forward-guarden fra #4453: fejler hvis et nyt
+      # console.<niveau>("[tag]") i backendens runtime hverken har en taerskel
+      # eller staar paa ignore-listen i railway-log-thresholds.json.
+      # Bemaerk: supabase-ops-scripts staar IKKE blandt main's required status
+      # checks, saa guarden er raadgivende - den goer jobbet roedt, men
+      # blokerer ikke merge. Skal den blokere, tilfoej jobbet til
+      # branch-protection og til scripts/ci-required-checks.json.
+      - name: Test railway-log-watch classification + tag coverage
+        run: node --test scripts/ops/railway-log-watch.test.mjs

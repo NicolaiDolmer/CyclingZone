@@ -19,6 +19,7 @@ import { seedPhysiologyFromLegacy } from "../../lib/physiologySeeding.js";
 import { deriveAbilities } from "../../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../../lib/riderTypes.js";
 import { predictBaseValue } from "../../lib/riderValuation.js";
+import { LAUNCH_REFERENCE_YEAR } from "../../lib/riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MODEL_PATH = join(__dirname, "../../lib/riderValuationModel.json");
@@ -30,7 +31,7 @@ const baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
 // Generer 20 kuld à 3-5 kandidater = ca. 60-100 per run; med 8 seeds à 50 kuld = 400+ total.
 // Vi bruger 50 kuld med seed 1308+i.
 const KULD_COUNT = 50;
-const REF_YEAR = 2026;
+const REF_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 
 const allResults = [];   // { is_serious, base_value }
 

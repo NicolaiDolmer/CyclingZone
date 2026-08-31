@@ -276,13 +276,30 @@ async function fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, captu
   const dueSteps = getDueWarningSteps(window.closes_at, now);
   if (!dueSteps.length) return { warnings: 0, errors: 0 };
 
-  const { data: teams } = await supabase
+  // #2997: notifikationssti — cron'et skal videre til Final Whistle uanset hvad,
+  // så vi kaster ikke. Men uden `error` bundet blev en fejlet modtager-læsning
+  // til `!teams?.length` → "ingen at advare", og HELE deadline-advarslen faldt
+  // bort tavst, tick efter tick. Rapportér via den injicerede captureExceptionFn
+  // (samme kanal som per-team-fejlene nedenfor) og tæl det som en fejl, så
+  // cron-loggen viser at runden ikke lykkedes.
+  const { data: teams, error: teamsError } = await supabase
     .from("teams")
     .select("id")
     .eq("is_bank", false)
     .eq("is_ai", false)
     .eq("is_frozen", false)
     .not("user_id", "is", null);
+
+  if (teamsError) {
+    console.error("Deadline Day: recipient lookup failed, no warnings sent:", teamsError.message);
+    if (captureExceptionFn) {
+      captureExceptionFn(teamsError, {
+        tags: { flow: "deadline-day", stage: "load-recipients" },
+        windowId: window.id,
+      });
+    }
+    return { warnings: 0, errors: 1 };
+  }
 
   if (!teams?.length) return { warnings: 0, errors: 0 };
 
@@ -317,7 +334,7 @@ async function fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, captu
   return { warnings: sent, errors };
 }
 
-async function fireFinalWhistle({ supabase, window, sendDiscordWebhookFn, getDefaultWebhookFn, now }) {
+async function fireFinalWhistle({ supabase, window, sendDiscordWebhookFn, getDefaultWebhookFn, captureExceptionFn, now }) {
   const nowIso = now.toISOString();
   const { data: claimed, error: claimError } = await supabase
     .from("transfer_windows")
@@ -333,7 +350,21 @@ async function fireFinalWhistle({ supabase, window, sendDiscordWebhookFn, getDef
 
   let seasonNumber = null;
   if (window.season_id) {
-    const { data: season } = await supabase.from("seasons").select("number").eq("id", window.season_id).single();
+    // #2997: ren berigelse af embed-overskriften, og whistle'en er ALLEREDE
+    // claimet ovenfor (final_whistle_sent_at sat) — kaster vi her, bliver
+    // rapporten aldrig sendt og kan ikke genfyres. Rapportér og udelad
+    // sæsonnummeret.
+    const { data: season, error: seasonError } = await supabase.from("seasons").select("number").eq("id", window.season_id).single();
+    if (seasonError) {
+      console.error("Deadline Day: season lookup for Final Whistle failed, omitting season number:", seasonError.message);
+      if (captureExceptionFn) {
+        captureExceptionFn(seasonError, {
+          tags: { flow: "deadline-day", stage: "final-whistle-season" },
+          windowId: window.id,
+          seasonId: window.season_id,
+        });
+      }
+    }
     seasonNumber = season?.number ?? null;
   }
 
@@ -358,12 +389,19 @@ export async function processDeadlineDayCron({
   captureExceptionFn,
   now = new Date(),
 }) {
-  const { data: window } = await supabase
+  // #2997: cron'ets ENESTE indgangs-læsning. Uden `error` bundet blev en fejlet
+  // læsning til `!window` → "intet at gøre", og deadline day fyrede aldrig — helt
+  // tavst, tick efter tick. Kast: monitorCron/trackedTick i cron.js isolerer
+  // ticket og rapporterer, og der er ikke muteret noget endnu.
+  const { data: window, error: windowError } = await supabase
     .from("transfer_windows")
     .select("id, season_id, status, closes_at, closed_at, created_at, final_whistle_sent_at")
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
+  if (windowError && windowError.code !== "PGRST116") {
+    throw new Error(`processDeadlineDayCron: could not load latest transfer_window: ${windowError.message}`);
+  }
 
   if (!window) return { warnings: 0, errors: 0, whistleSent: false, autoClosed: false };
 
@@ -407,7 +445,7 @@ export async function processDeadlineDayCron({
   }
 
   if (window.status === "closed" && !window.final_whistle_sent_at) {
-    const result = await fireFinalWhistle({ supabase, window, sendDiscordWebhookFn, getDefaultWebhookFn, now });
+    const result = await fireFinalWhistle({ supabase, window, sendDiscordWebhookFn, getDefaultWebhookFn, captureExceptionFn, now });
     whistleSent = result.whistleSent;
   }
 

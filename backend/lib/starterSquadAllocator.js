@@ -34,6 +34,7 @@ import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { computeFrozenSalary, pickStarterContractLength, computeContractEndSeason } from "./contractSeed.js";
 import { applyTypeDampening } from "./riderValuationTypeDampening.js";
+import { birthYearFrom } from "./riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
@@ -272,9 +273,13 @@ export function generateAiRiderBatchWithCap({
   return toInsertPayload(accepted.slice(0, count));
 }
 
+// #4455: fødselsår-udtrækket kommer fra SSOT'en, så denne kopi ikke kan divergere.
+// Returværdien er BEVIDST NaN (ikke null) ved ugyldig fødselsdato: `age` bruges i
+// numeriske gates herover, og `NaN <= x` er false mens `null <= x` er true — et skift
+// til null ville lydløst lukke ugyldige ryttere gennem alders-gaten.
 export function computeAge(birthdate, referenceYear) {
-  const year = Number(String(birthdate).slice(0, 4));
-  return referenceYear - year;
+  const year = birthYearFrom(birthdate);
+  return year === null ? Number.NaN : referenceYear - year;
 }
 
 // Deterministisk 32-bit hash af en streng (FNV-1a). Bruges til at udlede et

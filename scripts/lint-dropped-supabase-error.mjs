@@ -191,18 +191,19 @@ export function findDroppedSupabaseErrors(rawSrc) {
 // den har implicit baseline 0, og enhver ny droppet error i sæsonskiftet fejler
 // CI med det samme. Ratchet'en virker begge veje — når en anden PR rydder et
 // site, strammes tallet her i samme ombæring.
-const BASELINE = {
-  "backend/routes/api.js": 109,
-  "backend/lib/discordNotifier.js": 6,
-  "backend/lib/loanEngine.js": 6,
-  "backend/lib/proxyBidding.js": 6,
+//
+// 31/8 (#2997): de seks KOLDE filer uden for de varme PR'er blev ryddet helt —
+// discordNotifier (6), loanEngine (6), proxyBidding (6), academyGraduation (3),
+// deadlineDayReport (3), riderBidTimeline (3) = 27 sites. De er fjernet fra
+// tabellen (implicit baseline 0) sammen med prizePayoutEngine.js, der allerede
+// stod på 0. api.js sænket 109 → 108, så tabellen matcher det faktisk målte tal
+// (#2986-oprydningen var aldrig blevet ratchet'et ned). Live-total: 160 → 133.
+export const BASELINE = {
+  "backend/routes/api.js": 108,
   "backend/lib/raceRunner.js": 4,
   "backend/lib/academyTransfer.js": 3,
-  "backend/lib/academyGraduation.js": 3,
   "backend/lib/aiTeamGenerator.js": 1,
-  "backend/lib/deadlineDayReport.js": 3,
   "backend/lib/economyEngine.js": 2,
-  "backend/lib/riderBidTimeline.js": 3,
   "backend/lib/auctionEngine.js": 2,
   "backend/lib/auctionFinalization.js": 1,
   "backend/lib/discordDmRecipient.js": 2,
@@ -213,7 +214,6 @@ const BASELINE = {
   "backend/lib/adminSimulateRace.js": 1,
   "backend/lib/aluntaWebhook.js": 1,
   "backend/lib/marketPause.js": 1,
-  "backend/lib/prizePayoutEngine.js": 0,
   "backend/lib/squadEnforcement.js": 1,
 };
 

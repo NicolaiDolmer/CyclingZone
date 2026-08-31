@@ -3,6 +3,14 @@
 Usage:
     PYTHONUTF8=1 python score_done.py            # menneskelæsbar tabel (default)
     PYTHONUTF8=1 python score_done.py --json      # maskinlæsbar JSON til auto-close-routinen
+    PYTHONUTF8=1 python score_done.py --pr-map    # én linje pr. issue: hvilken merged PR dækker den?
+
+**Kør ALTID --pr-map først når done-puklen kommer fra en bølge.** Tier-modellen nedenfor scorer
+på kommentar-tekst, og en bølge efterlader typisk 0 kommentarer eller AI-skrevne WEAK-kommentarer
+— så ALT lander i Tier 3 og scoren bærer intet signal. 30/8: alle 51 done-issues scorede
+T3/WEAK/NO_COMMENTS, og 46 af dem blev lukket. Det der faktisk afgør sagen er joinet i --pr-map:
+"hvilken merged PR dækker dette issue?" — derefter læser du scopet på de få uafklarede.
+--pr-map kræver også $TEMP/audit-pr-merged.json.
 
 Reads $TEMP/audit-done.json (produced by `gh issue list --state open --label "claude:done" --json number,title,labels,comments,updatedAt`).
 
@@ -30,6 +38,7 @@ from datetime import datetime, timezone
 
 TMP = os.environ.get('TEMP', '/tmp')
 AS_JSON = '--json' in sys.argv
+AS_PRMAP = '--pr-map' in sys.argv
 
 with open(os.path.join(TMP, 'audit-done.json'), encoding='utf-8') as f:
     issues = json.load(f)
@@ -197,7 +206,60 @@ def score_issue(issue):
 results = [score_issue(i) for i in issues]
 results.sort(key=lambda x: x['number'])
 
-if AS_JSON:
+PR_TITLE_RE = re.compile(r'(?:\((?:[a-z/]+)?(\d{2,5})[),/ ]|#(\d{2,5}))')
+PR_BODY_RE = re.compile(r'(?:Closes|Fixes|Resolves|Refs|Updates|Implements)\s*#(\d{2,5})', re.I)
+
+
+def build_pr_map(numbers):
+    """Join done-issues mod merged PR'er. Titel-match rangerer over body-match:
+    repoets konvention er issue-nummeret i PR-TITLEN ved bevidst leverance, mens
+    en ren body-omtale ofte er incidentel (close-out-note, dependency-note, talkollision)."""
+    path = os.path.join(TMP, 'audit-pr-merged.json')
+    if not os.path.exists(path):
+        sys.exit('--pr-map kraever $TEMP/audit-pr-merged.json (gh pr list --state merged --limit 200 ...)')
+    with open(path, encoding='utf-8') as fh:
+        prs = json.load(fh)
+    hits = {n: [] for n in numbers}
+    for pr in prs:
+        title = pr.get('title') or ''
+        body = pr.get('body') or ''
+        tset = {int(a or b) for a, b in PR_TITLE_RE.findall(title)}
+        bset = {int(x) for x in PR_BODY_RE.findall(body)}
+        for n in numbers:
+            if n in tset:
+                hits[n].append((pr['number'], 'TITLE', pr.get('mergedAt', '')[:10]))
+            elif n in bset:
+                hits[n].append((pr['number'], 'body', pr.get('mergedAt', '')[:10]))
+    return hits
+
+
+if AS_PRMAP:
+    numbers = [r['number'] for r in results]
+    hits = build_pr_map(numbers)
+    unmatched = []
+    for r in results:
+        n = r['number']
+        v = hits[n]
+        flags = []
+        if r['user_feature']:
+            flags.append('user')
+        if r.get('keep_done_gated'):
+            flags.append('GATED-KEEP')
+        if r['work_pending']:
+            flags.append('PEND')
+        tag = ('[' + ','.join(flags) + '] ') if flags else ''
+        if v:
+            best = ' '.join(f"PR#{a}/{k}/{d}" for a, k, d in v[:3])
+            print(f"#{n:>5} {tag}{best}  :: {r['title'][:64]}")
+        else:
+            unmatched.append(r)
+            print(f"#{n:>5} {tag}INGEN-MERGED-PR  :: {r['title'][:64]}")
+    print()
+    print(f"{len(results)} done-issues | {len(results) - len(unmatched)} med merged PR | {len(unmatched)} uden")
+    print("TITLE-match = leverance tiltaenkt issuet. body-match = laes scopet foer close.")
+    print("INGEN-MERGED-PR = enten aegte gate (draft/flag/ejer-handling) eller aldrig leveret - laes den.")
+    print("Husk stadig: en merged PR beviser IKKE at HELE scopet er daekket (multi-slice-guarden).")
+elif AS_JSON:
     print(json.dumps(results, ensure_ascii=False, indent=2))
 else:
     for r in results:

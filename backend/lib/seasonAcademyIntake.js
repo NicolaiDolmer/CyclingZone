@@ -30,6 +30,7 @@ import { deriveForRiderIds } from "./backfillCores.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { fetchAllPaged } from "./dbChunk.js";
 import { captureException } from "./sentry.js";
+import { LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 
 export const SEASON_ACADEMY_INTAKE_FLAG_KEY = "season_academy_intake_enabled";
 
@@ -199,7 +200,7 @@ export async function runSeasonAcademyIntake({
       const newIds = await seedCohortFn(supabase, {
         teamId: entry.teamId,
         season,
-        referenceYear: parseInt(String(season.start_date).slice(0, 4), 10) || 2026,
+        referenceYear: parseInt(String(season.start_date).slice(0, 4), 10) || LAUNCH_REFERENCE_YEAR,
         existingNames,
         rng,
         identityBasis: identityByTeam.get(entry.teamId),

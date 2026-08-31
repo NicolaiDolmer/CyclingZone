@@ -229,3 +229,106 @@ test("contract: server.js sets trust proxy and owns no admin routes", async () =
   // ikke længere eje admin-routes — backend/routes/api.js er kanonisk ejer (#97).
   assert.doesNotMatch(serverSource, /app\.post\("\/api\/admin\//);
 });
+
+test("#4446: apiBaselineLimiter is mounted before the first route in api.js", async () => {
+  // Load-bearing ORDER, not just presence. express-rate-limit only guards what
+  // is registered after it, and CodeQL's js/missing-rate-limiting likewise only
+  // counts a limiter that GUARDS the route (see alerts 189-352, all raised on
+  // `requireAuth` because no limiter ran before it). Moving this mount below a
+  // route would silently un-protect everything above it.
+  const { readFileSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const apiSource = readFileSync(join(__dirname, "../routes/api.js"), "utf8");
+
+  const mountIndex = apiSource.indexOf("router.use(apiBaselineLimiter)");
+  assert.notEqual(mountIndex, -1, "apiBaselineLimiter must be mounted in api.js");
+
+  const firstRoute = /^router\.(get|post|put|patch|delete|use)\(/m.exec(apiSource);
+  assert.ok(firstRoute, "expected at least one route registration in api.js");
+  assert.equal(
+    firstRoute.index,
+    mountIndex,
+    "apiBaselineLimiter must be the FIRST router registration in api.js",
+  );
+
+  // Keyed by IP at this position (req.user is only set later, by requireAuth),
+  // which is the point: it dampens hammering against the auth layer itself.
+  assert.match(apiSource, /const apiBaselineLimiter = rateLimit\(\{[\s\S]*?limit: 600,/);
+});
+
+test("#4446: the twelve previously unlimited write routes carry a limiter", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const apiSource = readFileSync(join(__dirname, "../routes/api.js"), "utf8");
+
+  const expected = [
+    ["/billing/checkout", "billingLimiter"],
+    ["/billing/portal", "billingLimiter"],
+    ["/riders/names", "presencePulseLimiter"],
+    ["/scouting/estimates", "presencePulseLimiter"],
+    ["/development/transition/dismiss", "presencePulseLimiter"],
+    ["/me/onboarding-progress/dismiss", "presencePulseLimiter"],
+    ["/dashboard/my-latest-result/seen", "presencePulseLimiter"],
+    ["/sponsor/offers/accept", "boardWriteLimiter"],
+    ["/club/facilities/upgrade", "boardWriteLimiter"],
+    ["/club/staff/hire", "boardWriteLimiter"],
+    ["/club/staff/fire", "boardWriteLimiter"],
+    ["/club/staff/:id/release", "boardWriteLimiter"],
+  ];
+
+  for (const [path, limiter] of expected) {
+    assert.ok(
+      apiSource.includes(`router.post("${path}", requireAuth, ${limiter},`),
+      `${path} must be rate-limited by ${limiter}`,
+    );
+  }
+});
+
+test("#4446: billingLimiter is 10 per 10 minutes and resolves via i18n", async () => {
+  const { billingLimiter } = await import("./rateLimiters.js");
+  assert.equal(typeof billingLimiter, "function");
+
+  // Pin the threshold: /billing/checkout and /billing/portal each cost us an
+  // outbound Alunta call, so a loosened window here is a real regression and
+  // not just a tuning nit.
+  const app = express();
+  app.use((req, _res, next) => {
+    req.user = { id: "billing-test-user" };
+    next();
+  });
+  app.use(billingLimiter);
+  app.get("/", (_req, res) => res.json({ ok: true }));
+  const { server, port } = await startApp(app);
+  try {
+    const responses = [];
+    for (let i = 0; i < 11; i += 1) responses.push(await request(port));
+    assert.equal(responses.filter((r) => r.status === 200).length, 10);
+    assert.equal(responses.filter((r) => r.status === 429).length, 1);
+    const limited = JSON.parse(responses[10].body);
+    assert.equal(limited.errorCode, "rate_billing");
+    assert.equal(limited.retry_after_seconds, 600);
+  } finally {
+    await close(server);
+  }
+
+  // The player-facing string comes from the frontend errors:api.rate_billing
+  // key, not from the backend `message` fallback — assert both locales carry it
+  // so a 429 never surfaces as a raw error code (#1068).
+  const { readFileSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  for (const locale of ["en", "da"]) {
+    const errors = JSON.parse(
+      readFileSync(
+        join(__dirname, `../../frontend/public/locales/${locale}/errors.json`),
+        "utf8",
+      ),
+    );
+    assert.ok(errors.api?.rate_billing, `${locale} errors.json needs api.rate_billing`);
+  }
+});

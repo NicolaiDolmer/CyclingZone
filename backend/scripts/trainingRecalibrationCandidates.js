@@ -50,6 +50,7 @@ import {
 } from "../lib/riderCondition.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { isAcademyAge } from "../lib/academyFlag.js";
+import { LAUNCH_REFERENCE_YEAR } from "../lib/riderSeasonAge.js";
 
 function arg(name, def) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -60,7 +61,7 @@ function arg(name, def) {
 
 const SEED = parseInt(arg("seed", "2026"), 10);
 const COUNT = parseInt(arg("count", "400"), 10);
-const REFERENCE_YEAR = 2026;
+const REFERENCE_YEAR = LAUNCH_REFERENCE_YEAR; // sæson 1's kalenderår (lib/riderSeasonAge.js)
 const cfg = PROGRESSION_CONFIG;
 const SEASONS = 12; // #2082-krav: simulér over 10-12 sæsoner til ejer-scorecard
 const DAY_SWEEP = [28, 60, 90, 120]; // "hvor mange dage varede sæsonen rent faktisk"

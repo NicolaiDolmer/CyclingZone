@@ -114,3 +114,6 @@ backend/scripts/dev/gates-matrix-3564.json
 # Lokal script-state for Discord-sweepen (#4172-sessionen)
 scripts/discord/.sweep-state.json
 scripts/discord/.feedback-dump-*.md
+
+# Bolge-screenshots der ikke skal i repoet (30/8-koeen)
+pr-screens/queue/

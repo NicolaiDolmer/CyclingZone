@@ -21,8 +21,16 @@ name: Security grants audit
 #                                aldrig har været en fil i dette repo. Det var
 #                                præcis den sti #3765 kom ind ad.
 #
-# Live-jobbet kører to uafhængige drift-tjek mod samme forbindelse:
+# Live-jobbet kører tre uafhængige drift-tjek mod samme forbindelse:
 #   security-grants.sql        — hvilke SECURITY DEFINER-funktioner kan klienten kalde?
+#   security-rls-policy-fn-grants.sql
+#                              — den MODSATTE retning (#2671): kalder en RLS-policy
+#                                en funktion som en rolle policyen rammer IKKE har
+#                                EXECUTE på? Så fejler HELE tabellen med 42501 for
+#                                den rolle. Klassen har bidt 3x på præcis samme
+#                                policy (31/5, 29/6, 5/8) og er tavs, fordi den kun
+#                                rammer roller ingen tester i hånden. Sidste bid
+#                                stod uopdaget i ~3 uger.
 #   proposals-reconcile.mjs    — ligger der forslag i database/proposals/ som ER
 #                                anvendt i prod uden at være flyttet til top-niveau?
 #                                Måling 14/8: 6 af 10. En anvendt fil der stadig
@@ -37,6 +45,7 @@ on:
       - 'scripts/check-secdef-revoke-lint.mjs'
       - 'scripts/proposals-reconcile.mjs'
       - 'scripts/security-grants.sql'
+      - 'scripts/security-rls-policy-fn-grants.sql'
       - '.github/workflows/security-grants-audit.yml'
   schedule:
     - cron: '15 */6 * * *'
@@ -68,6 +77,7 @@ jobs:
         run: |
           node --test scripts/check-secdef-revoke-lint.test.mjs
           node --test scripts/proposals-reconcile.test.mjs
+          node --test scripts/security-rls-policy-fn-grants.test.mjs
 
       - name: Lint ændrede SQL-filer
         shell: bash
@@ -133,7 +143,33 @@ jobs:
             } >> "$GITHUB_OUTPUT"
           fi
 
-      # Anden drift-akse: et forslag i database/proposals/ der ER anvendt i prod,
+      # Anden drift-akse (#2671): den omvendte fejl. Grant-tjekket ovenfor finder
+      # funktioner klienten KAN kalde men ikke burde. Dette finder funktioner en
+      # RLS-policy kalder, som rollen IKKE kan kalde — hvorefter hele tabellen
+      # svarer 42501 for den rolle. Tavs fejl: den rammer kun roller ingen tester
+      # i hånden. Har bidt 3x på riders / "Public read riders" (31/5, 29/6, 5/8).
+      - name: Kør RLS-policy-funktions-tjek
+        id: policyfn
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          FINDINGS=$(psql "$DB_URL" -tA -F '|' -v ON_ERROR_STOP=1 -f scripts/security-rls-policy-fn-grants.sql | sed '/^$/d')
+          if [ -z "$FINDINGS" ]; then
+            echo "✅ Alle funktioner kaldt fra RLS-policies i public kan eksekveres af de roller policyen rammer."
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "⚠️ Fund:"
+            printf '%s\n' "$FINDINGS"
+            echo "has_findings=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "findings<<POLICYFN_EOF"
+              printf '%s\n' "$FINDINGS"
+              echo "POLICYFN_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      # Tredje drift-akse: et forslag i database/proposals/ der ER anvendt i prod,
       # men aldrig blev flyttet til top-niveau. Mappen holder dermed op med at
       # fortælle sandheden, og et halvt anvendt forslag bliver umuligt at skelne
       # fra et uanvendt udkast — præcis den tilstand #3765 opstod i.
@@ -227,11 +263,54 @@ jobs:
             gh issue create --title "$TITLE" --body-file security-grants-body.md --label "claude:todo" --label "security"
           fi
 
+      - name: Opret eller opdatér policy-funktions-issue ved fund
+        if: steps.policyfn.outputs.has_findings == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINDINGS: ${{ steps.policyfn.outputs.findings }}
+        run: |
+          set -euo pipefail
+          TITLE="[policy-fn-grants] RLS-policy kalder funktion som rollen ikke kan eksekvere"
+          {
+            echo "\`scripts/security-rls-policy-fn-grants.sql\` fandt RLS-policies i \`public\` der kalder en funktion som en af de roller policyen rammer ikke har EXECUTE på."
+            echo ""
+            echo "En RLS-policy evalueres med KALDERENS rettigheder. Mangler grantet, fejler hver eneste adgang til tabellen for den rolle med \`42501 permission denied for function\`. Det ligner ikke en RLS-afvisning, og det rammer kun roller ingen tester i hånden."
+            echo ""
+            echo '```'
+            printf '%s\n' "$FINDINGS"
+            echo '```'
+            echo ""
+            echo "Format: severity | check | detail"
+            echo ""
+            echo "**CRITICAL / \`policy_fn_missing_execute\` + authenticated** = indloggede spillere får 42501 på hele tabellen. Behandl som nedbrud og kør det GRANT der står i detail."
+            echo ""
+            echo "**WARN / \`policy_fn_missing_execute\` + anon** = anon fail-closer. Kan være tilsigtet, men skal være en truffet beslutning: enten GRANT EXECUTE, eller scope policyen \`TO authenticated\` så anon får en ren tom afvisning, eller whitelist posten i scriptet MED learning-reference."
+            echo ""
+            echo "**WARN / \`policy_fn_whitelist_stale\`** = en whitelist-post matcher ikke længere et fund. Grantet er givet, eller policyen er omdøbt eller droppet. Fjern posten."
+            echo ""
+            echo "**CRITICAL / \`policy_fn_name_not_regex_safe\`** = funktionsnavnet falder uden for scanningens dækning. Omdøb funktionen, eller udvid udtrækket."
+            echo ""
+            echo "Baggrund: #2671 (klassen, bidt 3x på riders / \"Public read riders\": 31/5, 29/6, 5/8)."
+            echo "Læringer: \`.claude/learnings/2026-05-31-rls-policy-calling-function-needs-role-grant.md\`, \`.claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md\`"
+            echo "Workflow: .github/workflows/security-grants-audit.yml"
+          } > policy-fn-grants-body.md
+          EXISTING=$(gh issue list --state open --search "policy-fn-grants in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "${EXISTING:-}" ] && [ "$EXISTING" != "null" ]; then
+            echo "↳ Åbent issue #$EXISTING findes — tilføjer kommentar."
+            gh issue comment "$EXISTING" --body-file policy-fn-grants-body.md
+          else
+            echo "↳ Opretter nyt issue."
+            gh issue create --title "$TITLE" --body-file policy-fn-grants-body.md --label "claude:todo" --label "security"
+          fi
+
       - name: Fejl ved fund
-        if: steps.check.outputs.has_findings == 'true' || steps.proposals.outputs.has_findings == 'true'
+        if: steps.check.outputs.has_findings == 'true' || steps.policyfn.outputs.has_findings == 'true' || steps.proposals.outputs.has_findings == 'true'
         run: |
           if [ "${{ steps.check.outputs.has_findings }}" = "true" ]; then
             echo "::error::Grant-tjekket fandt klient-eksekverbare SECURITY DEFINER-funktioner. Se issue."
+          fi
+          if [ "${{ steps.policyfn.outputs.has_findings }}" = "true" ]; then
+            echo "::error::En RLS-policy kalder en funktion som rollen ikke kan eksekvere. Se issue."
           fi
           if [ "${{ steps.proposals.outputs.has_findings }}" = "true" ]; then
             echo "::error::Forslag i database/proposals/ er anvendt i prod uden at være forfremmet. Se issue."

@@ -38,6 +38,9 @@ import { ABILITY_KEYS as VALUE_ABILITY_KEYS } from "../lib/riderTypes.js";
 import { buildRaceResults } from "../lib/raceRunner.js";
 import { buildRacePointsLookup, PRIZE_PER_POINT } from "../lib/raceResultsEngine.js";
 import { riderOverall } from "../lib/riderValuation.js";
+// SSOT for sæson-alder. riderSeasonAge.js er bevidst dependency-fri, netop så et
+// rent READ-ONLY sim-script kan importere formlen uden at trække DB-kæden med.
+import { ageForSeason } from "../lib/riderSeasonAge.js";
 import {
   assignSeasonFields,
   computeRacesEnteredByRider,
@@ -83,21 +86,6 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   process.exit(2);
 }
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
-
-// LAUNCH_REFERENCE_YEAR/ageForSeason spejler backend/lib/riderProgressionEngine.js
-// PRÆCIST (samme formel: LAUNCH_REFERENCE_YEAR + (seasonNumber-1) - birthYear).
-// Bevidst INLINET i stedet for importeret: riderProgressionEngine.js trækker en
-// tung DB-orchestrator-modulkæde ind (notificationService, academyGraduation,
-// dailyTrainingFlag, ...) for denne ene formel — ingen af dem eksekverer noget ved
-// import (kun funktions-/const-eksport), så det ville have virket, men et rent,
-// READ-ONLY sim-script bør ikke afhænge af hele den kæde for én linje matematik.
-const LAUNCH_REFERENCE_YEAR = 2026;
-function ageForSeason(birthdate, seasonNumber) {
-  if (!birthdate || !Number.isFinite(seasonNumber)) return null;
-  const birthYear = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(birthYear)) return null;
-  return LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) - birthYear;
-}
 
 function round2(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
