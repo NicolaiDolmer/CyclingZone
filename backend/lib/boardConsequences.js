@@ -160,8 +160,22 @@ export async function getActiveSponsorPulloutFactor(supabase, teamId) {
 }
 
 /**
- * Lag 5 cleanup ved sæson-start. Pullout varer ÉN sæson (Q-batch 1B Q11) — den
- * row der havde expires_at_season_id = forrige sæson markeres 'expired'.
+ * Lag 6 cleanup ved sæson-start (#4482): et bonustilbud hører til den sæson det
+ * blev givet i, og må ikke kunne indløses efter den sæson er slut.
+ *
+ * KUN LAG 6 — og det er en rettelse, ikke en indsnævring. Docstringen sagde før
+ * "lag 5 cleanup", men lag 5 (sponsor-exit) har allerede sin EGEN udløbs-sti i
+ * `economyEngine.js` ("Expire alle aktive lag 5 efter sponsor-payment"), som
+ * kører EFTER sponsorudbetalingen ved sæsonstart. En pullout skal netop ramme
+ * den ene sæsons sponsor-income FØRST og derefter frigøres. Ville denne funktion
+ * også tage lag 5, ville den udløbe straffen FØR den havde virket, fordi
+ * sæsonstart-hooks kører før payroll. Verificeret i prod 31/8: alle 8 lag
+ * 5-rækker står 'expired' via netop den sti, og ingen er aktive.
+ *
+ * Lag 2/3/4 har `expires_at_season_id = NULL` (målt i prod: alle 121 rækker) og
+ * er derfor uberørt uanset filteret; de udløber tilstands-drevet i
+ * evaluateAndApplyConsequences.
+ *
  * Idempotent: gentagne kald markerer ingen ekstra rows.
  */
 export async function expireSeasonScopedConsequences(supabase, completedSeasonId) {
@@ -171,6 +185,7 @@ export async function expireSeasonScopedConsequences(supabase, completedSeasonId
     .from("board_consequences")
     .update({ status: "expired", resolved_at: new Date().toISOString() })
     .eq("status", "active")
+    .eq("layer", CONSEQUENCE_LAYERS.BONUS_OFFER)
     .eq("expires_at_season_id", completedSeasonId)
     .select("id");
   if (error) throw new Error(`Could not expire season-scoped consequences: ${error.message}`);
