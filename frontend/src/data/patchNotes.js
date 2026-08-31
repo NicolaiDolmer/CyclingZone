@@ -115,6 +115,20 @@ export const PATCHES = [
           "body": "Et bonustilbud hører til den sæson bestyrelsen gav det i, men koden der lukkede dem ved sæsonskifte blev aldrig kørt. Tilbud fra afsluttede sæsoner blev stående. De slutter nu sammen med sæsonen, som det var meningen."
         },
         "refs": [4482]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "An academy graduate could get stuck with no way to resolve them",
+          "body": "A rider who spent time in your academy across two seasons could end up impossible to promote, sell or release: the button returned an error, and the nightly auto-resolve failed on them too. They are now resolved normally."
+        },
+        "da": {
+          "title": "En akademi-graduerende kunne sætte sig fast uden vej videre",
+          "body": "En rytter der havde været i dit akademi over to sæsoner kunne ende umulig at promovere, sælge eller frigive: knappen svarede med en fejl, og den natlige auto-afgørelse fejlede også på ham. Han afgøres nu normalt."
+        },
+        "refs": [4484]
       }
     ]
   },
