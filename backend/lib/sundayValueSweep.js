@@ -24,8 +24,23 @@
 // FAIL-SAFE: mangler log-tabellen (migration ikke kørt endnu), kører vi INTET.
 // En værdi-mutation af hele populationen uden dedup-anker er farligere end en
 // søndag uden opdatering.
+//
+// KILL-SWITCH: daily_training_enabled gælder også her (review 31/8). Værdi-
+// refresh'en lå før BAG trainingSweep.js's flag-gate, så ejerens nødbremse
+// frøs værdierne sammen med træningen. Flytningen til eget job må ikke gøre
+// nødbremsen smallere end den var: slukker ejeren træningen fordi motoren
+// udvikler forkert, skal værdierne heller ikke prissættes oven på præcis de
+// evner. Ingen flag-ændring var en del af ejer-beslutningen 30/8, kun tidspunkt.
+//
+// no_active_season er derimod BEVIDST ikke en gate her (samme review). Den var
+// et biprodukt af at refresh'en hang på en sweep der havde brug for sæsonen til
+// selve træningen; værdi-refresh'en har siden cutover-fixet 23/8 (#4151) sit
+// eget korrekte anker uden aktiv sæson (seneste completed sæson, aldrig '1').
+// En gate ville koste en hel uges værdiopdatering hver gang en søndag falder i
+// hullet mellem "Afslut sæson" og transitionen, uden at beskytte noget.
 
 import { copenhagenDateString, copenhagenHour, copenhagenWeekdayKey } from "./copenhagenTime.js";
+import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { refreshChangedRiderValues } from "./riderValueRefresh.js";
 import { runMarketValueSundaySweep } from "./marketValueSundaySweep.js";
 import { captureException } from "./sentry.js";
@@ -35,9 +50,20 @@ export const RIDER_VALUE_SUNDAY_LOG_TABLE = "rider_value_sunday_log";
 
 const noop = () => {};
 
+// KUN ægte "tabellen findes ikke". Postgres' 42P01 og PostgREST's PGRST205
+// (table not found in schema cache) er de to sande koder. Den tidligere brede
+// /does not exist|schema cache/ ramte også PGRST204, som er KOLONNE-mismatch
+// ("Could not find the 'x' column of 'rider_value_sunday_log' in the schema
+// cache") — en omdøbt kolonne ville dermed slå hele værdi-jobbet tavst fra i
+// stedet for at kaste. Ukendt kode ⇒ ikke tabel-fravær; en klient uden kode
+// falder tilbage til en besked-regex der kræver BÅDE tabelnavnet og
+// relation/table-ordlyden, så kolonne-beskeder ikke matcher.
 function isMissingTableError(error) {
+  const code = String(error?.code || "");
+  if (code === "42P01" || code === "PGRST205") return true;
+  if (code) return false;
   const msg = String(error?.message || "");
-  return error?.code === "42P01" || /does not exist|schema cache/i.test(msg);
+  return new RegExp(`(relation|table) \\S*${RIDER_VALUE_SUNDAY_LOG_TABLE}\\S* does not exist`, "i").test(msg);
 }
 
 // Atomisk dato-CLAIM. UNIQUE(run_date) gør INSERT'et til den naturlige mutex:
@@ -53,6 +79,17 @@ async function defaultClaimRunDate({ supabase, runDate }) {
   throw new Error(`sunday-value-sweep claim: ${error.message}`);
 }
 
+// FRIGIV dagens claim igen. Kaldes KUN når v4-refresh'en fejlede, altså før
+// markedsblendet har skrevet noget: uden den ville et enkelt 8-sekunders
+// statement-timeout koste hele ugens værdiopdatering, fordi næste tick blot
+// fandt claim-rækken og svarede already_ran_today. Før #4419 lå refresh'en i
+// trainingSweep, som cron kaldte hvert 5. minut, så en transient fejl helede
+// sig selv; det loft må omlægningen ikke fjerne.
+async function defaultReleaseRunDate({ supabase, runDate }) {
+  const { error } = await supabase.from(RIDER_VALUE_SUNDAY_LOG_TABLE).delete().eq("run_date", runDate);
+  if (error) throw error;
+}
+
 // Efter-skrivning: fyld claim-rækken med resultatet. Fejler DENNE, beholder vi
 // claim'et (rækken findes), værdierne er skrevet, og en manglende opsummering
 // må aldrig kunne udløse en gentagelse af selve mutationen.
@@ -65,7 +102,6 @@ async function defaultCompleteRun({ supabase, runDate, summary }) {
       written: summary.written ?? null,
       market_sweep_ran: summary.marketSweepRan,
       market_sweep_written: summary.marketSweepWritten ?? null,
-      value_refresh_failed: summary.valueRefreshFailed,
       completed_at: new Date().toISOString(),
     })
     .eq("run_date", runDate);
@@ -73,8 +109,10 @@ async function defaultCompleteRun({ supabase, runDate, summary }) {
 }
 
 /**
- * Kør søndagens værdi-pipeline. Stille no-op hvis: ikke søndag (dansk tid),
- * før kl. 06, log-tabellen mangler, eller dagen allerede er kørt.
+ * Kør søndagens værdi-pipeline. No-op hvis: ikke søndag (dansk tid), før
+ * kl. 06, daily_training_enabled er slukket, log-tabellen mangler, eller dagen
+ * allerede er kørt. Fejler v4-refresh'en, frigives dagens claim igen, og
+ * jobbet svarer skipped:"value_refresh_failed", så næste tick prøver forfra.
  *
  * @param {object} args
  * @param {object} args.supabase, service-role Supabase-client
@@ -82,7 +120,8 @@ async function defaultCompleteRun({ supabase, runDate, summary }) {
  *   lade tests læse vægur-tiden, og et søndags-gated job ville så bestå eller
  *   fejle afhængigt af hvilken ugedag suiten kører.
  * @returns {Promise<{ran: boolean, skipped?: string, runDate?: string,
- *   valueRefresh?: object|null, marketValueSweep?: object|null}>}
+ *   claimReleased?: boolean, valueRefresh?: object|null,
+ *   marketValueSweep?: object|null}>}
  */
 export async function runSundayValueSweep({
   supabase,
@@ -90,7 +129,9 @@ export async function runSundayValueSweep({
   refreshValues = refreshChangedRiderValues,
   runMarketValueSweep = runMarketValueSundaySweep,
   claimRunDate = defaultClaimRunDate,
+  releaseRunDate = defaultReleaseRunDate,
   completeRun = defaultCompleteRun,
+  trainingEnabled = isDailyTrainingEnabled,
   log = noop,
   captureExceptionFn = captureException,
 } = {}) {
@@ -105,23 +146,48 @@ export async function runSundayValueSweep({
   if (copenhagenWeekdayKey(runDate) !== "sun") return { ran: false, skipped: "not_sunday" };
   if (copenhagenHour(now) < SUNDAY_VALUE_FROM_HOUR) return { ran: false, skipped: "before_window" };
 
+  // Kill-switch FØR claim'et: er træningen slukket, må dagen ikke tælle som
+  // brugt — ellers ville et tick før et flag-flip stjæle søndagen.
+  if (!(await trainingEnabled(supabase))) return { ran: false, skipped: "flag_off" };
+
   const { claimed, tableMissing } = await claimRunDate({ supabase, runDate });
-  if (tableMissing) return { ran: false, skipped: "log_table_missing" };
+  if (tableMissing) {
+    // Fail-safe'en er korrekt (ingen mutation uden dedup-anker), men den må
+    // ikke være tavs: cron-wrapperen logger kun når ran er true, så et
+    // permanent skip ville ellers se ud som en normal uge, uge efter uge.
+    log(`sunday-value-sweep skippet: ${RIDER_VALUE_SUNDAY_LOG_TABLE} findes ikke`);
+    captureExceptionFn(
+      new Error(`sunday-value-sweep: ${RIDER_VALUE_SUNDAY_LOG_TABLE} mangler, vaerdier opdateres ikke`),
+      { tags: { cron: "sunday-value-sweep", stage: "claim" } }
+    );
+    return { ran: false, skipped: "log_table_missing" };
+  }
   if (!claimed) return { ran: false, skipped: "already_ran_today" };
 
   // ── 1. v4-refresh: base_value/CPV/typer følger de udviklede evner ──
   let valueRefresh = null;
-  let valueRefreshFailed = false;
   try {
     valueRefresh = await refreshValues(supabase, { log });
   } catch (err) {
-    // Fejler refresh'en, driver base_value ud af sync med udviklede evner uden
-    // alarm (samme klasse som #2392), capture, men fortsæt: markedsblendet
-    // arbejder videre på de værdier der ER i basen, og et fejlet trin må ikke
-    // koste hele søndagen.
-    valueRefreshFailed = true;
+    // FEJLET REFRESH ⇒ FRIGIV DAGEN OG PRØV IGEN. Vi gør bevidst IKKE noget
+    // andet her: markedsblendet springes over, fordi næste forsøgs v4-refresh
+    // ville skrive et blend fra dette tick væk igen (samme rækkefølge-fejlmode
+    // som headeren beskriver). Retry er sikker, også når refresh'en nåede at
+    // skrive nogle ryttere: den genberegner rent fra v4 og skriver kun diffs.
+    // Loftet er cadencen selv — det timelige tick giver højst ~18 forsøg inde i
+    // søndagens vindue, færre end de ~24 den 5-minutters sweep gav før #4419.
     log(`value-refresh fejlede: ${err.message}`);
     captureExceptionFn(err, { tags: { cron: "sunday-value-sweep", stage: "value-refresh" } });
+    try {
+      await releaseRunDate({ supabase, runDate });
+    } catch (releaseErr) {
+      // Kan vi ikke frigive, står claim'et, og næste tick svarer
+      // already_ran_today — den gamle adfærd. Så det skal ses.
+      log(`sunday-value-sweep kunne ikke frigive claim: ${releaseErr.message}`);
+      captureExceptionFn(releaseErr, { tags: { cron: "sunday-value-sweep", stage: "release-claim" } });
+      return { ran: false, skipped: "value_refresh_failed", runDate, claimReleased: false };
+    }
+    return { ran: false, skipped: "value_refresh_failed", runDate, claimReleased: true };
   }
 
   // ── 2. Markedsblend (#3448), SIDSTE skridt, bærer selv sine egne gates ──
@@ -143,7 +209,6 @@ export async function runSundayValueSweep({
         written: valueRefresh?.written,
         marketSweepRan: marketValueSweep?.ran === true,
         marketSweepWritten: marketValueSweep?.written,
-        valueRefreshFailed,
       },
     });
   } catch (err) {

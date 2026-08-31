@@ -31,11 +31,12 @@ CREATE TABLE IF NOT EXISTS public.rider_value_sunday_log (
   run_date             DATE NOT NULL UNIQUE,
   started_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at         TIMESTAMPTZ,
-  -- v4-refresh (trin 1)
+  -- v4-refresh (trin 1). Ingen "failed"-kolonne: fejler trin 1, FRIGIVES dagens
+  -- claim igen (DELETE), så næste times tick kan prøve forfra — en færdig række
+  -- betyder derfor altid at trin 1 lykkedes. Se sundayValueSweep.js.
   scanned              INTEGER,
   changed              INTEGER,
   written              INTEGER,
-  value_refresh_failed BOOLEAN NOT NULL DEFAULT false,
   -- markedsblend (trin 2), ran=false så længe market_value_sweep_enabled er 'off'
   market_sweep_ran     BOOLEAN NOT NULL DEFAULT false,
   market_sweep_written INTEGER

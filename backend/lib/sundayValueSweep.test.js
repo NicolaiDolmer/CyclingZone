@@ -6,25 +6,47 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { runSundayValueSweep, SUNDAY_VALUE_FROM_HOUR } from "./sundayValueSweep.js";
+import { runSundayValueSweep, SUNDAY_VALUE_FROM_HOUR, RIDER_VALUE_SUNDAY_LOG_TABLE } from "./sundayValueSweep.js";
 
 const SUNDAY_0700 = new Date("2026-06-21T05:00:00Z"); // søndag 07:00 CEST
+const SUNDAY_0800 = new Date("2026-06-21T06:00:00Z"); // søndag 08:00 CEST, næste tick
 const SUNDAY_0500 = new Date("2026-06-21T03:00:00Z"); // søndag 05:00 CEST
 const SATURDAY_0700 = new Date("2026-06-20T05:00:00Z"); // lørdag 07:00 CEST
 
 const supabase = { from: () => ({}) };
 
 function harness(overrides = {}) {
-  const calls = { refresh: 0, market: 0, claim: 0, complete: [] };
+  const calls = { refresh: 0, market: 0, claim: 0, release: 0, complete: [] };
   const base = {
     supabase,
     refreshValues: async () => { calls.refresh++; return { scanned: 10, changed: 3, written: 3 }; },
     runMarketValueSweep: async () => { calls.market++; return { ran: false, skipped: "flag_off" }; },
     claimRunDate: async () => { calls.claim++; return { claimed: true, tableMissing: false }; },
+    releaseRunDate: async () => { calls.release++; },
     completeRun: async ({ summary }) => { calls.complete.push(summary); },
+    trainingEnabled: async () => true,
     captureExceptionFn: () => {},
   };
   return { calls, args: { ...base, ...overrides } };
+}
+
+// Minimal PostgREST-agtig mock, KUN til de default-implementationer af claim/
+// release/complete der ellers ville køre første gang i prod (review 31/8).
+function mockSupabase({ insertError = null, deleteError = null } = {}) {
+  const seen = { table: null, inserts: [], deletes: [] };
+  return {
+    seen,
+    from(table) {
+      seen.table = table;
+      return {
+        insert(row) { seen.inserts.push(row); return Promise.resolve({ error: insertError }); },
+        delete() {
+          return { eq(col, val) { seen.deletes.push([col, val]); return Promise.resolve({ error: deleteError }); } };
+        },
+        update() { return { eq() { return Promise.resolve({ error: null }); } }; },
+      };
+    },
+  };
 }
 
 describe("runSundayValueSweep, gates", () => {
@@ -56,6 +78,18 @@ describe("runSundayValueSweep, gates", () => {
     assert.equal(calls.refresh, 1);
   });
 
+  it("respekterer ejerens nødbremse: daily_training_enabled off → ingen værdi-mutation", async () => {
+    // Værdi-refresh'en lå før BAG trainingSweep.js's flag-gate. Flytningen til
+    // eget job må ikke gøre nødbremsen smallere (review 31/8).
+    const { calls, args } = harness({ trainingEnabled: async () => false });
+    const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
+    assert.equal(r.ran, false);
+    assert.equal(r.skipped, "flag_off");
+    assert.equal(calls.refresh, 0);
+    assert.equal(calls.market, 0);
+    assert.equal(calls.claim, 0, "et claim mens flaget er slukket ville stjæle søndagen efter et flip");
+  });
+
   it("kræver eksplicit `now` (AGENTS.md hard rule 16)", async () => {
     const { args } = harness();
     await assert.rejects(() => runSundayValueSweep({ ...args }), /eksplicit `now`/);
@@ -73,13 +107,18 @@ describe("runSundayValueSweep, dato-claim", () => {
     assert.equal(calls.market, 0);
   });
 
-  it("manglende log-tabel → kører INTET (fail-safe, migration ikke kørt)", async () => {
+  it("manglende log-tabel → kører INTET, men skriger (fail-safe må ikke være tavs)", async () => {
+    const captured = [];
     const { calls, args } = harness({
       claimRunDate: async () => ({ claimed: false, tableMissing: true }),
+      captureExceptionFn: (err, ctx) => captured.push([ctx?.tags?.stage, err.message]),
     });
     const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
     assert.equal(r.skipped, "log_table_missing");
     assert.equal(calls.refresh, 0);
+    assert.equal(captured.length, 1, "et permanent skip uden alarm ser ud som en normal uge");
+    assert.equal(captured[0][0], "claim");
+    assert.match(captured[0][1], new RegExp(RIDER_VALUE_SUNDAY_LOG_TABLE));
   });
 
   it("claimer FØR første skrivning", async () => {
@@ -90,6 +129,61 @@ describe("runSundayValueSweep, dato-claim", () => {
     });
     await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
     assert.deepEqual(order, ["claim", "refresh"]);
+  });
+});
+
+describe("runSundayValueSweep, default-claim mod PostgREST-fejlkoder", () => {
+  // Alle øvrige tests injicerer claimRunDate som stub; DISSE kører den rigtige
+  // defaultClaimRunDate gennem sweepen, så 23505-detektionen og
+  // tabel-fravær-genkendelsen ikke debuterer i prod (review 31/8, punkt 2).
+  it("frisk dato → INSERT af run_date, dagen er claimet", async () => {
+    const sb = mockSupabase();
+    const { args } = harness();
+    delete args.claimRunDate;
+    const r = await runSundayValueSweep({ ...args, supabase: sb, now: SUNDAY_0700 });
+    assert.equal(r.ran, true);
+    assert.equal(sb.seen.table, RIDER_VALUE_SUNDAY_LOG_TABLE);
+    assert.deepEqual(sb.seen.inserts, [{ run_date: "2026-06-21" }]);
+  });
+
+  it("23505 (UNIQUE) → already_ran_today, ingen mutation", async () => {
+    const sb = mockSupabase({ insertError: { code: "23505", message: "duplicate key value violates unique constraint" } });
+    const { calls, args } = harness();
+    delete args.claimRunDate;
+    const r = await runSundayValueSweep({ ...args, supabase: sb, now: SUNDAY_0700 });
+    assert.equal(r.skipped, "already_ran_today");
+    assert.equal(calls.refresh, 0);
+  });
+
+  it("42P01 og PGRST205 → tabellen mangler (fail-safe)", async () => {
+    for (const error of [
+      { code: "42P01", message: 'relation "public.rider_value_sunday_log" does not exist' },
+      { code: "PGRST205", message: "Could not find the table 'public.rider_value_sunday_log' in the schema cache" },
+    ]) {
+      const sb = mockSupabase({ insertError: error });
+      const { args } = harness();
+      delete args.claimRunDate;
+      const r = await runSundayValueSweep({ ...args, supabase: sb, now: SUNDAY_0700 });
+      assert.equal(r.skipped, "log_table_missing", `kode ${error.code}`);
+    }
+  });
+
+  it("PGRST204 (KOLONNE-mismatch) kaster — den må ikke slå jobbet tavst fra", async () => {
+    // Den gamle regex matchede "schema cache" og dermed også kolonne-fejl: en
+    // omdøbt kolonne ville have stoppet værdi-opdateringer uge efter uge uden
+    // log, uden Sentry og uden monitor-udslag (review 31/8, fund 5).
+    const sb = mockSupabase({
+      insertError: {
+        code: "PGRST204",
+        message: "Could not find the 'scanned' column of 'rider_value_sunday_log' in the schema cache",
+      },
+    });
+    const { args } = harness();
+    delete args.claimRunDate;
+    await assert.rejects(
+      () => runSundayValueSweep({ ...args, supabase: sb, now: SUNDAY_0700 }),
+      /sunday-value-sweep claim/
+    );
   });
 });
 
@@ -109,18 +203,74 @@ describe("runSundayValueSweep, rækkefølge og fejlhåndtering", () => {
     assert.equal(r.marketValueSweep.ran, true);
   });
 
-  it("en fejlende v4-refresh stopper ikke markedsblendet, og logges", async () => {
+  it("en fejlende v4-refresh FRIGIVER dagens claim og springer blendet over", async () => {
+    // Uden frigivelsen kostede ét statement-timeout hele ugens værdiopdatering:
+    // næste tick fandt claim-rækken og svarede already_ran_today (review 31/8,
+    // fund 2). Blendet springes over, fordi næste forsøgs v4-refresh ellers
+    // ville skrive det væk igen.
     const captured = [];
     const { calls, args } = harness({
       refreshValues: async () => { throw new Error("v4 nede"); },
       captureExceptionFn: (err, ctx) => captured.push(ctx?.tags?.stage),
     });
     const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
-    assert.equal(r.ran, true);
-    assert.equal(r.valueRefresh, null);
-    assert.equal(calls.market, 1);
+    assert.equal(r.ran, false);
+    assert.equal(r.skipped, "value_refresh_failed");
+    assert.equal(r.claimReleased, true);
+    assert.equal(calls.release, 1);
+    assert.equal(calls.market, 0, "et blend nu ville blive skrevet væk af næste forsøgs refresh");
+    assert.equal(calls.complete.length, 0, "der er ingen række at opsummere efter en frigivelse");
     assert.deepEqual(captured, ["value-refresh"]);
-    assert.equal(calls.complete[0].valueRefreshFailed, true);
+  });
+
+  it("næste tick samme søndag KAN køre efter en frigivet dag", async () => {
+    // Selve pointen med frigivelsen: en transient fejl må koste 1 time, ikke
+    // 1 uge. Claim'et er delt state mellem de to tick, som i basen.
+    let claimedDate = null;
+    let attempt = 0;
+    const { calls, args } = harness({
+      claimRunDate: async ({ runDate }) => {
+        calls.claim++;
+        if (claimedDate === runDate) return { claimed: false, tableMissing: false };
+        claimedDate = runDate;
+        return { claimed: true, tableMissing: false };
+      },
+      releaseRunDate: async () => { calls.release++; claimedDate = null; },
+      refreshValues: async () => {
+        calls.refresh++;
+        if (++attempt === 1) throw new Error("statement timeout");
+        return { scanned: 10, changed: 3, written: 3 };
+      },
+    });
+    const first = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
+    assert.equal(first.skipped, "value_refresh_failed");
+    const second = await runSundayValueSweep({ ...args, now: SUNDAY_0800 });
+    assert.equal(second.ran, true, "den frigivne dag skal kunne claimes igen samme søndag");
+    assert.equal(calls.refresh, 2);
+    assert.equal(calls.market, 1);
+  });
+
+  it("default-frigivelsen sletter netop dagens række", async () => {
+    const sb = mockSupabase();
+    const { args } = harness({ refreshValues: async () => { throw new Error("v4 nede"); } });
+    delete args.claimRunDate;
+    delete args.releaseRunDate;
+    const r = await runSundayValueSweep({ ...args, supabase: sb, now: SUNDAY_0700 });
+    assert.equal(r.claimReleased, true);
+    assert.deepEqual(sb.seen.deletes, [["run_date", "2026-06-21"]]);
+  });
+
+  it("en fejlende frigivelse rapporteres, så den tabte uge kan ses", async () => {
+    const captured = [];
+    const { args } = harness({
+      refreshValues: async () => { throw new Error("v4 nede"); },
+      releaseRunDate: async () => { throw new Error("delete nede"); },
+      captureExceptionFn: (err, ctx) => captured.push(ctx?.tags?.stage),
+    });
+    const r = await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
+    assert.equal(r.skipped, "value_refresh_failed");
+    assert.equal(r.claimReleased, false);
+    assert.deepEqual(captured, ["value-refresh", "release-claim"]);
   });
 
   it("et fejlende markedsblend vælter ikke kørslen", async () => {
@@ -142,7 +292,7 @@ describe("runSundayValueSweep, rækkefølge og fejlhåndtering", () => {
     await runSundayValueSweep({ ...args, now: SUNDAY_0700 });
     assert.deepEqual(calls.complete[0], {
       scanned: 10, changed: 3, written: 3,
-      marketSweepRan: true, marketSweepWritten: 42, valueRefreshFailed: false,
+      marketSweepRan: true, marketSweepWritten: 42,
     });
   });
 

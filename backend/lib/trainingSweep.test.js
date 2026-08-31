@@ -200,6 +200,13 @@ describe("runTrainingSweep", () => {
     // 2026-06-21 er søndag. Før #4419 kaldte denne sweep værdi-pipelinen som et
     // efterhængt trin og gav den dermed sit eget kl.-22-vindue. Testen låser at
     // trænings-sweepen nu KUN træner, også på en søndag inde i vinduet.
+    //
+    // BEMÆRK hvad den IKKE beviser (review 31/8): den asserter returværdiens
+    // FORM, og et gen-indført kald pakket i try/catch ville ikke ændre formen.
+    // Vagten mod gen-indførelse er statisk og ligger i
+    // backend/valueWriteEntrypoints.test.js — den krydser kildeteksten i HELE
+    // backend/ mod listen over tilladte importører af de værdi-skrivende
+    // funktioner, så et nyt kaldested her (eller i routes/api.js) fejler i CI.
     const sunday = new Date("2026-06-21T20:30:00Z");
     const supabase = makeFullMockSupabase({ teams: [{ id: "t1" }], runs: [] });
     const result = await runTrainingSweep({
