@@ -166,6 +166,21 @@
       }
     },
     {
+      "name": "matrix-4535-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone-worktrees/feat-4535-matrix-calendar-strip/frontend"
+      ],
+      "port": 5216,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
+    },
+    {
       "name": "matrix-1146-mock",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

@@ -65,6 +65,10 @@
       "load": "Belastning"
     },
     "problemsOnly": "Kun problemer",
+    "rowRace": "Løb",
+    "rowDates": "Datoer",
+    "rowSquad": "Trup",
+    "rowDay": "Løbsdag",
     "save": "Gem plan",
     "saveCount": "{count, plural, one {Gem plan · # ændring} other {Gem plan · # ændringer}}",
     "saving": "Gemmer...",

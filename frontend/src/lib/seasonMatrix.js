@@ -3,8 +3,11 @@
 // med node --test. Komponenten (SeasonMatrix.jsx) er den eneste bruger.
 //
 // LÅST KONTRAKT (afvig ikke — se opgavebeskrivelsen for #1146):
-// 1. Kolonner = løbsdage, grupperet under datobånd. Klik på en kolonneheader
-//    åbner ?day=N (samme navigation som SeasonView.openDay).
+// 1. Kolonner = løbsdage. Klik på en kolonneheader åbner ?day=N (samme
+//    navigation som SeasonView.openDay). #4535: per-kolonne-datobåndet er
+//    fjernet — SeasonView-båndet over matrixen er sidens ENE kalender (tid +
+//    overlap); her viser hvert løbs header i stedet ét datospænd
+//    (raceDateRangeLabel), så en dato aldrig gentages i gitteret.
 // 2. HARD INVARIANT: alle display-tal her kommer fra races[].gameDayStart/
 //    gameDayEnd (raceGameDaySpan-semantikken, backend). bindingWindow/CET-
 //    ordinaler indgår ALDRIG i dette lag.
@@ -237,27 +240,31 @@ export function buildDayColumns(races) {
   return columns;
 }
 
+// "28 AUG"-kortform (fra SeasonMatrix.jsx's formatBandDate da datobånds-rækken
+// forsvandt, #4535) — sprog-neutral, samme mønster som SeasonView's fmt.range.
+// Kun raceDateRangeLabel bruger den; eksporteret for testbarhed.
+export function formatShortDate(iso) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  const s = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(d).replace(/\./g, "").toUpperCase();
+  // en-GB staver september "SEPT" (4 tegn) — klip måneden til 3 så spænd-labels er ensbredde.
+  const [day, month] = s.split(" ");
+  return `${day} ${(month || "").slice(0, 3)}`;
+}
+
 /**
- * Grupperer løbsdags-kolonnerne under datobånd (kontrakt #1: kolonner er
- * løbsdage, IKKE dato-celler — datoen er kun et bånd-overskrift, sekundær
- * linje i kolonne-headeren). Et bånd brydes ved BÅDE datoskift OG løbsskift —
- * to på-hinanden-følgende kolonner med samme dato men FORSKELLIGT løb (D1:
- * op til 5 løb samme kalenderdag) skal IKKE smelte sammen til ét bånd, for så
- * ville båndet visuelt binde to urelaterede løbs headere sammen. En løbsdag
- * uden kendt dato (ingen løb noget sted kører den dag) arver forrige kendte
- * dato — der findes ingen anden sandhed at vise.
+ * #4535 — ét datospænd pr. løbs-header ("28 AUG – 8 SEP", samme måned
+ * "1–5 SEP", endagsløb "5 SEP"). Ukendt dato (delvist backfillet spænd)
+ * → null, headeren viser da intet spænd frem for et gæt — samme
+ * ingen-fallback-disciplin som kontrakt #2.
  */
-export function buildDateBands(dayColumns, dayDatesMap) {
-  const bands = [];
-  let lastDate = null;
-  for (const col of dayColumns) {
-    const date = dayDatesMap.get(col.gameDay) ?? lastDate;
-    lastDate = date ?? lastDate;
-    const band = bands[bands.length - 1];
-    if (band && band.date === date && band.raceId === col.raceId) band.days.push(col);
-    else bands.push({ date: date ?? null, raceId: col.raceId, days: [col] });
-  }
-  return bands;
+export function raceDateRangeLabel(startIso, endIso) {
+  if (!startIso) return null;
+  if (!endIso || endIso === startIso) return formatShortDate(startIso);
+  const start = formatShortDate(startIso);
+  const end = formatShortDate(endIso);
+  const [sd, sm] = start.split(" ");
+  const [, em] = end.split(" ");
+  return sm === em ? `${sd}–${end}` : `${start} – ${end}`;
 }
 
 /**

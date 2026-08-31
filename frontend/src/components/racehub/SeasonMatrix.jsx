@@ -17,7 +17,7 @@ import { Spinner, EmptyState, ErrorState, Button, FlagIcon, LockIcon, AlertTrian
 import SeasonMatrixCellPopover from "./SeasonMatrixCellPopover.jsx";
 import {
   ROLE_LETTER, buildDraftsFromEntries, roleOf, dirtyRaceIds, roleBadgeClass,
-  buildDayColumns, buildDateBands, buildRaceHeaderGroups, buildRiderRowSegments, countProblems,
+  buildDayColumns, raceDateRangeLabel, buildRaceHeaderGroups, buildRiderRowSegments, countProblems,
   raceCurrentCount, riderLoadDays, emptyRaceDraft,
   setRiderRole, removeRiderFromRace, conflictingEntryForRace, buildSaveError,
 } from "../../lib/seasonMatrix.js";
@@ -88,11 +88,18 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   // kolonne pr. (løb, løbsdag) — se seasonMatrix.js's fil-header for begrundelsen.
   const dayColumns = useMemo(() => buildDayColumns(races), [races]);
   const dayDatesMap = useMemo(() => new Map((data?.dayDates ?? []).map((d) => [d.gameDay, d.date])), [data]);
-  const dateBands = useMemo(() => buildDateBands(dayColumns, dayDatesMap), [dayColumns, dayDatesMap]);
+  // #4535 (ejer-retning 1/9 efter første udkast): matrixen bærer IKKE sin egen
+  // kalender — SeasonView-båndet OVER matrixen er sidens ENE kalender (tid +
+  // overlap). Her fjernes kun dato-gentagelsen: per-kolonne-datobåndet er væk,
+  // og hvert løbs header viser ét datospænd (raceDateRangeLabel).
   // Race-navn-headeren: efter akse-konverteringen er hver kolonne entydigt ét
   // løb, så en enkelt header-række altid rækker (buildRaceHeaderGroups' egen
   // fil-header forklarer hvorfor den tidligere lane-pakning er fjernet).
   const raceLanes = useMemo(() => buildRaceHeaderGroups(dayColumns), [dayColumns]);
+  // Post-akse-konvertering (kontrakt #7) er der altid præcis én lane.
+  const raceGroups = raceLanes[0] ?? [];
+  // Findes der smalle grupper, får LØB-rækken en skrå-label-zone over båndet.
+  const anyNarrowGroup = raceGroups.some((g) => g.colSpan < 5);
   const problems = useMemo(() => countProblems(races, draftByRace), [races, draftByRace]);
   const dirtyIds = useMemo(() => dirtyRaceIds(draftByRace, serverByRace), [draftByRace, serverByRace]);
   const dirtyIdSet = useMemo(() => new Set(dirtyIds), [dirtyIds]);
@@ -305,67 +312,114 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             <col style={{ width: 148 }} />
             {dayColumns.map((col) => <col key={col.key} style={{ width: colWidth }} />)}
           </colgroup>
+          {/* #4535 (ejer-retning 1/9, 2. runde): ÉN informationstype pr. header-
+              række, hver med sin egen label i den fastlåste venstrekolonne —
+              den tidligere kombi-række (datospænd + navn + trup-tal i samme
+              celle) kollapsede til ulæselig talgrød for smalle endagsløb.
+              Rækkerne: Løb (navn, farvet bånd) · Datoer (spænd) · Trup (n/max)
+              · Løbsdag (etape-nr, klikbar). Smalle celler viser hvad der kan
+              være; resten bor i title-tooltips. */}
           <thead>
             <tr>
-              <th rowSpan={raceLanes.laneCount + 2} className="sticky left-0 z-sticky bg-cz-subtle border-b border-r border-cz-border px-3 py-1.5 text-left align-bottom" style={{ minWidth: 148 }}>
-                <span className="text-2xs uppercase tracking-wide text-cz-3">{t("matrix.heading")}</span>
-              </th>
-              {dateBands.map((band, i) => (
-                <th
-                  key={`${band.date}-${i}`}
-                  colSpan={band.days.length}
-                  title={band.date ?? undefined}
-                  className="border-b border-cz-border bg-cz-subtle px-1 py-1 text-2xs uppercase tracking-wide text-cz-3 font-semibold whitespace-nowrap overflow-hidden text-ellipsis"
-                >
-                  {band.date ? formatBandDate(band.date) : "—"}
-                </th>
-              ))}
-            </tr>
-            {raceLanes.map((laneGroups, laneIdx) => (
-              <tr key={`lane-${laneIdx}`}>
-                {laneGroups.map((g) => {
-                  const race = raceById.get(g.raceId);
-                  // Spillertest-punkt 1: den kolonne "Gem plan" afviste for, markeret
-                  // direkte i gitteret — ikke kun i banneret ovenfor.
-                  const hasError = saveError?.raceId === g.raceId;
-                  return (
-                    <th
-                      key={g.raceId}
-                      colSpan={g.colSpan}
-                      title={race?.name}
-                      className={`border-b px-1 py-1 text-3xs font-medium overflow-hidden whitespace-nowrap ${
-                        hasError ? "border-cz-danger bg-cz-danger/10 text-cz-danger" : `border-cz-border ${race ? raceGroupTint(race) : ""}`
+              <HeaderLabelCell label={t("matrix.rowRace")} alignBottom />
+              {raceGroups.map((g) => {
+                const race = raceById.get(g.raceId);
+                // Spillertest-punkt 1: den kolonne "Gem plan" afviste for, markeret
+                // direkte i gitteret — ikke kun i banneret ovenfor.
+                const hasError = saveError?.raceId === g.raceId;
+                const fullRange = race ? raceDateRangeLabel(dayDatesMap.get(race.gameDayStart), dayDatesMap.get(race.gameDayEnd)) : null;
+                // Ejer-retning 1/9 (3. runde): brede grupper beholder det VANDRETTE
+                // navn i det tintede bånd (som live's Giro-bånd — det var pænt);
+                // smalle grupper (< 5 kolonner) får navnet SKRÅT op over båndet i
+                // stedet for trunkeret "Gr…"-grød. 45° fra gruppens venstre kant —
+                // nabolabels er parallelle og kolliderer ikke (30px vandret ≈ 21px
+                // vinkelret afstand > linjehøjden).
+                const wide = g.colSpan >= 5;
+                return (
+                  <th
+                    key={g.raceId}
+                    colSpan={g.colSpan}
+                    title={race ? (fullRange ? `${race.name} · ${fullRange}` : race.name) : undefined}
+                    className={`relative border-b p-0 align-bottom ${hasError ? "border-cz-danger" : "border-cz-border"}`}
+                    style={{ height: anyNarrowGroup ? 104 : 26 }}
+                  >
+                    <div
+                      className={`absolute inset-x-0 bottom-0 flex h-6 items-center px-1 text-3xs font-medium overflow-hidden whitespace-nowrap ${
+                        hasError ? "bg-cz-danger/10 text-cz-danger" : race ? raceGroupTint(race) : ""
                       }`}
                     >
-                      {race ? (
-                        <span className="flex items-center justify-between gap-1">
+                      {wide && race ? (
+                        <span className="flex min-w-0 items-center gap-1">
                           {hasError && <AlertTriangleIcon size={10} className="shrink-0" aria-hidden="true" />}
                           <span className="truncate">{race.name}</span>
-                          <span className="tabular-nums text-cz-3 shrink-0">
-                            {t("matrix.squadCount", { count: raceCurrentCount(draftByRace, race.id), max: race.sizeMax })}
-                          </span>
                         </span>
                       ) : null}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
+                    </div>
+                    {!wide && race && (
+                      <span
+                        className={`pointer-events-none absolute bottom-7 left-1 z-10 inline-block origin-bottom-left -rotate-45 overflow-hidden text-ellipsis whitespace-nowrap font-data text-3xs font-medium ${
+                          hasError ? "text-cz-danger" : "text-cz-2"
+                        }`}
+                        style={{ maxWidth: 104 }}
+                      >
+                        {race.name}
+                      </span>
+                    )}
+                  </th>
+                );
+              })}
+            </tr>
             <tr>
+              <HeaderLabelCell label={t("matrix.rowDates")} />
+              {raceGroups.map((g) => {
+                const race = raceById.get(g.raceId);
+                const fullRange = race ? raceDateRangeLabel(dayDatesMap.get(race.gameDayStart), dayDatesMap.get(race.gameDayEnd)) : null;
+                return (
+                  <th
+                    key={g.raceId}
+                    colSpan={g.colSpan}
+                    title={fullRange ?? undefined}
+                    className="border-b border-cz-border px-1 py-0.5 text-left font-mono text-3xs font-normal tracking-wide text-cz-3 overflow-hidden whitespace-nowrap"
+                  >
+                    {/* Smalle grupper (<3 kolonner ≈ endagsløb) viser intet frem
+                        for et afkortet "28…" — datoen står i tooltip + kalenderen. */}
+                    {g.colSpan >= 3 ? fullRange : null}
+                  </th>
+                );
+              })}
+            </tr>
+            <tr>
+              <HeaderLabelCell label={t("matrix.rowSquad")} />
+              {raceGroups.map((g) => {
+                const race = raceById.get(g.raceId);
+                return (
+                  <th
+                    key={g.raceId}
+                    colSpan={g.colSpan}
+                    className="border-b border-cz-border px-1 py-0.5 text-center font-mono text-3xs font-normal tabular-nums text-cz-3"
+                  >
+                    {race ? t("matrix.squadCount", { count: raceCurrentCount(draftByRace, race.id), max: race.sizeMax }) : null}
+                  </th>
+                );
+              })}
+            </tr>
+            <tr>
+              <HeaderLabelCell label={t("matrix.rowDay")} />
               {dayColumns.map((col) => {
-                // Etape-nummer INDEN i løbet, 1-baseret (kontrakt #7: col.stageIndex
-                // er allerede udledt entydigt af KOLONNENS EGET løb — ingen races.find()-
-                // opslag her længere, så tallet kan ikke længere tilhøre "det forkerte"
-                // af flere løb der deler en kalenderdag).
+                // Ejer-retning 1/9: SÆSONENS løbsdags-nummer (col.gameDay — samme
+                // akse som dags-boardet), IKKE etape-nummeret inden i løbet: 1..N
+                // pr. løb læste som "hvor mange dage løbet varer", ikke "hvilken
+                // løbsdag det køres". Etape-nummeret kan aflæses af positionen i
+                // gruppen; dags-boardet har detaljerne.
                 return (
                   <th key={col.key} className="border-b border-cz-border p-0" style={{ width: colWidth, minWidth: colWidth }}>
                     <button
                       type="button"
                       onClick={() => { const d = dayDatesMap.get(col.gameDay); if (d) onOpenDay?.(d); }}
-                      title={t("matrix.dayAria", { index: col.stageIndex, date: dayDatesMap.get(col.gameDay) ?? "?" })}
+                      title={t("matrix.dayAria", { index: col.gameDay, date: dayDatesMap.get(col.gameDay) ?? "?" })}
                       className="w-full h-6 flex items-center justify-center text-3xs font-mono tabular-nums text-cz-3 hover:text-cz-accent-t hover:bg-cz-subtle"
                     >
-                      {col.stageIndex}
+                      {col.gameDay}
                     </button>
                   </th>
                 );
@@ -398,7 +452,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                         const hasError = race && saveError?.raceId === race.id;
                         return (
                           <td
-                            key={seg.day}
+                            key={`${seg.raceId}:${seg.day}`}
                             className={`border-b p-0 ${peak ? "bg-cz-accent/10" : ""} ${
                               hasError ? "border-cz-danger outline outline-1 outline-offset-[-1px] outline-cz-danger"
                                 : isDraftCell ? "border-cz-border outline outline-1 outline-offset-[-1px] outline-dashed outline-cz-accent-t" : "border-cz-border"
@@ -511,10 +565,17 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   );
 }
 
-// "27 Aug"-datobånd-label, sprog-neutral kort form (samme mønster som SeasonView's fmt.range).
-function formatBandDate(iso) {
-  const d = new Date(`${iso}T00:00:00Z`);
-  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(d).replace(/\./g, "").toUpperCase();
+// #4535: header-række-label i den fastlåste venstrekolonne — én pr. informations-
+// type (Løb/Datoer/Trup/Løbsdag), så tallene i gitteret kan aflæses uden gætteri.
+function HeaderLabelCell({ label, alignBottom = false }) {
+  return (
+    <th
+      className={`sticky left-0 z-sticky bg-cz-subtle border-b border-r border-cz-border px-3 py-0.5 text-left ${alignBottom ? "align-bottom pb-1.5" : "align-middle"}`}
+      style={{ minWidth: 148 }}
+    >
+      <span className="font-data text-3xs uppercase tracking-wide text-cz-3">{label}</span>
+    </th>
+  );
 }
 
 // Race-gruppe-header-tint: monument/GT skiller sig ud, samme signal som SeasonView's bandClasses.

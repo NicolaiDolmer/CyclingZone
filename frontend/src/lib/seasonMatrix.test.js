@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   emptyRaceDraft, buildDraftsFromEntries, roleOf, setRiderRole, removeRiderFromRace, raceDraftDirty, dirtyRaceIds,
-  buildDayColumns, buildDateBands, buildRiderRowSegments, countProblems,
+  buildDayColumns, raceDateRangeLabel, buildRiderRowSegments, countProblems,
   buildRaceHeaderGroups, riderLoadDays, roleBadgeClass, conflictingEntryForRace, raceLockLabel, buildSaveError,
 } from "./seasonMatrix.js";
 
@@ -176,36 +176,14 @@ test("buildDayColumns: løb uden gyldigt spænd (mangler game_day) bidrager inte
   assert.deepEqual(buildDayColumns(races), []);
 });
 
-test("buildDateBands: grupperer sammenhængende kolonner med samme dato OG samme løb under ét bånd", () => {
-  const races = [{ id: "r1", gameDayStart: 3, gameDayEnd: 5 }];
-  const cols = buildDayColumns(races);
-  const dayDates = new Map([[3, "2027-01-05"], [4, "2027-01-05"], [5, "2027-01-06"]]);
-  const bands = buildDateBands(cols, dayDates);
-  assert.deepEqual(bands.map((b) => [b.date, b.raceId, b.days.length]), [
-    ["2027-01-05", "r1", 2],
-    ["2027-01-06", "r1", 1],
-  ]);
-});
-
-test("buildDateBands: to løb der deler en kalenderdag bryder båndet, selv med samme dato (ingen sammensmeltning på tværs af løb)", () => {
-  const races = [
-    { id: "r1", gameDayStart: 5, gameDayEnd: 5 },
-    { id: "r2", gameDayStart: 5, gameDayEnd: 5 },
-  ];
-  const cols = buildDayColumns(races);
-  const dayDates = new Map([[5, "2027-01-05"]]);
-  const bands = buildDateBands(cols, dayDates);
-  assert.equal(bands.length, 2, "samme dato men FORSKELLIGT loeb -> to baand");
-  assert.deepEqual(bands.map((b) => b.raceId), ["r1", "r2"]);
-  assert.ok(bands.every((b) => b.date === "2027-01-05"));
-});
-
-test("buildDateBands: en løbsdag uden kendt dato arver forrige bånds dato (ingen dato-gæt)", () => {
-  const races = [{ id: "r1", gameDayStart: 3, gameDayEnd: 4 }];
-  const cols = buildDayColumns(races);
-  const dayDates = new Map([[3, "2027-01-05"]]);
-  const bands = buildDateBands(cols, dayDates);
-  assert.deepEqual(bands.map((b) => [b.date, b.days.length]), [["2027-01-05", 2]]);
+// #4535 — datobåndene (buildDateBands) er fjernet; datoen bor i SeasonView-
+// båndet + som ét spænd pr. løbs-header.
+test("raceDateRangeLabel: tværs af måneder, samme måned, endagsløb og ukendt dato", () => {
+  assert.equal(raceDateRangeLabel("2027-08-28", "2027-09-08"), "28 AUG – 8 SEP");
+  assert.equal(raceDateRangeLabel("2027-09-01", "2027-09-05"), "1–5 SEP");
+  assert.equal(raceDateRangeLabel("2027-09-05", "2027-09-05"), "5 SEP");
+  assert.equal(raceDateRangeLabel("2027-09-05", null), "5 SEP");
+  assert.equal(raceDateRangeLabel(null, "2027-09-05"), null);
 });
 
 test("buildRiderRowSegments: ét spænd pr. holdudtag (kontrakt #3), tomme celler ellers", () => {

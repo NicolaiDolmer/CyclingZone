@@ -65,6 +65,10 @@
       "load": "Load"
     },
     "problemsOnly": "Problems only",
+    "rowRace": "Race",
+    "rowDates": "Dates",
+    "rowSquad": "Squad",
+    "rowDay": "Race day",
     "save": "Save plan",
     "saveCount": "{count, plural, one {Save plan · # change} other {Save plan · # changes}}",
     "saving": "Saving...",

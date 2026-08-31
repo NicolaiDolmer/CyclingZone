@@ -606,10 +606,13 @@ export function forumPostDetail(postId) {
 }
 
 // #1146: seed til saesonmatrixen (GET /api/races/selection/season). Formen er
-// endpoint-kontrakten fra tests/e2e/1146-season-matrix.spec.js. Loebsnavne og
-// dag/dato-fordelingen spejler den rigtige S3 D1-aabningsuge (28/8-31/8, maalt
-// 27/8: to loebsdage pr. dato, fem paa 31/8, Giro-hviledag paa dag 10), saa
-// preview viser samme kolonne-taethed og lane-overlap som prod ville.
+// endpoint-kontrakten fra tests/e2e/1146-season-matrix.spec.js. #4535: loebene
+// SPEJLER SEED_CALENDAR's egne pulje-2-loeb (samme navne, game days og juli-
+// datoer), saa SeasonView-baandet (sidens ENE kalender) og matrixen viser SAMME
+// saeson paa preview — det tidligere S3-saersaet gjorde de to flader usammen-
+// haengende og preview ubrugelig til at vurdere kalender/matrix-samspillet.
+// Overlap-tilfaeldene er kalenderens egne: E3 paa THP's sidste dag (gd 17) og
+// Chrono des Nations samme dag som Giro Veneto (gd 20).
 const MATRIX_ABILITIES = (over = {}) => Object.fromEntries(
   ["climbing", "time_trial", "sprint", "punch", "endurance", "cobblestone", "acceleration",
     "recovery", "tactics", "positioning", "flat", "tempo", "durability", "aggression", "descending"]
@@ -617,25 +620,31 @@ const MATRIX_ABILITIES = (over = {}) => Object.fromEntries(
 );
 const SEASON_MATRIX_SEED = {
   enabled: true,
-  season: { id: "season-preview-3", number: 3 },
-  ownPoolId: 1,
+  season: { id: "season-e2e-1", number: 1 },
+  ownPoolId: 2,
   readOnly: false,
   races: [
-    { id: "smx-giro", name: "Giro della Penisola", raceClass: "GiroVuelta", stages: 18, status: "scheduled", stagesCompleted: 0,
-      gameDayStart: 1, gameDayEnd: 11, restGameDays: [10], sizeMin: 8, sizeMax: 8,
-      demandVector: { climbing: 0.5, tempo: 0.3, recovery: 0.2 } },
-    { id: "smx-tsa", name: "Tour of South Australia", raceClass: "OtherWorldTourA", stages: 6, status: "scheduled", stagesCompleted: 0,
-      gameDayStart: 1, gameDayEnd: 6, restGameDays: [], sizeMin: 7, sizeMax: 7,
-      demandVector: { sprint: 0.5, flat: 0.5 } },
-    { id: "smx-open", name: "De Openingsklassieker", raceClass: "OtherWorldTourC", stages: 1, status: "scheduled", stagesCompleted: 0,
-      gameDayStart: 1, gameDayEnd: 1, restGameDays: [], sizeMin: 6, sizeMax: 6,
+    { id: "smx-namur", name: "Grand Prix de Namur", raceClass: "Class2", stages: 1, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 12, gameDayEnd: 12, restGameDays: [], sizeMin: 6, sizeMax: 6,
       demandVector: { sprint: 0.7, positioning: 0.3 } },
-    { id: "smx-ocean", name: "Ocean Road Classic", raceClass: "OtherWorldTourC", stages: 1, status: "scheduled", stagesCompleted: 0,
-      gameDayStart: 3, gameDayEnd: 3, restGameDays: [], sizeMin: 6, sizeMax: 6,
+    { id: "smx-thp", name: "Tour des Hauts Plateaux", raceClass: "ProSeries", stages: 4, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 14, gameDayEnd: 17, restGameDays: [], sizeMin: 6, sizeMax: 6,
+      demandVector: { climbing: 0.6, tempo: 0.4 } },
+    { id: "smx-e3", name: "E3 Saxo Classic", raceClass: "OtherWorldTourC", stages: 1, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 17, gameDayEnd: 17, restGameDays: [], sizeMin: 6, sizeMax: 6,
       demandVector: { cobblestone: 0.6, punch: 0.4 } },
-    { id: "smx-harel", name: "Klassieker van Harelbeke", raceClass: "OtherWorldTourB", stages: 1, status: "scheduled", stagesCompleted: 0,
-      gameDayStart: 10, gameDayEnd: 10, restGameDays: [], sizeMin: 6, sizeMax: 6,
-      demandVector: { punch: 0.8, climbing: 0.2 } },
+    { id: "smx-veneto", name: "Giro Veneto", raceClass: "Class1", stages: 1, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 20, gameDayEnd: 20, restGameDays: [], sizeMin: 6, sizeMax: 6,
+      demandVector: { climbing: 0.6, punch: 0.4 } },
+    { id: "smx-chrono", name: "Chrono des Nations", raceClass: "OtherWorldTourC", stages: 1, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 20, gameDayEnd: 20, restGameDays: [], sizeMin: 6, sizeMax: 6,
+      demandVector: { time_trial: 1 } },
+    { id: "smx-klasika", name: "Klasika Bizkaia", raceClass: "Class1", stages: 1, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 22, gameDayEnd: 22, restGameDays: [], sizeMin: 6, sizeMax: 6,
+      demandVector: { time_trial: 0.8, flat: 0.2 } },
+    { id: "smx-burgos", name: "Vuelta a Burgos", raceClass: "ProSeries", stages: 5, status: "scheduled", stagesCompleted: 0,
+      gameDayStart: 26, gameDayEnd: 30, restGameDays: [], sizeMin: 6, sizeMax: 6,
+      demandVector: { climbing: 0.5, tempo: 0.3, sprint: 0.2 } },
   ],
   riders: [
     { id: "smx-r1", name: "Seungho Hong", primaryType: "gc", secondaryType: null, abilities: MATRIX_ABILITIES({ climbing: 74, recovery: 70 }), injured: false },
@@ -646,19 +655,22 @@ const SEASON_MATRIX_SEED = {
     { id: "smx-r6", name: "Pieter Vermeulen", primaryType: "rouleur", secondaryType: null, abilities: MATRIX_ABILITIES({ tempo: 69, flat: 67 }), injured: false },
   ],
   entries: [
-    { raceId: "smx-giro", riderId: "smx-r1", raceRole: "captain" },
-    { raceId: "smx-giro", riderId: "smx-r5", raceRole: "helper" },
-    { raceId: "smx-tsa", riderId: "smx-r2", raceRole: "captain" },
-    { raceId: "smx-tsa", riderId: "smx-r6", raceRole: "helper" },
-    { raceId: "smx-ocean", riderId: "smx-r4", raceRole: "free_role" },
+    { raceId: "smx-thp", riderId: "smx-r1", raceRole: "captain" },
+    { raceId: "smx-thp", riderId: "smx-r5", raceRole: "helper" },
+    { raceId: "smx-namur", riderId: "smx-r2", raceRole: "captain" },
+    { raceId: "smx-namur", riderId: "smx-r6", raceRole: "helper" },
+    { raceId: "smx-e3", riderId: "smx-r4", raceRole: "free_role" },
+    { raceId: "smx-burgos", riderId: "smx-r3", raceRole: "captain" },
   ],
+  // Samme gameDay->dato-mapping som SEED_CALENDAR.days (juli 2026, deterministisk).
   dayDates: [
-    { gameDay: 1, date: "2026-08-28" }, { gameDay: 2, date: "2026-08-28" },
-    { gameDay: 3, date: "2026-08-29" }, { gameDay: 4, date: "2026-08-29" },
-    { gameDay: 5, date: "2026-08-30" }, { gameDay: 6, date: "2026-08-30" },
-    { gameDay: 7, date: "2026-08-31" }, { gameDay: 8, date: "2026-08-31" },
-    { gameDay: 9, date: "2026-08-31" }, { gameDay: 10, date: "2026-08-31" },
-    { gameDay: 11, date: "2026-08-31" },
+    { gameDay: 12, date: "2026-07-02" },
+    { gameDay: 14, date: "2026-07-04" }, { gameDay: 15, date: "2026-07-05" },
+    { gameDay: 16, date: "2026-07-06" }, { gameDay: 17, date: "2026-07-07" },
+    { gameDay: 20, date: "2026-07-10" }, { gameDay: 22, date: "2026-07-12" },
+    { gameDay: 26, date: "2026-07-16" }, { gameDay: 27, date: "2026-07-17" },
+    { gameDay: 28, date: "2026-07-18" }, { gameDay: 29, date: "2026-07-19" },
+    { gameDay: 30, date: "2026-07-20" },
   ],
 };
 

@@ -384,6 +384,14 @@ export default function SeasonView({ onSwitchView }) {
 
             {/* Løbs-bænde */}
             <div className="relative mt-5" style={{ height: `${areaHeight}px` }}>
+              {/* #4535: uge-ticks trækkes ned gennem banerne som hairlines, så
+                  datoer/overlap kan aflæses direkte i båndet — kalenderen her er
+                  sidens ENE tidsvisning (matrixens eget datobånd er fjernet). */}
+              {ticks.map((tick) => (
+                tick.edge !== "end" && (
+                  <div key={tick.iso} className="absolute inset-y-0 w-px bg-cz-border/70" style={{ left: `${tick.pct}%` }} aria-hidden="true" />
+                )
+              ))}
               {todayPct != null && (
                 <div className="absolute inset-y-0 w-px bg-cz-accent/60" style={{ left: `${todayPct}%` }} aria-hidden="true" />
               )}

@@ -182,7 +182,9 @@ test.describe("Sæsonmatrix (#1146)", () => {
     const bodyOverflowX = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
     expect(bodyOverflowX).toBe(true);
 
-    const dayHeaderButton = page.locator("thead tr:nth-child(3) button").first();
+    // #4535: headeren er nu 4 label-mærkede rækker (Løb/Datoer/Trup/Løbsdag) —
+    // dag-knapperne bor i række 4.
+    const dayHeaderButton = page.locator("thead tr:nth-child(4) button").first();
     const box = await dayHeaderButton.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(24);
 

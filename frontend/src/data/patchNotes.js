@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.226",
+    "date": "2026-09-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Season view: one calendar, a readable matrix",
+          "body": "The season calendar above the matrix is now the one place to read time and overlap: week lines run through the race bars, so overlapping races are easy to spot. The matrix header is split into labelled rows, Race, Dates, Squad and Race day, so every number explains itself, and the cramped per-column date labels are gone."
+        },
+        "da": {
+          "title": "Sæsonvisning: én kalender, en læsbar matrix",
+          "body": "Sæsonkalenderen over matrixen er nu det ene sted man aflæser tid og overlap: ugelinjer løber gennem løbs-bjælkerne, så overlappende løb er lette at få øje på. Matrixens header er delt i navngivne rækker, Løb, Datoer, Trup og Løbsdag, så hvert tal forklarer sig selv, og de klemte datolabels pr. kolonne er væk."
+        },
+        "refs": [4535]
+      }
+    ]
+  },
+  {
     "version": "7.225",
     "date": "2026-08-31",
     "label": "Beta",
