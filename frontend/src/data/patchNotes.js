@@ -59,6 +59,20 @@ export const PATCHES = [
           "body": "Hjælp dækker nu hele forløbet: hvornår en flerårsplan udløber og går tilbage til forhandling, at alle tre plantyper kan udløse et bonustilbud, og hvorfor tidspunktet for tilbuddet varierer."
         },
         "refs": [4382]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Discord",
+        "en": {
+          "title": "A dead Discord connection now tells you",
+          "body": "A connection that permanently fails releases itself instead of staying silent, so you get a reconnect prompt in settings instead of simply never hearing from the bot again."
+        },
+        "da": {
+          "title": "En død Discord-forbindelse siger nu til",
+          "body": "En forbindelse der permanent fejler kobler sig selv fra i stedet for at tie, så du får en genforbind-besked i indstillingerne i stedet for bare aldrig at høre fra botten igen."
+        },
+        "refs": [3483]
       }
     ]
   },
