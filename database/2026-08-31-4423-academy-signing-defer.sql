@@ -61,6 +61,12 @@
 ALTER TABLE riders
   ADD COLUMN IF NOT EXISTS pending_academy_signing BOOLEAN NOT NULL DEFAULT false;
 
+-- riders bruger KOLONNE-grants, ikke tabel-grants (#2238/#1309): uden denne er
+-- kolonnen usynlig for klienten og en select af den 403'er tavst. Flaget er
+-- ikke foelsomt (spilleren notificeres selv om tilstanden), og et fremtidigt
+-- "afventer akademi-flytning"-badge skal kunne laese det.
+GRANT SELECT (pending_academy_signing) ON public.riders TO anon, authenticated;
+
 CREATE OR REPLACE FUNCTION finalize_academy_acquisition(
   p_team_id UUID,
   p_rider_id UUID,

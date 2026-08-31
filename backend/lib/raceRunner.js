@@ -136,7 +136,10 @@ async function flushDeferredAcademySigningsSafe({ supabase, race }) {
       console.log(`  🎓 ${ridersFlushed} udskudt akademi-optagelse(r) flushet efter ${race.name || race.id} (#4423)`);
     }
   } catch (err) {
+    // Fejlen må ikke vælte finaliseringen, men den må heller ikke forsvinde:
+    // en fejlet flush efterlader rytteren permanent i pending-limbo.
     console.error(`  ⚠️  deferred-academy-signing flush fejlede for race ${race.id} (#4423, ikke-fatal):`, err.message);
+    captureException(err, { tags: { flow: "race-run", stage: "deferred-academy-signing-flush" }, raceId: race.id });
   }
 }
 

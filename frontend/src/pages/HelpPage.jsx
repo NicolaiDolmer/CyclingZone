@@ -412,6 +412,7 @@ const FAQ_KEYS = [
   "riderDevelopment",
   "academyIntakeScoutingFaq",
   "academyIntakeExpiryFaq",
+  "academySigningMidRaceFaq",
   "howToWinRace",
   "whyReportFaq",
   "riderAbilities",

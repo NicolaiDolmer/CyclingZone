@@ -121,12 +121,22 @@ export async function flushDeferredAcademySigningsForRace(supabase, race, { noti
   const riderIds = [...new Set((entries || []).map((e) => e.rider_id))];
   if (riderIds.length === 0) return empty;
 
-  const { data: pending, error: pErr } = await supabase
-    .from("riders")
-    .select("id, firstname, lastname, team_id")
-    .in("id", riderIds)
-    .eq("pending_academy_signing", true);
-  if (pErr) throw new Error(`flushDeferredAcademySigningsForRace: pending riders lookup failed: ${pErr.message}`);
+  // fetchAllRows: .in() bounder ikke SVARET — et stort felt kan overstige
+  // PostgRESTs 1000-rækkers cap, og pending-flag der falder udenfor ville
+  // aldrig blive flushet (pagination-guard-klassen).
+  let pending;
+  try {
+    pending = await fetchAllRows(() =>
+      supabase
+        .from("riders")
+        .select("id, firstname, lastname, team_id")
+        .in("id", riderIds)
+        .eq("pending_academy_signing", true)
+        .order("id")
+    );
+  } catch (err) {
+    throw new Error(`flushDeferredAcademySigningsForRace: pending riders lookup failed: ${err.message}`);
+  }
   if (!pending || pending.length === 0) return empty;
 
   // Overlap-guard: en rytter i FLERE aktive etapeløb flushes først når det
