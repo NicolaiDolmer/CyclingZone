@@ -1,4 +1,8 @@
-# Session-prompt: Planner-forbedringer (matrix-hotfix + tidsakse + kø)
+# Session-prompt: Planner-forbedringer (HOTFIX #4534 FØRST, så tidsakse + kø)
+
+> **HASTER (ejer 31/8 ~22:30): Opgave 1 (#4534) er et LIVE game-breaking hul** — enhver spiller kan
+> fjerne ryttere fra igangværende løb lige nu. Kør opgave 1 til merget hotfix FØR alt andet i prompten;
+> opgave 2-3 og beslutningerne kan vente til hotfixet er live.
 
 > Skrevet 31/8 2026 sent, umiddelbart efter at sæsonmatrixen (PR #4323) gik live og fik sin første
 > spillerfeedback (friisisch + ejeren, Discord 22:08-22:22). Kopiér alt under linjen ind som første besked.
@@ -9,14 +13,20 @@
 ---
 
 Du forbedrer sæsonplanneren i CyclingZone. Svar på dansk; spillervendt copy EN først, DA under (æøå).
-Læs `docs/NOW.md` først — viser "🤖 Working agent" en anden aktiv session → STOP og spørg.
 
-## Fase 0 — genverificér (5 min)
+**Parallel-session-klarering (ejer-godkendt 31/8 ~22:30):** 31/8-orkestrator-sessionen kan stadig være
+aktiv med SIT restarbejde (PR #4533-merge + close-out af NOW/MASTERPLAN). Den rører IKKE #4534/#4535.
+Du må starte selvom NOW.md viser den som working agent — men arbejd UDELUKKENDE i dit eget worktree
+(`pwsh -File scripts/new-worktree.ps1 -Branch fix/4534-matrix-remove-guard -FromBranch origin/main`)
+og rør ikke #4533, NOW.md eller MASTERPLAN før orkestratoren har lukket ud.
+
+## Fase 0 — genverificér (2 min, blokér ikke på resten)
 
 1. `gh issue view 4534 --json state` og `gh issue view 4535 --json state` — byg kun på det åbne.
-2. Tjek at PR #4533 (#4485-kodefixet) er MERGED; er den ikke, er det første punkt.
-3. Nattens kalender-invariant-audit (kørte 05:50 dansk tid) SKAL være grøn — det er #4507's endelige bevis.
-   `gh run list --workflow calendar-invariant-audit.yml --limit 1`. Rød → diagnosticér før alt andet.
+2. `git pull` i main-checkoutet? NEJ — fetch i dit worktree er nok. Basér på `origin/main`.
+3. KUN hvis klokken er efter ~06:00: tjek nattens kalender-invariant-audit
+   (`gh run list --workflow calendar-invariant-audit.yml --limit 1`) — grøn = #4507-beviset. Rød →
+   notér det, men #4534-hotfixet går stadig FORREST.
 
 ## Opgave 1 — #4534 HOTFIX (kritisk, FØRST)
 
