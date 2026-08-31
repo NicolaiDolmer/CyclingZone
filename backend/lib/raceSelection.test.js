@@ -94,20 +94,20 @@ test("saveSelection: freeRoleIds mappes til race_role='free_role' i replace_race
   assert.deepEqual(rpcArgs.args.p_roles, ["captain", "free_role", "free_role", "helper"]);
 });
 
-// #2637: en skadet rytter skal altid kunne fjernes fra en trup — også midt i et aktivt
-// etapeløb. saveSelection({ removalOnly: true }) skal ikke kaste race_lineup_frozen
-// selv når løbet er i gang (stages_completed>0); uden flaget (default false) kaster den.
-test("saveSelection: removalOnly=true omgår race_lineup_frozen-guarden for et igangværende løb", async () => {
-  let rpcArgs = null;
-  const supabase = { rpc: (name, args) => { rpcArgs = { name, args }; return Promise.resolve({ error: null }); } };
+// #4534 (regression, live-fund 31/8): den tidligere #2637-bypass (removalOnly) er fjernet —
+// OGSÅ en ren fjernelse afvises på et igangværende løb. En kalder der stadig sender det
+// gamle flag får ingen særbehandling (parametren findes ikke længere).
+test("saveSelection: ren fjernelse afvises på et igangværende løb — ingen removalOnly-bypass (#4534)", async () => {
+  const supabase = { rpc: () => Promise.resolve({ error: null }) };
   const race = { id: "race1", status: "scheduled", stages_completed: 3 };
-  await saveSelection({
-    supabase, race, teamId: "t1",
-    riderIds: ["r1", "r2"], captainId: "r1", sprintCaptainId: null, hunterId: null, freeRoleIds: [],
-    removalOnly: true,
-  });
-  assert.equal(rpcArgs.name, "replace_race_selection");
-  assert.deepEqual(rpcArgs.args.p_rider_ids, ["r1", "r2"]);
+  await assert.rejects(
+    () => saveSelection({
+      supabase, race, teamId: "t1",
+      riderIds: ["r1", "r2"], captainId: "r1", sprintCaptainId: null, hunterId: null, freeRoleIds: [],
+      removalOnly: true, // ignoreres — bypass'en eksisterer ikke længere
+    }),
+    (err) => err.code === "race_lineup_frozen"
+  );
 });
 
 // #4283: RPC-guarden matcher kun dette løbs FAKTISKE etape-dage — en konflikt der alene
@@ -136,7 +136,7 @@ test("saveSelection: en URELATERET RPC-fejl får IKKE selection_rider_bound-kode
   );
 });
 
-test("saveSelection: uden removalOnly (default) afvises et igangværende løb stadig med race_lineup_frozen", async () => {
+test("saveSelection: et igangværende løb afvises med race_lineup_frozen", async () => {
   const supabase = { rpc: () => Promise.resolve({ error: null }) };
   const race = { id: "race1", status: "scheduled", stages_completed: 3 };
   await assert.rejects(
@@ -152,7 +152,7 @@ test("saveSelection: uden removalOnly (default) afvises et igangværende løb st
 // selection, genbrugt af BÅDE single- og bulk-endpointet (PUT /races/selection/bulk).
 // Genbruger makeSelectionSupabase (funktionserklæring, hoisted i modulet — defineret
 // nedenfor, men tilgængelig her ved kørsel).
-test("prepareSelectionChange: gyldig ændring passerer og returnerer riderIds/isRemovalOnly/ctx", async () => {
+test("prepareSelectionChange: gyldig ændring passerer og returnerer riderIds/ctx", async () => {
   const teamId = "t1";
   const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
   const state = {
@@ -167,7 +167,6 @@ test("prepareSelectionChange: gyldig ændring passerer og returnerer riderIds/is
   assert.equal(result.ok, true);
   assert.deepEqual(result.riderIds, ids);
   assert.equal(result.captainId, "r1");
-  assert.equal(result.isRemovalOnly, false);
   assert.ok(result.ctx, "skal returnere getSelectionContext-resultatet (bruges af binding-tjekket i kalderen)");
 });
 
@@ -233,7 +232,11 @@ test("prepareSelectionChange: rolle-reference uden for truppen afvises med 400 s
   assert.equal(result.error, "selection_role_not_selected");
 });
 
-test("prepareSelectionChange: frosset løb afviser en tilføjelse (409), men tillader ren fjernelse (#2637)", async () => {
+// #4534 (regression, live-fund 31/8 — friisisch fjernede sin kaptajn fra en igangværende
+// Giro via matrixen): frys-vagten var asymmetrisk (tilføjelse blokeret, fjernelse tilladt
+// via #2637-undtagelsen). Nu afvises BEGGE retninger med samme fejlklasse — frivillig
+// udtræden findes ikke som mekanik endnu (ejer-beslutning, Discord 31/8 22:21).
+test("prepareSelectionChange: frosset løb afviser BÅDE tilføjelse/uændret trup OG ren fjernelse (#4534)", async () => {
   const teamId = "t1";
   const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
   const state = {
@@ -246,18 +249,23 @@ test("prepareSelectionChange: frosset løb afviser en tilføjelse (409), men til
   };
   const race = { id: "race1", status: "scheduled", stages_completed: 2, league_division_id: "d1", race_class: "Class2" };
 
-  const blocked = await prepareSelectionChange({
+  const blockedAdd = await prepareSelectionChange({
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
-    body: { rider_ids: ids, captain_id: "r1" }, // uændret trup, ingen fjernelse → stadig frosset
+    body: { rider_ids: ids, captain_id: "r1" }, // uændret trup / tilføjelses-retningen
   });
-  assert.deepEqual(blocked, { ok: false, status: 409, error: "selection_race_started" });
+  assert.deepEqual(blockedAdd, { ok: false, status: 409, error: "selection_race_started" });
 
-  const allowed = await prepareSelectionChange({
+  const blockedRemoval = await prepareSelectionChange({
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
-    body: { rider_ids: ids.slice(0, 4), captain_id: "r1" }, // ægte delmængde → ren fjernelse
+    body: { rider_ids: ids.slice(0, 4), captain_id: "r1" }, // ægte delmængde — før #4534 slap den igennem
   });
-  assert.equal(allowed.ok, true);
-  assert.equal(allowed.isRemovalOnly, true);
+  assert.deepEqual(blockedRemoval, { ok: false, status: 409, error: "selection_race_started" });
+
+  const blockedClear = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: [], captain_id: null }, // tøm hele truppen — den groveste fjernelse
+  });
+  assert.deepEqual(blockedClear, { ok: false, status: 409, error: "selection_race_started" });
 });
 
 // #1146 — saveSelectionBulk: atomisk RPC-kald for HELE batchen. Den ægte alt-eller-intet-

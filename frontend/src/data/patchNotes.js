@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.225",
+    "date": "2026-08-31",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Riders can no longer be removed from a race in progress",
+          "body": "The season matrix blocked adding riders to a started race, but removing them slipped through, so a rider could vanish from a live race and become free for other races. Lineups in started races are now locked in both directions, and the save error names the race."
+        },
+        "da": {
+          "title": "Ryttere kan ikke længere fjernes fra et løb i gang",
+          "body": "Sæsonmatrixen blokerede tilføjelse af ryttere til et startet løb, men fjernelse slap igennem, så en rytter kunne forsvinde fra et igangværende løb og blive ledig til andre løb. Startede løbs opstillinger er nu låst i begge retninger, og gem-fejlen navngiver løbet."
+        },
+        "refs": [4534]
+      }
+    ]
+  },
+  {
     "version": "7.224",
     "date": "2026-08-31",
     "label": "Beta",

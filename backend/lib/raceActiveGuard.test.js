@@ -66,27 +66,28 @@ test("assertLineupMutationAllowed: fail-open uden supabase og uden race (kalder-
   await assert.doesNotReject(() => assertLineupMutationAllowed({ raceId: "r1" }));
 });
 
-// #2637: en skadet rytter skal altid kunne fjernes — også midt i et aktivt etapeløb.
-// allowRemovalOnly lader kalderen (der har verificeret at mutationen er en ren
-// delmængde/fjernelse) omgå frysningen for netop DEN mutation.
-test("assertLineupMutationAllowed: allowRemovalOnly omgår frysningen for et igangværende (ikke-fuldført) løb", async () => {
-  await assert.doesNotReject(
-    () => assertLineupMutationAllowed({
-      raceId: "r1", race: { status: "scheduled", stages_completed: 3 }, label: "test", allowRemovalOnly: true,
-    })
-  );
-});
-
-test("assertLineupMutationAllowed: allowRemovalOnly redder IKKE et FÆRDIGGJORT løb (status=completed)", async () => {
+// #4534 (regression, live-fund 31/8): den tidligere #2637-bypass (allowRemovalOnly) er
+// FJERNET — en igangværende lineup er låst i begge retninger, og et forældet flag fra en
+// gammel kalder må ikke genåbne hullet.
+test("assertLineupMutationAllowed: et forældet allowRemovalOnly-flag omgår IKKE frysningen (#4534)", async () => {
   await assert.rejects(
     () => assertLineupMutationAllowed({
-      raceId: "r1", race: { status: "completed", stages_completed: 8 }, label: "test", allowRemovalOnly: true,
+      raceId: "r1", race: { status: "scheduled", stages_completed: 3 }, label: "test", allowRemovalOnly: true,
     }),
     (err) => err.code === "race_lineup_frozen"
   );
 });
 
-test("assertLineupMutationAllowed: allowRemovalOnly=false (default) frysning uændret", async () => {
+test("assertLineupMutationAllowed: FÆRDIGGJORT løb (status=completed) er låst", async () => {
+  await assert.rejects(
+    () => assertLineupMutationAllowed({
+      raceId: "r1", race: { status: "completed", stages_completed: 8 }, label: "test",
+    }),
+    (err) => err.code === "race_lineup_frozen"
+  );
+});
+
+test("assertLineupMutationAllowed: igangværende løb (stages_completed>0) er låst", async () => {
   await assert.rejects(
     () => assertLineupMutationAllowed({ raceId: "r1", race: { status: "scheduled", stages_completed: 3 }, label: "test" }),
     (err) => err.code === "race_lineup_frozen"

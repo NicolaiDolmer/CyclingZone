@@ -73,14 +73,13 @@ export function roleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRol
 // Gem udtagelsen atomisk: erstat holdets entries for løbet i ÉN transaktion via
 // replace_race_selection-RPC'en (#2173). Enten gemmes hele truppen, eller intet
 // ændres — ingen delete-uden-insert-degradering, ingen delvist gemt trup.
-export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null, freeRoleIds = [], removalOnly = false }) {
+export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null, freeRoleIds = [] }) {
   // Forward-guard (#2074): nægt delete-then-insert hvis løbets felt er LÅST
   // (stages_completed>0). Rute-laget gater allerede, men guarden gør invarianten lokal
   // til mutationen så en fremtidig kalder ikke kan nulstille et aktivt startfelt.
-  // #2637: `removalOnly` (rute-laget har allerede verificeret at riderIds er en ægte
-  // delmængde af den gemte trup — ingen tilføjelser) lader en skadet rytter fjernes
-  // selv midt i et aktivt etapeløb; se assertLineupMutationAllowed.
-  await assertLineupMutationAllowed({ supabase, raceId: race?.id, race, label: "saveSelection", allowRemovalOnly: removalOnly });
+  // #4534: den tidligere #2637-undtagelse (removalOnly — ren fjernelse tilladt midt i
+  // aktivt løb) er fjernet; et startet løbs lineup er låst i begge retninger.
+  await assertLineupMutationAllowed({ supabase, raceId: race?.id, race, label: "saveSelection" });
   // #2173: atomisk erstat via RPC. Tidligere var det en delete-then-insert UDEN
   // transaktion ("accepteret degradering") — fejlede insert efter delete, stod
   // løbet med 0 entries (tavst tab). replace_race_selection kører delete+insert i
@@ -127,7 +126,7 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
 //
 // Returnerer { ok:false, status, error, errors? } ved afvisning (samme fejlkoder/rækkefølge
 // som den oprindelige inline-blok), ellers { ok:true, riderIds, captainId, sprintCaptainId,
-// hunterId, freeRoleIds, isRemovalOnly, ctx }.
+// hunterId, freeRoleIds, ctx }.
 export async function prepareSelectionChange({ supabase, race, teamId, teamDivisionId, body }) {
   if (race.status !== "scheduled") return { ok: false, status: 409, error: "selection_race_not_open" };
 
@@ -143,14 +142,18 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   }
   const riderIds = riderIdsBody;
 
-  const ctx = await getSelectionContext({ supabase, race, teamId });
-
-  // Frys (#1825), undtagen ren fjernelse (#2637) — se den fulde begrundelse i api.js.
-  const currentRiderIds = new Set(ctx.selection?.rider_ids || []);
-  const isRemovalOnly = riderIds.length < currentRiderIds.size && riderIds.every((id) => currentRiderIds.has(id));
-  if ((race.stages_completed ?? 0) > 0 && !isRemovalOnly) {
+  // Frys (#1825) i BEGGE retninger (#4534): den tidligere #2637-undtagelse ("ren
+  // fjernelse tilladt") lod en spiller trække ryttere ud af et IGANGVÆRENDE løb via
+  // matrixen — rytteren forsvandt fra feltet, kunne ikke gen-tilføjes (add-blokeringen
+  // ramte) og blev straks ledig til andre løb. Frivillig udtræden findes ikke som
+  // mekanik endnu (ejer-beslutning, Discord 31/8), så et startet løbs lineup er låst
+  // for både tilføjelse og fjernelse. Tjekket ligger FØR getSelectionContext — en
+  // afvisning skal ikke koste roster-opslagene.
+  if ((race.stages_completed ?? 0) > 0) {
     return { ok: false, status: 409, error: "selection_race_started" };
   }
+
+  const ctx = await getSelectionContext({ supabase, race, teamId });
 
   const result = validateSelection({
     riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
@@ -161,7 +164,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   });
   if (!result.ok) return { ok: false, status: 400, error: result.errors[0], errors: result.errors };
 
-  return { ok: true, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, isRemovalOnly, ctx };
+  return { ok: true, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, ctx };
 }
 
 // #1146/#4310-refutation: binding-konflikt-klassifikationen for EN HEL bulk-batch — ren

@@ -52,20 +52,20 @@ export function isRaceLineupFrozen(race) {
  * bug kan ikke længere nulstille et aktivt felt via en delete der ikke efterfølges af en
  * vellykket insert.
  *
- * #2637: en skadet rytter skal ALTID kunne fjernes fra sin trup — også midt i et aktivt
- * etapeløb (fjernelse er altid tilladt, kun tilføjelse valideres/fryses). `allowRemovalOnly`
- * lader kalderen (der allerede har verificeret at den nye rytter-liste er en ægte delmængde
- * af den eksisterende — ingen nye ryttere tilføjes) omgå frysningen for netop DEN mutation.
- * Et FÆRDIGGJORT løb (status='completed') forbliver hårdt låst uanset — der er intet aktivt
- * felt at redigere efter finalisering.
+ * #4534: den tidligere #2637-undtagelse (`allowRemovalOnly` — ren fjernelse tilladt midt
+ * i et aktivt etapeløb) er FJERNET. Frivillig udtræden findes ikke som mekanik endnu
+ * (ejer-beslutning, Discord 31/8): matrixens gem-vagt var asymmetrisk, så en spiller
+ * kunne trække sin kaptajn ud af et igangværende løb og straks bruge ham andetsteds.
+ * Et startet løbs lineup er nu låst i BEGGE retninger; et FÆRDIGGJORT løb
+ * (status='completed') var altid hårdt låst.
  *
  * Hvis `race` medsendes (allerede indlæst) bruges den direkte — ingen ekstra query.
  * Ellers slås status+stages_completed op på raceId.
  *
- * @param {{ supabase?: object, raceId: string, race?: object, label?: string, allowRemovalOnly?: boolean }} args
+ * @param {{ supabase?: object, raceId: string, race?: object, label?: string }} args
  * @returns {Promise<void>} kaster Error med .code = 'race_lineup_frozen' hvis låst
  */
-export async function assertLineupMutationAllowed({ supabase, raceId, race = null, label = "entry-mutation", allowRemovalOnly = false }) {
+export async function assertLineupMutationAllowed({ supabase, raceId, race = null, label = "entry-mutation" }) {
   let target = race;
   if (!target) {
     if (!supabase || !raceId) return; // intet at gå ud fra → fail-open (kalder-ansvar)
@@ -75,7 +75,6 @@ export async function assertLineupMutationAllowed({ supabase, raceId, race = nul
     target = data;
   }
   if (target && isRaceLineupFrozen(target)) {
-    if (allowRemovalOnly && target.status !== "completed") return;
     const err = new Error(
       `race_lineup_frozen: refusing to delete race_entries for in-flight race ${raceId} (${label}); ` +
       `lineup is locked (stages_completed=${target.stages_completed ?? 0}, status=${target.status ?? "?"})`
