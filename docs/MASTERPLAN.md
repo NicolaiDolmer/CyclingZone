@@ -2,7 +2,7 @@
 
 > **Ejer-godkendt 13/8** (#3662; spørg før omprioritering). 🔴 brand · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. ≤1.500 tok. [Visuel udgave](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635).
 
-**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Gjaldt FØR S3 startede — **afløst i S3-vinduet af rammen nedenfor** (ejer 28/8); genoptages efter 27/9. **Målt 28/8:** 616 åbne issues · 232 brugere, 1 abo. **Hard regel 23/8:** ingen prod-mutation uden ejerens "GO" på netop det skridt.
+**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Gjaldt FØR S3 — afløst i S3-vinduet af rammen nedenfor (ejer 28/8). **Målt 31/8:** 561 åbne · 232 brugere, 1 abo. **Hard regel 23/8:** ingen prod-mutation uden ejer-GO på netop det skridt.
 
 ## S3 KØRER 28/8 → 27/9 — rammen (ejer-beslutning 28/8)
 
@@ -36,14 +36,14 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 (#3864) · **#4109** Planlægning anti-AI-slop · #4143 kalender-glyffer. #4123-invarianterne mangler CI-gate.
 9. **P0 + UI-gæld + Z1** (ejer 25/8). P0: #3990-rest · navne-dedup-guard · #3329 · #2791. UI-gæld: de fem fund i `PLANNING_CENTER_RULES.md` §7. Z1: bulk-endpoint + kladde + tre linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405) — monterer motorens kort, bygger det ikke. **P3** assistenten — gated på **#4201**, og #4246 (rolle vs ordre) skal afgøres FØR `TeamOrder` fryses.
 
-## D · Penge og vækst — AKTIVT i S3-vinduet (ejer 31/8; hvert skridt kræver eget ejer-go)
+## D · Penge og vækst — AKTIVT i S3-vinduet (ejer 31/8; eget ejer-go pr. skridt)
 
-Ejer 31/8: *"noget af det markant vigtigste — vi skal begynde at tjene penge snarligt."* Rører ingen spilleregler; S3-køens spillerfejl går stadig forrest.
+Rører ingen spilleregler; S3-køens spillerfejl går forrest.
 
-10. **#2853** e-mail-loop tændes (ejer: 3 tekster + 2 nøgler) → **#2760** win-back til ~100 dormante. ⚪ **#4015** genmål efter #4013.
-11. **/pro-kæden:** #4074 valuta → #4005 moms/copy → flip + testkøb → #2813 handelsbetingelser → #2806 synligt link.
-12. **#4067** SEO-site S1 + **#2824** offentlige læse-ruter (kun 1 side indekseret i dag).
-13. **Kommunikations-produktionslinje:** AI genererer søndag ugens 3 udkast (#428-rytmen), ejer poster ~25 min/uge; #4117 afkrydses pr. opslag; #4111 løfte-audit som månedlig rutine.
+10. **#2853** e-mail-loop tændes (ejer: 3 tekster + 2 nøgler) → **#2760** win-back.
+11. **/pro:** #4074 → #4005 → flip + testkøb → #2813 → #2806 synligt link.
+12. **#4067** SEO-site S1 + **#2824** offentlige læse-ruter.
+13. **Kommunikationslinje:** AI laver søndag ugens 3 udkast (#428), ejer poster ~25 min/uge; #4117 afkrydses; #4111 månedlig løfte-audit.
 
 ## E · Løbende (aldrig hovedspor)
 

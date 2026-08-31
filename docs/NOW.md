@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Spor D er AKTIVT (ejer 31/8):** første skridt = #2853-mailteksterne til ejer-godkendelse + /pro #4074. Fuld-backlog-audit 31/8 udført: 602→~561 åbne, 41 closes, 9 done-flips, alle 602 klassificeret ([dashboard](audits/backlog-priorities-2026-08-31.md), [beslutningsark](audits/decision-briefs-2026-08-31.md), evidens #627). Natbølgens trin 3 + #4503 merget 08:26-08:39 — patch note-udkastet i `drafts/` mangler at komme i PatchNotesPage.
+> **🎯 Next action:** **Spor D AKTIVT (ejer 31/8):** #2853-mailtekster til godkendelse + /pro #4074. Audit 31/8: 602→561 åbne, 41 closes, alt klassificeret ([dashboard](audits/backlog-priorities-2026-08-31.md), evidens #627). Natbølge trin 3 + #4503 merget; patch note-udkast i `drafts/` mangler i PatchNotesPage.
 
 > **⛔ Venter på DIN beslutning:** **PR #4483** (#4479) er parkeret 31/8 og må IKKE merges. `/rules` fortæller spillerne at lønnen fryses ved **6,7 % af markedsværdien**; koden bruger **35 % af `current_production_value`** (`contractSeed.js:38-42`, verificeret 31/8). Både sats og grundlag er forkert, og drift-guarden var grøn fordi den pinnede til `SALARY_RATE`, død siden #3989. **Åbent spørgsmål:** skal afvigelsen måles på faktisk signerede kontrakter før patch noten skrives? · **#4482** skal lag 6-bonustilbud udløbe (37 aktive på afsluttede sæsoner).
 
