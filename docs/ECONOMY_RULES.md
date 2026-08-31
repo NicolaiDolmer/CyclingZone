@@ -174,7 +174,7 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 
 | # | Hvad | Hvornår | Kode | Status |
 |---|---|---|---|---|
-| 1 | **Søndagens værdi-pipeline**: v4-genberegning af `base_value`/CPV/typer for hele populationen, derefter markedsblendet | Søndag fra **kl. 06** dansk tid, ét persisteret dato-claim pr. søndag, gated af `daily_training_enabled` | `sundayValueSweep.js` (#4419) | Live |
+| 1 | **Søndagens værdi-pipeline**: v4-genberegning af `base_value`/CPV/typer for hele populationen, derefter markedsblendet | Søndag fra **kl. 06** dansk tid, ét persisteret dato-claim pr. søndag. IKKE gated af træning | `sundayValueSweep.js` (#4419) | Live |
 | 2 | `prize_earnings_bonus` (3-sæsons-vindue) genberegnes | Ved **præmie-udbetaling**, ubetinget, enhver ugedag | `prizePayoutEngine.js` | Live, se §1 |
 | 3 | Nye ryttere får `base_value` ved oprettelse | Akademi-intake, startrup-allokering | `academyIntakePull.js`, `starterSquadAllocator.js` | Live (oprettelse, ikke opdatering) |
 | 4 | Heal-sweep re-deriverer ryttere med `base_value` NULL | Løbende, kun strandede rækker | `riderDeriveHealSweep` (#1673) | Live |
@@ -188,7 +188,7 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 
 **Fejler v4-refresh'en, frigives dagens claim igen** (tilføjet efter review 31/8). Markedsblendet springes helt over i den gren, og næste times tick kører hele den ordnede pipeline forfra samme søndag. Uden frigivelsen ville ét statement-timeout koste en hel uges værdiopdatering, fordi næste tick blot fandt claim-rækken. Retry er sikker: refresh'en genberegner rent fra v4 og skriver kun de ryttere hvis værdi faktisk afviger.
 
-**Punkt 1 er også omfattet af `daily_training_enabled`.** Værdi-refresh'en lå før bag trænings-sweepens flag-gate, og ejerens nødbremse skal blive lige så bred efter omlægningen: slukkes træningen fordi motoren udvikler forkert, prissættes de evner heller ikke. `no_active_season` er derimod bevidst ikke en gate — refresh'en har eget korrekt sæson-anker (seneste completed sæson) siden cutover-fixet 23/8, og en gate ville koste en hel uges opdatering hver gang en søndag falder mellem "Afslut sæson" og transitionen.
+**Punkt 1 er bevidst IKKE gated af `daily_training_enabled`** (ejer-beslutning 31/8). Træning og værdiopdatering er to uafhængige systemer: der skal kunne trænes hver dag, og værdier skal opdateres hver søndag — aldrig andre dage — uanset træningens tilstand. Et review foreslog gaten, fordi værdi-refresh'en historisk lå bag trænings-sweepens flag-gate, men den kobling var et artefakt af hvor koden lå, ikke en spilregel. På sigt skal træningsscoren indgå i selve værdiberegningen; det bliver en input-afhængighed i modellen, ikke en gate på om jobbet kører. `no_active_season` er ligeledes ikke en gate — refresh'en har eget korrekt sæson-anker (seneste completed sæson) siden cutover-fixet 23/8, og en gate ville koste en hel uges opdatering hver gang en søndag falder mellem "Afslut sæson" og transitionen. `marketValueSundaySweep` beholder sit eget flag (`market_value_sweep`), som er den sweeps egen nødbremse.
 
 ### 9.2 Markedsdrevne værdier: hvad der er lovet, bygget og ikke tændt
 
