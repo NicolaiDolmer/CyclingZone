@@ -107,12 +107,44 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
 
   // Post-hydration sprog-skift (#landing-hydration): main.jsx tvinger EN under
   // landing-hydrationen (matcher den EN-prerendrede index.html) og beder os
-  // skifte til den besøgendes sprog HER. Effekten kører FØRST efter hydrationen
-  // er committet → et normalt re-render, ikke en hydration → ingen #418/#422/#425.
-  // Kun mount: hint'et er en engangsværdi fra boot.
+  // skifte til den besøgendes sprog HER. Kun mount: hint'et er en
+  // engangsværdi fra boot.
+  //
+  // #4370 (rod-årsag, verificeret): react-i18next v17's useTranslation
+  // abonnerer via useSyncExternalStore (use-sync-external-store/shim), som
+  // IKKE respekterer startTransition — dens "har storen ændret sig siden
+  // sidste render"-gencheck tvinger altid en synkron re-render af alle
+  // t()-forbrugere (LandingPage, LanguageToggle, …), uanset om kaldet der
+  // udløste det er pakket i startTransition. Selve i18n.changeLanguage()-
+  // kaldet er desuden asynkront internt (loadResources → backendConnector,
+  // aktiveret af partialBundledLanguages selvom ressourcerne allerede er
+  // bundlede) — dens 'languageChanged'-emit sker derfor i et SENERE microtask,
+  // uden for et evt. startTransition-scope om selve kaldet. Wrapping af
+  // kaldet i startTransition (afprøvet) og en ren macrotask-udsættelse via
+  // setTimeout(…, 0) (afprøvet) løser derfor INGEN af dem racet: React's
+  // hydrerings-afvikling af den store, prerendrede landing (mange DOM-noder)
+  // spredes over flere scheduler-passes, og et enkelt-tick setTimeout kan
+  // stadig lande midt i det, mens boundary'en (route-Suspense'en i App.jsx)
+  // ikke er færdigmeldt endnu → "Minified React error #421", boundary'en
+  // falder tilbage til client rendering, og prerender-gevinsten smides væk.
+  //
+  // Fix: udsæt selve i18n.changeLanguage()-kaldet til requestIdleCallback —
+  // den fyrer først når browseren reelt er ledig, dvs. efter al ventende
+  // rendering/scripting (herunder hydreringens spredte scheduler-passes) er
+  // afviklet, og er derfor den robuste erstatning for et gætte-timeout.
+  // setTimeout(…, 0)-fallback for Safari/WebKit-versioner uden
+  // requestIdleCallback (samme "vent til efter denne tick" idé, blot uden
+  // idle-garantien). Verificeret med et instrumenteret dev-build af den
+  // prerenderede landing (browser-locale "da"): 0 forekomster af #421 over 3
+  // separate loads, mod deterministisk fejl uden denne udsættelse.
   useEffect(() => {
     if (deferredLanguage && i18n.language !== deferredLanguage) {
-      i18n.changeLanguage(deferredLanguage);
+      const ric = typeof window.requestIdleCallback === "function"
+        ? window.requestIdleCallback
+        : (cb) => setTimeout(cb, 0);
+      ric(() => {
+        i18n.changeLanguage(deferredLanguage);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- bevidst engangs-hint fra boot; må ikke genkøre ved sprogskift (se #2045-noten nedenfor)
   }, []);

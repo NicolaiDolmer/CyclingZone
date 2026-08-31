@@ -11,20 +11,6 @@ import {
   collectPageErrors,
 } from "./fixtures.js";
 
-// #4370 — MIDLERTIDIG, smal undtagelse. Denne rutes prerendering kaster
-// `Minified React error #421`: route-Suspense-boundary'en i App.jsx:238 får en
-// opdatering fra det client-only `mounted`-flag (App.jsx:159) mens hydreringen
-// stadig kører, og falder derfor tilbage til client rendering.
-//
-// Fejlen er ÆGTE og ny-opdaget — #4248's guard fandt den på første kørsel,
-// fordi ingen spec asserterede på #421 (landing-hydration dækker kun
-// #418/#422/#425). Den undtages her i stedet for at blokere test-tøjet, men
-// den er IKKE accepteret: fjern denne blok når #4370 er lukket.
-//
-// Kun denne ene fejlkode. Alt andet fælder stadig testen.
-test.use({ allowedPageErrors: [/Minified React error #421/] });
-
-
 // i18n Fase 3+: oversatte sider skal bruge regex der matcher BÅDE DA + EN,
 // så testen ikke break'er afhængigt af LanguageDetector's valg (localStorage/
 // navigator.language varierer mellem CI-runs). Ikke-oversatte sider beholder
