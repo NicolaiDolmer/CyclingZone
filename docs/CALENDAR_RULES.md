@@ -310,13 +310,13 @@ Tre mål kan i dag **ikke nås uanset hvordan generatoren kalibreres**, fordi ka
 | Kategori | Mål |
 |---|---|
 | flad | 24 % |
-| kuperet | 32 % |
+| kuperet | 33 % |
 | bjerg | 28 % |
 | enkeltstart | 10 % |
-| brosten | 6 % |
+| brosten | 5 % |
 | TTT | 0 % (motoren scorer den ikke endnu) |
 
-`ACTIVE_TARGET` i `calendarCompositionTargets.js`, ejer-beslutning 6/8 ([#3295](https://github.com/NicolaiDolmer/CyclingZone/issues/3295)).
+`ACTIVE_TARGET` i `calendarCompositionTargets.js`, ejer-beslutning 6/8 ([#3295](https://github.com/NicolaiDolmer/CyclingZone/issues/3295)). **Brosten rettet 6 % → 5 % og kuperet 32 % → 33 % (ejer-beslutning 31/8, [#4103](https://github.com/NicolaiDolmer/CyclingZone/issues/4103))** — lukker §11 punkt 6's "5 % eller 6 %?": 5 % vandt, for BEGGE de tidligere konkurrerende mål (se §6b). Tabellen nedenfor (målt 30/8) er FØR denne rettelse og er ikke genmålt — den viser stadig retningen af de øvrige brud.
 
 **Ejer-beslutning 24/8:** målene skal rammes **pr. division**, ikke kun på sæson-aggregatet, og med den **strenge** tolerance: **±2 pp**, skaleret så en division aldrig kræves at ramme finere end ±2 løbsdage. Det er tolerancen. Der er ikke andre.
 
@@ -337,7 +337,7 @@ Fed = uden for ±2 pp. **7 brud pr. division** (D1 1 · D2 2 · D3 2 · D4 2), o
 
 > Dokumentet skrev indtil 30/8 *"sæsonen grøn på alle seks akser, men 11 brud fordelt på alle fire divisioner"*. **Ingen af de to led er sande længere** — det er 7 brud, og sæsonen er ikke grøn. Tallet 11 stammede fra en plan-måling, ikke fra live data.
 
-`ARCHETYPE_PROFILES`' filler-vægte er i dag kalibreret mod **sæson-aggregatet** — én global vægttabel for alle fire divisioner. Kalibrering **pr. division** er forudsætningen for at de stramme tal kan nås; se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176).
+`ARCHETYPE_PROFILES`' filler-vægte er i dag kalibreret mod **sæson-aggregatet** — én global vægttabel for alle fire divisioner. Kalibrering **pr. division** er forudsætningen for at de stramme tal kan nås; se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176). **Undtagelsen er §6b's tre kategorier** (itt/brosten/high_mountain), som fik en pr.-tier-kalibrering 31/8 — se §6b nedenfor. De resterende tre K-B-kategorier (flad/kuperet/almindelig bjerg) er stadig KUN globalt kalibreret; det er #4176's åbne rest.
 
 ---
 
@@ -353,7 +353,7 @@ Ejer-beslutning 23/8 ([#4103](https://github.com/NicolaiDolmer/CyclingZone/issue
 
 `calendarCompositionTargets.js:279-287`, tolerancen i `TIER_UNIFORM_TOLERANCE_PP`. Nævneren er alle divisionens etaper, samme nævner som §6.
 
-**To ting adskiller dem fra §6's profil.** For det første holder de `high_mountain` ADSKILT fra almindelig `mountain`, hvor K-B lægger de to sammen. For det andet er brosten-tallet **5 %**, mens K-B's brosten-mål er **6 %** — to mål for samme etapetype, i samme kalender. Hvilket der gælder, er ikke afgjort: §11 punkt 6.
+**Én ting adskiller dem stadig fra §6's profil:** de holder `high_mountain` ADSKILT fra almindelig `mountain`, hvor K-B lægger de to sammen — #4103 handler specifikt om summit-tætheden. Brosten-modsigelsen (5 % her mod K-B's tidligere 6 %) er LUKKET 31/8: ejeren valgte 5 %, og K-B's egen brosten-mål i §6 er rettet til at matche (§11 punkt 6 er dermed afgjort og fjernet herfra).
 
 **Målt på live sæson 3, 30/8:**
 
@@ -365,7 +365,7 @@ Ejer-beslutning 23/8 ([#4103](https://github.com/NicolaiDolmer/CyclingZone/issue
 
 Fed = uden for ±2 pp. **6 brud.** Højbjerg er brudt i **tre** af fire divisioner (D1, D2, D4), og D4 er brudt i den MODSATTE retning af D1 og D2. #4103 bærer i dag et done-flag; det er ikke sandt for hverken generatoren eller live-data.
 
-> ⚠ **Målene er en MÅLE-kontrakt, ikke en generator-kontrakt.** De er aldrig koblet ind i `ARCHETYPE_PROFILES`' filler-vægte — det står ordret i kodens egen docstring — så generatoren rammer dem kun ved held. At de er røde er derfor ikke en regression; det er at kontrakten aldrig blev bygget ind.
+> ⚠ **Tallene ovenfor er MÅLT FØR generator-koblingen** (30/8, mod den kalender S3 allerede havde). **Ejer-beslutning 31/8 (#4103, "valg A"):** S3 røres ikke — den kørende kalender står som den er, med de 6 brud ovenfor uændret. I stedet er §6b's tre mål koblet ind i `ARCHETYPE_PROFILES`' filler-vægte som en OPT-IN pr.-tier-tilt (`backend/lib/tierUniformFillerTilt.js`, `materializeTierCalendars({ useUniformTierTilt: true })`), klar til S4-genereringen. Kalibreringen er en PROPORTIONAL førstetilnærmelse afledt af tabellen ovenfor (mål ÷ målt pr. tier), ikke en fuld pipeline-søgning mod S4's (endnu ikke valgte) løbsudvalg — den bør efterprøves mod S4's faktiske katalog, samme metode som `scripts/calibrateCalendarComposition.js` bruger for K-B.
 
 ---
 
@@ -554,11 +554,12 @@ Resten af tabellerne i denne fil har endnu ikke alle tre niveauer. Se [#4176](ht
 | 4 | Terræn-gulvene er observerede værdier, ikke kvalitetsmål | denne fil §5 |
 | 5 | Overlap-cap × startfelt overstiger 79 % af holdenes trupper | [#4174](https://github.com/NicolaiDolmer/CyclingZone/issues/4174) |
 | 6 | Tre klassifikationssystemer over samme etaper (`profile_type`, terræn-familie, kompositions-kategori) | denne fil §5 |
-| 7 | To brosten-mål (K-B 6 % vs #4103's 5 %) på samme etapetype i samme kalender | denne fil §6b |
 | 8 | Prod-invarianten håndhæver monument-eksklusivitet som ejeren ophævede 26/8 | [#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465) |
 | 9 | Seks terræn-familier, fem gulve — `rolling` har intet, `classic` hører til ingen familie | denne fil §5 |
 
 > Modsigelse 3 er den gamle "GT-reglerne har nul slæk (6 × 4 = 21 + 3)". Den er **lukket**: slækket er 4 pladser, ikke 1, fordi ingen GT har 21 etaper (§3).
+>
+> Modsigelse 7 ("To brosten-mål, K-B 6 % vs #4103's 5 %") er **lukket 31/8**: ejeren valgte 5 % for begge (§6, §6b). Nummeret er ikke genbrugt til noget nyt.
 
 ---
 
@@ -576,11 +577,11 @@ Resten af tabellerne i denne fil har endnu ikke alle tre niveauer. Se [#4176](ht
 
 **5. Hvad betyder "monumenterne ligger spredt over sæsonen" på løbsdags-aksen?** CI måler i dag i KALENDERDAGE: mindst 2 dage mellem naboer, mindst 14 dages samlet spredning. Det er fixture-minimums, ikke ejer-satte tal. Målt 30/8 ligger de fem monumenter på `game_day` 11, 24, 44, 55, 69, med mellemrum på 13, 20, 11 og 14 **løbsdage**. **Skal minimumsafstanden være 10 løbsdage, 8, eller skal reglen blive ved kalenderdage?** Svaret afgør hvad #4465 skal vende invarianten til.
 
-**6. Skal brosten-målet være 5 % eller 6 %?** K-B-profilen (#3295, 6/8) siger 6 % af sæsonens løbsdage. #4103's uniforme pr.-division-mål (23/8) siger 5 % af divisionens løbsdage. Begge lever i `calendarCompositionTargets.js`. Målt: sæsonen 4,9 %, D1 3,9 %, D2 4,8 %, D3 7,1 %, D4 4,8 %. **Ved 5 % er kun D3 brudt; ved 6 % er D1 brudt.** Hvilket tal gælder?
+**6. Skal `rolling` have et gulv, og skal `classic` høre til en familie?** `rolling` blev sin egen familie 24/8, men fik aldrig et gulv: målt 30/8 har D1 22, D2 9, D3 4 og **D4 nul** rolling-etaper. `classic` hører til ingen familie: 9 etaper i S3 tælles ikke mod noget gulv. **Skal baroudeuren garanteres dage i D4, og skal `classic` tælle som kuperet?**
 
-**7. Skal `rolling` have et gulv, og skal `classic` høre til en familie?** `rolling` blev sin egen familie 24/8, men fik aldrig et gulv: målt 30/8 har D1 22, D2 9, D3 4 og **D4 nul** rolling-etaper. `classic` hører til ingen familie: 9 etaper i S3 tælles ikke mod noget gulv. **Skal baroudeuren garanteres dage i D4, og skal `classic` tælle som kuperet?**
+**7. Er det tilsigtet at ingen af sæsonens tre Grand Tours har 21 etaper?** Målt 30/8: 18, 17 og 17. Dokumentation og kodekommentarer regnede på 21 flere steder. **Er 17-18 den nye ramme, eller er kataloget skrumpet uden at nogen besluttede det?**
 
-**8. Er det tilsigtet at ingen af sæsonens tre Grand Tours har 21 etaper?** Målt 30/8: 18, 17 og 17. Dokumentation og kodekommentarer regnede på 21 flere steder. **Er 17-18 den nye ramme, eller er kataloget skrumpet uden at nogen besluttede det?**
+> Det gamle punkt 6 ("brosten 5 % eller 6 %?") er **afgjort 31/8**: 5 % vandt (§6, §6b). Slettet herfra per denne paragrafs egen regel.
 
 ---
 

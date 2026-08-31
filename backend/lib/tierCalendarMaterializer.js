@@ -15,6 +15,7 @@ import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES, TIER_CLA
 import { packLaneCalendar, reshapeCobblesFractionToTwoWindows } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, toStageProfileRow } from "./raceStageProfileGenerator.js";
+import { applyUniformTierTilt } from "./tierUniformFillerTilt.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import {
@@ -80,9 +81,13 @@ function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, s
   };
 }
 
+// ctx.archetypeProfiles (#4103, opt-in): tier-tiltet ARCHETYPE_PROFILES-tabel, hvis
+// materializeTierCalendars({ useUniformTierTilt: true }) er slået til for dette kald —
+// ellers undefined, og generateRaceStageProfiles falder tilbage til sin egen default
+// (bit-identisk med før #4103).
 function coverageProfilesFor(raceRows, ctx) {
   const map = new Map();
-  for (const r of raceRows) map.set(r.pool_race_id, generateRaceStageProfiles(seedRaceFor(r, ctx)));
+  for (const r of raceRows) map.set(r.pool_race_id, generateRaceStageProfiles(seedRaceFor(r, ctx), { archetypeProfiles: ctx.archetypeProfiles }));
   return map;
 }
 
@@ -480,6 +485,13 @@ export async function materializeTierCalendars({
   // se gaten nedenfor. Bruges af katalog-udvidelses-analysen til at måle effekten af
   // foreslåede løb før nogen af dem eksisterer.
   extraCatalogRows = [],
+  // #4103 (ejer-beslutning 31/8): slå §6b's pr.-tier filler-tilt til (se
+  // tierUniformFillerTilt.js). Default FRA — S3 er allerede materialiseret og må ikke
+  // røres; en fremtidig S4-generering skal eksplicit sætte den til true. Sand betyder
+  // at HVER tiers stage-profiler genereres med den tier-specifikke tiltede
+  // ARCHETYPE_PROFILES-tabel i stedet for den globale default, i BÅDE
+  // dæknings-verifikationen og selve skrive-stien (samme parcours måles og persisteres).
+  useUniformTierTilt = false,
 } = {}) {
   const editionYear = editionYearFrom(seasonStartDate);
 
@@ -561,6 +573,10 @@ export async function materializeTierCalendars({
   for (const tierPlan of tierPlans) {
     if (tiers && !tiers.includes(tierPlan.tier)) continue;
 
+    // #4103: ÉN gang pr. tier, genbrugt af BÅDE dæknings-verifikationen og skrive-stien
+    // nedenfor — undefined (default-adfærd) medmindre useUniformTierTilt er slået til.
+    const archetypeProfilesForTier = useUniformTierTilt ? applyUniformTierTilt({ tier: tierPlan.tier }) : undefined;
+
     // #3327/#3328: dækningsverifikation EFTER selection/packing men FØR apply-gaten —
     // beregnet fra ÉN repræsentativ pulje (identisk kalender pr. tier, #2276). Fejl her
     // slutter sig til calendarViolations, så de rammer SAMME "nægt apply"-gate som
@@ -578,7 +594,7 @@ export async function materializeTierCalendars({
       if (draw.attempt > 0) log(`  tier ${tierPlan.tier}: kanonisk parcours-træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → deterministisk gen-træk ${draw.attempt} (#3347)`);
       if (draw.exhausted) log(`  ⚠ tier ${tierPlan.tier}: alle ${draw.attemptsTried} gen-træk brød realisme-båndene — bruger det kanoniske træk; realisme-scorecardet vil melde NO-GO (#3347)`);
 
-      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant });
+      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier });
       const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand });
       const coverageViolations = detectCoverageViolations({
         tier: tierPlan.tier, stats: coverageStats, oneDayShareMin, terrainFamilyMin, mountainFreeMin,
@@ -650,7 +666,7 @@ export async function materializeTierCalendars({
         // season_variant (#3347) er tierens resolverede re-draw — SAMME tal som
         // dæknings-verifikationen og realisme-scorecardet bruger.
         const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant };
-        for (const p of generateRaceStageProfiles(seedRace)) {
+        for (const p of generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier })) {
           profileRows.push(toStageProfileRow(race.id, p));
         }
       }

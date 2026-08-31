@@ -255,6 +255,14 @@ export const ARCHETYPE_PROFILES = Object.freeze({
 
 // #3295 KALIBRERING (2026-08-06) — hvordan filler-vægtene ovenfor blev fundet.
 //
+// RETTET 31/8 (#4103): brosten var her oprindelig 6 %; ejeren rettede den til 5 % (samme
+// tal som TIER_UNIFORM_TARGET_FRACTIONS.cobbles) og lagde den tabte pp på kuperet — se
+// calendarCompositionTargets.js's KB_TARGET_FULL/INTERIM-docstring. Kalibrerings-loggen
+// nedenfor (målingerne fra 6/8 og 8/8) er et HISTORISK øjebliksbillede af dengang målet
+// var 6 % og er IKKE genkørt mod det rettede tal — cobbles-filler-vægten er ikke ændret
+// her, fordi brosten næsten udelukkende kommer fra ENDAGSLØB (se "Brosten står stille"
+// nedenfor), så 1 pp i MÅLET flytter ikke filler-vægten nævneværdigt.
+//
 // Ejer-beslutning 6/8: S3's kalender skal ramme K-B — flad 24 · kuperet 30 · bjerg 28 ·
 // ITT 8 · brosten 6 · TTT 4 (% af løbsdage), ±2 pp pr. type. TTT-motoren mangler (#3463),
 // så den aktive profil er interim: flad 24 · kuperet 32 · bjerg 28 · ITT 10 · brosten 6.
@@ -941,8 +949,12 @@ function buildStageRace(rng, stages, cfg, race) {
  *   resolveSeasonDrawVariants (raceRouteRealismDraw.js) — sæt den ALDRIG ad-hoc.
  * @param {{seed?:number, archetypeProfiles?:object}} [opts]
  *   seed              override-seed (default: stableSeed(seedIdentityFor(race)))
- *   archetypeProfiles override af ARCHETYPE_PROFILES — KUN til kalibrerings-/analyse-
- *                     harnesses (#3295). Prod-stierne sender den aldrig.
+ *   archetypeProfiles override af ARCHETYPE_PROFILES — oprindelig KUN til kalibrerings-/
+ *                     analyse-harnesses (#3295). #4103 (31/8) genbruger samme parameter i
+ *                     PROD: tierCalendarMaterializer.js sender en pr.-tier-tiltet tabel når
+ *                     materializeTierCalendars({ useUniformTierTilt: true }) er slået til
+ *                     (se tierUniformFillerTilt.js) — default er stadig FRA, så en almindelig
+ *                     kald uden flaget er bit-identisk med før #4103.
  * @returns {Array<{stage_number:number, profile_type:string, finale_type:(string|null), demand_vector:object}>}
  */
 export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES } = {}) {

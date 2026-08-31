@@ -42,11 +42,12 @@ test("gatePlan: --allow-tier-composition-drift flytter bruddet fra blocking til 
 });
 
 test("gatePlan: en tier der rammer K-B inden for tolerancen giver INGEN pr.-tier-brud", () => {
-  // K-B (ACTIVE_TARGET): flad 24 · kuperet 32 · bjerg 28 · ITT 10 · brosten 6 · TTT 0.
+  // K-B (ACTIVE_TARGET): flad 24 · kuperet 33 · bjerg 28 · ITT 10 · brosten 5 · TTT 0
+  // (brosten rettet 6 → 5 31/8, #4103 — +1 pp lagt på kuperet, se calendarCompositionTargets.js).
   // Byg 100 løbsdage der matcher profilen præcist.
   const stages = [
-    ...stagesOf("flat", 24), ...stagesOf("hilly", 32), ...stagesOf("mountain", 28),
-    ...stagesOf("itt", 10), ...stagesOf("cobbles", 6),
+    ...stagesOf("flat", 24), ...stagesOf("hilly", 33), ...stagesOf("mountain", 28),
+    ...stagesOf("itt", 10), ...stagesOf("cobbles", 5),
   ];
   const summary = { tiers: [tierPlan({ tier: 3, stages })] };
   const { blocking, tierCompositionDrift } = gatePlan(summary);
