@@ -37,7 +37,7 @@ jobs:
       - name: Lighthouse mod prod
         id: lighthouse
         continue-on-error: true
-        uses: treosh/lighthouse-ci-action@v12
+        uses: treosh/lighthouse-ci-action@3e7e23fb74242897f95c0ba9cabad3d0227b9b18 # v12
         with:
           urls: https://cyclingzone.org/
           uploadArtifacts: true
@@ -56,7 +56,7 @@ jobs:
         run: gh label create perf-seo-inbox -c "0E8A16" -d "Ugentlig perf/SEO-review inbox (bot)" --force
 
       - name: Claude — prioritér + opdatér inbox-issue
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@a874e9ecd7bb36efdad65429c6b35815f5a08f10 # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
