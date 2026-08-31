@@ -233,6 +233,21 @@ jobs:
       - name: Run constraint-form guard
         run: node scripts/lint-constraint-form.mjs
 
+      # #4330: forward-guard mod required check-navne der forsvinder. Et required
+      # navn kan forsvinde i en workflow-refaktor uden at noget faelder, og branch
+      # protection venter derefter i al evighed paa et check der aldrig rapporterer.
+      # Main kan ikke merges, og symptomet dukker foerst op paa NAESTE PR.
+      #
+      # Guarden bor HER og ikke i et advisory job, fordi migration-idempotency ER et
+      # required status check. Foerste udgave laa i et ikke-required job: den ville
+      # gaa roed OG merge alligevel, fordi auto-merge.yml kun venter paa
+      # `gh pr checks --required`. Det fund kom fra det adversariske review 31/8.
+      - name: Test required-ci-jobs guard
+        run: node --test scripts/check-required-ci-jobs.test.mjs
+
+      - name: Run required-ci-jobs guard
+        run: node scripts/check-required-ci-jobs.mjs
+
   postgrest-cap-guard:
     runs-on: ubuntu-latest
     permissions:

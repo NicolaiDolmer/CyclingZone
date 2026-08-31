@@ -82,6 +82,13 @@ try {
   node scripts/lint-t2-container-guard.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "t2-container-guard" }
 
+  # #4330: fanger et required check-navn der forsvinder i en workflow-refaktor.
+  # Uden den venter branch protection i al evighed paa et check der aldrig
+  # rapporterer, og symptomet rammer foerst NAESTE PR.
+  Write-Host "== required-ci-jobs-guard (tabte required check-navne, #4330) ==" -ForegroundColor Cyan
+  node scripts/check-required-ci-jobs.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "required-ci-jobs-guard" }
+
   Write-Host "== frontend eslint ==" -ForegroundColor Cyan
   Push-Location (Join-Path $root "frontend")
   npm run lint
