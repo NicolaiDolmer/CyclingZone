@@ -1316,6 +1316,9 @@ export async function transitionToNextSeason({
     supabase,
     now: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
     toSeasonNumber: plan.to_season.number,
+    // #4482: den netop afsluttede saesons id - bonustilbud scopet til DEN
+    // saeson udloeber her. Se board_bonus_offer_expiry i seasonStartHooks.js.
+    fromSeasonId,
   })));
   // ─── slut #2910 + #2911 ────────────────────────────────────────────────────
 

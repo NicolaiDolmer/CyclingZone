@@ -27,6 +27,7 @@
 import { applySeasonFatigueReset } from "./seasonFatigueReset.js";
 import { applySeasonFormReset } from "./seasonFormReset.js";
 import { runSeasonAcademyIntake } from "./seasonAcademyIntake.js";
+import { expireSeasonScopedConsequences } from "./boardConsequences.js";
 import { captureException } from "./sentry.js";
 
 /**
@@ -37,6 +38,7 @@ export async function runSeasonStartHooks({
   supabase,
   now = new Date(),
   toSeasonNumber = null,
+  fromSeasonId = null,
   deps = {},
 } = {}) {
   const log = [];
@@ -81,6 +83,33 @@ export async function runSeasonStartHooks({
     captureException(err, {
       tags: { phase: "season_academy_intake" },
       extra: { toSeasonNumber },
+    });
+  }
+
+  // #4482 · Lag 6-bonustilbud hoerer til den saeson de blev givet i. Funktionen
+  // fandtes, var testet og eksporteret, men blev ALDRIG kaldt i produktion: den
+  // eneste kalder var dens egen test. Resultatet var 36 aktive tilbud paa
+  // afsluttede saesoner 1 og 2, hvoraf det aeldste kunne indloeses to saesoner
+  // efter det blev givet (200.000 CZ$ pr. stk.).
+  //
+  // IKKE flag-gatet, i modsaetning til hookene ovenfor. De tre andre aendrer
+  // spil-balance og skal kunne slaas fra; denne LUKKER et hul. Et slukket flag
+  // ville betyde "lad pengehullet staa aabent", hvilket ikke er en tilstand
+  // nogen skal kunne ende i ved et uheld.
+  //
+  // Placeringen er bevidst: hookene koerer FOER season-payroll i
+  // seasonTransition. Det er praecis derfor filteret paa lag 6 i
+  // expireSeasonScopedConsequences er loadbearing - lag 5 skal udloebe EFTER
+  // payroll, og goer det allerede i economyEngine.
+  const expireFn = deps.expireSeasonScopedConsequences ?? expireSeasonScopedConsequences;
+  try {
+    const r = await expireFn(supabase, fromSeasonId);
+    log.push({ phase: "board_bonus_offer_expiry", ...r });
+  } catch (err) {
+    log.push({ phase: "board_bonus_offer_expiry", error: err.message });
+    captureException(err, {
+      tags: { phase: "board_bonus_offer_expiry" },
+      extra: { toSeasonNumber, fromSeasonId },
     });
   }
 

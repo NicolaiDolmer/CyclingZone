@@ -87,6 +87,20 @@ export const PATCHES = [
           "body": "Værdierne flyttede sig kl. 22 om søndagen, fordi genberegningen hang på den natlige træningskørsel. Den kører nu fra kl. 06 om søndagen i sit eget job, så du har hele dagen til at handle på de nye tal i stedet for at finde dem lige før sengetid. Værdier ændrer sig stadig én gang om ugen, kun om søndagen."
         },
         "refs": [4419]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board bonus offers now end with the season",
+          "body": "A bonus offer belongs to the season the board made it in, but the code that closed them at season change was never actually running. Offers from finished seasons stayed open. They now end when the season does, as intended."
+        },
+        "da": {
+          "title": "Bestyrelsens bonustilbud slutter nu med sæsonen",
+          "body": "Et bonustilbud hører til den sæson bestyrelsen gav det i, men koden der lukkede dem ved sæsonskifte blev aldrig kørt. Tilbud fra afsluttede sæsoner blev stående. De slutter nu sammen med sæsonen, som det var meningen."
+        },
+        "refs": [4482]
       }
     ]
   },
