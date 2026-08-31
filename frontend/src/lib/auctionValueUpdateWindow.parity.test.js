@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { SUNDAY_VALUE_FROM_HOUR } from "../../../backend/lib/sundayValueSweep.js";
+// Importerer fra economyConstants.js, IKKE sundayValueSweep.js: sidstnævnte
+// trækker @sentry/node med, som ikke er installeret i CI's frontend-build-job.
+// Den import bestod lokalt og fejlede i CI. economyConstants.js har ingen imports.
+import { SUNDAY_VALUE_FROM_HOUR } from "../../../backend/lib/economyConstants.js";
 import { VALUE_UPDATE_HOUR, VALUE_UPDATE_WEEKDAY, nextSundayValueUpdateUTC } from "./auctionValueUpdateWindow.js";
 
 // #4419 co-SSOT-guard (samme disciplin som staffSeverance.parity.test.js):

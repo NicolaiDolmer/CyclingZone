@@ -44,8 +44,11 @@ import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { refreshChangedRiderValues } from "./riderValueRefresh.js";
 import { runMarketValueSundaySweep } from "./marketValueSundaySweep.js";
 import { captureException } from "./sentry.js";
+import { SUNDAY_VALUE_FROM_HOUR } from "./economyConstants.js";
 
-export const SUNDAY_VALUE_FROM_HOUR = 6;
+// Genudstilles her, men bor i economyConstants.js: den fil har ingen imports,
+// så frontendens paritetstest kan importere tallet i CI (se kommentaren der).
+export { SUNDAY_VALUE_FROM_HOUR };
 export const RIDER_VALUE_SUNDAY_LOG_TABLE = "rider_value_sunday_log";
 
 const noop = () => {};

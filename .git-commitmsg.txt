@@ -1,0 +1,25 @@
+fix(ci): flyt SUNDAY_VALUE_FROM_HOUR til afhaengighedsfri fil (#4419)
+
+Paritetstesten bestod lokalt og fejlede i CI's frontend-build. Den importerede
+konstanten fra backend/lib/sundayValueSweep.js, som via sentry.js traekker
+@sentry/node med sig. frontend-build installerer kun frontend/node_modules, saa
+importen doede paa ERR_MODULE_NOT_FOUND. Lokalt findes backend/node_modules,
+og derfor var symptomet usynligt indtil CI.
+
+Konstanten bor nu i backend/lib/economyConstants.js, som har nul imports og
+allerede importeres af frontend/src/lib/rulesNumbers.test.js i et groent
+CI-job. Det er samme moenster som facilityConstants.js, der baerer den
+eksisterende staffSeverance-paritetstest. sundayValueSweep.js genudstiller
+konstanten, saa alle hidtidige forbrugere er uaendrede.
+
+Verificeret under den FAKTISKE CI-betingelse (backend/node_modules flyttet vaek):
+- ny import: pass 2, fail 0
+- gammel import samme sted: ERR_MODULE_NOT_FOUND, Cannot find package
+  '@sentry/node' imported from backend/lib/sentry.js - diagnosen bevist, ikke gaettet
+- MUTATIONSTEST: frontendens VALUE_UPDATE_HOUR 6 -> 7 gav pass 1, fail 1;
+  gendannet -> pass 2, fail 0. Vagten bider stadig.
+- backend node --test: 7681/7681
+- frontend node --test: 2563/2563
+- preflight-pr.ps1 groen, eslint rent
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
