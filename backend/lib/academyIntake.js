@@ -548,22 +548,38 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   if (intakeUpdateErr) throw new Error(`signAcademyCandidate intake update: ${intakeUpdateErr.message}`);
 
   // 5. Notifikation til hold-ejeren. notifyTeamOwner henter user_id selv.
+  // #4423: RPC'en kan have UDSKUDT selve akademi-optagelsen (rytteren har en
+  // levende race_entries-binding i et aktivt fleretape-løb hos DETTE hold —
+  // se database/2026-08-31-4423-academy-signing-defer.sql). Kontrakt/betaling
+  // er sket uanset; kun beskeden skal fortælle den rigtige historie. Er den
+  // udskudt, sender flushDeferredAcademySigningsForRace (raceRunner.js, ved
+  // løbs-finalisering) den "han er nu ankommet"-besked senere.
+  const deferred = acq?.deferred === true;
   await notifyTeamOwner({
     supabase,
     teamId,
     type: "academy_signed",
     // EN-first fallback (#1068 i18n-leak: ingen rå dansk i backend); locale-aware
     // rendering via backendMessages-koderne nedenfor (#666).
-    title: "Academy signing complete",
-    message: "Your academy prospect has joined your academy.",
+    title: deferred ? "Academy signing confirmed" : "Academy signing complete",
+    message: deferred
+      ? `${riderName || "Your academy prospect"} will join your academy once his current stage race is finished. He keeps racing for your senior squad until then.`
+      : "Your academy prospect has joined your academy.",
     relatedId: riderId,
-    metadata: {
-      titleCode: "notif.academySigned.title",
-      messageCode: "notif.academySigned.message",
-    },
+    metadata: deferred
+      ? {
+          titleCode: "notif.academySigningDeferred.title",
+          messageCode: "notif.academySigningDeferred.message",
+          titleParams: { riderName: riderName || riderId },
+          messageParams: { riderName: riderName || riderId },
+        }
+      : {
+          titleCode: "notif.academySigned.title",
+          messageCode: "notif.academySigned.message",
+        },
   });
 
-  return { riderId, salary, fee, contractEndSeason };
+  return { riderId, salary, fee, contractEndSeason, deferred };
 }
 
 /**
