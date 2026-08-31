@@ -8,6 +8,7 @@ import {
   SEASON_ACADEMY_INTAKE_FLAG_KEY,
 } from "./seasonAcademyIntake.js";
 import { ACADEMY } from "./academyFlag.js";
+import { seasonReferenceYear } from "./riderSeasonAge.js";
 
 // ─── Ren kerne ────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,26 @@ test("seeder kuld pr. hold ud fra ledig kapacitet, og afleder dem i ÉT kald", a
   assert.equal(res.teams, 1);
   assert.equal(res.candidates, 3);
   assert.equal(derivedWith.length, 3, "afled-pipelinen skal køre for alle nye ryttere");
+});
+
+// #4485 forward-guard: referenceYear til seedCohortFn skal komme fra SSOT'en
+// (seasonReferenceYear(season.number)), IKKE fra kalenderåret i seasons.start_date.
+// season = { number: 2, start_date: "2026-07-26" }: start_date-året er 2026 (bug-
+// resultatet), SSOT-referenceåret for sæson 2 er 2027 — de to divergerer bevidst i
+// denne fixtur, så en regression til start_date-parsing ville fælde testen.
+test("#4485 referenceYear til seedCohortFn er sæson-SSOT'en, ikke start_date-året", async () => {
+  const { supabase } = buildMockSupabase({
+    teams: [{ id: "t-tom", season_1_identity_basis: null }],
+  });
+  let seenReferenceYear = null;
+  await runSeasonAcademyIntake({
+    supabase, isEnabled: ON, academyEnabled: ON,
+    seedCohortFn: async (_sb, args) => { seenReferenceYear = args.referenceYear; return []; },
+    deriveRiders: async () => {},
+    notify: async () => {},
+  });
+  assert.equal(seenReferenceYear, seasonReferenceYear(2), "skal matche SSOT'en for sæson 2");
+  assert.notEqual(seenReferenceYear, 2026, "må ikke falde tilbage til start_date-kalenderåret (#4485-bugget)");
 });
 
 test("allerede claimet hold springes over (idempotens pr. hold+sæson)", async () => {
