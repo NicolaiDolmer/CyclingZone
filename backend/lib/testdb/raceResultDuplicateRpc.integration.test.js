@@ -40,6 +40,11 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATABASE_DIR = join(__dirname, "..", "..", "..", "database");
 const MIGRATION = "2026-08-29-4204-race-result-duplicate-rpc.sql";
+// #4507: perf-fix oven på #4204 — CREATE OR REPLACE af samme funktion (uændret
+// signatur/jsonb-form, kun HVORDAN tallene beregnes internt). Køres EFTER
+// #4204 i before(), så testene nedenfor måler den nyeste version af funktionen
+// mod uændret ækvivalens-facit.
+const PERF_MIGRATION = "2026-08-31-4507-race-result-duplicate-rpc-perf.sql";
 
 // Minimal, prod-tro DDL: kun de kolonner dublet-invarianterne rører, med samme
 // nullability som schema.sql (race_id, stage_number, rank og rider_id er alle
@@ -86,6 +91,7 @@ before(async () => {
   db = new PGlite();
   await db.exec(BASE_DDL);
   await db.exec(sanitizeForPglite(readFileSync(join(DATABASE_DIR, MIGRATION), "utf8")));
+  await db.exec(sanitizeForPglite(readFileSync(join(DATABASE_DIR, PERF_MIGRATION), "utf8")));
   await db.query("INSERT INTO races (id, name) VALUES ($1, 'Race A'), ($2, 'Race B')", [RACE_A, RACE_B]);
   await db.query("INSERT INTO riders (id, firstname) VALUES ($1, 'R1'), ($2, 'R2'), ($3, 'R3')", [
     RIDER_1,

@@ -558,6 +558,7 @@ function makeSignRejectSupabase({
   division = 1,
   riderTeamId = null, // #4213: rytterens nuværende ejer (null = fri)
   rpcCode = null, // #4213: tving RPC'en til at returnere { ok:false, code }
+  deferred = false, // #4423: tving RPC'en til at returnere { ok:true, deferred:true, ... }
 } = {}) {
   const riderUpdates = [];
   const intakeUpdates = [];
@@ -671,14 +672,24 @@ function makeSignRejectSupabase({
       }
       riderUpdates.push({
         team_id: _args.p_team_id,
-        is_academy: true,
+        // #4423: udskudt optagelse rører IKKE is_academy (RPC'en lader den
+        // stå på false og sætter pending_academy_signing=true i stedet).
+        is_academy: deferred ? false : true,
         salary: Number(_args.p_salary),
         contract_length: _args.p_contract_length,
         contract_end_season: _args.p_contract_end_season,
         acquired_at: _args.p_acquired_at,
         pending_team_id: null,
       });
-      return Promise.resolve({ data: { ok: true, balance: 500000 - price, academy_count: teamAcademyCount + 1 }, error: null });
+      return Promise.resolve({
+        data: {
+          ok: true,
+          balance: 500000 - price,
+          academy_count: teamAcademyCount + (deferred ? 0 : 1),
+          deferred,
+        },
+        error: null,
+      });
     },
     _riderUpdates: riderUpdates,
     _intakeUpdates: intakeUpdates,
@@ -777,6 +788,39 @@ test("signAcademyCandidate: opdaterer rytter med is_academy=true, team_id, salar
   assert.ok(supabase._intakeUpdates[0].resolved_at, "resolved_at sat");
   // #2793: signing_fee persisteres som rytterens kostbasis ved signing.
   assert.equal(supabase._intakeUpdates[0].signing_fee, result.fee, "signing_fee = den beregnede fee");
+});
+
+// #4423: RPC'en kan svare deferred=true (rytteren har en levende race_entries-
+// binding i et aktivt fleretape-løb hos DETTE hold — se database/2026-08-31-
+// 4423-academy-signing-defer.sql). Kontrakt/betaling sker som normalt; kun
+// notifikationens ordlyd og resultatets `deferred`-felt skal afspejle det.
+test("signAcademyCandidate (#4423): RPC svarer deferred=true → 'confirmed'-notifikation + deferred:true på resultatet", async () => {
+  const supabase = makeSignRejectSupabase({ riderBaseValue: 100000, teamAcademyCount: 0, deferred: true });
+  const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
+
+  assert.equal(result.riderId, "rider-X");
+  assert.equal(result.deferred, true, "signAcademyCandidate propagerer RPC'ens deferred-flag");
+
+  // Kontrakt + betaling er STADIG sket — kun berettigelses-flippet er udskudt.
+  assert.equal(supabase._rpcCalls.length, 1);
+  assert.ok(supabase._rpcCalls[0]._args.p_price > 0, "signing-fee'en betales med det samme, uanset defer");
+  assert.equal(supabase._intakeUpdates.length, 1, "academy_intake flipper til 'signed' med det samme");
+  assert.equal(supabase._intakeUpdates[0].status, "signed");
+
+  // Notifikationen skal bruge den UDSKUDT-ordlyd, ikke "har sluttet sig til dit akademi".
+  assert.equal(supabase._notificationInserts.length, 1, "præcis én notifikation");
+  const notif = supabase._notificationInserts[0];
+  assert.equal(notif.metadata.messageCode, "notif.academySigningDeferred.message");
+  assert.equal(notif.metadata.titleCode, "notif.academySigningDeferred.title");
+  assert.match(notif.message, /once his current stage race is finished/);
+});
+
+test("signAcademyCandidate (#4423): RPC svarer deferred=false (normal, upåvirket sti) → uændret 'complete'-notifikation", async () => {
+  const supabase = makeSignRejectSupabase({ riderBaseValue: 100000, teamAcademyCount: 0, deferred: false });
+  const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
+
+  assert.equal(result.deferred, false, "ikke-udskudt signering rapporterer deferred:false");
+  assert.equal(supabase._notificationInserts[0].metadata.messageCode, "notif.academySigned.message");
 });
 
 // #3550 punkt 3 (ejer-beslutning 19/8): intake-signeringer er ISOLERET fra den

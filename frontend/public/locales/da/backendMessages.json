@@ -179,6 +179,14 @@
       "title": "Akademi-signing gennemført",
       "message": "Din akademikandidat er nu en del af dit akademi."
     },
+    "academySigningDeferred": {
+      "title": "Akademi-signing bekræftet",
+      "message": "{riderName} bliver en del af dit akademi, når hans etapeløb er kørt færdigt - han kører stadig for din seniortrup indtil da."
+    },
+    "academySigningArrived": {
+      "title": "Akademirytter ankommet",
+      "message": "{riderName} er nu en del af dit akademi - hans etapeløb er kørt færdigt."
+    },
     "academyDrip": {
       "title": "Nyt akademi-talent er ankommet",
       "message": "Nye kandidater venter i dit akademi - signér eller afvis dem."

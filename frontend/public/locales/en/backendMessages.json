@@ -179,6 +179,14 @@
       "title": "Academy signing complete",
       "message": "Your academy prospect has joined your academy."
     },
+    "academySigningDeferred": {
+      "title": "Academy signing confirmed",
+      "message": "{riderName} will join your academy once his current stage race is finished. He keeps racing for your senior squad until then."
+    },
+    "academySigningArrived": {
+      "title": "Academy rider has arrived",
+      "message": "{riderName} has joined your academy. His stage race is over."
+    },
     "academyDrip": {
       "title": "New academy talent has arrived",
       "message": "New candidates are waiting in your academy - sign or reject them."
