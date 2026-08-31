@@ -119,9 +119,9 @@
           "En plan løber sin fulde længde, 1, 3 eller 5 sæsoner. Ved hver sæsons slutning evaluerer bestyrelsen den, og kumulative mål (etapesejre, GC-sejre) tæller videre på tværs af planens sæsoner.",
           "Midtvejs i en flerårsplan, efter 1 gennemført sæson på en 3-årsplan og 2 på en 5-årsplan, sender bestyrelsen et midtvejs-review til din indbakke. Det er en status på hvordan planen går, uden konsekvens knyttet til.",
           "Når en plan når sin fulde længde, udløber den. Den bliver ikke bare forlænget indtil du endelig klarer målene: bestyrelsen laver sin afsluttende vurdering, de kumulative tællere nulstilles, og planen sættes til afventer forhandling.",
-          "En udløbet plan gør ingenting før du forhandler en ny på Bestyrelse-siden. Mens den venter, tælles den ikke med i gennemsnittet af dine signerede planer der sætter din sponsor-modifier, så modifieren afgøres alene af de planer du faktisk har underskrevet.",
+          "En udløbet plan gør ingenting før du forhandler en ny på Bestyrelse-siden. Mens den venter, tæller den ikke med i din sponsor-modifier.",
           "Alle tre planer kan udløse bonustilbuddet, ikke kun 1-årsplanen. Berettigelsen tjekkes pr. plan, så en stærk 3-årsplan kan udløse tilbuddet selv når 1-årsplanen ikke kan.",
-          "Bestyrelsen giver højst ét bonustilbud pr. sæson uanset hvor mange planer der kvalificerer sig, og det tjekkes ved de samme to hårde checkpoints som de øvrige konsekvens-lag: midtvejs i sæsonen og ved sæsonens slutning. Det er derfor tilbuddet kan lande midtvejs i én sæson og først helt til sidst i en anden."
+          "Bestyrelsen giver højst ét bonustilbud pr. sæson, uanset hvor mange planer der kvalificerer sig. Det tjekkes ved sæsonens to checkpoints, midtvejs og ved slutningen, og derfor kan tilbuddet lande på forskellige tidspunkter fra sæson til sæson."
         ]
       }
     },
