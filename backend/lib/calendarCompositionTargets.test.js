@@ -110,17 +110,17 @@ test("detectCompositionViolations: profil på målet giver 0 brud og én række 
 });
 
 test("detectCompositionViolations: fanger afvigelse i BEGGE retninger", () => {
-  // 100 dage: 34 flade (mål 24 → +10) og 20 kuperede (mål 32 → -12).
+  // 100 dage: 34 flade (mål 24 → +10) og 20 kuperede (mål 33, brosten rettet 6→5 31/8 → -13).
   const stages = [...Array(34).fill("flat"), ...Array(20).fill("hilly"), ...Array(46).fill("mountain")];
   const stats = computeCompositionStats([race(...stages)]);
   const { rows, violations } = detectCompositionViolations({ stats, target: KB_TARGET_INTERIM, label: "tier 9" });
   const flat = rows.find((r) => r.category === "flat");
   const hilly = rows.find((r) => r.category === "hilly");
   assert.equal(flat.delta, 10);
-  assert.equal(hilly.delta, -12);
+  assert.equal(hilly.delta, -13);
   assert.ok(!flat.pass && !hilly.pass);
   assert.ok(violations.some((v) => v.includes("tier 9") && v.includes("flad") && v.includes("+10.0 pp")));
-  assert.ok(violations.some((v) => v.includes("kuperet") && v.includes("-12.0 pp")));
+  assert.ok(violations.some((v) => v.includes("kuperet") && v.includes("-13.0 pp")));
 });
 
 test("detectCompositionViolations: TTT over 0 er et brud mens motoren ikke understøtter det", () => {
