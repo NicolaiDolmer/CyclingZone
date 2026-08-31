@@ -17,6 +17,20 @@ export const PATCHES = [
           "body": "Daglig træning har en ny 'Modtag forslag fra assistenten'-knap, der åbner et gennemsyns-panel: et type-matchet fokus til hver rytter, med en 'Ingen plan'-markering for ryttere der endnu ikke er trænet. Markér de ryttere du vil have, og accepter valgte, eller accepter alle på én gang. Intet anvendes før du accepterer, og det overskriver aldrig en rytter der allerede har sit eget fokus sat."
         },
         "refs": [4522]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Planning",
+        "en": {
+          "title": "Season matrix: your whole selection in one grid",
+          "body": "Team selection's season view now has a rider-by-race-day grid. Each race has its own columns, one per race day. Click a cell to assign a role, switch lenses to see route match, load or problems only, and jump to a day's board and back. Built on tester feedback: save errors now explain themselves, and a locked rider tells you the real reason."
+        },
+        "da": {
+          "title": "Sæsonmatrix: hele din udtagelse i ét gitter",
+          "body": "Holdudtagelsens sæsonvisning har nu et gitter med ryttere gange løbsdage. Hvert løb har sine egne kolonner, én pr. løbsdag. Klik på en celle for at tildele en rolle, skift linse for at se rutematch, belastning eller kun problemer, og hop til en dags board og tilbage igen. Bygget på tester-feedback: gem-fejl forklarer nu sig selv, og en låst rytter fortæller den rigtige årsag."
+        },
+        "refs": [1146]
       }
     ]
   },
