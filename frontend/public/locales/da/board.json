@@ -1770,5 +1770,143 @@
     "loginRequired": "Du skal være logget ind.",
     "requestFallback": "Kunne ikke sende bestyrelsesforespørgslen.",
     "renewFallback": "Planen kunne ikke fornys. Intet blev ændret."
+  },
+  "boardroom": {
+    "route": {
+      "loading": "Indlæser bestyrelseslokalet"
+    },
+    "header": {
+      "title": "Bestyrelseslokalet",
+      "subtitle": "{chair}, formand · {dna}",
+      "subtitleChairOnly": "{chair}, formand",
+      "subtitleNoChair": "Bestyrelsen"
+    },
+    "status": {
+      "on_track": "På sporet",
+      "at_risk": "Under pres",
+      "behind": "Bagud",
+      "achieved": "Opnået",
+      "failed": "Ikke opnået"
+    },
+    "confidence": {
+      "cardTitle": "Bestyrelsens tillid",
+      "updated": "Opdateret {date}",
+      "weekDeltaUp": "+{delta} denne uge",
+      "weekDeltaDown": "{delta} denne uge",
+      "weekDeltaFlat": "Ingen ændring denne uge",
+      "categories": {
+        "results": "Resultater",
+        "economy": "Økonomi",
+        "identity": "Identitet",
+        "ranking": "Rangliste"
+      },
+      "noConsequenceDefault": "Ingen aktive konsekvenser. Lønloft aktiveres under 40."
+    },
+    "mandate": {
+      "cardTitle": "Sæsonmandat · S{season}",
+      "cardTitleGeneric": "Sæsonmandat",
+      "goalsMeta": "{count} mål · underskrevet {date}",
+      "achievedTarget": "Opnået {achieved} / mål {target}",
+      "stretch": "Stræk",
+      "discussTarget": "Diskutér mål",
+      "discussTargetDisabledHint": "Diskussion af mål åbner på årsmødet.",
+      "receipt": {
+        "countedPrefix": "Tælles:",
+        "lastMovementPrefix": "Seneste bevægelse:",
+        "weightedByPrefix": "Vægtet af {name}."
+      },
+      "empty": {
+        "title": "Intet mandat underskrevet endnu",
+        "description": "Bestyrelsen har endnu ikke underskrevet denne sæsons mandat. Kig igen efter årsmødet."
+      },
+      "goalLabels": {
+        "keepResultAboveZero": "Hold sæsonresultatet over nul",
+        "academyDebuts": "Giv {count} akademiryttere en debut"
+      },
+      "receipts": {
+        "winRaceDays": {
+          "counted": "bekræftede løbsdags-sejre gennem sæsonen.",
+          "lastMovement": "Etapesejr, {race}",
+          "weightedByLine": "Han vægter sejre over alt andet."
+        },
+        "economyResult": {
+          "counted": "sæsonindtægt minus løn, transfers og løbsomkostninger.",
+          "lastMovement": "{amount} løbsdagsindtægt",
+          "weightedByLine": "Han værdsætter stabile marginer over store udsving."
+        },
+        "academyDebuts": {
+          "counted": "akademiryttere givet en førsteholdsdebut.",
+          "lastMovement": "Debut: {name}, {age}",
+          "weightedByLine": "Hun tæller hver debut som et løfte holdt."
+        },
+        "clubRankingTopN": {
+          "counted": "nuværende placering på den globale klubrangliste.",
+          "lastMovement": "Ingen bevægelse denne uge",
+          "weightedByLine": "Han følger ranglisten hver eneste uge."
+        }
+      }
+    },
+    "vision": {
+      "cardTitle": "Klubvision",
+      "meta": "S{start} til S{end}",
+      "seasonLabel": "S{season}",
+      "currentSeasonLabel": "S{season} · Du er her",
+      "explainer": "Milepæle bedømmes i deres målsæson. En misset milepæl koster tillid én gang, så fortsætter visionen.",
+      "empty": {
+        "title": "Ingen vision sat endnu",
+        "description": "Klubbens vision er endnu ikke fastlagt."
+      },
+      "milestoneLabels": {
+        "establishDivision3": "Etablér dig i division 3",
+        "promotionPush": "Oprykningsforsøg",
+        "monumentPodium": "Monument-podie",
+        "clubRankingTop30": "Top 30 på klubranglisten"
+      }
+    },
+    "board": {
+      "cardTitle": "Bestyrelsen",
+      "minutesLink": "Referater",
+      "role": {
+        "chair": "Formand",
+        "results": "Resultater",
+        "economy": "Økonomi",
+        "identity": "Identitet",
+        "ranking": "Rangliste"
+      },
+      "mood": {
+        "positive": "Tilfreds med dig",
+        "neutral": "Følger tæt med",
+        "negative": "Utilfreds med dig"
+      },
+      "chairmanQuoteFixture": "Vi ser retningen. Hold lønbudgettet ærligt, så følger resultaterne med.",
+      "chairmanContextFixture": "efter søndagens gennemgang"
+    },
+    "member": {
+      "viewHint": "Se medlem",
+      "portraitLabel": "Portræt",
+      "ownsGoalsCount": "ejer {count} mål",
+      "sinceSeason": "i bestyrelsen siden S{season}",
+      "personalityHeading": "Personlighed",
+      "ownsGoalsHeading": "Ejer disse mål",
+      "ownWordsHeading": "Med egne ord",
+      "confidenceMove": "{sign}{delta} tillid · {date}",
+      "footerNote": "Portrætter kommer i en senere runde. Stemmen er identiteten.",
+      "close": "Luk"
+    },
+    "minutesFixture": {
+      "stageWin": "Etapesejr, Vuelta a Andalucía. “Det er det, jeg meldte mig til.”",
+      "youthDebut": "Ungdomsdebut: {name}, {age}. “Det er den nordiske vej.”",
+      "deficitWeek": "Underskudsuge, {amount}. “Marginer, ikke mirakler.”",
+      "captainSaleWarning": "Vi sælger ikke en kaptajn midt i sæsonen uden en plan. “Vis mig planen.”"
+    }
+  },
+  "vision": {
+    "title": {
+      "skandinavisk_udvikling": "Det nordiske projekt",
+      "italiensk_klassiker": "Klassiker-arven",
+      "sprint_kommerciel": "Sprint-ekspressen",
+      "fransk_klatrer": "Bjerg-arven",
+      "britisk_allrounder": "All-rounder-projektet"
+    }
   }
 }
