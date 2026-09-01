@@ -1777,7 +1777,8 @@
     },
     "header": {
       "title": "Boardroom",
-      "subtitle": "{chair}, chair",
+      "subtitle": "{chair}, chair · {dna}",
+      "subtitleChairOnly": "{chair}, chair",
       "subtitleNoChair": "The board"
     },
     "status": {
@@ -1819,10 +1820,8 @@
         "description": "The board has not signed this season's mandate. Check back after the annual meeting."
       },
       "goalLabels": {
-        "winRaceDays": "Win {count} race days",
         "keepResultAboveZero": "Keep season result above zero",
-        "academyDebuts": "Give {count} academy riders a debut",
-        "clubRankingTopN": "Finish top {n} of the club ranking"
+        "academyDebuts": "Give {count} academy riders a debut"
       },
       "receipts": {
         "winRaceDays": {
@@ -1886,6 +1885,7 @@
       "viewHint": "View member",
       "portraitLabel": "Portrait",
       "ownsGoalsCount": "owns {count} goals",
+      "sinceSeason": "on the board since S{season}",
       "personalityHeading": "Personality",
       "ownsGoalsHeading": "Owns these goals",
       "ownWordsHeading": "In his own words",
@@ -1898,6 +1898,15 @@
       "youthDebut": "Youth debut: {name}, {age}. “This is the Nordic way.”",
       "deficitWeek": "Deficit week, {amount}. “Margins, not miracles.”",
       "captainSaleWarning": "We do not sell a captain mid-season without a plan. “Show me the plan.”"
+    }
+  },
+  "vision": {
+    "title": {
+      "skandinavisk_udvikling": "The Nordic project",
+      "italiensk_klassiker": "The Classics heritage",
+      "sprint_kommerciel": "The Sprint express",
+      "fransk_klatrer": "The Mountain legacy",
+      "britisk_allrounder": "The All-rounder project"
     }
   }
 }

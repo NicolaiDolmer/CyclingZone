@@ -10,21 +10,26 @@ import BoardCard from "./BoardCard";
 // som `data`-prop fra BoardroomRoute.jsx (den ejer fetch'et, ét kald, ingen
 // dobbelt-hentning). T1: header + 4 stakkede section-cards, ingen faner.
 //
-// Mockup-afvigelse (rapportér til ejeren): undertitlen i Main.dc.html er
-// "{formand}, chair · {DNA-label}" — /api/board/room-kontrakten (som givet
-// til denne slice) baerer intet DNA-label-felt noget sted i payloaded, saa
-// DNA-fragmentet er UDELADT her ("{formand}, chair" alene) i stedet for at
-// gaette et felt der ikke findes. Backend-kontrakten boer udvides med et
-// dna-label-felt (fx paa `board`) hvis undertitlen skal matche mockuppen 1:1.
+// #4570-afstemning (løser tidligere afvigelse 1): backend leverer nu
+// `team.dnaKey` — undertitlen matcher mockuppen "{formand}, chair · {DNA-
+// label}" ved at genbruge den EKSISTERENDE dna.<key>.label-nøgle (samme
+// tekst som DNA-valg-fladen bruger, aldrig forfattet på ny). Mangler
+// dnaKey (fx endnu ikke sat), falder undertitlen til "{formand}, chair".
 export default function BoardroomPage({ data }) {
   const { t } = useTranslation("board");
   const chair = (data.board?.members || []).find((m) => m.role === "chair") || null;
+  const dnaKey = data.team?.dnaKey || null;
+  const dnaLabel = dnaKey ? t(`dna.${dnaKey}.label`, { defaultValue: "" }) : "";
+
+  let subtitle = t("boardroom.header.subtitleNoChair");
+  if (chair && dnaLabel) subtitle = t("boardroom.header.subtitle", { chair: chair.name, dna: dnaLabel });
+  else if (chair) subtitle = t("boardroom.header.subtitleChairOnly", { chair: chair.name });
 
   return (
     <div>
       <PageHeader
         title={t("boardroom.header.title")}
-        subtitle={chair ? t("boardroom.header.subtitle", { chair: chair.name }) : t("boardroom.header.subtitleNoChair")}
+        subtitle={subtitle}
       />
       <SectionStack>
         <ConfidenceCard confidence={data.confidence} />

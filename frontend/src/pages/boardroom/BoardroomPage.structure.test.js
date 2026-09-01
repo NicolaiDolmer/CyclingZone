@@ -31,3 +31,14 @@ test("#4557 header bruger t() for titel/undertitel — ingen hardcodede strenge"
   assert.match(source, /t\("boardroom\.header\.title"\)/);
   assert.match(source, /t\("boardroom\.header\.subtitle"/);
 });
+
+test("#4570-afstemning: undertitlens DNA-label genbruger den EKSISTERENDE dna.<key>.label-nøgle, forfatter ikke ny copy", () => {
+  assert.match(source, /t\(`dna\.\$\{dnaKey\}\.label`, \{ defaultValue: "" \}\)/);
+  assert.match(source, /data\.team\?\.dnaKey/);
+});
+
+test("#4570-afstemning: undertitlen har 3 grene (chair+dna / chair alene / ingen chair) — aldrig et gættet felt", () => {
+  assert.match(source, /t\("boardroom\.header\.subtitleNoChair"\)/);
+  assert.match(source, /t\("boardroom\.header\.subtitle", \{ chair: chair\.name, dna: dnaLabel \}\)/);
+  assert.match(source, /t\("boardroom\.header\.subtitleChairOnly", \{ chair: chair\.name \}\)/);
+});

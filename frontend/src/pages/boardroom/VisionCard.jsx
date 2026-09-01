@@ -33,11 +33,17 @@ export default function VisionCard({ vision }) {
   }
 
   const milestones = vision.milestones || [];
+  // #4570-afstemning: backend sender `vision.titleKey` = "vision.title.<dnaKey>"
+  // (narrativt klub-navn, "The Nordic project"-stil). Falder til den generiske
+  // "Club vision" hvis nøglen mangler eller intet oversat indhold findes endnu.
+  const title = vision.titleKey
+    ? t(vision.titleKey, { defaultValue: t("boardroom.vision.cardTitle") })
+    : t("boardroom.vision.cardTitle");
 
   return (
     <Section>
       <SectionHeader
-        title={t("boardroom.vision.cardTitle")}
+        title={title}
         meta={t("boardroom.vision.meta", { start: vision.startSeason, end: vision.endSeason })}
       />
       <div className="relative pt-2">

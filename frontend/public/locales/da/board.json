@@ -1777,7 +1777,8 @@
     },
     "header": {
       "title": "Bestyrelseslokalet",
-      "subtitle": "{chair}, formand",
+      "subtitle": "{chair}, formand · {dna}",
+      "subtitleChairOnly": "{chair}, formand",
       "subtitleNoChair": "Bestyrelsen"
     },
     "status": {
@@ -1819,10 +1820,8 @@
         "description": "Bestyrelsen har endnu ikke underskrevet denne sæsons mandat. Kig igen efter årsmødet."
       },
       "goalLabels": {
-        "winRaceDays": "Vind {count} løbsdage",
         "keepResultAboveZero": "Hold sæsonresultatet over nul",
-        "academyDebuts": "Giv {count} akademiryttere en debut",
-        "clubRankingTopN": "Slut i top {n} på klubranglisten"
+        "academyDebuts": "Giv {count} akademiryttere en debut"
       },
       "receipts": {
         "winRaceDays": {
@@ -1886,6 +1885,7 @@
       "viewHint": "Se medlem",
       "portraitLabel": "Portræt",
       "ownsGoalsCount": "ejer {count} mål",
+      "sinceSeason": "i bestyrelsen siden S{season}",
       "personalityHeading": "Personlighed",
       "ownsGoalsHeading": "Ejer disse mål",
       "ownWordsHeading": "Med egne ord",
@@ -1898,6 +1898,15 @@
       "youthDebut": "Ungdomsdebut: {name}, {age}. “Det er den nordiske vej.”",
       "deficitWeek": "Underskudsuge, {amount}. “Marginer, ikke mirakler.”",
       "captainSaleWarning": "Vi sælger ikke en kaptajn midt i sæsonen uden en plan. “Vis mig planen.”"
+    }
+  },
+  "vision": {
+    "title": {
+      "skandinavisk_udvikling": "Det nordiske projekt",
+      "italiensk_klassiker": "Klassiker-arven",
+      "sprint_kommerciel": "Sprint-ekspressen",
+      "fransk_klatrer": "Bjerg-arven",
+      "britisk_allrounder": "All-rounder-projektet"
     }
   }
 }

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { XIcon } from "../../components/ui";
-import { formatWeekdayShortDate } from "./boardroomFormat";
+import { formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat";
 
 const MOOD_DOT = {
   positive: "bg-cz-success",
@@ -14,11 +14,10 @@ const MOOD_DOT = {
 // board.json, ejede maal fra mandate.goals filtreret paa archetypeKey,
 // "in his own words" fra det delte minutes-feed filtreret paa medlemsnavn.
 //
-// Mockup-afvigelse (rapportér til ejeren): "on the board since S{n}" i
-// Member.dc.html'ens metalinje er UDELADT her — kontrakten (board.members[])
-// baerer ingen join-saeson-felt, og at gaette et taerskeltal ville vaere
-// fabrikeret data. Samme grund til at Member.dc.html's tredje citat
-// ("Annual meeting · 28 Aug", ingen confidence-delta) ikke er repraesenteret:
+// #4570-afstemning: "on the board since S{n}" vises naar backend leverer
+// `member.sinceSeason` — udelades stille naar feltet mangler (aldrig et
+// gættet taerskeltal). Member.dc.html's tredje citat ("Annual meeting ·
+// 28 Aug", ingen confidence-delta) er FORTSAT ikke repraesenteret:
 // minutes[]-kontrakten har intet felt for et delta-loest moede-citat.
 export default function MemberPanel({ member, mandate, minutes = [], onClose }) {
   const { t } = useTranslation("board");
@@ -46,9 +45,11 @@ export default function MemberPanel({ member, mandate, minutes = [], onClose }) 
               {member.name.toUpperCase()}
             </p>
             <p className="mt-[5px] text-xs text-cz-2">
-              {t("boardroom.board.role." + member.role, { defaultValue: member.role })}
-              {" · "}
-              {t("boardroom.member.ownsGoalsCount", { count: ownedGoals.length })}
+              {[
+                t("boardroom.board.role." + member.role, { defaultValue: member.role }),
+                member.sinceSeason != null ? t("boardroom.member.sinceSeason", { season: member.sinceSeason }) : null,
+                t("boardroom.member.ownsGoalsCount", { count: ownedGoals.length }),
+              ].filter(Boolean).join(" · ")}
             </p>
             <div className="mt-1.5 flex items-center gap-1.5">
               <span className={`h-2 w-2 rounded-full ${MOOD_DOT[member.mood] || MOOD_DOT.neutral}`} aria-hidden="true" />
@@ -80,7 +81,7 @@ export default function MemberPanel({ member, mandate, minutes = [], onClose }) 
           </p>
           {ownedGoals.map((g) => (
             <div key={g.id} className="flex items-center justify-between gap-2 border-b border-cz-border py-2.5 last:border-b-0">
-              <p className="text-[13px] font-medium text-cz-1">{t(g.labelKey, g.labelParams || {})}</p>
+              <p className="text-[13px] font-medium text-cz-1">{resolveGoalTitle(t, g)}</p>
               <span className="text-2xs font-semibold text-cz-2">{t(`boardroom.status.${g.status}`, { defaultValue: g.status })}</span>
             </div>
           ))}

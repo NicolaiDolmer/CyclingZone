@@ -14,11 +14,18 @@ const fixture = JSON.parse(readFileSync(join(__dirname, "__fixtures__", "boardRo
 
 test("#4557 fixture: top-level kontraktform", () => {
   assert.equal(fixture.enabled, true);
+  assert.ok(fixture.team);
   assert.ok(fixture.confidence);
   assert.ok(fixture.mandate);
   assert.ok(fixture.vision);
   assert.ok(fixture.board);
   assert.ok(Array.isArray(fixture.minutes));
+});
+
+test("#4570-afstemning: team.dnaKey og vision.titleKey peger på gyldige dna-nøgler", () => {
+  const validDnaKeys = ["skandinavisk_udvikling", "italiensk_klassiker", "sprint_kommerciel", "fransk_klatrer", "britisk_allrounder"];
+  assert.ok(validDnaKeys.includes(fixture.team.dnaKey), "team.dnaKey skal matche en kendt DNA-nøgle");
+  assert.equal(fixture.vision.titleKey, `vision.title.${fixture.team.dnaKey}`);
 });
 
 test("#4557 fixture: confidence matcher mockup'ens nøgletal (71, 4 kategorier)", () => {
@@ -39,13 +46,24 @@ test("#4557 fixture: mandate har 4 mål med fuld receipt-kvittering (spec-princi
   assert.equal(fixture.mandate.goals.length, 4);
   for (const goal of fixture.mandate.goals) {
     assert.ok(goal.id, "hvert mål skal have et id");
-    assert.ok(goal.labelKey, "hvert mål skal have en i18n-nøgle, ikke rå tekst");
+    // #4570-afstemning: titlen resolves via type (den type-styrede resolver)
+    // ELLER labelKey (fallback) — mindst ét af de to skal være sat, aldrig ingen.
+    assert.ok(goal.type != null || goal.labelKey != null, "hvert mål skal have enten type eller labelKey (mål-titel-resolveren kræver mindst ét)");
     assert.ok(goal.achievedDisplay != null, "achievedDisplay skal være sat");
     assert.ok(goal.targetDisplay != null, "targetDisplay skal være sat");
     assert.ok(["on_track", "at_risk", "behind", "achieved", "failed"].includes(goal.status));
     assert.ok(goal.owner?.initials, "hvert mål skal have en ejer med initialer");
     assert.ok(goal.receipt, "hvert mål i fixturen bærer en kvittering (spec-princip 2)");
+    // #4570-afstemning: backend kan endnu ikke levere "Last movement" — fixturen
+    // afspejler den nuværende backend-begrænsning eksplicit (aldrig en halv kvittering).
+    assert.equal(goal.receipt.lastMovementAt, null, "lastMovementAt skal være null indtil backend leverer den");
+    assert.equal(goal.receipt.lastMovementKey, null);
   }
+  const typedGoals = fixture.mandate.goals.filter((g) => g.type != null);
+  const fallbackGoals = fixture.mandate.goals.filter((g) => g.type == null);
+  assert.ok(typedGoals.length > 0, "fixturen skal øve type-styret titel-resolution (mindst ét mål)");
+  assert.ok(fallbackGoals.length > 0, "fixturen skal øve labelKey-fallback-stien (mindst ét mål uden type)");
+  for (const g of fallbackGoals) assert.ok(g.labelKey, "et mål uden type SKAL have labelKey som fallback");
   const stretchGoal = fixture.mandate.goals.find((g) => g.isStretch);
   assert.ok(stretchGoal, "fixturen skal indeholde mindst ét Stretch-mål (mockup-parity)");
 });
@@ -71,6 +89,12 @@ test("#4557 fixture: board har 5 medlemmer, netop én chair, chairmanQuote sat",
   }
   assert.ok(fixture.board.chairmanQuote?.textKey);
   assert.equal(fixture.board.chairmanQuote.memberName, "Ellen Kjær");
+  // #4570-afstemning: sinceSeason er et OPTIONELT felt — fixturen skal øve
+  // BEGGE stier (sat for nogle medlemmer, fraværende for mindst ét).
+  const withSince = fixture.board.members.filter((m) => m.sinceSeason != null);
+  const withoutSince = fixture.board.members.filter((m) => m.sinceSeason == null);
+  assert.ok(withSince.length > 0, "mindst ét medlem skal have sinceSeason sat");
+  assert.ok(withoutSince.length > 0, "mindst ét medlem skal MANGLE sinceSeason (øver udeladt-linje-stien)");
 });
 
 test("#4557 fixture: minutes-feed rækker bærer delta + textKey + attribution", () => {

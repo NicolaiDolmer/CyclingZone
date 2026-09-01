@@ -38,3 +38,13 @@ test("#4557 medlems-panel: mood/personlighed/citater er alle betinget af data", 
 test("#4557 medlems-panel: 'in his own words' render altid via t(), aldrig en rå textKey-streng", () => {
   assert.match(memberPanelSource, /t\(m\.textKey, m\.textParams \|\| \{\}\)/);
 });
+
+test("#4570-afstemning: ejede-mål-titlen i medlems-panelet bruger samme delte resolver som mandatkortet", () => {
+  assert.match(memberPanelSource, /import \{ formatWeekdayShortDate, resolveGoalTitle \} from "\.\/boardroomFormat";/);
+  assert.match(memberPanelSource, /\{resolveGoalTitle\(t, g\)\}/);
+  assert.doesNotMatch(memberPanelSource, /t\(g\.labelKey/, "skal ikke længere kalde t(g.labelKey, ...) direkte");
+});
+
+test("#4570-afstemning: 'on the board since S{n}' vises kun naar member.sinceSeason er sat (aldrig gættet)", () => {
+  assert.match(memberPanelSource, /member\.sinceSeason != null \? t\("boardroom\.member\.sinceSeason", \{ season: member\.sinceSeason \}\) : null/);
+});

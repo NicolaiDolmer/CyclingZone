@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon } from "../../components/ui";
-import { formatShortDate, formatWeekdayShortDate } from "./boardroomFormat";
+import { formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat";
 
 const STATUS_TONE = {
   on_track: "success",
@@ -37,20 +37,37 @@ function GoalOwnerAvatar({ initials }) {
 // Kvittering — den ENESTE detalje-visning (spec-princip 2 "kvittering for
 // alt"). Ingen ny mekanik i denne slice: "Discuss target" er bevidst no-op
 // (årsmødet er S-M2c), derfor render som disabled i stedet for en dead-link.
+//
+// #4570-afstemning: backend kan endnu ikke levere "Last movement" pr. mål
+// (lastMovementAt er null indtil videre) — linjen udelades da HELT (aldrig
+// en tom linje) i stedet for at vise en halvfærdig kvittering.
 function GoalReceipt({ receipt, t }) {
   if (!receipt) return null;
+  const hasLastMovement = Boolean(receipt.lastMovementKey && receipt.lastMovementAt);
+  const lines = [
+    <span key="counted">
+      <span className="font-semibold text-cz-1">{t("boardroom.mandate.receipt.countedPrefix")}</span>{" "}
+      {t(receipt.countedKey, receipt.countedParams || {})}
+    </span>,
+  ];
+  if (hasLastMovement) {
+    lines.push(
+      <span key="lastMovement">
+        <span className="font-semibold text-cz-1">{t("boardroom.mandate.receipt.lastMovementPrefix")}</span>{" "}
+        {t(receipt.lastMovementKey, receipt.lastMovementParams || {})}, {formatWeekdayShortDate(receipt.lastMovementAt)}.
+      </span>,
+    );
+  }
+  lines.push(
+    <span key="weightedBy">
+      {t("boardroom.mandate.receipt.weightedByPrefix", { name: receipt.weightedByName })}{" "}
+      {t(receipt.weightedByLineKey, {})}
+    </span>,
+  );
   return (
     <div className="ms-10 mb-[13px] rounded-cz bg-cz-subtle px-3.5 py-3">
       <p className="text-xs leading-relaxed text-cz-2">
-        <span className="font-semibold text-cz-1">{t("boardroom.mandate.receipt.countedPrefix")}</span>{" "}
-        {t(receipt.countedKey, receipt.countedParams || {})}
-        <br />
-        <span className="font-semibold text-cz-1">{t("boardroom.mandate.receipt.lastMovementPrefix")}</span>{" "}
-        {t(receipt.lastMovementKey, receipt.lastMovementParams || {})}
-        {receipt.lastMovementAt ? `, ${formatWeekdayShortDate(receipt.lastMovementAt)}.` : ""}
-        <br />
-        {t("boardroom.mandate.receipt.weightedByPrefix", { name: receipt.weightedByName })}{" "}
-        {t(receipt.weightedByLineKey, {})}
+        {lines.reduce((acc, line, i) => (i === 0 ? [line] : [...acc, <br key={`br-${i}`} />, line]), [])}
       </p>
       <p className="mt-2">
         <button type="button" disabled aria-disabled="true"
@@ -79,7 +96,7 @@ function GoalRow({ goal, t, expanded, onToggle }) {
           <GoalOwnerAvatar initials={goal.owner?.initials} />
           <div className="min-w-0">
             <p className="text-[13.5px] font-medium text-cz-1">
-              {t(goal.labelKey, goal.labelParams || {})}
+              {resolveGoalTitle(t, goal)}
               {goal.isStretch && (
                 <span className="ms-1.5 rounded-cz-pill border border-cz-border px-[7px] py-px align-middle text-3xs font-semibold uppercase tracking-[.08em] text-cz-accent-t">
                   {t("boardroom.mandate.stretch")}

@@ -1,5 +1,6 @@
 {
   "enabled": true,
+  "team": { "dnaKey": "skandinavisk_udvikling" },
   "confidence": {
     "value": 71,
     "weekDelta": 3,
@@ -18,8 +19,11 @@
     "goals": [
       {
         "id": "g1",
-        "labelKey": "boardroom.mandate.goalLabels.winRaceDays",
-        "labelParams": { "count": 3 },
+        "type": "stage_wins",
+        "target": 3,
+        "label": "Mindst 3 etapesejre i sæsonen",
+        "labelKey": null,
+        "labelParams": null,
         "achievedDisplay": "2",
         "targetDisplay": "3",
         "unitKey": "raceDays",
@@ -29,15 +33,18 @@
         "receipt": {
           "countedKey": "boardroom.mandate.receipts.winRaceDays.counted",
           "countedParams": null,
-          "lastMovementKey": "boardroom.mandate.receipts.winRaceDays.lastMovement",
-          "lastMovementParams": { "race": "Vuelta a Andalucía" },
-          "lastMovementAt": "2026-08-30",
+          "lastMovementKey": null,
+          "lastMovementParams": null,
+          "lastMovementAt": null,
           "weightedByName": "Jørgen Brandt",
           "weightedByLineKey": "boardroom.mandate.receipts.winRaceDays.weightedByLine"
         }
       },
       {
         "id": "g2",
+        "type": null,
+        "target": 0,
+        "label": "Hold sæsonresultatet over nul",
         "labelKey": "boardroom.mandate.goalLabels.keepResultAboveZero",
         "labelParams": null,
         "achievedDisplay": "+412.000 CZ$",
@@ -49,15 +56,18 @@
         "receipt": {
           "countedKey": "boardroom.mandate.receipts.economyResult.counted",
           "countedParams": null,
-          "lastMovementKey": "boardroom.mandate.receipts.economyResult.lastMovement",
-          "lastMovementParams": { "amount": "+86.000 CZ$" },
-          "lastMovementAt": "2026-08-30",
+          "lastMovementKey": null,
+          "lastMovementParams": null,
+          "lastMovementAt": null,
           "weightedByName": "Søren Lindqvist",
           "weightedByLineKey": "boardroom.mandate.receipts.economyResult.weightedByLine"
         }
       },
       {
         "id": "g3",
+        "type": null,
+        "target": 2,
+        "label": "Giv 2 akademiryttere en debut",
         "labelKey": "boardroom.mandate.goalLabels.academyDebuts",
         "labelParams": { "count": 2 },
         "achievedDisplay": "1",
@@ -69,17 +79,20 @@
         "receipt": {
           "countedKey": "boardroom.mandate.receipts.academyDebuts.counted",
           "countedParams": null,
-          "lastMovementKey": "boardroom.mandate.receipts.academyDebuts.lastMovement",
-          "lastMovementParams": { "name": "Mikkel Iversen", "age": 18 },
-          "lastMovementAt": "2026-08-29",
+          "lastMovementKey": null,
+          "lastMovementParams": null,
+          "lastMovementAt": null,
           "weightedByName": "Astrid Holm",
           "weightedByLineKey": "boardroom.mandate.receipts.academyDebuts.weightedByLine"
         }
       },
       {
         "id": "g4",
-        "labelKey": "boardroom.mandate.goalLabels.clubRankingTopN",
-        "labelParams": { "n": 40 },
+        "type": "top_n_finish",
+        "target": 40,
+        "label": "Top 40 i klubranglisten",
+        "labelKey": null,
+        "labelParams": null,
         "achievedDisplay": "46",
         "targetDisplay": "40",
         "unitKey": "rank",
@@ -89,9 +102,9 @@
         "receipt": {
           "countedKey": "boardroom.mandate.receipts.clubRankingTopN.counted",
           "countedParams": null,
-          "lastMovementKey": "boardroom.mandate.receipts.clubRankingTopN.lastMovement",
+          "lastMovementKey": null,
           "lastMovementParams": null,
-          "lastMovementAt": "2026-08-26",
+          "lastMovementAt": null,
           "weightedByName": "Niels Østergaard",
           "weightedByLineKey": "boardroom.mandate.receipts.clubRankingTopN.weightedByLine"
         }
@@ -101,6 +114,7 @@
   "vision": {
     "startSeason": 3,
     "endSeason": 6,
+    "titleKey": "vision.title.skandinavisk_udvikling",
     "milestones": [
       {
         "id": "m1",
@@ -138,10 +152,10 @@
   },
   "board": {
     "members": [
-      { "archetypeKey": "traditionalisten", "name": "Ellen Kjær", "initials": "EK", "role": "chair", "mood": "positive" },
-      { "archetypeKey": "resultatjaegeren", "name": "Jørgen Brandt", "initials": "JB", "role": "results", "mood": "positive" },
-      { "archetypeKey": "sponsoraten", "name": "Søren Lindqvist", "initials": "SL", "role": "economy", "mood": "neutral" },
-      { "archetypeKey": "ungdomsidealisten", "name": "Astrid Holm", "initials": "AH", "role": "identity", "mood": "positive" },
+      { "archetypeKey": "traditionalisten", "name": "Ellen Kjær", "initials": "EK", "role": "chair", "mood": "positive", "sinceSeason": 1 },
+      { "archetypeKey": "resultatjaegeren", "name": "Jørgen Brandt", "initials": "JB", "role": "results", "mood": "positive", "sinceSeason": 1 },
+      { "archetypeKey": "sponsoraten", "name": "Søren Lindqvist", "initials": "SL", "role": "economy", "mood": "neutral", "sinceSeason": 2 },
+      { "archetypeKey": "ungdomsidealisten", "name": "Astrid Holm", "initials": "AH", "role": "identity", "mood": "positive", "sinceSeason": 2 },
       { "archetypeKey": "nationalist_purist", "name": "Niels Østergaard", "initials": "NO", "role": "ranking", "mood": "negative" }
     ],
     "chairmanQuote": {
