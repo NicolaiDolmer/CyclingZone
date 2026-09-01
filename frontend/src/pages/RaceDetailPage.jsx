@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Link, useParams, useSearchParams, useLocation } from "react-router";
@@ -30,6 +30,7 @@ import {
   RoadIcon,
   TeamIcon,
   CobblesIcon,
+  SkeletonLines,
 } from "../components/ui";
 import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
 import { formatNumber } from "../lib/intl";
@@ -41,6 +42,13 @@ import { logEvent } from "../lib/logEvent";
 import { deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { buildLiveStandings } from "../lib/raceLiveStandings.js";
 import { classificationRowsForStage } from "../lib/raceStageClassifications.js";
+import {
+  deriveStageNumbers,
+  overallSeedStageNumber,
+  validateInitialStage,
+  stagesToPreload,
+  jerseyHoldersForStage,
+} from "../lib/raceResultsSelectors.js";
 import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider } from "../lib/raceStageMoments.js";
@@ -105,6 +113,30 @@ const JERSEYS = [
   { dayType: "mountain_day", bg: "rgb(var(--jersey-mountain-bg))", fg: "rgb(var(--jersey-mountain-fg))" },
   { dayType: "young_day",    bg: "rgb(var(--jersey-young-bg))",    fg: "rgb(var(--jersey-young-fg))" },
 ];
+
+// #4581: race_results-kolonnelisten er UÆNDRET fra før — nu bare genbrugt to steder
+// (initial preload i loadAll + on-demand etapeskift, se fetchStageResultRows
+// nedenfor) i stedet for duplikeret. Siden hentede tidligere ALLE etapers ALLE
+// klassementer på hvert load (Giro della Penisola 14/18 etaper: 11.947 rækker,
+// 2,43 MB, 12 sekventielle round-trips — #4581). Nu hentes kun én stage_number ad
+// gangen: alle result_types for DEN etape er strukturelt bounded af feltstørrelsen
+// (issue-audit 1/9: ~180-250 rækker/dag-type/etape), men den sidste etape af et
+// FÆRDIGT løb bærer BÅDE dag-typerne OG de definitive slut-klassementer (gc/points/
+// mountain/young/team) på samme stage_number, hvilket kan nærme sig/overstige
+// PostgREST's 1.000-rækkers-loft — fetchAllRows bruges derfor ubetinget (pagination-
+// safe via delegering, ikke en antaget grænse).
+const RACE_RESULT_SELECT = "id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, sprint_points, kom_points, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name)), team:team_id(id, name)";
+
+function fetchStageResultRows(raceId, stageNumber) {
+  return fetchAllRows(() =>
+    supabase
+      .from("race_results")
+      .select(RACE_RESULT_SELECT)
+      .eq("race_id", raceId)
+      .eq("stage_number", stageNumber)
+      .order("id")
+  );
+}
 
 // Sub-4 (#2448): ét sted der afgør om en etape får den ægte rute-graf eller
 // #1484-piktogrammet. Ingen rutedata → ingen syntetisk kurve (ejer-princip).
@@ -265,6 +297,11 @@ export default function RaceDetailPage() {
   const [loadError, setLoadError] = useState(false);
   const [teamFilter, setTeamFilter] = useState("all"); // "all" | "mine" | teamId
   const [myTeamId, setMyTeamId] = useState(null);
+  // #4581: hvilke stage_number'e er der allerede hentet race_results for (initial
+  // preload + etapeskift on-demand) — `results` er UNIONEN af disse, aldrig hentet
+  // to gange for samme etape i én session. Nulstilles i loadAll ved raceId-skift.
+  const [loadedStages, setLoadedStages] = useState(() => new Set());
+  const stageFetchInFlightRef = useRef(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     const s = searchParams.get("stage");
@@ -324,13 +361,30 @@ export default function RaceDetailPage() {
       return myTeam?.id ?? null;
     })();
 
-    const rowsPromise = fetchAllRows(() =>
-      supabase
-        .from("race_results")
-        .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, sprint_points, kom_points, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name)), team:team_id(id, name)")
-        .eq("race_id", raceId)
-        .order("id")
-    );
+    // #4581: løbssiden hentede tidligere ALLE etapers ALLE klassementer på hvert
+    // load (Giro della Penisola 14/18 etaper: 11.947 rækker, 2,43 MB, 12 sekventielle
+    // round-trips). Nu hentes kun: (1) en evt. dyb-linket etape (?stage=N, valideret
+    // mod stages_completed — se validateInitialStage) og (2) "samlet"-fanens seed-
+    // etape (den definitive slut-klassement ELLER den løbende stilling lever begge på
+    // stage_number = stages_completed, se overallSeedStageNumber). Yderligere etaper
+    // hentes on-demand ved etapeskift (useEffect nedenfor, cachet i loadedStages så
+    // samme etape aldrig hentes to gange i én session). `results`/`rows` beholder
+    // nøjagtig samme rækkeform som før — kun MÆNGDEN er reduceret.
+    //
+    // searchParams er BEVIDST udeladt af loadAll's dependency-array (bunden af
+    // funktionen) — den bruges kun til at læse ?stage= ved FØRSTE hentning af dette
+    // løb. Skulle den stå i dependency-arrayet, ville et etapeskift (som selv sætter
+    // ?stage= via changeTab) retrigge en fuld gen-hentning af race/moments/incidents
+    // m.m. og underminere hele on-demand-designet. Samme stale-closure-mønster som
+    // riderName i RaceReportPanel (linje ~1067).
+    const stageParam = searchParams.get("stage");
+    const initialStage = validateInitialStage(stageParam, { stagesCompleted: raceRow.stages_completed });
+    const overallSeedStage = overallSeedStageNumber({ stagesCompleted: raceRow.stages_completed });
+    const preloadStages = stagesToPreload({ initialStage, overallSeedStage });
+
+    const rowsPromise = preloadStages.length
+      ? Promise.all(preloadStages.map((n) => fetchStageResultRows(raceId, n))).then((parts) => parts.flat())
+      : Promise.resolve([]);
 
     // #1484 Stiliseret terræn-indikator. race_stage_profiles er læsbar for
     // authenticated (siden er auth-gated via ProtectedRoute). Degraderer pænt:
@@ -414,6 +468,10 @@ export default function RaceDetailPage() {
     setMyTeamId(myTeamId);
     setRace(raceRow);
     setResults(rows);
+    // #4581: nulstiller (ikke tilføjer til) det tidligere loaded-set — et raceId-skift
+    // er et helt nyt løb, gamle stage-numre fra det forrige løb må ikke overleve.
+    setLoadedStages(new Set(preloadStages));
+    stageFetchInFlightRef.current = new Set();
     setStageProfiles(profiles ?? []);
     setSchedule(scheduleRows ?? []);
     setIncidents(incidentRows ?? []);
@@ -421,9 +479,38 @@ export default function RaceDetailPage() {
     setCareerEvents(careerEventRows ?? []);
     setPassages(passageRows ?? []);
     setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- searchParams bevidst udeladt (læses kun ved FØRSTE hentning af løbet), se kommentar ved rowsPromise ovenfor (#4581)
   }, [raceId]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  // #4581: etapeskift — hent DEN valgte etapes race_results on-demand, cachet i
+  // loadedStages så en etape aldrig hentes to gange i samme session. Kører kun for
+  // stage-N-faner ("samlet" har allerede sine data fra loadAll's overallSeedStage-
+  // preload). in-flight-refen forhindrer et dobbelt round-trip + duplikerede rækker
+  // hvis brugeren klikker væk og tilbage før første hentning er landet.
+  useEffect(() => {
+    if (!activeTab.startsWith("stage-")) return;
+    const n = Number(activeTab.slice("stage-".length));
+    if (!Number.isFinite(n) || loadedStages.has(n) || stageFetchInFlightRef.current.has(n)) return;
+
+    let cancelled = false;
+    stageFetchInFlightRef.current.add(n);
+    fetchStageResultRows(raceId, n)
+      .catch((err) => {
+        console.warn("race_results per-stage fetch failed:", err.message);
+        return [];
+      })
+      .then((newRows) => {
+        if (cancelled) return;
+        if (newRows.length) setResults((prev) => [...prev, ...newRows]);
+        setLoadedStages((prev) => new Set(prev).add(n));
+      })
+      .finally(() => {
+        stageFetchInFlightRef.current.delete(n);
+      });
+    return () => { cancelled = true; };
+  }, [activeTab, raceId, loadedStages]);
 
   useEffect(() => {
     if (race?.id) logEvent("race_viewed", { race_id: race.id });
@@ -435,13 +522,15 @@ export default function RaceDetailPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Etaper med faktiske etape-data (result_type="stage"), sorteret.
-  const stageNumbers = useMemo(() => {
-    const set = new Set(
-      results.filter(r => r.result_type === "stage").map(r => r.stage_number ?? 1)
-    );
-    return [...set].sort((a, b) => a - b);
-  }, [results]);
+  // #4581: etaper med faktiske etape-data — afledt af races.stages_completed (samme
+  // kilde som backend's "næste etape", skrevet atomisk sammen med etapens resultat-
+  // rækker) i stedet for at scanne results.filter(result_type==="stage") som FØR.
+  // Den gamle afledning krævede at ALLE etapers rækker allerede var hentet, hvilket
+  // var netop den over-fetch #4581 fjerner — se raceResultsSelectors.js.
+  const stageNumbers = useMemo(
+    () => deriveStageNumbers({ raceType: race?.race_type, stagesCompleted: race?.stages_completed }),
+    [race?.race_type, race?.stages_completed],
+  );
 
   const isStageRace = race?.race_type === "stage_race" && stageNumbers.length > 0;
 
@@ -843,11 +932,18 @@ export default function RaceDetailPage() {
                   </SectionStack>
                 </div>
               )}
+              {/* #4581: etapens race_results hentes on-demand ved skift (se effekten
+                  ovenfor) — mens den er undervejs viser vi kortets kanoniske
+                  sektions-loading (docs/design/PAGE_TEMPLATES.md: skeleton-linjer
+                  inde i en Section, aldrig en spinner) i stedet for et tomt/forkert
+                  resultat. */}
               {stageNumbers.map(n => activeTab === `stage-${n}` && (
-                <StageTab key={n} stage={n} results={results} profile={profileByStage[n]} profileByStage={profileByStage}
-                  filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
-                  moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
-                  raceId={race.id} raceName={race.name} passages={passages} t={t} />
+                loadedStages.has(n)
+                  ? <StageTab key={n} stage={n} results={results} profile={profileByStage[n]} profileByStage={profileByStage}
+                      filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
+                      moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
+                      raceId={race.id} raceName={race.name} passages={passages} t={t} />
+                  : <Section key={n}><SkeletonLines lines={6} /></Section>
               ))}
             </div>
           )}
@@ -1336,9 +1432,7 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
 
   // #2081: dag-rækkerne er nu FULDE klassementer (rank 1..N pr. etape) — trøje-
   // bæreren er eksplicit rank 1 (legacy-etaper har kun rank-1-rækker; samme filter).
-  const jerseys = JERSEYS
-    .map(j => ({ ...j, holder: results.find(r => r.result_type === j.dayType && (r.stage_number ?? 1) === stage && (r.rank ?? 1) === 1) }))
-    .filter(j => j.holder);
+  const jerseys = jerseyHoldersForStage(results, stage, JERSEYS);
 
   const title = classTab === "stage"
     ? t("detail.stageFinishOrder", { number: stage })
