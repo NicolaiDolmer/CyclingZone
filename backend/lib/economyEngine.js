@@ -1843,14 +1843,28 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
           // dnaKey) som resten af "Stemme-kontrakten". Navne-afledning må ALDRIG
           // vælte notifikationen. Fejler den, degraderes bagudkompatibelt til
           // label alene (samme tekst som før #4556).
+          //
+          // Review-fund (faldgrube 2): naar HELE post-udskiftnings-medlemslisten
+          // er tilgaengelig (replacementInfo.new_board_member_keys, sat af
+          // replaceChairman i boardMembers.js), navngives hele holdet i ét kald
+          // og formandens navn slaas op i resultatet, samme mønster som
+          // Boardroom-siden (boardRoom.js). Uden den (fx en aeldre/mocket
+          // processReplacementTrigger) falder vi tilbage til kun formandens
+          // nøgle isoleret, som før #4556's review-fix.
           let chairmanName = null;
           if (replacementInfo.new_chairman_key) {
             try {
-              const [namedChairman] = generateBoardMemberNames({
+              const memberKeysForNaming = Array.isArray(replacementInfo.new_board_member_keys)
+                && replacementInfo.new_board_member_keys.length
+                ? replacementInfo.new_board_member_keys
+                : [replacementInfo.new_chairman_key];
+              const namedMembers = generateBoardMemberNames({
                 teamId: team.id,
-                members: [replacementInfo.new_chairman_key],
+                members: memberKeysForNaming,
                 dnaKey: team.team_dna_key ?? null,
               });
+              const namedChairman = namedMembers.find((m) => m.archetype_key === replacementInfo.new_chairman_key)
+                ?? namedMembers[0];
               chairmanName = namedChairman?.full_name ?? null;
             } catch (nameError) {
               captureException(nameError, {

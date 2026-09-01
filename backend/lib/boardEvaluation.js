@@ -46,7 +46,16 @@ function attachMembersOverlay({ outlook, assignedMembers, board, context }) {
     category: targetCategory,
     fallbackChairmanKey,
   });
-  const nameCtx = { teamId: context?.teamId, dnaKey: context?.dnaKey ?? null };
+  // #4556 review-fund (faldgrube 2): members skal med, i SAMME rækkefølge som
+  // assignedMembers kommer fra team_board_members (matcher boardRoom.js's
+  // egen generateBoardMemberNames-kald over hele holdet), ellers salter
+  // decorateReactionWithName's enkelt-medlems-fallback anderledes end
+  // Boardroom-siden ved en navne-kollision inden for samme hold.
+  const nameCtx = {
+    teamId: context?.teamId,
+    dnaKey: context?.dnaKey ?? null,
+    members: assignedMembers.map((m) => m.archetype_key),
+  };
   const dominantReaction = dominantArchetype
     ? decorateReactionWithName(
       sampleReactionForFeedback({
