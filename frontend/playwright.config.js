@@ -61,6 +61,15 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   expect: {
+    // #2960: assertion-budgettet paa CI er 10s, ikke Playwright-defaulten 5s.
+    // React 19's scheduling flytter marginale assertions over 5s-graensen paa
+    // den 2-kernede windows-runner under fuld suite-belastning: 3 CI-koersler
+    // gav 4 FORSKELLIGE roede specs (sponsor-ui, board-plan-tabs,
+    // season-honours, season-start-guide), alle 5s-timeouts, nul overlap -
+    // mens 330/330 gentagne koersler var groenne paa en 8-kernet maskine.
+    // En aegte broken flade dukker heller ikke op ved 10s, saa graensen
+    // skjuler ingen regressioner. Lokalt beholdes 5s.
+    timeout: process.env.CI ? 10000 : 5000,
     toHaveScreenshot: {
       maxDiffPixelRatio: 0.001,
     },
