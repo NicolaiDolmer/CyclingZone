@@ -1,0 +1,12 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Boardroom · desktop", "x": 0, "y": 0, "w": 1440, "h": 1500 },
+    { "file": "AnnualMeeting.dc.html", "title": "Årsmødet · fuldskærm", "x": 1560, "y": 0, "w": 1440, "h": 1060 },
+    { "file": "Mobile.dc.html", "title": "Boardroom · mobil", "x": 1560, "y": 1200, "w": 390, "h": 844 },
+    { "file": "Member.dc.html", "title": "Medlems-relation (personer med stemme)", "x": 2060, "y": 1200, "w": 560, "h": 780 }
+  ],
+  "annotations": [
+    { "id": "kontekst", "x": 0, "y": -170, "w": 460, "text": "Genskabelse af de ejer-godkendte Mandatet-mockups (spec 7/8, #3514) plus dagens beslutning 1/9: medlemmerne er personer med stemme.\nDesktop-boardroom = spec §3.4 punkt for punkt. Årsmødet = §3.2. Medlems-panelet er NYT (beslutning B, 1/9).\nRet direkte i canvasset eller sig hvad der skal ændres." }
+  ],
+  "launch": { "view": "canvas" }
+}

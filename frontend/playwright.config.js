@@ -61,6 +61,15 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
   expect: {
+    // #2960: assertion-budgettet paa CI er 10s, ikke Playwright-defaulten 5s.
+    // React 19's scheduling flytter marginale assertions over 5s-graensen paa
+    // den 2-kernede windows-runner under fuld suite-belastning: 3 CI-koersler
+    // gav 4 FORSKELLIGE roede specs (sponsor-ui, board-plan-tabs,
+    // season-honours, season-start-guide), alle 5s-timeouts, nul overlap -
+    // mens 330/330 gentagne koersler var groenne paa en 8-kernet maskine.
+    // En aegte broken flade dukker heller ikke op ved 10s, saa graensen
+    // skjuler ingen regressioner. Lokalt beholdes 5s.
+    timeout: process.env.CI ? 10000 : 5000,
     toHaveScreenshot: {
       maxDiffPixelRatio: 0.001,
     },
@@ -84,13 +93,26 @@ export default defineConfig({
     // der kørte build, derefter preview — på windows-runneren efterlod den en
     // forældreløs preview-proces Playwright ikke kunne dræbe → jobbet hang 48 min
     // (#1342, draft-fix-forsøg 1). I CI bygges frontend i et separat
-    // workflow-step FØR Playwright, så webServer-kommandoen er ÉN dræbelig proces
-    // (`vite preview`). Lokalt beholder vi `build && preview` for bekvemmelighed.
-    // --strictPort: hellere højlydt bind-fejl end at vite hopper til nabo-port
-    // mens baseURL stadig peger på den fremmede server.
+    // workflow-step FØR Playwright, så webServer-kommandoen er ÉN dræbelig proces.
+    // Lokalt beholder vi `build && ...` for bekvemmelighed.
+    //
+    // #2960: `vite preview` erstattet af scripts/e2e-static-server.mjs (sirv-
+    // biblioteket i egen tynd server). Hvorfor og hele stall-evidensen:
+    // .claude/learnings/2026-09-01-vite-preview-ci-smoke-random-stalls.md.
+    // Operationelt: serveren fejler HØJLYDT ved optaget port (strictPort-
+    // erstatning), læser KUN argv (aldrig env PORT/HOST — worktree-isolationen
+    // i playwright.ports.js), og serverer med etag+dev som vite preview gjorde.
+    // `npm run` (ikke `npx`) holder præcis ÉT dræbeligt barn i process-træet.
+    // NB: `--`-argumenterne appendes af npm til script-strengens SIDSTE kommando
+    // — preview:e2e skal forblive én enkelt kommando.
+    // NB: sirv har ingen middleware-hook som vites `configurePreviewServer`, så
+    // worktreeIdPlugin (vite.config.js) servede ikke længere WORKTREE_ID_PATH —
+    // "preview:e2e" (package.json) genererer den nu som en statisk fil i dist/
+    // via scripts/write-worktree-id.mjs FØR sirv starter. Uden den fejlede
+    // false-green-guarden (global-setup.js) højlydt på sirv selv.
     command: process.env.CI
-      ? `npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`
-      : `npm run build && npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`,
+      ? `npm run preview:e2e -- --host 127.0.0.1 --port ${PORT}`
+      : `npm run build && npm run preview:e2e -- --host 127.0.0.1 --port ${PORT}`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180000,

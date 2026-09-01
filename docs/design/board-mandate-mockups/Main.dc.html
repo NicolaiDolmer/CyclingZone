@@ -1,0 +1,239 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: "Inter Tight", "Arial Narrow", system-ui, sans-serif; background: #f4f2ec; color: #0e0f15; }
+    a { color: #a07800; text-decoration: none; } a:hover { color: #7a5c00; }
+  </style>
+</helmet>
+<div style="display: flex; width: 1440px; min-height: 1500px; background: #f4f2ec;">
+
+  <!-- App sidebar (always navy) -->
+  <div style="width: 208px; flex-shrink: 0; background: #1a1f38; display: flex; flex-direction: column; padding: 20px 0;">
+    <div style="font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif; font-size: 22px; letter-spacing: 0.04em; color: #ffffff; padding: 0 20px 18px 20px;">CYCLING ZONE</div>
+    <div style="display: flex; flex-direction: column;">
+      <div style="padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.55);">Dashboard</div>
+      <div style="padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.55);">Squad</div>
+      <div style="padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.55);">Races</div>
+      <div style="padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.55);">Market</div>
+      <div style="padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.55);">Training</div>
+      <div style="padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.55);">Finance</div>
+      <div style="padding: 9px 20px; font-size: 13px; color: #ffffff; background: rgba(255,255,255,0.06); box-shadow: inset 3px 0 0 0 rgb(232 197 71);">Boardroom</div>
+      <div style="padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.55);">Standings</div>
+    </div>
+  </div>
+
+  <!-- Main content (T1: max-w-4xl centered) -->
+  <div style="flex-grow: 1; padding: 28px 32px 64px 32px; display: flex; justify-content: center;">
+    <div style="width: 896px; max-width: 896px; display: flex; flex-direction: column;">
+
+      <!-- Page header (the ONE recipe) -->
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px;">
+        <div>
+          <div style="font-size: 20px; font-weight: 700; letter-spacing: -0.01em; color: #0e0f15;">Boardroom</div>
+          <div style="font-size: 13px; color: #66637a; margin-top: 4px;">Ellen Kjær, chair · Scandinavian development</div>
+        </div>
+        <button style="background: rgb(232 197 71); color: #1a1f38; border: none; border-radius: 5px; padding: 8px 14px; font-family: 'Inter Tight', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;">Enter annual meeting</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+
+        <!-- 1 · Confidence card -->
+        <div style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 5px; padding: 20px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px;">
+            <div style="font-size: 15px; font-weight: 600;">Board confidence</div>
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0; font-variant-numeric: tabular-nums;">Updated Sun 30 Aug</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 28px;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 44px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1;">71</div>
+              <div style="font-size: 13px; font-weight: 600; color: rgb(21 119 47); font-variant-numeric: tabular-nums;">+3 this week</div>
+            </div>
+            <div style="flex-grow: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;">
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #9896b0; margin-bottom: 6px;">Results</div>
+                <div style="height: 6px; background: #ece9e1; border-radius: 9999px;"><div style="height: 6px; width: 74%; background: rgb(232 197 71); border-radius: 9999px;"></div></div>
+                <div style="font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 5px;">74</div>
+              </div>
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #9896b0; margin-bottom: 6px;">Economy</div>
+                <div style="height: 6px; background: #ece9e1; border-radius: 9999px;"><div style="height: 6px; width: 63%; background: rgb(232 197 71); border-radius: 9999px;"></div></div>
+                <div style="font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 5px;">63</div>
+              </div>
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #9896b0; margin-bottom: 6px;">Identity</div>
+                <div style="height: 6px; background: #ece9e1; border-radius: 9999px;"><div style="height: 6px; width: 82%; background: rgb(232 197 71); border-radius: 9999px;"></div></div>
+                <div style="font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 5px;">82</div>
+              </div>
+              <div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #9896b0; margin-bottom: 6px;">Ranking</div>
+                <div style="height: 6px; background: #ece9e1; border-radius: 9999px;"><div style="height: 6px; width: 58%; background: rgb(154 91 0); border-radius: 9999px;"></div></div>
+                <div style="font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 5px;">58</div>
+              </div>
+            </div>
+          </div>
+          <div style="border-top: 1px solid #e5e0d5; margin-top: 16px; padding-top: 12px; font-size: 13px; color: #66637a;">No active consequences. Wage cap activates below 40.</div>
+        </div>
+
+        <!-- 2 · Mandate card -->
+        <div style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 5px; padding: 20px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px;">
+            <div style="font-size: 15px; font-weight: 600;">Season mandate · S3</div>
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0;">4 goals · signed 28 Aug</div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid #e5e0d5;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 28px; height: 28px; border-radius: 5px; background: #ece9e1; border: 1px solid #e5e0d5; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #66637a;">JB</div>
+              <div>
+                <div style="font-size: 13.5px; font-weight: 500;">Win 3 race days</div>
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0; font-variant-numeric: tabular-nums;">Achieved 2 / target 3</div>
+              </div>
+            </div>
+            <span style="font-size: 11px; font-weight: 600; color: rgb(21 119 47); background: rgb(21 119 47 / 0.08); border-radius: 9999px; padding: 3px 10px;">On track</span>
+          </div>
+
+          <!-- expanded row: the receipt -->
+          <div style="border-top: 1px solid #e5e0d5;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 28px; height: 28px; border-radius: 5px; background: #ece9e1; border: 1px solid #e5e0d5; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #66637a;">SL</div>
+                <div>
+                  <div style="font-size: 13.5px; font-weight: 500;">Keep season result above zero</div>
+                  <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0; font-variant-numeric: tabular-nums;">Achieved +412.000 CZ$ / target 0 CZ$</div>
+                </div>
+              </div>
+              <span style="font-size: 11px; font-weight: 600; color: rgb(21 119 47); background: rgb(21 119 47 / 0.08); border-radius: 9999px; padding: 3px 10px;">On track</span>
+            </div>
+            <div style="margin: 0 0 13px 40px; background: #ece9e1; border-radius: 5px; padding: 12px 14px;">
+              <div style="font-size: 12px; color: #66637a; line-height: 1.5;">Counted: season income minus wages, transfers and race costs.<br>Last movement: +86.000 CZ$ race-day income, Sun 30 Aug.<br>Weighted by Søren Lindqvist. He values steady margins over big swings.</div>
+              <div style="margin-top: 8px;"><a href="#" style="font-size: 12px; font-weight: 500;">Discuss target</a></div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid #e5e0d5;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 28px; height: 28px; border-radius: 5px; background: #ece9e1; border: 1px solid #e5e0d5; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #66637a;">AH</div>
+              <div>
+                <div style="font-size: 13.5px; font-weight: 500;">Give 2 academy riders a debut</div>
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0; font-variant-numeric: tabular-nums;">Achieved 1 / target 2</div>
+              </div>
+            </div>
+            <span style="font-size: 11px; font-weight: 600; color: rgb(154 91 0); background: rgb(154 91 0 / 0.08); border-radius: 9999px; padding: 3px 10px;">At risk</span>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0 0 0; border-top: 1px solid #e5e0d5;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 28px; height: 28px; border-radius: 5px; background: #ece9e1; border: 1px solid #e5e0d5; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #66637a;">NO</div>
+              <div>
+                <div style="font-size: 13.5px; font-weight: 500;">Finish top 40 of the club ranking <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #a07800; border: 1px solid #e5e0d5; border-radius: 9999px; padding: 1px 7px; margin-left: 6px;">Stretch</span></div>
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0; font-variant-numeric: tabular-nums;">Currently 46 / target 40</div>
+              </div>
+            </div>
+            <span style="font-size: 11px; font-weight: 600; color: rgb(168 30 30); background: rgb(168 30 30 / 0.08); border-radius: 9999px; padding: 3px 10px;">Behind</span>
+          </div>
+        </div>
+
+        <!-- 3 · Vision card -->
+        <div style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 5px; padding: 20px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px;">
+            <div style="font-size: 15px; font-weight: 600;">Club vision · The Nordic project</div>
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0;">2028 to 2032</div>
+          </div>
+          <div style="position: relative; padding: 8px 0 0 0;">
+            <div style="position: absolute; top: 15px; left: 40px; right: 40px; height: 2px; background: #e5e0d5;"></div>
+            <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; position: relative;">
+              <div style="text-align: center;">
+                <div style="width: 16px; height: 16px; border-radius: 9999px; background: rgb(232 197 71); border: 2px solid #1a1f38; margin: 0 auto;"></div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #a07800; font-weight: 600; margin-top: 8px;">S3 · You are here</div>
+                <div style="font-size: 13px; font-weight: 500; margin-top: 3px;">Establish in Division 3</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="width: 12px; height: 12px; border-radius: 9999px; background: #fcfbf7; border: 2px solid #9896b0; margin: 2px auto 0 auto;"></div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #9896b0; margin-top: 10px;">S4</div>
+                <div style="font-size: 13px; font-weight: 500; margin-top: 3px;">Promotion push</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="width: 12px; height: 12px; border-radius: 9999px; background: #fcfbf7; border: 2px solid #9896b0; margin: 2px auto 0 auto;"></div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #9896b0; margin-top: 10px;">S5</div>
+                <div style="font-size: 13px; font-weight: 500; margin-top: 3px;">Monument podium</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="width: 12px; height: 12px; border-radius: 9999px; background: #fcfbf7; border: 2px solid #9896b0; margin: 2px auto 0 auto;"></div>
+                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #9896b0; margin-top: 10px;">S6</div>
+                <div style="font-size: 13px; font-weight: 500; margin-top: 3px;">Top 30 club ranking</div>
+              </div>
+            </div>
+          </div>
+          <div style="border-top: 1px solid #e5e0d5; margin-top: 18px; padding-top: 12px; font-size: 13px; color: #66637a;">Milestones are judged in their target season. A missed milestone costs confidence once, then the vision moves on.</div>
+        </div>
+
+        <!-- 4 · Board card (people with a voice) -->
+        <div style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 5px; padding: 20px;">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px;">
+            <div style="font-size: 15px; font-weight: 600;">The board</div>
+            <a href="#" style="font-size: 12px; font-weight: 500;">Meeting minutes</a>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px;">
+            <div style="text-align: center;">
+              <div style="position: relative; width: 44px; height: 44px; border-radius: 5px; background: #1a1f38; color: #f4f2ec; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', Impact, sans-serif; font-size: 18px; margin: 0 auto;">EK<div style="position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 9999px; background: rgb(21 119 47); border: 2px solid #fcfbf7;"></div></div>
+              <div style="font-size: 12px; font-weight: 600; margin-top: 7px;">Ellen Kjær</div>
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0; margin-top: 2px;">Chair</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="position: relative; width: 44px; height: 44px; border-radius: 5px; background: #1a1f38; color: #f4f2ec; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', Impact, sans-serif; font-size: 18px; margin: 0 auto;">JB<div style="position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 9999px; background: rgb(21 119 47); border: 2px solid #fcfbf7;"></div></div>
+              <div style="font-size: 12px; font-weight: 600; margin-top: 7px;">Jørgen Brandt</div>
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0; margin-top: 2px;">Results</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="position: relative; width: 44px; height: 44px; border-radius: 5px; background: #1a1f38; color: #f4f2ec; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', Impact, sans-serif; font-size: 18px; margin: 0 auto;">SL<div style="position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 9999px; background: rgb(154 91 0); border: 2px solid #fcfbf7;"></div></div>
+              <div style="font-size: 12px; font-weight: 600; margin-top: 7px;">Søren Lindqvist</div>
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0; margin-top: 2px;">Economy</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="position: relative; width: 44px; height: 44px; border-radius: 5px; background: #1a1f38; color: #f4f2ec; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', Impact, sans-serif; font-size: 18px; margin: 0 auto;">AH<div style="position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 9999px; background: rgb(21 119 47); border: 2px solid #fcfbf7;"></div></div>
+              <div style="font-size: 12px; font-weight: 600; margin-top: 7px;">Astrid Holm</div>
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0; margin-top: 2px;">Identity</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="position: relative; width: 44px; height: 44px; border-radius: 5px; background: #1a1f38; color: #f4f2ec; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', Impact, sans-serif; font-size: 18px; margin: 0 auto;">NO<div style="position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 9999px; background: rgb(168 30 30); border: 2px solid #fcfbf7;"></div></div>
+              <div style="font-size: 12px; font-weight: 600; margin-top: 7px;">Niels Østergaard</div>
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0; margin-top: 2px;">Ranking</div>
+            </div>
+          </div>
+
+          <div style="border-left: 2px solid rgb(232 197 71); background: #ece9e1; border-radius: 0 5px 5px 0; padding: 12px 14px; margin-top: 16px;">
+            <div style="font-size: 13.5px; line-height: 1.5; color: #0e0f15;">"We see the direction. Keep the wage bill honest and the results will follow."</div>
+            <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0; margin-top: 6px;">Ellen Kjær · after the Sunday review</div>
+          </div>
+
+          <div style="border-top: 1px solid #e5e0d5; margin-top: 16px; padding-top: 4px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid #e5e0d5;">
+              <div style="font-size: 13px;"><span style="font-weight: 600; color: rgb(21 119 47); font-variant-numeric: tabular-nums;">+2</span> · Stage win, Vuelta a Andalucía. "That is what I signed up for."</div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0; white-space: nowrap;">Jørgen Brandt · Sun</div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid #e5e0d5;">
+              <div style="font-size: 13px;"><span style="font-weight: 600; color: rgb(21 119 47); font-variant-numeric: tabular-nums;">+1</span> · Youth debut: Mikkel Iversen, 18. "This is the Nordic way."</div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0; white-space: nowrap;">Astrid Holm · Sat</div>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0;">
+              <div style="font-size: 13px;"><span style="font-weight: 600; color: rgb(168 30 30); font-variant-numeric: tabular-nums;">-1</span> · Deficit week, -86.000 CZ$. "Margins, not miracles."</div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0; white-space: nowrap;">Søren Lindqvist · Wed</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
