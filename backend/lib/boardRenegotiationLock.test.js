@@ -195,32 +195,16 @@ test("#2512: gammel bug-signatur (524 completed / 60 total) ville have låst per
   assert.equal(r.locked, true); // uundgåeligt for guarden selv — kilden er nu fixet i seasonRaceDays.js
 });
 
-// #4377 · DOKUMENTATION, ikke en fix: verificerer #4377's antagelse
-// ("genforhandlings-låsen ændrer mål, ikke historik") mod #915-låsen — og
-// antagelsen holder IKKE. Låsen ser kun på negotiation_status + sæson-progress
-// (race_days_completed/total) for den IGANGVÆRENDE sæson. Den ved intet om
-// hvor langt planen selv er nået (seasons_completed vs. planDuration), så en
-// ALLEREDE SIGNERET, stadig-igangværende flerårsplan (fx sæson 2 af en 5yr-
-// plan) kan gen-signeres tidligt i en ny sæson — /board/sign (api.js) nulstiller
-// da ubetinget seasons_completed, cumulative_stage_wins/cumulative_gc_wins og
-// plan_start_season_number for HELE planen, selvom planen ikke er udløbet.
-// #3575 bekræfter at UI'et eksplicit lover en "reset" ved genforhandling, så
-// dette kan være tilsigtet — men det modsiger #4377's antagelse om at kun mål
-// (ikke historik) ændres. Ejer-beslutning krævet før dette ændres; ikke rettet
-// i #4377 (se PR-body).
-test("#4377 · en igangværende (ikke-udløbet) flerårsplan er IKKE låst tidligt i en NY sæson — genforhandling kan nulstille cumulative-historik", () => {
-  const board = completedPlan({
-    plan_type: "5yr",
-    seasons_completed: 1, // planen er kun 1/5 sæsoner inde — langt fra udløb
-    cumulative_stage_wins: 3,
-    cumulative_gc_wins: 1,
-  });
-  const r = getBoardRenegotiationLock({ board, activeSeason: season(0) });
-  assert.equal(
-    r.locked, false,
-    "låsen kender ikke plan-fremdrift (seasons_completed) — kun sæsonens egen race-day-progress"
-  );
-});
+// #4377 · Denne DOKUMENTATION-test (ikke en fix) beskrev tidligere præcis den
+// gap #3575 lukker: en igangværende, ikke-udløbet flerårsplan kunne gen-
+// signeres tidligt i en ny sæson og nulstille cumulative-historik. #4377
+// noterede eksplicit at ejer-beslutning var krævet før det blev rettet — #3575
+// ER den beslutning (se postmortem .claude/learnings/2026-09-01-flerarsplan-
+// genforhandling-reroll.md). Guarden låser nu denne præcise vektor
+// unconditionally (dækket af "(a) aktiv {planType}-plan kan IKKE gen-
+// underskrives tidligt i en NY sæson"-testene ovenfor), så den gamle
+// locked:false-assertion her er blevet forkert og er fjernet i stedet for
+// opdateret til det modsatte (ville være en duplikat af (a)-testene).
 
 // ── (d) kilde-scan: signLock skal håndhæves FØR counter-reset i /board/sign ──
 //
