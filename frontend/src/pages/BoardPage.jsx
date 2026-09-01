@@ -9,6 +9,7 @@ import { formatNumber } from "../lib/intl";
 import { Flag } from "../components/Flag";
 import { Link } from "react-router";
 import BoardEmptyState from "../components/BoardEmptyState";
+import MonogramAvatar from "../components/MonogramAvatar";
 import BoardSatisfactionTimeline from "../components/BoardSatisfactionTimeline";
 import SponsorOfferModal from "../components/SponsorOfferModal";
 import OnboardingTour from "../components/OnboardingTour";
@@ -606,18 +607,47 @@ function ClubDnaDialog({ dna, onClose, canRechoose = false }) {
   );
 }
 
-// Medlem-citat-panel inde i GoalCard expand eller PlanCard outlook-feedback.
+// #4556 · Fallback-initialer NÅR backend ikke kunne afledde et navn (intet
+// teamId i konteksten) — ren visnings-forkortelse af den allerede synlige
+// label, INTET opfundet navn. Matcher MonogramAvatar's øvrige forbrugere.
+function labelFallbackInitials(label) {
+  const words = String(label || "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
+
+// Medlem-citat-panel inde i GoalCard expand, GoalMiniDialog eller PlanCard
+// outlook-feedback. #4556 S-M2b addendum ("Stemme-kontrakten" punkt 2) ·
+// viser PERSONEN bag reaktionen (monogram-initialer + fuldt navn), ikke kun
+// arketype-label+emoji. full_name/initials afledes backend-side
+// (decorateReactionWithName, boardMembers.js) og degraderer HER pænt til
+// label alene når de mangler — ingen crash, intet opfundet navn, ingen
+// "undefined". Genbruger samme MonogramAvatar som Boardroom-siden
+// (frontend/src/pages/boardroom) så de to sider ikke driver fra hinanden.
 function MemberReactionPanel({ reaction, compact = false }) {
   const { t } = useTranslation("board");
   if (!reaction?.quote) return null;
+  const label = resolveMemberLabel(t, reaction);
+  const hasName = Boolean(reaction.full_name);
+  const initials = reaction.initials || labelFallbackInitials(label);
   return (
     <div className={`flex items-start gap-2 ${compact ? "p-2" : "p-3"} bg-cz-subtle border border-cz-border rounded-cz`}>
-      <div className={`${compact ? "w-8 h-8 text-base" : "w-10 h-10 text-xl"} rounded-full
-        bg-cz-card border border-cz-border flex items-center justify-center flex-shrink-0`}>
-        <span aria-hidden>{reaction.emoji}</span>
-      </div>
+      <MonogramAvatar
+        sizeClass={compact ? "h-8 w-8" : "h-10 w-10"}
+        initials={initials}
+        initialsClass={compact ? "text-xs" : "text-sm"}
+        navy
+      />
       <div className="flex-1 min-w-0">
-        <p className={`text-cz-1 font-medium ${compact ? "text-xs" : "text-sm"}`}>{resolveMemberLabel(t, reaction)}</p>
+        <p className={`text-cz-1 font-medium ${compact ? "text-xs" : "text-sm"}`}>
+          {hasName ? reaction.full_name : label}
+        </p>
+        {hasName && (
+          <p className={`text-cz-3 ${compact ? "text-3xs" : "text-2xs"} uppercase tracking-[.06em] mt-0.5`}>
+            {label}
+          </p>
+        )}
         <p className={`text-cz-2 italic mt-0.5 ${compact ? "text-2xs" : "text-xs"} leading-relaxed`}>
           &ldquo;{resolveReactionQuote(t, reaction)}&rdquo;
         </p>
@@ -795,8 +825,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
               onClick={() => setMemberExpanded(v => !v)}
               className="inline-flex items-center gap-1 text-2xs text-cz-2 hover:text-cz-1 underline-offset-2 hover:underline transition-colors"
             >
-              <span>{memberReaction.emoji}</span>
-              <span>{t("goal.memberReacts", { member: memberReaction.label })}</span>
+              <span>{t("goal.memberReacts", { member: memberReaction.full_name || resolveMemberLabel(t, memberReaction) })}</span>
               {memberExpanded
                 ? <ChevronUpIcon size={11} aria-hidden="true" className="text-cz-3" />
                 : <ChevronDownIcon size={11} aria-hidden="true" className="text-cz-3" />}
