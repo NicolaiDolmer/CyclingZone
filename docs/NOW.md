@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **#4556: stemmer til de 7 sidste arketyper** (tonen ejer-GODKENDT 1/9 aften — byg direkte; ejerens bestyrelse har 0 af prøve-stemmerne, så beta-siden føles død) → S-M2c årsmødet (#4557; spiller-beta venter på den pga. bonustilbud-hullet). **Merge-go venter (alle grønne):** PR #4571 (kalender-invarianter som CI-gate) · #4572 (scorecard i sæsonskifte-preflight) · #4575 (npm audit fix, lukker Dependabot-alert #38). **Derefter:** de 4 S4-balance-bånd stilles enkeltvist (CALENDAR_RULES §11 / #4123) · #4555 penge-værnet (ikke startet) · kvalitets-challenge-workflow på board-modulet før fuld flip · #2423 P1 Skew Protection · #4537 fair play-opfølgning · #4535 matrix-header (ejer-retning).
+> **🎯 Next action:** ejer-svar på de 7 kort i [status quo-rapporten 1/9](https://claude.ai/code/artifact/8d54da64-ba6b-43ee-9c1d-22b098dcda58) (kort 1 = tænd mail-loopet #2853) → merge-go på **PR #4584** (løbsside henter kun valgt etape, #4581, smoke-fix undervejs) + **PR #4585** (#4556-resten: navn+stemme på alle læsesteder; stemme-indholdet lå allerede i main) → S-M2c årsmødet (#4557). **Merge-go venter (alle grønne):** PR #4571 (kalender-invarianter som CI-gate) · #4572 (scorecard i sæsonskifte-preflight) · #4575 (npm audit fix, lukker Dependabot-alert #38). **Derefter:** de 4 S4-balance-bånd stilles enkeltvist (CALENDAR_RULES §11 / #4123) · #4555 penge-værnet (ikke startet) · kvalitets-challenge-workflow på board-modulet før fuld flip · #2423 P1 Skew Protection · #4537 fair play-opfølgning · #4535 matrix-header (ejer-retning).
 
 > **⏳ Venter på DIN beslutning (stil dem enkeltvist):** **#4376/PR #4388 S3-kompensation** — A = kun opad (anbefalet) / B = begge veje / C = begge veje uden minus. **Måling afstemt 1/9: 54 hold / +3.901.500 efter modifier** (56/3,32M var samme tal råt + 2 AI-hold; de 79/4,83M var forældede). Nedad = 10 hold, −195.000, og alle 10 udløber efter S3. **PR'en er rebaset og MERGEABLE** · **#4495** 7 ryttere fanget i akademiet (minimal reparation, SQL vises først) · **#3494** sponsor-målet (anbefalet: pensionér sponsor_growth minimal) · **#4485-genberegning** af de 3 løb ([`docs/audits/4485-genberegning-foreslag.md`](audits/4485-genberegning-foreslag.md), anbefaling A: efterbetal uden clawback) · **#4098 blødt loft**: designforslag i tråden, du valgte "dialog nu, beslut senere".
 
@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** Session B (fase 2) LUKKET 1/9 aften. Leveret: Dependabot ×4 + #4552/#4551 merget · skyggedata re-baselinet m. ejer-GO (#3514) · **S-M2b Boardroom live i BETA** (flag=`beta`, kun admin; ejer-verdikt: ikke klar til alle — mangler #4556-stemmer, kvitteringer, #4579) · S4-CI-gates bygget (PR #4571/#4572) · Sentry-triage ren (#4576-#4580). **Session A** ejer stadig KUN PR #4550 + #4553 + close-out hvis den kører — ellers ingen aktiv session.
+> **🤖 Working agent:** Ingen aktiv session. Status quo-session lukket 1/9 nat: målt datapakke (d7 22 %, D3 67 % sovende), PR #4584 + #4585 åbne (ikke merget), nye issues #4581 #4582 (demote-løn, ejer-valg) #4583 #4586. Boardroom stadig BETA (kun admin).
 
 _Historik i git-log, issue-tråde + docs/audits/._
