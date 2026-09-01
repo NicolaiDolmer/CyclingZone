@@ -1072,12 +1072,21 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
         break;
       }
 
-      actual = roundNumber(((currentIncome - baseline) / baseline) * 100);
+      // #3494 (CodeRabbit-fund, PR #4550) · score/status regnes af den RAA
+      // (uafrundede) procent, IKKE den afrundede visnings-værdi. roundNumber
+      // (3 decimaler) kan rundes en reel 11.9996 % op til visnings-12 %, hvilket
+      // ville vise "ahead" (12 >= target 12) selvom evaluateGoal's autoritative
+      // `met`-flag (rå, uafrundet, samme linje 804 ovenfor) korrekt siger false
+      // for 11.9996 < 12 — en selvmodsigelse mellem kortets status og den
+      // "kilde til sandhed" isBoardGoalAchieved bruger. `actual` afrundes KUN
+      // til visning, aldrig til beregning.
+      const rawActual = ((currentIncome - baseline) / baseline) * 100;
+      actual = roundNumber(rawActual);
       target = isFinalSeason
         ? enrichedGoal.target
         : Math.max(1, enrichedGoal.target * (seasonsCompleted / planDuration));
-      score = scoreHigherBetter(actual, target);
-      status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
+      score = scoreHigherBetter(rawActual, target);
+      status = rawActual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
     }
     // S-02d · 7 nye mål-typer

@@ -360,3 +360,49 @@ test("#3494 · ingen tidligere plan-snapshot (plan-sæson 1) → baseline null, 
     "ingen afsluttet sæson i planen endnu → intet ægte grundlag, evaluator skal returnere awaiting_data");
   assert.equal(ctx.sponsorGrowthCurrentIncome, 250000, "indeværende sæsons udbetaling måles uafhængigt af baseline");
 });
+
+// #3494 (CodeRabbit-fund, PR #4550) · error=null men data IKKE et array (teoretisk
+// malformet svar) må ALDRIG stille sig tilfreds med et tavst 0 — det ville se ud
+// som "holdet tjente reelt 0 denne sæson" i stedet for "vi ved det ikke", og kunne
+// producere en falsk -100 %-vækst mod en ellers gyldig baseline. Bygger en minimal
+// wrapper om den fuldt filtrerende fake der KUN forstyrrer sponsor-queryen
+// ("amount, season_id") — alle andre queries (inkl. transfer-balance-queryen på
+// samme tabel) går uændret gennem den ægte fake.
+test("#3494 · malformet svar (error null, data ikke et array) på sponsor-queryen giver null, ikke et tavst 0", async () => {
+  const baseSupabase = createFakeSupabase({
+    board_plan_snapshots: [
+      { board_id: "b1", season_id: "s-prev", season_within_plan: 1, season_number: 1, u25_stat_sum: null, u25_count: null },
+    ],
+    finance_transactions: [],
+    race_results: [],
+  });
+  const supabase = {
+    from(table) {
+      const real = baseSupabase.from(table);
+      if (table !== "finance_transactions") return real;
+      return {
+        select(columns) {
+          if (columns !== "amount, season_id") return real.select(columns);
+          // Simulerer et malformet PostgREST-svar: intet error, men data er
+          // ikke et array (ude af den ægte Supabase-klients normale kontrakt).
+          const stub = {
+            eq() { return stub; },
+            in() { return stub; },
+            then(resolve) { return Promise.resolve({ data: null, error: null }).then(resolve); },
+          };
+          return stub;
+        },
+      };
+    },
+  };
+
+  const ctx = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s-cur",
+    planStartSeasonNumber: 1,
+  });
+
+  assert.equal(ctx.sponsorGrowthCurrentIncome, null,
+    "malformet data må ALDRIG blive til et stille 0 — skal forblive 'ukendt' (null)");
+  assert.equal(ctx.sponsorGrowthBaselineIncome, null,
+    "samme malformet-data-guard gælder baseline");
+});

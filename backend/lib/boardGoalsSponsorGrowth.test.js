@@ -114,6 +114,39 @@ test("#3494 · evaluateGoalProgress beregner en LÆSBAR procent-vækst (naturlig
   assert.equal(progress.missing_data, false);
 });
 
+// #3494 (CodeRabbit-fund, PR #4550) · roundNumber (3 decimaler) kan runde en
+// raa 11.9996 % op til visnings-12 %, hvilket ville vise "ahead" (12 >= target
+// 12) samtidig med at evaluateGoal's autoritative `met`-flag (raa, uafrundet)
+// korrekt siger false for 11.9996 < 12 — en selvmodsigelse mellem kortets
+// status og "kilden til sandhed". Score/status SKAL regnes af den raa værdi.
+test("#3494 · 11.9996% raa vaekst mod target 12: viser 12% men status/score/met er alle 'ikke naaet endnu' (raa-vaerdi-regel)", () => {
+  const baseline = 1_000_000;
+  const currentIncome = 1_119_996; // (1119996-1000000)/1000000*100 = 11.9996 (raa)
+
+  const progress = evaluateGoalProgress(GOAL, null, TEAM_WITH_DEAD_FIELD, {
+    isFinalSeason: true,
+    seasonsCompleted: 5,
+    planDuration: 5,
+    sponsorGrowthBaselineIncome: baseline,
+    sponsorGrowthCurrentIncome: currentIncome,
+  });
+  assert.equal(progress.actual, 12, "visning afrundes til 12% (kosmetisk, kun til display)");
+  // Den raa værdi (11.9996) er lige under target (12) → status er reelt
+  // "on_track" (score naer 1, men ratio<1 saa aldrig 'ahead'-grenen). DEN BUGGEDE
+  // adfærd (rettet her) var at den AFRUNDEDE 12 >= target 12 slog "ahead" til —
+  // det er selve selvmodsigelsen med met=false denne test forhindrer.
+  assert.notEqual(progress.status, "ahead",
+    "'ahead' ville modsige evaluateGoal's met=false for den samme raa værdi — kun regression-bugget giver 'ahead' her");
+  assert.equal(progress.status, "on_track");
+
+  const met = evaluateGoal(GOAL, null, TEAM_WITH_DEAD_FIELD, {
+    isFinalSeason: true,
+    sponsorGrowthBaselineIncome: baseline,
+    sponsorGrowthCurrentIncome: currentIncome,
+  });
+  assert.equal(met, false, "evaluateGoal (raa) og evaluateGoalProgress.status (nu ogsaa raa) skal stemme overens");
+});
+
 test("#3494 · negativ reel vækst (fx nedrykning) giver 'behind', ikke et krasj", () => {
   const progress = evaluateGoalProgress(GOAL, null, TEAM_WITH_DEAD_FIELD, {
     isFinalSeason: true,

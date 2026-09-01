@@ -250,9 +250,21 @@ export async function loadGoalContextForBoard({
         .in("reason_code", SPONSOR_GROWTH_REASON_CODES)
         .in("season_id", planSeasonIds),
     ]);
-    if (!sponsorErr) {
+    // #3494 (CodeRabbit-fund, PR #4550) · `sponsorTxs || []` ville stille sig
+    // tavst tilfreds med et malformet svar (error faldsk, data IKKE et array —
+    // teoretisk uden for den ægte Supabase-klient, men denne funktion kaldes
+    // fra economyEngine.processTeamSeasonEnd's PER-HOLD-loop, som har NUL
+    // try/catch pr. hold (dokumenteret economyEngine.js:2724-2749: en kastet
+    // fejl for ÉT hold afbryder resten af sæson-slut-batchen for ALLE
+    // resterende hold). Vi kaster derfor IKKE her — i stedet behandles et
+    // ikke-array-svar som en query-fejl: sponsorGrowthCurrentIncome/
+    // BaselineIncome forbliver `null` (samme "ukendt, ikke nul"-sentinel som
+    // enhver anden fejl i denne funktion), så evaluator returnerer
+    // awaiting_data i stedet for at regne en falsk -100 %-vækst ud fra et
+    // stiltiende 0 for indeværende sæson.
+    if (!sponsorErr && Array.isArray(sponsorTxs)) {
       const sponsorBySeasonId = new Map();
-      for (const row of sponsorTxs || []) {
+      for (const row of sponsorTxs) {
         const key = row.season_id;
         sponsorBySeasonId.set(key, (sponsorBySeasonId.get(key) || 0) + Number(row.amount || 0));
       }

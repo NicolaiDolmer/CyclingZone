@@ -120,7 +120,7 @@
     "memberReacts": "{member} reacts",
     "relativeRankDetail": "You are #{rank} of {total} managers in the division, beating {actual} (target: {target}{check}).",
     "rankInDivisionShort": "You are #{rank} of {total} managers in the division.",
-    "sponsorGrowthDetail": "Grown {actual}% of the {target}% due by now.",
+    "sponsorGrowthDetail": "Sponsor growth is {actual}% against the {target}% target due by now.",
     "progress": "Progress",
     "obligatory": "Mandatory",
     "boardReaction": "The board's reaction"
@@ -144,7 +144,7 @@
     "signature_rider": "Counts riders the board recognizes as star riders, using the same bar as the board's star-rider count: renown weighted with UCI points, combined into one score. Renown counts more than points, so a well-known rider can qualify without a big point haul.",
     "top_n_finish": "Evaluated on your final standing in the last season of the plan, not an average across the plan's seasons.",
     "u25_development_delta": "The average stat-point gain per U25 rider per season. Develop young riders so their stats rise over the season.",
-    "sponsor_growth": "Compares your sponsor's season payout (contract base plus race-day income) to the first season of this plan. Only counts from the plan's second season onward, once a real baseline season exists."
+    "sponsor_growth": "Compares your sponsor's season payout (contract base, prorated if your team joined mid-season, plus race-day income) between this season and the plan's first season. One-time bonuses (signing, results, objectives) are not counted. Only shown from the plan's second season onward, once a real baseline season exists."
   },
   "drivers": {
     "heading": "What drives this board?",
