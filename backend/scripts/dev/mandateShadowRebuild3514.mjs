@@ -61,8 +61,6 @@ import { createClient } from "@supabase/supabase-js";
 
 import {
   computeMigratedConfidence,
-  consequenceLayersFor,
-  isBonusBand,
   isUnsignedLongPlan,
   mergeCategoryScoresForMigration,
   planToMandate,
