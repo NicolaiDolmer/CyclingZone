@@ -307,6 +307,20 @@ export default function RaceDetailPage() {
     const s = searchParams.get("stage");
     return s ? `stage-${s}` : "samlet";
   });
+  // #4581: ?stage= til loadAll's initial-etape-preload, holdt i en ref i stedet for
+  // en useCallback-dependency. loadAll skal IKKE genskabes (og dermed genkøre via
+  // useEffect(() => { loadAll(); }, [loadAll]) nedenfor) hver gang ?stage= ændrer
+  // sig — det sker ved HVERT etapeskift (changeTab skriver ?stage=), hvilket ville
+  // udløse en fuld gen-hentning af race/moments/incidents m.m. og underminere
+  // etapeskiftets on-demand-design. En ref undgår det uden et eslint-disable-
+  // direktiv (#4332-ratchet'en tillader ikke flere i denne fil): den initialiseres
+  // synkront ved første render (dækker mount), og holdes i sync ved senere
+  // searchParams-ændringer af effekten lige nedenfor — samme "xRef.current = x i
+  // useEffect"-mønster som fx RacePointModelSection.jsx/useRealtimeRefetch.js.
+  const initialStageParamRef = useRef(searchParams.get("stage"));
+  useEffect(() => {
+    initialStageParamRef.current = searchParams.get("stage");
+  }, [searchParams]);
 
   // #1500: deep-link til en bestemt etape via ?stage=N. Hold activeTab og URL i
   // sync, så et link fra holdresultater åbner den rigtige etape — og fanen kan
@@ -371,13 +385,13 @@ export default function RaceDetailPage() {
     // samme etape aldrig hentes to gange i én session). `results`/`rows` beholder
     // nøjagtig samme rækkeform som før — kun MÆNGDEN er reduceret.
     //
-    // searchParams er BEVIDST udeladt af loadAll's dependency-array (bunden af
-    // funktionen) — den bruges kun til at læse ?stage= ved FØRSTE hentning af dette
-    // løb. Skulle den stå i dependency-arrayet, ville et etapeskift (som selv sætter
-    // ?stage= via changeTab) retrigge en fuld gen-hentning af race/moments/incidents
-    // m.m. og underminere hele on-demand-designet. Samme stale-closure-mønster som
-    // riderName i RaceReportPanel (linje ~1067).
-    const stageParam = searchParams.get("stage");
+    // ?stage= læses via initialStageParamRef (deklareret ovenfor ved searchParams),
+    // IKKE via searchParams direkte — det holder searchParams UDE af loadAll's
+    // dependency-array uden et eslint-disable-direktiv. Skulle searchParams stå i
+    // dependency-arrayet, ville et etapeskift (som selv sætter ?stage= via changeTab)
+    // retrigge en fuld gen-hentning af race/moments/incidents m.m. og underminere
+    // hele on-demand-designet.
+    const stageParam = initialStageParamRef.current;
     const initialStage = validateInitialStage(stageParam, { stagesCompleted: raceRow.stages_completed });
     const overallSeedStage = overallSeedStageNumber({ stagesCompleted: raceRow.stages_completed });
     const preloadStages = stagesToPreload({ initialStage, overallSeedStage });
@@ -479,7 +493,6 @@ export default function RaceDetailPage() {
     setCareerEvents(careerEventRows ?? []);
     setPassages(passageRows ?? []);
     setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- searchParams bevidst udeladt (læses kun ved FØRSTE hentning af løbet), se kommentar ved rowsPromise ovenfor (#4581)
   }, [raceId]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
