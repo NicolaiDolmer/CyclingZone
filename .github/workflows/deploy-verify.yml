@@ -188,6 +188,21 @@ jobs:
       - name: Verify CDN cache-headers (#2423 — edge-request-forbrug)
         run: node scripts/check-cdn-cache-headers.mjs https://cyclingzone.org
 
+      # #4545: enhedstesten i frontend/vercel.rewrites.test.js bevogter vores HENSIGT
+      # i repoet. Denne probe bevogter OPFØRSLEN i prod, og de fanger forskellige ting:
+      # en ændring i Vercel-dashboardet eller en ændret header-semantik lader repo-testen
+      # stå grøn mens spillerne rammer muren. Proben er kørt mod prod FØR fixet og
+      # fejler dér (exit 1), så den er målt til at kunne bide.
+      - name: Verify manglende asset fejler rent (#4545)
+        if: steps.required.outputs.need_vercel == 'true'
+        run: |
+          if node scripts/check-asset-miss-behaviour.mjs --base=https://cyclingzone.org; then
+            echo "✅ **Asset-miss-probe: OK** — en manglende chunk giver 404, ikke en HTML-side." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "❌ **Asset-miss-probe: FEJLET** — en manglende chunk resolver til noget ugyldigt. Spillere kan sætte sig permanent fast bag chunk-fallbacken (#4545)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
       - name: Verify Sentry source-maps uploaded (#621 item 3)
         id: sourcemaps
         # Opt-in via secrets. Hvis SENTRY_AUTH_TOKEN ikke er konfigureret i GitHub Actions
@@ -259,6 +274,50 @@ jobs:
           echo "Sentry release ${SHA:0:7} har $FILE_COUNT source-map files uploaded"
           note "✅ Sentry source-map guard: ${SHA:0:7} har $FILE_COUNT filer uploadet."
           echo "result=success" >> "$GITHUB_OUTPUT"
+
+      # #4545: chunk-fejl blev droppet i beforeSend, saa der fandtes ikke et tal at
+      # kigge paa. Nu naar de Sentry, og dette trin saetter tallet paa hvert deploy.
+      # Uden det er "synlig i Sentry" kun sandt for den der husker at aabne Sentry.
+      # Skip skal kunne SES (#4335) — derfor job-summary paa hver udgang.
+      - name: Chunk-fejl-rate efter deploy (#4545)
+        if: steps.required.outputs.need_vercel == 'true'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          CHUNK_ERROR_BUDGET: '25'
+        run: |
+          note() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+
+          if [[ -z "$SENTRY_AUTH_TOKEN" || -z "$SENTRY_ORG" ]]; then
+            echo "::warning::Chunk-fejl-rate sprunget over — SENTRY_AUTH_TOKEN/SENTRY_ORG mangler i Actions"
+            note "⏭️ **Chunk-fejl-rate: SPRUNGET OVER** — secrets mangler, saa omfanget af chunk-fejl er uovervaaget (#4545)."
+            exit 0
+          fi
+
+          CODE=$(curl -s -o /tmp/chunk-rate.json -w "%{http_code}" \
+            -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+            -H "Accept: application/json" \
+            --get "https://sentry.io/api/0/organizations/$SENTRY_ORG/events/" \
+            --data-urlencode "field=count()" \
+            --data-urlencode "query=frontend_error_kind:chunk_load_error" \
+            --data-urlencode "statsPeriod=24h" \
+            --data-urlencode "dataset=errors")
+
+          if [[ "$CODE" != "200" ]]; then
+            echo "::warning::Sentry events-API returnerede $CODE"
+            note "⚠️ **Chunk-fejl-rate: API-fejl $CODE** — tallet kunne ikke hentes (#4545)."
+            exit 0
+          fi
+
+          COUNT=$(jq '[.data[]["count()"]] | add // 0' /tmp/chunk-rate.json)
+          echo "Chunk-load-fejl seneste 24 t: $COUNT (budget $CHUNK_ERROR_BUDGET)"
+
+          if [[ "$COUNT" -gt "$CHUNK_ERROR_BUDGET" ]]; then
+            echo "::error::$COUNT chunk-load-fejl seneste 24 t, budget er $CHUNK_ERROR_BUDGET"
+            note "❌ **Chunk-fejl-rate: $COUNT paa 24 t** (budget $CHUNK_ERROR_BUDGET). Spillere rammer chunk-fallbacken. Tjek asset-miss-proben og #2423 P1."
+            exit 1
+          fi
+          note "✅ Chunk-fejl-rate: $COUNT paa 24 t (budget $CHUNK_ERROR_BUDGET)."
 
       - name: Comment success on merged PR
         if: success() && steps.pr.outputs.number != ''

@@ -6,7 +6,7 @@
       "destination": "https://cyclingzone-production.up.railway.app/api/email/unsubscribe"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/|fonts/|brand/|locales/).*)",
       "destination": "/app.html"
     }
   ],
