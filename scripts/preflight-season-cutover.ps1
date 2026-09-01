@@ -149,6 +149,64 @@ if ($SkipTests) {
   }
 }
 
+# --- 2b. Kalender-scorecard: pakkerens output mod docs/CALENDAR_RULES.md (#4215) ---
+# #4176 punkt 3 kraever scorecardet TRE steder: CI mod pakkerens output (findes,
+# .github/workflows/calendar-scorecard-gate.yml), saesonskifte-preflighten (HER,
+# tilfoejet i denne PR) og verify-invariants mod prod (staar stadig aaben, se
+# #4215-PR-body -- calendarScorecard4218.mjs kan i dag KUN maale offline/fixture,
+# raceRouteRealismScorecard.js's --mod-prod fra #4219 er en anden gate).
+Write-Section "Kalender-scorecard -- pakkerens output mod docs/CALENDAR_RULES.md (#4215)"
+
+$scorecardScript = Join-Path $backendRoot "scripts\dev\calendarScorecard4218.mjs"
+if ($SkipTests) {
+  Write-Host "  [skip] -SkipTests sat -- sprunget over" -ForegroundColor Yellow
+  $warn += "Kalender-scorecard sprunget over (-SkipTests) -- koer uden flaget foer den rigtige cutover."
+} elseif (-not $nodeCmd) {
+  $warn += "Kalender-scorecard sprunget over -- node mangler."
+} elseif (-not (Test-Path $scorecardScript)) {
+  $warn += "Kalender-scorecard ikke fundet ($scorecardScript) -- muligvis omdoebt/flyttet. Ret stien i dette script."
+  Write-Host "  [warn] scriptet findes ikke: $scorecardScript" -ForegroundColor Yellow
+} else {
+  # 100 % offline (fixture + rene funktioner) -- ingen secrets, ingen prod-adgang,
+  # samme mekanik som CI-gaten. Scriptet tager i dag INGEN --season-flag: dets
+  # first-day/days-defaults er S3s ejer-besluttede parametre (25/8), saa maalingen er
+  # PRAECIS relevant naar ToSeasonNumber=3 og et REGRESSIONS-tjek af selve pakkeren
+  # for enhver anden overgang (parametrisering til vilkaarlig ToSeason er ikke bygget
+  # her -- se PR-body).
+  Push-Location $backendRoot
+  try {
+    $scOut = & $nodeCmd.Source $scorecardScript 2>&1
+    $scExit = $LASTEXITCODE
+  } finally {
+    Pop-Location
+  }
+  $domLinje = @($scOut) | Where-Object { $_ -match '^SAMLET:' } | Select-Object -First 1
+  if ($domLinje) { Write-Host "  $domLinje" }
+
+  if ($ToSeasonNumber -eq 3) {
+    if ($scExit -eq 0) {
+      $ok += "Kalender-scorecard (#4215) groent mod S3-parametrene -- den planlagte kalender overholder docs/CALENDAR_RULES.md."
+      Write-Host "  [ok] scorecard groent" -ForegroundColor Green
+    } else {
+      $fail += "Kalender-scorecard (#4215) er ROEDT for S3: den kalender der ville blive skrevet bryder docs/CALENDAR_RULES.md. Se detaljer i den fulde koersel: node scripts/dev/calendarScorecard4218.mjs (fra backend/)."
+      Write-Host "  [NO-GO] scorecard roedt -- se node scripts/dev/calendarScorecard4218.mjs for detaljer" -ForegroundColor Red
+      @($scOut) | Select-Object -Last 15 | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
+    }
+  } else {
+    # scorecardet er stadig hardkodet til S3s dato/katalog-parametre og maaler derfor
+    # IKKE S$ToSeasonNumber's kommende kalender -- kun at pakkeren/generatoren selv
+    # stadig producerer en gyldig kalender under de kendte parametre. Behandles derfor
+    # som advisory (warn), ikke NO-GO, for enhver anden overgang end S2->S3.
+    if ($scExit -eq 0) {
+      $ok += "Kalender-scorecard groent mod S3s hardkodede parametre (regressions-tjek af pakkeren -- IKKE en maaling af S$ToSeasonNumber, scriptet tager endnu ingen --season-parameter for en vilkaarlig fremtidig saeson)."
+      Write-Host "  [ok] scorecard groent (regressions-tjek, ikke S$ToSeasonNumber-specifik)" -ForegroundColor Green
+    } else {
+      $warn += "Kalender-scorecard er ROEDT mod S3s hardkodede parametre. Ikke noedvendigvis relevant for S$ToSeasonNumber, men indikerer at pakkeren/generatoren selv er i ustabil tilstand -- undersoeg FOER cutover uanset."
+      Write-Host "  [warn] scorecard roedt mod S3-parametrene (se ovenfor)" -ForegroundColor Yellow
+    }
+  }
+}
+
 # --- 3. Statisk kode-tilstedevaerelse (scripts/migrationer kaeden kraever) ---
 Write-Section "Kode-/script-tilstedevaerelse"
 
