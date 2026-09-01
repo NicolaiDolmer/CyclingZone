@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Performance",
         "en": {
           "title": "Landing page loads faster on mobile Safari",
-          "body": "Visitors on mobile Safari sometimes got the slow, unstyled version of the landing page instead of the fast pre-built one, because a rare timing issue made the browser throw the pre-built version away. That is now fixed."
+          "body": "A timing issue during page load made mobile Safari rebuild the landing page from scratch instead of using the fast pre-built version. The page looked the same but loaded slower. Fixed."
         },
         "da": {
           "title": "Landingssiden loader hurtigere på mobil-Safari",
-          "body": "Besøgende på mobil-Safari fik nogle gange den langsomme, ustylede udgave af landingssiden i stedet for den hurtige, prebyggede, fordi en sjælden timing-fejl fik browseren til at smide den prebyggede udgave væk. Det er nu rettet."
+          "body": "En timing-fejl under indlæsning fik mobil-Safari til at genopbygge landingssiden fra bunden i stedet for at bruge den hurtige, prebyggede udgave. Siden så ens ud, men loadede langsommere. Rettet."
         },
         "refs": [2960, 4370]
       }
