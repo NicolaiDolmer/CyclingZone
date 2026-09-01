@@ -5,7 +5,7 @@
  * Addendum: docs/superpowers/specs/2026-09-01-board-mandate-addendum-personer-med-stemme.md
  * Plan: docs/slices/09-board-mandate-rework-MASTER.md
  *
- * `buildBoardRoomPayload({ supabase, teamId, locale })` er den ENESTE aggregator
+ * `buildBoardRoomPayload({ supabase, teamId })` er den ENESTE aggregator
  * for Boardroom-siden. Route'en (routes/api.js `GET /board/room`) holdes tynd:
  * flag-tjek + auth/team-scoping, resten af sammensætningen sker her, så den kan
  * unit-testes uden Express.
@@ -268,7 +268,11 @@ export function deriveMilestoneStatus({ milestone, currentSeasonNumber } = {}) {
 // Aggregator
 // ---------------------------------------------------------------------------
 
-export async function buildBoardRoomPayload({ supabase, teamId, locale = "en" } = {}) {
+// Ingen `locale`-parameter: payloaden bærer kun i18n-NØGLER (+ params), aldrig
+// oversat tekst — oversættelse sker i frontend (`board`-namespace), jf.
+// addendummets stemme-kontrakt punkt 4. En locale-parameter her ville være
+// død kode indtil endpointet en dag også skal levere serversiderenderet tekst.
+export async function buildBoardRoomPayload({ supabase, teamId } = {}) {
   ensureSupabase(supabase);
   if (!teamId) throw new Error("teamId is required");
 

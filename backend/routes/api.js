@@ -15056,7 +15056,12 @@ router.get("/board/status", requireAuth, async (req, res) => {
 // (ingen skygge-tabel-læsning). Aggregeringen ligger i lib/boardRoom.js så
 // den kan unit-testes uden Express — se modul-headeren dér for kontrakten
 // og de rapporterede afvigelser.
-router.get("/board/room", requireAuth, async (req, res) => {
+// #530 · rate-limit-coverage-guard: presencePulseLimiter (samme mønster som
+// guardens egen eksempel-tekst) — polles på route-change/tab-focus ligesom de
+// andre presence-pulse-dækkede reads, IKKE grandfathered ind i den eksisterende
+// ~76-rute-baseline af (endnu) udækkede GET-ruter (bl.a. GET /board/status
+// selv, som forbliver udækket dér — ny kode skal ikke vokse den bunke).
+router.get("/board/room", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
