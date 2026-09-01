@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: "Inter Tight", "Arial Narrow", system-ui, sans-serif; background: #f4f2ec; color: #0e0f15; }
+    a { color: #a07800; text-decoration: none; } a:hover { color: #7a5c00; }
+  </style>
+</helmet>
+<div style="width: 1440px; min-height: 1060px; background: #f4f2ec;">
+
+  <!-- Fullscreen meeting header band (navy, the one takeover surface) -->
+  <div style="background: #1a1f38; padding: 22px 0;">
+    <div style="width: 896px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <div style="font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-serif; font-size: 34px; line-height: 0.92; color: #ffffff; letter-spacing: 0.02em;">ANNUAL MEETING · SEASON 4</div>
+        <div style="font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 6px;">The board proposes your mandate. Adjust it, make one request, sign.</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.55);">Confidence 71 · 2 adjustments available</div>
+        <div style="font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 4px; font-variant-numeric: tabular-nums;">Unanswered mandates sign automatically in 5 days</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step strip -->
+  <div style="width: 896px; margin: 20px auto 0 auto; display: flex; gap: 8px; align-items: center; font-size: 12px;">
+    <span style="color: #9896b0;">1 Focus</span>
+    <span style="color: #e5e0d5;">/</span>
+    <span style="font-weight: 600; color: #0e0f15; border-bottom: 2px solid rgb(232 197 71); padding-bottom: 2px;">2 Mandate</span>
+    <span style="color: #e5e0d5;">/</span>
+    <span style="color: #9896b0;">3 Request</span>
+    <span style="color: #e5e0d5;">/</span>
+    <span style="color: #9896b0;">4 Sign</span>
+  </div>
+
+  <div style="width: 896px; margin: 16px auto 0 auto; display: flex; flex-direction: column; gap: 14px; padding-bottom: 64px;">
+
+    <!-- Proposed mandate with counter-offers -->
+    <div style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 5px; padding: 20px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px;">
+        <div style="font-size: 15px; font-weight: 600;">Proposed mandate · focus: Youth development</div>
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0;">4 goals · 1 of 2 adjustments used</div>
+      </div>
+
+      <!-- Goal row 1: Keep selected -->
+      <div style="padding: 14px 0; border-top: 1px solid #e5e0d5;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 5px; background: #ece9e1; border: 1px solid #e5e0d5; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #66637a;">JB</div>
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">Win 4 race days</div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0;">Reward +6 confidence · miss -3</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 9999px; padding: 5px 12px; font-family: 'Inter Tight', sans-serif; font-size: 12px; font-weight: 500; color: #66637a; cursor: pointer;">Easier</button>
+            <button style="background: #1a1f38; border: 1px solid #1a1f38; border-radius: 9999px; padding: 5px 12px; font-family: 'Inter Tight', sans-serif; font-size: 12px; font-weight: 600; color: #ffffff; cursor: pointer;">Keep</button>
+            <button style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 9999px; padding: 5px 12px; font-family: 'Inter Tight', sans-serif; font-size: 12px; font-weight: 500; color: #66637a; cursor: pointer;">Stretch</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Goal row 2: Stretch selected, member reaction inline -->
+      <div style="padding: 14px 0; border-top: 1px solid #e5e0d5;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 5px; background: #ece9e1; border: 1px solid #e5e0d5; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #66637a;">AH</div>
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">Give 3 academy riders a debut <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #a07800; border: 1px solid #e5e0d5; border-radius: 9999px; padding: 1px 7px; margin-left: 6px;">Stretch</span></div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0;">Reward +9 confidence · miss -5 · was 2 debuts</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 9999px; padding: 5px 12px; font-family: 'Inter Tight', sans-serif; font-size: 12px; font-weight: 500; color: #66637a; cursor: pointer;">Easier</button>
+            <button style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 9999px; padding: 5px 12px; font-family: 'Inter Tight', sans-serif; font-size: 12px; font-weight: 500; color: #66637a; cursor: pointer;">Keep</button>
+            <button style="background: #1a1f38; border: 1px solid #1a1f38; border-radius: 9999px; padding: 5px 12px; font-family: 'Inter Tight', sans-serif; font-size: 12px; font-weight: 600; color: #ffffff; cursor: pointer;">Stretch</button>
+          </div>
+        </div>
+        <div style="margin: 10px 0 0 40px; display: flex; align-items: center; gap: 10px;">
+          <div style="width: 24px; height: 24px; border-radius: 5px; background: #1a1f38; color: #f4f2ec; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', Impact, sans-serif; font-size: 12px;">AH</div>
+          <div style="font-size: 12.5px; color: #66637a;">"Three debuts. Now you are speaking my language." · Astrid Holm backs the stretch</div>
+        </div>
+      </div>
+
+      <!-- Goal row 3 -->
+      <div style="padding: 14px 0 0 0; border-top: 1px solid #e5e0d5;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 28px; height: 28px; border-radius: 5px; background: #ece9e1; border: 1px solid #e5e0d5; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #66637a;">SL</div>
+            <div>
+              <div style="font-size: 13.5px; font-weight: 500;">Keep season result above zero</div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0;">Reward +5 confidence · miss -3</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 9999px; padding: 5px 12px; font-family: 'Inter Tight', sans-serif; font-size: 12px; font-weight: 500; color: #66637a; cursor: pointer;">Easier</button>
+            <button style="background: #1a1f38; border: 1px solid #1a1f38; border-radius: 9999px; padding: 5px 12px; font-family: 'Inter Tight', sans-serif; font-size: 12px; font-weight: 600; color: #ffffff; cursor: pointer;">Keep</button>
+            <button style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 9999px; padding: 5px 12px; font-family: 'Inter Tight', sans-serif; font-size: 12px; font-weight: 500; color: #66637a; cursor: pointer;">Stretch</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- One request -->
+    <div style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 5px; padding: 20px;">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px;">
+        <div style="font-size: 15px; font-weight: 600;">Your request · 1 per meeting</div>
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #9896b0;">A refusal always comes with a counter-offer</div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #e5e0d5; border-radius: 5px; padding: 13px 14px; background: #fcfbf7;">
+        <div>
+          <div style="font-size: 13.5px; font-weight: 500;">Raise the transfer budget</div>
+          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9896b0;">Trade-off: the board expects a tighter wage bill in return</div>
+        </div>
+        <button style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 5px; padding: 6px 12px; font-family: 'Inter Tight', sans-serif; font-size: 12px; font-weight: 500; color: #66637a; cursor: pointer;">Change request</button>
+      </div>
+    </div>
+
+    <!-- Sign footer -->
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 2px;">
+      <div style="font-size: 12px; color: #9896b0;">Fastest path: accept the proposal and sign. Two clicks.</div>
+      <div style="display: flex; gap: 10px;">
+        <button style="background: #fcfbf7; border: 1px solid #e5e0d5; border-radius: 5px; padding: 9px 14px; font-family: 'Inter Tight', sans-serif; font-size: 13px; font-weight: 500; color: #66637a; cursor: pointer;">Back</button>
+        <button style="background: rgb(232 197 71); color: #1a1f38; border: none; border-radius: 5px; padding: 9px 16px; font-family: 'Inter Tight', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;">Sign mandate</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
