@@ -12,7 +12,7 @@
 
 > **🔴 Åbne fund:** **#4535** header-design (se Next action) · **#4537** fair play: spiller med 2 hold meldte sig selv, 57 1-CZ-auktioner annulleret 31/8 (verificeret, backup taget); **udestår: han vælger hold, det andet lukkes — trup-håndteringen har ingen verificeret mekanik** · **#4370** WebKit (blokerer smoke) · **#4146** beslutningsoplæg i tråden · **#4493** sanitize falsk positiv · **#4496** CI-vagt.
 
-> **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). **Rod-årsag BEKRÆFTET 1/9** (triage-måling i #4514): perioden rullede til 1/10 uden faktura og uden træk; faktura #2 er 24 dage over. Nyt: `current_period_end` udløb i nat → Pro-mærket faldt for den eneste kunde (kosmetisk; ingen backend-gate). A/B om reconcile-dry-run venter · #4512 dunning (ejer) · #4511 EU-moms. Spor D aktivt: #2853-mailtekster + /pro #4074 · #2813 (needs-decision).
+> **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). **Rod-årsag BEKRÆFTET 1/9** (triage-måling i #4514): perioden rullede til 1/10 uden faktura og uden træk; faktura #2 er 24 dage over. Nyt: `current_period_end` udløb i nat → Pro-mærket faldt for den eneste kunde (kosmetisk; ingen backend-gate). Nye: **#4541** (Aluntas svarform aldrig verificeret - dry-run venter) + **#4542** (cache-friskhed kan ikke aflæses) · #4512 dunning (ejer) · #4511 EU-moms. Spor D aktivt: #2853-mailtekster + /pro #4074 · #2813 (needs-decision).
 
 > **✅ S3 kører:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Nattens kalender-audit (05:50) = #4507-beviset - tjek den i næste session.
 
