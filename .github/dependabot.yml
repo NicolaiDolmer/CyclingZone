@@ -19,7 +19,7 @@ updates:
           - patch
     # Major-bumps lever som separate PRs (kræver review)
     ignore:
-      # Express 5 har breaking middleware-API — separat migration-issue når relevant
+      # Express 5 har breaking middleware-API — #4565 - review 2026-12-01
       - dependency-name: "express"
         update-types: ["version-update:semver-major"]
 
@@ -39,15 +39,17 @@ updates:
           - minor
           - patch
     ignore:
-      # Tailwind 4 kræver postcss-plugin migration (#134) — blokeret indtil løst
+      # Tailwind 4 kræver postcss-plugin migration — #134 - review 2026-12-01
+      # (#134 er formelt lukket COMPLETED, men frontend/package.json viser stadig
+      # tailwindcss ^3.4.14 og migrationen er IKKE udført — se PR-body for #4551.
+      # Reference bevidst bevaret indtil ejeren har taget stilling til issuet.)
       - dependency-name: "tailwindcss"
         update-types: ["version-update:semver-major"]
-      # Vite 5 → 8 er 3 major-bumps på én gang — kræver dedikeret session
-      - dependency-name: "vite"
-        update-types: ["version-update:semver-major"]
-      # @vitejs/plugin-react v6 kræver Vite 5+ + dedikeret build-pipeline-test. PR #141 lukket 2026-05-08.
-      - dependency-name: "@vitejs/plugin-react"
-        update-types: ["version-update:semver-major"]
+      # vite- og @vitejs/plugin-react-ignores fjernet 2026-09-01 (#4551): repoet
+      # kører allerede vite@8.2.2 og @vitejs/plugin-react@6.0.2 — de major-bumps
+      # ignoren blokerede (5→8, samt v6 der krævede Vite 5+) er begge allerede
+      # landet. Fremtidige majors (fx vite@9) er nu almindelige ejer-gatede
+      # Dependabot-PRs uden for backend-minor-patch/frontend-minor-patch-grupperne.
 
   # Root scripts — sjældent ændret, men dækkes af Dependabot
   - package-ecosystem: npm
