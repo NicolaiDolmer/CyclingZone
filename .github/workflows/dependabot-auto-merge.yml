@@ -1,7 +1,7 @@
 name: Dependabot auto-merge
 
-# Genindført (ejer-beslutning 1/9, #4552) — patch+minor Dependabot-PR'er slaar
-# GitHub's native `gh pr merge --auto` til ved groen CI; majors forbliver
+# Genindført (ejer-beslutning 1/9, #4552) — patch+minor Dependabot-PR'er
+# synkron-venter på grøn CI og squash-merger eksplicit; majors forbliver
 # ejer-gatede (kun advisory-kommentar, ingen auto-merge).
 #
 # Hvorfor genindfoert nu: #178-fravalget (2026-05-08) var maerket "pre-launch".
@@ -11,14 +11,16 @@ name: Dependabot auto-merge
 # risiko i friske releases). Manuel `auto-merge`-label pr. patch-bump skalerer
 # ikke.
 #
-# `gh pr merge --auto` (IKKE synkron `gh pr merge`): saetter blot GitHub's
-# native auto-merge-flag paa PR'en. GitHub merger den selv naar required checks
-# er groenne — branch protection er stadig sikkerhedsnettet. Dette er bevidst
-# forskelligt fra auto-merge.yml's synkrone `gh pr checks --watch` + eksplicit
-# `gh pr merge` + `workflow_dispatch`-trigger af deploy-verify (se kommentar
-# der om GitHub's anti-loop-safeguard paa GITHUB_TOKEN-merges). For Dependabot
-# patch/minor er der IKKE et tilsvarende eksplicit deploy-verify-behov her —
-# hvis det senere viser sig noedvendigt, spejl moenstret fra auto-merge.yml.
+# Hvorfor IKKE `gh pr merge --auto` (rettet 1/9 efter review): dette workflow
+# fulgte oprindeligt native auto-merge, men det genindfører PRÆCIS den
+# fejlklasse #118 dokumenterede og auto-merge.yml blev bygget udenom -
+# GitHub's anti-loop-safeguard blokerer downstream workflows (push,
+# pull_request: closed) naar mergen kommer fra GITHUB_TOKEN. #118 (lint-staged
+# 17, mergede 2026-05-08T10:36) landede saaledes UDEN deploy-verify. Derfor
+# spejler dette workflow nu auto-merge.yml's moenster 1:1 for patch/minor:
+# synkron `gh pr checks --watch` -> eksplicit `gh pr merge --squash` (IKKE
+# --auto) -> eksplicit `workflow_dispatch` af deploy-verify (undtaget fra
+# anti-loop-safeguarden).
 
 on:
   pull_request:
@@ -27,6 +29,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write   # workflow_dispatch på deploy-verify
+  checks: read     # gh pr checks + gh api .../check-runs (statusCheckRollup → check-runs)
+  statuses: read   # gh pr checks (statusCheckRollup → commit statuses)
 
 concurrency:
   group: dependabot-auto-merge-${{ github.event.pull_request.number }}
@@ -34,9 +39,12 @@ concurrency:
 
 jobs:
   dependabot-auto-merge:
+    # Actor-guard: kun Dependabot-PR'er rammer dette workflow. Samme rolle som
+    # auto-merge.yml's sender-guard, bare mod app-actoren i stedet for et
+    # menneske der saetter en label.
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
     steps:
       - name: Fetch Dependabot metadata
         id: metadata
@@ -44,27 +52,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enable auto-merge for patch/minor
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
-          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
-        run: |
-          set -euo pipefail
-          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --auto --squash
-          if [[ "$UPDATE_TYPE" == "version-update:semver-minor" ]]; then
-            ICON="information_source"
-            CLASSIFICATION="**Minor version-bump** for \`$DEPENDENCY_NAMES\`"
-          else
-            ICON="bug"
-            CLASSIFICATION="**Patch version-bump** for \`$DEPENDENCY_NAMES\`"
-          fi
-          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body ":${ICON}: ${CLASSIFICATION}
-
-          **Auto-merge slaaet til** (ejer-beslutning 1/9, #4552) — squash-merger automatisk naar required checks er groenne. 7 dages release-cooldown er allerede haandhaevet af Dependabot foer PR'en overhovedet aabnes. Fjern auto-merge med \`gh pr merge $PR_NUMBER --disable-auto\` for at annullere."
-
+      # ---------------------------------------------------------------
+      # Major: uændret advisory-only kommentar, ingen auto-merge-forsøg.
+      # ---------------------------------------------------------------
       - name: Comment on major version-bump (ejer-gated, ingen auto-merge)
         if: steps.metadata.outputs.update-type == 'version-update:semver-major'
         env:
@@ -75,3 +65,135 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body ":warning: **Major version-bump** for \`$DEPENDENCY_NAMES\`
 
           Højrisiko — gennemgå breaking changes manuelt før merge. **Ingen auto-merge** for majors (ejer-beslutning 1/9, #4552). Tilføj \`auto-merge\` label manuelt hvis du har verificeret CI er grøn og at bumpen er safe — så håndterer auto-merge.yml resten (synkron CI-wait → squash-merge → deploy-verify)."
+
+      # ---------------------------------------------------------------
+      # Patch/minor: samme synkrone moenster som auto-merge.yml (spejlet,
+      # ikke genopfundet) — se filens header for hvorfor IKKE `--auto`.
+      # ---------------------------------------------------------------
+      - name: Confirm queued (patch/minor)
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+        run: |
+          if [[ "$UPDATE_TYPE" == "version-update:semver-minor" ]]; then
+            ICON="information_source"
+            CLASSIFICATION="**Minor version-bump** for \`$DEPENDENCY_NAMES\`"
+          else
+            ICON="bug"
+            CLASSIFICATION="**Patch version-bump** for \`$DEPENDENCY_NAMES\`"
+          fi
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body ":${ICON}: ${CLASSIFICATION}
+
+          **Auto-merge i kø** (ejer-beslutning 1/9, #4552) — venter synkront på required checks + \`frontend-smoke\` (fuld Playwright-suite) + advisory AI-review, squash-merger automatisk naar groent, og trigger deploy-verify bagefter. 7 dages release-cooldown er allerede haandhaevet af Dependabot foer PR'en blev aabnet."
+
+      - name: Wait for required checks (patch/minor)
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr checks "$PR_NUMBER" --repo "${{ github.repository }}" --watch --fail-fast --required
+
+      # Samme vaern som auto-merge.yml (2026-07-02, #2000-spec-rot): required
+      # checks alene fanger ikke en roed frontend-smoke, saa den ventes paa
+      # eksplicit. skipped/neutral = OK (docs-/backend-PR'er skipper suiten).
+      - name: Wait for frontend-smoke (fuld Playwright-suite, patch/minor)
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid --jq .headRefOid)
+          # 60 × 15s = 15 min — suiten tager ~4-5 min, men kan starte sent i køen.
+          for _ in $(seq 1 60); do
+            SMOKE_JSON=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=frontend-smoke" --jq '.check_runs[0] // empty')
+            if [ -z "$SMOKE_JSON" ]; then
+              echo "No frontend-smoke check found for $HEAD_SHA; continuing."
+              exit 0
+            fi
+            STATUS=$(echo "$SMOKE_JSON" | jq -r '.status')
+            CONCLUSION=$(echo "$SMOKE_JSON" | jq -r '.conclusion // ""')
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ] || [ "$CONCLUSION" = "neutral" ] || [ "$CONCLUSION" = "skipped" ]; then
+                echo "frontend-smoke concluded: ${CONCLUSION:-<none>}"
+                exit 0
+              fi
+              gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "⛔ **Auto-merge stoppet** — \`frontend-smoke\` (fuld Playwright-suite) endte med \`$CONCLUSION\`. Rød e2e må ikke merges stille (#2000-spec-rot → PR #2114): fix koden eller opdatér spec'en. Genkør workflowet (push et nyt commit) for at prøve igen."
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "frontend-smoke is still running after 15 min; leaving PR open for manual follow-up."
+          exit 1
+
+      - name: Wait for advisory AI review if present (patch/minor)
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json labels --jq '.labels[].name')
+          if echo "$LABELS" | grep -qx 'skip-ai-review'; then
+            echo "skip-ai-review label present; continuing."
+            exit 0
+          fi
+
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid --jq .headRefOid)
+          for _ in $(seq 1 20); do
+            REVIEW_JSON=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=review" --jq '.check_runs[0] // empty')
+            if [ -z "$REVIEW_JSON" ]; then
+              echo "No advisory review check found; continuing."
+              exit 0
+            fi
+            STATUS=$(echo "$REVIEW_JSON" | jq -r '.status')
+            CONCLUSION=$(echo "$REVIEW_JSON" | jq -r '.conclusion // ""')
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ] || [ "$CONCLUSION" = "neutral" ] || [ "$CONCLUSION" = "skipped" ]; then
+                exit 0
+              fi
+              gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "⛔ **Auto-merge stoppet** — advisory AI-review endte med \`$CONCLUSION\`. Review PR'en manuelt, eller tilføj \`skip-ai-review\` hvis fejlen er kendt og ufarlig, og genkør workflowet."
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "Advisory review is still running; leaving PR open for manual follow-up."
+          exit 1
+
+      - name: Squash-merge PR (patch/minor)
+        id: merge
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --squash --delete-branch
+          SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json mergeCommit --jq .mergeCommit.oid)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Merged to $SHA"
+
+      - name: Trigger deploy-verify (anti-loop workaround, patch/minor)
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SHA: ${{ steps.merge.outputs.sha }}
+        run: |
+          gh workflow run deploy-verify.yml --repo "${{ github.repository }}" --ref main \
+            -f sha="$SHA" \
+            -f pr_number="$PR_NUMBER"
+
+      - name: Notify on failure (patch/minor)
+        if: failure() && (steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **Dependabot auto-merge fejlede** — [se log]($RUN_URL)
+
+          Tjek: er CI rødt? Merge-konflikter? Workaround: merge manuelt, eller push et nyt commit for at genkøre."
