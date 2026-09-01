@@ -63,6 +63,12 @@ Dokumenteret med en test (`boardRenegotiationLock.test.js`), ikke rettet:
 ændring af reset-omfanget er en produktbeslutning med bred blast radius
 (rammer signeringsflowet for alle tre plan-typer).
 
+## Addendum (samme dag, CodeRabbit-review af PR #4549)
+
+CodeRabbit fangede korrekt at `cumulative: true`-fixet kun virker for NYE 5yr-forslag — allerede-signerede `board_profiles`-rækker har den gamle goal-JSON frosset i `current_goals` og retter sig ikke selv. Adresseret med:
+- `database/2026-09-01-4377-jersey-wins-cumulative-repair.sql` — idempotent reparation, 113 rækker målt i prod (read-only), UPDATE-logik verificeret via en `BEGIN…ROLLBACK`-dry-run mod prod. Ikke kørt her (ejer/orkestrator post-merge, #2642).
+- Forward-guard i `boardGoals.js`: `console.warn` når et persisteret `source:"club_dna"` jersey_wins-mål mangler `cumulative:true`, så reparationens fremdrift er synlig i logs.
+
 ## Læring
 
 - **En manglende boolean-flag på statisk DNA-data kan reproducere samme
