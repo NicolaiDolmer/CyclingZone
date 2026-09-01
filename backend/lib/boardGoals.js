@@ -15,7 +15,6 @@ import {
   STAR_RIDER_SCORE_THRESHOLD,
 } from "./boardIdentity.js";
 import { applyDnaWeightingToGoals, buildDnaTraditionGoal } from "./boardClubDna.js";
-import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
 import { stampGoalsOwners } from "./boardMembers.js";
 import {
   clamp,
@@ -786,8 +785,9 @@ export function evaluateGoal(goal, standing, team, context = {}) {
     // det er ikke en workaround for denne default, se kommentaren dér.
     isFinalSeason = false,
     activeLoanCount = 0,
-    planStartSponsorIncome,
-    currentSponsorIncome,
+    // #3494 · sponsor_growth genanvender IKKE længere planStartSponsorIncome/
+    // currentSponsorIncome (begge kilder er det døde teams.sponsor_income-felt)
+    // — se sponsorGrowthBaselineIncome/sponsorGrowthCurrentIncome nedenfor.
     cumulativeStats: _cumulativeStats,
     cumulativeMonumentPodiums,
     cumulativeJerseyWins,
@@ -797,6 +797,8 @@ export function evaluateGoal(goal, standing, team, context = {}) {
     planStartU25StatSum,
     planStartU25Count,
     divisionManagerCount,
+    sponsorGrowthCurrentIncome,
+    sponsorGrowthBaselineIncome,
   } = context;
 
   switch (enrichedGoal.type) {
@@ -823,9 +825,15 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       if (!isFinalSeason) return null;
       return activeLoanCount === 0;
     case "sponsor_growth":
+      // #3494 · Re-pointet til ægte sponsor_contracts-udbetalinger (boardGoalContext.js).
+      // Ingen baseline (plan-sæson 1, endnu ingen afsluttet sæson at måle fra) eller
+      // ingen aktuel måling (query-fejl) → null, samme "ikke talt med"-semantik som
+      // stage_wins/gc_wins cumulative ovenfor — IKKE en fejlet evaluering.
       if (!isFinalSeason) return null;
-      if (!planStartSponsorIncome || planStartSponsorIncome === 0) return null;
-      return ((currentSponsorIncome - planStartSponsorIncome) / planStartSponsorIncome * 100) >= enrichedGoal.target;
+      if (!sponsorGrowthBaselineIncome || sponsorGrowthBaselineIncome <= 0) return null;
+      if (sponsorGrowthCurrentIncome == null) return null;
+      return ((sponsorGrowthCurrentIncome - sponsorGrowthBaselineIncome) / sponsorGrowthBaselineIncome * 100)
+        >= enrichedGoal.target;
     // S-02d · 7 nye mål-typer
     case "monument_podium": {
       // Cumulative over plan-perioden (Q-A) — mindst N podie-placeringer.
@@ -1047,16 +1055,24 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       status = actual === 0 ? "ahead" : actual === 1 ? "watch" : "behind";
       break;
     case "sponsor_growth": {
-      const planStartSponsorIncome = context.planStartSponsorIncome;
-      if (!planStartSponsorIncome || planStartSponsorIncome <= 0) {
+      // #3494 · Re-pointet til ægte sponsor_contracts-udbetalinger. Baseline =
+      // planens FØRSTE afsluttede sæsons faktiske udbetaling (boardGoalContext.js);
+      // FINDES DEN IKKE (plan-sæson 1, eller historikken mangler) → awaiting_data,
+      // ALDRIG et fallback til teams.sponsor_income/SPONSOR_INCOME_BASE (rod-årsagen
+      // til at målet strukturelt altid viste 0/N, jf. docs/BOARD_RULES.md §3).
+      // awaiting_data tæller IKKE imod goalsMet (samme non-punishing semantik som
+      // de øvrige "mangler data endnu"-grene ovenfor) — se PR-body for beviset for
+      // at dette ALDRIG kan gøre en plan dårligere stillet end den dødfødte 0%-måling.
+      const baseline = context.sponsorGrowthBaselineIncome;
+      const currentIncome = context.sponsorGrowthCurrentIncome;
+      if (!baseline || baseline <= 0 || currentIncome == null) {
         missingData = true;
         score = 0.6;
         status = "awaiting_data";
         break;
       }
 
-      const currentSponsorIncome = context.currentSponsorIncome ?? team?.sponsor_income ?? SPONSOR_INCOME_BASE;
-      actual = ((currentSponsorIncome - planStartSponsorIncome) / planStartSponsorIncome) * 100;
+      actual = roundNumber(((currentIncome - baseline) / baseline) * 100);
       target = isFinalSeason
         ? enrichedGoal.target
         : Math.max(1, enrichedGoal.target * (seasonsCompleted / planDuration));

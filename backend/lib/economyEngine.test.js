@@ -602,6 +602,26 @@ function createSeasonEndSupabase({
               };
             }
 
+            // #3494 · loadGoalContextForBoard sponsor_growth-query (kontrakt-base +
+            // løbsdags-indtægt). Empty data er neutralt for disse tests — de
+            // tester ikke sponsor_growth, og tom respons giver blot awaiting_data.
+            if (columns === "amount, season_id") {
+              return {
+                eq(_col1, _val1) {
+                  return {
+                    in(col2, _values2) {
+                      assert.equal(col2, "reason_code");
+                      return {
+                        in() {
+                          return Promise.resolve({ data: [], error: null });
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            }
+
             assert.equal(columns, "id");
             assert.deepEqual(options, { count: "exact", head: true });
             const filters = {};
