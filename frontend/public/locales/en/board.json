@@ -1770,5 +1770,134 @@
     "loginRequired": "You must be logged in.",
     "requestFallback": "Could not send the board request.",
     "renewFallback": "The plan could not be renewed. Nothing was changed."
+  },
+  "boardroom": {
+    "route": {
+      "loading": "Loading boardroom"
+    },
+    "header": {
+      "title": "Boardroom",
+      "subtitle": "{chair}, chair",
+      "subtitleNoChair": "The board"
+    },
+    "status": {
+      "on_track": "On track",
+      "at_risk": "At risk",
+      "behind": "Behind",
+      "achieved": "Achieved",
+      "failed": "Failed"
+    },
+    "confidence": {
+      "cardTitle": "Board confidence",
+      "updated": "Updated {date}",
+      "weekDeltaUp": "+{delta} this week",
+      "weekDeltaDown": "{delta} this week",
+      "weekDeltaFlat": "No change this week",
+      "categories": {
+        "results": "Results",
+        "economy": "Economy",
+        "identity": "Identity",
+        "ranking": "Ranking"
+      },
+      "noConsequenceDefault": "No active consequences. Wage cap activates below 40."
+    },
+    "mandate": {
+      "cardTitle": "Season mandate · S{season}",
+      "cardTitleGeneric": "Season mandate",
+      "goalsMeta": "{count} goals · signed {date}",
+      "achievedTarget": "Achieved {achieved} / target {target}",
+      "stretch": "Stretch",
+      "discussTarget": "Discuss target",
+      "discussTargetDisabledHint": "Discussing targets opens at the annual meeting.",
+      "receipt": {
+        "countedPrefix": "Counted:",
+        "lastMovementPrefix": "Last movement:",
+        "weightedByPrefix": "Weighted by {name}."
+      },
+      "empty": {
+        "title": "No mandate signed yet",
+        "description": "The board has not signed this season's mandate. Check back after the annual meeting."
+      },
+      "goalLabels": {
+        "winRaceDays": "Win {count} race days",
+        "keepResultAboveZero": "Keep season result above zero",
+        "academyDebuts": "Give {count} academy riders a debut",
+        "clubRankingTopN": "Finish top {n} of the club ranking"
+      },
+      "receipts": {
+        "winRaceDays": {
+          "counted": "confirmed race-day wins across the season.",
+          "lastMovement": "Stage win, {race}",
+          "weightedByLine": "He rates wins over everything else."
+        },
+        "economyResult": {
+          "counted": "season income minus wages, transfers and race costs.",
+          "lastMovement": "{amount} race-day income",
+          "weightedByLine": "He values steady margins over big swings."
+        },
+        "academyDebuts": {
+          "counted": "academy riders given a first-team race start.",
+          "lastMovement": "Debut: {name}, {age}",
+          "weightedByLine": "She counts every debut as a promise kept."
+        },
+        "clubRankingTopN": {
+          "counted": "current position on the global club ranking.",
+          "lastMovement": "No movement this week",
+          "weightedByLine": "He watches the ranking every single week."
+        }
+      }
+    },
+    "vision": {
+      "cardTitle": "Club vision",
+      "meta": "S{start} to S{end}",
+      "seasonLabel": "S{season}",
+      "currentSeasonLabel": "S{season} · You are here",
+      "explainer": "Milestones are judged in their target season. A missed milestone costs confidence once, then the vision moves on.",
+      "empty": {
+        "title": "No vision set yet",
+        "description": "The club vision has not been established yet."
+      },
+      "milestoneLabels": {
+        "establishDivision3": "Establish in Division 3",
+        "promotionPush": "Promotion push",
+        "monumentPodium": "Monument podium",
+        "clubRankingTop30": "Top 30 club ranking"
+      }
+    },
+    "board": {
+      "cardTitle": "The board",
+      "minutesLink": "Meeting minutes",
+      "role": {
+        "chair": "Chair",
+        "results": "Results",
+        "economy": "Economy",
+        "identity": "Identity",
+        "ranking": "Ranking"
+      },
+      "mood": {
+        "positive": "Pleased with you",
+        "neutral": "Watching closely",
+        "negative": "Unhappy with you"
+      },
+      "chairmanQuoteFixture": "We see the direction. Keep the wage bill honest and the results will follow.",
+      "chairmanContextFixture": "after the Sunday review"
+    },
+    "member": {
+      "viewHint": "View member",
+      "portraitLabel": "Portrait",
+      "ownsGoalsCount": "owns {count} goals",
+      "personalityHeading": "Personality",
+      "ownsGoalsHeading": "Owns these goals",
+      "ownWordsHeading": "In his own words",
+      "confidenceMove": "{sign}{delta} confidence · {date}",
+      "footerNote": "Portraits arrive in a later round. The voice is the identity.",
+      "close": "Close"
+    },
+    "minutesFixture": {
+      "stageWin": "Stage win, Vuelta a Andalucía. “That is what I signed up for.”",
+      "youthDebut": "Youth debut: {name}, {age}. “This is the Nordic way.”",
+      "deficitWeek": "Deficit week, {amount}. “Margins, not miracles.”",
+      "captainSaleWarning": "We do not sell a captain mid-season without a plan. “Show me the plan.”"
+    }
   }
 }

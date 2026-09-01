@@ -52,6 +52,8 @@ const AdminFairplayPage = lazy(() => import("./pages/AdminFairplayPage")); // #3
 const AdminValueTransitionPage = lazy(() => import("./pages/AdminValueTransitionPage")); // #3750/#4000
 const RankingsHubPage = lazy(() => import("./pages/RankingsHubPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
+// #4557 (S-M2b): tynd kill-switch-wrapper — se pages/boardroom/BoardroomRoute.jsx.
+const BoardroomRoute = lazy(() => import("./pages/boardroom/BoardroomRoute"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
 const TeamProfilePage = lazy(() => import("./pages/TeamProfilePage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
@@ -74,6 +76,7 @@ const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
 // scope). Same /ui convention: public, unlinked, noindex. Remove once the
 // real-wiring follow-up PR mounts these components on their real pages.
 const SeasonExperiencePreviewPage = lazy(() => import("./pages/SeasonExperiencePreviewPage"));
+const BoardroomPreviewPage = lazy(() => import("./pages/BoardroomPreviewPage")); // #4557 — fjernes ved flip
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
 const RaceCentrePage = lazy(() => import("./pages/RaceCentrePage"));
@@ -246,6 +249,8 @@ export default function App() {
           <Route path="/founder-supporter" element={<I18nReadyGate ns="founder"><FounderSupporterPage /></I18nReadyGate>} />
           <Route path="/ui" element={<KitchenSinkPage />} />
           <Route path="/ui/season-experience" element={<I18nReadyGate ns="seasonEnd"><SeasonExperiencePreviewPage /></I18nReadyGate>} />
+          {/* #4557 — draft-only mockup-preview, fjernes ved flip (se BoardroomPreviewPage.jsx). */}
+          <Route path="/ui/boardroom" element={<I18nReadyGate ns="board"><BoardroomPreviewPage /></I18nReadyGate>} />
           {/* Bart domæne (#672): ikke-loggede-ind ser den offentlige landing,
               loggede-ind ryger til appen. */}
           <Route path="/" element={session ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
@@ -274,7 +279,7 @@ export default function App() {
                 Rytterrangliste · Global Rank som faner). ?view=/?compare=-dybe
                 links lander uændret på liga-fanen (default). */}
             <Route path="standings" element={<I18nReadyGate ns="standings"><RankingsHubPage /></I18nReadyGate>} />
-            <Route path="board" element={<I18nReadyGate ns="board"><I18nReadyGate ns="backendMessages"><BoardPage /></I18nReadyGate></I18nReadyGate>} />
+            <Route path="board" element={<I18nReadyGate ns="board"><I18nReadyGate ns="backendMessages"><BoardroomRoute LegacyBoardPage={BoardPage} /></I18nReadyGate></I18nReadyGate>} />
             <Route path="notifications" element={<I18nReadyGate ns="notifications"><I18nReadyGate ns="backendMessages"><NotificationsPage /></I18nReadyGate></I18nReadyGate>} />
             {/* #3199: forum (opslag + tråd-detalje). */}
             <Route path="forum" element={<I18nReadyGate ns="forum"><ForumPage /></I18nReadyGate>} />
