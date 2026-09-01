@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** Claude Code (DOLMERPC, 1/9 formiddag): React 19-PR (#2960, fixer #4370) + bestyrelses-redesign-research. Ejeren er til stede i sessionen.
+> **🤖 Working agent:** TO parallelle sessioner (ejer-godkendt split 1/9 ~17:20): **Session A (lukker)** ejer KUN merge-halen på PR #4550 + #4553 (rebase-CI kører) + close-out af 1/9-bølgen — rør intet andet. **Session B (ny, fase 2)** kører `drafts/2026-09-02-session-prompt-mandatet-fase2.md` og må IKKE røre #4550/#4553/#4388 eller merge-halen. Main-docs: pull-rebase før hvert commit.
 
 _Historik i git-log, issue-tråde + docs/audits/._

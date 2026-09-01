@@ -1,5 +1,7 @@
 # Session: Mandatet fase 1-apply + fase 2-byg, S4-fundamentet, og kvalitets-baren op
 
+> **PARALLEL-START 1/9 aften:** 1/9-sessionen (Session A) lukker sideløbende og ejer KUN: merge af PR #4550 + #4553 (rebase-CI kører) og bølgens close-out. RØR IKKE de to PR'er, #4388, eller close-out-committene. Status pr. start: React 19 + 5 board-PR'er MERGET (#4547/#4533/#4549/#4546/#4558/#4559), #4377-datareparation applied+verificeret, prod grøn. #4388 afventer stadig ejerens A/B/C. Koordinér via `docs/NOW.md`s Working agent-blok; pull-rebase main før docs-commits.
+
 Kør som multiagent-session: **Fable som arkitekt, sonnet-workers til udførelse, Explore-agenter til sweeps.** Workflows til fan-out (find → adversarial verify), aldrig som erstatning for samtalen. Jeg er til stede: én beslutning ad gangen med tal i selve spørgsmålet, visuelt undervejs (mockups/canvas — ALDRIG preview-server på uafklaret design), og merge intet uden mit go.
 
 ## Arbejdsregler (uændrede fra 1/9, bindende)
