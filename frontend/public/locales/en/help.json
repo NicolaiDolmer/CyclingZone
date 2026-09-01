@@ -1531,7 +1531,7 @@
     },
     "clubDnaEffects": {
       "q": "What does club DNA do exactly?",
-      "a": "DNA affects three things: (1) Your 5-year plans get an extra DNA tradition target (e.g. 'at least one Monument podium' for italian_classics or 'min. 2 stage jerseys/season' for sprint_commercial) as a bonus target on top of the focus-based ones. (2) Targets that match the DNA's priorities get boosted satisfaction bonus + penalty (italian_classics × 1.6 on monument_podium targets, if you win, the board cheers extra; if you miss, the penalty is larger). (3) When the chairman is replaced (after 2× plan expiry below 30% satisfaction), DNA bonus tips the alignment score towards archetypes that match the club's identity (italian_classics gives +4 to classics_purist and -2 to gc_lover, so the chairman reflects the DNA over time)."
+      "a": "DNA affects three things: (1) Your 5-year plans get an extra DNA tradition target (e.g. 'at least one Monument podium' for italian_classics or 'min. 2 stage jerseys over the plan period' for sprint_commercial) as a bonus target on top of the focus-based ones. (2) Targets that match the DNA's priorities get boosted satisfaction bonus + penalty (italian_classics × 1.6 on monument_podium targets, if you win, the board cheers extra; if you miss, the penalty is larger). (3) When the chairman is replaced (after 2× plan expiry below 30% satisfaction), DNA bonus tips the alignment score towards archetypes that match the club's identity (italian_classics gives +4 to classics_purist and -2 to gc_lover, so the chairman reflects the DNA over time)."
     },
     "midSeasonCheckFaq": {
       "q": "What is the mid-season check, and why am I getting an 'Action required' notification mid-season?",
