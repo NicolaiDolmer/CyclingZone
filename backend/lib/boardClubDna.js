@@ -151,10 +151,20 @@ export const BOARD_CLUB_DNA = {
       profitable_transfers: 1.1,
       u25_development_delta: 0.6,
     },
+    // #4377 · buildDnaTraditionGoal kun kaldes for 5yr-forslag (buildBoardProposal:
+    // `planType === "5yr" && dnaKey`), så dette mål er ALTID multi-year. Uden
+    // `cumulative: true` faldt evaluateGoal/evaluateGoalProgress (boardGoals.js)
+    // tilbage til jersey_wins' per-sæson-gren (seasonJerseyWins), der nulstiller
+    // ved hvert sæsonskifte — trøjer vundet en tidligere sæson i planperioden
+    // "glemtes" (spiller-rapport #4377: "min [board] har glemt at jeg fik trøjer
+    // sidste sæson"). cumulative:true retter både evaluering (cumulativeJerseyWins,
+    // som allerede summerer race_results over hele plan-vinduet) og frontend-
+    // labelvalget (boardGoalLabel.js's isPlanPeriod-check læser goal.cumulative).
     tradition_goal: {
       type: "jersey_wins",
       target: 2,
-      label: "Klub-DNA: vind mindst 2 etape-trøjer pr. sæson (sprint-fokus)",
+      cumulative: true,
+      label: "Klub-DNA: vind mindst 2 etape-trøjer over planperioden (sprint-fokus)",
       label_key: "dna.sprint_kommerciel.traditionGoalLabel",
       satisfaction_bonus: 18,
       satisfaction_penalty: 10,

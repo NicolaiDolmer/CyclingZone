@@ -109,6 +109,76 @@ test("jersey_wins evaluateGoal cumulative=false reads seasonJerseyWins", () => {
   );
 });
 
+// #4377 · Forward-guard: en persisteret jersey_wins-goal med source:"club_dna"
+// og uden cumulative:true kan KUN være en pre-#4377-fix current_goals-række
+// (efter fixet er ethvert club_dna jersey_wins-mål altid cumulative, da det
+// kun injiceres på 5yr-forslag). Den skal ikke fejle stille — evalueringen
+// skal advare, så database/2026-09-01-4377-jersey-wins-cumulative-repair.sql's
+// fremdrift er målbar i logs/Sentry, ikke kun i en engangs-SQL-optælling.
+test("#4377 · evaluateGoal advarer når et persisteret club_dna jersey_wins-mål mangler cumulative:true", () => {
+  const goal = { type: "jersey_wins", target: 2, source: "club_dna", dna_key: "sprint_kommerciel" };
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  try {
+    const result = evaluateGoal(goal, null, {}, { seasonJerseyWins: 0 });
+    // Evalueringen skal stadig returnere et resultat (fail-soft), ikke kaste.
+    assert.equal(result, false);
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.equal(warnings.length, 1, "et unflagget persisteret club_dna jersey_wins-mål skal trigge præcis én advarsel");
+  assert.match(warnings[0][0], /#4377/);
+  assert.match(warnings[0][0], /cumulative/);
+});
+
+test("#4377 · evaluateGoalProgress advarer på samme stale persisteret club_dna jersey_wins-mål", () => {
+  const goal = { type: "jersey_wins", target: 2, source: "club_dna", dna_key: "sprint_kommerciel" };
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  try {
+    evaluateGoalProgress(goal, null, { riders: [] }, { seasonJerseyWins: 2 });
+  } finally {
+    console.warn = originalWarn;
+  }
+  // evaluateGoalProgress kalder internt evaluateGoal (for at beregne det
+  // autoritative `met`-flag, #55) OG har sin egen jersey_wins-gren — begge
+  // rammer guarden på det samme stale mål, så >=1 (ikke et præcist tal) er
+  // den robuste kontrakt her.
+  assert.ok(warnings.length >= 1, "evaluateGoalProgress skal advare på samme betingelse som evaluateGoal");
+});
+
+test("#4377 · evaluateGoal advarer IKKE når club_dna jersey_wins-målet allerede er cumulative (post-fix/post-migration)", () => {
+  const goal = { type: "jersey_wins", target: 2, source: "club_dna", cumulative: true };
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  try {
+    evaluateGoal(goal, null, {}, { cumulativeJerseyWins: 2 });
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.equal(warnings.length, 0, "et allerede migreret/nyt cumulative:true-mål skal IKKE advare");
+});
+
+test("#4377 · evaluateGoal advarer IKKE på et almindeligt (ikke-club_dna) per-sæson jersey_wins-mål", () => {
+  // Non-DNA jersey_wins-mål findes ikke i dag (kun DNA-tradition-goal bruger
+  // typen), men guarden skal være specifik til source==="club_dna", ikke til
+  // typen alene — ellers ville en fremtidig, bevidst per-sæson jersey_wins-
+  // variant udenfor DNA-systemet false-positive advare for evigt.
+  const goal = { type: "jersey_wins", target: 2 };
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  try {
+    evaluateGoal(goal, null, {}, { seasonJerseyWins: 2 });
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.equal(warnings.length, 0, "ikke-club_dna jersey_wins-mål er (i dag) bevidst per-sæson og skal ikke advare");
+});
+
 // =====================================================================
 // 3. signature_rider — star-score (popularity + UCI), #3141
 // =====================================================================

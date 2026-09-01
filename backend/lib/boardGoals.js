@@ -742,6 +742,29 @@ export function inferNegotiationIndexesFromGoals({
   return selectedIndexes;
 }
 
+// #4377 · Forward-guard mod stale, pre-fix persisterede current_goals-rækker.
+// EFTER #4377-fixet er ethvert club_dna-kilde jersey_wins-mål ALTID multi-year
+// (kun injiceret på 5yr-forslag, boardGoals.js:480/buildBoardProposal) og skal
+// derfor ALTID bære `cumulative: true`. Et mål med `source: "club_dna"` og
+// jersey_wins-type der IKKE er cumulative kan derfor kun være en
+// current_goals-JSON persisteret FØR fixet (en board_profiles-række der endnu
+// ikke er kørt igennem database/2026-09-01-4377-jersey-wins-cumulative-
+// repair.sql). Uden dette guard ville en sådan række stille blive evalueret
+// som per-sæson (den præcise #4377-fejl) uden nogen synlig advarsel i
+// logs/Sentry — reparations-scriptets fremdrift ville være umulig at måle.
+// Ren logging, ingen kastede exceptions: evalueringen skal stadig returnere
+// et resultat (fallback til per-sæson-grenen), bare synligt flagget som stale.
+function warnIfStalePersistedJerseyGoal(enrichedGoal, callerLabel) {
+  if (enrichedGoal.type === "jersey_wins" && enrichedGoal.source === "club_dna" && !enrichedGoal.cumulative) {
+    console.warn(
+      `[boardGoals.${callerLabel}] #4377: persisted jersey_wins club_dna-goal mangler cumulative:true `
+      + `— pre-migration current_goals-række, evalueres midlertidigt per-sæson (stale). `
+      + `Kør database/2026-09-01-4377-jersey-wins-cumulative-repair.sql for at lukke gabet.`,
+      { dnaKey: enrichedGoal.dna_key ?? null }
+    );
+  }
+}
+
 export function evaluateGoal(goal, standing, team, context = {}) {
   const enrichedGoal = addGoalMetadata(goal);
   const {
@@ -813,6 +836,7 @@ export function evaluateGoal(goal, standing, team, context = {}) {
         if (cumulativeJerseyWins == null) return null;
         return cumulativeJerseyWins >= enrichedGoal.target;
       }
+      warnIfStalePersistedJerseyGoal(enrichedGoal, "evaluateGoal");
       if (seasonJerseyWins == null) return null;
       return seasonJerseyWins >= enrichedGoal.target;
     case "signature_rider":
@@ -1066,6 +1090,7 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
           ? enrichedGoal.target
           : Math.max(1, Math.ceil(enrichedGoal.target * (seasonsCompleted / planDuration)));
       } else {
+        warnIfStalePersistedJerseyGoal(enrichedGoal, "evaluateGoalProgress");
         const seasonCount = context.seasonJerseyWins;
         if (seasonCount == null) {
           missingData = true;

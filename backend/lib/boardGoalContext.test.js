@@ -7,7 +7,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadGoalContextForBoard } from "./boardGoalContext.js";
+import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
 import { CLASSIC_RACE_CLASSES } from "./boardConstants.js";
 import { createRecorderSupabase } from "./testUtils/fakeSupabase.js";
 
@@ -239,5 +239,69 @@ test("#4034 · endagssejre (race_type='single', result_type='gc', rank=1) tælle
   assert.ok(
     eqCalls.some(([, , col, val]) => col === "rank" && val === 1),
     "endagssejr-queryen skal filtrere rank=1"
+  );
+});
+
+// #4377 · Reproducerer spiller-rapporten direkte på query-laget: trøjer vundet
+// i en TIDLIGERE sæson af samme plan-cyklus (s-prev, stadig inden for
+// plan_start_season_number-vinduet) skal tælle kumulativt, selvom indeværende
+// sæson (s-cur) ikke selv har nogen trøjesejre. cumulativeJerseyWins er det
+// felt boardGoals.js's jersey_wins-cumulative-gren læser (evaluateGoal:812-814);
+// symptomet ("0/2 selvom trøjer blev vundet sidste sæson") var IKKE denne
+// query — den har altid summeret rigtigt — men den manglende cumulative:true på
+// DNA-tradition-målet (boardClubDna.js), der fik evalueringen til at læse
+// seasonJerseyWins (kun s-cur) i stedet. Testen her låser at query-laget under
+// den fix fortsat leverer den fulde plan-periode-sum.
+test("#4377 · cumulativeJerseyWins summerer troejesejre over hele plan-vinduet, ikke kun indevaerende saeson", async () => {
+  const recorder = [];
+  const supabase = makeSupabase({
+    board_plan_snapshots: [
+      { season_id: "s-prev", u25_stat_sum: null, u25_count: null, season_within_plan: 1 },
+    ],
+    race_results: [
+      // 2 troejer vundet i FORRIGE saeson af planen (matcher spiller-rapportens
+      // "trøjer vundet sidste sæson").
+      { rank: 1, races: { season_id: "s-prev" } },
+      { rank: 1, races: { season_id: "s-prev" } },
+      // Ingen troejer i indevaerende saeson.
+    ],
+    finance_transactions: [],
+  }, recorder);
+
+  const ctx = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s-cur",
+  });
+
+  assert.equal(ctx.cumulativeJerseyWins, 2, "sidste sæsons 2 trøjer skal tælle kumulativt i indeværende sæson");
+  assert.equal(ctx.seasonJerseyWins, 0, "indeværende sæson har selv 0 trøjer — bekræfter at kun cumulative fanger historikken");
+});
+
+// #4377 · Regression for spiller-rapportens tredje symptom ("kun 1 af 2 sejre —
+// S1 + S2 — tæller i 3/5-årsplanen"). Punktet er allerede dækket separat af
+// #3948 (endagssejr registreres som en 'gc'-række og manglede i stage_wins),
+// men verificeres her på tværs af to sæsoner for #4377's "flerårs-tællere skal
+// måle hele planperioden"-krav: en almindelig etapesejr persisteret fra sæson 1
+// (board.cumulative_stage_wins) plus en endagssejr i sæson 2 (indeværende
+// sæson, standing.stage_wins tæller den ikke — kun goalContext.cumulativeOneDayWins
+// gør, jf. #4034) skal begge tælle med i den kumulative stage_wins-sum.
+test("#4377/#3948 · cumulative stage_wins summerer en etapesejr fra sæson 1 + en endagssejr i sæson 2", () => {
+  // Sæson 1: 1 almindelig etapesejr, persisteret på boardet ved sæson-slut
+  // (economyEngine.js's newCumulativeStageWins-formel).
+  const board = {
+    plan_type: "3yr",
+    cumulative_stage_wins: 1,
+    cumulative_gc_wins: 0,
+    seasons_completed: 1,
+  };
+  // Sæson 2 (indeværende): ingen ny ETAPEsejr i season_standings, men 1
+  // endagssejr (tælles separat af loadGoalContextForBoard, #4034).
+  const standing = { stage_wins: 0, gc_wins: 0 };
+  const goalContext = { cumulativeOneDayWins: 1 };
+
+  const context = buildBoardEvalContext({ board, standing, goalContext });
+
+  assert.equal(
+    context.cumulativeStats.stageWins, 2,
+    "sæson 1's etapesejr + sæson 2's endagssejr skal summere til 2 på tværs af planperioden"
   );
 });

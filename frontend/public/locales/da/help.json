@@ -1531,7 +1531,7 @@
     },
     "clubDnaEffects": {
       "q": "Hvad gør klub-DNA helt konkret?",
-      "a": "DNA påvirker tre ting: (1) Dine 5-årsplaner får et ekstra DNA-tradition-mål (fx 'mindst ét Monument-podie' for italiensk_klassiker eller 'min. 2 etape-trøjer/sæson' for sprint_kommerciel) som bonus-mål oven på de focus-baserede mål. (2) Mål der matcher DNA'ets prioriteter får boostet satisfaction-bonus + penalty (italiensk_klassiker × 1.6 på monument_podium-mål, vinder du, jubler bestyrelsen ekstra; misser du, er straffen større). (3) Når formanden udskiftes (efter 2× plan-udløb under 30% tilfredshed), tipper DNA-bonus alignment-scoren mod arketyper der matcher klubbens identitet (italiensk_klassiker giver +4 til klassiker_purist og -2 til gc_elsker, så formanden reflekterer DNA'et over tid)."
+      "a": "DNA påvirker tre ting: (1) Dine 5-årsplaner får et ekstra DNA-tradition-mål (fx 'mindst ét Monument-podie' for italiensk_klassiker eller 'min. 2 etape-trøjer over planperioden' for sprint_kommerciel) som bonus-mål oven på de focus-baserede mål. (2) Mål der matcher DNA'ets prioriteter får boostet satisfaction-bonus + penalty (italiensk_klassiker × 1.6 på monument_podium-mål, vinder du, jubler bestyrelsen ekstra; misser du, er straffen større). (3) Når formanden udskiftes (efter 2× plan-udløb under 30% tilfredshed), tipper DNA-bonus alignment-scoren mod arketyper der matcher klubbens identitet (italiensk_klassiker giver +4 til klassiker_purist og -2 til gc_elsker, så formanden reflekterer DNA'et over tid)."
     },
     "midSeasonCheckFaq": {
       "q": "Hvad er mid-season check, og hvorfor får jeg pludselig en 'Skal handles'-notif midt i sæsonen?",
