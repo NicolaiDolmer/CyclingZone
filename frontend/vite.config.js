@@ -21,13 +21,28 @@ const worktreeIdPlugin = () => {
     res.setHeader("Content-Type", "text/plain");
     res.end(formatWorktreeId(FRONTEND_ROOT));
   };
+  let isSsrBuild = false;
   return {
     name: "cz-worktree-id",
+    configResolved(config) {
+      isSsrBuild = Boolean(config.build?.ssr);
+    },
     configureServer(server) {
       server.middlewares.use(WORKTREE_ID_PATH, handler);
     },
     configurePreviewServer(server) {
       server.middlewares.use(WORKTREE_ID_PATH, handler);
+    },
+    // #2960: e2e-serveren er en ren statisk server (scripts/e2e-static-server.mjs)
+    // uden middleware-hook, saa id'et emittes ogsaa som statisk fil i dist/ ved
+    // build — samme ejerfil som dev/preview-middleware'en, én mekanisme.
+    generateBundle() {
+      if (isSsrBuild) return;
+      this.emitFile({
+        type: "asset",
+        fileName: WORKTREE_ID_PATH.replace(/^\//, ""),
+        source: formatWorktreeId(FRONTEND_ROOT),
+      });
     },
   };
 };
