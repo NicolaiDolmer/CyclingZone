@@ -40,6 +40,13 @@ if (!fs.existsSync(path.join(DIST, "index.html"))) {
 
 const serve = sirv(DIST, { single: true, etag: true, dev: true });
 const server = http.createServer(serve);
+// Keep-alive-racet (maalt 1/9, run 33510693713): Node lukker idle keep-alive-
+// sockets efter 5s (default). Genbruger browseren socketen i praecis dét
+// vindue, hænger requesten for evigt (status -1) — set med BAADE vite preview
+// og sirv paa den langsomme CI-runner, 1-2 tilfaeldige tests pr. koersel.
+// 0 = luk aldrig idle sockets; ufarligt her, processen dræbes efter suiten.
+server.keepAliveTimeout = 0;
+server.headersTimeout = 0;
 server.on("error", (err) => {
   if (err.code === "EADDRINUSE") {
     console.error(`e2e-static-server: port ${port} er optaget (typisk en efterladt server fra et tidligere run — se playwright.ports.js). Fejler hoejlydt i stedet for at hoppe til en naboport.`);
