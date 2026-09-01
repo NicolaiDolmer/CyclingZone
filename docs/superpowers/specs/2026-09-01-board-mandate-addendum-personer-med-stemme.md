@@ -25,6 +25,16 @@ Princip 3 i spec'en ("Personer i front") udvides fra navne til personer:
 4. **Medlems-relations-panel** (nyt UI-element, `Member.dc.html`): inline expand fra bestyrelseskortet — personlighed (1-2 sætninger), ejede mål m. status, "In his own words"-feed (citater m. konfidens-bevægelse + dato), stemnings-dot. Portræt-slot forberedt ("Portraits arrive in a later round. The voice is the identity.").
 5. **Ingen ansigter i B-runden:** monogram-avatarer (navy, Bebas-initialer) + stemnings-dot. AI-genererede portrætter er fravalgt (anti-slop); A-runden bliver kuraterede/tegnede assets med eget ejer-go.
 
+## Stemme-kontrakten (teknisk — bygget på gap-audit 1/9)
+
+Auditten viste: reaktions-systemet FINDES (9 arketyper × 6 buckets × 5 varianter = 270 citater, fuldt EN+DA i `board.json`; sampling i `boardMembers.js::sampleReactionForFeedback/-Goal`), men er stikprøve, ikke kvittering — og navne (`boardMandateNames.js`), mål-ejerskab og de 4 Mandat-beats er ikke wiret. Kontrakt:
+
+1. **Stabilt mål-ejerskab (faldgrube 1):** mål får `owner_archetype_key` sat ÉN gang ved generering/underskrift (kategori-alignment som i dag, men persisteret). `selectDominantMember`-genudregningen udgår for mål-attribution; et mål skifter aldrig stemme mellem to visninger. Migrerede milepæle arver ejer efter samme regel ved flip.
+2. **Navne wires atomisk (faldgrube 2):** `generateBoardMemberNames` er deterministisk pr. (team_id, archetype_key, dna_key) → navne AFLEDES ved læsning, ingen ny kolonne. ALLE læsesteder af `dominant_member`/`member_reaction` (BoardPage ×3 + `notif.boardChairmanReplaced` i economyEngine) skiftes i SAMME PR til navn + arketype-underlinje — aldrig label ét sted og navn et andet.
+3. **Ét beat-modul (faldgrube 3):** nyt `backend/lib/boardVoice.js` = eneste sted en bestyrelses-hændelse bliver til (medlem, tone, citat-nøgle). De fire beat-stier (`boardMidSeason`, `boardConsequences` lag 3+, `boardMandateEngine`s `chairman_beat_key`-stub, `boardMandate`s modtilbud) kalder ind — ingen egen tekst-logik. Samme deterministiske seed-mønster som i dag; kvitterings-feedet seedes pr. event-id (stabil linje pr. række).
+4. **Nye buckets** (min. 4 varianter pr. arketype pr. bucket, samme bar som #2484): `receipt_positive`/`receipt_negative` (feed-rækker i ejerens stemme) · `meeting_easier`/`meeting_keep`/`meeting_stretch` (modtilbuds-reaktion fra målets ejer) · formands-beats: `midseason_status`, `milestone_achieved`, `milestone_missed`, `extraordinary_meeting`, `chairman_departure`/`chairman_arrival`. Alt som i18n-nøgler i `board`-namespacet (lazy, #3697), DA-fallback i backend som i dag.
+5. **Stemning pr. medlem** afledes (ikke persisteres): seneste N kvitteringer på medlemmets ejede mål → dot-farve. Ingen ny tabel.
+
 ## Konsekvenser for faseplanen
 
 - Fase 0 (korrekthed) uændret + **#4377** (tællere ignorerer historik) løftes ind: multiårs-mål bliver visions-milepæle ved migrationen, så tæller-historikken SKAL være korrekt før flip.
