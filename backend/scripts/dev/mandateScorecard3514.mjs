@@ -28,6 +28,8 @@
 // Output: markdown til stdout OG til --out=<fil> hvis angivet.
 // Refs #3514.
 
+import { pathToFileURL } from "node:url";
+
 import { createClient } from "@supabase/supabase-js";
 
 import {
@@ -185,7 +187,7 @@ export function buildScorecardMarkdown({ projectRef, activeSeasonNumber, plan, w
 // som scorecardet også blev kørt via mod prod-data hentet READ-ONLY gennem
 // Supabase MCP i #3514-PR'en) skal kunne genbruge den rene markdown-bygger
 // UDEN at trigge SUPABASE_URL-tjekket eller process.exit nedenfor.
-const isMain = process.argv[1] && import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}`;
+const isMain = Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isMain && SELFTEST_ONLY) {
   const md = buildScorecardMarkdown({

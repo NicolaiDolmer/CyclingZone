@@ -182,7 +182,11 @@ async function processTeamMidSeason({
   try {
     await unlockExtraordinaryRequestForTeamFn(supabase, { teamId: team.id, seasonId: activeSeason.id });
   } catch (error) {
-    // Skyggedata må ALDRIG vælte det spillervendte mid-season-flow.
+    // best-effort: skyggedata må ALDRIG vælte det spillervendte mid-season-flow.
+    // Kill-switchen er 'off' i denne PR, så stien rammes ikke i prod endnu —
+    // console-only er nok, ligesom det tilsvarende weekend-sync-fangst i
+    // boardWeekendFinalization.js (som DOG også captureException'er, fordi den
+    // kører hver løbsweekend; dette kald kører kun én gang pr. sæson).
     console.error(`  ⚠️  mandate mid-season unlock failed for team ${team.id}:`, error.message);
   }
 
