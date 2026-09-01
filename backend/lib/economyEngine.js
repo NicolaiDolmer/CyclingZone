@@ -1841,7 +1841,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
           // #4556 S-M2b addendum · formandsskifte skal nævne den nye formand ved
           // NAVN + arketype-label, samme determinisme-nøgle (teamId, archetype_key,
           // dnaKey) som resten af "Stemme-kontrakten". Navne-afledning må ALDRIG
-          // vælte notifikationen — fejler den, degraderes bagudkompatibelt til
+          // vælte notifikationen. Fejler den, degraderes bagudkompatibelt til
           // label alene (samme tekst som før #4556).
           let chairmanName = null;
           if (replacementInfo.new_chairman_key) {

@@ -649,7 +649,7 @@ export function sampleReactionForGoal({ archetype, goalContext = {}, seed = "" }
 /**
  * #4556 S-M2b addendum, "Stemme-kontrakten" punkt 2 · decorer én reaction
  * (fra sampleReactionForFeedback/sampleReactionForGoal) med `full_name` +
- * `initials` afledt via generateBoardMemberNames — SAMME determinisme-nøgle
+ * `initials` afledt via generateBoardMemberNames, SAMME determinisme-nøgle
  * (teamId, archetype_key, dnaKey) som Boardroom-siden (boardRoom.js/
  * boardVoice.js) bruger, så et hold ser samme navn på begge sider.
  *

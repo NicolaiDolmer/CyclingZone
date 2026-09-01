@@ -1779,7 +1779,7 @@ test("processSeasonEnd sends replacement notification when processReplacementTri
   );
   assert.ok(replacementNotif, "replacement notification must be sent when replaced=true");
   assert.ok(replacementNotif.message.includes("Resultatjægeren"), "notification must include new chairman label");
-  // #4556 · uden new_chairman_key kan intet navn afledes — bagudkompatibelt
+  // #4556 · uden new_chairman_key kan intet navn afledes, bagudkompatibelt
   // fallback til den uændrede label-only-kode.
   assert.equal(replacementNotif.metadata?.messageCode, "notif.boardChairmanReplaced.message");
   assert.equal(replacementNotif.metadata?.messageParams?.chairmanName, undefined);

@@ -608,7 +608,7 @@ function ClubDnaDialog({ dna, onClose, canRechoose = false }) {
 }
 
 // #4556 · Fallback-initialer NÅR backend ikke kunne afledde et navn (intet
-// teamId i konteksten) — ren visnings-forkortelse af den allerede synlige
+// teamId i konteksten), ren visnings-forkortelse af den allerede synlige
 // label, INTET opfundet navn. Matcher MonogramAvatar's øvrige forbrugere.
 function labelFallbackInitials(label) {
   const words = String(label || "").trim().split(/\s+/).filter(Boolean);
@@ -622,7 +622,7 @@ function labelFallbackInitials(label) {
 // viser PERSONEN bag reaktionen (monogram-initialer + fuldt navn), ikke kun
 // arketype-label+emoji. full_name/initials afledes backend-side
 // (decorateReactionWithName, boardMembers.js) og degraderer HER pænt til
-// label alene når de mangler — ingen crash, intet opfundet navn, ingen
+// label alene når de mangler: ingen crash, intet opfundet navn, ingen
 // "undefined". Genbruger samme MonogramAvatar som Boardroom-siden
 // (frontend/src/pages/boardroom) så de to sider ikke driver fra hinanden.
 function MemberReactionPanel({ reaction, compact = false }) {

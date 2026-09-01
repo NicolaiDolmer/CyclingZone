@@ -26,7 +26,7 @@ import { clamp, clampSatisfaction, roundNumber } from "./boardUtils.js";
 // Bagudkompatibel: hvis ingen members er tilgængelige, returneres outlook uændret.
 // #4556 S-M2b addendum · reactions berigets desuden med full_name/initials via
 // decorateReactionWithName, når context.teamId er sat (context.dnaKey er
-// valgfri). Mangler teamId, udelades navnefelterne — ingen opfundne navne.
+// valgfri). Mangler teamId, udelades navnefelterne: ingen opfundne navne.
 function attachMembersOverlay({ outlook, assignedMembers, board, context }) {
   if (!Array.isArray(assignedMembers) || assignedMembers.length === 0) {
     return outlook;

@@ -1,7 +1,7 @@
 // #4557 (bundle-budget-fix) · Delt monogram-avatar-markup. Brugt 3 steder på
 // Boardroom-siden med forskellig størrelse/tone (MandateCard's 28px neutrale
 // ejer-avatar, BoardCard's 44px navy medlems-avatar, MemberPanel's 72px navy
-// portræt-slot) — én kilde i stedet for 3x duplikeret div/span-markup
+// portræt-slot), én kilde i stedet for 3x duplikeret div/span-markup
 // (perf-gate: total gzip-bundle taeller ALLE chunks, saa duplikeret JSX
 // koster reelle bytes).
 // #4556 · flyttet fra pages/boardroom/ til components/ og genbrugt af
