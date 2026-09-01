@@ -455,6 +455,53 @@ test("processMidSeasonReviewCron sends banner naar satisfaction <50 ved midpoint
   assert.match(notifications[0].title, /season 5/);
 });
 
+// #3514 fase 1-rest (addendum §3.3): check-in'et låser 1 ekstraordinær samtale
+// op for ALLE hold der når midpoint-checkpointet — uanset om selve banneret
+// udløses. Testet her med en høj satisfaction (intet banner) for at bevise at
+// unlock-kaldet IKKE er betinget af trigger-resultatet.
+test("#3514: mid-season check-in kalder mandat-motorens unlock for ALLE hold ved midpoint, uanset banner-trigger", async () => {
+  const state = makeMidSeasonState({
+    raceDaysCompleted: 30,
+    raceDaysTotal: 60,
+    boardSatisfaction: 90, // høj satisfaction ...
+  });
+  state.board_profiles[0].current_goals = []; // ... og ingen mål → ingen many_behind-trigger heller
+  const supabase = makeFakeSupabase(state);
+  const calls = [];
+
+  const summary = await processMidSeasonReviewCron({
+    supabase,
+    notifyUser: async () => ({ delivered: true, deduped: false }),
+    deps: {
+      unlockExtraordinaryRequestForTeam: async (sb, args) => { calls.push(args); return { unlocked: true }; },
+    },
+  });
+
+  assert.equal(summary.banners_sent, 0, "ingen banner ved høj satisfaction");
+  assert.equal(calls.length, 1, "unlock kaldes alligevel — check-in'et er uafhængigt af banner-triggeren");
+  assert.equal(calls[0].teamId, "team-1");
+  assert.equal(calls[0].seasonId, "season-5");
+});
+
+test("#3514: en fejlende mandat-unlock vælter ALDRIG det spillervendte mid-season-banner", async () => {
+  const state = makeMidSeasonState({
+    raceDaysCompleted: 30,
+    raceDaysTotal: 60,
+    boardSatisfaction: 40, // trigger: low_satisfaction
+  });
+  const supabase = makeFakeSupabase(state);
+
+  const summary = await processMidSeasonReviewCron({
+    supabase,
+    notifyUser: async () => ({ delivered: true, deduped: false }),
+    deps: {
+      unlockExtraordinaryRequestForTeam: async () => { throw new Error("boom"); },
+    },
+  });
+
+  assert.equal(summary.banners_sent, 1, "banneret sendes stadig selvom skygge-unlocket fejler");
+});
+
 test("processMidSeasonReviewCron skipper foer midpoint", async () => {
   const state = makeMidSeasonState({
     raceDaysCompleted: 20,    // < midpoint

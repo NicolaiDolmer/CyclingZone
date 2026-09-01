@@ -31,6 +31,7 @@
 
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { parseBoardGoals, evaluateGoalProgress } from "./boardGoals.js";
+import { unlockExtraordinaryRequestForTeam as unlockExtraordinaryRequestForTeamShared } from "./boardMandateEngine.js";
 
 export const MID_SEASON_TITLE_PREFIX = "Mid-season check";
 
@@ -48,6 +49,7 @@ export async function processMidSeasonReviewCron({
   notifyUser,
   now = new Date(),
   captureExceptionFn,
+  deps = {},
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
@@ -128,6 +130,7 @@ export async function processMidSeasonReviewCron({
         divisionManagerCount: key != null ? divisionManagerCounts.get(key) || null : null,
         notifyUser,
         now,
+        deps,
       });
       if (result.banner_sent) summary.banners_sent += 1;
     } catch (error) {
@@ -153,6 +156,7 @@ async function processTeamMidSeason({
   divisionManagerCount,
   notifyUser,
   now,
+  deps = {},
 }) {
   if (!team.user_id) return { banner_sent: false };
 
@@ -168,6 +172,19 @@ async function processTeamMidSeason({
     !b.is_baseline && b.negotiation_status === "completed"
   );
   if (!board) return { banner_sent: false };
+
+  // #3514 fase 1-rest (addendum §3.3, ejer-beslutning 5): mid-season check-in'et
+  // låser 1 ekstraordinær samtale op — for ALLE hold der når checkpointet,
+  // uanset om selve check-in-banneren udløses nedenfor. Idempotent (mandat-
+  // motorens egen unlocked=false-filter), fail-safe når kill-switchen er off.
+  const unlockExtraordinaryRequestForTeamFn =
+    deps.unlockExtraordinaryRequestForTeam ?? unlockExtraordinaryRequestForTeamShared;
+  try {
+    await unlockExtraordinaryRequestForTeamFn(supabase, { teamId: team.id, seasonId: activeSeason.id });
+  } catch (error) {
+    // Skyggedata må ALDRIG vælte det spillervendte mid-season-flow.
+    console.error(`  ⚠️  mandate mid-season unlock failed for team ${team.id}:`, error.message);
+  }
 
   // Idempotency-check: er der allerede sendt en mid-season-banner for denne sæson?
   const title = `${MID_SEASON_TITLE_PREFIX} (season ${activeSeason.number})`;
