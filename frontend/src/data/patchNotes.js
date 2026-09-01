@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.226",
+    "date": "2026-09-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Performance",
+        "en": {
+          "title": "Landing page loads faster on mobile Safari",
+          "body": "A timing issue during page load made mobile Safari rebuild the landing page from scratch instead of using the fast pre-built version. The page looked the same but loaded slower. Fixed."
+        },
+        "da": {
+          "title": "Landingssiden loader hurtigere på mobil-Safari",
+          "body": "En timing-fejl under indlæsning fik mobil-Safari til at genopbygge landingssiden fra bunden i stedet for at bruge den hurtige, prebyggede udgave. Siden så ens ud, men loadede langsommere. Rettet."
+        },
+        "refs": [2960, 4370]
+      }
+    ]
+  },
+  {
     "version": "7.225",
     "date": "2026-08-31",
     "label": "Beta",
