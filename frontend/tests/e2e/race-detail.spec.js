@@ -11,6 +11,15 @@ const RACE = {
   race_type: "stage_race",
   race_class: "TourFrance",
   stages: 2,
+  // #4581: RaceDetailPage.jsx afleder nu etape-fanerne (stageNumbers) af
+  // stages_completed i stedet for at scanne alle hentede race_results-rækker —
+  // uden dette felt var stageNumbers altid [], og "Etape 1"/"Etape 2" fandtes
+  // aldrig i DOM'en (alle 4 tests i denne fil ramte en toBeVisible/click-timeout
+  // på etape-fane-knapperne). I prod er stages_completed altid sat (races-tabellen
+  // har den som not-null default 0, bumpet atomisk pr. simuleret etape,
+  // adminSimulateRace.js) — 2 matcher status:"completed" + de 2 etapers data i
+  // RESULTS/POINTS_RESULTS nedenfor.
+  stages_completed: 2,
   edition_year: 2026,
   status: "completed",
   season: { id: "season-e2e", number: 1 },
@@ -69,6 +78,29 @@ const RESULTS = [
   row("t1", 2, "team", 1, MIK, 0),
 ];
 
+// #4581: RaceDetailPage.jsx henter nu race_results PR. ETAPE
+// (.eq("stage_number", n)) i stedet for hele løbet i ét kald — først den valgte/
+// dyb-linkede etape + "samlet"-fanens seed-etape, derefter on-demand ved hvert
+// etapeskift (cachet, så samme etape ikke hentes to gange). Et etapeskift afføder
+// derfor et ANDET race_results-kald end førstelastningen. En mock der (som før
+// #4581) besvarer ETHVERT race_results-kald med hele datasættet er urealistisk
+// mod prod (PostgREST filtrerer server-side på .eq()) og duplikerer rækker i
+// siden ved etapeskift (samme række hentes to gange og lægges oveni sig selv —
+// RaceDetailPage.jsx APPENDER on-demand-hentede etaper, den erstatter dem ikke).
+// Denne helper filtrerer på query-strengens `stage_number=eq.N`, ligesom
+// PostgREST rent faktisk gør — samme mønster som src/preview/mockHandlers.js's
+// restRows() bruger for andre tabeller (fx `riders`' id=eq.-filter).
+function raceResultsRoute(dataset) {
+  return (route) => {
+    const url = new URL(route.request().url());
+    const stageMatch = url.search.match(/stage_number=eq\.([^&]+)/);
+    const rows = stageMatch
+      ? dataset.filter((r) => String(r.stage_number ?? 1) === decodeURIComponent(stageMatch[1]))
+      : dataset;
+    return json(route, rows);
+  };
+}
+
 // Sub-2 (#2770): passage-detaljer (KOM/mellemsprint-krydsninger) for etape 1 —
 // én kom-gruppe + én sprint-gruppe, hver med 2 rangerede ryttere.
 const PASSAGES = [
@@ -86,7 +118,7 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? RACE : [RACE]);
   });
-  await page.route("**/rest/v1/race_results**", route => json(route, RESULTS));
+  await page.route("**/rest/v1/race_results**", raceResultsRoute(RESULTS));
   await page.route("**/rest/v1/race_stage_profiles**", route => json(route, STAGE_PROFILES));
   // Sub-2 (#2770): tom passage-liste for denne test — ingen passage-sektion
   // skal rendere (etape 1 og 2 har ingen KOM/mellemsprint-data i dette fixture).
@@ -168,7 +200,7 @@ test("race detail page renders KOM and intermediate sprint passages under stage 
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? RACE : [RACE]);
   });
-  await page.route("**/rest/v1/race_results**", route => json(route, RESULTS));
+  await page.route("**/rest/v1/race_results**", raceResultsRoute(RESULTS));
   await page.route("**/rest/v1/race_stage_profiles**", route => json(route, STAGE_PROFILES));
   await page.route("**/rest/v1/race_stage_passages**", route => json(route, PASSAGES));
 
@@ -206,7 +238,7 @@ test("Final Kilometre playback follows the selected stage tab, not always the la
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? RACE : [RACE]);
   });
-  await page.route("**/rest/v1/race_results**", route => json(route, RESULTS));
+  await page.route("**/rest/v1/race_results**", raceResultsRoute(RESULTS));
   await page.route("**/rest/v1/race_stage_profiles**", route => json(route, STAGE_PROFILES));
   await page.route("**/rest/v1/race_stage_passages**", route => json(route, []));
 
@@ -278,7 +310,7 @@ test("points and mountain classification show distinct jersey-point vs prize-poi
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? RACE : [RACE]);
   });
-  await page.route("**/rest/v1/race_results**", route => json(route, POINTS_RESULTS));
+  await page.route("**/rest/v1/race_results**", raceResultsRoute(POINTS_RESULTS));
   await page.route("**/rest/v1/race_stage_profiles**", route => json(route, STAGE_PROFILES));
   await page.route("**/rest/v1/race_stage_passages**", route => json(route, []));
 

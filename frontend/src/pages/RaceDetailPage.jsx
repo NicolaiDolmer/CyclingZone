@@ -281,6 +281,10 @@ export default function RaceDetailPage() {
 
   const [race, setRace] = useState(null);
   const [results, setResults] = useState([]);
+  // #3519/#4581: whole-race "stage"-type-rækker (smal projektion, ingen embeds) til
+  // classificationPointTotals's kumulative trøje-punkt-total — se stagePointsPromise
+  // i loadAll for hvorfor denne IKKE kan deles med `results`s per-etape-scope.
+  const [stagePointsRows, setStagePointsRows] = useState([]);
   const [stageProfiles, setStageProfiles] = useState([]);
   const [schedule, setSchedule] = useState([]);
   const [incidents, setIncidents] = useState([]);
@@ -400,6 +404,30 @@ export default function RaceDetailPage() {
       ? Promise.all(preloadStages.map((n) => fetchStageResultRows(raceId, n))).then((parts) => parts.flat())
       : Promise.resolve([]);
 
+    // #3519/#4581 (korrekthedsrettelse): jersey-punkt-totalerne ("Trøjepoint"-
+    // kolonnen i klassement-tabellerne, classificationPointTotals) er en KUMULATIV
+    // sum af sprint_points/kom_points på tværs af ALLE spillede etaper — ikke kun
+    // den enkelte etape #4581s per-etape-preload ovenfor henter. En race_id-scoped
+    // per-etape-fetch alene ville derfor vise en FORKERT (kun seed-etapens bidrag)
+    // total på "samlet"-fanen. Smal projektion (ingen rytter/hold-embeds, kun de 7
+    // felter totalen rent faktisk bruger, se raceClassificationTotals.js) af
+    // result_type="stage" ALENE, hele løbet — samme "whole-race, ikke del af
+    // #4581s per-etape-scope"-mønster som moments/incidents/passages ovenfor
+    // (uændrede). Startes her (ikke i Promise.all-arrayet nedenfor, som PR #4568
+    // også rører — se dens momentsPromise-blok) og afventes SEPARAT bagefter, så
+    // den stadig kører PARALLELT med resten uden at ændre den eksisterende linje.
+    const stagePointsPromise = fetchAllRows(() =>
+      supabase
+        .from("race_results")
+        .select("id, stage_number, result_type, rank, rider_id, sprint_points, kom_points")
+        .eq("race_id", raceId)
+        .eq("result_type", "stage")
+        .order("id")
+    ).catch((err) => {
+      console.warn("race_results (stage point totals) fetch failed:", err.message);
+      return [];
+    });
+
     // #1484 Stiliseret terræn-indikator. race_stage_profiles er læsbar for
     // authenticated (siden er auth-gated via ProtectedRoute). Degraderer pænt:
     // en fejl/tom tabel → ingen profil-badges, ingen fejl-UI.
@@ -478,10 +506,15 @@ export default function RaceDetailPage() {
     if (careerEventsError) {
       console.warn("rider_career_events fetch failed (table may not be migrated yet):", careerEventsError.message);
     }
+    // Afventes separat (se stagePointsPromise ovenfor for hvorfor den ikke er i
+    // Promise.all-arrayet ovenfor) — den er allerede kørt parallelt siden den blev
+    // oprettet, dette blokerer kun på det der ikke allerede er landet.
+    const stagePointsRowsResult = await stagePointsPromise;
 
     setMyTeamId(myTeamId);
     setRace(raceRow);
     setResults(rows);
+    setStagePointsRows(stagePointsRowsResult);
     // #4581: nulstiller (ikke tilføjer til) det tidligere loaded-set — et raceId-skift
     // er et helt nyt løb, gamle stage-numre fra det forrige løb må ikke overleve.
     setLoadedStages(new Set(preloadStages));
@@ -627,13 +660,15 @@ export default function RaceDetailPage() {
   // den, så en spiller kan ikke se HVOR TÆT/LANGT han er fra podiet. Live =
   // "efter seneste kørte etape" (samme etape som liveStandings.stage); Final =
   // alle etaper (løbet er afgjort). Begge kun relevante mens der er resultater.
+  // #4581: bruger stagePointsRows (whole-race "stage"-type-rækker), IKKE results —
+  // results er nu per-etape-scoped, og totalen er kumulativ på tværs af etaper.
   const liveClassificationTotals = useMemo(
-    () => (liveStandings ? classificationPointTotals(results, profileByStage, liveStandings.stage) : null),
-    [results, profileByStage, liveStandings],
+    () => (liveStandings ? classificationPointTotals(stagePointsRows, profileByStage, liveStandings.stage) : null),
+    [stagePointsRows, profileByStage, liveStandings],
   );
   const finalClassificationTotals = useMemo(
-    () => classificationPointTotals(results, profileByStage, null),
-    [results, profileByStage],
+    () => classificationPointTotals(stagePointsRows, profileByStage, null),
+    [stagePointsRows, profileByStage],
   );
 
   // #2081: "mit hold" løses til den faktiske team_id (kan være ukendt hvis ikke logget
@@ -952,7 +987,7 @@ export default function RaceDetailPage() {
                   resultat. */}
               {stageNumbers.map(n => activeTab === `stage-${n}` && (
                 loadedStages.has(n)
-                  ? <StageTab key={n} stage={n} results={results} profile={profileByStage[n]} profileByStage={profileByStage}
+                  ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
                       filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
                       moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
                       raceId={race.id} raceName={race.name} passages={passages} t={t} />
@@ -1408,7 +1443,7 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
   );
 }
 
-function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, t }) {
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, t }) {
   const [classTab, setClassTab] = useState("stage");
   const [finalKmOpen, setFinalKmOpen] = useState(false);
 
@@ -1416,9 +1451,13 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
 
   // #3519: point-totaler "efter etape {stage}" for mountain/points-sub-fanen —
   // samme SSOT-genbrug som Overall-fanerne (raceClassificationTotals.js).
+  // #4581: stagePointsRows (whole-race "stage"-type-rækker), IKKE results — se
+  // samme begrundelse ved liveClassificationTotals/finalClassificationTotals ovenfor
+  // i RaceDetailPage. "Efter etape {stage}" er kumulativt (stage 1..stage), hvilket
+  // results (nu per-etape-scoped) ikke længere garanteret dækker.
   const stagePointsTotals = useMemo(
-    () => classificationPointTotals(results, profileByStage, stage),
-    [results, profileByStage, stage],
+    () => classificationPointTotals(stagePointsRows, profileByStage, stage),
+    [stagePointsRows, profileByStage, stage],
   );
 
   // Sub-2 (#2770): passage-grupper (KOM/mellemsprint) for DENNE etape — kun
