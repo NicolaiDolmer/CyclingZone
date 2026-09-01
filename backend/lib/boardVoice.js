@@ -40,19 +40,23 @@
  *
  * TOM BUCKET = KAST, ALDRIG STILLE FALDBACK
  * ------------------------------------------
- * 7 af de 9 arketyper har tomme arrays for de 11 nye Mandat-buckets indtil
- * deres tone-prøve er skrevet (kun sponsoraten + ungdomsidealisten har
- * reelt indhold i S-M2a, ejer-godkendt referenceprøve). At falde stille
- * tilbage til fx chairman's egen bucket eller en anden arketypes tekst ville
- * betyde at spilleren læser den FORKERTE person tale, hvilket er præcis den
- * fejlklasse Mandatet skal fjerne (#3514: "aldrig 'Bestyrelsen er utilfreds:
- * -3'"). Derfor kaster `sampleVoiceLine` en `BoardVoiceEmptyBucketError` når
- * bucket'en for den valgte (archetypeKey, beat)-kombination er tom, i stedet
- * for at vælge et andet medlem eller en anden bucket. Kaldere skal enten
- * undgå at route til arketyper uden indhold endnu (fx altid vise beats via
- * formanden, indtil dennes arketype har en tone-prøve), eller lade fejlen
- * boble op så manglen er synlig i test/Sentry i stedet for at blive
- * maskeret som en tilfældig anden stemme.
+ * Alle 9 arketyper har i dag min. 4 varianter for hver af de 11 nye
+ * Mandat-buckets (sponsoraten + ungdomsidealisten var de ejer-godkendte
+ * referenceprøver 1/9, de øvrige 7 blev skrevet i samme kvalitet 1/9 efter
+ * godkendelsen). Mekanismen i dette afsnit er alligevel PERMANENT, ikke en
+ * overgangsforanstaltning: den næste gang en ny bucket tilføjes (endnu en
+ * beat-type), vil den nødvendigvis starte tom for nogle eller alle
+ * arketyper igen. At falde stille tilbage til fx chairman's egen bucket
+ * eller en anden arketypes tekst ville betyde at spilleren læser den
+ * FORKERTE person tale, hvilket er præcis den fejlklasse Mandatet skal
+ * fjerne (#3514: "aldrig 'Bestyrelsen er utilfreds: -3'"). Derfor kaster
+ * `sampleVoiceLine` en `BoardVoiceEmptyBucketError` når bucket'en for den
+ * valgte (archetypeKey, beat)-kombination er tom, i stedet for at vælge et
+ * andet medlem eller en anden bucket. Kaldere skal enten undgå at route til
+ * arketyper uden indhold endnu (fx altid vise beats via formanden, indtil
+ * dennes arketype har en tone-prøve), eller lade fejlen boble op så manglen
+ * er synlig i test/Sentry i stedet for at blive maskeret som en tilfældig
+ * anden stemme.
  *
  * GENERISK PERSON-STEMME-KONTRAKT (fremtidssikring, ingen implementering nu)
  * ----------------------------------------------------------------------

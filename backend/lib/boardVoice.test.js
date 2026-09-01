@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
-import { BOARD_ARCHETYPE_KEYS, MANDATE_VOICE_BUCKETS } from "./boardArchetypes.js";
+import { BOARD_ARCHETYPES, BOARD_ARCHETYPE_KEYS, MANDATE_VOICE_BUCKETS } from "./boardArchetypes.js";
 
 // #3514 S-M2a · boardVoice-kontrakten. Se modul-header i boardVoice.js for
 // den fulde kontrakt-tekst (sampleVoiceLine, TOM BUCKET = KAST, generisk
@@ -73,33 +73,33 @@ test("forskellige teams faar potentielt forskellige navne for samme arketype (ik
 });
 
 // ── Tom bucket = kast, aldrig stille fallback ───────────────────────────────
+//
+// Alle 9 arketyper har nu reelt indhold for alle 11 Mandat-buckets (ejer-
+// godkendt 1/9, sponsoraten + ungdomsidealisten var de oprindelige tone-
+// prøver, de øvrige 7 fulgt op i samme godkendelses-runde). Guard-mekanismen
+// (BoardVoiceEmptyBucketError) er alligevel PERMANENT kode, ikke en
+// overgangsting, den skal fange enhver FREMTIDIG tom bucket (fx en 12.
+// beat-type der endnu ikke er skrevet for alle arketyper). Testen nedenfor
+// beviser det ved midlertidigt at tømme en reelt udfyldt bucket.
 
-test("sampleVoiceLine kaster BoardVoiceEmptyBucketError for en arketype uden tone-proeve endnu", () => {
-  assert.throws(
-    () => sampleVoiceLine({ beat: "receipt_positive", archetypeKey: "traditionalisten", seed: "evt-1" }),
-    BoardVoiceEmptyBucketError,
-  );
-});
-
-test("alle 7 ikke-reference-arketyper kaster for alle 11 nye buckets (ingen stille tom-bucket-sampling)", () => {
-  const referenceArchetypes = new Set(["sponsoraten", "ungdomsidealisten"]);
+test("alle 9 arketyper har mindst 4 varianter for alle 11 Mandat-buckets (kaster ikke)", () => {
   for (const archetypeKey of BOARD_ARCHETYPE_KEYS) {
-    if (referenceArchetypes.has(archetypeKey)) continue;
     for (const beat of MANDATE_VOICE_BUCKETS) {
-      assert.throws(
-        () => sampleVoiceLine({ beat, archetypeKey, seed: "evt-1" }),
-        BoardVoiceEmptyBucketError,
-        `${archetypeKey}/${beat} skulle kaste, men gjorde ikke`,
-      );
+      assert.doesNotThrow(() => sampleVoiceLine({ beat, archetypeKey, seed: "evt-1" }));
     }
   }
 });
 
-test("de 2 reference-arketyper har mindst 4 varianter for alle 11 nye buckets (kaster ikke)", () => {
-  for (const archetypeKey of ["sponsoraten", "ungdomsidealisten"]) {
-    for (const beat of MANDATE_VOICE_BUCKETS) {
-      assert.doesNotThrow(() => sampleVoiceLine({ beat, archetypeKey, seed: "evt-1" }));
-    }
+test("sampleVoiceLine kaster BoardVoiceEmptyBucketError hvis en bucket nogensinde bliver tom (regressionsnet)", () => {
+  const original = BOARD_ARCHETYPES.pragmatikeren.reactions.receipt_positive;
+  BOARD_ARCHETYPES.pragmatikeren.reactions.receipt_positive = [];
+  try {
+    assert.throws(
+      () => sampleVoiceLine({ beat: "receipt_positive", archetypeKey: "pragmatikeren", seed: "evt-1" }),
+      BoardVoiceEmptyBucketError,
+    );
+  } finally {
+    BOARD_ARCHETYPES.pragmatikeren.reactions.receipt_positive = original;
   }
 });
 

@@ -8,10 +8,9 @@ import { fileURLToPath } from "node:url";
 // (addendum "Stemme-kontrakten" punkt 4, docs/superpowers/specs/
 // 2026-09-01-board-mandate-addendum-personer-med-stemme.md).
 //
-// Kun sponsoraten + ungdomsidealisten har reelt indhold i S-M2a (ejer-tone-
-// prøve 1/9, se boardArchetypes.js). De 7 øvrige arketyper har bevidst
-// TOMME arrays i backend (boardVoice.js kaster hvis de samples) og har
-// derfor INGEN nøgler i board.json endnu, det er ikke en parity-fejl.
+// Alle 9 arketyper har nu reelt indhold (ejer-godkendte tone-prøver 1/9:
+// sponsoraten + ungdomsidealisten skrevet først som reference, de øvrige 7
+// fulgt op i samme godkendelses-runde, se boardArchetypes.js).
 //
 // Bucket-listen her er en bevidst kopi af backend/lib/boardArchetypes.js'
 // MANDATE_VOICE_BUCKETS (frontend importerer ikke backend-kode). Et diff i
@@ -32,8 +31,6 @@ const MANDATE_VOICE_BUCKETS = [
   "chairman_arrival",
 ];
 
-const REFERENCE_ARCHETYPES = ["sponsoraten", "ungdomsidealisten"];
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const localesDir = join(__dirname, "..", "..", "public", "locales");
 
@@ -43,13 +40,15 @@ function loadBoard(lng) {
 
 const en = loadBoard("en");
 const da = loadBoard("da");
+const ARCHETYPE_KEYS = Object.keys(en.archetypes);
 
 test("board.json findes for baade en og da, og archetypes-sektionen er til stede", () => {
   assert.ok(en.archetypes, "en/board.json mangler archetypes");
   assert.ok(da.archetypes, "da/board.json mangler archetypes");
+  assert.equal(ARCHETYPE_KEYS.length, 9, "forventede 9 arketyper i board.json");
 });
 
-for (const archetypeKey of REFERENCE_ARCHETYPES) {
+for (const archetypeKey of ARCHETYPE_KEYS) {
   test(`${archetypeKey}: alle 11 nye Mandat-buckets findes i baade en og da`, () => {
     const enReactions = en.archetypes[archetypeKey]?.reactions;
     const daReactions = da.archetypes[archetypeKey]?.reactions;
@@ -92,18 +91,26 @@ for (const archetypeKey of REFERENCE_ARCHETYPES) {
   });
 }
 
-test("de 7 ikke-reference-arketyper har INGEN nye Mandat-bucket-nøgler i board.json endnu (bevidst, matcher backend TODO)", () => {
-  const nonReference = Object.keys(en.archetypes).filter((key) => !REFERENCE_ARCHETYPES.includes(key));
-  assert.ok(nonReference.length > 0, "forventede mindst én ikke-reference-arketype i board.json");
-
-  for (const archetypeKey of nonReference) {
-    const enReactions = en.archetypes[archetypeKey]?.reactions || {};
-    for (const bucket of MANDATE_VOICE_BUCKETS) {
-      assert.equal(
-        bucket in enReactions,
-        false,
-        `en ${archetypeKey}.reactions.${bucket} findes uventet, backend har stadig en tom TODO-bucket for denne arketype`,
-      );
+// Karakter-adskillelse (koordinator-krav 1/9): ingen to arketyper må dele en
+// ORDRET identisk linje i en given sprogversion. Grov, automatiserbar proxy
+// for at hver arketype har sin egen stemme, en generisk linje der "kunne
+// komme fra hvem som helst" ville typisk optræde identisk to steder.
+for (const lngName of ["en", "da"]) {
+  test(`${lngName}: ingen to arketyper deler en ordret identisk linje på tværs af de nye buckets`, () => {
+    const tree = lngName === "en" ? en : da;
+    const seen = new Map(); // linje → arketype der først brugte den
+    for (const archetypeKey of ARCHETYPE_KEYS) {
+      const reactions = tree.archetypes[archetypeKey].reactions;
+      for (const bucket of MANDATE_VOICE_BUCKETS) {
+        for (const line of reactions[bucket]) {
+          const existing = seen.get(line);
+          assert.ok(
+            !existing || existing === archetypeKey,
+            `${lngName}: linjen "${line}" bruges ordret af både ${existing} og ${archetypeKey}`,
+          );
+          seen.set(line, archetypeKey);
+        }
+      }
     }
-  }
-});
+  });
+}

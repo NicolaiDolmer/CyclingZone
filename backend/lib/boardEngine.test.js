@@ -1572,20 +1572,32 @@ test("BOARD_ARCHETYPES contains exactly 9 archetypes med 30 reactions hver (Q-ba
 // #3514 S-M2a · Mandat-buckets (addendum "Stemme-kontrakten" punkt 4): kun
 // sponsoraten + ungdomsidealisten har reelt indhold (ejer-tone-prøve 1/9);
 // de 7 øvrige har bevidst tomme arrays indtil deres tone-prøve godkendes.
-test("MANDATE_VOICE_BUCKETS: kun de 2 reference-arketyper har indhold, resten er bevidst tomme", () => {
-  const referenceArchetypes = new Set(["sponsoraten", "ungdomsidealisten"]);
+test("MANDATE_VOICE_BUCKETS: alle 9 arketyper har mindst 4 varianter pr. bucket (ejer-godkendt 1/9)", () => {
   for (const key of BOARD_ARCHETYPE_KEYS) {
     const arc = BOARD_ARCHETYPES[key];
-    const mandateTotal = MANDATE_VOICE_BUCKETS.reduce((sum, bucket) => sum + (arc.reactions[bucket]?.length || 0), 0);
-    if (referenceArchetypes.has(key)) {
-      assert.ok(mandateTotal >= MANDATE_VOICE_BUCKETS.length * 4, `${key} skal have mindst 4 varianter pr. Mandat-bucket (har ${mandateTotal} i alt)`);
-      for (const bucket of MANDATE_VOICE_BUCKETS) {
-        assert.ok((arc.reactions[bucket]?.length || 0) >= 4, `${key}.reactions.${bucket} har under 4 varianter`);
-      }
-    } else {
-      assert.equal(mandateTotal, 0, `${key} skulle have 0 Mandat-bucket-reactions endnu (TODO), har ${mandateTotal}`);
-      for (const bucket of MANDATE_VOICE_BUCKETS) {
-        assert.deepEqual(arc.reactions[bucket], [], `${key}.reactions.${bucket} skal være et tomt array, ikke undefined eller udfyldt`);
+    for (const bucket of MANDATE_VOICE_BUCKETS) {
+      const variants = arc.reactions[bucket] || [];
+      assert.ok(variants.length >= 4, `${key}.reactions.${bucket} har under 4 varianter (har ${variants.length})`);
+    }
+  }
+});
+
+// Karakter-adskillelse (koordinator-krav 1/9): ingen to arketyper må dele en
+// ORDRET identisk linje. Det er en grov, men automatiserbar proxy for at hver
+// arketype skal have sin egen, ikke-forvekslelige stemme, en helt generisk
+// linje ville typisk blive genbrugt (bevidst eller ved copy-paste) på tværs.
+test("MANDATE_VOICE_BUCKETS: ingen to arketyper deler en ordret identisk linje (karakter-adskillelse)", () => {
+  const seen = new Map(); // linje → arketype der først brugte den
+  for (const key of BOARD_ARCHETYPE_KEYS) {
+    const arc = BOARD_ARCHETYPES[key];
+    for (const bucket of MANDATE_VOICE_BUCKETS) {
+      for (const line of arc.reactions[bucket] || []) {
+        const existing = seen.get(line);
+        assert.ok(
+          !existing || existing === key,
+          `Linjen "${line}" bruges ordret af både ${existing} og ${key}, arketyperne skal ikke kunne forveksles`,
+        );
+        seen.set(line, key);
       }
     }
   }
