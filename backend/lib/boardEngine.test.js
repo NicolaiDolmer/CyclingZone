@@ -1527,6 +1527,10 @@ import {
   TEAM_BOARD_MEMBERS_COUNT,
   REPLACEMENT_TRIGGER_THRESHOLD,
 } from "./boardEngine.js";
+// #3514 S-M2a · REACTION_BUCKETS/MANDATE_VOICE_BUCKETS er ikke re-eksporteret
+// via boardEngine.js-facaden (bevidst, ingen kaldere har brug for dem der
+// endnu), importeres direkte fra kildemodulet.
+import { REACTION_BUCKETS, MANDATE_VOICE_BUCKETS } from "./boardArchetypes.js";
 
 const FRENCH_GC_BASIS = {
   season_number_observed: 1,
@@ -1558,8 +1562,32 @@ test("BOARD_ARCHETYPES contains exactly 9 archetypes med 30 reactions hver (Q-ba
     const arc = BOARD_ARCHETYPES[key];
     assert.ok(arc, `archetype ${key} mangler`);
     assert.ok(arc.label && arc.emoji);
-    const total = Object.values(arc.reactions).reduce((sum, list) => sum + list.length, 0);
-    assert.equal(total, 30, `${key} skal have 30 reactions (har ${total})`);
+    // Det oprindelige Q9-bucket-sæt (feedback_*/goal_*) er UÆNDRET af #3514
+    // S-M2a's nye Mandat-buckets, tælles isoleret fra dem her.
+    const legacyTotal = REACTION_BUCKETS.reduce((sum, bucket) => sum + (arc.reactions[bucket]?.length || 0), 0);
+    assert.equal(legacyTotal, 30, `${key} skal have 30 legacy reactions (har ${legacyTotal})`);
+  }
+});
+
+// #3514 S-M2a · Mandat-buckets (addendum "Stemme-kontrakten" punkt 4): kun
+// sponsoraten + ungdomsidealisten har reelt indhold (ejer-tone-prøve 1/9);
+// de 7 øvrige har bevidst tomme arrays indtil deres tone-prøve godkendes.
+test("MANDATE_VOICE_BUCKETS: kun de 2 reference-arketyper har indhold, resten er bevidst tomme", () => {
+  const referenceArchetypes = new Set(["sponsoraten", "ungdomsidealisten"]);
+  for (const key of BOARD_ARCHETYPE_KEYS) {
+    const arc = BOARD_ARCHETYPES[key];
+    const mandateTotal = MANDATE_VOICE_BUCKETS.reduce((sum, bucket) => sum + (arc.reactions[bucket]?.length || 0), 0);
+    if (referenceArchetypes.has(key)) {
+      assert.ok(mandateTotal >= MANDATE_VOICE_BUCKETS.length * 4, `${key} skal have mindst 4 varianter pr. Mandat-bucket (har ${mandateTotal} i alt)`);
+      for (const bucket of MANDATE_VOICE_BUCKETS) {
+        assert.ok((arc.reactions[bucket]?.length || 0) >= 4, `${key}.reactions.${bucket} har under 4 varianter`);
+      }
+    } else {
+      assert.equal(mandateTotal, 0, `${key} skulle have 0 Mandat-bucket-reactions endnu (TODO), har ${mandateTotal}`);
+      for (const bucket of MANDATE_VOICE_BUCKETS) {
+        assert.deepEqual(arc.reactions[bucket], [], `${key}.reactions.${bucket} skal være et tomt array, ikke undefined eller udfyldt`);
+      }
+    }
   }
 });
 

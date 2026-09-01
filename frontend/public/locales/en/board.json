@@ -608,6 +608,72 @@
           "We are bleeding more than expected.",
           "The investors are asking questions now.",
           "This puts next season's sponsor negotiation at risk."
+        ],
+        "receipt_positive": [
+          "The budget holds, and the sponsors are calling to renew.",
+          "We hit the target without touching the reserve.",
+          "Three quarters in the black in a row. That is not luck, that is discipline.",
+          "The books look better than my forecast. That is rare."
+        ],
+        "receipt_negative": [
+          "We are dipping into the reserve again. That number needs to turn.",
+          "Sponsor income is under budget for the third month running.",
+          "I cannot defend this number at the next meeting.",
+          "The debt is growing faster than the revenue. That is not sustainable."
+        ],
+        "meeting_easier": [
+          "A lower target means a lower ceiling for the sponsors. I will take it, but I am noting it.",
+          "This is the cautious road. Fine by me.",
+          "Eased, but still a number I can stand behind to the sponsors.",
+          "I prefer a target we hit over one we chase."
+        ],
+        "meeting_keep": [
+          "Same number, same expectation. I respect that.",
+          "No change to the budget, no change in how I am watching.",
+          "We hold the course. That is often the right call.",
+          "Kept, as it should be while the numbers still add up."
+        ],
+        "meeting_stretch": [
+          "A higher target needs better books behind it. Show me that.",
+          "I am tightening my watch exactly as much as the target is tightened.",
+          "Ambitious. The sponsors will ask how we are funding it.",
+          "A stretch target I accept, but I am keeping the books on every month."
+        ],
+        "midseason_status": [
+          "We are halfway. The numbers on the table today are ones I can stand behind.",
+          "Halfway through the season, and the board wants an honest picture, not a dressed up one.",
+          "This status is not a verdict. It is a snapshot we act on.",
+          "I have seen worse halfway books than this."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, and the books confirm it. That is rare, both at once.",
+          "We celebrate this, and then the board finds the next target for the empty slot.",
+          "Reached ahead of schedule. The sponsors notice that kind of thing.",
+          "A closed chapter with a clean set of books. Good work."
+        ],
+        "milestone_missed": [
+          "The milestone slips, and it costs trust, not just the number.",
+          "We have to look these numbers in the eye without dressing them up.",
+          "Not catastrophic, but the board expected more by now.",
+          "I am writing it down. We will take it up again at the next annual meeting."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting. The numbers cannot wait for the next annual meeting.",
+          "This is not routine. We meet now, not at the usual time.",
+          "I asked for an extra meeting. The books require it.",
+          "We are gathering off cycle, because something here cannot wait."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair with the books in order. That is the legacy I wanted.",
+          "My time as chairman ends here. Look after the numbers after me.",
+          "I am stepping down. The club's finances stand better than when I took over.",
+          "The chair moves on. I will keep my worries to myself from here."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the first thing I do is read the books.",
+          "New chairman, same demands on the numbers.",
+          "I am going into this with my eyes open and the calculator ready.",
+          "It is my turn now. I promise no miracles, only an honest set of books."
         ]
       }
     },
@@ -853,6 +919,72 @@
           "We owe the young riders a better structure.",
           "A damaging signal to future talents.",
           "If this continues, the academy will not call."
+        ],
+        "receipt_positive": [
+          "A debutant took his first win today. That is the whole point of this.",
+          "The young riders get room, and they are using it.",
+          "Another U25 rider took a step today. That is how a generation is built.",
+          "This team is developing talent, not just spending it."
+        ],
+        "receipt_negative": [
+          "The young riders are on the bench again. That is hard to watch.",
+          "We promise development and deliver standing still.",
+          "Another debutant without race days in his legs this month.",
+          "The talent is there. The chance is not."
+        ],
+        "meeting_easier": [
+          "An eased target means more patience with the young riders. I will gladly take that.",
+          "Fewer points to chase, more room to let a debutant learn.",
+          "Eased is fine, as long as the development is not eased along with it.",
+          "I accept this, if it means more races for the U25 squad."
+        ],
+        "meeting_keep": [
+          "Same target, same promise to the young riders that they are seen.",
+          "Kept as is. The young riders deserve consistency, not shifting ground.",
+          "No change, and that is fine. Development takes the time it takes.",
+          "We hold the course for the sake of the youth."
+        ],
+        "meeting_stretch": [
+          "A tighter target must not come at the expense of the debutants.",
+          "I accept the stretch target, but I am watching who gets to race.",
+          "Ambitious is fine, as long as the young riders still get their chance.",
+          "Set the target higher. Just do not forget who has to reach it."
+        ],
+        "midseason_status": [
+          "We are halfway, and I want to know how many debutants have raced since last time.",
+          "The halfway picture should show development, not just placings.",
+          "I measure the season by how many young riders moved forward, not only by podiums.",
+          "Halfway through, and the young riders still have my full attention."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, and a debutant helped make it happen. That is how it should look.",
+          "Reached, and the board is already finding the next target for the young riders to grow toward.",
+          "This proves the development path works.",
+          "A future that was promised is now a future that was delivered."
+        ],
+        "milestone_missed": [
+          "The milestone slips, and I ask myself if the young riders got enough time.",
+          "Not the end of the world, but the development needs to speed up.",
+          "We owe the young riders a better plan from here.",
+          "I am noting it. The next annual meeting needs to give them a real chance again."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting. I want the young riders' conditions on the agenda.",
+          "This meeting cannot wait, and neither can the development work.",
+          "I asked for us to gather now. The talent must not suffer while we wait.",
+          "Extraordinary meeting, because something here hits the young riders directly."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair. Take good care of the academy after me.",
+          "My time ends here, but the young riders I made room for keep growing.",
+          "I am stepping down with a clear conscience. The youth got their chance under me.",
+          "The chair moves on. Do not forget who is building the future."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the young riders get my full attention from day one.",
+          "New chairman, same belief that the future starts in the U25 squad.",
+          "I am going into this for the sake of the young riders, not my own.",
+          "It is my turn now. I promise room for those who have not had their chance yet."
         ]
       }
     },
