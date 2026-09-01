@@ -14910,6 +14910,10 @@ router.get("/board/status", requireAuth, async (req, res) => {
         })
         : [];
 
+      // #915/#3575 · Beregnes én gang og deles af renew_locked + renew_lock_code
+      // nedenfor (én lås-evaluering pr. plan, ikke to).
+      const renegotiationLock = getBoardRenegotiationLock({ board, activeSeason });
+
       const planEntry = {
         board,
         plan_duration: planDuration,
@@ -14929,7 +14933,10 @@ router.get("/board/status", requireAuth, async (req, res) => {
         is_expired: isExpired,
         // #915 · Gen-forhandling låst når sæsonen er for langt fremme — frontend
         // skjuler "Forny"-knappen så låsen ikke kun håndhæves server-side.
-        renew_locked: getBoardRenegotiationLock({ board, activeSeason }).locked,
+        // #3575 · renew_lock_code lader frontend vise EN PRÆCIS årsag (flerårsplan
+        // stadig aktiv vs. same-sæson vindue/progress) i stedet for én generisk tekst.
+        renew_locked: renegotiationLock.locked,
+        renew_lock_code: renegotiationLock.code ?? null,
         // #2310 punkt 2 · retnings-pil ("62% → på vej mod 71").
         satisfaction_progress: satisfactionProgress,
         // #2310 punkt 7 · lag 1 (passiv sponsor-modifier), hidtil usynlig i UI.

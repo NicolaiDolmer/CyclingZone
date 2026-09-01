@@ -383,6 +383,7 @@
     "renew": "Forny plan (status quo)",
     "renewing": "Fornyer…",
     "renewLocked": "Genforhandling er låst resten af sæsonen.",
+    "renewLockedPlanActive": "Denne plan er stadig aktiv. Den kan først genforhandles, når hele planperioden er fuldført.",
     "standingHeading": "Status",
     "negotiationOrder": "Planer forhandles længst først: 5 → 3 → 1 år."
   },
@@ -434,6 +435,7 @@
     "agreedHeading": "Aftalte mål",
     "signing": "Gemmer...",
     "sign": "Underskriv kontrakt ✍",
+    "resetNotice": "At underskrive nulstiller planens tællere (gennemførte sæsoner, samlede sejre) og starter et nyt planvindue. Den nulstiller IKKE din bestyrelses-request for denne sæson, den forbliver låst til næste sæson.",
     "obligatory": "Obligatorisk krav",
     "negotiatedTick": "Forhandlet ✓",
     "steps": {

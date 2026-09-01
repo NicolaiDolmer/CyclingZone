@@ -53,6 +53,15 @@ Verificeret mod kode og prod 31/8 under #4382. Dette var det hul §7 række 8 pe
 | Udløb | `planIsComplete = seasons_completed >= planDuration` → planen **udsættes ikke**. `negotiation_status` sættes til `pending`, `seasons_completed` og begge cumulative-tællere nulstilles, og plan-vinduet rulles frem | `economyEngine.js:1663, 1761-1776` |
 | Genforhandling | Obligatorisk. En `pending` plan tæller **ikke** med i `computeBoardBaseModifier`, der kun midler `completed`-planer, så en overset flerårsplan falder ud af sponsor-modifierens gennemsnit | `sponsorEngine.js:193-202` |
 
+**Gen-underskrivnings-lås (ejer-valg 1/9, #3575/#4377):** `getBoardRenegotiationLock`
+(`boardRequests.js`) blokerer `/board/sign` + `/board/renew` for en `completed` 3yr/5yr-plan
+**ubetinget**, uanset indeværende sæsons fremdrift — den kan først gen-underskrives når
+`negotiation_status` er flippet til `pending` (dvs. planperioden reelt er fuldført). Før 1/9
+tjekkede låsen kun sæson-fremdrift, så en aktiv, ikke-udløbet flerårsplan kunne gen-underskrives
+tidligt i en ny sæson og nulstille `seasons_completed`/`cumulative_*_wins`/
+`plan_start_season_number` midt i planperioden (re-roll-hul). 1yr-planer er uændrede: de udløber
+hver sæson, så same-sæson-vindue/progress-reglerne er fortsat deres eneste lås.
+
 **De tre planer er uafhængige.** `board_profiles` har præcis én række pr. (team, plan_type). Målt
 31/8: 236 × 1yr, 222 × 3yr, 223 × 5yr, med `count(distinct team_id)` lig `count(*)` for hver type.
 Forhandlingsstien tager `board.plan_type` som parameter (`boardRequests.js:131, 516`), så en

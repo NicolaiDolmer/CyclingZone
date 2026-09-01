@@ -383,6 +383,7 @@
     "renew": "Renew plan (status quo)",
     "renewing": "Renewing…",
     "renewLocked": "Renegotiation is locked for the rest of the season.",
+    "renewLockedPlanActive": "This plan is still active. It can only be renegotiated once its full term is complete.",
     "standingHeading": "Standing",
     "negotiationOrder": "Plans are negotiated longest-first: 5 → 3 → 1 years."
   },
@@ -434,6 +435,7 @@
     "agreedHeading": "Agreed targets",
     "signing": "Saving...",
     "sign": "Sign contract ✍",
+    "resetNotice": "Signing resets this plan's counters (seasons completed, cumulative wins) and starts a new plan window. It does not reset your board request for this season, that stays locked until next season.",
     "obligatory": "Required",
     "negotiatedTick": "Negotiated ✓",
     "steps": {
