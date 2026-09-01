@@ -96,21 +96,15 @@ export default defineConfig({
     // workflow-step FØR Playwright, så webServer-kommandoen er ÉN dræbelig proces.
     // Lokalt beholder vi `build && ...` for bekvemmelighed.
     //
-    // #2960: `vite preview` erstattet af `sirv` (sirv-cli, --single = samme SPA-
-    // fallback vite preview allerede gav — dist/ har kun ÉT index.html, se
-    // main.jsx's hydratingLanding-gate for hvorfor det er sikkert). Årsag: 4
-    // rød-kørsler i træk på React 19/RR8-branchen, altid ~20-25 min inde i
-    // suiten, altid ÉN chunk-request der aldrig afsluttede (network-status -1)
-    // midt i en bunke sideløbende asset-hentninger — forskellig spec hver gang,
-    // 607/607 grønt lokalt. Chunk-graf-diff mod main viste ingen ny modulepreload
-    // af analytics-chunks (webVitalsIntegration/clarityIntegration er lazy() på
-    // begge grene) — så preload-listen var ikke roden. `vite preview`+Playwright-
-    // webServer under vedvarende belastning er et kendt community-mønster
-    // (vitejs/vite#12883, microsoft/playwright#21227); at skifte til en dedikeret
-    // static-file-server er den dokumenterede workaround. sirv er samme
-    // minimale, afprøvede library svelte-værktøjerne bruger — ingen af vites
-    // egen preview-serverstack. Kaldes via `npm run` (ikke `npx`) for at holde
-    // præcis ÉT dræbeligt barn i process-træet, samme mønster som virker i dag.
+    // #2960: `vite preview` erstattet af scripts/e2e-static-server.mjs (sirv-
+    // biblioteket i egen tynd server). Hvorfor og hele stall-evidensen:
+    // .claude/learnings/2026-09-01-vite-preview-ci-smoke-random-stalls.md.
+    // Operationelt: serveren fejler HØJLYDT ved optaget port (strictPort-
+    // erstatning), læser KUN argv (aldrig env PORT/HOST — worktree-isolationen
+    // i playwright.ports.js), og serverer med etag+dev som vite preview gjorde.
+    // `npm run` (ikke `npx`) holder præcis ÉT dræbeligt barn i process-træet.
+    // NB: `--`-argumenterne appendes af npm til script-strengens SIDSTE kommando
+    // — preview:e2e skal forblive én enkelt kommando.
     // NB: sirv har ingen middleware-hook som vites `configurePreviewServer`, så
     // worktreeIdPlugin (vite.config.js) servede ikke længere WORKTREE_ID_PATH —
     // "preview:e2e" (package.json) genererer den nu som en statisk fil i dist/

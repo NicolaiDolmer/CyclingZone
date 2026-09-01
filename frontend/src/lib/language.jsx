@@ -138,12 +138,12 @@ export function LanguageProvider({ children, deferredLanguage = null }) {
   // prerenderede landing (browser-locale "da"): 0 forekomster af #421 over 3
   // separate loads, mod deterministisk fejl uden denne udsættelse.
   //
-  // #2960 (verificeret 1/9): React 19's useSyncExternalStore respekterer
-  // startTransition korrekt og lukker dermed selve racet ovenfor på
-  // rod-årsagsniveau — 13/13 grønne x2 på mobile-webkit mod 5/13 røde på
-  // React 18. requestIdleCallback-udsættelsen her beholdes alligevel som
-  // defense-in-depth (billig, og dækker evt. fremtidige biblioteker med
-  // samme useSyncExternalStore-mønster).
+  // #2960 (målt 1/9): under React 19 er racet EMPIRISK lukket — 13/13 grønne
+  // x2 på mobile-webkit mod 5/13 røde på React 18, uden kodeændringer. Den
+  // præcise React 19-mekanisme er IKKE kildeverificeret (og wrapping i
+  // startTransition virkede beviseligt IKKE på React 18, jf. noten ovenfor),
+  // så requestIdleCallback-udsættelsen her er fortsat det bærende værn.
+  // FJERN DEN IKKE på baggrund af denne kommentar alene.
   useEffect(() => {
     if (deferredLanguage && i18n.language !== deferredLanguage) {
       const ric = typeof window.requestIdleCallback === "function"
