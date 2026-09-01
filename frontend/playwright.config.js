@@ -93,13 +93,32 @@ export default defineConfig({
     // der kørte build, derefter preview — på windows-runneren efterlod den en
     // forældreløs preview-proces Playwright ikke kunne dræbe → jobbet hang 48 min
     // (#1342, draft-fix-forsøg 1). I CI bygges frontend i et separat
-    // workflow-step FØR Playwright, så webServer-kommandoen er ÉN dræbelig proces
-    // (`vite preview`). Lokalt beholder vi `build && preview` for bekvemmelighed.
-    // --strictPort: hellere højlydt bind-fejl end at vite hopper til nabo-port
-    // mens baseURL stadig peger på den fremmede server.
+    // workflow-step FØR Playwright, så webServer-kommandoen er ÉN dræbelig proces.
+    // Lokalt beholder vi `build && ...` for bekvemmelighed.
+    //
+    // #2960: `vite preview` erstattet af `sirv` (sirv-cli, --single = samme SPA-
+    // fallback vite preview allerede gav — dist/ har kun ÉT index.html, se
+    // main.jsx's hydratingLanding-gate for hvorfor det er sikkert). Årsag: 4
+    // rød-kørsler i træk på React 19/RR8-branchen, altid ~20-25 min inde i
+    // suiten, altid ÉN chunk-request der aldrig afsluttede (network-status -1)
+    // midt i en bunke sideløbende asset-hentninger — forskellig spec hver gang,
+    // 607/607 grønt lokalt. Chunk-graf-diff mod main viste ingen ny modulepreload
+    // af analytics-chunks (webVitalsIntegration/clarityIntegration er lazy() på
+    // begge grene) — så preload-listen var ikke roden. `vite preview`+Playwright-
+    // webServer under vedvarende belastning er et kendt community-mønster
+    // (vitejs/vite#12883, microsoft/playwright#21227); at skifte til en dedikeret
+    // static-file-server er den dokumenterede workaround. sirv er samme
+    // minimale, afprøvede library svelte-værktøjerne bruger — ingen af vites
+    // egen preview-serverstack. Kaldes via `npm run` (ikke `npx`) for at holde
+    // præcis ÉT dræbeligt barn i process-træet, samme mønster som virker i dag.
+    // NB: sirv har ingen middleware-hook som vites `configurePreviewServer`, så
+    // worktreeIdPlugin (vite.config.js) servede ikke længere WORKTREE_ID_PATH —
+    // "preview:e2e" (package.json) genererer den nu som en statisk fil i dist/
+    // via scripts/write-worktree-id.mjs FØR sirv starter. Uden den fejlede
+    // false-green-guarden (global-setup.js) højlydt på sirv selv.
     command: process.env.CI
-      ? `npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`
-      : `npm run build && npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`,
+      ? `npm run preview:e2e -- --host 127.0.0.1 --port ${PORT}`
+      : `npm run build && npm run preview:e2e -- --host 127.0.0.1 --port ${PORT}`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180000,
