@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.228",
+    "date": "2026-09-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board reactions now show a name, not just a role",
+          "body": "When a board member reacts to a goal or the season outlook, and when a chairman is replaced, you now see their name alongside their role."
+        },
+        "da": {
+          "title": "Bestyrelsesreaktioner viser nu et navn, ikke kun en rolle",
+          "body": "Når et bestyrelsesmedlem reagerer på et mål eller sæsonudsigten, og når en formand udskiftes, ser du nu deres navn ved siden af deres rolle."
+        },
+        "refs": [4556]
+      }
+    ]
+  },
+  {
     "version": "7.227",
     "date": "2026-09-01",
     "label": "Beta",
