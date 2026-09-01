@@ -5,6 +5,10 @@ updates:
     directory: /backend
     schedule:
       interval: weekly
+    # 7 dages release-cooldown (ejer-beslutning 1/9, #4552) — dæmper supply-chain-
+    # risikoen i friske releases, gælder alle update-types (også de ejer-gatede majors).
+    cooldown:
+      default-days: 7
     labels:
       - dependencies
       - javascript
@@ -24,6 +28,8 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     labels:
       - dependencies
       - javascript
@@ -48,6 +54,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     labels:
       - dependencies
       - javascript
@@ -62,6 +70,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     labels:
       - dependencies
       - github_actions

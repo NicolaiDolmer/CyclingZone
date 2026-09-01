@@ -1,29 +1,39 @@
-name: Dependabot advisory
+name: Dependabot auto-merge
 
-# Advisory-only — INGEN automatisk merge. Workflow'en kommenterer på alle Dependabot-PRs
-# med klassifikation (patch/minor/major) og overlader merge til brugeren via manuel
-# `auto-merge`-label (auto-merge.yml håndterer label-trigget merge med samme CI-gates).
+# Genindført (ejer-beslutning 1/9, #4552) — patch+minor Dependabot-PR'er slaar
+# GitHub's native `gh pr merge --auto` til ved groen CI; majors forbliver
+# ejer-gatede (kun advisory-kommentar, ingen auto-merge).
 #
-# Hvorfor advisory-only (skift 2026-05-08, #178 polish-sprint hærdning):
-# Dependabot kan ikke længere ødelægge prod automatisk — selv ikke patch/minor med grøn CI.
-# CI fanger ikke alt (runtime-regressioner, supply-chain-malice, transitive deps), så bruger
-# skal eksplicit godkende hver merge. Frequent rebases lukkes også fordi vercel.json's
-# ignoreCommand nu skipper Vercel preview-builds på dependabot/* branches.
+# Hvorfor genindfoert nu: #178-fravalget (2026-05-08) var maerket "pre-launch".
+# Vi har vaeret live siden 8/5; sikkerhedsnettet er vokset markant siden
+# (7.680+ tests, pageerror-guard #4248, deploy-verify), og 7-dages release-
+# cooldown i .github/dependabot.yml daekker den reelle bekymring (supply-chain-
+# risiko i friske releases). Manuel `auto-merge`-label pr. patch-bump skalerer
+# ikke.
+#
+# `gh pr merge --auto` (IKKE synkron `gh pr merge`): saetter blot GitHub's
+# native auto-merge-flag paa PR'en. GitHub merger den selv naar required checks
+# er groenne — branch protection er stadig sikkerhedsnettet. Dette er bevidst
+# forskelligt fra auto-merge.yml's synkrone `gh pr checks --watch` + eksplicit
+# `gh pr merge` + `workflow_dispatch`-trigger af deploy-verify (se kommentar
+# der om GitHub's anti-loop-safeguard paa GITHUB_TOKEN-merges). For Dependabot
+# patch/minor er der IKKE et tilsvarende eksplicit deploy-verify-behov her —
+# hvis det senere viser sig noedvendigt, spejl moenstret fra auto-merge.yml.
 
 on:
   pull_request:
     types: [opened, reopened, synchronize]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 concurrency:
-  group: dependabot-advisory-${{ github.event.pull_request.number }}
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  dependabot-advisory:
+  dependabot-auto-merge:
     if: github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -34,29 +44,34 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Comment on PR
+      - name: Enable auto-merge for patch/minor
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
           DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
         run: |
-          if [[ "$UPDATE_TYPE" == "version-update:semver-major" ]]; then
-            ICON="warning"
-            CLASSIFICATION="**Major version-bump** for \`$DEPENDENCY_NAMES\`"
-            RISK="Højrisiko — gennemgå breaking changes manuelt før merge."
-          elif [[ "$UPDATE_TYPE" == "version-update:semver-minor" ]]; then
+          set -euo pipefail
+          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --auto --squash
+          if [[ "$UPDATE_TYPE" == "version-update:semver-minor" ]]; then
             ICON="information_source"
             CLASSIFICATION="**Minor version-bump** for \`$DEPENDENCY_NAMES\`"
-            RISK="Lavrisiko per semver, men runtime-regressioner sker stadig. Verificer CI grøn."
           else
             ICON="bug"
             CLASSIFICATION="**Patch version-bump** for \`$DEPENDENCY_NAMES\`"
-            RISK="Typisk lavrisiko (bugfixes). Verificer CI grøn."
           fi
-
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body ":${ICON}: ${CLASSIFICATION}
 
-          ${RISK}
+          **Auto-merge slaaet til** (ejer-beslutning 1/9, #4552) — squash-merger automatisk naar required checks er groenne. 7 dages release-cooldown er allerede haandhaevet af Dependabot foer PR'en overhovedet aabnes. Fjern auto-merge med \`gh pr merge $PR_NUMBER --disable-auto\` for at annullere."
 
-          **Auto-merge er deaktiveret for Dependabot pre-launch (#178).** Tilføj \`auto-merge\` label manuelt hvis du har verificeret CI er grøn og at bumpen er safe — så håndterer auto-merge.yml resten (synkron CI-wait → squash-merge → deploy-verify)."
+      - name: Comment on major version-bump (ejer-gated, ingen auto-merge)
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body ":warning: **Major version-bump** for \`$DEPENDENCY_NAMES\`
+
+          Højrisiko — gennemgå breaking changes manuelt før merge. **Ingen auto-merge** for majors (ejer-beslutning 1/9, #4552). Tilføj \`auto-merge\` label manuelt hvis du har verificeret CI er grøn og at bumpen er safe — så håndterer auto-merge.yml resten (synkron CI-wait → squash-merge → deploy-verify)."
