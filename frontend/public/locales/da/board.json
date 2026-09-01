@@ -435,7 +435,7 @@
     "agreedHeading": "Aftalte mål",
     "signing": "Gemmer...",
     "sign": "Underskriv kontrakt ✍",
-    "resetNotice": "At underskrive nulstiller planens tællere (gennemførte sæsoner, samlede sejre) og starter et nyt planvindue. Den nulstiller IKKE din bestyrelses-request for denne sæson, den forbliver låst til næste sæson.",
+    "resetNotice": "At underskrive nulstiller planens tællere (gennemførte sæsoner, samlede sejre) og starter et nyt planvindue. Den nulstiller IKKE din bestyrelses-request for denne sæson. Den forbliver låst til næste sæson.",
     "obligatory": "Obligatorisk krav",
     "negotiatedTick": "Forhandlet ✓",
     "steps": {

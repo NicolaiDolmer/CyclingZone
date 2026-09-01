@@ -435,7 +435,7 @@
     "agreedHeading": "Agreed targets",
     "signing": "Saving...",
     "sign": "Sign contract ✍",
-    "resetNotice": "Signing resets this plan's counters (seasons completed, cumulative wins) and starts a new plan window. It does not reset your board request for this season, that stays locked until next season.",
+    "resetNotice": "Signing resets this plan's counters (seasons completed, cumulative wins) and starts a new plan window. It does not reset your board request for this season. That stays locked until next season.",
     "obligatory": "Required",
     "negotiatedTick": "Negotiated ✓",
     "steps": {

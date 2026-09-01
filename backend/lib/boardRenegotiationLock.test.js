@@ -265,3 +265,22 @@ test("(d) /board/renew afviser (return) på renewLock.locked FØR negotiation_st
 
   assert.ok(returnIdx < updateIdx, "renewLock.locked-guarden skal stå FØR negotiation_status-updaten");
 });
+
+// #4553 CodeRabbit-fund (PR-review): /board/renew returnerede kun error+code,
+// ikke errorCode/errorParams — resolveApiError() (frontend) læser KUN
+// errorCode/errorParams, så uden dem faldt EN-spillere tilbage til den danske
+// `error`-råtekst. Samme { code, params }-kontrakt som /board/sign allerede
+// bruger for denne guard skal gælde begge steder.
+test("(d) /board/renew returnerer errorCode + errorParams (ikke kun error/code) på renewLock.locked", () => {
+  const renewIdx = apiSource.indexOf('router.post("/board/renew"');
+  assert.ok(renewIdx !== -1, "POST /board/renew skal findes");
+
+  const returnIdx = apiSource.indexOf("if (renewLock.locked)", renewIdx);
+  assert.ok(returnIdx !== -1, "/board/renew skal tjekke renewLock.locked");
+
+  // Næste ~700 tegn efter selve if-blokken dækker res.status(409).json({...})
+  // inkl. kommentarblokken der forklarer errorCode/errorParams-feltene.
+  const responseBlock = apiSource.slice(returnIdx, returnIdx + 700);
+  assert.match(responseBlock, /errorCode:\s*renewLock\.errorCode/, "/board/renew skal returnere renewLock.errorCode");
+  assert.match(responseBlock, /errorParams:\s*renewLock\.errorParams/, "/board/renew skal returnere renewLock.errorParams");
+});

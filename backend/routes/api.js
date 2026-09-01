@@ -15720,7 +15720,16 @@ router.post("/board/renew", requireAuth, boardWriteLimiter, async (req, res) => 
     const existingBoard = boards.find(b => b.plan_type === plan_type) || null;
     const renewLock = getBoardRenegotiationLock({ board: existingBoard, activeSeason });
     if (renewLock.locked) {
-      return res.status(409).json({ error: renewLock.reason, code: renewLock.code });
+      return res.status(409).json({
+        error: renewLock.reason,
+        code: renewLock.code,
+        // #4553 CodeRabbit-fund: resolveApiError() læser errorCode/errorParams,
+        // ikke `code` — uden dem faldt frontend tilbage til den danske
+        // `error`-tekst for EN-spillere. Samme { code, params }-kontrakt som
+        // /board/sign returnerer for samme guard.
+        errorCode: renewLock.errorCode,
+        errorParams: renewLock.errorParams,
+      });
     }
 
     const { data: board, error } = await supabase.from("board_profiles")
