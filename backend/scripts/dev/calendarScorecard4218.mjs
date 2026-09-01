@@ -42,6 +42,7 @@ import {
   TERRAIN_FINALE_BANDS, OVERALL_FINALE_BAND, FINALE_CLASSES, CLASS_LABELS, MIN_SAMPLE,
 } from "../../lib/stageFinaleMetrics.js";
 import { detectEmptyCalendarDays } from "../../lib/calendarDailyCoverage.js";
+import { augmentWithS3Additions } from "./lib/s3OfflineCalendarPlan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(__dirname, "..", "..", "lib", "__fixtures__", "racePoolCatalog.prod.json");
@@ -70,32 +71,9 @@ const NOW = new Date(`${arg("now", "2026-08-25")}T12:00:00Z`);
 const SEASON_UUID = "00000000-0000-0000-0000-000000000003";
 
 // De 22 nye løb fra database/2026-08-25-4218-katalog-22-nye-loeb.sql.
-const NYE_LOEB = [
-  ["cz4215-pro-alentejo",  "Volta ao Alentejo",            "ProSeries", "stage_race", 4, "sprinters_week",  "3/4 - 6/4"],
-  ["cz4215-pro-limousin",  "Tour du Limousin Nouveau",     "ProSeries", "stage_race", 4, "hilly_tour",      "18/8 - 21/8"],
-  ["cz4215-pro-lucania",   "Giro della Lucania",           "ProSeries", "stage_race", 5, "summit_tour",     "6/6 - 10/6"],
-  ["cz4215-pro-rioja",     "Vuelta a La Rioja Nueva",      "ProSeries", "stage_race", 4, "balanced_week",   "21/4 - 24/4"],
-  ["cz4215-pro-silesie",   "Tour de Silésie",              "ProSeries", "stage_race", 3, "mountain_tour",   "12/7 - 14/7"],
-  ["cz4215-pro-zeeland",   "Ronde van Zeeland",            "ProSeries", "stage_race", 3, "cobbled_tour",    "8/5 - 10/5"],
-  ["cz4215-pro-irpinia",   "Giro dell'Irpinia",            "ProSeries", "stage_race", 5, "hilly_tour",      "1/6 - 5/6"],
-  ["cz4215-pro-yonne",     "Tour de l'Yonne",              "ProSeries", "stage_race", 5, "balanced_week",   "14/8 - 18/8"],
-  ["cz4215-c1-fourmies",   "Grand Prix de Fourmies Neuf",  "Class1", "single",     1, "flat_sprint",     "13/9"],
-  ["cz4215-c1-bretagne",   "Tour de Bretagne Sud",         "Class1", "stage_race", 3, "cobbled_tour",    "28/4 - 30/4"],
-  ["cz4215-c1-euganei",    "Coppa dei Colli Euganei",      "Class1", "single",     1, "hilly_classic",   "11/5"],
-  ["cz4215-c1-zamora",     "Gran Premio de Zamora",        "Class1", "single",     1, "itt_classic",     "27/6"],
-  ["cz4215-c1-drenthe",    "Ronde van Drenthe Nieuw",      "Class1", "single",     1, "cobbled_classic", "15/3"],
-  ["cz4215-c1-sibillini",  "Giro dei Monti Sibillini",     "Class1", "stage_race", 4, "hilly_tour",      "2/7 - 5/7"],
-  ["cz4215-c1-castelli",   "Trofeo dei Castelli Romani",   "Class1", "single",     1, "hilly_classic",   "6/9"],
-  ["cz4215-c1-valladolid", "Gran Premio de Valladolid",    "Class1", "single",     1, "flat_sprint",     "12/6"],
-  ["cz4215-c2-vosges",     "Circuit des Vosges",           "Class2", "single",     1, "hilly_classic","23/5"],
-  ["cz4215-c2-valdichiana","Trofeo Val di Chiana",         "Class2", "single",     1, "hilly_classic",   "7/3"],
-  ["cz4215-c2-segovia",    "Vuelta a Segovia Menor",       "Class2", "stage_race", 3, "hilly_tour",      "16/9 - 18/9"],
-  ["cz4215-c2-waasland",   "Omloop van het Waasland",      "Class2", "single",     1, "flat_sprint",     "4/4"],
-  ["cz4215-c2-morbihan",   "Grand Prix du Morbihan Mineur","Class2", "single",     1, "puncheur",        "30/8"],
-  ["cz4215-c2-perigord",   "Tour du Périgord",             "Class2", "stage_race", 2, "hilly_tour",      "20/6 - 21/6"],
-].map(([external_id, name, race_class, race_type, stages, terrain_archetype, date_text]) => ({
-  id: external_id, external_id, name, race_class, race_type, stages, terrain_archetype, date_text,
-}));
+// #4123: flyttet til scripts/dev/lib/s3OfflineCalendarPlan.mjs, så CI-invariant-testene
+// og dette scorecard deler ÉN definition i stedet for to kopier der kan drifte fra
+// hinanden. Samme 22 rækker, uændrede — se den fil for baggrunden.
 
 const pct = (n) => `${(n * 100).toFixed(1)} %`;
 const ok = (b) => (b ? "OK " : "FEJL");
@@ -103,10 +81,7 @@ const ok = (b) => (b ? "OK " : "FEJL");
 function main() {
   const asJson = process.argv.includes("--json");
   const { pools, catalog: baseCatalog } = JSON.parse(readFileSync(FIXTURE, "utf8"));
-
-  const eksisterende = new Set(baseCatalog.map((c) => c.name));
-  const kollisioner = NYE_LOEB.filter((n) => eksisterende.has(n.name)).map((n) => n.name);
-  const catalog = [...baseCatalog, ...NYE_LOEB];
+  const { catalog, kollisioner } = augmentWithS3Additions(baseCatalog);
 
   const from = resolveCalendarFrom({ firstRaceDate: FIRST_RACE_DAY, now: NOW });
   const quotas = Object.fromEntries(Object.entries(TIER_DENSITY).map(([t, d]) => [t, d * REAL_DAYS]));
@@ -212,7 +187,7 @@ function main() {
   }
 
   console.log(`\nS3-KALENDER SCORECARD — ${FIRST_RACE_DAY} til ${LAST_RACE_DAY} (${REAL_DAYS} kalenderdage)`);
-  console.log(`Katalog: ${baseCatalog.length} + ${NYE_LOEB.length} nye = ${catalog.length} løb`);
+  console.log(`Katalog: ${baseCatalog.length} + ${catalog.length - baseCatalog.length} nye = ${catalog.length} løb`);
   console.log(`Navnekollisioner: ${kollisioner.length ? kollisioner.join(", ") : "ingen"}\n`);
 
   console.log(`${ok(dækning.ok)} LØB HVER KALENDERDAG (#4218)`);
