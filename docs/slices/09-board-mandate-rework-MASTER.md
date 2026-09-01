@@ -1,8 +1,12 @@
 # S-M · Bestyrelses-rework "Mandatet" — MASTER ROADMAP
 
-**Grundlag:** [Spec (GODKENDT 7/8)](../superpowers/specs/2026-08-07-board-mandate-rework-design.md) — 10 ejer-beslutninger låst, desktop + mobil-mockups godkendt i session 7/8.
+**Grundlag:** [Spec (GODKENDT 7/8)](../superpowers/specs/2026-08-07-board-mandate-rework-design.md) + [Addendum 1/9](../superpowers/specs/2026-09-01-board-mandate-addendum-personer-med-stemme.md) (A1-A8: personer med stemme, S3-flip, #103-valg C m.fl.). Mockups (genskabt + godkendt 1/9): `docs/design/board-mandate-mockups/`.
 **Nordstjerne:** Verdens bedste bestyrelse i et managerspil = den første hvor HVER bevægelse har en kvittering, forhandling er en dialog med modtilbud, og alt kan nås på ≤2 klik.
-**Deadline-anker:** Migration ved S2→S3-cutover **23/8** (ejer-valg). UI-flip få dage efter.
+**Timing (ejer-valg 1/9, afløser 23/8-ankeret):** **Flip i S3 så snart bygget + verificeret.** Datamodellen blev migreret 23/8 (217 hold, bag slukket kill-switch) men er frosset — skyggedata genopbygges og confidence-migrationen re-baselines til flipdagen.
+
+## Status 1/9 (målt)
+
+Fase 1a leveret 17/8 + backfillet 23/8; motoren er UWIRET (ingen live kodesti læser mandat-tabellerne). Fase 0 i gang: #4377-trøjefixet (PR #4549) + #3494-re-point (PR #4550) + genforhandlings-hullet A8 (PR undervejs) afventer merge-go. Fase 2 findes ikke endnu.
 
 ## Fase 0 — Korrekthed + arkæologi (start straks, uafhængig af resten)
 
@@ -35,21 +39,24 @@
 
 ## Fase 2 — Boardroom + årsmødet (UI, flip for ALLE)
 
-### S-M2a · Boardroom-siden (T1) — per godkendt mockup runde 1
-Tillidskort m. kvitteringer · mandatkort m. ejer-avatarer + inline expand · visionstidslinje · bestyrelseskort m. citat + referat. i18n en/da fuld paritet, stroke-ikoner (emoji udgår), `rounded-cz`.
+### S-M2a · Stemme-fundamentet (NYT 1/9, FØR UI-fladerne)
+`boardVoice.js` som eneste beat-modul (addendum: stemme-kontrakten) · persisteret `owner_archetype_key` pr. mål · navne wired atomisk på ALLE læsesteder · nye buckets (receipt/meeting/formands-beats, min. 4 varianter × 9 arketyper, EN+DA i lazy `board`-ns) · afledt stemning pr. medlem.
 
-### S-M2b · Årsmødet (fuldskærm) — per godkendt mockup runde 2
-Fokusvalg → mandat → Easier/Keep/Stretch-modtilbud m. medlemsreaktioner → 1 anmodning → underskriv. Hurtigste vej: 2 klik.
+### S-M2b · Boardroom-siden (T1) — per mockup `Main.dc.html`
+Tillidskort m. kvitteringer · mandatkort m. ejer-avatarer + inline expand · visionstidslinje (inkl. A7: tidligt nået milepæl = lukket + nyt slot-forslag ved årsmødet) · bestyrelseskort m. citat + referat-feed i medlemmernes stemmer · **medlems-relations-panel** (`Member.dc.html`, inline expand).
 
-### S-M2c · Mobil + integration — per godkendt mockup runde 3
+### S-M2c · Årsmødet (fuldskærm) — per mockup `AnnualMeeting.dc.html`
+Fokusvalg → mandat → Easier/Keep/Stretch-modtilbud m. medlemsreaktioner → 1 anmodning → underskriv. Hurtigste vej: 2 klik. A7: bestyrelsen foreslår erstatnings-milepæl når et visions-slot står tomt.
+
+### S-M2d · Mobil + integration — per mockup `Mobile.dc.html`
 Én kolonne, guld-CTA fuld bredde, lodrette modtilbud · dashboard-bestyrelseskort peger på boardroom · notifikations-/DM-copy opdateres · instrumentering (#1141: dead-clicks, mødegennemførelse, kvitterings-åbninger) · patch notes + help.json (en+da) + Discord-UDKAST til ejeren (ejeren poster selv).
 
-## Launch-sekvens
+## Launch-sekvens (revideret 1/9)
 
-1. Fase 0 + 1 merged og dry-run-godkendt senest 21/8.
-2. 23/8 ved cutover: migration applies (post-merge, hard rule 9-rammer; ejer ser scorecard live først — stor destruktiv klasse = ejer-gated).
-3. UI-flip for alle (kill-switch = rollback, ikke beta-gate) + patch notes.
-4. Uge 1 efter flip: mål succeskriterierne (dead-clicks < 0,2 · 0 nye "forstår ikke tallet"-tråde · kvitterings-brug) og justér.
+1. Fase 0-PR'erne (#4549, #4550, A8-låsen) merges når main-smoke er grøn (React 19-PR'en åbner den).
+2. Fase 1-rest: wiring + skyggedata-genopbygning + **midt-i-S3 re-baseline** af confidence-migrationen (50/30/20 består; snapshot = flipdagen) → dry-run-scorecard mod hele populationen. **Ejeren ser scorecardet LIVE før apply** (stor destruktiv klasse = ejer-gated).
+3. Fase 2-slices bygges bag kill-switchen; hver spillervendt flade vises ejeren som mockup-opdatering FØR bygning ved afvigelser fra de godkendte artboards.
+4. Flip for alle (kill-switch = rollback) + patch note + help.json + Discord-udkast. Uge 1 efter: mål succeskriterierne (dead-clicks < 0,2 · 0 nye "forstår ikke tallet"-tråde · kvitterings-brug) og justér.
 
 ## Issue-konsolidering
 
