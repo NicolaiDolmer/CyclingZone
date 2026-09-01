@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon } from "../../components/ui";
 import { formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat";
+import MonogramAvatar from "./MonogramAvatar";
 
 const STATUS_TONE = {
   on_track: "success",
@@ -23,14 +24,6 @@ function StatusPill({ status, t }) {
     <span className={`inline-block flex-shrink-0 rounded-cz-pill px-2.5 py-[3px] text-2xs font-semibold ${TONE_CLASS[tone]}`}>
       {t(`boardroom.status.${status}`, { defaultValue: status })}
     </span>
-  );
-}
-
-function GoalOwnerAvatar({ initials }) {
-  return (
-    <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-cz border border-cz-border bg-cz-subtle text-2xs font-semibold text-cz-2">
-      {initials}
-    </div>
   );
 }
 
@@ -93,7 +86,7 @@ function GoalRow({ goal, t, expanded, onToggle }) {
         className={`flex items-center justify-between gap-3 py-[13px] ${canExpand ? "cursor-pointer" : ""}`}
       >
         <div className="flex min-w-0 items-center gap-3">
-          <GoalOwnerAvatar initials={goal.owner?.initials} />
+          <MonogramAvatar sizeClass="h-7 w-7" initials={goal.owner?.initials} initialsClass="text-2xs" />
           <div className="min-w-0">
             <p className="text-[13.5px] font-medium text-cz-1">
               {resolveGoalTitle(t, goal)}

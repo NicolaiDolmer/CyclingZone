@@ -1,12 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { XIcon } from "../../components/ui";
-import { formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat";
-
-const MOOD_DOT = {
-  positive: "bg-cz-success",
-  neutral: "bg-cz-warning",
-  negative: "bg-cz-danger",
-};
+import { formatWeekdayShortDate, resolveGoalTitle, MOOD_DOT } from "./boardroomFormat";
+import MonogramAvatar from "./MonogramAvatar";
 
 // #4557 · Medlems-relations-panel (Member.dc.html) — inline expand fra
 // BoardCard's avatar-grid. Alt afledes af allerede-hentet data (ingen ny
@@ -34,12 +29,11 @@ export default function MemberPanel({ member, mandate, minutes = [], onClose }) 
     <div className="mt-3 rounded-cz border border-cz-border bg-cz-card p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-4">
-          <div className="flex h-[72px] w-[72px] flex-shrink-0 flex-col items-center justify-center rounded-cz bg-cz-sidebar text-cz-sidebar-1">
-            <span className="font-display text-[28px] leading-none">{member.initials}</span>
+          <MonogramAvatar sizeClass="h-[72px] w-[72px]" initials={member.initials} initialsClass="text-[28px]" navy column>
             <span className="mt-1 text-[8px] uppercase tracking-[.1em] text-cz-sidebar-2">
               {t("boardroom.member.portraitLabel")}
             </span>
-          </div>
+          </MonogramAvatar>
           <div>
             <p className="font-display text-[30px] leading-[0.92] tracking-[.01em] text-cz-1">
               {member.name.toUpperCase()}

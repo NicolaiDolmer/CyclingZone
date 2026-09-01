@@ -2,13 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader } from "../../components/ui";
 import MemberPanel from "./MemberPanel";
-import { formatWeekdayOnly } from "./boardroomFormat";
-
-const MOOD_DOT = {
-  positive: "bg-cz-success",
-  neutral: "bg-cz-warning",
-  negative: "bg-cz-danger",
-};
+import MonogramAvatar from "./MonogramAvatar";
+import { formatWeekdayOnly, MOOD_DOT } from "./boardroomFormat";
 
 function MemberTile({ member, selected, onSelect, t }) {
   return (
@@ -19,13 +14,12 @@ function MemberTile({ member, selected, onSelect, t }) {
       title={t("boardroom.member.viewHint")}
       className="flex flex-col items-center gap-0 text-center transition-opacity hover:opacity-80"
     >
-      <div className="relative flex h-11 w-11 items-center justify-center rounded-cz bg-cz-sidebar text-cz-sidebar-1">
-        <span className="font-display text-lg leading-none">{member.initials}</span>
+      <MonogramAvatar sizeClass="h-11 w-11" initials={member.initials} initialsClass="text-lg" navy>
         <span
           aria-hidden="true"
           className={`absolute -bottom-[3px] -right-[3px] h-[10px] w-[10px] rounded-full border-2 border-cz-card ${MOOD_DOT[member.mood] || MOOD_DOT.neutral}`}
         />
-      </div>
+      </MonogramAvatar>
       <p className="mt-[7px] text-2xs font-semibold text-cz-1">{member.name}</p>
       <p className="mt-[2px] text-3xs uppercase tracking-[.08em] text-cz-3">
         {t("boardroom.board.role." + member.role, { defaultValue: member.role })}

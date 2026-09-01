@@ -23,6 +23,14 @@ export function formatWeekdayOnly(date) {
   return formatDate(date, null, { weekday: "short" });
 }
 
+// Delt mellem BoardCard (avatar-grid) og MemberPanel (portræt-header) — samme
+// stemnings-dot-farve begge steder, defineret ét sted.
+export const MOOD_DOT = {
+  positive: "bg-cz-success",
+  neutral: "bg-cz-warning",
+  negative: "bg-cz-danger",
+};
+
 // #4557 (orkestrator-afgørelse efter #4570-afstemning) · mål-rækkens titel
 // SKAL vises som hel saetning ("At least 3 race wins"), ikke goalType-
 // korttitler. Genbruger den EKSISTERENDE type-styrede resolver

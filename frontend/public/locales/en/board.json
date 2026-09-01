@@ -1884,7 +1884,7 @@
     "member": {
       "viewHint": "View member",
       "portraitLabel": "Portrait",
-      "ownsGoalsCount": "owns {count} goals",
+      "ownsGoalsCount": "{count, plural, one {owns 1 goal} other {owns # goals}}",
       "sinceSeason": "on the board since S{season}",
       "personalityHeading": "Personality",
       "ownsGoalsHeading": "Owns these goals",

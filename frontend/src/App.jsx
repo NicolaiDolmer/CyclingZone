@@ -76,7 +76,14 @@ const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
 // scope). Same /ui convention: public, unlinked, noindex. Remove once the
 // real-wiring follow-up PR mounts these components on their real pages.
 const SeasonExperiencePreviewPage = lazy(() => import("./pages/SeasonExperiencePreviewPage"));
-const BoardroomPreviewPage = lazy(() => import("./pages/BoardroomPreviewPage")); // #4557 — fjernes ved flip
+// #4557 — draft-only preview (BoardroomPreviewPage.jsx). DEV-gated saa hverken
+// import()-kaldet eller ruten analyseres af Rollup i produktion: bag en
+// literal `false`-branch elimineres BÅDE lazy()-wrapperen og dens import()
+// helt af tree-shaking, saa fladen aldrig koster noget i prod-bundlen
+// (perf-gate-fund, CI-run 33534726425). Findes KUN i dev.
+const BoardroomPreviewPage = import.meta.env.DEV
+  ? lazy(() => import("./pages/BoardroomPreviewPage"))
+  : null;
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
 const RaceCentrePage = lazy(() => import("./pages/RaceCentrePage"));
@@ -249,8 +256,13 @@ export default function App() {
           <Route path="/founder-supporter" element={<I18nReadyGate ns="founder"><FounderSupporterPage /></I18nReadyGate>} />
           <Route path="/ui" element={<KitchenSinkPage />} />
           <Route path="/ui/season-experience" element={<I18nReadyGate ns="seasonEnd"><SeasonExperiencePreviewPage /></I18nReadyGate>} />
-          {/* #4557 — draft-only mockup-preview, fjernes ved flip (se BoardroomPreviewPage.jsx). */}
-          <Route path="/ui/boardroom" element={<I18nReadyGate ns="board"><BoardroomPreviewPage /></I18nReadyGate>} />
+          {/* #4557 — draft-only mockup-preview, DEV-only (se App.jsx's import
+              ovenfor + BoardroomPreviewPage.jsx). Fjernes ved flip. Registreret
+              her, langt før "/" og catch-all'en nedenfor, saa den aldrig
+              rammer et auth-redirect uanset session-state. */}
+          {import.meta.env.DEV && (
+            <Route path="/ui/boardroom" element={<I18nReadyGate ns="board"><BoardroomPreviewPage /></I18nReadyGate>} />
+          )}
           {/* Bart domæne (#672): ikke-loggede-ind ser den offentlige landing,
               loggede-ind ryger til appen. */}
           <Route path="/" element={session ? <Navigate to="/dashboard" replace /> : <LandingPage />} />

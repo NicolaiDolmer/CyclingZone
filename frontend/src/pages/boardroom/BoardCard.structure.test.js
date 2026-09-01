@@ -40,7 +40,7 @@ test("#4557 medlems-panel: 'in his own words' render altid via t(), aldrig en r�
 });
 
 test("#4570-afstemning: ejede-mål-titlen i medlems-panelet bruger samme delte resolver som mandatkortet", () => {
-  assert.match(memberPanelSource, /import \{ formatWeekdayShortDate, resolveGoalTitle \} from "\.\/boardroomFormat";/);
+  assert.match(memberPanelSource, /import \{ formatWeekdayShortDate, resolveGoalTitle, MOOD_DOT \} from "\.\/boardroomFormat";/);
   assert.match(memberPanelSource, /\{resolveGoalTitle\(t, g\)\}/);
   assert.doesNotMatch(memberPanelSource, /t\(g\.labelKey/, "skal ikke længere kalde t(g.labelKey, ...) direkte");
 });
