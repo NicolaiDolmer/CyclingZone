@@ -20,6 +20,7 @@ import {
   getArchetypeByKey,
 } from "./boardArchetypes.js";
 import { getDnaArchetypeAlignmentBonus } from "./boardClubDna.js";
+import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { captureException } from "./sentry.js";
 
 export const TEAM_BOARD_MEMBERS_COUNT = 5;
@@ -643,6 +644,31 @@ export function sampleReactionForGoal({ archetype, goalContext = {}, seed = "" }
     quote_key: `archetypes.${archetype.key}.reactions.${bucket}.${idx}`,
     bucket,
   };
+}
+
+/**
+ * #4556 S-M2b addendum, "Stemme-kontrakten" punkt 2 · decorer én reaction
+ * (fra sampleReactionForFeedback/sampleReactionForGoal) med `full_name` +
+ * `initials` afledt via generateBoardMemberNames — SAMME determinisme-nøgle
+ * (teamId, archetype_key, dnaKey) som Boardroom-siden (boardRoom.js/
+ * boardVoice.js) bruger, så et hold ser samme navn på begge sider.
+ *
+ * Opfinder ALDRIG et navn: mangler teamId i konteksten, returneres reaction
+ * uændret (frontend falder tilbage til label alene, jf. spec).
+ *
+ * @param {object|null} reaction - fra sampleReactionForFeedback/sampleReactionForGoal.
+ * @param {{ teamId?: string, dnaKey?: string|null }} [ctx]
+ * @returns {object|null} samme reaction, evt. beriget med full_name + initials.
+ */
+export function decorateReactionWithName(reaction, { teamId, dnaKey = null } = {}) {
+  if (!reaction?.archetype_key || !teamId) return reaction;
+  const [named] = generateBoardMemberNames({
+    teamId,
+    members: [reaction.archetype_key],
+    dnaKey,
+  });
+  if (!named?.full_name) return reaction;
+  return { ...reaction, full_name: named.full_name, initials: named.initials };
 }
 
 /**

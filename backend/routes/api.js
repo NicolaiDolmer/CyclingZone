@@ -14840,6 +14840,11 @@ router.get("/board/status", requireAuth, async (req, res) => {
           isExpired,
           // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
           assignedMembers: teamBoardMembers,
+          // #4556 S-M2b addendum · navne-afledning (samme kontrakt som
+          // Boardroom-siden/boardRoom.js): uden teamId udelades full_name/
+          // initials i stedet for at opfinde et navn.
+          teamId,
+          dnaKey: teamDnaKey,
         },
       });
 
