@@ -96,10 +96,13 @@ captureFirstTouch();
   const tree = (
     <React.StrictMode>
       <AppProviders deferredLanguage={deferredLanguage}>
-        {/* #969: v7_startTransition gør sidebar-nav interruptible. Routeren bor
-            HER (ikke inde i App), så client-træet er identisk med prerenderens
-            (entry-server bruger StaticRouter om samme <App/>) → ren hydration. */}
-        <BrowserRouter future={{ v7_startTransition: true }}>
+        {/* #969: transition-wrapped nav (interruptible sidebar-nav) er DEFAULT i
+            react-router v8 — den gamle future.v7_startTransition-prop er fjernet
+            fra API'et og ville være en stille no-op (fravalg hedder nu
+            useTransitions={false}). Routeren bor HER (ikke inde i App), så
+            client-træet er identisk med prerenderens (entry-server bruger
+            StaticRouter om samme <App/>) → ren hydration. */}
+        <BrowserRouter>
           <App />
         </BrowserRouter>
       </AppProviders>

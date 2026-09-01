@@ -140,7 +140,11 @@ jobs:
         run: node --test tests/e2e/guards.test.js
 
       - name: Run Playwright smoke
-        timeout-minutes: 25
+        # #2960 (1/9): 25 -> 35. Suiten er vokset til ~630 tests og tager 25-27
+        # min paa runneren under React 19 - run 33513547245 blev draebt af
+        # loftet med 587 bestaaede og NUL fejlede tests. 35 er stadig stramt
+        # nok til at et aegte haeng fejler hurtigt (jf. #1342-historikken).
+        timeout-minutes: 35
         run: npm run test:e2e
 
       # #3554 forward-guard: suiten må ALDRIG efterlade et beskidt arbejdstræ.

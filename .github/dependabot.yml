@@ -39,17 +39,6 @@ updates:
       # Vite 5 → 8 er 3 major-bumps på én gang — kræver dedikeret session
       - dependency-name: "vite"
         update-types: ["version-update:semver-major"]
-      # React 18 → 19 har nye type-defaults og dropped legacy APIs
-      - dependency-name: "react"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major"]
-      # React Router v7-migrationen er gennemført 2026-07-25 (Dependabot-alerts #22/#23/#24):
-      # `react-router-dom` er afinstalleret — v7 eksporterer alt fra `react-router`.
-      # v8 er blokeret på React 19: react-router@8 kræver peer react/react-dom >=19.2.7,
-      # og React-major er ignoreret ovenfor. Un-ignore SAMMEN med React 19-migrationen.
-      - dependency-name: "react-router"
-        update-types: ["version-update:semver-major"]
       # @vitejs/plugin-react v6 kræver Vite 5+ + dedikeret build-pipeline-test. PR #141 lukket 2026-05-08.
       - dependency-name: "@vitejs/plugin-react"
         update-types: ["version-update:semver-major"]
