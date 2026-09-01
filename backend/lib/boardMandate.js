@@ -17,6 +17,7 @@
  */
 
 import { clamp, clampSatisfaction, roundNumber } from "./boardUtils.js";
+import { stampGoalsOwners } from "./boardMembers.js";
 
 // ---------------------------------------------------------------------------
 // 1. Migrations-vægte (ejer-beslutning 7 af 7/8)
@@ -306,8 +307,13 @@ export const MANDATE_MAX_GOALS = 5;
  * allerede har forhandlet sig frem til. `goal_count_outside_range` rapporteres i
  * scorecardet så afvigelsen er synlig i stedet for stiltiende rettet.
  */
-export function planToMandate(plan = {}, goals = [], { confidence } = {}) {
-  const goalList = Array.isArray(goals) ? goals : [];
+export function planToMandate(plan = {}, goals = [], { confidence, assignedMembers = null } = {}) {
+  // #3514 S-M2a · owner_archetype_key stemples ÉN gang på mandatets mål-JSON
+  // hvis kalderen har teamets assignede medlemmer ved hånden (opt-in,
+  // bagudkompatibelt no-op ellers). Mål der allerede har feltet rører vi
+  // ikke, se boardMembers.js::stampGoalsOwners.
+  const rawGoalList = Array.isArray(goals) ? goals : [];
+  const goalList = assignedMembers ? stampGoalsOwners(rawGoalList, { assignedMembers }) : rawGoalList;
   return {
     focus: plan?.focus ?? null,
     goals: goalList,

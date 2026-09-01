@@ -229,6 +229,32 @@ test("1-års-planens mål overføres UÆNDRET - ingen genforhandling påtvinges"
   assert.equal(mandate.source.from_board_id, "board-1");
 });
 
+// ── #3514 S-M2a · Stabilt mål-ejerskab i mandatets goals-JSON ────────────────
+
+test("planToMandate stempler owner_archetype_key naar assignedMembers sendes med", () => {
+  const goals = [{ type: "no_outstanding_debt", category: "economy", target: 0 }];
+  const assignedMembers = [
+    { archetype_key: "sponsoraten", is_chairman: true },
+    { archetype_key: "ungdomsidealisten", is_chairman: false },
+  ];
+  const mandate = planToMandate({ focus: "balanced" }, goals, { confidence: 66, assignedMembers });
+  assert.equal(mandate.goals[0].owner_archetype_key, "sponsoraten");
+});
+
+test("planToMandate er bagudkompatibel: ingen assignedMembers giver samme goals-reference", () => {
+  const goals = [stageWinGoal];
+  const mandate = planToMandate({ focus: "balanced" }, goals, { confidence: 66 });
+  assert.deepEqual(mandate.goals, goals);
+  assert.ok(!("owner_archetype_key" in mandate.goals[0]));
+});
+
+test("planToMandate roerer aldrig et allerede stemplet owner_archetype_key", () => {
+  const goals = [{ type: "no_outstanding_debt", category: "economy", target: 0, owner_archetype_key: "traditionalisten" }];
+  const assignedMembers = [{ archetype_key: "sponsoraten", is_chairman: true }];
+  const mandate = planToMandate({ focus: "balanced" }, goals, { confidence: 66, assignedMembers });
+  assert.equal(mandate.goals[0].owner_archetype_key, "traditionalisten");
+});
+
 test("mandatet får tillids-trappens justeringer ved migrationen", () => {
   assert.equal(planToMandate({}, [], { confidence: 20 }).adjustments_allowed, 1);
   assert.equal(planToMandate({}, [], { confidence: 66 }).adjustments_allowed, 2);

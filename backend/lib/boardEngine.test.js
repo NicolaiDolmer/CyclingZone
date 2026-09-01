@@ -1527,6 +1527,10 @@ import {
   TEAM_BOARD_MEMBERS_COUNT,
   REPLACEMENT_TRIGGER_THRESHOLD,
 } from "./boardEngine.js";
+// #3514 S-M2a · REACTION_BUCKETS/MANDATE_VOICE_BUCKETS er ikke re-eksporteret
+// via boardEngine.js-facaden (bevidst, ingen kaldere har brug for dem der
+// endnu), importeres direkte fra kildemodulet.
+import { REACTION_BUCKETS, MANDATE_VOICE_BUCKETS } from "./boardArchetypes.js";
 
 const FRENCH_GC_BASIS = {
   season_number_observed: 1,
@@ -1558,8 +1562,44 @@ test("BOARD_ARCHETYPES contains exactly 9 archetypes med 30 reactions hver (Q-ba
     const arc = BOARD_ARCHETYPES[key];
     assert.ok(arc, `archetype ${key} mangler`);
     assert.ok(arc.label && arc.emoji);
-    const total = Object.values(arc.reactions).reduce((sum, list) => sum + list.length, 0);
-    assert.equal(total, 30, `${key} skal have 30 reactions (har ${total})`);
+    // Det oprindelige Q9-bucket-sæt (feedback_*/goal_*) er UÆNDRET af #3514
+    // S-M2a's nye Mandat-buckets, tælles isoleret fra dem her.
+    const legacyTotal = REACTION_BUCKETS.reduce((sum, bucket) => sum + (arc.reactions[bucket]?.length || 0), 0);
+    assert.equal(legacyTotal, 30, `${key} skal have 30 legacy reactions (har ${legacyTotal})`);
+  }
+});
+
+// #3514 S-M2a · Mandat-buckets (addendum "Stemme-kontrakten" punkt 4): kun
+// sponsoraten + ungdomsidealisten har reelt indhold (ejer-tone-prøve 1/9);
+// de 7 øvrige har bevidst tomme arrays indtil deres tone-prøve godkendes.
+test("MANDATE_VOICE_BUCKETS: alle 9 arketyper har mindst 4 varianter pr. bucket (ejer-godkendt 1/9)", () => {
+  for (const key of BOARD_ARCHETYPE_KEYS) {
+    const arc = BOARD_ARCHETYPES[key];
+    for (const bucket of MANDATE_VOICE_BUCKETS) {
+      const variants = arc.reactions[bucket] || [];
+      assert.ok(variants.length >= 4, `${key}.reactions.${bucket} har under 4 varianter (har ${variants.length})`);
+    }
+  }
+});
+
+// Karakter-adskillelse (koordinator-krav 1/9): ingen to arketyper må dele en
+// ORDRET identisk linje. Det er en grov, men automatiserbar proxy for at hver
+// arketype skal have sin egen, ikke-forvekslelige stemme, en helt generisk
+// linje ville typisk blive genbrugt (bevidst eller ved copy-paste) på tværs.
+test("MANDATE_VOICE_BUCKETS: ingen to arketyper deler en ordret identisk linje (karakter-adskillelse)", () => {
+  const seen = new Map(); // linje → arketype der først brugte den
+  for (const key of BOARD_ARCHETYPE_KEYS) {
+    const arc = BOARD_ARCHETYPES[key];
+    for (const bucket of MANDATE_VOICE_BUCKETS) {
+      for (const line of arc.reactions[bucket] || []) {
+        const existing = seen.get(line);
+        assert.ok(
+          !existing || existing === key,
+          `Linjen "${line}" bruges ordret af både ${existing} og ${key}, arketyperne skal ikke kunne forveksles`,
+        );
+        seen.set(line, key);
+      }
+    }
   }
 });
 

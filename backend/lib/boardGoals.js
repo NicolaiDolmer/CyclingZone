@@ -16,6 +16,7 @@ import {
 } from "./boardIdentity.js";
 import { applyDnaWeightingToGoals, buildDnaTraditionGoal } from "./boardClubDna.js";
 import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import { stampGoalsOwners } from "./boardMembers.js";
 import {
   clamp,
   clampToStep,
@@ -46,6 +47,12 @@ export function generateBoardGoals({
   team = null,
   riders = [],
   standing = null,
+  // #3514 S-M2a · Opt-in mål-ejerskab (addendum "Stemme-kontrakten" punkt 1).
+  // Sendes IKKE af eksisterende kaldere i dag (bagudkompatibelt no-op), men
+  // en kalder der har teamets team_board_members ved hånden kan sende dem
+  // ind for at få `owner_archetype_key` stemplet på hvert genereret mål ÉN
+  // gang. Se boardMembers.js::stampGoalOwner for kontrakten.
+  assignedMembers = null,
 } = {}) {
   const planDuration = getPlanDuration(planType);
   const isMultiYear = planDuration > 1;
@@ -314,10 +321,11 @@ export function generateBoardGoals({
     // strukturelle driver bag den høje konsekvens-rate (#1187-B). Beholdes på
     // multi-year-planer, hvor sponsor-indkomsten reelt kan vokse over sæsoner.
     .filter((goal) => isMultiYear || goal.type !== "sponsor_growth");
-  return selectedGoals.map((goal) => addGoalMetadata({
+  const enrichedGoals = selectedGoals.map((goal) => addGoalMetadata({
     ...goal,
     satisfaction_penalty: Math.round(goal.satisfaction_penalty * penaltyModifier),
   }));
+  return assignedMembers ? stampGoalsOwners(enrichedGoals, { assignedMembers }) : enrichedGoals;
 }
 
 // #1234 · Returnerer den forhandlede (lempede) variant af et mål — eller NULL

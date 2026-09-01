@@ -495,6 +495,82 @@ export function selectDominantMember({
 }
 
 /**
+ * #3514 S-M2a · Stabilt mål-ejerskab (addendum "Stemme-kontrakten" punkt 1).
+ * =========================================================================
+ * Før i dag beregnede `selectDominantMember` "hvem taler om det her mål"
+ * PÅ NY hver gang en visning skete, kategori-alignment mod de 5 assignede
+ * medlemmer. Det er fint til feedback-strimlen (ingen persisteret identitet
+ * nødvendig der), men forkert for et mål: samme mål skal ALTID tilhøre
+ * samme medlem, ellers skifter et mål stemme mellem to visninger, hvilket
+ * addendummet eksplicit forbyder ("selectDominantMember-genudregningen
+ * udgår for mål-attribution").
+ *
+ * `computeGoalOwnerArchetypeKey` er den RENE udregning (samme kategori-
+ * alignment-regel som selectDominantMember, deterministisk uanset
+ * rækkefølgen på `assignedMembers` fra DB, da input sorteres på
+ * archetype_key FØR udvælgelse). `stampGoalOwner`/`stampGoalsOwners` sætter
+ * feltet ÉN GANG: er `owner_archetype_key` allerede sat på målet, røres det
+ * ALDRIG (aldrig genberegnet, aldrig overskrevet). `resolveGoalOwnerArchetypeKey`
+ * er læse-stien for eksisterende mål uden feltet: samme regel, INGEN write-back
+ * (reparation af historiske mål er ejer-gated, jf. opgavens grænser).
+ *
+ * Persisteres i målets egen JSON (board_profiles.current_goals[].owner_archetype_key
+ * og board_mandates.goals[].owner_archetype_key) af kaldere der har adgang til
+ * teamets team_board_members-liste ved generering/underskrift — ingen ny
+ * DB-kolonne, samme mønster som `category`/`importance` på goal-objektet i dag.
+ */
+export function computeGoalOwnerArchetypeKey({
+  assignedMembers = [],
+  category = null,
+  fallbackChairmanKey = null,
+} = {}) {
+  if (!assignedMembers.length) return fallbackChairmanKey ?? null;
+
+  // Sortér en KOPI på archetype_key før udvælgelse, så resultatet er
+  // deterministisk uanset hvilken rækkefølge Supabase returnerede rækkerne
+  // i (ingen ORDER BY garanteres af de eksisterende .select()-kald).
+  // selectDominantMembers tie-break (chairman vinder, ellers array-orden)
+  // bliver dermed også alfabetisk-stabilt ved uafgjort alignment.
+  const stableMembers = [...assignedMembers].sort((a, b) =>
+    String(a?.archetype_key ?? "").localeCompare(String(b?.archetype_key ?? ""))
+  );
+
+  const dominant = selectDominantMember({ assignedMembers: stableMembers, category, fallbackChairmanKey });
+  return dominant?.key ?? fallbackChairmanKey ?? null;
+}
+
+/**
+ * Læse-tids-afledning for mål der IKKE har `owner_archetype_key` persisteret
+ * endnu (migrerede/historiske mål). Regner samme regel, skriver ALDRIG
+ * tilbage til målet, kalderen beslutter selv om resultatet skal caches.
+ */
+export function resolveGoalOwnerArchetypeKey({ goal = {}, assignedMembers = [], fallbackChairmanKey = null } = {}) {
+  if (goal?.owner_archetype_key) return goal.owner_archetype_key;
+  return computeGoalOwnerArchetypeKey({ assignedMembers, category: goal?.category ?? null, fallbackChairmanKey });
+}
+
+/**
+ * Sæt `owner_archetype_key` på ÉT mål, ÉN gang. No-op (samme reference
+ * returneret) hvis feltet allerede er sat, hvis der ikke er nogen
+ * assignede medlemmer, eller hvis der intet ejerskab kan udledes.
+ */
+export function stampGoalOwner(goal, { assignedMembers = [], fallbackChairmanKey = null } = {}) {
+  if (!goal || goal.owner_archetype_key) return goal;
+  const ownerArchetypeKey = computeGoalOwnerArchetypeKey({
+    assignedMembers,
+    category: goal?.category ?? null,
+    fallbackChairmanKey,
+  });
+  if (!ownerArchetypeKey) return goal;
+  return { ...goal, owner_archetype_key: ownerArchetypeKey };
+}
+
+/** Samme som stampGoalOwner, anvendt på en hel mål-liste. */
+export function stampGoalsOwners(goals = [], opts = {}) {
+  return (goals || []).map((goal) => stampGoalOwner(goal, opts));
+}
+
+/**
  * Sample en reaktion fra den dominerende arketype, baseret på feedback-tone.
  * Brugt af buildBoardOutlook til at attache 'dominant_member' til feedback.
  *
