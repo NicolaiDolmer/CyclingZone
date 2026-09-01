@@ -55,6 +55,7 @@ import {
   serializeStageRoleOverrides,
 } from "./raceStageRoles.js";
 import { autopickTeamSelection, selectionSizeForRace, MIN_RACE_ENTRIES } from "./raceAutopick.js";
+import { seasonReferenceYear } from "./riderSeasonAge.js";
 // S5 (#2224): form-peaks — I/O-loadere (peak-planer + stage-datoer) +
 // traeningskvalitet-seam. KUN kaldt når v3=true (flag-off skal forblive bit-
 // identisk); peak-inputs går ind på entrants/stages via de samme v3-gates som S3.
@@ -1036,8 +1037,9 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
 // uden flag (akademi/intake/generatorer) forblev false for evigt og manglede i
 // ungdomsklassementet. Konventionen matcher fictionalRiderGenerator + import_riders.py:
 //   U25 = fødselsår > referenceår - 25  ⇔  (referenceår − fødselsår) < 25.
-// referenceåret er SÆSONENS år (seasons.start_date), ikke wall-clock — så gaten er
-// sæson-drevet. Manglende birthdate/ugyldigt referenceår → false (kan ikke bekræftes).
+// referenceåret er SÆSONENS SSOT-år (riderSeasonAge.seasonReferenceYear), ikke
+// wall-clock/seasons.start_date (#4485) — så gaten er sæson-drevet. Manglende
+// birthdate/ugyldigt referenceår → false (kan ikke bekræftes).
 export function deriveIsU25FromBirthdate(birthdate, seasonYear) {
   if (!birthdate || !Number.isFinite(seasonYear)) return false;
   const birthYear = new Date(birthdate).getFullYear();
@@ -1045,10 +1047,15 @@ export function deriveIsU25FromBirthdate(birthdate, seasonYear) {
   return birthYear > seasonYear - 25;
 }
 
-// Sæsonens referenceår = året for seasons.start_date. Additiv/degraderende opslag
-// (som condition-/team_name-berigelsen): fejler det, falder vi tilbage til at bruge
-// det lagrede is_u25-flag frem for at blokere finalization. race.season_id er
-// garanteret af kalderne (runRaceFinalization/finalizeRaceStage kaster uden det).
+// Sæsonens referenceår = SSOT-formlen i riderSeasonAge.js (LAUNCH_REFERENCE_YEAR +
+// (sæsonnummer − 1)), IKKE året for seasons.start_date (#4485). start_date sættes til
+// WALL-CLOCK-tidspunktet for sæsonskiftet (seasonTransition.js), som ikke er sæsonens
+// alders-referenceår — samme fejlklasse #riderSeasonAge.js's topkommentar advarer mod
+// (#3071/#3081): fire tidligere kopier af aldersformlen, hver med sin egen wall-clock-
+// afvigelse. Additiv/degraderende opslag (som condition-/team_name-berigelsen): fejler
+// det, falder vi tilbage til at bruge det lagrede is_u25-flag frem for at blokere
+// finalization. race.season_id er garanteret af kalderne (runRaceFinalization/
+// finalizeRaceStage kaster uden det).
 async function loadSeasonReferenceYear({ supabase, seasonId }) {
   if (!seasonId) return null;
   try {
@@ -1057,16 +1064,14 @@ async function loadSeasonReferenceYear({ supabase, seasonId }) {
     // enhver uventet throw degraderer til null (fallback til lagret is_u25).
     const { data, error } = await supabase
       .from("seasons")
-      .select("start_date")
+      .select("number")
       .eq("id", seasonId);
     if (error) {
       console.error(`season reference-year lookup failed (falling back to stored is_u25): ${error.message}`);
       return null;
     }
-    const startDate = Array.isArray(data) ? data[0]?.start_date : data?.start_date;
-    if (!startDate) return null;
-    const year = new Date(startDate).getFullYear();
-    return Number.isFinite(year) ? year : null;
+    const seasonNumber = Array.isArray(data) ? data[0]?.number : data?.number;
+    return seasonReferenceYear(seasonNumber);
   } catch (e) {
     console.error(`season reference-year lookup threw (falling back to stored is_u25): ${e.message}`);
     return null;

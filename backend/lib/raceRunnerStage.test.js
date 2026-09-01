@@ -116,7 +116,7 @@ function cannedFor(race = STAGE_RACE, stages = STAGES_3, extra = {}, opts = {}) 
   return makeSupabase({
     race_stage_profiles: stages,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25, birthdate: e.is_u25 ? "2007-01-01" : "1995-01-01" })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
     races: [{ id: race.id, ...race }],
@@ -309,7 +309,7 @@ test("#2072 regression: solgt/slettet rytter beholder kørte etaper men udgår a
     race_stage_profiles: STAGES_3,
     // Feltet NU: kun ENTRANTS — leaver er væk (solgt/slettet).
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25, birthdate: e.is_u25 ? "2007-01-01" : "1995-01-01" })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
     races: [{ id: race.id, ...race }],
@@ -608,7 +608,7 @@ test("entries: persist=true KUN ved stageIndex=0 (auto-fill skriver entries kun 
     race_stage_profiles: STAGES_3,
     race_entries: [],
     teams: [{ id: "A", is_test_account: false, is_frozen: false }],
-    riders: ENTRANTS.filter((e) => e.team_id === "A").map((e) => ({ id: e.rider_id, team_id: "A", firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.filter((e) => e.team_id === "A").map((e) => ({ id: e.rider_id, team_id: "A", firstname: e.rider_id, lastname: "", is_u25: e.is_u25, birthdate: e.is_u25 ? "2007-01-01" : "1995-01-01" })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9 }],
@@ -623,7 +623,7 @@ test("entries: persist=true KUN ved stageIndex=0 (auto-fill skriver entries kun 
     race_stage_profiles: STAGES_3,
     race_entries: ENTRANTS.filter((e) => e.team_id === "A").map((e) => ({ rider_id: e.rider_id, team_id: "A" })),
     teams: [{ id: "A", is_test_account: false, is_frozen: false }],
-    riders: ENTRANTS.filter((e) => e.team_id === "A").map((e) => ({ id: e.rider_id, team_id: "A", firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.filter((e) => e.team_id === "A").map((e) => ({ id: e.rider_id, team_id: "A", firstname: e.rider_id, lastname: "", is_u25: e.is_u25, birthdate: e.is_u25 ? "2007-01-01" : "1995-01-01" })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9 }],
@@ -642,7 +642,7 @@ test("#1844: mid-race-intruder (i entries men ikke i etape-1-snapshot) ekskluder
     race_stage_profiles: STAGES_3,
     race_entries: allEntries,
     riders: [...ENTRANTS, { rider_id: "intruder", team_id: "A", is_u25: false }]
-      .map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+      .map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25, birthdate: e.is_u25 ? "2007-01-01" : "1995-01-01" })),
     rider_derived_abilities: [...ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })), { rider_id: "intruder", ...abil() }],
     race_points: [],
     races: [{ id: STAGE_RACE.id, ...STAGE_RACE }],
@@ -794,7 +794,7 @@ test("FIX 1: final-etape kører finalization FØR status=completed (rækkefølge
           const map = {
             race_stage_profiles: STAGES_3,
             race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-            riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+            riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25, birthdate: e.is_u25 ? "2007-01-01" : "1995-01-01" })),
             rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
             race_points: [],
             race_results: [],

@@ -73,6 +73,20 @@ export const PATCHES = [
           "body": "Holdudtagelsens sæsonvisning har nu et gitter med ryttere gange løbsdage. Hvert løb har sine egne kolonner, én pr. løbsdag. Klik på en celle for at tildele en rolle, skift linse for at se rutematch, belastning eller kun problemer, og hop til en dags board og tilbage igen. Bygget på tester-feedback: gem-fejl forklarer nu sig selv, og en låst rytter fortæller den rigtige årsag."
         },
         "refs": [1146]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Youth classification no longer includes 26-year-olds",
+          "body": "The youth (U25) leaderboard measured age against the calendar year a season happened to start in, not the season's own reference year. From season 3 onward that drifted from your rider's real season age, so riders who were already 26 by the season's cycling-age convention could still appear in the youth classification. It now uses the exact same reference year as the age shown on your rider's profile."
+        },
+        "da": {
+          "title": "Ungdomsklassementet inkluderer ikke længere 26-årige",
+          "body": "Ungdoms(U25)-klassementet målte alder mod det kalenderår en sæson tilfældigvis startede i, ikke sæsonens eget referenceår. Fra sæson 3 og frem drev det væk fra din rytters reelle sæson-alder, så ryttere der allerede var 26 efter sæsonens cykel-alderskonvention stadig kunne stå i ungdomsklassementet. Det bruger nu præcis samme referenceår som alderen på din rytters profil."
+        },
+        "refs": [4485]
       }
     ]
   },
