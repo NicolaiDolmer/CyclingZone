@@ -129,7 +129,9 @@ const BASELINE = {
   // guards regex ikke genkender som "handled" (kun literal captureException/
   // sentryCapture/captureExceptionFn/throw tælles) — samme kendte gab som
   // resten af api.js's 174-baseline allerede bærer.
-  "backend/routes/api.js": 177,
+  // #4557 (1/9): +1 for GET /board/room (Mandatets Boardroom-endpoint) —
+  // samme captureApiRouteError-mønster, samme kendte regex-gab.
+  "backend/routes/api.js": 178,
   "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,

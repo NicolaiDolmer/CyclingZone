@@ -329,6 +329,9 @@ import {
   declineBonusOffer,
   getActiveConsequencesForTeam,
 } from "../lib/boardConsequences.js";
+// #3514/#4557 S-M2b · Mandatets Boardroom-endpoint (GET /board/room).
+import { isBoardMandateModelEnabled } from "../lib/boardMandateFlag.js";
+import { buildBoardRoomPayload } from "../lib/boardRoom.js";
 import { computeWeekendSatisfactionUpdate } from "../lib/boardWeekendUpdate.js";
 import { computeBonusOfferProgress, computePassiveModifierInfo } from "../lib/boardTransparency.js";
 import { isBoardTestModeActive } from "../lib/boardTestMode.js";
@@ -15041,6 +15044,38 @@ router.get("/board/status", requireAuth, async (req, res) => {
       active_consequences: activeConsequences,
       bonus_offer: bonusOffer,
     });
+  } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// #3514/#4557 S-M2b · GET /api/board/room — Mandatets Boardroom-side.
+// Samme auth/team-scoping som GET /board/status. Flag off (mandat-modellen
+// er ikke aktiv for denne viewer) → 200 {enabled:false} og INTET andet
+// (ingen skygge-tabel-læsning). Aggregeringen ligger i lib/boardRoom.js så
+// den kan unit-testes uden Express — se modul-headeren dér for kontrakten
+// og de rapporterede afvigelser.
+// #530 · rate-limit-coverage-guard: presencePulseLimiter (samme mønster som
+// guardens egen eksempel-tekst) — polles på route-change/tab-focus ligesom de
+// andre presence-pulse-dækkede reads, IKKE grandfathered ind i den eksisterende
+// ~76-rute-baseline af (endnu) udækkede GET-ruter (bl.a. GET /board/status
+// selv, som forbliver udækket dér — ny kode skal ikke vokse den bunke).
+router.get("/board/room", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+    // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
+
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isBoardMandateModelEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false });
+
+    const payload = await buildBoardRoomPayload({ supabase, teamId });
+    res.json(payload);
   } catch (e) {
     captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
