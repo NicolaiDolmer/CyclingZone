@@ -30,6 +30,7 @@ import { processReplacementTrigger } from "./boardMembers.js";
 import {
   evaluateAndApplyConsequences,
 } from "./boardConsequences.js";
+import { applySeasonEndSync as applyMandateSeasonEndSyncShared } from "./boardMandateEngine.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
 import { developRidersForSeason } from "./riderProgressionEngine.js";
@@ -1616,12 +1617,19 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processReplacementTriggerFn = deps.processReplacementTrigger ?? processReplacementTrigger;
   const evaluateAndApplyConsequencesFn = deps.evaluateAndApplyConsequences ?? evaluateAndApplyConsequences;
+  // #3514 fase 1-rest: skyggemodellens sæson-slut-sync. Flag-gated INDENI
+  // funktionen selv (returnerer null øjeblikkeligt når kill-switchen er off).
+  const applyMandateSeasonEndSyncFn = deps.applyMandateSeasonEndSync ?? applyMandateSeasonEndSyncShared;
   // #805 · forudhentet af processSeasonEnd (én query), fallback til egen lookup
   // hvis kaldt direkte (fx repair-stien).
   const boardTestMode = deps.boardTestMode ?? await isBoardTestModeActive(supabaseClient);
   const notificationDeps = { supabase: supabaseClient, now: deps.now };
   const teamStanding = standings.find(s => s.team_id === team.id);
   const boards = team.board_profiles || [];
+  // #3514 fase 1-rest: samlet undervejs i loopet nedenfor, brugt ÉN gang efter
+  // loopet til skyggemodellens sæson-slut-sync (se applySeasonEndSync-kaldet).
+  let mandateSeasonEndEvaluation = null;
+  const mandateMilestoneContexts = [];
 
   // 2026-05-21: Lånerenter, lønninger og negativ-balance-rente flyttet til
   // processSeasonStart (kører nu ved sæson-START i stedet for sæson-SLUT).
@@ -1712,6 +1720,15 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       goalContext,
     });
 
+    // #1187: evaluer fra sæson-start-ankeret → newSatisfaction = anker + delta,
+    // identisk med dagens resultat uanset hvor langt weekend-opdateringerne
+    // allerede har flyttet den løbende værdi.
+    const seasonEvaluation = evaluateBoardSeason({
+      board: { ...board, satisfaction: anchorSatisfaction },
+      standing: teamStanding,
+      team,
+      context,
+    });
     const {
       goals,
       feedback,
@@ -1719,15 +1736,18 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       newModifier,
       newSatisfaction,
       scoreBreakdown,
-    } = evaluateBoardSeason({
-      // #1187: evaluer fra sæson-start-ankeret → newSatisfaction = anker + delta,
-      // identisk med dagens resultat uanset hvor langt weekend-opdateringerne
-      // allerede har flyttet den løbende værdi.
-      board: { ...board, satisfaction: anchorSatisfaction },
-      standing: teamStanding,
-      team,
-      context,
-    });
+    } = seasonEvaluation;
+
+    // #3514 fase 1-rest: saml til skyggemodellens sæson-slut-sync (kaldes ÉN
+    // gang efter hele boards-loopet, se bunden af funktionen). 1yr-boardets
+    // FULDE evaluering flytter relationens confidence (spec §3.1: "eksisterende
+    // evalueringsmotor genbruges"); 3yr/5yr-boardenes egen `context` bruges til
+    // at evaluere DE milepæle der stammer fra netop den plan.
+    if (board.plan_type === "1yr") {
+      mandateSeasonEndEvaluation = seasonEvaluation;
+    } else if (board.plan_type === "3yr" || board.plan_type === "5yr") {
+      mandateMilestoneContexts.push({ planType: board.plan_type, context });
+    }
 
     // S-02d · Snapshot U25-stat-baseline så u25_development_delta kan beregnes
     // fra plan-start-værdien i efterfølgende sæsoner.
@@ -1950,6 +1970,31 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       `  📊 ${team.name}: satisfaction ${anchorSatisfaction}% → ${newSatisfaction}% `
       + `(season ${seasonsCompleted}/${planDuration}, score ${Math.round((scoreBreakdown.adjusted_overall_score || 0) * 100)}%)`
     );
+  }
+
+  // #3514 fase 1-rest: skyggemodellens sæson-slut-sync, ÉN gang pr. hold efter
+  // at alle board_profiles-planer er behandlet ovenfor (rækkefølgen er
+  // bindende: mandatets ordinære evaluering FØRST, milepælene DEREFTER — se
+  // applySeasonEndSync-kommentaren). No-op når kill-switchen er 'off'
+  // (fail-safe inde i kaldet) — skriver KUN til skyggetabellerne, aldrig til
+  // board_profiles, som allerede er opdateret uændret ovenfor.
+  if (teamStanding && (mandateSeasonEndEvaluation || mandateMilestoneContexts.length)) {
+    try {
+      await applyMandateSeasonEndSyncFn(supabaseClient, {
+        teamId: team.id,
+        seasonId,
+        seasonNumber: currentSeasonNumber,
+        standing: teamStanding,
+        team,
+        mandateEvaluation: mandateSeasonEndEvaluation,
+        milestoneContexts: mandateMilestoneContexts,
+      });
+    } catch (error) {
+      // Skyggedata må ALDRIG vælte en rigtig sæson-slut-evaluering, som allerede
+      // er persisteret ovenfor.
+      console.error(`  ⚠️  mandate shadow season-end sync failed for ${team.name}:`, error.message);
+      captureException(error, { tags: { flow: "season-transition", stage: "mandate-shadow" }, teamId: team.id });
+    }
   }
 }
 

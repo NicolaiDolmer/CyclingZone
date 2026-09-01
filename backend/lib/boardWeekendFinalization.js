@@ -60,6 +60,7 @@ import {
   CHECKPOINT_KINDS,
 } from "./boardWeekendUpdate.js";
 import { evaluateAndApplyConsequences as evaluateAndApplyConsequencesShared } from "./boardConsequences.js";
+import { applyWeekendSync as applyMandateWeekendSyncShared } from "./boardMandateEngine.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
 import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
@@ -149,6 +150,9 @@ export async function processBoardWeekendFinalization({
     events_written: 0,
     errors: 0,
     skipped_reason: null,
+    // #3514 fase 1-rest: kun >0 når kill-switchen er 'on' — 0 er den korrekte
+    // værdi for hele populationen indtil flip.
+    mandate_relations_synced: 0,
   };
 
   if (!season?.id) {
@@ -169,6 +173,11 @@ export async function processBoardWeekendFinalization({
   const notifyTeamOwnerFn = deps.notifyTeamOwner ?? notifyTeamOwner;
   const computeWeekendUpdateFn = deps.computeWeekendUpdate ?? computeWeekendSatisfactionUpdate;
   const computeBaselineUpdateFn = deps.computeBaselineWeekendUpdate ?? computeBaselineWeekendUpdate;
+  // #3514 fase 1-rest: skyggemodellens weekend-sync. Flag-gated INDENI
+  // funktionen selv (returnerer null øjeblikkeligt når kill-switchen er off) —
+  // dette kald ændrer derfor intet ved flag off, og ingen anden kode i denne
+  // fil skal tjekke flaget.
+  const applyMandateWeekendSyncFn = deps.applyMandateWeekendSync ?? applyMandateWeekendSyncShared;
 
   // #2951: teams-hentningen (153 rækker 25/7, samme diskriminator som andre
   // steder i filen) pagineret via fetchAllRows — samme klasse som riders/
@@ -428,6 +437,37 @@ export async function processBoardWeekendFinalization({
           .eq("id", board.id);
         if (updateError) throw new Error(updateError.message);
         summary.boards_updated += 1;
+
+        // #3514 fase 1-rest: skyggemodellens weekend-sync for 1yr-boardet.
+        // Genbruger den EVALUERING flag-off-stien allerede regnede ovenfor
+        // (update.evaluation = evaluateBoardSeason-resultatet) i stedet for at
+        // regne noget nyt — spec §3.1: "eksisterende evalueringsmotor genbruges".
+        // Skriver KUN til board_relations/board_satisfaction_events (skygge-
+        // tabeller); board_profiles-opdateringen ovenfor er allerede skrevet
+        // uændret. No-op når kill-switchen er 'off' (fail-safe inde i kaldet).
+        if (board.plan_type === "1yr") {
+          try {
+            const mandateSync = await applyMandateWeekendSyncFn(supabase, {
+              teamId: team.id,
+              seasonId: season.id,
+              evaluation: update.evaluation,
+              raceId: race?.id && raceMatchesTeamPool(race, standing) ? race.id : null,
+              raceName: race?.id && raceMatchesTeamPool(race, standing) ? (race.name ?? null) : null,
+            });
+            if (mandateSync && !mandateSync.skipped) summary.mandate_relations_synced += 1;
+          } catch (error) {
+            // Skyggedata må ALDRIG vælte den spillervendte weekend-opdatering,
+            // som allerede er persisteret ovenfor.
+            summary.errors += 1;
+            console.error(`  ⚠️  mandate shadow weekend-sync failed for ${team.name}:`, error.message);
+            if (captureExceptionFn) {
+              captureExceptionFn(error, {
+                tags: { hook: "board-weekend", stage: "mandate-shadow" },
+                extra: { teamId: team.id, boardId: board.id, seasonId: season.id },
+              });
+            }
+          }
+        }
 
         // #1451 · Løb-for-løb event-log (visnings-only). Idempotent pr.
         // (board_id, race_id) via onConflict-upsert → re-import overskriver

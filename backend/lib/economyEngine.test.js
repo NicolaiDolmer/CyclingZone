@@ -1813,6 +1813,41 @@ test("processSeasonEnd passes consecutiveLowExpirations=0 when no replacement oc
     "triggerDoublePlanLapse=false when not replaced → consecutiveLowExpirations must be 0");
 });
 
+// ── #3514 fase 1-rest: skyggemodellens sæson-slut-sync ──────────────────────
+
+test("#3514: processSeasonEnd kalder mandat-motorens sæson-slut-sync ÉN gang pr. hold, EFTER boards-loopet", async () => {
+  const supabase = makePlanCompleteSupabase();
+  let callArgs = null;
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      applyMandateSeasonEndSync: async (sb, args) => { callArgs = args; return { confidence: 70 }; },
+    }),
+  });
+
+  assert.ok(callArgs, "applyMandateSeasonEndSync skal kaldes");
+  assert.equal(callArgs.teamId, "team-1");
+  assert.equal(callArgs.seasonId, "season-5");
+  assert.equal(callArgs.seasonNumber, 5);
+  assert.ok(callArgs.mandateEvaluation, "1yr-boardets FULDE evaluering skal genbruges (spec §3.1)");
+  assert.equal(typeof callArgs.mandateEvaluation.feedback?.satisfaction_delta, "number");
+  assert.deepEqual(callArgs.milestoneContexts, [], "intet 3yr/5yr-board i denne fixture → ingen milepæls-kontekster");
+});
+
+test("#3514: en fejlende sæson-slut-sync vælter ALDRIG den rigtige sæson-slut-evaluering", async () => {
+  const supabase = makePlanCompleteSupabase();
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      applyMandateSeasonEndSync: async () => { throw new Error("boom"); },
+    }),
+  });
+
+  // board_profiles-opdateringen (den spillervendte sti) er sket uændret,
+  // selvom skygge-syncet fejlede.
+  assert.equal(supabase.state.board.negotiation_status, "pending");
+});
+
 test("processSeasonEnd continues and completes season when processReplacementTrigger throws", async () => {
   const supabase = makePlanCompleteSupabase();
   await processSeasonEnd("season-5", {
