@@ -82,6 +82,10 @@ try {
   node scripts/lint-workflow-output-masking.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "workflow-output-guard" }
 
+  Write-Host "== dependabot-exceptions-guard (ignores/allowlists uden issue+review-dato, #4551) ==" -ForegroundColor Cyan
+  node scripts/check-dependabot-exceptions.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "dependabot-exceptions-guard" }
+
   Write-Host "== t2-container-guard (DataTable in a T1 max-w-4xl container, #3454) ==" -ForegroundColor Cyan
   node scripts/lint-t2-container-guard.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "t2-container-guard" }

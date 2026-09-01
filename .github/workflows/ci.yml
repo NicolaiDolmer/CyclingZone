@@ -282,6 +282,32 @@ jobs:
       - name: Test invariant-rapportens parser
         run: node --test scripts/summarize-invariant-report.test.mjs
 
+  dependabot-exceptions-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #4551 forward-guard (ejer-direktiv 1/9): "en undtagelse uden udløb er en
+    # permanent undtagelse". GHSA-allowlisten i dependency-review.yml stod uden
+    # review-dato i månederne mellem #2960 og #4547, og løj om vores reelle
+    # exponering indtil et helt andet PR tilfældigvis fjernede den. Guarden
+    # fejler når en .github/dependabot.yml ignore-entry eller en
+    # dependency-review.yml allow-ghsas/allow-licenses-linje mangler en
+    # issue-reference, mangler en review-dato, eller review-datoen er passeret.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test dependabot-exceptions guard
+        run: node --test scripts/check-dependabot-exceptions.test.mjs
+
+      - name: Run dependabot-exceptions guard
+        run: node scripts/check-dependabot-exceptions.mjs
+
   postgrest-cap-guard:
     runs-on: ubuntu-latest
     permissions:
