@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 
 import {
   buildBoardRoomPayload,
+  buildGoalLabelSource,
   deriveConsequenceLine,
+  deriveFoundingSeasonNumber,
   deriveMemberMood,
   deriveMemberRole,
   deriveMilestoneStatus,
@@ -83,8 +85,12 @@ function baseTables(overrides = {}) {
     team_board_members: [],
     board_mandates: [],
     board_vision_milestones: [],
-    teams: [{ id: TEAM_ID, team_dna_key: null }],
-    seasons: [{ id: "season-1", number: 3, status: "active" }],
+    teams: [{ id: TEAM_ID, team_dna_key: null, created_at: "2026-08-15T00:00:00Z" }],
+    seasons: [
+      { id: "s1", number: 1, status: "completed", start_date: "2026-05-08T00:00:00Z" },
+      { id: "s2", number: 2, status: "completed", start_date: "2026-06-19T00:00:00Z" },
+      { id: "s3", number: 3, status: "active", start_date: "2026-07-31T00:00:00Z" },
+    ],
     season_standings: [],
     riders: [],
     loans: [],
@@ -268,6 +274,81 @@ test("aktiv konsekvens sætter confidence.consequence.active + lineKey fra det V
   assert.equal(payload.confidence.consequence.lineKey, "consequence.layer.sponsorPullout");
 });
 
+// ── 1/9-tillæg (orkestrator-afstemning mod frontend-PR #4569) ─────────────────
+
+test("mandate.goals[] og vision.milestones[] bærer rå mål-felter til frontends getBoardGoalLabel", async () => {
+  const tables = baseTables({
+    team_board_members: FIVE_MEMBERS,
+    board_mandates: [{
+      id: "mand-1", team_id: TEAM_ID, season_number: 3, status: "active", signed_at: null,
+      goals: [{
+        type: "monument_podium", target: 2, label: "Top-3 i mindst 2 Monuments-loeb",
+        cumulative: false, race_scope: "classics", category: "results",
+      }],
+    }],
+    board_vision_milestones: [
+      { id: "ms-1", team_id: TEAM_ID, milestone_key: "k1", target_season_number: 5, status: "pending",
+        goal: { type: "min_national_riders", target: 3, label: "Min. 3 ryttere fra DNK", nationality_code: "DNK" } },
+    ],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+
+  const goal = payload.mandate.goals[0];
+  assert.equal(goal.type, "monument_podium");
+  assert.equal(goal.target, 2);
+  assert.equal(goal.label, "Top-3 i mindst 2 Monuments-loeb");
+  assert.equal(goal.cumulative, false);
+  assert.equal(goal.race_scope, "classics");
+  assert.equal(goal.nationality_code, null);
+  // labelKey/labelParams bevares som separat fallback.
+  assert.equal(goal.labelKey, "goalType.monument_podium");
+
+  const milestone = payload.vision.milestones[0];
+  assert.equal(milestone.type, "min_national_riders");
+  assert.equal(milestone.target, 3);
+  assert.equal(milestone.nationality_code, "DNK");
+  assert.equal(milestone.label, "Min. 3 ryttere fra DNK");
+});
+
+test("top-level team.dnaKey + vision.titleKey afledt af holdets DNA", async () => {
+  const tables = baseTables({
+    teams: [{ id: TEAM_ID, team_dna_key: "sprint_kommerciel", created_at: "2026-08-15T00:00:00Z" }],
+    board_vision_milestones: [
+      { id: "ms-1", team_id: TEAM_ID, milestone_key: "k1", target_season_number: 5, status: "pending", goal: { type: "gc_wins", target: 2 } },
+    ],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+
+  assert.deepEqual(payload.team, { dnaKey: "sprint_kommerciel" });
+  assert.equal(payload.vision.titleKey, "vision.title.sprint_kommerciel");
+});
+
+test("vision.titleKey falder tilbage til .default uden dnaKey", async () => {
+  const tables = baseTables({
+    board_vision_milestones: [
+      { id: "ms-1", team_id: TEAM_ID, milestone_key: "k1", target_season_number: 5, status: "pending", goal: { type: "gc_wins", target: 2 } },
+    ],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+  assert.equal(payload.vision.titleKey, "vision.title.default");
+});
+
+test("board.members[].sinceSeason afledes af teams.created_at mod seasons.start_date (samme tal for alle medlemmer)", async () => {
+  const tables = baseTables({ team_board_members: FIVE_MEMBERS });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+
+  // Fixture: teams.created_at = 2026-08-15, sæson 3 startede 2026-07-31 (seneste
+  // sæson hvis start_date <= created_at) -> sinceSeason = 3 for alle 5 medlemmer.
+  assert.equal(payload.board.members.length, 5);
+  for (const member of payload.board.members) {
+    assert.equal(member.sinceSeason, 3);
+  }
+});
+
 // ── Rene hjælpefunktioner ──────────────────────────────────────────────────────
 
 test("deriveMemberRole: chairman -> chair, ellers højeste category_alignment", () => {
@@ -363,6 +444,49 @@ test("deriveMilestoneStatus: forfalden-men-ikke-evalueret (target < indeværende
 test("deriveMilestoneStatus: achieved/missed går igennem uændret uanset sæson-tal", () => {
   assert.deepEqual(deriveMilestoneStatus({ milestone: { status: "achieved", target_season_number: 99 }, currentSeasonNumber: 1 }), { status: "achieved", isCurrentSeason: false });
   assert.deepEqual(deriveMilestoneStatus({ milestone: { status: "missed", target_season_number: 1 }, currentSeasonNumber: 1 }), { status: "missed", isCurrentSeason: false });
+});
+
+test("buildGoalLabelSource: eksponerer rå snake_case-felter til frontends getBoardGoalLabel, defaults til null/false", () => {
+  assert.deepEqual(
+    buildGoalLabelSource({ type: "jersey_wins", target: 4, label: "Mindst 4 etapeloeb-troejer", cumulative: true, race_scope: null, nationality_code: null }),
+    { type: "jersey_wins", target: 4, label: "Mindst 4 etapeloeb-troejer", cumulative: true, race_scope: null, nationality_code: null }
+  );
+  assert.deepEqual(
+    buildGoalLabelSource({}),
+    { type: null, target: null, label: null, cumulative: false, race_scope: null, nationality_code: null }
+  );
+  assert.deepEqual(
+    buildGoalLabelSource(undefined),
+    { type: null, target: null, label: null, cumulative: false, race_scope: null, nationality_code: null }
+  );
+});
+
+test("deriveFoundingSeasonNumber: vælger seneste sæson hvis start_date <= teamCreatedAt", () => {
+  const seasons = [
+    { number: 1, start_date: "2026-05-08T00:00:00Z" },
+    { number: 2, start_date: "2026-06-19T00:00:00Z" },
+    { number: 3, start_date: "2026-07-31T00:00:00Z" },
+  ];
+  assert.equal(deriveFoundingSeasonNumber({ teamCreatedAt: "2026-08-15T00:00:00Z", seasons }), 3);
+  assert.equal(deriveFoundingSeasonNumber({ teamCreatedAt: "2026-06-01T00:00:00Z", seasons }), 1);
+});
+
+test("deriveFoundingSeasonNumber: hold oprettet FØR nogen sæson startede falder tilbage til tidligste sæson", () => {
+  const seasons = [
+    { number: 2, start_date: "2026-06-19T00:00:00Z" },
+    { number: 3, start_date: "2026-07-31T00:00:00Z" },
+  ];
+  assert.equal(deriveFoundingSeasonNumber({ teamCreatedAt: "2026-01-01T00:00:00Z", seasons }), 2);
+});
+
+test("deriveFoundingSeasonNumber: ingen sæsoner eller manglende teamCreatedAt-match uden sæsoner -> null", () => {
+  assert.equal(deriveFoundingSeasonNumber({ teamCreatedAt: "2026-08-15T00:00:00Z", seasons: [] }), null);
+  assert.equal(deriveFoundingSeasonNumber({ teamCreatedAt: null, seasons: [] }), null);
+});
+
+test("deriveFoundingSeasonNumber: manglende teamCreatedAt men sæsoner findes -> tidligste sæson (defensivt, aldrig crash)", () => {
+  const seasons = [{ number: 1, start_date: "2026-05-08T00:00:00Z" }, { number: 2, start_date: "2026-06-19T00:00:00Z" }];
+  assert.equal(deriveFoundingSeasonNumber({ teamCreatedAt: null, seasons }), 1);
 });
 
 // ── Tom voice-bucket → null-citat, ikke crash (design punkt 5) ────────────────

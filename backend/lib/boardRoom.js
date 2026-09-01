@@ -51,6 +51,24 @@
  *  9. `vision.startSeason` er mandatets `season_number` (indeværende sæson),
  *     `endSeason` er den seneste `target_season_number` blandt milepælene.
  *     Ingen af de to er et dedikeret persisteret "vision-vindue"-felt.
+ *
+ * OPDATERET 1/9 efter integrations-afstemning med frontend-PR'en (#4569, mod
+ * denne PR #4570): orkestratoren godkendte afvigelse 2/4/5/6-9 uændret og
+ * bad om fire konkrete tilføjelser (afvigelse 1 er dermed rettet, ikke længere
+ * en afvigelse):
+ *  - `mandate.goals[]`/`vision.milestones[]` bærer nu RÅ mål-felter
+ *    (`type`, `target`, `label`, `cumulative`, `race_scope`,
+ *    `nationality_code`) så frontend kan bruge sin egen kanoniske
+ *    `getBoardGoalLabel`-resolver (`frontend/src/lib/boardGoalLabel.js`)
+ *    direkte på objektet. `labelKey`/`labelParams` bevares som separat
+ *    fallback (frontend afgør selv hvornår den bruges).
+ *  - Ny top-level `team: { dnaKey }`.
+ *  - `vision.titleKey` = `vision.title.<dnaKey>` (eller `.default` uden
+ *    dnaKey) — ren nøgle-afledning, intet indhold her.
+ *  - `board.members[].sinceSeason`: AFLEDT (ikke persisteret) af
+ *    `teams.created_at` mod `seasons.start_date` — samme tal for alle
+ *    medlemmer i denne runde (ejer-godkendt forenkling), se
+ *    `deriveFoundingSeasonNumber`.
  */
 
 import { getArchetypeByKey } from "./boardArchetypes.js";
@@ -188,6 +206,49 @@ export function deriveConsequenceLine(consequences = []) {
   return { active: true, lineKey: getLayerLabelKey(worst.layer), lineParams: {} };
 }
 
+/**
+ * Rå mål-felter til frontends kanoniske `getBoardGoalLabel`-resolver
+ * (`frontend/src/lib/boardGoalLabel.js`), som læser disse EXAKTE snake_case-
+ * navne direkte af goal-objektet. Delt mellem mandate.goals[] og
+ * vision.milestones[] — begge kommer fra samme rå mål-form.
+ */
+export function buildGoalLabelSource(goal = {}) {
+  return {
+    type: goal?.type ?? null,
+    target: goal?.target ?? null,
+    label: goal?.label ?? null,
+    cumulative: Boolean(goal?.cumulative),
+    race_scope: goal?.race_scope ?? null,
+    nationality_code: goal?.nationality_code ?? null,
+  };
+}
+
+/**
+ * Team-ancienniteten et hold på boardet fik sin bestyrelse fra: den seneste
+ * sæson hvis `start_date` ligger på eller før `teamCreatedAt`. Falder tilbage
+ * til den TIDLIGSTE kendte sæson hvis holdet er oprettet før nogen sæsons
+ * `start_date` (fx test-/migrations-data), aldrig `null` når mindst én sæson
+ * findes. `seasons` behøver ikke være sorteret af kalderen.
+ */
+export function deriveFoundingSeasonNumber({ teamCreatedAt, seasons = [] } = {}) {
+  const sorted = [...(seasons || [])]
+    .filter((s) => Number.isFinite(Number(s?.number)))
+    .sort((a, b) => Number(a.number) - Number(b.number));
+  if (!sorted.length) return null;
+
+  const createdMs = teamCreatedAt ? new Date(teamCreatedAt).getTime() : NaN;
+  if (!Number.isFinite(createdMs)) return Number(sorted[0].number);
+
+  let match = sorted[0];
+  for (const season of sorted) {
+    const startMs = season.start_date ? new Date(season.start_date).getTime() : null;
+    if (startMs != null && Number.isFinite(startMs) && startMs <= createdMs) {
+      match = season;
+    }
+  }
+  return Number(match.number);
+}
+
 /** 'pending' + sæson-sammenligning → kontraktens current/upcoming; achieved/missed går igennem uændret. */
 export function deriveMilestoneStatus({ milestone, currentSeasonNumber } = {}) {
   if (milestone?.status === "achieved") return { status: "achieved", isCurrentSeason: false };
@@ -218,6 +279,7 @@ export async function buildBoardRoomPayload({ supabase, teamId, locale = "en" } 
     milestonesRes,
     teamRes,
     seasonRes,
+    seasonsListRes,
     standingRes,
     ridersRes,
     loansRes,
@@ -231,8 +293,12 @@ export async function buildBoardRoomPayload({ supabase, teamId, locale = "en" } 
       .order("signed_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("board_vision_milestones").select("*").eq("team_id", teamId)
       .order("target_season_number", { ascending: true }),
-    supabase.from("teams").select("team_dna_key").eq("id", teamId).maybeSingle(),
+    supabase.from("teams").select("team_dna_key, created_at").eq("id", teamId).maybeSingle(),
     supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle(),
+    // #4557 (1/9-tillæg) · Hele sæson-listen, kun til board.members[].sinceSeason
+    // (deriveFoundingSeasonNumber). Lille tabel (én række pr. sæson) — billig
+    // ekstra-query, ikke en ny tabel-afhængighed af betydning.
+    supabase.from("seasons").select("number, start_date").order("number", { ascending: true }),
     supabase.from("season_standings").select("*").eq("team_id", teamId)
       .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
@@ -256,11 +322,13 @@ export async function buildBoardRoomPayload({ supabase, teamId, locale = "en" } 
   ]) {
     if (res.error) throw new Error(`${label} lookup failed: ${res.error.message}`);
   }
-  // season_standings/riders/loans er best-effort — et hold uden aktiv sæson-
-  // standing (fx helt nyt) skal stadig kunne se sit Boardroom.
+  // season_standings/riders/loans/seasons-listen er best-effort — et hold uden
+  // aktiv sæson-standing (fx helt nyt) skal stadig kunne se sit Boardroom, og
+  // en fejlende sæson-liste skal kun koste sinceSeason (null), ikke hele siden.
   const standing = standingRes.error ? null : (standingRes.data ?? null);
   const riders = ridersRes.error ? [] : (ridersRes.data ?? []);
   const activeLoanCount = loansRes.error ? 0 : (loansRes.count || 0);
+  const seasonsList = seasonsListRes.error ? [] : (seasonsListRes.data ?? []);
 
   const relation = relationRes.data ?? null;
   const assignedMembers = membersRes.data ?? [];
@@ -269,6 +337,10 @@ export async function buildBoardRoomPayload({ supabase, teamId, locale = "en" } 
   const dnaKey = teamRes.data?.team_dna_key ?? null;
   const currentSeasonNumber = seasonRes?.data?.number ?? null;
   const events = eventsRes.data ?? [];
+  const sinceSeason = deriveFoundingSeasonNumber({
+    teamCreatedAt: teamRes.data?.created_at ?? null,
+    seasons: seasonsList,
+  });
 
   const fallbackChairmanKey = assignedMembers.find((m) => m.is_chairman)?.archetype_key
     ?? assignedMembers[0]?.archetype_key
@@ -331,6 +403,9 @@ export async function buildBoardRoomPayload({ supabase, teamId, locale = "en" } 
       initials: named?.initials ?? null,
       role: deriveMemberRole({ archetypeKey: m.archetype_key, isChairman: m.is_chairman }),
       mood: deriveMemberMood({ ownedEvents: milestoneEventsWithOwner, archetypeKey: m.archetype_key }),
+      // Samme tal for alle medlemmer i denne runde (ejer-godkendt forenkling,
+      // 1/9-tillæg) — se deriveFoundingSeasonNumber.
+      sinceSeason,
     };
   });
 
@@ -395,6 +470,9 @@ export async function buildBoardRoomPayload({ supabase, teamId, locale = "en" } 
 
       return {
         id: goal?.id ?? `${goal?.type ?? "goal"}-${index}`,
+        // #4557 (1/9-tillæg) · rå felter til frontends getBoardGoalLabel — se
+        // buildGoalLabelSource + modul-headeren.
+        ...buildGoalLabelSource(goal),
         labelKey: `goalType.${goal?.type ?? "unknown"}`,
         labelParams: {
           target: goal?.target ?? null,
@@ -438,11 +516,16 @@ export async function buildBoardRoomPayload({ supabase, teamId, locale = "en" } 
     vision = {
       startSeason: mandateRow?.season_number ?? (targetSeasons.length ? Math.min(...targetSeasons) : null),
       endSeason: targetSeasons.length ? Math.max(...targetSeasons) : null,
+      // #4557 (1/9-tillæg) · ren nøgle-afledning, INTET indhold her — frontend
+      // forfatter oversættelserne (`vision.title.<dnaKey>`/`.default`).
+      titleKey: `vision.title.${dnaKey ?? "default"}`,
       milestones: milestoneRows.map((milestone) => {
         const { status, isCurrentSeason } = deriveMilestoneStatus({ milestone, currentSeasonNumber });
         return {
           id: milestone.id,
           seasonNumber: milestone.target_season_number ?? null,
+          // #4557 (1/9-tillæg) · rå felter til frontends getBoardGoalLabel.
+          ...buildGoalLabelSource(milestone.goal || {}),
           labelKey: `goalType.${milestone.goal?.type ?? "unknown"}`,
           labelParams: {
             target: milestone.goal?.target ?? null,
@@ -488,6 +571,9 @@ export async function buildBoardRoomPayload({ supabase, teamId, locale = "en" } 
 
   return {
     enabled: true,
+    // #4557 (1/9-tillæg) · frontend viser mockup-undertitlen "{formand}, chair
+    // · {DNA-label}" ud fra board.members (role=chair) + dette felt.
+    team: { dnaKey },
     confidence,
     mandate,
     vision,
