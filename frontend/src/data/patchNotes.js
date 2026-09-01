@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.227",
+    "date": "2026-09-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Stability",
+        "en": {
+          "title": "The 'Cycling Zone was updated' screen no longer gets stuck",
+          "body": "After an update, that screen could keep coming back no matter how many times you reloaded. It now recovers properly, and when reloading will not help, it tells you what does."
+        },
+        "da": {
+          "title": "'Cycling Zone er opdateret'-skærmen sætter sig ikke længere fast",
+          "body": "Efter en opdatering kunne den skærm blive ved med at komme igen, uanset hvor mange gange du genindlæste. Den kommer nu ordentligt videre, og hvis et genindlæs ikke hjælper, fortæller den hvad der gør."
+        },
+        "refs": [4545]
+      }
+    ]
+  },
+  {
     "version": "7.226",
     "date": "2026-09-01",
     "label": "Beta",

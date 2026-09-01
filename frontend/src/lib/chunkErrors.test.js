@@ -5,6 +5,7 @@ import {
   getChunkReloadKey,
   installChunkReloadHandlers,
   isChunkLoadError,
+  isUnambiguousChunkLoadError,
   shouldAttemptChunkReload,
 } from "./chunkErrors.js";
 
@@ -306,4 +307,48 @@ test("installChunkReloadHandlers — bruger target.fetch og target.location når
   assert.equal(reloads, 1);
   assert.deepEqual(seen.map((c) => c.url), ["https://cyclingzone.org/planning"]);
   assert.equal(seen[0].thisIsTarget, true, "fetch skal bindes til target — ellers kaster browseren Illegal invocation");
+});
+
+// #4545: to klassifikatorer med hver sin pris for at tage fejl.
+//   recovery  -> bred. En falsk positiv koster ét unoedigt reload.
+//   telemetri -> snaever. En falsk positiv begraver et aegte crash i chunk-bunken.
+const UNAMBIGUOUS_SAMPLES = [
+  "Failed to fetch dynamically imported module: https://cyclingzone.org/assets/AuctionsPage-7ZpbxV8J.js",
+  "Importing a module script failed.",
+  "Expected a JavaScript module script but the server responded with a MIME type of \"text/html\".",
+  "Loading chunk 42 failed",
+  "ChunkLoadError",
+];
+
+const AMBIGUOUS_SAMPLES = [
+  "Cannot read properties of undefined (reading 'default')",
+  "e._result is undefined",
+  "undefined is not an object (evaluating 'e._result.default')",
+];
+
+test("isUnambiguousChunkLoadError fanger de sikre modul-load-fejl", () => {
+  for (const message of UNAMBIGUOUS_SAMPLES) {
+    assert.ok(isUnambiguousChunkLoadError({ message }), message);
+    assert.ok(isChunkLoadError({ message }), `${message} skal ogsaa udloese recovery`);
+  }
+});
+
+test("React.lazy-interne signaturer er tvetydige: recovery ja, daempning nej", () => {
+  for (const message of AMBIGUOUS_SAMPLES) {
+    assert.ok(
+      isChunkLoadError({ message }),
+      `${message} skal stadig udloese recovery (#906 maalte den som dominerende signatur)`,
+    );
+    assert.ok(
+      !isUnambiguousChunkLoadError({ message }),
+      `${message} kan ogsaa komme fra almindelig kode og maa derfor ikke daempes i Sentry`,
+    );
+  }
+});
+
+test("almindelige fejl rammes af ingen af dem", () => {
+  for (const message of ["Cannot read properties of undefined (reading 'name')", "Network request failed"]) {
+    assert.ok(!isChunkLoadError({ message }), message);
+    assert.ok(!isUnambiguousChunkLoadError({ message }), message);
+  }
 });
