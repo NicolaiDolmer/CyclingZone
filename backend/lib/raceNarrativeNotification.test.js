@@ -210,7 +210,10 @@ function makeMomentsSupabase({ moments = [], resultRows = [], momentsError = nul
             return {
               eq(col, val) {
                 const filters = { [col]: val };
-                return {
+                // buildStageResultNarrative: .eq(race_id).eq(stage_number) -> thenable directly.
+                // buildRaceResultNarrative (#4566, fetchAllRows-pagineret): .eq(race_id)
+                // .order(...).order(...).range(from, to) -> chainable .order(), terminal .range().
+                const chain = {
                   eq(col2, val2) {
                     filters[col2] = val2;
                     return Promise.resolve({
@@ -219,11 +222,17 @@ function makeMomentsSupabase({ moments = [], resultRows = [], momentsError = nul
                       error: momentsError,
                     });
                   },
-                  then(resolve) {
-                    // race-result (final) path only filters on race_id -> no second .eq
-                    resolve({ data: momentsError ? null : moments, error: momentsError });
+                  order() {
+                    return chain;
+                  },
+                  range(from, to) {
+                    return Promise.resolve({
+                      data: momentsError ? null : moments.slice(from, to + 1),
+                      error: momentsError,
+                    });
                   },
                 };
+                return chain;
               },
             };
           },
