@@ -1779,6 +1779,72 @@ test("processSeasonEnd sends replacement notification when processReplacementTri
   );
   assert.ok(replacementNotif, "replacement notification must be sent when replaced=true");
   assert.ok(replacementNotif.message.includes("Resultatjægeren"), "notification must include new chairman label");
+  // #4556 · uden new_chairman_key kan intet navn afledes — bagudkompatibelt
+  // fallback til den uændrede label-only-kode.
+  assert.equal(replacementNotif.metadata?.messageCode, "notif.boardChairmanReplaced.message");
+  assert.equal(replacementNotif.metadata?.messageParams?.chairmanName, undefined);
+});
+
+// #4556 S-M2b addendum · "Stemme-kontrakten" punkt 2: formandsskifte-notifikationen
+// skal nævne den nye formand ved NAVN + arketype-label (ikke kun label+emoji).
+test("#4556 · processSeasonEnd navngiver den nye formand i replacement-notifikationen naar new_chairman_key er sat", async () => {
+  const supabase = makePlanCompleteSupabase();
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      processReplacementTrigger: async () => ({
+        counter: 0,
+        replaced: true,
+        new_chairman_key: "resultatjaegeren",
+        new_chairman_label: "The Results Hunter",
+      }),
+    }),
+  });
+
+  const replacementNotif = supabase.state.inserts.notifications.find(
+    (n) => n.title === "The board has chosen a new chairman"
+  );
+  assert.ok(replacementNotif, "replacement notification must be sent when replaced=true");
+  assert.equal(replacementNotif.metadata?.messageCode, "notif.boardChairmanReplaced.messageWithName");
+  assert.ok(replacementNotif.metadata?.messageParams?.chairmanName, "messageParams skal bære chairmanName");
+  assert.equal(replacementNotif.metadata.messageParams.chairmanLabel, "The Results Hunter");
+  assert.ok(
+    replacementNotif.message.includes(replacementNotif.metadata.messageParams.chairmanName),
+    "den raa fallback-besked skal ogsaa naevne navnet",
+  );
+
+  // Determinisme: samme (teamId, archetype_key, dnaKey) som resten af
+  // "Stemme-kontrakten" (boardVoice.js/boardRoom.js/decorateReactionWithName).
+  const { generateBoardMemberNames } = await import("./boardMandateNames.js");
+  const [expected] = generateBoardMemberNames({
+    teamId: "team-1",
+    members: ["resultatjaegeren"],
+    dnaKey: "skandinavisk_udvikling",
+  });
+  assert.equal(replacementNotif.metadata.messageParams.chairmanName, expected.full_name);
+});
+
+test("#4556 · replacement-notifikation uden new_chairman_key falder korrekt tilbage til label alene (intet opfundet navn)", async () => {
+  const supabase = makePlanCompleteSupabase();
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      processReplacementTrigger: async () => ({
+        counter: 0,
+        replaced: true,
+        new_chairman_key: null,
+        new_chairman_label: "The Results Hunter",
+      }),
+    }),
+  });
+
+  const replacementNotif = supabase.state.inserts.notifications.find(
+    (n) => n.title === "The board has chosen a new chairman"
+  );
+  assert.ok(replacementNotif, "notifikationen skal stadig sendes uden new_chairman_key");
+  assert.equal(replacementNotif.metadata?.messageCode, "notif.boardChairmanReplaced.message");
+  assert.equal(replacementNotif.metadata?.messageParams?.chairmanName, undefined);
+  assert.equal(replacementNotif.message.includes("undefined"), false, "aldrig 'undefined' i beskeden");
 });
 
 test("processSeasonEnd passes consecutiveLowExpirations=2 when replacement triggers (triggerDoublePlanLapse)", async () => {
