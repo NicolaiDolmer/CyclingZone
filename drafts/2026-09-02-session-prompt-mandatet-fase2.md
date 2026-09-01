@@ -21,7 +21,7 @@ Læs `docs/NOW.md`, `docs/slices/09-board-mandate-rework-MASTER.md` (revideret 1
 3. **Fase 2-UI start (#4557):** S-M2b Boardroom-siden bag kill-switch, tro mod `docs/design/board-mandate-mockups/`. Afvigelser vises mig som mockup-opdatering FØR bygning.
 4. **S4-fundamentet:** S4-kalenderen laves (min 7-dages-frist fra 1/9, jf. #4176-fristen) → derefter #4543: aktiverings-fix + divisor-guard målt mod den FÆRDIGE kalender.
 5. **Penge-værnet (#4555):** periode-rul-vagten (dagligt tjek, fejler højt). Dry-run mod prod før merge.
-6. **Hygiejne-slottet (bølgens faste, ejer-kadence 1/9):** #4551 dependabot/allowlist-vagten (kør mod brudt tilstand FØR merge) + #4552 auto-merge m. cooldown.
+6. **Hygiejne-slottet (bølgens faste, ejer-kadence 1/9):** FØRST de fire ventende Dependabot-PR'er (#4560-#4563, alle minor/patch-grupper + gha — verificér grøn CI, merge, `npm run sync-deps` efter pull). DERNÆST #4552 auto-merge m. 7d cooldown (så næste bølges patch/minor kører selv) + #4551 dependabot/allowlist-vagten (kør mod brudt tilstand FØR merge).
 7. **Kvalitets-challenge (udfordre status quo):** når fase 2-slices lander, kør en adversarial review-workflow på HELE board-modulet (find-dimensioner → verify-panel, jf. Workflow-mønstrene) — målet er at flippet møder spillerne fejlfrit, ikke bare "grønt". Fundene bliver issues eller fixes i samme bølge, aldrig en liste der rådner.
 
 ## Åbne ejer-beslutninger (stil dem enkeltvist, med tal)
