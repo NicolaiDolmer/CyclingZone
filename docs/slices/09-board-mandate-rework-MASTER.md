@@ -4,9 +4,9 @@
 **Nordstjerne:** Verdens bedste bestyrelse i et managerspil = den første hvor HVER bevægelse har en kvittering, forhandling er en dialog med modtilbud, og alt kan nås på ≤2 klik.
 **Timing (ejer-valg 1/9, afløser 23/8-ankeret):** **Flip i S3 så snart bygget + verificeret.** Datamodellen blev migreret 23/8 (217 hold, bag slukket kill-switch) men er frosset — skyggedata genopbygges og confidence-migrationen re-baselines til flipdagen.
 
-## Status 1/9 (målt)
+## Status 1/9 aften (målt)
 
-Fase 1a leveret 17/8 + backfillet 23/8; motoren er UWIRET (ingen live kodesti læser mandat-tabellerne). Fase 0 i gang: #4377-trøjefixet (PR #4549) + #3494-re-point (PR #4550) + genforhandlings-hullet A8 (PR undervejs) afventer merge-go. Fase 2 findes ikke endnu.
+Fase 1 KOMPLET: motor-wiring bag kill-switch (#4559) + skyggedata re-baselinet mod prod m. ejer-GO 1/9 (237 relationer/mandater, 2.320 milepæle, post-verificeret — se #3514). S-M2a-fundament merget (#4558); stemme-INDHOLD kun 2/9 arketyper (#4556, gater på tone-prøven). **S-M2b Boardroom LIVE i beta 1/9** (PR #4569/#4570; flag=`beta`, kun admin/beta-testere; alle spillere ser gammel side). Ejer-verdikt på beta: ikke klar til fuld flip — mangler stemmer (#4556), kvitterings-produktion (motoren skriver først events ved fuld aktivering), #4578/#4579. Fase 0-rest (#4550) + A8-låsen (#4553) afventer stadig merge i Session A's spor. Spiller-beta afventer S-M2c (bonustilbud-hullet).
 
 ## Fase 0 — Korrekthed + arkæologi (start straks, uafhængig af resten)
 
