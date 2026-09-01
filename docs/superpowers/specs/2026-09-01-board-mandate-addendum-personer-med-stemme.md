@@ -14,6 +14,8 @@
 | A4 | #3494 sponsor-vækstmål | **Re-point til `sponsor_contracts`** (7/8-beslutningen fastholdt). Baseline-valget dokumenteres eksplicit i PR'en |
 | A5 | #4519/#3575 (gammel flade) | Vent på Mandatet; genbesøges hvis flippet viser sig >2-3 uger væk |
 | A6 | Adskillelse (#4265) | Løses AF Boardroom-flippet (sponsor får egen flade; rækkefølge-låsen i BOARD_RULES §5.3 består) |
+| A7 | Milepæl nået FØR mål-sæsonen (#103) | **C: fejr straks + fyld op.** Confidence + formands-kvittering i det øjeblik det sker; milepælen lukkes; næste årsmøde foreslår bestyrelsen en NY milepæl i det tomme slot. Bevidst genåbning af spec §3.1's "evalueres i mål-sæsonen" for netop tidlig opfyldelse — evidensen (død bestyrelse = klage nr. 1) er stærkere end da linjen blev låst 7/8 |
+| A8 | Genforhandlings-hul (#3575/#4377-fund) | **A: luk hullet.** Aktiv flerårsplan kan først gen-underskrives ved udløb; "ny plan = friske tællere" består; reset-copy siger præcis hvad der nulstilles. Implementering i gang 1/9 |
 
 ## Personer med stemme (A3, designkontrakt)
 
