@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { runEmailRaceDigestSweep, DIGEST_HOUR_COPENHAGEN } from "./emailRaceDigestSweep.js";
+import { runEmailRaceDigestSweep, DIGEST_HOUR_COPENHAGEN, DIGEST_ACTIVITY_WINDOW_MS } from "./emailRaceDigestSweep.js";
 import { copenhagenHour, copenhagenMidnightUTC } from "./copenhagenTime.js";
+
+// #2853: same-day timestamp as IN_WINDOW_NOW, well inside the 14-day
+// activity window, used as the default last_seen for any fixture user row
+// that doesn't explicitly test the activity filter.
+const DEFAULT_ACTIVE_LAST_SEEN = "2026-07-20T10:00:00Z";
 
 // July -> CEST (UTC+2). 17:15 UTC = 19:15 Copenhagen (inside the digest hour);
 // 16:15 UTC = 18:15 Copenhagen (outside it). Asserted via copenhagenHour
@@ -41,7 +46,16 @@ function makeSupabase({ raceResultRows = [], userRows = [] } = {}) {
       if (table === "users") {
         return {
           select() { return this; },
-          in: async (_col, ids) => ({ data: userRows.filter((u) => ids.includes(u.id)), error: null }),
+          // #2853: default every fixture row to "recently active, no opt-out"
+          // unless a test explicitly overrides last_seen/email_prefs, so the
+          // pre-#2853 tests don't all need updating just to add an activity
+          // timestamp.
+          in: async (_col, ids) => ({
+            data: userRows
+              .filter((u) => ids.includes(u.id))
+              .map((u) => ({ last_seen: DEFAULT_ACTIVE_LAST_SEEN, email_prefs: {}, ...u })),
+            error: null,
+          }),
         };
       }
       throw new Error(`unexpected table: ${table}`);
@@ -225,4 +239,93 @@ test("per-manager failures are isolated", async () => {
   assert.equal(result.candidates, 2);
   assert.equal(result.sent, 1);
   assert.equal(result.failed, 1);
+});
+
+// ─── #2853 · 14-day activity + email_prefs consent filter ─────────────────
+
+test("a manager who hasn't been seen in over 14 days is skipped, never sent to", async () => {
+  const staleLastSeen = new Date(IN_WINDOW_NOW.getTime() - DIGEST_ACTIVITY_WINDOW_MS - 60 * 60 * 1000).toISOString(); // just over 14d ago
+  const rows = [row({ rank: 1, rider_name: "R", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
+  const supabase = makeSupabase({
+    raceResultRows: rows,
+    userRows: [{ id: "u1", email: "u1@example.com", last_seen: staleLastSeen }],
+  });
+  const send = async () => { throw new Error("must not send to an inactive manager"); };
+
+  const result = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  assert.equal(result.candidates, 1, "still counted among today's racers");
+  assert.equal(result.sent, 0);
+  assert.equal(result.skipped, 1);
+});
+
+test("a manager seen exactly at the 14-day boundary is still included (>=, not >)", async () => {
+  const boundaryLastSeen = new Date(IN_WINDOW_NOW.getTime() - DIGEST_ACTIVITY_WINDOW_MS).toISOString();
+  const rows = [row({ rank: 1, rider_name: "R", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
+  const supabase = makeSupabase({
+    raceResultRows: rows,
+    userRows: [{ id: "u1", email: "u1@example.com", last_seen: boundaryLastSeen }],
+  });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  assert.deepEqual(sendCalls.map((c) => c.userId), ["u1"]);
+});
+
+test("a manager with no last_seen at all (never returned) is skipped, not treated as active", async () => {
+  const rows = [row({ rank: 1, rider_name: "R", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
+  const supabase = makeSupabase({
+    raceResultRows: rows,
+    userRows: [{ id: "u1", email: "u1@example.com", last_seen: null }],
+  });
+  const send = async () => { throw new Error("must not send without a last_seen timestamp"); };
+
+  const result = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  assert.equal(result.sent, 0);
+  assert.equal(result.skipped, 1);
+});
+
+test("email_prefs race_digest=false (or all=false) is skipped, reusing the existing opt-out rule", async () => {
+  const rows = [
+    row({ rank: 1, rider_name: "R1", team_id: "t1", userId: "u-type-off", raceId: "race-1", raceName: "Race" }),
+    row({ rank: 1, rider_name: "R2", team_id: "t2", userId: "u-all-off", raceId: "race-1", raceName: "Race" }),
+    row({ rank: 1, rider_name: "R3", team_id: "t3", userId: "u-opted-in", raceId: "race-1", raceName: "Race" }),
+  ];
+  const supabase = makeSupabase({
+    raceResultRows: rows,
+    userRows: [
+      { id: "u-type-off", email: "a@example.com", email_prefs: { race_digest: false } },
+      { id: "u-all-off", email: "b@example.com", email_prefs: { all: false } },
+      { id: "u-opted-in", email: "c@example.com", email_prefs: {} },
+    ],
+  });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  const result = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  assert.deepEqual(sendCalls.map((c) => c.userId), ["u-opted-in"]);
+  assert.equal(result.candidates, 3);
+  assert.equal(result.sent, 1);
+  assert.equal(result.skipped, 2);
+});
+
+test("an inactive/opted-out manager never triggers the narrative lookup (filtered before that work happens)", async () => {
+  const staleLastSeen = new Date(IN_WINDOW_NOW.getTime() - DIGEST_ACTIVITY_WINDOW_MS - 60 * 60 * 1000).toISOString();
+  const rows = [row({ rank: 1, rider_name: "R", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
+  const supabase = makeSupabase({
+    raceResultRows: rows,
+    userRows: [{ id: "u1", email: "u1@example.com", last_seen: staleLastSeen }],
+  });
+  const fetchNarrative = async () => { throw new Error("must not fetch a narrative for a filtered-out manager"); };
+
+  const result = await runEmailRaceDigestSweep({
+    supabase, now: IN_WINDOW_NOW, isActive: async () => true,
+    send: async () => ({ status: "dry_run" }), unsubSecret: "test-secret", fetchNarrative,
+  });
+
+  assert.equal(result.skipped, 1);
 });

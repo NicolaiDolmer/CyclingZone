@@ -16,6 +16,7 @@
 import { fetchAllRows } from "./supabasePagination.js";
 import { isEmailLoopActive } from "./emailLoopFlag.js";
 import { sendLoopEmail } from "./emailService.js";
+import { isEmailTypeEnabled } from "./emailPrefs.js";
 import { buildRaceDigestEmail } from "./emailTemplates.js";
 import { unsubscribeUrlFor } from "./emailUnsubUrl.js";
 import { copenhagenHour, copenhagenDateString, copenhagenMidnightUTC } from "./copenhagenTime.js";
@@ -23,6 +24,16 @@ import { captureException } from "./sentry.js";
 import { buildRaceResultNarrative } from "./raceNarrativeNotification.js";
 
 export const DIGEST_HOUR_COPENHAGEN = 19;
+
+// #2853: the digest previously emailed EVERY manager with a ranked result
+// today, regardless of whether they had touched the game in months (verified
+// against the pre-#2853 query below — it filtered AI/bank/frozen/test teams
+// only, no activity check at all). A 14-day last_seen window matches the
+// house "recently active" cutoff used elsewhere (see users.last_seen
+// consumers) — a manager who raced today via idle riders/auto-lineups but
+// hasn't opened the app in 2+ weeks is exactly the "unsubscribe as spam"
+// risk this filter targets.
+export const DIGEST_ACTIVITY_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
 // #2725: a single race day can produce >1000 race_results rows once every
 // division races the same day (stage races × many teams), so this MUST
@@ -97,9 +108,24 @@ export async function runEmailRaceDigestSweep({
   if (!userIds.length) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
 
   const { data: userRows, error: usersErr } = await supabase
-    .from("users").select("id, email").in("id", userIds);
+    .from("users").select("id, email, last_seen, email_prefs").in("id", userIds);
   if (usersErr) throw new Error(`race-digest users lookup: ${usersErr.message}`);
-  const emailByUser = new Map((userRows || []).map((u) => [u.id, u.email]));
+
+  // #2853: activity + consent filter. last_seen reuses the house "recently
+  // active" cutoff (DIGEST_ACTIVITY_WINDOW_MS); the consent check reuses
+  // email_prefs's existing isEmailTypeEnabled rule (same one sendLoopEmail
+  // already enforces per-send) rather than inventing a second opt-out
+  // mechanism — doing it here too means an inactive/opted-out manager never
+  // even counts as a send attempt (and never triggers the narrative lookup
+  // below), instead of silently landing in `skipped` after the work was
+  // already done for them.
+  const activityCutoffIso = new Date(now.getTime() - DIGEST_ACTIVITY_WINDOW_MS).toISOString();
+  const emailByUser = new Map(
+    (userRows || [])
+      .filter((u) => u.last_seen && u.last_seen >= activityCutoffIso)
+      .filter((u) => isEmailTypeEnabled(u.email_prefs, "race_digest"))
+      .map((u) => [u.id, u.email])
+  );
 
   const copenhagenDate = copenhagenDateString(now);
   let sent = 0;
