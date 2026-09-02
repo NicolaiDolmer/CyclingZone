@@ -46,3 +46,9 @@ bash scripts/guard-commit-branch.sh main && git commit -F msg.txt
 ```
 
 Wiret ind i `.claude/skills/discord-dm/SKILL.md`. Bør bredes ud til oevrige skills og natboelge-prompts, da fejlklassen ikke er DM-specifik.
+
+---
+
+## 6. bid: 2026-09-02 (omvendt fortegn: guarden selv doemte falsk)
+
+Guarden laeste `git branch --show-current` i shell-cwd. En worktree-worker der committede via `git -C <dir>` fik "BLOKERET: main", fordi agent-shellens cwd var hoved-checkoutet, ikke worktree'et. Fix: valgfrit `<dir>`-argument + exit 2 naar to traeer er i spil uden `<dir>`. Fuld postmortem: `2026-09-02-guard-commit-branch-tjekker-cwd-ikke-worktree.md` (#4658).
