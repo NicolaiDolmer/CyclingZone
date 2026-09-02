@@ -23,6 +23,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/PROGRESSION_RULES.md` | Rytterudvikling, træning, potentiale, lofter, rating, ryttertyper |
 | `docs/ASSISTANT_RULES.md` | **SSOT for assistenten:** auto-udtagelse, sen redning ved afvikling, peak-forslag, automatisk træningsfokus · hvad den ikke må bryde · kendte afvigelser (#3957, #3743) |
 | `docs/TRAINING_RULES.md` | **SSOT for træningsmaskinen:** det daglige tick, dagstyper, ugerytme, restitution, træner- og facilitets-effekt, løbsdages forhold til træning. Lofter og rating bor i PROGRESSION_RULES |
+| `docs/YOUTH_RULES.md` | **SSOT for ungdommen:** akademiet som paraply, Junior team (16-18) og U23 team (19-22) med aldersloft, frit flyt, én kontraktmodel, egne ungdomskalendere og pyramider, Graduation Day, "kommer snart"-reglen. Skabelse bor i RIDER_GENERATION, udvikling i PROGRESSION/TRAINING |
 | `docs/TRANSFER_MARKET_RULES.md` | **SSOT for transfermarkedet:** auktionens livscyklus og timere, bud og autobud, frie agenter, annullering, finalisering, lån, udskudte holdskifter, trup-lofter, misbrugs-gates |
 | `docs/SOCIAL_RULES.md` | **SSOT for de sociale features:** Discord-kobling og rollesync, DM-udsendelse og præferencer, notifikationer, achievements, holdprofiler, ranglister. Forummets indhold bor i FORUM_RULES |
 | `docs/GAME_INVARIANTS.md` | Game-balance konstanter (sponsor/balance/gældsloft/upload-grænser) |
