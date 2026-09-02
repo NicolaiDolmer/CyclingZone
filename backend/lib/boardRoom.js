@@ -17,14 +17,23 @@
  *     (`goalType.<type>`) — der findes IKKE i dag i18n-nøgler for mål-typer i
  *     `board.json` (boardGoals.js::buildGoalLabel returnerer rå dansk tekst).
  *     Content for disse nøgler skal skrives, dette er kun den strukturelle krog.
- *  2. `mandate.goals[].status`-udregningen bruger en LET kontekst (standing +
- *     riders + aktive lån), IKKE den fulde `loadGoalContextForBoard`-loader
- *     (cumulative monument/jersey/transfer/u25-felter over flere sæsoner).
- *     Mål-typer der kræver den kontekst (monument_podium, jersey_wins
- *     cumulative, profitable_transfers, u25_development_delta,
- *     domestic_dominance, relative_rank) evaluerer derfor til
- *     `evaluateGoalProgress`s `awaiting_data`, som her mappes til `on_track`
- *     (se `mapGoalEvaluationToStatus`) i stedet for at opfinde et 6. statustal.
+ *  2. LUKKET 2/9 (#4579): `mandate.goals[].status`-udregningen brugte en LET
+ *     håndbygget kontekst (planDuration 1, cumulativeStats 0/0 hardkodet) i
+ *     stedet for den fulde `loadGoalContextForBoard`-loader. 177 af 237 aktive
+ *     mandater i prod har et `relative_rank`-mål — den lette kontekst manglede
+ *     `divisionManagerCount`, så ALLE disse mål evaluerede til
+ *     `evaluateGoalProgress`s `awaiting_data` (mappet til `on_track`, se
+ *     `mapGoalEvaluationToStatus`) uanset reel placering. Nu: mandatets 1yr-
+ *     `board_profiles`-row (`mandateRow.source.from_board_id`, fallback
+ *     team_id+plan_type='1yr') hentes best-effort, `loadGoalContextForBoard`
+ *     kaldes med den (injicerbar via `loadGoalContext`-parameteren til test),
+ *     og den DELTE `buildBoardEvalContext` (samme bygger som /board/status,
+ *     weekend- og season-end-stierne, #2469) bygger evaluerings-konteksten.
+ *     `awaiting_data` (ægte datamangel — fx plan-sæson 1 uden baseline,
+ *     `domestic_dominance` som stadig er et skelet) mappes STADIG til
+ *     `on_track` (aldrig en falsk alarm), men hvert `mandate.goals[]`-objekt
+ *     bærer nu `awaitingData: boolean` så frontend kan skelne "reelt on
+ *     track" fra "vi mangler data endnu".
  *  3. `mandate.goals[].unitKey` er altid `null` — der findes ikke et etableret
  *     enheds-nøgle-system for mål-typer i dag.
  *  4. `mandate.goals[].receipt.lastMovementAt`/`lastMovementParams` er altid
@@ -84,6 +93,7 @@ import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { resolveGoalOwnerArchetypeKey } from "./boardMembers.js";
 import { evaluateGoalProgress } from "./boardGoals.js";
+import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
 import { MANDATE_CATEGORIES } from "./boardMandate.js";
 import { getActiveConsequencesForTeam, getLayerLabelKey } from "./boardConsequences.js";
@@ -280,7 +290,13 @@ export function deriveMilestoneStatus({ milestone, currentSeasonNumber } = {}) {
 // oversat tekst — oversættelse sker i frontend (`board`-namespace), jf.
 // addendummets stemme-kontrakt punkt 4. En locale-parameter her ville være
 // død kode indtil endpointet en dag også skal levere serversiderenderet tekst.
-export async function buildBoardRoomPayload({ supabase, teamId } = {}) {
+export async function buildBoardRoomPayload({
+  supabase,
+  teamId,
+  // #4579 · injicerbar KUN til test (samme mønster som boardWeekendFinalization.js's
+  // deps.loadGoalContext) — produktionskode kalder altid med default.
+  loadGoalContext = loadGoalContextForBoard,
+} = {}) {
   ensureSupabase(supabase);
   if (!teamId) throw new Error("teamId is required");
 
@@ -305,7 +321,9 @@ export async function buildBoardRoomPayload({ supabase, teamId } = {}) {
       .order("signed_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("board_vision_milestones").select("*").eq("team_id", teamId)
       .order("target_season_number", { ascending: true }),
-    supabase.from("teams").select("team_dna_key, created_at").eq("id", teamId).maybeSingle(),
+    // #4579 · sponsor_income tilføjet: buildBoardEvalContext's currentSponsorIncome
+    // (sponsor_growth-målets ikke-baseline-halvdel, se boardGoalContext.js).
+    supabase.from("teams").select("team_dna_key, created_at, sponsor_income").eq("id", teamId).maybeSingle(),
     supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle(),
     // #4557 (1/9-tillæg) · Hele sæson-listen, kun til board.members[].sinceSeason
     // (deriveFoundingSeasonNumber). Lille tabel (én række pr. sæson) — billig
@@ -348,6 +366,7 @@ export async function buildBoardRoomPayload({ supabase, teamId } = {}) {
   const milestoneRows = milestonesRes.data ?? [];
   const dnaKey = teamRes.data?.team_dna_key ?? null;
   const currentSeasonNumber = seasonRes?.data?.number ?? null;
+  const currentSeasonId = seasonRes?.data?.id ?? null;
   const events = eventsRes.data ?? [];
   const sinceSeason = deriveFoundingSeasonNumber({
     teamCreatedAt: teamRes.data?.created_at ?? null,
@@ -445,21 +464,79 @@ export async function buildBoardRoomPayload({ supabase, teamId } = {}) {
     }
   }
 
+  // ---- 1yr-board mandatet stammer fra (#4579) ----
+  // loadGoalContextForBoard kræver et board_id (til board_plan_snapshots).
+  // Primært via mandatets migrations-kilde (planToMandate stempler
+  // source.from_board_id, se boardMandate.js); fallback for mandater uden den
+  // kilde: holdets seneste 1yr-row. Best-effort — en fejlende opslag logges
+  // (captureException) men vælter ALDRIG siden; uden et 1yr-board falder
+  // loadGoalContext tilbage til goalContext={} nedenfor.
+  let oneYearBoard = null;
+  if (mandateRow) {
+    const BOARD_PROFILE_SELECT = "id, plan_type, seasons_completed, plan_start_season_number, plan_start_sponsor_income";
+    try {
+      const fromBoardId = mandateRow.source?.from_board_id ?? null;
+      if (fromBoardId) {
+        const { data, error } = await supabase.from("board_profiles")
+          .select(BOARD_PROFILE_SELECT).eq("id", fromBoardId).maybeSingle();
+        if (!error) oneYearBoard = data ?? null;
+      }
+      if (!oneYearBoard) {
+        const { data, error } = await supabase.from("board_profiles")
+          .select(BOARD_PROFILE_SELECT).eq("team_id", teamId).eq("plan_type", "1yr").maybeSingle();
+        if (!error) oneYearBoard = data ?? null;
+      }
+    } catch (err) {
+      captureException(err);
+      oneYearBoard = null;
+    }
+  }
+
+  // ---- fuld goal-kontekst (#4579) ----
+  // Kaldes kun når der ER et mandat OG en aktiv sæson (uden currentSeasonId er
+  // der intet at evaluere cumulative-felter imod). Best-effort: fejler
+  // loaderen, fortsættes med goalContext={} — mål der kræver de manglende
+  // felter falder tilbage til evaluateGoalProgress's egen awaiting_data-gren
+  // (se awaitingData nedenfor).
+  let goalContext = {};
+  if (mandateRow && currentSeasonId) {
+    try {
+      goalContext = await loadGoalContext({
+        supabase,
+        teamId,
+        boardId: oneYearBoard?.id ?? null,
+        currentSeasonId,
+        division: standing?.division ?? null,
+        // #1608 · pulje-rang: divisionManagerCount skal tælles pr. pulje når
+        // holdet er pulje-allokeret (ellers tier-bredt fallback, se boardGoalContext.js).
+        leagueDivisionId: standing?.league_division_id ?? null,
+        standings: null,
+        planStartSeasonNumber: oneYearBoard?.plan_start_season_number ?? mandateRow.season_number ?? null,
+      });
+    } catch (err) {
+      captureException(err);
+      goalContext = {};
+    }
+  }
+
   // ---- mandate + goals ----
   let mandate = null;
   if (mandateRow) {
-    const goalEvalContext = {
-      planDuration: 1,
-      seasonsCompleted: 1,
-      isFinalSeason: true,
+    // #4579 · DELT bygger (samme som /board/status, weekend + season-end,
+    // #2469-princippet) — boardRoom driftede før fra de andre live-stier via
+    // en håndbygget kontekst; nu er der ét sted en ny kontekst-parameter tilføjes.
+    const evalContext = buildBoardEvalContext({
+      board: oneYearBoard ?? { plan_type: "1yr", seasons_completed: 0 },
+      standing,
       activeLoanCount,
-      cumulativeStats: { stageWins: 0, gcWins: 0 },
-      assignedMembers,
-    };
+      currentSponsorIncome: teamRes.data?.sponsor_income ?? null,
+      goalContext,
+      extra: { assignedMembers },
+    });
 
     const goalsSource = Array.isArray(mandateRow.goals) ? mandateRow.goals : [];
     const goals = goalsSource.map((goal, index) => {
-      const evaluation = evaluateGoalProgress(goal, standing, { riders }, goalEvalContext);
+      const evaluation = evaluateGoalProgress(goal, standing, { riders }, evalContext);
       const ownerArchetypeKey = resolveGoalOwnerArchetypeKey({
         goal,
         assignedMembers,
@@ -500,6 +577,10 @@ export async function buildBoardRoomPayload({ supabase, teamId } = {}) {
         targetDisplay,
         unitKey: null,
         status,
+        // #4579 · ægte datamangel (evaluateGoalProgress's awaiting_data, mappet
+        // til on_track ovenfor for aldrig at vise en falsk alarm) — frontend kan
+        // nu vise "vi mangler data endnu" i stedet for at læse status som reel.
+        awaitingData: evaluation?.missing_data === true,
         isStretch: goal?.importance === "bonus",
         owner: ownerArchetypeKey ? {
           archetypeKey: ownerArchetypeKey,
