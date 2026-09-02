@@ -68,6 +68,15 @@
       "heldMid": "Season {nextNumber} starts now. Push for a top-two finish and promotion."
     }
   },
+  "seasonSignup": {
+    "titleParked": "Your team was parked",
+    "titleDormant": "Keep your spot for season {number}",
+    "bodyParked": "No login for a while moved your team out of the league. Sign up to return for season {number}.",
+    "bodyDormant": "You have been away for a while. Sign up now to lock in your spot for season {number}.",
+    "cta": "Sign up for next season",
+    "confirmed": "You are signed up for season {number}",
+    "error": "Could not sign up. Try again."
+  },
   "squadWarning": {
     "over": "Squad too large. Max {limit} in Division {division}. Sell {count, plural, one {1 rider} other {# riders}}.",
     "under": "Squad too small. Min {limit} in Division {division}. Buy {count, plural, one {1 more rider} other {# more riders}}.",

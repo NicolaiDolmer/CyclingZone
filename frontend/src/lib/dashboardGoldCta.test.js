@@ -103,5 +103,72 @@ test("#3509 falsy/undefined inputs behandles som false (ingen krasj, ingen falsk
   const result = computeDashboardGoldCta({});
   assert.equal(result.firstRaceMoment, false);
   assert.equal(result.squadCtaActive, false);
+  assert.equal(result.seasonSignupPrimary, false);
   assert.equal(result.seasonWrapPrimary, false);
+});
+
+// ─── [epic #4592 del 3] season-signup indsat mellem squad-CTA og season-wrap ──
+
+function countPrimaryV2({ firstRaceMomentActive, squadCtaActive, seasonSignupPrimary, seasonWrapVisible, seasonWrapPrimary }) {
+  let count = 0;
+  if (firstRaceMomentActive) count += 1;
+  if (squadCtaActive) count += 1;
+  if (seasonSignupPrimary) count += 1;
+  if (seasonWrapVisible && seasonWrapPrimary) count += 1;
+  return count;
+}
+
+test("#4592 alle 16 kombinationer af (firstRaceMoment, squadCtaEligible, seasonSignupEligible, seasonWrapVisible) giver højst ét gold primary-kort", () => {
+  for (const firstRaceMomentActive of BOOL) {
+    for (const squadCtaEligible of BOOL) {
+      for (const seasonSignupEligible of BOOL) {
+        for (const seasonWrapVisible of BOOL) {
+          const result = computeDashboardGoldCta({
+            firstRaceMomentActive,
+            squadCtaEligible,
+            seasonSignupEligible,
+            seasonWrapVisible,
+          });
+
+          const primaryCount = countPrimaryV2({
+            firstRaceMomentActive,
+            squadCtaActive: result.squadCtaActive,
+            seasonSignupPrimary: result.seasonSignupPrimary,
+            seasonWrapVisible,
+            seasonWrapPrimary: result.seasonWrapPrimary,
+          });
+
+          assert.ok(
+            primaryCount <= 1,
+            `firstRaceMomentActive=${firstRaceMomentActive} squadCtaEligible=${squadCtaEligible} ` +
+              `seasonSignupEligible=${seasonSignupEligible} seasonWrapVisible=${seasonWrapVisible} ` +
+              `gav ${primaryCount} gold primary-kort (forventet højst 1)`,
+          );
+        }
+      }
+    }
+  }
+});
+
+test("#4592 season-signup vinder over season-wrap, men taber til first-race-moment og squad-CTA", () => {
+  assert.equal(
+    computeDashboardGoldCta({ firstRaceMomentActive: false, squadCtaEligible: false, seasonSignupEligible: true, seasonWrapVisible: true }).seasonSignupPrimary,
+    true,
+    "eneste rangordnede kandidat under squad-CTA skal vinde guld",
+  );
+  assert.equal(
+    computeDashboardGoldCta({ firstRaceMomentActive: false, squadCtaEligible: false, seasonSignupEligible: true, seasonWrapVisible: true }).seasonWrapPrimary,
+    false,
+    "season-wrap skal nedgraderes når season-signup er aktivt",
+  );
+  assert.equal(
+    computeDashboardGoldCta({ firstRaceMomentActive: false, squadCtaEligible: true, seasonSignupEligible: true, seasonWrapVisible: false }).seasonSignupPrimary,
+    false,
+    "squad-CTA skal vinde over season-signup",
+  );
+  assert.equal(
+    computeDashboardGoldCta({ firstRaceMomentActive: true, squadCtaEligible: false, seasonSignupEligible: true, seasonWrapVisible: false }).seasonSignupPrimary,
+    false,
+    "first-race-moment skal vinde over season-signup",
+  );
 });

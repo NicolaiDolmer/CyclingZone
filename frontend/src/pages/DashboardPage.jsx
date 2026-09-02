@@ -61,6 +61,7 @@ import {
 } from "../lib/seasonStartGuide";
 import SeasonWrapNudgeCard from "../components/SeasonWrapNudgeCard";
 import { readSeasonWrapDismissed, writeSeasonWrapDismissed } from "../lib/seasonWrapNudge";
+import SeasonSignupCard from "../components/SeasonSignupCard"; // [epic #4592 del 3] #452
 import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
 import { resolveSeasonMovement } from "../lib/seasonRecapData.js";
 // vk-movement-signals — bevægelses-signaler på "My division standings":
@@ -218,6 +219,18 @@ export default function DashboardPage() {
   // endnu (ikke hentet, eller ingen af mit holds rækker fundet).
   const [seasonWrapDismissed, setSeasonWrapDismissed] = useState(false);
   const [completedSeasonRecap, setCompletedSeasonRecap] = useState(null);
+
+  // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — status fra
+  // GET /api/season/signup-status: { enabled, eligible, parked, signed_up,
+  // next_season_number }. null = ikke hentet endnu/fejlet → kortet renderer
+  // intet (samme fail-stille-mønster som resten af DASHBOARD_RULES.md §3).
+  // Bevidst INGEN dismiss/localStorage her (til forskel fra SeasonWrapNudge/
+  // SeasonStartGuide ovenfor): dette er et konto-risiko-varsel i samme klasse
+  // som trup-/kontrakt-advarslerne øverst på siden (heller ingen dismiss) —
+  // en manager der er ved at miste sin plads skal blive ved med at se det
+  // indtil hun rent faktisk tilmelder sig, ikke kunne klikke det væk.
+  const [seasonSignupStatus, setSeasonSignupStatus] = useState(null);
+  const [seasonSignupSubmitting, setSeasonSignupSubmitting] = useState(false);
 
   // #2925 — sæsonstart-vinduet. Afledt af eksisterende data (aktiv sæsons
   // start_date), ikke af et nyt flag. `nowMs` tikker allerede hvert minut, så
@@ -452,6 +465,23 @@ export default function DashboardPage() {
             setOnboardingDismissed(true);
           }
         }
+      } catch {
+        // best-effort
+      }
+    }
+
+    // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — best-effort, samme
+    // mønster som Discord-status/onboarding-progress ovenfor: fejler kaldet,
+    // forbliver seasonSignupStatus null og kortet renderer intet
+    // (docs/DASHBOARD_RULES.md §3: "et modul må aldrig kunne vælte
+    // dashboardet"). Flaget er off som default (seasonSignupFlag.js), så dette
+    // er typisk et enkelt hurtigt 200-svar med enabled:false.
+    if (token) {
+      try {
+        const signupRes = await fetch(`${API}/api/season/signup-status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (signupRes.ok) setSeasonSignupStatus(await signupRes.json());
       } catch {
         // best-effort
       }
@@ -794,6 +824,36 @@ export default function DashboardPage() {
     setSeasonWrapDismissed(true);
   }
 
+  // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452). Ingen optimistisk
+  // lokal state FØR svaret (til forskel fra dismissOnboarding ovenfor) — en
+  // fejlet POST skal IKKE vise en falsk bekræftelse for noget så vigtigt som
+  // "beholder jeg min plads". Knappen viser sin egen loading-tilstand
+  // (Button `loading`-prop) mens kaldet er i flugt.
+  async function handleSeasonSignup() {
+    setSeasonSignupSubmitting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      const res = await fetch(`${API}/api/season/signup`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const body = await res.json();
+        setSeasonSignupStatus((prev) => ({
+          ...(prev || {}),
+          signed_up: true,
+          next_season_number: body.next_season_number ?? prev?.next_season_number,
+        }));
+      }
+    } catch {
+      // best-effort — kortet forbliver i sin ikke-tilmeldt tilstand, manageren kan prøve igen
+    } finally {
+      setSeasonSignupSubmitting(false);
+    }
+  }
+
   function dismissCompletion() {
     localStorage.setItem("cz-dashboard-onboarding-completion-dismissed", "1");
     setCompletionDismissed(true);
@@ -934,16 +994,26 @@ export default function DashboardPage() {
   const showSeasonWrapNudge = seasonStartWindowOpen && !seasonWrapDismissed && !onboardingIncomplete && !!completedSeasonRecap;
   const showSeasonStartGuide = seasonStartWindowOpen && !seasonStartDismissed && !onboardingIncomplete;
 
+  // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — vises KUN når
+  // backend-flaget er on (default off, fail-safe) OG holdet rent faktisk er
+  // kandidat (parkeret ELLER inaktiv, samme definition som parkerings-
+  // sweepen). Samme onboarding-undertrykkelse som søskende-kortene ovenfor —
+  // en helt ny manager kan pr. definition ikke være 30-dages-inaktiv endnu,
+  // så dette koster intet reelt, men holder mønsteret konsistent.
+  const showSeasonSignupCard =
+    Boolean(seasonSignupStatus?.enabled && seasonSignupStatus?.eligible) && !onboardingIncomplete;
+
   // #3509 — gold-CTA prioritetskæde (docs/design/PAGE_TEMPLATES.md: maks ÉN gold
   // primary-knap pr. view). Rækkefølge: first-race-moment > squad-selection-CTA >
-  // season-wrap. Kun det højst-prioriterede aktive kort beholder guld; resten
-  // nedgraderes til sekundær variant (samme mønster som MyLatestResultCard's
-  // eksisterende nedgradering af TeamSelectionCtaCard). Ren logik i
-  // lib/dashboardGoldCta.js — se DashboardPage.goldCtaPriority.test.js for
-  // dækning af alle kombinationer.
-  const { squadCtaActive, seasonWrapPrimary } = computeDashboardGoldCta({
+  // season-signup > season-wrap (#4592). Kun det højst-prioriterede aktive kort
+  // beholder guld; resten nedgraderes til sekundær variant (samme mønster som
+  // MyLatestResultCard's eksisterende nedgradering af TeamSelectionCtaCard). Ren
+  // logik i lib/dashboardGoldCta.js — se DashboardPage.goldCtaPriority.test.js
+  // for dækning af alle kombinationer.
+  const { squadCtaActive, seasonSignupPrimary, seasonWrapPrimary } = computeDashboardGoldCta({
     firstRaceMomentActive,
     squadCtaEligible: !!squadSelectionMissingRace,
+    seasonSignupEligible: showSeasonSignupCard,
     seasonWrapVisible: showSeasonWrapNudge,
   });
   const seasonStartItems = showSeasonStartGuide
@@ -1211,6 +1281,22 @@ export default function DashboardPage() {
           primary={seasonWrapPrimary}
           onView={() => navigate(`/seasons/${completedSeasonRecap.seasonId}`)}
           onDismiss={dismissSeasonWrap}
+        />
+      )}
+
+      {/* [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — placeret mellem
+          sæson-opsummeringen og sæsonstart-guiden (docs/DASHBOARD_RULES.md §4/
+          §5: ikke en af de historisk ejer-låste rækker i §2, bygget som Card
+          ikke banner jf. §3). Tematisk nabo til de to andre sæson-kort:
+          "sæsonen sluttede" → "beholder du din plads" → "sæsonen startede". */}
+      {showSeasonSignupCard && (
+        <SeasonSignupCard
+          nextSeasonNumber={seasonSignupStatus?.next_season_number}
+          parked={Boolean(seasonSignupStatus?.parked)}
+          signedUp={Boolean(seasonSignupStatus?.signed_up)}
+          submitting={seasonSignupSubmitting}
+          primary={seasonSignupPrimary}
+          onSignUp={handleSeasonSignup}
         />
       )}
 
