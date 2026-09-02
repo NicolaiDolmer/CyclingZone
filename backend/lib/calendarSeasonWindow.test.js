@@ -29,7 +29,7 @@ test("§2: en mandags-start kan KUN have længder der er hele uger", () => {
 test("§2: 31 dage er UMULIGT fra mandag 28/9 — reglen siger fra i stedet for at afrunde", () => {
   assert.throws(
     () => resolveSeasonWindow({ firstRaceDay: "2026-09-28", raceDays: REFERENCE_SEASON_RACE_DAYS }),
-    /ikke en søndag/,
+    /is not a Sunday/,
   );
 });
 
@@ -47,14 +47,14 @@ test("§2: en eksplicit slutdato bestemmer længden — og skal selv være en s�
 
   assert.throws(
     () => resolveSeasonWindow({ firstRaceDay: "2026-09-28", lastRaceDay: "2026-10-31" }),
-    /ikke en søndag/,
+    /is not a Sunday/,
   );
 });
 
 test("§2: en slutdato før startdatoen er en fejl, ikke et negativt vindue", () => {
   assert.throws(
     () => resolveSeasonWindow({ firstRaceDay: "2026-09-28", lastRaceDay: "2026-09-20" }),
-    /ligger FØR/,
+    /is BEFORE/,
   );
 });
 

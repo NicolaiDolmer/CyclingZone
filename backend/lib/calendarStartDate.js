@@ -88,7 +88,7 @@ export function resolveSeasonWindow({
   firstRaceDay, raceDays = null, lastRaceDay = null,
   referenceRaceDays = REFERENCE_SEASON_RACE_DAYS,
 } = {}) {
-  if (!firstRaceDay) throw new Error("resolveSeasonWindow: firstRaceDay kræves");
+  if (!firstRaceDay) throw new Error("resolveSeasonWindow: firstRaceDay is required");
   const candidates = sundayEndCandidates(firstRaceDay);
 
   let chosenDays = null;
@@ -99,10 +99,10 @@ export function resolveSeasonWindow({
     const [y1, m1, d1] = firstRaceDay.split("-").map(Number);
     const [y2, m2, d2] = lastRaceDay.split("-").map(Number);
     const diff = Math.round((Date.UTC(y2, m2 - 1, d2, 12) - Date.UTC(y1, m1 - 1, d1, 12)) / 86_400_000);
-    if (diff < 0) throw new Error(`sidste løbsdag ${lastRaceDay} ligger FØR første løbsdag ${firstRaceDay}`);
+    if (diff < 0) throw new Error(`last race day ${lastRaceDay} is BEFORE first race day ${firstRaceDay}`);
     chosenDays = diff + 1;
   } else {
-    if (!candidates.length) throw new Error(`ingen søndags-afsluttet sæsonlængde findes for første løbsdag ${firstRaceDay}`);
+    if (!candidates.length) throw new Error(`no Sunday-ending season length exists for first race day ${firstRaceDay}`);
     const best = candidates.slice().sort((a, b) => {
       const da = Math.abs(a.raceDays - referenceRaceDays), db = Math.abs(b.raceDays - referenceRaceDays);
       return da === db ? a.raceDays - b.raceDays : da - db;
@@ -114,8 +114,8 @@ export function resolveSeasonWindow({
   const last = addDays(firstRaceDay, chosenDays - 1);
   if (weekday(last) !== 0) {
     throw new Error(
-      `sidste løbsdag ${last} er ikke en søndag (ugedag ${weekday(last)}) — CALENDAR_RULES.md §2 kræver søndags-slut. ` +
-      `Lovlige længder for ${firstRaceDay}: ${candidates.map((c) => `${c.raceDays} (til ${c.lastRaceDay})`).join(" · ")}`,
+      `last race day ${last} is not a Sunday (weekday ${weekday(last)}) - CALENDAR_RULES.md section 2 requires a Sunday finish. ` +
+      `Legal lengths for ${firstRaceDay}: ${candidates.map((c) => `${c.raceDays} (to ${c.lastRaceDay})`).join(" · ")}`,
     );
   }
   return { firstRaceDay, lastRaceDay: last, raceDays: chosenDays, candidates, derived };

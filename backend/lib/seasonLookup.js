@@ -25,7 +25,7 @@
  * @returns {Promise<{found:boolean, season:object|null, number:number}>}
  */
 export async function findSeasonByNumber({ supabase, number, columns = "id, number, status, start_date" } = {}) {
-  if (!supabase) throw new Error("findSeasonByNumber: supabase kræves");
+  if (!supabase) throw new Error("findSeasonByNumber: supabase is required");
   const seasonNumber = Number(number);
   if (!Number.isFinite(seasonNumber)) return { found: false, season: null, number: seasonNumber };
 
@@ -46,6 +46,6 @@ export async function findSeasonByNumber({ supabase, number, columns = "id, numb
  */
 export async function findNextSeason({ supabase, currentNumber, columns } = {}) {
   const current = Number(currentNumber);
-  if (!Number.isFinite(current)) throw new Error("findNextSeason: currentNumber skal være et tal");
+  if (!Number.isFinite(current)) throw new Error("findNextSeason: currentNumber must be a number");
   return findSeasonByNumber({ supabase, number: current + 1, columns });
 }
