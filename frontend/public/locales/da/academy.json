@@ -11,6 +11,19 @@
   "emptyIntakeTitle": "Ingen kandidater på tilbud",
   "emptyRoster": "Signér en kandidat ovenfor for at begynde at udvikle dine egne ryttere.",
   "emptyRosterTitle": "Dit akademi er tomt",
+  "youthSquads": {
+    "title": "Youth squads",
+    "roadmap": "Roadmap",
+    "comingSoon": "Kommer snart",
+    "junior": {
+      "title": "Junior team",
+      "description": "16-18 år. Egne løb og stillinger."
+    },
+    "u23": {
+      "title": "U23 team",
+      "description": "19-22 år. Egne løb, divisioner og oprykning."
+    }
+  },
   "seriousBadge": "Seriøs kandidat",
   "potential": "Potentiale",
   "ageLabel": "{age} år",

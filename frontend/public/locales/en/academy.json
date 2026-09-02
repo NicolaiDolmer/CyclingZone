@@ -11,6 +11,19 @@
   "emptyIntakeTitle": "No candidates on offer",
   "emptyRoster": "Sign a candidate above to start developing your own riders.",
   "emptyRosterTitle": "Your academy is empty",
+  "youthSquads": {
+    "title": "Youth squads",
+    "roadmap": "Roadmap",
+    "comingSoon": "Coming soon",
+    "junior": {
+      "title": "Junior team",
+      "description": "Ages 16-18. Own races and standings."
+    },
+    "u23": {
+      "title": "U23 team",
+      "description": "Ages 19-22. Own races, divisions and promotion."
+    }
+  },
   "seriousBadge": "Serious prospect",
   "potential": "Potential",
   "ageLabel": "{age} y/o",

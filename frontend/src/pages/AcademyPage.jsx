@@ -22,6 +22,7 @@
 // backend-fejl (#2796: en 500'er viste før "Akademiet kommer snart").
 
 import { useMemo, useState } from "react";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAcademy } from "../lib/useAcademy.js";
 import PotentialeStars from "../components/PotentialeStars.jsx";
@@ -34,7 +35,10 @@ import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
 import { AcademyReleaseConfirmModal } from "../components/AcademyReleaseConfirmModal.jsx";
 import AcademyPnl from "../components/AcademyPnl.jsx";
-import { Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, DataTable } from "../components/ui";
+import {
+  Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, DataTable,
+  Section, SectionHeader, SectionAction,
+} from "../components/ui";
 import { projectSeniorSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { keepsExistingContractOnPromote } from "../lib/academyPromoteContract.js";
 import { formatNumber } from "../lib/intl.js";
@@ -679,6 +683,41 @@ export default function AcademyPage() {
           />
         )}
       </section>
+
+      {/* YOUTH SQUADS-kort (#4618, slice 0 af epic #2492) — "Kommer snart"-rammen
+          for Junior team og U23 team, jf. docs/YOUTH_RULES.md §3 og artboard 3b
+          (docs/design/youth-tiers/HANDOFF.md beslutning 10). Lægges UNDER
+          roster-kortet, ikke over (fold-disciplin, PAGE_TEMPLATES.md). Ingen
+          nye nav-punkter, ingen tomme tabeller, ingen tal — kun en pille
+          (FacilityTrackCard-mønstret) + én sætning pr. trup + ét roadmap-link
+          (P11 "ingenting opdigtet", TASTE.md). Dagens akademi-ryttere forbliver
+          én samlet trup ("Academy roster" ovenfor) indtil slice 1.
+          Beskrivelseslinjen er en fuld sætning, ikke en meta-label, så den
+          IKKE bruger PAGE_TEMPLATES' uppercase-11px-meta-stil (den stil er til
+          korte labels/tal, ikke løbende tekst) — samme valg som
+          FacilityTrackCard's egen "coming soon"-linje (text-xs text-cz-2). */}
+      <Section>
+        <SectionHeader
+          title={t("youthSquads.title")}
+          action={<SectionAction as={Link} to="/roadmap">{t("youthSquads.roadmap")}</SectionAction>}
+        />
+        <div className="divide-y divide-cz-border">
+          {[
+            { key: "junior", title: t("youthSquads.junior.title"), description: t("youthSquads.junior.description") },
+            { key: "u23", title: t("youthSquads.u23.title"), description: t("youthSquads.u23.description") },
+          ].map((row) => (
+            <div key={row.key} className="py-[13px] flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[13.5px] font-medium text-cz-1">{row.title}</p>
+                <p className="text-xs text-cz-2 mt-0.5">{row.description}</p>
+              </div>
+              <span className="shrink-0 text-3xs uppercase tracking-wide rounded-cz px-[7px] py-[2px] text-cz-accent-t bg-cz-accent/10">
+                {t("youthSquads.comingSoon")}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Section>
 
       {/* Akademi-regnskab (#2485) — P&L for udvikl-og-sælg. */}
       <AcademyPnl />
