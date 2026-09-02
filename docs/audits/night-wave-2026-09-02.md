@@ -2,9 +2,9 @@
 
 | Metrik | Værdi |
 |---|---|
-| Start/slut (lokal tid) | 19:50 → (chunk 3 kører; opdateres ved close-out) |
-| Agenter launched / fuldført / døde | 10 workers + 3 fix-up-agenter / 8 fuldført + 3 fix-ups / 0 døde (chunk 3: 2 kører) |
-| PR'er åbnet / merged | 9 åbnet (#4652 #4653 #4654 #4655 #4656 #4657 #4661 #4662 + #4608 rebaset) / 3 merged (#4652 #4653 #4655) |
+| Start/slut (lokal tid) | 19:50 → 23:40 (3 t 50 min) |
+| Agenter launched / fuldført / døde | 10 workers + 4 fix-up/recovery-agenter / 13 fuldført / 1 stoppet (hang på `cd`, sporet reddet af recovery-agent) |
+| PR'er åbnet / merged | 10 åbnet (#4652 #4653 #4654 #4655 #4656 #4657 #4659 #4661 #4662 #4663) + #4608 rebaset / 3 merged (#4652 #4653 #4655) |
 | Issues → claude:done | #4644, #4648, #2816 |
 | gh-401-retries (preflight-probe + bølge) | 0 observeret (OAuth-token-advarsel i preflight, ingen fejl) |
 | Recoveries (type) | 0 (to tunge workers pushede først efter 55-65 min, men leverede; ingen stall) |
@@ -22,7 +22,7 @@
 | Design-kit (#4625) | #4657 | draft, ejer-go | EmptyState/FilterBar/Tabs/DataTable + Dashboard/Indbakke; dev-throws blødgjort til console.error (fix-up 22:20) |
 | Pro-fordele (#4649) | #4662 | draft, ejer-go | Founder-mærke, evnehistorik, gemte filtre, ønskeliste-loft; 2 migrationer (apply efter merge); 3 ejer-spørgsmål i PR |
 | Årsmøde frontend (S-M2c c) | #4661 | draft, ejer-go | /board/meeting per mockup, 4/4 spec-tests, 8 screenshots |
-| Tilmeld-knap + parkering (#4592 #452) | recovery-agent | kører (genstartet 22:30) | workeren hang 40 min på et `cd X &&`-Bash-kald (permission-prompt uden svar); workflow stoppet, frisk Agent fortsætter i SAMME worktree med 1 commit + 3 ucommittede filer |
+| Tilmeld-knap + parkering (#4592 #452) | #4663 | draft, ejer-go | første worker hang 40 min på et `cd X &&`-Bash-kald; workflow stoppet, recovery-agent i SAMME worktree fandt og rettede en fejlplaceret parkerings-kald (kun i else-grenen), leverede API + Dashboard-kort + 2 migrationer (ikke applied) + dry-run-script; kortet kræver ejer-sign-off (fold-reglen) |
 | SEO fase 1 (#4067) | #4659 | draft, ejer-go | 50 filer: how-it-works, PCM-sammenligning, /da/ + hreflang, sitemap/robots, cookie-consent; build + lint grøn; Vercel-opsætning beskrevet i PR |
 | #4608 EUR-checkout | #4608 | rebaset 22:00, MERGEABLE | holdes til nøgleblokken (#4616); patch note renummereres til 7.238 ved merge (7.237 brugt i nat) |
 
