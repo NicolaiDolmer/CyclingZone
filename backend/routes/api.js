@@ -5496,6 +5496,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
       stagesCompleted: ctx.stages_completed,
       teamRiderIds: ctx.teamRiderIds,
       baseRoleByRider: ctx.baseRoleByRider,
+      abandonedRiderIds: ctx.abandonedRiderIds,
     });
     if (!result.ok) {
       const status = result.errors[0] === "stage_roles_race_completed" ? 409 : 400;
