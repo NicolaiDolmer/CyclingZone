@@ -460,7 +460,7 @@
         "descent": 55,
         "cobbles": 32
       },
-      "strengthSpeedGain": 0.25,
+      "strengthSpeedGain": 0.12,
       "speedMultiplierBounds": [
         0.7,
         1.3
