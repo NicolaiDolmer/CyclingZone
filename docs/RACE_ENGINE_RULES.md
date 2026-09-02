@@ -51,15 +51,15 @@ Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 | M2 | Stignings-selektion | F2 ✅ |
 | M3 | Nedkørsel v2 — monotoni-garanti, descent attack, risiko-koblet | F2 ✅ |
 | M4 | Punch-finale — forspring bæres ind i finalen | F2 ✅ |
-| M5 | Udbrud v2 + spiller-ordre, bounded bidrag | F3 |
-| M6 | Sprint-tog, leadout-roller | F3 |
+| M5 | Udbrud v2 + spiller-ordre, bounded bidrag | F3 ✅ wiret 3/9 |
+| M6 | Sprint-tog, leadout-roller | F3 ✅ wiret 3/9 |
 | M7 | Distance-slid: monument-effekt + dag-til-dag | F3 |
 | M8 | Brosten-sektorer | F3 |
 | M9 | Bonussekunder — bounded så bjerg dominerer GC | F3 |
 | M10 | Incidents + 3 km-reglen | F3 |
 | M11 | Vejr-lag pr. etape, seeded | F3 |
 | M12 | Effort pr. rytter (`protect`/`normal`/`save`) | F3 |
-| M14 | AI-holds ordrer gennem samme type | F3 |
+| M14 | AI-holds ordrer gennem samme type | F3 ✅ wiret 3/9 (harness) |
 
 Tre nye stats er ejer-valgt ind (20/8) og fødes skjulte først: dagsform-stabilitet · vejr-teknik · højde-tolerance.
 
@@ -74,6 +74,10 @@ Tre nye stats er ejer-valgt ind (20/8) og fødes skjulte først: dagsform-stabil
 3. **Monotoni.** Inden for samme gruppe kan lavere testet evne aldrig give bedre tid. Støj skalerer magnitude, aldrig fortegn.
 4. **Km-dækning.** `0 ≤ km ≤ distance_km`, monotont ordnet, #2410-taksonomien håndhævet.
 5. **Fog-gate ([#1791](https://github.com/NicolaiDolmer/CyclingZone/issues/1791)).** Ingen rå komponenter, vægte eller sandsynligheder i `events[].params`.
+6. **Låst feltstørrelse ([#4615](https://github.com/NicolaiDolmer/CyclingZone/issues/4615)).** Lige så mange i mål som på startlisten, hver rytter præcis én gang, placeringer = en komplet permutation 1..N. Grupper splittes, smelter sammen og bliver til placerings-tiers hele vejen igennem; hvert skridt kan tabe eller duplikere en rytter, og fejlen ville vise sig som et forskudt anker-tal længe før nogen så årsagen. Feltet er nævneren i felt-sammenhængs-ankeret.
+7. **Felt-sammenhæng ([#4615](https://github.com/NicolaiDolmer/CyclingZone/issues/4615)).** En massefinale afgøres på **placering**, ikke på tid: den ankomne pulje deler vindertiden, og rækkefølgen bæres af `EngineState.finish_order`. Selektive finaler (bjerg, punch, nedkørsel, udbrud, ITT) beholder individuelle tids-tiers — dér er tidsforskellene ægte.
+
+Invariant 6 og 7 er property-testet i `backend/lib/engine/v4/fieldIntegrity.test.ts` over evne-niveauerne 5/11/30/60/99, samme skala-invariant-form som #4604-load-guarden.
 
 Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldrig vendes.
 
@@ -103,7 +107,11 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 | F5 | Kalibrering i S3 → ejer-gate | ikke startet |
 | F6 | Flag-flip i S3 på en hviledag | **ejer-gated** |
 
-**F3-noten (målt 2/9, [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604)).** "I gang" stod i denne tabel fra 21/8 til 2/9 uden at være efterprøvet. Den faktiske tilstand: `index.ts` kalder **kun M2, M3 og M4** (plus M1, der bor i selve segment-loopet). M5-M12 findes som skrevne og testede filer i `mechanics/`, men **ingen af dem kaldes af motoren** — de er kode uden kaldssted, ikke leveret mekanik. Taktik-kortet er ikke bygget; `TeamOrder` er stadig det løse placeholder-udkast i `types.ts`, og kernen læser ingen ordrer. Kontrakten den skal bygges mod blev afgjort 2/9 ([#4246](https://github.com/NicolaiDolmer/CyclingZone/issues/4246)): rollen er standardordren, taktik-kortet vinder for den enkelte etape, og rollen skrives aldrig om af kortet.
+**F3-noten (målt 2/9, [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604), opdateret 3/9 [#4615](https://github.com/NicolaiDolmer/CyclingZone/issues/4615)).** "I gang" stod i denne tabel fra 21/8 til 2/9 uden at være efterprøvet. Tilstanden 2/9 var: `index.ts` kaldte **kun M2, M3 og M4** (plus M1, der bor i selve segment-loopet), og M5-M12 var kode uden kaldssted.
+
+**Wiret 3/9 (#4615):** `SegmentHookContext` bærer nu `StageInput.orders` rå videre, `MechanicHooks` har et `breakaway`-felt, og motoren kalder **M5** (udbrud, hvert segment — efter climb/descent, før finale) og **M6** (leadout, inde fra finale-hooket, på den usorterede kontendentliste før sortering). **M14** producerer ordrer opstrøms og når kernen gennem `StageInput.orders` — derfor har den intet hook. Head-to-head-harnessen kan nu bygge realistiske holdplaner (`--orders=ai`) i stedet for at give alle `free_role` og en tom ordre-liste, som gjorde M6/M14 målbart død kode i scorecardet.
+
+`TeamOrder` er **bevidst stadig den åbne `{team_id, kind, params}`-konvolut**, ikke T3-formen: hver mekanik parser sin egen `kind`. Rolle-vs-ordre-modsigelsen (#4246, modsigelse 1-2 i §7) er ejer-gated og må ikke låses ind i en frossen kontrakt som sidegevinst ved en wiring-PR. Når #4246 er afgjort, kollapser wrapperne til identitet, og afgørelsen skal bæres af `scripts/lib/headToHeadOrders.js`'s rolle-/ordre-tildeling. Taktik-kortet (UI) er stadig ikke bygget.
 
 **v3 er låst fallback indtil F6.** Flippet er ejer-only og sker aldrig som sidegevinst ved en anden opgave.
 
@@ -114,6 +122,8 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 | Regel | Håndhæves af |
 |---|---|
 | Determinisme, gruppe-tid, monotoni, km-dækning | property-tests (`fast-check`) + golden fixtures |
+| Låst feltstørrelse + felt-sammenhæng | `fieldIntegrity.test.ts` (5 evne-niveauer) |
+| Scorecardets feltstørrelse | `headToHeadV4.js`'s låste default (`--field-size=all` er den eksplicitte vej ud) |
 | Fog-gaten | samme testmønster som `raceTimeline.test.js` |
 | Type-kontrakten | `tsc`-typegate i CI (Node 24 type stripping) |
 | Rolle-vokabularet | intet i dag — se modsigelse 3 |
@@ -134,8 +144,11 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 | 7 | `raceRouteRealismScorecard` måler sin egen plan, ikke basen | [#4219](https://github.com/NicolaiDolmer/CyclingZone/issues/4219) |
 | 8 | **Head-to-head-scorecardet er seed-domineret.** Samme kode, samme kalender, fem seeds: sprinter-ankeret svinger ~12 procentpoint til hver side. Etaper med samme etapenummer deler feltsample OG motor-seed, så n=117 flade etaper er reelt ~20 uafhængige træk. Et enkelt-seed-tal kan derfor hverken erklære et anker grønt eller rødt — scorecardet skal aggregere over seeds før det kan gate noget. **Ejer-beslutning 2/9: gaten måles som 5-seed-middel med spænd; fejlrettelser der løfter alle ankre uden regression må merges som fundament (#4606), mens båndkravene forfølges pr. anker** | [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
 | 9 | `positioning` og `tactics` står i `AbilityKey` og vægter i finalens demand-vektorer, men **ingen rytter i spillet har dem** (0 af 5.938 i S3-populationen). Vægten falder tavst på gulvet, så bl.a. massespurt-finalen afgøres på en mindre del af sin egen vektor end tabellen antyder | [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
-| 10 | **Felt-favoritters win-rate (bånd 25-40 %) kan ikke blive grøn med den motor der er wiret i dag.** Målt 2/9 over 5 seeds: 53,7 % før bjerg-ankeret, 83,2 % efter. Båndet forudsætter at udbrud og holdtaktik af og til vinder — M5 (udbrud), M6 (leadout) og M14 (AI-taktik) er skrevet og testet, men kaldes ikke af `index.ts`, så den stærkeste rytter vinder næsten altid. Cellen skal forfølges ved at koble mekanikkerne på, **aldrig ved at straffe styrke** (ejer 4/8). Jo bedre fysiologien virker, jo højere stiger tallet — det er en måler på manglende mekanik, ikke på balance | [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
+| 10 | **Felt-favoritters win-rate (bånd 25-40 %) var 83,2 % 2/9 fordi mekanikkerne ikke var wiret.** Efter #4615's wiring falder den (målt 3/9 over 5 seeds mod en offline proxy-kalender: 57,7 %) men er stadig rød. Cellen forfølges ved at koble mekanikkerne på, **aldrig ved at straffe styrke** (ejer 4/8). Oprindelig note: Målt 2/9 over 5 seeds: 53,7 % før bjerg-ankeret, 83,2 % efter. Båndet forudsætter at udbrud og holdtaktik af og til vinder — M5 (udbrud), M6 (leadout) og M14 (AI-taktik) er skrevet og testet, men kaldes ikke af `index.ts`, så den stærkeste rytter vinder næsten altid. Cellen skal forfølges ved at koble mekanikkerne på, **aldrig ved at straffe styrke** (ejer 4/8). Jo bedre fysiologien virker, jo højere stiger tallet — det er en måler på manglende mekanik, ikke på balance | [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
 | 11 | **Bjerg-top-10-ankeret er kun meningsfuldt ved realistisk feltstørrelse.** Samme kode scorer 211 s ved 180 ryttere og 19 s ved hele populationen (5.938) — målet er sekundbaseret og skalerer med feltet, fordi en stor peloton giver en stor frontgruppe. Kørsel B (180) er gaten, jf. scorecard-metodologien 23/8; kørsel A's tal er ikke et mål for dette anker | [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
+
+| 12 | **Sprinter-vinderraten (≥ 90 %) og felt-sammenhængen (80-95 %) trækker mod hinanden når M5 er wiret.** Et udbrud der overlever en flad etape gør begge ting på én gang: vinderen er ikke en sprinter, og kun udbryderne deler vindertiden. Målt 3/9 over 5 seeds efter wiringen: felt-sammenhængen steg fra ~1 % til 17,7 % (bånd 80-95 %), mens sprinter-ankeret faldt fra ~91 % til 85,0 %. Begge tal er styret af den samme størrelse — hvor ofte et udbrud går hele vejen — og på en flad etape går det i dag hele vejen langt oftere end i virkeligheden. Det er en kalibrering af jagt-modellen, ikke en wiring-mangel, og den er ejer-gated | [#4615](https://github.com/NicolaiDolmer/CyclingZone/issues/4615) |
+| 13 | **To led i jagt-modellen er absolutte konstanter målt mod en evne-relativ skala** (samme fejlfamilie som #4604/#4606): sen-etape-uroen og udbruddets størrelses-bonus. Mod den ægte population (median-evne 11/99) er de evne-afledte led en brøkdel af deres tiltænkte størrelse mens konstanterne står uændret. En naiv relativisering af begge led blev prøvet og **målt 3/9: den forværrede bjerg-ankeret** (207 → 247 s mod bånd 180-240) og blev rullet tilbage. Rettelsen kræver sin egen kalibrering med ejer-go, ikke en sidegevinst | [#4615](https://github.com/NicolaiDolmer/CyclingZone/issues/4615) |
 
 **Bjerg-ankerets måleflade (ejer-beslutning 2/9, [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604)).** Bjerg-top-10-spredningen måles **kun på topankomster** — bjergetaper der slutter på toppen. En bjergetape der slutter på en nedkørsel hører til nedkørsels-ankeret, som netop kræver at de etaper er tættere; da begge ankre tidligere midlede over de samme etaper, kunne de to bånd ikke opfyldes samtidigt.
 
