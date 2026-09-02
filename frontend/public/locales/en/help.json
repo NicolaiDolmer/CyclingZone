@@ -1287,7 +1287,7 @@
     },
     "auctionExpiry": {
       "q": "When does an auction expire?",
-      "a": "When you list your own rider you pick the exact time the auction ends, from 1 to 48 hours ahead. Auctions started by the bank run for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day. Example: an auction started at 19:40 ends the same evening at 20:40. An auction started at 23:30 ends the next morning at 08:30."
+      "a": "When you list your own rider, you pick the exact time the auction ends, from 1 to 48 hours ahead. An auction on a free rider (no team) runs for at least 12 active hours by default — whoever starts it, and whatever made the rider free (self-started, the bank, the academy or the youth market) — so you don't miss a young talent just because you were asleep or at work. The one exception is a Flash Auction, which always lasts exactly 30 minutes. Night hours don't count: the active window is 08:00 to 24:00 every day. Example: an auction started at 19:40 ends the same evening at 20:40. An auction started at 23:30 ends the next morning at 08:30."
     },
     "flashAuction": {
       "q": "What is a Flash Auction?",
