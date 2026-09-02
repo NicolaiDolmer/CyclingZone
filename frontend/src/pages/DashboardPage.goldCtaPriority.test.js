@@ -11,6 +11,9 @@ import { fileURLToPath } from "node:url";
 // kildekode-struktur at DashboardPage.jsx faktisk bruger den delte funktion
 // til at style begge kort (samme mønster som DashboardPage.boardGating.test.js
 // — repoet kører `node --test` uden DOM-renderer).
+//
+// [epic #4592 del 3] SeasonSignupCard tilføjet som 3. forbruger — se
+// dashboardGoldCta.js's egen prioritetskommentar for rangordenen.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "DashboardPage.jsx"), "utf8");
@@ -23,8 +26,8 @@ test("#3509 DashboardPage bruger den delte computeDashboardGoldCta i stedet for 
   );
   assert.match(
     source,
-    /const \{ squadCtaActive, seasonWrapPrimary \} = computeDashboardGoldCta\(\{/,
-    "skal udlede begge flags fra computeDashboardGoldCta",
+    /const \{ squadCtaActive, seasonSignupPrimary, seasonWrapPrimary \} = computeDashboardGoldCta\(\{/,
+    "skal udlede alle tre flags fra computeDashboardGoldCta",
   );
 });
 
@@ -41,5 +44,13 @@ test("#3509 SeasonWrapNudgeCard modtager en primary-prop fra prioritetskæden", 
     source,
     /<SeasonWrapNudgeCard[\s\S]{0,600}?primary=\{seasonWrapPrimary\}/,
     "SeasonWrapNudgeCard skal modtage primary={seasonWrapPrimary} — den må ikke altid rendere gold",
+  );
+});
+
+test("[epic #4592] SeasonSignupCard modtager en primary-prop fra prioritetskæden", () => {
+  assert.match(
+    source,
+    /<SeasonSignupCard[\s\S]{0,400}?primary=\{seasonSignupPrimary\}/,
+    "SeasonSignupCard skal modtage primary={seasonSignupPrimary} — den må ikke altid rendere gold",
   );
 });

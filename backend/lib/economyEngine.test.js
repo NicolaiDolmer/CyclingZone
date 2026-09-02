@@ -5728,6 +5728,68 @@ test("processSeasonEnd fail-safe: manglende/fejlende flag-opslag = motorens norm
   assert.equal(supabase.state.season.status, "completed");
 });
 
+// ─── [epic #4592 del 2] Parkerings-wiring ──────────────────────────────────
+//
+// processSeasonEnd skal kalde parkDormantTeams KUN når season_signup_enabled
+// er 'on', og en fejlende parkerings-sweep må ALDRIG vælte resten af
+// sæsonskiftet (samme fail-isolerende mønster som notifikations-loopet).
+
+test("[epic #4592] processSeasonEnd kalder INGEN parkering når season_signup_enabled er off (default/fail-safe)", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  let parkCalled = false;
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true, // undgå at røre league_divisions-mocken her
+    isSeasonSignupEnabled: async () => false,
+    parkDormantTeams: async () => { parkCalled = true; return { candidates: 0, parked: 0, skipped: 0, parkedTeamIds: [] }; },
+  });
+
+  assert.equal(parkCalled, false, "parkDormantTeams må ikke kaldes når flaget er off");
+  assert.equal(supabase.state.season.status, "completed");
+});
+
+test("[epic #4592] processSeasonEnd kalder parkDormantTeams når season_signup_enabled er on, og fortsætter uændret", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  let parkArgs = null;
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    isSeasonSignupEnabled: async () => true,
+    parkDormantTeams: async (args) => { parkArgs = args; return { candidates: 3, parked: 2, skipped: 1, parkedTeamIds: ["t1", "t2"] }; },
+  });
+
+  assert.ok(parkArgs, "parkDormantTeams skal kaldes når flaget er on");
+  assert.equal(parkArgs.supabase, supabase);
+  assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre normalt efter parkeringen");
+});
+
+test("[epic #4592] processSeasonEnd: en fejlende parkerings-sweep vælter IKKE resten af sæsonskiftet", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    isSeasonSignupEnabled: async () => true,
+    parkDormantTeams: async () => { throw new Error("boom"); },
+  });
+
+  assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre selv om parkeringen fejler");
+});
+
 // ─── #2912/#2919/#2920 · Gælds-/pengemotor-cluster ────────────────────────────
 //
 // Fælles mock: ét D3-hold (loft 600k), dækning af de tabeller

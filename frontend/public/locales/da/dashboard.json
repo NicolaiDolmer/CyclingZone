@@ -68,6 +68,15 @@
       "heldMid": "Sæson {nextNumber} starter nu. Gå efter en top-2-placering og oprykning."
     }
   },
+  "seasonSignup": {
+    "titleParked": "Dit hold blev parkeret",
+    "titleDormant": "Behold din plads til sæson {number}",
+    "bodyParked": "Manglende login flyttede dit hold ud af ligaen. Tilmeld dig for at vende tilbage til sæson {number}.",
+    "bodyDormant": "Du har været væk et stykke tid. Tilmeld dig nu for at sikre din plads til sæson {number}.",
+    "cta": "Tilmeld dig næste sæson",
+    "confirmed": "Du er tilmeldt sæson {number}",
+    "error": "Kunne ikke tilmelde. Prøv igen."
+  },
   "squadWarning": {
     "over": "Hold er for stort. Max {limit} i Division {division}. Sælg {count, plural, one {1 rytter} other {# ryttere}}.",
     "under": "Hold er for lille. Min {limit} i Division {division}. Køb {count, plural, one {1 rytter} other {# ryttere}} mere.",

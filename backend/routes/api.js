@@ -203,6 +203,8 @@ import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
+import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
+import { isDormantManager } from "../lib/managerActivity.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, demoteSalary } from "../lib/academyTransfer.js";
@@ -12149,6 +12151,79 @@ router.post("/dashboard/my-latest-result/seen", requireAuth, presencePulseLimite
   } catch (e) {
     captureException(e);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Season Signup Routes (#4592 del 3 / #452) ─────────────────────────────────
+//
+// "Tilmeld dig næste sæson"-knap. Bag app_config-flaget season_signup_enabled
+// (fælles med parkerings-forberedelsen, del 2 — seasonSignupFlag.js). Skriver
+// KUN teams.next_season_signup_at — cutoveren (managerParking.selectTeamsToPark)
+// respekterer feltet: en manager der har tilmeldt sig eksplicit parkeres
+// ALDRIG, uanset inaktivitet. Denne PR flipper IKKE flaget.
+
+// GET /api/season/signup-status — status til Dashboard-kortet. `eligible`
+// afspejler SAMME inaktivitets-definition som parkerings-sweepen
+// (isDormantManager, managerActivity.js — 30 dage uden login) OR allerede
+// parkeret, så kortet kun vises for de managere sweepen faktisk ville ramme.
+router.get("/season/signup-status", requireAuth, presencePulseLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isSeasonSignupEnabled(supabase, { isBetaTester });
+    // En fejlet/manglende users-række gør userRow null/undefined, og
+    // isDormantManager behandler det som inaktiv (samme fallback-retning som
+    // resten af #4592 — "manglende bruger tæller som inaktiv", se
+    // managerActivity.js) — det er den sikre retning for et gate der styrer
+    // synligheden af en RENT DEFENSIV knap, ikke en penge-/data-mutation.
+    const { data: userRow } = await supabase
+      .from("users").select("last_seen").eq("id", req.user.id).maybeSingle(); // best-effort: se kommentar ovenfor
+    const parked = req.team.parked_at != null;
+    const dormant = isDormantManager(userRow, new Date());
+    const nextSeasonNumber = (await getActiveSeasonNumber()) + 1;
+    res.json({
+      enabled,
+      eligible: enabled && (parked || dormant),
+      parked,
+      signed_up: req.team.next_season_signup_at != null,
+      next_season_number: nextSeasonNumber,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/season/signup — bekræft tilmelding. Idempotent (gentagne kald
+// opdaterer blot timestampet). Ingen eligibility-gate her med vilje: at
+// tilmelde sig tidligt/uopfordret kan aldrig skade — feltet er udelukkende
+// beskyttende (forhindrer fremtidig parkering).
+router.post("/season/signup", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isSeasonSignupEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "season_signup_flag_disabled" });
+
+    const now = new Date();
+    const { data, error } = await supabase
+      .from("teams")
+      .update({ next_season_signup_at: now.toISOString() })
+      .eq("id", req.team.id)
+      .select("next_season_signup_at")
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+
+    const nextSeasonNumber = (await getActiveSeasonNumber()) + 1;
+    res.json({
+      ok: true,
+      signed_up: true,
+      next_season_signup_at: data?.next_season_signup_at ?? now.toISOString(),
+      next_season_number: nextSeasonNumber,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
   }
 });
 

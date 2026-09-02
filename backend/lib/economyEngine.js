@@ -65,6 +65,8 @@ import {
 } from "./economyConstants.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
+import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
+import { parkDormantTeams } from "./managerParking.js";
 import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
 import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -1422,6 +1424,32 @@ export async function processSeasonEnd(seasonId, deps = {}) {
       for (const ld of poolTree.byId.values()) {
         await reconcileAiTeamsForPool({ supabase: supabaseClient, poolId: ld.id });
       }
+    }
+  }
+
+  // [epic #4592 del 2] Parkerings-forberedelse — KUN når season_signup_enabled
+  // er 'on' (fælles flag med tilmeld-knappen, del 3). Kører UDENFOR if/else'en
+  // ovenfor, BEVIDST uafhængig af #2851-skip-flaget (den er en engangs-undtagelse
+  // for S1→S2-pyramide-kompriмering og har intet med parkering af inaktive hold
+  // at gøre) — parkFn bruger heller intet fra poolTree. Placeres alligevel EFTER
+  // hele op/nedryknings-blokken (når den kører), så vores league_division_id=null
+  // altid er sidste ord for et parkeret holds plads (processDivisionEnd kan
+  // ellers overskrive den igen hvis holdet også rangerer til op/nedrykning).
+  // Fail-safe: manglende flag/fejl → false → ingen parkering (motorens uændrede
+  // adfærd).
+  const isSignupEnabledFn = deps.isSeasonSignupEnabled ?? isSeasonSignupEnabled;
+  const signupEnabled = await isSignupEnabledFn(supabaseClient);
+  if (signupEnabled) {
+    try {
+      const parkFn = deps.parkDormantTeams ?? parkDormantTeams;
+      // Ingen teams/users her: parkFn henter selv (menneskehold-diskriminator
+      // + last_seen), samme pagineret mønster som dormantTeamsReport.js.
+      const parkResult = await parkFn({ supabase: supabaseClient, now: notificationNow });
+      console.log(`  🅿️  Parkering (#4592 del 2): ${parkResult.parked}/${parkResult.candidates} inaktive hold parkeret (${parkResult.skipped} sprunget over).`);
+    } catch (parkErr) {
+      // Parkering må ALDRIG vælte resten af sæsonskiftet — logges + Sentry, cutoveren fortsætter.
+      console.error("  ❌ Parkerings-sweep fejlede (#4592 del 2):", parkErr?.message || parkErr);
+      captureException(parkErr, { tags: { flow: "season_end", stage: "manager_parking" }, extra: { seasonId } });
     }
   }
 
