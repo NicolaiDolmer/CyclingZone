@@ -44,6 +44,8 @@ async function main() {
   // Samme "menneskehold"-diskriminator som dormantTeamsReport.js. Bevidst
   // UDEN is_frozen-eksklusion i selve query'en — selectTeamsToPark filtrerer
   // frosne hold fra selv, så vi kan vise dem i totalen ("X frosne, ikke rørt").
+  // schema-columns-ok: parked_at/next_season_signup_at kommer fra #4592-
+  // migrationerne (applies post-merge, #2642) — manuelt script, fejler højt.
   const teams = await fetchAllRows(() =>
     supabase
       .from('teams')

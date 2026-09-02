@@ -12163,8 +12163,13 @@ router.get("/season/signup-status", requireAuth, presencePulseLimiter, async (re
   try {
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isSeasonSignupEnabled(supabase, { isBetaTester });
+    // En fejlet/manglende users-række gør userRow null/undefined, og
+    // isDormantManager behandler det som inaktiv (samme fallback-retning som
+    // resten af #4592 — "manglende bruger tæller som inaktiv", se
+    // managerActivity.js) — det er den sikre retning for et gate der styrer
+    // synligheden af en RENT DEFENSIV knap, ikke en penge-/data-mutation.
     const { data: userRow } = await supabase
-      .from("users").select("last_seen").eq("id", req.user.id).maybeSingle();
+      .from("users").select("last_seen").eq("id", req.user.id).maybeSingle(); // best-effort: se kommentar ovenfor
     const parked = req.team.parked_at != null;
     const dormant = isDormantManager(userRow, new Date());
     const nextSeasonNumber = (await getActiveSeasonNumber()) + 1;

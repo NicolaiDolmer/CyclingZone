@@ -17,6 +17,7 @@
 
 import { isDormantManager } from "./managerActivity.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { captureException } from "./sentry.js";
 
 /**
  * @param {{ id:string, is_ai?:boolean, is_bank?:boolean, is_test_account?:boolean,
@@ -107,6 +108,12 @@ export async function parkDormantTeams({ supabase, teams, users, now = new Date(
   const resolvedTeams = teams ?? await fetchAllRows(() => (
     supabase
       .from("teams")
+      // schema-columns-ok: parked_at/next_season_signup_at tilføjes af
+      // database/2026-09-03-4592-team-parked-at.sql og 2026-09-03-4592-next-
+      // season-signup.sql (applies post-merge under #2642); nullable, ingen
+      // graceful-fallback nødvendig (kolonnerne findes altid efter merge, og
+      // denne funktion kaldes KUN når season_signup_enabled='on', som
+      // forudsætter migrationerne allerede er anvendt).
       .select("id, name, division, league_division_id, user_id, is_ai, is_bank, is_test_account, is_frozen, parked_at, next_season_signup_at")
       .eq("is_ai", false)
       .eq("is_bank", false)
@@ -127,7 +134,12 @@ export async function parkDormantTeams({ supabase, teams, users, now = new Date(
       else skipped += 1;
     } catch (err) {
       skipped += 1;
+      // Ét holds fejlede parkering må ikke stoppe resten af sweepen (samme
+      // fail-isolerende mønster som notifikations-loopene i economyEngine.js)
+      // — men skal stadig være OBSERVERBAR, ellers opdager ingen at et hold
+      // aldrig blev parkeret. console.error alene drukner i Railway-logs.
       console.error(`  ❌ managerParking: kunne ikke parkere hold ${team.id}:`, err?.message || err);
+      captureException(err, { tags: { flow: "manager_parking", stage: "park_team" }, extra: { teamId: team.id } });
     }
   }
   return { candidates: candidates.length, parked: parkedTeamIds.length, skipped, parkedTeamIds };
