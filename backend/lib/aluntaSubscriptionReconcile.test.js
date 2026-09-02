@@ -6,6 +6,7 @@ import {
   computeReconcileActions,
   fetchAllAluntaSubscriptions,
   runAluntaSubscriptionReconcile,
+  runAluntaSubscriptionReconcileForTeam,
   sameInstant,
   toInstantMs,
 } from "./aluntaSubscriptionReconcile.js";
@@ -509,4 +510,137 @@ test("computeReconcileActions: allerede synkroniseret række (Postgres-tidsforma
   const { updates, unchanged } = computeReconcileActions({ localRows, remoteEntries, now: Date.parse("2026-09-02T14:10:00Z") });
   assert.deepEqual(unchanged, ["t1"]);
   assert.equal(updates.length, 0);
+});
+
+// ── #4648: runAluntaSubscriptionReconcileForTeam (scopet reconcile) ─────────
+
+function makeFakeTeamSupabase(initialRows) {
+  const rows = initialRows.map((r) => ({ ...r }));
+  const upsertCalls = [];
+  return {
+    _rows: () => rows.map((r) => ({ ...r })),
+    _upsertCalls: () => upsertCalls,
+    from(table) {
+      assert.equal(table, "subscriptions");
+      return {
+        select() {
+          return {
+            eq(col, val) {
+              assert.equal(col, "team_id");
+              return {
+                maybeSingle: async () => ({ data: rows.find((r) => r.team_id === val) ?? null, error: null }),
+              };
+            },
+          };
+        },
+        upsert(row) {
+          upsertCalls.push({ ...row });
+          const idx = rows.findIndex((r) => r.team_id === row.team_id);
+          if (idx === -1) rows.push({ ...row });
+          else rows[idx] = { ...rows[idx], ...row };
+          return Promise.resolve({ error: null });
+        },
+      };
+    },
+  };
+}
+
+test("runAluntaSubscriptionReconcileForTeam: opdaterer KUN det ene hold, selv med flere hold i Aluntas svar", async () => {
+  const supabase = makeFakeTeamSupabase([
+    { team_id: "team-a", status: "active", plan_interval: null, current_period_end: null, alunta_customer_id: null, alunta_subscription_id: null },
+    { team_id: "team-b", status: "active", plan_interval: "monthly", current_period_end: "2020-01-01T00:00:00Z", alunta_customer_id: "cus-b-old", alunta_subscription_id: "sub-b-old" },
+  ]);
+  const client = {
+    listSubscriptions: async () => ({
+      data: [
+        { external_customer_id: "team-a", customer_uuid: "cus-a", uuid: "sub-a", status: "active", plan_interval: "monthly", current_period_end: "2026-10-01T00:00:00Z" },
+        { external_customer_id: "team-b", customer_uuid: "cus-b-new", uuid: "sub-b-new", status: "active", plan_interval: "monthly", current_period_end: "2026-10-01T00:00:00Z" },
+      ],
+    }),
+  };
+
+  const result = await runAluntaSubscriptionReconcileForTeam({ supabase, client, teamId: "team-a" });
+  assert.equal(result.ran, true);
+  assert.equal(result.applied, true);
+  assert.equal(supabase._upsertCalls().length, 1); // KUN team-a — team-b's reelle drift røres ikke
+  const rows = supabase._rows();
+  assert.equal(rows.find((r) => r.team_id === "team-a").current_period_end, "2026-10-01T00:00:00Z");
+  assert.equal(rows.find((r) => r.team_id === "team-b").alunta_customer_id, "cus-b-old"); // uændret
+});
+
+test("runAluntaSubscriptionReconcileForTeam: ingen lokal række -> ran=false, ingen fejl", async () => {
+  const supabase = makeFakeTeamSupabase([]);
+  const client = { listSubscriptions: async () => ({ data: [] }) };
+  const result = await runAluntaSubscriptionReconcileForTeam({ supabase, client, teamId: "ghost-team" });
+  assert.equal(result.ran, false);
+  assert.equal(result.reason, "no_local_row");
+  assert.equal(supabase._upsertCalls().length, 0);
+});
+
+test("runAluntaSubscriptionReconcileForTeam: ingen match i Aluntas svar -> applied=false, ingen upsert", async () => {
+  const supabase = makeFakeTeamSupabase([
+    { team_id: "team-a", status: "active", plan_interval: "monthly", current_period_end: "2026-10-01T00:00:00Z", alunta_customer_id: "cus-a", alunta_subscription_id: "sub-a" },
+  ]);
+  const client = { listSubscriptions: async () => ({ data: [] }) };
+  const result = await runAluntaSubscriptionReconcileForTeam({ supabase, client, teamId: "team-a" });
+  assert.equal(result.ran, true);
+  assert.equal(result.applied, false);
+  assert.equal(supabase._upsertCalls().length, 0);
+});
+
+test("runAluntaSubscriptionReconcileForTeam: uændret værdi -> ingen upsert (idempotent)", async () => {
+  const supabase = makeFakeTeamSupabase([
+    { team_id: "team-a", status: "active", plan_interval: "monthly", current_period_end: "2026-10-01T00:00:00Z", alunta_customer_id: "cus-a", alunta_subscription_id: "sub-a" },
+  ]);
+  const client = {
+    listSubscriptions: async () => ({
+      data: [{ external_customer_id: "team-a", customer_uuid: "cus-a", uuid: "sub-a", status: "active", plan_interval: "monthly", current_period_end: "2026-10-01T00:00:00Z" }],
+    }),
+  };
+  const result = await runAluntaSubscriptionReconcileForTeam({ supabase, client, teamId: "team-a" });
+  assert.equal(result.applied, false);
+  assert.equal(supabase._upsertCalls().length, 0);
+});
+
+test("runAluntaSubscriptionReconcileForTeam: Alunta-fejl kastes højt og alarmerer med eget fingerprint", async () => {
+  const supabase = makeFakeTeamSupabase([
+    { team_id: "team-a", status: "active", plan_interval: "monthly", current_period_end: "2026-10-01T00:00:00Z", alunta_customer_id: "cus-a", alunta_subscription_id: "sub-a" },
+  ]);
+  const client = { listSubscriptions: async () => { throw new Error("network error"); } };
+  const captured = [];
+  await assert.rejects(
+    () => runAluntaSubscriptionReconcileForTeam({ supabase, client, teamId: "team-a", captureExceptionFn: (err, ctx) => captured.push({ err, ctx }) }),
+    /Alunta GET \/subscriptions fejlede/,
+  );
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0].ctx.fingerprint?.[0], "alunta-reconcile-team-fetch-failed");
+});
+
+test("runAluntaSubscriptionReconcileForTeam: upsert-fejl fanges, kastes IKKE videre", async () => {
+  const supabase = {
+    from(table) {
+      assert.equal(table, "subscriptions");
+      return {
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({
+              data: { team_id: "team-a", status: "active", plan_interval: "monthly", current_period_end: "2020-01-01T00:00:00Z", alunta_customer_id: "cus-a", alunta_subscription_id: "sub-a" },
+              error: null,
+            }),
+          }),
+        }),
+        upsert: async () => ({ error: { message: "simuleret upsert-fejl" } }),
+      };
+    },
+  };
+  const client = {
+    listSubscriptions: async () => ({
+      data: [{ external_customer_id: "team-a", customer_uuid: "cus-a", uuid: "sub-a", status: "active", plan_interval: "monthly", current_period_end: "2026-10-01T00:00:00Z" }],
+    }),
+  };
+  const captured = [];
+  const result = await runAluntaSubscriptionReconcileForTeam({ supabase, client, teamId: "team-a", captureExceptionFn: (err, ctx) => captured.push({ err, ctx }) });
+  assert.equal(result.applied, false);
+  assert.equal(result.error, "simuleret upsert-fejl");
+  assert.equal(captured[0].ctx.fingerprint?.[0], "alunta-reconcile-team-upsert-failed");
 });

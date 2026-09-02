@@ -349,6 +349,20 @@ Køres fra `backend/`. Sammenligner Aluntas faktiske planer mod den forventede o
 
 Erstatter den tidligere adfærd, hvor scriptet stiltiende sprang eksisterende planer over på navn og dermed lod en forkert pris overleve enhver gen-kørsel.
 
+Kataloget (`PLANS`/`RETIRED`/`INTERVAL_MONTHS`) er udtrukket til `backend/scripts/lib/aluntaPlanCatalog.js` (#4645) — uændrede tal, men flyttet så de kan læses uden at trigge dette scripts top-level Alunta-kald.
+
+### Pris-forward-guard (#4645)
+
+`alunta-setup-plans.js` sammenligner kun Alunta mod SIN EGEN konstant — ikke mod det spilleren rent faktisk ser på `/pro`. Det gav 2/9 en reel fejlpris: `pro.json` viste 265 kr., Alunta trak 295 kr. (regnefejl i en issue-kommentar, "6 × 49 = 294" blev læst som 295; se `.claude/learnings/2026-09-02-halvaarspris-fejlregning-kunde-betalte-30-kr-for-meget.md`).
+
+```bash
+node scripts/check-pro-prices.mjs
+```
+
+Ingen netværk — læser `aluntaPlanCatalog.js` + `frontend/public/locales/{en,da}/pro.json` og fejler (exit 1) hvis `round(price_excl_minor * 1.25) / 100` ikke matcher BÅDE planens egen `inclVat`-deklaration OG det viste tal i begge sprog. Beregner også rabatpåstanden (6 mdr. mod 6× månedlig) i stedet for at den håndskrives i docs. Regnestykket er unit-testet mod fixture-data (`node --test scripts/check-pro-prices.test.mjs`) — ikke mod de ægte repo-filer, så testen forbliver grøn uanset aktuel drift; kør selve scriptet for at se den ægte tilstand.
+
+**Kendt åben drift pr. 2026-09-02:** scriptet rapporterer i dag at `CZ Pro 6 Months` (23600 øre i `aluntaPlanCatalog.js`) beregner til 295 kr., mens `pro.json` viser 265 kr. Alunta-planen er allerede reprised live til 21200 øre (#4645, verificeret via `get_plan_catalog`), men den lokale scriptkonstant og EUR-planerne (`CZ Pro 1 month EUR` 519 cent, `CZ Pro 6 Months EUR` 2799 cent, allerede oprettet i Alunta men `available_in_checkout: false`) venter på PR #4608/#4616 (ejer-kørt, Railway-env + checkout-flag). Se `docs/NOW.md`/#4616 for status.
+
 ## 10. Relateret
 
 - `docs/legal/TERMS_DRAFT_2026-07-30.md` — handelsbetingelser + åbne verifikationer før go-live

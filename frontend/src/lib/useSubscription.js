@@ -12,7 +12,7 @@ export function useSubscription(teamId) {
     (async () => {
       const { data } = await supabase
         .from("subscriptions")
-        .select("status, current_period_end, is_founder")
+        .select("status, current_period_end, is_founder, last_event_at")
         .eq("team_id", teamId)
         .maybeSingle();
       if (alive) { setSub(data ?? null); setLoading(false); }

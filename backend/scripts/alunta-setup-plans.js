@@ -20,6 +20,7 @@
 import dotenv from "dotenv";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PLANS, RETIRED, INTERVAL_MONTHS } from "./lib/aluntaPlanCatalog.js";
 
 dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), "../.env"), quiet: true });
 
@@ -32,29 +33,9 @@ if (!TOKEN) {
 
 const APPLY = process.argv.includes("--create-missing");
 
-// amount = øre EKSKL. moms. inclVat er kun til menneskelig kontrol i outputtet.
-const PLANS = [
-  {
-    name: "CZ Pro 1 month",
-    amount: 3920,
-    inclVat: "49,00",
-    currency: "DKK",
-    interval: "monthly",
-    description: "Cycling Zone Pro, billed monthly.",
-  },
-  {
-    name: "CZ Pro 6 Months",
-    amount: 23600,
-    inclVat: "295,00",
-    currency: "DKK",
-    interval: "half-yearly",
-    description: "Cycling Zone Pro, billed every 6 months.",
-  },
-];
-
-// Planer der bevidst er udfaset. Rapporteres hvis de stadig er aktive, så en
-// glemt arkivering ikke bliver til en plan der stadig kan sælges.
-const RETIRED = ["CZ Pro Monthly"];
+// #4645: PLANS/RETIRED/INTERVAL_MONTHS flyttet til lib/aluntaPlanCatalog.js —
+// samme data, uændret — så scripts/check-pro-prices.mjs kan læse dem uden at
+// trigge denne fils top-level Alunta-kald (se den fils filhoved).
 
 async function api(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
@@ -77,8 +58,6 @@ function storedAmount(plan, intervalMonths) {
   const hit = intervals.find((p) => Number(p.interval) === intervalMonths) ?? intervals[0];
   return hit ? Number(hit.price) : null;
 }
-
-const INTERVAL_MONTHS = { monthly: 1, quarterly: 3, "half-yearly": 6, yearly: 12 };
 
 // /me svarer FLADT — ingen data-envelope, i modsætning til /plans og
 // /checkout-sessions. Verificeret mod live-API 2026-08-31:
