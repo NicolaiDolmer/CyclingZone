@@ -16,6 +16,7 @@
 // league_division_id=null — aldrig andet.
 
 import { isDormantManager } from "./managerActivity.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 
 /**
  * @param {{ id:string, is_ai?:boolean, is_bank?:boolean, is_test_account?:boolean,
@@ -92,13 +93,31 @@ export async function parkTeam({ supabase, teamId, now = new Date() }) {
  * når season_signup_enabled='on' (economyEngine.js) — denne funktion har
  * INGEN egen flag-kontrol, den antager kalderen allerede har tjekket.
  *
- * @param {{ supabase: object, teams: object[], users: object[], now?: Date,
+ * `teams`/`users` er OPTIONALE — udelades de, henter funktionen dem selv
+ * (samme pagineret mønster + menneskehold-diskriminator som
+ * dormantTeamsReport.js), så cutover-wiringen i economyEngine.js kan kalde
+ * denne funktion uden selv at duplikere fetch-logikken.
+ *
+ * @param {{ supabase: object, teams?: object[], users?: object[], now?: Date,
  *           days?: number }} args
  * @returns {Promise<{ candidates: number, parked: number, skipped: number,
  *           parkedTeamIds: string[] }>}
  */
 export async function parkDormantTeams({ supabase, teams, users, now = new Date(), days = 30 }) {
-  const candidates = selectTeamsToPark({ teams, users, now, days });
+  const resolvedTeams = teams ?? await fetchAllRows(() => (
+    supabase
+      .from("teams")
+      .select("id, name, division, league_division_id, user_id, is_ai, is_bank, is_test_account, is_frozen, parked_at, next_season_signup_at")
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_test_account", false)
+      .order("id")
+  ));
+  const resolvedUsers = users ?? await fetchAllRowsChunkedIn(
+    [...new Set((resolvedTeams || []).map((t) => t.user_id).filter(Boolean))],
+    (chunk) => supabase.from("users").select("id, last_seen").in("id", chunk).order("id"),
+  );
+  const candidates = selectTeamsToPark({ teams: resolvedTeams, users: resolvedUsers, now, days });
   const parkedTeamIds = [];
   let skipped = 0;
   for (const team of candidates) {
