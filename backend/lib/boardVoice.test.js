@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
 import { BOARD_ARCHETYPES, BOARD_ARCHETYPE_KEYS, MANDATE_VOICE_BUCKETS } from "./boardArchetypes.js";
+import { generateBoardMemberNames } from "./boardMandateNames.js";
 
 // #3514 S-M2a · boardVoice-kontrakten. Se modul-header i boardVoice.js for
 // den fulde kontrakt-tekst (sampleVoiceLine, TOM BUCKET = KAST, generisk
@@ -70,6 +71,130 @@ test("forskellige teams faar potentielt forskellige navne for samme arketype (ik
   // afledt af den samme (archetypeKey, dnaKey)-nøgle alene, teamId skal indgå.
   assert.notEqual(JSON.stringify(a.member), "");
   assert.notEqual(JSON.stringify(b.member), "");
+});
+
+// ── context.members: kollisions-salt matcher hele bestyrelsen (#4586) ──────
+//
+// Bug #4586: sampleVoiceLine navngav ét medlem ad gangen, mens boardRoom.js's
+// medlemskort (namesByArchetype) navngiver HELE bestyrelsen samlet via
+// generateBoardMemberNames. Kolliderer to medlemmers basisnavne inden for
+// samme hold, lægger generateBoardMemberNames et "salt" på det andet medlem,
+// men salten afhænger af de FOREGÅENDE medlemmer i listen — et enkelt-
+// medlems-kald har derfor ALTID salt 0, uanset kollision. Samme person kunne
+// dermed hedde to forskellige ting i citatet og på kortet.
+
+test("med context.members: samme navn som generateBoardMemberNames over den FULDE liste, for 3 teams x 5 arketyper", () => {
+  const teamIds = ["team-alpha", "team-beta", "team-gamma"];
+  const archetypes = BOARD_ARCHETYPE_KEYS.slice(0, 5);
+
+  for (const teamId of teamIds) {
+    const expected = generateBoardMemberNames({ teamId, members: archetypes, dnaKey: null });
+    const expectedByArchetype = new Map(expected.map((m) => [m.archetype_key, m]));
+
+    for (const archetypeKey of archetypes) {
+      const line = sampleVoiceLine({
+        beat: "receipt_positive",
+        archetypeKey,
+        seed: `${teamId}:${archetypeKey}`,
+        context: { teamId, dnaKey: null, members: archetypes },
+      });
+      const expectedMember = expectedByArchetype.get(archetypeKey);
+      assert.equal(line.member.navn, expectedMember.full_name);
+      assert.equal(line.member.initialer, expectedMember.initials);
+    }
+  }
+});
+
+// Brute-forcet kollisions-bevis (fundet med et engangs-scriptet søgning over
+// team-0..team-19999 x de 5 rigtige DNA-nøgler + null): ved (teamId: "team-1",
+// dnaKey: "skandinavisk_udvikling") kolliderer "pragmatikeren"s basisnavn med
+// et af de forudgående 4 medlemmers, så generateBoardMemberNames giver
+// "pragmatikeren" salt > 0 i den samlede liste. Enkelt-medlems-formen (salt
+// altid 0) giver derfor et ANDET navn end den samlede liste for netop dette
+// medlem — det er selve reproduktionen af #4586.
+const COLLISION_TEAM_ID = "team-1";
+const COLLISION_DNA_KEY = "skandinavisk_udvikling";
+const COLLISION_ARCHETYPE = "pragmatikeren";
+const COLLISION_BOARD = BOARD_ARCHETYPE_KEYS.slice(0, 5); // sponsoraten..pragmatikeren
+
+test("bevis: den brute-forcede (teamId, dnaKey) giver reelt salt > 0 for pragmatikeren (kollisionen er ægte)", () => {
+  const listNamed = generateBoardMemberNames({
+    teamId: COLLISION_TEAM_ID,
+    members: COLLISION_BOARD,
+    dnaKey: COLLISION_DNA_KEY,
+  });
+  const [singleNamed] = generateBoardMemberNames({
+    teamId: COLLISION_TEAM_ID,
+    members: [COLLISION_ARCHETYPE],
+    dnaKey: COLLISION_DNA_KEY,
+  });
+  const listMember = listNamed.find((m) => m.archetype_key === COLLISION_ARCHETYPE);
+  // Selve beviset: uden salt (enkelt-kald) hedder medlemmet noget ANDET end
+  // med salt (samlet liste) — kollisionen findes rent faktisk i denne fixture.
+  assert.notEqual(listMember.full_name, singleNamed.full_name);
+});
+
+test("med context.members (hele bestyrelsen): sampleVoiceLine matcher den SALTEDE liste-navngivning", () => {
+  const listNamed = generateBoardMemberNames({
+    teamId: COLLISION_TEAM_ID,
+    members: COLLISION_BOARD,
+    dnaKey: COLLISION_DNA_KEY,
+  });
+  const expected = listNamed.find((m) => m.archetype_key === COLLISION_ARCHETYPE);
+
+  const line = sampleVoiceLine({
+    beat: "receipt_positive",
+    archetypeKey: COLLISION_ARCHETYPE,
+    seed: "evt-collision",
+    context: { teamId: COLLISION_TEAM_ID, dnaKey: COLLISION_DNA_KEY, members: COLLISION_BOARD },
+  });
+
+  assert.equal(line.member.navn, expected.full_name);
+  assert.equal(line.member.initialer, expected.initials);
+});
+
+test("UDEN context.members: sampleVoiceLine matcher stadig kun enkelt-medlems-formen (uændret gammel adfærd, salt altid 0)", () => {
+  const [singleNamed] = generateBoardMemberNames({
+    teamId: COLLISION_TEAM_ID,
+    members: [COLLISION_ARCHETYPE],
+    dnaKey: COLLISION_DNA_KEY,
+  });
+
+  const line = sampleVoiceLine({
+    beat: "receipt_positive",
+    archetypeKey: COLLISION_ARCHETYPE,
+    seed: "evt-collision",
+    context: { teamId: COLLISION_TEAM_ID, dnaKey: COLLISION_DNA_KEY }, // ingen members
+  });
+
+  assert.equal(line.member.navn, singleNamed.full_name);
+  // Og dermed IKKE den saltede liste-navngivning — dokumenterer at
+  // fraværet af context.members bevidst giver et andet (det gamle) navn.
+  const listNamed = generateBoardMemberNames({
+    teamId: COLLISION_TEAM_ID,
+    members: COLLISION_BOARD,
+    dnaKey: COLLISION_DNA_KEY,
+  });
+  const listExpected = listNamed.find((m) => m.archetype_key === COLLISION_ARCHETYPE);
+  assert.notEqual(line.member.navn, listExpected.full_name);
+});
+
+test("context.members der IKKE indeholder denne archetypeKey falder tilbage til enkelt-medlems-formen", () => {
+  const otherBoard = ["sponsoraten", "traditionalisten"]; // uden pragmatikeren
+  const [singleNamed] = generateBoardMemberNames({
+    teamId: COLLISION_TEAM_ID,
+    members: [COLLISION_ARCHETYPE],
+    dnaKey: COLLISION_DNA_KEY,
+  });
+
+  const line = sampleVoiceLine({
+    beat: "receipt_positive",
+    archetypeKey: COLLISION_ARCHETYPE,
+    seed: "evt-collision",
+    context: { teamId: COLLISION_TEAM_ID, dnaKey: COLLISION_DNA_KEY, members: otherBoard },
+  });
+
+  assert.equal(line.member.navn, singleNamed.full_name);
 });
 
 // ── Tom bucket = kast, aldrig stille fallback ───────────────────────────────

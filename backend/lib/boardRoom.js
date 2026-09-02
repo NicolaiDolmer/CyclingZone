@@ -69,6 +69,14 @@
  *    `teams.created_at` mod `seasons.start_date` — samme tal for alle
  *    medlemmer i denne runde (ejer-godkendt forenkling), se
  *    `deriveFoundingSeasonNumber`.
+ *
+ * RETTET 2/9 (#4586): alle tre `sampleVoiceLineOrNull`-kald (chairmanQuote,
+ * goal-receipt, minutes) sender nu `context.members: assignedMembers` med —
+ * den SAMME liste `namesByArchetype` bygges af. boardVoice.js's kollisions-
+ * salt (se boardMandateNames.js) afhænger af de foregående medlemmer i
+ * listen, så et enkelt-medlems-kald (uden `members`) kunne give et ANDET
+ * navn end medlemskortene for samme (team, arketype) når to basisnavne
+ * kolliderede. Se boardVoice.js's modul-header for kontrakten.
  */
 
 import { getArchetypeByKey } from "./boardArchetypes.js";
@@ -423,7 +431,10 @@ export async function buildBoardRoomPayload({ supabase, teamId } = {}) {
         beat,
         archetypeKey: fallbackChairmanKey,
         seed: latestChairmanEvent.id,
-        context: { teamId, dnaKey },
+        // #4586 · HELE bestyrelses-listen med, så boardVoice's kollisions-
+        // salt matcher namesByArchetype (medlemskortene) i stedet for at
+        // navngive dette ene medlem isoleret (salt altid 0).
+        context: { teamId, dnaKey, members: assignedMembers },
       });
       chairmanQuote = line ? {
         textKey: line.quote_key,
@@ -464,7 +475,8 @@ export async function buildBoardRoomPayload({ supabase, teamId } = {}) {
           beat,
           archetypeKey: ownerArchetypeKey,
           seed: `${mandateRow.id}:${goal.id ?? goal.type ?? index}:${beat}`,
-          context: { teamId, dnaKey },
+          // #4586 · se kommentaren ved chairmanQuote ovenfor.
+          context: { teamId, dnaKey, members: assignedMembers },
         });
         receiptQuoteKey = line?.quote_key ?? null;
       }
@@ -556,7 +568,8 @@ export async function buildBoardRoomPayload({ supabase, teamId } = {}) {
         beat: speaker.beat,
         archetypeKey: speaker.archetypeKey,
         seed: row.id,
-        context: { teamId, dnaKey },
+        // #4586 · se kommentaren ved chairmanQuote ovenfor.
+        context: { teamId, dnaKey, members: assignedMembers },
       });
       if (line) {
         textKey = line.quote_key;
