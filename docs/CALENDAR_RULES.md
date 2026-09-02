@@ -162,7 +162,7 @@ Spændet er i alle tre tilfælde præcis `etaper + 2`, hvilket bekræfter `GRAND
 
 > ⚠ **Slækket er 4 pladser, ikke 1.** 6 dage × 4 etaper = 24 pladser. En GT på **18** etaper + 2 hviledage bruger 20, altså **4 pladser til overs**. Den gamle formulering (*"21 + 2 = 23, én plads til overs, enhver placering der ikke er næsten perfekt er umulig"*) var korrekt matematik på et etapetal der ikke er i kataloget, og den får en kalender-bygger til at tro der er mindre plads end der er. **Reglerne selv er uændrede** — kun begrundelsen var forkert. Skal én af de fire knapper (density, span, stages/day, rest days) ændres, skal de tre andre stadig efterregnes, men nu mod 17-18 etaper.
 >
-> Om 17-18 er den tilsigtede ramme, eller om kataloget er skrumpet uden at nogen besluttede det, er ikke afklaret — se §11 punkt 8.
+> Om 17-18 er den tilsigtede ramme, eller om kataloget er skrumpet uden at nogen besluttede det, er ikke afklaret — se §11 punkt 7.
 
 ---
 
@@ -226,11 +226,52 @@ Spændet er i alle tre tilfælde præcis `etaper + 2`, hvilket bekræfter `GRAND
 >
 > **`rolling` er en familie uden gulv.** `TIER_TERRAIN_FAMILY_MIN` dækker fem familier; `rolling` er ikke en af dem. Målt 30/8: D1 har 22 rolling-etaper, D2 9, D3 4 og **D4 nul**. Baroudeuren har ingen dage i Division 4, og ingen gate siger fra.
 >
-> **`classic` hører til ingen familie.** 9 af sæsonens 426 etaper (D2 2, D3 3, D4 4) tælles ikke mod noget gulv overhovedet. Begge spørgsmål står i §11 punkt 7.
+> **`classic` hører til ingen familie.** 9 af sæsonens 426 etaper (D2 2, D3 3, D4 4) tælles ikke mod noget gulv overhovedet. Begge spørgsmål står i §11 punkt 6.
 >
 > `classic` produceres kun af arketypen `hilly_classic`. Brostensklassikere bruger `cobbles` (brosten-vægt 0,66) og tælles korrekt. **Skulle en brosten-variant nogensinde få `profile_type='classic'`, ryger den ud af tællingen i stilhed** — derfor bør klassifikationen på sigt bygge på `terrain_archetype`, ikke på `profile_type`.
 >
 > Historik: `rolling`, `classic` og `itt_hilly` hørte indtil 24/8 til INGEN familie og var usynlige for alle dækningsgarantier — 21 af Division 1's 140 etaper (15 %). `itt_hilly` var en enkeltstart der ikke talte som enkeltstart; den er rettet. `rolling` og `classic` er det ikke.
+
+### 5a. `rolling` grupperes ni steder — familien ovenfor er kun det ene
+
+Familie-tabellen ovenfor siger at `rolling` er baroudeurens terræn. **Det er én af ni grupperinger i `backend/lib/`, og seks af de andre placerer den sammen med `flat`.** Ejer-beslutningen 24/8 er altså gennemført præcis dér hvor den blev truffet, og ingen andre steder. Kortlagt 2/9 ([#4596](https://github.com/NicolaiDolmer/CyclingZone/issues/4596)), efter ejer-flag i Discord 1/9: *"jeg forventer langsigtet, at 'rolling' etaper, skal være i bakke [...] Det er faktisk ikke sikkert, at der er lavet om i raceengine, måske er det kun generatoren."*
+
+Formodningen var korrekt — og undervurderede omfanget: der er heller ikke lavet om i generatorens finale-logik.
+
+**Bakke-/udbruds-siden (3)**
+
+| Konstant | Fil | Gruppering | Hvad den styrer |
+|---|---|---|---|
+| `TERRAIN_FAMILY_BY_PROFILE_TYPE` | `tierCalendarGuarantees.js:100` | egen familie `"rolling"` | Terræn-gulve (§5) |
+| `PROFILE_TO_CATEGORY` | `calendarCompositionTargets.js:71` | `rolling → "hilly"` | Komposition (§6) |
+| `GC_RELEVANT_PROFILES` | `raceRoles.js:208` | med `hilly`/`mountain`/`classic` | Helper-arbejde koster GC-sats, ikke leadout-sats |
+
+**Flad-siden (6)**
+
+| Konstant | Fil | Gruppering | Hvad den styrer |
+|---|---|---|---|
+| `PROFILE_TO_BUCKET` | `raceTerrain.js:8` | `rolling → "flat"` | **Kaptajn-prioriteternes terræn-bucket — spiller-vendt** |
+| `FLAT_FAMILY` | `raceStageProfileGenerator.js:716` | `{flat, rolling}` | **GT'ens afsluttende etape** (l. 633) + `sprint_finale`-arketypen (l. 721) |
+| `SPRINTER_DENSITY_PROFILES` | `raceSimulator.js:437` | `{flat, rolling}` | Sprinter-tæthed i `routeBreakawayFactor` |
+| `FLAT_INCIDENT_PROFILES` | `raceTimeline.js:68` | `{flat, rolling}` | Styrt/uheld vægtes mod sidste kvartal (positionskamp) |
+| `WIND_EXPOSED_FAMILY` | `routeSegments.js:233` | `{flat, rolling, cobbles}` | +0,1 vind-eksponering i vejret |
+| `FLAT_FAMILY` | `stageOrderMetrics.js:16` | `{flat, rolling}` | Målings-siden af #3326's etaperækkefølge |
+
+> ⚠ **De to tungeste er `raceTerrain.js` og GT-finalen.**
+>
+> `raceTerrain.js`s docstring kalder de fem buckets *"strategi-buckets som kaptajn-prioriteter er rangordnet pr."* Det er ikke intern bogholderi — det er den kasse **spillerens taktik-valg tolkes i**. Sætter en spiller kaptajnen op til en rolling-etape, behandles den som en flad dag. Filen noterer selv at den *"genbruges senere i S4/S5 (terræn-DNA, rolle-hints)"*, så placeringen forplanter sig til systemer der endnu ikke er bygget. Det gør den billigere at afgøre nu end senere.
+>
+> `toGrandTourFinale` (`raceStageProfileGenerator.js:633`) vælger GT'ens sidste etape som *"flad/enkeltstart → sidst (aldrig bjerg)"* — og `FLAT_FAMILY` gør `rolling` til en gyldig kandidat. **En Grand Tour kan altså slutte på en etape der ender i udbrud 65 % af gangene** (finale-fordelingen for `rolling`: breakaway 65 / reduced_sprint 20 / bunch_sprint 15, `raceStageProfileGenerator.js:140`). Samme spænding i korte etapeløb via `sprint_finale`.
+
+**Tre af flad-placeringerne er formentlig rigtige som de er** og bør bekræftes frem for flyttes: sprinter-tæthed (mange sprinterhold jager et udbrud ned — også på en rullende dag), vind-eksponering (rullende terræn er åbent) og hændelses-vægtning. De står her for at være dokumenterede undtagelser i stedet for udokumenterede afvigelser.
+
+**Uenighed inden for samme fil:** `raceTimeline.js` har både `FLAT_PROFILES = {flat}` (l. 66) og `FLAT_INCIDENT_PROFILES = {flat, rolling}` (l. 68) — to klassifikationer af samme etape, til hvert sit formål, tre linjer fra hinanden.
+
+**Spejlinger i tests og scripts** er ikke selvstændige beslutninger, men skal følge med hvis noget flyttes: `raceStageProfileGenerator.test.js:41` (`SPRINT_FRIENDLY`), `stageOrderReorder3371.js:18` (`BREAKER_TYPES`, `PREFERRED_OPENERS`), `simulateSeasonDryRun.js:647`.
+
+> **Ændr én gruppering ad gangen, med måling imellem.** De ni rammer generator, motor, tidslinje, vejr, roller og taktik-UI. En samlet "flyt rolling til bakke" ville flytte for mange variable til at nogen bagefter kan se hvad der virkede.
+
+Evnevægtene selv (`raceStageProfileGenerator.js:107`) hører hverken til flad eller kuperet: udholdenhed 0,18 · flad 0,12 · punch 0,12 · **tilfældighed 0,20** — den højeste randomness af alle ti profiltyper. Det er dét der gør den til en udbrudsdag, og det er målt, ikke navngivet.
 
 ### Gulve (minimum antal ETAPER pr. pulje pr. sæson)
 
@@ -317,7 +358,7 @@ Tre mål kan i dag **ikke nås uanset hvordan generatoren kalibreres**, fordi ka
 | brosten | 5 % |
 | TTT | 0 % (motoren scorer den ikke endnu) |
 
-`ACTIVE_TARGET` i `calendarCompositionTargets.js`, ejer-beslutning 6/8 ([#3295](https://github.com/NicolaiDolmer/CyclingZone/issues/3295)). **Brosten rettet 6 % → 5 % og kuperet 32 % → 33 % (ejer-beslutning 31/8, [#4103](https://github.com/NicolaiDolmer/CyclingZone/issues/4103))** — lukker §11 punkt 6's "5 % eller 6 %?": 5 % vandt, for BEGGE de tidligere konkurrerende mål (se §6b). Tabellen nedenfor (målt 30/8) er FØR denne rettelse og er ikke genmålt — den viser stadig retningen af de øvrige brud.
+`ACTIVE_TARGET` i `calendarCompositionTargets.js`, ejer-beslutning 6/8 ([#3295](https://github.com/NicolaiDolmer/CyclingZone/issues/3295)). **Brosten rettet 6 % → 5 % og kuperet 32 % → 33 % (ejer-beslutning 31/8, [#4103](https://github.com/NicolaiDolmer/CyclingZone/issues/4103))** — lukker det tidligere §11-punkt "5 % eller 6 %?": 5 % vandt, for BEGGE de tidligere konkurrerende mål (se §6b). Tabellen nedenfor (målt 30/8) er FØR denne rettelse og er ikke genmålt — den viser stadig retningen af de øvrige brud.
 
 **Ejer-beslutning 24/8:** målene skal rammes **pr. division**, ikke kun på sæson-aggregatet, og med den **strenge** tolerance: **±2 pp**, skaleret så en division aldrig kræves at ramme finere end ±2 løbsdage. Det er tolerancen. Der er ikke andre.
 
@@ -354,7 +395,7 @@ Ejer-beslutning 23/8 ([#4103](https://github.com/NicolaiDolmer/CyclingZone/issue
 
 `calendarCompositionTargets.js:279-287`, tolerancen i `TIER_UNIFORM_TOLERANCE_PP`. Nævneren er alle divisionens etaper, samme nævner som §6.
 
-**Én ting adskiller dem stadig fra §6's profil:** de holder `high_mountain` ADSKILT fra almindelig `mountain`, hvor K-B lægger de to sammen — #4103 handler specifikt om summit-tætheden. Brosten-modsigelsen (5 % her mod K-B's tidligere 6 %) er LUKKET 31/8: ejeren valgte 5 %, og K-B's egen brosten-mål i §6 er rettet til at matche (§11 punkt 6 er dermed afgjort og fjernet herfra).
+**Én ting adskiller dem stadig fra §6's profil:** de holder `high_mountain` ADSKILT fra almindelig `mountain`, hvor K-B lægger de to sammen — #4103 handler specifikt om summit-tætheden. Brosten-modsigelsen (5 % her mod K-B's tidligere 6 %) er LUKKET 31/8: ejeren valgte 5 %, og K-B's egen brosten-mål i §6 er rettet til at matche (det spørgsmål er dermed afgjort og fjernet fra §11).
 
 **Målt på live sæson 3, 30/8:**
 
@@ -554,7 +595,7 @@ Resten af tabellerne i denne fil har endnu ikke alle tre niveauer. Se [#4176](ht
 | 3 | Tre kvote-tal (140/112/84/56 vs 135/108/81/54 vs 155/124/93/62) | denne fil §1b |
 | 4 | Terræn-gulvene er observerede værdier, ikke kvalitetsmål | denne fil §5 |
 | 5 | Overlap-cap × startfelt overstiger 79 % af holdenes trupper | [#4174](https://github.com/NicolaiDolmer/CyclingZone/issues/4174) |
-| 6 | Tre klassifikationssystemer over samme etaper (`profile_type`, terræn-familie, kompositions-kategori) | denne fil §5 |
+| 6 | **Ni** klassifikationssystemer over samme etaper, ikke tre — `rolling` er "flad" i seks af dem og "bakke/egen familie" i tre | denne fil §5a, [#4596](https://github.com/NicolaiDolmer/CyclingZone/issues/4596) |
 | 8 | Prod-invarianten håndhæver monument-eksklusivitet som ejeren ophævede 26/8 | [#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465) |
 | 9 | Seks terræn-familier, fem gulve — `rolling` har intet, `classic` hører til ingen familie | denne fil §5 |
 
@@ -582,6 +623,8 @@ Resten af tabellerne i denne fil har endnu ikke alle tre niveauer. Se [#4176](ht
 
 **7. Er det tilsigtet at ingen af sæsonens tre Grand Tours har 21 etaper?** Målt 30/8: 18, 17 og 17. Dokumentation og kodekommentarer regnede på 21 flere steder. **Er 17-18 den nye ramme, eller er kataloget skrumpet uden at nogen besluttede det?**
 
+**8. Skal `rolling` flyttes til bakke-siden i kaptajn-bucket'en og i GT-finalen?** De to er §5a's tungeste flad-placeringer. `raceTerrain.js:8` lader spillerens kaptajn-prioriteter læse en rolling-etape som en flad dag, og `raceStageProfileGenerator.js:633` kan lade en Grand Tour slutte på en etape der ender i udbrud 65 % af gangene. Begge modsiger familie-beslutningen 24/8. **Men et flyt er ikke gratis:** fjernes `rolling` fra `FLAT_FAMILY`, bliver `sprint_finale` infeasible i etapeløb hvis eneste flade forsyning er rolling, og GT-finalen falder tilbage på `arr.pop()` — mål det før, ikke efter. Ejerens langsigtede ønske om *"mellemrummet mellem bakke etaper og medium mountain"* er en **femte profiltype**, ikke en omkategorisering, og hører til race engine v4 sammen med durability-trækket han selv henlagde dertil. Se [#4596](https://github.com/NicolaiDolmer/CyclingZone/issues/4596).
+
 > Det gamle punkt 6 ("brosten 5 % eller 6 %?") er **afgjort 31/8**: 5 % vandt (§6, §6b). Slettet herfra per denne paragrafs egen regel.
 
 ---
@@ -597,6 +640,7 @@ Hver linje er en guard der kan bygges i dag, uden en ejer-beslutning først. De 
 | Prod-invariant: `count(distinct dato) = race_days_total` pr. pulje | `verify-invariants.js` | Løbsfrie dage i en division (§2) |
 | Prod-invariant: GT-spænd = `etaper + GRAND_TOUR_REST_DAYS` | `verify-invariants.js` | At hviledags-reglen driver i data (§3) |
 | Doc-test: hver konstant nævnt i denne fil findes med den værdi i den fil der står i tabellen | ny test i `backend/lib/` | At dette dokument igen kan blive forældet uden at nogen opdager det |
+| Doc-test: hvert `Set`/`Object.freeze` i `backend/lib/` der nævner en `profile_type` står i §5a's tabel | ny test i `backend/lib/` | At en tiende `rolling`-gruppering kan opstå uden at nogen ser den (§5a) |
 
 > **Den sidste er den vigtigste.** Årsagen til at seks tal i dette dokument var forkerte 30/8 er ikke at nogen skrev dem forkert — det er at intet fangede at koden flyttede sig bagefter. Se `.claude/learnings/2026-08-28-now-md-laest-som-sandhedskilde-gav-tre-forkerte-konklusioner.md`.
 
