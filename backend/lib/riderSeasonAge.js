@@ -102,3 +102,72 @@ export function seasonReferenceYear(seasonNumber) {
   if (!Number.isFinite(seasonNumber)) return null;
   return LAUNCH_REFERENCE_YEAR + (seasonNumber - 1);
 }
+
+// ── U25/U23-klassifikation (ejer-beslutning 2/9-2026, #4557-opfølger) ─────────
+// U25 fulgte hidtil "sæson-alder < 25" (24 år og yngre) i FEM separate kopier
+// (raceRunner.js, fictionalRiderGenerator.js, riderProgressionEngine.js,
+// frontend/riderAge.js, useRiderFilters.js, plus scripts/import_riders.py).
+// Ejeren besluttede 2/9 at følge UCI-reglen i stedet: en rytter er U25 så
+// længe han er FØDT I ELLER EFTER (referenceår − 25), dvs. sæson-alder ≤ 25
+// (den 25-årige tæller stadig med, ligesom UCIs hvide trøje). U23 er UÆNDRET
+// (sæson-alder < 23, matcher UCIs egen U23-kategori) og lever her ved siden af,
+// så begge grænser bor ét sted i stedet for at U25-fixet efterlader U23 som en
+// sjette, uafhængig kopi.
+//
+// Spillerbaggrund: spillerne bemærkede 1/9 at en 25-årig IKKE talte som U25
+// ("25 burde være u25"), netop den divergens fra den virkelige UCI-regel.
+
+/**
+ * U25-status efter UCI-reglen: sæson-alder ≤ 25, dvs. fødselsår ≥ referenceår-25.
+ * Erstatter den tidligere "< 25"-konvention (ejer-beslutning 2/9-2026).
+ *
+ * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
+ * @param {number|null|undefined} referenceYear  kalenderåret alderen måles mod
+ * @returns {boolean}  false ved manglende/ugyldigt input (aldrig et gæt)
+ */
+export function isU25ForReferenceYear(birthdate, referenceYear) {
+  if (!Number.isFinite(referenceYear)) return false;
+  const birthYear = birthYearFrom(birthdate);
+  if (birthYear === null) return false;
+  return birthYear >= referenceYear - 25;
+}
+
+/**
+ * U25-status ud fra et sæsonnummer i stedet for et referenceår, samme
+ * delegerings-mønster som ageForSeason/ageForReferenceYear.
+ *
+ * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
+ * @param {number|null|undefined} seasonNumber  1-baseret sæsonnummer
+ * @returns {boolean}
+ */
+export function isU25ForSeason(birthdate, seasonNumber) {
+  return isU25ForReferenceYear(birthdate, seasonReferenceYear(seasonNumber));
+}
+
+/**
+ * U23-status: sæson-alder < 23, dvs. fødselsår > referenceår-23. UÆNDRET ved
+ * 2/9-beslutningen (matcher UCIs U23-kategori), samlet her så U25 og U23 er
+ * ét fælles sted i stedet for at U23 forbliver en implicit "alder < 23"-kopi
+ * spredt i frontend/riderAge.js og useRiderFilters.js.
+ *
+ * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
+ * @param {number|null|undefined} referenceYear  kalenderåret alderen måles mod
+ * @returns {boolean}
+ */
+export function isU23ForReferenceYear(birthdate, referenceYear) {
+  if (!Number.isFinite(referenceYear)) return false;
+  const birthYear = birthYearFrom(birthdate);
+  if (birthYear === null) return false;
+  return birthYear > referenceYear - 23;
+}
+
+/**
+ * U23-status ud fra et sæsonnummer i stedet for et referenceår.
+ *
+ * @param {string|null|undefined} birthdate  "YYYY-MM-DD"
+ * @param {number|null|undefined} seasonNumber  1-baseret sæsonnummer
+ * @returns {boolean}
+ */
+export function isU23ForSeason(birthdate, seasonNumber) {
+  return isU23ForReferenceYear(birthdate, seasonReferenceYear(seasonNumber));
+}

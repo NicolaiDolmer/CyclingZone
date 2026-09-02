@@ -55,7 +55,7 @@ import {
   serializeStageRoleOverrides,
 } from "./raceStageRoles.js";
 import { autopickTeamSelection, selectionSizeForRace, MIN_RACE_ENTRIES } from "./raceAutopick.js";
-import { seasonReferenceYear } from "./riderSeasonAge.js";
+import { seasonReferenceYear, isU25ForReferenceYear } from "./riderSeasonAge.js";
 // S5 (#2224): form-peaks — I/O-loadere (peak-planer + stage-datoer) +
 // traeningskvalitet-seam. KUN kaldt når v3=true (flag-off skal forblive bit-
 // identisk); peak-inputs går ind på entrants/stages via de samme v3-gates som S3.
@@ -1032,19 +1032,16 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   return rows.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id, race_role: r.race_role }));
 }
 
-// U25 afledt SÆSON-korrekt fra birthdate (#109/#2073). Den lagrede riders.is_u25-
-// kolonne er statisk (DEFAULT FALSE) og re-deriveres aldrig → 16-18-årige oprettet
-// uden flag (akademi/intake/generatorer) forblev false for evigt og manglede i
-// ungdomsklassementet. Konventionen matcher fictionalRiderGenerator + import_riders.py:
-//   U25 = fødselsår > referenceår - 25  ⇔  (referenceår − fødselsår) < 25.
+// U25 afledt SÆSON-korrekt fra birthdate (#109/#2073), efter UCI-reglen (ejer-
+// beslutning 2/9-2026): Den lagrede riders.is_u25-kolonne er statisk (DEFAULT
+// FALSE) og re-deriveres aldrig → 16-18-årige oprettet uden flag (akademi/
+// intake/generatorer) forblev false for evigt og manglede i ungdomsklassementet.
+// Selve grænsen bor nu ÉT sted (riderSeasonAge.isU25ForReferenceYear):
+//   U25 = fødselsår ≥ referenceår - 25  ⇔  (referenceår − fødselsår) ≤ 25.
 // referenceåret er SÆSONENS SSOT-år (riderSeasonAge.seasonReferenceYear), ikke
-// wall-clock/seasons.start_date (#4485) — så gaten er sæson-drevet. Manglende
-// birthdate/ugyldigt referenceår → false (kan ikke bekræftes).
+// wall-clock/seasons.start_date (#4485), så gaten er sæson-drevet.
 export function deriveIsU25FromBirthdate(birthdate, seasonYear) {
-  if (!birthdate || !Number.isFinite(seasonYear)) return false;
-  const birthYear = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(birthYear)) return false;
-  return birthYear > seasonYear - 25;
+  return isU25ForReferenceYear(birthdate, seasonYear);
 }
 
 // Sæsonens referenceår = SSOT-formlen i riderSeasonAge.js (LAUNCH_REFERENCE_YEAR +

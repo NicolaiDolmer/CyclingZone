@@ -537,20 +537,23 @@ test("loadEntrantsForRace: race_entries-forespørgslen har eksplicit ORDER BY (t
   ]);
 });
 
-// ── U25 sæson-derivering (#109/#2073) ─────────────────────────────────────────
+// ── U25 sæson-derivering (#109/#2073), UCI-reglen (ejer-beslutning 2/9-2026) ──
 // Den lagrede riders.is_u25 er statisk (DEFAULT FALSE) og re-deriveres aldrig →
 // 16-18-årige oprettet uden flag manglede i ungdomsklassementet. U25 udledes nu
-// sæson-korrekt fra birthdate: fødselsår > sæsonens år - 25.
-test("deriveIsU25FromBirthdate: fødselsår > referenceår-25 ⇔ U25", () => {
+// sæson-korrekt fra birthdate: fødselsår ≥ sæsonens år - 25 (25-årige tæller
+// stadig med, matcher UCIs hvide trøje). Tidligere konvention var "> ... - 25",
+// dvs. sæson-alder < 25.
+test("deriveIsU25FromBirthdate: fødselsår ≥ referenceår-25 ⇔ U25", () => {
   assert.equal(deriveIsU25FromBirthdate("2010-06-15", 2026), true);  // 16
   assert.equal(deriveIsU25FromBirthdate("2002-01-01", 2026), true);  // 24
-  assert.equal(deriveIsU25FromBirthdate("2001-01-01", 2026), false); // 25 (boundary)
+  assert.equal(deriveIsU25FromBirthdate("2001-01-01", 2026), true);  // 25 (boundary, UCI-reglen)
+  assert.equal(deriveIsU25FromBirthdate("2000-06-15", 2026), false); // 26 (boundary)
   assert.equal(deriveIsU25FromBirthdate("1990-01-01", 2026), false); // 36
 });
 
 test("deriveIsU25FromBirthdate: sæson-drevet — samme rytter skifter ved sæsonskift", () => {
-  assert.equal(deriveIsU25FromBirthdate("2002-06-15", 2026), true);  // 24
-  assert.equal(deriveIsU25FromBirthdate("2002-06-15", 2027), false); // 25
+  assert.equal(deriveIsU25FromBirthdate("2001-06-15", 2026), true);  // 25 (stadig U25 under UCI-reglen)
+  assert.equal(deriveIsU25FromBirthdate("2001-06-15", 2027), false); // 26
 });
 
 test("deriveIsU25FromBirthdate: robust ved manglende birthdate/referenceår", () => {

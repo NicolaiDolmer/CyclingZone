@@ -76,7 +76,8 @@ export function useClientRiderFilters(riders = [], seasonYear = null) {
 
     // U25 = sæson-afledt fra birthdate (#109/#2073), IKKE det lagrede is_u25-flag
     // (statisk DEFAULT FALSE → 16-18-årige oprettet uden flag forblev false for
-    // evigt). isU25: sæson-alder < 25. #3071: seasonYear (prop) er klientens
+    // evigt). isU25: sæson-alder ≤ 25 (UCI-reglen, ejer-beslutning 2/9-2026).
+    // #3071: seasonYear (prop) er klientens
     // sæson-referenceår, IKKE længere en wall-clock modul-konstant.
     if (filters.u25) result = result.filter(r => isU25(r.birthdate, seasonYear));
     // U23 = samme grænse som u23-badge (isU23: alder < 23, dvs. ≤22 år) — delt
@@ -162,9 +163,11 @@ function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {
   if (filters.u25 && Number.isFinite(seasonYear)) {
     // U25 = sæson-afledt fra birthdate (#109/#2073), IKKE det lagrede is_u25-flag
     // (statisk DEFAULT FALSE → aldrig re-deriveret; 368 unge havde false i prod).
-    // Sæson-alder < 25 ⇔ fødselsår > seasonYear-25 ⇔ født ≥ (seasonYear-24)-01-01.
-    // Spejler u23-birthdate-grænsen nedenfor så server- og klient-filter er ens.
-    const minBirth = new Date(`${seasonYear - 24}-01-01`).toISOString().split("T")[0];
+    // UCI-reglen (ejer-beslutning 2/9-2026): sæson-alder ≤ 25 ⇔ fødselsår ≥
+    // seasonYear-25 ⇔ født ≥ (seasonYear-25)-01-01. Matcher isU25 i riderAge.js
+    // (server- og klient-filter skal give samme resultat) og backend-SSOT'en
+    // (riderSeasonAge.isU25ForReferenceYear).
+    const minBirth = new Date(`${seasonYear - 25}-01-01`).toISOString().split("T")[0];
     query = query.gte(col("birthdate"), minBirth);
   }
   if (filters.free_agent) query = query.is(col("team_id"), null);
