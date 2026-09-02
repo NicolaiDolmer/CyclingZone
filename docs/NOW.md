@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Næste session = #4616 Infisical-session** (EUR-planer i Alunta + reprise DKK 6 mdr til 265 kr, Railway-nøgler `ALUNTA_CZ_PRO_PLAN_ID_*_EUR`, Resend-nøgler, Alunta checkout-sprog, revisor-spørgsmål #4511) → merge PR #4608 (Pro i euro/kroner, visuelt godkendt 2/9) og tænd mail-loop dry-run (runbook `docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md`). **Derefter:** #4388 S3-komp. (egen session, A anbefalet) · PR #4610 nedkørsels-anker (worker rebasede på main ved close-out; scorecard 5-seed) · #4615 harness-TeamOrders + M5/M6/M14-wiring · #4485-audit m. ny regel · #3512: anbefalet lukket (ejer ikke svaret).
+> **🎯 Next action:** **Næste session = #4616 Infisical-session** (EUR-planer i Alunta + reprise DKK 6 mdr til 265 kr, Railway-nøgler `ALUNTA_CZ_PRO_PLAN_ID_*_EUR`, Resend-nøgler, Alunta checkout-sprog, revisor-spørgsmål #4511) → merge PR #4608 (Pro i euro/kroner, visuelt godkendt 2/9) og tænd mail-loop dry-run (runbook `docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md`). **Derefter:** #4388 S3-komp. (egen session, A anbefalet) · #4615 harness-TeamOrders + M5/M6/M14-wiring · #4485-audit m. ny regel · #3512: anbefalet lukket (ejer ikke svaret).
 
 > **⏳ Venter på DIN beslutning (stil dem enkeltvist):** **#4376/PR #4388 S3-kompensation** — A = kun opad (anbefalet, 54 hold / +3.901.500) / B = begge veje / C = begge veje uden minus; PR rebaset og mergeable · **#4495** 7 ryttere fanget i akademiet (SQL vises først) · **#4485-genberegning:** audit skal genkøres m. U25-reglen (26 løb, 915 rækker), så ét go · **#4098 blødt loft**: dialog nu, beslut senere · **#3512** arketyper del 2: anbefalet lukket.
 
@@ -20,7 +20,7 @@
 
 - **Liga:** 4-divisions-pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
 - **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag**. **Pension:** måles på AFSLUTTET sæsons alder. Alders-referenceår = `riderSeasonAge.js` SSOT (S3=2028; #4485-kodefix ligger i PR #4533).
-- **Race engine:** v3 låst fallback; v4-flip ejer-only. **v4-gate = 5-seed-middel (ejer 2/9); bjerg 211 s + sprinter 99,7 % INDE, nedkørsel i PR #4610.** **Bonustilbud (Regel A, ejer 31/8): et tilbud lever præcis én sæson** - sæson-slut-tilbud indløses hele den følgende sæson.
+- **Race engine:** v3 låst fallback; v4-flip ejer-only. **v4-gate = 5-seed-middel (ejer 2/9); alle tre F3-ankre GRØNNE 2/9: nedkørsel 0,46, bjerg 208 s (måles på topankomster, ejer-valg A), sprinter 95 %. Næste: #4615 harness-TeamOrders + M5/M6/M14.** **Bonustilbud (Regel A, ejer 31/8): et tilbud lever præcis én sæson** - sæson-slut-tilbud indløses hele den følgende sæson.
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
