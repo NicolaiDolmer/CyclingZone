@@ -52,3 +52,22 @@ export function copenhagenHourToUTC(dateStr, hour) {
   const offsetMs = new Date(wall.replace(" ", "T") + "Z").getTime() - approx.getTime();
   return new Date(approx.getTime() - offsetMs);
 }
+
+// ISO-8601-uge ("YYYY-Www") for den danske kalenderdato afledt af `now` (#4650:
+// dedupe-nøgle for tilbagekomst-digestet, "højst 1 pr. 7 dage" via en ISO-uge-
+// noegle i stedet for en kalenderdato). Standard ISO-algoritme: ryk datoen til
+// torsdag i samme uge (ISO-uger tilhoerer det aar deres torsdag falder i), find
+// saa den uge-taeller relativt til aarets uge 1 (ugen med 4. januar). Kun
+// kalenderdatoen fra copenhagenDateString bruges — selve klokkeslaettet er
+// irrelevant for en uge-noegle.
+export function copenhagenIsoWeekString(now = new Date()) {
+  const d = new Date(`${copenhagenDateString(now)}T00:00:00Z`);
+  const dayNum = (d.getUTCDay() + 6) % 7; // mandag=0 .. soendag=6
+  d.setUTCDate(d.getUTCDate() - dayNum + 3); // torsdag i samme ISO-uge
+  const isoYear = d.getUTCFullYear();
+  const jan4 = new Date(Date.UTC(isoYear, 0, 4)); // 4. januar ligger altid i uge 1
+  const jan4DayNum = (jan4.getUTCDay() + 6) % 7;
+  const week1Monday = new Date(jan4.getTime() - jan4DayNum * 86400000);
+  const weekNum = 1 + Math.round((d.getTime() - week1Monday.getTime()) / (7 * 86400000));
+  return `${isoYear}-W${String(weekNum).padStart(2, "0")}`;
+}
