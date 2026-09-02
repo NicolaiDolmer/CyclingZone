@@ -42,6 +42,7 @@ export function DataTable({
   className = "",
   dense = false,
   toolbar = null,
+  empty = null,
 }) {
   const zones = rows.map((row, i) => (rowZone ? rowZone(row, i) : null));
   const foldCols = columns.filter((c) => c.fold);
@@ -108,6 +109,18 @@ export function DataTable({
             </thead>
             <TableRowContext.Provider value={true}>
               <tbody>
+                {/* PAGE_TEMPLATES "Canonical states": for tabeller swappes
+                    <tbody>, ikke hele kortet — headeren og toolbaren bliver
+                    monteret. #4628: uden det forsvandt filter-kontrollerne
+                    sammen med raekkerne, saa et filter der tømte tabellen ikke
+                    kunne slaas fra igen. */}
+                {rows.length === 0 && empty && (
+                  <tr>
+                    <td colSpan={columns.length} className="border-t border-cz-border p-4">
+                      {empty}
+                    </td>
+                  </tr>
+                )}
                 {rows.map((row, i) => {
                   const zone = zones[i];
                   const edgeTop = Boolean(zone) && i > 0 && zones[i - 1] !== zone;
