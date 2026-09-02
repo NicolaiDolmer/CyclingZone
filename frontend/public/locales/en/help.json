@@ -856,12 +856,12 @@
           [
             "Climber",
             "Long climbs and sustained mountain tempo.",
-            "Intervals (Climbing, Punch, Tempo)"
+            "Climbing intervals (Climbing, Tempo)"
           ],
           [
             "Puncheur",
             "Short, steep efforts and hilly finales.",
-            "Intervals (Punch, Tempo)"
+            "Punch intervals (Punch, Tempo)"
           ],
           [
             "Cobbles specialist",
@@ -917,7 +917,7 @@
         "steps": [
           "Go to Daily Training in the navigation.",
           "Find a rider and choose what kind of day it is: Rest, Active recovery, a Skill day or Training.",
-          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Intervals, Threshold or Sprint (hard). On a skill day: Technique, Aero or Race craft.",
+          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Mixed intervals, Climbing intervals, Punch intervals, Threshold or Sprint (hard). On a skill day: Technique, Aero or Race craft.",
           "Save. The day runs every day until you change it.",
           "There is no cap on how many riders can have a program: you can set one for your entire squad."
         ]
@@ -928,7 +928,7 @@
       },
       "focusAbilities": {
         "title": "What each session trains",
-        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Intervals train Climbing, Punch and Tempo. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending and Cobbles. Aero trains Time trial and Flat. Race craft trains Positioning, Tactics and Aggression. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard; technique, aero and race craft are all easy. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
+        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Mixed intervals train Climbing, Punch and Tempo at an even share. Climbing intervals train Climbing and Tempo, and Climbing gains more than it does in the mixed session, but Punch is not trained at all. Punch intervals are the mirror image: Punch and Tempo, with Punch gaining more and Climbing left out. The three cover the same amount of work, so picking one over another moves your gains, it does not add any. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending and Cobbles. Aero trains Time trial and Flat. Race craft trains Positioning, Tactics and Aggression. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard; technique, aero and race craft are all easy. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
       },
       "typeGating": {
         "title": "Why does a focus grow faster for some riders?",
@@ -1359,7 +1359,7 @@
     },
     "flatCobblesHardTrainingFaq": {
       "q": "Why can't I train Flat or Cobbles at Hard intensity?",
-      "a": "By design, no Hard session targets those two abilities today. The three Hard sessions are Intervals (Climbing, Punch, Tempo), Threshold (Time trial, Tempo) and Sprint (Sprint, Acceleration). Flat is trained by Tempo (Normal) and Aero (Easy); Cobbles only by Technique (Easy). There's currently no way to push either one at Hard."
+      "a": "By design, no Hard session targets those two abilities today. The Hard sessions are Mixed intervals (Climbing, Punch, Tempo), Climbing intervals (Climbing, Tempo), Punch intervals (Punch, Tempo), Threshold (Time trial, Tempo) and Sprint (Sprint, Acceleration). Flat is trained by Tempo (Normal) and Aero (Easy); Cobbles only by Technique (Easy). There's currently no way to push either one at Hard."
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Does a better scouting network also improve how well I see my own riders?",
