@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Næste session = #4616 Infisical-session** (EUR-planer i Alunta + reprise DKK 6 mdr til 265 kr, Railway-nøgler `ALUNTA_CZ_PRO_PLAN_ID_*_EUR`, Resend-nøgler, Alunta checkout-sprog, revisor-spørgsmål #4511) → merge PR #4608 (Pro i euro/kroner, visuelt godkendt 2/9) og tænd mail-loop dry-run (runbook `docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md`). **Derefter:** #4388 S3-komp. (egen session, A anbefalet) · #4615 harness-TeamOrders + M5/M6/M14-wiring · #4485-audit m. ny regel · #3512: anbefalet lukket (ejer ikke svaret). **Design + ungdom (2/9, egne sessioner):** epic **#4622** designsystem til næste niveau, start m. **#4623** taste-doc → #4627 spejl-synk (`/design-sync` ejer-låst, projekt a332ec00) · epic **#2492** tre trupper: SSOT `docs/YOUTH_RULES.md` + slices #4617-#4621, ejer laver wireframes (#4617) efter spejl-synk, så #4618 kommer snart.
+> **🎯 Next action:** **Ejer (15 min): godkend `docs/design/TASTE.md` (#4623)** + visuelt go på PR for #4618 (Youth squads-kort, draft) + svar på G-rækkefølgen i `MASTERPLAN.md` §G. **Næste session = #4616 Infisical** (EUR-planer i Alunta, Railway-nøgler `ALUNTA_CZ_PRO_PLAN_ID_*_EUR`, Resend-nøgler, checkout-sprog, #4511) → merge PR #4608 → mail-loop dry-run (`docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md`). **Derefter (forslag 2/9, hård dato 27/9):** bestyrelsens beta-blokkere #4579/#4586/#4578 → S-M2c årsmødet (#4557) · design-audit #4624 når TASTE er godkendt (eget worktree) · #4619 spec (flip ved cutover 28/9) · #4388 S3-komp. (A anbefalet) · #4615 harness-TeamOrders · #3512 anbefalet lukket. **Leveret 2/9 (design/ungdom-session):** TASTE.md-udkast, ungdoms-hi-fi + handoff i `docs/design/youth-tiers/` (#4617 done, regler i `YOUTH_RULES.md` §2.6), slice 0 #4618 i byg.
 
 > **⏳ Venter på DIN beslutning (stil dem enkeltvist):** **#4376/PR #4388 S3-kompensation** — A = kun opad (anbefalet, 54 hold / +3.901.500) / B = begge veje / C = begge veje uden minus; PR rebaset og mergeable · **#4495** 7 ryttere fanget i akademiet (SQL vises først) · **#4485-genberegning:** audit skal genkøres m. U25-reglen (26 løb, 915 rækker), så ét go · **#4098 blødt loft**: dialog nu, beslut senere · **#3512** arketyper del 2: anbefalet lukket.
 
@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** Ingen aktiv session (status quo-session 2/9 lukket ~12:15: 8 merges — #4602 mail-loop, #4568 story-tags, #4605 patch notes 7.234, #4603 dagsform 7.233, #4607 mock-fix, #4606/#4609 v4 sprinter+bjerg; 6 nye issues #4611-#4616; fog of war: ejer-retning på #2798/#4264; Discord-catch-up 7.148-7.231 postet af ejer).
+> **🤖 Working agent:** Design/ungdom-session 2/9 (Fable, hoved-checkout) aktiv: TASTE.md + handoff committet; sonnet-worker bygger #4618 i eget worktree (branch `feat/4618-youth-squads-coming-soon`). Rør ikke `AcademyPage.jsx`/`academy.json` parallelt.
 
 _Historik i git-log, issue-tråde + docs/audits/._
