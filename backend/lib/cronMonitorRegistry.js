@@ -159,7 +159,7 @@ export const ALL_CRON_MONITORS = [
   // samme kadence som discord-dm-outbox-drain/discord-webhook-outbox-drain.
   ["email-retry-drain", CRON_MONITOR_5MIN],
   ["discord-race-digest", CRON_MONITOR_60MIN],
-  ["alunta-subscription-reconcile", CRON_MONITOR_24H],
+  ["alunta-subscription-reconcile", CRON_MONITOR_60MIN],
   // #4514 — forfalds-vagt. Ikke gated bag et flag: en vagt der er slukket som
   // default er præcis den fejl den findes for at fange. Den skriver intet.
   ["alunta-overdue-watch", CRON_MONITOR_24H],

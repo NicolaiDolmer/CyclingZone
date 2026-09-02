@@ -398,3 +398,82 @@ test("integration: flere kunder i ét svar behandles alle", async () => {
   assert.equal(result.applied, 2);
   assert.equal(supabase._rows().find((r) => r.team_id === "team-b").status, "cancelled");
 });
+
+// ── #4541/#4542: updated_at-stempel + respit-guard ───────────────────────────
+
+const NOW_2SEP = Date.parse("2026-09-02T12:00:00Z");
+
+test("computeReconcileActions: opdateringsrække får updated_at fra now, uændret række får intet", () => {
+  const localRows = [
+    { team_id: "t-old", status: "active", plan_interval: "1", current_period_end: "2026-08-31T21:59:59Z", alunta_customer_id: "c1", alunta_subscription_id: "s1" },
+    { team_id: "t-same", status: "active", plan_interval: "6", current_period_end: "2027-03-01T22:59:59Z", alunta_customer_id: "c2", alunta_subscription_id: "s2" },
+  ];
+  const remoteEntries = [
+    { uuid: "s1", status: "active", interval: 1, current_period_end: "2026-09-30T21:59:59Z", customer: { uuid: "c1", external_customer_id: "t-old" } },
+    { uuid: "s2", status: "active", interval: 6, current_period_end: "2027-03-01T22:59:59Z", customer: { uuid: "c2", external_customer_id: "t-same" } },
+  ];
+  const { updates, unchanged } = computeReconcileActions({ localRows, remoteEntries, now: NOW_2SEP });
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].team_id, "t-old");
+  assert.equal(updates[0].updated_at, new Date(NOW_2SEP).toISOString());
+  assert.deepEqual(unchanged, ["t-same"]);
+});
+
+test("extractSubscriptionFields: verificeret Alunta-form (customer.external_customer_id, interval) udtrækkes", () => {
+  const fields = extractSubscriptionFields({
+    uuid: "b9d010fc",
+    status: "active",
+    interval: 6,
+    current_period_end: "2027-03-01T22:59:59.999999Z",
+    customer: { uuid: "7a7b9292", name: "x", external_customer_id: "dd7665b4" },
+    plan: { uuid: "298f32cf", name: "CZ Pro 6 Months" },
+  });
+  assert.deepEqual(fields, {
+    externalCustomerId: "dd7665b4",
+    customerUuid: "7a7b9292",
+    subscriptionUuid: "b9d010fc",
+    rawStatus: "active",
+    planInterval: 6,
+    currentPeriodEnd: "2027-03-01T22:59:59.999999Z",
+  });
+});
+
+test("computeReconcileActions: aktivt hos Alunta men udløbet ud over respitten -> activeButExpired", () => {
+  const remoteEntries = [
+    { uuid: "s1", status: "active", interval: 1, current_period_end: "2026-08-20T21:59:59Z", customer: { uuid: "c1", external_customer_id: "t1" } },
+    { uuid: "s2", status: "active", interval: 1, current_period_end: "2026-09-01T21:59:59Z", customer: { uuid: "c2", external_customer_id: "t2" } }, // inden for respit
+    { uuid: "s3", status: "ended", interval: 1, current_period_end: "2026-01-01T00:00:00Z", customer: { uuid: "c3", external_customer_id: "t3" } }, // ikke løbende
+  ];
+  const { activeButExpired } = computeReconcileActions({ localRows: [], remoteEntries, now: NOW_2SEP });
+  assert.deepEqual(activeButExpired.map((a) => a.externalCustomerId), ["t1"]);
+});
+
+test("mapAluntaStatus: under_cancellation (Aluntas opsagt-men-løbende) -> cancelled", () => {
+  assert.equal(mapAluntaStatus("under_cancellation"), "cancelled");
+});
+
+test("runAluntaSubscriptionReconcile: activeButExpired alarmeres med egen fingerprint", async () => {
+  const captured = [];
+  const supabase = {
+    from() {
+      return {
+        select: async () => ({ data: [], error: null }),
+        upsert: async () => ({ error: null }),
+      };
+    },
+  };
+  const client = {
+    listSubscriptions: async () => ({
+      data: [{ uuid: "s1", status: "active", interval: 1, current_period_end: "2026-08-01T00:00:00Z", customer: { uuid: "c1", external_customer_id: "t1" } }],
+    }),
+  };
+  const result = await runAluntaSubscriptionReconcile({
+    supabase,
+    client,
+    captureExceptionFn: (err, ctx) => captured.push({ err, ctx }),
+    now: new Date(NOW_2SEP),
+    retryDelayMs: 0,
+  });
+  assert.equal(result.activeButExpired, 1);
+  assert.ok(captured.some((c) => c.ctx.fingerprint?.[0] === "alunta-reconcile-active-but-expired"));
+});

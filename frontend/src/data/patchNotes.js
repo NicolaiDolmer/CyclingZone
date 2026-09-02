@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.236",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro no longer drops at renewal",
+          "body": "A Pro subscription could lose its badge and Pro view at the turn of the month even though the subscription had renewed. Renewals are now picked up within the hour, and Pro stays on for a short buffer after the period end while the renewal is confirmed. A cancelled subscription still ends exactly when its paid period does."
+        },
+        "da": {
+          "title": "Pro falder ikke længere væk ved fornyelse",
+          "body": "Et Pro-abonnement kunne miste mærket og Pro-visningen ved månedsskiftet, selvom abonnementet var fornyet. Fornyelser fanges nu inden for en time, og Pro bliver stående i en kort buffer efter periodens udløb mens fornyelsen bekræftes. Et opsagt abonnement slutter stadig præcis når den betalte periode gør."
+        },
+        "refs": [4512, 4541]
+      }
+    ]
+  },
+  {
     "version": "7.235",
     "date": "2026-09-02",
     "label": "Beta",
