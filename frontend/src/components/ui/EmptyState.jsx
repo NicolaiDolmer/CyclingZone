@@ -8,8 +8,9 @@ import { InboxIcon } from "./icons";
 // #4625 (slice 3 af #4622, TASTE fork 4) — `action` er PÅKRÆVET. En tom tilstand
 // der kun beskriver hvad der mangler ("Ingen aktive auktioner") uden en knap der
 // fører videre var 6 af de 10 værste fund i audit 2026-09 (Indbakke, Scouting,
-// Klub, Transfers m.fl.). Kastes i DEV (tree-shaket ud af produktionsbuilds) —
-// dette primitiv kan derfor ikke længere bruges uden en handling.
+// Klub, Transfers m.fl.). Logger console.error i DEV (tree-shaket ud af
+// produktionsbuilds) og renderer uden knap — blødgjort fra throw 2/9
+// (PR #4657 opfølgning), migreres i opfølgende PR'er.
 export default function EmptyState({
   icon = <InboxIcon size={26} aria-hidden="true" />,
   title,
@@ -18,7 +19,7 @@ export default function EmptyState({
   className = "",
 }) {
   if (import.meta.env.DEV && !action) {
-    throw new Error(
+    console.error(
       `EmptyState kraever en \`action\`-prop (titel: ${JSON.stringify(title ?? null)}). ` +
         "Skabelonens anatomi er stroke-ikon + handlings-titel + EN saetning + EN knap " +
         "(docs/design/PAGE_TEMPLATES.md#canonical-states) — en tom tilstand uden vej videre er et fund, ikke en variant."
