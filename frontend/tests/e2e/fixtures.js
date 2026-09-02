@@ -53,6 +53,30 @@ export function json(route, data, status = 200) {
   });
 }
 
+// #4581: RaceDetailPage.jsx henter nu race_results PR. ETAPE (.eq("race_id", id)
+// .eq("stage_number", n)) i stedet for hele løbet i ét kald — først den valgte/dyb-
+// linkede etape + "samlet"-fanens seed-etape, derefter on-demand ved hvert etape-
+// skift (cachet, så samme etape ikke hentes to gange). En mock der (som før #4581)
+// besvarer ETHVERT race_results-kald med hele datasættet er urealistisk mod prod
+// (PostgREST filtrerer server-side på .eq()) og duplikerer rækker i siden ved
+// etapeskift (samme række hentes to gange og lægges oveni sig selv — RaceDetail-
+// Page.jsx APPENDER on-demand-hentede etaper, den erstatter dem ikke). Denne helper
+// filtrerer på query-strengens `stage_number=eq.N`, ligesom PostgREST rent faktisk
+// gør — samme mønster som race_results-casen i src/preview/mockHandlers.js's
+// restRows() bruger for andre tabeller (fx `riders`s id=eq.-filter). Delt af alle
+// specs der mocker race_results for en /races/:id-side (RaceDetailPage), så
+// filtreringen ikke drifter mellem specs.
+export function raceResultsRoute(dataset) {
+  return (route) => {
+    const url = new URL(route.request().url());
+    const stageMatch = url.search.match(/stage_number=eq\.([^&]+)/);
+    const rows = stageMatch
+      ? dataset.filter((r) => String(r.stage_number ?? 1) === decodeURIComponent(stageMatch[1]))
+      : dataset;
+    return json(route, rows);
+  };
+}
+
 export async function installNetworkMocks(page) {
   await page.route("**/auth/v1/token?**", route => json(route, {
     access_token: "e2e-access-token",

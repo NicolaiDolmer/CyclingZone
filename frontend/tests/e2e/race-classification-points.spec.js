@@ -1,5 +1,5 @@
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage, json, evidenceShotPath } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, json, evidenceShotPath, raceResultsRoute } from "./fixtures.js";
 
 // #3519 — to uafhængige spillerønsker: (a) synlige point pr. waypoint på
 // etape-resultatsiden (allerede bygget, Sub-2 #2770/#2448 — PassageList/
@@ -155,7 +155,7 @@ async function mockRace(page) {
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? RACE : [RACE]);
   });
-  await page.route("**/rest/v1/race_results**", route => json(route, RESULTS));
+  await page.route("**/rest/v1/race_results**", raceResultsRoute(RESULTS));
   await page.route("**/rest/v1/race_stage_profiles**", route => json(route, STAGE_PROFILES));
   await page.route("**/rest/v1/race_stage_passages**", route => json(route, PASSAGES));
 }

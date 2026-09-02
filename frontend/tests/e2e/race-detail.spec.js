@@ -1,5 +1,5 @@
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage, json, evidenceShotPath } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, json, evidenceShotPath, raceResultsRoute } from "./fixtures.js";
 
 // #959 Etape-resultater V1 — renderer-regression for /races/:raceId.
 // Mocker ét 2-etapers stage-race med etape-resultater, daglige trøjebærere og
@@ -78,28 +78,9 @@ const RESULTS = [
   row("t1", 2, "team", 1, MIK, 0),
 ];
 
-// #4581: RaceDetailPage.jsx henter nu race_results PR. ETAPE
-// (.eq("stage_number", n)) i stedet for hele løbet i ét kald — først den valgte/
-// dyb-linkede etape + "samlet"-fanens seed-etape, derefter on-demand ved hvert
-// etapeskift (cachet, så samme etape ikke hentes to gange). Et etapeskift afføder
-// derfor et ANDET race_results-kald end førstelastningen. En mock der (som før
-// #4581) besvarer ETHVERT race_results-kald med hele datasættet er urealistisk
-// mod prod (PostgREST filtrerer server-side på .eq()) og duplikerer rækker i
-// siden ved etapeskift (samme række hentes to gange og lægges oveni sig selv —
-// RaceDetailPage.jsx APPENDER on-demand-hentede etaper, den erstatter dem ikke).
-// Denne helper filtrerer på query-strengens `stage_number=eq.N`, ligesom
-// PostgREST rent faktisk gør — samme mønster som src/preview/mockHandlers.js's
-// restRows() bruger for andre tabeller (fx `riders`' id=eq.-filter).
-function raceResultsRoute(dataset) {
-  return (route) => {
-    const url = new URL(route.request().url());
-    const stageMatch = url.search.match(/stage_number=eq\.([^&]+)/);
-    const rows = stageMatch
-      ? dataset.filter((r) => String(r.stage_number ?? 1) === decodeURIComponent(stageMatch[1]))
-      : dataset;
-    return json(route, rows);
-  };
-}
+// #4581: raceResultsRoute (query-bevidst race_results-mock) er flyttet til
+// fixtures.js så alle specs der mocker race_results for en /races/:id-side deler
+// samme filtreringslogik — se kommentaren ved dens definition der.
 
 // Sub-2 (#2770): passage-detaljer (KOM/mellemsprint-krydsninger) for etape 1 —
 // én kom-gruppe + én sprint-gruppe, hver med 2 rangerede ryttere.
