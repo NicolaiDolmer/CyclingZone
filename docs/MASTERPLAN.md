@@ -36,11 +36,8 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
 ## D · 30-dages pengeplan (ejer 2/9, SSOT [`2026-09-02-30-dages-pengeplan.md`](superpowers/specs/2026-09-02-30-dages-pengeplan.md); rækkefølge, ikke datoer)
 
-Mandagstal: MRR 113,87 kr / 3 abo · checkout 2 af 5 · D7 18 % (uge 24/8). Mål 2/10: ≥ 450 kr / ≥ 10 · ≥ 60 % · ≥ 45 % · aktive/7d ≥ 100.
-10. **Pro der kan ses og købes:** #4648 webhook-fix → PR #4608 merge (ejer-go) → #4646 events → #4649 Founder-mærke/historik-fane/gemte filtre (drafts m. screenshots) → #2816 · #4555 · #4645 · nøgleblok #4616 (Alunta-checkout, Railway EUR, Resend).
-11. **Mail-loop:** #2853 tekster låst 2/9 + #4650 digest-målretning → PR → dry_run (ejer-GO) → nøgler → on pr. type.
-12. **Sæsonskiftet 27/9 som event:** S-M2c årsmødet (#4557, svar A/A/A) → #4592 rapport + #452 knap + parkering bag flag → S4-opslag.
-13. **Win-back** #2760 til 77 sovende m. samtykke (segment vises først). 14. **Nye spillere:** ejerens opslag + #4067 fase 1 (3 commits i worktree).
+Mandagstal: MRR 113,87 kr / 3 abo · checkout 2 af 5 · D7 18 %. Mål 2/10: ≥ 450 kr / ≥ 10 · ≥ 60 % · ≥ 45 % · aktive/7d ≥ 100.
+10. **Pro synlig + købbar:** #4648 → PR #4608 (ejer-go) → #4646 → #4649 perks (drafts) → #2816 #4555 #4645 · nøgleblok #4616. 11. **Mail-loop:** #2853 + #4650 → PR → dry_run (GO) → nøgler → on. 12. **Sæsonskiftet 27/9:** S-M2c (#4557, A×5) → #4592 + #452 → S4-opslag. 13. **Win-back** #2760 (77 m. samtykke). 14. **Nye spillere:** ejerens opslag + #4067.
 
 ## G · Design, ungdom, bestyrelse, inaktive (ejer-godkendt 2/9, genåbn ikke før 27/9)
 
@@ -51,7 +48,7 @@ Ejer 2/9: *"Standarden skal hæves markant. Og vi skal være fri for AI slop nu.
 - **G3 Tre trupper (#2492):** handoff i `YOUTH_RULES.md` §2.6. **#4618 slice 0 i byg** (ejer-go på screenshots) → #4619 spec + bag flag, **flip ved cutover 28/9** → #4620/#4621 i S4.
 - **G4 Inaktive (#4592), deadline 27/9:** rapport → ejer godkender liste → parkering ved cutover → #452 → #2760.
 
-**Ejerens område-rækkefølge for alt udskudt (2/9 kl. 19:55, Bagkataloget = 102 issues i klart sprog, `docs/audits/backlog-plain-language-2026-09-02.md`):** 1 design-kit/anti-slop (#4625 #4626 #4627 #4628 #4613) · 2 drift/tempo (#4647 #4496 #4267 #4010-rest) · 3 rytterudvikling/træning (#4128 #4098 #4634 #4631 #4629 #4632 #4633) · 4 løbsmotor v4/taktik (#3855 #4615 #4246 #4201 #2794) · 5 dashboard/indbakke/dag 1 (#1369 #4070 #3513 #2223 #1140) · 6 planlægning (#4109 #1146 #4535) · 7 kalender (#4203 #4209 #4288 #4146) · 8 trupper (#2492 #4619-#4621 #3970) · 9 økonomi (#3732 #3720 #3719) · 10 fair play/roller (#3131 #4268) · 11 vision (#2822 #1154). Claude udskyder ikke selv; ejeren rangerer områder.
+**Ejerens område-rækkefølge for alt udskudt (2/9; issues pr. område i pengeplan §3):** 1 design-kit/anti-slop · 2 drift/tempo · 3 rytterudvikling/træning · 4 løbsmotor v4/taktik · 5 dashboard/indbakke/dag 1 · 6 planlægning · 7 kalender · 8 trupper · 9 økonomi · 10 fair play/roller · 11 vision. Claude udskyder ikke selv; ejeren rangerer områder.
 
 ## E · Løbende (aldrig hovedspor)
 
