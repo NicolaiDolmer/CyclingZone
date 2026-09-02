@@ -88,9 +88,61 @@ Weekend-, sæson-slut- og konsekvens-motoren evaluerer stadig `board_profiles` (
 - `POST /board/meeting/sign` (§4.5).
 - Alle tre bag flag + `requireAuth` + manager-hold-tjek som `/board/room`.
 
-### 4.9 Migration `database/2026-09-XX-<N>-board-mandates-proposed.sql`
+### 4.8a Backend-leveret 3/9 (#4557 a+b) — kontrakt-afvigelser fra §4.8
 
-Idempotent: `status`-check-constraint udvides med `proposed`/`completed`/`lapsed` (hvis constraint findes), partial unique index `(team_id, season_id) where status in ('proposed','active')`, kolonne `negotiation_power jsonb` (eller i `source`, valg ved byg), `board_vision_milestones.slot_open` findes allerede. Ingen backfill; de 237 aktive mandater fortsætter til sæson-slut 27/9, hvor det første rigtige årsmøde (S3→S4) opstår automatisk.
+Bygget i `backend/lib/boardMandateEngine.js` (livscyklus), `boardMandate.js`
+(`buildStretchGoal`/`buildMandateGoalOptions`/`finalizeMandateGoals`),
+`boardMandateMeeting.js` (API-aggregering + `signMandate`),
+`boardMandateAutoAccept.js` (cron). Frontend-sporet bygger mod DENNE version:
+
+- `GET /board/meeting` flag off → `{ available: false }` (samme konvention
+  som `GET /board/room`s `{ enabled: false }`), IKKE 404 — 404 er kun for de
+  to POST-endpoints.
+- `mandate.goals[]`: hvert element er mål-objektet UDVIDET med `goalKey`
+  (`boardGoals.js::buildGoalKey`, indholdsbaseret, ikke et id — samme mønster
+  som Boardroom), `owner: { archetypeKey, name, initials } | null`,
+  `options: { easier, keep, stretch }` (hver `{ target, label,
+  satisfaction_bonus, satisfaction_penalty } | null`), og `reactions: {
+  easier, stretch }` (hver `{ textKey, textFallback, memberName } | null`).
+  `reactions.keep` findes ALDRIG (spec §4.2: "Keep viser ingen linje").
+- `request.options`: bruger `buildBoardRequestOptions` uændret (samme form
+  som `/board/status`); tomt array når `mandate.request_used` er sandt.
+- `visionSlot`: `{ replaces_milestone_id, origin, goal, target_season_number,
+  milestone_key } | null` — regenereret DETERMINISTISK ved hvert GET (ikke
+  persisteret før accept), se `boardMandateMeeting.js`'s modul-header for
+  begrundelsen.
+- `POST /board/meeting/sign` **afviger fra §4.5's ordlyd**: svaret er
+  Boardroom-payloaden (`buildBoardRoomPayload`, samme form som `GET
+  /board/room`) UDVIDET med `request_outcome` (se næste punkt) og
+  `vision_slot_outcome: { accepted: bool, milestone_key? } | null` — ikke en
+  rå kopi af mandatet. Idempotent på `mandate.id` + status `proposed`: et
+  andet kald mod et allerede-`active` mandat skriver INTET og returnerer
+  bare den friske payload igen (retry-sikkert).
+- Afslags-modtilbuddet (§4.3) er `request_outcome.meeting_outcome:
+  "approved"|"partial"|"tradeoff"|"counter"` — ALDRIG `"rejected"`. Ved
+  `"counter"` følger `counter_kind: "tradeoff"|"deferred"` (+
+  `counter_tradeoff_payload` ved `"tradeoff"`). De eksisterende
+  satisfaction/overallScore-gates i `resolveBoardRequest` omgås ALDRIG for
+  kunstigt at tvinge et "approved" frem — se `resolveMeetingRequestOutcome`s
+  modul-kommentar for fuld begrundelse.
+- Justerings-budgettet (409 ved brud) returnerer `{ error, errorCode:
+  "board_mandate_adjustment_budget_exceeded", used, allowed }`.
+- **`proposeNextMandate` skriver KUN når målsæsonens `seasons`-række allerede
+  findes** (kalenderen skal være materialiseret så langt frem) — ingen
+  gættet `season_id`. Rammer kalenderen ikke langt nok frem, springes holdet
+  over (`{ skipped: "target_season_not_found" }`, logget, ingen fejl) og
+  fanges op ved NÆSTE sæson-slut-kørsel eller manuel efterkørsel. Dette er en
+  bevidst afvigelse fra en ellers underforstået "skriver altid" — se
+  `database/2026-09-03-4557-board-mandates-proposed.sql`s header for hvorfor
+  den eksisterende (ikke-partial) unique-indeks gør dette sikkert.
+- `negotiation_power` (tillids-trappen, frosset ved forhandlingens start)
+  ligger i `board_mandates.source.negotiation_power` — IKKE en separat
+  kolonne (§4.9's "vælg ved byg" er afgjort til fordel for `source`).
+
+### 4.9 Migration `database/2026-09-03-4557-board-mandates-proposed.sql`
+
+**Bygget 3/9, mindre end §4.9 lagde op til — verificeret mod den faktiske 18/8-migration i stedet for antaget:** `status`-check-constrainten
+(`database/2026-08-18-3514-mandate-model.sql`) omfattede ALLEREDE `draft`/`proposed`/`active`/`completed`/`lapsed` — ingen ALTER nødvendig. Den eksisterende `uq_board_mandates_team_season`-indeks (IKKE partial, på `(team_id, season_id)`) er STRENGERE end den bedte partial-indeks og forbliver korrekt, fordi `proposeNextMandate` aldrig skriver et `NULL season_id` (se §4.8a) — en ny partial-indeks ville kun have lempet beskyttelsen. `negotiation_power` ligger i den eksisterende `source jsonb`-kolonne. Det eneste denne migration reelt tilføjer er et understøttende index (`idx_board_mandates_team_status`) til `GET /board/meeting`s opslag. Ingen backfill; de 237 aktive mandater fortsætter til sæson-slut 27/9, hvor det første rigtige årsmøde (S3→S4) opstår automatisk.
 
 ## 5. Verifikationssti
 

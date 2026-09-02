@@ -48,7 +48,24 @@ import { deriveDefaultFocusFromIdentity } from "./boardIdentity.js";
 import { regenerateBoardMembersForTeam } from "./boardMembers.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+// #4557 · Tærskel-konstanterne + resolveThresholds flyttet til
+// boardNegotiationThresholds.js så den nye Mandat-årsmøde-cron
+// (boardMandateAutoAccept.js) kan bruge SAMME regel uden at duplikere den.
+// Re-exporteret her for bagudkompatibilitet — ingen kaldested ændrer sig.
+import {
+  DAY_MS,
+  AUTO_ACCEPT_THRESHOLDS,
+  ACTIVE_PLAYER_THRESHOLDS,
+  ACTIVE_PLAYER_LAST_SEEN_DAYS,
+  resolveThresholds,
+} from "./boardNegotiationThresholds.js";
+
+export {
+  AUTO_ACCEPT_THRESHOLDS,
+  ACTIVE_PLAYER_THRESHOLDS,
+  ACTIVE_PLAYER_LAST_SEEN_DAYS,
+  resolveThresholds,
+};
 
 // #3502 · Backfill-dæmpning ved deploy. Cronen var reelt død fra 26/7 (global
 // window-gate, se filens toppe-kommentar) — prod-verifikation 7/8 viser 161
@@ -68,57 +85,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // no-op for al fremtidig drift. Sat til ejer-review-vinduet efter denne PR
 // (~1 uge margin fra 7/8) — juster datoen op hvis merge trækker ud.
 export const AUTO_ACCEPT_ROLLOUT_FLOOR = new Date("2026-08-15T00:00:00Z");
-
-// Tærskler — kalenderdage siden planen blev åbnet til forhandling (#2463).
-// Navnesemantikken (T_MINUS_3/T_MINUS_1/AUTO_ACCEPT) er bevaret fra
-// Q-bekræftelse C 2026-05-05 — kun enheden ændrede sig (race-days → dage).
-//
-// #3579 · NOTICE er en NEUTRAL åbnings-besked uden nedtælling. Før den fandtes,
-// var spillerens første kontakt en nedtælling ("du har 3 dage tilbage") — og
-// efter #3502-udfaldet (cronen død 26/7-7/8) kom den efter tre ugers tavshed.
-// Tavsheden var vores fejl, så nedtællingen må ikke være det første de hører.
-export const AUTO_ACCEPT_THRESHOLDS = {
-  NOTICE: 0,      // dage siden åbning → neutralt varsel, ingen nedtælling
-  T_MINUS_3: 2,   // dage siden åbning → info-reminder (board_update)
-  T_MINUS_1: 4,   // dage siden åbning → kritisk reminder (board_critical)
-  AUTO_ACCEPT: 5, // dage siden åbning → bestyrelsen tager over
-};
-
-// #3579 · Aktive spillere får dobbelt vindue. Auto-accept er en sikkerhedsventil
-// for de hold ingen passer — ikke en måde at træffe flerårs-beslutninger på
-// vegne af nogen der spiller lige nu. En aktiv manager der ikke har forhandlet
-// har sandsynligvis ikke SET opfordringen (synligheds-problem, jf. #3514/#2223),
-// ikke fravalgt den. Prod-tal 9/8: af 144 hold med uafklaret plan var 92 ikke
-// logget ind i 14+ dage — for dem er auto-accept ren oprydning. De resterende
-// 24 aktive + 27 halvaktive er dem denne tærskel beskytter.
-export const ACTIVE_PLAYER_THRESHOLDS = {
-  NOTICE: 0,
-  T_MINUS_3: 5,
-  T_MINUS_1: 8,
-  AUTO_ACCEPT: 10,
-};
-
-// Grænsen for "spiller stadig". users.last_seen inden for dette vindue = aktiv.
-export const ACTIVE_PLAYER_LAST_SEEN_DAYS = 14;
-
-/**
- * #3579 · Vælg tærskelsæt ud fra om der sidder et menneske bag holdet.
- * Ukendt/manglende last_seen behandles som inaktiv: der er ingen at varsle,
- * og oprydning er det rigtige udfald.
- *
- * @param {object|null} lastSeenSource — teams-rækkens embeddede user (`{ last_seen }`)
- * @param {Date} now
- */
-export function resolveThresholds(lastSeenSource, now) {
-  const lastSeenRaw = lastSeenSource?.last_seen ?? null;
-  if (!lastSeenRaw) return AUTO_ACCEPT_THRESHOLDS;
-  const lastSeenMs = new Date(lastSeenRaw).getTime();
-  if (Number.isNaN(lastSeenMs)) return AUTO_ACCEPT_THRESHOLDS;
-  const daysSinceSeen = (now.getTime() - lastSeenMs) / DAY_MS;
-  return daysSinceSeen <= ACTIVE_PLAYER_LAST_SEEN_DAYS
-    ? ACTIVE_PLAYER_THRESHOLDS
-    : AUTO_ACCEPT_THRESHOLDS;
-}
 
 // #2469 · Kolonnerne autoAcceptPendingPlan viderefører fra en EKSISTERENDE
 // board-række. Enhver kolonne der læses som `existingBoard?.x ?? <default>` i

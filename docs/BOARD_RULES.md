@@ -226,8 +226,18 @@ Ejer-godkendt 7/8 med 10 låste beslutninger. Erstatter tre planer med **én rel
 | `board_vision_milestones` | 2.059 |
 | `team_board_members` | 1.085 (5 pr. hold) |
 | Backup | `backup_board_profiles_3514_20260823`, 649 rækker |
-| Fase 2 (Boardroom-side, årsmøde) | **Findes ikke.** `BoardPage.jsx` er stadig monolitten |
+| Fase 2 (Boardroom-side, årsmøde) | Boardroom-siden (S-M2b) + årsmødets **backend** (S-M2c, #4557) findes nu bag flaget. Frontend-mødet (`/board/meeting`-UI'et) er en separat, senere worker (S-M2c-frontend) |
 | Issue-label | `claude:done` — med tomme fase-checkbokse |
+
+**Opdateret 3/9 (#4557, S-M2c a+b):** `boardMandateEngine.js::advanceMandateAtSeasonEnd` og
+`::proposeMandateForNewTeam` er nu wiret ind i `economyEngine.js::processTeamSeasonEnd` (efter
+`applySeasonEndSync`, samme fail-safe try/catch-disciplin) — næste sæsons mandat foreslås (status
+`proposed`) automatisk ved sæson-slut for hold der har en skyggerelation. `GET/POST /board/meeting/*`
+(§4.8 i slice-spec'en) + en ny 30-min-cron (`boardMandateAutoAccept.js`) er bygget, alt stadig
+flag-gated. **Dette ændrer IKKE tabellen ovenfor:** `board_mandate_model_enabled` er stadig `off`,
+og de 237 aktive mandater rammes først ved sæson-slut 27/9 (S3→S4), hvor det første rigtige årsmøde
+opstår automatisk — se `backend/scripts/proposeNextMandateDryRun.js` for tørkørslen ejeren skal se
+FØR flip.
 
 **Konsekvensen af at flippe flaget i dag:** `boardMandateEngine.js` er den eneste runtime-skriver af
 `board_relations`, og den er flag-gated. Skyggemodellen har derfor stået stille i seks dage mens

@@ -13,6 +13,7 @@ import {
 import {
   buildGoalLabel,
   buildNegotiatedGoal,
+  buildStretchGoal,
   computeU25StatSum,
   countGoalsMet,
   evaluateGoal,
@@ -429,6 +430,54 @@ test("buildNegotiatedGoal halves penalty + reduces target where possible", () =>
     type: "relative_rank", target: 3, satisfaction_penalty: 8,
   });
   assert.equal(rank.target, 2);
+});
+
+// =====================================================================
+// #4557 S-M2c · buildStretchGoal — spejlfunktion af buildNegotiatedGoal
+// =====================================================================
+
+test("buildStretchGoal strammer target ét trin (spejl af relaxGoalTarget) og ×1,5 bonus+straf, pr. type", () => {
+  const cases = [
+    { in: { type: "top_n_finish", target: 4, satisfaction_bonus: 10, satisfaction_penalty: 6 }, target: 2 },
+    { in: { type: "stage_wins", target: 2, satisfaction_bonus: 10, satisfaction_penalty: 4 }, target: 3 },
+    { in: { type: "gc_wins", target: 1, satisfaction_bonus: 20, satisfaction_penalty: 8 }, target: 2 },
+    { in: { type: "min_u25_riders", target: 5, satisfaction_bonus: 10, satisfaction_penalty: 6 }, target: 6 },
+    { in: { type: "min_national_riders", target: 3, satisfaction_bonus: 8, satisfaction_penalty: 8 }, target: 4 },
+    { in: { type: "sponsor_growth", target: 10, satisfaction_bonus: 10, satisfaction_penalty: 8 }, target: 15 },
+    { in: { type: "jersey_wins", target: 2, cumulative: true, satisfaction_bonus: 10, satisfaction_penalty: 6 }, target: 3 },
+    { in: { type: "signature_rider", target: 1, satisfaction_bonus: 12, satisfaction_penalty: 8 }, target: 2 },
+    { in: { type: "profitable_transfers", target: 200_000, satisfaction_bonus: 10, satisfaction_penalty: 6 }, target: 250_000 },
+    { in: { type: "relative_rank", target: 3, satisfaction_bonus: 8, satisfaction_penalty: 8 }, target: 4 },
+  ];
+  for (const c of cases) {
+    const stretched = buildStretchGoal(c.in, { generosity: 1.0 });
+    assert.ok(stretched, `buildStretchGoal(${c.in.type}) skal ikke være null`);
+    assert.equal(stretched.target, c.target, `${c.in.type}: forkert stretch-target`);
+    assert.equal(stretched.satisfaction_bonus, Math.round(c.in.satisfaction_bonus * 1.5), `${c.in.type}: bonus skal være ×1,5`);
+    assert.equal(stretched.satisfaction_penalty, Math.round(c.in.satisfaction_penalty * 1.5), `${c.in.type}: straf skal være ×1,5`);
+    assert.equal(stretched.stretch, true);
+  }
+});
+
+test("buildStretchGoal: min_riders respekterer max_target-loftet i stedet for at overstramme", () => {
+  const goal = { type: "min_riders", target: 20, max_target: 22, satisfaction_bonus: 5, satisfaction_penalty: 10 };
+  const stretched = buildStretchGoal(goal, { generosity: 1.0 });
+  assert.equal(stretched.target, 22, "target+3 (23) klippes til max_target (22)");
+});
+
+test("buildStretchGoal: binært mål (no_outstanding_debt) returnerer null — ingen no-op-rabat den anden vej", () => {
+  assert.equal(buildStretchGoal({
+    type: "no_outstanding_debt", target: 0, satisfaction_bonus: 12, satisfaction_penalty: 8,
+  }), null);
+});
+
+test("buildStretchGoal: generosity skalerer KUN bonussen, aldrig straffen (ejer-svar 2/9 spørgsmål 1: A)", () => {
+  const goal = { type: "gc_wins", target: 1, satisfaction_bonus: 20, satisfaction_penalty: 10 };
+  const trusted = buildStretchGoal(goal, { generosity: 1.25 });
+  const strained = buildStretchGoal(goal, { generosity: 0.80 });
+  assert.equal(trusted.satisfaction_bonus, Math.round(20 * 1.5 * 1.25));
+  assert.equal(strained.satisfaction_bonus, Math.round(20 * 1.5 * 0.80));
+  assert.equal(trusted.satisfaction_penalty, strained.satisfaction_penalty, "straffen er UAFHÆNGIG af tillids-trappen");
 });
 
 // =====================================================================

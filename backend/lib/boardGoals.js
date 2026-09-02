@@ -440,6 +440,102 @@ function relaxGoalTarget(enrichedGoal) {
   }
 }
 
+// #4557 (S-M2c, ejer-svar 2/9 spørgsmål 1: A) · Returnerer den STRAMMEDE
+// ("Stretch") variant af et mål på årsmødet — eller NULL når målet ikke
+// reelt kan strammes (samme "ingen no-op-rabat"-garanti som buildNegotiatedGoal,
+// bare i den modsatte retning). `stretchGoalTarget` er en bevidst SPEJLING af
+// `relaxGoalTarget` pr. type (samme trin, modsat fortegn) — se den funktion
+// for typernes semantik. Binære mål (`no_outstanding_debt`) kan hverken
+// lempes eller strammes → null, knappen deaktiveres i UI'en (#3012-klassen).
+export function buildStretchGoal(goal, { generosity = 1.0 } = {}) {
+  const enrichedGoal = addGoalMetadata(goal);
+  const stretched = stretchGoalTarget(enrichedGoal);
+
+  // Intet reelt hårdere target at tilbyde → ingen Stretch-option.
+  if (!stretched || stretched.target === enrichedGoal.target) return null;
+
+  const generosityFactor = Number.isFinite(Number(generosity)) ? Number(generosity) : 1.0;
+
+  return addGoalMetadata({
+    ...enrichedGoal,
+    target: stretched.target,
+    label: stretched.label,
+    // Ejer-svar 2/9 §9.1: bonus OG straf × 1,5; tillids-trappen (generosity,
+    // 0,80/1,00/1,25) skalerer KUN bonussen, aldrig straffen — en betroet
+    // manager får mere ud af at strække sig, uden at risikoen bliver mindre.
+    satisfaction_bonus: Math.round((enrichedGoal.satisfaction_bonus || 0) * 1.5 * generosityFactor),
+    satisfaction_penalty: Math.round((enrichedGoal.satisfaction_penalty || 0) * 1.5),
+    stretch: true,
+  });
+}
+
+// Beregner det STRAMMEDE target pr. mål-type — spejlfunktion af relaxGoalTarget
+// ovenfor (samme trin-størrelse, modsat retning). Returnerer null for typer der
+// aldrig kan strammes (binære mål + ukendte typer). Et target identisk med
+// originalen (fx top_n_finish der allerede er på target=1) filtreres af
+// buildStretchGoal.
+function stretchGoalTarget(enrichedGoal) {
+  switch (enrichedGoal.type) {
+    case "top_n_finish": {
+      const target = Math.max(1, enrichedGoal.target - 2);
+      return { target, label: `Top ${target} i divisionen` };
+    }
+    case "stage_wins": {
+      const target = enrichedGoal.target + 1;
+      return {
+        target,
+        label: enrichedGoal.cumulative
+          ? `Mindst ${target} sejre over planperioden`
+          : `Mindst ${target} sejr${target !== 1 ? "e" : ""}`,
+      };
+    }
+    case "gc_wins": {
+      const target = enrichedGoal.target + 1;
+      return {
+        target,
+        label: enrichedGoal.cumulative
+          ? `Mindst ${target} samlede sejre over planperioden`
+          : `Mindst ${target} samlet sejr${target !== 1 ? "e" : ""}`,
+      };
+    }
+    case "min_u25_riders": {
+      const target = enrichedGoal.target + 1;
+      return { target, label: `Min. ${target} U25-ryttere pa holdet` };
+    }
+    case "min_national_riders": {
+      const target = enrichedGoal.target + 1;
+      return { target, label: buildGoalLabel({ ...enrichedGoal, target }) };
+    }
+    case "min_riders": {
+      const uncapped = enrichedGoal.target + 3;
+      const target = enrichedGoal.max_target != null ? Math.min(enrichedGoal.max_target, uncapped) : uncapped;
+      return { target, label: `Hold pa min. ${target} ryttere` };
+    }
+    case "sponsor_growth": {
+      const target = enrichedGoal.target + 5;
+      return { target, label: `Sponsor-indkomst vokset med ${target}%` };
+    }
+    case "monument_podium":
+    case "signature_rider":
+    case "jersey_wins":
+    case "u25_development_delta":
+    case "relative_rank":
+    case "domestic_dominance": {
+      const target = enrichedGoal.target + 1;
+      return { target, label: buildGoalLabel({ ...enrichedGoal, target }) };
+    }
+    case "profitable_transfers": {
+      const target = enrichedGoal.target + 50_000;
+      return { target, label: buildGoalLabel({ ...enrichedGoal, target }) };
+    }
+    // Binære mål (target er allerede absolut minimum) + ukendte typer:
+    // intet meningsfuldt at stramme.
+    case "no_outstanding_debt":
+    default:
+      return null;
+  }
+}
+
 // S-02g · Tradeoff-stramning fra approved board request anvendes på næste plan-renewal.
 // Hardkodet pr. request-type (Q-batch 1B Q16):
 //   - lower_results_pressure  →  tighten_identity_riders (target+1 på min_u25/min_national)
