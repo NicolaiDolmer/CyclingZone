@@ -405,8 +405,8 @@ const NOW_2SEP = Date.parse("2026-09-02T12:00:00Z");
 
 test("computeReconcileActions: opdateringsrække får updated_at fra now, uændret række får intet", () => {
   const localRows = [
-    { team_id: "t-old", status: "active", plan_interval: "1", current_period_end: "2026-08-31T21:59:59Z", alunta_customer_id: "c1", alunta_subscription_id: "s1" },
-    { team_id: "t-same", status: "active", plan_interval: "6", current_period_end: "2027-03-01T22:59:59Z", alunta_customer_id: "c2", alunta_subscription_id: "s2" },
+    { team_id: "t-old", status: "active", plan_interval: "monthly", current_period_end: "2026-08-31T21:59:59Z", alunta_customer_id: "c1", alunta_subscription_id: "s1" },
+    { team_id: "t-same", status: "active", plan_interval: "semiannual", current_period_end: "2027-03-01T22:59:59Z", alunta_customer_id: "c2", alunta_subscription_id: "s2" },
   ];
   const remoteEntries = [
     { uuid: "s1", status: "active", interval: 1, current_period_end: "2026-09-30T21:59:59Z", customer: { uuid: "c1", external_customer_id: "t-old" } },
@@ -433,7 +433,7 @@ test("extractSubscriptionFields: verificeret Alunta-form (customer.external_cust
     customerUuid: "7a7b9292",
     subscriptionUuid: "b9d010fc",
     rawStatus: "active",
-    planInterval: 6,
+    planInterval: "semiannual",
     currentPeriodEnd: "2027-03-01T22:59:59.999999Z",
   });
 });
