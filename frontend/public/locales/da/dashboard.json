@@ -53,8 +53,8 @@
     "title": "Sæson {number} er slut",
     "dismissAria": "Skjul sæson-opsummeringskortet",
     "movement": {
-      "promoted": "↑ Rykket op",
-      "relegated": "↓ Rykket ned",
+      "promoted": "Rykket op",
+      "relegated": "Rykket ned",
       "maintained": "Holdt division {division}"
     },
     "rankLine": "Du blev nr. {rank} af {size} i division {division}",
@@ -71,11 +71,11 @@
   "squadWarning": {
     "over": "Hold er for stort. Max {limit} i Division {division}. Sælg {count, plural, one {1 rytter} other {# ryttere}}.",
     "under": "Hold er for lille. Min {limit} i Division {division}. Køb {count, plural, one {1 rytter} other {# ryttere}} mere.",
-    "ctaMyTeam": "Mit Hold →"
+    "ctaMyTeam": "Mit Hold"
   },
   "contractWarning": {
     "message": "{count, plural, one {1 rytters kontrakt udløber} other {# rytteres kontrakter udløber}} ved sæsonskiftet. Forlæng fra rytterens profil for at beholde dem, ellers frigives de som fri agenter.",
-    "cta": "Se kontrakter →"
+    "cta": "Se kontrakter"
   },
   "discordNudge": {
     "title": "Få DMs ved overbud, transfertilbud og bestyrelses-signaler",
@@ -94,12 +94,12 @@
     "daysLeftSuffix": "dage til sæsonslut",
     "stages": "{completed}/{total} etaper",
     "stagesLive": "{count} i gang",
-    "viewCalendar": "Se kalender →"
+    "viewCalendar": "Se kalender"
   },
   "cards": {
     "myResult": {
       "title": "Sådan gik det for dit hold",
-      "linkFull": "Fuldt resultat →",
+      "linkFull": "Fuldt resultat",
       "newBadge": "Nyt",
       "oneDay": "Endagsløb",
       "stagesCount": "{count} etaper",
@@ -115,7 +115,7 @@
       "seasonRaces": "{count, plural, one {# løb} other {# løb}}",
       "stageWins": "{count, plural, one {# etapesejr} other {# etapesejre}}",
       "empty": "Dine ryttere har ikke kørt løb endnu. Holdets resultater lander her efter det første løb.",
-      "emptyCta": "Åbn løbskalenderen →",
+      "emptyCta": "Åbn løbskalenderen",
       "firstRaceTitle": "Dit første løb er kørt",
       "firstRaceIntro": "Kørt mens du var væk. Sådan gik det.",
       "firstRaceIntroAt": "Afsluttet {time} mens du var væk. Sådan gik det.",
@@ -127,7 +127,7 @@
     "maidenWin": {
       "title": "Karriereøjeblikke",
       "unknownRider": "Din rytter",
-      "viewRace": "Se løbet →",
+      "viewRace": "Se løbet",
       "headline": {
         "maidenWin": "Første sejr",
         "firstPodium": "Første podie",
@@ -143,7 +143,7 @@
     },
     "heroAgony": {
       "title": "Hero & Agony",
-      "linkFull": "Åbn løb →",
+      "linkFull": "Åbn løb",
       "eyebrow": {
         "hero": "Hero",
         "agony": "Agony",
@@ -186,10 +186,11 @@
       }
     },
     "auctions": {
-      "title": "Aktive Auktioner",
-      "linkAll": "Se alle →",
+      "title": "Aktive auktioner",
+      "linkAll": "Se alle",
       "empty": "Ingen aktive auktioner",
-      "emptyCta": "Se auktionsmarkedet →",
+      "emptyCta": "Se auktionsmarkedet",
+      "emptyHint": "Auktionerne lukker hver aften kl. 20.",
       "expired": "Udløbet",
       "winning": "Vinder",
       "selling": "Sælger",
@@ -197,10 +198,11 @@
       "timeLeftM": "{m}m"
     },
     "transfers": {
-      "title": "Transfers & Tilbud",
-      "linkAll": "Se alle →",
+      "title": "Transfers og tilbud",
+      "linkAll": "Se alle",
       "empty": "Ingen ventende transfers",
-      "emptyCta": "Se ryttere til salg →",
+      "emptyCta": "Se ryttere til salg",
+      "emptyHint": "Transfermarkedet er åbent hele sæsonen.",
       "incomingCount": "{count, plural, one {1 indgående transfer} other {# indgående transfers}}",
       "from": "Fra: {name}",
       "to": "Til: {name}",
@@ -208,10 +210,11 @@
       "active": "Aktiv"
     },
     "races": {
-      "title": "Kommende Løb",
-      "linkAll": "Kalender →",
+      "title": "Kommende løb",
+      "linkAll": "Kalender",
       "empty": "Ingen planlagte løb",
-      "emptyCta": "Åbn løbskalenderen →",
+      "emptyCta": "Åbn løbskalenderen",
+      "emptyHint": "Tilmeld holdet et kommende løb fra kalenderen.",
       "stages": "{count, plural, one {1 etape} other {# etaper}}",
       "oneDay": "Enkeltdagsløb",
       "scheduled": "Planlagt",
@@ -220,17 +223,18 @@
     "standings": {
       "title": "Division {division} · Stilling",
       "titlePool": "{label} · Stilling",
-      "linkAll": "Fuld rangliste →",
+      "linkAll": "Fuld rangliste",
       "empty": "Ingen sæsondata endnu",
-      "emptyCta": "Se den fulde rangliste →",
+      "emptyCta": "Se den fulde rangliste",
+      "emptyHint": "Stillingen opdateres efter hver afsluttet løbsdag.",
       "aiBadge": "AI",
       "managerRank": "#{rank} blandt managere",
       "movementTitle": "Divisionsplacering siden sidste løbsdag",
       "pointsDeltaTitle": "Point optjent på sidste løbsdag"
     },
     "board": {
-      "title": "Bestyrelsens Status",
-      "linkAll": "Detaljer →",
+      "title": "Bestyrelsens status",
+      "linkAll": "Detaljer",
       "satisfaction": "Tilfredshed",
       "focus": "Fokus",
       "budgetMultiplier": "Budget multiplikator",
@@ -239,9 +243,9 @@
     },
     "recentResults": {
       "title": "Seneste resultater",
-      "linkAll": "Se alle →",
+      "linkAll": "Se alle",
       "empty": "Resultater vises her efter de første løb",
-      "emptyCta": "Åbn løbskalenderen →",
+      "emptyCta": "Åbn løbskalenderen",
       "gc": "Samlet vinder",
       "winner": "Vinder",
       "stage": "Vinder af etape {n}",
@@ -250,9 +254,9 @@
     "riderRanking": {
       "title": "Rytterrangliste",
       "scopeLabel": "Din division",
-      "linkAll": "Hele ranglisten →",
+      "linkAll": "Hele ranglisten",
       "empty": "Resultater vises her efter de første løb",
-      "emptyCta": "Åbn løbskalenderen →",
+      "emptyCta": "Åbn løbskalenderen",
       "stageWins": "{count, plural, one {1 etapesejr} other {# etapesejre}}",
       "gcWins": "{count} GC",
       "classicWins": "{count} klassiker",
@@ -270,7 +274,7 @@
       "myLatestResult": "Sådan gik det for dit hold",
       "heroAgony": "Hero & Agony",
       "auctions": "Aktive auktioner",
-      "transfers": "Transfers & tilbud",
+      "transfers": "Transfers og tilbud",
       "races": "Kommende løb",
       "divStandings": "Divisionsrangliste",
       "board": "Bestyrelsens status",
@@ -331,7 +335,7 @@
       "prize": "Præmiepenge",
       "salary": "Løn",
       "upkeep": "Divisions-upkeep",
-      "staffFacilities": "Stab & faciliteter",
+      "staffFacilities": "Stab og faciliteter",
       "facilityUpkeep": "Facilitets-upkeep",
       "staffSalary": "Stab-løn",
       "loanInterest": "Lånerenter",
@@ -395,10 +399,10 @@
       "board_plan_set": "Forhandl en bestyrelsesplan"
     },
     "ctas": {
-      "first_bid_placed": "Se Auktioner →",
-      "first_training_run": "Gå til Træning →",
-      "first_squad_selected": "Gå til Løb →",
-      "board_plan_set": "Mød bestyrelsen →"
+      "first_bid_placed": "Se auktioner",
+      "first_training_run": "Gå til træning",
+      "first_squad_selected": "Gå til løb",
+      "board_plan_set": "Mød bestyrelsen"
     },
     "tour": "Vis mig hvordan",
     "dismissAria": "Skjul"
@@ -412,7 +416,7 @@
         "desc": "Forhandl 1yr/3yr/5yr-planer parallelt"
       },
       "help": {
-        "label": "Hjælp & regler",
+        "label": "Hjælp og regler",
         "desc": "Lær hvordan økonomi, racing og taktik fungerer"
       }
     },

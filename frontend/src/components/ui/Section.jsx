@@ -4,7 +4,21 @@ import { ChevronRightIcon } from "./icons/index.jsx";
 // #2849 bølge 0 — DEN kanoniske section-card-recipe (docs/design/PAGE_TEMPLATES.md).
 // Padding 20px (16px på mobil), ingen skygge — chrome renderer altid; kun body
 // swapper mellem loading/empty/error (canonical states).
+//
+// #4625 (slice 3 af #4622, TASTE §3) — venstre-accent-bjælker er et femte
+// prioritetssignal oven i de fire guld har lov til, og var Dashboards mest
+// gentagne fund (audit 2026-09). Section har ingen `accent`/`leftBar`-prop, og
+// forsøger en className en border-l-klasse ind alligevel, kaster den i DEV —
+// primitivet kan ikke bruges til at tegne en femte "vigtigt"-markør.
+const LEFT_ACCENT_RE = /\bborder-l-(?:\[|[2-9]\b|cz-)/;
+
 export default function Section({ className = "", children, ...rest }) {
+  if (import.meta.env.DEV && LEFT_ACCENT_RE.test(className)) {
+    throw new Error(
+      `Section maa ikke have en venstre-accent-bjaelke (className="${className}"). ` +
+        "Det er et femte prioritetssignal oven i guld-knap/leder-markoer/guld-tekst/T3-keyline — se docs/design/TASTE.md §3."
+    );
+  }
   return (
     <Card className={`p-4 sm:p-5 ${className}`} {...rest}>
       {children}

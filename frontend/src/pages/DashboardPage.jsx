@@ -1028,7 +1028,10 @@ export default function DashboardPage() {
             limit: squadWarning.limit,
             division: squadWarning.division,
           })}</span>
-          <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:squadWarning.ctaMyTeam")}</Link>
+          <Link to="/team" className="ms-auto inline-flex items-center gap-0.5 text-xs underline opacity-70 hover:opacity-100">
+            {t("dashboard:squadWarning.ctaMyTeam")}
+            <ChevronRightIcon size={13} aria-hidden="true" />
+          </Link>
         </div>
       )}
 
@@ -1039,7 +1042,10 @@ export default function DashboardPage() {
         <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2 bg-cz-warning-bg text-cz-warning border-cz-warning/30">
           <AlertTriangleIcon size={16} className="flex-shrink-0" />
           <span>{t("dashboard:contractWarning.message", { count: expiringContractCount })}</span>
-          <Link to="/team" className="ms-auto text-xs underline opacity-70 hover:opacity-100">{t("dashboard:contractWarning.cta")}</Link>
+          <Link to="/team" className="ms-auto inline-flex items-center gap-0.5 text-xs underline opacity-70 hover:opacity-100">
+            {t("dashboard:contractWarning.cta")}
+            <ChevronRightIcon size={13} aria-hidden="true" />
+          </Link>
         </div>
       )}
 
@@ -1166,7 +1172,10 @@ export default function DashboardPage() {
                   )}
 
                   <div className="ms-auto flex items-center gap-3">
-                    <span className="text-xs text-cz-accent-t group-hover:underline whitespace-nowrap">{t("dashboard:seasonBanner.viewCalendar")}</span>
+                    <span className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t group-hover:underline whitespace-nowrap">
+                      {t("dashboard:seasonBanner.viewCalendar")}
+                      <ChevronRightIcon size={13} aria-hidden="true" />
+                    </span>
                   </div>
                 </Card>
               </Link>
@@ -1288,6 +1297,7 @@ export default function DashboardPage() {
           {myActiveAuctions.length === 0 ? (
             <EmptyState
               title={t("dashboard:cards.auctions.empty")}
+              description={t("dashboard:cards.auctions.emptyHint")}
               action={
                 <Link to="/auctions" className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.auctions.emptyCta")}
@@ -1341,6 +1351,7 @@ export default function DashboardPage() {
           {activeMarketOffers.length === 0 && pendingIncoming === 0 ? (
             <EmptyState
               title={t("dashboard:cards.transfers.empty")}
+              description={t("dashboard:cards.transfers.emptyHint")}
               action={
                 <Link to="/transfers" className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.transfers.emptyCta")}
@@ -1394,6 +1405,7 @@ export default function DashboardPage() {
           {displayedRaces.length === 0 ? (
             <EmptyState
               title={t("dashboard:cards.races.empty")}
+              description={t("dashboard:cards.races.emptyHint")}
               action={
                 <Link to="/planning" className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.races.emptyCta")}
@@ -1460,6 +1472,7 @@ export default function DashboardPage() {
           {divStandings.length === 0 ? (
             <EmptyState
               title={t("dashboard:cards.standings.empty")}
+              description={t("dashboard:cards.standings.emptyHint")}
               action={
                 <Link to="/standings" className={buttonClass({ variant: "secondary", size: "sm" })}>
                   {t("dashboard:cards.standings.emptyCta")}
