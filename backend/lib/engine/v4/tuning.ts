@@ -257,11 +257,11 @@ export const BONUS_SECONDS_EXTRA_TUNING = deepFreeze(bonusSecondsExtra);
 // bjergankomster (nedkoersels-/summit-ratio ~1,1 mod kravet <= 0,5).
 const descentExtra = {
   regroupSecondsPerKm: 9, // ABSOLUT led: sekunder af hullet til gruppen foran der lukkes pr. km nedkoersel — det led der lukker SMAA huller helt (START-KANDIDAT, kalibreret i head-to-head-harnesset som alle oevrige v4-konstanter)
-  regroupGapFractionPerKm: 0.05, // PROPORTIONALT led: andel af et STORT hul der lukkes pr. km (sammensat pr. km, saa en lang nedkoersel krymper mere end en kort) — uden det ville en selektion paa 10+ minutter passere en 15 km nedkoersel naesten uroert
-  regroupMaxGapFractionPerSegment: 0.6, // haardt loft: ét nedkoersels-segment maa ALDRIG udradere mere end denne andel af et hul — en aegte selektion skal kunne overleve en nedkoersel
+  regroupGapFractionPerKm: 0.2, // PROPORTIONALT led: andel af et STORT hul der lukkes pr. km (sammensat pr. km, saa en lang nedkoersel krymper mere end en kort) — uden det ville en selektion paa 10+ minutter passere en 15 km nedkoersel naesten uroert
+  regroupMaxGapFractionPerSegment: 0.9, // haardt loft: ét nedkoersels-segment maa ALDRIG udradere mere end denne andel af et hul — en aegte selektion skal kunne overleve en nedkoersel
   regroupTechnicalityFactor: { 1: 1.3, 2: 1.0, 3: 0.65 } as Record<1 | 2 | 3, number>, // T1 udligner mest (bred, hurtig vej), T3 mindst (teknisk vej lader en staerk descender forsvare hullet)
   regroupAbilitySpanPoints: 25, // descending-evne-forskel (0-99-skala) mellem jagende og forankoerende gruppe der giver fuldt udslag paa lukkehastigheden
-  regroupAbilityFactorBounds: [0.5, 1.5] as const, // clamp paa evne-faktoren — en svagere gruppe lukker mindre, en staerkere mere, men ALDRIG negativt (et hul kan aldrig VOKSE af regrupperingen)
+  regroupAbilityFactorBounds: [0.85, 1.15] as const, // clamp paa evne-faktoren — en svagere gruppe lukker mindre, en staerkere mere, men ALDRIG negativt (et hul kan aldrig VOKSE af regrupperingen)
   // Angrebs-kvalifikationens OEVRE reference (#4604). DescentTuning.minAbilityGapForAttack
   // maaler mod gruppens SVAGESTE descender: i et felt paa 150+ ryttere ligger
   // minimum saa lavt at stort set hele feltet kvalificerer, og "angrebet" bliver
@@ -272,6 +272,7 @@ const descentExtra = {
   // (det er fortsat en ren evne-taerskel, saa den kvalificerende delmaengde er
   // altid et sammenhaengende praefiks sorteret paa faldende descending-evne).
   attackAbilityWindowPoints: 8, // kun ryttere inden for saa mange descending-point af gruppens bedste descender kan gaa med i et nedkoersels-angreb
+  maxGroupSizeForAttack: 40, // et nedkoersels-angreb kan kun gaa fra en ALLEREDE reduceret gruppe. Man koerer ikke 20 sekunder fra en samlet hovedgruppe paa en nedkoersel — dér er der altid nogen paa hjulet. Uden gaten udloeste M3 et angreb ud af selve feltet paa hver eneste tekniske nedkoersel (504 angreb paa 426 etaper)
 } as const;
 
 /** M3 additiv regrupperings-tuning (deep-frosset). Se descentExtra-kommentaren ovenfor. */
