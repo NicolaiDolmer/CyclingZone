@@ -86,7 +86,20 @@ const tuning: EngineTuning = {
       descent: 55, // intern illustrativ basishastighed, descent
       cobbles: 32, // intern illustrativ basishastighed, cobbles
     },
-    strengthSpeedGain: 0.25, // skalering af hastigheds-multiplikator pr. enhed kollektiv-CP over/under baseDemand
+    // #4604: kalibreret 2/9 fra 0,25 mod #2415's ejer-godkendte bjerg-top-10-baand
+    // (180-240 s) paa hele S3-kalenderen, 180-rytters felt — praecis den kalibrering
+    // filens header lovede ("START-KANDIDATER ... kalibreres i head-to-head-harnesset").
+    // Denne konstant styrer hvor meget tempo-drift der akkumulerer MELLEM grupper
+    // efter selektionen, og var den dominerende gap-kilde: 85 % (488 af 574 s) af
+    // 10.-plads-gappet paa bjergetaper var drift EFTER selektionen, ikke selve
+    // selektionen — gaps voksede endda paa flade run-in-kilometre.
+    // Kalibreret OVEN PAA #4606 (W'-tidskonstant + gruppe-lae-fart-gevinst).
+    // Ét seed svinger betydeligt (#4606's fund), saa kalibreringen er koert over
+    // 5 seeds x 426 etaper. Middel (spaend) af bjerg-top-10-spredningen:
+    //   0,12 -> 211 s (177-237) · 0,13 -> 230 s (193-258) · 0,25 -> 447 s (418-486)
+    // 0,12 rammer baandets midte med den mindste afvigelse paa tvaers af seeds
+    // (ét seed 3 s under 180; 0,13 laegger til gengaeld to seeds ~15 s over 240).
+    strengthSpeedGain: 0.12, // skalering af hastigheds-multiplikator pr. enhed kollektiv-CP over/under baseDemand
     speedMultiplierBounds: [0.7, 1.3], // clamp paa hastigheds-multiplikatoren (undgaar urealistiske yderpunkter)
   },
 
