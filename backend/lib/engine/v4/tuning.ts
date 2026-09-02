@@ -240,6 +240,43 @@ const bonusSecondsExtra = {
 /** M9 additiv bonussekunder-tuning (deep-frosset). Se bonusSecondsExtra-kommentaren ovenfor. */
 export const BONUS_SECONDS_EXTRA_TUNING = deepFreeze(bonusSecondsExtra);
 
+// ── M3 (mechanics/descent.ts, #4604) — ADDITIV nedkoersels-regruppering ───────
+// SS2's frosne DescentTuning (types.ts) baerer KUN angrebs-/risiko-haandtagene;
+// den kender ingen regruppering. Samme "bevidst separat eksport"-moenster som
+// finaleExtra ovenfor: mechanics/descent.ts importerer denne DIREKTE, saa den
+// frosne kontrakt (arkitekt-only) staar uroert.
+//
+// HVORFOR den findes (#4604, F3-anker 3): segmentLoop's generiske gap-bogfoering
+// er `gap = max(0, gap + (dtGruppe - dtFront))` — monotont IKKE-faldende for
+// enhver gruppe bagude, paa ALLE terraen-kinds. En nedkoersel kunne derfor kun
+// skabe tid, aldrig give den tilbage, og M3's eneste tids-effekt var et SPLIT.
+// Virkeligheden er den modsatte: en nedkoersel udligner typisk smaa huller
+// (hastigheden er tyngde-/aerodynamik-domineret, ikke effekt-domineret, saa en
+// jagende gruppe taber ikke terraen paa at vaere svagere), og skaber sjaeldent
+// store. Uden dette lag blev nedkoersels-finaler lige saa spredte som
+// bjergankomster (nedkoersels-/summit-ratio ~1,1 mod kravet <= 0,5).
+const descentExtra = {
+  regroupSecondsPerKm: 9, // ABSOLUT led: sekunder af hullet til gruppen foran der lukkes pr. km nedkoersel — det led der lukker SMAA huller helt (START-KANDIDAT, kalibreret i head-to-head-harnesset som alle oevrige v4-konstanter)
+  regroupGapFractionPerKm: 0.05, // PROPORTIONALT led: andel af et STORT hul der lukkes pr. km (sammensat pr. km, saa en lang nedkoersel krymper mere end en kort) — uden det ville en selektion paa 10+ minutter passere en 15 km nedkoersel naesten uroert
+  regroupMaxGapFractionPerSegment: 0.6, // haardt loft: ét nedkoersels-segment maa ALDRIG udradere mere end denne andel af et hul — en aegte selektion skal kunne overleve en nedkoersel
+  regroupTechnicalityFactor: { 1: 1.3, 2: 1.0, 3: 0.65 } as Record<1 | 2 | 3, number>, // T1 udligner mest (bred, hurtig vej), T3 mindst (teknisk vej lader en staerk descender forsvare hullet)
+  regroupAbilitySpanPoints: 25, // descending-evne-forskel (0-99-skala) mellem jagende og forankoerende gruppe der giver fuldt udslag paa lukkehastigheden
+  regroupAbilityFactorBounds: [0.5, 1.5] as const, // clamp paa evne-faktoren — en svagere gruppe lukker mindre, en staerkere mere, men ALDRIG negativt (et hul kan aldrig VOKSE af regrupperingen)
+  // Angrebs-kvalifikationens OEVRE reference (#4604). DescentTuning.minAbilityGapForAttack
+  // maaler mod gruppens SVAGESTE descender: i et felt paa 150+ ryttere ligger
+  // minimum saa lavt at stort set hele feltet kvalificerer, og "angrebet" bliver
+  // et split hvor 60-70 % af feltet koerer fra resten. Maalt paa syntetiske felter
+  // foer fixet: 96 af 150 og 122 af 180 ryttere i "angrebsgruppen". Dette vindue
+  // maaler i stedet mod gruppens BEDSTE descender, saa kun de reelt bedste gaar —
+  // og bevarer praefiks-egenskaben monotoni-beviset i descent.ts hviler paa
+  // (det er fortsat en ren evne-taerskel, saa den kvalificerende delmaengde er
+  // altid et sammenhaengende praefiks sorteret paa faldende descending-evne).
+  attackAbilityWindowPoints: 8, // kun ryttere inden for saa mange descending-point af gruppens bedste descender kan gaa med i et nedkoersels-angreb
+} as const;
+
+/** M3 additiv regrupperings-tuning (deep-frosset). Se descentExtra-kommentaren ovenfor. */
+export const DESCENT_EXTRA_TUNING = deepFreeze(descentExtra);
+
 // ── M10 (mechanics/incidents.ts, #4030 #4080) — ADDITIV incidents-tuning ──────
 // SS2's frosne EngineTuning-kontrakt (types.ts) baerer INGEN incidents-sektion
 // (arkitekten har ikke tilfoejet den) — samme "bevidst separat eksport"-moenster
