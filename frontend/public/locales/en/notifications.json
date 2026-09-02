@@ -34,10 +34,14 @@
   "empty": {
     "noneUnread": "No unread notifications",
     "noneInCategory": "No notifications in this category",
+    "noneHint": "Notifications for other categories may still be waiting.",
+    "showAllCta": "Show all notifications",
     "noPending": "Nothing waiting on your decision",
     "noPendingHint": "Offers and swaps that need your response will show up here",
+    "browseMarketCta": "Browse the market",
     "noFeed": "No activity yet",
-    "noFeedHint": "Start auctions and trades to see activity here"
+    "noFeedHint": "Start auctions and trades to see activity here",
+    "goToAuctionsCta": "Go to auctions"
   },
   "aggregate": {
     "countSuffix": "(×{count})",
