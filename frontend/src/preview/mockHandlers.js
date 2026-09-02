@@ -89,8 +89,32 @@ export function rpcResponse(name) {
     // #3190: løbsdage pr. rytter — Mit Holds Stats-fane.
     case "get_rider_race_days":
       return SEED_RIDER_RACE_DAYS;
+    // #4649: offentligt Founder-mærke (database/2026-09-03-4649-founder-public.sql).
+    // Ny RPC — intet eksisterende preview/e2e-forløb kalder den, så seeded data
+    // her ændrer ikke nogen eksisterende fladeadfærd. TEST_TEAM + RIVAL_TEAM
+    // seedes som Founders, så Standings/holdside/forum kan skærmbilledes uden
+    // ekstra opsætning.
+    case "founder_public_list":
+      return [
+        { team_id: TEST_TEAM.id, founder_number: 7 },
+        { team_id: RIVAL_TEAM.id, founder_number: 23 },
+      ];
     default:
       return undefined;
+  }
+}
+
+// #4649: Pro-tilstanden i preview styres af localStorage cz_mock_pro ("1"=Pro,
+// alt andet/uset=fri) — DEFAULT UÆNDRET (ingen flag sat → samme "{}"-fallback
+// som subscriptions altid har haft, se restRows/restObject nedenfor), så
+// eksisterende Layout.jsx-sidebar-badge-adfærd på andre skærmbilleder/e2e ikke
+// flytter sig. Kun skærmbilleder til DENNE PR sætter flaget eksplicit.
+export function mockProEnabled() {
+  try {
+    if (typeof localStorage === "undefined") return false;
+    return localStorage.getItem("cz_mock_pro") === "1";
+  } catch {
+    return false;
   }
 }
 
@@ -443,6 +467,12 @@ export function restRows(table, requestUrl = "") {
       return [ACTIVE_SEASON];
     case "transfer_windows":
       return [{ id: "window-e2e", status: "open" }];
+    // #4649: kun tilstedeværende når cz_mock_pro="1" — ellers uændret default
+    // (tom liste → useSubscription ser {} → isPro/isFounder false, som i dag).
+    case "subscriptions":
+      return mockProEnabled()
+        ? [{ team_id: TEST_TEAM.id, status: "active", current_period_end: "2099-01-01T00:00:00Z", is_founder: true }]
+        : [];
     default:
       return [];
   }
@@ -458,6 +488,10 @@ export function restObject(table, requestUrl = "") {
       return ACTIVE_SEASON;
     case "transfer_windows":
       return { id: "window-e2e", status: "open" };
+    case "subscriptions":
+      return mockProEnabled()
+        ? { team_id: TEST_TEAM.id, status: "active", current_period_end: "2099-01-01T00:00:00Z", is_founder: true }
+        : {};
     default:
       return restRows(table, requestUrl)[0] || {};
   }
@@ -524,7 +558,7 @@ const FORUM_POSTS = [
     last_reply_at: "2026-08-06T06:10:00Z",
     has_poll: false,
     is_unread: true,
-    author: { username: "peloton_pete", team_name: "Thunder Cycling" },
+    author: { username: "peloton_pete", team_name: "Thunder Cycling", team_id: RIVAL_TEAM.id },
   },
   {
     id: "forum-post-3",
@@ -570,7 +604,7 @@ export function forumPostDetail(postId) {
         seq: 1,
         created_at: "2026-08-05T21:05:00Z",
         body: "Great initiative. My vote went to race replays, the finale deserves it.",
-        author: { username: "peloton_pete", team_name: "Thunder Cycling" },
+        author: { username: "peloton_pete", team_name: "Thunder Cycling", team_id: RIVAL_TEAM.id },
         is_mine: false,
         support_count: 6,
         supported_by_me: true,
@@ -590,7 +624,7 @@ export function forumPostDetail(postId) {
           id: `${post.id}-r1`,
           removed: false,
           excerpt: "Great initiative. My vote went to race replays, the finale deserves it.",
-          author: { username: "peloton_pete", team_name: "Thunder Cycling" },
+          author: { username: "peloton_pete", team_name: "Thunder Cycling", team_id: RIVAL_TEAM.id },
         },
       },
       {

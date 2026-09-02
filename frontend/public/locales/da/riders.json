@@ -8,6 +8,7 @@
   "loadError": "Kunne ikke indlæse rytterne. Prøv igen.",
   "retry": "Prøv igen",
   "watchlistToggleFailed": "Kunne ikke opdatere din ønskeliste. Prøv igen.",
+  "watchlistLimitReached": "Din ønskeliste er fuld. Pro hæver loftet, se /pro.",
   "table": {
     "nation": "Nation",
     "rider": "Rytter",

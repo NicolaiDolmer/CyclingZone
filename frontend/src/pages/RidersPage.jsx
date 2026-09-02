@@ -23,6 +23,8 @@ import { getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
+import SavedFiltersBar from "../components/rider/SavedFiltersBar.jsx";
+import { useSubscription } from "../lib/useSubscription.js";
 import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
 import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
@@ -195,6 +197,8 @@ export default function RidersPage() {
   );
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
+  // #4649: gemte filtre (del C) — Pro-gated i UI, se SavedFiltersBar.
+  const { isPro, isFounder } = useSubscription(myTeam?.id);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [compareIds, setCompareIds] = useState([]);
   // #3012: fejl-feedback når en watchlist-toggle fejler, så den ikke tavst
@@ -207,8 +211,16 @@ export default function RidersPage() {
     setToasts(prev => prev.filter(item => item.id !== id));
   }
 
-  function showWatchlistError() {
+  function showWatchlistError(error) {
     const id = `watchlist-error-${Date.now()}`;
+    // #4649: databasens loft-trigger (rider_watchlist-cap) rammer med denne
+    // errorCode i beskeden — vis en handlingsorienteret Pro-note i stedet for
+    // den generiske fejlbesked, når det er ÅRSAGEN (aldrig omvendt: en ægte
+    // netværks-/RLS-fejl skal stadig vise den generiske besked).
+    if (error?.message?.includes("watchlist_limit_reached")) {
+      setToasts(prev => [...prev, { id, tone: "warning", title: t("watchlistLimitReached") }]);
+      return;
+    }
     setToasts(prev => [...prev, { id, tone: "danger", title: t("watchlistToggleFailed") }]);
   }
 
@@ -285,7 +297,7 @@ export default function RidersPage() {
     if (watchlist.has(riderId)) {
       const { error } = await supabase.from("rider_watchlist").delete().eq("user_id", userId).eq("rider_id", riderId);
       if (error) {
-        showWatchlistError();
+        showWatchlistError(error);
         reportActionFailure("rider_watchlist_toggle", { reason: error.message, context: { riderId, op: "delete" } });
         return;
       }
@@ -293,7 +305,7 @@ export default function RidersPage() {
     } else {
       const { error } = await supabase.from("rider_watchlist").insert({ user_id: userId, rider_id: riderId });
       if (error) {
-        showWatchlistError();
+        showWatchlistError(error);
         reportActionFailure("rider_watchlist_toggle", { reason: error.message, context: { riderId, op: "insert" } });
         return;
       }
@@ -605,6 +617,15 @@ export default function RidersPage() {
           onStartTour={() => startTour("riders")}
         />
       )}
+
+      {/* #4649: gemte filtre (Pro v1.1 del C) — over filterpanelet, samme
+          niveau som filter-bar'en selv (chips + "Save current filter"). */}
+      <SavedFiltersBar
+        userId={userId}
+        filters={filters}
+        onApply={(saved) => setFilters({ ...FILTER_DEFAULTS, ...saved, page: 1 })}
+        eligible={isPro || isFounder}
+      />
 
       <div data-tour="riders-filters">
         <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} nationalities={nationalities} showAiToggle={true} />
