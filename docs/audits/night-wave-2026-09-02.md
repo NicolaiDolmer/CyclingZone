@@ -22,8 +22,8 @@
 | Design-kit (#4625) | #4657 | draft, ejer-go | EmptyState/FilterBar/Tabs/DataTable + Dashboard/Indbakke; dev-throws blødgjort til console.error (fix-up 22:20) |
 | Pro-fordele (#4649) | #4662 | draft, ejer-go | Founder-mærke, evnehistorik, gemte filtre, ønskeliste-loft; 2 migrationer (apply efter merge); 3 ejer-spørgsmål i PR |
 | Årsmøde frontend (S-M2c c) | #4661 | draft, ejer-go | /board/meeting per mockup, 4/4 spec-tests, 8 screenshots |
-| Tilmeld-knap + parkering (#4592 #452) | chunk 3 | kører | |
-| SEO fase 1 (#4067) | chunk 3 | kører | worktree havde 3 commits, +4 i nat |
+| Tilmeld-knap + parkering (#4592 #452) | recovery-agent | kører (genstartet 22:30) | workeren hang 40 min på et `cd X &&`-Bash-kald (permission-prompt uden svar); workflow stoppet, frisk Agent fortsætter i SAMME worktree med 1 commit + 3 ucommittede filer |
+| SEO fase 1 (#4067) | #4659 | draft, ejer-go | 50 filer: how-it-works, PCM-sammenligning, /da/ + hreflang, sitemap/robots, cookie-consent; build + lint grøn; Vercel-opsætning beskrevet i PR |
 | #4608 EUR-checkout | #4608 | rebaset 22:00, MERGEABLE | holdes til nøgleblokken (#4616); patch note renummereres til 7.238 ved merge (7.237 brugt i nat) |
 
 ## Afvigelser/læringer
