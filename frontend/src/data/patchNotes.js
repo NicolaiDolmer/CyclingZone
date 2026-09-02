@@ -1,5 +1,96 @@
 export const PATCHES = [
   {
+    "version": "7.234",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board plans can only be renegotiated once they expire",
+          "body": "Multi-year board plans could be renegotiated early, resetting season and win progress before the plan was done. Renegotiation is now only available once the plan has run its course, and the confirmation text says exactly what will reset."
+        },
+        "da": {
+          "title": "Bestyrelsesplaner kan først genforhandles når de er udløbet",
+          "body": "Flerårige bestyrelsesplaner kunne genforhandles tidligt, hvilket nulstillede sæson- og sejrsfremgang før planen var færdig. Genforhandling er nu kun mulig når planen har kørt sin periode, og bekræftelsesteksten siger præcis hvad der nulstilles."
+        },
+        "refs": [3575, 4377]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board sponsor growth goal now tracks real income",
+          "body": "The sponsor growth goal always showed 0% progress, no matter how sponsor income actually moved. It now compares real payouts season over season."
+        },
+        "da": {
+          "title": "Bestyrelsens mål for sponsorvækst måler nu den rigtige indtægt",
+          "body": "Målet for sponsorvækst viste altid 0% fremgang, uanset hvordan sponsorindtægten reelt bevægede sig. Det sammenligner nu de faktiske udbetalinger sæson for sæson."
+        },
+        "refs": [3494]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Jersey win goal in five-year plans now counts the whole plan",
+          "body": "The board's goal for jersey wins in a five-year plan only counted the current season, resetting every year even though the goal spans the plan. It now adds up across the full plan period."
+        },
+        "da": {
+          "title": "Trøjesejrsmålet i femårsplaner tæller nu hele planen",
+          "body": "Bestyrelsens mål for trøjesejre i en femårsplan talte kun den aktuelle sæson og blev nulstillet hvert år, selvom målet dækker hele planen. Det lægger nu sammen over hele planperioden."
+        },
+        "refs": [4377]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Protected role conflicts now resolve the same way every time",
+          "body": "When two riders on the same team had a protected role (captain or sprint captain) on the same stage, which one counted could change between views. The same rider is now picked consistently."
+        },
+        "da": {
+          "title": "Konflikter om beskyttet rolle løses nu ens hver gang",
+          "body": "Når to ryttere på samme hold havde en beskyttet rolle (kaptajn eller sprintkaptajn) på samme etape, kunne det skifte hvilken der talte fra visning til visning. Den samme rytter vælges nu konsekvent."
+        },
+        "refs": [4357]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Fair play",
+        "en": {
+          "title": "Fair play checks now cover direct trades too",
+          "body": "Fair play reviews previously looked only at auctions and swaps. They now also cover direct trades, and weigh repeated patterns more heavily than the amount involved."
+        },
+        "da": {
+          "title": "Fair play-tjek dækker nu også direkte handler",
+          "body": "Fair play-gennemgange kiggede tidligere kun på auktioner og bytter. De dækker nu også direkte handler og vægter gentagne mønstre højere end det involverede beløb."
+        },
+        "refs": [3818]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Privacy",
+        "en": {
+          "title": "Cookie banner now names Vercel Web Analytics",
+          "body": "The Analytics category in the cookie banner now lists Vercel Web Analytics alongside Clarity and Google Analytics, matching what actually runs."
+        },
+        "da": {
+          "title": "Cookie-banneret nævner nu Vercel Web Analytics",
+          "body": "Analyse-kategorien i cookie-banneret nævner nu Vercel Web Analytics sammen med Clarity og Google Analytics, så det matcher hvad der rent faktisk kører."
+        },
+        "refs": [435]
+      }
+    ]
+  },
+  {
     "version": "7.232",
     "date": "2026-09-02",
     "label": "Beta",
