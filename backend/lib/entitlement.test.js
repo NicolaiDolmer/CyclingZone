@@ -1,7 +1,7 @@
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createTestDb } from "./testdb/createTestDb.js";
-import { computeIsPro, PRO_GRACE_AFTER_PERIOD_END_MS } from "./entitlement.js";
+import { computeIsPro, PRO_GRACE_AFTER_PERIOD_END_MS, PRO_GRACE_NO_PERIOD_END_MS } from "./entitlement.js";
 
 // Minimalt fil-sæt: base-skema (teams = FK-mål) + subscriptions-migration.
 const SCHEMA_FILES = ["schema.sql", "2026-06-26-cz-pro-subscriptions.sql"];
@@ -64,4 +64,24 @@ test("computeIsPro: inaktiv får ingen respit uanset periode", () => {
 });
 test("computeIsPro: ulæselig periode = false", () => {
   assert.equal(computeIsPro({ status: "active", current_period_end: "ikke-en-dato" }, NOW), false);
+});
+
+// ── #4648: 24h-respit uden current_period_end (checkout.completed-race) ──────
+test("computeIsPro: active, intet current_period_end, last_event_at for 1 time siden = true (respit)", () => {
+  assert.equal(computeIsPro({ status: "active", current_period_end: null, last_event_at: iso(NOW - 60 * 60 * 1000) }, NOW), true);
+});
+test("computeIsPro: past_due, intet current_period_end, last_event_at for 23 timer siden = true (respit)", () => {
+  assert.equal(computeIsPro({ status: "past_due", current_period_end: null, last_event_at: iso(NOW - 23 * 60 * 60 * 1000) }, NOW), true);
+});
+test("computeIsPro: active, intet current_period_end, last_event_at for 24 timer + 1 ms siden = false (respit opbrugt)", () => {
+  assert.equal(computeIsPro({ status: "active", current_period_end: null, last_event_at: iso(NOW - PRO_GRACE_NO_PERIOD_END_MS - 1) }, NOW), false);
+});
+test("computeIsPro: active, intet current_period_end OG intet last_event_at = false", () => {
+  assert.equal(computeIsPro({ status: "active", current_period_end: null, last_event_at: null }, NOW), false);
+});
+test("computeIsPro: cancelled uden current_period_end = false (ingen respit at æres til)", () => {
+  assert.equal(computeIsPro({ status: "cancelled", current_period_end: null, last_event_at: iso(NOW) }, NOW), false);
+});
+test("computeIsPro: active, intet current_period_end, ulæseligt last_event_at = false", () => {
+  assert.equal(computeIsPro({ status: "active", current_period_end: null, last_event_at: "ikke-en-dato" }, NOW), false);
 });

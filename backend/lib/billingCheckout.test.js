@@ -11,15 +11,30 @@ function fakeClient() {
   };
 }
 
-// #2813: fake supabase der fanger accept-log-upserts på subscriptions.
-function fakeSupabase() {
+// #2813/#2816/#4646: fake supabase der fanger accept-log-upserts + player_events-
+// inserts på subscriptions, og lader tests injicere en eksisterende
+// subscriptions-række (dobbeltkøb-guarden, #2816) via `existingSub`.
+function fakeSupabase({ existingSub = null } = {}) {
   const upserts = [];
+  const inserts = [];
   return {
     upserts,
+    inserts,
     from(table) {
       return {
+        select() {
+          return {
+            eq() {
+              return { maybeSingle: () => Promise.resolve({ data: table === "subscriptions" ? existingSub : null, error: null }) };
+            },
+          };
+        },
         upsert(row, opts) {
           upserts.push({ table, row, opts });
+          return Promise.resolve({ error: null });
+        },
+        insert(row) {
+          inserts.push({ table, row });
           return Promise.resolve({ error: null });
         },
       };
@@ -154,4 +169,113 @@ test("checkout: Alunta-fejl → 502", async () => {
   const r = res();
   await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
   assert.equal(r.code, 502);
+});
+
+// ── #2816: dobbeltkøb-guard ───────────────────────────────────────────────────
+
+test("checkout: eksisterende ACTIVE subscription MED alunta_subscription_id → 409 already_subscribed, ingen Alunta-kald", async () => {
+  const client = fakeClient();
+  const supabase = fakeSupabase({ existingSub: { status: "active", alunta_subscription_id: "sub-existing" } });
+  const handler = createCheckoutHandler({ client, supabase, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
+  assert.equal(r.code, 409);
+  assert.equal(r.body.errorCode, "already_subscribed");
+  assert.equal(client.calls.length, 0);
+  assert.equal(supabase.upserts.length, 0); // accept-loggen skrives IKKE for et allerede-abonneret hold
+});
+
+test("checkout: eksisterende PAST_DUE subscription MED alunta_subscription_id → 409 already_subscribed", async () => {
+  const client = fakeClient();
+  const supabase = fakeSupabase({ existingSub: { status: "past_due", alunta_subscription_id: "sub-existing" } });
+  const handler = createCheckoutHandler({ client, supabase, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
+  assert.equal(r.code, 409);
+  assert.equal(r.body.errorCode, "already_subscribed");
+  assert.equal(client.calls.length, 0);
+});
+
+test("checkout: eksisterende CANCELLED subscription → IKKE blokeret (kan genkøbe)", async () => {
+  const client = fakeClient();
+  const supabase = fakeSupabase({ existingSub: { status: "cancelled", alunta_subscription_id: "sub-old" } });
+  const handler = createCheckoutHandler({ client, supabase, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
+  assert.equal(r.code, 200);
+  assert.equal(client.calls.length, 2);
+});
+
+test("checkout: eksisterende active-agtig række UDEN alunta_subscription_id (kun terms-accept, ikke betalt) → IKKE blokeret", async () => {
+  const client = fakeClient();
+  const supabase = fakeSupabase({ existingSub: { status: "inactive", alunta_subscription_id: null } });
+  const handler = createCheckoutHandler({ client, supabase, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
+  assert.equal(r.code, 200);
+  assert.equal(client.calls.length, 2);
+});
+
+test("checkout: dobbeltkøb-tjekket fejler (DB-fejl) → fail-open, checkout fortsætter, fejlen alarmeres ikke som 502", async () => {
+  const client = fakeClient();
+  const supabase = {
+    from: (table) => ({
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: { message: "db nede" } }) }) }),
+      upsert: () => Promise.resolve({ error: null }),
+      insert: () => Promise.resolve({ error: null }),
+      _table: table,
+    }),
+  };
+  const handler = createCheckoutHandler({ client, supabase, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
+  assert.equal(r.code, 200);
+  assert.equal(client.calls.length, 2);
+});
+
+// ── #4646: checkout_started player_events-funnel-event ───────────────────────
+
+test("checkout: vellykket køb skriver player_events 'checkout_started' med interval + currency:null", async () => {
+  const client = fakeClient();
+  const supabase = fakeSupabase();
+  const handler = createCheckoutHandler({ client, supabase, paused: false, planIds: { monthly: "m", semiannual: "s" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "team-9" }, user: { id: "user-1" }, body: acceptedBody({ interval: "semiannual" }) }, r);
+  assert.equal(r.code, 200);
+  // Fire-and-forget, ikke awaited af handleren — vent én microtask-runde af.
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(supabase.inserts.length, 1);
+  const ev = supabase.inserts[0];
+  assert.equal(ev.table, "player_events");
+  assert.equal(ev.row.team_id, "team-9");
+  assert.equal(ev.row.user_id, "user-1");
+  assert.equal(ev.row.event_name, "checkout_started");
+  assert.deepEqual(ev.row.event_data, { interval: "semiannual", currency: null });
+});
+
+test("checkout: intet req.user.id → springer player_events-skrivning stille over, køb gennemføres stadig", async () => {
+  const client = fakeClient();
+  const supabase = fakeSupabase();
+  const handler = createCheckoutHandler({ client, supabase, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
+  assert.equal(r.code, 200);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(supabase.inserts.length, 0);
+});
+
+test("checkout: player_events-insert der fejler paavirker IKKE checkout-svaret (fire-and-forget)", async () => {
+  const client = fakeClient();
+  const supabase = {
+    from: () => ({
+      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
+      upsert: () => Promise.resolve({ error: null }),
+      insert: () => Promise.resolve({ error: { message: "player_events nede" } }),
+    }),
+  };
+  const handler = createCheckoutHandler({ client, supabase, paused: false, planIds: { monthly: "m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: { id: "u1" }, body: acceptedBody() }, r);
+  assert.equal(r.code, 200);
+  assert.equal(r.body.checkout_url, "https://app.alunta.com/checkout/xyz");
 });

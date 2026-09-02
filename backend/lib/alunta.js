@@ -77,13 +77,20 @@ export function createAluntaClient({
     async listSubscriptions({ page = 1, perPage = 100 } = {}) {
       return call(`/subscriptions?page=${page}&per_page=${perPage}`);
     },
-    // #4514 — fakturaliste til den daglige forfalds-vagt. GET /invoices har
-    // INGEN status-filter (verificeret mod OpenAPI 31/8: kun per_page, page,
-    // customer_uuid, date_from, date_to), så forfaldne fakturaer må findes
-    // klient-side på `outstanding` + `due_date`. Returnerer det RÅ svar med
-    // data/meta-envelope; fetchAllAluntaInvoices håndterer pagineringen.
-    async listInvoices({ page = 1, perPage = 100 } = {}) {
-      return call(`/invoices?page=${page}&per_page=${perPage}`);
+    // #4514/#4555 — fakturaliste. GET /invoices har INGEN status-filter
+    // (verificeret mod OpenAPI 31/8: kun per_page, page, customer_uuid,
+    // date_from, date_to), så forfaldne fakturaer må findes klient-side på
+    // `outstanding` + `due_date`. customerUuid/dateFrom/dateTo er valgfrie —
+    // #4514's forfalds-vagt henter ufiltreret (hele fakturalisten dagligt),
+    // #4555's periode-rul-vagt scoper til ÉN kunde + dato-vindue. Returnerer
+    // det RÅ svar med data/meta-envelope; fetchAllAluntaInvoices håndterer
+    // pagineringen.
+    async listInvoices({ page = 1, perPage = 100, customerUuid, dateFrom, dateTo } = {}) {
+      const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+      if (customerUuid) params.set("customer_uuid", customerUuid);
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", dateTo);
+      return call(`/invoices?${params.toString()}`);
     },
   };
 }

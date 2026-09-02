@@ -67,6 +67,7 @@
     "terms_not_accepted": "You must accept the terms of sale before completing your purchase",
     "terms_version_mismatch": "The terms of sale have been updated. Please review and accept the latest version",
     "no_subscription": "You don't have an active subscription",
+    "already_subscribed": "You already have an active CZ Pro subscription. Manage it under Settings.",
     "contract_extension_cap_reached": "This contract can't be extended any further: the end season can't go beyond season {maxSeason}",
     "not_owned": "You don't own this rider",
     "not_academy": "This rider isn't in your academy",

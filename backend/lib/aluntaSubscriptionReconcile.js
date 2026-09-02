@@ -371,3 +371,73 @@ export async function runAluntaSubscriptionReconcile({
     updates, // altid inkluderet — dry-run-scriptet bruger dette til at printe forslag
   };
 }
+
+/**
+ * #4648 — scopet reconcile for ÉT hold, kaldt fire-and-forget fra
+ * aluntaWebhook.js lige efter et checkout.completed. checkout.completed bærer
+ * ikke altid fulde billing-felter (BILLING_STACK.md §5), og den fulde reconcile
+ * er time-vis, ikke øjeblikkelig (#2736/#4541) — dette lukker det vindue for
+ * DETTE ene hold straks, i stedet for at vente op til en time. Genbruger den
+ * samme pure computeReconcileActions() som den fulde reconcile, med localRows
+ * begrænset til ét hold — Aluntas API har ingen customer-filter på
+ * GET /subscriptions (alunta.js), så hentningen henter fortsat hele listen,
+ * men SKRIVNINGEN er scopet til det ene team_id. is_founder RØRES ALDRIG,
+ * præcis samme regel som den fulde reconcile.
+ *
+ * @param {object} args
+ * @param {object} args.supabase
+ * @param {object} args.client         Alunta-klient (createAluntaClient())
+ * @param {string} args.teamId
+ * @param {(err:Error, ctx:object)=>void} [args.captureExceptionFn]
+ * @param {Date}   [args.now]
+ * @returns {Promise<{ran:boolean, applied:boolean, reason?:string, update?:object, error?:string}>}
+ */
+export async function runAluntaSubscriptionReconcileForTeam({
+  supabase,
+  client,
+  teamId,
+  captureExceptionFn = defaultCaptureException,
+  now = new Date(),
+} = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (!client?.listSubscriptions) throw new Error("Alunta client required");
+  if (!teamId) throw new Error("teamId required");
+
+  const { data: localRow, error: localErr } = await supabase
+    .from("subscriptions")
+    .select("team_id, status, plan_interval, current_period_end, alunta_customer_id, alunta_subscription_id")
+    .eq("team_id", teamId)
+    .maybeSingle();
+  if (localErr) throw new Error(`subscriptions-opslag (team-reconcile) fejlede: ${localErr.message}`);
+  // Ingen lokal række — checkout.completed skriver terms-accept-loggen FØR
+  // Alunta-sessionen (billingCheckout.js), så en ægte kunde har altid en
+  // række på dette tidspunkt. Intet at gøre, ingen fejl.
+  if (!localRow) return { ran: false, reason: "no_local_row" };
+
+  let remoteEntries;
+  try {
+    remoteEntries = await fetchAllAluntaSubscriptions(client);
+  } catch (err) {
+    const wrapped = new Error(`Alunta GET /subscriptions fejlede (team-reconcile): ${err.message}`);
+    captureExceptionFn?.(wrapped, {
+      tags: { cron: "alunta-subscription-reconcile-team" },
+      fingerprint: ["alunta-reconcile-team-fetch-failed"],
+      extra: { teamId },
+    });
+    throw wrapped;
+  }
+
+  const { updates } = computeReconcileActions({ localRows: [localRow], remoteEntries, now });
+  if (!updates.length) return { ran: true, applied: false };
+
+  const { error } = await supabase.from("subscriptions").upsert(updates[0], { onConflict: "team_id" });
+  if (error) {
+    captureExceptionFn?.(new Error(`Alunta-reconcile (team-reconcile ${teamId}) upsert fejlede: ${error.message}`), {
+      tags: { cron: "alunta-subscription-reconcile-team" },
+      fingerprint: ["alunta-reconcile-team-upsert-failed"],
+      extra: { teamId },
+    });
+    return { ran: true, applied: false, error: error.message };
+  }
+  return { ran: true, applied: true, update: updates[0] };
+}

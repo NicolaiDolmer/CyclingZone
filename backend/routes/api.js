@@ -35,6 +35,7 @@ import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
 import { handleEmailUnsubscribe } from "../lib/emailUnsubRoute.js";
 import { createCheckoutHandler } from "../lib/billingCheckout.js";
 import { createPortalHandler } from "../lib/billingPortal.js";
+import { createAluntaClient } from "../lib/alunta.js"; // #4648 — scopet reconcile-for-team efter checkout.completed
 import { getFounderSeats } from "../lib/founderSeats.js";
 import {
   ACTIVE_AUCTION_STATUSES,
@@ -827,7 +828,10 @@ async function requireOwner(req, res, next) {
 // Rå body wired i server.js (express.raw på pathen før express.json).
 const billingCheckout = createCheckoutHandler({ supabase });
 const billingPortal = createPortalHandler({ supabase });
-router.post("/billing/alunta-webhook", (req, res) => handleAluntaWebhook({ req, res, supabase }));
+// #4648: lazy — kaster først ved faktisk kald hvis ALUNTA_API_TOKEN mangler,
+// samme mønster som cron.js's modul-niveau aluntaClient.
+const aluntaClient = createAluntaClient();
+router.post("/billing/alunta-webhook", (req, res) => handleAluntaWebhook({ req, res, supabase, client: aluntaClient }));
 router.post("/billing/checkout", requireAuth, billingLimiter, (req, res) => billingCheckout(req, res));
 // #2813: self-service opsigelse — signeret auto-login-link til Alunta-portalen.
 router.post("/billing/portal", requireAuth, billingLimiter, (req, res) => billingPortal(req, res));

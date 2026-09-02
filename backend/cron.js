@@ -89,6 +89,7 @@ import { createAluntaClient } from "./lib/alunta.js"; // #2736
 import { runAluntaSubscriptionReconcile } from "./lib/aluntaSubscriptionReconcile.js"; // #2736
 import { isAluntaReconcileEnabled } from "./lib/aluntaReconcileFlag.js"; // #2736
 import { runAluntaOverdueWatch } from "./lib/aluntaOverdueWatch.js"; // #4514
+import { runAluntaPeriodRollWatch } from "./lib/aluntaPeriodRollWatch.js"; // #4555
 import { runFairplayScoringSweep } from "./lib/fairplayFlagsCron.js"; // #3138
 import { captureException as sentryCapture, monitorCron, captureCheckIn, setCronHeartbeatRecorder } from "./lib/sentry.js";
 // #2892 — egen cron-heartbeat-vagt (backup for Sentrys kvote-begrænsede
@@ -1282,6 +1283,21 @@ async function runAluntaOverdueWatchCron() {
   }
 }
 
+// ─── Periode-rul-vagt (#4555) ─────────────────────────────────────────────────
+// Spørger et andet spørgsmål end forfalds-vagten ovenfor: for et hold hvis
+// periode LIGE er rullet, findes der overhovedet en faktura hos Alunta i
+// vinduet omkring rulningen? aluntaOverdueWatch.js fanger en UDSTEDT, UBETALT
+// faktura — denne fanger den blinde plet hvor Alunta aldrig udsteder en
+// faktura overhovedet (§9 punkt 9: et 2xx er ikke bevis for at penge flyttede).
+// Read-only, samme kanal (console.warn + Sentry) — se aluntaPeriodRollWatch.js's
+// filhoved for det fulde rationale.
+async function runAluntaPeriodRollWatchCron() {
+  const r = await runAluntaPeriodRollWatch({ supabase, client: aluntaClient, captureExceptionFn: sentryCapture });
+  if (r.alerted) {
+    console.log(`🚨 Periode-rul-vagt: ${r.missing} af ${r.rolls} nyligt rullede periode(r) uden fundet faktura (#4555)`);
+  }
+}
+
 // ─── Fair-play scoring-sweep (#3138) ─────────────────────────────────────────
 // Dagligt sweep der kombinerer detektorernes signaler (#3135/#3136/#3137) til
 // én vægtet score pr. par og upserter mistænkte hændelser i fairplay_flags —
@@ -1790,6 +1806,13 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
   void trackedTick("alunta forfalds-vagt (boot)", runAluntaOverdueWatchCron)();
+
+  // #4555 — periode-rul-vagt. Read-only, samme boot-run-rationale som ovenfor.
+  setInterval(
+    trackedTick("alunta periode-rul-vagt", monitorCron("alunta-period-roll-watch", runAluntaPeriodRollWatchCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
+  void trackedTick("alunta periode-rul-vagt (boot)", runAluntaPeriodRollWatchCron)();
 
   // #3138 — dagligt fair-play scoring-sweep. Read-only analyse (upsert i
   // service-role-only fairplay_flags); skipper roligt indtil migrationen er
