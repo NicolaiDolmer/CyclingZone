@@ -2,10 +2,10 @@
   "page": {
     "title": "Transfers",
     "subtitle": "Forhandle direkte med andre managers",
+    "subtitleWithBalance": "Forhandle direkte med andre managers · Balance {balance} CZ$",
     "balance": "Balance",
     "loadingAria": "Indlæser transfers"
   },
-  "marketIntro": "Transfermarkedet er hvor managers sætter deres egne ryttere til salg til en fast pris. Køb med det samme eller send et tilbud. Auktioner er noget andet (tidsbestemte bud).",
   "tabs": {
     "received": "Modtagne tilbud",
     "sent": "Sendte tilbud",
@@ -178,13 +178,19 @@
     "archivedSentProposals": "Arkiverede sendte forslag"
   },
   "empty": {
-    "received": "Ingen modtagne tilbud",
-    "receivedHint": "Andre managers kan sende tilbud på dine ryttere fra rytterens side",
-    "sent": "Du har ikke sendt nogen tilbud endnu",
-    "sentHint": "Find en rytter og klik \"Send transfertilbud\" på deres side",
-    "archive": "Intet arkiveret endnu",
-    "marketNoListings": "Ingen ryttere til salg",
-    "marketNoMatches": "Ingen ryttere matcher filteret"
+    "received": "Kig på markedet imens",
+    "receivedHint": "Andre managers sender tilbud på dine ryttere fra rytterens side.",
+    "sent": "Send dit første tilbud",
+    "sentHint": "Åbn en rytters side og klik \"Send transfertilbud\".",
+    "archive": "Se dine åbne forhandlinger",
+    "archiveHint": "Handler du lukker eller afviser, lander her.",
+    "marketNoListings": "Sæt en rytter til salg",
+    "marketNoListingsHint": "Der er ingen ryttere på transferlisten lige nu. Sæt en pris fra din trup.",
+    "marketNoMatches": "Udvid dit filter",
+    "marketNoMatchesHint": "Ingen rytter på listen matcher det nuværende filter.",
+    "ctaBrowseMarket": "Åbn markedet",
+    "ctaSeeSent": "Se sendte tilbud",
+    "ctaListRider": "Åbn min trup"
   },
   "toast": {
     "offerSent": "✅ Tilbud sendt!",
@@ -224,33 +230,9 @@
     }
   },
   "marketSort": {
-    "label": "Sortering",
-    "newest": "Nyeste først",
-    "price_asc": "Pris: laveste først",
-    "price_desc": "Pris: højeste først",
-    "value_desc": "Værdi: højeste først",
-    "value_asc": "Værdi: laveste først",
-    "age_asc": "Alder: yngste først",
-    "age_desc": "Alder: ældste først",
-    "abilityLabel": "Sortér efter evne",
-    "abilityPlaceholder": "Efter evne",
-    "abilities": {
-      "climbing": "Bjerge",
-      "tempo": "Tempo",
-      "punch": "Punch",
-      "sprint": "Sprint",
-      "acceleration": "Acceleration",
-      "flat": "Flade",
-      "time_trial": "Enkeltstart",
-      "endurance": "Udholdenhed",
-      "durability": "Robusthed",
-      "recovery": "Restitution",
-      "aggression": "Aggression",
-      "tactics": "Taktik",
-      "descending": "Nedkørsel",
-      "cobblestone": "Brosten",
-      "positioning": "Positionering"
-    }
+    "label": "Sortér efter",
+    "ascAria": "Sortér stigende",
+    "descAria": "Sortér faldende"
   },
   "marketRow": {
     "nation": "Nation",
