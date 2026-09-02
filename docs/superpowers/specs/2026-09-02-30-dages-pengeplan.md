@@ -47,11 +47,13 @@ D30 er beregnet med samme aktivitets-definition (auth.users-kohorte, egen SQL, R
 | Har mindst ét løbsresultat | 137 | 90 % |
 | Kom tilbage dag 1 eller senere | 68 | 44 % |
 | Kom tilbage i uge 2 (7+ dage efter signup, 143 berettigede) | 44 | 31 % |
-| Har afgivet mindst ét bud | 55 | 36 % |
+| Har afgivet mindst ét bud (`auction_bids`) | 87 | 57 % |
 
-**Korrektion:** "47 af 137 draftede aldrig et hold" holder ikke mod `teams.starter_squad_allocated_at`: 13 af 153 (8 %) har intet hold. De 47 stammer sandsynligvis fra `player_events.team_drafted` (findes først fra 4/8, 93 rækker) eller `onboarding_completed` (41). Tragtens hul er ikke draften; det er dag 1 til uge 2: 92 % får hold og løb, 44 % kommer tilbage, 31 % er der i uge 2.
+**Korrektion:** "47 af 137 draftede aldrig et hold" holder ikke mod `teams.starter_squad_allocated_at`: 13 af 153 (8 %) har intet hold, og alle 140 hold har fået starter-trup. Tragtens hul er ikke draften; det er dag 1 til uge 2: 92 % får hold og løb, 44 % kommer tilbage, 31 % er der i uge 2.
 
-**Bud og overlevelse:** af de 44 der er der i uge 2 har 25 budt (57 %); af de 99 tabte har 27 budt (27 %) og 72 aldrig budt. Første bud er den handling der bedst adskiller dem der bliver fra dem der forsvinder.
+**Bud og overlevelse (verificeret af uafhængig måling 2/9 17:25):** af de 44 der er der i uge 2 har **42 budt (95 %)**; af de 99 tabte har 37 budt (37 %) og 62 aldrig budt. Første bud er den handling der bedst adskiller dem der bliver fra dem der forsvinder. Første måling brugte `player_events` og undervurderede bud-andelen; `auction_bids` er SSOT.
+
+**Køber-pulje (målt 2/9):** 27 af de 83 aktive/7d er top-3 i egen division, 14 af dem nr. 1. Det er den realistiske Pro-pulje ud fra §0.5-profilen. 32 af 235 menneskehold har Discord koblet, 23 af dem aktive/7d. Der findes ingen rabat-, kampagne- eller referral-mekanik i koden; enhver af dem er nyt byggeri.
 
 ### 0.4 Pro: MRR, abonnenter, checkout 2/9
 
@@ -66,7 +68,7 @@ D30 er beregnet med samme aktivitets-definition (auth.users-kohorte, egen SQL, R
 | dd7665b4 Lidl-Leffe Pro Drinking | 2/9 12:04 | da | Windows | 6 mdr | active, Founder, periode til 1/3-2027; betalte 295, krediteret 30 (#4616) |
 | bb59dd4e Wander Riders | 2/9 12:30 | en | Android + Windows | ukendt | inactive; Alunta-kunde 6065 oprettet, intet abo |
 | 814b9df1 Bad At Names | 2/9 14:57 (række 09:53) | da | ingen events 3 d | ukendt | inactive; Alunta-kunde 5507 (ældre) |
-| 82d343f7 LEGO-Vestas Cycling Team | 2/9 16:34 | en | Windows + Android | 6 mdr | **active i DB, men uden Alunta-id og periode** (se 0.6) |
+| 82d343f7 LEGO-Vestas Cycling Team | 2/9 16:34 | en | Windows + Android | 6 mdr (sat af reconcilen 17:30) | active, Founder; **uden Alunta-id og periode i 55 min** (se 0.6) |
 
 Planvalg gemmes ikke ved vilkårsaccept (`billingCheckout.js` skriver kun `terms_accepted_at`), så de tre frafaldnes plan er ukendt; `/pro` forudvælger 6 mdr. **Gennemførelse 2/9: 2 af 5 = 40 %.** Frafaldet ramte 2 danske + 1 engelsk; alle tre er aktive spillere (D1, placering 22, 3 og 9). `/pro` havde 18 unikke besøg på 7 dage (24 hits).
 
@@ -88,7 +90,9 @@ Fællesnævner: **topplacering i egen division** (nr. 1-2), 2+ måneders ancienn
 
 ### 0.6 Team 82d343f7 (verificeret FØRST)
 
-Alunta: kunde "Eli Lamhauge" (6066) har et **billable, aktivt** abonnement, næste træk 2/3-2027. Pengene er trukket. Vores række: `checkout.completed` modtaget 16:35 CPH, `status=active`, `is_founder=true`, men `alunta_customer_id`, `alunta_subscription_id`, `plan_interval` og `current_period_end` er alle null, fordi `checkout.completed` ikke bærer felterne (kendt, `BILLING_STACK.md` §5). `computeIsPro()` kræver periodeslut, så **kunden ser ikke Pro**. Reconcilen (hver time + boot) rørte de øvrige rækker 16:06:57 CPH; kl. 17:10:50 var rækken stadig urørt. Se 0.7 for log-evidens. Fix-klasse: (a) `checkout.completed` → kald reconcilen straks for det ene hold, (b) `computeIsPro()` giver `active` uden `current_period_end` respit i 24 t fra `last_event_at` (cache-lag må aldrig koste en betalende kunde Pro, postmortem 2/9).
+Alunta: kunde "Eli Lamhauge" (6066) har et **billable, aktivt** abonnement, næste træk 2/3-2027. Pengene er trukket. Vores række: `checkout.completed` modtaget 16:35 CPH, `status=active`, `is_founder=true`, men `alunta_customer_id`, `alunta_subscription_id`, `plan_interval` og `current_period_end` er alle null, fordi `checkout.completed` ikke bærer felterne (kendt, `BILLING_STACK.md` §5). `computeIsPro()` kræver periodeslut, så **kunden så ikke Pro i 55 minutter** (16:35 til 17:30, hvor den timelige reconcile fra boot 16:30 samlede rækken op; verificeret 18:23: ids, `semiannual` og periode til 1/3-2027 er sat).
+
+**Rod-årsag (Railway-log 16:36 CPH):** `subscription.created` og `subscription.started` for kunden blev afvist med `teamId: null`. `aluntaWebhook.js:139` læser kun `data.external_customer_id` på topniveau; Alunta lægger den under `data.customer.external_customer_id` på subscription-events (målt REST-form i `BILLING_STACK.md` §5). Så de events der bærer id'er og periode smides væk, og Pro afhænger af reconcilens kadence. Fix-klasse: (a) læs også `data.customer.external_customer_id` + `data.interval`, (b) kald reconcilen for det ene hold straks ved `checkout.completed`, (c) `computeIsPro()` giver `active` uden `current_period_end` 24 t respit fra `last_event_at`. Postmortem skrives med fixet.
 
 ### 0.7 Cron-status (#4644, målt)
 
@@ -117,7 +121,7 @@ Så #4644 er rigtigt i konklusionen (mandagstal kan ikke tages fra snapshots) me
    SELECT count(*) AS aktive_abo FROM subscriptions
    WHERE status IN ('active','past_due') AND alunta_subscription_id IS NOT NULL;
    ```
-   Baseline 2/9: **113,87 kr. / 3**.
+   Baseline 2/9: **113,87 kr. / 3**. Indtil webhook-fixet (0.6) er landet, kan SQL'en undertælle med 1 i timen efter et køb; Alunta-tallet er sandheden ved uenighed. **Fornyelse inde i vinduet:** månedskunden 8073fb4a ruller 1/10, dagen før planens deadline; #4555 periode-rul-vagten skal være live før den dato.
 2. **D7 for seneste fulde kohorte.** `SELECT * FROM get_cohort_retention(4);` og aflæs `d7_pct` for den seneste uge med `d7_eligible >= 5`. Baseline 2/9: **18 % (uge 24/8), 33 % (uge 17/8)**.
 3. **Gennemførte / startede checkouts, rullende 7 dage.**
    ```sql
