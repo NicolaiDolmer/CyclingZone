@@ -31,7 +31,10 @@ import { generateBoardMemberNames } from "./boardMandateNames.js";
 import {
   evaluateAndApplyConsequences,
 } from "./boardConsequences.js";
-import { applySeasonEndSync as applyMandateSeasonEndSyncShared } from "./boardMandateEngine.js";
+import {
+  applySeasonEndSync as applyMandateSeasonEndSyncShared,
+  advanceMandateAtSeasonEnd as advanceMandateAtSeasonEndShared,
+} from "./boardMandateEngine.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
 import { developRidersForSeason } from "./riderProgressionEngine.js";
@@ -1621,6 +1624,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   // #3514 fase 1-rest: skyggemodellens sæson-slut-sync. Flag-gated INDENI
   // funktionen selv (returnerer null øjeblikkeligt når kill-switchen er off).
   const applyMandateSeasonEndSyncFn = deps.applyMandateSeasonEndSync ?? applyMandateSeasonEndSyncShared;
+  // #4557 S-M2c · Årsmødet: næste sæsons mandat foreslås (status 'proposed')
+  // EFTER skyggemodellens sæson-slut-sync ovenfor. Samme fail-safe-disciplin
+  // som applyMandateSeasonEndSyncFn: flag-gated indeni, no-op når 'off'.
+  const advanceMandateAtSeasonEndFn = deps.advanceMandateAtSeasonEnd ?? advanceMandateAtSeasonEndShared;
   // #805 · forudhentet af processSeasonEnd (én query), fallback til egen lookup
   // hvis kaldt direkte (fx repair-stien).
   const boardTestMode = deps.boardTestMode ?? await isBoardTestModeActive(supabaseClient);
@@ -2037,6 +2044,35 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       // er persisteret ovenfor.
       console.error(`  ⚠️  mandate shadow season-end sync failed for ${team.name}:`, error.message);
       captureException(error, { tags: { flow: "season-transition", stage: "mandate-shadow" }, teamId: team.id });
+    }
+  }
+
+  // #4557 S-M2c · Årsmødet: EFTER skyggemodellens sæson-slut-sync (spec §4.1
+  // punkt 1, rækkefølgen er bindende — confidence skal være sæsonens FÆRDIGE
+  // tal før tillids-trappen for næste mandat allokeres). No-op (fail-safe
+  // inde i kaldet) når kill-switchen er 'off' eller holdet ikke har en
+  // skyggerelation endnu. En fejl her må ALDRIG vælte en rigtig sæson-slut —
+  // samme isolerede try/catch-disciplin som skygge-syncet ovenfor.
+  if (teamStanding) {
+    try {
+      const { data: assignedMembers } = await supabaseClient
+        .from("team_board_members")
+        .select("archetype_key, is_chairman")
+        .eq("team_id", team.id);
+
+      await advanceMandateAtSeasonEndFn(supabaseClient, {
+        teamId: team.id,
+        seasonId,
+        currentSeasonNumber,
+        standing: teamStanding,
+        team,
+        riders: team.riders || [],
+        assignedMembers: assignedMembers?.length ? assignedMembers : null,
+        now: deps.now ?? new Date(),
+      });
+    } catch (error) {
+      console.error(`  ⚠️  mandate annual-meeting proposal failed for ${team.name}:`, error.message);
+      captureException(error, { tags: { flow: "season-transition", stage: "mandate-annual-meeting" }, teamId: team.id });
     }
   }
 }

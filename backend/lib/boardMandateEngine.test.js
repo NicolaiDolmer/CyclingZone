@@ -2,16 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  advanceMandateAtSeasonEnd,
   allocateNegotiationPower,
   applyMilestoneDeltas,
   applySeasonEndSync,
   applyWeekendSync,
   buildGoalStatesFromEvaluation,
+  completeActiveMandate,
   computeRelationUpdateFromEvaluation,
+  ensureRelationForTeam,
   evaluateDueMilestones,
   evaluateEarlyMilestones,
   loadRelation,
   persistConfidenceChange,
+  proposeMandateForNewTeam,
+  proposeNextMandate,
   unlockExtraordinaryRequest,
   unlockExtraordinaryRequestForTeam,
 } from "./boardMandateEngine.js";
@@ -600,4 +605,205 @@ test("unlockExtraordinaryRequestForTeam: on + aktivt mandat → låser op", asyn
   const supabase = makeShadowSupabase({ flagValue: "on" });
   const result = await unlockExtraordinaryRequestForTeam(supabase, { teamId: "t1", seasonId: "s1" });
   assert.equal(result.unlocked, true);
+});
+
+// =============================================================================
+// #4557 S-M2c · Årsmødet: proposeNextMandate / completeActiveMandate /
+// advanceMandateAtSeasonEnd / proposeMandateForNewTeam
+// =============================================================================
+
+function makeMandateLifecycleSupabase({ flagValue = "on", seasons = [], mandates = [], relations = [] } = {}) {
+  const state = { mandates: [...mandates], relations: [...relations] };
+  let mandateSeq = state.mandates.length;
+  let relationSeq = state.relations.length;
+
+  function matchAll(row, filters) {
+    return Object.entries(filters).every(([k, v]) => row[k] === v);
+  }
+
+  function selectChain(rows) {
+    const filters = {};
+    const chain = {
+      eq(col, value) { filters[col] = value; return chain; },
+      maybeSingle: async () => ({ data: rows.find((r) => matchAll(r, filters)) ?? null, error: null }),
+    };
+    return chain;
+  }
+
+  return {
+    _state: state,
+    from(table) {
+      if (table === "app_config") {
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: flagValue }, error: null }) }) }) };
+      }
+      if (table === "seasons") {
+        return { select: () => selectChain(seasons) };
+      }
+      if (table === "board_relations") {
+        return {
+          select: () => selectChain(state.relations),
+          insert: (payload) => ({
+            select: () => ({
+              single: async () => {
+                relationSeq += 1;
+                const row = { id: `rel-${relationSeq}`, ...payload };
+                state.relations.push(row);
+                return { data: row, error: null };
+              },
+            }),
+          }),
+        };
+      }
+      if (table === "board_mandates") {
+        return {
+          select: () => selectChain(state.mandates),
+          insert: (payload) => ({
+            select: () => ({
+              single: async () => {
+                mandateSeq += 1;
+                const row = { id: `mand-${mandateSeq}`, ...payload };
+                state.mandates.push(row);
+                return { data: row, error: null };
+              },
+            }),
+          }),
+          update(payload) {
+            const filters = {};
+            const chain = {
+              eq(col, value) { filters[col] = value; return chain; },
+              select: async () => {
+                const matched = state.mandates.filter((m) => matchAll(m, filters));
+                matched.forEach((m) => Object.assign(m, payload));
+                return { data: matched.map((m) => ({ id: m.id })), error: null };
+              },
+            };
+            return chain;
+          },
+        };
+      }
+      throw new Error(`uventet tabel i test: ${table}`);
+    },
+  };
+}
+
+test("proposeNextMandate: kill-switch off → null, intet skrives", async () => {
+  const supabase = makeMandateLifecycleSupabase({ flagValue: "off" });
+  const result = await proposeNextMandate(supabase, { teamId: "t1", targetSeasonNumber: 4, confidence: 60 });
+  assert.equal(result, null);
+  assert.equal(supabase._state.mandates.length, 0);
+});
+
+test("proposeNextMandate: sæsonen findes ikke endnu → skip, ingen gættet FK", async () => {
+  const supabase = makeMandateLifecycleSupabase({ flagValue: "on", seasons: [] });
+  const result = await proposeNextMandate(supabase, { teamId: "t1", targetSeasonNumber: 4, confidence: 60 });
+  assert.deepEqual(result, { skipped: "target_season_not_found", season_number: 4 });
+});
+
+test("proposeNextMandate: opretter proposed mandat med 3-5 mål, tillids-trappen frosset, deadline fra resolveThresholds", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    flagValue: "on",
+    seasons: [{ id: "season-4", number: 4 }],
+  });
+  const now = new Date("2026-09-03T12:00:00Z");
+  const result = await proposeNextMandate(supabase, {
+    teamId: "t1",
+    targetSeasonNumber: 4,
+    confidence: 80, // ≥75 → tillids-trappens "trusted"-trin
+    previousFocus: "star_signing",
+    now,
+  });
+
+  assert.equal(result.season_number, 4);
+  assert.ok(result.goal_count >= 3 && result.goal_count <= 5);
+  assert.equal(result.adjustments_allowed, 3, "confidence 80 → trusted-trinnet giver 3 justeringer");
+
+  const row = supabase._state.mandates[0];
+  assert.equal(row.status, "proposed");
+  assert.equal(row.season_id, "season-4");
+  assert.equal(row.focus, "star_signing");
+  assert.equal(row.source.method, "annual_meeting");
+  assert.equal(row.source.negotiation_power.trust_tier, "trusted");
+  // #2463/#3579-tærsklen: uden last_seen falder resolveThresholds til den
+  // KORTE default (5 dage) — se boardNegotiationThresholds.js.
+  const deadlineDays = (new Date(row.auto_accept_deadline).getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
+  assert.equal(deadlineDays, 5);
+});
+
+test("proposeNextMandate: idempotent — allerede et mandat for (team, sæson) → no-op", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    flagValue: "on",
+    seasons: [{ id: "season-4", number: 4 }],
+    mandates: [{ id: "existing-1", team_id: "t1", season_id: "season-4", status: "proposed" }],
+  });
+  const result = await proposeNextMandate(supabase, { teamId: "t1", targetSeasonNumber: 4, confidence: 60 });
+  assert.deepEqual(result, { skipped: "already_exists", mandate_id: "existing-1", status: "proposed" });
+  assert.equal(supabase._state.mandates.length, 1, "intet nyt mandat oprettet");
+});
+
+test("completeActiveMandate: markerer det aktive mandat completed, rører ikke andre statusser", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    flagValue: "on",
+    mandates: [
+      { id: "m1", team_id: "t1", season_id: "s3", status: "active" },
+      { id: "m2", team_id: "t1", season_id: "s2", status: "completed" },
+    ],
+  });
+  const result = await completeActiveMandate(supabase, { teamId: "t1", seasonId: "s3" });
+  assert.equal(result.updated, true);
+  assert.equal(supabase._state.mandates.find((m) => m.id === "m1").status, "completed");
+  assert.equal(supabase._state.mandates.find((m) => m.id === "m2").status, "completed", "uændret — var allerede completed");
+});
+
+test("ensureRelationForTeam: opretter confidence=50 for et hold uden relation, rører ALDRIG en eksisterende", async () => {
+  const supabase = makeMandateLifecycleSupabase({ flagValue: "on" });
+  const created = await ensureRelationForTeam(supabase, "t1");
+  assert.equal(created.confidence, 50);
+  assert.equal(created.confidence_source.method, "team_formation");
+
+  const again = await ensureRelationForTeam(supabase, "t1");
+  assert.equal(again.id, created.id, "anden kald finder samme række, opretter ikke en ny");
+  assert.equal(supabase._state.relations.length, 1);
+});
+
+test("advanceMandateAtSeasonEnd: intet skyggerelation → skip (ingen skrivning)", async () => {
+  const supabase = makeMandateLifecycleSupabase({ flagValue: "on", seasons: [{ id: "s5", number: 5 }] });
+  const result = await advanceMandateAtSeasonEnd(supabase, {
+    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4,
+  });
+  assert.deepEqual(result, { skipped: "no_shadow_relation" });
+});
+
+test("advanceMandateAtSeasonEnd: fuld livscyklus — aktivt mandat completes, næste sæsons mandat proposed med FORRIGE fokus", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    flagValue: "on",
+    seasons: [{ id: "s4", number: 4 }, { id: "s5", number: 5 }],
+    relations: [{ id: "rel-1", team_id: "t1", confidence: 70 }],
+    mandates: [{ id: "m-active", team_id: "t1", season_id: "s4", status: "active", focus: "youth_development" }],
+  });
+  const result = await advanceMandateAtSeasonEnd(supabase, {
+    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4,
+  });
+
+  assert.equal(result.completed_active, true);
+  assert.equal(supabase._state.mandates.find((m) => m.id === "m-active").status, "completed");
+
+  const proposed = supabase._state.mandates.find((m) => m.season_id === "s5");
+  assert.equal(proposed.status, "proposed");
+  assert.equal(proposed.focus, "youth_development", "fokus arves fra det AFSLUTTEDE mandat");
+});
+
+test("proposeMandateForNewTeam: nyt hold får confidence=50 + mandat for NUVÆRENDE sæson (ikke næste)", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    flagValue: "on",
+    seasons: [{ id: "s3", number: 3 }],
+  });
+  const result = await proposeMandateForNewTeam(supabase, {
+    teamId: "t-new", currentSeasonNumber: 3,
+  });
+
+  assert.equal(result.season_number, 3);
+  assert.equal(supabase._state.relations[0].confidence, 50);
+  const row = supabase._state.mandates[0];
+  assert.equal(row.season_id, "s3");
+  assert.equal(row.focus, "balanced", "intet forrige fokus → default balanced");
 });
