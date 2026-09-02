@@ -14,7 +14,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Akademiet forhåndsviser de kommende Junior- og U23-hold",
-          "body": "Akademi-siden viser nu et Youth squads-kort med Junior team og U23 team, begge markeret Kommer snart med en kort beskrivelse og et link til roadmappet. Dagens akademi-ryttere vises stadig som én samlet trup, indtil holdene er bygget."
+          "body": "Akademi-siden viser nu et Ungdomshold-kort med Juniorhold og U23-hold, begge markeret Kommer snart med en kort beskrivelse og et link til roadmappet. Dagens akademi-ryttere vises stadig som én samlet trup, indtil holdene er bygget."
         },
         "refs": [4618, 2492]
       },

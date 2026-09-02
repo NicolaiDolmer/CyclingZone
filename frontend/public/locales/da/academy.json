@@ -12,15 +12,15 @@
   "emptyRoster": "Signér en kandidat ovenfor for at begynde at udvikle dine egne ryttere.",
   "emptyRosterTitle": "Dit akademi er tomt",
   "youthSquads": {
-    "title": "Youth squads",
+    "title": "Ungdomshold",
     "roadmap": "Roadmap",
     "comingSoon": "Kommer snart",
     "junior": {
-      "title": "Junior team",
+      "title": "Juniorhold",
       "description": "16-18 år. Egne løb og stillinger."
     },
     "u23": {
-      "title": "U23 team",
+      "title": "U23-hold",
       "description": "19-22 år. Egne løb, divisioner og oprykning."
     }
   },
