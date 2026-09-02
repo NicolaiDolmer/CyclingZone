@@ -1,6 +1,6 @@
 # TASTE.md: hvad verdensklasse er for Cycling Zone
 
-> **Status:** udkast 2/9 2026, slice 1 af [#4622](https://github.com/NicolaiDolmer/CyclingZone/issues/4622) ([#4623](https://github.com/NicolaiDolmer/CyclingZone/issues/4623)). **Otte retningsvalg er truffet af ejeren 2/9 i visuel dialog (§6).** Bindende når ejeren har godkendt hele dokumentet. Indtil da er dokumentet det vi måler slice 2 (audit af alle 63 sider) op imod, og alt her kan ændres af ejeren med ét ord.
+> **Status: BINDENDE. Ejer-godkendt 2/9 2026** efter visuel dialog om otte forks (§6). Slice 1 af [#4622](https://github.com/NicolaiDolmer/CyclingZone/issues/4622) ([#4623](https://github.com/NicolaiDolmer/CyclingZone/issues/4623), lukket). Slice 2 (audit af alle 63 sider, #4624) måler mod dette dokument. Ejeren kan ændre alt her med ét ord; ændringer noteres i §6 med dato.
 >
 > **Forhold til de andre regler:** [`PAGE_TEMPLATES.md`](PAGE_TEMPLATES.md) siger HVAD en side består af (skabelon, sidehoved, kort, tabel, tilstande, fold-disciplin). Dette dokument siger HVORFOR og HVOR GODT: hvad der adskiller en side der blot følger skabelonen fra en side der er i verdensklasse. Skabelonen er gulvet, smagen er målet. Brand-DNA'et står i [`../brand/BRAND_BRIEF.md`](../brand/BRAND_BRIEF.md), copy-reglerne i [`../TONE_OF_VOICE.md`](../TONE_OF_VOICE.md). Ingen af dem gentages her, kun peges på.
 >
