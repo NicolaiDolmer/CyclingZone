@@ -30,6 +30,29 @@ export function getPlanDuration(planType) {
   return PLAN_DURATIONS[planType] ?? 1;
 }
 
+// #4578 · Stabil mål-nøgle UDEN id. Prod-fund (2/9): mål i board_mandates.goals[]
+// har ALDRIG haft id'er — issue #4578 antog fejlagtigt "stabile id'er", det
+// holder ikke. Nøglen er indholdsbaseret (type + target + nationality_code +
+// race_scope + cumulative), deterministisk og uafhængig af felt-rækkefølge og
+// ekstra felter på mål-objektet (fx satisfaction_bonus/label/category må gerne
+// variere uden at nøglen ændrer sig). Målt mod prod: 0 dubletter blandt de 237
+// aktive mandater på denne nøgle.
+//
+// Bevidst: et forhandlet mål med et NYT target giver en NY nøgle — en
+// genforhandling af et mål ER et nyt mål i kvitterings-forstand (dets
+// historik/bevægelser starter forfra), ikke en fortsættelse af det gamle måls
+// historik. Bruges BÅDE når motoren skriver mål-tilstande (boardMandateEngine.js)
+// og når boardRoom.js læser dem tilbage — samme nøgle begge steder er hele
+// pointen.
+export function buildGoalKey(goal = {}) {
+  const type = goal?.type ?? "";
+  const target = goal?.target ?? "";
+  const nationalityCode = goal?.nationality_code ?? "";
+  const raceScope = goal?.race_scope ?? "";
+  const cumulative = goal?.cumulative ? 1 : 0;
+  return `${type}|${target}|${nationalityCode}|${raceScope}|${cumulative}`;
+}
+
 export function parseBoardGoals(rawGoals) {
   const parsedGoals = Array.isArray(rawGoals)
     ? rawGoals

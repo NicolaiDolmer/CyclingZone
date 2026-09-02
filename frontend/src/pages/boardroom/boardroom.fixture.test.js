@@ -54,11 +54,26 @@ test("#4557 fixture: mandate har 4 mål med fuld receipt-kvittering (spec-princi
     assert.ok(["on_track", "at_risk", "behind", "achieved", "failed"].includes(goal.status));
     assert.ok(goal.owner?.initials, "hvert mål skal have en ejer med initialer");
     assert.ok(goal.receipt, "hvert mål i fixturen bærer en kvittering (spec-princip 2)");
-    // #4570-afstemning: backend kan endnu ikke levere "Last movement" — fixturen
-    // afspejler den nuværende backend-begrænsning eksplicit (aldrig en halv kvittering).
-    assert.equal(goal.receipt.lastMovementAt, null, "lastMovementAt skal være null indtil backend leverer den");
-    assert.equal(goal.receipt.lastMovementKey, null);
+    // #4578: backend kan nu levere "Last movement" (board_satisfaction_events.
+    // goal_states) — men aldrig en HALV kvittering, de to felter er altid
+    // begge null eller begge sat.
+    const hasMovement = goal.receipt.lastMovementAt != null;
+    assert.equal(hasMovement, goal.receipt.lastMovementKey != null,
+      "lastMovementAt og lastMovementKey skal enten begge være sat eller begge null (aldrig en halv kvittering)");
   }
+  // #4578-afstemning: fixturen skal øve BEGGE stier — mindst ét mål med en
+  // udfyldt Last movement-kvittering (mockup-parity), og mindst ét uden
+  // (målets nøgle har endnu ingen bevægelse i skygge-modellen).
+  const goalsWithMovement = fixture.mandate.goals.filter((g) => g.receipt.lastMovementAt != null);
+  const goalsWithoutMovement = fixture.mandate.goals.filter((g) => g.receipt.lastMovementAt == null);
+  assert.ok(goalsWithMovement.length > 0, "mindst ét mål skal have en udfyldt Last movement-kvittering (#4578)");
+  assert.ok(goalsWithoutMovement.length > 0, "mindst ét mål skal stadig mangle Last movement (ingen bevægelse endnu)");
+  const [movementGoal] = goalsWithMovement;
+  assert.match(
+    movementGoal.receipt.lastMovementKey,
+    /^archetypes\.[a-z_]+\.reactions\.receipt_(positive|negative)\.\d+$/,
+    "lastMovementKey skal følge boardVoice.js's i18n-nøgle-konvention"
+  );
   const typedGoals = fixture.mandate.goals.filter((g) => g.type != null);
   const fallbackGoals = fixture.mandate.goals.filter((g) => g.type == null);
   assert.ok(typedGoals.length > 0, "fixturen skal øve type-styret titel-resolution (mindst ét mål)");

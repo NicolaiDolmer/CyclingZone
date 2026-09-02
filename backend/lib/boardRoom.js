@@ -36,23 +36,41 @@
  *     track" fra "vi mangler data endnu".
  *  3. `mandate.goals[].unitKey` er altid `null` — der findes ikke et etableret
  *     enheds-nøgle-system for mål-typer i dag.
- *  4. `mandate.goals[].receipt.lastMovementAt`/`lastMovementParams` er altid
- *     `null`/`{}` — `board_satisfaction_events` linker IKKE til enkelte mål,
- *     kun til mandatet (aggregeret weekend/season-delta) eller en milepæl.
- *     "Sidste bevægelse" pr. mål findes derfor ikke i datamodellen endnu.
- *  5. `minutes[]`-rækker uden `milestone_id` (dvs. `weekend_update`/`season_end`
- *     mandat-niveau kvitteringer) er IKKE knyttet til ét enkelt mål og kan derfor
- *     ikke tale i "målets ejers stemme" (addendum punkt 2). De falder tilbage til
- *     FORMANDEN med `receipt_positive`/`receipt_negative` ud fra fortegnet på
- *     `satisfaction_delta`. Kun milepæls-afgørelser (`mandate.milestone.*`) er
- *     ægte formands-beats i addendummets forstand.
+ *  4. LUKKET 2/9 (#4578): `board_satisfaction_events.goal_states` (ny nullable
+ *     jsonb-kolonne, `database/2026-09-02-4578-board-satisfaction-events-goal-
+ *     states.sql`) bærer nu et mål-for-mål-snapshot pr. kvittering, skrevet af
+ *     `boardMandateEngine.js::buildGoalStatesFromEvaluation`. `deriveGoalMovements`
+ *     sammenligner nabo-tilstande PR. `goal_key` (`boardGoals.js::buildGoalKey`
+ *     — indholdsbaseret, IKKE et id, mål har aldrig haft id'er) og finder
+ *     "bevægelser" (status/met skifter). `mandate.goals[].receipt.lastMovementAt`/
+ *     `lastMovementKey` udfyldes nu fra den seneste bevægelse for målets
+ *     nøgle, talt i EJERENS stemme. Rækker skrevet FØR denne PR (og enhver
+ *     legacy-række uden `goal_states`) har intet at sammenligne imod og
+ *     bidrager ikke til nogen bevægelse — kvitteringen forbliver `null` for
+ *     dem, uden fejl (se `deriveGoalMovements`s "legacy-rækker springes over").
+ *  5. LUKKET 2/9 (#4578): en `minutes[]`-række kan nu tale i EJERENS stemme,
+ *     HVIS rækken bærer `goal_states` og mindst én bevægelse i netop den
+ *     række kan tilskrives ét mål med en kendt ejer (`goal_key` slået op mod
+ *     mandatets `goals[]` via `resolveGoalOwnerArchetypeKey`) — ved flere
+ *     bevægede mål i samme række vinder den med størst `|toRank − fromRank|`
+ *     (uafgjort: mandatets mål-rækkefølge). En række UDEN nogen tilskrivelig
+ *     bevægelse (legacy-rækker, mandat-niveau-rækker uden `goal_states`,
+ *     eller rækker hvor ingen af de bevægede mål har en ejer) falder STADIG
+ *     tilbage til FORMANDEN med `receipt_positive`/`receipt_negative` ud fra
+ *     fortegnet på `satisfaction_delta` — det er ikke længere ALLE mandat-
+ *     niveau-rækker, kun dem uden en tilskrivelig mål-bevægelse. Milepæls-
+ *     afgørelser (`mandate.milestone.*`) er stadig ALTID formands-beats,
+ *     uanset `goal_states`.
  *  6. `board.members[].role` er en AFLEDT visning (chairman → "chair", ellers
  *     arketypens højeste `category_alignment`-kategori) — `role` er ikke et
  *     persisteret felt på `team_board_members`.
- *  7. `board.members[].mood` afledes KUN af milepæls-linkede kvitteringer
- *     (`board_vision_milestones` via `board_satisfaction_events.milestone_id`),
- *     fordi mandat-niveau weekend/season-kvitteringer (se punkt 5) ikke er
- *     knyttet til ét mål og derfor ikke entydigt kan tilskrives ét medlem.
+ *  7. LUKKET 2/9 (#4578): `board.members[].mood` afledes nu OGSÅ af mål-
+ *     bevægelser på medlemmets EJEDE mål (improved = +1, worsened = -1),
+ *     oveni de eksisterende milepæls-linkede kvitteringer — begge slags
+ *     samles og sorteres nyeste-først FØR `deriveMemberMood`s 5-seneste-
+ *     vindue (MOOD_WINDOW) vælger ud. `deriveMemberMood`s signatur er
+ *     UÆNDRET (den filtrerer stadig `ownedEvents` på `ownerArchetypeKey`);
+ *     det er kun INPUT-listen kalderen bygger der nu er bredere.
  *  8. `confidence.consequence.lineKey` genbruger `boardConsequences.js`'
  *     eksisterende `consequence.layer.*`-nøgler, som resolves i
  *     `backendMessages`-namespacet, IKKE `board`-namespacet addendummet ellers
@@ -86,13 +104,25 @@
  * listen, så et enkelt-medlems-kald (uden `members`) kunne give et ANDET
  * navn end medlemskortene for samme (team, arketype) når to basisnavne
  * kolliderede. Se boardVoice.js's modul-header for kontrakten.
+ *
+ * RETTET 2/9 (#4578): kvitterings-events bærer nu mål-tilstande
+ * (`board_satisfaction_events.goal_states`, skrevet af boardMandateEngine.js)
+ * — lukker afvigelse 4/5/7 ovenfor. `deriveGoalMovements(events)` finder
+ * status/met-skift PR. `goal_key` (`boardGoals.js::buildGoalKey`), og
+ * `mandate.goals[].id` er nu SELVE `goal_key` i stedet for den tidligere
+ * `type-index`-fallback (mål har aldrig haft persisterede id'er). Ingen
+ * historik at migrere: 0 rækker med `mandate_id` var skrevet i prod pr. 2/9
+ * (motoren skriver først ved fuld aktivering), så feltet er rent
+ * fremadrettet — eksisterende/legacy-rækker uden `goal_states` bidrager
+ * hverken til bevægelser eller stemning, og falder tilbage til den
+ * eksisterende formands-adfærd (se afvigelse 4/5/7).
  */
 
 import { getArchetypeByKey } from "./boardArchetypes.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { resolveGoalOwnerArchetypeKey } from "./boardMembers.js";
-import { evaluateGoalProgress } from "./boardGoals.js";
+import { buildGoalKey, evaluateGoalProgress } from "./boardGoals.js";
 import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
 import { MANDATE_CATEGORIES } from "./boardMandate.js";
@@ -103,6 +133,26 @@ const MINUTES_LIMIT = 10;
 const EVENTS_FETCH_LIMIT = 50; // bredere vindue end minutes-loftet, så weekDelta + mood har nok historik
 const MOOD_WINDOW = 5;
 const WEEK_DELTA_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+// #4578 · Rang-orden for goal_states's `status`, brugt af `deriveGoalMovements`
+// til at afgøre om et mål er flyttet sig OP eller NED siden sin forrige kendte
+// tilstand. `met:true` overtrumfer status og er altid rang 4 (uanset om
+// status'en bag et opnået mål tilfældigvis stadig siger "ahead"/"on_track").
+// `awaiting_data`/`neutral` (og enhver ukendt status) mapper til `undefined`
+// → `null` via `??` → ignoreres helt (hverken bevægelse eller baseline-ændring).
+const GOAL_STATUS_RANK = {
+  behind: 0,
+  watch: 1,
+  near_miss: 1,
+  on_track: 2,
+  ahead: 3,
+};
+
+function rankOfGoalState(state) {
+  if (!state) return null;
+  if (state.met === true) return 4;
+  return GOAL_STATUS_RANK[state.status] ?? null;
+}
 
 function ensureSupabase(supabase) {
   if (!supabase?.from) throw new Error("Supabase client is required");
@@ -168,13 +218,47 @@ export function formatGoalDisplayValue(value) {
 /**
  * Hvem "taler" for én `board_satisfaction_events`-række i referatet, og med
  * hvilket boardVoice-beat? Se afvigelse 5 i modul-headeren.
+ *
+ * #4578 · `movements` er kalderens FORUDFILTREREDE liste af
+ * `deriveGoalMovements`-bevægelser der hører til DENNE række (`eventId ===
+ * row.id`), hver beriget med `ownerArchetypeKey` (mål-nøglens ejer, eller
+ * `null` hvis ukendt/ikke persisteret i mandatet) og `goalIndex` (målets
+ * position i mandatets `goals[]`, brugt til uafgjort-tiebreak). Findes der
+ * mindst én bevægelse MED en kendt ejer, taler ejeren af den bevægelse med
+ * størst `|toRank − fromRank|` (uafgjort: laveste `goalIndex`, dvs.
+ * mandatets egen mål-rækkefølge) — beat'et følger bevægelsens retning, IKKE
+ * rækkens samlede `satisfaction_delta`-fortegn. Milepæls-rækker er ALTID
+ * formands-beats, uanset `movements` — tjekket sker FØR movements-grenen.
+ * Ingen tilskrivelig bevægelse → uændret formands-fallback (fortegn af
+ * `satisfaction_delta`).
  */
-export function resolveEventSpeaker({ row, chairmanArchetypeKey } = {}) {
+export function resolveEventSpeaker({ row, chairmanArchetypeKey, movements = [] } = {}) {
   if (!chairmanArchetypeKey) return null;
   const milestoneBeat = MILESTONE_BEAT_BY_REASON[row?.reason_category];
   if (milestoneBeat) {
     return { archetypeKey: chairmanArchetypeKey, beat: milestoneBeat, isChairmanBeat: true };
   }
+
+  const attributableMovements = (movements || [])
+    .filter((m) => m?.eventId === row?.id && m?.ownerArchetypeKey);
+  if (attributableMovements.length) {
+    const best = attributableMovements.reduce((champion, candidate) => {
+      const championMagnitude = Math.abs(champion.toRank - champion.fromRank);
+      const candidateMagnitude = Math.abs(candidate.toRank - candidate.fromRank);
+      if (candidateMagnitude > championMagnitude) return candidate;
+      if (candidateMagnitude < championMagnitude) return champion;
+      // Uafgjort magnitude: mandatets egen mål-rækkefølge afgør (laveste index vinder).
+      const championIndex = champion.goalIndex ?? Number.POSITIVE_INFINITY;
+      const candidateIndex = candidate.goalIndex ?? Number.POSITIVE_INFINITY;
+      return candidateIndex < championIndex ? candidate : champion;
+    });
+    return {
+      archetypeKey: best.ownerArchetypeKey,
+      beat: best.direction === "improved" ? "receipt_positive" : "receipt_negative",
+      isChairmanBeat: false,
+    };
+  }
+
   const beat = Number(row?.satisfaction_delta ?? 0) < 0 ? "receipt_negative" : "receipt_positive";
   return { archetypeKey: chairmanArchetypeKey, beat, isChairmanBeat: false };
 }
@@ -194,6 +278,60 @@ export function deriveMemberMood({ ownedEvents = [], archetypeKey } = {}) {
   if (sum > 0) return "positive";
   if (sum < 0) return "negative";
   return "neutral";
+}
+
+/**
+ * #4578 · Finder "bevægelser" (status/met-skift) pr. mål-nøgle på tværs af
+ * `board_satisfaction_events.goal_states`-snapshots. `events` forventes
+ * NYESTE-FØRST (samme konvention som resten af filen — boardRoom's egen
+ * fetch bruger `.order("created_at", { ascending: false })`); funktionen
+ * behandler dem internt ÆLDST→NYEST pr. mål-nøgle, fordi en bevægelse er
+ * defineret relativt til målets FORRIGE kendte tilstand.
+ *
+ * Den FØRSTE gang en `goal_key` optræder er IKKE en bevægelse (der er intet
+ * at sammenligne med endnu) — den sætter kun baseline-rangen. Rækker uden
+ * `goal_states` (legacy, eller skrevet før #4578) springes helt over: de
+ * bidrager hverken til en bevægelse eller til at flytte en mål-nøgles
+ * baseline. `awaiting_data`/`neutral`-tilstande (se `rankOfGoalState`)
+ * ignoreres på samme måde — en datamangel er hverken en bevægelse eller en
+ * ny baseline at sammenligne fremtidige tilstande imod.
+ *
+ * Returnerer bevægelserne i KRONOLOGISK rækkefølge (ældst → nyest) — den
+ * SIDSTE bevægelse for en given `goalKey` i det returnerede array er derfor
+ * altid den seneste, hvilket gør "seneste bevægelse pr. mål"-opslag til en
+ * simpel sidste-skriv-vinder-reduktion for kaldere.
+ */
+export function deriveGoalMovements(events = []) {
+  const chronological = [...(events || [])].reverse();
+  const lastRankByGoalKey = new Map();
+  const movements = [];
+
+  for (const row of chronological) {
+    const goalStates = Array.isArray(row?.goal_states) ? row.goal_states : null;
+    if (!goalStates) continue;
+
+    for (const state of goalStates) {
+      const goalKey = state?.goal_key;
+      if (!goalKey) continue;
+      const rank = rankOfGoalState(state);
+      if (rank == null) continue;
+
+      const previousRank = lastRankByGoalKey.get(goalKey);
+      if (previousRank != null && previousRank !== rank) {
+        movements.push({
+          eventId: row.id,
+          goalKey,
+          at: row.created_at,
+          direction: rank > previousRank ? "improved" : "worsened",
+          fromRank: previousRank,
+          toRank: rank,
+        });
+      }
+      lastRankByGoalKey.set(goalKey, rank);
+    }
+  }
+
+  return movements;
 }
 
 /**
@@ -334,8 +472,13 @@ export async function buildBoardRoomPayload({
     supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
     supabase.from("loans").select("id", { count: "exact", head: true })
       .eq("team_id", teamId).eq("status", "active"),
+    // #4578 · goal_states tilføjet: mål-for-mål-snapshottet deriveGoalMovements
+    // sammenligner naboer af pr. goal_key (se boardMandateEngine.js).
+    // schema-columns-ok: goal_states tilføjes af database/2026-09-02-4578-board-
+    // satisfaction-events-goal-states.sql (applies post-merge under #2642); nullable,
+    // ingen graceful-fallback nødvendig (kolonnen findes altid efter merge).
     supabase.from("board_satisfaction_events")
-      .select("id, race_name, satisfaction_before, satisfaction_after, satisfaction_delta, goals_met, goals_total, reason_category, created_at, mandate_id, milestone_id")
+      .select("id, race_name, satisfaction_before, satisfaction_after, satisfaction_delta, goals_met, goals_total, reason_category, created_at, mandate_id, milestone_id, goal_states")
       .eq("team_id", teamId)
       .or("mandate_id.not.is.null,milestone_id.not.is.null")
       .order("created_at", { ascending: false })
@@ -376,6 +519,34 @@ export async function buildBoardRoomPayload({
   const fallbackChairmanKey = assignedMembers.find((m) => m.is_chairman)?.archetype_key
     ?? assignedMembers[0]?.archetype_key
     ?? null;
+
+  // ---- #4578: mål-bevægelser (Last movement/stemning/ejer-stemme i referatet) ----
+  // `goalOwnerByKey` slår en `goal_key` op mod mandatets EGNE `goals[]` (samme
+  // resolveGoalOwnerArchetypeKey-regel `mandate.goals[]`-loopet bruger nedenfor)
+  // — en mål-nøgle uden match i mandatet (fx et bonus-mål lagt på et 1yr-board
+  // senere end mandatet blev underskrevet) har ingen kendt ejer og ignoreres.
+  // Beregnes UBETINGET (tomt map når der ikke er noget mandat) så movements
+  // altid kan berige sig selv, uanset om `mandate` ender null nedenfor.
+  const mandateGoalsRaw = Array.isArray(mandateRow?.goals) ? mandateRow.goals : [];
+  const goalOwnerByKey = new Map();
+  mandateGoalsRaw.forEach((goal, index) => {
+    goalOwnerByKey.set(buildGoalKey(goal), {
+      ownerArchetypeKey: resolveGoalOwnerArchetypeKey({ goal, assignedMembers, fallbackChairmanKey }),
+      goalIndex: index,
+    });
+  });
+
+  // Kronologisk (ældst→nyest) — se deriveGoalMovements's modul-header. Beriges
+  // med ejer + mandatets mål-rækkefølge (tiebreak i resolveEventSpeaker).
+  const goalMovements = deriveGoalMovements(events);
+  const movementsWithOwner = goalMovements.map((movement) => {
+    const owner = goalOwnerByKey.get(movement.goalKey) ?? null;
+    return { ...movement, ownerArchetypeKey: owner?.ownerArchetypeKey ?? null, goalIndex: owner?.goalIndex ?? null };
+  });
+  // Kronologisk kildeliste → sidste-skriv-vinder giver den SENESTE bevægelse
+  // pr. mål-nøgle, brugt af mandate.goals[]-loopets receipt.lastMovementAt/Key.
+  const lastMovementByGoalKey = new Map();
+  for (const movement of goalMovements) lastMovementByGoalKey.set(movement.goalKey, movement);
 
   const namedMembers = generateBoardMemberNames({
     teamId,
@@ -426,6 +597,21 @@ export async function buildBoardRoomPayload({
       return { ...e, ownerArchetypeKey };
     });
 
+  // #4578 · Mål-bevægelser med en kendt ejer bidrager til samme mood-pulje
+  // som milepæls-kvitteringerne (improved = +1, worsened = -1, matcher
+  // deriveMemberMood's sum-af-fortegn-regel). Slået sammen og sorteret
+  // nyeste-først FØR deriveMemberMood's 5-seneste-vindue vælger ud — se
+  // afvigelse 7 (lukket) i modul-headeren.
+  const movementMoodEvents = movementsWithOwner
+    .filter((m) => m.ownerArchetypeKey)
+    .map((m) => ({
+      ownerArchetypeKey: m.ownerArchetypeKey,
+      satisfaction_delta: m.direction === "improved" ? 1 : -1,
+      created_at: m.at,
+    }));
+  const moodEvents = [...milestoneEventsWithOwner, ...movementMoodEvents]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
   const boardMembers = assignedMembers.map((m) => {
     const named = namesByArchetype.get(m.archetype_key);
     return {
@@ -433,7 +619,7 @@ export async function buildBoardRoomPayload({
       name: named?.full_name ?? null,
       initials: named?.initials ?? null,
       role: deriveMemberRole({ archetypeKey: m.archetype_key, isChairman: m.is_chairman }),
-      mood: deriveMemberMood({ ownedEvents: milestoneEventsWithOwner, archetypeKey: m.archetype_key }),
+      mood: deriveMemberMood({ ownedEvents: moodEvents, archetypeKey: m.archetype_key }),
       // Samme tal for alle medlemmer i denne runde (ejer-godkendt forenkling,
       // 1/9-tillæg) — se deriveFoundingSeasonNumber.
       sinceSeason,
@@ -535,7 +721,8 @@ export async function buildBoardRoomPayload({
     });
 
     const goalsSource = Array.isArray(mandateRow.goals) ? mandateRow.goals : [];
-    const goals = goalsSource.map((goal, index) => {
+    const goals = goalsSource.map((goal) => {
+      const goalKey = buildGoalKey(goal);
       const evaluation = evaluateGoalProgress(goal, standing, { riders }, evalContext);
       const ownerArchetypeKey = resolveGoalOwnerArchetypeKey({
         goal,
@@ -545,24 +732,34 @@ export async function buildBoardRoomPayload({
       const ownerName = ownerArchetypeKey ? namesByArchetype.get(ownerArchetypeKey) : null;
       const status = mapGoalEvaluationToStatus({ evaluation, mandateStatus: mandateRow.status });
 
-      let receiptQuoteKey = null;
-      if (ownerArchetypeKey && (status === "achieved" || status === "at_risk" || status === "behind" || status === "failed")) {
-        const beat = status === "achieved" ? "receipt_positive" : "receipt_negative";
+      // #4578 · Last movement: den SENESTE goal_states-bevægelse for denne
+      // mål-nøgle, talt i EJERENS stemme (ikke status-baseret som før — se
+      // afvigelse 4, lukket, i modul-headeren). Ingen bevægelse endnu (ny
+      // mål-nøgle, eller kun legacy-rækker uden goal_states) → begge felter
+      // forbliver null, som frontends GoalReceipt allerede kræver.
+      const lastMovement = lastMovementByGoalKey.get(goalKey) ?? null;
+      let lastMovementKey = null;
+      let lastMovementAt = null;
+      if (lastMovement && ownerArchetypeKey) {
+        const beat = lastMovement.direction === "improved" ? "receipt_positive" : "receipt_negative";
         const line = sampleVoiceLineOrNull({
           beat,
           archetypeKey: ownerArchetypeKey,
-          seed: `${mandateRow.id}:${goal.id ?? goal.type ?? index}:${beat}`,
+          seed: `${lastMovement.eventId}:${goalKey}`,
           // #4586 · se kommentaren ved chairmanQuote ovenfor.
           context: { teamId, dnaKey, members: assignedMembers },
         });
-        receiptQuoteKey = line?.quote_key ?? null;
+        lastMovementKey = line?.quote_key ?? null;
+        lastMovementAt = lastMovement.at;
       }
 
       const achievedDisplay = formatGoalDisplayValue(evaluation?.actual);
       const targetDisplay = formatGoalDisplayValue(evaluation?.target ?? goal?.target);
 
       return {
-        id: goal?.id ?? `${goal?.type ?? "goal"}-${index}`,
+        // #4578 · goal_key (indholdsbaseret) i stedet for den tidligere
+        // type-index-fallback — mål har aldrig haft persisterede id'er.
+        id: goalKey,
         // #4557 (1/9-tillæg) · rå felter til frontends getBoardGoalLabel — se
         // buildGoalLabelSource + modul-headeren.
         ...buildGoalLabelSource(goal),
@@ -590,9 +787,9 @@ export async function buildBoardRoomPayload({
         receipt: {
           countedKey: `goalReceipt.counted.${goal?.type ?? "unknown"}`,
           countedParams: { achieved: achievedDisplay, target: targetDisplay },
-          lastMovementKey: receiptQuoteKey,
+          lastMovementKey,
           lastMovementParams: {},
-          lastMovementAt: null,
+          lastMovementAt,
           weightedByName: ownerName?.full_name ?? null,
           weightedByLineKey: ownerArchetypeKey ? `archetypes.${ownerArchetypeKey}.label` : null,
         },
@@ -639,7 +836,9 @@ export async function buildBoardRoomPayload({
 
   // ---- minutes (kvitterings-feed) ----
   const minutes = events.slice(0, MINUTES_LIMIT).map((row) => {
-    const speaker = resolveEventSpeaker({ row, chairmanArchetypeKey: fallbackChairmanKey });
+    // #4578 · resolveEventSpeaker filtrerer selv movementsWithOwner ned til
+    // denne rækkes eventId — se afvigelse 5 (lukket) i modul-headeren.
+    const speaker = resolveEventSpeaker({ row, chairmanArchetypeKey: fallbackChairmanKey, movements: movementsWithOwner });
     let textKey = null;
     let memberName = null;
     if (speaker) {

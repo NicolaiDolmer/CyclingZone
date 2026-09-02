@@ -6,6 +6,7 @@ import {
   buildGoalLabelSource,
   deriveConsequenceLine,
   deriveFoundingSeasonNumber,
+  deriveGoalMovements,
   deriveMemberMood,
   deriveMemberRole,
   deriveMilestoneStatus,
@@ -14,6 +15,7 @@ import {
   resolveEventSpeaker,
   sampleVoiceLineOrNull,
 } from "./boardRoom.js";
+import { buildGoalKey } from "./boardGoals.js";
 import { BoardVoiceEmptyBucketError } from "./boardVoice.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { BOARD_ARCHETYPE_KEYS } from "./boardArchetypes.js";
@@ -709,6 +711,201 @@ test("#4579 loadGoalContext kaldes med boardId=source.from_board_id og leagueDiv
   assert.ok(capturedArgs);
   assert.equal(capturedArgs.boardId, "board-xyz");
   assert.equal(capturedArgs.leagueDivisionId, 42);
+});
+
+// ── #4578: kvitterings-events baerer maal-tilstande ────────────────────────────
+// Last movement, medlems-stemning og ejer-stemme i referatet — se afvigelse
+// 4/5/7 (lukket) i boardRoom.js's modul-header.
+
+test("deriveGoalMovements: foerste forekomst af en goal_key er IKKE en bevaegelse", () => {
+  const events = [
+    { id: "e1", created_at: "2026-08-20T00:00:00Z", goal_states: [{ goal_key: "k1", status: "behind", met: false }] },
+  ];
+  assert.deepEqual(deriveGoalMovements(events), []);
+});
+
+test("deriveGoalMovements: status-skift behind -> on_track er en IMPROVED bevaegelse", () => {
+  const events = [
+    // nyeste foerst (samme konvention som den rigtige fetch).
+    { id: "e2", created_at: "2026-08-21T00:00:00Z", goal_states: [{ goal_key: "k1", status: "on_track", met: false }] },
+    { id: "e1", created_at: "2026-08-20T00:00:00Z", goal_states: [{ goal_key: "k1", status: "behind", met: false }] },
+  ];
+  const movements = deriveGoalMovements(events);
+  assert.equal(movements.length, 1);
+  assert.equal(movements[0].eventId, "e2");
+  assert.equal(movements[0].goalKey, "k1");
+  assert.equal(movements[0].direction, "improved");
+  assert.equal(movements[0].fromRank, 0);
+  assert.equal(movements[0].toRank, 2);
+});
+
+test("deriveGoalMovements: met:true -> false er en WORSENED bevaegelse", () => {
+  const events = [
+    { id: "e2", created_at: "2026-08-21T00:00:00Z", goal_states: [{ goal_key: "k1", status: "on_track", met: false }] },
+    { id: "e1", created_at: "2026-08-20T00:00:00Z", goal_states: [{ goal_key: "k1", status: "ahead", met: true }] },
+  ];
+  const movements = deriveGoalMovements(events);
+  assert.equal(movements.length, 1);
+  assert.equal(movements[0].direction, "worsened");
+  assert.equal(movements[0].fromRank, 4);
+  assert.equal(movements[0].toRank, 2);
+});
+
+test("deriveGoalMovements: awaiting_data/neutral ignoreres helt (hverken bevaegelse eller baseline-aendring)", () => {
+  const events = [
+    { id: "e3", created_at: "2026-08-22T00:00:00Z", goal_states: [{ goal_key: "k1", status: "on_track", met: false }] },
+    { id: "e2", created_at: "2026-08-21T00:00:00Z", goal_states: [{ goal_key: "k1", status: "awaiting_data", met: false }] },
+    { id: "e1", created_at: "2026-08-20T00:00:00Z", goal_states: [{ goal_key: "k1", status: "behind", met: false }] },
+  ];
+  const movements = deriveGoalMovements(events);
+  // e2 (awaiting_data) ignoreres helt -> baseline er stadig "behind" (fra e1),
+  // saa e3's on_track ER en bevaegelse imod DEN baseline, ikke imod e2.
+  assert.equal(movements.length, 1);
+  assert.equal(movements[0].eventId, "e3");
+  assert.equal(movements[0].direction, "improved");
+});
+
+test("deriveGoalMovements: legacy-raekker uden goal_states springes over", () => {
+  const events = [
+    { id: "e2", created_at: "2026-08-21T00:00:00Z", goal_states: null },
+    { id: "e1", created_at: "2026-08-20T00:00:00Z", goal_states: [{ goal_key: "k1", status: "behind", met: false }] },
+  ];
+  assert.deepEqual(deriveGoalMovements(events), []);
+});
+
+test("#4578 mandate.goals[].id er buildGoalKey(goal), IKKE type-index-fallback", async () => {
+  const goal = { type: "monument_podium", target: 2, race_scope: "classics", category: "results" };
+  const tables = baseTables({
+    team_board_members: FIVE_MEMBERS,
+    board_mandates: [{ id: "mand-1", team_id: TEAM_ID, season_number: 3, status: "active", goals: [goal] }],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+  assert.equal(payload.mandate.goals[0].id, buildGoalKey(goal));
+});
+
+test("#4578 receipt.lastMovementAt/lastMovementKey udfyldes fra seneste bevaegelse i EJERENS stemme", async () => {
+  const ownerKey = "resultatjaegeren";
+  const goal = { type: "stage_wins", target: 5, category: "results", owner_archetype_key: ownerKey };
+  const goalKey = buildGoalKey(goal);
+  const tables = baseTables({
+    team_board_members: FIVE_MEMBERS,
+    board_mandates: [{
+      id: "mand-1", team_id: TEAM_ID, season_number: 3, status: "active", signed_at: "2026-08-01T00:00:00Z",
+      goals: [goal],
+    }],
+    board_satisfaction_events: [
+      {
+        id: "evt-1", team_id: TEAM_ID, mandate_id: "mand-1", milestone_id: null,
+        satisfaction_delta: 2, reason_category: "weekend_update", created_at: "2026-08-20T00:00:00Z",
+        goal_states: [{ goal_key: goalKey, type: "stage_wins", status: "behind", met: false }],
+      },
+      {
+        id: "evt-2", team_id: TEAM_ID, mandate_id: "mand-1", milestone_id: null,
+        satisfaction_delta: 3, reason_category: "weekend_update", created_at: "2026-08-25T00:00:00Z",
+        goal_states: [{ goal_key: goalKey, type: "stage_wins", status: "on_track", met: false }],
+      },
+    ],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+
+  const goalOut = payload.mandate.goals[0];
+  assert.equal(goalOut.id, goalKey);
+  assert.equal(goalOut.receipt.lastMovementAt, "2026-08-25T00:00:00Z");
+  assert.ok(goalOut.receipt.lastMovementKey);
+  assert.match(goalOut.receipt.lastMovementKey, new RegExp(`^archetypes\\.${ownerKey}\\.reactions\\.receipt_positive\\.`));
+});
+
+test("#4578 receipt.lastMovementAt/Key forbliver null naar maalets noegle ikke har nogen bevaegelse endnu", async () => {
+  const goal = { type: "stage_wins", target: 5, category: "results", owner_archetype_key: "resultatjaegeren" };
+  const tables = baseTables({
+    team_board_members: FIVE_MEMBERS,
+    board_mandates: [{ id: "mand-1", team_id: TEAM_ID, season_number: 3, status: "active", goals: [goal] }],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+  const goalOut = payload.mandate.goals[0];
+  assert.equal(goalOut.receipt.lastMovementAt, null);
+  assert.equal(goalOut.receipt.lastMovementKey, null);
+});
+
+test("#4578 mood: to IMPROVED-bevaegelser paa et medlems eget maal giver positive stemning", async () => {
+  const ownerKey = "traditionalisten";
+  const goal = { type: "stage_wins", target: 5, category: "results", owner_archetype_key: ownerKey };
+  const goalKey = buildGoalKey(goal);
+  const tables = baseTables({
+    team_board_members: FIVE_MEMBERS,
+    board_mandates: [{ id: "mand-1", team_id: TEAM_ID, season_number: 3, status: "active", goals: [goal] }],
+    board_satisfaction_events: [
+      { id: "e1", team_id: TEAM_ID, mandate_id: "mand-1", milestone_id: null, satisfaction_delta: 1, reason_category: "weekend_update", created_at: "2026-08-18T00:00:00Z",
+        goal_states: [{ goal_key: goalKey, status: "behind", met: false }] },
+      { id: "e2", team_id: TEAM_ID, mandate_id: "mand-1", milestone_id: null, satisfaction_delta: 1, reason_category: "weekend_update", created_at: "2026-08-19T00:00:00Z",
+        goal_states: [{ goal_key: goalKey, status: "on_track", met: false }] },
+      { id: "e3", team_id: TEAM_ID, mandate_id: "mand-1", milestone_id: null, satisfaction_delta: 1, reason_category: "weekend_update", created_at: "2026-08-20T00:00:00Z",
+        goal_states: [{ goal_key: goalKey, status: "ahead", met: true }] },
+    ],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+  const member = payload.board.members.find((m) => m.archetypeKey === ownerKey);
+  // e1 saetter kun baseline. e2 (behind->on_track) og e3 (on_track->ahead+met)
+  // er begge IMPROVED-bevaegelser paa ownerKey's eget maal.
+  assert.equal(member.mood, "positive");
+});
+
+test("#4578 mood: blandet IMPROVED-bevaegelse + milepaels-negativt event giver korrekt sum", async () => {
+  const ownerKey = "traditionalisten";
+  const goal = { type: "stage_wins", target: 5, category: "results", owner_archetype_key: ownerKey };
+  const goalKey = buildGoalKey(goal);
+  const tables = baseTables({
+    team_board_members: FIVE_MEMBERS,
+    board_mandates: [{ id: "mand-1", team_id: TEAM_ID, season_number: 3, status: "active", goals: [goal] }],
+    board_vision_milestones: [
+      { id: "ms-1", team_id: TEAM_ID, milestone_key: "k1", goal: { type: "min_riders", target: 20, owner_archetype_key: ownerKey }, target_season_number: 3, status: "missed" },
+    ],
+    board_satisfaction_events: [
+      { id: "e1", team_id: TEAM_ID, mandate_id: "mand-1", milestone_id: null, satisfaction_delta: 1, reason_category: "weekend_update", created_at: "2026-08-18T00:00:00Z",
+        goal_states: [{ goal_key: goalKey, status: "behind", met: false }] },
+      { id: "e2", team_id: TEAM_ID, mandate_id: "mand-1", milestone_id: null, satisfaction_delta: 1, reason_category: "weekend_update", created_at: "2026-08-19T00:00:00Z",
+        goal_states: [{ goal_key: goalKey, status: "on_track", met: false }] },
+      { id: "e3", team_id: TEAM_ID, mandate_id: null, milestone_id: "ms-1", satisfaction_delta: -6, reason_category: "mandate.milestone.missed", created_at: "2026-08-21T00:00:00Z" },
+    ],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+  const member = payload.board.members.find((m) => m.archetypeKey === ownerKey);
+  // +1 (IMPROVED-bevaegelse) + (-6) (milepael missed) = -5 -> negative.
+  assert.equal(member.mood, "negative");
+});
+
+test("#4578 minutes: mandat-niveau raekke MED en tilskrivelig bevaegelse taler i EJERENS stemme (memberName + textKey)", async () => {
+  const ownerKey = "traditionalisten";
+  const goal = { type: "stage_wins", target: 5, category: "results", owner_archetype_key: ownerKey };
+  const goalKey = buildGoalKey(goal);
+  const tables = baseTables({
+    team_board_members: FIVE_MEMBERS,
+    board_mandates: [{ id: "mand-1", team_id: TEAM_ID, season_number: 3, status: "active", goals: [goal] }],
+    board_satisfaction_events: [
+      { id: "e1", team_id: TEAM_ID, mandate_id: "mand-1", milestone_id: null, satisfaction_delta: 1, reason_category: "weekend_update", created_at: "2026-08-18T00:00:00Z", race_name: null,
+        goal_states: [{ goal_key: goalKey, status: "behind", met: false }] },
+      { id: "e2", team_id: TEAM_ID, mandate_id: "mand-1", milestone_id: null, satisfaction_delta: 4, reason_category: "weekend_update", created_at: "2026-08-19T00:00:00Z", race_name: null,
+        goal_states: [{ goal_key: goalKey, status: "on_track", met: false }] },
+    ],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+
+  // e1 baerer ingen bevaegelse (den saetter kun baseline) -> falder tilbage til
+  // formanden. e2 baerer bevaegelsen (behind->on_track) -> taler i ejerens stemme.
+  const rowWithoutMovement = payload.minutes.find((m) => m.id === "e1");
+  const rowWithMovement = payload.minutes.find((m) => m.id === "e2");
+  const ownerName = payload.board.members.find((m) => m.archetypeKey === ownerKey).name;
+  const chairmanName = payload.board.members.find((m) => m.role === "chair").name;
+
+  assert.equal(rowWithMovement.memberName, ownerName);
+  assert.match(rowWithMovement.textKey, new RegExp(`^archetypes\\.${ownerKey}\\.reactions\\.receipt_positive\\.`));
+  assert.equal(rowWithoutMovement.memberName, chairmanName);
 });
 
 // ── Rene hjælpefunktioner ──────────────────────────────────────────────────────
