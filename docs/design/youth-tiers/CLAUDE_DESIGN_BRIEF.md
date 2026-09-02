@@ -6,7 +6,7 @@
 
 ## 1. Sådan bruger du briefen
 
-1. Opret et nyt design-projekt i claude.ai/design. Vedhæft repoet via GitHub-connectoren (eller upload filerne under §2).
+1. Start en ny design-chat i claude.ai/design med det EKSISTERENDE designsystem-projekt "Cycling Zone design system" vedhæftet (id `a332ec00…`, se [`docs/design/README.md`](../README.md)). Opret ikke et nyt. Vedhæft desuden repoet via GitHub-connectoren (eller upload filerne under §2). Kør gerne `/design-sync` mod samme projekt først, så komponenterne matcher koden fra august.
 2. Kopiér prompten i §6 ind som første besked. Den er skrevet til at Claude Design læser koden først og tegner bagefter.
 3. Lad Claude Design lave 2-3 lavfidelitets-retninger pr. skærm først. Vælg. Derefter hi-fi.
 4. Eksportér "design handoff" til denne mappe når du er tilfreds. Slice 0 (kommer snart) bygges herfra.
