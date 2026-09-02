@@ -9,6 +9,7 @@ import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, a
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
+import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
   SEED_DEV_TRANSITION,
@@ -105,6 +106,17 @@ export function installPreviewMock() {
         let body = null;
         if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
         const res = plannerMockRoute(method, u.pathname, u.search, body);
+        if (res) return jsonResponse(res.body, res.status);
+      }
+
+      // #4557 (S-M2c): statefuld aarsmoede-mock — rout /api/board/room +
+      // /api/board/meeting* FØR den generiske /api-blok, saa fokus-skift og
+      // underskrift muterer in-memory-state (samme moenster som clubMock).
+      if (/\/api\/board\/(room|meeting)/.test(url)) {
+        const u = new URL(url, window.location.origin);
+        let body = null;
+        if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
+        const res = boardMeetingMockRoute(method, u.pathname, body);
         if (res) return jsonResponse(res.body, res.status);
       }
 

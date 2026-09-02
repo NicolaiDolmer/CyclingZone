@@ -1783,7 +1783,8 @@
       "title": "Bestyrelseslokalet",
       "subtitle": "{chair}, formand · {dna}",
       "subtitleChairOnly": "{chair}, formand",
-      "subtitleNoChair": "Bestyrelsen"
+      "subtitleNoChair": "Bestyrelsen",
+      "enterMeetingCta": "Gå til årsmødet"
     },
     "status": {
       "on_track": "På sporet",
@@ -1902,6 +1903,63 @@
       "youthDebut": "Ungdomsdebut: {name}, {age}. “Det er den nordiske vej.”",
       "deficitWeek": "Underskudsuge, {amount}. “Marginer, ikke mirakler.”",
       "captainSaleWarning": "Vi sælger ikke en kaptajn midt i sæsonen uden en plan. “Vis mig planen.”"
+    },
+    "meeting": {
+      "route": {
+        "loading": "Indlæser årsmøde"
+      },
+      "header": {
+        "title": "Årsmøde · sæson {season}",
+        "subtitle": "Bestyrelsen foreslår dit mandat. Justér det, stil ét ønske, underskriv.",
+        "confidenceMeta": "Tillid {confidence} · {count} justeringer tilbage",
+        "confidenceMetaNoValue": "{count} justeringer tilbage",
+        "deadline": "Ubesvarede mandater underskrives automatisk om {days, plural, one {# dag} other {# dage}}"
+      },
+      "steps": {
+        "focus": "Fokus",
+        "mandate": "Mandat",
+        "request": "Anmodning",
+        "sign": "Underskriv"
+      },
+      "focus": {
+        "label": "Fokus"
+      },
+      "mandate": {
+        "title": "Foreslået mandat · fokus: {focus}",
+        "meta": "{count, plural, one {# mål} other {# mål}} · {used} af {allowed} justeringer brugt",
+        "reward": "Gevinst +{bonus} tillid · tab -{penalty}",
+        "rewardWas": "Gevinst +{bonus} tillid · tab -{penalty} · var {was}",
+        "choice": {
+          "easier": "Lettere",
+          "keep": "Behold",
+          "stretch": "Stræk"
+        },
+        "choiceDisabledEasier": "Dette mål kan ikke lempes yderligere.",
+        "choiceDisabledStretch": "Dette mål kan ikke strækkes yderligere.",
+        "choiceDisabledBudget": "Du har brugt alle dine justeringer til dette møde.",
+        "reactionAttribution": "{name} bakker op om {choice}"
+      },
+      "visionSlot": {
+        "title": "Bestyrelsen foreslår en ny milepæl",
+        "targetSeason": "Mål: sæson {season}",
+        "accept": "Accepter",
+        "decline": "Afvis"
+      },
+      "request": {
+        "title": "Din anmodning · 1 pr. møde",
+        "meta": "Et afslag kommer altid med et modtilbud",
+        "changeRequest": "Skift anmodning",
+        "select": "Vælg",
+        "none": "Ingen anmodning denne gang"
+      },
+      "sign": {
+        "hint": "Hurtigste vej: accepter forslaget og underskriv. To klik.",
+        "back": "Tilbage",
+        "button": "Underskriv mandat",
+        "signing": "Underskriver",
+        "error": "Noget gik galt. Prøv igen.",
+        "focusChangeError": "Kunne ikke opdatere fokus. Prøv igen."
+      }
     }
   },
   "vision": {

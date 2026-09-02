@@ -1783,7 +1783,8 @@
       "title": "Boardroom",
       "subtitle": "{chair}, chair · {dna}",
       "subtitleChairOnly": "{chair}, chair",
-      "subtitleNoChair": "The board"
+      "subtitleNoChair": "The board",
+      "enterMeetingCta": "Enter annual meeting"
     },
     "status": {
       "on_track": "On track",
@@ -1902,6 +1903,63 @@
       "youthDebut": "Youth debut: {name}, {age}. “This is the Nordic way.”",
       "deficitWeek": "Deficit week, {amount}. “Margins, not miracles.”",
       "captainSaleWarning": "We do not sell a captain mid-season without a plan. “Show me the plan.”"
+    },
+    "meeting": {
+      "route": {
+        "loading": "Loading annual meeting"
+      },
+      "header": {
+        "title": "Annual meeting · Season {season}",
+        "subtitle": "The board proposes your mandate. Adjust it, make one request, sign.",
+        "confidenceMeta": "Confidence {confidence} · {count} adjustments available",
+        "confidenceMetaNoValue": "{count} adjustments available",
+        "deadline": "Unanswered mandates sign automatically in {days, plural, one {# day} other {# days}}"
+      },
+      "steps": {
+        "focus": "Focus",
+        "mandate": "Mandate",
+        "request": "Request",
+        "sign": "Sign"
+      },
+      "focus": {
+        "label": "Focus"
+      },
+      "mandate": {
+        "title": "Proposed mandate · focus: {focus}",
+        "meta": "{count, plural, one {# goal} other {# goals}} · {used} of {allowed} adjustments used",
+        "reward": "Reward +{bonus} confidence · miss -{penalty}",
+        "rewardWas": "Reward +{bonus} confidence · miss -{penalty} · was {was}",
+        "choice": {
+          "easier": "Easier",
+          "keep": "Keep",
+          "stretch": "Stretch"
+        },
+        "choiceDisabledEasier": "This goal can't be eased further.",
+        "choiceDisabledStretch": "This goal can't be stretched further.",
+        "choiceDisabledBudget": "You've used all your adjustments for this meeting.",
+        "reactionAttribution": "{name} backs the {choice}"
+      },
+      "visionSlot": {
+        "title": "The board proposes a new milestone",
+        "targetSeason": "Target: season {season}",
+        "accept": "Accept",
+        "decline": "Decline"
+      },
+      "request": {
+        "title": "Your request · 1 per meeting",
+        "meta": "A refusal always comes with a counter-offer",
+        "changeRequest": "Change request",
+        "select": "Select",
+        "none": "No request this meeting"
+      },
+      "sign": {
+        "hint": "Fastest path: accept the proposal and sign. Two clicks.",
+        "back": "Back",
+        "button": "Sign mandate",
+        "signing": "Signing",
+        "error": "Something went wrong. Try again.",
+        "focusChangeError": "Couldn't update the focus. Try again."
+      }
     }
   },
   "vision": {
