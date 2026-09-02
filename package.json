@@ -7,6 +7,8 @@
     "sync-docs": "node scripts/sync-docs.js",
     "check:patchnotes": "node scripts/check-patch-notes-version.js",
     "test:check-patchnotes": "node --test scripts/check-patch-notes-version.test.js",
+    "test:e2e-shard-budget": "node --test scripts/check-e2e-shard-budget.test.mjs",
+    "test:e2e-flakes": "node --test scripts/extract-e2e-flakes.test.mjs",
     "doctor": "pwsh -File scripts/agent-doctor.ps1",
     "codex:doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/codex-session-start.ps1",
     "cleanup:worktrees": "pwsh -File scripts/prune-merged-worktrees.ps1",
