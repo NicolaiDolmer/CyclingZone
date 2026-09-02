@@ -27,6 +27,8 @@ Ejerens ord: "Du er slet slet ikke ambitiøs nok med hvad vi kan nå" og "planl�
 
 ## 4. Sådan skalerer bølgen (læring fra 2/9)
 
+- **Modeller (ejer 2/9 kl. 23):** Fable er kun arkitekt: læser, beslutter, skriver prompter, reviewer, merger. Alt udførende arbejde kører på **Opus** (tunge spor: motor, migrationer, design-kritiske UI-flader) eller **Sonnet** (afgrænsede spor, docs, tests, rebase). `model` sættes EKSPLICIT i hvert `agent()`-kald og i hvert Agent-tool-kald; arves aldrig.
+
 - Worktrees oprettes sekventielt med `scripts/new-worktree.ps1 -Branch <type>/<N>-<slug>` (ca. 30 s hver). Preflight: `pwsh -File scripts/preflight-night-wave.ps1 -Fix` (GO 2/9), `scripts/keep-awake.ps1` som baggrundsproces.
 - Workflow-tool i chunks på 5-8 sonnet-workers (`model: 'sonnet'` EKSPLICIT), én `parallel()` pr. chunk, nyt Workflow-kald pr. chunk; scripts i sessionens `workflows/scripts/` kan genbruges som skabelon (night-wave-chunk1..3 fra 2/9: COMMON-preamble + TRACKS-liste + StructuredOutput-schema).
 - **En worker der skriver `cd X && ...` i Bash hænger for evigt** (permission-prompt ingen kan besvare; set 2/9 kl. 21:54, workeren stod stille i 40 min og hele chunk-barrieren med den). Skriv forbuddet som første regel, og tjek transcript-alder pr. agent hvert 20. minut (`stat` på `subagents/workflows/<run>/agent-*.jsonl`); en frossen transcript med et åbent `cd`-kald = stop workflowet og fortsæt sporet med en frisk Agent i SAMME worktree.
