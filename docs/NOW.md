@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** Ingen aktiv session (design/ungdom-session 2/9 lukket ~13:50: TASTE.md godkendt, handoff + YOUTH_RULES §2.6, MASTERPLAN §G, PR #4635 draft).
+> **🤖 Working agent:** Session B (bestyrelsens beta-blokkere #4586 → #4579 → #4578, worktree `C:devCyclingZone-worktreesix-4586-voice-name-salt`, startet 2/9 aften; Playwright-slottet ejes af session A, kun board-specs koeres her). Derefter S-M2c-spec.
 
 _Historik i git-log, issue-tråde + docs/audits/._
