@@ -1,9 +1,23 @@
 export const PATCHES = [
   {
-    "version": "7.234",
+    "version": "7.235",
     "date": "2026-09-02",
     "label": "Beta",
     "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy previews the coming Junior and U23 teams",
+          "body": "The Academy page now shows a Youth squads card with Junior team and U23 team, each marked Coming soon with a one-line description and a link to the roadmap. Today's academy riders still show as one combined roster until the squads are built."
+        },
+        "da": {
+          "title": "Akademiet forhåndsviser de kommende Junior- og U23-hold",
+          "body": "Akademi-siden viser nu et Ungdomshold-kort med Juniorhold og U23-hold, begge markeret Kommer snart med en kort beskrivelse og et link til roadmappet. Dagens akademi-ryttere vises stadig som én samlet trup, indtil holdene er bygget."
+        },
+        "refs": [4618, 2492]
+      },
       {
         "category": "fixed",
         "audience": "player",
