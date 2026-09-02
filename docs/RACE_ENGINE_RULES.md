@@ -137,6 +137,8 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 | 10 | **Felt-favoritters win-rate (bånd 25-40 %) kan ikke blive grøn med den motor der er wiret i dag.** Målt 2/9 over 5 seeds: 53,7 % før bjerg-ankeret, 83,2 % efter. Båndet forudsætter at udbrud og holdtaktik af og til vinder — M5 (udbrud), M6 (leadout) og M14 (AI-taktik) er skrevet og testet, men kaldes ikke af `index.ts`, så den stærkeste rytter vinder næsten altid. Cellen skal forfølges ved at koble mekanikkerne på, **aldrig ved at straffe styrke** (ejer 4/8). Jo bedre fysiologien virker, jo højere stiger tallet — det er en måler på manglende mekanik, ikke på balance | [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
 | 11 | **Bjerg-top-10-ankeret er kun meningsfuldt ved realistisk feltstørrelse.** Samme kode scorer 211 s ved 180 ryttere og 19 s ved hele populationen (5.938) — målet er sekundbaseret og skalerer med feltet, fordi en stor peloton giver en stor frontgruppe. Kørsel B (180) er gaten, jf. scorecard-metodologien 23/8; kørsel A's tal er ikke et mål for dette anker | [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
 
+**Bjerg-ankerets måleflade (ejer-beslutning 2/9, [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604)).** Bjerg-top-10-spredningen måles **kun på topankomster** — bjergetaper der slutter på toppen. En bjergetape der slutter på en nedkørsel hører til nedkørsels-ankeret, som netop kræver at de etaper er tættere; da begge ankre tidligere midlede over de samme etaper, kunne de to bånd ikke opfyldes samtidigt.
+
 ---
 
 ## 8. Kildedokumenter

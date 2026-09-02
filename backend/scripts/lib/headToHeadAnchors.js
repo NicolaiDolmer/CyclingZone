@@ -394,7 +394,20 @@ export function scoreBonusSecondsBounded() {
 // ---------------------------------------------------------------------------
 
 export function scoreGapRealism(rows) {
-  const mountainRows = stagesWhere(rows, (route) => route.profile_type === "mountain" || route.profile_type === "high_mountain");
+  // Ejer-beslutning 2/9-2026 (#4604, PR #4610): bjerg-ankeret maales KUN paa
+  // TOPANKOMSTER. #2415-baandet beskriver "bjergetape top-10 inden for ~3-4
+  // min" — det er en beskrivelse af en etape der afgoeres paa toppen. En
+  // bjergetape der slutter paa en nedkoersel er ikke en topankomst; den hoerer
+  // til nedkoersels-ankeret (scoreDescentVsSummitRatio), som netop KRAEVER at
+  // de etaper er tættere. Foer beslutningen midlede dette anker over begge
+  // slags, saa de to ankre trak i hver sin retning paa de SAMME etaper og ikke
+  // kunne opfyldes samtidigt.
+  const mountainRows = stagesWhere(
+    rows,
+    (route) =>
+      (route.profile_type === "mountain" || route.profile_type === "high_mountain")
+      && route.finale_type === "long_climb",
+  );
   const band = ANCHOR_BANDS.mountainTop10SpreadSeconds;
 
   function spreadFor(getTimes) {
@@ -410,11 +423,11 @@ export function scoreGapRealism(rows) {
   return [
     {
       id: "mountain_top10_spread",
-      label: "Bjergetape top-10-spredning (#2415)",
+      label: "Bjergetape top-10-spredning, topankomster (#2415)",
       bandLabel: `${band.min}-${band.max}s (~3-4 min)`,
       source: band.source,
-      v3: { ...judge(v3.value, band, v3.n, "ingen mountain/high_mountain-etaper i input"), display: (v) => fmt(v, 0) },
-      v4: { ...judge(v4.value, band, v4.n, "ingen mountain/high_mountain-etaper i input"), display: (v) => fmt(v, 0) },
+      v3: { ...judge(v3.value, band, v3.n, "ingen bjerg-topankomster i input"), display: (v) => fmt(v, 0) },
+      v4: { ...judge(v4.value, band, v4.n, "ingen bjerg-topankomster i input"), display: (v) => fmt(v, 0) },
     },
     {
       id: "gt_winner_margin",
