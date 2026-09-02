@@ -1,0 +1,463 @@
+[
+  {
+    "route": "/admin/data",
+    "template": "T2",
+    "pageFile": "frontend/src/pages/admin/AdminDataTab.jsx",
+    "checklist": {
+      "q1": "ja",
+      "q2": "nej - 1114px chrome (racekatalog og saesonopsaetning) foer foerste datareaekke i Loebskalenderen.",
+      "q3": "nej - Race-katalog-kortet alene fylder over 900px foer 'Loebskalender' (kort nr. 2) starter.",
+      "q4": "ja",
+      "q5": "ikke relevant - adminvaerktoej til loebsopsaetning, ikke en cykeldata-visningsside.",
+      "q6": "ja",
+      "q7": "ja",
+      "q8": "nej - fire guld-elementer samtidig: 'Tilfoej loeb', 'Generer forslag', 'Model (kaskade)' og 'Gem og generer'.",
+      "q9": "nej - fire kort bruger en roed venstre-accent-bjaelke ved titlen (forbudt femte prioritetssignal), off-token radius maalt til 26.",
+      "q10": "nej - flag-emoji bruges som ikon ved 'Race-katalog' og 'Race-motor V2' (emoji=2 i metrics).",
+      "q11": "nej - accent-bjaelken er et femte prioritetssignal ud over de fire tilladte.",
+      "q12": "ja",
+      "q13": "ikke relevant - ingen tom tilstand maalt paa siden.",
+      "q14": "nej - to saetningers prosa under 'Pointtabel per loebsklasse' hoerer hjemme i Hjaelp.",
+      "q15": "nej - bund-navigationen overlapper saeson-dropdown'en, og Loebskalender-tabellen mister Klasse-kolonnen paa mobil.",
+      "q16": "ja",
+      "q17": "nej - roede bjaelker, emoji og guld-overload signalerer komponentbibliotek, ikke cykelkaerlighed."
+    },
+    "score": 7,
+    "band": "skal have en runde",
+    "mainFinding": "Siden viser 1114px chrome (racekatalog og saesons-opsaetning) foer foerste rigtige datareaekke i Loebskalenderen, og fire kort bruger samtidig en roed venstre-accent-bjaelke ved titlen, et femte prioritetssignal som er eksplicit forbudt i TASTE paragraf 3.",
+    "patternTag": "chrome-foer-data",
+    "severity": 2,
+    "darkNote": "Moerk fungerer, hierarkiet holder, og de roede bjaelker forbliver synlige.",
+    "mobileNote": "Bund-navigationen overlapper saeson-dropdown'en, og Loebskalender-tabellen mister Klasse-kolonnen.",
+    "secondaryFindings": [
+      "Fire guld-farvede knapper/toggles paa en skaerm ('Tilfoej loeb', 'Generer forslag', 'Model (kaskade)', 'Gem og generer') mod TASTE's et-guld-regel.",
+      "To linjers forklarende prosa under 'Pointtabel per loebsklasse' hoerer hjemme i Hjaelp, ikke paa fladen (P9).",
+      "Flag-emoji bruges som ikon ved 'Race-katalog' og 'Race-motor V2' i stedet for et stroke-ikon."
+    ]
+  },
+  {
+    "route": "/admin/economy",
+    "template": "T2",
+    "pageFile": "frontend/src/pages/admin/AdminEconomyTab.jsx",
+    "checklist": {
+      "q1": "ikke relevant", "q2": "ikke relevant", "q3": "ikke relevant", "q4": "ikke relevant",
+      "q5": "ikke relevant", "q6": "ikke relevant", "q7": "ikke relevant", "q8": "ikke relevant",
+      "q9": "ikke relevant", "q10": "ikke relevant", "q11": "ikke relevant", "q12": "ikke relevant",
+      "q13": "ikke relevant", "q14": "ikke relevant", "q15": "ikke relevant", "q16": "ikke relevant",
+      "q17": "ikke relevant"
+    },
+    "score": 0,
+    "band": "skal have en runde",
+    "mainFinding": "ikke doemt: mock-begraensning. Siden renderer en generisk ErrorBoundary ('Siden kunne ikke vises') under e2e-mocks, sandsynligvis en mock-data-mangel (auction_timing_config .single()-kald). Boer verificeres mod et rigtigt admin-login foer det tages med som design-fund.",
+    "patternTag": "intet-fund",
+    "severity": 0,
+    "darkNote": "Fejlkortet er identisk i moerk tilstand.",
+    "mobileNote": "Ikke maalt, samme crash under mocks.",
+    "secondaryFindings": [
+      "ErrorState-komponentens 'Genindlaes siden'-knap er guld, men PAGE_TEMPLATES kraever at retry ALDRIG er guld, kun sekundaer - gaelder alle tre ErrorBoundary-sider (economy, season, seasons-finance)."
+    ]
+  },
+  {
+    "route": "/admin/feedback",
+    "template": "T2",
+    "pageFile": "frontend/src/pages/admin/AdminFeedbackTab.jsx",
+    "checklist": {
+      "q1": "ja", "q2": "ja", "q3": "ja", "q4": "ja",
+      "q5": "ikke relevant - supportkoe uden naturligt cykeldata-billedsprog.",
+      "q6": "ja", "q7": "ja", "q8": "ja", "q9": "ja", "q10": "ja", "q11": "ja", "q12": "ja",
+      "q13": "ikke relevant - ingen tom tilstand vises i det filtrerede view.",
+      "q14": "ja",
+      "q15": "nej - mobilkortet mister MODTAGET/TYPE/SIDE/BESKED/STATUS-kolonnerne og efterlader et stort tomt felt over afsenderens navn.",
+      "q16": "ja",
+      "q17": "ja"
+    },
+    "score": 19,
+    "band": "paa system, mangler smag",
+    "mainFinding": "Paa mobil mister feedback-tabellen alle kolonner undtagen afsender-navnet, og der efterlades et stort tomt hvidt felt (omkring 250px) oeverst i kortet hvor MODTAGET/TYPE/SIDE/BESKED/STATUS burde staa, en tydelig P10-regression, ikke bare mindre data.",
+    "patternTag": "mobil-taber-kolonner",
+    "severity": 2,
+    "darkNote": "ok",
+    "mobileNote": "Stort tomt felt i kortet, og alle kolonner ud over afsendernavnet forsvinder.",
+    "secondaryFindings": [
+      "'Aabn' er korrekt sekundaer (ikke guld) i raekken, godt eksempel paa gulds-rationering.",
+      "Statuspillen 'NY' bruger en anden roed/pink-tone end statusbadges andre steder, boer tjekkes mod fire-signal-reglen."
+    ]
+  },
+  {
+    "route": "/admin/forum",
+    "template": "T2",
+    "pageFile": "frontend/src/pages/admin/AdminForumTab.jsx",
+    "checklist": {
+      "q1": "ja", "q2": "ja", "q3": "ja", "q4": "ja",
+      "q5": "ikke relevant - rapportkoe uden naturligt cykeldata-billedsprog.",
+      "q6": "ja", "q7": "ja", "q8": "ja", "q9": "ja", "q10": "ja", "q11": "ja", "q12": "ja",
+      "q13": "nej - tom tilstand 'Ingen rapporter' har ingen handlingsknap overhovedet.",
+      "q14": "ja", "q15": "ja", "q16": "ja",
+      "q17": "nej - generisk supportkoe uden cykelspecifikt praeg."
+    },
+    "score": 19,
+    "band": "paa system, mangler smag",
+    "mainFinding": "Den tomme tilstand 'Ingen rapporter' er rent beskrivende uden nogen handlingsknap, det er vaerre end skabelonens eget eksempel som mindst har EN sekundaer knap - her er der intet at goere for admin'en.",
+    "patternTag": "tom-tilstand-beskrivende",
+    "severity": 1,
+    "darkNote": "ok",
+    "mobileNote": "ok, ingen overlap paa denne korte side.",
+    "secondaryFindings": [
+      "'Nye'-filterchippen har en guld-tint som aktiv-tilstand, indenfor budgettet men graenser til pille-anarki-moensteret set paa flere sider.",
+      "Ikonsaettet (globe, people-ikoner) er konsekvent stroke-stil."
+    ]
+  },
+  {
+    "route": "/admin/season",
+    "template": "T2",
+    "pageFile": "frontend/src/pages/admin/AdminSeasonTab.jsx",
+    "checklist": {
+      "q1": "ikke relevant", "q2": "ikke relevant", "q3": "ikke relevant", "q4": "ikke relevant",
+      "q5": "ikke relevant", "q6": "ikke relevant", "q7": "ikke relevant", "q8": "ikke relevant",
+      "q9": "ikke relevant", "q10": "ikke relevant", "q11": "ikke relevant", "q12": "ikke relevant",
+      "q13": "ikke relevant", "q14": "ikke relevant", "q15": "ikke relevant", "q16": "ikke relevant",
+      "q17": "ikke relevant"
+    },
+    "score": 0,
+    "band": "skal have en runde",
+    "mainFinding": "ikke doemt: mock-begraensning. Siden renderer samme generiske ErrorBoundary som /admin/economy under e2e-mocks, sandsynligvis en mock-data-mangel (transfer_windows/auction_timing_config .single()-kald). Boer verificeres mod et rigtigt admin-login.",
+    "patternTag": "intet-fund",
+    "severity": 0,
+    "darkNote": "Fejlkortet er identisk i moerk tilstand.",
+    "mobileNote": "Ikke maalt, samme crash under mocks.",
+    "secondaryFindings": [
+      "Samme guld-retry-knap-brud som paa /admin/economy og seasons-finance-teamId."
+    ]
+  },
+  {
+    "route": "/admin/system",
+    "template": "T1",
+    "pageFile": "frontend/src/pages/admin/AdminSystemTab.jsx",
+    "checklist": {
+      "q1": "ja",
+      "q2": "ja",
+      "q3": "nej - fem kort (Marked-pause, Discord webhooks, Admin log, Bestyrelse, Balance-drift-vagt) stables i traek uden fold.",
+      "q4": "ja",
+      "q5": "ikke relevant - systemvaerktoej, ikke en cykeldata-side.",
+      "q6": "ja", "q7": "ja", "q8": "ja",
+      "q9": "nej - alle fem kort har roed venstre-accent-bjaelke, off-token radius maalt til 10.",
+      "q10": "nej - roede cirkler og en groen trekant bruges som ikon i stedet for stroke-ikoner (emoji=3, pile=2).",
+      "q11": "nej - blandet ikon/farve-sprog: pink dot-knapper, groen trekant-knap, graa toggle-chip, plus accent-bjaelken som femte signal.",
+      "q12": "ja",
+      "q13": "ikke relevant - 'Balance-drift-vagt' er en systemfejlmelding, ikke en formel EmptyState.",
+      "q14": "nej - flerlinjede forklarende afsnit under 'Marked-pause' og 'Bestyrelse' hoerer hjemme i Hjaelp.",
+      "q15": "nej - bund-navigationen paa mobil daekker dele af 'Admin log'-kortets tekst.",
+      "q16": "ja",
+      "q17": "nej - ligner et raat devtools-panel uden cykelpraeg."
+    },
+    "score": 11,
+    "band": "skal have en runde",
+    "mainFinding": "Siden stables fem sektionskort i traek (Marked-pause, Discord webhooks, Admin log, Bestyrelse, Balance-drift-vagt) uden fold eller fane, det bryder T1's fold-disciplin (maks 2 kort foer 1000px), og to af kortene ('Marked-pause', 'Bestyrelse') har flerlinjede forklarende afsnit direkte paa fladen i stedet for i Hjaelp.",
+    "patternTag": "prosa-paa-fladen",
+    "severity": 2,
+    "darkNote": "Moerk holder hierarkiet, men de roede bjaelker og farve-glyffer er lige saa synlige som i lys.",
+    "mobileNote": "Den faste bund-navigationsbjaelke daekker dele af 'Admin log'-kortet, og alle fem kort stables i en lang scroll uden fold.",
+    "secondaryFindings": [
+      "Alle fem kort bruger en roed venstre-accent-bjaelke ved titlen, samme forbudte femte prioritetssignal som paa /admin/data.",
+      "To roede 'Frys'-knapper bruger en farvet cirkel og 'Genoptag' en trekant som ikon i stedet for stroke-ikoner.",
+      "Den faste bund-navigation paa mobil overlapper 'Admin log'-kortets tekst."
+    ]
+  },
+  {
+    "route": "/admin/users",
+    "template": "T2",
+    "pageFile": "frontend/src/pages/admin/AdminUsersTab.jsx",
+    "checklist": {
+      "q1": "ja",
+      "q2": "nej - chromeBeforeDataPx rammer noejagtigt 250px, ikke under graensen.",
+      "q3": "ja", "q4": "ja",
+      "q5": "ikke relevant - brugeradministration, ikke en cykeldata-side.",
+      "q6": "ja", "q7": "ja",
+      "q8": "ja",
+      "q9": "nej - samme forbudte roede accent-bjaelke som paa /admin/data og /admin/system, off-token radius maalt til 4.",
+      "q10": "nej - '-> Admin'-knappen bruger en bogstavelig unicode-pil i selve knap-labelen.",
+      "q11": "nej - accent-bjaelken er et femte prioritetssignal.",
+      "q12": "ja",
+      "q13": "ikke relevant - ingen tom tilstand vises.",
+      "q14": "ja",
+      "q15": "nej - Email-, Hold- og Handlinger-kolonnerne forsvinder helt paa mobil, admin kan ikke slette eller forfremme brugere fra telefonen.",
+      "q16": "ja",
+      "q17": "nej - generisk CRUD-brugerliste uden cykelpraeg."
+    },
+    "score": 11,
+    "band": "skal have en runde",
+    "mainFinding": "'-> Admin'-knappen bruger en bogstavelig unicode-pil midt i knap-labelen i stedet for et stroke-ikon, og kortet 'Brugere' har (som /admin/data og /admin/system) en roed venstre-accent-bjaelke; paa mobil forsvinder desuden Email-, Hold- og Handlinger-kolonnerne helt, saa admin ikke kan slette eller forfremme brugere fra telefonen.",
+    "patternTag": "unicode-pil",
+    "severity": 2,
+    "darkNote": "Moerk holder linjen, ingen elementer forsvinder.",
+    "mobileNote": "Email, Hold og Handlinger-kolonnerne (Admin/Slet-knapperne) forsvinder helt fra mobilkortet.",
+    "secondaryFindings": [
+      "Samme forbudte roede venstre-accent-bjaelke som paa /admin/data og /admin/system, tredje forekomst, tyder paa et systemisk moenster.",
+      "'Hold'-kolonnen viser en tankestreg uden forklaring for brugere uden hold.",
+      "chromeBeforeDataPx rammer noejagtigt 250px-graensen, lige paa kanten af budgettet."
+    ]
+  },
+  {
+    "route": "/auctions/history",
+    "template": "T2",
+    "pageFile": "frontend/src/pages/AuctionHistoryPage.jsx",
+    "checklist": {
+      "q1": "ja",
+      "q2": "nej - 278px chrome, lige over 250px-graensen.",
+      "q3": "ja", "q4": "ja",
+      "q5": "ja - nationsflag, 'BUDKRIG'-badge og bud-historik er aegte cykel/auktions-data som billedsprog.",
+      "q6": "ja", "q7": "ja",
+      "q8": "nej - 'Alle' (aktivt filter) og 'Historik (1)' (aktiv fane) er begge fyldt med guld samtidig.",
+      "q9": "nej - off-token radius maalt til 5.",
+      "q10": "ja",
+      "q11": "nej - flere pille-sprog paa en skaerm: filterchips, tabs, statusbadge og BUDKRIG-badge har hver sin anatomi.",
+      "q12": "ja",
+      "q13": "ikke relevant - ingen tom tilstand vises.",
+      "q14": "ja",
+      "q15": "nej - mobilen falder til kort-pr.-raekke og mister Nation/Status/Saelger/Vinder-kolonnerne, den variant ejeren afviste i fork 6.",
+      "q16": "ja",
+      "q17": "ja"
+    },
+    "score": 14,
+    "band": "skal have en runde",
+    "mainFinding": "Paa mobil falder auktionshistorik-tabellen tilbage til et kort-pr.-raekke-layout og mister Nation-, Status-, Saelger- og Vinder-kolonnerne helt, det er praecis den 'kort-variant B' som ejeren afviste som standard i fork 6 (P10); den godkendte loesning er pinned navnekolonne plus vandret scroll, som ikke er bygget her.",
+    "patternTag": "mobil-taber-kolonner",
+    "severity": 2,
+    "darkNote": "ok",
+    "mobileNote": "Tabellen falder til kort-layout og mister Nation/Status/Saelger/Vinder-kolonnerne (afvist variant, fork 6).",
+    "secondaryFindings": [
+      "'Alle' (aktivt filter) og 'Historik (1)' (aktiv fane) er begge fyldt med guld samtidig, to guld-elementer paa en skaerm.",
+      "Off-token radius maalt til 5 forekomster, sandsynligvis BUDKRIG-badge'en.",
+      "Flag-brug, 'BUDKRIG'-badge og bud-historik er et godt eksempel paa aegte cykel/auktions-data som billedsprog (P2)."
+    ]
+  },
+  {
+    "route": "/compare",
+    "template": "T2",
+    "pageFile": "frontend/src/pages/RiderComparePage.jsx",
+    "checklist": {
+      "q1": "ja", "q2": "ja", "q3": "ja", "q4": "ja",
+      "q5": "ikke relevant - ingen ryttere tilfoejet endnu, siden er en ren soege-tom-tilstand.",
+      "q6": "ikke relevant - ingen tabel/tal at vurdere endnu.",
+      "q7": "ja", "q8": "ja", "q9": "ja", "q10": "ja", "q11": "ja", "q12": "ja", "q13": "ja", "q14": "ja", "q15": "ja", "q16": "ja", "q17": "ja"
+    },
+    "score": 20,
+    "band": "verdensklasse-kandidat",
+    "mainFinding": "Siden er en ren tom-tilstand der foelger T2-skabelonen praecist: intet chrome foer content, et soegefelt, et stroke-ikon, ingen guld-overforbrug. Eneste svaghed er at siden ikke kan verificeres fuldt ud med rigtige ryttere i sammenligningen under mocks, men det den viser er allerede verdensklasse.",
+    "patternTag": "intet-fund",
+    "severity": 1,
+    "darkNote": "ok",
+    "mobileNote": "ok",
+    "secondaryFindings": [
+      "Ingen eksempel-ryttere vises, saa det er ikke muligt at bedoeme selve sammenligningstabellen i denne audit.",
+      "Kopien ('Tilfoej op til 3 ryttere for at sammenligne stats') er kort og klar."
+    ]
+  },
+  {
+    "route": "/profile",
+    "template": "T1",
+    "pageFile": "frontend/src/pages/ProfilePage.jsx",
+    "checklist": {
+      "q1": "ja",
+      "q2": "ja",
+      "q3": "nej - fem kort (Konto, Udseende, Privatliv, Hold, Discord) stables i traek uden fold.",
+      "q4": "ja",
+      "q5": "ikke relevant - konto-indstillinger, ikke en cykeldata-side.",
+      "q6": "ikke relevant - ingen relevant tabel.",
+      "q7": "ja",
+      "q8": "nej - guld-keyline paa det valgte tema-kort plus tre guld-knapper og seks guld-toggles langt over et-guld-budgettet.",
+      "q9": "nej - 2px guld-keyline om 'Foelg system/Moerkt'-kortet, som TASTE forbeholder T3-heroen.",
+      "q10": "nej - pile=5 maalt paa siden.",
+      "q11": "nej - 'Gem Discord ID' er blaa, en femte farve uden for de fire tilladte prioritetssignaler.",
+      "q12": "ja",
+      "q13": "ikke relevant - ingen tom tilstand vises.",
+      "q14": "ja",
+      "q15": "nej - bund-navigationen overlapper 'Udseende'-sektionen midt i indholdet.",
+      "q16": "ja",
+      "q17": "nej - ren konto-indstillingsside uden cykelpraeg, feles som generisk SaaS."
+    },
+    "score": 9,
+    "band": "skal have en runde",
+    "mainFinding": "Det valgte tema-kort ('Foelg system'/'Moerkt') faar en 2px guld-keyline rundt om HELE kortet, det er noejagtigt det TASTE paragraf P3 eksplicit forbyder ('aldrig keyline paa almindelige kort, keyline kun T3-heroen'), og det ses i baade lys og moerk tilstand.",
+    "patternTag": "to-guld",
+    "severity": 2,
+    "darkNote": "Guld-keylinen paa det valgte tema-kort og den blaa Discord-knap er lige saa synlige i moerk tilstand, samme fund.",
+    "mobileNote": "Den faste bund-navigation overlapper 'Udseende'-sektionen midt i indholdet.",
+    "secondaryFindings": [
+      "Discord-integrationens 'Gem Discord ID'-knap er blaa, en femte farve uden for de fire tilladte prioritetssignaler (guld/success/danger/warning).",
+      "Fem kort stables i traek (Konto, Udseende, Privatliv, Hold, Discord) uden fold, bryder T1's 2-korts-budget.",
+      "Seks guld-farvede toggle-switches under Discord-notifikationer laegger sig oveni tre guld-knapper, langt over 'et guld-primary' pr. skaerm."
+    ]
+  },
+  {
+    "route": "/roadmap",
+    "template": "T1",
+    "pageFile": "frontend/src/pages/RoadmapPage.jsx",
+    "checklist": {
+      "q1": "ja", "q2": "ja",
+      "q3": "nej - fem forklarings-kort (Loeb, Traening, Ungdomsudvikling, Transfers og auktioner, Klub og verden) stables uden fold.",
+      "q4": "ja - introlinjen er praecis en saetning, inden for P9's tilladte kontekstlinje.",
+      "q5": "ikke relevant - koncept-ikoner, ikke aegte cykeldata-visualisering.",
+      "q6": "ikke relevant - ingen relevant tabel.",
+      "q7": "ja", "q8": "ja", "q9": "ja", "q10": "ja", "q11": "ja", "q12": "ja",
+      "q13": "ikke relevant - ingen tom tilstand paa siden.",
+      "q14": "ja",
+      "q15": "nej - bund-navigationen overlapper tekst i 'Traening'-kortet.",
+      "q16": "ja",
+      "q17": "ja"
+    },
+    "score": 17,
+    "band": "paa system, mangler smag",
+    "mainFinding": "Roadmap stables fem store forklarings-kort i traek (Loeb, Traening, Ungdomsudvikling, Transfers og auktioner, Klub og verden) uden fold eller fane, langt over T1's 'maks 2 kort foer 1000px'-budget fra fold-disciplinen i PAGE_TEMPLATES.md, selvom hvert kort i sig selv er velskrevet og cykel-fagligt.",
+    "patternTag": "andet",
+    "severity": 1,
+    "darkNote": "ok",
+    "mobileNote": "Bund-navigationen overlapper tekst i Traening-kortet midtvejs i scrollet.",
+    "secondaryFindings": [
+      "Den faste bund-navigation paa mobil overlapper tekst i 'Traening'-kortet.",
+      "Introlinjen 'Bedoem planerne herunder...' er praecis inden for P9's tilladte en-linje-kontekst, men balancerer paa graensen.",
+      "Copyen er staerkt cykel-fagsprog ('Deadlineday-drama', 'Vejkaptajner og mentorer'), et godt eksempel paa aegte stemme."
+    ]
+  },
+  {
+    "route": "/rules",
+    "template": "T1",
+    "pageFile": "frontend/src/pages/RulesPage.jsx",
+    "checklist": {
+      "q1": "ja", "q2": "ja", "q3": "ja",
+      "q4": "nej - tre-saetnings intro-afsnit mellem sidehoved og indhold, det forbudte moenster fra paragraf 3.",
+      "q5": "ikke relevant - regeltekst, ikke en visuel cykeldata-side.",
+      "q6": "ikke relevant - ingen relevant tabel.",
+      "q7": "ja", "q8": "ja", "q9": "ja", "q10": "ja", "q11": "ja", "q12": "ja",
+      "q13": "ikke relevant - ingen tom tilstand paa siden.",
+      "q14": "nej - samme intro-afsnit som q4 er mere end en linje kontekst.",
+      "q15": "nej - bund-navigationen daekker starten af 'Trup-loft'-kortets brodtekst.",
+      "q16": "ja", "q17": "ja"
+    },
+    "score": 16,
+    "band": "paa system, mangler smag",
+    "mainFinding": "Introafsnittet oeverst ('Denne side er sandheden om spillets tal...') er tre saetninger prosa mellem sidehoved og indhold, det er praecis det forbudte moenster i TASTE paragraf 3 ('Introtekst mellem sidehoved og indhold'), selvom resten af siden er en solid, veldisponeret regelreference.",
+    "patternTag": "prosa-paa-fladen",
+    "severity": 1,
+    "darkNote": "ok",
+    "mobileNote": "Bund-navigationen daekker starten af Trup-loft-kortets broedtekst.",
+    "secondaryFindings": [
+      "Bund-navigationen paa mobil overlapper 'Trup-loft'-kortets tekst.",
+      "De otte sub-navigationsikoner er konsekvent stroke-stil, godt eksempel.",
+      "'Tallene er verificeret mod spillets kode' er en god tillidsskabende detalje, matcher P11."
+    ]
+  },
+  {
+    "route": "/help",
+    "template": "T1",
+    "pageFile": "frontend/src/pages/HelpPage.jsx",
+    "checklist": {
+      "q1": "ja", "q2": "ja", "q3": "ja", "q4": "ja",
+      "q5": "ikke relevant - manualindhold, ikke en visuel cykeldata-side.",
+      "q6": "ikke relevant - ingen relevant tabel.",
+      "q7": "ja", "q8": "ja", "q9": "ja", "q10": "ja", "q11": "ja", "q12": "ja",
+      "q13": "ikke relevant - ingen tom tilstand paa siden.",
+      "q14": "ja",
+      "q15": "nej - bund-navigationen daekker trin 3-4 i 'Foerste skridt'-listen.",
+      "q16": "ja", "q17": "ja"
+    },
+    "score": 18,
+    "band": "paa system, mangler smag",
+    "mainFinding": "Siden selv er ren og velfungerende, eneste reelle fund er at den faste bund-navigation paa mobil overlapper trin 3-4 i 'Foerste skridt'-listen, et gennemgaaende problem set paa flere sider i denne audit (profile, roadmap, rules, admin/system).",
+    "patternTag": "andet",
+    "severity": 1,
+    "darkNote": "ok",
+    "mobileNote": "Bund-navigationen daekker trin 3-4 i 'Foerste skridt'-listen.",
+    "secondaryFindings": [
+      "Konsekvent stroke-ikonsaet for de 22 hjaelpe-emner, godt eksempel paa P7.",
+      "'Kom i gang'-fanens guld-baggrund er den eneste guld-brug paa siden, inden for budgettet."
+    ]
+  },
+  {
+    "route": "/pro",
+    "template": "T1",
+    "pageFile": "frontend/src/pages/ProUpgradePage.jsx",
+    "checklist": {
+      "q1": "nej - sidehovedets undertekst er tre saetninger, bryder header-opskriftens en-linje-regel.",
+      "q2": "ja", "q3": "ja", "q4": "ja",
+      "q5": "ikke relevant - betalingsside, ingen cykeldata forventet.",
+      "q6": "ja", "q7": "ja",
+      "q8": "nej - to guld-elementer: 'Videre til betaling'-knappen og en guld-kant om det valgte '6 maaneder'-prisfelt.",
+      "q9": "nej - guld-kant/keyline paa et almindeligt prisfelt uden for T3-heroen, off-token radius maalt til 1.",
+      "q10": "ja", "q11": "ja", "q12": "ja",
+      "q13": "ikke relevant - ingen tom tilstand paa siden.",
+      "q14": "ja",
+      "q15": "nej - bund-navigationen daekker samtykketeksten foer betalingsknappen.",
+      "q16": "ja",
+      "q17": "nej - ingen cykeldata eller billedsprog, generisk prisside."
+    },
+    "score": 13,
+    "band": "skal have en runde",
+    "mainFinding": "Sidehovedets undertekst er tre saetninger lang ('Stoet spillets udvikling... Pro er et badge og en identitet, aldrig en fordel.') og bryder dermed header-opskriftens en-linje-regel, samtidig har det valgte '6 maaneder'-prisfelt en guld-kant paa et almindeligt kort, samme moenster som er set paa /profile's temavaelger.",
+    "patternTag": "to-guld",
+    "severity": 1,
+    "darkNote": "Guld-kanten om '6 maaneder'-feltet er lige saa synlig i moerk.",
+    "mobileNote": "Bund-navigationen daekker en del af samtykketeksten foer betalingsknappen.",
+    "secondaryFindings": [
+      "Bund-navigationen paa mobil overlapper samtykketeksten under prisvalget.",
+      "Kopien er aerlig om at Pro aldrig er en spilfordel (matcher P11's 'ingenting opdigtet').",
+      "Ingen cykeldata/billedsprog paa siden, forventeligt for en betalingsside, men bidrager til at siden foeles generisk."
+    ]
+  },
+  {
+    "route": "/seasons",
+    "template": "T1",
+    "pageFile": "frontend/src/pages/SeasonEndPage.jsx",
+    "checklist": {
+      "q1": "ja",
+      "q2": "nej - 1089px chrome maalt til foerste table-raekke (Division 4-tabellen), selvom saesonlederkortet viser rigtig data tidligere paa siden.",
+      "q3": "nej - fem sektioner (bedste ryttere, fire stat-mini-kort, kalender, division, pointudvikling) stables uden fold.",
+      "q4": "ja",
+      "q5": "ja - flag, troeje-kontekst, ledermarkoerer og en pointudviklings-kurve er aegte cykeldata som billedsprog.",
+      "q6": "ja", "q7": "ja",
+      "q8": "ja - 0 guld-primaerknapper maalt.",
+      "q9": "nej - fem skygge-elementer maalt, og bundgrafen 'Dit holds pointudvikling' er tegnet helt i guld i stedet for den vedtagne monokrome sparkline.",
+      "q10": "ja",
+      "q11": "nej - mange pille-typer paa en skaerm: AI-badge, FORELOEBIG, KOMMENDE/AFSLUTTET, FOERER, DIG.",
+      "q12": "nej - to Bebas Neue-navne ('MIKKEL HANSEN' og 'ADA PEDERSEN') vises samtidig paa en T1-side uden hero.",
+      "q13": "ikke relevant - mini-stat-tomheder ('Ingen praemier endnu') er ikke den formelle EmptyState.",
+      "q14": "ja",
+      "q15": "nej - bund-navigationen overlapper indhold, og UDVIKLING-mini-graf-kolonnen forsvinder fra Division 4-tabellen paa mobil.",
+      "q16": "ja", "q17": "ja"
+    },
+    "score": 13,
+    "band": "skal have en runde",
+    "mainFinding": "Saeson-snapshot-kortet har en guld-keyline foroven (forbeholdt T3-heroen, paragraf 3), og bundgrafen 'Dit holds pointudvikling' er tegnet med en helt guldfarvet streg og guldprikker i stedet for den vedtagne monokrome sparkline (fork 5: kun deltaet maa vaere farvet), to separate steder hvor guld bruges ud over de fire tilladte formaal paa samme side.",
+    "patternTag": "to-guld",
+    "severity": 2,
+    "darkNote": "Guld-keylinen og den fuldt guldfarvede pointudviklings-graf er lige saa synlige i moerk.",
+    "mobileNote": "Bund-navigationen overlapper indhold midtvejs, og UDVIKLING-kolonnen (mini-graf) forsvinder fra Division 4-tabellen.",
+    "secondaryFindings": [
+      "To Bebas Neue-navne ('MIKKEL HANSEN' og 'ADA PEDERSEN') vises samtidig paa denne T1-side, mod fork 2's 'kun et display-element pr. skaerm'.",
+      "Fem skygge-elementer maalt paa siden (skal vaere 0 uden for modal/popover).",
+      "Standingstabellens UDVIKLING-sparkline-kolonne forsvinder helt paa mobil."
+    ]
+  },
+  {
+    "route": "/seasons/:seasonId/finance/:teamId",
+    "template": "T1",
+    "pageFile": "frontend/src/pages/SeasonFinanceReport.jsx",
+    "checklist": {
+      "q1": "ikke relevant", "q2": "ikke relevant", "q3": "ikke relevant", "q4": "ikke relevant",
+      "q5": "ikke relevant", "q6": "ikke relevant", "q7": "ikke relevant", "q8": "ikke relevant",
+      "q9": "ikke relevant", "q10": "ikke relevant", "q11": "ikke relevant", "q12": "ikke relevant",
+      "q13": "ikke relevant", "q14": "ikke relevant", "q15": "ikke relevant", "q16": "ikke relevant",
+      "q17": "ikke relevant"
+    },
+    "score": 0,
+    "band": "skal have en runde",
+    "mainFinding": "ikke doemt: mock-begraensning. Siden renderer samme generiske ErrorBoundary som /admin/economy og /admin/season under e2e-mocks (h1 kunne ikke findes, console-fejl=1). Boer verificeres mod et rigtigt admin-login/rigtig saeson foer det tages med som design-fund.",
+    "patternTag": "intet-fund",
+    "severity": 0,
+    "darkNote": "Fejlkortet er identisk i moerk tilstand.",
+    "mobileNote": "Ikke maalt, samme crash under mocks.",
+    "secondaryFindings": [
+      "Samme guld-retry-knap-brud som paa /admin/economy og /admin/season, tredje forekomst af samme ErrorState-komponentfejl."
+    ]
+  }
+]
