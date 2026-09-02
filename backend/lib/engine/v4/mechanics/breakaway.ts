@@ -347,6 +347,12 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const isLastSegment = ctx.segmentIndex === ctx.route.segments.length - 1;
 
   for (const breakaway of breakawayGroups) {
+    // WIRING-GUARD (#4615): en gruppe med kind "breakaway" er ikke
+    // noedvendigvis ET udbrud M5 selv dannede — M3's descent attack bruger
+    // samme art. Er "udbruddet" ikke foran jagt-gruppen, er der intet hul at
+    // lukke, og et blindt kald ville emittere et falsk breakaway_caught.
+    if (breakaway.gap_seconds > chaseGroup.gap_seconds) continue;
+
     const netAdvantage = computeNetChaseAdvantage({
       chaseGroupRiderIds: chaseGroup.rider_ids,
       breakawayRiderIds: breakaway.rider_ids,
@@ -355,16 +361,38 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       remainingKmFraction,
       stance,
     });
-    const closingSeconds = netAdvantage * segmentLengthKm * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit;
+    // WIRING-GUARD (#4615): jagt-interessen kan KUN lukke et hul, aldrig aabne
+    // et. Farten (og dermed hvor meget et udbrud traekker fra) afgoeres af
+    // segmentLoop's egen tempo-model; lod vi et negativt netto tilfoeje
+    // sekunder her, ville M5 bogfoere det samme forspring to gange — og en
+    // holdordre kunne dermed SKABE et forspring i stedet for at paavirke
+    // jagten paa det (mor-spec §5: spillerens valg kan aldrig vaelte et loeb).
+    const closingSeconds = Math.max(
+      0,
+      netAdvantage * segmentLengthKm * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
+    );
 
-    // Kun jagt-gruppens gap AENDRES (hoved-invarianten laner gap_seconds som
-    // "afstand til fronten" — descent.ts/climbSelection.ts's samme moenster).
+    // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
+    // gruppens absolutte gap (#4615). Begge felter er "sekunder bag fronten",
+    // og hvem der ER fronten afhaenger af hvornaar i segmentet hooket kaldes:
+    // paa formations-segmentet er pelotonen stadig 0 og udbruddet negativt,
+    // paa alle senere segmenter er det omvendt (segmentLoop rebaseliner efter
+    // hvert hook-kald). Blev jagten maalt paa jagt-gruppens eget gap, ville et
+    // udbrud dannet i dette segment fremstaa fanget med det samme.
+    //
+    // Det er UDBRUDDETS gap der flyttes mod jagt-gruppen: separationen kan
+    // dermed aldrig blive negativ (jagten overhaler ikke det den jager), og
+    // jagt-gruppens eget gap — som segmentLoop's tempo-model ejer — roeres ikke.
     const currentChase = groups.find((g) => g.id === chaseGroup.id);
-    if (!currentChase) continue;
-    const newGap = Math.max(0, currentChase.gap_seconds - closingSeconds);
-    groups = groups.map((g) => (g.id === chaseGroup.id ? { ...g, gap_seconds: newGap } : g));
+    const currentBreakaway = groups.find((g) => g.id === breakaway.id);
+    if (!currentChase || !currentBreakaway) continue;
+    const separation = currentChase.gap_seconds - currentBreakaway.gap_seconds;
+    const newSeparation = Math.max(0, separation - closingSeconds);
+    const newBreakawayGap = currentChase.gap_seconds - newSeparation;
+    groups = groups.map((g) => (g.id === breakaway.id ? { ...g, gap_seconds: newBreakawayGap } : g));
     changed = true;
 
+    const newGap = newSeparation;
     const caught = newGap < ctx.tuning.groups.mergeThresholdSeconds;
     if (caught) {
       events.push({
@@ -396,8 +424,12 @@ export const breakawayHook: BreakawayHook = (state: EngineState, ctx: BreakawayH
   if (ctx.segmentIndex === FORMATION_SEGMENT_INDEX && findBreakawayGroups(state.groups).length === 0) {
     const tryBreakRiderIds = flattenTryBreakRiderIds(parseBreakawayOrders(ctx.orders));
     const formationResult = attemptFormation(state, ctx, tryBreakRiderIds);
-    const chaseResult = progressChase(formationResult.state, ctx);
-    return { state: chaseResult.state, events: [...formationResult.events, ...chaseResult.events] };
+    // Dannede vi et udbrud i DETTE segment, faar det sit hovedstart uantastet:
+    // jagten begynder foerst paa det naeste segment (#4615). Ellers ville en
+    // fuld segment-laengdes jagt-fremdrift blive bogfoert i samme kald som
+    // formationen og udslette forspringet foer det var kort.
+    if (findBreakawayGroups(formationResult.state.groups).length > 0) return formationResult;
+    return progressChase(formationResult.state, ctx);
   }
   return progressChase(state, ctx);
 };
