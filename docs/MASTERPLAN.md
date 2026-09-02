@@ -1,6 +1,6 @@
 # MASTERPLAN — prioriteret rækkefølge (SSOT for rækkefølgen)
 
-> **Ejer-godkendt 13/8** (#3662; spørg før omprioritering). 🔴 brand · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. ≤1.500 tok. [Visuel udgave](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635).
+> **Ejer-godkendt 13/8** (#3662; spørg før omprioritering). 🔴 brand · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. ≤1.500 tok.
 
 **Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Gjaldt FØR S3 — afløst i S3-vinduet af rammen nedenfor (ejer 28/8). **Målt 2/9 kl. 17:10:** 622 åbne · 235 menneskehold · 83 aktive/7d · 3 abo, MRR 113,87 kr. **Hard regel 23/8:** ingen prod-mutation uden ejer-GO på netop det skridt.
 
