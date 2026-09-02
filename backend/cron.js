@@ -1859,6 +1859,16 @@ export function startCron() {
   // #3138: idempotent upsert på dedup-nøgle + tavs skip før migration — boot-run
   // gør 24h-monitoren ærlig uden risiko for dubletter eller støj.
   trackedTick("fairplay scoring-sweep", runFairplayScoringCron)();
+  // #4644 — de to sidste 24h-jobs uden boot-run, målt reelt døde (growth-
+  // snapshot sporadisk siden 2/8, global-rank-weekly kun ét distinct captured_at
+  // siden 12/8): setInterval(24h) nulstilles ved hvert deploy, og backend
+  // deployer typisk flere gange dagligt. Begge sikre at boot-runne: growth-
+  // snapshot UPSERT'er på snapshot_date (database/2026-09-02-growth-snapshot-
+  // paying-only-4636.sql), global-rank-weekly no-op'er selv medmindre >= 7 dage
+  // er gået siden seneste snapshot (database/2026-07-17-global-rank.sql) —
+  // ingen af dem kan lave dubletter ved et boot-run lige efter et normalt tick.
+  trackedTick("growth snapshot", runGrowthSnapshotCron)();
+  trackedTick("global rank weekly snapshot", runGlobalRankWeeklySnapshotCron)();
   trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
   trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN))(); // boot-run: samme, ren måling
   trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_60MIN))(); // boot-run: claim-idempotent, søndags- + kl.-06-gated
