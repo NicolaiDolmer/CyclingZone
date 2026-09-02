@@ -91,7 +91,18 @@ const team = (id, extra) => ({
   is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, ...extra,
 });
 
-const user = (id, extra) => ({ id, email: `${id}@example.com`, last_seen: ABSENT_LAST_SEEN, email_prefs: {}, ...extra });
+// consent_preferences defaults to an explicit email_marketing opt-in so the
+// pre-existing tests below (absence window, dedupe, cap, results) exercise
+// an already-consented manager and don't need to know about #4654 -- the
+// dedicated consent-gate section further down overrides this per case.
+const user = (id, extra) => ({
+  id,
+  email: `${id}@example.com`,
+  last_seen: ABSENT_LAST_SEEN,
+  email_prefs: {},
+  consent_preferences: { email_marketing: true },
+  ...extra,
+});
 
 const result = ({ raceId, raceName, rank, riderName, importedAt }) => ({
   rank, rider_name: riderName, race_id: raceId, race: { id: raceId, name: raceName }, imported_at: importedAt,
@@ -222,6 +233,51 @@ test("email_prefs race_digest=false (or all=false) is excluded even though absen
 
   assert.equal(res.candidates, 1, "only the opted-in absentee counts as a candidate");
   assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-in"]);
+});
+
+// ─── #4654 · consent gate (consent_preferences.email_marketing opt-in) ────
+
+test("only an EXPLICIT consent_preferences.email_marketing=true is sent to -- false, null, and a missing object/key all exclude", async () => {
+  const teamRows = [
+    team("t-true"), team("t-false"), team("t-null"), team("t-no-object"), team("t-no-key"),
+  ];
+  const userRows = [
+    user("user-t-true", { consent_preferences: { email_marketing: true } }),
+    user("user-t-false", { consent_preferences: { email_marketing: false } }),
+    user("user-t-null", { consent_preferences: { email_marketing: null } }),
+    user("user-t-no-object", { consent_preferences: null }), // DB default -- banner never answered post-login
+    user("user-t-no-key", { consent_preferences: { analytics: true, marketing: true } }), // answered, but not this category
+  ];
+  const raceResultsByTeam = Object.fromEntries(
+    teamRows.map((t) => [t.id, [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })]])
+  );
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.candidates, 1, "only the explicit email_marketing=true user counts as a candidate");
+  assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-true"]);
+});
+
+test("email_marketing=true alone isn't enough: the consent gate combines with the existing email_prefs opt-out", async () => {
+  const teamRows = [team("t-both-in"), team("t-unsubbed")];
+  const userRows = [
+    user("user-t-both-in", { consent_preferences: { email_marketing: true }, email_prefs: {} }),
+    user("user-t-unsubbed", { consent_preferences: { email_marketing: true }, email_prefs: { race_digest: false } }),
+  ];
+  const raceResultsByTeam = Object.fromEntries(
+    teamRows.map((t) => [t.id, [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })]])
+  );
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.candidates, 1);
+  assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-both-in"]);
 });
 
 // ─── #4650 · at most 1 per ISO week (dedupe key) ───────────────────────────

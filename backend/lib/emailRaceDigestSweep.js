@@ -39,6 +39,11 @@
 // email_prefs opt-out (isEmailTypeEnabled, same rule sendLoopEmail enforces
 // per-send), the 19:00 hour gate.
 //
+// #4654 (consent-audit follow-up, see the users-select filter below for the
+// full rationale): candidates now also require an EXPLICIT
+// consent_preferences.email_marketing === true opt-in, not just the
+// email_prefs opt-out above. welcome.js/day1.js are unchanged.
+//
 // #3399's narrative-headline lead-in ("Krogh takes the sprint") is dropped
 // along with the daily cadence -- the locked v2 copy in
 // docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md goes straight from
@@ -133,18 +138,46 @@ export async function runEmailRaceDigestSweep({
   const userIds = [...teamByUser.keys()];
 
   const { data: userRows, error: usersErr } = await supabase
-    .from("users").select("id, email, last_seen, email_prefs").in("id", userIds);
+    .from("users").select("id, email, last_seen, email_prefs, consent_preferences").in("id", userIds);
   if (usersErr) throw new Error(`race-digest users lookup: ${usersErr.message}`);
 
-  // #4650: absence + consent filter, reusing the existing isEmailTypeEnabled
+  // #4650: absence + opt-out filter, reusing the existing isEmailTypeEnabled
   // rule (same one sendLoopEmail already enforces per-send) instead of
   // inventing a second opt-out mechanism. A user with no last_seen at all
   // (never returned since account creation) is treated as NOT yet absent in
   // the digest's sense -- they have nothing to "come back" from -- so they
   // are excluded rather than default-included.
+  //
+  // Consent gate (#4654, owner 2026-09-02: "we do this properly, no spam").
+  // The audit at docs/audits/winback-consent-audit-2026-09-02.md (PR #4652)
+  // found this sweep checked email_prefs (opt-OUT) but never
+  // consent_preferences.email_marketing (opt-IN). Since #4650 this digest
+  // only reaches managers already absent 3+ days, about a season update --
+  // not a message tied to an in-progress transaction -- which the audit
+  // classifies as marketing under GDPR art. 6(1)(a) (consent), not the
+  // account-service basis of art. 6(1)(b). consent_preferences is a
+  // SEPARATE mechanism from email_prefs above (see database/2026-05-11-
+  // consent-preferences.sql): it is the cookie banner's per-category
+  // opt-IN, JSONB with an `email_marketing` boolean, and NULL whenever the
+  // player has never answered the banner post-login. NULL must never read
+  // as silent consent (GDPR art. 4(11): consent must be an unambiguous,
+  // active choice) -- so only an EXPLICIT `email_marketing === true` passes;
+  // both NULL and false are excluded, same as anyone who said no.
+  //
+  // welcome.js / day1.js are deliberately NOT gated the same way: both fire
+  // once, right after a manager creates the very account the mail is about
+  // (onboarding to their own just-taken action), and the banner's own
+  // "Email" category copy (frontend/public/locales/*/banners.json) says
+  // transactional email does not depend on this choice -- there is no
+  // separate marketing-classification question to resolve for them here.
   const absenceCutoffIso = new Date(now.getTime() - DIGEST_ABSENCE_WINDOW_MS).toISOString();
   const absentees = (userRows || []).filter(
-    (u) => u.email && u.last_seen && u.last_seen < absenceCutoffIso && isEmailTypeEnabled(u.email_prefs, "race_digest")
+    (u) =>
+      u.email &&
+      u.last_seen &&
+      u.last_seen < absenceCutoffIso &&
+      isEmailTypeEnabled(u.email_prefs, "race_digest") &&
+      u.consent_preferences?.email_marketing === true
   );
   if (!absentees.length) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
 
