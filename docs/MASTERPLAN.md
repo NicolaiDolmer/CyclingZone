@@ -13,13 +13,13 @@
 0. **FØRST (ejer 28/8): #2758** Discord-triage → issues (dagligt) + **#4269** daglig Supabase-kontrol (fejler på manglende secret — se nøgle-listen i NUA-auditten 31/8). Køen fyldes af det spillerne møder og det basen melder, ikke af AI-vurdering.
 1. **#4370** WebKit-#421 (blokerer smoke) · **#4595** chunk-fejl over budget · **#4259** byg FORFRA · **#4355** taktik-læk.
 2. **#4098** grundregel; blødt-loft-forslag i tråden til ejer-valg (simulér-før-ship).
-3. **Z1 (#1146): matrixen LIVE 31/8.** Akse ejer-låst (kolonne pr. løbsdag pr. løb). Rest: **#4535 header-design WIP — afventer ejer-retning** (branch `feat/4535-matrix-calendar-strip`) · #4530 · #4531 (efter S3).
+3. **Z1 (#1146): matrixen LIVE 31/8.** Akse ejer-låst. Rest: #4535 header (afventer ejer-retning) · #4530 · #4531.
 4. **#4176** kalender-SSOT — ejer-frist senest 4/9 OG før S4-kalenderen. Med #4254 (24 regler bagud, hard rule 30).
 
 **Ejer-beslutninger 27-28/8 (genåbn ikke):** løbsdage 1-baseret · afmeldt hold stiller ikke op · løbsdag = bindings-enhed · minimum 6, fladt · to regenereringer forbudt.
 
 Ny gæld: #4288 · **#4278** · #4282/#4146 · #4292 · #4123 + #4215-rest.
-**UDSKUDT:** v4-flip · #4203/#4209 · PC P2-P3 + #4070/#4071 · #4270 · #4264/#4262/#4263/#4177/#4297 · #4267/#4268. #4265 → G1.
+**UDSKUDT:** rangeret i pengeplan §3. #4265 → G1.
 
 ## Grundreglerne — UDSKUDT til efter 27/9 (ejer 28/8)
 
