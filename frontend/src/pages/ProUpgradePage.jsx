@@ -27,10 +27,11 @@ const PLANS = [
   { key: "semiannual", priceKey: "semiannualPrice", noteKey: "semiannualNote" },
 ];
 
-// #2813: køb er pauset indtil handelsbetingelser + accept-flow er live.
-// Backend afviser også (503 checkout_paused i billingCheckout.js) — dette flag
-// styrer kun visningen og skal holdes i sync med CHECKOUT_PAUSED dér.
-const CHECKOUT_PAUSED = true;
+// #2813: ejer-beslutning 2/9 ("åbn nu, ret bagefter") flipper checkout åben.
+// Backend afviser også hvis flaget er sat (503 checkout_paused i
+// billingCheckout.js) — dette flag styrer kun visningen og skal holdes i sync
+// med CHECKOUT_PAUSED dér.
+const CHECKOUT_PAUSED = false;
 
 export default function ProUpgradePage() {
   const { t, i18n } = useTranslation("pro");

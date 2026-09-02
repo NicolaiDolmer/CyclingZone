@@ -8,12 +8,12 @@ export const PLAN_IDS = {
   semiannual: process.env.ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL,
 };
 
-// #2813: køb er pauset indtil go-live-kravene er på plads (support-e-mail +
-// moms/plan-konfiguration verificeret hos Alunta — se docs/legal/
-// TERMS_DRAFT_2026-07-30.md "Åbne verifikationer"). Vilkårs-sider + accept-flow
-// + opsigelsessti ER bygget; ejer flipper flaget når resten er verificeret.
+// #2813: ejer-beslutning 2/9 ("åbn nu, ret bagefter") flipper checkout åben.
+// Vilkårs-sider, accept-flow og opsigelsessti er bygget siden 30/7; resterende
+// punkter (EU-moms #4511, udløb uden fornyelsessti #4512, EUR/DKK #4074) rettes
+// som opfølgning, ikke som gate for selve flippet.
 // Skal holdes i sync med CHECKOUT_PAUSED i ProUpgradePage.jsx.
-export const CHECKOUT_PAUSED = true;
+export const CHECKOUT_PAUSED = false;
 
 // #2813: version af handelsbetingelserne kunden accepterer ved checkout.
 // Skal matche TERMS_VERSION i frontend/src/lib/termsVersion.js — mismatch
