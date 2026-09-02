@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.229",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "U25 now includes 25-year-olds",
+          "body": "25-year-olds now count as U25, matching real-world cycling. Badges and filters follow the same rule."
+        },
+        "da": {
+          "title": "U25 inkluderer nu 25-årige",
+          "body": "25-årige tæller nu med i U25, ligesom i virkelighedens cykelsport. Badges og filtre følger samme regel."
+        },
+        "refs": [4587]
+      }
+    ]
+  },
+  {
     "version": "7.228",
     "date": "2026-09-01",
     "label": "Beta",

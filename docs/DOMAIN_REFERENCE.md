@@ -13,6 +13,7 @@
 | Hold-min | Ingen — roster-floor fjernet 2026-06-05 (`MARKET_SQUAD_LIMITS.min=0`; et hold må have 0 ryttere) |
 | Hold-max | 30 ryttere (ensrettet, #838) |
 | Race-minimum | Ikke håndhævet (`MIN_RIDERS_FOR_RACE=8` er ubrugt — afventer race-engine [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676)) |
+| U25/U23-grænse | U25 = sæson-alder ≤ 25 (UCI-reglen, ejer-beslutning 2/9-2026, [#4587](https://github.com/NicolaiDolmer/CyclingZone/issues/4587)); U23 uændret (sæson-alder < 23). SSOT: `backend/lib/riderSeasonAge.js` (`isU25ForReferenceYear`/`isU23ForReferenceYear`) |
 
 ---
 
