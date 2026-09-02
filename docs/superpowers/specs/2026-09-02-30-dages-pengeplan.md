@@ -133,18 +133,32 @@ Så #4644 er rigtigt i konklusionen (mandagstal kan ikke tages fra snapshots) me
 
 Hvem måler: Claude (Code) mandag morgen som første handling i ugens session; tallene skrives i `docs/NOW.md` Betaling-linjen og i #4646-tråden.
 
-## §1 Hypoteser
+## §1 Satsninger (ejer-beslutninger 2/9 kl. 18:30-19:10, ét spørgsmål ad gangen)
 
-_(udfyldes efter fase 1)_
+Planen skrives som **rækkefølge, ikke datoer** (ejer 2/9: "planlæg i rækkefølger igen ... prioritér efter hvad der skaber mest værdi"). Datoer nævnes kun hvor de er hårde fakta: sæsonskiftet 27/9, månedskundens fornyelse 1/10.
 
-## §2 Mål pr. 2/10
+1. **Pro der kan ses og købes** (valgt A). Hypotese: betalerne er topplacerede, længe aktive spillere; køber-puljen er de 27 aktive/7d der er top-3 i egen division. Indhold: webhook-fix så Pro lander straks efter køb (§0.6), EUR-checkout live (PR #4608, rebaset 2/9 kl. 19:05 til `78bf73eb4`, MERGEABLE, preview `cycling-zone-git-feat-4074-pro-99e737-nicolai-dolmers-projects.vercel.app`; visuelt go afventer ejeren på EN+DA, desktop+mobil), frafald måles pr. plan og valuta som `player_events` (#4646), og de tre Pro-fordele ejeren valgte 2/9: **A** synligt Founder-mærke i stilling, holdside og forum · **B** sæsonhistorik og udviklingsgrafer som Pro-fane · **C** gemte filtre og større ønskeliste. Alle bag `isPro`, UI som draft-PR med screenshots før merge, aldrig sportslig fordel.
+2. **Mail-loopet** (welcome, dag 1, løbs-digest). Beslutning udsat til senere samme aften: ejeren får teksterne som fil og et tegnet mail-flow FØR flip. Kræver `RESEND_API_KEY` + `EMAIL_UNSUB_SECRET` (nøgleblokken sprunget over kl. 18:50, tages op igen).
+3. **Sæsonskiftet 27/9 som event** (valgt): årsmødet S-M2c som draft med screenshots, parkering af inaktive (#4592) ved cutover, Tilmeld-næste-sæson-knap (#452), S4-opslag som win-back-krog.
+4. **Win-back til de 77 sovende med samtykke** (valgt): consent-audit (#2760) → én mail med ægte holddata → segment vises ejeren før første send.
+5. **Nye spillere ind** (valgt): ejerens egne opslag nu (Discord, Reddit, cykel-fora), SEO fase 1 (#4067) startes som spor.
 
-_(udfyldes efter fase 1)_
+Stående vagter der kører med uanset: #4555 periode-rul-vagt før 1/10, #4645 prisvagt, #4644 de to døde døgn-jobs, #2816 dobbeltkøb-guard.
 
-## §3 Ugemilepæle
+## §2 Mål pr. 2/10 (forslag, ejeren godkender)
 
-_(udfyldes efter fase 1)_
+| Mandagstal | Baseline 2/9 | Mål 2/10 |
+|---|---|---|
+| MRR ekskl. moms / aktive abonnementer | 113,87 kr. / 3 | ≥ 450 kr. / ≥ 10 |
+| Checkout gennemført / startet, rullende 7 d | 2 / 5 (40 %) | ≥ 60 % |
+| D7 seneste fulde kohorte | 18 % (uge 24/8) | ≥ 45 % |
+| Aktive/7d | 83 | ≥ 100 |
+| Mail-loop | off | on, 0 failed |
 
-## §4 Ud af S3-vinduet (det ubekvemme)
+## §3 Rækkefølge for byg (opdateres når ejeren har prioriteret Bagkataloget)
 
-_(udfyldes efter fase 1)_
+Bagkataloget (alle 102 udskudte punkter i klart sprog, med værdi, langsigtet værdi, ny UI, størrelse og klar-i-nat) ligger som artefakt `claude.ai/code/artifact/bab9127f-bd3c-4744-b6f5-eb3673e4c06f` og som tabel i `docs/audits/backlog-plain-language-2026-09-02.md`. Ejeren sætter rækkefølgen dér; Claude foreslår ikke længere selv udskydelser.
+
+## §4 Nattens spor (fyldes ud efter ejerens rækkefølge)
+
+_(udfyldes)_
