@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.237",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro lands right after you pay",
+          "body": "New subscriptions could sit without the Pro badge for up to an hour because the payment provider's confirmation was read in the wrong shape. The confirmation is now read correctly, the subscription is synced the moment you pay, and you cannot start a second subscription by accident."
+        },
+        "da": {
+          "title": "Pro lander med det samme du har betalt",
+          "body": "Nye abonnementer kunne stå uden Pro-mærke i op til en time, fordi betalingsudbyderens bekræftelse blev læst i den forkerte form. Bekræftelsen læses nu rigtigt, abonnementet synkes i samme øjeblik du betaler, og du kan ikke ved et uheld starte et abonnement nummer to."
+        },
+        "refs": [4648, 2816, 4655]
+      }
+    ]
+  },
+  {
     "version": "7.236",
     "date": "2026-09-02",
     "label": "Beta",
