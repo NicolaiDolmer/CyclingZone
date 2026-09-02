@@ -236,6 +236,21 @@
       "env": {
         "VITE_PREVIEW_MOCK": "1"
       }
+    },
+    {
+      "name": "pro-4608-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/dev/CyclingZone-worktrees/feat-4074-pro-eur-dkk-by-language/frontend"
+      ],
+      "port": 5231,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
     }
   ]
 }
