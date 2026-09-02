@@ -31,8 +31,13 @@ import {
   TeamIcon,
   CobblesIcon,
   SkeletonLines,
+  // #4628 (TASTE P7): tilbage-linket bar en unicode-pil ("← Race library") i selve
+  // locale-strengen. Pile er ikke ikoner — de arver linjehoejde, rammer ikke
+  // baseline og ser forskellige ud pr. platform. Nu et stroke-chevron + ren tekst.
+  ChevronLeftIcon,
 } from "../components/ui";
 import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 import { formatNumber } from "../lib/intl";
 import { resultEntity } from "../lib/raceResultEntity.js";
 import { buildRaceRecap } from "../lib/raceRecap.js";
@@ -766,6 +771,14 @@ export default function RaceDetailPage() {
     document.getElementById("race-selection-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  // #4628 (billig delløsning af #2794): har løbet resultater, står de længere nede
+  // bag hero, etape-stribe og evt. karriere-momentkort — især på mobil. En stille
+  // genvej i sidehovedet springer direkte derned. Ingen fane-rework, ingen ny IA:
+  // samme anker-mekanik som #selection-linket ovenfor.
+  const scrollToResults = useCallback(() => {
+    document.getElementById("race-results-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   // Full-bleed-ruten får ingen Layout-padding — loading/fejl/not-found-grenene
   // sætter derfor selv side-padding, nu efter T3-kort-revisionens ydre
   // container-opskrift (#2849 bølge 5c: pt-4 md:pt-6, samme som kortet nedenfor).
@@ -777,7 +790,7 @@ export default function RaceDetailPage() {
 
   if (loadError) return (
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
-      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">{backLabel}</Link>
+      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"><ChevronLeftIcon size={13} aria-hidden="true" />{backLabel}</Link>
       <ErrorState
         description={t("detail.loadError.message")}
         action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("detail.loadError.retry")}</Button>}
@@ -787,8 +800,19 @@ export default function RaceDetailPage() {
 
   if (notFound) return (
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
-      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">{backLabel}</Link>
-      <EmptyState icon={<FlagIcon size={26} aria-hidden="true" />} title={t("empty.raceNotFound")} />
+      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"><ChevronLeftIcon size={13} aria-hidden="true" />{backLabel}</Link>
+      {/* #4625/#4628: EmptyState kræver en vej videre (TASTE fork 4) — en tom
+          flade der kun beskriver hvad der mangler var 6 af de 10 værste audit-fund. */}
+      <EmptyState
+        icon={<FlagIcon size={26} aria-hidden="true" />}
+        title={t("empty.raceNotFound")}
+        description={t("empty.raceNotFoundHint")}
+        action={
+          <Link to="/resultater?tab=archive" className={buttonClass({ variant: "secondary", size: "sm" })}>
+            {t("detail.backToLibrary")}
+          </Link>
+        }
+      />
     </div>
   );
 
@@ -829,6 +853,7 @@ export default function RaceDetailPage() {
           metadata). */}
       <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
         <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+          <ChevronLeftIcon size={13} aria-hidden="true" />
           {backLabel}
         </Link>
 
@@ -845,16 +870,20 @@ export default function RaceDetailPage() {
                 </span>
               </div>
             </div>
-            {/* #3914: sidens ENE gold-knap FØR resultater findes — "Review tactics"
-                (genbruger discoverCta-scroll-mekanikken, ny tekst). Når løbet har
-                resultater flytter gold-rollen til "Watch the race film" på
-                etape-fanen i stedet (se StoryOfTheStageSection) — aldrig begge
-                samtidig (PAGE_TEMPLATES.md: én gold primary-knap pr. view). */}
-            {!hasAnyResults && race.status === "scheduled" && (
-              <div className="flex gap-2 flex-none">
-                <Button size="sm" onClick={scrollToSelection}>{t("raceCentre.action.reviewTactics")}</Button>
-              </div>
-            )}
+            {/* #4628: sidehovedets handling er STILLE (secondary). Den var guld, men
+                udtagelses-panelets "Gem udtagelse" er også guld og står på SAMME
+                skærm — to guld-primære pr. view (audit 2026-09 række #4, TASTE P3).
+                Gem er den handling der faktisk ændrer noget; sidehovedet er en
+                genvej. Når løbet har resultater bærer "Watch the race film" på
+                etape-fanen guld-rollen (StoryOfTheStageSection) — aldrig to. */}
+            <div className="flex gap-2 flex-none">
+              {!hasAnyResults && race.status === "scheduled" && (
+                <Button size="sm" variant="secondary" onClick={scrollToSelection}>{t("raceCentre.action.reviewTactics")}</Button>
+              )}
+              {hasAnyResults && (
+                <Button size="sm" variant="secondary" onClick={scrollToResults}>{t("detail.jumpToResults")}</Button>
+              )}
+            </div>
           </div>
           <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
             {statBlocks.map((b, i) => (
@@ -919,12 +948,11 @@ export default function RaceDetailPage() {
               race.status==="scheduled" (som OGSÅ dækker et løb der er live,
               #1825), hvilket stablede dem oven på resultat-fanerne. Se
               resultat-tilstanden længere nede for den nye rækkefølge. */}
-          {!hasAnyResults && race.status === "scheduled" && (
-            <StageDetailPanel
-              profile={profileByStage[scheduledStage]}
-              stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
-            />
-          )}
+          {/* #4628: den frittstående StageDetailPanel er VÆK herfra. Den tegnede
+              etapeprofilen i fuld bredde, og StageProfileCard tegnede den SAMME
+              profil igen 400 px længere nede — 1.754 px før første rytterrække i
+              holdudtagelsen (audit 2026-09 række #4). Panelet lever nu ÉT sted:
+              inde i udtagelses-blokken nedenfor, hvor ruten faktisk bruges. */}
 
           {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
               race-engine-flaget (renderer intet når backend siger enabled=false).
@@ -934,16 +962,17 @@ export default function RaceDetailPage() {
           {!hasAnyResults && race.status === "scheduled" && (
             <div id="race-selection-anchor" className="flex flex-col gap-3">
               {/* Sub-4 (#2448): ruten SKAL være synlig mens man udtager — man udtager
-                  til et parcours, ikke til et navn. Kompakt tier: bånd, kategori-chips,
-                  km-akse og race-read, men ingen højdeakse eller navne (pladsen bruges
-                  på selve udtagelsen). Ingen rutedata → intet kort, panelet står som før. */}
-              {hasRouteData(profileByStage[scheduledStage]) && (
-                <StageProfileCard
-                  profile={profileByStage[scheduledStage]}
-                  stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
-                  tier="compact"
-                />
-              )}
+                  til et parcours, ikke til et navn.
+                  #2810 + #4628: ÉT panel (rute + terræn-navn + finale + terræn-DNA)
+                  i `full`-tier, så stigningernes navn, længde og gradient kan aflæses
+                  netop hvor holdet sættes. Før stod der to grafer af samme etape her,
+                  begge i den tier der SKJULER de tal man planlægger efter. */}
+              <StageDetailPanel
+                profile={profileByStage[scheduledStage]}
+                stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
+                tier="full"
+                hasClassifications={race.race_type === "stage_race"}
+              />
               <RaceSelectionPanel
                 raceId={race.id}
                 selectedStageIndex={scheduledStageNums.indexOf(scheduledStage) >= 0 ? scheduledStageNums.indexOf(scheduledStage) : 0}
@@ -968,7 +997,16 @@ export default function RaceDetailPage() {
           )}
 
           {!hasAnyResults && race.status !== "scheduled" && (
-            <EmptyState icon={<FlagIcon size={28} aria-hidden="true" />} title={t("empty.noResultsImportedRace")} />
+            <EmptyState
+              icon={<FlagIcon size={26} aria-hidden="true" />}
+              title={t("empty.noResultsImportedRace")}
+              description={t("empty.noResultsImportedRaceHint")}
+              action={
+                <Link to="/resultater?tab=archive" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("empty.noResultsImportedRaceCta")}
+                </Link>
+              }
+            />
           )}
 
           {/* #3914: LØB MED RESULTATER (live eller completed) — resultatet
@@ -976,7 +1014,7 @@ export default function RaceDetailPage() {
               tidligere altid-åbne panellerne (opstilling, taktik) flyttet ned i
               foldede sektioner nedenfor. */}
           {hasAnyResults && isStageRace && (
-            <div className="flex flex-col gap-[14px]">
+            <div id="race-results-anchor" className="flex flex-col gap-[14px] scroll-mt-4">
               {/* Etape-stribe (Overall/etape-N) sidder under kortet, se ovenfor. */}
               {teamFilterBar}
 
@@ -1012,8 +1050,10 @@ export default function RaceDetailPage() {
 
           {/* Enkeltdagsløb — ingen faner, bare måltavlen (+ holdklassement hvis det findes) */}
           {hasAnyResults && !isStageRace && (
-            <div className="flex flex-col gap-[14px]">
-              <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="full" hasClassifications={false} />
+            <div id="race-results-anchor" className="flex flex-col gap-[14px] scroll-mt-4">
+              {/* #2810: løbet er kørt — ruten er kontekst, ikke beslutningsgrundlag.
+                  Den store graf hører hjemme på den KOMMENDE etape. */}
+              <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="compact" hasClassifications={false} />
               {teamFilterBar}
               <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
                 <SectionStack>
@@ -1055,13 +1095,14 @@ export default function RaceDetailPage() {
             <div id="race-selection-anchor" className="flex flex-col gap-[14px]">
               <CollapsibleSection title={t("selection.title")} defaultOpen={location.hash === "#selection"}>
                 <div className="flex flex-col gap-3">
-                  {hasRouteData(profileByStage[scheduledStage]) && (
-                    <StageProfileCard
-                      profile={profileByStage[scheduledStage]}
-                      stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
-                      tier="compact"
-                    />
-                  )}
+                  {/* #4628: samme ÉNE panel som på den kommende flade, blot i
+                      `compact` — folden er allerede en detalje, og løbet er i gang. */}
+                  <StageDetailPanel
+                    profile={profileByStage[scheduledStage]}
+                    stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
+                    tier="compact"
+                    hasClassifications={race.race_type === "stage_race"}
+                  />
                   <RaceSelectionPanel
                     raceId={race.id}
                     selectedStageIndex={scheduledStageNums.indexOf(scheduledStage) >= 0 ? scheduledStageNums.indexOf(scheduledStage) : 0}
@@ -1623,8 +1664,10 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
       {/* #3914 (bølge 3, point 3 i kontrakten): fuld profilgraf flyttet NED i
           en foldet (default lukket) sektion — resultatet er etapens vigtigste
           indhold nu, ikke ruten. */}
+      {/* #2810: kørt etape → den lille graf. Den store bor på den kommende etape,
+          hvor stigningernes navn/længde/gradient er det man planlægger efter. */}
       <CollapsibleSection title={t("detail.stageProfile.sectionTitle")} defaultOpen={false}>
-        <StageProfileSlot profile={profile} passages={passages} tier="full" />
+        <StageProfileSlot profile={profile} passages={passages} tier="compact" />
       </CollapsibleSection>
     </div>
   );
