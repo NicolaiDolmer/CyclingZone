@@ -392,6 +392,34 @@ jobs:
       - name: Run fetchAllRows order guard
         run: node scripts/check-fetchallrows-order.mjs
 
+  maybesingle-unique-scope-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod .maybeSingle()-kald der ikke daekker tabellens fulde
+    # flerkolonne-UNIQUE (#4496, rodaarsagen bag #4484). .maybeSingle() svarer
+    # med BAADE en fejl OG data: null naar mere end én raekke matcher filteret
+    # - fire kaldsteder laeste det som "ingen raekke findes" i stedet for
+    # "flertydig forespoergsel", og graduerings-sweepet fejlede 23 gange paa
+    # én nat. Usynlig i review (linjen ser rigtig ud) og usynlig for en naiv
+    # mock (#3620-klassen). Constraints laeses statisk fra database/*.sql +
+    # database/schema-snapshot.json - ingen DB-adgang. Opt-out:
+    # "maybesingle-scope-ok: <begrundelse>".
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test maybeSingle unique-scope guard
+        run: node --test scripts/check-maybesingle-unique-scope.test.mjs
+
+      - name: Run maybeSingle unique-scope guard
+        run: node scripts/check-maybesingle-unique-scope.mjs
+
   rls-classification-guard:
     runs-on: ubuntu-latest
     permissions:
