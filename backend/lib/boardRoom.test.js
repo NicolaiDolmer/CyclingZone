@@ -15,6 +15,8 @@ import {
   sampleVoiceLineOrNull,
 } from "./boardRoom.js";
 import { BoardVoiceEmptyBucketError } from "./boardVoice.js";
+import { generateBoardMemberNames } from "./boardMandateNames.js";
+import { BOARD_ARCHETYPE_KEYS } from "./boardArchetypes.js";
 
 // #3514/#4557 S-M2b · boardRoom.js-kontrakten. Se modul-headeren i boardRoom.js
 // for den fulde liste af rapporterede afvigelser fra Boardroom-kontrakten.
@@ -272,6 +274,75 @@ test("aktiv konsekvens sætter confidence.consequence.active + lineKey fra det V
 
   assert.equal(payload.confidence.consequence.active, true);
   assert.equal(payload.confidence.consequence.lineKey, "consequence.layer.sponsorPullout");
+});
+
+// ── #4586: navne-konsistens mellem medlemskort og citater ─────────────────────
+//
+// Brute-forcet kollisions-fixture (samme som boardVoice.test.js): ved
+// (teamId: "team-1" = denne fils TEAM_ID, dnaKey: "skandinavisk_udvikling")
+// kolliderer "pragmatikeren"s basisnavn med et andet medlems, så
+// generateBoardMemberNames giver "pragmatikeren" salt > 0 når HELE
+// bestyrelsen navngives samlet (namesByArchetype-kortene). Før #4586 kaldte
+// sampleVoiceLine ind med ét medlem ad gangen (salt altid 0), så
+// chairmanQuote.memberName/minutes[].memberName kunne hedde noget ANDET end
+// board.members[].name for samme person. `resolveEventSpeaker` peger citat-
+// og kvitterings-stemmen på formanden, så testen sætter "pragmatikeren" som
+// formand for at ramme netop den kolliderede arketype begge steder.
+
+const COLLISION_DNA_KEY = "skandinavisk_udvikling"; // TEAM_ID ("team-1") er allerede kollisions-teamet.
+const COLLISION_CHAIRMAN_KEY = "pragmatikeren";
+const COLLISION_MEMBERS = [
+  { team_id: TEAM_ID, archetype_key: "sponsoraten", selection_kind: "identity", alignment_score: 3, is_chairman: false },
+  { team_id: TEAM_ID, archetype_key: "resultatjaegeren", selection_kind: "identity", alignment_score: 2, is_chairman: false },
+  { team_id: TEAM_ID, archetype_key: "talentspejderen", selection_kind: "identity", alignment_score: 2, is_chairman: false },
+  { team_id: TEAM_ID, archetype_key: "traditionalisten", selection_kind: "wildcard", alignment_score: 1, is_chairman: false },
+  { team_id: TEAM_ID, archetype_key: COLLISION_CHAIRMAN_KEY, selection_kind: "wildcard", alignment_score: 1, is_chairman: true },
+];
+
+test("#4586: board.members[].name, chairmanQuote.memberName og minutes[].memberName er ÉT og samme navn for den kolliderede arketype", async () => {
+  // Egen-verificeret forudsætning (se boardVoice.test.js): den saltede
+  // liste-navngivning for pragmatikeren er FAKTISK forskellig fra en
+  // enkelt-medlems-navngivning i denne fixture, ellers beviser testen intet.
+  const listNamed = generateBoardMemberNames({
+    teamId: TEAM_ID,
+    members: BOARD_ARCHETYPE_KEYS.slice(0, 5),
+    dnaKey: COLLISION_DNA_KEY,
+  });
+  const [singleNamed] = generateBoardMemberNames({
+    teamId: TEAM_ID,
+    members: [COLLISION_CHAIRMAN_KEY],
+    dnaKey: COLLISION_DNA_KEY,
+  });
+  const expectedName = listNamed.find((m) => m.archetype_key === COLLISION_CHAIRMAN_KEY).full_name;
+  assert.notEqual(expectedName, singleNamed.full_name, "fixturen skal reelt indeholde en salt-kollision");
+
+  const tables = baseTables({
+    teams: [{ id: TEAM_ID, team_dna_key: COLLISION_DNA_KEY, created_at: "2026-08-15T00:00:00Z" }],
+    team_board_members: COLLISION_MEMBERS,
+    board_vision_milestones: [
+      { id: "ms-1", team_id: TEAM_ID, milestone_key: "k1", goal: { type: "gc_wins", target: 2, category: "results" }, target_season_number: 3, status: "achieved" },
+    ],
+    board_satisfaction_events: [
+      {
+        id: "evt-1", team_id: TEAM_ID, mandate_id: null, milestone_id: "ms-1",
+        satisfaction_delta: 8, reason_category: "mandate.milestone.achieved",
+        created_at: "2026-08-25T00:00:00Z", race_name: null,
+      },
+    ],
+  });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+
+  const memberCard = payload.board.members.find((m) => m.archetypeKey === COLLISION_CHAIRMAN_KEY);
+  assert.equal(memberCard.name, expectedName);
+  assert.equal(payload.board.chairmanQuote.memberName, expectedName);
+  assert.equal(payload.minutes.length, 1);
+  assert.equal(payload.minutes[0].memberName, expectedName);
+
+  // Og dermed IKKE den forkerte (usaltede) enkelt-medlems-navngivning nogen
+  // af de tre steder — det er selve regressions-beviset for #4586.
+  assert.notEqual(payload.board.chairmanQuote.memberName, singleNamed.full_name);
+  assert.notEqual(payload.minutes[0].memberName, singleNamed.full_name);
 });
 
 // ── 1/9-tillæg (orkestrator-afstemning mod frontend-PR #4569) ─────────────────

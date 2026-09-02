@@ -32,11 +32,28 @@
  *     `archetypeKey:beat`, hvilket er deterministisk men IKKE varieret på
  *     tværs af flere hændelser af samme (arketype, beat) for samme team,
  *     så det er kun egnet til engangs-beats (fx formandsskifte).
- *   - `context` er fritstående data beat-kaldere sender med. I dag bruges
- *     kun `context.teamId` og `context.dnaKey` (til navne-afledning via
- *     generateBoardMemberNames, S-M2a's "navne wires atomisk"-kontrakt).
- *     Feltet er bevidst åbent, så fremtidige beats kan sende mere uden at
- *     ændre funktions-signaturen.
+ *   - `context` er fritstående data beat-kaldere sender med. Foruden
+ *     `context.teamId` og `context.dnaKey` (navne-afledning via
+ *     generateBoardMemberNames, S-M2a's "navne wires atomisk"-kontrakt)
+ *     bruges `context.members` (#4586, faldgrube 2 i addendummet: "aldrig
+ *     navn ét sted og andet et andet sted"): den FULDE, ordnede liste af
+ *     bestyrelses-medlemmer for holdet (arketype-nøgle-strenge, eller
+ *     objekter med `archetype_key`, samme form som `team_board_members`-
+ *     rækker) — samme liste den kaldende side selv bruger til
+ *     `generateBoardMemberNames`. `generateBoardMemberNames` afleder navne
+ *     for HELE listen på én gang og lægger salt på ved kollision inden for
+ *     holdet (`boardMandateNames.js`), så salten afhænger af de FOREGÅENDE
+ *     medlemmer i listen. Kaldes funktionen for kun ÉT medlem ad gangen
+ *     (uden `context.members`), er salten altid 0, hvilket kan give et
+ *     ANDET navn end det samme medlem har i en samlet navngivning et andet
+ *     sted på siden (fx Boardroom-sidens medlemskort) — se bug #4586.
+ *     Sendes `context.members` med, OG den indeholder `archetypeKey`, slår
+ *     funktionen navnet op i `generateBoardMemberNames`-resultatet for HELE
+ *     listen i stedet, så salten matcher. Mangler/er tom listen, eller
+ *     indeholder den ikke `archetypeKey`, falder funktionen tilbage til det
+ *     gamle enkelt-medlems-kald (samme adfærd som før #4586, salt altid 0).
+ *     Feltet er i øvrigt bevidst åbent, så fremtidige beats kan sende mere
+ *     uden at ændre funktions-signaturen.
  *
  * TOM BUCKET = KAST, ALDRIG STILLE FALDBACK
  * ------------------------------------------
@@ -125,7 +142,12 @@ function hashSeed(input) {
  * @param {string} args.beat - reaktions-bucket-navn, se REACTION_BUCKETS/MANDATE_VOICE_BUCKETS.
  * @param {string} args.archetypeKey - BOARD_ARCHETYPE_KEYS-nøgle ("speakerKey", se modul-header).
  * @param {string} [args.seed] - determinisme-seed. Seed PR. EVENT-ID for kvitteringer (stabil linje pr. række).
- * @param {{ teamId?: string, dnaKey?: string|null }} [args.context] - navne-afledning.
+ * @param {{ teamId?: string, dnaKey?: string|null, members?: Array<string|{archetype_key: string}> }} [args.context] -
+ *   navne-afledning. `members` (#4586) skal være den FULDE bestyrelses-liste
+ *   (samme rækkefølge/form som kalderens `generateBoardMemberNames`-kald), så
+ *   kollisions-salten matcher en samlet navngivning et andet sted. Mangler
+ *   `members`, eller indeholder listen ikke `archetypeKey`, navngives kun
+ *   det ene medlem (salt altid 0, se modul-header).
  * @returns {{ member: { navn: string, initialer: string, archetype_key: string, label_key: string }, quote_key: string, quote_fallback_da: string }}
  */
 export function sampleVoiceLine({ beat, archetypeKey, seed = "", context = {} } = {}) {
@@ -148,11 +170,31 @@ export function sampleVoiceLine({ beat, archetypeKey, seed = "", context = {} } 
   const seedString = String(seed || `${archetypeKey}:${beat}`);
   const idx = hashSeed(seedString) % templates.length;
 
-  const [namedMember] = generateBoardMemberNames({
-    teamId: context?.teamId ?? "",
-    members: [archetypeKey],
-    dnaKey: context?.dnaKey ?? null,
-  });
+  // #4586 · navngiv via HELE bestyrelses-listen når kalderen sender den, så
+  // kollisions-salten (boardMandateNames.js) matcher en samlet navngivning
+  // et andet sted på siden (fx Boardroom-sidens medlemskort). Uden en liste
+  // der rent faktisk indeholder denne arketype, falder vi tilbage til det
+  // gamle enkelt-medlems-kald (salt altid 0, se modul-header og #4586).
+  const membersList = Array.isArray(context?.members) ? context.members : [];
+  const listHasArchetype = membersList.some(
+    (m) => (typeof m === "string" ? m : m?.archetype_key) === archetypeKey
+  );
+
+  let namedMember;
+  if (listHasArchetype) {
+    const named = generateBoardMemberNames({
+      teamId: context?.teamId ?? "",
+      members: membersList,
+      dnaKey: context?.dnaKey ?? null,
+    });
+    namedMember = named.find((m) => m.archetype_key === archetypeKey);
+  } else {
+    [namedMember] = generateBoardMemberNames({
+      teamId: context?.teamId ?? "",
+      members: [archetypeKey],
+      dnaKey: context?.dnaKey ?? null,
+    });
+  }
 
   return {
     member: {
