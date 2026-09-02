@@ -57,7 +57,10 @@
     "wishlistTitleOff": "Show only wishlisted riders",
     "feedButton": "Live bids",
     "feedTitleOn": "Hide the live bids panel",
-    "feedTitleOff": "Show the live bids panel"
+    "feedTitleOff": "Show the live bids panel",
+    "searchPlaceholder": "Search riders",
+    "searchAria": "Search riders on auction",
+    "moreFilters": "More filters"
   },
   "nav": {
     "active": "Active ({count})",
@@ -137,6 +140,11 @@
     "line": "Leading: {name}",
     "none": "No bids yet"
   },
+  "overbidHidden": {
+    "hideTitle": "Hide this auction from your list",
+    "hideAria": "Hide the auction for {name} from your list",
+    "showAgain": "Show hidden ({count})"
+  },
   "list": {
     "countLine": "Showing {shown} of {total} auctions"
   },
@@ -207,7 +215,10 @@
     "noResults": "No auctions in this category",
     "wishlistHelp": "Turn off 'Wishlist only' or add riders from the rider overview",
     "browseSuggestion": "Switch to 'All' to browse the market",
-    "startAuctionSuggestion": "Go to Riders and start an auction"
+    "startAuctionSuggestion": "Go to Riders and start an auction",
+    "actionClearWishlist": "Show all auctions",
+    "actionBrowseAll": "Browse all auctions",
+    "actionStartAuction": "Go to riders"
   },
   "feed": {
     "title": "Live bids · your auctions",

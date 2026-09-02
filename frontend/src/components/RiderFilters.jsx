@@ -214,6 +214,11 @@ export default function RiderFilters({
   showTeamFilter = true, compact = false, teams = [], nationalities = [],
   showAuctionPriceFilter = false, showAskingPriceFilter = false, showAiToggle = false,
   showValueDeviationFilter = false,
+  // #4628: felter som kalderen selv har loeftet op i den kanoniske FilterBar-linje
+  // (T2, docs/design/PAGE_TEMPLATES.md#t2-wide-data-page). Uden den ville navnet
+  // staa to gange paa Auktioner: én gang i filterlinjen og én gang i panelet bag
+  // "More filters". Default er tom, saa Ryttere/Transfers er uroerte.
+  hideFields = [],
 }) {
   const { t, i18n } = useTranslation("riderFilters");
   const { t: tTypes } = useTranslation("riderTypes");
@@ -289,11 +294,13 @@ export default function RiderFilters({
         <div className={`${panelOpen ? "block" : "hidden"} sm:block mt-3 sm:mt-0`}>
         <div className={`grid gap-2 ${compact ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>
           {/* Name */}
-          <div>
-            <label className={labelClass()}>{t("fields.name")}</label>
-            <Input type="text" data-testid="filter-name" value={filters.q} onChange={e => onChange("q", e.target.value)}
-              placeholder={t("fields.namePlaceholder")} />
-          </div>
+          {!hideFields.includes("q") && (
+            <div>
+              <label className={labelClass()}>{t("fields.name")}</label>
+              <Input type="text" data-testid="filter-name" value={filters.q} onChange={e => onChange("q", e.target.value)}
+                placeholder={t("fields.namePlaceholder")} />
+            </div>
+          )}
 
           {/* Country */}
           <div>

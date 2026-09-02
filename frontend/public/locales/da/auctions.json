@@ -57,6 +57,9 @@
     "wishlistTitleOff": "Vis kun ryttere på din ønskeliste",
     "feedButton": "Live bud",
     "feedTitleOn": "Skjul live bud-panelet",
+    "searchPlaceholder": "Søg efter ryttere",
+    "searchAria": "Søg efter ryttere på auktion",
+    "moreFilters": "Flere filtre",
     "feedTitleOff": "Vis live bud-panelet"
   },
   "nav": {
@@ -137,6 +140,11 @@
     "line": "Fører: {name}",
     "none": "Ingen bud endnu"
   },
+  "overbidHidden": {
+    "hideTitle": "Skjul denne auktion fra din liste",
+    "hideAria": "Skjul auktionen på {name} fra din liste",
+    "showAgain": "Vis skjulte ({count})"
+  },
   "list": {
     "countLine": "Viser {shown} af {total} auktioner"
   },
@@ -207,6 +215,9 @@
     "noResults": "Ingen auktioner i denne kategori",
     "wishlistHelp": "Slå 'Kun ønskeliste' fra eller tilføj ryttere fra rytter-oversigten",
     "browseSuggestion": "Skift til 'Alle' for at browse markedet",
+    "actionClearWishlist": "Vis alle auktioner",
+    "actionBrowseAll": "Se alle auktioner",
+    "actionStartAuction": "Gå til ryttere",
     "startAuctionSuggestion": "Gå til Ryttere og start en auktion"
   },
   "feed": {
