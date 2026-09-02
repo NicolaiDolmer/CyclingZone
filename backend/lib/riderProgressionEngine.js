@@ -220,7 +220,10 @@ export async function developRidersForSeason({
     const abilityPatch = { ...next };
     if (capsChanged) abilityPatch.ability_caps = caps;
 
-    const riderPatch = { is_u25: age < 25 };
+    // U25 = UCI-reglen (ejer-beslutning 2/9-2026): sæson-alder ≤ 25 (ikke < 25).
+    // `age` er allerede sæson-korrekt (ageForSeason ovenfor); grænsen selv bor
+    // i riderSeasonAge.isU25ForReferenceYear (samme "≥ referenceår-25"-formel).
+    const riderPatch = { is_u25: age <= 25 };
     if (newBaseValue != null) riderPatch.base_value = newBaseValue;
     if (newCpv != null) riderPatch.current_production_value = newCpv;
     if (retirement.retire) { riderPatch.is_retired = true; summary.retired++; }

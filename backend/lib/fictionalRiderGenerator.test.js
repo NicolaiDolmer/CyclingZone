@@ -108,11 +108,13 @@ test("stat-skala holder [50,85] over stor population (forward-guard)", () => {
   assert.ok(max <= 85, `største stat ${max} > 85`);
 });
 
+// UCI-reglen (ejer-beslutning 2/9-2026): U25 = sæson-alder ≤ 25, dvs. fødselsår
+// ≥ referenceår-25 (var tidligere "> referenceår-25", dvs. < 25).
 test("birthdate er YYYY-MM-DD og is_u25 er konsistent", () => {
   for (const r of gen().riders) {
     assert.match(r.birthdate, /^\d{4}-\d{2}-\d{2}$/);
     const birthYear = Number(r.birthdate.slice(0, 4));
-    assert.equal(r.is_u25, birthYear > REF_YEAR - 25);
+    assert.equal(r.is_u25, birthYear >= REF_YEAR - 25);
     const age = REF_YEAR - birthYear;
     assert.ok(age >= 18 && age <= 39, `urealistisk alder ${age}`);
   }

@@ -15,6 +15,7 @@ import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { NAME_CLUSTERS, clusterForNationality } from "./fictionalRiderNames.js";
 import { seedArchetypePhysiology } from "./archetypePhysiology.js";
 import { drawSecondaryArchetype } from "./archetypeDistribution.js";
+import { isU25ForReferenceYear } from "./riderSeasonAge.js";
 
 // ── Seeded PRNG (mulberry32) ──────────────────────────────────────────────────
 export function makeRng(seed) {
@@ -383,8 +384,10 @@ function buildDemographics(rng, tier, archetype, referenceYear, secondary = null
   const birthMonth = intBetween(rng, 1, 12);
   const birthDay = intBetween(rng, 1, 28);
   const birthdate = `${birthYear}-${String(birthMonth).padStart(2, "0")}-${String(birthDay).padStart(2, "0")}`;
-  // U25 = under 25 ved referenceåret (matcher import_riders.py-logikken).
-  const is_u25 = birthYear > referenceYear - 25;
+  // U25 = UCI-reglen (ejer-beslutning 2/9-2026): sæson-alder ≤ 25, dvs. født
+  // >= referenceår-25. SSOT: riderSeasonAge.isU25ForReferenceYear (delt med
+  // raceRunner.js/riderProgressionEngine.js), ikke inlinet her længere.
+  const is_u25 = isU25ForReferenceYear(birthdate, referenceYear);
 
   // #3634: KROPPEN formes af begge anlæg — samme konvekse vægt som statsene, så
   // en climber/brostensrytter ikke længere fødes med en ren klatrekrop. Ved w = 0

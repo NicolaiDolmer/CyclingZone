@@ -6,10 +6,14 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { LAUNCH_REFERENCE_YEAR, ageForSeason, seasonReferenceYear, birthYearFrom } from "./riderSeasonAge.js";
+import {
+  LAUNCH_REFERENCE_YEAR, ageForSeason, seasonReferenceYear, birthYearFrom,
+  isU25ForReferenceYear, isU25ForSeason, isU23ForReferenceYear, isU23ForSeason,
+} from "./riderSeasonAge.js";
 import { ageForSeason as fromProgression } from "./riderProgressionEngine.js";
 import { ageForSeason as fromSquadGuard } from "./squadRiskGuard.js";
 import { ageForSeason as fromPeakSuggestions } from "./peakSuggestions.js";
+import { deriveIsU25FromBirthdate } from "./raceRunner.js";
 
 const LIB_DIR = dirname(fileURLToPath(import.meta.url));
 const BACKEND_DIR = dirname(LIB_DIR);
@@ -86,6 +90,59 @@ test("seasonReferenceYear: sæson N er launch-året plus N−1", () => {
   assert.equal(seasonReferenceYear(2), LAUNCH_REFERENCE_YEAR + 1);
   assert.equal(seasonReferenceYear(null), null);
   assert.equal(seasonReferenceYear(Number.NaN), null);
+});
+
+// ── U25/U23 (ejer-beslutning 2/9-2026, UCI-reglen) ────────────────────────────
+// U25 = sæson-alder ≤ 25 (født ≥ referenceår-25). Ændret fra den tidligere
+// "< 25"-konvention, da spillerne forventede at en 25-årig talte som U25 (feedback
+// 1/9), og UCIs hvide trøje følger netop denne grænse. U23 er UÆNDRET (< 23).
+test("isU25ForReferenceYear: boundary 24/25/26 - 24 og 25 ER U25, 26 er IKKE", () => {
+  assert.equal(isU25ForReferenceYear("2002-06-15", 2026), true);  // 24
+  assert.equal(isU25ForReferenceYear("2001-06-15", 2026), true);  // 25, UCI-reglen
+  assert.equal(isU25ForReferenceYear("2001-01-01", 2026), true);  // 25, årsskifte
+  assert.equal(isU25ForReferenceYear("2000-06-15", 2026), false); // 26
+});
+
+test("isU25ForReferenceYear: robust ved manglende/ugyldigt input", () => {
+  assert.equal(isU25ForReferenceYear(null, 2026), false);
+  assert.equal(isU25ForReferenceYear(undefined, 2026), false);
+  assert.equal(isU25ForReferenceYear("2001-01-01", null), false);
+  assert.equal(isU25ForReferenceYear("2001-01-01", Number.NaN), false);
+  assert.equal(isU25ForReferenceYear("ikke-en-dato", 2026), false);
+});
+
+test("isU25ForSeason: sæson-drevet - samme rytter kan krydse 25-grænsen ved sæsonskift", () => {
+  // Født 2001 → 25 år i sæson 1 (2026, U25 under UCI-reglen), 26 år i sæson 2 (2027, ikke U25).
+  assert.equal(isU25ForSeason("2001-06-15", 1), true);
+  assert.equal(isU25ForSeason("2001-06-15", 2), false);
+  assert.equal(isU25ForSeason("2001-06-15", null), false);
+});
+
+test("isU23ForReferenceYear: boundary 22/23 - UÆNDRET af 2/9-beslutningen", () => {
+  assert.equal(isU23ForReferenceYear("2004-06-15", 2026), true);  // 22
+  assert.equal(isU23ForReferenceYear("2003-06-15", 2026), false); // 23 (bærer u25 i stedet)
+  assert.equal(isU23ForReferenceYear(null, 2026), false);
+  assert.equal(isU23ForReferenceYear("2004-06-15", Number.NaN), false);
+});
+
+test("isU23ForSeason: delegerer via seasonReferenceYear, samme grænse som isU23ForReferenceYear", () => {
+  assert.equal(isU23ForSeason("2004-06-15", 1), isU23ForReferenceYear("2004-06-15", LAUNCH_REFERENCE_YEAR));
+  assert.equal(isU23ForSeason("2004-06-15", null), false);
+});
+
+// deriveIsU25FromBirthdate (raceRunner.js) er den ene konsument der IKKE tager
+// et sæsonNUMMER men et referenceår direkte, samme kontrakt som
+// isU25ForReferenceYear, så den skal svare bit-identisk.
+test("deriveIsU25FromBirthdate (raceRunner.js) deler præcis samme formel som isU25ForReferenceYear", () => {
+  for (const referenceYear of [2026, 2027, 2030]) {
+    for (const birthdate of ["2010-06-15", "2002-01-01", "2001-01-01", "2001-12-31", "2000-06-15", null]) {
+      assert.equal(
+        deriveIsU25FromBirthdate(birthdate, referenceYear),
+        isU25ForReferenceYear(birthdate, referenceYear),
+        `raceRunner.deriveIsU25FromBirthdate divergerer for ${birthdate} i referenceår ${referenceYear}`
+      );
+    }
+  }
 });
 
 // Alle tre libs der tidligere havde hver sin kopi skal nu svare identisk. Divergerer
