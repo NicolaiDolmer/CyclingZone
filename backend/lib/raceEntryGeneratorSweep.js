@@ -10,14 +10,22 @@
 // (fail-safe OFF — er flaget ikke tændt, sker intet) + finder aktiv sæson samme måde.
 // Selve generatoren er idempotent (kun is_auto_filled=true rykkes, manuelle entries
 // røres aldrig) + binding-bevidst, så gentagne ticks er harmløse.
+//
+// #4201: sweepen er ogsaa det ENE sted assistant_selection_mode laeses for den
+// proaktive sti. Fail-safe (assistantSelectionMode.js) er "proactive" = dagens
+// adfaerd, saa en manglende noegle eller DB-fejl aldrig aabner for manager-hold.
+// Saeson-transitionen og admin-genvejen kalder generatoren UDEN mode og koerer
+// derfor altid proactive — se docs/ASSISTANT_RULES.md §1b.
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
 import { runRaceEntryGenerator } from "./raceEntryGenerator.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
+import { readAssistantSelectionConfig } from "./assistantSelectionMode.js";
 
 export async function runRaceEntryGeneratorSweep({
   supabase,
   isEnabled = isAutoEntryGeneratorEnabled,
   runGeneratorFn = runRaceEntryGenerator,
+  readModeFn = readAssistantSelectionConfig,
   captureExceptionFn,
 } = {}) {
   if (!(await isEnabled(supabase))) return { ran: false, reason: "flag_off" };
@@ -27,6 +35,9 @@ export async function runRaceEntryGeneratorSweep({
   const season = await loadSingleActiveSeason(supabase, { tag: "race-entry-generator-sweep", captureExceptionFn });
   if (!season) return { ran: false, reason: "no_active_season" };
 
-  const result = await runGeneratorFn({ supabase, seasonId: season.id, dryRun: false });
+  const { mode, lateFillHours } = await readModeFn(supabase);
+  const result = await runGeneratorFn({
+    supabase, seasonId: season.id, dryRun: false, mode, lateFillHours,
+  });
   return { ran: true, seasonId: season.id, ...result };
 }
