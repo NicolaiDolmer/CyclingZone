@@ -152,6 +152,32 @@ const finaleExtra = {
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
 export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
 
+// ── M1 (segmentLoop.ts, #4604) — ADDITIV gruppe-lae-tuning ────────────────────
+// Samme "bevidst separat eksport"-moenster som finaleExtra ovenfor: SS2's
+// frosne EngineTuning-kontrakt (types.ts, arkitekt-only) har ingen noegle for
+// dette, saa segmentLoop.ts importerer konstanten direkte.
+//
+// HVORFOR (maalt 2/9, #4604): gruppe-hastigheden blev udelukkende afledt af
+// gruppens staerkeste ryttere (computeGroupTempo's kollektive CP) UDEN noget
+// stoerrelses-led. En enkelt elite-rytter fik derfor hoejere kollektiv CP end
+// en 180-mands peloton — og dermed hoejere fart — saa ethvert solo-udbrud
+// voksede monotont resten af etapen. Maalt paa S3-kalenderen ankom 83 % af de
+// flade etaper til finalen med en front-pulje paa ÉN rytter, og massespurten
+// blev derfor afgjort af en solo-rytter i stedet for af sprinterne.
+// tuning.work.draftFactor modellerede allerede laeen paa OMKOSTNINGS-siden
+// (W'-forbrug); dette er den manglende halvdel paa FART-siden.
+//
+// Terraen-vaegten genbruges bevidst fra draftFactor (1 - draftFactor) i stedet
+// for en ny per-terraen-tabel: laegevinsten er stor hvor hjul-rabatten er stor
+// (flad) og lille hvor den er lille (klatring). Ét sted at kalibrere, ikke to.
+const groupDraftExtra = {
+  maxSpeedGain: 0.12, // loft paa den relative fart-gevinst en fuldt bemandet gruppe faar over en solo-rytter med samme kollektive CP, FOER terraen-vaegtning
+  referenceSize: 60, // gruppe-stoerrelse hvor stoerrelses-faktoren naar 1 (logaritmisk aftagende marginalnytte derunder; stoerre grupper clampes til 1)
+};
+
+/** M1 additiv gruppe-lae-tuning (deep-frosset). Se groupDraftExtra-kommentaren ovenfor. */
+export const GROUP_DRAFT_EXTRA_TUNING = deepFreeze(groupDraftExtra);
+
 // ── M13 (mechanics/teamTimeTrial.ts, #4030) — ADDITIV TTT-tuning ──────────────
 // Samme moenster som finaleExtra ovenfor: TTT er IKKE en del af SS2's frosne
 // EngineTuning-kontrakt (types.ts, arkitekt-only), saa dens haandtag lever

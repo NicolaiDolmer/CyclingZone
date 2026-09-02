@@ -59,6 +59,12 @@ const SPLIT_GAP_BASE_SECONDS = 15;
 const SPLIT_GAP_PER_SCORE_UNIT = 90;
 const SPLIT_GAP_BOUNDS: readonly [number, number] = [10, 240];
 
+// Loft paa andelen af en gruppe ÉN stigning kan skyde af ved fuld alvor
+// (climbSeverity01 = 1, dvs. en HC-agtig 15%/10km-klatring). Skaleres lineaert
+// ned med stigningens alvor — se maxScoreSplitCount. Start-kandidat, kalibreres
+// i head-to-head-harnesset som alle andre konstanter her.
+const MAX_SPLIT_FRACTION_AT_FULL_SEVERITY = 0.6;
+
 type RiderSelection = {
   riderId: string;
   baseScore: number; // stoej-fri: deficitWeight*climbDeficitScaled + energyDeficitWeight*energyDeficit
@@ -77,13 +83,43 @@ function climbDeficit01(referenceClimbing: number, climbing: number): number {
  * tuning.selection-vaegtene/-taersklen (alle ~0-1-skala).
  */
 function climbDeficitScaled(deficit01: number, gradientPct: number, lengthKm: number): number {
-  const gradientNorm = clamp(gradientPct, 0, 100) / GRADIENT_NORM_PCT;
-  const lengthNorm = clamp(lengthKm, 0, 1000) / LENGTH_NORM_KM;
-  return deficit01 * gradientNorm * lengthNorm;
+  return deficit01 * climbSeverity01(gradientPct, lengthKm);
 }
 
+/**
+ * Stigningens SELEKTIONS-ALVOR (0-1): "gradient x laengde" normaliseret mod
+ * GRADIENT_NORM_PCT/LENGTH_NORM_KM. 1 = HC-agtig referenceklatring.
+ *
+ * #4604: eksporteret og loeftet ud af climbDeficitScaled fordi den nu ogsaa
+ * skalerer ENERGI-leddet i selektions-scoren. FOER: kun klatre-underskuddet
+ * var alvors-skaleret, mens energi-underskuddet taalte fuldt uanset om
+ * stigningen var en HC-bjergside eller en 2 km lang bakke. Efter 170 km har
+ * NAESTEN HELE feltet et stort energi-underskud, saa energi-leddet alene
+ * oversteg splitThreshold paa enhver stigning — og den foerste smaabakke sent
+ * paa en FLAD etape shellede 179 af 180 ryttere i ét skridt (maalt 2/9 paa
+ * S3-kalenderen: 83 % af de flade etaper ankom til finalen med en front-pulje
+ * paa ÉN rytter). Selektions-pres skal skalere med selektions-MULIGHEDEN:
+ * ingen stigning, ingen udvaelgelse.
+ */
+export function climbSeverity01(gradientPct: number, lengthKm: number): number {
+  const gradientNorm = clamp(gradientPct, 0, 100) / GRADIENT_NORM_PCT;
+  const lengthNorm = clamp(lengthKm, 0, 1000) / LENGTH_NORM_KM;
+  return clamp(gradientNorm * lengthNorm, 0, 1);
+}
+
+/**
+ * Energi-underskud (0-1): 1 = tom reserve, 0 = fuld reserve.
+ *
+ * #4604: `wprimeMax <= 0` returnerede FOER 0 — altsaa "fuldstaendig frisk".
+ * Guarden var skrevet mod division med nul, men oversatte i praksis "ingen
+ * anaerob kapacitet overhovedet" til "uudtoemmelig". De 6 ryttere i S3-
+ * populationen med punch=acceleration=sprint=0 blev derfor IMMUNE over for
+ * energi-leddet i selektionen: de overlevede hver eneste udvaelgelse, sad
+ * alene i front og vandt massespurter med sprint-evne 0. En rytter uden
+ * anaerob kapacitet er maksimalt saarbar, ikke usaarlig — derfor 1.
+ */
 function energyDeficit01(wprime: number, wprimeMax: number): number {
-  if (wprimeMax <= 0) return 0;
+  if (wprimeMax <= 0) return 1;
   return clamp(1 - wprime / wprimeMax, 0, 1);
 }
 
@@ -118,7 +154,9 @@ function computeSelections(
     const deficit01 = climbDeficit01(referenceClimbing, entrant.abilities.climbing);
     const deficitScaled = climbDeficitScaled(deficit01, gradientPct, lengthKm);
     const energyDeficit = energyDeficit01(riderState.wprime, riderState.wprimeMax);
-    const baseScore = deficitWeight * deficitScaled + energyDeficitWeight * energyDeficit;
+    // Begge led er nu alvors-skalerede (#4604) — se climbSeverity01's docblock.
+    const energyScaled = energyDeficit * climbSeverity01(gradientPct, lengthKm);
+    const baseScore = deficitWeight * deficitScaled + energyDeficitWeight * energyScaled;
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);
     const noisyScore = baseScore + noise;
@@ -141,13 +179,36 @@ function computeSelections(
  * wprime-tvungne splits (fysiologisk absolut) er UNDTAGET guarden: de
  * paavirkes kun af selve energi-tilstanden, ikke af rangeringen.
  */
-function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
+/**
+ * Alvors-loft paa hvor STOR en andel af en gruppe ÉN stigning kan skyde af
+ * (#4604). En HC-klatring (climbSeverity01 = 1) kan sprede feltet bredt; en
+ * 2 km lang bakke kan ikke.
+ *
+ * FOER: guarden havde intet loft. Scoren er kontinuert og naesten hele feltet
+ * laa over splitThreshold sent paa en etape, saa ÉN stigning splittede 179 af
+ * 180 ryttere i ét skridt og efterlod en enkelt rytter alene i front — ogsaa
+ * paa etaper klassificeret som massespurt. Loftet aendrer ALDRIG raekkefolgen:
+ * listen er allerede sorteret svageste-foerst, saa der skaeres i den svage ende.
+ * Monotoni-invarianten (SS2 §2 invariant 3) er derfor uberoert, og "styrke
+ * straffes aldrig" holder — de staerkeste er praecis dem loftet beskytter.
+ */
+function maxScoreSplitCount(groupSize: number, severity01: number): number {
+  const fraction = MAX_SPLIT_FRACTION_AT_FULL_SEVERITY * clamp(severity01, 0, 1);
+  return Math.max(1, Math.floor(groupSize * fraction));
+}
+
+function guardedSplitRiderIds(selections: RiderSelection[], severity01: number): string[] {
   const sorted = [...selections].sort((a, b) => b.baseScore - a.baseScore || a.riderId.localeCompare(b.riderId));
+  const cap = maxScoreSplitCount(sorted.length, severity01);
   let stillEligible = true;
+  let scoreSplits = 0;
   const split: string[] = [];
   for (const sel of sorted) {
-    const guardedTriggered = stillEligible && sel.scoreTriggered;
+    const guardedTriggered = stillEligible && sel.scoreTriggered && scoreSplits < cap;
     if (!sel.scoreTriggered) stillEligible = false;
+    if (guardedTriggered) scoreSplits++;
+    // wprime-tvungne splits er fysiologisk absolutte og taeller ikke mod loftet:
+    // en rytter med tom reserve er koert af uanset stigningens stoerrelse.
     if (guardedTriggered || sel.wprimeForced) split.push(sel.riderId);
   }
   return split.sort();
@@ -213,7 +274,7 @@ export const climbSelectionHook: ClimbSelectionHook = (
     const selections = computeSelections(group, nextState, ctx, gradientPct, lengthKm);
     if (selections.length < 2) continue;
 
-    let splitRiderIds = guardedSplitRiderIds(selections);
+    let splitRiderIds = guardedSplitRiderIds(selections, climbSeverity01(gradientPct, lengthKm));
     if (splitRiderIds.length === 0) continue;
     if (splitRiderIds.length >= group.rider_ids.length) {
       // Ekstremt segment (fx laengere hele-etape-klatring i test-harnesset):
