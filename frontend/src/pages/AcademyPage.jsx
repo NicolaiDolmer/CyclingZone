@@ -466,7 +466,7 @@ export default function AcademyPage() {
               overskrifts-stil og fik Youth squads-kortets kanoniske 15/600-titel
               til at skille sig ud fra sine naboer (audit 2026-09, /academy).
               Alle fire blokke bruger nu SectionHeader-recipen. */}
-          <SectionHeader title={t("graduationHeading")} meta={String(graduations.length)} />
+          <SectionHeader title={t("graduationHeading")} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {graduations.map((g) => {
               const busy = actionState[g.riderId] != null;
@@ -540,7 +540,7 @@ export default function AcademyPage() {
 
       {/* INTAKE-sektion */}
       <section>
-        <SectionHeader title={t("intakeHeading")} meta={t("slots", { used: slots.used, max: slots.max })} />
+        <SectionHeader title={t("intakeHeading")} />
 
         {/* #3550 (ejer-beslutning 19/8, ungdomspakken): pull-baseret intake.
             intakePull.enabled=false (default indtil cutover-flip 23/8) → uændret
@@ -714,7 +714,7 @@ export default function AcademyPage() {
       {/* ROSTER-sektion — #3045: DataTable (T2-recipen), sticky navnekolonne +
           Type/Værdi foldet ind i portræt-underlinjen (se rosterColumns). */}
       <section>
-        <SectionHeader title={t("rosterHeading")} meta={String(roster.length)} />
+        <SectionHeader title={t("rosterHeading")} />
 
         {roster.length === 0 ? (
           <EmptyState
