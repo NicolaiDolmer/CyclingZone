@@ -68,6 +68,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { FOUNDER_SEAT_CAP, getFounderSeats } from "./founderSeats.js";
 import { captureException } from "./sentry.js";
+import { normalizePlanInterval } from "./subscriptionPlanInterval.js";
 
 export function verifyWebhookSignature(req, secret) {
   if (!secret) return false;
@@ -178,8 +179,9 @@ export async function handleAluntaWebhook({
 
   if (isTierChange) {
     if (data.plan_interval == null) return res.sendStatus(200); // intet at ændre
+    // #4541: Alunta sender plan_interval som tal (måneder) — normalisér før DB.
     const { error } = await supabase.from("subscriptions").upsert(
-      { team_id: teamId, plan_interval: data.plan_interval, last_event_id: eventId, last_event_at: lastEventAt },
+      { team_id: teamId, plan_interval: normalizePlanInterval(data.plan_interval), last_event_id: eventId, last_event_at: lastEventAt },
       { onConflict: "team_id" }
     );
     if (error) {
@@ -195,7 +197,8 @@ export async function handleAluntaWebhook({
   const row = {
     team_id: teamId,
     status,
-    plan_interval: data.plan_interval ?? existing?.plan_interval ?? null,
+    // #4541: normaliseres også for existing, så en gammel rå '1' rettes ved næste event.
+    plan_interval: normalizePlanInterval(data.plan_interval ?? existing?.plan_interval) ?? null,
     alunta_customer_id: data.customer_uuid ?? existing?.alunta_customer_id ?? null,
     alunta_subscription_id: data.subscription_uuid ?? existing?.alunta_subscription_id ?? null,
     current_period_end: data.current_period_end ?? existing?.current_period_end ?? null,

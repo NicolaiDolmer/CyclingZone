@@ -27,15 +27,19 @@
 // is_founder RØRES ALDRIG — udelades fra hver upsert-row, præcis samme regel
 // som aluntaWebhook.js (server-afledt, permanent, aldrig fra provider-payload).
 //
-// ⚠️ UVERIFICERET KONTRAKT: Aluntas faktiske GET /subscriptions-svarform er IKKE
-// bekræftet i denne session — ingen levende test_mode-adgang, og docs-siden
-// (app.alunta.com/docs/v1) er en JS-SPA uden statisk indhold WebFetch kan læse.
-// extractSubscriptionFields er derfor bevidst FORSVARSMÆSSIGT (flere kandidat-
-// nøgler pr. felt, samme mønster som alunta.js' checkout_url-fallback).
-// Kør `node scripts/reconcileAluntaSubscriptions.js` (UDEN --apply) FØRST og
-// læs RAW-output — ret feltnavnene her hvis de ikke matcher det ægte svar,
-// FØR app_config-flaget flippes til on (se PR-beskrivelsen for aktiverings-
-// tjekliste).
+// ✅ KONTRAKT VERIFICERET 2026-09-02 (#4541): dry-run af
+// scripts/reconcileAluntaSubscriptions.js mod prod-Alunta (2 abonnementer).
+// Aluntas GET /subscriptions-elementer er FLADE og bærer præcis:
+//   external_customer_id  (= vores team_id, UUID)
+//   customer_uuid, uuid   (Alunta kunde-/abonnements-id)
+//   status                ('active' set; øvrige værdier mappes i mapAluntaStatus)
+//   plan_interval         TAL = måneder pr. periode (1 = månedlig, 6 = halvår)
+//   current_period_end    ISO-timestamp med mikrosekunder ('...T21:59:59.999999Z')
+// De nestede fallback-stier i extractSubscriptionFields (customer.*, plan.*,
+// renews_at ...) rammes ikke af det ægte svar; de bevares som forsvar mod en
+// senere API-ændring, ikke fordi de er set. plan_interval normaliseres via
+// subscriptionPlanInterval.js, fordi resten af systemet forventer
+// 'monthly' | 'semiannual' (prod havde '1' stående 25/7 til 2/9).
 //
 // Idempotent: identiske værdier springes over (ingen no-op-write); gentagne
 // kørsler mod uændret Alunta-tilstand producerer 0 updates. Netværks-/API-fejl
@@ -45,11 +49,17 @@
 //
 // Scope-afgrænsning (bevidst, se PR-beskrivelse "Åbne spørgsmål"): reconcilen
 // OPDATERER kun rækker der allerede findes i public.subscriptions. Den
-// OPRETTER ingen ny række for en Alunta-kunde uden lokal modpart (ville kræve
-// FK-gyldig team_id-gæt + er ikke nødvendig lige nu: checkout er paused,
-// CHECKOUT_PAUSED=true i billingCheckout.js, så ingen nye kunder kan opstå).
+// OPRETTER ingen ny række for en Alunta-kunde uden lokal modpart. Det holder
+// også efter checkout blev åbnet 2/9 (#4597): billingCheckout.js upserter den
+// lokale række (vilkårsaccept) FØR Alunta-kunden oprettes, så enhver Alunta-
+// kunde har en lokal modpart at matche på.
+//
+// Kadence (#4541): 24h-setInterval i cron.js PLUS en boot-run. Uden boot-run
+// kørte reconcilen reelt aldrig, fordi intervallet nulstilles ved hvert deploy
+// og backend deployes oftere end dagligt (fornyelsen 1/9 lå usynkroniseret 2/9).
 
 import { captureException as defaultCaptureException } from "./sentry.js";
+import { normalizePlanInterval } from "./subscriptionPlanInterval.js";
 
 const ACTIVE_ALIASES = new Set(["active", "started", "resumed", "trialing"]);
 const CANCELLED_ALIASES = new Set(["cancelled", "canceled"]);
@@ -69,7 +79,7 @@ export function mapAluntaStatus(rawStatus) {
 }
 
 // PUR: forsvarsmæssigt feltudtræk fra ét Alunta-abonnements-objekt. Se
-// "UVERIFICERET KONTRAKT" ovenfor.
+// "KONTRAKT VERIFICERET" ovenfor for den ægte (flade) svarform.
 export function extractSubscriptionFields(entry) {
   if (!entry || typeof entry !== "object") return null;
   const customer = entry.customer || {};
@@ -79,7 +89,7 @@ export function extractSubscriptionFields(entry) {
   const customerUuid = entry.customer_uuid ?? customer.uuid ?? entry.customer_id ?? null;
   const subscriptionUuid = entry.uuid ?? entry.subscription_uuid ?? entry.id ?? null;
   const rawStatus = entry.status ?? null;
-  const planInterval = entry.plan_interval ?? entry.interval ?? plan.interval ?? null;
+  const planInterval = normalizePlanInterval(entry.plan_interval ?? entry.interval ?? plan.interval ?? null);
   const currentPeriodEnd =
     entry.current_period_end ??
     entry.currentPeriodEnd ??

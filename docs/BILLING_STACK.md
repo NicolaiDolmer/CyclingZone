@@ -196,9 +196,11 @@ Rettes en fejlkonfiguration, **gensynkroniseres berørte fakturaer ikke automati
 | Felt | Skrives af | Bemærkning |
 |---|---|---|
 | `alunta_customer_id`, `alunta_subscription_id` | Webhook + reconcile | Kan mangle på gamle rækker |
-| `status`, `current_period_end`, `plan_interval` | Reconcile (dagligt) | Sandheden ligger i Alunta |
+| `status`, `current_period_end`, `plan_interval` | Reconcile (dagligt) | Sandheden ligger i Alunta. `plan_interval` normaliseres til `monthly`/`semiannual` (Alunta sender tal, #4541) |
 | `is_founder` | Webhook | Permanent, jf. handelsbetingelserne |
 | `terms_version`, `terms_accepted_at` | Checkout, før købet | Null på kunder fra før accept-flowet |
+
+**En række er ikke en kunde.** Vilkårsaccepten skrives FØR betalingen, så en spiller der lukker Alunta-siden efterlader en række med `status='inactive'` og intet andet. "Har betalt" = `alunta_subscription_id` sat, ELLER status i {active, cancelled, past_due}, ELLER `current_period_end` sat (`hasEverPaid()` i `backend/lib/growthSnapshot.js`, samme definition i `compute_daily_growth_snapshot`). Resten vises i admin som "startede checkout, betalte ikke" (#4636).
 | `last_event_id` | Webhook | Fallback-format `<event>:<timestamp>` betyder at `data.uuid` manglede i payloaden |
 
 ### `computeIsPro()` 📄
@@ -230,6 +232,18 @@ Signaturverifikation er obligatorisk (`ALUNTA_WEBHOOK_SECRET`).
 `backend/lib/aluntaSubscriptionReconcile.js`. Henter Aluntas fulde `GET /subscriptions` og synker status, `current_period_end`, `plan_interval` og id'er ind. **Matcher på `external_customer_id === team_id`** — bevidst, fordi en lokal række kan mangle begge Alunta-id'er.
 
 Flag: `app_config.alunta_reconcile_enabled` (true siden 2026-08-03).
+
+**Svarform ✅ målt 2026-09-02** (dry-run mod prod, #4541). Hvert element i `GET /subscriptions` er fladt:
+
+| felt | form | eksempel |
+|---|---|---|
+| `external_customer_id` | UUID = vores `team_id` | `8073fb4a-…` |
+| `customer_uuid`, `uuid` | Alunta kunde-/abonnements-id | |
+| `status` | streng | `active` |
+| `plan_interval` | **tal**, måneder pr. periode | `1` (månedlig), `6` (halvår) |
+| `current_period_end` | ISO med mikrosekunder | `2026-09-30T21:59:59.999999Z` |
+
+**Kadence:** 24 timer PLUS en boot-run ved hvert backend-deploy (#4541). Uden boot-run kørte den reelt aldrig, fordi intervallet nulstilles ved deploy.
 
 **Kører dagligt.** Betaler en kunde nu, følger entitlementet først med ved næste kørsel. Se #4512.
 

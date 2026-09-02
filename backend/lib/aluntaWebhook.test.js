@@ -146,6 +146,26 @@ test("checkout.completed med korrekt secret flipper subscription til active", as
   });
 });
 
+// #4541: Alunta sender plan_interval som TAL (måneder pr. periode). Rå '6' må
+// aldrig lande i DB'en — LTV-estimat og admin-UI forventer 'semiannual'.
+test("plan_interval som tal (6) normaliseres til 'semiannual' før upsert (#4541)", async () => {
+  await withServer(async (base) => {
+    const payload = {
+      event: "subscription.started",
+      data: {
+        external_customer_id: "00000000-0000-0000-0000-000000000009",
+        subscription_uuid: "sub_1", customer_uuid: "cus_1", plan_interval: 6,
+        current_period_end: new Date(Date.now() + 180 * 864e5).toISOString(),
+      },
+      timestamp: "2026-09-02T10:05:54Z", test_mode: true,
+    };
+    const res = await fireWebhook(base, payload);
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT plan_interval FROM public.subscriptions WHERE team_id=$1", ["00000000-0000-0000-0000-000000000009"]);
+    assert.equal(rows[0].plan_interval, "semiannual");
+  });
+});
+
 test("signatur med forkert secret afvises 401", async () => {
   await withServer(async (base) => {
     const res = await fireWebhook(base, { event: "checkout.completed", data: {} }, "wrong");

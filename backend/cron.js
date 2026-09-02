@@ -1760,8 +1760,7 @@ export function startCron() {
   );
 
   // #2736 — Alunta subscription-reconcile. Gated bag alunta_reconcile_enabled
-  // (fail-safe OFF) indtil ejeren har verificeret feltudtræk mod Aluntas ægte
-  // GET /subscriptions-svar via node scripts/reconcileAluntaSubscriptions.js.
+  // (true siden 3/8; feltudtræk verificeret mod Aluntas ægte svar 2/9, #4541).
   setInterval(
     trackedTick(
       "alunta subscription-reconcile",
@@ -1769,6 +1768,12 @@ export function startCron() {
     ),
     24 * 60 * 60 * 1000
   );
+  // #4541 — boot-run. Uden den kørte reconcilen reelt ALDRIG: 24h-intervallet
+  // nulstilles ved hvert deploy (jf. #2389/B5), og backend deployes oftere end
+  // dagligt. Fornyelsen 1/9 lå derfor stadig usynkroniseret 2/9 (dry-run viste
+  // 2 ventende opdateringer). Kørslen er idempotent (identiske værdier = no-op)
+  // og gated bag app_config-flaget, præcis som interval-kørslen.
+  void trackedTick("alunta subscription-reconcile (boot)", runAluntaSubscriptionReconcileCron)();
 
   // #4514 — daglig forfalds-vagt. Boot-run nedenfor gør 24h-monitoren ærlig
   // (jf. #2389/B5: intervallet nulstilles ved hvert deploy) og betyder samtidig
