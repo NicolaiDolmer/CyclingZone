@@ -53,8 +53,8 @@
     "title": "Season {number} wrapped",
     "dismissAria": "Dismiss the season wrap card",
     "movement": {
-      "promoted": "↑ Promoted",
-      "relegated": "↓ Relegated",
+      "promoted": "Promoted",
+      "relegated": "Relegated",
       "maintained": "Held Division {division}"
     },
     "rankLine": "You finished #{rank} of {size} in Division {division}",
@@ -71,11 +71,11 @@
   "squadWarning": {
     "over": "Squad too large. Max {limit} in Division {division}. Sell {count, plural, one {1 rider} other {# riders}}.",
     "under": "Squad too small. Min {limit} in Division {division}. Buy {count, plural, one {1 more rider} other {# more riders}}.",
-    "ctaMyTeam": "My Team →"
+    "ctaMyTeam": "My Team"
   },
   "contractWarning": {
     "message": "{count, plural, one {1 rider's contract expires} other {# riders' contracts expire}} at the season change. Renew from the rider's profile to keep them, or they'll be released as free agents.",
-    "cta": "Review contracts →"
+    "cta": "Review contracts"
   },
   "discordNudge": {
     "title": "Get DMs for overbids, transfer offers, and board signals",
@@ -94,12 +94,12 @@
     "daysLeftSuffix": "days until season ends",
     "stages": "{completed}/{total} stages",
     "stagesLive": "{count} live",
-    "viewCalendar": "View calendar →"
+    "viewCalendar": "View calendar"
   },
   "cards": {
     "myResult": {
       "title": "How your team did",
-      "linkFull": "Full result →",
+      "linkFull": "Full result",
       "newBadge": "New",
       "oneDay": "One-day race",
       "stagesCount": "{count} stages",
@@ -115,7 +115,7 @@
       "seasonRaces": "{count, plural, one {# race} other {# races}}",
       "stageWins": "{count, plural, one {# stage win} other {# stage wins}}",
       "empty": "Your riders haven't raced yet. Your team's results land here after the first race.",
-      "emptyCta": "Open the race calendar →",
+      "emptyCta": "Open the race calendar",
       "firstRaceTitle": "Your first race is in the books",
       "firstRaceIntro": "Run while you were away. Here is how it went.",
       "firstRaceIntroAt": "Finished {time} while you were away. Here is how it went.",
@@ -127,7 +127,7 @@
     "maidenWin": {
       "title": "Career moments",
       "unknownRider": "Your rider",
-      "viewRace": "View race →",
+      "viewRace": "View race",
       "headline": {
         "maidenWin": "Maiden victory",
         "firstPodium": "First podium",
@@ -143,7 +143,7 @@
     },
     "heroAgony": {
       "title": "Hero & Agony",
-      "linkFull": "Open race →",
+      "linkFull": "Open race",
       "eyebrow": {
         "hero": "Hero",
         "agony": "Agony",
@@ -186,10 +186,11 @@
       }
     },
     "auctions": {
-      "title": "Active Auctions",
-      "linkAll": "See all →",
+      "title": "Active auctions",
+      "linkAll": "See all",
       "empty": "No active auctions",
-      "emptyCta": "Browse the auction market →",
+      "emptyCta": "Browse the auction market",
+      "emptyHint": "Auctions close every evening at 20:00.",
       "expired": "Expired",
       "winning": "Winning",
       "selling": "Selling",
@@ -197,10 +198,11 @@
       "timeLeftM": "{m}m"
     },
     "transfers": {
-      "title": "Transfers & Offers",
-      "linkAll": "See all →",
+      "title": "Transfers and offers",
+      "linkAll": "See all",
       "empty": "No pending transfers",
-      "emptyCta": "Browse riders for sale →",
+      "emptyCta": "Browse riders for sale",
+      "emptyHint": "The transfer market is open all season.",
       "incomingCount": "{count, plural, one {1 incoming transfer} other {# incoming transfers}}",
       "from": "From: {name}",
       "to": "To: {name}",
@@ -208,10 +210,11 @@
       "active": "Active"
     },
     "races": {
-      "title": "Upcoming Races",
-      "linkAll": "Calendar →",
+      "title": "Upcoming races",
+      "linkAll": "Calendar",
       "empty": "No scheduled races",
-      "emptyCta": "Open the race calendar →",
+      "emptyCta": "Open the race calendar",
+      "emptyHint": "Enter your team in an upcoming race from the calendar.",
       "stages": "{count, plural, one {1 stage} other {# stages}}",
       "oneDay": "One-day race",
       "scheduled": "Scheduled",
@@ -220,17 +223,18 @@
     "standings": {
       "title": "Division {division} · Standings",
       "titlePool": "{label} · Standings",
-      "linkAll": "Full standings →",
+      "linkAll": "Full standings",
       "empty": "No season data yet",
-      "emptyCta": "View full standings →",
+      "emptyCta": "View full standings",
+      "emptyHint": "Standings update after each completed race day.",
       "aiBadge": "AI",
       "managerRank": "#{rank} among managers",
       "movementTitle": "Division placement since last race day",
       "pointsDeltaTitle": "Points earned on the last race day"
     },
     "board": {
-      "title": "Board Status",
-      "linkAll": "Details →",
+      "title": "Board status",
+      "linkAll": "Details",
       "satisfaction": "Satisfaction",
       "focus": "Focus",
       "budgetMultiplier": "Budget multiplier",
@@ -239,9 +243,9 @@
     },
     "recentResults": {
       "title": "Recent results",
-      "linkAll": "See all →",
+      "linkAll": "See all",
       "empty": "Results appear here after the first races",
-      "emptyCta": "Open the race calendar →",
+      "emptyCta": "Open the race calendar",
       "gc": "Overall winner",
       "winner": "Winner",
       "stage": "Stage {n} winner",
@@ -250,9 +254,9 @@
     "riderRanking": {
       "title": "Rider ranking",
       "scopeLabel": "Your division",
-      "linkAll": "Full ranking →",
+      "linkAll": "Full ranking",
       "empty": "Results appear here after the first races",
-      "emptyCta": "Open the race calendar →",
+      "emptyCta": "Open the race calendar",
       "stageWins": "{count, plural, one {1 stage win} other {# stage wins}}",
       "gcWins": "{count} GC",
       "classicWins": "{count} classic",
@@ -270,7 +274,7 @@
       "myLatestResult": "How your team did",
       "heroAgony": "Hero & Agony",
       "auctions": "Active auctions",
-      "transfers": "Transfers & offers",
+      "transfers": "Transfers and offers",
       "races": "Upcoming races",
       "divStandings": "Division standings",
       "board": "Board status",
@@ -331,7 +335,7 @@
       "prize": "Prize money",
       "salary": "Salary",
       "upkeep": "Division upkeep",
-      "staffFacilities": "Staff & facilities",
+      "staffFacilities": "Staff and facilities",
       "facilityUpkeep": "Facility upkeep",
       "staffSalary": "Staff salaries",
       "loanInterest": "Loan interest",
@@ -395,10 +399,10 @@
       "board_plan_set": "Negotiate a board plan"
     },
     "ctas": {
-      "first_bid_placed": "See Auctions →",
-      "first_training_run": "Go to Training →",
-      "first_squad_selected": "Go to Races →",
-      "board_plan_set": "Meet the board →"
+      "first_bid_placed": "See auctions",
+      "first_training_run": "Go to training",
+      "first_squad_selected": "Go to races",
+      "board_plan_set": "Meet the board"
     },
     "tour": "Show me how",
     "dismissAria": "Hide"
@@ -412,7 +416,7 @@
         "desc": "Negotiate 1yr/3yr/5yr plans in parallel"
       },
       "help": {
-        "label": "Help & rules",
+        "label": "Help and rules",
         "desc": "Learn how the economy, racing, and tactics work"
       }
     },

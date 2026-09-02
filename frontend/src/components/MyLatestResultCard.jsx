@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { Card } from "./ui";
+import { Card, ChevronRightIcon } from "./ui";
 import { buttonClass } from "./ui/buttonStyles.js";
 import RiderLink from "./RiderLink";
 import { Flag } from "./Flag";
@@ -213,8 +213,9 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
         </div>
         {race && !firstRaceMoment && (
           <Link to={`/races/${race.id}`} state={{ from: "dashboard" }}
-            className="text-xs text-cz-accent-t hover:underline flex-shrink-0">
+            className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline flex-shrink-0">
             {t("dashboard:cards.myResult.linkFull")}
+            <ChevronRightIcon size={13} aria-hidden="true" />
           </Link>
         )}
       </div>
@@ -222,8 +223,9 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
       {!race ? (
         <div className="text-center py-4">
           <p className="text-cz-3 text-sm">{t("dashboard:cards.myResult.empty")}</p>
-          <Link to="/planning?tab=calendar" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">
+          <Link to="/planning?tab=calendar" className="inline-flex items-center gap-0.5 text-cz-accent-t text-xs hover:underline mt-1">
             {t("dashboard:cards.myResult.emptyCta")}
+            <ChevronRightIcon size={13} aria-hidden="true" />
           </Link>
         </div>
       ) : (

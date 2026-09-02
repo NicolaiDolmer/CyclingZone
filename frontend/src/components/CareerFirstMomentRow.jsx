@@ -1,6 +1,6 @@
 import RiderLink from "./RiderLink";
 import RaceLink from "./RaceLink";
-import { TrophyIcon } from "./ui";
+import { TrophyIcon, ChevronRightIcon } from "./ui";
 
 // #3398 (Maiden Win Engine) — DEN ene editorial moment-kort-visning, delt
 // mellem dashboardet (MaidenWinMomentCard.jsx) og løbssiden (RaceDetailPage.jsx),
@@ -51,8 +51,9 @@ export default function CareerFirstMomentRow({ event, t, isNew = false, showRace
         })}
       </p>
       {showRaceLink && event.race_id && (
-        <RaceLink id={event.race_id} className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">
+        <RaceLink id={event.race_id} className="inline-flex items-center gap-0.5 text-cz-accent-t text-xs hover:underline mt-1">
           {t("dashboard:cards.maidenWin.viewRace")}
+          <ChevronRightIcon size={13} aria-hidden="true" />
         </RaceLink>
       )}
     </div>

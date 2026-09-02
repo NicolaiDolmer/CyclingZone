@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Card, Button, DownloadIcon, FlagIcon } from "./ui";
+import { Card, Button, DownloadIcon, FlagIcon, ChevronRightIcon } from "./ui";
 import RaceLink from "./RaceLink";
 import useHeroAgonyMoment from "../hooks/useHeroAgonyMoment.js";
 import { heroAgonyCopyFor, heroAgonyHeadlineFor, heroAgonyEyebrowKeyFor } from "../lib/heroAgonyCopy.js";
@@ -67,8 +67,9 @@ export default function HeroAgonyCard({ teamId, teamName }) {
         </div>
         {race?.id && (
           <RaceLink id={race.id} stage={stageNumber} state={{ from: "dashboard" }}
-            className="text-xs text-cz-accent-t hover:underline flex-shrink-0">
+            className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline flex-shrink-0">
             {t("dashboard:cards.heroAgony.linkFull")}
+            <ChevronRightIcon size={13} aria-hidden="true" />
           </RaceLink>
         )}
       </div>
