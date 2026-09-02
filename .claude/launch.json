@@ -221,6 +221,21 @@
         "docs/brand"
       ],
       "port": 4173
+    },
+    {
+      "name": "dayform-4603-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone/.claude/worktrees/agent-ac0ede0b84703d5f8/frontend"
+      ],
+      "port": 5230,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
     }
   ]
 }
