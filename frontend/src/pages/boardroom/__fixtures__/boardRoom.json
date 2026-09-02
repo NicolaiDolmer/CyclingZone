@@ -34,9 +34,9 @@
         "receipt": {
           "countedKey": "boardroom.mandate.receipts.winRaceDays.counted",
           "countedParams": null,
-          "lastMovementKey": null,
+          "lastMovementKey": "archetypes.resultatjaegeren.reactions.receipt_positive.0",
           "lastMovementParams": null,
-          "lastMovementAt": null,
+          "lastMovementAt": "2026-08-29T12:00:00Z",
           "weightedByName": "Jørgen Brandt",
           "weightedByLineKey": "boardroom.mandate.receipts.winRaceDays.weightedByLine"
         }
