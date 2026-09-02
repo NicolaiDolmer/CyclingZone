@@ -1,5 +1,6 @@
 import { SortIndicator } from "./SortableTh.jsx";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, mergeRowProps, zonePillClass } from "./dataTableStyles.js";
+import { TableRowContext } from "./tableRowContext.js";
 
 // #2849 bølge 0 — DEN kanoniske wide-data-tabel (T2, docs/design/PAGE_TEMPLATES.md).
 //
@@ -44,6 +45,20 @@ export function DataTable({
   const zones = rows.map((row, i) => (rowZone ? rowZone(row, i) : null));
   const foldCols = columns.filter((c) => c.fold);
 
+  // #4625 (slice 3 af #4622, TASTE fork 6 / P10) — pinned navnekolonne + vandret
+  // scroll er DEN vedtagne mobil-standard for T2 (Traeningssiden havde moensteret
+  // allerede; audit 2026-09 fandt 6 sider uden det: Ryttere, Mit hold, /teams/:id,
+  // /managers/:teamId, /auctions/history, /admin/feedback). SCROLLER er allerede
+  // ubetinget "overflow-x-auto"; det eneste en tabel kan glemme er selve pin'et.
+  // Dev-warning (ikke kast — DataTable bruges af snesevis af sider der endnu ikke
+  // er migreret) saa nye tabeller ikke stille mister moensteret.
+  if (import.meta.env.DEV && rows.length > 0 && !columns.some((c) => c.sticky)) {
+    console.error(
+      `DataTable "${label ?? "(uden label)"}": ingen kolonne har sticky:true. ` +
+        "Mobil-standarden er pinned navnekolonne + vandret scroll under den (docs/design/PAGE_TEMPLATES.md#t2-wide-data-page) — marker entity-navnekolonnen `sticky: true`."
+    );
+  }
+
   return (
     <div className={className}>
       <div className={WRAP}>
@@ -79,29 +94,31 @@ export function DataTable({
                 })}
               </tr>
             </thead>
-            <tbody>
-              {rows.map((row, i) => {
-                const zone = zones[i];
-                const edgeTop = Boolean(zone) && i > 0 && zones[i - 1] !== zone;
-                const edgeBottom = Boolean(zone) && i < rows.length - 1 && zones[i + 1] !== zone;
-                return (
-                  <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zone, rowProps ? rowProps(row, i) : null)}>
-                    {columns.map((col) => (
-                      <td
-                        key={col.key}
-                        className={`${tdClass({ numeric: col.numeric, sticky: col.sticky, zone, edgeTop, edgeBottom, compact: col.compact, tight: col.tight, dense })} ${col.fold ? "hidden sm:table-cell" : ""}`}
-                      >
-                        {col.sticky
-                          ? renderStickyCell(col, row, i, foldCols)
-                          : col.render
-                            ? col.render(row, i)
-                            : row[col.key]}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
+            <TableRowContext.Provider value={true}>
+              <tbody>
+                {rows.map((row, i) => {
+                  const zone = zones[i];
+                  const edgeTop = Boolean(zone) && i > 0 && zones[i - 1] !== zone;
+                  const edgeBottom = Boolean(zone) && i < rows.length - 1 && zones[i + 1] !== zone;
+                  return (
+                    <tr key={rowKey ? rowKey(row, i) : i} {...mergeRowProps(zone, rowProps ? rowProps(row, i) : null)}>
+                      {columns.map((col) => (
+                        <td
+                          key={col.key}
+                          className={`${tdClass({ numeric: col.numeric, sticky: col.sticky, zone, edgeTop, edgeBottom, compact: col.compact, tight: col.tight, dense })} ${col.fold ? "hidden sm:table-cell" : ""}`}
+                        >
+                          {col.sticky
+                            ? renderStickyCell(col, row, i, foldCols)
+                            : col.render
+                              ? col.render(row, i)
+                              : row[col.key]}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </TableRowContext.Provider>
           </table>
         </div>
       </div>

@@ -15,3 +15,11 @@ test("Button har loading-state og forwarder rest-props", () => {
   assert.match(src, /loading/, "Button skal have loading-prop");
   assert.match(src, /\.\.\.rest/, "Button skal forwarde rest-props til <button>");
 });
+
+// #4625 (slice 3 af #4622) — PAGE_TEMPLATES T2: raekkeknapper er ALTID secondary.
+test("Button kaster i dev naar variant=primary bruges inde i en DataTable-raekke", () => {
+  assert.match(src, /TableRowContext/, "Button skal laese TableRowContext");
+  assert.match(src, /useContext\(TableRowContext\)/);
+  assert.match(src, /inTableRow && variant === "primary"/);
+  assert.match(src, /throw new Error/);
+});

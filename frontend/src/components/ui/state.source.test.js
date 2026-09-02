@@ -22,6 +22,16 @@ test("EmptyState er dashed inset med ikon/titel/tekst/handling", () => {
   assert.match(src, /\{action\}/);
 });
 
+// #4625 (slice 3 af #4622, TASTE fork 4) — EmptyState uden en handling der
+// fører videre var 6 af de 10 værste audit-fund 2026-09. `action` er nu
+// PÅKRÆVET (kaster i dev, tree-shaket ud af produktionsbuilds).
+test("EmptyState kaster i dev naar action mangler", () => {
+  const src = read("EmptyState.jsx");
+  assert.match(src, /import\.meta\.env\.DEV && !action/);
+  assert.match(src, /throw new Error/);
+  assert.doesNotMatch(src, /action\s*=\s*null/, "action maa ikke laengere have en null-default");
+});
+
 test("ErrorState: samme anatomi, danger kun i ikonet — ingen røde flader", () => {
   const src = read("ErrorState.jsx");
   assert.match(src, /AlertTriangleIcon/);

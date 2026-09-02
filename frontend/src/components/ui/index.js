@@ -5,6 +5,7 @@ export { default as Card } from "./Card.jsx";
 export { default as PageHeader } from "./PageHeader.jsx";
 export { default as Section, SectionStack, SectionHeader, SectionAction } from "./Section.jsx";
 export { default as CollapsibleSection } from "./CollapsibleSection.jsx";
+export { default as FilterBar } from "./FilterBar.jsx";
 export { DataTable, ZonePill } from "./DataTable.jsx";
 export { default as Field } from "./Field.jsx";
 export { default as Input } from "./Input.jsx";
