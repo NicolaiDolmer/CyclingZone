@@ -1,6 +1,6 @@
 # TASTE.md: hvad verdensklasse er for Cycling Zone
 
-> **Status:** udkast 2/9 2026, slice 1 af [#4622](https://github.com/NicolaiDolmer/CyclingZone/issues/4622) ([#4623](https://github.com/NicolaiDolmer/CyclingZone/issues/4623)). **Bindende når ejeren har godkendt.** Indtil da er dokumentet det vi måler slice 2 (audit af alle 63 sider) op imod, og alt her kan ændres af ejeren med ét ord.
+> **Status:** udkast 2/9 2026, slice 1 af [#4622](https://github.com/NicolaiDolmer/CyclingZone/issues/4622) ([#4623](https://github.com/NicolaiDolmer/CyclingZone/issues/4623)). **Otte retningsvalg er truffet af ejeren 2/9 i visuel dialog (§6).** Bindende når ejeren har godkendt hele dokumentet. Indtil da er dokumentet det vi måler slice 2 (audit af alle 63 sider) op imod, og alt her kan ændres af ejeren med ét ord.
 >
 > **Forhold til de andre regler:** [`PAGE_TEMPLATES.md`](PAGE_TEMPLATES.md) siger HVAD en side består af (skabelon, sidehoved, kort, tabel, tilstande, fold-disciplin). Dette dokument siger HVORFOR og HVOR GODT: hvad der adskiller en side der blot følger skabelonen fra en side der er i verdensklasse. Skabelonen er gulvet, smagen er målet. Brand-DNA'et står i [`../brand/BRAND_BRIEF.md`](../brand/BRAND_BRIEF.md), copy-reglerne i [`../TONE_OF_VOICE.md`](../TONE_OF_VOICE.md). Ingen af dem gentages her, kun peges på.
 >
@@ -27,6 +27,7 @@ Spilleren kom for at se sine ryttere, sin stilling, sit løb. Det han kom for at
 - **Forkert i dag:** `wave6-elevation/riders-desktop-light.png`. Rytterdatabasen viser 463 px chrome før første rytter (sidehoved, løsrevet knaprække "Vis stats / Min ønskeliste", filterpanel med 8 felter og 4 chips, kode-forklaring). På 1280×900 ser spilleren to ryttere. Football Manager viser tyve.
 - **Forkert i dag:** `wave6-elevation/transfers-desktop-light.png`. 603 px chrome: saldo-kort, faner, introtekst, filterpanel, OG 8 sorteringsknapper som chips selvom kolonneoverskrifterne allerede sorterer. To sorterings-mekanismer på én side.
 - **Rigtigt i dag:** `wave6-elevation/standings-desktop-light.png`. 188 px chrome, så tabellen. Filterbar på én linje, zone-forklaringen under tabellen hvor den hører til.
+- **Ejer-retning 2/9 (fork 1, valg B "FM-tæt"):** filterbar på én linje (søg + 3 selects + "Flere filtre" lukket som default), `DataTable dense` (7 px lodret padding) som standard på rostere og databaser, 11 px meta-subline. Mål: 8-10 rækker over folden. **Gate:** ejeren godkender visuelt på den ÆGTE side (ikke mockup) før det indføres på hver T2-side; auditten må flagge afvigelsen som fund, men ingen side ændres uden det go.
 - **Spørgsmål:** Ser spilleren mindst 8 datarækker (eller sidens primære indhold) uden at scrolle på 1280×900?
 
 ### P2 · Ægte cykel-data som billedsprog
@@ -36,6 +37,7 @@ Vores billeder er etapeprofiler, tidsgab, trøjefarver, resultatlister, stigning
 - **Rigtigt i dag:** `wave6-elevation/race-detail-desktop-dark.png`. Etapeprofilen som inline-SVG med stigninger markeret i rødt, målflag, km-akse, "18 KM NEDKØRSEL TIL MÅL" som terræn-signal. Det ER cykelsport. Ingen anden managergenre kan vise det.
 - **Forkert på samme side:** profilen tegnes tre gange (thumbnail-række, stor profil, igen i etape-kortet under). Gentagelse er ikke dybde. Én stor profil + thumbnails er nok.
 - **Mangler i dag:** formkurve pr. rytter (vi viser ét tal), point pr. løbsdag i stillingen (vi viser en slutsum), markedsværdi over tid (vi viser en pil). Data findes i alle tre tilfælde. `Sparkline`-primitiven mangler (ELEVATION #5).
+- **Ejer-retning 2/9 (fork 5, valg A "monokrom streg"):** én `Sparkline`-opskrift til alle tre steder: 2 px streg i `--text-1`, flad `--bg-subtle`-fyld under kurven, slutpunktet markeret, akse-labels `text-3xs`. Kurven selv skifter ALDRIG farve efter retning; deltaet ved siden af tallet bærer grøn/rød. Søjler (variant C) kun som supplement til diskrete værdier (point pr. løbsdag), aldrig til form eller værdi.
 - **Spørgsmål:** Bruger siden mindst ét ægte cykel-data-element som billede, og er der ingen dekorative elementer der ikke viser data?
 
 ### P3 · Redaktionel ro: hairlines, ét guld, luft
@@ -44,6 +46,7 @@ Aviser og L'Équipe-resultatsider deler flader med tynde streger og luft, ikke m
 
 - **Rigtigt i dag:** `design_handoff_rider_profile/screenshots/01-own-light.png` og `wave6-elevation/rider-profile-desktop-light.png`. Hero-kortet med 2 px guld-keyline øverst, Bebas-navn, stat-række med hairline over. Én guld-knap ("Forlæng kontrakt"). Referencen for alle T3-sider.
 - **Forkert i dag:** `wave6-elevation/dashboard-desktop-light.png`. Fire kort-idiomer på én side: kanonisk `Section`, kort med 3 px venstre-accent-bjælke ("Du er klar", "Bestyrelse", "Hjælp & regler"), kort med guld-knap indeni, tomme kort med centreret tekst. Venstre-bjælken findes ikke i spec'en; den er et femte "vigtigt"-signal oven i de fire vi har.
+- **Ejer-retning 2/9 (fork 3, valg B "som i dag"):** guld må stå præcis fire steder: (1) én primær knap pr. view, (2) leder-markører (FØRER-pille, trøje), (3) guld-TEKST `--accent-t` på quiet actions og aktiv fane, (4) 2 px keyline kun på T3-heroen. Aldrig guld-tal, aldrig guld-tint på egen række, aldrig keyline på almindelige kort. Det er PAGE_TEMPLATES' regel; TASTE gør den til et fund når den brydes.
 - **Spørgsmål:** Er der præcis ét guld-primært element, ingen skygger, ingen bjælker og ingen kasser inde i kasser ud over skabelonens kort-i-side?
 
 ### P4 · Bebas kun hvor det bærer
@@ -52,6 +55,7 @@ Bebas Neue er vores stemme når noget er STORT: rytternavnet i heroen, løbstitl
 
 - **Rigtigt i dag:** "ADA PEDERSEN" og "TOUR DE PREVIEW" i heroerne. Ét ord pr. side i display-størrelse, resten Inter Tight og DM Sans.
 - **Forkert historisk:** KitchenSinks "kanoniske" eyebrow + `text-5xl`-titel som ingen sider fulgte, og de fem "editorial Gen 2"-sider med tre forskellige Bebas-størrelser (audit 23/7, F2). Nu konvergeret til ét sidehoved (Inter Tight 20/700), og Bebas kun i T3-heroer.
+- **Ejer-retning 2/9 (fork 2, valg A "kun hero-navnet"):** Bebas Neue står kun på det ene STORE ord pr. side: rytternavn, løbstitel, holdnavn i T3-heroen (og landing/brand-flader uden for app-skabelonerne). Aldrig på kort-titler, aldrig på tal (Bebas har ikke tabulære cifre). Kort-titler forbliver 15/600 sentence case.
 - **Spørgsmål:** Optræder Bebas kun i hero-navnet/-titlen, og er der højst ét display-element pr. skærm?
 
 ### P5 · Tæthed med hierarki
@@ -69,6 +73,7 @@ En tom flade er første indtryk for 73 % af nye spillere der aldrig kommer igen.
 
 - **Forkert i dag:** `transfers-desktop-light.png`: "Ingen ryttere til salg" med et ikon og uden handling. `dashboard-desktop-light.png`: "Resultater vises her efter de første løb" (passiv), "Ingen aktive auktioner" (beskrivende). Fire af otte dashboard-kort er tomme på en frisk konto.
 - **Rigtigt (skabelonens eget eksempel):** "Draft your first rider in the live auction." + sm-knap.
+- **Ejer-retning 2/9 (fork 4, valg A "handling + én knap"):** anatomi = stroke-ikon 22-26 px `--text-3` · titel er en HANDLING i bydeform ("Byd på din første rytter") · én sætning med et konkret faktum ("Auktionerne lukker hver aften kl. 20.") · én sekundær sm-knap der fører derhen. Aldrig beskrivende titel ("Ingen aktive auktioner"), aldrig kun et link. De ~15 tomme tilstande skrives om i én tone-runde med ejeren (EN først, DA under).
 - **Spørgsmål:** Er hver tom tilstand en handlings-sætning med én knap der fører derhen?
 
 ### P7 · Ikoner er streger, aldrig tegn
@@ -100,6 +105,7 @@ En sætning på fladen, resten bag et Hjælp-link (ejer 20/8, #4025). Introtekst
 
 - **Forkert i dag:** `riders-mobile-light.png`: værdi, løn, alder, evner er væk. Ingen vandret scroll. Spilleren kan ikke gøre det siden er til.
 - **Rigtigt i dag:** `standings-mobile-light.png` og `rider-profile-mobile-light.png`: samme data, stablet.
+- **Ejer-retning 2/9 (fork 6, valg A "pinned navn + vandret scroll"):** navnekolonnen står fast (min ~148 px, navn 13 px/500 + `text-3xs`-meta), talkolonnerne scroller vandret under den, samme kolonner og sortering som desktop, filterbar kollapset til søg + to halve selects. Bygges én gang i `DataTable` og gælder alle T2-sider. Kort-pr.-rytter (variant B) afvist som standard.
 - **Spørgsmål:** Kan spilleren udføre sidens primære handling og se sidens primære tal på 375 px uden at tabe kolonner?
 
 ### P11 · Ingenting opdigtet
@@ -124,6 +130,8 @@ Ingen falske tal, ingen mock-ryttere, ingen "Coming soon" som fejl-fallback, ing
 | **Whoop / Linear** (uden for genren, BRAND_BRIEF §9) | Restraint. Én accentfarve. Typografi der gør arbejdet. Ingen effekter der dater | Tomme "premium"-flader uden data. SaaS-generik |
 
 Kort: **vi vil have FM's tæthed og datadisciplin, Hattricks alt-på-én-skærm, OOTP's historik, PCM's cykel-korrekthed, og L'Équipes redaktionelle ro.** Vi vil ikke have nogen af deres æstetiske arv.
+
+**Ankeret når to principper trækker hver sin vej (ejer 2/9): Football Manager.** Trækker tæthed og ro i hver sin retning, vinder tætheden; roen skal komme fra typografi, hairlines og guld-rationering, ikke fra færre rækker. Auditten dømmer efter det.
 
 ---
 
@@ -189,7 +197,7 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 **Bonus-spørgsmålet der afgør verdensklasse**
 17. Ville en Football Manager-spiller der ser siden i 5 sekunder tro at den var lavet af nogen der elsker cykelsport? Hvis nej: hvad mangler? Skriv det som fundet.
 
-**Score:** 17/17 = verdensklasse-kandidat. 14-16 = på system, mangler smag. Under 14 = skal have en runde. Spørgsmål 2, 7, 8 og 13 vejer dobbelt, fordi de rammer det spillerne mærker først.
+**Score (ejer-bekræftet 2/9):** 17/17 = verdensklasse-kandidat. 14-16 = på system, mangler smag. Under 14 = skal have en runde. Spørgsmål 2, 7, 8 og 13 vejer dobbelt, fordi de rammer det spillerne mærker først. Auditten rangerer sider efter (manglende point × spillertrafik), så den mest sete side med det største hul står øverst.
 
 ---
 
@@ -204,6 +212,21 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 
 ---
 
-## 6. Kilder
+## 6. Ejer-beslutninger 2/9 (visuel dialog, genåbn dem ikke)
+
+Otte forks blev vist som mockup-varianter (A/B/C) og afgjort af ejeren 2/9 2026. De står her som SSOT; principperne ovenfor citerer dem.
+
+| # | Fork | Valg | Konsekvens |
+|---|---|---|---|
+| 1 | Tæthed på T2-datasider | **B · FM-tæt** (filterlinje + "Flere filtre" lukket, `dense`-rækker, 8-10 rækker over folden) | **Indføres først når ejeren har godkendt det visuelt på den ægte side**, side for side. Auditten flagger, ejeren giver go |
+| 2 | Bebas Neue | **A · kun hero-navnet** | Kort-titler forbliver 15/600; ingen Bebas på tal |
+| 3 | Guld | **B · som i dag** (én knap, leder-markører, guld-tekst på quiet actions og aktiv fane, keyline kun T3) | Guld-tal, guld-tints og keyline på almindelige kort er fund |
+| 4 | Tomme flader | **A · handling + én knap** | ~15 tomme tilstande skrives om i én tone-runde (EN først) |
+| 5 | Dataviz | **A · monokrom streg + slutpunkt** | Én `Sparkline`-primitiv; farve kun i deltaet; søjler kun som supplement til diskrete værdier |
+| 6 | Mobil-tabel | **A · pinned navn + vandret scroll** | Bygges én gang i `DataTable`; gælder alle T2-sider |
+| 7 | Genre-anker ved konflikt | **Football Manager** | Tæthed vinder over ro; roen kommer fra typografi |
+| 8 | Tjeklistens strenghed | **Som skrevet** (17 spørgsmål, tre bånd, fire vejer dobbelt) | Fund = hvert nej; rangering = manglende point × trafik |
+
+## 7. Kilder
 
 `ELEVATION_2849.md` (25/7, de syv løft) · `PAGE_TEMPLATES.md` (23/7, bindende) · `../audits/design-composition-audit-2026-07-23.md` (52 sider, F1-F10) · `../brand/BRAND_BRIEF.md` (§3 personlighed, §4 anti-patterns, §9 inspiration) · `../brand/GUIDELINES.md` (marks, kontrast) · `../TONE_OF_VOICE.md` · `README.md` (Claude Design-spejlet, drift-punkter) · memory `feedback_anti_ai_slop_design_taste` (#672, 14/6) · #481 (brand) · #2849 (lukket, bølge 0-6) · #4622 (epic).
