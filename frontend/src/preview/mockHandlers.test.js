@@ -39,6 +39,26 @@ test("race_results uden race_id-filter → tom (uændret dashboard-adfærd)", ()
   assert.equal(rows.length, 0);
 });
 
+test("race_results med stage_number=eq.N filtrerer til ét etape-sæt (#4581-rest)", () => {
+  const rows = restRows(
+    "race_results",
+    "https://x/rest/v1/race_results?race_id=eq.race-done-2&stage_number=eq.1&select=*"
+  );
+  assert.equal(rows.length, 1, "kun etape 1-raekker for race-done-2");
+  assert.equal(rows[0].id, "res-d2-s1-1");
+  assert.ok(rows.every(r => r.stage_number === 1));
+});
+
+test("race_results uden stage_number-filter returnerer alle etaper for løbet (#4581-rest)", () => {
+  const rows = restRows(
+    "race_results",
+    "https://x/rest/v1/race_results?race_id=eq.race-done-2&select=*"
+  );
+  assert.ok(rows.length > 1, "forventede raekker paa tvaers af flere etaper");
+  assert.ok(rows.some(r => r.stage_number === 1));
+  assert.ok(rows.some(r => r.stage_number === 2));
+});
+
 // vk-movement-signals — team_race_points_mv race_id=in.(...) scoping.
 test("team_race_points_mv race_id=in.(...) filtrerer til de angivne løb", () => {
   const rows = restRows("team_race_points_mv", "https://x/rest/v1/team_race_points_mv?race_id=in.(pool-race-done-2)");
