@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { climbSelectionHook } from "./climbSelection.ts";
+import { climbSelectionHook, climbSeverity01 } from "./climbSelection.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
 import { boundRngFor } from "../rng.ts";
 import type {
@@ -294,4 +294,64 @@ test("monotoni-garanti over tilfaeldige felter (fast-check, 200 runs, seeded)", 
     ),
     { numRuns: 200, seed: 4030 },
   );
+});
+
+// ── #4604: alvors-skalering + wprimeMax=0-guarden ────────────────────────
+
+test("#4604 climbSeverity01: 0 uden stigning, monotont voksende, clampet til 1", () => {
+  assert.equal(climbSeverity01(0, 10), 0, "0 % gradient => ingen selektions-alvor");
+  assert.equal(climbSeverity01(7, 0), 0, "0 km laengde => ingen selektions-alvor");
+  assert.ok(
+    climbSeverity01(5, 2) < climbSeverity01(7, 5),
+    "stejlere OG laengere stigning skal have hoejere alvor",
+  );
+  assert.ok(climbSeverity01(5, 2) < climbSeverity01(5, 6), "laengere stigning, samme gradient => hoejere alvor");
+  assert.ok(climbSeverity01(4, 3) < climbSeverity01(9, 3), "stejlere stigning, samme laengde => hoejere alvor");
+  assert.equal(climbSeverity01(30, 40), 1, "ekstrem stigning clampes til 1");
+});
+
+test("#4604 energi-leddet er alvors-skaleret: en smaabakke shredder ikke et udmattet felt", () => {
+  // 12 ryttere med IDENTISK klatre-evne (deficit-vejen er derfor doed) og en
+  // reserve der er koert helt i bund — praecis situationen sent paa en flad
+  // etape. FOER fixet oversteg energi-leddet alene splitThreshold uanset
+  // stigningens stoerrelse, saa hele feltet blev shellet paa den foerste bakke.
+  const ids = Array.from({ length: 12 }, (_, i) => `r${i}`);
+  const entrants = ids.map((id) => entrant(id, { climbing: 50 }));
+  // wprime lige OVER 0, saa den wprime-tvungne (fysiologisk absolutte) gren
+  // ikke er den der maales — det er score-vejen der testes her.
+  const overrides = Object.fromEntries(ids.map((id) => [id, { wprime: 0.001, wprimeMax: 0.4 }]));
+
+  const tinyHill = climbSegment({ from_km: 50, to_km: 52, avg_gradient: 3, category: "4" });
+  const hcClimb = climbSegment({ from_km: 50, to_km: 62, avg_gradient: 9, category: "HC" });
+
+  const tinyOut = climbSelectionHook(makeState(entrants, overrides), makeCtx(entrants, tinyHill));
+  const hcOut = climbSelectionHook(makeState(entrants, overrides), makeCtx(entrants, hcClimb));
+
+  const tinySplit = splitRiderIdsFrom(tinyOut.state).size;
+  const hcSplit = splitRiderIdsFrom(hcOut.state).size;
+
+  assert.equal(tinySplit, 0, "en 2 km/3 %-bakke maa ikke splitte et felt med identisk klatre-evne");
+  assert.ok(hcSplit > 0, "en 12 km/9 %-klatring SKAL kunne selektere det samme felt");
+});
+
+test("#4604 wprimeMax=0 goer en rytter maksimalt saarbar, ikke immun", () => {
+  // Rytteren uden anaerob kapacitet (punch=acceleration=sprint=0) skal splitte
+  // FOER en normal rytter med samme klatre-evne og fuld reserve. FOER fixet
+  // returnerede energyDeficit01 0 ("helt frisk") for ham, saa han overlevede
+  // hver eneste udvaelgelse og vandt massespurter med sprint-evne 0.
+  const zero = entrant("zero", { punch: 0, acceleration: 0, sprint: 0, climbing: 50 });
+  const normal = [entrant("n1", { climbing: 50 }), entrant("n2", { climbing: 50 }), entrant("n3", { climbing: 99 })];
+  const entrants = [zero, ...normal];
+  const overrides: Record<string, Partial<RiderState>> = {
+    zero: { wprime: 0.0001, wprimeMax: 0 },
+    n1: { wprime: 0.4, wprimeMax: 0.4 },
+    n2: { wprime: 0.4, wprimeMax: 0.4 },
+    n3: { wprime: 0.4, wprimeMax: 0.4 },
+  };
+  const segment = climbSegment({ from_km: 50, to_km: 60, avg_gradient: 8, category: "1" });
+  const out = climbSelectionHook(makeState(entrants, overrides), makeCtx(entrants, segment));
+  const split = splitRiderIdsFrom(out.state);
+
+  assert.ok(split.has("zero"), "rytteren uden anaerob kapacitet skal selekteres bagud");
+  assert.ok(!split.has("n3"), "gruppens staerkeste klatrer med fuld reserve skal blive i front");
 });

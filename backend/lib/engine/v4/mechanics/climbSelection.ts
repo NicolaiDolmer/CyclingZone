@@ -59,12 +59,6 @@ const SPLIT_GAP_BASE_SECONDS = 15;
 const SPLIT_GAP_PER_SCORE_UNIT = 90;
 const SPLIT_GAP_BOUNDS: readonly [number, number] = [10, 240];
 
-// Loft paa andelen af en gruppe ÉN stigning kan skyde af ved fuld alvor
-// (climbSeverity01 = 1, dvs. en HC-agtig 15%/10km-klatring). Skaleres lineaert
-// ned med stigningens alvor — se maxScoreSplitCount. Start-kandidat, kalibreres
-// i head-to-head-harnesset som alle andre konstanter her.
-const MAX_SPLIT_FRACTION_AT_FULL_SEVERITY = 0.6;
-
 type RiderSelection = {
   riderId: string;
   baseScore: number; // stoej-fri: deficitWeight*climbDeficitScaled + energyDeficitWeight*energyDeficit
@@ -180,35 +174,20 @@ function computeSelections(
  * paavirkes kun af selve energi-tilstanden, ikke af rangeringen.
  */
 /**
- * Alvors-loft paa hvor STOR en andel af en gruppe ÉN stigning kan skyde af
- * (#4604). En HC-klatring (climbSeverity01 = 1) kan sprede feltet bredt; en
- * 2 km lang bakke kan ikke.
- *
- * FOER: guarden havde intet loft. Scoren er kontinuert og naesten hele feltet
- * laa over splitThreshold sent paa en etape, saa ÉN stigning splittede 179 af
- * 180 ryttere i ét skridt og efterlod en enkelt rytter alene i front — ogsaa
- * paa etaper klassificeret som massespurt. Loftet aendrer ALDRIG raekkefolgen:
- * listen er allerede sorteret svageste-foerst, saa der skaeres i den svage ende.
- * Monotoni-invarianten (SS2 §2 invariant 3) er derfor uberoert, og "styrke
- * straffes aldrig" holder — de staerkeste er praecis dem loftet beskytter.
+ * Rank-guard (§4 monotoni-afsnittet): sorteret efter baseScore faldende
+ * (svageste/mest energi-udtoemte foerst), propageres "ikke-split" ALTID
+ * fremad — saa en rytter med lavere baseScore (staerkere/friskere, samme
+ * gruppe) aldrig kan ende splittet mens en med hoejere baseScore forbliver.
+ * wprime-tvungne splits (fysiologisk absolut) er UNDTAGET guarden: de
+ * paavirkes kun af selve energi-tilstanden, ikke af rangeringen.
  */
-function maxScoreSplitCount(groupSize: number, severity01: number): number {
-  const fraction = MAX_SPLIT_FRACTION_AT_FULL_SEVERITY * clamp(severity01, 0, 1);
-  return Math.max(1, Math.floor(groupSize * fraction));
-}
-
-function guardedSplitRiderIds(selections: RiderSelection[], severity01: number): string[] {
+function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
   const sorted = [...selections].sort((a, b) => b.baseScore - a.baseScore || a.riderId.localeCompare(b.riderId));
-  const cap = maxScoreSplitCount(sorted.length, severity01);
   let stillEligible = true;
-  let scoreSplits = 0;
   const split: string[] = [];
   for (const sel of sorted) {
-    const guardedTriggered = stillEligible && sel.scoreTriggered && scoreSplits < cap;
+    const guardedTriggered = stillEligible && sel.scoreTriggered;
     if (!sel.scoreTriggered) stillEligible = false;
-    if (guardedTriggered) scoreSplits++;
-    // wprime-tvungne splits er fysiologisk absolutte og taeller ikke mod loftet:
-    // en rytter med tom reserve er koert af uanset stigningens stoerrelse.
     if (guardedTriggered || sel.wprimeForced) split.push(sel.riderId);
   }
   return split.sort();
@@ -274,7 +253,7 @@ export const climbSelectionHook: ClimbSelectionHook = (
     const selections = computeSelections(group, nextState, ctx, gradientPct, lengthKm);
     if (selections.length < 2) continue;
 
-    let splitRiderIds = guardedSplitRiderIds(selections, climbSeverity01(gradientPct, lengthKm));
+    let splitRiderIds = guardedSplitRiderIds(selections);
     if (splitRiderIds.length === 0) continue;
     if (splitRiderIds.length >= group.rider_ids.length) {
       // Ekstremt segment (fx laengere hele-etape-klatring i test-harnesset):

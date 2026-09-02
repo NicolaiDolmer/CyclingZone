@@ -387,3 +387,28 @@ const physiologySubTick = {
 
 /** Sub-tick-fysiologi-tuning (deep-frosset). Se physiologySubTick-kommentaren ovenfor. */
 export const PHYSIOLOGY_SUBTICK_TUNING = deepFreeze(physiologySubTick);
+
+// ── W'-taerings-tidskonstant (#4604) — ADDITIV physiology-tuning ──────────────
+// SS2's frosne PhysiologyTuning-kontrakt baerer ikke dette felt; samme
+// additiv-praecedens som finaleExtra ovenfor.
+//
+// HVORFOR (maalt 2/9): §5-formlen taerer W' som `(demand - cp) * dtSeconds`.
+// wprimeMax er NORMALISERET (0-1, maks 1,0 ved punch=accel=sprint=99), mens
+// dtSeconds er et helt segments varighed - typisk 2.000-5.000 sekunder. Et
+// overforbrug paa bare 0,001 over CP toemte derfor hele reserven paa ét
+// segment. W' var i praksis BINAER: enten praecis fuld (strengt under CP hele
+// vejen) eller nul. Maalt paa S3-kalenderen betoed det at 179 af 180 ryttere
+// stod med wprime <= 0 ved etapens foerste stigning, hvorefter M2's
+// wprime-tvungne selektion shellede hele feltet i ét skridt - ogsaa paa
+// etaper klassificeret som massespurt.
+//
+// Tidskonstanten er den manglende bro mellem de to enheder: hvor mange
+// sekunder ved et normaliseret overforbrug paa 1,0 der skal til for at toemme
+// en FULD reserve. Genopladnings-grenen har allerede sin egen tidsskala
+// (rechargeRateBase, ~1/0,0006 s) og roeres ikke.
+const physiologyWprimeDrain = {
+  timeConstantSeconds: 240, // sekunder ved normaliseret overforbrug 1,0 der toemmer en fuld reserve; en rytter 0,1 over CP holder ~40 min paa en halv reserve
+};
+
+/** W'-taerings-tidskonstant (deep-frosset). Se physiologyWprimeDrain-kommentaren ovenfor. */
+export const PHYSIOLOGY_WPRIME_DRAIN_TUNING = deepFreeze(physiologyWprimeDrain);
