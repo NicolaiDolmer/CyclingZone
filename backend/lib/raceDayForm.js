@@ -92,3 +92,31 @@ export function jourSansComponent({ riderId, stageSeed, form = null, tuning = RA
   const u = rng();
   return -(tuning.JOUR_SANS_MAGNITUDE_MIN + u * (tuning.JOUR_SANS_MAGNITUDE_MAX - tuning.JOUR_SANS_MAGNITUDE_MIN));
 }
+
+// #4598 (ejer-design 2/9): dagsform som ét af 11 spillervendte trin (-5..5),
+// KUN VISNING — ingen ny mekanik, motoren/finalScore rører INTET herfra.
+// dayFormComponent er ~N(0, sd) (Box-Muller, se gaussian() ovenfor), så
+// Z = dayform/sd er standardnormal UANSET sd — "trin" er derfor simpelt
+// "antal standardafvigelser fra middel, rundet til nærmeste heltal, clamped
+// til [-5, 5]". Formlen er selv sd-uafhængig (kun kill-switch sd=0 er
+// særtilfældet), hvilket gør fordelingen forudsigelig uden at skulle
+// genkalibreres hvis DAYFORM_SD justeres i tuning.
+//
+// Målt fordeling (20.000 træk med default sd=0.018, se raceDayForm.test.js):
+// trin 0 ≈ 38-39 %, ±1 ≈ 24 % hver, ±2 ≈ 6 % hver, ±5 < 0,01 % hver —
+// klokkeformet og symmetrisk om 0, matcher ejerens mål (35-45 % / ~20 % / <1 %).
+//
+// @param {number} dayform  rå dagsform-komponent (dayFormComponent-output)
+// @param {number} [sd=RACE_V3_TUNING.DAYFORM_SD]  SAMME sd som blev brugt til
+//   at trække dayform (default-tuningen, medmindre en test overrider begge).
+// @returns {number} heltal i [-5, 5]. Ikke-finite dayform eller sd=0 → 0
+//   (ærlig degradering, samme retning som dayFormComponent's egen sd=0-kill).
+export function dayformBand(dayform, sd = RACE_V3_TUNING.DAYFORM_SD) {
+  if (!sd || !Number.isFinite(dayform)) return 0;
+  const z = dayform / sd;
+  // Math.round runder .5 MOD +Infinity (round(-1.5) === -1, IKKE -2), hvilket
+  // ville gøre trin-grænserne asymmetriske lige på halve standardafvigelser.
+  // "Runder væk fra nul" i stedet, så +Z og -Z ALTID giver modsatte trin.
+  const rounded = z < 0 ? -Math.round(-z) : Math.round(z);
+  return clamp(rounded, -5, 5);
+}

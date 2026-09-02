@@ -944,6 +944,74 @@
         "tooltip": "Sat til at arbejde for fuld kraft denne etape, som valgt på taktik-siden."
       }
     },
+    "dayformLine": {
+      "band_m5": [
+        "De værste ben jeg har haft hele sæsonen.",
+        "Jeg overlevede bare derude i dag.",
+        "Alt gjorde ondt fra den første kilometer.",
+        "Jeg har aldrig lidt så meget før."
+      ],
+      "band_m4": [
+        "Jeg havde en hård dag.",
+        "Der var ingenting i benene i dag.",
+        "Jeg led fra den første stigning.",
+        "Ikke min dag. Jeg kommer igen."
+      ],
+      "band_m3": [
+        "Jeg havde en hård dag.",
+        "Der var ingenting i benene i dag.",
+        "Jeg led fra den første stigning.",
+        "Ikke min dag. Jeg kommer igen."
+      ],
+      "band_m2": [
+        "Kæmpede lidt mere end normalt i dag.",
+        "Benene ville ikke samarbejde i dag.",
+        "En hård dag, måtte grave dybt.",
+        "Intet kom let for mig i dag."
+      ],
+      "band_m1": [
+        "Benene føltes lidt flade i dag.",
+        "Ikke helt der i dag, mangler lidt.",
+        "En lidt sløv dag, intet alvorligt.",
+        "Følte mig lidt tung i benene i dag."
+      ],
+      "band_0": [
+        "Bare en almindelig dag derude.",
+        "Ikke noget særligt i dag, som sædvanlig.",
+        "En helt almindelig dag. Intet at berette.",
+        "Benene føltes som de plejer."
+      ],
+      "band_p1": [
+        "Følte mig lidt bedre end normalt i dag.",
+        "Lidt ekstra gnist i benene i dag.",
+        "En fin dag, intet at klage over.",
+        "Tingene klaffede lidt i dag."
+      ],
+      "band_p2": [
+        "Benene føltes gode, en let dag derude.",
+        "En solid dag, alt gik som planlagt.",
+        "Jeg havde god energi hele etapen.",
+        "Følte mig stærk og tryg hele dagen."
+      ],
+      "band_p3": [
+        "Jeg havde gode ben i dag.",
+        "Benene var med i dag, chef.",
+        "Jeg havde det i dag. Der var mere at give af.",
+        "God dag. Kroppen svarede hver gang."
+      ],
+      "band_p4": [
+        "Jeg havde gode ben i dag.",
+        "Benene var med i dag, chef.",
+        "Jeg havde det i dag. Der var mere at give af.",
+        "God dag. Kroppen svarede hver gang."
+      ],
+      "band_p5": [
+        "De bedste ben jeg har haft hele sæsonen.",
+        "Jeg kunne have kørt dobbelt så langt i dag.",
+        "Alt hvad jeg prøvede i dag lykkedes.",
+        "Jeg har aldrig følt mig så stærk før."
+      ]
+    },
     "report": {
       "title": "Rapport fra {number}. etape",
       "numbers": {

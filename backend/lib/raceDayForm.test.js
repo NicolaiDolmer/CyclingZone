@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { dayFormComponent, jourSansComponent, jourSansProbability } from "./raceDayForm.js";
+import { dayFormComponent, dayformBand, jourSansComponent, jourSansProbability } from "./raceDayForm.js";
 import { RACE_V3_TUNING } from "./raceRoles.js";
 import { simulateStage, ABILITY_KEYS } from "./raceSimulator.js";
 import { RACE_V3_TUNING as T } from "./raceRoles.js";
@@ -35,6 +35,100 @@ test("dagsform: fordelingen har ~0 middelværdi og ~sd som konfigureret (5.000 t
 
 test("dagsform: sd=0 → altid 0 (kill via tuning)", () => {
   assert.equal(dayFormComponent({ riderId: "r1", stageSeed: 1, sd: 0 }), 0);
+});
+
+// ── dayformBand (#4598, ejer-design 2/9) ───────────────────────────────────────
+
+test("dayformBand: 0 → trin 0", () => {
+  assert.equal(dayformBand(0, 0.018), 0);
+});
+
+test("dayformBand: monoton + symmetrisk om 0 — samme |dayform| giver samme |trin|, modsat fortegn", () => {
+  const sd = 0.018;
+  for (const mult of [0, 0.3, 0.6, 1, 1.5, 2.4, 3, 4.6, 5, 9]) {
+    const pos = dayformBand(sd * mult, sd);
+    const neg = dayformBand(-sd * mult, sd);
+    assert.equal(pos, -neg, `dayformBand(+${mult}sd) og dayformBand(-${mult}sd) skal være modsatte, fik ${pos}/${neg}`);
+  }
+  // Monotoni: stigende dayform giver aldrig et LAVERE trin.
+  const xs = [-5, -3, -1.4, -0.6, -0.2, 0, 0.2, 0.6, 1.4, 3, 5].map((m) => sd * m);
+  let prev = -Infinity;
+  for (const x of xs) {
+    const b = dayformBand(x, sd);
+    assert.ok(b >= prev, `dayformBand skal være monoton stigende, ${x} gav ${b} < forrige ${prev}`);
+    prev = b;
+  }
+});
+
+test("dayformBand: clamper til [-5, 5] uanset hvor ekstremt (men finite) input", () => {
+  const sd = 0.018;
+  assert.equal(dayformBand(sd * 100, sd), 5);
+  assert.equal(dayformBand(-sd * 100, sd), -5);
+  // Infinity er IKKE finite → rammer samme ærlig-degraderings-gren som NaN, trin 0.
+  assert.equal(dayformBand(Infinity, sd), 0);
+  assert.equal(dayformBand(-Infinity, sd), 0);
+});
+
+test("dayformBand: nøjagtige trin-grænser (afrunding til nærmeste heltal antal sd'er)", () => {
+  const sd = 0.02;
+  assert.equal(dayformBand(sd * 0.49, sd), 0, "under 0.5 sd runder til trin 0");
+  assert.equal(dayformBand(sd * 0.51, sd), 1, "over 0.5 sd runder til trin 1");
+  assert.equal(dayformBand(sd * 1.49, sd), 1);
+  assert.equal(dayformBand(sd * 1.51, sd), 2);
+  assert.equal(dayformBand(sd * 4.49, sd), 4);
+  assert.equal(dayformBand(sd * 4.51, sd), 5);
+});
+
+test("dayformBand: sd=0 (kill-switch) → altid trin 0, uanset dayform", () => {
+  assert.equal(dayformBand(0.5, 0), 0);
+  assert.equal(dayformBand(-0.5, 0), 0);
+  assert.equal(dayformBand(0, 0), 0);
+});
+
+test("dayformBand: ikke-finite dayform (NaN/undefined) → trin 0 (ærlig degradering)", () => {
+  assert.equal(dayformBand(NaN, 0.018), 0);
+  assert.equal(dayformBand(undefined, 0.018), 0);
+});
+
+test("dayformBand: default sd = RACE_V3_TUNING.DAYFORM_SD (samme tuning motoren bruger)", () => {
+  assert.equal(dayformBand(RACE_V3_TUNING.DAYFORM_SD * 3), 3);
+  assert.equal(dayformBand(-RACE_V3_TUNING.DAYFORM_SD * 3), -3);
+});
+
+test("dayformBand: fordelingen over 20.000 dayFormComponent-træk er klokkeformet + symmetrisk om 0 (spec: trin 0 35-45%, ±1 ~20%, ±5 <1%)", () => {
+  const sd = 0.018;
+  const N = 20000;
+  const counts = {};
+  for (let m = -5; m <= 5; m++) counts[m] = 0;
+  for (let i = 0; i < N; i++) {
+    const v = dayFormComponent({ riderId: `r${i}`, stageSeed: 4242, sd });
+    counts[dayformBand(v, sd)] += 1;
+  }
+  const pct = (m) => (counts[m] / N) * 100;
+
+  // Klokkeform: trin 0 er strengt det hyppigste, og hyppigheden falder
+  // monotont ud mod begge haler.
+  for (let m = 1; m <= 4; m++) {
+    assert.ok(counts[m - 1] > counts[m], `trin ${m - 1} (${counts[m - 1]}) skal være hyppigere end trin ${m} (${counts[m]})`);
+    assert.ok(counts[-(m - 1)] > counts[-m], `trin ${-(m - 1)} (${counts[-(m - 1)]}) skal være hyppigere end trin ${-m} (${counts[-m]})`);
+  }
+
+  // Symmetri om 0: hvert positivt trin skal ligge tæt på sit spejlbillede
+  // (bred tolerance — 20.000 træk giver statistisk støj, ikke eksakt lighed).
+  for (let m = 1; m <= 5; m++) {
+    assert.ok(Math.abs(pct(m) - pct(-m)) < 2, `trin ±${m} skal være ~symmetriske, fik +${pct(m).toFixed(2)}% / -${pct(-m).toFixed(2)}%`);
+  }
+
+  // Ejerens mål-intervaller.
+  assert.ok(pct(0) >= 30 && pct(0) <= 48, `trin 0 skal ramme ca. 35-45% (bred tolerance for støj), fik ${pct(0).toFixed(2)}%`);
+  assert.ok(pct(1) >= 15 && pct(1) <= 30, `trin +1 skal ramme ca. 20%, fik ${pct(1).toFixed(2)}%`);
+  assert.ok(pct(-1) >= 15 && pct(-1) <= 30, `trin -1 skal ramme ca. 20%, fik ${pct(-1).toFixed(2)}%`);
+  assert.ok(pct(5) < 1, `trin +5 skal være under 1%, fik ${pct(5).toFixed(3)}%`);
+  assert.ok(pct(-5) < 1, `trin -5 skal være under 1%, fik ${pct(-5).toFixed(3)}%`);
+
+  // Alle 11 trin summerer til 100% (ingen træk tabt).
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  assert.equal(total, N);
 });
 
 // ── jourSansProbability (form-kobling) ────────────────────────────────────────

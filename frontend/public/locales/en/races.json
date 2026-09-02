@@ -944,6 +944,74 @@
         "tooltip": "Set to work at full effort this stage, as chosen on the tactics page."
       }
     },
+    "dayformLine": {
+      "band_m5": [
+        "Worst legs I have had all season.",
+        "I was just surviving out there today.",
+        "Everything hurt from the very first kilometre.",
+        "I have never suffered this much before."
+      ],
+      "band_m4": [
+        "I had a hard day.",
+        "Nothing in the legs today.",
+        "I was suffering from the first climb.",
+        "Not my day. I will be back."
+      ],
+      "band_m3": [
+        "I had a hard day.",
+        "Nothing in the legs today.",
+        "I was suffering from the first climb.",
+        "Not my day. I will be back."
+      ],
+      "band_m2": [
+        "Struggled a bit more than usual today.",
+        "Legs did not want to cooperate today.",
+        "A tough day, had to dig deep.",
+        "Nothing came easy for me today."
+      ],
+      "band_m1": [
+        "Legs felt a little flat today.",
+        "Not quite there today, small things missing.",
+        "A slightly off day, nothing serious.",
+        "Felt a touch heavy in the legs today."
+      ],
+      "band_0": [
+        "Just a normal day out there.",
+        "Nothing special today, steady as always.",
+        "An ordinary day. Nothing to report.",
+        "Legs felt about the same as usual."
+      ],
+      "band_p1": [
+        "Felt a bit better than usual today.",
+        "Small spark in the legs today.",
+        "A decent day, nothing to complain about.",
+        "Things clicked a little today."
+      ],
+      "band_p2": [
+        "Legs felt good, easy day out there.",
+        "A solid day, everything worked as planned.",
+        "I had good energy the whole stage.",
+        "Felt strong and comfortable all day."
+      ],
+      "band_p3": [
+        "I felt strong today.",
+        "Legs were good today, boss.",
+        "I had it today. There was more to give.",
+        "Good day. The body answered every time."
+      ],
+      "band_p4": [
+        "I felt strong today.",
+        "Legs were good today, boss.",
+        "I had it today. There was more to give.",
+        "Good day. The body answered every time."
+      ],
+      "band_p5": [
+        "Best legs I have had all season.",
+        "I could have gone twice as far today.",
+        "Everything I tried today just worked.",
+        "I have never felt this strong before."
+      ]
+    },
     "report": {
       "title": "Stage {number} report",
       "numbers": {
