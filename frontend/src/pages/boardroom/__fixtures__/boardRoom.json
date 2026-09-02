@@ -28,6 +28,7 @@
         "targetDisplay": "3",
         "unitKey": "raceDays",
         "status": "on_track",
+        "awaitingData": false,
         "isStretch": false,
         "owner": { "archetypeKey": "resultatjaegeren", "name": "Jørgen Brandt", "initials": "JB" },
         "receipt": {
@@ -51,6 +52,7 @@
         "targetDisplay": "0 CZ$",
         "unitKey": "cz",
         "status": "on_track",
+        "awaitingData": false,
         "isStretch": false,
         "owner": { "archetypeKey": "sponsoraten", "name": "Søren Lindqvist", "initials": "SL" },
         "receipt": {
@@ -74,6 +76,7 @@
         "targetDisplay": "2",
         "unitKey": "riders",
         "status": "at_risk",
+        "awaitingData": false,
         "isStretch": false,
         "owner": { "archetypeKey": "ungdomsidealisten", "name": "Astrid Holm", "initials": "AH" },
         "receipt": {
@@ -97,6 +100,7 @@
         "targetDisplay": "40",
         "unitKey": "rank",
         "status": "behind",
+        "awaitingData": false,
         "isStretch": true,
         "owner": { "archetypeKey": "nationalist_purist", "name": "Niels Østergaard", "initials": "NO" },
         "receipt": {

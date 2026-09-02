@@ -98,6 +98,12 @@ function baseTables(overrides = {}) {
     loans: [],
     board_satisfaction_events: [],
     board_consequences: [],
+    // #4579 · det 1yr-board mandatet stammer fra (buildBoardRoomPayload slår
+    // det op best-effort via mandateRow.source.from_board_id, fallback
+    // team_id+plan_type='1yr'). Tom i de fleste fixtures — testene for de nye
+    // mål-typer stubber loadGoalContext direkte i stedet for at gå gennem den
+    // rigtige loader, så denne tabel er kun relevant for boardId-argument-testen.
+    board_profiles: [],
     ...overrides,
   };
 }
@@ -418,6 +424,291 @@ test("board.members[].sinceSeason afledes af teams.created_at mod seasons.start_
   for (const member of payload.board.members) {
     assert.equal(member.sinceSeason, 3);
   }
+});
+
+// ── #4579: mandate.goals[].status bruger nu FULD goal-kontekst ────────────────
+//
+// Før #4579 evaluerede boardRoom.js ALTID med en håndbygget LET kontekst
+// (planDuration 1, cumulativeStats 0/0 hardkodet, INGEN divisionManagerCount/
+// cumulative*/planStart*-felter). Mål-typer der kræver den fulde kontekst
+// evaluerede derfor altid til `evaluateGoalProgress`s awaiting_data (mappet
+// til on_track — en falsk "on track", ikke en ærlig datamangel). Hver test
+// herunder stubber `loadGoalContext` (den nye injicerbare parameter) med
+// netop de felter mål-typen kræver og assert'er den REELLE status — ikke
+// on_track-af-datamangel — plus `awaitingData: false`.
+
+function tablesWithSingleGoal(goal, overrides = {}) {
+  return baseTables({
+    team_board_members: FIVE_MEMBERS,
+    board_mandates: [{
+      id: "mand-4579", team_id: TEAM_ID, season_number: 3, status: "active",
+      signed_at: "2026-08-01T00:00:00Z",
+      goals: [goal],
+    }],
+    ...overrides,
+  });
+}
+
+async function payloadForGoal(goal, { loadGoalContext = async () => ({}), ...overrides } = {}) {
+  const supabase = makeSupabase(tablesWithSingleGoal(goal, overrides));
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext });
+  return payload.mandate.goals[0];
+}
+
+test("#4579 top_n_finish: reel status fra standing.rank_in_division (ikke awaiting_data)", async () => {
+  const goal = await payloadForGoal(
+    { type: "top_n_finish", target: 3, category: "results" },
+    { season_standings: [{ team_id: TEAM_ID, rank_in_division: 2, updated_at: "2026-08-20T00:00:00Z" }] },
+  );
+  assert.equal(goal.status, "achieved");
+  assert.equal(goal.awaitingData, false);
+});
+
+test("#4579 stage_wins (ikke-kumulativ): reel status fra standing.stage_wins", async () => {
+  const goal = await payloadForGoal(
+    { type: "stage_wins", target: 2, cumulative: false, category: "results" },
+    { season_standings: [{ team_id: TEAM_ID, stage_wins: 3, updated_at: "2026-08-20T00:00:00Z" }] },
+  );
+  assert.equal(goal.status, "achieved");
+  assert.equal(goal.awaitingData, false);
+});
+
+test("#4579 stage_wins (ikke-kumulativ) tæller seasonOneDayWins med (#4034-paritet)", async () => {
+  // 1 (etapesejr) + 2 (endagssejre, stubbet) = 3 >= target 3.
+  const tables = tablesWithSingleGoal(
+    { type: "stage_wins", target: 3, cumulative: false, category: "results" },
+    { season_standings: [{ team_id: TEAM_ID, stage_wins: 1, updated_at: "2026-08-20T00:00:00Z" }] },
+  );
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => ({ seasonOneDayWins: 2 }),
+  });
+  const goal = payload.mandate.goals[0];
+  assert.equal(goal.status, "achieved");
+  assert.equal(goal.awaitingData, false);
+  assert.equal(goal.achievedDisplay, "3");
+});
+
+test("#4579 gc_wins (ikke-kumulativ): reel status fra standing.gc_wins", async () => {
+  const goal = await payloadForGoal(
+    { type: "gc_wins", target: 1, cumulative: false, category: "results" },
+    { season_standings: [{ team_id: TEAM_ID, gc_wins: 0, updated_at: "2026-08-20T00:00:00Z" }] },
+  );
+  assert.equal(goal.status, "behind");
+  assert.equal(goal.awaitingData, false);
+});
+
+test("#4579 min_u25_riders: reel status fra riders", async () => {
+  const goal = await payloadForGoal(
+    { type: "min_u25_riders", target: 2, category: "identity" },
+    { riders: [{ id: "r1", team_id: TEAM_ID, is_u25: true }, { id: "r2", team_id: TEAM_ID, is_u25: true }, { id: "r3", team_id: TEAM_ID, is_u25: false }] },
+  );
+  assert.equal(goal.status, "achieved");
+  assert.equal(goal.awaitingData, false);
+});
+
+test("#4579 min_national_riders: reel status fra riders.nationality_code", async () => {
+  const goal = await payloadForGoal(
+    { type: "min_national_riders", target: 2, nationality_code: "DNK", category: "identity" },
+    { riders: [{ id: "r1", team_id: TEAM_ID, nationality_code: "DNK" }, { id: "r2", team_id: TEAM_ID, nationality_code: "DNK" }, { id: "r3", team_id: TEAM_ID, nationality_code: "FRA" }] },
+  );
+  assert.equal(goal.status, "achieved");
+  assert.equal(goal.awaitingData, false);
+});
+
+test("#4579 min_riders: reel status fra riders.length", async () => {
+  // 8/20 = 0.4-ratio -> scoreHigherBetter under 0.65-grænsen -> "behind" (ikke "on_track").
+  const goal = await payloadForGoal(
+    { type: "min_riders", target: 20, category: "economy" },
+    { riders: Array.from({ length: 8 }, (_, i) => ({ id: `r${i}`, team_id: TEAM_ID })) },
+  );
+  assert.equal(goal.status, "behind");
+  assert.equal(goal.awaitingData, false);
+});
+
+test("#4579 no_outstanding_debt: reel status fra activeLoanCount", async () => {
+  const goal = await payloadForGoal(
+    { type: "no_outstanding_debt", target: 0, category: "economy" },
+    { loans: [] },
+  );
+  assert.equal(goal.status, "achieved");
+  assert.equal(goal.awaitingData, false);
+});
+
+test("#4579 signature_rider: reel status fra riders' star-score", async () => {
+  const goal = await payloadForGoal(
+    { type: "signature_rider", target: 1, category: "identity" },
+    { riders: [{ id: "r1", team_id: TEAM_ID, popularity: 100, uci_points: 900 }] },
+  );
+  assert.equal(goal.status, "achieved");
+  assert.equal(goal.awaitingData, false);
+});
+
+test("#4579 relative_rank: BEHIND når beatCount < target (divisionManagerCount stubbet)", async () => {
+  // Kun 3 managere i puljen (stubbet) -> beatCount = 3 - 2 = 1 < target 3.
+  const tables = tablesWithSingleGoal(
+    { type: "relative_rank", target: 3, category: "results" },
+    { season_standings: [{ team_id: TEAM_ID, rank_in_division: 2, league_division_id: 11, updated_at: "2026-08-20T00:00:00Z" }] },
+  );
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => ({ divisionManagerCount: 3 }),
+  });
+  assert.equal(payload.mandate.goals[0].status, "behind");
+  assert.equal(payload.mandate.goals[0].awaitingData, false);
+});
+
+test("#4579 relative_rank: ACHIEVED når beatCount >= target (divisionManagerCount stubbet)", async () => {
+  const tables = tablesWithSingleGoal(
+    { type: "relative_rank", target: 3, category: "results" },
+    { season_standings: [{ team_id: TEAM_ID, rank_in_division: 2, league_division_id: 11, updated_at: "2026-08-20T00:00:00Z" }] },
+  );
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    // 6 managere i puljen -> beatCount = 6 - 2 = 4 >= target 3.
+    loadGoalContext: async () => ({ divisionManagerCount: 6 }),
+  });
+  assert.equal(payload.mandate.goals[0].status, "achieved");
+  assert.equal(payload.mandate.goals[0].awaitingData, false);
+});
+
+test("#4579 sponsor_growth: BEHIND når vækst < target (sponsorGrowth*Income stubbet)", async () => {
+  const tables = tablesWithSingleGoal({ type: "sponsor_growth", target: 20, category: "economy" });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    // (105-100)/100 = 5% < target 20%.
+    loadGoalContext: async () => ({ sponsorGrowthBaselineIncome: 100, sponsorGrowthCurrentIncome: 105 }),
+  });
+  assert.equal(payload.mandate.goals[0].status, "behind");
+  assert.equal(payload.mandate.goals[0].awaitingData, false);
+});
+
+test("#4579 sponsor_growth: ACHIEVED når vækst >= target (sponsorGrowth*Income stubbet)", async () => {
+  const tables = tablesWithSingleGoal({ type: "sponsor_growth", target: 20, category: "economy" });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    // (150-100)/100 = 50% >= target 20%.
+    loadGoalContext: async () => ({ sponsorGrowthBaselineIncome: 100, sponsorGrowthCurrentIncome: 150 }),
+  });
+  assert.equal(payload.mandate.goals[0].status, "achieved");
+  assert.equal(payload.mandate.goals[0].awaitingData, false);
+});
+
+test("#4579 monument_podium: reel status fra cumulativeMonumentPodiums (stubbet)", async () => {
+  const tables = tablesWithSingleGoal({ type: "monument_podium", target: 2, category: "results" });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => ({ cumulativeMonumentPodiums: 3 }),
+  });
+  assert.equal(payload.mandate.goals[0].status, "achieved");
+  assert.equal(payload.mandate.goals[0].awaitingData, false);
+});
+
+test("#4579 jersey_wins (kumulativ): reel status fra cumulativeJerseyWins (stubbet)", async () => {
+  const tables = tablesWithSingleGoal({ type: "jersey_wins", target: 4, cumulative: true, category: "results" });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => ({ cumulativeJerseyWins: 5 }),
+  });
+  assert.equal(payload.mandate.goals[0].status, "achieved");
+  assert.equal(payload.mandate.goals[0].awaitingData, false);
+});
+
+test("#4579 jersey_wins (ikke-kumulativ): reel status fra seasonJerseyWins (stubbet)", async () => {
+  const tables = tablesWithSingleGoal({ type: "jersey_wins", target: 2, cumulative: false, category: "results" });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => ({ seasonJerseyWins: 3 }),
+  });
+  assert.equal(payload.mandate.goals[0].status, "achieved");
+  assert.equal(payload.mandate.goals[0].awaitingData, false);
+});
+
+test("#4579 profitable_transfers: reel status fra cumulativeTransferBalance (stubbet)", async () => {
+  const tables = tablesWithSingleGoal({ type: "profitable_transfers", target: 50_000, category: "economy" });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => ({ cumulativeTransferBalance: 80_000 }),
+  });
+  assert.equal(payload.mandate.goals[0].status, "achieved");
+  assert.equal(payload.mandate.goals[0].awaitingData, false);
+});
+
+test("#4579 u25_development_delta: reel status fra planStart*-baseline (stubbet) + rytternes stats", async () => {
+  const tables = tablesWithSingleGoal(
+    { type: "u25_development_delta", target: 8, category: "identity" },
+    // planStartAvg = 100/2 = 50. currentAvg = (58+58)/2 = 58. delta/season(1) = 8 >= target 8.
+    { riders: [{ id: "r1", team_id: TEAM_ID, is_u25: true, stat_fl: 58 }, { id: "r2", team_id: TEAM_ID, is_u25: true, stat_fl: 58 }] },
+  );
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => ({ planStartU25StatSum: 100, planStartU25Count: 2 }),
+  });
+  assert.equal(payload.mandate.goals[0].status, "achieved");
+  assert.equal(payload.mandate.goals[0].awaitingData, false);
+});
+
+test("#4579 domestic_dominance: FORBLIVER awaiting_data (S-02g-skelet, dokumenteret kendt begrænsning)", async () => {
+  const tables = tablesWithSingleGoal({ type: "domestic_dominance", target: 1, category: "identity" });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => ({}),
+  });
+  const goal = payload.mandate.goals[0];
+  // mapGoalEvaluationToStatus: awaiting_data -> on_track (aldrig en falsk alarm),
+  // MEN awaitingData:true afslører nu at det er en datamangel, ikke en reel status.
+  assert.equal(goal.status, "on_track");
+  assert.equal(goal.awaitingData, true);
+});
+
+test("#4579 loadGoalContext kaster: payloaden leveres stadig, målet får awaitingData:true (best-effort-garanti)", async () => {
+  const tables = tablesWithSingleGoal({ type: "relative_rank", target: 3, category: "results" });
+  const supabase = makeSupabase(tables);
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => { throw new Error("boom"); },
+  });
+  assert.ok(payload.mandate);
+  const goal = payload.mandate.goals[0];
+  assert.equal(goal.status, "on_track");
+  assert.equal(goal.awaitingData, true);
+});
+
+test("#4579 loadGoalContext kaldes med boardId=source.from_board_id og leagueDivisionId=standing.league_division_id", async () => {
+  const tables = tablesWithSingleGoal(
+    { type: "relative_rank", target: 3, category: "results" },
+    {
+      board_mandates: [{
+        id: "mand-4579", team_id: TEAM_ID, season_number: 3, status: "active",
+        signed_at: "2026-08-01T00:00:00Z",
+        source: { from_board_id: "board-xyz" },
+        goals: [{ type: "relative_rank", target: 3, category: "results" }],
+      }],
+      board_profiles: [{ id: "board-xyz", team_id: TEAM_ID, plan_type: "1yr", seasons_completed: 0, plan_start_season_number: 3, plan_start_sponsor_income: 100 }],
+      season_standings: [{ team_id: TEAM_ID, rank_in_division: 2, league_division_id: 42, updated_at: "2026-08-20T00:00:00Z" }],
+    },
+  );
+  const supabase = makeSupabase(tables);
+  let capturedArgs = null;
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async (args) => { capturedArgs = args; return { divisionManagerCount: 5 }; },
+  });
+  assert.ok(payload.mandate);
+  assert.ok(capturedArgs);
+  assert.equal(capturedArgs.boardId, "board-xyz");
+  assert.equal(capturedArgs.leagueDivisionId, 42);
 });
 
 // ── Rene hjælpefunktioner ──────────────────────────────────────────────────────
