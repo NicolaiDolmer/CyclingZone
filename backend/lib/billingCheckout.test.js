@@ -36,12 +36,23 @@ function res() {
   return { code: 0, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } };
 }
 
-// #2813: default-tilstanden er pauset indtil go-live-kravene (support-e-mail +
-// moms-verifikation) er på plads — ejer flipper flaget.
-test("checkout: pauset som default → 503 checkout_paused, ingen Alunta-kald", async () => {
-  assert.equal(CHECKOUT_PAUSED, true);
+// #2813 (ejer-beslutning 2/9, "åbn nu, ret bagefter"): default-tilstanden er
+// nu åben. Selve pause-mekanikken (paused: true) testes stadig eksplicit
+// herunder, så nødbremsen forbliver bevist virkende.
+test("checkout: åbent som default → ensureCustomer + checkout_url uden eksplicit paused", async () => {
+  assert.equal(CHECKOUT_PAUSED, false);
   const client = fakeClient();
   const handler = createCheckoutHandler({ client, planIds: { monthly: "plan-m" }, appBaseUrl: "https://cz" });
+  const r = res();
+  await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
+  assert.equal(r.code, 200);
+  assert.equal(r.body.checkout_url, "https://app.alunta.com/checkout/xyz");
+  assert.equal(client.calls.length, 2);
+});
+
+test("checkout: paused=true (eksplicit) → 503 checkout_paused, ingen Alunta-kald", async () => {
+  const client = fakeClient();
+  const handler = createCheckoutHandler({ client, paused: true, planIds: { monthly: "plan-m" }, appBaseUrl: "https://cz" });
   const r = res();
   await handler({ team: { id: "t" }, user: {}, body: acceptedBody() }, r);
   assert.equal(r.code, 503);
