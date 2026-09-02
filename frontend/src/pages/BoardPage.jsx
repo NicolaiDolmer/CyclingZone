@@ -1695,6 +1695,19 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
   const { t } = useTranslation("board");
   const [detailOpen, setDetailOpen] = useState(false);
 
+  // #3575 · flerårsplaner (3yr/5yr) er nu låst FULDT ud af planperioden (ikke kun
+  // same-sæson vindue/progress som 1yr) — vis den PRÆCISE grund frem for én
+  // generisk "låst resten af sæsonen"-tekst der ville være vildledende her.
+  // #3012: knappen skal forblive synlig men blokeret (useBlockedAction/BlockedNote),
+  // ikke bare forsvinde. Hooket kaldes UBETINGET (før planData-early-return'et
+  // nedenfor) — planData kan være null her, deraf optional chaining.
+  const renewBlockReason = planData?.renew_locked
+    ? (planData.renew_lock_code === "BOARD_RENEGOTIATION_LOCKED_PLAN_ACTIVE"
+      ? t("plan.renewLockedPlanActive")
+      : t("plan.renewLocked"))
+    : null;
+  const renewBlock = useBlockedAction(renewBlockReason);
+
   if (!planData) {
     return (
       <Card className="p-4 flex flex-col items-center justify-center gap-2 min-h-[120px] text-center">
@@ -1708,7 +1721,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
   }
 
   const { board, plan_duration, seasons_remaining, seasons_completed, plan_progress_pct,
-    cumulative_stats, snapshots, satisfaction_events, is_expired, renew_locked, outlook, request_status, request_options,
+    cumulative_stats, snapshots, satisfaction_events, is_expired, outlook, request_status, request_options,
     satisfaction_progress, passive_modifier, bonus_offer_progress } = planData;
 
   const goals = typeof board.current_goals === "string"
@@ -1911,19 +1924,25 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             onRequest={onRequest}
           />
 
-          {!is_expired && !renew_locked && (
+          {/* #3012/#3575 · knappen forbliver synlig og forklaret når den er
+              blokeret (useBlockedAction/BlockedNote) i stedet for at forsvinde —
+              en fjernet knap er ikke selv-forklarende for spilleren. */}
+          {!is_expired && (
             <>
-              <button type="button" onClick={onRenew} disabled={renewBusy} aria-busy={renewBusy || undefined}
-                className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-cz hover:text-cz-2 hover:border-cz-border/80 transition-all disabled:opacity-50">
+              <button type="button" onClick={renewBlock.guard(onRenew)} disabled={renewBusy}
+                aria-busy={renewBusy || undefined} {...renewBlock.blockedProps}
+                className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-cz hover:text-cz-2 hover:border-cz-border/80 transition-all disabled:opacity-50 aria-disabled:opacity-50">
                 {renewBusy ? t("plan.renewing") : t("plan.renew")}
               </button>
+              {renewBlock.blocked && (
+                <BlockedNote id={renewBlock.reasonId} pulseKey={renewBlock.pulseKey} className="text-3xs justify-center mt-1">
+                  {renewBlock.reason}
+                </BlockedNote>
+              )}
               {renewError && (
                 <p role="alert" className="text-cz-danger text-3xs text-center mt-1">{renewError}</p>
               )}
             </>
-          )}
-          {!is_expired && renew_locked && (
-            <p className="text-cz-3 text-3xs text-center">{t("plan.renewLocked")}</p>
           )}
         </div>
       )}
@@ -2141,7 +2160,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
   );
 }
 
-function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
+function WizardStep3({ finalGoals, planType, onSign, saving, onBack, hasExistingBoard = false }) {
   const { t } = useTranslation("board");
   const duration = getPlanDuration(planType);
   return (
@@ -2188,6 +2207,15 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
           ))}
         </div>
       </Section>
+
+      {/* #3575 · ærlig reset-copy: hvad underskriften nulstiller, og hvad den
+          IKKE gør (bestyrelses-requests forbliver låst sæsonen ud). Vist FØR
+          bekræftelsen — den oprindelige klage var at info kom for sent. */}
+      {hasExistingBoard && (
+        <p className="text-cz-3 text-xs bg-cz-subtle border border-cz-border rounded-cz p-3 mb-4">
+          {t("wizard.resetNotice")}
+        </p>
+      )}
 
       <button onClick={onSign} disabled={saving}
         className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz
@@ -3129,6 +3157,11 @@ export default function BoardPage() {
                 onSign={signContract}
                 saving={saving}
                 onBack={handleWizardBack}
+                // #3575 · ærlig reset-copy vises FØR underskrift (ikke først bagefter,
+                // som var den oprindelige spillerklage). Kun relevant når der ER en
+                // eksisterende plan at (gen)underskrive over — en helt ny førstegangs-
+                // signering har ingen tællere at nulstille.
+                hasExistingBoard={Boolean(wizardExistingPlanData?.board)}
               />
             )}
 

@@ -11,6 +11,11 @@ export const REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT = 5;       // F5: requests umul
 export const MID_CYCLE_PROGRESS_THRESHOLD_PCT = 50;          // F6: ≥50% plan-gennemført ELLER
 export const MID_CYCLE_SATISFACTION_DELTA_PCT = 30;          // >30% satisfaction-delta åbner re-orientering
 export const RENEGOTIATION_SEASON_PROGRESS_LOCK_PCT = 50;    // #915: gen-forhandling låst når ≥50% af sæsonen er kørt
+// #3575/#4377 · plan_type-værdier der løber over mere end én sæson. En "completed"
+// plan af disse typer er pr. definition ikke udløbet endnu (season-end-flowet i
+// economyEngine.js flipper selv status til "pending" når planen er fuldført) — så
+// den kan aldrig gen-underskrives før udløb, uanset sæson-fremdrift.
+const MULTI_YEAR_PLAN_TYPES = new Set(["3yr", "5yr"]);
 export const MAJOR_PIVOT_REQUEST_TYPES = new Set([           // F4: kun krydsninger youth↔star tæller
   "more_youth_focus",     // major hvis FRA star_signing
   "more_results_focus",   // major hvis FRA youth_development
@@ -436,9 +441,32 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
 // Gælder KUN signerede planer for den igangværende sæson. Udløbne/pending planer
 // (incl. første signering og fornyelse af en udløbet plan ved sæsonstart) må altid
 // signeres — guarden returnerer { locked: false } for dem.
+//
+// #3575/#4377 · Ejer-valg 1/9: lukker et re-roll-hul i ovenstående. Reglerne
+// nedenfor tjekker kun INDEVÆRENDE sæsons fremdrift, så en aktiv, ikke-udløbet
+// flerårsplan (3yr/5yr) kunne gen-underskrives tidligt i en NY sæson (lav
+// race_days_completed → sæsonstart-undtagelsen ramte, selvom planen reelt havde
+// 1-4 sæsoner tilbage). /board/sign's upsert nulstiller ubetinget seasons_completed,
+// cumulative_stage_wins/gc_wins og ruller plan_start_season_number om — så hullet
+// lod en manager reelt slette dårlig historik midt i en flerårsplan. Fremover: en
+// flerårsplan kan FØRST gen-underskrives når den er udløbet (planperioden
+// fuldført, dvs. negotiation_status er flippet til "pending" af season-end-flowet
+// i economyEngine.js). 1-årsplaner er UÆNDREDE af dette tjek — de udløber hver
+// sæson, så same-sæson-progress-reglerne nedenfor er fortsat deres eneste lås.
 export function getBoardRenegotiationLock({ board, activeSeason } = {}) {
   if (!board || board.negotiation_status !== "completed") {
     return { locked: false };
+  }
+
+  if (MULTI_YEAR_PLAN_TYPES.has(board.plan_type)) {
+    return {
+      locked: true,
+      code: "BOARD_RENEGOTIATION_LOCKED_PLAN_ACTIVE",
+      reason: `Denne ${board.plan_type}-plan er stadig aktiv og kan foerst gen-underskrives naar planperioden er fuldfoert.`,
+      // #678 Track 3: { code, params }-kontrakt til frontend resolveApiError.
+      errorCode: "board_renegotiation_locked_plan_active",
+      errorParams: { planType: board.plan_type },
+    };
   }
 
   const total = Number(activeSeason?.race_days_total ?? 0);
