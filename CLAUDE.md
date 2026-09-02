@@ -8,7 +8,7 @@ Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér r
 
 ## Page templates (binding — ejer-godkendt 23/7, #2849)
 
-Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/PAGE_TEMPLATES.md`](docs/design/PAGE_TEMPLATES.md) — læs den FØR du bygger eller ændrer en side: T1 standard content (max-w-4xl), T2 wide data (cap 1600px), T3 profile/detail (hero + tabs, max-w-5xl). Opfind ALDRIG eget sidehoved, container-bredde, padding, radius, typografi-trin eller loading/empty/error-markup. Bindende: én gold primary-knap pr. view, hairline-borders (ingen skygger), 5px card-radius, tabular figures på al numerik, stroke-ikoner (aldrig emoji). Artboards: `docs/design/design_handoff_page_templates/`.
+Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/PAGE_TEMPLATES.md`](docs/design/PAGE_TEMPLATES.md) — læs den FØR du bygger eller ændrer en side: T1 standard content (max-w-4xl), T2 wide data (cap 1600px), T3 profile/detail (hero + tabs, max-w-5xl). **Smagen** (hvad verdensklasse er, forbudsliste, dommer-tjekliste ja/nej) står i [`docs/design/TASTE.md`](docs/design/TASTE.md) (#4623): skabelonen er gulvet, TASTE er målet; enhver UI-PR skal kunne svare ja på tjeklisten. Opfind ALDRIG eget sidehoved, container-bredde, padding, radius, typografi-trin eller loading/empty/error-markup. Bindende: én gold primary-knap pr. view, hairline-borders (ingen skygger), 5px card-radius, tabular figures på al numerik, stroke-ikoner (aldrig emoji). Artboards: `docs/design/design_handoff_page_templates/`.
 
 ## Auto-loaded (intet at gøre)
 

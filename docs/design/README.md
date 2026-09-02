@@ -51,5 +51,6 @@ Tokens for farver, sidebar, accent, `me`-markør, motion, z-index og fonte **mat
 | `race-planning-proposal/` | V1/V2/V3 sæsonmatrix (`.dc.html` + `canvas.json`) | IA ejer-låst 21/8 (#1146) |
 | `board-mandate-mockups/` | boardroom + årsmøde + medlem (`.dc.html`) | retning ejer-godkendt 1/9 (#3514) |
 | `3721-traeningssidens-struktur/` | træningssidens tre faner | live 20/8 |
-| `youth-tiers/` | akademi/junior/U23-wireframes + brief | brief klar 2/9, wireframes afventer (#4617) |
+| `youth-tiers/` | akademi/junior/U23: brief, wireframes (runde 1-2), hi-fi (artboards 3a-3k) + `HANDOFF.md` med ejer-beslutninger | **hi-fi + handoff leveret 2/9 (#4617)**; regler indarbejdet i `YOUTH_RULES.md` §2.6; slice 0 = artboard 3b |
+| `TASTE.md` | hvad verdensklasse er: 11 principper m. screenshots, genre-referencer, forbudsliste, dommer-tjekliste | udkast 2/9 (#4623), afventer ejer-godkendelse før slice 2 |
 | `klub/`, `mockups/`, `rider-page/`, `screenshots/`, `ELEVATION_2849.md` | ældre referencer | bevares (slet aldrig design-planer) |

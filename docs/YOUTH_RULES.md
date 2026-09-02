@@ -28,7 +28,7 @@
 
 | EN | DA | Hvad det er |
 |---|---|---|
-| Academy | Akademi | Klubbens ungdomsafdeling. Paraplyen over intake, Junior team og U23 team. Én side i spillet |
+| Academy | Akademi | Klubbens ungdomsafdeling. Paraplyen over intake, Junior team og U23 team. **Siden "Academy" viser intake, Graduation Day og regnskab; trupperne har egne sider** (ejer 2/9, handoff, se §2.6) |
 | Intake | Intake-kuld | Kandidater tilbudt klubben (i dag hver søndag). Ikke en trup |
 | Class of S{n} | Årgang S{n} | Mærke på alle ryttere der kom ind i samme sæson (`riders.generation_tag`). Ikke en trup |
 | Junior team | Juniorhold | Trup med aldersloft. Sæsonalder 16-18. Løbsberettiget fra 17 (UCI junior = U19) |
@@ -54,7 +54,7 @@ Intake (tilbud)  →  Junior team 16-18  →  U23 team 19-22  →  Senior team 2
 
 | Regel | Beslutning | Kilde |
 |---|---|---|
-| Akademiet er en paraply, ikke en trup | Akademi-siden viser intake + Junior team + U23 team. Der findes ikke en fjerde "akademi-trup" | ejer 2/9, svar 1 (A+B) |
+| Akademiet er en paraply, ikke en trup | Der findes ikke en fjerde "akademi-trup". Akademi-siden viser intake, Graduation Day og regnskab; Junior team og U23 team er egne sider i Klubhus-navigationen (§2.6, ejer 2/9 handoff, amenderer svar 1's "én side") | ejer 2/9, svar 1 (A+B) + handoff 2/9 |
 | 16-årige | Sidder i Junior team, men er IKKE løbsberettigede før sæsonalder 17. Første år er træning + scouting | ejer 2/9 (A+B) + teknisk valg godkendt 2/9 |
 | Junior team | Sæsonalder 16-18. Bliver rytteren 19, skal han ud | ejer 2/9, svar 2 ("junior max 18") |
 | U23 team | Sæsonalder 19-22. Bliver rytteren 23, skal han ud | ejer 2/9, svar 2; matcher `isU23ForSeason` |
@@ -87,6 +87,7 @@ Ejer, ordret: *"Spilleren skal som udgangspunkt selv vælge hvor rytterne er. [.
 | Felt-gate (hård) | Hvert ungdomsløb skal have et køreligt felt via AI-fyld i 100 % af simulerede løbsdage ved nuværende population (addendum Scorecard C1). Fejler den, skæres antal divisioner, aldrig antallet af løb til nul |
 | Løbsfrekvens v1 (forslag) | U23 1-2 løb pr. uge, junior 1 pr. uge (addendum §7.3). Kalibreres i kalender-SSOT'en `CALENDAR_RULES.md` når slicen bygges |
 | Resultater | Føder rytterens profil, årgangens side (#2493) og krøniken (#2490). Ungdomsranglister vises pr. gruppe og samlet |
+| Hvor ungdomsløb vises (ejer 2/9, handoff) | To steder: i truppens egne faner (Calendar · Results · Standings · Development på Junior team- og U23 team-siden) OG på en egen side **"Youth races"** under Results (Select U23 team / Junior team, guld-knap `Set tactics`, faner Calendar · Results · Standings · Rankings). "A race is a race." Amenderer briefens antagelse om én side |
 
 ### 2.4 Én kontraktmodel (ejer 2/9, svar 2)
 
@@ -97,6 +98,26 @@ Ejer, ordret: *"Spilleren skal som udgangspunkt selv vælge hvor rytterne er. [.
 | Drift pr. besat ungdomsplads | Bevares som princip: hver besat plads i Junior team og U23 team koster fast drift pr. sæson (guld-dræn). Konstanten hedder i dag `ACADEMY.DRIFT_PER_SEASON` i `backend/lib/academyFlag.js` | Beløbet pr. tier afgøres i økonomi-sim (Scorecard C3), ikke her |
 | Loft pr. trup (ejer 2/9, svar 3: A) | Senior 30 (uændret). **Forslag:** U23 12, junior 10. Endelige tal via økonomi-sim i slice 2-spec | Erstatter den flade 8-plads-cap (`academy_full` ved `academy_count >= 8`) |
 | Intake og ungdomsauktion | Uændret scope (#2456): tilbud udløber efter `INTAKE_OFFER_EXPIRY_DAYS`, afvist kandidat går på ungdomsauktion uden sælger, usolgt = forlader sporten | Signeret kandidat lander i Junior team i stedet for "akademiet" |
+
+### 2.6 Fladerne (ejer-beslutninger i Claude Design-handoffet 2/9)
+
+Kilde: [`design/youth-tiers/HANDOFF.md`](design/youth-tiers/HANDOFF.md) + hi-fi-artboards 3a-3k i `design/youth-tiers/Youth tiers hi-fi.html`. Disse beslutninger vinder over briefens §4 hvor de afviger.
+
+| Regel | Beslutning |
+|---|---|
+| Trupperne er selvstændige områder | Klubhus-navigationen får `U23 team` og `Junior team` efter `My Team` (senior). `Academy` bliver: intake, Graduation Day, regnskab. Ingen "squads"-blok på Academy-siden |
+| Alle tre trupsider deler My Team-skabelonen | T2: PageHeader med trupnavn, faner, filterbar, DataTable. Ungdoms-faner: Squad · Calendar · Results · Standings · Development. Senior beholder sine faner. `TeamPage.jsx` genbruges med `squad`-param |
+| Ét trup-Select i alle rostere | `Squad: Senior team / U23 team / Junior team / All squads`. `All squads` tilføjer en Squad-kolonne. Checkbox pr. trup afvist |
+| Trupnavne | Default `[Club] U23` / `[Club] Juniors`, kan omdøbes via stille `Rename` i header-clusteret |
+| Flyt mellem trupper i UI | Række-handling `Move up` / `Move down` på trupsiden (sekundær, aldrig guld) OG `Move to squad`-menu i rytterprofilens hero. Begge åbner `AcademyTransferConfirmModal`. `Move down` disabled med tooltip når sæsonalder > 18 |
+| Guld, én pr. view | `Sign` (intake-kort på Academy), `Set tactics` (Youth races + truppens Calendar-fane), `Confirm all` (Graduation Day), `Sell / Auction` (rytterprofil som i dag) |
+| Graduation Day | T1-side: ét kort pr. overgang; pr. rytter identitet, rating-plade, potentiale-bånd, kontrakt, træner-sætning, segment (`Move up` default; blokeret = disabled + årsag i danger + `Sell` forvalgt). Banner KUN på Academy plus Inbox-notifikation, ikke på Dashboard. Tom tilstand: EmptyState `inbox`, ingen guld |
+| Rytterens rejse | Nyt kort i `RiderHistoryTab`, venstre kolonne af 1.55fr/1fr-gridet. Kun ægte hændelser (intake, trupskifte, første sejr, Graduation Day). `Developed by [club]` kun ved klubskifte. Tom: EmptyState `road` |
+| "Class of S{n}" | Vises IKKE som linje på Academy (ejer 2/9: ikke forstået, ikke nødvendigt før #2493). Kun som meta-label på rejse-kortet og som hændelse ("Discovered · Class of S3") |
+| Mobil | Bundnav uændret; U23 team og Junior team nås via menuen |
+| Slice 0 (S1b) | Bygges præcis som artboard 3b: dagens Academy-side + ét kort `Youth squads` under roster-kortet, to rækker med FacilityTrackCard-pillen "Coming soon", én sætning hver, stille handling `Roadmap`. Ingen nye nav-punkter, ingen tomme tabeller, ingen tal |
+
+Trup-lofter vist i artboards (Junior 10, U23 12) er §2.4-forslaget, stadig afventende økonomi-sim.
 
 ### 2.5 Hvad der IKKE ændres
 
@@ -150,9 +171,9 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 
 | Slice | Indhold | Gate |
 |---|---|---|
-| **Wireframes** ([#4617](https://github.com/NicolaiDolmer/CyclingZone/issues/4617), ejer) | De fire skærme i Claude Design efter `docs/design/youth-tiers/CLAUDE_DESIGN_BRIEF.md` | Handoff gemt i `docs/design/youth-tiers/` |
+| **Wireframes** ([#4617](https://github.com/NicolaiDolmer/CyclingZone/issues/4617), ejer) | **LEVERET 2/9:** hi-fi (artboards 3a-3k), wireframes (runde 1-2) og `HANDOFF.md` ligger i `docs/design/youth-tiers/`. Ejer-beslutningerne er indarbejdet i §2.6 | Handoff gemt i `docs/design/youth-tiers/` ✅ |
 | **0 · Kommer snart** ([#4618](https://github.com/NicolaiDolmer/CyclingZone/issues/4618)) | Akademi-siden får den nye ramme (§3). Bygges mod wireframe S1b | Ejer-visuelt go på screenshots før merge (UI-reglen) |
-| **1 · Trup-datamodel** ([#4619](https://github.com/NicolaiDolmer/CyclingZone/issues/4619)) | `riders.squad` (senior / u23 / junior) erstatter `is_academy`; migration mapper efter sæsonalder (16-18 → junior, 19-22 → u23, ≥ 23 med `is_academy` → pending flyt); flyt-endpoint generaliseres; Graduation Day for begge overgange; loft pr. trup; én kontraktmodel | Idempotent migration + post-verify; snapshot før mutation; ejer ser dry-run-diff (antal ryttere pr. mål-trup pr. hold) |
+| **1 · Trup-datamodel** ([#4619](https://github.com/NicolaiDolmer/CyclingZone/issues/4619)) | `riders.squad` (senior / u23 / junior) erstatter `is_academy`; migration mapper efter sæsonalder (16-18 → junior, 19-22 → u23, ≥ 23 med `is_academy` → pending flyt); flyt-endpoint generaliseres; Graduation Day for begge overgange; loft pr. trup; én kontraktmodel. **UI pr. handoff (§2.6):** trupsider i Klubhus-nav (ikke tabeller på Academy), trup-Select i alle rostere, `Move to squad` i rytterprofilen, Graduation Day-siden (3g/3h), rejse-kortet (3i/3j) | Idempotent migration + post-verify; snapshot før mutation; ejer ser dry-run-diff (antal ryttere pr. mål-trup pr. hold) |
 | **2 · U23 team + U23-kalender + U23-pyramide** ([#4620](https://github.com/NicolaiDolmer/CyclingZone/issues/4620)) | Kalender, AI-fyld, udtagelse via assistent, taktik via Planning Center, ranglister, op/nedrykning | Scorecard C1-C3, C7 (addendum §5); `CALENDAR_RULES.md` opdateres i samme PR |
 | **3 · Junior team + junior-kalender + junior-pyramide** ([#4621](https://github.com/NicolaiDolmer/CyclingZone/issues/4621)) | Fuld tre-tier | Samme gates, genmålt mod da-aktuel population |
 
