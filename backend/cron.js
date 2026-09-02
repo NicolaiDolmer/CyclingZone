@@ -1160,7 +1160,8 @@ async function runOwnershipInvariantWatchCron() {
       `🚨 Ownership-invariant-vagt: brud fundet — youthOwned=${result.findings.youthOwned}, ` +
       `sellerlessOwned=${result.findings.sellerlessOwned}, staleIntake=${result.findings.staleIntake}, ` +
       `strandedAcademy=${result.findings.strandedAcademy}, ` +
-      `stalePendingTransfer=${result.findings.stalePendingTransfer} (#2647/#3330)`
+      `stalePendingTransfer=${result.findings.stalePendingTransfer}, ` +
+      `teamsMissingBoardMembers=${result.findings.teamsMissingBoardMembers} (#2647/#3330/#4664)`
     );
   }
 }
