@@ -53,9 +53,9 @@ Ejer 2/9: *"Standarden skal hæves markant. Og vi skal være fri for AI slop nu.
 ## E · Løbende (aldrig hovedspor)
 
 12. 🔴 **Spiller-kommunikation (#428), viger aldrig:** MAN uge-note · ONS spørgsmål · SØN ugens øjeblik. Tråd-bank #4117.
-13. Gæld: cutover-rest (#4010 · #3584) · #3513 opsluger #2442/#2583/#2445. Ops: #4016 · #3486 · #3487 · #691 · worktree-hygiejne.
+13. Gæld: cutover-rest (#4010 · #3584). Ops: pengeplan §3 område 2.
 14. 🔵 **Fair play (#3131):** #3138 ENESTE værn. Rest: retnings-/overbetalings-signal · #3438 · #3139. **#4537** to hold på to konti: hold-valg udestår.
-15. ⚪ **Forum** (`FORUM_RULES.md`): #4252 · #4255. Rolle mod Discord **15/9 (#4235)**. ⚪ **Typelaget:** rest #4326-#4333.
+15. ⚪ **Forum:** rolle mod Discord **15/9 (#4235)**. ⚪ **Typelaget:** #4327 #4328 #4333.
 
 ## F · Backlog-bølger (#3154; audit 31/8, beslutningsark `docs/audits/*-2026-08-31.md`)
 
