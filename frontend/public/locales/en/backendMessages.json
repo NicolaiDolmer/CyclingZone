@@ -278,6 +278,23 @@
       "title": "The board chose {planLabel} for you",
       "message": "You didn't negotiate your {planLabel} in time. The board picked focus \"{focus}\" and default goals. You can still request changes once the plan is running."
     },
+    "boardMandateOpened": {
+      "title": "Your board is ready for the annual meeting",
+      "message": "Your board has proposed next season's mandate. Take the time you need. You'll get a reminder before the board signs on its own."
+    },
+    "boardMandateT3Reminder": {
+      "title": "The board is waiting for your annual mandate",
+      "message": "You have {daysLeft} days left to negotiate your annual mandate. If you don't act, the board will sign for you."
+    },
+    "boardMandateT1Reminder": {
+      "title": "Last chance: sign your annual mandate",
+      "messageSingle": "The board signs on its own in {daysLeft} day. Open the annual meeting now.",
+      "messageMulti": "The board signs on its own in {daysLeft} days. Open the annual meeting now."
+    },
+    "boardMandateAutoAccepted": {
+      "title": "The board signed your annual mandate for you",
+      "message": "You didn't sign your annual mandate in time. The board kept the proposed goals and signed on your behalf. You can still request changes once the season is running."
+    },
     "autoBidPlaced": {
       "title": "Autobid placed",
       "message": "{bidderName}'s autobid placed {amount} CZ$ on {riderName}"

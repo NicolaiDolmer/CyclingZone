@@ -332,6 +332,14 @@ import {
 // #3514/#4557 S-M2b · Mandatets Boardroom-endpoint (GET /board/room).
 import { isBoardMandateModelEnabled } from "../lib/boardMandateFlag.js";
 import { buildBoardRoomPayload } from "../lib/boardRoom.js";
+// #4557 S-M2c · Årsmødet (GET/POST /board/meeting/*).
+import {
+  buildBoardMeetingPayload,
+  regenerateMandateFocus,
+  signMandate,
+  MandateSignConflictError,
+} from "../lib/boardMandateMeeting.js";
+import { MandateAdjustmentBudgetError } from "../lib/boardMandate.js";
 import { computeWeekendSatisfactionUpdate } from "../lib/boardWeekendUpdate.js";
 import { computeBonusOfferProgress, computePassiveModifierInfo } from "../lib/boardTransparency.js";
 import { isBoardTestModeActive } from "../lib/boardTestMode.js";
@@ -15103,6 +15111,123 @@ router.get("/board/room", requireAuth, presencePulseLimiter, async (req, res) =>
     if (!enabled) return res.json({ enabled: false });
 
     const payload = await buildBoardRoomPayload({ supabase, teamId });
+    res.json(payload);
+  } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// #4557 S-M2c · Årsmødet (spec §4.7-4.8). Samme auth/team-scoping som
+// GET /board/room. Flag off → `{ available: false }` (samme konvention som
+// Boardroom's `{ enabled: false }`) — INTET andet læses.
+router.get("/board/meeting", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
+
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isBoardMandateModelEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ available: false });
+
+    const payload = await buildBoardMeetingPayload({ supabase, teamId });
+    res.json(payload);
+  } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// #4557 S-M2c · Regenererer det foreslåede mandat for et NYT fokus (spec
+// §4.8) — nulstiller justeringerne (nye mål = 0 brugt). Kun mens mandatet
+// står i status 'proposed'.
+router.post("/board/meeting/focus", requireAuth, boardWriteLimiter, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
+
+    const { focus } = req.body || {};
+    if (!isValidBoardFocus(focus)) {
+      return res.status(400).json({ error: "Invalid focus" });
+    }
+
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isBoardMandateModelEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(404).json({ error: "Mandat-modellen er ikke aktiv", available: false });
+
+    const payload = await regenerateMandateFocus(supabase, { teamId, focus, isBetaTester });
+    if (!payload) return res.status(404).json({ error: "Mandat-modellen er ikke aktiv", available: false });
+    if (payload.available === false) {
+      return res.status(404).json({ error: "Intet foreslået mandat at ændre fokus på", available: false });
+    }
+    res.json(payload);
+  } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// #4557 S-M2c · Underskriv årsmødet i ét kald (spec §4.5). Idempotent på
+// mandate.id + status 'proposed'. Body:
+//   { mandateId, focus?, adjustments: [{ goalKey, choice }], request: { type } | null, visionSlot: { accept } | null }
+router.post("/board/meeting/sign", requireAuth, boardWriteLimiter, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
+
+    const { mandateId, mandate_id, focus, adjustments, request, visionSlot, vision_slot } = req.body || {};
+    const resolvedMandateId = mandateId || mandate_id;
+    if (!resolvedMandateId) {
+      return res.status(400).json({ error: "mandateId is required", errorCode: "mandate_id_required" });
+    }
+    if (focus != null && !isValidBoardFocus(focus)) {
+      return res.status(400).json({ error: "Invalid focus" });
+    }
+    if (request?.type && !isValidBoardRequestType(request.type)) {
+      return res.status(400).json({ error: "Invalid request_type" });
+    }
+
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isBoardMandateModelEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(404).json({ error: "Mandat-modellen er ikke aktiv", available: false });
+
+    let payload;
+    try {
+      payload = await signMandate(supabase, {
+        teamId,
+        mandateId: resolvedMandateId,
+        focus: focus || null,
+        adjustments: Array.isArray(adjustments) ? adjustments : [],
+        request: request?.type ? { type: request.type } : null,
+        visionSlot: visionSlot ?? vision_slot ?? null,
+        isBetaTester,
+        signedVia: "manager",
+      });
+    } catch (signError) {
+      if (signError instanceof MandateAdjustmentBudgetError) {
+        return res.status(409).json({
+          error: signError.message,
+          errorCode: signError.errorCode,
+          used: signError.used,
+          allowed: signError.allowed,
+        });
+      }
+      if (signError instanceof MandateSignConflictError) {
+        return res.status(signError.status || 409).json({ error: signError.message, errorCode: signError.errorCode });
+      }
+      throw signError;
+    }
+    if (!payload) return res.status(404).json({ error: "Mandat-modellen er ikke aktiv", available: false });
+
     res.json(payload);
   } catch (e) {
     captureApiRouteError(e, req);
