@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../lib/actionTelemetry.js";
 import { PageLoader, EmptyState, ErrorState, Button, Select, Checkbox, Modal, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
-import TerrainGlyph from "../components/calendar/TerrainGlyph.jsx";
+import TerrainCodeGlyph from "../components/race/TerrainCodeGlyph";
+import { densityForDivision } from "../lib/calendarTierDensity";
 import {
   buildMonthGrid,
   expandStageEvents,
@@ -21,6 +22,14 @@ const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 // — brosten var tidligere umuligt at skelne fra en flad sprint-etape i kalenderen).
 const LEGEND_BUCKETS = ["sprint", "cobbles", "hilly", "mountain", "itt", "ttt"];
 const TABS = ["mine", "all", "divisions"];
+// #4386: cellens loft var hardcodet til 4 uanset division, selvom D1 kører
+// 5,0 etaper/løbsdag i snit (målt 29/8) — "+N more" var derfor dagligdags for
+// D1-spillere. Loftet er nu divisionens egen density (TIER_DENSITY,
+// docs/CALENDAR_RULES.md §1). Mobilens visning er UÆNDRET ved 3: cellen deler
+// ikke plads med resten af siden på desktop, men på 375px er hver ekstra
+// række en tabet skærm-højde, og "+N more" åbner allerede dagens FULDE
+// program i modalen — loftet er en læsbarheds-afvejning, ikke skjult data.
+const MOBILE_DAY_CAP = 3;
 
 // Today in Europe/Copenhagen as "YYYY-MM-DD" — used to highlight the current day cell
 // independent of the engine (the calendar is a read view, today is always "now").
@@ -168,6 +177,10 @@ export default function CalendarPage() {
 
   const byDate = useMemo(() => groupStageEventsByDate(stageEvents), [stageEvents]);
   const weeks = useMemo(() => (cursor ? buildMonthGrid(cursor.year, cursor.month) : []), [cursor]);
+  // #4386: én division synligt (mine/en valgt division) -> dens egen density;
+  // "alle divisioner" blander tiers i samme celle -> bredeste (D1's 5), se
+  // calendarTierDensity.js.
+  const dayCap = densityForDivision(activeDivision);
 
   if (loading) return <PageLoader label={t("loadingAria")} />;
 
@@ -350,6 +363,7 @@ export default function CalendarPage() {
                     todayISO={todayISO}
                     t={t}
                     onExpand={setExpandedDayIso}
+                    dayCap={dayCap}
                   />
                 ))}
               </div>
@@ -381,7 +395,7 @@ export default function CalendarPage() {
           <span className="font-data text-3xs font-bold uppercase tracking-[0.14em] text-cz-3">{t("legend.title")}</span>
           {LEGEND_BUCKETS.map((b) => (
             <span key={b} className="flex items-center gap-1.5 text-cz-2">
-              <TerrainGlyph bucket={b} className="text-cz-2" />
+              <TerrainCodeGlyph bucket={b} width={22} height={13} className="text-cz-2" />
               <span className="text-xs">{t(`legend.${b}`)}</span>
             </span>
           ))}
@@ -452,14 +466,23 @@ function CalendarControls({ t, eyebrow = null, division, onDivision, data, avail
 
 // ── day cell ─────────────────────────────────────────────────────────────────
 
-function DayCell({ cell, entries, todayISO, t, onExpand }) {
+function DayCell({ cell, entries, todayISO, t, onExpand, dayCap }) {
   if (!cell) {
     return <div className="border-b border-r border-cz-border bg-cz-subtle/40 min-h-[7rem]" aria-hidden="true" />;
   }
   const isToday = cell.iso === todayISO;
   const list = entries || [];
-  const shown = list.slice(0, 4);
-  const overflow = list.length - shown.length;
+  // #4386: loftet er divisionens density (dayCap, 5/4/3/2), ikke det gamle
+  // hardcodede 4 — men mobil holder sig til MOBILE_DAY_CAP uanset division
+  // (se konstanten). Begge lister deler DOM: chips ud over mobil-loftet men
+  // inden for dagCap er stadig i markup'et, bare skjult under sm (640px) via
+  // CSS — samme tal cellen faktisk viser på desktop, ingen ekstra JS-viewport-
+  // lytter. Cellens egen grid-min-width (630px) er allerede den samme
+  // breakpoint som appens øvrige mobil-cutover (PAGE_TEMPLATES.md).
+  const mobileCap = Math.min(dayCap, MOBILE_DAY_CAP);
+  const shown = list.slice(0, dayCap);
+  const desktopOverflow = list.length - shown.length;
+  const mobileOverflow = list.length - Math.min(list.length, mobileCap);
 
   return (
     <div
@@ -474,20 +497,31 @@ function DayCell({ cell, entries, todayISO, t, onExpand }) {
           </span>
         )}
       </div>
-      <div className="space-y-1">
-        {shown.map((ev) => (
-          <StageChip key={`${ev.raceId}:${ev.stage}`} ev={ev} t={t} />
+      <div className="space-y-0.5">
+        {shown.map((ev, i) => (
+          <StageChip key={`${ev.raceId}:${ev.stage}`} ev={ev} t={t} className={i >= mobileCap ? "hidden sm:block" : undefined} />
         ))}
         {/* #2756: "+N more" var før statisk tekst — spillere kunne ikke se resten
             af dagens program uden at være i den division/pulje selv. Nu åbner den
-            et dag-panel med hele dagens løb (Discord-feedback, thelamba 20/7). */}
-        {overflow > 0 && (
+            et dag-panel med hele dagens løb (Discord-feedback, thelamba 20/7).
+            #4386: to knapper, én pr. breakpoint — kun den ene er nogensinde
+            synlig (sm:hidden / hidden sm:block), begge åbner samme modal. */}
+        {mobileOverflow > 0 && (
           <button
             type="button"
             onClick={() => onExpand(cell.iso)}
-            className="block w-full px-0.5 text-start text-3xs text-cz-3 underline decoration-dotted transition-colors hover:text-cz-1"
+            className="sm:hidden block w-full px-0.5 text-start text-3xs text-cz-3 underline decoration-dotted transition-colors hover:text-cz-1"
           >
-            {t("moreRaces", { count: overflow })}
+            {t("moreRaces", { count: mobileOverflow })}
+          </button>
+        )}
+        {desktopOverflow > 0 && (
+          <button
+            type="button"
+            onClick={() => onExpand(cell.iso)}
+            className="hidden sm:block w-full px-0.5 text-start text-3xs text-cz-3 underline decoration-dotted transition-colors hover:text-cz-1"
+          >
+            {t("moreRaces", { count: desktopOverflow })}
           </button>
         )}
       </div>
@@ -521,7 +555,7 @@ function DayDetailModal({ iso, events, onClose, t, locale }) {
 // Én chip pr. etape: klikbar ind på løbets planlægningsside (?stage=N), med terræn-glyf,
 // løbsnavn og en anden linje med "N. etape · HH:MM" (endagsløb: kun klokkeslæt).
 
-function StageChip({ ev, t }) {
+function StageChip({ ev, t, className = "" }) {
   const mine = ev.isMine;
   const isStageRace = ev.raceType === "stage_race";
   const stageLabel = isStageRace ? t("chip.stageNum", { n: ev.stage }) : null;
@@ -536,13 +570,16 @@ function StageChip({ ev, t }) {
       data-testid="calendar-race-chip"
       aria-label={t("chip.openRace", { name: ev.name })}
       title={a11yLabel}
-      className={`block rounded-cz border px-1.5 py-1 leading-tight transition-colors
+      className={`block rounded-cz border px-1.5 py-0.5 leading-tight transition-colors
         ${mine
           ? "border-cz-accent/40 bg-cz-accent/[0.07] hover:bg-cz-accent/[0.14]"
-          : "border-cz-border bg-cz-subtle/50 opacity-80 hover:opacity-100 hover:bg-cz-subtle"}`}
+          : "border-cz-border bg-cz-subtle/50 opacity-80 hover:opacity-100 hover:bg-cz-subtle"} ${className}`}
     >
       <div className="flex items-center gap-1.5">
-        <TerrainGlyph bucket={ev.terrain || "sprint"} width={18} height={10} className={mine ? "text-cz-1" : "text-cz-3"} />
+        {/* #4143: bogstavkode-primitiv (delt med planlæggerens MasterCanvas) —
+            en fuld mini-profil kræver rutedata pr. race, som kalenderens svar
+            ikke henter (docs/CALENDAR_RULES.md, se lib/terrainCode.ts). */}
+        <TerrainCodeGlyph bucket={ev.terrain || "sprint"} width={18} height={10} className={mine ? "text-cz-1" : "text-cz-3"} />
         <span className={`truncate text-2xs font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{ev.name}</span>
       </div>
       {secondLine && (
