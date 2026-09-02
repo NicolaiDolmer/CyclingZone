@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { STAT_KEYS, STAT_LABELS_MAP } from "./RiderFilters";
+import { buttonClass } from "./ui/buttonStyles.js";
 
 export default function StatsToggle({ visibleStats, onToggleStat, onShowAll, onHideAll }) {
   // Delt på tværs af sider (auktioner + rytterdatabase) → common-namespace.
@@ -30,16 +31,18 @@ export default function StatsToggle({ visibleStats, onToggleStat, onShowAll, onH
 
   return (
     <div className="relative" ref={ref}>
+      {/* #4628: guld-tinten paa "aktiv" var et femte prioritetssignal ved siden af
+          de fire tilladte (TASTE P8/fork 3) og gav to knap-hoejder i sidehovedets
+          action-cluster. Kanonisk sekundaer knap; taelleren baerer selv tilstanden. */}
       <button
+        type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-haspopup="true"
-        className={`inline-flex items-center min-h-[44px] px-3 py-1.5 rounded-cz text-sm font-medium transition-all border whitespace-nowrap
-          ${count > 0
-            ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-            : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}
+        className={`${buttonClass({ variant: "secondary", size: "sm" })} whitespace-nowrap`}
       >
-        {t("controls.statsToggleButton")} {count > 0 && <span className="text-2xs font-mono ms-1">({count}/{total})</span>}
+        {t("controls.statsToggleButton")}
+        {count > 0 && <span className="font-data tabular-nums text-2xs">({count}/{total})</span>}
       </button>
 
       {open && (
