@@ -1202,6 +1202,10 @@
         "title": "Fatigue matters",
         "text": "Tired helpers support their captain less, and racing builds fatigue. Rotating your squad between races keeps your stars fresh for the days that matter."
       },
+      "assistantFill": {
+        "title": "When the assistant fills a line-up",
+        "text": "The assistant never overwrites a line-up you set yourself, and it never touches a race day you cleared on purpose. What it does on its own depends on the setting we run: it can leave every line-up to you, it can fill a race you left completely empty shortly before it starts, or you can switch it on for your team and let it pick. Whatever the setting, a team that is empty or below six riders when the race starts is still filled up to six so you take the start."
+      },
       "scouting": {
         "title": "Scouting other divisions",
         "text": "Switch the race hub to 'My division' or 'Other divisions' to browse any pool's upcoming start lists, read-only. Start lists open seven days before each race and show gross squads only (which riders a team has entered), so you can size up the expected field. Roles, form and fatigue stay hidden, and races further out stay locked until their start list opens."

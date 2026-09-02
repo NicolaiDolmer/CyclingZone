@@ -1047,6 +1047,11 @@ export function apiResponse(pathname, search = "") {
   }
   // Fake sequential placeholder ID (not a secret; Discord client IDs are public) so the preview shows the connected DM-settings state.
   if (pathname.endsWith("/api/me/discord-status")) return { discord_id: "123456789012345678", dm_enabled: true, dm_prefs: { board_update: false }, bot_configured: true }; // gitleaks:allow
+  // #4201: assistentens tilstand. Preview viser opt_in-tilstanden, saa kontakten
+  // paa Profil-siden er synlig uden at noget flippes i prod (den staar proactive).
+  if (pathname.endsWith("/api/me/assistant-settings")) {
+    return { mode: "opt_in", late_fill_hours: 24, autopick_enabled: true };
+  }
   // #3102 etape 3: verdens-kataloget bor i Resultat-hubbens Arkiv-fane nu.
   // Returnerede før en tom liste med forkert shape ({pool, summary} forventes)
   // → fladen så død ud på preview. Lille men ægte pulje, så ejer-gennemklik
