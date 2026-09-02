@@ -163,18 +163,18 @@ export function computeRegroupSeconds(
   //     (fronten sidder op naar vejen peger nedad, en jagende gruppe koerer
   //     hurtigere ned end en enkelt mand). Uden det proportionale led ville en
   //     selektion paa 10+ minutter passere en 15 km nedkoersel naesten uroert.
-  const absoluteClose = extra.regroupSecondsPerKm * km * techFactor * abilityFactor;
-  const fractionPerSegment = 1 - Math.pow(1 - clamp(extra.regroupGapFractionPerKm, 0, 1), km);
+  const secondsPerKm = isFinishDescent ? extra.regroupFinishSecondsPerKm : extra.regroupSecondsPerKm;
+  const gapFractionPerKm = isFinishDescent ? extra.regroupFinishGapFractionPerKm : extra.regroupGapFractionPerKm;
+
+  const absoluteClose = secondsPerKm * km * techFactor * abilityFactor;
+  const fractionPerSegment = 1 - Math.pow(1 - clamp(gapFractionPerKm, 0, 1), km);
   const proportionalClose = gap * clamp(
     fractionPerSegment * techFactor * abilityFactor,
     0,
     extra.regroupMaxGapFractionPerSegment,
   );
 
-  // En nedkoersel der ER finalen udligner langt mere — se
-  // DESCENT_EXTRA_TUNING.regroupFinishMultiplier.
-  const finishFactor = isFinishDescent ? extra.regroupFinishMultiplier : 1;
-  const closing = Math.max(absoluteClose, proportionalClose) * finishFactor;
+  const closing = Math.max(absoluteClose, proportionalClose);
   return round2(Math.min(gap, Math.max(0, closing)));
 }
 

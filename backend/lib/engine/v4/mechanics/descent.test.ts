@@ -329,10 +329,13 @@ function buildMultiGroupScenario(
     return { id, kind: "peloton" as GroupKind, rider_ids: riderIds, gap_seconds: spec.gap, cohesion: 1 };
   });
   const segment = descentSegment(technicality, 40, 40 + lengthKm);
+  // Nedkoerslen ER finalen: regrupperingen er kalibreret paa finale-nedkoersler
+  // (midtvejs-leddet er bevidst 0, se DESCENT_EXTRA_TUNING i tuning.ts).
+  const route: RouteV2 = { ...ROUTE_STUB, segments: [segment] };
   return {
     state: { km: 40, groups, riders, virtual_gc: {} },
     ctx: {
-      segment, segmentIndex: 3, route: ROUTE_STUB, entrants: entrantsById,
+      segment, segmentIndex: 0, route, entrants: entrantsById,
       tuning: RACE_V4_TUNING, rngFor: boundRngFor("regroup-seed"),
     },
   };
@@ -375,7 +378,7 @@ test("regruppering: computeRegroupSeconds lukker aldrig mere end hullet og aldri
       fc.integer({ min: 0, max: 99 }),
       fc.integer({ min: 0, max: 99 }),
       (gap, km, tech, chase, ahead) => {
-        const closed = computeRegroupSeconds(gap, km, tech, chase, ahead);
+        const closed = computeRegroupSeconds(gap, km, tech, chase, ahead, undefined, true);
         assert.ok(closed >= 0, `lukning blev negativ: ${closed}`);
         assert.ok(closed <= gap + 1e-9, `lukning (${closed}) oversteg hullet (${gap})`);
       },
@@ -386,7 +389,7 @@ test("regruppering: computeRegroupSeconds lukker aldrig mere end hullet og aldri
 
 test("regruppering: en gruppe med bedre descending-evne lukker mindst lige saa meget som en svagere", () => {
   const mk = (chaseDescending: number) =>
-    computeRegroupSeconds(300, 12, 2, chaseDescending, 50);
+    computeRegroupSeconds(300, 12, 2, chaseDescending, 50, undefined, true);
   const weak = mk(20);
   const mid = mk(50);
   const strong = mk(90);
@@ -394,7 +397,7 @@ test("regruppering: en gruppe med bedre descending-evne lukker mindst lige saa m
   assert.ok(mid <= strong + 1e-9, `middel (${mid}) lukkede mere end staerk (${strong})`);
 });
 
-test("regruppering: en ikke-teknisk nedkoersel regrupperer selvom den ALDRIG kan udloese et angreb", () => {
+test("regruppering: en ikke-teknisk finale-nedkoersel regrupperer selvom den ALDRIG kan udloese et angreb", () => {
   const { state, ctx } = buildMultiGroupScenario(
     [{ gap: 0, descending: 50, size: 5 }, { gap: 200, descending: 50, size: 30 }],
     1, // under minTechnicalityForAttack — gammel kode returnerede uaendret state
