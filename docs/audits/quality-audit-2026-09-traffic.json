@@ -1,0 +1,10 @@
+{
+  "source": "Microsoft Clarity, unikke sessioner pr. URL, 2026-08-03 til 2026-09-02, non-bot. Dynamiske ruter = sum af id-URL'er i top 40 (undervurderet). Ruter uden tal = under 50 sessioner.",
+  "sessions": {
+    "/notifications": 4012, "/dashboard": 3978, "/team": 1866, "/training": 1417, "/auctions": 1410,
+    "/planning": 1395, "/riders": 1170, "/races/:raceId": 1170, "/finance": 758, "/standings": 676,
+    "/transfers": 670, "/academy": 668, "/scouting": 469, "/board": 434, "/resultater": 377,
+    "/forum": 358, "/patch-notes": 339, "/klub": 309, "/": 232, "/login": 229, "/riders/:id": 215,
+    "/watchlist": 205, "/race-centre": 80, "/help": 77, "/profile": 74, "/forum/:postId": 61
+  }
+}

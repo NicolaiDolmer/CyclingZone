@@ -1,0 +1,644 @@
+{
+  "generated": "2026-09-02T12:49:45.517Z",
+  "issue": 4624,
+  "totalRoutes": 53,
+  "note": "Bygget ud fra frontend/src/App.jsx sine <Routes> krydset med frontend/src/pages/*.jsx. 53 unikke ruter (ikke 63) — se docs/audits/quality-audit-2026-09-metrics.md for begrundelse (param-varianter uden visuel forskel er deduplikeret, legacy-redirects tæller ikke som egen side).",
+  "routes": [
+    {
+      "route": "/",
+      "file": "frontend/src/pages/LandingPage.jsx",
+      "template": "marketing",
+      "auth": "public",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/landing-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/landing-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/landing-mobile-light.png"
+      }
+    },
+    {
+      "route": "/login",
+      "file": "frontend/src/pages/LoginPage.jsx",
+      "template": "auth",
+      "auth": "public",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/login-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/login-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/login-mobile-light.png"
+      }
+    },
+    {
+      "route": "/reset-password",
+      "file": "frontend/src/pages/ResetPasswordPage.jsx",
+      "template": "auth",
+      "auth": "public",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/reset-password-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/reset-password-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/reset-password-mobile-light.png"
+      }
+    },
+    {
+      "route": "/founder-supporter",
+      "file": "frontend/src/pages/FounderSupporterPage.jsx",
+      "template": "marketing",
+      "auth": "public",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/founder-supporter-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/founder-supporter-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/founder-supporter-mobile-light.png"
+      }
+    },
+    {
+      "route": "/terms",
+      "file": "frontend/src/pages/TermsPageEn.jsx",
+      "template": "marketing",
+      "auth": "public",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/terms-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/terms-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/terms-mobile-light.png"
+      }
+    },
+    {
+      "route": "/handelsbetingelser",
+      "file": "frontend/src/pages/TermsPage.jsx",
+      "template": "marketing",
+      "auth": "public",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/handelsbetingelser-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/handelsbetingelser-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/handelsbetingelser-mobile-light.png"
+      }
+    },
+    {
+      "route": "/privacy-policy",
+      "file": "frontend/src/pages/PrivacyPolicyPageEn.jsx",
+      "template": "marketing",
+      "auth": "public",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/privacy-policy-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/privacy-policy-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/privacy-policy-mobile-light.png"
+      }
+    },
+    {
+      "route": "/privatlivspolitik",
+      "file": "frontend/src/pages/PrivacyPolicyPage.jsx",
+      "template": "marketing",
+      "auth": "public",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/privatlivspolitik-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/privatlivspolitik-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/privatlivspolitik-mobile-light.png"
+      }
+    },
+    {
+      "route": "/dashboard",
+      "file": "frontend/src/pages/DashboardPage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/dashboard-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/dashboard-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/dashboard-mobile-light.png"
+      }
+    },
+    {
+      "route": "/riders",
+      "file": "frontend/src/pages/RidersPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/riders-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/riders-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/riders-mobile-light.png"
+      }
+    },
+    {
+      "route": "/riders/:id",
+      "file": "frontend/src/pages/RiderStatsPage.jsx",
+      "template": "T3",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/riders-id-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/riders-id-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/riders-id-mobile-light.png"
+      }
+    },
+    {
+      "route": "/staff/:id",
+      "file": "frontend/src/pages/StaffProfilePage.jsx",
+      "template": "T3",
+      "auth": "protected",
+      "note": "ingen staff-seed — generisk mock, forventet tom/fejl-state",
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/staff-id-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/staff-id-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/staff-id-mobile-light.png"
+      }
+    },
+    {
+      "route": "/auctions",
+      "file": "frontend/src/pages/AuctionsPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/auctions-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/auctions-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/auctions-mobile-light.png"
+      }
+    },
+    {
+      "route": "/auctions/history",
+      "file": "frontend/src/pages/AuctionHistoryPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/auctions-history-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/auctions-history-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/auctions-history-mobile-light.png"
+      }
+    },
+    {
+      "route": "/transfers",
+      "file": "frontend/src/pages/TransfersPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/transfers-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/transfers-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/transfers-mobile-light.png"
+      }
+    },
+    {
+      "route": "/team",
+      "file": "frontend/src/pages/TeamPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/team-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/team-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/team-mobile-light.png"
+      }
+    },
+    {
+      "route": "/teams/:id",
+      "file": "frontend/src/pages/TeamProfilePage.jsx",
+      "template": "T3",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/teams-id-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/teams-id-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/teams-id-mobile-light.png"
+      }
+    },
+    {
+      "route": "/standings",
+      "file": "frontend/src/pages/RankingsHubPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/standings-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/standings-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/standings-mobile-light.png"
+      }
+    },
+    {
+      "route": "/board",
+      "file": "frontend/src/pages/boardroom/BoardroomRoute.jsx -> BoardPage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/board-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/board-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/board-mobile-light.png"
+      }
+    },
+    {
+      "route": "/notifications",
+      "file": "frontend/src/pages/NotificationsPage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/notifications-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/notifications-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/notifications-mobile-light.png"
+      }
+    },
+    {
+      "route": "/forum",
+      "file": "frontend/src/pages/ForumPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/forum-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/forum-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/forum-mobile-light.png"
+      }
+    },
+    {
+      "route": "/forum/:postId",
+      "file": "frontend/src/pages/ForumPostPage.jsx",
+      "template": "T3",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/forum-postId-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/forum-postId-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/forum-postId-mobile-light.png"
+      }
+    },
+    {
+      "route": "/compare",
+      "file": "frontend/src/pages/RiderComparePage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/compare-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/compare-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/compare-mobile-light.png"
+      }
+    },
+    {
+      "route": "/profile",
+      "file": "frontend/src/pages/ProfilePage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/profile-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/profile-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/profile-mobile-light.png"
+      }
+    },
+    {
+      "route": "/pro",
+      "file": "frontend/src/pages/ProUpgradePage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": "dækker også /pro/success (samme komponent, ingen visuel forskel)",
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/pro-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/pro-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/pro-mobile-light.png"
+      }
+    },
+    {
+      "route": "/watchlist",
+      "file": "frontend/src/pages/WatchlistPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/watchlist-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/watchlist-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/watchlist-mobile-light.png"
+      }
+    },
+    {
+      "route": "/planning",
+      "file": "frontend/src/pages/PlanningHubPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/planning-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/planning-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/planning-mobile-light.png"
+      }
+    },
+    {
+      "route": "/races/:raceId",
+      "file": "frontend/src/pages/RaceDetailPage.jsx",
+      "template": "T3",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/races-raceId-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/races-raceId-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/races-raceId-mobile-light.png"
+      }
+    },
+    {
+      "route": "/seasons",
+      "file": "frontend/src/pages/SeasonEndPage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": "dækker også /seasons/:seasonId (falder til samme aktive sæson uden id)",
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/seasons-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/seasons-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/seasons-mobile-light.png"
+      }
+    },
+    {
+      "route": "/resultater",
+      "file": "frontend/src/pages/ResultaterPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/resultater-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/resultater-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/resultater-mobile-light.png"
+      }
+    },
+    {
+      "route": "/race-centre",
+      "file": "frontend/src/pages/RaceCentrePage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/race-centre-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/race-centre-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/race-centre-mobile-light.png"
+      }
+    },
+    {
+      "route": "/race-archive/:raceSlug",
+      "file": "frontend/src/pages/RaceHistoryPage.jsx",
+      "template": "T3",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/race-archive-raceSlug-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/race-archive-raceSlug-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/race-archive-raceSlug-mobile-light.png"
+      }
+    },
+    {
+      "route": "/finance",
+      "file": "frontend/src/pages/FinancePage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/finance-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/finance-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/finance-mobile-light.png"
+      }
+    },
+    {
+      "route": "/seasons/:seasonId/finance/:teamId",
+      "file": "frontend/src/pages/SeasonFinanceReport.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/seasons-seasonId-finance-teamId-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/seasons-seasonId-finance-teamId-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/seasons-seasonId-finance-teamId-mobile-light.png"
+      }
+    },
+    {
+      "route": "/managers/:teamId",
+      "file": "frontend/src/pages/ManagerProfilePage.jsx",
+      "template": "T3",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/managers-teamId-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/managers-teamId-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/managers-teamId-mobile-light.png"
+      }
+    },
+    {
+      "route": "/admin/season",
+      "file": "frontend/src/pages/admin/AdminSeasonTab.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": "renderer ErrorBoundary-crash under e2e-mocks (formodet mock-data-mangel) — boer verificeres mod rigtigt admin-login.",
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-season-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-season-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/admin-season-mobile-light.png"
+      }
+    },
+    {
+      "route": "/admin/economy",
+      "file": "frontend/src/pages/admin/AdminEconomyTab.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": "renderer ErrorBoundary-crash under e2e-mocks (formodet mock-data-mangel) — boer verificeres mod rigtigt admin-login.",
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-economy-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-economy-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/admin-economy-mobile-light.png"
+      }
+    },
+    {
+      "route": "/admin/users",
+      "file": "frontend/src/pages/admin/AdminUsersTab.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-users-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-users-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/admin-users-mobile-light.png"
+      }
+    },
+    {
+      "route": "/admin/feedback",
+      "file": "frontend/src/pages/admin/AdminFeedbackTab.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-feedback-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-feedback-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/admin-feedback-mobile-light.png"
+      }
+    },
+    {
+      "route": "/admin/forum",
+      "file": "frontend/src/pages/admin/AdminForumTab.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-forum-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-forum-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/admin-forum-mobile-light.png"
+      }
+    },
+    {
+      "route": "/admin/data",
+      "file": "frontend/src/pages/admin/AdminDataTab.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-data-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-data-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/admin-data-mobile-light.png"
+      }
+    },
+    {
+      "route": "/admin/system",
+      "file": "frontend/src/pages/admin/AdminSystemTab.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-system-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-system-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/admin-system-mobile-light.png"
+      }
+    },
+    {
+      "route": "/admin/growth",
+      "file": "frontend/src/pages/AdminGrowthPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": "kraever admin (users.role=admin) — ikke seedet i e2e-mocks, redirecter client-side til /dashboard. Screenshot viser dashboardet.",
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-growth-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-growth-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/admin-growth-mobile-light.png"
+      }
+    },
+    {
+      "route": "/admin/fairplay",
+      "file": "frontend/src/pages/AdminFairplayPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": "kraever admin (users.role=admin) — ikke seedet i e2e-mocks, redirecter client-side til /dashboard. Screenshot viser dashboardet.",
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-fairplay-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-fairplay-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/admin-fairplay-mobile-light.png"
+      }
+    },
+    {
+      "route": "/admin/value-transition",
+      "file": "frontend/src/pages/AdminValueTransitionPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-value-transition-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-value-transition-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/admin-value-transition-mobile-light.png"
+      }
+    },
+    {
+      "route": "/training",
+      "file": "frontend/src/pages/TrainingPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/training-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/training-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/training-mobile-light.png"
+      }
+    },
+    {
+      "route": "/academy",
+      "file": "frontend/src/pages/AcademyPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/academy-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/academy-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/academy-mobile-light.png"
+      }
+    },
+    {
+      "route": "/klub",
+      "file": "frontend/src/pages/KlubPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/klub-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/klub-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/klub-mobile-light.png"
+      }
+    },
+    {
+      "route": "/scouting",
+      "file": "frontend/src/pages/ScoutingCentralPage.jsx",
+      "template": "T2",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/scouting-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/scouting-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/scouting-mobile-light.png"
+      }
+    },
+    {
+      "route": "/help",
+      "file": "frontend/src/pages/HelpPage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/help-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/help-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/help-mobile-light.png"
+      }
+    },
+    {
+      "route": "/rules",
+      "file": "frontend/src/pages/RulesPage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/rules-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/rules-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/rules-mobile-light.png"
+      }
+    },
+    {
+      "route": "/patch-notes",
+      "file": "frontend/src/pages/PatchNotesPage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/patch-notes-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/patch-notes-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/patch-notes-mobile-light.png"
+      }
+    },
+    {
+      "route": "/roadmap",
+      "file": "frontend/src/pages/RoadmapPage.jsx",
+      "template": "T1",
+      "auth": "protected",
+      "note": null,
+      "screenshots": {
+        "desktop-light": "docs/screenshots/quality-audit-2026-09/roadmap-desktop-light.png",
+        "desktop-dark": "docs/screenshots/quality-audit-2026-09/roadmap-desktop-dark.png",
+        "mobile-light": "docs/screenshots/quality-audit-2026-09/roadmap-mobile-light.png"
+      }
+    }
+  ]
+}

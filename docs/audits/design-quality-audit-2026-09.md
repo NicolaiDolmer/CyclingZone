@@ -1,0 +1,141 @@
+# Design-kvalitetsaudit 2026-09: alle sider mod TASTE.md
+
+**Dato:** 2026-09-02 · **Issue:** [#4624](https://github.com/NicolaiDolmer/CyclingZone/issues/4624) (slice 2 af [#4622](https://github.com/NicolaiDolmer/CyclingZone/issues/4622)) · **Målestok:** [`docs/design/TASTE.md`](../design/TASTE.md) (ejer-godkendt 2/9) + [`PAGE_TEMPLATES.md`](../design/PAGE_TEMPLATES.md) · **Forrige audit:** [23/7 (komposition, 52 sider)](design-composition-audit-2026-07-23.md).
+
+**Metode.** 53 unikke ruter (63 sidefiler minus param-varianter og legacy-filer der ikke er routet) fotograferet i lys 1280×900, mørk 1280×900 og mobil 375×812 med e2e-mocks (sonnet-worker, script `frontend/tests/e2e/4624-quality-audit.shots.mjs`, screenshots i `docs/screenshots/quality-audit-2026-09/`). Mekaniske slop-indikatorer pr. side i [`quality-audit-2026-09-metrics.md`](quality-audit-2026-09-metrics.md). De 17 mest besøgte sider er dømt af Fable, resten af to sonnet-dommere, alle mod §4-tjeklisten (17 ja/nej, q2/q7/q8/q13 dobbelt). Score er normaliseret til /21 uden "ikke relevant"-spørgsmål (`*` = tyndt grundlag, under 8 vægtede spørgsmål). Trafik fra Microsoft Clarity, 30 dage til 2/9. Samlet af `scripts/audit/4624-compile-quality-audit.mjs`. Read-only: ingen kildekode ændret.
+
+## TL;DR
+
+Ensartetheden fra juli holder: 0 rå hex, 0 gradienter, 0 tekst-glyffer, og 9 sider er verdensklasse-kandidater (alle sider med lidt indhold: Sammenlign, Hjælp, Patch notes, forum-tråden, legal-siderne). **Men de syv mest besøgte sider (Indbakke, Dashboard, Mit hold, Træning, Auktioner, Planlægning, Ryttere: 15.250 sessioner på 30 dage) scorer 11-18 og har alle det samme problem: chrome står foran data, og kontrol-idiomer opfindes pr. side.** Løbssiden, appens smukkeste flade, har 1.754 px før holdudtagelsen fordi etapeprofilen tegnes to gange i fuld størrelse.
+
+Fire mønstre dækker 27 af de 45 dømte sider og er kit-fund (slice 3), ikke side-fund:
+
+| Mønster | Sider (hovedfund) | Løses hvor |
+|---|---|---|
+| **Chrome før data** (filterpaneler åbne, stat-kort, intro-prosa, løsrevne knaprækker) | Ryttere, Auktioner, Transfers, løbssiden, /admin/data + orphan-rows på Mit hold og Træning + prosa på Økonomi, Regler, /admin/system | Én `FilterBar`-primitiv (søg + 3 selects + "Flere filtre" lukket), `PageHeader` action-slot håndhævet, T2-tabellens fold. Fork 1 (FM-tæt) indføres side for side efter ejer-go på den ægte side |
+| **Tom tilstand beskrivende** (titel siger hvad der mangler, ingen knap) | Indbakke, Scouting, Klub, Løbscenter, /admin/forum + Transfers, Dashboard (delvist) | `EmptyState` kræver `action`-prop; copy-runde på ~15 tekster (fork 4) |
+| **Mobil taber kolonner** | Ryttere, Mit hold, /teams/:id, /managers/:teamId, /auctions/history, /admin/feedback | `DataTable` pinned navn + vandret scroll som default (fork 6). Træningssiden HAR mønstret allerede; gør det til standarden |
+| **Guld uden for de fire tilladte steder** (guld i rækker, guld-tal, keyline på almindelige kort, guld-tint som "aktiv") | Akademi, Auktioner, Økonomi, Profil, /pro, /seasons, løbssiden | `Button` i `DataTable`-rækker kan ikke være primary; `Card` uden keyline-prop uden for T3; stat-tal aldrig `--accent-t` |
+
+Dertil tre mekaniske sweeps der ikke behøver design-dom: **76 unicode-pile** (14 alene på Dashboard, plus `← Forrige / Næste →` og `↔ Sæt til salg`), **80 off-token radier** (26 på /admin/data), og **1.010 tekst-elementer i 10-12 px uden token** (70 på Akademi, 75 på Ryttere, 70 på /teams/:id). De tre er CI-vagt-kandidater (slice 4, #4626) med baseline-ratchet.
+
+## De ti sider der skal have en runde først
+
+Rangeret efter (manglende point × trafik). Alle ti er spillerflader.
+
+1. **Dashboard** (3.978 sessioner, 13/21): 12 stablede kort, 14 tekst-pile, Title Case + ampersand i overskrifter, venstre-accent-bjælke, fire tomme kort. Det første en ny spiller ser; 73 % kommer aldrig igen. ELEVATION #4 fra 25/7 er ikke leveret.
+2. **Mit hold** (1.866, 13): faner som kantede knapper, løsrevet Overblik/Evner-række, tabel klippet ved 1280 px, mobil viser to talkolonner og tankestreg som værdi.
+3. **Auktioner** (1.410, 11): 556 px chrome, tre guld-tintede "aktive" knapper, guld i rækker (`Byd`, `+ Autobud`).
+4. **Løbssiden** (1.170, 9): profilen tegnes to gange i fuld størrelse, to guld-knapper, 22 elementer under 10 px, prosa under tabellen. Selve profil-SVG'en er P2 i renkultur; den skal bare tegnes én gang.
+5. **Indbakke** (4.012, 18): beskrivende tom tilstand uden handling som kasse i kasse. Appens mest besøgte side.
+6. **Ryttere** (1.170, 11): uændret siden 25/7: 500 px chrome, orphan-række, klippet tabel, mobil uden tal.
+7. **Træning** (1.417, 15): orphan checkbox-række, prosa, disabled guld-tintet knap med parentes-copy. #4613 (overblik + faner) dækker retningen; denne audit bekræfter behovet.
+8. **Planlægning** (1.395, 16): tre egne kontrol-idiomer (navy toggle, uppercase guld-chips, tom tidslinje-bjælke), 29 mikro-tekster uden token.
+9. **Transfers** (670, 11): to sorterings-mekanismer, intro-prosa, beskrivende tom tilstand.
+10. **Akademi** (668, 11): seks guld-knapper på ét view, danger-outline i rækker, eyebrow-idiom over kortene (så #4635's kanoniske kort skiller sig ud).
+
+## Fund der ikke er design, men skal ses
+
+- **Em-dash på forsiden:** fem sektions-eyebrows på `/` starter med en em-dash (`[em-dash] SÅDAN SPILLER DU`). `tone-check-em-dash.mjs` fanger ikke hardkodet copy uden for locales. Rettes som copy + vagt udvides.
+- **`/staff/:id` viser `ROLES.UNDEFINED` og `undefined`** under mocks (manglende staff-seed). Skal verificeres mod et ægte staff-id før det tælles som prod-fund; er det ægte, er det severity 3.
+- **`/reset-password` viser en spinner i kortet** i alle tre varianter (formentlig manglende token i e2e-URL'en). Verificér mod et ægte link.
+- **`/scouting` i gated tilstand** er et stiplet EmptyState uden sidehoved og uden handling, og 469 sessioner på 30 dage rammer den. Selv hvis siden er låst for de fleste, skal den have sidehoved + "hvornår" + én handling.
+- **Watchlist bruger et ⭐-emoji i tom-tilstands-copy'en** ("Klik på ⭐ ved siden af…"). Eneste emoji-fund i spillerflader (de øvrige 6 er admin).
+
+## Ikke dømt (mock-begrænsninger, ikke fund)
+
+- `/standings` sad i skeleton-state og `/board` i PageLoader under mocks; 25/7-billedet viser Stillinger som referenceside, og Bestyrelsen dømmes når Boardroom (S-M2b, beta) flippes.
+- `/admin/economy`, `/admin/season`, `/seasons/:seasonId/finance/:teamId` rammer ErrorBoundary under mocks (`.single()` mod tabeller uden seed). Ikke et prod-fund før det er set med ægte admin-login.
+- `/admin/fairplay`, `/admin/growth`, `/admin/value-transition` redirecter til dashboardet fordi TEST_USER ikke er admin i mocks; udeladt af tabellen.
+- **Screenshot-artefakt:** i fullPage-billederne på mobil står den faste bund-navigation midt på siden (Playwright tegner `position: fixed` én gang ved viewport-positionen). Dommer A's "bund-nav overlapper indhold på 7 sider" er dette artefakt, ikke en fejl, og er fjernet fra fund-listen. Verificeret på Dashboard-mobil.
+- ErrorBoundaryens "Genindlæs siden" er `variant="primary"`. Det er den eneste knap på en crash-side og dermed inden for "én guld pr. view"; PAGE_TEMPLATES' "retry aldrig guld" gælder `ErrorState` inde i kort. Spec-uklarhed, ikke fund.
+
+## Input til de næste slices
+
+- **Slice 3 (kit, #4625):** de fire kit-fund i TL;DR-tabellen, i den rækkefølge. Plus: `Tabs`-primitiv der ikke kan tegnes som knapper (Mit hold), `Section` uden mulighed for venstre-bjælke (Dashboard, tre admin-sider), `Sparkline`-primitiv (fork 5) så `/seasons`' guld-kurve og Dashboards guld-progress-bars får ét monokromt sprog.
+- **Slice 4 (CI, #4626):** unicode-pile (76, baseline-ratchet), off-token radius (80), `text-[Npx]`/computed 10-12 px uden token (1.010, ratchet), em-dash i hardkodet JSX-copy, emoji i JSX. Metrics-scriptet i `frontend/tests/e2e/4624-quality-audit.shots.mjs` er en brugbar kerne for en nightly måling.
+- **Slice 6 (#4628):** #4109 Planlægning anti-slop er dækket af Planlægnings-fundet ovenfor.
+- **Copy-runde (fork 4):** de ~15 tomme tilstande + Dashboards Title Case-overskrifter i én tone-session med ejeren.
+
+## Tabellen (alle 50 dømte/ikke-dømte sider)
+
+<!-- GENERERET af scripts/audit/4624-compile-quality-audit.mjs 2026-09-02 -->
+
+**Doemt:** 45 af 50 sider (resten: mock-begraensning). **Gennemsnit:** 15.5/21. **Baand:** 9 verdensklasse-kandidater · 15 paa system, mangler smag · 21 skal have en runde.
+
+Rangering = (manglende point) × (sessioner pr. 30 dage, min. 50). Den mest sete side med det stoerste hul staar oeverst.
+
+| # | Side | Skabelon | Trafik (30 d) | Score /21 | Bånd | Alvor | Mønster | Hovedfund |
+|---|---|---|---|---|---|---|---|---|
+| 1 | `/dashboard` | T1 | 3978 | 13 | skal have en runde | 2 | unicode-pil | Det foerste en ny spiller ser: 12 stablede kort, 14 tekst-pile ('Se alle -> >' har baade tekst-pil OG chevron), Title Case og ampersand i overskrifter ('Aktive Auktioner', 'Transfers & Tilbud'), venstre-accent-bjaelke paa 'Du er klar'-kortet og fire tomme kort med pile i knapperne. Fire kort-idiomer paa een side (ELEVATION #4 staar stadig). |
+| 2 | `/team` | T2 | 1866 | 13 | skal have en runde | 2 | orphan-action-row | Faner tegnes som fire kantede knapper (ikke skabelonens underline-tabs), Overblik/Evner-toggle staar som loesrevet raekke over tabellen, og tabellen klippes ved 1280 px uden synlig scroll-affordance (HANDLING-kolonnen halvt ude). Banneret bruger tekst-pil. |
+| 3 | `/auctions` | T2 | 1410 | 11 | skal have en runde | 2 | chrome-foer-data | 556 px chrome foer foerste auktion: fire stat-kort, en raekke med seks filter-/visnings-knapper (tre af dem guld-tintede som 'aktiv'), fuldt filterpanel med 11 felter + 3 chips + evne-fold. Guld bruges i raekkerne ('Byd', '+ Autobud') og som aktiv-tilstand paa knapper: guld betyder ikke laengere noget. |
+| 4 | `/races/:raceId` | T3 | 1170 | 9 | skal have en runde | 2 | chrome-foer-data | 1.754 px foer holdudtagelsen: hero, fire thumbnails, etapeprofilen i fuld stoerrelse, og saa den SAMME profil igen i fuld stoerrelse i etape-kortet. To guld-knapper paa viewet ('Gennemgaa taktik' + 'Gem udtagelse'), 22 tekst-elementer under 10 px, og 'Saadan virker udbrudsjaegeren' som prosa under tabellen. Profil-SVG'en selv er verdensklasse; den skal bare tegnes een gang. |
+| 5 | `/notifications` | T1 | 4012 | 18 | paa system, mangler smag | 2 | tom-tilstand-beskrivende | Appens mest besoegte side (4.012 sessioner/30 d) moeder spilleren med en beskrivende tom tilstand ('Ingen notifikationer i denne kategori') uden handling, lagt som kasse i kasse (EmptyState inde i et Card). Fork 4 siger handling + een knap. |
+| 6 | `/riders` | T2 | 1170 | 11 | skal have en runde | 2 | chrome-foer-data | Uaendret siden 25/7: 500 px chrome (loesrevet 'Vis stats / Min oenskeliste'-raekke, 8-felts filterpanel + 4 chips + evne-fold, 'Hvad betyder koderne?'-linje) foer foerste rytter, og tabellen klippes ved 1280 px. Paa mobil forsvinder alle talkolonner; meta-linjen presser vaerdi, alder og type sammen i 10 px uppercase. |
+| 7 | `/training` | T2 | 1417 | 15 | skal have en runde | 2 | orphan-action-row | Loesrevet kontrolraekke (checkbox 'Grupper efter type' + understreget 'Saadan virker traening'-link) og en graa prosa-saetning mellem faner og tabel; sidehovedet har to actions hvoraf den ene er en disabled guld-tintet knap med parentes-copy '(+25% konsistens-bonus)'. Kursiv undertitel er off-template. #4613 (overblik + faner) daekker allerede retningen. |
+| 8 | `/planning` | T2 | 1395 | 16 | paa system, mangler smag | 1 | mikro-typografi | Egne kontrol-idiomer oven i kittet: navy-fyldt Saeson/Dag-toggle, uppercase guld-pille-chips ('MINE LOEB'), og en tidslinje-bjaelke der kun er en gul streg uden labels ('Dag 12 af 28 · du er her'). 29 tekst-elementer i 10-12 px uden token. |
+| 9 | `/transfers` | T2 | 670 | 11 | skal have en runde | 2 | chrome-foer-data | Uaendret siden 25/7: loesrevet balance-kort, to linjer introtekst, 12-felts filterpanel, og otte sorterings-chips + et select selvom en tabel med kolonneoverskrifter ville sortere selv. Tom tilstand 'Ingen ryttere til salg' uden handling. |
+| 10 | `/academy` | T2 | 668 | 11 | skal have en runde | 2 | to-guld | Seks guld-knapper paa eet view ('Ryk op', tre 'Signer', to 'Ryk op' i tabelraekker) plus roede outline-'Fyr'-knapper i raekkerne. Siden bruger uppercase eyebrow-labels over kortene i stedet for kort-opskriften, saa det nye Youth squads-kort (#4635) ser anderledes ud end sine naboer. 'Potentiale , ' som vaerdi. |
+| 11 | `/finance` | T1 | 758 | 14 | skal have en runde | 2 | prosa-paa-fladen | Et forklaringskort med guld-keyline (T3-signaturen paa en T1-side) og fire tintede prosa-fliser ('Sponsor-indkomst', 'Loen til ryttere'...) staar FOER sidens data, med en anden guld-knap ('Vis mig rundt') oven i. De tre stat-kort saetter tallene i guld (fork 3 forbyder guld-tal). Prognose-tabellen nedenunder er derimod taet og laesbar. |
+| 12 | `/scouting` | T2 | 469 | 14 | skal have en runde | 2 | tom-tilstand-beskrivende | 469 sessioner paa 30 dage rammer en side der (i gated tilstand) kun er et stiplet EmptyState uden sidehoved, uden handling og uden dato: 'Spejder-centralen er ikke aaben endnu'. Hverken T1/T2-sidehoved eller fork 4-anatomi. |
+| 13 | `/klub` | T2 | 309 | 11 | skal have en runde | 2 | tom-tilstand-beskrivende | 'Faciliteter'-kortet er reelt tomt: der er hverken en facilitetsliste, byggeknapper eller datavisning under kort-headeren, kun en daempet bemaerkning 'IKKE ALLE EFFEKTER ER AKTIVE ENDNU'. Introteksten ovenfor lover facilitets-styring, men siden leverer intet spilleren kan handle paa - graenser op til P11's forbud mod at vise indhold der endnu ikke er bygget. |
+| 14 | `/resultater` | T2 | 377 | 16 | paa system, mangler smag | 1 | andet | 'Mere under Resultater'-kortet nederst er tre feature-fliser (ikon + overskrift + saetning) som navigation, altsaa AI-landing-idiomet fra forbudslisten inde i appen. 'Vaelg et loeb for at se detaljer' er et EmptyState brugt som placeholder. Etapeprofil-sparklines i 'Afsluttede' er derimod praecis P2. |
+| 15 | `/riders/:id` | T3 | 215 | 16 | paa system, mangler smag | 1 | andet | Referencen for T3, men Bebas er spredt til kort-titlerne ('FYSISKE', 'MENTALE', 'TEKNISKE', 'RYTTERTYPER'), hvilket fork 2 (kun hero-navnet) nu forbyder. Knappen 'Saet til salg' baerer en unicode-pil, 'Popularitet , ' viser tankestreg som vaerdi, og 'Fyr rytter' er en roed outline-knap i hero-raekken. |
+| 16 | `/watchlist` | T2 | 205 | 16 | paa system, mangler smag | 1 | emoji | Tomtilstands-teksten bruger et bogstaveligt stjerne-emoji ('⭐') inline i saetningen ('Klik paa ⭐ ved siden af en rytter...') i stedet for at referere til stroke-ikonet - direkte brud paa forbudslisten (emoji som UI, kun stroke-ikoner tilladt). Titlen 'Din onskeliste er tom' er desuden stadig beskrivende, ikke en handling, selvom resten af anatomien (ikon + saetning + knap) ellers er korrekt. |
+| 17 | `/` | marketing | 232 | 17 | paa system, mangler smag | 1 | eyebrow-idiom | Fem sektioner paa forsiden har en em-dash-praefikset "eyebrow"-label (",  SAADAN SPILLER DU" osv.). Em-dash i spillervendt tekst er forbudt (TASTE §3), og selve eyebrow-idiomet er et klassisk SaaS/AI-landing-tell der ikke hoerer hjemme paa en redaktionel cykel-side. |
+| 18 | `/profile` | T1 | 74 | 11 | skal have en runde | 2 | to-guld | Det valgte tema-kort ('Foelg system'/'Moerkt') faar en 2px guld-keyline rundt om HELE kortet, det er noejagtigt det TASTE paragraf P3 eksplicit forbyder ('aldrig keyline paa almindelige kort, keyline kun T3-heroen'), og det ses i baade lys og moerk tilstand. |
+| 19 | `/forum` | T1 | 358 | 19 | paa system, mangler smag | 1 | pille-anarki | Ren side. Eneste fund: meta-linjen under hvert opslag saetter kategori, status og forfatter i samme uppercase guld-tekst ('FASTGJORT AFSTEMNING AF DOLMER'), saa status og kategori laeses ens. |
+| 20 | `/login` | auth | 229 | 18* | paa system, mangler smag | 1 | off-token-radius | Eneste evidensbaserede fund: 1 element paa siden bruger en off-token border-radius-klasse i stedet for den bindende 5px rounded-cz. Ellers er login-siden et solidt, restriktivt eksempel: ét centreret kort, ét guld-knap, ingen Bebas-misbrug, ren tekst. |
+| 21 | `/admin/data` | T2 | <50 | 8 | skal have en runde | 2 | chrome-foer-data | Siden viser 1114px chrome (racekatalog og saesons-opsaetning) foer foerste rigtige datareaekke i Loebskalenderen, og fire kort bruger samtidig en roed venstre-accent-bjaelke ved titlen, et femte prioritetssignal som er eksplicit forbudt i TASTE paragraf 3. |
+| 22 | `/staff/:id` | T3 | <50 | 8 | skal have en runde | 2 | data-slop | Med manglende staff-seed viser siden raa implementeringsartefakter direkte til spilleren: pillen viser bogstaveligt 'ROLES.UNDEFINED' (uoversat i18n-noegle), 'TIER' viser teksten 'undefined', loennen viser kun 'CZ$/saeson' uden tal, og navnet i T3-heroen mangler helt. Boer verificeres mod et rigtigt staff-id foer det tages som et bekraeftet produktionsfund (manifest-noten siger ingen staff er seedet i e2e-mocks), men selve manglen paa fallback-haandtering (i18n-noegle og 'undefined' laekker til UI) er en reel kode-risiko uanset miljoe. |
+| 23 | `/founder-supporter` | marketing | <50 | 12 | skal have en runde | 2 | manglende-dataviz | Siden mangler helt ægte cykeldata-billedsprog - ingen etapeprofil, troeje eller holddata, kun tekst-priskort og checklister. Det goer at en prisside om et cykel-managerspil ligner en generisk SaaS-pricing-side i stedet for noget bygget af folk der elsker cykelsport (P2, bonus-spg. 17). |
+| 24 | `/race-centre` | T2 | 80 | 16 | paa system, mangler smag | 2 | tom-tilstand-beskrivende | Tomtilstanden 'Ingen loeb for dit hold i dag' er en beskrivende titel, ikke en handling, og mangler helt en knap: 'Gaa til planlaegningen og saet truppen op' staar kun som proesetekst, ikke som et klikbart primaer-kald. Direkte modstrid med skabelonens EmptyState-anatomi (stroke-ikon + handlings-titel + 1 saetning + ÉN knap) og TASTE P6/fork 4. |
+| 25 | `/admin/system` | T1 | <50 | 13 | skal have en runde | 2 | prosa-paa-fladen | Siden stables fem sektionskort i traek (Marked-pause, Discord webhooks, Admin log, Bestyrelse, Balance-drift-vagt) uden fold eller fane, det bryder T1's fold-disciplin (maks 2 kort foer 1000px), og to af kortene ('Marked-pause', 'Bestyrelse') har flerlinjede forklarende afsnit direkte paa fladen i stedet for i Hjaelp. |
+| 26 | `/admin/users` | T2 | <50 | 13 | skal have en runde | 2 | unicode-pil | '-> Admin'-knappen bruger en bogstavelig unicode-pil midt i knap-labelen i stedet for et stroke-ikon, og kortet 'Brugere' har (som /admin/data og /admin/system) en roed venstre-accent-bjaelke; paa mobil forsvinder desuden Email-, Hold- og Handlinger-kolonnerne helt, saa admin ikke kan slette eller forfremme brugere fra telefonen. |
+| 27 | `/auctions/history` | T2 | <50 | 13 | skal have en runde | 2 | mobil-taber-kolonner | Paa mobil falder auktionshistorik-tabellen tilbage til et kort-pr.-raekke-layout og mister Nation-, Status-, Saelger- og Vinder-kolonnerne helt, det er praecis den 'kort-variant B' som ejeren afviste som standard i fork 6 (P10); den godkendte loesning er pinned navnekolonne plus vandret scroll, som ikke er bygget her. |
+| 28 | `/seasons` | T1 | <50 | 13 | skal have en runde | 2 | to-guld | Saeson-snapshot-kortet har en guld-keyline foroven (forbeholdt T3-heroen, paragraf 3), og bundgrafen 'Dit holds pointudvikling' er tegnet med en helt guldfarvet streg og guldprikker i stedet for den vedtagne monokrome sparkline (fork 5: kun deltaet maa vaere farvet), to separate steder hvor guld bruges ud over de fire tilladte formaal paa samme side. |
+| 29 | `/pro` | T1 | <50 | 14 | skal have en runde | 1 | to-guld | Sidehovedets undertekst er tre saetninger lang ('Stoet spillets udvikling... Pro er et badge og en identitet, aldrig en fordel.') og bryder dermed header-opskriftens en-linje-regel, samtidig har det valgte '6 maaneder'-prisfelt en guld-kant paa et almindeligt kort, samme moenster som er set paa /profile's temavaelger. |
+| 30 | `/patch-notes` | T1 | 339 | 20 | verdensklasse-kandidat | 1 | mikro-typografi | 8 tekst-elementer paa siden bruger 10-12px skriftstoerrelse uden text-2xs/text-3xs-tokens (formentlig kategori-labels og opsummerings-linjer som '3 NYT · 4 FORBEDRINGER · 5 FEJLRETTELSER') - mikro-typografi-drift mod den bindende to-trins-skala (PAGE_TEMPLATES, F8). |
+| 31 | `/teams/:id` | T3 | <50 | 15 | skal have en runde | 2 | mobil-taber-kolonner | Paa 375px mister trup-tabellen Status-, Alder- og Type-kolonnerne fuldstaendigt - de er hverken foldet ind i navnecellens subline (som T2-mobilspecen kraever) eller tilgaengelige ved vandret scroll. Kun Rytter, Vaerdi og de foerste tre evne-kolonner er synlige. |
+| 32 | `/reset-password` | auth | <50 | 16* | paa system, mangler smag | 2 | andet | Kortet viser en rund spinner midt i kortet i stedet for selve nulstillings-formularen, i lys, moerk og paa mobil - direkte brud paa forbudslisten ('Spinner inde i kort / Skeleton-linjer kun'). Dette kan skyldes manglende reset-token i e2e-testens URL (ikke bekraeftet mod et rigtigt reset-link), men selve fraevaeret af en skeleton-fallback er en reel implementeringsmangel uanset aarsag. |
+| 33 | `/rules` | T1 | <50 | 17 | paa system, mangler smag | 1 | prosa-paa-fladen | Introafsnittet oeverst ('Denne side er sandheden om spillets tal...') er tre saetninger prosa mellem sidehoved og indhold, det er praecis det forbudte moenster i TASTE paragraf 3 ('Introtekst mellem sidehoved og indhold'), selvom resten af siden er en solid, veldisponeret regelreference. |
+| 34 | `/admin/forum` | T2 | <50 | 18 | paa system, mangler smag | 1 | tom-tilstand-beskrivende | Den tomme tilstand 'Ingen rapporter' er rent beskrivende uden nogen handlingsknap, det er vaerre end skabelonens eget eksempel som mindst har EN sekundaer knap - her er der intet at goere for admin'en. |
+| 35 | `/race-archive/:raceSlug` | T3 | <50 | 18 | paa system, mangler smag | 2 | data-slop | Alle 4 raekker under 'Udgaver' hedder 'Sæson 1' - spilleren kan ikke skelne de fire loebsudgaver fra hinanden ud fra labelen alene, kun raekkefoelgen antyder forskel. Ren data-slop: identisk tekst fire gange uden differentiering. |
+| 36 | `/roadmap` | T1 | <50 | 19 | paa system, mangler smag | 1 | andet | Roadmap stables fem store forklarings-kort i traek (Loeb, Traening, Ungdomsudvikling, Transfers og auktioner, Klub og verden) uden fold eller fane, langt over T1's 'maks 2 kort foer 1000px'-budget fra fold-disciplinen i PAGE_TEMPLATES.md, selvom hvert kort i sig selv er velskrevet og cykel-fagligt. |
+| 37 | `/managers/:teamId` | T3 | <50 | 19 | paa system, mangler smag | 2 | mobil-taber-kolonner | Stat-raekken i heroen ('RYTTERE / SAESONER / TRANSFERS / ACHIEVEMENTS') klipper det fjerde tal helt af paa 375px - kun en tom skillelinje er synlig i kanten. Spilleren kan ikke se achievement-tallet uden vandret scroll, som ikke findes her (P10: mobil skal vise samme tal, ikke et resumé). |
+| 38 | `/help` | T1 | 77 | 20 | verdensklasse-kandidat | 1 | andet | Siden selv er ren og velfungerende, eneste reelle fund er at den faste bund-navigation paa mobil overlapper trin 3-4 i 'Foerste skridt'-listen, et gennemgaaende problem set paa flere sider i denne audit (profile, roadmap, rules, admin/system). |
+| 39 | `/forum/:postId` | T3 | 61 | 20 | verdensklasse-kandidat | 1 | andet | Sidehovedet ('Which feature should we build next?' + meta-linjen 'dolmer · Feedback & idéer · ...') staar direkte paa sidebaggrunden uden kort-indpakning. Det er hverken T1's section-card-opskrift eller T3's hero-card (hairline + radius, evt. keyline) - en tredje, opfundet sidehoved-variant paa en side klassificeret som T3. |
+| 40 | `/admin/feedback` | T2 | <50 | 20 | verdensklasse-kandidat | 2 | mobil-taber-kolonner | Paa mobil mister feedback-tabellen alle kolonner undtagen afsender-navnet, og der efterlades et stort tomt hvidt felt (omkring 250px) oeverst i kortet hvor MODTAGET/TYPE/SIDE/BESKED/STATUS burde staa, en tydelig P10-regression, ikke bare mindre data. |
+| 41 | `/standings` | T2 | 676 | – | ikke doemt | – | ikke-doemt | Ikke doemt: e2e-mocken sidder i skeleton-state paa audit-tidspunktet (7 'skygger' i metrics er shimmer-linjer). 25/7-billedet (wave6) viste siden som referenceside: 188 px chrome, zone-tints, tabulaere tal. |
+| 42 | `/board` | T1 | 434 | – | ikke doemt | – | ikke-doemt | Ikke doemt: siden bliver i PageLoader-spinner under e2e-mocks (BoardroomRoute kill-switch + /api/board/status). Den gamle BoardPage fik 10 haandrullede kort + tekst-glyffer i 23/7-auditten; den nye Boardroom (beta, S-M2b) doemmes naar den flippes. |
+| 43 | `/admin/economy` | T2 | <50 | – | ikke doemt | – | ikke-doemt | ikke doemt: mock-begraensning. Siden renderer en generisk ErrorBoundary ('Siden kunne ikke vises') under e2e-mocks, sandsynligvis en mock-data-mangel (auction_timing_config .single()-kald). Boer verificeres mod et rigtigt admin-login foer det tages med som design-fund. |
+| 44 | `/admin/season` | T2 | <50 | – | ikke doemt | – | ikke-doemt | ikke doemt: mock-begraensning. Siden renderer samme generiske ErrorBoundary som /admin/economy under e2e-mocks, sandsynligvis en mock-data-mangel (transfer_windows/auction_timing_config .single()-kald). Boer verificeres mod et rigtigt admin-login. |
+| 45 | `/compare` | T2 | <50 | 21 | verdensklasse-kandidat | 1 | intet-fund | Siden er en ren tom-tilstand der foelger T2-skabelonen praecist: intet chrome foer content, et soegefelt, et stroke-ikon, ingen guld-overforbrug. Eneste svaghed er at siden ikke kan verificeres fuldt ud med rigtige ryttere i sammenligningen under mocks, men det den viser er allerede verdensklasse. |
+| 46 | `/seasons/:seasonId/finance/:teamId` | T1 | <50 | – | ikke doemt | – | ikke-doemt | ikke doemt: mock-begraensning. Siden renderer samme generiske ErrorBoundary som /admin/economy og /admin/season under e2e-mocks (h1 kunne ikke findes, console-fejl=1). Boer verificeres mod et rigtigt admin-login/rigtig saeson foer det tages med som design-fund. |
+| 47 | `/handelsbetingelser` | marketing | <50 | 21 | verdensklasse-kandidat | 1 | intet-fund | Intet reelt fund: siden er ren - ét Bebas-ord i titlen, hairline-kort, ingen guld-knapper, ingen off-token radier, fuld moerk/lys-parallelitet. Den lave score skyldes at mange spoergsmaal er ikke-relevante for en ren vilkaarsside (ingen data, badges eller tomme tilstande at doemme), ikke faktiske brud. |
+| 48 | `/terms` | marketing | <50 | 21 | verdensklasse-kandidat | 1 | intet-fund | Intet reelt fund: den engelske spejling af handelsbetingelser er lige saa ren - samme hairline-kort, ét Bebas-ord, ingen guld-stoej. Siden angiver korrekt at 'The Danish version is the primary legal text', hvilket er god praksis. Den lave score afspejler mange ikke-relevante spoergsmaal for en simpel juraside, ikke faktiske brud. |
+| 49 | `/privacy-policy` | marketing | <50 | 21 | verdensklasse-kandidat | 1 | mikro-typografi | 3 tekst-elementer (formentlig 'Necessary: always on'-listen under 'Your current choices') bruger 10-12px skrift uden text-2xs/3xs-token - en lille mikro-typografi-afvigelse. Ud over det er siden ren: ét Bebas-ord, kun ét guld-knap (samtykke-CTA 'Change my consent choices'), ingen skygger/gradients/off-token-radius. |
+| 50 | `/privatlivspolitik` | marketing | <50 | 21 | verdensklasse-kandidat | 1 | mikro-typografi | 3 tekst-elementer (formentlig 'Nodvendige: altid paa'-listen under 'Dit naevaerende valg') bruger 10-12px skrift uden text-2xs/3xs-token - samme lille mikro-typografi-afvigelse som den engelske udgave. Ellers ren side: ét Bebas-ord, ét guld-knap ('Skift mine samtykke-valg'), ingen skygger/gradients/off-token-radius. |
+
+### Moenster-optaelling (hovedfund pr. side)
+
+| Moenster | Sider |
+|---|---|
+| andet | 6 |
+| chrome-foer-data | 5 |
+| tom-tilstand-beskrivende | 5 |
+| ikke-doemt | 5 |
+| mikro-typografi | 4 |
+| to-guld | 4 |
+| mobil-taber-kolonner | 4 |
+| prosa-paa-fladen | 3 |
+| intet-fund | 3 |
+| unicode-pil | 2 |
+| orphan-action-row | 2 |
+| data-slop | 2 |
+| emoji | 1 |
+| eyebrow-idiom | 1 |
+| pille-anarki | 1 |
+| off-token-radius | 1 |
+| manglende-dataviz | 1 |
