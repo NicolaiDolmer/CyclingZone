@@ -18,9 +18,15 @@
 -- fundet ovenfor): FRI = 20, PRO/FOUNDER = 100.
 --
 -- Pro-opslag i SQL spejler computeIsPro() (frontend/src/lib/proEntitlement.js +
--- backend/lib/entitlement.js): status IN (active, past_due) med periodeslut +
--- 3 dages respit, ELLER status=cancelled med periodeslut ikke overskredet
--- endnu, ELLER is_founder=true (permanent, uafhaengigt af status).
+-- backend/lib/entitlement.js, #4648-udgaven): status IN (active, past_due) MED
+-- current_period_end faar 3 dages respit efter periodeslut; SAMME statusser
+-- UDEN current_period_end endnu (webhook landet foer reconcilen har fyldt
+-- perioden ud) faar 24 timers respit fra last_event_at i stedet; cancelled
+-- aeres praecist til periodeslut (intet at aere uden periodeslut); is_founder
+-- er altid Pro (permanent, uafhaengigt af status). Drift-risiko: dette er en
+-- TREDJE kopi af samme formel (JS-SSOT'erne staar allerede parret i deres
+-- egne kommentarer) -- aendres respit-konstanterne i JS, skal denne trigger
+-- opdateres i samme PR.
 --
 -- Idempotent: CREATE OR REPLACE FUNCTION + DROP TRIGGER IF EXISTS/CREATE TRIGGER.
 --
@@ -49,14 +55,22 @@ BEGIN
     SELECT
       (s.is_founder IS TRUE)
       OR (
-        s.status IN ('active', 'past_due')
+        -- #4648: statusser der taeller som betalende, MED en kendt periode.
+        s.status IN ('active', 'cancelled', 'past_due')
         AND s.current_period_end IS NOT NULL
-        AND s.current_period_end + INTERVAL '3 days' > now()
+        AND (
+          (s.status = 'cancelled' AND s.current_period_end > now())
+          OR (s.status <> 'cancelled' AND s.current_period_end + INTERVAL '3 days' > now())
+        )
       )
       OR (
-        s.status = 'cancelled'
-        AND s.current_period_end IS NOT NULL
-        AND s.current_period_end > now()
+        -- #4648: samme statusser UDEN periode endnu (webhook landet foer
+        -- reconcilen har fyldt current_period_end ud) -- 24t respit fra
+        -- last_event_at. 'cancelled' uden periode har intet at aere -> false.
+        s.status IN ('active', 'past_due')
+        AND s.current_period_end IS NULL
+        AND s.last_event_at IS NOT NULL
+        AND s.last_event_at + INTERVAL '24 hours' > now()
       )
     INTO v_is_pro
     FROM public.subscriptions s
