@@ -774,10 +774,22 @@ async function runAiTeamTrimHealSweepCron() {
   }
   if (result.failed) {
     console.error(`❌ AI-trim heal-sweep: ${result.failed} hold fejlede (per-hold try/catch isolerede)`);
-    // #2389 A2: akutte per-hold-fejl (den stale-gren nedenfor dækker kun >48t).
-    sentryCapture(new Error(`ai-trim heal sweep: ${result.failed} hold fejlede`), {
-      tags: { cron: "ai-trim heal sweep" },
-      extra: { healed: result.healed, failed: result.failed, errors: result.errors },
+    // #4594: CYCLINGZONE-49 fyrede 221 gange over 27 dage uden at nogen kunne se
+    // HVORFOR — Sentrys normalizeDepth klipper `errors` (et array af {teamId,
+    // message}-objekter) til `["[Object]"]` i extra-visningen, og #3414 blev derfor
+    // lukket på symptomet i stedet for rodårsagen. Fix: (1) den FØRSTE fejlbesked
+    // står nu direkte i selve Error-teksten → synlig i Sentry-titlen uden at åbne
+    // extra, (2) `errors` sendes som flade STRENGE ("teamId: message"), som Sentry
+    // aldrig klipper uanset normalizeDepth (primitiver, ikke indlejrede objekter).
+    // #2389 A2: akutte per-hold-fejl (den stale-gren nedenfor dækker kun >120t, #2434).
+    const firstMessage = result.errors[0]?.message || "(ukendt fejl)";
+    sentryCapture(new Error(`ai-trim heal sweep: ${result.failed} hold fejlede — ${firstMessage}`), {
+      tags: { cron: "ai-trim heal sweep", firstFailedTeamId: result.errors[0]?.teamId || "" },
+      extra: {
+        healed: result.healed,
+        failed: result.failed,
+        errorMessages: result.errors.map((e) => `${e.teamId}: ${e.message}`),
+      },
     });
   }
   if (result.stale?.length) {
@@ -785,14 +797,23 @@ async function runAiTeamTrimHealSweepCron() {
     // hold pr. tick → CYCLINGZONE-31 spammede 200+ events, 65 hold × 5-min-kadence).
     // stale[] er nu løbs-bevidst (blokerende løb selv stallet el. > backstop), ikke
     // ren alder >48t — så et lovligt kørende multi-dag etapeløb alarmerer ikke længere.
+    // #4594: en PERSISTENT genuin fejl (samme hold, samme exception, hver tick i
+    // >120t) eskaleres nu her i stedet for at blive ved med at spamme `failed`
+    // (reason="error_exceeds_backstop", carries `message`) — samme [Object]-fix
+    // som ovenfor: teams flades til strenge i extra.
     const n = result.stale.length;
     console.error(
-      `🚨 AI-trim heal-sweep: ${n} AI-hold reelt fastlåst (blokerende løb stallet el. > backstop) — se Sentry (#2187/#2434)`
+      `🚨 AI-trim heal-sweep: ${n} AI-hold reelt fastlåst (blokerende løb stallet, > backstop, el. vedvarende fejl) — se Sentry (#2187/#2434/#4594)`
     );
     sentryCapture(new Error("AI-trim persistent stall: AI-hold reelt fastlåst"), {
       tags: { cron: "ai-team-trim-heal" },
       fingerprint: ["ai-trim-persistent-stall"],
-      extra: { count: n, teams: result.stale },
+      extra: {
+        count: n,
+        teams: result.stale.map((s) =>
+          `${s.teamId} (pool ${s.poolId}): ${s.reason}, ${s.ageHours}t${s.message ? ` — ${s.message}` : ""}`
+        ),
+      },
     });
   }
 }
