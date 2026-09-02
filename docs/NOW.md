@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Ejer: læs design-auditten** (PR #4641, `docs/audits/design-quality-audit-2026-09.md`: TL;DR + top-10) → #4624 done. Session C = **#4595** chunk-budget (intermitterende rød deploy-verify) + #4548. **TASTE.md GODKENDT; #4624 leveret** → næste design-session = **#4625 kit** (fire kit-fund i auditten). **Næste session = #4616 Infisical** (EUR-planer i Alunta ✅ oprettet 2/9; rest: Railway-nøgler `ALUNTA_CZ_PRO_PLAN_ID_*_EUR`, DKK 6 mdr reprise 295→265, ejer-visuelt go på /pro EN+DA, Resend-nøgler, checkout-sprog, #4511) → merge PR #4608 → mail-loop dry-run (`docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md`). **Derefter (ejer-godkendt 2/9, hård dato 27/9):** bestyrelsens beta-blokkere #4579/#4586/#4578 → S-M2c årsmødet (#4557) · #4625 kit ∥ #4626 CI-vagter · #4619 spec (flip ved cutover 28/9) · #4388 S3-komp. (A anbefalet) · #4615 harness-TeamOrders · #3512 anbefalet lukket. **Leveret 2/9:** #4623 TASTE, #4617 ungdoms-handoff (`YOUTH_RULES.md` §2.6), #4618 merget. **Træning 2/9:** `TRAINING_RULES.md` §12 + #4629-#4634, roadbook i `docs/discord/`.
+> **🎯 Next action:** **Aftenens session (prompt leveret 2/9 ~16:50):** fase 0 måling → 8 ejer-spørgsmål ét ad gangen (inkl. de 5 i `docs/slices/09c-board-annual-meeting.md` §9) → 30-dages pengeplan → natbølge: Pro-checkout (#4608, blokeret på #4616: Railway-nøgler `ALUNTA_CZ_PRO_PLAN_ID_*_EUR`, DKK 6 mdr 295→265, visuelt go på /pro, Resend-nøgler, #4511) · mail-loop dry-run (#2853, `docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md`) · S-M2c årsmødet (#4557) · #4647 Playwright · #4592 inaktive. **Ejer: læs design-auditten** (PR #4641, `docs/audits/design-quality-audit-2026-09.md`) → #4624 done → #4625 kit ∥ #4626 CI-vagter. Session C = **#4595** chunk-budget + #4548. **Leveret 2/9:** #4586/#4579/#4578 merget · #4623 TASTE · #4617 ungdoms-handoff (`YOUTH_RULES.md` §2.6) · #4618 · `TRAINING_RULES.md` §12 + #4629-#4634. **Kø (ejer 2/9, hård dato 27/9):** #4619 spec (flip 28/9) · #4388 (A anbefalet) · #4615 · #3512 anbefalet lukket.
 
 > **⏳ Venter på DIN beslutning (stil dem enkeltvist):** **#4376/PR #4388 S3-kompensation** — A = kun opad (anbefalet, 54 hold / +3.901.500) / B = begge veje / C = begge veje uden minus; PR rebaset og mergeable · **#4495** 7 ryttere fanget i akademiet (SQL vises først) · **#4485-genberegning:** audit skal genkøres m. U25-reglen (26 løb, 915 rækker), så ét go · **#4098 blødt loft**: dialog nu, beslut senere · **#3512** arketyper del 2: anbefalet lukket.
 
@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** **B** (bestyrelsen #4586 → #4579 → #4578, worktree `CyclingZone-worktrees/fix-4586-voice-name-salt`) → S-M2c-spec. Session A lukket ~15:45 (audit leveret, PR #4641); **Playwright-slottet er frit.**
+> **🤖 Working agent:** Ingen aktiv session (session B lukket 2/9 ~16:50: #4586/#4579/#4578 merget + done, migration verificeret, S-M2c-spec skrevet, #4647 oprettet). **Playwright-slottet er frit.**
 
 _Historik i git-log, issue-tråde + docs/audits/._
