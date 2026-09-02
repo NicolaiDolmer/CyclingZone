@@ -1,5 +1,5 @@
 import { test, expect } from "./e2e-base.js";
-import { installNetworkMocks, login, stabilizePage, json } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, json, raceResultsRoute } from "./fixtures.js";
 import { MOUNTAIN_TIMELINE, MOUNTAIN_STAGE_PROFILE } from "../../src/lib/stageTimelineFixtures.js";
 
 // #3859 (bølge 2 — løbsfilm-afspiller + "The story of the stage", EFTER-
@@ -16,6 +16,11 @@ const RACE = {
   race_type: "stage_race",
   race_class: "TourFrance",
   stages: 1,
+  // #4581: RaceDetailPage.jsx afleder nu etape-fanerne af stages_completed —
+  // uden feltet var stageNumbers altid [], isStageRace blev false, og StageTab
+  // (som StoryOfTheStageSection/FinalKilometrePlayback lever inde i) rendrede
+  // aldrig. Se samme fix + fulde begrundelse i race-detail.spec.js.
+  stages_completed: 1,
   edition_year: 2026,
   status: "completed",
   season: { id: "season-timeline-e2e", number: 1 },
@@ -69,7 +74,7 @@ async function mockRace(page, { withTimeline = true, withProfile = true } = {}) 
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? RACE : [RACE]);
   });
-  await page.route("**/rest/v1/race_results**", route => json(route, RESULTS));
+  await page.route("**/rest/v1/race_results**", raceResultsRoute(RESULTS));
   await page.route("**/rest/v1/race_stage_profiles**", route => json(route, withProfile ? [PROFILE] : []));
   await page.route("**/rest/v1/race_stage_passages**", route => json(route, []));
 

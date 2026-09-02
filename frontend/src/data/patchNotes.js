@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.231",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race pages load faster, especially in long stage races",
+          "body": "The race page now loads only the stage you're viewing instead of the whole race at once. Long Grand Tours that used to take several seconds to open now load much quicker."
+        },
+        "da": {
+          "title": "Løbssider indlæser hurtigere, især i lange etapeløb",
+          "body": "Løbssiden henter nu kun den etape du kigger på i stedet for hele løbet på én gang. Lange grand tours der før tog flere sekunder at åbne, indlæser nu meget hurtigere."
+        },
+        "refs": [4581]
+      }
+    ]
+  },
+  {
     "version": "7.230",
     "date": "2026-09-02",
     "label": "Beta",

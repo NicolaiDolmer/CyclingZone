@@ -15,6 +15,7 @@ import {
   evidenceShotPath,
   json,
   corsHeaders,
+  raceResultsRoute,
 } from "./fixtures.js";
 
 const RACE_ID = "00000000-0000-4000-8000-000000002034";
@@ -59,7 +60,7 @@ async function mockTacticsRace(page) {
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? LIVE_STAGE_RACE : [LIVE_STAGE_RACE]);
   });
-  await page.route("**/rest/v1/race_results**", (route) => json(route, LIVE_RESULTS));
+  await page.route("**/rest/v1/race_results**", raceResultsRoute(LIVE_RESULTS));
   await page.route("**/rest/v1/race_stage_profiles**", (route) => json(route, []));
   await page.route("**/rest/v1/race_stage_schedule**", (route) => json(route, []));
 
