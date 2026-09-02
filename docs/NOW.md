@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** **Session B (ny, fra 2/9 ~23:05):** Fable som arkitekt designer den store natbølge; må claime frit. **Session A (pengeplan-sessionen) afslutter kun:** #4592-sporet i worktree `feat-4592-season-signup-button` + docs/audits/night-wave-2026-09-02.md, rører intet andet, lukker ~23:30. Playwright-slottet er frit for session B. Modeller: Fable = arkitekt (aldrig worker), workers = Opus eller Sonnet med `model` sat eksplicit.
+> **🤖 Working agent:** **Session B (ny, 2/9 ~23:05)** designer den store natbølge og må claime frit. Session A lukker ~23:30 og rører kun worktree `feat-4592-season-signup-button` + `docs/audits/night-wave-2026-09-02.md`. Playwright-slottet er frit. Fable = arkitekt, workers = Opus/Sonnet med `model` sat eksplicit.
 
 _Historik i git-log, issue-tråde + docs/audits/._
