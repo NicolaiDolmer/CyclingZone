@@ -326,6 +326,59 @@ test("tag_peak_day vs. tag_perfect_peak: sidstnævnte kun ved rank 1", () => {
   assert.ok(!findMoment(nonWinnerPeak, "tag_perfect_peak"));
 });
 
+// ── #4598 (ejer-design 2/9): dayform_line ───────────────────────────────────
+
+test("dayform_line: fyrer for HVER rytter, også dayform=0 (trin 0, modsat tag_jour_sans der kun fyrer ved kollaps)", () => {
+  const ranked = [
+    riderRow({ id: "r1", team: "t1", rank: 1, components: { terrain: 0.9, dayform: 0 } }),
+    riderRow({ id: "r2", team: "t2", rank: 2, components: { dayform: 0.018 * 3 } }),
+  ];
+  const moments = extractStageMoments({ stageNumber: 1, ranked });
+  const lines = findMoments(moments, "dayform_line");
+  assert.equal(lines.length, 2, "ALLE ryttere skal have en dayform_line, også ved trin 0");
+  const r1 = lines.find((m) => m.rider_ids[0] === "r1");
+  const r2 = lines.find((m) => m.rider_ids[0] === "r2");
+  assert.equal(r1.params.band, 0);
+  assert.equal(r2.params.band, 3);
+});
+
+test("dayform_line: params.band er ALDRIG det rå c.dayform-tal (fog-gate)", () => {
+  const ranked = [riderRow({ id: "r1", rank: 1, components: { dayform: 0.018 * 2 } })];
+  const moments = extractStageMoments({ stageNumber: 1, ranked });
+  const line = findMoment(moments, "dayform_line");
+  assert.equal(line.params.band, 2);
+  assert.notEqual(line.params.band, 0.018 * 2, "band skal være det afrundede trin, ikke det kontinuerte tal");
+});
+
+test("dayform_line: team_ids sat til rytterens eget hold (frontend-filtreringsgrundlag for 'kun eget hold')", () => {
+  const ranked = [
+    riderRow({ id: "r1", team: "team-a", rank: 1, components: { dayform: 0.018 } }),
+    riderRow({ id: "r2", team: "team-b", rank: 2, components: { dayform: -0.018 } }),
+  ];
+  const moments = extractStageMoments({ stageNumber: 1, ranked });
+  const lines = findMoments(moments, "dayform_line");
+  assert.deepEqual(lines.find((m) => m.rider_ids[0] === "r1").team_ids, ["team-a"]);
+  assert.deepEqual(lines.find((m) => m.rider_ids[0] === "r2").team_ids, ["team-b"]);
+});
+
+test("dayform_line: manglende team_id → tomt team_ids (ingen hold at knytte replikken til)", () => {
+  const ranked = [riderRow({ id: "r1", team: null, rank: 1, components: { dayform: 0 } })];
+  const moments = extractStageMoments({ stageNumber: 1, ranked });
+  const line = findMoment(moments, "dayform_line");
+  assert.deepEqual(line.team_ids, []);
+});
+
+test("dayform_line: ikke-finite dayform (fx manglende components) → intet moment (ærlig degradering)", () => {
+  const ranked = [{ rider_id: "r1", team_id: "t1", rank: 1, stageGap: 0, components: {} }];
+  const moments = extractStageMoments({ stageNumber: 1, ranked });
+  assert.ok(!findMoment(moments, "dayform_line"));
+});
+
+test("dayform_line: er IKKE en story-tag (intet 'tag_'-præfiks) — vises ikke som badge via storyTagsForRider-mønstret", () => {
+  assert.ok(!isStoryTagKey("dayform_line"));
+  assert.ok(!STORY_TAG_KEYS.includes("dayform_line"));
+});
+
 test("incidents: time_loss → incident_time_loss, abandon → incident_abandon", () => {
   const ranked = [riderRow({ id: "r1", rank: 1, components: { terrain: 0.9 } })];
   const incidentsForStage = [
@@ -428,7 +481,11 @@ test("fog-gate: ingen params-felt hedder som et rå komponent-navn med numerisk 
     riderRow({ id: "r2", rank: 20, gap: 5, components: { terrain: 0.95, jour_sans: -0.05 } }),
   ];
   const moments = extractStageMoments({ stageNumber: 1, ranked, formByRider: new Map([["r1", 80]]) });
-  const ALLOWED_NUMERIC_KEYS = new Set(["gapSeconds", "count", "rank", "secondsLost"]); // allerede offentlige/tælletal
+  // #4598 (ejer-design 2/9): "band" er en EKSPLICIT, bevidst undtagelse — det
+  // er dayformBand()-oversættelsen (-5..5), ALDRIG det rå c.dayform-tal. Den
+  // eneste tilladte numeriske "bånd-oversættelse af rå komponenter" i denne
+  // fil, se modul-headerens note ved samme issue-nummer.
+  const ALLOWED_NUMERIC_KEYS = new Set(["gapSeconds", "count", "rank", "secondsLost", "band"]); // allerede offentlige/tælletal + #4598-båndet
   const RAW_COMPONENT_KEYS = new Set(["terrain", "noise", "form", "fatigue", "team", "breakaway", "finale", "work_cost", "dayform", "jour_sans", "peak", "incident"]);
   for (const m of moments) {
     for (const [k, v] of Object.entries(m.params || {})) {

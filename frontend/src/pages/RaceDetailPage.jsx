@@ -51,7 +51,8 @@ import {
 } from "../lib/raceResultsSelectors.js";
 import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
-import { whyBeatsForStage, storyTagsForRider } from "../lib/raceStageMoments.js";
+import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
+import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
 import { groupPassagesForStage } from "../lib/raceStagePassages.js";
 import { classificationPointTotals } from "../lib/raceClassificationTotals.js";
 import { hasRouteData } from "../lib/stageRouteProfile.js";
@@ -1023,6 +1024,7 @@ export default function RaceDetailPage() {
                     myOwnTeamId={myTeamId}
                     moments={moments}
                     stageNumber={1}
+                    raceId={race.id}
                   />
                   {finalByType.team?.length > 0 && (
                     <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} />
@@ -1407,6 +1409,22 @@ function StoryTagBadges({ moments, riderId, stageNumber, t }) {
   );
 }
 
+// #4598 (ejer-design 2/9): dagsform som en lille linje under rytteren, KUN for
+// spillerens EGET hold (isMine, se ResultEntityCell/ResultTable's isMine-
+// beregning) — aldrig for andres ryttere, aldrig som tal. Egen komponent
+// (ikke StoryTagBadges ovenfor) fordi designet er en linje UNDER navnet, ikke
+// en inline badge, og fordi dayform_line ikke er et 'tag_'-moment (vises for
+// ALLE 11 trin, også 0, modsat story-tags der kun fyrer ved markant udfald).
+// Samme lille, dæmpede typografi (text-3xs/text-cz-3) som story-tags ovenfor,
+// men som prosa-sætning, ikke en uppercase-pille.
+function DayformLine({ moments, riderId, stageNumber, raceId, t }) {
+  const found = dayformLineMoment(moments, riderId, stageNumber);
+  if (!found) return null;
+  const key = dayformLineI18nKey({ raceId, stageNumber, riderId, band: found.band });
+  if (!key) return null;
+  return <span className="block text-3xs text-cz-3 mt-0.5 leading-snug">{t(key)}</span>;
+}
+
 // #3519: mountain/points-klassementerne er point-baserede (ikke tids-baserede)
 // — rangordenen alene fortæller ikke en spiller HVOR TÆT/LANGT han er fra
 // podiet. pointsTotals={mountain,sprint} (raceClassificationTotals.js) bærer
@@ -1473,6 +1491,21 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
     [stagePointsRows, profileByStage, stage],
   );
 
+  // #4598 (ejer-design 2/9): instrumentering — hvor mange EGNE dayform-
+  // replikker findes for DENNE etape (uafhængig af classTab, da linjen kun
+  // vises i "stage"-sub-fanens rytterrækker, men "set resultatsiden med
+  // mindst én egen replik" er et etape-niveau-signal). team_ids er hvordan
+  // raceNarrative.js knytter momentet til et hold (se dayform_line-pushet).
+  const myDayformLineCount = useMemo(() => {
+    if (myOwnTeamId == null) return 0;
+    return momentsForStage(moments, stage).filter(
+      (m) => m.moment_key === "dayform_line" && (m.team_ids || []).map(String).includes(String(myOwnTeamId))
+    ).length;
+  }, [moments, stage, myOwnTeamId]);
+  useEffect(() => {
+    if (myDayformLineCount > 0) logEvent("feature_dayform_line_viewed", { count: myDayformLineCount, stage });
+  }, [myDayformLineCount, stage]);
+
   // Sub-2 (#2770): passage-grupper (KOM/mellemsprint) for DENNE etape — kun
   // relevante i "stage"-sub-fanen (måltavlen), ikke under de øvrige klassement-
   // linser (gc/points/mountain/young/team ser samme etape gennem et andet filter).
@@ -1531,7 +1564,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
         <SectionStack>
-          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} />
+          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId} />
           {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
         </SectionStack>
         <SectionStack>
@@ -1659,7 +1692,7 @@ function YouBadge({ t }) {
   );
 }
 
-function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumber }) {
+function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumber, raceId }) {
   const entity = resultEntity(row);
   const isWinner = highlightWinner && row.rank === 1;
   if (entity.kind === "team") {
@@ -1688,6 +1721,12 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
         {entity.linkId && <StoryTagBadges moments={moments} riderId={entity.linkId} stageNumber={stageNumber} t={t} />}
         {isMine && <YouBadge t={t} />}
       </span>
+      {/* #4598: dagsform-replikken, KUN eget hold (isMine), KUN på en konkret
+          etape (stageNumber != null — "samlet"-fanen aggregerer på tværs af
+          etaper og har ingen ENKELT dagsform at vise). */}
+      {isMine && stageNumber != null && entity.linkId && (
+        <DayformLine moments={moments} riderId={entity.linkId} stageNumber={stageNumber} raceId={raceId} t={t} />
+      )}
     </RiderLink>
   );
 }
@@ -1697,7 +1736,7 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
 // UDEN scroller. Audit-fund: tabellen manglede en horizontal-scroll-wrapper, så
 // et bredt felt (5 kolonner: rank/rytter/hold/tid/point) kunne klippes af på
 // mobil i stedet for at scrolle — body må ALDRIG scrolle horisontalt ved 375px.
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = null }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement
@@ -1779,7 +1818,7 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                   >
                     <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                     <td className="px-2 py-2">
-                      <ResultEntityCell row={r} highlightWinner={highlightWinner} isMine={isMine} t={t} moments={moments} stageNumber={stageNumber} />
+                      <ResultEntityCell row={r} highlightWinner={highlightWinner} isMine={isMine} t={t} moments={moments} stageNumber={stageNumber} raceId={raceId} />
                     </td>
                     {showTeamCol && (
                       <td className="px-2 py-2 text-cz-3 text-xs">

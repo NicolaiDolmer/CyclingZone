@@ -29,14 +29,23 @@
 // Tærskler nedenfor er START-KANDIDATER (samme forbehold som narrativ-specens
 // egne Tier 1-tærskler, §A2: "kalibreres mod en harness-kørsel FØR ship").
 // Audit 15/7 (issue #2355-kommentar) pegede på et MINIMALT why-signal frem for
-// det fulde bånd-lag — denne fil implementerer netop det minimale, kvalitative
-// lag (ingen tal, ingen bånd-oversættelse af rå komponenter).
+// det fulde bånd-lag — denne fil implementerede oprindeligt netop det minimale,
+// kvalitative lag (ingen tal, ingen bånd-oversættelse af rå komponenter).
+//
+// #4598 (ejer-design 2/9) er en EKSPLICIT, senere undtagelse fra "ingen bånd":
+// dagsform_line-momentet nedenfor ER en bånd-oversættelse (dayformBand,
+// -5..5), men aldrig det rå tal — samme fog-gate som resten af filen, blot
+// et 11-trins bånd i stedet for en boolsk tag_jour_sans/tag_peak_day.
 //
 // D3 2026-08-04 (#3115 + #2356): tag_aggression_no_cost (gap 1a — udbrud er
 // gratis, viser det eksplicit når et hentet udbrud kunne fejltolkes som en
 // straf) + tag_saved_effort/tag_gave_everything (gap 1b — bånd-oversat
 // spillervalgt effort, IKKE en ny motor-komponent). frontend/src/lib/raceReport.js
 // (#2356 recap v2) bruger disse tags som beats i etape-dramaturgien.
+
+// #4598: ren visning af den EKSISTERENDE dagsform-komponent (S2, #2353) som
+// et 11-trins spillervendt bånd — ingen ny motor-mekanik, se modul-headeren.
+import { dayformBand } from "./raceDayForm.js";
 
 const SPRINT_GAP_S = 3;
 const CLOSE_GAP_S = 10;
@@ -375,6 +384,21 @@ export function extractStageMoments({
     if (Number(c.peak) > 0) {
       const key = r.rank === 1 ? "tag_perfect_peak" : "tag_peak_day";
       push(moments, { key, params: { riderId: r.rider_id }, riderIds: [r.rider_id] });
+    }
+    // #4598 (ejer-design 2/9): dagsform som 11-trins bånd, EN PR. RYTTER, ALLE
+    // 11 trin (også trin 0 = "almindelig dag") — modsat tag_jour_sans/
+    // tag_peak_day ovenfor, som kun fyrer ved et markant udfald. teamIds sat
+    // (modsat de to ovenfor, som ALDRIG har sat den) fordi #4598 er den
+    // FØRSTE flade hvor "kun eget hold" er en eksplicit fog-of-war-garanti,
+    // ikke bare UI-pynt — frontend filtrerer på team_ids/rider.team_id (se
+    // frontend/src/lib/dayformLine.js). teamIds ændrer IKKE hvem der reelt
+    // kan LÆSE rækken (race_stage_moments' RLS er stadig "alle authenticated",
+    // se PR-body-noten + opfølgnings-issue) — kun UI-visningen.
+    // Not-finite dayform (bør ikke ske når v3=true, men degradér ærligt i
+    // stedet for at kaste) → intet moment, samme mønster som resten af filen.
+    if (Number.isFinite(c.dayform)) {
+      const band = dayformBand(c.dayform);
+      push(moments, { key: "dayform_line", params: { riderId: r.rider_id, band }, riderIds: [r.rider_id], teamIds: [r.team_id] });
     }
   }
 

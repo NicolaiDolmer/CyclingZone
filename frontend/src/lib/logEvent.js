@@ -98,6 +98,10 @@ export const KNOWN_EVENTS = Object.freeze([
   "feature_rider_development_tab_opened",
   "feature_board_consequences_panel_viewed",
   "feature_finance_forecast_card_viewed",
+  // feature_dayform_line_viewed (#4598, ejer-design 2/9): fyrer fra
+  // RaceDetailPage.jsx's StageTab når en spiller ser en etapes resultater MED
+  // mindst én egen dagsform-replik synlig (team_ids-scopet, aldrig andres).
+  "feature_dayform_line_viewed",
   "feature_hall_of_fame_opened",
   // survey_banner_shown/clicked/dismissed fjernet (#2467): SurveyBanner.jsx
   // slettet — admin-preview uden ægte Tally-URL loggede shown ved hver mount og

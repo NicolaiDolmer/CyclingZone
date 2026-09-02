@@ -590,6 +590,12 @@ export const SEED_RACE_STAGE_MOMENTS = [
   { id: "mom-d2-s1-2", race_id: "race-done-2", stage_number: 1, moment_key: "tag_outsider_win", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
   { id: "mom-d2-s1-3", race_id: "race-done-2", stage_number: 1, moment_key: "sprint_win", params: { riderId: RIDERS[0].id, gapSeconds: 1 }, significance: 50, rider_ids: [RIDERS[0].id], team_ids: [TEST_TEAM.id] },
   { id: "mom-d2-s1-4", race_id: "race-done-2", stage_number: 1, moment_key: "tag_aggression_no_cost", params: { riderId: RIDERS[1].id }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
+  // #4598 (ejer-design 2/9): dayform_line-preview — Ada (RIDERS[0], TEST_TEAM,
+  // "mit hold" i preview) skal vise sin replik, Mikkel (RIDERS[1], RIVAL_TEAM)
+  // skal IKKE vise sin, selvom begge momenter er i samme moments-array (samme
+  // fog-of-war-mønster som prod: client-side filtrering på team_ids).
+  { id: "mom-d2-s1-5", race_id: "race-done-2", stage_number: 1, moment_key: "dayform_line", params: { riderId: RIDERS[0].id, band: 3 }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [TEST_TEAM.id] },
+  { id: "mom-d2-s1-6", race_id: "race-done-2", stage_number: 1, moment_key: "dayform_line", params: { riderId: RIDERS[1].id, band: -2 }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [RIVAL_TEAM.id] },
   { id: "mom-d2-s2-1", race_id: "race-done-2", stage_number: 2, moment_key: "gc_takeover", params: { riderId: RIDERS[1].id, previousLeaderId: RIDERS[0].id }, significance: 80, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
   { id: "mom-d2-s2-2", race_id: "race-done-2", stage_number: 2, moment_key: "final_gc", params: { riderIds: [RIDERS[1].id, RIDERS[0].id] }, significance: 90, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
   { id: "mom-d2-s2-3", race_id: "race-done-2", stage_number: 2, moment_key: "tag_crash_ruined", params: { riderId: "rider-99", kind: "crash", outcome: "abandon" }, significance: 30, rider_ids: ["rider-99"], team_ids: [] },
@@ -602,6 +608,10 @@ export const SEED_RACE_STAGE_MOMENTS = [
   // (ikke altid jour_sans-teksten som Adas tag_jour_sans ovenfor).
   { id: "mom-d2-s2-8", race_id: "race-done-2", stage_number: 2, moment_key: "favorite_off_day", params: { riderId: RIDERS[1].id, rank: 22, reason: "helper_work" }, significance: 65, rider_ids: [RIDERS[1].id], team_ids: [] },
   { id: "mom-d2-s2-9", race_id: "race-done-2", stage_number: 2, moment_key: "tag_favorite_collapse", params: { riderId: RIDERS[1].id, rank: 22, reason: "helper_work" }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
+  // #4598: Mikkel (RIVAL_TEAM) also has a dayform_line on stage 2, where he
+  // actually appears as a "stage" result row — lets a manual preview check
+  // confirm his line stays hidden on stage 2's "Etape" sub-tab too (fog-of-war).
+  { id: "mom-d2-s2-10", race_id: "race-done-2", stage_number: 2, moment_key: "dayform_line", params: { riderId: RIDERS[1].id, band: -2 }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [RIVAL_TEAM.id] },
 ];
 
 // #3398 (Maiden Win Engine) — rider_career_events preview-seed. Ada Pedersen
