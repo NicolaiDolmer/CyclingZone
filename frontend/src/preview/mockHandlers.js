@@ -275,10 +275,22 @@ export function restRows(table, requestUrl = "") {
     }
     case "race_results": {
       // Den race-scopede query (RaceDetailPage: race_id=eq.<id>) får seed-resultater.
+      // #4581-rest: RaceDetailPage henter nu KUN den viste etapes race_results
+      // (.eq("race_id", id).eq("stage_number", n)) og APPENDER on-demand-hentede
+      // etaper til den eksisterende liste (linje ~552 i RaceDetailPage.jsx). Uden
+      // stage_number-filtret her svarer mocken med HELE datasættet for løbet ved
+      // hvert kald, og samme række dubleres i visningen. Samme filter-mønster som
+      // raceResultsRoute() i frontend/tests/e2e/fixtures.js.
       const idMatch = url.search.match(/race_id=eq\.([^&]+)/);
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
-        return SEED_RACE_RESULTS.filter(r => r.race_id === id);
+        const rows = SEED_RACE_RESULTS.filter(r => r.race_id === id);
+        const stageMatch = url.search.match(/stage_number=eq\.([^&]+)/);
+        if (stageMatch) {
+          const stageNumber = decodeURIComponent(stageMatch[1]);
+          return rows.filter(r => String(r.stage_number ?? 1) === stageNumber);
+        }
+        return rows;
       }
       // #1997 S1: rytter-scopede query (RiderStatsPage.fetchAllRiderSeasonRows →
       // Resultater-/Palmarès-fanen: rider_id=eq.<id>) får palmarès-seedet
