@@ -38,11 +38,11 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
 10. **#2853** e-mail-loop (ejer: tekster + nøgler, #4616) → **#2760** win-back. 11. **/pro:** PR #4608 → #4005 → flip + testkøb → #2813 → #2806. 12. **#4067** SEO S1 + **#2824** læse-ruter. 13. Søndags-udkast (#428), #4111 løfte-audit.
 
-## G · Design, ungdom, bestyrelse, inaktive (2/9 — FORSLAG, afventer ejer-go)
+## G · Design, ungdom, bestyrelse, inaktive (ejer-godkendt 2/9, genåbn ikke før 27/9)
 
 Ejer 2/9: *"Standarden skal hæves markant. Og vi skal være fri for AI slop nu."* Hård dato: **S3 slutter 27/9**; årsmøde og parkering hører til sæsonskiftet.
 
-- **G1 Mandatet (#3514/#4557), deadline 27/9:** beta-blokkere #4579 · #4586 · #4578 → **S-M2c årsmødet** (mockup godkendt, ejer-visuelt go) → #4556 stemmer (ejer tone-prøve) → S-M2d mobil → flip m. #4265 verificeret.
+- **G1 Mandatet (#3514/#4557), deadline 27/9:** beta-blokkere #4579 · #4586 · #4578 → **S-M2c årsmødet** (ejer-visuelt go) → #4556 stemmer (ejer tone-prøve) → S-M2d mobil + **"Sponsors"-side under Klubhus** (#4265) → flip.
 - **G2 Design (#4622):** **#4623 TASTE.md godkendes (ejer, 15 min)** → #4624 audit 63 sider → #4625 kit ∥ #4626 CI-vagter → #4627 spejl → #4628. #4613 træningssiden = første side mod ny standard.
 - **G3 Tre trupper (#2492):** handoff i `YOUTH_RULES.md` §2.6. **#4618 slice 0 i byg** (ejer-go på screenshots) → #4619 spec + bag flag, **flip ved cutover 28/9** → #4620/#4621 i S4.
 - **G4 Inaktive (#4592), deadline 27/9:** rapport → ejer godkender liste → parkering ved cutover → #452 → #2760.
