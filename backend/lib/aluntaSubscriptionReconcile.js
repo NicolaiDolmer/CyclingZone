@@ -113,6 +113,30 @@ export async function fetchAllAluntaSubscriptions(client, { perPage = 100, maxPa
   return all;
 }
 
+// #4542: current_period_end sammenlignes som TIDSPUNKT, ikke som tekst. Alunta
+// sender "2027-03-01T22:59:59.999999Z", Postgres returnerer den samme værdi som
+// "2027-03-01 22:59:59.999999+00" — tekst-sammenligning saa hver kørsel som en
+// ændring, upsertede begge rækker hver time og stemplede updated_at uden at
+// noget var sket (målt i Railway-loggen 2/9 efter #4640: "2 opdateret" ved boot
+// på allerede synkroniserede rækker). Ulæselige værdier falder tilbage til
+// tekst-sammenligning, saa en uventet form aldrig bliver "ens" ved et tilfælde.
+export function toInstantMs(value) {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) return value.getTime();
+  let s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2} \d/.test(s)) s = s.replace(" ", "T");
+  if (/[+-]\d{2}$/.test(s)) s = `${s}:00`;
+  const ms = Date.parse(s);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+export function sameInstant(a, b) {
+  const ma = toInstantMs(a);
+  const mb = toInstantMs(b);
+  if (ma != null && mb != null) return ma === mb;
+  return String(a ?? "") === String(b ?? "");
+}
+
 function toMs(now) {
   return now instanceof Date ? now.getTime() : Number(now);
 }
@@ -194,7 +218,7 @@ export function computeReconcileActions({ localRows = [], remoteEntries = [], no
       String(nextRow.plan_interval ?? "") === String(row.plan_interval ?? "") &&
       nextRow.alunta_customer_id === (row.alunta_customer_id ?? null) &&
       nextRow.alunta_subscription_id === (row.alunta_subscription_id ?? null) &&
-      String(nextRow.current_period_end ?? "") === String(row.current_period_end ?? "");
+      sameInstant(nextRow.current_period_end, row.current_period_end);
 
     if (isSame) unchanged.push(row.team_id);
     else updates.push({ ...nextRow, updated_at: updatedAt });

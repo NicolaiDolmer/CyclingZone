@@ -6,6 +6,8 @@ import {
   computeReconcileActions,
   fetchAllAluntaSubscriptions,
   runAluntaSubscriptionReconcile,
+  sameInstant,
+  toInstantMs,
 } from "./aluntaSubscriptionReconcile.js";
 
 // ── mapAluntaStatus ──────────────────────────────────────────────────────────
@@ -476,4 +478,35 @@ test("runAluntaSubscriptionReconcile: activeButExpired alarmeres med egen finger
   });
   assert.equal(result.activeButExpired, 1);
   assert.ok(captured.some((c) => c.ctx.fingerprint?.[0] === "alunta-reconcile-active-but-expired"));
+});
+
+// ── #4542: periodeslut sammenlignes som tidspunkt, ikke tekst ────────────────
+
+test("toInstantMs: Postgres-form og Alunta-form af samme tidspunkt giver samme ms", () => {
+  const pg = toInstantMs("2027-03-01 22:59:59.999999+00");
+  const alunta = toInstantMs("2027-03-01T22:59:59.999999Z");
+  assert.ok(pg != null && alunta != null);
+  assert.equal(pg, alunta);
+  assert.equal(toInstantMs("ikke-en-dato"), null);
+  assert.equal(toInstantMs(null), null);
+});
+
+test("sameInstant: ens tidspunkt i to formater = true; forskellige = false; ulæselige falder til tekst", () => {
+  assert.equal(sameInstant("2027-03-01 22:59:59.999999+00", "2027-03-01T22:59:59.999999Z"), true);
+  assert.equal(sameInstant("2026-09-30T21:59:59.999999Z", "2027-03-01T22:59:59.999999Z"), false);
+  assert.equal(sameInstant(null, null), true);
+  assert.equal(sameInstant("x", "x"), true);
+  assert.equal(sameInstant("x", "y"), false);
+});
+
+test("computeReconcileActions: allerede synkroniseret række (Postgres-tidsformat) er UÆNDRET, ingen upsert hver time", () => {
+  const localRows = [
+    { team_id: "t1", status: "active", plan_interval: "semiannual", current_period_end: "2027-03-01 22:59:59.999999+00", alunta_customer_id: "c1", alunta_subscription_id: "s1" },
+  ];
+  const remoteEntries = [
+    { uuid: "s1", status: "active", interval: 6, current_period_end: "2027-03-01T22:59:59.999999Z", customer: { uuid: "c1", external_customer_id: "t1" } },
+  ];
+  const { updates, unchanged } = computeReconcileActions({ localRows, remoteEntries, now: Date.parse("2026-09-02T14:10:00Z") });
+  assert.deepEqual(unchanged, ["t1"]);
+  assert.equal(updates.length, 0);
 });
