@@ -997,11 +997,12 @@ export default function DashboardPage() {
   // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — vises KUN når
   // backend-flaget er on (default off, fail-safe) OG holdet rent faktisk er
   // kandidat (parkeret ELLER inaktiv, samme definition som parkerings-
-  // sweepen). Samme onboarding-undertrykkelse som søskende-kortene ovenfor —
-  // en helt ny manager kan pr. definition ikke være 30-dages-inaktiv endnu,
-  // så dette koster intet reelt, men holder mønsteret konsistent.
-  const showSeasonSignupCard =
-    Boolean(seasonSignupStatus?.enabled && seasonSignupStatus?.eligible) && !onboardingIncomplete;
+  // sweepen). BEVIDST IKKE undertrykt af onboardingIncomplete (til forskel
+  // fra søskende-kortene ovenfor): en manager der onboardede og forsvandt
+  // UDEN at gennemføre et eneste af de 4 kom-i-gang-trin kan sagtens være
+  // 30-dages-inaktiv — og er netop den manager kortet skal nå. At skjule det
+  // bag onboarding ville gemme det for præcis dem der har mest brug for det.
+  const showSeasonSignupCard = Boolean(seasonSignupStatus?.enabled && seasonSignupStatus?.eligible);
 
   // #3509 — gold-CTA prioritetskæde (docs/design/PAGE_TEMPLATES.md: maks ÉN gold
   // primary-knap pr. view). Rækkefølge: first-race-moment > squad-selection-CTA >
