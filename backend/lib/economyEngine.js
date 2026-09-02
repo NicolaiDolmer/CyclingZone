@@ -2055,10 +2055,17 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   // samme isolerede try/catch-disciplin som skygge-syncet ovenfor.
   if (teamStanding) {
     try {
-      const { data: assignedMembers } = await supabaseClient
+      // best-effort: en fejlende opslag her degraderer bare til assignedMembers=null
+      // (proposeNextMandate genererer stadig mål, blot uden owner_archetype_key
+      // stemplet) — den ydre catch nedenfor fanger uanset, dette er ikke en ekstra
+      // fejlkilde, kun en tydeliggørelse af at fejlen er set og accepteret her.
+      const { data: assignedMembers, error: membersError } = await supabaseClient
         .from("team_board_members")
         .select("archetype_key, is_chairman")
         .eq("team_id", team.id);
+      if (membersError) {
+        console.warn(`  ⚠️  team_board_members lookup failed for ${team.name} (mandate proposal continues without owner stamping):`, membersError.message);
+      }
 
       await advanceMandateAtSeasonEndFn(supabaseClient, {
         teamId: team.id,

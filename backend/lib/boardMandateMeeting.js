@@ -514,7 +514,7 @@ export async function signMandate(supabase, {
     ?? null;
   const confidenceNow = relation?.confidence ?? 50;
   if (chairmanKey && relation) {
-    await supabase.from("board_satisfaction_events").insert({
+    const { error: signedReceiptError } = await supabase.from("board_satisfaction_events").insert({
       team_id: teamId,
       mandate_id: mandateId,
       satisfaction_before: confidenceNow,
@@ -524,9 +524,12 @@ export async function signMandate(supabase, {
       goals_total: goalsAfterRequest.length,
       reason_category: signedVia === "auto_accept" ? "mandate.auto_signed" : "mandate.signed",
     });
+    // "kvittering for alt" (spec §2): en manglende kvittering er en RIGTIG
+    // fejl, ikke en logline, samme princip som persistConfidenceChange.
+    if (signedReceiptError) throw new Error(`board_satisfaction_events (mandate.signed) insert failed: ${signedReceiptError.message}`);
   }
   if (requestOutcome && relation) {
-    await supabase.from("board_satisfaction_events").insert({
+    const { error: requestReceiptError } = await supabase.from("board_satisfaction_events").insert({
       team_id: teamId,
       mandate_id: mandateId,
       satisfaction_before: confidenceNow,
@@ -536,6 +539,7 @@ export async function signMandate(supabase, {
       goals_total: 0,
       reason_category: `request.${requestOutcome.meeting_outcome}`,
     });
+    if (requestReceiptError) throw new Error(`board_satisfaction_events (request) insert failed: ${requestReceiptError.message}`);
   }
 
   // Dual-write (§4.6): legacy-motoren må aldrig stå uden en 1yr-plan at evaluere.
