@@ -41,6 +41,7 @@ export function DataTable({
   label,
   className = "",
   dense = false,
+  toolbar = null,
 }) {
   const zones = rows.map((row, i) => (rowZone ? rowZone(row, i) : null));
   const foldCols = columns.filter((c) => c.fold);
@@ -62,6 +63,17 @@ export function DataTable({
   return (
     <div className={className}>
       <div className={WRAP}>
+        {/* #4628 (slice 3 af #4622) — tabellens egen kontrol-bjaelke. Kontroller
+            der KUN styrer tabellen (gruppe-filtre, visnings-segmenter) laa foer
+            som en fritsvaevende raekke mellem sidehovedet og tabellen; det er
+            praecis PAGE_TEMPLATES' "no orphan action rows" og audit 2026-09's
+            fund paa Mit hold. Inde i tabellens hairline-ramme, adskilt af den
+            samme 1px-regel som headeren, hoerer de synligt til tabellen. */}
+        {toolbar && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-cz-border px-4 py-2.5">
+            {toolbar}
+          </div>
+        )}
         <div className={SCROLLER}>
           <table className={TABLE} aria-label={label} data-sortable>
             <thead>
