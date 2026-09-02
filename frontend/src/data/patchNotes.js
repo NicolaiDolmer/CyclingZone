@@ -91,6 +91,27 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "7.233",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Your riders tell you how the day went",
+          "body": "A short line now appears under each of your own riders in the stage results, in their own words. You never see it for other teams' riders."
+        },
+        "da": {
+          "title": "Dine ryttere fortæller hvordan dagen gik",
+          "body": "En kort linje vises nu under hver af dine egne ryttere i etaperesultatet, med deres egne ord. Du ser den aldrig for andre holds ryttere."
+        },
+        "refs": [4598]
+      }
+    ]
+  },
+  {
     "version": "7.232",
     "date": "2026-09-02",
     "label": "Beta",
