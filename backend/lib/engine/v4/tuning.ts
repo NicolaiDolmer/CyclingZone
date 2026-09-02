@@ -260,6 +260,7 @@ const descentExtra = {
   regroupGapFractionPerKm: 0.25, // PROPORTIONALT led: andel af et STORT hul der lukkes pr. km (sammensat pr. km, saa en lang nedkoersel krymper mere end en kort) — uden det ville en selektion paa 10+ minutter passere en 15 km nedkoersel naesten uroert
   regroupMaxGapFractionPerSegment: 0.95, // haardt loft: ét nedkoersels-segment maa ALDRIG udradere mere end denne andel af et hul — en aegte selektion skal kunne overleve en nedkoersel
   regroupTechnicalityFactor: { 1: 1.3, 2: 1.0, 3: 0.65 } as Record<1 | 2 | 3, number>, // T1 udligner mest (bred, hurtig vej), T3 mindst (teknisk vej lader en staerk descender forsvare hullet)
+  regroupFinishMultiplier: 6, // en nedkoersel DER ER FINALEN udligner langt mere end en midtvejs-nedkoersel: der er ingen stigning tilbage til at genskabe selektionen, og jagten er forpligtet hele vejen ned. Uden denne opdeling maatte man vaelge mellem at ramme nedkoersels-ankeret og at lade en aegte bjerg-selektion overleve til stregen (#2415-baandet) - se PR #4610
   regroupAbilitySpanPoints: 25, // descending-evne-forskel (0-99-skala) mellem jagende og forankoerende gruppe der giver fuldt udslag paa lukkehastigheden
   regroupAbilityFactorBounds: [0.9, 1.1] as const, // clamp paa evne-faktoren — en svagere gruppe lukker mindre, en staerkere mere, men ALDRIG negativt (et hul kan aldrig VOKSE af regrupperingen)
   // Angrebs-kvalifikationens OEVRE reference (#4604). DescentTuning.minAbilityGapForAttack

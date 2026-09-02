@@ -139,6 +139,7 @@ export function computeRegroupSeconds(
   chaseDescending: number,
   aheadDescending: number,
   extra: DescentExtra = DESCENT_EXTRA_TUNING,
+  isFinishDescent: boolean = false,
 ): number {
   const gap = Math.max(0, gapToAheadSeconds);
   if (gap === 0) return 0;
@@ -170,7 +171,10 @@ export function computeRegroupSeconds(
     extra.regroupMaxGapFractionPerSegment,
   );
 
-  const closing = Math.max(absoluteClose, proportionalClose);
+  // En nedkoersel der ER finalen udligner langt mere — se
+  // DESCENT_EXTRA_TUNING.regroupFinishMultiplier.
+  const finishFactor = isFinishDescent ? extra.regroupFinishMultiplier : 1;
+  const closing = Math.max(absoluteClose, proportionalClose) * finishFactor;
   return round2(Math.min(gap, Math.max(0, closing)));
 }
 
@@ -186,6 +190,7 @@ export function regroupOnDescent(
   lengthKm: number,
   technicality: number,
   extra: DescentExtra = DESCENT_EXTRA_TUNING,
+  isFinishDescent: boolean = false,
 ): RaceGroup[] {
   if (groups.length <= 1) return groups.map((g) => ({ ...g }));
   const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
@@ -199,7 +204,7 @@ export function regroupOnDescent(
     const group = sorted[i];
     const chaseDescending = groupDescendingMean(group.rider_ids, entrants);
     const gapToAhead = Math.max(0, group.gap_seconds - aheadGap);
-    const closed = computeRegroupSeconds(gapToAhead, lengthKm, technicality, chaseDescending, aheadDescending, extra);
+    const closed = computeRegroupSeconds(gapToAhead, lengthKm, technicality, chaseDescending, aheadDescending, extra, isFinishDescent);
     const newGap = round2(Math.max(aheadGap, group.gap_seconds - closed));
     out.push({ ...group, gap_seconds: newGap });
     aheadGap = newGap;
@@ -288,6 +293,7 @@ export const descentHook: DescentHook = (
     segmentLengthKm,
     segment.technicality,
     extra,
+    ctx.segmentIndex === ctx.route.segments.length - 1,
   );
   let riders: Record<string, RiderState> = state.riders;
   let seq = 0;
