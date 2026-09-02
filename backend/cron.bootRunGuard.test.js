@@ -95,8 +95,7 @@ function extractDaily24hTicks(scheduleBody) {
 function findTrackedTickCalls(body) {
   const calls = [];
   const callRe = /trackedTick\s*\(/g;
-  let m;
-  while ((m = callRe.exec(body)) !== null) {
+  while (callRe.exec(body) !== null) {
     const argsStart = callRe.lastIndex;
     let depth = 1;
     let i = argsStart;
