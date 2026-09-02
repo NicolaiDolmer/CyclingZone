@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader } from "../../components/ui";
 import MemberPanel from "./MemberPanel";
-import MonogramAvatar from "./MonogramAvatar";
+import MonogramAvatar from "../../components/MonogramAvatar";
 import { formatWeekdayOnly, MOOD_DOT } from "./boardroomFormat";
 
 function MemberTile({ member, selected, onSelect, t }) {

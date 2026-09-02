@@ -17,12 +17,16 @@ import {
   selectDominantMember,
   sampleReactionForFeedback,
   sampleReactionForGoal,
+  decorateReactionWithName,
 } from "./boardMembers.js";
 import { clamp, clampSatisfaction, roundNumber } from "./boardUtils.js";
 
 // S-02c · annoter outlook med dominant_member-citat + pr-mål reactions baseret
 // på context.assignedMembers (hentet i api.js fra team_board_members).
 // Bagudkompatibel: hvis ingen members er tilgængelige, returneres outlook uændret.
+// #4556 S-M2b addendum · reactions berigets desuden med full_name/initials via
+// decorateReactionWithName, når context.teamId er sat (context.dnaKey er
+// valgfri). Mangler teamId, udelades navnefelterne: ingen opfundne navne.
 function attachMembersOverlay({ outlook, assignedMembers, board, context }) {
   if (!Array.isArray(assignedMembers) || assignedMembers.length === 0) {
     return outlook;
@@ -42,12 +46,25 @@ function attachMembersOverlay({ outlook, assignedMembers, board, context }) {
     category: targetCategory,
     fallbackChairmanKey,
   });
+  // #4556 review-fund (faldgrube 2): members skal med, i SAMME rækkefølge som
+  // assignedMembers kommer fra team_board_members (matcher boardRoom.js's
+  // egen generateBoardMemberNames-kald over hele holdet), ellers salter
+  // decorateReactionWithName's enkelt-medlems-fallback anderledes end
+  // Boardroom-siden ved en navne-kollision inden for samme hold.
+  const nameCtx = {
+    teamId: context?.teamId,
+    dnaKey: context?.dnaKey ?? null,
+    members: assignedMembers.map((m) => m.archetype_key),
+  };
   const dominantReaction = dominantArchetype
-    ? sampleReactionForFeedback({
-      archetype: dominantArchetype,
-      tone,
-      seed: `${seedBase}:feedback:${tone}`,
-    })
+    ? decorateReactionWithName(
+      sampleReactionForFeedback({
+        archetype: dominantArchetype,
+        tone,
+        seed: `${seedBase}:feedback:${tone}`,
+      }),
+      nameCtx,
+    )
     : null;
 
   // Goal-niveau reactions: én pr. evaluerings-objekt så frontend kan vise
@@ -60,11 +77,14 @@ function attachMembersOverlay({ outlook, assignedMembers, board, context }) {
       fallbackChairmanKey,
     });
     if (!archetype) return evaluation;
-    const reaction = sampleReactionForGoal({
-      archetype,
-      goalContext: { type: evaluation?.type, status: evaluation?.status },
-      seed: `${seedBase}:goal:${evaluation?.type ?? ""}:${evaluation?.status ?? ""}`,
-    });
+    const reaction = decorateReactionWithName(
+      sampleReactionForGoal({
+        archetype,
+        goalContext: { type: evaluation?.type, status: evaluation?.status },
+        seed: `${seedBase}:goal:${evaluation?.type ?? ""}:${evaluation?.status ?? ""}`,
+      }),
+      nameCtx,
+    );
     return reaction ? { ...evaluation, member_reaction: reaction } : evaluation;
   });
 

@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { XIcon } from "../../components/ui";
 import { formatWeekdayShortDate, resolveGoalTitle, MOOD_DOT } from "./boardroomFormat";
-import MonogramAvatar from "./MonogramAvatar";
+import MonogramAvatar from "../../components/MonogramAvatar";
 
 // #4557 · Medlems-relations-panel (Member.dc.html) — inline expand fra
 // BoardCard's avatar-grid. Alt afledes af allerede-hentet data (ingen ny

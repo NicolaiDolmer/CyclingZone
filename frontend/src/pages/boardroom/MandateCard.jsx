@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, EmptyState, ClipboardIcon, ChevronDownIcon, ChevronUpIcon } from "../../components/ui";
 import { formatShortDate, formatWeekdayShortDate, resolveGoalTitle } from "./boardroomFormat";
-import MonogramAvatar from "./MonogramAvatar";
+import MonogramAvatar from "../../components/MonogramAvatar";
 
 const STATUS_TONE = {
   on_track: "success",

@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildBoardOutlook,
   computeResultsCompetitivenessFloor,
   evaluateBoardSeason,
   RESULTS_COMPETITIVENESS_FLOOR_SCALE,
@@ -95,4 +96,73 @@ test("#2596 · satisfactionToModifier: bånd-tabel (autoritativ, matcher fronten
       `satisfaction=${satisfaction}: backend satisfactionToModifier divergerer fra delt bånd-tabel`,
     );
   }
+});
+
+// ── #4556 S-M2b addendum ("Stemme-kontrakten" punkt 2) ───────────────────────
+// buildBoardOutlook skal berige dominant_member/member_reaction med
+// full_name+initials når context.teamId er sat (samme determinisme-nøgle som
+// Boardroom-siden), og ALDRIG opfinde et navn når teamId mangler.
+
+const NAME_TEST_MEMBERS = [
+  { archetype_key: "sponsoraten", is_chairman: true },
+  { archetype_key: "ungdomsidealisten", is_chairman: false },
+  { archetype_key: "resultatjaegeren", is_chairman: false },
+];
+
+function buildNameTestOutlook(context = {}) {
+  const board = {
+    satisfaction: 50,
+    plan_type: "1yr",
+    focus: "balanced",
+    current_goals: [
+      { type: "stage_wins", target: 2, satisfaction_bonus: 10, satisfaction_penalty: 5 },
+      { type: "no_outstanding_debt", target: 0, satisfaction_bonus: 12, satisfaction_penalty: 8 },
+    ],
+  };
+  const team = { id: "t-name-test", division: 1, sponsor_income: 240000, riders: [] };
+  const standing = { team_id: "t-name-test", division: 1, rank_in_division: 2, stage_wins: 1, gc_wins: 0 };
+  return buildBoardOutlook({
+    board,
+    standing,
+    team,
+    context: {
+      planDuration: 1, seasonsCompleted: 1, isFinalSeason: true,
+      activeLoanCount: 0, hasSeasonData: true,
+      cumulativeStats: { stageWins: 0, gcWins: 0 },
+      assignedMembers: NAME_TEST_MEMBERS,
+      ...context,
+    },
+  });
+}
+
+test("#4556 · buildBoardOutlook beriger dominant_member + member_reaction med full_name/initials naar teamId er sat", () => {
+  const outlook = buildNameTestOutlook({ teamId: "team-4556-a", dnaKey: "italiensk_klassiker" });
+
+  assert.ok(outlook.feedback.dominant_member, "dominant_member skal vaere sat");
+  assert.ok(outlook.feedback.dominant_member.full_name, "dominant_member skal have full_name");
+  assert.equal(outlook.feedback.dominant_member.initials.length, 2);
+
+  const evaluationWithReaction = outlook.goal_evaluations.find((e) => e.member_reaction);
+  assert.ok(evaluationWithReaction, "mindst ét mål skal have member_reaction");
+  assert.ok(evaluationWithReaction.member_reaction.full_name, "member_reaction skal have full_name");
+  assert.equal(evaluationWithReaction.member_reaction.initials.length, 2);
+});
+
+test("#4556 · buildBoardOutlook-navngivning er deterministisk pr. (teamId, archetype_key, dnaKey)", () => {
+  const a = buildNameTestOutlook({ teamId: "team-4556-stable", dnaKey: "fransk_klatrer" });
+  const b = buildNameTestOutlook({ teamId: "team-4556-stable", dnaKey: "fransk_klatrer" });
+  assert.equal(a.feedback.dominant_member.full_name, b.feedback.dominant_member.full_name);
+  assert.equal(a.feedback.dominant_member.initials, b.feedback.dominant_member.initials);
+});
+
+test("#4556 · buildBoardOutlook opfinder ALDRIG et navn naar teamId mangler i konteksten", () => {
+  const outlook = buildNameTestOutlook({}); // ingen teamId
+
+  assert.ok(outlook.feedback.dominant_member, "dominant_member skal stadig vaere sat (label alene)");
+  assert.equal(outlook.feedback.dominant_member.full_name, undefined, "intet teamId => intet opfundet navn");
+  assert.ok(outlook.feedback.dominant_member.label, "label skal stadig vaere til stede som fallback");
+
+  const evaluationWithReaction = outlook.goal_evaluations.find((e) => e.member_reaction);
+  assert.ok(evaluationWithReaction, "mindst ét mål skal have member_reaction");
+  assert.equal(evaluationWithReaction.member_reaction.full_name, undefined, "intet teamId => intet opfundet navn");
 });

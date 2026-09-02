@@ -20,6 +20,7 @@ import {
   getArchetypeByKey,
 } from "./boardArchetypes.js";
 import { getDnaArchetypeAlignmentBonus } from "./boardClubDna.js";
+import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { captureException } from "./sentry.js";
 
 export const TEAM_BOARD_MEMBERS_COUNT = 5;
@@ -646,6 +647,48 @@ export function sampleReactionForGoal({ archetype, goalContext = {}, seed = "" }
 }
 
 /**
+ * #4556 S-M2b addendum, "Stemme-kontrakten" punkt 2 · decorer én reaction
+ * (fra sampleReactionForFeedback/sampleReactionForGoal) med `full_name` +
+ * `initials` afledt via generateBoardMemberNames, SAMME determinisme-nøgle
+ * (teamId, archetype_key, dnaKey) som Boardroom-siden (boardRoom.js/
+ * boardVoice.js) bruger, så et hold ser samme navn på begge sider.
+ *
+ * Opfinder ALDRIG et navn: mangler teamId i konteksten, returneres reaction
+ * uændret (frontend falder tilbage til label alene, jf. spec).
+ *
+ * Review-fund (faldgrube 2 i addendummet): generateBoardMemberNames bruger et
+ * `taken`-set der salter et navn ved kollision INDEN FOR samme
+ * (teamId, dnaKey)-kald (boardMandateNames.js). Genereres kun ét medlem ad
+ * gangen, ser kollisions-logikken aldrig kollisionen, og et medlem der reelt
+ * fik salt 1 fordi boardRoom.js navngiver HELE holdet samlet ville få salt 0
+ * her, samme person, to navne på to flader. Fixet: send `members` (den fulde
+ * medlemsliste, SAMME rækkefølge som boardRoom.js bruger) med, så hele
+ * holdet navngives i ét kald og `reaction.archetype_key` slås op i
+ * resultatet. Mangler `members`, eller indeholder den ikke archetype_key'en,
+ * falder vi tilbage til enkelt-medlems-stien (bedre end intet navn, men kan
+ * afvige fra Boardroom-siden ved en reel kollision).
+ *
+ * @param {object|null} reaction - fra sampleReactionForFeedback/sampleReactionForGoal.
+ * @param {{ teamId?: string, dnaKey?: string|null, members?: Array<string|{archetype_key:string}> }} [ctx]
+ * @returns {object|null} samme reaction, evt. beriget med full_name + initials.
+ */
+export function decorateReactionWithName(reaction, { teamId, dnaKey = null, members = null } = {}) {
+  if (!reaction?.archetype_key || !teamId) return reaction;
+
+  const archetypeKeys = Array.isArray(members)
+    ? members.map((m) => (typeof m === "string" ? m : m?.archetype_key)).filter(Boolean)
+    : [];
+
+  const named = archetypeKeys.includes(reaction.archetype_key)
+    ? generateBoardMemberNames({ teamId, members: archetypeKeys, dnaKey })
+      .find((m) => m.archetype_key === reaction.archetype_key)
+    : generateBoardMemberNames({ teamId, members: [reaction.archetype_key], dnaKey })[0];
+
+  if (!named?.full_name) return reaction;
+  return { ...reaction, full_name: named.full_name, initials: named.initials };
+}
+
+/**
  * Replacement-trigger: kaldes fra economyEngine.processSeasonEnd's planIsComplete-branch.
  *
  * Logik:
@@ -728,6 +771,9 @@ export async function processReplacementTrigger({
     old_chairman_key: replacement.old_chairman_key,
     new_chairman_key: replacement.new_chairman_key,
     new_chairman_label: replacement.new_chairman_label,
+    // #4556 review-fund: videreformidler replaceChairman's fulde
+    // post-udskiftnings-medlemsliste, se kommentaren der.
+    new_board_member_keys: replacement.new_board_member_keys,
   };
 }
 
@@ -810,5 +856,12 @@ async function replaceChairman({ supabase, teamId, identityBasis, dnaKey = null 
     old_chairman_key: oldChairman.archetype_key,
     new_chairman_key: newChairmanCandidate.key,
     new_chairman_label: newChairmanCandidate.archetype.label,
+    // #4556 review-fund (faldgrube 2): den FULDE post-udskiftnings-medlemsliste,
+    // så en kalder kan navngive hele holdet i ét generateBoardMemberNames-kald
+    // (samme mønster som boardRoom.js) i stedet for kun formandens nøgle
+    // isoleret, hvilket kan salte anderledes ved en navne-kollision. Rækkefølge:
+    // de 4 tilbageværende medlemmer (uændret query-orden) + den nye formand sidst
+    // (matcher insert-rækkefølgen en efterfølgende team_board_members-select ser).
+    new_board_member_keys: [...remainingMembers.map((m) => m.archetype_key), newChairmanCandidate.key],
   };
 }

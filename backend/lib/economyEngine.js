@@ -27,6 +27,7 @@ import {
   startSequentialNegotiation,
 } from "./boardEngine.js";
 import { processReplacementTrigger } from "./boardMembers.js";
+import { generateBoardMemberNames } from "./boardMandateNames.js";
 import {
   evaluateAndApplyConsequences,
 } from "./boardConsequences.js";
@@ -1837,17 +1838,59 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         });
 
         if (replacementInfo?.replaced && replacementInfo.new_chairman_label) {
+          // #4556 S-M2b addendum · formandsskifte skal nævne den nye formand ved
+          // NAVN + arketype-label, samme determinisme-nøgle (teamId, archetype_key,
+          // dnaKey) som resten af "Stemme-kontrakten". Navne-afledning må ALDRIG
+          // vælte notifikationen. Fejler den, degraderes bagudkompatibelt til
+          // label alene (samme tekst som før #4556).
+          //
+          // Review-fund (faldgrube 2): naar HELE post-udskiftnings-medlemslisten
+          // er tilgaengelig (replacementInfo.new_board_member_keys, sat af
+          // replaceChairman i boardMembers.js), navngives hele holdet i ét kald
+          // og formandens navn slaas op i resultatet, samme mønster som
+          // Boardroom-siden (boardRoom.js). Uden den (fx en aeldre/mocket
+          // processReplacementTrigger) falder vi tilbage til kun formandens
+          // nøgle isoleret, som før #4556's review-fix.
+          let chairmanName = null;
+          if (replacementInfo.new_chairman_key) {
+            try {
+              const memberKeysForNaming = Array.isArray(replacementInfo.new_board_member_keys)
+                && replacementInfo.new_board_member_keys.length
+                ? replacementInfo.new_board_member_keys
+                : [replacementInfo.new_chairman_key];
+              const namedMembers = generateBoardMemberNames({
+                teamId: team.id,
+                members: memberKeysForNaming,
+                dnaKey: team.team_dna_key ?? null,
+              });
+              const namedChairman = namedMembers.find((m) => m.archetype_key === replacementInfo.new_chairman_key)
+                ?? namedMembers[0];
+              chairmanName = namedChairman?.full_name ?? null;
+            } catch (nameError) {
+              captureException(nameError, {
+                tags: { flow: "season-transition", stage: "board-replacement-name" },
+                teamId: team.id,
+              });
+            }
+          }
+
           await notifyManager(
             team.id,
             "board_update",
             "The board has chosen a new chairman",
-            `After two disappointing plan seasons, the board has replaced the chairman. ${replacementInfo.new_chairman_label} takes over — expect a new tone in upcoming negotiations.`,
+            chairmanName
+              ? `After two disappointing plan seasons, the board has replaced the chairman. ${chairmanName}, the club's new ${replacementInfo.new_chairman_label}, takes over. Expect a new tone in upcoming negotiations.`
+              : `After two disappointing plan seasons, the board has replaced the chairman. ${replacementInfo.new_chairman_label} takes over. Expect a new tone in upcoming negotiations.`,
             notificationDeps,
             {
               titleCode: "notif.boardChairmanReplaced.title",
               titleParams: {},
-              messageCode: "notif.boardChairmanReplaced.message",
-              messageParams: { chairmanLabel: replacementInfo.new_chairman_label },
+              messageCode: chairmanName
+                ? "notif.boardChairmanReplaced.messageWithName"
+                : "notif.boardChairmanReplaced.message",
+              messageParams: chairmanName
+                ? { chairmanLabel: replacementInfo.new_chairman_label, chairmanName }
+                : { chairmanLabel: replacementInfo.new_chairman_label },
             }
           );
         }

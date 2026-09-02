@@ -141,7 +141,8 @@
     },
     "boardChairmanReplaced": {
       "title": "The board has chosen a new chairman",
-      "message": "After two disappointing plan seasons, the board has replaced the chairman. {chairmanLabel} takes over. Expect a new tone in upcoming negotiations."
+      "message": "After two disappointing plan seasons, the board has replaced the chairman. {chairmanLabel} takes over. Expect a new tone in upcoming negotiations.",
+      "messageWithName": "After two disappointing plan seasons, the board has replaced the chairman. {chairmanName}, the club's new {chairmanLabel}, takes over. Expect a new tone in upcoming negotiations."
     },
     "boardForcedListing": {
       "title": "The board demands a sale",

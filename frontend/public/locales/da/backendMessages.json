@@ -141,7 +141,8 @@
     },
     "boardChairmanReplaced": {
       "title": "Bestyrelsen har valgt en ny formand",
-      "message": "Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. {chairmanLabel} overtager. Forvent ny tone i de kommende forhandlinger."
+      "message": "Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. {chairmanLabel} overtager. Forvent ny tone i de kommende forhandlinger.",
+      "messageWithName": "Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. {chairmanName}, klubbens nye {chairmanLabel}, overtager. Forvent ny tone i de kommende forhandlinger."
     },
     "boardForcedListing": {
       "title": "Bestyrelsen kræver salg",
