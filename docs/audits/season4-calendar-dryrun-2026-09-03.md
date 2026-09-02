@@ -1,4 +1,4 @@
-# Sæson 4 — kalender-tørkørsel og ejerens beslutningsliste (3/9 2026)
+# Sæson 4 - kalender-tørkørsel og ejerens beslutningsliste (3/9 2026)
 
 > **Intet er skrevet.** Alle tal nedenfor kommer fra en 100 % read-only tørkørsel mod prod.
 > Sæson 4 findes stadig ikke i `seasons`, og der er ikke oprettet ét eneste løb.
@@ -25,7 +25,7 @@ Ingen af dem har `--apply`. Scriptet læser `race_pool`, `league_divisions`, `te
 
 ---
 
-## 1. Sæsonvinduet (§2) — 31 dage er ikke muligt for S4
+## 1. Sæsonvinduet (§2) - 31 dage er ikke muligt for S4
 
 §2 er to låste regler, ikke ét tal: **sæsonen slutter altid en søndag** (ejer-låst 23/8,
 [#4131](https://github.com/NicolaiDolmer/CyclingZone/issues/4131)) og **antal løbsdatoer =
@@ -36,15 +36,15 @@ mandags-start kan kun have længder der er hele uger:
 | Længde | Sidste løbsdag | Kan kalenderen fyldes? |
 |--:|---|---|
 | 21 | søn 18/10 | ikke målt (kortere end nogen tidligere sæson) |
-| **28** | **søn 25/10** | **ja — alle fire divisioner har løb hver dag** |
-| 35 | søn 1/11 | **nej** — D3 mangler 55 løbsdage af kvoten og har 18 kalenderdage uden løb |
+| **28** | **søn 25/10** | **ja - alle fire divisioner har løb hver dag** |
+| 35 | søn 1/11 | **nej** - D3 mangler 55 løbsdage af kvoten og har 18 kalenderdage uden løb |
 | 42 | søn 8/11 | nej (værre end 35) |
 
 **31 er umuligt.** Mandag + 30 dage = onsdag 28/10. Scriptet afviser det nu med en fejl i
 stedet for at afrunde: `resolveSeasonWindow` kaster og printer de lovlige længder.
 
 **Målt på 35 dage** (kommandoen ovenfor): D3 leverer 50 af 105 løbsdage og har 18 tomme
-kalenderdage — det er §2's ejer-regel "jeg vil ikke have dage uden løb" brudt i en hel
+kalenderdage - det er §2's ejer-regel "jeg vil ikke have dage uden løb" brudt i en hel
 division. Årsagen er den samme forsyningsgrænse som §5b beskriver: kaskaden sulter nedad,
 og kataloget rummer ikke nok Class1/ProSeries-løb til at fylde 35 dage i alle fire divisioner.
 
@@ -83,17 +83,17 @@ D3 84 · D4 56**. Alle fire divisioner rammer den præcist.
 | §7b finale-bånd pr. division | 🟢 (5 rå-bånds-afvigelser bæres af stikprøve-tillægget) | 🟢 (4) | 🟢 (6) | 🟢 (11) |
 
 **Sæson-aggregatet, komposition:** flad 24,0 · kuperet 31,9 · bjerg 27,8 · ITT 11,0 ·
-brosten 5,4 · TTT 0 — alle inden for tolerancen mod K-B (§6).
+brosten 5,4 · TTT 0 - alle inden for tolerancen mod K-B (§6).
 
-**Sæson-aggregatet, finale-bånd:** 🔴 ét brud — `hilly` slutter fladt 30,1 % mod båndet
+**Sæson-aggregatet, finale-bånd:** 🔴 ét brud - `hilly` slutter fladt 30,1 % mod båndet
 15-30 % (n=83). Det er et grænsetilfælde på 0,1 pp.
 
 ### Fire blokerende fund (28 dage, med tilt)
 
 Scriptet nægter at gå videre på dem. De skal lukkes før S4 kan bygges:
 
-1. **D2 kuperet 38,4 % mod mål 33 %** (tolerance ±5) — for meget kuperet.
-2. **D2 bjerg 20,5 % mod mål 28 %** (tolerance ±5) — for lidt bjerg.
+1. **D2 kuperet 38,4 % mod mål 33 %** (tolerance ±5) - for meget kuperet.
+2. **D2 bjerg 20,5 % mod mål 28 %** (tolerance ±5) - for lidt bjerg.
 3. **D1 brosten-i-etapeløb 0 < 1** (realisme-båndet, #3469). D1 vælger ingen `cobbled_tour`;
    kataloget har 7, men D1's reservation står bevidst på 0 (§5, #4075).
 4. **D1 nedkørsels-finale-etapedage 6 < 8** (realisme-gulvet, #3469).
@@ -117,16 +117,16 @@ Scriptet nægter at gå videre på dem. De skal lukkes før S4 kan bygges:
 Tilten hjælper D2 (3,6 → 6,3 %) og skader D1 (12,9 → 14,3 %) og D3 (13,1 → 15,5 % ITT).
 Det er præcis den risiko `tierUniformFillerTilt.js` selv beskriver i sin docstring: den er
 en **proportional førstetilnærmelse afledt af en ANDEN sæsons løbsudvalg**, ikke en søgning
-mod S4's. S4's udvalg ligner ikke S3's — fx havde D3 5,9 % ITT i S3, men planen for S4
+mod S4's. S4's udvalg ligner ikke S3's - fx havde D3 5,9 % ITT i S3, men planen for S4
 starter på 13,1 % uden tilt, så en opjustering på 10/5,9 skyder forbi.
 
 > **Dette er den vigtigste enkeltmåling i rapporten:** at slå tilten til uden at
-> genkalibrere den mod S4 er ikke neutralt — det koster ét ekstra brud og én ekstra
+> genkalibrere den mod S4 er ikke neutralt - det koster ét ekstra brud og én ekstra
 > blokerende gate.
 
 ---
 
-## 4. Katalog-lofterne (§5b) — hvad kalibrering ALDRIG kan lukke
+## 4. Katalog-lofterne (§5b) - hvad kalibrering ALDRIG kan lukke
 
 Målt read-only mod `race_pool` 3/9 (168 aktive rækker):
 
@@ -167,9 +167,9 @@ ikke vælger. **Ingen af dem er gættet på plads.**
 - **Anbefaling: A nu, B som opgave til S5.** Genkalibrering er en søgning, ikke en
   regnestykke-rettelse, og den kan ikke nå at blive verificeret før 28/9.
 - **Vælger du ikke:** `--uniform-tilt` er FRA som default, så S4 bygges uden. Det er også
-  det målt bedste af de to — men det er stadig et valg der bør træffes bevidst.
+  det målt bedste af de to - men det er stadig et valg der bør træffes bevidst.
 
-### C. §11 punkt 1 — skal "etapeløb højst etaper + 3 kalenderdage" have preflight + prod-invariant?
+### C. §11 punkt 1 - skal "etapeløb højst etaper + 3 kalenderdage" have preflight + prod-invariant?
 
 - **Hvad det betyder:** reglen er gatet i CI, men ikke ved selve genereringen eller mod prod.
   Den kommer i dag "gratis" af at et løbs etaper ligger på løbsdage i træk.
@@ -178,16 +178,16 @@ ikke vælger. **Ingen af dem er gættet på plads.**
   divisioner bryder den, så den blokerer ikke sæsonen.
 - **Vælger du ikke:** ingenting sker; reglen forbliver ugated på to af tre niveauer.
 
-### D. §11 punkt 2 — skal `Class1`/`Class2` have et etapebånd?
+### D. §11 punkt 2 - skal `Class1`/`Class2` have et etapebånd?
 
 - **Hvad det betyder:** D4 kører etapeløb helt ned til 2 etaper. Ingen ved om det er en
   tilsigtet format-variation eller et hul.
-- **A: sæt et bånd (fx 3-6).** **B: lad det stå — korte etapeløb er D4's identitet.**
+- **A: sæt et bånd (fx 3-6).** **B: lad det stå - korte etapeløb er D4's identitet.**
 - **Anbefaling: B for S4.** Et bånd nu ville skære i D4's i forvejen tynde vindue på 19
   etapeløb og gøre §5b's forsyningsproblem værre, ikke bedre.
 - **Vælger du ikke:** D4 bygges som i dag, med 2-etapers etapeløb.
 
-### E. §11 punkt 3 / #4278 — D4's højbjergs-overskud: arketype-LOFT eller flere katalog-løb?
+### E. §11 punkt 3 / #4278 - D4's højbjergs-overskud: arketype-LOFT eller flere katalog-løb?
 
 - **Hvad det betyder:** D4 har 16,1 % højbjerg mod målet 12 %, fordi D4 trækker 5-6 af
   katalogets 6 `summit_tour`. Den laveste division er den mest bjergrige.
@@ -198,7 +198,7 @@ ikke vælger. **Ingen af dem er gættet på plads.**
 - **Vælger du ikke:** D4 bygges 4 pp for bjergrig igen, og §6b's højbjerg-mål er rødt i
   tre divisioner i S4 som i S3.
 
-### F. §11 punkt 4 — hvad er gulvet for kvote-opfyldelse?
+### F. §11 punkt 4 - hvad er gulvet for kvote-opfyldelse?
 
 - **Hvad det betyder:** kvoten (density × dage) er en øvre ramme uden gulv. I S3 leverede
   D3 91,4 %. I S4's 28-dages-plan leverer **alle fire divisioner 100 %**.
@@ -207,7 +207,7 @@ ikke vælger. **Ingen af dem er gættet på plads.**
   koster ingenting nu og fanger næste gang en division sulter (35-dages-kørslen ramte 48 %).
 - **Vælger du ikke:** en division kan igen levere 91 % uden at nogen gate siger fra.
 
-### G. §11 punkt 5 — monument-spredning målt i løbsdage?
+### G. §11 punkt 5 - monument-spredning målt i løbsdage?
 
 - **Hvad det betyder:** CI måler spredning i KALENDERDAGE mod en fixture. Der findes intet
   ejer-sat tal på løbsdags-aksen.
@@ -216,7 +216,7 @@ ikke vælger. **Ingen af dem er gættet på plads.**
   det blokerer ikke S4.
 - **Vælger du ikke:** #4465 står stille, og monument-spredningen gates fortsat kun i CI.
 
-### H. §11 punkt 6 — skal `rolling` have et gulv, og skal `classic` høre til en familie?
+### H. §11 punkt 6 - skal `rolling` have et gulv, og skal `classic` høre til en familie?
 
 - **Hvad det betyder:** baroudeurens terræn har ingen garanti. Målt i S4-planen: D1 19
   rolling-etaper, D2 10, D3 4, **D4 1**. `classic` tælles ikke mod noget gulv.
@@ -225,10 +225,10 @@ ikke vælger. **Ingen af dem er gættet på plads.**
   Et rolling-gulv i D4 ville skulle tages fra et andet terræn i en division der allerede
   er for bjergrig.
 - **Vælger du ikke:** D4 har én enkelt rolling-etape hele sæsonen, og `classic`-etaperne
-  er fortsat usynlige for alle dækningsgarantier (antallet i S4 er ikke målt — `classic`
+  er fortsat usynlige for alle dækningsgarantier (antallet i S4 er ikke målt - `classic`
   hører til ingen familie og tælles derfor ikke af scorecardet).
 
-### I. §11 punkt 7 / #4288 — er 17-18 etaper den nye GT-ramme?
+### I. §11 punkt 7 / #4288 - er 17-18 etaper den nye GT-ramme?
 
 - **Hvad det betyder:** kataloget har tre GT'er på 17, 18 og 17 etaper. Realisme-båndet
   kræver 21 og springer dem derfor over: **spillets tre største løb måles slet ikke.**
@@ -236,39 +236,39 @@ ikke vælger. **Ingen af dem er gættet på plads.**
   **B: udvid GT'erne i kataloget til 21 etaper.**
 - **Anbefaling: A.** B kan ikke lade sig gøre i en 28-dages sæson: 21 etaper + 2 hviledage
   = 23 løbsdage, og tre af dem skal være i samme sæson uden at overlappe.
-- **Vælger du ikke:** S4's Grand Tours bygges uden at nogen gate har set på dem —
+- **Vælger du ikke:** S4's Grand Tours bygges uden at nogen gate har set på dem -
   hverken GO eller NO-GO. Det er "en vagt der er stille fordi systemet er ændret".
 
-### J. §11 punkt 8 — skal `rolling` flyttes til bakke-siden i kaptajn-bucket og GT-finale?
+### J. §11 punkt 8 - skal `rolling` flyttes til bakke-siden i kaptajn-bucket og GT-finale?
 
 - **Hvad det betyder:** en spiller der sætter kaptajnen op til en rolling-etape får den
   behandlet som en flad dag, og en Grand Tour kan slutte på en etape der ender i udbrud
   65 % af gangene.
 - **A: flyt begge.** **B: mål effekten først, flyt én ad gangen efter S4.**
 - **Anbefaling: B.** Fjernes `rolling` fra `FLAT_FAMILY` bliver `sprint_finale` infeasible
-  i etapeløb hvis eneste flade forsyning er rolling — det skal måles før, ikke efter.
+  i etapeløb hvis eneste flade forsyning er rolling - det skal måles før, ikke efter.
 - **Vælger du ikke:** uændret adfærd i S4.
 
-### K. #4203 — monumenterne skal ud af GT-vinduerne
+### K. #4203 - monumenterne skal ud af GT-vinduerne
 
 - **Hvad det betyder:** i S3 lå 4 af 5 monumenter inde i et GT-vindue, og GT'erne fyldte
-  70 % af D1's sæson. S4's plan er ikke målt på dette punkt — der findes ingen gate for det.
+  70 % af D1's sæson. S4's plan er ikke målt på dette punkt - der findes ingen gate for det.
 - **A: byg gaten (monument må ikke ligge i et GT's løbsdags-spænd) FØR S4 materialiseres.**
   **B: mål S4's plan i hånden og flyt bagefter.**
 - **Anbefaling: A.** §2c tillader kun én regenerering, så "flyt bagefter" bruger den ene
   chance på noget der kunne være fanget før.
 - **Vælger du ikke:** S4 kan gentage S3's tilstand, og reparationen koster sæsonens ene regenerering.
 
-### L. #4209 — GT-hviledage skal binde rytteren
+### L. #4209 - GT-hviledage skal binde rytteren
 
 - **Hvad det betyder:** på en GT's hviledag er rytteren i dag fri til at køre et andet løb.
   Ejer-direktivet 24/8 siger det modsatte.
 - **A: byg det (kræver #4191 først).** **B: udskyd.**
-- **Anbefaling: A, men det er ikke en kalender-opgave** — det er `race_entry_days_rebuild()`
+- **Anbefaling: A, men det er ikke en kalender-opgave** - det er `race_entry_days_rebuild()`
   og hører i sit eget spor. Det blokerer ikke S4's kalender.
 - **Vælger du ikke:** GT-ryttere kan fortsat forlade en Grand Tour på hviledagen i S4.
 
-### M. #4105 — Terre di Toscana skal være grus, ikke brosten
+### M. #4105 - Terre di Toscana skal være grus, ikke brosten
 
 - **Hvad det betyder:** løbet er ét af katalogets 17 `cobbled_classic`. Ændres det, falder
   brostens-forsyningen med ét løb, og D1's brosten-andel (4,3 % mod 5 %) bliver lavere.
@@ -278,20 +278,20 @@ ikke vælger. **Ingen af dem er gættet på plads.**
   etapetype i motoren i dag, så ændringen er ikke en ren dataændring.
 - **Vælger du ikke:** løbet er brosten i endnu en sæson.
 
-### N. #3864 — belgisk åbningsuge + brosten-sektorer med reel vægt
+### N. #3864 - belgisk åbningsuge + brosten-sektorer med reel vægt
 
 - **Hvad det betyder:** spillerønske til S4: sæsonens første uge skal føles som
   forårsklassikere, og brosten skal veje 15-20 % på udvalgte punch-etaper.
 - **A: kurater åbningsugen i S4** (selection/fase-arbejde oven på det eksisterende).
   **B: udskyd til S5.**
 - **Anbefaling: B for sektor-vægtene** (balance-følsomt, kræver simulering), **A for
-  åbningsugen** hvis der er tid — den er ren placering og rører ikke motoren.
+  åbningsugen** hvis der er tid - den er ren placering og rører ikke motoren.
 - **Vælger du ikke:** S4's åbning bliver som S3's.
 
-### O. #3329 — D1's løbsdage uden overlap
+### O. #3329 - D1's løbsdage uden overlap
 
 - **Hvad det betyder:** i S2 havde D1 6 af 28 løbsdage med kun ét løb. Der findes stadig
-  intet MINDSTE-overlap som krav — kun et loft. S4's plan rammer loftet (maks 3 i D1),
+  intet MINDSTE-overlap som krav - kun et loft. S4's plan rammer loftet (maks 3 i D1),
   men bunden er umålt.
 - **A: definér et mindste-overlap pr. division som data og fejl ved generering.**
   **B: lad det stå som et loft.**
@@ -309,6 +309,6 @@ I rækkefølge. Ingen af dem er kørt.
    scriptet at apply'e.
 2. **De fire blokerende gates lukkes** (D2's komposition, D1's brosten-i-etapeløb,
    D1's nedkørsels-finaler). To af dem peger på kataloget, ikke på generatoren.
-3. **Sæson-rækken oprettes** (`--apply` gør det selv, status `upcoming`) — først dér
+3. **Sæson-rækken oprettes** (`--apply` gør det selv, status `upcoming`) - først dér
    holder årsmødet op med at springe alle hold over.
 4. **Én regenerering, punktum** (§2c). Er kalenderen skrevet, er formen låst for S4.

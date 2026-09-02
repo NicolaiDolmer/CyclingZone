@@ -132,25 +132,25 @@ En sæsons kalender må regenereres **højst én gang**, og kun mens sæsonen ha
 ## 2d. Sådan bygges sæson 4 (og enhver sæson efter den)
 
 **Ét script, én kommando, én regenerering.** `backend/scripts/buildSeasonCalendar.js` er
-vejen. `regenSeason3Calendar.mjs` var S3-specifik og skal ikke kopieres — dens hardkodede
+vejen. `regenSeason3Calendar.mjs` var S3-specifik og skal ikke kopieres - dens hardkodede
 `REAL_DAYS = 31` og `OWNER_FIRST_RACE_DAY` gælder kun S3.
 
 ```
-# 1) tørkørsel — skriver ALDRIG, uanset flag
+# 1) tørkørsel - skriver ALDRIG, uanset flag
 node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28
 
 # 2) samme, med §6b's pr.-division-tilt slået til (#4103)
 node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --uniform-tilt
 
-# 3) skrivning — kun efter ejer-go, og kun med en EKSPLICIT længde
+# 3) skrivning - kun efter ejer-go, og kun med en EKSPLICIT længde
 node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days 28 --apply
 ```
 
-### Længden udledes af §2 — den arves ikke
+### Længden udledes af §2 - den arves ikke
 
 `resolveSeasonWindow` (`backend/lib/calendarStartDate.js`) håndhæver §2's to regler:
 slutdatoen skal være en **søndag**, og løbsdatoer = slutdato − startdato + 1. **S3's 31 er
-ikke en konstant** — det er dét reglerne gav for en fredags-start. En mandags-start kan
+ikke en konstant** - det er dét reglerne gav for en fredags-start. En mandags-start kan
 kun have længder der er hele uger. Uden `--race-days`/`--last-day` FORESLÅR scriptet den
 lovlige længde tættest på 31 og markerer den som udledt; `--apply` nægter at køre på et
 forslag, netop fordi §2c kun giver én chance.
@@ -166,7 +166,7 @@ scriptet. `TIER_GAME_DAY_QUOTA`s 140/112/84/56 bruges ikke af denne vej.
 | Dækningsgarantier (§4 endagsløb, §5 terræn-gulve) | `gatePlan` | **ingen** |
 | Etaperækkefølge (§7) | `gatePlan` | **ingen** |
 | Realisme-bånd (#3347/#3469) | `gatePlan` | **ingen** |
-| Løb hver kalenderdag (§2) | scorecardet | **ingen** — ejer-regel |
+| Løb hver kalenderdag (§2) | scorecardet | **ingen** - ejer-regel |
 | Kvote-hul > 3 løbsdage | `gatePlan` | **ingen** |
 | K-B-komposition, sæson (§6) | `gatePlan` | `--allow-composition-drift` |
 | K-B-komposition, pr. division (§6) | `gatePlan` | `--allow-tier-composition-drift` |
@@ -174,15 +174,15 @@ scriptet. `TIER_GAME_DAY_QUOTA`s 140/112/84/56 bruges ikke af denne vej.
 | Uniforme mål (§6b) | scorecardet | `--allow-uniform-target-drift` |
 
 Scorecardet er den SAMME kode CI kører (`lib/calendarScorecardReport.js`, delt med
-`scripts/dev/calendarScorecard4218.mjs`) — så tørkørslen og CI ikke kan dømme forskelligt.
+`scripts/dev/calendarScorecard4218.mjs`) - så tørkørslen og CI ikke kan dømme forskelligt.
 
 ### Hvad ejeren skal vælge før en sæson bygges
 
 1. **Længden** (`--race-days`), blandt de søndags-afsluttede muligheder scriptet printer.
 2. **Om §6b-tilten skal være tændt** (`--uniform-tilt`). Den er kalibreret mod en
-   TIDLIGERE sæsons måling og skal efterprøves mod den sæson der bygges — for S4 gjorde
+   TIDLIGERE sæsons måling og skal efterprøves mod den sæson der bygges - for S4 gjorde
    den planen målt ringere, se `docs/audits/season4-calendar-dryrun-2026-09-03.md`.
-3. **Hvad der gøres ved hvert blokerende fund** — de peger typisk på kataloget (§5b),
+3. **Hvad der gøres ved hvert blokerende fund** - de peger typisk på kataloget (§5b),
    ikke på generatoren.
 
 Beslutningerne til S4 står samlet, med målte tal og A/B-anbefaling pr. punkt, i
@@ -190,7 +190,7 @@ Beslutningerne til S4 står samlet, med målte tal og A/B-anbefaling pr. punkt, 
 
 ### Sæson-rækken
 
-Scriptet opretter `seasons`-rækken med status `'upcoming'` — **kun i `--apply`-stien**.
+Scriptet opretter `seasons`-rækken med status `'upcoming'` - **kun i `--apply`-stien**.
 Det er ikke kosmetik: årsmødet (`proposeNextMandate`) slår næste sæson op på `number` uden
 at filtrere på status, og springer ALLE hold over indtil rækken findes. Opslaget bor i
 `backend/lib/seasonLookup.js` (`findNextSeason`), og tørkørslen rapporterer tilstanden.

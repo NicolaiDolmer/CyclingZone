@@ -138,7 +138,7 @@ SQL-blokke tæt på cutover-dagen, ikke ugen før.
    fejl for de first-time-berørte hold (spot-check et par nyoprykkede D1-hold
    + et par nyrelegerede D4-hold i deres nye puljers kalender).
 
-## S3 → S4 (28/9 2026) — kun det der er ANDERLEDES
+## S3 → S4 (28/9 2026) - kun det der er ANDERLEDES
 
 Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod prod 3/9 2026.
 
@@ -153,7 +153,7 @@ Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod pro
    derfor kun hele uger. 35 dage er målt umuligt (D3 får 18 kalenderdage uden løb).
    Ejeren skal vælge længden eksplicit; `--apply` nægter at køre på scriptets forslag.
 
-3. **`seasons`-rækken for S4 findes ikke — og årsmødet er dødt indtil den gør.**
+3. **`seasons`-rækken for S4 findes ikke - og årsmødet er dødt indtil den gør.**
    `proposeNextMandate` slår næste sæson op på `number` og springer alle hold over med
    `target_season_not_found`. Rækken oprettes af `--apply` med status `'upcoming'`;
    `insertSeasonIfMissing` promoverer den selv til `'active'` ved cutoveren.
@@ -166,11 +166,11 @@ Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod pro
 
 5. **Fire gates var røde i tørkørslen 3/9** og skal lukkes før kalenderen bygges:
    D2's komposition (kuperet/bjerg), D1's brosten-i-etapeløb og D1's nedkørsels-finaler.
-   To af dem peger på kataloget (§5b), ikke på generatoren — de kan altså ikke kalibreres
+   To af dem peger på kataloget (§5b), ikke på generatoren - de kan altså ikke kalibreres
    væk. Fund, tal og beslutningsliste: `docs/audits/season4-calendar-dryrun-2026-09-03.md`.
 
 > **Uændret og stadig bindende:** §2c's "én regenerering pr. sæsonkalender". Er S4's
-> kalender skrevet, er formen låst for S4 — en fejl bagefter står til S5.
+> kalender skrevet, er formen låst for S4 - en fejl bagefter står til S5.
 
 ## Reference
 
