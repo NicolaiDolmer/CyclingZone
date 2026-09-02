@@ -474,6 +474,9 @@ export async function buildBoardRoomPayload({
       .eq("team_id", teamId).eq("status", "active"),
     // #4578 · goal_states tilføjet: mål-for-mål-snapshottet deriveGoalMovements
     // sammenligner naboer af pr. goal_key (se boardMandateEngine.js).
+    // schema-columns-ok: goal_states tilføjes af database/2026-09-02-4578-board-
+    // satisfaction-events-goal-states.sql (applies post-merge under #2642); nullable,
+    // ingen graceful-fallback nødvendig (kolonnen findes altid efter merge).
     supabase.from("board_satisfaction_events")
       .select("id, race_name, satisfaction_before, satisfaction_after, satisfaction_delta, goals_met, goals_total, reason_category, created_at, mandate_id, milestone_id, goal_states")
       .eq("team_id", teamId)
