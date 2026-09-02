@@ -155,7 +155,25 @@ function tickGroupRiders(
   tuning: EngineTuning,
 ): Record<string, RiderState> {
   const next: Record<string, RiderState> = {};
-  const baseDemand = tuning.terrain.baseDemand[segment.kind];
+  // #4604 (bjerg-anker): kravet er RELATIVT til gruppens kollektive CP — den
+  // samme stoerrelse §4 punkt 1 allerede afleder front-tempoet af.
+  //
+  // FOER var `terrain.baseDemand[kind]` en ABSOLUT 0-1-vaerdi maalt mod en
+  // evne-VAEGTET CP. Konstanterne blev valgt ud fra en antaget middel-evne
+  // omkring midt-skala; den aegte S3-populations median-CP paa climb er 0,097
+  // mod et krav paa 0,720. Maalt 2/9 over 5.938 ryttere: 100 % af feltet laa
+  // over CP paa climb, 92 % paa flat, 89 % paa descent — altsaa ogsaa nedad.
+  // Det er ikke en balance-praeference, det er en skala-fejl: uanset hvor
+  // staerkt eller svagt et felt er, kan det ikke ligge over sit EGET tempo.
+  // #4606's tidskonstant gjorde taeringen langsom nok til at vaere maalbar;
+  // uden dette led taerer den stadig for ALLE, hele tiden.
+  //
+  // `baseDemand[kind]` beholder sin kalibrering, men laeses nu som "andel af
+  // gruppens baeredygtige tempo dette terraen kraever". Terraenets indbyrdes
+  // ordning (climb 0,8 > cobbles 0,65 > flat 0,55 > descent 0,3) er uaendret,
+  // og fortolkningen er population-uafhaengig: en staerkere eller svagere
+  // aargang giver samme selektions-dynamik i stedet for et kollaps.
+  const groupDemand = tempo.collectiveCp * tuning.terrain.baseDemand[segment.kind];
   const segmentLengthKm = Math.max(0, segment.to_km - segment.from_km);
   for (const riderId of group.rider_ids) {
     const entrant = entrantsById[riderId];
@@ -165,7 +183,7 @@ function tickGroupRiders(
     const positionFactor = tempo.frontRiderIds.has(riderId)
       ? tuning.work.frontWorkFactor[segment.kind]
       : tuning.work.draftFactor[segment.kind];
-    const demand = baseDemand * positionFactor;
+    const demand = groupDemand * positionFactor;
     const rechargeRate = deriveRechargeRate(entrant.abilities, tuning.physiology);
     // #4030 fixture-fund: sub-tick i stedet for ét Euler-skridt over hele
     // segmentet (tuning.ts's PHYSIOLOGY_SUBTICK_TUNING, physiology.ts's
