@@ -1,17 +1,49 @@
-// Daily race-digest sweep (#2725). Cron ticks hourly but the sweep only does
-// work during the 19:00-19:59 Copenhagen-time hour — computed via
-// copenhagenHour (Intl-based, DST-correct, no hardcoded UTC offset), never a
-// fixed UTC hour. dedupe_key includes the Copenhagen calendar date
-// (`digest:<userId>:<YYYY-MM-DD>`) so the daily digest is idempotent even if
-// the hourly cron ticks more than once inside the 19:00 hour, and so a
-// digest can never accidentally span two different days.
+// Race-digest "you were away" sweep (#2853 v2 / #4650). Cron ticks hourly but
+// the sweep only does work during the 19:00-19:59 Copenhagen-time hour --
+// unchanged from before #4650 (copenhagenHour, DST-correct, never a
+// hardcoded UTC hour).
 //
-// Source query mirrors notificationService.js's fetch-participating-managers
-// join shape (race_results -> riders'/team via team_id -> teams), filtered to
-// today's Copenhagen calendar day via race_results.imported_at, restricted to
-// human teams (is_ai/is_bank/is_frozen/is_test_account), and reduced to each
-// manager's single best (lowest rank) result per race — never invented data,
-// every line comes straight from a race_results row.
+// #4650 (owner, tone session 2026-09-02, "ingen spam"): this used to be a
+// DAILY digest to every RECENTLY active manager who raced today -- up to
+// ~30 emails a season to an engaged player. The owner rejected that cadence.
+// The digest is now a come-back mail, not a report:
+//
+//   - Only to managers with users.last_seen OLDER than
+//     DIGEST_ABSENCE_WINDOW_MS (3 days) -- the OPPOSITE direction from the
+//     pre-#4650 "recently active" filter this file used to have.
+//   - At most one per ISO-calendar-week per manager: dedupeKey now embeds
+//     copenhagenIsoWeekString(now) instead of a calendar date, so
+//     sendLoopEmail's existing dedupe_key uniqueness check IS the weekly
+//     cap -- no separate counting needed for this rule.
+//   - At most DIGEST_MAX_PER_ABSENCE (2) per absence period: counted as
+//     email_log race_digest rows for that user with created_at >= their
+//     CURRENT last_seen. last_seen only advances when the player actually
+//     opens the app again, so this count naturally resets the moment they
+//     come back -- a fresh absence period starts at 0.
+//   - Only results since the player's LAST VISIT (race_results.imported_at
+//     >= last_seen), not "today". An absent player may not have raced
+//     specifically today, so the pre-#4650 query -- which started from
+//     TODAY's race_results and derived candidate users from that -- no
+//     longer fits. This sweep now starts from the candidate USER (human
+//     teams, filtered to absentees first) and fetches each survivor's own
+//     results window individually -- the same one-query-per-team shape
+//     emailDay1Sweep.js already uses for its race_results lookup. The
+//     candidate set reaching that per-user query is small BY CONSTRUCTION:
+//     only absentees that passed the weekly dedupe (checked by sendLoopEmail
+//     itself downstream) and the 2-per-absence cap (checked here) get this
+//     far.
+//   - No results since last visit -> no email at all (never an empty/
+//     "nothing happened" digest).
+//
+// Unchanged: human-team filter (is_ai/is_bank/is_frozen/is_test_account),
+// email_prefs opt-out (isEmailTypeEnabled, same rule sendLoopEmail enforces
+// per-send), the 19:00 hour gate.
+//
+// #3399's narrative-headline lead-in ("Krogh takes the sprint") is dropped
+// along with the daily cadence -- the locked v2 copy in
+// docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md goes straight from
+// the greeting to the result lines (see emailTemplates.js's
+// buildRaceDigestEmail for the same removal on the template side).
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { isEmailLoopActive } from "./emailLoopFlag.js";
@@ -19,40 +51,54 @@ import { sendLoopEmail } from "./emailService.js";
 import { isEmailTypeEnabled } from "./emailPrefs.js";
 import { buildRaceDigestEmail } from "./emailTemplates.js";
 import { unsubscribeUrlFor } from "./emailUnsubUrl.js";
-import { copenhagenHour, copenhagenDateString, copenhagenMidnightUTC } from "./copenhagenTime.js";
+import { copenhagenHour, copenhagenIsoWeekString } from "./copenhagenTime.js";
 import { captureException } from "./sentry.js";
-import { buildRaceResultNarrative } from "./raceNarrativeNotification.js";
 
 export const DIGEST_HOUR_COPENHAGEN = 19;
+export const DIGEST_ABSENCE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+export const DIGEST_MAX_PER_ABSENCE = 2;
 
-// #2853: the digest previously emailed EVERY manager with a ranked result
-// today, regardless of whether they had touched the game in months (verified
-// against the pre-#2853 query below — it filtered AI/bank/frozen/test teams
-// only, no activity check at all). A 14-day last_seen window matches the
-// house "recently active" cutoff used elsewhere (see users.last_seen
-// consumers) — a manager who raced today via idle riders/auto-lineups but
-// hasn't opened the app in 2+ weeks is exactly the "unsubscribe as spam"
-// risk this filter targets.
-export const DIGEST_ACTIVITY_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+// Human teams only (mirrors emailWelcomeSweep.js / emailDay1Sweep.js's
+// filter 1:1) -- the last_seen absence check happens afterwards, in JS,
+// once we have each candidate's user row.
+async function defaultFetchCandidateTeams({ supabase }) {
+  return fetchAllRows(() =>
+    supabase
+      .from("teams")
+      .select("id, name, user_id")
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .eq("is_test_account", false)
+      .not("user_id", "is", null)
+      .order("id")
+  );
+}
 
-// #2725: a single race day can produce >1000 race_results rows once every
-// division races the same day (stage races × many teams), so this MUST
-// paginate via fetchAllRows rather than a single .select() — a naive load
-// would silently drop rows past PostgREST's 1000-row default limit (jf.
-// supabasePagination.js's header comment: PCM rider-matcher lost 88% of
-// riders this exact way). Stable .order("id") required for correct paging.
-async function defaultFetchDigestRows({ supabase, sinceIso }) {
+// email_log rows for the 2-per-absence-period cap. Only user_id + created_at
+// are needed -- the per-user filter (created_at >= that user's last_seen)
+// happens in JS below, once per candidate.
+async function defaultFetchDigestLogRows({ supabase, userIds }) {
+  if (!userIds.length) return [];
+  return fetchAllRows(() =>
+    supabase
+      .from("email_log")
+      .select("user_id, created_at")
+      .eq("email_type", "race_digest")
+      .in("user_id", userIds)
+      .order("id")
+  );
+}
+
+// One query per surviving candidate (small set -- see header comment), same
+// shape as emailDay1Sweep.js's per-team race_results lookup.
+async function defaultFetchResultsSince({ supabase, teamId, sinceIso }) {
   return fetchAllRows(() =>
     supabase
       .from("race_results")
-      .select(
-        "id, rank, rider_name, team_id, race:race_id!inner(id, name), team:team_id!inner(user_id, is_ai, is_bank, is_frozen, is_test_account)"
-      )
+      .select("id, rank, rider_name, race_id, race:race_id!inner(id, name)")
+      .eq("team_id", teamId)
       .gte("imported_at", sinceIso)
-      .eq("team.is_ai", false)
-      .eq("team.is_bank", false)
-      .eq("team.is_frozen", false)
-      .eq("team.is_test_account", false)
       .not("rank", "is", null)
       .order("id")
   );
@@ -64,110 +110,94 @@ export async function runEmailRaceDigestSweep({
   isActive = isEmailLoopActive,
   send = sendLoopEmail,
   unsubSecret = process.env.EMAIL_UNSUB_SECRET,
-  fetchRows = defaultFetchDigestRows,
+  fetchCandidateTeams = defaultFetchCandidateTeams,
+  fetchDigestLogRows = defaultFetchDigestLogRows,
+  fetchResultsSince = defaultFetchResultsSince,
   captureExceptionFn = captureException,
-  // #3399: narrativ rubrik ("Krogh takes the sprint") for dagens BEDSTE
-  // (laveste rank) løb pr. manager — buildRaceDigestEmail leder med den i
-  // stedet for en nøgen liste. Ærlig degradering: returnerer null for
-  // gamle/PCM-løb eller når v3 var slukket, og digesten ser da ud som før
-  // #3399 (kun listen, ingen rubrik-afsnit).
-  fetchNarrative = buildRaceResultNarrative,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
-  // 2026-08-06 (#3475-klassen): præcis-time-gate + interval-nulstilling ved
-  // deploy kan springe HELE dagen over. `<` + den persisterede dedupe
-  // (email_log.dedupe_key med Copenhagen-dato, tjekket FØR send i
-  // emailService.js) giver én-gang-pr.-dag uden afhængighed af tick-timing.
+  // 2026-08-06 (#3475-klassen): precise-hour-gate + interval-reset ved deploy
+  // kan springe hele dagen over. `<` + den persisterede dedupe (email_log.
+  // dedupe_key, tjekket FØR send i emailService.js) giver stadig korrekt
+  // en-gang-pr.-uge selvom en catch-up-tick rammer efter kl. 19.
   if (copenhagenHour(now) < DIGEST_HOUR_COPENHAGEN) {
     return { candidates: 0, sent: 0, skipped: 0, failed: 0, skippedReason: "outside_hour_window" };
   }
   if (!(await isActive(supabase, "race_digest"))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
 
-  const sinceIso = copenhagenMidnightUTC(now).toISOString();
-  const rows = await fetchRows({ supabase, sinceIso });
+  const teams = await fetchCandidateTeams({ supabase });
+  if (!teams.length) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
 
-  // Best (lowest rank) row per (userId, raceId).
-  const bestByUserRace = new Map(); // userId -> Map(raceId -> row)
-  const teamIdByUser = new Map();
-  for (const row of rows) {
-    const userId = row.team?.user_id;
-    const raceId = row.race?.id;
-    if (!userId || !raceId || row.rank == null) continue;
-    if (!teamIdByUser.has(userId)) teamIdByUser.set(userId, row.team_id ?? null);
-
-    if (!bestByUserRace.has(userId)) bestByUserRace.set(userId, new Map());
-    const perRace = bestByUserRace.get(userId);
-    const existing = perRace.get(raceId);
-    if (!existing || row.rank < existing.rank) {
-      perRace.set(raceId, { rank: row.rank, riderName: row.rider_name, raceName: row.race?.name ?? "your race" });
-    }
-  }
-
-  const userIds = [...bestByUserRace.keys()];
-  if (!userIds.length) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+  const teamByUser = new Map(teams.map((t) => [t.user_id, t]));
+  const userIds = [...teamByUser.keys()];
 
   const { data: userRows, error: usersErr } = await supabase
     .from("users").select("id, email, last_seen, email_prefs").in("id", userIds);
   if (usersErr) throw new Error(`race-digest users lookup: ${usersErr.message}`);
 
-  // #2853: activity + consent filter. last_seen reuses the house "recently
-  // active" cutoff (DIGEST_ACTIVITY_WINDOW_MS); the consent check reuses
-  // email_prefs's existing isEmailTypeEnabled rule (same one sendLoopEmail
-  // already enforces per-send) rather than inventing a second opt-out
-  // mechanism — doing it here too means an inactive/opted-out manager never
-  // even counts as a send attempt (and never triggers the narrative lookup
-  // below), instead of silently landing in `skipped` after the work was
-  // already done for them.
-  const activityCutoffIso = new Date(now.getTime() - DIGEST_ACTIVITY_WINDOW_MS).toISOString();
-  const emailByUser = new Map(
-    (userRows || [])
-      .filter((u) => u.last_seen && u.last_seen >= activityCutoffIso)
-      .filter((u) => isEmailTypeEnabled(u.email_prefs, "race_digest"))
-      .map((u) => [u.id, u.email])
+  // #4650: absence + consent filter, reusing the existing isEmailTypeEnabled
+  // rule (same one sendLoopEmail already enforces per-send) instead of
+  // inventing a second opt-out mechanism. A user with no last_seen at all
+  // (never returned since account creation) is treated as NOT yet absent in
+  // the digest's sense -- they have nothing to "come back" from -- so they
+  // are excluded rather than default-included.
+  const absenceCutoffIso = new Date(now.getTime() - DIGEST_ABSENCE_WINDOW_MS).toISOString();
+  const absentees = (userRows || []).filter(
+    (u) => u.email && u.last_seen && u.last_seen < absenceCutoffIso && isEmailTypeEnabled(u.email_prefs, "race_digest")
   );
+  if (!absentees.length) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
 
-  const copenhagenDate = copenhagenDateString(now);
+  const digestLogRows = await fetchDigestLogRows({ supabase, userIds: absentees.map((u) => u.id) });
+  const digestLogsByUser = new Map();
+  for (const row of digestLogRows) {
+    if (!digestLogsByUser.has(row.user_id)) digestLogsByUser.set(row.user_id, []);
+    digestLogsByUser.get(row.user_id).push(row);
+  }
+
+  const isoWeek = copenhagenIsoWeekString(now);
   let sent = 0;
   let skipped = 0;
   let failed = 0;
 
-  // #3399: memoized pr. raceId — flere managere kan dele den samme "bedste"
-  // løbsdag (fx samme division-race), så vi vil ikke genberegne rubrikken pr.
-  // manager. narrativeCache holder Promise<narrative|null> per raceId.
-  const narrativeCache = new Map();
-  const getNarrative = (raceId, raceName) => {
-    if (!narrativeCache.has(raceId)) {
-      narrativeCache.set(raceId, fetchNarrative({ supabase, race: { id: raceId, name: raceName } }).catch(() => null));
-    }
-    return narrativeCache.get(raceId);
-  };
-
-  for (const [userId, perRace] of bestByUserRace) {
+  for (const user of absentees) {
     try {
-      const email = emailByUser.get(userId);
-      if (!email) { skipped += 1; continue; }
+      // Højst 2 pr. fraværsperiode: digests logget SIDEN spillerens nuværende
+      // last_seen. Kommer spilleren tilbage, rykker last_seen frem og tælleren
+      // starter forfra af sig selv -- ingen separat "nulstil"-handling nødvendig.
+      const sentSinceLastSeen = (digestLogsByUser.get(user.id) || []).filter((r) => r.created_at >= user.last_seen).length;
+      if (sentSinceLastSeen >= DIGEST_MAX_PER_ABSENCE) { skipped += 1; continue; }
 
-      const results = [...perRace.values()];
-      // Dagens rubrik = managerens BEDSTE (laveste rank) løb i dag — samme
-      // "bedste-resultat"-diskriminator digesten allerede bruger pr. løb.
-      const [topRaceId] = [...perRace.entries()].sort((a, b) => (a[1].rank ?? Infinity) - (b[1].rank ?? Infinity))[0] ?? [];
-      const narrative = topRaceId ? await getNarrative(topRaceId, perRace.get(topRaceId)?.raceName) : null;
+      const team = teamByUser.get(user.id);
+      const resultRows = await fetchResultsSince({ supabase, teamId: team.id, sinceIso: user.last_seen });
 
-      const unsubscribeUrl = unsubscribeUrlFor(userId, unsubSecret);
+      // Bedste (laveste rank) placering pr. løb siden sidste besøg -- aldrig
+      // opfundet data, hver linje kommer direkte fra en race_results-række.
+      const bestByRace = new Map();
+      for (const row of resultRows) {
+        if (row.rank == null) continue;
+        const raceId = row.race?.id ?? row.race_id;
+        if (!raceId) continue;
+        const existing = bestByRace.get(raceId);
+        if (!existing || row.rank < existing.rank) {
+          bestByRace.set(raceId, { rank: row.rank, riderName: row.rider_name, raceName: row.race?.name ?? "your race" });
+        }
+      }
+      if (!bestByRace.size) { skipped += 1; continue; } // ingen resultater siden sidste besøg -> ingen mail
+
+      const unsubscribeUrl = unsubscribeUrlFor(user.id, unsubSecret);
       const { subject, html, text } = buildRaceDigestEmail({
-        teamName: null,
-        results,
-        headline: narrative?.headlineText ?? null,
+        teamName: team.name,
+        results: [...bestByRace.values()],
         unsubscribeUrl,
       });
       const result = await send({
         supabase,
-        userId,
-        teamId: teamIdByUser.get(userId) ?? null,
+        userId: user.id,
+        teamId: team.id,
         type: "race_digest",
-        dedupeKey: `digest:${userId}:${copenhagenDate}`,
-        to: email,
+        dedupeKey: `digest:${user.id}:${isoWeek}`,
+        to: user.email,
         subject,
         html,
         text,
@@ -177,10 +207,10 @@ export async function runEmailRaceDigestSweep({
       else skipped += 1;
     } catch (err) {
       failed += 1;
-      console.error(`  ❌ race-digest fejlede for bruger ${userId}:`, err?.message || err);
-      captureExceptionFn(err, { tags: { cron: "email-race-digest" }, extra: { userId } });
+      console.error(`  ❌ race-digest fejlede for bruger ${user.id}:`, err?.message || err);
+      captureExceptionFn(err, { tags: { cron: "email-race-digest" }, extra: { userId: user.id } });
     }
   }
 
-  return { candidates: bestByUserRace.size, sent, skipped, failed };
+  return { candidates: absentees.length, sent, skipped, failed };
 }
