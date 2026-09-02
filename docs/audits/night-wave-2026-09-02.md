@@ -2,7 +2,7 @@
 
 | Metrik | Værdi |
 |---|---|
-| Start/slut (lokal tid) | 19:50 → 23:40 (3 t 50 min) |
+| Start/slut (lokal tid) | 19:50 → 23:21 (3 t 31 min) |
 | Agenter launched / fuldført / døde | 10 workers + 4 fix-up/recovery-agenter / 13 fuldført / 1 stoppet (hang på `cd`, sporet reddet af recovery-agent) |
 | PR'er åbnet / merged | 10 åbnet (#4652 #4653 #4654 #4655 #4656 #4657 #4659 #4661 #4662 #4663) + #4608 rebaset / 3 merged (#4652 #4653 #4655) |
 | Issues → claude:done | #4644, #4648, #2816 |
