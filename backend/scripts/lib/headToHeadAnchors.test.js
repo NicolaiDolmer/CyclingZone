@@ -296,6 +296,28 @@ test("scoreGapRealism: mountain-etape med 198s top-10-spredning -> PASS (#2415-b
   assert.equal(gtAnchor.v3.verdict, "N/A"); // kraever saeson-GC, aldrig maalbart her
 });
 
+test("scoreGapRealism: bjergetape med NEDKOERSELS-finale taeller IKKE med (ejer 2/9, #4604)", () => {
+  // Samme spredning som testen ovenfor, men finale_type: descent. Etapen hoerer
+  // til nedkoersels-ankeret, ikke til #2415's topankomst-baand.
+  const summit = makeRow({
+    profile_type: "mountain", finale_type: "long_climb",
+    v3Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, stageGap: i * 22 })),
+    v4Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `r${i}`, rank: i + 1, time_seconds: 100 + i * 22 })),
+  });
+  const descentFinale = makeRow({
+    profile_type: "mountain", finale_type: "descent",
+    v3Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `d${i}`, rank: i + 1, stageGap: i * 2 })),
+    v4Entries: Array.from({ length: 11 }, (_, i) => ({ rider_id: `d${i}`, rank: i + 1, time_seconds: 100 + i * 2 })),
+  });
+
+  const [onlySummit] = scoreGapRealism([summit]);
+  const [both] = scoreGapRealism([summit, descentFinale]);
+
+  assert.equal(both.v3.sampleCount, onlySummit.v3.sampleCount, "nedkoerselsfinalen maa ikke tælles med");
+  assert.equal(both.v3.value, onlySummit.v3.value, "nedkoerselsfinalen maa ikke flytte gennemsnittet");
+  assert.equal(both.v3.verdict, "PASS");
+});
+
 // ── buildScorecard + formatScorecard (integration af alle ankre) ────────
 
 test("buildScorecard: returnerer alle forventede anker-id'er, formatScorecard producerer laesbar tekst", () => {

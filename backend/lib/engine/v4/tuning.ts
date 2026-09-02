@@ -240,6 +240,47 @@ const bonusSecondsExtra = {
 /** M9 additiv bonussekunder-tuning (deep-frosset). Se bonusSecondsExtra-kommentaren ovenfor. */
 export const BONUS_SECONDS_EXTRA_TUNING = deepFreeze(bonusSecondsExtra);
 
+// ── M3 (mechanics/descent.ts, #4604) — ADDITIV nedkoersels-regruppering ───────
+// SS2's frosne DescentTuning (types.ts) baerer KUN angrebs-/risiko-haandtagene;
+// den kender ingen regruppering. Samme "bevidst separat eksport"-moenster som
+// finaleExtra ovenfor: mechanics/descent.ts importerer denne DIREKTE, saa den
+// frosne kontrakt (arkitekt-only) staar uroert.
+//
+// HVORFOR den findes (#4604, F3-anker 3): segmentLoop's generiske gap-bogfoering
+// er `gap = max(0, gap + (dtGruppe - dtFront))` — monotont IKKE-faldende for
+// enhver gruppe bagude, paa ALLE terraen-kinds. En nedkoersel kunne derfor kun
+// skabe tid, aldrig give den tilbage, og M3's eneste tids-effekt var et SPLIT.
+// Virkeligheden er den modsatte: en nedkoersel udligner typisk smaa huller
+// (hastigheden er tyngde-/aerodynamik-domineret, ikke effekt-domineret, saa en
+// jagende gruppe taber ikke terraen paa at vaere svagere), og skaber sjaeldent
+// store. Uden dette lag blev nedkoersels-finaler lige saa spredte som
+// bjergankomster (nedkoersels-/summit-ratio ~1,1 mod kravet <= 0,5).
+const descentExtra = {
+  regroupSecondsPerKm: 0, // MIDTVEJS-nedkoersel, absolut led. BEVIDST 0 i denne PR: enhver regruppering paa en midtvejs-nedkoersel trækker direkte fra bjerg-top10-spredningen (#2415-baandet), og de to ankre deler etaper. Midtvejs-regruppering hoerer til en faelles kalibrering af begge baand, ikke til denne PR - se #4610
+  regroupGapFractionPerKm: 0, // MIDTVEJS-nedkoersel, proportionalt led. Samme begrundelse som ovenfor
+  regroupMaxGapFractionPerSegment: 0.85, // haardt loft: ét nedkoersels-segment maa ALDRIG udradere mere end denne andel af et hul — en aegte selektion skal kunne overleve en nedkoersel
+  regroupTechnicalityFactor: { 1: 1.3, 2: 1.0, 3: 0.65 } as Record<1 | 2 | 3, number>, // T1 udligner mest (bred, hurtig vej), T3 mindst (teknisk vej lader en staerk descender forsvare hullet)
+  regroupFinishSecondsPerKm: 10, // FINALE-nedkoersel, absolut led: sekunder af hullet til gruppen foran der lukkes pr. km
+  regroupFinishGapFractionPerKm: 0.15, // FINALE-nedkoersel, proportionalt led: andel af et stort hul der lukkes pr. km
+  regroupAbilitySpanPoints: 25, // descending-evne-forskel (0-99-skala) mellem jagende og forankoerende gruppe der giver fuldt udslag paa lukkehastigheden
+  regroupAbilityFactorBounds: [0.9, 1.1] as const, // clamp paa evne-faktoren — en svagere gruppe lukker mindre, en staerkere mere, men ALDRIG negativt (et hul kan aldrig VOKSE af regrupperingen)
+  // Angrebs-kvalifikationens OEVRE reference (#4604). DescentTuning.minAbilityGapForAttack
+  // maaler mod gruppens SVAGESTE descender: i et felt paa 150+ ryttere ligger
+  // minimum saa lavt at stort set hele feltet kvalificerer, og "angrebet" bliver
+  // et split hvor 60-70 % af feltet koerer fra resten. Maalt paa syntetiske felter
+  // foer fixet: 96 af 150 og 122 af 180 ryttere i "angrebsgruppen". Dette vindue
+  // maaler i stedet mod gruppens BEDSTE descender, saa kun de reelt bedste gaar —
+  // og bevarer praefiks-egenskaben monotoni-beviset i descent.ts hviler paa
+  // (det er fortsat en ren evne-taerskel, saa den kvalificerende delmaengde er
+  // altid et sammenhaengende praefiks sorteret paa faldende descending-evne).
+  attackAbilityWindowPoints: 8, // kun ryttere inden for saa mange descending-point af gruppens bedste descender kan gaa med i et nedkoersels-angreb
+  maxGroupSizeForAttack: 40, // et nedkoersels-angreb gaar normalt kun fra en ALLEREDE reduceret gruppe. Man koerer ikke 20 sekunder fra en samlet hovedgruppe paa en nedkoersel — dér er der altid nogen paa hjulet. Uden gaten udloeste M3 et angreb ud af selve feltet paa hver eneste tekniske nedkoersel
+  minTechnicalityForLargeGroupAttack: 3, // undtagelsen: fra en STOR gruppe kan der stadig angribes, men kun paa den svaereste vejtype (T3). Ellers ville gruppestoerrelses-gaten slaa M3's angreb (ejer-beslutning 6) helt ihjel paa et realistisk felt
+} as const;
+
+/** M3 additiv regrupperings-tuning (deep-frosset). Se descentExtra-kommentaren ovenfor. */
+export const DESCENT_EXTRA_TUNING = deepFreeze(descentExtra);
+
 // ── M10 (mechanics/incidents.ts, #4030 #4080) — ADDITIV incidents-tuning ──────
 // SS2's frosne EngineTuning-kontrakt (types.ts) baerer INGEN incidents-sektion
 // (arkitekten har ikke tilfoejet den) — samme "bevidst separat eksport"-moenster
