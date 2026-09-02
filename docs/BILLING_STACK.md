@@ -25,18 +25,26 @@ Spiller → /pro → POST /api/billing/checkout → Alunta /checkout-sessions
        → webhook + time-reconcile → Supabase subscriptions → isPro i appen
 ```
 
+**Sprog vælger valuta** (#4074, ejer-beslutning 2/9): dansk spilsprog → DKK, alt andet spilsprog → EUR. `ProUpgradePage.jsx` sender `currency` med i checkout-body (`i18n.language?.startsWith("da") ? "DKK" : "EUR"`); mangler feltet (ældre klient), antager backend DKK bagudkompatibelt. Aluntas hostede betalingsside er dansk uanset spilsprog (målt 2/9) — det kan ikke styres via API'et.
+
 ## 2. Alunta
 
-### Planer (tilstand 2026-08-31) ✅
+### Planer (mål-tilstand 2026-09-02, #4074) 📄
 
-| Plan | UUID | Gemt (øre, ekskl. moms) | Kunden betaler | I checkout |
+| Plan | UUID | Gemt (mindste enhed, ekskl. moms) | Kunden betaler | I checkout |
 |---|---|---|---|---|
-| CZ Pro 1 month | `0cd45c7f-…5989a8` | 3920 | **49,00 kr.** | ja |
-| CZ Pro 6 Months | `298f32cf-…69111` | 23600 | **295,00 kr.** | nej |
+| CZ Pro 1 month | `0cd45c7f-…5989a8` | 3920 øre | **49,00 kr.** | ja |
+| CZ Pro 6 Months | `298f32cf-…69111` | 21200 øre | **265,00 kr.** | ja |
+| CZ Pro 1 month EUR | sættes af orkestratoren 2/9 | 519 cent | **€6,49** | ja |
+| CZ Pro 6 Months EUR | sættes af orkestratoren 2/9 | 2799 cent | **€34,99** | ja |
 
 Alle planer: `auto_renewal: true`, `charge_vat: true`, låst til Stripe (`payment_provider_restricted`).
 
-Begge rammer ejer-beslutningen 31/8 (#4005: 49 kr. **inkl.** moms). Halvåret giver ~17% rabat mod 6 × 49.
+De to DKK-planer rammer ejer-beslutningen 31/8 (#4005: 49 kr. **inkl.** moms). Halvåret giver ~10% rabat mod 6 × 49.
+
+**Ejer-beslutning 2/9 (#4074):** halvårsprisen korrigeres fra 295,00 kr. (23600 øre, tilstand 2026-08-31, endnu ikke i checkout) til **265,00 kr. (21200 øre)** og går samtidig i checkout. `backend/scripts/alunta-setup-plans.js` har det nye tal som forventet opsætning — kan `CZ Pro 6 Months` ikke reprises pga. aktive abonnenter (se afsnittet nedenfor), er UUID'en ovenfor et mål og ikke en garanti; orkestratoren opretter i så fald en ny plan og opdaterer `ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL`.
+
+De to EUR-planer oprettes af orkestratoren 2/9; koden (`billingCheckout.js`) vælger blot plan efter valuta og fejler pænt (400 `plan_unavailable`) indtil UUID'erne er sat i Railway.
 
 Den gamle `CZ Pro Monthly` (4900 øre = 61,25 inkl.) er arkiveret 31/8. Den eneste abonnent havde et **planskift planlagt til 1/9** over på `CZ Pro 1 month` — se afsnittet om planskift nedenfor for hvorfor det ikke kan aflæses i MCP-fladen.
 
@@ -276,8 +284,10 @@ Betaler en kunde nu, følger entitlementet med inden for en time; webhooken dæk
 |---|---|---|
 | `ALUNTA_API_TOKEN` | Infisical | Skriveadgang til Alunta-API'et |
 | `ALUNTA_WEBHOOK_SECRET` | Infisical | Signaturverifikation |
-| `ALUNTA_CZ_PRO_PLAN_ID_MONTHLY` | Railway | **Skal opdateres ved plan-skift** |
-| `ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL` | Railway | Samme |
+| `ALUNTA_CZ_PRO_PLAN_ID_MONTHLY` | Railway | DKK månedlig. **Skal opdateres ved plan-skift** |
+| `ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL` | Railway | DKK halvårlig. Samme |
+| `ALUNTA_CZ_PRO_PLAN_ID_MONTHLY_EUR` | Railway | #4074: EUR månedlig |
+| `ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL_EUR` | Railway | #4074: EUR halvårlig |
 | `ALUNTA_BASE` | valgfri | Default er prod |
 
 > ⚠️ Skiftes en plan i Alunta uden at env-nøglen følger med, sælger appen fortsat den gamle plan. Let at overse, dyrt at opdage.
@@ -309,9 +319,12 @@ Begge MCP-forbindelser er `local scope`: kun denne bruger, kun dette projekt, in
 | [#4005](https://github.com/NicolaiDolmer/CyclingZone/issues/4005) | Pris låst til 49 inkl. — planer skal følge med | Go-live |
 | [#4511](https://github.com/NicolaiDolmer/CyclingZone/issues/4511) | Moms på EU-privatkunder | Bør før go-live |
 | [#4512](https://github.com/NicolaiDolmer/CyclingZone/issues/4512) | Udløb uden fornyelsessti | Bør før go-live |
-| [#4074](https://github.com/NicolaiDolmer/CyclingZone/issues/4074) | Valuta-mismatch EUR/DKK | Bør før go-live |
 | [#2816](https://github.com/NicolaiDolmer/CyclingZone/issues/2816) | Dobbeltkøb overskriver abonnement | Bør før go-live |
 | [#2806](https://github.com/NicolaiDolmer/CyclingZone/issues/2806) | /pro ikke linket, isPro gater intet | Efter |
+
+### Ryddet 2/9
+
+1. ~~[#4074](https://github.com/NicolaiDolmer/CyclingZone/issues/4074) Valuta-mismatch EUR/DKK~~ — `billingCheckout.js` vælger nu plan pr. valuta x interval (`currency` i checkout-body, sprog vælger valuta client-side); `ProUpgradePage.jsx` viser EUR-priser til ikke-danske spilsprog; handelsbetingelserne (EN/DA) nævner begge valutaer. EUR-plan-UUID'erne sættes af orkestratoren 2/9 (§2, §6).
 
 ### Ryddet 31/8
 

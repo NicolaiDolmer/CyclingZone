@@ -182,6 +182,8 @@
     "offer_id_required": "offer_id kræves",
     "unknown_dna_key": "Ukendt DNA-nøgle",
     "unknown_interval": "Ukendt abonnementsinterval",
+    "unknown_currency": "Ukendt valuta",
+    "plan_unavailable": "Denne plan er ikke tilgængelig lige nu",
     "test_account_delete_needs_confirm": "{username} er en permanent testkonto. Bekræft eksplicit for at slette den.",
     "feedback_invalid_category": "Ugyldig kategori",
     "feedback_message_required": "Besked er påkrævet",

@@ -35,7 +35,7 @@ export default function TermsPageEn() {
         </div>
 
         <p className="text-cz-3 text-sm mb-6">
-          Last updated: 30 July 2026 · Version 2026-07-30. Applies to purchases of the CZ Pro subscription in the browser game Cycling Zone. The Danish version is the primary legal text.
+          Last updated: 2 September 2026 · Version 2026-09-02. Applies to purchases of the CZ Pro subscription in the browser game Cycling Zone. The Danish version is the primary legal text.
         </p>
 
         <SectionStack>
@@ -66,9 +66,10 @@ export default function TermsPageEn() {
             <SectionHeader title="3. Price and payment" />
             <div className="text-cz-2 text-sm leading-relaxed">
               <ul className="list-disc pl-5 space-y-1">
-                <li>Monthly subscription: DKK 49 per month.</li>
-                <li>6-month subscription: DKK 265 per 6 months.</li>
-                <li>All prices are in Danish kroner and are the total price you pay, including any applicable VAT. No fees or surcharges are added.</li>
+                <li>Monthly subscription: EUR 6.49 per month.</li>
+                <li>6-month subscription: EUR 34.99 per 6 months.</li>
+                <li>Prices are charged in euro when Cycling Zone is played in English, and in Danish kroner when played in Danish — the game&apos;s language decides the currency.</li>
+                <li>All prices are the total price you pay, including any applicable VAT. No fees or surcharges are added.</li>
                 <li>Payment is handled by our payment provider Alunta. We never store your card details.</li>
               </ul>
             </div>

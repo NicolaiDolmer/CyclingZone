@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.237",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro is priced in euro for international managers",
+          "body": "Playing in English now shows and charges CZ Pro prices in euro. Danish players still pay in kroner, and the 6-month plan can now be purchased too."
+        },
+        "da": {
+          "title": "Pro prissættes i euro for internationale managere",
+          "body": "Spiller du på engelsk, vises og opkræves CZ Pro nu i euro. Danske spillere betaler stadig i kroner, og 6-måneders planen kan nu også købes."
+        },
+        "refs": [4074]
+      }
+    ]
+  },
+  {
     "version": "7.236",
     "date": "2026-09-02",
     "label": "Beta",

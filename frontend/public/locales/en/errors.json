@@ -182,6 +182,8 @@
     "offer_id_required": "offer_id is required",
     "unknown_dna_key": "Unknown DNA key",
     "unknown_interval": "Unknown plan interval",
+    "unknown_currency": "Unknown currency",
+    "plan_unavailable": "This plan isn't available right now",
     "test_account_delete_needs_confirm": "{username} is a permanent test account. Confirm explicitly to delete it.",
     "feedback_invalid_category": "Invalid category",
     "feedback_message_required": "Message is required",

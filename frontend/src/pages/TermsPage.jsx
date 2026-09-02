@@ -37,7 +37,7 @@ export default function TermsPage() {
         </div>
 
         <p className="text-cz-3 text-sm mb-6">
-          Senest opdateret: 30. juli 2026 · Version 2026-07-30. Gælder for køb af CZ Pro-abonnementet i browserspillet Cycling Zone.
+          Senest opdateret: 2. september 2026 · Version 2026-09-02. Gælder for køb af CZ Pro-abonnementet i browserspillet Cycling Zone.
         </p>
 
         <SectionStack>
@@ -70,7 +70,8 @@ export default function TermsPage() {
               <ul className="list-disc pl-5 space-y-1">
                 <li>Månedligt abonnement: 49 kr. pr. måned.</li>
                 <li>6-måneders abonnement: 265 kr. pr. 6 måneder.</li>
-                <li>Alle priser er i danske kroner og er den samlede pris du betaler, inkl. eventuel moms. Der lægges ikke gebyrer eller tillæg oveni.</li>
+                <li>Priser opkræves i danske kroner når du spiller Cycling Zone på dansk, og i euro når du spiller på engelsk — spillets sprog afgør valutaen.</li>
+                <li>Alle priser er den samlede pris du betaler, inkl. eventuel moms. Der lægges ikke gebyrer eller tillæg oveni.</li>
                 <li>Betaling sker via vores betalingsudbyder Alunta. Vi opbevarer aldrig dine kortoplysninger.</li>
               </ul>
             </div>
