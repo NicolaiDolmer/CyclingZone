@@ -429,7 +429,7 @@
       "file": "frontend/src/pages/admin/AdminSeasonTab.jsx",
       "template": "T2",
       "auth": "protected",
-      "note": null,
+      "note": "renderer ErrorBoundary-crash under e2e-mocks (formodet mock-data-mangel) — boer verificeres mod rigtigt admin-login.",
       "screenshots": {
         "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-season-desktop-light.png",
         "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-season-desktop-dark.png",
@@ -441,7 +441,7 @@
       "file": "frontend/src/pages/admin/AdminEconomyTab.jsx",
       "template": "T2",
       "auth": "protected",
-      "note": null,
+      "note": "renderer ErrorBoundary-crash under e2e-mocks (formodet mock-data-mangel) — boer verificeres mod rigtigt admin-login.",
       "screenshots": {
         "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-economy-desktop-light.png",
         "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-economy-desktop-dark.png",
@@ -513,7 +513,7 @@
       "file": "frontend/src/pages/AdminGrowthPage.jsx",
       "template": "T2",
       "auth": "protected",
-      "note": null,
+      "note": "kraever admin (users.role=admin) — ikke seedet i e2e-mocks, redirecter client-side til /dashboard. Screenshot viser dashboardet.",
       "screenshots": {
         "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-growth-desktop-light.png",
         "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-growth-desktop-dark.png",
@@ -525,7 +525,7 @@
       "file": "frontend/src/pages/AdminFairplayPage.jsx",
       "template": "T2",
       "auth": "protected",
-      "note": null,
+      "note": "kraever admin (users.role=admin) — ikke seedet i e2e-mocks, redirecter client-side til /dashboard. Screenshot viser dashboardet.",
       "screenshots": {
         "desktop-light": "docs/screenshots/quality-audit-2026-09/admin-fairplay-desktop-light.png",
         "desktop-dark": "docs/screenshots/quality-audit-2026-09/admin-fairplay-desktop-dark.png",
