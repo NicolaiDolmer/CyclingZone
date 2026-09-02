@@ -32,7 +32,7 @@ Ny gæld: #4288 · **#4278** · #4282/#4146 · #4292 · #4123 + #4215-rest.
 SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
 8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 · **#4109** anti-slop (→ G2) · #4143 glyffer. #4123-invarianterne mangler CI-gate.
-9. **P0 + UI-gæld + Z1** (ejer 25/8): #3990-rest · navne-dedup-guard · #3329 · #2791 · `PLANNING_CENTER_RULES.md` §7 · Z1 bulk-endpoint + kladde + linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405). **P3** assistenten gated på **#4201**; #4246 afgøres FØR `TeamOrder` fryses.
+9. **P0 + UI-gæld + Z1** (ejer 25/8): #3329 · `PLANNING_CENTER_RULES.md` §7 · Z1 bulk-endpoint + kladde + linser. **P2** taktik ind i centret (#3049 #2794). **P3** assistenten gated på **#4201**; #4246 afgøres FØR `TeamOrder` fryses.
 
 ## D · 30-dages pengeplan (ejer 2/9, SSOT [`2026-09-02-30-dages-pengeplan.md`](superpowers/specs/2026-09-02-30-dages-pengeplan.md); rækkefølge, ikke datoer)
 
@@ -63,11 +63,11 @@ Lukkemandat: done/dubletter/opslugte frit; won't-do i chat-bundter. **Rest:** 18
 
 ## E2 · Race-oplevelsen (SSOT: `RACE_ENGINE_RULES.md`)
 
-**#3855 v4 UDSKUDT** (ejer 25/8); v3 låst fallback, flip ejer-only. Alle tre F3-ankre grønne 2/9 → **#4615** harness-TeamOrders + M5/M6/M14. **Rest:** #4246 FØR `TeamOrder` fryses · #3856 · #3864→S4. Efter 27/9: #4070 + #4071.
+**#3855 v4** (ejer-område 4); v3 låst fallback, flip ejer-only. F3-ankre grønne 2/9 → **#4615**. Rest: #4246 FØR `TeamOrder` fryses · #3856 · #3864.
 
 ## Parkeret (genbesøges efter B og C)
 
-VK bølge 2-rest · #2223 + #3513 · vækst #2822/#1369/#1140/#2823 · #2960 React 19 · #4099/#4100. **FROSSET:** #2217/#2218 · #1712 · #1941 · #450 · live-taktik/replay.
+Alt udskudt rangeres i pengeplan §3 (Bagkataloget). **FROSSET:** #2217/#2218 · #1941 · live-taktik/replay.
 
 ## Stående (viger aldrig)
 
