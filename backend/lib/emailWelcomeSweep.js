@@ -25,7 +25,7 @@ export async function runEmailWelcomeSweep({
   captureExceptionFn = captureException,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
-  if (!(await isActive(supabase))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+  if (!(await isActive(supabase, "welcome"))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
 
   const cutoffIso = new Date(now.getTime() - WELCOME_WINDOW_MS).toISOString();
 

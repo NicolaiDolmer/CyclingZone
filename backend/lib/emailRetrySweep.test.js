@@ -73,6 +73,13 @@ function withResendKey(fn) {
   return fn().finally(() => { process.env.RESEND_API_KEY = old; });
 }
 
+// #2853: a readStage double that answers per-type instead of one fixed
+// value for every call — lets a test put different types in different
+// stages within the same drain run.
+function stagesFor(map) {
+  return async (_supabase, type) => map[type] ?? "off";
+}
+
 // ── gating ─────────────────────────────────────────────────────────────────
 
 test("no-op (does not query) when the email-loop stage is not exactly 'on'", async () => {
@@ -100,6 +107,60 @@ test("empty queue: no send attempts, no alarm", () =>
     const result = await processEmailRetryDrain({ supabase, ...deps });
     assert.deepEqual(result, { processed: 0, sent: 0, rescheduled: 0, dead: 0 });
     assert.equal(deps._captures.length, 0);
+  }));
+
+// ── per-type gating (#2853) ─────────────────────────────────────────────────
+
+test("a row whose own type has been flipped back off is left untouched, other due rows still drain", () =>
+  withResendKey(async () => {
+    const { supabase, writes } = makeSupabaseMock({
+      failedRows: [
+        { id: "row-off", dedupe_key: "day1:user-1", attempts: 1, retry_payload: PAYLOAD, email_type: "day1" },
+        { id: "row-on", dedupe_key: "welcome:user-2", attempts: 1, retry_payload: PAYLOAD, email_type: "welcome" },
+      ],
+    });
+    const deps = makeDeps({ sendResults: [{ data: { id: "provider-1" }, error: null }] });
+    deps.readStage = stagesFor({ welcome: "on", day1: "off", race_digest: "off" });
+
+    const result = await processEmailRetryDrain({ supabase, ...deps });
+
+    assert.deepEqual(result, { processed: 1, sent: 1, rescheduled: 0, dead: 0 });
+    assert.equal(deps._sendCalls.length, 1);
+    assert.equal(deps._sendCalls[0].opts.idempotencyKey, "welcome:user-2");
+    assert.equal(writes.updates.length, 1, "the off-type row is never written — left queued for the next tick");
+  }));
+
+test("every type off/dry_run: the upfront check skips the query entirely, even with due rows in the table", () =>
+  withResendKey(async () => {
+    const { supabase, writes } = makeSupabaseMock({
+      failedRows: [{ id: "row-1", dedupe_key: "day1:user-1", attempts: 1, retry_payload: PAYLOAD, email_type: "day1" }],
+    });
+    const deps = makeDeps();
+    deps.readStage = stagesFor({ welcome: "dry_run", day1: "off", race_digest: "off" });
+
+    const result = await processEmailRetryDrain({ supabase, ...deps });
+
+    assert.deepEqual(result, { processed: 0, sent: 0, rescheduled: 0, dead: 0 });
+    assert.equal(writes.updates.length, 0);
+  }));
+
+test("a row with no email_type (pre-#2853 data) falls back to the legacy shared flag, same as before", () =>
+  withResendKey(async () => {
+    const { supabase, writes } = makeSupabaseMock({
+      failedRows: [{ id: "row-1", dedupe_key: "welcome:user-1", attempts: 1, retry_payload: PAYLOAD }],
+    });
+    const deps = makeDeps({ sendResults: [{ data: { id: "provider-1" }, error: null }] });
+    // readStage(supabase, row.email_type) is called with `undefined` for a
+    // row that predates #2853 — that's the same call shape as the legacy
+    // type-agnostic read (readEmailLoopStage(supabase) with no type arg).
+    // day1="on" only satisfies the upfront "is anything on at all" check;
+    // undefined="on" is what actually lets this specific row through.
+    deps.readStage = stagesFor({ day1: "on", undefined: "on" });
+
+    const result = await processEmailRetryDrain({ supabase, ...deps });
+
+    assert.deepEqual(result, { processed: 1, sent: 1, rescheduled: 0, dead: 0 });
+    assert.equal(writes.updates.length, 1);
   }));
 
 // ── successful retry ─────────────────────────────────────────────────────

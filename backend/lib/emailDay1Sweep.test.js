@@ -178,7 +178,7 @@ test("hasResults=true with a race_id deep-links the CTA to that race (#3310, dor
   // Pin href'en, ikke en delstreng: includes() ville også passere hvis
   // deep-linket kun stod som brødtekst, eller pegede på et fremmed host med
   // vores URL som præfiks (CodeQL js/incomplete-url-substring-sanitization).
-  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99"/);
+  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99\?utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
 });
 
 test("hasResults=true with a race_id and stage_number deep-links the CTA to that stage's result (#3912)", async () => {
@@ -195,7 +195,7 @@ test("hasResults=true with a race_id and stage_number deep-links the CTA to that
 
   await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
 
-  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99\?stage=3"/);
+  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99\?stage=3&amp;utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
 });
 
 test("hasResults=true with a race_id but no stage_number falls back to the plain race link (single-day race / legacy data)", async () => {
@@ -212,7 +212,7 @@ test("hasResults=true with a race_id but no stage_number falls back to the plain
 
   await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
 
-  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99"/);
+  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99\?utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
 });
 
 test("hasResults=false renders the truthful no-results-yet copy, never the invented results claim", async () => {

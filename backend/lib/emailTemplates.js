@@ -17,6 +17,18 @@ const DASHBOARD_URL = "https://cyclingzone.org/dashboard";
 const RESULTS_URL = "https://cyclingzone.org/resultater";
 const RACES_URL = "https://cyclingzone.org/races";
 
+// #2853: tag every CTA link with the SAME utm_source/utm_medium/utm_campaign
+// parameter names the existing traffic_events/signup_attribution channel
+// pipeline already reads (#4320 — see backend/lib/trafficChannel.js's
+// resolveChannel + frontend/src/lib/attribution.js's UTM_KEYS). utm_source
+// is always "email" (the channel), utm_medium/utm_campaign are the loop
+// type (welcome/day1/race_digest) so each mail's clicks are distinguishable
+// in the existing channel funnel without inventing a new tracking mechanism.
+function withEmailUtm(url, type) {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}utm_source=email&utm_medium=${encodeURIComponent(type)}&utm_campaign=${encodeURIComponent(type)}`;
+}
+
 // Escapes the five HTML-significant characters. The double- and single-quote
 // replacements are required because escapeHtml output is interpolated into
 // double-quoted attribute values (e.g. href="..."), where an unescaped quote
@@ -74,6 +86,7 @@ function wrapText({ bodyText, unsubscribeUrl }) {
 export function buildWelcomeEmail({ teamName, unsubscribeUrl }) {
   const name = escapeHtml(teamName) || "your team";
   const subject = "Your team is on the start line";
+  const dashboardUrl = withEmailUtm(DASHBOARD_URL, "welcome");
 
   const bodyHtml = `
     <p style="margin:0 0 16px;">Hi,</p>
@@ -85,7 +98,7 @@ export function buildWelcomeEmail({ teamName, unsubscribeUrl }) {
       <li style="margin-bottom:6px;">Set your training plan for the week.</li>
       <li style="margin-bottom:6px;">Pick your race lineup.</li>
     </ol>
-    <p style="margin:0 0 16px;"><a href="${escapeHtml(DASHBOARD_URL)}" style="color:#1a1a1a;font-weight:600;">Go to your dashboard</a></p>
+    <p style="margin:0 0 16px;"><a href="${escapeHtml(dashboardUrl)}" style="color:#1a1a1a;font-weight:600;">Go to your dashboard</a></p>
   `.trim();
 
   const bodyText = [
@@ -96,7 +109,7 @@ export function buildWelcomeEmail({ teamName, unsubscribeUrl }) {
     "1. Place a bid on a rider in an open auction.",
     "2. Set your training plan for the week.",
     "3. Pick your race lineup.",
-    `Go to your dashboard: ${DASHBOARD_URL}`,
+    `Go to your dashboard: ${dashboardUrl}`,
   ].join("\n\n");
 
   return {
@@ -132,9 +145,10 @@ export function buildDay1Email({ teamName, hasResults, latestRaceId = null, late
   if (hasResults) {
     const subject = "Day 1: your first results are in";
     const hasStage = Number.isInteger(latestStageNumber) && latestStageNumber > 0;
-    const ctaUrl = latestRaceId
+    const baseCtaUrl = latestRaceId
       ? `${RACES_URL}/${latestRaceId}${hasStage ? `?stage=${latestStageNumber}` : ""}`
       : DASHBOARD_URL;
+    const ctaUrl = withEmailUtm(baseCtaUrl, "day1");
 
     const bodyHtml = `
       <p style="margin:0 0 16px;">Hi,</p>
@@ -158,19 +172,20 @@ export function buildDay1Email({ teamName, hasResults, latestRaceId = null, late
   }
 
   const subject = "Day 1: your first race is coming up";
+  const dashboardUrl = withEmailUtm(DASHBOARD_URL, "day1");
 
   const bodyHtml = `
     <p style="margin:0 0 16px;">Hi,</p>
     <p style="margin:0 0 16px;">${name}'s first races are on the calendar and will run automatically, so there is nothing you need to set up for that.</p>
     <p style="margin:0 0 16px;">Worth doing today: check any auctions ending today, and pick your race lineup.</p>
-    <p style="margin:0 0 16px;"><a href="${escapeHtml(DASHBOARD_URL)}" style="color:#1a1a1a;font-weight:600;">Go to your dashboard</a></p>
+    <p style="margin:0 0 16px;"><a href="${escapeHtml(dashboardUrl)}" style="color:#1a1a1a;font-weight:600;">Go to your dashboard</a></p>
   `.trim();
 
   const bodyText = [
     "Hi,",
     `${plainName}'s first races are on the calendar and will run automatically, so there is nothing you need to set up for that.`,
     "Worth doing today: check any auctions ending today, and pick your race lineup.",
-    `Go to your dashboard: ${DASHBOARD_URL}`,
+    `Go to your dashboard: ${dashboardUrl}`,
   ].join("\n\n");
 
   return {
@@ -230,12 +245,13 @@ export function buildRaceDigestEmail({ teamName, results, headline = null, unsub
   const bestMomentHtml = bestMomentText ? `<p style="margin:0 0 16px;">${escapeHtml(bestMomentText)}</p>` : "";
 
   const name = escapeHtml(teamName) || "Your team";
+  const resultsUrl = withEmailUtm(RESULTS_URL, "race_digest");
   const bodyHtml = `
     <p style="margin:0 0 16px;">Hi,</p>
     ${headlineHtml}${bestMomentHtml}
     <p style="margin:0 0 16px;">${name}'s best results from today:</p>
     ${linesHtml}
-    <p style="margin:0 0 16px;"><a href="${escapeHtml(RESULTS_URL)}" style="color:#1a1a1a;font-weight:600;">See all results</a></p>
+    <p style="margin:0 0 16px;"><a href="${escapeHtml(resultsUrl)}" style="color:#1a1a1a;font-weight:600;">See all results</a></p>
   `.trim();
 
   const bodyText = [
@@ -244,7 +260,7 @@ export function buildRaceDigestEmail({ teamName, results, headline = null, unsub
     ...(bestMomentText ? [bestMomentText] : []),
     `${teamName || "Your team"}'s best results from today:`,
     linesText,
-    `See all results: ${RESULTS_URL}`,
+    `See all results: ${resultsUrl}`,
   ].join("\n\n");
 
   return {
