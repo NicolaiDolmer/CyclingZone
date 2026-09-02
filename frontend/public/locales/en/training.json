@@ -133,6 +133,7 @@
     "colNow": "Now",
     "colSeason": "Season",
     "colProgress": "Progress",
+    "nowTooltip": "The rider's current value, not the ceiling. Check the bar or the \"done\" tag to see if there's more to gain.",
     "done": "done",
     "doneTitle": "This ability is fully developed. Training develops this rider's other abilities instead.",
     "inFocusTitle": "Trained by the current focus.",
