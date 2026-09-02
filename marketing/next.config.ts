@@ -10,6 +10,9 @@ const projectRoot = path.resolve(process.cwd());
 const nextConfig: NextConfig = {
   turbopack: { root: projectRoot },
   outputFileTracingRoot: projectRoot,
+  // Next 16 genererer ellers sin egen AGENTS.md/CLAUDE.md i marketing/ ved
+  // hver dev-start, som kolliderer med repoets egne (rod-)CLAUDE.md-filer.
+  agentRules: false,
 };
 
 export default nextConfig;
