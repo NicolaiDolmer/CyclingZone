@@ -64,24 +64,24 @@ test("day1 email (hasResults=false): truthful variant, no invented results claim
   // URL'en kun stod som brødtekst, eller hvis CTA'en pegede på
   // https://cyclingzone.org/dashboard.angriber.dk. (CodeQL
   // js/incomplete-url-substring-sanitization flagede præcis det mønster.)
-  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard"/);
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
   assertHasUnsubscribeLink(t);
   assertNoEmDash(t, "day1 hasResults=false");
 });
 
 test("day1 med latestRaceId deep-linker CTA til løbssiden", () => {
   const t = buildDay1Email({ teamName: "Team X", hasResults: true, latestRaceId: "race-42", unsubscribeUrl: UNSUB_URL });
-  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/races\/race-42"/);
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/races\/race-42\?utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
   // Plaintext-varianten har ingen href — pin hele CTA-linjen i stedet, så
   // URL'en skal stå alene og komplet til linjeslut.
-  assert.match(t.text, /^See your results and auctions: https:\/\/cyclingzone\.org\/races\/race-42$/m);
+  assert.match(t.text, /^See your results and auctions: https:\/\/cyclingzone\.org\/races\/race-42\?utm_source=email&utm_medium=day1&utm_campaign=day1$/m);
   assertNoEmDash(t, "day1 latestRaceId");
   assertHasUnsubscribeLink(t);
 });
 
 test("day1 uden latestRaceId falder tilbage til dashboard-URL", () => {
   const t = buildDay1Email({ teamName: "Team X", hasResults: true, latestRaceId: null, unsubscribeUrl: UNSUB_URL });
-  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard"/);
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
 });
 
 // ─── #3912 · CTA deep-links to the specific stage's result ────────────────
@@ -97,8 +97,8 @@ test("day1 med latestRaceId og latestStageNumber deep-linker CTA til etapens res
   // Pin hele href'en (samme sanitization-begrundelse som testen ovenfor):
   // includes() ville også passere for en href med vores URL som præfiks på
   // et fremmed host.
-  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/races\/race-42\?stage=3"/);
-  assert.match(t.text, /^See your results and auctions: https:\/\/cyclingzone\.org\/races\/race-42\?stage=3$/m);
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/races\/race-42\?stage=3&amp;utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
+  assert.match(t.text, /^See your results and auctions: https:\/\/cyclingzone\.org\/races\/race-42\?stage=3&utm_source=email&utm_medium=day1&utm_campaign=day1$/m);
   assertNoEmDash(t, "day1 latestStageNumber");
 });
 
@@ -110,7 +110,7 @@ test("day1 med latestRaceId men uden latestStageNumber (single-day race/legacy d
     latestStageNumber: null,
     unsubscribeUrl: UNSUB_URL,
   });
-  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/races\/race-42"/);
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/races\/race-42\?utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
   assert.ok(!t.html.includes("?stage="));
 });
 
@@ -225,6 +225,26 @@ test("unsubscribe URL is quote-escaped so a value cannot break out of the href a
   });
   assert.ok(!t.html.includes('"><script>'), "attribute-breaking sequence must not survive");
   assert.ok(t.html.includes("&quot;&gt;&lt;script&gt;"), "quote and angle brackets are entity-encoded");
+});
+
+// ─── #2853 · UTM on every CTA link (utm_source=email, medium/campaign=type) ─
+
+test("welcome email CTA carries utm_source=email&utm_medium=welcome&utm_campaign=welcome", () => {
+  const t = buildWelcomeEmail({ teamName: "T", unsubscribeUrl: UNSUB_URL });
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&amp;utm_medium=welcome&amp;utm_campaign=welcome"/);
+  assert.match(t.text, /Go to your dashboard: https:\/\/cyclingzone\.org\/dashboard\?utm_source=email&utm_medium=welcome&utm_campaign=welcome$/m);
+});
+
+test("race_digest email CTA carries utm_source=email&utm_medium=race_digest&utm_campaign=race_digest", () => {
+  const t = buildRaceDigestEmail({ teamName: "T", results: [{ riderName: "R", rank: 1, raceName: "Race" }], unsubscribeUrl: UNSUB_URL });
+  assert.match(t.html, /href="https:\/\/cyclingzone\.org\/resultater\?utm_source=email&amp;utm_medium=race_digest&amp;utm_campaign=race_digest"/);
+  assert.match(t.text, /See all results: https:\/\/cyclingzone\.org\/resultater\?utm_source=email&utm_medium=race_digest&utm_campaign=race_digest$/m);
+});
+
+test("UTM query string is never present on the unsubscribe link, only on the CTA", () => {
+  const t = buildWelcomeEmail({ teamName: "T", unsubscribeUrl: UNSUB_URL });
+  assert.ok(!t.html.includes(`${UNSUB_URL}?utm`), "unsubscribe link must stay exactly what the caller passed in");
+  assertHasUnsubscribeLink(t);
 });
 
 test("buildLoopEmail dispatches by type", () => {
