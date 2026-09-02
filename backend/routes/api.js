@@ -860,9 +860,9 @@ router.get("/billing/founder-seats", async (req, res) => {
 // ── Pro v1.1-perks (#4649) ────────────────────────────────────────────────────
 // Foerste rute der bruger isPro()-helperen til at gate funktionalitet (#2806).
 const proRiderHistory = createProRiderHistoryHandler({ supabase });
-router.get("/pro/rider-history/:riderId", requireAuth, (req, res) => proRiderHistory(req, res));
+router.get("/pro/rider-history/:riderId", requireAuth, presencePulseLimiter, (req, res) => proRiderHistory(req, res));
 const watchlistLimit = createWatchlistLimitHandler({ supabase });
-router.get("/watchlist/limit", requireAuth, (req, res) => watchlistLimit(req, res));
+router.get("/watchlist/limit", requireAuth, presencePulseLimiter, (req, res) => watchlistLimit(req, res));
 
 // ── Email unsubscribe (#2725) — one-click opt-out, INGEN requireAuth (link
 // lever i selve e-mailen, læses af mailklienter der aldrig er logget ind).
