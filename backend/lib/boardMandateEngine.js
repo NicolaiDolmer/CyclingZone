@@ -32,7 +32,7 @@ import {
   computeMilestoneMissPenalty,
   getTrustTier,
 } from "./boardMandate.js";
-import { evaluateGoalProgress } from "./boardGoals.js";
+import { buildGoalKey, evaluateGoalProgress } from "./boardGoals.js";
 import { clampSatisfaction } from "./boardUtils.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 
@@ -153,6 +153,36 @@ export function evaluateEarlyMilestones({
 // ---------------------------------------------------------------------------
 // 2. Weekend-opdatering → ét confidence-tal (ren)
 // ---------------------------------------------------------------------------
+
+/**
+ * #4578 · Maal-tilstande til kvitteringens `goal_states`-kolonne (se
+ * database/2026-09-02-4578-board-satisfaction-events-goal-states.sql).
+ * Ét element pr. `evaluation.goalEvaluations` (evaluateBoardSeason's rå
+ * evaluateGoalProgress-resultater — se boardEvaluation.js) — samme kilde
+ * `computeRelationUpdateFromEvaluation` allerede læser `goalsMet`/`goals`
+ * fra. `goal_key` er `boardGoals.js::buildGoalKey(ev)` (indholdsbaseret,
+ * IKKE et id — mål har aldrig haft id'er, prod-fund 2/9), SAMME nøgle
+ * `boardRoom.js::deriveGoalMovements` slår op mod. Ingen evaluation eller
+ * tom `goalEvaluations` → tomt array, aldrig et kast.
+ */
+function toNumberOrNull(value) {
+  if (value == null) return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+export function buildGoalStatesFromEvaluation(evaluation) {
+  return (evaluation?.goalEvaluations || []).map((goalEvaluation) => ({
+    goal_key: buildGoalKey(goalEvaluation),
+    type: goalEvaluation?.type ?? null,
+    status: goalEvaluation?.status ?? null,
+    met: Boolean(goalEvaluation?.met),
+    score_pct: toNumberOrNull(goalEvaluation?.score_pct),
+    actual: toNumberOrNull(goalEvaluation?.actual),
+    target: toNumberOrNull(goalEvaluation?.target),
+  }));
+}
+
 /**
  * Oversæt én sæson-evaluering til den nye relations-tilstand.
  *
@@ -192,6 +222,11 @@ export function computeRelationUpdateFromEvaluation({
       reason_category: reasonCategory,
       race_id: raceId,
       race_name: raceName,
+      // #4578 · Mål-for-mål-snapshot til boardRoom.js's Last movement/
+      // stemning/ejer-stemme. persistConfidenceChange spreader `receipt` ind
+      // i board_satisfaction_events-insertet, så kolonnen følger med
+      // automatisk uden ændringer dér.
+      goal_states: buildGoalStatesFromEvaluation(evaluation),
     },
   };
 }

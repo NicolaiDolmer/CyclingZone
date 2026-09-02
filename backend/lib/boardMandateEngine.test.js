@@ -6,6 +6,7 @@ import {
   applyMilestoneDeltas,
   applySeasonEndSync,
   applyWeekendSync,
+  buildGoalStatesFromEvaluation,
   computeRelationUpdateFromEvaluation,
   evaluateDueMilestones,
   evaluateEarlyMilestones,
@@ -14,6 +15,7 @@ import {
   unlockExtraordinaryRequest,
   unlockExtraordinaryRequestForTeam,
 } from "./boardMandateEngine.js";
+import { buildGoalKey } from "./boardGoals.js";
 
 // ── Fake-supabase, samme mønster som boardWeekendFinalization.test.js ─────────
 function makeSupabase({ flagValue = "off", relation = null, captures = {} } = {}) {
@@ -190,6 +192,84 @@ test("manglende delta flytter ikke tallet (fail-safe, ingen NaN i et spiller-ven
   const result = computeRelationUpdateFromEvaluation({ relation: { confidence: 55 }, evaluation: {} });
   assert.equal(result.confidence, 55);
   assert.equal(result.receipt.satisfaction_delta, 0);
+});
+
+// ── #4578: goal_states-snapshot til kvitteringen ────────────────────────────
+
+const goalEvaluationFixture = (over) => ({
+  type: "stage_wins", target: 5, cumulative: false, nationality_code: null, race_scope: null,
+  status: "on_track", met: false, score_pct: 60, actual: 3,
+  ...over,
+});
+
+test("buildGoalStatesFromEvaluation: ét element pr. goalEvaluation, goal_key = buildGoalKey", () => {
+  const evaluation = {
+    goalEvaluations: [
+      goalEvaluationFixture(),
+      goalEvaluationFixture({ type: "min_riders", target: 20, met: true, status: "ahead", score_pct: 100, actual: 22 }),
+    ],
+  };
+  const states = buildGoalStatesFromEvaluation(evaluation);
+  assert.equal(states.length, 2);
+  assert.equal(states[0].goal_key, buildGoalKey(goalEvaluationFixture()));
+  assert.equal(states[0].type, "stage_wins");
+  assert.equal(states[0].status, "on_track");
+  assert.equal(states[0].met, false);
+  assert.equal(states[0].score_pct, 60);
+  assert.equal(states[0].actual, 3);
+  assert.equal(states[0].target, 5);
+  assert.equal(states[1].goal_key, buildGoalKey({ type: "min_riders", target: 20 }));
+  assert.equal(states[1].met, true);
+});
+
+test("buildGoalStatesFromEvaluation: evaluation uden goalEvaluations -> tomt array, ikke et kast", () => {
+  assert.deepEqual(buildGoalStatesFromEvaluation({}), []);
+  assert.deepEqual(buildGoalStatesFromEvaluation(null), []);
+  assert.deepEqual(buildGoalStatesFromEvaluation({ goalEvaluations: [] }), []);
+});
+
+test("buildGoalStatesFromEvaluation: manglende actual/target/score_pct bliver null, ikke NaN", () => {
+  const [state] = buildGoalStatesFromEvaluation({
+    goalEvaluations: [{ type: "sponsor_growth", target: 20, status: "awaiting_data", met: false, actual: null, score_pct: null }],
+  });
+  assert.equal(state.actual, null);
+  assert.equal(state.target, 20);
+  assert.equal(state.score_pct, null);
+});
+
+test("computeRelationUpdateFromEvaluation: receipt.goal_states udfyldes fra evaluation.goalEvaluations", () => {
+  const result = computeRelationUpdateFromEvaluation({
+    relation: { confidence: 50 },
+    evaluation: {
+      feedback: { satisfaction_delta: 2 },
+      goalsMet: 1,
+      goals: [1],
+      goalEvaluations: [goalEvaluationFixture({ met: true, status: "ahead" })],
+    },
+  });
+  assert.equal(result.receipt.goal_states.length, 1);
+  assert.equal(result.receipt.goal_states[0].met, true);
+  assert.equal(result.receipt.goal_states[0].goal_key, buildGoalKey(goalEvaluationFixture()));
+});
+
+test("computeRelationUpdateFromEvaluation: evaluation uden goalEvaluations giver tomt goal_states, aldrig undefined", () => {
+  const result = computeRelationUpdateFromEvaluation({ relation: { confidence: 50 }, evaluation: {} });
+  assert.deepEqual(result.receipt.goal_states, []);
+});
+
+test("persistConfidenceChange: goal_states fra receipt lander i board_satisfaction_events-insertet", async () => {
+  const captures = {};
+  const supabase = makeSupabase({ flagValue: "on", captures });
+  const goalStates = [{ goal_key: "stage_wins|5|||0", type: "stage_wins", status: "ahead", met: true, score_pct: 100, actual: 5, target: 5 }];
+  await persistConfidenceChange(supabase, {
+    relationId: "r1", teamId: "t", seasonId: "s", confidence: 60,
+    receipt: {
+      satisfaction_before: 50, satisfaction_after: 60, satisfaction_delta: 10,
+      goals_met: 1, goals_total: 1, reason_category: "weekend_update",
+      goal_states: goalStates,
+    },
+  });
+  assert.deepEqual(captures.inserts[0].payload.goal_states, goalStates);
 });
 
 // ── Tillids-trappen fryses ───────────────────────────────────────────────────
