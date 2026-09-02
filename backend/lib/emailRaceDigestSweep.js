@@ -71,7 +71,7 @@ export async function runEmailRaceDigestSweep({
   if (copenhagenHour(now) < DIGEST_HOUR_COPENHAGEN) {
     return { candidates: 0, sent: 0, skipped: 0, failed: 0, skippedReason: "outside_hour_window" };
   }
-  if (!(await isActive(supabase))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+  if (!(await isActive(supabase, "race_digest"))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
 
   const sinceIso = copenhagenMidnightUTC(now).toISOString();
   const rows = await fetchRows({ supabase, sinceIso });

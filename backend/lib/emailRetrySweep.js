@@ -26,6 +26,15 @@
  * calls Resend at all), and if the owner flips the flag back off mid-
  * incident, retries stop too (same fail-safe direction as isEmailLoopActive
  * elsewhere — turning OFF must never require a separate opt-out).
+ *
+ * #2853: the single email-loop flag split into a per-mailtype gate (welcome/
+ * day1/race_digest each get their own off/dry_run/on). A queued retry row
+ * carries its own `email_type`, and the type may have been flipped back off
+ * AFTER the row was queued (while another type stays "on") — so the "off
+ * stops retries" guarantee above is now evaluated PER ROW against that row's
+ * own type-stage, not once globally. The cheap upfront check only
+ * short-circuits the whole drain (skips the query) when every type is off,
+ * preserving the pre-#2853 "fully dormant unless something is on" shape.
  */
 
 import {
@@ -35,11 +44,12 @@ import {
   nextEmailAttemptDelayMs,
   MAX_EMAIL_ATTEMPTS,
 } from "./emailService.js";
-import { readEmailLoopStage } from "./emailLoopFlag.js";
+import { readEmailLoopStage, EMAIL_LOOP_TYPE_KEYS } from "./emailLoopFlag.js";
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
 import { captureException } from "./sentry.js";
 
 const DRAIN_BATCH_SIZE = 25;
+const EMAIL_LOOP_TYPES = Object.keys(EMAIL_LOOP_TYPE_KEYS);
 
 /**
  * Is the failure "the retry columns don't exist yet" (Postgres 42703 /
@@ -66,8 +76,17 @@ export async function processEmailRetryDrain({
 } = {}) {
   if (!supabase?.from) throw new Error("processEmailRetryDrain: supabase required");
 
-  const stage = await readStage(supabase);
-  if (stage !== "on") return { processed: 0, sent: 0, rescheduled: 0, dead: 0 };
+  // #2853: memoize per-type stage reads within this one drain run — at most
+  // 3 distinct types exist, so this is a handful of app_config reads total
+  // regardless of how many rows are in the batch.
+  const stageCache = new Map();
+  const stageFor = (type) => {
+    if (!stageCache.has(type)) stageCache.set(type, readStage(supabase, type));
+    return stageCache.get(type);
+  };
+
+  const anyTypeOn = (await Promise.all(EMAIL_LOOP_TYPES.map(stageFor))).some((stage) => stage === "on");
+  if (!anyTypeOn) return { processed: 0, sent: 0, rescheduled: 0, dead: 0 };
   if (!process.env.RESEND_API_KEY) return { processed: 0, sent: 0, rescheduled: 0, dead: 0 };
 
   // schema-columns-ok: attempts/retry_payload are added by
@@ -77,7 +96,7 @@ export async function processEmailRetryDrain({
   // window at runtime (same gap the guard's own header documents).
   const { data: rows, error } = await supabase
     .from("email_log")
-    .select("id, dedupe_key, attempts, retry_payload")
+    .select("id, dedupe_key, attempts, retry_payload, email_type")
     .eq("status", "failed")
     .not("next_attempt_at", "is", null)
     .lte("next_attempt_at", now.toISOString())
@@ -101,9 +120,21 @@ export async function processEmailRetryDrain({
   const resend = resendFactory();
   let sent = 0;
   let rescheduled = 0;
+  let skippedTypeOff = 0;
   const deadRows = [];
 
   for (const row of rows) {
+    // #2853: this row's own type may have been flipped back off (or to
+    // dry_run) since it was queued, while another type stays "on" — leave it
+    // untouched (next_attempt_at unchanged) so the next tick reconsiders it
+    // once/if the type is "on" again. row.email_type is undefined for a
+    // caller that predates #2853 or a test double — stageFor(undefined)
+    // falls back to the legacy shared flag via readEmailLoopStage, same as
+    // before this change.
+    if ((await stageFor(row.email_type)) !== "on") {
+      skippedTypeOff += 1;
+      continue;
+    }
     if (!row.retry_payload) {
       // Defensive: a 'failed' row with next_attempt_at set should always
       // carry a retry_payload (both are written together in emailService.js).
@@ -197,5 +228,5 @@ export async function processEmailRetryDrain({
     );
   }
 
-  return { processed: rows.length, sent, rescheduled, dead: deadRows.length };
+  return { processed: rows.length - skippedTypeOff, sent, rescheduled, dead: deadRows.length };
 }

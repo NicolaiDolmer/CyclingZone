@@ -4,7 +4,9 @@
 // live in exactly one place.
 //
 // Gate order (each one short-circuits the rest):
-//   1. flag off             -> {skipped:"flag_off"}, no email_log row at all.
+//   1. flag off (per-type, #2853 — readEmailLoopStage(supabase, type), with
+//      fallback to the legacy shared flag when the type's own key is unset)
+//                           -> {skipped:"flag_off"}, no email_log row at all.
 //   2. dedupe_key already logged -> {skipped:"dedupe"} (idempotent retries).
 //   3. email_prefs opt-out (type or master "all") -> {skipped:"prefs"}.
 //   4. flag dry_run         -> logs status "dry_run", never calls Resend.
@@ -129,7 +131,7 @@ export async function sendLoopEmail({
     throw new Error("sendLoopEmail: userId, type, dedupeKey and to are required");
   }
 
-  const stage = await readStage(supabase);
+  const stage = await readStage(supabase, type);
   if (stage === "off") return { skipped: "flag_off" };
 
   const { data: existing, error: dedupeErr } = await supabase

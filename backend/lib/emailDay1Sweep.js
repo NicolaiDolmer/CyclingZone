@@ -59,7 +59,7 @@ export async function runEmailDay1Sweep({
   captureExceptionFn = captureException,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
-  if (!(await isActive(supabase))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
+  if (!(await isActive(supabase, "day1"))) return { candidates: 0, sent: 0, skipped: 0, failed: 0 };
 
   const minCreatedIso = new Date(now.getTime() - DAY1_WINDOW_MAX_MS).toISOString();
   const maxCreatedIso = new Date(now.getTime() - DAY1_WINDOW_MIN_MS).toISOString();
