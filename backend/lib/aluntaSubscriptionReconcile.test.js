@@ -71,8 +71,46 @@ test("extractSubscriptionFields: nested customer/plan-objekt (fallback-stier)", 
   assert.equal(f.externalCustomerId, "team-2");
   assert.equal(f.customerUuid, "cus-2");
   assert.equal(f.subscriptionUuid, "sub-2");
-  assert.equal(f.planInterval, "half-yearly");
+  assert.equal(f.planInterval, "semiannual", "half-yearly normaliseres (#4541)");
   assert.equal(f.currentPeriodEnd, "2026-10-01T00:00:00Z");
+});
+
+// #4541: Aluntas ÆGTE svarform, målt 2/9 via dry-run mod prod. plan_interval
+// er et tal (måneder pr. periode) og current_period_end bærer mikrosekunder.
+test("extractSubscriptionFields: Aluntas ægte svarform (målt 2/9) -> plan_interval normaliseres fra tal", () => {
+  const monthly = extractSubscriptionFields({
+    external_customer_id: "8073fb4a-0000-0000-0000-000000000000",
+    customer_uuid: "dd3372d2-0000-0000-0000-000000000000",
+    uuid: "bea7ced2-0000-0000-0000-000000000000",
+    status: "active",
+    plan_interval: 1,
+    current_period_end: "2026-09-30T21:59:59.999999Z",
+  });
+  assert.equal(monthly.planInterval, "monthly");
+  assert.equal(monthly.currentPeriodEnd, "2026-09-30T21:59:59.999999Z");
+
+  const semiannual = extractSubscriptionFields({
+    external_customer_id: "dd7665b4-0000-0000-0000-000000000000",
+    customer_uuid: "7a7b9292-0000-0000-0000-000000000000",
+    uuid: "b9d010fc-0000-0000-0000-000000000000",
+    status: "active",
+    plan_interval: 6,
+    current_period_end: "2027-03-01T22:59:59.999999Z",
+  });
+  assert.equal(semiannual.planInterval, "semiannual");
+});
+
+test("computeReconcileActions: rå '1' i DB rettes til 'monthly' selvom intet andet ændres (#4541)", () => {
+  const localRows = [
+    { team_id: "team-1", status: "active", plan_interval: "1", current_period_end: "2026-09-30T21:59:59.999999Z", alunta_customer_id: "cus-1", alunta_subscription_id: "sub-1" },
+  ];
+  const remoteEntries = [
+    { external_customer_id: "team-1", customer_uuid: "cus-1", uuid: "sub-1", status: "active", plan_interval: 1, current_period_end: "2026-09-30T21:59:59.999999Z" },
+  ];
+  const { updates, unchanged } = computeReconcileActions({ localRows, remoteEntries });
+  assert.equal(unchanged.length, 0);
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].plan_interval, "monthly");
 });
 
 test("extractSubscriptionFields: null/non-object -> null", () => {

@@ -370,7 +370,7 @@ import { recordIdentityEvent } from "../lib/identityTelemetry.js";
 import { evaluateAuctionEntryGate, readNewAccountGateConfig } from "../lib/newAccountGates.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
-import { buildCustomerRows, summarizeNps } from "../lib/growthSnapshot.js";
+import { buildCustomerRows, partitionSubscriptions, summarizeNps } from "../lib/growthSnapshot.js";
 import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches, findConsecutiveTierBreaches } from "../lib/balanceDriftMetrics.js";
 import { isBotUserAgent } from "../lib/botDetection.js";
 import { computeVisitHash, dayString } from "../lib/visitHash.js";
@@ -8907,11 +8907,17 @@ router.get("/admin/growth/snapshots", requireAdmin, async (req, res) => {
 // kunde + konverteringer. Beta-populationen er lille (håndfulde betalende
 // kunder), så det er trygt at hente ALLE subscriptions-rows og beregne LTV i
 // Node (backend/lib/growthSnapshot.js, unit-testet) frem for en RPC.
+//
+// #4636: en subscriptions-række er IKKE automatisk en kunde. Checkout-flowet
+// skriver vilkårsaccepten som en række FØR betalingen (billingCheckout.js), så
+// rækker uden betalingsspor (hasEverPaid) rapporteres separat som
+// "startede checkout, betalte ikke" og tæller hverken i kunder, LTV eller
+// konvertering.
 router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
   try {
     const { data: subs, error: subsErr } = await supabase
       .from("subscriptions")
-      .select("team_id, status, plan_interval, is_founder, current_period_end, created_at")
+      .select("team_id, status, plan_interval, is_founder, current_period_end, alunta_subscription_id, terms_accepted_at, created_at")
       .order("created_at", { ascending: false });
     if (subsErr) throw subsErr;
 
@@ -8927,9 +8933,17 @@ router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
     }
 
     const now = new Date();
-    const customers = buildCustomerRows(subs, teamsById, now);
+    const { paying, checkoutOnly } = partitionSubscriptions(subs);
+    const customers = buildCustomerRows(paying, teamsById, now);
     const active = customers.filter(c => c.is_active);
     const ltvTotalCents = customers.reduce((sum, c) => sum + c.ltv_cents, 0);
+    const checkoutStarted = checkoutOnly
+      .map(s => ({
+        team_id: s.team_id,
+        team_name: teamsById[s.team_id]?.name || null,
+        terms_accepted_at: s.terms_accepted_at || s.created_at,
+      }))
+      .sort((a, b) => new Date(b.terms_accepted_at) - new Date(a.terms_accepted_at));
 
     // Waitlist-konvertering (samme kilde som AdminWaitlistPage): hvor mange af
     // dem der SIGNEDE UP på waitlisten er også blevet betalende kunder — join
@@ -8943,6 +8957,7 @@ router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
 
     res.json({
       customers,
+      checkout_started: checkoutStarted,
       summary: {
         total_customers: customers.length,
         active_customers: active.length,
@@ -8950,6 +8965,7 @@ router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
         ltv_avg_cents: customers.length ? Math.round(ltvTotalCents / customers.length) : null,
         total_registered: totalRegistered || 0,
         conversion_pct: totalRegistered ? Math.round((customers.length / totalRegistered) * 1000) / 10 : null,
+        checkout_started_unpaid: checkoutStarted.length,
       },
     });
   } catch (error) {

@@ -12,6 +12,10 @@ import { RefreshIcon, StarIcon } from "../../ui/icons";
 // kunderne. Samt at jeg kan se hvor mange aktive kunder vi har." Data via
 // GET /api/admin/growth/customers (subscriptions + teams, service_role — se
 // backend/routes/api.js).
+//
+// #4636: `customers` er kun rækker med betalingsspor. Rækker der kun bærer en
+// vilkårsaccept (checkout startet, aldrig betalt) kommer separat som
+// `checkout_started` og vises som funnel-tal, ikke som kunder.
 const API = import.meta.env.VITE_API_URL;
 
 function fmtNumber(n) {
@@ -27,6 +31,11 @@ function fmtCents(cents) {
 function fmtDate(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 const STATUS_LABELS = { active: "Aktiv", cancelled: "Opsagt", past_due: "Forfalden", inactive: "Inaktiv" };
@@ -67,14 +76,15 @@ export default function GrowthCustomersTab() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const customers = data?.customers ?? [];
+  const checkoutStarted = data?.checkout_started ?? [];
   const summary = data?.summary ?? {};
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-cz-3 text-sm">
-          Aktive abonnementer + estimeret livstidsværdi pr. kunde + konverteringsrate. LTV er et ESTIMAT
-          (ingen faktura-historik findes — se tooltip på tabellen).
+          Betalende kunder + estimeret livstidsværdi pr. kunde + konverteringsrate. LTV er et ESTIMAT
+          (ingen faktura-historik findes — se tooltip på tabellen). Vilkårsaccept uden betaling tæller ikke som kunde.
         </p>
         <Button
           variant="secondary"
@@ -95,15 +105,20 @@ export default function GrowthCustomersTab() {
         />
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <KpiCard label="Aktive kunder" value={fmtNumber(summary.active_customers)} />
-        <KpiCard label="Kunder i alt (nogensinde)" value={fmtNumber(summary.total_customers)} />
+        <KpiCard label="Kunder i alt (har betalt)" value={fmtNumber(summary.total_customers)} />
         <KpiCard label="LTV i alt (estimeret)" value={fmtCents(summary.ltv_total_cents)} />
         <KpiCard label="LTV pr. kunde (gns.)" value={fmtCents(summary.ltv_avg_cents)} />
         <KpiCard
           label="Konvertering"
           value={summary.conversion_pct != null ? `${summary.conversion_pct}%` : "—"}
           sub={`${fmtNumber(summary.total_customers)} af ${fmtNumber(summary.total_registered)} registrerede`}
+        />
+        <KpiCard
+          label="Startede checkout, betalte ikke"
+          value={fmtNumber(summary.checkout_started_unpaid)}
+          sub="Accepterede vilkår, ingen betaling"
         />
       </div>
 
@@ -133,7 +148,7 @@ export default function GrowthCustomersTab() {
             {!loading && customers.length === 0 && (
               <Tr>
                 <Td colSpan={6} className="py-4">
-                  <EmptyState title="Ingen abonnementer endnu" description="Betalende kunder vises her, når det første CZ Pro-abonnement oprettes." />
+                  <EmptyState title="Ingen betalende kunder endnu" description="Betalende kunder vises her, når det første CZ Pro-abonnement er gennemført." />
                 </Td>
               </Tr>
             )}
@@ -163,6 +178,30 @@ export default function GrowthCustomersTab() {
           </tbody>
         </Table>
       </Card>
+
+      {!loading && checkoutStarted.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="px-4 py-3 border-b border-cz-border">
+            <p className="text-cz-3 text-xs uppercase tracking-wide">Startede checkout, betalte ikke</p>
+          </div>
+          <Table data-sort-exempt="nyeste først, server-ordnet">
+            <thead>
+              <Tr>
+                <Th>Hold</Th>
+                <Th>Accepterede vilkår</Th>
+              </Tr>
+            </thead>
+            <tbody>
+              {checkoutStarted.map(c => (
+                <Tr key={c.team_id}>
+                  <Td className="max-w-[180px] truncate" title={c.team_name || ""}>{c.team_name || "—"}</Td>
+                  <Td className="text-cz-3 text-xs whitespace-nowrap">{fmtDateTime(c.terms_accepted_at)}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 }

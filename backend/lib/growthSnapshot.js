@@ -11,6 +11,8 @@
 // (database/2026-08-03-growth-snapshots-3196.sql) — hold dem i sync ved
 // prisændring. Priser matcher frontend/public/locales/{en,da}/pro.json
 // ("49 kr/mo" / "265 kr"); ingen fælles maskinlæsbar kilde findes i dag.
+import { normalizePlanInterval } from "./subscriptionPlanInterval.js";
+
 export const PLAN_PRICE_CENTS = {
   monthly: 4900,
   semiannual: 26500,
@@ -41,10 +43,39 @@ export function estimateSubscriptionLtvCents(sub, asOf = new Date()) {
     : new Date(sub.current_period_end || sub.created_at);
   const effectiveEnd = referenceEnd.getTime() < asOf.getTime() ? referenceEnd : asOf;
   const coveredSeconds = Math.max(0, (effectiveEnd.getTime() - createdAt.getTime()) / 1000);
-  const periodSeconds = sub.plan_interval === "semiannual" ? SEMIANNUAL_SECONDS : MONTH_SECONDS;
+  // #4541: Alunta leverer plan_interval som tal (6 = halvår); ældre rækker kan
+  // stadig bære den rå værdi indtil reconcilen har skrevet den normaliserede.
+  const plan = normalizePlanInterval(sub.plan_interval);
+  const periodSeconds = plan === "semiannual" ? SEMIANNUAL_SECONDS : MONTH_SECONDS;
   const periods = Math.max(1, Math.ceil(coveredSeconds / periodSeconds));
-  const pricePerPeriod = PLAN_PRICE_CENTS[sub.plan_interval] ?? PLAN_PRICE_CENTS.monthly;
+  const pricePerPeriod = PLAN_PRICE_CENTS[plan] ?? PLAN_PRICE_CENTS.monthly;
   return periods * pricePerPeriod;
+}
+
+// #4636: "har nogensinde betalt". Checkout-flowet (billingCheckout.js) upserter
+// en subscriptions-række med terms_version/terms_accepted_at FØR betalingen.
+// En spiller der accepterer vilkår og lukker Alunta-siden efterlader derfor
+// en række med status='inactive' (kolonne-default) og intet andet. Sådan en
+// række er IKKE en kunde. Betalt = Alunta har givet os et abonnements-id,
+// ELLER et webhook-event har sat en Pro-relevant status, ELLER en periode er
+// dækket. Samme definition i SQL: compute_daily_growth_snapshot()
+// (database/2026-09-02-growth-snapshot-paying-only-4636.sql) — hold dem i sync.
+export function hasEverPaid(sub) {
+  if (!sub) return false;
+  if (sub.alunta_subscription_id) return true;
+  if (SUBSCRIPTION_ACTIVE_STATUSES.has(sub.status)) return true;
+  return !!sub.current_period_end;
+}
+
+// Deler subscriptions-rækkerne i betalende kunder og "startede checkout,
+// betalte ikke" (funnel-tal, ikke kunder). Rækkefølgen bevares.
+export function partitionSubscriptions(subscriptions) {
+  const paying = [];
+  const checkoutOnly = [];
+  for (const sub of subscriptions || []) {
+    (hasEverPaid(sub) ? paying : checkoutOnly).push(sub);
+  }
+  return { paying, checkoutOnly };
 }
 
 // Bygger den pr.-kunde-tabel "Kunder & LTV"-fanen viser: ét array-element pr.
@@ -58,7 +89,7 @@ export function buildCustomerRows(subscriptions, teamsById = {}, asOf = new Date
         team_name: team?.name || null,
         manager_name: team?.manager_name || null,
         status: sub.status,
-        plan_interval: sub.plan_interval,
+        plan_interval: normalizePlanInterval(sub.plan_interval),
         is_founder: !!sub.is_founder,
         is_active: isSubscriptionActive(sub, asOf),
         current_period_end: sub.current_period_end,
