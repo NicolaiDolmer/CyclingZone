@@ -1,70 +1,68 @@
 # The Roadbook: training (EN), ejeren poster SELV
 
-> Skrevet 2/9 2026 ud fra ejerens egne ord i #dansk-strategi samme dag (kl. 12:20-13:20 dansk tid)
-> og #feedback-from-dolmer 31/8. **Ingen løfter ud over det ejeren selv har sagt.** Den eneste dato
-> er ejerens egen ("about a month" om ugeplanen); alt andet står uden dato.
-> Hver besked er under Discords grænse på 2.000 tegn. Kanal: **#the-roadbook**.
-> Kilde-SSOT: `docs/TRAINING_RULES.md` §12. Issues: #4629 #4630 #4631 #4632 #4633 #4634.
+> Skrevet 2/9 2026 ud fra ejerens egne ord i #dansk-strategi samme dag og #feedback-from-dolmer 31/8.
+> Rettet 2/9 efter ejer-feedback: **ingen tidspunkter, ingen tal, glad tone, din egen "I"-stemme**
+> (`docs/TONE_OF_VOICE.md`). Kun ting du selv har sagt. Hver besked er under 2.000 tegn.
+> Kanal: **#the-roadbook**. Kilde-SSOT: `docs/TRAINING_RULES.md` §12. Issues: #4629 #4630 #4631 #4632 #4633 #4634.
 >
 > **Vedhæft:** de to wireframes i `docs/design/wireframes-training-2026-09-02/` (PNG). Begge bærer
-> stemplet "Wireframe, not final", så ingen læser dem som færdigt design.
+> stemplet "Wireframe, not final".
 >
 > **Hjemmesidens roadmap** (`/roadmap`, motoren "Training") har allerede punktet "Real training depth:
-> programs for individual riders, not just a single focus." Det matcher besked 1. Ingen ændring nødvendig
-> der før programmerne ship'es; så flyttes punktet til "Already built".
+> programs for individual riders, not just a single focus." Det matcher besked 1.
 
 ---
 
-## Besked 1 (post først): where training is going
+## Besked 1: what is coming to training
 
-Training: where it is going
+Training: what is coming
 
-Earlier today I asked in the Danish strategy channel what you are actually missing in training. Great answers, so here is the direction for everyone, in one place. None of this is live yet. The only date in here is the one I gave myself.
+I asked in the Danish strategy channel today what you are actually missing in training, and the answers were great. So here is where training is heading, for everyone, in one place. None of it is live yet. This is the direction, and I am really looking forward to it.
 
-1. Training programs instead of a daily click
-You will build a week: Monday intervals, Tuesday technique, Wednesday long ride, Sunday rest. That week is a program. You put it on one rider or the whole squad and it runs until you change it. The week plan already exists, but it only knows "easy / normal / hard". The new one knows the actual session for each day. I am aiming for roughly a month for this part.
+Training programs
+Instead of setting training every single day, you build a week: intervals on Monday, technique on Tuesday, a long ride on Wednesday, rest on Sunday. That week is a program. Put it on one rider or on the whole squad and it just runs until you change it.
 
-2. Default programs, 10 to 25 of them
-"Sprinter", "Climber", "Cobbles", "GC rider", "Recovery week", and so on. Pick one and the week is set. This is how I want to answer the wish to "train a rider type" without adding yet another menu.
+Default programs
+Sprinter, Climber, Cobbles, GC rider, Recovery week and more. Pick one and the week is set. A lot of you asked to "train a rider type", and this is how I want to make that feel natural without adding another menu.
 
-3. Your own programs, and a place to share them
-Build a week from scratch, name it, save it. Later: a community workshop where you can find other managers' programs, copy them, comment on them, and argue about them. Timing not set.
+Your own programs, and a place to share them
+Build a week from scratch, name it and save it. And later, a community workshop where you can find other managers' programs, copy them, comment on them and argue about which one is best. I think that part is going to be a lot of fun.
 
-4. Punch and climbing get separate sessions
-They sit in the same package today, and their ceilings are nowhere near each other. Soon you choose one or the other, or switch between them. This is my answer to "I am wasting sessions on a stat that is done". I will not make the engine quietly move the gain somewhere else. More choices, not hand-holding.
+Punch and climbing get their own sessions
+Today they sit in the same package, and they are very different things. Riding a climb for forty minutes is not the same as a two minute punch. So you will choose one, or the other, or switch between them. This is my answer to "I am wasting sessions on an ability that is done". I want to give you more choices, not have the engine quietly decide for you.
 
-Second message follows with ceilings, race days and form.
+Part two follows with ceilings, race days and form.
 
-## Besked 2: ceilings, race days, form
+## Besked 2: ceilings, race days and form
 
-Training, part 2
+Training, part two
 
-5. Ceilings: limits yes, locks no
-Three rules decide how fast a rider trains: the younger he is, the further from his max, and the lower the ability, the faster it goes. Ceilings are meant to feel almost absent; speed is the real limit. A few riders have hit hard safety nets from the early days, and that is not how it is meant to feel. The lowest hard caps will be raised or softened, and GC riders will get more room in punch. Numbers first, then the change.
+Ceilings
+The way it is meant to work: the younger a rider is, the further he is from his best, and the lower the ability, the faster he trains. Limits are part of the game. Hard locks are not. A few riders have run into old safety nets from the early days, and that is not how it should feel. Those nets are going away, and GC riders in particular get more room to train punch. Ceilings should feel almost invisible. Your choices are what matters.
 
-6. Race day is one choice, then how deep you go
-A rider either trains or races that day, never both. My sketch for the day's choice looks like this. Rest. Training: active recovery, easy or technical, medium, hard. Racing: grupetto, ride it easy, normal, work or attack, all out. In practice it is simple: it is a mountain day and I want to attack, or it is a flat stage and I sit with my captain. This replaces the training plan as the input on race days, which is exactly the problem some of you found. Design first, then build.
+Race days
+A rider either trains or races on a given day, never both. On a race day you decide how deep he goes: sit in the grupetto, ride it easy, a normal day, work or attack, or go all out. It is a mountain day and you want to attack. It is a flat stage and you keep your captain out of trouble. That choice becomes the day, instead of his training plan quietly deciding for him.
 
-7. Form training, for everyone
-"Form training for older riders who are done chasing stats" was suggested today. It is coming, and not only for old riders.
+Form training
+"Form training for older riders who are done chasing abilities" came up today. I love it, and it is coming for every rider, not only the older ones.
 
-8. Ask the assistant
-A button on the training page: get suggestions, accept all, or only some riders, or only riders with no plan yet. Same pattern everywhere the assistant can act for you.
+Ask the assistant
+A button on the training page that asks the assistant for suggestions. Accept all of them, only some riders, or only the riders who have no plan yet. I want that pattern everywhere the assistant can help you.
 
-Two rough wireframes are attached so you can see the shape: the week program view and the race day choice. They are sketches, not the final design. Comments, objections and better names for the default programs are welcome below or in #feedback-and-ideas.
+Two rough wireframes are attached so you can see the shape: the weekly program view and the race day choice. They are sketches, not the final design. Better names for the default programs, objections, and wild ideas are all welcome, here or in #feedback-and-ideas. This is going to be good.
 
 ---
 
 ## Kort udgave (hvis du hellere vil have ÉN besked)
 
-Training: the direction
+Training: what is coming
 
-Not live yet, no dates except one. Programs instead of a daily click: build a week (intervals, technique, long ride, rest), put it on a rider or the squad, done. About a month for that. 10 to 25 default programs like Sprinter, Climber, Cobbles. Your own programs later, and a workshop to share them. Punch and climbing become separate sessions, so you stop wasting days on a finished stat. Ceilings are meant to feel absent, speed is the limit: the lowest hard caps get raised. On race days you pick how deep the rider goes, from grupetto to all out, instead of his training plan deciding. Form training for everyone. And an assistant button that suggests the week. Sketches attached, not final. Tell me what is wrong with it.
+Not live yet, but here is the direction. Programs instead of a daily click: build a week, put it on a rider or the squad, done. Default programs like Sprinter, Climber and Cobbles. Your own programs later, and a workshop to share them. Punch and climbing become separate sessions, so you stop wasting days on an ability that is done. Ceilings should feel almost invisible, so the old hard locks are going away. On race days you decide how deep a rider goes, from grupetto to all out. Form training for every rider. And a button that asks the assistant for suggestions. Sketches attached, not final. Tell me what you think.
 
 ---
 
 ## Dansk note til ejeren (ikke til Discord)
 
-Beskederne bruger kun ting du selv har sagt. Tre steder er bevidst vage, fordi du ikke satte dato:
-workshop (3), lofter (5) og løbsdagens valg (6). Vil du give en dato på nogen af dem, så sig til, og
-issuet opdateres samtidig. Formtræning (7) og assistent-knap (8) står uden dato af samme grund.
+Alle tre udkast holder sig til det du selv har sagt i tråden. Ingen tidspunkter og ingen tal (heller
+ikke "10-25 programmer" eller "about a month"), så det kan postes uden at love noget. Vil du senere
+sætte tid på noget, gør vi det i en ny besked når det er klar.
