@@ -51,6 +51,12 @@ export function parseDisplayedAmount(str) {
 
 const PRO_JSON_KEY_BY_INTERVAL = { monthly: "monthlyPrice", "half-yearly": "semiannualPrice" };
 
+// #4074/#4608: sproget vælger valutaen (dansk spilsprog -> DKK, alt andet ->
+// EUR, se ProUpgradePage.jsx) — 'en' og 'da' pro.json viser derfor BEVIDST
+// forskellige tal i dag, ikke en oversættelse af samme pris. Hver valuta
+// tjekkes kun mod den ene locale der rent faktisk viser den.
+const LOCALES_BY_CURRENCY = { DKK: ["da"], EUR: ["en"] };
+
 // PUR: ét plan-katalog-element -> selv-konsistens (amount vs. dets egen
 // inclVat-deklaration) + evt. sammenligning mod et vist beløb (pro.json).
 export function checkPlanPrice(plan, { displayedAmount = null } = {}) {
@@ -61,16 +67,19 @@ export function checkPlanPrice(plan, { displayedAmount = null } = {}) {
   return { name: plan.name, currency: plan.currency, interval: plan.interval, amount: plan.amount, computed, declared, selfConsistent, displayedAmount, displayMatch };
 }
 
-// PUR: hele kataloget mod pro.json for hvert sprog. Kun DKK-planer tjekkes mod
-// pro.json — den viser i dag ingen EUR-pris (#4074/#4608 endnu ikke merget);
-// EUR-planer får stadig selv-konsistens-tjekket.
+// PUR: hele kataloget mod pro.json for hvert sprog. Hver plan tjekkes kun mod
+// de locale(r) der viser dens valuta (LOCALES_BY_CURRENCY) — en DKK-plan og en
+// EUR-plan har INGEN fælles locale i dag, så localeMismatches er reelt kun
+// aktivt hvis en valuta nogensinde vises i mere end én locale igen.
 export function checkAllPrices({ plans, proJsonByLocale }) {
   return plans.map((plan) => {
-    const key = plan.currency === "DKK" ? PRO_JSON_KEY_BY_INTERVAL[plan.interval] : null;
+    const key = PRO_JSON_KEY_BY_INTERVAL[plan.interval];
+    const locales = LOCALES_BY_CURRENCY[plan.currency] ?? [];
     const perLocale = {};
     if (key) {
-      for (const [locale, json] of Object.entries(proJsonByLocale ?? {})) {
-        perLocale[locale] = parseDisplayedAmount(json?.[key]);
+      for (const locale of locales) {
+        const json = proJsonByLocale?.[locale];
+        if (json != null) perLocale[locale] = parseDisplayedAmount(json[key]);
       }
     }
     const seen = Object.values(perLocale).filter((v) => v != null);

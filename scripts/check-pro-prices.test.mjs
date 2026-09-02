@@ -78,34 +78,48 @@ const GOOD_PLANS = [
   { name: "CZ Pro 1 month EUR", amount: 519, inclVat: "6,49", currency: "EUR", interval: "monthly" },
   { name: "CZ Pro 6 Months EUR", amount: 2799, inclVat: "34,99", currency: "EUR", interval: "half-yearly" },
 ];
+// #4074/#4608: sproget vælger valutaen — 'en' viser EUR, 'da' viser DKK (se
+// LOCALES_BY_CURRENCY i check-pro-prices.mjs). Fixturen afspejler det bevidst
+// forskellige indhold, ikke en oversættelse af samme tal.
 const GOOD_PRO_JSON = {
-  en: { monthlyPrice: "49 kr/mo", semiannualPrice: "265 kr" },
+  en: { monthlyPrice: "€6.49/mo", semiannualPrice: "€34.99" },
   da: { monthlyPrice: "49 kr/md", semiannualPrice: "265 kr" },
 };
 
-test("checkAllPrices: fuldt sammenhængende katalog (DKK 3920->49, 21200->265; EUR 519->6,49, 2799->34,99) -> ingen drift", () => {
+test("checkAllPrices: fuldt sammenhængende katalog (DKK 3920->49 mod 'da', 21200->265 mod 'da'; EUR 519->6,49 mod 'en', 2799->34,99 mod 'en') -> ingen drift", () => {
   const results = checkAllPrices({ plans: GOOD_PLANS, proJsonByLocale: GOOD_PRO_JSON });
   assert.equal(results.length, 4);
   assert.equal(hasDrift(results), false);
   const eurMonthly = results.find((r) => r.name === "CZ Pro 1 month EUR");
   assert.equal(eurMonthly.computed, 6.49);
-  assert.equal(eurMonthly.displayedAmount, null); // pro.json viser ingen EUR-pris endnu — kun selv-konsistens tjekket
+  assert.equal(eurMonthly.displayedAmount, 6.49); // matches 'en' pro.json, som viser EUR
+  assert.equal(eurMonthly.displayMatch, true);
   assert.equal(eurMonthly.selfConsistent, true);
+  const dkkMonthly = results.find((r) => r.name === "CZ Pro 1 month");
+  assert.equal(dkkMonthly.displayedAmount, 49); // matches 'da' pro.json, som viser DKK
 });
 
 test("checkAllPrices: pro.json viser en anden pris end katalogets beregnede (2/9-scenariet) -> drift", () => {
   const driftedPlans = [{ name: "CZ Pro 6 Months", amount: 23600, inclVat: "295,00", currency: "DKK", interval: "half-yearly" }];
-  const results = checkAllPrices({ plans: driftedPlans, proJsonByLocale: GOOD_PRO_JSON }); // pro.json viser stadig 265
+  const results = checkAllPrices({ plans: driftedPlans, proJsonByLocale: GOOD_PRO_JSON }); // 'da' pro.json viser stadig 265
   assert.equal(hasDrift(results), true);
   assert.equal(results[0].displayMatch, false);
 });
 
-test("checkAllPrices: EN og DA pro.json UENIGE om prisen -> drift (localeMismatches)", () => {
-  const proJson = { en: { monthlyPrice: "49 kr/mo" }, da: { monthlyPrice: "61 kr/md" } };
+// #4074/#4608: 'en' viser EUR og 'da' viser DKK for samme katalog — de er
+// bevidst uenige (forskellige valutaer), og skal IKKE flages som drift. Før
+// #4074 delte begge locales DKK og krydstjekkedes mod hinanden; det ville nu
+// give falsk positiv drift hver gang EUR- og DKK-tallet ikke tilfældigvis er
+// ens (se localeMismatches i checkAllPrices).
+test("checkAllPrices: DKK-plan tjekkes KUN mod 'da' — 'en' (EUR-tal) giver ikke et falsk localeMismatch", () => {
+  const proJson = { en: { monthlyPrice: "€6.49/mo" }, da: { monthlyPrice: "61 kr/md" } };
   const plans = [{ name: "CZ Pro 1 month", amount: 3920, inclVat: "49,00", currency: "DKK", interval: "monthly" }];
   const results = checkAllPrices({ plans, proJsonByLocale: proJson });
-  assert.equal(hasDrift(results), true);
-  assert.ok(results[0].localeMismatches.length > 0);
+  // 61 kr. (da) afviger fra beregnet 49 -> ægte drift, men IKKE via localeMismatches.
+  assert.equal(results[0].displayedAmount, 61);
+  assert.equal(results[0].displayMatch, false);
+  assert.deepEqual(results[0].localeMismatches, []);
+  assert.equal(hasDrift(results), true); // stadig drift, bare fra displayMatch, ikke localeMismatches
 });
 
 // ── computeDiscountPct — rabat REGNES, håndskrives ikke (postmortem-læring) ──
