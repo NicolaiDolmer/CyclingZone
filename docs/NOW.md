@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** **AKTIV 2/9 fra ~10:00 (Claude Code, DOLMERPC, orkestrator + 5 workers):** #4568 rebase, #4603 dagsform, #4602 Del D, #4604 sprinter-anker (ny branch `feat/4604-v4-sprinter-anchor`), patch-notes-audit-PR (`docs/patch-notes-audit-2sep`). Pro/EUR (#4074) + Discord-catch-up (`docs/drafts/discord-patch-notes-catchup-2026-09-02.md`) i hovedsessionen. Rør IKKE disse branches fra en anden session. 2/9 tidligere: Discord-sweep → #4588-#4591; #4596 → CALENDAR_RULES §5a; Boardroom BETA (kun admin).
+> **🤖 Working agent:** **AKTIV 2/9 fra ~10:00 (Claude Code, DOLMERPC, orkestrator + 5 workers):** #4568 rebase, #4603 dagsform, #4602 Del D, #4604 sprinter-anker (ny branch `feat/4604-v4-sprinter-anchor`), patch-notes-audit-PR (`docs/patch-notes-audit-2sep`). Pro/EUR (#4074) + Discord-catch-up (`docs/drafts/discord-patch-notes-catchup-2026-09-02.md`) i hovedsessionen. Rør IKKE disse branches fra en anden session.
 
 _Historik i git-log, issue-tråde + docs/audits/._
