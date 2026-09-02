@@ -1,25 +1,11 @@
-// #2736 — daglig subscription-reconcile mod Alunta-API'et.
+// #2736/#4541 — subscription-reconcile mod Alunta-API'et (hver time + boot, se cron.js).
 //
-// BAGGRUND: aluntaWebhook.js's ACTIVATING-set lytter på 'invoice.paid', men det
+// BAGGRUND: aluntaWebhook.js's ACTIVATING-set lyttede på 'invoice.paid', men det
 // event FINDES IKKE i Aluntas event-katalog (kun invoice.created, subscription.
 // created/started/cancelled/resumed/ended/payment_failed/tier_changed, checkout.
-// completed, customer.*). Konsekvens: current_period_end opdateres muligvis
-// ALDRIG ved fornyelse -> computeIsPro() falder til false selvom kunden betaler.
-//
-// VERIFICERET LIVE 2026-08-03 (read-only SELECT mod prod): den eneste
-// subscriptions-række i produktion har status='active', is_founder=true, MEN
-// current_period_end=NULL og alunta_customer_id/alunta_subscription_id begge
-// NULL. last_event_id='checkout.completed:<timestamp>' (fallback-formatet i
-// aluntaWebhook.js — betyder checkout.completed-payloaden ikke indeholdt et
-// data.uuid, og enten aldrig indeholdt current_period_end/subscription_uuid,
-// eller et senere subscription.created-event med de felter aldrig fyrede).
-// computeIsPro() kræver current_period_end != null OG i fremtiden — denne
-// kunde er derfor allerede (ikke kun ved fornyelse ~24/8) uden synlig Pro-
-// status i entitlement-laget. Ingen backend-feature er pt. hård-gatet bag
-// isPro (kun UI: ProBadge/ProfilePage/ProUpgradePage), så impact er kosmetisk
-// indtil videre — men datamodellen SKAL rettes uafhængigt af 24/8.
-//
-// DESIGN (fra issuet, Refs #1903): daglig cron henter Aluntas fulde
+// completed, customer.*). Konsekvens: current_period_end opdateres ikke
+// pålideligt ved fornyelse -> computeIsPro() kan falde til false selvom kunden
+// betaler. Reconcilen er sikkerhedsnettet: den henter Aluntas fulde
 // abonnements-liste (GET /subscriptions, sidevist) og synker status +
 // current_period_end + plan_interval + alunta_customer_id/alunta_subscription_id
 // ind i public.subscriptions, matchet på external_customer_id === team_id
@@ -27,48 +13,57 @@
 // is_founder RØRES ALDRIG — udelades fra hver upsert-row, præcis samme regel
 // som aluntaWebhook.js (server-afledt, permanent, aldrig fra provider-payload).
 //
-// ✅ KONTRAKT VERIFICERET 2026-09-02 (#4541): dry-run af
-// scripts/reconcileAluntaSubscriptions.js mod prod-Alunta (2 abonnementer).
-// Aluntas GET /subscriptions-elementer er FLADE og bærer præcis:
-//   external_customer_id  (= vores team_id, UUID)
-//   customer_uuid, uuid   (Alunta kunde-/abonnements-id)
-//   status                ('active' set; øvrige værdier mappes i mapAluntaStatus)
-//   plan_interval         TAL = måneder pr. periode (1 = månedlig, 6 = halvår)
-//   current_period_end    ISO-timestamp med mikrosekunder ('...T21:59:59.999999Z')
-// De nestede fallback-stier i extractSubscriptionFields (customer.*, plan.*,
-// renews_at ...) rammes ikke af det ægte svar; de bevares som forsvar mod en
-// senere API-ændring, ikke fordi de er set. plan_interval normaliseres via
-// subscriptionPlanInterval.js, fordi resten af systemet forventer
-// 'monthly' | 'semiannual' (prod havde '1' stående 25/7 til 2/9).
+// KONTRAKT VERIFICERET 2026-09-02 (#4541) mod Aluntas ægte GET /subscriptions-svar
+// i prod (2 abonnementer): `data[]` med `uuid`, `status` ('active'), `interval`
+// (1/6), `current_period_start`/`current_period_end` (ISO, fx
+// 2027-03-01T22:59:59.999999Z), `customer: { uuid, name, external_customer_id }`
+// hvor external_customer_id === vores team_id, samt `plan: { uuid, name }`,
+// `scheduled_plan_change` og `scheduled_price_changes[]`. extractSubscriptionFields
+// læser de verificerede navne først og beholder de gamle kandidat-nøgler som
+// fallback (koster intet, og et felt-omdøb hos Alunta må ikke nulstille en
+// betalende kundes periode).
+//
+// KADENCE (#4541): hver time + ved boot. Den oprindelige døgn-kadence var et
+// setInterval målt fra proces-start uden boot-run; hvert deploy nulstillede
+// uret, så med flere backend-deploys om dagen kørte reconcilen reelt aldrig,
+// og fornyelsen 1/9 blev ikke synket (#4512/#4514).
+//
+// FORWARD-GUARD (#4512/#4555): siger Alunta 'active'/'past_due' om et abonnement
+// hvis current_period_end ligger længere tilbage end entitlementets respit,
+// er noget galt hos Alunta eller i vores udtræk — det alarmeres via Sentry
+// (activeButExpired) i stedet for at ligge stille til en kunde klager.
+//
+// #4542: updated_at stemples på rækken, men KUN når noget faktisk ændres, så
+// kolonnen kan bruges til at aflæse hvornår cachen sidst rykkede sig.
 //
 // Idempotent: identiske værdier springes over (ingen no-op-write); gentagne
 // kørsler mod uændret Alunta-tilstand producerer 0 updates. Netværks-/API-fejl
 // under selve hentningen kastes højt (efter ét retry), så cron.js' trackedTick
 // + monitorCron centralt logger + Sentry-alarmerer + markerer cron-monitoren
-// som fejlet — præcis samme mønster som de øvrige daglige sweeps.
+// som fejlet — præcis samme mønster som de øvrige sweeps.
 //
-// Scope-afgrænsning (bevidst, se PR-beskrivelse "Åbne spørgsmål"): reconcilen
-// OPDATERER kun rækker der allerede findes i public.subscriptions. Den
-// OPRETTER ingen ny række for en Alunta-kunde uden lokal modpart. Det holder
-// også efter checkout blev åbnet 2/9 (#4597): billingCheckout.js upserter den
-// lokale række (vilkårsaccept) FØR Alunta-kunden oprettes, så enhver Alunta-
-// kunde har en lokal modpart at matche på.
-//
-// Kadence (#4541): 24h-setInterval i cron.js PLUS en boot-run. Uden boot-run
-// kørte reconcilen reelt aldrig, fordi intervallet nulstilles ved hvert deploy
-// og backend deployes oftere end dagligt (fornyelsen 1/9 lå usynkroniseret 2/9).
+// Scope-afgrænsning (bevidst): reconcilen OPDATERER kun rækker der allerede
+// findes i public.subscriptions. Den OPRETTER ingen ny række for en Alunta-
+// kunde uden lokal modpart — checkout skriver accept-loggen på rækken FØR
+// Alunta-sessionen oprettes (billingCheckout.js), så en ægte kunde har altid
+// en lokal række. En Alunta-kunde uden lokal række er en afvigelse, ikke et
+// tilfælde vi skal gætte et team_id til.
 
 import { captureException as defaultCaptureException } from "./sentry.js";
+import { PRO_GRACE_AFTER_PERIOD_END_MS } from "./entitlement.js";
 import { normalizePlanInterval } from "./subscriptionPlanInterval.js";
 
 const ACTIVE_ALIASES = new Set(["active", "started", "resumed", "trialing"]);
-const CANCELLED_ALIASES = new Set(["cancelled", "canceled"]);
+const CANCELLED_ALIASES = new Set(["cancelled", "canceled", "under_cancellation"]);
 const PAST_DUE_ALIASES = new Set(["past_due", "payment_failed", "unpaid"]);
 const INACTIVE_ALIASES = new Set(["ended", "expired", "inactive", "paused"]);
 
 // PUR: Aluntas rå status-streng -> vores interne status-enum. Ukendte værdier
 // returnerer null (raekken røres IKKE — bedre at flagge end at gætte forkert
-// på et betalings-kritisk felt).
+// på et betalings-kritisk felt). 'under_cancellation' er Aluntas dokumenterede
+// tilstand for et opsagt abonnement der stadig løber til slutdatoen (OpenAPI
+// Subscription.status: pending/active/under_cancellation/cancelled) — det er
+// præcis vores 'cancelled' (æret indtil current_period_end).
 export function mapAluntaStatus(rawStatus) {
   const s = String(rawStatus ?? "").toLowerCase().trim();
   if (ACTIVE_ALIASES.has(s)) return "active";
@@ -78,18 +73,20 @@ export function mapAluntaStatus(rawStatus) {
   return null;
 }
 
-// PUR: forsvarsmæssigt feltudtræk fra ét Alunta-abonnements-objekt. Se
-// "KONTRAKT VERIFICERET" ovenfor for den ægte (flade) svarform.
+// PUR: feltudtræk fra ét Alunta-abonnements-objekt. Verificerede navne først
+// (se "KONTRAKT VERIFICERET" ovenfor), gamle kandidater som fallback.
 export function extractSubscriptionFields(entry) {
   if (!entry || typeof entry !== "object") return null;
   const customer = entry.customer || {};
   const plan = entry.plan || {};
   const externalCustomerId =
-    entry.external_customer_id ?? customer.external_customer_id ?? entry.customer_external_id ?? null;
-  const customerUuid = entry.customer_uuid ?? customer.uuid ?? entry.customer_id ?? null;
+    customer.external_customer_id ?? entry.external_customer_id ?? entry.customer_external_id ?? null;
+  const customerUuid = customer.uuid ?? entry.customer_uuid ?? entry.customer_id ?? null;
   const subscriptionUuid = entry.uuid ?? entry.subscription_uuid ?? entry.id ?? null;
   const rawStatus = entry.status ?? null;
-  const planInterval = normalizePlanInterval(entry.plan_interval ?? entry.interval ?? plan.interval ?? null);
+  // Alunta sender `interval` som TAL (måneder pr. periode); vores skema og alle
+  // forbrugere forventer 'monthly' | 'semiannual' (#4541, subscriptionPlanInterval.js).
+  const planInterval = normalizePlanInterval(entry.interval ?? entry.plan_interval ?? plan.interval ?? null);
   const currentPeriodEnd =
     entry.current_period_end ??
     entry.currentPeriodEnd ??
@@ -116,14 +113,22 @@ export async function fetchAllAluntaSubscriptions(client, { perPage = 100, maxPa
   return all;
 }
 
+function toMs(now) {
+  return now instanceof Date ? now.getTime() : Number(now);
+}
+
 // PUR: beregn hvilke lokale rækker der skal opdateres, ud fra Aluntas rå liste.
 // localRows: [{ team_id, status, plan_interval, current_period_end,
 //               alunta_customer_id, alunta_subscription_id }]
 // remoteEntries: rå Alunta-objekter (endnu ikke feltudtrukket).
-export function computeReconcileActions({ localRows = [], remoteEntries = [] } = {}) {
+// now: Date eller epoch-ms — styrer updated_at-stemplet og respit-guarden.
+export function computeReconcileActions({ localRows = [], remoteEntries = [], now = Date.now() } = {}) {
+  const nowMs = toMs(now);
+  const updatedAt = new Date(nowMs).toISOString();
   const byTeamId = new Map();
   const unmatchedRemote = [];
   const skippedUnknownStatus = [];
+  const activeButExpired = [];
 
   for (const raw of remoteEntries) {
     const fields = extractSubscriptionFields(raw);
@@ -137,6 +142,20 @@ export function computeReconcileActions({ localRows = [], remoteEntries = [] } =
       continue;
     }
     byTeamId.set(String(fields.externalCustomerId), { ...fields, mappedStatus });
+
+    // Forward-guard: Alunta kalder abonnementet løbende, men perioden er udløbet
+    // ud over respitten — ingen fornyelse er rullet, eller vores udtræk er blindt.
+    if (mappedStatus === "active" || mappedStatus === "past_due") {
+      const endMs = fields.currentPeriodEnd ? Date.parse(fields.currentPeriodEnd) : NaN;
+      if (Number.isNaN(endMs) || endMs + PRO_GRACE_AFTER_PERIOD_END_MS < nowMs) {
+        activeButExpired.push({
+          externalCustomerId: fields.externalCustomerId,
+          subscriptionUuid: fields.subscriptionUuid,
+          rawStatus: fields.rawStatus,
+          currentPeriodEnd: fields.currentPeriodEnd ?? null,
+        });
+      }
+    }
   }
 
   const updates = [];
@@ -168,18 +187,20 @@ export function computeReconcileActions({ localRows = [], remoteEntries = [] } =
       current_period_end: match.currentPeriodEnd ?? null,
     };
 
+    // plan_interval sammenlignes som streng: Alunta sender tallet 6, Postgres
+    // returnerer kolonnen som "6" — ellers ville hver kørsel skrive rækken igen.
     const isSame =
       nextRow.status === row.status &&
-      nextRow.plan_interval === (row.plan_interval ?? null) &&
+      String(nextRow.plan_interval ?? "") === String(row.plan_interval ?? "") &&
       nextRow.alunta_customer_id === (row.alunta_customer_id ?? null) &&
       nextRow.alunta_subscription_id === (row.alunta_subscription_id ?? null) &&
       String(nextRow.current_period_end ?? "") === String(row.current_period_end ?? "");
 
     if (isSame) unchanged.push(row.team_id);
-    else updates.push(nextRow);
+    else updates.push({ ...nextRow, updated_at: updatedAt });
   }
 
-  return { updates, unchanged, missingRemote, unmatchedRemote, skippedUnknownStatus };
+  return { updates, unchanged, missingRemote, unmatchedRemote, skippedUnknownStatus, activeButExpired };
 }
 
 async function fetchLocalSubscriptionRows(supabase) {
@@ -206,17 +227,17 @@ async function fetchWithRetry(fn, { attempts = 2, delayMs = 1000 } = {}) {
 }
 
 /**
- * Daglig reconcile: henter Aluntas fulde abonnements-liste, matcher på
- * external_customer_id === team_id, og upserter status/current_period_end/
- * plan_interval/alunta_customer_id/alunta_subscription_id ind i public.
- * subscriptions. is_founder røres ALDRIG.
+ * Reconcile (hver time + boot): henter Aluntas fulde abonnements-liste, matcher
+ * på external_customer_id === team_id, og upserter status/current_period_end/
+ * plan_interval/alunta_customer_id/alunta_subscription_id (+ updated_at ved
+ * reel ændring) ind i public.subscriptions. is_founder røres ALDRIG.
  *
  * @param {object}   args
  * @param {object}   args.supabase            service-role Supabase-klient
  * @param {object}   args.client               Alunta-klient (createAluntaClient())
  * @param {(err:Error, ctx:object)=>void} [args.captureExceptionFn]
  * @param {boolean}  [args.dryRun]             beregn + returnér forslag, men skriv INTET
- * @param {Date}     [args.now]                DI-hook (reserveret, ingen tidsvindue-logik pt.)
+ * @param {Date}     [args.now]                DI-hook: updated_at-stempel + respit-guard
  * @param {number}   [args.retryAttempts]      forsøg på Alunta-hentningen (default 2)
  * @param {number}   [args.retryDelayMs]       pause mellem forsøg i ms (default 1000; sæt 0 i tests)
  * @returns {Promise<object>} summary
@@ -232,7 +253,6 @@ export async function runAluntaSubscriptionReconcile({
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!client?.listSubscriptions) throw new Error("Alunta client required");
-  void now;
 
   const localRows = await fetchLocalSubscriptionRows(supabase);
 
@@ -251,10 +271,8 @@ export async function runAluntaSubscriptionReconcile({
     throw wrapped;
   }
 
-  const { updates, unchanged, missingRemote, unmatchedRemote, skippedUnknownStatus } = computeReconcileActions({
-    localRows,
-    remoteEntries,
-  });
+  const { updates, unchanged, missingRemote, unmatchedRemote, skippedUnknownStatus, activeButExpired } =
+    computeReconcileActions({ localRows, remoteEntries, now });
 
   const errors = [];
   let applied = 0;
@@ -280,6 +298,18 @@ export async function runAluntaSubscriptionReconcile({
         tags: { cron: "alunta-subscription-reconcile" },
         fingerprint: ["alunta-reconcile-missing-remote"],
         extra: { sample: missingRemote.slice(0, 20) },
+      }
+    );
+  }
+  if (activeButExpired.length) {
+    captureExceptionFn?.(
+      new Error(
+        `Alunta-reconcile: ${activeButExpired.length} abonnement er aktivt hos Alunta men perioden er udløbet ud over respitten`
+      ),
+      {
+        tags: { cron: "alunta-subscription-reconcile" },
+        fingerprint: ["alunta-reconcile-active-but-expired"],
+        extra: { sample: activeButExpired.slice(0, 20) },
       }
     );
   }
@@ -312,6 +342,7 @@ export async function runAluntaSubscriptionReconcile({
     missingRemote: missingRemote.length,
     unmatchedRemote: unmatchedRemote.length,
     skippedUnknownStatus: skippedUnknownStatus.length,
+    activeButExpired: activeButExpired.length,
     errors,
     updates, // altid inkluderet — dry-run-scriptet bruger dette til at printe forslag
   };

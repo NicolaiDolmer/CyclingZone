@@ -1,7 +1,7 @@
 import test, { before, after } from "node:test";
 import assert from "node:assert/strict";
 import { createTestDb } from "./testdb/createTestDb.js";
-import { computeIsPro } from "./entitlement.js";
+import { computeIsPro, PRO_GRACE_AFTER_PERIOD_END_MS } from "./entitlement.js";
 
 // Minimalt fil-sæt: base-skema (teams = FK-mål) + subscriptions-migration.
 const SCHEMA_FILES = ["schema.sql", "2026-06-26-cz-pro-subscriptions.sql"];
@@ -12,8 +12,8 @@ test("computeIsPro: aktiv + fremtidig periode = true", () => {
 test("computeIsPro: opsagt men stadig i perioden = true (æret betalt tid)", () => {
   assert.equal(computeIsPro({ status: "cancelled", current_period_end: new Date(Date.now() + 86400000).toISOString() }), true);
 });
-test("computeIsPro: udløbet periode = false", () => {
-  assert.equal(computeIsPro({ status: "active", current_period_end: new Date(Date.now() - 1000).toISOString() }), false);
+test("computeIsPro: udløbet ud over respitten = false", () => {
+  assert.equal(computeIsPro({ status: "active", current_period_end: new Date(Date.now() - PRO_GRACE_AFTER_PERIOD_END_MS - 1000).toISOString() }), false);
 });
 test("computeIsPro: ingen række = false", () => {
   assert.equal(computeIsPro(null), false);
@@ -39,4 +39,29 @@ test("subscriptions-row kan upsertes og læses tilbage (DDL-kontrakt)", async ()
   );
   assert.equal(rows.length, 1);
   assert.equal(computeIsPro(rows[0]), true);
+});
+
+// ── Respit efter periodeslut (#4512/#4541) ───────────────────────────────────
+const DAY = 24 * 60 * 60 * 1000;
+const NOW = Date.parse("2026-09-02T12:00:00Z");
+const iso = (ms) => new Date(ms).toISOString();
+
+test("computeIsPro: aktiv, periode udløbet for 1 dag siden = true (respit dækker cache-lag)", () => {
+  assert.equal(computeIsPro({ status: "active", current_period_end: iso(NOW - DAY) }, NOW), true);
+});
+test("computeIsPro: past_due, periode udløbet for 2 dage siden = true (Aluntas rykkerproces)", () => {
+  assert.equal(computeIsPro({ status: "past_due", current_period_end: iso(NOW - 2 * DAY) }, NOW), true);
+});
+test("computeIsPro: aktiv, periode udløbet for 3 dage + 1 ms siden = false (respit opbrugt)", () => {
+  assert.equal(computeIsPro({ status: "active", current_period_end: iso(NOW - PRO_GRACE_AFTER_PERIOD_END_MS - 1) }, NOW), false);
+});
+test("computeIsPro: opsagt får INGEN respit — falder præcis ved periodeslut", () => {
+  assert.equal(computeIsPro({ status: "cancelled", current_period_end: iso(NOW - 1) }, NOW), false);
+  assert.equal(computeIsPro({ status: "cancelled", current_period_end: iso(NOW + 1) }, NOW), true);
+});
+test("computeIsPro: inaktiv får ingen respit uanset periode", () => {
+  assert.equal(computeIsPro({ status: "inactive", current_period_end: iso(NOW + DAY) }, NOW), false);
+});
+test("computeIsPro: ulæselig periode = false", () => {
+  assert.equal(computeIsPro({ status: "active", current_period_end: "ikke-en-dato" }, NOW), false);
 });
