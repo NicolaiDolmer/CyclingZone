@@ -11,7 +11,7 @@
 
 import type { AbilityKey, DayformTuning, PhysiologyTuning, SegmentKind } from "./types.ts";
 import { gaussian, rngFor } from "./rng.ts";
-import { PHYSIOLOGY_SUBTICK_TUNING } from "./tuning.ts";
+import { PHYSIOLOGY_SUBTICK_TUNING, PHYSIOLOGY_WPRIME_DRAIN_TUNING } from "./tuning.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -96,11 +96,20 @@ export function tickPhysiology(args: {
   demand: number;
   dtSeconds: number;
   rechargeRate: number;
+  /**
+   * #4604: sekunder ved normaliseret overforbrug 1,0 der toemmer en FULD
+   * reserve. Broen mellem den normaliserede W'-skala og dtSeconds' sekunder —
+   * uden den var taeringen `(demand-cp)*dtSeconds` og reserven i praksis
+   * binaer. Se tuning.ts's PHYSIOLOGY_WPRIME_DRAIN_TUNING for maalingen bag.
+   */
+  wprimeDrainTimeConstantSeconds?: number;
 }): PhysiologyTickResult {
   const { cp, wprimeMax, wprime, demand, dtSeconds, rechargeRate } = args;
+  const drainTimeConstant = args.wprimeDrainTimeConstantSeconds ?? PHYSIOLOGY_WPRIME_DRAIN_TUNING.timeConstantSeconds;
   const workNorm = demand * dtSeconds;
   if (demand > cp) {
-    const nextWprime = clamp(wprime - (demand - cp) * dtSeconds, 0, wprimeMax);
+    const drain = drainTimeConstant > 0 ? ((demand - cp) * dtSeconds) / drainTimeConstant : (demand - cp) * dtSeconds;
+    const nextWprime = clamp(wprime - drain, 0, wprimeMax);
     return { wprime: nextWprime, secondsOverCp: dtSeconds, workNorm };
   }
   const nextWprime = clamp(wprime + rechargeRate * (wprimeMax - wprime) * dtSeconds, 0, wprimeMax);
@@ -157,8 +166,10 @@ export function tickPhysiologyOverSegment(args: {
   rechargeRate: number;
   segmentLengthKm: number;
   subTick?: { kmPerSubTick: number; maxSubTicksPerSegment: number };
+  wprimeDrainTimeConstantSeconds?: number;
 }): PhysiologyTickResult {
   const { cp, wprimeMax, demand, dtSeconds, rechargeRate, segmentLengthKm } = args;
+  const wprimeDrainTimeConstantSeconds = args.wprimeDrainTimeConstantSeconds;
   const subTick = args.subTick ?? PHYSIOLOGY_SUBTICK_TUNING;
   const plan = planSubTicks({
     dtSeconds,
@@ -171,7 +182,15 @@ export function tickPhysiologyOverSegment(args: {
   let secondsOverCp = 0;
   let workNorm = 0;
   for (let i = 0; i < plan.count; i++) {
-    const tick = tickPhysiology({ cp, wprimeMax, wprime, demand, dtSeconds: plan.dtSubSeconds, rechargeRate });
+    const tick = tickPhysiology({
+      cp,
+      wprimeMax,
+      wprime,
+      demand,
+      dtSeconds: plan.dtSubSeconds,
+      rechargeRate,
+      wprimeDrainTimeConstantSeconds,
+    });
     wprime = tick.wprime;
     secondsOverCp += tick.secondsOverCp;
     workNorm += tick.workNorm;

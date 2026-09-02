@@ -152,6 +152,32 @@ const finaleExtra = {
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
 export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
 
+// ── M1 (segmentLoop.ts, #4604) — ADDITIV gruppe-lae-tuning ────────────────────
+// Samme "bevidst separat eksport"-moenster som finaleExtra ovenfor: SS2's
+// frosne EngineTuning-kontrakt (types.ts, arkitekt-only) har ingen noegle for
+// dette, saa segmentLoop.ts importerer konstanten direkte.
+//
+// HVORFOR (maalt 2/9, #4604): gruppe-hastigheden blev udelukkende afledt af
+// gruppens staerkeste ryttere (computeGroupTempo's kollektive CP) UDEN noget
+// stoerrelses-led. En enkelt elite-rytter fik derfor hoejere kollektiv CP end
+// en 180-mands peloton — og dermed hoejere fart — saa ethvert solo-udbrud
+// voksede monotont resten af etapen. Maalt paa S3-kalenderen ankom 83 % af de
+// flade etaper til finalen med en front-pulje paa ÉN rytter, og massespurten
+// blev derfor afgjort af en solo-rytter i stedet for af sprinterne.
+// tuning.work.draftFactor modellerede allerede laeen paa OMKOSTNINGS-siden
+// (W'-forbrug); dette er den manglende halvdel paa FART-siden.
+//
+// Terraen-vaegten genbruges bevidst fra draftFactor (1 - draftFactor) i stedet
+// for en ny per-terraen-tabel: laegevinsten er stor hvor hjul-rabatten er stor
+// (flad) og lille hvor den er lille (klatring). Ét sted at kalibrere, ikke to.
+const groupDraftExtra = {
+  maxSpeedGain: 0.12, // loft paa den relative fart-gevinst en fuldt bemandet gruppe faar over en solo-rytter med samme kollektive CP, FOER terraen-vaegtning
+  referenceSize: 60, // gruppe-stoerrelse hvor stoerrelses-faktoren naar 1 (logaritmisk aftagende marginalnytte derunder; stoerre grupper clampes til 1)
+};
+
+/** M1 additiv gruppe-lae-tuning (deep-frosset). Se groupDraftExtra-kommentaren ovenfor. */
+export const GROUP_DRAFT_EXTRA_TUNING = deepFreeze(groupDraftExtra);
+
 // ── M13 (mechanics/teamTimeTrial.ts, #4030) — ADDITIV TTT-tuning ──────────────
 // Samme moenster som finaleExtra ovenfor: TTT er IKKE en del af SS2's frosne
 // EngineTuning-kontrakt (types.ts, arkitekt-only), saa dens haandtag lever
@@ -361,3 +387,28 @@ const physiologySubTick = {
 
 /** Sub-tick-fysiologi-tuning (deep-frosset). Se physiologySubTick-kommentaren ovenfor. */
 export const PHYSIOLOGY_SUBTICK_TUNING = deepFreeze(physiologySubTick);
+
+// ── W'-taerings-tidskonstant (#4604) — ADDITIV physiology-tuning ──────────────
+// SS2's frosne PhysiologyTuning-kontrakt baerer ikke dette felt; samme
+// additiv-praecedens som finaleExtra ovenfor.
+//
+// HVORFOR (maalt 2/9): §5-formlen taerer W' som `(demand - cp) * dtSeconds`.
+// wprimeMax er NORMALISERET (0-1, maks 1,0 ved punch=accel=sprint=99), mens
+// dtSeconds er et helt segments varighed - typisk 2.000-5.000 sekunder. Et
+// overforbrug paa bare 0,001 over CP toemte derfor hele reserven paa ét
+// segment. W' var i praksis BINAER: enten praecis fuld (strengt under CP hele
+// vejen) eller nul. Maalt paa S3-kalenderen betoed det at 179 af 180 ryttere
+// stod med wprime <= 0 ved etapens foerste stigning, hvorefter M2's
+// wprime-tvungne selektion shellede hele feltet i ét skridt - ogsaa paa
+// etaper klassificeret som massespurt.
+//
+// Tidskonstanten er den manglende bro mellem de to enheder: hvor mange
+// sekunder ved et normaliseret overforbrug paa 1,0 der skal til for at toemme
+// en FULD reserve. Genopladnings-grenen har allerede sin egen tidsskala
+// (rechargeRateBase, ~1/0,0006 s) og roeres ikke.
+const physiologyWprimeDrain = {
+  timeConstantSeconds: 240, // sekunder ved normaliseret overforbrug 1,0 der toemmer en fuld reserve; en rytter 0,1 over CP holder ~40 min paa en halv reserve
+};
+
+/** W'-taerings-tidskonstant (deep-frosset). Se physiologyWprimeDrain-kommentaren ovenfor. */
+export const PHYSIOLOGY_WPRIME_DRAIN_TUNING = deepFreeze(physiologyWprimeDrain);

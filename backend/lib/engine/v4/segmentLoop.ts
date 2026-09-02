@@ -45,6 +45,7 @@ import type {
 import { boundRngFor } from "./rng.ts";
 import { deriveCp, deriveRechargeRate, tickPhysiologyOverSegment } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
+import { GROUP_DRAFT_EXTRA_TUNING } from "./tuning.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -85,12 +86,39 @@ function riderCpForSegment(entrant: Entrant, riderState: RiderState, segment: Se
   return Math.max(0, baseCp + riderState.dayform);
 }
 
-function computeSegmentSpeedKmh(collectiveCp: number, kind: SegmentKind, tuning: EngineTuning): number {
+/**
+ * Gruppe-lae-fart-gevinst (M1, #4604): den relative fart en gruppe paa
+ * `riderCount` holder UD OVER en solo-rytter med samme kollektive CP.
+ *
+ * Eksporteret for property-testbarhed. Tre egenskaber testene laaser:
+ *   1. `riderCount <= 1` giver praecis 0 — en solo-rytter faar aldrig laegevinst.
+ *   2. Monotont ikke-faldende i `riderCount` (log-kurve, clampet til [0, 1]).
+ *   3. Terraen-vaegten er `1 - draftFactor[kind]`, saa gevinsten er stoerst paa
+ *      flad vej og mindst op ad bakke — samme rangorden som hjul-rabatten selv.
+ *
+ * Ren aritmetik: ingen RNG, ingen state. Paavirker KUN gruppe-tider (mellem
+ * grupper), aldrig raekkefolgen inden for en gruppe — monotoni-invarianten
+ * (SS2 §2 invariant 3) er derfor uberoert per konstruktion.
+ */
+export function groupDraftSpeedGain(riderCount: number, kind: SegmentKind, tuning: EngineTuning): number {
+  if (!Number.isFinite(riderCount) || riderCount <= 1) return 0;
+  const { maxSpeedGain, referenceSize } = GROUP_DRAFT_EXTRA_TUNING;
+  const sizeFactor = clamp(Math.log(riderCount) / Math.log(referenceSize), 0, 1);
+  const terrainShare = clamp(1 - tuning.work.draftFactor[kind], 0, 1);
+  return maxSpeedGain * terrainShare * sizeFactor;
+}
+
+function computeSegmentSpeedKmh(
+  collectiveCp: number,
+  kind: SegmentKind,
+  tuning: EngineTuning,
+  riderCount: number,
+): number {
   const baseSpeed = tuning.terrain.baseSpeedKmh[kind];
   const baseDemand = tuning.terrain.baseDemand[kind];
   const [lo, hi] = tuning.terrain.speedMultiplierBounds;
   const multiplier = clamp(1 + tuning.terrain.strengthSpeedGain * (collectiveCp - baseDemand), lo, hi);
-  return baseSpeed * multiplier;
+  return baseSpeed * multiplier * (1 + groupDraftSpeedGain(riderCount, kind, tuning));
 }
 
 function computeGroupTempo(
@@ -112,7 +140,7 @@ function computeGroupTempo(
   const frontSlice = ranked.slice(0, frontCount);
   const frontRiderIds = new Set(frontSlice.map(([id]) => id));
   const collectiveCp = frontSlice.length > 0 ? frontSlice.reduce((s, [, cp]) => s + cp, 0) / frontSlice.length : 0;
-  const speedKmh = computeSegmentSpeedKmh(collectiveCp, segment.kind, tuning);
+  const speedKmh = computeSegmentSpeedKmh(collectiveCp, segment.kind, tuning, ranked.length);
   const distanceSegmentKm = Math.max(0, segment.to_km - segment.from_km);
   const dtSeconds = speedKmh > 0 ? (distanceSegmentKm / speedKmh) * 3600 : 0;
   return { collectiveCp, frontRiderIds, cpByRider, dtSeconds };
