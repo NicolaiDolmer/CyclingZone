@@ -98,10 +98,12 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 | F0 | Spec ejer-godkendt, 16 valg | ✅ 20/8 |
 | F1 | Rute-SSOT: segmentmodel, vejr-lag, generator, legacy-syntese | ✅ PR #4028 |
 | F2 | Motor-kerne: segment-loop, M1-M4, tidslinje, golden fixtures | ✅ PR #4072, 21/8 |
-| F3 | Mekanik-bølge M5-M12 + taktik-kort | i gang |
+| F3 | Mekanik-bølge M5-M12 + taktik-kort | **delvis (2/9)** — se noten |
 | F4 | Skygge-mode: runner-hook, sammenlignings-scorecard | ikke startet |
 | F5 | Kalibrering i S3 → ejer-gate | ikke startet |
 | F6 | Flag-flip i S3 på en hviledag | **ejer-gated** |
+
+**F3-noten (målt 2/9, [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604)).** "I gang" stod i denne tabel fra 21/8 til 2/9 uden at være efterprøvet. Den faktiske tilstand: `index.ts` kalder **kun M2, M3 og M4** (plus M1, der bor i selve segment-loopet). M5-M12 findes som skrevne og testede filer i `mechanics/`, men **ingen af dem kaldes af motoren** — de er kode uden kaldssted, ikke leveret mekanik. Taktik-kortet er ikke bygget; `TeamOrder` er stadig det løse placeholder-udkast i `types.ts`, og kernen læser ingen ordrer. Kontrakten den skal bygges mod blev afgjort 2/9 ([#4246](https://github.com/NicolaiDolmer/CyclingZone/issues/4246)): rollen er standardordren, taktik-kortet vinder for den enkelte etape, og rollen skrives aldrig om af kortet.
 
 **v3 er låst fallback indtil F6.** Flippet er ejer-only og sker aldrig som sidegevinst ved en anden opgave.
 
@@ -128,8 +130,10 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 | 3 | Rolle-vokabularet har ingen gate — en ny flade kan indføre et sjette ord uden at noget fejler | denne fil §1 |
 | 4 | `race:gate:routes` er permanent rød; `longDayEnduranceLift`-båndet står på middelværdien | [#4197](https://github.com/NicolaiDolmer/CyclingZone/issues/4197) |
 | 5 | `balance:check` tæller 98 afvigelser på main, men er advisory | [#4196](https://github.com/NicolaiDolmer/CyclingZone/issues/4196) |
-| 6 | v4's head-to-head-gate var rød 23/8: bjerg-spredning 4-5x, sprintere 45-61 % | [#4132](https://github.com/NicolaiDolmer/CyclingZone/issues/4132) |
+| 6 | v4's head-to-head-gate er fortsat rød. Genmålt 2/9 over 5 seeds: sprinter-vinderraten løftet fra 68 % til 85 % i gennemsnit, bjerg-spredningen skåret 36 %, men **ingen af de tre ankre er inden for båndet** | [#4132](https://github.com/NicolaiDolmer/CyclingZone/issues/4132) · [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
 | 7 | `raceRouteRealismScorecard` måler sin egen plan, ikke basen | [#4219](https://github.com/NicolaiDolmer/CyclingZone/issues/4219) |
+| 8 | **Head-to-head-scorecardet er seed-domineret.** Samme kode, samme kalender, fem seeds: sprinter-ankeret svinger ~12 procentpoint til hver side. Etaper med samme etapenummer deler feltsample OG motor-seed, så n=117 flade etaper er reelt ~20 uafhængige træk. Et enkelt-seed-tal kan derfor hverken erklære et anker grønt eller rødt — scorecardet skal aggregere over seeds før det kan gate noget | [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
+| 9 | `positioning` og `tactics` står i `AbilityKey` og vægter i finalens demand-vektorer, men **ingen rytter i spillet har dem** (0 af 5.938 i S3-populationen). Vægten falder tavst på gulvet, så bl.a. massespurt-finalen afgøres på en mindre del af sin egen vektor end tabellen antyder | [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
 
 ---
 
