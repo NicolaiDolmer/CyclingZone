@@ -68,7 +68,7 @@ export default function TermsPageEn() {
               <ul className="list-disc pl-5 space-y-1">
                 <li>Monthly subscription: EUR 6.49 per month.</li>
                 <li>6-month subscription: EUR 34.99 per 6 months.</li>
-                <li>Prices are charged in euro when Cycling Zone is played in English, and in Danish kroner when played in Danish — the game&apos;s language decides the currency.</li>
+                <li>Prices are charged in euro when Cycling Zone is played in English, and in Danish kroner when played in Danish. The game&apos;s language decides the currency.</li>
                 <li>All prices are the total price you pay, including any applicable VAT. No fees or surcharges are added.</li>
                 <li>Payment is handled by our payment provider Alunta. We never store your card details.</li>
               </ul>

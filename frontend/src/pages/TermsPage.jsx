@@ -70,7 +70,7 @@ export default function TermsPage() {
               <ul className="list-disc pl-5 space-y-1">
                 <li>Månedligt abonnement: 49 kr. pr. måned.</li>
                 <li>6-måneders abonnement: 265 kr. pr. 6 måneder.</li>
-                <li>Priser opkræves i danske kroner når du spiller Cycling Zone på dansk, og i euro når du spiller på engelsk — spillets sprog afgør valutaen.</li>
+                <li>Priser opkræves i danske kroner når du spiller Cycling Zone på dansk, og i euro når du spiller på engelsk. Spillets sprog afgør valutaen.</li>
                 <li>Alle priser er den samlede pris du betaler, inkl. eventuel moms. Der lægges ikke gebyrer eller tillæg oveni.</li>
                 <li>Betaling sker via vores betalingsudbyder Alunta. Vi opbevarer aldrig dine kortoplysninger.</li>
               </ul>
