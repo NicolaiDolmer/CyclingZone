@@ -72,6 +72,13 @@ export const DENY_TABLES = [
   'race_stage_profiles',
   'finance_transactions',
   'notifications',
+  // #4566 (spillerverificeret 1/9): race_stage_moments viste 87/83/86 story-
+  // tags på etape 11-13 af et 13-etapes løb i DB, men 0 på siden — en
+  // race_id-only select ramte PostgREST's 1.000-rækkers-loft ved 1.345 rækker.
+  // Prod-audit 1/9: max 1.345 rækker/løb race_id-only (761 løb), men kun
+  // 117 rækker/etape race_id+stage_number-scoped (1.845 etaper) — sidstnævnte
+  // shape er provably bounded og optes ud med "pagination-safe:".
+  'race_stage_moments',
 ];
 
 const DEFAULT_DIRS = ['backend', 'frontend/src'];

@@ -32,6 +32,7 @@
 // eller løb hvor v3 var slukket for etapen.
 
 import { captureException } from "./sentry.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 // ─── Rene tekst-hjælpere ───────────────────────────────────────────────────
 
@@ -284,11 +285,19 @@ function logNarrativeFailure(err, { raceId, stageNumber, stage }) {
 export async function buildRaceResultNarrative({ supabase, race }) {
   if (!supabase?.from || !race?.id) return null;
   try {
-    const { data: momentRows, error } = await supabase
-      .from("race_stage_moments")
-      .select("stage_number, moment_key, params, significance, rider_ids")
-      .eq("race_id", race.id);
-    if (error) throw error;
+    // #4566: race_id-only (ikke stage-scoped) — samme klassebug som
+    // RaceDetailPage.jsx's momentsPromise (et 13-etapes løb har allerede ramt
+    // 1.345 rækker mod PostgREST's tavse 1.000-loft). fetchAllRows pagineret,
+    // stabil .order() så "sidste etape" (Math.max nedenfor) altid ser den
+    // fulde rækkefølge på tværs af sider.
+    const momentRows = await fetchAllRows(() =>
+      supabase
+        .from("race_stage_moments")
+        .select("stage_number, moment_key, params, significance, rider_ids")
+        .eq("race_id", race.id)
+        .order("stage_number", { ascending: true })
+        .order("id", { ascending: true })
+    );
     if (!momentRows?.length) return null;
 
     const finalStage = Math.max(...momentRows.map((m) => m.stage_number ?? 1));
@@ -325,6 +334,9 @@ export async function buildRaceResultNarrative({ supabase, race }) {
 export async function buildStageResultNarrative({ supabase, race, stageNumber }) {
   if (!supabase?.from || !race?.id || !stageNumber) return null;
   try {
+    // pagination-safe: race_id+stage_number-scoped — bounded af den enkelte
+    // etapes feltstørrelse, verificeret max 117 rækker/etape prod-audit 1/9
+    // (#4566), langt under PostgREST's 1.000-rækkers-loft.
     const { data: momentRows, error } = await supabase
       .from("race_stage_moments")
       .select("stage_number, moment_key, params, significance, rider_ids")

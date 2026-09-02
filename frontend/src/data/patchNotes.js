@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.232",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race results",
+        "en": {
+          "title": "Story bubbles now show on every stage of long races",
+          "body": "Races with many stages could silently drop the newest stages' story bubbles (Peak, Outsider, and the rest). Fixed."
+        },
+        "da": {
+          "title": "Historie-bobler vises nu på alle etaper i lange løb",
+          "body": "Løb med mange etaper kunne stille miste historie-boblerne (Peak, Outsider og de øvrige) på de nyeste etaper. Rettet."
+        },
+        "refs": [4566]
+      }
+    ]
+  },
+  {
     "version": "7.231",
     "date": "2026-09-02",
     "label": "Beta",

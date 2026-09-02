@@ -345,7 +345,8 @@ jobs:
     # uden `.limit()/.single()/.maybeSingle()/.range()` eller delegering til en
     # fetchAllRows*-pagineringshelper. Deny-liste: race_results, riders,
     # race_entries, race_stage_schedule, race_stage_profiles,
-    # finance_transactions, notifications. Baseline-ratchet (samme mønster som
+    # finance_transactions, notifications, race_stage_moments (#4566).
+    # Baseline-ratchet (samme mønster som
     # lint-ui-slop.mjs) grandfatherer ~120 pre-eksisterende, prod-verificerede
     # sikre fund (single-team/single-race-scoping) — kun NYE overtrædelser
     # fejler builden. Opt-out: `pagination-safe: <begrundelse>`-kommentar.

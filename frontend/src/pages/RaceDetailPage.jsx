@@ -464,10 +464,26 @@ export default function RaceDetailPage() {
     // anvendes først af ejeren POST-merge, og v3-scoring var allerede ON i prod
     // FØR denne migration, så en fejl her er FORVENTET indtil ejeren har anvendt
     // den. Må ALDRIG vælte race-siden.
-    const momentsPromise = supabase
-      .from("race_stage_moments")
-      .select("id, stage_number, moment_key, params, significance, rider_ids, team_ids")
-      .eq("race_id", raceId);
+    //
+    // #4566 (spillerverificeret 1/9): denne query er IKKE stage-scoped (den
+    // henter HELE løbet på én gang, i modsætning til useHeroAgonyMoment.js's
+    // per-etape-slice) — et 13-etapes løb har allerede ramt 1.345 momenter mod
+    // PostgREST's tavse 1.000-rækkers-loft, hvilket tavst slugte etape 11-13's
+    // story-tags. fetchAllRows bruges (som race_results/race_stage_passages
+    // ovenfor) fordi et langt etapeløb strukturelt kan overstige 1000 rækker;
+    // fejl fanges lokalt så den ALDRIG vælter race-siden (samme mønster som
+    // passagesPromise).
+    const momentsPromise = fetchAllRows(() =>
+      supabase
+        .from("race_stage_moments")
+        .select("id, stage_number, moment_key, params, significance, rider_ids, team_ids")
+        .eq("race_id", raceId)
+        .order("stage_number", { ascending: true })
+        .order("id", { ascending: true })
+    ).catch((err) => {
+      console.warn("race_stage_moments fetch failed (table may not be migrated yet):", err.message);
+      return [];
+    });
 
     // #3398 (Maiden Win Engine): career-firsts for DETTE løb (maiden win/første
     // podium/første trøje/klub-milepæl). Samme degradér-ærligt-mønster —
@@ -494,14 +510,11 @@ export default function RaceDetailPage() {
       return [];
     });
 
-    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }, { data: momentRows, error: momentsError }, { data: careerEventRows, error: careerEventsError }, passageRows] = await Promise.all([
+    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }, momentRows, { data: careerEventRows, error: careerEventsError }, passageRows] = await Promise.all([
       myTeamPromise, rowsPromise, profilesPromise, schedulePromise, incidentsPromise, momentsPromise, careerEventsPromise, passagesPromise,
     ]);
     if (incidentsError) {
       console.warn("race_incidents fetch failed (table may not be migrated yet):", incidentsError.message);
-    }
-    if (momentsError) {
-      console.warn("race_stage_moments fetch failed (table may not be migrated yet):", momentsError.message);
     }
     if (careerEventsError) {
       console.warn("rider_career_events fetch failed (table may not be migrated yet):", careerEventsError.message);
