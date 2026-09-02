@@ -10,6 +10,14 @@
 //   F: divisionManagerCount = is_ai=false-teams i samme PULJE (league_division_id)
 //      for sæsonen, når leagueDivisionId er sat (#1608); ellers tier-bredt fallback.
 //
+// #3494 · sponsorGrowthCurrentIncome/sponsorGrowthBaselineIncome: re-pointer
+// sponsor_growth-målet fra det døde teams.sponsor_income-felt (altid
+// SPONSOR_INCOME_BASE for alle hold, se docs/BOARD_RULES.md §3) til ægte
+// sponsor_contracts-udbetalinger (finance_transactions, SPONSOR_GROWTH_REASON_CODES
+// herunder). Baseline = planens FØRSTE afsluttede sæson (samme
+// firstSnapshot-mekanik som E1/U25 ovenfor) — ikke en gemt DB-snapshot-værdi,
+// da board_profiles.plan_start_sponsor_income er den samme dødte kilde.
+//
 // #1238 · Podie-queryen dækker hele den kanoniske klassiker-kategori
 // (CLASSIC_RACE_CLASSES, Monuments ⊂ klassikere) og splittes i JS via
 // isMonumentRace/isClassicRace, så monument_podium-mål med race_scope
@@ -17,6 +25,21 @@
 
 import { CLASSIC_RACE_CLASSES, isClassicRace, isMonumentRace } from "./boardConstants.js";
 import { getPlanDuration } from "./boardGoals.js";
+import { FINANCE_REASON } from "./economyConstants.js";
+
+// #3494 · sponsor_growth re-pointet fra det døde teams.sponsor_income-felt til
+// ægte kontrakt-økonomi: kontrakt-garanteret base (season_start_sponsor, evt.
+// forholdsmæssig for hold oprettet midt i sæsonen: midseason_sponsor_prorata)
+// + løbsdags-indtægt fra den aktive sponsor_contracts-kontrakt (sponsor_race_day).
+// Bevidst UDEN engangsbonusser (signing/result/objective, #2948-klausuler) —
+// de er ikke tilbagevendende kontrakt-"vækst" og ville gøre målet uforudsigeligt
+// år-til-år (en signing-bonus i plan-start-sæsonen ville se ud som et fald året
+// efter). Se docs/BOARD_RULES.md §3 + gh issue 3494 for rod-årsagen.
+const SPONSOR_GROWTH_REASON_CODES = [
+  FINANCE_REASON.SEASON_START_SPONSOR,
+  FINANCE_REASON.MIDSEASON_SPONSOR_PRORATA,
+  FINANCE_REASON.SPONSOR_RACE_DAY,
+];
 
 // #2469 · Fælles kontekst-bygger for bestyrelses-motoren. #2308 fandt at tre
 // live-stier håndbyggede hver sit context-objekt til calculateBoardPerformance/
@@ -139,9 +162,17 @@ export async function loadGoalContextForBoard({
   // samme model som riderPalmares.js' oneDayWins-skel #1997) — se query nedenfor.
   let cumulativeOneDayWins = null;
   let seasonOneDayWins = null;
+  // #3494 · sponsor_growth-kontekst. null = "kunne ikke måles" (query-fejl),
+  // så evaluator returnerer awaiting_data i stedet for at regne på et forkert
+  // tal. sponsorGrowthBaselineIncome læses fra PLANENS FØRSTE (allerede
+  // afsluttede) sæson via firstSnapshot herunder — findes ingen tidligere
+  // snapshot (plan-sæson 1) forbliver den null: samme "evaluerer først fra
+  // sæson 2"-princip som u25_development_delta ovenfor.
+  let sponsorGrowthCurrentIncome = null;
+  let sponsorGrowthBaselineIncome = null;
 
   if (planSeasonIds.length > 0) {
-    // #2444 · de fire queries herunder er uafhængige af hinanden (samme input:
+    // #2444 · de fem queries herunder er uafhængige af hinanden (samme input:
     // teamId + planSeasonIds) og kørte tidligere sekventielt (3 round-trips
     // efter hinanden pr. plan-type, ×3 plan-typer i /board/status-loopet).
     // Promise.all parallelliserer dem til én round-trip-bredde.
@@ -150,6 +181,7 @@ export async function loadGoalContextForBoard({
       { data: jerseyResults, error: jerErr },
       { data: transferTxs, error: trxErr },
       { data: oneDayResults, error: odErr },
+      { data: sponsorTxs, error: sponsorErr },
     ] = await Promise.all([
       // Podie-placeringer (rank 1-3 i GC) i klassiker-kategorien. #1238: én query
       // over den kanoniske klasse-liste; Monuments-delmængden + den fulde
@@ -204,7 +236,44 @@ export async function loadGoalContextForBoard({
         .eq("rank", 1)
         .eq("races.race_type", "single")
         .in("races.season_id", planSeasonIds),
+      // #3494 · Sponsor-udbetalinger (kontrakt-base + løbsdags-indtægt, se
+      // SPONSOR_GROWTH_REASON_CODES) for hele plan-cyklussens sæson-vindue.
+      // Summeres pr. sæson i JS herunder — nuværende sæson = "actual",
+      // planens FØRSTE (afsluttede) sæson = baseline.
+      // pagination-safe: bounded by season count in the plan window (max 5),
+      // ~3-4 payout rows/season/team (base + prorata + per-race-day-batches),
+      // far under the 1000-row cap (same reasoning as the other queries above).
+      supabase
+        .from("finance_transactions")
+        .select("amount, season_id")
+        .eq("team_id", teamId)
+        .in("reason_code", SPONSOR_GROWTH_REASON_CODES)
+        .in("season_id", planSeasonIds),
     ]);
+    // #3494 (CodeRabbit-fund, PR #4550) · `sponsorTxs || []` ville stille sig
+    // tavst tilfreds med et malformet svar (error faldsk, data IKKE et array —
+    // teoretisk uden for den ægte Supabase-klient, men denne funktion kaldes
+    // fra economyEngine.processTeamSeasonEnd's PER-HOLD-loop, som har NUL
+    // try/catch pr. hold (dokumenteret economyEngine.js:2724-2749: en kastet
+    // fejl for ÉT hold afbryder resten af sæson-slut-batchen for ALLE
+    // resterende hold). Vi kaster derfor IKKE her — i stedet behandles et
+    // ikke-array-svar som en query-fejl: sponsorGrowthCurrentIncome/
+    // BaselineIncome forbliver `null` (samme "ukendt, ikke nul"-sentinel som
+    // enhver anden fejl i denne funktion), så evaluator returnerer
+    // awaiting_data i stedet for at regne en falsk -100 %-vækst ud fra et
+    // stiltiende 0 for indeværende sæson.
+    if (!sponsorErr && Array.isArray(sponsorTxs)) {
+      const sponsorBySeasonId = new Map();
+      for (const row of sponsorTxs) {
+        const key = row.season_id;
+        sponsorBySeasonId.set(key, (sponsorBySeasonId.get(key) || 0) + Number(row.amount || 0));
+      }
+      sponsorGrowthCurrentIncome = sponsorBySeasonId.get(currentSeasonId) ?? 0;
+      const baselineSeasonId = firstSnapshot?.season_id ?? null;
+      sponsorGrowthBaselineIncome = baselineSeasonId != null
+        ? (sponsorBySeasonId.get(baselineSeasonId) ?? 0)
+        : null;
+    }
     if (!monErr) {
       const podiumRows = classicResults || [];
       cumulativeMonumentPodiums = podiumRows.filter((row) => isMonumentRace(row.races)).length;
@@ -288,5 +357,7 @@ export async function loadGoalContextForBoard({
     seasonOneDayWins,
     divisionManagerCount,
     divisionTeamCount,
+    sponsorGrowthCurrentIncome,
+    sponsorGrowthBaselineIncome,
   };
 }

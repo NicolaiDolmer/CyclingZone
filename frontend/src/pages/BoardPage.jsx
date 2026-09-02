@@ -666,6 +666,21 @@ function goalProgressPct(current, target) {
   return Math.min(100, Math.round(((current ?? 0) / target) * 100));
 }
 
+// #3494 · sponsor_growth's actual/target er begge PROCENTER (ikke enheder som
+// "etaper" eller "ryttere") — den rå "0/8"-visning uden enhed er selve rod-
+// årsagen til spiller-klagen. Appendér "%" her så det korte header-tal i det
+// mindste bærer sin egen enhed; den fulde sætning står i sponsorGrowthDetail-
+// sublinen (GoalCard/GoalMiniDialog).
+function formatGoalActualTarget(goal, evaluation) {
+  if (goal.type === "top_n_finish") {
+    return { actual: `#${evaluation.actual}`, target: `top ${evaluation.target}` };
+  }
+  if (goal.type === "sponsor_growth") {
+    return { actual: `${evaluation.actual}%`, target: `${evaluation.target}%` };
+  }
+  return { actual: evaluation.actual, target: evaluation.target };
+}
+
 function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) {
   const { t } = useTranslation("board");
   const [identityExpanded, setIdentityExpanded] = useState(false);
@@ -707,7 +722,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
             <span className={`text-sm font-medium ${achieved ? "text-cz-success" : "text-cz-2"} group-hover/goal:text-cz-1`}>{getBoardGoalLabel(t, goal)}</span>
             {!achieved && evaluation?.actual != null && (
               <span className="text-xs font-mono text-cz-3 flex-shrink-0">
-                {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
+                {formatGoalActualTarget(goal, evaluation).actual}/{formatGoalActualTarget(goal, evaluation).target}
               </span>
             )}
           </button>
@@ -716,7 +731,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
             <p className={`text-sm font-medium ${achieved ? "text-cz-success" : "text-cz-2"}`}>{getBoardGoalLabel(t, goal)}</p>
             {!achieved && evaluation?.actual != null && (
               <span className="text-xs font-mono text-cz-3 flex-shrink-0">
-                {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
+                {formatGoalActualTarget(goal, evaluation).actual}/{formatGoalActualTarget(goal, evaluation).target}
               </span>
             )}
           </div>
@@ -744,6 +759,17 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
               actual: evaluation.actual ?? 0,
               target: evaluation.target,
               check: evaluation.actual >= evaluation.target ? " ✓" : "",
+            })}
+          </p>
+        )}
+        {/* #3494 · sponsor_growth-tælleren/-nævneren er begge pro-raterede procenter
+            ("0/8") uden enhed — uforståeligt uden forklaring (rod-årsag til spiller-
+            klagen). Subline i naturligt sprog med de samme tal. */}
+        {goal.type === "sponsor_growth" && evaluation?.actual != null && (
+          <p className="text-2xs text-cz-3 mt-1.5 leading-relaxed">
+            {t("goal.sponsorGrowthDetail", {
+              actual: evaluation.actual,
+              target: evaluation.target,
             })}
           </p>
         )}
@@ -856,9 +882,9 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
         <div className="bg-cz-subtle rounded-cz px-4 py-3 mb-4 flex items-center justify-between">
           <span className="text-cz-3 text-sm">{t("goal.progress")}</span>
           <span className="font-mono text-cz-1 text-sm font-semibold">
-            {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}
+            {formatGoalActualTarget(goal, evaluation).actual}
             {" / "}
-            {goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
+            {formatGoalActualTarget(goal, evaluation).target}
           </span>
         </div>
       )}
@@ -868,6 +894,17 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
           {t("goal.rankInDivisionShort", {
             rank: evaluation.rank_in_division,
             total: evaluation.division_manager_count,
+          })}
+        </p>
+      )}
+
+      {/* #3494 · Samme naturligt-sprog-subline som GoalCard — tæller/nævner er begge
+          procenter uden enhed, uforståelige uden forklaring. */}
+      {goal.type === "sponsor_growth" && evaluation?.actual != null && (
+        <p className="text-cz-3 text-sm mb-4 leading-relaxed">
+          {t("goal.sponsorGrowthDetail", {
+            actual: evaluation.actual,
+            target: evaluation.target,
           })}
         </p>
       )}
