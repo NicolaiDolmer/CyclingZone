@@ -35,16 +35,16 @@ Spiller → /pro → POST /api/billing/checkout → Alunta /checkout-sessions
 |---|---|---|---|---|
 | CZ Pro 1 month | `0cd45c7f-…5989a8` | 3920 øre | **49,00 kr.** | ja |
 | CZ Pro 6 Months | `298f32cf-…69111` | 21200 øre | **265,00 kr.** | ja |
-| CZ Pro 1 month EUR | sættes af orkestratoren 2/9 | 519 cent | **€6,49** | ja |
-| CZ Pro 6 Months EUR | sættes af orkestratoren 2/9 | 2799 cent | **€34,99** | ja |
+| CZ Pro 1 month EUR | `abef830e-…3cdead` | 519 cent | **€6,49** | ja |
+| CZ Pro 6 Months EUR | `7e0bf2a2-…6646de` | 2799 cent | **€34,99** | ja |
 
-Alle planer: `auto_renewal: true`, `charge_vat: true`, låst til Stripe (`payment_provider_restricted`).
+Alle planer: `auto_renewal: true`, `charge_vat: true`. DKK-planerne er låst til Stripe (`payment_provider_restricted`); de to EUR-planer (oprettet via API 2/9) er ikke provider-låst og har `available_in_checkout: false`. Målt 2/9: `POST /checkout-sessions` giver 201 på alle fire planer uanset det flag, så flaget styrer kun Aluntas hostede plan-vælger, ikke appens checkout.
 
 De to DKK-planer rammer ejer-beslutningen 31/8 (#4005: 49 kr. **inkl.** moms). Halvåret giver ~10% rabat mod 6 × 49.
 
 **Ejer-beslutning 2/9 (#4074):** halvårsprisen korrigeres fra 295,00 kr. (23600 øre, tilstand 2026-08-31, endnu ikke i checkout) til **265,00 kr. (21200 øre)** og går samtidig i checkout. `backend/scripts/alunta-setup-plans.js` har det nye tal som forventet opsætning — kan `CZ Pro 6 Months` ikke reprises pga. aktive abonnenter (se afsnittet nedenfor), er UUID'en ovenfor et mål og ikke en garanti; orkestratoren opretter i så fald en ny plan og opdaterer `ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL`.
 
-De to EUR-planer oprettes af orkestratoren 2/9; koden (`billingCheckout.js`) vælger blot plan efter valuta og fejler pænt (400 `plan_unavailable`) indtil UUID'erne er sat i Railway.
+De to EUR-planer er oprettet 2/9 (UUID'er i tabellen); koden (`billingCheckout.js`) vælger blot plan efter valuta og fejler pænt (400 `plan_unavailable`) indtil UUID'erne er sat i Railway.
 
 Den gamle `CZ Pro Monthly` (4900 øre = 61,25 inkl.) er arkiveret 31/8. Den eneste abonnent havde et **planskift planlagt til 1/9** over på `CZ Pro 1 month` — se afsnittet om planskift nedenfor for hvorfor det ikke kan aflæses i MCP-fladen.
 
