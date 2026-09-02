@@ -155,10 +155,41 @@ Stående vagter der kører med uanset: #4555 periode-rul-vagt før 1/10, #4645 p
 | Aktive/7d | 83 | ≥ 100 |
 | Mail-loop | off | on, 0 failed |
 
-## §3 Rækkefølge for byg (opdateres når ejeren har prioriteret Bagkataloget)
+## §3 Rækkefølge for byg (ejer 2/9 kl. 19:55, områder)
 
-Bagkataloget (alle 102 udskudte punkter i klart sprog, med værdi, langsigtet værdi, ny UI, størrelse og klar-i-nat) ligger som artefakt `claude.ai/code/artifact/bab9127f-bd3c-4744-b6f5-eb3673e4c06f` og som tabel i `docs/audits/backlog-plain-language-2026-09-02.md`. Ejeren sætter rækkefølgen dér; Claude foreslår ikke længere selv udskydelser.
+Bagkataloget (alle 102 udskudte punkter i klart sprog, med værdi, langsigtet værdi, ny UI, størrelse og klar-i-nat, samlet i 11 områder) ligger som artefakt `claude.ai/code/artifact/bab9127f-bd3c-4744-b6f5-eb3673e4c06f` og som tabel i `docs/audits/backlog-plain-language-2026-09-02.md`. Claude foreslår ikke længere selv udskydelser; ejeren rangerer områder, ikke enkeltpunkter.
 
-## §4 Nattens spor (fyldes ud efter ejerens rækkefølge)
+**Ejerens rækkefølge på områderne (efter de fem satsninger i §1):**
 
-_(udfyldes)_
+1. Design-kit og anti-slop (#4625 #4626 #4627 #4628 #4613 #4099 #4100 #4264 #4262 #4177 #4297)
+2. Drift og udviklingstempo (#4010-rest #4647 #4496 #4267 #4016 #4292 #4493 #3486 #3487 #691 #4327 #4328 #4333 #4123 #4215 #4254 #4595)
+3. Rytterudvikling og træning (#4128 #4098 #4634 #3668 #4039 #4631 #4629 #4632 #4633 #4630 #3966)
+4. Løbsmotor v4 og taktik (#3855 #4615 #4246 #4201 #3049 #2405 #1884 #2810 #2794 #3856)
+5. Dashboard, indbakke og dag 1 (#1369 #4070 #3513 #2223 #1140 #4071)
+6. Planlægning og sæsonoverblik (#4109 #1146 #4535 #4530 #4531 #4259 #4143)
+7. Kalender og løbsstruktur (#4203 #4209 #4288 #4278 #4146 #4105 #3329 #3864 #1712)
+8. Trupper, ungdom og kontrakter (#2492 #4619 #4620 #4621 #3970 #3854 #3853 #4001)
+9. Økonomi og balance (#3732 #3720 #3719 #3987 #3755 #3756 #3656 #3442 #4282 #4355 #450 #4263)
+10. Fair play og roller (#3131 #3438 #3139 #4537 #4268 #4235)
+11. Vision og benchmark (#2822 #2823 #1154 #2217 #2218)
+
+Bestyrelsen og årsmødet er ikke et område her, fordi de ligger i §1 som satsning 3. Inden for et område bygges "høj værdi nu" og "klar i nat" først, medmindre ejeren markerer andet på siden.
+
+## §4 Natbølge 2/9-3/9 (spor, worktrees, regler)
+
+Worktrees oprettet 2/9 kl. 20:10 under `C:\Dev\CyclingZone-worktrees\`. Max 3 tunge spor samtidig; orkestratoren (Fable) ejer e2e-slottet og kører fuld suite én gang før hver merge-runde. Workers på sonnet, `model` sat eksplicit.
+
+| Spor | Worktree | Issues | Tyngde | Verify | Merge |
+|---|---|---|---|---|---|
+| Pro backend | `fix-4646-billing-night` | #4648 webhook (nested ids + reconcile straks + 24 t respit), #4646 `player_events` checkout_started/completed, #2816 dobbeltkøb-guard, #4555 periode-rul-vagt, #4645 prisvagt | tung | backend `node --test` fuld | auto-merge når grøn (aftalt i sessionen) |
+| Pro perks UI | `feat-2806-pro-perks` | #4649 A mærke, B historik-fane, C gemte filtre | tung | TARGETED + screenshots | **draft, ejer-visuelt go** |
+| Mail v2 | `feat-2853-mail-v2` | #2853 tekster + layout + Dolmer, #4650 digest-målretning | medium | backend tests + renderede HTML-filer | draft med screenshots, ejer-go |
+| Crons | `fix-4644-daily-crons` | #4644 (2 jobs + forward-guard-test) | let | backend tests | auto-merge når grøn |
+| Årsmøde backend | `feat-4557-meeting-backend` | S-M2c (a)+(b): livscyklus proposed/active/completed, `buildStretchGoal` (A: ×1,5), `proposeNextMandate`, GET/POST `/board/meeting`, auto-accept-cron 5/10 dage, migration (apply EFTER merge, #2642), read-only tørkørsel-scorecard | tung | backend tests fuld | PR, ejer-go (migration) |
+| Årsmøde frontend | `feat-4557-meeting-frontend` | S-M2c (c): `/board/meeting` per mockup `AnnualMeeting.dc.html`, mod frosset API-kontrakt | tung | TARGETED + screenshots desktop + Android | **draft, ejer-visuelt go** |
+| Design-kit | `feat-4625-ui-kit-primitives` | #4625: `EmptyState` m. action, `FilterBar`, `Tabs`, `DataTable` mobil; Dashboard + Indbakke tomme tilstande m. handling (audit fund 1+5) | tung | TARGETED + screenshots | **draft, ejer-visuelt go** |
+| Sæsonskifte | `feat-4592-season-signup-button` | #4592 dormant-rapport (read-only), #452 Tilmeld-knap bag flag, parkerings-logik bag flag (ingen flip) | medium | backend + TARGETED | draft, ejer-go |
+| Win-back | `docs-2760-winback-consent` | #2760 consent-audit + udkast EN/DA + segment-SQL (ingen send) | let | docs-only | PR, ejer læser |
+| SEO | `feat-4067-marketing-site` (eksisterende, 3 commits) | #4067 fase 1 rest | tung | build + preview | draft, ejer-go |
+
+Chunking: chunk 1 = Pro backend, mail v2, crons, årsmøde backend, win-back (5). Chunk 2 = Pro perks UI, årsmøde frontend, design-kit, sæsonskifte, SEO (5) startes når chunk 1 har leveret. Regler: commit pr. delfix, push hvert 30. min, 45 min tavshed = status-krav, ingen under-agenter, ingen heredoc, `git add` kun specifikke filer, ingen `patchNotes.js`/`NOW.md`, patch note-tekst i PR-body, `Refs #N`. Prod-mutationer (migrationer, app_config) kun af orkestratoren efter merge med ejer-GO. Live-systemer gen-tændes aldrig af Claude.

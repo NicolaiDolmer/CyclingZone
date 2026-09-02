@@ -2,7 +2,7 @@
 
 > **Ejer-godkendt 13/8** (#3662; spørg før omprioritering). 🔴 brand · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. ≤1.500 tok. [Visuel udgave](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635).
 
-**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Gjaldt FØR S3 — afløst i S3-vinduet af rammen nedenfor (ejer 28/8). **Målt 2/9:** 614 åbne (+53 på 2 dage, 23 done-men-åbne) · 232 brugere, 1 abo. **Hard regel 23/8:** ingen prod-mutation uden ejer-GO på netop det skridt.
+**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Gjaldt FØR S3 — afløst i S3-vinduet af rammen nedenfor (ejer 28/8). **Målt 2/9 kl. 17:10:** 622 åbne · 235 menneskehold · 83 aktive/7d · 3 abo, MRR 113,87 kr. **Hard regel 23/8:** ingen prod-mutation uden ejer-GO på netop det skridt.
 
 ## S3 KØRER 28/8 → 27/9 — rammen (ejer-beslutning 28/8)
 
@@ -34,9 +34,13 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 · **#4109** anti-slop (→ G2) · #4143 glyffer. #4123-invarianterne mangler CI-gate.
 9. **P0 + UI-gæld + Z1** (ejer 25/8): #3990-rest · navne-dedup-guard · #3329 · #2791 · `PLANNING_CENTER_RULES.md` §7 · Z1 bulk-endpoint + kladde + linser + #4245. **P2** taktik ind i centret (#3049 #2794 #1884 #2810 #2405). **P3** assistenten gated på **#4201**; #4246 afgøres FØR `TeamOrder` fryses.
 
-## D · Penge og vækst — AKTIVT i S3-vinduet (ejer 31/8; eget ejer-go pr. skridt)
+## D · 30-dages pengeplan (ejer 2/9, SSOT [`2026-09-02-30-dages-pengeplan.md`](superpowers/specs/2026-09-02-30-dages-pengeplan.md); rækkefølge, ikke datoer)
 
-10. **#2853** e-mail-loop (ejer: tekster + nøgler, #4616) → **#2760** win-back. 11. **/pro:** PR #4608 → #4005 → flip + testkøb → #2813 → #2806. 12. **#4067** SEO S1 + **#2824** læse-ruter. 13. Søndags-udkast (#428), #4111 løfte-audit.
+Mandagstal: MRR 113,87 kr / 3 abo · checkout 2 af 5 · D7 18 % (uge 24/8). Mål 2/10: ≥ 450 kr / ≥ 10 · ≥ 60 % · ≥ 45 % · aktive/7d ≥ 100.
+10. **Pro der kan ses og købes:** #4648 webhook-fix → PR #4608 merge (ejer-go) → #4646 events → #4649 Founder-mærke/historik-fane/gemte filtre (drafts m. screenshots) → #2816 · #4555 · #4645 · nøgleblok #4616 (Alunta-checkout, Railway EUR, Resend).
+11. **Mail-loop:** #2853 tekster låst 2/9 + #4650 digest-målretning → PR → dry_run (ejer-GO) → nøgler → on pr. type.
+12. **Sæsonskiftet 27/9 som event:** S-M2c årsmødet (#4557, svar A/A/A) → #4592 rapport + #452 knap + parkering bag flag → S4-opslag.
+13. **Win-back** #2760 til 77 sovende m. samtykke (segment vises først). 14. **Nye spillere:** ejerens opslag + #4067 fase 1 (3 commits i worktree).
 
 ## G · Design, ungdom, bestyrelse, inaktive (ejer-godkendt 2/9, genåbn ikke før 27/9)
 
@@ -47,7 +51,7 @@ Ejer 2/9: *"Standarden skal hæves markant. Og vi skal være fri for AI slop nu.
 - **G3 Tre trupper (#2492):** handoff i `YOUTH_RULES.md` §2.6. **#4618 slice 0 i byg** (ejer-go på screenshots) → #4619 spec + bag flag, **flip ved cutover 28/9** → #4620/#4621 i S4.
 - **G4 Inaktive (#4592), deadline 27/9:** rapport → ejer godkender liste → parkering ved cutover → #452 → #2760.
 
-**Foreslået rækkefølge:** #4616 → G1 → G2 audit → #4619 spec; G3/G4 som side-PR'er.
+**Ejerens område-rækkefølge for alt udskudt (2/9 kl. 19:55, Bagkataloget = 102 issues i klart sprog, `docs/audits/backlog-plain-language-2026-09-02.md`):** 1 design-kit/anti-slop (#4625 #4626 #4627 #4628 #4613) · 2 drift/tempo (#4647 #4496 #4267 #4010-rest) · 3 rytterudvikling/træning (#4128 #4098 #4634 #4631 #4629 #4632 #4633) · 4 løbsmotor v4/taktik (#3855 #4615 #4246 #4201 #2794) · 5 dashboard/indbakke/dag 1 (#1369 #4070 #3513 #2223 #1140) · 6 planlægning (#4109 #1146 #4535) · 7 kalender (#4203 #4209 #4288 #4146) · 8 trupper (#2492 #4619-#4621 #3970) · 9 økonomi (#3732 #3720 #3719) · 10 fair play/roller (#3131 #4268) · 11 vision (#2822 #1154). Claude udskyder ikke selv; ejeren rangerer områder.
 
 ## E · Løbende (aldrig hovedspor)
 

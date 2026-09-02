@@ -115,12 +115,14 @@ Ekstraordinær samtale-fladen (mid-season), formandsskifte-beats, sponsor-siden 
 
 3 worker-PR'er: (a) backend livscyklus + stretch + migration, (b) API + auto-accept, (c) frontend-mødet. Parallelt (a)+(c) mod en frosset API-kontrakt; (b) efter (a). Ejer-visuelt go efter (c).
 
-## 9. Spørgsmål til ejeren (stilles ét ad gangen, 2/9)
+## 9. Spørgsmål til ejeren (besvaret 2/9 kl. 20:05, vist visuelt som mockups)
 
 | # | Spørgsmål | A (anbefalet) | B | Svar |
 |---|---|---|---|---|
-| 1 | Stretch-regnestykket | Target ét trin hårdere (spejl af Easier), bonus OG straf × 1,5; tillids-trappen skalerer kun bonussen | Bonus × 2, straf × 1,5 (mere gulerod, samme pisk) | |
-| 2 | Anmodningen på mødet | De 4 eksisterende typer genbruges 1:1 (ingen nyt indhold i slicen) | Ny, kortere liste skrevet til mødet | |
-| 3 | Auto-accept-frist for et foreslået mandat | 5 dage / 10 for aktive spillere (som i dag) | Fast 7 dage for alle | |
-| 4 | Fokus-skift på mødet | Frit (mødet ER genforhandlingen; major-pivot-låsen udgår) | Behold major-pivot-låsen fra request-flowet | |
-| 5 | A7: erstatnings-milepæl i et tomt slot | Bestyrelsen foreslår ÉN, Accept/Decline | Manageren vælger mellem 2 forslag | |
+| 1 | Stretch-regnestykket | Target ét trin hårdere (spejl af Easier), bonus OG straf × 1,5; tillids-trappen skalerer kun bonussen | Bonus × 2, straf × 1,5 (mere gulerod, samme pisk) | **A** |
+| 2 | Anmodningen på mødet | De 4 eksisterende typer genbruges 1:1 (ingen nyt indhold i slicen) | Ny, kortere liste skrevet til mødet | **A** |
+| 3 | Auto-accept-frist for et foreslået mandat | 5 dage / 10 for aktive spillere (som i dag) | Fast 7 dage for alle | **A** |
+| 4 | Fokus-skift på mødet | Frit (mødet ER genforhandlingen; major-pivot-låsen udgår) | Behold major-pivot-låsen fra request-flowet | **A** |
+| 5 | A7: erstatnings-milepæl i et tomt slot | Bestyrelsen foreslår ÉN, Accept/Decline | Manageren vælger mellem 2 forslag | **A** |
+
+Status efter svar: **KLAR TIL BYG** (natbølge 2/9-3/9): (a) backend livscyklus + `buildStretchGoal` + migration, (b) API + auto-accept, (c) frontend `/board/meeting` som draft med screenshots desktop + Android. Prod-tørkørsel af `proposeNextMandate` mod alle hold vises ejeren FØR flip.
