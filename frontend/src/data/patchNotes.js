@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.230",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro checkout is open",
+          "body": "Cycling Zone Pro is live for purchase at /pro, a way to back the project's development. The free game stays exactly as competitive as always, and Pro never buys an edge."
+        },
+        "da": {
+          "title": "Pro er åbent for køb",
+          "body": "Cycling Zone Pro er nu live for køb på /pro, en måde at bakke projektets udvikling op på. Det gratis spil forbliver lige så konkurrencedygtigt som altid, og Pro giver aldrig en fordel."
+        },
+        "refs": [2813, 2806, 4074]
+      }
+    ]
+  },
+  {
     "version": "7.229",
     "date": "2026-09-02",
     "label": "Beta",
