@@ -753,3 +753,46 @@ jobs:
       # branch-protection og til scripts/ci-required-checks.json.
       - name: Test railway-log-watch classification + tag coverage
         run: node --test scripts/ops/railway-log-watch.test.mjs
+
+  calendar-invariant-ci-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #4123 — kalender-invarianterne + den gyldne S3-kalender-diff som eget, synligt
+    # check på PR'er der rører pakkeren/generatoren. Testene kører allerede som en del
+    # af backend-tests' `npm test` (alle *.test.js findes automatisk, se
+    # backend/scripts/run-tests.js) — dette job giver dem deres EGET navn i PR-tjeklisten
+    # i stedet for at drukne blandt ~340 andre backend-testfiler, samme begrundelse som
+    # .github/workflows/calendar-scorecard-gate.yml (#4215).
+    #
+    # Genererer S3-kalenderen 100 % OFFLINE (lib/__fixtures__/racePoolCatalog.prod.json +
+    # scripts/dev/lib/s3OfflineCalendarPlan.mjs). Ingen secrets, ingen prod-adgang.
+    #
+    # RÅDGIVENDE, IKKE PÅKRÆVET: står bevidst UDENFOR scripts/ci-required-checks.json i
+    # første omgang (spawn-prompt-direktiv #4270) — samme mønster som
+    # supabase-ops-scripts ovenfor. En rød diff her er ikke nødvendigvis en fejl (se
+    # lib/calendarGoldenSnapshot.test.js's egen docstring: kan også være en TILSIGTET
+    # ændring der mangler en `refreshCalendarGoldenSnapshot.mjs`-kørsel), så den skal
+    # kunne læses og vurderes af et menneske før den evt. gøres blokerende.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Kalender-invariant-tests (#4123)
+        working-directory: backend
+        run: node --test lib/calendarInvariantsCiGate4123.test.js
+
+      - name: Gylden kalender-snapshot-diff (#4123)
+        working-directory: backend
+        run: node --test lib/calendarGoldenSnapshot.test.js
