@@ -150,10 +150,11 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 
 | Slice | Indhold | Gate |
 |---|---|---|
-| **0 · Kommer snart** | Akademi-siden får den nye ramme (§3). Wireframes fra Claude Design først (`docs/design/youth-tiers/`) | Ejer-visuelt go på screenshots før merge (UI-reglen) |
-| **1 · Trup-datamodel** | `riders.squad` (senior / u23 / junior) erstatter `is_academy`; migration mapper efter sæsonalder (16-18 → junior, 19-22 → u23, ≥ 23 med `is_academy` → pending flyt); flyt-endpoint generaliseres; Graduation Day for begge overgange; loft pr. trup; én kontraktmodel | Idempotent migration + post-verify; snapshot før mutation; ejer ser dry-run-diff (antal ryttere pr. mål-trup pr. hold) |
-| **2 · U23 team + U23-kalender + U23-pyramide** | Kalender, AI-fyld, udtagelse via assistent, taktik via Planning Center, ranglister, op/nedrykning | Scorecard C1-C3, C7 (addendum §5); `CALENDAR_RULES.md` opdateres i samme PR |
-| **3 · Junior team + junior-kalender + junior-pyramide** | Fuld tre-tier | Samme gates, genmålt mod da-aktuel population |
+| **Wireframes** ([#4617](https://github.com/NicolaiDolmer/CyclingZone/issues/4617), ejer) | De fire skærme i Claude Design efter `docs/design/youth-tiers/CLAUDE_DESIGN_BRIEF.md` | Handoff gemt i `docs/design/youth-tiers/` |
+| **0 · Kommer snart** ([#4618](https://github.com/NicolaiDolmer/CyclingZone/issues/4618)) | Akademi-siden får den nye ramme (§3). Bygges mod wireframe S1b | Ejer-visuelt go på screenshots før merge (UI-reglen) |
+| **1 · Trup-datamodel** ([#4619](https://github.com/NicolaiDolmer/CyclingZone/issues/4619)) | `riders.squad` (senior / u23 / junior) erstatter `is_academy`; migration mapper efter sæsonalder (16-18 → junior, 19-22 → u23, ≥ 23 med `is_academy` → pending flyt); flyt-endpoint generaliseres; Graduation Day for begge overgange; loft pr. trup; én kontraktmodel | Idempotent migration + post-verify; snapshot før mutation; ejer ser dry-run-diff (antal ryttere pr. mål-trup pr. hold) |
+| **2 · U23 team + U23-kalender + U23-pyramide** ([#4620](https://github.com/NicolaiDolmer/CyclingZone/issues/4620)) | Kalender, AI-fyld, udtagelse via assistent, taktik via Planning Center, ranglister, op/nedrykning | Scorecard C1-C3, C7 (addendum §5); `CALENDAR_RULES.md` opdateres i samme PR |
+| **3 · Junior team + junior-kalender + junior-pyramide** ([#4621](https://github.com/NicolaiDolmer/CyclingZone/issues/4621)) | Fuld tre-tier | Samme gates, genmålt mod da-aktuel population |
 
 Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. Ingen slice un-gater sig selv.
 
