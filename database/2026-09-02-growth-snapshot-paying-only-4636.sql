@@ -188,6 +188,7 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.compute_daily_growth_snapshot(date) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.compute_daily_growth_snapshot(date) FROM anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.compute_daily_growth_snapshot(date) TO service_role;
 
 COMMENT ON FUNCTION public.compute_daily_growth_snapshot(date) IS
