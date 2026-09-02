@@ -307,9 +307,13 @@ export const descentHook: DescentHook = (
   // moenster som den oprindelige `for (const group of state.groups)`).
   const groupsToScan = groups;
   for (const group of groupsToScan) {
-    // Gate 0 (#4604): angreb kun fra en allerede reduceret gruppe — se
-    // DESCENT_EXTRA_TUNING.maxGroupSizeForAttack.
-    if (group.rider_ids.length > extra.maxGroupSizeForAttack) continue;
+    // Gate 0 (#4604): angreb gaar normalt kun fra en allerede reduceret gruppe.
+    // Undtagelse: paa den svaereste vejtype kan der stadig rives et hul i en
+    // stor gruppe. Se DESCENT_EXTRA_TUNING.maxGroupSizeForAttack.
+    if (
+      group.rider_ids.length > extra.maxGroupSizeForAttack
+      && segment.technicality < extra.minTechnicalityForLargeGroupAttack
+    ) continue;
     const { attackers, groupMinDescending } = findAttackers(
       group,
       ctx.entrants,
