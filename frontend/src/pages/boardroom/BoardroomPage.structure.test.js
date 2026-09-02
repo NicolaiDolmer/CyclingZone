@@ -22,9 +22,10 @@ test("#4557 BoardroomPage tager den allerede-hentede payload som prop (ingen ege
   assert.match(source, /export default function BoardroomPage\(\{\s*data\s*\}\)/);
 });
 
-test("#4557 gold 'Enter annual meeting'-knappen renderes IKKE denne slice (årsmødet er S-M2c)", () => {
-  assert.doesNotMatch(source, /meetingButton|Enter annual meeting/i);
-  assert.doesNotMatch(source, /actions=/, "PageHeader skal kaldes uden actions-prop (ingen gold-knap)");
+test("#4557 (S-M2c) gold 'Enter annual meeting'-knappen vises KUN naar GET /board/meeting svarer available:true", () => {
+  assert.match(source, /t\("boardroom\.header\.enterMeetingCta"\)/);
+  assert.match(source, /actions=\{meetingAvailable \?/, "CTA skal vaere betinget af meetingAvailable, aldrig altid-vist eller deaktiveret");
+  assert.match(source, /fetchBoardMeeting\(\)/);
 });
 
 test("#4557 header bruger t() for titel/undertitel — ingen hardcodede strenge", () => {
