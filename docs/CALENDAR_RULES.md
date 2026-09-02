@@ -89,6 +89,7 @@ Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om 
 | Sæsonen slutter | altid en søndag | 23/8 | [#4131](https://github.com/NicolaiDolmer/CyclingZone/issues/4131) |
 | Bufferdag efter cutover | 1 dag uden løb | 18/8 | [#3467](https://github.com/NicolaiDolmer/CyclingZone/issues/3467) |
 | Puljer i samme division | deler identisk kalender-form | — | [#2276](https://github.com/NicolaiDolmer/CyclingZone/issues/2276) |
+| Inaktiv manager | 30 dage uden login (`users.last_seen`, `backend/lib/managerActivity.js`) — parkeres uden for divisionerne ved sæsonskifte (S4, 28/9), frigør plads i puljen. Parkeringen (del 2) er IKKE bygget endnu, kun definitionen + rapportering | 2/9 | [#4592](https://github.com/NicolaiDolmer/CyclingZone/issues/4592), [#4307](https://github.com/NicolaiDolmer/CyclingZone/issues/4307) |
 
 **Løb hver dag, ordret (ejer 25/8):** *"Jeg vil ikke have dage uden løb. I den nye sæson skal der være løb hver dag."*
 

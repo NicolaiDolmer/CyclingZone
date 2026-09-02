@@ -399,6 +399,24 @@ group by 1 order by 1;
 "@
 Write-Host $sqlDivisions
 
+$manual += "Aktive mennesker pr. pool (7 d) -- epic #4592 (inaktiv-manager, ejer-design 2/9). Del 2 (parkering af inaktive hold ved S4) er IKKE bygget endnu -- dette er kun rapportering, saa ejeren ser tallet foer S4-parkeringen designes/bygges. Definitionen (30 dage = inaktiv) matcher backend/lib/managerActivity.js; samme opgoerelse kan koeres read-only via 'node scripts/dormantTeamsReport.js' eller docs/audits/dormant-teams-s3-template.sql:"
+$sqlActivePerPool = @"
+select t.division,
+       coalesce(ld.label, '(ukendt pulje ' || t.league_division_id || ')') as pool_label,
+       count(*) as total_teams,
+       count(*) filter (where u.last_seen is not null and now() - u.last_seen <= interval '7 days') as active_7d,
+       count(*) filter (where u.last_seen is not null and now() - u.last_seen > interval '7 days' and now() - u.last_seen < interval '30 days') as away_8_30d,
+       count(*) filter (where u.last_seen is null or now() - u.last_seen >= interval '30 days') as dormant_30d,
+       count(*) filter (where t.is_frozen) as already_frozen
+from teams t
+left join league_divisions ld on ld.id = t.league_division_id
+left join users u on u.id = t.user_id
+where t.is_ai = false and t.is_bank = false and t.is_test_account = false
+group by t.division, pool_label
+order by t.division, pool_label;
+"@
+Write-Host $sqlActivePerPool
+
 $manual += "Readiness-gate (API, ikke SQL): GET /api/admin/season-transition/preview -- alle checks groenne undtagen evt. no_active_auctions (kryds-tjek mod pensions-listen ovenfor foer force=true)."
 
 # --- Summary + JSON-state ---
