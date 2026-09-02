@@ -33,6 +33,7 @@ import {
   SEED_DISTRIBUTION,
   SEED_BROWSE,
   SEED_SELECTION,
+  SEED_STAGE_ROLES,
   SEED_STRATEGY,
   SEED_ACADEMY,
   SEED_ACADEMY_PNL,
@@ -1082,6 +1083,8 @@ export function apiResponse(pathname, search = "") {
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
   // S5: udtagelses-panel (RaceSelectionPanel + HunterExplainer). /api/races/:id/selection.
   if (/\/api\/races\/[^/]+\/selection$/.test(pathname)) return SEED_SELECTION;
+  // #4538: etape-taktik-panelet (StageRoleMatrix). /api/races/:id/stage-roles.
+  if (/\/api\/races\/[^/]+\/stage-roles$/.test(pathname)) return SEED_STAGE_ROLES;
   // NB: i preview-interceptoren (installPreviewMock) fanges /api/scouting/me af
   // scoutingMock.js FØR denne blok (med scoutSystemEnabled: true, så Scouting-
   // centralen kan klikkes igennem). Denne variant — uden flag — rammes kun af
