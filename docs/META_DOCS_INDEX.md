@@ -31,6 +31,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/ALUNTA_OPS.md` | Alunta webhook/reconcile-opsætning · Infisical-nøgler · hvilke dashboard-events skal slås til · pre-fornyelses-tjekliste (#2736) |
 | `docs/BUSINESS_STRATEGY.md` | Monetization-spørgsmål · tier-struktur · validation sprint · UCI/IP-risiko · dansk finansiering · fact-check krav |
 | `docs/SPRINT_DASHBOARD.md` | Live status på 30-dages validation sprint · metrics-snapshot · uge-checkbox-tasks · founder-track · decision log |
+| `docs/AGENT_PLAYBOOK.md` | Hvornår Fable/Opus/Sonnet, hvornår én agent vs bølge · verifikations-trappen (bevisbyrde pr. påstandstype) · faste faldgruber (gennemsnit/median, vindue/tilstand, id/kategori, sæson/sæson, klasse/fil) · fleet-prompt-regler · orkestratorens pligter · hvad det koster |
 | `docs/AGENT_ARCHITECTURE.md` | Cross-agent bug · parallel-session-setup · failure-mode lookup (auto-gen fra learnings) |
 | `docs/WORKTREE_WORKFLOW.md` | Setup af parallelle Claude Code-sessioner via git worktrees · `new-worktree.ps1` / `remove-worktree.ps1` · node_modules-sharing · memory-junction · branch-collision gotchas |
 | `docs/PARALLEL_WORKTREE_ORCHESTRATION.md` | 7-step protokol + **fire spoergsmaal foer spawn** (verifikationsniveau: kun een FULL e2e ad gangen · filkonflikt-kort · kadence + ret til wip-commits · `worker-status.ps1`) for parallel worktree-orchestration (3+ subagents, ~30 min wall-clock vs. 2-3h sekventielt) · candidate-selection · sub-agent prompt template · token-budget · pitfalls |

@@ -1,6 +1,6 @@
 # Mail-tekster v2, låst med ejeren 2/9-2026 kl. 19:20-19:50 (#2853)
 
-**Status: LÅST af ejeren i små bidder (tone-session 2/9).** Erstatter v1 (`mailtekster-2853-2026-08-03.md`). Underskrift **"Dolmer, Cycling Zone"** (stort D). Koden sender kun engelsk i dag; DA følger i opfølger-PR med sprog pr. modtager.
+**Status: LÅST af ejeren i små bidder (tone-session 2/9).** Erstatter v1 (`mailtekster-2853-2026-08-03.md`). Underskrift **"Dolmer, Cycling Zone"** (stort D). DA-oversættelsen er leveret i opfølger-PR'en (3/9), valgt pr. modtager via `users.language` (`'da'` -> dansk, alt andet -> engelsk). Se DA-teksterne nederst i dette dokument.
 
 Ejerens tone-domme undervejs, så de ikke gentages: "Here is the honest version", "Welcome to the club", "one week at a time", "there is always one", "every time", "if you do one thing today", "good day or bad day" og "{{teamName}} is in" er AI-fyld og er fjernet. Ingen rammesætnings-sætninger, ingen aforismer, ingen performet varme. Sig tingene ligeud.
 
@@ -107,4 +107,88 @@ Dolmer, Cycling Zone
 3. `emailTemplates.test.js` + `emailRaceDigestSweep.test.js` opdateret.
 4. Rendering-bevis: HTML-udgaven af hver mail gemt som fil og screenshot i PR'en (desktop + smal 375 px).
 5. Efter merge: dry_run (ejer-GO), derefter nøgler (Resend + unsub-hemmelighed), derefter `on` pr. type efter ejer-ja. Patch note + help.json (EN+DA) ved `on`.
-6. DA pr. modtager: opfølger-PR.
+6. DA pr. modtager: **leveret** (opfølger-session 3/9). `users.language` (`'da'` -> dansk, alt andet -> engelsk) læses af de tre sweeps og sendes til `emailTemplates.js`. DA-teksterne står ordret nedenfor.
+
+## DA-oversættelse (leveret 3/9-2026, opfølger-session til denne lås)
+
+Trofast oversættelse af EN-teksterne ovenfor, samme struktur og pladsholdere, Dolmers stemme på dansk (jeg-form hvor Dolmer taler direkte, fx Discord-linjen). Underskriften **"Dolmer, Cycling Zone"** oversættes ikke (navn + produktnavn, uændret på begge sprog). Rendering-bevis: `docs/drafts/mail-render-2026-09-02/*-da.html`.
+
+### Fælles bund (alle fire mails)
+
+```
+Er noget i stykker eller uklart? Kom forbi Discord, jeg læser alt.
+[Deltag i Discord]  https://discord.gg/ykysBrWUyC
+
+Dolmer, Cycling Zone
+
+Du modtager denne mail fordi du har en Cycling Zone-konto. [Afmeld disse mails]
+```
+
+### 1. Welcome (DA)
+
+Subject: `Dit hold er på startlinjen`
+
+```
+Hej,
+
+Velkommen til Cycling Zone, og tak fordi du oprettede {{teamName}}. Kom og
+gå som du vil, sæsonen kører uanset. Dit hold deltager i løb automatisk. Du
+behøver ikke gøre noget for det, men dine ryttere kører bedre, når du gør.
+
+1. Byd på en rytter du kan lide
+   Du lærer markedet at kende ved at tabe en auktion eller to.
+2. Skriv en ung rytter under kontrakt
+   Dit akademi har allerede ryttere klar. Du kan skrive en under kontrakt i dag.
+3. Træning og opstilling
+   Sæt ugens træning, og vælg hvem der starter dit næste løb.
+
+[Åbn dit dashboard]  https://cyclingzone.org/dashboard
+```
+
+### 2. Dag 1 (DA)
+
+#### Variant A, holdet har resultater
+
+Subject: `Dag 1: dine ryttere har allerede kørt`
+
+```
+Hej,
+
+{{teamName}} kørte mens du var væk. Resultaterne er klar. Se hvem der
+klarede sig godt og hvem der ikke gjorde det, og tjek de auktioner der
+lukker i dag, før en anden tager den rytter du ville have.
+
+[Åbn dit dashboard]  https://cyclingzone.org/dashboard
+```
+
+#### Variant B, ingen resultater endnu
+
+Subject: `Dag 1: dit første løb er på kalenderen`
+
+```
+Hej,
+
+{{teamName}}s første løb er på kalenderen og kører af sig selv. I dag:
+tjek de auktioner der lukker i aften, og vælg selv din opstilling til det
+første løb. Gør du ingenting, fylder assistenten hullerne, men dine egne
+valg er bedre.
+
+[Åbn dit dashboard]  https://cyclingzone.org/dashboard
+```
+
+### 3. Digest (DA)
+
+Subject: `{{teamName}} kørte mens du var væk`
+
+```
+Hej,
+
+{{teamName}} kørte mens du var væk. Bedste resultater siden dit sidste
+besøg:
+
+{{resultLines}}
+
+[Se alle resultater]  https://cyclingzone.org/resultater
+```
+
+Resultatlinje pr. løb: `{{rider}}: placering {{rank}} i {{race}}` (eller `{{rider}}: resultater i {{race}}` hvis rangen mangler). "Placering" genbruger det ord `backendMessages.json` allerede bruger til samme koncept, ikke et nyt ord ("plads").
