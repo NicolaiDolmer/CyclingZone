@@ -147,7 +147,7 @@ function baseState() {
 
 test("loadDbTierData: grupperer pr. tier, tæller kun stikprøve-divisionen (dobbelttælling undgået)", async () => {
   const supabase = makeSupabase(baseState());
-  const { tierData, unassessed, seasonNumber } = await loadDbTierData({ supabase, seasonNumber: 3 });
+  const { tierData, seasonNumber } = await loadDbTierData({ supabase, seasonNumber: 3 });
   assert.equal(seasonNumber, 3);
   const tier1 = tierData.find((t) => t.tier === 1);
   // r-flat tælles, r-dup (samme pool_race_id, pulje 2) tælles IKKE — ellers dobbelttælling.
