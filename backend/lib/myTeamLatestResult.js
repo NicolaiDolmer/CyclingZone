@@ -167,9 +167,16 @@ const DAY_JERSEY_TO_CLASSIFICATION = {
  * @param {{myRows: Array}} args - samme `myRows` som summarizeTeamRace modtager
  *   (result_type, stage_number, rank, points_earned, prize_money, rider_id, rider_name).
  * @returns {{prize_total:number, points_total:number,
- *   stages: Array<{stage_number, amount, points, riders: Array<{rider_id, rider_name, rank}>}>,
- *   classifications: Array<{classification, amount, points, riders: Array<{rider_id, rider_name, rank}>}>,
+ *   stages: Array<{stage_number, amount, points, riders: Array<{rider_id, rider_name, rank, amount}>}>,
+ *   classifications: Array<{classification, amount, points, riders: Array<{rider_id, rider_name, rank, amount}>}>,
  *   team_bonus: {amount, points}|null}}
+ *
+ * `riders[].amount` er DEN rytters egen andel (rows kan have flere ryttere pr.
+ * etape/klassifikation-gruppe — fx to klatrere der begge placerer sig samme
+ * etape); gruppens `amount` er stadig summen, men frontend skal bruge
+ * `riders[].amount` når den viser hvem der tjente hvad (#4697-rettelsen,
+ * ret-runde PR #4728: den anonyme sum uden rytternavn var netop det
+ * reporteren + ejeren bad om at kunne se).
  */
 export function buildPrizeBreakdown({ myRows } = {}) {
   const rows = (Array.isArray(myRows) ? myRows : []).filter((r) => (Number(r.prize_money) || 0) > 0);
@@ -181,7 +188,9 @@ export function buildPrizeBreakdown({ myRows } = {}) {
   for (const r of rows) {
     const amount = Number(r.prize_money) || 0;
     const points = Number(r.points_earned) || 0;
-    const rider = r.rider_name ? { rider_id: r.rider_id ?? null, rider_name: r.rider_name, rank: r.rank ?? null } : null;
+    const rider = r.rider_name
+      ? { rider_id: r.rider_id ?? null, rider_name: r.rider_name, rank: r.rank ?? null, amount }
+      : null;
 
     if (r.result_type === "stage") {
       const stageNumber = r.stage_number ?? 1;

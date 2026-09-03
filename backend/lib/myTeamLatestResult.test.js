@@ -264,6 +264,33 @@ test("buildPrizeBreakdown: tom/ugyldig input → nul-total og tomme grupper, ing
   });
 });
 
+// Ret-runde PR #4728 fund #1/#2: to ryttere der begge scorer i SAMME etape/
+// klassifikation må ikke smelte sammen til én anonym sum uden navn — hver
+// rytters riders[]-entry skal bære sin EGEN andel, ikke gruppens total, ellers
+// kan frontend ikke vise "hvilken rytter tjente hvad" (#4697's kernekrav).
+test("buildPrizeBreakdown: to ryttere i samme etape/klassifikation-gruppe beholder hver deres EGEN andel i riders[].amount", () => {
+  const myRows = [
+    { result_type: "stage", stage_number: 5, rank: 3, rider_id: "r1", rider_name: "Naoki Goto", points_earned: 30, prize_money: 2250 },
+    { result_type: "stage", stage_number: 5, rank: 7, rider_id: "r2", rider_name: "Someone Else", points_earned: 10, prize_money: 750 },
+    { result_type: "gc", stage_number: 6, rank: 5, rider_id: "r1", rider_name: "Naoki Goto", points_earned: 20, prize_money: 1500 },
+    { result_type: "gc", stage_number: 6, rank: 8, rider_id: "r2", rider_name: "Someone Else", points_earned: 5, prize_money: 375 },
+  ];
+  const b = buildPrizeBreakdown({ myRows });
+
+  assert.equal(b.stages[0].amount, 3000); // gruppetotal uændret
+  assert.equal(b.stages[0].riders.length, 2);
+  assert.deepEqual(
+    b.stages[0].riders.map((r) => [r.rider_name, r.amount]).sort(),
+    [["Naoki Goto", 2250], ["Someone Else", 750]].sort(),
+  );
+
+  assert.equal(b.classifications[0].amount, 1875);
+  assert.deepEqual(
+    b.classifications[0].riders.map((r) => [r.rider_name, r.amount]).sort(),
+    [["Naoki Goto", 1500], ["Someone Else", 375]].sort(),
+  );
+});
+
 // ── buildSponsorPayoutLine (#4698) ───────────────────────────────────────────
 
 test("buildSponsorPayoutLine: summerer race-day + resultat-bonus til én linje med begge kilder", () => {

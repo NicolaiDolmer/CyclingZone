@@ -50,6 +50,38 @@ function placementName(p) {
   return p.rider_name || "—";
 }
 
+// Ret-runde PR #4728, fund #2: buildPrizeBreakdown() (backend/lib/
+// myTeamLatestResult.js) samlede allerede en riders[]-liste pr. etape/
+// klassifikations-gruppe, men den blev kasseret her — kun gruppens SUM blev
+// vist, uden rytternavn. Det modsagde #4697's udtrykkeligt bekræftede krav
+// ("+ rider in the same view?" → "Yes") og reporterens egen begrundelse (at se
+// hvilken af hans 2 klatrere der tjente hvad). Når to ryttere scorer i samme
+// gruppe, får hver deres EGEN linje med deres EGEN andel (riders[].amount,
+// ikke gruppens total) — netop den detalje der blev efterspurgt. Kun når
+// gruppen slet ingen rytternavne har (bør ikke ske efter #4697/#4698-filtret,
+// men samme forsigtige "ærligt på gulvet"-holdning som backend-kommentaren)
+// falder den tilbage til én anonym sum-linje frem for at vise en tom liste.
+function breakdownRiderRows({ group, keyPrefix, label }) {
+  if (group.riders?.length > 0) {
+    return group.riders.map((r, i) => (
+      <li key={`${keyPrefix}-${r.rider_id ?? i}`} className="flex items-center justify-between gap-3 py-1 text-xs">
+        <span className="text-cz-2">
+          {label}
+          {" · "}
+          {r.rider_name}
+        </span>
+        <span className="font-data tabular-nums text-cz-1">{formatNumber(r.amount)} CZ$</span>
+      </li>
+    ));
+  }
+  return [
+    <li key={keyPrefix} className="flex items-center justify-between gap-3 py-1 text-xs">
+      <span className="text-cz-2">{label}</span>
+      <span className="font-data tabular-nums text-cz-1">{formatNumber(group.amount)} CZ$</span>
+    </li>,
+  ];
+}
+
 // "Nyt"-markering indtil set (#2593 del 2): SERVER-flaget (race.seen) er nu
 // sandheden, ikke det device-scopede localStorage-flag fra #2466 — det
 // nulstillede sig ved enhedsskifte (54,9% af besøg er mobil), så badgen
@@ -386,18 +418,20 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
               buildSponsorPayoutLine, backend/lib/myTeamLatestResult.js. */}
           {breakdownExpanded && (hasBreakdown || hasSponsorPayout) && (
             <ul className="flex flex-col mt-1 pt-1">
-              {(prizeBreakdown?.stages || []).map((s) => (
-                <li key={`stage-${s.stage_number}`} className="flex items-center justify-between gap-3 py-1 text-xs">
-                  <span className="text-cz-2">{t("dashboard:cards.myResult.breakdown.stage", { number: s.stage_number })}</span>
-                  <span className="font-data tabular-nums text-cz-1">{formatNumber(s.amount)} CZ$</span>
-                </li>
-              ))}
-              {(prizeBreakdown?.classifications || []).map((c) => (
-                <li key={`cls-${c.classification}`} className="flex items-center justify-between gap-3 py-1 text-xs">
-                  <span className="text-cz-2">{t(`races:detail.classification.${c.classification}`)}</span>
-                  <span className="font-data tabular-nums text-cz-1">{formatNumber(c.amount)} CZ$</span>
-                </li>
-              ))}
+              {(prizeBreakdown?.stages || []).flatMap((s) =>
+                breakdownRiderRows({
+                  group: s,
+                  keyPrefix: `stage-${s.stage_number}`,
+                  label: t("dashboard:cards.myResult.breakdown.stage", { number: s.stage_number }),
+                }),
+              )}
+              {(prizeBreakdown?.classifications || []).flatMap((c) =>
+                breakdownRiderRows({
+                  group: c,
+                  keyPrefix: `cls-${c.classification}`,
+                  label: t(`races:detail.classification.${c.classification}`),
+                }),
+              )}
               {prizeBreakdown?.team_bonus && (
                 <li className="flex items-center justify-between gap-3 py-1 text-xs">
                   <span className="text-cz-2">{t("dashboard:cards.myResult.breakdown.teamBonus")}</span>
