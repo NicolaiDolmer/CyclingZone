@@ -9,9 +9,6 @@ import { processMandateAutoAcceptCron } from "./boardMandateAutoAccept.js";
 function makeCronSupabase({ flagValue = "on", mandates = [], teams = [], users = [] } = {}) {
   const state = { mandates: [...mandates], events: [], boardProfiles: [] };
 
-  function matchAll(row, filters) {
-    return Object.entries(filters).every(([k, v]) => row[k] === v);
-  }
   function selectChain(rows) {
     const filters = {};
     const chain = {
