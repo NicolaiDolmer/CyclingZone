@@ -1,5 +1,5 @@
 {
-  "$comment": "Kendte anti-slop-overtraedelser (ratchet — maa kun skrumpe). Kategorier: arrow/smallpx/shadow/gradient. Genereret af scripts/check-anti-slop.mjs --update-baseline. Refs #4626, #3422. Nye overtraedelser maa IKKE tilfoejes her — brug stroke-ikoner (ikke pile), text-2xs/text-3xs (ikke arbitraer px), shadow-overlay (ikke andre shadow-*), eller (legitimt) udvid EXEMPT_FILES i lint-ui-slop.mjs med begrundelse (delt med denne guard).",
+  "$comment": "Kendte anti-slop-overtraedelser (ratchet, maa kun skrumpe). Kategorier: arrow/smallpx/shadow/gradient. Genereret af scripts/check-anti-slop.mjs --update-baseline. Refs #4626, #3422. Nye overtraedelser maa IKKE tilfoejes her: brug stroke-ikoner (ikke pile), text-2xs/text-3xs (ikke arbitraer px), shadow-overlay (ikke andre shadow-*), eller (legitimt) udvid EXEMPT_FILES i lint-ui-slop.mjs med begrundelse (delt med denne guard).",
   "files": {
     "frontend/public/locales/da/activity.json": {
       "arrow": 1,
@@ -80,7 +80,7 @@
       "gradient": 0
     },
     "frontend/public/locales/da/races.json": {
-      "arrow": 12,
+      "arrow": 10,
       "smallpx": 0,
       "shadow": 0,
       "gradient": 0
@@ -97,12 +97,6 @@
       "shadow": 0,
       "gradient": 0
     },
-    "frontend/public/locales/da/riders.json": {
-      "arrow": 2,
-      "smallpx": 0,
-      "shadow": 0,
-      "gradient": 0
-    },
     "frontend/public/locales/da/seasonEnd.json": {
       "arrow": 6,
       "smallpx": 0,
@@ -111,12 +105,6 @@
     },
     "frontend/public/locales/da/standings.json": {
       "arrow": 2,
-      "smallpx": 0,
-      "shadow": 0,
-      "gradient": 0
-    },
-    "frontend/public/locales/da/team.json": {
-      "arrow": 1,
       "smallpx": 0,
       "shadow": 0,
       "gradient": 0
@@ -218,7 +206,7 @@
       "gradient": 0
     },
     "frontend/public/locales/en/races.json": {
-      "arrow": 12,
+      "arrow": 10,
       "smallpx": 0,
       "shadow": 0,
       "gradient": 0
@@ -235,12 +223,6 @@
       "shadow": 0,
       "gradient": 0
     },
-    "frontend/public/locales/en/riders.json": {
-      "arrow": 2,
-      "smallpx": 0,
-      "shadow": 0,
-      "gradient": 0
-    },
     "frontend/public/locales/en/seasonEnd.json": {
       "arrow": 6,
       "smallpx": 0,
@@ -249,12 +231,6 @@
     },
     "frontend/public/locales/en/standings.json": {
       "arrow": 2,
-      "smallpx": 0,
-      "shadow": 0,
-      "gradient": 0
-    },
-    "frontend/public/locales/en/team.json": {
-      "arrow": 1,
       "smallpx": 0,
       "shadow": 0,
       "gradient": 0
@@ -527,18 +503,6 @@
       "arrow": 1,
       "smallpx": 0,
       "shadow": 0,
-      "gradient": 0
-    },
-    "frontend/src/pages/TeamPage.jsx": {
-      "arrow": 1,
-      "smallpx": 0,
-      "shadow": 0,
-      "gradient": 0
-    },
-    "frontend/src/pages/TeamProfilePage.jsx": {
-      "arrow": 0,
-      "smallpx": 0,
-      "shadow": 1,
       "gradient": 0
     },
     "frontend/src/pages/TransfersPage.jsx": {

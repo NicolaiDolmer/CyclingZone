@@ -5,7 +5,7 @@
 import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRiderEligibilityFilter, isRiderInjured } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 import { isRiderDayInvariantViolation, teamInRacePool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 
@@ -345,7 +345,13 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   ]);
   const abilityByRider = new Map((abilitiesRes.data || []).map((a) => [a.rider_id, a]));
   const conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));
-  const todayStr = copenhagenDateString();
+  // #4701: skadesstatus i udtagelses-panelet vurderes mod LØBETS startdato, ikke "nu" —
+  // se raceSelectionReferenceDateStr (riderEligibility.js). En rytter der er skadet i
+  // dag, men rask inden løbet starter, skal hverken vises som skadet eller kunne
+  // afvises af validateSelection's injuredRiderIds (begge udledes af riderRows.injured
+  // nedenfor). Engine-laget (raceRunner/filterOutInjuredEntries) forbliver den
+  // uafhængige, afgørende bagstopper på selve løbsdagen — se dets egen kommentar.
+  const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
 
   const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr });
 

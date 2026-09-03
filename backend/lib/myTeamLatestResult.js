@@ -10,6 +10,13 @@
 //                         frontendens buildRaceRecap() stadig kan fortælle ud fra
 //   buildSeasonHistory  — #2886: de FOREGÅENDE løb + sæson-totaler, normaliseret
 //                         fra dashboard_my_team_season_races-RPC'ens rækker
+//   buildPrizeBreakdown — #4697/#4698: samme race_results-rækker som
+//                         summarizeTeamRace, foldet til en LILLE sammensætning
+//                         (etapeplacering pr. etape, klassifikationsplacering,
+//                         holdbonus) i stedet for kun ét lump-total-tal.
+//   buildSponsorPayoutLine — #4698: sæsonens sponsor-race-day/result-bonus-
+//                         finance_transactions for DETTE løb, som egen linje
+//                         med kilde i stedet for kun en separat notifikation.
 // Ruten i routes/api.js komponerer dem over trimmede SELECTs.
 
 // Seneste løb = løbet med den nyeste imported_at blandt holdets egne
@@ -131,4 +138,117 @@ export function buildSeasonHistory({ rows, latestRaceId = null } = {}) {
     }));
 
   return { history, season_totals };
+}
+
+// ── #4697/#4698: prize-sammensætning + sponsor-udbetaling som egen linje ────
+//
+// Kilde (docs/ECONOMY_RULES.md §1/§3): prize_money er allerede beregnet pr.
+// race_results-række (points_earned × PRIZE_PER_POINT, se raceResultsEngine.js
+// buildRaceResultsFromPending) og prize_earnings_bonus genberegnes ved
+// paySeasonPrizesToDate — INGEN ny beregning her, kun aggregering + labels af
+// det der allerede er skrevet. Foldes til tre grupper (Discord-ønsket, #4697):
+// "placeringspræmie pr. etape", "pr. klassifikation" og "holdbonus". De fire
+// dagstrøje-mikrobonusser (leader/mountain_day/points_day/young_day —
+// raceResultsEngine.js's RESULT_TYPE_TO_RACE_POINTS) lægges ind under deres
+// tilhørende slutklassifikation i stedet for at få en fjerde gruppe hver —
+// "en LILLE sammensætning", ikke ti rækker for et 21-etapes løb.
+const CLASSIFICATION_KEYS = ["gc", "points", "mountain", "young"];
+const DAY_JERSEY_TO_CLASSIFICATION = {
+  leader: "gc",
+  mountain_day: "mountain",
+  points_day: "points",
+  young_day: "young",
+};
+
+/**
+ * Fold ét holds race_results-rækker for ét løb til en foldbar sammensætning.
+ * Rene input/output — ingen supabase/IO (samme regel som resten af filen).
+ *
+ * @param {{myRows: Array}} args - samme `myRows` som summarizeTeamRace modtager
+ *   (result_type, stage_number, rank, points_earned, prize_money, rider_id, rider_name).
+ * @returns {{prize_total:number, points_total:number,
+ *   stages: Array<{stage_number, amount, points, riders: Array<{rider_id, rider_name, rank, amount}>}>,
+ *   classifications: Array<{classification, amount, points, riders: Array<{rider_id, rider_name, rank, amount}>}>,
+ *   team_bonus: {amount, points}|null}}
+ *
+ * `riders[].amount` er DEN rytters egen andel (rows kan have flere ryttere pr.
+ * etape/klassifikation-gruppe — fx to klatrere der begge placerer sig samme
+ * etape); gruppens `amount` er stadig summen, men frontend skal bruge
+ * `riders[].amount` når den viser hvem der tjente hvad (#4697-rettelsen,
+ * ret-runde PR #4728: den anonyme sum uden rytternavn var netop det
+ * reporteren + ejeren bad om at kunne se).
+ */
+export function buildPrizeBreakdown({ myRows } = {}) {
+  const rows = (Array.isArray(myRows) ? myRows : []).filter((r) => (Number(r.prize_money) || 0) > 0);
+
+  const stageMap = new Map();
+  const classificationMap = new Map();
+  const teamBonus = { amount: 0, points: 0 };
+
+  for (const r of rows) {
+    const amount = Number(r.prize_money) || 0;
+    const points = Number(r.points_earned) || 0;
+    const rider = r.rider_name
+      ? { rider_id: r.rider_id ?? null, rider_name: r.rider_name, rank: r.rank ?? null, amount }
+      : null;
+
+    if (r.result_type === "stage") {
+      const stageNumber = r.stage_number ?? 1;
+      const g = stageMap.get(stageNumber) || { stage_number: stageNumber, amount: 0, points: 0, riders: [] };
+      g.amount += amount;
+      g.points += points;
+      if (rider) g.riders.push(rider);
+      stageMap.set(stageNumber, g);
+      continue;
+    }
+    if (r.result_type === "team") {
+      teamBonus.amount += amount;
+      teamBonus.points += points;
+      continue;
+    }
+    const classification = CLASSIFICATION_KEYS.includes(r.result_type)
+      ? r.result_type
+      : DAY_JERSEY_TO_CLASSIFICATION[r.result_type];
+    // Ukendt/fremtidig result_type uden mapping falder ærligt på gulvet her
+    // (samme holdning som raceResultsEngine.js's #3718 forward-guard) — det
+    // beløb er stadig talt med i prize_total/points_total nedenfor, blot uden
+    // egen gruppe, så tallene aldrig kommer i uoverensstemmelse med totalen.
+    if (!classification) continue;
+    const g = classificationMap.get(classification) || { classification, amount: 0, points: 0, riders: [] };
+    g.amount += amount;
+    g.points += points;
+    if (rider) g.riders.push(rider);
+    classificationMap.set(classification, g);
+  }
+
+  const stages = [...stageMap.values()].sort((a, b) => a.stage_number - b.stage_number);
+  const classifications = CLASSIFICATION_KEYS.map((k) => classificationMap.get(k)).filter(Boolean);
+
+  return {
+    prize_total: rows.reduce((s, r) => s + (Number(r.prize_money) || 0), 0),
+    points_total: rows.reduce((s, r) => s + (Number(r.points_earned) || 0), 0),
+    stages,
+    classifications,
+    team_bonus: teamBonus.amount > 0 ? teamBonus : null,
+  };
+}
+
+// Kilde: backend/lib/sponsorRaceDayIncome.js's payRaceDaySponsorsToDate — race-
+// day-indkomst (type="sponsor_race_day") og resultat-bonus (type=
+// "sponsor_result_bonus") krediteres begge med race_id+team_id sat og
+// sender i dag KUN en separat "Sponsor payout"-notifikation (#3315). #4698
+// (Discord 2/9, @zootne): vis den SAMME sum som egen linje i selve
+// løbsrapporten, med kilde, i stedet for kun i den ekstra besked.
+//
+// @param {{sponsorRows: Array<{type:string, amount:number}>}} args - finance_transactions
+//   rækker for ÉT race_id + team_id, type IN (sponsor_race_day, sponsor_result_bonus).
+// @returns {{total:number, items: Array<{type:string, amount:number}>}|null} null hvis
+//   holdet ikke fik nogen sponsor-udbetaling for dette løb (ingen tom linje i UI'et).
+export function buildSponsorPayoutLine({ sponsorRows } = {}) {
+  const rows = (Array.isArray(sponsorRows) ? sponsorRows : []).filter((r) => (Number(r.amount) || 0) > 0);
+  if (!rows.length) return null;
+  return {
+    total: rows.reduce((s, r) => s + (Number(r.amount) || 0), 0),
+    items: rows.map((r) => ({ type: r.type, amount: Number(r.amount) || 0 })),
+  };
 }

@@ -190,7 +190,7 @@ import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked }
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
-import { applyRiderEligibilityFilter, isRiderInjured } from "../lib/riderEligibility.js";
+import { applyRiderEligibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
@@ -438,7 +438,7 @@ import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
-import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory } from "../lib/myTeamLatestResult.js";
+import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory, buildPrizeBreakdown, buildSponsorPayoutLine } from "../lib/myTeamLatestResult.js";
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 import { fetchLatestGate as fetchLatestLevelCorrectionGate, getDryRunReport as getLevelCorrectionDryRunReport } from "../scripts/marketValueLevelCorrectionApply.js";
 
@@ -4145,7 +4145,9 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       // #2637: stages_completed er nu med — panelet skal kunne se om løbet er "live"
       // (0 < stages_completed < stages), så det kan forhindre TILFØJELSER til en
       // frosset trup client-side (fjernelse er stadig altid tilladt, se PUT /selection).
-      .select("id, name, race_type, race_class, stages, stages_completed, status, season_id, league_division_id")
+      // #4701: scheduled_for skal med — getSelectionContext vurderer skadesstatus mod
+      // LØBETS startdato, ikke "nu" (raceSelectionReferenceDateStr, riderEligibility.js).
+      .select("id, name, race_type, race_class, stages, stages_completed, status, season_id, league_division_id, scheduled_for")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -4605,7 +4607,9 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     const { data: races } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text)")
+      // #4701: scheduled_for skal med — getSelectionContext (kaldt pr. kolonne nedenfor)
+      // vurderer skadesstatus mod LØBETS startdato, ikke "nu".
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text), scheduled_for")
       .eq("season_id", season.id);
     const raceIds = (races || []).map((r) => r.id);
     // #1984/#2195 rod-årsag: load MED game_day, så binding-vinduet regnes i in-game-dag-rum —
@@ -4993,7 +4997,9 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       .from("races")
       // #3070: season_id SKAL med — loadTeamBindingContext bruger den til at
       // udelukke forrige-sæsons entries fra binding (game_day er sæson-relativt).
-      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
+      // #4701: scheduled_for SKAL med — prepareSelectionChange → getSelectionContext
+      // vurderer skadesstatus mod LØBETS startdato, ikke "nu".
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -5170,7 +5176,10 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
 
     const { data: raceRows, error: racesErr } = await supabase
       .from("races")
-      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
+      // #4701: scheduled_for SKAL med — prepareSelectionChange → getSelectionContext
+      // vurderer skadesstatus mod LØBETS startdato, ikke "nu" (samme regel som
+      // single-endpointet ovenfor, så matrixens "Gem plan" ikke afviger).
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for")
       .in("id", raceIds);
     if (racesErr) return res.status(500).json({ error: racesErr.message });
     const raceById = new Map((raceRows || []).map((r) => [r.id, r]));
@@ -5333,7 +5342,9 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
 
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
+      // #4701: scheduled_for skal med — skadesstatus for kandidat-poolen nedenfor
+      // vurderes mod LØBETS startdato, ikke "nu".
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -5383,7 +5394,9 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (condErr) return res.status(500).json({ error: condErr.message });
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
     const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
-    const todayStr = copenhagenDateString();
+    // #4701: reference-dato = løbets EGEN startdato, ikke "nu" — assistenten må gerne
+    // fylde en rytter ind der er skadet i dag, men rask inden dette løb starter.
+    const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
     // #3896: kanonisk skades-predikat (riderEligibility.isRiderInjured).
     const injuredIds = new Set(
       (conditions || []).filter((c) => isRiderInjured(c.injured_until, todayStr)).map((c) => c.rider_id)
@@ -5712,7 +5725,9 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     if (!season) return res.status(409).json({ error: "no_active_season" });
 
     const { data: races } = await supabase
-      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id").eq("season_id", season.id);
+      // #4701: scheduled_for skal med — injuredIds-kandidatpoolen nedenfor vurderes mod
+      // regenerings-DAGENS løbsdato, ikke "nu" (raceSelectionReferenceDateStr).
+      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id, scheduled_for").eq("season_id", season.id);
     const raceIds = (races || []).map((r) => r.id);
     // #1984/#2195: load MED game_day, så autofill-bindingen regnes i in-game-dag-rum — SAMME
     // nøgle-rum som save-guarden. Uden game_day (CET-ordinal) ville autofill nægte at placere en
@@ -5771,7 +5786,13 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // #2637/#3896: skadede ryttere (kanonisk isRiderInjured) må ALDRIG auto-udtages —
     // spejler raceRunner.fillMissingTeamEntries (spec 6.5, #1306) og raceEntryGenerator-sweepet.
     // Dette endpoint er spillerens EGEN "auto-udfyld"-knap; manglede samme guard.
-    const todayStr = copenhagenDateString();
+    // #4701: reference-dato = den REGENERÉREDE dags egen løbsdato, ikke "nu" — target
+    // deler alle samme board-dag, så mindste scheduled_for blandt dem er dagens dato
+    // (konservativ: aldrig senere end nogen af dagens faktiske løb).
+    const todayStr = target.reduce((min, r) => {
+      const ref = raceSelectionReferenceDateStr(r, copenhagenDateString());
+      return min === null || ref < min ? ref : min;
+    }, null) ?? copenhagenDateString();
     const injuredIds = new Set(
       (conditions || []).filter((c) => isRiderInjured(c.injured_until, todayStr)).map((c) => c.rider_id)
     );
@@ -12037,7 +12058,7 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     const raceMeta = raceMetaById.get(raceId);
     const finalStage = raceMeta.stages ?? 1;
 
-    const [myRowsRes, recapRows, incidentsRes, seasonRacesRes] = await Promise.all([
+    const [myRowsRes, recapRows, incidentsRes, seasonRacesRes, sponsorRowsRes] = await Promise.all([
       // pagination-safe: one team's own results in one race — bounded by
       // squad/stage-count, nowhere near the 1000-row cap (#3331 audit).
       supabase
@@ -12072,6 +12093,16 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
         p_league_division_id: req.team.league_division_id ?? null,
         p_limit: MY_TEAM_SEASON_RACES_LIMIT,
       }),
+      // pagination-safe: #4698 sponsor-race-day + resultat-bonus for DETTE
+      // løb/hold — bundet til ét race_id + team_id, samme størrelsesorden som
+      // myRowsRes ovenfor (højst to rækker: race-day + resultat-bonus, se
+      // sponsorRaceDayIncome.js — én idempotency-nøgle pr. type pr. race+team).
+      supabase
+        .from("finance_transactions")
+        .select("type, amount")
+        .eq("race_id", raceId)
+        .eq("team_id", req.team.id)
+        .in("type", ["sponsor_race_day", "sponsor_result_bonus"]),
     ]);
     if (myRowsRes.error) throw myRowsRes.error;
     // recapRows came from fetchAllRows(), which throws on error — no separate
@@ -12079,6 +12110,9 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     // race_incidents kan mangle i ældre miljøer (v3-flag) — degradér til tom
     // liste i stedet for at vælte hele kortet (samme holdning som RaceDetailPage).
     const incidents = incidentsRes.error ? [] : (incidentsRes.data || []);
+    // #4698: samme degraderings-holdning — en fejlet sponsor-slice må ikke
+    // vælte hele kortet, den skjuler blot sponsor-udbetalings-linjen.
+    const sponsorRows = sponsorRowsRes.error ? [] : (sponsorRowsRes.data || []);
 
     // #2886 historik-fejl kastes — MED én snæver undtagelse: "funktionen findes
     // ikke" (PostgREST PGRST202 / Postgres 42883) i vinduet mellem merge og
@@ -12123,6 +12157,9 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       raceMeta,
       myRows: myRowsRes.data || [],
     });
+    // #4697/#4698: samme myRows/sponsorRows — ren aggregering, ingen ekstra query.
+    const prize_breakdown = buildPrizeBreakdown({ myRows: myRowsRes.data || [] });
+    const sponsor_payout = buildSponsorPayoutLine({ sponsorRows });
     const lastImport = (participation || []).find((p) => p.race_id === raceId)?.imported_at ?? null;
 
     res.json({
@@ -12142,6 +12179,11 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       placements,
       stage_wins,
       totals,
+      // #4697: foldbar sammensætning af totals.prize_money (etape/klassifikation/
+      // holdbonus). #4698: sponsor-udbetalingen for DETTE løb som egen linje —
+      // null hvis holdet ikke fik nogen (ingen tom linje i UI'et).
+      prize_breakdown,
+      sponsor_payout,
       // #2886: de foregående løb (uden det viste) + sæson til dato.
       history,
       season_totals,
