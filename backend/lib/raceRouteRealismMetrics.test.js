@@ -1,7 +1,7 @@
 // backend/lib/raceRouteRealismMetrics.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { scoreTier, scoreSeason, TIER_TARGETS, VERDICT, tierGateState } from "./raceRouteRealismMetrics.js";
+import { scoreTier, scoreSeason, scoreGrandTour, TIER_TARGETS, VERDICT, tierGateState } from "./raceRouteRealismMetrics.js";
 
 const st = (profile_type, finale_type, distance_km = 160) => ({ profile_type, finale_type, distance_km, sectors: [] });
 const stageRace = (stages) => ({ race_type: "stage_race", stages });
@@ -27,20 +27,33 @@ function passingTier1Races() {
   return [
     stageRace(Array.from({ length: 12 }, () => st("high_mountain", "long_climb", 170))),
     stageRace(Array.from({ length: 8 }, () => st("mountain", "descent", 170))),
-    stageRace(Array.from({ length: 15 }, () => st("flat", "bunch_sprint", 158))),
+    // #4288 (3/9): GT-taersklen er nu spillets egen (15 etaper), saa et etapeloeb paa 15
+    // flade etaper VILLE blive maalt som en Grand Tour - og det er korrekt: 15 etaper ER
+    // en Grand Tour efter grandTourRestDays.GRAND_TOUR_MIN_STAGES. Fixturen er delt i to
+    // realistiske etapeloeb med samme 15 bunch-sprint-etapedage i alt.
+    stageRace(Array.from({ length: 8 }, () => st("flat", "bunch_sprint", 158))),
+    stageRace(Array.from({ length: 7 }, () => st("flat", "bunch_sprint", 158))),
     oneDay("itt", "solo_tt"),
     oneDay("itt", "solo_tt"),
     stageRace([st("flat", "bunch_sprint"), { ...st("cobbles", "reduced_sprint", 160), sectors: [{ kind: "cobbles", start_km: 80, length_km: 2 }] }]),
   ];
 }
 
-// 21 etaper: 3318 km (∈ 3200–3500) og 42 kategoriserede stigninger (≥ 25) — kun
-// HC-antallet varieres, så en fixture kan fejle PRÆCIS ét GT-bånd.
-function grandTourStages({ hc = 4, stageCount = 21 } = {}) {
-  return Array.from({ length: stageCount }, (_, i) => ({
-    ...st("flat", "bunch_sprint", 158),
-    climbs: i < hc ? [{ category: "HC" }, { category: "1" }] : [{ category: "2" }, { category: "3" }],
-  }));
+// En realistisk GT-rute (#4288, ejer-beslutning 3/9): prolog + een rigtig enkeltstart +
+// landevejsetaper. Formen er valgt saa den rammer ejerens fire distance-graenser med
+// margin - samlet snit, landevejssnit, prolog-gulv og ITT-gulv - saa en test der fejler
+// fejler paa dét den maaler, ikke paa at fixturen er urealistisk.
+//   17 etaper: (10 + 32 + 15 x 178) / 17 = 159,5 km samlet snit, 178 km landevejssnit.
+// Kun HC-antallet varieres, saa en fixture kan fejle PRAECIS eet GT-baand.
+function grandTourStages({ hc = 4, stageCount = 21, roadKm = 178 } = {}) {
+  return Array.from({ length: stageCount }, (_, i) => {
+    const base = i === 0
+      ? st("itt", "solo_tt", 10)          // prolog
+      : i === 1
+        ? st("itt", "solo_tt", 32)        // rigtig enkeltstart
+        : st("flat", "bunch_sprint", roadKm);
+    return { ...base, climbs: i < hc ? [{ category: "HC" }, { category: "1" }] : [{ category: "2" }, { category: "3" }] };
+  });
 }
 
 test("scoreTier tæller summit = long_climb på mtn/hm", () => {
@@ -216,14 +229,58 @@ test("scoreSeason: en tier uden mål i TIER_TARGETS er ikke tavst grøn", () => 
   assert.ok(summary.unassessed.some((u) => u.includes("tier 9")));
 });
 
-test("scoreSeason: en GT-arketype med for få etaper rapporteres, ikke sprunget over", () => {
+// #4288 (3/9): taersklen faldt fra 21 til 15, saa katalogets tre aegte GT'er (17/18/17)
+// NU bliver maalt - det var hele pointen. "Kan ikke vurderes"-stien gaelder derfor kun
+// under 15 etaper, og den skal stadig give UKENDT frem for tavshed.
+test("scoreSeason: en GT-arketype under 15 etaper rapporteres, ikke sprunget over", () => {
   const summary = scoreSeason([
     { tier: 3, races: passingTier3Races() },
-    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ stageCount: 18 })), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
+    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ stageCount: 12 })), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
   ]);
   assert.equal(summary.verdict, VERDICT.UNKNOWN);
   assert.equal(summary.grandToursEvaluated, 0);
-  assert.ok(summary.unassessed.some((u) => u.includes("Vuelta Ibérica") && u.includes("18 etaper")));
+  assert.ok(summary.unassessed.some((u) => u.includes("Vuelta Ibérica") && u.includes("12 etaper")));
+});
+
+// #4288: en 17-etapers GT som katalogets Vuelta Ibérica MAA ikke laengere vaere usynlig.
+// Baandet skaleres pr. etape, saa den maales mod 2590-2833 km i stedet for 3200-3500.
+test("#4288: en 17-etapers Grand Tour MAALES nu, i stedet for at vaere tavs", () => {
+  const summary = scoreSeason([
+    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ hc: 3, stageCount: 17 })), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
+    { tier: 3, races: passingTier3Races() },
+  ]);
+  assert.equal(summary.grandToursEvaluated, 1, "GT'en skal vaere vurderet, ikke sprunget over");
+  const gt = summary.tiers.find((t) => t.tier === 1).grandTours[0];
+  assert.equal(gt.stageCount, 17);
+  assert.equal(gt.pass, true, `17 x 158 km = 2686 km ligger i det skalerede baand: ${gt.failures.join(" · ")}`);
+});
+
+// #4288: og den skal kunne SIGE FRA. En GT med for korte etaper er praecis det fund
+// baandet fandtes for - katalogets Vuelta Ibérica laa 3/9 paa 151,4 km/etape og faldt
+// under gulvet paa 152,4.
+test("#4288: en 17-etapers GT med for korte etaper faelder baandet", () => {
+  const summary = scoreSeason([
+    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ hc: 3, stageCount: 17, roadKm: 150 })), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
+    { tier: 3, races: passingTier3Races() },
+  ]);
+  assert.equal(summary.verdict, VERDICT.NO_GO);
+  assert.ok(summary.failures.some((f) => f.includes("landevejsetapernes snit")), summary.failures.join(" · "));
+});
+
+// #4288 (ejer 3/9): de tre oevrige graenser skal ogsaa kunne sige fra hver for sig - ellers
+// er baandet kun eet krav i forklaedning.
+test("#4288: prolog-gulvet og enkeltstarts-gulvet gates hver for sig", () => {
+  const kort = grandTourStages({ hc: 3, stageCount: 17 });
+  const forKortProlog = [{ ...kort[0], distance_km: 4 }, ...kort.slice(1)];
+  assert.ok(scoreGrandTour(forKortProlog).failures.some((f) => f.includes("prolog")),
+    scoreGrandTour(forKortProlog).failures.join(" · "));
+
+  const forKortItt = [kort[0], { ...kort[1], distance_km: 14 }, ...kort.slice(2)];
+  assert.ok(scoreGrandTour(forKortItt).failures.some((f) => f.includes("enkeltstart på etape 2")),
+    scoreGrandTour(forKortItt).failures.join(" · "));
+
+  // En kort tempoetape MIDT i loebet er ikke en prolog - kun loebets foerste taeller.
+  assert.equal(scoreGrandTour(kort).failures.length, 0, scoreGrandTour(kort).failures.join(" · "));
 });
 
 test("scoreSeason: generator-fejl bogføres som ikke-vurderet, ikke som båndbrud", () => {

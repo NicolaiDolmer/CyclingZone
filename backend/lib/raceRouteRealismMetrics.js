@@ -3,7 +3,13 @@
 // Ren funktion — ingen DB. Input = allerede-genererede etaper (profile_type/finale_type/rute).
 // GATEN: raceRouteRealismScorecard.js regenererer S2 in-memory og kalder scoreTier pr. tier.
 
+// #4288: GT-taersklen er spillets egen (15), ikke en anden konstant med samme navn.
+// grandTourRestDays.js importerer intet, saa der er ingen cyklus.
+import { GRAND_TOUR_MIN_STAGES as GT_MIN_STAGES } from "./grandTourRestDays.js";
+
 const MOUNTAIN = new Set(["mountain", "high_mountain"]);
+// #4105 (ejer 3/9): grus hoerer til brostensfamilien - se TERRAIN_FAMILY_BY_PROFILE_TYPE.
+const COBBLES_FAMILY = new Set(["cobbles", "gravel"]);
 const isSummit = (s) => s.finale_type === "long_climb" && MOUNTAIN.has(s.profile_type);
 
 // #2755-mål pr. tier. null = intet krav.
@@ -117,7 +123,7 @@ export const TIER_TARGETS = Object.freeze({
 export const WT_DISTANCE_BANDS = Object.freeze({
   flat: [150, 200], rolling: [150, 190], hilly: [160, 210],
   mountain: [140, 190], high_mountain: [140, 190],
-  cobbles: [150, 170], classic: [200, 260], itt: [15, 40], ttt: [25, 45],
+  cobbles: [150, 170], gravel: [150, 170], classic: [200, 260], itt: [15, 40], ttt: [25, 45],
 });
 
 // #4104: monumenter prissaettes paa KLASSE, ikke terraen (se CLASS_DISTANCE_BANDS i
@@ -145,7 +151,9 @@ export function scoreTier(tier, races) {
   const mdown = mountainStages.filter((s) => s.finale_type === "descent");
   const summit = stages.filter(isSummit).length;
   const standaloneItt = races.filter((r) => r.race_type === "single" && (r.stages || []).some((s) => s.profile_type === "itt")).length;
-  const cobblesInStageRace = races.filter((r) => r.race_type === "stage_race" && (r.stages || []).some((s) => s.profile_type === "cobbles")).length;
+  // #4105/#4270 (ejer 3/9): grusloeb taeller med i brostensklassikerne. Uden `gravel`
+  // her ville en konvertering fra brosten til grus se ud som et FALD i brosten-dae­kning.
+  const cobblesInStageRace = races.filter((r) => r.race_type === "stage_race" && (r.stages || []).some((s) => COBBLES_FAMILY.has(s.profile_type))).length;
   const mdownPct = mountainStages.length ? Math.round((mdown.length / mountainStages.length) * 100) : 0;
 
   // #3469 finale-gulve (leverance 2): "etapedage" = rå optælling af stages med den givne
@@ -184,20 +192,140 @@ export function scoreTier(tier, races) {
   };
 }
 
-// GT-realisme (spec §6): tjek et 21-etapers løb. total-km-bånd + kategoriserede stigninger.
+// ── GT-realisme (spec §6) ────────────────────────────────────────────────────────────
+//
+// #4288 (EJER-BESLUTNING 3/9, lukker CALENDAR_RULES.md §11 punkt 7): baandet SKALERES PR.
+// ETAPE i stedet for at vaere et absolut km-tal for hele loebet, og taersklen falder fra 21
+// til GRAND_TOUR_MIN_STAGES (15) - spillets egen definition af en Grand Tour.
+//
+// HVORFOR: spec §6's tal (3.200-3.500 km, >= 25 kategoriserede stigninger, 3-8 HC) blev
+// skrevet for et 21-etapers loeb. Kataloget har tre Grand Tours med 17, 18 og 17 etaper, og
+// INGEN af dem naaede taersklen paa 21. Resultatet var ikke et roedt scorecard - det var
+// tavshed: spillets tre stoerste loeb blev slet ikke maalt, hverken GO eller NO-GO. Det er
+// praecis "en vagt der er stille fordi systemet er aendret" (samme fejlklasse som §9b's
+// nat-vagt der gik groen paa sit eget fejlsvar).
+//
+// Ejerens ramme for S4 er Giro 17 / Vuelta 17 / Tour 18 etaper. Et absolut km-baand ville
+// doemme dem alle tre roede for at vaere 3-4 etaper korte - det ville maale
+// KATALOG-LAENGDEN, ikke parcours-realismen. Km PR. ETAPE maaler det baandet faktisk handler
+// om: at en GT-etape har GT-laengde.
+//
+// GRAND_TOUR_MIN_STAGES (15) er UAENDRET som spillets GT-definition - se
+// grandTourRestDays.js. Konstanten her var en ANDEN, hoejere taerskel (21) som ingen havde
+// besluttet; den er nu den samme som resten af spillet bruger.
+export const GRAND_TOUR_MIN_STAGES = GT_MIN_STAGES;
+
+// ── GT-baandet er forankret i VIRKELIGHEDEN, ikke i et gammelt totaltal ────────────
+//
+// EJER-BESLUTNING 3/9 kl. 09:55 (valg A). Spec §6's oprindelige 3.200-3.500 km i alt var
+// skrevet for et 21-etapers loeb, og et km/etape-gulv afledt af det (152,4) var stadig kun
+// et gammelt totaltal divideret med 21 - altsaa et tal uden dae­kning i hvordan en Grand Tour
+// faktisk ser ud. Ejeren erstattede det med fire graenser der hver for sig kan genkendes fra
+// en rigtig grand tour-rute:
+//
+//   1. SAMLET snit, enkeltstarter inkluderet.  En GT er ikke en samling maratonetaper, og
+//      den er heller ikke en uge-tur. Snittet er dét tal en rutepraesentation aabner med.
+//   2. LANDEVEJSETAPERNES snit.  Enkeltstarterne traekker det samlede snit ned, saa uden
+//      denne graense kunne et loeb ramme punkt 1 med lutter korte etaper plus et par lange
+//      tempoer. Landevejsetaperne er selve loebet.
+//   3. PROLOGENS minimum.  En prolog er kort med vilje, men under gulvet er den en
+//      opvisning, ikke en etape der afgoer noget.
+//   4. ENKELTSTARTENS minimum.  En rigtig GT-tempoetape skal kunne skabe tidsforskelle;
+//      en kort en er en prolog, og saa gaelder punkt 3 i stedet.
+//
+// KLASSIFIKATION (den eneste ikke-trivielle del): en tempoetape (itt/itt_hilly/ttt) taeller
+// som PROLOG hvis den er loebets FOERSTE etape OG kortere end enkeltstarts-gulvet. Alle
+// andre tempoetaper skal opfylde enkeltstarts-gulvet. Reglen er bevidst stram i den ene
+// ende: en kort tempoetape midt i loebet er ikke en prolog, den er en for kort enkeltstart.
+//
+// Stigningerne (kategoriserede + HC) skaleres fortsat pr. etape fra spec §6's anker - kun
+// km-siden er erstattet.
+export const GRAND_TOUR_CLIMB_ANCHOR = Object.freeze({
+  stages: 21,
+  categorizedClimbsMin: 25,
+  hcClimbs: Object.freeze([3, 8]),
+});
+
+// Ejer-beslutning 3/9. Alle graenser er inklusive, alle tal i km.
+export const GRAND_TOUR_DISTANCE_RULES = Object.freeze({
+  overallAvgKm: Object.freeze([155, 170]),
+  roadAvgKm: Object.freeze([165, 185]),
+  prologueMinKm: 8,
+  ittMinKm: 25,
+});
+
+const TT_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
+
+/** Stigningsbaandet skaleret til et loeb med `stages` etaper. */
+export function grandTourBandsFor(stages) {
+  const n = Math.max(1, Number(stages) || 0);
+  const a = GRAND_TOUR_CLIMB_ANCHOR;
+  const perStage = n / a.stages;
+  return {
+    stages: n,
+    // Stigninger er heltal: gulvet rundes NED og loftet OP, saa skaleringen aldrig goer
+    // baandet strengere end ankeret var for 21 etaper.
+    categorizedClimbsMin: Math.floor(a.categorizedClimbsMin * perStage),
+    hcClimbs: [Math.floor(a.hcClimbs[0] * perStage), Math.ceil(a.hcClimbs[1] * perStage)],
+    ...GRAND_TOUR_DISTANCE_RULES,
+  };
+}
+
+/**
+ * Scorer EN Grand Tour mod ejerens fire distance-graenser (#4288, 3/9) + det etape-
+ * skalerede stigningsbaand. Rapporterer baade snittene og de enkelte tempoetaper, saa en
+ * roed linje kan laeses uden at regne selv.
+ */
 export function scoreGrandTour(stages) {
+  const stageCount = stages.length;
   const totalKm = stages.reduce((s, x) => s + (x.distance_km || 0), 0);
   const categorizedClimbs = stages.reduce((s, x) => s + ((x.climbs || []).length), 0);
   const hcClimbs = stages.reduce((s, x) => s + (x.climbs || []).filter((c) => c.category === "HC").length, 0);
-  const failures = [];
-  if (totalKm < 3200 || totalKm > 3500) failures.push(`total ${totalKm} km udenfor 3200–3500`);
-  if (categorizedClimbs < 25) failures.push(`kategoriserede stigninger ${categorizedClimbs} < 25`);
-  if (hcClimbs < 3 || hcClimbs > 8) failures.push(`HC-stigninger ${hcClimbs} udenfor 3–8`);
-  return { totalKm, categorizedClimbs, hcClimbs, pass: failures.length === 0, failures };
-}
+  const bands = grandTourBandsFor(stageCount);
+  const d = GRAND_TOUR_DISTANCE_RULES;
 
-// Et løb med mindst så mange etaper scores mod GT-båndet.
-export const GRAND_TOUR_MIN_STAGES = 21;
+  const overallAvgKm = stageCount ? totalKm / stageCount : 0;
+  const roadStages = stages.filter((x) => !TT_PROFILES.has(x.profile_type));
+  const roadAvgKm = roadStages.length
+    ? roadStages.reduce((s, x) => s + (x.distance_km || 0), 0) / roadStages.length
+    : 0;
+
+  // En tempoetape er en PROLOG hvis den er loebets foerste OG kortere end ITT-gulvet.
+  const ttStages = stages
+    .map((x, i) => ({ ...x, _index: i }))
+    .filter((x) => TT_PROFILES.has(x.profile_type));
+  const prologue = ttStages.find((x) => x._index === 0 && (x.distance_km || 0) < d.ittMinKm) ?? null;
+  const fullItts = ttStages.filter((x) => x !== prologue);
+
+  const failures = [];
+  if (overallAvgKm < d.overallAvgKm[0] || overallAvgKm > d.overallAvgKm[1]) {
+    failures.push(`samlet snit ${overallAvgKm.toFixed(1)} km/etape udenfor ${d.overallAvgKm[0]}–${d.overallAvgKm[1]} (${stageCount} etaper, ${totalKm} km i alt)`);
+  }
+  if (roadStages.length && (roadAvgKm < d.roadAvgKm[0] || roadAvgKm > d.roadAvgKm[1])) {
+    failures.push(`landevejsetapernes snit ${roadAvgKm.toFixed(1)} km udenfor ${d.roadAvgKm[0]}–${d.roadAvgKm[1]} (${roadStages.length} landevejsetaper)`);
+  }
+  if (prologue && (prologue.distance_km || 0) < d.prologueMinKm) {
+    failures.push(`prolog ${prologue.distance_km} km under ${d.prologueMinKm} km`);
+  }
+  for (const t of fullItts) {
+    if ((t.distance_km || 0) < d.ittMinKm) {
+      failures.push(`enkeltstart på etape ${t._index + 1} er ${t.distance_km} km, under ${d.ittMinKm} km`);
+    }
+  }
+  if (categorizedClimbs < bands.categorizedClimbsMin) {
+    failures.push(`kategoriserede stigninger ${categorizedClimbs} < ${bands.categorizedClimbsMin} (${stageCount} etaper)`);
+  }
+  if (hcClimbs < bands.hcClimbs[0] || hcClimbs > bands.hcClimbs[1]) {
+    failures.push(`HC-stigninger ${hcClimbs} udenfor ${bands.hcClimbs[0]}–${bands.hcClimbs[1]} (${stageCount} etaper)`);
+  }
+
+  return {
+    totalKm, overallAvgKm, roadAvgKm,
+    roadStageCount: roadStages.length, ittCount: fullItts.length,
+    prologueKm: prologue ? prologue.distance_km : null,
+    categorizedClimbs, hcClimbs, bands, pass: failures.length === 0, failures,
+  };
+}
 
 // Tre udfald — "kunne ikke vurderes" er BEVIDST forskelligt fra både GO og NO-GO.
 // Et scorecard der siger GO på et grundlag det ikke har målt er værre end intet

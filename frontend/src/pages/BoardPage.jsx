@@ -1272,7 +1272,56 @@ const OUTCOME_STYLE = {
   rejected: { accent: "text-cz-danger",     box: "border-cz-danger/30 bg-cz-danger-bg" },
 };
 
-function BoardRequestPanel({ requestOptions, requestStatus, requestError, requestingType, onRequest }) {
+// #4519 · Delt "hvad ændrer sig"-blok (fokus-skift + mål-før/efter). Bruges
+// BÅDE af det ikke-anvendte forslag (preview, før Accept) og af historikken
+// (latestRequest, efter et tidligere Accept) — samme kort, to datakilder, så
+// "sådan ser en ændring ud" aldrig driver mellem de to steder.
+function BoardRequestChangeList({ t, focusChanged, focusBefore, focusAfter, goalChanges }) {
+  if (!focusChanged && goalChanges.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {focusChanged && (
+        <div className="bg-cz-subtle border border-cz-border rounded-cz p-3">
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("request.focusLabel")}</p>
+          <p className="text-cz-2 text-sm mt-1">
+            {getFocusLabel(t, focusBefore)} → {getFocusLabel(t, focusAfter)}
+          </p>
+        </div>
+      )}
+      {goalChanges.map((change, index) => {
+        const kind = GOAL_CHANGE_STYLE[change.kind] ? change.kind : "replaced";
+        const style = GOAL_CHANGE_STYLE[kind];
+        return (
+          <div key={`${change.kind}-${index}`} className={`border rounded-cz p-3 ${style.box}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                {/* #1750 · Type-oversæt via getBoardGoalLabel når backend
+                    sender strukturerede before/after-mål; ellers fallback
+                    til de rå labels (allerede-persisterede requests). */}
+                <p className="text-cz-2 text-sm">
+                  {change.before_goal
+                    ? getBoardGoalLabel(t, change.before_goal)
+                    : formatBoardCopy(change.before_label)}
+                </p>
+                <p className="text-cz-3 text-xs mt-1">
+                  → {change.after_goal
+                    ? getBoardGoalLabel(t, change.after_goal)
+                    : formatBoardCopy(change.after_label)}
+                </p>
+              </div>
+              <span className={`text-3xs font-semibold uppercase tracking-wider ${style.accent}`}>
+                {t(`changeKind.${kind}`)}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BoardRequestPanel({ requestOptions, requestStatus, requestError, requestingType, previewingType,
+  preview, onRequest, onAcceptPreview, onCancelPreview }) {
   const { t } = useTranslation("board");
   const latestRequest = requestStatus?.latest_request;
   const usedThisSeason = Boolean(requestStatus?.used_this_season);
@@ -1283,6 +1332,19 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
   const focusChanged = Boolean(focusBefore && focusAfter && focusBefore !== focusAfter);
   const outcomeKey = latestRequest?.outcome && OUTCOME_STYLE[latestRequest.outcome] ? latestRequest.outcome : "partial";
   const latestStyle = OUTCOME_STYLE[outcomeKey];
+
+  // #4519 · Et hentet, endnu-ikke-anvendt forslag. Så længe det står her, er
+  // options-gitteret nedenfor skjult: én skærm har kun ÉT gold primary-klik
+  // (Accept), aldrig et gitter af gold-knapper OG et separat accept-klik.
+  const previewResult = preview?.requestResult;
+  const previewChanges = preview?.boardChanges;
+  const previewFocusBefore = previewChanges?.focus_before;
+  const previewFocusAfter = previewChanges?.focus_after;
+  const previewFocusChanged = Boolean(previewFocusBefore && previewFocusAfter && previewFocusBefore !== previewFocusAfter);
+  const previewGoalChanges = previewChanges?.goal_changes || [];
+  const previewOutcomeKey = previewResult?.outcome && OUTCOME_STYLE[previewResult.outcome] ? previewResult.outcome : "partial";
+  const previewStyle = OUTCOME_STYLE[previewOutcomeKey];
+  const accepting = Boolean(requestingType);
 
   return (
     <Section>
@@ -1328,44 +1390,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
           {(focusChanged || goalChanges.length > 0) && (
             <div className="mt-4 pt-4 border-t border-cz-border">
               <p className="text-cz-3 text-3xs uppercase tracking-wider mb-3">{t("request.changesHeading")}</p>
-              <div className="flex flex-col gap-2">
-                {focusChanged && (
-                  <div className="bg-cz-subtle border border-cz-border rounded-cz p-3">
-                    <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("request.focusLabel")}</p>
-                    <p className="text-cz-2 text-sm mt-1">
-                      {getFocusLabel(t, focusBefore)} → {getFocusLabel(t, focusAfter)}
-                    </p>
-                  </div>
-                )}
-                {goalChanges.map((change, index) => {
-                  const kind = GOAL_CHANGE_STYLE[change.kind] ? change.kind : "replaced";
-                  const style = GOAL_CHANGE_STYLE[kind];
-                  return (
-                    <div key={`${change.kind}-${index}`} className={`border rounded-cz p-3 ${style.box}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          {/* #1750 · Type-oversæt via getBoardGoalLabel når backend
-                              sender strukturerede before/after-mål; ellers fallback
-                              til de rå labels (allerede-persisterede requests). */}
-                          <p className="text-cz-2 text-sm">
-                            {change.before_goal
-                              ? getBoardGoalLabel(t, change.before_goal)
-                              : formatBoardCopy(change.before_label)}
-                          </p>
-                          <p className="text-cz-3 text-xs mt-1">
-                            → {change.after_goal
-                              ? getBoardGoalLabel(t, change.after_goal)
-                              : formatBoardCopy(change.after_label)}
-                          </p>
-                        </div>
-                        <span className={`text-3xs font-semibold uppercase tracking-wider ${style.accent}`}>
-                          {t(`changeKind.${kind}`)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <BoardRequestChangeList t={t} focusChanged={focusChanged} focusBefore={focusBefore} focusAfter={focusAfter} goalChanges={goalChanges} />
             </div>
           )}
         </div>
@@ -1377,25 +1402,85 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
         </div>
       )}
 
-      {supported && (
+      {/* #4519 · Forslag hentet men IKKE anvendt endnu — "nuværende plan →
+          foreslået plan" med et eksplicit Accept/Behold-valg. Erstatter
+          options-gitteret nedenfor mens det står åbent, så siden aldrig har
+          mere end ét gold primary-klik ad gangen (thelamba 31/8: et klik
+          anvendte planen uden mulighed for at sige nej). */}
+      {supported && preview && (
+        <div className={`rounded-cz border p-4 mt-4 ${previewStyle.box}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("request.previewHeading")}</p>
+              <p className="text-cz-1 text-sm font-semibold">{resolveBoardCopy(t, previewResult?.title_code, previewResult?.title)}</p>
+              <p className="text-cz-2 text-xs mt-1">{resolveBoardCopy(t, previewResult?.request_label_key, previewResult?.request_label)}</p>
+            </div>
+            <span className={`text-xs font-semibold uppercase tracking-wider ${previewStyle.accent}`}>
+              {t(`outcome.${previewOutcomeKey}`)}
+            </span>
+          </div>
+          <p className="text-cz-2 text-sm mt-2">
+            {formatBoardCopy(resolveBoardCopy(t, previewResult?.summary_code, previewResult?.summary, previewResult?.summary_params || {}))}
+          </p>
+          {previewResult?.tradeoff_summary && (
+            <p className="text-cz-2 text-sm mt-2">
+              {formatBoardCopy(resolveBoardCopy(t, previewResult?.tradeoff_summary_code, previewResult?.tradeoff_summary))}
+            </p>
+          )}
+          {(previewFocusChanged || previewGoalChanges.length > 0) && (
+            <div className="mt-4 pt-4 border-t border-cz-border">
+              <p className="text-cz-3 text-3xs uppercase tracking-wider mb-3">{t("request.changesHeading")}</p>
+              <BoardRequestChangeList t={t} focusChanged={previewFocusChanged} focusBefore={previewFocusBefore} focusAfter={previewFocusAfter} goalChanges={previewGoalChanges} />
+            </div>
+          )}
+          <p className="text-cz-3 text-xs mt-4 pt-4 border-t border-cz-border">{t("request.previewSubheading")}</p>
+          <div className="flex flex-col sm:flex-row gap-2 mt-3">
+            <button
+              type="button"
+              onClick={onAcceptPreview}
+              disabled={accepting}
+              className="flex-1 py-2.5 rounded-cz text-sm font-semibold border transition-all
+                bg-cz-accent text-cz-on-accent border-cz-accent/40 hover:brightness-110
+                disabled:bg-cz-subtle disabled:text-cz-3 disabled:border-cz-border disabled:cursor-not-allowed"
+            >
+              {accepting ? t("request.applying") : t("request.accept")}
+            </button>
+            <button
+              type="button"
+              onClick={onCancelPreview}
+              disabled={accepting}
+              className="flex-1 py-2.5 rounded-cz text-sm font-semibold border border-cz-border text-cz-2
+                hover:text-cz-1 hover:border-cz-border/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t("request.keepCurrent")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {supported && !preview && (
         <div className="grid sm:grid-cols-2 gap-3 mt-4">
           {(requestOptions || []).map((option) => {
             const disabled = Boolean(option.disabled);
-            const isBusy = requestingType === option.type;
+            const isBusy = previewingType === option.type;
             return (
               <div key={option.type} className="bg-cz-subtle border border-cz-border rounded-cz p-4">
                 {/* #1084 · requestDefs-keys resolves via board.json (dansk = fallback). */}
                 <p className="text-cz-1 font-semibold text-sm">{resolveBoardCopy(t, option.label_key, option.label)}</p>
                 <p className="text-cz-2 text-sm mt-1">{resolveBoardCopy(t, option.description_key, option.description)}</p>
                 <p className="text-cz-3 text-xs mt-3">{resolveBoardCopy(t, option.tradeoff_preview_key, option.tradeoff_preview)}</p>
+                {/* #4519 · Klikket henter nu et forslag (POST /board/request/preview,
+                    ingen writes) i stedet for at anvende ændringen med det samme.
+                    Neutral outline-knap, ikke gold: den ENESTE handling der reelt
+                    ændrer planen er "Accept" i preview-panelet ovenfor. */}
                 <button
                   onClick={() => onRequest(option.type)}
-                  disabled={disabled || Boolean(requestingType)}
-                  className="w-full mt-4 py-2.5 rounded-cz text-sm font-semibold border transition-all
-                    bg-cz-accent text-cz-on-accent border-cz-accent/40 hover:brightness-110
-                    disabled:bg-cz-subtle disabled:text-cz-3 disabled:border-cz-border disabled:cursor-not-allowed"
+                  disabled={disabled || Boolean(previewingType)}
+                  className="w-full mt-4 py-2.5 rounded-cz text-sm font-semibold border border-cz-border text-cz-2
+                    hover:text-cz-1 hover:border-cz-border/80 transition-all
+                    disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isBusy ? t("request.sending") : t("request.send")}
+                  {isBusy ? t("request.previewing") : t("request.preview")}
                 </button>
                 {disabled && option.disabled_reason && (
                   <p className="text-cz-3 text-xs mt-2">
@@ -1719,7 +1804,8 @@ function TradeoffWarningLine({ payload }) {
 // ── S-02h · DashboardPlanPanel — kompakt panel i 3-kolonne grid ───────────────
 
 function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCount, team,
-  requestError, requestingType, onRequest, onRenew, renewBusy = false, renewError = "",
+  requestError, requestingType, previewingType, preview, onRequest, onAcceptPreview, onCancelPreview,
+  onRenew, renewBusy = false, renewError = "",
   onNegotiate, onGoalClick }) {
   const { t } = useTranslation("board");
   const [detailOpen, setDetailOpen] = useState(false);
@@ -1950,7 +2036,11 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             requestStatus={request_status}
             requestError={requestError}
             requestingType={requestingType}
+            previewingType={previewingType}
+            preview={preview}
             onRequest={onRequest}
+            onAcceptPreview={onAcceptPreview}
+            onCancelPreview={onCancelPreview}
           />
 
           {/* #3012/#3575 · knappen forbliver synlig og forklaret når den er
@@ -2311,6 +2401,14 @@ export default function BoardPage() {
   const [saving, setSaving] = useState(false);
   const [requestingType, setRequestingType] = useState("");
   const [requestErrors, setRequestErrors] = useState({ "5yr": "", "3yr": "", "1yr": "" });
+  // #4519 · Board-request-forslaget skal ses FØR det anvendes (thelamba 31/8:
+  // et klik anvendte en flerårsplan-ændring uden bekræftelse, og at fortryde
+  // krævede en hel genforhandling). previewingType er samme "planType:requestType"-
+  // nøgle-mønster som requestingType ovenfor. boardRequestPreview bærer det
+  // seneste hentede forslag, keyed på planType — kun ét forslag ad gangen pr.
+  // plan-fane er meningsfuldt (bruger kan skifte fane mens et forslag står åbent).
+  const [previewingType, setPreviewingType] = useState("");
+  const [boardRequestPreview, setBoardRequestPreview] = useState({});
   // #2718-sweep: "Forny plan" havde hverken loading- eller fejl-state.
   const [renewingType, setRenewingType] = useState("");
   const [renewErrors, setRenewErrors] = useState({ "5yr": "", "3yr": "", "1yr": "" });
@@ -2702,6 +2800,47 @@ export default function BoardPage() {
     }
   }
 
+  // #4519 · Trin 1: hent forslaget UDEN at anvende det (POST /board/request/preview,
+  // ingen writes server-side). Erstatter det direkte "onRequest → skriver med det
+  // samme"-klik med et preview spilleren skal godkende eksplicit.
+  async function previewBoardRequest(planType, requestType) {
+    const key = `${planType}:${requestType}`;
+    setPreviewingType(key);
+    setRequestErrors(e => ({ ...e, [planType]: "" }));
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setRequestErrors(e => ({ ...e, [planType]: t("errors.loginRequired") }));
+        return;
+      }
+
+      const res = await fetch(`${API}/api/board/request/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plan_type: planType, request_type: requestType }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRequestErrors(e => ({ ...e, [planType]: resolveApiError(data, t, t("request.previewErrorFallback")) }));
+        return;
+      }
+
+      setBoardRequestPreview(p => ({
+        ...p,
+        [planType]: { requestType, requestResult: data.request_result, boardChanges: data.board_changes },
+      }));
+    } catch {
+      setRequestErrors(e => ({ ...e, [planType]: t("auth:error.connectionFailed") }));
+    } finally {
+      setPreviewingType("");
+    }
+  }
+
+  // #4519 · Trin 2a: brugeren accepterer forslaget → NU skrives det (uændret
+  // POST /board/request bag denne bekræftelse).
   async function sendBoardRequest(planType, requestType) {
     const key = `${planType}:${requestType}`;
     setRequestingType(key);
@@ -2727,12 +2866,19 @@ export default function BoardPage() {
         return;
       }
 
+      setBoardRequestPreview(p => { const next = { ...p }; delete next[planType]; return next; });
       await loadAll();
     } catch {
       setRequestErrors(e => ({ ...e, [planType]: t("auth:error.connectionFailed") }));
     } finally {
       setRequestingType("");
     }
+  }
+
+  // #4519 · Trin 2b: "Behold nuværende plan" — kasserer forslaget, ingen skrivning.
+  function cancelBoardRequestPreview(planType) {
+    setBoardRequestPreview(p => { const next = { ...p }; delete next[planType]; return next; });
+    setRequestErrors(e => ({ ...e, [planType]: "" }));
   }
 
   // S-02e · Bonus-offer accept/decline (lag 6)
@@ -3037,7 +3183,18 @@ export default function BoardPage() {
                   ? requestingType.split(":").slice(1).join(":")
                   : ""
               }
-              onRequest={(requestType) => sendBoardRequest(activePlanTab, requestType)}
+              previewingType={
+                previewingType.startsWith(`${activePlanTab}:`)
+                  ? previewingType.split(":").slice(1).join(":")
+                  : ""
+              }
+              preview={boardRequestPreview[activePlanTab] || null}
+              onRequest={(requestType) => previewBoardRequest(activePlanTab, requestType)}
+              onAcceptPreview={() => {
+                const pending = boardRequestPreview[activePlanTab];
+                if (pending) sendBoardRequest(activePlanTab, pending.requestType);
+              }}
+              onCancelPreview={() => cancelBoardRequestPreview(activePlanTab)}
               onRenew={() => renewContract(activePlanTab)}
               renewBusy={renewingType === activePlanTab}
               renewError={renewErrors[activePlanTab] || ""}

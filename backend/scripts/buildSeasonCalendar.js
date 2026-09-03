@@ -46,17 +46,28 @@
 //      som CI's calendarScorecard4218.mjs) mod den PLANLAGTE kalender og printer grøn/rød
 //      pr. regel pr. division. Før #4270 målte dry-runnet kun kompositionen.
 //
+// #4270 — EJERENS BESLUTNINGER 3/9 (se docs/CALENDAR_RULES.md §1, §1b, §2, §4, §5):
+//   4. `--race-days` behøves ikke længere for en sæson med et EJER-VALGT vindue
+//      (SEASON_RACE_DAYS_DEFAULT i calendarStartDate.js). S4 = 28 løbsdatoer.
+//   5. TRE nye PLACERINGS-GATES, hårde krav UDEN override (calendarPlacementGates.js):
+//        §1b  kvote-opfyldelse EKSAKT 100 % pr. division
+//        §4   monument må ikke ligge inde i et GT's LØBSDAGS-spænd (#4203)
+//        §1   mindste-overlap pr. division (#3329)
+//      De stopper --apply, men lader dry-runnet køre til ende: dry-runnet er det eneste
+//      sted man kan MÅLE hvor langt der er igen, og nogle af bruddene lukkes af kataloget
+//      frem for af en regel (§5b).
+//
 // EFTER APPLY kører scriptet en post-verify (rækketal pr. tier + at ingen etape er
 // planlagt i fortiden) og printer den, så resultatet ikke skal tages på tro.
 //
-// Refs #3295 #3469 #4270 #4176 #4215 #4557.
+// Refs #3295 #3469 #4270 #4176 #4203 #4215 #4288 #4557 #3329.
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { materializeTierCalendars, TIER_DENSITY } from "../lib/tierCalendarMaterializer.js";
-import { resolveCalendarFrom, resolveSeasonWindow } from "../lib/calendarStartDate.js";
+import { resolveCalendarFrom, resolveSeasonWindow, SEASON_RACE_DAYS_DEFAULT } from "../lib/calendarStartDate.js";
 import { gatePlan } from "../lib/seasonCalendarGate.js";
 import { scoreCalendarPlan, formatScorecard, scorecardGateGroups } from "../lib/calendarScorecardReport.js";
 import { findNextSeason } from "../lib/seasonLookup.js";
@@ -137,9 +148,15 @@ if (isMain) {
 
     // §2: længden UDLEDES (søndags-slut, løbsdatoer = slut − start + 1). Uden et eksplicit
     // valg foreslås den lovlige længde tættest på S3's 31 — se resolveSeasonWindow.
+    // #4270 (ejer 3/9): en saeson med et EJER-VALGT vindue (SEASON_RACE_DAYS_DEFAULT) skal
+    // ikke kraeve --race-days paa kommandolinjen. S4 = 28. Alle andre saesoner faar fortsat
+    // et udledt forslag som skal bekraeftes eksplicit foer --apply.
+    // Praecedens: --race-days > --last-day > ejer-valgt saesonvindue > udledt forslag.
+    const seasonDefaultDays = SEASON_RACE_DAYS_DEFAULT[seasonNumber] ?? null;
+    const explicitDays = raceDaysArg != null ? Number(raceDaysArg) : null;
     const window = resolveSeasonWindow({
       firstRaceDay,
-      raceDays: raceDaysArg != null ? Number(raceDaysArg) : null,
+      raceDays: explicitDays ?? (lastDayArg ? null : seasonDefaultDays),
       lastRaceDay: lastDayArg || null,
     });
     const realDays = window.raceDays;
@@ -148,6 +165,9 @@ if (isMain) {
     console.log(`  første løbsdag = ${firstRaceDay}${firstDay ? "" : " (næste mandag)"} · from-anker = ${from.toISOString()}`);
     console.log(`\n── §2 sæsonvindue ──`);
     console.log(`  ${firstRaceDay} → ${window.lastRaceDay} · ${realDays} løbsdatoer · sidste dag er en søndag: OK`);
+    if (explicitDays == null && !lastDayArg && seasonDefaultDays != null) {
+      console.log(`  længden er sæson ${seasonNumber}'s EJER-VALGTE vindue (${seasonDefaultDays} løbsdatoer, docs/CALENDAR_RULES.md §2) — ikke et udledt forslag.`);
+    }
     console.log(`  kvote pr. division (density × løbsdatoer, §1b): ${Object.entries(quotas).map(([t, q]) => `D${t} ${q}`).join(" · ")}`);
     if (window.derived) {
       console.log(`  ⚠ LÆNGDEN ER UDLEDT, IKKE VALGT. Lovlige længder for ${firstRaceDay}: ${window.candidates.map((c) => `${c.raceDays} (til ${c.lastRaceDay})`).join(" · ")}`);
@@ -215,6 +235,21 @@ if (isMain) {
     const scorecardGates = scorecardGateGroups(rapport);
     blocking.push(...scorecardGates.blocking);
 
+    // #4270 (ejer 3/9): de tre placerings-gates (§1b eksakt kvote, #4203 monument-i-GT,
+    // #3329 mindste-overlap) er HAARDE krav uden override — men de stopper kun --apply.
+    // Dry-runnet skal kunne koeres til ende, fordi det er det ENESTE sted man kan maale hvor
+    // langt der er igen: nogle af dem lukkes af kataloget, ikke af en regel (§5b).
+    const applyBlocking = scorecardGates.applyBlocking ?? [];
+    if (applyBlocking.length) {
+      console.error(`\n❌ PLACERINGS-GATES (${applyBlocking.length}) — hårde krav, ingen override:`);
+      for (const b of applyBlocking) console.error(`   · ${b}`);
+      if (apply) {
+        console.error(`\nAfbryder. Ret årsagen; disse gates beskytter spillet, ikke scriptet.`);
+        process.exit(1);
+      }
+      console.error(`   → dry-run fortsætter, så resten af scorecardet kan måles. Ved --apply stopper de.`);
+    }
+
     if (blocking.length) {
       console.error(`\n❌ BLOKERENDE (${blocking.length}) — kan ikke overrides:`);
       for (const b of blocking) console.error(`   · ${b}`);
@@ -263,7 +298,9 @@ if (isMain) {
 
     if (!apply) {
       console.log(`\nDRY-RUN slut — intet skrevet. Gentag med --apply for at bygge kalenderen.\n`);
-      process.exitCode = 0;
+      // Et dry-run med aabne placerings-gates maa ikke afslutte groent: forskellen paa
+      // "intet brud" og "brud vi valgte at maale videre paa" skal vaere synlig i exit-koden.
+      process.exitCode = applyBlocking.length ? 1 : 0;
     } else {
       if (!firstDay) { console.error("\n❌ --first-day YYYY-MM-DD kræves ved --apply (gæt aldrig sæsonens startdato)."); process.exit(2); }
       if (window.derived) {

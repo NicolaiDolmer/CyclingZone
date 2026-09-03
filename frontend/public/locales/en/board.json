@@ -328,7 +328,15 @@
     "focusLabel": "Focus",
     "sending": "Sending...",
     "send": "Send request",
-    "errorFallback": "Could not send the board request."
+    "errorFallback": "Could not send the board request.",
+    "preview": "See suggestion",
+    "previewing": "Loading suggestion...",
+    "previewHeading": "Suggested change",
+    "previewSubheading": "Nothing is applied yet. Review it, then accept or keep your current plan.",
+    "accept": "Accept",
+    "applying": "Applying...",
+    "keepCurrent": "Keep current plan",
+    "previewErrorFallback": "Could not load the suggestion."
   },
   "consequence": {
     "heading": "Active consequences",

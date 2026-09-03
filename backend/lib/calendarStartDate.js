@@ -59,6 +59,15 @@ export function resolveCalendarFrom({ firstRaceDate, now = new Date() } = {}) {
 /** S3's længde, 31 løbsdatoer (§2). Referencen længde-forslaget måles imod — ikke et krav. */
 export const REFERENCE_SEASON_RACE_DAYS = 31;
 
+// EJER-VALGTE saesonvinduer (§2). En saeson der staar her har faaet sin laengde BESLUTTET,
+// ikke udledt, og buildSeasonCalendar.js bruger tallet som default i stedet for at kraeve
+// --race-days. Alle andre saesoner faar fortsat et UDLEDT forslag som ejeren skal bekraefte.
+//
+// S4 = 28 loebsdatoer (man 28/9 -> soen 25/10), ejer-beslutning 3/9 (#4270). 31 findes ikke
+// som mulighed for en mandags-start (mandag + 30 dage = onsdag), og 35 blev maalt umulig:
+// D3 fik 18 kalenderdage uden loeb, altsaa §2's ejer-regel broedt i en hel division.
+export const SEASON_RACE_DAYS_DEFAULT = Object.freeze({ 4: 28 });
+
 /**
  * Alle §2-lovlige længder for en given første løbsdag: dem hvor sidste løbsdag er en
  * søndag. Sorteret stigende.
