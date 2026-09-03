@@ -141,7 +141,12 @@ test.describe("Auction start-price typo guard (#3184)", () => {
     await priceInput.fill("150.000");
     await expect(page.getByText(/= 150\.000 CZ\$/)).toBeVisible();
 
-    await page.getByRole("button", { name: /^(List for sale|Sæt til salg)$/ }).click();
+    // #3422: den åbnende trigger-knap ("Sæt til salg") og submit-knappen deler nu
+    // samme tekst (arrow-glyph'et der tidligere adskilte dem — "↔ Sæt til salg" vs.
+    // "Sæt til salg" — er fjernet). Triggeren forbliver synlig mens formularen er
+    // åben (samme knap toggler show/hide), så to knapper matcher navnet — submit
+    // står SIDST i DOM'et (efter trigger-knappen), deraf .last().
+    await page.getByRole("button", { name: /^(List for sale|Sæt til salg)$/ }).last().click();
 
     await expect.poll(() => capturedBody).not.toBeNull();
     expect(capturedBody.asking_price).toBe(150000);
