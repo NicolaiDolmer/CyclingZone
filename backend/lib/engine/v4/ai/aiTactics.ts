@@ -93,7 +93,9 @@ export function classifyTerrainDemand(route: AiTacticsRoute): TerrainDemand {
   if (route.profile_type === "mountain" || route.profile_type === "high_mountain" || route.finale_type === "long_climb") {
     return "climb";
   }
-  if (route.profile_type === "cobbles") return "cobbles";
+  // #4105: grus laeses som brosten af AI-taktikken — samme primaere evne (cobblestone),
+  // samme ledertype. Det ER pointen med "naesten samme type der er god til den slags loeb".
+  if (route.profile_type === "cobbles" || route.profile_type === "gravel") return "cobbles";
   if (route.profile_type === "itt" || route.profile_type === "itt_hilly" || route.profile_type === "ttt") return "time_trial";
   if (route.finale_type === "bunch_sprint" || route.profile_type === "flat") return "sprint";
   return "rolling";

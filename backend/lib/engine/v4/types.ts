@@ -96,6 +96,12 @@ export type ProfileType =
   | "mountain"
   | "high_mountain"
   | "cobbles"
+  // gravel (#4105): additiv udvidelse af profil-UNIONEN, ikke af StageInput/StageOutput's
+  // form. Segment-modellen er UAENDRET: en grus-sektor bliver et "cobbles"-segment, fordi
+  // fysikken er den samme (loest/ujaevnt underlag, lav laesgevinst, hoej styrt-risiko) og
+  // ejer-rammen 3/9 er "naesten samme type der er god til den slags loeb". Forskellen
+  // mellem grus og brosten bor i etapens profile_type + demand_vector, ikke i segmentet.
+  | "gravel"
   | "classic"
   | "itt"
   | "itt_hilly"
