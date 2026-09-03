@@ -5,10 +5,9 @@
 // toggle) importerer nu fra HER i stedet. Et nyt sprog kræver kun én ny
 // entry i LANGUAGES + de matchende locale-JSON-filer under
 // frontend/public/locales/<code>/ + den matchende værdi i
-// database/2026-07-23-rls-write-lockdown-users-transfers-bids-swaps.sql's
-// søster-migration for users.language CHECK-constraint (se
-// database/2026-09-03-users-language-constraint-config.sql, hvis den findes —
-// migrationen er kun oprettet når der reelt var en hardcodet CHECK at afløse).
+// users_language_check (se database/2026-09-03-4733-users-language-
+// constraint-config.sql, som holder samme liste og skal udvides sammen med
+// denne fil).
 //
 // Flag-koder matcher de faktiske `fi fi-<code>`-klasser fra flag-icons, som
 // LanguageSwitcher.jsx og Flag.jsx allerede bruger i dag (en → gb, da → dk).

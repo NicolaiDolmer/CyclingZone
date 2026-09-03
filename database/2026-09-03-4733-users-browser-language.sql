@@ -42,9 +42,20 @@ COMMENT ON COLUMN public.users.browser_language IS
 
 -- ── 2. handle_new_user-trigger: læs også browser_language fra signup-meta ──
 -- Al eksisterende logik (username-fallback, role, language-default) er
--- BEVARET uændret — kun browser_language-feltet er nyt.
+-- BEVARET uændret — kun browser_language-feltet er nyt. Spejlet 1:1 fra
+-- prods aktuelle definition (verificeret med pg_get_functiondef 3/9), inkl.
+-- `SET search_path TO 'public', 'pg_catalog'` — sat af
+-- 2026-05-21-security-hardening-phase-a.sql (function_search_path_mutable-
+-- hærdning). CREATE OR REPLACE uden denne klausul ville nulstille
+-- funktionens search_path-lås (Postgres bevarer IKKE proconfig på tværs af
+-- CREATE OR REPLACE, medmindre klausulen gentages) — klausulen SKAL derfor
+-- være med i denne og enhver fremtidig CREATE OR REPLACE af funktionen.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_catalog'
+AS $$
 BEGIN
   INSERT INTO public.users (id, email, username, role, language, browser_language)
   VALUES (
@@ -58,6 +69,6 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Trigger eksisterer allerede (on_auth_user_created) — vi har bare opdateret funktionen.
