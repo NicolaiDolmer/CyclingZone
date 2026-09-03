@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DENY_URLS, isDeniedUrl } from "./sentryDenyUrls.js";
+import { DENY_URLS, isDeniedUrl, isKnownExtensionNoise } from "./sentryDenyUrls.js";
 
 // #2018: Vercel Live Feedback / Toolbar injicerer /_next-live/feedback/instrument.js
 // og kaster tredjeparts-fejl (CYCLINGZONE-18/19/1A/1B/1C). Disse SKAL filtreres,
@@ -27,10 +27,34 @@ test("browser-extension-URL'er filtreres fortsat (#1792 — ingen regression)", 
   assert.equal(isDeniedUrl("safari-web-extension://abcdef/inpage.js"), true);
 });
 
-test("CYCLINGZONE-4B: webkit-maskerede extension-URL'er filtreres (Safari/iOS skjuler den rigtige URL)", () => {
-  // Den faktiske stacktrace-URL fra CYCLINGZONE-4B (setupExtension-frame).
-  assert.equal(isDeniedUrl("webkit-masked-url://hidden/"), true);
-  assert.equal(isDeniedUrl("webkit-masked-url://hidden/:149626:47"), true);
+test("#4499: webkit-masked-url:// er IKKE i DENY_URLS (blankt URL-match droppede alle WebKit-modul-fejl)", () => {
+  // Regression for #4499: denne URL alene maa ALDRIG filtrere et event —
+  // WebKit maskerer den for AL modul-script-fejl (vores egne lazy-loadede
+  // routes inklusive), ikke kun extension-injektion. Se sentryDenyUrls.js.
+  assert.equal(isDeniedUrl("webkit-masked-url://hidden/"), false);
+  assert.equal(isDeniedUrl("webkit-masked-url://hidden/:149626:47"), false);
+});
+
+test("CYCLINGZONE-4B: extension-stoej filtreres nu paa BESKEDEN, ikke paa den maskerede URL", () => {
+  // Den faktiske fejlbesked fra CYCLINGZONE-4B (setupExtension-frame,
+  // tredjeparts browser-extension).
+  assert.equal(
+    isKnownExtensionNoise("Cannot destructure property 'tabId' from null or undefined value"),
+    true,
+  );
+  assert.equal(
+    isKnownExtensionNoise("Cannot destructure property 'tabId' from null or undefined"),
+    true,
+  );
+});
+
+test("#4499: isKnownExtensionNoise filtrerer IKKE aegte app-fejl der tilfaeldigvis ogsaa er maskerede paa WebKit", () => {
+  // Aegte fejl fra en lazy-loadet route-chunk faar SAMME maskerede URL som
+  // extension-stoej paa WebKit, men beskeden matcher ikke tabId-signaturen.
+  assert.equal(isKnownExtensionNoise("TypeError: undefined is not an object (evaluating 'i.subscribe')"), false);
+  assert.equal(isKnownExtensionNoise("TypeError: Load failed"), false);
+  assert.equal(isKnownExtensionNoise(""), false);
+  assert.equal(isKnownExtensionNoise(undefined), false);
 });
 
 test("normale app-fejl filtreres IKKE (filteret er ikke for bredt)", () => {

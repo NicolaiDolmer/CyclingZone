@@ -11,7 +11,7 @@ import {
 import ErrorState from "../components/ui/ErrorState.jsx";
 import Button from "../components/ui/Button.jsx";
 // denyUrls-moenstre i ren .js-fil (unit-testbar uden JSX-import), se #2018.
-import { DENY_URLS } from "./sentryDenyUrls.js";
+import { DENY_URLS, isKnownExtensionNoise } from "./sentryDenyUrls.js";
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
 const ENABLED = import.meta.env.PROD && Boolean(DSN);
@@ -43,6 +43,13 @@ export function initSentry() {
     beforeSend(event) {
       const value = event.exception?.values?.[0]?.value || event.message || "";
       if (/ResizeObserver loop completed|NetworkError when attempting to fetch resource/i.test(value)) {
+        return null;
+      }
+      // #4499: erstatter den tidligere URL-baserede webkit-masked-url-regel i
+      // denyUrls (fjernet — den droppede ALLE WebKit-modul-fejl, ikke kun
+      // extension-stoej, se sentryDenyUrls.js). Matcher paa selve beskeden,
+      // som WebKit ikke maskerer.
+      if (isKnownExtensionNoise(value)) {
         return null;
       }
       // #4545: chunk-fejl blev FOER droppet helt (#881: "recoverable stoej,
