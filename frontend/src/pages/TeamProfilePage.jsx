@@ -16,7 +16,7 @@ import { initialsFrom } from "../components/ui/avatarStyles.js";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { sortRidersForTable } from "../lib/riderTableSort";
 import { cycleSortState } from "../lib/riderSort";
-import SortTh from "../components/rider/RiderSortTh";
+import { getCountryCode3 } from "../lib/countryUtils";
 import { formatNumber } from "../lib/intl";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamResultsTab from "../components/TeamResultsTab";
@@ -34,8 +34,11 @@ import {
   TabList,
   Tab,
   TeamIcon,
+  ChevronLeftIcon,
+  DataTable,
+  Segmented,
+  HeroStats,
 } from "../components/ui";
-import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
 import { TEAM_PROFILE_TABS as TABS, resolveTeamProfileTab } from "../lib/teamProfileTabs.js";
 
 // Gyldige tab-nøgler — ?tab= i URL'en (fx ranglistens holdnavn-link → results, #824).
@@ -51,18 +54,9 @@ import { TEAM_PROFILE_TABS as TABS, resolveTeamProfileTab } from "../lib/teamPro
 // labels = STATS[i].label (ABILITY_SHORT, oversættes ikke, jf. #487).
 // #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd.
 
-// #2849 bølge 5: T3 hero stat-blok — samme opskrift som RaceDetailPage (bølge 3):
-// label 10px uppercase · value 20px/650 data-font tabular · optional 11px sub.
-// Sidste blok i rækken udelader højre-rule (spec: "24px padding/margin"-adskillelse).
-function HeroStatBlock({ label, value, sub, last = false }) {
-  return (
-    <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
-      <div className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
-      <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
-      {sub && <div className="font-data text-2xs text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
-    </div>
-  );
-}
+// #2849 bølge 5 gav siden en lokal HeroStatBlock-kopi. #4628: opskriften bor nu
+// i kittet (components/ui/HeroStats) og stabler i to kolonner på mobil — den
+// lokale kopi klippede holdets sidste stat-blokke væk på 375px.
 
 export default function TeamProfilePage() {
   const { id } = useParams();
@@ -70,6 +64,9 @@ export default function TeamProfilePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation("team");
   const { t: tGR } = useTranslation("globalRank");
+  // #4628: ryttertypen foldes ind i navnecellens underlinje på mobil og skal
+  // dér være TEKST — samme kilde som Akademiets fold bruger.
+  const { t: tTypes } = useTranslation("riderTypes");
   // #3071: sæson-referenceår til alders-visning/badges (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
   const [team, setTeam] = useState(null);
@@ -200,7 +197,7 @@ export default function TeamProfilePage() {
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <button type="button" onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
-        {t("profile.back")}
+        <ChevronLeftIcon size={16} />{t("profile.back")}
       </button>
       <ErrorState
         description={t("profile.loadError.message")}
@@ -213,7 +210,7 @@ export default function TeamProfilePage() {
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <button type="button" onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
-        {t("profile.back")}
+        <ChevronLeftIcon size={16} />{t("profile.back")}
       </button>
       <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("profile.notFound")} />
     </div>
@@ -236,6 +233,106 @@ export default function TeamProfilePage() {
 
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
   const totalValue = currentRiders.reduce((s, r) => s + getRiderMarketValue(r), 0);
+
+  // #4628: kolonne-kontrakten. Nation/alder/type foldes ind i navnecellens
+  // underlinje på ≤640px (samme fold-sæt som Akademiet og /riders bruger);
+  // Status, Værdi og de 15 evner scroller vandret under den pinnede navne-
+  // kolonne. Ingen kolonne forsvinder længere på mobil.
+  const squadColumns = [
+    {
+      key: "nation",
+      header: t("profile.thNation"),
+      sortKey: "nationality_code",
+      compact: true,
+      fold: true,
+      foldValue: (r) => getCountryCode3(r.nationality_code) || "—",
+      render: (r) => <NationCell code={r.nationality_code} />,
+    },
+    {
+      key: "name",
+      header: t("profile.thRider"),
+      sticky: true,
+      sortKey: "firstname",
+      render: (r) => (
+        <>
+          <RiderLink id={r.id} stopPropagation
+            className="text-cz-1 hover:text-cz-accent-t transition-colors">
+            {r.firstname} {r.lastname}
+          </RiderLink>
+          {/* #1531: skade-badget bliver ved navnet — Status-kolonnen scroller
+              væk på mobil, og en skade skal kunne ses uden at scrolle. */}
+          {isRiderInjured(r.injured_until) && <RiderBadges badges={["injured"]} />}
+        </>
+      ),
+    },
+    {
+      key: "badges",
+      header: t("profile.thBadges"),
+      // #1755: Status sortérbar på alders-tier — som på eget hold (#1482).
+      sortKey: "is_u25",
+      compact: true,
+      render: (r) => (
+        <div className="flex flex-wrap items-center gap-1">
+          <RiderBadges badges={[
+            isRiderInjured(r.injured_until) && "injured",
+            r.is_academy && "academy",
+            ageBadgeKey(r, seasonYear),
+            r._isIncoming && "incoming",
+            r._isOutgoing && "outgoing",
+          ]} />
+        </div>
+      ),
+    },
+    {
+      key: "age",
+      header: t("profile.thAge"),
+      sortKey: "birthdate",
+      numeric: true,
+      compact: true,
+      fold: true,
+      foldValue: (r) => String(getRiderAge(r.birthdate, seasonYear) ?? "—"),
+      render: (r) => <span className="text-cz-2">{getRiderAge(r.birthdate, seasonYear) ?? "—"}</span>,
+    },
+    {
+      key: "type",
+      header: t("profile.thType"),
+      sortKey: "primary_type",
+      compact: true,
+      fold: true,
+      foldValue: (r) => {
+        if (!r.primary_type) return "";
+        const primary = tTypes(`types.${r.primary_type}`);
+        const hasSecondary = r.secondary_type && r.secondary_type !== r.primary_type;
+        return hasSecondary ? `${primary}/${tTypes(`types.${r.secondary_type}`)}` : primary;
+      },
+      render: (r) => <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} stacked />,
+    },
+    {
+      key: "value",
+      header: t("profile.thValue"),
+      sortKey: "market_value",
+      numeric: true,
+      compact: true,
+      render: (r) => (
+        <span className="text-cz-accent-t font-bold">
+          {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
+        </span>
+      ),
+    },
+    ...STATS.map(({ key, label }) => ({
+      key,
+      header: label,
+      sortKey: key,
+      numeric: true,
+      tight: true,
+      render: (r) => (
+        <span className="inline-block min-w-[24px] text-center text-xs font-mono px-1 py-0.5 rounded"
+          style={statStyle(r[key] || 0)}>
+          {r[key] || "-"}
+        </span>
+      ),
+    })),
+  ];
 
   // #2849 bølge 5: hero stat-række — de fire altid-kendte holdtal + (hvis en
   // sæsonplacering findes) point/etapesejre/GC-sejre. Erstatter de to separate
@@ -277,7 +374,7 @@ export default function TeamProfilePage() {
       <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
         <button type="button" onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
-          {t("profile.back")}
+          <ChevronLeftIcon size={16} />{t("profile.back")}
         </button>
 
         <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
@@ -318,11 +415,7 @@ export default function TeamProfilePage() {
               </div>
             )}
           </div>
-          <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
-            {statBlocks.map((b, i) => (
-              <HeroStatBlock key={b.label} label={b.label} value={b.value} sub={b.sub} last={i === statBlocks.length - 1} />
-            ))}
-          </div>
+          <HeroStats items={statBlocks} />
         </section>
 
         {/* Tabs UNDER kortet på sidens baggrund — TabList bærer sin egen
@@ -356,109 +449,45 @@ export default function TeamProfilePage() {
             <TeamClubTab teamId={id} />
           )}
 
-          {/* Squad with FM toggle */}
+          {/* #4628 (slice 3 af #4622, audit 2026-09 række #31): truppen brugte
+              sin egen kopi af tabel-markuppen, hvor Status/Alder/Type var
+              `hidden sm:table-cell` — på 375px forsvandt de HELT: hverken foldet
+              ind i navnecellens underlinje eller nåelige ved vandret scroll
+              (TASTE P10 / PAGE_TEMPLATES T2's mobil-regel). Den kanoniske
+              DataTable ejer begge dele: pinned navnekolonne, ubetinget vandret
+              scroll, og `fold` der lægger nation/alder/type i underlinjen. */}
           {activeTab === "squad" && (
             <Section>
-              <SectionHeader
-                title={t("profile.squadTitle", { count: currentRiders.length })}
-                action={hasTransfers && (
-                  <div className="flex rounded-cz border border-cz-border overflow-hidden">
-                    {[
-                      { key: "current",  label: t("profile.viewCurrent",  { count: currentRiders.length }) },
-                      { key: "upcoming", label: t("profile.viewUpcoming", { count: upcomingCount }) },
-                    ].map(v => (
-                      <button key={v.key} type="button" onClick={() => setSquadView(v.key)}
-                        className={`px-2.5 py-1 text-xs font-medium transition-all
-                          ${squadView === v.key
-                            ? "bg-cz-accent/10 text-cz-accent-t"
-                            : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
-                        {v.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              />
+              <SectionHeader title={t("profile.squadTitle", { count: currentRiders.length })} />
               {squadView === "upcoming" && hasTransfers && (
                 <p className="text-cz-3 text-xs mb-3">{t("profile.viewUpcomingHint")}</p>
               )}
               {displayRiders.length === 0 ? (
                 <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("profile.noRiders")} />
               ) : (
-                <div className={WRAP}>
-                  <div className={SCROLLER}>
-                    <table data-sortable className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-cz-border">
-                          <SortTh sortKey="nationality_code" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                            className="px-2 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thNation")}</SortTh>
-                          <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                            className="px-4 py-3 text-left font-medium uppercase sticky left-0 z-sticky bg-cz-card border-r border-cz-border">{t("profile.thRider")}</SortTh>
-                          {/* #1755: Status sortérbar (alders-tier) + Alder/Type som egne
-                              sorterbare kolonner — på linje med eget hold (#1482/#1674). */}
-                          <SortTh sortKey="is_u25" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                            className="px-4 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thBadges")}</SortTh>
-                          <SortTh sortKey="birthdate" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                            className="px-3 py-3 text-center font-medium uppercase hidden sm:table-cell">{t("profile.thAge")}</SortTh>
-                          <SortTh sortKey="primary_type" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                            className="px-3 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thType")}</SortTh>
-                          <SortTh sortKey="market_value" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                            className="px-4 py-3 text-right font-medium">{t("profile.thValue")}</SortTh>
-                          {STATS.map(({ key, label }) => (
-                            <SortTh key={key} sortKey={key} sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                              className="px-1.5 py-3 text-center font-medium w-10">{label}</SortTh>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {displayRiders.map(r => (
-                          <tr key={r.id}
-                            className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer
-                              ${r._isIncoming ? "bg-cz-success-bg" : r._isOutgoing ? "bg-cz-danger-bg" : ""}`}
-                            onClick={() => navigate(`/riders/${r.id}`)}>
-                            <td className="px-2 py-2.5 hidden sm:table-cell">
-                              <NationCell code={r.nationality_code} />
-                            </td>
-                            <td className="px-4 py-2.5 sticky-name-cell sticky left-0 z-sticky border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <RiderLink id={r.id} stopPropagation
-                                  className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
-                                  {r.firstname} {r.lastname}
-                                </RiderLink>
-                                {/* #1531: skade-badge inline på mobil (Status-kolonnen er skjult <sm). */}
-                                {isRiderInjured(r.injured_until) && (
-                                  <span className="sm:hidden">
-                                    <RiderBadges badges={["injured"]} />
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-2.5 hidden sm:table-cell">
-                              <div className="flex flex-wrap items-center gap-1">
-                                {/* #1531: skade-badge først i Status-rækken når rytteren er skadet. */}
-                                <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r, seasonYear), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
-                              </div>
-                            </td>
-                            {/* #1755: numerisk alder + ryttertype som egne celler (matcher eget hold). */}
-                            <td className="px-3 py-2.5 hidden sm:table-cell text-center text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate, seasonYear) ?? "—"}</td>
-                            <td className="px-3 py-2.5 hidden sm:table-cell">
-                              <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
-                            </td>
-                            <td className="px-4 py-2.5 text-right text-cz-accent-t font-mono font-bold">
-                              {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
-                            </td>
-                            {STATS.map(({ key }) => (
-                              <td key={key} className="px-1.5 py-2.5 text-center">
-                                <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
-                                  {r[key] || "—"}
-                                </span>
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <DataTable
+                  label={t("profile.squadTitle", { count: currentRiders.length })}
+                  columns={squadColumns}
+                  rows={displayRiders}
+                  rowKey={(r) => r.id}
+                  dense
+                  rowZone={(r) => (r._isIncoming ? "success" : r._isOutgoing ? "danger" : null)}
+                  rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
+                  sort={tableSort.key}
+                  sortDir={tableSort.dir}
+                  onSort={handleSort}
+                  toolbar={hasTransfers && (
+                    <Segmented
+                      label={t("profile.squadTitle", { count: currentRiders.length })}
+                      value={squadView}
+                      onChange={setSquadView}
+                      options={[
+                        { value: "current", label: t("profile.viewCurrent", { count: currentRiders.length }) },
+                        { value: "upcoming", label: t("profile.viewUpcoming", { count: upcomingCount }) },
+                      ]}
+                    />
+                  )}
+                />
               )}
             </Section>
           )}
