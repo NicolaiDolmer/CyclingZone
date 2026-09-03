@@ -1287,7 +1287,7 @@
     },
     "auctionExpiry": {
       "q": "Hvornår udløber en auktion?",
-      "a": "Når du selv sætter en rytter til salg, vælger du det præcise tidspunkt auktionen slutter, fra 1 til 48 timer frem. En auktion på en fri rytter (uden hold) varer som udgangspunkt mindst 12 aktive timer — uanset hvem der starter den, og uanset hvorfor rytteren blev fri (selv startet, banken, akademiet eller ungdomsmarkedet) — så du ikke går glip af et ungt talent bare fordi du sov eller var på arbejde. Den ene undtagelse er en Flash Auktion, der altid varer præcis 30 minutter. Nattetimer tæller ikke: det aktive vindue er kl. 08 til 24 alle dage. Eksempel: en auktion startet kl. 19:40 slutter samme aften kl. 20:40. En auktion startet kl. 23:30 slutter næste morgen kl. 08:30."
+      "a": "Når du selv sætter en rytter til salg, vælger du det præcise tidspunkt auktionen slutter, fra 1 til 48 timer frem. En auktion på en fri rytter (uden hold) varer som udgangspunkt mindst 12 aktive timer: uanset hvem der starter den, og uanset hvorfor rytteren blev fri (selv startet, banken, akademiet eller ungdomsmarkedet), så du ikke går glip af et ungt talent bare fordi du sov eller var på arbejde. Den ene undtagelse er en Flash Auktion, der altid varer præcis 30 minutter. Nattetimer tæller ikke: det aktive vindue er kl. 08 til 24 alle dage. Eksempel: en auktion startet kl. 19:40 slutter samme aften kl. 20:40. En auktion startet kl. 23:30 slutter næste morgen kl. 08:30."
     },
     "flashAuction": {
       "q": "Hvad er en Flash Auktion?",
