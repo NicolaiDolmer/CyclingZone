@@ -26,6 +26,6 @@
 - **Økonomi/værdier S3:** låst. **Sikkerhed:** kun #691 åben. **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428).
 - **Mekanik:** PR'er merges med `--admin` (én ad gangen); `database/*.sql` applies af auto-migrate.yml ved merge, Claude laver kun post-verify.
 
-> **🤖 Working agent:** Fable (orkestrator), aftenbølge 3/9 fra kl. 22:20: 2 Sonnet-workers i worktrees — #2423 Skew Protection (`fix/2423-skew-protection`) · #3777 proposals-forfremmelse (`chore/3777-promote-applied-proposals`). Flere laner afventer ejer-valg.
+> **🤖 Working agent:** Fable (orkestrator), aftenbølge 3/9 fra kl. 22:20: 6 Sonnet-workers i worktrees — #2423 Skew Protection · #3777 proposals-forfremmelse · #4590 perf efter 1/9 · #4148 finalize-instrumentering + bulk-writes (bag flag) · #4499 Sentry blind på iOS · #3422 pile→ikoner (ejer e2e-slottet). Ejer valgte bundterne "Drift og tempo" + "Anti-slop" kl. 22:30; #4627 er ejer-only (`/design-sync`). Merge: ingen før ejer-go i morgen.
 
 _Historik i git-log, issue-tråde + docs/audits/._
