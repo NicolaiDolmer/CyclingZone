@@ -386,3 +386,36 @@ test("#3709 de tre loft-tekster er væk fra trænings-fladen", () => {
     assert.doesNotMatch(src, new RegExp(`t\\("${key}"`), `${key} skal være slettet, ikke bare skjult`);
   }
 });
+
+// ── #4699: assistent-panelets to accept-stier ────────────────────────────────
+// Begge stier skrev gennem smart-bulk, som springer ryttere med managerens egen
+// plan over server-side. Panelet tilbød dem alligevel, så et fuldt planlagt hold
+// fik "Updated 0 riders" på både enkelt-markering og "Accept all". Guarden
+// pinner at BEGGE stier går gennem det acceptable sæt fra den delte helper.
+test("#4699 begge accept-stier sender kun de ryttere serveren kan skrive", () => {
+  assert.match(
+    src,
+    /import \{[^}]*acceptableSuggestionIds[^}]*acceptableSelectionIds[^}]*\} from "\.\.\/lib\/assistantTrainingSuggestions\.js"/,
+    "begge accept-helpers skal komme fra den delte, unit-testede lib-fil",
+  );
+  assert.match(
+    src,
+    /assistantAcceptableIds = useMemo\(\s*\(\) => new Set\(acceptableSuggestionIds\(assistantVisibleRows\)\)/,
+    "det acceptable sæt skal udledes af de SYNLIGE rækker",
+  );
+  // "Accept all" må ikke længere sende hele visningen.
+  assert.match(src, /applyAssistantSuggestions\(\[\.\.\.assistantAcceptableIds\]\)/,
+    "'Accept all' skal sende det acceptable sæt");
+  assert.doesNotMatch(src, /applyAssistantSuggestions\(assistantVisibleRows\.map\(/,
+    "'Accept all' må ikke sende hele visningen igen");
+  // Enkelt-markeringen beskæres af samme kilde.
+  assert.match(src, /applyAssistantSuggestions\(acceptableSelectionIds\(assistantSelected, assistantVisibleRows\)\)/,
+    "'Accept selected' skal beskæres til det acceptable");
+  assert.doesNotMatch(src, /applyAssistantSuggestions\(\[\.\.\.assistantSelected\]\)/,
+    "'Accept selected' må ikke sende et ubeskåret valg igen");
+  // En række serveren springer over må ikke kunne markeres.
+  assert.match(src, /if \(!assistantAcceptableIds\.has\(riderId\)\) return;/,
+    "toggleAssistantSelect skal afvise en uacceptabel rytter");
+  assert.match(src, /acceptableCount=\{assistantAcceptableIds\.size\}/,
+    "panelet skal kende antallet, så knappen kan slås fra i stedet for at skrive 0 rækker");
+});

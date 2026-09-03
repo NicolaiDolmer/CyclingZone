@@ -1,152 +1,176 @@
 import { Link } from "react-router";
+import { useTranslation, Trans } from "react-i18next";
 import { useConsent } from "../lib/consent.jsx";
 import { formatDateTime } from "../lib/intl";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { Wordmark } from "../components/Brand.jsx";
-import { Section, SectionHeader, SectionStack } from "../components/ui";
+import { Section, SectionHeader, SectionStack, PageLoader } from "../components/ui";
 import { ChevronLeftIcon } from "../components/ui/icons/index.jsx";
 
-export default function PrivacyPolicyPage() {
-  const { openBanner, consent } = useConsent();
-
-  // Per-route head (#1404/#1301). DA-udgaven i dual-page-mønsteret — hardkodet
-  // dansk copy (siden er EXEMPT i i18n-page-untranslated-guarden).
-  useDocumentHead({
+// #4733/#413: dual-page-mønsteret (PrivacyPolicyPage.jsx + PrivacyPolicyPageEn.jsx)
+// er merget til ÉN komponent der rendrer fra namespacet `privacy` (lazy via
+// HttpBackend, se INLINE_EXEMPT i scripts/i18n-check-namespace-inline.mjs).
+// Sprog vælges pr. route via `forceLang`-prop (App.jsx) — IKKE
+// i18n.changeLanguage, som ville skifte hele app'ens globale sprog. `t` er
+// bundet fast til `forceLang` via useTranslation-optionen `lng` (react-i18next
+// binder t via i18n.getFixedT(lng, ...) uafhængigt af det globale sprog).
+//
+// Document-head-metadata (titel/beskrivelse/canonical) er BEVIDST ikke en del
+// af privacy.json: de skal foreligge med det samme uden at vente på
+// namespace-fetchen, så <title> aldrig kortvarigt viser en rå i18n-nøgle.
+const HEAD_META = {
+  da: {
     title: "Privatlivspolitik · Cycling Zone",
     description:
       "Sådan behandler Cycling Zone dine data: så lidt som muligt, EU-hostet og du bestemmer selv hvad vi må måle.",
     canonical: "https://cyclingzone.org/privatlivspolitik",
-    lang: "da",
+  },
+  en: {
+    title: "Privacy policy · Cycling Zone",
+    description:
+      "How Cycling Zone handles your data: as little as possible, EU-hosted, and you decide what we may measure.",
+    canonical: "https://cyclingzone.org/privacy-policy",
+  },
+};
+
+const OTHER_LANG_PATH = { da: "/privacy-policy", en: "/privatlivspolitik" };
+
+// Trans-tag-komponenter delt af hele privacy.json — juridisk tekst har brug for
+// inline <bold>/<em>/<code> plus ét navngivet link (samme mønster som
+// board:bonusOffer.body / pro:termsAccept).
+const STATIC_TRANS_COMPONENTS = {
+  bold: <strong />,
+  em: <em />,
+  code: <code className="text-xs" />,
+  helpLink: <Link to="/help" className="text-cz-accent-t underline" />,
+};
+
+function TransList({ t, transComponents, i18nKey, className }) {
+  const items = t(i18nKey, { returnObjects: true });
+  if (!Array.isArray(items)) return null;
+  return (
+    <ul className={className}>
+      {items.map((_, i) => (
+        <li key={i}>
+          <Trans t={t} i18nKey={`${i18nKey}.${i}`} components={transComponents} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default function PrivacyPolicyPage({ forceLang = "da" }) {
+  const { openBanner, consent } = useConsent();
+  // Namespace lazy-loaded via HttpBackend (#3697, INLINE_EXEMPT) — `ready`
+  // gater render bag PageLoader så rå nøgler aldrig rammer first paint (samme
+  // in-page-mønster som RulesPage/HelpPage). `lng` er sat FAST pr. route, så
+  // /privacy-policy altid rendrer engelsk uanset app'ens globale sprog.
+  const { t, ready } = useTranslation("privacy", { lng: forceLang });
+
+  const meta = HEAD_META[forceLang] || HEAD_META.da;
+  // Per-route head (#1404/#1301).
+  useDocumentHead({
+    title: meta.title,
+    description: meta.description,
+    canonical: meta.canonical,
+    lang: forceLang,
   });
+
+  if (!ready) return <PageLoader />;
+
+  const transComponents = {
+    ...STATIC_TRANS_COMPONENTS,
+    datatilsynetLink: (
+      <a
+        href={t("sections.rights.complaintUrl")}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-cz-accent-t underline"
+      />
+    ),
+  };
+
+  // #413: DA-siden formaterede altid via formatDateTime (følger app'ens
+  // globale i18n-sprog); EN-siden formaterede altid hardkodet en-GB. Den
+  // adfærd er bevidst bevaret bit-for-bit pr. route i merget.
+  const lastUpdated =
+    forceLang === "en"
+      ? consent.updated_at
+        ? new Date(consent.updated_at).toLocaleString("en-GB")
+        : ""
+      : formatDateTime(consent.updated_at);
 
   return (
     <div className="min-h-screen bg-cz-body py-10 px-4 sm:px-6">
       <div className="max-w-3xl mx-auto">
-        {/* #2849 bølge 6: siden havde sin egen lokale Section-komponent (border-top-
-            delt liste i ét stort kort) med en tredje h2-opskrift (text-xs uppercase
-            tracking-[.12em]) — nu ui/Section (kanonisk kort) + ui/SectionHeader
-            (15px/600 sentence case), samme opskrift som resten af app'en. Header
-            (wordmark/titel/sprogskift/tilbage) sidder på sidebaggrunden ABOVE
-            kort-stakken, samme mønster som T3's back-link. */}
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
             <Link to="/" aria-label="Cycling Zone" className="inline-block">
               <Wordmark className="h-4 w-auto mb-3" alt="" />
             </Link>
-            <h1 className="text-cz-1 font-display text-4xl tracking-tight leading-none">Privatlivspolitik</h1>
+            <h1 className="text-cz-1 font-display text-4xl tracking-tight leading-none">{t("page.title")}</h1>
           </div>
           <div className="flex flex-shrink-0 items-center gap-3 text-sm pt-1">
-            <Link to="/privacy-policy" className="text-cz-3 hover:text-cz-1">English</Link>
+            <Link to={OTHER_LANG_PATH[forceLang]} className="text-cz-3 hover:text-cz-1">{t("page.langSwitchLabel")}</Link>
             <Link to="/" className="inline-flex items-center gap-1 text-cz-3 hover:text-cz-1">
-              <ChevronLeftIcon size={14} aria-hidden="true" />Tilbage
+              <ChevronLeftIcon size={14} aria-hidden="true" />{t("page.back")}
             </Link>
           </div>
         </div>
 
-        <p className="text-cz-3 text-sm mb-6">
-          Senest opdateret: 3. august 2026. Cycling Zone er en åben beta drevet af Dolmer Digital (CVR 46524861).
-          Vi behandler så lidt data som muligt, og du bestemmer selv hvad vi må måle.
-        </p>
+        <p className="text-cz-3 text-sm mb-6">{t("page.intro")}</p>
 
         <SectionStack>
           <Section>
-            <SectionHeader title="Hvem er dataansvarlig?" />
+            <SectionHeader title={t("sections.controller.heading")} />
             <div className="text-cz-2 text-sm leading-relaxed">
-              <p>
-                <strong>Dolmer Digital</strong> (CVR 46524861), enkeltmandsvirksomhed v/ Nicolai Dolmer Mikkelsen. Cycling Zone er et produkt af Dolmer Digital.
-              </p>
-              <p className="mt-2">
-                Henvendelser om dine data (indsigt, sletning, dataportabilitet, indsigelse) kan sendes via Discord (foretrukket) eller via en e-mail oplyst på{" "}
-                <Link to="/help" className="text-cz-accent-t underline">Hjælp-siden</Link>. Vi svarer normalt inden for få dage, senest inden for én måned jf. GDPR art. 12.
-              </p>
+              <p><Trans t={t} i18nKey="sections.controller.paragraph1" components={transComponents} /></p>
+              <p className="mt-2"><Trans t={t} i18nKey="sections.controller.paragraph2" components={transComponents} /></p>
             </div>
           </Section>
 
           <Section>
-            <SectionHeader title="Hvilke data behandler vi?" />
+            <SectionHeader title={t("sections.dataTypes.heading")} />
             <div className="text-cz-2 text-sm leading-relaxed">
-              <ul className="list-disc pl-5 space-y-1">
-                <li><strong>Konto:</strong> e-mail, brugernavn, valgt holdnavn og manager-navn (nødvendigt for at logge ind og deltage).</li>
-                <li><strong>Spildata:</strong> dit holds økonomi, ryttere, auktioner, bestyrelses-status, sæsonresultater (alt skabt ved at spille).</li>
-                <li><strong>Frivilligt:</strong> Discord-ID hvis du selv tilføjer det for at modtage DM-notifikationer.</li>
-                <li><strong>Teknisk:</strong> IP-adresse i adgangslogs i op til 30 dage til drift og sikkerhed.</li>
-                <li><strong>Analyse (kun med dit samtykke):</strong> anonyme adfærdsdata via Microsoft Clarity (fx hvor brugere klikker forgæves eller skroller frustreret), anonym trafik-/kildestatistik via Google Analytics (fx hvilken side du kom fra) og anonyme sidevisninger via Vercel Web Analytics (fx hvor mange der besøger en side). Bruges udelukkende til at rette dårlig UX og forstå hvor spillere finder spillet.</li>
-                <li><strong>Tilmeldingskilde (legitim interesse):</strong> når du opretter en konto, registrerer vi hvordan du først nåede siden (et henvisende link, eventuelle kampagne-tags i URL&apos;en og den side du landede på), så vi kan se hvilke kanaler der bringer nye spillere. Kun first-party, ingen cross-site-tracking, og du kan til enhver tid gøre indsigelse.</li>
-                <li><strong>Aggregeret trafikstatistik (kræver ikke samtykke):</strong> vi tæller anonyme, aggregerede sidevisninger og engagement (fx hvor mange besøgende en side fik, og om de engagerede sig) uden cookies og uden at gemme IP-adresser eller andre data der kan identificere dig. Vi registrerer også hvilken side besøget kom fra og eventuelle kampagne-tags i URL&apos;en, så vi kan se hvilke kanaler der bringer besøgende. Det er oplysninger om det henvisende link, ikke om dig. Da det ikke kan henføres til dig, kræver det ikke samtykke.</li>
-                {/* #3132: fair play-telemetri (identity_events, live 31/7) — ejer-godkendt ordlyd 3/8. */}
-                <li><strong>Fair play (legitim interesse):</strong> for at kunne opdage og dokumentere snyd med flere konti registrerer vi tekniske signaler ved kontooprettelse og ved værdibærende handlinger i spillet (fx accepterede transfers, auktionsbud og optagne lån): IP-adresse, browser-oplysninger (user-agent), sprogindstilling og tidszone. Disse data bruges udelukkende til fair play-håndhævelse, er aldrig synlige for andre spillere, deles ikke med tredjeparter og slettes automatisk efter 180 dage. Sletter du din konto, slettes de sammen med den. Grundlaget er vores legitime interesse i et retfærdigt spil (GDPR art. 6, stk. 1, litra f), og du kan til enhver tid gøre indsigelse.</li>
-              </ul>
+              <TransList t={t} transComponents={transComponents} i18nKey="sections.dataTypes.items" className="list-disc pl-5 space-y-1" />
             </div>
           </Section>
 
           <Section>
-            <SectionHeader title="Founder-waitlist (uforpligtende interessetilkendegivelse)" />
+            <SectionHeader title={t("sections.founderWaitlist.heading")} />
             <div className="text-cz-2 text-sm leading-relaxed">
-              <p className="mb-2">
-                Hvis du tilmelder dig vores waitlist for &quot;Founder&quot;-status, behandler vi følgende data baseret på dit udtrykkelige samtykke (GDPR art. 6, stk. 1, litra a):
-              </p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li><strong>Kontakt:</strong> e-mail og/eller Discord-handle (mindst én kræves så vi kan vende tilbage).</li>
-                <li><strong>Intent:</strong> interesseniveau, foretrukken tier, primær årsag, hvilke fordele du værdsætter, hvad du opfatter som unfair (fritekst).</li>
-                <li><strong>Opfølgning:</strong> samtykke til personlig opfølgning (separat ja/nej).</li>
-                <li><strong>Attribution:</strong> hvor du kom fra (UTM-parameter eller manuelt tag, fx &quot;discord_launch&quot;).</li>
-                <li><strong>Tidspunkt:</strong> hvornår du gav samtykke (tidsstempel som bevis).</li>
-              </ul>
-              <p className="mt-3">
-                <strong>Formål:</strong> at administrere waitlisten, kontakte dig vedrørende lancering, og måle hvilke kanaler der genererer reel interesse.
-              </p>
-              <p className="mt-2">
-                <strong>Opbevaring:</strong> indtil du beder os slette dig, eller efter 24 måneders inaktivitet, hvad der kommer først. Du kan til enhver tid skrive til os og blive slettet.
-              </p>
-              <p className="mt-2">
-                <strong>Vigtigt:</strong> en waitlist-tilmelding er <em>ikke</em> et køb og <em>ikke</em> bindende. Der opkræves ingen betaling før en eventuel senere lancering, hvor du aktivt skal acceptere salgsvilkår.
-              </p>
+              <p className="mb-2">{t("sections.founderWaitlist.intro")}</p>
+              <TransList t={t} transComponents={transComponents} i18nKey="sections.founderWaitlist.items" className="list-disc pl-5 space-y-1" />
+              <p className="mt-3"><Trans t={t} i18nKey="sections.founderWaitlist.purpose" components={transComponents} /></p>
+              <p className="mt-2"><Trans t={t} i18nKey="sections.founderWaitlist.retention" components={transComponents} /></p>
+              <p className="mt-2"><Trans t={t} i18nKey="sections.founderWaitlist.important" components={transComponents} /></p>
             </div>
           </Section>
 
           <Section>
-            <SectionHeader title="Tredjeparter (databehandlere)" />
+            <SectionHeader title={t("sections.thirdParties.heading")} />
             <div className="text-cz-2 text-sm leading-relaxed">
-              <ul className="list-disc pl-5 space-y-1">
-                <li><strong>Supabase (EU, Frankfurt):</strong> database og autentificering (databehandleraftale i kraft).</li>
-                <li><strong>Vercel:</strong> hosting af frontend (EU/US edge). Vercel kan se IP i adgangslogs.</li>
-                <li><strong>Railway:</strong> hosting af backend.</li>
-                <li><strong>Microsoft Clarity:</strong> kun aktiveret hvis du har accepteret &quot;Analyse&quot;-kategorien.</li>
-                <li><strong>Google Analytics:</strong> kun aktiveret hvis du har accepteret &quot;Analyse&quot;-kategorien. Annonce-signaler er slået fra.</li>
-                <li><strong>Vercel Web Analytics:</strong> kun aktiveret hvis du har accepteret &quot;Analyse&quot;-kategorien.</li>
-                <li><strong>Discord (via Discord Inc.):</strong> kun hvis du frivilligt tilføjer dit Discord-ID, eller skriver til os på Discord. Discord er en selvstændig dataansvarlig for det indhold du sender til os der.</li>
-              </ul>
-              <p className="mt-2 text-cz-3 text-xs">
-                Vi sælger eller deler ikke dine data med tredjeparter til marketing. Et link til Discord er ikke en data-overførsel, først når du selv klikker og skriver til os.
-              </p>
+              <TransList t={t} transComponents={transComponents} i18nKey="sections.thirdParties.items" className="list-disc pl-5 space-y-1" />
+              <p className="mt-2 text-cz-3 text-xs">{t("sections.thirdParties.footnote")}</p>
             </div>
           </Section>
 
           <Section>
-            <SectionHeader title="Hvor længe gemmer vi data?" />
+            <SectionHeader title={t("sections.retention.heading")} />
             <div className="text-cz-2 text-sm leading-relaxed">
-              <ul className="list-disc pl-5 space-y-1">
-                <li><strong>Konto- og spildata:</strong> så længe din konto er aktiv. Sletter du kontoen, fjernes personhenførbare data inden for 30 dage; aggregeret spillehistorik (fx tidligere sæsonresultater) kan bevares anonymiseret.</li>
-                <li><strong>Waitlist-data:</strong> indtil du beder os slette dig, eller 24 måneders inaktivitet, hvad der kommer først.</li>
-                <li><strong>Adgangslogs (IP):</strong> automatisk slettet efter 30 dage.</li>
-                <li><strong>Fair play-telemetri (IP og enhedssignaler):</strong> automatisk slettet efter 180 dage.</li>
-                <li><strong>Samtykke-bevis (consent_given_at + valg):</strong> så længe det relaterede data behandles, så vi kan dokumentere lovligt grundlag.</li>
-              </ul>
+              <TransList t={t} transComponents={transComponents} i18nKey="sections.retention.items" className="list-disc pl-5 space-y-1" />
             </div>
           </Section>
 
           <Section>
-            <SectionHeader title="Dine rettigheder under GDPR" />
+            <SectionHeader title={t("sections.rights.heading")} />
             <div className="text-cz-2 text-sm leading-relaxed">
-              Du har ret til:
+              {t("sections.rights.intro")}
               <ul className="list-disc pl-5 space-y-1 mt-2">
-                <li><strong>Indsigt</strong>: at få at vide hvilke data vi har om dig.</li>
-                <li><strong>Berigtigelse</strong>: at få forkerte data rettet.</li>
-                <li><strong>Sletning</strong> (&quot;ret til at blive glemt&quot;).</li>
-                <li><strong>Dataportabilitet</strong>: at få dine data udleveret i et maskinlæsbart format.</li>
-                <li><strong>Indsigelse</strong> mod behandling baseret på legitim interesse.</li>
-                <li><strong>Tilbagetrækning af samtykke</strong>: gælder fremadrettet og stopper indsamlingen. Data hentet før tilbagetrækningen kan ikke fjernes fra anonyme aggregater.</li>
-                <li><strong>Klage til Datatilsynet</strong>: <a href="https://www.datatilsynet.dk" target="_blank" rel="noopener noreferrer" className="text-cz-accent-t underline">datatilsynet.dk</a>.</li>
+                {t("sections.rights.items", { returnObjects: true }).map((_, i) => (
+                  <li key={i}><Trans t={t} i18nKey={`sections.rights.items.${i}`} components={transComponents} /></li>
+                ))}
+                <li><Trans t={t} i18nKey="sections.rights.complaint" components={transComponents} /></li>
               </ul>
               <div className="mt-3">
                 <button
@@ -154,45 +178,35 @@ export default function PrivacyPolicyPage() {
                   onClick={openBanner}
                   className="bg-cz-accent text-cz-on-accent font-semibold text-sm rounded-cz px-4 py-2 hover:brightness-110 transition-all"
                 >
-                  Skift mine samtykke-valg
+                  {t("sections.rights.consentButton")}
                 </button>
               </div>
             </div>
           </Section>
 
           <Section>
-            <SectionHeader title="Cookies og lokal lagring" />
+            <SectionHeader title={t("sections.cookies.heading")} />
             <div className="text-cz-2 text-sm leading-relaxed">
-              <p>
-                Vi bruger <em>nødvendige</em> cookies/localStorage og first-party-lagring til:
-              </p>
-              <ul className="list-disc pl-5 space-y-1 mt-2">
-                <li><strong>Login-session</strong> (Supabase auth): nødvendig for at holde dig logget ind.</li>
-                <li><strong>Temavalg</strong> (lys/mørk): gemt lokalt i din browser.</li>
-                <li><strong>Samtykke-valg</strong> (<code className="text-xs">cz_consent_v1</code> i localStorage): så vi husker dine valg og ikke spørger igen.</li>
-              </ul>
-              <p className="mt-2">
-                Disse kræver ikke samtykke jf. ePrivacy-direktivet (strengt nødvendige). <strong>Microsoft Clarity</strong>, <strong>Google Analytics</strong> og <strong>Vercel Web Analytics</strong> indlæses kun hvis du aktivt har accepteret &quot;Analyse&quot;-kategorien. Du kan til enhver tid skifte valg her på siden.
-              </p>
+              <p><Trans t={t} i18nKey="sections.cookies.intro" components={transComponents} /></p>
+              <TransList t={t} transComponents={transComponents} i18nKey="sections.cookies.items" className="list-disc pl-5 space-y-1 mt-2" />
+              <p className="mt-2"><Trans t={t} i18nKey="sections.cookies.outro" components={transComponents} /></p>
             </div>
           </Section>
 
           <Section>
-            <SectionHeader title="Dit nuværende valg" />
+            <SectionHeader title={t("sections.currentChoices.heading")} />
             <ul className="text-cz-3 text-sm space-y-1">
-              <li>Nødvendige: <strong className="text-cz-1">altid på</strong></li>
-              <li>Analyse: <strong className="text-cz-1">{consent.analytics ? "accepteret" : "afvist"}</strong></li>
-              <li>Marketing: <strong className="text-cz-1">{consent.marketing ? "accepteret" : "afvist"}</strong></li>
-              <li>E-mail: <strong className="text-cz-1">{consent.email_marketing ? "accepteret" : "afvist"}</strong></li>
-              {consent.updated_at && <li className="text-xs">Sidst opdateret: {formatDateTime(consent.updated_at)}</li>}
+              <li>{t("sections.currentChoices.necessary")}: <strong className="text-cz-1">{t("sections.currentChoices.alwaysOn")}</strong></li>
+              <li>{t("sections.currentChoices.analytics")}: <strong className="text-cz-1">{consent.analytics ? t("sections.currentChoices.accepted") : t("sections.currentChoices.denied")}</strong></li>
+              <li>{t("sections.currentChoices.marketing")}: <strong className="text-cz-1">{consent.marketing ? t("sections.currentChoices.accepted") : t("sections.currentChoices.denied")}</strong></li>
+              <li>{t("sections.currentChoices.email")}: <strong className="text-cz-1">{consent.email_marketing ? t("sections.currentChoices.accepted") : t("sections.currentChoices.denied")}</strong></li>
+              {consent.updated_at && <li className="text-xs">{t("sections.currentChoices.lastUpdated", { date: lastUpdated })}</li>}
             </ul>
           </Section>
 
           <Section>
-            <SectionHeader title="Ændringer i politikken" />
-            <div className="text-cz-2 text-sm leading-relaxed">
-              Vi opdaterer politikken når nye værktøjer eller funktioner introduceres. Større ændringer annonceres i patch-noter; du kan altid se den nyeste version her.
-            </div>
+            <SectionHeader title={t("sections.changes.heading")} />
+            <div className="text-cz-2 text-sm leading-relaxed">{t("sections.changes.paragraph")}</div>
           </Section>
         </SectionStack>
       </div>

@@ -37,6 +37,7 @@ const INLINE_EXEMPT = new Set([
   "help", // kun HelpPage.jsx — ready-gate + PageLoader
   "rules", // kun RulesPage.jsx — ready-gate + PageLoader
   "patchnotes", // kun PatchNotesPage.jsx — ready indgår i eksisterende PageLoader-gate
+  "privacy", // #4733/#413: kun PrivacyPolicyPage.jsx (begge ruter) — ready-gate + PageLoader
 
   // #3697: rod-årsagen bag 26 budget-hævninger. Alle namespaces herunder har
   // deres ENESTE forbrugere bag en lazy route (React.lazy i App.jsx) hvor

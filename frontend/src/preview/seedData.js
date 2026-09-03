@@ -1923,10 +1923,18 @@ export const SEED_TRAINING = {
   // ikke et fokus assistenten reelt foreslår (SESSION_INTENSITY mangler en
   // nøgle for den, og dayPanel.session_restitution findes slet ikke i i18n —
   // et forslag på den værdi ville rendere den rå i18n-nøgle i panelet).
-  smartDefaultFocus: { "rider-2": "vo2max", "rider-4": "technique", "rider-6": "endurance" },
-  // #4736: rider-7 racer i dag — dækker "racer i dag"-badget i Skift dag-
-  // kolonnen og racing-tælleren/filteret i overbliksstriben. Løbsnavnet
-  // matcher SEED_RACES' "race-up-1" for konsistens på tværs af preview.
+  //   #4699 (merge med main 3/9): rider-1 har BÅDE en plan og et hint — det er
+  //   den "din plan"-tilstand AssistantSuggestionsPanel skal vise (badge +
+  //   slået-fra checkbox). #4699's oprindelige preview-scenarie regnede med at
+  //   Ada var TEST_TEAM's ENESTE rytter, så acceptableCount blev 0 og
+  //   "Accept all"-noten viste sig. Det holder ikke længere: #4613 gav
+  //   TEST_TEAM 7 ryttere, så rider-4 og rider-6 er reelt acceptable. Begge
+  //   tilstande er stadig dækket på samme flade — "din plan" på rider-1, et
+  //   ægte forslag på rider-4/6.
+  smartDefaultFocus: { "rider-1": "sprint", "rider-2": "vo2max", "rider-4": "technique", "rider-6": "endurance" },
+  // #4736: rider-7 racer i dag — dækker "racer i dag"-badget i dags-kolonnen
+  // og racing-tælleren/filteret i overbliksstriben. Løbsnavnet matcher
+  // SEED_RACES' "race-up-1" for konsistens på tværs af preview.
   racingToday: { "rider-7": { race: "Tour de Preview" } },
   weekPlan: null,
   riderWeekPlans: {},

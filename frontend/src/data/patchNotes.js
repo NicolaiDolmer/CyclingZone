@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.244",
+    "version": "7.245",
     "date": "2026-09-03",
     "label": "Beta",
     "changes": [
@@ -17,6 +17,27 @@ export const PATCHES = [
           "body": "Første fane er nu et overblik: én tæt række pr. rytter med form, træthed, dagens dag og de næste syv dage som en strimmel, plus et søgefelt og et filter for de ryttere der endnu ikke har fået en dag. Intet er fjernet. Sæsonens kvittering pr. evne er flyttet til Udvikling, dagens rapport og gårsdagens fremgang til Rapporter, og den individuelle ugeplan til Ugeplan, hvor et klik på rytterens uge-strimmel fører dig direkte til hans egen plan. Dagens valg er nu ét kontrol pr. rytter, hvile, aktiv restitution eller hans egen session, og de øvrige sessioner ligger bag \"Andet\", så form, træthed og status er med på skærmen."
         },
         "refs": [4613, 4623]
+      }
+    ]
+  },
+  {
+    "version": "7.244",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Assistant suggestions: Accept now works on a fully planned squad",
+          "body": "The assistant never overwrites a rider you've already set a focus for, but the suggestion panel still offered a checkbox for them, so a squad with a plan on every rider got \"Updated 0 riders\" no matter what you ticked. Those rows now show \"Your plan\" and can't be ticked, and Accept all only covers riders marked \"No plan\"."
+        },
+        "da": {
+          "title": "Assistentens forslag: Accepter virker nu på et fuldt planlagt hold",
+          "body": "Assistenten overskriver aldrig en rytter du selv har sat et fokus for, men forslagspanelet tilbød stadig en aktiv boks for dem, så et hold med en plan på hver rytter fik \"Updated 0 riders\" uanset hvad du markerede. De rækker viser nu \"Din plan\" og kan ikke markeres, og Accepter alle dækker kun ryttere markeret \"Ingen plan\"."
+        },
+        "refs": [4699]
       }
     ]
   },

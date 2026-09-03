@@ -82,6 +82,29 @@ try {
   node scripts/lint-constraint-form.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "constraint-form-guard" }
 
+  # #2858: CI-vagten koerer kun paa AENDREDE SQL-filer (hele database/ har historiske
+  # fund der ikke afspejler live-tilstanden, se scriptets header) - spejler samme
+  # afgraensning her, ellers fanger preflight ikke det CI faktisk spaerrer paa.
+  # origin/main skal vaere fetchet for at diffen er retvisende (samme forudsaetning
+  # som resten af scriptet, der antager en frisk `git fetch origin`).
+  Write-Host "== secdef-revoke-lint (SECURITY DEFINER uden REVOKE i aendrede SQL-filer, #2858) ==" -ForegroundColor Cyan
+  $changedSql = @()
+  try {
+    $diffOutput = & git --no-pager diff --name-only origin/main...HEAD -- database 2>$null
+    if ($LASTEXITCODE -eq 0 -and $diffOutput) {
+      $changedSql = @($diffOutput | Where-Object { $_ -match '\.sql$' -and (Test-Path $_) })
+    }
+  } catch {
+    # git diff kan fejle hvis origin/main ikke findes lokalt - spring tjekket over
+    # i stedet for at fejle preflight paa git-infrastruktur.
+  }
+  if ($changedSql.Count -gt 0) {
+    node scripts/check-secdef-revoke-lint.mjs $changedSql
+    if ($LASTEXITCODE -ne 0) { $failed += "secdef-revoke-lint" }
+  } else {
+    Write-Host "  (ingen aendrede .sql-filer mod origin/main - sprunget over)" -ForegroundColor DarkGray
+  }
+
   Write-Host "== workflow-output-guard (vagt der gaar groen uden at maale, #4463) ==" -ForegroundColor Cyan
   node scripts/lint-workflow-output-masking.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "workflow-output-guard" }
