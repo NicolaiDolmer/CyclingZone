@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Training starts with your squad",
-          "body": "The first tab is now an overview: one dense row per rider with form, fatigue, today's day and the next seven days as a strip, plus a search box and a filter for the riders who still have no day set. Nothing was removed. The season receipt per ability moved to Development, today's report and yesterday's gains moved to Reports, and the individual weekly plan moved to Week plan, where clicking a rider's week strip takes you straight to his own plan."
+          "body": "The first tab is now an overview: one dense row per rider with form, fatigue, today's day and the next seven days as a strip, plus a search box and a filter for the riders who still have no day set. Nothing was removed. The season receipt per ability moved to Development, today's report and yesterday's gains moved to Reports, and the individual weekly plan moved to Week plan, where clicking a rider's week strip takes you straight to his own plan. Today's day is one control per rider now, rest, active recovery or his own session, with the remaining sessions behind \"Other\", so form, fatigue and status all fit on screen."
         },
         "da": {
           "title": "Træning starter med truppen",
-          "body": "Første fane er nu et overblik: én tæt række pr. rytter med form, træthed, dagens dag og de næste syv dage som en strimmel, plus et søgefelt og et filter for de ryttere der endnu ikke har fået en dag. Intet er fjernet. Sæsonens kvittering pr. evne er flyttet til Udvikling, dagens rapport og gårsdagens fremgang til Rapporter, og den individuelle ugeplan til Ugeplan, hvor et klik på rytterens uge-strimmel fører dig direkte til hans egen plan."
+          "body": "Første fane er nu et overblik: én tæt række pr. rytter med form, træthed, dagens dag og de næste syv dage som en strimmel, plus et søgefelt og et filter for de ryttere der endnu ikke har fået en dag. Intet er fjernet. Sæsonens kvittering pr. evne er flyttet til Udvikling, dagens rapport og gårsdagens fremgang til Rapporter, og den individuelle ugeplan til Ugeplan, hvor et klik på rytterens uge-strimmel fører dig direkte til hans egen plan. Dagens valg er nu ét kontrol pr. rytter, hvile, aktiv restitution eller hans egen session, og de øvrige sessioner ligger bag \"Andet\", så form, træthed og status er med på skærmen."
         },
         "refs": [4613, 4623]
       }

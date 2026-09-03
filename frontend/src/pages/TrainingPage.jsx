@@ -701,10 +701,11 @@ export default function TrainingPage() {
 
   // --- Gruppering + multi-select (#1480) ---
   // Antal kolonner i roster-tabellen — bruges til colSpan på gruppe-header-rækker.
-  // #4613: 10 kolonner (vælg, navn, type, alder, dag, skift dag, uge, form,
-  // træthed, status). Kvitterings-kolonnen flyttede til Udvikling-fanen, og
-  // ugeplan-knappens egen kolonne blev uge-strippen.
-  const ROSTER_COLS = 10;
+  // #4613: kvitterings-kolonnen flyttede til Udvikling-fanen, og ugeplan-
+  // knappens egen kolonne blev uge-strippen. #4736: Dag og "Skift dag" er slået
+  // sammen til ÉN celle, så der er 9 kolonner (vælg, navn, type, alder, dag,
+  // uge, form, træthed, status).
+  const ROSTER_COLS = 9;
 
   // Accessors til roster-sortering. form/fatigue bor i condition-map'et (ikke på
   // rytteren), så closure over condition — useMemo holder referencen stabil pr.
@@ -892,7 +893,7 @@ export default function TrainingPage() {
           </div>
           {/* #3045: portræt-kolonnekontrakt — Type + Alder + Form + Træthed foldes
               ind i navne-underlinjen ≤640px (samme "DataTable fold"-mønster som
-              RidersPage/TeamPage), så Dag + Skift dag + Uge beholder pladsen i
+              RidersPage/TeamPage), så Dag + Uge beholder pladsen i
               portræt. #3194: underlinjen må ALDRIG diktere kolonnebredden —
               denne celle er STICKY, så max-w + ombrydning i stedet for nowrap. */}
           <div className="mt-0.5 sm:hidden max-w-[40vw] font-data text-3xs uppercase tracking-[.05em] text-cz-3">
@@ -922,93 +923,124 @@ export default function TrainingPage() {
           <span className="text-cz-2">{ageForSeason(rider.birthdate, seasonYear) ?? "—"}</span>
         </td>
 
-        {/* #3721: fokus-vælgeren er et panel, ikke en <select> (ejer-godkendt
-            14/8) — cellen bar før fire signaler i 184 px. #4613: cellen er
-            dagens VALG, som chip: en rytter uden en valgt dag bærer den
-            stiplede advarsels-kant, så hullerne kan ses ned gennem kolonnen. */}
-        <td className={tdClass({ dense: true })}>
-          {/* #3721: DELT FocusOpenButton — samme komponent/mutation som
-              Development-fanens rækker bruger (ingen forgrenet fokus-logik). */}
-          <FocusOpenButton
-            rider={rider}
-            plan={plan}
-            busy={busy}
-            smartFocus={smartDefaultFocus[rider.id]}
-            error={planActionError?.riderId === rider.id ? planActionError.error : null}
-            onOpen={() => setFocusPanelRiderId(rider.id)}
-            t={t}
-            dataTour={isFirst ? "training-focus" : undefined}
-          />
-        </td>
-
-        {/* Skift dag */}
-        <td className={tdClass({ dense: true })}>
-          {plan?.focus ? (
-            <div
-              role="group"
-              aria-label={`${t("dayPanel.colChangeDay")} — ${rider.firstname} ${rider.lastname}`}
-              // #3459 V3: dæmpet (ikke deaktiveret) på løbsdage — planen er urørt og
-              // gælder alle ikke-løbsdage, knapperne forbliver derfor fuldt aktive.
-              className={`inline-flex rounded-cz border border-cz-border overflow-hidden ${raceToday ? "opacity-[0.55]" : ""}`}
-            >
-              {/* #3762: intensiteten er ikke længere et frit valg — den er en
-                  egenskab ved sessionen. Knapperne skifter derfor DAGEN.
-                  Sessions-knappen bærer rytterens egen session, som serveren
-                  bevarer hen over en hviledag, så vejen tilbage er ét klik.
-                  #4613: det aktive segment er guld-TEKST på 10% guld-flade,
-                  samme anatomi som kittets Segmented (TASTE fork 3) — den
-                  fyldte guld-knap var et andet guld-signal i hver række. */}
-              {QUICK_DAY_TYPES.map((k) => {
-                const activeDay = dayTypeForProgram(plan);
-                const isSession = k === "session";
-                const dayType = isSession ? sessionDayType(plan) : k;
-                const label = isSession
-                  ? t(`dayPanel.session_${plan.focus}`, { defaultValue: t("dayPanel.dayType_training") })
-                  : t(`dayPanel.dayType_${k}`);
-                const pressed = isSession ? activeDay === dayType : activeDay === k;
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => handleDayQuickChange(rider.id, isSession ? "session" : k, plan.focus)}
-                    aria-pressed={pressed}
-                    className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
-                      pressed ? "bg-cz-accent/10 font-semibold text-cz-accent-t" : "text-cz-2 hover:bg-cz-subtle"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <span className="text-cz-3 text-xs">—</span>
-          )}
-          {/* #2438 — "én sandhed pr. rytter": vis altid dagens EFFEKTIVE intensitet +
-              kilden når holdet har en ugerytme, uanset om rytteren selv har en plan.
-              Kompakt T2-meta-linje med den fulde forklaring som title-tooltip.
-              #3459 V3: løbsdags-linjen ERSTATTER (ikke supplerer) rytme-hinten på
-              dage rytteren racer i dag — racedagen ER dagens svar på "hvorfor". */}
-          {raceToday ? (
-            <div
-              className="mt-1 flex items-center gap-1 font-data text-3xs uppercase tracking-[.06em] text-cz-accent"
-              title={t("raceDayTooltip", {
-                riderName: `${rider.firstname} ${rider.lastname}`,
-                raceName: raceToday.race ?? t("raceDayTooltipRaceFallback"),
-              })}
-            >
-              <FlagIcon size={12} aria-hidden="true" />
-              {t("raceDayBadge")}
-            </div>
-          ) : teamRhythmActive && (
-            <div
-              className="mt-1 font-data text-3xs uppercase tracking-[.06em] text-cz-3"
-              title={t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
-            >
-              {t("weekRhythmTodayShort", { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
-            </div>
-          )}
+        {/* #4736 (ejer-review af #4613, 3/9): ÉN dags-celle pr. række. "Dag" og
+            "Skift dag" stod side om side og sagde det samme, og de to kolonner
+            skubbede Form, Træthed og Status ud over højre kant ved 1440 px.
+            Segmentet er nu det primære — Hvile · Aktiv restitution · rytterens
+            egen session — og de øvrige sessionstyper ligger bag "Andet", som
+            åbner PRÆCIS det samme dags-panel som "Dag"-chippen gjorde. Uden en
+            valgt dag beholder cellen "Vælg dag"-tilstanden med assistentens
+            forslag. Samme mutationer som før, kun én celle i stedet for to. */}
+        <td className={tdClass({ compact: true, dense: true })}>
+          {/* #2819: tour-ankeret sidder på cellens wrapper, ikke på en af de to
+              grene, så det findes uanset om rytteren har valgt en dag endnu. */}
+          <div data-tour={isFirst ? "training-focus" : undefined}>
+            {plan?.focus ? (
+              <div
+                role="group"
+                aria-label={`${t("dayPanel.colDay")} — ${rider.firstname} ${rider.lastname}`}
+                // #3459 V3: dæmpet (ikke deaktiveret) på løbsdage — planen er urørt og
+                // gælder alle ikke-løbsdage, knapperne forbliver derfor fuldt aktive.
+                className={`inline-flex rounded-cz border border-cz-border overflow-hidden ${raceToday ? "opacity-[0.55]" : ""}`}
+              >
+                {/* #3762: intensiteten er ikke længere et frit valg — den er en
+                    egenskab ved sessionen. Knapperne skifter derfor DAGEN.
+                    Sessions-knappen bærer rytterens egen session, som serveren
+                    bevarer hen over en hviledag, så vejen tilbage er ét klik.
+                    #4613: det aktive segment er guld-TEKST på 10% guld-flade,
+                    samme anatomi som kittets Segmented (TASTE fork 3) — den
+                    fyldte guld-knap var et andet guld-signal i hver række. */}
+                {QUICK_DAY_TYPES.map((k) => {
+                  const activeDay = dayTypeForProgram(plan);
+                  const isSession = k === "session";
+                  const dayType = isSession ? sessionDayType(plan) : k;
+                  const label = isSession
+                    ? t(`dayPanel.session_${plan.focus}`, { defaultValue: t("dayPanel.dayType_training") })
+                    : t(`dayPanel.dayType_${k}`);
+                  const pressed = isSession ? activeDay === dayType : activeDay === k;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleDayQuickChange(rider.id, isSession ? "session" : k, plan.focus)}
+                      aria-pressed={pressed}
+                      // #4736: kun sessions-labelen kan blive lang (fx
+                      // "Klatreintervaller"), så kun den får et loft — og en
+                      // title, så det fulde navn stadig kan læses. Hvile og
+                      // Aktiv restitution står uafkortede.
+                      title={isSession ? label : undefined}
+                      className={`text-xs px-1.5 py-1 transition-colors disabled:opacity-50 ${
+                        isSession ? "max-w-[96px] truncate" : "whitespace-nowrap"
+                      } ${pressed ? "bg-cz-accent/10 font-semibold text-cz-accent-t" : "text-cz-2 hover:bg-cz-subtle"}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                {/* #4736: resten af sessionstyperne. Åbner den samme FocusPanel
+                    (setFocusPanelRiderId) som den gamle Dag-chip, så vejen til
+                    fx en klatreintervals-dag er præcis uændret. Chevronen alene
+                    — teksten "Andet" ville koste ~44 px i hver række, og det var
+                    netop de px der klippede Status af i højre kant. Navnet bor i
+                    aria-label + title, så kontrollen stadig kan læses højt og
+                    forklarer sig selv ved hover. */}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setFocusPanelRiderId(rider.id)}
+                  title={t("dayPanel.otherDay")}
+                  aria-label={`${t("dayPanel.otherDay")} — ${rider.firstname} ${rider.lastname}`}
+                  className="flex items-center border-s border-cz-border px-1.5 py-1 text-cz-3 transition-colors hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50"
+                >
+                  <ChevronDownIcon size={13} className="shrink-0" aria-hidden="true" />
+                </button>
+              </div>
+            ) : (
+              /* #3721: DELT FocusOpenButton — samme komponent/mutation som
+                 Development-fanens rækker bruger (ingen forgrenet fokus-logik).
+                 #4613: den stiplede advarsels-kant gør hullerne synlige ned
+                 gennem kolonnen. Fejlen renderes én gang på celle-niveau
+                 nedenfor, så den dækker BEGGE grene. */
+              <FocusOpenButton
+                rider={rider}
+                plan={plan}
+                busy={busy}
+                smartFocus={smartDefaultFocus[rider.id]}
+                onOpen={() => setFocusPanelRiderId(rider.id)}
+                t={t}
+              />
+            )}
+            {planActionError?.riderId === rider.id && (
+              <div role="alert" className="mt-0.5 text-3xs text-cz-danger">
+                {t([`planActionError_${planActionError.error}`, "planActionErrorGeneric"])}
+              </div>
+            )}
+            {/* #2438 — "én sandhed pr. rytter": vis altid dagens EFFEKTIVE intensitet +
+                kilden når holdet har en ugerytme, uanset om rytteren selv har en plan.
+                Kompakt T2-meta-linje med den fulde forklaring som title-tooltip.
+                #3459 V3: løbsdags-linjen ERSTATTER (ikke supplerer) rytme-hinten på
+                dage rytteren racer i dag — racedagen ER dagens svar på "hvorfor". */}
+            {raceToday ? (
+              <div
+                className="mt-1 flex items-center gap-1 font-data text-3xs uppercase tracking-[.06em] text-cz-accent"
+                title={t("raceDayTooltip", {
+                  riderName: `${rider.firstname} ${rider.lastname}`,
+                  raceName: raceToday.race ?? t("raceDayTooltipRaceFallback"),
+                })}
+              >
+                <FlagIcon size={12} aria-hidden="true" />
+                {t("raceDayBadge")}
+              </div>
+            ) : teamRhythmActive && (
+              <div
+                className="mt-1 font-data text-3xs uppercase tracking-[.06em] text-cz-3"
+                title={t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
+              >
+                {t("weekRhythmTodayShort", { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
+              </div>
+            )}
+          </div>
         </td>
 
         {/* #4613 — Uge: de næste 7 dage som strimmel, og samtidig indgangen til
@@ -1016,7 +1048,7 @@ export default function TrainingPage() {
             openRiderWeekPlan). Ugeplan-knappen havde før sin egen kolonne
             (#3300-rework); strimlen bærer nu både svaret og vejen videre, så
             rækken ikke har to celler til den samme ting. */}
-        <td className={tdClass({ dense: true })}>
+        <td className={tdClass({ compact: true, dense: true })}>
           <button
             type="button"
             onClick={() => openRiderWeekPlan(rider.id)}
@@ -1446,7 +1478,7 @@ export default function TrainingPage() {
                       </SortTh>
                       {/* #3045: Type/Alder/Form/Træthed foldes ind i navne-underlinjen
                           ≤640px (samme portræt-kolonnekontrakt som de andre
-                          rytterflader), så Dag + Skift dag + Uge — dem man rent
+                          rytterflader), så Dag + Uge — dem man rent
                           faktisk REDIGERER — beholder pladsen i portræt. */}
                       <SortTh sortKey="primary_type" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
                         className={`${thClass({ dense: true })} hidden sm:table-cell`}>
@@ -1461,12 +1493,13 @@ export default function TrainingPage() {
                         className={`${thClass({ numeric: true, compact: true, dense: true })} hidden sm:table-cell`}>
                         {t("colAge")}
                       </SortTh>
-                      {/* #3762: kolonnerne hedder nu det de indeholder — én dag,
-                          og en hurtig vej til at skifte den. */}
-                      <th className={thClass({ dense: true })}>{t("dayPanel.colDay")}</th>
-                      <th className={thClass({ dense: true })}>{t("dayPanel.colChangeDay")}</th>
+                      {/* #3762: kolonnen hedder det den indeholder — én dag.
+                          #4736: "Dag" og "Skift dag" var to kolonner om det
+                          samme og klippede Form/Træthed/Status af ved 1440 px;
+                          nu er der ét kontrol under ÉN overskrift. */}
+                      <th className={thClass({ compact: true, dense: true })}>{t("dayPanel.colDay")}</th>
                       {/* #4613: de næste 7 dage. */}
-                      <th className={thClass({ dense: true })}>{t("colWeek")}</th>
+                      <th className={thClass({ compact: true, dense: true })}>{t("colWeek")}</th>
                       <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
                         className={`${thClass({ numeric: true, compact: true, dense: true })} hidden sm:table-cell`}>
                         {t("form")}

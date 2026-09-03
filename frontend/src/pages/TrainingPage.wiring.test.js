@@ -137,8 +137,9 @@ test("#3815 roster-tabellen har en sorterbar Alder-kolonne", () => {
 test("#4613 uge-kolonnen bærer strimlen OG indgangen til rytterens egen ugeplan", () => {
   assert.match(src, /"colWeek"/, "uge-kolonnen skal have sin egen locale-nøgle");
   // #4613: kvitterings-kolonnen flyttede til Udvikling-fanen og ugeplan-knappens
-  // egen kolonne blev uge-strimlen, så tallet er 10.
-  assert.match(src, /const ROSTER_COLS = 10;/, "kolonnetal skal matche de faktiske kolonner");
+  // egen kolonne blev uge-strimlen. #4736 slog Dag + "Skift dag" sammen, så
+  // tallet er 9.
+  assert.match(src, /const ROSTER_COLS = 9;/, "kolonnetal skal matche de faktiske kolonner");
 
   const weekCellStart = src.indexOf("#4613 — Uge:");
   assert.ok(weekCellStart > -1, "uge-kolonnens celle skal have sin egen kommentar");
@@ -148,6 +149,29 @@ test("#4613 uge-kolonnen bærer strimlen OG indgangen til rytterens egen ugeplan
   assert.match(weekCellSrc, /openRiderWeekPlan\(rider\.id\)/, "cellen er indgangen til rytterens egen ugeplan");
   assert.match(weekCellSrc, /individualWeekPlanToggleOpen/, "knap-teksten skal genbruges uændret");
   assert.match(weekCellSrc, /<TrainingWeekStrip days=\{weekStripDays\}/, "cellen skal vise de næste 7 dage");
+});
+
+// #4736 (ejer-review af #4613, 3/9): "Dag" og "Skift dag" var to kolonner om
+// præcis det samme valg, og de klippede Form/Træthed/Status af i højre kant ved
+// 1440 px. Forward-guard: rækken må kun have ÉN dags-celle, og vejen til de
+// øvrige sessionstyper skal stadig gå gennem den samme FocusPanel-mutation.
+test("#4736 dagen er ÉT kontrol pr. række, ikke to kolonner om det samme", () => {
+  assert.doesNotMatch(src, /colChangeDay/, "den anden dags-kolonne må ikke komme igen");
+  const dayCellStart = src.indexOf("#4736 (ejer-review af #4613");
+  assert.ok(dayCellStart > -1, "dags-cellen skal have sin egen kommentar");
+  const dayTdStart = src.indexOf("<td", dayCellStart);
+  const dayTdEnd = src.indexOf("</td>", dayTdStart);
+  const dayCellSrc = src.slice(dayTdStart, dayTdEnd);
+  assert.match(dayCellSrc, /QUICK_DAY_TYPES\.map/, "segmentet er det primære kontrol i cellen");
+  assert.match(dayCellSrc, /handleDayQuickChange\(rider\.id, isSession \? "session" : k, plan\.focus\)/,
+    "samme mutation som før sammenlægningen");
+  assert.match(dayCellSrc, /t\("dayPanel\.otherDay"\)/, "de øvrige sessionstyper ligger bag \"Andet\"");
+  assert.match(dayCellSrc, /<FocusOpenButton/, "\"Vælg dag\"-tilstanden med assistentens forslag skal bevares");
+  assert.match(dayCellSrc, /data-tour=\{isFirst \? "training-focus" : undefined\}/,
+    "tour-ankeret skal findes uanset om rytteren har valgt en dag (#2819)");
+  // Én dags-celle = præcis ét sted der åbner dags-panelet fra segment-grenen +
+  // ét fra Vælg dag-grenen; flere ville være to kontroller om det samme igen.
+  assert.equal((dayCellSrc.match(/setFocusPanelRiderId\(rider\.id\)/g) ?? []).length, 2);
 });
 
 // #4613: strimlen må ALDRIG opfinde en kalender fremad — kun I DAG kan bære en

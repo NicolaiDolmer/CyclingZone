@@ -261,7 +261,7 @@
     "session_loebslaere": "Løbslære",
     "note": "En session bærer sin egen belastning, så det sætter du ikke længere for sig. Færdighedsdage bygger håndværk med en fast, langsommere fart, uanset hvad rytteren er bygget til.",
     "colDay": "Dag",
-    "colChangeDay": "Skift dag",
+    "otherDay": "Andet",
     "chooseDay": "Vælg dag",
     "clear": "Fjern plan",
     "save": "Gem dag",
