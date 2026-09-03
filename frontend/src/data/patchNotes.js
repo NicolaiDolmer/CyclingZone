@@ -1,5 +1,152 @@
 export const PATCHES = [
   {
+    "version": "7.239",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Cleaner race page, one stage profile",
+          "body": "The race page is tidier: the stage profile is drawn once with full climb detail on the upcoming stage, your breakaway hunter is picked from one ranked list, and races with results get a quick shortcut to them."
+        },
+        "da": {
+          "title": "Renere løbsside, én etapeprofil",
+          "body": "Løbssiden er ryddet op: etapeprofilen tegnes nu én gang med fuld stigningsdetalje på den kommende etape, din udbrudsjæger vælges fra én rangeret liste, og løb med resultater får en hurtig genvej til dem."
+        },
+        "refs": [4628, 2810, 1884, 2794, 4668]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race tactics",
+        "en": {
+          "title": "Injured riders are locked in stage tactics",
+          "body": "A rider who has crashed out or is injured can no longer be edited in the stage tactics tab; the row now shows a clear status instead."
+        },
+        "da": {
+          "title": "Skadede ryttere er låst i etape-taktikken",
+          "body": "En rytter der er styrtet ud eller skadet kan ikke længere redigeres i etape-taktik-fanen; rækken viser nu en tydelig status i stedet."
+        },
+        "refs": [4538, 4681]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rider profile",
+        "en": {
+          "title": "Days in jersey counts only your own jersey days",
+          "body": "Days in jersey on a rider's profile now counts only the stages he actually led the classification, instead of every stage he started."
+        },
+        "da": {
+          "title": "Dage i trøje tæller nu kun dine egne trøjedage",
+          "body": "Dage i trøje på en rytterprofil tæller nu kun de etaper han faktisk førte klassificeringen, i stedet for hver etape han startede."
+        },
+        "refs": [4588, 4676]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rider contracts",
+        "en": {
+          "title": "Contract extension explains the new salary demand",
+          "body": "The contract extension panel now explains that a rider's new salary demand follows this season's output, not the frozen salary he signed at."
+        },
+        "da": {
+          "title": "Kontraktforlængelse forklarer det nye lønkrav",
+          "body": "Panelet for kontraktforlængelse forklarer nu at en rytters nye lønkrav følger denne sæsons præstation, ikke den fastfrosne løn han blev underskrevet til."
+        },
+        "refs": [3442, 4695]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Standings",
+        "en": {
+          "title": "Squad strength no longer crashes the Rankings page",
+          "body": "Switching to the Squad strength view on the Rankings page for a division with no teams yet no longer crashes the page."
+        },
+        "da": {
+          "title": "Holdstyrke crasher ikke længere Ranglister-siden",
+          "body": "Skift til Holdstyrke-visningen på Ranglister-siden for en division uden hold endnu crasher ikke længere siden."
+        },
+        "refs": [4374, 4672]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Auction FAQ corrected, duplicate transfer row removed",
+          "body": "The FAQ about free agent auction length now matches the actual 12-hour floor instead of the old 1-hour claim, and a rare case where a rider's transfer history could show the same sale twice is fixed."
+        },
+        "da": {
+          "title": "Auktions-FAQ rettet, dobbelt transferrække fjernet",
+          "body": "FAQ'en om varigheden af fri agent-auktioner matcher nu det faktiske 12-timers-gulv i stedet for den gamle påstand om 1 time, og et sjældent tilfælde hvor en rytters transferhistorik kunne vise det samme salg to gange er rettet."
+        },
+        "refs": [4177, 4297, 4674]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Interval training is now three packages",
+          "body": "Interval training is now three packages instead of one: the original mixed session, plus a climbing-focused and a punch-focused option that trade one ability's gains for the other without adding extra progress."
+        },
+        "da": {
+          "title": "Intervaltræning er nu tre pakker",
+          "body": "Intervaltræning er nu tre pakker i stedet for én: den oprindelige blandede session, plus en klatre- og en punch-fokuseret mulighed der bytter fremgang mellem de to evner uden at lægge noget ekstra til."
+        },
+        "refs": [4631, 4128, 4677]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Daily Training",
+        "en": {
+          "title": "Current ability value is now shown separately from the ceiling",
+          "body": "Daily Training now makes clear that a rider's current ability value is not the ceiling, with a tooltip explaining why progress can slow down near the top."
+        },
+        "da": {
+          "title": "Nuværende evneværdi vises nu adskilt fra loftet",
+          "body": "Daglig træning gør nu tydeligt at en rytters nuværende evneværdi ikke er loftet, med en tooltip der forklarer hvorfor fremgangen kan gå langsommere tæt på toppen."
+        },
+        "refs": [4128, 4675]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Help now explains why training pace can vary",
+          "body": "Help now explains that cobblestone sessions are always trained at an easy pace and that overall training pace shifts sometimes as part of ongoing balancing, not a bug."
+        },
+        "da": {
+          "title": "Hjælp forklarer nu hvorfor træningstempoet kan variere",
+          "body": "Hjælp forklarer nu at brosten-sessioner altid trænes i et let tempo, og at det generelle træningstempo justeres løbende som en del af balanceringen, ikke er en fejl."
+        },
+        "refs": [3966, 4678]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Teams without a board have been restored",
+          "body": "A small number of teams could end up without a board, the panel behind your budget bonus or penalty; affected teams have been restored and the underlying bug is fixed."
+        },
+        "da": {
+          "title": "Hold uden bestyrelse er blevet genoprettet",
+          "body": "Et lille antal hold kunne ende uden en bestyrelse, panelet bag dit budget-bonus eller -straf; de ramte hold er genoprettet, og den underliggende fejl er rettet."
+        },
+        "refs": [4664, 4557, 4656, 4669]
+      }
+    ]
+  },
+  {
     "version": "7.238",
     "date": "2026-09-02",
     "label": "Beta",
