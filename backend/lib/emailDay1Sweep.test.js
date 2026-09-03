@@ -40,7 +40,15 @@ function makeSupabase(
         return {
           select() { return this; },
           eq(_col, id) { userId = id; return this; },
-          maybeSingle: async () => ({ data: userEmails[userId] ? { email: userEmails[userId] } : null, error: null }),
+          // userEmails values may be a bare email string (language omitted,
+          // legacy fixture shape) or { email, language } for the language-
+          // selection tests below.
+          maybeSingle: async () => {
+            const entry = userEmails[userId];
+            if (!entry) return { data: null, error: null };
+            const data = typeof entry === "string" ? { email: entry } : { email: entry.email, language: entry.language };
+            return { data, error: null };
+          },
         };
       }
       if (table === "race_results") {
@@ -156,6 +164,46 @@ test("hasResults=false renders the truthful no-results-yet copy, never the inven
 
   assert.equal(sendCalls[0].subject, "Day 1: your first race is on the calendar");
   assert.ok(!sendCalls[0].html.includes("raced while you were away"));
+});
+
+// ─── #2853 DA follow-up: users.language selects the mail's copy ───────────
+
+test("users.language 'da' renders the Danish day1 copy for both hasResults variants", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const rows = [
+    mk("has-results", { created_at: inWindow, user_id: "user-hr" }),
+    mk("no-results", { created_at: inWindow, user_id: "user-nr" }),
+  ];
+  const supabase = makeSupabase(
+    rows,
+    {
+      "user-hr": { email: "hr@example.com", language: "da" },
+      "user-nr": { email: "nr@example.com", language: "da" },
+    },
+    { resultTeamIds: ["has-results"] }
+  );
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  const byTeam = Object.fromEntries(sendCalls.map((c) => [c.teamId, c]));
+  assert.equal(byTeam["has-results"].subject, "Dag 1: dine ryttere har allerede kørt");
+  assert.equal(byTeam["no-results"].subject, "Dag 1: dit første løb er på kalenderen");
+});
+
+test("any users.language other than 'da' (including missing) renders the English day1 copy", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const rows = [mk("t1", { created_at: inWindow, user_id: "user-42" })];
+  const supabase = makeSupabase(rows, { "user-42": { email: "player@example.com" } }, { resultTeamIds: ["t1"] });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  assert.equal(sendCalls[0].subject, "Day 1: your riders have already raced");
 });
 
 test("is a no-op when the flag is not active", async () => {
