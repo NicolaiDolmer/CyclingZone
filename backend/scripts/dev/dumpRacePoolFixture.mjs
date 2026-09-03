@@ -59,8 +59,12 @@ async function main() {
   if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
   const { data: teams, error: tErr } = await sb.from("teams").select("league_division_id, is_ai, is_bank, is_frozen, is_test_account");
   if (tErr) throw new Error(`teams: ${tErr.message}`);
-  const catalogRows = await fetchAllRows(sb, (query) =>
-    query
+  // fetchAllRows(buildQuery, pageSize): buildQuery tager INGEN argumenter og bygger selv
+  // hele queryen. Scriptet kaldte den som fetchAllRows(sb, (query) => ...), altsaa med
+  // klienten i buildQuery-pladsen, og doede paa "buildQuery is not a function" foerste gang
+  // det faktisk blev koert (#4203, 3/9). Headeren siger det selv: "SKREVET, IKKE KOERT".
+  const catalogRows = await fetchAllRows(() =>
+    sb
       .from("race_pool")
       .select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text")
       .is("retired_at", null)

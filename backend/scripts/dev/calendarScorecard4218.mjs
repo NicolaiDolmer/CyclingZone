@@ -58,7 +58,6 @@ import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
 import { arg as devArg } from "./lib/devCalendarArgs.mjs";
 import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
 import { scoreCalendarPlan, formatScorecard, alleBrud } from "../../lib/calendarScorecardReport.js";
-import { augmentWithS3Additions } from "./lib/s3OfflineCalendarPlan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(__dirname, "..", "..", "lib", "__fixtures__", "racePoolCatalog.prod.json");
@@ -124,8 +123,11 @@ export function resolveMode(argv = process.argv.slice(2)) {
 // fra SAMME seed-vej som skrive-stien, videregivet råt til scoreCalendarPlan.
 // ---------------------------------------------------------------------------
 export function loadFixtureCalendar() {
-  const { pools, catalog: baseCatalog } = JSON.parse(readFileSync(FIXTURE, "utf8"));
-  const { catalog, kollisioner } = augmentWithS3Additions(baseCatalog);
+  // #4203 (3/9): fixturen er genopfrisket fra prod og BAERER nu de 22 loeb fra
+  // 2026-08-25-4218-katalog-22-nye-loeb.sql + #4708's udvidelse. Den tidligere in-memory
+  // augmentering ville laegge dem oveni endnu en gang (22 navnekollisioner).
+  const { pools, catalog } = JSON.parse(readFileSync(FIXTURE, "utf8"));
+  const kollisioner = [];
 
   const from = resolveCalendarFrom({ firstRaceDate: FIRST_RACE_DAY, now: NOW });
   const quotas = Object.fromEntries(Object.entries(TIER_DENSITY).map(([t, d]) => [t, d * REAL_DAYS]));
@@ -157,7 +159,7 @@ export function loadFixtureCalendar() {
   return {
     tierPlans, profilesByTier, archetypeByPoolRace, kollisioner,
     firstRaceDay: FIRST_RACE_DAY, realDays: REAL_DAYS,
-    katalogLinje: `Katalog: ${baseCatalog.length} + ${catalog.length - baseCatalog.length} nye = ${catalog.length} løb`,
+    katalogLinje: `Katalog: ${catalog.length} løb (lib/__fixtures__/racePoolCatalog.prod.json)`,
   };
 }
 
