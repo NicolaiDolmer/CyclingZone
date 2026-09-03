@@ -2,6 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateSelection, buildRiderRows, getSelectionContext, saveSelection, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts } from "./raceSelection.js";
+import { copenhagenDateString } from "./copenhagenTime.js";
 
 // Ejer 28/6 (afløser #1906): delvis trup tilladt — kun OVER feltstørrelsen afvises.
 const base = {
@@ -561,6 +562,73 @@ test("getSelectionContext: selection.manual_rider_ids indeholder kun ikke-auto-f
   const ctx = await getSelectionContext({ supabase, race: { id: "race1", race_class: "Class2" }, teamId });
   assert.deepEqual(ctx.selection.rider_ids.sort(), ["r1", "r2", "r3"], "rider_ids forbliver ALT (auto+manuelt)");
   assert.deepEqual(ctx.selection.manual_rider_ids, ["r1"], "manual_rider_ids kun den manuelle");
+});
+
+// #4701 (ejer-bekræftet 2/9, Discord @jaxx_38086_92839): en skadet rytter skal kunne
+// udtages til et løb der STARTER EFTER skaden er udløbet — gaten spurgte fejlagtigt
+// på skadesstatus "nu" i stedet for på løbets egen scheduled_for. Dato-aritmetik sker
+// relativt til den ægte "i dag" (copenhagenDateString), så testen aldrig bliver
+// tidsafhængig/flaky, uanset hvornår suiten kører.
+test("getSelectionContext: skadet rytter (til i dag+1) ER valgbar til et løb der starter i dag+2 (efter skaden er udløbet)", async () => {
+  const teamId = "t1";
+  const today = copenhagenDateString();
+  const todayNoonUtc = new Date(`${today}T12:00:00Z`).getTime();
+  const plusDays = (n) => copenhagenDateString(new Date(todayNoonUtc + n * 86400000));
+  const injuredUntilStr = plusDays(1); // stadig skadet "i dag"
+  const raceScheduledFor = new Date(todayNoonUtc + 2 * 86400000).toISOString(); // i dag+2
+
+  const state = {
+    riders: [{ id: "r1", team_id: teamId, is_academy: false, is_retired: false, firstname: "R", lastname: "One" }],
+    race_stage_profiles: [{ race_id: "race1", stage_number: 1, profile_type: "flat", demand_vector: { sprint: 0.8 } }],
+    race_entries: [],
+    rider_derived_abilities: [{ rider_id: "r1", climbing: 50, sprint: 50, aggression: 40 }],
+    rider_condition: [{ rider_id: "r1", form: 60, fatigue: 10, injured_until: injuredUntilStr }],
+  };
+  const supabase = makeSelectionSupabase(state);
+  const ctx = await getSelectionContext({
+    supabase, race: { id: "race1", race_class: "Class2", scheduled_for: raceScheduledFor }, teamId,
+  });
+  const r1 = ctx.riders.find((r) => r.id === "r1");
+  assert.equal(r1.injured, false, "løbet starter EFTER skaden er udløbet → ikke skadet for DETTE løb");
+  assert.equal(ctx.availableCount, 1, "tæller med i den ledige trup");
+
+  const validated = validateSelection({
+    riderIds: ["r1"], captainId: "r1", sprintCaptainId: null, hunterId: null, freeRoleIds: [],
+    teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
+    injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
+    sizeRule: ctx.size,
+  });
+  assert.ok(validated.ok, "udtagelsen skal kunne gemmes — ingen selection_rider_injured");
+});
+
+test("getSelectionContext: samme skadede rytter ER STADIG afvist for et løb der starter i dag+1 (inden for skadesperioden)", async () => {
+  const teamId = "t1";
+  const today = copenhagenDateString();
+  const todayNoonUtc = new Date(`${today}T12:00:00Z`).getTime();
+  const injuredUntilStr = copenhagenDateString(new Date(todayNoonUtc + 3 * 86400000)); // skadet 3 dage ude
+  const raceScheduledFor = new Date(todayNoonUtc + 1 * 86400000).toISOString(); // i dag+1, stadig inden for skaden
+
+  const state = {
+    riders: [{ id: "r1", team_id: teamId, is_academy: false, is_retired: false, firstname: "R", lastname: "One" }],
+    race_stage_profiles: [{ race_id: "race1", stage_number: 1, profile_type: "flat", demand_vector: { sprint: 0.8 } }],
+    race_entries: [],
+    rider_derived_abilities: [{ rider_id: "r1", climbing: 50, sprint: 50, aggression: 40 }],
+    rider_condition: [{ rider_id: "r1", form: 60, fatigue: 10, injured_until: injuredUntilStr }],
+  };
+  const supabase = makeSelectionSupabase(state);
+  const ctx = await getSelectionContext({
+    supabase, race: { id: "race1", race_class: "Class2", scheduled_for: raceScheduledFor }, teamId,
+  });
+  const r1 = ctx.riders.find((r) => r.id === "r1");
+  assert.equal(r1.injured, true, "løbet starter INDEN skaden er udløbet → stadig skadet for DETTE løb");
+
+  const validated = validateSelection({
+    riderIds: ["r1"], captainId: "r1", sprintCaptainId: null, hunterId: null, freeRoleIds: [],
+    teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
+    injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
+    sizeRule: ctx.size,
+  });
+  assert.ok(!validated.ok && validated.errors.includes("selection_rider_injured"));
 });
 
 // S4: per-etape rute-match — buildRiderRows mapper evner+profiler til riderRows.

@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.242",
+    "version": "7.243",
     "date": "2026-09-03",
     "label": "Beta",
     "changes": [
@@ -17,6 +17,27 @@ export const PATCHES = [
           "body": "\"Sådan gik det for dit hold\"-kortet på dit dashboard har et \"Se sammensætning\"-link under løbets point og præmiepenge. Åbn det for at se præmien delt op i etapeplacering, klassifikation og holdbonus, med den rytter der tjente hvert beløb, plus din sponsors løbsdagsudbetaling som egen linje i stedet for kun en separat besked."
         },
         "refs": [4697, 4698]
+      }
+    ]
+  },
+  {
+    "version": "7.242",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "Injured riders can be picked for races that start after they heal",
+          "body": "You can now pick an injured rider for a race, either yourself or via assistant auto-fill, as long as the race itself starts after the injury is over. Previously the app checked injury status right now, so a race weeks away still waited for the rider to fully recover."
+        },
+        "da": {
+          "title": "Skadede ryttere kan udtages til løb der starter efter skaden er ovre",
+          "body": "Du kan nu udtage en skadet rytter til et løb, enten selv eller via assistentens auto-udfyldning, så længe løbet starter efter skaden er ovre. Før tjekkede appen skadestatus lige nu, så et løb uger ude stadig ventede på at rytteren blev rask."
+        },
+        "refs": [4701]
       }
     ]
   },
