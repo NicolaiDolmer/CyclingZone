@@ -17,11 +17,26 @@ response-status).
 
 Konsekvens: en spillers laenge-levende fane har en gammel bundle der refererer en
 chunk-hash der er roteret vaek af senere deploys. Foerste request paa den hash
-fejler (404, korrekt) — men browseren cacher DET SVAR immutable i et aar. Vores
-egen ene retry i `loadWithRetry` (lazyWithRetry.js) rammer samme cache-entry og
-faar samme fejl. `location.reload()` gaar samme vej. Og i Firefox/Safari
-undertrykker `immutable` specifikt revalidate-on-reload-heuristikken, saa selv
-`Ctrl+Shift+R` ikke hjalp for spilleren der rapporterede det 1/9.
+fejler (404, korrekt) — men browseren cacher DET SVAR immutable i et aar.
+`location.reload()` gaar samme vej. Og i Firefox/Safari undertrykker `immutable`
+specifikt revalidate-on-reload-heuristikken, saa selv `Ctrl+Shift+R` ikke hjalp
+for spilleren der rapporterede det 1/9.
+
+**Rettet efter ekstern review (ret-runde, 3/9):** `loadWithRetry`s (lazyWithRetry.js)
+ENE retry sker SYNKRONT, millisekunder efter foerste fejl — langt inden for baade
+det gamle et-aars OG det nye 300s-vindue. Retry'et rammer derfor ALTID samme
+cache-entry som foerste forsoeg, uanset denne PR's max-age-aendring. Det er ikke
+en del af det denne PR fixer og staar IKKE laengere naevnt som saadan. For en
+PERMANENT roteret hash (spillerens faktiske scenarie — hash'en findes aldrig
+igen) giver 5-min vs. 1-aars cache ingen forskel i om `loadWithRetry` fejler og
+sender en Sentry-event: den fejler stadig, uanset cache-alder. Det der reelt
+redder spilleren i DET scenarie er den allerede eksisterende
+`chunkErrors.js`-reload (uaendret af denne PR), som henter et FRISK index.html
+(kort-cachet, <=60s, `ENTRY_MAX_MAX_AGE` i `check-cdn-cache-headers.mjs`) med
+nye, gyldige hash-referencer. Denne PR's reelle gevinst er smallere: et
+FORBIGAAENDE miss under selve udrulnings-vinduet (samme hash bliver
+tilgaengelig igen kort efter) selvhelbreder nu paa 5 min i stedet for et aar —
+ikke den permanente-rotation-historie der dominerer de 252 events/37 brugere.
 
 ## Hvorfor blev det ikke fanget foer
 
@@ -52,9 +67,12 @@ Konsekvens:
 **Bevidst afvejning, IKKE en regression:** dette giver et mindre stykke af
 #3484's oprindelige Edge-Request-besparelse tilbage (assets revalideres nu
 efter 5 min i stedet for aldrig inden for et aar). Prisen vurderes lav for et
-lille open-beta-spillertal, og opvejes af at chunk-fallbacken (allerede robust
-implementeret siden #4545/#4546 — se `frontend/src/lib/chunkErrors.js`) rent
-faktisk kan selvhelbrede i stedet for at sidde fast bag en aar-gammel cache.
+lille open-beta-spillertal. Chunk-fallbacken (allerede robust implementeret
+siden #4545/#4546 — se `frontend/src/lib/chunkErrors.js`) selvhelbredte
+ALLEREDE for det dominerende (permanent-rotation) scenarie foer denne PR, fordi
+den henter et separat, kort-cachet index.html — det er ikke denne PR's
+fortjeneste. Denne PR laegger et snaevrere lag ovenpaa: et forbigaaende miss
+under selve udrulnings-vinduet fejler ikke laengere unoedigt i op til et aar.
 
 `--require-fresh-miss` i deploy-verify.yml er BEVIDST ikke slaaet til i denne
 PR: proben rammer en fast, deterministisk falsk sti

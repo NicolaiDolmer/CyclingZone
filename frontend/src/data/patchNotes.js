@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.242",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Stability",
+        "en": {
+          "title": "Faster recovery from a stale asset link during a deploy",
+          "body": "If your app briefly requested a script file that had not propagated yet during a deploy, that failure used to get remembered for a year. It is now remembered for 5 minutes, so a temporary miss during a rollout heals itself much sooner instead of needing a full page reload."
+        },
+        "da": {
+          "title": "Hurtigere selvhelbredelse ved en midlertidig asset-fejl under en udrulning",
+          "body": "Hvis appen kortvarigt bad om en scriptfil der ikke var nået frem endnu under en udrulning, blev den fejl før husket i et helt år. Den huskes nu kun i 5 minutter, så en forbigående fejl under en udrulning helbreder sig selv langt hurtigere i stedet for at kræve en fuld genindlæsning."
+        },
+        "refs": [4595, 2423]
+      }
+    ]
+  },
+  {
     "version": "7.241",
     "date": "2026-09-03",
     "label": "Beta",
