@@ -620,15 +620,6 @@ export default function RidersPage() {
         />
       )}
 
-      {/* #4649: gemte filtre (Pro v1.1 del C), over filterpanelet, samme
-          niveau som filter-bar'en selv (chips + "Save current filter"). */}
-      <SavedFiltersBar
-        userId={userId}
-        filters={filters}
-        onApply={(saved) => setFilters({ ...FILTER_DEFAULTS, ...saved, page: 1 })}
-        eligible={isPro || isFounder}
-      />
-
       {/* #4628: T2-filterlinjen (TASTE fork 1), soeg + land + ryttertype paa én
           linje, resten bag "Flere filtre" lukket som default. Erstatter det aabne
           8-felts panel + evne-folden, som stod mellem spilleren og foerste rytter. */}
@@ -643,6 +634,15 @@ export default function RidersPage() {
           showAiToggle={true}
         />
       </div>
+
+      {/* #4649: gemte filtre (Pro v1.1 del C), som en raekke under filterlinjen
+          (chips + "Save current filter"). */}
+      <SavedFiltersBar
+        userId={userId}
+        filters={filters}
+        onApply={(saved) => setFilters({ ...FILTER_DEFAULTS, ...saved, page: 1 })}
+        eligible={isPro || isFounder}
+      />
 
       {loading ? (
         <div className={`${WRAP} p-5`}>
