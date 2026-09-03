@@ -95,6 +95,7 @@ function makeCtx(entrants: Entrant[], segment: Segment, seed = "climb-seed", seg
     entrants: entrantsById,
     tuning: RACE_V4_TUNING,
     rngFor: boundRngFor(seed),
+    orders: [],
   };
 }
 

@@ -53,13 +53,56 @@ const ALL_PROJECTS = [
 // projekter. Divergensen mellem de to var selve fejlen i #3429.
 const PROJECTS = ALL_PROJECTS;
 
+/**
+ * Antal parallelle workers. Playwright tager enten et tal eller en
+ * procent-streng ("50%" = halvdelen af kernerne), og PW_WORKERS skal kunne
+ * begge dele uden at "50%" bliver til NaN.
+ *
+ * @returns {number | string}
+ */
+function resolveWorkers() {
+  const override = process.env.PW_WORKERS?.trim();
+  if (override) return override.endsWith("%") ? override : Number(override);
+  return process.env.CI ? "100%" : "50%";
+}
+
 export default defineConfig({
   testDir: "./tests/e2e",
   globalSetup: "./tests/e2e/global-setup.js",
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  workers: 1,
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
+  // #4647: workers var 1 uden begrundelse siden filen blev oprettet, og suiten
+  // voksede til 26-28 min pr. PR. Suiten ER parallel-sikker: API'et mockes pr.
+  // side i Playwright-routes, ingen `serial`-describes, og webServer'en er en
+  // statisk sirv-server uden delt tilstand (scripts/e2e-static-server.mjs).
+  //
+  //   CI  = "100%": hver CI-shard koerer KUN eet projekt (matrix i
+  //         playwright-smoke.yml), saa hele runnerens kerner maa gaa til det ene
+  //         projekt. Procent frem for et fast tal: runner-stoerrelsen kan aendre
+  //         sig under os, og et hardcodet 2 ville stille gaa glip af den.
+  //   lokalt = "50%": halvdelen af kernerne. Ejerens maskine skal kunne bruges
+  //         til andet mens suiten koerer, og en overtegnet CPU er netop den
+  //         belastning der foeder flake-klassen i #4292/#2960.
+  //
+  // PW_WORKERS overrider begge (fx `PW_WORKERS=1` for at isolere en flaky test,
+  // eller "25%" paa en presset maskine).
+  workers: resolveWorkers(),
+  // #4647: test-timeout 60s i CI (Playwright-defaulten er 30s). Parallelle
+  // workers deler runnerens CPU, saa den ENKELTE tests vaegur-tid stiger selv
+  // om suitens samlede tid falder. Det ramte core-smoke's side-loop paa
+  // mobile-webkit: den gaar mange sider igennem i EEN test og loeb toer for de
+  // 30s ved 4 workers (2 forskellige overskrifter i to forsoeg - klassisk
+  // "testen naaede ikke frem", ikke "siden var forkert"). Samme afvejning som
+  // expect-timeouten i #2960: en aegte broken flade dukker ikke op ved 60s, saa
+  // graensen skjuler ingen regressioner. Lokalt beholdes Playwright-defaulten.
+  timeout: process.env.CI ? 60000 : 30000,
+  // json-reporteren er inputtet til scripts/extract-e2e-flakes.mjs: den er den
+  // eneste rapport der eksplicit maerker en test der fejlede foerst og bestod
+  // ved retry som "flaky" (#4292's klasse). html-rapporten viser det for et
+  // menneske, men kan ikke laeses af en gate.
+  reporter: process.env.CI
+    ? [["github"], ["html", { open: "never" }], ["json", { outputFile: "playwright-report/results.json" }]]
+    : [["list"]],
   expect: {
     // #2960: assertion-budgettet paa CI er 10s, ikke Playwright-defaulten 5s.
     // React 19's scheduling flytter marginale assertions over 5s-graensen paa
