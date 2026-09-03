@@ -36,6 +36,9 @@ import {
   ArrowDownIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  InfoIcon,
   Select,
   Button,
   PageHeader,
@@ -47,6 +50,7 @@ import {
   ToastViewport,
 } from "../components/ui";
 import { WRAP } from "../components/ui/dataTableStyles.js";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -91,14 +95,15 @@ function buildRidersTourSteps(t) {
 function AbilityLegend({ t, tRider }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="mb-3">
+    <div className="mt-3">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         className="inline-flex items-center gap-1.5 text-cz-3 hover:text-cz-2 text-xs transition-colors"
       >
-        <span className="font-mono text-3xs border border-cz-border rounded px-1" aria-hidden="true">?</span>
+        {/* #4628: "?" i en boks var en tekst-glyf brugt som ikon (TASTE P7). */}
+        <InfoIcon size={13} aria-hidden="true" />
         {t("abilityLegend.toggle")}
         {open ? <ChevronUpIcon size={12} aria-hidden="true" /> : <ChevronDownIcon size={12} aria-hidden="true" />}
       </button>
@@ -577,26 +582,31 @@ export default function RidersPage() {
   return (
     <div className="mx-auto max-w-[1600px]">
       <OnboardingTour pageKey="riders" steps={ridersTourSteps} />
-      <PageHeader title={t("page.title")} subtitle={t("page.subtitle", { count: formatNumber(total) })} />
-
-      {/* #2849 bølge 2 — kolonnevalg (StatsToggle) + watchlist-genvej hører ikke til
-          PageHeader's action-cluster-kontrakt (maks 1 Select sm + 1 primær Button sm,
-          intet andet). Flyttet til en let værktøjslinje under headeren — samme
-          mønster som Standings' Compare-knap i filter-bar-rækken (#2849 bølge 1).
-          Ingen adfærd ændret, kun placering. */}
-      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-        <StatsToggle
-          visibleStats={visibleStats}
-          onToggleStat={toggleStat}
-          onShowAll={showAll}
-          onHideAll={hideAll}
-        />
-        <Link to="/watchlist" data-tour="riders-watchlist"
-          className="inline-flex items-center justify-center px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-            rounded-cz text-xs font-medium hover:bg-cz-accent/10 transition-all">
-          {t("page.watchlistLink", { count: watchlist.size })}
-        </Link>
-      </div>
+      {/* #4628 (slice 6 af #4622): den loesrevne "Vis stats / Min oenskeliste"-raekke
+          under headeren var audit 2026-09's hovedfund paa /riders ("no orphan action
+          rows", PAGE_TEMPLATES). Begge er quiet utility actions og bor i PageHeader's
+          action-cluster — kontrakten tillader op til TO saadanne uden en primaer. */}
+      <PageHeader
+        title={t("page.title")}
+        subtitle={t("page.subtitle", { count: formatNumber(total) })}
+        actions={
+          <>
+            <StatsToggle
+              visibleStats={visibleStats}
+              onToggleStat={toggleStat}
+              onShowAll={showAll}
+              onHideAll={hideAll}
+            />
+            <Link
+              to="/watchlist"
+              data-tour="riders-watchlist"
+              className={buttonClass({ variant: "secondary", size: "sm" })}
+            >
+              {t("page.watchlistLink", { count: watchlist.size })}
+            </Link>
+          </>
+        }
+      />
 
       {showEmptyState && myTeam && (
         <RidersEmptyState
@@ -606,12 +616,20 @@ export default function RidersPage() {
         />
       )}
 
+      {/* #4628: T2-filterlinjen (TASTE fork 1) — soeg + land + ryttertype paa én
+          linje, resten bag "Flere filtre" lukket som default. Erstatter det aabne
+          8-felts panel + evne-folden, som stod mellem spilleren og foerste rytter. */}
       <div data-tour="riders-filters">
-        <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} nationalities={nationalities} showAiToggle={true} />
+        <RiderFilters
+          layout="bar"
+          filters={filters}
+          onChange={setFilter}
+          onReset={onReset}
+          showTeamFilter={false}
+          nationalities={nationalities}
+          showAiToggle={true}
+        />
       </div>
-
-      {/* #1592: evne-kode-legende — afkoder de 15 kolonne-koder for nye spillere. */}
-      <AbilityLegend t={t} tRider={tRider} />
 
       {loading ? (
         <div className={`${WRAP} p-5`}>
@@ -663,21 +681,25 @@ export default function RidersPage() {
         </>
       )}
 
-      {/* Pagination */}
+      {/* #1592: evne-kode-legenden staar UNDER tabellen (#4628) — samme plads som
+          zone-forklaringen paa Stillinger. Den forklarer kolonner man foerst har
+          set; over folden var den chrome foer data (TASTE P1/P9). */}
+      <AbilityLegend t={t} tRider={tRider} />
+
+      {/* Pagination. #4628: kanoniske sekundaere knapper i stedet for haandrullede
+          bg-cz-subtle-flader (ingen guld, ingen egne stoerrelser). */}
       <div className="flex justify-end mt-4">
         <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-          <button disabled={filters.page <= 1}
-            onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}
-            className="px-3 py-1.5 bg-cz-subtle rounded-cz text-cz-2 text-xs
-              hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
+          <Button variant="secondary" size="sm" disabled={filters.page <= 1}
+            iconLeft={<ChevronLeftIcon size={13} aria-hidden="true" />}
+            onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}>
             {t("pagination.prev")}
-          </button>
-          <button disabled={filters.page * 50 >= total}
-            onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}
-            className="px-3 py-1.5 bg-cz-subtle rounded-cz text-cz-2 text-xs
-              hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
+          </Button>
+          <Button variant="secondary" size="sm" disabled={filters.page * 50 >= total}
+            iconRight={<ChevronRightIcon size={13} aria-hidden="true" />}
+            onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}>
             {t("pagination.next")}
-          </button>
+          </Button>
         </div>
       </div>
 

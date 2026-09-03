@@ -35,8 +35,8 @@
   },
   "pagination": {
     "showing": "Viser {from}-{to} af {total}",
-    "prev": "← Forrige",
-    "next": "Næste →"
+    "prev": "Forrige",
+    "next": "Næste"
   },
   "tour": {
     "filters": {

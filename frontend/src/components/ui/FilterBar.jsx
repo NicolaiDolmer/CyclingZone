@@ -13,10 +13,15 @@ import { SearchIcon, FilterIcon, ChevronDownIcon } from "./icons/index.jsx";
 // bag "More filters", ikke i selve linjen). Hvert filter-select faar automatisk
 // size="sm" uanset hvad selve <Select> fik, saa siden ikke kan blande store og smaa
 // felter i baren.
+//
+// `trailing` er en valgfri quiet action i selve linjen (fx "Nulstil alt (3)").
+// Den bor UDEN FOR "More filters", saa den er synlig ogsaa naar folden er lukket
+// — ellers kunne man saette et filter via en chip og ikke finde vejen tilbage.
 export default function FilterBar({
   search = null,
   filters = [],
   checkbox = null,
+  trailing = null,
   meta = null,
   moreLabel = "More filters",
   moreDefaultOpen = false,
@@ -46,6 +51,7 @@ export default function FilterBar({
             onChange={search.onChange}
             placeholder={search.placeholder}
             aria-label={search.ariaLabel ?? search.placeholder}
+            data-testid={search.testId}
             className="pl-8"
           />
         </div>
@@ -76,6 +82,8 @@ export default function FilterBar({
           onChange={checkbox.onChange}
         />
       )}
+
+      {trailing}
 
       {children && (
         <details open={moreDefaultOpen} className="group order-last w-full sm:order-none sm:ms-auto sm:w-auto">
