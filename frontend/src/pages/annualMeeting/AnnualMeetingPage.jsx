@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, ToastViewport } from "../../components/ui";
@@ -8,6 +8,7 @@ import VisionSlotSection from "./VisionSlotSection";
 import RequestSection from "./RequestSection";
 import { postBoardMeetingFocus, postBoardMeetingSign } from "./meetingApi";
 import { daysUntil } from "./meetingFormat";
+import { logEvent } from "../../lib/logEvent";
 
 const FOCUS_OPTIONS = ["balanced", "youth_development", "star_signing"];
 const STEP_KEYS = ["focus", "mandate", "request", "sign"];
@@ -48,6 +49,19 @@ export default function AnnualMeetingPage({ initialMeeting, confidenceValue }) {
   );
   const remaining = Math.max(0, allowed - usedCount);
   const days = daysUntil(mandate?.deadlineAt);
+
+  // #4557 (S-M2d) · instrumentering (#1141: mødegennemførelse) — canary for
+  // "aabnede aarsmoedet". Fyrer kun én gang pr. mount, ikke pr. re-render fra
+  // focus-skift (mandate.id skifter DÉR). Laeser mandate/goals via en ref sat
+  // ved mount i stedet for at have dem som effekt-dependencies, saa effekten
+  // aldrig genkoerer naar de aendrer sig efter mount — ingen eslint-disable
+  // noedvendig (#4332-ratchet). Fire-and-forget, samme moenster som al oevrig
+  // logEvent-brug.
+  const mountMeetingRef = useRef({ mandate, goals });
+  useEffect(() => {
+    const { mandate: openedMandate, goals: openedGoals } = mountMeetingRef.current;
+    if (openedMandate) logEvent("feature_board_meeting_opened", { goalCount: openedGoals.length });
+  }, []);
 
   function pushToast(tone, title) {
     toastSeq.current += 1;
@@ -99,6 +113,14 @@ export default function AnnualMeetingPage({ initialMeeting, confidenceValue }) {
     };
     const { ok, data } = await postBoardMeetingSign(payload);
     if (ok) {
+      // #4557 (S-M2d) · instrumentering (#1141: mødegennemførelse) — canary
+      // for "gennemførte aarsmoedet" (funnel-modstykke til
+      // feature_board_meeting_opened ovenfor).
+      logEvent("board_meeting_signed", {
+        adjustmentsUsed: adjustments.length,
+        hasRequest: Boolean(requestType),
+        visionSlotAnswered: visionChoice !== null,
+      });
       navigate("/board", { replace: true });
       return;
     }
