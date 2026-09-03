@@ -552,6 +552,7 @@
     "stageCol": "Etape {number}",
     "roleAria": "Rolle for {rider}, etape {stage}",
     "effortAria": "Indsats for {rider}, etape {stage}",
+    "riderAbandoned": "Udgået af løbet",
     "role": {
       "free_role": "Fri rolle"
     },
@@ -587,6 +588,7 @@
       "stage_roles_invalid_effort": "En af indsats-indstillingerne er ugyldig.",
       "stage_roles_role_overlap": "Kun én rytter kan være kaptajn, og kun én kan være spurtkaptajn, pr. etape.",
       "stage_roles_duplicate": "Samme rytter optræder to gange for samme etape.",
+      "stage_roles_rider_abandoned": "En af rytterne er udgået af løbet og kan ikke længere tildeles taktik.",
       "stage_roles_race_completed": "Løbet er afsluttet, så taktikken kan ikke længere ændres.",
       "generic": "Kunne ikke gemme din taktik. Prøv igen."
     }
