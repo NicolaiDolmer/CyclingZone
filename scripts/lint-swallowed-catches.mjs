@@ -135,7 +135,12 @@ const BASELINE = {
   // POST /board/meeting/sign) — samme captureApiRouteError-mønster på den ydre
   // catch i alle tre. Den indre signError-catch i POST /sign rethrow'er
   // (fallback-grenen) og tælles korrekt som handled, ingen ekstra her for den.
-  "backend/routes/api.js": 181,
+  // #4519 (3/9): +1 for POST /board/request/preview — samme captureApiRouteError-
+  // mønster som resten af de 4 eksisterende /board-handlere. computeBoardRequestOutcome
+  // (den delte kerne for /board/request og /board/request/preview) flyttede den
+  // eksisterende loadGoalContextForBoard-catch fra /board/request uændret; den
+  // tæller ikke ekstra her.
+  "backend/routes/api.js": 182,
   "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,
