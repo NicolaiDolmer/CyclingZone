@@ -135,7 +135,7 @@ jobs:
     # (ratchet — maa kun skrumpe). Kendte callsites + emoji er Plan 4's job.
     #
     # #4626 (slice 4 af #4622, docs/design/TASTE.md §3): samme job koerer OGSAA
-    # check-anti-slop.mjs — de fire TASTE-forbudte moenstre lint-ui-slop.mjs
+    # check-anti-slop.mjs, de fire TASTE-forbudte moenstre lint-ui-slop.mjs
     # ikke daekker (unicode-pile-som-ikon, arbitraer text-[Npx] under 12px,
     # shadow-* uden for shadow-overlay, CSS/Tailwind-gradient). Samlet i dette
     # job i stedet for et nyt, fordi begge er rene node-scripts uden npm ci

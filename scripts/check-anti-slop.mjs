@@ -1,21 +1,21 @@
 #!/usr/bin/env node
 // scripts/check-anti-slop.mjs
 // ============================================================
-// CI-vagter mod slop, del 2 — #4626 (slice 4 af designsystem-epic'et #4622).
+// CI-vagter mod slop, del 2: #4626 (slice 4 af designsystem-epic'et #4622).
 //
 // docs/design/TASTE.md §3 (forbudslisten) er ejer-godkendt 2/9 2026 og siger
 // eksplicit: "det der kan greppes SKAL greppes." Dette script daekker de FIRE
 // navngivne regler fra forbudslisten som scripts/lint-ui-slop.mjs IKKE fanger
 // i dag:
 //
-//   arrow    — unicode-pile/piktogrammer brugt som ikoner (→ ← ↔ ↑ ↓ ↩ ↪ ‹ › « »)
+//   arrow    : unicode-pile/piktogrammer brugt som ikoner (→ ← ↔ ↑ ↓ ↩ ↪ ‹ › « »)
 //              i JSX/JS OG i locale-copy. #3422: pile er `Symbol, Math` i
-//              Unicode, ikke `Extended_Pictographic` — de slipper 100% forbi
-//              lint-ui-slop's emoji-kategori, som kun matcher pictographic.
-//   smallpx  — `text-[Npx]` under 12px. PAGE_TEMPLATES.md: kun `text-2xs`
+//              Unicode, ikke `Extended_Pictographic`, saa de slipper 100%
+//              forbi lint-ui-slop's emoji-kategori, som kun matcher pictographic.
+//   smallpx  : `text-[Npx]` under 12px. PAGE_TEMPLATES.md: kun `text-2xs`
 //              (11px) og `text-3xs` (10px) er de gyldige mikro-steps; en
 //              arbitraer bracket-vaerdi under 12px er altid en opfindelse.
-//   shadow   — `shadow-*`-klasser og raa `box-shadow`/`boxShadow`-styles.
+//   shadow   : `shadow-*`-klasser og raa `box-shadow`/`boxShadow`-styles.
 //              Sanktioneret undtagelse: `shadow-overlay` (tailwind.config.js
 //              `boxShadow.overlay`), den ENE tilladte overlay-elevation for
 //              modal/popover/toast/tooltip (se frontend/src/components/ui/
@@ -26,10 +26,10 @@
 //              (korrekt) kun bruger shadow-overlay giver 0 fund, uanset om
 //              overlayen er en selvstaendig komponent (Modal.jsx) eller inline
 //              markup i en side (BoardPage.jsx's inline-modal, TeamPage.jsx's
-//              inline-toast) — begge bruger shadow-overlay og fanges IKKE.
-//   gradient — `bg-gradient-to-*` (Tailwind) og raa `linear-/radial-/conic-
+//              inline-toast); begge bruger shadow-overlay og fanges IKKE.
+//   gradient : `bg-gradient-to-*` (Tailwind) og raa `linear-/radial-/conic-
 //              gradient(...)`. Scoped til den FAKTISKE CSS/Tailwind-mekanisme,
-//              IKKE det blotte ord "gradient" — som i denne kodebase for det
+//              IKKE det blotte ord "gradient", som i denne kodebase for det
 //              meste betyder cykel-stigningsprocent (avg_gradient,
 //              gradientBand i lib/stageRouteProfile.js, i18n-noeglen
 //              detail.route.waypoint.gradient), altsaa PRAECIS den slags
@@ -38,8 +38,8 @@
 //
 // Rounded-2xl/rounded-xl, emoji-i-player-facing-filer og raa hex-farver i JSX
 // staar OGSAA i TASTE §3, men er ALLEREDE daekket af lint-ui-slop.mjs'
-// eksisterende slop/emoji/hex-kategorier (samme fil-sæt: frontend/src +
-// frontend/public/locales, samme ratchet-mekanik) — se PR-beskrivelsen for
+// eksisterende slop/emoji/hex-kategorier (samme fil-saet: frontend/src +
+// frontend/public/locales, samme ratchet-mekanik). Se PR-beskrivelsen for
 // maalt udbredelse. De duplikeres bevidst IKKE her.
 //
 // Samme moenster som lint-ui-slop.mjs og check-eslint-disable-count.mjs: en
@@ -52,8 +52,8 @@
 //   node scripts/check-anti-slop.mjs --update-baseline # regenerér baseline
 //
 // Exit codes:
-//   0 — ingen nye overtraedelser
-//   1 — nye overtraedelser ud over baseline
+//   0: ingen nye overtraedelser
+//   1: nye overtraedelser ud over baseline
 //
 // Refs #4626, #3422, #4332 (ratchet-moenstret), #4330 (guard-job).
 
@@ -72,11 +72,11 @@ const LOCALES_DIR = join(ROOT, "frontend", "public", "locales");
 // Unicode-pile brugt som ikon-erstatning (TASTE §3: "→ ← ↔ ↑ ↓ › «"). Daekker
 // Unicode Arrows-blokkens hoved-retninger + hook-varianter (#3422's forslag
 // `[←-↕↩↪↔]`) samt de to vinkel-anfoerselstegn-par TASTE navngiver som
-// chevron-erstatning (‹ › « ») — samme misbrug, symmetrisk retning.
+// chevron-erstatning (‹ › « »), samme misbrug, symmetrisk retning.
 // Indholds-pile i en forklarende saetning ("60-100% → sponsor x1,10") matcher
 // SAMME regex som knap-chrome ("Forhandl ny plan →"): en ren regex kan ikke
 // skelne de to (#3422 punkt 3: locale-siden "skal laeses igennem, ikke
-// find-erstattes"). Ratchet'en loeser det praktisk — begge typer fryses i
+// find-erstattes"). Ratchet'en loeser det praktisk: begge typer fryses i
 // baseline, kun VAEKST fejler, hvilket er praecis det #3422 maalte som
 // problemet ("+59 paa 12 dage", ikke det eksisterende antal).
 const ARROW_RE = /[←-↕↩↪‹›«»]/gu;
@@ -121,14 +121,14 @@ export function countShadow(src) {
   let n = 0;
   let m;
 
-  // Raa CSS/JS-stil-deklarationer ("box-shadow:"/"boxShadow:") taelles foerst…
+  // Raa CSS/JS-stil-deklarationer ("box-shadow:"/"boxShadow:") taelles foerst,
   SHADOW_STYLE_RE.lastIndex = 0;
   while ((m = SHADOW_STYLE_RE.exec(clean)) !== null) n++;
 
-  // …og fjernes derefter, saa klasse-scannet nedenfor ikke dobbelt-taeller
+  // og fjernes derefter, saa klasse-scannet nedenfor ikke dobbelt-taeller
   // "shadow"-halen af "box-shadow:" som endnu et separat Tailwind-klasse-fund
-  // (bindestregen foran "shadow" er en ægte \b-graense, saa uden dette ville
-  // "box-shadow:" tælle som BAADE en style-deklaration OG en bar `shadow`-klasse).
+  // (bindestregen foran "shadow" er en aegte \b-graense, saa uden dette ville
+  // "box-shadow:" taelle som BAADE en style-deklaration OG en bar `shadow`-klasse).
   const withoutStyleDecls = clean.replace(SHADOW_STYLE_RE, "");
 
   SHADOW_CLASS_RE.lastIndex = 0;
@@ -208,7 +208,7 @@ export function compareAgainstBaseline(findings, baseline) {
       const cur = counts[cat] || 0;
       const max = allowed[cat] || 0;
       if (cur > max) {
-        newViolations.push(`${file} — ${cat}: ${cur} (baseline tillader ${max}, +${cur - max} ny(e))`);
+        newViolations.push(`${file}, ${cat}: ${cur} (baseline tillader ${max}, +${cur - max} ny(e))`);
       }
     }
   }
@@ -216,7 +216,7 @@ export function compareAgainstBaseline(findings, baseline) {
     const cur = findings[file] || ZERO;
     for (const cat of CATS) {
       if ((cur[cat] || 0) < (allowed[cat] || 0)) {
-        stale.push(`${file} — ${cat}: ${cur[cat] || 0}/${allowed[cat] || 0} tilbage (baseline kan strammes)`);
+        stale.push(`${file}, ${cat}: ${cur[cat] || 0}/${allowed[cat] || 0} tilbage (baseline kan strammes)`);
       }
     }
   }
@@ -228,7 +228,7 @@ function buildBaseline(findings) {
   for (const file of Object.keys(findings).sort()) files[file] = findings[file];
   return {
     $comment:
-      "Kendte anti-slop-overtraedelser (ratchet — maa kun skrumpe). Kategorier: arrow/smallpx/shadow/gradient. Genereret af scripts/check-anti-slop.mjs --update-baseline. Refs #4626, #3422. Nye overtraedelser maa IKKE tilfoejes her — brug stroke-ikoner (ikke pile), text-2xs/text-3xs (ikke arbitraer px), shadow-overlay (ikke andre shadow-*), eller (legitimt) udvid EXEMPT_FILES i lint-ui-slop.mjs med begrundelse (delt med denne guard).",
+      "Kendte anti-slop-overtraedelser (ratchet, maa kun skrumpe). Kategorier: arrow/smallpx/shadow/gradient. Genereret af scripts/check-anti-slop.mjs --update-baseline. Refs #4626, #3422. Nye overtraedelser maa IKKE tilfoejes her: brug stroke-ikoner (ikke pile), text-2xs/text-3xs (ikke arbitraer px), shadow-overlay (ikke andre shadow-*), eller (legitimt) udvid EXEMPT_FILES i lint-ui-slop.mjs med begrundelse (delt med denne guard).",
     files,
   };
 }
@@ -255,7 +255,7 @@ function main() {
   const { newViolations, stale } = compareAgainstBaseline(findings, baseline);
 
   if (stale.length) {
-    console.log(`${stale.length} baseline-entr${stale.length === 1 ? "y" : "ies"} skrumpet (fixet) — stram ratchet'en i en dedikeret commit:`);
+    console.log(`${stale.length} baseline-entr${stale.length === 1 ? "y" : "ies"} skrumpet (fixet). Stram ratchet'en i en dedikeret commit:`);
     for (const s of stale.slice(0, 12)) console.log(`   - ${s}`);
     console.log("   -> node scripts/check-anti-slop.mjs --update-baseline");
   }
