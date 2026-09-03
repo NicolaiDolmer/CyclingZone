@@ -61,13 +61,11 @@ function makeMock({ intake, riders, backupExists = true, backupRows = [] }) {
       }
       if (table === BACKUP_TABLE) {
         let inIds = null;
-        let limitN = null;
         const b = {
           select() { return b; },
           in(_col, ids) { inIds = ids; return b; },
           order() { return b; },
           limit(n) {
-            limitN = n;
             if (!backupExists) return Promise.resolve({ data: null, error: new Error("relation does not exist") });
             return Promise.resolve({ data: backup.slice(0, n ?? backup.length), error: null });
           },
