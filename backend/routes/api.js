@@ -15913,7 +15913,7 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
         ...(outcome.errorCode ? { errorCode: outcome.errorCode } : {}),
       });
     }
-    const { teamId, plan_type, request_type, board, activeSeason, requestResult } = outcome;
+    const { teamId, request_type, board, activeSeason, requestResult } = outcome;
 
     let updatedBoard = board;
 
