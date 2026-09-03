@@ -25,6 +25,13 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
+    // Node-test-filer (*.test.ts) importerer soeskende-moduler MED .ts-extension,
+    // fordi node --test (Node 24 native TS-stripping) kraever den eksakte
+    // extension i ESM-resolution - uden extension fejler runtime med
+    // ERR_MODULE_NOT_FOUND (ingen automatisk extension-probing i ESM). Samme
+    // flag som backend/tsconfig.engine.json af samme grund. Kraever noEmit
+    // (allerede sat ovenfor).
+    "allowImportingTsExtensions": true,
     "types": ["vite/client"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]

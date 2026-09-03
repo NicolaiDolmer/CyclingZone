@@ -1,4 +1,5 @@
 // Unit-tests for terrainCode.ts (#4143). Kører med: node --test (i frontend/)
+/// <reference types="node" />
 import { test } from "node:test";
 import assert from "node:assert/strict";
 

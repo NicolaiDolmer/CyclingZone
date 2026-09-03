@@ -1,4 +1,5 @@
 // Unit-tests for calendarTierDensity.ts (#4386). Kører med: node --test (i frontend/)
+/// <reference types="node" />
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
