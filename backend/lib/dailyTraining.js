@@ -3,7 +3,7 @@
 // dag-rate = residual-gap × f(age)/daysPerSeason. Over en sæson ≈ gap×e^(−f) ~ L0's gap×(1−f).
 // dailyBudgetBoost kalibreres i scripts/previewDailyTraining.js så peak rammer 27-28 (spec 5.2).
 import { PROGRESSION_CONFIG, seededUnit, youthRateForPotential, roleRateFactor, ROLE_CLASS_RATE } from "./riderProgression.js";
-import { TRAINING_CONFIG, TRAINING_FOCUSES, smartDefaultFocus } from "./training.js";
+import { TRAINING_CONFIG, TRAINING_FOCUSES, focusAbilityWeight, smartDefaultFocus } from "./training.js";
 import { dayTypeForProgram, RECOVERY_INTENSITY } from "./trainingDayTypes.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
@@ -94,8 +94,12 @@ export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
   if (program.intensity === RECOVERY_INTENSITY) {
     return inFocus ? (cfg.focusGrowthMult[RECOVERY_INTENSITY] ?? 0) : 0;
   }
+  // #4631: vægten pr. (fokus, evne) ganges KUN på fokus-evner. Den er 1,0 for
+  // alle fokus der ikke står i FOCUS_ABILITY_WEIGHT, så enhver eksisterende plan
+  // er bit-identisk. Off-fokus-evner rører den ikke: en session må ikke kunne
+  // ændre hvad den IKKE træner.
   return inFocus
-    ? (cfg.focusGrowthMult[program.intensity] ?? 1)
+    ? (cfg.focusGrowthMult[program.intensity] ?? 1) * focusAbilityWeight(program.focus, ability)
     : cfg.offFocusMult;
 }
 

@@ -6,8 +6,12 @@
 // sæson-skift (og er gated bag #1137-flaget).
 
 // Fokus-nøgle → evner det skubber mod cap (matcher backend TRAINING_FOCUSES).
+// #4631: `vo2max` er uændret og er nu hybriden; de to specialiserede sessioner
+// står ved siden af den. Nøglen beholdes, så ingen gemt plan skal migreres.
 export const TRAINING_FOCUS_ABILITIES = Object.freeze({
-  vo2max:      Object.freeze(["climbing", "punch", "tempo"]),
+  vo2max:       Object.freeze(["climbing", "punch", "tempo"]),
+  vo2max_climb: Object.freeze(["climbing", "tempo"]),
+  vo2max_punch: Object.freeze(["punch", "tempo"]),
   threshold:   Object.freeze(["time_trial", "tempo"]),
   sprint:      Object.freeze(["sprint", "acceleration"]),
   endurance:   Object.freeze(["endurance", "recovery", "durability"]),
