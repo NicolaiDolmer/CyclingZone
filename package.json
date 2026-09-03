@@ -68,6 +68,8 @@
     "test:lint-rate-limit-coverage": "node --test scripts/check-rate-limit-coverage.test.mjs",
     "lint:rls-classification": "node scripts/check-rls-classification-coverage.mjs",
     "test:lint-rls-classification": "node --test scripts/check-rls-classification-coverage.test.mjs",
+    "lint:maybesingle-unique-scope": "node scripts/check-maybesingle-unique-scope.mjs",
+    "test:lint-maybesingle-unique-scope": "node --test scripts/check-maybesingle-unique-scope.test.mjs",
     "verify:affected": "node scripts/verify-affected.mjs",
     "test:verify-affected": "node --test scripts/verify-affected.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",

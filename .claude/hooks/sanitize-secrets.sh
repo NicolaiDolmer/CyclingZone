@@ -240,6 +240,39 @@ ISO_TIMESTAMP_SUFFIX_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}
 def looks_like_iso_timestamp_filename(value):
     return bool(ISO_TIMESTAMP_SUFFIX_RE.search(value))
 
+# Uppercase-var-assignment detector (#4493). `STORT_NAVN=<hex-of-lignende>`
+# er en helt almindelig shell-idiom (COMMIT=<sha>, SHA=<sha>, COMMIT_SHA=<sha>,
+# container-digests, checksums, migrations-/build-id'er). HIGH_ENTROPY's
+# char-class inkluderer '=', saa variabelnavnets STORE bogstaver bindes sammen
+# med vaerdiens smaa bogstaver+cifre til ét token, og reglen (2 store, 2
+# smaa, 2 cifre, >=40 tegn) er opfyldt af KOMBINATIONEN alene — hverken navnet
+# eller vaerdien opfylder den hver for sig.
+#
+# Fix: split kandidat-tokenet paa '=' og kraev at MINDST ét segment
+# uafhaengigt opfylder entropi-kravet, foer vi flager. En aegte secret
+# overlever: `KEY=<aegte-secret>` -> vaerdi-segmentet alene har stadig
+# blandet case + cifre + laengde >=40. Base64-padding ('==') ligger til
+# sidst, saa splittet trimmer kun de (tomme) padding-segmenter, ikke selve
+# secret-kroppen. Navngivne patterns (sb_secret_/eyJ/ghp_/AKIA/Sentry/...)
+# koeres FOER denne fallback, saa et kendt-praefikset secret ved siden af et
+# stort variabelnavn fanges alligevel der (verificeret: COMMIT=<JWT>,
+# SUPABASE_KEY=<sb_secret_...> i scripts/test-sanitize-secrets.sh).
+_UPPER_RE = re.compile(r"[A-Z]")
+_LOWER_RE = re.compile(r"[a-z]")
+_DIGIT_RE = re.compile(r"[0-9]")
+def _segment_is_high_entropy(segment):
+    return (
+        len(segment) >= 40
+        and len(_UPPER_RE.findall(segment)) >= 2
+        and len(_LOWER_RE.findall(segment)) >= 2
+        and len(_DIGIT_RE.findall(segment)) >= 2
+    )
+def looks_like_uppercase_var_assignment(value):
+    if "=" not in value:
+        return False
+    segments = [s for s in value.split("=") if s]
+    return not any(_segment_is_high_entropy(s) for s in segments)
+
 findings = []
 redacted = text
 
@@ -274,6 +307,7 @@ redacted, bot_metadata_skipped = BOT_METADATA_RE.subn("[BOT-METADATA]", redacted
 high_entropy_skipped = 0
 path_like_skipped = 0
 iso_timestamp_skipped = 0
+var_assign_skipped = 0
 if image_mode:
     high_entropy_skipped = sum(1 for _ in HIGH_ENTROPY.finditer(redacted))
 else:
@@ -281,6 +315,11 @@ else:
         value = m.group(0)
         # Skip allow-listed
         if any(a.match(value) for a in ALLOW):
+            continue
+        # Skip STORT_NAVN=<vaerdi>-idiomer hvor kun kombinationen (ikke
+        # navnet eller vaerdien hver for sig) opfylder entropi-kravet (#4493).
+        if looks_like_uppercase_var_assignment(value):
+            var_assign_skipped += 1
             continue
         # Skip path/identifier-like strings (#752) — flade file-paths,
         # worktree-/session-navne. Safe: named patterns har allerede koert.
@@ -307,6 +346,7 @@ result = {
     "high_entropy_skipped": high_entropy_skipped,
     "path_like_skipped": path_like_skipped,
     "iso_timestamp_skipped": iso_timestamp_skipped,
+    "var_assign_skipped": var_assign_skipped,
     "bot_metadata_skipped": bot_metadata_skipped,
     "tool_name": tool_name,
 }
@@ -332,7 +372,7 @@ STATS_FILE="$REPO_ROOT/.claude/secret-leak-stats.log"
 STATS_LINE=$(printf '%s' "$SCAN_RESULT" | "$PY" -c '
 import sys, json
 d = json.load(sys.stdin)
-if not (d.get("image_mode") or d.get("leak_detected") or d.get("path_like_skipped") or d.get("iso_timestamp_skipped") or d.get("bot_metadata_skipped")):
+if not (d.get("image_mode") or d.get("leak_detected") or d.get("path_like_skipped") or d.get("iso_timestamp_skipped") or d.get("bot_metadata_skipped") or d.get("var_assign_skipped")):
     sys.exit(0)
 fields = [
     "image_mode={}".format(d.get("image_mode", False)),
@@ -340,6 +380,7 @@ fields = [
     "skipped_he={}".format(d.get("high_entropy_skipped", 0)),
     "skipped_path={}".format(d.get("path_like_skipped", 0)),
     "skipped_iso={}".format(d.get("iso_timestamp_skipped", 0)),
+    "skipped_var={}".format(d.get("var_assign_skipped", 0)),
     "skipped_bot={}".format(d.get("bot_metadata_skipped", 0)),
     "leak={}".format(d.get("leak_detected", False)),
     "count={}".format(d.get("count", 0)),

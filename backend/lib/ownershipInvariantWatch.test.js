@@ -15,7 +15,7 @@ import { runOwnershipInvariantWatch } from "./ownershipInvariantWatch.js";
 //                   buildere thenable. Default er TOMME lister = "ingen kører
 //                   et aktivt etapeløb", hvilket bevarer alle eksisterende
 //                   forventninger uændret.
-function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEntries = [], auctionsError = null } = {}) {
+function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEntries = [], auctionsError = null, teams = [], teamBoardMembers = [] } = {}) {
   return {
     from(table) {
       if (table === "auctions") {
@@ -122,6 +122,39 @@ function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEnt
         };
         return b;
       }
+      if (table === "teams") {
+        // Invariant F (#4664): .eq(is_ai) .eq(is_bank) .eq(is_frozen) .eq(is_test_account)
+        // .not(season_1_identity_basis, "is", null) .order() .range()
+        const eqFilters = [];
+        const notNullCols = [];
+        const b = {
+          select() { return b; },
+          eq(col, val) { eqFilters.push([col, val]); return b; },
+          not(col, op, val) { if (op === "is" && val === null) notNullCols.push(col); return b; },
+          order() { return b; },
+          range(from, to) {
+            let out = teams.filter((r) => eqFilters.every(([c, v]) => (r[c] ?? false) === v));
+            out = out.filter((r) => notNullCols.every((c) => r[c] != null));
+            out = out.slice(from, to + 1);
+            return Promise.resolve({ data: out, error: null });
+          },
+        };
+        return b;
+      }
+      if (table === "team_board_members") {
+        const inFilters = [];
+        const b = {
+          select() { return b; },
+          in(col, vals) { inFilters.push([col, vals]); return b; },
+          order() { return b; },
+          range(from, to) {
+            let out = teamBoardMembers.filter((r) => inFilters.every(([c, v]) => v.includes(r[c])));
+            out = out.slice(from, to + 1);
+            return Promise.resolve({ data: out.map((r) => ({ team_id: r.team_id })), error: null });
+          },
+        };
+        return b;
+      }
       throw new Error(`uventet tabel: ${table}`);
     },
   };
@@ -143,7 +176,7 @@ test("#2647 clean fixture — ingen brud, ingen capture, alerted=false", async (
   });
   assert.equal(calls.length, 0);
   assert.equal(result.alerted, false);
-  assert.deepEqual(result.findings, { youthOwned: 0, sellerlessOwned: 0, staleIntake: 0, strandedAcademy: 0, stalePendingTransfer: 0 });
+  assert.deepEqual(result.findings, { youthOwned: 0, sellerlessOwned: 0, staleIntake: 0, strandedAcademy: 0, stalePendingTransfer: 0, teamsMissingBoardMembers: 0 });
   assert.equal(result.checked, 2);
 });
 
@@ -674,4 +707,68 @@ test("CYCLINGZONE-4M samplet viser ejerskabet EFTER genlæsningen, ikke det for�
   });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].ctx.extra.sample[0].teamId, "team-NY");
+});
+
+// ─── Invariant F (#4664): menneskehold uden bestyrelsesmedlemmer ────────────
+
+test("#4664 alarmerer på et menneskehold uden nogen bestyrelsesmedlemmer", async () => {
+  const teams = [
+    { id: "team-1", name: "Boardless FC", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, season_1_identity_basis: { rider_count: 12 }, team_dna_key: "fransk_klatrer" },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ teams, teamBoardMembers: [] }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+  });
+  assert.equal(result.findings.teamsMissingBoardMembers, 1);
+  assert.equal(result.alerted, true);
+  const f4664Call = calls.find((c) => c.ctx.fingerprint?.[0] === "human-team-without-board-members");
+  assert.ok(f4664Call, "invariant F skal capture med sit eget faste fingerprint");
+  assert.equal(f4664Call.ctx.extra.sample[0].name, "Boardless FC");
+});
+
+test("#4664 alarmerer på et hold med kun 3 af 5 medlemmer (delvis brud tæller også)", async () => {
+  const teams = [
+    { id: "team-1", name: "Half Board FC", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, season_1_identity_basis: { rider_count: 12 }, team_dna_key: null },
+  ];
+  const teamBoardMembers = [
+    { team_id: "team-1", archetype_key: "gc_elsker" },
+    { team_id: "team-1", archetype_key: "sponsoraten" },
+    { team_id: "team-1", archetype_key: "traditionalisten" },
+  ];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ teams, teamBoardMembers }),
+    captureExceptionFn: () => {},
+  });
+  assert.equal(result.findings.teamsMissingBoardMembers, 1);
+});
+
+test("#4664 ingen alarm når holdet har alle 5 medlemmer", async () => {
+  const teams = [
+    { id: "team-1", name: "Full Board FC", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, season_1_identity_basis: { rider_count: 12 }, team_dna_key: "fransk_klatrer" },
+  ];
+  const teamBoardMembers = Array.from({ length: 5 }, (_, i) => ({ team_id: "team-1", archetype_key: `arch-${i}` }));
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ teams, teamBoardMembers }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+  });
+  assert.equal(result.findings.teamsMissingBoardMembers, 0);
+  assert.equal(result.alerted, false);
+  assert.equal(calls.length, 0);
+});
+
+test("#4664 springer AI-, bank-, frosne og test-hold over, samt hold uden identity_basis endnu", async () => {
+  const teams = [
+    { id: "ai-1", name: "AI Team", is_ai: true, is_bank: false, is_frozen: false, is_test_account: false, season_1_identity_basis: { rider_count: 12 } },
+    { id: "bank-1", name: "Bank", is_ai: false, is_bank: true, is_frozen: false, is_test_account: false, season_1_identity_basis: { rider_count: 12 } },
+    { id: "frozen-1", name: "Frozen FC", is_ai: false, is_bank: false, is_frozen: true, is_test_account: false, season_1_identity_basis: { rider_count: 12 } },
+    { id: "test-1", name: "TestHoldet", is_ai: false, is_bank: false, is_frozen: false, is_test_account: true, season_1_identity_basis: { rider_count: 12 } },
+    { id: "brand-new-1", name: "Brand New FC", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, season_1_identity_basis: null },
+  ];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ teams, teamBoardMembers: [] }),
+    captureExceptionFn: () => {},
+  });
+  assert.equal(result.findings.teamsMissingBoardMembers, 0, "ingen af de fem skal tælle med");
 });
