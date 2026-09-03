@@ -40,6 +40,7 @@ import type {
   SegmentGroupSnapshot,
   SegmentKind,
   StageInput,
+  TeamOrder,
   TimelineEvent,
 } from "./types.ts";
 import { boundRngFor } from "./rng.ts";
@@ -70,6 +71,7 @@ export const DEFAULT_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: noopHook,
   descent: noopHook,
   finale: noopHook,
+  breakaway: noopHook,
 };
 
 // ── Kollektiv-CP + hastighed ───────────────────────────────────────────────────
@@ -230,6 +232,9 @@ export type SegmentLoopResult = {
  */
 export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT_MECHANIC_HOOKS): SegmentLoopResult {
   const { route, startlist, seed, tuning } = input;
+  // T4 (tactics-orders-specen): kernen kraever ALDRIG ordrer — en manglende
+  // eller tom liste er den neutrale default.
+  const orders: readonly TeamOrder[] = input.orders ?? [];
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
 
@@ -292,6 +297,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       entrants: entrantsById,
       tuning,
       rngFor: rngForFn,
+      orders,
     };
     if (segment.kind === "climb") {
       const result = hooks.climbSelection(state, ctx);
@@ -302,6 +308,19 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       state = result.state;
       timeline.push(...result.events);
     }
+
+    // M5 (#4615): udbrud v2 koeres paa HVERT segment — formation paa det
+    // foerste, jagt-fremdrift paa de oevrige. Placeret EFTER climb/descent (saa
+    // selektionen paa dagens terraen allerede har fundet sted) og FOER finale-
+    // hooket (saa M4 ser det korrekte frontgruppe-billede naar en overlevet
+    // udbryder skal placeres) — praecis den raekkefolge breakaway.ts's egen
+    // wiring-note foreskriver.
+    {
+      const result = hooks.breakaway(state, ctx);
+      state = result.state;
+      timeline.push(...result.events);
+    }
+
     const isLastSegment = segmentIndex === segments.length - 1;
     if (isLastSegment) {
       // M3-angreb paa selve finale-segmentet giver angrebsgruppen negativt gap
