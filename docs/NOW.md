@@ -26,6 +26,6 @@
 - **Økonomi/værdier S3:** låst. **Sikkerhed:** kun #691 åben. **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428).
 - **Mekanik:** PR'er merges med `--admin` (én ad gangen); `database/*.sql` applies af auto-migrate.yml ved merge, Claude laver kun post-verify.
 
-> **🤖 Working agent:** Ingen aktiv session (session lukket 3/9 kl. 20:55 efter 13-opgavers bølge; #4736 draft). Playwright-slottet er frit.
+> **🤖 Working agent:** Ingen aktiv session (Fable lukkede #4733-sessionen 3/9 kl. 20:45; 13-opgavers boelgen fra kl. 16 er ogsaa afsluttet, ejer bekraeftede eneste session).
 
 _Historik i git-log, issue-tråde + docs/audits/._
