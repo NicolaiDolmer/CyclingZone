@@ -46,6 +46,11 @@ export function computeIsPro(sub, now = Date.now()) {
 }
 
 // Slår team'ets subscription op via service_role-klienten og returnerer is_pro.
+// BEMÆRK: dette er KUN "har et løbende betalt abonomnement nu" — det inkluderer
+// bevidst IKKE is_founder (permanent status, uafhængig af om abonnementet siden
+// er udløbet). Kald isProOrFounder() i stedet når UI/rute skal gate på "har
+// Pro-adgang" i bred forstand — samme kontrakt som Layout.jsx's `isPro ||
+// isFounder`-mønster, som ALLE Pro-perk-gates (#4649) skal spejle.
 export async function isPro(supabase, teamId) {
   const { data, error } = await supabase
     .from("subscriptions")
@@ -54,4 +59,21 @@ export async function isPro(supabase, teamId) {
     .maybeSingle();
   if (error) throw error;
   return computeIsPro(data);
+}
+
+// #4649: kombineret adgangs-tjek til Pro-PERKS (badge, analytics, komfort) —
+// isPro() ELLER en permanent Founder, præcis som Layout.jsx's sidebar-gate på
+// frontend. Første backend-brug af isPro() til at gate reel funktionalitet
+// (#2806) skal bruge DENNE, ikke isPro() alene, for ikke at fjerne adgang fra
+// Founders hvis deres abonnement senere lapses (founderExplainer i pro.json:
+// "Founders keep a permanent Founder badge, even if the subscription later
+// lapses" — badge OG perks, jf. Layout.jsx's eksisterende adfærd).
+export async function isProOrFounder(supabase, teamId) {
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("status, current_period_end, is_founder")
+    .eq("team_id", teamId)
+    .maybeSingle();
+  if (error) throw error;
+  return computeIsPro(data) || Boolean(data?.is_founder);
 }

@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
 import LeaderBadge from "../components/LeaderBadge";
+import FounderMark from "../components/FounderMark";
 import CompareDrawer from "../components/CompareDrawer";
 import { formatNumber } from "../lib/intl";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
@@ -484,6 +485,8 @@ export default function StandingsPage() {
             stopPropagation: rækken selv har et onClick (navigate, via rowProps) —
             uden dette ville linket først navigere, og row-klikket bagefter forsøge igen. */}
         <TeamLink id={s.team_id} tab="results" stopPropagation className="truncate">{s.team?.name}</TeamLink>
+        {/* #4649: Founder-mærke — synligt for ALLE, ikke kun køberen selv. */}
+        <FounderMark teamId={s.team_id} />
         {isLeader && <LeaderBadge className={leaderPulse ? "cz-chip-pulse" : ""} />}
         {s.team_id === myTeamId && (
           <span className="shrink-0 rounded-full px-1.5 py-0.5 text-3xs font-bold uppercase"

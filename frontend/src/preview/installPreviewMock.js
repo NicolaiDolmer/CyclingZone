@@ -5,7 +5,7 @@
 // Interceptoren må ALDRIG kaste: enhver umatchet route eller fejl falder tilbage
 // til den ægte fetch, så Vite-assets/HMR/WS stadig virker. Bag VITE_PREVIEW_MOCK-
 // guarden i main.jsx ⇒ prod tree-shaker hele preview/-mappen væk.
-import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, apiResponse } from "./mockHandlers.js";
+import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, apiResponse, mockProEnabled } from "./mockHandlers.js";
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
@@ -209,6 +209,28 @@ export function installPreviewMock() {
           next_season_signup_at: new Date().toISOString(),
           next_season_number: ACTIVE_SEASON.number + 1,
         });
+      }
+
+      // #4649 · Pro v1.1-ruter. Ny funktionalitet (ingen eksisterende preview/
+      // e2e-forløb rammer disse paths), styret af SAMME cz_mock_pro-flag som
+      // subscriptions-mocken ovenfor, så et skærmbillede af BEGGE tilstande
+      // (Pro og fri) kan tages ved blot at sætte flaget før reload.
+      if (method === "GET" && /\/api\/pro\/rider-history\//.test(url)) {
+        if (!mockProEnabled()) {
+          return jsonResponse({ error: "Pro required", errorCode: "pro_required" }, 403);
+        }
+        return jsonResponse({
+          abilityCeiling: 99,
+          seasons: [
+            { season_number: 1, abilities: { climbing: 52, tempo: 55, punch: 48, sprint: 40, acceleration: 44, flat: 50, time_trial: 47, endurance: 58, durability: 53, recovery: 51, aggression: 45, tactics: 42, descending: 49, cobblestone: 38, positioning: 46 } },
+            { season_number: 2, abilities: { climbing: 61, tempo: 60, punch: 53, sprint: 43, acceleration: 47, flat: 54, time_trial: 52, endurance: 63, durability: 57, recovery: 54, aggression: 47, tactics: 46, descending: 52, cobblestone: 40, positioning: 49 } },
+            { season_number: 3, abilities: { climbing: 68, tempo: 64, punch: 57, sprint: 45, acceleration: 49, flat: 57, time_trial: 55, endurance: 67, durability: 60, recovery: 56, aggression: 48, tactics: 49, descending: 54, cobblestone: 41, positioning: 51 } },
+          ],
+        });
+      }
+      // Offentligt (uafhaengigt af cz_mock_pro) — samme seat-tal som RPC-listen ovenfor.
+      if (method === "GET" && /\/api\/billing\/founder-seats$/.test(url)) {
+        return jsonResponse({ taken: 2, cap: 50 });
       }
 
       // #4519: board-request-preview-mock — "nuværende plan → foreslået plan"

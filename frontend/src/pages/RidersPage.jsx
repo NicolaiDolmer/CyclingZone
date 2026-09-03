@@ -23,6 +23,8 @@ import { getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
+import SavedFiltersBar from "../components/rider/SavedFiltersBar.jsx";
+import { useSubscription } from "../lib/useSubscription.js";
 import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
 import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
@@ -200,6 +202,8 @@ export default function RidersPage() {
   );
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
+  // #4649: gemte filtre (del C) — Pro-gated i UI, se SavedFiltersBar.
+  const { isPro, isFounder } = useSubscription(myTeam?.id);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [compareIds, setCompareIds] = useState([]);
   // #3012: fejl-feedback når en watchlist-toggle fejler, så den ikke tavst
@@ -616,7 +620,7 @@ export default function RidersPage() {
         />
       )}
 
-      {/* #4628: T2-filterlinjen (TASTE fork 1) — soeg + land + ryttertype paa én
+      {/* #4628: T2-filterlinjen (TASTE fork 1), soeg + land + ryttertype paa én
           linje, resten bag "Flere filtre" lukket som default. Erstatter det aabne
           8-felts panel + evne-folden, som stod mellem spilleren og foerste rytter. */}
       <div data-tour="riders-filters">
@@ -630,6 +634,15 @@ export default function RidersPage() {
           showAiToggle={true}
         />
       </div>
+
+      {/* #4649: gemte filtre (Pro v1.1 del C), som en raekke under filterlinjen
+          (chips + "Save current filter"). */}
+      <SavedFiltersBar
+        userId={userId}
+        filters={filters}
+        onApply={(saved) => setFilters({ ...FILTER_DEFAULTS, ...saved, page: 1 })}
+        eligible={isPro || isFounder}
+      />
 
       {loading ? (
         <div className={`${WRAP} p-5`}>

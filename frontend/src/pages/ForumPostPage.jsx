@@ -9,6 +9,7 @@ import {
 } from "../components/ui";
 import { InboxIcon, ArrowUpIcon, UndoIcon } from "../components/ui/icons/index.jsx";
 import { formatForumDate } from "./ForumPage.jsx";
+import FounderMark from "../components/FounderMark.jsx";
 
 // #3199 — tråd-detalje: opslag + evt. ejer-poll + svar. T1 (max-w-4xl).
 // Afstemning: single choice, genafstemning tilladt (backend upserter). Kun
@@ -42,6 +43,8 @@ function AuthorLine({ author, createdAt, language, t }) {
     <div className="flex items-center gap-2 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
       <span className="truncate">{t("list.by", { name: author?.username || author?.team_name || "?" })}</span>
       {author?.team_name && author?.username && <span className="truncate normal-case">{author.team_name}</span>}
+      {/* #4649: Founder-mærke ved forfatterlinjen. */}
+      <FounderMark teamId={author?.team_id} />
       <span>·</span>
       <span className="tabular-nums">{formatForumDate(createdAt, language)}</span>
     </div>
@@ -421,7 +424,13 @@ export default function ForumPostPage() {
         <>
         <PageHeader
           title={post.title}
-          subtitle={`${post.author?.username || post.author?.team_name || "?"}${post.author?.team_name && post.author?.username ? ` · ${post.author.team_name}` : ""} · ${t(`categories.${post.category}`)} · ${formatForumDate(post.created_at, language)}`}
+          subtitle={
+            <span className="inline-flex items-center gap-2 flex-wrap">
+              {`${post.author?.username || post.author?.team_name || "?"}${post.author?.team_name && post.author?.username ? ` · ${post.author.team_name}` : ""} · ${t(`categories.${post.category}`)} · ${formatForumDate(post.created_at, language)}`}
+              {/* #4649: Founder-mærke ved forfatterlinjen (trådstarteren). */}
+              <FounderMark teamId={post.author?.team_id} />
+            </span>
+          }
         />
         <SectionStack>
           <Section>

@@ -8,6 +8,7 @@ import {
   SkeletonLines, Modal, Field, Input, Textarea,
 } from "../components/ui";
 import { InboxIcon } from "../components/ui/icons/index.jsx";
+import FounderMark from "../components/FounderMark.jsx";
 
 // #3199 — Forum v1 (plan låst 6/8): to kategorier (General · Feedback & ideas),
 // opslag + svar-tråde, ejer-opslag kan pinnes og bære afstemninger. T1 standard
@@ -68,6 +69,8 @@ function PostRow({ post, t, language }) {
         <span className="truncate">
           {t("list.by", { name: post.author?.username || post.author?.team_name || "?" })}
         </span>
+        {/* #4649: Founder-mærke ved forfatterlinjen. */}
+        <FounderMark teamId={post.author?.team_id} />
         <span>·</span>
         <span>{t(`categories.${post.category}`)}</span>
         <span>·</span>

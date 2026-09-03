@@ -69,6 +69,7 @@
     "terms_version_mismatch": "Handelsbetingelserne er blevet opdateret. Læs og acceptér den nyeste version",
     "no_subscription": "Du har ikke et aktivt abonnement",
     "already_subscribed": "Du har allerede et aktivt CZ Pro-abonnement. Administrér det under Indstillinger.",
+    "pro_required": "Dette er en Pro-funktion",
     "not_owned": "Du ejer ikke denne rytter",
     "not_academy": "Rytteren er ikke i dit akademi",
     "already_academy": "Rytteren er allerede i dit akademi",

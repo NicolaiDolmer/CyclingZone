@@ -156,6 +156,9 @@ function shapeAuthor(row, usersById, teamsById) {
   return {
     username: user?.username ?? null,
     team_name: team?.name ?? null,
+    // #4649: team_id (ikke-sensitivt — allerede en offentlig FK) så fronten kan
+    // slå Founder-mærket op via useFounderTeams uden en ekstra rundtur.
+    team_id: row.team_id ?? null,
   };
 }
 
