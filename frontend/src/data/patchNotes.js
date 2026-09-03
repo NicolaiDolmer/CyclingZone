@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.242",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "Injured riders can be selected for races that start after they heal",
+          "body": "You can now select an injured rider for a race, autofill him in, or have the assistant fill him in, as long as the race itself starts after his injury ends. Previously the whole app checked his status \"right now\", so you had to wait for him to heal even for races weeks away."
+        },
+        "da": {
+          "title": "Skadede ryttere kan udtages til løb der starter efter skaden er ovre",
+          "body": "Du kan nu udtage en skadet rytter til et løb, autofylde ham ind, eller lade assistenten fylde ham ind, så længe selve løbet starter efter skaden er slut. Før tjekkede hele app'en hans status \"lige nu\", så du skulle vente til han var rask selv til løb der lå uger ude."
+        },
+        "refs": [4701]
+      }
+    ]
+  },
+  {
     "version": "7.241",
     "date": "2026-09-03",
     "label": "Beta",

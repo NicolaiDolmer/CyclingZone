@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   isEligibleRider, filterEligibleEntries, applyRiderEligibilityFilter,
   isRiderInjured, applyInjuredFilter, filterOutInjuredEntries,
+  raceSelectionReferenceDateStr,
 } from "./riderEligibility.js";
 
 test("isEligibleRider: senior på holdet er berettiget", () => {
@@ -77,6 +78,36 @@ test("filterOutInjuredEntries: skadede committede entries falder ud; raske/udlø
   ];
   const live = filterOutInjuredEntries({ entries, injuredUntilByRider, todayStr: "2026-08-21" });
   assert.deepEqual(live.map((e) => e.rider_id), ["healed", "no-condition"]);
+});
+
+// #4701 (ejer-bekræftet 2/9): skadesstatus for udtagelse skal vurderes mod LØBETS
+// startdato, ikke "nu" — en rytter skadet i dag skal kunne udtages til et løb der
+// starter EFTER skaden er udløbet.
+test("raceSelectionReferenceDateStr: løb i fremtiden → løbets EGEN startdato (ikke i dag)", () => {
+  const race = { scheduled_for: "2026-09-20T12:00:00Z" }; // langt efter todayStr
+  assert.equal(raceSelectionReferenceDateStr(race, "2026-09-03"), "2026-09-20");
+});
+
+test("raceSelectionReferenceDateStr: manglende scheduled_for (kalender ikke materialiseret) → falder tilbage til i dag", () => {
+  assert.equal(raceSelectionReferenceDateStr({ scheduled_for: null }, "2026-09-03"), "2026-09-03");
+  assert.equal(raceSelectionReferenceDateStr({}, "2026-09-03"), "2026-09-03");
+});
+
+test("raceSelectionReferenceDateStr: en løbsdato FØR i dag (degenereret tilfælde) gør aldrig en rask rytter skadet igen — max(i dag, løbsdato)", () => {
+  const race = { scheduled_for: "2026-08-01T12:00:00Z" };
+  assert.equal(raceSelectionReferenceDateStr(race, "2026-09-03"), "2026-09-03");
+});
+
+// Integrationen af de to: en rytter skadet 2/9-10/9 må IKKE afvises for et løb der
+// starter 20/9 (referencedatoen er løbets, ikke dagens), men SKAL stadig afvises
+// for et løb der starter 5/9 (stadig inden for skadesperioden).
+test("raceSelectionReferenceDateStr + isRiderInjured: rytter skadet til 10/9 er valgbar til løb 20/9, ikke til løb 5/9", () => {
+  const injuredUntil = "2026-09-10";
+  const todayStr = "2026-09-03";
+  const futureRace = { scheduled_for: "2026-09-20T12:00:00Z" };
+  const soonRace = { scheduled_for: "2026-09-05T12:00:00Z" };
+  assert.equal(isRiderInjured(injuredUntil, raceSelectionReferenceDateStr(futureRace, todayStr)), false);
+  assert.equal(isRiderInjured(injuredUntil, raceSelectionReferenceDateStr(soonRace, todayStr)), true);
 });
 
 test("applyRiderEligibilityFilter: kæder akademi- + pensioneret- + ikke-under-handel-filter på query'en", () => {

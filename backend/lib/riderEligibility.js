@@ -1,5 +1,6 @@
 // backend/lib/riderEligibility.js
 // #1800/#1742/#1823 Rod B: ÉN definition af "valgbar/løbs-berettiget rytter".
+import { copenhagenDateString } from "./copenhagenTime.js";
 //
 // En rytter er løbs-berettiget for et hold når han: er på holdet (team_id matcher),
 // IKKE er akademirytter (is_academy), og IKKE er pensioneret (is_retired). Tidligere
@@ -83,6 +84,23 @@ export function filterEligibleEntries({ entries = [], ridersById }) {
 // oprindelige `>=`-semantik).
 export function isRiderInjured(injuredUntil, todayStr) {
   return !!(injuredUntil && injuredUntil >= todayStr);
+}
+
+// #4701 (ejer-bekræftet 2/9, Discord-fund @jaxx_38086_92839): reference-DATO for
+// "er rytteren skadet FOR DETTE LØB" — udtagelses-gaten (raceSelection.js,
+// api.js' auto-udfyld/regenerer-endpoints) skal spørge på LØBETS egen startdato
+// (races.scheduled_for — "løbets første stages scheduled_at", se
+// raceCalendarScheduling.js), ikke "nu". Havde rytteren tidligere KUN "nu" som
+// reference, blev en fremtidig udtagelse forkert afvist af en skade der udløber
+// FØR løbet overhovedet starter — man skulle vente til han var rask i DAG, selv
+// om løbet lå uger ude. max(i dag, løbsdato): scheduled_for kan mangle (kalender
+// ikke materialiseret endnu) → falder tilbage til i dag; en løbsdato der (i et
+// degenereret tilfælde) ligger FØR i dag må aldrig gøre en i dag rask rytter
+// "skadet" igen — deraf max, ikke direkte scheduled_for.
+export function raceSelectionReferenceDateStr(race, todayStr) {
+  if (!race?.scheduled_for) return todayStr;
+  const raceDateStr = copenhagenDateString(new Date(race.scheduled_for));
+  return raceDateStr > todayStr ? raceDateStr : todayStr;
 }
 
 // SQL-siden af isRiderInjured: begræns en rider_condition-query til KUN skadede rækker
