@@ -70,8 +70,8 @@ test("root path redirects to dashboard", async ({ page }) => {
 const TRANSLATED_PAGE_SMOKE = [
   {
     path: "/dashboard",
-    en: [/Active auctions/i, /Transfers & Offers/i],
-    da: [/Aktive auktioner/i, /Transfers & tilbud/i],
+    en: [/Active auctions/i, /Transfers and offers/i],
+    da: [/Aktive auktioner/i, /Transfers og tilbud/i],
     rawKeys: ["dashboard:cards.transfers.title", "cards.transfers.title", "cards.auctions.title"],
   },
   {
