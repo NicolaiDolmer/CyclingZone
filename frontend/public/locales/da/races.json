@@ -249,13 +249,12 @@
       "tooltip": "Hvor sandsynligt et udbrud er at holde hjem på dette terræn. Jægeren er altid udbruds-kandidat."
     },
     "hunterExplainer": {
-      "title": "Sådan virker udbrudsjægeren",
-      "body": "Jægeren sendes altid med i dagens udbrud og kører hårdere for at holde sig væk. Om udbruddet holder til mål afhænger af terrænet.",
       "strengthLine": "På dette løbs terræn har et udbrud {strength} chance for at holde hjem.",
-      "candidatesTitle": "Bedste jægere i din trup",
       "candidatesHint": "Rangeret efter aggression: lysten til at angribe og satse på et ryk.",
       "noCandidates": "Vælg ryttere til løbet for at se dine bedste jægere.",
-      "aggression": "Aggression"
+      "aggression": "Aggression",
+      "pickTitle": "Vælg din udbrudsjæger",
+      "noHunter": "Ingen jæger"
     },
     "fit": {
       "label": "Match",
@@ -322,7 +321,10 @@
     "noRacesMatch": "Ingen løb matcher filtrene",
     "raceNotFound": "Løbet blev ikke fundet",
     "noResultsImportedRace": "Ingen resultater importeret for dette løb endnu",
-    "noHistory": "Ingen data fundet for \"{name}\""
+    "noHistory": "Ingen data fundet for \"{name}\"",
+    "raceNotFoundHint": "Linket kan være gammelt, eller løbet er fjernet. Åbn løbsbiblioteket og find et andet.",
+    "noResultsImportedRaceHint": "Dette løb har ingen resultatrækker endnu. Andre løb i biblioteket har deres.",
+    "noResultsImportedRaceCta": "Åbn løbsbiblioteket"
   },
   "calendar": {
     "upcoming": "Kommende",
@@ -457,7 +459,6 @@
     "willNotStartShort": "Under {min} ryttere. Stiller ikke op.",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
-    "hunter": "Udbruds-jæger (valgfri)",
     "freeRole": "Fri rolle",
     "noRole": "Ingen",
     "thRider": "Rytter",
@@ -751,8 +752,8 @@
       "season": "Sæson",
       "nextStage": "Næste etape"
     },
-    "backToLibrary": "← Løbsbibliotek",
-    "back": "← Tilbage",
+    "backToLibrary": "Løbsbibliotek",
+    "back": "Tilbage",
     "raceDnaLabel": "Dette løb:",
     "terrainDna": {
       "label": "Terræn-DNA · hvad etapen belønner",
@@ -1250,7 +1251,8 @@
     "table": {
       "prizePoints": "Præmiepoint",
       "jerseyPoints": "Trøjepoint"
-    }
+    },
+    "jumpToResults": "Se resultater"
   },
   "history": {
     "loadError": {
