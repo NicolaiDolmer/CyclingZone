@@ -15,9 +15,12 @@
     "cleanup:worktrees:run": "pwsh -File scripts/prune-merged-worktrees.ps1 -Execute",
     "race:cockpit": "pwsh -File scripts/race-cockpit.ps1",
     "check:warnings": "node scripts/check-eslint-warning-budget.mjs",
-    "check:i18n": "node scripts/i18n-check-keys.mjs && node --test scripts/i18n-check-delta-pending.test.mjs && node scripts/i18n-check-delta-pending.mjs && node --test scripts/i18n-check-duplicate-keys.test.mjs && node scripts/i18n-check-duplicate-keys.mjs && node scripts/i18n-check-namespace-inline.mjs && node scripts/i18n-check-nav-strings.mjs && node scripts/i18n-check-page-untranslated.mjs && node scripts/i18n-check-lib-strings.mjs && node scripts/i18n-check-leaks.mjs && node --test scripts/tone-check-em-dash.test.mjs && node scripts/tone-check-em-dash.mjs && node --test scripts/i18n-check-icu-braces.test.mjs && node scripts/i18n-check-icu-braces.mjs && node --test scripts/i18n-check-terrain-coverage.test.mjs && node scripts/i18n-check-terrain-coverage.mjs && node --test scripts/i18n-check-error-codes.test.mjs && node scripts/i18n-check-error-codes.mjs",
+    "check:i18n": "node scripts/i18n-check-keys.mjs && node --test scripts/i18n-check-delta-pending.test.mjs && node scripts/i18n-check-delta-pending.mjs && node --test scripts/i18n-translate-delta.test.mjs && node --test scripts/i18n-check-duplicate-keys.test.mjs && node scripts/i18n-check-duplicate-keys.mjs && node scripts/i18n-check-namespace-inline.mjs && node scripts/i18n-check-nav-strings.mjs && node scripts/i18n-check-page-untranslated.mjs && node scripts/i18n-check-lib-strings.mjs && node scripts/i18n-check-leaks.mjs && node --test scripts/tone-check-em-dash.test.mjs && node scripts/tone-check-em-dash.mjs && node --test scripts/i18n-check-icu-braces.test.mjs && node scripts/i18n-check-icu-braces.mjs && node --test scripts/i18n-check-terrain-coverage.test.mjs && node scripts/i18n-check-terrain-coverage.mjs && node --test scripts/i18n-check-error-codes.test.mjs && node scripts/i18n-check-error-codes.mjs",
     "check:i18n-delta-pending": "node scripts/i18n-check-delta-pending.mjs",
     "test:i18n-delta-pending": "node --test scripts/i18n-check-delta-pending.test.mjs",
+    "i18n:translate": "node scripts/i18n-translate-delta.mjs",
+    "i18n:translate:dry": "node scripts/i18n-translate-delta.mjs --dry-run",
+    "test:i18n-translate-delta": "node --test scripts/i18n-translate-delta.test.mjs",
     "check:i18n-leaks": "node scripts/i18n-check-leaks.mjs",
     "check:i18n-terrain": "node scripts/i18n-check-terrain-coverage.mjs",
     "check:i18n-error-codes": "node scripts/i18n-check-error-codes.mjs",
@@ -90,6 +93,7 @@
     "db:selftest": "node scripts/db-selftest.mjs"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.123.0",
     "lint-staged": "^17.4.1",
     "png-to-ico": "^3.0.2",
     "sharp": "^0.35.4"
