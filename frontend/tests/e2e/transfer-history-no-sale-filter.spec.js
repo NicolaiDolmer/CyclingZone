@@ -20,7 +20,7 @@ test.describe("Transferhistorik skjuler no_sale-auktioner som default (#2400)", 
 
     await login(page);
     await page.goto("/team");
-    await page.getByRole("button", { name: /Transferhistorik|Transfer history/ }).click();
+    await page.getByRole("tab", { name: /Transferhistorik|Transfer history/ }).click();
 
     await expect(page.getByRole("heading", { name: /Transferhistorik|Transfer history/ })).toBeVisible();
 
@@ -59,7 +59,7 @@ test.describe("Transferhistorik skjuler no_sale-auktioner som default (#2400)", 
     test.skip(testInfo.project.name === "desktop-chromium", "Dækket af desktop-testen ovenfor.");
     await login(page);
     await page.goto("/team");
-    await page.getByRole("button", { name: /Transferhistorik|Transfer history/ }).click();
+    await page.getByRole("tab", { name: /Transferhistorik|Transfer history/ }).click();
     await expect(page.getByRole("heading", { name: /Transferhistorik|Transfer history/ })).toBeVisible();
     await page.screenshot({ path: evidenceShotPath(`pr-screens/2400-history-mobile-${testInfo.project.name}.png`), fullPage: true });
   });
