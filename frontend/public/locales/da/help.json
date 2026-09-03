@@ -1180,7 +1180,7 @@
       },
       "suitability": {
         "title": "Sådan læser du udtagelses-tabellen",
-        "text": "Hver rytter viser sin type (fx Spurter eller Klatrer), et egnethedstal fra 0 til 100 der angiver hvor godt rytteren passer til løbets terræn, samt aktuel Form og Træthed. Højere egnethed betyder et bedre match til parcouren. Skadede ryttere kan ikke udtages; brug Skjul skadede for at fjerne dem fra listen mens du vælger."
+        "text": "Hver rytter viser sin type (fx Spurter eller Klatrer), et egnethedstal fra 0 til 100 der angiver hvor godt rytteren passer til løbets terræn, samt aktuel Form og Træthed. Højere egnethed betyder et bedre match til parcouren. En rytter der stadig er skadet på selve løbets startdato kan ikke udtages til det; brug Skjul skadede for at fjerne dem fra listen mens du vælger. En rytter hvis skade er ovre inden løbet starter, står ikke som skadet her, selv hvis han er skadet lige nu, så du kan planlægge et løb uger frem uden at vente på at han bliver rask først."
       },
       "roles": {
         "title": "Kaptajn, spurt-kaptajn, udbruds-jæger og fri rolle",

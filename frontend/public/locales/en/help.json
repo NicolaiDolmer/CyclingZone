@@ -1180,7 +1180,7 @@
       },
       "suitability": {
         "title": "Reading the selection table",
-        "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. Injured riders can't be picked; use Hide injured to remove them from the list while you choose."
+        "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. A rider still injured on the race's own start date can't be picked for it; use Hide injured to remove them from the list while you choose. A rider whose injury ends before the race starts is not marked injured here, even if he's injured right now, so you can plan a race weeks ahead without waiting for him to heal first."
       },
       "roles": {
         "title": "Captain, sprint captain, breakaway hunter and free role",
