@@ -15775,123 +15775,187 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
   }
 });
 
-router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) => {
+// #4519 · Delt kerne for POST /board/request og POST /board/request/preview:
+// validering + kontekst-load + resolveBoardRequest. Preview-endpointet kalder
+// DENNE og stopper der (ingen writes, se dens handler); det skrivende endpoint
+// kalder DEN SAMME funktion og fortsætter til board_profiles.update +
+// board_request_log.insert. Én kilde til forretningslogikken, så et preview
+// aldrig kan vise noget andet end hvad et faktisk Accept-klik ville skrive —
+// spilleren skal kunne stole på "nuværende plan → foreslået plan" (#4519).
+//
+// Returnerer enten { ok:false, status, error, errorCode? } (send direkte som
+// res.status(status).json({error, ...})) eller { ok:true, teamId, plan_type,
+// request_type, board, activeSeason, requestResult, requestUsedThisSeason }.
+async function computeBoardRequestOutcome(req) {
+  const teamId = req.team?.id;
+  if (!teamId) return { ok: false, status: 404, error: "No team" };
+  // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
+  // Håndhæves OGSÅ eksplicit i selve route-handleren lige efter requireAuth
+  // (bevidst duplikat — spejler #1077-guard-mønstret de tre andre /board-
+  // handlere bruger, og boardBankGuard.routes.test.js scanner netop den
+  // placering). Denne kopi er defense-in-depth for direkte kald af funktionen.
+  if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+    return { ok: false, status: 403, error: "Bestyrelsen er kun for manager-hold" };
+  }
+
+  const { plan_type, request_type } = req.body || {};
+  if (!isValidBoardPlanType(plan_type)) {
+    return { ok: false, status: 400, error: "Invalid plan_type" };
+  }
+  if (!isValidBoardRequestType(request_type)) {
+    return { ok: false, status: 400, error: "Invalid request_type" };
+  }
+
+  const context = await loadBoardPlanningContext(teamId);
+  const { activeSeason, boards, riders, standing, team } = context;
+  const board = boards.find(b => b.plan_type === plan_type) || null;
+
+  if (!board) return { ok: false, status: 404, error: "No active board plan for this plan type" };
+  if (!activeSeason) return { ok: false, status: 409, error: "No active season" };
+  if (board.negotiation_status !== "completed") {
+    return { ok: false, status: 409, error: "Board plan must be active before requests" };
+  }
+
+  const [loansRes, snapshotsRes, requestLogRes] = await Promise.all([
+    supabase.from("loans").select("id", { count: "exact", head: true })
+      .eq("team_id", teamId).eq("status", "active"),
+    supabase.from("board_plan_snapshots")
+      .select("goals_met, goals_total, satisfaction_delta")
+      .eq("board_id", board.id)
+      .order("created_at", { ascending: false })
+      .limit(3),
+    supabase.from("board_request_log")
+      .select("id")
+      .eq("board_id", board.id)
+      .eq("season_number", activeSeason.number)
+      .order("created_at", { ascending: false })
+      .limit(1),
+  ]);
+
+  if (loansRes.error) return { ok: false, status: 500, error: loansRes.error.message };
+  if (snapshotsRes.error) return { ok: false, status: 500, error: snapshotsRes.error.message };
+  if (isMissingTable(requestLogRes.error, "board_request_log")) {
+    // #678 Track 3: intern SQL/migration-instruktion må ALDRIG eksponeres til
+    // spilleren. Log til ops og returnér en generisk, lokaliserbar besked.
+    console.warn("[board/request] board_request_log-tabellen mangler — kør SQL-migrationen for board_request_log");
+    return { ok: false, status: 503, error: "Board features aren't available yet", errorCode: "board_unavailable" };
+  }
+  if (requestLogRes.error) return { ok: false, status: 500, error: requestLogRes.error.message };
+
+  const requestUsedThisSeason = Boolean(requestLogRes.data?.length);
+
+  if (requestUsedThisSeason) {
+    return { ok: false, status: 409, error: "Board request already used this season" };
+  }
+
+  // #2469 · /board/request var den fjerde context-sti som #2308 ikke dækkede:
+  // den håndbyggede sin egen context UDEN isFinalSeason og UDEN goal-context
+  // (divisionManagerCount/divisionTeamCount + cumulative metrics), men fodrede
+  // samme motor (resolveBoardRequest → calculateBoardPerformance). Scoren der
+  // afgør om bestyrelsen accepterer forhandlingen blev dermed beregnet på et
+  // andet grundlag end det /board/status netop viste spilleren: relative_rank
+  // pinnedes til awaiting_data (0.6) og results-competitiveness-gulvet
+  // kollapsede til 0. Samme loader + samme delte bygger som de øvrige stier.
+  // Best-effort som i /board/status: fejler loaderen, degraderer vi til
+  // evaluering uden de kumulative metrics frem for at vælte requesten.
+  let goalContext = {};
   try {
-    const teamId = req.team?.id;
-    if (!teamId) return res.status(404).json({ error: "No team" });
+    goalContext = await loadGoalContextForBoard({
+      supabase,
+      teamId,
+      boardId: board.id,
+      currentSeasonId: activeSeason.id,
+      division: standing?.division ?? null,
+      // #1608 · pulje-rang: divisionManagerCount tælles pr. pulje når holdet
+      // er pulje-allokeret (ellers tier-bredt fallback).
+      leagueDivisionId: standing?.league_division_id ?? null,
+      // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
+      planStartSeasonNumber: board.plan_start_season_number,
+    });
+  } catch (e) {
+    console.warn(`[board/request] loadGoalContextForBoard failed for board ${board.id}:`, e?.message);
+  }
+
+  const requestResult = resolveBoardRequest({
+    board,
+    requestType: request_type,
+    team: {
+      ...(team || {}),
+      riders,
+    },
+    standing,
+    context: buildBoardEvalContext({
+      board,
+      standing,
+      activeLoanCount: loansRes.count || 0,
+      currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
+      recentSnapshots: snapshotsRes.data || [],
+      goalContext,
+      extra: {
+        isExpired: board.negotiation_status === "pending",
+        requestUsedThisSeason,
+        // S-02g · Window-blokering + mid-cycle-låsning + tradeoff/pivot-tracking
+        raceDaysLeft: activeSeason
+          ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
+          : null,
+        satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
+        activeSeasonId: activeSeason?.id ?? null,
+      },
+    }),
+  });
+
+  return { ok: true, teamId, plan_type, request_type, board, activeSeason, requestResult, requestUsedThisSeason };
+}
+
+// #4519 · POST /board/request/preview — SAMME beregning som /board/request,
+// INGEN writes. Spilleren skal se "nuværende plan → foreslået plan" FØR et
+// klik anvender det (thelamba 31/8: en board-request blev anvendt uden
+// bekræftelse, og at fortryde krævede en hel genforhandling). Bruger IKKE
+// af sæsonens ene request-forsøg — kun /board/request (Accept-klikket)
+// forbruger det, via board_request_log.insert nedenfor.
+router.post("/board/request/preview", requireAuth, boardWriteLimiter, async (req, res) => {
+  try {
     // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
     if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
       return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
     }
-
-    const { plan_type, request_type } = req.body || {};
-    if (!isValidBoardPlanType(plan_type)) {
-      return res.status(400).json({ error: "Invalid plan_type" });
-    }
-    if (!isValidBoardRequestType(request_type)) {
-      return res.status(400).json({ error: "Invalid request_type" });
-    }
-
-    const context = await loadBoardPlanningContext(teamId);
-    const { activeSeason, boards, riders, standing, team } = context;
-    const board = boards.find(b => b.plan_type === plan_type) || null;
-
-    if (!board) return res.status(404).json({ error: "No active board plan for this plan type" });
-    if (!activeSeason) return res.status(409).json({ error: "No active season" });
-    if (board.negotiation_status !== "completed") {
-      return res.status(409).json({ error: "Board plan must be active before requests" });
-    }
-
-    const [loansRes, snapshotsRes, requestLogRes] = await Promise.all([
-      supabase.from("loans").select("id", { count: "exact", head: true })
-        .eq("team_id", teamId).eq("status", "active"),
-      supabase.from("board_plan_snapshots")
-        .select("goals_met, goals_total, satisfaction_delta")
-        .eq("board_id", board.id)
-        .order("created_at", { ascending: false })
-        .limit(3),
-      supabase.from("board_request_log")
-        .select("id")
-        .eq("board_id", board.id)
-        .eq("season_number", activeSeason.number)
-        .order("created_at", { ascending: false })
-        .limit(1),
-    ]);
-
-    if (loansRes.error) return res.status(500).json({ error: loansRes.error.message });
-    if (snapshotsRes.error) return res.status(500).json({ error: snapshotsRes.error.message });
-    if (isMissingTable(requestLogRes.error, "board_request_log")) {
-      // #678 Track 3: intern SQL/migration-instruktion må ALDRIG eksponeres til
-      // spilleren. Log til ops og returnér en generisk, lokaliserbar besked.
-      console.warn("[board/request] board_request_log-tabellen mangler — kør SQL-migrationen for board_request_log");
-      return res.status(503).json({
-        error: "Board features aren't available yet",
-        errorCode: "board_unavailable",
+    const outcome = await computeBoardRequestOutcome(req);
+    if (!outcome.ok) {
+      return res.status(outcome.status).json({
+        error: outcome.error,
+        ...(outcome.errorCode ? { errorCode: outcome.errorCode } : {}),
       });
     }
-    if (requestLogRes.error) return res.status(500).json({ error: requestLogRes.error.message });
-
-    const requestUsedThisSeason = Boolean(requestLogRes.data?.length);
-
-    if (requestUsedThisSeason) {
-      return res.status(409).json({ error: "Board request already used this season" });
-    }
-
-    // #2469 · /board/request var den fjerde context-sti som #2308 ikke dækkede:
-    // den håndbyggede sin egen context UDEN isFinalSeason og UDEN goal-context
-    // (divisionManagerCount/divisionTeamCount + cumulative metrics), men fodrede
-    // samme motor (resolveBoardRequest → calculateBoardPerformance). Scoren der
-    // afgør om bestyrelsen accepterer forhandlingen blev dermed beregnet på et
-    // andet grundlag end det /board/status netop viste spilleren: relative_rank
-    // pinnedes til awaiting_data (0.6) og results-competitiveness-gulvet
-    // kollapsede til 0. Samme loader + samme delte bygger som de øvrige stier.
-    // Best-effort som i /board/status: fejler loaderen, degraderer vi til
-    // evaluering uden de kumulative metrics frem for at vælte requesten.
-    let goalContext = {};
-    try {
-      goalContext = await loadGoalContextForBoard({
-        supabase,
-        teamId,
-        boardId: board.id,
-        currentSeasonId: activeSeason.id,
-        division: standing?.division ?? null,
-        // #1608 · pulje-rang: divisionManagerCount tælles pr. pulje når holdet
-        // er pulje-allokeret (ellers tier-bredt fallback).
-        leagueDivisionId: standing?.league_division_id ?? null,
-        // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
-        planStartSeasonNumber: board.plan_start_season_number,
-      });
-    } catch (e) {
-      console.warn(`[board/request] loadGoalContextForBoard failed for board ${board.id}:`, e?.message);
-    }
-
-    const requestResult = resolveBoardRequest({
-      board,
-      requestType: request_type,
-      team: {
-        ...(team || {}),
-        riders,
+    const { board, requestResult } = outcome;
+    res.json({
+      ok: true,
+      request_result: requestResult,
+      board_changes: {
+        focus_before: board.focus,
+        focus_after: requestResult.updated_board?.focus ?? board.focus,
+        goal_changes: requestResult.goal_changes || [],
       },
-      standing,
-      context: buildBoardEvalContext({
-        board,
-        standing,
-        activeLoanCount: loansRes.count || 0,
-        currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
-        recentSnapshots: snapshotsRes.data || [],
-        goalContext,
-        extra: {
-          isExpired: board.negotiation_status === "pending",
-          requestUsedThisSeason,
-          // S-02g · Window-blokering + mid-cycle-låsning + tradeoff/pivot-tracking
-          raceDaysLeft: activeSeason
-            ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
-            : null,
-          satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
-          activeSeasonId: activeSeason?.id ?? null,
-        },
-      }),
     });
+  } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) => {
+  try {
+    // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
+    const outcome = await computeBoardRequestOutcome(req);
+    if (!outcome.ok) {
+      return res.status(outcome.status).json({
+        error: outcome.error,
+        ...(outcome.errorCode ? { errorCode: outcome.errorCode } : {}),
+      });
+    }
+    const { teamId, request_type, board, activeSeason, requestResult } = outcome;
 
     let updatedBoard = board;
 

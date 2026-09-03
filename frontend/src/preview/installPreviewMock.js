@@ -211,6 +211,44 @@ export function installPreviewMock() {
         });
       }
 
+      // #4519: board-request-preview-mock — "nuværende plan → foreslået plan"
+      // uden en rigtig backend, så BoardRequestPanel's Accept/Behold-flow kan
+      // klikkes igennem og skærmbilledes i preview. Hardkodet outcome (samme
+      // mønster som season/signup ovenfor) — ikke en genimplementering af
+      // resolveBoardRequest, kun en troværdig demo-payload.
+      if (method === "POST" && /\/api\/board\/request\/preview$/.test(url)) {
+        let body = null;
+        try { body = init && init.body ? JSON.parse(init.body) : null; } catch { body = null; }
+        const requestType = body?.request_type || "more_youth_focus";
+        const isYouth = requestType === "more_youth_focus";
+        return jsonResponse({
+          ok: true,
+          request_result: {
+            outcome: "approved",
+            title: isYouth ? "The board embraces the youth pivot" : "The board reviews your request",
+            request_label: isYouth ? "More youth focus" : requestType,
+            request_label_key: `requestDefs.${requestType}.label`,
+            summary: isYouth
+              ? "The board agrees to shift the plan toward developing young talent."
+              : "The board adjusts the plan.",
+            tradeoff_summary: isYouth
+              ? "The U25 identity goal becomes more central to the active plan."
+              : "",
+          },
+          board_changes: {
+            focus_before: "star_signing",
+            focus_after: isYouth ? "youth_development" : "star_signing",
+            goal_changes: isYouth
+              ? [{
+                kind: "replaced",
+                before_label: "Sign at least 1 marquee star rider",
+                after_label: "Give 2 U25 riders their debut this season",
+              }]
+              : [],
+          },
+        });
+      }
+
       // Express-API (/api/...).
       if (/\/api\//.test(url)) {
         if (method !== "GET") return jsonResponse({ ok: true });
