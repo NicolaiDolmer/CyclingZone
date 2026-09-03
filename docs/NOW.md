@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** **Session B (Fable, arkitekt) kører natbølge 3/9** siden 2/9 kl. 23:45: workflows `wf_64e6c306-c6f` (6 laner) + `wf_e2adaf29-541` (2 laner), 29 worktrees under `C:\Dev\CyclingZone-worktrees\`, monitor hvert 20. min. Rør IKKE bølgens worktrees eller hoved-checkoutet. Playwright-slottet er Fables (kun fixup-sporet må refreshe navngivne specs for #4662). Merge-runde kl. 09.
+> **🤖 Working agent:** **Session B (Fable, arkitekt) kører merge-runden 3/9** siden kl. 07:36: batch A/B merges med `--admin`, done-flips, S4-spor på Opus (feat/4270-s4-rules-and-gates + feat/4270-s4-catalog-gravel), fix-workers på #4687 #4692 #4693 #4674 #4678 #4662 #4665. Rør IKKE bølgens worktrees eller hoved-checkoutet. Playwright-slottet er Fables. Status: [`night-wave-2026-09-03.md`](audits/night-wave-2026-09-03.md).
 
 _Historik i git-log, issue-tråde + docs/audits/._
