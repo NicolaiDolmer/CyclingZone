@@ -66,7 +66,8 @@ function makeRepo({ en = {}, targets = {}, state = null, glossary = GLOSSARY_FIX
   }
   const glossaryPath = join(root, "GLOSSARY.md");
   writeFileSync(glossaryPath, glossary, "utf8");
-  const statePath = join(localesDir, ".i18n-state.json");
+  // Uden for localesDir, praecis som i produktion (frontend/i18n-state.json).
+  const statePath = join(root, "i18n-state.json");
   if (state) writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
   return { root, localesDir, glossaryPath, statePath };
 }

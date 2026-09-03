@@ -39,9 +39,11 @@ API-nøglen læses kun fra `ANTHROPIC_API_KEY` og ligger i Infisical, aldrig i r
 
 Hver oversat streng valideres før den skrives: samme placeholders som kilden, samme antal klammer, ingen `{{`, ingen em-dash, samme antal `#` i plural-grene. En nøgle der fejler valideringen skrives ikke, og kørslen slutter med exit 1.
 
-## `.i18n-state.json`
+## `frontend/i18n-state.json`
 
-`frontend/public/locales/.i18n-state.json` er delt sandhed om hvad der er oversat og hvad der er reviewet. Den **committes**.
+State-filen er delt sandhed om hvad der er oversat og hvad der er reviewet. Den **committes**.
+
+Den ligger bevidst i frontend-roden og ikke under `frontend/public/`: alt under `public/` kopieres råt til `dist/` og serveres offentligt af Vercel, og en state-fil på ca. 8.300 nøgler er build-tid-metadata, ikke et deploy-artefakt.
 
 ```json
 { "version": 1, "languages": { "da": { "common": {
@@ -50,7 +52,7 @@ Hver oversat streng valideres før den skrives: samme placeholders som kilden, s
 
 - `srcHash` er en hash af EN-værdien dengang nøglen blev oversat. Afviger den fra EN nu, gen-oversættes nøglen, og status ryger tilbage til `machine`.
 - `status: "machine"` betyder maskin-oversat og ikke set af et menneske. `reviewed` betyder godkendt af sprogkaptajnen.
-- **Filen findes ikke endnu.** Den oprettes af den første rigtige (ikke-dry) kørsel efter merge. Den kørsel oversætter intet: den registrerer de ca. 8.200 håndskrevne DA-nøgler som `reviewed` med deres nuværende hash. Det er den forventede første-kørsel-adfærd, og resultatet skal committes.
+- **Filen findes ikke endnu.** Den oprettes af den første rigtige (ikke-dry) kørsel efter merge. Den kørsel oversætter intet: den registrerer de ca. 8.300 håndskrevne DA-nøgler som `reviewed` med deres nuværende hash. Det er den forventede første-kørsel-adfærd, og resultatet skal committes.
 - Dry-run skriver aldrig state.
 
 ## Kaptajn-flowet
@@ -69,10 +71,10 @@ En sprogkaptajn ejer ét sprog (gratis Pro + badge, Hattrick-modellen).
 ## Tilføj et sprog
 
 1. **Mappe:** `frontend/public/locales/<kode>/` (tom er nok, filerne bygges fra EN).
-2. **Konfiguration:** tilføj sproget i `frontend/src/i18n/languages.js`, som samler `supportedLngs`, sprogvælgeren og visningsnavnet ét sted (indføres af #4737; indtil da rettes `frontend/src/i18n/index.js` og `LanguageSwitcher` hver for sig).
-3. **Database:** migration der udvider `users_language_check` på `public.users` med den nye kode (idempotent, brug `database/2026-05-17-users-language-i18n.sql` som skabelon).
+2. **Konfiguration:** tilføj en entry i `frontend/src/i18n/languages.js`. Den samler `supportedLngs`, `LanguageProvider`, `LanguageSwitcher` og landingssidens toggle ét sted, så koden ikke skal røres flere steder.
+3. **Database:** udvid `users_language_check` på `public.users` med den nye kode i **samme PR** som `languages.js`. De to lister skal matche, ellers afviser databasen et sprog UI'et tilbyder. Mønstret står i `database/2026-09-03-4733-users-language-constraint-config.sql` (idempotent drop + recreate).
 4. **Oversæt:** `infisical run --env=dev -- npm run i18n:translate -- --lng <kode>`. Første kørsel på et nyt sprog rammer sikkerhedsloftet, så kør med det `--max-keys`-tal fejlbeskeden angiver.
 5. **Review:** sprogkaptajnen gennemgår og kører `--mark-reviewed` pr. namespace.
-6. **Commit** locale-filerne og `.i18n-state.json` sammen.
+6. **Commit** locale-filerne og `frontend/i18n-state.json` sammen.
 
 Uden en kaptajn tilføjes sproget ikke. Triggeren for et nyt sprog står i #4110.

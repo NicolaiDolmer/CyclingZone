@@ -6,7 +6,9 @@
 // EN-kilde er ændret. Alt andet røres aldrig, så en sprogkaptajns rettelser
 // overlever enhver senere kørsel.
 //
-// Ændringsdetektion sker via `frontend/public/locales/.i18n-state.json`:
+// Ændringsdetektion sker via `frontend/i18n-state.json` (bevidst UDEN for
+// `frontend/public/`, som Vite kopierer råt til `dist/` og Vercel serverer
+// offentligt: state-filen er build-tid-metadata, ikke et deploy-artefakt):
 //
 //   { "version": 1, "languages": { "<lng>": { "<ns>": {
 //       "<dot.path>": { "srcHash": "<sha256-prefix af EN-værdien>",
@@ -722,7 +724,7 @@ async function main() {
     ...opts,
     localesDir,
     glossaryPath: join(ROOT, "docs", "i18n", "GLOSSARY.md"),
-    statePath: join(localesDir, ".i18n-state.json"),
+    statePath: join(ROOT, "frontend", "i18n-state.json"),
   });
   process.exitCode = result.exitCode;
 }
