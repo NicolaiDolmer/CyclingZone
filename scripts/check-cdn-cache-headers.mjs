@@ -19,8 +19,22 @@
 const ORIGIN = (process.argv[2] || "https://cyclingzone.org").replace(/\/$/, "");
 
 // Krav pr. sti-klasse. minMaxAge i sekunder; requireImmutable for content-hashede filer.
+//
+// #4595/#2423: `immutable` + et-aars max-age blev bevidst sænket til 5 minutter for
+// /assets/(.*), fordi Vercels headers-regler matcher på STI, ikke på status — en
+// manglende chunk (404, fordi hash'en er roteret væk af et senere deploy) fik
+// PRÆCIS samme cache-header som en rigtig fil. Browseren cachede 404'et immutable i
+// et år, og hverken location.reload() eller Ctrl+Shift+R (immutable undertrykker
+// Firefox/Safaris revalidate-on-reload) kunne hente den rigtige fil igen. Vercel
+// understøtter ikke en status-betinget header-regel i vercel.json — se
+// check-asset-miss-behaviour.mjs. Fem minutter er samme grænse som
+// missResponseIsSafelyCacheable() i den probe accepterer som "trygt", så et
+// forbigående miss selvhelbreder i stedet for at blive permanent. Prisen: mindre
+// Edge-Request-besparelse end #3484's oprindelige år-lange immutable-cache for
+// samme mappe — en bevidst, dokumenteret afvejning, ikke en regression. Fuld
+// lukning (nul afvejning) kræver Skew Protection (#2423 P1).
 const RULES = [
-  { label: "hashed build-assets", pick: pickHashedAsset, minMaxAge: 31536000, requireImmutable: true },
+  { label: "hashed build-assets", pick: pickHashedAsset, minMaxAge: 300, requireImmutable: false },
   { label: "fonts", pick: () => "/fonts/dm-sans-latin-wght-normal.woff2", minMaxAge: 86400, requireImmutable: false },
   { label: "brand-assets", pick: () => "/brand/wordmark-ondark.svg", minMaxAge: 86400, requireImmutable: false },
   { label: "favicon", pick: () => "/favicon.svg", minMaxAge: 86400, requireImmutable: false },
