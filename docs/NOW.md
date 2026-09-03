@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** Ingen aktiv session (session lukket 3/9 kl. 15:20 efter audit + S4-forberedelse + #4670). Playwright-slottet er frit. Worktrees ryddet med `npm run cleanup:worktrees:run`.
+> **🤖 Working agent:** Claude Code (Fable, orkestrator) AKTIV fra 3/9 kl. 16: 13-opgavers Workflow-boelge (bugs #4701 #4699 #4700 #4595 · sikkerhed qs/CodeQL/Supabase-WARNs · drift lokal-cron-vagt · traenings-design #4613 #4629 #4632 · #4628 · #4697/#4698 · #4592+#4645 · aarsmoede #4557). Orkestratoren ejer Playwright-slottet. Anden session: STOP og spoerg ejeren.
 
 _Historik i git-log, issue-tråde + docs/audits/._
