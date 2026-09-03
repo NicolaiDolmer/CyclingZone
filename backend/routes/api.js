@@ -438,7 +438,7 @@ import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
-import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory } from "../lib/myTeamLatestResult.js";
+import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory, buildPrizeBreakdown, buildSponsorPayoutLine } from "../lib/myTeamLatestResult.js";
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 import { fetchLatestGate as fetchLatestLevelCorrectionGate, getDryRunReport as getLevelCorrectionDryRunReport } from "../scripts/marketValueLevelCorrectionApply.js";
 
@@ -12037,7 +12037,7 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     const raceMeta = raceMetaById.get(raceId);
     const finalStage = raceMeta.stages ?? 1;
 
-    const [myRowsRes, recapRows, incidentsRes, seasonRacesRes] = await Promise.all([
+    const [myRowsRes, recapRows, incidentsRes, seasonRacesRes, sponsorRowsRes] = await Promise.all([
       // pagination-safe: one team's own results in one race — bounded by
       // squad/stage-count, nowhere near the 1000-row cap (#3331 audit).
       supabase
@@ -12072,6 +12072,16 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
         p_league_division_id: req.team.league_division_id ?? null,
         p_limit: MY_TEAM_SEASON_RACES_LIMIT,
       }),
+      // pagination-safe: #4698 sponsor-race-day + resultat-bonus for DETTE
+      // løb/hold — bundet til ét race_id + team_id, samme størrelsesorden som
+      // myRowsRes ovenfor (højst to rækker: race-day + resultat-bonus, se
+      // sponsorRaceDayIncome.js — én idempotency-nøgle pr. type pr. race+team).
+      supabase
+        .from("finance_transactions")
+        .select("type, amount")
+        .eq("race_id", raceId)
+        .eq("team_id", req.team.id)
+        .in("type", ["sponsor_race_day", "sponsor_result_bonus"]),
     ]);
     if (myRowsRes.error) throw myRowsRes.error;
     // recapRows came from fetchAllRows(), which throws on error — no separate
@@ -12079,6 +12089,9 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     // race_incidents kan mangle i ældre miljøer (v3-flag) — degradér til tom
     // liste i stedet for at vælte hele kortet (samme holdning som RaceDetailPage).
     const incidents = incidentsRes.error ? [] : (incidentsRes.data || []);
+    // #4698: samme degraderings-holdning — en fejlet sponsor-slice må ikke
+    // vælte hele kortet, den skjuler blot sponsor-udbetalings-linjen.
+    const sponsorRows = sponsorRowsRes.error ? [] : (sponsorRowsRes.data || []);
 
     // #2886 historik-fejl kastes — MED én snæver undtagelse: "funktionen findes
     // ikke" (PostgREST PGRST202 / Postgres 42883) i vinduet mellem merge og
@@ -12123,6 +12136,9 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       raceMeta,
       myRows: myRowsRes.data || [],
     });
+    // #4697/#4698: samme myRows/sponsorRows — ren aggregering, ingen ekstra query.
+    const prize_breakdown = buildPrizeBreakdown({ myRows: myRowsRes.data || [] });
+    const sponsor_payout = buildSponsorPayoutLine({ sponsorRows });
     const lastImport = (participation || []).find((p) => p.race_id === raceId)?.imported_at ?? null;
 
     res.json({
@@ -12142,6 +12158,11 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       placements,
       stage_wins,
       totals,
+      // #4697: foldbar sammensætning af totals.prize_money (etape/klassifikation/
+      // holdbonus). #4698: sponsor-udbetalingen for DETTE løb som egen linje —
+      // null hvis holdet ikke fik nogen (ingen tom linje i UI'et).
+      prize_breakdown,
+      sponsor_payout,
       // #2886: de foregående løb (uden det viste) + sæson til dato.
       history,
       season_totals,

@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.242",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Race results now show how the prize money adds up",
+          "body": "The \"How your team did\" card on your dashboard has a \"See breakdown\" link under this race's points and prize money. Open it to see the prize split by stage placing, classification and team bonus, plus your sponsor's race-day payout as its own line instead of only a separate message."
+        },
+        "da": {
+          "title": "Løbsresultatet viser nu hvordan præmien er sammensat",
+          "body": "\"Sådan gik det for dit hold\"-kortet på dit dashboard har et \"Se sammensætning\"-link under løbets point og præmiepenge. Åbn det for at se præmien delt op i etapeplacering, klassifikation og holdbonus, plus din sponsors løbsdagsudbetaling som egen linje i stedet for kun en separat besked."
+        },
+        "refs": [4697, 4698]
+      }
+    ]
+  },
+  {
     "version": "7.241",
     "date": "2026-09-03",
     "label": "Beta",

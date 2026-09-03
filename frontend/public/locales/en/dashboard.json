@@ -131,7 +131,16 @@
       "firstRaceCta": "Read the full race story",
       "firstRaceNext": "Next race: {race}, {count, plural, one {in # day} other {in # days}}",
       "confettiTitleGc": "GC won!",
-      "confettiTitleRace": "Race won!"
+      "confettiTitleRace": "Race won!",
+      "breakdown": {
+        "show": "See breakdown",
+        "hide": "Hide breakdown",
+        "stage": "Stage {number} placing",
+        "teamBonus": "Team bonus",
+        "sponsor": "Sponsor payout",
+        "sponsorRaceDay": "Race-day income",
+        "sponsorResultBonus": "Result bonus"
+      }
     },
     "maidenWin": {
       "title": "Career moments",
