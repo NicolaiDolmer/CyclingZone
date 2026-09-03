@@ -328,7 +328,15 @@
     "focusLabel": "Fokus",
     "sending": "Sender...",
     "send": "Send request",
-    "errorFallback": "Kunne ikke sende bestyrelsesforespørgslen."
+    "errorFallback": "Kunne ikke sende bestyrelsesforespørgslen.",
+    "preview": "Se forslaget",
+    "previewing": "Henter forslag...",
+    "previewHeading": "Foreslået ændring",
+    "previewSubheading": "Intet er anvendt endnu. Se det igennem, og accepter eller behold din nuværende plan.",
+    "accept": "Accepter",
+    "applying": "Anvender...",
+    "keepCurrent": "Behold nuværende plan",
+    "previewErrorFallback": "Kunne ikke hente forslaget."
   },
   "consequence": {
     "heading": "Aktive konsekvenser",
