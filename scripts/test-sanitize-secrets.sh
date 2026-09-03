@@ -261,6 +261,52 @@ run "supabase-secret inside signature-field still blocks (#3024 guard)" \
   "Transcript line: $(mk_signature_field "$(mk_supabase_secret)") $PAD" \
   2 "supabase-secret"
 
+# ===== #4493: STORT_NAVN=<hex> false-positive skip =====
+
+# UPPERCASE_VAR=<40-tegns-lowercase-hex> (fx et git commit-SHA) SKAL passere.
+# '=' bandt tidligere variabelnavnets store bogstaver sammen med vaerdiens
+# smaa+cifre til ét high-entropy-token; ingen af delene har en secret alene.
+mk_fake_sha() {
+  printf '%s%s' '3d3c42e5aa1b2c3d4e5f6789ab' 'cdef0123456789ba90b1'
+}
+
+run "COMMIT=<sha> allowlisted (#4493)" \
+  "Log: COMMIT=$(mk_fake_sha) done. $PAD" \
+  0 ""
+
+run "SHA=<sha> allowlisted (#4493)" \
+  "Log: SHA=$(mk_fake_sha) done. $PAD" \
+  0 ""
+
+run "COMMIT_SHA=<sha> allowlisted (#4493)" \
+  "Log: COMMIT_SHA=$(mk_fake_sha) done. $PAD" \
+  0 ""
+
+# KONTROL: en aegte navngivet secret ved siden af et stort variabelnavn SKAL
+# stadig blokere — named patterns koeres FOER high-entropy-fallback'en.
+run "COMMIT=<jwt> still blocks (#4493 guard)" \
+  "Log: COMMIT=$(mk_jwt_legacy) done. $PAD" \
+  2 "jwt-supabase-legacy"
+
+run "SUPABASE_KEY=<sb_secret_> still blocks (#4493 guard)" \
+  "Log: SUPABASE_KEY=$(mk_supabase_secret) done. $PAD" \
+  2 "supabase-secret"
+
+# KONTROL: KEY=<aegte base64-secret med == padding> SKAL stadig blokere —
+# vaerdi-segmentet alene (efter split paa '=') opfylder stadig entropi-kravet.
+mk_padded_base64_secret() {
+  # 42-tegns krop (>=40 kraevet uafhaengigt af padding) + '==' padding.
+  printf '%s%s' 'AbC123dEfG456hIjK789lMnO012pQrS345tUvWxYz' '=='
+}
+run "KEY=<padded-base64-secret> still blocks (#4493 guard)" \
+  "Log: KEY=$(mk_padded_base64_secret) done. $PAD" \
+  2 "high-entropy"
+
+# KONTROL: raw high-entropy UDEN '=' SKAL stadig blokere (beskyttelse intakt).
+run "raw high-entropy still blocks (#4493 guard)" \
+  "Value: $(mk_random_highentropy) $PAD" \
+  2 "high-entropy"
+
 # ===== Performance optimization tests =====
 
 # <100 char input skipper hook scan (perf opt). Selv match-streng slipper.

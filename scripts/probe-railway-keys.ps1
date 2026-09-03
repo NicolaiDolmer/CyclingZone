@@ -82,9 +82,13 @@ try {
   $parsed = $null
 }
 
-# Optional filter (case-insensitive substring match on key name)
+# Optional filter (case-insensitive substring match on key name).
+# @(...) tvinger resultatet til et array: Where-Object returnerer $null
+# (ikke et tomt array) ved 0 traef, og $null.Count fejler under
+# Set-StrictMode ("The property 'Count' cannot be found on this object.").
+# Refs #4651.
 if ($Filter) {
-  $keys = $keys | Where-Object { $_ -match $Filter }
+  $keys = @($keys | Where-Object { $_ -match $Filter })
 }
 
 # Output

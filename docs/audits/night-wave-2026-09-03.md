@@ -53,6 +53,18 @@ Workflows: A = `wf_64e6c306-c6f` (opus/sonnet eksplicit pr. spor), B = `wf_e2ada
 
 Ejer-go 2/9 kl. 23:44: hele planen + visuelt go til #4657 (merges i nat når CI er grøn og deployet er set READY).
 
+## Status 3/9 kl. 09:10 (merge-runden i gang)
+
+- **Natten:** A 14/14 spor med PR, B 14/15 (anti-slop-sporet døde tavst kl. 00:22 uden commits; genkørt om morgenen som PR #4706). 32 PR'er åbnet i nat + #4705/#4706 om morgenen. Ejeren mergede selv #4654 #4656 #4657 #4659 #4661 #4663 kl. 23:44 (før min launch-commit), hvilket gjorde main rød på fire vagter (canary, warning-budget, bundle-budget, feature-liveness) og alle 32 PR'er røde; rettet af #4705 (merget 08:42).
+- **Sessionen døde i nat** (begge workflows "stopped" uden slutrecord); recovery efter runbooken: alt lå pushet med PR'er, intet uncommitted, kun anti-slop-sporet skulle re-spawnes.
+- **Merget 3/9 formiddag (batch A):** #4705 #4660 #4667 #4669 #4682 #4680 #4684 #4706 #4683 #4689 #4686 #4691 #4694 #4696 #4690. Done-flip: #4658 #4594 #4496 #4493 #4651 #4626 #3853 #2405 #4254 #2823 #4650 #4664.
+- **Prod-mutation med ejer-GO:** bestyrelses-backfill kørt 09:01 (13 hold uden medlemmer fik 5 hver; 24 på dry-run-listen havde allerede 5; post-verify 0 hold under 5 ekskl. test).
+- **Ejer-beslutninger 3/9:** visuelt go på #4671 #4670 #4666 #4668 (ingen filtre fjernet, verificeret i kode) og #4677; S4: 28 dage, ingen tilt, D4 3 etaper/dag, eksakt kvote, etapebånd 3-6, rolling gulv+loft, classic i hilly, GT 17/17/18, monument- og overlap-gates, grus som etapetype (tæller som brosten), belgisk åbningsuge i S4, sektorvægte til S5, #4209 som eget spor; v4 #4679 merges bag flag med jagt-kalibrering som næste spor.
+- **I gang:** #4665 (rebaset, CI kører) → derefter batch B (#4671 → #4670 → #4666 → #4668, #4673) + rest af A; S4-spor på Opus (regler/gates + katalog/grus).
+
 ## Afvigelser/læringer
 - Hard rule 12 (maks 5 åbne PR'er) fraveget bevidst på ejerens ønske om en hel nats volumen; drafts parkeres til visuelt go, backend merges i rækkefølge kl. 09.
-- (opdateres ved close-out)
+- Ejer-merges i den samme time som bølgen launches gør main rød for alle spor: næste gang merges drafts FØR launch (med CI-fixup) eller efter bølgen, ikke midt i.
+- Workflow-agenter dør tavst (anti-slop 00:22, 7 tool-kald): lane-timeouten (90 min) holdt køen i gang, men 90 min var tabt; overvej 45 min for lette spor + re-spawn ved "ingen commit efter 30 min".
+- Dry-run-rapporter kan overtælle (bestyrelses-scriptet viste 37 kandidater, 13 var reelle): apply-guarden skal være sandheden, og rapporten skal bruge samme predikat som apply.
+- Session-død er stadig realiteten: alle spor overlevede fordi de pushede og oprettede PR'er selv; monitoren (bash `sleep`-loop) døde med exit 1 ved start og gav ingen vækning.

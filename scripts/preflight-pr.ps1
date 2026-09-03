@@ -52,6 +52,10 @@ try {
   node scripts/check-fetchallrows-order.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "fetchallrows-order-guard" }
 
+  Write-Host "== maybesingle-unique-scope-guard (.maybeSingle() uden fuldt UNIQUE-scope, #4496) ==" -ForegroundColor Cyan
+  node scripts/check-maybesingle-unique-scope.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "maybesingle-unique-scope-guard" }
+
   Write-Host "== schema-column-guard (select mod ukendt kolonne, #3586) ==" -ForegroundColor Cyan
   node scripts/lint-schema-columns.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "schema-column-guard" }
