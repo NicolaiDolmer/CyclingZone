@@ -37,21 +37,22 @@ function kør(args = []) {
 }
 
 // #4270 (3/9): scorecardet måler nu S4's vindue (28/9 → 25/10, 28 dage) og S4's regler.
-// Ejerens beslutning om at hæve D4 fra 2 til 3 etaper om dagen flytter kalenderens form, og
-// TRE balance-afvigelser følger med. De er ENUMERERET nedenfor, ikke tolereret i en klump:
-// testen fejler stadig hvis der kommer ét brud mere, eller hvis et af de tre forsvinder
-// uden at listen følger med.
+// #4203 (3/9): fixturen er genopfrisket fra prod (214 løb), så gaten måler S4's regler mod
+// S4's KATALOG. Det flyttede den kendte tilstand markant, og hver af de tre klasser af brud
+// fra før er lukket af sit eget spor:
+//   · monument-i-GT-spænd    → lukket af DENNE PR's pakker-ændring (#4203)
+//   · D2 bjerg under målet   → lukket af katalog-migrationen (#4708), nu i fixturen
+//   · D4 rolling under gulvet→ samme migration
+// Tilbage står SEKS afvigelser, alle på §7b's finale-bånd på sæson-aggregatet. De er
+// ENUMERERET i KENDTE_FIXTURE_BRUD, ikke tolereret i en klump: testen fejler stadig hvis
+// der kommer ét brud mere, eller hvis et af dem forsvinder uden at listen følger med.
 //
-// HVORFOR DE IKKE KAN LUKKES I DENNE PR: alle tre er filler-vægt-kalibrering, og
-// genkalibreringen pr. division er ejer-besluttet 3/9 som en S5-opgave (CALENDAR_RULES §6b).
-// De SAMME afvigelser findes i dry-runnet mod prods katalog samme dag — det er altså
-// kalenderens faktiske tilstand, ikke en fixture-artefakt. Se
-// docs/audits/season4-calendar-dryrun-2026-09-03.md, afsnittet "Efter ejerens beslutninger 3/9".
-//   · tier 2 bjerg mod målet (tolerance ±5) — katalog-sporets nye bjergløb lukker den, når
-//     migrationen er anvendt mod prod og fixturen er genopfrisket
-//   · tier 4 mountain slutter aldrig i udbrud (stikprøve-båndet, n=12)
-//   · sæson hilly slutter for ofte fladt
-const KENDTE_BALANCEBRUD = 3;
+// HVORFOR DE IKKE KAN LUKKES I DENNE PR: fem af dem er filler-vægt-kalibrering (ejer-
+// besluttet 3/9 som en S5-opgave, CALENDAR_RULES §6b/§7b) og tre af de fem er samme
+// n=2-stikprøve på grus. Ingen af dem er en placerings-regel, og ingen af dem kan lukkes
+// ved at flytte et løb. De SAMME seks findes i dry-runnet mod prods katalog samme dag — se
+// docs/audits/season4-calendar-dryrun-2026-09-03.md, afsnittet "Dry-run efter #4203-pakker".
+const KENDTE_BALANCEBRUD = 6;
 
 test("#4215: den planlagte S4-kalender har kun de KENDTE balance-afvigelser", () => {
   const { stdout } = kør();
@@ -79,7 +80,11 @@ test("#4215: --json bærer samme dom som tabellen", () => {
   assert.equal(rapport.regelbrud, KENDTE_BALANCEBRUD);
   assert.equal(rapport.dækning.ok, true);
   assert.equal(rapport.tiers.length, 4, "alle fire divisioner skal måles");
-  assert.ok(rapport.placeringsbrud > 0, "placerings-gatene skal være målt, ikke tavse");
+  // #4203: placeringsbrud er nu NUL - det er hele leverancen. Feltet skal stadig FINDES
+  // (en gate der ikke rapporterer et tal er ikke maalt, §9b), men et krav om at det er
+  // positivt ville have laast fixturen fast paa et brud vi netop har lukket.
+  assert.equal(typeof rapport.placeringsbrud, "number", "placerings-gatene skal være målt, ikke tavse");
+  assert.equal(rapport.placeringsbrud, 0, "S4-planen må ikke have placeringsbrud efter #4203");
 });
 
 // Gaten skal kunne SIGE FRA. En gate der aldrig fejler beviser ingenting — og det var
@@ -130,14 +135,21 @@ test("#4270: den grønne gate lyver ikke i tabellen", () => {
   assert.doesNotMatch(stdout, /Kalenderen overholder alle gates/);
 });
 
+// #4203 (3/9): TALLET FLYTTEDE SIG, IKKE KONTRAKTEN. Foer fixture-refreshen kunne 35 dage
+// ikke fyldes; med prods 214 loeb kan de. 42 er nu den foerste laengde hvor forsyningen
+// slipper op (maalt: D3 faar 5 kalenderdage uden loeb). Havde vi ladet 35 staa, ville
+// begge tests nedenfor vaere blevet groenne af en helt anden grund end den de vogter -
+// "HULLER|FEJL" ville have matchet paa balance-bruddene alene.
+const FOR_MANGE_DAGE = "--days=42";
+
 test("#4215: gaten fejler når kalenderen ikke kan fyldes (exit 1, ikke bare en advarsel)", () => {
-  const { code, stdout } = kør(["--days=35"]);
+  const { code, stdout } = kør([FOR_MANGE_DAGE]);
   assert.equal(code, 1, "for mange dage skal give exit 1");
-  assert.match(stdout, /HULLER|FEJL/);
+  assert.match(stdout, /dækning HULLER/, "dommen skal navngive DAEKNINGEN, ikke bare et vilkaarligt brud");
 });
 
 test("#4215: hver division måles for sig — ikke spillet som helhed", () => {
-  const { stdout } = kør(["--days=35"]);
+  const { stdout } = kør([FOR_MANGE_DAGE]);
   // D1 har flest løb og fyldes længst; et hul i en LAVERE division må ikke drukne
   // i et samlet tal. Beskeden skal navngive divisionen.
   assert.match(stdout, /division \d har \d+ kalenderdag\(e\) uden løb/);
