@@ -40,6 +40,8 @@ import { isBoardTestModeActive } from "./boardTestMode.js";
 import { developRidersForSeason } from "./riderProgressionEngine.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
+// #4148: bag flag, default OFF — se riderValuesBulkWriteFlag.js.
+import { isRiderValuesBulkWriteEnabled } from "./riderValuesBulkWriteFlag.js";
 import {
   DEBT_CEILING_BY_DIVISION,
   DIVISION_BONUSES,
@@ -2122,6 +2124,28 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
 // (owner decision 2026-06-08). See updateRiderValues JSDoc.
 const VALUATION_WINDOW_SEASONS = 3;
 
+// #4148: bulk-skrivestien — ét RPC-kald i stedet for ét PATCH pr. rytter (op til
+// 25.562 kald/time målt 23/8). Chunk-loftet spejler RPC'ens egen guard
+// (database/2026-09-03-4148-bulk-update-rider-values.sql) med margin.
+const RIDER_VALUES_BULK_RPC = "bulk_update_rider_prize_earnings_bonus";
+const RIDER_VALUES_BULK_CHUNK_SIZE = 2000;
+
+/**
+ * Ren beregningsfunktion: samme udledning som updateRiderValues' loop, adskilt
+ * så den kan testes/genbruges UAFHÆNGIGT af hvilken sti (per-rytter-PATCH eller
+ * bulk-RPC) der persisterer resultatet — begge stier fodres af NØJAGTIGT samme
+ * payload, så de er byte-identiske pr. rytter ved konstruktion (#4148).
+ */
+export function computeRiderValueUpdates({ allRiders = [], riderSeasonEarnings = {}, seasonIds = [], divisor = VALUATION_WINDOW_SEASONS } = {}) {
+  return (allRiders || []).map((rider) => {
+    const earningsSum = seasonIds.reduce(
+      (sum, sid) => sum + (riderSeasonEarnings[rider.id]?.[sid] || 0),
+      0
+    );
+    return { id: rider.id, prize_earnings_bonus: Math.round(earningsSum / divisor) };
+  });
+}
+
 /**
  * Recalculates prize_earnings_bonus for every rider.
  *
@@ -2149,7 +2173,7 @@ const VALUATION_WINDOW_SEASONS = 3;
  * salary er en GENERATED STORED column (se database/2026-06-10-value-cutover-base-value.sql)
  * — DB genberegner automatisk når base_value eller prize_earnings_bonus opdateres (#1101).
  */
-export async function updateRiderValues(supabaseClient) {
+export async function updateRiderValues(supabaseClient, opts = {}) {
   const { data: activeSeason } = await supabaseClient
     .from("seasons")
     .select("id, number")
@@ -2235,36 +2259,43 @@ export async function updateRiderValues(supabaseClient) {
   // owner decision 2026-06-08). seasonIds still scopes the numerator below.
   const divisor = VALUATION_WINDOW_SEASONS;
 
-  const updates = [];
+  const updates = computeRiderValueUpdates({ allRiders, riderSeasonEarnings, seasonIds, divisor });
 
-  for (const rider of allRiders || []) {
-    const earningsSum = seasonIds.reduce(
-      (sum, sid) => sum + (riderSeasonEarnings[rider.id]?.[sid] || 0),
-      0
-    );
-    const newBonus = Math.round(earningsSum / divisor);
+  // #4148: bag flag (default OFF — opts.forceBulkWrite er KUN til tests, der
+  // ikke skal afhænge af en app_config-DB-læsning for at vælge sti deterministisk).
+  const useBulkWrite = opts.forceBulkWrite ?? await isRiderValuesBulkWriteEnabled(supabaseClient);
+  let writeCalls = 0;
 
-    updates.push({
-      id: rider.id,
-      prize_earnings_bonus: newBonus,
-    });
-  }
-
-  for (let i = 0; i < updates.length; i += RIDER_VALUE_PATCH_CONCURRENCY) {
-    const batch = updates.slice(i, i + RIDER_VALUE_PATCH_CONCURRENCY);
-    // withSupabaseRetry (#2392): opdateringen er idempotent (samme payload pr. rytter),
-    // så et transient gateway-hikke midt i tusindvis af PATCHes skal ikke vælte recalc'en.
-    await Promise.all(batch.map(({ id, ...payload }) => withSupabaseRetry(async () => {
-      const { error } = await supabaseClient
-        .from("riders")
-        .update(payload)
-        .eq("id", id);
-      if (error) throw error;
-    })));
+  if (useBulkWrite) {
+    for (let i = 0; i < updates.length; i += RIDER_VALUES_BULK_CHUNK_SIZE) {
+      const chunk = updates.slice(i, i + RIDER_VALUES_BULK_CHUNK_SIZE);
+      if (!chunk.length) continue;
+      writeCalls += 1;
+      // withSupabaseRetry (#2392): samme idempotens-begrundelse som per-rytter-
+      // stien nedenfor — et transient gateway-hikke må ikke vælte hele recalc'en.
+      await withSupabaseRetry(async () => {
+        const { error } = await supabaseClient.rpc(RIDER_VALUES_BULK_RPC, { p_updates: chunk });
+        if (error) throw error;
+      });
+    }
+  } else {
+    for (let i = 0; i < updates.length; i += RIDER_VALUE_PATCH_CONCURRENCY) {
+      const batch = updates.slice(i, i + RIDER_VALUE_PATCH_CONCURRENCY);
+      // withSupabaseRetry (#2392): opdateringen er idempotent (samme payload pr. rytter),
+      // så et transient gateway-hikke midt i tusindvis af PATCHes skal ikke vælte recalc'en.
+      await Promise.all(batch.map(({ id, ...payload }) => withSupabaseRetry(async () => {
+        const { error } = await supabaseClient
+          .from("riders")
+          .update(payload)
+          .eq("id", id);
+        if (error) throw error;
+      })));
+      writeCalls += batch.length;
+    }
   }
 
   const ridersUpdated = allRiders?.length || 0;
-  console.log(`  🏅 Rider values recalculated: ${ridersUpdated} ryttere opdateret`);
+  console.log(`  🏅 Rider values recalculated: ${ridersUpdated} ryttere opdateret (bulk=${useBulkWrite}, write_calls=${writeCalls})`);
   return { ridersUpdated };
 }
 
