@@ -186,6 +186,27 @@ export async function regenerateBoardMembersForTeam({ supabase, teamId, identity
     return { assigned: 0, deleted: 0, skipped: true, reason: "missing_dna", members: [] };
   }
 
+  // #4664 · Root cause: DELETE og INSERT er to separate, ikke-transaktionelle
+  // Supabase-kald. Kaster INSERT'et (assignBoardMembersForTeam) EFTER at
+  // DELETE'et allerede er committet — transient netværksfejl, en samtidig
+  // dobbelt-indsendelse, eller et Railway-deploy der dræber processen midt i —
+  // stod holdet tidligere tilbage med 0 board-medlemmer PERMANENT: DNA er
+  // uændret (allerede sat), så `requiresBoardDnaChoice` (routes/api.js) er
+  // false, og DNA-vælgeren vises aldrig igen. Ingen naturlig sti reparerede
+  // det. Målt i prod 2-3/9 (#4664): adskillige hold med `team_dna_key` SAT
+  // men 0 rækker i `team_board_members` — netop denne signatur.
+  //
+  // Fix: gem de eksisterende rækker FØR delete, og gendan dem best-effort hvis
+  // assignBoardMembersForTeam kaster. Et fejlet regenereringsforsøg efterlader
+  // dermed ALDRIG holdet dårligere stillet end før kaldet — enten lykkes hele
+  // regenereringen, eller også ender holdet med det gamle sæt (og fejlen
+  // bobler stadig op til kalderen, som i forvejen håndterer den).
+  const { data: existingRows, error: readError } = await supabase
+    .from("team_board_members")
+    .select("archetype_key, selection_kind, alignment_score, is_chairman")
+    .eq("team_id", teamId);
+  throwIfSupabaseError(readError, "Could not read existing team board members before regenerate");
+
   const { data: deleted, error: deleteError } = await supabase
     .from("team_board_members")
     .delete()
@@ -193,7 +214,25 @@ export async function regenerateBoardMembersForTeam({ supabase, teamId, identity
     .select("id");
   throwIfSupabaseError(deleteError, "Could not delete existing team board members");
 
-  const result = await assignBoardMembersForTeam({ supabase, teamId, identityBasis, dnaKey });
+  let result;
+  try {
+    result = await assignBoardMembersForTeam({ supabase, teamId, identityBasis, dnaKey });
+  } catch (assignError) {
+    if ((existingRows || []).length > 0) {
+      const restoreRows = existingRows.map((row) => ({ team_id: teamId, ...row }));
+      const { error: restoreError } = await supabase.from("team_board_members").insert(restoreRows);
+      if (restoreError) {
+        // Dobbelt-fejl: kunne hverken indsætte det nye sæt eller gendanne det
+        // gamle. Holdet ER boardless nu — capture, saa det ikke er tavst.
+        captureException(
+          new Error(`Could not restore team board members after failed regenerate: ${restoreError.message}`),
+          { tags: { flow: "board-members", stage: "regenerate-restore" }, extra: { teamId } },
+        );
+      }
+    }
+    throw assignError;
+  }
+
   return {
     ...result,
     deleted: (deleted || []).length,

@@ -214,7 +214,7 @@ START med: `cd "<path>"` ELLER brug `git -C "<path>"`. Arbejd ALDRIG i C:\dev\Cy
 1. `git fetch origin && git rebase origin/main`
 2. `git add <specifikke-filer>` (ALDRIG `git add -A` — lint-staged-pitfall sweeper untracked ind)
 3. Write commit-msg-fil — ALDRIG PowerShell heredoc (`@'...'@` / `<<EOF`) — kendt bug i Bash-tool på Windows. Filnavn: `.tmp-<N>-commit.txt`. Indhold: <commit-msg-template>
-4. `git commit -F .tmp-<N>-commit.txt && rm .tmp-<N>-commit.txt`
+4. `bash "<path>/scripts/guard-commit-branch.sh" <branch> "<path>" && git -C "<path>" commit -F .tmp-<N>-commit.txt && rm .tmp-<N>-commit.txt`. Guarden faar SAMME mappe som `git -C`. Uden <dir> tjekker den shell-cwd, som agent-shells nulstiller mellem kald; det gav en falsk blokering fra et korrekt worktree 2/9 (#4658). Guarden exiter 1 ved forkert branch/detached HEAD og 2 hvis den ikke kan afgoere hvilket trae du committer i. Blokerer den, saa gentag ALDRIG uden guarden.
 5. `git push -u origin <branch>`
 6. Write PR-body til `.tmp-<N>-pr.md`. Skal indeholde Brugerverifikation-sektion ELLER tilføj backend-only/docs-only label.
 7. `gh pr create --base main --head <branch> --title "..." --body-file .tmp-<N>-pr.md --label <label>`

@@ -265,6 +265,29 @@ kun i tillid.** Penge forbliver i lag 6 og modifieren.
 
 ---
 
+## 8. Bestyrelsesmedlemmer (`team_board_members`)
+
+Hvert menneskehold (`is_ai=false`) har **altid 5 bestyrelsesmedlemmer** (`TEAM_BOARD_MEMBERS_COUNT`,
+`boardMembers.js`) — 3 identity-matched + 2 non-conflicting wildcards, én formand. Tildeles af
+`assignBoardMembersForTeam` (idempotent: no-op hvis holdet allerede har 5), enten første gang en
+manager vælger Klub-DNA (`chooseDnaForTeam`, `POST /board/dna-choose`) eller via
+`regenerateBoardMembersForTeam` (DNA-genvalg, auto-accept, reparation).
+
+**#4664 (2-3/9):** op til 40 menneskehold målt uden fuldt board — heraf en delmængde med
+`team_dna_key` SAT men 0 rækker i `team_board_members`, en tilstand koden selv antog var umulig
+(atomiske rollback-guards i to af tre `chooseDnaForTeam`-grene). Rod-årsag:
+`regenerateBoardMembersForTeam` slettede holdets rækker FØR den indsatte det nye sæt — to separate,
+ikke-transaktionelle Supabase-kald. Fejlede insert'et efter delete'et var committet (transient
+netværksfejl, dobbelt-indsendelse, et deploy der dræbte processen midtvejs), stod holdet permanent
+uden bestyrelse: `requiresBoardDnaChoice` (`season_1_identity_basis && !team_dna_key`) er `false` når
+DNA allerede er sat, så DNA-vælgeren — den eneste sti der (gen)tildeler — vises aldrig igen. Fixet:
+`regenerateBoardMembersForTeam` gemmer nu det gamle sæt før delete og gendanner det best-effort hvis
+re-insert fejler (aldrig værre stillet end før kaldet). Backfill: `repairMissingBoardMembers.js`
+(dry-run default, `--apply` skriver via `assignBoardMembersForTeam`). Forward-guard: invariant F i
+`ownershipInvariantWatch.js` (daglig, read-only, Sentry-capture med fast fingerprint
+`human-team-without-board-members`). Postmortem:
+`.claude/learnings/2026-09-03-new-teams-without-board-members.md`.
+
 ## Kildedokumenter
 
 - `superpowers/specs/2026-08-07-board-mandate-rework-design.md` — de 10 ejer-beslutninger er gyldige;
