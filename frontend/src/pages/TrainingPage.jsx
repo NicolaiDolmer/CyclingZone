@@ -1,11 +1,22 @@
 // TrainingPage — daglig træning (#1305).
 //
-// Viser holdets træningsprogrammer (fokus + intensitet per rytter) + dagens
-// kørsel-knap (med konsistens-bonus) + rapport fra seneste kørsel.
+// #4613 (ejer-retning 2/9 + valgt retning B 3/9): siden er OVERBLIK FØRST.
+// Fanen "Overblik" er én tæt rytterliste — form, træthed, dagens valg og de
+// næste 7 dage pr. række — og alt det der før lå stablet under hinanden bor nu
+// i en fane eller i assistent-panelet:
+//   · sæson-kvitteringen pr. evne (#3709)      → Udvikling-fanen
+//   · dagens rapport + udviklings-momentet     → Rapporter-fanen
+//   · gårsdagens kvittering + tick-beskeden    → Rapporter-fanen
+//   · den individuelle ugeplan pr. rytter      → Ugeplan-fanen (uge-cellen i
+//     rosteret er indgangen, så vejen dertil stadig går gennem rytteren)
+// INTET er fjernet funktionelt — kun flyttet. Prosaen på fladen er trimmet til
+// én linje pr. sted; de fulde forklaringer bor uændret i help.json
+// (dailytraining.weeklyRhythm / individualWeeklyPlan / trainToday).
+//
 // Rytterliste hentes fra Supabase (samme kilde som TeamPage) da det er holdets
 // egne ryttere vi træner. Condition/progress/todayRun serveres fra useTraining.
 
-import { useState, useEffect, useMemo, useRef, Fragment } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
 import { supabase } from "../lib/supabase";
@@ -19,6 +30,7 @@ import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { ageForSeason, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
 import { riderStatRating } from "../lib/riderRating.js";
 import { TRAINING_INTENSITIES, injuryDaysLeft, WEEKDAY_KEYS, weekdayKeyForDate, resolveDayIntensityDisplay, resolveDayIntensitySource } from "../lib/training.js";
+import { riderWeekStrip } from "../lib/trainingWeekStrip.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import {
   SESSION_INTENSITY,
@@ -36,6 +48,7 @@ import AbilityReceiptRow from "../components/training/AbilityReceiptRow.jsx";
 import FocusPanel from "../components/training/FocusPanel.jsx";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
 import TrainingMoment from "../components/training/TrainingMoment.jsx";
+import TrainingWeekStrip from "../components/training/TrainingWeekStrip.jsx";
 import AssistantSuggestionsPanel from "../components/training/AssistantSuggestionsPanel.jsx";
 import { buildAssistantSuggestions, countSuggestionsWithoutPlan, filterAssistantSuggestions, acceptableSuggestionIds, acceptableSelectionIds } from "../lib/assistantTrainingSuggestions.js";
 import DevelopmentGlyph from "../components/development/DevelopmentGlyph.jsx";
@@ -43,58 +56,58 @@ import OnboardingTour from "../components/OnboardingTour.jsx";
 import SortTh from "../components/rider/RiderSortTh.jsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
-  PageHeader, Card, Button, Select, Checkbox,
+  PageHeader, Card, Button, Select, FilterBar, Segmented,
   PageLoader, EmptyState, ChevronDownIcon, TeamIcon,
   ArrowUpIcon, ArrowDownIcon, FlagIcon, StarIcon,
   Tabs, TabList, Tab, TabPanel, CollapsibleSection,
 } from "../components/ui";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 import { WRAP, SCROLLER, TABLE, COUNT, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 
-// #3721: siden fik faner (Train today / Development / History), ?tab=-
-// synkroniseret efter samme mønster som FinancePage/RiderStatsPage. Ukendt
-// eller manglende param falder tilbage til "today".
-// #3746 trin 7 (ejer-beslutning 20/8): "weekplan" er ny fane nr. 2 — den
-// ugentlige rytme-editor flyttet ud af Train today, se TabPanel value="weekplan".
-// Siden er nu 4 faner: today, weekplan, development, history.
-const TRAINING_TABS = ["today", "weekplan", "development", "history"];
+// #3721 gav siden faner, ?tab=-synkroniseret efter samme mønster som
+// FinancePage/RiderStatsPage. #4613 gør listen DATA-DREVET, fordi de to næste
+// faner er specificeret og på vej: Program (#4629) og Løbsdag (#4632). De to
+// tilføjes som et element hver i listen nedenfor + et <TabPanel> — der er
+// ingen tom placeholder-fane i mellemtiden (TASTE P11: intet "Coming soon").
+// ?tab=-værdierne er UÆNDREDE, så alle eksisterende dyb-links holder.
+const TRAINING_TAB_DEFS = Object.freeze([
+  { value: "today", labelKey: "tabs.today" },
+  { value: "weekplan", labelKey: "tabs.weekplan" },
+  { value: "development", labelKey: "tabs.development" },
+  { value: "history", labelKey: "tabs.history" },
+]);
+const TRAINING_TABS = TRAINING_TAB_DEFS.map((tab) => tab.value);
 
-// #2849 bølge 4 — migreret til T2 wide-data-skabelonen (docs/design/PAGE_TEMPLATES.md):
+// #2849 bølge 4 — T2 wide-data-skabelonen (docs/design/PAGE_TEMPLATES.md):
 // PageHeader-recipe (status i subtitle, "Train today" som sidens ene gold CTA),
-// max-w-[1600px]-container, PageLoader ved initial load, kanonisk Card-chrome for
-// ugerytme-sektionen (#3746 trin 7: åben sektion på sin egen fane, ikke længere
-// en accordion), ui/DataTable-recepten (dataTableStyles: WRAP/SCROLLER/
-// thClass/tdClass/trClass) på begge tabeller. Roster-tabellen bruger dataTableStyles-
-// chrome i stedet for <DataTable> direkte, fordi den har multi-select-checkbox +
-// group-header-rækker + en per-rytter udvidelig ugeplan-række, som DataTable's
-// 1-række-pr-row-kolonnemodel ikke understøtter.
-// #3721 (ejer-godkendt design 19/8): siden er nu 3 faner i stedet for én lang
-// flade — se TRAINING_TABS. Den åbne FAQ er slettet (indhold levede allerede i
-// help.json). Fetches/beregninger/save-handlers/state-maskiner er UÆNDREDE
-// (useTraining/useTrainingHistory rører ingen af de to omlægninger).
+// max-w-[1600px]-container, PageLoader ved initial load, ui/DataTable-recepten
+// (dataTableStyles: WRAP/SCROLLER/thClass/tdClass/trClass) på begge tabeller.
+// Roster-tabellen bruger dataTableStyles-chrome i stedet for <DataTable>
+// direkte, fordi den har multi-select-checkbox + group-header-rækker, som
+// DataTable's 1-række-pr-row-kolonnemodel ikke understøtter. #4613 sætter
+// `dense` på den (T2's ene opt-in for rosters hvor rækker-pr-skærm ER pointen)
+// og lægger tabellens egne kontroller i toolbar-slotten inde i hairline-rammen
+// i stedet for som løsrevne rækker over tabellen.
 
 // Roster-tabellen sorterer på navn/type (tekst, asc-først) + form/træthed/status
 // (tal, desc-først: "hvem er mest træt/i bedst form / hvem er akademi?" med ét klik).
 // #3815: alder er ligeledes numerisk og følger derfor samme desc-først-konvention.
-// Spørgsmålet man stiller kolonnen her er "hvem er for gammel til at investere
-// hård træning i?", så ét klik skal give de ældste øverst.
 const ROSTER_DESC_FIRST = new Set(["age", "form", "fatigue", "status"]);
 
-// #3706: Status-kolonnens comparator. Overskriften var et bart <th> uden
-// SortTh, så et klik gjorde bogstavelig talt ingenting (@cybersimon, Discord
-// 13/8). Kolonnen bærer to badges, så rangen er en vægt i stedet for en enkelt
-// værdi: akademi vejer tungest (det var dét spilleren bad om at kunne samle),
-// skade lægger et point oveni. Desc-først → akademi øverst med ét klik.
+// #3706: Status-kolonnens comparator. Kolonnen bærer to badges, så rangen er en
+// vægt i stedet for en enkelt værdi: akademi vejer tungest, skade lægger et
+// point oveni. Desc-først → akademi øverst med ét klik.
 const STATUS_ACADEMY_WEIGHT = 2;
 const STATUS_INJURED_WEIGHT = 1;
 
 // ── #3762: dagen som label + hurtig-skift ─────────────────────────────────
-// Rosteret viste før et fokusnavn i én kolonne og fire intensitets-knapper i
-// den næste. Under dagstype-modellen er det ÉN ting: hvad er det for en dag.
-// Kolonnen viser dagen, og knapperne skifter den.
-
 // Hvile · Aktiv restitution · rytterens egen session. Den sidste er en sentinel,
 // ikke en dagstype: hvilken dag den fører til afhænger af rytterens session.
 const QUICK_DAY_TYPES = Object.freeze(["rest", "recovery", "session"]);
+
+// #4613: overbliksfanens status-segment. Ét spørgsmål ad gangen om truppen —
+// hvem mangler en dag, hvem er i fare, hvem racer i dag.
+const ROSTER_VIEWS = Object.freeze(["all", "noplan", "risk", "racing"]);
 
 // Dagstypen rytterens gemte session hører til (skill eller training), eller
 // null hvis planen ikke bærer en session (fx en restitutionsdag).
@@ -121,11 +134,12 @@ function dayLabel(plan, t) {
   return `${t(`dayPanel.dayType_${dayType}`)} · ${t(`dayPanel.session_${session}`)}`;
 }
 
-
 // #2819 — guidet tour på /training (aktiveres fra dashboardets "Show me how" når
 // onboarding-trin 2, first_training_run, er næste trin). Samme mønster som
 // AuctionsPage's getAuctionsTourSteps: bygges via t() ved render-tid så sproget
-// følger brugerens locale. Ankrene sidder på første roster-række + dagens knap.
+// følger brugerens locale. Ankrene sidder på første roster-rækkes dags-knap +
+// uge-strip + dagens knap i sidehovedet (#4613: det tredje anker lå før på
+// kvitterings-kolonnen, som nu bor på Udvikling-fanen).
 function getTrainingTourSteps(t) {
   return [
     {
@@ -149,15 +163,22 @@ function getTrainingTourSteps(t) {
 // Bred side — samme mønster som TeamPage / RidersPage.
 // (Layout WIDE_CONTENT_ROUTES håndterer kun specific paths — vi bruger inline max-w)
 
-function MiniBar({ value, color, label }) {
-  // value = 0..100
+// #4613: form/træthed som ét tal + én hairline-måler i samme celle. Tallet er
+// det man skanner efter (tabular, højrestillet), måleren er formen på det.
+function ConditionCell({ value, label, tone = "neutral" }) {
   const pct = Math.max(0, Math.min(100, value ?? 0));
+  const known = value != null;
   return (
-    <div className="flex items-center gap-1.5 min-w-[80px]" title={`${label}: ${pct}`}>
-      <div className="flex-1 h-1.5 bg-cz-subtle rounded-cz-pill overflow-hidden">
-        <div className={`h-full rounded-cz-pill transition-all ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-      <span className="text-3xs font-mono text-cz-3 w-6 text-right">{pct}</span>
+    <div className="flex items-center justify-end gap-2" title={`${label}: ${known ? pct : "—"}`}>
+      <span className={`font-data text-[13px] tabular-nums ${tone === "danger" ? "font-semibold text-cz-danger" : "text-cz-1"}`}>
+        {known ? pct : "—"}
+      </span>
+      <span className="hidden h-1 w-10 overflow-hidden bg-cz-subtle sm:block" aria-hidden="true">
+        <span
+          className={`block h-full ${tone === "danger" ? "bg-cz-danger" : "bg-cz-2"}`}
+          style={{ width: `${known ? pct : 0}%` }}
+        />
+      </span>
     </div>
   );
 }
@@ -226,7 +247,11 @@ function yesterdayLineText(story, t, tRider) {
 // rækker, så de to flader bruger samme komponent/mutation (FocusPanel via
 // onOpen) i stedet for at Development opfinder sin egen fokus-visning. Ren
 // visning: al state (plan, busy, fejl) ejes stadig af TrainingPage.
+// #4613: knappen er strammet til en chip i rækkehøjde, og en rytter UDEN en
+// valgt dag bærer den stiplede advarsels-kant — "3 mangler en dag" skal kunne
+// ses ned gennem kolonnen uden at læse et ord.
 function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, dataTour }) {
+  const chosen = !!plan?.focus;
   return (
     <div>
       <button
@@ -235,11 +260,13 @@ function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, data
         onClick={onOpen}
         data-tour={dataTour}
         aria-label={`${t("dayPanel.colDay")} — ${rider.firstname} ${rider.lastname}`}
-        className="flex w-full max-w-[184px] items-center justify-between gap-2 rounded-cz border border-cz-border px-2.5 py-1.5 text-start transition-colors hover:border-cz-2/40 hover:bg-cz-subtle disabled:opacity-40"
+        className={`flex w-full max-w-[176px] items-center justify-between gap-1.5 rounded-cz border px-2 py-1 text-start transition-colors hover:bg-cz-subtle disabled:opacity-40 ${
+          chosen ? "border-cz-border" : "border-dashed border-cz-warning/60"
+        }`}
       >
         <span className="min-w-0">
-          <span className={`block truncate text-[13px] ${plan?.focus ? "font-medium text-cz-1" : "text-cz-3"}`}>
-            {plan?.focus ? dayLabel(plan, t) : t("dayPanel.chooseDay")}
+          <span className={`block truncate text-[13px] ${chosen ? "font-medium text-cz-1" : "text-cz-warning"}`}>
+            {chosen ? dayLabel(plan, t) : t("dayPanel.chooseDay")}
           </span>
           {!plan?.focus && smartFocus && (
             <span className="mt-0.5 block truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">
@@ -260,11 +287,11 @@ function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, data
 
 // #3299: mobil-sorterings-kontrol — Type/Form/Træthed-headerne er skjult i portræt
 // (#3045-kolonnekontrakten, "hidden sm:table-cell"), og træthed er netop den
-// kolonne spillere sorterer på for at afgøre hvem der skal have hvile (restsymptom
-// efter #3194's portræt-fix). Samme mønster som RidersPage's MobileSortControl:
-// select + retnings-toggle eksponerer PRÆCIS de samme sort-nøgler som desktop-
-// headerne og skriver til samme rosterSort-state via handleSort — ingen ny
-// sort-logik. Synlig kun under sm-breakpointet (`sm:hidden`).
+// kolonne spillere sorterer på for at afgøre hvem der skal have hvile.
+// Eksponerer PRÆCIS de samme sort-nøgler som desktop-headerne og skriver til
+// samme rosterSort-state via handleSort — ingen ny sort-logik. Synlig kun under
+// sm-breakpointet. #4613: bor nu i tabellens toolbar-slot i stedet for som en
+// løsrevet række over tabellen (PAGE_TEMPLATES "no orphan action rows").
 function RosterMobileSortControl({ sort, sortDir, onSort, t }) {
   const options = [
     { key: "name", label: t("colRider") },
@@ -281,7 +308,7 @@ function RosterMobileSortControl({ sort, sortDir, onSort, t }) {
   const dirAria = sortDir === "desc" ? t("mobileSort.descAria") : t("mobileSort.ascAria");
 
   return (
-    <div className="sm:hidden flex items-end gap-2 mb-3">
+    <div className="sm:hidden flex w-full items-end gap-2">
       <label className="flex-1 min-w-0">
         <span className="block text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("mobileSort.label")}</span>
         <Select size="sm" value={sort ?? ""} onChange={(e) => onSort(e.target.value)} className="w-full">
@@ -316,7 +343,7 @@ export default function TrainingPage() {
   // #2819: guidet rundvisning for onboarding-trin 2 (first_training_run).
   const trainingTourSteps = useMemo(() => getTrainingTourSteps(t), [t]);
 
-  // #3721: tre faner, ?tab=-synkroniseret efter samme mønster som FinancePage/
+  // #3721: faner, ?tab=-synkroniseret efter samme mønster som FinancePage/
   // RiderStatsPage (VALID_TABS-fallback). Kun læst ved mount for den initiale
   // fane; skift derefter styres af setTab (skriver `replace`, ingen historik-
   // spam pr. fane-klik).
@@ -329,39 +356,19 @@ export default function TrainingPage() {
       return p;
     }, { replace: true });
 
-  // #3746 trin 7: Week plan-fanens "gå til rosteret"-knap — den simple løsning
-  // for #4 i issuet (ingen ny data/redigering på denne fane, kun link til
-  // rosteret på Train today). Skifter fane og scroller roster-tabellen i
-  // synsfeltet, når today-panelet er mountet igen (TabPanel unmounter inaktive
-  // faner, så scrollet skal vente på næste render efter fane-skiftet).
-  const rosterTableRef = useRef(null);
-  const [scrollToRosterPending, setScrollToRosterPending] = useState(false);
-  function handleGoToRoster() {
-    setScrollToRosterPending(true);
-    setTab("today");
-  }
-  useEffect(() => {
-    if (activeTab === "today" && scrollToRosterPending) {
-      rosterTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      setScrollToRosterPending(false);
-    }
-  }, [activeTab, scrollToRosterPending]);
-
-  // #4522 (ejer-direktiv 31/8): "Get suggestions from the assistant"-panelet.
-  // Header-knappen kan klikkes fra enhver fane, så vi skifter til "today" +
-  // scroller panelet i syne — samme mønster som handleGoToRoster ovenfor,
-  // fordi TabPanel unmounter inaktive faner (panelet lever kun i "today").
-  const assistantPanelRef = useRef(null);
+  // #4522 (ejer-direktiv 31/8): "Get suggestions from the assistant"-panelet —
+  // et LUKKET panel man åbner fra sidehovedet (retning B, #4613). Det ligger
+  // øverst i overbliksfanen når det er åbent, og fladen er uberørt indtil man
+  // åbner det. Header-knappen kan klikkes fra enhver fane, så vi skifter til
+  // "today" (panelet lever kun der).
   const [assistantPanelOpen, setAssistantPanelOpen] = useState(false);
   const [assistantOnlyNoPlan, setAssistantOnlyNoPlan] = useState(false);
   const [assistantSelected, setAssistantSelected] = useState(() => new Set());
   const [assistantMsg, setAssistantMsg] = useState(null);
-  const [scrollToAssistantPending, setScrollToAssistantPending] = useState(false);
 
   function handleOpenAssistantPanel() {
     setAssistantMsg(null);
     setAssistantPanelOpen(true);
-    setScrollToAssistantPending(true);
     setTab("today");
   }
   function handleDismissAssistantPanel() {
@@ -369,12 +376,6 @@ export default function TrainingPage() {
     setAssistantSelected(new Set());
     setAssistantMsg(null);
   }
-  useEffect(() => {
-    if (activeTab === "today" && scrollToAssistantPending) {
-      assistantPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      setScrollToAssistantPending(false);
-    }
-  }, [activeTab, scrollToAssistantPending]);
 
   // #3721: Development-fanens prognose-bånd — samme kilde som spejder-fladerne
   // (POST /api/scouting/estimates via useScouting). Egne ryttere er altid et
@@ -397,8 +398,8 @@ export default function TrainingPage() {
     racingToday,
   } = training;
 
-  // #2578: dagens vundne hele point pr. rytter fra dagens kørsel — så roster-
-  // rækkens progress-celle kan vise "+N i dag" når baren netop har wrappet efter
+  // #2578: dagens vundne hele point pr. rytter fra dagens kørsel — så
+  // kvitterings-rækken kan vise "+N i dag" når baren netop har wrappet efter
   // et gennembrud (ellers fejllæses wrappen som "ingen fremgang").
   const todayGainsByRider = useMemo(() => {
     const out = {};
@@ -409,18 +410,19 @@ export default function TrainingPage() {
     return out;
   }, [todayRun]);
 
-  // #3924 trin 2: rider_id → hele gårsdagens rapport-linje, så roster-rækkens
-  // kvitteringsbar kan udlede gårsdagens bidrag (progress_before + gains pr.
-  // evne). Samme todayRun som alt andet på denne side — intet nyt kald.
+  // #3924 trin 2: rider_id → hele gårsdagens rapport-linje, så kvitteringens
+  // bar kan udlede gårsdagens bidrag (progress_before + gains pr. evne).
+  // Samme todayRun som alt andet på denne side — intet nyt kald.
   const todayRowByRider = useMemo(() => {
     const out = {};
     for (const row of todayRun?.report?.riders ?? []) out[row.rider_id] = row;
     return out;
   }, [todayRun]);
 
-  // #3924 trin 1 (design-go 20/8): "Yesterday's gains"-resuméet øverst på Train
-  // today — holdniveau-tallene til den ÉNE linje + kvitteringens per-rytter-
-  // historier til fold-ud'et. Samme todayRun/progress som resten af siden.
+  // #3924 trin 1 (design-go 20/8): "Yesterday's gains"-resuméet — holdniveau-
+  // tallene til den ÉNE linje + kvitteringens per-rytter-historier til fold-
+  // ud'et. Samme todayRun/progress som resten af siden. #4613: linjen bor nu
+  // på Rapporter-fanen sammen med resten af dagens kvittering.
   const yesterday = todayRun?.report ? yesterdaySummary(todayRun.report.riders) : null;
   const yesterdayStories = useMemo(
     () => (todayRun?.report ? riderDayStories(todayRun.report.riders, progress) : []),
@@ -433,8 +435,9 @@ export default function TrainingPage() {
   const [weekPlanMsg, setWeekPlanMsg] = useState(null);
   const activeWeekDays = weekDraft ?? weekPlan;
 
-  // #1895 PR 2: individuel ugeplan pr. rytter — udvidbar inline-flade i rosteret,
-  // tænkt til de 2-3 ryttere man mikro-styrer. Kun ÉN rytter udvidet ad gangen.
+  // #1895 PR 2: individuel ugeplan pr. rytter. #4613: editoren bor på Ugeplan-
+  // fanen (én rytter udvidet ad gangen), og uge-cellen i rosteret er genvejen
+  // dertil — funktionen er uændret, kun placeringen.
   const [expandedRiderId, setExpandedRiderId] = useState(null);
   const [riderWeekDraftMap, setRiderWeekDraftMap] = useState({}); // { <rider_id>: days } — kun redigerede
   const [riderWeekMsgMap, setRiderWeekMsgMap] = useState({}); // { <rider_id>: {type,text} | null }
@@ -447,10 +450,9 @@ export default function TrainingPage() {
   const [ridersLoading, setRidersLoading] = useState(true);
   const [runError, setRunError] = useState(null);
 
-  // #2465: roster-radens Fokus-select/clear-knap/intensitet-knapper kaldte tidligere
-  // setPlan/clearPlan uden await og uden at læse {ok,error} — en fejl (session,
-  // netværk, backend-afvisning) var visuelt usynlig. Fælles wrapper + pr.-rytter
-  // fejl-state (kun én celle relevant ad gangen pr. bruger-handling).
+  // #2465: roster-radens handlinger kaldte tidligere setPlan/clearPlan uden
+  // await og uden at læse {ok,error} — en fejl var visuelt usynlig. Fælles
+  // wrapper + pr.-rytter fejl-state.
   const [planActionError, setPlanActionError] = useState(null); // { riderId, error } | null
   async function handlePlanChange(riderId, dayType, session = null) {
     setPlanActionError(null);
@@ -510,6 +512,12 @@ export default function TrainingPage() {
   const [bulkDay, setBulkDay] = useState("");
   const [bulkMsg, setBulkMsg] = useState(null); // { type: "ok" | "partial" | "warn", text }
 
+  // #4613: overbliksfanens filtre. Søgefelt + ryttertype i den kanoniske
+  // FilterBar, status-spørgsmålet som Segmented i tabellens egen toolbar.
+  const [rosterQuery, setRosterQuery] = useState("");
+  const [rosterType, setRosterType] = useState("all");
+  const [rosterView, setRosterView] = useState("all");
+
   // Hent egne ryttere fra Supabase — samme mønster som TeamPage.
   useEffect(() => {
     async function loadRiders() {
@@ -524,19 +532,9 @@ export default function TrainingPage() {
           .single();
         if (!myTeam) return;
         // #3300: is_academy medtages read-only i samme select (ingen migration,
-        // intet nyt kald) — feltet findes allerede på riders, kun mangel på
-        // visning på trænings-siden.
-        // #3709 trin 1: + de 15 evne-kolonner via det delte ABILITY_SELECT-embed
-        // (samme mønster som AuctionsPage/RidersPage). Kvitteringen skal vise hvad
-        // evnen står på NU, og uden dette embed havde rækken kun fremdrifts-
-        // procenten. Ingen ny query og ingen loft-tal: ability_caps er ikke med i
-        // ABILITY_KEYS og forlader aldrig serveren (#1162).
-        // #3721: + birthdate — Development-fanens navn+alder-række har brug for
-        // det (samme ageForSeason-helper som rytterprofilen). Ingen ny query.
-        // #3815: birthdate bærer nu OGSÅ roster-tabellens alders-kolonne.
-        // #3761: + contract_end_season — Status-cellens contractExpiring-badge
-        // (samme kolonne TeamPage allerede henter). Read-only felt på riders,
-        // ingen migration og ingen ny query.
+        // intet nyt kald). #3709 trin 1: + de 15 evne-kolonner via det delte
+        // ABILITY_SELECT-embed. #3721/#3815: + birthdate (alder). #3761:
+        // + contract_end_season (Status-cellens contractExpiring-badge).
         const { data } = await supabase
           .from("riders")
           .select(`id, firstname, lastname, birthdate, contract_end_season, primary_type, secondary_type, is_academy, ${ABILITY_SELECT}`)
@@ -605,6 +603,14 @@ export default function TrainingPage() {
     setExpandedRiderId((prev) => (prev === riderId ? null : riderId));
   }
 
+  // #4613: uge-cellen i rosteret er indgangen til rytterens egen ugeplan —
+  // skifter til Ugeplan-fanen med netop den rytter udvidet. Samme state og
+  // samme mutation som fanens egen toggle, kun en anden vej ind.
+  function openRiderWeekPlan(riderId) {
+    setExpandedRiderId(riderId);
+    setTab("weekplan");
+  }
+
   function riderWeekDraftFor(riderId) {
     return riderWeekDraftMap[riderId] ?? riderWeekPlans[riderId] ?? flatWeekTemplate();
   }
@@ -660,9 +666,9 @@ export default function TrainingPage() {
     return time ? t(`trainedTodayAt_${who}`, { time }) : t(`trainedToday_${who}`);
   }
 
-  // Stabil dags-reference: bruges både af rækkernes skade-visning og af #3706's
-  // Status-comparator, som er memoiseret — en frisk Date pr. render ville
-  // invalidere den memo hver eneste gang.
+  // Stabil dags-reference: bruges både af rækkernes skade-visning, uge-strippen
+  // og af #3706's Status-comparator, som er memoiseret — en frisk Date pr.
+  // render ville invalidere den memo hver eneste gang.
   const today = useMemo(() => new Date(), []);
 
   const isLoading = loading || ridersLoading;
@@ -672,8 +678,7 @@ export default function TrainingPage() {
 
   // Dagligt udviklings-moment (#2484, H3): ÉN kurateret historie i stedet for
   // kun rå tal. latestRun = dagens kørsel hvis den allerede er kørt, ellers
-  // seneste historiske dag (typisk "i går"). pastRuns bruges KUN til cooldown
-  // (undgå samme rytter/historie-type dag-for-dag) — aldrig til visning.
+  // seneste historiske dag (typisk "i går"). pastRuns bruges KUN til cooldown.
   const latestRun = todayRun ?? history.runs[0] ?? null;
   const latestIsToday = !!todayRun;
   const pastRuns = latestIsToday
@@ -683,12 +688,8 @@ export default function TrainingPage() {
   // #3709 trin 1: sæsonens hele point pr. rytter, summeret fra den AKTIVE sæsons
   // trænings-kørsler (useTrainingHistory skærer selv forrige sæsons hale fra).
   // Uden en kendt sæsonstart bliver map'et tomt, rækkerne får seasonGains = null
-  // og viser "—" i stedet for et opfundet "+0".
-  // #4293: en sæson kan være `active` med en start_date i FREMTIDEN (interregnum
-  // mellem to sæsoner), og en begyndt sæson kan endnu ikke have en eneste
-  // træningsdag. I begge tilfælde er der ingen sæsondage at kvittere for, og
-  // map'et bliver tomt — rækkerne får seasonGains = null og viser "—" i stedet
-  // for et "+0" om en periode der ikke har målt noget.
+  // og viser "—" i stedet for et opfundet "+0" (#4293 dækker interregnum +
+  // sæsonens første morgen).
   const seasonGainsByRider = useMemo(() => {
     const out = {};
     if (history.seasonState !== SEASON_RECEIPT_RUNNING || !history.seasonStart) return out;
@@ -698,21 +699,13 @@ export default function TrainingPage() {
     return out;
   }, [riders, history.seasonRuns, history.seasonStart, history.seasonState]);
 
-  // #3746 trin 7: Week plan-fanens kompakte oversigt — ryttere med en egen
-  // individuel ugeplan-override. Genbruger riderWeekPlans (allerede hentet af
-  // useTraining til roster-rækkens udvidelige panel), ingen nyt kald.
-  const ridersWithOwnWeekPlan = useMemo(
-    () => riders.filter((r) => riderWeekPlans[r.id] != null),
-    [riders, riderWeekPlans],
-  );
-
   // --- Gruppering + multi-select (#1480) ---
-  // Antal kolonner i roster-tabellen (select + type + 7 oprindelige) — bruges til
-  // colSpan på gruppe-header-rækker.
-  // #3300-rework: +1 kolonne (individuel ugeplan-knap flyttet ud af navne-cellen
-  // og ind i sin egen kolonne, jf. ejer-feedback).
-  // #3815: +1 kolonne (Alder).
-  const ROSTER_COLS = 11;
+  // Antal kolonner i roster-tabellen — bruges til colSpan på gruppe-header-rækker.
+  // #4613: kvitterings-kolonnen flyttede til Udvikling-fanen, og ugeplan-
+  // knappens egen kolonne blev uge-strippen. #4736: Dag og "Skift dag" er slået
+  // sammen til ÉN celle, så der er 9 kolonner (vælg, navn, type, alder, dag,
+  // uge, form, træthed, status).
+  const ROSTER_COLS = 9;
 
   // Accessors til roster-sortering. form/fatigue bor i condition-map'et (ikke på
   // rytteren), så closure over condition — useMemo holder referencen stabil pr.
@@ -721,25 +714,72 @@ export default function TrainingPage() {
     name: (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`.trim(),
     primary_type: (r) => r.primary_type ?? "",
     // #3815: sæson-alderen som tal, samme helper som cellen selv viser, så
-    // rækkefølgen ikke kan drive fra det man læser. Uden sæson-år giver
-    // ageForSeason null, og sortRows lægger null'er sidst uanset retning.
+    // rækkefølgen ikke kan drive fra det man læser.
     age: (r) => ageForSeason(r.birthdate, seasonYear),
     form: (r) => condition[r.id]?.form ?? null,
     fatigue: (r) => condition[r.id]?.fatigue ?? null,
     // #3706: samme to badges som Status-cellen viser, som ét sorterbart tal.
-    // injuryDaysLeft er den samme kilde cellen selv bruger, så rækkefølgen kan
-    // ikke drive fra det man ser.
     status: (r) => (r.is_academy ? STATUS_ACADEMY_WEIGHT : 0)
       + (injuryDaysLeft(condition[r.id]?.injured_until, today) > 0 ? STATUS_INJURED_WEIGHT : 0),
   }), [condition, today, seasonYear]);
   const rosterAccessor = rosterSort.sort ? rosterAccessors[rosterSort.sort] : null;
   const sortRoster = (list) => sortRows(list, rosterAccessor, rosterSort.sortDir);
 
-  // Vis enten flade rækker eller type-grupper. Begge bruger samme allerede-hentede
-  // riders-array (ingen ny query) og den samme aktive sortering.
-  const groups = groupByType ? groupRidersByType(riders) : null;
+  // #4613: overbliksfladens tællinger. Alle fra data siden ALLEREDE har —
+  // ingen nye kald, ingen opdigtede tal (en rytter uden condition tælles ikke
+  // som i fare, han tælles slet ikke).
+  const rosterCounts = useMemo(() => {
+    let noPlan = 0;
+    let risk = 0;
+    let injured = 0;
+    let racing = 0;
+    for (const r of riders) {
+      const cond = condition[r.id] ?? {};
+      const isInjured = injuryDaysLeft(cond.injured_until, today) > 0;
+      if (!planFor(r.id)?.focus) noPlan += 1;
+      if (isInjured) injured += 1;
+      else if ((cond.risk ?? 0) >= 0.05) risk += 1;
+      if (racingToday[r.id]) racing += 1;
+    }
+    return { total: riders.length, planned: riders.length - noPlan, noPlan, risk, injured, racing };
+  }, [riders, condition, today, planFor, racingToday]);
 
-  const allSelected = riders.length > 0 && selected.size === riders.length;
+  // Ryttertyper der faktisk findes i truppen — filteret må ikke tilbyde en type
+  // ingen rytter har (TASTE P11: ingen tomme valg).
+  const rosterTypeOptions = useMemo(() => {
+    const seen = new Set();
+    for (const r of riders) if (r.primary_type) seen.add(r.primary_type);
+    return [...seen].sort((a, b) => tTypes(`types.${a}`).localeCompare(tTypes(`types.${b}`)));
+  }, [riders, tTypes]);
+
+  const filteredRiders = useMemo(() => {
+    const needle = rosterQuery.trim().toLowerCase();
+    return riders.filter((r) => {
+      if (needle && !`${r.firstname ?? ""} ${r.lastname ?? ""}`.toLowerCase().includes(needle)) return false;
+      if (rosterType !== "all" && r.primary_type !== rosterType) return false;
+      if (rosterView === "noplan" && planFor(r.id)?.focus) return false;
+      if (rosterView === "racing" && !racingToday[r.id]) return false;
+      if (rosterView === "risk") {
+        const cond = condition[r.id] ?? {};
+        const isInjured = injuryDaysLeft(cond.injured_until, today) > 0;
+        if (!isInjured && (cond.risk ?? 0) < 0.05) return false;
+      }
+      return true;
+    });
+  }, [riders, rosterQuery, rosterType, rosterView, planFor, racingToday, condition, today]);
+
+  const filtersActive = rosterQuery.trim() !== "" || rosterType !== "all" || rosterView !== "all";
+  function clearRosterFilters() {
+    setRosterQuery("");
+    setRosterType("all");
+    setRosterView("all");
+  }
+
+  // Vis enten flade rækker eller type-grupper. Begge bruger samme allerede-hentede
+  // (og nu filtrerede) riders-array — ingen ny query — og samme aktive sortering.
+  const groups = groupByType ? groupRidersByType(filteredRiders) : null;
+
+  const allSelected = filteredRiders.length > 0 && filteredRiders.every((r) => selected.has(r.id));
 
   function toggleSelect(riderId) {
     setSelected((prev) => {
@@ -751,7 +791,11 @@ export default function TrainingPage() {
   }
 
   function toggleSelectAll() {
-    setSelected((prev) => (prev.size === riders.length ? new Set() : new Set(riders.map((r) => r.id))));
+    setSelected((prev) => (
+      filteredRiders.length > 0 && filteredRiders.every((r) => prev.has(r.id))
+        ? new Set()
+        : new Set(filteredRiders.map((r) => r.id))
+    ));
   }
 
   function clearSelection() {
@@ -764,8 +808,7 @@ export default function TrainingPage() {
   }
 
   // Én roster-række (genbruges af både flad liste og type-grupperet visning).
-  // #2819: isFirst markerer den øverste synlige roster-række som tour-anker
-  // (samme mønster som AuctionsPage's isFirst → data-tour="auctions-bid-input").
+  // #2819: isFirst markerer den øverste synlige roster-række som tour-anker.
   function renderRosterRow(rider, isFirst = false) {
     const plan = planFor(rider.id);
     const cond = condition[rider.id] ?? {};
@@ -774,22 +817,6 @@ export default function TrainingPage() {
     const highRisk = !injured && (cond.risk ?? 0) >= 0.05;
     const busy = savingId === rider.id || bulkApplying;
     const isSelected = selected.has(rider.id);
-    // #3709 trin 1: kvitteringen for fokussets 2-3 evner. Erstatter den ene
-    // aggregerede progress-bar, som var rod-årsagen bag #3639: baren viste kun
-    // evnen tættest på gennembrud, så en låst evne ved siden af var usynlig.
-    // Nu står hver af fokussets evner på sin egen linje med nu / sæson / på vej,
-    // og en låst evne skriver "færdig" i stedet for en død bar.
-    // `capped` er kun ability-NØGLER — cap-tal forlader aldrig serveren (#1162).
-    const focusReceipt = focusAbilityReceipt(plan?.focus, {
-      abilities: rider.abilities,
-      progress: progress[rider.id],
-      capped: capped[rider.id],
-      seasonGains: seasonGainsByRider[rider.id] ?? null,
-      // #3924 trin 2: gårsdagens bidrag som mørkere segment på baren — begge
-      // fra samme todayRun-linje, null når rytteren ikke indgik i dagens kørsel.
-      progressBefore: todayRowByRider[rider.id]?.progress_before ?? null,
-      gainsToday: todayRowByRider[rider.id]?.gains ?? null,
-    });
 
     // #3459 V3 / #4375: løbsdags-badge - feltet findes KUN når
     // race_day_development_enabled er on (backend udelader det helt ellers, se
@@ -801,14 +828,11 @@ export default function TrainingPage() {
     // ugerytme for netop denne rytter (samme lagdeling som motoren).
     const riderOverrideDays = riderWeekPlans[rider.id] ?? null;
     const hasOwnWeekPlan = riderOverrideDays != null;
-    const isExpanded = expandedRiderId === rider.id;
-    const savingRiderPlan = savingRiderWeekPlanId === rider.id;
 
     // #2438 — "én sandhed pr. rytter": rytterens EGEN eksplicitte focus+intensity
     // (training_plans) overtrumfer holdets ugerytme; rytmen er kun default for
     // ryttere uden egen override. Samme lagdeling som motoren (training.js
-    // resolveDayIntensity). Kun relevant til visning når holdet HAR en ugerytme —
-    // uden rytme er der intet konkurrerende signal at forklare.
+    // resolveDayIntensity). Kun relevant til visning når holdet HAR en ugerytme.
     const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
     const teamRhythmActive = weekPlan != null;
     const effectiveTodayIntensity = teamRhythmActive
@@ -830,12 +854,23 @@ export default function TrainingPage() {
       default: "weekRhythmTodayHint",
     }[todayIntensitySource];
 
+    // #4613: de næste 7 dage som strimmel. Ren lagdeling af data siden allerede
+    // har (lib/trainingWeekStrip.js, unit-testet) — ingen kalender fremad, så
+    // kun I DAG kan bære en løbsmarkering.
+    const weekStripDays = riderWeekStrip({
+      fromDate: today,
+      riderOverrideDays,
+      teamWeekDays: weekPlan,
+      planIntensity: plan?.intensity ?? "normal",
+      hasExplicitPlan,
+      racingToday: !!raceToday,
+    });
+
     return (
-      <Fragment key={rider.id}>
-      <tr className={`${trClass(null)} ${isSelected ? "bg-cz-accent/5" : ""}`}>
+      <tr key={rider.id} className={`${trClass(null)} ${isSelected ? "bg-cz-accent/5" : ""}`}>
         {/* Multi-select — sticky sammen med navnekolonnen (#2446), fast w-10 så
             offsettet på navnekolonnen (left-10) matcher præcis. */}
-        <td className="border-t border-cz-border px-2 py-3 w-10 sticky-name-cell sticky left-0 z-sticky">
+        <td className="border-t border-cz-border px-2 py-[7px] w-10 sticky-name-cell sticky left-0 z-sticky">
           <input
             type="checkbox"
             checked={isSelected}
@@ -846,29 +881,21 @@ export default function TrainingPage() {
         </td>
 
         {/* Navn — sticky ved horisontal scroll (#2446), så rytter-identiteten aldrig
-            forsvinder når man scroller ud til fokus/intensitet-kolonnerne. Samme
-            opskrift som RidersPage/TeamPage (.sticky-name-cell). Ingen rå skygge-klasse
-            (#2849 bølge 4 anti-slop) — den opake .sticky-name-cell-baggrund + 1px
+            forsvinder når man scroller ud til dag/uge-kolonnerne. Samme opskrift
+            som RidersPage/TeamPage (.sticky-name-cell): den opake baggrund + 1px
             border-r ER den kanoniske sticky-first-column-recipe (T2). */}
-        <td className="border-t border-cz-border px-4 py-3 sticky-name-cell sticky left-10 z-sticky border-r border-cz-border">
-          {/* whitespace-nowrap: navnet er kolonnens naturlige bredde (DataTable-opskriften)
-              — uden den kollapser cellen til underlinjens max-w og ombryder navnet. */}
+        <td className="border-t border-cz-border px-4 py-[7px] sticky-name-cell sticky left-10 z-sticky border-r border-cz-border">
+          {/* whitespace-nowrap: navnet er kolonnens naturlige bredde (DataTable-opskriften). */}
           <div className="flex items-center gap-1.5 whitespace-nowrap">
             <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
               {rider.firstname} {rider.lastname}
             </RiderLink>
           </div>
-          {/* #3045: portræt-kolonnekontrakt — Type + Form + Træthed foldes ind
-              i navne-underlinjen ≤640px (samme "DataTable fold"-mønster som
-              RidersPage/TeamPage/WatchlistPage), så Fokus + Intensitet-
-              kolonnerne (dem man rent faktisk redigerer) ikke skal dele
-              skærmen med rent info-only kolonner i portræt. Skjult ≥640px,
-              hvor Type/Form/Træthed vises som deres egne kolonner (uændret).
-              #3194: underlinjen må ALDRIG diktere kolonnebredden — denne celle er
-              STICKY, så en nowrap-linje ("SPRINTER/KLATRER · FORM 78 · TRÆTHED 42")
-              gjorde navnekolonnen ~skærmbred i portræt og reducerede fokus/
-              intensitet til en ubrugelig scroll-strimmel (2 spillere, iOS+Android).
-              max-w + ombrydning i stedet for nowrap: infoen står på 2 korte linjer. */}
+          {/* #3045: portræt-kolonnekontrakt — Type + Alder + Form + Træthed foldes
+              ind i navne-underlinjen ≤640px (samme "DataTable fold"-mønster som
+              RidersPage/TeamPage), så Dag + Uge beholder pladsen i
+              portræt. #3194: underlinjen må ALDRIG diktere kolonnebredden —
+              denne celle er STICKY, så max-w + ombrydning i stedet for nowrap. */}
           <div className="mt-0.5 sm:hidden max-w-[40vw] font-data text-3xs uppercase tracking-[.05em] text-cz-3">
             {[
               rider.primary_type
@@ -876,10 +903,6 @@ export default function TrainingPage() {
                   ? `${tTypes(`types.${rider.primary_type}`)}/${tTypes(`types.${rider.secondary_type}`)}`
                   : tTypes(`types.${rider.primary_type}`))
                 : null,
-              // #3815: alderen følger samme portræt-fold som Type/Form/Træthed —
-              // kolonnen er skjult ≤640px, så tallet står her i stedet. Uden
-              // dette ville ønsket ("alder under Daglig træning") kun være
-              // opfyldt på desktop, og fladen bruges også i portræt.
               `${t("colAge")} ${ageForSeason(rider.birthdate, seasonYear) ?? "—"}`,
               `${t("form")} ${cond.form ?? "—"}`,
               `${t("fatigue")} ${cond.fatigue ?? "—"}`,
@@ -888,153 +911,173 @@ export default function TrainingPage() {
         </td>
 
         {/* Ryttertype */}
-        <td className={`${tdClass({})} hidden sm:table-cell`}>
+        <td className={`${tdClass({ dense: true })} hidden sm:table-cell`}>
           <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
         </td>
 
         {/* #3815: Alder. Sæson-alderen (ageForSeason, ikke wall-clock — #3071),
             samme tal som rytterprofilen og Development-fanen viser. "—" når
             sæson-året endnu ikke er hentet; en manglende alder er bedre end en
-            forkert. tabular-nums via numeric-recipen, så cifrene flugter
-            lodret ned gennem truppen. */}
-        <td className={`${tdClass({ numeric: true, compact: true })} hidden sm:table-cell`}>
+            forkert. */}
+        <td className={`${tdClass({ numeric: true, compact: true, dense: true })} hidden sm:table-cell`}>
           <span className="text-cz-2">{ageForSeason(rider.birthdate, seasonYear) ?? "—"}</span>
         </td>
 
-        {/* #3721: fokus-vælgeren er et panel, ikke en <select> (ejer-godkendt
-            14/8). Cellen bar før fire signaler i 184 px — fokussets navn, et
-            trænbarheds-mærke klistret ind i option-teksten (som klippede:
-            "Threshold / TT (X very lir"), en to-linjers chip, og assistentens
-            hint. Trin 2 lægger et syvende fokus i den og trin 4 point pr. sæson
-            pr. fokus; en <select> kan ikke bære det. Cellen er nu én knap der
-            åbner panelet, hvor hvert fokus har sin egen række.
-
-            Trænbarheds-chippen er VÆK herfra, ikke flyttet. Den røde
-            "blocked"-variant er målt uopnåelig (0 af 384 type-kombinationer på
-            både main og #3741), og den gule "limited" er den tvetydige bucket
-            #3747 beskriver, hvor håndværk (tag 0,95) og anden rolle (0,70)
-            lander sammen. Panelet viser kun de påstande der kan efterprøves. */}
-        <td className={tdClass({})}>
-          {/* #3721: DELT FocusOpenButton — samme komponent/mutation som
-              Development-fanens rækker bruger (ingen forgrenet fokus-logik). */}
-          <FocusOpenButton
-            rider={rider}
-            plan={plan}
-            busy={busy}
-            smartFocus={smartDefaultFocus[rider.id]}
-            error={planActionError?.riderId === rider.id ? planActionError.error : null}
-            onOpen={() => setFocusPanelRiderId(rider.id)}
-            t={t}
-            dataTour={isFirst ? "training-focus" : undefined}
-          />
+        {/* #4736 (ejer-review af #4613, 3/9): ÉN dags-celle pr. række. "Dag" og
+            "Skift dag" stod side om side og sagde det samme, og de to kolonner
+            skubbede Form, Træthed og Status ud over højre kant ved 1440 px.
+            Segmentet er nu det primære — Hvile · Aktiv restitution · rytterens
+            egen session — og de øvrige sessionstyper ligger bag "Andet", som
+            åbner PRÆCIS det samme dags-panel som "Dag"-chippen gjorde. Uden en
+            valgt dag beholder cellen "Vælg dag"-tilstanden med assistentens
+            forslag. Samme mutationer som før, kun én celle i stedet for to. */}
+        <td className={tdClass({ compact: true, dense: true })}>
+          {/* #2819: tour-ankeret sidder på cellens wrapper, ikke på en af de to
+              grene, så det findes uanset om rytteren har valgt en dag endnu. */}
+          <div data-tour={isFirst ? "training-focus" : undefined}>
+            {plan?.focus ? (
+              <div
+                role="group"
+                aria-label={`${t("dayPanel.colDay")} — ${rider.firstname} ${rider.lastname}`}
+                // #3459 V3: dæmpet (ikke deaktiveret) på løbsdage — planen er urørt og
+                // gælder alle ikke-løbsdage, knapperne forbliver derfor fuldt aktive.
+                className={`inline-flex rounded-cz border border-cz-border overflow-hidden ${raceToday ? "opacity-[0.55]" : ""}`}
+              >
+                {/* #3762: intensiteten er ikke længere et frit valg — den er en
+                    egenskab ved sessionen. Knapperne skifter derfor DAGEN.
+                    Sessions-knappen bærer rytterens egen session, som serveren
+                    bevarer hen over en hviledag, så vejen tilbage er ét klik.
+                    #4613: det aktive segment er guld-TEKST på 10% guld-flade,
+                    samme anatomi som kittets Segmented (TASTE fork 3) — den
+                    fyldte guld-knap var et andet guld-signal i hver række. */}
+                {QUICK_DAY_TYPES.map((k) => {
+                  const activeDay = dayTypeForProgram(plan);
+                  const isSession = k === "session";
+                  const dayType = isSession ? sessionDayType(plan) : k;
+                  const label = isSession
+                    ? t(`dayPanel.session_${plan.focus}`, { defaultValue: t("dayPanel.dayType_training") })
+                    : t(`dayPanel.dayType_${k}`);
+                  const pressed = isSession ? activeDay === dayType : activeDay === k;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleDayQuickChange(rider.id, isSession ? "session" : k, plan.focus)}
+                      aria-pressed={pressed}
+                      // #4736: kun sessions-labelen kan blive lang (fx
+                      // "Klatreintervaller"), så kun den får et loft — og en
+                      // title, så det fulde navn stadig kan læses. Hvile og
+                      // Aktiv restitution står uafkortede.
+                      title={isSession ? label : undefined}
+                      className={`text-xs px-1.5 py-1 transition-colors disabled:opacity-50 ${
+                        isSession ? "max-w-[96px] truncate" : "whitespace-nowrap"
+                      } ${pressed ? "bg-cz-accent/10 font-semibold text-cz-accent-t" : "text-cz-2 hover:bg-cz-subtle"}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                {/* #4736: resten af sessionstyperne. Åbner den samme FocusPanel
+                    (setFocusPanelRiderId) som den gamle Dag-chip, så vejen til
+                    fx en klatreintervals-dag er præcis uændret. Chevronen alene
+                    — teksten "Andet" ville koste ~44 px i hver række, og det var
+                    netop de px der klippede Status af i højre kant. Navnet bor i
+                    aria-label + title, så kontrollen stadig kan læses højt og
+                    forklarer sig selv ved hover. */}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setFocusPanelRiderId(rider.id)}
+                  title={t("dayPanel.otherDay")}
+                  aria-label={`${t("dayPanel.otherDay")} — ${rider.firstname} ${rider.lastname}`}
+                  className="flex items-center border-s border-cz-border px-1.5 py-1 text-cz-3 transition-colors hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50"
+                >
+                  <ChevronDownIcon size={13} className="shrink-0" aria-hidden="true" />
+                </button>
+              </div>
+            ) : (
+              /* #3721: DELT FocusOpenButton — samme komponent/mutation som
+                 Development-fanens rækker bruger (ingen forgrenet fokus-logik).
+                 #4613: den stiplede advarsels-kant gør hullerne synlige ned
+                 gennem kolonnen. Fejlen renderes én gang på celle-niveau
+                 nedenfor, så den dækker BEGGE grene. */
+              <FocusOpenButton
+                rider={rider}
+                plan={plan}
+                busy={busy}
+                smartFocus={smartDefaultFocus[rider.id]}
+                onOpen={() => setFocusPanelRiderId(rider.id)}
+                t={t}
+              />
+            )}
+            {planActionError?.riderId === rider.id && (
+              <div role="alert" className="mt-0.5 text-3xs text-cz-danger">
+                {t([`planActionError_${planActionError.error}`, "planActionErrorGeneric"])}
+              </div>
+            )}
+            {/* #2438 — "én sandhed pr. rytter": vis altid dagens EFFEKTIVE intensitet +
+                kilden når holdet har en ugerytme, uanset om rytteren selv har en plan.
+                Kompakt T2-meta-linje med den fulde forklaring som title-tooltip.
+                #3459 V3: løbsdags-linjen ERSTATTER (ikke supplerer) rytme-hinten på
+                dage rytteren racer i dag — racedagen ER dagens svar på "hvorfor". */}
+            {raceToday ? (
+              <div
+                className="mt-1 flex items-center gap-1 font-data text-3xs uppercase tracking-[.06em] text-cz-accent"
+                title={t("raceDayTooltip", {
+                  riderName: `${rider.firstname} ${rider.lastname}`,
+                  raceName: raceToday.race ?? t("raceDayTooltipRaceFallback"),
+                })}
+              >
+                <FlagIcon size={12} aria-hidden="true" />
+                {t("raceDayBadge")}
+              </div>
+            ) : teamRhythmActive && (
+              <div
+                className="mt-1 font-data text-3xs uppercase tracking-[.06em] text-cz-3"
+                title={t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
+              >
+                {t("weekRhythmTodayShort", { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
+              </div>
+            )}
+          </div>
         </td>
 
-        {/* Intensitet */}
-        <td className={tdClass({})}>
-          {plan?.focus ? (
-            <div
-              role="group"
-              aria-label={`${t("dayPanel.colChangeDay")} — ${rider.firstname} ${rider.lastname}`}
-              // #3459 V3: dæmpet (ikke deaktiveret) på løbsdage — planen er urørt og
-              // gælder alle ikke-løbsdage, knapperne forbliver derfor fuldt aktive.
-              className={`inline-flex rounded-cz border border-cz-border overflow-hidden ${raceToday ? "opacity-[0.55]" : ""}`}
-            >
-              {/* #3762: intensiteten er ikke længere et frit valg — den er en
-                  egenskab ved sessionen. Knapperne skifter derfor DAGEN.
-                  Sessions-knappen bærer rytterens egen session, som serveren
-                  bevarer hen over en hviledag, så vejen tilbage er ét klik. */}
-              {QUICK_DAY_TYPES.map((k) => {
-                const activeDay = dayTypeForProgram(plan);
-                const isSession = k === "session";
-                const dayType = isSession ? sessionDayType(plan) : k;
-                const label = isSession
-                  ? t(`dayPanel.session_${plan.focus}`, { defaultValue: t("dayPanel.dayType_training") })
-                  : t(`dayPanel.dayType_${k}`);
-                const pressed = isSession ? activeDay === dayType : activeDay === k;
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => handleDayQuickChange(rider.id, isSession ? "session" : k, plan.focus)}
-                    aria-pressed={pressed}
-                    className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
-                      pressed ? "bg-cz-accent text-white" : "text-cz-2 hover:bg-cz-subtle"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <span className="text-cz-3 text-xs">—</span>
-          )}
-          {/* #2438 — "én sandhed pr. rytter": vis altid dagens EFFEKTIVE intensitet +
-              kilden når holdet har en ugerytme, uanset om rytteren selv har en plan.
-              Uden dette forsvandt hele forklaringen for ryttere uden eget fokus, som
-              stille fulgte holdrytmen uden nogen synlig grund. */}
-          {/* Ejer-kvalitetspas 24/7: den fulde kilde-forklaring gentaget som prosa
-              under HVER række var visuel støj — kompakt T2-meta-linje med den
-              fulde forklaring som title-tooltip i stedet. */}
-          {/* #3459 V3: løbsdags-linjen ERSTATTER (ikke supplerer) den normale
-              rytme-hint på dage rytteren racer i dag — planen er urørt (knapperne
-              er kun dæmpet ovenfor, ikke deaktiveret), racedagen ER dagens svar på
-              "hvorfor". Tooltip forklarer hele mekanikken; badgen selv holdes kort
-              (samme kompakte T2 meta-linje-format som rytme-hinten den erstatter). */}
-          {raceToday ? (
-            <div
-              className="mt-1 flex items-center gap-1 font-data text-3xs uppercase tracking-[.06em] text-cz-accent"
-              title={t("raceDayTooltip", {
-                riderName: `${rider.firstname} ${rider.lastname}`,
-                raceName: raceToday.race ?? t("raceDayTooltipRaceFallback"),
-              })}
-            >
-              <FlagIcon size={12} aria-hidden="true" />
-              {t("raceDayBadge")}
-            </div>
-          ) : teamRhythmActive && (
-            <div
-              className="mt-1 font-data text-3xs uppercase tracking-[.06em] text-cz-3"
-              title={t(todayHintKey, { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
-            >
-              {t("weekRhythmTodayShort", { intensity: tRider(`training.intensity_${effectiveTodayIntensity}`) })}
-            </div>
-          )}
-        </td>
-
-        {/* #3709 trin 1: kvitteringen for fokussets egne evner. Hver evne får
-            sin egen linje med nu / point i sæsonen / på vej, og en låst evne
-            skriver "færdig". Den gamle ene aggregerede bar viste kun evnen
-            tættest på gennembrud (#3639), og de tre loft-tekster lovede at en
-            evne aldrig steg igen — et løfte den nye model gør usandt (#3649). */}
-        <td className={tdClass({})} data-tour={isFirst ? "training-next-up" : undefined}>
-          {focusReceipt ? (
-            <div className="min-w-[176px]">
-              {focusReceipt.map((row) => (
-                <AbilityReceiptRow key={row.ability} row={row} />
-              ))}
-            </div>
-          ) : (
-            <span className="text-cz-3 text-xs">{t("noFocus")}</span>
-          )}
-          {todayGainsByRider[rider.id] > 0 && (
-            <div className="mt-0.5">
-              <span className="inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-success-bg text-cz-success border border-cz-success/30">
-                {t("gainedToday", { count: todayGainsByRider[rider.id] })}
+        {/* #4613 — Uge: de næste 7 dage som strimmel, og samtidig indgangen til
+            rytterens EGEN ugeplan (editoren bor på Ugeplan-fanen, jf.
+            openRiderWeekPlan). Ugeplan-knappen havde før sin egen kolonne
+            (#3300-rework); strimlen bærer nu både svaret og vejen videre, så
+            rækken ikke har to celler til den samme ting. */}
+        <td className={tdClass({ compact: true, dense: true })}>
+          <button
+            type="button"
+            onClick={() => openRiderWeekPlan(rider.id)}
+            data-tour={isFirst ? "training-next-up" : undefined}
+            aria-label={`${t("individualWeekPlanToggleOpen")} — ${rider.firstname} ${rider.lastname}`}
+            className="flex items-center gap-2 rounded-cz border border-transparent px-1 py-0.5 transition-colors hover:border-cz-border"
+          >
+            <TrainingWeekStrip days={weekStripDays} />
+            {/* #1895 PR 2: markering for ryttere med egen ugeplan-override, så man
+                kan se hvem der kører sit eget program uden at åbne panelet. */}
+            {hasOwnWeekPlan && (
+              <span
+                className="inline-block whitespace-nowrap rounded-cz-pill border border-cz-accent/30 bg-cz-accent/10 px-1.5 py-0.5 text-3xs text-cz-accent-t"
+                title={t("individualWeekPlanBadgeTitle")}
+              >
+                {t("individualWeekPlanBadge")}
               </span>
-            </div>
-          )}
+            )}
+          </button>
         </td>
 
         {/* Form */}
-        <td className={`${tdClass({})} hidden sm:table-cell`}>
-          <MiniBar value={cond.form} color="bg-cz-info" label={t("form")} />
+        <td className={`${tdClass({ numeric: true, compact: true, dense: true })} hidden sm:table-cell`}>
+          <ConditionCell value={cond.form} label={t("form")} />
         </td>
 
         {/* Træthed */}
-        <td className={`${tdClass({})} hidden sm:table-cell`}>
-          <MiniBar value={cond.fatigue} color="bg-cz-warning" label={t("fatigue")} />
+        <td className={`${tdClass({ numeric: true, compact: true, dense: true })} hidden sm:table-cell`}>
+          <ConditionCell value={cond.fatigue} label={t("fatigue")} tone={highRisk || injured ? "danger" : "neutral"} />
         </td>
 
         {/* Status: akademi + skadet / høj risiko. Ejer-feedback (rework af #3300):
@@ -1042,19 +1085,15 @@ export default function TrainingPage() {
             andre steder" — samme RiderBadges-recipe og samme Status-kolonne som
             TeamPage/TeamProfilePage bundler badges i (injured/academy/age/risk/
             contract alt sammen under ÉN "Status"-header), i stedet for at ligge
-            inline i navne-cellen. Ingen `hidden sm:table-cell` — TeamPages
-            badges-kolonne foldes heller ikke væk i portræt (#3194), den scroller
-            vandret som resten af tabellen. */}
-        <td className={tdClass({})}>
+            inline i navne-cellen. Ingen `hidden sm:table-cell` — kolonnen
+            scroller vandret som resten af tabellen (#3194). */}
+        <td className={tdClass({ dense: true })}>
           <div className="flex flex-wrap gap-1">
-            {/* #3761: Status-cellen viste ÉN af de badges rytteren kan bære.
-                De to der mangler er præcis dem der afgør om træningen
-                overhovedet er en investering værd: kontrakten udløber ved
-                næste sæsonskifte, eller rytteren er i/lige før pensions-
-                vinduet. Begge er allerede beregnede helpers (riderAge.js) og
-                vises på TeamPage — samme kald-form her, ingen ny mekanik.
-                is_academy udelades fra begge, ligesom på TeamPage: squad-risk-
-                spærren (#2748) tæller kun senior-ryttere. */}
+            {/* #3761: de to badges der afgør om træningen overhovedet er en
+                investering værd — kontrakten udløber ved næste sæsonskifte,
+                eller rytteren er i/lige før pensions-vinduet. Begge er
+                allerede beregnede helpers (riderAge.js) og vises på TeamPage.
+                is_academy udelades fra begge, ligesom på TeamPage. */}
             <RiderBadges badges={[
               rider.is_academy && "academy",
               !rider.is_academy && retirementRiskBadgeKey(rider, seasonYear),
@@ -1074,98 +1113,7 @@ export default function TrainingPage() {
             )}
           </div>
         </td>
-
-        {/* Individuel ugeplan — egen kolonne (rework af #3300, ejer-feedback: knappen
-            der åbner rytterens egen ugeplan skal ikke ligge i navne-cellen, men have
-            sin egen kolonne, ligesom akademi-badgen ovenfor). Ingen `hidden sm:table-
-            cell` — skal virke på mobil ligesom badges-kolonnen. */}
-        <td className={tdClass({})}>
-          <div className="flex flex-col items-start gap-1">
-            <button
-              type="button"
-              onClick={() => toggleRiderWeekPlan(rider.id)}
-              className="text-3xs text-cz-3 hover:text-cz-accent underline decoration-dotted whitespace-nowrap"
-            >
-              {isExpanded ? t("individualWeekPlanToggleClose") : t("individualWeekPlanToggleOpen")}
-            </button>
-            {/* #1895 PR 2: markering for ryttere med egen ugeplan-override, så man
-                kan se hvem der kører sit eget program uden at åbne panelet. */}
-            {hasOwnWeekPlan && (
-              <span
-                className="inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill border bg-cz-accent/10 text-cz-accent border-cz-accent/30"
-                title={t("individualWeekPlanBadgeTitle")}
-              >
-                {t("individualWeekPlanBadge")}
-              </span>
-            )}
-          </div>
-        </td>
       </tr>
-
-      {/* #1895 PR 2: individuel ugeplan-flade — udvidet inline-række under rytteren.
-          Rører ALDRIG fokus; overstyrer KUN holdets ugerytme for netop denne rytter. */}
-      {isExpanded && (
-        <tr className="bg-cz-subtle/40">
-          <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-3">
-            <div className="flex flex-col gap-2">
-              <p className="text-[13px] text-cz-3 leading-relaxed">
-                {t("individualWeekPlanIntro", { name: `${rider.firstname} ${rider.lastname}` })}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {WEEKDAY_KEYS.map((weekday) => {
-                  const current = riderWeekDraftFor(rider.id)[weekday]?.intensity ?? "normal";
-                  return (
-                    <div key={weekday} className="flex flex-col items-center gap-1">
-                      <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
-                      <div className="w-[92px]">
-                        <Select
-                          size="sm"
-                          value={current}
-                          disabled={savingRiderPlan}
-                          aria-label={`${t("individualWeekPlanTitle")} — ${t(`weekday_${weekday}`)} — ${rider.firstname} ${rider.lastname}`}
-                          onChange={(e) => setRiderWeekDraftDay(rider.id, weekday, e.target.value)}
-                        >
-                          {TRAINING_INTENSITIES.map((k) => (
-                            <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
-                          ))}
-                        </Select>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleSaveRiderWeekPlan(rider.id)}
-                  disabled={savingRiderPlan}
-                >
-                  {savingRiderPlan ? t("loading") : t("individualWeekPlanSave")}
-                </Button>
-                {hasOwnWeekPlan && (
-                  <Button
-                    type="button"
-                    variant="danger"
-                    size="sm"
-                    onClick={() => handleRemoveRiderWeekPlan(rider.id)}
-                    disabled={savingRiderPlan}
-                  >
-                    {t("individualWeekPlanRemove")}
-                  </Button>
-                )}
-                {riderWeekMsgMap[rider.id] && (
-                  <span className={`text-xs ${riderWeekMsgMap[rider.id].type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
-                    {riderWeekMsgMap[rider.id].text}
-                  </span>
-                )}
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
-      </Fragment>
     );
   }
 
@@ -1277,13 +1225,27 @@ export default function TrainingPage() {
     applyAssistantSuggestions([...assistantAcceptableIds]);
   }
 
-  // Sidehoved-status (T2 PageHeader subtitle) — samme 3 tilstande som før, nu i
-  // ÉT sted i stedet for inline i JSX'en. Ren tekst/farve-mapping, ingen ny logik.
+  // Sidehoved-status (T2 PageHeader subtitle) — samme 3 tilstande som før.
   const headerStatus = todayRun
     ? <span className="text-cz-success font-medium">{trainedTodayLabel()}</span>
     : !enabled
       ? <span className="italic">{t("disabledNote")}</span>
       : t("notTrainedYetToday");
+
+  // #4613: tom-tilstanden på en side hvor man endnu ikke HAR nogen ryttere —
+  // handling + én knap (TASTE fork 4), ikke en beskrivelse af et hul.
+  const noRidersState = (
+    <EmptyState
+      icon={<TeamIcon size={26} aria-hidden="true" />}
+      title={t("noRiders")}
+      description={t("noRidersHint")}
+      action={
+        <Link to="/auctions" className={buttonClass({ variant: "secondary", size: "sm" })}>
+          {t("noRidersAction")}
+        </Link>
+      }
+    />
+  );
 
   if (isLoading) {
     return (
@@ -1316,8 +1278,8 @@ export default function TrainingPage() {
             {/* #2819: tour-anker på dagens knap. Wrapper-span frem for data-tour på
                 <Button>, så ankeret overlever uanset om Button videresender data-*.
                 #4522: mens forslags-panelet er åbent bærer panelets "Accept selected"
-                sidens ENE gold primary (én gold pr. view) — denne knap dæmpes til
-                secondary så længe panelet er åbent. */}
+                sidens ENE gold primary — denne knap dæmpes til secondary så længe
+                panelet er åbent. */}
             <span data-tour="training-run-today" className="inline-flex">
               <Button
                 type="button"
@@ -1333,52 +1295,619 @@ export default function TrainingPage() {
         }
       />
 
-      {/* #3721: 3 faner (Train today / Development / History), ?tab=-
-          synkroniseret. Én gold primary-knap pr. view (#trainToday i headeren)
-          — fanebjælken bærer ingen egen primary. */}
+      {/* #3721/#4613: faner, ?tab=-synkroniseret og DATA-DREVET (TRAINING_TAB_DEFS
+          — Program #4629 og Løbsdag #4632 kobles på som ét element hver, når de
+          er bygget). Én gold primary-knap pr. view (trainToday i sidehovedet) —
+          fanebjælken bærer ingen egen primary. */}
       <Tabs value={activeTab} onChange={setTab} className="mt-1">
         <TabList label={t("title")} className="mb-4">
-          <Tab value="today">{t("tabs.today")}</Tab>
-          <Tab value="weekplan">{t("tabs.weekplan")}</Tab>
-          <Tab value="development">{t("tabs.development")}</Tab>
-          <Tab value="history">{t("tabs.history")}</Tab>
+          {TRAINING_TAB_DEFS.map((tab) => (
+            <Tab key={tab.value} value={tab.value}>{t(tab.labelKey)}</Tab>
+          ))}
         </TabList>
 
+      {/* ── Overblik: truppen som én tæt liste (retning B, #4613) ───────────── */}
       <TabPanel value="today">
-      <div className="space-y-6">
-        {/* #4522 (ejer-direktiv 31/8): assistent-forslagspanelet — øverst i
-            indholdet, som mockuppen kræver. Card med accent-hairline-border
-            (samme opskrift som PlannerAssistantCard, #3086's peak-forslag). */}
+      <div className="space-y-3">
+        {/* #4522 (ejer-direktiv 31/8): assistent-panelet — lukket som standard,
+            åbnes fra sidehovedet. Card med accent-hairline-border. */}
         {assistantPanelOpen && (
-          <div ref={assistantPanelRef}>
-            <AssistantSuggestionsPanel
-              rows={assistantSuggestionRows}
-              visibleRows={assistantVisibleRows}
-              noPlanCount={assistantNoPlanCount}
-              onlyWithoutPlan={assistantOnlyNoPlan}
-              onToggleOnlyWithoutPlan={handleToggleAssistantOnlyNoPlan}
-              selected={assistantSelected}
-              onToggleSelect={toggleAssistantSelect}
-              onAcceptSelected={handleAcceptAssistantSelected}
-              onAcceptAll={handleAcceptAssistantAll}
-              onDismiss={handleDismissAssistantPanel}
-              busy={bulkApplying}
-              message={assistantMsg}
-              acceptableCount={assistantAcceptableIds.size}
-            />
-          </div>
+          /* Merge med main 3/9: mains scroll-i-syne-wrapper (assistantPanelRef)
+             er BEVIDST væk — #4613 flyttede panelet op som det ØVERSTE element i
+             overbliksfanen, så der ikke er noget at scrolle til. #4699's faktiske
+             rettelse (acceptableCount) er beholdt uændret. */
+          <AssistantSuggestionsPanel
+            rows={assistantSuggestionRows}
+            visibleRows={assistantVisibleRows}
+            noPlanCount={assistantNoPlanCount}
+            onlyWithoutPlan={assistantOnlyNoPlan}
+            onToggleOnlyWithoutPlan={handleToggleAssistantOnlyNoPlan}
+            selected={assistantSelected}
+            onToggleSelect={toggleAssistantSelect}
+            onAcceptSelected={handleAcceptAssistantSelected}
+            onAcceptAll={handleAcceptAssistantAll}
+            onDismiss={handleDismissAssistantPanel}
+            busy={bulkApplying}
+            message={assistantMsg}
+            acceptableCount={assistantAcceptableIds.size}
+          />
         )}
 
         {runError && (
           <p className="text-cz-danger text-sm">{runError}</p>
         )}
 
-        {/* #3924 trin 1 (design-go 20/8, ejer-godkendt): "Yesterday's gains" —
-            ÉN resumé-linje øverst på Train today, foldet ud til en kvalitativ
-            linje pr. rytter. "Ingen nyt kort" (fold-disciplin): genbruger
-            CollapsibleSection (#3914's delte fold-primitiv) i stedet for en ny
-            stat-grid; ingen ny beregning — todayRun + live progress, samme
-            kilde som resten af siden. Skjult uden en dagens kørsel. */}
+        {riders.length === 0 ? noRidersState : (
+          <>
+            {/* #4613: den slanke overbliks-stribe. Ikke stat-kort — én linje der
+                svarer på "hvad kræver min opmærksomhed i dag", så rytterrækkerne
+                bliver over folden. Hvert tal står ÉT sted på siden. */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-cz border border-cz-border bg-cz-card px-3.5 py-2 text-[12.5px] text-cz-2">
+              <span>{t("overview.planned", { n: rosterCounts.planned })}</span>
+              <span className={rosterCounts.noPlan > 0 ? "text-cz-warning" : undefined}>
+                {t("overview.noPlan", { n: rosterCounts.noPlan })}
+              </span>
+              <span className={rosterCounts.risk > 0 ? "text-cz-danger" : undefined}>
+                {t("overview.risk", { n: rosterCounts.risk })}
+              </span>
+              {rosterCounts.injured > 0 && <span>{t("overview.injured", { n: rosterCounts.injured })}</span>}
+              {rosterCounts.racing > 0 && <span>{t("overview.racing", { n: rosterCounts.racing })}</span>}
+            </div>
+
+            {/* Den kanoniske T2-filterlinje (#4625): søgefelt + ryttertype +
+                gruppér-efter-type, og det stille Hjælp-link som trailing action
+                (erstatter den slettede FAQ-prosa, #3721). */}
+            <FilterBar
+              search={{
+                value: rosterQuery,
+                onChange: (e) => setRosterQuery(e.target.value),
+                placeholder: t("overview.searchPlaceholder"),
+              }}
+              filters={[
+                {
+                  key: "type",
+                  value: rosterType,
+                  onChange: (e) => setRosterType(e.target.value),
+                  ariaLabel: t("colType"),
+                  options: [
+                    { value: "all", label: t("overview.allTypes") },
+                    ...rosterTypeOptions.map((type) => ({ value: type, label: tTypes(`types.${type}`) })),
+                  ],
+                },
+              ]}
+              checkbox={{
+                id: "training-group-by-type",
+                label: t("groupByType"),
+                checked: groupByType,
+                onChange: (e) => setGroupByType(e.target.checked),
+              }}
+              trailing={
+                <Link
+                  to="/help?section=dailytraining"
+                  className="text-2xs text-cz-3 hover:text-cz-accent underline decoration-dotted whitespace-nowrap"
+                >
+                  {t("howTrainingWorksLink")}
+                </Link>
+              }
+              meta={t("overview.showing", { shown: filteredRiders.length, total: riders.length })}
+            />
+
+            {/* #4293: "This season"-kvitteringen bor på Udvikling-fanen, men noten
+                om en sæson der ikke er begyndt hører til der hvor tallet mangler —
+                se TabPanel value="development". */}
+            <div className={WRAP}>
+              {/* #4628: tabellens EGNE kontroller i toolbar-slotten, inde i
+                  hairline-rammen — status-segmentet, mobil-sorteringen og
+                  bulk-bjælken. De lå før som løsrevne rækker mellem sidehovedet
+                  og tabellen (PAGE_TEMPLATES "no orphan action rows"). */}
+              <div className="flex flex-wrap items-center gap-2 border-b border-cz-border px-4 py-2.5">
+                <Segmented
+                  label={t("overview.viewLabel")}
+                  value={rosterView}
+                  onChange={setRosterView}
+                  options={ROSTER_VIEWS.map((view) => ({
+                    value: view,
+                    label: view === "all"
+                      ? t("overview.viewAll")
+                      : view === "noplan"
+                        ? t("overview.viewNoPlan", { n: rosterCounts.noPlan })
+                        : view === "risk"
+                          ? t("overview.viewRisk", { n: rosterCounts.risk })
+                          : t("overview.viewRacing", { n: rosterCounts.racing }),
+                  }))}
+                />
+                <RosterMobileSortControl
+                  sort={rosterSort.sort}
+                  sortDir={rosterSort.sortDir}
+                  onSort={rosterSort.handleSort}
+                  t={t}
+                />
+
+                {/* Bulk-apply (#1480) — kun når ryttere er valgt. */}
+                {selected.size > 0 && (
+                  <div className="flex w-full flex-wrap items-center gap-2 border-t border-cz-border pt-2.5">
+                    <span className="text-sm font-medium text-cz-1">{t("selected", { n: selected.size })}</span>
+                    {/* #3762: ét valg, ikke to. Listen er de DAGE der findes,
+                        grupperet som i panelet — så en markering aldrig kan give
+                        en kombination den enkelte rytter ikke kunne have fået. */}
+                    <div className="w-56">
+                      <Select
+                        size="sm"
+                        value={bulkDay}
+                        disabled={bulkApplying}
+                        aria-label={t("dayPanel.bulkSetDay")}
+                        onChange={(e) => setBulkDay(e.target.value)}
+                      >
+                        <option value="">{t("dayPanel.bulkSetDay")}</option>
+                        <option value="smart">{t("bulkSmartFocusOption")}</option>
+                        <optgroup label={t("dayPanel.bulkWholeDay")}>
+                          <option value="rest">{t("dayPanel.dayType_rest")}</option>
+                          <option value="recovery">{t("dayPanel.dayType_recovery")}</option>
+                        </optgroup>
+                        {TRAINING_LEVELS.map((level) => (
+                          <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
+                            {TRAINING_SESSIONS_BY_LEVEL[level].map((k) => (
+                              <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                        <optgroup label={t("dayPanel.dayType_skill")}>
+                          {SKILL_SESSIONS.map((k) => (
+                            <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
+                          ))}
+                        </optgroup>
+                      </Select>
+                    </div>
+                    <Button type="button" variant="secondary" size="sm" onClick={handleBulkApply} disabled={bulkApplying || !bulkDay}>
+                      {bulkApplying ? t("bulkApplying") : t("bulkApply", { n: selected.size })}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={clearSelection} disabled={bulkApplying}>
+                      {t("bulkClear")}
+                    </Button>
+                    {bulkMsg && (
+                      <span
+                        className={`text-xs ${
+                          bulkMsg.type === "ok" ? "text-cz-success" : bulkMsg.type === "partial" ? "text-cz-warning" : "text-cz-danger"
+                        }`}
+                      >
+                        {bulkMsg.text}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className={SCROLLER}>
+                <table className={TABLE} data-sortable>
+                  <thead>
+                    <tr>
+                      {/* Sticky sammen med navne-headeren nedenfor (#2446) — fast w-10 så
+                          offsettet på navne-kolonnen (left-10) matcher præcis. */}
+                      <th className={`${thClass({ dense: true })} sticky-name-cell sticky left-0 z-sticky w-10`}>
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleSelectAll}
+                          aria-label={t("selectAll")}
+                          className="h-4 w-4 rounded-[3px] accent-cz-accent"
+                        />
+                      </th>
+                      <SortTh sortKey="name" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                        className={`${thClass({ dense: true })} sticky-name-cell sticky left-10 z-sticky border-r border-cz-border`}>
+                        {t("colRider")}
+                      </SortTh>
+                      {/* #3045: Type/Alder/Form/Træthed foldes ind i navne-underlinjen
+                          ≤640px (samme portræt-kolonnekontrakt som de andre
+                          rytterflader), så Dag + Uge — dem man rent
+                          faktisk REDIGERER — beholder pladsen i portræt. */}
+                      <SortTh sortKey="primary_type" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                        className={`${thClass({ dense: true })} hidden sm:table-cell`}>
+                        {t("colType")}
+                      </SortTh>
+                      {/* #3815: alderen er den vigtigste enkeltvariabel når man
+                          vælger hvem der skal trænes hårdt (@knud_r_flink,
+                          Discord 15/8), og manglede netop dér hvor valget
+                          træffes. Kompakt numerisk kolonne, samme portræt-
+                          kontrakt som Type/Form/Træthed (#3045). */}
+                      <SortTh sortKey="age" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                        className={`${thClass({ numeric: true, compact: true, dense: true })} hidden sm:table-cell`}>
+                        {t("colAge")}
+                      </SortTh>
+                      {/* #3762: kolonnen hedder det den indeholder — én dag.
+                          #4736: "Dag" og "Skift dag" var to kolonner om det
+                          samme og klippede Form/Træthed/Status af ved 1440 px;
+                          nu er der ét kontrol under ÉN overskrift. */}
+                      <th className={thClass({ compact: true, dense: true })}>{t("dayPanel.colDay")}</th>
+                      {/* #4613: de næste 7 dage. */}
+                      <th className={thClass({ compact: true, dense: true })}>{t("colWeek")}</th>
+                      <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                        className={`${thClass({ numeric: true, compact: true, dense: true })} hidden sm:table-cell`}>
+                        {t("form")}
+                      </SortTh>
+                      <SortTh sortKey="fatigue" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                        className={`${thClass({ numeric: true, compact: true, dense: true })} hidden sm:table-cell`}>
+                        {t("fatigue")}
+                      </SortTh>
+                      {/* #3706: var et bart <th> — overskriften kunne klikkes uden
+                          at der skete noget (@cybersimon, Discord 13/8). Nu samme
+                          SortTh-recipe som navn/type/form/træthed. */}
+                      <SortTh sortKey="status" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
+                        className={thClass({ dense: true })}>
+                        {t("colStatus")}
+                      </SortTh>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* PAGE_TEMPLATES "Canonical states": ved et filter der tømmer
+                        tabellen swappes <tbody>, ikke hele kortet — ellers ryger
+                        toolbaren med, og filteret kan ikke slås fra igen. */}
+                    {filteredRiders.length === 0 ? (
+                      <tr>
+                        <td colSpan={ROSTER_COLS} className="border-t border-cz-border p-4">
+                          <EmptyState
+                            icon={<TeamIcon size={26} aria-hidden="true" />}
+                            title={t("overview.emptyFiltered")}
+                            description={t("overview.emptyFilteredHint")}
+                            action={
+                              <Button type="button" variant="secondary" size="sm" onClick={clearRosterFilters} disabled={!filtersActive}>
+                                {t("overview.clearFilters")}
+                              </Button>
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ) : groupByType
+                      ? groups.map((group, gi) => (
+                          <Fragment key={group.type}>
+                            <tr className="bg-cz-subtle/60">
+                              <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-2">
+                                <span className="font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-2">
+                                  {groupLabel(group.type)}
+                                </span>
+                                <span className="ms-2 font-data text-2xs text-cz-3">
+                                  {t("groupCount", { n: group.riders.length })}
+                                </span>
+                              </td>
+                            </tr>
+                            {sortRoster(group.riders).map((rider, ri) => renderRosterRow(rider, gi === 0 && ri === 0))}
+                          </Fragment>
+                        ))
+                      : sortRoster(filteredRiders).map((rider, ri) => renderRosterRow(rider, ri === 0))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className={COUNT}>{t("overview.showing", { shown: filteredRiders.length, total: riders.length })}</div>
+          </>
+        )}
+      </div>
+      </TabPanel>
+
+      {/* ── Ugeplan: holdets rytme + rytterens egen ugeplan ─────────────────── */}
+      {/* #3746 trin 7: den ugentlige rytme-editor som en åben sektion (ikke en
+          accordion). #4613: den individuelle ugeplan pr. rytter er FLYTTET
+          hertil fra roster-rækken — samme state, samme handlers, samme markup,
+          bare på den fane den hører til. Ingen nye API-kald: riderWeekPlans/
+          weekPlan kommer begge fra useTraining, allerede hentet af siden. */}
+      <TabPanel value="weekplan">
+      <div className="space-y-3.5">
+        <Card className="overflow-hidden">
+          <div className="px-4 py-3 sm:px-5 border-b border-cz-border">
+            <span className="text-[15px] font-semibold text-cz-1">{t("weekRhythmTitle")}</span>
+          </div>
+          <div className="px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+            {/* Kort på fladen, manualen i Hjælp (#4025): én linje her, hele
+                lagdelingen i help.json dailytraining.weeklyRhythm. */}
+            <p className="text-[13px] text-cz-2">{t("weekRhythmIntro")}</p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {WEEKDAY_KEYS.map((weekday) => {
+                const current = (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal";
+                return (
+                  <div key={weekday} className="flex flex-col items-center gap-1">
+                    <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
+                    <div className="w-[92px]">
+                      <Select
+                        size="sm"
+                        value={current}
+                        disabled={savingWeekPlan}
+                        aria-label={`${t("weekRhythmTitle")} — ${t(`weekday_${weekday}`)}`}
+                        onChange={(e) => setWeekDraftDay(weekday, e.target.value)}
+                      >
+                        {TRAINING_INTENSITIES.map((k) => (
+                          <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <Button type="button" variant="secondary" size="sm" onClick={handleSaveWeekPlan} disabled={savingWeekPlan}>
+                {savingWeekPlan ? t("loading") : t("weekRhythmSave")}
+              </Button>
+              {weekPlan && (
+                <Button type="button" variant="danger" size="sm" onClick={handleResetWeekPlan} disabled={savingWeekPlan}>
+                  {t("weekRhythmResetButton")}
+                </Button>
+              )}
+              {weekPlanMsg && (
+                <span className={`text-xs ${weekPlanMsg.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
+                  {weekPlanMsg.text}
+                </span>
+              )}
+              <Link
+                to="/help?section=dailytraining"
+                className="ms-auto text-2xs text-cz-3 hover:text-cz-accent underline decoration-dotted whitespace-nowrap"
+              >
+                {t("howTrainingWorksLink")}
+              </Link>
+            </div>
+          </div>
+        </Card>
+
+        {/* #4613: den individuelle ugeplan pr. rytter. Kom fra roster-rækkens
+            udvidelige række; ÉN rytter udvidet ad gangen, som før. Rører ALDRIG
+            fokus; overstyrer KUN holdets ugerytme for netop denne rytter. */}
+        <Card className="overflow-hidden">
+          <div className="flex items-baseline justify-between gap-3 border-b border-cz-border px-4 py-3 sm:px-5">
+            <span className="text-[15px] font-semibold text-cz-1">{t("individualWeekPlanOverviewTitle")}</span>
+            <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
+              {t("individualWeekPlanCount", { n: riders.filter((r) => riderWeekPlans[r.id] != null).length })}
+            </span>
+          </div>
+          {riders.length === 0 ? (
+            <div className="p-4 sm:p-5">{noRidersState}</div>
+          ) : (
+            <div className="divide-y divide-cz-border">
+              {riders.map((rider) => {
+                const hasOwnWeekPlan = riderWeekPlans[rider.id] != null;
+                const isExpanded = expandedRiderId === rider.id;
+                const savingRiderPlan = savingRiderWeekPlanId === rider.id;
+                return (
+                  <div key={rider.id} className="px-4 py-2.5 sm:px-5">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <RiderLink id={rider.id} className="min-w-[150px] text-[13.5px] font-medium text-cz-1 hover:text-cz-accent transition-colors">
+                        {rider.firstname} {rider.lastname}
+                      </RiderLink>
+                      {hasOwnWeekPlan ? (
+                        <div className="flex flex-wrap gap-x-3 gap-y-1">
+                          {WEEKDAY_KEYS.map((weekday) => (
+                            <span key={weekday} className="font-data text-3xs uppercase tracking-[.05em] text-cz-3 whitespace-nowrap">
+                              {t(`weekday_${weekday}`)}{" "}
+                              <span className="text-cz-2">
+                                {tRider(`training.intensity_${riderWeekPlans[rider.id]?.[weekday]?.intensity ?? "normal"}`)}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">
+                          {t("individualWeekPlanFollowsTeam")}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => toggleRiderWeekPlan(rider.id)}
+                        className="ms-auto text-2xs text-cz-3 hover:text-cz-accent underline decoration-dotted whitespace-nowrap"
+                      >
+                        {isExpanded ? t("individualWeekPlanToggleClose") : t("individualWeekPlanToggleOpen")}
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="mt-2.5 flex flex-col gap-2 border-t border-cz-border pt-2.5">
+                        <div className="flex flex-wrap gap-2">
+                          {WEEKDAY_KEYS.map((weekday) => {
+                            const current = riderWeekDraftFor(rider.id)[weekday]?.intensity ?? "normal";
+                            return (
+                              <div key={weekday} className="flex flex-col items-center gap-1">
+                                <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
+                                <div className="w-[92px]">
+                                  <Select
+                                    size="sm"
+                                    value={current}
+                                    disabled={savingRiderPlan}
+                                    aria-label={`${t("individualWeekPlanTitle")} — ${t(`weekday_${weekday}`)} — ${rider.firstname} ${rider.lastname}`}
+                                    onChange={(e) => setRiderWeekDraftDay(rider.id, weekday, e.target.value)}
+                                  >
+                                    {TRAINING_INTENSITIES.map((k) => (
+                                      <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
+                                    ))}
+                                  </Select>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleSaveRiderWeekPlan(rider.id)}
+                            disabled={savingRiderPlan}
+                          >
+                            {savingRiderPlan ? t("loading") : t("individualWeekPlanSave")}
+                          </Button>
+                          {hasOwnWeekPlan && (
+                            <Button
+                              type="button"
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleRemoveRiderWeekPlan(rider.id)}
+                              disabled={savingRiderPlan}
+                            >
+                              {t("individualWeekPlanRemove")}
+                            </Button>
+                          )}
+                          {riderWeekMsgMap[rider.id] && (
+                            <span className={`text-xs ${riderWeekMsgMap[rider.id].type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
+                              {riderWeekMsgMap[rider.id].text}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </div>
+      </TabPanel>
+
+      {/* ── Udvikling: prognose-båndet + sæsonens kvittering pr. evne ────────── */}
+      {/* #3721: én række pr. rytter i truppen: navn+alder, udviklings-glyffen
+          (DevelopmentGlyph, FAST 0-99-skala), tallene "now · lo-hi · loft", og
+          den SAMME FocusOpenButton/FocusPanel-mutation som overbliks-rækken
+          bruger. #4613: sæsonens kvittering pr. evne (#3709 trin 1) er flyttet
+          hertil fra roster-kolonnen — det er samme spørgsmål som fanen
+          allerede svarer på, og overbliksrækken kunne ikke bære 3-4 linjer. */}
+      <TabPanel value="development">
+        {riders.length === 0 ? noRidersState : (
+          <>
+            {/* #4293: kvitteringens sæson-kolonne står tom både når sæsonen er
+                aktiv men ikke begyndt, og på sæsonens første morgen før dagens
+                tick. Fladen siger roligt hvorfor. Samme copy-nøgle som
+                rytterprofilens kvittering, så de to ikke kan sige forskellige
+                ting. */}
+            {(history.seasonState === SEASON_RECEIPT_NOT_STARTED || history.seasonState === SEASON_RECEIPT_NO_DAYS) && history.seasonStart && (
+              <p className="mb-2 text-2xs text-cz-3 leading-snug">
+                {t(SEASON_RECEIPT_NOTE_KEY[history.seasonState], { date: formatDate(history.seasonStart) })}
+              </p>
+            )}
+            <Card className="p-0 overflow-hidden">
+              <div className="divide-y divide-cz-border">
+                {riders.map((rider) => {
+                  const age = ageForSeason(rider.birthdate, seasonYear);
+                  const estimate = estimateFor(rider.id);
+                  const plan = planFor(rider.id);
+                  const busy = savingId === rider.id || bulkApplying;
+                  const hasBand = estimate && estimate.now != null && estimate.prog
+                    && Number.isFinite(estimate.prog.lo) && Number.isFinite(estimate.prog.hi);
+                  // Tester-feedback 20/8 (#3798): rollen skal stå PÅ rækken —
+                  // estimate.role er båndets egen nøgle (samme payload som
+                  // tallene); primary_type er kun fallback for rækker uden bånd.
+                  const roleKey = estimate?.role ?? rider.primary_type ?? null;
+                  const roleLabel = roleKey ? tTypes(`types.${roleKey}`) : null;
+                  // #3709 trin 1: kvitteringen for fokussets 2-3 evner. Hver
+                  // evne står på sin egen linje med nu / sæson / på vej, og en
+                  // låst evne skriver "færdig" i stedet for en død bar.
+                  // `capped` er kun ability-NØGLER — cap-tal forlader aldrig
+                  // serveren (#1162).
+                  const focusReceipt = focusAbilityReceipt(plan?.focus, {
+                    abilities: rider.abilities,
+                    progress: progress[rider.id],
+                    capped: capped[rider.id],
+                    seasonGains: seasonGainsByRider[rider.id] ?? null,
+                    // #3924 trin 2: gårsdagens bidrag som mørkere segment på
+                    // baren — begge fra samme todayRun-linje, null når rytteren
+                    // ikke indgik i dagens kørsel.
+                    progressBefore: todayRowByRider[rider.id]?.progress_before ?? null,
+                    gainsToday: todayRowByRider[rider.id]?.gains ?? null,
+                  });
+                  return (
+                    <div key={rider.id} data-rider-id={rider.id} className="flex flex-wrap items-start gap-4 px-4 py-[13px] sm:px-5">
+                      <div className="min-w-[160px] flex-1">
+                        <RiderLink id={rider.id} className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent transition-colors">
+                          {rider.firstname} {rider.lastname}
+                        </RiderLink>
+                        <div className="mt-0.5 font-data text-3xs uppercase tracking-[.05em] text-cz-3">
+                          {age != null
+                            ? (roleLabel
+                              ? t("development.ageRoleLine", { age, role: roleLabel })
+                              : t("development.ageLine", { age }))
+                            : (roleLabel ?? "—")}
+                        </div>
+                      </div>
+
+                      <div className="min-w-[180px] max-w-[260px] flex-1">
+                        {estimate === undefined ? (
+                          <span className="text-cz-3 text-xs">{t("loading")}</span>
+                        ) : hasBand ? (
+                          <>
+                            <DevelopmentGlyph now={estimate.now} progLo={estimate.prog.lo} progHi={estimate.prog.hi} loft={estimate.loft} />
+                            <div className="mt-1 font-mono tabular-nums text-2xs text-cz-2">
+                              {roleLabel ? (
+                                <span className="font-data uppercase tracking-[.05em] text-3xs text-cz-1 me-1.5">{roleLabel}</span>
+                              ) : null}
+                              {Number.isFinite(estimate.loft)
+                                ? t("development.numbers", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi, loft: estimate.loft })
+                                : t("development.numbersNoLoft", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi })}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono tabular-nums text-2xs text-cz-1">{riderStatRating(rider) || "—"}</span>
+                            <span className="text-cz-3 text-3xs italic">{t("development.noForecastYet")}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="min-w-[190px] flex-1">
+                        <div className="font-data text-3xs uppercase tracking-[.08em] text-cz-3">{t("receipt.title")}</div>
+                        {focusReceipt ? (
+                          <div className="mt-1">
+                            {focusReceipt.map((row) => (
+                              <AbilityReceiptRow key={row.ability} row={row} />
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-cz-3 text-xs">{t("noFocus")}</span>
+                        )}
+                        {todayGainsByRider[rider.id] > 0 && (
+                          <div className="mt-0.5">
+                            <span className="inline-block text-3xs px-1.5 py-0.5 rounded-cz-pill bg-cz-success-bg text-cz-success border border-cz-success/30">
+                              {t("gainedToday", { count: todayGainsByRider[rider.id] })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-none">
+                        <FocusOpenButton
+                          rider={rider}
+                          plan={plan}
+                          busy={busy}
+                          smartFocus={smartDefaultFocus[rider.id]}
+                          error={planActionError?.riderId === rider.id ? planActionError.error : null}
+                          onOpen={() => setFocusPanelRiderId(rider.id)}
+                          t={t}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </>
+        )}
+      </TabPanel>
+
+      {/* ── Rapporter: dagens kvittering + de seneste 30 dage ────────────────── */}
+      {/* #4613: dagens rapport, udviklings-momentet, gårsdagens kvittering og
+          tick-beskeden lå alle stablet under rosteret på Train today. De hører
+          sammen — det er dagens KVITTERING, ikke dagens VALG — og bor nu her,
+          sammen med den uændrede historik (#1533). */}
+      <TabPanel value="history">
+      <div className="space-y-3.5">
+        {/* Dagligt udviklings-moment (#2484, H3) — ÉN kurateret historie fra
+            seneste kørsel i stedet for kun rå tal. */}
+        <TrainingMoment
+          latestRun={latestRun}
+          isToday={latestIsToday}
+          progressByRider={progress}
+          pastRuns={pastRuns}
+        />
+
+        {/* #3924 trin 1 (design-go 20/8): "Yesterday's gains" — ÉN resumé-linje,
+            foldet ud til en kvalitativ linje pr. rytter. Genbruger
+            CollapsibleSection (#3914's delte fold-primitiv); ingen ny
+            beregning — todayRun + live progress. Skjult uden en dagens kørsel. */}
         {yesterday && (
           <CollapsibleSection
             title={[
@@ -1400,242 +1929,13 @@ export default function TrainingPage() {
           </CollapsibleSection>
         )}
 
-        {/* Dagligt udviklings-moment (#2484, H3) — ÉN kurateret historie fra
-            seneste kørsel i stedet for kun rå tal. Selvstændigt kort, rører
-            ikke roster-/rapport-tabellernes markup (koord. #2446-layoutfix). */}
-        <TrainingMoment
-          latestRun={latestRun}
-          isToday={latestIsToday}
-          progressByRider={progress}
-          pastRuns={pastRuns}
-        />
-
-        {/* Tick-model-besked (#1936): når dagens træning er kørt, forklar at ændringer
-            nu gælder fra i morgen + at form/træthed kun rykker ved det daglige tick.
-            Fjerner "fokus blev ikke gemt"/"træthed fryser"-forvirringen. */}
+        {/* Tick-model-besked (#1936): når dagens træning er kørt, gælder
+            ændringer fra i morgen. Kort på fladen; hele mekanikken står i
+            Hjælp (dailytraining.trainToday / formFatigue). */}
         {todayRun && (
           <div className="bg-cz-accent/5 border border-cz-accent/20 rounded-cz px-4 py-2.5">
-            <p className="text-sm text-cz-2 leading-relaxed">{t("tickModelDone")}</p>
+            <p className="text-[13px] text-cz-2">{t("tickModelDone")}</p>
           </div>
-        )}
-
-        {/* #3721 (ejer-godkendt design 19/8, #3721): den åbne FAQ ("Får man
-            energi tilbage hver dag?") + fokus-guide-accordionen (#1908) er
-            begge slettet fra siden. Fokus-guiden svarede "hvad træner hvert
-            fokus" i fokus-panelets Træner-kolonne i stedet (uændret). Recovery-
-            svaret findes uændret i Hjælp (help.json dailytraining.formFatigue,
-            allerede ordret dækkende) — nået via toolbar-linket nedenfor
-            ("How training works" → /help?section=dailytraining), ikke gentaget
-            her. Ingen kopi gik tabt: begge afsnits indhold levede allerede i
-            help.json før denne ændring. */}
-
-        {/* #3299: mobil-sortering — Form/Træthed sorteres via kolonne-headers på
-            desktop, men headerne er skjult i portræt (#3045-kolonnekontrakten).
-            Uden denne kontrol kunne træthed (den kolonne spillere rent faktisk
-            sorterer på for at se hvem der skal have hvile) slet ikke sorteres i
-            portræt. */}
-        {riders.length > 0 && (
-          <RosterMobileSortControl
-            sort={rosterSort.sort}
-            sortDir={rosterSort.sortDir}
-            onSort={rosterSort.handleSort}
-            t={t}
-          />
-        )}
-
-        {/* Roster-værktøjslinje (#1480 gruppér-toggle + #3721 stille Hjælp-link).
-            #3721: erstatter den slettede FAQ/accordion-forklaring ovenfor —
-            i stedet for prosa på siden, ét dæmpet link til Hjælpens Daglig
-            Træning-afsnit (recovery, ugerytme, kvitteringen, alt sammen). */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {riders.length > 0 ? (
-            <Checkbox
-              checked={groupByType}
-              onChange={(e) => setGroupByType(e.target.checked)}
-              label={t("groupByType")}
-            />
-          ) : <span />}
-          <Link
-            to="/help?section=dailytraining"
-            className="text-2xs text-cz-3 hover:text-cz-accent underline decoration-dotted whitespace-nowrap"
-          >
-            {t("howTrainingWorksLink")}
-          </Link>
-        </div>
-
-        {/* Bulk-apply bjælke — vises kun når ryttere er valgt (#1480) */}
-        {selected.size > 0 && (
-          <Card className="p-4 flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-cz-1">{t("selected", { n: selected.size })}</span>
-
-            {/* #3762: ét valg, ikke to. Listen er de DAGE der findes, grupperet
-                som i panelet — så en markering aldrig kan få en kombination som
-                den enkelte rytter ikke kunne have fået. */}
-            <div className="w-60">
-              <Select
-                size="sm"
-                value={bulkDay}
-                disabled={bulkApplying}
-                aria-label={t("dayPanel.bulkSetDay")}
-                onChange={(e) => setBulkDay(e.target.value)}
-              >
-                <option value="">{t("dayPanel.bulkSetDay")}</option>
-                <option value="smart">{t("bulkSmartFocusOption")}</option>
-                <optgroup label={t("dayPanel.bulkWholeDay")}>
-                  <option value="rest">{t("dayPanel.dayType_rest")}</option>
-                  <option value="recovery">{t("dayPanel.dayType_recovery")}</option>
-                </optgroup>
-                {TRAINING_LEVELS.map((level) => (
-                  <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
-                    {TRAINING_SESSIONS_BY_LEVEL[level].map((k) => (
-                      <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
-                    ))}
-                  </optgroup>
-                ))}
-                <optgroup label={t("dayPanel.dayType_skill")}>
-                  {SKILL_SESSIONS.map((k) => (
-                    <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
-                  ))}
-                </optgroup>
-              </Select>
-            </div>
-
-            <Button type="button" variant="secondary" size="sm" onClick={handleBulkApply} disabled={bulkApplying || !bulkDay}>
-              {bulkApplying ? t("bulkApplying") : t("bulkApply", { n: selected.size })}
-            </Button>
-
-            <Button type="button" variant="ghost" size="sm" onClick={clearSelection} disabled={bulkApplying}>
-              {t("bulkClear")}
-            </Button>
-
-            {bulkMsg && (
-              <span
-                className={`text-xs ${
-                  bulkMsg.type === "ok" ? "text-cz-success" : bulkMsg.type === "partial" ? "text-cz-warning" : "text-cz-danger"
-                }`}
-              >
-                {bulkMsg.text}
-              </span>
-            )}
-          </Card>
-        )}
-
-        {/* Rosterbord (T2 wide-data-recipe: dataTableStyles-chrome i stedet for
-            <DataTable> direkte — checkbox-multiselect + sticky navnekolonne kræver 2
-            forskellige sticky-offsets (left-0/left-10), og group-header-rækker +
-            udvidelig ugeplan-række pr. rytter passer ikke DataTable's 1-række-pr-row-
-            model. Se HallOfFamePage/StaffOverviewPage for de to varianter af recepten.) */}
-        {riders.length === 0 ? (
-          <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
-        ) : (
-          <>
-            {/* #4293: "This season"-kolonnen står tom hele vejen ned både når
-                sæsonen er aktiv men endnu ikke begyndt, og på sæsonens første
-                morgen før dagens tick har kørt. Fladen siger roligt hvorfor, i
-                stedet for at lade en kolonne fuld af "—" tale for sig selv.
-                Samme copy-nøgle som rytterprofilens kvittering, så de to steder
-                ikke kan sige forskellige ting. */}
-            {(history.seasonState === SEASON_RECEIPT_NOT_STARTED || history.seasonState === SEASON_RECEIPT_NO_DAYS) && history.seasonStart && (
-              <p className="mb-2 text-2xs text-cz-3 leading-snug">
-                {t(SEASON_RECEIPT_NOTE_KEY[history.seasonState], { date: formatDate(history.seasonStart) })}
-              </p>
-            )}
-            <div ref={rosterTableRef} className={WRAP}>
-              <div className={SCROLLER}>
-                <table className={TABLE} data-sortable>
-                  <thead>
-                    <tr>
-                      {/* Sticky sammen med navne-headeren nedenfor (#2446) — fast w-10 så
-                          offsettet på navne-kolonnen (left-10) matcher præcis. */}
-                      <th className={`${thClass({})} sticky-name-cell sticky left-0 z-sticky w-10`}>
-                        <input
-                          type="checkbox"
-                          checked={allSelected}
-                          onChange={toggleSelectAll}
-                          aria-label={t("selectAll")}
-                          className="h-4 w-4 rounded-[3px] accent-cz-accent"
-                        />
-                      </th>
-                      <SortTh sortKey="name" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                        className={`${thClass({})} sticky-name-cell sticky left-10 z-sticky border-r border-cz-border`}>
-                        {t("colRider")}
-                      </SortTh>
-                      {/* #3045: Type/Form/Træthed foldes ind i navne-underlinjen ≤640px
-                          (samme portræt-kolonnekontrakt som de andre rytterflader), så
-                          Fokus + Intensitet — de to felter man rent faktisk REDIGERER på
-                          denne side — beholder pladsen i portræt uden at konkurrere med
-                          info-only kolonner. Landskabs-visningen er uændret (kun hidden
-                          sm:table-cell tilføjet). */}
-                      <SortTh sortKey="primary_type" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                        className={`${thClass({})} hidden sm:table-cell`}>
-                        {t("colType")}
-                      </SortTh>
-                      {/* #3815: alderen er den vigtigste enkeltvariabel når man
-                          vælger hvem der skal trænes hårdt — ung rytter har
-                          hovedrum, ældre har ikke — og den manglede netop dér
-                          hvor valget træffes (@knud_r_flink, Discord 15/8).
-                          #1674 lukkede hullet på rytteroverblik + transferliste,
-                          men ikke her. Kompakt numerisk kolonne (samme
-                          numeric+compact-recipe som TeamPages alders-kolonne),
-                          og samme portræt-kontrakt som Type/Form/Træthed
-                          (#3045): foldet ind i navne-underlinjen ≤640px, så
-                          Dag + Skift dag beholder pladsen i portræt. */}
-                      <SortTh sortKey="age" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                        className={`${thClass({ numeric: true, compact: true })} hidden sm:table-cell`}>
-                        {t("colAge")}
-                      </SortTh>
-                      {/* #3762: kolonnerne hedder nu det de indeholder. Før stod
-                          der "Fokus" og "Intensitet" — to akser der kunne modsige
-                          hinanden. Nu er der én dag, og en hurtig vej til at
-                          skifte den. */}
-                      <th className={thClass({})}>{t("dayPanel.colDay")}</th>
-                      <th className={thClass({})}>{t("dayPanel.colChangeDay")}</th>
-                      {/* #3709 trin 1: kolonnen er ikke længere "næste +1" på ÉN
-                          evne, men sæsonens kvittering pr. evne i fokusset. */}
-                      <th className={thClass({})}>{t("receipt.title")}</th>
-                      <SortTh sortKey="form" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={`${thClass({})} hidden sm:table-cell`}>
-                        {t("form")}
-                      </SortTh>
-                      <SortTh sortKey="fatigue" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort} className={`${thClass({})} hidden sm:table-cell`}>
-                        {t("fatigue")}
-                      </SortTh>
-                      {/* #3706: var et bart <th> — overskriften kunne klikkes uden
-                          at der skete noget (@cybersimon, Discord 13/8). Nu samme
-                          SortTh-recipe som navn/type/form/træthed, med en
-                          comparator der samler akademi-rytterne. */}
-                      <SortTh sortKey="status" sort={rosterSort.sort} sortDir={rosterSort.sortDir} onSort={rosterSort.handleSort}
-                        className={thClass({})}>
-                        {t("colStatus")}
-                      </SortTh>
-                      {/* #3300-rework: individuel ugeplan-knap i egen kolonne (ejer-
-                          feedback), samme mønster som badges-kolonnen ovenfor. */}
-                      <th className={thClass({})}>{t("colWeekPlan")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {groupByType
-                      ? groups.map((group, gi) => (
-                          <Fragment key={group.type}>
-                            <tr className="bg-cz-subtle/60">
-                              <td colSpan={ROSTER_COLS} className="border-t border-cz-border px-4 py-2">
-                                <span className="font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-2">
-                                  {groupLabel(group.type)}
-                                </span>
-                                <span className="ms-2 font-data text-2xs text-cz-3">
-                                  {t("groupCount", { n: group.riders.length })}
-                                </span>
-                              </td>
-                            </tr>
-                            {sortRoster(group.riders).map((rider, ri) => renderRosterRow(rider, gi === 0 && ri === 0))}
-                          </Fragment>
-                        ))
-                      : sortRoster(riders).map((rider, ri) => renderRosterRow(rider, ri === 0))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className={COUNT}>{t("groupCount", { n: riders.length })}</div>
-          </>
         )}
 
         {/* Rapport fra seneste kørsel */}
@@ -1691,17 +1991,15 @@ export default function TrainingPage() {
                     const prog = focusProgress(row.focus, progress[row.rider_id]);
                     // #3541: rapportens egne skadefelter på denne række er en
                     // engangs-snapshot fra selve dagens tick og opdateres aldrig
-                    // efterfølgende (0 for en rytter der allerede var skadet FØR i dag,
-                    // jf. dailyTrainingEngine.js hvor snapshot-tallet kun sættes i den
-                    // nyligt-skadet-gren). injuryDaysLeft på den samme condition-state
-                    // som roster-rækken (linje ~548) og ConditionChips på rytterprofilen
-                    // er ÉN kanonisk kilde, så de tre visninger ikke kan divergere.
+                    // efterfølgende. injuryDaysLeft på den samme condition-state
+                    // som roster-rækken og ConditionChips på rytterprofilen er
+                    // ÉN kanonisk kilde, så de tre visninger ikke kan divergere.
                     const reportDaysLeft = injuryDaysLeft(condition[row.rider_id]?.injured_until, today);
                     const reportInjured = reportDaysLeft > 0;
                     return (
                       <tr
                         key={row.rider_id}
-                        className={`group transition-colors duration-150 hover:bg-cz-subtle ${breakthrough ? "bg-cz-success-bg border-l-2 border-l-cz-success" : ""}`}
+                        className={`group transition-colors duration-150 hover:bg-cz-subtle ${breakthrough ? "bg-cz-success-bg" : ""}`}
                       >
                         <td className={tdClass({ sticky: true })}>
                           <RiderLink id={row.rider_id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
@@ -1767,205 +2065,9 @@ export default function TrainingPage() {
           </div>
         )}
 
-        {/* #3746 trin 7 (ejer-beslutning 20/8): ugentlig træningsrytme-editoren
-            er flyttet HERFRA til sin egen fane ("Week plan" / "Ugeplan") — se
-            TabPanel value="weekplan" nedenfor. #3721 flyttede den først fra
-            oversiden af rosteret til en accordion under kvitteringen; nu bor
-            den slet ikke på Train today længere. Selve funktionen (state,
-            useTraining-wiring, gem/nulstil-handlers) er UÆNDRET, kun
-            placeringen + accordion→åben-sektion ændrede sig. weekRhythmTodayShort
-            -hintet på roster-rækken (linje ~841) er UBERØRT — det bliver hvor det er. */}
-      </div>
-      </TabPanel>
-
-      {/* #3746 trin 7: "Week plan"-fanen — den ugentlige rytme-editor som en
-          åben sektion (ikke en accordion), + en kompakt oversigt over ryttere
-          med egen individuel ugeplan. Ingen nye API-kald: riderWeekPlans/
-          weekPlan kommer begge fra useTraining, allerede hentet af siden. */}
-      <TabPanel value="weekplan">
-      <div className="space-y-6">
-        <Card className="overflow-hidden">
-          <div className="px-4 py-3 sm:px-5 border-b border-cz-border">
-            <span className="text-[15px] font-semibold text-cz-1">{t("weekRhythmTitle")}</span>
-          </div>
-          <div className="px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-            <p className="text-sm text-cz-3 leading-relaxed">{t("weekRhythmIntro")}</p>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {WEEKDAY_KEYS.map((weekday) => {
-                const current = (activeWeekDays ?? flatWeekTemplate())[weekday]?.intensity ?? "normal";
-                return (
-                  <div key={weekday} className="flex flex-col items-center gap-1">
-                    <span className="font-data text-3xs uppercase tracking-[.05em] text-cz-3">{t(`weekday_${weekday}`)}</span>
-                    <div className="w-[92px]">
-                      <Select
-                        size="sm"
-                        value={current}
-                        disabled={savingWeekPlan}
-                        aria-label={`${t("weekRhythmTitle")} — ${t(`weekday_${weekday}`)}`}
-                        onChange={(e) => setWeekDraftDay(weekday, e.target.value)}
-                      >
-                        {TRAINING_INTENSITIES.map((k) => (
-                          <option key={k} value={k}>{tRider(`training.intensity_${k}`)}</option>
-                        ))}
-                      </Select>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <Button type="button" variant="secondary" size="sm" onClick={handleSaveWeekPlan} disabled={savingWeekPlan}>
-                {savingWeekPlan ? t("loading") : t("weekRhythmSave")}
-              </Button>
-              {weekPlan && (
-                <Button type="button" variant="danger" size="sm" onClick={handleResetWeekPlan} disabled={savingWeekPlan}>
-                  {t("weekRhythmResetButton")}
-                </Button>
-              )}
-              {weekPlanMsg && (
-                <span className={`text-xs ${weekPlanMsg.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
-                  {weekPlanMsg.text}
-                </span>
-              )}
-            </div>
-
-            <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("weekRhythmBonusNote")}</p>
-          </div>
-        </Card>
-
-        {/* #3746 trin 7: kompakt læse-oversigt over ryttere MED en individuel
-            ugeplan-override. Selve redigeringen bliver på rosteret (Train
-            today) — her genbruges kun riderWeekPlans (allerede på siden, ingen
-            nyt kald) til navn + 7-dages plan i læseform + en note om at den
-            overstyrer holdrytmen, plus en knap der springer til rosteret. */}
-        <Card className="p-4 sm:p-5">
-          <h2 className="text-[15px] font-semibold text-cz-1">{t("individualWeekPlanOverviewTitle")}</h2>
-          {ridersWithOwnWeekPlan.length === 0 ? (
-            <p className="mt-2 text-sm text-cz-3 leading-relaxed">{t("individualWeekPlanOverviewEmpty")}</p>
-          ) : (
-            <div className="mt-2 divide-y divide-cz-border">
-              {ridersWithOwnWeekPlan.map((rider) => (
-                <div key={rider.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0">
-                  <RiderLink id={rider.id} className="min-w-[140px] text-[13px] font-medium text-cz-1 hover:text-cz-accent transition-colors">
-                    {rider.firstname} {rider.lastname}
-                  </RiderLink>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {WEEKDAY_KEYS.map((weekday) => (
-                      <span key={weekday} className="font-data text-3xs uppercase tracking-[.05em] text-cz-3 whitespace-nowrap">
-                        {t(`weekday_${weekday}`)} <span className="text-cz-2">{tRider(`training.intensity_${riderWeekPlans[rider.id]?.[weekday]?.intensity ?? "normal"}`)}</span>
-                      </span>
-                    ))}
-                  </div>
-                  <span
-                    className="ms-auto text-3xs px-1.5 py-0.5 rounded-cz-pill border bg-cz-accent/10 text-cz-accent border-cz-accent/30 whitespace-nowrap"
-                    title={t("individualWeekPlanBadgeTitle")}
-                  >
-                    {t("individualWeekPlanOverviewOverridesNote")}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="mt-3">
-            <Button type="button" variant="ghost" size="sm" onClick={handleGoToRoster}>
-              {t("individualWeekPlanOverviewGoToRoster")}
-            </Button>
-          </div>
-        </Card>
-      </div>
-      </TabPanel>
-
-      {/* #3721: Development-fanen — én række pr. rytter i truppen: navn+alder,
-          udviklings-glyffen (DevelopmentGlyph, FAST 0-99-skala), tallene
-          "now · lo-hi · loft", og den SAMME FocusOpenButton/FocusPanel-mutation
-          som Train today's roster-række bruger (ingen ny fokus-logik). Estimatet
-          kommer fra useScouting (POST /api/scouting/estimates, samme kilde som
-          spejder-fladerne) — egne ryttere er altid et bånd, så der er ingen
-          scout-knap eller slots-tilstand at vise her. */}
-      <TabPanel value="development">
-        {riders.length === 0 ? (
-          <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
-        ) : (
-          <Card className="p-0 overflow-hidden">
-            <div className="divide-y divide-cz-border">
-              {riders.map((rider) => {
-                const age = ageForSeason(rider.birthdate, seasonYear);
-                const estimate = estimateFor(rider.id);
-                const plan = planFor(rider.id);
-                const busy = savingId === rider.id || bulkApplying;
-                const hasBand = estimate && estimate.now != null && estimate.prog
-                  && Number.isFinite(estimate.prog.lo) && Number.isFinite(estimate.prog.hi);
-                // Tester-feedback 20/8 (#3798): rollen skal stå PÅ rækken —
-                // uden den skal spilleren gætte hvilken evne tallene gælder.
-                // estimate.role er båndets egen nøgle (backend, samme payload
-                // som tallene) og kan derfor aldrig pege på en anden rolle end
-                // den der faktisk er prognosticeret; primary_type er kun
-                // fallback for rækker uden bånd endnu.
-                const roleKey = estimate?.role ?? rider.primary_type ?? null;
-                const roleLabel = roleKey ? tTypes(`types.${roleKey}`) : null;
-                return (
-                  <div key={rider.id} className="flex flex-wrap items-center gap-4 px-4 py-[13px] sm:px-5">
-                    <div className="min-w-[160px] flex-1">
-                      <RiderLink id={rider.id} className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent transition-colors">
-                        {rider.firstname} {rider.lastname}
-                      </RiderLink>
-                      <div className="mt-0.5 font-data text-3xs uppercase tracking-[.05em] text-cz-3">
-                        {age != null
-                          ? (roleLabel
-                            ? t("development.ageRoleLine", { age, role: roleLabel })
-                            : t("development.ageLine", { age }))
-                          : (roleLabel ?? "—")}
-                      </div>
-                    </div>
-
-                    <div className="min-w-[180px] max-w-[260px] flex-1">
-                      {estimate === undefined ? (
-                        <span className="text-cz-3 text-xs">{t("loading")}</span>
-                      ) : hasBand ? (
-                        <>
-                          <DevelopmentGlyph now={estimate.now} progLo={estimate.prog.lo} progHi={estimate.prog.hi} loft={estimate.loft} />
-                          <div className="mt-1 font-mono tabular-nums text-2xs text-cz-2">
-                            {roleLabel ? (
-                              <span className="font-data uppercase tracking-[.05em] text-3xs text-cz-1 me-1.5">{roleLabel}</span>
-                            ) : null}
-                            {Number.isFinite(estimate.loft)
-                              ? t("development.numbers", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi, loft: estimate.loft })
-                              : t("development.numbersNoLoft", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi })}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono tabular-nums text-2xs text-cz-1">{riderStatRating(rider) || "—"}</span>
-                          <span className="text-cz-3 text-3xs italic">{t("development.noForecastYet")}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-none">
-                      <FocusOpenButton
-                        rider={rider}
-                        plan={plan}
-                        busy={busy}
-                        smartFocus={smartDefaultFocus[rider.id]}
-                        error={planActionError?.riderId === rider.id ? planActionError.error : null}
-                        onOpen={() => setFocusPanelRiderId(rider.id)}
-                        t={t}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-        )}
-      </TabPanel>
-
-      <TabPanel value="history">
-        {/* Træningsrapport-historik (#1533) — seneste 30 dage. Uændret indhold,
-            kun flyttet fra bunden af Train today til sin egen fane (#3721). */}
+        {/* Træningsrapport-historik (#1533) — seneste 30 dage, uændret. */}
         <TrainingHistory history={history} />
+      </div>
       </TabPanel>
       </Tabs>
 

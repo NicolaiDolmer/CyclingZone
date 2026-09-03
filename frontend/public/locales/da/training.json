@@ -16,10 +16,10 @@
     "descAria": "Sorterer faldende, tryk for stigende"
   },
   "tabs": {
-    "today": "Træn i dag",
+    "today": "Overblik",
     "weekplan": "Ugeplan",
     "development": "Udvikling",
-    "history": "Historik"
+    "history": "Rapporter"
   },
   "howTrainingWorksLink": "Sådan virker træning",
   "development": {
@@ -56,14 +56,11 @@
   "colGains": "Fremgang",
   "colResult": "Resultat",
   "colStatus": "Status",
-  "colWeekPlan": "Ugeplan",
   "groupByType": "Gruppér efter type",
   "untypedGroup": "Ingen type endnu",
   "groupCount": "{n, plural, one {# rytter} other {# ryttere}}",
   "selectAll": "Vælg alle",
   "selected": "{n, plural, one {# valgt} other {# valgt}}",
-  "bulkSetFocus": "Sæt fokus for valgte",
-  "bulkIntensity": "Intensitet",
   "bulkApply": "Anvend på {n} valgte",
   "bulkApplying": "Anvender…",
   "bulkClear": "Ryd valg",
@@ -103,7 +100,7 @@
   "riderHistoryEmpty": "Ingen træningshistorik for rytteren endnu.",
   "riderHistoryRest": "Hviledag",
   "weekRhythmTitle": "Ugentlig rytme",
-  "weekRhythmIntro": "Sæt holdets ønskede intensitet pr. ugedag. Dette er kun default for ryttere UDEN egen indstilling: en rytters eget fokus og intensitet, eller deres individuelle ugeplan, vinder altid over holdets rytme for netop den rytter. \"Træn i dag\" kræver stadig dit klik for konsistens-bonussen.",
+  "weekRhythmIntro": "Én mål-intensitet pr. ugedag for hele truppen. Den er kun default: rytterens egen dag, eller hans egen ugeplan, vinder altid.",
   "weekday_mon": "Man",
   "weekday_tue": "Tir",
   "weekday_wed": "Ons",
@@ -121,7 +118,6 @@
   "planActionError_not_own_rider": "Du kan kun træne dine egne ryttere.",
   "planActionError_auth": "Din session er udløbet. Log ind igen.",
   "planActionError_network": "Forbindelsen fejlede. Tjek dit netværk og prøv igen.",
-  "weekRhythmBonusNote": "Rytmen er en default: den gælder kun for ryttere uden egen fokus/intensitet eller individuel ugeplan, og den rører aldrig fokus. Manager-konsistens-bonussen (+25%) gives stadig kun når du selv klikker \"Træn i dag\".",
   "weekRhythmTodayShort": "I dag: {intensity}",
   "weekRhythmTodayHint": "i dag: {intensity} (holdets ugentlige rytme)",
   "weekRhythmTodayHintOwn": "i dag: {intensity} (egen ugeplan)",
@@ -167,7 +163,6 @@
   "individualWeekPlanToggleOpen": "Individuel ugeplan",
   "individualWeekPlanToggleClose": "Skjul individuel plan",
   "individualWeekPlanTitle": "Individuel ugeplan",
-  "individualWeekPlanIntro": "Sæt {name}'s egen ønskede intensitet pr. ugedag. Dette overstyrer holdets ugentlige rytme for netop denne rytter; fokus røres aldrig her.",
   "individualWeekPlanSave": "Gem plan",
   "individualWeekPlanRemove": "Fjern (følg holdets rytme)",
   "individualWeekPlanSaved": "Individuel ugeplan gemt.",
@@ -175,9 +170,6 @@
   "individualWeekPlanBadge": "Egen plan",
   "individualWeekPlanBadgeTitle": "Denne rytter har sin egen individuelle ugeplan, som overstyrer holdets ugentlige rytme.",
   "individualWeekPlanOverviewTitle": "Individuelle ugeplaner",
-  "individualWeekPlanOverviewEmpty": "Ingen ryttere har en individuel ugeplan endnu. Sæt en fra en rytters række på Træn i dag.",
-  "individualWeekPlanOverviewOverridesNote": "Overstyrer holdrytmen",
-  "individualWeekPlanOverviewGoToRoster": "Gå til rosteret",
   "momentLabelToday": "Dagens historie",
   "momentLabelLatest": "Seneste træningshistorie",
   "momentBreakthrough_0": "{riderName} gennembryder i {ability}: {from} → {to}.",
@@ -214,8 +206,8 @@
       "body": "Trykker du her, træner truppen med +25% bonus på dagens udbytte. Springer du over, kører din assistent samme pas efter kl. 22 uden bonus. Hård intensitet giver mere, men efterlader rytterne trætte til næste løb."
     },
     "nextUp": {
-      "title": "Hvor træningen viser sig",
-      "body": "Baren viser hvor tæt rytteren er på næste hele +1 i fokus-evnen. Der sker intet på hans kort før den er fuld, så aflæs baren i stedet for dagen. Det +1 er hvad han tager med i næste løb."
+      "title": "Læs ugen på ét blik",
+      "body": "Strimlen er rytterens næste syv dage: jo mørkere blok, jo hårdere dag, en stiplet blok er hvile, og i dag er den med ramme om. Klik på den for at give rytteren sin egen ugeplan. Fremdrift pr. evne bor på Udvikling-fanen."
     }
   },
   "focusPanel": {
@@ -271,11 +263,34 @@
     "session_loebslaere": "Løbslære",
     "note": "En session bærer sin egen belastning, så det sætter du ikke længere for sig. Færdighedsdage bygger håndværk med en fast, langsommere fart, uanset hvad rytteren er bygget til.",
     "colDay": "Dag",
-    "colChangeDay": "Skift dag",
+    "otherDay": "Andet",
     "chooseDay": "Vælg dag",
     "clear": "Fjern plan",
     "save": "Gem dag",
     "bulkSetDay": "Sæt dag",
     "bulkWholeDay": "Hele dagen"
+  },
+  "colWeek": "Uge",
+  "noRidersHint": "Køb din første rytter i den live auktion, og sæt hans træningsdag her.",
+  "noRidersAction": "Gå til auktioner",
+  "individualWeekPlanCount": "{n} med egen plan",
+  "individualWeekPlanFollowsTeam": "Følger holdets rytme",
+  "overview": {
+    "planned": "{n} har en dag",
+    "noPlan": "{n} mangler en dag",
+    "risk": "{n} i skaderisiko",
+    "injured": "{n} skadet",
+    "racing": "{n} kører løb i dag",
+    "searchPlaceholder": "Søg rytter",
+    "allTypes": "Alle typer",
+    "showing": "Viser {shown} af {total} ryttere",
+    "viewLabel": "Vis ryttere",
+    "viewAll": "Alle",
+    "viewNoPlan": "Mangler dag ({n})",
+    "viewRisk": "I risiko ({n})",
+    "viewRacing": "Kører løb ({n})",
+    "emptyFiltered": "Ingen ryttere passer på denne visning.",
+    "emptyFilteredHint": "Nulstil filtrene for at se hele truppen igen.",
+    "clearFilters": "Nulstil filtre"
   }
 }

@@ -16,10 +16,10 @@
     "descAria": "Sorting descending, tap for ascending"
   },
   "tabs": {
-    "today": "Train today",
+    "today": "Overview",
     "weekplan": "Week plan",
     "development": "Development",
-    "history": "History"
+    "history": "Reports"
   },
   "howTrainingWorksLink": "How training works",
   "development": {
@@ -56,14 +56,11 @@
   "colGains": "Gains",
   "colResult": "Result",
   "colStatus": "Status",
-  "colWeekPlan": "Weekly plan",
   "groupByType": "Group by type",
   "untypedGroup": "No type yet",
   "groupCount": "{n, plural, one {# rider} other {# riders}}",
   "selectAll": "Select all",
   "selected": "{n, plural, one {# selected} other {# selected}}",
-  "bulkSetFocus": "Set focus for selected",
-  "bulkIntensity": "Intensity",
   "bulkApply": "Apply to {n} selected",
   "bulkApplying": "Applying…",
   "bulkClear": "Clear selection",
@@ -103,7 +100,7 @@
   "riderHistoryEmpty": "No training history for this rider yet.",
   "riderHistoryRest": "Rest day",
   "weekRhythmTitle": "Weekly rhythm",
-  "weekRhythmIntro": "Set your team's target intensity for each day of the week. This is only the default for riders without their own setting: a rider's own focus and intensity, or their individual weekly plan, always take priority over the team rhythm for that rider. \"Train today\" still needs your click for the consistency bonus.",
+  "weekRhythmIntro": "One target intensity per weekday for the whole squad. It is only the default: a rider's own day, or his own weekly plan, always wins.",
   "weekday_mon": "Mon",
   "weekday_tue": "Tue",
   "weekday_wed": "Wed",
@@ -121,7 +118,6 @@
   "planActionError_not_own_rider": "You can only train your own riders.",
   "planActionError_auth": "Your session expired. Sign in again.",
   "planActionError_network": "Connection failed. Check your network and try again.",
-  "weekRhythmBonusNote": "The rhythm is a default: it only applies to riders without their own focus/intensity or individual weekly plan, and it never touches focus. The manager consistency bonus (+25%) still only applies when you click \"Train today\" yourself.",
   "weekRhythmTodayShort": "Today: {intensity}",
   "weekRhythmTodayHint": "today: {intensity} (team weekly rhythm)",
   "weekRhythmTodayHintOwn": "today: {intensity} (own weekly plan)",
@@ -167,7 +163,6 @@
   "individualWeekPlanToggleOpen": "Individual weekly plan",
   "individualWeekPlanToggleClose": "Hide individual plan",
   "individualWeekPlanTitle": "Individual weekly plan",
-  "individualWeekPlanIntro": "Set {name}'s own target intensity for each day of the week. This overrides the team's weekly rhythm for this rider only; focus is never touched here.",
   "individualWeekPlanSave": "Save plan",
   "individualWeekPlanRemove": "Remove (follow team rhythm)",
   "individualWeekPlanSaved": "Individual weekly plan saved.",
@@ -175,9 +170,6 @@
   "individualWeekPlanBadge": "Own plan",
   "individualWeekPlanBadgeTitle": "This rider has their own individual weekly plan, which overrides the team's weekly rhythm.",
   "individualWeekPlanOverviewTitle": "Individual weekly plans",
-  "individualWeekPlanOverviewEmpty": "No riders have an individual weekly plan yet. Set one from a rider's row on Train today.",
-  "individualWeekPlanOverviewOverridesNote": "Overrides team rhythm",
-  "individualWeekPlanOverviewGoToRoster": "Go to roster",
   "momentLabelToday": "Today's story",
   "momentLabelLatest": "Latest training story",
   "momentBreakthrough_0": "{riderName} breaks through on {ability}: {from} → {to}.",
@@ -214,8 +206,8 @@
       "body": "Press this and the squad trains with a +25% bonus on the day's gains. Skip it and your assistant runs the session after 22:00 without the bonus. Hard intensity gains more but leaves riders tired for their next race."
     },
     "nextUp": {
-      "title": "Where the training shows up",
-      "body": "This bar is how close the rider is to his next whole +1 in the focus ability. Nothing changes on his card until it fills, so read the bar, not the day. That +1 is what he takes into his next race."
+      "title": "Read the week at a glance",
+      "body": "The strip is the rider's next seven days: the darker the block, the harder the day, a dashed block is rest, and today is the outlined one. Click it to give this rider his own weekly plan. Progress per ability lives on the Development tab."
     }
   },
   "focusPanel": {
@@ -271,11 +263,34 @@
     "session_loebslaere": "Race craft",
     "note": "A session carries its own effort, so you no longer set that separately. Skill days build craft at a fixed, slower rate, whatever the rider is built for.",
     "colDay": "Day",
-    "colChangeDay": "Change day",
+    "otherDay": "Other",
     "chooseDay": "Choose day",
     "clear": "Remove plan",
     "save": "Save day",
     "bulkSetDay": "Set day",
     "bulkWholeDay": "Whole day"
+  },
+  "colWeek": "Week",
+  "noRidersHint": "Draft your first rider in the live auction, then set his training day here.",
+  "noRidersAction": "Go to auctions",
+  "individualWeekPlanCount": "{n} with an own plan",
+  "individualWeekPlanFollowsTeam": "Follows the team rhythm",
+  "overview": {
+    "planned": "{n} with a day set",
+    "noPlan": "{n} with no day yet",
+    "risk": "{n} at injury risk",
+    "injured": "{n} injured",
+    "racing": "{n} racing today",
+    "searchPlaceholder": "Search rider",
+    "allTypes": "All types",
+    "showing": "Showing {shown} of {total} riders",
+    "viewLabel": "Show riders",
+    "viewAll": "All",
+    "viewNoPlan": "No day ({n})",
+    "viewRisk": "At risk ({n})",
+    "viewRacing": "Racing ({n})",
+    "emptyFiltered": "No riders match this view.",
+    "emptyFilteredHint": "Clear the filters to see the whole squad again.",
+    "clearFilters": "Clear filters"
   }
 }

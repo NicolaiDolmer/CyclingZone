@@ -129,20 +129,92 @@ test("#3815 roster-tabellen har en sorterbar Alder-kolonne", () => {
   );
 });
 
-// #3300-rework: ugeplan-knappen får sin egen kolonne (ejer-feedback, samme
-// session som badge-flytningen ovenfor) — "colWeekPlan" er den nye header-nøgle.
-test("#3300-rework individuel ugeplan-knap har sin egen kolonne", () => {
-  assert.match(src, /"colWeekPlan"/, "skal have en dedikeret kolonne-header for ugeplan-knappen");
-  // #3815 lagde Alder-kolonnen oveni, så tallet er 11.
-  assert.match(src, /const ROSTER_COLS = 11;/, "kolonnetal skal være opdateret til den nye kolonne");
+// #3300-rework gav ugeplan-knappen sin EGEN kolonne. #4613 (retning B,
+// ejer-valgt 3/9) erstatter den kolonne med uge-strimlen: cellen bærer nu BÅDE
+// svaret (de næste 7 dage) og vejen videre (rytterens egen ugeplan, som bor på
+// Ugeplan-fanen). Kravet bag #3300-rework er uændret — knappen må ikke ligge i
+// navne-cellen, og rækken må ikke have to celler til den samme ting.
+test("#4613 uge-kolonnen bærer strimlen OG indgangen til rytterens egen ugeplan", () => {
+  assert.match(src, /"colWeek"/, "uge-kolonnen skal have sin egen locale-nøgle");
+  // #4613: kvitterings-kolonnen flyttede til Udvikling-fanen og ugeplan-knappens
+  // egen kolonne blev uge-strimlen. #4736 slog Dag + "Skift dag" sammen, så
+  // tallet er 9.
+  assert.match(src, /const ROSTER_COLS = 9;/, "kolonnetal skal matche de faktiske kolonner");
 
-  const weekPlanCellStart = src.indexOf("Individuel ugeplan — egen kolonne");
-  assert.ok(weekPlanCellStart > -1, "ugeplan-kolonnens celle skal have sin egen kommentar");
-  const weekPlanTdStart = src.indexOf("<td", weekPlanCellStart);
-  const weekPlanTdEnd = src.indexOf("</td>", weekPlanTdStart);
-  const weekPlanCellSrc = src.slice(weekPlanTdStart, weekPlanTdEnd);
-  assert.match(weekPlanCellSrc, /toggleRiderWeekPlan\(rider\.id\)/, "ugeplan-toggle-knappen skal stå i sin egen kolonne");
-  assert.match(weekPlanCellSrc, /individualWeekPlanToggleOpen/, "knap-teksten skal genbruges uændret");
+  const weekCellStart = src.indexOf("#4613 — Uge:");
+  assert.ok(weekCellStart > -1, "uge-kolonnens celle skal have sin egen kommentar");
+  const weekTdStart = src.indexOf("<td", weekCellStart);
+  const weekTdEnd = src.indexOf("</td>", weekTdStart);
+  const weekCellSrc = src.slice(weekTdStart, weekTdEnd);
+  assert.match(weekCellSrc, /openRiderWeekPlan\(rider\.id\)/, "cellen er indgangen til rytterens egen ugeplan");
+  assert.match(weekCellSrc, /individualWeekPlanToggleOpen/, "knap-teksten skal genbruges uændret");
+  assert.match(weekCellSrc, /<TrainingWeekStrip days=\{weekStripDays\}/, "cellen skal vise de næste 7 dage");
+});
+
+// #4736 (ejer-review af #4613, 3/9): "Dag" og "Skift dag" var to kolonner om
+// præcis det samme valg, og de klippede Form/Træthed/Status af i højre kant ved
+// 1440 px. Forward-guard: rækken må kun have ÉN dags-celle, og vejen til de
+// øvrige sessionstyper skal stadig gå gennem den samme FocusPanel-mutation.
+test("#4736 dagen er ÉT kontrol pr. række, ikke to kolonner om det samme", () => {
+  assert.doesNotMatch(src, /colChangeDay/, "den anden dags-kolonne må ikke komme igen");
+  const dayCellStart = src.indexOf("#4736 (ejer-review af #4613");
+  assert.ok(dayCellStart > -1, "dags-cellen skal have sin egen kommentar");
+  const dayTdStart = src.indexOf("<td", dayCellStart);
+  const dayTdEnd = src.indexOf("</td>", dayTdStart);
+  const dayCellSrc = src.slice(dayTdStart, dayTdEnd);
+  assert.match(dayCellSrc, /QUICK_DAY_TYPES\.map/, "segmentet er det primære kontrol i cellen");
+  assert.match(dayCellSrc, /handleDayQuickChange\(rider\.id, isSession \? "session" : k, plan\.focus\)/,
+    "samme mutation som før sammenlægningen");
+  assert.match(dayCellSrc, /t\("dayPanel\.otherDay"\)/, "de øvrige sessionstyper ligger bag \"Andet\"");
+  assert.match(dayCellSrc, /<FocusOpenButton/, "\"Vælg dag\"-tilstanden med assistentens forslag skal bevares");
+  assert.match(dayCellSrc, /data-tour=\{isFirst \? "training-focus" : undefined\}/,
+    "tour-ankeret skal findes uanset om rytteren har valgt en dag (#2819)");
+  // Én dags-celle = præcis ét sted der åbner dags-panelet fra segment-grenen +
+  // ét fra Vælg dag-grenen; flere ville være to kontroller om det samme igen.
+  assert.equal((dayCellSrc.match(/setFocusPanelRiderId\(rider\.id\)/g) ?? []).length, 2);
+});
+
+// #4613: strimlen må ALDRIG opfinde en kalender fremad — kun I DAG kan bære en
+// løbsmarkering, fordi racingToday er det eneste løbsdata fladen har.
+test("#4613 uge-strimlen bygges af den delte, unit-testede helper", () => {
+  assert.match(src, /import \{ riderWeekStrip \} from "\.\.\/lib\/trainingWeekStrip\.js"/);
+  assert.match(src, /const weekStripDays = riderWeekStrip\(\{/, "rækken må ikke lagdele dagene selv");
+  assert.match(src, /racingToday: !!raceToday,/, "løbsdagen er den samme kilde som badgen på rækken");
+});
+
+// #4613: overbliksfladen. Den slanke stribe + den kanoniske FilterBar +
+// status-segmentet i tabellens toolbar ERSTATTER de løsrevne kontrol-rækker
+// (gruppér-checkbox, hjælpe-link, mobil-sort, bulk-bjælke) der lå mellem
+// sidehovedet og tabellen ("no orphan action rows", PAGE_TEMPLATES).
+test("#4613 overbliksfanen bruger den kanoniske FilterBar + Segmented i tabellens toolbar", () => {
+  assert.match(src, /import \{[\s\S]*?FilterBar, Segmented,/, "skal bruge kittets primitiver, ikke håndrullede filtre");
+  assert.match(src, /<FilterBar/, "filterlinjen skal være FilterBar-recepten");
+  assert.match(src, /t\("overview\.searchPlaceholder"\)/, "søgefeltet skal have sin egen locale-nøgle");
+  assert.match(src, /<Segmented/, "status-spørgsmålet skal være kittets Segmented");
+  assert.match(src, /ROSTER_VIEWS = Object\.freeze\(\["all", "noplan", "risk", "racing"\]\)/);
+  assert.match(src, /t\("overview\.showing"/, "tælle-linjen skal sige hvor mange af hvor mange");
+});
+
+// #4613: tabellen er `dense` (T2's ENE opt-in for rosters hvor rækker-pr-skærm
+// ER pointen) og bærer et filter-tomt-tbody i stedet for at swappe hele kortet
+// — ellers ryger toolbaren med, og filteret kan ikke slås fra igen.
+test("#4613 roster-tabellen er dense og swapper <tbody> ved et tomt filter", () => {
+  assert.match(src, /thClass\(\{ dense: true \}\)/, "headeren skal bruge dense-rytmen");
+  assert.match(src, /tdClass\(\{ dense: true \}\)/, "cellerne skal bruge dense-rytmen");
+  assert.match(src, /filteredRiders\.length === 0 \? \(/, "tom-tilstanden skal bo i <tbody>");
+  assert.match(src, /t\("overview\.clearFilters"\)/, "tom-tilstanden skal have ÉN handling (TASTE fork 4)");
+});
+
+// #4613: fanelisten er data-drevet, så Program (#4629) og Løbsdag (#4632) kan
+// kobles på som ét element hver. Ingen tomme placeholder-faner i mellemtiden.
+test("#4613 fanelisten er data-drevet og har ingen tomme placeholder-faner", () => {
+  assert.match(src, /const TRAINING_TAB_DEFS = Object\.freeze\(\[/);
+  assert.match(src, /const TRAINING_TABS = TRAINING_TAB_DEFS\.map\(\(tab\) => tab\.value\);/);
+  assert.match(src, /TRAINING_TAB_DEFS\.map\(\(tab\) => \(\s*<Tab key=\{tab\.value\} value=\{tab\.value\}>/);
+  for (const value of ["today", "weekplan", "development", "history"]) {
+    assert.match(src, new RegExp(`value: "${value}"`), `?tab=${value} skal stadig være et gyldigt dyb-link`);
+  }
+  assert.doesNotMatch(src, /comingSoon|placeholderTab/i, "en ubygget fane vises ikke som en tom fane (TASTE P11)");
 });
 
 test("#1480.1 hver række renderer en RiderTypeBadge", () => {
@@ -155,7 +227,9 @@ test("#1480.1 hver række renderer en RiderTypeBadge", () => {
 
 test("#1480.2 group-by-type-toggle styrer grupperet visning via groupRidersByType", () => {
   assert.match(src, /import \{ groupRidersByType, UNTYPED_KEY \} from/);
-  assert.match(src, /groupByType\s*\?\s*groupRidersByType\(riders\)/);
+  // #4613: grupperingen kører på den FILTREREDE liste, så gruppe-tællingerne
+  // matcher det man ser (en gruppe kan ikke sige 4 og vise 1).
+  assert.match(src, /groupByType\s*\?\s*groupRidersByType\(filteredRiders\)/);
   assert.match(src, /t\("groupByType"\)/);
 });
 
@@ -227,9 +301,14 @@ test("#1895.2 individuel ugeplan wired mod useTraining's riderWeekPlans/setRider
   assert.match(src, /clearRiderWeekPlan\(riderId\)/, "fjern skal kalde useTraining's clearRiderWeekPlan");
 });
 
-test("#1895.2 roster-tabellen har en toggle-knap pr. rytter til individuel ugeplan", () => {
+// #4613: editoren flyttede fra roster-rækkens udvidelige række til Ugeplan-
+// fanen (samme state, samme handlers, ÉN rytter udvidet ad gangen). Uge-cellen
+// i rosteret er genvejen dertil, se #4613-guarden ovenfor.
+test("#1895.2 der er en toggle-knap pr. rytter til den individuelle ugeplan", () => {
   assert.match(src, /toggleRiderWeekPlan\(rider\.id\)/);
   assert.match(src, /t\("individualWeekPlanToggleOpen"\)/);
+  assert.match(src, /function openRiderWeekPlan\(riderId\)/, "rosteret skal have en genvej til fanen");
+  assert.match(src, /setExpandedRiderId\(riderId\);\s*\n\s*setTab\("weekplan"\);/, "genvejen åbner netop den rytter");
 });
 
 test("#1895.2 ryttere MED egen ugeplan markeres i rosteret (badge)", () => {
@@ -249,7 +328,9 @@ test("#1895.2 dagens-hint tager højde for rytter-override (samme opløsningsræ
 // PRÆCIS de samme sort-nøgler (rosterSort.handleSort) som desktop-headerne, kun
 // synlig under sm-breakpointet.
 test("#3299 mobil-sort-kontrol eksponerer træthed (+ form) via rosterSort, kun synlig i portræt", () => {
-  assert.match(src, /sm:hidden[^`]*mb-3/, "skal have et sm:hidden-wrapper (samme klassenavne-mønster som RidersPage)");
+  // #4613: kontrollen bor nu i tabellens toolbar-slot (inde i hairline-rammen)
+  // i stedet for som en løsrevet række over tabellen — stadig sm:hidden.
+  assert.match(src, /sm:hidden[^`]*items-end/, "skal have et sm:hidden-wrapper (samme klassenavne-mønster som RidersPage)");
   assert.match(src, /key:\s*"fatigue"/, "sort-options skal inkludere fatigue-nøglen");
   assert.match(src, /key:\s*"form"/, "sort-options skal inkludere form-nøglen");
   assert.match(src, /onSort=\{rosterSort\.handleSort\}/, "skal skrive til samme sort-state som desktop-headerne (ingen ny sort-logik)");
@@ -278,13 +359,23 @@ test("#3706 Status-kolonnen er sorterbar via samme SortTh/useSortState-mønster 
   assert.match(src, /key:\s*"status"/, "mobil-sort-kontrollen skal eksponere den samme nøgle");
 });
 
-// ── #3709 trin 1: kvitteringen på roster-rækken ───────────────────────────────
-test("#3709 roster-kolonnen viser kvitteringen pr. evne i fokusset, ikke én aggregeret bar", () => {
+// ── #3709 trin 1: kvitteringen pr. evne ───────────────────────────────────────
+// #4613: kvitteringen flyttede fra roster-kolonnen til Udvikling-fanen — det er
+// samme spørgsmål som fanen allerede svarer på, og overbliksrækken kunne ikke
+// bære 3-4 linjer pr. rytter. Selve helperen og tallene er UÆNDREDE.
+test("#3709 kvitteringen vises pr. evne i fokusset, ikke som én aggregeret bar", () => {
   assert.match(src, /import AbilityReceiptRow from "\.\.\/components\/training\/AbilityReceiptRow\.jsx"/);
   assert.match(src, /focusAbilityReceipt\(plan\?\.focus, \{/, "rækkerne skal komme fra den delte helper");
   assert.match(src, /seasonAbilityGains\(history\.seasonRuns, r\.id, history\.seasonStart\)/,
     "sæson-point skal filtreres på den AKTIVE sæsons start, ikke bare 30 dage");
-  assert.match(src, /t\("receipt\.title"\)/, "kolonne-headeren skal være kvitteringens titel");
+  assert.match(src, /t\("receipt\.title"\)/, "blokken skal bære kvitteringens titel");
+  // Kvitteringen står på Udvikling-fanens rækker, ikke i roster-tabellen.
+  const devPanelStart = src.indexOf('<TabPanel value="development">');
+  assert.ok(devPanelStart > -1, "Udvikling-fanen skal findes");
+  assert.ok(
+    src.indexOf("<AbilityReceiptRow") > devPanelStart,
+    "kvitteringens rækker skal rendres inde i Udvikling-fanen",
+  );
 });
 
 // De tre loft-tekster er slettet: de lovede spilleren at en evne aldrig steg

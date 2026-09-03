@@ -163,6 +163,83 @@ export const RIDERS = [
       cobblestone: 16, positioning: 22, aggression: 21, tactics: 24,
     },
   },
+  // #4736 (retning B, #4613): 6 flere TEST_TEAM-ryttere, så Træning-fanens
+  // "Overblik"-liste viser en rigtig trup i stedet for én ensom række. Bevidst
+  // spredning på type, form/træthed og dagens valg — se SEED_TRAINING nedenfor
+  // for plans/condition/trainability pr. rytter. Ren preview-pynt: ingen af
+  // disse id'er refereres af noget andet seed-array eller nogen test.
+  {
+    id: "rider-3", firstname: "Frederik", lastname: "Holm", team_id: TEST_TEAM.id,
+    nationality_code: "no", birthdate: "1999-06-20",
+    base_value: 980000, market_value: 980000, salary: 68000, contract_length: 2, contract_end_season: 3,
+    prize_earnings_bonus: 0, is_u25: false, primary_type: "climber", secondary_type: "gc",
+    team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    rider_derived_abilities: {
+      climbing: 33, time_trial: 27, flat: 14, tempo: 26, sprint: 10, acceleration: 15,
+      punch: 22, endurance: 28, recovery: 24, durability: 25, descending: 24,
+      cobblestone: 12, positioning: 23, aggression: 20, tactics: 24,
+    },
+  },
+  {
+    id: "rider-4", firstname: "Sofia", lastname: "Reyes", team_id: TEST_TEAM.id,
+    nationality_code: "es", birthdate: "2001-11-02",
+    base_value: 860000, market_value: 860000, salary: 54000, contract_length: 3, contract_end_season: 4,
+    prize_earnings_bonus: 0, is_u25: false, primary_type: "puncheur", secondary_type: "brostensrytter",
+    team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    rider_derived_abilities: {
+      climbing: 20, time_trial: 18, flat: 22, tempo: 24, sprint: 19, acceleration: 21,
+      punch: 32, endurance: 22, recovery: 20, durability: 27, descending: 22,
+      cobblestone: 29, positioning: 26, aggression: 25, tactics: 21,
+    },
+  },
+  {
+    id: "rider-5", firstname: "Elias", lastname: "Berg", team_id: TEST_TEAM.id,
+    nationality_code: "be", birthdate: "2004-02-14",
+    base_value: 720000, market_value: 720000, salary: 36000, contract_length: 2, contract_end_season: 3,
+    prize_earnings_bonus: 0, is_u25: true, is_academy: true, primary_type: "tt", secondary_type: "gc",
+    team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    rider_derived_abilities: {
+      climbing: 24, time_trial: 34, flat: 20, tempo: 27, sprint: 12, acceleration: 16,
+      punch: 19, endurance: 26, recovery: 27, durability: 22, descending: 21,
+      cobblestone: 14, positioning: 22, aggression: 18, tactics: 20,
+    },
+  },
+  {
+    id: "rider-6", firstname: "Marcus", lastname: "Lindberg", team_id: TEST_TEAM.id,
+    nationality_code: "de", birthdate: "1996-03-30",
+    base_value: 610000, market_value: 610000, salary: 48000, contract_length: 1, contract_end_season: 1,
+    prize_earnings_bonus: 0, is_u25: false, primary_type: "rouleur", secondary_type: "brostensrytter",
+    team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    rider_derived_abilities: {
+      climbing: 14, time_trial: 19, flat: 31, tempo: 20, sprint: 16, acceleration: 18,
+      punch: 18, endurance: 25, recovery: 18, durability: 29, descending: 23,
+      cobblestone: 28, positioning: 24, aggression: 19, tactics: 19,
+    },
+  },
+  {
+    id: "rider-7", firstname: "Noah", lastname: "Kristiansen", team_id: TEST_TEAM.id,
+    nationality_code: "dk", birthdate: "2000-08-08",
+    base_value: 1120000, market_value: 1120000, salary: 74000, contract_length: 3, contract_end_season: 4,
+    prize_earnings_bonus: 0, is_u25: false, primary_type: "sprinter", secondary_type: "puncheur",
+    team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    rider_derived_abilities: {
+      climbing: 12, time_trial: 15, flat: 26, tempo: 20, sprint: 33, acceleration: 31,
+      punch: 24, endurance: 19, recovery: 21, durability: 20, descending: 20,
+      cobblestone: 16, positioning: 25, aggression: 23, tactics: 19,
+    },
+  },
+  {
+    id: "rider-8", firstname: "Lucas", lastname: "Moller", team_id: TEST_TEAM.id,
+    nationality_code: "fr", birthdate: "1998-12-01",
+    base_value: 790000, market_value: 790000, salary: 51000, contract_length: 2, contract_end_season: 3,
+    prize_earnings_bonus: 0, is_u25: false, primary_type: "baroudeur", secondary_type: "rouleur",
+    team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    rider_derived_abilities: {
+      climbing: 19, time_trial: 22, flat: 27, tempo: 22, sprint: 15, acceleration: 18,
+      punch: 21, endurance: 31, recovery: 26, durability: 26, descending: 26,
+      cobblestone: 20, positioning: 22, aggression: 28, tactics: 23,
+    },
+  },
 ];
 
 // ── Evne-lofter: SERVER-SANDHED, må ALDRIG serveres til klienten ────────────
@@ -194,6 +271,39 @@ export const SEED_ABILITY_CAPS = Object.freeze({
     punch: 26, endurance: 32, recovery: 29, durability: 27, descending: 24,
     cobblestone: 20, positioning: 26, aggression: 25, tactics: 28,
   }),
+  // #4736: lofter for de 6 nye TEST_TEAM-ryttere — håndhævet af
+  // seedData.consistency.test.js ("hver seed-rytter har lofter"): hvert tal
+  // her SKAL være >= rytterens egen evne (RIDERS' rider_derived_abilities).
+  "rider-3": Object.freeze({
+    climbing: 45, time_trial: 35, flat: 20, tempo: 32, sprint: 15, acceleration: 20,
+    punch: 28, endurance: 34, recovery: 30, durability: 30, descending: 29,
+    cobblestone: 18, positioning: 28, aggression: 25, tactics: 29,
+  }),
+  "rider-4": Object.freeze({
+    climbing: 25, time_trial: 23, flat: 27, tempo: 29, sprint: 24, acceleration: 26,
+    punch: 40, endurance: 27, recovery: 25, durability: 33, descending: 27,
+    cobblestone: 36, positioning: 31, aggression: 30, tactics: 26,
+  }),
+  "rider-5": Object.freeze({
+    climbing: 32, time_trial: 46, flat: 26, tempo: 35, sprint: 17, acceleration: 21,
+    punch: 25, endurance: 33, recovery: 34, durability: 28, descending: 27,
+    cobblestone: 19, positioning: 28, aggression: 23, tactics: 26,
+  }),
+  "rider-6": Object.freeze({
+    climbing: 18, time_trial: 23, flat: 38, tempo: 24, sprint: 20, acceleration: 22,
+    punch: 22, endurance: 29, recovery: 22, durability: 34, descending: 27,
+    cobblestone: 34, positioning: 28, aggression: 23, tactics: 23,
+  }),
+  "rider-7": Object.freeze({
+    climbing: 16, time_trial: 19, flat: 31, tempo: 25, sprint: 38, acceleration: 36,
+    punch: 29, endurance: 24, recovery: 26, durability: 25, descending: 25,
+    cobblestone: 20, positioning: 30, aggression: 28, tactics: 24,
+  }),
+  "rider-8": Object.freeze({
+    climbing: 24, time_trial: 27, flat: 32, tempo: 27, sprint: 19, acceleration: 23,
+    punch: 26, endurance: 37, recovery: 31, durability: 31, descending: 31,
+    cobblestone: 25, positioning: 27, aggression: 33, tactics: 28,
+  }),
 });
 
 // #2454 preview-seed: POST /api/scouting/estimates. Ét sted, delt af BEGGE
@@ -217,6 +327,53 @@ export const SEED_SCOUT_ESTIMATES = Object.freeze({
     pastPeak: false,
   }),
   "rider-2": Object.freeze({ hidden: true, level: 0 }),
+  // #4736: bånd for tre af de nye TEST_TEAM-ryttere, så Udvikling-fanen ikke
+  // KUN viser Ada med et bånd — resten falder tilbage til primary_type, som er
+  // den tilsigtede degraderede tilstand (ikke en fejl), se estimateFor.
+  "rider-3": Object.freeze({
+    lo: 3.5, hi: 4, level: 3, role: "climber", now: 33,
+    prog: Object.freeze({ lo: 34, hi: 41 }),
+    ceil: Object.freeze({ lo: 34, hi: 41 }),
+    loft: 78, pastPeak: false,
+  }),
+  "rider-5": Object.freeze({
+    lo: 4, hi: 4.5, level: 3, role: "tt", now: 34,
+    prog: Object.freeze({ lo: 38, hi: 46 }),
+    ceil: Object.freeze({ lo: 38, hi: 46 }),
+    loft: 88, pastPeak: false,
+  }),
+  "rider-7": Object.freeze({
+    lo: 3.5, hi: 4, level: 3, role: "sprinter", now: 33,
+    prog: Object.freeze({ lo: 31, hi: 38 }),
+    ceil: Object.freeze({ lo: 31, hi: 38 }),
+    loft: 70, pastPeak: false,
+  }),
+  // #4736: rider-4/6/8 fik IKKE et bånd i første omgang — estimateFor()
+  // returnerer for evigt `undefined` ("ikke hentet endnu") for et id mocken
+  // aldrig svarer på (mockHandlers.js sætter kun estimates[id] når
+  // SEED_SCOUT_ESTIMATES[id] findes), så Udvikling-fanen viste "Henter…" i al
+  // evighed for netop de tre ryttere. Egne ryttere er ALTID et bånd i prod
+  // (isOwn i backend/lib/scouting.js) — så alle 7 TEST_TEAM-ryttere skal have
+  // et her.
+  "rider-4": Object.freeze({
+    lo: 3, hi: 3.5, level: 3, role: "puncheur", now: 32,
+    prog: Object.freeze({ lo: 35, hi: 42 }),
+    ceil: Object.freeze({ lo: 35, hi: 42 }),
+    loft: 75, pastPeak: false,
+  }),
+  "rider-6": Object.freeze({
+    lo: 2.5, hi: 3, level: 3, role: "rouleur", now: 31,
+    prog: Object.freeze({ lo: 32, hi: 38 }),
+    ceil: Object.freeze({ lo: 32, hi: 38 }),
+    // #4039: Marcus er 30 og tæt på/forbi PEAK_AGE — loft-visningen ER dæmpet.
+    loft: 60, pastPeak: true,
+  }),
+  "rider-8": Object.freeze({
+    lo: 3, hi: 3.5, level: 3, role: "baroudeur", now: 31,
+    prog: Object.freeze({ lo: 34, hi: 41 }),
+    ceil: Object.freeze({ lo: 34, hi: 41 }),
+    loft: 74, pastPeak: false,
+  }),
 });
 
 // Overgangs-panelet (trin 7, #3746/#3803, ejer-design 18/8) — samme form som
@@ -1694,16 +1851,40 @@ export const SEED_TRAINING = {
       ],
     },
   },
+  // #4736 (retning B, #4613): plans/condition/progress/capped/trainability
+  // udvidet til de 6 nye TEST_TEAM-ryttere (rider-3..8, se RIDERS ovenfor) —
+  // bevidst spredning så Overblik-fanen viser en rigtig trup: rider-4 og
+  // rider-6 har INGEN plan (den stiplede advarsels-kant + assistent-hintet),
+  // rider-6 er skadet + høj-risiko, rider-7 racer i dag (racingToday
+  // nedenfor). rider-2 (RIVAL_TEAM) er UÆNDRET — den bruges af andre specs.
   plans: {
     "rider-1": { focus: "sprint", intensity: "normal" },
+    "rider-3": { focus: "vo2max_climb", intensity: "hard" },
+    "rider-5": { focus: "threshold", intensity: "hard" },
+    "rider-7": { focus: "sprint", intensity: "hard" },
+    "rider-8": { focus: "endurance", intensity: "easy" },
   },
   condition: {
     "rider-1": { form: 72, fatigue: 38, risk: 0.02, injured_until: null },
     "rider-2": { form: 64, fatigue: 51, risk: 0.03, injured_until: null },
+    "rider-3": { form: 78, fatigue: 45, risk: 0.02, injured_until: null },
+    "rider-4": { form: 58, fatigue: 60, risk: 0.04, injured_until: null },
+    "rider-5": { form: 66, fatigue: 30, risk: 0.01, injured_until: null },
+    // #4736: skadet + høj risiko — dækker Status-kolonnens skade-badge +
+    // "i fare"-tælleren i overbliksstriben. injured_until er langt fremme
+    // (2026-12-01), så badget forbliver synligt uanset hvornår screenshottet
+    // faktisk tages.
+    "rider-6": { form: 40, fatigue: 70, risk: 0.07, injured_until: "2026-12-01" },
+    "rider-7": { form: 70, fatigue: 42, risk: 0.03, injured_until: null },
+    "rider-8": { form: 62, fatigue: 25, risk: 0.01, injured_until: null },
   },
   progress: {
     "rider-1": { sprint: 0.82, acceleration: 0.41 },
     "rider-2": { climbing: 0.35, punch: 0.22, tempo: 0.18 },
+    "rider-3": { climbing: 0.55, tempo: 0.3 },
+    "rider-5": { time_trial: 0.68, tempo: 0.2 },
+    "rider-7": { sprint: 0.45, acceleration: 0.6 },
+    "rider-8": { endurance: 0.72, recovery: 0.35, durability: 0.2 },
   },
   // #3639/#3709: preview SKAL kunne vise låste evner — med capped:{} kunne
   // kvitteringens "færdig"-tilstand ikke ses på preview, og en ejer-verifikation
@@ -1718,6 +1899,8 @@ export const SEED_TRAINING = {
   capped: {
     "rider-1": ["acceleration"],
     "rider-2": ["climbing", "punch", "tempo"],
+    "rider-3": ["tempo"],
+    "rider-7": ["acceleration"],
   },
   // #3195: værdierne skal matche backend-vokabularet ("strength"/"limited"/
   // "blocked" — se training.js' focusTrainability), IKKE et "high"-synonym, ellers
@@ -1726,17 +1909,33 @@ export const SEED_TRAINING = {
   trainability: {
     "rider-1": { sprint: "strength", acceleration: "strength", vo2max: "limited", threshold: "limited" },
     "rider-2": { vo2max: "strength", sprint: "blocked", aero: "limited" },
+    "rider-3": { vo2max_climb: "strength", climbing: "strength", tempo: "limited" },
+    "rider-4": { technique: "strength", vo2max_punch: "limited" },
+    "rider-5": { threshold: "strength", aero: "strength", sprint: "blocked" },
+    "rider-6": { endurance: "limited", technique: "limited" },
+    "rider-7": { sprint: "strength", vo2max_punch: "strength", endurance: "limited" },
+    "rider-8": { endurance: "strength", restitution: "strength" },
   },
-  // #4699 preview-udvidelse: Ada (rider-1) har allerede en plan (se `plans`
-  // ovenfor) OG et smartDefaultFocus-hit — det er den nye "din plan"-tilstand
-  // AssistantSuggestionsPanel skal vise (badge + slået-fra checkbox), og fordi
-  // hun er den ENESTE rytter på TEST_TEAM i preview (RIDERS-arrayet har kun
-  // rider-1 med team_id=TEST_TEAM.id — Mikkel/rider-2 hører til RIVAL_TEAM),
-  // bliver acceptableCount 0 og "Accept all" viser deaktiveret-noten. Samme
-  // scenarie som prod 3/9: 65/241 hold har en plan på hver ikke-pensioneret
-  // rytter (#4699-issuet). rider-2 beholdt uændret — bruges ikke af dette
-  // panel (hun er ikke i TEST_TEAM's roster), men andre flader kan læse den.
-  smartDefaultFocus: { "rider-1": "sprint", "rider-2": "vo2max" },
+  // #4736: rider-4 og rider-6 har ingen plan (se plans ovenfor) — begge får et
+  // assistent-hint, så FocusOpenButton's "smartFocusHint"-linje er synlig i
+  // overbliksrækken (samme mønster som rider-2's eksisterende entry). "restitution"
+  // er BEVIDST undgået her — det er RECOVERY_FOCUS-sentinelen (trainingDayTypes.js),
+  // ikke et fokus assistenten reelt foreslår (SESSION_INTENSITY mangler en
+  // nøgle for den, og dayPanel.session_restitution findes slet ikke i i18n —
+  // et forslag på den værdi ville rendere den rå i18n-nøgle i panelet).
+  //   #4699 (merge med main 3/9): rider-1 har BÅDE en plan og et hint — det er
+  //   den "din plan"-tilstand AssistantSuggestionsPanel skal vise (badge +
+  //   slået-fra checkbox). #4699's oprindelige preview-scenarie regnede med at
+  //   Ada var TEST_TEAM's ENESTE rytter, så acceptableCount blev 0 og
+  //   "Accept all"-noten viste sig. Det holder ikke længere: #4613 gav
+  //   TEST_TEAM 7 ryttere, så rider-4 og rider-6 er reelt acceptable. Begge
+  //   tilstande er stadig dækket på samme flade — "din plan" på rider-1, et
+  //   ægte forslag på rider-4/6.
+  smartDefaultFocus: { "rider-1": "sprint", "rider-2": "vo2max", "rider-4": "technique", "rider-6": "endurance" },
+  // #4736: rider-7 racer i dag — dækker "racer i dag"-badget i dags-kolonnen
+  // og racing-tælleren/filteret i overbliksstriben. Løbsnavnet matcher
+  // SEED_RACES' "race-up-1" for konsistens på tværs af preview.
+  racingToday: { "rider-7": { race: "Tour de Preview" } },
   weekPlan: null,
   riderWeekPlans: {},
 };

@@ -123,8 +123,10 @@ test("#3761 Status-kolonnen viser kontraktudløb + pensionsrisiko, og kun på de
   if (testInfo.project.name === "desktop-chromium") {
     // Status-kolonnen ligger til højre for viewportens kant på 1280px (#2446,
     // uændret her) — scroll tabellen ud til den, så beviset viser badges.
-    // Kolonne-indeks: 0 vælg, 1 navn, 2 type, 3 alder, 4 dag, 5 skift dag,
-    // 6 denne sæson, 7 form, 8 træthed, 9 status, 10 ugeplan.
+    // Kolonne-indeks (#4613): 0 vælg, 1 navn, 2 type, 3 alder, 4 dag,
+    // 5 skift dag, 6 uge, 7 form, 8 træthed, 9 status. Kvitteringen flyttede
+    // til Udvikling-fanen og ugeplan-kolonnen blev uge-strimlen, så Status
+    // ligger fortsat på indeks 9.
     await veteranRow.locator("td").nth(9).scrollIntoViewIfNeeded();
     await page.screenshot({ path: evidenceShotPath("pr-screens/3761-training-status-badges.png"), fullPage: false });
   }

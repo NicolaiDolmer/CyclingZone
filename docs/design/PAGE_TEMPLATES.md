@@ -36,13 +36,18 @@ compose the recipes from that file. One gold primary button per view, hairline b
   - Nothing renders below 10px. Never write `text-[Npx]` under 12px again — if neither step fits, the content is wrong, not the scale.
 
 ## T1 · Standard content page
-Reading pages (Board, Training, Finance detail, settings…).
+Reading pages (Board, Finance detail, settings…).
+
+> **Training flyttede til T2** (ejer-godkendt 3/9, #4613). Siden stod her som
+> T1-eksempel, men rendrede i praksis 1600 px / 11 kolonner — konflikten var
+> åben siden #2849 bølge 4. Retning B ("trup-først") gør rytterlisten til
+> sidens overbliksflade, og den hører derfor under T2 · Wide data nedenfor.
 - Container: **max-w-4xl (896px)**, centered.
 - Body = stacked section cards per the shared recipe. Row lists inside cards: 13.5px/500 title + data-font 11px uppercase meta line (`--text-3`), separated by 1px `--border` top rules, 13px vertical padding.
 - Status language: StatusBadge green "On track" / amber "At risk" / red "Behind"; meters `ProgressMeter` (danger tone below ~60).
 
 ## T2 · Wide data page
-Dense tables (Riders, Transfers, Standings, Rankings, Results, Finance…).
+Dense tables (Riders, Transfers, Standings, Rankings, Results, Finance, Training…).
 - Container: full-bleed, **capped at 1600px**, centered; filter bar shares the cap, `mb-4`.
 - **Filter bar — use the `FilterBar` primitive** (`components/ui/FilterBar.jsx`, #4625): search Input (sm, 240px) + up to **3** Selects (sm, `FilterBar` throws in dev past 3) + optional Checkbox, on one row; a 4th+ filter goes behind **"More filters"**, a `<details>` disclosure **closed by default** (TASTE fork 1 — replaces the hand-rolled 8-12-field-open panels found on Riders/Auctions/Transfers, audit 2026-09). Right-aligned data-font count/meta (12px `--text-3`) via `meta`. When the disclosure hides a whole panel rather than a short field list — Auctions puts the entire shared `RiderFilters` panel behind it — pass `moreWide` so it takes its own full-width row instead of shrink-wrapping (#4628). A field the page has lifted into the bar itself must be suppressed in the panel behind it (`RiderFilters hideFields`), so no control appears twice.
 - Table (`cz-table` recipe): wrap = **5px radius (`rounded-cz`)** + hairline border on `--bg-card` (12px was the system's only radius outlier; converged 2026-07-24, owner call); header cells **`text-2xs` uppercase, tracking .06em, `--text-3`**; numeric columns right-aligned tabular; row cells 13px pad 16px; row action buttons are **secondary sm** (never gold in rows) — **enforced**: `DataTable` wraps its `<tbody>` in `TableRowContext`, and `Button` throws in dev if `variant="primary"` renders inside it (#4625).
@@ -94,7 +99,9 @@ Sider må ikke vokse i højden ved at nye features stabler nye kort ovenpå. Reg
   1 point landed") — folden er detaljen, ikke meningen.
 - Reference-eksempel: trænings-sidens "Yesterday"-kvittering (#3924, design-go
   20/8) = resumé-linje + fold + dags-segment i eksisterende roster-rækker,
-  ikke et nyt kort.
+  ikke et nyt kort. Kvitteringen bor siden #4613 på Rapporter-fanen, hvor
+  resten af dagens kvittering ligger; mønsteret (resumé-linje + fold) er
+  uændret.
 
 ## Hard don'ts
 No gradients · no drop shadows (overlay shadow is for modals/popovers only) · no rounded-2xl (ONE surface radius: 5px `rounded-cz` everywhere — cards, table wraps, modals, state insets; pills use `rounded-cz-pill`, skeleton lines 4px; converged 2026-07-24) · no emoji (stroke icon set only) · no second gold button per view · no per-page header or container inventions · **no arbitrary `text-[Npx]` below 12px** — `text-2xs` / `text-3xs` only (converged 2026-07-25).
