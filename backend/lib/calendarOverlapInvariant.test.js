@@ -53,31 +53,55 @@ test("to etaper af SAMME løb på samme game_day er et brud (pakker-kontrakt: 1 
   });
 });
 
-test("fladet akse opdages: én game_day pr. kalenderdag i en division hvor K = 2", () => {
-  const rows = [
-    row("a", 1, 0, "2026-08-25T09:00:00Z"), row("b", 1, 0, "2026-08-25T11:00:00Z"),
-    row("a", 2, 1, "2026-08-26T09:00:00Z"), row("b", 2, 1, "2026-08-26T11:00:00Z"),
-  ];
+// #4270 (3/9): K udledes nu af DATA (etaper ÷ kalenderdage ÷ cap), ikke af TIER_DENSITY.
+// Fixturerne skal derfor bære en realistisk tæthed — ellers måler testen ikke det den påstår.
+test("fladet akse opdages: én game_day pr. kalenderdag i en division der kører 5 etaper om dagen", () => {
+  // Tier 1: 5 etaper pr. kalenderdag, cap 3 → K = 2. Men kun 2 game_days på 2 kalenderdage.
+  const rows = [];
+  for (const [dag, dato] of [[0, "2026-08-25"], [1, "2026-08-26"]]) {
+    for (const løb of ["a", "b", "c", "d", "e"]) {
+      rows.push(row(løb, dag + 1, dag, `${dato}T09:00:00Z`));
+    }
+  }
   const r = checkCalendarOverlapInvariants({ scheduleRows: rows, tier: 1 });
   assert.equal(r.gameDayCount, 2);
   assert.equal(r.realDayCount, 2);
   assert.equal(r.minGameDaysPerCalendarDay, 2);
-  assert.equal(r.axisLooksCollapsed, true, "2 game_days på 2 kalenderdage i tier 1 er en fladet akse");
+  assert.equal(r.axisLooksCollapsed, true, "2 game_days på 2 kalenderdage ved 5 etaper/dag er en fladet akse");
 });
 
-// #4270 (ejer-beslutning 3/9): Div 4 gik fra density 2 til 3, mens cap'en blev på 2.
-// K = ceil(3/2) = 2, så den 1:1 mellem løbsdag og kalenderdag som var KORREKT for D4 i
-// sæson 1-3 er nu et brud — samme dom som de tre øvrige divisioner. Det er den vigtigste
-// følgevirkning af densitets-ændringen, og den skal fanges her og ikke opdages i data.
-test("Div 4 har nu K = 2 — én game_day pr. kalenderdag er IKKE længere korrekt dér", () => {
-  const fladet = [
-    row("a", 1, 0, "2026-08-25T10:00:00Z"), row("b", 1, 0, "2026-08-25T16:00:00Z"),
-    row("a", 2, 1, "2026-08-26T10:00:00Z"),
-  ];
-  const r = checkCalendarOverlapInvariants({ scheduleRows: fladet, tier: 4 });
+// Den vigtigste regressionsvagt i denne fil. Da D4 gik fra 2 til 3 etaper om dagen for
+// sæson 4, meldte nat-vagten sæson 3's ALLEREDE SKREVNE og korrekte D4-kalender som
+// "kollapset akse" i alle 8 puljer — fordi K blev læst af konstanten i stedet for af
+// kalenderen. En invariant mod prod skal måle den kalender der står der, mod den tæthed
+// den er BYGGET med. Se #4161 og #4270.
+test("en FROSSEN sæson måles mod sin egen tæthed, ikke mod en konstant der er flyttet", () => {
+  // Sæson 3's D4-form: 2 etaper pr. kalenderdag, cap 2 → K = 1. Én game_day pr.
+  // kalenderdag er dér KORREKT, også efter at TIER_DENSITY[4] er hævet til 3.
+  const rows = [];
+  for (const [dag, dato] of [[0, "2026-08-28"], [1, "2026-08-29"], [2, "2026-08-30"]]) {
+    rows.push(row("a", dag + 1, dag, `${dato}T10:00:00Z`));
+    rows.push(row("b", dag + 1, dag, `${dato}T16:00:00Z`));
+  }
+  const r = checkCalendarOverlapInvariants({ scheduleRows: rows, tier: 4 });
+  assert.equal(r.observedDensity, 2, "målt tæthed er 2 etaper pr. kalenderdag");
+  assert.equal(r.minGameDaysPerCalendarDay, 1);
+  assert.equal(r.axisLooksCollapsed, false, "sæson 3's D4 er korrekt og må ikke meldes rød");
+  assert.equal(r.overlapViolationCount, 0);
+});
+
+// Og sæson 4's D4-form: 3 etaper pr. kalenderdag, cap 2 → K = 2. Dér ER 1:1 et brud.
+test("Div 4 ved 3 etaper om dagen: én game_day pr. kalenderdag ER et brud", () => {
+  const rows = [];
+  for (const [dag, dato] of [[0, "2026-09-28"], [1, "2026-09-29"]]) {
+    rows.push(row("a", dag + 1, dag, `${dato}T12:00:00Z`));
+    rows.push(row("b", dag + 1, dag, `${dato}T15:00:00Z`));
+    rows.push(row("c", dag + 1, dag, `${dato}T18:00:00Z`));
+  }
+  const r = checkCalendarOverlapInvariants({ scheduleRows: rows, tier: 4 });
+  assert.equal(r.observedDensity, 3);
   assert.equal(r.minGameDaysPerCalendarDay, 2);
-  assert.equal(r.axisLooksCollapsed, true, "2 game_days på 2 kalenderdage i tier 4 er nu en fladet akse");
-  assert.equal(r.overlapViolationCount, 0, "cap'en er stadig 2 og er ikke brudt her");
+  assert.equal(r.axisLooksCollapsed, true);
 });
 
 test("Div 4 med to løbsdage pr. kalenderdag er ren (den form density 3 kræver)", () => {

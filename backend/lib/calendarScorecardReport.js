@@ -254,6 +254,31 @@ export function scoreCalendarPlan({
  * finale/uniform er balance-MAAL (samme klasse som kompositions-driften), ikke
  * korrekthedsinvarianter, og har derfor hvert sit override-flag i CLI'en.
  */
+/**
+ * Alle brud der taeller i dommen, som flad liste af strenge - baade `regelbrud` og
+ * #4270's `placeringsbrud`. Bruges af fixture-gaten til at skelne KENDTE brud fra NYE.
+ *
+ * Formen er bevidst "en streng pr. brud": kendt-tilstand-listen matcher paa tekst, saa et
+ * brud der aendrer ordlyd bliver behandlet som nyt. Det er den rigtige default - aendrer et
+ * bruds beskrivelse sig, er der sket noget, og et menneske skal se paa det.
+ */
+export function alleBrud(rapport) {
+  const ud = [];
+  for (const t of rapport.tiers ?? []) {
+    for (const v of t.planViolations ?? []) ud.push(v);
+    for (const v of t.coverageViol ?? []) ud.push(v);
+    for (const v of t.compositionViol ?? []) ud.push(v);
+    for (const v of t.orderViol ?? []) ud.push(v);
+    for (const v of t.finaleViol ?? []) ud.push(v);
+    for (const v of t.quotaViol ?? []) ud.push(v);
+    for (const v of t.monumentGtViol ?? []) ud.push(v);
+    for (const v of t.minOverlapViol ?? []) ud.push(v);
+    for (const v of t.terrainBandViol ?? []) ud.push(v);
+  }
+  for (const v of rapport.sæsonFinaleViol ?? []) ud.push(`sæson: ${v}`.replace(/^sæson: sæson: /, "sæson: "));
+  return ud;
+}
+
 export function scorecardGateGroups(rapport) {
   const blocking = [];
   const applyBlocking = [];

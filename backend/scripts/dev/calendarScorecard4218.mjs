@@ -57,7 +57,7 @@ import { buildTierMaterializationPlan, TIER_DENSITY } from "../../lib/tierCalend
 import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
 import { arg as devArg } from "./lib/devCalendarArgs.mjs";
 import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
-import { scoreCalendarPlan, formatScorecard } from "../../lib/calendarScorecardReport.js";
+import { scoreCalendarPlan, formatScorecard, alleBrud } from "../../lib/calendarScorecardReport.js";
 import { augmentWithS3Additions } from "./lib/s3OfflineCalendarPlan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -333,11 +333,31 @@ async function main() {
   });
   if (mode === "db") rapport.seasonNumber = loaded.seasonNumber;
 
+  // #4270: FIXTURE-tilstanden doemmes mod den ENUMEREREDE kendte tilstand. DB-tilstanden
+  // (#4573) er allerede advisory i nat-vagten og roeres ikke.
+  if (mode !== "db") {
+    const { nye, forsvundne } = delEfterKendteBrud(alleBrud(rapport));
+    rapport.kendtTilstand = {
+      nye, forsvundne,
+      kendte: KENDTE_FIXTURE_BRUD.map((k) => k.id),
+      ok: nye.length === 0 && forsvundne.length === 0,
+    };
+    // `rapport.ok` roeres IKKE: tabellen skal blive ved med at sige sandheden om at der
+    // ER brud. Det er `gateOk` der styrer exit-koden - forskellen mellem "kalenderen er i
+    // orden" og "der er ikke kommet noget nyt" skal vaere synlig, ikke skjult bag et
+    // groent flueben. Samme princip som §9b's "en vagt der ikke kan bevise at den har
+    // maalt noget, er ikke en vagt".
+    rapport.gateOk = rapport.kendtTilstand.ok
+      && rapport.dækning.ok
+      && (rapport.kollisioner?.length ?? 0) === 0
+      && (rapport.unassessed?.length ?? 0) === 0;
+  }
+
   // Samme dom i begge udgaver — ellers ville --json altid exit'e 0 og gøre gaten
   // usynligt grøn for enhver der bruger den maskinlæsbare sti.
   if (asJson) {
     console.log(JSON.stringify(rapport, null, 2));
-    return rapport.ok;
+    return rapport.gateOk ?? rapport.ok;
   }
 
   const heading = mode === "db"
@@ -346,7 +366,93 @@ async function main() {
   for (const line of formatScorecard(rapport, { heading, katalogLinje: loaded.katalogLinje ?? null })) {
     console.log(line);
   }
-  return rapport.ok;
+  if (mode !== "db") {
+    for (const line of formatKendtTilstand(rapport.kendtTilstand)) console.log(line);
+  }
+  return rapport.gateOk ?? rapport.ok;
+}
+
+/** Menneske-laesbar udgave af kendt-tilstand-dommen. */
+export function formatKendtTilstand(k) {
+  if (!k) return [];
+  const ud = ["", "─".repeat(72), "KENDT TILSTAND (#4270) — fixturen er et frosset S3-katalog, se KENDTE_FIXTURE_BRUD"];
+  for (const post of KENDTE_FIXTURE_BRUD) {
+    const stadig = !k.forsvundne.some((f) => f.id === post.id);
+    ud.push(`  ${stadig ? "kendt " : "VÆK  "} ${post.id} — lukkes af ${post.lukkesAf}`);
+  }
+  if (k.forsvundne.length) {
+    ud.push("", `❌ ${k.forsvundne.length} KENDT brud er forsvundet. Det er godt nyt — men listen skal følge med,`);
+    ud.push("   ellers lyver den om hvad vi ved. Fjern posten i KENDTE_FIXTURE_BRUD i samme PR.");
+    for (const f of k.forsvundne) ud.push(`   · ${f.id} (${f.lukkesAf})`);
+  }
+  if (k.nye.length) {
+    ud.push("", `❌ ${k.nye.length} NYT brud der ikke står på listen:`);
+    for (const n of k.nye) ud.push(`   · ${n}`);
+  }
+  ud.push("", k.ok
+    ? "✅ Kun kendte brud. Gaten er grøn — men den er IKKE et bevis på at kalenderen er i orden."
+    : "Se linjerne ovenfor. Et nyt eller forsvundet brud kræver en beslutning, ikke en opdatering af tallet.");
+  return ud;
+}
+
+
+// ── KENDT TILSTAND i FIXTURE-gaten (#4270, 3/9) ──────────────────────────────────────
+//
+// Fixturen (`racePoolCatalog.prod.json`) er et FROSSET prod-snapshot fra S3-aeraen. Naar
+// ejeren aendrer en regel, maaler gaten den nye regel mod et gammelt katalog, og resultatet
+// er brud der er KORREKTE at rapportere men som ikke kan lukkes af den PR der indfoerte
+// reglen. Alternativet - at goere gaten groen ved at slaekke reglen - er praecis det
+// docs/CALENDAR_RULES.md §5b forbyder.
+//
+// Derfor: hvert kendt brud staar NAVNGIVET nedenfor med sin begrundelse og det spor der
+// lukker det. Gaten er groen naar der ikke er andet end de kendte, og den er ROED
+// baade naar der kommer eet nyt OG naar et kendt forsvinder uden at listen foelger med
+// (en stale post er en loegn om hvad vi ved).
+//
+// DETTE ER KUN FIXTURE-GATEN. `buildSeasonCalendar.js --apply` er UAENDRET haard uden
+// override: en kalender med et af disse brud kan ikke skrives til prod.
+export const KENDTE_FIXTURE_BRUD = Object.freeze([
+  {
+    id: "monument-i-gt-spaend",
+    moenster: /monument .* inde i .* Grand Tour-spænd/,
+    hvorfor: "§4's nye gate (ejer 3/9) maaler noget pakkeren aldrig har haandhaevet. Reglen er rigtig; placeringen er pakkerens arbejde.",
+    lukkesAf: "#4203 (pakker-aendring: monumenter ud af GT-vinduerne)",
+  },
+  {
+    id: "d2-bjerg-under-maal",
+    moenster: /tier 2: bjerg .* mod mål/,
+    hvorfor: "Katalog-forsyning, ikke generator-fejl (§5b). Maalt: de nye OtherWorldTourB/C-bjergloeb tager D2 fra 21 % til 31 %.",
+    lukkesAf: "S4-katalogets migration anvendt mod prod + fixturen genopfrisket (#4278)",
+  },
+  {
+    id: "d4-rolling-under-gulv",
+    moenster: /tier 4: terræn-familie "rolling" har \d+ etaper, under gulvet/,
+    hvorfor: "Samme katalog-forsyning. Maalt: de nye Class2-loeb tager D4 fra 1 til 6 rolling-etaper. Gulvet er sat efter det katalog S4 bygges paa.",
+    lukkesAf: "S4-katalogets migration anvendt mod prod + fixturen genopfrisket (#4278)",
+  },
+  {
+    id: "d4-mountain-uden-udbrud",
+    moenster: /tier 4: mountain slutter udbrud/,
+    hvorfor: "Filler-vaegt-kalibrering pr. division, ikke en regel der kan rettes i kataloget.",
+    lukkesAf: "§6b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
+  },
+  {
+    id: "saeson-hilly-for-fladt",
+    moenster: /sæson: hilly slutter fladt/,
+    hvorfor: "Samme kalibrering, maalt paa saeson-aggregatet.",
+    lukkesAf: "§6b's genkalibrering (S5)",
+  },
+]);
+
+/** Del bruddene i kendte og nye, og find de kendte poster der ikke laengere rammer noget. */
+export function delEfterKendteBrud(brud, kendte = KENDTE_FIXTURE_BRUD) {
+  const nye = [];
+  const ramt = new Set();
+  for (const b of brud) {
+    const match = kendte.find((k) => k.moenster.test(b));
+    if (match) ramt.add(match.id); else nye.push(b);
+  }
+  return { nye, forsvundne: kendte.filter((k) => !ramt.has(k.id)) };
 }
 
 // #4215: exit 1 ved brud, exit 2 ved "kunne ikke vurderes" (sat i main). UDEN dette er

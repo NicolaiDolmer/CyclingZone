@@ -686,9 +686,19 @@ Det tredje niveau er dét der manglede da #4155 brød overlap-cap'en. Tre invari
 - `calendar_one_stage_per_race_per_game_day`
 - `calendar_game_day_axis_not_collapsed`
 
+> ⚠ **En invariant mod prod skal måle den kalender der står der, mod den tæthed den er BYGGET med.** `calendar_game_day_axis_not_collapsed` udledte indtil 3/9 sit K af `TIER_DENSITY` **som konstanten ser ud lige nu**. Da D4 gik fra 2 til 3 etaper om dagen for sæson 4, meldte nat-vagten derfor sæson 3's allerede skrevne og fuldstændig korrekte D4-kalender (2 etaper/dag, cap 2 → K = 1) som kollapset akse i **alle 8 puljer**. Ingen havde rørt den kalender. K udledes nu af data (etaper ÷ kalenderdage ÷ cap); konstanten er kun fallback når rækkerne ingen `scheduled_at` har. Det er samme fejlklasse som `.claude/learnings/2026-08-28-now-md-laest-som-sandhedskilde-gav-tre-forkerte-konklusioner.md`: et tal blev læst som sandhed om noget det ikke længere beskrev.
+
 Overlap-cap'en (§8) er tættest på: niveau 1 (`calendarOverlapInvariant.test.js`, `raceCalendarLanePacker.test.js`) og niveau 3 (`calendar_overlap_within_tier_cap`) er på plads. Niveau 2 er IKKE verificeret: `detectCalendarViolations` tjekker GT-rygrad og klasse-whitelist, ikke cap'en — pakkeren får cap'en med som input, men preflighten måler den ikke bagefter. Ingen regel i denne fil er derfor bekræftet på alle tre niveauer. Se [#4176](https://github.com/NicolaiDolmer/CyclingZone/issues/4176).
 
 **Fjernet 31/8 ([#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465)): `calendar_monument_exclusive_game_day`.** Den håndhævede #4075's eksklusive monument-løbsdag, som ejeren ophævede 26/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236), se §4). Reglen forsvandt fra tabellen i §4, men gaten fulgte ikke med, og nat-vagten stod derfor rød 27/8, 28/8 og 29/8 på noget der er tilladt. Læringen er led (c) i hard rule 30: ophæver du en regel, skal SSOT, generator og gate ændres i SAMME PR — ellers vogter gaten en regel der ikke findes.
+
+### 9a. CI-fixturens kendte tilstand
+
+`calendar-scorecard-gate.yml` måler pakkerens output mod **et frosset prod-snapshot fra S3-æraen** (`racePoolCatalog.prod.json`). Når ejeren ændrer en regel, måler gaten den nye regel mod det gamle katalog — og resultatet er brud der er **korrekte at rapportere**, men som ikke kan lukkes af den PR der indførte reglen. Alternativet, at gøre gaten grøn ved at slække reglen, er præcis det §5b forbyder.
+
+Fixture-gaten dømmer derfor mod en **enumereret kendt tilstand** (`KENDTE_FIXTURE_BRUD` i `calendarScorecard4218.mjs`): hvert kendt brud står navngivet med sin begrundelse og det spor der lukker det. Gaten er rød både når der kommer **ét nyt** og når et **kendt forsvinder** uden at listen følger med — en stale post er en løgn om hvad vi ved.
+
+> **Det er kun fixture-gaten.** `buildSeasonCalendar.js --apply` er uændret hård uden override: en kalender med et af disse brud kan ikke skrives til prod. Og tabellen bliver ved med at sige at der ER brud — forskellen på "kalenderen er i orden" og "der er ikke kommet noget nyt" må aldrig skjules bag ét grønt flueben (§9b).
 
 Og vagten kører af sig selv: `.github/workflows/calendar-invariant-audit.yml` måler kalender-invarianterne + den kritiske constraint-form (`scripts/constraint-form-audit.sql`, [#4163](https://github.com/NicolaiDolmer/CyclingZone/issues/4163)) mod prod hver nat 03:50 UTC og åbner et tracking-issue ved brud. Før det kørte `verify-invariants` kun når nogen huskede det i hånden — og begge hændelser (#4155, #4161) opstod i DATA, ikke i kode. Vagten fejler nu hårdt hvis `invariants.json` er tom eller ugyldig ([#4463](https://github.com/NicolaiDolmer/CyclingZone/issues/4463)): forskellen på "intet brud" og "intet målt" skal være synlig.
 
