@@ -33,6 +33,8 @@ import HttpBackend from "i18next-http-backend";
 import LanguageDetector from "i18next-browser-languagedetector";
 import ICU from "i18next-icu";
 
+import { SUPPORTED_LANGS, PSEUDO_LANG } from "./languages.js";
+
 import commonDa from "../../public/locales/da/common.json";
 import commonEn from "../../public/locales/en/common.json";
 import authDa from "../../public/locales/da/auth.json";
@@ -111,7 +113,9 @@ const PSEUDO = (() => {
 
 const PSEUDO_ENABLED = PSEUDO.enabled;
 
-const SUPPORTED = PSEUDO_ENABLED ? ["en", "da", "en-XA"] : ["en", "da"];
+// #4733: afledt af languages.js's SUPPORTED_LANGS i stedet for hardcodet her —
+// et nyt sprog i LANGUAGES lander automatisk i supportedLngs.
+const SUPPORTED = PSEUDO_ENABLED ? [...SUPPORTED_LANGS, PSEUDO_LANG] : SUPPORTED_LANGS;
 
 i18n
   .use(ICU)
