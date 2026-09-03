@@ -48,7 +48,7 @@ const EXEMPT_FILES = new Map([
   ["frontend/src/components/WaitlistConsentText.jsx", "Dual-sprog-komponent med eksplicit lang-prop — dansk gren er bevidst."],
   ["frontend/src/lib/sentry.jsx", "Error-boundary: statisk EN+DA med EN-default — må IKKE afhænge af i18n-runtime (kan være nede/uinitialiseret når boundary rammer). #1170 slice B-beslutning."],
   ["frontend/src/pages/PatchNotesPage.jsx", "Patch notes er bevidst tosprogede (en+da felter side om side) — dansk indhold er data, ikke leak."],
-  ["frontend/src/pages/PrivacyPolicyPage.jsx", "DA-udgaven i dual-page-mønster (separat PrivacyPolicyPageEn.jsx til EN)."],
+  ["frontend/src/pages/PrivacyPolicyPage.jsx", "#4733/#413: merget til ét namespace (privacy.json, begge sprog); det eneste tilbageværende hardkodede er document-head-metadata (titel/beskrivelse) i HEAD_META, bevidst uden for i18n så <title> ikke kan flashe en rå nøgle før namespacet er hentet."],
   ["frontend/src/pages/TermsPage.jsx", "DA-udgaven i dual-page-mønster (#2813, separat TermsPageEn.jsx til EN)."],
   ["frontend/src/pages/TermsPageEn.jsx", "EN-side, men citerer danske klageorganers egennavne (Nævnenes Hus / Center for Klageløsning) i juridisk tekst (#2813)."],
   ["frontend/src/pages/AdminGrowthPage.jsx", "Admin-only samlet vækst-dashboard (#3196) — ikke player-facing."],
