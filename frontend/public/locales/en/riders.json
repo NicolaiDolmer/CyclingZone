@@ -35,8 +35,8 @@
   },
   "pagination": {
     "showing": "Showing {from}-{to} of {total}",
-    "prev": "← Previous",
-    "next": "Next →"
+    "prev": "Previous",
+    "next": "Next"
   },
   "tour": {
     "filters": {

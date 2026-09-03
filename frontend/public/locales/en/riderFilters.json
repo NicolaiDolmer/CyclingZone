@@ -2,7 +2,8 @@
   "panel": {
     "label": "Filter",
     "resetAll": "Reset all",
-    "resetCount": "Reset all ({count})"
+    "resetCount": "Reset all ({count})",
+    "more": "More filters"
   },
   "fields": {
     "name": "Name",

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink";
@@ -21,7 +21,8 @@ import { cycleSortState } from "../lib/riderSort.js";
 import SortableTh from "../components/ui/SortableTh.jsx";
 import {
   AmountInput, EmptyState, ExchangeIcon, InboxIcon, PageLoader,
-  PageHeader, Section, Button, Tabs, TabList, Tab, BlockedNote,
+  PageHeader, Section, Button, Select, Tabs, TabList, Tab, BlockedNote,
+  ArrowUpIcon, ArrowDownIcon, BikeIcon,
 } from "../components/ui";
 import { useBlockedAction } from "../lib/useBlockedAction.js";
 // #2849 bølge 2: markeds-tabellens wrap/border deles med cz-table-recipen (T2),
@@ -42,17 +43,9 @@ import ValueDeltaBadge from "../components/rider/ValueDeltaBadge";
 // komme i konflikt. Erstattede den listing-niveau sortListings (#1185/#2031),
 // som kun kunne rammes fra knapperne, ikke fra header-klik.
 //
-// #2031: pris/værdi/alder-sortering vises som knapper; de 15 evne-sorteringer
-// samles i en dropdown (for mange til knapper).
-const MARKET_SORT_BUTTONS = [
-  { key: "newest", sort: "listed", dir: "desc" },
-  { key: "price_asc", sort: "price", dir: "asc" },
-  { key: "price_desc", sort: "price", dir: "desc" },
-  { key: "value_desc", sort: "value", dir: "desc" },
-  { key: "value_asc", sort: "value", dir: "asc" },
-  { key: "age_asc", sort: "age", dir: "asc" },
-  { key: "age_desc", sort: "age", dir: "desc" },
-];
+// #4628: de otte sorterings-knapper (#2031) og evne-dropdownen er fjernet —
+// kolonneoverskrifterne sorterer allerede paa de samme noegler, saa fladen bar
+// to idiomer for én state. Mobil-pariteten ligger nu i MarketSortControl.
 
 // Numeriske kolonner + evner starter faldende ved første header-klik ("bedst/
 // dyrest øverst"), som resten af sidens tabeller (riderSort-konventionen).
@@ -105,6 +98,51 @@ const TAB_MODES = [
   { key: "negotiations", tabs: ["sent", "archive"] },
   { key: "market",       tabs: ["market"] },
 ];
+
+// #4628 — mobil-sortering for markeds-tabellen. Paa mobil er de fleste sorterbare
+// kolonneoverskrifter skjult (hidden sm/md:table-cell), saa saelger/alder/listet/
+// loen ikke kan sorteres. Denne select + retnings-toggle eksponerer NOEJAGTIG de
+// samme sort-noegler som headerne og skriver til samme marketSortState via
+// handleMarketSort — ingen ny sort-logik. Synlig kun under sm-breakpointet.
+// Samme komponent-moenster som RidersPage's MobileSortControl (#9).
+function MarketSortControl({ sort, sortDir, onSort, statCols, t }) {
+  const baseOptions = [
+    { key: "rider", label: t("marketRow.rider") },
+    { key: "seller", label: t("marketRow.seller") },
+    { key: "age", label: t("marketRow.age") },
+    { key: "listed", label: t("marketRow.listed") },
+    { key: "value", label: t("marketRow.value") },
+    { key: "salary", label: t("marketRow.salary") },
+    { key: "price", label: t("marketRow.price") },
+  ];
+  const options = [...baseOptions, ...statCols.map(({ key, label }) => ({ key, label }))];
+  const dirAria = sortDir === "desc" ? t("marketSort.descAria") : t("marketSort.ascAria");
+
+  return (
+    <div className="sm:hidden flex items-end gap-2 mb-3">
+      <label className="flex-1 min-w-0">
+        <span className="block text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("marketSort.label")}</span>
+        <Select size="sm" value={sort} onChange={e => onSort(e.target.value)} className="w-full">
+          {options.map(({ key, label }) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </Select>
+      </label>
+      <Button
+        variant="secondary"
+        size="sm"
+        onClick={() => onSort(sort)}
+        aria-label={dirAria}
+        title={dirAria}
+        className="flex-shrink-0"
+      >
+        {sortDir === "desc"
+          ? <ArrowDownIcon size={16} aria-hidden="true" />
+          : <ArrowUpIcon size={16} aria-hidden="true" />}
+      </Button>
+    </div>
+  );
+}
 
 // tab → mode-opslag (afledt af TAB_MODES, så de aldrig kan divergere). Bruges til at
 // udlede det aktive mode fra den aktive fane (som stadig lever i ?tab=).
@@ -1100,6 +1138,8 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function TransfersPage() {
   const { t } = useTranslation("transfers");
+  const { t: tCommon } = useTranslation("common");
+  const navigate = useNavigate();
   // #3071: sæson-referenceår til alders-visning/filtre (se riderAge.js).
   const seasonYear = useActiveSeasonYear();
   // #987: aktiv fane lever i URL'en (?tab=) så nav-genvejen "Transferliste"
@@ -1139,9 +1179,6 @@ export default function TransfersPage() {
   const marketSortDir = marketSortState.dir;
   function handleMarketSort(key) {
     setMarketSortState((cur) => cycleSortState(cur, key, MARKET_SORT_DESC_FIRST_KEYS));
-  }
-  function setExactMarketSort(sort, dir) {
-    setMarketSortState({ sort, dir });
   }
   const [expandedListingId, setExpandedListingId] = useState(null); // #1523: åben action-række i market-tabellen
 
@@ -1529,15 +1566,14 @@ export default function TransfersPage() {
         icon={celebration?.icon}
       />
 
-      <PageHeader title={t("page.title")} subtitle={t("page.subtitle")} />
-
-      {/* Balance er ikke en Select/Button-action — den bor i en enkelt kanonisk
-          stat-Section under headeren (samme recipe som AuctionsPage's stats-
-          grid fra bølge 1), ikke i PageHeader's action-slot. */}
-      <Section className="mb-5 inline-block">
-        <p className="text-3xs uppercase tracking-widest text-cz-3 mb-0.5">{t("page.balance")}</p>
-        <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">{formatNumber(myBalance)} CZ$</p>
-      </Section>
+      {/* #4628 (slice 6 af #4622): balancen stod som et loesrevet stat-kort mellem
+          sidehovedet og fanerne — 1 tal i ~90 px chrome foer data (audit 2026-09).
+          Den bor nu i sidehovedets meta-linje (samme ét-tals-recipe som Ryttere's
+          "463 riders"), saa foerste listing rykker over folden. */}
+      <PageHeader
+        title={t("page.title")}
+        subtitle={t("page.subtitleWithBalance", { balance: formatNumber(myBalance) })}
+      />
 
       {msg.text && (
         <div className={`mb-4 px-4 py-3 rounded-cz text-sm border
@@ -1602,10 +1638,17 @@ export default function TransfersPage() {
             <div className="flex flex-col gap-3 max-w-3xl">
               {receivedOffers.length === 0 && receivedSwaps.length === 0 ? (
                 <Section>
+                  {/* #4628 (TASTE fork 4): titlen er en handling, ikke en beskrivelse
+                      af hvad der mangler, og der er én knap der foerer derhen. */}
                   <EmptyState
-                    icon={<ExchangeIcon size={28} aria-hidden="true" />}
+                    icon={<ExchangeIcon size={26} aria-hidden="true" />}
                     title={t("empty.received")}
                     description={t("empty.receivedHint")}
+                    action={
+                      <Button variant="secondary" size="sm" onClick={() => selectMode("market")}>
+                        {t("empty.ctaBrowseMarket")}
+                      </Button>
+                    }
                   />
                 </Section>
               ) : (
@@ -1633,9 +1676,14 @@ export default function TransfersPage() {
               {sentOffers.length === 0 && sentSwaps.length === 0 ? (
                 <Section>
                   <EmptyState
-                    icon={<ExchangeIcon size={28} aria-hidden="true" />}
+                    icon={<ExchangeIcon size={26} aria-hidden="true" />}
                     title={t("empty.sent")}
                     description={t("empty.sentHint")}
+                    action={
+                      <Button variant="secondary" size="sm" onClick={() => selectMode("market")}>
+                        {t("empty.ctaBrowseMarket")}
+                      </Button>
+                    }
                   />
                 </Section>
               ) : (
@@ -1662,8 +1710,14 @@ export default function TransfersPage() {
               {archivedCount === 0 ? (
                 <Section>
                   <EmptyState
-                    icon={<InboxIcon size={28} aria-hidden="true" />}
+                    icon={<InboxIcon size={26} aria-hidden="true" />}
                     title={t("empty.archive")}
+                    description={t("empty.archiveHint")}
+                    action={
+                      <Button variant="secondary" size="sm" onClick={() => setTab("sent")}>
+                        {t("empty.ctaSeeSent")}
+                      </Button>
+                    }
                   />
                 </Section>
               ) : (
@@ -1717,13 +1771,15 @@ export default function TransfersPage() {
 
           {tab === "market" && (
             <div>
-              {/* #1569: kort intro så nye spillere forstår transferlistens marked
-                  (vs. auktioner). */}
-              <p className="text-cz-3 text-xs mb-3 max-w-4xl">{t("marketIntro")}</p>
+              {/* #4628: introteksten ("Transfermarkedet er hvor managers…") er
+                  flyttet til Hjaelp (help.json, "What is the transfer system?" +
+                  "Sell via the transfer list"), hvor manualen hoerer hjemme —
+                  TASTE P9 "kort paa fladen, manualer i Hjaelp". */}
               {/* #2849 bølge 2: den ekstra max-w-[1600px]-wrapper er fjernet — siden
                   er allerede capped på 1600px (T2-containeren), så en indre kopi af
                   samme bredde var et no-op (den flagede "redundante indre max-w"). */}
               <RiderFilters
+                layout="bar"
                 filters={riderFilters.filters}
                 onChange={riderFilters.onChange}
                 onReset={riderFilters.onReset}
@@ -1732,36 +1788,20 @@ export default function TransfersPage() {
                 showValueDeviationFilter={true}
                 nationalities={riderFilters.nationalities}
               />
-              {/* #1185/#2329: sortér på listing-pris (asking_price)/værdi/alder/nyeste
-                  via knapperne, ELLER klik en kolonne-header direkte — begge sætter
-                  den samme kanoniske sort-state (marketSortState).
-                  #2031: evne-sortering via dropdown (15 evner = for mange til knapper). */}
-              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <span className="text-cz-3 text-xs uppercase tracking-wider">{t("marketSort.label")}</span>
-                {MARKET_SORT_BUTTONS.map(btn => {
-                  const active = marketSort === btn.sort && marketSortDir === btn.dir;
-                  return (
-                    <Button key={btn.key} variant="secondary" size="sm"
-                      onClick={() => setExactMarketSort(btn.sort, btn.dir)}
-                      className={active ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : ""}>
-                      {t(`marketSort.${btn.key}`)}
-                    </Button>
-                  );
-                })}
-                <select
-                  aria-label={t("marketSort.abilityLabel")}
-                  value={ABILITY_KEYS.includes(marketSort) ? marketSort : ""}
-                  onChange={e => { if (e.target.value) setExactMarketSort(e.target.value, "desc"); }}
-                  className={`min-h-[44px] px-3 py-1.5 rounded-cz text-xs font-medium transition-all border
-                    ${ABILITY_KEYS.includes(marketSort)
-                      ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                      : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-                  <option value="">{t("marketSort.abilityPlaceholder")}</option>
-                  {ABILITY_KEYS.map(key => (
-                    <option key={key} value={key}>{t(`marketSort.abilities.${key}`)}</option>
-                  ))}
-                </select>
-              </div>
+              {/* #4628: de otte sorterings-chips + evne-dropdownen er vaek. Tabellen
+                  har allerede sorterbare kolonneoverskrifter (SortableTh) paa
+                  nøjagtig de samme nøgler, så fladen havde TO sorterings-idiomer
+                  for én state (audit 2026-09, hovedfund paa /transfers). Desktop
+                  sorterer nu KUN via headerne; paa mobil er de fleste headers
+                  skjult, saa MarketSortControl (sm:hidden) eksponerer de samme
+                  nøgler — samme moenster som RidersPage's MobileSortControl (#9). */}
+              <MarketSortControl
+                sort={marketSort}
+                sortDir={marketSortDir}
+                onSort={handleMarketSort}
+                statCols={LISTING_STATS}
+                t={t}
+              />
               {/* #2451: bulk-prisredigering — "Markér alle" er kun synlig når manageren
                   faktisk har egne listinger blandt de viste, og selve editoren kun når
                   noget er markeret. Ellers uændret tabel. */}
@@ -1780,10 +1820,32 @@ export default function TransfersPage() {
               )}
               {filteredListings.length === 0 ? (
                 <Section>
-                  <EmptyState
-                    icon={<ExchangeIcon size={28} aria-hidden="true" />}
-                    title={listings.length === 0 ? t("empty.marketNoListings") : t("empty.marketNoMatches")}
-                  />
+                  {/* #4628: to forskellige tomme tilstande, to forskellige veje
+                      videre — et tomt marked loeses ved selv at saette en rytter til
+                      salg, et tomt filter ved at nulstille det. */}
+                  {listings.length === 0 ? (
+                    <EmptyState
+                      icon={<BikeIcon size={26} aria-hidden="true" />}
+                      title={t("empty.marketNoListings")}
+                      description={t("empty.marketNoListingsHint")}
+                      action={
+                        <Button variant="secondary" size="sm" onClick={() => navigate("/team")}>
+                          {t("empty.ctaListRider")}
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <EmptyState
+                      icon={<ExchangeIcon size={26} aria-hidden="true" />}
+                      title={t("empty.marketNoMatches")}
+                      description={t("empty.marketNoMatchesHint")}
+                      action={
+                        <Button variant="secondary" size="sm" onClick={riderFilters.onReset}>
+                          {tCommon("controls.clearFilters")}
+                        </Button>
+                      }
+                    />
+                  )}
                 </Section>
               ) : (
                 /* #1523: rækkelayout på linje med ryttersiden (RidersPage) — bedre
