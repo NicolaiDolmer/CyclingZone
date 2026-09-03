@@ -384,7 +384,16 @@ export function buildTierMaterializationPlan({
     // fordeling: se reshapeCobblesFractionToTwoWindows' docstring. isCobbles kigger op i
     // catalogById (denne funktions egen scope), så den rene shaping-funktion i
     // raceCalendarLanePacker.js forbliver katalog-uafhængig.
-    const isCobbledClassic = (r) => catalogById.get(r.id)?.terrain_archetype === "cobbled_classic";
+    //
+    // #4203 (3/9): MONUMENTER er undtaget. To af katalogets cobbled_classic er monumenter
+    // (De Vlaamse Ronde 5/4 og L'Enfer du Nord 12/4), og omformningen skubbede dem ud i
+    // det SENE vindue (0,75-0,90). Det braekkede monument-kronologien: La Doyenne des
+    // Ardennes (26/4) laa foer begge i den pakkede kalender, altsaa Liege foer Ronde og
+    // Roubaix. #3546 F's rod-aarsag var brostens-FORSYNINGENS monotone fald hen over
+    // saesonen (29->24->18->8 pr. uge); de to monumenter er ikke forsyning, de er
+    // saesonens faste holdepunkter, og deres plads i kalenderen er selve pointen.
+    const isCobbledClassic = (r) => catalogById.get(r.id)?.terrain_archetype === "cobbled_classic"
+      && r.race_class !== "Monuments";
     const enrichedOneDayRaces = reshapeCobblesFractionToTwoWindows(withSeasonFraction(sel.oneDayRaces), isCobbledClassic);
     const packed = packLaneCalendar({
       stageRaces: enrichedStageRaces, oneDayRaces: enrichedOneDayRaces,
@@ -449,6 +458,11 @@ export function buildTierMaterializationPlan({
       // "rapportér, gater ikke her"-princip som de øvrige dry-run-tal ovenfor.
       daysWithoutDecision: packed.daysWithoutDecision ?? [],
       daysWithoutDecisionCount: packed.daysWithoutDecisionCount ?? 0,
+      // #4203: monument-placeringen, maalt paa begge akser + om pakningen blev fundet MED
+      // reglerne aktive. Dommen selv ligger i calendarPlacementGates.js.
+      monuments: packed.monuments ?? null,
+      monumentRulesHeld: Boolean(packed.monumentRulesHeld),
+      solveAttempts: packed.solveAttempts ?? [],
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
       chronologyRaces, // #3469: se docstring ved fractionByRaceId ovenfor.
       grandTourRestDays: packed.grandTourRestDays, // #3470: dry-run-diagnostik, se packLaneCalendar's docstring.

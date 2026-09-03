@@ -58,7 +58,6 @@ import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
 import { arg as devArg } from "./lib/devCalendarArgs.mjs";
 import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
 import { scoreCalendarPlan, formatScorecard, alleBrud } from "../../lib/calendarScorecardReport.js";
-import { augmentWithS3Additions } from "./lib/s3OfflineCalendarPlan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(__dirname, "..", "..", "lib", "__fixtures__", "racePoolCatalog.prod.json");
@@ -124,8 +123,11 @@ export function resolveMode(argv = process.argv.slice(2)) {
 // fra SAMME seed-vej som skrive-stien, videregivet råt til scoreCalendarPlan.
 // ---------------------------------------------------------------------------
 export function loadFixtureCalendar() {
-  const { pools, catalog: baseCatalog } = JSON.parse(readFileSync(FIXTURE, "utf8"));
-  const { catalog, kollisioner } = augmentWithS3Additions(baseCatalog);
+  // #4203 (3/9): fixturen er genopfrisket fra prod og BAERER nu de 22 loeb fra
+  // 2026-08-25-4218-katalog-22-nye-loeb.sql + #4708's udvidelse. Den tidligere in-memory
+  // augmentering ville laegge dem oveni endnu en gang (22 navnekollisioner).
+  const { pools, catalog } = JSON.parse(readFileSync(FIXTURE, "utf8"));
+  const kollisioner = [];
 
   const from = resolveCalendarFrom({ firstRaceDate: FIRST_RACE_DAY, now: NOW });
   const quotas = Object.fromEntries(Object.entries(TIER_DENSITY).map(([t, d]) => [t, d * REAL_DAYS]));
@@ -157,7 +159,7 @@ export function loadFixtureCalendar() {
   return {
     tierPlans, profilesByTier, archetypeByPoolRace, kollisioner,
     firstRaceDay: FIRST_RACE_DAY, realDays: REAL_DAYS,
-    katalogLinje: `Katalog: ${baseCatalog.length} + ${catalog.length - baseCatalog.length} nye = ${catalog.length} løb`,
+    katalogLinje: `Katalog: ${catalog.length} løb (lib/__fixtures__/racePoolCatalog.prod.json)`,
   };
 }
 
@@ -413,34 +415,28 @@ export function formatKendtTilstand(k) {
 // override: en kalender med et af disse brud kan ikke skrives til prod.
 export const KENDTE_FIXTURE_BRUD = Object.freeze([
   {
-    id: "monument-i-gt-spaend",
-    moenster: /monument .* inde i .* Grand Tour-spænd/,
-    hvorfor: "§4's nye gate (ejer 3/9) maaler noget pakkeren aldrig har haandhaevet. Reglen er rigtig; placeringen er pakkerens arbejde.",
-    lukkesAf: "#4203 (pakker-aendring: monumenter ud af GT-vinduerne)",
+    id: "saeson-hilly-udbrud",
+    moenster: /sæson: hilly slutter udbrud/,
+    hvorfor: "§7b's finale-baand paa saeson-aggregatet: kuperede etaper afgoeres lidt oftere i udbrud end baandet tillader. Filler-vaegt-kalibrering, ikke en placerings- eller katalog-fejl.",
+    lukkesAf: "§6b/§7b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
   },
   {
-    id: "d2-bjerg-under-maal",
-    moenster: /tier 2: bjerg .* mod mål/,
-    hvorfor: "Katalog-forsyning, ikke generator-fejl (§5b). Maalt: de nye OtherWorldTourB/C-bjergloeb tager D2 fra 21 % til 31 %.",
-    lukkesAf: "S4-katalogets migration anvendt mod prod + fixturen genopfrisket (#4278)",
+    id: "saeson-cobbles-udbrud",
+    moenster: /sæson: cobbles slutter udbrud/,
+    hvorfor: "Samme kalibrering, maalt paa brostens-etaperne (n=23). Generatorens brostens-vaegte giver flere udbruds-afgoerelser end baandet.",
+    lukkesAf: "§6b/§7b's genkalibrering (S5)",
   },
   {
-    id: "d4-rolling-under-gulv",
-    moenster: /tier 4: terræn-familie "rolling" har \d+ etaper, under gulvet/,
-    hvorfor: "Samme katalog-forsyning. Maalt: de nye Class2-loeb tager D4 fra 1 til 6 rolling-etaper. Gulvet er sat efter det katalog S4 bygges paa.",
-    lukkesAf: "S4-katalogets migration anvendt mod prod + fixturen genopfrisket (#4278)",
+    id: "saeson-gravel-baand",
+    moenster: /sæson: gravel slutter/,
+    hvorfor: "DAEKKER TRE LINJER (opad/fladt/udbrud) fra EEN stikproeve paa n=2. Grus fik sit eget finale-baand 3/9 (#4272), men kataloget har kun to grus-etaper, saa hver enkelt etape flytter andelen 50 pp. Baandet kan ikke rammes foer forsyningen er stoerre.",
+    lukkesAf: "flere grus-loeb i kataloget (#4105/#3864), ikke en regel- eller pakker-aendring",
   },
   {
-    id: "d4-mountain-uden-udbrud",
-    moenster: /tier 4: mountain slutter udbrud/,
-    hvorfor: "Filler-vaegt-kalibrering pr. division, ikke en regel der kan rettes i kataloget.",
-    lukkesAf: "§6b's genkalibrering, ejer-besluttet 3/9 som en S5-opgave",
-  },
-  {
-    id: "saeson-hilly-for-fladt",
-    moenster: /sæson: hilly slutter fladt/,
-    hvorfor: "Samme kalibrering, maalt paa saeson-aggregatet.",
-    lukkesAf: "§6b's genkalibrering (S5)",
+    id: "saeson-samlet-udbrud",
+    moenster: /sæson: SAMLET udbrud/,
+    hvorfor: "Summen af de tre ovenfor: naar hilly og cobbles ligger over deres udbruds-baand, gaar saeson-totalen med over. Lukkes af samme kalibrering, ikke af en selvstaendig aendring.",
+    lukkesAf: "§6b/§7b's genkalibrering (S5)",
   },
 ]);
 

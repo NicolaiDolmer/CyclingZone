@@ -2,10 +2,11 @@
 //
 // Genererer S3-kalenderen OFFLINE via samme mekanik som scripts/dev/calendarDryRunLocal.mjs
 // / scripts/dev/calendarScorecard4218.mjs (den rene buildTierMaterializationPlan mod
-// lib/__fixtures__/racePoolCatalog.prod.json + database/2026-08-25-4218-katalog-22-nye-loeb.sql's
-// 22 løb, delt via scripts/dev/lib/s3OfflineCalendarPlan.mjs — se den fil for hvorfor
-// katalog-udvidelsen er nødvendig for at reproducere den ÆGTE S3-kalender) og asserterer
-// på det de facto ville blive skrevet, ikke en syntetisk konstruktion.
+// lib/__fixtures__/racePoolCatalog.prod.json, delt via
+// scripts/dev/lib/s3OfflineCalendarPlan.mjs) og asserterer på det der de facto ville blive
+// skrevet, ikke en syntetisk konstruktion. Fixturen er genopfrisket fra prod 3/9 (#4203) og
+// bærer nu selv de 22 løb fra 2026-08-25-4218-katalog-22-nye-loeb.sql; den in-memory
+// katalog-udvidelse der før kompenserede for et forældet snapshot er derfor fjernet.
 //
 // SCOPE (issuets egen afgrænsning): KUN de objektivt afgjorte invarianter. De fire
 // bånd-invarianter (enkeltstart-andel, brosten-andel, høj-bjerg-monotoni, klasse↔etapebånd
@@ -23,7 +24,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildS3OfflineCalendarPlan } from "../scripts/dev/lib/s3OfflineCalendarPlan.mjs";
+import { readFileSync } from "node:fs";
+
+import { buildS3OfflineCalendarPlan, FIXTURE_PATH } from "../scripts/dev/lib/s3OfflineCalendarPlan.mjs";
 import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
 import { computeTierCoverageStats } from "./tierCalendarGuarantees.js";
 import { detectEmptyCalendarDays } from "./calendarDailyCoverage.js";
@@ -55,8 +58,21 @@ function stagesByRace(pool) {
   return byRace;
 }
 
-test("#4123: katalog-udvidelsen har ingen navnekollisioner med fixturens base-katalog", () => {
-  assert.deepEqual(PLAN.kollisioner, []);
+test("#4123: fixture-kataloget har ingen dublet-navne", () => {
+  // Foer 3/9 vogtede denne test at den IN-MEMORY katalog-udvidelse ikke kolliderede med
+  // fixturen. Udvidelsen er vaek (fixturen ER prods katalog), saa vagten flyttes hen paa
+  // det den reelt beskytter: at en fixture-refresh ikke smugler dubletter ind. To loeb med
+  // samme navn giver to raekker der ikke kan skelnes i UI, i resultater eller i selektionen.
+  assert.deepEqual(PLAN.kollisioner, [], "offline-planen maa ikke rapportere kollisioner");
+
+  const { catalog } = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
+  const set = new Set();
+  const dubletter = [];
+  for (const r of catalog) {
+    if (set.has(r.name)) dubletter.push(r.name);
+    set.add(r.name);
+  }
+  assert.deepEqual(dubletter, [], `dublet-navne i racePoolCatalog.prod.json: ${dubletter.join(", ")}`);
 });
 
 // ── De fire allerede-håndhævede GT/kronologi-invarianter (issuets [x]-liste) ──────

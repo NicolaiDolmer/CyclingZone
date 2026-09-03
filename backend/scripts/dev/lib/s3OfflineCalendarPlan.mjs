@@ -1,25 +1,24 @@
-// #4123 — ÉN fælles offline S3-kalender-genereringssti, delt af CI-invariant-testene,
-// den gyldne kalender-snapshot og calendarScorecard4218.mjs's katalog-udvidelse.
+// #4123 — ÉN fælles offline kalender-genereringssti, delt af CI-invariant-testene, den
+// gyldne kalender-snapshot og calendarScorecard4218.mjs.
 //
-// HVORFOR DEN FINDES. lib/__fixtures__/racePoolCatalog.prod.json (#4121) er et snapshot
-// af race_pool taget FØR database/2026-08-25-4218-katalog-22-nye-loeb.sql blev applyet i
-// prod. Genererer man kalenderen mod fixturen ALENE, mangler D3 særligt hårdt: målt
-// under dette arbejde faldt division 3 fra 85/93 etaper (prod, med de 22 nye løb) til
-// 49/93 (fixture alene) — og fik 13 kalenderdage uden løb, et brud på #4218's
-// ejer-låste "løb hver dag"-regel. Det er IKKE en generator-fejl; det er katalog-
-// fixturen der er forældet i forhold til prod. calendarScorecard4218.mjs løste det ved
-// at lægge de 22 løb oveni IN-MEMORY (se scriptets egen kommentar); denne fil flytter
-// den katalog-udvidelse hertil, så CI-invarianttestene (#4123) og scorecardet (#4215)
-// deler ÉN definition i stedet for to kopier der kan drifte fra hinanden.
+// HVORFOR DEN FINDES. lib/__fixtures__/racePoolCatalog.prod.json (#4121) er et snapshot af
+// prods race_pool. Driver snapshottet fra prod, tester CI en kalender der ikke længere
+// findes — det var præcis den fejl der gjorde at fixturen indtil 3/9 manglede de 22 løb
+// fra database/2026-08-25-4218-katalog-22-nye-loeb.sql. Filen bar dem derfor som en
+// IN-MEMORY katalog-udvidelse (S3_CATALOG_ADDITIONS), så CI-testene og scorecardet delte
+// ÉN definition i stedet for to kopier der kunne drifte.
 //
-// Verificeret mod prod-tallene i docs/CALENDAR_RULES.md §1c/§3 (30/8): med denne
-// udvidelse + de kanoniske S3-parametre (first-day 28/8, 31 kalenderdage) giver
-// offline-genereringen D1 155 etaper med præcis de samme tre Grand Tours
-// (Giro della Penisola / Tour de l'Hexagone / Vuelta Ibérica, alle 6-dages vinduer),
-// og D3 84/93 etaper med nul tomme kalenderdage — samme størrelsesorden som de målte
-// 85/93 i prod (den sidste etapes forskel er seed-/afrundingsstøj, ikke et brud).
+// UDVIDELSEN ER FJERNET 3/9 (#4203). Fixturen er genopfrisket fra prod med
+// scripts/dev/dumpRacePoolFixture.mjs (214 aktive løb mod 140 før), og de 22 løb ligger nu
+// i selve snapshottet sammen med #4708's katalog-udvidelse. At lægge dem oveni IGEN gav 22
+// navnekollisioner og en kalender bygget af dubletter. dumpRacePoolFixture.mjs's egen
+// header udpegede netop dette som det manuelle skridt der hører til en fixture-refresh.
 //
-// Refs #4123 #4218 #4215 #4121
+// Konsekvensen for kalderne: `kollisioner` er nu altid tom fra denne fil. Den bliver ikke
+// meningsløs af det — calendarScorecard4218.mjs's DB-sti og s4CatalogDryRun.mjs måler
+// stadig kollisioner mod ægte katalog-tilføjelser.
+//
+// Refs #4123 #4218 #4215 #4121 #4203 #4708
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -30,48 +29,6 @@ import { offlineCalendarFrom } from "./devCalendarArgs.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const FIXTURE_PATH = join(__dirname, "..", "..", "..", "lib", "__fixtures__", "racePoolCatalog.prod.json");
-
-// De 22 løb fra database/2026-08-25-4218-katalog-22-nye-loeb.sql. Anvendt i prod, men
-// IKKE en del af lib/__fixtures__/racePoolCatalog.prod.json's snapshot (taget før
-// migrationen). Flyttet uændret fra calendarScorecard4218.mjs (#4215) — samme 22 rækker,
-// samme rækkefølge, samme felter.
-export const S3_CATALOG_ADDITIONS = [
-  ["cz4215-pro-alentejo",  "Volta ao Alentejo",            "ProSeries", "stage_race", 4, "sprinters_week",  "3/4 - 6/4"],
-  ["cz4215-pro-limousin",  "Tour du Limousin Nouveau",     "ProSeries", "stage_race", 4, "hilly_tour",      "18/8 - 21/8"],
-  ["cz4215-pro-lucania",   "Giro della Lucania",           "ProSeries", "stage_race", 5, "summit_tour",     "6/6 - 10/6"],
-  ["cz4215-pro-rioja",     "Vuelta a La Rioja Nueva",      "ProSeries", "stage_race", 4, "balanced_week",   "21/4 - 24/4"],
-  ["cz4215-pro-silesie",   "Tour de Silésie",              "ProSeries", "stage_race", 3, "mountain_tour",   "12/7 - 14/7"],
-  ["cz4215-pro-zeeland",   "Ronde van Zeeland",            "ProSeries", "stage_race", 3, "cobbled_tour",    "8/5 - 10/5"],
-  ["cz4215-pro-irpinia",   "Giro dell'Irpinia",            "ProSeries", "stage_race", 5, "hilly_tour",      "1/6 - 5/6"],
-  ["cz4215-pro-yonne",     "Tour de l'Yonne",              "ProSeries", "stage_race", 5, "balanced_week",   "14/8 - 18/8"],
-  ["cz4215-c1-fourmies",   "Grand Prix de Fourmies Neuf",  "Class1", "single",     1, "flat_sprint",     "13/9"],
-  ["cz4215-c1-bretagne",   "Tour de Bretagne Sud",         "Class1", "stage_race", 3, "cobbled_tour",    "28/4 - 30/4"],
-  ["cz4215-c1-euganei",    "Coppa dei Colli Euganei",      "Class1", "single",     1, "hilly_classic",   "11/5"],
-  ["cz4215-c1-zamora",     "Gran Premio de Zamora",        "Class1", "single",     1, "itt_classic",     "27/6"],
-  ["cz4215-c1-drenthe",    "Ronde van Drenthe Nieuw",      "Class1", "single",     1, "cobbled_classic", "15/3"],
-  ["cz4215-c1-sibillini",  "Giro dei Monti Sibillini",     "Class1", "stage_race", 4, "hilly_tour",      "2/7 - 5/7"],
-  ["cz4215-c1-castelli",   "Trofeo dei Castelli Romani",   "Class1", "single",     1, "hilly_classic",   "6/9"],
-  ["cz4215-c1-valladolid", "Gran Premio de Valladolid",    "Class1", "single",     1, "flat_sprint",     "12/6"],
-  ["cz4215-c2-vosges",     "Circuit des Vosges",           "Class2", "single",     1, "hilly_classic","23/5"],
-  ["cz4215-c2-valdichiana","Trofeo Val di Chiana",         "Class2", "single",     1, "hilly_classic",   "7/3"],
-  ["cz4215-c2-segovia",    "Vuelta a Segovia Menor",       "Class2", "stage_race", 3, "hilly_tour",      "16/9 - 18/9"],
-  ["cz4215-c2-waasland",   "Omloop van het Waasland",      "Class2", "single",     1, "flat_sprint",     "4/4"],
-  ["cz4215-c2-morbihan",   "Grand Prix du Morbihan Mineur","Class2", "single",     1, "puncheur",        "30/8"],
-  ["cz4215-c2-perigord",   "Tour du Périgord",             "Class2", "stage_race", 2, "hilly_tour",      "20/6 - 21/6"],
-].map(([external_id, name, race_class, race_type, stages, terrain_archetype, date_text]) => ({
-  id: external_id, external_id, name, race_class, race_type, stages, terrain_archetype, date_text,
-}));
-
-/**
- * Lægger S3_CATALOG_ADDITIONS oveni et base-katalog (typisk fixturens `catalog`).
- * Rapporterer navnekollisioner i stedet for at fejle, så kaldere selv kan afgøre om
- * det er en test-fejl (uventet dublet) eller forventet (samme løb tilføjet to gange).
- */
-export function augmentWithS3Additions(baseCatalog) {
-  const eksisterende = new Set(baseCatalog.map((c) => c.name));
-  const kollisioner = S3_CATALOG_ADDITIONS.filter((n) => eksisterende.has(n.name)).map((n) => n.name);
-  return { catalog: [...baseCatalog, ...S3_CATALOG_ADDITIONS], kollisioner };
-}
 
 // Vinduet for den offline plan. Ejer-beslutning 3/9 (#4270): 28 kalenderdage, saesonens
 // eget S4-vindue (man 28/9 -> soen 25/10).
@@ -85,17 +42,18 @@ export const OFFLINE_REAL_DAYS = 28;
 export const S3_REAL_DAYS = OFFLINE_REAL_DAYS;
 
 /**
- * Bygger den fulde offline S3-kalenderplan: fixture + katalog-udvidelse + de
- * kanoniske S3-parametre (first-day, 31 dage, kvoter = density × 31). Deterministisk —
- * ingen DB, intet ur, ingen tilfældighed ud over `baseSeed`.
+ * Bygger den fulde offline kalenderplan: fixturens katalog + de kanoniske parametre
+ * (first-day, OFFLINE_REAL_DAYS dage, kvoter = density × dage). Deterministisk — ingen
+ * DB, intet ur, ingen tilfældighed ud over `baseSeed`.
  *
  * @param {{baseSeed?: number}} [args]
  * @returns {{tierPlans: object[], firstDay: string, lastDay: string, realDays: number,
  *   quotas: Record<number, number>, kollisioner: string[]}}
  */
 export function buildS3OfflineCalendarPlan({ baseSeed = 1 } = {}) {
-  const { pools, catalog: baseCatalog } = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
-  const { catalog, kollisioner } = augmentWithS3Additions(baseCatalog);
+  const { pools, catalog } = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
+  // Ingen katalog-udvidelse laengere: fixturen ER prods katalog (se header).
+  const kollisioner = [];
   const { from, firstDay } = offlineCalendarFrom([]);
   const lastDay = new Date(
     Date.parse(`${firstDay}T00:00:00Z`) + (OFFLINE_REAL_DAYS - 1) * 86_400_000

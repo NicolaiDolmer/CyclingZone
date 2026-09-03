@@ -296,10 +296,13 @@ Stigningerne skaleres fortsat pr. etape fra spec §6's anker (`GRAND_TOUR_CLIMB_
 | Etapeløb uden bjergetape | `TIER_MOUNTAIN_FREE_STAGE_RACE_MIN` | 0 | 2 | 1 | 2 | 7/8 | `tierCalendarGuarantees.js` |
 | Etapeløbs-spænd (ikke-GT) | hård grænse | etaper + 3 kalenderdage | | | | 17/8 | [#3546 H](https://github.com/NicolaiDolmer/CyclingZone/issues/3546) |
 | Monumenter | **ingen eksklusiv løbsdag** — deler som ethvert andet løb | | | | | 26/8 | [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236) |
+| Monument uden for GT-spænd | R9 i pakkeren + `detectMonumentsInsideGrandTours` | | | | | 3/9 | [#4203](https://github.com/NicolaiDolmer/CyclingZone/issues/4203) |
+| Kalenderdage mellem to nabo-monumenter | `MONUMENT_MIN_CALENDAR_GAP_DAYS` | 2 | | | | 3/9 | [#4203](https://github.com/NicolaiDolmer/CyclingZone/issues/4203) |
+| Kalenderdages samlet monument-spredning | `MONUMENT_MIN_CALENDAR_SPREAD_DAYS` | 14 | | | | 3/9 | [#4203](https://github.com/NicolaiDolmer/CyclingZone/issues/4203) |
 
 > **Etapeløbs-spændet har ingen konstant og ingen check i pakkeren — det er tilsigtet.** Reglen blev før håndhævet af `spanMoveOk` inde i `layoutStream`. Kontiguiteten giver den nu gratis: et løbs etaper ligger på løbsdage i træk, så spændet i datoer er bundet af hvor mange løbsdage en dato bærer. Men "gratis" er ikke "garanteret", så den **måles mod hele kataloget** i `raceCalendarLanePackerInvariants.test.js:141` og rapporteres af `scripts/s3CalendarPackageScorecard.js:195`. Leder du efter en `MAX_STAGE_RACE_SPAN`-konstant i `raceCalendarLanePacker.js`, finder du ingen — det betyder ikke at reglen er væk. Den mangler derimod på niveau 2 og 3 (§9).
 
-**Monument-reglen, præcist (ejer 26/8, [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)).** Et monument har **ikke** længere sin egen eksklusive løbsdag. Reglen kom 21/8 for at sikre fulde felter i sæsonens fem største endagsløb, men holdt op med at levere da [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217) gjorde bindingen spænd-baseret 24 timer før: rytteren er bundet hele etapeløbets spænd, også hen over monumentets løbsdag. Målt mod prod 26/8: **0 delte ryttere i alle 9 monument/etapeløb-kombinationer** — gevinsten var væk. Prisen blev betalt alligevel, for det eksklusive indskud rev hul i løbsdagene hos fem D1-etapeløb og var eneste årsag til at kronologi-reglen var brudt. Det der stadig gælder er at monumenterne ligger **spredt over sæsonen**; det måles i `raceCalendarLanePackerInvariants.test.js:125` med to konkrete tal: mindst **2 kalenderdage** mellem to nabomonumenter og mindst **14 kalenderdages** samlet spredning fra første til sidste.
+**Monument-reglen, præcist (ejer 26/8, [#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)).** Et monument har **ikke** længere sin egen eksklusive løbsdag. Reglen kom 21/8 for at sikre fulde felter i sæsonens fem største endagsløb, men holdt op med at levere da [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217) gjorde bindingen spænd-baseret 24 timer før: rytteren er bundet hele etapeløbets spænd, også hen over monumentets løbsdag. Målt mod prod 26/8: **0 delte ryttere i alle 9 monument/etapeløb-kombinationer** — gevinsten var væk. Prisen blev betalt alligevel, for det eksklusive indskud rev hul i løbsdagene hos fem D1-etapeløb og var eneste årsag til at kronologi-reglen var brudt. Det der stadig gælder er at monumenterne ligger **spredt over sæsonen**: mindst **2 kalenderdage** mellem to nabomonumenter og mindst **14 kalenderdages** samlet spredning fra første til sidste. De to tal var indtil 3/9 kun assertions i `raceCalendarLanePackerInvariants.test.js`; de er nu bindinger i pakkeren (R10/R11, se nedenfor) med konstanterne i `calendarTierCaps.js`.
 
 ### Et monument må ikke ligge inde i et Grand Tours løbsdags-spænd (ejer 3/9, #4203)
 
@@ -307,11 +310,29 @@ En Grand Tour binder rytteren **hele sit spænd**, hviledagene med (§2b's spæn
 
 Gaten er `detectMonumentsInsideGrandTours` i `backend/lib/calendarPlacementGates.js`. Den måler på **`game_day`**, ikke på datoen: en D1-kalenderdag bærer 3-5 løbsdage, så to løb kan dele dato uden at dele løbsdag. Den er rød i scorecardet og stopper `--apply`, uden override.
 
-> **Målt på S4's plan 3/9: 3 brud i D1** — Milano–Riviera (løbsdag 11) i Giro della Penisola (0-19), De Vlaamse Ronde (37) i Tour de l'Hexagone (28-46), La Classica d'Autunno (59) i Vuelta Ibérica (53-71). Gaten fanger dem før kalenderen skrives; **at flytte dem er pakkerens arbejde og ligger i #4203's eget spor.**
+### Pakkeren placerer monumenterne — reglen er en binding, ikke en måling (#4203, 3/9)
 
-**Spredningen måles fortsat i KALENDERDAGE** (ejer 3/9, §11 punkt 5 = valg B). De to må ikke blandes sammen.
+Indtil 3/9 var §4's monument-regler **målinger uden håndhævelse**: monument-i-GT var en gate der kunne sige fra, og spredningen stod som to assertions i `raceCalendarLanePackerInvariants.test.js`. Ingen af dem fortalte pakkeren hvor et monument SKULLE ligge. Målt på S4's plan gav det **2 brud i D1** (Milano–Riviera i Tour de l'Hexagone, De Vlaamse Ronde i Giro della Penisola) og **ét monument-nabopar på én kalenderdag**.
 
-> **Det ene spørgsmål ejeren skal svare på:** hvad er minimumsafstanden mellem to monumenter **på løbsdags-aksen (`game_day`)**, og skal den håndhæves mod prod? Testen ovenfor måler i KALENDERDAGE mod en fixture (`>= 2` mellem naboer, `>= 14` i samlet spredning) — der findes ingen tilsvarende gate mod prod og intet låst tal på løbsdags-aksen. Målt mod prod 30/8 ligger D1's fem monumenter på game_day 11, 24, 44, 55 og 69, altså med 13, 20, 11 og 14 løbsdages mellemrum; et krav på ≤ 11 løbsdage ville den nuværende kalender holde. Indtil tallet er låst, gættes det ikke på plads, og der kommer ingen `verify-invariants`-gate på spredningen ([#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465)).
+Reglerne er nu **bindinger i `solveContiguousStarts`** (`raceCalendarLanePacker.js`), på linje med GT-separationen og overlap-cap'en:
+
+| | Regel | Akse | Konstant |
+|---|---|---|---|
+| **R9** | et monument ligger aldrig inde i et Grand Tours spænd | **løbsdage** (`game_day`) | — (GT'ens eget spænd) |
+| **R10** | mindst 2 dage mellem to nabo-monumenter | **kalenderdage** | `MONUMENT_MIN_CALENDAR_GAP_DAYS` |
+| **R11** | mindst 14 dage fra første til sidste monument | **kalenderdage** | `MONUMENT_MIN_CALENDAR_SPREAD_DAYS` |
+
+Begge konstanter bor i `calendarTierCaps.js`. **Spredningen måles fortsat i KALENDERDAGE** (ejer 3/9, §11 punkt 5 = valg B); monument-i-GT måles på løbsdage. De to må aldrig blandes sammen.
+
+**Hvorfor det ikke kunne ordnes efter søgningen.** Et monument er et 1-etapes løb som enhver anden klassiker, så den oplagte lap er at bytte dets slot med en klassikers. Målt på S4's plan er det umuligt: kun **7 af D1's 19 endagsløbs-slots** lå uden for et GT-vindue, fordelt på to klumper (4 + 3 datoer i træk). Med kravet om 2 kalenderdage mellem naboer kan der højst vælges 2 fra hver klump — **4 slots til 5 monumenter**, og en spredning på 12 dage mod kravet 14. Der findes flere frie datoer i sæsonen, men ingen af dem bar et endagsløb, og hvilke datoer der bærer et endagsløb afgøres netop af søgningen.
+
+**To søgeforsøg, og det er bevidst.** Findes der ingen lovlig pakning med R9-R11, kører pakkeren søgningen igen uden dem i stedet for at falde ned i det afslappede layout — ellers ville en placerings-regel betales med §1b's eksakte kvote. Udfaldet er ikke stille: `detectMonumentsInsideGrandTours` er en hård gate uden override i både scorecardet og `--apply`, og pakkeren rapporterer selv `monumentRulesHeld` + `monuments`-diagnostik i dry-runnet. Det monument-bundne forsøg har sit eget skridt-loft (`MONUMENT_SOLVE_MAX_STEPS`, 2 mio.) så et uopfyldeligt katalog ikke spiser hele budgettet; prods S4-plan løser D1 med reglerne på ca. 120.000 skridt.
+
+**Monument-kronologien er en del af leverancen.** Monumenterne får deres egen identitets-gruppe, så de lander i `seasonFraction`-rækkefølge: Sanremo → Ronde → Roubaix → Liège → Lombardia. Det krævede én rettelse mere: #3546 F's brostens-omformning (`reshapeCobblesFractionToTwoWindows`) skubbede De Vlaamse Ronde og L'Enfer du Nord ud i det sene vindue, så Liège lå før begge. **Monumenter er nu undtaget fra omformningen** — #3546 F's rod-årsag var brostens-*forsyningens* monotone fald hen over sæsonen, og de to monumenter er ikke forsyning.
+
+> **Målt på S4's plan efter ændringen (dry-run mod prod 3/9):** monumenterne ligger på kalenderdag 6, 16, 18, 20 og 27 af 28 — mindste naboafstand 2 dage, spredning 21 dage, **0 inde i et GT-vindue**. Scorecardet: `0 placeringsbrud`.
+
+> **Det ene spørgsmål ejeren stadig skal svare på:** skal der OGSÅ være en minimumsafstand mellem to monumenter på **løbsdags-aksen** (`game_day`), og skal den håndhæves mod prod? R10/R11 er kalenderdage; på løbsdags-aksen findes intet låst tal. Målt på S4-planen ligger D1's fem monumenter på løbsdag 20, 47, 51, 55 og 76, altså med 27, 4, 4 og 21 løbsdages mellemrum. Indtil tallet er låst, gættes det ikke på plads, og der kommer ingen `verify-invariants`-gate på spredningen ([#4465](https://github.com/NicolaiDolmer/CyclingZone/issues/4465)).
 
 > **Andelen måles på ANTAL LØB, ikke på løbsdage.** Det er et bevidst valg (#3327) og står i kodens overskrift. Målt på løbsdage ville D1 være 14 % — målt på løb er den 61 %.
 

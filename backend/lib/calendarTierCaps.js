@@ -57,6 +57,27 @@ export const TIER_OVERLAP_CAP = Object.freeze({ 1: 3, 2: 3, 3: 2, 4: 2 });
 export const TIER_OVERLAP_MIN = Object.freeze({ 1: 1, 2: 1, 3: 1, 4: 1 });
 export const TIER_MULTI_RACE_DAY_MIN_SHARE = Object.freeze({ 1: 0.45, 2: 0.55, 3: 0.40, 4: 0.40 });
 
+// ── Monument-spredning (CALENDAR_RULES.md §4) ─────────────────────────────────────────
+//
+// De to tal har eksisteret siden 21/8, men KUN som assertions inde i
+// raceCalendarLanePackerInvariants.test.js. En regel der kun er en test er ikke haandhaevet:
+// den siger hvad kalenderen ER, ikke hvad pakkeren SKAL. §4 sagde det selv ordret
+// ("MAALT her, men aldrig HAANDHAEVET i pakkeren"), og ved 28 dage holdt den op med at
+// passe - S4's plan fik et nabopar paa EEN kalenderdag. #4203 flytter tallene hertil og
+// bruger dem som binding i selve pakningen.
+//
+// AKSEN ER KALENDERDAGE, ikke loebsdage (ejer-beslutning 3/9, §11 punkt 5 = valg B).
+// Monument-i-GT-gaten maaler paa loebsdage; de to maa aldrig blandes sammen (§0).
+//
+//   MIN_GAP    mindst 2 kalenderdage mellem to nabo-monumenter. To monumenter samme dag
+//              (eller dag efter dag) er samme skade som et monument i et GT-vindue: de
+//              bedste ryttere kan kun stille op i det ene.
+//   MIN_SPREAD mindst 14 kalenderdage fra foerste til sidste monument. Monumenterne er
+//              saesonens fem stoerste endagsloeb; ligger de i en klynge, er halvdelen af
+//              saesonen uden et.
+export const MONUMENT_MIN_CALENDAR_GAP_DAYS = 2;
+export const MONUMENT_MIN_CALENDAR_SPREAD_DAYS = 14;
+
 // Game-dage pr. IRL-dag — NEDRE GRAENSE, ikke et facit.
 //
 // Pakkeren lae­gger flere hele in-game-dage inden i hver kalenderdag, saa density etaper kan

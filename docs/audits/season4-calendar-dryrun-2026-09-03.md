@@ -462,3 +462,231 @@ driver fra hinanden.
    GT-vindue. Gaten stopper `--apply` uden override.
 4. Sæson-rækken oprettes af `--apply` selv, status `upcoming`.
 5. **Én regenerering, punktum** (§2c).
+
+---
+
+# Dry-run efter #4203-pakker (3/9 2026, kl. 14:20 dansk tid)
+
+> **Stadig 100 % read-only.** `node backend/scripts/buildSeasonCalendar.js --season 4
+> --first-day 2026-09-28 --race-days 28` — INGEN `--apply`. Kørt fra worktreet
+> `feat/4203-monument-packer` mod **prods nuværende katalog** (214 aktive løb: #4708's
+> udvidelse, Toscana som `gravel_classic`, GT 17/17/18 fra #4716 — alle anvendt i prod
+> tidligere samme dag).
+
+## 12. Hvad ændringen lukkede
+
+| Fund fra afsnit 9 | Klasse | Status nu |
+|---|---|---|
+| D1: 2 monumenter inde i et GT-spænd | pakkeren | ✅ **lukket** — 0 brud |
+| D1: ét monument-nabopar under 2 kalenderdage | pakkeren | ✅ **lukket** — mindste naboafstand 2 dage, spredning 21 |
+| D4: 1 rolling-etape, gulv 3 | katalog | ✅ **lukket** — D4 har nu 6 rolling i båndet [3-10] |
+| D2: bjerg 20,5 % mod 28 % | katalog | ✅ **lukket** — D2 rammer 29 mod målet 28 |
+| §6b: uniform-brud | kalibrering | 🔴 **2 tilbage** (D2 og D3 højbjerg) — S5-opgave, ejer-besluttet 3/9 |
+| §7b: finale-bånd på sæson-aggregatet | kalibrering + katalog | 🔴 **6 tilbage** — se nedenfor |
+
+**Placeringsbrud: 0.** Det er dét tal der stopper `--apply` uden override.
+
+### Monumenterne, målt på begge akser
+
+| Monument | Løbsdag | Dato | Afstand til forrige |
+|---|--:|---|--:|
+| Milano–Riviera (Sanremo) | 20 | 04/10 | — |
+| De Vlaamse Ronde (Ronde) | 47 | 14/10 | 10 kalenderdage |
+| L'Enfer du Nord (Roubaix) | 51 | 16/10 | 2 |
+| La Doyenne des Ardennes (Liège) | 55 | 18/10 | 2 |
+| La Classica d'Autunno (Lombardia) | 76 | 25/10 | 7 |
+
+Grand Tour-vinduerne (løbsdage): Tour de l'Hexagone 0-19 · Giro della Penisola 28-46 ·
+Vuelta Ibérica 57-75. **Ingen af de fem monumenter ligger i et af dem**, rækkefølgen er
+den rigtige (Sanremo → Ronde → Roubaix → Liège → Lombardia), spredningen er 21
+kalenderdage mod kravet 14, og mindste naboafstand er 2 mod kravet 2.
+
+### Hvad der stadig er rødt — og hvorfor det ikke er pakkerens arbejde
+
+Otte afvigelser, alle **balance-mål med eget override-flag**, ingen af dem placerings-regler:
+
+- **§6b (2):** D2 højbjerg 9,8 % og D3 højbjerg 7,1 % mod målet 12 %. Filler-vægte
+  kalibreret mod S3's løbsudvalg; genkalibreringen er ejer-besluttet 3/9 som en S5-opgave
+  (beslutning B). Et monument kan ikke flyttes hen hvor det bliver til en højbjergsetape.
+- **§7b (6):** sæson-aggregatets finale-bånd — `hilly` udbrud 31,6 %, `cobbles` udbrud
+  65,2 %, `SAMLET` udbrud 20,5 %, plus tre linjer fra **samme n=2-stikprøve på grus**
+  (opad/fladt/udbrud). Grus fik sit eget bånd 3/9, men kataloget har kun to grus-etaper, så
+  hver enkelt etape flytter andelen 50 pp. De lukkes af generatorens vægte og af flere
+  grus-løb i kataloget, ikke af hvor et løb ligger i kalenderen.
+
+Begge klasser var **røde i præcis samme omfang før ændringen** (baseline samme dag:
+`6 regelbrud · 2 placeringsbrud`; nu: `6 regelbrud · 0 placeringsbrud`). Den eneste
+øvrige forskel i hele scorecardet er D1's mindste-overlap, der går fra 52,4 % til 56,3 %
+— stadig grønt mod gulvet på 45 %.
+
+## 13. Scorecardet, ordret
+
+```
+
+=== Byg sæson 4-kalender (DRY-RUN — skriver intet) ===
+  season_id = 00000000-0000-0000-0000-000000000004
+  første løbsdag = 2026-09-28 · from-anker = 2026-09-27T12:00:00.000Z
+
+── §2 sæsonvindue ──
+  2026-09-28 → 2026-10-25 · 28 løbsdatoer · sidste dag er en søndag: OK
+  kvote pr. division (density × løbsdatoer, §1b): D1 140 · D2 112 · D3 84 · D4 84
+  §6b pr.-division filler-tilt (#4103): FRA — sæt --uniform-tilt for at generere mod §6b's mål
+
+  ⚠ sæson 4 findes ikke i seasons.
+     Ved --apply oprettes den med status='upcoming' og start_date = første løbsdag.
+     Sæson-transitionen promoverer selv 'upcoming' → 'active' (insertSeasonIfMissing i seasonTransition.js),
+     så pre-create kolliderer IKKE med cutoveren.
+  årsmødets næste-sæson-opslag (#4557): sæson 4 MANGLER — årsmødet springer alle hold over indtil rækken findes
+
+── Plan ──
+  tier 1: 140/140 game-days · 1 pulje(r) · 32 løb i alt
+  tier 2: 112/112 game-days · 2 pulje(r) · 74 løb i alt
+  tier 3: 84/84 game-days · 4 pulje(r) · 128 løb i alt
+  tier 4: 84/84 game-days · 8 pulje(r) · 296 løb i alt
+
+── Komposition mod K-B ──
+  flad       23.8 %  mål 24 %  -0.2 pp  OK
+  kuperet    31.9 %  mål 33 %  -1.1 pp  OK
+  bjerg      29.0 %  mål 28 %  +1.0 pp  OK
+  ITT         9.3 %  mål 10 %  -0.7 pp  OK
+  brosten     6.0 %  mål  5 %  +1.0 pp  OK
+  TTT         0.0 %  mål  0 %  +0.0 pp  OK
+  (420 løbsdage)
+
+SÆSON 4 — KALENDER-SCORECARD (planlagt, docs/CALENDAR_RULES.md §1-§7) — 2026-09-28 til 2026-10-25 (28 kalenderdage)
+Navnekollisioner: ingen
+
+OK  LØB HVER KALENDERDAG (§2, #4218)
+
+────────────────────────────────────────────────────────────────────────
+DIVISION 1 — 32 løb, 140 etaper, 80 løbsdage, 28/28 kalenderdage
+  OK  Kvote (§1b, eksakt 100 %): 140 af 140 løbsdage
+  OK  Endagsløb (§4): 19 af 32 = 59.4 % (mål 55.0 %, min 45.0 %)
+  OK  Terræn-gulve + rolling-bånd (§5): cobbles 9/3 · flat_sprint 29/20 · itt 14/5 · hilly 21/10 · mountain 43/28 · rolling 24/16-30
+  OK  Komposition (§6, gated ±7 pp): flad 21/24 · kuperet 32/33 · bjerg 31/28 · ITT 10/10 · brosten 6/5
+  --  Komposition mod §6's STRENGE ±2 pp (rapport, §10 modsigelse 2): 2 afvigelse(r)
+       ~ tier 1: flad 20.7 % mod mål 24 % (afvigelse -3.3 pp, tolerance ±2.0 pp) (#3295)
+       ~ tier 1: bjerg 30.7 % mod mål 28 % (afvigelse +2.7 pp, tolerance ±2.0 pp) (#3295)
+  OK  Uniforme mål (§6b, ±2 pp): itt 10.0/10 · cobbles 6.4/5 · high_mountain 11.4/12
+  OK  Etapeløb der slutter på bjerg (§7): 15.4 % (maks 60 %) · flad slutning 46.2 % · ITT-slutning 15.4 %
+  OK  Finale-bånd pr. terræn (§7b) — slutter nedad i alt: 11 af 140 = 7.9 %
+      high_mountain  n= 16  opad 94% · nedad 6%
+      mountain       n= 27  opad 52% · nedad 37%✗[20-35] · udbrud 11%
+      hilly          n= 21  opad 38%✗[40-60] · fladt 33%✗[15-30] · udbrud 29%
+      cobbles        n=  7  fladt 43% · udbrud 57% (n<min, kun rapport)
+      gravel         n=  2  opad 50%✗[15-35] · fladt 50%✗[10-30] · udbrud 0%✗[45-65] (n<min, kun rapport)
+      rolling        n= 24  fladt 42% · udbrud 58%
+      flat           n= 29  fladt 100%
+      itt            n= 11  enkeltstart 100% (n<min, kun rapport)
+      itt_hilly      n=  3  enkeltstart 100% (n<min, kun rapport)
+      SAMLET         n=140  opad 27.1% · fladt 35.7% · nedad 7.9% · udbrud 19.3% · enkeltstart 10.0%
+      (6 afvigelse(r) fra det rå bånd bæres af stikprøve-tillægget — se ✗)
+  OK  Samtidige løb pr. løbsdag (§1): maks 3 (cap 3)
+  OK  Mindste-overlap (§1/#3329): min 1 (krav 1) · 56.3 % af løbsdagene har ≥2 løb (gulv 45 %) · 1 løb: 35 dage · 2 løb: 30 dage · 3 løb: 15 dage
+  OK  Monument uden for GT-spænd (§4/#4203, løbsdags-aksen): 0 brud
+  OK  Plan-invarianter (§3 GT, whitelist, dedup): 0 brud
+
+────────────────────────────────────────────────────────────────────────
+DIVISION 2 — 37 løb, 112 etaper, 56 løbsdage, 28/28 kalenderdage
+  OK  Kvote (§1b, eksakt 100 %): 112 af 112 løbsdage
+  OK  Endagsløb (§4): 21 af 37 = 56.8 % (mål 55.0 %, min 45.0 %)
+  OK  Terræn-gulve + rolling-bånd (§5): cobbles 6/6 · flat_sprint 26/15 · itt 10/4 · hilly 28/8 · mountain 32/20 · rolling 10/6-14 · (heraf classic 3, tælles i hilly)
+  OK  Komposition (§6, gated ±5 pp): flad 23/24 · kuperet 34/33 · bjerg 29/28 · ITT 9/10 · brosten 5/5
+  --  Komposition mod §6's STRENGE ±2 pp (rapport, §10 modsigelse 2): 0 afvigelse(r)
+  FEJL Uniforme mål (§6b, ±2 pp): itt 8.9/10 · cobbles 5.4/5 · high_mountain 9.8/12 ✗
+       ~ tier 2: high_mountain 9.8 % mod mål 12.0 % (afvigelse -2.2 pp, tolerance ±2.0 pp) (#4103)
+  OK  Etapeløb der slutter på bjerg (§7): 37.5 % (maks 60 %) · flad slutning 18.8 % · ITT-slutning 12.5 %
+  OK  Finale-bånd pr. terræn (§7b) — slutter nedad i alt: 7 af 112 = 6.3 %
+      high_mountain  n= 11  opad 82% · nedad 18%✗[0-15] (n<min, kun rapport)
+      mountain       n= 21  opad 48% · nedad 24% · udbrud 29%✗[10-25]
+      hilly          n= 25  opad 52% · fladt 20% · udbrud 28%
+      cobbles        n=  6  fladt 33% · udbrud 67%✗[40-60] (n<min, kun rapport)
+      rolling        n= 10  fladt 50%✗[25-45] · udbrud 50%✗[55-75] (n<min, kun rapport)
+      flat           n= 26  fladt 100%
+      itt            n= 10  enkeltstart 100% (n<min, kun rapport)
+      SAMLET         n=112  opad 29.5% · fladt 35.7% · nedad 6.3% · udbrud 19.6% · enkeltstart 8.9%
+      (5 afvigelse(r) fra det rå bånd bæres af stikprøve-tillægget — se ✗)
+  OK  Samtidige løb pr. løbsdag (§1): maks 3 (cap 3)
+  OK  Mindste-overlap (§1/#3329): min 1 (krav 1) · 78.6 % af løbsdagene har ≥2 løb (gulv 55 %) · 1 løb: 12 dage · 2 løb: 32 dage · 3 løb: 12 dage
+  OK  Monument uden for GT-spænd (§4/#4203, løbsdags-aksen): 0 brud
+  OK  Plan-invarianter (§3 GT, whitelist, dedup): 0 brud
+
+────────────────────────────────────────────────────────────────────────
+DIVISION 3 — 32 løb, 84 etaper, 56 løbsdage, 28/28 kalenderdage
+  OK  Kvote (§1b, eksakt 100 %): 84 af 84 løbsdage
+  OK  Endagsløb (§4): 18 af 32 = 56.3 % (mål 58.0 %, min 48.0 %)
+  OK  Terræn-gulve + rolling-bånd (§5): cobbles 5/5 · flat_sprint 22/12 · itt 7/3 · hilly 19/8 · mountain 23/12 · rolling 8/4-12 · (heraf classic 3, tælles i hilly)
+  OK  Komposition (§6, gated ±8 pp): flad 26/24 · kuperet 32/33 · bjerg 27/28 · ITT 8/10 · brosten 6/5
+  --  Komposition mod §6's STRENGE ±2 pp (rapport, §10 modsigelse 2): 0 afvigelse(r)
+  FEJL Uniforme mål (§6b, ±2 pp): itt 8.3/10 · cobbles 6.0/5 · high_mountain 7.1/12 ✗
+       ~ tier 3: high_mountain 7.1 % mod mål 12.0 % (afvigelse -4.9 pp, tolerance ±2.0 pp) (#4103)
+  OK  Etapeløb der slutter på bjerg (§7): 35.7 % (maks 60 %) · flad slutning 28.6 % · ITT-slutning 14.3 %
+  OK  Finale-bånd pr. terræn (§7b) — slutter nedad i alt: 5 af 84 = 6.0 %
+      high_mountain  n=  6  opad 100% · nedad 0% (n<min, kun rapport)
+      mountain       n= 17  opad 41%✗[45-65] · nedad 29% · udbrud 29%✗[10-25]
+      hilly          n= 16  opad 44% · fladt 25% · udbrud 31%✗[15-30]
+      cobbles        n=  5  fladt 20%✗[30-50] · udbrud 80%✗[40-60] (n<min, kun rapport)
+      rolling        n=  8  fladt 13%✗[25-45] · udbrud 88%✗[55-75] (n<min, kun rapport)
+      flat           n= 22  fladt 100%
+      itt            n=  7  enkeltstart 100% (n<min, kun rapport)
+      SAMLET         n= 84  opad 25.0% · fladt 34.5% · nedad 6.0% · udbrud 26.2%✗[12-20] · enkeltstart 8.3%
+      (8 afvigelse(r) fra det rå bånd bæres af stikprøve-tillægget — se ✗)
+  OK  Samtidige løb pr. løbsdag (§1): maks 2 (cap 2)
+  OK  Mindste-overlap (§1/#3329): min 1 (krav 1) · 50.0 % af løbsdagene har ≥2 løb (gulv 40 %) · 1 løb: 28 dage · 2 løb: 28 dage
+  OK  Monument uden for GT-spænd (§4/#4203, løbsdags-aksen): 0 brud
+  OK  Plan-invarianter (§3 GT, whitelist, dedup): 0 brud
+
+────────────────────────────────────────────────────────────────────────
+DIVISION 4 — 37 løb, 84 etaper, 56 løbsdage, 28/28 kalenderdage
+  OK  Kvote (§1b, eksakt 100 %): 84 af 84 løbsdage
+  OK  Endagsløb (§4): 22 af 37 = 59.5 % (mål 55.0 %, min 45.0 %)
+  OK  Terræn-gulve + rolling-bånd (§5): cobbles 5/1 · flat_sprint 23/8 · itt 8/1 · hilly 18/6 · mountain 24/13 · rolling 6/3-10 · (heraf classic 1, tælles i hilly)
+  OK  Komposition (§6, gated ±10 pp): flad 27/24 · kuperet 29/33 · bjerg 29/28 · ITT 10/10 · brosten 6/5
+  --  Komposition mod §6's STRENGE ±2 pp (rapport, §10 modsigelse 2): 2 afvigelse(r)
+       ~ tier 4: flad 27.4 % mod mål 24 % (afvigelse +3.4 pp, tolerance ±2.4 pp) (#3295)
+       ~ tier 4: kuperet 28.6 % mod mål 33 % (afvigelse -4.4 pp, tolerance ±2.4 pp) (#3295)
+  OK  Uniforme mål (§6b, ±2 pp): itt 9.5/10 · cobbles 6.0/5 · high_mountain 13.1/12
+  OK  Etapeløb der slutter på bjerg (§7): 13.3 % (maks 60 %) · flad slutning 46.7 % · ITT-slutning 6.7 %
+  OK  Finale-bånd pr. terræn (§7b) — slutter nedad i alt: 6 af 84 = 7.1 %
+      high_mountain  n= 11  opad 100% · nedad 0% (n<min, kun rapport)
+      mountain       n= 13  opad 46% · nedad 46%✗[20-35] · udbrud 8%✗[10-25]
+      hilly          n= 17  opad 41% · fladt 18% · udbrud 41%✗[15-30]
+      cobbles        n=  5  fladt 40% · udbrud 60% (n<min, kun rapport)
+      rolling        n=  6  fladt 33% · udbrud 67% (n<min, kun rapport)
+      flat           n= 23  fladt 100%
+      itt            n=  8  enkeltstart 100% (n<min, kun rapport)
+      SAMLET         n= 84  opad 28.6% · fladt 36.9% · nedad 7.1% · udbrud 17.9% · enkeltstart 9.5%
+      (3 afvigelse(r) fra det rå bånd bæres af stikprøve-tillægget — se ✗)
+  OK  Samtidige løb pr. løbsdag (§1): maks 2 (cap 2)
+  OK  Mindste-overlap (§1/#3329): min 1 (krav 1) · 50.0 % af løbsdagene har ≥2 løb (gulv 40 %) · 1 løb: 28 dage · 2 løb: 28 dage
+  OK  Monument uden for GT-spænd (§4/#4203, løbsdags-aksen): 0 brud
+  OK  Plan-invarianter (§3 GT, whitelist, dedup): 0 brud
+
+════════════════════════════════════════════════════════════════════════
+FEJL SÆSON-AGGREGAT, finale-bånd uden stikprøve-tillæg (420 etaper)
+     ! sæson: hilly slutter udbrud 31.6 % (bånd 15-30 %, n=79) (#4272)
+     ! sæson: cobbles slutter udbrud 65.2 % (bånd 40-60 %, n=23) (#4272)
+     ! sæson: gravel slutter opad 50.0 % (bånd 15-35 %, n=2) (#4272)
+     ! sæson: gravel slutter fladt 50.0 % (bånd 10-30 %, n=2) (#4272)
+     ! sæson: gravel slutter udbrud 0.0 % (bånd 45-65 %, n=2) (#4272)
+     ! sæson: SAMLET udbrud 20.5 % (bånd 12-20 %, n=420) (#4272)
+SAMLET: 6 regelbrud · 0 placeringsbrud (#4270, stopper --apply) · dækning OK · 0 navnekollisioner
+Se linjerne markeret FEJL / ! ovenfor.
+
+
+✅ Alle gates grønne: kalender-invarianter · realisme-bånd · etaperækkefølge · K-B-komposition.
+
+⚠ FINALE-BÅND-AFVIGELSE (§7b, 6):
+   · finale-bånd, sæson-aggregat (§7b) — sæson: hilly slutter udbrud 31.6 % (bånd 15-30 %, n=79) (#4272)
+   · finale-bånd, sæson-aggregat (§7b) — sæson: cobbles slutter udbrud 65.2 % (bånd 40-60 %, n=23) (#4272)
+   · finale-bånd, sæson-aggregat (§7b) — sæson: gravel slutter opad 50.0 % (bånd 15-35 %, n=2) (#4272)
+   · finale-bånd, sæson-aggregat (§7b) — sæson: gravel slutter fladt 50.0 % (bånd 10-30 %, n=2) (#4272)
+   · finale-bånd, sæson-aggregat (§7b) — sæson: gravel slutter udbrud 0.0 % (bånd 45-65 %, n=2) (#4272)
+   · finale-bånd, sæson-aggregat (§7b) — sæson: SAMLET udbrud 20.5 % (bånd 12-20 %, n=420) (#4272)
+
+⚠ UNIFORME MÅL-AFVIGELSE (§6b, 2):
+   · uniformt mål (§6b) — tier 2: high_mountain 9.8 % mod mål 12.0 % (afvigelse -2.2 pp, tolerance ±2.0 pp) (#4103)
+   · uniformt mål (§6b) — tier 3: high_mountain 7.1 % mod mål 12.0 % (afvigelse -4.9 pp, tolerance ±2.0 pp) (#4103)
+
+DRY-RUN slut — intet skrevet. Gentag med --apply for at bygge kalenderen.
+```
