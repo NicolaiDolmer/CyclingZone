@@ -1,5 +1,40 @@
 export const PATCHES = [
   {
+    "version": "7.241",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions, tidied up",
+          "body": "Your balance, reserved bids and squad size are now one line under the title instead of four stat cards, the view filters are underline tabs, and the full filter panel sits behind \"More filters\". The bid buttons in the table are plain buttons again, so gold means one thing."
+        },
+        "da": {
+          "title": "Auktioner er ryddet op",
+          "body": "Din saldo, dine reserverede bud og din trupstørrelse er nu samlet på én linje under titlen i stedet for fire stat-kort, visningsfiltrene er blevet til understregede faner, og hele filterpanelet ligger bag \"Flere filtre\". Bud-knapperne i tabellen er almindelige knapper igen, så guld betyder én ting."
+        },
+        "refs": [4628, 4625, 4670]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Hide auctions you've been outbid on",
+          "body": "In \"My auctions\" a small X lets you hide an auction you've been outbid on. It only changes what you see, your bid still stands and the auction keeps running, and \"Show hidden (N)\" brings them back. Academy also lost its wall of gold buttons, and \"Release\" is no longer a red box in every row."
+        },
+        "da": {
+          "title": "Skjul auktioner du er overbudt på",
+          "body": "I \"Mine auktioner\" kan du med det lille X skjule en auktion, du er blevet overbudt på. Det ændrer kun det, du ser, dit bud står stadig og auktionen kører videre, og \"Vis skjulte (N)\" henter dem frem igen. Akademiet har også mistet sin mur af guld-knapper, og \"Fyr\" er ikke længere en rød kasse i hver række."
+        },
+        "refs": [4262, 4670]
+      }
+    ]
+  },
+  {
     "version": "7.240",
     "date": "2026-09-03",
     "label": "Beta",
