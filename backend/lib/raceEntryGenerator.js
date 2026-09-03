@@ -262,6 +262,11 @@ export async function runRaceEntryGenerator({
   // tilbage til proactive i stedet for at gaette at alle har sagt ja.
   let optInTeamIds = null;
   if (mode === ASSISTANT_MODES.OPT_IN) {
+    // schema-columns-ok: assistant_autopick_enabled tilfoejes af
+    // database/2026-09-03-4201-assistant-mode.sql, som foerst koeres EFTER merge
+    // under #2642-rammerne (idempotent + post-verify). schema-snapshot.json er et
+    // spejl af prod og opdateres derfor foerst naar migrationen er applied - ikke
+    // i denne PR, hvor kolonnen endnu ikke findes i prod.
     const { data: optInRows, error: optInErr } = await supabase
       .from("teams").select("id, assistant_autopick_enabled");
     if (optInErr) {

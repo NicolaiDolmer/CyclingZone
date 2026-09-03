@@ -9163,7 +9163,7 @@ router.get("/admin/balance-drift", requireAdmin, async (req, res) => {
 // spillerens eget til/fra-valg. Fladen viser KUN kontakten naar tilstanden er
 // "opt_in" — i proactive og late_fill er der intet at vaelge, og en synlig
 // kontakt uden virkning ville vaere en loegn. Se docs/ASSISTANT_RULES.md §1b.
-router.get("/me/assistant-settings", requireAuth, async (req, res) => {
+router.get("/me/assistant-settings", requireAuth, presencePulseLimiter, async (req, res) => {
   const { mode, lateFillHours } = await readAssistantSelectionConfig(supabase);
   res.json({
     mode,
