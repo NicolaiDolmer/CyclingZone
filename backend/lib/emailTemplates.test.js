@@ -222,3 +222,109 @@ test("buildLoopEmail dispatches by type", () => {
 test("buildLoopEmail throws for an unknown type", () => {
   assert.throws(() => buildLoopEmail("nonexistent", {}));
 });
+
+// ─── #2853 DA follow-up (2026-09-03): users.language selects EN vs DA copy ──
+// Faithful translation of the locked EN text in
+// docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md, added in this PR's
+// "DA-oversaettelse" section. 'da' selects the Danish copy; any other value
+// (including undefined/unset) falls back to English, matching the
+// frontend's LanguageProvider default.
+
+const EN_MARKERS = [
+  "Hi,",
+  "Open your dashboard",
+  "See all results",
+  "Join the Discord",
+  "Something broken or confusing? Come say hi on Discord, I read everything.",
+  "You are receiving this because you have a Cycling Zone account.",
+  "Unsubscribe from these emails",
+];
+
+function assertNoEnglishResidue(template) {
+  for (const marker of EN_MARKERS) {
+    assert.ok(!template.html.includes(marker), `html must not contain English marker "${marker}"`);
+    assert.ok(!template.text.includes(marker), `text must not contain English marker "${marker}"`);
+  }
+}
+
+test("welcome email: language 'da' renders Danish subject, body, steps and shared footer, no em-dash, no English residue", () => {
+  const t = buildWelcomeEmail({ teamName: "Team Velodrome", unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.equal(t.subject, "Dit hold er på startlinjen");
+  assert.ok(t.html.includes("Velkommen til Cycling Zone"));
+  assert.ok(t.html.includes("Team Velodrome"));
+  assert.ok(t.html.includes("Byd på en rytter du kan lide"));
+  assert.ok(t.html.includes("Skriv en ung rytter under kontrakt"));
+  assert.ok(t.html.includes("Træning og opstilling"));
+  assert.ok(t.text.includes("1. Byd på en rytter du kan lide"));
+  assert.ok(t.html.includes("Åbn dit dashboard"));
+  assert.ok(t.html.includes("Er noget i stykker eller uklart? Kom forbi Discord, jeg læser alt."));
+  assert.ok(t.html.includes("Deltag i Discord"));
+  assert.ok(t.html.includes("Dolmer, Cycling Zone"));
+  assert.ok(t.html.includes("Afmeld disse mails"));
+  assertHasUnsubscribeLink(t);
+  assertNoEmDash(t, "welcome da");
+  assertNoEnglishResidue(t);
+});
+
+test("welcome email: language 'da' falls back to 'dit hold' when teamName is missing", () => {
+  const t = buildWelcomeEmail({ teamName: null, unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.ok(t.html.includes("dit hold"));
+  assert.ok(!t.html.includes("null"));
+});
+
+test("welcome email: any language other than 'da' (including unset) renders the English copy", () => {
+  const noLang = buildWelcomeEmail({ teamName: "T", unsubscribeUrl: UNSUB_URL });
+  const unknownLang = buildWelcomeEmail({ teamName: "T", unsubscribeUrl: UNSUB_URL, language: "fr" });
+  assert.equal(noLang.subject, "Your team is on the start line");
+  assert.equal(unknownLang.subject, "Your team is on the start line");
+});
+
+test("day1 email: language 'da' renders the Danish copy for both hasResults variants, no em-dash, no English residue", () => {
+  const withResults = buildDay1Email({ teamName: "Team Velodrome", hasResults: true, unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.equal(withResults.subject, "Dag 1: dine ryttere har allerede kørt");
+  assert.ok(withResults.html.includes("kørte mens du var væk"));
+  assertNoEmDash(withResults, "day1 da hasResults=true");
+  assertNoEnglishResidue(withResults);
+
+  const noResults = buildDay1Email({ teamName: "Team Velodrome", hasResults: false, unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.equal(noResults.subject, "Dag 1: dit første løb er på kalenderen");
+  assert.ok(noResults.html.includes("første løb er på kalenderen"));
+  assert.ok(!noResults.html.includes("kørte mens du var væk"), "must not claim results exist when they don't (DA)");
+  assertNoEmDash(noResults, "day1 da hasResults=false");
+  assertNoEnglishResidue(noResults);
+});
+
+test("race_digest email: language 'da' renders the Danish copy, uses 'placering' for rank, no em-dash, no English residue", () => {
+  const t = buildRaceDigestEmail({
+    teamName: "Team Velodrome",
+    results: [{ riderName: "Jonas Vingegaard", rank: 3, raceName: "Vuelta a Andalucia" }],
+    unsubscribeUrl: UNSUB_URL,
+    language: "da",
+  });
+  assert.equal(t.subject, "Team Velodrome kørte mens du var væk");
+  assert.ok(t.html.includes("Bedste resultater siden dit sidste besøg"));
+  assert.ok(t.html.includes("placering 3 i Vuelta a Andalucia"));
+  assert.ok(t.html.includes("Se alle resultater"));
+  assertNoEmDash(t, "race_digest da");
+  assertNoEnglishResidue(t);
+});
+
+test("race_digest email: language 'da' with no results uses the Danish generic line, not an invented one", () => {
+  const t = buildRaceDigestEmail({ teamName: "Team Velodrome", results: [], unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.ok(t.html.includes("Dit holds resultater siden dit sidste besøg er klar."));
+  assert.ok(!/placering \d/.test(t.html), "no invented rank when there are no results (DA)");
+});
+
+test("race_digest email: language 'da' falls back to 'Dit hold' when teamName is missing", () => {
+  const t = buildRaceDigestEmail({ teamName: null, results: [{ riderName: "R", rank: 1, raceName: "Race" }], unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.equal(t.subject, "Dit hold kørte mens du var væk");
+});
+
+test("buildLoopEmail passes language through for all three types", () => {
+  const welcome = buildLoopEmail("welcome", { teamName: "T", unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.equal(welcome.subject, "Dit hold er på startlinjen");
+  const day1 = buildLoopEmail("day1", { teamName: "T", hasResults: true, unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.equal(day1.subject, "Dag 1: dine ryttere har allerede kørt");
+  const digest = buildLoopEmail("race_digest", { teamName: "T", results: [], unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.equal(digest.subject, "T kørte mens du var væk");
+});

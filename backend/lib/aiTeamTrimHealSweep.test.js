@@ -218,6 +218,58 @@ test("#2187 sweep: per-hold fejl isoleres (én fejler, resten heales)", async ()
   assert.deepEqual(removed, ["b"]);
 });
 
+// #4594 (CYCLINGZONE-49): en GENUIN exception (ikke bare "blokeret") på SAMME hold
+// ved hver eneste tick alarmerede FØR dette et NYT Sentry-event pr. 5-min-tick, for
+// evigt (221 events / 27 dage, aldrig set fordi extra.errors klippedes til
+// "[Object]" af Sentry, #3414 lukket på symptomet). Under backstoppen: uændret akut
+// per-hold-fejl (dækket af testen ovenfor). Over backstoppen: eskaleres til `stale`
+// (ÉN fingerprintet alarm, samme mekanik som blokerings-grenene) i stedet for at
+// blive ved med at tælle som `failed`.
+test("#4594 sweep: genuin fejl UNDER backstop forbliver akut (failed), ikke stale", async () => {
+  const now = new Date("2026-07-14T12:00:00Z");
+  const rows = [
+    { id: "ai-err-young", name: "AI Err Young", is_ai: true, league_division_id: "pool-a", pending_removal_at: hoursAgo(now, 2) },
+  ];
+  const res = await runAiTeamTrimHealSweep({
+    supabase: teamsMock(rows),
+    now,
+    teamBlockingRaceIds: async () => { throw new Error("duplicate key value violates unique constraint \"some_constraint\""); },
+    getStalledIds: async () => [],
+    hasUnpaidPrizes: async () => false,
+    removeTeam: async () => { throw new Error("må ikke kaldes"); },
+    getInflightIds: async () => [],
+  });
+
+  assert.equal(res.failed, 1, "2t gammel fejl er stadig akut, ikke eskaleret");
+  assert.equal(res.errors[0].teamId, "ai-err-young");
+  assert.match(res.errors[0].message, /unique constraint/);
+  assert.deepEqual(res.stale, [], "under backstoppen rører fejlen ikke stale");
+});
+
+test("#4594 sweep: genuin fejl OVER backstop eskaleres til stale (reason=error_exceeds_backstop) i stedet for at blive ved med at fejle dagligt", async () => {
+  const now = new Date("2026-07-14T12:00:00Z");
+  const rows = [
+    { id: "ai-err-old", name: "AI Err Old", is_ai: true, league_division_id: "pool-a", pending_removal_at: hoursAgo(now, STALE_BACKSTOP_HOURS + 3) },
+  ];
+  const res = await runAiTeamTrimHealSweep({
+    supabase: teamsMock(rows),
+    now,
+    teamBlockingRaceIds: async () => { throw new Error("AI-rider delete (ai-err-old): duplicate key value violates unique constraint \"race_results_entrant_unique\""); },
+    getStalledIds: async () => [],
+    hasUnpaidPrizes: async () => false,
+    removeTeam: async () => { throw new Error("må ikke kaldes"); },
+    getInflightIds: async () => [],
+  });
+
+  assert.equal(res.failed, 0, "vedvarende fejl tæller IKKE længere som akut failed hver tick");
+  assert.deepEqual(res.errors, [], "errors[] er tom — fejlen er flyttet til stale");
+  assert.equal(res.stale.length, 1);
+  assert.equal(res.stale[0].teamId, "ai-err-old");
+  assert.equal(res.stale[0].reason, "error_exceeds_backstop");
+  assert.match(res.stale[0].message, /race_results_entrant_unique/, "den faktiske fejlbesked følger med — det var netop den der gik tabt i Sentry");
+  assert.ok(res.stale[0].ageHours >= STALE_BACKSTOP_HOURS);
+});
+
 // #4233: transfer_offers-FK'erne (rider_id + seller_team_id, begge NO ACTION) er en
 // TREDJE selvstaendig blokerings-grund. Doede tilbud (withdrawn/accepted/rejected)
 // forsvinder aldrig af sig selv, saa holdet forbliver udskudt — men det maa aldrig

@@ -8,29 +8,18 @@
 // REN — ingen import fra oevrigt backend, ingen IO/Date/Math.random. rng bruges
 // KUN via ctx.rngFor (seedet, per-rytter-hash). Muterer aldrig input-state.
 //
-// ARKITEKTUR-NOTE (vigtig — laes foer wiring): dette modul er bygget som en NY
-// fil under mechanics/ (hard rule for denne worker: ma IKKE aendre types.ts/
-// index.ts/segmentLoop.ts/groups.ts). Konsekvenser af det:
+// ARKITEKTUR-NOTE:
 //
-//  1. types.ts's `TeamOrder` er I DAG et LOEST F3-placeholder-udkast
-//     (`{ team_id, kind, params? }`, jf. types.ts's egen kommentar over typen)
-//     — IKKE endnu tactics-orders-v1-specens frosne form. Dette modul definerer
-//     derfor sin EGEN lokale ordre-type (`BreakawayTeamOrder`, se nedenfor) der
-//     matcher specens T3-kontrakt 1:1. Naar arkitekten laaser `TeamOrder` om til
-//     specens form, er `BreakawayTeamOrder` allerede strukturelt identisk —
-//     ingen kode her aendrer sig, kun typen den importeres fra.
-//  2. `SegmentHookContext` (types.ts) baerer i dag INGEN `orders`-felt. Dette
-//     modul udvider konteksten lokalt (`BreakawayHookContext = SegmentHookContext
-//     & { orders?: readonly BreakawayTeamOrder[] }`) saa hooket er kalbart UDEN
-//     at types.ts's frosne kontrakt aendres. Wiring-behov (beskrevet fuldt i
-//     PR-body): segmentLoop.ts skal (a) laese `input.orders` og laegge dem paa
-//     ctx som `orders`, (b) kalde `breakawayHook(state, ctx)` PAA HVERT segment
-//     (ikke kind-gated som climb/descent) — bade formation (segmentIndex===0)
-//     og jagt-fremdrift (hvert efterfoelgende segment) sker inde i dette ETT
-//     hook-kald — placeret EFTER climb/descent-hooket og FOER finale-hooket (saa
-//     finale.ts ser det korrekte front-gruppe-billede naar en overlevet udbryder
-//     skal placeres). `MechanicHooks` (types.ts) skal have et `breakaway`-felt;
-//     `index.ts`'s `LIVE_MECHANIC_HOOKS` skal wire `breakawayHook` ind.
+//  1. WIRET 3/9 (#4615): `SegmentHookContext` baerer nu `orders: readonly
+//     TeamOrder[]` (den AABNE konvolut fra types.ts), `MechanicHooks` har et
+//     `breakaway`-felt, og `index.ts`'s LIVE_MECHANIC_HOOKS kalder dette hook
+//     paa HVERT segment — efter climb/descent, foer finale. Ordrerne laeses via
+//     `parseBreakawayOrders` (kind === "team_tactics"), samme moenster som
+//     `mechanics/leadout.ts`'s `parseLeadoutOrders` (kind === "leadout").
+//  2. `TeamOrder` er BEVIDST stadig konvolutten og ikke T3-formen: rolle-vs-
+//     ordre-modsigelsen (#4246, `hunter` vs `try_break`) er ejer-gated og ikke
+//     afgjort. `BreakawayTeamOrder` nedenfor er specens T3-form 1:1; naar #4246
+//     er afgjort og konvolutten fryses, kollapser parseren til identitet.
 //  3. `Entrant` baerer intet `team_id` — dette modul har derfor IKKE behov for en
 //     rider->team-mapping: `try_break` laeses direkte fra
 //     `order.riders[].rider_id`, og hold-stance aggregeres holdvist (se
@@ -70,6 +59,7 @@ import type {
   FinaleType,
   RaceGroup,
   SegmentHookContext,
+  TeamOrder,
   SegmentHookResult,
   TimelineEvent,
 } from "../types.ts";
@@ -86,9 +76,9 @@ function normAbility(v: number | undefined): number {
   return clamp(Number(v) || 0, 0, 99) / 99;
 }
 
-// ── Lokal ordre-kontrakt (T3, tactics-orders-v1-design.md) ────────────────────
-// Se filens toppe-kommentar punkt 1: matcher specens frosne form 1:1, men
-// importeres IKKE fra types.ts (som endnu ikke baerer den).
+// ── Ordre-kontrakt (T3, tactics-orders-v1-design.md) ─────────────────────────
+// Se filens toppe-kommentar punkt 2: matcher specens form 1:1 og parses ud af
+// types.ts's aabne TeamOrder-konvolut.
 
 export type BreakawayStance = "chase" | "neutral" | "let_go";
 
@@ -98,11 +88,40 @@ export type BreakawayTeamOrder = {
   riders: Array<{ rider_id: string; try_break: boolean }>;
 };
 
-// ── Lokal kontekst-udvidelse (se filens toppe-kommentar punkt 2) ──────────────
+/** Konvolut-`kind` M5 fortolker (orders/teamOrdersAdapter.ts's toEngineTeamOrder skriver den). */
+export const TEAM_TACTICS_ORDER_KIND = "team_tactics";
 
-export type BreakawayHookContext = SegmentHookContext & {
-  orders?: readonly BreakawayTeamOrder[];
-};
+const VALID_STANCES: ReadonlySet<string> = new Set(["chase", "neutral", "let_go"]);
+
+/**
+ * Udtraekker M5's T3-ordrer fra den aabne `TeamOrder`-konvolut (samme moenster
+ * som leadout.ts's parseLeadoutOrders). Defensiv mod drift: ukendt stance
+ * falder til "neutral", ikke-arrays til tom rytterliste, ryttere uden
+ * `rider_id` droppes — en korrupt ordre maa aldrig vaelte en simulering.
+ * Ét hold kan kun have ÉN team_tactics-ordre pr. etape; ved dubletter vinder
+ * den sidste (array-raekkefolge, deterministisk).
+ */
+export function parseBreakawayOrders(orders: readonly TeamOrder[] | undefined): BreakawayTeamOrder[] {
+  if (!orders || orders.length === 0) return [];
+  const byTeam = new Map<string, BreakawayTeamOrder>();
+  for (const order of orders) {
+    if (order.kind !== TEAM_TACTICS_ORDER_KIND) continue;
+    const params = order.params ?? {};
+    const rawStance = params["breakaway_stance"];
+    const stance: BreakawayStance = VALID_STANCES.has(rawStance as string)
+      ? (rawStance as BreakawayStance)
+      : "neutral";
+    const rawRiders = Array.isArray(params["riders"]) ? (params["riders"] as unknown[]) : [];
+    const riders = rawRiders
+      .filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null)
+      .filter((r) => typeof r["rider_id"] === "string")
+      .map((r) => ({ rider_id: r["rider_id"] as string, try_break: r["try_break"] === true }));
+    byTeam.set(order.team_id, { team_id: order.team_id, breakaway_stance: stance, riders });
+  }
+  return [...byTeam.values()].sort((a, b) => a.team_id.localeCompare(b.team_id));
+}
+
+export type BreakawayHookContext = SegmentHookContext;
 
 export type BreakawayHook = (state: EngineState, ctx: BreakawayHookContext) => SegmentHookResult;
 
@@ -320,7 +339,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   if (!chaseGroup) return { state, events };
 
   const remainingKmFraction = ctx.route.distance_km > 0 ? clamp(ctx.segment.to_km / ctx.route.distance_km, 0, 1) : 0;
-  const stance = stanceSignal(ctx.orders);
+  const stance = stanceSignal(parseBreakawayOrders(ctx.orders));
   const segmentLengthKm = Math.max(0, ctx.segment.to_km - ctx.segment.from_km);
 
   let groups = state.groups;
@@ -328,6 +347,12 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const isLastSegment = ctx.segmentIndex === ctx.route.segments.length - 1;
 
   for (const breakaway of breakawayGroups) {
+    // WIRING-GUARD (#4615): en gruppe med kind "breakaway" er ikke
+    // noedvendigvis ET udbrud M5 selv dannede — M3's descent attack bruger
+    // samme art. Er "udbruddet" ikke foran jagt-gruppen, er der intet hul at
+    // lukke, og et blindt kald ville emittere et falsk breakaway_caught.
+    if (breakaway.gap_seconds > chaseGroup.gap_seconds) continue;
+
     const netAdvantage = computeNetChaseAdvantage({
       chaseGroupRiderIds: chaseGroup.rider_ids,
       breakawayRiderIds: breakaway.rider_ids,
@@ -336,16 +361,38 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       remainingKmFraction,
       stance,
     });
-    const closingSeconds = netAdvantage * segmentLengthKm * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit;
+    // WIRING-GUARD (#4615): jagt-interessen kan KUN lukke et hul, aldrig aabne
+    // et. Farten (og dermed hvor meget et udbrud traekker fra) afgoeres af
+    // segmentLoop's egen tempo-model; lod vi et negativt netto tilfoeje
+    // sekunder her, ville M5 bogfoere det samme forspring to gange — og en
+    // holdordre kunne dermed SKABE et forspring i stedet for at paavirke
+    // jagten paa det (mor-spec §5: spillerens valg kan aldrig vaelte et loeb).
+    const closingSeconds = Math.max(
+      0,
+      netAdvantage * segmentLengthKm * BREAKAWAY_EXTRA_TUNING.closingSecondsPerKmPerUnit,
+    );
 
-    // Kun jagt-gruppens gap AENDRES (hoved-invarianten laner gap_seconds som
-    // "afstand til fronten" — descent.ts/climbSelection.ts's samme moenster).
+    // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
+    // gruppens absolutte gap (#4615). Begge felter er "sekunder bag fronten",
+    // og hvem der ER fronten afhaenger af hvornaar i segmentet hooket kaldes:
+    // paa formations-segmentet er pelotonen stadig 0 og udbruddet negativt,
+    // paa alle senere segmenter er det omvendt (segmentLoop rebaseliner efter
+    // hvert hook-kald). Blev jagten maalt paa jagt-gruppens eget gap, ville et
+    // udbrud dannet i dette segment fremstaa fanget med det samme.
+    //
+    // Det er UDBRUDDETS gap der flyttes mod jagt-gruppen: separationen kan
+    // dermed aldrig blive negativ (jagten overhaler ikke det den jager), og
+    // jagt-gruppens eget gap — som segmentLoop's tempo-model ejer — roeres ikke.
     const currentChase = groups.find((g) => g.id === chaseGroup.id);
-    if (!currentChase) continue;
-    const newGap = Math.max(0, currentChase.gap_seconds - closingSeconds);
-    groups = groups.map((g) => (g.id === chaseGroup.id ? { ...g, gap_seconds: newGap } : g));
+    const currentBreakaway = groups.find((g) => g.id === breakaway.id);
+    if (!currentChase || !currentBreakaway) continue;
+    const separation = currentChase.gap_seconds - currentBreakaway.gap_seconds;
+    const newSeparation = Math.max(0, separation - closingSeconds);
+    const newBreakawayGap = currentChase.gap_seconds - newSeparation;
+    groups = groups.map((g) => (g.id === breakaway.id ? { ...g, gap_seconds: newBreakawayGap } : g));
     changed = true;
 
+    const newGap = newSeparation;
     const caught = newGap < ctx.tuning.groups.mergeThresholdSeconds;
     if (caught) {
       events.push({
@@ -375,10 +422,14 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
  */
 export const breakawayHook: BreakawayHook = (state: EngineState, ctx: BreakawayHookContext): SegmentHookResult => {
   if (ctx.segmentIndex === FORMATION_SEGMENT_INDEX && findBreakawayGroups(state.groups).length === 0) {
-    const tryBreakRiderIds = flattenTryBreakRiderIds(ctx.orders);
+    const tryBreakRiderIds = flattenTryBreakRiderIds(parseBreakawayOrders(ctx.orders));
     const formationResult = attemptFormation(state, ctx, tryBreakRiderIds);
-    const chaseResult = progressChase(formationResult.state, ctx);
-    return { state: chaseResult.state, events: [...formationResult.events, ...chaseResult.events] };
+    // Dannede vi et udbrud i DETTE segment, faar det sit hovedstart uantastet:
+    // jagten begynder foerst paa det naeste segment (#4615). Ellers ville en
+    // fuld segment-laengdes jagt-fremdrift blive bogfoert i samme kald som
+    // formationen og udslette forspringet foer det var kort.
+    if (findBreakawayGroups(formationResult.state.groups).length > 0) return formationResult;
+    return progressChase(formationResult.state, ctx);
   }
   return progressChase(state, ctx);
 };

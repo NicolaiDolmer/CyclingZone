@@ -133,6 +133,13 @@ jobs:
     # Fejler KUN paa NYE raa hex / slop-tells (rounded-xl/2xl/3xl, glow,
     # backdrop-blur, blob-blur) / emoji-som-ikon ud over scripts/ui-slop-baseline.json
     # (ratchet — maa kun skrumpe). Kendte callsites + emoji er Plan 4's job.
+    #
+    # #4626 (slice 4 af #4622, docs/design/TASTE.md §3): samme job koerer OGSAA
+    # check-anti-slop.mjs, de fire TASTE-forbudte moenstre lint-ui-slop.mjs
+    # ikke daekker (unicode-pile-som-ikon, arbitraer text-[Npx] under 12px,
+    # shadow-* uden for shadow-overlay, CSS/Tailwind-gradient). Samlet i dette
+    # job i stedet for et nyt, fordi begge er rene node-scripts uden npm ci
+    # (#4330: flere jobs = flere checkout/setup-node-runners for to kommandoer).
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -147,6 +154,12 @@ jobs:
 
       - name: Run anti-drift guard
         run: node scripts/lint-ui-slop.mjs
+
+      - name: Test anti-slop guard
+        run: node --test scripts/check-anti-slop.test.mjs
+
+      - name: Run anti-slop guard
+        run: node scripts/check-anti-slop.mjs
 
   eslint-disable-guard:
     runs-on: ubuntu-latest
@@ -391,6 +404,34 @@ jobs:
 
       - name: Run fetchAllRows order guard
         run: node scripts/check-fetchallrows-order.mjs
+
+  maybesingle-unique-scope-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod .maybeSingle()-kald der ikke daekker tabellens fulde
+    # flerkolonne-UNIQUE (#4496, rodaarsagen bag #4484). .maybeSingle() svarer
+    # med BAADE en fejl OG data: null naar mere end én raekke matcher filteret
+    # - fire kaldsteder laeste det som "ingen raekke findes" i stedet for
+    # "flertydig forespoergsel", og graduerings-sweepet fejlede 23 gange paa
+    # én nat. Usynlig i review (linjen ser rigtig ud) og usynlig for en naiv
+    # mock (#3620-klassen). Constraints laeses statisk fra database/*.sql +
+    # database/schema-snapshot.json - ingen DB-adgang. Opt-out:
+    # "maybesingle-scope-ok: <begrundelse>".
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test maybeSingle unique-scope guard
+        run: node --test scripts/check-maybesingle-unique-scope.test.mjs
+
+      - name: Run maybeSingle unique-scope guard
+        run: node scripts/check-maybesingle-unique-scope.mjs
 
   rls-classification-guard:
     runs-on: ubuntu-latest

@@ -70,8 +70,13 @@ test("root path redirects to dashboard", async ({ page }) => {
 const TRANSLATED_PAGE_SMOKE = [
   {
     path: "/dashboard",
-    en: [/Active auctions/i, /Transfers & Offers/i],
-    da: [/Aktive auktioner/i, /Transfers & tilbud/i],
+    // #4647: canary'erne var "Transfers & Offers" / "Transfers & tilbud" og
+    // matchede ikke laengere copyen. Dashboardet blev bygget om i #4625, hvor
+    // kortet fik sentence case og "and"/"og" i stedet for "&"
+    // (locales/{en,da}/dashboard.json -> cards.transfers.title). Testen var
+    // dermed roed paa main, ikke kun her - samme klasse som #4548.
+    en: [/Active auctions/i, /Transfers and offers/i],
+    da: [/Aktive auktioner/i, /Transfers og tilbud/i],
     rawKeys: ["dashboard:cards.transfers.title", "cards.transfers.title", "cards.auctions.title"],
   },
   {
