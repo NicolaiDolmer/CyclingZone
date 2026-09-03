@@ -133,6 +133,7 @@
     "colNow": "Nu",
     "colSeason": "Sæson",
     "colProgress": "På vej",
+    "nowTooltip": "Rytterens nuværende værdi, ikke loftet. Se baren eller \"færdig\"-mærket for om der er mere at hente.",
     "done": "færdig",
     "doneTitle": "Denne evne er færdigudviklet. Træningen udvikler rytterens øvrige evner i stedet.",
     "inFocusTitle": "Trænes af det aktuelle fokus.",
