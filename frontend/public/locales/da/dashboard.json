@@ -131,7 +131,16 @@
       "firstRaceCta": "Læs hele løbshistorien",
       "firstRaceNext": "Næste løb: {race}, {count, plural, one {om # dag} other {om # dage}}",
       "confettiTitleGc": "Sammenlagt vundet!",
-      "confettiTitleRace": "Løb vundet!"
+      "confettiTitleRace": "Løb vundet!",
+      "breakdown": {
+        "show": "Se sammensætning",
+        "hide": "Skjul sammensætning",
+        "stage": "Etape {number} placering",
+        "teamBonus": "Holdbonus",
+        "sponsor": "Sponsorudbetaling",
+        "sponsorRaceDay": "Løbsdagsindkomst",
+        "sponsorResultBonus": "Resultatbonus"
+      }
     },
     "maidenWin": {
       "title": "Karriereøjeblikke",
