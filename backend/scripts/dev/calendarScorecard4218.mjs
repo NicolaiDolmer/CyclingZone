@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // backend/scripts/dev/calendarScorecard4218.mjs
 // #4218 — mål kalenderen mod ALLE reglerne i docs/CALENDAR_RULES.md.
+// Defaultene peger paa den saeson der er ved at blive planlagt (S4 pr. 3/9, se nedenfor).
 //
 // EJER-KRAV 25/8: "før vi skriver til spillerne skal kalenderen testes og godkendes
 // selvfølgelig. Tests i forhold til vores regler. Slutter det for tit nedad? Er der nok
@@ -76,14 +77,22 @@ const FIXTURE = join(__dirname, "..", "..", "lib", "__fixtures__", "racePoolCata
 // #4239: delt med de oevrige kalender-dev-scripts, saa der kun er een arg-parser at rette.
 const arg = (name, fallback) => devArg(process.argv.slice(2), name, fallback);
 
-// Ejer-beslutning 25/8: fredag 28/8 → søndag 27/9 = 31 kalenderdage, løb hver dag.
-const FIRST_RACE_DAY = arg("first-day", "2026-08-28");
-const REAL_DAYS = Number(arg("days", "31"));
+// #4270 (ejer-beslutning 3/9): defaultene foelger den saeson der er ved at blive PLANLAGT,
+// ikke den der allerede koerer. S3's kalender er skrevet og laast (§2c), saa et scorecard
+// mod S3's vindue maaler en kalender ingen kan aendre. S4 = mandag 28/9 → soendag 25/10 =
+// 28 kalenderdage, loeb hver dag (docs/CALENDAR_RULES.md §2).
+//
+// Skiftet er ikke kosmetisk: D4's density 2 → 3 goer S3's 31-dages vindue UMULIGT for D4
+// (kvote 3 × 31 = 93 mod et katalog-loft paa 96 i D4's klasse-vindue), saa scorecardet ville
+// maale tomme kalenderdage der kun findes fordi vi holdt et gammelt vindue fast.
+// Tidligere default (S3, ejer-beslutning 25/8): first-day 2026-08-28, days 31, now 2026-08-25.
+const FIRST_RACE_DAY = arg("first-day", "2026-09-28");
+const REAL_DAYS = Number(arg("days", "28"));
 // `now` injiceres, så scriptet er tidsuafhængigt (27/6-blitz-guarden afviser en
 // første løbsdag der ikke er strengt i fremtiden — se raceCalendarLanePackerGtDayCap.test.js).
 // Uden det ville CI begynde at fejle på selve dagen den hardkodede dato passeres.
-const NOW = new Date(`${arg("now", "2026-08-25")}T12:00:00Z`);
-const SEASON_UUID = "00000000-0000-0000-0000-000000000003";
+const NOW = new Date(`${arg("now", "2026-09-03")}T12:00:00Z`);
+const SEASON_UUID = "00000000-0000-0000-0000-000000000004";
 
 // ---------------------------------------------------------------------------
 // #4573: mode-parsing som REN funktion, testet uden DB (parseren er det scriptet

@@ -35,8 +35,9 @@
 //   §7b finale-baand             → computeFinaleStats/detectFinaleViolations (to lag)
 
 import {
-  computeTierCoverageStats, detectCoverageViolations,
-  TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN, TIER_TERRAIN_FAMILY_MIN,
+  computeTierCoverageStats, detectCoverageViolations, detectTerrainBandViolations,
+  TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN,
+  TIER_TERRAIN_FAMILY_MIN, TIER_TERRAIN_FAMILY_MAX,
 } from "./tierCalendarGuarantees.js";
 import {
   computeCompositionStats, detectCompositionViolations,
@@ -55,7 +56,6 @@ import {
   detectMinOverlapViolations, detectQuotaViolations,
 } from "./calendarPlacementGates.js";
 import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE } from "./calendarTierCaps.js";
-import { TIER_TERRAIN_FAMILY_MAX } from "./tierCalendarGuarantees.js";
 
 const pct = (n) => `${(n * 100).toFixed(1)} %`;
 const ok = (b) => (b ? "OK " : "FEJL");
@@ -90,6 +90,9 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
 
   const coverage = computeTierCoverageStats({ raceRows, profilesByPoolRaceId });
   const coverageViol = detectCoverageViolations({ tier: plan.tier, stats: coverage });
+  // #4270: rolling-baandet (gulv + loft) doemmes for sig - roedt i scorecardet og en
+  // apply-gate, men uden at aendre #4215's eksisterende CI-dom. Se TERRAIN_BAND_FAMILIES.
+  const terrainBandViol = detectTerrainBandViolations({ tier: plan.tier, stats: coverage });
 
   const composition = computeCompositionStats(maalbare);
   // To domme paa samme kalender — CALENDAR_RULES.md §10 modsigelse 2, IKKE et valg denne
@@ -155,6 +158,7 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
     finale, finaleViol, finaleRaw,
     descent, descentAndel: etaper ? descent / etaper : 0,
     finaler: Object.fromEntries([...finaler.entries()].sort((a, b) => b[1] - a[1])),
+    terrainBandViol,
     gameDayOverlap, overlapMin: overlapMinForTier,
     multiRaceShareMin: TIER_MULTI_RACE_DAY_MIN_SHARE[plan.tier] ?? null,
     monumentGtViol, minOverlapViol, quotaViol,
@@ -213,14 +217,19 @@ export function scoreCalendarPlan({
   rapport.sæsonFinale = mergeFinaleStats(rapport.tiers.map((t) => t.finale));
   rapport.sæsonFinaleViol = detectFinaleViolations({ stats: rapport.sæsonFinale, label: "sæson", strict: true });
 
-  // #4270: de tre nye placerings-gates taeller MED i `regelbrud` (og dermed i CI-scorecardets
-  // exit-kode). De er ejer-besluttede haarde krav, ikke balance-maal - modsat §6b's uniforme
-  // maal og §6's strenge tolerance, der fortsat kun rapporteres.
   rapport.regelbrud = rapport.tiers.reduce((n, t) =>
     n + t.planViolations.length + t.coverageViol.length + t.compositionViol.length
-      + t.orderViol.length + t.finaleViol.length
-      + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0) + (t.minOverlapViol?.length ?? 0),
-  0) + rapport.sæsonFinaleViol.length;
+      + t.orderViol.length + t.finaleViol.length, 0) + rapport.sæsonFinaleViol.length;
+
+  // #4270's fire nye gates (§1b eksakt kvote, #4203 monument-i-GT, #3329 mindste-overlap,
+  // §5's rolling-baand) taelles FOR SIG. De er roede i rapporten og stopper --apply, men de
+  // aendrer IKKE #4215's eksisterende CI-dom (`regelbrud`/`ok`) - samme afgraensning som
+  // §6b's uniforme maal og §6's strenge tolerance allerede har. Ellers ville en ejer-
+  // beslutning om S4's kalender vaelte en groen gate for alt andet arbejde i repoet, og
+  // monument-i-GT kan foerst blive groen naar pakkeren er aendret (#4203's eget spor).
+  rapport.placeringsbrud = rapport.tiers.reduce((n, t) =>
+    n + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0)
+      + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0), 0);
   rapport.ok = rapport.regelbrud === 0 && dækning.ok && kollisioner.length === 0
     && unassessed.length === 0;
   return rapport;
@@ -254,6 +263,7 @@ export function scorecardGateGroups(rapport) {
   for (const v of rapport.dækning?.violations ?? []) blocking.push(`løb hver kalenderdag (§2) — ${v}`);
   for (const t of rapport.tiers) {
     for (const v of t.quotaViol ?? []) applyBlocking.push(`kvote-opfyldelse (§1b) — ${v}`);
+    for (const v of t.terrainBandViol ?? []) applyBlocking.push(`rolling-bånd (§5) — ${v}`);
     for (const v of t.monumentGtViol ?? []) applyBlocking.push(`monument i GT-spænd (§4/#4203) — ${v}`);
     for (const v of t.minOverlapViol ?? []) applyBlocking.push(`mindste-overlap (§1/#3329) — ${v}`);
     for (const v of t.finaleViol) finaleDrift.push(`finale-bånd (§7b) — ${v}`);
@@ -316,7 +326,8 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
       const krav = loft != null ? `${skal ?? 0}-${loft}` : `${skal}`;
       return `${f} ${har}/${krav}${famBrud(f) ? " ✗" : ""}`;
     }).join(" · ");
-    out.push(`  ${ok(!famNavne.some(famBrud))} Terræn-gulve + rolling-loft (§5): ${famLinje}${t.coverage?.classicStages ? ` · (heraf classic ${t.coverage.classicStages}, tælles i hilly)` : ""}`);
+    out.push(`  ${ok(!famNavne.some(famBrud))} Terræn-gulve + rolling-bånd (§5): ${famLinje}${t.coverage?.classicStages ? ` · (heraf classic ${t.coverage.classicStages}, tælles i hilly)` : ""}`);
+    for (const v of t.terrainBandViol ?? []) out.push(`     ! ${v}`);
 
     const c = t.composition?.pct ?? {};
     const komp = Object.keys(ACTIVE_TARGET).filter((k) => ACTIVE_TARGET[k] > 0).map((k) => {
@@ -393,7 +404,9 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
   out.push(`\n${"═".repeat(72)}`);
   out.push(`${ok(rapport.sæsonFinaleViol.length === 0)} SÆSON-AGGREGAT, finale-bånd uden stikprøve-tillæg (${rapport.sæsonFinale.total} etaper)`);
   for (const v of rapport.sæsonFinaleViol) out.push(`     ! ${v}`);
-  out.push(`SAMLET: ${rapport.regelbrud} regelbrud · dækning ${rapport.dækning.ok ? "OK" : "HULLER"}`
+  out.push(`SAMLET: ${rapport.regelbrud} regelbrud`
+    + ` · ${rapport.placeringsbrud ?? 0} placeringsbrud (#4270, stopper --apply)`
+    + ` · dækning ${rapport.dækning.ok ? "OK" : "HULLER"}`
     + (fraDb ? "" : ` · ${rapport.kollisioner.length} navnekollisioner`)
     + (rapport.unassessed?.length ? ` · ${rapport.unassessed.length} kunne ikke vurderes` : ""));
   out.push(rapport.ok

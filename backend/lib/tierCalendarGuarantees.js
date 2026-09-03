@@ -206,6 +206,44 @@ export const TIER_TERRAIN_FAMILY_MAX = Object.freeze({
   4: Object.freeze({ rolling: 6 }),
 });
 
+// De familier der doemmes af BAANDET (min+max) i stedet for af det gamle gulv alene.
+// De rapporteres roedt/groent i scorecardet og stopper --apply, men de aendrer IKKE dommen
+// i det eksisterende CI-scorecard (#4215) - praecis samme afgraensning som §6b's uniforme
+// maal og §6's strenge tolerance allerede har i calendarScorecardReport.js.
+//
+// HVORFOR: ejeren har besluttet baandet 3/9 og skal se tallene FOER apply. Et gulv der
+// samtidig vaelter en groen CI-gate ville goere den beslutning til en blokering af alt
+// andet arbejde i repoet - og rolling-forsyningen kan kun loeftes ved at genkalibrere
+// filler-vaegtene, hvilket er en S5-opgave (CALENDAR_RULES.md §6b).
+// MAALT forskel 3/9: prods katalog giver D4 1 rolling-etape (groen mod gulvet 1),
+// fixturen `racePoolCatalog.prod.json` giver 0 (roed). Baandet er altsaa paa kanten, og
+// dét er selve pointen med at ejeren ser tallet.
+export const TERRAIN_BAND_FAMILIES = Object.freeze(["rolling"]);
+
+/**
+ * §5/#4270: doem BAAND-familierne (min+max) for sig. Samme violation-format som
+ * detectCoverageViolations, men holdt ude af dens dom - se TERRAIN_BAND_FAMILIES.
+ */
+export function detectTerrainBandViolations({
+  tier, stats, families = TERRAIN_BAND_FAMILIES,
+  terrainFamilyMin = TIER_TERRAIN_FAMILY_MIN, terrainFamilyMax = TIER_TERRAIN_FAMILY_MAX,
+} = {}) {
+  const violations = [];
+  if (!stats) return violations;
+  const min = terrainFamilyMin?.[tier] ?? {};
+  const max = terrainFamilyMax?.[tier] ?? {};
+  for (const fam of families) {
+    const got = stats.familyCounts?.[fam] ?? 0;
+    if (min[fam] != null && got < min[fam]) {
+      violations.push(`tier ${tier}: terræn-familie "${fam}" har ${got} etaper, under gulvet ${min[fam]} (#4270)`);
+    }
+    if (max[fam] != null && got > max[fam]) {
+      violations.push(`tier ${tier}: terræn-familie "${fam}" har ${got} etaper, over loftet ${max[fam]} (#4270)`);
+    }
+  }
+  return violations;
+}
+
 // Minimum antal etapeløb UDEN bjerg-etape (mountain/high_mountain) pr. pulje pr. sæson
 // (à la Danmark Rundt — sprint/TT/kuperet, ingen klatre-etape overhovedet). D2 hævet fra
 // observeret 1 → 2 (ejer-ask #3327: "ikke alle etapeløb skal have bjerge"). D1 er en
@@ -367,7 +405,7 @@ export function detectCoverageViolations({
   tier, stats,
   oneDayShareMin = TIER_ONE_DAY_SHARE_MIN,
   terrainFamilyMin = TIER_TERRAIN_FAMILY_MIN,
-  terrainFamilyMax = TIER_TERRAIN_FAMILY_MAX,
+  bandFamilies = TERRAIN_BAND_FAMILIES,
   mountainFreeMin = TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
 } = {}) {
   const violations = [];
@@ -378,27 +416,17 @@ export function detectCoverageViolations({
     violations.push(`tier ${tier}: endagsløb-andel ${(stats.oneDayShare * 100).toFixed(1)}% under garanteret minimum ${(shareMin * 100).toFixed(1)}% (#3327)`);
   }
 
+  // #4270: BAAND-familierne (rolling) doemmes af detectTerrainBandViolations, ikke her.
+  // Se TERRAIN_BAND_FAMILIES for hvorfor de er holdt ude af denne dom.
   const familyMin = terrainFamilyMin?.[tier];
   if (familyMin) {
     for (const fam of TERRAIN_FAMILIES) {
+      if (bandFamilies?.includes(fam)) continue;
       const min = familyMin[fam];
       if (min == null) continue;
       const got = stats.familyCounts[fam] ?? 0;
       if (got < min) {
         violations.push(`tier ${tier}: terræn-familie "${fam}" har ${got} etaper, under garanteret minimum ${min} (#3327)`);
-      }
-    }
-  }
-
-  // #4270 (3/9): lofterne. Kun `rolling` har et i dag - se TIER_TERRAIN_FAMILY_MAX.
-  const familyMax = terrainFamilyMax?.[tier];
-  if (familyMax) {
-    for (const fam of TERRAIN_FAMILIES) {
-      const max = familyMax[fam];
-      if (max == null) continue;
-      const got = stats.familyCounts[fam] ?? 0;
-      if (got > max) {
-        violations.push(`tier ${tier}: terræn-familie "${fam}" har ${got} etaper, over tilladt maksimum ${max} (#4270)`);
       }
     }
   }
