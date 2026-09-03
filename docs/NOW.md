@@ -26,6 +26,6 @@
 - **Økonomi/værdier S3:** låst. **Sikkerhed:** kun #691 åben. **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428).
 - **Mekanik:** PR'er merges med `--admin` (én ad gangen); `database/*.sql` applies af auto-migrate.yml ved merge, Claude laver kun post-verify.
 
-> **🤖 Working agent:** Ingen aktiv session (Fable lukkede audit-aften-sessionen 3/9; masterplan + artifact synkroniseret).
+> **🤖 Working agent:** Fable (orkestrator), aftenbølge 3/9 fra kl. 22:20: 2 Sonnet-workers i worktrees — #2423 Skew Protection (`fix/2423-skew-protection`) · #3777 proposals-forfremmelse (`chore/3777-promote-applied-proposals`). Flere laner afventer ejer-valg.
 
 _Historik i git-log, issue-tråde + docs/audits/._
