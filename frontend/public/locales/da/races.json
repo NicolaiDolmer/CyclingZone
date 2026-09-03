@@ -1170,6 +1170,7 @@
       "itt_hilly": "Kuperet enkeltstart",
       "ttt": "Holdtidskørsel",
       "cobbles": "Brosten",
+      "gravel": "Grus",
       "classic": "Klassiker"
     },
     "finaleType": {
@@ -1220,6 +1221,10 @@
         "cobbles": {
           "label": "{count} brostenssektorer",
           "note": "positionering og styrke over brostenene"
+        },
+        "gravel": {
+          "label": "{count} grussektorer",
+          "note": "køreteknik og styrke på løst underlag"
         }
       },
       "waypoint": {

@@ -67,6 +67,51 @@ Tre nye stats er ejer-valgt ind (20/8) og fødes skjulte først: dagsform-stabil
 
 ---
 
+## 2b. Etapetyper (`profile_type`) — motorens terræn-vokabular
+
+Elleve værdier. De er defineret i `PROFILE_TYPES` (`backend/lib/raceStageProfileGenerator.js`)
+og håndhævet af CHECK'en på `race_stage_profiles.profile_type`. Hver type har ÉN
+`demand_vector` (hvilke evner dagen belønner) og ÉT sæt finale-vægte (hvordan den slutter)
+— begge samme sted i samme fil, så de er ét sted at tune.
+
+`flat` · `rolling` · `hilly` · `mountain` · `high_mountain` · `itt` · `itt_hilly` · `ttt` ·
+`cobbles` · **`gravel`** · `classic`
+
+Hvornår hver type opstår, og hvilken terræn-familie den tælles i, står i
+[`CALENDAR_RULES.md`](CALENDAR_RULES.md) §5-§7b. Denne fil ejer hvad typen GØR ved løbet.
+
+### Grus (`gravel`) — ejer-direktiv 21/8, ramme 3/9 ([#4105](https://github.com/NicolaiDolmer/CyclingZone/issues/4105))
+
+Ordret 21/8: *"Terre di Toscana skal blive et grusvejs løb og ikke et brostensløb"*.
+Ordret 3/9: *"det skal være næsten samme type der er god til den slags løb"* og
+*"brostensevnen tæller kun på etaper med brosten/grus"*.
+
+**Grus er sin egen type, ikke en etikette på brosten.** Det er dét der gør det muligt at
+tælle den i brostensfamilien i kalenderens dækning uden at spillet holder op med at kunne
+skelne de to. Fire ting definerer den:
+
+| | Hvad der gælder | Hvorfor |
+|---|---|---|
+| **Rytterprofil** | brostensevnen er den tungeste dimension, som på brosten. Vægten der er taget fra den ligger på udholdenhed, punch/klatring og tilfældighed | ejer-rammen: næsten samme rytter skal vinde. Grusklassikeren er længere, mere nedslidende og mere lotteri-agtig, og den afgøres oftere på en kort stejl rampe |
+| **Sektorer** | en grus-etape har **altid** mindst én sektor, og sektorerne er flere og længere end brostenens. `sectors[].kind = "gravel"` | ejer-reglen "brostensevnen tæller kun på etaper med brosten/grus" — en grus-etape uden sektorer ville lade den dominerende vægt hvile på ingenting |
+| **Segmenter** | en grus-sektor bliver et **`cobbles`-segment** i v4. Segment-modellen er uændret | segmentet beskriver FYSIKKEN (løst/ujævnt underlag: lav læsgevinst, høj styrtrisiko, høj work-cost), og den er den samme. Underlaget står i `profile_type` og i `sectors[].kind` |
+| **Finaler** | udbrud er det hyppigste udfald, rampe-finale det næsthyppigste, samlet gruppe mindretallet | grus bryder feltet tidligere end brosten, og den toscanske type afgøres på en rampe |
+
+**Grus er RAPPORTERET men ikke bånd-gatet** i `stageFinaleMetrics.js` — samme status som
+`classic`. #4272's finale-bånd blev godkendt tal for tal 26/8, og grus fandtes ikke
+dengang; et bånd for den kræver derfor en ejer-beslutning, ikke en PR.
+
+> ⚠ **`classic` bærer en brostens-vægt uden garanteret sektor-forsyning.** Grus opfylder
+> ejer-reglen ved konstruktion; `classic` gør det ikke — den trækker 0-3 sektorer og får
+> altså ingen i cirka en fjerdedel af tilfældene. At rette det er en balance-ændring
+> (`classic` er monument-arketypen), ikke en oprydning, og den er ikke lavet.
+
+Invarianterne for typen er property-testet i `backend/lib/gravelStageType.test.js` og
+måler RELATIONER mod evne-fordelingen, ikke faste tal — [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604)'s
+læring om at et scorecard der hænger på et absolut tal måler feltstørrelsen.
+
+---
+
 ## 3. Invarianter (property-testede, må aldrig brydes)
 
 1. **Determinisme.** Samme input ⇒ byte-identisk output. Per-rytter-hash, så én ekstra tilmelding ikke flytter andres relative udfald.

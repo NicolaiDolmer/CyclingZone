@@ -394,6 +394,10 @@ export const BREAKAWAY_BONUS = Object.freeze({
   mountain:      Object.freeze({ descent: 0.50, breakaway: 0.50, long_climb: 0.06, _default: 0.45 }),
   high_mountain: Object.freeze({ descent: 0.42, long_climb: 0.05, _default: 0.08 }),
   cobbles:       Object.freeze({ reduced_sprint: 0.30, breakaway: 0.36, _default: 0.28 }),
+  // gravel (#4105): samme familie som brosten, men et haak hoejere. Grusklassikeren
+  // afgoeres oftere langt fra maal (loest underlag bryder feltet tidligere), og dens
+  // rampe-finale er et punch-udfald hvor brosten kun har samlet gruppe eller udbrud.
+  gravel:        Object.freeze({ reduced_sprint: 0.30, punch: 0.36, breakaway: 0.40, _default: 0.36 }),
 });
 
 // → maxBonus for en (profil, finale). Manglende finale → profilens _default.
