@@ -107,11 +107,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Daily Training",
         "en": {
-          "title": "Current ability value is now shown separately from the ceiling",
+          "title": "Current value is not the ceiling",
           "body": "Daily Training now makes clear that a rider's current ability value is not the ceiling, with a tooltip explaining why progress can slow down near the top."
         },
         "da": {
-          "title": "Nuværende evneværdi vises nu adskilt fra loftet",
+          "title": "Nuværende værdi er ikke loftet",
           "body": "Daglig træning gør nu tydeligt at en rytters nuværende evneværdi ikke er loftet, med en tooltip der forklarer hvorfor fremgangen kan gå langsommere tæt på toppen."
         },
         "refs": [4128, 4675]
