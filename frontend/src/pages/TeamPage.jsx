@@ -33,7 +33,7 @@ import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
 import { extendCapGate } from "../lib/extendCapGate.js";
 import { cycleSortState } from "../lib/riderSort";
-import { AmountInput, PageHeader, Button, BikeIcon, PageLoader, EmptyState, DataTable } from "../components/ui";
+import { AmountInput, PageHeader, Button, BikeIcon, ChevronRightIcon, PageLoader, EmptyState, DataTable, Tabs, TabList, Tab, Segmented } from "../components/ui";
 import { controlClass } from "../components/ui/fieldStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
@@ -727,6 +727,12 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     ),
   }));
 
+  // #4381 (spillerforslag @knud_r_flink 28/8, ejer-issue): Mit hold og Akademiet
+  // viser SAMME datatype i to forskellige rækkefølger. Akademiets orden er
+  // referencen (nation · navn · type · alder · potentiale · værdi · løn ·
+  // kontrakt · handling); Mit holds tre ekstra kolonner (rating, popularitet,
+  // status) sættes ind uden at bryde den delrækkefølge. Akademiet er IKKE rørt
+  // i denne PR — kun Mit hold flytter sig.
   const overviewColumns = [
     {
       key: "nation",
@@ -738,6 +744,18 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     },
     nameColumn,
     ratingColumn,
+    typeColumn,
+    // #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier).
+    {
+      key: "age",
+      header: t("squad.headers.age"),
+      sortKey: "birthdate",
+      numeric: true,
+      compact: true,
+      fold: true,
+      foldValue: (r) => String(getRiderAge(r.birthdate, seasonYear) ?? "—"),
+      render: (r) => <span className="text-cz-2">{getRiderAge(r.birthdate, seasonYear) ?? "—"}</span>,
+    },
     {
       key: "potential",
       header: <span title={t("squad.headers.potentialTitle")}>{t("squad.headers.potential")}</span>,
@@ -810,30 +828,18 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
         </div>
       ),
     },
-    // #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier).
-    {
-      key: "age",
-      header: t("squad.headers.age"),
-      sortKey: "birthdate",
-      numeric: true,
-      compact: true,
-      fold: true,
-      foldValue: (r) => String(getRiderAge(r.birthdate, seasonYear) ?? "—"),
-      render: (r) => <span className="text-cz-2">{getRiderAge(r.birthdate, seasonYear) ?? "—"}</span>,
-    },
-    typeColumn,
-    // #1482: Kontraktudløb. #2888: cellen viser den korte sæson-form ("S4") med
-    // den fulde sætning i tooltip'en — "Udløber efter S4" fyldte ~120px pr. række.
+    // #1482: Kontraktudløb. #2888 forkortede cellen til "S4" af pladshensyn;
+    // #4381 (ejer-issue efter spillerfeedback) omgør det: Akademiet skriver
+    // "Until season 4", og de to flader skal formulere det ENS. Nøglen er den
+    // samme ordlyd som academy.contractUntil, så begge sider arver én streng.
     {
       key: "contract",
       header: t("squad.headers.contract"),
       sortKey: "contract_end_season",
-      numeric: true,
       compact: true,
       render: (r) => (
-        <span className="text-cz-2"
-          title={r.contract_end_season != null ? t("squad.headers.contractValue", { season: r.contract_end_season }) : undefined}>
-          {r.contract_end_season != null ? t("squad.headers.contractShort", { season: r.contract_end_season }) : "—"}
+        <span className="text-cz-2 whitespace-nowrap">
+          {r.contract_end_season != null ? t("squad.headers.contractUntil", { season: r.contract_end_season }) : "—"}
         </span>
       ),
     },
@@ -856,80 +862,68 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   const abilityModeColumns = [nameColumn, ratingColumn, typeColumn, ...abilityColumns];
   const columns = tableMode === "abilities" ? abilityModeColumns : overviewColumns;
 
+  // #4628 (audit 2026-09 række #2): kontrol-rækken lå som en LØSREVET række
+  // mellem sidehovedet og tabellen — præcis PAGE_TEMPLATES' "no orphan action
+  // rows". Kontrollerne styrer kun tabellen, så de flyttes ind i tabellens egen
+  // toolbar (inde i hairline-rammen, over kolonne-headeren). De tre hånd-
+  // rullede segment-idiomer er samtidig samlet i ÉT: kittets Segmented.
+  const squadToolbar = (
+    <>
+      {/* #1929-redesign: gruppe-filtre — inkludér/ekskludér seniorer og
+          akademiryttere uafhængigt. Default begge på = hele holdet vist. Kun
+          synligt når holdet har akademiryttere (ellers er der intet at filtrere).
+          #3188: "Vis" + de to filter-piller ligger i deres EGEN wrapper, så et
+          klik i mellemrummet fanges lokalt i stedet for at boble op til en række
+          uden handler (1.306 dead clicks, Clarity 27/7-3/8). */}
+      {academyGroupCount > 0 && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-cz-3 select-none">{t("squad.filter.label")}</span>
+          <button type="button" onClick={() => setShowSeniors(v => !v)} aria-pressed={showSeniors}
+            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-colors duration-150 ${showSeniors ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
+            {t("squad.filter.seniors", { count: seniorGroupCount })}
+          </button>
+          <button type="button" onClick={() => setShowAcademy(v => !v)} aria-pressed={showAcademy}
+            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-colors duration-150 ${showAcademy ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
+            {t("squad.filter.academy", { count: academyGroupCount })}
+          </button>
+        </div>
+      )}
+
+      {/* #1095: segmenteret nuværende/kommende-visning */}
+      {hasTransfers && (
+        <Segmented
+          label={t("squad.view.ariaLabel")}
+          value={squadView}
+          onChange={setSquadView}
+          options={[
+            { value: "current", label: t("squad.view.current", { count: currentCount }) },
+            { value: "upcoming", label: t("squad.view.upcoming", { count: upcomingCount }) },
+          ]}
+        />
+      )}
+
+      {/* #2906 punkt 1: kolonne-tilstand. "Evner" viser alle 15 evner samtidig. */}
+      <Segmented
+        className="ms-auto"
+        label={t("squad.mode.ariaLabel")}
+        value={tableMode}
+        onChange={setTableMode}
+        options={[
+          { value: "overview", label: t("squad.mode.overview") },
+          { value: "abilities", label: t("squad.mode.abilities") },
+        ]}
+      />
+    </>
+  );
+
   return (
     <div>
-      {/* #2888/#2906: ÉN kontrol-række i stedet for op til tre stablede rækker
-          (gruppe-filtre, nuværende/kommende, tilstand). Hver stablet række kostede
-          ~44px højde over tabellen — den plads er det tabellen skulle bruge.
-          Venstre: hvem vises. Højre: hvilke kolonner vises. */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {/* #1929-redesign: gruppe-filtre — inkludér/ekskludér seniorer og
-            akademiryttere uafhængigt. Default begge på = hele holdet vist. Kun
-            synligt når holdet har akademiryttere (ellers er der intet at filtrere). */}
-        {academyGroupCount > 0 && (
-          // #3188: "Vis" + de to filter-pilles lå som løse søskende direkte i den
-          // ydre rækkes `gap-2`-flex — samme gap-afstand som til de HELT andre
-          // kontrolgrupper (nuværende/kommende, Oversigt/Evner) ved siden af.
-          // Et klik der ramte imellem "Vis" og "Seniorer (N)" boblede op til den
-          // ydre række (ingen handler dér) i stedet for en af knapperne — Clarity
-          // rapporterede den samlede tekst "VisSeniorer (N)Akademi (N)" som dead
-          // click (1.306, 27/7-3/8). Egen wrapper med SAMME gap (ingen visuel
-          // ændring) fanger nu klik i mellemrummet lokalt i stedet for at lade dem
-          // forsvinde op til den ydre rækkes tomme baggrund.
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-cz-3 select-none">{t("squad.filter.label")}</span>
-            <button type="button" onClick={() => setShowSeniors(v => !v)} aria-pressed={showSeniors}
-              className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showSeniors ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
-              {t("squad.filter.seniors", { count: seniorGroupCount })}
-            </button>
-            <button type="button" onClick={() => setShowAcademy(v => !v)} aria-pressed={showAcademy}
-              className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showAcademy ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
-              {t("squad.filter.academy", { count: academyGroupCount })}
-            </button>
-          </div>
-        )}
-
-        {/* #1095: segmenteret nuværende/kommende-visning */}
-        {hasTransfers && (
-          <div className="flex rounded-cz border border-cz-border overflow-hidden">
-            {[
-              { key: "current",  label: t("squad.view.current",  { count: currentCount }) },
-              { key: "upcoming", label: t("squad.view.upcoming", { count: upcomingCount }) },
-            ].map(v => (
-              <button key={v.key} onClick={() => setSquadView(v.key)} aria-pressed={squadView === v.key}
-                className={`px-3 py-1.5 text-xs font-medium transition-all
-                  ${squadView === v.key
-                    ? "bg-cz-accent/10 text-cz-accent-t"
-                    : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
-                {v.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* #2906 punkt 1: kolonne-tilstand. "Evner" viser alle 15 evner samtidig. */}
-        <div className="flex rounded-cz border border-cz-border overflow-hidden ms-auto">
-          {[
-            { key: "overview",  label: t("squad.mode.overview") },
-            { key: "abilities", label: t("squad.mode.abilities") },
-          ].map(m => (
-            <button key={m.key} type="button" onClick={() => setTableMode(m.key)} aria-pressed={tableMode === m.key}
-              className={`px-3 py-1.5 text-xs font-medium transition-all
-                ${tableMode === m.key
-                  ? "bg-cz-accent/10 text-cz-accent-t"
-                  : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {squadView === "upcoming" && (incomingRiders.length > 0 || outgoingRiders.length > 0) && (
         <p className="text-cz-3 text-xs mb-3">{t("squad.view.upcomingHint")}</p>
       )}
 
-      {displayRiders.length === 0 ? (
-        riders.length === 0 ? (
+      {riders.length === 0 ? (
+        (
           /* #1569: ægte tom trup (ny spiller) — gør blindgyden guidende med en
              primær CTA til markedet, så "hvad gør jeg nu?" har et svar.
              #2849 bølge 1: kanonisk EmptyState — action-slotten har undtagelsesvis
@@ -951,9 +945,6 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
               </div>
             }
           />
-        ) : (
-          /* Trup har ryttere, men den valgte visning/filter er tom. */
-          <EmptyState icon={<BikeIcon size={26} aria-hidden="true" />} title={t("squad.emptyView")} />
         )
       ) : (
         /* #2888/#2906: truppen bruger nu den KANONISKE DataTable (T2-recipen) i
@@ -975,6 +966,11 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
           sort={sort}
           sortDir={sortDir}
           onSort={handleSort}
+          toolbar={squadToolbar}
+          /* Trup har ryttere, men den valgte visning/filter er tom. #4628:
+             tomtilstanden swapper <tbody> i stedet for hele kortet, så
+             filter-kontrollerne i toolbaren stadig kan slås fra igen. */
+          empty={<EmptyState icon={<BikeIcon size={26} aria-hidden="true" />} title={t("squad.emptyView")} />}
           count={t("squad.count", { count: displayRiders.length })}
         />
       )}
@@ -1273,30 +1269,25 @@ export function TeamPage() {
           className="mb-5 flex items-center justify-between gap-3 rounded-cz border border-cz-accent/30 bg-cz-accent/10 px-4 py-3 text-sm text-cz-accent-t hover:bg-cz-accent/15 transition-colors"
         >
           <span className="font-medium">{t("page.ownAuctionsBanner", { count: Object.keys(ownAuctions).length })}</span>
-          <span aria-hidden="true">→</span>
+          {/* #4628: unicode-pilen var et tegn brugt som ikon (TASTE P7 / forbudslisten). */}
+          <ChevronRightIcon size={14} aria-hidden="true" />
         </Link>
       )}
 
-      <div className="flex gap-2 mb-5">
-        {tabs.map(tab => {
-          const active = activeTab === tab.key;
-          // #3188: den aktive fane var en <button> med samme klik-handler og
-          // pointer-cursor som de andre — så et gentaget klik på "Trup (N)"
-          // (default-fanen) SÅ klikbart ud men var garanteret en no-op (samme
-          // state, ingen re-render). Det var appens højeste dead-click-kilde
-          // (Clarity 27/7-3/8: 1.530 dead clicks). Aktiv fane mister nu
-          // klik-handler + pointer-cursor; øvrige faner uændret.
-          return (
-            <button key={tab.key} type="button"
-              onClick={active ? undefined : () => setActiveTab(tab.key)}
-              aria-pressed={active}
-              className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
-                ${active ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 cursor-default" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* #4628 (audit 2026-09 række #2): fanerne var tegnet som fire kantede
+          knapper. PAGE_TEMPLATES er utvetydig — "Tabs are underline-tabs, never
+          buttons ... never hand-roll a tab row". Kittets Tabs ejer også
+          role="tablist", roving tabindex og Left/Right/Home/End (#4625), som
+          den håndrullede række manglede. #3188's dead-click-læring (den aktive
+          fane må ikke se klikbar ud) lever videre i Tab: den aktive knap har
+          aria-selected og skifter ikke state ved et gentaget klik. */}
+      <Tabs value={activeTab} onChange={setActiveTab} className="mb-5">
+        <TabList label={t("tabs.ariaLabel")}>
+          {tabs.map(tab => (
+            <Tab key={tab.key} value={tab.key}>{tab.label}</Tab>
+          ))}
+        </TabList>
+      </Tabs>
 
       {activeTab === "squad" && (
         <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber} />

@@ -53,16 +53,17 @@ test("#4270: sæson-aggregatets finale-brud tælles med i finale-driften", () =>
   assert.match(g.finaleDrift[0], /sæson-aggregat/);
 });
 
-test("#4270: en ren plan giver tre tomme grupper — gaten larmer ikke uden fund", () => {
+test("#4270: en ren plan giver fire tomme grupper - gaten larmer ikke uden fund", () => {
   const g = scorecardGateGroups(rapportMed());
-  assert.deepEqual(g, { blocking: [], finaleDrift: [], uniformDrift: [] });
+  assert.deepEqual(g, { blocking: [], applyBlocking: [], finaleDrift: [], uniformDrift: [] });
 });
 
 test("#4270: kvoten er density × løbsdatoer (§1b), ikke den hardkodede 140/112/84/56", () => {
-  // S3's egne tal (31 løbsdatoer) — dem regenSeason3Calendar.mjs faktisk byggede med.
-  assert.deepEqual(quotasForRaceDays(31), { 1: 155, 2: 124, 3: 93, 4: 62 });
-  // S4's 28-dages-vindue.
-  assert.deepEqual(quotasForRaceDays(28), { 1: 140, 2: 112, 3: 84, 4: 56 });
+  // S3's egne tal (31 løbsdatoer). D4 staar med 93, ikke 62: densiteten er ejer-hae­vet
+  // 2 -> 3 pr. 3/9 (#4270), og kvoten er afledt, ikke en historisk kopi.
+  assert.deepEqual(quotasForRaceDays(31), { 1: 155, 2: 124, 3: 93, 4: 93 });
+  // S4's 28-dages-vindue (ejer-valgt 3/9): D4 3 x 28 = 84.
+  assert.deepEqual(quotasForRaceDays(28), { 1: 140, 2: 112, 3: 84, 4: 84 });
   // Afledningen skal følge TIER_DENSITY, ikke en kopi af tallene.
   for (const [tier, density] of Object.entries(TIER_DENSITY)) {
     assert.equal(quotasForRaceDays(35)[Number(tier)], density * 35);

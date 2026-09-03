@@ -35,8 +35,9 @@
 //   §7b finale-baand             → computeFinaleStats/detectFinaleViolations (to lag)
 
 import {
-  computeTierCoverageStats, detectCoverageViolations,
-  TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN, TIER_TERRAIN_FAMILY_MIN,
+  computeTierCoverageStats, detectCoverageViolations, detectTerrainBandViolations,
+  TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN,
+  TIER_TERRAIN_FAMILY_MIN, TIER_TERRAIN_FAMILY_MAX,
 } from "./tierCalendarGuarantees.js";
 import {
   computeCompositionStats, detectCompositionViolations,
@@ -50,6 +51,11 @@ import {
   TERRAIN_FINALE_BANDS, OVERALL_FINALE_BAND, FINALE_CLASSES, CLASS_LABELS, MIN_SAMPLE,
 } from "./stageFinaleMetrics.js";
 import { detectEmptyCalendarDays } from "./calendarDailyCoverage.js";
+import {
+  detectMonumentsInsideGrandTours, computeGameDayOverlap,
+  detectMinOverlapViolations, detectQuotaViolations,
+} from "./calendarPlacementGates.js";
+import { TIER_OVERLAP_MIN, TIER_MULTI_RACE_DAY_MIN_SHARE } from "./calendarTierCaps.js";
 
 const pct = (n) => `${(n * 100).toFixed(1)} %`;
 const ok = (b) => (b ? "OK " : "FEJL");
@@ -73,6 +79,7 @@ export function addCalendarDays(dateStr, n) {
 export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace = new Map() } = {}) {
   const pool = (plan.pools ?? [])[0] ?? { raceRows: [], stageRows: [] };
   const raceRows = pool.raceRows ?? [];
+  const stageRows = pool.stageRows ?? [];
 
   const maalbare = raceRows.map((r) => ({
     name: r.name,
@@ -83,6 +90,9 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
 
   const coverage = computeTierCoverageStats({ raceRows, profilesByPoolRaceId });
   const coverageViol = detectCoverageViolations({ tier: plan.tier, stats: coverage });
+  // #4270: rolling-baandet (gulv + loft) doemmes for sig - roedt i scorecardet og en
+  // apply-gate, men uden at aendre #4215's eksisterende CI-dom. Se TERRAIN_BAND_FAMILIES.
+  const terrainBandViol = detectTerrainBandViolations({ tier: plan.tier, stats: coverage });
 
   const composition = computeCompositionStats(maalbare);
   // To domme paa samme kalender — CALENDAR_RULES.md §10 modsigelse 2, IKKE et valg denne
@@ -120,12 +130,20 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
   const finaleViol = detectFinaleViolations({ stats: finale, label: `tier ${plan.tier}`, strict: false });
   const finaleRaw = detectFinaleViolations({ stats: finale, label: `tier ${plan.tier}`, strict: true });
 
+  // #4270's tre nye placerings-gates (calendarPlacementGates.js). De doemmer paa den samme
+  // to-akse-form scorecardet allerede har, og maales derfor her frem for i pakkeren.
+  const overlapMinForTier = TIER_OVERLAP_MIN[plan.tier] ?? null;
+  const gameDayOverlap = computeGameDayOverlap({ stageRows, overlapMin: overlapMinForTier });
+  const monumentGtViol = detectMonumentsInsideGrandTours({ tier: plan.tier, raceRows, stageRows });
+  const minOverlapViol = detectMinOverlapViolations({ tier: plan.tier, overlap: gameDayOverlap });
+  const quotaViol = detectQuotaViolations({ tier: plan.tier, quota: plan.quota, totalGameDays: plan.totalGameDays });
+
   return {
     tier: plan.tier,
     løb: raceRows.length,
     etaper,
-    løbsdage: new Set((pool.stageRows ?? []).map((s) => s.game_day)).size,
-    kalenderdage: new Set((pool.stageRows ?? []).map((s) => String(s.scheduled_at).slice(0, 10))).size,
+    løbsdage: new Set(stageRows.map((s) => s.game_day)).size,
+    kalenderdage: new Set(stageRows.map((s) => String(s.scheduled_at).slice(0, 10))).size,
     quota: plan.quota ?? null,
     totalGameDays: plan.totalGameDays ?? null,
     quotaHit: plan.quotaHit ?? null,
@@ -140,6 +158,10 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
     finale, finaleViol, finaleRaw,
     descent, descentAndel: etaper ? descent / etaper : 0,
     finaler: Object.fromEntries([...finaler.entries()].sort((a, b) => b[1] - a[1])),
+    terrainBandViol,
+    gameDayOverlap, overlapMin: overlapMinForTier,
+    multiRaceShareMin: TIER_MULTI_RACE_DAY_MIN_SHARE[plan.tier] ?? null,
+    monumentGtViol, minOverlapViol, quotaViol,
   };
 }
 
@@ -198,6 +220,16 @@ export function scoreCalendarPlan({
   rapport.regelbrud = rapport.tiers.reduce((n, t) =>
     n + t.planViolations.length + t.coverageViol.length + t.compositionViol.length
       + t.orderViol.length + t.finaleViol.length, 0) + rapport.sæsonFinaleViol.length;
+
+  // #4270's fire nye gates (§1b eksakt kvote, #4203 monument-i-GT, #3329 mindste-overlap,
+  // §5's rolling-baand) taelles FOR SIG. De er roede i rapporten og stopper --apply, men de
+  // aendrer IKKE #4215's eksisterende CI-dom (`regelbrud`/`ok`) - samme afgraensning som
+  // §6b's uniforme maal og §6's strenge tolerance allerede har. Ellers ville en ejer-
+  // beslutning om S4's kalender vaelte en groen gate for alt andet arbejde i repoet, og
+  // monument-i-GT kan foerst blive groen naar pakkeren er aendret (#4203's eget spor).
+  rapport.placeringsbrud = rapport.tiers.reduce((n, t) =>
+    n + (t.quotaViol?.length ?? 0) + (t.monumentGtViol?.length ?? 0)
+      + (t.minOverlapViol?.length ?? 0) + (t.terrainBandViol?.length ?? 0), 0);
   rapport.ok = rapport.regelbrud === 0 && dækning.ok && kollisioner.length === 0
     && unassessed.length === 0;
   return rapport;
@@ -211,26 +243,60 @@ export function scoreCalendarPlan({
  * K-B-komposition (saeson + pr. tier) og realisme-baandene. Dubleret gating ville
  * kun give dobbelt-udskrift af samme brud.
  *
- *   blocking     §2's "loeb hver kalenderdag" — ejer-laast 25/8, INGEN override
- *   finaleDrift  §7b's finale-baand pr. division + saesons-aggregatet
- *   uniformDrift §6b's tre uniforme maal (itt/brosten/hoejbjerg)
+ *   blocking       §2's "loeb hver kalenderdag" — ejer-laast 25/8, INGEN override
+ *   applyBlocking  #4270's tre placerings-gates (3/9) — roede i scorecardet i BEGGE
+ *                  koersler, men stopper kun --apply. INGEN override: ejeren har kaldt dem
+ *                  haarde krav, og dry-runnet skal kunne koeres til ende for at MAALE hvor
+ *                  langt der er igen (§5b's katalog-lofter kan ikke lukkes af en gate).
+ *   finaleDrift    §7b's finale-baand pr. division + saesons-aggregatet
+ *   uniformDrift   §6b's tre uniforme maal (itt/brosten/hoejbjerg)
  *
  * finale/uniform er balance-MAAL (samme klasse som kompositions-driften), ikke
  * korrekthedsinvarianter, og har derfor hvert sit override-flag i CLI'en.
  */
+/**
+ * Alle brud der taeller i dommen, som flad liste af strenge - baade `regelbrud` og
+ * #4270's `placeringsbrud`. Bruges af fixture-gaten til at skelne KENDTE brud fra NYE.
+ *
+ * Formen er bevidst "en streng pr. brud": kendt-tilstand-listen matcher paa tekst, saa et
+ * brud der aendrer ordlyd bliver behandlet som nyt. Det er den rigtige default - aendrer et
+ * bruds beskrivelse sig, er der sket noget, og et menneske skal se paa det.
+ */
+export function alleBrud(rapport) {
+  const ud = [];
+  for (const t of rapport.tiers ?? []) {
+    for (const v of t.planViolations ?? []) ud.push(v);
+    for (const v of t.coverageViol ?? []) ud.push(v);
+    for (const v of t.compositionViol ?? []) ud.push(v);
+    for (const v of t.orderViol ?? []) ud.push(v);
+    for (const v of t.finaleViol ?? []) ud.push(v);
+    for (const v of t.quotaViol ?? []) ud.push(v);
+    for (const v of t.monumentGtViol ?? []) ud.push(v);
+    for (const v of t.minOverlapViol ?? []) ud.push(v);
+    for (const v of t.terrainBandViol ?? []) ud.push(v);
+  }
+  for (const v of rapport.sæsonFinaleViol ?? []) ud.push(`sæson: ${v}`.replace(/^sæson: sæson: /, "sæson: "));
+  return ud;
+}
+
 export function scorecardGateGroups(rapport) {
   const blocking = [];
+  const applyBlocking = [];
   const finaleDrift = [];
   const uniformDrift = [];
 
   for (const v of rapport.dækning?.violations ?? []) blocking.push(`løb hver kalenderdag (§2) — ${v}`);
   for (const t of rapport.tiers) {
+    for (const v of t.quotaViol ?? []) applyBlocking.push(`kvote-opfyldelse (§1b) — ${v}`);
+    for (const v of t.terrainBandViol ?? []) applyBlocking.push(`rolling-bånd (§5) — ${v}`);
+    for (const v of t.monumentGtViol ?? []) applyBlocking.push(`monument i GT-spænd (§4/#4203) — ${v}`);
+    for (const v of t.minOverlapViol ?? []) applyBlocking.push(`mindste-overlap (§1/#3329) — ${v}`);
     for (const v of t.finaleViol) finaleDrift.push(`finale-bånd (§7b) — ${v}`);
     for (const v of t.uniformViol) uniformDrift.push(`uniformt mål (§6b) — ${v}`);
   }
   for (const v of rapport.sæsonFinaleViol ?? []) finaleDrift.push(`finale-bånd, sæson-aggregat (§7b) — ${v}`);
 
-  return { blocking, finaleDrift, uniformDrift };
+  return { blocking, applyBlocking, finaleDrift, uniformDrift };
 }
 
 /**
@@ -262,23 +328,31 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
   for (const t of rapport.tiers) {
     out.push(`\n${"─".repeat(72)}\nDIVISION ${t.tier} — ${t.løb} løb, ${t.etaper} etaper, ${t.løbsdage} løbsdage, ${t.kalenderdage}/${rapport.kalenderdage} kalenderdage`);
 
-    // §1b: kvoten er en oevre ramme; gulvet for opfyldelse er IKKE fastlagt (§11 punkt 4),
-    // saa den rapporteres uden dom.
+    // §1b: EKSAKT 100 % (ejer-beslutning 3/9, #4270 — lukker §11 punkt 4). Hverken 99
+    // eller 101: kvoten ER antallet af loebsdage divisionens tidsplan har.
     if (t.quota != null) {
-      out.push(`  --  Kvote (§1b): ${t.totalGameDays ?? "?"} af ${t.quota} løbsdage${t.shortfall ? ` · mangler ${t.shortfall}` : ""} (intet gulv fastlagt — §11 punkt 4)`);
+      out.push(`  ${ok((t.quotaViol?.length ?? 0) === 0)} Kvote (§1b, eksakt 100 %): ${t.totalGameDays ?? "?"} af ${t.quota} løbsdage${t.shortfall ? ` · mangler ${t.shortfall}` : ""}`);
+      for (const v of t.quotaViol ?? []) out.push(`     ! ${v}`);
     }
 
     const share = t.coverage?.oneDayShare ?? 0;
     const målShare = TIER_ONE_DAY_SHARE_TARGET[t.tier], minShare = TIER_ONE_DAY_SHARE_MIN[t.tier];
     out.push(`  ${ok(share >= minShare)} Endagsløb (§4): ${t.coverage?.oneDayRaces ?? "?"} af ${t.løb} = ${pct(share)} (mål ${pct(målShare)}, min ${pct(minShare)})`);
 
+    // §5: gulve for alle seks familier + #4270's loft paa `rolling`. classic taeller nu
+    // med i hilly (#4270), saa ingen etape falder uden for taellingen laengere.
     const fam = t.coverage?.familyCounts ?? {};
     const gulve = TIER_TERRAIN_FAMILY_MIN[t.tier] ?? {};
-    const famLinje = Object.keys(gulve).map((f) => {
-      const har = fam[f] ?? 0, skal = gulve[f];
-      return `${f} ${har}/${skal}${har < skal ? " ✗" : ""}`;
+    const lofter = TIER_TERRAIN_FAMILY_MAX[t.tier] ?? {};
+    const famNavne = [...new Set([...Object.keys(gulve), ...Object.keys(lofter)])];
+    const famBrud = (f) => (fam[f] ?? 0) < (gulve[f] ?? 0) || (lofter[f] != null && (fam[f] ?? 0) > lofter[f]);
+    const famLinje = famNavne.map((f) => {
+      const har = fam[f] ?? 0, skal = gulve[f], loft = lofter[f];
+      const krav = loft != null ? `${skal ?? 0}-${loft}` : `${skal}`;
+      return `${f} ${har}/${krav}${famBrud(f) ? " ✗" : ""}`;
     }).join(" · ");
-    out.push(`  ${ok(!Object.keys(gulve).some((f) => (fam[f] ?? 0) < gulve[f]))} Terræn-gulve (§5): ${famLinje}`);
+    out.push(`  ${ok(!famNavne.some(famBrud))} Terræn-gulve + rolling-bånd (§5): ${famLinje}${t.coverage?.classicStages ? ` · (heraf classic ${t.coverage.classicStages}, tælles i hilly)` : ""}`);
+    for (const v of t.terrainBandViol ?? []) out.push(`     ! ${v}`);
 
     const c = t.composition?.pct ?? {};
     const komp = Object.keys(ACTIVE_TARGET).filter((k) => ACTIVE_TARGET[k] > 0).map((k) => {
@@ -326,10 +400,22 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
       out.push(`      (${t.finaleRaw.length} afvigelse(r) fra det rå bånd bæres af stikprøve-tillægget — se ✗)`);
     }
 
+    // §1: baade toppen (cap, laast 28/6) og bunden (#3329, ejer 3/9). Histogrammet staar
+    // med, fordi "maks 3" og "min 1" hver for sig skjuler hvor mange dage der er tynde.
+    // #4687's DB-tilstand maaler dem ikke: overlap og plan-invarianter har deres eget
+    // prod-niveau (verify-invariants.js / calendarOverlapInvariant.js, §9c), og
+    // monument-i-GT + mindste-overlap regnes ud af PLANENS to-akse-form.
     if (fraDb) {
-      out.push(`  --  Samtidige løb pr. løbsdag (§1) + plan-invarianter (§3): IKKE målt her — de har eget prod-niveau i verify-invariants.js / calendarOverlapInvariant.js (§9c)`);
+      out.push(`  --  Samtidige løb pr. løbsdag (§1) + mindste-overlap (§1/#3329) + monument uden for GT-spænd (§4/#4203) + plan-invarianter (§3): IKKE målt her — de har eget prod-niveau i verify-invariants.js / calendarOverlapInvariant.js (§9c)`);
     } else {
+      const gd = t.gameDayOverlap ?? {};
+      const hist = Object.keys(gd.histogram ?? {}).sort((a, b) => Number(a) - Number(b))
+        .map((n) => `${n} løb: ${gd.histogram[n]} dage`).join(" · ");
       out.push(`  ${ok((t.maxOverlap ?? 0) <= (t.overlapCap ?? 99))} Samtidige løb pr. løbsdag (§1): maks ${t.maxOverlap} (cap ${t.overlapCap})`);
+      out.push(`  ${ok((t.minOverlapViol?.length ?? 0) === 0)} Mindste-overlap (§1/#3329): min ${gd.minOverlap ?? "?"} (krav ${t.overlapMin ?? "ingen bund sat"}) · ${(100 * (gd.multiRaceShare ?? 0)).toFixed(1)} % af løbsdagene har ≥2 løb (gulv ${t.multiRaceShareMin != null ? `${(100 * t.multiRaceShareMin).toFixed(0)} %` : "ikke sat"}) · ${hist}`);
+      for (const v of t.minOverlapViol ?? []) out.push(`     ! ${v}`);
+      out.push(`  ${ok((t.monumentGtViol?.length ?? 0) === 0)} Monument uden for GT-spænd (§4/#4203, løbsdags-aksen): ${t.monumentGtViol?.length ?? 0} brud`);
+      for (const v of t.monumentGtViol ?? []) out.push(`     ! ${v}`);
       out.push(`  ${ok((t.planViolations?.length ?? 0) === 0)} Plan-invarianter (§3 GT, whitelist, dedup): ${t.planViolations.length} brud`);
       for (const v of t.planViolations.slice(0, 5)) out.push(`     ${v}`);
     }
@@ -343,7 +429,9 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
   out.push(`\n${"═".repeat(72)}`);
   out.push(`${ok(rapport.sæsonFinaleViol.length === 0)} SÆSON-AGGREGAT, finale-bånd uden stikprøve-tillæg (${rapport.sæsonFinale.total} etaper)`);
   for (const v of rapport.sæsonFinaleViol) out.push(`     ! ${v}`);
-  out.push(`SAMLET: ${rapport.regelbrud} regelbrud · dækning ${rapport.dækning.ok ? "OK" : "HULLER"}`
+  out.push(`SAMLET: ${rapport.regelbrud} regelbrud`
+    + ` · ${rapport.placeringsbrud ?? 0} placeringsbrud (#4270, stopper --apply)`
+    + ` · dækning ${rapport.dækning.ok ? "OK" : "HULLER"}`
     + (fraDb ? "" : ` · ${rapport.kollisioner.length} navnekollisioner`)
     + (rapport.unassessed?.length ? ` · ${rapport.unassessed.length} kunne ikke vurderes` : ""));
   out.push(rapport.ok

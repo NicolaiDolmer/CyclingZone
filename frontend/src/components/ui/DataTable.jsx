@@ -41,6 +41,8 @@ export function DataTable({
   label,
   className = "",
   dense = false,
+  toolbar = null,
+  empty = null,
 }) {
   const zones = rows.map((row, i) => (rowZone ? rowZone(row, i) : null));
   const foldCols = columns.filter((c) => c.fold);
@@ -62,6 +64,17 @@ export function DataTable({
   return (
     <div className={className}>
       <div className={WRAP}>
+        {/* #4628 (slice 3 af #4622) — tabellens egen kontrol-bjaelke. Kontroller
+            der KUN styrer tabellen (gruppe-filtre, visnings-segmenter) laa foer
+            som en fritsvaevende raekke mellem sidehovedet og tabellen; det er
+            praecis PAGE_TEMPLATES' "no orphan action rows" og audit 2026-09's
+            fund paa Mit hold. Inde i tabellens hairline-ramme, adskilt af den
+            samme 1px-regel som headeren, hoerer de synligt til tabellen. */}
+        {toolbar && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-cz-border px-4 py-2.5">
+            {toolbar}
+          </div>
+        )}
         <div className={SCROLLER}>
           <table className={TABLE} aria-label={label} data-sortable>
             <thead>
@@ -96,6 +109,18 @@ export function DataTable({
             </thead>
             <TableRowContext.Provider value={true}>
               <tbody>
+                {/* PAGE_TEMPLATES "Canonical states": for tabeller swappes
+                    <tbody>, ikke hele kortet — headeren og toolbaren bliver
+                    monteret. #4628: uden det forsvandt filter-kontrollerne
+                    sammen med raekkerne, saa et filter der tømte tabellen ikke
+                    kunne slaas fra igen. */}
+                {rows.length === 0 && empty && (
+                  <tr>
+                    <td colSpan={columns.length} className="border-t border-cz-border p-4">
+                      {empty}
+                    </td>
+                  </tr>
+                )}
                 {rows.map((row, i) => {
                   const zone = zones[i];
                   const edgeTop = Boolean(zone) && i > 0 && zones[i - 1] !== zone;

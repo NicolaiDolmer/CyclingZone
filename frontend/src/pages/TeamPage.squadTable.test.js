@@ -117,9 +117,14 @@ test("potentiale vises uden kvalitativ TEKST-label nogen steder på holdsiden (#
   }
 });
 
-test("kontrakt-cellen er den korte sæson-form med den fulde sætning i tooltip (#2888 punkt 4)", () => {
-  assert.match(src, /squad\.headers\.contractShort/, "cellen skal vise 'S4', ikke 'Udløber efter S4' (~120px pr. række)");
-  assert.match(src, /title=\{r\.contract_end_season != null \? t\("squad\.headers\.contractValue"/, "den fulde sætning skal stadig være tilgængelig som tooltip");
+// #4381 supersederer #2888 punkt 4 (den korte "S4"-form): ejeren oprettede
+// issuet efter spillerfeedback om at Mit hold og Akademiet formulerer den
+// SAMME kontraktlængde forskelligt ("Until season 5" ét sted, bart "S5" et
+// andet). Akademiets ordlyd er referencen, og nøglen har samme tekst som
+// academy.contractUntil, så de to flader ikke kan drive fra hinanden igen.
+test("kontrakt-cellen skriver den fulde saeson-form som Akademiet (#4381)", () => {
+  assert.match(src, /squad\.headers\.contractUntil/, "cellen skal skrive 'Until season 4' — samme ordlyd som Akademiet");
+  assert.doesNotMatch(src, /squad\.headers\.contractShort/, "den korte S4-form er afloest");
 });
 
 // Ejer 25/7: navnecellen skal være ren, og mobil-folden reduceret til det der
@@ -178,7 +183,7 @@ test("team.json har de nye nøgler i BÅDE en og da", () => {
     const teamJson = JSON.parse(readFileSync(join(localesDir, lng, "team.json"), "utf8"));
     assert.equal(typeof teamJson?.squad?.headers?.rating, "string", `${lng}: squad.headers.rating mangler`);
     assert.equal(typeof teamJson?.squad?.headers?.ratingTitle, "string", `${lng}: squad.headers.ratingTitle mangler`);
-    assert.equal(typeof teamJson?.squad?.headers?.contractShort, "string", `${lng}: squad.headers.contractShort mangler`);
+    assert.equal(typeof teamJson?.squad?.headers?.contractUntil, "string", `${lng}: squad.headers.contractUntil mangler`);
     assert.equal(typeof teamJson?.squad?.mode?.overview, "string", `${lng}: squad.mode.overview mangler`);
     assert.equal(typeof teamJson?.squad?.mode?.abilities, "string", `${lng}: squad.mode.abilities mangler`);
     assert.equal(typeof teamJson?.squad?.count, "string", `${lng}: squad.count mangler`);

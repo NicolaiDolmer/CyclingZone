@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildTierMaterializationPlan, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST } from "./tierCalendarMaterializer.js";
 import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
+import { TIER_DENSITY } from "./calendarTierCaps.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
@@ -490,7 +491,7 @@ test("#2251 reconcile: kvote-override MERGES oven på defaults, så tier 1-3's s
   assert.equal(q[1], TIER_GAME_DAY_QUOTA[1], "tier 1 skal beholde sin default-kvote i dedup-genberegningen");
   assert.equal(q[2], TIER_GAME_DAY_QUOTA[2]);
   assert.equal(q[3], TIER_GAME_DAY_QUOTA[3]);
-  assert.equal(q[4], 2 * 11, "den aktiverede tiers kvote = density × rest-dage");
+  assert.equal(q[4], TIER_DENSITY[4] * 11, "den aktiverede tiers kvote = density × rest-dage");
 });
 
 // ── #2149 · reconcilePoolCalendarOnActivation: forward-guard ved pulje-aktivering ──
@@ -601,7 +602,7 @@ test("#2149 midt-sæson-aktivering afkortes til de-facto sæson-slut (ingen etap
   const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, coverageOverrides: LEGACY_MIX }); // now=28/6 → from=29/6
   assert.equal(summary.skipped, null);
   assert.equal(summary.realDays, 11, "29/6 → 10/7 = 11 rest-dage");
-  assert.equal(summary.tiers[0].quota, 22, "kvote = density 2 × 11 dage");
+  assert.equal(summary.tiers[0].quota, TIER_DENSITY[4] * 11, "kvote = density × 11 rest-dage (D4 hævet til 3 pr. 3/9, #4270)");
   assert.ok(summary.racesInserted > 0);
 
   const insertedRaceIds = new Set(sb.state.races.filter((r) => r.league_division_id === 8).map((r) => r.id));

@@ -53,6 +53,21 @@ export const TERRAIN_FINALE_BANDS = Object.freeze({
   mountain:      Object.freeze({ up: [45, 65], down: [20, 35], break: [10, 25] }),
   hilly:         Object.freeze({ up: [40, 60], flat: [15, 30], break: [15, 30] }),
   cobbles:       Object.freeze({ flat: [30, 50], break: [40, 60] }),
+  // #4105/#4270 (EJER-BESLUTNING 3/9 kl. 10:00, valg A - lukker §11 punkt 9): grus faar
+  // sit EGET baand, afledt af grusets egne finale-vaegte, i stedet for brostens.
+  //
+  // Foerste udkast gav grus brostens-baand ("naesten samme type"). Det holdt ikke ved
+  // maaling: generatorens gravel-vaegte er ikke brostens-vaegte. Grus afgoeres langt oftere
+  // i UDBRUD end en brostensklassiker - underlaget slider feltet ned over lange, aabne
+  // sektorer i stedet for at samle det til en reduceret spurt - og den forskel er hele
+  // pointen med at grus er sin egen etapetype. Et brostens-baand ville have vaeret en
+  // garanti generatorens egne vaegte ikke kunne naa, altsaa en blokering frem for en vagt
+  // (.claude/learnings/2026-08-06-garanti-uden-forsyning-blokerede-s3-kalenderen.md).
+  //
+  // Baandet er derfor vaegtene i FINALE_WEIGHTS_BY_PROFILE.gravel med samme +/-10 pp
+  // spillerum som de oevrige raekker i denne tabel. Aendres vaegtene, skal baandet med -
+  // stageFinaleMetrics.test.js faelder dem hvis de driver fra hinanden.
+  gravel:        Object.freeze({ up: [15, 35], flat: [10, 30], break: [45, 65] }),
   rolling:       Object.freeze({ flat: [25, 45], break: [55, 75] }),
   flat:          Object.freeze({ flat: [90, 100] }),
   itt:           Object.freeze({ tt: [100, 100] }),
