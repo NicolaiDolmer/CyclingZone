@@ -619,6 +619,11 @@ export async function materializeTierCalendars({
       // apply-stien har ingen brug for det, og summary'en skal ikke bære unødig vægt.
       if (dryRun) {
         tierPlan.seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant }));
+        // #4270: de PRÆCIS samme profiler dæknings-verifikationen (og dermed insert'et)
+        // bruger — så kalender-scorecardet i buildSeasonCalendar.js's dry-run måler det
+        // parcours der ville blive skrevet, med tilt og re-draw indregnet, og ikke et nyt
+        // træk. Kun dry-run: apply-stien har ingen brug for dem.
+        tierPlan.profilesByPoolRaceId = profiles;
       }
     }
 
@@ -690,6 +695,15 @@ export async function materializeTierCalendars({
       log(`  pulje ${poolPlan.leagueDivisionId} (tier ${tierPlan.tier}): +${inserted.length} løb · ${profileRows.length} profiler · ${schedRows.length} etape-tider`);
     }
     summary.tiers.push(tLine);
+  }
+
+  // #4270: den RÅ plan (pulje-rækker, etape-tider, profiler) videregives KUN i dry-run,
+  // så kalender-scorecardet (lib/calendarScorecardReport.js) kan score den kalender der
+  // faktisk ville blive skrevet. Apply-stiens summary er uændret — seasonTransition.js
+  // logger `applied`-summary'en i admin-loggen, og den må ikke vokse med hele planen.
+  if (dryRun) {
+    summary.planTiers = tierPlans;
+    summary.archetypeByPoolRace = archetypeByPoolRace;
   }
 
   // #3990: materialisér seasons.race_days_total fra den FAKTISKE kalender så snart

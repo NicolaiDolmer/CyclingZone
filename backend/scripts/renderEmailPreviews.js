@@ -3,6 +3,10 @@
 // before this PR merges (task brief step 4 — rendering evidence). This is a
 // one-off local aid, not a test and not wired into cron/CI.
 //
+// #2853 DA follow-up (2026-09-03): also renders the same four templates in
+// Danish (language: "da") to <name>-da.html, so the owner can review the
+// translated layout the same way.
+//
 // Usage: node backend/scripts/renderEmailPreviews.js
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -44,6 +48,31 @@ const pages = [
         { riderName: "Julie Leth", rank: 1, raceName: "Ladies Tour, etape 1" },
       ],
       unsubscribeUrl: UNSUBSCRIBE_URL,
+    }),
+  },
+  {
+    file: "welcome-da.html",
+    template: buildWelcomeEmail({ teamName: "Fjordkraft Racing", unsubscribeUrl: UNSUBSCRIBE_URL, language: "da" }),
+  },
+  {
+    file: "day1-results-da.html",
+    template: buildDay1Email({ teamName: "Fjordkraft Racing", hasResults: true, unsubscribeUrl: UNSUBSCRIBE_URL, language: "da" }),
+  },
+  {
+    file: "day1-no-results-da.html",
+    template: buildDay1Email({ teamName: "Fjordkraft Racing", hasResults: false, unsubscribeUrl: UNSUBSCRIBE_URL, language: "da" }),
+  },
+  {
+    file: "digest-da.html",
+    template: buildRaceDigestEmail({
+      teamName: "Fjordkraft Racing",
+      results: [
+        { riderName: "Mikkel Bjerg", rank: 2, raceName: "GP Frederiksberg" },
+        { riderName: "Asbjorn Kragh Andersen", rank: 5, raceName: "Post Danmark Rundt, etape 3" },
+        { riderName: "Julie Leth", rank: 1, raceName: "Ladies Tour, etape 1" },
+      ],
+      unsubscribeUrl: UNSUBSCRIBE_URL,
+      language: "da",
     }),
   },
 ];
