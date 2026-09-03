@@ -7,6 +7,7 @@ import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
 import { useTableSort } from "../../lib/useTableSort.js";
 import SortableTh from "../../components/ui/SortableTh.jsx";
+import { ChevronRightIcon } from "../../components/ui/icons/index.jsx";
 
 // Sorterbare kolonner (#2294) — bruger/email/rolle er tekst, hold sorteres på
 // holdnavn (division indgår ikke i sort-nøglen, kun i visningen).
@@ -257,8 +258,13 @@ export default function AdminUsersTab() {
                         <button
                           onClick={() => handleChangeRole(u.id, u.role === "admin" ? "manager" : "admin", u.username)}
                           disabled={loading[`role_${u.id}`]}
-                          className="text-xs px-2 py-1 bg-cz-subtle text-cz-2 border border-cz-border rounded hover:text-cz-1 disabled:opacity-50 transition-all">
-                          {loading[`role_${u.id}`] ? "..." : u.role === "admin" ? "→ Manager" : "→ Admin"}
+                          className="text-xs px-2 py-1 bg-cz-subtle text-cz-2 border border-cz-border rounded hover:text-cz-1 disabled:opacity-50 transition-all inline-flex items-center gap-0.5">
+                          {loading[`role_${u.id}`] ? "..." : (
+                            <>
+                              <ChevronRightIcon size={11} aria-hidden="true" />
+                              {u.role === "admin" ? "Manager" : "Admin"}
+                            </>
+                          )}
                         </button>
                         <button
                           onClick={() => handleDeleteUser(u.id, u.username, isTestAccount)}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ChevronRightIcon } from "../ui/icons/index.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -295,8 +296,9 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
                           />
                           <span className="text-cz-3 text-3xs">%</span>
                         </div>
-                        <span className="text-cz-3 text-3xs font-mono" title={t("racePoints.model.previewHint")}>
-                          → {previewRank1(c.key, rt.key)}
+                        <span className="text-cz-3 text-3xs font-mono inline-flex items-center gap-0.5" title={t("racePoints.model.previewHint")}>
+                          <ChevronRightIcon size={9} aria-hidden="true" />
+                          {previewRank1(c.key, rt.key)}
                         </span>
                       </div>
                     </td>

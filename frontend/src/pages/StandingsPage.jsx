@@ -15,6 +15,7 @@ import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import useFlipRows from "../hooks/useFlipRows";
 import {
   EmptyState, ErrorState, Input, Select, Button, DataTable, ZonePill, SkeletonLines, PodiumIcon, BlockedNote,
+  ArrowUpIcon, ArrowDownIcon,
 } from "../components/ui";
 import { useBlockedAction } from "../lib/useBlockedAction.js";
 import { WRAP } from "../components/ui/dataTableStyles.js";
@@ -501,8 +502,18 @@ export default function StandingsPage() {
             {t("aiBadge")}
           </span>
         )}
-        {isPromotionRow(s) && <ZonePill tone="success">{t("promotionBadge")}</ZonePill>}
-        {isRelegationRow(s) && <ZonePill tone="danger">{t("relegationBadge")}</ZonePill>}
+        {isPromotionRow(s) && (
+          <ZonePill tone="success">
+            <ArrowUpIcon size={10} className="inline -mt-px me-0.5" aria-hidden="true" />
+            {t("promotionBadge")}
+          </ZonePill>
+        )}
+        {isRelegationRow(s) && (
+          <ZonePill tone="danger">
+            <ArrowDownIcon size={10} className="inline -mt-px me-0.5" aria-hidden="true" />
+            {t("relegationBadge")}
+          </ZonePill>
+        )}
       </>
     );
   }

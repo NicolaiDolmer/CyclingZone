@@ -69,46 +69,46 @@ test("wizard back button navigates goals/steps without losing choices (#1240)", 
   await page.goto("/board");
 
   // Udløbet plan → wizard trin 1.
-  await page.getByRole("button", { name: "Forhandl ny plan →" }).click();
+  await page.getByRole("button", { name: "Forhandl ny plan" }).click();
   await expect(page.getByRole("heading", { name: "Bestyrelsens forslag" })).toBeVisible();
 
   // Trin 1 har INGEN intern tilbageknap.
-  await expect(page.getByRole("button", { name: "← Tilbage", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Tilbage", exact: true })).toHaveCount(0);
 
   // Trin 2, mål 1/2: forhandl mål 0 ned (valget vi ikke må miste).
-  await page.getByRole("button", { name: "Start forhandling →" }).click();
+  await page.getByRole("button", { name: "Start forhandling" }).click();
   await expect(page.getByText("Mål 1/2")).toBeVisible();
-  await page.getByRole("button", { name: "Forhandl ned ↓" }).click();
+  await page.getByRole("button", { name: "Forhandl ned" }).click();
   await expect(page.getByText("Bestyrelsen har accepteret kompromis")).toBeVisible();
 
   // Tilbage fra kompromis-viewet → samme mål, nu markeret "Allerede forhandlet".
-  await page.getByRole("button", { name: "← Tilbage", exact: true }).click();
+  await page.getByRole("button", { name: "Tilbage", exact: true }).click();
   await expect(page.getByText("Mål 1/2")).toBeVisible();
   await expect(page.getByRole("button", { name: "Allerede forhandlet" })).toBeDisabled();
 
   // Videre til mål 2/2 → tilbage → mål 1/2 igen med forhandlet-state intakt.
-  await page.getByRole("button", { name: "Accepter →" }).click();
+  await page.getByRole("button", { name: "Accepter" }).click();
   await expect(page.getByText("Mål 2/2")).toBeVisible();
-  await page.getByRole("button", { name: "← Tilbage", exact: true }).click();
+  await page.getByRole("button", { name: "Tilbage", exact: true }).click();
   await expect(page.getByText("Mål 1/2")).toBeVisible();
   await expect(page.getByText("Top 7 i divisionen")).toBeVisible();
   await expect(page.getByRole("button", { name: "Allerede forhandlet" })).toBeDisabled();
 
   // Tilbage fra første mål → trin 1 (strategi).
-  await page.getByRole("button", { name: "← Tilbage", exact: true }).click();
+  await page.getByRole("button", { name: "Tilbage", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Bestyrelsens forslag" })).toBeVisible();
 
   // Genoptag uden strategi-skifte → samme mål, forhandlingen er IKKE nulstillet.
-  await page.getByRole("button", { name: "Start forhandling →" }).click();
+  await page.getByRole("button", { name: "Start forhandling" }).click();
   await expect(page.getByText("Mål 1/2")).toBeVisible();
   await expect(page.getByText("Top 7 i divisionen")).toBeVisible();
   await expect(page.getByRole("button", { name: "Allerede forhandlet" })).toBeDisabled();
 
   // Hele vejen til trin 3 → tilbage lander på SIDSTE mål, ikke det første.
-  await page.getByRole("button", { name: "Accepter →" }).click();
+  await page.getByRole("button", { name: "Accepter" }).click();
   await expect(page.getByText("Mål 2/2")).toBeVisible();
-  await page.getByRole("button", { name: "Accepter →" }).click();
+  await page.getByRole("button", { name: "Accepter" }).click();
   await expect(page.getByRole("heading", { name: "Underskrift" })).toBeVisible();
-  await page.getByRole("button", { name: "← Tilbage", exact: true }).click();
+  await page.getByRole("button", { name: "Tilbage", exact: true }).click();
   await expect(page.getByText("Mål 2/2")).toBeVisible();
 });

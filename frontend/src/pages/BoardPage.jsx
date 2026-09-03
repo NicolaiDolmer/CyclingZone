@@ -57,6 +57,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  ChevronLeftIcon,
   StarIcon,
   ClipboardIcon,
   FlagIcon,
@@ -135,14 +136,14 @@ function getSatisfactionTrend(snapshots) {
   const latest = snapshots.reduce((a, b) =>
     (b.season_within_plan ?? b.season_number ?? 0) > (a.season_within_plan ?? a.season_number ?? 0) ? b : a);
   const delta = latest?.satisfaction_delta ?? 0;
-  if (delta > 0) return { glyph: "▲", color: "text-cz-success", key: "up" };
-  if (delta < 0) return { glyph: "▼", color: "text-cz-danger", key: "down" };
-  return { glyph: "→", color: "text-cz-3", key: "flat" };
+  if (delta > 0) return { color: "text-cz-success", key: "up" };
+  if (delta < 0) return { color: "text-cz-danger", key: "down" };
+  return { color: "text-cz-3", key: "flat" };
 }
 
-// #2849 bølge 6 · trend.glyph (▲/▼/→) er rå unicode-chrome fra getSatisfactionTrend/
-// getEventSatisfactionTrend (delt lib, ikke rørt her) — render altid via stroke-ikon
-// i stedet for at printe trend.glyph direkte.
+// #2849 bølge 6 → #3422: trend.glyph (var ▲/▼/→ rå unicode-chrome) er fjernet fra
+// getSatisfactionTrend/getEventSatisfactionTrend (delt lib) — feltet var dødt,
+// render har altid brugt TREND_ICON via key, aldrig trend.glyph direkte.
 const TREND_ICON = { up: ArrowUpIcon, down: ArrowDownIcon, flat: MinusIcon };
 function getTrendIcon(key) {
   return TREND_ICON[key] || MinusIcon;
@@ -1906,8 +1907,9 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
         {is_expired ? (
           <button onClick={onNegotiate}
-            className="w-full py-2.5 text-sm font-semibold bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded-cz hover:bg-cz-accent/20 transition-all">
+            className="w-full py-2.5 text-sm font-semibold bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded-cz hover:bg-cz-accent/20 transition-all inline-flex items-center justify-center gap-1">
             {t("plan.negotiateExpired")}
+            <ChevronRightIcon size={14} aria-hidden="true" />
           </button>
         ) : (
           <>
@@ -2164,9 +2166,10 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
         disabled={previewLoading}
         {...startBlock.blockedProps}
         className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110
-          disabled:opacity-50 transition-all"
+          disabled:opacity-50 transition-all inline-flex items-center justify-center gap-1"
       >
         {t("wizard.startNegotiation")}
+        <ChevronRightIcon size={14} aria-hidden="true" />
       </button>
       {startBlock.blocked && (
         <BlockedNote id={startBlock.reasonId} pulseKey={startBlock.pulseKey} className="text-xs justify-center mt-2">
@@ -2196,7 +2199,8 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
         {/* #1240 · Tilbage uden at miste valg: forrige mål, eller trin 1 fra første mål. */}
         {onBack && (
           <button type="button" onClick={onBack}
-            className="text-cz-3 hover:text-cz-2 text-xs flex-shrink-0 transition-colors">
+            className="text-cz-3 hover:text-cz-2 text-xs flex-shrink-0 transition-colors inline-flex items-center gap-0.5">
+            <ChevronLeftIcon size={13} aria-hidden="true" />
             {t("wizard.back")}
           </button>
         )}
@@ -2252,11 +2256,19 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
               ? t("wizard.alreadyNegotiated")
               : !hasNegotiationOption
                 ? t("wizard.cannotNegotiate")
-                : t("wizard.negotiateDown")}
+                : (
+                  <span className="inline-flex items-center justify-center gap-1">
+                    <ArrowDownIcon size={13} aria-hidden="true" />
+                    {t("wizard.negotiateDown")}
+                  </span>
+                )}
           </button>
           <button onClick={onAccept}
             className="flex-1 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 transition-all">
-            {t("wizard.accept")}
+            <span className="inline-flex items-center justify-center gap-1">
+              {t("wizard.accept")}
+              <ChevronRightIcon size={15} aria-hidden="true" />
+            </span>
           </button>
         </div>
       ) : (
@@ -2267,7 +2279,10 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
           </div>
           <button onClick={onAcceptNegotiated}
             className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 transition-all">
-            {t("wizard.acceptNegotiated")}
+            <span className="inline-flex items-center justify-center gap-1">
+              {t("wizard.acceptNegotiated")}
+              <ChevronRightIcon size={15} aria-hidden="true" />
+            </span>
           </button>
         </div>
       )}
@@ -2287,7 +2302,8 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack, hasExisting
       {/* #1240 · Tilbage til forhandlingen (sidste mål) uden at miste valg. */}
       {onBack && (
         <button type="button" onClick={onBack}
-          className="text-cz-3 hover:text-cz-2 text-xs mb-4 transition-colors">
+          className="text-cz-3 hover:text-cz-2 text-xs mb-4 transition-colors inline-flex items-center gap-0.5">
+          <ChevronLeftIcon size={13} aria-hidden="true" />
           {t("wizard.back")}
         </button>
       )}
@@ -3366,7 +3382,8 @@ export default function BoardPage() {
                   setNegotiated({});
                   setPendingNegotiate(false);
                 }}
-                className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors">
+                className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors inline-flex items-center justify-center gap-0.5">
+                <ChevronLeftIcon size={13} aria-hidden="true" />
                 {t("wizard.backToPlan", { plan: getPlanLabel(t, renewalQueue[renewalQueueIdx - 1]) })}
               </button>
             )}
@@ -3375,7 +3392,8 @@ export default function BoardPage() {
                 #2104: følger wizardClosable, så DNA-mangel-guarden også viser knappen. */}
             {wizardClosable && (
               <button onClick={closeWizard}
-                className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors">
+                className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors inline-flex items-center justify-center gap-0.5">
+                <ChevronLeftIcon size={13} aria-hidden="true" />
                 {t("wizard.backToOverview")}
               </button>
             )}

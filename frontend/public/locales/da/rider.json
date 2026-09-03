@@ -761,7 +761,7 @@
     }
   },
   "sellRider": {
-    "buttonOpen": "↔ Sæt til salg",
+    "buttonOpen": "Sæt til salg",
     "description": "Sæt rytteren til salg med fast pris på transferlisten. Du kan til enhver tid redigere prisen eller fjerne listingen.",
     "pricePlaceholder": "Pris i CZ$",
     "submit": "Sæt til salg",
