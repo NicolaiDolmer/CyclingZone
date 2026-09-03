@@ -76,6 +76,18 @@ test("igangværende etapeløb uden gc-række: finalRank null, tæller ikke som t
   assert.equal(t.races, 1);
 });
 
+test("#4588: dayLeads tæller kun rank===1 (rytteren BAR trøjen, ikke bare deltog i klassifikationen)", () => {
+  const races = groupRiderRaces([
+    { race: single, result_type: "gc", stage_number: 1, rank: 4, points_earned: 80, prize_money: 6000 },
+    // raceRunner skriver en "leader"/"points_day"-række pr. rytter i feltet hver
+    // etape (GC-gap-visning) — rank 5/12 betyder rytteren IKKE bar trøjen den dag.
+    { race: single, result_type: "leader", stage_number: 1, rank: 5, points_earned: 0, prize_money: 0 },
+    { race: single, result_type: "points_day", stage_number: 1, rank: 12, points_earned: 0, prize_money: 0 },
+  ]);
+  const ge = races.find((r) => r.raceId === "ge");
+  assert.deepEqual(ge.dayLeads, {}, "ingen af rækkerne har rank===1 → ingen trøje-dage talt");
+});
+
 test("sæsonfilter + sæsonliste", () => {
   const s2race = { ...single, id: "s2", season: { number: 2 }, scheduled_for: "2026-08-01T18:00:00Z" };
   const races = groupRiderRaces([...ROWS, { race: s2race, result_type: "gc", rank: 9, points_earned: 10, prize_money: 0 }]);
