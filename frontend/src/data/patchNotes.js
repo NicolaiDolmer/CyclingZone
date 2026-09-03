@@ -1,5 +1,82 @@
 export const PATCHES = [
   {
+    "version": "7.240",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders & Transfers",
+        "en": {
+          "title": "Riders and Transfers, tidied up",
+          "body": "The filter panel on both pages is now a single row, search, country and rider type, with everything else behind \"More filters\" instead of an always-open panel. The ability code legend moved below the table, the Transfers balance moved into the page header, and the eight sort buttons are gone because the column headers already sort."
+        },
+        "da": {
+          "title": "Ryttere og Transfers er ryddet op",
+          "body": "Filterpanelet på begge sider er nu én linje, søg, land og ryttertype, mens resten ligger bag \"Flere filtre\" i stedet for et panel der altid var åbent. Forklaringen på evne-koderne er flyttet ned under tabellen, balancen på Transfers er flyttet op i sidehovedet, og de otte sorteringsknapper er væk, fordi kolonneoverskrifterne allerede sorterer."
+        },
+        "refs": [4628, 4625, 4622, 4671]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team pages",
+        "en": {
+          "title": "My Team, team pages and manager profiles, tidied up",
+          "body": "Tabs on My Team are underline tabs now, and the squad filters sit inside the table instead of floating above it. Contract length reads \"Until season 4\" here too. On phones the team page keeps every column, the rider name stays pinned while the rest scrolls, and the manager profile no longer cuts off its fourth stat."
+        },
+        "da": {
+          "title": "Mit hold, holdsider og managerprofiler er ryddet op",
+          "body": "Fanerne på Mit hold er understregede faner nu, og trup-filtrene sidder inde i tabellen i stedet for at svæve over den. Kontraktlængden står som \"Til sæson 4\" her også. På mobil beholder holdsiden alle kolonner, rytternavnet står fast mens resten scroller, og managerprofilen klipper ikke længere sit fjerde tal af."
+        },
+        "refs": [4628, 4625, 4622, 4381, 4666]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Calendar day shows your division's full slate",
+          "body": "The calendar day cell now shows as many stages as your division actually runs (5/4/3/2) instead of a flat 4, so Division 1's busiest days no longer hide behind \"+N more\" as often. The season planner now uses the same small terrain glyph as the calendar for each stage instead of its own icons."
+        },
+        "da": {
+          "title": "Kalenderdagen viser hele din divisions program",
+          "body": "Kalenderens dagcelle viser nu lige så mange etaper som din division faktisk kører (5/4/3/2) i stedet for et fast loft på 4, så Division 1's travleste dage gemmer sig sjældnere bag \"+N mere\". Sæsonplanlæggeren bruger nu den samme lille terræn-glyf som kalenderen for hver etape i stedet for sine egne ikoner."
+        },
+        "refs": [4143, 4386, 4685]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board requests show you the suggestion first",
+          "body": "Clicking a board request option now shows you the suggested plan change, current plan versus proposed plan, before anything is applied. Nothing is written until you press Accept; you can still keep your current plan instead."
+        },
+        "da": {
+          "title": "Bestyrelsesanmodninger viser nu forslaget først",
+          "body": "Et klik på en bestyrelsesanmodning viser nu det foreslåede planskift, nuværende plan mod foreslået plan, før noget bliver anvendt. Intet skrives før du trykker Accepter; du kan stadig vælge at beholde din nuværende plan."
+        },
+        "refs": [4519, 4688]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "CZ Pro",
+        "en": {
+          "title": "CZ Pro v1.1: Founder badge, season history, saved filters",
+          "body": "A visible Founder supporter badge now shows on standings, team pages and the forum, not just your own sidebar. Rider Development gets a Pro season-by-season ability history, and the rider list gets saved filters you can name and reapply."
+        },
+        "da": {
+          "title": "CZ Pro v1.1: Founder-mærke, sæsonhistorik, gemte filtre",
+          "body": "Et synligt Founder-supporter-mærke vises nu i stillingen, på holdsider og i forummet, ikke kun i din egen sidebar. Rytterens Udvikling-fane får en Pro sæson-for-sæson evnehistorik, og rytterlisten får gemte filtre du kan navngive og bruge igen."
+        },
+        "refs": [4649, 2806, 4662]
+      }
+    ]
+  },
+  {
     "version": "7.239",
     "date": "2026-09-03",
     "label": "Beta",
