@@ -12,6 +12,35 @@
         }
       },
       {
+        "km": 40,
+        "type": "breakaway_formed",
+        "params": {
+          "group_id": "breakaway-0",
+          "rider_ids": [
+            "r05",
+            "r07",
+            "r08",
+            "r15"
+          ]
+        }
+      },
+      {
+        "km": 40,
+        "type": "gap_update",
+        "params": {
+          "group_id": "peloton-0",
+          "gap_seconds": 25
+        }
+      },
+      {
+        "km": 58,
+        "type": "gap_update",
+        "params": {
+          "group_id": "peloton-0",
+          "gap_seconds": 6.36
+        }
+      },
+      {
         "km": 68,
         "type": "finale_attack",
         "params": {
@@ -26,19 +55,46 @@
       },
       {
         "km": 68,
+        "type": "breakaway_caught",
+        "params": {
+          "group_id": "breakaway-0",
+          "rider_ids": [
+            "r05",
+            "r07",
+            "r08",
+            "r15"
+          ]
+        }
+      },
+      {
+        "km": 68,
         "type": "gap_update",
         "params": {
-          "group_id": "peloton-0",
-          "gap_seconds": 20
+          "group_id": "breakaway-0",
+          "gap_seconds": 6.06
+        }
+      },
+      {
+        "km": 70,
+        "type": "breakaway_caught",
+        "params": {
+          "group_id": "breakaway-2000",
+          "rider_ids": [
+            "r01",
+            "r02"
+          ]
         }
       },
       {
         "km": 70,
         "type": "finale_attack",
         "params": {
-          "kind": "gap_survived",
-          "group_id": "peloton-0",
-          "gap_seconds": 14.95
+          "kind": "carried_gap_held",
+          "group_id": "breakaway-2000",
+          "rider_ids": [
+            "r01",
+            "r02"
+          ]
         }
       },
       {
@@ -71,8 +127,112 @@
         "km": 70,
         "type": "gap_update",
         "params": {
-          "group_id": "peloton-0",
-          "gap_seconds": 14.95
+          "group_id": "finale-tier-2",
+          "gap_seconds": 6.34
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-3",
+          "gap_seconds": 8.78
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-4",
+          "gap_seconds": 11.48
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-5",
+          "gap_seconds": 13.93
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-6",
+          "gap_seconds": 16.43
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-7",
+          "gap_seconds": 18.9
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-8",
+          "gap_seconds": 21.58
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-9",
+          "gap_seconds": 24.07
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-10",
+          "gap_seconds": 26.58
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-11",
+          "gap_seconds": 29.25
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-12",
+          "gap_seconds": 31.72
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-13",
+          "gap_seconds": 34.29
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-14",
+          "gap_seconds": 36.79
+        }
+      },
+      {
+        "km": 70,
+        "type": "gap_update",
+        "params": {
+          "group_id": "finale-tier-15",
+          "gap_seconds": 39.38
         }
       },
       {
@@ -88,47 +248,47 @@
             {
               "rider_id": "r02",
               "rank": 2,
-              "gap": 2.78
+              "gap": 2.79
             },
             {
-              "rider_id": "r03",
+              "rider_id": "r11",
               "rank": 3,
-              "gap": 14.95
-            },
-            {
-              "rider_id": "r04",
-              "rank": 4,
-              "gap": 14.95
-            },
-            {
-              "rider_id": "r05",
-              "rank": 5,
-              "gap": 14.95
-            },
-            {
-              "rider_id": "r06",
-              "rank": 6,
-              "gap": 14.95
-            },
-            {
-              "rider_id": "r07",
-              "rank": 7,
-              "gap": 14.95
-            },
-            {
-              "rider_id": "r08",
-              "rank": 8,
-              "gap": 14.95
-            },
-            {
-              "rider_id": "r09",
-              "rank": 9,
-              "gap": 14.95
+              "gap": 6.34
             },
             {
               "rider_id": "r10",
+              "rank": 4,
+              "gap": 8.78
+            },
+            {
+              "rider_id": "r12",
+              "rank": 5,
+              "gap": 11.48
+            },
+            {
+              "rider_id": "r09",
+              "rank": 6,
+              "gap": 13.93
+            },
+            {
+              "rider_id": "r08",
+              "rank": 7,
+              "gap": 16.43
+            },
+            {
+              "rider_id": "r07",
+              "rank": 8,
+              "gap": 18.9
+            },
+            {
+              "rider_id": "r06",
+              "rank": 9,
+              "gap": 21.58
+            },
+            {
+              "rider_id": "r05",
               "rank": 10,
-              "gap": 14.95
+              "gap": 24.07
             }
           ],
           "win_type": "group_finish"
@@ -140,113 +300,113 @@
     {
       "rider_id": "r01",
       "rank": 1,
-      "time_seconds": 7545.92,
+      "time_seconds": 7572.75,
       "group_id": "finale-winner-0",
       "status": "finished"
     },
     {
       "rider_id": "r02",
       "rank": 2,
-      "time_seconds": 7548.7,
+      "time_seconds": 7575.54,
       "group_id": "finale-tier-1",
       "status": "finished"
     },
     {
-      "rider_id": "r03",
+      "rider_id": "r11",
       "rank": 3,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
-      "status": "finished"
-    },
-    {
-      "rider_id": "r04",
-      "rank": 4,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
-      "status": "finished"
-    },
-    {
-      "rider_id": "r05",
-      "rank": 5,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
-      "status": "finished"
-    },
-    {
-      "rider_id": "r06",
-      "rank": 6,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
-      "status": "finished"
-    },
-    {
-      "rider_id": "r07",
-      "rank": 7,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
-      "status": "finished"
-    },
-    {
-      "rider_id": "r08",
-      "rank": 8,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
-      "status": "finished"
-    },
-    {
-      "rider_id": "r09",
-      "rank": 9,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
+      "time_seconds": 7579.09,
+      "group_id": "finale-tier-2",
       "status": "finished"
     },
     {
       "rider_id": "r10",
-      "rank": 10,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
-      "status": "finished"
-    },
-    {
-      "rider_id": "r11",
-      "rank": 11,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
+      "rank": 4,
+      "time_seconds": 7581.53,
+      "group_id": "finale-tier-3",
       "status": "finished"
     },
     {
       "rider_id": "r12",
-      "rank": 12,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
+      "rank": 5,
+      "time_seconds": 7584.23,
+      "group_id": "finale-tier-4",
       "status": "finished"
     },
     {
-      "rider_id": "r13",
-      "rank": 13,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
+      "rider_id": "r09",
+      "rank": 6,
+      "time_seconds": 7586.68,
+      "group_id": "finale-tier-5",
       "status": "finished"
     },
     {
-      "rider_id": "r14",
-      "rank": 14,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
+      "rider_id": "r08",
+      "rank": 7,
+      "time_seconds": 7589.18,
+      "group_id": "finale-tier-6",
       "status": "finished"
     },
     {
-      "rider_id": "r15",
-      "rank": 15,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
+      "rider_id": "r07",
+      "rank": 8,
+      "time_seconds": 7591.65,
+      "group_id": "finale-tier-7",
+      "status": "finished"
+    },
+    {
+      "rider_id": "r06",
+      "rank": 9,
+      "time_seconds": 7594.33,
+      "group_id": "finale-tier-8",
+      "status": "finished"
+    },
+    {
+      "rider_id": "r05",
+      "rank": 10,
+      "time_seconds": 7596.82,
+      "group_id": "finale-tier-9",
+      "status": "finished"
+    },
+    {
+      "rider_id": "r04",
+      "rank": 11,
+      "time_seconds": 7599.33,
+      "group_id": "finale-tier-10",
       "status": "finished"
     },
     {
       "rider_id": "r16",
+      "rank": 12,
+      "time_seconds": 7602,
+      "group_id": "finale-tier-11",
+      "status": "finished"
+    },
+    {
+      "rider_id": "r03",
+      "rank": 13,
+      "time_seconds": 7604.47,
+      "group_id": "finale-tier-12",
+      "status": "finished"
+    },
+    {
+      "rider_id": "r15",
+      "rank": 14,
+      "time_seconds": 7607.04,
+      "group_id": "finale-tier-13",
+      "status": "finished"
+    },
+    {
+      "rider_id": "r14",
+      "rank": 15,
+      "time_seconds": 7609.54,
+      "group_id": "finale-tier-14",
+      "status": "finished"
+    },
+    {
+      "rider_id": "r13",
       "rank": 16,
-      "time_seconds": 7560.87,
-      "group_id": "peloton-0",
+      "time_seconds": 7612.13,
+      "group_id": "finale-tier-15",
       "status": "finished"
     }
   ],
@@ -255,97 +415,97 @@
       "rider_id": "r01",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3084.7
+      "work_norm": 3096.9
     },
     {
       "rider_id": "r02",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3053.96
+      "work_norm": 3066.16
     },
     {
       "rider_id": "r03",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3055.23
+      "work_norm": 3067.42
     },
     {
       "rider_id": "r04",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3989.51
+      "work_norm": 4003.2
     },
     {
       "rider_id": "r05",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3055.23
+      "work_norm": 3033.87
     },
     {
       "rider_id": "r06",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3055.23
+      "work_norm": 3067.42
     },
     {
       "rider_id": "r07",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3055.23
+      "work_norm": 3033.87
     },
     {
       "rider_id": "r08",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3293.94
+      "work_norm": 3301.95
     },
     {
       "rider_id": "r09",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3989.51
+      "work_norm": 4003.2
     },
     {
       "rider_id": "r10",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3719.02
+      "work_norm": 3699.35
     },
     {
       "rider_id": "r11",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3055.23
+      "work_norm": 3067.42
     },
     {
       "rider_id": "r12",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3055.23
+      "work_norm": 3067.42
     },
     {
       "rider_id": "r13",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3989.51
+      "work_norm": 4003.2
     },
     {
       "rider_id": "r14",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3055.23
+      "work_norm": 3067.42
     },
     {
       "rider_id": "r15",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3055.23
+      "work_norm": 3033.87
     },
     {
       "rider_id": "r16",
       "wprime_depleted_j_norm": 0,
       "seconds_over_cp": 0,
-      "work_norm": 3055.23
+      "work_norm": 3067.42
     }
   ],
   "groupSnapshots": [
@@ -353,33 +513,16 @@
       "km": 40,
       "groups": [
         {
-          "group_id": "peloton-0",
-          "kind": "peloton",
+          "group_id": "breakaway-0",
+          "kind": "breakaway",
           "rider_ids": [
-            "r01",
-            "r02",
-            "r03",
-            "r04",
             "r05",
-            "r06",
             "r07",
             "r08",
-            "r09",
-            "r10",
-            "r11",
-            "r12",
-            "r13",
-            "r14",
-            "r15",
-            "r16"
+            "r15"
           ],
           "gap_seconds": 0
-        }
-      ]
-    },
-    {
-      "km": 58,
-      "groups": [
+        },
         {
           "group_id": "peloton-0",
           "kind": "peloton",
@@ -388,20 +531,51 @@
             "r02",
             "r03",
             "r04",
-            "r05",
             "r06",
-            "r07",
-            "r08",
             "r09",
             "r10",
             "r11",
             "r12",
             "r13",
             "r14",
-            "r15",
             "r16"
           ],
+          "gap_seconds": 25
+        }
+      ]
+    },
+    {
+      "km": 58,
+      "groups": [
+        {
+          "group_id": "breakaway-0",
+          "kind": "breakaway",
+          "rider_ids": [
+            "r05",
+            "r07",
+            "r08",
+            "r15"
+          ],
           "gap_seconds": 0
+        },
+        {
+          "group_id": "peloton-0",
+          "kind": "peloton",
+          "rider_ids": [
+            "r01",
+            "r02",
+            "r03",
+            "r04",
+            "r06",
+            "r09",
+            "r10",
+            "r11",
+            "r12",
+            "r13",
+            "r14",
+            "r16"
+          ],
+          "gap_seconds": 6.363374404026217
         }
       ]
     },
@@ -418,25 +592,25 @@
           "gap_seconds": 0
         },
         {
-          "group_id": "peloton-0",
+          "group_id": "breakaway-0",
           "kind": "peloton",
           "rider_ids": [
-            "r03",
-            "r04",
             "r05",
-            "r06",
             "r07",
             "r08",
+            "r15",
+            "r03",
+            "r04",
+            "r06",
             "r09",
             "r10",
             "r11",
             "r12",
             "r13",
             "r14",
-            "r15",
             "r16"
           ],
-          "gap_seconds": 20
+          "gap_seconds": 6.06007455507456
         }
       ]
     },
@@ -460,25 +634,116 @@
           "gap_seconds": 2.7846342324152253
         },
         {
-          "group_id": "peloton-0",
-          "kind": "peloton",
+          "group_id": "finale-tier-2",
+          "kind": "solo",
           "rider_ids": [
-            "r03",
-            "r04",
-            "r05",
-            "r06",
-            "r07",
-            "r08",
-            "r09",
-            "r10",
-            "r11",
-            "r12",
-            "r13",
-            "r14",
-            "r15",
+            "r11"
+          ],
+          "gap_seconds": 6.340562437052105
+        },
+        {
+          "group_id": "finale-tier-3",
+          "kind": "solo",
+          "rider_ids": [
+            "r10"
+          ],
+          "gap_seconds": 8.775595111694102
+        },
+        {
+          "group_id": "finale-tier-4",
+          "kind": "solo",
+          "rider_ids": [
+            "r12"
+          ],
+          "gap_seconds": 11.475420420832057
+        },
+        {
+          "group_id": "finale-tier-5",
+          "kind": "solo",
+          "rider_ids": [
+            "r09"
+          ],
+          "gap_seconds": 13.93393422431369
+        },
+        {
+          "group_id": "finale-tier-6",
+          "kind": "solo",
+          "rider_ids": [
+            "r08"
+          ],
+          "gap_seconds": 16.42872427672176
+        },
+        {
+          "group_id": "finale-tier-7",
+          "kind": "solo",
+          "rider_ids": [
+            "r07"
+          ],
+          "gap_seconds": 18.896930387429894
+        },
+        {
+          "group_id": "finale-tier-8",
+          "kind": "solo",
+          "rider_ids": [
+            "r06"
+          ],
+          "gap_seconds": 21.579039892386362
+        },
+        {
+          "group_id": "finale-tier-9",
+          "kind": "solo",
+          "rider_ids": [
+            "r05"
+          ],
+          "gap_seconds": 24.070982745908566
+        },
+        {
+          "group_id": "finale-tier-10",
+          "kind": "solo",
+          "rider_ids": [
+            "r04"
+          ],
+          "gap_seconds": 26.584018753337755
+        },
+        {
+          "group_id": "finale-tier-11",
+          "kind": "solo",
+          "rider_ids": [
             "r16"
           ],
-          "gap_seconds": 14.952668378641619
+          "gap_seconds": 29.252612406457065
+        },
+        {
+          "group_id": "finale-tier-12",
+          "kind": "solo",
+          "rider_ids": [
+            "r03"
+          ],
+          "gap_seconds": 31.720878220050395
+        },
+        {
+          "group_id": "finale-tier-13",
+          "kind": "solo",
+          "rider_ids": [
+            "r15"
+          ],
+          "gap_seconds": 34.29351150509336
+        },
+        {
+          "group_id": "finale-tier-14",
+          "kind": "solo",
+          "rider_ids": [
+            "r14"
+          ],
+          "gap_seconds": 36.78736046479422
+        },
+        {
+          "group_id": "finale-tier-15",
+          "kind": "solo",
+          "rider_ids": [
+            "r13"
+          ],
+          "gap_seconds": 39.378334884167025
         }
       ]
     }
