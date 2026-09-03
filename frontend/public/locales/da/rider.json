@@ -783,6 +783,7 @@
       "description": "Forlæng rytterens kontrakt med én sæson til en genforhandlet løn.",
       "currentSalary": "Nuværende løn",
       "newSalary": "Ny løn",
+      "newSalaryHint": "Følger hvad han leverer i denne sæson. Nuværende løn ligger fast indtil du forlænger.",
       "newContract": "Ny kontrakt",
       "newContractValue": "Til og med sæson {season}",
       "confirm": "Bekræft forlængelse",

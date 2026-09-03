@@ -1331,7 +1331,7 @@
     },
     "riderSalaryView": {
       "q": "Hvordan ser jeg en rytters løn?",
-      "a": "Løn er en synlig kolonne i Rytterdatabasen og ønskelisten og kan sorteres og filtreres på. Du kan filtrere på løn-interval under 'Løn CZ$ (min-max)' i filterpanelet. En rytters løn er en fast andel af hans nuværende produktionsværdi, altså det spillet forventer han leverer i denne sæson med de evner han har nu. Den bygger ikke på hans markedsværdi: værdien prissætter hele hans resterende karriere, lønnen prissætter kun denne sæson. Andelen er den samme for alle hold i alle divisioner, så den samme rytter koster det samme uanset hvor han kører. En rytter hvis evner vokser bliver dyrere ved næste kontrakt, og en hvis evner falder bliver billigere."
+      "a": "Løn er en synlig kolonne i Rytterdatabasen og ønskelisten og kan sorteres og filtreres på. Du kan filtrere på løn-interval under 'Løn CZ$ (min-max)' i filterpanelet. En rytters løn er en fast andel af hans nuværende produktionsværdi, altså det spillet forventer han leverer i denne sæson med de evner han har nu. Den bygger ikke på hans markedsværdi: værdien prissætter hele hans resterende karriere, lønnen prissætter kun denne sæson. Andelen er den samme for alle hold i alle divisioner, så den samme rytter koster det samme uanset hvor han kører. En rytter hvis evner vokser bliver dyrere ved næste kontrakt, og en hvis evner falder bliver billigere. Én ting at vide før du forlænger: hans nuværende løn fryses i det øjeblik han skriver under, og flytter sig aldrig af sig selv, så hvis hans evner er vokset meget siden, kan forlængelsestilbuddet virke som et stort hop, selvom selve beregningen ikke har ændret sig."
     },
     "riderDevelopment": {
       "q": "Hvor kan jeg se om en rytter udvikler sig?",
