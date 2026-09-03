@@ -62,6 +62,14 @@ Uanset udfald vises **begge akser**: dato-kalenderen som ramme, løbsdags-stribe
 4. **Forslag er aldrig beslutninger.** Peak-FORSLAG består (de skriver planer, ikke udtagelser), men optager aldrig en plads, tæller aldrig som peaks og forbliver afvist ([#4212](https://github.com/NicolaiDolmer/CyclingZone/issues/4212)/PR #4359).
 5. **Spiller-initieret udfyld er lovligt** via de tre eksisterende indgange (dagsboardet, `PlannerAssistantCard` for peaks, `/selection/auto`). En fjerde indgang må ikke opstå.
 
+**Tilstanden er nu valgbar runtime (#4201, 3/9).** Regel 1-5 ovenfor er `proactive`-tilstanden,
+som er prod i dag. `app_config.assistant_selection_mode` kan skifte til `late_fill` (assistenten
+udfylder KUN en helt tom trup, og først inden for `assistant_late_fill_hours` før start) eller
+`opt_in` (holdet skal selv have slået assistenten til). Reglerne pr. tilstand, fail-safen og
+gaterne bor i [`ASSISTANT_RULES.md`](ASSISTANT_RULES.md) §1b - dupliker dem ikke her. **Intet er
+flippet**, og regel 1's forbud mod nye proaktive assistent-FLADER gælder uændret i alle tre
+tilstande; den eneste nye flade er én til/fra-kontakt på Profil, synlig kun i `opt_in`.
+
 **Kendt rest (kode, hører til P3):** symmetriske kontroller (man kan rydde dag OG sæson, men kun udfylde en dag), én forklarende linje på boardet, Hjælp-afsnit (en+da). AI-holds autofill er uændret (felterne afhænger af den, jf. #2622-bindingen).
 
 ---

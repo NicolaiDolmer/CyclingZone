@@ -180,6 +180,8 @@
     "loan_end_before_start": "end_season skal være større end eller lig med start_season",
     "discord_id_required_first": "Tilføj først dit Discord-ID",
     "enabled_must_be_boolean": "enabled skal være en boolean",
+    "team_required": "Du skal have et hold først",
+    "assistant_opt_in_not_active": "Assistenten er ikke i opt-in-tilstand lige nu",
     "unknown_pref_keys": "Ukendt indstillingsnøgle",
     "username_invalid": "Brugernavn skal være 3-20 tegn (bogstaver, tal, _ eller -)",
     "username_taken": "Brugernavnet er optaget",
