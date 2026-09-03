@@ -278,7 +278,6 @@ export async function runRaceEntryGenerator({
     }
   }
 
-  const managerTeamsIncluded = mode !== DEFAULT_ASSISTANT_MODE;
   const eligibleTeams = (allTeams || []).filter((t) => {
     if (t.is_frozen) return false;
     if (!t.user_id) return true; // AI-hold: uaendret i ALLE tilstande (#2622-bindingen).
