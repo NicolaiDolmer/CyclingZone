@@ -45,8 +45,17 @@ const FIXED_HANDLERS = [
     label: "ProfilePage.toggleDmEnabled",
     source: profile,
     start: "async function toggleDmEnabled(",
-    end: "async function toggleDmPref(",
+    end: "async function toggleAssistantAutopick(",
     clears: /finally \{\s*setSavingDmEnabled\(false\);/,
+  },
+  {
+    // #4201: ny kontakt i samme fil — netop "naboen fik aldrig samme kur"-fejlen
+    // dette vaern findes for. Skrevet ind ved foedslen, ikke bagefter.
+    label: "ProfilePage.toggleAssistantAutopick",
+    source: profile,
+    start: "async function toggleAssistantAutopick(",
+    end: "async function toggleDmPref(",
+    clears: /finally \{\s*setSavingAssistant\(false\);/,
   },
   {
     label: "ProfilePage.toggleDmPref",
@@ -116,8 +125,8 @@ test("de rettede handlere viser en lokaliseret netvaerksbesked, ikke en tom fejl
   // errors:generic.networkError findes i BÅDE en og da (verificeret 14/8).
   assert.equal(
     (profile.match(/t\("errors:generic\.networkError"\)/g) || []).length,
-    4,
-    "alle fire Profil-handlere skal vise netværks-teksten",
+    5,
+    "alle fem Profil-handlere skal vise netværks-teksten (#4201 tilføjede den femte)",
   );
   assert.match(riderStats, /setAuctionError\(t\("errors:generic\.networkError"\)\)/);
   assert.match(board, /t\("errors:generic\.networkError"\)/);

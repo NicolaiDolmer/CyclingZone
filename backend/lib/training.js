@@ -63,8 +63,20 @@ export const TRAINING_CONFIG = Object.freeze({
 // dagstype-model (trainingDayTypes.js), ikke nye frie fokus — hvornår de kan
 // vælges afgøres af dagstypen. De står her fordi motoren slår evnerne op i
 // netop denne tabel; havde de ikke stået her, ville de træne ingenting.
+// ── #4631: punch og climbing kan trænes hver for sig (ejer 2/9, "snarligt") ──
+// `vo2max` er UÆNDRET og er nu HYBRIDEN: den træner stadig begge. Ved siden af
+// den står to specialiserede sessioner, så spilleren selv vælger. Grunden er
+// ejerens: "at kunne køre på stigninger i 40 minutter - Mod i 2/3 minutter, er
+// ikke særligt tæt på hinanden", og de to evner har vidt forskellige lofter, så
+// en rytter der er færdig i den ene spildte pas på bundtet.
+//
+// Nøglen `vo2max` beholdes bevidst for hybriden: hver eneste gemte plan i
+// `training_plans` peger allerede på den, så splittet kræver INGEN datamigration
+// og ingen spiller vågner op til en anden session end i går.
 export const TRAINING_FOCUSES = Object.freeze({
-  vo2max:      Object.freeze(["climbing", "punch", "tempo"]),
+  vo2max:       Object.freeze(["climbing", "punch", "tempo"]),
+  vo2max_climb: Object.freeze(["climbing", "tempo"]),
+  vo2max_punch: Object.freeze(["punch", "tempo"]),
   threshold:   Object.freeze(["time_trial", "tempo"]),
   sprint:      Object.freeze(["sprint", "acceleration"]),
   endurance:   Object.freeze(["endurance", "recovery", "durability"]),
@@ -77,6 +89,44 @@ export const TRAINING_FOCUSES = Object.freeze({
   loebslaere:  Object.freeze(["positioning", "tactics", "aggression"]),
 });
 export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUSES));
+
+// ── Vægt pr. (fokus, evne) — #4631 ──────────────────────────────────────────
+//
+// Uden dette led ville splittet være uden virkning. Den daglige delta beregnes
+// PR. EVNE og deler ikke et budget (dailyTraining.dailyAbilityDelta), så en evne
+// på sit loft koster ikke noget — den giver bare nul. Hybriden ville derfor være
+// svagt dominerende, og ingen ville nogensinde vælge en specialiseret session:
+// "vælg selv" uden en forskel er ikke et valg.
+//
+// Vægten er den forskel. Den ene evne der forsvinder ud af pakken efterlader sin
+// andel til den evne pakken er opkaldt efter; den fælles motor-evne står
+// uændret. Prisen for at gå specialiseret er at den anden evne slet ikke trænes
+// den dag.
+//
+// INVARIANTEN (håndhævet i training.test.js): summen af vægte er den SAMME i de
+// tre sessioner i vo2max-familien. Splittet flytter altså udbytte rundt inden
+// for en dag, det skaber ikke nyt. Ingen power creep, og ingen automatisk
+// omfordeling af "spildt" træning — spilleren vælger selv (ejer-afvist 2/9:
+// motoren må ikke håndholde fordelingen).
+//
+// Fokus uden en post her vægter 1,0 pr. evne, dvs. bit-identisk med før.
+export const FOCUS_ABILITY_WEIGHT = Object.freeze({
+  vo2max_climb: Object.freeze({ climbing: 2, tempo: 1 }),
+  vo2max_punch: Object.freeze({ punch: 2, tempo: 1 }),
+});
+
+// Vægten for én evne i ét fokus. Ren opslag med sikker default.
+export function focusAbilityWeight(focus, ability) {
+  const w = FOCUS_ABILITY_WEIGHT[focus]?.[ability];
+  return Number.isFinite(w) ? w : 1;
+}
+
+// Summen af et fokus' vægte — "hvor meget dag" pakken indeholder i alt.
+// Bruges af invariant-testen og af balance-scripts, aldrig af motoren.
+export function focusWeightSum(focus) {
+  const abilities = TRAINING_FOCUSES[focus] ?? [];
+  return abilities.reduce((sum, ability) => sum + focusAbilityWeight(focus, ability), 0);
+}
 
 // ⚠ FROSSET LISTE — rør den ikke når du tilføjer et fokus (#3762).
 //

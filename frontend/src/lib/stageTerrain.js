@@ -9,7 +9,7 @@ const PROFILE_TO_BUCKET = {
   flat: "flat", rolling: "flat",
   hilly: "hilly", classic: "hilly",
   mountain: "mountain", high_mountain: "mountain",
-  cobbles: "cobbles",
+  cobbles: "cobbles", gravel: "cobbles", // #4105: grus deler bucket med brosten
   itt: "itt", ttt: "itt", itt_hilly: "itt",
 };
 

@@ -6,6 +6,7 @@ import {
   evaluateSlotHealthAlert,
   TRAINING_SLOT_HEALTH_TUNING,
 } from "./trainingSlotHealth.js";
+import { ALL_SESSIONS } from "./trainingDayTypes.js";
 
 // Hjælper: en rider_derived_abilities-agtig række. Kun de evner testen bruger
 // sættes; cappedVisibleAbilities springer ikke-numeriske felter over.
@@ -42,8 +43,11 @@ test("computeTrainingSlotHealth: tæller dead/partial/open pr. fokus mod ÆGTE c
   const vo2 = rows.find((r) => r.focus === "vo2max");
   assert.deepEqual(vo2, { focus: "vo2max", ridersInTraining: 3, deadSlots: 1, partialSlots: 1 });
   assert.deepEqual(totals, { ridersInTraining: 3, deadSlots: 1, partialSlots: 1 });
-  // trin 2 (#3746, 16/8): "loebslaere" er en ottende skill-session (ALL_SESSIONS).
-  assert.equal(rows.length, 8, "alle otte sessioner rapporteres, også med nul-tal (#3762: uden restitution)");
+  // Vagten rapporterer ÉN række pr. session i ALL_SESSIONS, også med nul-tal
+  // (#3762: uden restitution). Tallet bindes til listen frem for at stå som en
+  // literal, så et nyt split (#4631: to intervaldage mere) ikke fejler som en
+  // regression i en vagt der bare tæller flere rækker.
+  assert.equal(rows.length, ALL_SESSIONS.length, "alle sessioner rapporteres, også med nul-tal");
 });
 
 test("computeTrainingSlotHealth: ryttere UDEN plan tælles under assistentens fokus", () => {
@@ -66,8 +70,7 @@ test("computeTrainingSlotHealth: rytter uden afledte evner tælles slet ikke", (
 
 test("computeTrainingSlotHealth: tomt input giver nul-rækker, ikke tom liste", () => {
   const { rows, totals } = computeTrainingSlotHealth();
-  // trin 2 (#3746, 16/8): "loebslaere" er en ottende skill-session.
-  assert.equal(rows.length, 8);
+  assert.equal(rows.length, ALL_SESSIONS.length);
   assert.equal(totals.ridersInTraining, 0);
 });
 

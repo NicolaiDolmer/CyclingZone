@@ -12,6 +12,7 @@
 // røres desuden ALDRIG, uanset request-body.
 
 import { VALID_RACE_ROLES, VALID_EFFORTS } from "./raceRoles.js";
+import { loadAbandonedRiderIds } from "./raceIncidents.js";
 
 /**
  * Ren validering af en PUT-body. Ingen DB. Fejlrækkefølge (errors[0] til brugeren,
@@ -25,6 +26,7 @@ import { VALID_RACE_ROLES, VALID_EFFORTS } from "./raceRoles.js";
  *   stagesCompleted: number,
  *   teamRiderIds: Set<string>,
  *   baseRoleByRider: Map<string, string|null>,
+ *   abandonedRiderIds: Set<string>,
  * }} args
  * @returns {{ok: boolean, errors: string[]}}
  */
@@ -35,6 +37,7 @@ export function validateStageRoleOverrides({
   stagesCompleted = 0,
   teamRiderIds = new Set(),
   baseRoleByRider = new Map(),
+  abandonedRiderIds = new Set(),
 }) {
   if (raceCompleted) return { ok: false, errors: ["stage_roles_race_completed"] };
   if (!Array.isArray(overrides)) return { ok: false, errors: ["stage_roles_invalid_body"] };
@@ -50,6 +53,14 @@ export function validateStageRoleOverrides({
   }
   for (const o of overrides) {
     if (!teamRiderIds.has(o?.rider_id)) { errors.push("stage_roles_rider_not_entered"); break; }
+  }
+  // #4538: en udgået/skadet rytter (race_incidents.outcome='abandon' — dækker
+  // BÅDE styrt-DNF og skadet-inden-etapestart) kører ikke de resterende etaper.
+  // Motoren ekskluderer ham allerede (raceRunner via loadAbandonedRiderIds) —
+  // en ny taktik-override for ham ville derfor blive gemt uden nogensinde at
+  // blive læst, og fladen ville løbe stille løbet fra virkeligheden.
+  for (const o of overrides) {
+    if (abandonedRiderIds.has(o?.rider_id)) { errors.push("stage_roles_rider_abandoned"); break; }
   }
   for (const o of overrides) {
     if (!VALID_RACE_ROLES.includes(o?.race_role)) { errors.push("stage_roles_invalid_role"); break; }
@@ -122,12 +133,22 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
     ridersById = new Map((riderRows || []).map((r) => [r.id, r]));
   }
 
+  // #4538: rytterens deltagerstatus (udgået/skadet = 'abandon', samme kilde
+  // som raceRunner bruger til at ekskludere ham fra kommende etapers felt).
+  // Slås kun op når holdet har ryttere i løbet — spejler riders/overrides-
+  // opslagene ovenfor.
+  let abandonedRiderIds = new Set();
+  if (riderIds.length) {
+    abandonedRiderIds = await loadAbandonedRiderIds({ supabase, raceId: race.id });
+  }
+
   const riders = (entries || []).map((e) => {
     const r = ridersById.get(e.rider_id);
     return {
       rider_id: e.rider_id,
       name: [r?.firstname, r?.lastname].filter(Boolean).join(" ") || null,
       race_role: e.race_role ?? null,
+      abandoned: abandonedRiderIds.has(e.rider_id),
     };
   });
 
@@ -152,6 +173,8 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
     // skal kunne tælle EFFEKTIVE roller, ikke kun bodyens. Samme felt som
     // raceTeamOrdersApi.getTeamOrdersContext returnerer.
     baseRoleByRider: new Map(riders.map((r) => [r.rider_id, r.race_role])),
+    // #4538: PUT-validatoren afviser overrides for disse.
+    abandonedRiderIds,
   };
 }
 

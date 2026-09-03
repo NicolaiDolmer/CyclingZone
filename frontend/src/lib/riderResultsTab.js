@@ -63,7 +63,13 @@ export function groupRiderRaces(rows = []) {
     } else if (JERSEY_TYPES.includes(r.result_type)) {
       g.jerseys[r.result_type] = r.rank ?? null;
     } else if (DAY_JERSEY_TYPES.includes(r.result_type)) {
-      g.dayLeads[r.result_type] = (g.dayLeads[r.result_type] || 0) + 1;
+      // #4588: raceRunner skriver ÉN "leader"/"points_day"/"mountain_day"/"young_day"-
+      // række PR. RYTTER I KLASSIFIKATIONEN hver etape (til GC-gap-visning i
+      // Resultater-fanens etape-underrækker, se raceRunner.js:547) — rank AFGØR
+      // hvem der faktisk bar trøjen den dag. Uden rank===1-filteret talte enhver
+      // etaperytter en "dag i trøjen" for hver etape han startede (thelamba 1/9:
+      // "He's never had one himself, I'm sure").
+      if (r.rank === 1) g.dayLeads[r.result_type] = (g.dayLeads[r.result_type] || 0) + 1;
     }
   }
   const races = [...byRace.values()];

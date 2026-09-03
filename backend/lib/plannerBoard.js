@@ -231,6 +231,7 @@ const PROFILE_TERRAIN = Object.freeze({
   itt: "itt",
   ttt: "ttt",
   cobbles: "cobbles",
+  gravel: "cobbles", // #4105
   classic: "hilly",
 });
 

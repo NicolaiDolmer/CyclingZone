@@ -56,8 +56,12 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
               ${active ? "border-cz-accent bg-cz-accent/[0.06]" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}
           >
             <span className={active ? "text-cz-accent-t" : "text-cz-2"}>
+              {/* #4628: fast lav hoejde (h-7 = 28 px) i stedet for `h-auto`.
+                  Miniaturen skalerede foer med bredden, saa en stribe med faa
+                  etaper blev til fire ~90 px hoeje billeder foer sidens indhold
+                  (audit 2026-09 raekke #4, "fire thumbnails"). */}
               {hasRouteData(s)
-                ? <StageProfileGraph profile={s} tier="mini" width={100} height={26} uid={`ms-${n}`} />
+                ? <StageProfileGraph profile={s} tier="mini" width={100} height={26} uid={`ms-${n}`} heightClass="h-7" />
                 : <LegacyMiniSilhouette profileType={s.profile_type} />}
               <span className="block text-3xs font-mono mt-0.5">{n}</span>
               {times?.[n]?.timeLabel && (

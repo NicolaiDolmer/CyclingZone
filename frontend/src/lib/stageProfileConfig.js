@@ -15,7 +15,7 @@
 // + PROFILE_TYPES i backend/lib/raceStageProfileGenerator.js). Holdes i sync med dem.
 // itt_hilly (#3546 D): kuperet enkeltstart: GT'ens ANDEN tidskørsel.
 export const PROFILE_TYPE_KEYS = Object.freeze([
-  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "classic",
+  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "gravel", "classic",
 ]);
 
 // finale_type-værdier (samme kilder). Bruges til labels, ikke til silhuet.
@@ -58,6 +58,10 @@ const SHAPES = Object.freeze({
   ttt:           [6, 13, 20, 6, 13, 20, 20, 20],
   // Brosten: flad rute med tæt, lav rumlen (chikaneret, ikke bakket).
   cobbles:       [21, 20, 21, 19, 21, 20, 21, 20],
+  // Grus (#4105): brostenens tætte rumlen LAGT OVEN PÅ et bølget bakkeland — sektorerne
+  // ligger i toscanske bakker, ikke på flandersk flad. Formen skal kunne skelnes fra
+  // både cobbles (som er flad med rumlen) og rolling (som er bølget uden rumlen).
+  gravel:        [21, 17, 18, 14, 16, 13, 17, 15],
   // Klassiker: blandet rullende + et par korte stik.
   classic:       [21, 18, 13, 19, 14, 18, 20, 17],
 });

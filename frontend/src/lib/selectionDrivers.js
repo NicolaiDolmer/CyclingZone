@@ -53,6 +53,7 @@ export const TACTICAL_DEMAND = Object.freeze({
   itt: "none",
   itt_hilly: "none", // #3546 D: DEMAND_VECTORS.itt_hilly har ingen tactics-vægt (samme som itt)
   cobbles: "none",
+  gravel: "none", // #4105: DEMAND_VECTORS.gravel har ingen tactics-vaegt (samme som cobbles)
   rolling: "light",
   mountain: "light",
   high_mountain: "light",

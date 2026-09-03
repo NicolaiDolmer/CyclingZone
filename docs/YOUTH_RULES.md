@@ -152,6 +152,7 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 | Aldersvindue for akademiet | `backend/lib/academyFlag.js` `ACADEMY.MIN_AGE`/`MAX_AGE` | 16-21 |
 | Søndags-intake | `backend/lib/sundayIntakeTick.js` | 2 kandidater pr. menneske-hold hver søndag (#2064 S0) |
 | Tilbudsfrist | `backend/lib/academyIntakeExpirySweep.js` `INTAKE_OFFER_EXPIRY_DAYS` | 7 dage, derefter ungdomsauktion |
+| Intake-status-livscyklus (#1756, ejer-SSOT for engangsoprydninger som #4576) | `backend/lib/academyIntakeReconcile.js` | `academy_intake.status`: `offered` → `signed` (RPC finaliserer erhvervelsen), `rejected` (holdet afviste/hentede ikke, ELLER en stale `offered`-raekke opdager at rytteren blev vundet af et ANDET hold, typisk via ungdomsauktionen). En `offered`-raekke med rytter allerede ejet er stale: maal-status afgoeres af HVEM der ejer rytteren nu — ejet af det TILBUDTE hold → `signed` (sign-flippet fuldfoerte aldrig); ejet af et ANDET hold → `rejected`. `team_id IS NULL` (fri rytter) er IKKE stale — legitimt aabent tilbud, roeres aldrig |
 | Signing fee | `academyIntake.js:483`, `ACADEMY.SIGNING_FEE_RATE` | andel af markedsværdi (udgår, §2.4) |
 | Drift | `ACADEMY.DRIFT_PER_SEASON`, opkræves i `processSeasonStart` | pr. besat plads pr. sæson |
 | Plads-loft | `academy_full` ved `academy_count >= 8` | 8 (erstattes af loft pr. trup) |
