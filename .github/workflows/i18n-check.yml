@@ -15,6 +15,8 @@ on:
       - 'backend/routes/**'
       - 'backend/lib/**'
       - 'scripts/i18n-check-keys.mjs'
+      - 'scripts/i18n-check-delta-pending.mjs'
+      - 'scripts/i18n-check-delta-pending.test.mjs'
       - 'scripts/i18n-check-namespace-inline.mjs'
       - 'scripts/i18n-check-nav-strings.mjs'
       - 'scripts/i18n-check-page-untranslated.mjs'
@@ -38,10 +40,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # Advisory i Fase 1 (Refs #410). Promotes til required via branch
-    # protection ved Fase 5 (#414) — eller når en/da har overlappende
-    # keys ud over `common.json`.
-    continue-on-error: true
+    # BLOKERENDE siden #4733 (var advisory i Fase 1, Refs #410/#414).
+    # Hvorfor nu: pipelinen skal gøre et NYT sprog næsten gratis at vedligeholde,
+    # og det kræver at et asymmetrisk nøglesæt ikke kan nå main. Guarden er
+    # grøn på main i dag (2 sprog × 46 namespaces), så promoveringen koster
+    # ingen oprydning — den fryser bare den tilstand.
+    # NB: `continue-on-error` styrer om JOBBET fælder workflowet. At gøre checket
+    # til et *required* check kræver derudover at ejeren tilføjer job-navnet
+    # `key-coverage` under Settings > Branches (kan ikke sættes fra repoet).
     steps:
       - uses: actions/checkout@v7
 
@@ -52,6 +58,32 @@ jobs:
 
       - name: Run i18n key-coverage check
         run: node scripts/i18n-check-keys.mjs
+
+  delta-pending:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # REQUIRED (Refs #4733) — den spillervendte besked-guard for retningen
+    # EN → alle øvrige sprog. En nøgle der findes i `en` men mangler (eller står
+    # som `__MISSING__`) i fx `da` betyder at en spiller på det sprog ser en rå
+    # nøgle eller en EN-fallback. key-coverage dækker det IKKE fuldt: den er
+    # retningsløs og accepterer bevidst `__MISSING__` som work-in-progress.
+    # Fejlbeskeden peger på `npm run i18n:translate` (delta-oversætteren), så en
+    # feature-PR der tilføjer EN-strenge har én kommando til at lukke gælden i
+    # stedet for at lade den vokse pr. sprog.
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Test i18n delta-pending guard
+        run: node --test scripts/i18n-check-delta-pending.test.mjs
+
+      - name: Run i18n delta-pending guard
+        run: node scripts/i18n-check-delta-pending.mjs
 
   namespace-inline:
     runs-on: ubuntu-latest

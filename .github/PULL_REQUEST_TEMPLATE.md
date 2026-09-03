@@ -11,6 +11,7 @@ Refs #
 - [ ] Frontend build: `npm run build --prefix frontend` passerer
 - [ ] Backend tests: `npm test --prefix backend` passerer
 - [ ] Lint: `npm run lint --prefix frontend` + `npm run lint --prefix backend` passerer
+- [ ] Nye brugersynlige strenge er tilføjet i `en` og oversat til alle sprog (`npm run i18n:translate`)
 - [ ] Manuel: <!-- hvad du klikkede på i browseren -->
 - [ ] Regression: <!-- hvilke andre features blev tjekket -->
 
