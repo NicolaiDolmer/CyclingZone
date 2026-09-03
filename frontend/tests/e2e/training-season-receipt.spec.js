@@ -75,14 +75,17 @@ test.beforeEach(async ({ page }) => {
   await installNetworkMocks(page);
 });
 
-test("#3709 roster-rækken viser hver af fokussets evner, ikke ét aggregeret tal", async ({ page }, testInfo) => {
+// #4613: kvitteringen flyttede fra roster-kolonnen til Udvikling-fanen — samme
+// spørgsmål som fanen allerede svarer på, og overbliksrækken kunne ikke bære
+// 3-4 linjer pr. rytter. Tallene, helperen og "færdig"-reglen er UÆNDREDE.
+test("#3709 rytterens række viser hver af fokussets evner, ikke ét aggregeret tal", async ({ page }, testInfo) => {
   await mockTrainingMe(page, { capped: { "rider-1": ["climbing"] } });
   await mockTrainingRuns(page);
   await login(page);
-  await page.goto("/training");
+  await page.goto("/training?tab=development");
 
-  const row = page.locator("tbody tr", { hasText: "Ada Pedersen" }).first();
-  const receipt = row.locator("td").filter({ hasText: /Klatring/ }).first();
+  const row = page.locator('[data-rider-id="rider-1"]');
+  const receipt = row;
 
   // vo2max = climbing + punch + tempo. Alle tre står nu på hver sin linje.
   for (const label of ["Klatring", "Punch", "Tempo"]) {
@@ -109,10 +112,9 @@ test("#3709 sæsonens point tælles fra sæsonstart, ikke fra 30-dages-vinduet",
   await mockTrainingMe(page, { capped: {} });
   await mockTrainingRuns(page);
   await login(page);
-  await page.goto("/training");
+  await page.goto("/training?tab=development");
 
-  const row = page.locator("tbody tr", { hasText: "Ada Pedersen" }).first();
-  const receipt = row.locator("td").filter({ hasText: /Klatring/ }).first();
+  const receipt = page.locator('[data-rider-id="rider-1"]');
 
   // Tempo fik 2 point i sæsonen (4/5) og 9 point dagen før sæsonstart (28/4).
   // Ville filteret mangle, stod der +11 her.
@@ -124,9 +126,9 @@ test("#3709 de tre loft-tekster er væk fra fladen", async ({ page }) => {
   await mockTrainingMe(page, { capped: { "rider-1": ["climbing", "punch", "tempo"] } });
   await mockTrainingRuns(page);
   await login(page);
-  await page.goto("/training");
+  await page.goto("/training?tab=development");
 
-  const row = page.locator("tbody tr", { hasText: "Ada Pedersen" }).first();
+  const row = page.locator('[data-rider-id="rider-1"]');
 
   // Teksterne lovede "stiger ikke igen, uanset hvordan rytteren træner".
   await expect(row.getByText(/Færdigudviklet i dette fokus/i)).toHaveCount(0);
@@ -134,8 +136,7 @@ test("#3709 de tre loft-tekster er væk fra fladen", async ({ page }) => {
   await expect(row.locator("option", { hasText: /loft nået/i })).toHaveCount(0);
 
   // Alle tre evner er låste, så alle tre linjer siger "færdig". Ingen død bar.
-  const receipt = row.locator("td").filter({ hasText: /Klatring/ }).first();
-  await expect(receipt.getByText("færdig", { exact: true })).toHaveCount(3);
+  await expect(row.getByText("færdig", { exact: true })).toHaveCount(3);
 });
 
 test("#3706 Status-kolonnen sorterer akademi-rytterne sammen", async ({ page }) => {

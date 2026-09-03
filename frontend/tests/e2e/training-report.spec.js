@@ -77,9 +77,13 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+// #4613: dagens rapport lå stablet under rosteret på første fane. Den er
+// dagens KVITTERING, ikke dagens VALG, og bor nu på Rapporter-fanen sammen med
+// udviklings-momentet, gårsdagens kvittering og historikken. Indholdet er
+// uændret — kun ?tab=history skal med i vejen derhen.
 test("training report shows day summary, progress and breakthrough jump", async ({ page }) => {
   await login(page);
-  await page.goto("/training");
+  await page.goto("/training?tab=history");
 
   // Dags-opsummering (payoff, holdniveau) — DA-locale via stabilizePage.
   await expect(page.getByText("Ryttere trænet")).toBeVisible();
@@ -96,7 +100,7 @@ test("training report shows day summary, progress and breakthrough jump", async 
   await expect(page.getByRole("columnheader", { name: "Resultat" }).first()).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Score" })).toHaveCount(0);
 
-  // Roster viser progress-kolonnen mod næste +1 (anticipation).
+  // Rapporten viser progress-kolonnen mod næste +1 (anticipation).
   await expect(page.getByRole("columnheader", { name: "Næste +1" }).first()).toBeVisible();
 
   // #1937: en hviledags-rytter MED valgt fokus vises som "Hviledag" i Næste +1,
@@ -115,7 +119,7 @@ test("training report shows day summary, progress and breakthrough jump", async 
 test("#3194: portræt — sticky navnekolonne æder ikke skærmen", async ({ page }) => {
   await login(page);
   await page.goto("/training");
-  await expect(page.getByRole("columnheader", { name: "Næste +1" }).first()).toBeVisible();
+  await page.locator("table[data-sortable]").waitFor();
 
   const viewport = page.viewportSize();
   test.skip(viewport.width >= 640, "portræt-kolonnekontrakten gælder kun under sm-breakpointet");

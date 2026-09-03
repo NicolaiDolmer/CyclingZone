@@ -1,18 +1,20 @@
-// #3721 — træningssiden omlagt til faner (Train today / Development /
-// History), ejer-godkendt design 19/8. #3746 trin 7 (ejer-beslutning 20/8)
-// tilføjede en ny fane, "Week plan", og flyttede den ugentlige rytme-editor
-// dertil (som en åben sektion, ikke længere en accordion). Guarden her holder på:
-//   1) "Train today" er default (ingen ?tab=) og viser rosteret — men ALDRIG
-//      den slettede åbne FAQ, og IKKE LÆNGERE ugerytme-editoren (flyttet).
-//   2) Toolbaren bærer et stille "How training works"-link til
+// #3721 — træningssiden omlagt til faner, ejer-godkendt design 19/8. #3746
+// trin 7 (ejer-beslutning 20/8) tilføjede "Week plan" og flyttede den
+// ugentlige rytme-editor dertil. #4613 (ejer-valgt retning B 3/9) gjorde
+// første fane til et OVERBLIK (trup-først) og flyttede den individuelle
+// ugeplan til Ugeplan-fanen + dagens rapport til Rapporter-fanen.
+// Guarden her holder på:
+//   1) Overblik er default (ingen ?tab=) og viser rosteret — men ALDRIG
+//      den slettede åbne FAQ, og IKKE ugerytme-editoren (flyttet).
+//   2) Filterlinjen bærer et stille "How training works"-link til
 //      /help?section=dailytraining i stedet for FAQ-prosaen.
-//   3) "Week plan"-fanen viser ugerytme-editoren åben (ingen <details>) + en
-//      kompakt oversigt over ryttere med individuel ugeplan.
+//   3) "Week plan"-fanen viser ugerytme-editoren åben (ingen <details>) + den
+//      individuelle ugeplan pr. rytter.
 //   4) Development-fanen viser én række pr. rytter: navn+alder, glyf-tallene
 //      "now · lo-hi · loft", og en fungerende fokus-knap (samme FocusPanel).
-//   5) History-fanen viser den uændrede træningshistorik.
+//   5) Rapporter-fanen viser den uændrede træningshistorik.
 //   6) ?tab=development og ?tab=weekplan er gyldige dyb-links (samme mønster
-//      som RiderStatsPage).
+//      som RiderStatsPage) — værdierne er UÆNDREDE efter #4613.
 //
 // riders kommer fra Supabase-mocken uden override: rider-1 = Ada Pedersen
 // (samme fixture-rytter som training-report.spec.js bruger), som har et fuldt
@@ -50,7 +52,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("Train today er default: rosteret er synligt, den slettede FAQ er væk, ugerytmen er flyttet til Week plan", async ({ page }) => {
+test("Overblik er default: rosteret er synligt, den slettede FAQ er væk, ugerytmen er flyttet til Week plan", async ({ page }) => {
   await login(page);
   await page.goto("/training");
   await page.locator("table[data-sortable]").waitFor();
@@ -74,7 +76,7 @@ test("Train today er default: rosteret er synligt, den slettede FAQ er væk, uge
   await expect(helpLink).toHaveAttribute("href", "/help?section=dailytraining");
 });
 
-test("Week plan-fanen viser ugerytme-editoren åben (ingen accordion) + den individuelle ugeplan-oversigt", async ({ page }) => {
+test("Week plan-fanen viser ugerytme-editoren åben (ingen accordion) + den individuelle ugeplan pr. rytter", async ({ page }) => {
   await login(page);
   await page.goto("/training");
   await page.locator("table[data-sortable]").waitFor();
@@ -90,12 +92,18 @@ test("Week plan-fanen viser ugerytme-editoren åben (ingen accordion) + den indi
   await expect(page.locator("details:has-text('Ugentlig rytme')")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Gem rytme" })).toBeVisible();
 
-  // Den individuelle ugeplan-oversigt (tom i denne fixture — riderWeekPlans: {}).
+  // #4613: den individuelle ugeplan-editor bor nu her (kom fra roster-rækken).
+  // Fixturen har riderWeekPlans: {}, så rytteren følger holdets rytme.
   await expect(page.getByText("Individuelle ugeplaner")).toBeVisible();
-  await expect(page.getByText("Ingen ryttere har en individuel ugeplan endnu.", { exact: false })).toBeVisible();
+  await expect(page.getByText("Ada Pedersen")).toBeVisible();
+  await expect(page.getByText("Følger holdets rytme").first()).toBeVisible();
 
-  // "Gå til rosteret"-knappen springer tilbage til Train today.
-  await page.getByRole("button", { name: "Gå til rosteret" }).click();
+  // Rækkens toggle folder rytterens egne 7 ugedags-selects ud.
+  await page.getByRole("button", { name: "Individuel ugeplan", exact: true }).first().click();
+  await expect(page.getByRole("button", { name: "Gem plan", exact: true })).toBeVisible();
+
+  // Overblik-fanen henter rosteret tilbage.
+  await page.getByRole("tab", { name: "Overblik" }).click();
   await expect(page).toHaveURL(/\/training\?tab=today$/);
   await expect(page.locator("table[data-sortable]")).toBeVisible();
 });
@@ -128,12 +136,12 @@ test("Development-fanen viser navn+alder, glyf-tallene og en fungerende fokus-kn
   await expect(page.getByRole("dialog")).toBeVisible();
 });
 
-test("History-fanen viser den uændrede træningshistorik, roster er væk", async ({ page }) => {
+test("Rapporter-fanen viser den uændrede træningshistorik, roster er væk", async ({ page }) => {
   await login(page);
   await page.goto("/training");
   await page.locator("table[data-sortable]").waitFor();
 
-  await page.getByRole("tab", { name: "Historik" }).click();
+  await page.getByRole("tab", { name: "Rapporter" }).click();
   await expect(page).toHaveURL(/\/training\?tab=history$/);
 
   await expect(page.locator("table[data-sortable]")).toHaveCount(0);
