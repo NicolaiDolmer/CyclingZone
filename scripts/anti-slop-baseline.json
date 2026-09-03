@@ -1,0 +1,575 @@
+{
+  "$comment": "Kendte anti-slop-overtraedelser (ratchet — maa kun skrumpe). Kategorier: arrow/smallpx/shadow/gradient. Genereret af scripts/check-anti-slop.mjs --update-baseline. Refs #4626, #3422. Nye overtraedelser maa IKKE tilfoejes her — brug stroke-ikoner (ikke pile), text-2xs/text-3xs (ikke arbitraer px), shadow-overlay (ikke andre shadow-*), eller (legitimt) udvid EXEMPT_FILES i lint-ui-slop.mjs med begrundelse (delt med denne guard).",
+  "files": {
+    "frontend/public/locales/da/activity.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/admin.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/auctions.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/auth.json": {
+      "arrow": 6,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/backendMessages.json": {
+      "arrow": 3,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/board.json": {
+      "arrow": 15,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/dashboard.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/finance.json": {
+      "arrow": 4,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/founder.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/help.json": {
+      "arrow": 9,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/klub.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/notifications.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/profile.json": {
+      "arrow": 6,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/races.json": {
+      "arrow": 12,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/results.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/rider.json": {
+      "arrow": 7,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/riders.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/seasonEnd.json": {
+      "arrow": 6,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/standings.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/team.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/training.json": {
+      "arrow": 4,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/transfers.json": {
+      "arrow": 4,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/da/watchlist.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/activity.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/admin.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/auctions.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/auth.json": {
+      "arrow": 6,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/backendMessages.json": {
+      "arrow": 3,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/board.json": {
+      "arrow": 15,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/dashboard.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/finance.json": {
+      "arrow": 4,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/founder.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/help.json": {
+      "arrow": 9,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/klub.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/notifications.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/profile.json": {
+      "arrow": 6,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/races.json": {
+      "arrow": 12,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/results.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/rider.json": {
+      "arrow": 7,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/riders.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/seasonEnd.json": {
+      "arrow": 6,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/standings.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/team.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/training.json": {
+      "arrow": 4,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/transfers.json": {
+      "arrow": 4,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/en/watchlist.json": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/AcademyReleaseConfirmModal.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/AcademyTransferConfirmModal.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/BidConfirmModal.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/CompareSelection.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/CookieBanner.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/DashboardCustomizeMenu.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/DevTransitionCard.jsx": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/LanguageSwitcher.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/LoanConfirmModal.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/NpsPrompt.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/OnboardingModal.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/OnboardingTour.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 2,
+      "gradient": 0
+    },
+    "frontend/src/components/OverbidToast.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/RacePriceModal.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/SeasonFinanceReportPanel.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/SetupWizardModal.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/StartPriceTypoGuardModal.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/StatsToggle.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/TeamPalmaresTab.jsx": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/admin/EconomyAdminSection.jsx": {
+      "arrow": 6,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/admin/RacePointModelSection.jsx": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/admin/RacePointsAdminSection.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/admin/SeasonCycleSection.jsx": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/admin/ValuationPreviewSection.jsx": {
+      "arrow": 3,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/admin/ValuationV4PreviewSection.jsx": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 2,
+      "gradient": 0
+    },
+    "frontend/src/components/admin/sections/BoardTestModeSection.jsx": {
+      "arrow": 6,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/planner/PlannerSquad.jsx": {
+      "arrow": 0,
+      "smallpx": 1,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/planner/plannerShared.js": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/racehub/ContextBand.jsx": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/rider/TeamCell.jsx": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/rider/profile/RiderPhysiologyTab.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/rider/profile/RiderTrainingTab.jsx": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/staff/ReleaseStaffModal.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/staff/profile/StaffSwitcherBar.jsx": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/components/ui/StatusBadge.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/components/ui/dataTableStyles.js": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 2
+    },
+    "frontend/src/lib/boardUtils.js": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/pages/AdminFairplayPage.jsx": {
+      "arrow": 4,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/pages/AdminSprintMetricsPage.jsx": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/pages/BoardPage.jsx": {
+      "arrow": 3,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/pages/KlubPage.jsx": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/pages/StaffProfilePage.jsx": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/pages/TeamPage.jsx": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/pages/TeamProfilePage.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/pages/TransfersPage.jsx": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/src/pages/admin/AdminDataTab.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/pages/admin/AdminEconomyTab.jsx": {
+      "arrow": 0,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/pages/admin/AdminUsersTab.jsx": {
+      "arrow": 2,
+      "smallpx": 0,
+      "shadow": 1,
+      "gradient": 0
+    },
+    "frontend/src/pages/boardroom/MemberPanel.jsx": {
+      "arrow": 0,
+      "smallpx": 1,
+      "shadow": 0,
+      "gradient": 0
+    }
+  }
+}
