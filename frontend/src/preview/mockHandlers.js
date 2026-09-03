@@ -705,10 +705,55 @@ export function apiResponse(pathname, search = "") {
   }
 
   if (pathname.endsWith("/api/board/status")) {
+    // #4519: en aktiv, forhandlet 1-årsplan (negotiation_status='completed')
+    // med et bredt request_options-sæt, så board-request-preview-flowet
+    // (BoardRequestPanel) kan klikkes igennem og skærmbilledes i preview —
+    // uden dette faldt siden altid tilbage til baseline-fasen (plans: alle
+    // null), hvor request-panelet aldrig renderer noget at klikke på.
     return {
-      is_baseline_phase: true,
+      is_baseline_phase: false,
       setup_next_plan_type: null,
-      plans: { "5yr": null, "3yr": null, "1yr": null },
+      plans: {
+        "5yr": null,
+        "3yr": null,
+        "1yr": {
+          board: {
+            id: "board-preview-1yr",
+            team_id: TEST_TEAM.id,
+            plan_type: "1yr",
+            focus: "star_signing",
+            satisfaction: 62,
+            budget_modifier: 1.10,
+            negotiation_status: "completed",
+            current_goals: "[]",
+            seasons_completed: 0,
+            cumulative_stage_wins: 0,
+            cumulative_gc_wins: 0,
+            plan_start_season_number: 1,
+            renew_locked: false,
+            renew_lock_code: null,
+          },
+          plan_duration: 1,
+          seasons_remaining: 1,
+          seasons_completed: 0,
+          plan_progress_pct: 40,
+          cumulative_stats: {},
+          snapshots: [],
+          satisfaction_events: [],
+          is_expired: false,
+          outlook: null,
+          request_status: { active_season_number: 1, used_this_season: false, latest_request: null, supported: true },
+          request_options: [
+            { type: "lower_results_pressure", label_key: "requestDefs.lower_results_pressure.label", description_key: "requestDefs.lower_results_pressure.description", tradeoff_preview_key: "requestDefs.lower_results_pressure.tradeoffPreview", disabled: false, disabled_reason: null, disabled_reason_key: null, disabled_reason_params: {} },
+            { type: "more_youth_focus", label_key: "requestDefs.more_youth_focus.label", description_key: "requestDefs.more_youth_focus.description", tradeoff_preview_key: "requestDefs.more_youth_focus.tradeoffPreview", disabled: false, disabled_reason: null, disabled_reason_key: null, disabled_reason_params: {} },
+            { type: "more_results_focus", label_key: "requestDefs.more_results_focus.label", description_key: "requestDefs.more_results_focus.description", tradeoff_preview_key: "requestDefs.more_results_focus.tradeoffPreview", disabled: true, disabled_reason: null, disabled_reason_key: "requestReason.majorPivotUsed", disabled_reason_params: {} },
+            { type: "ease_identity_requirements", label_key: "requestDefs.ease_identity_requirements.label", description_key: "requestDefs.ease_identity_requirements.description", tradeoff_preview_key: "requestDefs.ease_identity_requirements.tradeoffPreview", disabled: false, disabled_reason: null, disabled_reason_key: null, disabled_reason_params: {} },
+          ],
+          satisfaction_progress: null,
+          passive_modifier: null,
+          bonus_offer_progress: null,
+        },
+      },
       team: TEST_TEAM,
       riders: RIDERS.filter(rider => rider.team_id === TEST_TEAM.id),
       standing: null,
