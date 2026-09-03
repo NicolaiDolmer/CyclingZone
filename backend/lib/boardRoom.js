@@ -158,13 +158,18 @@ function ensureSupabase(supabase) {
   if (!supabase?.from) throw new Error("Supabase client is required");
 }
 
-// Milepæls-udfaldets reason_category (skrevet af boardMandateEngine.js's
-// persistMilestoneOutcome) → boardVoice-beat. Kun disse to er ægte
-// formands-beats i den nuværende datamodel (afvigelse 5/7 i modul-headeren).
-const MILESTONE_BEAT_BY_REASON = {
+// reason_category → boardVoice-beat for ÆGTE formands-beats. Milepæls-udfald
+// skrives af boardMandateEngine.js's persistMilestoneOutcome (afvigelse 5/7 i
+// modul-headeren); "mandate.signed"/"mandate.auto_signed" skrives af
+// boardMandateMeeting.js::signMandate (#4557 S-M2c, spec §4.5: "formandens
+// meeting_keep-linje som beat") — samme kort giver derfor automatisk et
+// friskt formandscitat på Boardroom-payloaden underskrift returnerer.
+const CHAIRMAN_BEAT_BY_REASON = {
   "mandate.milestone.achieved": "milestone_achieved",
   "mandate.milestone.achieved_early": "milestone_achieved",
   "mandate.milestone.missed": "milestone_missed",
+  "mandate.signed": "meeting_keep",
+  "mandate.auto_signed": "meeting_keep",
 };
 
 // ---------------------------------------------------------------------------
@@ -234,7 +239,7 @@ export function formatGoalDisplayValue(value) {
  */
 export function resolveEventSpeaker({ row, chairmanArchetypeKey, movements = [] } = {}) {
   if (!chairmanArchetypeKey) return null;
-  const milestoneBeat = MILESTONE_BEAT_BY_REASON[row?.reason_category];
+  const milestoneBeat = CHAIRMAN_BEAT_BY_REASON[row?.reason_category];
   if (milestoneBeat) {
     return { archetypeKey: chairmanArchetypeKey, beat: milestoneBeat, isChairmanBeat: true };
   }
@@ -629,9 +634,9 @@ export async function buildBoardRoomPayload({
   // ---- chairmanQuote (seneste ægte formands-beat, ellers null) ----
   let chairmanQuote = null;
   if (fallbackChairmanKey) {
-    const latestChairmanEvent = events.find((e) => MILESTONE_BEAT_BY_REASON[e.reason_category]);
+    const latestChairmanEvent = events.find((e) => CHAIRMAN_BEAT_BY_REASON[e.reason_category]);
     if (latestChairmanEvent) {
-      const beat = MILESTONE_BEAT_BY_REASON[latestChairmanEvent.reason_category];
+      const beat = CHAIRMAN_BEAT_BY_REASON[latestChairmanEvent.reason_category];
       const line = sampleVoiceLineOrNull({
         beat,
         archetypeKey: fallbackChairmanKey,

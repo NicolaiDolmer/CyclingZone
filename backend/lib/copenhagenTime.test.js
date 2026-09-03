@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { copenhagenDateString, copenhagenHour, copenhagenMidnightUTC, copenhagenHourToUTC } from "./copenhagenTime.js";
+import { copenhagenDateString, copenhagenHour, copenhagenMidnightUTC, copenhagenHourToUTC, copenhagenIsoWeekString } from "./copenhagenTime.js";
 
 test("UTC-aften om sommeren ruller til ny dansk dato (CEST, +2)", () => {
   // 2026-06-11T22:30Z = 2026-06-12 00:30 CEST
@@ -88,4 +88,27 @@ test("copenhagenMidnightUTC: returneret instant ER selv på den danske kalenderd
     assert.equal(copenhagenDateString(mid), copenhagenDateString(now), `dato-konsistens for ${iso}`);
     assert.equal(copenhagenHour(mid), 0, `midnat skal være time 0 for ${iso}`);
   }
+});
+
+// ── copenhagenIsoWeekString (#4650, digest-dedupe-noeglens ISO-uge) ──────────
+test("copenhagenIsoWeekString: mandag og soendag i samme uge giver samme noegle", () => {
+  // 2026-07-20 er en mandag, 2026-07-26 den efterfoelgende soendag — samme ISO-uge.
+  assert.equal(copenhagenIsoWeekString(new Date("2026-07-20T10:00:00Z")), "2026-W30");
+  assert.equal(copenhagenIsoWeekString(new Date("2026-07-26T10:00:00Z")), "2026-W30");
+});
+
+test("copenhagenIsoWeekString: naeste mandag ruller til en ny uge-noegle", () => {
+  assert.equal(copenhagenIsoWeekString(new Date("2026-07-19T10:00:00Z")), "2026-W29");
+  assert.equal(copenhagenIsoWeekString(new Date("2026-07-20T10:00:00Z")), "2026-W30");
+});
+
+test("copenhagenIsoWeekString: aarsskifte hvor 1. januar hoerer til foregaaende aars sidste ISO-uge", () => {
+  // 2027-01-01 er en fredag; ISO-uger tilhoerer det aar deres torsdag falder i,
+  // saa fredag 1/1-2027 ligger stadig i 2026's sidste uge (W53), ikke 2027-W01.
+  assert.equal(copenhagenIsoWeekString(new Date("2027-01-01T10:00:00Z")), "2026-W53");
+  assert.equal(copenhagenIsoWeekString(new Date("2027-01-04T10:00:00Z")), "2027-W01");
+});
+
+test("copenhagenIsoWeekString: default-argument er nu", () => {
+  assert.match(copenhagenIsoWeekString(), /^\d{4}-W\d{2}$/);
 });

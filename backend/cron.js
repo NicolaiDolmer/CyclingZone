@@ -45,6 +45,7 @@ import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
 import { SEASON_AUTO_TRANSITION_ENABLED } from "./lib/economyConstants.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
+import { processMandateAutoAcceptCron } from "./lib/boardMandateAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
@@ -363,6 +364,33 @@ async function runBoardAutoAcceptCron() {
     // ellers når fejlen hverken Sentry eller trackedTick.
     console.error("Cron error (board auto-accept):", err.message);
     sentryCapture(err, { tags: { cron: "board auto-accept" } });
+  }
+}
+
+// ─── Board Mandate Auto-Accept (#4557 S-M2c, årsmødet) ─────────────────────
+// Samme kadence + DM-run-guard-mønster som runBoardAutoAcceptCron ovenfor,
+// bare mod board_mandates.status='proposed' i stedet for board_profiles.
+// Kill-switch-gated indeni processMandateAutoAcceptCron selv — no-op når
+// board_mandate_model_enabled er 'off'.
+async function runBoardMandateAutoAcceptCron() {
+  flushDmRunGuard(["board_update", "board_critical"]);
+  try {
+    const result = await processMandateAutoAcceptCron({
+      supabase,
+      notifyUser: notifyUserWithBoardDM,
+      captureExceptionFn: sentryCapture,
+      now: new Date(),
+    });
+    if (result.reminders_sent || result.auto_accepted || result.errors) {
+      console.log(
+        `📋 Mandate auto-accept: ${result.mandates_checked} mandater tjekket — ${result.reminders_sent} reminders, ${result.auto_accepted} auto-accepted, ${result.errors} fejl`
+      );
+    } else {
+      console.log(`📋 Mandate auto-accept: ${result.mandates_checked} mandater tjekket — intet at gøre`);
+    }
+  } catch (err) {
+    console.error("Cron error (board mandate auto-accept):", err.message);
+    sentryCapture(err, { tags: { cron: "board mandate auto-accept" } });
   }
 }
 
@@ -1490,6 +1518,13 @@ export function startCron() {
   // Notif-dedup (24h) sikrer ingen spam selv ved hyppig polling.
   setInterval(
     trackedTick("board auto-accept", monitorCron("board-auto-accept", runBoardAutoAcceptCron, CRON_MONITOR_30MIN)),
+    30 * 60 * 1000
+  );
+
+  // Every 30 minutes: board mandate auto-accept (#4557 S-M2c, årsmødet).
+  // Kill-switch-gated indeni — no-op når board_mandate_model_enabled er 'off'.
+  setInterval(
+    trackedTick("board mandate auto-accept", monitorCron("board-mandate-auto-accept", runBoardMandateAutoAcceptCron, CRON_MONITOR_30MIN)),
     30 * 60 * 1000
   );
 

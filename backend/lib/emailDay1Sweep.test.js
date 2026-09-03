@@ -5,14 +5,10 @@ import { runEmailDay1Sweep, DAY1_WINDOW_MIN_MS, DAY1_WINDOW_MAX_MS } from "./ema
 // resultTeamIds: team ids that have >=1 race_results row (drives hasResults).
 // resultsErrorForTeamIds: team ids where the race_results lookup itself
 // throws, to exercise the per-team try/catch isolation.
-// raceIdByTeamId: team id -> race_id, drives the #3310 deep-link CTA
-// (latestRaceId) for teams that are also in resultTeamIds.
-// stageNumberByTeamId: team id -> stage_number, drives the #3912 stage
-// deep-link (latestStageNumber) for teams that are also in resultTeamIds.
 function makeSupabase(
   teamRows,
   userEmails = {},
-  { resultTeamIds = [], resultsErrorForTeamIds = [], raceIdByTeamId = {}, stageNumberByTeamId = {} } = {}
+  { resultTeamIds = [], resultsErrorForTeamIds = [] } = {}
 ) {
   return {
     from(table) {
@@ -50,34 +46,21 @@ function makeSupabase(
       if (table === "race_results") {
         let teamId = null;
         return {
-          // #3585: race_results has no created_at column — pin the exact
-          // select/order strings so a regression to the wrong column name
-          // fails this mock loudly instead of silently ignoring it.
-          // #3912: stage_number joined the select so the CTA can deep-link
-          // to the specific stage, not just the race.
+          // #2853 v2: the #3310/#3912 deep-link columns (race_id, stage_number,
+          // imported_at + an order-by) are gone — pin the exact select string
+          // so a regression back to the old wide select fails this mock
+          // loudly instead of silently ignoring it.
           select(cols) {
-            assert.equal(cols, "id, race_id, stage_number, imported_at");
+            assert.equal(cols, "id");
             return this;
           },
           eq(_col, id) { teamId = id; return this; },
-          order(col, opts) {
-            assert.equal(col, "imported_at");
-            assert.deepEqual(opts, { ascending: false });
-            return this;
-          },
           limit: async () => {
             if (resultsErrorForTeamIds.includes(teamId)) {
               return { data: null, error: { message: "connection reset" } };
             }
             return {
-              data: resultTeamIds.includes(teamId)
-                ? [{
-                    id: `result-${teamId}`,
-                    race_id: raceIdByTeamId[teamId] ?? null,
-                    stage_number: stageNumberByTeamId[teamId] ?? null,
-                    imported_at: "2026-07-19T00:00:00Z",
-                  }]
-                : [],
+              data: resultTeamIds.includes(teamId) ? [{ id: `result-${teamId}` }] : [],
               error: null,
             };
           },
@@ -147,7 +130,7 @@ test("dedupeKey is deterministic (day1:<userId>)", async () => {
   assert.equal(sendCalls[0].type, "day1");
 });
 
-test("hasResults=true renders the results-in copy for a team with a race_results row", async () => {
+test("hasResults=true renders the raced-while-away copy for a team with a race_results row", async () => {
   const now = new Date("2026-07-20T12:00:00Z");
   const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
   const rows = [mk("t1", { created_at: inWindow, user_id: "user-42" })];
@@ -157,62 +140,8 @@ test("hasResults=true renders the results-in copy for a team with a race_results
 
   await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
 
-  assert.equal(sendCalls[0].subject, "Day 1: your first results are in");
-  assert.ok(sendCalls[0].html.includes("already on the board"));
-});
-
-test("hasResults=true with a race_id deep-links the CTA to that race (#3310, dormant)", async () => {
-  const now = new Date("2026-07-20T12:00:00Z");
-  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
-  const rows = [mk("t1", { created_at: inWindow, user_id: "user-42" })];
-  const supabase = makeSupabase(
-    rows,
-    { "user-42": "player@example.com" },
-    { resultTeamIds: ["t1"], raceIdByTeamId: { t1: "race-99" } }
-  );
-  const sendCalls = [];
-  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
-
-  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
-
-  // Pin href'en, ikke en delstreng: includes() ville også passere hvis
-  // deep-linket kun stod som brødtekst, eller pegede på et fremmed host med
-  // vores URL som præfiks (CodeQL js/incomplete-url-substring-sanitization).
-  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99\?utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
-});
-
-test("hasResults=true with a race_id and stage_number deep-links the CTA to that stage's result (#3912)", async () => {
-  const now = new Date("2026-07-20T12:00:00Z");
-  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
-  const rows = [mk("t1", { created_at: inWindow, user_id: "user-42" })];
-  const supabase = makeSupabase(
-    rows,
-    { "user-42": "player@example.com" },
-    { resultTeamIds: ["t1"], raceIdByTeamId: { t1: "race-99" }, stageNumberByTeamId: { t1: 3 } }
-  );
-  const sendCalls = [];
-  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
-
-  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
-
-  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99\?stage=3&amp;utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
-});
-
-test("hasResults=true with a race_id but no stage_number falls back to the plain race link (single-day race / legacy data)", async () => {
-  const now = new Date("2026-07-20T12:00:00Z");
-  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
-  const rows = [mk("t1", { created_at: inWindow, user_id: "user-42" })];
-  const supabase = makeSupabase(
-    rows,
-    { "user-42": "player@example.com" },
-    { resultTeamIds: ["t1"], raceIdByTeamId: { t1: "race-99" } }
-  );
-  const sendCalls = [];
-  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
-
-  await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
-
-  assert.match(sendCalls[0].html, /href="https:\/\/cyclingzone\.org\/races\/race-99\?utm_source=email&amp;utm_medium=day1&amp;utm_campaign=day1"/);
+  assert.equal(sendCalls[0].subject, "Day 1: your riders have already raced");
+  assert.ok(sendCalls[0].html.includes("raced while you were away"));
 });
 
 test("hasResults=false renders the truthful no-results-yet copy, never the invented results claim", async () => {
@@ -225,8 +154,8 @@ test("hasResults=false renders the truthful no-results-yet copy, never the inven
 
   await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
 
-  assert.equal(sendCalls[0].subject, "Day 1: your first race is coming up");
-  assert.ok(!sendCalls[0].html.includes("already on the board"));
+  assert.equal(sendCalls[0].subject, "Day 1: your first race is on the calendar");
+  assert.ok(!sendCalls[0].html.includes("raced while you were away"));
 });
 
 test("is a no-op when the flag is not active", async () => {
@@ -281,4 +210,17 @@ test("a failed race_results lookup for one team is isolated (per-team try/catch)
   assert.deepEqual(sendCalls.map((c) => c.teamId), ["b"]);
   assert.equal(capturedErrors.length, 1);
   assert.match(capturedErrors[0].err.message, /race_results lookup/);
+});
+
+test("skips (does not throw) a team whose user has no email on file", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const inWindow = new Date(now.getTime() - 25 * 60 * 60 * 1000).toISOString();
+  const rows = [mk("no-email", { created_at: inWindow })];
+  const supabase = makeSupabase(rows, {}); // no email registered
+  const send = async () => { throw new Error("send must not be called without an email"); };
+
+  const result = await runEmailDay1Sweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+  assert.equal(result.candidates, 1);
+  assert.equal(result.skipped, 1);
+  assert.equal(result.failed, 0);
 });

@@ -121,6 +121,7 @@ export const ALL_CRON_MONITORS = [
   ["selection-warning", CRON_MONITOR_5MIN],
   ["debt-warnings", CRON_MONITOR_24H],
   ["board-auto-accept", CRON_MONITOR_30MIN],
+  ["board-mandate-auto-accept", CRON_MONITOR_30MIN],
   ["board-mid-season", CRON_MONITOR_30MIN],
   ["daily-season-count-check", CRON_MONITOR_24H],
   ["discord-bot-token-check", CRON_MONITOR_24H],

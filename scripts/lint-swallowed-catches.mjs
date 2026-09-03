@@ -131,7 +131,11 @@ const BASELINE = {
   // resten af api.js's 174-baseline allerede bærer.
   // #4557 (1/9): +1 for GET /board/room (Mandatets Boardroom-endpoint) —
   // samme captureApiRouteError-mønster, samme kendte regex-gab.
-  "backend/routes/api.js": 178,
+  // #4557 (3/9): +3 for årsmødet (GET /board/meeting, POST /board/meeting/focus,
+  // POST /board/meeting/sign) — samme captureApiRouteError-mønster på den ydre
+  // catch i alle tre. Den indre signError-catch i POST /sign rethrow'er
+  // (fallback-grenen) og tælles korrekt som handled, ingen ekstra her for den.
+  "backend/routes/api.js": 181,
   "backend/lib/seasonTransition.js": 3,
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,

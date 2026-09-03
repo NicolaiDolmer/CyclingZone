@@ -31,7 +31,10 @@ import { generateBoardMemberNames } from "./boardMandateNames.js";
 import {
   evaluateAndApplyConsequences,
 } from "./boardConsequences.js";
-import { applySeasonEndSync as applyMandateSeasonEndSyncShared } from "./boardMandateEngine.js";
+import {
+  applySeasonEndSync as applyMandateSeasonEndSyncShared,
+  advanceMandateAtSeasonEnd as advanceMandateAtSeasonEndShared,
+} from "./boardMandateEngine.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
 import { developRidersForSeason } from "./riderProgressionEngine.js";
@@ -62,6 +65,8 @@ import {
 } from "./economyConstants.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
+import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
+import { parkDormantTeams } from "./managerParking.js";
 import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
 import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -1422,6 +1427,32 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     }
   }
 
+  // [epic #4592 del 2] Parkerings-forberedelse — KUN når season_signup_enabled
+  // er 'on' (fælles flag med tilmeld-knappen, del 3). Kører UDENFOR if/else'en
+  // ovenfor, BEVIDST uafhængig af #2851-skip-flaget (den er en engangs-undtagelse
+  // for S1→S2-pyramide-kompriмering og har intet med parkering af inaktive hold
+  // at gøre) — parkFn bruger heller intet fra poolTree. Placeres alligevel EFTER
+  // hele op/nedryknings-blokken (når den kører), så vores league_division_id=null
+  // altid er sidste ord for et parkeret holds plads (processDivisionEnd kan
+  // ellers overskrive den igen hvis holdet også rangerer til op/nedrykning).
+  // Fail-safe: manglende flag/fejl → false → ingen parkering (motorens uændrede
+  // adfærd).
+  const isSignupEnabledFn = deps.isSeasonSignupEnabled ?? isSeasonSignupEnabled;
+  const signupEnabled = await isSignupEnabledFn(supabaseClient);
+  if (signupEnabled) {
+    try {
+      const parkFn = deps.parkDormantTeams ?? parkDormantTeams;
+      // Ingen teams/users her: parkFn henter selv (menneskehold-diskriminator
+      // + last_seen), samme pagineret mønster som dormantTeamsReport.js.
+      const parkResult = await parkFn({ supabase: supabaseClient, now: notificationNow });
+      console.log(`  🅿️  Parkering (#4592 del 2): ${parkResult.parked}/${parkResult.candidates} inaktive hold parkeret (${parkResult.skipped} sprunget over).`);
+    } catch (parkErr) {
+      // Parkering må ALDRIG vælte resten af sæsonskiftet — logges + Sentry, cutoveren fortsætter.
+      console.error("  ❌ Parkerings-sweep fejlede (#4592 del 2):", parkErr?.message || parkErr);
+      captureException(parkErr, { tags: { flow: "season_end", stage: "manager_parking" }, extra: { seasonId } });
+    }
+  }
+
   // Mark season as completed
   const { error: completeError } = await supabaseClient.from("seasons")
     .update({ status: "completed" })
@@ -1621,6 +1652,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   // #3514 fase 1-rest: skyggemodellens sæson-slut-sync. Flag-gated INDENI
   // funktionen selv (returnerer null øjeblikkeligt når kill-switchen er off).
   const applyMandateSeasonEndSyncFn = deps.applyMandateSeasonEndSync ?? applyMandateSeasonEndSyncShared;
+  // #4557 S-M2c · Årsmødet: næste sæsons mandat foreslås (status 'proposed')
+  // EFTER skyggemodellens sæson-slut-sync ovenfor. Samme fail-safe-disciplin
+  // som applyMandateSeasonEndSyncFn: flag-gated indeni, no-op når 'off'.
+  const advanceMandateAtSeasonEndFn = deps.advanceMandateAtSeasonEnd ?? advanceMandateAtSeasonEndShared;
   // #805 · forudhentet af processSeasonEnd (én query), fallback til egen lookup
   // hvis kaldt direkte (fx repair-stien).
   const boardTestMode = deps.boardTestMode ?? await isBoardTestModeActive(supabaseClient);
@@ -2037,6 +2072,42 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       // er persisteret ovenfor.
       console.error(`  ⚠️  mandate shadow season-end sync failed for ${team.name}:`, error.message);
       captureException(error, { tags: { flow: "season-transition", stage: "mandate-shadow" }, teamId: team.id });
+    }
+  }
+
+  // #4557 S-M2c · Årsmødet: EFTER skyggemodellens sæson-slut-sync (spec §4.1
+  // punkt 1, rækkefølgen er bindende — confidence skal være sæsonens FÆRDIGE
+  // tal før tillids-trappen for næste mandat allokeres). No-op (fail-safe
+  // inde i kaldet) når kill-switchen er 'off' eller holdet ikke har en
+  // skyggerelation endnu. En fejl her må ALDRIG vælte en rigtig sæson-slut —
+  // samme isolerede try/catch-disciplin som skygge-syncet ovenfor.
+  if (teamStanding) {
+    try {
+      // best-effort: en fejlende opslag her degraderer bare til assignedMembers=null
+      // (proposeNextMandate genererer stadig mål, blot uden owner_archetype_key
+      // stemplet) — den ydre catch nedenfor fanger uanset, dette er ikke en ekstra
+      // fejlkilde, kun en tydeliggørelse af at fejlen er set og accepteret her.
+      const { data: assignedMembers, error: membersError } = await supabaseClient
+        .from("team_board_members")
+        .select("archetype_key, is_chairman")
+        .eq("team_id", team.id);
+      if (membersError) {
+        console.warn(`  ⚠️  team_board_members lookup failed for ${team.name} (mandate proposal continues without owner stamping):`, membersError.message);
+      }
+
+      await advanceMandateAtSeasonEndFn(supabaseClient, {
+        teamId: team.id,
+        seasonId,
+        currentSeasonNumber,
+        standing: teamStanding,
+        team,
+        riders: team.riders || [],
+        assignedMembers: assignedMembers?.length ? assignedMembers : null,
+        now: deps.now ?? new Date(),
+      });
+    } catch (error) {
+      console.error(`  ⚠️  mandate annual-meeting proposal failed for ${team.name}:`, error.message);
+      captureException(error, { tags: { flow: "season-transition", stage: "mandate-annual-meeting" }, teamId: team.id });
     }
   }
 }

@@ -1,5 +1,47 @@
 export const PATCHES = [
   {
+    "version": "7.238",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Cleaner Dashboard and Inbox",
+          "body": "Empty cards on the Dashboard now tell you what to do next and give you a button to do it, card titles are consistent, and the text arrows are gone. The Inbox shows one clear next step when a category is empty instead of a box inside a box."
+        },
+        "da": {
+          "title": "Renere Dashboard og Indbakke",
+          "body": "Tomme kort på Dashboardet fortæller nu hvad du kan gøre som det næste og giver dig en knap til det, kort-titlerne er ensartede, og tekst-pilene er væk. Indbakken viser ét tydeligt næste skridt når en kategori er tom, i stedet for en kasse i en kasse."
+        },
+        "refs": [4625, 4624, 4657]
+      }
+    ]
+  },
+  {
+    "version": "7.237",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro lands right after you pay",
+          "body": "New subscriptions could sit without the Pro badge for up to an hour because the payment provider's confirmation was read in the wrong shape. The confirmation is now read correctly, the subscription is synced the moment you pay, and you cannot start a second subscription by accident."
+        },
+        "da": {
+          "title": "Pro lander med det samme du har betalt",
+          "body": "Nye abonnementer kunne stå uden Pro-mærke i op til en time, fordi betalingsudbyderens bekræftelse blev læst i den forkerte form. Bekræftelsen læses nu rigtigt, abonnementet synkes i samme øjeblik du betaler, og du kan ikke ved et uheld starte et abonnement nummer to."
+        },
+        "refs": [4648, 2816, 4655]
+      }
+    ]
+  },
+  {
     "version": "7.236",
     "date": "2026-09-02",
     "label": "Beta",

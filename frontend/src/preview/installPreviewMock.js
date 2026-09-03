@@ -9,10 +9,17 @@ import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, a
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
+import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
-  SEED_DEV_TRANSITION,
+  SEED_DEV_TRANSITION, ACTIVE_SEASON,
 } from "./seedData.js";
+
+// [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — statefuld in-memory
+// toggle, samme princip som klubMock/plannerMock: POST flipper den, GET
+// spejler den, så et før/efter-screenshot-par kan tages på ægte klik i
+// stedet for to statiske payloads.
+let previewSeasonSignupSignedUp = false;
 
 // Læs Accept-headeren robust: init.headers kan være en Headers-instans, et plain
 // objekt, eller helt fraværende (når input er et Request-objekt med egne headers).
@@ -108,6 +115,17 @@ export function installPreviewMock() {
         if (res) return jsonResponse(res.body, res.status);
       }
 
+      // #4557 (S-M2c): statefuld aarsmoede-mock — rout /api/board/room +
+      // /api/board/meeting* FØR den generiske /api-blok, saa fokus-skift og
+      // underskrift muterer in-memory-state (samme moenster som clubMock).
+      if (/\/api\/board\/(room|meeting)/.test(url)) {
+        const u = new URL(url, window.location.origin);
+        let body = null;
+        if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
+        const res = boardMeetingMockRoute(method, u.pathname, body);
+        if (res) return jsonResponse(res.body, res.status);
+      }
+
       // #2454: potentiale-estimaterne. Preview faldt før igennem til den
       // generiske /api-blok og fik `{ ok: true }` på denne POST, så hver
       // potentiale-celle stod tom — inklusive de ti flader landing 1 lægger om.
@@ -160,6 +178,37 @@ export function installPreviewMock() {
       }
       if (method === "GET" && /\/api\/training\/me$/.test(url)) {
         return jsonResponse(SEED_TRAINING);
+      }
+
+      // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — dashboard-kortet.
+      // Bevidst KUN her og ikke i mockHandlers.js (samme lagdeling som
+      // onboarding-/dev-transition-mocken lige ovenfor): Playwright-fixtures
+      // deler mockHandlers via frontend/tests/e2e/fixtures.js, og et synligt
+      // kort her ville flytte de eksisterende dashboard-snapshots. `enabled:
+      // true, eligible: true` er et BEVIDST preview-override af den ægte
+      // fail-safe off-default (season_signup_enabled i app_config er 'off' i
+      // prod), så ejeren kan se og gennemklikke kortet på preview FØR flaget
+      // nogensinde flippes (docs' "ejeren skal kunne teste på preview"-regel).
+      if (method === "GET" && /\/api\/season\/signup-status$/.test(url)) {
+        return jsonResponse({
+          enabled: true,
+          // Forbliver true efter signup: server-siden nulstiller aldrig
+          // eligible ved tilmelding (kun signed_up ændrer sig) — kortets
+          // bekræftelses-tilstand skal kunne SES efter klik, ikke forsvinde.
+          eligible: true,
+          parked: false,
+          signed_up: previewSeasonSignupSignedUp,
+          next_season_number: ACTIVE_SEASON.number + 1,
+        });
+      }
+      if (method === "POST" && /\/api\/season\/signup$/.test(url)) {
+        previewSeasonSignupSignedUp = true;
+        return jsonResponse({
+          ok: true,
+          signed_up: true,
+          next_season_signup_at: new Date().toISOString(),
+          next_season_number: ACTIVE_SEASON.number + 1,
+        });
       }
 
       // Express-API (/api/...).

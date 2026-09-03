@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Natbølge 2/9-3/9 kører** (spor, worktrees og regler i [pengeplan §4](superpowers/specs/2026-09-02-30-dages-pengeplan.md)). **Status 21:30:** merget #4652 #4653 #4655 (done: #4644 #4648 #2816); drafts #4654 mail v2, #4656 årsmøde backend (migration = ejer-GO); chunk 2 i gang (#4649 perks, årsmøde-frontend, #4625 kit); #4608 rebases. **Morgen 3/9 kl. 09:00 (ejer, 30 min):** visuelt go på drafts (Pro-perks #4649, årsmøde-frontend #4557, design-kit #4625, mail v2 #2853, Tilmeld-knap #4592) → merge-runde (auto-merge grønne backend-PR'er #4648 #4646 #2816 #4555 #4645 #4644) → S-M2c-migration applies af Claude efter merge (GO) → nøgleblok #4616 (Alunta EUR-planer i checkout, Railway EUR-nøgler, Resend + unsub) → dry_run #2853 (GO). Mandagstal (§0.9) måles man 7/9 kl. 09 via SQL + Alunta. Ejerens område-rækkefølge for alt udskudt står i MASTERPLAN §G (design-kit først).
+> **🎯 Next action:** **Natbølge 3/9 kører** (29 spor, ejer-GO 2/9 kl. 23:44; plan + resultater: [`docs/audits/night-wave-2026-09-03.md`](audits/night-wave-2026-09-03.md)). **Kl. 09 (Fable, ca. 90 min):** merge-runde `--admin` når CI grøn (backend/guards/docs først, UI-drafts efter ejerens visuelle go, #4647 sidst) → done-flip pr. merge → kit-PR'er rebases på main når #4657 er inde → migrationer + S4-apply + bestyrelses-backfill (#4664) KUN med ejer-GO → samlet patch note 7.238. **Kl. 09 (ejer, 30 min):** visuelt go på drafts (#4654 #4657 #4659 #4661 #4662 #4663 + nattens), GO på S4-scorecard og bestyrelseslisten, nøgleblok #4616, #4608 EUR-checkout lige efter, dry_run #2853, faktura #2 (61,25 kr) hos Alunta. **Hårdt (målt 2/9 23:30):** S4 findes ikke i `seasons`; 16 menneskehold uden bestyrelse. Mandagstal (§0.9) man 7/9 kl. 09; målt 2/9 kl. 21:30: MRR 188,40 kr / 5 abo, checkout 4 af 7, D7 18 %.
 
 > **⏳ Venter på DIN beslutning (stil dem enkeltvist):** **#4376/PR #4388 S3-kompensation** — A = kun opad (anbefalet, 54 hold / +3.901.500) / B = begge veje / C = begge veje uden minus; PR rebaset og mergeable · **#4495** 7 ryttere fanget i akademiet (SQL vises først) · **#4485-genberegning:** audit skal genkøres m. U25-reglen (26 løb, 915 rækker), så ét go · **#4098 blødt loft**: dialog nu, beslut senere · **#3512** arketyper del 2: anbefalet lukket.
 
@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** Claude Fable 5.1 · Code · DolmerPC · 2/9 20:30 → 3/9 09:45: natbølge (pengeplan §4), worktrees under `C:\Dev\CyclingZone-worktrees\`. **Playwright-slottet er optaget af orkestratoren.**
+> **🤖 Working agent:** **Session B (Fable, arkitekt) kører natbølge 3/9** siden 2/9 kl. 23:45: workflows `wf_64e6c306-c6f` (6 laner) + `wf_e2adaf29-541` (2 laner), 29 worktrees under `C:\Dev\CyclingZone-worktrees\`, monitor hvert 20. min. Rør IKKE bølgens worktrees eller hoved-checkoutet. Playwright-slottet er Fables (kun fixup-sporet må refreshe navngivne specs for #4662). Merge-runde kl. 09.
 
 _Historik i git-log, issue-tråde + docs/audits/._
