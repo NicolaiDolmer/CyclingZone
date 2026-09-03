@@ -69,3 +69,6 @@ Ejer-go 2/9 kl. 23:44: hele planen + visuelt go til #4657 (merges i nat når CI 
 - Workflow-agenter dør tavst (anti-slop 00:22, 7 tool-kald): lane-timeouten (90 min) holdt køen i gang, men 90 min var tabt; overvej 45 min for lette spor + re-spawn ved "ingen commit efter 30 min".
 - Dry-run-rapporter kan overtælle (bestyrelses-scriptet viste 37 kandidater, 13 var reelle): apply-guarden skal være sandheden, og rapporten skal bruge samme predikat som apply.
 - Session-død er stadig realiteten: alle spor overlevede fordi de pushede og oprettede PR'er selv; monitoren (bash `sleep`-loop) døde med exit 1 ved start og gav ingen vækning.
+- **37 deploys på en formiddag koster spillerne chunk-fejl:** deploy-verify på main-HEAD 11:40 målte 257 chunk-load-fejl på 24 t mod budget 25 (#4595; rodfix = #2423 skew protection). Næste merge-runde: batch UI-merges tættere (færre deploys) eller prioritér #2423 før næste bølge.
+- Agent-id'er forveksles let når 8+ agenter kører: hold et id-kort (scratchpad `agent-map.md`) og mål tavshed pr. id før statuskrav; to beskeder gik til forkerte agenter 3/9.
+- `cd X && ...` i en worker-Bash hænger stadig for evigt (GT-katalog 10:13, 60 min tabt) selv med forbuddet i prompten; genstart-prompten bør lægge forbuddet ØVERST med årsagen.
