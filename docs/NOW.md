@@ -24,6 +24,6 @@
 - **Økonomi/værdier S3:** låst. [`ECONOMY_RULES.md`](ECONOMY_RULES.md). **Sikkerhed:** kun #691 åben.
 - **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428); tråd-bank #4117.
 
-> **🤖 Working agent:** Claude Code (Fable, orkestrator) AKTIV fra 3/9 kl. 16: 13-opgavers Workflow-boelge (bugs #4701 #4699 #4700 #4595 · sikkerhed qs/CodeQL/Supabase-WARNs · drift lokal-cron-vagt · traenings-design #4613 #4629 #4632 · #4628 · #4697/#4698 · #4592+#4645 · aarsmoede #4557). Orkestratoren ejer Playwright-slottet. Anden session: STOP og spoerg ejeren.
+> **🤖 Working agent:** Claude Code (Fable, orkestrator) AKTIV fra 3/9 kl. 16 + **#4733 i18n-pipeline (ejer-go 3/9, 3 worker-spor i CyclingZone-worktrees/feat-4733-*)**: 13-opgavers Workflow-boelge (bugs #4701 #4699 #4700 #4595 · sikkerhed qs/CodeQL/Supabase-WARNs · drift lokal-cron-vagt · traenings-design #4613 #4629 #4632 · #4628 · #4697/#4698 · #4592+#4645 · aarsmoede #4557). Orkestratoren ejer Playwright-slottet. Anden session: STOP og spoerg ejeren.
 
 _Historik i git-log, issue-tråde + docs/audits/._
