@@ -93,6 +93,7 @@ import { runAluntaOverdueWatch } from "./lib/aluntaOverdueWatch.js"; // #4514
 import { runAluntaPeriodRollWatch } from "./lib/aluntaPeriodRollWatch.js"; // #4555
 import { runFairplayScoringSweep } from "./lib/fairplayFlagsCron.js"; // #3138
 import { captureException as sentryCapture, monitorCron, captureCheckIn, setCronHeartbeatRecorder } from "./lib/sentry.js";
+import { evaluateCronRuntimeGuard } from "./lib/cronRuntimeGuard.js"; // #drift-3-9 — lokal proces må ikke tikke mod prod
 // #2892 — egen cron-heartbeat-vagt (backup for Sentrys kvote-begrænsede
 // cron-monitorer, se lib/cronHeartbeat.js for den fulde forklaring).
 import {
@@ -1475,6 +1476,31 @@ export function primeCronMonitorCheckIns(captureCheckInFn = captureCheckIn) {
 // ─── Scheduler ───────────────────────────────────────────────────────────────
 
 export function startCron() {
+  // #drift-3-9 — vagt: se lib/cronRuntimeGuard.js for hændelsen (191 x 401
+  // "permission denied for table riders" fra en lokal proces mod prod, 2/9-3/9).
+  // Cron må kun tikke når nøglen dekoder til service_role OG processen kører
+  // på Railways production-miljø — ellers rammer en helt almindelig lokal
+  // `node server.js`/`npm run dev` prod med cron-ticks hvert 1.-60. minut uden
+  // nogen anelse om det. CRON_FORCE_LOCAL=1 er den eksplicitte undtagelse.
+  const cronGuard = evaluateCronRuntimeGuard({
+    serviceKey: process.env.SUPABASE_SERVICE_KEY,
+    railwayEnvironmentName: process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_ENVIRONMENT,
+    forceLocal: process.env.CRON_FORCE_LOCAL,
+  });
+  if (!cronGuard.allowed) {
+    console.error(
+      `🛑 Cron-scheduler IKKE startet: ${cronGuard.reason}. ` +
+        "Sæt CRON_FORCE_LOCAL=1 for bevidst at køre cron lokalt (OBS: rammer LIVE data hvis SUPABASE_URL peger på prod)."
+    );
+    return;
+  }
+  if (cronGuard.forced) {
+    console.warn(
+      `⚠️  CRON_FORCE_LOCAL=1 sat — cron-scheduler starter UDEN normal produktions-vagt (${cronGuard.reason}). ` +
+        "Tjek at SUPABASE_URL rent faktisk peger på det du forventer."
+    );
+  }
+
   console.log("⏱  Cron jobs started");
 
   // #2440: prime ALLE monitor-check-ins FØRST, før noget interval sættes op —
