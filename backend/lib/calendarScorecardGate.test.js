@@ -41,16 +41,16 @@ function kør(args = []) {
 // testen fejler stadig hvis der kommer ét brud mere, eller hvis et af de tre forsvinder
 // uden at listen følger med.
 //
-// HVORFOR DE IKKE KAN LUKKES I DENNE PR: alle syv er filler-vægt-kalibrering, og
+// HVORFOR DE IKKE KAN LUKKES I DENNE PR: alle tre er filler-vægt-kalibrering, og
 // genkalibreringen pr. division er ejer-besluttet 3/9 som en S5-opgave (CALENDAR_RULES §6b).
 // De SAMME afvigelser findes i dry-runnet mod prods katalog samme dag — det er altså
 // kalenderens faktiske tilstand, ikke en fixture-artefakt. Se
 // docs/audits/season4-calendar-dryrun-2026-09-03.md, afsnittet "Efter ejerens beslutninger 3/9".
-//   · tier 2 kuperet 38,4 % mod mål 33 % (tolerance ±5) og bjerg 20,5 % mod 28 %
-//   · tier 4 mountain slutter udbrud 0,0 % og SAMLET udbrud 6,0 %
-//   · sæson hilly slutter fladt 31,5 % (bånd 15-30)
-//   · sæson rolling slutter fladt 24,3 % og udbrud 75,7 % (bånd 25-45 / 55-75)
-const KENDTE_BALANCEBRUD = 7;
+//   · tier 2 bjerg mod målet (tolerance ±5) — katalog-sporets nye bjergløb lukker den, når
+//     migrationen er anvendt mod prod og fixturen er genopfrisket
+//   · tier 4 mountain slutter aldrig i udbrud (stikprøve-båndet, n=12)
+//   · sæson hilly slutter for ofte fladt
+const KENDTE_BALANCEBRUD = 3;
 
 test("#4215: den planlagte S4-kalender har kun de KENDTE balance-afvigelser", () => {
   const { stdout } = kør();

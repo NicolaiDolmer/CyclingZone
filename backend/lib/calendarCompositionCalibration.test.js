@@ -121,8 +121,16 @@ test("#3295: den nuværende generator rammer K-B-profilen på det ægte kalender
   );
 
   // Kompositionen må ikke være købt for realisme: begge sæt bånd skal holde samtidigt.
-  assert.deepEqual(scoreSeason(draws.map((d) => d.entry)).failures, [],
-    "realisme-båndene skal holde med de samme vægte");
+  //
+  // #4288 (3/9): GT-båndet er lagt om til ejerens fire distance-grænser. Snapshottet er
+  // FROSSET og har 21-ETAPERS Grand Tours — et etapeantal kataloget ikke har haft siden før
+  // sæson 3, og som ejeren 3/9 satte til 17/17/18. Deres ruter er trukket under de gamle
+  // regler og bryder de nye gulve uanset gen-træk. Målt mod prods faktiske katalog samme
+  // dag er alle tre ægte GT'er grønne (docs/audits/season4-calendar-dryrun-2026-09-03.md
+  // §10). Denne test handler om KOMPOSITIONS-vægtene, ikke om en frossen GT-rute, så
+  // GT-brud filtreres fra her — tier-båndene gates uændret.
+  const realismeBrud = scoreSeason(draws.map((d) => d.entry)).failures.filter((f) => !f.includes(": GT «"));
+  assert.deepEqual(realismeBrud, [], "realisme-båndene skal holde med de samme vægte");
 });
 
 test("#3295: balanced_week garanterer en enkeltstart (ITT-løftets kilde)", () => {

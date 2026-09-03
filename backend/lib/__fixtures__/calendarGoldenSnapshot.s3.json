@@ -7,7 +7,7 @@
   "tiers": [
     {
       "tier": 1,
-      "løb": 33,
+      "løb": 32,
       "etaper": 140,
       "dage": [
         {
@@ -49,7 +49,7 @@
               "game_day": 2
             },
             {
-              "løb": "Ocean Road Classic",
+              "løb": "Terre di Toscana",
               "etapenummer": 1,
               "game_day": 2
             },
@@ -79,7 +79,7 @@
               "game_day": 4
             },
             {
-              "løb": "Terre di Toscana",
+              "løb": "Klassieker van Harelbeke",
               "etapenummer": 1,
               "game_day": 4
             },
@@ -119,7 +119,7 @@
               "game_day": 8
             },
             {
-              "løb": "Klassieker van Harelbeke",
+              "løb": "Milano–Riviera",
               "etapenummer": 1,
               "game_day": 9
             },
@@ -139,7 +139,7 @@
               "game_day": 11
             },
             {
-              "løb": "Milano–Riviera",
+              "løb": "Limburgse Klassieker",
               "etapenummer": 1,
               "game_day": 11
             },
@@ -169,7 +169,7 @@
               "game_day": 15
             },
             {
-              "løb": "Limburgse Klassieker",
+              "løb": "Le Mur de Huy",
               "etapenummer": 1,
               "game_day": 16
             },
@@ -199,7 +199,7 @@
               "game_day": 20
             },
             {
-              "løb": "Le Mur de Huy",
+              "løb": "La Doyenne des Ardennes",
               "etapenummer": 1,
               "game_day": 20
             },
@@ -224,13 +224,13 @@
           "dato": "2026-09-04",
           "etaper": [
             {
-              "løb": "La Course au Soleil",
-              "etapenummer": 3,
+              "løb": "Københavns Klassiker",
+              "etapenummer": 1,
               "game_day": 22
             },
             {
-              "løb": "La Doyenne des Ardennes",
-              "etapenummer": 1,
+              "løb": "La Course au Soleil",
+              "etapenummer": 3,
               "game_day": 22
             },
             {
@@ -254,13 +254,13 @@
           "dato": "2026-09-05",
           "etaper": [
             {
-              "løb": "La Course au Soleil",
-              "etapenummer": 5,
+              "løb": "Clásica del Cantábrico",
+              "etapenummer": 1,
               "game_day": 24
             },
             {
-              "løb": "Taunus-Klassiker",
-              "etapenummer": 1,
+              "løb": "La Course au Soleil",
+              "etapenummer": 5,
               "game_day": 24
             },
             {
@@ -284,11 +284,6 @@
           "dato": "2026-09-06",
           "etaper": [
             {
-              "løb": "Københavns Klassiker",
-              "etapenummer": 1,
-              "game_day": 26
-            },
-            {
               "løb": "La Course au Soleil",
               "etapenummer": 7,
               "game_day": 26
@@ -296,6 +291,11 @@
             {
               "løb": "Tour des Volcans d'Auvergne",
               "etapenummer": 7,
+              "game_day": 26
+            },
+            {
+              "løb": "Westkust Klassieker",
+              "etapenummer": 1,
               "game_day": 26
             },
             {
@@ -314,7 +314,7 @@
           "dato": "2026-09-07",
           "etaper": [
             {
-              "løb": "Clásica del Cantábrico",
+              "løb": "Hamburger Klassiker",
               "etapenummer": 1,
               "game_day": 28
             },
@@ -344,6 +344,11 @@
           "dato": "2026-09-08",
           "etaper": [
             {
+              "løb": "La Classique Bretonne",
+              "etapenummer": 1,
+              "game_day": 30
+            },
+            {
               "løb": "Tour de l'Hexagone",
               "etapenummer": 3,
               "game_day": 30
@@ -351,11 +356,6 @@
             {
               "løb": "Volta Catalana",
               "etapenummer": 3,
-              "game_day": 30
-            },
-            {
-              "løb": "Westkust Klassieker",
-              "etapenummer": 1,
               "game_day": 30
             },
             {
@@ -374,7 +374,7 @@
           "dato": "2026-09-09",
           "etaper": [
             {
-              "løb": "Hamburger Klassiker",
+              "løb": "De Vlaamse Ronde",
               "etapenummer": 1,
               "game_day": 32
             },
@@ -404,7 +404,7 @@
           "dato": "2026-09-10",
           "etaper": [
             {
-              "løb": "La Classique Bretonne",
+              "løb": "Grand Prix du Saint-Laurent",
               "etapenummer": 1,
               "game_day": 34
             },
@@ -434,7 +434,7 @@
           "dato": "2026-09-11",
           "etaper": [
             {
-              "løb": "De Vlaamse Ronde",
+              "løb": "Chrono Champenois Majeur",
               "etapenummer": 1,
               "game_day": 37
             },
@@ -474,7 +474,7 @@
               "game_day": 43
             },
             {
-              "løb": "Grand Prix du Saint-Laurent",
+              "løb": "Grand Prix du Mont-Royal",
               "etapenummer": 1,
               "game_day": 44
             },
@@ -494,7 +494,7 @@
           "dato": "2026-09-13",
           "etaper": [
             {
-              "løb": "Chrono Champenois Majeur",
+              "løb": "L'Enfer du Nord",
               "etapenummer": 1,
               "game_day": 47
             },
@@ -524,7 +524,7 @@
           "dato": "2026-09-14",
           "etaper": [
             {
-              "løb": "Grand Prix du Mont-Royal",
+              "løb": "La Classica d'Autunno",
               "etapenummer": 1,
               "game_day": 49
             },
@@ -554,11 +554,6 @@
           "dato": "2026-09-15",
           "etaper": [
             {
-              "løb": "L'Enfer du Nord",
-              "etapenummer": 1,
-              "game_day": 51
-            },
-            {
               "løb": "La Corsa dei Due Mari",
               "etapenummer": 5,
               "game_day": 51
@@ -576,6 +571,11 @@
             {
               "løb": "Tour de la Vistule",
               "etapenummer": 6,
+              "game_day": 52
+            },
+            {
+              "løb": "Vuelta Ibérica",
+              "etapenummer": 1,
               "game_day": 52
             }
           ]
@@ -595,17 +595,17 @@
             },
             {
               "løb": "Vuelta Ibérica",
-              "etapenummer": 1,
+              "etapenummer": 2,
               "game_day": 53
             },
             {
               "løb": "Vuelta Ibérica",
-              "etapenummer": 2,
+              "etapenummer": 3,
               "game_day": 54
             },
             {
               "løb": "Vuelta Ibérica",
-              "etapenummer": 3,
+              "etapenummer": 4,
               "game_day": 55
             }
           ]
@@ -615,28 +615,28 @@
           "etaper": [
             {
               "løb": "Vuelta Ibérica",
-              "etapenummer": 4,
-              "game_day": 56
-            },
-            {
-              "løb": "Tour du Léman",
-              "etapenummer": 1,
-              "game_day": 57
-            },
-            {
-              "løb": "Vuelta Ibérica",
               "etapenummer": 5,
-              "game_day": 57
-            },
-            {
-              "løb": "Tour du Léman",
-              "etapenummer": 2,
-              "game_day": 58
+              "game_day": 56
             },
             {
               "løb": "Vuelta Ibérica",
               "etapenummer": 6,
+              "game_day": 57
+            },
+            {
+              "løb": "Vuelta Ibérica",
+              "etapenummer": 7,
               "game_day": 58
+            },
+            {
+              "løb": "Tour de Silésie",
+              "etapenummer": 1,
+              "game_day": 59
+            },
+            {
+              "løb": "Vuelta Ibérica",
+              "etapenummer": 8,
+              "game_day": 59
             }
           ]
         },
@@ -644,29 +644,29 @@
           "dato": "2026-09-18",
           "etaper": [
             {
-              "løb": "La Classica d'Autunno",
-              "etapenummer": 1,
-              "game_day": 59
+              "løb": "Tour de Silésie",
+              "etapenummer": 2,
+              "game_day": 60
             },
             {
-              "løb": "Tour du Léman",
+              "løb": "Vuelta Ibérica",
+              "etapenummer": 9,
+              "game_day": 60
+            },
+            {
+              "løb": "Tour de Silésie",
               "etapenummer": 3,
-              "game_day": 59
+              "game_day": 61
             },
             {
               "løb": "Vuelta Ibérica",
-              "etapenummer": 7,
-              "game_day": 59
-            },
-            {
-              "løb": "Tour du Léman",
-              "etapenummer": 4,
-              "game_day": 60
+              "etapenummer": 10,
+              "game_day": 62
             },
             {
               "løb": "Vuelta Ibérica",
-              "etapenummer": 8,
-              "game_day": 60
+              "etapenummer": 11,
+              "game_day": 63
             }
           ]
         },
@@ -674,29 +674,29 @@
           "dato": "2026-09-19",
           "etaper": [
             {
-              "løb": "Tour du Léman",
-              "etapenummer": 5,
-              "game_day": 61
-            },
-            {
               "løb": "Vuelta Ibérica",
-              "etapenummer": 9,
-              "game_day": 61
-            },
-            {
-              "løb": "Tour du Léman",
-              "etapenummer": 6,
-              "game_day": 62
-            },
-            {
-              "løb": "Vuelta Ibérica",
-              "etapenummer": 10,
-              "game_day": 63
-            },
-            {
-              "løb": "Vuelta Ibérica",
-              "etapenummer": 11,
+              "etapenummer": 12,
               "game_day": 64
+            },
+            {
+              "løb": "Vuelta Ibérica",
+              "etapenummer": 13,
+              "game_day": 65
+            },
+            {
+              "løb": "Vuelta Ibérica",
+              "etapenummer": 14,
+              "game_day": 66
+            },
+            {
+              "løb": "Tour des Émirats",
+              "etapenummer": 1,
+              "game_day": 67
+            },
+            {
+              "løb": "Vuelta Ibérica",
+              "etapenummer": 15,
+              "game_day": 67
             }
           ]
         },
@@ -704,29 +704,29 @@
           "dato": "2026-09-20",
           "etaper": [
             {
-              "løb": "Vuelta Ibérica",
-              "etapenummer": 12,
-              "game_day": 65
-            },
-            {
-              "løb": "Vuelta Ibérica",
-              "etapenummer": 13,
-              "game_day": 66
-            },
-            {
-              "løb": "Vuelta Ibérica",
-              "etapenummer": 14,
-              "game_day": 67
+              "løb": "Tour des Émirats",
+              "etapenummer": 2,
+              "game_day": 68
             },
             {
               "løb": "Tour des Émirats",
-              "etapenummer": 1,
-              "game_day": 68
+              "etapenummer": 3,
+              "game_day": 69
             },
             {
               "løb": "Vuelta Ibérica",
-              "etapenummer": 15,
-              "game_day": 68
+              "etapenummer": 16,
+              "game_day": 69
+            },
+            {
+              "løb": "Tour des Émirats",
+              "etapenummer": 4,
+              "game_day": 70
+            },
+            {
+              "løb": "Vuelta Ibérica",
+              "etapenummer": 17,
+              "game_day": 70
             }
           ]
         },
@@ -735,28 +735,28 @@
           "etaper": [
             {
               "løb": "Tour des Émirats",
+              "etapenummer": 5,
+              "game_day": 71
+            },
+            {
+              "løb": "Vuelta Vasca",
+              "etapenummer": 1,
+              "game_day": 71
+            },
+            {
+              "løb": "Tour des Émirats",
+              "etapenummer": 6,
+              "game_day": 72
+            },
+            {
+              "løb": "Tour du Léman",
+              "etapenummer": 1,
+              "game_day": 72
+            },
+            {
+              "løb": "Vuelta Vasca",
               "etapenummer": 2,
-              "game_day": 69
-            },
-            {
-              "løb": "Tour des Émirats",
-              "etapenummer": 3,
-              "game_day": 70
-            },
-            {
-              "løb": "Vuelta Ibérica",
-              "etapenummer": 16,
-              "game_day": 70
-            },
-            {
-              "løb": "Tour des Émirats",
-              "etapenummer": 4,
-              "game_day": 71
-            },
-            {
-              "løb": "Vuelta Ibérica",
-              "etapenummer": 17,
-              "game_day": 71
+              "game_day": 72
             }
           ]
         },
@@ -765,28 +765,28 @@
           "etaper": [
             {
               "løb": "Tour des Émirats",
-              "etapenummer": 5,
-              "game_day": 72
-            },
-            {
-              "løb": "Vuelta Vasca",
-              "etapenummer": 1,
-              "game_day": 72
-            },
-            {
-              "løb": "Tour des Émirats",
-              "etapenummer": 6,
+              "etapenummer": 7,
               "game_day": 73
             },
             {
-              "løb": "Tour of South China",
-              "etapenummer": 1,
-              "game_day": 73
-            },
-            {
-              "løb": "Vuelta Vasca",
+              "løb": "Tour du Léman",
               "etapenummer": 2,
               "game_day": 73
+            },
+            {
+              "løb": "Vuelta Vasca",
+              "etapenummer": 3,
+              "game_day": 73
+            },
+            {
+              "løb": "Tour du Léman",
+              "etapenummer": 3,
+              "game_day": 74
+            },
+            {
+              "løb": "Vuelta Vasca",
+              "etapenummer": 4,
+              "game_day": 74
             }
           ]
         },
@@ -794,29 +794,29 @@
           "dato": "2026-09-23",
           "etaper": [
             {
-              "løb": "Tour des Émirats",
-              "etapenummer": 7,
-              "game_day": 74
-            },
-            {
-              "løb": "Tour of South China",
-              "etapenummer": 2,
-              "game_day": 74
-            },
-            {
-              "løb": "Vuelta Vasca",
-              "etapenummer": 3,
-              "game_day": 74
-            },
-            {
-              "løb": "Tour of South China",
-              "etapenummer": 3,
-              "game_day": 75
-            },
-            {
-              "løb": "Vuelta Vasca",
+              "løb": "Tour du Léman",
               "etapenummer": 4,
               "game_day": 75
+            },
+            {
+              "løb": "Vuelta Vasca",
+              "etapenummer": 5,
+              "game_day": 75
+            },
+            {
+              "løb": "Danmark Rundt",
+              "etapenummer": 1,
+              "game_day": 76
+            },
+            {
+              "løb": "Tour du Léman",
+              "etapenummer": 5,
+              "game_day": 76
+            },
+            {
+              "løb": "Vuelta Vasca",
+              "etapenummer": 6,
+              "game_day": 76
             }
           ]
         },
@@ -824,29 +824,29 @@
           "dato": "2026-09-24",
           "etaper": [
             {
-              "løb": "Tour of South China",
-              "etapenummer": 4,
-              "game_day": 76
-            },
-            {
-              "løb": "Vuelta Vasca",
-              "etapenummer": 5,
-              "game_day": 76
-            },
-            {
-              "løb": "Tour of South China",
-              "etapenummer": 5,
+              "løb": "Danmark Rundt",
+              "etapenummer": 2,
               "game_day": 77
             },
             {
-              "løb": "Vuelta Vasca",
+              "løb": "Tour du Léman",
               "etapenummer": 6,
               "game_day": 77
             },
             {
-              "løb": "Tour of South China",
-              "etapenummer": 6,
+              "løb": "Danmark Rundt",
+              "etapenummer": 3,
               "game_day": 78
+            },
+            {
+              "løb": "Danmark Rundt",
+              "etapenummer": 4,
+              "game_day": 79
+            },
+            {
+              "løb": "Danmark Rundt",
+              "etapenummer": 5,
+              "game_day": 80
             }
           ]
         }
@@ -854,7 +854,7 @@
     },
     {
       "tier": 2,
-      "løb": 42,
+      "løb": 40,
       "etaper": 112,
       "dage": [
         {
@@ -866,7 +866,7 @@
               "game_day": 0
             },
             {
-              "løb": "Mascate Classic",
+              "løb": "Ocean Road Classic",
               "etapenummer": 1,
               "game_day": 0
             },
@@ -886,12 +886,12 @@
           "dato": "2026-08-29",
           "etaper": [
             {
-              "løb": "Clássica da Figueira",
+              "løb": "Classique du Hainaut",
               "etapenummer": 1,
               "game_day": 2
             },
             {
-              "løb": "Classique du Hainaut",
+              "løb": "Mascate Classic",
               "etapenummer": 1,
               "game_day": 2
             },
@@ -911,12 +911,12 @@
           "dato": "2026-08-30",
           "etaper": [
             {
-              "løb": "Clásica Almeriense",
+              "løb": "Classique de l'Ardèche",
               "etapenummer": 1,
               "game_day": 4
             },
             {
-              "løb": "Classique de l'Ardèche",
+              "løb": "Vlaamse Doortocht",
               "etapenummer": 1,
               "game_day": 4
             },
@@ -936,17 +936,17 @@
           "dato": "2026-08-31",
           "etaper": [
             {
+              "løb": "Milano–Piemonte",
+              "etapenummer": 1,
+              "game_day": 6
+            },
+            {
               "løb": "Tour des Grandes Alpes",
               "etapenummer": 1,
               "game_day": 6
             },
             {
               "løb": "Trofeo Ligure",
-              "etapenummer": 1,
-              "game_day": 6
-            },
-            {
-              "løb": "Vlaamse Doortocht",
               "etapenummer": 1,
               "game_day": 6
             },
@@ -961,12 +961,12 @@
           "dato": "2026-09-01",
           "etaper": [
             {
-              "løb": "Klassieker van de Kust",
+              "løb": "Klassieker van Brugge",
               "etapenummer": 1,
               "game_day": 8
             },
             {
-              "løb": "Milano–Piemonte",
+              "løb": "Klassieker van de Kust",
               "etapenummer": 1,
               "game_day": 8
             },
@@ -991,7 +991,7 @@
               "game_day": 10
             },
             {
-              "løb": "Klassieker van Brugge",
+              "løb": "Prijs van de Schelde",
               "etapenummer": 1,
               "game_day": 10
             },
@@ -1016,17 +1016,17 @@
               "game_day": 12
             },
             {
-              "løb": "Prijs van de Schelde",
+              "løb": "Taunus-Klassiker",
               "etapenummer": 1,
               "game_day": 12
             },
             {
-              "løb": "Tour du Hedjaz",
+              "løb": "Tour of South China",
               "etapenummer": 1,
               "game_day": 12
             },
             {
-              "løb": "Tour du Hedjaz",
+              "løb": "Tour of South China",
               "etapenummer": 2,
               "game_day": 13
             }
@@ -1036,7 +1036,7 @@
           "dato": "2026-09-04",
           "etaper": [
             {
-              "løb": "Classique du Léon",
+              "løb": "Classique de l'Avesnois",
               "etapenummer": 1,
               "game_day": 14
             },
@@ -1046,12 +1046,12 @@
               "game_day": 14
             },
             {
-              "løb": "Tour du Hedjaz",
+              "løb": "Tour of South China",
               "etapenummer": 3,
               "game_day": 14
             },
             {
-              "løb": "Tour du Hedjaz",
+              "løb": "Tour of South China",
               "etapenummer": 4,
               "game_day": 15
             }
@@ -1061,23 +1061,23 @@
           "dato": "2026-09-05",
           "etaper": [
             {
-              "løb": "Chesapeake Classic",
+              "løb": "Classique de Touraine",
               "etapenummer": 1,
               "game_day": 16
             },
             {
-              "løb": "Tour du Hedjaz",
+              "løb": "Giro Emiliano",
+              "etapenummer": 1,
+              "game_day": 16
+            },
+            {
+              "løb": "Tour of South China",
               "etapenummer": 5,
               "game_day": 16
             },
             {
-              "løb": "Vuelta Andaluza",
-              "etapenummer": 1,
-              "game_day": 16
-            },
-            {
-              "løb": "Vuelta Andaluza",
-              "etapenummer": 2,
+              "løb": "Tour of South China",
+              "etapenummer": 6,
               "game_day": 17
             }
           ]
@@ -1086,23 +1086,23 @@
           "dato": "2026-09-06",
           "etaper": [
             {
-              "løb": "Classique de l'Avesnois",
+              "løb": "Klassiker im Münsterland",
               "etapenummer": 1,
               "game_day": 18
             },
             {
-              "løb": "Classique de Touraine",
+              "løb": "Tour du Hedjaz",
               "etapenummer": 1,
               "game_day": 18
             },
             {
-              "løb": "Vuelta Andaluza",
-              "etapenummer": 3,
+              "løb": "Trofeo delle Tre Valli",
+              "etapenummer": 1,
               "game_day": 18
             },
             {
-              "løb": "Vuelta Andaluza",
-              "etapenummer": 4,
+              "løb": "Tour du Hedjaz",
+              "etapenummer": 2,
               "game_day": 19
             }
           ]
@@ -1111,23 +1111,23 @@
           "dato": "2026-09-07",
           "etaper": [
             {
-              "løb": "Giro Emiliano",
+              "løb": "Classica delle Colline Venete",
               "etapenummer": 1,
               "game_day": 20
             },
             {
-              "løb": "Tour du Tyrol",
+              "løb": "Gran Premio del Piemonte",
               "etapenummer": 1,
               "game_day": 20
             },
             {
-              "løb": "Vuelta Andaluza",
-              "etapenummer": 5,
+              "løb": "Tour du Hedjaz",
+              "etapenummer": 3,
               "game_day": 20
             },
             {
-              "løb": "Tour du Tyrol",
-              "etapenummer": 2,
+              "løb": "Tour du Hedjaz",
+              "etapenummer": 4,
               "game_day": 21
             }
           ]
@@ -1136,23 +1136,23 @@
           "dato": "2026-09-08",
           "etaper": [
             {
-              "løb": "Coppa di Legnano",
-              "etapenummer": 1,
+              "løb": "Tour du Hedjaz",
+              "etapenummer": 5,
               "game_day": 22
             },
             {
-              "løb": "Klassiker im Münsterland",
+              "løb": "Vuelta Andaluza",
               "etapenummer": 1,
               "game_day": 22
             },
             {
               "løb": "Tour du Tyrol",
-              "etapenummer": 3,
-              "game_day": 22
+              "etapenummer": 1,
+              "game_day": 23
             },
             {
-              "løb": "Tour du Tyrol",
-              "etapenummer": 4,
+              "løb": "Vuelta Andaluza",
+              "etapenummer": 2,
               "game_day": 23
             }
           ]
@@ -1161,23 +1161,23 @@
           "dato": "2026-09-09",
           "etaper": [
             {
-              "løb": "Tour d'Anatolie",
-              "etapenummer": 1,
+              "løb": "Tour du Tyrol",
+              "etapenummer": 2,
+              "game_day": 24
+            },
+            {
+              "løb": "Vuelta Andaluza",
+              "etapenummer": 3,
               "game_day": 24
             },
             {
               "løb": "Tour du Tyrol",
-              "etapenummer": 5,
-              "game_day": 24
+              "etapenummer": 3,
+              "game_day": 25
             },
             {
-              "løb": "Trofeo delle Tre Valli",
-              "etapenummer": 1,
-              "game_day": 24
-            },
-            {
-              "løb": "Tour d'Anatolie",
-              "etapenummer": 2,
+              "løb": "Vuelta Andaluza",
+              "etapenummer": 4,
               "game_day": 25
             }
           ]
@@ -1186,23 +1186,23 @@
           "dato": "2026-09-10",
           "etaper": [
             {
-              "løb": "Classica delle Colline Venete",
-              "etapenummer": 1,
-              "game_day": 26
-            },
-            {
-              "løb": "Gran Premio del Piemonte",
-              "etapenummer": 1,
-              "game_day": 26
-            },
-            {
-              "løb": "Tour d'Anatolie",
-              "etapenummer": 3,
-              "game_day": 26
-            },
-            {
-              "løb": "Tour d'Anatolie",
+              "løb": "Tour du Tyrol",
               "etapenummer": 4,
+              "game_day": 26
+            },
+            {
+              "løb": "Vuelta Andaluza",
+              "etapenummer": 5,
+              "game_day": 26
+            },
+            {
+              "løb": "Tour d'Anatolie",
+              "etapenummer": 1,
+              "game_day": 27
+            },
+            {
+              "løb": "Tour du Tyrol",
+              "etapenummer": 5,
               "game_day": 27
             }
           ]
@@ -1212,22 +1212,22 @@
           "etaper": [
             {
               "løb": "Tour d'Anatolie",
-              "etapenummer": 5,
+              "etapenummer": 2,
               "game_day": 28
             },
             {
               "løb": "Tour du Danube",
               "etapenummer": 1,
               "game_day": 28
+            },
+            {
+              "løb": "Tour d'Anatolie",
+              "etapenummer": 3,
+              "game_day": 29
             },
             {
               "løb": "Tour du Danube",
               "etapenummer": 2,
-              "game_day": 29
-            },
-            {
-              "løb": "Tour Wallon",
-              "etapenummer": 1,
               "game_day": 29
             }
           ]
@@ -1236,23 +1236,23 @@
           "dato": "2026-09-12",
           "etaper": [
             {
+              "løb": "Tour d'Anatolie",
+              "etapenummer": 4,
+              "game_day": 30
+            },
+            {
               "løb": "Tour du Danube",
               "etapenummer": 3,
               "game_day": 30
             },
             {
-              "løb": "Tour Wallon",
-              "etapenummer": 2,
-              "game_day": 30
+              "løb": "Tour d'Anatolie",
+              "etapenummer": 5,
+              "game_day": 31
             },
             {
               "løb": "Tour du Danube",
               "etapenummer": 4,
-              "game_day": 31
-            },
-            {
-              "løb": "Tour Wallon",
-              "etapenummer": 3,
               "game_day": 31
             }
           ]
@@ -1267,7 +1267,7 @@
             },
             {
               "løb": "Tour Wallon",
-              "etapenummer": 4,
+              "etapenummer": 1,
               "game_day": 32
             },
             {
@@ -1277,7 +1277,7 @@
             },
             {
               "løb": "Tour Wallon",
-              "etapenummer": 5,
+              "etapenummer": 2,
               "game_day": 33
             }
           ]
@@ -1291,8 +1291,8 @@
               "game_day": 34
             },
             {
-              "løb": "Tour Belge",
-              "etapenummer": 1,
+              "løb": "Tour Wallon",
+              "etapenummer": 3,
               "game_day": 34
             },
             {
@@ -1301,8 +1301,8 @@
               "game_day": 35
             },
             {
-              "løb": "Tour Belge",
-              "etapenummer": 2,
+              "løb": "Tour Wallon",
+              "etapenummer": 4,
               "game_day": 35
             }
           ]
@@ -1316,8 +1316,8 @@
               "game_day": 36
             },
             {
-              "løb": "Tour Belge",
-              "etapenummer": 3,
+              "løb": "Tour Wallon",
+              "etapenummer": 5,
               "game_day": 36
             },
             {
@@ -1327,7 +1327,7 @@
             },
             {
               "løb": "Tour Belge",
-              "etapenummer": 4,
+              "etapenummer": 1,
               "game_day": 37
             }
           ]
@@ -1337,7 +1337,7 @@
           "etaper": [
             {
               "løb": "Tour Belge",
-              "etapenummer": 5,
+              "etapenummer": 2,
               "game_day": 38
             },
             {
@@ -1346,8 +1346,8 @@
               "game_day": 38
             },
             {
-              "løb": "Danmark Rundt",
-              "etapenummer": 1,
+              "løb": "Tour Belge",
+              "etapenummer": 3,
               "game_day": 39
             },
             {
@@ -1361,8 +1361,8 @@
           "dato": "2026-09-17",
           "etaper": [
             {
-              "løb": "Danmark Rundt",
-              "etapenummer": 2,
+              "løb": "Tour Belge",
+              "etapenummer": 4,
               "game_day": 40
             },
             {
@@ -1371,8 +1371,8 @@
               "game_day": 40
             },
             {
-              "løb": "Danmark Rundt",
-              "etapenummer": 3,
+              "løb": "Tour Belge",
+              "etapenummer": 5,
               "game_day": 41
             },
             {
@@ -1386,8 +1386,8 @@
           "dato": "2026-09-18",
           "etaper": [
             {
-              "løb": "Danmark Rundt",
-              "etapenummer": 4,
+              "løb": "Tour de l'Yonne",
+              "etapenummer": 1,
               "game_day": 42
             },
             {
@@ -1396,12 +1396,12 @@
               "game_day": 42
             },
             {
-              "løb": "Danmark Rundt",
-              "etapenummer": 5,
+              "løb": "Tour de l'Yonne",
+              "etapenummer": 2,
               "game_day": 43
             },
             {
-              "løb": "Tour de l'Yonne",
+              "løb": "Tour of the Isles",
               "etapenummer": 1,
               "game_day": 43
             }
@@ -1412,22 +1412,22 @@
           "etaper": [
             {
               "løb": "Tour de l'Yonne",
-              "etapenummer": 2,
+              "etapenummer": 3,
               "game_day": 44
             },
             {
               "løb": "Tour of the Isles",
-              "etapenummer": 1,
+              "etapenummer": 2,
               "game_day": 44
             },
             {
               "løb": "Tour de l'Yonne",
-              "etapenummer": 3,
+              "etapenummer": 4,
               "game_day": 45
             },
             {
               "løb": "Tour of the Isles",
-              "etapenummer": 2,
+              "etapenummer": 3,
               "game_day": 45
             }
           ]
@@ -1437,22 +1437,22 @@
           "etaper": [
             {
               "løb": "Tour de l'Yonne",
-              "etapenummer": 4,
+              "etapenummer": 5,
               "game_day": 46
             },
             {
               "løb": "Tour of the Isles",
-              "etapenummer": 3,
+              "etapenummer": 4,
               "game_day": 46
             },
             {
-              "løb": "Tour de l'Yonne",
-              "etapenummer": 5,
+              "løb": "Tour Adriatique",
+              "etapenummer": 1,
               "game_day": 47
             },
             {
               "løb": "Tour of the Isles",
-              "etapenummer": 4,
+              "etapenummer": 5,
               "game_day": 47
             }
           ]
@@ -1461,22 +1461,22 @@
           "dato": "2026-09-21",
           "etaper": [
             {
-              "løb": "Tour Luxembourgeois",
-              "etapenummer": 1,
+              "løb": "Tour Adriatique",
+              "etapenummer": 2,
               "game_day": 48
             },
             {
-              "løb": "Tour of the Isles",
-              "etapenummer": 5,
+              "løb": "Tour de Malaisie",
+              "etapenummer": 1,
               "game_day": 48
             },
             {
               "løb": "Tour Adriatique",
-              "etapenummer": 1,
+              "etapenummer": 3,
               "game_day": 49
             },
             {
-              "løb": "Tour Luxembourgeois",
+              "løb": "Tour de Malaisie",
               "etapenummer": 2,
               "game_day": 49
             }
@@ -1487,21 +1487,21 @@
           "etaper": [
             {
               "løb": "Tour Adriatique",
-              "etapenummer": 2,
+              "etapenummer": 4,
               "game_day": 50
             },
             {
-              "løb": "Tour Luxembourgeois",
+              "løb": "Tour de Malaisie",
               "etapenummer": 3,
               "game_day": 50
             },
             {
               "løb": "Tour Adriatique",
-              "etapenummer": 3,
+              "etapenummer": 5,
               "game_day": 51
             },
             {
-              "løb": "Tour Luxembourgeois",
+              "løb": "Tour de Malaisie",
               "etapenummer": 4,
               "game_day": 51
             }
@@ -1511,23 +1511,23 @@
           "dato": "2026-09-23",
           "etaper": [
             {
-              "løb": "Tour Adriatique",
-              "etapenummer": 4,
+              "løb": "Tour de Bohême",
+              "etapenummer": 1,
               "game_day": 52
-            },
-            {
-              "løb": "Tour Luxembourgeois",
-              "etapenummer": 5,
-              "game_day": 52
-            },
-            {
-              "løb": "Tour Adriatique",
-              "etapenummer": 5,
-              "game_day": 53
             },
             {
               "løb": "Tour de Malaisie",
+              "etapenummer": 5,
+              "game_day": 52
+            },
+            {
+              "løb": "Ronde van Zeeland",
               "etapenummer": 1,
+              "game_day": 53
+            },
+            {
+              "løb": "Tour de Bohême",
+              "etapenummer": 2,
               "game_day": 53
             }
           ]
@@ -1536,24 +1536,24 @@
           "dato": "2026-09-24",
           "etaper": [
             {
-              "løb": "Tour de Malaisie",
+              "løb": "Ronde van Zeeland",
               "etapenummer": 2,
               "game_day": 54
             },
             {
-              "løb": "Tour de Malaisie",
+              "løb": "Tour de Bohême",
+              "etapenummer": 3,
+              "game_day": 54
+            },
+            {
+              "løb": "Ronde van Zeeland",
               "etapenummer": 3,
               "game_day": 55
             },
             {
-              "løb": "Tour de Malaisie",
+              "løb": "Tour de Bohême",
               "etapenummer": 4,
-              "game_day": 56
-            },
-            {
-              "løb": "Tour de Malaisie",
-              "etapenummer": 5,
-              "game_day": 57
+              "game_day": 55
             }
           ]
         }
@@ -1561,7 +1561,7 @@
     },
     {
       "tier": 3,
-      "løb": 34,
+      "løb": 36,
       "etaper": 84,
       "dage": [
         {
@@ -1628,7 +1628,7 @@
           "dato": "2026-08-31",
           "etaper": [
             {
-              "løb": "Rund um Köln Neu",
+              "løb": "Koerse van Nokere",
               "etapenummer": 1,
               "game_day": 6
             },
@@ -1668,7 +1668,7 @@
           "dato": "2026-09-02",
           "etaper": [
             {
-              "løb": "Koerse van Nokere",
+              "løb": "Clássica da Figueira",
               "etapenummer": 1,
               "game_day": 10
             },
@@ -1708,7 +1708,7 @@
           "dato": "2026-09-04",
           "etaper": [
             {
-              "løb": "Classique de la Drôme",
+              "løb": "Clásica Almeriense",
               "etapenummer": 1,
               "game_day": 14
             },
@@ -1748,7 +1748,7 @@
           "dato": "2026-09-06",
           "etaper": [
             {
-              "løb": "Classique des Flandres-Sud",
+              "løb": "Classique de la Drôme",
               "etapenummer": 1,
               "game_day": 18
             },
@@ -1788,13 +1788,13 @@
           "dato": "2026-09-08",
           "etaper": [
             {
-              "løb": "Giro della Lucania",
-              "etapenummer": 3,
+              "løb": "Classique des Flandres-Sud",
+              "etapenummer": 1,
               "game_day": 22
             },
             {
-              "løb": "Grand Prix Criquielion Nouveau",
-              "etapenummer": 1,
+              "løb": "Giro della Lucania",
+              "etapenummer": 3,
               "game_day": 22
             },
             {
@@ -1828,7 +1828,7 @@
           "dato": "2026-09-10",
           "etaper": [
             {
-              "løb": "Famenne-Ardenne Classique Nouvelle",
+              "løb": "Grand Prix Criquielion Nouveau",
               "etapenummer": 1,
               "game_day": 26
             },
@@ -1868,7 +1868,7 @@
           "dato": "2026-09-12",
           "etaper": [
             {
-              "løb": "Classique du Morbihan",
+              "løb": "Famenne-Ardenne Classique Nouvelle",
               "etapenummer": 1,
               "game_day": 30
             },
@@ -1908,7 +1908,7 @@
           "dato": "2026-09-14",
           "etaper": [
             {
-              "løb": "Brusselse Klassieker",
+              "løb": "Classique du Morbihan",
               "etapenummer": 1,
               "game_day": 34
             },
@@ -1928,17 +1928,17 @@
           "dato": "2026-09-15",
           "etaper": [
             {
-              "løb": "Boucles Mayennaises",
-              "etapenummer": 1,
-              "game_day": 36
-            },
-            {
               "løb": "Tour de Germanie",
               "etapenummer": 5,
               "game_day": 36
             },
             {
-              "løb": "Boucles Mayennaises",
+              "løb": "Tour Luxembourgeois",
+              "etapenummer": 1,
+              "game_day": 36
+            },
+            {
+              "løb": "Tour Luxembourgeois",
               "etapenummer": 2,
               "game_day": 37
             }
@@ -1948,17 +1948,17 @@
           "dato": "2026-09-16",
           "etaper": [
             {
-              "løb": "Boucles Mayennaises",
-              "etapenummer": 3,
-              "game_day": 38
-            },
-            {
-              "løb": "Gran Premio de Castilla",
+              "løb": "Classique du Léon",
               "etapenummer": 1,
               "game_day": 38
             },
             {
-              "løb": "Boucles Mayennaises",
+              "løb": "Tour Luxembourgeois",
+              "etapenummer": 3,
+              "game_day": 38
+            },
+            {
+              "løb": "Tour Luxembourgeois",
               "etapenummer": 4,
               "game_day": 39
             }
@@ -1968,13 +1968,13 @@
           "dato": "2026-09-17",
           "etaper": [
             {
-              "løb": "Circuit des Frontières",
+              "løb": "Tour des Fjords",
               "etapenummer": 1,
               "game_day": 40
             },
             {
-              "løb": "Tour des Fjords",
-              "etapenummer": 1,
+              "løb": "Tour Luxembourgeois",
+              "etapenummer": 5,
               "game_day": 40
             },
             {
@@ -1988,7 +1988,7 @@
           "dato": "2026-09-18",
           "etaper": [
             {
-              "løb": "Gran Premio di Prato",
+              "løb": "Brusselse Klassieker",
               "etapenummer": 1,
               "game_day": 42
             },
@@ -2008,17 +2008,17 @@
           "dato": "2026-09-19",
           "etaper": [
             {
-              "løb": "Tour Arctique",
+              "løb": "Gran Premio de Castilla",
               "etapenummer": 1,
               "game_day": 44
             },
             {
-              "løb": "Trofeo dei Castelli Romani",
+              "løb": "Tour du Limousin Nouveau",
               "etapenummer": 1,
               "game_day": 44
             },
             {
-              "løb": "Tour Arctique",
+              "løb": "Tour du Limousin Nouveau",
               "etapenummer": 2,
               "game_day": 45
             }
@@ -2028,17 +2028,17 @@
           "dato": "2026-09-20",
           "etaper": [
             {
-              "løb": "Coppa di Peccioli",
+              "løb": "Circuit des Frontières",
               "etapenummer": 1,
               "game_day": 46
             },
             {
-              "løb": "Tour Arctique",
+              "løb": "Tour du Limousin Nouveau",
               "etapenummer": 3,
               "game_day": 46
             },
             {
-              "løb": "Tour Arctique",
+              "løb": "Tour du Limousin Nouveau",
               "etapenummer": 4,
               "game_day": 47
             }
@@ -2048,17 +2048,17 @@
           "dato": "2026-09-21",
           "etaper": [
             {
-              "løb": "Grand Prix de Fourmies Neuf",
+              "løb": "Chesapeake Classic",
               "etapenummer": 1,
               "game_day": 48
             },
             {
-              "løb": "Tour du Limousin Nouveau",
+              "løb": "Tour de Bretagne Sud",
               "etapenummer": 1,
               "game_day": 48
             },
             {
-              "løb": "Tour du Limousin Nouveau",
+              "løb": "Tour de Bretagne Sud",
               "etapenummer": 2,
               "game_day": 49
             }
@@ -2068,18 +2068,18 @@
           "dato": "2026-09-22",
           "etaper": [
             {
-              "løb": "Grand Prix de Namur",
+              "løb": "Gran Premio di Prato",
               "etapenummer": 1,
               "game_day": 50
             },
             {
-              "løb": "Tour du Limousin Nouveau",
+              "løb": "Tour de Bretagne Sud",
               "etapenummer": 3,
               "game_day": 50
             },
             {
-              "løb": "Tour du Limousin Nouveau",
-              "etapenummer": 4,
+              "løb": "Coppa di Peccioli",
+              "etapenummer": 1,
               "game_day": 51
             }
           ]
@@ -2088,18 +2088,18 @@
           "dato": "2026-09-23",
           "etaper": [
             {
-              "løb": "Ronde van Zeeland",
+              "løb": "Grand Prix de Fourmies Neuf",
+              "etapenummer": 1,
+              "game_day": 52
+            },
+            {
+              "løb": "Grand Prix de Namur",
               "etapenummer": 1,
               "game_day": 52
             },
             {
               "løb": "Vlaamse Najaarsklassieker",
               "etapenummer": 1,
-              "game_day": 52
-            },
-            {
-              "løb": "Ronde van Zeeland",
-              "etapenummer": 2,
               "game_day": 53
             }
           ]
@@ -2108,13 +2108,13 @@
           "dato": "2026-09-24",
           "etaper": [
             {
-              "løb": "Giro Veneto",
+              "løb": "Coppa di Legnano",
               "etapenummer": 1,
               "game_day": 54
             },
             {
-              "løb": "Ronde van Zeeland",
-              "etapenummer": 3,
+              "løb": "Giro Veneto",
+              "etapenummer": 1,
               "game_day": 54
             },
             {
@@ -2128,14 +2128,14 @@
     },
     {
       "tier": 4,
-      "løb": 40,
+      "løb": 42,
       "etaper": 84,
       "dage": [
         {
           "dato": "2026-08-28",
           "etaper": [
             {
-              "løb": "Trofeo Camp de Morvedre Nuevo",
+              "løb": "Rund um Köln Neu",
               "etapenummer": 1,
               "game_day": 0
             },
@@ -2155,7 +2155,7 @@
           "dato": "2026-08-29",
           "etaper": [
             {
-              "løb": "Antwerp Port Epic Mineur",
+              "løb": "Trofeo Camp de Morvedre Nuevo",
               "etapenummer": 1,
               "game_day": 2
             },
@@ -2195,13 +2195,13 @@
           "dato": "2026-08-31",
           "etaper": [
             {
-              "løb": "Étoile de Bessèges Mineure",
-              "etapenummer": 3,
+              "løb": "Antwerp Port Epic Mineur",
+              "etapenummer": 1,
               "game_day": 6
             },
             {
-              "løb": "Grand Prix d'Isbergues Neuf",
-              "etapenummer": 1,
+              "løb": "Étoile de Bessèges Mineure",
+              "etapenummer": 3,
               "game_day": 6
             },
             {
@@ -2215,12 +2215,12 @@
           "dato": "2026-09-01",
           "etaper": [
             {
-              "løb": "O Gran Camiño Menor",
+              "løb": "Grand Prix d'Isbergues Neuf",
               "etapenummer": 1,
               "game_day": 8
             },
             {
-              "løb": "Trofeo Val di Chiana",
+              "løb": "O Gran Camiño Menor",
               "etapenummer": 1,
               "game_day": 8
             },
@@ -2235,13 +2235,13 @@
           "dato": "2026-09-02",
           "etaper": [
             {
-              "løb": "Coppa San Geo Nuova",
-              "etapenummer": 1,
+              "løb": "O Gran Camiño Menor",
+              "etapenummer": 3,
               "game_day": 10
             },
             {
-              "løb": "O Gran Camiño Menor",
-              "etapenummer": 3,
+              "løb": "Trofeo Val di Chiana",
+              "etapenummer": 1,
               "game_day": 10
             },
             {
@@ -2255,7 +2255,7 @@
           "dato": "2026-09-03",
           "etaper": [
             {
-              "løb": "Grand Prix de Wallonie Neuf",
+              "løb": "Coppa San Geo Nuova",
               "etapenummer": 1,
               "game_day": 12
             },
@@ -2275,7 +2275,7 @@
           "dato": "2026-09-04",
           "etaper": [
             {
-              "løb": "La Roue Tourangelle Mineure",
+              "løb": "Grand Prix de Wallonie Neuf",
               "etapenummer": 1,
               "game_day": 14
             },
@@ -2295,12 +2295,12 @@
           "dato": "2026-09-05",
           "etaper": [
             {
-              "løb": "Settimana di Coppi e Bartali Minore",
+              "løb": "La Roue Tourangelle Mineure",
               "etapenummer": 1,
               "game_day": 16
             },
             {
-              "løb": "Trofeo Laigueglia Minore",
+              "løb": "Settimana di Coppi e Bartali Minore",
               "etapenummer": 1,
               "game_day": 16
             },
@@ -2315,13 +2315,13 @@
           "dato": "2026-09-06",
           "etaper": [
             {
-              "løb": "Cholet Agglo Classique",
-              "etapenummer": 1,
+              "løb": "Settimana di Coppi e Bartali Minore",
+              "etapenummer": 3,
               "game_day": 18
             },
             {
-              "løb": "Settimana di Coppi e Bartali Minore",
-              "etapenummer": 3,
+              "løb": "Trofeo Laigueglia Minore",
+              "etapenummer": 1,
               "game_day": 18
             },
             {
@@ -2335,7 +2335,7 @@
           "dato": "2026-09-07",
           "etaper": [
             {
-              "løb": "Coppa Appenninica",
+              "løb": "Cholet Agglo Classique",
               "etapenummer": 1,
               "game_day": 20
             },
@@ -2355,13 +2355,13 @@
           "dato": "2026-09-08",
           "etaper": [
             {
-              "løb": "Giro del Trentino Nuovo",
-              "etapenummer": 3,
+              "løb": "Coppa Appenninica",
+              "etapenummer": 1,
               "game_day": 22
             },
             {
-              "løb": "Paris-Camembert Mineur",
-              "etapenummer": 1,
+              "løb": "Giro del Trentino Nuovo",
+              "etapenummer": 3,
               "game_day": 22
             },
             {
@@ -2375,12 +2375,12 @@
           "dato": "2026-09-09",
           "etaper": [
             {
-              "løb": "Coppa dei Colli Euganei",
+              "løb": "Giro d'Abruzzo Nuovo",
               "etapenummer": 1,
               "game_day": 24
             },
             {
-              "løb": "Giro d'Abruzzo Nuovo",
+              "løb": "Paris-Camembert Mineur",
               "etapenummer": 1,
               "game_day": 24
             },
@@ -2395,7 +2395,7 @@
           "dato": "2026-09-10",
           "etaper": [
             {
-              "løb": "Circuit des Vosges",
+              "løb": "Coppa dei Colli Euganei",
               "etapenummer": 1,
               "game_day": 26
             },
@@ -2415,12 +2415,12 @@
           "dato": "2026-09-11",
           "etaper": [
             {
-              "løb": "Tour du Jura",
+              "løb": "Circuit des Vosges",
               "etapenummer": 1,
               "game_day": 28
             },
             {
-              "løb": "Trofeo Mediterraneo",
+              "løb": "Tour du Jura",
               "etapenummer": 1,
               "game_day": 28
             },
@@ -2435,13 +2435,13 @@
           "dato": "2026-09-12",
           "etaper": [
             {
-              "løb": "Ronde van Twente",
-              "etapenummer": 1,
+              "løb": "Tour du Jura",
+              "etapenummer": 3,
               "game_day": 30
             },
             {
-              "løb": "Tour du Jura",
-              "etapenummer": 3,
+              "løb": "Trofeo Mediterraneo",
+              "etapenummer": 1,
               "game_day": 30
             },
             {
@@ -2460,7 +2460,7 @@
               "game_day": 32
             },
             {
-              "løb": "Gran Premio de Valladolid",
+              "løb": "Ronde van Twente",
               "etapenummer": 1,
               "game_day": 32
             },
@@ -2480,7 +2480,7 @@
               "game_day": 34
             },
             {
-              "løb": "Gran Premio de Zamora",
+              "løb": "Gran Premio de Valladolid",
               "etapenummer": 1,
               "game_day": 34
             },
@@ -2495,7 +2495,7 @@
           "dato": "2026-09-15",
           "etaper": [
             {
-              "løb": "Gran Premio de Llanera",
+              "løb": "Gran Premio de Zamora",
               "etapenummer": 1,
               "game_day": 36
             },
@@ -2515,7 +2515,7 @@
           "dato": "2026-09-16",
           "etaper": [
             {
-              "løb": "Tour de Bretagne Sud",
+              "løb": "Ronde van Vlaams-Brabant",
               "etapenummer": 1,
               "game_day": 38
             },
@@ -2525,7 +2525,7 @@
               "game_day": 38
             },
             {
-              "løb": "Tour de Bretagne Sud",
+              "løb": "Ronde van Vlaams-Brabant",
               "etapenummer": 2,
               "game_day": 39
             }
@@ -2535,17 +2535,17 @@
           "dato": "2026-09-17",
           "etaper": [
             {
-              "løb": "Ronde van Vlaams-Brabant",
+              "løb": "Région Pays de la Loire Tour Mineur",
               "etapenummer": 1,
               "game_day": 40
             },
             {
-              "løb": "Tour de Bretagne Sud",
+              "løb": "Ronde van Vlaams-Brabant",
               "etapenummer": 3,
               "game_day": 40
             },
             {
-              "løb": "Ronde van Vlaams-Brabant",
+              "løb": "Région Pays de la Loire Tour Mineur",
               "etapenummer": 2,
               "game_day": 41
             }
@@ -2556,16 +2556,16 @@
           "etaper": [
             {
               "løb": "Région Pays de la Loire Tour Mineur",
-              "etapenummer": 1,
-              "game_day": 42
-            },
-            {
-              "løb": "Ronde van Vlaams-Brabant",
               "etapenummer": 3,
               "game_day": 42
             },
             {
-              "løb": "Région Pays de la Loire Tour Mineur",
+              "løb": "Tour de l'Ain Nouveau",
+              "etapenummer": 1,
+              "game_day": 42
+            },
+            {
+              "løb": "Tour de l'Ain Nouveau",
               "etapenummer": 2,
               "game_day": 43
             }
@@ -2575,17 +2575,17 @@
           "dato": "2026-09-19",
           "etaper": [
             {
-              "løb": "Région Pays de la Loire Tour Mineur",
+              "løb": "Tour de l'Ain Nouveau",
               "etapenummer": 3,
               "game_day": 44
             },
             {
-              "løb": "Tour de l'Ain Nouveau",
+              "løb": "Vuelta a Cantabria Menor",
               "etapenummer": 1,
               "game_day": 44
             },
             {
-              "løb": "Tour de l'Ain Nouveau",
+              "løb": "Vuelta a Cantabria Menor",
               "etapenummer": 2,
               "game_day": 45
             }
@@ -2595,17 +2595,17 @@
           "dato": "2026-09-20",
           "etaper": [
             {
-              "løb": "Tour de l'Ain Nouveau",
+              "løb": "Vuelta a Cantabria Menor",
               "etapenummer": 3,
               "game_day": 46
             },
             {
-              "løb": "Vuelta a Cantabria Menor",
+              "løb": "Vuelta a Segovia Menor",
               "etapenummer": 1,
               "game_day": 46
             },
             {
-              "løb": "Vuelta a Cantabria Menor",
+              "løb": "Vuelta a Segovia Menor",
               "etapenummer": 2,
               "game_day": 47
             }
@@ -2615,17 +2615,17 @@
           "dato": "2026-09-21",
           "etaper": [
             {
-              "løb": "Vuelta a Cantabria Menor",
-              "etapenummer": 3,
-              "game_day": 48
-            },
-            {
-              "løb": "Vuelta a Segovia Menor",
+              "løb": "Tour de la Provence Mineur",
               "etapenummer": 1,
               "game_day": 48
             },
             {
               "løb": "Vuelta a Segovia Menor",
+              "etapenummer": 3,
+              "game_day": 48
+            },
+            {
+              "løb": "Tour de la Provence Mineur",
               "etapenummer": 2,
               "game_day": 49
             }
@@ -2635,18 +2635,18 @@
           "dato": "2026-09-22",
           "etaper": [
             {
-              "løb": "Tour de la Provence Mineur",
+              "løb": "Gran Premio de Llanera",
               "etapenummer": 1,
               "game_day": 50
             },
             {
-              "løb": "Vuelta a Segovia Menor",
+              "løb": "Tour de la Provence Mineur",
               "etapenummer": 3,
               "game_day": 50
             },
             {
-              "løb": "Tour de la Provence Mineur",
-              "etapenummer": 2,
+              "løb": "Klassieker van de Kempen",
+              "etapenummer": 1,
               "game_day": 51
             }
           ]
@@ -2655,17 +2655,17 @@
           "dato": "2026-09-23",
           "etaper": [
             {
-              "løb": "Klassieker van de Kempen",
+              "løb": "Circuit de l'Aveyron",
               "etapenummer": 1,
               "game_day": 52
             },
             {
-              "løb": "Tour de la Provence Mineur",
-              "etapenummer": 3,
+              "løb": "Circuito del Porto",
+              "etapenummer": 1,
               "game_day": 52
             },
             {
-              "løb": "Circuito del Porto",
+              "løb": "Grand Prix du Morbihan Mineur",
               "etapenummer": 1,
               "game_day": 53
             }
@@ -2675,12 +2675,12 @@
           "dato": "2026-09-24",
           "etaper": [
             {
-              "løb": "Circuit de l'Aveyron",
+              "løb": "Polynormande Nouvelle",
               "etapenummer": 1,
               "game_day": 54
             },
             {
-              "løb": "Grand Prix du Morbihan Mineur",
+              "løb": "Trofeo dei Castelli Romani",
               "etapenummer": 1,
               "game_day": 54
             },

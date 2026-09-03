@@ -364,6 +364,7 @@ sætning i §0 gælder til og med sæson 3.
 | §4 monument uden for GT-spænd **(ny)** | 🔴 **2 brud** | 🟢 | 🟢 | 🟢 |
 | §5 terræn-gulve | 🟢 alle | 🟢 alle | 🟢 alle | 🟢 alle |
 | §5 rolling-bånd **(ny)** | 🟢 18 i [16,30] | 🟢 11 i [6,14] | 🟢 5 i [4,12] | 🔴 **1, gulv 3** |
+| §3 GT-realisme, etape-forankret **(ny)** | 🟢 alle tre GT'er (7 gen-træk) | — | — | — |
 | §6 K-B, gated tolerance | 🟢 | 🔴 bjerg −7,5 | 🟢 | 🟢 |
 | §6b uniforme mål (±2 pp) | 🟢 alle tre | 🔴 højbjerg 3,6 | 🔴 brosten 7,1 · højbjerg 8,3 | 🔴 ITT 6,0 · brosten 2,4 |
 | §7 etapeløb der slutter på bjerg | 🟢 7,1 % | 🟢 27,8 % | 🟢 53,8 % | 🟢 18,8 % |
@@ -379,8 +380,9 @@ for tolerancen mod K-B. Finale-båndene på sæson-niveau er grønne.
 | Fund | Klasse | Hvad der skal til |
 |---|---|---|
 | **D1: 2 monumenter inde i et GT-spænd** | **pakkeren** | Milano–Riviera (løbsdag 9) i Giro della Penisola (0-19) og De Vlaamse Ronde (32) i Tour de l'Hexagone (28-46). Gaten fanger dem nu; at FLYTTE dem er `raceCalendarLanePacker.js`s arbejde og ligger i #4203's eget spor. Stopper `--apply`. |
-| **D4: 1 rolling-etape, gulv 3** | **katalog** | Katalog-sporets måling: de nye Class2-løb tager D4 fra 1 til **6** rolling-etaper. Rødt indtil #4708 er i main; derefter grønt med margin. |
+| **D4: 1 rolling-etape, gulv 3** | **katalog** | Katalog-sporets måling: de nye Class2-løb tager D4 fra 1 til **6** rolling-etaper. Koden er i main, men migrationen er ikke anvendt mod prod endnu — derfor stadig rødt her. |
 | **D2: bjerg 20,5 % mod 28 %** | **katalog** | Samme måling: de nye OtherWorldTourB/C-bjergløb tager D2 til 31,3 %. Eneste tilbageværende BLOKERENDE gate. |
+| **D1: ét monument-nabopar under 2 kalenderdage** | **pakkeren** | §4's spredningsregel er MÅLT, aldrig håndhævet i pakkeren. Den holdt ved 31 dage og holder ikke ved 28. Samme reparation som monument-i-GT: hvor et monument lander, #4203's spor. |
 | **§6b: 5 uniform-brud** | **kalibrering** | Kataloget lukker tre af dem (D1 alle tre grønne, D4 brosten 2,4 → 6,0, D2 højbjerg 3,6 → 9,8). De sidste to — D3's brosten og højbjerg — er filler-vægte og hører til S5's genkalibrering. |
 
 ### D4's kvote ved density 3 mod det NUVÆRENDE katalog
@@ -409,26 +411,54 @@ brugbare. Pr. arketype, etaper i båndet: `summit_tour` 23 · `hilly_tour` 17 ·
 > fordi sæsonen er 28 dage.** Bliver en fremtidig sæson længere, skal D4's klasse-vindue
 > udvides FØRST — eller tætheden ned igen.
 
-## 10. Grand Tours: målt for første gang
+## 10. Grand Tours: målt for første gang, mod et bånd forankret i virkeligheden
 
-Realisme-båndet krævede 21 etaper og sprang derfor alle tre GT'er over. Med
-etape-skaleringen (§3) måles de nu:
+Realisme-båndet krævede 21 etaper og sprang derfor alle tre GT'er over. To ejer-beslutninger
+3/9 rettede begge halvdele: tærsklen er nu spillets egen (15), og km-siden er erstattet af
+fire grænser der kan genkendes fra en rigtig grand tour-rute — samlet snit inkl.
+enkeltstart, landevejsetapernes snit, prologens minimum og enkeltstartens minimum (§3).
 
-| Løb | Klasse | Etaper | km | km/etape | Bånd | Dom |
-|---|---|--:|--:|--:|---|---|
-| Giro della Penisola | GiroVuelta | 18 | — | — | 2.743-3.000 | 🟢 |
-| Tour de l'Hexagone | TourFrance | 17 | — | — | 2.590-2.833 | 🟢 |
-| Vuelta Ibérica | GiroVuelta | 17 | 2.573 | **151,4** | 2.590-2.833 | 🔴 1 km/etape under |
+**Målt mod prod 3/9 efter omlægningen — alle tre grønne:**
 
-> **Navnene er verificeret read-only mod `race_pool`.** Ejerens ramme var "Giro 17,
-> Vuelta 17, Tour 18"; kataloget har **Giro 18 · Vuelta 17 · Tour 17**. Summen er den
-> samme (52), men de 18 sidder på Giroen. Ingen data er ændret.
+| Løb | Etaper | I alt | Samlet snit | Landevejssnit | Prolog | Rigtige ITT'er | Dom |
+|---|--:|--:|--:|--:|--:|--:|---|
+| Giro della Penisola | 18 | 2.954 km | 164,1 | 172,1 (17 etaper) | ingen | 1 | 🟢 |
+| Tour de l'Hexagone | 17 | 2.679 km | 157,6 | 176,3 (15 etaper) | 8 km | 1 | 🟢 |
+| Vuelta Ibérica | 17 | 2.649 km | 155,8 | 173,3 (15 etaper) | 23 km | 1 | 🟢 |
+
+> ⚠ **Grønt, men dyrt: D1 brugte 7 gen-træk af 12** (`realisme-gen-træk 7`). Båndet er
+> opnåeligt og stramt på samme tid. Et tidligere træk gav Vuelta Ibérica 151,4 km i samlet
+> snit og Tour de l'Hexagone 153,0 — begge under gulvet — og det er præcis de tal båndet nu
+> fanger, i stedet for at lade dem passere usynligt. **Bliver gen-trækkene ved med at ligge
+> over 8, er det forsyningen der skal ses på, ikke båndet.** Den nuværende plan er ikke en
+> tilfældighed, men den har ikke meget luft.
+
+**Etapeantallene rettes i kataloget, ikke i reglen** (ejer 3/9, valg A). Rammen er
+**Giro 17 · Vuelta 17 · Tour 18**; `race_pool` har i dag Giro 18 · Vuelta 17 · Tour 17.
+Samme sum, men den ekstra etape sidder på Giroen. Datamigrationen ligger i katalog-sporet.
+Regel-siden her forventer 17/17/18, og fordi målingen er etape-baseret, måler den både 17
+og 18 uden ændring — rettelsen kan derfor lande i sit eget tempo uden at gøre gaten tavs.
+
+## 10b. Grus fik sit eget finale-bånd, ikke brostens
+
+Første udkast gav `gravel` brostens-bånd ("næsten samme type"). **Det holdt ikke ved
+måling.** Generatorens grus-vægte er ikke brostens-vægte: grus afgøres langt oftere i
+udbrud end en brostensklassiker, og har en opad-andel brosten slet ikke har. Et
+brostens-bånd ville have været en garanti generatorens egne vægte ikke kunne nå — altså en
+blokering frem for en vagt, samme fejlklasse som
+`.claude/learnings/2026-08-06-garanti-uden-forsyning-blokerede-s3-kalenderen.md`.
+
+Ejeren valgte 3/9 at grus får sit **eget** bånd, afledt af vægtene (§7b). Det lukker
+CALENDAR_RULES §11 punkt 9, og `stageFinaleMetrics.test.js` fælder vægte og bånd hvis de
+driver fra hinanden.
 
 ## 11. Hvad der skal ske før `--apply` (opdateret)
 
-1. **#4708's katalog i main.** Det lukker D2's blokerende komposition og D4's rolling-gulv.
-2. **#4203's pakker-ændring**, eller ejerens accept af at 2 monumenter ligger i et
+1. **Katalog-sporets migration anvendt mod prod.** Koden er i main, men de 46 nye løb er
+   endnu ikke i `race_pool` — dry-runnet ovenfor kører derfor stadig mod det gamle katalog.
+   Det lukker D2's blokerende komposition og D4's rolling-gulv.
+2. **GT-etapeantallene rettet til 17/17/18** i kataloget (ejer-valg A, eget spor).
+3. **#4203's pakker-ændring**, eller ejerens accept af at 2 monumenter ligger i et
    GT-vindue. Gaten stopper `--apply` uden override.
-3. **Grus' finale-bånd og finale-vægte landes sammen** (CALENDAR_RULES §11 punkt 9).
 4. Sæson-rækken oprettes af `--apply` selv, status `upcoming`.
 5. **Én regenerering, punktum** (§2c).

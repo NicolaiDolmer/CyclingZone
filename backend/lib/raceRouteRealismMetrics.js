@@ -215,33 +215,66 @@ export function scoreTier(tier, races) {
 // besluttet; den er nu den samme som resten af spillet bruger.
 export const GRAND_TOUR_MIN_STAGES = GT_MIN_STAGES;
 
-// Ankeret baandene er afledt af: spec §6's oprindelige tal og det etapeantal de blev skrevet
-// for. Aendres ankeret, skalerer alle tre baand med.
-export const GRAND_TOUR_BAND_ANCHOR = Object.freeze({
+// ── GT-baandet er forankret i VIRKELIGHEDEN, ikke i et gammelt totaltal ────────────
+//
+// EJER-BESLUTNING 3/9 kl. 09:55 (valg A). Spec §6's oprindelige 3.200-3.500 km i alt var
+// skrevet for et 21-etapers loeb, og et km/etape-gulv afledt af det (152,4) var stadig kun
+// et gammelt totaltal divideret med 21 - altsaa et tal uden dae­kning i hvordan en Grand Tour
+// faktisk ser ud. Ejeren erstattede det med fire graenser der hver for sig kan genkendes fra
+// en rigtig grand tour-rute:
+//
+//   1. SAMLET snit, enkeltstarter inkluderet.  En GT er ikke en samling maratonetaper, og
+//      den er heller ikke en uge-tur. Snittet er dét tal en rutepraesentation aabner med.
+//   2. LANDEVEJSETAPERNES snit.  Enkeltstarterne traekker det samlede snit ned, saa uden
+//      denne graense kunne et loeb ramme punkt 1 med lutter korte etaper plus et par lange
+//      tempoer. Landevejsetaperne er selve loebet.
+//   3. PROLOGENS minimum.  En prolog er kort med vilje, men under gulvet er den en
+//      opvisning, ikke en etape der afgoer noget.
+//   4. ENKELTSTARTENS minimum.  En rigtig GT-tempoetape skal kunne skabe tidsforskelle;
+//      en kort en er en prolog, og saa gaelder punkt 3 i stedet.
+//
+// KLASSIFIKATION (den eneste ikke-trivielle del): en tempoetape (itt/itt_hilly/ttt) taeller
+// som PROLOG hvis den er loebets FOERSTE etape OG kortere end enkeltstarts-gulvet. Alle
+// andre tempoetaper skal opfylde enkeltstarts-gulvet. Reglen er bevidst stram i den ene
+// ende: en kort tempoetape midt i loebet er ikke en prolog, den er en for kort enkeltstart.
+//
+// Stigningerne (kategoriserede + HC) skaleres fortsat pr. etape fra spec §6's anker - kun
+// km-siden er erstattet.
+export const GRAND_TOUR_CLIMB_ANCHOR = Object.freeze({
   stages: 21,
-  totalKm: Object.freeze([3200, 3500]),
   categorizedClimbsMin: 25,
   hcClimbs: Object.freeze([3, 8]),
 });
 
-/** Spec §6's anker skaleret til et loeb med `stages` etaper. Alle graenser er inklusive. */
+// Ejer-beslutning 3/9. Alle graenser er inklusive, alle tal i km.
+export const GRAND_TOUR_DISTANCE_RULES = Object.freeze({
+  overallAvgKm: Object.freeze([155, 170]),
+  roadAvgKm: Object.freeze([165, 185]),
+  prologueMinKm: 8,
+  ittMinKm: 25,
+});
+
+const TT_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
+
+/** Stigningsbaandet skaleret til et loeb med `stages` etaper. */
 export function grandTourBandsFor(stages) {
   const n = Math.max(1, Number(stages) || 0);
-  const a = GRAND_TOUR_BAND_ANCHOR;
+  const a = GRAND_TOUR_CLIMB_ANCHOR;
   const perStage = n / a.stages;
   return {
     stages: n,
-    totalKm: [a.totalKm[0] * perStage, a.totalKm[1] * perStage],
     // Stigninger er heltal: gulvet rundes NED og loftet OP, saa skaleringen aldrig goer
     // baandet strengere end ankeret var for 21 etaper.
     categorizedClimbsMin: Math.floor(a.categorizedClimbsMin * perStage),
     hcClimbs: [Math.floor(a.hcClimbs[0] * perStage), Math.ceil(a.hcClimbs[1] * perStage)],
+    ...GRAND_TOUR_DISTANCE_RULES,
   };
 }
 
 /**
- * Scorer EN Grand Tour mod det etape-skalerede baand (#4288). Rapporterer baade det
- * absolutte tal og km-pr-etape, saa en roed linje kan laeses uden at regne selv.
+ * Scorer EN Grand Tour mod ejerens fire distance-graenser (#4288, 3/9) + det etape-
+ * skalerede stigningsbaand. Rapporterer baade snittene og de enkelte tempoetaper, saa en
+ * roed linje kan laeses uden at regne selv.
  */
 export function scoreGrandTour(stages) {
   const stageCount = stages.length;
@@ -249,10 +282,35 @@ export function scoreGrandTour(stages) {
   const categorizedClimbs = stages.reduce((s, x) => s + ((x.climbs || []).length), 0);
   const hcClimbs = stages.reduce((s, x) => s + (x.climbs || []).filter((c) => c.category === "HC").length, 0);
   const bands = grandTourBandsFor(stageCount);
-  const kmPerStage = stageCount ? totalKm / stageCount : 0;
+  const d = GRAND_TOUR_DISTANCE_RULES;
+
+  const overallAvgKm = stageCount ? totalKm / stageCount : 0;
+  const roadStages = stages.filter((x) => !TT_PROFILES.has(x.profile_type));
+  const roadAvgKm = roadStages.length
+    ? roadStages.reduce((s, x) => s + (x.distance_km || 0), 0) / roadStages.length
+    : 0;
+
+  // En tempoetape er en PROLOG hvis den er loebets foerste OG kortere end ITT-gulvet.
+  const ttStages = stages
+    .map((x, i) => ({ ...x, _index: i }))
+    .filter((x) => TT_PROFILES.has(x.profile_type));
+  const prologue = ttStages.find((x) => x._index === 0 && (x.distance_km || 0) < d.ittMinKm) ?? null;
+  const fullItts = ttStages.filter((x) => x !== prologue);
+
   const failures = [];
-  if (totalKm < bands.totalKm[0] || totalKm > bands.totalKm[1]) {
-    failures.push(`total ${totalKm} km (${kmPerStage.toFixed(1)} km/etape) udenfor ${Math.round(bands.totalKm[0])}–${Math.round(bands.totalKm[1])} for ${stageCount} etaper`);
+  if (overallAvgKm < d.overallAvgKm[0] || overallAvgKm > d.overallAvgKm[1]) {
+    failures.push(`samlet snit ${overallAvgKm.toFixed(1)} km/etape udenfor ${d.overallAvgKm[0]}–${d.overallAvgKm[1]} (${stageCount} etaper, ${totalKm} km i alt)`);
+  }
+  if (roadStages.length && (roadAvgKm < d.roadAvgKm[0] || roadAvgKm > d.roadAvgKm[1])) {
+    failures.push(`landevejsetapernes snit ${roadAvgKm.toFixed(1)} km udenfor ${d.roadAvgKm[0]}–${d.roadAvgKm[1]} (${roadStages.length} landevejsetaper)`);
+  }
+  if (prologue && (prologue.distance_km || 0) < d.prologueMinKm) {
+    failures.push(`prolog ${prologue.distance_km} km under ${d.prologueMinKm} km`);
+  }
+  for (const t of fullItts) {
+    if ((t.distance_km || 0) < d.ittMinKm) {
+      failures.push(`enkeltstart på etape ${t._index + 1} er ${t.distance_km} km, under ${d.ittMinKm} km`);
+    }
   }
   if (categorizedClimbs < bands.categorizedClimbsMin) {
     failures.push(`kategoriserede stigninger ${categorizedClimbs} < ${bands.categorizedClimbsMin} (${stageCount} etaper)`);
@@ -260,7 +318,13 @@ export function scoreGrandTour(stages) {
   if (hcClimbs < bands.hcClimbs[0] || hcClimbs > bands.hcClimbs[1]) {
     failures.push(`HC-stigninger ${hcClimbs} udenfor ${bands.hcClimbs[0]}–${bands.hcClimbs[1]} (${stageCount} etaper)`);
   }
-  return { totalKm, kmPerStage, categorizedClimbs, hcClimbs, bands, pass: failures.length === 0, failures };
+
+  return {
+    totalKm, overallAvgKm, roadAvgKm,
+    roadStageCount: roadStages.length, ittCount: fullItts.length,
+    prologueKm: prologue ? prologue.distance_km : null,
+    categorizedClimbs, hcClimbs, bands, pass: failures.length === 0, failures,
+  };
 }
 
 // Tre udfald — "kunne ikke vurderes" er BEVIDST forskelligt fra både GO og NO-GO.

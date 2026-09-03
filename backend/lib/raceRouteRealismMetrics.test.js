@@ -1,7 +1,7 @@
 // backend/lib/raceRouteRealismMetrics.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { scoreTier, scoreSeason, TIER_TARGETS, VERDICT, tierGateState } from "./raceRouteRealismMetrics.js";
+import { scoreTier, scoreSeason, scoreGrandTour, TIER_TARGETS, VERDICT, tierGateState } from "./raceRouteRealismMetrics.js";
 
 const st = (profile_type, finale_type, distance_km = 160) => ({ profile_type, finale_type, distance_km, sectors: [] });
 const stageRace = (stages) => ({ race_type: "stage_race", stages });
@@ -39,13 +39,21 @@ function passingTier1Races() {
   ];
 }
 
-// 21 etaper: 3318 km (∈ 3200–3500) og 42 kategoriserede stigninger (≥ 25) — kun
-// HC-antallet varieres, så en fixture kan fejle PRÆCIS ét GT-bånd.
-function grandTourStages({ hc = 4, stageCount = 21 } = {}) {
-  return Array.from({ length: stageCount }, (_, i) => ({
-    ...st("flat", "bunch_sprint", 158),
-    climbs: i < hc ? [{ category: "HC" }, { category: "1" }] : [{ category: "2" }, { category: "3" }],
-  }));
+// En realistisk GT-rute (#4288, ejer-beslutning 3/9): prolog + een rigtig enkeltstart +
+// landevejsetaper. Formen er valgt saa den rammer ejerens fire distance-graenser med
+// margin - samlet snit, landevejssnit, prolog-gulv og ITT-gulv - saa en test der fejler
+// fejler paa dét den maaler, ikke paa at fixturen er urealistisk.
+//   17 etaper: (10 + 32 + 15 x 178) / 17 = 159,5 km samlet snit, 178 km landevejssnit.
+// Kun HC-antallet varieres, saa en fixture kan fejle PRAECIS eet GT-baand.
+function grandTourStages({ hc = 4, stageCount = 21, roadKm = 178 } = {}) {
+  return Array.from({ length: stageCount }, (_, i) => {
+    const base = i === 0
+      ? st("itt", "solo_tt", 10)          // prolog
+      : i === 1
+        ? st("itt", "solo_tt", 32)        // rigtig enkeltstart
+        : st("flat", "bunch_sprint", roadKm);
+    return { ...base, climbs: i < hc ? [{ category: "HC" }, { category: "1" }] : [{ category: "2" }, { category: "3" }] };
+  });
 }
 
 test("scoreTier tæller summit = long_climb på mtn/hm", () => {
@@ -252,11 +260,27 @@ test("#4288: en 17-etapers Grand Tour MAALES nu, i stedet for at vaere tavs", ()
 // under gulvet paa 152,4.
 test("#4288: en 17-etapers GT med for korte etaper faelder baandet", () => {
   const summary = scoreSeason([
-    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ hc: 3, stageCount: 17 }).map((s) => ({ ...s, distance_km: 140 }))), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
+    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ hc: 3, stageCount: 17, roadKm: 150 })), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
     { tier: 3, races: passingTier3Races() },
   ]);
   assert.equal(summary.verdict, VERDICT.NO_GO);
-  assert.ok(summary.failures.some((f) => f.includes("km/etape")), summary.failures.join(" · "));
+  assert.ok(summary.failures.some((f) => f.includes("landevejsetapernes snit")), summary.failures.join(" · "));
+});
+
+// #4288 (ejer 3/9): de tre oevrige graenser skal ogsaa kunne sige fra hver for sig - ellers
+// er baandet kun eet krav i forklaedning.
+test("#4288: prolog-gulvet og enkeltstarts-gulvet gates hver for sig", () => {
+  const kort = grandTourStages({ hc: 3, stageCount: 17 });
+  const forKortProlog = [{ ...kort[0], distance_km: 4 }, ...kort.slice(1)];
+  assert.ok(scoreGrandTour(forKortProlog).failures.some((f) => f.includes("prolog")),
+    scoreGrandTour(forKortProlog).failures.join(" · "));
+
+  const forKortItt = [kort[0], { ...kort[1], distance_km: 14 }, ...kort.slice(2)];
+  assert.ok(scoreGrandTour(forKortItt).failures.some((f) => f.includes("enkeltstart på etape 2")),
+    scoreGrandTour(forKortItt).failures.join(" · "));
+
+  // En kort tempoetape MIDT i loebet er ikke en prolog - kun loebets foerste taeller.
+  assert.equal(scoreGrandTour(kort).failures.length, 0, scoreGrandTour(kort).failures.join(" · "));
 });
 
 test("scoreSeason: generator-fejl bogføres som ikke-vurderet, ikke som båndbrud", () => {

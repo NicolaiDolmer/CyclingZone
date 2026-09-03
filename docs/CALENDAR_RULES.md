@@ -228,8 +228,12 @@ så en pre-oprettet række kolliderer ikke med cutoveren.
 | Regel | Konstant | Værdi | Låst | Fil |
 |---|---|---|---|---|
 | Hvad er en GT | `GRAND_TOUR_MIN_STAGES` | ≥ 15 etaper | uændret, bekræftet 3/9 | `grandTourRestDays.js` |
-| GT-rammen (etaper) | katalog | Giro 18 · Tour 17 · Vuelta 17 | ejer 3/9 ([#4288](https://github.com/NicolaiDolmer/CyclingZone/issues/4288)) | `race_pool` |
-| Realisme-båndet | `GRAND_TOUR_BAND_ANCHOR` | **skaleres pr. etape** | ejer 3/9 (#4288) | `raceRouteRealismMetrics.js` |
+| GT-rammen (etaper) | katalog | **Giro 17 · Vuelta 17 · Tour 18** | **ejer 3/9** ([#4288](https://github.com/NicolaiDolmer/CyclingZone/issues/4288)) | `race_pool` |
+| Samlet snit, inkl. enkeltstart | `GRAND_TOUR_DISTANCE_RULES` | 155-170 km/etape | ejer 3/9 (#4288) | `raceRouteRealismMetrics.js` |
+| Landevejsetapernes snit | `GRAND_TOUR_DISTANCE_RULES` | 165-185 km | ejer 3/9 (#4288) | `raceRouteRealismMetrics.js` |
+| Prolog, minimum | `GRAND_TOUR_DISTANCE_RULES` | 8 km | ejer 3/9 (#4288) | `raceRouteRealismMetrics.js` |
+| Enkeltstart, minimum | `GRAND_TOUR_DISTANCE_RULES` | 25 km | ejer 3/9 (#4288) | `raceRouteRealismMetrics.js` |
+| Stigninger (kategoriserede + HC) | `GRAND_TOUR_CLIMB_ANCHOR` | skaleres pr. etape | ejer 3/9 (#4288) | `raceRouteRealismMetrics.js` |
 | GT-etaper pr. kalenderdag | `MAX_GT_STAGES_PER_DAY` | 4 | 22/8 m. @thelamba | `raceCalendarLanePacker.js` |
 | GT-spænd i kalenderdage | `MAX_GT_SPAN_DAYS` | 6 | 22/8 m. @thelamba | `raceCalendarLanePacker.js` |
 | Hviledage pr. GT | `GRAND_TOUR_REST_DAYS` | **præcis 2** | 26/8 ([#4236](https://github.com/NicolaiDolmer/CyclingZone/issues/4236)) | `grandTourRestDays.js` |
@@ -260,24 +264,26 @@ Spændet er i alle tre tilfælde præcis `etaper + 2`, hvilket bekræfter `GRAND
 >
 ### Realisme-båndet skaleres pr. etape (ejer 3/9, #4288 — lukker det tidligere §11 punkt 7)
 
-**17-18 etaper ER rammen.** Ejeren låste den 3/9: Giro, Vuelta og Tour er sæsonens tre Grand Tours, og de udvides ikke til 21 — 21 etaper + 2 hviledage = 23 løbsdage, og tre af dem skal kunne ligge i den samme 28-dages sæson uden at overlappe.
+**Rammen er Giro 17 · Vuelta 17 · Tour 18 (ejer 3/9).** De udvides ikke til 21: 21 etaper + 2 hviledage = 23 løbsdage, og tre af dem skal kunne ligge i den samme 28-dages sæson uden at overlappe.
+
+> ⚠ **Kataloget matcher ikke rammen endnu.** Målt read-only 3/9 har `race_pool` **Giro della Penisola 18 · Vuelta Ibérica 17 · Tour de l'Hexagone 17** — samme sum (52), men den ekstra etape sidder på Giroen i stedet for på Touren. Ejeren valgte 3/9 at **kataloget rettes** (valg A), ikke reglen. Datamigrationen ligger i katalog-sporet; regel-siden her forventer 17/17/18, og realisme-målingen er etape-baseret, så den måler både 17 og 18 uden ændring.
 
 Konsekvensen for gaten var alvorligere end et forkert tal. `raceRouteRealismMetrics.js` havde sin **egen** `GRAND_TOUR_MIN_STAGES = 21` — et andet tal end spillets 15 — og sprang derfor alle tre GT'er over. **Spillets tre største løb blev ikke målt: hverken GO eller NO-GO, bare tavshed.** Det er samme fejlklasse som §9b's nat-vagt der gik grøn på sit eget fejlsvar.
 
-Rettet 3/9, begge dele:
+Tærsklen er nu spillets egen (15, importeret fra `grandTourRestDays.js`), og km-siden er **forankret i virkeligheden i stedet for i et gammelt totaltal** (ejer 3/9, valg A). Spec §6's 3.200-3.500 km var skrevet for et 21-etapers løb; et km/etape-gulv afledt af det var stadig bare det gamle tal divideret med 21. De fire nye grænser kan hver for sig genkendes fra en rigtig grand tour-rute:
 
-| | Før | Efter |
-|---|---|---|
-| Tærskel for at måle | 21 etaper (egen konstant) | **15** — spillets egen, importeret fra `grandTourRestDays.js` |
-| Km-bånd | 3.200-3.500 i alt | **skaleret pr. etape** fra samme anker: 152,4-166,7 km/etape |
-| Kategoriserede stigninger | ≥ 25 i alt | ≥ `floor(25 × etaper ÷ 21)` |
-| HC-stigninger | 3-8 i alt | `floor(3 × n ÷ 21)` til `ceil(8 × n ÷ 21)` |
+| Grænse | Hvorfor den findes |
+|---|---|
+| **Samlet snit, enkeltstarter inkluderet** | En GT er hverken en samling maratonetaper eller en uge-tur. Det er dét tal en rutepræsentation åbner med. |
+| **Landevejsetapernes snit** | Enkeltstarterne trækker det samlede snit ned. Uden denne grænse kunne et løb ramme den første med lutter korte etaper plus et par lange tempoer. Landevejsetaperne **er** løbet. |
+| **Prologens minimum** | En prolog er kort med vilje, men under gulvet er den en opvisning, ikke en etape der afgør noget. |
+| **Enkeltstartens minimum** | En rigtig GT-tempoetape skal kunne skabe tidsforskelle. |
 
-Ankeret (`GRAND_TOUR_BAND_ANCHOR`) er spec §6's oprindelige tal og det etapeantal de blev skrevet for. Ændres ankeret, skalerer alle tre bånd med. Et absolut km-bånd ville måle **katalog-længden**, ikke parcours-realismen.
+**Klassifikationen er den eneste ikke-trivielle del:** en tempoetape (`itt`/`itt_hilly`/`ttt`) tæller som **prolog** hvis den er løbets **første** etape **og** kortere end enkeltstarts-gulvet. Alle andre tempoetaper skal opfylde enkeltstarts-gulvet. Reglen er bevidst stram i den ene ende: en kort tempoetape midt i løbet er ikke en prolog, den er en for kort enkeltstart.
 
-> **Første fund, med det samme:** målt mod prod 3/9 falder **Vuelta Ibérica** uden for båndet — 2.573 km over 17 etaper = **151,4 km/etape** mod gulvet 152,4. Giro della Penisola (18) og Tour de l'Hexagone (17) består. Bruddet er 1 km pr. etape og har ligget usynligt i mindst tre sæsoner.
+Stigningerne skaleres fortsat pr. etape fra spec §6's anker (`GRAND_TOUR_CLIMB_ANCHOR`) — kun km-siden er erstattet.
 
-> ⚠ **Navnene er verificeret read-only mod `race_pool` 3/9, og de matcher ikke helt ejerens ordlyd.** Ejeren sagde "Giro 17, Vuelta 17, Tour 18". Kataloget har **Giro della Penisola 18 · Vuelta Ibérica 17 · Tour de l'Hexagone 17**. Summen er den samme (52), men de 18 sidder på Giroen, ikke på Touren. Ingen data er ændret — det er en observation ejeren skal se, ikke en rettelse nogen skal gætte sig til.
+> **Målt mod prod 3/9, efter omlægningen: alle tre GT'er er grønne** — Giro della Penisola 164,1 km samlet snit / 172,1 landevej · Tour de l'Hexagone 157,6 / 176,3 · Vuelta Ibérica 155,8 / 173,3. **Men det kostede D1 syv gen-træk af tolv** (`realisme-gen-træk 7`). Båndet er altså opnåeligt og stramt på samme tid: et tidligere træk gav Vuelta 151,4 km/etape, og det er dét tal båndet nu fanger. Bliver gen-trækkene ved med at ligge over 8, er forsyningen — ikke båndet — det der skal se på.
 
 ---
 
@@ -376,7 +382,7 @@ D4 er dét gulvet blev lavet for: S3 leverede **nul** rolling-etaper, altså ikk
 
 **`gravel` hører til cobbles-familien** (ejer 3/9, [#4105](https://github.com/NicolaiDolmer/CyclingZone/issues/4105)): grusløb tæller med i brostensklassikerne. Etapetypen kommer fra grus-sporet; regel-siden er klar til den, så den første grus-etape ikke falder ud af tællingen i stilhed. Det gælder tre steder: `TERRAIN_FAMILY_BY_PROFILE_TYPE`, `cobbles_in_stagerace` i `raceRouteRealismMetrics.js` (ellers ville en konvertering fra brosten til grus se ud som et **fald** i brosten-dækning) og WT-distancebåndet.
 
-> ⚠ **Ét grus-punkt er IKKE lukket: §7b's finale-bånd.** Ejeren besluttede 3/9 at grus får **samme bånd som brosten** ("næsten samme type"). Grus-sporets vægte (`FINALE_WEIGHTS_BY_PROFILE.gravel`: breakaway 55 · punch 25 · reduced_sprint 20) giver udbrud 55 % · opad 25 % · fladt 20 % — og brostens-båndet (fladt 30-50, udbrud 40-60, opad 0) kan **ikke** rammes af dem. Et bånd generatorens egne vægte ikke kan nå er en garanti uden forsyning, ikke en garanti. **Båndet og vægtene skal landes sammen**, i én PR; indtil da står `gravel` uden for finale-tabellen med begrundelsen skrevet ind i `stageFinaleMetrics.js`.
+**Grus har sit EGET §7b-finale-bånd** (ejer 3/9, valg A — se §7b's tabel). Første udkast gav grus brostens-bånd, men det holdt ikke ved måling: generatorens grus-vægte er ikke brostens-vægte. Grus afgøres langt oftere i **udbrud** end en brostensklassiker — underlaget slider feltet ned over lange, åbne sektorer i stedet for at samle det til en reduceret spurt — og den forskel er hele pointen med at grus er sin egen etapetype. Båndet er derfor afledt af `FINALE_WEIGHTS_BY_PROFILE.gravel` med samme spillerum som de øvrige rækker. Ændres vægtene, skal båndet med; `stageFinaleMetrics.test.js` fælder dem hvis de driver fra hinanden.
 >
 > `classic` produceres kun af arketypen `hilly_classic`. Brostensklassikere bruger `cobbles` (brosten-vægt 0,66) og tælles korrekt. **Skulle en brosten-variant nogensinde få `profile_type='classic'`, ryger den ud af tællingen i stilhed** — derfor bør klassifikationen på sigt bygge på `terrain_archetype`, ikke på `profile_type`.
 >
@@ -603,9 +609,12 @@ Før #4272 målte kalenderen kun "slutter det for tit nedad?" — den håndhæve
 | `mountain` | 45-65 % | — | 20-35 % | 10-25 % |
 | `hilly` | 40-60 % | 15-30 % | — | 15-30 % |
 | `cobbles` | — | 30-50 % | — | 40-60 % |
+| `gravel` | 15-35 % | 10-30 % | — | 45-65 % |
 | `rolling` | — | 25-45 % | — | 55-75 % |
 | `flat` | — | 90-100 % | — | — |
 | `itt` / `itt_hilly` / `ttt` | — | — | — | 100 % `solo_tt` |
+
+`gravel` kom til 3/9 (ejer-beslutning, #4105). Båndet er **ikke** brostens: grus afgøres oftere i udbrud og har en opad-andel brosten ikke har. Det er afledt af generatorens egne grus-vægte, ikke af en analogi.
 
 En "—" er **ikke** "uspecificeret": klassen har vægt 0 i generatoren og gates mod 0. En bunch-sprint i højbjerget er et brud, ikke en tolereret sjældenhed. `classic` (monument-arketypen) står bevidst uden for tabellen — den rapporteres, men bånd-gates ikke.
 
@@ -793,7 +802,7 @@ Resten af tabellerne i denne fil har endnu ikke alle tre niveauer. Se [#4176](ht
 
 **Gæt ALDRIG et af disse på plads.** Hver post er ÉN ting der skal afgøres, med de målte tal indlejret så beslutningen kan træffes uden at måle forfra. Bliver et af dem afgjort, flyttes det op i den paragraf det hører til, og slettes her.
 
-**Afgjort 3/9 og flyttet op i deres paragraffer** (denne paragrafs egen regel): punkt 2 (Class1/Class2's etapebånd → §4) · punkt 3 (D4's højbjergs-overskud → §5b, lukket af tæthed + katalog) · punkt 4 (gulvet for kvote-opfyldelse → §1b, eksakt 100 %) · punkt 5 (monument-spredning → §4, forbliver kalenderdage; ny gate på løbsdags-aksen mod GT-spænd) · punkt 6 (`rolling`-gulv og `classic`s familie → §5) · punkt 7 (GT-rammen → §3, båndet skaleres pr. etape).
+**Afgjort 3/9 og flyttet op i deres paragraffer** (denne paragrafs egen regel): punkt 2 (Class1/Class2's etapebånd → §4) · punkt 3 (D4's højbjergs-overskud → §5b, lukket af tæthed + katalog) · punkt 4 (gulvet for kvote-opfyldelse → §1b, eksakt 100 %) · punkt 5 (monument-spredning → §4, forbliver kalenderdage; ny gate på løbsdags-aksen mod GT-spænd) · punkt 6 (`rolling`-gulv og `classic`s familie → §5) · punkt 7 (GT-rammen → §3: 17/17/18, og km-båndet forankret i virkeligheden i stedet for i et 21-etapers totaltal).
 
 De to der står tilbage:
 
@@ -803,7 +812,7 @@ De to der står tilbage:
 
 **8. Skal `rolling` flyttes til bakke-siden i kaptajn-bucket'en og i GT-finalen?** De to er §5a's tungeste flad-placeringer. `raceTerrain.js:8` lader spillerens kaptajn-prioriteter læse en rolling-etape som en flad dag, og `raceStageProfileGenerator.js:633` kan lade en Grand Tour slutte på en etape der ender i udbrud 65 % af gangene. Begge modsiger familie-beslutningen 24/8. **Men et flyt er ikke gratis:** fjernes `rolling` fra `FLAT_FAMILY`, bliver `sprint_finale` infeasible i etapeløb hvis eneste flade forsyning er rolling, og GT-finalen falder tilbage på `arr.pop()` — mål det før, ikke efter. Ejerens langsigtede ønske om *"mellemrummet mellem bakke etaper og medium mountain"* er en **femte profiltype**, ikke en omkategorisering, og hører til race engine v4 sammen med durability-trækket han selv henlagde dertil. Se [#4596](https://github.com/NicolaiDolmer/CyclingZone/issues/4596).
 
-**9. Grus' §7b-finale-bånd og grus' finale-vægte skal landes sammen.** Ejeren besluttede 3/9 at `gravel` får **samme bånd som brosten**. Grus-sporets vægte (breakaway 55 · punch 25 · reduced_sprint 20) giver udbrud 55 % · opad 25 % · fladt 20 % og kan **ikke** ramme brostens-båndet (fladt 30-50, udbrud 40-60, opad 0). Det er ikke et åbent spørgsmål om hvad reglen ER — den er besluttet — men om hvilken af de to sider der giver efter: **skal vægtene flyttes mod brostens-fordelingen, eller skal grus have sit eget bånd?** Indtil det er afgjort står `gravel` uden for finale-tabellen, med begrundelsen skrevet ind i `stageFinaleMetrics.js`.
+> Det tidligere punkt 9 ("grus' finale-bånd mod grus' finale-vægte") er **afgjort 3/9**: grus fik sit eget bånd afledt af vægtene, ikke brostens (§5, §7b). Slettet herfra per denne paragrafs egen regel.
 
 > Det gamle punkt 6 ("brosten 5 % eller 6 %?") er **afgjort 31/8**: 5 % vandt (§6, §6b). Slettet herfra per denne paragrafs egen regel.
 
