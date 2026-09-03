@@ -21,7 +21,7 @@
     "Saet capturedAt til dagens dato naar du opdaterer contexts.",
     "Refs #4330."
   ],
-  "capturedAt": "2026-08-30",
+  "capturedAt": "2026-09-03",
   "contexts": [
     "backend-tests",
     "frontend-build",
@@ -46,6 +46,8 @@
     "postgrest-cap-guard",
     "rankings-fetch-guard",
     "riders-column-grant-guard",
-    "gitleaks"
+    "gitleaks",
+    "key-coverage",
+    "delta-pending"
   ]
 }
