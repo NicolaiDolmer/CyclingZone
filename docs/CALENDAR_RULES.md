@@ -552,15 +552,15 @@ Fixene, i rækkefølge:
 | 1 etape pr. løb pr. `game_day` | findes | findes | findes |
 | `game_day`-aksen ikke kollapset | findes | findes | findes |
 | Rytterbinding pr. løbsdag | findes | findes | findes (DB-constraint) |
-| Terræn-familie-gulve | findes (`detectCoverageViolations`) | findes | **kan bygges** |
-| `TIER_ONE_DAY_SHARE_MIN` | findes | findes | **kan bygges** |
-| Klasse-etapebånd | findes | findes | **kan bygges** |
+| Terræn-familie-gulve | findes (`detectCoverageViolations`) | findes | findes (`calendarScorecard4218.mjs --from-db`, ADVISORY — #4573) |
+| `TIER_ONE_DAY_SHARE_MIN` | findes | findes | findes (`calendarScorecard4218.mjs --from-db`, ADVISORY — #4573) |
+| Klasse-etapebånd | findes | findes | findes (`calendarScorecard4218.mjs --from-db`, ADVISORY — #4573) |
 | `MAX_GT_SPAN_DAYS` = 6 | findes (R8) | mangler | **kan bygges** |
 | `MAX_GT_STAGES_PER_DAY` = 4 | findes (R7) | mangler | **kan bygges** |
 | To GT'er deler ikke kalenderdag | findes | mangler | **kan bygges** |
 | Etapeløbs-spænd ≤ etaper + 3 | findes (`raceCalendarLanePackerInvariants.test.js:141`) | mangler | **kan bygges** |
 | `TIER_DENSITY` som etaper pr. kalenderdag | mangler | mangler | **kan bygges**, group by dato |
-| Løb hver kalenderdag i alle divisioner | mangler | mangler | **kan bygges**, én SQL: `count(distinct dato) = race_days_total` pr. pulje |
+| Løb hver kalenderdag i alle divisioner | findes (`calendarScorecard4218.mjs`, del af `grønt`/exit-koden) | findes (samme script, sæsonskifte-preflighten #4572) | findes (`--from-db`, ADVISORY — #4573) |
 | Sæsonen slutter søndag | mangler | findes (`regenSeason3Calendar.mjs:197`) | **kan bygges**, `extract(dow)` |
 | `GRAND_TOUR_REST_DAYS` = 2 | mangler | mangler | **kan bygges**: spænd skal være `etaper + 2`, verificeret sand for alle 3 GT'er |
 | Kvote-opfyldelse (§1b) | mangler | mangler | **kan bygges når gulvet er sat** (§11 punkt 4) — skal være et INTERVAL, ikke en lighed |
@@ -568,6 +568,20 @@ Fixene, i rækkefølge:
 | K-B-komposition pr. division ±2 pp | findes med de LØSE tal | findes med de LØSE tal | **først når §6's modsigelse er ryddet** — vil være rød på 7 akser i dag |
 | §6b's uniforme mål | mangler | mangler | **kan bygges** — vil være rød på 6 akser i dag |
 | Startfelt pr. klasse, startgulv 6 | findes (ved gem/afvikling) | ikke relevant | ikke relevant |
+
+**#4573 (2/9): `calendarScorecard4218.mjs` fik en `--from-db --season <n>`-tilstand** der læser
+`races` + `race_stage_profiles` + `race_stage_schedule` for den skrevne kalender (READ-ONLY,
+aldrig writes) i stedet for at måle pakkerens fixture-output. Den kører nu hver nat i
+`.github/workflows/calendar-invariant-audit.yml` (samme workflow som `verify-invariants`)
+og dækker fire af ovenstående "kan bygges"-celler. Den er BEVIDST **ADVISORY**
+(rapporteres i det daglige tracking-issue, vælter ikke jobbet) — samme princip som denne
+fils egen §9b allerede fastslår for "øvrige invarianter": komposition/finale-målene har et
+kendt kalibreringsefterslæb (§10, modsigelse 1+2 — kompositionsmålene er kalibreret mod
+sæson-AGGREGATET men gates PR. DIVISION), og at vælte en daglig prod-vagt på et
+kendt-usikkert mål ville gøre den rød uden at det betyder noget. Plan-interne invarianter
+(GT-rygrad/whitelist/dedup/overlap-cap) måles IKKE af `--from-db` — de har allerede deres
+eget prod-niveau (`calendarOverlapInvariant.js` via `verify-invariants.js`) og duplikeres
+bevidst ikke af to regelsæt der kan drifte fra hinanden.
 
 ### 9d. Regler en test IKKE kan afgøre
 

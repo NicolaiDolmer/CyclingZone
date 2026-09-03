@@ -17,6 +17,12 @@ name: Calendar invariant audit
 # rapporteres i tracking-issuet, men vælter ikke jobbet — et permanent rødt
 # workflow bliver slået fra, og så vogter det ingenting.
 #
+# #4573 (2/9): kalender-scorecardet (calendarScorecard4218.mjs --from-db) kører også
+# her mod den SKREVNE kalender for den aktive sæson — det tredje af #4176 punkt 3's
+# tre niveauer for §9c's "kan bygges"-regler (terræn-gulve, endagsløb-andel, klasse-
+# etapebånd, løb-hver-kalenderdag). BEVIDST ikke en del af gaten nedenfor endnu — se
+# steppets egen kommentar.
+#
 # Triggers:
 #   - PR der rører kalender-libs, vagten selv eller dette workflow
 #   - Dagligt cron (03:50 UTC — efter league-size 03:40, før feature-liveness 04:00)
@@ -159,6 +165,41 @@ jobs:
             cat race-entry-days-drift.txt
           fi
 
+      # #4573: kalender-scorecardet (docs/CALENDAR_RULES.md, samme regelsæt som
+      # calendar-scorecard-gate.yml måler mod pakkerens FIXTURE-output) i --from-db-
+      # tilstand mod DEN SKREVNE kalender for den aktive sæson. Dækker de "kan bygges"-
+      # celler i §9c's prod-invariant-kolonne (terræn-gulve, TIER_ONE_DAY_SHARE_MIN,
+      # klasse-etapebånd, løb-hver-kalenderdag) som hverken verify-invariants eller
+      # denne fils øvrige steps måler i dag.
+      #
+      # BEVIDST ADVISORY, ikke en del af "Fail if calendar or constraint findings"
+      # nedenfor — samme princip som denne fils egen docstring allerede sætter for
+      # "øvrige invarianter": komposition/finale-målene har et kendt kalibrerings-
+      # efterslæb (docs/CALENDAR_RULES.md §10, modsigelse 1+2 — kompositionsmålene er
+      # kalibreret mod sæson-AGGREGATET men gates PR. DIVISION, og to tolerance-
+      # systemer måler samme kalender med to domme). At vælte en daglig prod-vagt på et
+      # kendt-usikkert mål ville gøre den PRÆCIS den slags rødt-der-ikke-betyder-noget
+      # som denne fils egen §9b-postmortem advarer mod. Rapporteres i tracking-issuet,
+      # blokerer intet, indtil §10's modsigelser er ryddet af ejeren.
+      - name: Kalender-scorecard mod prod (#4573, advisory)
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        id: dbscorecard
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        working-directory: backend
+        shell: bash
+        run: |
+          set -o pipefail
+          scorecard_exit=0
+          node scripts/dev/calendarScorecard4218.mjs --from-db | tee ../calendar-scorecard-db.txt || scorecard_exit=$?
+          echo "exit=$scorecard_exit" >> "$GITHUB_OUTPUT"
+          if [ "$scorecard_exit" = "2" ]; then
+            echo "::warning::Kalender-scorecard (#4573) kunne ikke vurdere prod-kalenderen — se calendar-scorecard-db.txt. Advisory, vælter ikke jobbet."
+          elif [ "$scorecard_exit" != "0" ]; then
+            echo "::warning::Kalender-scorecard (#4573) fandt brud mod den skrevne kalender — se calendar-scorecard-db.txt. Advisory (§10-kalibreringsefterslæb), vælter ikke jobbet."
+          fi
+
       - name: Upload report
         if: always() && (github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]')
         uses: actions/upload-artifact@v7
@@ -169,6 +210,7 @@ jobs:
             invariants.txt
             constraint-form.txt
             race-entry-days-drift.txt
+            calendar-scorecard-db.txt
 
       - name: Comment on PR if findings (PR runs only)
         if: github.event_name == 'pull_request' && (steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0' || steps.entrydays.outputs.count != '0')
@@ -201,6 +243,8 @@ jobs:
             const fs = require('fs');
             const report = fs.readFileSync('invariants.txt', 'utf8');
             const constraints = fs.existsSync('constraint-form.txt') ? fs.readFileSync('constraint-form.txt', 'utf8').trim() : '';
+            const scorecard = fs.existsSync('calendar-scorecard-db.txt') ? fs.readFileSync('calendar-scorecard-db.txt', 'utf8').trim() : '';
+            const scorecardExit = '${{ steps.dbscorecard.outputs.exit }}';
             const kal = '${{ steps.invariants.outputs.kalender_brud }}';
             const con = '${{ steps.constraints.outputs.count }}';
             const andre = '${{ steps.invariants.outputs.oevrige_brud }}';
@@ -216,6 +260,14 @@ jobs:
               report.trim(),
               '```',
               constraints ? ['', '### Constraint-form', '```', constraints, '```'].join('\n') : '',
+              scorecard ? [
+                '',
+                `### Kalender-scorecard mod prod (#4573, ADVISORY — exit ${scorecardExit}, blokerer ikke)`,
+                'Terræn-gulve, endagsløb-andel, klasse-etapebånd, komposition, finale-bånd og løb-hver-kalenderdag for den skrevne kalender. Kendt kalibreringsefterslæb på komposition/finale (§10) — se linjen der ikke er OK, men behandl den ikke som et akut kalender-brud på linje med sektionerne ovenfor.',
+                '```',
+                scorecard,
+                '```',
+              ].join('\n') : '',
               '',
               'Run-link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
             ].join('\n');
