@@ -11,7 +11,7 @@
 ## Kø i S3-vinduet (ejer-godkendt 27/8, trimmet 28/8)
 
 0. **FØRST (ejer 28/8): #2758** Discord-triage dagligt + **#4269** daglig Supabase-kontrol (fejler på manglende secret). Køen fyldes af det spillerne møder, ikke af AI-vurdering.
-1. **#4370** WebKit-#421 (blokerer smoke) · **#4595** chunk-fejl over budget · **#4259** byg FORFRA · **#4355** taktik-læk.
+1. **#4595** chunk-fejl over budget · **#4259** byg FORFRA · **#4355** taktik-læk. (#4370 WebKit lukket 1/9.)
 2. **#4098** grundregel; blødt-loft-forslag i tråden til ejer-valg (simulér-før-ship).
 3. **Z1 (#1146): matrixen LIVE 31/8.** Akse ejer-låst. Rest: #4535 header (afventer ejer-retning) · #4530 · #4531.
 4. **#4176** kalender-SSOT — ejer-frist senest 4/9 OG før S4-kalenderen. Med #4254 (24 regler bagud, hard rule 30).
@@ -31,7 +31,8 @@ Ny gæld: rangeret i pengeplan §3 (kalender, drift).
 
 SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
-8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 · **#4109** anti-slop (→ G2) · #4143 glyffer. #4123-invarianterne mangler CI-gate.
+8. 🟠 **Ejer-direktiv-klyngen 21/8, rest:** **#4103** præmier pr. division m. #3719 · #4105 Toscana → S4 · **#4109** anti-slop (→ G2) · #4143 glyffer (lukket 3/9). #4123-invarianterne har CI-gate (4 bånd-invarianter skippet til ejer-valg).
+8b. 🔴 **S4-apply-kæden (#4270, hård dato 27/9):** #4203 monument-pakker → read-only dry-run (scorecard grønt på alle gates) → ejer-"kør" → `--apply` én gang → post-verify (S4 upcoming, 28 løbsdatoer, kvote 140/112/84/84) → årsmøde-tørkørsel (#4557). Regler #4709, katalog #4708 og GT 17/17/18 #4716 er i prod.
 9. **P0 + UI-gæld + Z1** (ejer 25/8): #3329 · `PLANNING_CENTER_RULES.md` §7 · Z1 bulk-endpoint + kladde + linser. **P2** taktik ind i centret (#3049 #2794). **P3** assistenten gated på **#4201**; #4246 afgøres FØR `TeamOrder` fryses.
 
 ## D · 30-dages pengeplan (ejer 2/9, SSOT [`2026-09-02-30-dages-pengeplan.md`](superpowers/specs/2026-09-02-30-dages-pengeplan.md); rækkefølge, ikke datoer)
@@ -44,8 +45,8 @@ Mandagstal: MRR 113,87 kr / 3 abo · checkout 2 af 5 · D7 18 %. Mål 2/10: ≥ 
 Ejer 2/9: *"Standarden skal hæves markant. Og vi skal være fri for AI slop nu."* Hård dato: **S3 slutter 27/9**; årsmøde og parkering hører til sæsonskiftet.
 
 - **G1 Mandatet (#3514/#4557), deadline 27/9:** beta-blokkere #4579 · #4586 · #4578 → **S-M2c årsmødet** (ejer-visuelt go) → #4556 stemmer (ejer tone-prøve) → S-M2d mobil + **"Sponsors"-side under Klubhus** (#4265) → flip.
-- **G2 Design (#4622):** **#4623 TASTE.md godkendes (ejer, 15 min)** → #4624 audit 63 sider → #4625 kit ∥ #4626 CI-vagter → #4627 spejl → #4628. #4613 træningssiden = første side mod ny standard.
-- **G3 Tre trupper (#2492):** handoff i `YOUTH_RULES.md` §2.6. **#4618 slice 0 i byg** (ejer-go på screenshots) → #4619 spec + bag flag, **flip ved cutover 28/9** → #4620/#4621 i S4.
+- **G2 Design (#4622):** #4623 TASTE · #4624 audit · #4625 kit · #4626 CI-vagter leveret (lukket 2-3/9). Rest: #4627 spejl → **#4628** (PR #4670 Auktioner/Akademi + patch note 7.240 i PR #4717). #4613 træningssiden = første side mod ny standard.
+- **G3 Tre trupper (#2492):** handoff i `YOUTH_RULES.md` §2.6. #4618 slice 0 leveret (lukket 2/9) → **#4619 spec + bag flag, flip ved cutover 28/9** → #4620/#4621 i S4.
 - **G4 Inaktive (#4592), deadline 27/9:** rapport → ejer godkender liste → parkering ved cutover → #452 → #2760.
 
 **Ejerens område-rækkefølge for alt udskudt (2/9; issues pr. område i pengeplan §3):** 1 design-kit/anti-slop · 2 drift/tempo · 3 rytterudvikling/træning · 4 løbsmotor v4/taktik · 5 dashboard/indbakke/dag 1 · 6 planlægning · 7 kalender · 8 trupper · 9 økonomi · 10 fair play/roller · 11 vision. Claude udskyder ikke selv; ejeren rangerer områder.
@@ -59,7 +60,7 @@ Ejer 2/9: *"Standarden skal hæves markant. Og vi skal være fri for AI slop nu.
 
 ## F · Backlog-bølger (#3154; audit 31/8, beslutningsark `docs/audits/*-2026-08-31.md`)
 
-Lukkemandat: done/dubletter/opslugte frit; won't-do i chat-bundter. **Rest:** 18 dubletpar · 23 done-men-åbne (2/9) · W8 · #4119 · #3944/#3945.
+Lukkemandat: done/dubletter/opslugte frit; won't-do i chat-bundter. **Rest:** 18 dubletpar · 14 gated/delvise done (3/9; 57 lukket i audit 3/9) · W8 · #4119.
 
 ## E2 · Race-oplevelsen (SSOT: `RACE_ENGINE_RULES.md`)
 
