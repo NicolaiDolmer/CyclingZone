@@ -73,8 +73,16 @@ export function augmentWithS3Additions(baseCatalog) {
   return { catalog: [...baseCatalog, ...S3_CATALOG_ADDITIONS], kollisioner };
 }
 
-// Ejer-beslutning 25/8 (#4218): 31 kalenderdage, 28/8 til 27/9.
-export const S3_REAL_DAYS = 31;
+// Vinduet for den offline plan. Ejer-beslutning 3/9 (#4270): 28 kalenderdage, saesonens
+// eget S4-vindue (man 28/9 -> soen 25/10).
+//
+// HVORFOR DET FLYTTEDE FRA S3's 31: D4's tae­thed gik 2 -> 3 samme dag, saa D4's kvote i et
+// 31-dages vindue ville vaere 3 x 31 = 93 mod et katalog-loft paa 96 i D4's klasse-vindue.
+// Planen kunne ikke fyldes, og fixturen ville rapportere tomme kalenderdage der KUN findes
+// fordi vi holdt et gammelt vindue fast. Se docs/CALENDAR_RULES.md §1 og §5b.
+export const OFFLINE_REAL_DAYS = 28;
+/** @deprecated brug OFFLINE_REAL_DAYS - navnet er en rest fra da vinduet var S3's. */
+export const S3_REAL_DAYS = OFFLINE_REAL_DAYS;
 
 /**
  * Bygger den fulde offline S3-kalenderplan: fixture + katalog-udvidelse + de
@@ -90,11 +98,11 @@ export function buildS3OfflineCalendarPlan({ baseSeed = 1 } = {}) {
   const { catalog, kollisioner } = augmentWithS3Additions(baseCatalog);
   const { from, firstDay } = offlineCalendarFrom([]);
   const lastDay = new Date(
-    Date.parse(`${firstDay}T00:00:00Z`) + (S3_REAL_DAYS - 1) * 86_400_000
+    Date.parse(`${firstDay}T00:00:00Z`) + (OFFLINE_REAL_DAYS - 1) * 86_400_000
   ).toISOString().slice(0, 10);
-  const quotas = Object.fromEntries(Object.entries(TIER_DENSITY).map(([t, d]) => [t, d * S3_REAL_DAYS]));
+  const quotas = Object.fromEntries(Object.entries(TIER_DENSITY).map(([t, d]) => [t, d * OFFLINE_REAL_DAYS]));
   const { tierPlans } = buildTierMaterializationPlan({
-    pools, catalog, from, realDays: S3_REAL_DAYS, quotas, baseSeed,
+    pools, catalog, from, realDays: OFFLINE_REAL_DAYS, quotas, baseSeed,
   });
-  return { tierPlans, firstDay, lastDay, realDays: S3_REAL_DAYS, quotas, kollisioner };
+  return { tierPlans, firstDay, lastDay, realDays: OFFLINE_REAL_DAYS, quotas, kollisioner };
 }

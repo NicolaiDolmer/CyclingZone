@@ -182,17 +182,32 @@ test("determinisme: samme season_id → bit-identisk kalender (også når re-dra
   assert.ok(a.some((d) => d.attempt > 0), `fixturen forventes at ramme re-draw-stien; attempts=${a.map((d) => d.attempt)}`);
 });
 
+// #4288 (3/9): GT-baandet er lagt om til ejerens fire distance-graenser (samlet snit,
+// landevejssnit, prolog- og enkeltstarts-gulv). Snapshottet i denne fil er FROSSET og
+// indeholder 21-ETAPERS Grand Tours - et etapeantal kataloget ikke har haft siden foer
+// saeson 3, og som ejeren 3/9 endeligt satte til 17/17/18. Deres parcours er trukket under
+// de gamle regler, saa de bryder de nye gulve (prologer paa 5-7 km, enkeltstarter paa
+// 15-23 km) uanset hvor mange gange der traekkes om.
+//
+// Det er IKKE en svaghed ved baandet: maalt mod prods faktiske katalog 3/9 er alle tre
+// aegte GT'er groenne (docs/audits/season4-calendar-dryrun-2026-09-03.md §10). Det er en
+// staleness i fixturen. Disse to tests handler om RE-DRAW-MEKANIKKEN for tier-baandene, og
+// de maa ikke holde op med at teste den fordi en frossen GT-rute fra en anden aera ikke kan
+// rettes af et gen-traek. GT-bruddene filtreres derfor fra HER - og kun her.
+const udenGtBrud = (failures) => failures.filter((f) => !f.includes(": GT «"));
+
 test("et kanonisk træk der bryder tier 3's bånd rettes af re-drawet — og KUN den tier trækkes om", () => {
   const tierSeedRaces = tierSeedRacesFor(SINGLE_TIER_RETRY_SEASON_ID);
   const first = scoreSeason(tierSeedRaces.map(({ tier, seedRaces }) => ({
     tier, races: seedRaces.map((r) => ({ name: r.name, race_type: r.race_type, terrain_archetype: r.terrain_archetype, stages: generateRaceStageProfiles(r) })),
   })));
-  assert.ok(first.failures.every((f) => f.startsWith("tier 3:")), `fixturen skal PRÆCIS bryde tier 3, ellers tester vi ikke det testen påstår: ${first.failures.join(" · ")}`);
-  assert.ok(first.failures.length > 0, "fixturen skal reelt bryde noget");
+  const foerste = udenGtBrud(first.failures);
+  assert.ok(foerste.every((f) => f.startsWith("tier 3:")), `fixturen skal PRÆCIS bryde tier 3, ellers tester vi ikke det testen påstår: ${foerste.join(" · ")}`);
+  assert.ok(foerste.length > 0, "fixturen skal reelt bryde noget");
 
   const draws = resolveSeasonDraw({ tierSeedRaces });
   const resolved = scoreSeason(draws.map((d) => d.entry));
-  assert.deepEqual(resolved.failures, [], "re-drawet skal rette bruddet fuldstændigt — alle 4 tiers er nu realisme-gatede (#3469), ingen strukturelle huller tilbage efter snapshottet blev regenereret fra en dry-run-plan (se fil-header)");
+  assert.deepEqual(udenGtBrud(resolved.failures), [], "re-drawet skal rette bruddet fuldstændigt — alle 4 tiers er nu realisme-gatede (#3469), ingen strukturelle huller tilbage efter snapshottet blev regenereret fra en dry-run-plan (se fil-header)");
   // Kun den brydende tier 3 trækkes om — de øvrige tiers' parcours røres ikke.
   assert.deepEqual(draws.filter((d) => d.attempt > 0).map((d) => d.tier), [3]);
 });
@@ -210,11 +225,13 @@ test("#3469: sæson 3-planens kanoniske træk bryder tier 1/2/3's bånd (spredni
   const first = scoreSeason(tierSeedRaces.map(({ tier, seedRaces }) => ({
     tier, races: seedRaces.map((r) => ({ name: r.name, race_type: r.race_type, terrain_archetype: r.terrain_archetype, stages: generateRaceStageProfiles(r) })),
   })));
-  assert.ok(first.failures.length > 0, "det kanoniske træk skal reelt bryde noget, ellers tester vi ikke re-draw-stien");
+  assert.ok(udenGtBrud(first.failures).length > 0, "det kanoniske træk skal reelt bryde noget, ellers tester vi ikke re-draw-stien");
 
   const draws = resolveSeasonDraw({ tierSeedRaces });
-  assert.deepEqual(scoreSeason(draws.map((d) => d.entry)).failures, [], "re-drawet skal fjerne ALLE brud, på tværs af alle 4 tiers");
-  assert.ok(draws.every((d) => !d.exhausted), draws.map((d) => `tier ${d.tier}: exhausted=${d.exhausted}`).join(" · "));
+  assert.deepEqual(udenGtBrud(scoreSeason(draws.map((d) => d.entry)).failures), [], "re-drawet skal fjerne ALLE tier-brud, på tværs af alle 4 tiers");
+  // Tier 1 udtømmer sit gen-træk på fixturens frosne 21-etapers GT-ruter (se udenGtBrud
+  // ovenfor); de øvrige tiers må ikke udtømme.
+  assert.ok(draws.filter((d) => d.tier !== 1).every((d) => !d.exhausted), draws.map((d) => `tier ${d.tier}: exhausted=${d.exhausted}`).join(" · "));
   // Mindst tier 1-3 har historisk krævet et gen-træk på denne plan (dokumenteret i
   // fil-headeren) — tier 4 komponerer sig grønt fra start. Assert'et er bevidst løst
   // koblet til de PRÆCISE attempt-numre (de skifter med ARCHETYPE_PROFILES-vægte, jf.

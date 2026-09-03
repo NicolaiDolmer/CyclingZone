@@ -46,11 +46,13 @@ export { TIER_DENSITY, TIER_OVERLAP_CAP };
 
 // Etape-tids-slots pr. division: bane k → slots[k] (ejer-låst: div 3 = 12/15/18). Antal slots =
 // density, så en dag aldrig har flere etaper end slots.
+// #4270 (ejer-beslutning 3/9): D4 2 -> 3 slots, samme klokkeslaet som D3 (12/15/18).
+// Antal slots skal FOELGE TIER_DENSITY - en dag maa aldrig have flere etaper end slots.
 export const TIER_STAGE_SLOTS = Object.freeze({
   1: ["11:00", "13:00", "15:00", "17:00", "19:00"],
   2: ["12:00", "14:00", "16:00", "18:00"],
   3: ["12:00", "15:00", "18:00"],
-  4: ["12:00", "18:00"],
+  4: ["12:00", "15:00", "18:00"],
 });
 
 function isRealManagerRow(t) {
