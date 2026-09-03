@@ -4,8 +4,9 @@ import { useTranslation } from "react-i18next";
 import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../lib/actionTelemetry.js";
 import { PageLoader, EmptyState, ErrorState, Button, Select, Checkbox, Modal, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
-import TerrainCodeGlyph from "../components/race/TerrainCodeGlyph";
+import TerrainGlyph from "../components/calendar/TerrainGlyph.jsx";
 import { densityForDivision } from "../lib/calendarTierDensity";
+import { toTerrainBucket } from "../lib/terrainBucket";
 import {
   buildMonthGrid,
   expandStageEvents,
@@ -395,7 +396,7 @@ export default function CalendarPage() {
           <span className="font-data text-3xs font-bold uppercase tracking-[0.14em] text-cz-3">{t("legend.title")}</span>
           {LEGEND_BUCKETS.map((b) => (
             <span key={b} className="flex items-center gap-1.5 text-cz-2">
-              <TerrainCodeGlyph bucket={b} width={22} height={13} className="text-cz-2" />
+              <TerrainGlyph bucket={toTerrainBucket(b)} className="text-cz-2" />
               <span className="text-xs">{t(`legend.${b}`)}</span>
             </span>
           ))}
@@ -576,10 +577,11 @@ function StageChip({ ev, t, className = "" }) {
           : "border-cz-border bg-cz-subtle/50 opacity-80 hover:opacity-100 hover:bg-cz-subtle"} ${className}`}
     >
       <div className="flex items-center gap-1.5">
-        {/* #4143: bogstavkode-primitiv (delt med planlæggerens MasterCanvas) —
-            en fuld mini-profil kræver rutedata pr. race, som kalenderens svar
-            ikke henter (docs/CALENDAR_RULES.md, se lib/terrainCode.ts). */}
-        <TerrainCodeGlyph bucket={ev.terrain || "sprint"} width={18} height={10} className={mine ? "text-cz-1" : "text-cz-3"} />
+        {/* #4143 v2: ejeren afviste bogstavkoder (3/9) — tilbage til den
+            miniature-terræn-silhuet (samme tegning som StageStripe's
+            MiniSilhouette, se components/calendar/TerrainGlyph.jsx), nu delt
+            med planlæggerens MasterCanvas via lib/terrainBucket.ts. */}
+        <TerrainGlyph bucket={toTerrainBucket(ev.terrain)} width={18} height={10} className={mine ? "text-cz-1" : "text-cz-3"} />
         <span className={`truncate text-2xs font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{ev.name}</span>
       </div>
       {secondLine && (

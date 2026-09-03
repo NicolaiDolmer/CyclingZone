@@ -15,7 +15,8 @@ import { statColor, statTextColor } from "../../lib/statColor";
 import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
 import { Flag } from "../Flag";
 import { StarIcon, FlagIcon } from "../ui";
-import TerrainCodeGlyph from "../race/TerrainCodeGlyph";
+import TerrainGlyph from "../calendar/TerrainGlyph.jsx";
+import { toTerrainBucket } from "../../lib/terrainBucket";
 import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName, formatRaceDateLabel, formatOrdinalShort } from "./plannerShared";
 
 const VBW = 940, RAIL = 190, RRAIL = 132;
@@ -156,21 +157,37 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
         const targeted = (riders || []).some((rd) => rd.peaks.some((p) => !p.isSuggestion && p.targetRaceId === r.id));
         const gap = i === 0 || rx - x(visRaces[i - 1].ord) > 34;
         const active = r.id === selectedRaceId;
+        // #4143 v2: r.terrain kommer fra samme kalender-model som CalendarPage.jsx
+        // (buildCalendarModel, backend/lib/raceCalendar.js) og bør derfor allerede
+        // være en af TerrainGlyph's buckets — men backend har mindst ét andet
+        // terræn-vokabular for samme data (plannerBoard.js's terrainKey(), som
+        // kalder samme bucket "flat" i stedet for "sprint"). toTerrainBucket() er
+        // den defensive normalisering (lib/terrainBucket.ts), delt med kalenderen,
+        // så glyffen aldrig falder tilbage til en forkert silhuet.
+        const terrainBucket = toTerrainBucket(r.terrain);
+        const terrainLabel = t(`terrain.${terrainBucket}`);
         return (
           <g key={r.id}>
             <line x1={rx} y1={AXIS} x2={rx} y2={H} stroke={targeted ? CZ.goldDeep : CZ.border} strokeWidth={targeted ? 1.2 : 1} strokeDasharray="1 3" opacity={targeted ? 0.6 : 0.5} />
-            {/* #4143: delt bogstavkode-primitiv (samme fil kalenderen bruger)
-                indlejret via foreignObject — samme mønster som Flag/StarIcon
-                længere nede i dette canvas. Terrænet forbliver dekorativt her:
-                hit-området nedenfor bærer allerede den fulde a11y-label
-                (navn · dato · terræn). */}
+            {/* #4143 v2 (ejeren afviste bogstavkoder 3/9): samme miniature-
+                terræn-silhuet som kalenderen (TerrainGlyph, components/calendar/
+                TerrainGlyph.jsx), indlejret via foreignObject — samme mønster
+                som Flag/StarIcon længere nede i dette canvas. Glyffen bærer sin
+                egen title/aria-label (terrænnavnet); hit-området nedenfor bærer
+                stadig den fulde navn · dato · terræn-label. */}
             {gap && (
               <foreignObject x={rx - 10} y={AXIS - 24} width="20" height="13" pointerEvents="none">
-                <div xmlns="http://www.w3.org/1999/xhtml" style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: "100%", height: "100%", color: CZ.ink,
-                }}>
-                  <TerrainCodeGlyph bucket={r.terrain} width={20} height={12} />
+                <div
+                  xmlns="http://www.w3.org/1999/xhtml"
+                  title={terrainLabel}
+                  aria-label={terrainLabel}
+                  role="img"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: "100%", height: "100%", color: CZ.ink, pointerEvents: "auto",
+                  }}
+                >
+                  <TerrainGlyph bucket={terrainBucket} width={20} height={12} />
                 </div>
               </foreignObject>
             )}
@@ -204,7 +221,7 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
               x={rx - 6} y={AXIS} width="12" height={H - AXIS}
               fill={active ? CZ.gold : "transparent"} opacity={active ? 0.12 : 1}
               tabIndex={0} role="button"
-              aria-label={`${r.name} · ${formatRaceDateLabel(r, months)} · ${t(`terrain.${r.terrain}`)}`}
+              aria-label={`${r.name} · ${formatRaceDateLabel(r, months)} · ${terrainLabel}`}
               style={{ cursor: "pointer" }}
               onClick={() => onSelectRace(r.id)}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectRace(r.id); } }}
