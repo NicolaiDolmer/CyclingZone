@@ -7,6 +7,8 @@ import {
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
 } from "./economyConstants.js";
+// #4148: rene måle-hjælpere (ingen adfærdsændring) — se finalizeInstrumentation.js.
+import { wrapSupabaseWithCallCounter, formatPhaseLogLine } from "./finalizeInstrumentation.js";
 
 export async function getSeasonPrizePreview(seasonId, supabase) {
   const { data: races, error: racesError } = await supabase
@@ -212,8 +214,26 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opt
   // (api.js) er fuldstændig uændret.
   const actorType = opts.actorType ?? FINANCE_ACTOR_TYPE.ADMIN;
 
+  // #4148: instrumentér — måler varighed + Supabase-kald pr. trin (preview,
+  // payout, rytterværdier) uden at ændre adfærd. `supabase` genbindes, så alle
+  // nedstrøms kald i denne invokation (inkl. updateRiderValues) tælles med.
+  const { client: countedSupabase, counter: __callCounter } = wrapSupabaseWithCallCounter(supabase);
+  supabase = countedSupabase;
+  const __phases = [];
+  let __phaseStartMs = Date.now();
+  let __phaseStartCalls = __callCounter.calls;
+  const __markPhase = (name) => {
+    __phases.push({ name, ms: Date.now() - __phaseStartMs, calls: __callCounter.calls - __phaseStartCalls });
+    __phaseStartMs = Date.now();
+    __phaseStartCalls = __callCounter.calls;
+  };
+
   const preview = await getSeasonPrizePreview(seasonId, supabase);
-  if (!preview.pending_payment.length) return { races_paid: 0, total_paid: 0, by_race: [] };
+  __markPhase("preview");
+  if (!preview.pending_payment.length) {
+    console.log(formatPhaseLogLine(`prize-sweep season=${seasonId}`, __phases));
+    return { races_paid: 0, total_paid: 0, by_race: [] };
+  }
 
   const now = new Date().toISOString();
 
@@ -290,6 +310,7 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opt
       imported_by: adminUserId,
     });
   }
+  __markPhase("payout");
 
   // R3 (#895): recalculate rider values now that this season's prizes are paid,
   // so the active season's prize earnings feed the progress-weighted value
@@ -306,6 +327,8 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opt
     captureException(err, { tags: { cron: "auto-prize", stage: "rider-value-recalc" } });
     riders_updated = null;
   }
+  __markPhase(`values(${riders_updated ?? 0}riders)`);
+  console.log(formatPhaseLogLine(`prize-sweep season=${seasonId}`, __phases));
 
   // #1573: rapportér KUN de løb dette tick faktisk claimede — ikke hele det læste
   // pending-preview. Et tabende tick returnerer races_paid: 0 (det satte ingenting
