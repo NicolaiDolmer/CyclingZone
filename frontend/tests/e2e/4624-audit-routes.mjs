@@ -26,7 +26,7 @@ export const ROUTES = [
   { route: "/founder-supporter", path: "/founder-supporter", file: "FounderSupporterPage.jsx", template: "marketing", auth: "public" },
   { route: "/terms", path: "/terms", file: "TermsPageEn.jsx", template: "marketing", auth: "public" },
   { route: "/handelsbetingelser", path: "/handelsbetingelser", file: "TermsPage.jsx", template: "marketing", auth: "public" },
-  { route: "/privacy-policy", path: "/privacy-policy", file: "PrivacyPolicyPageEn.jsx", template: "marketing", auth: "public" },
+  { route: "/privacy-policy", path: "/privacy-policy", file: "PrivacyPolicyPage.jsx (forceLang=\"en\")", template: "marketing", auth: "public" },
   { route: "/privatlivspolitik", path: "/privatlivspolitik", file: "PrivacyPolicyPage.jsx", template: "marketing", auth: "public" },
 
   // ── Protected (kræver login) ────────────────────────────────────────────

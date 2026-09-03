@@ -69,7 +69,6 @@ const PatchNotesPage = lazy(() => import("./pages/PatchNotesPage"));
 const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
 const RulesPage = lazy(() => import("./pages/RulesPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
-const PrivacyPolicyPageEn = lazy(() => import("./pages/PrivacyPolicyPageEn"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
 const TermsPageEn = lazy(() => import("./pages/TermsPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
@@ -253,7 +252,7 @@ export default function App() {
           <Route path="/login" element={<LoginRoute session={session} />} />
           <Route path="/reset-password" element={<ResetPasswordPage session={session} />} />
           <Route path="/privatlivspolitik" element={<PrivacyPolicyPage />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage forceLang="en" />} />
           <Route path="/handelsbetingelser" element={<TermsPage />} />
           <Route path="/terms" element={<TermsPageEn />} />
           <Route path="/founder-supporter" element={<I18nReadyGate ns="founder"><FounderSupporterPage /></I18nReadyGate>} />
