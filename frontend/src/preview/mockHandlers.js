@@ -1248,10 +1248,10 @@ export function apiResponse(pathname, search = "") {
         prize_total: 194000,
         points_total: 80,
         stages: [
-          { stage_number: 1, amount: 60000, points: 40, riders: [{ rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", rank: 1 }] },
+          { stage_number: 1, amount: 60000, points: 40, riders: [{ rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", rank: 1, amount: 60000 }] },
         ],
         classifications: [
-          { classification: "gc", amount: 120000, points: 40, riders: [{ rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", rank: 2 }] },
+          { classification: "gc", amount: 120000, points: 40, riders: [{ rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", rank: 2, amount: 120000 }] },
         ],
         team_bonus: { amount: 14000, points: 0 },
       },
