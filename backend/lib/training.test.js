@@ -6,7 +6,7 @@ import {
   deriveTrainingState, canTrain, resolveTrainingModifier,
   isValidFocus, isValidIntensity,
   partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS,
-  focusTrainability, smartDefaultFocus,
+  focusTrainability, smartDefaultFocus, focusAbilityWeight, focusWeightSum,
   WEEKDAY_KEYS, isValidWeekPlanDays, resolveDayIntensity, cappedVisibleAbilities,
 } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
@@ -598,4 +598,55 @@ test("cappedVisibleAbilities: current >= 99 er ALTID på loftet (dailyTraining k
 test("cappedVisibleAbilities: kun VISIBLE_ABILITIES vurderes — fremmede nøgler ignoreres", () => {
   const row = { not_an_ability: 50, ability_caps: { not_an_ability: 50 } };
   assert.deepEqual(cappedVisibleAbilities(row), []);
+});
+
+// ── #4631 · punch og climbing kan trænes hver for sig ────────────────────────
+// Ejer 2/9: de to evner har vidt forskellige lofter, så et fast bundt tvinger
+// en rytter der er færdig i den ene til at spilde pas. Splittet er tre pakker
+// (hybrid + to specialiserede), og pakke-TABELLEN er dét disse tests vogter.
+
+test("#4631 · pakke-tabellen: hybriden er uændret, de to nye træner hver sin evne", () => {
+  assert.deepEqual([...TRAINING_FOCUSES.vo2max], ["climbing", "punch", "tempo"], "hybriden må IKKE ændre sig: hver gemt plan i prod peger på den");
+  assert.deepEqual([...TRAINING_FOCUSES.vo2max_climb], ["climbing", "tempo"]);
+  assert.deepEqual([...TRAINING_FOCUSES.vo2max_punch], ["punch", "tempo"]);
+  assert.ok(!TRAINING_FOCUSES.vo2max_climb.includes("punch"), "klatrepakken må ikke træne punch");
+  assert.ok(!TRAINING_FOCUSES.vo2max_punch.includes("climbing"), "punch-pakken må ikke træne climbing");
+  for (const key of ["vo2max", "vo2max_climb", "vo2max_punch"]) assert.ok(isValidFocus(key));
+});
+
+test("#4631 · UDBYTTE-SUMMEN er den samme i de tre intervaldage (ingen power creep)", () => {
+  const hybrid = focusWeightSum("vo2max");
+  assert.equal(focusWeightSum("vo2max_climb"), hybrid, "klatrepakken må ikke indeholde mere dag end hybriden");
+  assert.equal(focusWeightSum("vo2max_punch"), hybrid, "punch-pakken må ikke indeholde mere dag end hybriden");
+});
+
+test("#4631 · specialiseringen henter sin gevinst fra den evne der forsvinder", () => {
+  // Uden dette led ville splittet være uden virkning: deltaen beregnes pr. evne
+  // og deler ikke et budget, så hybriden ville være svagt dominerende.
+  assert.ok(focusAbilityWeight("vo2max_climb", "climbing") > focusAbilityWeight("vo2max", "climbing"));
+  assert.ok(focusAbilityWeight("vo2max_punch", "punch") > focusAbilityWeight("vo2max", "punch"));
+  // Den fælles motor-evne står uændret i alle tre.
+  for (const key of ["vo2max", "vo2max_climb", "vo2max_punch"]) {
+    assert.equal(focusAbilityWeight(key, "tempo"), focusAbilityWeight("vo2max", "tempo"));
+  }
+});
+
+test("#4631 · alle ANDRE fokus vejer præcis 1,0 pr. evne (bit-identisk med før)", () => {
+  for (const focus of TRAINING_FOCUS_KEYS) {
+    if (focus === "vo2max_climb" || focus === "vo2max_punch") continue;
+    for (const ability of TRAINING_FOCUSES[focus]) {
+      assert.equal(focusAbilityWeight(focus, ability), 1, `${focus}/${ability} må ikke have fået en vægt`);
+    }
+  }
+  assert.equal(focusAbilityWeight("vo2max_climb", "sprint"), 1, "en evne uden for pakken vejer 1,0");
+  assert.equal(focusAbilityWeight("ikke-et-fokus", "climbing"), 1, "ukendt fokus falder sikkert tilbage");
+});
+
+test("#4631 · smartDefaultFocus er UÆNDRET af de to nye pakker", () => {
+  // De nye nøgler står bevidst ikke i SMART_DEFAULT_FOCUS_KEYS: assistenten
+  // træner tusindvis af ryttere, og dens valg må aldrig flytte sig som
+  // sideeffekt af at et fokus kom til (#3762-reglen, frossen liste).
+  assert.equal(smartDefaultFocus("climber"), "vo2max");
+  assert.equal(smartDefaultFocus("sprinter"), "sprint");
+  assert.equal(smartDefaultFocus(null), "endurance");
 });

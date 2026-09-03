@@ -431,6 +431,7 @@ import {
   getCacheStats,
 } from "../lib/responseCache.js";
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
+import { readAssistantSelectionConfig, ASSISTANT_MODES } from "../lib/assistantSelectionMode.js";
 import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { selectInChunks } from "../lib/dbChunk.js";
@@ -9155,6 +9156,46 @@ router.get("/admin/balance-drift", requireAdmin, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message || "Kunne ikke hente balance-drift-data" });
   }
+});
+
+// ── /api/me/assistant-settings — #4201 ────────────────────────────────────────
+//
+// Assistentens udtagelses-tilstand (app_config.assistant_selection_mode) plus
+// spillerens eget til/fra-valg. Fladen viser KUN kontakten naar tilstanden er
+// "opt_in" — i proactive og late_fill er der intet at vaelge, og en synlig
+// kontakt uden virkning ville vaere en loegn. Se docs/ASSISTANT_RULES.md §1b.
+router.get("/me/assistant-settings", requireAuth, presencePulseLimiter, async (req, res) => {
+  const { mode, lateFillHours } = await readAssistantSelectionConfig(supabase);
+  res.json({
+    mode,
+    late_fill_hours: lateFillHours,
+    // Kolonnen kommer med database/2026-09-03-4201-assistant-mode.sql. Er den
+    // ikke applied endnu, er vaerdien undefined = ikke fravalgt.
+    autopick_enabled: req.team?.assistant_autopick_enabled !== false,
+  });
+});
+
+router.patch("/me/assistant-settings", requireAuth, marketWriteLimiter, async (req, res) => {
+  const { enabled } = req.body || {};
+  if (typeof enabled !== "boolean") {
+    return res.status(400).json({ error: "enabled must be a boolean", errorCode: "enabled_must_be_boolean" });
+  }
+  if (!req.team?.id) {
+    return res.status(400).json({ error: "You need a team first", errorCode: "team_required" });
+  }
+  // Skriv kun naar valget faktisk betyder noget — ellers ville en gammel klient
+  // kunne gemme en praeference der ser ud til at virke, men ikke goer det.
+  const { mode } = await readAssistantSelectionConfig(supabase);
+  if (mode !== ASSISTANT_MODES.OPT_IN) {
+    return res.status(409).json({
+      error: "The assistant is not opt-in right now",
+      errorCode: "assistant_opt_in_not_active",
+    });
+  }
+  const { error } = await supabase
+    .from("teams").update({ assistant_autopick_enabled: enabled }).eq("id", req.team.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, autopick_enabled: enabled });
 });
 
 // ── /api/me — current user's Discord DM preferences ───────────────────────────

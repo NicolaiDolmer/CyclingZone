@@ -14,7 +14,8 @@ export const SKILL_SESSIONS = Object.freeze(["technique", "aero", "loebslaere"])
 export const TRAINING_SESSIONS_BY_LEVEL = Object.freeze({
   easy: Object.freeze(["endurance"]),
   normal: Object.freeze(["tempo"]),
-  hard: Object.freeze(["vo2max", "threshold", "sprint"]),
+  // #4631: intervaldagen findes nu som hybrid + to specialiserede halvdele.
+  hard: Object.freeze(["vo2max", "vo2max_climb", "vo2max_punch", "threshold", "sprint"]),
 });
 export const TRAINING_LEVELS = Object.freeze(Object.keys(TRAINING_SESSIONS_BY_LEVEL));
 export const SESSION_INTENSITY = Object.freeze({
@@ -24,6 +25,8 @@ export const SESSION_INTENSITY = Object.freeze({
   endurance: "easy",
   tempo: "normal",
   vo2max: "hard",
+  vo2max_climb: "hard",
+  vo2max_punch: "hard",
   threshold: "hard",
   sprint: "hard",
 });

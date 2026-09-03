@@ -2,9 +2,13 @@
 // #4270/#4176: scorecard-logikken fra scripts/dev/calendarScorecard4218.mjs, ekstraheret
 // til lib/ saa den kan koeres BEGGE steder mod PRAECIS samme kode:
 //
-//   1. scripts/dev/calendarScorecard4218.mjs — offline, mod fixture-kataloget (CI + i haanden)
+//   1. scripts/dev/calendarScorecard4218.mjs --from-fixture — offline, mod fixture-kataloget
+//      (CI-gaten calendar-scorecard-gate.yml + saesonskifte-preflighten + i haanden)
 //   2. scripts/buildSeasonCalendar.js's DRY-RUN — mod den kalender der faktisk ville blive
 //      skrevet (samme plan, samme parcours, samme tilt som apply-stien)
+//   3. scripts/dev/calendarScorecard4218.mjs --from-db — mod den SKREVNE kalender i basen
+//      (#4573, nat-vagten calendar-invariant-audit.yml). Samme taerskler, andet datagrundlag:
+//      raekkerne pakkes til tierPlan-formen og scores af PRAECIS koden herunder.
 //
 // HVORFOR EN EKSTRAKTION OG IKKE EN KOPI: #4215's hele pointe er at scorecardet skal koere
 // paa TRE tidspunkter (CI, saesonskifte-preflight, prod-invariant) — tre kopier af de
@@ -149,14 +153,23 @@ export function scoreTierPlan({ plan, profilesByPoolRaceId, archetypeByPoolRace 
  * @param {string} args.firstRaceDay       "YYYY-MM-DD"
  * @param {number} args.realDays           antal kalenderdage (loebsdatoer)
  * @param {Array}  [args.kollisioner]      navnekollisioner fra katalog-augmentering
+ * @param {"plan"|"db"} [args.tilstand]    HVOR raekkerne kom fra (#4573). "plan" =
+ *   pakkerens output (fixture eller dry-run) — plan-invarianterne er maalt. "db" = den
+ *   SKREVNE kalender laest read-only; plan-interne invarianter findes ikke i raekkerne og
+ *   maales af verify-invariants.js i stedet (docs/CALENDAR_RULES.md §9c). Feltet styrer
+ *   KUN hvad rapporten paastaar den har set — aldrig hvordan en regel doemmes.
+ * @param {Array}  [args.unassessed]       raekker der ikke KUNNE vurderes (fx et loeb uden
+ *   race_stage_profiles). #2854: fravaer af evidens maa aldrig ligne groent, saa de
+ *   taeller ikke som regelbrud, men de goer heller ikke rapporten `ok`.
  */
 export function scoreCalendarPlan({
   tierPlans = [], profilesByTier = new Map(), archetypeByPoolRace = new Map(),
-  firstRaceDay, realDays, kollisioner = [],
+  firstRaceDay, realDays, kollisioner = [], tilstand = "plan", unassessed = [],
 } = {}) {
   const lastRaceDay = addCalendarDays(firstRaceDay, realDays - 1);
   const rapport = {
-    første: firstRaceDay, sidste: lastRaceDay, kalenderdage: realDays, kollisioner, tiers: [],
+    tilstand, første: firstRaceDay, sidste: lastRaceDay, kalenderdage: realDays,
+    kollisioner, unassessed, tiers: [],
   };
   const stageDays = [];
 
@@ -185,7 +198,8 @@ export function scoreCalendarPlan({
   rapport.regelbrud = rapport.tiers.reduce((n, t) =>
     n + t.planViolations.length + t.coverageViol.length + t.compositionViol.length
       + t.orderViol.length + t.finaleViol.length, 0) + rapport.sæsonFinaleViol.length;
-  rapport.ok = rapport.regelbrud === 0 && dækning.ok && kollisioner.length === 0;
+  rapport.ok = rapport.regelbrud === 0 && dækning.ok && kollisioner.length === 0
+    && unassessed.length === 0;
   return rapport;
 }
 
@@ -219,12 +233,28 @@ export function scorecardGateGroups(rapport) {
   return { blocking, finaleDrift, uniformDrift };
 }
 
-/** Menneske-laesbar rapport som linjer (samme layout begge kaldere printer). */
+/**
+ * Menneske-laesbar rapport som linjer (samme layout alle kaldere printer).
+ *
+ * `rapport.tilstand === "db"` (#4573) aendrer INGEN dom — kun hvad rapporten paastaar den
+ * har set: navnekollisioner er et katalog-begreb der ikke findes i en skreven kalender, og
+ * plan-interne invarianter (§1's overlap-cap, §3's GT-rygrad/whitelist/dedup) kan ikke
+ * udledes af raekkerne. De maales af verify-invariants.js mod prod (§9c) og duplikeres
+ * bevidst ikke af to regelsaet der kan drifte fra hinanden.
+ */
 export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katalogLinje = null } = {}) {
+  const fraDb = rapport.tilstand === "db";
   const out = [];
   out.push(`\n${heading} — ${rapport.første} til ${rapport.sidste} (${rapport.kalenderdage} kalenderdage)`);
   if (katalogLinje) out.push(katalogLinje);
-  out.push(`Navnekollisioner: ${rapport.kollisioner.length ? rapport.kollisioner.join(", ") : "ingen"}\n`);
+  if (!fraDb) out.push(`Navnekollisioner: ${rapport.kollisioner.length ? rapport.kollisioner.join(", ") : "ingen"}`);
+  // #2854: kalenderen er skrevet, profilerne er ikke — det er fravaer af evidens, ikke
+  // nul etaper, og det skal staa FOER tallene saa ingen laeser dem som fuldstaendige.
+  if (rapport.unassessed?.length) {
+    out.push(`\n!!  KUNNE IKKE VURDERES (${rapport.unassessed.length}) — rækker uden måleligt grundlag:`);
+    for (const u of rapport.unassessed) out.push(`     · ${u}`);
+  }
+  out.push("");
 
   out.push(`${ok(rapport.dækning.ok)} LØB HVER KALENDERDAG (§2, #4218)`);
   for (const v of rapport.dækning.violations) out.push(`     ${v}`);
@@ -296,9 +326,13 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
       out.push(`      (${t.finaleRaw.length} afvigelse(r) fra det rå bånd bæres af stikprøve-tillægget — se ✗)`);
     }
 
-    out.push(`  ${ok((t.maxOverlap ?? 0) <= (t.overlapCap ?? 99))} Samtidige løb pr. løbsdag (§1): maks ${t.maxOverlap} (cap ${t.overlapCap})`);
-    out.push(`  ${ok((t.planViolations?.length ?? 0) === 0)} Plan-invarianter (§3 GT, whitelist, dedup): ${t.planViolations.length} brud`);
-    for (const v of t.planViolations.slice(0, 5)) out.push(`     ${v}`);
+    if (fraDb) {
+      out.push(`  --  Samtidige løb pr. løbsdag (§1) + plan-invarianter (§3): IKKE målt her — de har eget prod-niveau i verify-invariants.js / calendarOverlapInvariant.js (§9c)`);
+    } else {
+      out.push(`  ${ok((t.maxOverlap ?? 0) <= (t.overlapCap ?? 99))} Samtidige løb pr. løbsdag (§1): maks ${t.maxOverlap} (cap ${t.overlapCap})`);
+      out.push(`  ${ok((t.planViolations?.length ?? 0) === 0)} Plan-invarianter (§3 GT, whitelist, dedup): ${t.planViolations.length} brud`);
+      for (const v of t.planViolations.slice(0, 5)) out.push(`     ${v}`);
+    }
     // "!" = brud der taeller i `regelbrud` (og dermed i exit-koden). §6b's uniforme maal
     // og §6's strenge tolerance staar med "~" ovenfor: de RAPPORTERES her og gates i
     // buildSeasonCalendar.js's apply-sti bag hvert sit override-flag, men maa ikke
@@ -309,7 +343,9 @@ export function formatScorecard(rapport, { heading = "KALENDER-SCORECARD", katal
   out.push(`\n${"═".repeat(72)}`);
   out.push(`${ok(rapport.sæsonFinaleViol.length === 0)} SÆSON-AGGREGAT, finale-bånd uden stikprøve-tillæg (${rapport.sæsonFinale.total} etaper)`);
   for (const v of rapport.sæsonFinaleViol) out.push(`     ! ${v}`);
-  out.push(`SAMLET: ${rapport.regelbrud} regelbrud · dækning ${rapport.dækning.ok ? "OK" : "HULLER"} · ${rapport.kollisioner.length} navnekollisioner`);
+  out.push(`SAMLET: ${rapport.regelbrud} regelbrud · dækning ${rapport.dækning.ok ? "OK" : "HULLER"}`
+    + (fraDb ? "" : ` · ${rapport.kollisioner.length} navnekollisioner`)
+    + (rapport.unassessed?.length ? ` · ${rapport.unassessed.length} kunne ikke vurderes` : ""));
   out.push(rapport.ok
     ? "Kalenderen overholder alle gates i docs/CALENDAR_RULES.md.\n"
     : "Se linjerne markeret FEJL / ! ovenfor.\n");

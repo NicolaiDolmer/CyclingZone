@@ -180,6 +180,8 @@
     "loan_end_before_start": "end_season must be greater than or equal to start_season",
     "discord_id_required_first": "Add your Discord ID first",
     "enabled_must_be_boolean": "enabled must be a boolean",
+    "team_required": "You need a team first",
+    "assistant_opt_in_not_active": "The assistant is not opt-in right now",
     "unknown_pref_keys": "Unknown preference key",
     "username_invalid": "Username must be 3-20 characters (letters, numbers, _ or -)",
     "username_taken": "Username is taken",

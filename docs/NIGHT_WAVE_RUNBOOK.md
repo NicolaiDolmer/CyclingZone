@@ -79,6 +79,16 @@ Kombinér: `status="running"` ≠ fremdrift (jf. memory `feedback_verify_backgro
 
 > **Natbølge 17/7-læring (orkestratoren vågnede aldrig):** én frossen agent holdt chunk-barrieren åben → ingen completion-notifikation, og ScheduleWakeup-fallback-heartbeaten fyrede aldrig (tavs single point of failure). Maskinen sov IKKE (keep-awake virkede). Konsekvens: 4. lag er obligatorisk — **per-agent timeout i workflow-scriptet** så barrieren aldrig kan hænge evigt, og heartbeat må ALDRIG være eneste vækning. Keep-awake kan orkestratoren selv starte som baggrundsproces ved preflight-GO (bekræftet 17/7). Detaljer: `.claude/learnings/2026-07-17-night-wave-orchestrator-never-woke.md`.
 
+## Læringer 2-3/9 (den store natbølge, 29 spor, 32 PR'er, 31 merget næste formiddag)
+
+- **Lane-pool i stedet for chunk-barrierer:** to Workflow-kald (6 + 2 laner, cap pr. workflow = CPU−2) over én prioriteret kø, hver lane tager næste spor, per-spor `Promise.race`-timeout. Ingen tomme slots; et spor der døde tavst (anti-slop 00:22) kostede kun sin lane i 90 min. Skabelon: memory `project_night_wave_lane_pool_design`. Lette spor: 45-60 min timeout, ikke 90.
+- **Merge INGEN drafts i launch-timen.** Ejerens seks merges kl. 23:44 (før launch-commit) gjorde main rød på fire vagter (canary, warning-budget, bundle-budget, feature-liveness) og alle 32 PR'er røde til kl. 08:42 (#4705). Merge drafts FØR launch med CI-fixup, eller efter bølgen.
+- **Session-død er normalen, ikke undtagelsen:** begge workflows døde med sessionen; intet gik tabt fordi hvert spor pushede + oprettede sin PR. Monitor-scriptet (bash `sleep`-loop) døde ved start; `gh pr checks --watch` i baggrunds-Bash er det der vækker.
+- **GitHub-runner-køen mætter** ved 30+ PR'er × 3 shards + main-kørsler: annullér mellemliggende main-runs (kun nyeste HEAD tæller, jf. §Merge-protokol), opdatér frontend-PR'er først når shard-CI'en (#4665) er inde, og merge den først.
+- **Dry-run-rapporter skal bruge apply'ets predikat:** bestyrelses-scriptet listede 37 kandidater, 13 var reelle; apply-guarden var korrekt, rapporten ikke.
+- **Go-kort bygges på diffen:** to kort blev afvist fordi parafrasen af PR-body var forkert (#4695 "markedsværdi", #4675 "19 / 25"). Citer locale-strengene ordret (memory `feedback_present_pr_from_diff_not_body`).
+- **Rollback-SQL må ikke ligge i `database/2026-*.sql`** (auto-migrate ville køre den ved merge, #4677): manual-only-scripts i `database/manual/` med markøren `KOERES IKKE AUTOMATISK`.
+
 ## Vercel deploy-rate-limit (høj-tempo-bølger)
 
 **Status 2026-06-23: projektet er på Vercel Pro** — det aggressive hobby-rate-limit ("retry in 24 hours", ramt 2026-06-20 efter ~13 hurtige merges) gælder derfor ikke længere i praksis. *Historisk på hobby-tier:* en høj-tempo-bølge kunne fryse **frontend-prod på sidste gode deploy** indtil reset/manuel re-deploy; **Railway (backend) var upåvirket**. Pro kan teoretisk stadig ramme et loft ved ekstreme bølger — overvåg, men forvent ikke 24t-frys.
