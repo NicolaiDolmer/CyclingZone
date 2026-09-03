@@ -21,13 +21,16 @@ import type {
   Entrant,
   EngineState,
   FinaleHook,
+  FinaleType,
+  ProfileType,
   RaceGroup,
   RiderState,
   SegmentHookContext,
   SegmentHookResult,
   TimelineEvent,
 } from "./types.ts";
-import { FINALE_EXTRA_TUNING } from "./tuning.ts";
+import { FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } from "./tuning.ts";
+import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -53,6 +56,21 @@ const DEFAULT_DEMAND_VECTOR: Partial<Record<AbilityKey, number>> = {
   tactics: 0.2,
   positioning: 0.2,
 };
+
+// ── Massefinale-klassifikation (#4615) ────────────────────────────────────────
+// Finaler hvor hele den ankomne pulje krydser stregen sammen og derfor deler
+// vindertiden. De oevrige finale-typer (long_climb, punch, descent, breakaway,
+// solo_tt) er selektive: dér er tidsforskellene inden for frontpuljen ægte.
+const MASS_FINISH_FINALE_TYPES: ReadonlySet<FinaleType> = new Set(["bunch_sprint", "reduced_sprint"]);
+// Fallback naar etapen ikke er finale-klassificeret: en flad/kuperet etape
+// ankommer stadig samlet. Bevidst konservativ — alt andet regnes som selektivt.
+const MASS_FINISH_PROFILE_TYPES: ReadonlySet<ProfileType> = new Set(["flat", "rolling"]);
+
+/** Er dagens finale et samlet feltopgoer? Eksporteret for direkte kontrakt-tests. */
+export function isMassFinishRoute(route: { finale_type: FinaleType | null; profile_type: ProfileType }): boolean {
+  if (route.finale_type) return MASS_FINISH_FINALE_TYPES.has(route.finale_type);
+  return MASS_FINISH_PROFILE_TYPES.has(route.profile_type);
+}
 
 // Kollektiv "flugt"-evne: staying-power til at forsvare et forspring.
 const FLIGHT_KEYS: AbilityKey[] = ["tempo", "endurance", "durability"];
@@ -221,20 +239,44 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const demandVector =
     (route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR;
 
-  const scored: ScoredRider[] = contenderIds
+  const scoreOf = (riderId: string): number | null => {
+    const entrant = entrants[riderId];
+    if (!entrant) return null;
+    return computeFinaleAbilityScore(
+      entrant.abilities,
+      wprimeReserveFraction(state.riders[riderId]),
+      demandVector,
+      extra.wprimeReserveWeight,
+    );
+  };
+
+  const baseScored: ScoredRider[] = contenderIds
     .map((riderId): ScoredRider | null => {
-      const entrant = entrants[riderId];
-      if (!entrant) return null;
-      const score = computeFinaleAbilityScore(
-        entrant.abilities,
-        wprimeReserveFraction(state.riders[riderId]),
-        demandVector,
-        extra.wprimeReserveWeight,
-      );
-      return { riderId, score };
+      const score = scoreOf(riderId);
+      return score === null ? null : { riderId, score };
     })
-    .filter((s): s is ScoredRider => s !== null)
-    .sort((a, b) => b.score - a.score || a.riderId.localeCompare(b.riderId));
+    .filter((s): s is ScoredRider => s !== null);
+
+  // M6 (#4615): sprint-toget loefter kaptajnens placerings-score BOUNDED, FOER
+  // sorteringen — en leadout skal kunne flytte en placering, aldrig
+  // efterrationalisere en allerede afgjort raekkefolge. Ingen ordre = ingen
+  // aendring (T4-defaultet: passivitet straffes ikke).
+  const contenderIdSet = new Set(contenderIds);
+  const scored: ScoredRider[] = applyLeadoutScoreBonuses(
+    baseScored,
+    parseLeadoutOrders(ctx.orders),
+    contenderIdSet,
+    entrants,
+    state.riders,
+    LEADOUT_EXTRA_TUNING,
+  ).sort((a, b) => b.score - a.score || a.riderId.localeCompare(b.riderId));
+
+  // Kontendere uden entrant-raekke (data-drift opstroems) faar ingen score og
+  // ville ellers falde helt ud af opgoerelsen — og dermed ud af feltet. De
+  // haenges bagerst paa, saa feltstoerrelsen er bevaret per konstruktion
+  // (#4615-invarianten: lige saa mange i maal som paa startlisten).
+  const scoredIds = new Set(scored.map((s) => s.riderId));
+  const unscoredContenderIds = contenderIds.filter((id) => !scoredIds.has(id));
 
   const placementGroups: RaceGroup[] = [];
   let seq = 0;
@@ -242,7 +284,25 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let prevScore: number | null = null;
   let tailStarted = false;
 
-  scored.forEach((entry, rank) => {
+  // ── Massefinale (#4615, felt-sammenhaengs-ankeret) ──────────────────────────
+  // En massespurt afgoeres paa PLACERING, ikke paa tid: hele den ankomne pulje
+  // faar vinderens tid (gruppe-tids-princippet, mor-spec §3.2), og
+  // raekkefolgen baeres af `finish_order`. FOER gav opgoerelsen hver af de 20
+  // bedste sin egen tids-tier, saa naesten ingen delte vindertiden paa flade
+  // etaper — en mekanisk konsekvens af at raekkefolgen kun kunne udtrykkes
+  // gennem tiden, ikke en modelleret hale af afhaegtede ryttere.
+  //
+  // Selektive finaler (bjerg, punch, nedkoersel, udbrud, ITT) beholder de
+  // individuelle tids-tiers: dér ER tidsforskellene virkelige.
+  if (isMassFinishRoute(route)) {
+    placementGroups.push({
+      id: "finale-bunch-0",
+      kind: scored.length + unscoredContenderIds.length > 1 ? "peloton" : "solo",
+      rider_ids: [...scored.map((s) => s.riderId), ...unscoredContenderIds],
+      gap_seconds: 0,
+      cohesion: 1,
+    });
+  } else scored.forEach((entry, rank) => {
     const inTailZone = rank >= extra.placementFullResolutionCount;
     if (inTailZone) {
       if (!tailStarted) {
@@ -288,6 +348,24 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     prevScore = entry.score;
   });
 
+  if (!isMassFinishRoute(route) && unscoredContenderIds.length > 0) {
+    // Samme feltbevarelses-hensyn som i massefinale-grenen: bagerst i den
+    // sidste eksisterende klump, ellers som en klump for sig.
+    const last = placementGroups[placementGroups.length - 1];
+    if (last) {
+      last.rider_ids.push(...unscoredContenderIds);
+      if (last.rider_ids.length > 1) last.kind = "peloton";
+    } else {
+      placementGroups.push({
+        id: `finale-tail-${seq++}`,
+        kind: unscoredContenderIds.length > 1 ? "peloton" : "solo",
+        rider_ids: [...unscoredContenderIds],
+        gap_seconds: 0,
+        cohesion: 1,
+      });
+    }
+  }
+
   if (placementGroups.length > 1) {
     const winner = placementGroups[0];
     const runnerUpGap = placementGroups[1].gap_seconds;
@@ -312,6 +390,23 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   }
 
   const newGroups: RaceGroup[] = [...placementGroups, ...survivingGroups];
-  const nextState: EngineState = { ...state, groups: newGroups };
+
+  // Eksplicit maal-raekkefolge (#4615): placerings-tiers foerst (allerede i
+  // score-orden), derefter de overlevende jagt-grupper sorteret paa gap. Inden
+  // for hver overlevende gruppe ordnes rytterne paa samme finale-score, saa
+  // raekkefolgen er evne-baseret og ikke alfabetisk. index.ts rangerer paa
+  // (tid, denne raekkefolge, rider_id) — saa lige tid stadig giver en stabil,
+  // meningsfuld placering i stedet for et alfabetisk opgoer.
+  const orderedSurvivors = [...survivingGroups].sort(
+    (a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id),
+  );
+  const finishOrder: string[] = [
+    ...placementGroups.flatMap((g) => g.rider_ids),
+    ...orderedSurvivors.flatMap((g) =>
+      [...g.rider_ids].sort((a, b) => (scoreOf(b) ?? -Infinity) - (scoreOf(a) ?? -Infinity) || a.localeCompare(b)),
+    ),
+  ];
+
+  const nextState: EngineState = { ...state, groups: newGroups, finish_order: finishOrder };
   return { state: nextState, events };
 };

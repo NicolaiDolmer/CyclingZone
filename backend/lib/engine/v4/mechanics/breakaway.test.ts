@@ -14,6 +14,7 @@ import {
   stanceSignal,
   type BreakawayHookContext,
   type BreakawayTeamOrder,
+  TEAM_TACTICS_ORDER_KIND,
 } from "./breakaway.ts";
 import { boundRngFor } from "../rng.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
@@ -102,7 +103,13 @@ function buildFieldScenario(
     entrants: entrantsById,
     tuning: RACE_V4_TUNING,
     rngFor: boundRngFor(seed),
-    orders,
+    // Ordrerne naar hooket gennem den AABNE TeamOrder-konvolut (#4615) —
+    // praecis som orders/teamOrdersAdapter.ts skriver dem i produktion.
+    orders: (orders ?? []).map((o) => ({
+      team_id: o.team_id,
+      kind: TEAM_TACTICS_ORDER_KIND,
+      params: { breakaway_stance: o.breakaway_stance, riders: o.riders },
+    })),
   };
   return { state, ctx };
 }
