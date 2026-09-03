@@ -140,7 +140,7 @@ function formComponent(entrant, weight = FORM_RACE_WEIGHT) {
 // raceRouteGenerator.test.js holder dem i sync).
 export const DISTANCE_BAND_MIDPOINTS = Object.freeze({
   flat: 175, rolling: 170, hilly: 185, mountain: 170, high_mountain: 160,
-  cobbles: 160, classic: 230, itt: 27.5, ttt: 35,
+  cobbles: 160, gravel: 197.5, classic: 230, itt: 27.5, ttt: 35,
 });
 export const LONG_DAY_ENDURANCE_WEIGHT = 0.65;
 
