@@ -6,6 +6,11 @@
 // Human-team filter mirrors academyHealSweep.js / aiTeamGenerator.js
 // (is_ai=false, is_bank=false, is_frozen=false, is_test_account=false) —
 // AI/bank/frozen/test accounts never get retention email.
+//
+// #2853 DA follow-up (2026-09-03): users.language ('da' -> Danish copy,
+// anything else -> English) is read alongside email and passed straight
+// through to buildWelcomeEmail; emailTemplates.js owns the actual copy
+// selection.
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { isEmailLoopActive } from "./emailLoopFlag.js";
@@ -49,12 +54,12 @@ export async function runEmailWelcomeSweep({
   for (const team of candidates) {
     try {
       const { data: userRow, error } = await supabase
-        .from("users").select("email").eq("id", team.user_id).maybeSingle();
+        .from("users").select("email, language").eq("id", team.user_id).maybeSingle();
       if (error) throw new Error(`users lookup: ${error.message}`);
       if (!userRow?.email) { skipped += 1; continue; }
 
       const unsubscribeUrl = unsubscribeUrlFor(team.user_id, unsubSecret);
-      const { subject, html, text } = buildWelcomeEmail({ teamName: team.name, unsubscribeUrl });
+      const { subject, html, text } = buildWelcomeEmail({ teamName: team.name, unsubscribeUrl, language: userRow.language });
       const result = await send({
         supabase,
         userId: team.user_id,
