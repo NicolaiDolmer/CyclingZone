@@ -40,21 +40,15 @@
   },
   "stats": {
     "balance": "Balance",
-    "balanceAvailable": "{amount} CZ$ available",
     "reserved": "Reserved in bids",
-    "auctionsLeading": "{count, plural, one {1 auction} other {# auctions}} you lead",
     "ridersNow": "Riders now",
-    "projection": "Projection",
-    "incoming": "+{count} in",
-    "outgoing": "−{count} out"
+    "projection": "Projection"
   },
   "filter": {
     "mySituation": "My auctions ({count})",
     "all": "All ({count})",
     "otherManagers": "Other managers ({count})",
     "wishlistButton": "Wishlist only",
-    "wishlistTitleOn": "Show all riders",
-    "wishlistTitleOff": "Show only wishlisted riders",
     "feedButton": "Live bids",
     "feedTitleOn": "Hide the live bids panel",
     "feedTitleOff": "Show the live bids panel",
@@ -63,7 +57,6 @@
     "moreFilters": "More filters"
   },
   "nav": {
-    "active": "Active ({count})",
     "history": "History"
   },
   "history": {

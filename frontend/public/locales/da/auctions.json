@@ -40,21 +40,15 @@
   },
   "stats": {
     "balance": "Balance",
-    "balanceAvailable": "{amount} CZ$ tilgængelig",
     "reserved": "Reserveret i bud",
-    "auctionsLeading": "{count, plural, one {1 auktion} other {# auktioner}} du leder",
     "ridersNow": "Ryttere nu",
-    "projection": "Projektion",
-    "incoming": "+{count} ind",
-    "outgoing": "−{count} ud"
+    "projection": "Projektion"
   },
   "filter": {
     "mySituation": "Mine auktioner ({count})",
     "all": "Alle ({count})",
     "otherManagers": "Andre managers ({count})",
     "wishlistButton": "Kun ønskeliste",
-    "wishlistTitleOn": "Vis alle ryttere",
-    "wishlistTitleOff": "Vis kun ryttere på din ønskeliste",
     "feedButton": "Live bud",
     "feedTitleOn": "Skjul live bud-panelet",
     "searchPlaceholder": "Søg efter ryttere",
@@ -63,7 +57,6 @@
     "feedTitleOff": "Vis live bud-panelet"
   },
   "nav": {
-    "active": "Aktive ({count})",
     "history": "Historik"
   },
   "history": {
