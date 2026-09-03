@@ -38,7 +38,6 @@ import { createPortalHandler } from "../lib/billingPortal.js";
 import { createAluntaClient } from "../lib/alunta.js"; // #4648 — scopet reconcile-for-team efter checkout.completed
 import { getFounderSeats } from "../lib/founderSeats.js";
 import { createProRiderHistoryHandler } from "../lib/proRiderHistory.js";
-import { createWatchlistLimitHandler } from "../lib/watchlistLimit.js";
 import {
   ACTIVE_AUCTION_STATUSES,
   OPEN_SWAP_STATUSES,
@@ -861,8 +860,6 @@ router.get("/billing/founder-seats", async (req, res) => {
 // Foerste rute der bruger isPro()-helperen til at gate funktionalitet (#2806).
 const proRiderHistory = createProRiderHistoryHandler({ supabase });
 router.get("/pro/rider-history/:riderId", requireAuth, presencePulseLimiter, (req, res) => proRiderHistory(req, res));
-const watchlistLimit = createWatchlistLimitHandler({ supabase });
-router.get("/watchlist/limit", requireAuth, presencePulseLimiter, (req, res) => watchlistLimit(req, res));
 
 // ── Email unsubscribe (#2725) — one-click opt-out, INGEN requireAuth (link
 // lever i selve e-mailen, læses af mailklienter der aldrig er logget ind).

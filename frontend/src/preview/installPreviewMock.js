@@ -228,10 +228,6 @@ export function installPreviewMock() {
           ],
         });
       }
-      if (method === "GET" && /\/api\/watchlist\/limit$/.test(url)) {
-        const pro = mockProEnabled();
-        return jsonResponse({ count: pro ? 34 : 14, cap: pro ? 100 : 20, isPro: pro });
-      }
       // Offentligt (uafhaengigt af cz_mock_pro) — samme seat-tal som RPC-listen ovenfor.
       if (method === "GET" && /\/api\/billing\/founder-seats$/.test(url)) {
         return jsonResponse({ taken: 2, cap: 50 });

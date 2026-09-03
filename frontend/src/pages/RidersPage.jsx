@@ -211,16 +211,8 @@ export default function RidersPage() {
     setToasts(prev => prev.filter(item => item.id !== id));
   }
 
-  function showWatchlistError(error) {
+  function showWatchlistError() {
     const id = `watchlist-error-${Date.now()}`;
-    // #4649: databasens loft-trigger (rider_watchlist-cap) rammer med denne
-    // errorCode i beskeden — vis en handlingsorienteret Pro-note i stedet for
-    // den generiske fejlbesked, når det er ÅRSAGEN (aldrig omvendt: en ægte
-    // netværks-/RLS-fejl skal stadig vise den generiske besked).
-    if (error?.message?.includes("watchlist_limit_reached")) {
-      setToasts(prev => [...prev, { id, tone: "warning", title: t("watchlistLimitReached") }]);
-      return;
-    }
     setToasts(prev => [...prev, { id, tone: "danger", title: t("watchlistToggleFailed") }]);
   }
 
@@ -297,7 +289,7 @@ export default function RidersPage() {
     if (watchlist.has(riderId)) {
       const { error } = await supabase.from("rider_watchlist").delete().eq("user_id", userId).eq("rider_id", riderId);
       if (error) {
-        showWatchlistError(error);
+        showWatchlistError();
         reportActionFailure("rider_watchlist_toggle", { reason: error.message, context: { riderId, op: "delete" } });
         return;
       }
@@ -305,7 +297,7 @@ export default function RidersPage() {
     } else {
       const { error } = await supabase.from("rider_watchlist").insert({ user_id: userId, rider_id: riderId });
       if (error) {
-        showWatchlistError(error);
+        showWatchlistError();
         reportActionFailure("rider_watchlist_toggle", { reason: error.message, context: { riderId, op: "insert" } });
         return;
       }

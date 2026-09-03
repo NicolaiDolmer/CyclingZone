@@ -294,7 +294,7 @@ export default function TeamProfilePage() {
               <div className="min-w-0">
                 {/* Holdnavnet FØRST (sidens vigtigste ord) — tags/meta UNDER navnet. */}
                 <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{team.name}</h1>
-                {/* #4649: "Founder no. N of 50" under holdnavnet — synligt for ALLE besøgende. */}
+                {/* #4649: "Founder supporter no. N of 50" under holdnavnet — synligt for ALLE besøgende. */}
                 <FounderHeroLine teamId={team.id} className="mt-1" />
                 <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                   {isMyTeam && <CategoryTag>{t("profile.yourTeam")}</CategoryTag>}

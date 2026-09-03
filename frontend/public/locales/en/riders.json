@@ -8,7 +8,6 @@
   "loadError": "Couldn't load the riders. Please try again.",
   "retry": "Try again",
   "watchlistToggleFailed": "Could not update your watchlist. Please try again.",
-  "watchlistLimitReached": "Your watchlist is full. Pro raises the cap, see /pro.",
   "table": {
     "nation": "Nation",
     "rider": "Rider",

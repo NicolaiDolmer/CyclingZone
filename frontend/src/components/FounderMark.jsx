@@ -25,7 +25,7 @@ export default function FounderMark({ teamId, className = "" }) {
   );
 }
 
-// Ren tekstlinje-variant til T3-heroen ("Founder no. N of 50" under navnet) —
+// Ren tekstlinje-variant til T3-heroen ("Founder supporter no. N of 50" under navnet) —
 // ikke en pille, fordi hero-meta-linjen allerede er tekst (division/manager),
 // ikke badges.
 export function FounderHeroLine({ teamId, className = "" }) {

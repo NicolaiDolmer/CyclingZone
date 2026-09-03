@@ -28,9 +28,9 @@
     "retry": "Prøv igen"
   },
   "founderMark": {
-    "label": "Founder",
-    "aria": "Founder nr. {n} af {cap}",
-    "heroLine": "Founder nr. {n} af {cap}"
+    "label": "Founder-supporter",
+    "aria": "Founder-supporter nr. {n} af {cap}",
+    "heroLine": "Founder-supporter nr. {n} af {cap}"
   },
   "gate": {
     "note": "Pro viser dette på tværs af alle sæsoner, ikke kun den nuværende.",
@@ -52,10 +52,6 @@
     "remove": "Fjern",
     "empty": "Ingen gemte filtre endnu.",
     "note": "Pro lader dig gemme filtre med navn og hoppe direkte tilbage til dem.",
-    "cta": "Se Pro"
-  },
-  "watchlistCap": {
-    "count": "{count} af {cap} ryttere fulgt",
     "cta": "Se Pro"
   }
 }

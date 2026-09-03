@@ -28,9 +28,9 @@
     "retry": "Try again"
   },
   "founderMark": {
-    "label": "Founder",
-    "aria": "Founder no. {n} of {cap}",
-    "heroLine": "Founder no. {n} of {cap}"
+    "label": "Founder supporter",
+    "aria": "Founder supporter no. {n} of {cap}",
+    "heroLine": "Founder supporter no. {n} of {cap}"
   },
   "gate": {
     "note": "Pro shows this across every season, not just the current one.",
@@ -52,10 +52,6 @@
     "remove": "Remove",
     "empty": "No saved filters yet.",
     "note": "Pro lets you save filters by name and jump back to them in one click.",
-    "cta": "See Pro"
-  },
-  "watchlistCap": {
-    "count": "{count} of {cap} riders watched",
     "cta": "See Pro"
   }
 }

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
-import { supabase, authHeaders } from "../lib/supabase";
+import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
@@ -41,9 +41,6 @@ const TOAST_DURATION_MS = 4000;
 export default function WatchlistPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("watchlist");
-  // #4649: "N of M" ønskeliste-loft (del C) — API_URL + auth-headere som i den
-  // eksisterende startAuction-fetch nedenfor, samme mønster.
-  const { t: tPro } = useTranslation("pro");
   // #3045: mobil-fold-tekst for ryttertype (samme namespace som /riders' #2849 bølge 2).
   const { t: tTypes } = useTranslation("riderTypes");
   // #4036: mobil-fold-tekst for markeds-status (RiderBadges' korte labels — se nedenfor).
@@ -66,7 +63,6 @@ export default function WatchlistPage() {
   // læsbar (RLS "Public read"), så ingen ny endpoint nødvendig.
   const [listedRiderIds, setListedRiderIds] = useState(() => new Set());
   const [toasts, setToasts] = useState([]);
-  const [watchlistLimit, setWatchlistLimit] = useState(null); // #4649: { count, cap, isPro }
 
   function dismissToast(id) {
     setToasts(prev => prev.filter(item => item.id !== id));
@@ -133,21 +129,6 @@ export default function WatchlistPage() {
   }
 
   useEffect(() => { loadWatchlist(); }, []);
-
-  // #4649: "N of M"-loftet (del C) — ikke-kritisk, fejler stille (linjen
-  // udelades bare hvis den ikke kan hentes).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const h = await authHeaders();
-        if (!h) return;
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/watchlist/limit`, { headers: h });
-        if (res.ok && !cancelled) setWatchlistLimit(await res.json());
-      } catch { /* ikke-kritisk */ }
-    })();
-    return () => { cancelled = true; };
-  }, [entries.length]);
 
   function pushToast(tone, title) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -464,22 +445,6 @@ export default function WatchlistPage() {
           </Button>
         ) : null}
       />
-
-      {/* #4649 del C: "N of M"-loftet. Pro/Founder hæver det (20→100); fri
-          spillere ser samme tal + en vej til /pro når de nærmer sig loftet. */}
-      {watchlistLimit && (
-        <p className="-mt-3 mb-4 font-data text-2xs text-cz-3">
-          {tPro("watchlistCap.count", { count: watchlistLimit.count, cap: watchlistLimit.cap })}
-          {!watchlistLimit.isPro && watchlistLimit.count >= watchlistLimit.cap && (
-            <>
-              {" · "}
-              <button type="button" onClick={() => navigate("/pro")} className="text-cz-accent-t hover:underline">
-                {tPro("watchlistCap.cta")}
-              </button>
-            </>
-          )}
-        </p>
-      )}
 
       {actionError && (
         <div role="alert" className="mb-4 rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-4 py-2.5 text-sm text-cz-danger">

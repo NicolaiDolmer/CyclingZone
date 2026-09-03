@@ -13,7 +13,7 @@ import { supabase } from "./supabase.js";
 let cachedPromise = null;
 // Loftet (FOUNDER_SEAT_CAP=50, backend/lib/founderSeats.js) — samme offentlige
 // endpoint ProUpgradePage.jsx allerede bruger til sin seat-counter, genbrugt
-// her så "Founder no. N of 50" ikke hardkoder et tal der kan drifte.
+// her så "Founder supporter no. N of 50" ikke hardkoder et tal der kan drifte.
 let cachedCapPromise = null;
 
 function fetchFounderMap() {
