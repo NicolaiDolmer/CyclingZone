@@ -107,6 +107,7 @@ function makeCtx(
     entrants: entrantsById,
     tuning: RACE_V4_TUNING,
     rngFor: boundRngFor(opts.seed ?? "cobbles-seed"),
+    orders: [],
   };
 }
 

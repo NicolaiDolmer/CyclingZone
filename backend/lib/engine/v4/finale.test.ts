@@ -83,6 +83,7 @@ function makeCtx(args: {
     entrants: args.entrants,
     tuning: RACE_V4_TUNING,
     rngFor: boundRngFor(args.seed ?? "finale-test-seed"),
+    orders: [],
   };
 }
 
@@ -273,6 +274,7 @@ test("finaleHook: gruppe-tids-invarianten holdes gennem hele segment-loopet (fas
         climbSelection: DEFAULT_MECHANIC_HOOKS.climbSelection,
         descent: DEFAULT_MECHANIC_HOOKS.descent,
         finale: finaleHook,
+        breakaway: DEFAULT_MECHANIC_HOOKS.breakaway,
       });
       const timeByGroup = new Map<string, number>();
       for (const rider of Object.values(state.riders)) {

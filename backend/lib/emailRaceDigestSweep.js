@@ -49,6 +49,11 @@
 // docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md goes straight from
 // the greeting to the result lines (see emailTemplates.js's
 // buildRaceDigestEmail for the same removal on the template side).
+//
+// #2853 DA follow-up (2026-09-03): users.language is read alongside the
+// other per-user columns above and passed straight through to
+// buildRaceDigestEmail; emailTemplates.js owns the actual copy selection
+// ('da' -> Danish, anything else -> English).
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { isEmailLoopActive } from "./emailLoopFlag.js";
@@ -138,7 +143,7 @@ export async function runEmailRaceDigestSweep({
   const userIds = [...teamByUser.keys()];
 
   const { data: userRows, error: usersErr } = await supabase
-    .from("users").select("id, email, last_seen, email_prefs, consent_preferences").in("id", userIds);
+    .from("users").select("id, email, last_seen, email_prefs, consent_preferences, language").in("id", userIds);
   if (usersErr) throw new Error(`race-digest users lookup: ${usersErr.message}`);
 
   // #4650: absence + opt-out filter, reusing the existing isEmailTypeEnabled
@@ -223,6 +228,7 @@ export async function runEmailRaceDigestSweep({
         teamName: team.name,
         results: [...bestByRace.values()],
         unsubscribeUrl,
+        language: user.language,
       });
       const result = await send({
         supabase,

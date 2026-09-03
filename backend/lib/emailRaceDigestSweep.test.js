@@ -428,6 +428,35 @@ test("subject and body carry the manager's real team name", async () => {
   assert.equal(sendCalls[0].subject, "Team Velodrome raced while you were away");
 });
 
+// ─── #2853 DA follow-up: users.language selects the mail's copy ───────────
+
+test("users.language 'da' renders the Danish digest copy", async () => {
+  const teamRows = [team("t1", { name: "Team Velodrome" })];
+  const userRows = [user("user-t1", { language: "da" })];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(sendCalls[0].subject, "Team Velodrome kørte mens du var væk");
+  assert.ok(sendCalls[0].html.includes("placering 1 i Race"));
+});
+
+test("any users.language other than 'da' (including missing) renders the English digest copy", async () => {
+  const teamRows = [team("t1", { name: "Team Velodrome" })];
+  const userRows = [user("user-t1", { language: undefined })];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(sendCalls[0].subject, "Team Velodrome raced while you were away");
+});
+
 test("per-manager failures are isolated", async () => {
   const teamRows = [team("t1"), team("t2")];
   const userRows = [user("user-t1"), user("user-t2")];
