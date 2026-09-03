@@ -1,54 +1,75 @@
 name: Playwright Smoke
 
-# Kører den FULDE Playwright-suite (alle specs i frontend/tests/e2e,
-# chromium-projekterne) — navnet "smoke" er historisk.
+# Kører den FULDE Playwright-suite (alle specs i frontend/tests/e2e, alle tre
+# projekter) - navnet "smoke" er historisk.
+#
+# FORM (#4647, 2/9): suiten er delt i ÉT JOB PR. PLAYWRIGHT-PROJEKT
+# (`e2e-shard`-matrixen) plus ét samle-job. Før: ét windows-job, workers=1,
+# 26-28 min pr. PR. Efter: tre parallelle shards med workers="100%" på hver
+# runner, og et samle-job der fælder dommen.
+#
+#   e2e-shard (desktop-chromium) ─┐
+#   e2e-shard (mobile-chromium)  ─┼─→ frontend-smoke  ← required check på main
+#   e2e-shard (mobile-webkit)    ─┘
+#
+# Samle-jobbet SKAL hedde præcis `frontend-smoke`: det er navnet branch
+# protection kræver. Matrix-jobs kan aldrig bære et required check-navn -
+# GitHub suffikser dem med "(<matrix-værdi>)", og branch protection ville vente
+# for evigt på et "frontend-smoke" der aldrig rapporterer (samme fejlklasse som
+# scripts/check-required-ci-jobs.mjs sag (c) vogter). Derfor: shards kører
+# testene, `frontend-smoke` samler op med `if: always()` og fejler hvis en shard
+# fejlede ELLER brugte for lang tid.
+#
+# Runner: windows-latest, bevidst. De committede toHaveScreenshot-baselines er
+# taget på Windows; et skift til ubuntu-latest kræver en re-baseline af ALLE
+# snapshots i samme PR og er derfor et selvstændigt skridt (se #4647).
 #
 # Værn mod stille e2e-spec-rot (2026-07-02): da rytterprofil-redesignet (#2000,
 # PR #2037) fjernede "Effektprofil"-sektionen, FANGEDE dette job regressionen i
-# race-physiology-preview.spec.js — men PR'en blev merget alligevel, fordi
+# race-physiology-preview.spec.js - men PR'en blev merget alligevel, fordi
 # frontend-smoke ikke er et required check og auto-merge kun venter på required
 # checks. Fixet i PR #2114; postmortem:
 # .claude/learnings/2026-07-02-e2e-spec-rot-ci-gater-kun-core-smoke.md
 #
 # Derfor: intet `paths:`-filter på workflow-niveau. Path-filteret ligger i
-# `changes`-jobbet, så frontend-smoke ALTID rapporterer en konklusion (skipped
-# tæller som grøn for branch protection) og dermed kan gøres til required
-# check. Et workflow-niveau paths-filter ville efterlade et required check som
-# "Expected" for evigt på docs-/backend-PR'er og blokere merge.
+# `changes`-jobbet, så frontend-smoke ALTID rapporterer en konklusion og dermed
+# kan være required check. Et workflow-niveau paths-filter ville efterlade et
+# required check som "Expected" for evigt på docs-/backend-PR'er og blokere
+# merge. Samle-jobbet kører derfor `if: always()` og er grønt-med-besked når
+# shards'ene er `skipped`.
 
 on:
   pull_request:
   workflow_dispatch:
   # Merge queue (4/8): suiten kørte allerede på selve PR'en. I køen sætter
-  # changes-jobbet eksplicit frontend=false, så frontend-smoke skipper
-  # (skipped = grøn for required checks, præcis som på docs-/backend-PR'er)
-  # og kø-batches ikke betaler ~10 min windows-runtime pr. omgang.
+  # changes-jobbet eksplicit frontend=false, så shards'ene skipper
+  # (og frontend-smoke bliver grønt uden at måle noget, præcis som på
+  # docs-/backend-PR'er) og kø-batches ikke betaler windows-runtime pr. omgang.
   merge_group:
   # #4281: main kan stå rød i dagevis uden at nogen opdager det, fordi
-  # `pull_request` kun kører mod DIFF'en — en PR merget med rød smoke (eller en
+  # `pull_request` kun kører mod DIFF'en - en PR merget med rød smoke (eller en
   # dårlig merge af to grønne PR'er) efterlader ingen efterfølgende kørsel der
   # fanger det. Konkret 26/8: et layout-overløb (#4275) + to røde e2e-tests lå
   # på ren main (verificeret på 20b1debe1) i mindst et døgn, uopdaget, indtil en
   # urelateret session kørte hele suiten af andre grunde.
   #
-  # Natlig cron i stedet for en push-trigger pr. merge til main: suiten tager
-  # ~18-20 min på windows-latest, og en push-trigger ville betale den pris
-  # FOR HVER merge. Nightly fanger et rødt main inden for et døgn — samme
-  # afvejning som #4155/#4161 → calendar-invariant-audit.yml.
+  # Natlig cron i stedet for en push-trigger pr. merge til main: nightly fanger
+  # et rødt main inden for et døgn - samme afvejning som #4155/#4161 →
+  # calendar-invariant-audit.yml.
   #
   # Denne trigger gør IKKE frontend-smoke til et nyt required check, og den
   # ændrer intet ved det eksisterende required check på PR'er: en scheduled
   # kørsel er ikke knyttet til en PR eller et commit-SHA nogen anden PR
   # afventer, den rapporterer kun til et tracking-issue (se nedenfor).
   schedule:
-    - cron: '10 4 * * *' # dagligt 04:10 UTC — efter calendar-invariant-audit + clock-drift-test-check (begge 03:50)
+    - cron: '10 4 * * *' # dagligt 04:10 UTC - efter calendar-invariant-audit + clock-drift-test-check (begge 03:50)
 
 permissions:
   contents: read
 
 jobs:
   # Letvægts-path-filter (~10s ubuntu-job) i stedet for workflow-niveau `paths:`
-  # — se kommentaren øverst. Matcher det gamle filter: frontend/** + denne fil.
+  # - se kommentaren øverst. Matcher det gamle filter: frontend/** + denne fil.
   changes:
     runs-on: ubuntu-latest
     permissions:
@@ -75,20 +96,34 @@ jobs:
           FILES=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename')
           # Ikke `grep -q`: tidlig exit + pipefail kan SIGPIPE printf og vende
           # svaret til falsk "ingen frontend-ændringer". >/dev/null læser alt.
-          if printf '%s\n' "$FILES" | grep -E '^(frontend/|\.github/workflows/playwright-smoke\.yml$)' > /dev/null; then
+          if printf '%s\n' "$FILES" | grep -E '^(frontend/|scripts/(check-e2e-shard-budget|extract-e2e-flakes)\.mjs$|\.github/workflows/playwright-smoke\.yml$)' > /dev/null; then
             echo "frontend=true" >> "$GITHUB_OUTPUT"
           else
             echo "frontend=false" >> "$GITHUB_OUTPUT"
           fi
 
-  frontend-smoke:
+  # ÉT job pr. Playwright-projekt. fail-fast: false - en rød mobile-webkit må
+  # ikke aflyse de to andre shards, ellers mister samle-jobbet sine målinger og
+  # kan ikke sige HVAD der var galt.
+  e2e-shard:
     needs: changes
     if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true'
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop-chromium, mobile-chromium, mobile-webkit]
+        include:
+          # Kun den browser shard'en faktisk bruger installeres: `npx playwright
+          # install chromium webkit` hentede før begge på ALLE kørsler.
+          - project: desktop-chromium
+            browser: chromium
+          - project: mobile-chromium
+            browser: chromium
+          - project: mobile-webkit
+            browser: webkit
     permissions:
       contents: read
-      pull-requests: write # fejl-kommentar på PR'en (rød suite må ikke være stille)
-      issues: write # #4281: tracking-issue ved rødt på den natlige cron
     defaults:
       run:
         working-directory: frontend
@@ -106,19 +141,19 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      # #3429: CI kører alle tre projekter igen (desktop-chromium,
-      # mobile-chromium, mobile-webkit). Webkit var droppet siden #1342 og var
-      # dermed den eneste browser hvis snapshots kunne drive uset — se
-      # playwright.config.js for hvorfor #1342's rodårsag ikke findes længere.
-      - name: Install Playwright browsers
-        run: npx playwright install chromium webkit
+      # #3429: CI kører alle tre projekter (desktop-chromium, mobile-chromium,
+      # mobile-webkit). Webkit var droppet siden #1342 og var dermed den eneste
+      # browser hvis snapshots kunne drive uset - se playwright.config.js for
+      # hvorfor #1342's rodårsag ikke findes længere.
+      - name: Install Playwright browser
+        run: npx playwright install ${{ matrix.browser }}
 
       # #1342: byg frontend FØR Playwright, så webServer-kommandoen i CI kun er
-      # `vite preview` (én proces). `npm run build && npm run preview` i én
+      # den statiske server (én proces). `npm run build && npm run preview` i én
       # webServer-kommando efterlod en forældreløs preview-proces på
       # windows-runneren som Playwright ikke kunne dræbe → jobbet hang 48 min.
-      # VITE_E2E + VITE_-vars bages ind her på build-tid (preview serverer
-      # statisk dist og læser dem ikke). Port 4173 = MAIN_PORT (se playwright.ports.js).
+      # VITE_E2E + VITE_-vars bages ind her på build-tid (serveren serverer
+      # statisk dist og læser dem ikke). Port 4173 = MAIN_PORT (playwright.ports.js).
       - name: Build frontend (e2e)
         run: npm run build
         env:
@@ -128,33 +163,74 @@ jobs:
           VITE_SUPABASE_ANON_KEY: e2e-anon-key
           VITE_PUBLIC_APP_URL: http://127.0.0.1:4173
 
-      # timeout-minutes: backstop så et fremtidigt teardown-hæng aldrig igen kan
-      # æde en 6-timers runner (#1342: et webkit-hæng kørte 48 min før cancel).
-      # #3429 lagde mobile-webkit tilbage i suiten (+~5 min lokalt målt: 125
-      # tests, 4,6 min), så loftet er hævet fra 15 til 25 min. Det er stadig
-      # stramt nok til at et ægte hæng fejler hurtigt frem for at hænge timevis.
       # #3554: guards.test.js fanger KILDEN statisk (en spec der skriver til en
       # committet sti). Den kører her fordi den er sekunder og skal fejle før
-      # de 25 minutters suite, ikke efter.
+      # suiten, ikke efter.
       - name: Run e2e guards (static)
         run: node --test tests/e2e/guards.test.js
 
-      - name: Run Playwright smoke
-        # #2960 (1/9): 25 -> 35. Suiten er vokset til ~630 tests og tager 25-27
-        # min paa runneren under React 19 - run 33513547245 blev draebt af
-        # loftet med 587 bestaaede og NUL fejlede tests. 35 er stadig stramt
-        # nok til at et aegte haeng fejler hurtigt (jf. #1342-historikken).
-        timeout-minutes: 35
-        run: npm run test:e2e
+      # Selve shard'en. `--grep-invert @flaky` er karantæne-mekanismen: en test
+      # der tagges `@flaky` køres stadig (steppet nedenfor), men kan ikke gøre
+      # dette blokerende step rødt. Karantæne-listen bor dermed synligt i
+      # spec-filerne, ikke i en sidekanal.
+      #
+      # Tiden måles omkring PRÆCIS denne kommando (ikke hele jobbet): det er
+      # suitens egen tid, uafhængig af npm ci/browser-download, og det er den
+      # scripts/check-e2e-shard-budget.mjs holder op mod tidsbudgettet.
+      # timeout-minutes: backstop mod et teardown-hæng (#1342 kørte 48 min før
+      # cancel). 20 er rigeligt over budgettets 12 og stadig stramt.
+      - name: Run Playwright shard
+        id: shard
+        shell: bash
+        timeout-minutes: 20
+        env:
+          PW_PROJECT: ${{ matrix.project }}
+        run: |
+          start=$(date +%s)
+          set +e
+          npm run test:e2e -- --project="$PW_PROJECT" --grep-invert @flaky
+          status=$?
+          set -e
+          elapsed=$(( $(date +%s) - start ))
+          mkdir -p ../e2e-shard-metrics
+          printf '{"project":"%s","seconds":%s,"exitCode":%s}\n' "$PW_PROJECT" "$elapsed" "$status" > "../e2e-shard-metrics/$PW_PROJECT.json"
+          echo "shard $PW_PROJECT: ${elapsed}s, exit $status"
+          exit $status
+
+      # Flake-sporing: en test der fejlede første forsøg og bestod ved retry er
+      # grøn i dag og dermed usynlig (#4292: 1 rød test af 560, en NY hver gang).
+      # json-rapporten markerer netop den klasse som "flaky"; her høstes den til
+      # en artifact. Kører før karantæne-steppet nedenfor, som overskriver
+      # rapporten.
+      - name: Collect flake report
+        if: always()
+        shell: bash
+        working-directory: .
+        env:
+          PW_PROJECT: ${{ matrix.project }}
+        run: node scripts/extract-e2e-flakes.mjs --report frontend/playwright-report/results.json --project "$PW_PROJECT" --out "e2e-shard-metrics/flakes-$PW_PROJECT.json"
+
+      # Karantæne-kørslen: `@flaky`-tagede tests KØRER, men blokerer ikke.
+      # `--pass-with-no-tests` fordi listen normalt er tom - og den skal være tom
+      # for at #4647 kan lukkes. continue-on-error gør resultatet synligt i
+      # step-listen uden at farve jobbet.
+      - name: Run quarantined @flaky tests (non-blocking)
+        if: success()
+        continue-on-error: true
+        shell: bash
+        timeout-minutes: 10
+        env:
+          PW_PROJECT: ${{ matrix.project }}
+        run: npm run test:e2e -- --project="$PW_PROJECT" --grep @flaky --pass-with-no-tests
 
       # #3554 forward-guard: suiten må ALDRIG efterlade et beskidt arbejdstræ.
       # Fem specs skrev direkte til committede PNG'er, så den obligatoriske
-      # lokale pre-flight altid efterlod 7-9 ændrede binære filer — enten
+      # lokale pre-flight altid efterlod 7-9 ændrede binære filer - enten
       # smuttede de med i en urelateret PR (PNG-diffs er usynlige i review),
       # eller man rullede tilbage med `git checkout --` og ramte ægte,
-      # ucommittede skærmbilleder. Guarden ovenfor dækker `page.screenshot`;
-      # denne dækker alt andet en fremtidig spec måtte finde på at skrive.
+      # ucommittede skærmbilleder.
       - name: Verify e2e left the working tree clean
+        if: always()
         shell: bash
         working-directory: .
         run: |
@@ -163,16 +239,97 @@ jobs:
             exit 1
           fi
 
+      # Målinger + flake-rapport SKAL uploades også når shard'en er rød:
+      # samle-jobbet fælder dommen ud fra dem, og et manglende måletal er i sig
+      # selv rødt (gaten må ikke kunne blive grøn ved at tabe sin måling).
+      - name: Upload shard metrics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-shard-metrics-${{ matrix.project }}
+          path: e2e-shard-metrics/
+          retention-days: 7
+
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: frontend/playwright-report/
           retention-days: 7
 
+  # Samle-checket. Navnet er en KONTRAKT med branch protection (se
+  # scripts/ci-required-checks.json) - omdøb det aldrig uden at ejeren har
+  # ændret required checks først. `if: always()` fordi et skipped samle-job og
+  # et skipped shard-sæt ser ens ud for GitHub, men kun det første kan bære
+  # tidsbudget-gaten.
+  frontend-smoke:
+    needs: [changes, e2e-shard]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # download-artifact på egne run-artifacts
+      pull-requests: write # fejl-kommentar på PR'en (rød suite må ikke være stille)
+      issues: write # #4281: tracking-issue ved rødt på den natlige cron
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # Path-filteret er selv en gate: fejler det, ved vi ikke om suiten SKULLE
+      # have kørt, og så må samle-checket ikke lyse grønt.
+      - name: Fail if the path filter itself failed
+        if: needs.changes.result == 'failure' || needs.changes.result == 'cancelled'
+        run: |
+          echo "::error::changes-jobbet endte som ${{ needs.changes.result }} - vi ved ikke om e2e-suiten skulle køre. frontend-smoke kan ikke give grønt lys."
+          exit 1
+
+      # Gaten tester sig selv FØR den dømmer. Sekunder på ubuntu, og den fanger
+      # den værste fejlklasse et budget-check kan have: et grønt check der har
+      # mistet sin evne til at blive rødt.
+      - name: Unit-test the gate scripts
+        run: node --test scripts/check-e2e-shard-budget.test.mjs scripts/extract-e2e-flakes.test.mjs
+
+      - name: Download shard metrics
+        if: needs.e2e-shard.result != 'skipped'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: e2e-shard-metrics-*
+          merge-multiple: true
+          path: e2e-shard-metrics
+
+      - name: Merge flake reports
+        if: needs.e2e-shard.result != 'skipped'
+        run: node scripts/extract-e2e-flakes.mjs --merge e2e-shard-metrics --out e2e-flakes.json
+
+      - name: Upload flake report
+        if: needs.e2e-shard.result != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-flakes
+          path: e2e-flakes.json
+          retention-days: 14
+
+      # Tidsbudget-gaten. 12 min pr. shard: målt før-tilstand var 26-28 min for
+      # ALLE tre projekter i serie, så en enkelt shard over 12 min betyder at
+      # suiten er vokset forbi det den blev shardet for at fikse.
+      - name: Time budget gate + shard verdict
+        env:
+          SHARDS_RESULT: ${{ needs.e2e-shard.result }}
+        run: |
+          node scripts/check-e2e-shard-budget.mjs \
+            --dir e2e-shard-metrics \
+            --budget-minutes 12 \
+            --shards-result "$SHARDS_RESULT" \
+            --projects desktop-chromium,mobile-chromium,mobile-webkit
+
       # Rød suite skal være synlig i PR-samtalen (også på mobil, hvor
-      # checks-boksen let overses — #2037 blev merget med rød frontend-smoke).
+      # checks-boksen let overses - #2037 blev merget med rød frontend-smoke).
       # continue-on-error: fork-PR'er har read-only token; kommentaren er
       # best-effort og må aldrig maskere selve test-resultatet.
       - name: Comment on PR on failure
@@ -184,12 +341,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **frontend-smoke fejlede** — den fulde Playwright-suite fandt regressioner. [Se run + playwright-report-artifact]($RUN_URL).
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **frontend-smoke fejlede** - enten fandt en Playwright-shard regressioner, eller en shard brød tidsbudgettet. [Se run + artifacts]($RUN_URL): \`playwright-report-<projekt>\` for fejlene, \`e2e-flakes\` for tests der først bestod ved retry.
 
           Rød e2e må ikke merges stille (#2000-spec-rot → PR #2114): fix koden eller opdatér spec'en i samme PR. Auto-merge venter nu eksplicit på dette check."
 
       # #4281: samme mønster som calendar-invariant-audit.yml / clock-drift-test-check.yml
-      # — ét samlet issue pr. audit-type, opdateret in-place i stedet for et nyt
+      # - ét samlet issue pr. audit-type, opdateret in-place i stedet for et nyt
       # issue pr. rød nat. Kun scheduled runs opretter/opdaterer issuet; en rød
       # PR-kørsel har allerede PR-kommentaren ovenfor og fejler sit eget required check.
       - name: Open or update tracking issue (nightly schedule only)
@@ -202,10 +359,11 @@ jobs:
             const body = [
               '## Playwright Smoke fejlede på en natlig kørsel mod main',
               '',
-              'Dette er IKKE en PR-kørsel — den fulde e2e-suite kørte natligt mod main og fandt en rød tilstand ' +
+              'Dette er IKKE en PR-kørsel - den fulde e2e-suite kørte natligt mod main og fandt en rød tilstand ' +
                 'som ingen PR-kørsel nødvendigvis vil fange igen (se [#4281](https://github.com/${{ github.repository }}/issues/4281)).',
               '',
-              'main kan have stået rød siden den PR der introducerede fejlen blev merget — check playwright-report-artifact-en på run-linket for detaljer.',
+              'main kan have stået rød siden den PR der introducerede fejlen blev merget - check artifacts på run-linket: ' +
+                '`playwright-report-<projekt>` for selve fejlene, `e2e-flakes` for tests der kun bestod ved retry.',
               '',
               `Run-link: ${runUrl}`,
             ].join('\n');

@@ -205,7 +205,7 @@ Bruges i slice 2 på hver af de 63 sider, i lys, mørk og mobil. **Hvert "nej" e
 
 - **Slice 2 (audit #4624):** screenshot af hver side i lys/mørk/mobil, tjeklisten besvares, ét fund pr. side, sorteret efter spillertrafik. Fund der gentager sig på 3+ sider er kit-fund (slice 3), ikke side-fund.
 - **Slice 3 (kit #4625):** tilbagevendende fund løses i `components/ui`, så de ikke kan opstå igen. Eksempel: `DataTable` med vandret scroll på mobil løser P10 for alle T2-sider på én gang.
-- **Slice 4 (CI #4626):** kolonnen "sådan opdages det" i §3 er specifikationen. Det der kan greppes skal fejle et build.
+- **Slice 4 (CI #4626):** kolonnen "sådan opdages det" i §3 er specifikationen. Det der kan greppes skal fejle et build. `scripts/check-anti-slop.mjs` håndhæver nu pile-som-ikon/arbitrær `text-[Npx]`/skygge-uden-for-overlay/gradient herfra (ratchet-baseline pr. fil); rounded-xl/2xl, emoji og rå hex dækkes allerede af `scripts/lint-ui-slop.mjs`.
 - **Slice 5 (spejl #4627):** §0-§3 kopieres som readme-afsnit i Claude Design-projektet `a332ec00`, så design-agenten tegner mod samme smag.
 - **Nye sider og design-briefs:** briefen citerer P1-P11 og tjeklisten. Et design-go skal kunne svare ja på spørgsmål 1-4 før der tegnes videre.
 - **Ejeren har sidste ord.** Dette dokument gør smag til en gate. Det erstatter ikke ejerens blik; det gør at vi fanger 90 % før han skal bruge det.
