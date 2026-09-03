@@ -169,6 +169,7 @@ const TERRAIN_ICON_BY_PROFILE = {
   itt_hilly: TimeTrialIcon,
   ttt: TeamIcon,
   cobbles: CobblesIcon,
+  gravel: CobblesIcon, // #4105: grus deler ikon med brosten (samme terraen-familie)
   classic: RoadIcon,
 };
 

@@ -240,6 +240,7 @@
         "flat_sprint": "Flat",
         "long_sprint_classic": "Rolling",
         "cobbled_classic": "Cobbles",
+        "gravel_classic": "Gravel",
         "puncheur": "Hilly",
         "hilly_classic": "Hilly",
         "mountain_classic": "Mountain",

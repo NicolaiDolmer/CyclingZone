@@ -38,6 +38,9 @@ export const RACE_PROFILE_ABILITY_MAP = Object.freeze({
   hilly: ["climbing", "punch", "tempo"],
   classic: ["punch", "durability", "positioning"],
   cobbles: ["cobblestone", "durability", "flat"],
+  // #4105: grus traener de samme evner som brosten, men bytter `flat` ud med
+  // `endurance` — grusklassikeren er laengere og mere nedslidende end brostenens.
+  gravel: ["cobblestone", "durability", "endurance"],
   mountain: ["climbing", "endurance", "durability"],
   high_mountain: ["climbing", "endurance", "recovery", "durability"],
   itt: ["time_trial", "tempo"],

@@ -1170,6 +1170,7 @@
       "itt_hilly": "Hilly time trial",
       "ttt": "Team time trial",
       "cobbles": "Cobbles",
+      "gravel": "Gravel",
       "classic": "Classic"
     },
     "finaleType": {
@@ -1220,6 +1221,10 @@
         "cobbles": {
           "label": "{count} cobbled sectors",
           "note": "positioning & power over pavé"
+        },
+        "gravel": {
+          "label": "{count} gravel sectors",
+          "note": "handling & power on loose ground"
         }
       },
       "waypoint": {
