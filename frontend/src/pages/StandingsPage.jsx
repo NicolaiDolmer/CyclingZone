@@ -373,7 +373,10 @@ export default function StandingsPage() {
     .filter(s => matchesPoolTab(rowPoolId(s), poolTab, hasPoolSubtabs))
     .sort((a, b) => effectivePts(b) - effectivePts(a));
   // Linse B sorteres efter trup-værdi; Linse A efter point. Søgning filtrerer begge.
-  const strengthVal = (s) => (strength?.[s.team_id]?.totalValue || 0);
+  // #4374: s kan være undefined (tom division/pulje giver divRanked[0] === undefined,
+  // linje ~446) — samme forsvars-mønster som effectivePts (linje 355). Uden `s?.` her
+  // crashede hele Linse B ("Squad strength virker ikke", knud_r_flink 28/8).
+  const strengthVal = (s) => (strength?.[s?.team_id]?.totalValue || 0);
   const divRanked = lens === LENS_STRENGTH
     ? [...divStandingsBase].sort((a, b) => strengthVal(b) - strengthVal(a))
     : divStandingsBase;

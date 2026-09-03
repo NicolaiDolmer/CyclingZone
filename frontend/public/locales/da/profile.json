@@ -30,6 +30,14 @@
     "darkLabel": "Mørkt",
     "darkHint": "Mørk baggrund i hele appen"
   },
+  "assistant": {
+    "title": "Assistent",
+    "subtitle": "Vælg om assistenten må udtage hold for dig.",
+    "toggleLabel": "Assistenten udtager mit hold automatisk",
+    "toggleHint": "Til: assistenten udtager et hold til de løb du ikke selv har sat. Fra: de løb står tomme til du selv udtager, og kun redningen når løbet starter gælder stadig.",
+    "on": "Assistenten udfylder nu dine hold.",
+    "off": "Assistenten udtager ikke længere for dig."
+  },
   "privacy": {
     "title": "Privatliv",
     "subtitle": "Du bestemmer hvad vi må måle. Ændringer træder i kraft næste gang du åbner spillet.",

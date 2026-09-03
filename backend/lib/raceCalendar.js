@@ -28,6 +28,7 @@ const PROFILE_TO_CAL_BUCKET = {
   flat: "sprint",
   rolling: "sprint",
   cobbles: "cobbles",
+  gravel: "cobbles", // #4105: grus deler kalender-glyf med brosten (samme familie)
   hilly: "hilly",
   classic: "hilly",
   mountain: "mountain",

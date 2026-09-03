@@ -33,6 +33,8 @@ export default function ProfilePage() {
   const [team, setTeam] = useState(null);
   const [discordId, setDiscordId] = useState("");
   const [dmStatus, setDmStatus] = useState(null);
+  const [assistant, setAssistant] = useState(null);
+  const [savingAssistant, setSavingAssistant] = useState(false);
   const [savingDmEnabled, setSavingDmEnabled] = useState(false);
   const [testingDm, setTestingDm] = useState(false);
   const [teamName, setTeamName] = useState("");
@@ -73,8 +75,21 @@ export default function ProfilePage() {
     setTeam(teamData);
     setTeamName(teamData?.name || "");
     setManagerName(teamData?.manager_name || "");
-    await refreshDmStatus();
+    await Promise.all([refreshDmStatus(), refreshAssistantSettings()]);
     setLoading(false);
+  }
+
+  // #4201: assistentens tilstand er runtime-styret (app_config). Kortet vises kun
+  // naar tilstanden er "opt_in" — i de to andre tilstande er der intet at vaelge.
+  async function refreshAssistantSettings() {
+    const headers = await getAuthHeaders();
+    if (!headers) return;
+    try {
+      const res = await fetch(`${API}/api/me/assistant-settings`, { headers });
+      if (res.ok) setAssistant(await res.json());
+    } catch {
+      // best-effort — uden svar vises kortet ikke (fail-safe: ingen tom kontakt)
+    }
   }
 
   async function refreshDmStatus() {
@@ -237,6 +252,39 @@ export default function ProfilePage() {
       });
     } finally {
       setSavingDmEnabled(false);
+    }
+  }
+
+  // #3628-moenstret: try/finally om HELE kroppen, saa kontakten aldrig saetter
+  // sig fast i gemmer-tilstand hvis nettet falder vaek under getAuthHeaders().
+  async function toggleAssistantAutopick(enabled) {
+    setSavingAssistant(true);
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) {
+        showMsg(t("discord.noSession"), "error");
+        return;
+      }
+      const res = await fetch(`${API}/api/me/assistant-settings`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ enabled }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) showMsg(data.error || t("errors:generic.serverError"), "error");
+      else {
+        setAssistant(prev => ({ ...prev, autopick_enabled: data.autopick_enabled }));
+        showMsg(enabled ? t("assistant.on") : t("assistant.off"));
+      }
+    } catch (cause) {
+      showMsg(t("errors:generic.networkError"), "error");
+      reportActionFailure("profile_assistant_autopick", {
+        reason: "network",
+        cause,
+        context: { enabled },
+      });
+    } finally {
+      setSavingAssistant(false);
     }
   }
 
@@ -496,6 +544,26 @@ export default function ProfilePage() {
           })}
         </div>
       </Card>
+
+      {/* Assistent (#4201) — kun naar tilstanden er "opt_in"; ellers er der intet valg */}
+      {assistant?.mode === "opt_in" && (
+        <Card className="p-5 mb-4">
+          <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("assistant.title")}</h2>
+          <p className="text-cz-3 text-xs mb-4">{t("assistant.subtitle")}</p>
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="profile-assistant-autopick" className="text-cz-1 text-sm font-medium">
+              {t("assistant.toggleLabel")}
+            </label>
+            <Toggle
+              id="profile-assistant-autopick"
+              checked={assistant.autopick_enabled !== false}
+              disabled={savingAssistant}
+              onChange={e => toggleAssistantAutopick(e.target.checked)}
+            />
+          </div>
+          <p className="text-cz-3 text-xs leading-relaxed mt-3">{t("assistant.toggleHint")}</p>
+        </Card>
+      )}
 
       {/* Privatliv */}
       <Card className="p-5 mb-4">

@@ -127,6 +127,13 @@ export function diffToOverrides({ matrix, riders }) {
       const cell = riderCells[riderIdStr];
       const rider = ridersById.get(riderIdStr);
       if (!rider) continue; // defensiv — rytter forsvundet fra holdet siden load
+      // #4538: en udgået/skadet rytter er ikke redigerbar i UI'et, men hans
+      // celler kan stadig bære en override fra FØR han udgik (sat mens han var
+      // aktiv, på en etape der dengang var fremtidig). Diffen skal aldrig
+      // sende den override videre — backend afviser den alligevel (400
+      // stage_roles_rider_abandoned), og et gem skal ikke fejle pga. en celle
+      // spilleren ikke kan røre.
+      if (rider.abandoned) continue;
       if (isCellOverridden(cell, rider)) {
         out.push({
           stage_number: stageNumber,

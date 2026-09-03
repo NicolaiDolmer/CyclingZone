@@ -9,7 +9,10 @@ const PROFILE_TO_BUCKET = Object.freeze({
   flat: "flat", rolling: "flat",
   hilly: "hilly", classic: "hilly",
   mountain: "mountain", high_mountain: "mountain",
-  cobbles: "cobbles",
+  // #4105: grus deler bucket med brosten. Kaptajn-prioriteterne er spiller-vendte, og
+  // ejer-rammen 3/9 er at det er "naesten samme type der er god til den slags loeb" — en
+  // sjette bucket ville tvinge spilleren til at rangordne den samme rytter to gange.
+  cobbles: "cobbles", gravel: "cobbles",
   itt: "itt", ttt: "itt", itt_hilly: "itt",
 });
 

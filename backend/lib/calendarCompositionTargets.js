@@ -75,7 +75,13 @@ const PROFILE_TO_CATEGORY = Object.freeze({
   // itt_hilly (#3546 D): stadig en TIDSKØRSEL for K-B-budgetteringens formål (den er en
   // GT's ANDEN enkeltstart, ikke en ny kategori spilleren oplever anderledes i budgettet).
   itt: "itt", itt_hilly: "itt",
-  cobbles: "cobbles",
+  // gravel (#4105/#4270): grus taeller i BROSTENS-kategorien. Ejer-ramme 3/9: "det skal
+  // vaere naesten samme type der er god til den slags loeb", og grusloeb taeller i
+  // brostensfamilien i kalenderens daekning. Linjen staar her fordi denne fils EGEN
+  // regressionsvagt kraever den: calendarCompositionTargets.test.js:37 "alle generator-
+  // profiltyper har en kompositions-kategori" med kommentaren "Fejler denne, skal
+  // PROFILE_TO_CATEGORY udvides". Uden den lander grus usynligt i naevneren uden kategori.
+  cobbles: "cobbles", gravel: "cobbles",
   ttt: "ttt",
 });
 
@@ -319,7 +325,9 @@ export function computeUniformTierStats(races = []) {
       raceDays += 1;
       const pt = s?.profile_type;
       if (pt === "itt" || pt === "itt_hilly") counts.itt += 1;
-      else if (pt === "cobbles") counts.cobbles += 1;
+      // #4105: grus taeller med i §6b's brostens-maal, samme grund som
+      // PROFILE_TO_CATEGORY ovenfor — ellers ville §6 og §6b vaere uenige om samme etape.
+      else if (pt === "cobbles" || pt === "gravel") counts.cobbles += 1;
       else if (pt === "high_mountain") counts.high_mountain += 1;
     }
   }

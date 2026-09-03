@@ -108,6 +108,11 @@ export default function FocusPanel({
     // deps for at panelet følger med hvis planen ændrer sig mens det er åbent.
   }, [open, savedDayType, savedSession]);
 
+  // En session-note er valgfri: findes nøglen ikke, renderes der ingenting.
+  // `defaultValue: ""` frem for i18n.exists, så en manglende nøgle aldrig kan
+  // lække sit eget navn ud på fladen.
+  const sessionNote = (session) => t(`dayPanel.sessionNote_${session}`, { defaultValue: "" });
+
   const needsSession = draftDayType != null && !DAY_TYPES_WITHOUT_SESSION.includes(draftDayType);
   const groups = sessionGroupsForDayType(draftDayType);
 
@@ -287,7 +292,16 @@ export default function FocusPanel({
                         )}
                       </span>
                       <span className="min-w-0 text-2xs text-cz-2 max-sm:col-start-2">
-                        {row.abilities.map((a) => tRider(`racePreview.derived.${a}`)).join(" · ")}
+                        <span className="block">
+                          {row.abilities.map((a) => tRider(`racePreview.derived.${a}`)).join(" · ")}
+                        </span>
+                        {/* #4631: én linje kun hvor valget ikke giver sig selv af
+                            evne-listen — de tre intervaldage deler evner og skal
+                            kunne skelnes uden at man gætter. Sessioner uden en
+                            note får ingen tom linje. */}
+                        {sessionNote(session) && (
+                          <span className="mt-0.5 block text-cz-3">{sessionNote(session)}</span>
+                        )}
                       </span>
                       {showPerSeason && (
                         <span className="font-data text-2xs tabular-nums text-cz-1 max-sm:col-start-2">

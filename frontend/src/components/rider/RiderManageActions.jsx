@@ -478,6 +478,12 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
                     {extendQuote ? `${formatNumber(extendQuote.newSalary)} CZ$` : "..."}
                   </span>
                 </div>
+                {/* #3442: en høj forlængelseskrav ift. nuværende løn er ikke en
+                    fejl — nuværende løn er frosset siden signering (§2 i
+                    ECONOMY_RULES.md), mens det nye krav følger rytterens
+                    friske sæson-produktion. Kort linje her, fuld forklaring i
+                    Hjælp (riderSalaryView). Ingen formel/tal nævnt. */}
+                <p className="text-cz-3 text-3xs">{t("manage.extend.newSalaryHint")}</p>
                 {extendQuote && (
                   <div className="flex items-center justify-between">
                     <span className="text-cz-3 text-xs">{t("manage.extend.newContract")}</span>

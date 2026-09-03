@@ -46,7 +46,7 @@ export const BALANCE_SNAPSHOT_DEFAULTS = Object.freeze({
   referenceYear: LAUNCH_REFERENCE_YEAR,
 });
 
-const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "classic"];
+const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "gravel", "classic"];
 
 // Samme GT-skabelon som simulateSeasonDryRun.js (21 etaper).
 const GT_TEMPLATE = [
