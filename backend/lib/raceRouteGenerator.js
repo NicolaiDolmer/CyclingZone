@@ -69,12 +69,47 @@ export const CLASS_DISTANCE_BANDS = Object.freeze({
   Monuments: [250, 290],
 });
 
+// #4288 (ejer-beslutning 3/9): en Grand Tour er spillets laengste loeb, og dens etaper
+// skal maales mod virkeligheden - ikke mod den samme skabelon som en firedages Class2-tur.
+// Ejeren satte tre tal: samlet snit INKL. enkeltstart 155-170 km, landevejsetaper 165-185
+// km i snit, prolog 8-14 km og rigtige enkeltstarter 25-40 km. #4709 gOEr dem til en gate
+// (GRAND_TOUR_DISTANCE_RULES i raceRouteRealismMetrics.js).
+//
+// HVORFOR ET EGET BAAND OG IKKE EN JUSTERING AF DISTANCE_BANDS: terraen-baandene daekker
+// HELE kataloget - 200+ loeb fra endagsklassikere til firedages-ture. Loefter man dem, faar
+// en Class2-tur i Portugal 190 km flade etaper, og #4104's monument-loesning (klasse slaar
+// terraen) ville skulle laves om igen. Maalt paa S3's LEVENDE kalender laa GT-snittene paa
+// 153,0 / 155,6 / 162,6 km - Touren under gulvet, de to andre i den nederste kant - fordi
+// GT'en arvede baandene fra et gennemsnitsloeb. GT'en har sit eget baand, praecis som
+// monumentet fik sit i #4104.
+//
+// KALIBRERING: baandene er sat saa landevejssnittet lander paa ~176 km (midt i 165-185 og
+// hoejt nok til at det SAMLEDE snit stadig rammer 155-170 naar to korte tempoetaper traekker
+// det ned). Spredningen er smallere end terraen-baandenes 40-50 km, fordi et bredt baand
+// giver et snit der falder ud af 155-170 i hver tredje traekning. Raekkefoelgen mellem
+// typerne foelger virkeligheden: kuperede og flade etaper er de laengste, hoejbjerget det
+// korteste (klatringen begraenser hvad der kan koeres paa en etapedag).
+export const GRAND_TOUR_DISTANCE_BANDS = Object.freeze({
+  flat: [170, 190], rolling: [165, 190], hilly: [170, 195],
+  mountain: [165, 185], high_mountain: [160, 180],
+  // Ejerens 25-40 km. itt_hilly holdes i den korte ende af det samme baand (klatringen
+  // begraenser distancen), men ALDRIG under 25 - gulvet er det samme for alle rigtige
+  // enkeltstarter i en GT.
+  itt: [25, 40], itt_hilly: [25, 35],
+});
+
 // Sub-3 (#2771) Task 6: prolog-arketype. profile_type FORBLIVER "itt" (design-
 // beslutning låst i spec §6 + plan Task 6 self-review) — prolog er en DISTANCE-
 // egenskab afgjort her i pass 2, ikke en ny arketype i pass 1 (som forbliver
 // urørt/bit-identisk). KUN etape 1 i et etapeløb kan trække en prolog.
 export const PROLOGUE_PROBABILITY = 0.6;
 export const PROLOGUE_DISTANCE_BAND = [5, 8];
+// #4288: en GT-prolog er 8-14 km (ejer-beslutning 3/9). Baandet er GT-specifikt, saa en
+// prolog i en almindelig etapeuge stadig maa vaere de 5-8 km den altid har vaeret.
+export const GRAND_TOUR_PROLOGUE_DISTANCE_BAND = [8, 14];
+// Arketypen der udpeger en Grand Tour. Samme noegle som ARCHETYPE_PROFILES.grand_tour i
+// raceStageProfileGenerator.js og isGrandTourArchetype i raceRouteRealismMetrics.js.
+const GRAND_TOUR_ARCHETYPE = "grand_tour";
 // Climb-antal + kategori-pool pr. profil (spec §4.1).
 const CLIMB_SPEC = Object.freeze({
   flat: { count: [0, 1], cats: ["4"] },
@@ -396,13 +431,19 @@ export function attachRoute(stage, race, isStageRace) {
   // falder uændret gennem det normale bånd (pass 1 forbliver bit-identisk;
   // determinisme: samme race-identitet + etape → samme afgørelse hver gang).
   const isProlog = pt === "itt" && stage.stage_number === 1 && isStageRace && rng() < PROLOGUE_PROBABILITY;
+  // #4288: GT-baandet slaar terraen-baandet (samme foelge-orden som #4104's klasse-baand),
+  // men KUN for etaper i et etapeloeb med grand_tour-arketypen. Valget koster INGEN
+  // rng-traekning, saa alle andre loeb er bit-identiske med foer.
+  const isGrandTour = isStageRace && race?.terrain_archetype === GRAND_TOUR_ARCHETYPE;
   // #4104: klasse-baandet vinder over terraen-baandet, men KUN for endagsloeb (et
   // monument er pr. definition et endagsloeb) og KUN naar race_class faktisk er sat.
   // Kalder-stier der bygger et delvist seedRace-objekt uden race_class falder derfor
   // uaendret gennem terraen-baandet i stedet for at kaste - samme defensive linje som
   // #3620's "undefined er ikke det samme som null"-laering.
   const classBand = !isStageRace && race?.race_class ? CLASS_DISTANCE_BANDS[race.race_class] : null;
-  const [lo, hi] = isProlog ? PROLOGUE_DISTANCE_BAND : (classBand ?? DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat);
+  const prologueBand = isGrandTour ? GRAND_TOUR_PROLOGUE_DISTANCE_BAND : PROLOGUE_DISTANCE_BAND;
+  const grandTourBand = isGrandTour ? GRAND_TOUR_DISTANCE_BANDS[pt] : null;
+  const [lo, hi] = isProlog ? prologueBand : (classBand ?? grandTourBand ?? DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat);
   let distance_km = isTimeTrialProfile(pt) ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
   if (distance_km < lo) distance_km = lo; // round5 må aldrig skyde under båndet
   if (distance_km > hi) distance_km = hi;
