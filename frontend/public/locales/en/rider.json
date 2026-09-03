@@ -786,6 +786,7 @@
       "description": "Extend this rider's contract by one season at a renegotiated salary.",
       "currentSalary": "Current salary",
       "newSalary": "New salary",
+      "newSalaryHint": "Follows what he's delivering this season. Current salary stays fixed until you renew.",
       "newContract": "New contract",
       "newContractValue": "Through season {season}",
       "confirm": "Confirm extension",
