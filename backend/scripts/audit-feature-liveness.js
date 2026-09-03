@@ -579,20 +579,34 @@ async function listBackendEndpoints() {
 
 async function findFrontendApiCalls() {
   const files = await walk(FRONTEND_SRC, (n) => /\.(jsx?|tsx?)$/.test(n));
-  // Match enhver template-literal med `${X}/api/...` form — fanger både inline
-  // fetch() og URL-built-then-fetched-mønstret hvor URL'en konstrueres på en
-  // tidligere linje. Excluder PatchNotesPage for at undgå markdown-eksempler.
-  const re = /[`'"]\$\{[^}]+\}\/api\/([^`'"?\s,]+)/g;
+  // To former, fordi frontenden bruger to kald-mønstre:
+  //   1) INLINE — `${API}/api/foo` direkte i fetch(), eller URL'en bygget på en
+  //      tidligere linje og fetchet bagefter.
+  //   2) PATH-KONSTANT — en bar streng "/api/foo" sendt til en delt helper der
+  //      selv præfixer ${API} (fx postJson() i pages/annualMeeting/meetingApi.js).
+  //      Uden denne form falsk-flagede Detector B POST /board/meeting/focus og
+  //      /sign som orphaned selv om frontenden kalder dem (#4557, merget 2/9),
+  //      og gjorde dermed `audit` rød på main.
+  const RE_INLINE = /[`'"]\$\{[^}]+\}\/api\/([^`'"?\s,]+)/g;
+  const RE_PATH_CONST = /[`'"]\/api\/([^`'"?\s,]+)/g;
   const calls = new Set();
   for (const file of files) {
+    // PatchNotesPage: markdown-eksempler, ikke rigtige kald.
     if (file.endsWith("PatchNotesPage.jsx")) continue;
+    // src/preview/*: mock-interceptors der SVARER på endpoints (pathname
+    // .endsWith("/api/...")), ikke kalder dem. At tælle dem som callers ville
+    // lade en mock alene holde et dødt endpoint "levende".
+    const rel = file.slice(FRONTEND_SRC.length).replace(/\\/g, "/");
+    if (rel.startsWith("/preview/")) continue;
     const text = await readFile(file, "utf8");
-    let m;
-    while ((m = re.exec(text)) !== null) {
-      // Strip query-strings og template-expressions; behold path-segmentet
-      let path = "/" + m[1].replace(/\$\{[^}]+\}/g, ":param");
-      path = path.replace(/\/$/, "");
-      calls.add(path);
+    for (const re of [RE_INLINE, RE_PATH_CONST]) {
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        // Strip query-strings og template-expressions; behold path-segmentet
+        let path = "/" + m[1].replace(/\$\{[^}]+\}/g, ":param");
+        path = path.replace(/\/$/, "");
+        calls.add(path);
+      }
     }
   }
   return calls;
