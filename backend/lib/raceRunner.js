@@ -35,6 +35,8 @@ import {
   buildRacePointsLookup,
   PRIZE_PER_POINT,
 } from "./raceResultsEngine.js";
+// #4148: rene måle-hjælpere (ingen adfærdsændring) — se finalizeInstrumentation.js.
+import { wrapSupabaseWithCallCounter, formatPhaseLogLine } from "./finalizeInstrumentation.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
@@ -2200,6 +2202,25 @@ export async function simulateStageByIndex({
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
   if (!Number.isInteger(stageIndex) || stageIndex < 0) throw new Error("stageIndex must be a non-negative integer");
 
+  // #4148: instrumentér afslutningsstien — måler varighed + Supabase-kald pr. fase
+  // uden at ændre nogen forespørgsels adfærd (se finalizeInstrumentation.js).
+  // `supabase` genbindes til den tællende klient, så ALLE nedstrøms hjælpere i
+  // resten af funktionen (samme reference) tælles med, uanset hvor mange lag
+  // kaldet går igennem (loadEntrantsForRace, persistRuns, applyStageResult, …).
+  const { client: countedSupabase, counter: __callCounter } = wrapSupabaseWithCallCounter(supabase);
+  supabase = countedSupabase;
+  const __finalizePhases = [];
+  let __phaseStartMs = Date.now();
+  let __phaseStartCalls = __callCounter.calls;
+  const __markPhase = (name) => {
+    __finalizePhases.push({ name, ms: Date.now() - __phaseStartMs, calls: __callCounter.calls - __phaseStartCalls });
+    __phaseStartMs = Date.now();
+    __phaseStartCalls = __callCounter.calls;
+  };
+  const __logFinalizePhases = () => {
+    console.log(formatPhaseLogLine(`finalize race=${race.id} stage=${stageNumber}/${totalStages} final=${isFinalStage}`, __finalizePhases));
+  };
+
   // Checkpoint FØR afviklingen — board-weekend bruger previous-vs-new race_days.
   const { data: seasonBefore } = await supabase
     .from("seasons")
@@ -2409,6 +2430,10 @@ export async function simulateStageByIndex({
     // vinder. Taberen ser lockWon=false → afbryd FØR standings, så standings/præmier
     // ikke dobbelt-anvendes. status sættes IKKE her (FIX 1: status flippes sidst).
     //
+    // #4148: lukker "sim"-fasen (entrants-load + etape-bygning ovenfor) FØR den
+    // atomære result-write nedenfor — se __markPhase-opsætningen ved funktionens start.
+    __markPhase("sim");
+
     // resultRows er allerede afgrænset til DENNE etape (linje ~691), og rækkerne har
     // points_earned/prize_money udledt via buildRacePointsLookup — RPC'en persisterer
     // dem 1:1 (samme normaliserede kolonne-mapping som applyRaceResults). Balance-NEUTRAL.
@@ -2419,9 +2444,11 @@ export async function simulateStageByIndex({
       totalStages,
       resultRows,
     });
+    __markPhase("write");
     if (!lockWon) {
       // Konkurrerende run vandt (eller stages_completed er allerede forbi denne etape).
       // RPC'en kørte INGEN side-effekter → sikkert at afbryde uden dobbelt-anvendelse.
+      __logFinalizePhases();
       return {
         stageNumber, isFinalStage, skipped: "concurrent_lock_lost",
         rowsImported: 0, rows: 0, entrants: entrants.length, stages: totalStages,
@@ -2453,6 +2480,7 @@ export async function simulateStageByIndex({
       console.error(`  ⚠️  standings recompute failed after stage ${stageNumber} (race ${race.id}) — enrichment continues, standings will self-heal on next recompute: ${err.message}`);
       captureException(err, { tags: { flow: "race-run", stage: "standings-recompute" }, raceId: race.id, stageNumber });
     }
+    __markPhase("standings");
 
     // #3193: samme flytning som fuld-løb-stien ovenfor — refresh rangliste-
     // matviews LIGE EFTER season_standings er opdateret, ikke efter board-
@@ -2463,6 +2491,7 @@ export async function simulateStageByIndex({
     // refresh — cron-fallback (10 min) dækker allerede mellem-etaper.
     if (isFinalStage) {
       await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+      __markPhase("matview");
     }
 
     await persistRuns({ supabase, race, runs, source: runSource });
@@ -2538,6 +2567,8 @@ export async function simulateStageByIndex({
         }
       }
     }
+    // #4148: lukker "enrichment"-fasen (persistRuns/…/fatigue ovenfor).
+    __markPhase("enrichment");
 
     // ── Mellem-etape: INGEN finalization. status forbliver scheduled (binær enum). ──
     if (!isFinalStage) {
@@ -2553,6 +2584,8 @@ export async function simulateStageByIndex({
           // best-effort: notificationService capturer internt, tavs slugning er bevidst.
         }
       }
+      __markPhase("notify");
+      __logFinalizePhases();
       return { stageNumber, isFinalStage, rowsImported: applied.rowsImported, rows: resultRows.length, entrants: entrants.length, stages: totalStages };
     }
   }
@@ -2585,6 +2618,7 @@ export async function simulateStageByIndex({
       captureException(error, { tags: { flow: "race-run", stage: "board-weekend" }, raceId: race.id });
     }
   }
+  __markPhase("board");
 
   if (notifyDiscord) {
     try {
@@ -2642,6 +2676,7 @@ export async function simulateStageByIndex({
       // capturer internt (#2394), så en tavs slugning her er bevidst (#2395).
     }
   }
+  __markPhase("notify");
 
   // FIX 1: status='completed' sættes SIDST — efter al finalization er lykkedes. Idempotent
   // (en recovery-genkørsel sætter samme værdi). stages_completed sættes også (recovery-sti
@@ -2669,6 +2704,7 @@ export async function simulateStageByIndex({
   await flushDeferredTransfersSafe({ supabase, race });
   // #4423: løbet er finaliseret → flush udskudte akademi-optagelser for deltagerne.
   await flushDeferredAcademySigningsSafe({ supabase, race });
+  __markPhase("status-flush");
 
   // #3193: normal final-etape-afvikling refresher allerede tidligere i denne
   // funktion (lige efter updateStandings, isFinalStage-gated) — et kald her
@@ -2680,7 +2716,12 @@ export async function simulateStageByIndex({
   // crash-recovery-genoptagelse indtil næste 10-min cron-tick.
   if (finalizationPending) {
     await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+    __markPhase("matview");
   }
+
+  // #4148: sidste log-linje for denne invokation — dækker BÅDE normal
+  // final-etape-afvikling og recovery-genoptagelse (finalizationPending).
+  __logFinalizePhases();
 
   return {
     stageNumber, isFinalStage,
