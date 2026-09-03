@@ -64,7 +64,7 @@ function isLeadoutParams(params: Record<string, unknown> | undefined): params is
 }
 
 /** Udtraekker gyldige M6-ordrer fra den raa TeamOrder[]-liste (§2's aabne kind/params-kontrakt). */
-export function parseLeadoutOrders(orders: TeamOrder[]): LeadoutOrder[] {
+export function parseLeadoutOrders(orders: readonly TeamOrder[]): LeadoutOrder[] {
   const byTeam = new Map<string, LeadoutOrder>();
   for (const order of orders) {
     if (order.kind !== "leadout") continue;
@@ -183,19 +183,10 @@ export type ScoredRiderLike = { riderId: string; score: number };
  * `scored` (ikke overlevet ind i finale-kontendentpuljen) ignoreres tavst.
  * Rene ryttere uden en leadout-ordre er upaavirkede (samme score som input).
  *
- * WIRING (kraever arkitekt-integration, ikke del af denne PR — se PR-body):
- * finale.ts's `finaleHook` bygger `scored` fra `contenderIds` FOER sortering
- * (linje ~224-237 i nuvaerende finale.ts) og har hverken `orders: TeamOrder[]`
- * paa `SegmentHookContext` (types.ts §"Mekanik-hooks") eller adgang til denne
- * fil (hard rule: denne PR maa ikke aendre finale.ts/types.ts). For at koble
- * M6 ind skal arkitekten:
- *   1. Tilfoeje `orders: TeamOrder[]` til `SegmentHookContext` (types.ts).
- *   2. I finale.ts, lige FOER `scored.sort(...)`, kalde
- *      `applyLeadoutScoreBonuses(scored, parseLeadoutOrders(ctx.orders), new
- *      Set(contenderIds), entrants, state.riders, LEADOUT_TUNING)` og bruge
- *      resultatet i stedet for `scored`.
- *   3. Route `ctx.orders` fra `segmentLoop.ts`/`index.ts`'s `StageInput.orders`
- *      ind i `SegmentHookContext` (samme sted `rngFor` bindes i dag).
+ * WIRET 3/9 (#4615): `SegmentHookContext` baerer nu `orders`, og finale.ts
+ * kalder denne funktion paa den u-sorterede kontendent-liste LIGE FOER
+ * `scored.sort(...)` — bonussen skal kunne flytte en placering, aldrig
+ * efterrationalisere en allerede afgjort raekkefolge.
  */
 export function applyLeadoutScoreBonuses(
   scored: readonly ScoredRiderLike[],

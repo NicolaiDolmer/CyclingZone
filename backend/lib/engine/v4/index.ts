@@ -9,15 +9,21 @@ import type { MechanicHooks, RiderLoad, StageInput, StageOutput, StageResult, Ti
 import { runSegmentLoop, type SegmentLoopResult } from "./segmentLoop.ts";
 import { climbSelectionHook } from "./mechanics/climbSelection.ts";
 import { descentHook } from "./mechanics/descent.ts";
+import { breakawayHook } from "./mechanics/breakaway.ts";
 import { finaleHook } from "./finale.ts";
 import { sortTimeline } from "./timeline.ts";
 
-// Fase C-wiring (#4030): de rigtige M2/M3/M4-implementeringer. Harness/tests
-// kan stadig injicere egne hooks via runSegmentLoop direkte.
+// Fase C-wiring (#4030) + F3-wiring (#4615): de rigtige M2/M3/M4/M5-
+// implementeringer. M6 (leadout) kaldes inde fra finaleHook, M14 (AI-taktik)
+// producerer ordrer OPSTROEMS og naar kernen som `StageInput.orders` — der er
+// derfor ikke et hook for hver mekanik, kun for dem der raekker ind i
+// segment-loopet. Harness/tests kan stadig injicere egne hooks via
+// runSegmentLoop direkte.
 const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: climbSelectionHook,
   descent: descentHook,
   finale: finaleHook,
+  breakaway: breakawayHook,
 };
 
 function round2(n: number): number {
@@ -25,8 +31,19 @@ function round2(n: number): number {
 }
 
 function buildResults(state: SegmentLoopResult["state"]): StageResult[] {
+  // Placerings-raekkefolge ved LIGE tid (#4615): et massespurt-opgoer giver
+  // hele den ankomne gruppe samme tid, saa raekkefolgen kan ikke laeses af
+  // tiden alene. finale.ts's `finish_order` baerer den; uden den (fx et
+  // hook-loest testkald) falder vi tilbage til rider_id, som foer.
+  const orderIndex = new Map<string, number>();
+  (state.finish_order ?? []).forEach((riderId, index) => orderIndex.set(riderId, index));
+  const tieBreak = (riderId: string): number => orderIndex.get(riderId) ?? Number.MAX_SAFE_INTEGER;
+
   const sorted = Object.values(state.riders).sort(
-    (a, b) => a.time_seconds - b.time_seconds || a.rider_id.localeCompare(b.rider_id),
+    (a, b) =>
+      a.time_seconds - b.time_seconds ||
+      tieBreak(a.rider_id) - tieBreak(b.rider_id) ||
+      a.rider_id.localeCompare(b.rider_id),
   );
   return sorted.map((rider, index) => ({
     rider_id: rider.rider_id,
