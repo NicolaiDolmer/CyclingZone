@@ -46,6 +46,7 @@ export const BREAKAWAY_STRENGTH = Object.freeze({
   mountain:      Object.freeze({ descent: "high",        breakaway: "high",        long_climb: "low",  _default: "high" }),
   high_mountain: Object.freeze({ descent: "high",        long_climb: "low",        _default: "low" }),
   cobbles:       Object.freeze({ reduced_sprint: "high", breakaway: "high",        _default: "medium" }),
+  gravel:        Object.freeze({ reduced_sprint: "high", punch: "high", breakaway: "high", _default: "high" }),
 });
 
 // Udbruds-styrke for en (profil, finale): spejler breakawayMaxBonus-opslaget.

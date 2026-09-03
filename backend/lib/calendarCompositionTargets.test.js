@@ -48,7 +48,7 @@ test("compositionCategory grupperer som ejerens #3295-tabel", () => {
   for (const pt of ["rolling", "hilly", "classic"]) assert.equal(compositionCategory(pt), "hilly");
   for (const pt of ["mountain", "high_mountain"]) assert.equal(compositionCategory(pt), "mountain");
   assert.equal(compositionCategory("itt"), "itt");
-  assert.equal(compositionCategory("cobbles"), "cobbles");
+  for (const pt of ["cobbles", "gravel"]) assert.equal(compositionCategory(pt), "cobbles");
   assert.equal(compositionCategory("ttt"), "ttt");
 });
 
@@ -66,9 +66,12 @@ test("computeCompositionStats: endagsløb tæller 1 løbsdag, etapeløb tæller 
 });
 
 test("computeCompositionStats: ukendt profil-type tælles i nævneren OG rapporteres", () => {
-  const stats = computeCompositionStats([race("flat", "gravel")]);
+  // Pladsholderen var "gravel" indtil #4105 gjorde grus til en RIGTIG profiltype.
+  // Den skal være en værdi der aldrig kan blive rigtig, ellers holder vagten op med at
+  // måle det den er sat til: at en NY type ikke lander tavst i nævneren.
+  const stats = computeCompositionStats([race("flat", "ikke_en_profiltype")]);
   assert.equal(stats.raceDays, 2, "ukendt type skal stadig være en løbsdag");
-  assert.equal(stats.unknown.gravel, 1);
+  assert.equal(stats.unknown.ikke_en_profiltype, 1);
   assert.equal(stats.pct.flat, 50);
 });
 
@@ -131,9 +134,9 @@ test("detectCompositionViolations: TTT over 0 er et brud mens motoren ikke under
 });
 
 test("detectCompositionViolations: ukendt profil-type bliver et brud, ikke tavshed", () => {
-  const stats = computeCompositionStats([race("gravel")]);
+  const stats = computeCompositionStats([race("ikke_en_profiltype")]);
   const { violations } = detectCompositionViolations({ stats });
-  assert.ok(violations.some((v) => v.includes("gravel") && v.includes("uden kompositions-kategori")));
+  assert.ok(violations.some((v) => v.includes("ikke_en_profiltype") && v.includes("uden kompositions-kategori")));
 });
 
 test("detectCompositionViolations: applyMinRaceDayTolerance løsner kun små stikprøver", () => {

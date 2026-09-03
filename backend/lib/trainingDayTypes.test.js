@@ -246,6 +246,42 @@ test("naadesdagen er idempotent — anden koersel flytter intet", () => {
   assert.equal(anden.graceDay, false);
 });
 
+// ── #4631 · de to specialiserede intervaldage i stigen ──────────────────────
+
+test("#4631 · begge nye sessioner ligger paa HAARD, og hybriden staar foerst", () => {
+  assert.deepEqual([...TRAINING_SESSIONS_BY_LEVEL.hard], ["vo2max", "vo2max_climb", "vo2max_punch", "threshold", "sprint"]);
+  assert.equal(SESSION_INTENSITY.vo2max_climb, "hard");
+  assert.equal(SESSION_INTENSITY.vo2max_punch, "hard");
+  assert.ok(sessionsForDayType("training").includes("vo2max_climb"));
+  assert.ok(sessionsForDayType("training").includes("vo2max_punch"));
+  assert.ok(!sessionsForDayType("skill").includes("vo2max_climb"), "en intervaldag er ikke en faerdighedsdag");
+});
+
+test("#4631 · skrivestien accepterer de to nye og gemmer dem som haarde traeningsdage", () => {
+  for (const session of ["vo2max_climb", "vo2max_punch"]) {
+    const out = programForChoice({ dayType: "training", session });
+    assert.deepEqual(out, { ok: true, focus: session, intensity: "hard" });
+  }
+});
+
+test("#4631 · laesestien: den GAMLE noegle er hybriden og roeres ikke", () => {
+  // Splittet beholder `vo2max` som hybrid netop for at ingen gemt plan skal
+  // migreres. En eksisterende raekke skal derfor komme uaendret igennem.
+  const out = normalizeProgram({ focus: "vo2max", intensity: "hard" });
+  assert.deepEqual(out, { dayType: "training", session: "vo2max", focus: "vo2max", intensity: "hard", changed: false });
+  const migrated = migrationTargetFor({ focus: "vo2max", intensity: "hard" });
+  assert.equal(migrated.changed, false, "en hybrid-plan maa ikke flyttes af en migration");
+  assert.equal(migrated.graceDay, false);
+});
+
+test("#4631 · en gemt specialiseret plan laeses tilbage som sig selv", () => {
+  for (const session of ["vo2max_climb", "vo2max_punch"]) {
+    const out = normalizeProgram({ focus: session, intensity: "hard" });
+    assert.equal(out.session, session);
+    assert.equal(out.changed, false);
+  }
+});
+
 test("INGEN plan i hele kombinations-rummet ender med hoejere belastning end den havde", () => {
   const RANK = { rest: 0, recovery: 1, easy: 2, normal: 3, hard: 4 };
   for (const focus of Object.keys(TRAINING_FOCUSES)) {

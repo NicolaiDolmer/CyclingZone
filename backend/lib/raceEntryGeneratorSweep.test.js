@@ -139,3 +139,37 @@ test("#2743: fler-aktiv-tælling fejler → sweepet fortsætter alligevel (best-
   assert.equal(r.seasonId, "s1");
   assert.equal(captured.length, 0, "count-fejl (ikke >1) skal ikke selv udløse en alarm");
 });
+
+// #4201: sweepen er den ENE vej hvor assistant_selection_mode laeses. Bliver den
+// ikke sendt videre, koerer motoren proactive uanset hvad ejeren har sat.
+test("#4201: tilstand + horisont fra app_config sendes videre til generatoren", async () => {
+  const supabase = makeSeasonsSupabase({ seasons: [{ id: "s1" }] });
+  let called = null;
+  const r = await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    readModeFn: async () => ({ mode: "late_fill", lateFillHours: 12 }),
+    runGeneratorFn: async (args) => {
+      called = args;
+      return { dryRun: false, mode: args.mode, races: 0, teams: 0, generated: 0, skipped: 0 };
+    },
+  });
+  assert.equal(called.mode, "late_fill");
+  assert.equal(called.lateFillHours, 12);
+  assert.equal(called.dryRun, false);
+  assert.equal(r.mode, "late_fill", "tilstanden er synlig i sweep-resultatet (cron-loggen)");
+});
+
+test("#4201: uden app_config-svar koerer sweepet proactive (fail-safe)", async () => {
+  const supabase = makeSeasonsSupabase({ seasons: [{ id: "s1" }] });
+  let called = null;
+  await runRaceEntryGeneratorSweep({
+    supabase,
+    isEnabled: async () => true,
+    // Ingen readModeFn: den ægte readAssistantSelectionConfig rammer seasons-mocken,
+    // fejler internt og fail-safer — præcis prod-stien hvis app_config er utilgængelig.
+    runGeneratorFn: async (args) => { called = args; return { dryRun: false, mode: args.mode }; },
+  });
+  assert.equal(called.mode, "proactive");
+  assert.equal(called.lateFillHours, 24);
+});

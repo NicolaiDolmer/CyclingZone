@@ -77,6 +77,16 @@ test("diffToOverrides: ingen afvigelser → tomt array (uændret draft sender in
   assert.deepEqual(diffToOverrides({ matrix, riders: RIDERS }), []);
 });
 
+test("#4538: diffToOverrides sender ALDRIG en override for en abandoned rytter, selv med en override-celle i matrixen", () => {
+  const abandonedRiders = [RIDERS[0], { ...RIDERS[1], abandoned: true }, RIDERS[2]];
+  let matrix = buildDraftMatrix({ riders: abandonedRiders, overrides: [], stageNumbers: [3, 4], stagesCompleted: 2 });
+  // b er udgået, men bar en override fra FØR han udgik (havde dengang en fremtidig etape).
+  matrix = setCell(matrix, 4, "b", { race_role: "hunter", effort: "save" });
+  matrix = setCell(matrix, 3, "c", { race_role: "helper" }); // ikke-udgået rytters ændring skal stadig med
+  const diff = diffToOverrides({ matrix, riders: abandonedRiders });
+  assert.deepEqual(diff, [{ stage_number: 3, rider_id: "c", race_role: "helper", effort: "normal" }]);
+});
+
 test("diffToOverrides: sortering på tværs af flere etaper og ryttere", () => {
   let matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3, 4], stagesCompleted: 2 });
   matrix = setCell(matrix, 4, "c", { race_role: "helper" });
