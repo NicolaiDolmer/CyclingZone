@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.243",
+    "version": "7.244",
     "date": "2026-09-03",
     "label": "Beta",
     "changes": [
@@ -17,6 +17,48 @@ export const PATCHES = [
           "body": "Første fane er nu et overblik: én tæt række pr. rytter med form, træthed, dagens dag og de næste syv dage som en strimmel, plus et søgefelt og et filter for de ryttere der endnu ikke har fået en dag. Intet er fjernet. Sæsonens kvittering pr. evne er flyttet til Udvikling, dagens rapport og gårsdagens fremgang til Rapporter, og den individuelle ugeplan til Ugeplan, hvor et klik på rytterens uge-strimmel fører dig direkte til hans egen plan."
         },
         "refs": [4613, 4623]
+      }
+    ]
+  },
+  {
+    "version": "7.243",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Race results now show how the prize money adds up",
+          "body": "The \"How your team did\" card on your dashboard has a \"See breakdown\" link under this race's points and prize money. Open it to see the prize split by stage placing, classification and team bonus, with the rider who earned each amount, plus your sponsor's race-day payout as its own line instead of only a separate message."
+        },
+        "da": {
+          "title": "Løbsresultatet viser nu hvordan præmien er sammensat",
+          "body": "\"Sådan gik det for dit hold\"-kortet på dit dashboard har et \"Se sammensætning\"-link under løbets point og præmiepenge. Åbn det for at se præmien delt op i etapeplacering, klassifikation og holdbonus, med den rytter der tjente hvert beløb, plus din sponsors løbsdagsudbetaling som egen linje i stedet for kun en separat besked."
+        },
+        "refs": [4697, 4698]
+      }
+    ]
+  },
+  {
+    "version": "7.242",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "Injured riders can be picked for races that start after they heal",
+          "body": "You can now pick an injured rider for a race, either yourself or via assistant auto-fill, as long as the race itself starts after the injury is over. Previously the app checked injury status right now, so a race weeks away still waited for the rider to fully recover."
+        },
+        "da": {
+          "title": "Skadede ryttere kan udtages til løb der starter efter skaden er ovre",
+          "body": "Du kan nu udtage en skadet rytter til et løb, enten selv eller via assistentens auto-udfyldning, så længe løbet starter efter skaden er ovre. Før tjekkede appen skadestatus lige nu, så et løb uger ude stadig ventede på at rytteren blev rask."
+        },
+        "refs": [4701]
       }
     ]
   },

@@ -1240,6 +1240,28 @@ export function apiResponse(pathname, search = "") {
       ],
       stage_wins: 1,
       totals: { points: 80, prize_money: 194000 },
+      // #4697/#4698 — samme form som buildPrizeBreakdown/buildSponsorPayoutLine
+      // (backend/lib/myTeamLatestResult.js), håndkomponeret så preview kan vise
+      // fold-ud-sammensætningen uden at duplikere backend-beregningen her.
+      // Grupperne summer til totals.prize_money (60000 + 120000 + 14000).
+      prize_breakdown: {
+        prize_total: 194000,
+        points_total: 80,
+        stages: [
+          { stage_number: 1, amount: 60000, points: 40, riders: [{ rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", rank: 1, amount: 60000 }] },
+        ],
+        classifications: [
+          { classification: "gc", amount: 120000, points: 40, riders: [{ rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", rank: 2, amount: 120000 }] },
+        ],
+        team_bonus: { amount: 14000, points: 0 },
+      },
+      sponsor_payout: {
+        total: 6000,
+        items: [
+          { type: "sponsor_race_day", amount: 4500 },
+          { type: "sponsor_result_bonus", amount: 1500 },
+        ],
+      },
       history: seasonRaces.filter((r) => r.race_id !== "race-done-2"),
       season_totals: {
         points: seasonRaces.reduce((s, r) => s + r.points, 0),

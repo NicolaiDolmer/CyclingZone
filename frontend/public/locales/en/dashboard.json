@@ -131,7 +131,16 @@
       "firstRaceCta": "Read the full race story",
       "firstRaceNext": "Next race: {race}, {count, plural, one {in # day} other {in # days}}",
       "confettiTitleGc": "GC won!",
-      "confettiTitleRace": "Race won!"
+      "confettiTitleRace": "Race won!",
+      "breakdown": {
+        "show": "See breakdown",
+        "hide": "Hide breakdown",
+        "stage": "Stage {number} placing",
+        "teamBonus": "Team bonus",
+        "sponsor": "Sponsor payout",
+        "sponsorRaceDay": "Race-day income",
+        "sponsorResultBonus": "Result bonus"
+      }
     },
     "maidenWin": {
       "title": "Career moments",
@@ -248,7 +257,13 @@
       "focus": "Focus",
       "budgetMultiplier": "Budget multiplier",
       "exceeds": "Exceeded",
-      "exceedsTitle": "This category scored above 100%. You exceeded the board's expectations here."
+      "exceedsTitle": "This category scored above 100%. You exceeded the board's expectations here.",
+      "meetingNudge": {
+        "title": "The annual meeting is open",
+        "subtitle": "Your board has proposed next season's mandate. Adjust, request, and sign.",
+        "daysLeft": "{count, plural, one {# day left before auto-sign} other {# days left before auto-sign}}",
+        "cta": "Go to the annual meeting"
+      }
     },
     "recentResults": {
       "title": "Recent results",

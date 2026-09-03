@@ -53,6 +53,9 @@ import {
   resolveCategoryLabel,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
+import AnnualMeetingNudgeCard from "../components/AnnualMeetingNudgeCard"; // #4557 S-M2d
+import { fetchBoardMeeting } from "./annualMeeting/meetingApi";
+import { daysUntil } from "./annualMeeting/meetingFormat";
 import GlobalRankWidget from "../components/GlobalRankWidget";
 import SeasonStartGuideCard from "../components/SeasonStartGuideCard";
 import {
@@ -134,6 +137,11 @@ export default function DashboardPage() {
   // som Bestyrelse-sidens drivers-panel, så de to flader ikke divergerer.
   const [boardSatisfaction, setBoardSatisfaction] = useState(null);
   const [boardOutlook, setBoardOutlook] = useState(null);
+  // #4557 (S-M2d) · dashboard-genvej til aarsmoedet. Selvstaendigt, IKKE-
+  // blokerende kald (samme moenster som BoardroomPage's egen gold-CTA-tjek) —
+  // svarer {available:false} for alle ikke-beta-hold, saa ingen ekstra
+  // gating er noedvendig her ud over selve svaret.
+  const [annualMeeting, setAnnualMeeting] = useState(null);
   const [activeOffers, setActiveOffers] = useState([]);
   const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -497,6 +505,17 @@ export default function DashboardPage() {
 
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
+
+  // #4557 (S-M2d) · dashboard-genvej til aarsmoedet — udenfor loadAll'ens
+  // Promise.all med vilje (progressiv, aldrig blokerende for resten af
+  // dashboardet, samme princip som meetingApi.js's fetch-helpers selv følger).
+  useEffect(() => {
+    let cancelled = false;
+    fetchBoardMeeting().then((data) => {
+      if (!cancelled && data?.available && data.mandate) setAnnualMeeting(data);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // #1828 + #2171: for "Kommende løb"-kortet henter vi den ægte kalender-tid for
   // næste etape (game-day-countdown), både for igangværende OG endnu-ikke-startede
@@ -1370,6 +1389,27 @@ export default function DashboardPage() {
 
       {/* #3397: Hero & Agony moment-kort — selv-hentende, se HeroAgonyCard.jsx. */}
       {heroAgonyVisible && <HeroAgonyCard teamId={team?.id} teamName={team?.name} />}
+
+      {/* #4557 (S-M2d): dashboard-genvej til aarsmoedet — fuld bredde,
+          UDENFOR to-kolonne-gridet, i den oevre stak af betingede engangs-
+          kort (docs/DASHBOARD_RULES.md §4 "oevre del": Udviklings-overgang,
+          Onboarding-progress, Season Wrap/Start Guide er ALLE fuld bredde i
+          samme stak, ingen af dem er parret i gridet). §0 regel 1 er
+          opfyldt af den samme begrundelse som de kort: et betinget,
+          engangs-nudge-kort med titel+meta+subtitle+CTA hoerer ikke i
+          gridets faste parringer (som binder to LOEBENDE datamoduler
+          sammen), og en paring ville efterlade en forreldreloes halv-celle
+          naar kortet er skjult (§3 "betingede moduler maa ikke efterlade
+          tomme grid-celler") — ret-runde #4732 fund 3. Placeret EFTER
+          Maiden Win/Hero & Agony (samme oevre stak), lige foer hovedgridet,
+          saa den ikke forskyder Board/Global-Rank-parringen nedenfor. Vises
+          udelukkende naar GET /board/meeting svarer available:true —
+          automatisk skjult for alle uden for beta. */}
+      {annualMeeting?.mandate && (
+        <div className="mb-4">
+          <AnnualMeetingNudgeCard daysLeft={daysUntil(annualMeeting.mandate.deadlineAt)} />
+        </div>
+      )}
 
       {/* Main grid — #2849 bølge 1: sibling-gap 14px (spec) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-[14px]">

@@ -51,7 +51,7 @@
 
 ## 4. Modulrækkefølgen (efter omlægningen 25/8, PR [#4249](https://github.com/NicolaiDolmer/CyclingZone/pull/4249))
 
-**Øvre del.** Advarsler · Dagens etaper (fuld) · [Seneste resultat | Næste træk] · [Holdudtagelse | Sæsonstatus] · betingede engangskort (Udviklings-overgang, Onboarding-progress, Onboarding fuldført, Sæson slut, **Tilmeld næste sæson** (#4592/#452, mellem Sæson slut og Sæsonstart-guide — flag-gated, off som default, ingen dismiss med vilje jf. §5), Sæsonstart-guide, Første sejr, Discord-nudge).
+**Øvre del.** Advarsler · Dagens etaper (fuld) · [Seneste resultat | Næste træk] · [Holdudtagelse | Sæsonstatus] · betingede engangskort (Udviklings-overgang, Onboarding-progress, Onboarding fuldført, Sæson slut, **Tilmeld næste sæson** (#4592/#452, mellem Sæson slut og Sæsonstart-guide — flag-gated, off som default, ingen dismiss med vilje jf. §5), Sæsonstart-guide, Første sejr, **Årsmøde-genvej** (`AnnualMeetingNudgeCard`, #4557 S-M2d — flag-gated på GET /board/meeting `available:true`, lige før to-kolonne-gridet, ingen dismiss), Discord-nudge).
 
 **To-kolonne-gridet.** [Auktioner | Transfers] · [Løb | From the forum] · [Stilling/pulje | Økonomi-prognose] · [Seneste resultater | Rytter-rangliste] · [Bestyrelse | …].
 

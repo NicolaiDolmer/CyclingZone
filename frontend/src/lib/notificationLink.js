@@ -27,12 +27,31 @@ const TRANSFER_DECISION_TYPES = new Set([
  * @param {string|null|undefined} fallbackLink — TYPE_CONFIG[notification.type]?.link
  * @returns {string|null}
  */
+// #4557 (S-M2d): aarsmoede-notifikationer (aabning + de to reminders) skal
+// lande direkte paa /board/meeting, ikke det generiske /board — spilleren
+// klikkede netop FORDI moedet venter. /board/meeting er selv rute-vagtet
+// (AnnualMeetingRoute.jsx falder tilbage til /board hvis moedet allerede er
+// lukket), saa et forsinket klik lander stadig et sikkert sted.
+// boardMandateAutoAccepted er bevidst UDELADT: moedet er allerede
+// underskrevet naar den notifikation fyrer, saa /board (boardroom med det
+// nye mandat) er den rigtige landing, ikke ruten der straks ville sende
+// spilleren tilbage.
+const BOARD_MEETING_TITLE_CODES = new Set([
+  "notif.boardMandateOpened.title",
+  "notif.boardMandateT1Reminder.title",
+  "notif.boardMandateT3Reminder.title",
+]);
+
 export function resolveNotificationLink(notification, fallbackLink) {
   const n = notification || {};
   const meta = n.metadata || {};
 
   if (TRANSFER_DECISION_TYPES.has(n.type)) {
     return fallbackLink ?? null;
+  }
+
+  if ((n.type === "board_update" || n.type === "board_critical") && BOARD_MEETING_TITLE_CODES.has(meta.titleCode)) {
+    return "/board/meeting";
   }
 
   // #3491: scout-rapport for en enkelt-rytter-undersøgelse (kind="target",

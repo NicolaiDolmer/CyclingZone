@@ -12,6 +12,12 @@ const EM_DASH = "—";
 const UNSUB_URL = "https://cyclingzone.org/api/email/unsubscribe?token=abc.def";
 const DISCORD_URL = "https://discord.gg/ykysBrWUyC";
 
+// Escapes a literal string for use inside a RegExp (not a URL/host check -
+// this only builds an exact-match pattern for fixture assertions below).
+function escapeRegExp(literal) {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function assertNoEmDash(template, label) {
   assert.ok(!template.subject.includes(EM_DASH), `${label} subject has no em-dash`);
   assert.ok(!template.html.includes(EM_DASH), `${label} html has no em-dash`);
@@ -31,8 +37,16 @@ function assertHasSharedFooter(template) {
   assert.ok(template.text.includes("Dolmer, Cycling Zone"), "text signed by Dolmer");
   assert.ok(template.html.includes("Come say hi on Discord, I read everything."), "html has the Discord line");
   assert.ok(template.text.includes("Come say hi on Discord, I read everything."), "text has the Discord line");
-  assert.ok(template.html.includes(DISCORD_URL), "html links to Discord");
-  assert.ok(template.text.includes(DISCORD_URL), "text links to Discord");
+  assert.match(
+    template.html,
+    new RegExp(`href="${escapeRegExp(DISCORD_URL)}"`),
+    "html links to Discord",
+  );
+  assert.match(
+    template.text,
+    new RegExp(`:\\s${escapeRegExp(DISCORD_URL)}(?:\\s|$)`),
+    "text links to Discord",
+  );
 }
 
 test("TEMPLATE_TYPES lists the three loop email types", () => {

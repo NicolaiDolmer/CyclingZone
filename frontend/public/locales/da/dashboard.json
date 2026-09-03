@@ -131,7 +131,16 @@
       "firstRaceCta": "Læs hele løbshistorien",
       "firstRaceNext": "Næste løb: {race}, {count, plural, one {om # dag} other {om # dage}}",
       "confettiTitleGc": "Sammenlagt vundet!",
-      "confettiTitleRace": "Løb vundet!"
+      "confettiTitleRace": "Løb vundet!",
+      "breakdown": {
+        "show": "Se sammensætning",
+        "hide": "Skjul sammensætning",
+        "stage": "Etape {number} placering",
+        "teamBonus": "Holdbonus",
+        "sponsor": "Sponsorudbetaling",
+        "sponsorRaceDay": "Løbsdagsindkomst",
+        "sponsorResultBonus": "Resultatbonus"
+      }
     },
     "maidenWin": {
       "title": "Karriereøjeblikke",
@@ -248,7 +257,13 @@
       "focus": "Fokus",
       "budgetMultiplier": "Budget multiplikator",
       "exceeds": "Overget",
-      "exceedsTitle": "Denne kategori scorede over 100%. Du har overgået bestyrelsens forventninger her."
+      "exceedsTitle": "Denne kategori scorede over 100%. Du har overgået bestyrelsens forventninger her.",
+      "meetingNudge": {
+        "title": "Årsmødet er åbent",
+        "subtitle": "Bestyrelsen har foreslået næste sæsons mandat. Justér, stil et ønske, og underskriv.",
+        "daysLeft": "{count, plural, one {# dag tilbage før auto-underskrift} other {# dage tilbage før auto-underskrift}}",
+        "cta": "Gå til årsmødet"
+      }
     },
     "recentResults": {
       "title": "Seneste resultater",
