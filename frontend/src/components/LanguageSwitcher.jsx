@@ -21,11 +21,20 @@ import { CheckIcon, ChevronDownIcon } from "./ui/icons/index.jsx";
 // #2047: flag-icons-CSS scopes hertil (ud af global boot i main.jsx) — switcheren
 // viser `fi fi-*`-flag, så den skal have spritet. Vite deduper på tværs af moduler.
 import "flag-icons/css/flag-icons.min.css";
+// #4733: kode + flag kommer nu fra den ene sprog-konfigurationsfil i stedet
+// for hardcodet her. LABEL_KEYS mapper code -> den eksisterende
+// common.json-nøgle (language.danish/language.english er ordnøgler, ikke
+// ISO-koder — et nyt sprog kræver en ny entry her OG en matchende nøgle i
+// common.json for alle sprog). DISPLAY_ORDER holder den eksisterende visuelle
+// rækkefølge (dansk øverst, engelsk nederst) uændret uanset rækkefølgen i
+// LANGUAGES.
+import { LANGUAGES } from "../i18n/languages.js";
 
-const OPTIONS = [
-  { code: "da", flag: "dk", labelKey: "language.danish" },
-  { code: "en", flag: "gb", labelKey: "language.english" },
-];
+const LABEL_KEYS = { da: "language.danish", en: "language.english" };
+const DISPLAY_ORDER = ["da", "en"];
+const OPTIONS = [...LANGUAGES]
+  .sort((a, b) => DISPLAY_ORDER.indexOf(a.code) - DISPLAY_ORDER.indexOf(b.code))
+  .map((l) => ({ code: l.code, flag: l.flag, labelKey: LABEL_KEYS[l.code] ?? `language.${l.code}` }));
 
 // Estimeret menuhøjde (2 valg) til at vælge op/ned før menuen er målt.
 const MENU_EST_HEIGHT = 88;

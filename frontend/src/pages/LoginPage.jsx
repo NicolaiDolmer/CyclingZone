@@ -340,6 +340,17 @@ export default function LoginPage() {
       // device), er snapshottet væk når bootstrappen kører. Gem det derfor også
       // i auth-metadata ved signUp, så confirm-stien kan falde tilbage til det.
       const attribution = getAttribution();
+      // #4733: rå navigator.language (fx "nl-BE"), IKKE app-UI-sproget
+      // ('language' herover) — sprogklynge-måling til #4110, læses aldrig af
+      // spillet. Kun ved signup (aldrig login); handle_new_user() på
+      // auth.users læser den fra raw_user_meta_data ind i
+      // public.users.browser_language (se
+      // database/2026-09-03-4733-users-browser-language.sql). Trunkeret
+      // defensivt her også, selvom DB-siden allerede left()-trimmer.
+      const browserLanguage =
+        typeof navigator !== "undefined" && typeof navigator.language === "string"
+          ? navigator.language.slice(0, 16)
+          : undefined;
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -351,6 +362,7 @@ export default function LoginPage() {
             team_name: teamName.trim(),
             manager_name: managerName.trim(),
             language,
+            ...(browserLanguage ? { browser_language: browserLanguage } : {}),
             ...(attribution ? { attribution } : {}),
           },
         },

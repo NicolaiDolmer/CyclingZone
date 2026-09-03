@@ -45,10 +45,13 @@ import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { supabase } from "./supabase";
 import { useUserProfile } from "./userProfile.jsx";
+// #4733: SUPPORTED/DEFAULT afledt af den ene sprog-konfigurationsfil i stedet
+// for hardcodet her — se i18n/languages.js.
+import { SUPPORTED_LANGS, DEFAULT_LANG } from "../i18n/languages.js";
 
 const STORAGE_KEY = "cz_lang";
-const SUPPORTED = ["en", "da"];
-const DEFAULT = "en";
+const SUPPORTED = SUPPORTED_LANGS;
+const DEFAULT = DEFAULT_LANG;
 
 const LanguageContext = createContext(null);
 
