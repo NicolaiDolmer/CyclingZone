@@ -27,7 +27,12 @@ function passingTier1Races() {
   return [
     stageRace(Array.from({ length: 12 }, () => st("high_mountain", "long_climb", 170))),
     stageRace(Array.from({ length: 8 }, () => st("mountain", "descent", 170))),
-    stageRace(Array.from({ length: 15 }, () => st("flat", "bunch_sprint", 158))),
+    // #4288 (3/9): GT-taersklen er nu spillets egen (15 etaper), saa et etapeloeb paa 15
+    // flade etaper VILLE blive maalt som en Grand Tour - og det er korrekt: 15 etaper ER
+    // en Grand Tour efter grandTourRestDays.GRAND_TOUR_MIN_STAGES. Fixturen er delt i to
+    // realistiske etapeloeb med samme 15 bunch-sprint-etapedage i alt.
+    stageRace(Array.from({ length: 8 }, () => st("flat", "bunch_sprint", 158))),
+    stageRace(Array.from({ length: 7 }, () => st("flat", "bunch_sprint", 158))),
     oneDay("itt", "solo_tt"),
     oneDay("itt", "solo_tt"),
     stageRace([st("flat", "bunch_sprint"), { ...st("cobbles", "reduced_sprint", 160), sectors: [{ kind: "cobbles", start_km: 80, length_km: 2 }] }]),
@@ -216,14 +221,42 @@ test("scoreSeason: en tier uden mål i TIER_TARGETS er ikke tavst grøn", () => 
   assert.ok(summary.unassessed.some((u) => u.includes("tier 9")));
 });
 
-test("scoreSeason: en GT-arketype med for få etaper rapporteres, ikke sprunget over", () => {
+// #4288 (3/9): taersklen faldt fra 21 til 15, saa katalogets tre aegte GT'er (17/18/17)
+// NU bliver maalt - det var hele pointen. "Kan ikke vurderes"-stien gaelder derfor kun
+// under 15 etaper, og den skal stadig give UKENDT frem for tavshed.
+test("scoreSeason: en GT-arketype under 15 etaper rapporteres, ikke sprunget over", () => {
   const summary = scoreSeason([
     { tier: 3, races: passingTier3Races() },
-    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ stageCount: 18 })), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
+    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ stageCount: 12 })), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
   ]);
   assert.equal(summary.verdict, VERDICT.UNKNOWN);
   assert.equal(summary.grandToursEvaluated, 0);
-  assert.ok(summary.unassessed.some((u) => u.includes("Vuelta Ibérica") && u.includes("18 etaper")));
+  assert.ok(summary.unassessed.some((u) => u.includes("Vuelta Ibérica") && u.includes("12 etaper")));
+});
+
+// #4288: en 17-etapers GT som katalogets Vuelta Ibérica MAA ikke laengere vaere usynlig.
+// Baandet skaleres pr. etape, saa den maales mod 2590-2833 km i stedet for 3200-3500.
+test("#4288: en 17-etapers Grand Tour MAALES nu, i stedet for at vaere tavs", () => {
+  const summary = scoreSeason([
+    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ hc: 3, stageCount: 17 })), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
+    { tier: 3, races: passingTier3Races() },
+  ]);
+  assert.equal(summary.grandToursEvaluated, 1, "GT'en skal vaere vurderet, ikke sprunget over");
+  const gt = summary.tiers.find((t) => t.tier === 1).grandTours[0];
+  assert.equal(gt.stageCount, 17);
+  assert.equal(gt.pass, true, `17 x 158 km = 2686 km ligger i det skalerede baand: ${gt.failures.join(" · ")}`);
+});
+
+// #4288: og den skal kunne SIGE FRA. En GT med for korte etaper er praecis det fund
+// baandet fandtes for - katalogets Vuelta Ibérica laa 3/9 paa 151,4 km/etape og faldt
+// under gulvet paa 152,4.
+test("#4288: en 17-etapers GT med for korte etaper faelder baandet", () => {
+  const summary = scoreSeason([
+    { tier: 1, races: [...passingTier1Races(), { ...stageRace(grandTourStages({ hc: 3, stageCount: 17 }).map((s) => ({ ...s, distance_km: 140 }))), name: "Vuelta Ibérica", terrain_archetype: "grand_tour" }] },
+    { tier: 3, races: passingTier3Races() },
+  ]);
+  assert.equal(summary.verdict, VERDICT.NO_GO);
+  assert.ok(summary.failures.some((f) => f.includes("km/etape")), summary.failures.join(" · "));
 });
 
 test("scoreSeason: generator-fejl bogføres som ikke-vurderet, ikke som båndbrud", () => {
