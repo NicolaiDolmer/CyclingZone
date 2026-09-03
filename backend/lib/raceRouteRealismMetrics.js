@@ -3,6 +3,10 @@
 // Ren funktion — ingen DB. Input = allerede-genererede etaper (profile_type/finale_type/rute).
 // GATEN: raceRouteRealismScorecard.js regenererer S2 in-memory og kalder scoreTier pr. tier.
 
+// #4288: GT-taersklen er spillets egen (15), ikke en anden konstant med samme navn.
+// grandTourRestDays.js importerer intet, saa der er ingen cyklus.
+import { GRAND_TOUR_MIN_STAGES as GT_MIN_STAGES } from "./grandTourRestDays.js";
+
 const MOUNTAIN = new Set(["mountain", "high_mountain"]);
 const isSummit = (s) => s.finale_type === "long_climb" && MOUNTAIN.has(s.profile_type);
 
@@ -184,20 +188,76 @@ export function scoreTier(tier, races) {
   };
 }
 
-// GT-realisme (spec §6): tjek et 21-etapers løb. total-km-bånd + kategoriserede stigninger.
+// ── GT-realisme (spec §6) ────────────────────────────────────────────────────────────
+//
+// #4288 (EJER-BESLUTNING 3/9, lukker CALENDAR_RULES.md §11 punkt 7): baandet SKALERES PR.
+// ETAPE i stedet for at vaere et absolut km-tal for hele loebet, og taersklen falder fra 21
+// til GRAND_TOUR_MIN_STAGES (15) - spillets egen definition af en Grand Tour.
+//
+// HVORFOR: spec §6's tal (3.200-3.500 km, >= 25 kategoriserede stigninger, 3-8 HC) blev
+// skrevet for et 21-etapers loeb. Kataloget har tre Grand Tours med 17, 18 og 17 etaper, og
+// INGEN af dem naaede taersklen paa 21. Resultatet var ikke et roedt scorecard - det var
+// tavshed: spillets tre stoerste loeb blev slet ikke maalt, hverken GO eller NO-GO. Det er
+// praecis "en vagt der er stille fordi systemet er aendret" (samme fejlklasse som §9b's
+// nat-vagt der gik groen paa sit eget fejlsvar).
+//
+// Ejerens ramme for S4 er Giro 17 / Vuelta 17 / Tour 18 etaper. Et absolut km-baand ville
+// doemme dem alle tre roede for at vaere 3-4 etaper korte - det ville maale
+// KATALOG-LAENGDEN, ikke parcours-realismen. Km PR. ETAPE maaler det baandet faktisk handler
+// om: at en GT-etape har GT-laengde.
+//
+// GRAND_TOUR_MIN_STAGES (15) er UAENDRET som spillets GT-definition - se
+// grandTourRestDays.js. Konstanten her var en ANDEN, hoejere taerskel (21) som ingen havde
+// besluttet; den er nu den samme som resten af spillet bruger.
+export const GRAND_TOUR_MIN_STAGES = GT_MIN_STAGES;
+
+// Ankeret baandene er afledt af: spec §6's oprindelige tal og det etapeantal de blev skrevet
+// for. Aendres ankeret, skalerer alle tre baand med.
+export const GRAND_TOUR_BAND_ANCHOR = Object.freeze({
+  stages: 21,
+  totalKm: Object.freeze([3200, 3500]),
+  categorizedClimbsMin: 25,
+  hcClimbs: Object.freeze([3, 8]),
+});
+
+/** Spec §6's anker skaleret til et loeb med `stages` etaper. Alle graenser er inklusive. */
+export function grandTourBandsFor(stages) {
+  const n = Math.max(1, Number(stages) || 0);
+  const a = GRAND_TOUR_BAND_ANCHOR;
+  const perStage = n / a.stages;
+  return {
+    stages: n,
+    totalKm: [a.totalKm[0] * perStage, a.totalKm[1] * perStage],
+    // Stigninger er heltal: gulvet rundes NED og loftet OP, saa skaleringen aldrig goer
+    // baandet strengere end ankeret var for 21 etaper.
+    categorizedClimbsMin: Math.floor(a.categorizedClimbsMin * perStage),
+    hcClimbs: [Math.floor(a.hcClimbs[0] * perStage), Math.ceil(a.hcClimbs[1] * perStage)],
+  };
+}
+
+/**
+ * Scorer EN Grand Tour mod det etape-skalerede baand (#4288). Rapporterer baade det
+ * absolutte tal og km-pr-etape, saa en roed linje kan laeses uden at regne selv.
+ */
 export function scoreGrandTour(stages) {
+  const stageCount = stages.length;
   const totalKm = stages.reduce((s, x) => s + (x.distance_km || 0), 0);
   const categorizedClimbs = stages.reduce((s, x) => s + ((x.climbs || []).length), 0);
   const hcClimbs = stages.reduce((s, x) => s + (x.climbs || []).filter((c) => c.category === "HC").length, 0);
+  const bands = grandTourBandsFor(stageCount);
+  const kmPerStage = stageCount ? totalKm / stageCount : 0;
   const failures = [];
-  if (totalKm < 3200 || totalKm > 3500) failures.push(`total ${totalKm} km udenfor 3200–3500`);
-  if (categorizedClimbs < 25) failures.push(`kategoriserede stigninger ${categorizedClimbs} < 25`);
-  if (hcClimbs < 3 || hcClimbs > 8) failures.push(`HC-stigninger ${hcClimbs} udenfor 3–8`);
-  return { totalKm, categorizedClimbs, hcClimbs, pass: failures.length === 0, failures };
+  if (totalKm < bands.totalKm[0] || totalKm > bands.totalKm[1]) {
+    failures.push(`total ${totalKm} km (${kmPerStage.toFixed(1)} km/etape) udenfor ${Math.round(bands.totalKm[0])}–${Math.round(bands.totalKm[1])} for ${stageCount} etaper`);
+  }
+  if (categorizedClimbs < bands.categorizedClimbsMin) {
+    failures.push(`kategoriserede stigninger ${categorizedClimbs} < ${bands.categorizedClimbsMin} (${stageCount} etaper)`);
+  }
+  if (hcClimbs < bands.hcClimbs[0] || hcClimbs > bands.hcClimbs[1]) {
+    failures.push(`HC-stigninger ${hcClimbs} udenfor ${bands.hcClimbs[0]}–${bands.hcClimbs[1]} (${stageCount} etaper)`);
+  }
+  return { totalKm, kmPerStage, categorizedClimbs, hcClimbs, bands, pass: failures.length === 0, failures };
 }
-
-// Et løb med mindst så mange etaper scores mod GT-båndet.
-export const GRAND_TOUR_MIN_STAGES = 21;
 
 // Tre udfald — "kunne ikke vurderes" er BEVIDST forskelligt fra både GO og NO-GO.
 // Et scorecard der siger GO på et grundlag det ikke har målt er værre end intet

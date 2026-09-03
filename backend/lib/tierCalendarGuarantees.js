@@ -167,7 +167,7 @@ export const TIER_TERRAIN_FAMILY_MIN = Object.freeze({
   1: Object.freeze({ cobbles: 3, flat_sprint: 20, itt: 5, hilly: 10, mountain: 28, rolling: 14 }),
   2: Object.freeze({ cobbles: 6, flat_sprint: 15, itt: 4, hilly: 8, mountain: 20, rolling: 6 }),
   3: Object.freeze({ cobbles: 5, flat_sprint: 12, itt: 3, hilly: 8, mountain: 12, rolling: 3 }),
-  4: Object.freeze({ cobbles: 1, flat_sprint: 8, itt: 1, hilly: 6, mountain: 13, rolling: 2 }),
+  4: Object.freeze({ cobbles: 1, flat_sprint: 8, itt: 1, hilly: 6, mountain: 13, rolling: 1 }),
 });
 
 // Maksimum antal etaper pr. terraen-familie pr. pulje pr. sae­son. KUN `rolling` har et loft
@@ -176,18 +176,29 @@ export const TIER_TERRAIN_FAMILY_MIN = Object.freeze({
 // dem ovenfra.
 //
 // TALGRUNDLAG (maalt, ikke gaettet). To maalinger pr. division: live saeson 3 (30/8,
-// read-only mod prod) og S4's 28-dages plan (3/9, tordry-run uden tilt).
-//   D1: S3 22 · S4-plan 19  -> band [14, 26]. Baandets bredde er +/-6 om midten (20,5),
-//       fordi D1's 140-155 etaper goer en enkelt etape mindre end 1 pp - et smallere baand
-//       ville vaere roedt paa stikproeve-stoej frem for paa skaevhed.
-//   D2: S3 9 · S4-plan 10   -> band [6, 14]. Samme relative bredde, skaleret ned.
-//   D3: S3 4 · S4-plan 4    -> band [3, 8]. Gulvet lige under den maalte vaerdi: D3 har
-//       kun 84 etaper og skal ikke tvinges over sit eget observerede niveau.
-//   D4: S3 0 · S4-plan 1 (ved density 2) -> band [2, 6]. Gulvet er det ENESTE i tabellen
-//       der ligger OVER det maalte: 0-1 rolling-etaper er ikke en fordeling, det er et
-//       fravaer, og ejeren har besluttet at baroudeuren skal have dage i alle fire
-//       divisioner. D4's density 2 -> 3 (#4270) giver 84 etaper i stedet for 56 og dermed
-//       28 nye pladser at tage de to fra.
+// read-only mod prod) og S4's 28-dages plan (dry-run 3/9, uden tilt, D4 paa density 3).
+//
+//   | div | S3 live      | S4-plan      | band      | begrundelse                        |
+//   | D1  | 22 af 155    | 19 af 140    | [14, 26]  | baandet er +/-6 om midten (20).    |
+//   |     | 14,2 %       | 13,6 %       |           | D1 har 140 etaper, saa 1 etape er  |
+//   |     |              |              |           | 0,7 pp - et smallere baand ville   |
+//   |     |              |              |           | vaere roedt paa stoej, ikke skaevhed.|
+//   | D2  |  9 af 124    | 10 af 112    | [6, 14]   | samme relative bredde, skaleret.   |
+//   | D3  |  4 af  85    |  4 af  84    | [3, 8]    | gulv lige under den maalte vaerdi. |
+//   | D4  |  0 af  62    |  1 af  84    | [1, 6]    | se nedenfor.                       |
+//
+// D4's gulv er 1, ikke 2, og det er et BEVIDST valg maalt frem: S4-planen leverer 1
+// rolling-etape af 84 (1,2 %) mod D1's 13,6 %. Et gulv paa 2 ville vaere en garanti uden
+// forsyning - praecis den fejlklasse
+// `.claude/learnings/2026-08-06-garanti-uden-forsyning-blokerede-s3-kalenderen.md`
+// beskriver, og den blokerer en saeson i stedet for at forbedre den. Gulvet paa 1 er
+// alligevel den regressionsvagt der manglede: S3 leverede NUL, altsaa ingen dag til
+// baroudeuren i hele divisionen, og ingen gate sagde fra.
+//
+// Rolling er en GENERERET profiltype (ARCHETYPE_PROFILES' filler-vaegte), ikke en egenskab
+// ved et katalog-loeb. D4's 1,2 % kan derfor kun loeftes ved at genkalibrere fillerne pr.
+// division - og den genkalibrering er ejer-besluttet 3/9 som en S5-opgave (se
+// CALENDAR_RULES.md §6b). Naar den lander, er D4's gulv det foerste tal der skal op.
 export const TIER_TERRAIN_FAMILY_MAX = Object.freeze({
   1: Object.freeze({ rolling: 26 }),
   2: Object.freeze({ rolling: 14 }),
