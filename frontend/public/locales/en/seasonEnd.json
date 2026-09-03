@@ -65,8 +65,8 @@
     "progression": "Trend"
   },
   "you": "You",
-  "promotion": "↑ Up",
-  "relegation": "↓ Down",
+  "promotion": "Up",
+  "relegation": "Down",
   "myProgression": "Your team's points progression",
   "loadError": "Couldn't load the season. Please try again.",
   "retry": "Try again",
@@ -82,8 +82,8 @@
     },
     "rankLine": "#{rank} of {size} in Division {division}",
     "movement": {
-      "promoted": "↑ Promoted",
-      "relegated": "↓ Relegated",
+      "promoted": "Promoted",
+      "relegated": "Relegated",
       "maintained": "Held Division {division}"
     },
     "highlight": {

@@ -412,7 +412,8 @@ function TransferListButton({ rider, onChanged }) {
           )}
         </div>
       ) : (
-        <button type="button" onClick={() => setShow(!show)} className={triggerClass(show)}>
+        <button type="button" onClick={() => setShow(!show)} className={`${triggerClass(show)} inline-flex items-center gap-1`}>
+          <ExchangeIcon size={14} aria-hidden="true" />
           {t("sellRider.buttonOpen")}
         </button>
       )}

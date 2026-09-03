@@ -761,7 +761,7 @@
     }
   },
   "sellRider": {
-    "buttonOpen": "↔ List for sale",
+    "buttonOpen": "List for sale",
     "description": "List the rider for sale at a fixed price on the transfer list. You can edit the price or remove the listing at any time.",
     "pricePlaceholder": "Asking price in CZ$",
     "submit": "List for sale",

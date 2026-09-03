@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   Section, SectionHeader, Button, ZonePill,
   BookOpenIcon, PodiumIcon, TrophyIcon, CoinIcon, ClipboardIcon, DownloadIcon,
+  ArrowUpIcon, ArrowDownIcon,
 } from "./ui";
 import { formatNumber } from "../lib/intl";
 import { movementTone, movementLabelKey } from "../lib/seasonRecapCopy.js";
@@ -119,6 +120,8 @@ export default function SeasonRecapHero({
 
       <div className="mb-4 mt-2 flex flex-wrap items-center gap-2">
         <ZonePill tone={movementTone(movement)}>
+          {movement === "promoted" && <ArrowUpIcon size={10} className="inline -mt-px me-0.5" aria-hidden="true" />}
+          {movement === "relegated" && <ArrowDownIcon size={10} className="inline -mt-px me-0.5" aria-hidden="true" />}
           {t(`recap.movement.${movementLabelKey(movement)}`, { division })}
         </ZonePill>
         {rank != null && divisionSize != null && (

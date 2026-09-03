@@ -135,7 +135,7 @@ test.describe("Auction start-price typo guard (#3184)", () => {
 
     await login(page);
     await page.goto("/riders/rider-1");
-    await page.getByRole("button", { name: /↔ List for sale|↔ Sæt til salg/ }).click();
+    await page.getByRole("button", { name: /^(List for sale|Sæt til salg)$/ }).click();
 
     const priceInput = page.getByTestId("transfer-list-price-input");
     await priceInput.fill("150.000");

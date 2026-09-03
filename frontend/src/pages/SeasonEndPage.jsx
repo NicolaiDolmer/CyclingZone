@@ -22,6 +22,7 @@ import {
   CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, TrophyIcon, PageLoader,
   PageHeader, Section, SectionHeader, Card, Table, Th, Td, EmptyState, ErrorState,
   Button, Select, ZonePill, FlameIcon, PodiumIcon, LightningIcon,
+  ArrowUpIcon, ArrowDownIcon,
 } from "../components/ui";
 
 // #2908: division-farven kommer nu fra den delte anti-drift-vokabular
@@ -865,8 +866,18 @@ export default function SeasonEndPage() {
                                 </span>
                                 {isLeader && <LeaderBadge />}
                                 {isMe && <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("you")}</span>}
-                                {isPromotion && <ZonePill tone="success">{t("promotion")}</ZonePill>}
-                                {isRelegation && <ZonePill tone="danger">{t("relegation")}</ZonePill>}
+                                {isPromotion && (
+                                  <ZonePill tone="success">
+                                    <ArrowUpIcon size={10} className="inline -mt-px me-0.5" aria-hidden="true" />
+                                    {t("promotion")}
+                                  </ZonePill>
+                                )}
+                                {isRelegation && (
+                                  <ZonePill tone="danger">
+                                    <ArrowDownIcon size={10} className="inline -mt-px me-0.5" aria-hidden="true" />
+                                    {t("relegation")}
+                                  </ZonePill>
+                                )}
                               </div>
                             </Td>
                             <Td numeric className="hidden sm:table-cell">

@@ -41,7 +41,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 2,
-      "arrowglyph": 15
+      "arrowglyph": 7
     },
     "frontend/public/locales/da/dashboard.json": {
       "hex": 0,
@@ -110,17 +110,10 @@
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 20,
-      "arrowglyph": 5
+      "emoji": 19,
+      "arrowglyph": 4
     },
     "frontend/public/locales/da/seasonEnd.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 6
-    },
-    "frontend/public/locales/da/standings.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
@@ -188,7 +181,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 2,
-      "arrowglyph": 15
+      "arrowglyph": 7
     },
     "frontend/public/locales/en/dashboard.json": {
       "hex": 0,
@@ -257,17 +250,10 @@
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 20,
-      "arrowglyph": 5
+      "emoji": 19,
+      "arrowglyph": 4
     },
     "frontend/public/locales/en/seasonEnd.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 6
-    },
-    "frontend/public/locales/en/standings.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
@@ -295,26 +281,12 @@
       "emoji": 1,
       "arrowglyph": 2
     },
-    "frontend/src/components/DevTransitionCard.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
     "frontend/src/components/SetupWizardModal.jsx": {
       "hex": 0,
       "slop": 0,
       "colour": 1,
       "emoji": 0,
       "arrowglyph": 0
-    },
-    "frontend/src/components/TeamPalmaresTab.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 2
     },
     "frontend/src/components/admin/DeadlineReadinessSection.jsx": {
       "hex": 0,
@@ -329,13 +301,6 @@
       "colour": 0,
       "emoji": 14,
       "arrowglyph": 2
-    },
-    "frontend/src/components/admin/RacePointModelSection.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
     },
     "frontend/src/components/admin/RacePoolSection.jsx": {
       "hex": 0,
@@ -400,21 +365,7 @@
       "emoji": 0,
       "arrowglyph": 1
     },
-    "frontend/src/components/rider/TeamCell.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
     "frontend/src/components/rider/profile/RiderTrainingTab.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
-    "frontend/src/lib/boardUtils.js": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
@@ -447,7 +398,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 3
+      "arrowglyph": 2
     },
     "frontend/src/pages/KitchenSinkPage.jsx": {
       "hex": 1,
@@ -503,7 +454,7 @@
       "slop": 0,
       "colour": 1,
       "emoji": 12,
-      "arrowglyph": 2
+      "arrowglyph": 0
     }
   }
 }

@@ -71,12 +71,12 @@ test("negotiate-down button is disabled (not a silent no-op) when a goal can't b
   await login(page);
   await page.goto("/board");
 
-  // Udløbet plan → "Forhandl ny plan →" åbner wizard'en (step 1).
-  await page.getByRole("button", { name: "Forhandl ny plan →" }).click();
+  // Udløbet plan → "Forhandl ny plan" åbner wizard'en (step 1).
+  await page.getByRole("button", { name: "Forhandl ny plan" }).click();
   await expect(page.getByRole("heading", { name: "Bestyrelsens forslag" })).toBeVisible();
 
-  // Start forhandling → step 2, mål 0.
-  await page.getByRole("button", { name: "Start forhandling →" }).click();
+  // Start forhandling step 2, mål 0.
+  await page.getByRole("button", { name: "Start forhandling" }).click();
   await expect(page.getByRole("heading", { name: "Forhandling" })).toBeVisible();
 
   // Mål 0 KAN forhandles → knappen er aktiveret og viser "Forhandl ned".
@@ -84,7 +84,7 @@ test("negotiate-down button is disabled (not a silent no-op) when a goal can't b
   await expect(negotiateBtn).toBeEnabled();
 
   // Accepter mål 0 → frem til mål 1.
-  await page.getByRole("button", { name: "Accepter →" }).click();
+  await page.getByRole("button", { name: "Accepter" }).click();
 
   // Mål 1 kan IKKE forhandles → knappen er deaktiveret og mærket tydeligt,
   // i stedet for at se klikbar ud og gøre ingenting (dead-click).
