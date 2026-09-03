@@ -856,12 +856,12 @@
           [
             "Bjergrytter",
             "Lange stigninger og vedvarende bjergtempo.",
-            "Intervaller (Bjerg, Punch, Tempo)"
+            "Klatreintervaller (Bjerg, Tempo)"
           ],
           [
             "Bakkerytter",
             "Korte, stejle indsatser og kuperede finaler.",
-            "Intervaller (Punch, Tempo)"
+            "Punch-intervaller (Punch, Tempo)"
           ],
           [
             "Brostensrytter",
@@ -917,7 +917,7 @@
         "steps": [
           "Gå til Daglig træning i menuen.",
           "Find en rytter og vælg hvad det er for en dag: Hvile, Aktiv restitution, en Færdighedsdag eller Træning.",
-          "På en træningsdag vælger du sessionen: Lang tur (let), Tempo (mellem), eller Intervaller, Tærskel eller Sprint (hård). På en færdighedsdag: Teknik, Aero eller Løbslære.",
+          "På en træningsdag vælger du sessionen: Lang tur (let), Tempo (mellem), eller Blandede intervaller, Klatreintervaller, Punch-intervaller, Tærskel eller Sprint (hård). På en færdighedsdag: Teknik, Aero eller Løbslære.",
           "Gem. Dagen kører hver dag, indtil du ændrer den.",
           "Der er ingen grænse for hvor mange ryttere der kan have et program: du kan sætte et for hele truppen."
         ]
@@ -928,15 +928,15 @@
       },
       "focusAbilities": {
         "title": "Hvad hver session træner",
-        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Intervaller træner Bjerg, Punch og Tempo. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Teknik træner Nedkørsel og Brosten. Aero træner Enkeltstart og Fladt. Løbslære træner Positionering, Taktik og Aggression. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel og sprint er hårde; teknik, aero og løbslære er alle lette. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
+        "text": "Hver session udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner fortsætter lidt langsommere. Lang tur træner Udholdenhed, Restitution og Robusthed. Tempo træner Tempo, Fladt og Robusthed. Blandede intervaller træner Bjerg, Punch og Tempo med lige stor andel. Klatreintervaller træner Bjerg og Tempo, og Bjerg får mere end i den blandede session, men Punch trænes slet ikke. Punch-intervaller er spejlbilledet: Punch og Tempo, hvor Punch får mere, og Bjerg er ude. De tre dækker den samme mængde arbejde, så et andet valg flytter dit udbytte, det lægger ikke noget til. Tærskel træner Enkeltstart og Tempo. Sprint træner Sprint og Acceleration. Teknik træner Nedkørsel og Brosten. Aero træner Enkeltstart og Fladt. Løbslære træner Positionering, Taktik og Aggression. Belastningen følger med sessionen og er ikke et selvstændigt valg: en lang tur er let, tempo er mellem, og intervaller, tærskel og sprint er hårde; teknik, aero og løbslære er alle lette. Hårde sessioner bygger mere træthed op end lette, men har ingen risiko for tilbageslag."
       },
       "typeGating": {
         "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",
-        "text": "Hver rytter har en primær OG en sekundær type (sprinter, klatrer, tidskører, klassementsrytter og så videre) samt et skjult potentiale per evne, begge fastlagt da rytteren blev skabt. To ting afgør hvad en evne bliver: hvor højt den kan nå, og hvor hurtigt den kommer derhen. Typen sætter begge. En evne hans primære type er bygget til når højest og vokser hurtigst. Hans sekundære type ligger tæt på, omkring 85 procent så højt. Positionering og taktik er håndværk: ingen fødes med dem, så alle ryttere kan nå omkring 73 procent så højt, men de bygges langsomt op. En evne uden for begge hans roller når omkring halvt så højt og vokser langsomt. En evne hans type direkte modarbejder rykker sig knap nok. Tjek begge type-mærker før du vælger fokus, og husk at det at nå højt og det at komme hurtigt derhen ikke længere er det samme: en evne kan have masser af luft tilbage og alligevel tage år at fylde."
+        "text": "Hver rytter har en primær OG en sekundær type (sprinter, klatrer, tidskører, klassementsrytter og så videre) samt et skjult potentiale per evne, begge fastlagt da rytteren blev skabt. To ting afgør hvad en evne bliver: hvor højt den kan nå, og hvor hurtigt den kommer derhen. Typen sætter begge. En evne hans primære type er bygget til når højest og vokser hurtigst. Hans sekundære type ligger tæt på, omkring 85 procent så højt. Positionering og taktik er håndværk: ingen fødes med dem, så alle ryttere kan nå omkring 73 procent så højt, men de bygges langsomt op. En evne uden for begge hans roller når omkring halvt så højt og vokser langsomt. En evne hans type direkte modarbejder rykker sig knap nok. Tjek begge type-mærker før du vælger fokus, og husk at det at nå højt og det at komme hurtigt derhen ikke længere er det samme: en evne kan have masser af luft tilbage og alligevel tage år at fylde. Tempoet justeres løbende som en del af den fortsatte balancering af spillet, så en rytters daglige fremgang kan føles anderledes fra én opdatering til den næste, uden at noget ved rytteren selv er ændret."
       },
       "ceilingReached": {
         "title": "Min rytters evne er holdt op med at stige",
-        "text": "Det er nu usædvanligt. Hver evne har stadig et livstidsloft sat af type og potentiale, men ryttere ankommer ikke længere bare derhen. Hvor tæt en rytter kommer, og på hvilke evner, afgøres af hvordan du træner ham. Er en evne virkelig holdt op, er det næsten altid en af to ting. Enten er rytteren forbi sit højdepunkt, hvor evner falder i stedet for at vokse, og det han har er det han beholder. Eller også ligger evnen allerede over hvad hans type og potentiale ville bygge op af sig selv, hvilket sker for ryttere der er båret over fra en tidligere udgave af spillet. Der bliver ikke taget noget fra ham, den stiger bare ikke videre. Hver evne har sin egen linje på træningssiden og på rytterprofilen, og en færdig evne står som færdig hvor de andre viser fremdrift."
+        "text": "Det er nu usædvanligt. Hver evne har stadig et livstidsloft sat af type og potentiale, men ryttere ankommer ikke længere bare derhen. Hvor tæt en rytter kommer, og på hvilke evner, afgøres af hvordan du træner ham. Er en evne virkelig holdt op, er det næsten altid en af to ting. Enten er rytteren forbi sit højdepunkt, hvor evner falder i stedet for at vokse, og det han har er det han beholder. Eller også ligger evnen allerede over hvad hans type og potentiale ville bygge op af sig selv, hvilket sker for ryttere der er båret over fra en tidligere udgave af spillet. Der bliver ikke taget noget fra ham, den stiger bare ikke videre. Hver evne har sin egen linje på træningssiden og på rytterprofilen, og en færdig evne står som færdig hvor de andre viser fremdrift. Tallet ved siden af en evne er altid dens nuværende værdi, aldrig loftet i sig selv, som aldrig vises som et tal noget sted i spillet, og fremgangen aftager naturligt jo tættere rytteren kommer, så en værdi der står stille i nogle dage ikke nødvendigvis betyder at den er færdig."
       },
       "trainToday": {
         "title": "Træn i dag og +25%-boostet",
@@ -1202,6 +1202,10 @@
         "title": "Træthed betyder noget",
         "text": "Trætte hjælpere støtter kaptajnen mindre, og løbsdage opbygger træthed. Roter din trup mellem løb for at holde dine stjerner friske til de dage der tæller."
       },
+      "assistantFill": {
+        "title": "Hvornår assistenten udfylder et hold",
+        "text": "Assistenten overskriver aldrig et hold du selv har sat, og den rører aldrig en løbsdag du bevidst har ryddet. Hvad den gør af sig selv afhænger af den indstilling vi kører: den kan overlade alle udtagelser til dig, den kan udfylde et løb du har efterladt helt tomt kort før start, eller du kan slå den til for dit hold og lade den udtage. Uanset indstillingen bliver et hold der er tomt eller under seks ryttere ved løbsstart stadig fyldt op til seks, så du kommer til start."
+      },
       "scouting": {
         "title": "Scout andre divisioner",
         "text": "Skift race hub'en til 'Min division' eller 'Andre divisioner' for at se enhver puljes kommende startlister, skrivebeskyttet. Startlister åbner syv dage før hvert løb og viser kun bruttotrupper (hvilke ryttere et hold har meldt til), så du kan vurdere det forventede felt. Roller, form og træthed forbliver skjult, og løb længere ude er låst, indtil deres startliste åbner."
@@ -1287,7 +1291,7 @@
     },
     "auctionExpiry": {
       "q": "Hvornår udløber en auktion?",
-      "a": "Når du selv sætter en rytter til salg, vælger du det præcise tidspunkt auktionen slutter, fra 1 til 48 timer frem. Auktioner banken starter varer 1 aktiv time. Nattetimer tæller ikke: det aktive vindue er kl. 08 til 24 alle dage. Eksempel: en auktion startet kl. 19:40 slutter samme aften kl. 20:40. En auktion startet kl. 23:30 slutter næste morgen kl. 08:30."
+      "a": "Når du selv sætter en rytter til salg, vælger du det præcise tidspunkt auktionen slutter, fra 1 til 48 timer frem. En auktion på en fri rytter (uden hold) varer som udgangspunkt mindst 12 aktive timer: uanset hvem der starter den, og uanset hvorfor rytteren blev fri (selv startet, banken, akademiet eller ungdomsmarkedet), så du ikke går glip af et ungt talent bare fordi du sov eller var på arbejde. Den ene undtagelse er en Flash Auktion, der altid varer præcis 30 minutter. Nattetimer tæller ikke: det aktive vindue er kl. 08 til 24 alle dage. Eksempel: en auktion startet kl. 19:40 slutter samme aften kl. 20:40. En auktion startet kl. 23:30 slutter næste morgen kl. 08:30."
     },
     "flashAuction": {
       "q": "Hvad er en Flash Auktion?",
@@ -1331,7 +1335,7 @@
     },
     "riderSalaryView": {
       "q": "Hvordan ser jeg en rytters løn?",
-      "a": "Løn er en synlig kolonne i Rytterdatabasen og ønskelisten og kan sorteres og filtreres på. Du kan filtrere på løn-interval under 'Løn CZ$ (min-max)' i filterpanelet. En rytters løn er en fast andel af hans nuværende produktionsværdi, altså det spillet forventer han leverer i denne sæson med de evner han har nu. Den bygger ikke på hans markedsværdi: værdien prissætter hele hans resterende karriere, lønnen prissætter kun denne sæson. Andelen er den samme for alle hold i alle divisioner, så den samme rytter koster det samme uanset hvor han kører. En rytter hvis evner vokser bliver dyrere ved næste kontrakt, og en hvis evner falder bliver billigere."
+      "a": "Løn er en synlig kolonne i Rytterdatabasen og ønskelisten og kan sorteres og filtreres på. Du kan filtrere på løn-interval under 'Løn CZ$ (min-max)' i filterpanelet. En rytters løn er en fast andel af hans nuværende produktionsværdi, altså det spillet forventer han leverer i denne sæson med de evner han har nu. Den bygger ikke på hans markedsværdi: værdien prissætter hele hans resterende karriere, lønnen prissætter kun denne sæson. Andelen er den samme for alle hold i alle divisioner, så den samme rytter koster det samme uanset hvor han kører. En rytter hvis evner vokser bliver dyrere ved næste kontrakt, og en hvis evner falder bliver billigere. Én ting at vide før du forlænger: hans nuværende løn fryses i det øjeblik han skriver under, og flytter sig aldrig af sig selv, så hvis hans evner er vokset meget siden, kan forlængelsestilbuddet virke som et stort hop, selvom selve beregningen ikke har ændret sig."
     },
     "riderDevelopment": {
       "q": "Hvor kan jeg se om en rytter udvikler sig?",
@@ -1359,7 +1363,7 @@
     },
     "flatCobblesHardTrainingFaq": {
       "q": "Hvorfor kan jeg ikke træne Fladt eller Brosten med Hård intensitet?",
-      "a": "Det er en bevidst del af designet, at ingen Hård-session rammer de to evner i dag. De tre Hårde sessioner er Intervaller (Bjerg, Punch, Tempo), Tærskel (Enkeltstart, Tempo) og Sprint (Sprint, Acceleration). Fladt trænes af Tempo (Normal) og Aero (Let); Brosten kun af Teknik (Let). Der findes i dag ingen måde at presse nogen af de to på Hård."
+      "a": "Det er en bevidst del af designet, at ingen Hård-session rammer de to evner i dag. De Hårde sessioner er Blandede intervaller (Bjerg, Punch, Tempo), Klatreintervaller (Bjerg, Tempo), Punch-intervaller (Punch, Tempo), Tærskel (Enkeltstart, Tempo) og Sprint (Sprint, Acceleration). Fladt trænes af Tempo (Normal) og Aero (Let); Brosten kun af Teknik (Let). Der findes i dag ingen måde at presse nogen af de to på Hård."
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Forbedrer et bedre scouting-netværk også hvor godt jeg ser mine egne ryttere?",

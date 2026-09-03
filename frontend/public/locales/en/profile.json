@@ -30,6 +30,14 @@
     "darkLabel": "Dark",
     "darkHint": "Dark background across the app"
   },
+  "assistant": {
+    "title": "Assistant",
+    "subtitle": "Choose whether the assistant may pick line-ups for you.",
+    "toggleLabel": "Assistant fills my line-up automatically",
+    "toggleHint": "On: the assistant picks a line-up for races you have not set yourself. Off: those races stay empty until you pick, and only the rescue when the race starts still applies.",
+    "on": "The assistant now fills your line-ups.",
+    "off": "The assistant no longer picks for you."
+  },
   "privacy": {
     "title": "Privacy",
     "subtitle": "You decide what we measure. Changes take effect the next time you open the game.",

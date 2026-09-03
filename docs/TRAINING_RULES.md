@@ -152,7 +152,44 @@ sessionen** (`SESSION_INTENSITY`, `backend/lib/trainingDayTypes.js:71-83`).
 | Hvile (`rest`) | ingen | `rest` | Ingen udvikling overhovedet. Fokus bevares i kolonnen så valget ikke går tabt |
 | Aktiv restitution (`recovery`) | ingen | `recovery` | Egen fokus-nøgle `restitution` → kun evnen `recovery`. Sænker træthed, men mindre end hvile |
 | Færdighed (`skill`) | `technique`, `aero`, `loebslaere` | `easy` | Rammes af håndværks-loftet på raten, §2.1 |
-| Træning (`training`) | `endurance` (let) · `tempo` (normal) · `vo2max`, `threshold`, `sprint` (hård) | følger sessionen | Niveauet ER intensiteten |
+| Træning (`training`) | `endurance` (let) · `tempo` (normal) · `vo2max`, `vo2max_climb`, `vo2max_punch`, `threshold`, `sprint` (hård) | følger sessionen | Niveauet ER intensiteten |
+
+### 3.1 Intervaldagen er tre pakker, ikke én (#4631, ejer 2/9)
+
+Ejeren slog fast at climbing og punch ikke hører sammen i ét bundt, fordi de har
+vidt forskellige lofter: en rytter der er færdig i den ene taber en del af hver
+eneste intervaldag. Splittet er derfor **tre sessioner på samme niveau**:
+
+| Session | Evner | Rolle |
+|---|---|---|
+| `vo2max` | climbing · punch · tempo | **Hybriden. Uændret.** Nøglen er bevidst ikke omdøbt: hver gemt plan i `training_plans` peger allerede på den, så der er ingen datamigration og ingen manager der vågner op til en anden session end i går |
+| `vo2max_climb` | climbing · tempo | Specialiseret. Punch trænes ikke den dag |
+| `vo2max_punch` | punch · tempo | Specialiseret. Climbing trænes ikke den dag |
+
+**Hvorfor pakkerne har vægte.** Den daglige delta beregnes pr. evne og deler ikke
+et budget (§2.1), så en evne på sit loft koster ingenting - den giver bare nul.
+Uden et ekstra led ville hybriden derfor være svagt dominerende, og ingen ville
+nogensinde vælge en specialiseret session: et valg uden forskel er ikke et valg.
+`FOCUS_ABILITY_WEIGHT` (`backend/lib/training.js`) ganges derfor på fokus-evnerne;
+den evne der forlader pakken efterlader sin andel til den evne pakken er opkaldt
+efter, og den fælles motor-evne står uændret.
+
+**Invarianten der holder splittet ærligt:** summen af vægte er den SAMME i alle
+tre sessioner (`focusWeightSum`, pinnet i `training.test.js`). Splittet flytter
+udbytte inden for en dag; det skaber ikke nyt. Fokus uden en post i
+`FOCUS_ABILITY_WEIGHT` vejer 1,0 pr. evne, altså bit-identisk med før.
+
+**Ingen automatisk omfordeling.** Rammer en evne alligevel sit loft, er svaret
+stadig nul - motoren flytter ikke udbyttet et andet sted hen. Det er ejerens
+princip B (§12.1), ikke en forglemmelse.
+
+`smartDefaultFocus` er uændret: de to nye nøgler står bevidst ikke i den frosne
+`SMART_DEFAULT_FOCUS_KEYS`, så assistentens valg for tusindvis af ryttere ikke
+flytter sig som sideeffekt (§samme regel som #3762).
+
+**Målt i prod 3/9** (aktiv sæson): 2.541 aktive planer, heraf **933 på hybriden**.
+Af de 933 har 73 climbing på loftet og 22 punch på loftet; 63 har kun climbing
+død og 12 kun punch død. Det er de rækker splittet er lavet til.
 
 **Hvorfor modellen blev vendt om:** de gamle 6 fokus × 4 intensiteter gav 24 kombinationer,
 hvoraf mindst en tredjedel var meningsløse, og spillet lod dig vælge dem. Målt 14/8 mod 4.588
@@ -523,7 +560,7 @@ trænings-motorens output, i modsætning til kalenderens
 | # | Princip | Ejerens ord (ordret) | Konsekvens for design |
 |---|---|---|---|
 | A | **Lofter skal føles fraværende; hastighed er begrænsningen** | "Jo yngre din rytter er, jo bedre træner han. Jo længere fra rytterens 'max' i sin evne han er, jo bedre træner han. Jo lavere evnen er, jo hurtigere træner rytteren." · "Begrænsninger er tiltænkt - Hårde (låste) begrænsninger er ikke." | Bund-lofter (det hårde sikkerhedsnet ved dobbelt svaghed) hæves eller blødgøres; GC-rytterens punch-loft hæves. [#4634](https://github.com/NicolaiDolmer/CyclingZone/issues/4634). Matcher `PROGRESSION_RULES.md`: raten er det væsentlige, loftet det uvæsentlige |
-| B | **Flere valg, ikke håndholdt omfordeling** | "Umiddelbart er det ikke planlagt at jeg vil 'håndholde' spillerne på den måde, fordi så synes jeg faktisk, at man gør valget af træning mindre vigtig ... Jeg vil hellere give langt flere muligheder for spilleren, selv at undgå at det sker i første omgang." | Spildt træning på en evne på loftet løses ved at splitte pakker og give flere sessioner, ALDRIG ved at motoren flytter udbyttet til en anden evne. Afviser den "overflow"-løsning tre spillere foreslog samme dag. Første split: punch og climbing, [#4631](https://github.com/NicolaiDolmer/CyclingZone/issues/4631) (refs #3705) |
+| B | **Flere valg, ikke håndholdt omfordeling** | "Umiddelbart er det ikke planlagt at jeg vil 'håndholde' spillerne på den måde, fordi så synes jeg faktisk, at man gør valget af træning mindre vigtig ... Jeg vil hellere give langt flere muligheder for spilleren, selv at undgå at det sker i første omgang." | Spildt træning på en evne på loftet løses ved at splitte pakker og give flere sessioner, ALDRIG ved at motoren flytter udbyttet til en anden evne. Afviser den "overflow"-løsning tre spillere foreslog samme dag. Første split: punch og climbing, [#4631](https://github.com/NicolaiDolmer/CyclingZone/issues/4631) (refs #3705) - **bygget, se §3.1** (afventer ejerens go før merge) |
 | C | **Program i stedet for dagligt klik** | "Jeg regner med, at vi på sigt går over mod, at man laver et 'træningsprogram' i stedet for at man behøver at ændre træningen hver eneste dag." · "Indenfor en månedstid, cirka." (om ugeplan med session pr. dag) | Ugeplanen bærer en SESSION pr. ugedag (ikke intensitet, som §4 beskriver i dag), og et program er en navngivet 7-dages skabelon. 10-25 default-programmer ("Sprinter", "Bakkerytter", "Brostensrytter"...). [#4629](https://github.com/NicolaiDolmer/CyclingZone/issues/4629) (lukker #4116). Egne programmer + deling i en community-workshop: [#4630](https://github.com/NicolaiDolmer/CyclingZone/issues/4630) |
 | D | **Løb ELLER træning er dagens ene valg; inde i løbet vælger man hvor dybt man går** | "Fordi du vælger jo træning eller løb. Det er 1 valg. Og inde i løbet tror jeg det giver sig selv - Jeg har bjergdag og vil gerne angribe .. Eller 'jeg har flad etape idag og vil slappe af med min kaptajn'." | Ejerens skitse til dagens valg: Hvile · Træning (aktiv restitution / let-teknisk / mellem / hård) · Løb (grupetto / stille og roligt / normal / arbejd-angrib-udbrud / voldsom aggressivitet). Det er retningen for §8 punkt 1. [#4632](https://github.com/NicolaiDolmer/CyclingZone/issues/4632) (refs #3459, #4192) |
 

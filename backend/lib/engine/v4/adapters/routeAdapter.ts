@@ -30,7 +30,7 @@ import type {
 // spejler synthesizeSegments' egen interne DISTANCE_BANDS-gate (ikke eksporteret).
 const KNOWN_PROFILE_TYPES = new Set<ProfileType>([
   "flat", "rolling", "hilly", "mountain", "high_mountain",
-  "cobbles", "classic", "itt", "itt_hilly", "ttt",
+  "cobbles", "gravel", "classic", "itt", "itt_hilly", "ttt",
 ]);
 
 // Lokal FNV-1a 32-bit (samme selvstaendige moenster som routeSegments.js's

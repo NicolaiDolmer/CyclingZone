@@ -85,7 +85,7 @@ test("hunter: markant forhøjet escapee-chance", () => {
 test("BREAKAWAY_BONUS dækker de udbruds-egnede terræner (ikke itt/ttt/classic)", () => {
   assert.deepEqual(
     Object.keys(BREAKAWAY_BONUS).sort(),
-    ["cobbles", "flat", "high_mountain", "hilly", "mountain", "rolling"],
+    ["cobbles", "flat", "gravel", "high_mountain", "hilly", "mountain", "rolling"],
   );
   for (const t of ["itt", "ttt", "classic"]) {
     assert.equal(breakawayMaxBonus(t, "solo_tt"), 0, `${t} må ikke have udbrud`);

@@ -14,8 +14,10 @@ import {
 // backend/lib/raceStageProfileGenerator.js). Hardkodet kopi, så testen fanger drift.
 // #3546 D: itt_hilly tilføjet (migration database/2026-08-17-3546-itt-hilly-profile-type.sql,
 // anvendes post-merge: se PR-body).
+// #4105: gravel tilføjet (migration database/2026-09-03-4105-terre-di-toscana-gravel.sql,
+// anvendes post-merge: se PR-body).
 const DB_PROFILE_TYPES = [
-  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "classic",
+  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "gravel", "classic",
 ];
 const DB_FINALE_TYPES = [
   "bunch_sprint", "reduced_sprint", "punch", "long_climb", "descent", "solo_tt", "breakaway",
