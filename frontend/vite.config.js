@@ -12,6 +12,20 @@ const enableSentryUpload = Boolean(
   process.env.SENTRY_PROJECT
 );
 
+// #2423 P1 — Vercel Skew Protection for en ren Vite-SPA (ikke Next/SvelteKit/Nuxt,
+// som har indbygget support). Vercel sætter selv VERCEL_SKEW_PROTECTION_ENABLED='1'
+// + VERCEL_DEPLOYMENT_ID på build-containeren når "Skew Protection" er slået til i
+// projekt-settings (Advanced) — se https://vercel.com/docs/skew-protection. Uden
+// begge env-variabler er dette no-op og buildet 100 % uændret (samme URL'er som i
+// dag). Med dem sat lader vi hver bygget asset-URL (inkl. dynamiske chunks, jf.
+// Vites egen håndtering af `experimental.renderBuiltUrl` for chunk-preload-kode)
+// bære `?dpl=<deployment-id>`, så Vercels edge pinner requesten til netop den
+// deployment — det lukker chunk-skew-racet fra #4595/#4545/#2423 (gammel index.html
+// rammer en chunk der er roteret væk på en anden edge-node).
+const skewProtectionEnabled =
+  process.env.VERCEL_SKEW_PROTECTION_ENABLED === "1" &&
+  Boolean(process.env.VERCEL_DEPLOYMENT_ID);
+
 // Dev/preview-only endpoint der identificerer hvilken worktree serveren kører
 // fra, så Playwrights globalSetup kan afvise en fremmed worktrees server på
 // porten (false-green-guard, se playwright.ports.js). Rører ikke prod-builds.
@@ -56,6 +70,16 @@ const worktreeIdPlugin = () => {
 const explicitPort = process.env.PORT ? Number(process.env.PORT) : undefined;
 
 export default defineConfig({
+  experimental: skewProtectionEnabled
+    ? {
+        renderBuiltUrl(filename) {
+          // filename er relativ til build-root (fx "assets/index-abc123.js").
+          // Vite bruger samme hook til entry-HTML'ens <script>/<link> og til
+          // chunk-preload-koden bag dynamic import() — begge veje ender her.
+          return `/${filename}?dpl=${process.env.VERCEL_DEPLOYMENT_ID}`;
+        },
+      }
+    : {},
   plugins: [
     react(),
     worktreeIdPlugin(),
