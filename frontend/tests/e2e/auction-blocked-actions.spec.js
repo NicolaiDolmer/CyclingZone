@@ -50,6 +50,14 @@ test("auto-bid Save explains itself instead of dying silently (#2719)", async ({
   await expect(reason).toBeVisible();
   await expect(reason).toContainText("50.000");
 
+  // #4628: mobil-kortets layout satte nu "Gem"-knappen ved kanten af viewporten
+  // (autobud-panel + evt. mask), hvor CDP's koordinat-klik ramte den faste
+  // bund-navigation i stedet (den ligger ovenpå, og `force` slår IKKE
+  // scroll-checket fra — kun synligheds-/enabled-checket). Uden dette scroll
+  // ramte det forcerede klik "Marked"-ikonet, nulstillede ?tab= og fanen faldt
+  // tilbage til den tomme "Mine auktioner" — reason-noten forsvandt med kortet.
+  await save.evaluate(el => el.scrollIntoView({ block: "center" }));
+
   // Et klik på den blokerede knap åbner ikke bekræftelses-dialogen. `force`
   // springer Playwright's aria-bevidste enabled-gate over og efterligner det
   // faktiske bruger-tryk (som browseren VIL levere til vores handler).

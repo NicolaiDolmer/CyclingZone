@@ -221,14 +221,15 @@ export const ROUTE_READINESS = {
   "/auctions": async (page) => {
     // Loader væk.
     await expect(page.locator('[role="status"]')).toHaveCount(0);
-    // Tab-data loaded ("Aktive (1)" afspejler den ene mockede auktion).
-    await expect(page.getByRole("link", { name: /^(Aktive|Active) \(1\)$/ })).toBeVisible();
-    // #1569: fladen defaulter nu til 'All'-fanen for nye spillere (tom "My
-    // situation"), så de lander på de faktiske auktioner i stedet for en tom
-    // fane. 'All (1)'-fanen er aktiv, og listens ene rytter er den endelige
-    // render-tilstand (erstatter den gamle "not involved"-tom-state-gate).
+    // #4628: sidehovedets "Aktiv (N)"-navigationslink er fjernet (konsolideret
+    // ind i meta-linjen), og de tre visningsfiltre er nu kanoniske underline-
+    // Tabs (role="tab"), ikke en bar <button>. #1569: fladen defaulter til
+    // 'All'-fanen for nye spillere (tom "My situation"), så de lander på de
+    // faktiske auktioner i stedet for en tom fane. 'All (1)'-fanen er aktiv,
+    // og listens ene rytter er den endelige render-tilstand (erstatter den
+    // gamle "not involved"-tom-state-gate).
     await expect(
-      page.getByRole("button", { name: /^(Alle|All) \(1\)$/ })
+      page.getByRole("tab", { name: /^(Alle|All) \(1\)$/ })
     ).toBeVisible();
     await expect(page.getByRole("link", { name: /Mikkel Hansen/ }).first()).toBeVisible();
   },
