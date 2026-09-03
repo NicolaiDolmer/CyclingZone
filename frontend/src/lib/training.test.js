@@ -10,7 +10,20 @@ test("fokus-nøgler matcher abilities-mappens nøgler", () => {
   assert.deepEqual(TRAINING_FOCUS_KEYS, Object.keys(TRAINING_FOCUS_ABILITIES));
   // #3762: `tempo` og `restitution` kom til som sessioner i dagstype-modellen.
   // trin 2 (#3746, 16/8): `loebslaere` kom til (positioning/tactics/aggression).
-  assert.equal(TRAINING_FOCUS_KEYS.length, 9);
+  // #4631 (2/9): intervaldagen blev tre pakker — hybriden `vo2max` plus
+  // `vo2max_climb` og `vo2max_punch`.
+  assert.equal(TRAINING_FOCUS_KEYS.length, 11);
+});
+
+// #4631: fladens kopi af pakke-tabellen skal vise præcis det motoren træner.
+// Drift mellem de to fanges af backend/lib/handheldCopyGuards.test.js; her
+// vogtes selve splittet, så en halv tilbagerulning ikke går ubemærket hen.
+test("#4631 · fladen kender de tre intervaldage, og hybriden er uændret", () => {
+  assert.deepEqual([...TRAINING_FOCUS_ABILITIES.vo2max], ["climbing", "punch", "tempo"]);
+  assert.deepEqual([...TRAINING_FOCUS_ABILITIES.vo2max_climb], ["climbing", "tempo"]);
+  assert.deepEqual([...TRAINING_FOCUS_ABILITIES.vo2max_punch], ["punch", "tempo"]);
+  assert.ok(isValidFocus("vo2max_climb"));
+  assert.ok(isValidFocus("vo2max_punch"));
 });
 
 test("hvert fokus peger på mindst én evne", () => {

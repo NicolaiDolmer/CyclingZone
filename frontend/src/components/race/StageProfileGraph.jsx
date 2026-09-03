@@ -31,9 +31,15 @@ const DEFAULT_DIMS = { mini: { width: 120, height: 36 }, full: { width: 900, hei
 // tegnes stadig (kategori, navn, km-mærke: ægte klassikere annoncerer også
 // Koppenberg og Poggio), men uden point-/bonus-tallene. Bjerg- og point-
 // konkurrencer findes kun i etapeløb, hvor de akkumulerer over flere dage.
+// #4628: `heightClass` styrer KUN den renderede hoejde (viewBox'en er uroert).
+// Default `h-auto` = grafen skalerer med bredden. Miniaturen i etape-striben skal
+// derimod holde en fast, lav hoejde: `w-full h-auto` fik 120x36-miniaturen til at
+// vokse til ~90 px pr. thumbnail naar striben kun havde 2-4 etaper, saa
+// "kompakt etape-strip" blev til fire store billeder foer sidens indhold.
 export default function StageProfileGraph({
   profile, tier = "full", width, height,
   activeWaypoint = null, onWaypointSelect = null, uid = "sp", hasClassifications = true,
+  heightClass = "h-auto",
 }) {
   const { t } = useTranslation("races");
   // #4107 (ejer-låst 23/8): FAST højdeskala pr. profile_type — buildProfileSeries
@@ -76,7 +82,7 @@ export default function StageProfileGraph({
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className="block w-full h-auto overflow-visible"
+      className={`block w-full ${heightClass} overflow-visible`}
       preserveAspectRatio={mini ? "none" : undefined}
       role={mini ? undefined : "img"}
       aria-hidden={mini ? "true" : undefined}

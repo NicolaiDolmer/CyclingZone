@@ -383,6 +383,9 @@ const SECTION_DEFS = [
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "fatigue", kind: "text" },
+      // #4201: hvornaar assistenten selv udfylder — tilstanden er runtime-styret,
+      // saa teksten beskriver reglerne uden at love én bestemt indstilling.
+      { id: "assistantFill", kind: "text" },
       // #4066: wired in — read-only scouting of other divisions' start
       // lists already had translated copy but no reachable docs.
       { id: "scouting", kind: "text" },

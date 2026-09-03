@@ -59,6 +59,25 @@ test("rider_id ikke i holdets race_entries → stage_roles_rider_not_entered", (
   assert.equal(result.errors[0], "stage_roles_rider_not_entered");
 });
 
+// ── #4538: stage_roles_rider_abandoned ────────────────────────────────────────
+
+test("override for udgået/skadet rytter (abandonedRiderIds) → stage_roles_rider_abandoned", () => {
+  const result = ok(
+    [{ stage_number: 3, rider_id: "r1", race_role: "helper", effort: "normal" }],
+    { abandonedRiderIds: new Set(["r1"]) },
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.errors[0], "stage_roles_rider_abandoned");
+});
+
+test("override for IKKE-udgået rytter, mens en anden rytter er udgået → ok (kun den udgåede blokerer)", () => {
+  const result = ok(
+    [{ stage_number: 3, rider_id: "r2", race_role: "helper", effort: "normal" }],
+    { abandonedRiderIds: new Set(["r1"]) },
+  );
+  assert.deepEqual(result, { ok: true, errors: [] });
+});
+
 // ── stage_roles_invalid_role / stage_roles_invalid_effort ────────────────────
 
 test("ugyldig race_role → stage_roles_invalid_role", () => {
@@ -261,14 +280,18 @@ test("saveStageRoleOverrides: tomt teamRiderIds → INGEN delete-kald", async ()
 
 // ── getStageRolesContext (I/O, minimal mock-supabase) ─────────────────────────
 
-function makeContextSupabase({ entries = [], riders = [], overrides = [] } = {}) {
+function makeContextSupabase({ entries = [], riders = [], overrides = [], incidents = [] } = {}) {
   function from(table) {
     const b = {
       select() { return b; },
       eq() { return b; },
       in() { return b; },
       then(resolve, reject) {
-        const data = table === "race_entries" ? entries : table === "riders" ? riders : table === "race_stage_roles" ? overrides : [];
+        const data = table === "race_entries" ? entries
+          : table === "riders" ? riders
+          : table === "race_stage_roles" ? overrides
+          : table === "race_incidents" ? incidents
+          : [];
         return Promise.resolve({ data, error: null }).then(resolve, reject);
       },
     };
@@ -285,12 +308,35 @@ test("getStageRolesContext: bygger riders[] med navn + basis-race_role fra race_
   });
   const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 1 }, teamId: "team-1" });
   assert.deepEqual(ctx.riders, [
-    { rider_id: "r1", name: "Tadej P", race_role: "captain" },
-    { rider_id: "r2", name: "Jonas V", race_role: "helper" },
+    { rider_id: "r1", name: "Tadej P", race_role: "captain", abandoned: false },
+    { rider_id: "r2", name: "Jonas V", race_role: "helper", abandoned: false },
   ]);
   assert.equal(ctx.stage_count, 5);
   assert.equal(ctx.stages_completed, 1);
   assert.deepEqual(ctx.teamRiderIds, new Set(["r1", "r2"]));
+});
+
+// ── #4538: abandoned/skadet-status ─────────────────────────────────────────────
+
+test("getStageRolesContext: udgået rytter (race_incidents.outcome=abandon) markeres abandoned:true", async () => {
+  const supabase = makeContextSupabase({
+    entries: [{ rider_id: "r1", race_role: "captain" }, { rider_id: "r2", race_role: "helper" }],
+    riders: [{ id: "r1", firstname: "Tadej", lastname: "P" }, { id: "r2", firstname: "Jonas", lastname: "V" }],
+    incidents: [{ rider_id: "r1" }],
+  });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 1 }, teamId: "team-1" });
+  assert.deepEqual(ctx.riders.map((r) => [r.rider_id, r.abandoned]), [["r1", true], ["r2", false]]);
+  assert.deepEqual(ctx.abandonedRiderIds, new Set(["r1"]));
+});
+
+test("getStageRolesContext: ingen incidents → alle riders abandoned:false, abandonedRiderIds tom", async () => {
+  const supabase = makeContextSupabase({
+    entries: [{ rider_id: "r1", race_role: "captain" }],
+    riders: [{ id: "r1", firstname: "Tadej", lastname: "P" }],
+  });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 1 }, teamId: "team-1" });
+  assert.equal(ctx.riders[0].abandoned, false);
+  assert.deepEqual(ctx.abandonedRiderIds, new Set());
 });
 
 test("getStageRolesContext: overrides inkluderer ALLE etaper (også kørte)", async () => {

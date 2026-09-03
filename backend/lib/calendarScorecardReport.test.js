@@ -7,7 +7,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { addCalendarDays, scorecardGateGroups } from "./calendarScorecardReport.js";
+import { addCalendarDays, scorecardGateGroups, scoreCalendarPlan, formatScorecard } from "./calendarScorecardReport.js";
 import { quotasForRaceDays } from "../scripts/buildSeasonCalendar.js";
 import { TIER_DENSITY } from "./tierCalendarMaterializer.js";
 
@@ -73,4 +73,42 @@ test("#4270: datomatematikken holder over et månedsskifte", () => {
   assert.equal(addCalendarDays("2026-09-28", 27), "2026-10-25");
   assert.equal(addCalendarDays("2026-09-28", 34), "2026-11-01");
   assert.equal(addCalendarDays("2026-12-31", 1), "2027-01-01");
+});
+
+// ---------------------------------------------------------------------------
+// #4573: `tilstand` og `unassessed`. De må ændre hvad rapporten PÅSTÅR den har set —
+// aldrig hvordan en regel dømmes. Datakilden bestemmer rækkerne, ikke tærsklerne.
+// ---------------------------------------------------------------------------
+const tomPlan = { tier: 1, pools: [{ raceRows: [], stageRows: [] }], calendarViolations: [] };
+
+test("#4573: default er 'plan' — en kalder der intet siger får uændret adfærd", () => {
+  const r = scoreCalendarPlan({ tierPlans: [tomPlan], firstRaceDay: "2026-08-28", realDays: 3 });
+  assert.equal(r.tilstand, "plan");
+  assert.deepEqual(r.unassessed, []);
+  const tekst = formatScorecard(r).join("\n");
+  assert.match(tekst, /Navnekollisioner: ingen/);
+  assert.match(tekst, /Samtidige løb pr\. løbsdag \(§1\): maks/);
+});
+
+test("#4573: db-tilstand siger HØJT at plan-invarianterne ikke er målt her (§9c)", () => {
+  const r = scoreCalendarPlan({ tierPlans: [tomPlan], firstRaceDay: "2026-08-28", realDays: 3, tilstand: "db" });
+  const tekst = formatScorecard(r).join("\n");
+  // Et grønt flueben for en invariant der aldrig blev målt er præcis den løgn
+  // #4463 gjorde nat-vagten rød for. Linjen skal sige det, ikke printe "OK".
+  assert.match(tekst, /IKKE målt her/);
+  assert.equal(/OK\s+Samtidige løb pr\. løbsdag/.test(tekst), false);
+  // Navnekollisioner er et katalog-begreb; en skreven kalender har ikke nogen.
+  assert.equal(tekst.includes("Navnekollisioner"), false);
+});
+
+test("#4573/#2854: rækker der ikke kunne vurderes gør rapporten ikke-grøn og står i teksten", () => {
+  const r = scoreCalendarPlan({
+    tierPlans: [tomPlan], firstRaceDay: "2026-08-28", realDays: 3, tilstand: "db",
+    unassessed: ["Paris-Roubaix (tier 1): ingen race_stage_profiles-rækker"],
+  });
+  assert.equal(r.ok, false, "fravær af evidens må aldrig ligne grønt");
+  const tekst = formatScorecard(r).join("\n");
+  assert.match(tekst, /KUNNE IKKE VURDERES \(1\)/);
+  assert.match(tekst, /Paris-Roubaix/);
+  assert.match(tekst, /1 kunne ikke vurderes/);
 });

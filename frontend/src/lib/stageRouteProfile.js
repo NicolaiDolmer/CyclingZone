@@ -32,7 +32,9 @@ export const VALLEY_M = 180;
 //     enkeltstart) — følger itt's 1200-bånd for ensartethed på tværs af
 //     tidskørsels-formatet, selvom ttt aldrig trækker climbs.
 export const PROFILE_TYPE_SCALE_M = Object.freeze({
-  flat: 600, cobbles: 600,
+  // gravel (#4105): CLIMB_SPEC giver grus op til 4 stigninger i kat "2"/"3"/"4" og
+  // BASE_ELEVATION 800 — worst-case ligger mellem hilly og mountain, ikke ved cobbles.
+  flat: 600, cobbles: 600, gravel: 2000,
   hilly: 1200, rolling: 1200, itt: 1200, itt_hilly: 1200, ttt: 1200,
   mountain: 2500, classic: 2500,
   high_mountain: 3000,
@@ -40,7 +42,7 @@ export const PROFILE_TYPE_SCALE_M = Object.freeze({
 // Visuel dal-basishøjde pr. type (opts §2b: "flad ~50-150 m, bjerg ~400-900 m").
 // Interpolerer glidende mellem de to ankre for de mellemliggende typer.
 export const PROFILE_TYPE_VALLEY_M = Object.freeze({
-  flat: 90, cobbles: 70, ttt: 90,
+  flat: 90, cobbles: 70, gravel: 300, ttt: 90,
   rolling: 220, hilly: 260, itt: 140, itt_hilly: 240,
   mountain: 650, classic: 600,
   high_mountain: 850,
@@ -251,6 +253,7 @@ export const GREEN_FINISH_SCALES = Object.freeze({
   rolling:       Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
   hilly:         Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
   classic:       Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
+  gravel:        Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
   mountain:      Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
   high_mountain: Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
   itt:           Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
@@ -280,7 +283,7 @@ export const DESCENDING_FINALE_WEIGHT = 0.018;
 export const TECHNICAL_FINALE_WEIGHT = 0.035;
 export const DISTANCE_BAND_MIDPOINTS = Object.freeze({
   flat: 175, rolling: 170, hilly: 185, mountain: 170, high_mountain: 160,
-  cobbles: 160, classic: 230, itt: 27.5, ttt: 35,
+  cobbles: 160, gravel: 197.5, classic: 230, itt: 27.5, ttt: 35,
 });
 
 // Sub-4s EGNE præsentations-tærskler — findes IKKE i backend. Motoren clamper
@@ -346,7 +349,12 @@ export function routeReadKeys(profile) {
     else if (ratio <= SHORT_DAY_RATIO) keys.push({ key: "short" });
   }
 
-  if (sectors.length > 0) keys.push({ key: "cobbles", params: { count: sectors.length } });
+  // #4105: sektor-chippen navngiver UNDERLAGET. En grusklassiker der siger "5
+  // brostenssektorer" er den samme indholdsfejl som at Terre di Toscana var brosten.
+  if (sectors.length > 0) {
+    const isGravel = sectors.some((s) => s?.kind === "gravel") || profile.profile_type === "gravel";
+    keys.push({ key: isGravel ? "gravel" : "cobbles", params: { count: sectors.length } });
+  }
 
   return keys;
 }

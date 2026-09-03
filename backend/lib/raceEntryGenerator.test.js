@@ -1703,3 +1703,135 @@ test("#4163: en RASK batch-RPC saetter ikke flaget", async () => {
   assert.equal(res.constraint_not_deferrable, false);
   assert.equal(res.failed_units, 0);
 });
+
+// ── #4201: assistant_selection_mode ──────────────────────────────────────────
+// Fem spillere bad 24/8 om at faa auto-udtagelsen vendt om: assistenten skal
+// udfylde det spilleren ikke naaede, ikke fylde alt paa forhaand. Tre tilstande
+// (docs/ASSISTANT_RULES.md §1b) — og default SKAL vaere dagens adfaerd.
+// Tiden injiceres via `now` (hard rule 16: ingen vaegur i tests).
+const NEAR_START = "2026-07-10T12:00:00Z";
+const FAR_START = "2026-07-25T12:00:00Z";
+
+function seedModeScenario({ managerOptIn = true } = {}) {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [
+    { id: "NEAR", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
+    { id: "FAR", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "NEAR", stage_number: 1, scheduled_at: NEAR_START, game_day: 10 },
+    { race_id: "FAR", stage_number: 1, scheduled_at: FAR_START, game_day: 25 },
+  ];
+  state.race_stage_profiles = [
+    { race_id: "NEAR", ...flatProfile(1) }, { race_id: "FAR", ...flatProfile(1) },
+  ];
+  state.teams = [
+    // AI-hold (ingen bruger) — skal fyldes i ALLE tilstande (#2622-bindingen).
+    { id: "ai1", is_test_account: false, is_frozen: false, league_division_id: 1, user_id: null, assistant_autopick_enabled: true },
+    // Manager-hold — det er DET tilstanden handler om.
+    { id: "mgr", is_test_account: false, is_frozen: false, league_division_id: 1, user_id: "u1", assistant_autopick_enabled: managerOptIn },
+  ];
+  seedTeamRiders(state, "ai1", 8);
+  seedTeamRiders(state, "mgr", 8);
+  return { state, seasonId };
+}
+
+const entriesFor = (state, raceId, teamId) =>
+  state.race_entries.filter((e) => e.race_id === raceId && e.team_id === teamId);
+
+test("#4201 proactive (default): manager-hold roeres ikke, AI-hold fyldes", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const supabase = makeSupabase(state);
+  const res = await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, now: Date.parse("2026-07-10T08:00:00Z"),
+  });
+  assert.equal(res.mode, "proactive", "default-tilstanden er proactive");
+  assert.equal(entriesFor(state, "NEAR", "mgr").length, 0, "#4217: manager-hold aldrig proaktivt");
+  assert.equal(entriesFor(state, "FAR", "mgr").length, 0);
+  assert.ok(entriesFor(state, "NEAR", "ai1").length > 0, "AI-hold fyldt");
+  assert.ok(entriesFor(state, "FAR", "ai1").length > 0);
+});
+
+test("#4201 late_fill: tom manager-trup fyldes INDEN for horisonten, ikke uden for", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const supabase = makeSupabase(state);
+  const res = await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"), // 4 timer foer NEAR, 15 dage foer FAR
+  });
+  assert.equal(res.mode, "late_fill");
+  const near = entriesFor(state, "NEAR", "mgr");
+  assert.equal(near.length, 6, "NEAR (om 4 timer) fyldt op til feltet");
+  assert.ok(near.every((e) => e.is_auto_filled === true));
+  assert.equal(entriesFor(state, "FAR", "mgr").length, 0, "FAR er uden for horisonten");
+  assert.ok(entriesFor(state, "FAR", "ai1").length > 0, "AI-hold fyldes uanset horisont");
+});
+
+test("#4201 late_fill: uden for horisonten roeres manager-holdet slet ikke", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-07T12:00:00Z"), // 3 doegn foer NEAR
+  });
+  assert.equal(entriesFor(state, "NEAR", "mgr").length, 0);
+  assert.equal(entriesFor(state, "FAR", "mgr").length, 0);
+});
+
+test("#4201 late_fill: en trup der ALLEREDE har raekker roeres ikke (heller ikke delvis)", async () => {
+  const { state, seasonId } = seedModeScenario();
+  // Spilleren har selv sat 2 ryttere — assistenten udfylder kun det HELT tomme.
+  state.race_entries = [
+    { race_id: "NEAR", rider_id: "mgr-r0", team_id: "mgr", race_role: "captain", is_auto_filled: false },
+    { race_id: "NEAR", rider_id: "mgr-r1", team_id: "mgr", race_role: "helper", is_auto_filled: false },
+  ];
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"),
+  });
+  const near = entriesFor(state, "NEAR", "mgr");
+  assert.equal(near.length, 2, "ingen top-up: spillerens 2 raekker staar uroerte");
+  assert.equal(near.filter((e) => e.is_auto_filled === true).length, 0, "ingen auto-raekker tilfoejet");
+});
+
+test("#4201 late_fill: 'Ryd dag/alt' vinder ogsaa inde i horisonten", async () => {
+  const { state, seasonId } = seedModeScenario();
+  state.race_entry_clears = [{ race_id: "NEAR", team_id: "mgr" }];
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({
+    supabase, seasonId, dryRun: false, mode: "late_fill", lateFillHours: 24,
+    now: Date.parse("2026-07-10T08:00:00Z"),
+  });
+  assert.equal(entriesFor(state, "NEAR", "mgr").length, 0, "gate 3: ryddet forbliver ryddet");
+});
+
+test("#4201 opt_in: kun hold der selv har slaaet assistenten til", async () => {
+  const off = seedModeScenario({ managerOptIn: false });
+  await runRaceEntryGenerator({
+    supabase: makeSupabase(off.state), seasonId: off.seasonId, dryRun: false,
+    mode: "opt_in", now: Date.parse("2026-07-10T08:00:00Z"),
+  });
+  assert.equal(entriesFor(off.state, "NEAR", "mgr").length, 0, "fravalgt hold roeres ikke");
+  assert.ok(entriesFor(off.state, "NEAR", "ai1").length > 0, "AI-hold fyldes stadig");
+
+  const on = seedModeScenario({ managerOptIn: true });
+  const res = await runRaceEntryGenerator({
+    supabase: makeSupabase(on.state), seasonId: on.seasonId, dryRun: false,
+    mode: "opt_in", now: Date.parse("2026-07-10T08:00:00Z"),
+  });
+  assert.equal(res.mode, "opt_in");
+  assert.equal(entriesFor(on.state, "NEAR", "mgr").length, 6, "tilvalgt hold fyldes");
+  assert.equal(entriesFor(on.state, "FAR", "mgr").length, 6, "…ogsaa uden for en horisont");
+});
+
+test("#4201: ukendt tilstand falder fail-safe tilbage til proactive", async () => {
+  const { state, seasonId } = seedModeScenario();
+  const res = await runRaceEntryGenerator({
+    supabase: makeSupabase(state), seasonId, dryRun: false, mode: "vend-den-om",
+    now: Date.parse("2026-07-10T08:00:00Z"),
+  });
+  assert.equal(res.mode, "proactive");
+  assert.equal(entriesFor(state, "NEAR", "mgr").length, 0);
+});
