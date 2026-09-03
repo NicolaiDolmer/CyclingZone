@@ -53,6 +53,21 @@ export const TERRAIN_FINALE_BANDS = Object.freeze({
   mountain:      Object.freeze({ up: [45, 65], down: [20, 35], break: [10, 25] }),
   hilly:         Object.freeze({ up: [40, 60], flat: [15, 30], break: [15, 30] }),
   cobbles:       Object.freeze({ flat: [30, 50], break: [40, 60] }),
+  // #4105/#4270: EJEREN HAR BESLUTTET 3/9 at grus faar SAMME finale-baand som brosten
+  // ("naesten samme type"). Raekken staar bevidst IKKE her endnu, og det er et aabent
+  // punkt, ikke en forglemmelse:
+  //
+  //   grus-sporet (#4708) giver `gravel` vaegtene breakaway 55 / punch 25 /
+  //   reduced_sprint 20 i FINALE_WEIGHTS_BY_PROFILE. Oversat til finale-klasser er det
+  //   udbrud 55 % · opad 25 % · fladt 20 % - og brostens-baandet (fladt 30-50,
+  //   udbrud 40-60, opad 0) kan IKKE rammes af dem. Et baand generatorens egne vaegte
+  //   ikke kan naa er en garanti uden forsyning, ikke en garanti
+  //   (.claude/learnings/2026-08-06-garanti-uden-forsyning-blokerede-s3-kalenderen.md),
+  //   og stageFinaleMetrics.test.js faelder den med det samme.
+  //
+  // De to ting skal derfor landes SAMMEN: baandet her + vaegtene i
+  // raceStageProfileGenerator.js. Se docs/CALENDAR_RULES.md §5 og §11.
+
   rolling:       Object.freeze({ flat: [25, 45], break: [55, 75] }),
   flat:          Object.freeze({ flat: [90, 100] }),
   itt:           Object.freeze({ tt: [100, 100] }),

@@ -164,10 +164,10 @@ export const TERRAIN_FAMILIES = Object.freeze(["cobbles", "flat_sprint", "itt", 
 // familier har en profiltype med et ejermaal i §6/§6b og er dermed allerede loftet ovenfra.
 // Tallene staar i TIER_TERRAIN_FAMILY_MAX nedenfor med begrundelse pr. division.
 export const TIER_TERRAIN_FAMILY_MIN = Object.freeze({
-  1: Object.freeze({ cobbles: 3, flat_sprint: 20, itt: 5, hilly: 10, mountain: 28, rolling: 14 }),
+  1: Object.freeze({ cobbles: 3, flat_sprint: 20, itt: 5, hilly: 10, mountain: 28, rolling: 16 }),
   2: Object.freeze({ cobbles: 6, flat_sprint: 15, itt: 4, hilly: 8, mountain: 20, rolling: 6 }),
-  3: Object.freeze({ cobbles: 5, flat_sprint: 12, itt: 3, hilly: 8, mountain: 12, rolling: 3 }),
-  4: Object.freeze({ cobbles: 1, flat_sprint: 8, itt: 1, hilly: 6, mountain: 13, rolling: 1 }),
+  3: Object.freeze({ cobbles: 5, flat_sprint: 12, itt: 3, hilly: 8, mountain: 12, rolling: 4 }),
+  4: Object.freeze({ cobbles: 1, flat_sprint: 8, itt: 1, hilly: 6, mountain: 13, rolling: 3 }),
 });
 
 // Maksimum antal etaper pr. terraen-familie pr. pulje pr. sae­son. KUN `rolling` har et loft
@@ -175,35 +175,32 @@ export const TIER_TERRAIN_FAMILY_MIN = Object.freeze({
 // uloftet - det er ikke en mangel, det er de fem oevrige familiers §6/§6b-maal der loefter
 // dem ovenfra.
 //
-// TALGRUNDLAG (maalt, ikke gaettet). To maalinger pr. division: live saeson 3 (30/8,
-// read-only mod prod) og S4's 28-dages plan (dry-run 3/9, uden tilt, D4 paa density 3).
+// TALGRUNDLAG (maalt, ikke gaettet). TRE maalinger pr. division: live saeson 3 (30/8,
+// read-only mod prod), S4's 28-dages plan uden de nye katalog-loeb (dry-run 3/9), og
+// samme plan MED katalog-udvidelsen (#4708's maaling 3/9, det katalog S4 faktisk bygges paa).
 //
-//   | div | S3 live      | S4-plan      | band      | begrundelse                        |
-//   | D1  | 22 af 155    | 19 af 140    | [14, 26]  | baandet er +/-6 om midten (20).    |
-//   |     | 14,2 %       | 13,6 %       |           | D1 har 140 etaper, saa 1 etape er  |
-//   |     |              |              |           | 0,7 pp - et smallere baand ville   |
-//   |     |              |              |           | vaere roedt paa stoej, ikke skaevhed.|
-//   | D2  |  9 af 124    | 10 af 112    | [6, 14]   | samme relative bredde, skaleret.   |
-//   | D3  |  4 af  85    |  4 af  84    | [3, 8]    | gulv lige under den maalte vaerdi. |
-//   | D4  |  0 af  62    |  1 af  84    | [1, 6]    | se nedenfor.                       |
+//   | div | S3 live | S4 uden #4708 | S4 med #4708 | band     |
+//   | D1  | 22/155  | 19/140        | 24/140       | [16, 30] |
+//   | D2  |  9/124  | 10/112        |  9/112       | [6, 14]  |
+//   | D3  |  4/ 85  |  7/ 84        |  8/ 84       | [4, 12]  |
+//   | D4  |  0/ 62  |  1/ 84        |  6/ 84       | [3, 10]  |
 //
-// D4's gulv er 1, ikke 2, og det er et BEVIDST valg maalt frem: S4-planen leverer 1
-// rolling-etape af 84 (1,2 %) mod D1's 13,6 %. Et gulv paa 2 ville vaere en garanti uden
-// forsyning - praecis den fejlklasse
-// `.claude/learnings/2026-08-06-garanti-uden-forsyning-blokerede-s3-kalenderen.md`
-// beskriver, og den blokerer en saeson i stedet for at forbedre den. Gulvet paa 1 er
-// alligevel den regressionsvagt der manglede: S3 leverede NUL, altsaa ingen dag til
-// baroudeuren i hele divisionen, og ingen gate sagde fra.
+// Gulvene ligger et godt stykke UNDER den maaling S4 bygges paa, og lofterne over - samme
+// disciplin som resten af TIER_TERRAIN_FAMILY_MIN: de er regressionsvagter, ikke
+// kvalitetsmaal. Baandene er brede nok til at en enkelt etapes udsving ikke er et brud
+// (D1's 140 etaper goer 1 etape til 0,7 pp), og smalle nok til at fange en skaevhed.
 //
-// Rolling er en GENERERET profiltype (ARCHETYPE_PROFILES' filler-vaegte), ikke en egenskab
-// ved et katalog-loeb. D4's 1,2 % kan derfor kun loeftes ved at genkalibrere fillerne pr.
-// division - og den genkalibrering er ejer-besluttet 3/9 som en S5-opgave (se
-// CALENDAR_RULES.md §6b). Naar den lander, er D4's gulv det foerste tal der skal op.
+// D4 er dét gulvet blev lavet for. S3 leverede NUL rolling-etaper: baroudeuren havde ikke
+// een dag i hele divisionen, og ingen gate sagde fra. Foerst med katalog-udvidelsen (#4708)
+// kan D4 levere 6 - uden den ville et gulv paa 3 vaere en garanti uden forsyning, altsaa en
+// blokering (.claude/learnings/2026-08-06-garanti-uden-forsyning-blokerede-s3-kalenderen.md).
+// Gaten er derfor ROED indtil #4708's katalog er i main, og det er den korrekte tilstand:
+// den siger praecis hvad der mangler.
 export const TIER_TERRAIN_FAMILY_MAX = Object.freeze({
-  1: Object.freeze({ rolling: 26 }),
+  1: Object.freeze({ rolling: 30 }),
   2: Object.freeze({ rolling: 14 }),
-  3: Object.freeze({ rolling: 8 }),
-  4: Object.freeze({ rolling: 6 }),
+  3: Object.freeze({ rolling: 12 }),
+  4: Object.freeze({ rolling: 10 }),
 });
 
 // De familier der doemmes af BAANDET (min+max) i stedet for af det gamle gulv alene.
@@ -323,7 +320,12 @@ export const TIER_ARCHETYPE_RESERVATIONS = Object.freeze({
   //   8 → D3 falder under sit ejer-låste brostens-gulv (4 < 5), jf. #4075
   // Den syvende brosten-etape koster altså D3 fire dage hvor noget afgøres. 6 giver D1
   // 50 % flere brosten UDEN den regning, og lader D3 beholde margin på sit gulv (6/5).
-  1: Object.freeze({ itt_classic: 1, cobbled_classic: 6 }),
+  // #4270 (EJER-BESLUTNING 3/9 kl. 09:28, valg A): cobbled_tour 0 -> 1 for tier 1.
+  // #4075 satte den til 0 fordi kataloget kun havde 2 cobbled_tour-loeb, og D1's
+  // reservation stoevsugede det ENE som D2/D3 ogsaa kunne naa. Katalog-udvidelsen 3/9
+  // (#4708) hae­ver forsyningen, saa begrundelsen for 0 er faldet bort: D1 kan nu faa sit
+  // eget brosten-etapeloeb uden at tage D2's eller D3's.
+  1: Object.freeze({ itt_classic: 1, cobbled_classic: 6, cobbled_tour: 1 }),
   // summit_tour 1→2 (#3469, 7/8 catalog-upgrade følge-commit): de 2 nye OWTC summit_tour-
   // løb (Vuelta a los Pirineos + Tour des Grandes Alpes, seedet 7/8) gør D2's
   // summit/M-Down-bånd opgraderbare (raceRouteRealismMetrics.js) — men KUN hvis begge

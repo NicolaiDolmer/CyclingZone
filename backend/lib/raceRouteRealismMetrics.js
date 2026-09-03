@@ -8,6 +8,8 @@
 import { GRAND_TOUR_MIN_STAGES as GT_MIN_STAGES } from "./grandTourRestDays.js";
 
 const MOUNTAIN = new Set(["mountain", "high_mountain"]);
+// #4105 (ejer 3/9): grus hoerer til brostensfamilien - se TERRAIN_FAMILY_BY_PROFILE_TYPE.
+const COBBLES_FAMILY = new Set(["cobbles", "gravel"]);
 const isSummit = (s) => s.finale_type === "long_climb" && MOUNTAIN.has(s.profile_type);
 
 // #2755-mål pr. tier. null = intet krav.
@@ -121,7 +123,7 @@ export const TIER_TARGETS = Object.freeze({
 export const WT_DISTANCE_BANDS = Object.freeze({
   flat: [150, 200], rolling: [150, 190], hilly: [160, 210],
   mountain: [140, 190], high_mountain: [140, 190],
-  cobbles: [150, 170], classic: [200, 260], itt: [15, 40], ttt: [25, 45],
+  cobbles: [150, 170], gravel: [150, 170], classic: [200, 260], itt: [15, 40], ttt: [25, 45],
 });
 
 // #4104: monumenter prissaettes paa KLASSE, ikke terraen (se CLASS_DISTANCE_BANDS i
@@ -149,7 +151,9 @@ export function scoreTier(tier, races) {
   const mdown = mountainStages.filter((s) => s.finale_type === "descent");
   const summit = stages.filter(isSummit).length;
   const standaloneItt = races.filter((r) => r.race_type === "single" && (r.stages || []).some((s) => s.profile_type === "itt")).length;
-  const cobblesInStageRace = races.filter((r) => r.race_type === "stage_race" && (r.stages || []).some((s) => s.profile_type === "cobbles")).length;
+  // #4105/#4270 (ejer 3/9): grusloeb taeller med i brostensklassikerne. Uden `gravel`
+  // her ville en konvertering fra brosten til grus se ud som et FALD i brosten-dae­kning.
+  const cobblesInStageRace = races.filter((r) => r.race_type === "stage_race" && (r.stages || []).some((s) => COBBLES_FAMILY.has(s.profile_type))).length;
   const mdownPct = mountainStages.length ? Math.round((mdown.length / mountainStages.length) * 100) : 0;
 
   // #3469 finale-gulve (leverance 2): "etapedage" = rå optælling af stages med den givne
