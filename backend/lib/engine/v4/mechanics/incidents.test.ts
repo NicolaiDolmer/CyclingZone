@@ -105,6 +105,7 @@ function buildSingleGroupScenario(
     entrants: entrantsById,
     tuning: {} as SegmentHookContext["tuning"], // incidentHook laeser IKKE ctx.tuning (INCIDENTS_EXTRA_TUNING er additiv)
     rngFor: boundRngFor(seed),
+    orders: [],
   };
   return { state, ctx };
 }

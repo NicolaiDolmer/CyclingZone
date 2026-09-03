@@ -225,6 +225,7 @@ test("gruppe-tid-invariant: alle ryttere i samme sluttgruppe har identisk tid, o
         climbSelection: makeTestSplitHook(),
         descent: DEFAULT_MECHANIC_HOOKS.descent,
         finale: DEFAULT_MECHANIC_HOOKS.finale,
+        breakaway: DEFAULT_MECHANIC_HOOKS.breakaway,
       };
       const { state } = runSegmentLoop(input, hooks);
       const timeByGroup = new Map<string, number>();

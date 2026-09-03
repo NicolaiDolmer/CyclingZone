@@ -54,6 +54,7 @@
 import { fetchAllRows } from "./supabasePagination.js";
 import { findStaleOfferedIntake } from "./academyIntakeReconcile.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
+import { TEAM_BOARD_MEMBERS_COUNT } from "./boardMembers.js";
 
 const CHUNK = 1000;
 const SAMPLE_LIMIT = 50;
@@ -147,6 +148,54 @@ async function fetchRidersOwnership(supabase, riderIds) {
     for (const r of rows) byId.set(r.id, r);
   }
   return byId;
+}
+
+// Invariant F (#4664): menneskehold uden bestyrelsesmedlemmer. Rod-årsag:
+// regenerateBoardMembersForTeam (boardMembers.js) slettede tidligere et holds
+// team_board_members-rækker FØR den indsatte det nye sæt — to separate,
+// ikke-transaktionelle Supabase-kald. Fejlede insert'et efter delete'et var
+// committet, stod holdet permanent uden bestyrelse (DNA forbliver sat, så
+// DNA-vælgeren — den eneste sti der (gen)tildeler — aldrig vises igen). Fixet
+// (regenerateBoardMembersForTeam gendanner nu det gamle sæt best-effort hvis
+// re-insert fejler); DENNE vagt er backstoppet for hvis den klasse alligevel
+// opstår igen, eller hvis en ny oprettelses-/genforhandlings-sti springer
+// tildelingen over. Reparerer INTET — alarmerer. Backfill: repairMissingBoardMembers.js.
+//
+// Scopet til hold der reelt SKAL have en bestyrelse: menneske- (ikke AI/bank),
+// ikke-testkonto, ikke-frosne hold, hvor season_1_identity_basis er sat (dvs.
+// holdet er forbi holddannelsens synkrone identitets-trin — se
+// teamProfileEngine.js ensureSeasonIdentityBasis). Et helt nyt hold der endnu
+// ikke har fået identity_basis er en transient millisekund-tilstand midt i
+// signup, ikke et invariant-brud.
+async function fetchHumanTeamsMissingBoardMembers(supabase) {
+  const teams = await fetchAllRows(() =>
+    supabase
+      .from("teams")
+      .select("id, name, season_1_identity_basis, team_dna_key")
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .eq("is_test_account", false)
+      .not("season_1_identity_basis", "is", null)
+      .order("id"));
+
+  if (teams.length === 0) return [];
+
+  const memberCounts = new Map();
+  for (let i = 0; i < teams.length; i += CHUNK) {
+    const chunk = teams.slice(i, i + CHUNK);
+    const rows = await fetchAllRows(() =>
+      supabase
+        .from("team_board_members")
+        .select("team_id")
+        .in("team_id", chunk.map((t) => t.id))
+        .order("team_id"));
+    for (const row of rows) {
+      memberCounts.set(row.team_id, (memberCounts.get(row.team_id) || 0) + 1);
+    }
+  }
+
+  return teams.filter((t) => (memberCounts.get(t.id) || 0) < TEAM_BOARD_MEMBERS_COUNT);
 }
 
 // Invariant D (#2257): strandede akademi-fri-agenter. Server-side filtreret —
@@ -332,6 +381,9 @@ export async function runOwnershipInvariantWatch({
     : new Set();
   const stalePendingTransfer = agedPending.filter((r) => !stillRacingIds.has(r.id));
 
+  // Invariant F (#4664): menneskehold uden bestyrelsesmedlemmer.
+  const teamsMissingBoardMembers = await fetchHumanTeamsMissingBoardMembers(supabase);
+
   let alerted = false;
 
   if (youthOwned.length > 0) {
@@ -412,6 +464,27 @@ export async function runOwnershipInvariantWatch({
     );
   }
 
+  if (teamsMissingBoardMembers.length > 0) {
+    alerted = true;
+    captureExceptionFn?.(
+      new Error(
+        `Ownership-invariant-brud: ${teamsMissingBoardMembers.length} menneskehold uden ${TEAM_BOARD_MEMBERS_COUNT} bestyrelsesmedlemmer (#4664)`
+      ),
+      {
+        tags: { cron: "ownership-invariant-watch" },
+        fingerprint: ["human-team-without-board-members"],
+        extra: {
+          count: teamsMissingBoardMembers.length,
+          sample: teamsMissingBoardMembers.slice(0, SAMPLE_LIMIT).map((t) => ({
+            teamId: t.id,
+            name: t.name,
+            teamDnaKey: t.team_dna_key ?? null,
+          })),
+        },
+      }
+    );
+  }
+
   return {
     checked: activeAuctions.length,
     findings: {
@@ -420,6 +493,7 @@ export async function runOwnershipInvariantWatch({
       staleIntake: staleIntake.length,
       strandedAcademy: strandedAcademy.length,
       stalePendingTransfer: stalePendingTransfer.length,
+      teamsMissingBoardMembers: teamsMissingBoardMembers.length,
     },
     alerted,
   };
