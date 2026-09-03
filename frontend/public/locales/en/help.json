@@ -952,7 +952,7 @@
       },
       "assistantSuggestions": {
         "title": "Get suggestions from the assistant",
-        "text": "The 'Get suggestions from the assistant' button in the Daily Training header opens a review panel with a type-matched focus for every rider (the same suggestion the smart default uses). Each row shows the rider, a 'No plan' marker when they have no focus set yet, and what the assistant would set. Nothing is applied until you accept: tick the riders you want and click 'Accept selected', or click 'Accept all'. Turn on 'Only riders without a plan' to review just the riders who aren't trained yet. Accepting never overwrites a rider who already has their own focus set, the same rule as the roster's 'Smart focus' bulk option."
+        "text": "The 'Get suggestions from the assistant' button in the Daily Training header opens a review panel with a type-matched focus for every rider (the same suggestion the smart default uses). Each row shows the rider, a 'No plan' or 'Your plan' marker, and what the assistant would set. Nothing is applied until you accept: tick the riders you want and click 'Accept selected', or click 'Accept all', which covers every rider marked 'No plan'. Turn on 'Only riders without a plan' to review just the riders who aren't trained yet. Accepting never overwrites a rider who already has their own focus set, the same rule as the roster's 'Smart focus' bulk option, so rows marked 'Your plan' cannot be ticked. Clear that rider's focus first if you want the assistant to take over."
       },
       "formFatigue": {
         "title": "Form and Fatigue",

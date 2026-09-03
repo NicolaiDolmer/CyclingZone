@@ -1727,7 +1727,16 @@ export const SEED_TRAINING = {
     "rider-1": { sprint: "strength", acceleration: "strength", vo2max: "limited", threshold: "limited" },
     "rider-2": { vo2max: "strength", sprint: "blocked", aero: "limited" },
   },
-  smartDefaultFocus: { "rider-2": "vo2max" },
+  // #4699 preview-udvidelse: Ada (rider-1) har allerede en plan (se `plans`
+  // ovenfor) OG et smartDefaultFocus-hit — det er den nye "din plan"-tilstand
+  // AssistantSuggestionsPanel skal vise (badge + slået-fra checkbox), og fordi
+  // hun er den ENESTE rytter på TEST_TEAM i preview (RIDERS-arrayet har kun
+  // rider-1 med team_id=TEST_TEAM.id — Mikkel/rider-2 hører til RIVAL_TEAM),
+  // bliver acceptableCount 0 og "Accept all" viser deaktiveret-noten. Samme
+  // scenarie som prod 3/9: 65/241 hold har en plan på hver ikke-pensioneret
+  // rytter (#4699-issuet). rider-2 beholdt uændret — bruges ikke af dette
+  // panel (hun er ikke i TEST_TEAM's roster), men andre flader kan læse den.
+  smartDefaultFocus: { "rider-1": "sprint", "rider-2": "vo2max" },
   weekPlan: null,
   riderWeekPlans: {},
 };
