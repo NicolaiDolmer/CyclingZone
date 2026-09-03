@@ -4,11 +4,11 @@
 |---|---|
 | Start/slut (lokal tid) | 2/9 23:45 → 3/9 ca. 03:30 (sidste nat-PR) · merge-runde 07:36 → 11:45 |
 | Agenter launched / fuldført / døde | Nat: 29 workflow-spor (8 samtidige), 28 fuldført, 1 død tavst (anti-slop 00:22). Morgen: 22 Agent-tool-workers (fixups, e2e, S4-regler, katalog, patch note), 20 fuldført, 2 stoppet (GT-katalog hang på `cd &&` 10:13; #4670-e2e tavs 45 min) |
-| PR'er åbnet / merged | 38 åbnet (32 i nat + 6 om morgenen) / **37 merget 3/9 kl. 07:36-11:40** (inkl. #4705 CI-fix, #4713 budget). Ejeren mergede 6 drafts 2/9 kl. 23:44. Åbne ved close-out: se "Rest" |
+| PR'er åbnet / merged | 39 åbnet (32 i nat + 7 om morgenen) / **39 merget 3/9 kl. 07:36-12:09** (inkl. #4705 CI-fix, #4713 budget, #4716 GT-katalog). Ejeren mergede 6 drafts 2/9 kl. 23:44. Rest ved close-out: #4670 (Auktioner/Akademi, e2e rød, agent stoppet) og #4662 (Pro-fordele, sidste main-merge + CI) |
 | Issues → claude:done | #4658 #4594 #4496 #4493 #4651 #4626 #3853 #2405 #4254 #2823 #4650 #4664 #4615 #4647 #4292 #4105 #2810 #1884 #4538 #4374 #4588 #4177 #4297 #3966 #4282 #4631 #4128 #3442 #4215 #4573 #4201 #4519 #4143 #4386 (34) |
 | gh-401-retries (preflight-probe + bølge) | 0 i preflight (OAuth-token-advarsel, ingen fejl); 0 observeret i bølgen |
 | Recoveries (type) | 3: anti-slop re-spawn (0 commits), GT-katalog re-spawn efter `cd`-hæng (0 commits), #4662 rebase fortsat i samme worktree efter to stoppede agenter (uncommitted budget-ændring bevaret) |
-| Prod-mutationer med ejer-GO | bestyrelses-backfill 09:01 (13 hold, 65 rækker; post-verify 0 under 5); S4-katalog + grus auto-migreret ved merge af #4708 09:50 (race_pool 175 → 221, Toscana = gravel_classic, CHECK udvidet med gravel) |
+| Prod-mutationer med ejer-GO | bestyrelses-backfill 09:01 (13 hold, 65 rækker; post-verify 0 under 5); S4-katalog + grus auto-migreret ved merge af #4708 09:50 (race_pool 175 → 221, Toscana = gravel_classic, CHECK udvidet med gravel); GT-etapetal auto-migreret ved merge af #4716 12:12 (Giro 18 → 17, Tour 17 → 18, Vuelta 17; post-verify OK) |
 | Preflight | GO kl. 23:19 (.codex.local/night-wave-preflight.json) |
 
 Workflows: A = `wf_64e6c306-c6f` (opus/sonnet eksplicit pr. spor), B = `wf_e2adaf29-541` (sonnet). Scripts i sessionens scratchpad (`natboelge-A/B-2026-09-03.js`); design: lane-pool over prioriteret kø (ingen tomme slots, et frosset spor blokerer kun sin lane), per-spor-timeout 170/100/90 min, monitor hvert 20. min (frosne transcripts + PR-tal).
