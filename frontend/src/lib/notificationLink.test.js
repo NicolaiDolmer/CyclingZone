@@ -95,3 +95,40 @@ test("#4118/#3517 forum_thread_reply deep-linker til tråden via related_id", ()
   const link = resolveNotificationLink({ type: "forum_thread_reply", related_id: "post-1" }, "/forum");
   assert.equal(link, "/forum/post-1");
 });
+
+// #4557 (S-M2d): aabnings- og reminder-notifikationer om aarsmoedet
+// deep-linker direkte til /board/meeting, ikke det generiske /board.
+for (const titleCode of [
+  "notif.boardMandateOpened.title",
+  "notif.boardMandateT1Reminder.title",
+  "notif.boardMandateT3Reminder.title",
+]) {
+  test(`#4557 board_update med titleCode ${titleCode} deep-linker til /board/meeting`, () => {
+    const link = resolveNotificationLink(
+      { type: "board_update", metadata: { titleCode } },
+      "/board",
+    );
+    assert.equal(link, "/board/meeting");
+  });
+}
+
+test("#4557 board_critical med T1-reminder-titleCode deep-linker ogsaa til /board/meeting", () => {
+  const link = resolveNotificationLink(
+    { type: "board_critical", metadata: { titleCode: "notif.boardMandateT1Reminder.title" } },
+    "/board",
+  );
+  assert.equal(link, "/board/meeting");
+});
+
+test("#4557 boardMandateAutoAccepted lander PAA /board (moedet er allerede underskrevet)", () => {
+  const link = resolveNotificationLink(
+    { type: "board_update", metadata: { titleCode: "notif.boardMandateAutoAccepted.title" } },
+    "/board",
+  );
+  assert.equal(link, "/board");
+});
+
+test("#4557 board_update uden boardMandate-titleCode falder tilbage til fallbackLink", () => {
+  const link = resolveNotificationLink({ type: "board_update", metadata: {} }, "/board");
+  assert.equal(link, "/board");
+});
