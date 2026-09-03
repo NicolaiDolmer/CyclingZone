@@ -25,6 +25,7 @@ export default function FilterBar({
   meta = null,
   moreLabel = "More filters",
   moreDefaultOpen = false,
+  moreWide = false,
   children = null,
   className = "",
 }) {
@@ -85,8 +86,13 @@ export default function FilterBar({
 
       {trailing}
 
+      {/* #4628: `moreWide` — naar "More filters" gemmer et helt panel (Auktioner
+          skjuler hele RiderFilters-panelet bag den) skal disclosuren ligge paa
+          sin egen linje i fuld bredde; den shrink-wrappede sm:w-auto-variant
+          lader et bredt panel vokse ud over filterlinjens bredde. Default er
+          uaendret: en kort felt-liste der flugter til hoejre. */}
       {children && (
-        <details open={moreDefaultOpen} className="group order-last w-full sm:order-none sm:ms-auto sm:w-auto">
+        <details open={moreDefaultOpen} className={`group order-last w-full ${moreWide ? "basis-full" : "sm:order-none sm:ms-auto sm:w-auto"}`}>
           <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-cz-2 select-none hover:text-cz-1">
             <FilterIcon size={14} aria-hidden="true" />
             {moreLabel}

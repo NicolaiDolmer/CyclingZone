@@ -60,8 +60,9 @@ import { cycleSortState } from "../lib/riderSort";
 import {
   AmountInput, Card, Button, TagIcon, EyeIcon, StarIcon, PageLoader,
   PageHeader, Section, EmptyState, ErrorState, BlockedNote, XIcon,
-  Select, ArrowUpIcon, ArrowDownIcon,
+  Select, ArrowUpIcon, ArrowDownIcon, FilterBar, Tabs, TabList, Tab,
 } from "../components/ui";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 // #2849 bølge 1: tabel-wrap-radius/border deles med cz-table-recipen (T2), men
 // selve tabellen konverteres IKKE til DataTable — se kommentar ved AuctionList.
 import { WRAP } from "../components/ui/dataTableStyles.js";
@@ -190,7 +191,7 @@ function AuctionLeaderLine({ auction, t, className = "" }) {
   );
 }
 
-function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear }) {
+function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, onHide = null }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -249,6 +250,19 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
             className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors text-left truncate max-w-[160px]">
             {r?.firstname} {r?.lastname}
           </RiderLink>
+          {/* #4262: skjul denne overbudte auktion fra "Mine auktioner". Ren
+              visning — buddet staar, auktionen loeber videre. */}
+          {onHide && (
+            <button
+              type="button"
+              onClick={() => onHide(auction.id)}
+              aria-label={t("auctions:overbidHidden.hideAria", { name: riderName })}
+              title={t("auctions:overbidHidden.hideTitle")}
+              className="ms-auto shrink-0 text-cz-3 transition-colors hover:text-cz-1"
+            >
+              <XIcon size={13} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </td>
 
@@ -436,10 +450,14 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                 disabled={bidStatus === "loading"}
                 {...bidBlock.blockedProps}
                 aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
-                className={`px-3 py-1.5 rounded-cz text-xs font-bold transition-all whitespace-nowrap
+                /* #4628: raekkeknapper er ALDRIG guld (T2: "row action buttons
+                   are secondary sm, never gold in rows"). Byd stod i guld i hver
+                   eneste raekke, saa guld ikke laengere betoed noget paa siden
+                   (audit 2026-09). Status-tilstandene er uaendrede. */
+                className={`px-3 py-1.5 rounded-cz text-xs font-bold transition-colors duration-150 whitespace-nowrap
                   ${bidStatus === "error"   ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                     bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
-                    "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 hover:bg-cz-accent/25"}
+                    "bg-transparent text-cz-1 border border-cz-border hover:border-cz-3"}
                   disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                 {bidStatus === "loading" ? t("common:actions.loadingShort") :
                  bidStatus === "error"   ? t("auctions:bid.buttonError") :
@@ -464,7 +482,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                 <button
                   onClick={() => setProxyExpanded(true)}
                   aria-label={t("auctions:bid.proxy.set")}
-                  className="inline-flex min-h-[28px] items-center justify-center rounded-cz border border-cz-accent/50 bg-cz-accent/10 px-2 py-1 text-3xs font-bold text-cz-accent-t hover:bg-cz-accent/20 whitespace-nowrap"
+                  className="inline-flex min-h-[28px] items-center justify-center rounded-cz border border-cz-border bg-transparent px-2 py-1 text-3xs font-bold text-cz-2 hover:border-cz-3 hover:text-cz-1 whitespace-nowrap"
                 >
                   {t("auctions:bid.proxy.buttonAdd")}
                 </button>
@@ -534,7 +552,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
   );
 }
 
-function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear }) {
+function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCount, academyCount, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, isRecommended, visibleStats, scouting, seasonYear, onHide = null }) {
   const { t } = useTranslation(["auctions", "common", "riderTypes"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -637,9 +655,23 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
             </div>
           </div>
         </div>
-        <div className="text-right flex-shrink-0" data-tour={isFirst ? "auctions-countdown" : undefined}>
-          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.time")}</p>
-          <Countdown end={auction.calculated_end} status={auction.status} />
+        <div className="flex flex-shrink-0 items-start gap-2">
+          <div className="text-right" data-tour={isFirst ? "auctions-countdown" : undefined}>
+            <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("auctions:card.time")}</p>
+            <Countdown end={auction.calculated_end} status={auction.status} />
+          </div>
+          {/* #4262: samme skjul-handling som i desktop-raekken. */}
+          {onHide && (
+            <button
+              type="button"
+              onClick={() => onHide(auction.id)}
+              aria-label={t("auctions:overbidHidden.hideAria", { name: riderName })}
+              title={t("auctions:overbidHidden.hideTitle")}
+              className="-me-2 -mt-2 inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-cz-3 transition-colors hover:text-cz-1"
+            >
+              <XIcon size={14} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -732,10 +764,12 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 disabled={bidStatus === "loading"}
                 {...bidBlock.blockedProps}
                 aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
-                className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-bold transition-all whitespace-nowrap
+                /* #4628: samme guld-rationering som i tabelraekken — ét kort pr.
+                   auktion betyder ellers N guld-knapper paa mobil-skaermen. */
+                className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-bold transition-colors duration-150 whitespace-nowrap
                   ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                     bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
-                    "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40"}
+                    "bg-transparent text-cz-1 border border-cz-border hover:border-cz-3"}
                   disabled:opacity-50 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}>
                 {bidStatus === "loading" ? t("common:actions.loadingShort") : bidStatus === "error" ? t("auctions:bid.buttonError") : bidStatus === "success" ? t("common:actions.success") : imWinning ? t("auctions:bid.buttonRaise") : t("auctions:bid.buttonPlace")}
               </button>
@@ -766,7 +800,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 <button
                   onClick={() => setProxyExpanded(true)}
                   aria-label={t("auctions:bid.proxy.set")}
-                  className="min-h-[44px] rounded-cz border border-cz-accent/50 bg-cz-accent/10 px-3 text-xs font-bold text-cz-accent-t hover:bg-cz-accent/20 whitespace-nowrap"
+                  className="min-h-[44px] rounded-cz border border-cz-border bg-transparent px-3 text-xs font-bold text-cz-2 hover:border-cz-3 hover:text-cz-1 whitespace-nowrap"
                 >
                   {t("auctions:bid.proxy.buttonAddCard")}
                 </button>
@@ -891,6 +925,43 @@ export default function AuctionsPage() {
       // localStorage kan være disabled (privacy mode); accepter tab af persistens
     }
   }, [wishlistOnly]);
+
+  // #4262: skjul en auktion du er blevet overbudt paa. REN VISNING — buddet
+  // roeres ikke, auktionen loeber videre, og du er stadig med i den. Formaalet
+  // er at "Mine auktioner" kan ryddes ned til de auktioner du faktisk vil
+  // foelge, uden at trykke paa noget der koster penge.
+  // Persisteres pr. HOLD i localStorage (nøglen baerer team-id), saa to hold i
+  // samme browser ikke deler skjul-liste. Se PR-body for hvorfor det ikke er
+  // server-side.
+  const [hiddenOverbidIds, setHiddenOverbidIds] = useState(() => new Set());
+  useEffect(() => {
+    if (typeof window === "undefined" || !myTeamId) return;
+    try {
+      const raw = localStorage.getItem(`cz-auctions-hidden-overbid-${myTeamId}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      setHiddenOverbidIds(new Set(Array.isArray(parsed) ? parsed : []));
+    } catch {
+      setHiddenOverbidIds(new Set());
+    }
+  }, [myTeamId]);
+
+  function persistHiddenOverbid(next) {
+    setHiddenOverbidIds(next);
+    if (typeof window === "undefined" || !myTeamId) return;
+    try {
+      localStorage.setItem(`cz-auctions-hidden-overbid-${myTeamId}`, JSON.stringify([...next]));
+    } catch {
+      // localStorage kan være disabled (privacy mode); accepter tab af persistens
+    }
+  }
+
+  function hideOverbidAuction(auctionId) {
+    persistHiddenOverbid(new Set([...hiddenOverbidIds, auctionId]));
+  }
+
+  function showHiddenOverbid() {
+    persistHiddenOverbid(new Set());
+  }
   // "Live bud"-feed kan slås fra (#1510406001751363584) — default synligt, husket i localStorage.
   const [showFeed, setShowFeed] = useState(
     () => typeof window === "undefined" || localStorage.getItem("cz-auctions-show-feed") !== "0",
@@ -1462,10 +1533,10 @@ export default function AuctionsPage() {
 
   const winningAuctions  = auctions.filter(a => getAuctionLeaderId(a) === myTeamId);
   // #44: worst-case reservation — delt klient-spejl af backendens commitment-
-  // formel (auctionLogic.js / auctionRules.js). availableBalance vises i headeren;
-  // selve bid-gaten beregner pr.-auktion-available i useAuctionBidding (#1184).
+  // formel (auctionLogic.js / auctionRules.js). Reserveret staar i sidehovedets
+  // meta-linje (#4628); selve bid-gaten beregner pr.-auktion-available i
+  // useAuctionBidding (#1184).
   const reservedBalance = computeWorstCaseReservation(auctions, myTeamId);
-  const availableBalance = Math.max(0, myBalance - reservedBalance);
   const incomingCount    = winningAuctions.filter(a => a.rider?.team_id !== myTeamId).length;
   const outgoingCount    = auctions.filter(a => {
     if (a.rider?.team_id !== myTeamId) return false;
@@ -1584,89 +1655,57 @@ export default function AuctionsPage() {
         </div>
       )}
 
-      {/* #2849 bølge 1: DEN kanoniske sidehoved-recipe. Eksisterende actions
-          (Aktiv/Historik-faner) bevares uændret i actions-slotten — dette er
-          side-navigation, ikke en Select+Button, en bevidst afvigelse fra
-          actions-kontraktens "max 1 select + 1 knap" for at undgå at opfinde
-          nyt navigations-mønster i denne bølge. */}
+      {/* #4628 (audit 2026-09, /auctions score 11: "556 px chrome foer foerste
+          auktion"): de fire stat-kort (Saldo / Reserveret / Ryttere / Prognose)
+          er nu ÉN meta-linje i sidehovedet. Tallene er kontekst for buddene,
+          ikke sidens indhold — TASTE P1 ("data foerst, forklaring bagefter").
+          Action-slotten holder de to tilladte quiet utility actions (live-feed
+          + Historik, PAGE_TEMPLATES' header-kontrakt); "Aktiv (N)"-linket er
+          vaek, fordi man staar paa den side, og tallet nu staar i "All (N)"-fanen.
+          Ingen guld-tint paa knapperne: guld er rationeret til leder-markoerer
+          og den aktive fanes underline. */}
       <PageHeader
         title={t("auctions:page.title")}
         subtitle={
-          // #196: aggregat-ticker — rolling vindue, opdateres live via channel + 1s tick.
-          <span data-testid="auctions-ticker" className="font-data tabular-nums" aria-live="polite">
-            {t("auctions:ticker.bidCount", { count: tickerCount })}
+          <span className="font-data tabular-nums text-cz-2">
+            {!loading && myTeamId && (
+              <>
+                {t("auctions:stats.balance")} {formatNumber(myBalance)} CZ$
+                {reservedBalance > 0 && (
+                  <> · {t("auctions:stats.reserved")} {formatNumber(reservedBalance)} CZ$</>
+                )}
+                {currentRiderCount !== null && (
+                  <> · {t("auctions:stats.ridersNow")} {currentRiderCount}</>
+                )}
+                {projectedRiderCount !== null && projectedRiderCount !== currentRiderCount && (
+                  <> · {t("auctions:stats.projection")} {projectedRiderCount}</>
+                )}
+                {" · "}
+              </>
+            )}
+            {/* #196: aggregat-ticker — rolling vindue, opdateres live via channel + 1s tick. */}
+            <span data-testid="auctions-ticker" aria-live="polite">
+              {t("auctions:ticker.bidCount", { count: tickerCount })}
+            </span>
           </span>
         }
         actions={
           <>
-            <NavLink to="/auctions" end
-              className={({ isActive }) =>
-                `px-3 py-1.5 rounded-cz text-sm font-medium transition-all border ${
-                  isActive
-                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-              {t("auctions:nav.active", { count: auctions.length })}
-            </NavLink>
-            <NavLink to="/auctions/history"
-              className={({ isActive }) =>
-                `px-3 py-1.5 rounded-cz text-sm font-medium transition-all border ${
-                  isActive
-                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+            <button
+              type="button"
+              onClick={() => setShowFeed(v => !v)}
+              aria-pressed={showFeed}
+              title={showFeed ? t("auctions:filter.feedTitleOn") : t("auctions:filter.feedTitleOff")}
+              className={`${buttonClass({ variant: "secondary", size: "sm" })} ${showFeed ? "border-cz-3 text-cz-1" : ""}`}>
+              <EyeIcon size={14} aria-hidden="true" className="text-cz-3" />
+              {t("auctions:filter.feedButton")}
+            </button>
+            <NavLink to="/auctions/history" className={buttonClass({ variant: "secondary", size: "sm" })}>
               {t("auctions:nav.history")}
             </NavLink>
           </>
         }
       />
-
-      {!loading && myTeamId && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-          <Section>
-            <p className="text-3xs uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.balance")}</p>
-            <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">
-              {formatNumber(myBalance)} CZ$
-            </p>
-            {reservedBalance > 0 && (
-              <p className="text-cz-3 text-3xs mt-0.5">
-                {t("auctions:stats.balanceAvailable", { amount: formatNumber(availableBalance) })}
-              </p>
-            )}
-          </Section>
-          <Section>
-            <p className="text-3xs uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.reserved")}</p>
-            <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
-              {formatNumber(reservedBalance)} CZ$
-            </p>
-            {winningAuctions.length > 0 && (
-              <p className="text-cz-3 text-3xs mt-0.5">{t("auctions:stats.auctionsLeading", { count: winningAuctions.length })}</p>
-            )}
-          </Section>
-          <Section>
-            <p className="text-3xs uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.ridersNow")}</p>
-            <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
-              {currentRiderCount ?? "—"}
-            </p>
-          </Section>
-          <Section>
-            <p className="text-3xs uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.projection")}</p>
-            <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
-              {projectedRiderCount ?? "—"}
-              {projectedRiderCount !== null && projectedRiderCount !== currentRiderCount && (
-                <span className={`text-xs ms-1.5 font-medium ${projectedRiderCount > currentRiderCount ? "text-cz-success" : "text-cz-danger"}`}>
-                  {projectedRiderCount > currentRiderCount ? "+" : ""}{projectedRiderCount - currentRiderCount}
-                </span>
-              )}
-            </p>
-            {(incomingCount > 0 || outgoingCount > 0) && (
-              <p className="text-cz-3 text-3xs mt-0.5">
-                {incomingCount > 0 && t("auctions:stats.incoming", { count: incomingCount })}
-                {incomingCount > 0 && outgoingCount > 0 && " · "}
-                {outgoingCount > 0 && t("auctions:stats.outgoing", { count: outgoingCount })}
-              </p>
-            )}
-          </Section>
-        </div>
-      )}
 
       {showFirstBidHint && (
         <AuctionsFirstBidHint
@@ -1676,62 +1715,59 @@ export default function AuctionsPage() {
         />
       )}
 
-      {/* Filter tabs + Wishlist-toggle + StatsToggle */}
-      <div className="flex gap-2 mb-4 flex-wrap items-center justify-between">
-        <div className="flex gap-2 flex-wrap items-center">
+      {/* #4628: de tre visnings-filtre er nu kanoniske underline-Tabs
+          (PAGE_TEMPLATES: "Tabs are underline-tabs, never buttons"), ikke seks
+          guld-tintede knapper i en loesreven raekke. Guld staar kun paa den
+          aktive fanes 2 px underline. */}
+      <Tabs value={filter} onChange={pickFilter} className="mb-3">
+        <TabList label={t("auctions:page.title")}>
           {FILTER_TABS.map(tab => (
-            <button key={tab.key} onClick={() => pickFilter(tab.key)}
-              className={`inline-flex items-center min-h-[44px] px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
-                ${filter === tab.key
-                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-              {tab.label}
-            </button>
+            <Tab key={tab.key} value={tab.key}>{tab.label}</Tab>
           ))}
-          <button
-            onClick={() => setWishlistOnly(v => !v)}
-            aria-pressed={wishlistOnly}
-            title={wishlistOnly ? t("auctions:filter.wishlistTitleOn") : t("auctions:filter.wishlistTitleOff")}
-            className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
-              ${wishlistOnly
-                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            <StarIcon size={16} aria-hidden="true"
-              className={wishlistOnly ? "text-cz-accent-t" : "text-cz-3"}
-              fill={wishlistOnly ? "currentColor" : "none"} />
-            {t("auctions:filter.wishlistButton")}
-          </button>
-          <button
-            onClick={() => setShowFeed(v => !v)}
-            aria-pressed={showFeed}
-            title={showFeed ? t("auctions:filter.feedTitleOn") : t("auctions:filter.feedTitleOff")}
-            className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
-              ${showFeed
-                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            <EyeIcon size={14} className={showFeed ? "text-cz-accent-t" : "text-cz-3"} />
-            {t("auctions:filter.feedButton")}
-          </button>
-        </div>
-        <StatsToggle
-          visibleStats={visibleStats}
-          onToggleStat={toggleStat}
-          onShowAll={showAll}
-          onHideAll={hideAll}
-        />
-      </div>
+        </TabList>
+      </Tabs>
 
-      {/* RiderFilters er en delt komponent på tværs af flere rytter-oversigter
-          (RidersPage, TransfersPage m.fl.) — dens interne Input/Select-recipe
-          rører vi ikke i denne bølge (bølge 1-scope er AuctionsPage.jsx alene). */}
-      <RiderFilters
-        filters={riderFilters.filters}
-        onChange={riderFilters.onChange}
-        onReset={riderFilters.onReset}
-        showTeamFilter={false}
-        nationalities={riderFilters.nationalities}
-        showAuctionPriceFilter={true}
-      />
+      {/* #4628: DEN kanoniske T2-filterlinje. Soegefelt + ønskeliste-checkbox +
+          taellelinje paa ÉN raekke; det fulde RiderFilters-panel (11 felter +
+          evne-fold) og kolonne-toggle'en ligger bag "More filters", lukket som
+          standard (TASTE fork 1). RiderFilters er delt med Ryttere/Transfers —
+          derfor loeftes KUN navnefeltet ud (hideFields), saa det ikke staar to
+          gange, og panelets egne felter roeres ikke. */}
+      <FilterBar
+        className="mb-4"
+        search={{
+          value: riderFilters.filters.q,
+          onChange: e => riderFilters.onChange("q", e.target.value),
+          placeholder: t("auctions:filter.searchPlaceholder"),
+          ariaLabel: t("auctions:filter.searchAria"),
+        }}
+        checkbox={{
+          id: "auctions-wishlist-only",
+          label: t("auctions:filter.wishlistButton"),
+          checked: wishlistOnly,
+          onChange: e => setWishlistOnly(e.target.checked),
+        }}
+        moreLabel={t("auctions:filter.moreFilters")}
+        moreWide
+      >
+        <div className="flex w-full flex-col gap-3">
+          <StatsToggle
+            visibleStats={visibleStats}
+            onToggleStat={toggleStat}
+            onShowAll={showAll}
+            onHideAll={hideAll}
+          />
+          <RiderFilters
+            filters={riderFilters.filters}
+            onChange={riderFilters.onChange}
+            onReset={riderFilters.onReset}
+            showTeamFilter={false}
+            nationalities={riderFilters.nationalities}
+            showAuctionPriceFilter={true}
+            hideFields={["q"]}
+          />
+        </div>
+      </FilterBar>
 
       {loading ? (
         <PageLoader label={t("auctions:page.loadingAria")} />
@@ -1755,7 +1791,10 @@ export default function AuctionsPage() {
           wishlistOnly={wishlistOnly}
           mySituationBuckets={{
             leading: sortByRiderOrder(myLeadingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a))),
-            overbid: sortByRiderOrder(myOverbidAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a))),
+            // #4262: skjulte overbudte auktioner filtreres ud af visningen her;
+            // de er stadig med i myOverbidAuctions (og dermed i "Mine
+            // auktioner"-taelleren), fordi buddet stadig staar.
+            overbid: sortByRiderOrder(myOverbidAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a) && !hiddenOverbidIds.has(a.id))),
             selling: sortByRiderOrder(mySellingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a))),
           }}
           myTeamId={myTeamId}
@@ -1781,6 +1820,13 @@ export default function AuctionsPage() {
           now={now}
           showFeed={showFeed}
           recommendedAuctionId={firstBidRecommendation?.id ?? null}
+          // #4262: skjul/vis-igen af overbudte auktioner (ren visning).
+          onHideOverbid={hideOverbidAuction}
+          onShowHiddenOverbid={showHiddenOverbid}
+          hiddenOverbidCount={myOverbidAuctions.filter(a => hiddenOverbidIds.has(a.id)).length}
+          // #4628: tomme tilstande skal have en vej videre (TASTE fork 4).
+          onClearWishlist={() => setWishlistOnly(false)}
+          onBrowseAll={() => pickFilter("all")}
           // #3401: best-effort navne-snapshot til post-hammerslag-berigelse af
           // "Modbud"-labels for auktioner der er lukket (ingen ekstra fetch —
           // genbruger cachen der allerede bygges til fører-navnet, #196/#910).
@@ -1967,7 +2013,7 @@ function AuctionMobileSortControl({ visibleStats, activeSortDir, handleSort, rid
 // genbruges cz-table-recipens VÆRDIER direkte (WRAP-radius/border, header-
 // typografi, border-rule i stedet for box-shadow) uden at bytte selve
 // tabel-primitivet.
-function AuctionList({ auctions, sectionId, sharedProps }) {
+function AuctionList({ auctions, sectionId, sharedProps, onHide = null }) {
   const sorted = applyAuctionSort(auctions, sharedProps.auctionSort);
   return (
     <>
@@ -2000,6 +2046,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
             visibleStats={sharedProps.visibleStats}
             scouting={sharedProps.scouting}
             seasonYear={sharedProps.seasonYear}
+            onHide={onHide}
           />
         ))}
       </div>
@@ -2036,6 +2083,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
                   visibleStats={sharedProps.visibleStats}
                   scouting={sharedProps.scouting}
                   seasonYear={sharedProps.seasonYear}
+                  onHide={onHide}
                 />
               ))}
             </tbody>
@@ -2046,15 +2094,18 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
   );
 }
 
-function MySituationSection({ title, badgeClass, auctions, sectionId, sharedProps }) {
-  if (auctions.length === 0) return null;
+function MySituationSection({ title, badgeClass, auctions, sectionId, sharedProps, onHide = null, action = null }) {
+  if (auctions.length === 0 && !action) return null;
   return (
     <section className="mb-5">
       <div className="flex items-baseline gap-2 mb-2">
         <h2 className={`text-sm font-bold ${badgeClass}`}>{title}</h2>
         <span className="text-cz-3 text-xs font-mono">({auctions.length})</span>
+        {action}
       </div>
-      <AuctionList auctions={auctions} sectionId={sectionId} sharedProps={sharedProps} />
+      {auctions.length > 0 && (
+        <AuctionList auctions={auctions} sectionId={sectionId} sharedProps={sharedProps} onHide={onHide} />
+      )}
     </section>
   );
 }
@@ -2064,6 +2115,8 @@ function AuctionsContent(props) {
   const {
     filter, filtered, totalCount, wishlistOnly, mySituationBuckets,
     feedEvents, auctionsById, myTeamId, now, showFeed, teamNamesById,
+    onHideOverbid, onShowHiddenOverbid, hiddenOverbidCount,
+    onClearWishlist, onBrowseAll,
     ...rest
   } = props;
   const sharedProps = { myTeamId, ...rest };
@@ -2092,6 +2145,23 @@ function AuctionsContent(props) {
                   ? t("empty.wishlistHelp")
                   : (filter === "my-situation" ? t("empty.browseSuggestion") : t("empty.startAuctionSuggestion"))
               }
+              // #4628 (TASTE fork 4): ÉN knap der foerer derhen — de tre tomme
+              // tilstande her stod med ren beskrivelse og ingen vej videre.
+              action={
+                wishlistOnly ? (
+                  <Button size="sm" variant="secondary" onClick={onClearWishlist}>
+                    {t("empty.actionClearWishlist")}
+                  </Button>
+                ) : filter === "my-situation" ? (
+                  <Button size="sm" variant="secondary" onClick={onBrowseAll}>
+                    {t("empty.actionBrowseAll")}
+                  </Button>
+                ) : (
+                  <NavLink to="/riders" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                    {t("empty.actionStartAuction")}
+                  </NavLink>
+                )
+              }
             />
           </Section>
         ) : filter === "my-situation" ? (
@@ -2103,12 +2173,28 @@ function AuctionsContent(props) {
               sectionId="leading"
               sharedProps={sharedProps}
             />
+            {/* #4262: hvert overbudt-kort/-raekke faar et lille X der skjuler
+                auktionen fra listen (ren visning, buddet staar). Er noget
+                skjult, staar der en quiet action ved siden af overskriften der
+                henter dem frem igen. */}
             <MySituationSection
               title={t("section.overbid")}
               badgeClass="text-cz-danger"
               auctions={mySituationBuckets.overbid}
               sectionId="overbid"
               sharedProps={sharedProps}
+              onHide={onHideOverbid}
+              action={
+                hiddenOverbidCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={onShowHiddenOverbid}
+                    className="text-xs font-medium text-cz-accent-t hover:underline"
+                  >
+                    {t("overbidHidden.showAgain", { count: hiddenOverbidCount })}
+                  </button>
+                ) : null
+              }
             />
             <MySituationSection
               title={t("section.selling")}
