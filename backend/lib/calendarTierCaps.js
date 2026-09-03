@@ -6,7 +6,18 @@
 // uændret, så alle eksisterende importstier virker som før.
 //
 // Tæthed pr. division (= "løbsdage kørt om dagen", ejer-låst). quota = density × realDays.
-export const TIER_DENSITY = Object.freeze({ 1: 5, 2: 4, 3: 3, 4: 2 });
+//
+// EJER-BESLUTNING 2026-09-03 (#4270): Division 4 haevet 2 -> 3 etaper om dagen fra saeson 4.
+// 56 etaper over 28 dage var spillets tyndeste program, og D4 er den division med flest
+// hold. Kvoten foelger automatisk (density x loebsdatoer, CALENDAR_RULES.md §1b):
+// D4 3 x 28 = 84 etaper i S4. TIER_STAGE_SLOTS[4] hae­vet tilsvarende til 12/15/18.
+//
+// FOELGEVIRKNING der ikke maa overses: minGameDaysPerRealDay(4) gaar fra 1 til 2, saa D4's
+// game_day-akse og kalenderaksen maa IKKE laengere falde sammen. Foer S4 var D4 den eneste
+// division med 1:1 mellem loebsdag og kalenderdag (CALENDAR_RULES.md §0). Kode der antog
+// den 1:1 for D4 skal maale, ikke antage - checkCalendarOverlapInvariants haandhaever det
+// selv via axisLooksCollapsed, som nu ogsaa gaelder tier 4.
+export const TIER_DENSITY = Object.freeze({ 1: 5, 2: 4, 3: 3, 4: 3 });
 
 // Overlap-cap pr. division (ejer-låst 2026-06-28): max antal FORSKELLIGE løb der må binde en rytter
 // samtidig (= samtidige løb pr. in-game-dag). Div 1/2 = 3, Div 3/4 = 2. Adskilt fra tæthed: tætheden

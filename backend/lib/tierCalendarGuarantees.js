@@ -36,14 +36,30 @@ export const TIER_ONE_DAY_SHARE_MIN = Object.freeze({ 1: 0.45, 2: 0.45, 3: 0.48,
 //
 // ProSeries korte etapeløb (3-5), WorldTour C/B/A længere (6-8) — SAMME bånd for alle tre
 // WorldTour-underklasser (ejer valgte den simple 2-bånds-udgave, ikke #3328's oprindelige
-// forslag med ét bånd pr. WorldTour-bogstav). Klasser UDEN et bånd her (GrandTour/
-// TourFrance/GiroVuelta/Monuments/Class1/Class2) er UPÅVIRKEDE — GT'ens 21 etaper er
-// ejer-bekræftet og røres ikke.
+// forslag med ét bånd pr. WorldTour-bogstav).
+//
+// #4270 (EJER-BESLUTNING 3/9, lukker CALENDAR_RULES.md §11 punkt 2): Class1 og Class2 faar
+// baandet [3, 6]. Foer stod de uden baand - ikke fordi nogen havde besluttet det, men fordi
+// #3328 kun tog stilling til ProSeries og WorldTour. Maalt 30/8 koerte D4 Class2-etapeloeb
+// med 2 ETAPER; et etapeloeb paa to dage er ikke et etapeloeb, det er to endagsloeb med
+// faelles klassement. Loftet 6 holder Class1/Class2 under WorldTour-baandets 6-8, saa
+// klasse-hierarkiet stadig betyder noget i laengde.
+//
+// PRIS, maalt og ikke gaettet: etapeloeb med 2 etaper falder ud af vinduet. D4's
+// klasse-vindue (Class1+Class2) er i forvejen tyndt (19 etapeloeb, katalog-maaling 3/9), og
+// katalog-udvidelsen ligger i et andet spor. Konsekvensen for D4's kvote-opfyldelse maales i
+// docs/audits/season4-calendar-dryrun-2026-09-03.md - ikke skjult bag et groent flueben.
+//
+// Klasser UDEN et bånd her (GrandTour/TourFrance/GiroVuelta/Monuments) er UPÅVIRKEDE.
+// GT'erne har 17/17/18 etaper i kataloget (CALENDAR_RULES.md §3) - den gamle kommentar om
+// "GT'ens 21 etaper er ejer-bekraeftet" var en rest fra et katalog der ikke findes laengere.
 export const CLASS_STAGE_LENGTH_BAND = Object.freeze({
   ProSeries: Object.freeze([3, 5]),
   OtherWorldTourC: Object.freeze([6, 8]),
   OtherWorldTourB: Object.freeze([6, 8]),
   OtherWorldTourA: Object.freeze([6, 8]),
+  Class1: Object.freeze([3, 6]),
+  Class2: Object.freeze([3, 6]),
 });
 
 // ── Terræn-familier: arketyper der får forrang inden for prestige-lige valg ──
@@ -97,11 +113,24 @@ export const SCARCE_TERRAIN_ARCHETYPES = Object.freeze([
 // flad→sprinter, itt→TT, kuperet→puncheur, bjerg→klatrer). Med rolling som familie er
 // garanti-systemet komplet. Kompositionen er UÆNDRET: rolling tæller fortsat som
 // "kuperet" dér, jf. ejerens egen gruppering i #3295.
+// #4270 (EJER-BESLUTNING 3/9, lukker halvdelen af CALENDAR_RULES.md §11 punkt 6):
+//   · `classic` hoerer nu til HILLY-familien. Foer hoerte den til INGEN familie: 9 af
+//     saeson 3's 426 etaper (D2 2, D3 3, D4 4) taeltes ikke mod noget gulv overhovedet.
+//     hilly_classic er dokumenteret som samme karakter som puncheuren (kuperet), og
+//     kompositionen (PROFILE_TO_CATEGORY i calendarCompositionTargets.js) har hele tiden
+//     talt den som "hilly" - de to grupperinger modsagde hinanden uden begrundelse, praecis
+//     som `itt_hilly` gjorde det indtil 24/8.
+//   · `gravel` er FORBEREDT som cobbles-familie. Etapetypen findes ikke i motoren endnu
+//     (#4105 indfoerer den i et andet spor og konverterer Terre di Toscana), men ejeren har
+//     besluttet at grusloeb taeller med i brostensklassikerne. Uden denne raekke ville den
+//     foerste gravel-etape falde ud af HVER dae­kningsgaranti i stilhed - samme fejlklasse
+//     som `rolling`/`classic`/`itt_hilly` allerede har kostet os to gange.
+//     Se CALENDAR_RULES.md §5.
 export const TERRAIN_FAMILY_BY_PROFILE_TYPE = Object.freeze({
-  cobbles: "cobbles",
+  cobbles: "cobbles", gravel: "cobbles",
   flat: "flat_sprint",
   itt: "itt", ttt: "itt", itt_hilly: "itt",
-  hilly: "hilly",
+  hilly: "hilly", classic: "hilly",
   rolling: "rolling",
   mountain: "mountain", high_mountain: "mountain",
 });
@@ -122,11 +151,48 @@ export const TERRAIN_FAMILIES = Object.freeze(["cobbles", "flat_sprint", "itt", 
 //     som D2's summit_min i raceRouteRealismMetrics.js (kataloget mangler bjerg-løb).
 //   T3 loft middel 20,4 (min 18) → mål 12, rigelig margin.
 //   T4 loft middel 20,3 (min 19) → mål 13, rigelig margin.
+// #4270 (EJER-BESLUTNING 3/9, lukker resten af CALENDAR_RULES.md §11 punkt 6): `rolling`
+// faar BAADE gulv og loft i alle fire divisioner. Den blev sin egen familie 24/8 (#4176)
+// men fik aldrig et gulv - maalt 30/8 havde D4 NUL rolling-etaper, altsaa ingen dage til
+// baroudeuren hele saesonen, og ingen gate sagde fra.
+//
+// Hvorfor OGSAA et loft, og kun paa rolling: rolling er den eneste familie uden en
+// dominerende evne (stoerste vaegte er udholdenhed 0,18 og tilfaeldighed 0,20, de hoejeste
+// af alle ti profiltyper). Et gulv alene ville lade den vokse frit paa bekostning af de
+// familier der ER nogens speciale - en division fuld af udbrudsdage er ikke en division
+// hvor sprinteren, puncheuren eller klatreren har noget at koere efter. De oevrige fem
+// familier har en profiltype med et ejermaal i §6/§6b og er dermed allerede loftet ovenfra.
+// Tallene staar i TIER_TERRAIN_FAMILY_MAX nedenfor med begrundelse pr. division.
 export const TIER_TERRAIN_FAMILY_MIN = Object.freeze({
-  1: Object.freeze({ cobbles: 3, flat_sprint: 20, itt: 5, hilly: 10, mountain: 28 }),
-  2: Object.freeze({ cobbles: 6, flat_sprint: 15, itt: 4, hilly: 8, mountain: 20 }),
-  3: Object.freeze({ cobbles: 5, flat_sprint: 12, itt: 3, hilly: 8, mountain: 12 }),
-  4: Object.freeze({ cobbles: 1, flat_sprint: 8, itt: 1, hilly: 6, mountain: 13 }),
+  1: Object.freeze({ cobbles: 3, flat_sprint: 20, itt: 5, hilly: 10, mountain: 28, rolling: 14 }),
+  2: Object.freeze({ cobbles: 6, flat_sprint: 15, itt: 4, hilly: 8, mountain: 20, rolling: 6 }),
+  3: Object.freeze({ cobbles: 5, flat_sprint: 12, itt: 3, hilly: 8, mountain: 12, rolling: 3 }),
+  4: Object.freeze({ cobbles: 1, flat_sprint: 8, itt: 1, hilly: 6, mountain: 13, rolling: 2 }),
+});
+
+// Maksimum antal etaper pr. terraen-familie pr. pulje pr. sae­son. KUN `rolling` har et loft
+// i dag (se begrundelsen ved TIER_TERRAIN_FAMILY_MIN). En familie uden en raekke her er
+// uloftet - det er ikke en mangel, det er de fem oevrige familiers §6/§6b-maal der loefter
+// dem ovenfra.
+//
+// TALGRUNDLAG (maalt, ikke gaettet). To maalinger pr. division: live saeson 3 (30/8,
+// read-only mod prod) og S4's 28-dages plan (3/9, tordry-run uden tilt).
+//   D1: S3 22 · S4-plan 19  -> band [14, 26]. Baandets bredde er +/-6 om midten (20,5),
+//       fordi D1's 140-155 etaper goer en enkelt etape mindre end 1 pp - et smallere baand
+//       ville vaere roedt paa stikproeve-stoej frem for paa skaevhed.
+//   D2: S3 9 · S4-plan 10   -> band [6, 14]. Samme relative bredde, skaleret ned.
+//   D3: S3 4 · S4-plan 4    -> band [3, 8]. Gulvet lige under den maalte vaerdi: D3 har
+//       kun 84 etaper og skal ikke tvinges over sit eget observerede niveau.
+//   D4: S3 0 · S4-plan 1 (ved density 2) -> band [2, 6]. Gulvet er det ENESTE i tabellen
+//       der ligger OVER det maalte: 0-1 rolling-etaper er ikke en fordeling, det er et
+//       fravaer, og ejeren har besluttet at baroudeuren skal have dage i alle fire
+//       divisioner. D4's density 2 -> 3 (#4270) giver 84 etaper i stedet for 56 og dermed
+//       28 nye pladser at tage de to fra.
+export const TIER_TERRAIN_FAMILY_MAX = Object.freeze({
+  1: Object.freeze({ rolling: 26 }),
+  2: Object.freeze({ rolling: 14 }),
+  3: Object.freeze({ rolling: 8 }),
+  4: Object.freeze({ rolling: 6 }),
 });
 
 // Minimum antal etapeløb UDEN bjerg-etape (mountain/high_mountain) pr. pulje pr. sæson
@@ -242,10 +308,14 @@ export function computeTierCoverageStats({
   // vist samlet under "brosten"), IKKE en del af garantien (se docstring ovenfor).
   let classicStages = 0;
 
+  // #4270 (3/9): `classic` taelles nu MED i sin familie (hilly). Den blev foer sprunget over
+  // med `continue`, saa den hverken talte mod hilly eller noget andet gulv. classicStages
+  // bevares som rapport-kolonne (samme konvention som #3327's audit-SQL), men er ikke
+  // laengere det eneste sted etapen dukker op.
   for (const r of raceRows) {
     const profiles = profilesByPoolRaceId.get(r.pool_race_id) || [];
     for (const p of profiles) {
-      if (p.profile_type === "classic") { classicStages++; continue; }
+      if (p.profile_type === "classic") classicStages++;
       const fam = TERRAIN_FAMILY_BY_PROFILE_TYPE[p.profile_type];
       if (fam) familyCounts[fam] += 1;
     }
@@ -286,6 +356,7 @@ export function detectCoverageViolations({
   tier, stats,
   oneDayShareMin = TIER_ONE_DAY_SHARE_MIN,
   terrainFamilyMin = TIER_TERRAIN_FAMILY_MIN,
+  terrainFamilyMax = TIER_TERRAIN_FAMILY_MAX,
   mountainFreeMin = TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
 } = {}) {
   const violations = [];
@@ -304,6 +375,19 @@ export function detectCoverageViolations({
       const got = stats.familyCounts[fam] ?? 0;
       if (got < min) {
         violations.push(`tier ${tier}: terræn-familie "${fam}" har ${got} etaper, under garanteret minimum ${min} (#3327)`);
+      }
+    }
+  }
+
+  // #4270 (3/9): lofterne. Kun `rolling` har et i dag - se TIER_TERRAIN_FAMILY_MAX.
+  const familyMax = terrainFamilyMax?.[tier];
+  if (familyMax) {
+    for (const fam of TERRAIN_FAMILIES) {
+      const max = familyMax[fam];
+      if (max == null) continue;
+      const got = stats.familyCounts[fam] ?? 0;
+      if (got > max) {
+        violations.push(`tier ${tier}: terræn-familie "${fam}" har ${got} etaper, over tilladt maksimum ${max} (#4270)`);
       }
     }
   }
