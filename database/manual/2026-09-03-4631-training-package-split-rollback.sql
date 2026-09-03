@@ -1,3 +1,5 @@
+-- KOERES IKKE AUTOMATISK (manual-only): rollback-vaern, koeres kun ved tilbagerulning af #4631.
+--
 -- #4631 · Punch og climbing skilles i traeningspakkerne (ejer 2/9, "snarligt")
 --
 -- STATUS: IKKE ANVENDT. Denne fil er leveret sammen med PR'en, ikke koert mod prod.
