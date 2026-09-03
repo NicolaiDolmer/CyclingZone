@@ -15,15 +15,24 @@
 -- — frontend sender kun værdien i options.data ved selve
 -- supabase.auth.signUp()-kaldet.
 --
--- RLS/GRANT: ingen ændring nødvendig. Kolonnen skrives udelukkende af
--- handle_new_user() (SECURITY DEFINER-trigger på auth.users, EXECUTE allerede
--- revoket fra anon/authenticated siden 2026-05-21-security-hardening-phase-a.sql)
--- — ALDRIG via en direkte frontend `.update()`. Den eksisterende kolonne-
--- scopede UPDATE-grant til authenticated på public.users (language,
--- consent_preferences, discord_id, nps_last_prompted_at — se
+-- RLS/GRANT: kolonnen skrives udelukkende af handle_new_user() (SECURITY
+-- DEFINER-trigger på auth.users) — ALDRIG via en direkte frontend `.update()`.
+-- Den eksisterende kolonne-scopede UPDATE-grant til authenticated på
+-- public.users (language, consent_preferences, discord_id,
+-- nps_last_prompted_at — se
 -- 2026-07-23-rls-write-lockdown-users-transfers-bids-swaps.sql) udvides
 -- BEVIDST IKKE med browser_language, da ingen frontend-flow skriver den efter
 -- signup.
+--
+-- EXECUTE-revoke: 2026-05-21-security-hardening-phase-a.sql revokede EXECUTE
+-- på handle_new_user() fra PUBLIC/anon/authenticated, men det holder KUN indtil
+-- næste CREATE OR REPLACE af funktionen — Supabase' ALTER DEFAULT PRIVILEGES
+-- re-granter EXECUTE til anon/authenticated ved enhver funktions-(gen)oprettelse
+-- i public (#2858, scripts/check-secdef-revoke-lint.mjs). Denne migration
+-- CREATE OR REPLACE'er handle_new_user(), så REVOKE gentages nedenfor i SAMME
+-- fil, ellers ville funktionen kortvarigt være RPC-kaldbar for anon/authenticated
+-- efter denne migration (indtil en senere migration tilfældigvis revoker den
+-- igen).
 --
 -- Idempotent: ADD COLUMN IF NOT EXISTS + CREATE OR REPLACE FUNCTION, sikkert
 -- at re-køre (auto-migrate.yml).
@@ -70,5 +79,10 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- #2858: CREATE OR REPLACE re-granter EXECUTE til anon/authenticated via
+-- Supabase' ALTER DEFAULT PRIVILEGES, så revoket fra 2026-05-21-security-
+-- hardening-phase-a.sql SKAL gentages i denne fil (samme linje som der).
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
 
 -- Trigger eksisterer allerede (on_auth_user_created) — vi har bare opdateret funktionen.
