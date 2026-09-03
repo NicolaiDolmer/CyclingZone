@@ -172,6 +172,12 @@ jobs:
       # klasse-etapebånd, løb-hver-kalenderdag) som hverken verify-invariants eller
       # denne fils øvrige steps måler i dag.
       #
+      # #4270: begge tilstande scorer gennem lib/calendarScorecardReport.js, så CI-gaten,
+      # sæsonskifte-preflighten og dette step ikke kan drifte fra hinanden. Rapporten
+      # rummer derfor også de RAPPORT-ONLY linjer (§6b's uniforme mål, §6's strenge
+      # ±2 pp) — de står med "~"/"FEJL" i teksten, men tælles IKKE i `regelbrud` og
+      # ændrer ikke exit-koden. Læs "SAMLET:"-linjen, ikke de enkelte ~-linjer.
+      #
       # BEVIDST ADVISORY, ikke en del af "Fail if calendar or constraint findings"
       # nedenfor — samme princip som denne fils egen docstring allerede sætter for
       # "øvrige invarianter": komposition/finale-målene har et kendt kalibrerings-
@@ -263,7 +269,7 @@ jobs:
               scorecard ? [
                 '',
                 `### Kalender-scorecard mod prod (#4573, ADVISORY — exit ${scorecardExit}, blokerer ikke)`,
-                'Terræn-gulve, endagsløb-andel, klasse-etapebånd, komposition, finale-bånd og løb-hver-kalenderdag for den skrevne kalender. Kendt kalibreringsefterslæb på komposition/finale (§10) — se linjen der ikke er OK, men behandl den ikke som et akut kalender-brud på linje med sektionerne ovenfor.',
+                'Terræn-gulve, endagsløb-andel, klasse-etapebånd, komposition, finale-bånd og løb-hver-kalenderdag for den skrevne kalender. Dommen står i `SAMLET:`-linjen; linjer med `~` (§6b\'s uniforme mål, §6\'s strenge ±2 pp) er RAPPORT-ONLY og tælles ikke med. Kendt kalibreringsefterslæb på komposition/finale (§10) — behandl ikke en rød linje her som et akut kalender-brud på linje med sektionerne ovenfor.',
                 '```',
                 scorecard,
                 '```',

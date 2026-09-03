@@ -182,6 +182,16 @@ Alle worktrees junctioner til samme `~\OneDrive\CyclingZone-context\memory\`. De
 
 Worktrees kan **ikke** have samme branch checked out i to paths samtidig. Hvis du allerede har `feat/foo` checked out i main repo, kan du ikke samtidig lave en worktree på `feat/foo`. Solution: enten skift main til en anden branch, eller brug en ny branch.
 
+### Commit fra et worktree: giv branch-guarden mappen
+
+Hard rule 18 gælder også her: commit kun bag `scripts/guard-commit-branch.sh`. Men guarden tjekker shell-cwd, og agent-shells nulstiller cwd mellem kald. Committer du via `git -C <path>`, så giv guarden SAMME mappe som 2. argument:
+
+```bash
+bash scripts/guard-commit-branch.sh <branch> "<path>" && git -C "<path>" commit -F msg.txt
+```
+
+Uden `<dir>` nægter guarden at dømme (exit 2 med den rigtige kommando i beskeden), hvis scriptet ligger i ét træ og cwd i et andet, eller hvis cwd slet ikke er et repo. Det afløste den falske "BLOKERET: main" et korrekt worktree fik 2/9 ([#4658](https://github.com/NicolaiDolmer/CyclingZone/issues/4658)). Selvtest: `bash scripts/test-guard-commit-branch.sh`.
+
 ## Når noget går galt
 
 - `git worktree list` → se hvilke worktrees der findes

@@ -39,7 +39,8 @@ import { simulateStageV4 } from "../lib/engine/v4/index.ts";
 import { RACE_V4_TUNING } from "../lib/engine/v4/tuning.ts";
 import { entrantsFromAbilitiesRows } from "../lib/engine/v4/adapters/entrantAdapter.ts";
 import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter.ts";
-import { buildScorecard, formatScorecard } from "./lib/headToHeadAnchors.js";
+import { aggregateScorecards, buildScorecard, formatScorecard } from "./lib/headToHeadAnchors.js";
+import { buildStageTeamOrders, formatOrderEffect, sumOrderEffects } from "./lib/headToHeadOrders.js";
 import { sampleField } from "./lib/headToHeadStats.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 
@@ -62,36 +63,42 @@ function readJson(path) {
 // Population -> entrants pr. motor
 // ---------------------------------------------------------------------------
 
-// TODO (23-24/8, fuld harness): rolle-/taktik-tildeling pr. hold (kaptajn/
-// sprint_captain/helper/hunter) skal laeses af en rigtig holdopstilling —
-// population-snapshottet (exportPopulationSnapshot.js) baerer INGEN race_role
-// (det er entry-tidspunkt-data, ikke rytter-/hold-data). F2-stubben bruger
-// 'free_role' for ALLE ryttere paa BEGGE motorer, saa sammenligningen isolerer
-// motor-mekanikkens forskel (grupper/selektion/finale) fra taktik-laget — en
-// bevidst forenkling, ikke en bug. Fuld harness (23-24/8) skal enten simulere
-// en realistisk rolle-fordeling pr. hold eller koere N gentagelser pr. rolle-
-// scenarie.
+// Rolle-/taktik-tildeling (#4615). Population-snapshottet baerer INGEN
+// race_role (det er entry-tidspunkt-data, ikke rytter-/hold-data), saa
+// harnessen maa selv stille holdene op. To tilstande:
+//
+//   --orders=none (default): ALLE ryttere faar 'free_role' og ordre-listen er
+//     tom — den oprindelige F2-stub-adfaerd, bevaret uaendret saa "foer"-siden
+//     af en foer/efter-maaling er praecis den man maalte 2/9.
+//   --orders=ai: realistiske roller pr. hold + AI-genererede TeamOrders
+//     (lib/headToHeadOrders.js). Uden denne er M6 (lead-out) og M14
+//     (AI-taktik) maalbart doed kode i scorecardet — de har intet input.
+//
+// TODO (F3/M7): map population.form/fatigue -> condition naar motoren
+// forbruger feltet.
 const DEFAULT_ROLE = "free_role";
 const DEFAULT_EFFORT = "normal";
 
-function v3EntrantsFromPopulation(riders) {
+export const ORDER_MODES = Object.freeze(["none", "ai"]);
+
+function v3EntrantsFromPopulation(riders, roles = null) {
   return riders.map((r) => ({
     rider_id: r.id,
     team_id: r.team_id,
     abilities: r.abilities,
     form: r.form ?? null,
     fatigue: r.fatigue ?? null,
-    race_role: DEFAULT_ROLE,
+    race_role: roles?.get(r.id) ?? DEFAULT_ROLE,
     effort: DEFAULT_EFFORT,
   }));
 }
 
-function v4EntrantsFromPopulation(riders) {
+function v4EntrantsFromPopulation(riders, roles = null) {
   const rows = riders.map((r) => ({ rider_id: r.id, ...r.abilities }));
-  return entrantsFromAbilitiesRows(rows, () => ({
-    role: DEFAULT_ROLE,
+  return entrantsFromAbilitiesRows(rows, (riderId) => ({
+    role: roles?.get(riderId) ?? DEFAULT_ROLE,
     effort: DEFAULT_EFFORT,
-    condition: 1, // TODO (F3/M7): map population.form/fatigue -> condition naar motoren forbruger det
+    condition: 1,
   }));
 }
 
@@ -175,9 +182,18 @@ function printComparisonTable(rows) {
 // uden om process.exit/console.log-siden).
 // ---------------------------------------------------------------------------
 
-export function runHeadToHead({ population, stages, seedInput = "head-to-head-v4-stub", fieldSize = null }) {
+export function runHeadToHead({
+  population,
+  stages,
+  seedInput = "head-to-head-v4-stub",
+  fieldSize = null,
+  orderMode = "none",
+}) {
   if (!population?.riders?.length) throw new Error("population.riders mangler eller er tom");
   if (!Array.isArray(stages) || stages.length === 0) throw new Error("stages mangler eller er tom");
+  if (!ORDER_MODES.includes(orderMode)) {
+    throw new Error(`ukendt --orders-tilstand "${orderMode}" (gyldige: ${ORDER_MODES.join(", ")})`);
+  }
 
   // fieldSize=null (default): SAMME hele population paa ALLE etaper — det
   // oprindelige F2-adfaerd (uaendret, alle eksisterende tests dækker denne
@@ -190,9 +206,6 @@ export function runHeadToHead({ population, stages, seedInput = "head-to-head-v4
   // traekkes et DETERMINISTISK sample pr. etape (seedet af seedInput+etape-
   // nummer, samme sampleField-helper som --films bruger), saa hver etape faar
   // sit eget realistiske startfelt i stedet for hele populationen.
-  const wholePopV3Entrants = fieldSize ? null : v3EntrantsFromPopulation(population.riders);
-  const wholePopV4Entrants = fieldSize ? null : v4EntrantsFromPopulation(population.riders);
-
   const rows = [];
   for (const stageRow of stages) {
     if (!stageRow.demand_vector) {
@@ -201,21 +214,35 @@ export function runHeadToHead({ population, stages, seedInput = "head-to-head-v4
     const stageSeedStr = `${seedInput}:${stageRow.stage_number ?? 1}`;
     const v3Seed = stableSeed(stageSeedStr);
 
-    let v3Entrants = wholePopV3Entrants;
-    let v4Entrants = wholePopV4Entrants;
+    let fieldRiders = population.riders;
     if (fieldSize) {
       const rng = makeRng(stableSeed(`${stageSeedStr}:field`));
-      const sampled = sampleField(rng, population.riders, fieldSize);
-      v3Entrants = v3EntrantsFromPopulation(sampled);
-      v4Entrants = v4EntrantsFromPopulation(sampled);
+      fieldRiders = sampleField(rng, population.riders, fieldSize);
     }
 
-    const v3Output = simulateStage({ entrants: v3Entrants, stageProfile: stageRow, seed: v3Seed, v3: true });
     const route = routeFromStageProfileRow(stageRow);
+
+    // #4615: roller og ordrer bygges paa DET FELT der reelt starter etapen —
+    // ikke paa hele populationen. Et hold der kun har to ryttere med i dagens
+    // felt kan ikke stille et sprint-tog op, og det skal harnessen afspejle.
+    let orders = [];
+    let roles = null;
+    let orderEffect = null;
+    if (orderMode === "ai") {
+      const built = buildStageTeamOrders({ riders: fieldRiders, route });
+      orders = built.orders;
+      roles = built.roles;
+      orderEffect = built.effect;
+    }
+
+    const v3Entrants = v3EntrantsFromPopulation(fieldRiders, roles);
+    const v4Entrants = v4EntrantsFromPopulation(fieldRiders, roles);
+
+    const v3Output = simulateStage({ entrants: v3Entrants, stageProfile: stageRow, seed: v3Seed, v3: true });
     const v4Output = simulateStageV4({
       route,
       startlist: v4Entrants,
-      orders: [],
+      orders,
       seed: stageSeedStr,
       tuning: RACE_V4_TUNING,
     });
@@ -225,6 +252,8 @@ export function runHeadToHead({ population, stages, seedInput = "head-to-head-v4
       profileType: stageRow.profile_type ?? "?",
       v3: summarizeV3(v3Output.ranked),
       v4: summarizeV4(v4Output),
+      fieldSize: fieldRiders.length,
+      orderEffect,
       // Raat, u-sammenfattet output pr. etape — konsumeres af
       // headToHeadAnchors.buildScorecard() (mor-spec §5-scoring). Additiv felt,
       // aendrer intet ved de eksisterende summary-felter ovenfor (bagudkompatibelt
@@ -396,22 +425,56 @@ export function runFilms(outDir) {
 // win_type (i dag PLACEHOLDER_WIN_TYPE="group_finish" i index.ts).
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Laast feltstoerrelse (#4615, #4604 modsigelse 11)
+// ---------------------------------------------------------------------------
+//
+// Flere ankre er SEKUND-baserede og skalerer med feltet: samme kode scorede
+// 211 s paa bjerg-top-10-spredningen ved 180 ryttere og 19 s ved hele
+// populationen (5.938), fordi en stor peloton giver en stor frontgruppe.
+// Scorecardet maa derfor ikke kunne koere paa en tilfaeldig feltstoerrelse —
+// gaten er kalibreret paa et REALISTISK startfelt (kørsel B, scorecard-
+// metodologien 23/8), og den stoerrelse er nu default i stedet for et flag
+// man skal huske. `--field-size=all` er den eksplicitte, dokumenterede vej ud.
+export const LOCKED_FIELD_SIZE = 180;
+
+/** @returns {number|null} feltstoerrelse pr. etape; null = hele populationen. */
+export function resolveFieldSize(arg) {
+  if (arg === null || arg === undefined || arg === "") return LOCKED_FIELD_SIZE;
+  if (String(arg).toLowerCase() === "all") return null;
+  const n = Number(arg);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error(`ugyldig --field-size="${arg}" (forventer et positivt tal eller "all")`);
+  }
+  return Math.floor(n);
+}
+
+/** `--seeds=a,b,c` -> liste af seed-strenge; tom -> [seedInput]. */
+export function resolveSeeds(seedsArg, seedInput) {
+  if (!seedsArg) return [seedInput];
+  const seeds = String(seedsArg)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return seeds.length > 0 ? seeds : [seedInput];
+}
+
+const USAGE =
+  "Usage: node backend/scripts/headToHeadV4.js --population=<fil> --stages=<fil> " +
+  '[--seed=<streng>] [--seeds=<s1,s2,...>] [--orders=none|ai] [--field-size=<n>|all] [--films[=<dir>]]';
+
 function main() {
   const populationPath = argValue("population");
   const stagesPath = argValue("stages");
   const seedInput = argValue("seed", "head-to-head-v4-stub");
   const filmsRequested = process.argv.includes("--films") || process.argv.some((a) => a.startsWith("--films="));
   const filmsDir = argValue("films", join(SCRIPT_DIR, "out", "films"));
-  // --field-size=N: se runHeadToHead's egen dokumentation (fieldSize-param) —
-  // traekker et realistisk, deterministisk sample pr. etape i stedet for at
-  // koere hele populationen paa hver etape. Udeladt = uaendret F2-adfaerd.
-  const fieldSizeArg = argValue("field-size");
-  const fieldSize = fieldSizeArg ? Number(fieldSizeArg) : null;
+  const fieldSize = resolveFieldSize(argValue("field-size"));
+  const orderMode = argValue("orders", "none");
+  const seeds = resolveSeeds(argValue("seeds"), seedInput);
 
   if (!populationPath || !stagesPath) {
-    console.error(
-      "Usage: node backend/scripts/headToHeadV4.js --population=<fil> --stages=<fil> [--seed=<streng>] [--films[=<dir>]] [--field-size=<n>]",
-    );
+    console.error(USAGE);
     process.exit(2);
     return;
   }
@@ -420,17 +483,36 @@ function main() {
   const stagesFile = readJson(stagesPath);
   const stages = Array.isArray(stagesFile) ? stagesFile : stagesFile.stages;
 
-  console.log(`Population: ${population.riders?.length ?? 0} ryttere. Etaper: ${stages?.length ?? 0}. Seed: ${seedInput}${fieldSize ? `. Feltstoerrelse pr. etape: ${fieldSize} (sampled)` : ""}`);
-  const rows = runHeadToHead({ population, stages, seedInput, fieldSize });
-  printComparisonTable(rows);
+  const fieldLabel = fieldSize === null ? "hele populationen (--field-size=all)" : `${fieldSize} (laast, sampled pr. etape)`;
+  console.log(
+    `Population: ${population.riders?.length ?? 0} ryttere. Etaper: ${stages?.length ?? 0}. ` +
+      `Seeds: ${seeds.join(", ")}. Feltstoerrelse pr. etape: ${fieldLabel}. Ordrer: ${orderMode}`,
+  );
 
   const teamByRider = buildTeamByRider(population.riders);
   const abilitiesByRider = buildAbilitiesByRider(population.riders);
   const v4Entrants = v4EntrantsFromPopulation(population.riders);
   const v4EntrantsById = Object.fromEntries(v4Entrants.map((e) => [e.rider_id, e]));
 
-  const scorecard = buildScorecard(rows, { teamByRider, abilitiesByRider, v4EntrantsById });
+  const scorecards = [];
+  const orderEffects = [];
+  for (const seed of seeds) {
+    const rows = runHeadToHead({ population, stages, seedInput: seed, fieldSize, orderMode });
+    if (seeds.length === 1) printComparisonTable(rows);
+    for (const row of rows) if (row.orderEffect) orderEffects.push(row.orderEffect);
+    scorecards.push(buildScorecard(rows, { teamByRider, abilitiesByRider, v4EntrantsById }));
+  }
+
+  if (orderEffects.length > 0) {
+    console.log("");
+    console.log(formatOrderEffect(sumOrderEffects(orderEffects)));
+  }
+
+  const scorecard = aggregateScorecards(scorecards);
   console.log("");
+  if (seeds.length > 1) {
+    console.log(`(Ankre nedenfor er MIDLET over ${seeds.length} seeds med spaend — gate-formen ejeren valgte 2/9.)`);
+  }
   console.log(formatScorecard(scorecard));
 
   if (filmsRequested) {

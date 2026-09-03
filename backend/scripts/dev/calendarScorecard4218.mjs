@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 // backend/scripts/dev/calendarScorecard4218.mjs
-// #4218 — mål den PLANLAGTE S3-kalender mod ALLE reglerne i docs/CALENDAR_RULES.md.
+// #4218 — mål kalenderen mod ALLE reglerne i docs/CALENDAR_RULES.md.
 //
 // EJER-KRAV 25/8: "før vi skriver til spillerne skal kalenderen testes og godkendes
 // selvfølgelig. Tests i forhold til vores regler. Slutter det for tit nedad? Er der nok
 // brostensløb. Hvor mange endagsløb er der, osv?"
 //
-// TO TILSTANDE (#4573, samme mønster som raceRouteRealismScorecard.js fik i #4219 —
-// "mål basen, ikke egen plan"), og de måler IKKE det samme:
+// #4270: selve MÅLINGEN bor i lib/calendarScorecardReport.js, så CI-scriptet,
+// buildSeasonCalendar.js's dry-run og DB-tilstanden nedenfor måler mod PRÆCIS samme
+// tærskler. Dette script ejer DATAKILDERNE, S3-defaultene og CLI-kontrakten — aldrig
+// en kopi af scoringen.
+//
+// TO DATAKILDER (#4573, samme mønster som raceRouteRealismScorecard.js fik i #4219 —
+// "mål basen, ikke egen plan"), og de svarer IKKE på det samme spørgsmål:
 //
 //   --from-fixture (DEFAULT, uændret siden #4218): 100 % READ-ONLY og uden DB. Kører
 //     den RENE buildTierMaterializationPlan mod lib/__fixtures__/racePoolCatalog.prod.json
@@ -28,6 +33,8 @@
 //
 // De 22 nye katalog-løb (database/2026-08-25-4218-katalog-22-nye-loeb.sql) lægges oveni
 // in-memory i fixture-tilstanden, så scorecardet kan køres FØR seed'en er applyet i prod.
+// #4123: definitionen bor i scripts/dev/lib/s3OfflineCalendarPlan.mjs, så CI-invariant-
+// testene og dette scorecard deler ÉN kopi af de 22 rækker.
 //
 // KØRSEL
 //   cd backend && node scripts/dev/calendarScorecard4218.mjs
@@ -39,7 +46,7 @@
 // (manglende creds, sæson ikke fundet, DB-fejl — #2854-princippet: manglende evidens
 // må aldrig ligne grønt). --from-fixture har aldrig exit 2, den er DB-fri.
 //
-// Refs #4218 #4217 #4215 #4573 #4176 #3327 #3328 #3469 #3295 #3326 #3371 #4075 #2276
+// Refs #4270 #4218 #4217 #4215 #4573 #4176 #3327 #3328 #3469 #3295 #3326 #3371 #4075 #2276
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -49,20 +56,7 @@ import { buildTierMaterializationPlan, TIER_DENSITY } from "../../lib/tierCalend
 import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
 import { arg as devArg } from "./lib/devCalendarArgs.mjs";
 import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
-import {
-  computeTierCoverageStats, detectCoverageViolations,
-  TIER_ONE_DAY_SHARE_TARGET, TIER_ONE_DAY_SHARE_MIN, TIER_TERRAIN_FAMILY_MIN,
-} from "../../lib/tierCalendarGuarantees.js";
-import {
-  computeCompositionStats, detectCompositionViolations,
-  ACTIVE_TARGET, TIER_COMPOSITION_TOLERANCE_PP, CATEGORY_LABELS,
-} from "../../lib/calendarCompositionTargets.js";
-import { computeStageOrderStats, detectStageOrderViolations, STAGE_ORDER_TARGETS } from "../../lib/stageOrderMetrics.js";
-import {
-  computeFinaleStats, mergeFinaleStats, detectFinaleViolations,
-  TERRAIN_FINALE_BANDS, OVERALL_FINALE_BAND, FINALE_CLASSES, CLASS_LABELS, MIN_SAMPLE,
-} from "../../lib/stageFinaleMetrics.js";
-import { detectEmptyCalendarDays } from "../../lib/calendarDailyCoverage.js";
+import { scoreCalendarPlan, formatScorecard } from "../../lib/calendarScorecardReport.js";
 import { augmentWithS3Additions } from "./lib/s3OfflineCalendarPlan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -71,22 +65,20 @@ const FIXTURE = join(__dirname, "..", "..", "lib", "__fixtures__", "racePoolCata
 // #4215: scriptet er en GATE, ikke kun en rapport. Parametre kan overstyres, så samme
 // kode kan køre i CI (mod en fast fixture-dato), i sæsonskifte-preflighten (mod den
 // kalender der er ved at blive skrevet) og i hånden.
-//   --first-day=YYYY-MM-DD   første løbsdag  (default: ejer-beslutningen for S3) — fixture-tilstand
-//   --days=N                 antal kalenderdage — fixture-tilstand
-//   --now=YYYY-MM-DD         hvad scriptet skal regne som "i dag" — fixture-tilstand
+//   --first-day=YYYY-MM-DD   første løbsdag  (default: ejer-beslutningen for S3) — fixture
+//   --days=N                 antal kalenderdage — fixture
+//   --now=YYYY-MM-DD         hvad scriptet skal regne som "i dag" — fixture
 //   --from-fixture           eksplicit fixture-tilstand (samme som ingen flag, #4573)
-//   --from-db                læs den skrevne kalender fra DB (kræver env, læser ikke skriver)
+//   --from-db                læs den skrevne kalender fra DB (kræver env, læser aldrig andet)
 //   --season=N               sæsonnummer for --from-db (default: den AKTIVE sæson)
 //   --json                   maskinlæsbar rapport i stedet for tabellen
+// EXIT-KODE er dét CI hænger på — se hovedet ovenfor.
 // #4239: delt med de oevrige kalender-dev-scripts, saa der kun er een arg-parser at rette.
 const arg = (name, fallback) => devArg(process.argv.slice(2), name, fallback);
 
 // Ejer-beslutning 25/8: fredag 28/8 → søndag 27/9 = 31 kalenderdage, løb hver dag.
 const FIRST_RACE_DAY = arg("first-day", "2026-08-28");
 const REAL_DAYS = Number(arg("days", "31"));
-const LAST_RACE_DAY = new Date(
-  Date.parse(`${FIRST_RACE_DAY}T00:00:00Z`) + (REAL_DAYS - 1) * 86_400_000
-).toISOString().slice(0, 10);
 // `now` injiceres, så scriptet er tidsuafhængigt (27/6-blitz-guarden afviser en
 // første løbsdag der ikke er strengt i fremtiden — se raceCalendarLanePackerGtDayCap.test.js).
 // Uden det ville CI begynde at fejle på selve dagen den hardkodede dato passeres.
@@ -118,15 +110,11 @@ export function resolveMode(argv = process.argv.slice(2)) {
   return { mode: fromDb ? "db" : "fixture", season, asJson: argv.includes("--json") };
 }
 
-const pct = (n) => `${(n * 100).toFixed(1)} %`;
-const ok = (b) => (b ? "OK " : "FEJL");
-
 // ---------------------------------------------------------------------------
-// Fixture-tilstand: uændret logik fra #4218, kun udtrukket fra main() så begge
-// tilstande deler ÉN dømmende krop (computeTierReport) i stedet for to kopier
-// der kan drifte fra hinanden (samme læring som #4123 for de 22 nye løb).
+// Fixture-kilden: uændret logik fra #4218/#4270 — pakkerens tierPlans + profilerne
+// fra SAMME seed-vej som skrive-stien, videregivet råt til scoreCalendarPlan.
 // ---------------------------------------------------------------------------
-function loadFixtureTierData() {
+export function loadFixtureCalendar() {
   const { pools, catalog: baseCatalog } = JSON.parse(readFileSync(FIXTURE, "utf8"));
   const { catalog, kollisioner } = augmentWithS3Additions(baseCatalog);
 
@@ -139,14 +127,14 @@ function loadFixtureTierData() {
   const externalIdByPoolRace = new Map(catalog.map((c) => [c.id, c.external_id ?? null]));
   const archetypeByPoolRace = new Map(catalog.map((c) => [c.id, c.terrain_archetype ?? null]));
 
-  const tierData = tierPlans.map((plan) => {
-    const pool = (plan.pools ?? [])[0] ?? { raceRows: [], stageRows: [] };
-
-    // Samme seed-vej som skrive-stien (#3347/#4104): race_class SKAL med, ellers
-    // prissættes monumenterne på terrænbåndet i stedet for klassebåndet.
-    const profilesByPoolRaceId = new Map();
+  // Samme seed-vej som skrive-stien (#3347/#4104): race_class SKAL med, ellers
+  // prissættes monumenterne på terrænbåndet i stedet for klassebåndet.
+  const profilesByTier = new Map();
+  for (const plan of tierPlans) {
+    const pool = (plan.pools ?? [])[0] ?? { raceRows: [] };
+    const byRace = new Map();
     for (const r of pool.raceRows ?? []) {
-      profilesByPoolRaceId.set(r.pool_race_id, generateRaceStageProfiles({
+      byRace.set(r.pool_race_id, generateRaceStageProfiles({
         id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
         external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
         terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
@@ -154,34 +142,33 @@ function loadFixtureTierData() {
         season_id: SEASON_UUID, season_variant: 0,
       }));
     }
+    profilesByTier.set(plan.tier, byRace);
+  }
 
-    return {
-      tier: plan.tier,
-      raceRows: pool.raceRows ?? [],
-      stageRows: pool.stageRows ?? [],
-      profilesByPoolRaceId,
-      planViolations: plan.calendarViolations ?? [],
-      maxOverlap: plan.maxOverlap, overlapCap: plan.overlapCap,
-      emptyDays: plan.emptyDays, daysWithoutDecisionCount: plan.daysWithoutDecisionCount,
-    };
-  });
-
-  return { tierData, kollisioner, første: FIRST_RACE_DAY, sidste: LAST_RACE_DAY, kalenderdage: REAL_DAYS };
+  return {
+    tierPlans, profilesByTier, archetypeByPoolRace, kollisioner,
+    firstRaceDay: FIRST_RACE_DAY, realDays: REAL_DAYS,
+    katalogLinje: `Katalog: ${baseCatalog.length} + ${catalog.length - baseCatalog.length} nye = ${catalog.length} løb`,
+  };
 }
 
 // ---------------------------------------------------------------------------
-// #4573 DB-tilstand: læs races + race_stage_profiles + race_stage_schedule for
-// sæsonen (READ-ONLY, ALDRIG writes) og gruppér pr. tier. Samme
-// én-pulje-pr-tier-stikprøve som raceRouteRealismScorecard.js's collectSeasonTierRaces*:
-// alle puljer i en tier har identisk løbssæt (tierCalendarMaterializer), så én
-// repræsentativ division pr. tier er nok og undgår at tælle hvert løb 4× (D1-D4).
+// #4573 DB-kilden: læs races + race_stage_profiles + race_stage_schedule for
+// sæsonen (READ-ONLY, ALDRIG writes) og pak rækkerne til PRÆCIS den tierPlan-form
+// scoreCalendarPlan allerede tager. Derfor findes der ingen anden scoringskode her:
+// begge tilstande ender i lib/calendarScorecardReport.js.
 //
-// Plan-interne invarianter (GT/whitelist/dedup/overlap-cap) rapporteres IKKE — de
-// findes allerede som eget prod-niveau (calendarOverlapInvariant.js via
-// verify-invariants.js) og skal ikke måles to gange af to forskellige regelsæt der
-// kan komme ud af trit (se docs/CALENDAR_RULES.md §9c).
+// Samme én-pulje-pr-tier-stikprøve som raceRouteRealismScorecard.js's
+// collectSeasonTierRaces*: alle puljer i en tier har identisk løbssæt
+// (tierCalendarMaterializer), så én repræsentativ division pr. tier er nok og undgår
+// at tælle hvert løb 4× (D1-D4).
+//
+// Plan-interne felter (calendarViolations/maxOverlap/overlapCap/emptyDays) sættes
+// bevidst til null: de kan ikke udledes af de skrevne rækker, og de har allerede eget
+// prod-niveau (calendarOverlapInvariant.js via verify-invariants.js). `tilstand: "db"`
+// får rapporten til at SIGE det i stedet for at printe et falsk grønt flueben.
 // ---------------------------------------------------------------------------
-export async function loadDbTierData({ supabase, seasonNumber }) {
+export async function loadDbCalendar({ supabase, seasonNumber }) {
   const { fetchAllRows } = await import("../../lib/supabasePagination.js");
 
   let season;
@@ -253,67 +240,37 @@ export async function loadDbTierData({ supabase, seasonNumber }) {
     for (const s of scheduleByRaceId.get(r.id) ?? []) bucket.stageRows.push(s);
   }
 
-  const tierData = [...byTier.keys()].sort((a, b) => a - b).map((tier) => ({
-    tier, ...byTier.get(tier),
-    planViolations: [], maxOverlap: null, overlapCap: null, emptyDays: null, daysWithoutDecisionCount: null,
-  }));
-
-  return {
-    tierData, kollisioner: [], unassessed,
-    første: String(season.start_date).slice(0, 10),
-    sidste: String(season.end_date).slice(0, 10),
-    kalenderdage: null, seasonNumber: season.number,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Fælles dømmende krop — kaldes af BEGGE tilstande med samme inputform. Ren
-// funktion (intet fil-/DB-kald), så den kan enhedstestes uafhængigt af tilstand.
-// ---------------------------------------------------------------------------
-export function computeTierReport({ tier, raceRows, stageRows, profilesByPoolRaceId, planViolations = [], maxOverlap = null, overlapCap = null, emptyDays = null, daysWithoutDecisionCount = null }) {
-  const målbare = raceRows.map((r) => ({
-    name: r.name,
-    race_type: r.race_type,
-    terrain_archetype: r.terrain_archetype ?? null,
-    stages: profilesByPoolRaceId.get(r.pool_race_id) ?? [],
-  }));
-
-  const coverage = computeTierCoverageStats({ raceRows, profilesByPoolRaceId });
-  const coverageViol = detectCoverageViolations({ tier, stats: coverage });
-  const composition = computeCompositionStats(målbare);
-  const compositionRes = detectCompositionViolations({
-    stats: composition, label: `tier ${tier}`,
-    tolerancePp: TIER_COMPOSITION_TOLERANCE_PP[tier],
-  });
-  const compositionViol = compositionRes.violations ?? [];
-  const order = computeStageOrderStats(målbare);
-  const orderViol = detectStageOrderViolations({ stats: order, label: `tier ${tier}` });
-
-  let descent = 0, etaper = 0;
-  const finaler = new Map();
-  for (const r of målbare) {
-    for (const st of r.stages ?? []) {
-      etaper += 1;
-      const f = st.finale_type ?? "?";
-      finaler.set(f, (finaler.get(f) ?? 0) + 1);
-      if (f === "descent") descent += 1;
-    }
+  const tierPlans = [];
+  const profilesByTier = new Map();
+  for (const tier of [...byTier.keys()].sort((a, b) => a - b)) {
+    const bucket = byTier.get(tier);
+    tierPlans.push({
+      tier,
+      pools: [{ raceRows: bucket.raceRows, stageRows: bucket.stageRows }],
+      quota: null, totalGameDays: null, quotaHit: null, shortfall: 0,
+      calendarViolations: [], maxOverlap: null, overlapCap: null,
+      emptyDays: null, daysWithoutDecisionCount: null,
+    });
+    profilesByTier.set(tier, bucket.profilesByPoolRaceId);
   }
-  const finale = computeFinaleStats(målbare);
-  const finaleViol = detectFinaleViolations({ stats: finale, label: `tier ${tier}`, strict: false });
-  const finaleRaw = detectFinaleViolations({ stats: finale, label: `tier ${tier}`, strict: true });
+
+  const firstRaceDay = String(season.start_date).slice(0, 10);
+  const lastRaceDay = String(season.end_date).slice(0, 10);
+  // scoreCalendarPlan udleder sidste dag af (firstRaceDay + realDays - 1); sæsonens
+  // egne datoer er sandheden her, så længden regnes tilbage fra dem i stedet for at
+  // arve S3's 31 som konstant (§1b's tre uenige kvote-tal kom af præcis dét).
+  const realDays = Math.round(
+    (Date.parse(`${lastRaceDay}T12:00:00Z`) - Date.parse(`${firstRaceDay}T12:00:00Z`)) / 86_400_000
+  ) + 1;
 
   return {
-    tier,
-    løb: raceRows.length,
-    etaper,
-    løbsdage: new Set(stageRows.map((s) => s.game_day)).size,
-    kalenderdage: new Set(stageRows.map((s) => String(s.scheduled_at).slice(0, 10))).size,
-    planViolations, maxOverlap, overlapCap, tommeLøbsdage: emptyDays, dageUdenAfgørelse: daysWithoutDecisionCount,
-    coverage, coverageViol, composition, compositionViol, order, orderViol,
-    finale, finaleViol, finaleRaw,
-    descent, descentAndel: etaper ? descent / etaper : 0,
-    finaler: Object.fromEntries([...finaler.entries()].sort((a, b) => b[1] - a[1])),
+    tierPlans, profilesByTier,
+    // terrain_archetype bor på race_pool, ikke på races. Feltet indgår hverken i en dom
+    // eller i den printede rapport (kun stageOrderMetrics' archetypeCounts), så DB-stien
+    // henter det ikke og køber sig fri af en ekstra query og dens fejl-flade.
+    archetypeByPoolRace: new Map(),
+    kollisioner: [], unassessed,
+    firstRaceDay, realDays, seasonNumber: season.number,
   };
 }
 
@@ -343,138 +300,55 @@ async function main() {
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     try {
-      loaded = await loadDbTierData({ supabase, seasonNumber: season });
+      loaded = await loadDbCalendar({ supabase, seasonNumber: season });
     } catch (e) {
       console.error(`KUNNE IKKE VURDERES — ${e.message}`);
       process.exitCode = 2;
       return;
     }
   } else {
-    loaded = loadFixtureTierData();
+    loaded = loadFixtureCalendar();
   }
 
-  const { tierData, kollisioner, første, sidste, kalenderdage, unassessed = [], seasonNumber } = loaded;
-
-  const rapport = { tilstand: mode, første, sidste, kalenderdage, kollisioner, unassessed, tiers: [] };
-  const stageDays = [];
-  for (const td of tierData) {
-    rapport.tiers.push(computeTierReport(td));
-    for (const s of td.stageRows) stageDays.push({ division: td.tier, date: String(s.scheduled_at).slice(0, 10) });
-  }
-
-  const dækning = detectEmptyCalendarDays({
-    stageDays, from: første, to: sidste, divisions: tierData.map((t) => t.tier),
+  // ÉN scoringsvej for begge kilder (#4270). Alt hvad kilderne må bestemme er HVILKE
+  // rækker der måles — aldrig hvordan de dømmes.
+  const rapport = scoreCalendarPlan({
+    tierPlans: loaded.tierPlans,
+    profilesByTier: loaded.profilesByTier,
+    archetypeByPoolRace: loaded.archetypeByPoolRace,
+    firstRaceDay: loaded.firstRaceDay,
+    realDays: loaded.realDays,
+    kollisioner: loaded.kollisioner,
+    tilstand: mode === "db" ? "db" : "plan",
+    unassessed: loaded.unassessed ?? [],
   });
-  rapport.dækning = { ok: dækning.ok, violations: dækning.violations };
+  if (mode === "db") rapport.seasonNumber = loaded.seasonNumber;
 
-  rapport.sæsonFinale = mergeFinaleStats(rapport.tiers.map((t) => t.finale));
-  rapport.sæsonFinaleViol = detectFinaleViolations({ stats: rapport.sæsonFinale, label: "sæson", strict: true });
-
-  const bruddene = rapport.tiers.reduce((n, t) =>
-    n + t.planViolations.length + t.coverageViol.length + t.compositionViol.length + t.orderViol.length
-      + t.finaleViol.length, 0) + rapport.sæsonFinaleViol.length;
-  // #2854: rækker der ikke kunne vurderes (kalenderen skrevet, profilerne ikke) må
-  // aldrig ligne et grønt scorecard på tomt grundlag — de tæller ikke som "brud" (det
-  // er en anden fejlklasse), men gøre gaten grøn er heller ikke retvisende.
-  const grønt = bruddene === 0 && dækning.ok && !kollisioner.length && !unassessed.length;
-
+  // Samme dom i begge udgaver — ellers ville --json altid exit'e 0 og gøre gaten
+  // usynligt grøn for enhver der bruger den maskinlæsbare sti.
   if (asJson) {
-    console.log(JSON.stringify({ ...rapport, seasonNumber, regelbrud: bruddene, ok: grønt }, null, 2));
-    process.exitCode = grønt ? 0 : 1;
-    return;
+    console.log(JSON.stringify(rapport, null, 2));
+    return rapport.ok;
   }
 
-  const modeLabel = mode === "db" ? `MOD DB — sæson ${seasonNumber} (races + race_stage_profiles, den skrevne kalender)` : "fixture — pakkerens output";
-  console.log(`\nKALENDER SCORECARD (${modeLabel}) — ${første} til ${sidste}${kalenderdage ? ` (${kalenderdage} kalenderdage)` : ""}`);
-  if (mode === "fixture") {
-    console.log(`Navnekollisioner: ${kollisioner.length ? kollisioner.join(", ") : "ingen"}`);
+  const heading = mode === "db"
+    ? `KALENDER-SCORECARD MOD DB — sæson ${loaded.seasonNumber} (races + race_stage_profiles, den skrevne kalender)`
+    : "S3-KALENDER SCORECARD";
+  for (const line of formatScorecard(rapport, { heading, katalogLinje: loaded.katalogLinje ?? null })) {
+    console.log(line);
   }
-  if (unassessed.length) {
-    console.log(`\n⚠ KUNNE IKKE VURDERES (${unassessed.length}) — kalenderen er skrevet, profilerne er ikke:`);
-    for (const u of unassessed) console.log(`     · ${u}`);
-  }
-  console.log("");
-
-  console.log(`${ok(dækning.ok)} LØB HVER KALENDERDAG (#4218)`);
-  for (const v of dækning.violations) console.log(`     ${v}`);
-
-  for (const t of rapport.tiers) {
-    console.log(`\n${"─".repeat(72)}\nDIVISION ${t.tier} — ${t.løb} løb, ${t.etaper} etaper, ${t.løbsdage} løbsdage, ${t.kalenderdage} kalenderdage`);
-
-    const share = t.coverage?.oneDayShare ?? 0;
-    const målShare = TIER_ONE_DAY_SHARE_TARGET[t.tier], minShare = TIER_ONE_DAY_SHARE_MIN[t.tier];
-    console.log(`  ${ok(share >= minShare)} Endagsløb: ${t.coverage?.oneDayRaces ?? "?"} af ${t.løb} = ${pct(share)} (mål ${pct(målShare)}, min ${pct(minShare)})`);
-
-    const fam = t.coverage?.familyCounts ?? {};
-    const gulve = TIER_TERRAIN_FAMILY_MIN[t.tier] ?? {};
-    const famLinje = Object.keys(gulve).map((f) => {
-      const har = fam[f] ?? 0, skal = gulve[f];
-      return `${f} ${har}/${skal}${har < skal ? " ✗" : ""}`;
-    }).join(" · ");
-    console.log(`  ${ok(!Object.keys(gulve).some((f) => (fam[f] ?? 0) < gulve[f]))} Terræn-gulve: ${famLinje}`);
-
-    const c = t.composition?.pct ?? {};
-    const komp = Object.keys(ACTIVE_TARGET).filter((k) => ACTIVE_TARGET[k] > 0).map((k) => {
-      const har = Number(c[k] ?? 0), mål = ACTIVE_TARGET[k];
-      const af = Math.abs(har - mål);
-      return `${CATEGORY_LABELS[k] ?? k} ${har.toFixed(0)}/${mål}${af > TIER_COMPOSITION_TOLERANCE_PP[t.tier] ? " ✗" : ""}`;
-    }).join(" · ");
-    console.log(`  ${ok(t.compositionViol.length === 0)} Komposition (±${TIER_COMPOSITION_TOLERANCE_PP[t.tier]} pp): ${komp}`);
-
-    const finishMountain = t.order?.mountainFinishPct;
-    if (Number.isFinite(finishMountain)) {
-      console.log(`  ${ok(finishMountain <= STAGE_ORDER_TARGETS.mountain_finish_max_pct)} Etapeløb der slutter på bjerg: ${finishMountain.toFixed(1)} % (maks ${STAGE_ORDER_TARGETS.mountain_finish_max_pct} %) · flad slutning ${(t.order?.flatFinishPct ?? 0).toFixed(1)} % · ITT-slutning ${(t.order?.ittFinishPct ?? 0).toFixed(1)} %`);
-    }
-    console.log(`  ${ok(t.finaleViol.length === 0)} Finale-bånd pr. terræn (#4272) — slutter nedad i alt: ${t.descent} af ${t.etaper} = ${pct(t.descentAndel)}`);
-    for (const p of Object.keys(TERRAIN_FINALE_BANDS)) {
-      const slot = t.finale.byProfile?.[p];
-      if (!slot?.total) continue;
-      const bands = TERRAIN_FINALE_BANDS[p];
-      const celler = FINALE_CLASSES
-        .filter((c) => bands[c] || slot.pct[c] > 0)
-        .map((c) => {
-          const [lo, hi] = bands[c] ?? [0, 0];
-          const got = slot.pct[c];
-          return `${CLASS_LABELS[c]} ${got.toFixed(0)}%${got < lo || got > hi ? `✗[${lo}-${hi}]` : ""}`;
-        });
-      const lille = slot.total < MIN_SAMPLE ? " (n<min, kun rapport)" : "";
-      console.log(`      ${p.padEnd(14)} n=${String(slot.total).padStart(3)}  ${celler.join(" · ")}${lille}`);
-    }
-    const o = t.finale.overall;
-    console.log(`      ${"SAMLET".padEnd(14)} n=${String(t.finale.total).padStart(3)}  ` +
-      Object.entries(OVERALL_FINALE_BAND).map(([c, [lo, hi]]) => {
-        const got = o.pct[c];
-        return `${CLASS_LABELS[c]} ${got.toFixed(1)}%${got < lo || got > hi ? `✗[${lo}-${hi}]` : ""}`;
-      }).join(" · ") + ` · ${CLASS_LABELS.tt} ${o.pct.tt.toFixed(1)}%`);
-    if (t.finaleRaw.length && !t.finaleViol.length) {
-      console.log(`      (${t.finaleRaw.length} afvigelse(r) fra det rå bånd bæres af stikprøve-tillægget — se ✗)`);
-    }
-
-    if (mode === "fixture") {
-      console.log(`  ${ok((t.maxOverlap ?? 0) <= (t.overlapCap ?? 99))} Samtidige løb pr. løbsdag: maks ${t.maxOverlap} (cap ${t.overlapCap})`);
-      console.log(`  ${ok((t.planViolations?.length ?? 0) === 0)} Plan-invarianter (GT, monument, whitelist, dedup): ${t.planViolations.length} brud`);
-      for (const v of t.planViolations.slice(0, 5)) console.log(`     ${v}`);
-    } else {
-      console.log(`  · Overlap-cap + plan-invarianter: IKKE målt her — dækkes af verify-invariants.js / calendarOverlapInvariant.js (§9c)`);
-    }
-    for (const v of [...t.coverageViol, ...t.compositionViol, ...t.orderViol, ...t.finaleViol].slice(0, 8)) console.log(`     ! ${v}`);
-  }
-
-  console.log(`\n${"═".repeat(72)}`);
-  console.log(`${ok(rapport.sæsonFinaleViol.length === 0)} SÆSON-AGGREGAT, finale-bånd uden stikprøve-tillæg (${rapport.sæsonFinale.total} etaper)`);
-  for (const v of rapport.sæsonFinaleViol) console.log(`     ! ${v}`);
-  console.log(`SAMLET: ${bruddene} regelbrud · dækning ${dækning.ok ? "OK" : "HULLER"} · ${kollisioner.length} navnekollisioner${unassessed.length ? ` · ${unassessed.length} kunne ikke vurderes` : ""}`);
-  console.log(grønt
-    ? "Kalenderen overholder alle gates i docs/CALENDAR_RULES.md.\n"
-    : "Se linjerne markeret FEJL / ! ovenfor.\n");
-  process.exitCode = grønt ? 0 : 1;
+  return rapport.ok;
 }
 
-// #4215: exit 1 ved brud, exit 2 ved "kunne ikke vurderes". UDEN dette er scriptet kun
-// en rapport nogen skal huske at læse — og præcis dét var problemet: reglerne fandtes,
-// men intet stoppede en kalender der brød dem (#4155 brød TIER_OVERLAP_CAP i alle fire
-// divisioner uopdaget).
+// #4215: exit 1 ved brud, exit 2 ved "kunne ikke vurderes" (sat i main). UDEN dette er
+// scriptet kun en rapport nogen skal huske at læse — og præcis dét var problemet:
+// reglerne fandtes, men intet stoppede en kalender der brød dem (#4155 brød
+// TIER_OVERLAP_CAP i alle fire divisioner uopdaget).
+// #4573: guarden er nødvendig fordi testfilen IMPORTERER modulet — uden den ville
+// hver import køre hele scorecardet (og i db-tilstand ramme DB'en).
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 if (isMain) {
-  await main();
+  const groent = await main();
+  // `groent === undefined` betyder at main() allerede har sat exit 1/2 selv.
+  if (groent === false) process.exitCode = 1;
 }

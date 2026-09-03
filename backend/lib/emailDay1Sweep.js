@@ -25,6 +25,10 @@
 // point the single CTA at the plain dashboard, so buildDay1Email no longer
 // accepts a latestRaceId/latestStageNumber. The lookup is now a plain
 // existence check (`.limit(1)` on `id`), one column instead of four.
+//
+// #2853 DA follow-up (2026-09-03): users.language is read alongside email
+// and passed straight through to buildDay1Email; emailTemplates.js owns the
+// actual copy selection ('da' -> Danish, anything else -> English).
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { isEmailLoopActive } from "./emailLoopFlag.js";
@@ -71,7 +75,7 @@ export async function runEmailDay1Sweep({
   for (const team of candidates) {
     try {
       const { data: userRow, error } = await supabase
-        .from("users").select("email").eq("id", team.user_id).maybeSingle();
+        .from("users").select("email, language").eq("id", team.user_id).maybeSingle();
       if (error) throw new Error(`users lookup: ${error.message}`);
       if (!userRow?.email) { skipped += 1; continue; }
 
@@ -84,7 +88,7 @@ export async function runEmailDay1Sweep({
       const hasResults = (resultRows || []).length > 0;
 
       const unsubscribeUrl = unsubscribeUrlFor(team.user_id, unsubSecret);
-      const { subject, html, text } = buildDay1Email({ teamName: team.name, hasResults, unsubscribeUrl });
+      const { subject, html, text } = buildDay1Email({ teamName: team.name, hasResults, unsubscribeUrl, language: userRow.language });
       const result = await send({
         supabase,
         userId: team.user_id,
