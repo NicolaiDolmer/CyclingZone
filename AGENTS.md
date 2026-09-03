@@ -97,6 +97,12 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 32. **"Kan en type fange det?" — spørg FØR du foreslår en ny CI-guard.** `.github/workflows/ci.yml` har allerede ca. 15 håndbyggede ratchet-guard-jobs. Kan compileren fange fejlen (forkert felt-navn, manglende case, forkert type), tilføj typen i stedet. Guards reserveres til det compileren IKKE kan se: invarianter, RLS, paginerings-lofter, patch-notes-dækning, feature-liveness.
 
+### Backlog-disciplin (ejer-direktiv 25/8, [#4267](https://github.com/NicolaiDolmer/CyclingZone/issues/4267))
+
+33. **Dublet-tjek er obligatorisk FØR `gh issue create`.** Søg mindst to gange på nøgleord fra titlen (`gh issue list --search "<ord>" --state all` og `gh search issues --repo NicolaiDolmer/CyclingZone --match title,body "<ord>"`) og læs hits'ene før du opretter. Findes emnet allerede (åbent ELLER lukket-uden-leverance), så kommentér på det eksisterende issue i stedet — og reopen hvis det blev lukket som dublet af noget der aldrig blev leveret. Et nyt issue nævner de beslægtede numre det tjekkede mod. Ejeren 25/8: *"Der skal aldrig oprettes en opgave til github, hvis den er der i forvejen."* Housekeeping-skillen lukkede 20 dubletpar 31/8 og 26 par 30/7 — hver af dem var et brud på denne regel.
+
+34. **Masterplan-ændring → artifacten opdateres i samme omgang.** Ændres `docs/MASTERPLAN.md` (rækkefølge, status, nye spor), republiceres artifacten *"Cycling Zone — Masterplan"* (find den med `Artifact action=list`; samme URL, aldrig en ny) FØR sessionen lukker, og commit-beskeden nævner det. Artifacten er ejerens læseflade; en plan der kun er rettet i markdown er en parallel plan (samme princip som hard rule 30). Ejeren 25/8: *"hver gang masterplanen opdateres, så opdateres artifacten også."*
+
 ### §LOKAL lokal-only-state (legacy — Codex-æra)
 
 `.codex.local/`-whitelisten og `cross-pc-forensic-audit.ps1` blev bygget til at fange lokal-only state Codex efterlod på tværs af PC'er. Med solo Claude-operation er rutinen ikke længere en per-session-gate — kør kun auditen ad hoc hvis du mistænker drift (fx efter længere ophold på en sekundær PC). Detaljer: [`docs/CROSS_PC_LOCAL_STATE.md`](docs/CROSS_PC_LOCAL_STATE.md).
