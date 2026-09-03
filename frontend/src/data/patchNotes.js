@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.245",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Text arrows replaced with real icons across the app",
+          "body": "Promotion and relegation badges on the standings, the board negotiation buttons, the season recap and rider stats used typed arrow characters as icons. They now use the same stroke icons as the rest of the app, so they sit on the baseline and scale correctly on mobile. A lint rule keeps new text arrows out."
+        },
+        "da": {
+          "title": "Tekstpile erstattet af rigtige ikoner i hele appen",
+          "body": "Op- og nedrykningsbadges på ranglisten, bestyrelsens forhandlingsknapper, sæsonopsummeringen og rytterstatistikken brugte skrevne piletegn som ikoner. De bruger nu de samme stregikoner som resten af appen, så de sidder på linjen og skalerer rigtigt på mobil. En lint-regel holder nye tekstpile ude."
+        },
+        "refs": [
+          3422
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.244",
     "date": "2026-09-03",
     "label": "Beta",
