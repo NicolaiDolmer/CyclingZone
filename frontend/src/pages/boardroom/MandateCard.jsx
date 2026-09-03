@@ -144,14 +144,17 @@ export default function MandateCard({ mandate }) {
             goal={goal}
             t={t}
             expanded={expandedId === goal.id}
-            onToggle={() => setExpandedId((cur) => {
+            onToggle={() => {
               // #4557 (S-M2d) · instrumentering (#1141: kvitterings-åbninger)
               // — fyrer kun ved AABNING, ikke ved luk, saa tallet er antal
               // gange en spiller faktisk søgte forklaringen, ikke dobbelt-
-              // talt af toggle-klik.
-              if (cur !== goal.id) logEvent("board_receipt_opened", { goalStatus: goal.status, surface: "boardroom" });
-              return cur === goal.id ? null : goal.id;
-            })}
+              // talt af toggle-klik. Kaldet ligger UDENFOR updateren, fordi
+              // React.StrictMode (main.jsx) dobbelt-kalder updater-
+              // funktioner i dev — en side effect derinde ville dobbelt-
+              // taelle hver kvitterings-aabning (ret-runde #4732).
+              if (expandedId !== goal.id) logEvent("board_receipt_opened", { goalStatus: goal.status, surface: "boardroom" });
+              setExpandedId((cur) => (cur === goal.id ? null : goal.id));
+            }}
           />
         ))}
       </div>

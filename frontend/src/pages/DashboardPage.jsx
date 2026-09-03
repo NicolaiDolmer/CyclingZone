@@ -1390,12 +1390,21 @@ export default function DashboardPage() {
       {/* #3397: Hero & Agony moment-kort — selv-hentende, se HeroAgonyCard.jsx. */}
       {heroAgonyVisible && <HeroAgonyCard teamId={team?.id} teamName={team?.name} />}
 
-      {/* #4557 (S-M2d): dashboard-genvej til aarsmoedet — fuld bredde, uden
-          for hovedgridet (samme placering som Maiden Win/Hero & Agony
-          ovenfor), saa den ikke forskyder Board/Global-Rank-parringen
-          nedenfor (docs/DASHBOARD_RULES.md §4). Vises udelukkende naar
-          GET /board/meeting svarer available:true — automatisk skjult for
-          alle uden for beta. */}
+      {/* #4557 (S-M2d): dashboard-genvej til aarsmoedet — fuld bredde,
+          UDENFOR to-kolonne-gridet, i den oevre stak af betingede engangs-
+          kort (docs/DASHBOARD_RULES.md §4 "oevre del": Udviklings-overgang,
+          Onboarding-progress, Season Wrap/Start Guide er ALLE fuld bredde i
+          samme stak, ingen af dem er parret i gridet). §0 regel 1 er
+          opfyldt af den samme begrundelse som de kort: et betinget,
+          engangs-nudge-kort med titel+meta+subtitle+CTA hoerer ikke i
+          gridets faste parringer (som binder to LOEBENDE datamoduler
+          sammen), og en paring ville efterlade en forreldreloes halv-celle
+          naar kortet er skjult (§3 "betingede moduler maa ikke efterlade
+          tomme grid-celler") — ret-runde #4732 fund 3. Placeret EFTER
+          Maiden Win/Hero & Agony (samme oevre stak), lige foer hovedgridet,
+          saa den ikke forskyder Board/Global-Rank-parringen nedenfor. Vises
+          udelukkende naar GET /board/meeting svarer available:true —
+          automatisk skjult for alle uden for beta. */}
       {annualMeeting?.mandate && (
         <div className="mb-4">
           <AnnualMeetingNudgeCard daysLeft={daysUntil(annualMeeting.mandate.deadlineAt)} />
