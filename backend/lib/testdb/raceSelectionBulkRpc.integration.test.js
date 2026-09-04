@@ -82,6 +82,14 @@ before(async () => {
   // tilgængeligt i PGlite) — irrelevant her, 4173 dropper 3420's EXCLUDE-constraint
   // betingelsesløst ("if exists") og genskaber intet der afhænger af den.
   await db.exec(loadMigration("2026-08-24-4173-rider-binding-per-game-day.sql"));
+  // #4191 + #4217 (tilføjet 4/9 under #4209): harnessen stoppede ved 4173 og testede
+  // derfor en race_entry_days_rebuild-krop der ikke findes i prod længere — 4173's
+  // "kun de kørte etapedage". #4191 gav diff-formen, #4217 gjorde ønske-mængden til
+  // HELE spændet. Samme apply-rækkefølge som prod, så det er den GÆLDENDE funktion vi
+  // tester. Filens egne tests bruger sammenhængende game_days og er derfor uændrede;
+  // spænd-adfærden bevises i raceEntryDaysGtRestDay.integration.test.js.
+  await db.exec(loadMigration("2026-08-24-4191-race-entry-days-diff-rebuild.sql"));
+  await db.exec(loadMigration("2026-08-25-4217-spaend-binding.sql"));
   // #1146: selve den RPC vi tester — den ÆGTE fil, ikke en kopi.
   await db.exec(loadMigration("2026-08-27-1146-selection-bulk-rpc.sql"));
   // #4534: frys-guarden gælder begge retninger — SAMME apply-rækkefølge som prod
