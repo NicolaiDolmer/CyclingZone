@@ -82,7 +82,8 @@
       "items": [
         "<bold>Login-session</bold> (Supabase auth): nødvendig for at holde dig logget ind.",
         "<bold>Temavalg</bold> (lys/mørk): gemt lokalt i din browser.",
-        "<bold>Samtykke-valg</bold> (<code>cz_consent_v1</code> i localStorage): så vi husker dine valg og ikke spørger igen."
+        "<bold>Samtykke-valg</bold> (<code>cz_consent_v1</code> i localStorage): så vi husker dine valg og ikke spørger igen.",
+        "<bold>Version-fastholdelse</bold> (<code>__vdpl</code>): holder din browser på den version af spillet du indlæste, så siden ikke går i stykker midt i en session."
       ],
       "outro": "Disse kræver ikke samtykke jf. ePrivacy-direktivet (strengt nødvendige). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> og <bold>Vercel Web Analytics</bold> indlæses kun hvis du aktivt har accepteret \"Analyse\"-kategorien. Du kan til enhver tid skifte valg her på siden."
     },

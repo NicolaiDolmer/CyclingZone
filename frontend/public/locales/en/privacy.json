@@ -82,7 +82,8 @@
       "items": [
         "<bold>Login session</bold> (Supabase auth): required to keep you logged in.",
         "<bold>Theme choice</bold> (light/dark): stored locally in your browser.",
-        "<bold>Consent choices</bold> (<code>cz_consent_v1</code> in localStorage): so we remember your selection and don't ask again."
+        "<bold>Consent choices</bold> (<code>cz_consent_v1</code> in localStorage): so we remember your selection and don't ask again.",
+        "<bold>Version pinning</bold> (<code>__vdpl</code>): keeps your browser on the version of the app you loaded, so the page does not break mid-session."
       ],
       "outro": "These do not require consent under the ePrivacy directive (strictly necessary). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> and <bold>Vercel Web Analytics</bold> are only loaded if you have actively accepted the \"Analytics\" category. You can change your choice on this page at any time."
     },

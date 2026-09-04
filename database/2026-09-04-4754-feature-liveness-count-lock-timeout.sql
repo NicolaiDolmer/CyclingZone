@@ -31,6 +31,12 @@
 -- rls_enabled positionelt fortsætter uændret (audit-scriptet bruger named
 -- destructuring, se backend/scripts/audit-feature-liveness.js).
 
+-- 4/9 kl. 12:05: auto-migrate fejlede med "cannot change return type of existing
+-- function" — RETURNS TABLE får en ny kolonne (estimated), og CREATE OR REPLACE kan
+-- ikke ændre returtypen. DROP først; funktionen har ingen afhængige objekter
+-- (kun RPC-kald fra audit-scriptet). Idempotent.
+DROP FUNCTION IF EXISTS public.feature_liveness_table_counts();
+
 CREATE OR REPLACE FUNCTION public.feature_liveness_table_counts()
 RETURNS TABLE (
   table_name text,

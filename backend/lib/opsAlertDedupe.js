@@ -18,9 +18,19 @@
 //      vedvarende tilstand forbliver synlig i stedet for at forsvinde helt —
 //      det er forskellen fra cronHeartbeats rene edge-trigger).
 //
-// Fail-open: kan state-rækken ikke læses eller skrives, ALARMERER vi (og
-// rapporterer DB-fejlen). En dedupe-mekanisme må aldrig kunne tie en ægte alarm
-// ihjel fordi en hjælpetabel er nede.
+// Fail-open (DEFAULT): kan state-rækken ikke læses eller skrives, ALARMERER vi
+// (og rapporterer DB-fejlen). En dedupe-mekanisme må aldrig kunne tie en ægte
+// alarm ihjel fordi en hjælpetabel er nede.
+//
+// #2738-migreringen: cronHeartbeat.js/balanceDriftWatch.js/aluntaPeriodRollWatch.js
+// prædaterer denne hjælper og var alle tre bevidst skrevet fail-SAFE-stille ved
+// en LÆSEfejl på ops_alert_state ("kan vi ikke afgøre om bruddet er nyt, vær
+// stille frem for at risikere gen-spam" — se deres respektive kommentarer). For
+// ikke at ændre de alarmers adfærd under migreringen findes `alertOnReadError`
+// (default true = denne fils oprindelige fail-open) — sæt til `false` for at få
+// den samme fail-safe-stille semantik. Gælder KUN læsefejl: en skrivefejl når
+// `alert` allerede er besluttet true rammer aldrig denne gren (se nedenfor) og
+// forbliver fail-open uanset flaget, ligesom i alle fire steder.
 
 export const OPS_ALERT_STATE_TABLE = "ops_alert_state";
 
@@ -39,7 +49,12 @@ export function buildAlertSignature(parts = []) {
  * Skal denne alarm fyre nu? Læser + opdaterer `ops_alert_state` for `alertKey`.
  *
  * @param {{ supabase: object, alertKey: string, signature: string, now?: Date,
- *           reAlertAfterMs?: number|null, captureExceptionFn?: Function }} args
+ *           reAlertAfterMs?: number|null, captureExceptionFn?: Function,
+ *           alertOnReadError?: boolean }} args
+ *   alertOnReadError: hvad skal `alert` være hvis SELVE LÆSNINGEN af
+ *     ops_alert_state fejler? `true` (default) = fail-open, denne fils
+ *     oprindelige semantik. `false` = fail-safe-stille (#2738-migrerede
+ *     kaldere) — se filhovedet.
  * @returns {Promise<{ alert: boolean, reason: "changed"|"re-alert"|"suppressed"|"state-error" }>}
  */
 export async function shouldAlertOnChange({
@@ -49,6 +64,7 @@ export async function shouldAlertOnChange({
   now = new Date(),
   reAlertAfterMs = null,
   captureExceptionFn,
+  alertOnReadError = true,
 } = {}) {
   const { data: stateRow, error: readErr } = await supabase
     .from(OPS_ALERT_STATE_TABLE)
@@ -60,7 +76,7 @@ export async function shouldAlertOnChange({
     captureExceptionFn?.(new Error(`ops_alert_state read (${alertKey}): ${readErr.message}`), {
       tags: { alert_key: alertKey },
     });
-    return { alert: true, reason: "state-error" };
+    return { alert: alertOnReadError, reason: "state-error" };
   }
 
   const changed = (stateRow?.signature ?? "") !== signature;

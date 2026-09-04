@@ -1,5 +1,46 @@
 export const PATCHES = [
   {
+    "version": "7.246",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Pages that went blank after an update now repair themselves",
+          "body": "If your browser had cached a missing file from an earlier update, the page could stay blank until you forced a reload. The app now detects this, clears the cached file and reloads once on its own. Your browser also stays on the version you loaded for half an hour after an update, so a page open during a deploy no longer breaks mid-session."
+        },
+        "da": {
+          "title": "Sider der blev tomme efter en opdatering reparerer nu sig selv",
+          "body": "Havde din browser gemt en manglende fil fra en tidligere opdatering, kunne siden blive tom, indtil du tvang en genindlæsning. Appen opdager det nu selv, rydder den gemte fil og genindlæser én gang. Din browser bliver også på den version du åbnede i en halv time efter en opdatering, så en side der er åben under et deploy ikke længere går i stykker midt i det hele."
+        },
+        "refs": [
+          4595,
+          2423
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Weak abilities can grow further before hitting their ceiling",
+          "body": "A rider's weakest abilities were capped hard at a low level, so many young riders showed as done in training while still far below what their type allows. The floor for weak abilities is now higher, and GC riders get a higher punch ceiling. Weak abilities still develop slowly; this only removes the hard stop. The done markers update at the next nightly training pass."
+        },
+        "da": {
+          "title": "Svage evner kan udvikle sig længere, før de rammer loftet",
+          "body": "En rytters svageste evner havde et hårdt, lavt loft, så mange unge ryttere stod som færdige i træningen, selvom de lå langt under, hvad deres type tillader. Gulvet for svage evner er nu højere, og GC-ryttere får et højere punch-loft. Svage evner udvikler sig stadig langsomt; det er kun det hårde stop, der er væk. Færdig-mærkerne opdateres ved næste natlige træningskørsel."
+        },
+        "refs": [
+          4634,
+          4098
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.245",
     "date": "2026-09-03",
     "label": "Beta",

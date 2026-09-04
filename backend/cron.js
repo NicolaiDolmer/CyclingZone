@@ -48,6 +48,7 @@ import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMandateAutoAcceptCron } from "./lib/boardMandateAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
+import { checkSeasonTransitionKeyDrift } from "./lib/seasonTransitionKeyGuard.js"; // #4129
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
 import { runAiRecoverySweep } from "./lib/aiRecoverySweep.js";
@@ -57,6 +58,7 @@ import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
+import { runHalfFinalizedRaceWatch } from "./lib/raceFinalizeWatch.js"; // #4147
 import { refreshRankingMatviewsSafe } from "./lib/refreshRankingMatviews.js";
 import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot.js";
 import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
@@ -111,6 +113,7 @@ import {
   CRON_MONITOR_1MIN,
   CRON_MONITOR_5MIN,
   CRON_MONITOR_10MIN,
+  CRON_MONITOR_15MIN,
   CRON_MONITOR_30MIN,
   CRON_MONITOR_60MIN,
   CRON_MONITOR_24H,
@@ -452,6 +455,9 @@ async function runSeasonAutoTransitionCron() {
 // transitions på 30 min). Hvis admin_log viser >1 sæson-transition per døgn
 // → alert til Discord + Sentry. Pure read + notify, ingen DB-writes.
 
+const SEASON_TRANSITION_KEY_DRIFT_ALERT_KEY = "season-transition-key-drift";
+const SEASON_TRANSITION_KEY_DRIFT_REALERT_MS = 24 * 60 * 60 * 1000;
+
 async function runDailySeasonCountCheck() {
   const result = await processDailySeasonCountCheck({
     supabase,
@@ -465,6 +471,45 @@ async function runDailySeasonCountCheck() {
     console.error(
       `🚨 Daily season-count check: ${result.transitionCount} transitions seneste 24h (>1 alert fyret)`
     );
+  }
+
+  // #4129: forward-guard for season_transition_planned_at (#4004-guardens anker).
+  // buildSeasonCalendar.js --apply sætter nu nøglen selv ved sæson-oprettelse —
+  // dette er sikkerhedsnettet for de veje der springer det uden om (manuel SQL,
+  // glemt --apply). Read-only; se seasonTransitionKeyGuard.js.
+  let drift;
+  try {
+    drift = await checkSeasonTransitionKeyDrift({ supabase, now: new Date() });
+  } catch (err) {
+    console.error("Cron error (season-transition-key drift check):", err.message);
+    sentryCapture(err, { tags: { cron: "season-transition-key-drift" } });
+    return;
+  }
+  if (drift.drift) {
+    // Signaturen skifter når årsag/forventet/faktisk ændrer sig — en uændret
+    // "missing" for samme sæson alarmerer først igen efter re-alert-gulvet
+    // (samme #4752-mønster som AI-trim-stall-vagten ovenfor).
+    const signature = buildAlertSignature([
+      String(drift.reason), String(drift.seasonNumber ?? ""), String(drift.expected ?? ""), String(drift.existing ?? ""),
+    ]);
+    const { alert } = await shouldAlertOnChange({
+      supabase,
+      alertKey: SEASON_TRANSITION_KEY_DRIFT_ALERT_KEY,
+      signature,
+      reAlertAfterMs: SEASON_TRANSITION_KEY_DRIFT_REALERT_MS,
+      captureExceptionFn: sentryCapture,
+    });
+    if (alert) {
+      console.error(
+        `🚨 season_transition_planned_at ${drift.reason}: sæson ${drift.seasonNumber} starter ${Math.round(drift.daysUntilStart)}d ude ` +
+        `(forventet ${drift.expected}, faktisk ${drift.existing ?? "(mangler)"}) — #4129`
+      );
+      sentryCapture(new Error(`season_transition_planned_at ${drift.reason} < 7 dage før sæsonstart (#4129)`), {
+        tags: { cron: "season-transition-key-drift" },
+        fingerprint: ["season-transition-key-drift"],
+        extra: drift,
+      });
+    }
   }
 }
 
@@ -1042,7 +1087,7 @@ async function runStageSchedulerCron() {
       isStageSchedulerEnabled,
       isRaceEngineV2Enabled,
       seenKeys: stageSchedulerSeenKeys,
-      runStageFn: async ({ raceId, stageIndex }) => {
+      runStageFn: async ({ raceId, stageIndex, resume = false }) => {
         const notifyDiscord = async ({ race, resultRows, incidents }) => {
           const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
           if (!urls.length) return;
@@ -1067,7 +1112,10 @@ async function runStageSchedulerCron() {
           runSource: "scheduler", // FIX 4: kun scheduler-runs tæller i den daglige cap
           // #2090 defense-in-depth: løbet må KUN afvikle præcis den etape scheduleren
           // udvalgte som forfalden — er løbet imens bumpet af et andet run, 409'es der.
-          expectedStageIndex: stageIndex,
+          expectedStageIndex: resume ? null : stageIndex,
+          // #4147: genoptagelse — etapen er GIVET af trin-markeringen, ikke udledt af
+          // stages_completed (som den afbrudte kørsel allerede har bumpet).
+          resumeStageIndex: resume ? stageIndex : null,
           ensureSeasonStandings: ensureSeasonStandingsCron,
           updateStandings,
           notifyDiscord,
@@ -1076,11 +1124,26 @@ async function runStageSchedulerCron() {
         });
       },
     });
-    if (result.ran || result.errors || result.recovered) {
-      console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.recovered || 0} finalization-recovery, ${result.errors} fejl`);
+    if (result.ran || result.errors || result.recovered || result.resumed) {
+      console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.recovered || 0} finalization-recovery, ${result.resumed || 0} genoptaget afslutning, ${result.errors} fejl`);
     }
   } finally {
     stageSchedulerTickRunning = false;
+  }
+}
+
+// ─── Halv-finaliserings-vagt (#4147) ─────────────────────────────────────────
+// Read-only. Finder løb der sidder fast midt i afslutningen: en trin-markering der
+// har stået stille i over 10 minutter, et løb hvor alle etaper er kørt uden at status
+// blev flippet (Llanera-tilstanden 23/8), eller et færdigt løb hvis præmier aldrig
+// blev udbetalt. Alarmerer via Sentry med fast fingerprint + opsAlertDedupe, så én
+// uafklaret tilstand giver ÉT issue og ikke 96 events i døgnet. Reparerer INTET —
+// genopretningen sker (bag flag) i raceRunner.simulateStageByIndex's genoptagelses-
+// sti, og alt derudover er ejer-beslutning.
+async function runRaceFinalizeWatchCron() {
+  const r = await runHalfFinalizedRaceWatch({ supabase, captureExceptionFn: sentryCapture });
+  if (r.findings) {
+    console.warn(`🚨 Halv-finaliserings-vagt: ${r.findings} fund (alarmeret: ${r.alerted})`);
   }
 }
 
@@ -1726,6 +1789,15 @@ export function startCron() {
   setInterval(
     trackedTick("stage scheduler", monitorCron("stage-scheduler", runStageSchedulerCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
+  );
+
+  // Every 15 minutes: halv-finaliserings-vagt (#4147) — read-only detektion af løb
+  // der sidder fast midt i afslutningen. Bevidst INGEN immediate-run: en alarm skal
+  // ikke fyre ved hver genstart (mirror stage-scheduler/stall-watchdog-mønstret), og
+  // 15 min efter boot er tidligt nok til at fange en afbrydelse fra selve deployet.
+  setInterval(
+    trackedTick("race-finalize-watch", monitorCron("race-finalize-watch", runRaceFinalizeWatchCron, CRON_MONITOR_15MIN)),
+    15 * 60 * 1000
   );
 
   // Every 10 minutes: rangliste-matview refresh (#2175) — fallback for race-

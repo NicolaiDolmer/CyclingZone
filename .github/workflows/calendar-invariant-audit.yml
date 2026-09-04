@@ -242,23 +242,30 @@ jobs:
             });
 
       - name: Open or update tracking issue (scheduled runs only)
-        if: github.event_name == 'schedule' && (steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0' || steps.invariants.outputs.oevrige_brud != '0')
+        # #4209 (4/9): `steps.entrydays.outputs.count` manglede i denne betingelse. PR-runs
+        # kommenterede allerede på drift i den afledte bindings-tabel, men det DAGLIGE
+        # cron-run droppede fundet tavst — det nåede kun artefakten, som ingen åbner.
+        # Vagten bliver BEVIDST ikke en del af det hårde fail-step nedenfor (samme snævre
+        # gate som filens docstring låser), men et fund skal være SYNLIGT i tracking-issuet.
+        if: github.event_name == 'schedule' && (steps.invariants.outputs.kalender_brud != '0' || steps.constraints.outputs.count != '0' || steps.invariants.outputs.oevrige_brud != '0' || steps.entrydays.outputs.count != '0')
         uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
             const report = fs.readFileSync('invariants.txt', 'utf8');
             const constraints = fs.existsSync('constraint-form.txt') ? fs.readFileSync('constraint-form.txt', 'utf8').trim() : '';
+            const entrydays = fs.existsSync('race-entry-days-drift.txt') ? fs.readFileSync('race-entry-days-drift.txt', 'utf8').trim() : '';
             const scorecard = fs.existsSync('calendar-scorecard-db.txt') ? fs.readFileSync('calendar-scorecard-db.txt', 'utf8').trim() : '';
             const scorecardExit = '${{ steps.dbscorecard.outputs.exit }}';
             const kal = '${{ steps.invariants.outputs.kalender_brud }}';
             const con = '${{ steps.constraints.outputs.count }}';
             const andre = '${{ steps.invariants.outputs.oevrige_brud }}';
-            const title = `[bot] Invariant-audit: ${kal} kalender-brud, ${con} constraint-form-brud, ${andre} øvrige`;
+            const drift = '${{ steps.entrydays.outputs.count }}';
+            const title = `[bot] Invariant-audit: ${kal} kalender-brud, ${con} constraint-form-brud, ${drift} bindings-drift, ${andre} øvrige`;
             const body = [
               '## Invarianter målt mod prod',
               '',
-              `Dagligt cron-run: **${kal}** kalender-brud, **${con}** constraint-form-brud, **${andre}** øvrige invariant-brud.`,
+              `Dagligt cron-run: **${kal}** kalender-brud, **${con}** constraint-form-brud, **${drift}** bindings-drift-fund, **${andre}** øvrige invariant-brud.`,
               '',
               'Kalender-reglerne og hvem der låste dem: [`docs/CALENDAR_RULES.md`](docs/CALENDAR_RULES.md). Et kalender-brud betyder at rækkerne i prod bryder en ejer-låst regel — typisk efter et reparations-script eller ad-hoc-SQL, ikke efter en generator-ændring (#4155, #4161, #4075).',
               '',
@@ -266,6 +273,14 @@ jobs:
               report.trim(),
               '```',
               constraints ? ['', '### Constraint-form', '```', constraints, '```'].join('\n') : '',
+              entrydays ? [
+                '',
+                '### race_entry_days-drift (#4191/#4217, ADVISORY — blokerer ikke)',
+                'Den afledte bindings-tabel er ikke længere præcis lig den mængde `race_entry_days_rebuild` ville skrive. `mangler` = rytteren er IKKE bundet og kan udtages to steder samme løbsdag; `overskydende` = rytteren er bundet på en løbsdag hans løb ikke optager. Ønske-mængden er HELE spændet `min..max game_day` (#4217), GT-hviledage inkluderet (`docs/CALENDAR_RULES.md` §3).',
+                '```',
+                entrydays,
+                '```',
+              ].join('\n') : '',
               scorecard ? [
                 '',
                 `### Kalender-scorecard mod prod (#4573, ADVISORY — exit ${scorecardExit}, blokerer ikke)`,

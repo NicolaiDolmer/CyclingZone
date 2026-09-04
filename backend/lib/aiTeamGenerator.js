@@ -40,6 +40,8 @@ import { fetchExistingFoldedNamesForAi, makeAiTeamName } from "./aiTeamNames.js"
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { STALL_WATCHDOG_DEFAULT_THRESHOLDS } from "./stallWatchdog.js";
 import { notifyAndClearWatchlistForRiders } from "./notificationService.js";
+import { isAiTeamRetireEnabled } from "./aiTeamRetireFlag.js";
+import { retireAiTeam, teamHasLiveTransferOffers } from "./aiTeamRetirement.js";
 
 const INSERT_BATCH = 500;
 
@@ -373,6 +375,37 @@ export async function teamHasBlockingTransferOffers(supabase, teamId) {
   return false;
 }
 
+// #4753: ÉN kilde til "kan dette AI-hold forlade puljen lige nu?" — delt af begge
+// fjernelses-tilstande, så guard-listen ikke kan drifte fra hinanden.
+//
+// De to første grunde gælder i BEGGE tilstande, fordi de ikke handler om FK'er:
+//   · inflight race_entries (#2074): et hold midt i et etapeløb skal køre løbet
+//     færdigt — feltet må ikke skifte under et kørende løb.
+//   · uudbetalte præmier (#2389): auto-prize-sweepen og standings-recalc læser
+//     holdet; forsvinder det midt i det, aborteres hele ticket (CYCLINGZONE-26/2E/2F).
+//
+// Den TREDJE grund skifter betydning med tilstanden:
+//   · hård-slet: ENHVER transfer_offers-række blokerer, uanset status, fordi begge
+//     FK'er (rider_id + seller_team_id) er NO ACTION (#4233).
+//   · nedlæggelse: kun LEVENDE tilbud blokerer, og da som spiller-hensyn (en manager
+//     står midt i en forhandling). Døde tilbud (withdrawn/accepted/rejected) blokerede
+//     kun fordi der blev SLETTET — og der slettes ikke længere. Det er præcis dét led
+//     der låste 13 AI-hold permanent (målt prod 4/9).
+// Returnerer HVILKEN guard der blokerer (null = ingen). Reparations-dry-run'en
+// (backend/scripts/retire-stuck-ai-teams.js) viser grunden pr. hold, så ejeren kan se
+// forskel på "venter på et løb der kører færdigt" og "permanent fastlåst" uden at
+// gætte — netop det gæt lod 4 puljer stå på 25 hold i en uge uden at nogen opdagede det.
+export async function teamRemovalBlockReason(supabase, teamId, inflightRaceIds, { retire = false } = {}) {
+  if (await teamHasInflightEntries(supabase, teamId, inflightRaceIds)) return "inflight_entries";
+  if (await teamHasUnpaidPrizeResults(supabase, teamId)) return "unpaid_prizes";
+  if (retire) return (await teamHasLiveTransferOffers(supabase, teamId)) ? "live_transfer_offers" : null;
+  return (await teamHasBlockingTransferOffers(supabase, teamId)) ? "transfer_offers_fk" : null;
+}
+
+export async function teamIsBlockedForRemoval(supabase, teamId, inflightRaceIds, opts = {}) {
+  return (await teamRemovalBlockReason(supabase, teamId, inflightRaceIds, opts)) != null;
+}
+
 // #2187: slet ét navngivet AI-hold (rytter+hold). Bruges af heal-sweep-retryen, som
 // (modsat removeAiTeams' kandidat-udvælgelse fra en pulje-liste) allerede kender det
 // præcise hold-id den skal forsøge igen.
@@ -386,6 +419,24 @@ export async function teamHasBlockingTransferOffers(supabase, teamId) {
 // men rapporteret som "failed" i stedet for korrekt udskudt). Filtrér de blokerede
 // ryttere fra FØR delete i stedet.
 export async function deleteAiTeamById(supabase, teamId) {
+  // #4753: nedlæggelses-tilstanden (flag ai_team_retire_enabled). Ingen DELETE —
+  // holdet forlader puljen via league_division_id=NULL og rytterne pensioneres.
+  // Guards: inflight (#2074) + uudbetalte præmier (#2389) + LEVENDE tilbud udskyder
+  // stadig; døde tilbud gør ikke, fordi der ikke slettes noget de kan blokere.
+  if (await isAiTeamRetireEnabled(supabase)) {
+    const inflightRaceIds = await getInflightRaceIds(supabase);
+    if (await teamIsBlockedForRemoval(supabase, teamId, inflightRaceIds, { retire: true })) {
+      await markPendingRemoval(supabase, [teamId]);
+      console.warn(
+        `  ⏳ deleteAiTeamById(${teamId}): hold er inflight-/præmie-/levende-tilbud-blokeret (#4753) — nedlæggelse udskudt, hold markeret pending_removal_at.`
+      );
+      return { deleted: false, deferred: true, blockedRiderIds: [] };
+    }
+    const { ridersRetired } = await retireAiTeam(supabase, teamId);
+    console.log(`  🏁 deleteAiTeamById(${teamId}): hold nedlagt (#4753), ${ridersRetired} ryttere pensioneret.`);
+    return { deleted: true, deferred: false, retired: true, blockedRiderIds: [] };
+  }
+
   // #4233: transfer_offers-FK'erne (rider_id + seller_team_id, begge NO ACTION) sprænger
   // baade rytter- og hold-sletningen. Tjek FOER vi roerer noget: en delvis sletning ville
   // efterlade holdet uden trup uden at bringe puljen naermere target. Udskyd hele holdet.
@@ -444,19 +495,19 @@ async function removeAiTeams(supabase, aiTeams, count) {
   if (!sorted.length || count <= 0) return 0;
 
   const inflightRaceIds = await getInflightRaceIds(supabase);
+  // #4753: nedlæggelse frem for hård-slet (flag ai_team_retire_enabled). Læses ÉN
+  // gang pr. trim, ikke pr. hold — tilstanden må ikke kunne skifte midt i et loop.
+  const retire = await isAiTeamRetireEnabled(supabase);
 
   const toRemove = [];
   const blockedIds = [];
   for (const team of sorted) {
     if (toRemove.length >= count) break;
-    // #2389: uudbetalte præmier blokerer OGSÅ trim — ellers kolliderer sletningen
-    // med auto-prize-sweepen/standings-recalc (samme udskudt-trim-mekanik).
-    // #4233: transfer_offers-FK'erne er NO ACTION og blokerer OGSAA trim — samme
-    // udskudt-trim-mekanik. Uden dette led valgte loopet et hold det ikke kunne
-    // slette, og hele reconcilen kastede i stedet for at tage naeste kandidat.
-    if (await teamHasInflightEntries(supabase, team.id, inflightRaceIds)
-        || await teamHasUnpaidPrizeResults(supabase, team.id)
-        || await teamHasBlockingTransferOffers(supabase, team.id)) {
+    // #2389 (uudbetalte præmier) + #2074 (inflight) + #4233/#4753 (tilbud) — se
+    // teamIsBlockedForRemoval for hvorfor det tredje led skifter betydning med
+    // tilstanden. Uden dette led valgte loopet et hold det ikke kunne slette, og hele
+    // reconcilen kastede i stedet for at tage naeste kandidat.
+    if (await teamIsBlockedForRemoval(supabase, team.id, inflightRaceIds, { retire })) {
       blockedIds.push(team.id);
       continue;
     }
@@ -483,6 +534,20 @@ async function removeAiTeams(supabase, aiTeams, count) {
   }
   if (!toRemove.length) return 0;
   const ids = toRemove.map((t) => t.id);
+
+  // #4753: NEDLÆGGELSES-STIEN. Ingen DELETE på hverken riders eller teams — derfor
+  // heller ingen navne-snapshot (#1847): race_results.rider_id/team_id peger fortsat
+  // på levende rækker, så attributionen bevares i stedet for at blive SET NULL'et.
+  // Ét hold ad gangen: hver nedlæggelse er selvstændigt idempotent, og en fejl på
+  // hold nr. 3 må ikke rulle nr. 1-2 tilbage.
+  if (retire) {
+    for (const teamId of ids) {
+      await retireAiTeam(supabase, teamId);
+    }
+    console.log(`  🏁 AI-trim: ${ids.length} hold nedlagt (#4753) — puljepladsen frigivet, intet slettet.`);
+    return toRemove.length;
+  }
+
   for (let i = 0; i < ids.length; i += INSERT_BATCH) {
     const batch = ids.slice(i, i + INSERT_BATCH);
     // #1847: bevar løbshistorikkens navne før FK'erne SET NULL'er attributionen.

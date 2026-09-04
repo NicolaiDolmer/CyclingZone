@@ -164,3 +164,29 @@ test("skrivefejl → fail-open, så næste tick prøver igen i stedet for at tie
   assert.equal(res.reason, "state-error");
   assert.match(captured[0], /upsert boom/);
 });
+
+// ── alertOnReadError (#2738-migrering: fail-safe-stille kaldere) ────────────
+
+test("alertOnReadError:false — læsefejl er fail-safe-stille (INGEN alarm), men fejlen rapporteres stadig", async () => {
+  const supabase = makeSupabase({ readError: { message: "state table down" } });
+  const captured = [];
+  const res = await shouldAlertOnChange({
+    supabase, alertKey: "k", signature: "s", alertOnReadError: false,
+    captureExceptionFn: (e) => captured.push(e.message),
+  });
+
+  assert.equal(res.alert, false);
+  assert.equal(res.reason, "state-error");
+  assert.match(captured[0], /state table down/);
+});
+
+test("alertOnReadError:false ændrer INTET når læsningen rent faktisk lykkes", async () => {
+  const now = new Date("2026-09-04T06:00:00Z");
+  const supabase = makeSupabase();
+  const res = await shouldAlertOnChange({
+    supabase, alertKey: "k", signature: "team-1:stall", now, alertOnReadError: false,
+  });
+
+  assert.equal(res.alert, true);
+  assert.equal(res.reason, "changed");
+});

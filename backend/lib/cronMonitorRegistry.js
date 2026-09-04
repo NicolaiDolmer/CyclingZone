@@ -68,6 +68,17 @@ export const CRON_MONITOR_10MIN = {
   failureIssueThreshold: 2,
   timezone: "Etc/UTC",
 };
+// #4147: 15-min-kadence til halv-finaliserings-vagten. Samme deploy-tolerance som
+// 10MIN ovenfor — marginen skal kunne rumme en Railway-genstartsklynge uden at
+// bekræfte to misses i træk, mens en reelt død vagt stadig alarmerer inden for
+// 2×15+15 = 45 min.
+export const CRON_MONITOR_15MIN = {
+  schedule: { type: "interval", value: 15, unit: "minute" },
+  checkinMargin: 15,
+  maxRuntime: 25,
+  failureIssueThreshold: 2,
+  timezone: "Etc/UTC",
+};
 export const CRON_MONITOR_30MIN = {
   schedule: { type: "interval", value: 30, unit: "minute" },
   checkinMargin: 15,
@@ -140,6 +151,9 @@ export const ALL_CRON_MONITORS = [
   ["deferred-transfer-heal", CRON_MONITOR_5MIN],
   ["auto-prize", CRON_MONITOR_5MIN],
   ["stage-scheduler", CRON_MONITOR_5MIN],
+  // #4147 — halv-finaliserings-vagt. Read-only; ikke gated bag et flag (en vagt der
+  // som default er slukket er præcis den fejl den findes for at fange).
+  ["race-finalize-watch", CRON_MONITOR_15MIN],
   ["ranking-matview-refresh", CRON_MONITOR_10MIN],
   ["global-rank-weekly-snapshot", CRON_MONITOR_24H],
   ["stall-watchdog", CRON_MONITOR_30MIN],
