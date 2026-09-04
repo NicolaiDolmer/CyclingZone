@@ -8,9 +8,11 @@
 
 > **⏳ Venter på DIN beslutning (én ad gangen):** **#4629** træningsprogrammer §8 · **#4632** løbsdagens intention (model C) · **#4201** assistent-tilstand (mekanik merget, flag off) · **#4700** luk eller hold 14 dage · **#3426** nedkørsel, ventet 4 uger på din observation · **#4376/PR #4388** S3-kompensation (A) · **#4177** `CUSTOM_END_MIN_HOURS` · **#4576** intake-apply · #4485 · #4448 · #4098 · #3512 (anbefalet lukket) · **#4627** kræver at du kører `/design-sync`.
 
-> **🔴 Åbne fund:** **#4595** chunk-fejl (rodfix = #2423, PR klar) · **#4453** Railway-logvagt mangler secret · **#4537** fair play 2 hold · **#2960** React 19 egen session · #4146 · #4530 · #4531 · #4423 · **#4109** planlægnings-fladen kræver mockups · webkit-hydration #418 set intermitterende på PR-CI (datapunkt på #4370).
+> **🔴 Åbne fund:** **#4753** 4 puljer på 25 hold (13 AI-hold utrimbare, FK-beslutning fra #4233 aldrig truffet) · **#4595** chunk-fejl (rodfix = #2423, PR klar) · **#4453** Railway-logvagt mangler secret · **#4537** fair play 2 hold · **#2960** React 19 egen session · #4146 · #4530 · #4531 · #4423 · **#4109** planlægnings-fladen kræver mockups · webkit-hydration #418 set intermitterende på PR-CI (datapunkt på #4370).
 
-> **✅ Aftenbølge 3/9 (6 laner, `docs/audits/night-wave-2026-09-03-aften.md`):** #4590 lukket (ingen regression) · #3777 lukket (3 migrations-rækker registreret m. ejer-GO, PR #4740) · #4499 → done (PR #4741, Sentry var blind på WebKit) · #4148 trin 1+2 (PR #4742, RPC applied, flag off) · #3422 JSX + guard (PR #4743, 7.245 via #4744; 166 locale-pile udestår) · #2423 PR #4745 afventer go. Audit aften: 5 lukket + #4267 (hard rule 33+34), masterplan-drift rettet, artifact republiceret. Done-gated: 16.
+> **✅ Aftenbølge 3/9** (`docs/audits/night-wave-2026-09-03-aften.md`): 5 PR merget (#4740-#4744), #2423 PR #4745 afventer go, 166 locale-pile udestår på #3422.
+
+> **🔍 Sentry/Railway-triage 4/9:** 4 issues resolvet (støj/allerede fikset) · **PR #4754** (#4752) dedupe AI-trim-alarmen: 288 Sentry-events i døgnet → 1, backend-only, 8330 tests grønne, **afventer dit go** · **#4753** rejst: 4 puljer på 25 hold fordi døde `transfer_offers` gør 13 AI-hold utrimbare — kræver dit A/B/C-valg (anbefaling: C).
 
 > **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). PR #4608 efter #4616. Pro v1.1 live. #4645 pris-vagt (synk efter #4608). #4646 udskudt 3/9. #4512 dunning · #4511 EU-moms.
 
