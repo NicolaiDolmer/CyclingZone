@@ -525,7 +525,12 @@ export function managerProfile(teamId) {
 
 // #3199 — forum-seed til preview/Playwright. Pinned ejer-opslag med poll +
 // almindelige spiller-opslag, samme shape som backend/lib/forum.js serverer.
-const FORUM_AUTHOR_OWNER = { username: "dolmer", team_name: null };
+// #4751: forfatter-shapen baerer nu ogsaa division (auto-signaturen). Ejeren
+// har intet hold — bevidst, saa preview ogsaa viser den ulinkede tilstand.
+const FORUM_AUTHOR_OWNER = { username: "dolmer", team_name: null, team_id: null, division: null };
+const FORUM_AUTHOR_PETE = { username: "peloton_pete", team_name: "Thunder Cycling", team_id: RIVAL_TEAM.id, division: RIVAL_TEAM.division };
+const FORUM_AUTHOR_SOFIE = { username: "sofie_r", team_name: "Nordjysk CC", team_id: "team-nordjysk", division: 4 };
+const FORUM_AUTHOR_E2E = { username: "e2e", team_name: "E2E Racing", team_id: TEST_TEAM.id, division: TEST_TEAM.division };
 // #4118/#3451: is_unread pr. tråd — pinned-1 og post-3 er læst (demonstrerer
 // den umarkerede tilstand), post-2 og post-4 er ulæst (prik + fed titel på
 // preview/e2e), så unread-status-mocken nedenfor har noget ægte at svare på.
@@ -558,7 +563,7 @@ const FORUM_POSTS = [
     last_reply_at: "2026-08-06T06:10:00Z",
     has_poll: false,
     is_unread: true,
-    author: { username: "peloton_pete", team_name: "Thunder Cycling", team_id: RIVAL_TEAM.id },
+    author: FORUM_AUTHOR_PETE,
   },
   {
     id: "forum-post-3",
@@ -573,7 +578,7 @@ const FORUM_POSTS = [
     last_reply_at: "2026-08-05T08:00:00Z",
     has_poll: false,
     is_unread: false,
-    author: { username: "sofie_r", team_name: "Nordjysk CC" },
+    author: FORUM_AUTHOR_SOFIE,
   },
   {
     id: "forum-post-4",
@@ -588,7 +593,7 @@ const FORUM_POSTS = [
     last_reply_at: null,
     has_poll: false,
     is_unread: true,
-    author: { username: "e2e", team_name: "E2E Racing" },
+    author: FORUM_AUTHOR_E2E,
   },
 ];
 
@@ -612,7 +617,7 @@ export function forumPostDetail(postId) {
         seq: 1,
         created_at: "2026-08-05T21:05:00Z",
         body: "Great initiative. My vote went to race replays, the finale deserves it.",
-        author: { username: "peloton_pete", team_name: "Thunder Cycling", team_id: RIVAL_TEAM.id },
+        author: FORUM_AUTHOR_PETE,
         is_mine: false,
         support_count: 6,
         supported_by_me: true,
@@ -623,7 +628,7 @@ export function forumPostDetail(postId) {
         seq: 2,
         created_at: "2026-08-06T07:20:00Z",
         body: "Agreed, and thanks for asking us directly in the game instead of only on Discord.",
-        author: { username: "sofie_r", team_name: "Nordjysk CC" },
+        author: FORUM_AUTHOR_SOFIE,
         is_mine: false,
         support_count: 2,
         supported_by_me: false,
@@ -632,7 +637,7 @@ export function forumPostDetail(postId) {
           id: `${post.id}-r1`,
           removed: false,
           excerpt: "Great initiative. My vote went to race replays, the finale deserves it.",
-          author: { username: "peloton_pete", team_name: "Thunder Cycling", team_id: RIVAL_TEAM.id },
+          author: FORUM_AUTHOR_PETE,
         },
       },
       {
@@ -640,7 +645,7 @@ export function forumPostDetail(postId) {
         seq: 3,
         created_at: "2026-08-06T07:45:00Z",
         body: "Whatever the original comment said, I second it.",
-        author: { username: "e2e", team_name: "E2E Racing" },
+        author: FORUM_AUTHOR_E2E,
         is_mine: true,
         support_count: 0,
         supported_by_me: false,

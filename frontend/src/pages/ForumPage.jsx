@@ -9,6 +9,9 @@ import {
 } from "../components/ui";
 import { InboxIcon } from "../components/ui/icons/index.jsx";
 import FounderMark from "../components/FounderMark.jsx";
+// #4751: datoformatteren bor nu i det delte forum-modul (en side skal ikke
+// vaere kilde for en komponent — ForumAuthorIdentity bruger den samme).
+import { formatForumDate } from "../components/forum/forumIdentity.js";
 
 // #3199 — Forum v1 (plan låst 6/8): to kategorier (General · Feedback & ideas),
 // opslag + svar-tråde, ejer-opslag kan pinnes og bære afstemninger. T1 standard
@@ -25,17 +28,6 @@ const TITLE_MAX = 120;
 const BODY_MAX = 4000;
 // Modul-konstant: en inline-array ville re-subscribe Realtime-kanalen hver render.
 const FORUM_TABLES = ["forum_posts", "forum_replies"];
-
-export function formatForumDate(iso, language) {
-  if (!iso) return "";
-  return new Date(iso).toLocaleString(language === "da" ? "da-DK" : "en-GB", {
-    timeZone: "Europe/Copenhagen",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function PostRow({ post, t, language }) {
   return (
