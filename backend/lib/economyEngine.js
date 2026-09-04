@@ -27,6 +27,9 @@ import {
   startSequentialNegotiation,
 } from "./boardEngine.js";
 import { processReplacementTrigger } from "./boardMembers.js";
+// #1237 · sumActiveLoanDebt = aktiv gæld (sum af loans.amount_remaining), delt formel
+// til no_outstanding_debt-målets nettostilling (scoreFinanceHealthGoal, boardUtils.js).
+import { sumActiveLoanDebt, sumRiderSalaries } from "./boardUtils.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import {
   evaluateAndApplyConsequences,
@@ -1662,6 +1665,12 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
           board,
           standing,
           activeLoanCount: teamLoans.length,
+          // #1237 · nettostilling-input til no_outstanding_debt (scoreFinanceHealthGoal).
+          // totalSalary er allerede beregnet ovenfor (samme rytterfelt), teamLoans har
+          // amount_remaining fra loanData.
+          balance: team.balance || 0,
+          activeDebt: sumActiveLoanDebt(teamLoans),
+          wageBillPerSeason: totalSalary,
           currentSponsorIncome: team.sponsor_income,
           recentSnapshots: [],
         }),
@@ -1767,15 +1776,20 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     const planIsComplete = seasonsCompleted >= planDuration;
     const isMidReview = !planIsComplete && seasonsCompleted === Math.floor(planDuration / 2);
 
-    // Active loans count for no_outstanding_debt goal
-    const { count: activeLoanCount, error: activeLoanCountError } = await supabaseClient.from("loans")
-      .select("id", { count: "exact", head: true })
+    // #1237 · Aktive lån + udestående gæld (amount_remaining) til no_outstanding_debt-
+    // målets nettostilling (scoreFinanceHealthGoal). Ikke længere head:true-kun-count —
+    // vi skal bruge de faktiske amount_remaining-beløb til activeDebt.
+    const { data: activeLoanRows, error: activeLoanCountError } = await supabaseClient.from("loans")
+      .select("id, amount_remaining")
       .eq("team_id", team.id).eq("status", "active");
     throwIfSupabaseError(activeLoanCountError, `Could not count active loans for ${team.name}`);
+    const activeLoanCount = (activeLoanRows || []).length;
+    const activeDebt = sumActiveLoanDebt(activeLoanRows || []);
 
-    // Fresh team data for sponsor_growth evaluation
+    // Fresh team data for sponsor_growth evaluation + nettostilling (#1237: balance
+    // hentes samme sted som sponsor_income for at undgå en femte query).
     const { data: freshTeamData, error: freshTeamDataError } = await supabaseClient.from("teams")
-      .select("sponsor_income").eq("id", team.id).single();
+      .select("sponsor_income, balance").eq("id", team.id).single();
     throwIfSupabaseError(freshTeamDataError, `Could not load sponsor income for ${team.name}`);
 
     const { data: recentSnapshots, error: recentSnapshotsError } = await supabaseClient
@@ -1811,6 +1825,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       board,
       standing: teamStanding,
       activeLoanCount: activeLoanCount || 0,
+      // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
+      balance: freshTeamData?.balance ?? team.balance ?? 0,
+      activeDebt,
+      wageBillPerSeason: sumRiderSalaries(team.riders || []),
       currentSponsorIncome: freshTeamData?.sponsor_income ?? team.sponsor_income,
       recentSnapshots: recentSnapshots || [],
       goalContext,

@@ -406,13 +406,17 @@ test("evaluateMidSeasonTrigger satisfaction >=50 + alle goals OK → trigger=fal
     { type: "min_u25_riders", target: 1 },
     { type: "no_outstanding_debt", target: 0 },
   ];
+  // #1237 · no_outstanding_debt scorer nu på nettostilling (balance minus aktiv
+  // gæld) med buffer mod lønsummen — team.balance (200K) dækker rigeligt lønsummen
+  // (50K, afledt af rytterens salary) og activeDebt (0), så målet er reelt "ahead".
   const result = await evaluateMidSeasonTrigger({
     satisfaction: 70,
     goals,
     standing: { rank_in_division: 1, division: 3 },
-    team: { riders: [{ is_u25: true }] },
+    team: { balance: 200_000, riders: [{ is_u25: true, salary: 50_000 }] },
     divisionManagerCount: 6,
-    getRiders: async () => [{ is_u25: true }],
+    activeDebt: 0,
+    getRiders: async () => [{ is_u25: true, salary: 50_000 }],
   });
   assert.equal(result.trigger, false);
 });

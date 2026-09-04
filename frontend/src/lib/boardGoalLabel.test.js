@@ -104,7 +104,7 @@ test("all board goal types resolve to English in EN (no DA leak)", () => {
       "Sponsor income up 10%", "Sponsor-indkomst vokset med 10%"],
     [{ type: "sponsor_growth", target: 30, label: "Sponsor-indkomst vokset med 30% over planperioden" },
       "Sponsor income up 30% over the plan period", "Sponsor-indkomst vokset med 30% over planperioden"],
-    [{ type: "no_outstanding_debt", target: 0, label: "Ingen udestaende gaeld ved saesonslut" },
+    [{ type: "no_outstanding_debt", target: 0, label: "Ingen udestaaende gaeld ved saesonslut" },
       "No outstanding debt at season end", "Ingen udestående gæld ved sæsonslut"],
     [{ type: "relative_rank", target: 3, label: "Slut foran mindst 3 andre managers i divisionen" },
       "Finish ahead of at least 3 other managers in the division", "Slut foran mindst 3 andre managers i divisionen"],

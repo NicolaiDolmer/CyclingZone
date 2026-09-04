@@ -69,6 +69,13 @@ export function buildBoardEvalContext({
   board,
   standing = null,
   activeLoanCount = 0,
+  // #1237 · nettostilling-input til no_outstanding_debt-målet (scoreFinanceHealthGoal,
+  // boardUtils.js). Alle tre defaulter til 0 for opkaldssteder der (endnu) ikke
+  // sender dem — no_outstanding_debt falder da tilbage til "dyb negativ netto"-scoren,
+  // aldrig et krav (evaluateGoal/evaluateGoalProgress håndterer default-sikkert).
+  balance = 0,
+  activeDebt = 0,
+  wageBillPerSeason = 0,
   currentSponsorIncome = null,
   recentSnapshots = [],
   goalContext = {},
@@ -84,6 +91,9 @@ export function buildBoardEvalContext({
     seasonsCompleted,
     isFinalSeason: seasonsCompleted >= planDuration,
     activeLoanCount,
+    balance,
+    activeDebt,
+    wageBillPerSeason,
     planStartSponsorIncome: board.plan_start_sponsor_income,
     currentSponsorIncome,
     recentSnapshots,

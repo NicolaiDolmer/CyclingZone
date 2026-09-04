@@ -116,8 +116,15 @@ const DRIFT_TEAM = { riders: [], sponsor_income: 200_000 };
 
 // Nøjagtig den context /board/request håndbyggede FØR fixet (api.js pre-#2469):
 // 13 felter, ingen isFinalSeason, ingen loadGoalContextForBoard-felter.
+// #1237 · balance/activeDebt/wageBillPerSeason tilføjet: en solidt positiv
+// nettostilling (500K balance, ingen gæld, 200K lønsum → fuld buffer dækket),
+// så no_outstanding_debt-scoren reelt kan nå 1.0/1.05 og testen stadig
+// isolerer isFinalSeason-mekanismen (punkt 3 nedenfor), ikke en svag nettostilling.
 const PRE_FIX_REQUEST_CONTEXT = {
   activeLoanCount: 0,
+  balance: 500_000,
+  activeDebt: 0,
+  wageBillPerSeason: 200_000,
   currentSponsorIncome: 200_000,
   hasSeasonData: true,
   isExpired: false,
@@ -137,6 +144,10 @@ function fullRequestContext() {
     board: DRIFT_BOARD,
     standing: DRIFT_STANDING,
     activeLoanCount: 0,
+    // #1237 · samme solide nettostilling som PRE_FIX_REQUEST_CONTEXT ovenfor.
+    balance: 500_000,
+    activeDebt: 0,
+    wageBillPerSeason: 200_000,
     currentSponsorIncome: 200_000,
     recentSnapshots: [],
     goalContext: { divisionManagerCount: 6, divisionTeamCount: 12 },

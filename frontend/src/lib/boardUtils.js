@@ -88,13 +88,17 @@ export function satisfactionToModifier(satisfaction) {
  *
  * @param {object} goal       Mål-objekt fra board.current_goals.
  * @param {object} [evaluation] outlook.goal_evaluations[i] for samme indeks (med `met`).
- * @param {object} [ctx]       Fallback-kontekst: { cumulativeStats, riders, standing, activeLoanCount }.
+ * @param {object} [ctx]       Fallback-kontekst: { cumulativeStats, riders, standing, activeLoanCount,
+ *                              team, activeDebt }. `team.balance` + `activeDebt` er #1237-tilføjelser
+ *                              (nettostilling); uden dem falder no_outstanding_debt tilbage til den
+ *                              gamle activeLoanCount===0-regel (backend sender normalt `evaluation.met`,
+ *                              så denne gren rammes sjældent).
  */
 export function isBoardGoalAchieved(goal, evaluation, ctx = {}) {
   if (typeof evaluation?.met === "boolean") return evaluation.met;
   if (!goal) return false;
 
-  const { cumulativeStats, riders = [], standing, activeLoanCount = 0 } = ctx;
+  const { cumulativeStats, riders = [], standing, activeLoanCount = 0, team, activeDebt } = ctx;
   if (goal.cumulative) {
     if (goal.type === "stage_wins") return (cumulativeStats?.stage_wins || 0) >= goal.target;
     if (goal.type === "gc_wins") return (cumulativeStats?.gc_wins || 0) >= goal.target;
@@ -113,6 +117,13 @@ export function isBoardGoalAchieved(goal, evaluation, ctx = {}) {
     case "gc_wins":
       return standing ? (standing.gc_wins || 0) >= goal.target : false;
     case "no_outstanding_debt":
+      // #1237 · nettostilling (balance minus aktiv gæld) når kalderen sender BEGGE
+      // felter; ellers uændret gammel regel (aldrig et gæt på et manglende balance-
+      // eller activeDebt-tal — CodeRabbit-fund, PR #4779: et manglende `team.balance`
+      // gættede tidligere 0, hvilket kunne gøre nettostillingen for optimistisk).
+      if (typeof activeDebt === "number" && typeof team?.balance === "number") {
+        return team.balance - activeDebt >= 0;
+      }
       return activeLoanCount === 0;
     // #3494 · sponsor_growth kan IKKE afgøres uden backend-evaluering (kræver
     // aggregerede sponsor_contracts-udbetalinger over sæsoner) — teams.sponsor_income
