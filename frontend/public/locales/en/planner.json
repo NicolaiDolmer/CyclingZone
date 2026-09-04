@@ -209,7 +209,7 @@
   ],
   "divisionPending": {
     "title": "Your season {number} division is decided at the season rollover",
-    "body": "Promotion and relegation are settled when the current season closes, so we cannot tell you which calendar is yours yet. Every division's season {number} races are listed below, so you can still study the route.",
+    "body": "Promotion and relegation are settled when the current season closes, so I cannot tell you which calendar is yours yet. Every division's season {number} races are listed below, so you can still study the route.",
     "hint": "Peaks for season {number} open as soon as your division is confirmed."
   }
 }
