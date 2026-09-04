@@ -40,6 +40,8 @@ Låst 14/8 (spec `2026-08-14-3659-rytterudvikling-og-traening-design.md`, beslut
 
 > ⚠ **Status er 🟡, ikke ✅.** Trin 4's rolle-tag blev leveret 14/8 og RULLET TILBAGE 15/8 (PR #3791), fordi 748 ryttere brød loftet. Nuværende `ROLE_CLASS_TAG` er en genopbygning via #3709/#3798, og er ikke genmålt mod de oprindelige success-kriterier siden. Se audit-filen §C1, §C6.
 
+> 🔧 **4/9 ([#4634](https://github.com/NicolaiDolmer/CyclingZone/issues/4634)/[#4098](https://github.com/NicolaiDolmer/CyclingZone/issues/4098), ejer-beslutning, variant A3+C2 af `docs/audits/4634-cap-varianter-2026-09-04.md`):** `roleTags.svaghed` hævet — 635 ryttere/867 evne-felter stod på bund-loftet ("done") i prod, halvdelen 29+ (aldersaftrapning, urørt). Samtidig fik `gc`-ryttere et nyt gulv på `punch`-taget (`GC_PUNCH_FLOOR`, `riderProgression.js`), fordi `gc` ikke har en `punch`-post i `CAPS_SHAPING_WEIGHTS` og derfor arvede sit punch-tag alene fra sekundærtypen. `ROLE_CLASS_RATE.svaghed` er UÆNDRET — raten er en separat beslutning (egen session, se opfølger-issue). Præcise tal: se konstanterne selv (hard rule 17).
+
 ---
 
 ## 2. Ryttertyper (8 arketyper)

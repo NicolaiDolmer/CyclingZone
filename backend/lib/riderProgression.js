@@ -107,7 +107,17 @@ export const YOUTH_PROGRESSION_CONFIG = Object.freeze({
   // (0,82). Det betyder at en rytter hvis positioning er sekundær-ejet BEHOLDER
   // sekundær-klassen (tag 80, rate 0,36) frem for at blive "opgraderet" ned.
   // abilityRoleClass' gulv-løft-invariant håndhæver det uanset værdierne.
-  roleTags: Object.freeze({ signatur: 93, sekundaer: 80, haandvaerk: 70, andenRolle: 55, svaghed: 25 }),
+  //
+  // SVAGHED 25 → 45 (#4634/#4098, ejer-beslutning 4/9, variant A3 af
+  // docs/audits/4634-cap-varianter-2026-09-04.md): 635 ryttere/867 evne-felter
+  // stod på bund-loftet ("done", 0 point tilbage at vinde) i prod 4/9, heraf
+  // halvdelen 29+ (aldersaftrapning, urørt af denne ændring). A3 frigiver alle
+  // 631 under-29-ryttere/861 felter uden at flytte en eneste rytterværdi (målt
+  // 0,00 % median værdi-ændring, `predictBaseValueV4` læser ikke roleTags) og
+  // med kun +17 point evne-vækst totalt i resten af S3 (dedikeret hård
+  // træning). ROLE_CLASS_RATE.svaghed (0,05) er UÆNDRET — raten er en separat
+  // beslutning, egen session inden 11/9.
+  roleTags: Object.freeze({ signatur: 93, sekundaer: 80, haandvaerk: 70, andenRolle: 55, svaghed: 45 }),
 
   // Potentiale → træningsfart-multiplikator. ══ SPREDT I TRIN 7 (ejer 16/8),
   // REKALIBRERET OP 21/8 (#3966) ══
@@ -156,6 +166,19 @@ export const YOUTH_PROGRESSION_CONFIG = Object.freeze({
 // Klassens TAG — absolut loft for evnen, uafhængigt af potentiale (trin 7).
 // Eksporteret ved siden af ROLE_CLASS_RATE så de to knapper står side om side.
 export const ROLE_CLASS_TAG = YOUTH_PROGRESSION_CONFIG.roleTags;
+
+// GC-PUNCH-GULV (#4634/#4098, ejer-beslutning 4/9, variant C2 af
+// docs/audits/4634-cap-varianter-2026-09-04.md): `gc` har ingen punch-post i
+// CAPS_SHAPING_WEIGHTS (capsShapingWeights.js), så en GC-rytters punch-tag
+// afgøres i dag udelukkende af sekundærtypen — 69,7 % af GC-ryttere (331/475)
+// endte på andenRolle-tag eller under, og de 22 gc/tt-ryttere endte i klassen
+// `svaghed`. Gulvet løfter punch-TAGET (ikke evnen — se youthAbilityCap
+// nedenfor) til sekundær-niveau for ALLE GC-ryttere, uanset klassificering.
+// Det er et gulv PÅ LOFTET: bygges ind hvor det absolutte tag udledes
+// (youthAbilityCap → buildYouthCaps → buildCapsForRider), så det tapres med
+// alderen på præcis samme måde som ethvert andet tag, og aldrig konkurrerer
+// med håndværks-gulvet (anden evne, positioning/tactics).
+export const GC_PUNCH_FLOOR = 80;
 
 // Evner ingen ryttertype fødes med, men alle kan lære (spec §2.1 "håndværk").
 // Se craftFactor i YOUTH_PROGRESSION_CONFIG for hvorfor listen er præcis disse to.
@@ -492,9 +515,17 @@ function _youthLoftForPotential(potentiale, cfg = YOUTH_PROGRESSION_CONFIG) {
 // `potentiale` indgår IKKE længere — det styrer kun farten (rateByPotential).
 // Parameteren beholdes i signaturen: (a) alle callers sender den allerede, og
 // (b) .length === 5-kontrakten (ingen skjult baseline-param) er pinnet i test.
+//
+// GC-punch-gulvet (#4634/#4098, 4/9, variant C2 — se GC_PUNCH_FLOOR ovenfor)
+// lægges oveni klasse-taget som en ren MAX, samme gulv-løft-invariant som
+// håndværket bruger: den kan aldrig sænke et tag, kun løfte punch for `gc`.
 export function youthAbilityCap(potentiale, primaryType, secondaryType, ability, cfg) {
   const c = cfg ?? YOUTH_PROGRESSION_CONFIG;
-  return clamp(Math.round(tagForClass(abilityRoleClass(primaryType, secondaryType, ability, c), c)), 0, 99);
+  let tag = tagForClass(abilityRoleClass(primaryType, secondaryType, ability, c), c);
+  if (primaryType === "gc" && ability === "punch") {
+    tag = Math.max(tag, GC_PUNCH_FLOOR);
+  }
+  return clamp(Math.round(tag), 0, 99);
 }
 
 // Byg caps-sættet for en ung over alle synlige evner.
