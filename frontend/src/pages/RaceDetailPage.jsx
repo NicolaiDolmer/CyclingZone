@@ -25,11 +25,6 @@ import {
   TabList,
   Tab,
   CollapsibleSection,
-  MountainIcon,
-  TimeTrialIcon,
-  RoadIcon,
-  TeamIcon,
-  CobblesIcon,
   SkeletonLines,
   // #4628 (TASTE P7): tilbage-linket bar en unicode-pil ("← Race library") i selve
   // locale-strengen. Pile er ikke ikoner — de arver linjehoejde, rammer ikke
@@ -64,6 +59,7 @@ import { classificationPointTotals } from "../lib/raceClassificationTotals.js";
 import { hasRouteData } from "../lib/stageRouteProfile.js";
 import { buildFinalKilometrePlayback } from "../lib/finalKilometre.js";
 import { profileLabelKey } from "../lib/stageProfileConfig.js";
+import TerrainTypeGlyph from "../components/race/TerrainTypeGlyph.jsx";
 import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
@@ -161,24 +157,6 @@ function StageProfileSlot({ profile, stageLabel, passages, tier, hasClassificati
   return <LegacyStageProfileCard profile={profile} stageLabel={stageLabel} />;
 }
 
-// #3985: ejer-valgt terræn-badge (20/8) — stroke-ikon + tekstlabel. Genbruger
-// de eksisterende stroke-ikoner hvor formsproget allerede matcher (bjerg/
-// stopur/vej/hold); CobblesIcon (brosten) bor i det delte ikon-bibliotek
-// (components/ui/icons/index.jsx).
-const TERRAIN_ICON_BY_PROFILE = {
-  flat: RoadIcon,
-  rolling: RoadIcon,
-  hilly: MountainIcon,
-  mountain: MountainIcon,
-  high_mountain: MountainIcon,
-  itt: TimeTrialIcon,
-  itt_hilly: TimeTrialIcon,
-  ttt: TeamIcon,
-  cobbles: CobblesIcon,
-  gravel: CobblesIcon, // #4105: grus deler ikon med brosten (samme terraen-familie)
-  classic: RoadIcon,
-};
-
 // #3985: #3914 flyttede den fulde profilgraf (inkl. #1484-terræn-badget) ned i
 // en default-lukket "Etapeprofil"-sektion — for etaper MED rutedata (Sub-4)
 // forsvandt terræn-typen (flad/bakket/bjerg/brosten/enkeltstart) dermed helt
@@ -186,18 +164,15 @@ const TERRAIN_ICON_BY_PROFILE = {
 // gengiver KUN terræn-kategorien, i etape-fanens metadata-linje, uden at
 // genåbne #3914's "resultat øverst"-beslutning eller folde noget ud. Ukendt
 // profile_type → null (graceful degrade, ingen falsk visning).
-function StageTerrainTag({ profileType, t }) {
+// #4748/#4487: ikon + label kommer nu fra DEN delte tabel (TerrainTypeGlyph,
+// terrainTypeIcons.ts) i stedet for en lokal TERRAIN_ICON_BY_PROFILE-kopi —
+// samme ikon-sæt som StageStripe og StageDetailPanel bruger.
+function StageTerrainTag({ profileType }) {
   const labelKey = profileLabelKey(profileType);
   if (!labelKey) return null;
-  const label = t(`detail.${labelKey}`);
-
-  // Minimalt stroke-ikon (samme sprog som resten af appens stroke-ikoner) +
-  // typenavn.
-  const Icon = TERRAIN_ICON_BY_PROFILE[profileType] || RoadIcon;
   return (
     <CategoryTag className="gap-1">
-      <Icon size={13} className="shrink-0" />
-      {label}
+      <TerrainTypeGlyph profileType={profileType} size={13} showLabel labelClassName="" />
     </CategoryTag>
   );
 }
@@ -1588,7 +1563,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
           FØR #3914 (dengang stod den fulde profilgraf altid åben her). */}
       <div className="flex items-center gap-2 flex-wrap">
         <span className="font-data text-3xs uppercase tracking-[.08em] text-cz-3">{stageLabel}</span>
-        <StageTerrainTag profileType={profile?.profile_type} t={t} />
+        <StageTerrainTag profileType={profile?.profile_type} />
       </div>
 
       {/* #3914 (bølge 3): resultatet FØRST — klassement-sub-faner + tabel før

@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { profileShape, profileLabelKey } from "../../lib/stageProfileConfig.js";
 import { hasRouteData } from "../../lib/stageRouteProfile.js";
 import StageProfileGraph from "./StageProfileGraph.jsx";
+import TerrainTypeGlyph from "./TerrainTypeGlyph.jsx";
 
 // #1484-piktogrammet — bevares for etaper UDEN rutedata (S1/PCM-løb).
 function LegacyMiniSilhouette({ profileType }) {
@@ -63,7 +64,17 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
               {hasRouteData(s)
                 ? <StageProfileGraph profile={s} tier="mini" width={100} height={26} uid={`ms-${n}`} heightClass="h-7" />
                 : <LegacyMiniSilhouette profileType={s.profile_type} />}
-              <span className="block text-3xs font-mono mt-0.5">{n}</span>
+              {/* #4487 (mobil har intet ækvivalent til desktops hover-`title`):
+                  et permanent synligt terræn-ikon — samme tabel som label'en
+                  ovenfor bruger — så sprint og rolling kan skelnes UDEN hover
+                  ("mærke, ikke kun kurve"). Etapetypens FULDE tekst-label står
+                  altid synligt lige ovenover striben (StageDetailPanel), som
+                  skifter til den etape der trykkes/vælges her — der er derfor
+                  aldrig brug for et hover for at læse typen på mobil. */}
+              <span className="flex items-center justify-center gap-1 mt-0.5">
+                <TerrainTypeGlyph profileType={s.profile_type} size={10} className={active ? "text-cz-accent-t" : "text-cz-3"} />
+                <span className="text-3xs font-mono">{n}</span>
+              </span>
               {times?.[n]?.timeLabel && (
                 <span className="block text-3xs font-mono text-cz-3 leading-none">{times[n].timeLabel}</span>
               )}

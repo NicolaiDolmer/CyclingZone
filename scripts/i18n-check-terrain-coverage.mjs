@@ -22,11 +22,17 @@
 // key — completed races ("Mascate Classic", "Gran Premio de Castilla") already
 // show the raw key on the rider Results tab.
 //
-// This script checks BOTH classes against their generator source of truth:
+// This script checks these classes against their generator source of truth:
 //   1. CALENDAR_TERRAIN_BUCKETS (raceCalendar.js)
 //        ⊆ planner.json `terrain` keys (en + da)
 //   2. ARCHETYPE_PROFILES kind:"single" keys (raceStageProfileGenerator.js)
 //        ⊆ rider.json `profile.results.terrain` keys (en + da)
+//   3. PROFILE_TYPE_KEYS (frontend stageProfileConfig.js — #4748/#4487)
+//        ⊆ races.json `detail.profileType` keys (en + da) — the visible label
+//        ⊆ terrainTypeIcons.ts `TERRAIN_TYPE_ICON_NAME` keys — the glyph
+//      A profile_type missing either would render a raw i18n key or fall back
+//      silently to the wrong icon (RoadIcon) — this class is exactly #2896's
+//      failure mode again, just on the new terrain-glyph table.
 //
 // Brug:
 //   node scripts/i18n-check-terrain-coverage.mjs
@@ -38,6 +44,8 @@ import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { CALENDAR_TERRAIN_BUCKETS } from "../backend/lib/raceCalendar.js";
 import { ARCHETYPE_PROFILES } from "../backend/lib/raceStageProfileGenerator.js";
+import { PROFILE_TYPE_KEYS } from "../frontend/src/lib/stageProfileConfig.js";
+import { TERRAIN_TYPE_ICON_NAME } from "../frontend/src/lib/terrainTypeIcons.ts";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const LOCALES_DIR = join(ROOT, "frontend", "public", "locales");
@@ -78,9 +86,17 @@ export function singleRaceArchetypes(archetypeProfiles) {
     .map(([key]) => key);
 }
 
+// #4748/#4487: profile_type-keys uden en glyf-navn i TERRAIN_TYPE_ICON_NAME.
+// Ren funktion (samme moenster som findMissingTerrainKeys) saa den kan testes
+// uden fs.
+export function findMissingIconCoverage(values, iconNameByKey) {
+  return values.filter((value) => !(value in iconNameByKey));
+}
+
 function main() {
   const plannerByLng = Object.fromEntries(LNGS.map((lng) => [lng, loadJSON(lng, "planner")]));
   const riderByLng = Object.fromEntries(LNGS.map((lng) => [lng, loadJSON(lng, "rider")]));
+  const racesByLng = Object.fromEntries(LNGS.map((lng) => [lng, loadJSON(lng, "races")]));
 
   const calendarMissing = findMissingTerrainKeys(CALENDAR_TERRAIN_BUCKETS, plannerByLng, "terrain")
     .map((m) => ({ ...m, ns: "planner.json", keyPath: "terrain", source: "CALENDAR_TERRAIN_BUCKETS (backend/lib/raceCalendar.js)" }));
@@ -89,20 +105,28 @@ function main() {
   const archetypeMissing = findMissingTerrainKeys(archetypeValues, riderByLng, "profile.results.terrain")
     .map((m) => ({ ...m, ns: "rider.json", keyPath: "profile.results.terrain", source: "ARCHETYPE_PROFILES kind:\"single\" (backend/lib/raceStageProfileGenerator.js)" }));
 
-  const allMissing = [...calendarMissing, ...archetypeMissing];
+  const profileLabelMissing = findMissingTerrainKeys(PROFILE_TYPE_KEYS, racesByLng, "detail.profileType")
+    .map((m) => ({ ...m, ns: "races.json", keyPath: "detail.profileType", source: "PROFILE_TYPE_KEYS (frontend/src/lib/stageProfileConfig.js)" }));
 
-  if (allMissing.length === 0) {
+  const allMissing = [...calendarMissing, ...archetypeMissing, ...profileLabelMissing];
+
+  const iconMissing = findMissingIconCoverage(PROFILE_TYPE_KEYS, TERRAIN_TYPE_ICON_NAME);
+
+  if (allMissing.length === 0 && iconMissing.length === 0) {
     console.log(
-      `✓ i18n terrain-coverage OK — ${CALENDAR_TERRAIN_BUCKETS.length} calendar bucket(s) + ${archetypeValues.length} single-race archetype(s) × ${LNGS.length} language(s)`
+      `✓ i18n terrain-coverage OK — ${CALENDAR_TERRAIN_BUCKETS.length} calendar bucket(s) + ${archetypeValues.length} single-race archetype(s) + ${PROFILE_TYPE_KEYS.length} profile type(s) (label + glyf) × ${LNGS.length} language(s)`
     );
     process.exit(0);
   }
 
-  console.error(`✗ i18n terrain-coverage FAILED — ${allMissing.length} value(s) missing a locale key:\n`);
+  console.error(`✗ i18n terrain-coverage FAILED — ${allMissing.length + iconMissing.length} problem(s):\n`);
   for (const { value, missingIn, ns, keyPath, source } of allMissing) {
     console.error(`  • "${value}" (from ${source}) missing at frontend/public/locales/{${missingIn.join(",")}}/${ns} → ${keyPath}.${value}`);
   }
-  console.error(`\nFix: add the missing key(s) under frontend/public/locales/{en,da}/<namespace>.json at the noted path.`);
+  for (const value of iconMissing) {
+    console.error(`  • "${value}" (from PROFILE_TYPE_KEYS) has no glyf in frontend/src/lib/terrainTypeIcons.ts's TERRAIN_TYPE_ICON_NAME`);
+  }
+  console.error(`\nFix: add the missing key(s)/glyf under frontend/public/locales/{en,da}/<namespace>.json or terrainTypeIcons.ts.`);
   console.error(`Why this matters: these keys are built DYNAMICALLY (t(\`...\${value}\`)) — a key missing in`);
   console.error(`BOTH languages is invisible to i18n-check-keys.mjs's en-vs-da symmetry check (Refs #2896).`);
   process.exit(1);
