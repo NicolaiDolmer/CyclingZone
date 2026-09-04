@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 
 import {
   DIVISION_ADJUSTMENT_FACTOR,
-  FIRST_SEASON_WITH_DOWNWARD_ADJUSTMENT,
   DOWNWARD_ADJUSTMENT_ENABLED,
   computeDivisionAdjustment,
   applyModifierToAdjustment,
