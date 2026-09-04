@@ -26,6 +26,6 @@
 - **Grundregler (rytter, værdi/løn, økonomi-balance) udskudt til efter 27/9** (ejer 28/8 + 4/9).
 - **Mekanik:** PR'er merges med `--admin` én ad gangen, ÉT deploy-vindue pr. bølge; `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Workers: maks 3 tunge, "push senest efter 15 min", fremdrift måles på branchens sidste push.
 
-> **🤖 Working agent:** Ingen aktiv session (Fable lukkede 4/9 kl. ~23:50).
+> **🤖 Working agent:** Fable (natbølge 5/9, orkestrator) fra 5/9 ca. 22:30: workflows wf_781cc9b1-ef7 (A, 6 laner, 18 spor) + wf_de8ee347-3ae (B, 3 laner, 8 spor). Merge om morgenen med ejer-go. Pick-up kun via denne session.
 
 _Historik i git-log, issue-tråde + docs/audits/._
