@@ -1,0 +1,91 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; background: #ffffff; color: #222222; font: 14px/1.35 "Segoe UI", Arial, sans-serif; }
+    a { color: #555555; } a:hover { color: #222222; }
+    .stamp { border: 2px dashed #777777; color: #777777; padding: 6px 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; transform: rotate(-2deg); background: #ffffff; }
+    .tab { padding: 8px 16px; color: #777777; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+    .tab.on { color: #222222; border-bottom-color: #222222; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; background: #ffffff; }
+    th, td { border: 1px solid #9a9a9a; padding: 6px 10px; text-align: left; vertical-align: middle; }
+    th { background: #e9e9e9; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #777777; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .sub { display: block; color: #777777; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+    .chip { display: inline-block; border: 1px solid #9a9a9a; background: #f5f5f5; padding: 2px 8px; font-size: 11px; white-space: nowrap; }
+    .chip.on { background: #cfcfcf; font-weight: 700; }
+    .box { display: inline-block; width: 12px; height: 12px; border: 1px solid #222222; background: #ffffff; vertical-align: middle; }
+    .box.on { background: #222222; }
+    .btn { border: 1px solid #222222; background: #ffffff; padding: 7px 12px; display: inline-block; font-weight: 600; }
+    .btn.primary { background: #222222; color: #ffffff; }
+    .field { border: 1px solid #9a9a9a; background: #ffffff; padding: 6px 10px; font-size: 12px; color: #555555; }
+    .card { border: 1px solid #9a9a9a; background: #ffffff; padding: 14px; }
+    .card h3 { margin: 0 0 10px; font-size: 15px; }
+    .note { border: 1px dashed #9a9a9a; padding: 6px 10px; color: #777777; font-size: 12px; background: #fafafa; }
+    tr.pick td { background: #e9e9e9; }
+  </style>
+</helmet>
+<div style="width: 1280px; box-sizing: border-box; padding: 20px 28px 28px; background: #ffffff; position: relative;">
+  <div style="position: absolute; right: 28px; top: 16px;"><span class="stamp">Wireframe, not final</span></div>
+  <div style="font-size: 22px; font-weight: 800; margin-bottom: 4px;">Direction B sketch: you are the national coach</div>
+  <div style="color: #777777; margin-bottom: 16px;">The best-ranked manager of each nation coaches it for one season. New tab on the race page, only visible to that manager.</div>
+
+  <div style="display: flex; border-bottom: 2px solid #9a9a9a; margin: 0 0 16px;">
+    <div class="tab">Overview</div>
+    <div class="tab">Nations</div>
+    <div class="tab on">Denmark · your selection</div>
+    <div class="tab">Route</div>
+    <div class="tab">Results</div>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <div><strong>Denmark</strong> <span style="color: #777777;">· 6 places · you coach this season (rank 1 Danish manager) · closes day 79</span></div>
+    <div style="display: flex; gap: 8px;"><span class="btn">Auto-pick by ranking</span><span class="btn primary">Confirm selection</span></div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1.55fr 1fr; gap: 14px;">
+    <div>
+      <table>
+        <thead>
+          <tr><th style="width: 36px;"></th><th>Eligible Danish riders</th><th class="num">World rank</th><th>Type</th><th class="num">Rating</th><th class="num">Form</th><th>Club manager</th></tr>
+        </thead>
+        <tbody>
+          <tr class="pick"><td><span class="box on"></span></td><td>K. Nørgaard, 28<span class="sub">Team Nordkap</span></td><td class="num">17</td><td>Climber</td><td class="num">79</td><td class="num">81</td><td>Bobby_R</td></tr>
+          <tr class="pick"><td><span class="box on"></span></td><td>M. Hald, 25<span class="sub">Copenhagen Cycling</span></td><td class="num">33</td><td>Puncheur</td><td class="num">77</td><td class="num">70</td><td>AI team</td></tr>
+          <tr class="pick"><td><span class="box on"></span></td><td><strong>J. Sørensen, 19</strong><span class="sub">Your team</span></td><td class="num">41</td><td>Climber</td><td class="num">74</td><td class="num">86</td><td>you</td></tr>
+          <tr class="pick"><td><span class="box on"></span></td><td>R. Vestergaard, 30<span class="sub">Team Nordkap</span></td><td class="num">58</td><td>Domestique</td><td class="num">72</td><td class="num">75</td><td>Lene_K</td></tr>
+          <tr><td><span class="box"></span></td><td>E. Brandt, 24<span class="sub">Aarhus Riders</span></td><td class="num">91</td><td>Sprinter</td><td class="num">71</td><td class="num">62</td><td>AI team</td></tr>
+          <tr class="pick"><td><span class="box on"></span></td><td>S. Juhl, 22<span class="sub">Copenhagen Cycling</span></td><td class="num">104</td><td>Puncheur</td><td class="num">70</td><td class="num">88</td><td>AI team</td></tr>
+          <tr class="pick"><td><span class="box on"></span></td><td>N. Friis, 27<span class="sub">Aarhus Riders</span></td><td class="num">120</td><td>Domestique</td><td class="num">69</td><td class="num">79</td><td>Peter_H</td></tr>
+          <tr><td colspan="7" style="color: #777777; font-size: 12px;">17 more eligible riders, sorted by world rank</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size: 12px; color: #777777; margin-top: 8px;">6 of 6 picked · 2 reserves optional</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div class="card">
+        <h3>Team plan</h3>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;"><span>Captain</span><span class="field">K. Nørgaard</span></div>
+          <div style="display: flex; justify-content: space-between; align-items: center;"><span>Tactic</span><span class="field">Attack on the climb</span></div>
+          <div style="display: flex; justify-content: space-between; align-items: center;"><span>Protected rider</span><span class="field">J. Sørensen</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>What the other Danish managers see</h3>
+        <div style="font-size: 13px; color: #555555;">"K. Nørgaard called up by coach Bobby_R." They cannot refuse the call-up. Their rider misses club racing on day 84.</div>
+      </div>
+      <div class="note">Trade-off. More agency and a real reason to chase the national manager ranking. But 24 nations and roughly 5 with an active human manager: most nations end up auto-picked anyway, and a coach can favour their own riders. Direction A is the safe first version; B can be added on top later without changing the race page.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
