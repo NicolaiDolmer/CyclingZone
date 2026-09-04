@@ -26,6 +26,49 @@ Hvis Vercel-projekt, Railway-service eller domæner ændres, skal denne fil opda
 
 ---
 
+## Skew Protection (#2423)
+
+Vite-SPA'en serverer content-hashede chunks. Deployer vi mens en bruger har appen
+åben, forsvinder de gamle chunk-filnavne, og næste lazy `import()` rammer en 404
+→ fejlskærm (#4595/#4545). **Skew Protection** er slået TIL i Vercel-projektet
+(Settings → Advanced) og var det allerede før koden her blev skrevet.
+
+**Mekanikken er en cookie, ikke en query-string.** Ved app-boot sætter
+`frontend/src/lib/skewProtection.js` Vercels cookie `__vdpl=<deployment-id>`.
+Vercels edge ruter så både dokumentet og alle assets til netop det deployment
+klienten kører. Deployment-id og build-tidspunkt bages ind via `define` i
+`frontend/vite.config.js` fra `VERCEL_DEPLOYMENT_ID` — kun når
+`VERCEL_SKEW_PROTECTION_ENABLED === "1"`. Uden begge env-variabler er buildet
+bit-for-bit uændret og cookien sættes aldrig.
+
+**Asset-URL'er må ALDRIG stemples med `?dpl=`.** Første forsøg (PR #4745) brugte
+Vites `experimental.renderBuiltUrl` og knækkede hele appen i prod: entry-HTML og
+dynamiske imports fik query-strengen, men Vites statiske chunk-imports
+(`from "./react-XXXX.js"`) gør ikke — samme fil blev loadet under to URL'er,
+React og ConsentProvider blev instantieret to gange, React #418 på alle sider.
+Postmortem: `.claude/learnings/2026-09-04-skew-protection-dpl-query-brak-hele-appen.md`.
+
+- **Pin-vindue:** cookiens `Max-Age` er "resten af 4 timer efter build-tidspunktet"
+  og kan ikke forlænges ved reload. Vinduet ligger langt under Vercels Maximum Age
+  (default 1 døgn), så en pinnet request aldrig kan nå at blive 404'et, og en
+  bruger falder automatisk tilbage på seneste deployment efter 4 timer.
+  Konstanten er `PIN_WINDOW_MS` i `frontend/src/lib/skewProtection.js`. Sættes
+  Vercels Maximum Age under 4 timer, skal konstanten ned tilsvarende.
+- **Trade-off:** cookien pinner også dokument-navigationer, så en aktiv bruger kan
+  køre op til 4 timer på et gammelt deployment. Skal et hotfix ud med det samme,
+  brug Vercels **Custom Skew Protection Threshold** på det nye deployment.
+- **Forward-guard:** `npm run check:skew-protection`
+  (`scripts/check-skew-protection.mjs`) kører i CI's `frontend-build`-job og
+  fejler hvis NOGEN bygget URL i `frontend/dist/` bærer `?dpl=`. Er
+  `VERCEL_DEPLOYMENT_ID` sat, verificerer den desuden at id'et og cookienavnet
+  faktisk er bagt ind i en JS-chunk.
+- `frontend/vercel.json`s rewrites/headers matcher på sti og er upåvirkede —
+  cookien ændrer ingen URL.
+- **Effekt måles:** deploy-verifys chunk-fejl-rate-gate (budget 25/24 t,
+  `.github/workflows/deploy-verify.yml`) + Sentry CYCLINGZONE-56.
+
+---
+
 ## Observability env vars
 
 Sentry er canonical error-tracking for browser- og Node-runtime errors. GitHub Actions er canonical for CI/deploy/audit-status, og Supabase audits er canonical for DB/RLS/liveness drift.

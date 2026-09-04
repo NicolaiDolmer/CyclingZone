@@ -55,7 +55,21 @@ const worktreeIdPlugin = () => {
 // (auto-increment ved konflikt) for almindelig manuel `npm run dev`.
 const explicitPort = process.env.PORT ? Number(process.env.PORT) : undefined;
 
+// #2423: Vercel Skew Protection. Vi bager KUN to konstanter ind — deployment-id
+// og build-tidspunkt — som `src/lib/skewProtection.js` bruger til at sætte
+// Vercels `__vdpl`-cookie ved boot. Asset-URL'erne røres IKKE (se #4745-
+// postmortem: `experimental.renderBuiltUrl` med `?dpl=` gav dobbelt-loadede
+// moduler og knækkede hele appen). Uden begge Vercel-env-variabler er buildet
+// bit-for-bit uændret: id = "" og build-tid = 0 ⇒ cookie-koden er en no-op.
+const skewProtectionEnabled = process.env.VERCEL_SKEW_PROTECTION_ENABLED === "1";
+const skewDeploymentId = skewProtectionEnabled ? process.env.VERCEL_DEPLOYMENT_ID || "" : "";
+const skewBuildTime = skewDeploymentId ? Date.now() : 0;
+
 export default defineConfig({
+  define: {
+    __CZ_SKEW_DEPLOYMENT_ID__: JSON.stringify(skewDeploymentId),
+    __CZ_SKEW_BUILD_TIME__: JSON.stringify(skewBuildTime),
+  },
   plugins: [
     react(),
     worktreeIdPlugin(),

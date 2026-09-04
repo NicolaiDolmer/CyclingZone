@@ -1,3 +1,7 @@
+// #2423: FØRSTE import med vilje. ES-moduler evalueres i import-rækkefølge, så
+// `__vdpl`-cookien er sat før noget andet modul (og dermed før nogen lazy
+// `import()`) kan nå at hente en chunk. Se lib/skewProtection.js for mekanikken.
+import { installSkewProtection } from "./lib/skewProtection.js";
 import React from "react";
 import { hydrateRoot, createRoot } from "react-dom/client";
 import App from "./App.jsx";
@@ -14,6 +18,12 @@ import "./index.css";
 // blokerede boot uden gevinst. CSS'en scopes nu til de to moduler der faktisk
 // renderer flag: `Flag.jsx` og `LanguageSwitcher.jsx` — Vite deduper importen,
 // så den loades præcis én gang, første gang et flag-modul indlæses.
+
+// Skew Protection (#2423): pin denne klient til det deployment den kører, så en
+// lazy chunk hentet EFTER et deploy stadig findes. Skal køre før alt andet —
+// derfor første statement. No-op i alt andet end et Vercel-build med Skew
+// Protection slået til.
+installSkewProtection();
 
 // Stale-chunk recovery (#906): et globalt net der fanger dynamic-import/preload-
 // fejl efter et deploy FØR React's error-boundary kan ramme dem — både Vite's

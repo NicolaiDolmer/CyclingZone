@@ -101,6 +101,18 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      # #2423: gaten maaler det BYGGEDE output, ikke konfigurationen. Den fejler
+      # hvis nogen bygget URL baerer "?dpl=" — praecis den omskrivning der
+      # knaekkede hele appen i prod 4/9 (PR #4745, revertet). Skew Protection
+      # koerer via __vdpl-cookien i stedet, som ikke roerer en eneste URL.
+      - name: Test skew-protection guard
+        working-directory: .
+        run: node --test scripts/check-skew-protection.test.mjs
+
+      - name: Run skew-protection guard
+        working-directory: .
+        run: node scripts/check-skew-protection.mjs
+
   warning-budget:
     runs-on: ubuntu-latest
     permissions:
