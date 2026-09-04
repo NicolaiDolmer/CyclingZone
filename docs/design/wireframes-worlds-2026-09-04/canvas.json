@@ -1,0 +1,15 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Worlds race page · Overview", "x": 0, "y": 0, "w": 1280, "h": 1150 },
+    { "file": "Nations.dc.html", "title": "Nations tab", "x": 1380, "y": 0, "w": 1280, "h": 950 },
+    { "file": "Results.dc.html", "title": "Results tab (after the race)", "x": 2760, "y": 0, "w": 1280, "h": 1040 },
+    { "file": "Touchpoints.dc.html", "title": "Where the Worlds show up", "x": 0, "y": 1320, "w": 1280, "h": 870 },
+    { "file": "DirectionB.dc.html", "title": "Direction B sketch · national coach", "x": 1380, "y": 1320, "w": 1280, "h": 670 }
+  ],
+  "annotations": [
+    { "id": "direction-a", "x": 0, "y": -170, "w": 520, "text": "Direction A (built out): the game picks each nation's best-ranked riders. You do not run the national team; your riders bring the glory home. Three screens: Overview, Nations, Results. Same T3 race-page anatomy as every other race." },
+    { "id": "open-questions", "x": 1380, "y": -170, "w": 520, "text": "Open, one at a time:\n1. Road race only, or also a time trial?\n2. Does club racing pause on Worlds day?\n3. Prize money for the club of a medallist?\nRainbow jersey = prestige and reputation only, never a strength boost." },
+    { "id": "direction-b", "x": 1380, "y": 1200, "w": 520, "text": "Direction B (sketch beside, not instead): the best-ranked manager of a nation coaches it for one season. More agency, but most nations would be auto-picked anyway. Can be layered on A later." }
+  ],
+  "launch": { "view": "canvas" }
+}

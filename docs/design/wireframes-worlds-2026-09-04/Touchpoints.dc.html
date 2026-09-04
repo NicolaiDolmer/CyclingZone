@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; background: #ffffff; color: #222222; font: 14px/1.35 "Segoe UI", Arial, sans-serif; }
+    a { color: #555555; } a:hover { color: #222222; }
+    .stamp { border: 2px dashed #777777; color: #777777; padding: 6px 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; transform: rotate(-2deg); background: #ffffff; }
+    .panel { border: 1px solid #9a9a9a; background: #fafafa; padding: 14px; }
+    .panel h3 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #777777; }
+    .panel p { margin: 0 0 10px; font-size: 12px; color: #777777; }
+    .card { border: 1px solid #9a9a9a; background: #ffffff; padding: 12px; }
+    .row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #dddddd; padding: 8px 0; gap: 12px; }
+    .row.first { border-top: 0; padding-top: 0; }
+    .sub { display: block; color: #777777; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+    .chip { display: inline-block; border: 1px solid #9a9a9a; background: #f5f5f5; padding: 2px 8px; font-size: 11px; white-space: nowrap; }
+    .chip.on { background: #cfcfcf; font-weight: 700; }
+    .chip.off { border-style: dashed; color: #777777; background: #ffffff; }
+    .btn { border: 1px solid #222222; background: #ffffff; padding: 6px 10px; display: inline-block; font-weight: 600; font-size: 12px; }
+    .btn.primary { background: #222222; color: #ffffff; }
+    .num { font-variant-numeric: tabular-nums; text-align: right; }
+    .stripes { display: flex; width: 34px; height: 14px; border: 1px solid #222222; }
+    .stripes span { flex: 1; }
+    .me { background: #e9e9e9; }
+  </style>
+</helmet>
+<div style="width: 1280px; box-sizing: border-box; padding: 20px 28px 28px; background: #ffffff; position: relative;">
+  <div style="position: absolute; right: 28px; top: 16px;"><span class="stamp">Wireframe, not final</span></div>
+  <div style="font-size: 22px; font-weight: 800; margin-bottom: 4px;">Where the Worlds show up</div>
+  <div style="color: #777777; margin-bottom: 16px;">Five existing surfaces get a line or a chip. No new pages beyond the race page itself.</div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+
+    <div class="panel">
+      <h3>Calendar</h3>
+      <p>One row like any race. Chip says national teams; the day has no club racing.</p>
+      <div class="card">
+        <div class="row first"><div>Day 82 · GP Nordkap<span class="sub">One day · 190 km · division 2</span></div><span class="chip">Entered · 6 riders</span></div>
+        <div class="row me" style="padding: 8px 6px;"><div><strong>Day 84 · World Championships · Road race</strong><span class="sub">One day · 268 km · 24 nations</span></div><span class="chip on">National teams · 1 of yours</span></div>
+        <div class="row"><div>Day 86 · Tour of the Fjords, stage 1<span class="sub">Stage race · 5 days · division 2</span></div><span class="chip off">Not entered</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Dashboard</h3>
+      <p>A line inside the existing "Next race" card, not a new card.</p>
+      <div class="card">
+        <div style="font-size: 15px; font-weight: 600; margin-bottom: 8px;">Next race</div>
+        <div class="row first"><div>GP Nordkap in 2 days<span class="sub">6 riders entered · tactics set</span></div><div class="btn">Tactics</div></div>
+        <div class="row"><div><strong>Worlds in 4 days</strong><span class="sub">J. Sørensen called up for Denmark</span></div><div class="btn">Startlist</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Inbox</h3>
+      <p>One message on day 80 per called-up rider. One message on day 84 with the result.</p>
+      <div class="card">
+        <div class="row first"><div><strong>Call-up: J. Sørensen rides for Denmark</strong><span class="sub">Day 80 · World Championships</span></div></div>
+        <div style="font-size: 13px; color: #555555; margin-top: 8px;">Denmark takes 6 riders to the Worlds. J. Sørensen is 3rd on the Danish list and starts on day 84. He is unavailable for your club that day.</div>
+        <div style="margin-top: 10px;"><span class="btn">See the nations</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Rider profile</h3>
+      <p>A rainbow chip next to the tags on the hero card, kept until the next Worlds. Also shown as a jersey mark in results lists.</p>
+      <div class="card" style="border-top: 3px solid #222222;">
+        <div style="display: flex; gap: 14px; align-items: center;">
+          <div style="width: 56px; height: 56px; border: 1px solid #9a9a9a; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-weight: 700;">PL</div>
+          <div>
+            <div style="font-size: 26px; font-weight: 800; text-transform: uppercase; line-height: 1;">P. Lefèvre</div>
+            <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+              <span class="chip">Puncheur</span>
+              <span class="chip">France</span>
+              <span class="chip on" style="display: inline-flex; gap: 6px; align-items: center;"><span class="stripes"><span style="background: #ffffff;"></span><span style="background: #cfcfcf;"></span><span style="background: #9a9a9a;"></span><span style="background: #555555;"></span><span style="background: #222222;"></span></span> World champion · S3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="grid-column: span 2;">
+      <h3>Season end and past champions</h3>
+      <p>The Worlds winner gets a line in the season honours. The race page's "Past champions" tab is the same list across seasons.</p>
+      <div class="card">
+        <div style="display: flex; gap: 40px;">
+          <div style="flex: 1;">
+            <div class="row first"><div>Season 3<span class="sub">[HOST CITY] · 268 km</span></div><div><strong>P. Lefèvre</strong> · France</div></div>
+            <div class="row"><div>Season 2<span class="sub">No Worlds held</span></div><div style="color: #777777;">Starts season 3</div></div>
+          </div>
+          <div style="flex: 1; font-size: 12px; color: #555555;">Nation medal table lives here too once there are two or more seasons of data. Nothing invented before then: the tab shows one row.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

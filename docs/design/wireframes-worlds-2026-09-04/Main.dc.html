@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; background: #ffffff; color: #222222; font: 14px/1.35 "Segoe UI", Arial, sans-serif; }
+    a { color: #555555; } a:hover { color: #222222; }
+    .stamp { border: 2px dashed #777777; color: #777777; padding: 6px 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; transform: rotate(-2deg); background: #ffffff; }
+    .tab { padding: 8px 16px; color: #777777; border-bottom: 3px solid transparent; margin-bottom: -2px; }
+    .tab.on { color: #222222; border-bottom-color: #222222; font-weight: 700; }
+    .card { border: 1px solid #9a9a9a; background: #ffffff; padding: 14px; }
+    .card h3 { margin: 0; font-size: 15px; }
+    .meta { font-size: 11px; color: #777777; text-transform: uppercase; letter-spacing: .08em; font-weight: 400; }
+    .row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #dddddd; padding: 9px 0; gap: 12px; }
+    .row.first { border-top: 0; padding-top: 0; }
+    .sub { display: block; color: #777777; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+    .chip { display: inline-block; border: 1px solid #9a9a9a; background: #f5f5f5; padding: 2px 8px; font-size: 11px; white-space: nowrap; }
+    .chip.on { background: #cfcfcf; font-weight: 700; }
+    .chip.off { border-style: dashed; color: #777777; background: #ffffff; }
+    .stat small { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #777777; }
+    .stat b { font-size: 20px; font-variant-numeric: tabular-nums; }
+    .note { border: 1px dashed #9a9a9a; padding: 6px 10px; color: #777777; font-size: 12px; background: #fafafa; }
+    .btn { border: 1px solid #222222; background: #ffffff; padding: 7px 12px; display: inline-block; font-weight: 600; }
+    .btn.ghost { border-style: dashed; color: #777777; }
+    .num { font-variant-numeric: tabular-nums; text-align: right; }
+  </style>
+</helmet>
+<div style="width: 1280px; box-sizing: border-box; padding: 20px 28px 28px; background: #ffffff; position: relative;">
+  <div style="position: absolute; right: 28px; top: 16px;"><span class="stamp">Wireframe, not final</span></div>
+
+  <div style="color: #777777; font-size: 12px; margin-bottom: 10px;">Back to calendar</div>
+
+  <div style="border: 1px solid #9a9a9a; border-top: 3px solid #222222; background: #f5f5f5; padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+      <div>
+        <div style="font-size: 34px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; line-height: 1;">World Championships · Road race</div>
+        <div style="display: flex; gap: 8px; margin-top: 10px; align-items: center;">
+          <span class="chip on">National teams</span>
+          <span class="chip">One day</span>
+          <span class="chip">Hilly</span>
+          <span style="color: #777777; font-size: 12px;">Season 3 · day 84 · [HOST CITY] · 268 km · 6 laps</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <span class="btn ghost">Rules</span>
+        <span class="btn ghost">Share</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 40px; border-top: 1px solid #9a9a9a; margin-top: 16px; padding-top: 12px;">
+      <div class="stat"><small>Nations</small><b>24</b></div>
+      <div class="stat"><small>Riders</small><b>168</b></div>
+      <div class="stat"><small>Your riders called up</small><b>1</b></div>
+      <div class="stat"><small>Selection closes</small><b>5 days</b></div>
+      <div class="stat"><small>Race starts</small><b>Day 84, 14:00</b></div>
+    </div>
+  </div>
+
+  <div style="display: flex; border-bottom: 2px solid #9a9a9a; margin: 18px 0 16px;">
+    <div class="tab on">Overview</div>
+    <div class="tab">Nations</div>
+    <div class="tab">Route</div>
+    <div class="tab">Results</div>
+    <div class="tab">Past champions</div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1.55fr 1fr; gap: 14px;">
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <h3>Your riders at the Worlds</h3>
+          <span class="meta">3 eligible</span>
+        </div>
+        <div class="row first">
+          <div><strong>J. Sørensen</strong>, 19<span class="sub">Denmark · Climber · world rank 41 · 3rd on Danish list</span></div>
+          <span class="chip on">Called up</span>
+        </div>
+        <div class="row">
+          <div><strong>L. Bianchi</strong>, 27<span class="sub">Italy · Puncheur · world rank 88 · 9th on Italian list</span></div>
+          <span class="chip">Reserve</span>
+        </div>
+        <div class="row">
+          <div><strong>A. Petrov</strong>, 31<span class="sub">Bulgaria · Climber · world rank 312 · nation has 2 places</span></div>
+          <span class="chip off">Not selected</span>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; color: #555555;">Each nation takes its best-ranked riders. Places per nation follow nation strength. Ranking freezes on day 79. <a href="#">How selection works</a></div>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <h3>Favourites</h3>
+          <span class="meta">By world ranking</span>
+        </div>
+        <div class="row first">
+          <div><strong>1 · T. van der Berg</strong><span class="sub">Netherlands · Puncheur · rank 1</span></div>
+          <div class="num">Form 92</div>
+        </div>
+        <div class="row">
+          <div><strong>2 · M. Okafor</strong><span class="sub">Nigeria · Climber · rank 4</span></div>
+          <div class="num">Form 88</div>
+        </div>
+        <div class="row">
+          <div><strong>3 · P. Lefèvre</strong><span class="sub">France · Puncheur · rank 6</span></div>
+          <div class="num">Form 85</div>
+        </div>
+        <div class="row">
+          <div><strong>4 · S. Kowalski</strong><span class="sub">Poland · Climber · rank 9</span></div>
+          <div class="num">Form 84</div>
+        </div>
+        <div class="row">
+          <div><strong>5 · R. Almeida</strong><span class="sub">Portugal · Puncheur · rank 12</span></div>
+          <div class="num">Form 79</div>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px; color: #777777;">Showing 5 of 168 riders. Full startlist under Nations.</div>
+      </div>
+
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <h3>Course</h3>
+          <span class="meta">268 km · 4,200 m</span>
+        </div>
+        <svg viewBox="0 0 360 110" width="100%" height="110" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0" y="0" width="360" height="110" fill="#f5f5f5"></rect>
+          <polyline points="0,90 30,88 60,70 80,86 110,68 130,84 160,66 180,82 210,64 230,80 260,62 280,78 310,60 330,76 360,58" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="4 3"></polyline>
+          <text x="6" y="104" font-size="9" fill="#777777">0 km</text>
+          <text x="150" y="104" font-size="9" fill="#777777">6 laps × 27 km</text>
+          <text x="330" y="104" font-size="9" fill="#777777">268</text>
+          <text x="236" y="52" font-size="9" fill="#777777">Climb 2.1 km · 8%</text>
+        </svg>
+        <div style="margin-top: 8px; font-size: 12px; color: #777777;">Suits puncheurs and climbers. Sprinters need a flat year.</div>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <h3>Key dates</h3>
+          <span class="meta">Season 3</span>
+        </div>
+        <div class="row first"><div>Ranking freezes<span class="sub">Selection closes</span></div><div class="num">Day 79</div></div>
+        <div class="row"><div>Startlist published<span class="sub">Call-ups land in your inbox</span></div><div class="num">Day 80</div></div>
+        <div class="row"><div><strong>Road race</strong><span class="sub">Live at 14:00</span></div><div class="num"><strong>Day 84</strong></div></div>
+        <div class="row"><div>Rainbow jersey<span class="sub">Worn until next Worlds</span></div><div class="num">Day 84</div></div>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px;">
+          <h3>Strongest nations</h3>
+          <span class="meta">Places</span>
+        </div>
+        <div class="row first"><div>Netherlands</div><div class="num">8</div></div>
+        <div class="row"><div>France</div><div class="num">8</div></div>
+        <div class="row"><div>Italy</div><div class="num">8</div></div>
+        <div class="row"><div><strong>Denmark</strong></div><div class="num">6</div></div>
+        <div style="margin-top: 10px; font-size: 12px;"><a href="#">All 24 nations</a></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="note" style="margin-top: 16px;">No gold primary button on this page on purpose: in direction A the manager does not run the national team. The rider's own club tactics do not apply here.</div>
+</div>
+</x-dc>
+</body>
+</html>
