@@ -52,6 +52,8 @@ import {
   targetAiCountForPool,
   isRealManager,
 } from "./aiTeamGenerator.js";
+import { teamHasLiveTransferOffers } from "./aiTeamRetirement.js";
+import { isAiTeamRetireEnabled } from "./aiTeamRetireFlag.js";
 
 // #2434: defense-in-depth-backstop. Den PRIMÆRE stale-detektion er løbs-bevidst
 // (alarmér når det blokerende løb selv er stallet). Denne backstop fanger blokeringer
@@ -125,6 +127,12 @@ export async function runAiTeamTrimHealSweep({
   // udskudt indtil FK-semantikken er afgjort — det rapporteres via `stale`, aldrig
   // tvangsslettet (backstoppen sletter ikke, den melder).
   hasBlockingOffers = teamHasBlockingTransferOffers,
+  // #4753: under nedlæggelses-tilstanden slettes intet, så en DØD tilbudsrække kan
+  // ikke blokere noget — kun LEVENDE tilbud udskyder (spiller-hensyn: en manager står
+  // midt i en forhandling). Netop dette led er grunden til at 13 AI-hold sad
+  // permanent fast: deres eneste blokering var withdrawn/accepted/rejected-rækker.
+  hasLiveOffers = teamHasLiveTransferOffers,
+  isRetireEnabled = isAiTeamRetireEnabled,
   removeTeam = deleteAiTeamById,
   // #2407: pr.-pulje trim-budget (hard-gate mod at slette under target) + rydning
   // af forældede markører. Injicerbare for test.
@@ -151,6 +159,9 @@ export async function runAiTeamTrimHealSweep({
 
   const inflightRaceIds = await getInflightIds(supabase);
   const stalledRaceIds = new Set(await getStalledIds(supabase, now));
+  // #4753: læses ÉN gang pr. sweep (ikke pr. hold) — tilstanden må ikke kunne skifte
+  // midt i et loop hvor budgettet allerede er beregnet.
+  const retire = await isRetireEnabled(supabase);
   const backstopMs = backstopHours * 60 * 60 * 1000;
 
   // #2407 Fejl 2: hard-gate — hvor mange sletninger tåler hver pulje FØR den rammer
@@ -192,9 +203,13 @@ export async function runAiTeamTrimHealSweep({
         ? false
         : await hasUnpaidPrizes(supabase, team.id);
       // #4233: tredje selvstændige grund, samme kortslutnings-mønster som ovenfor.
+      // #4753: hvilken tilbuds-guard der gælder afhænger af tilstanden — se
+      // `hasLiveOffers`-doc'en i signaturen.
       const offersBlocked = blockingInflight.length > 0 || prizeBlocked
         ? false
-        : await hasBlockingOffers(supabase, team.id);
+        : retire
+          ? await hasLiveOffers(supabase, team.id)
+          : await hasBlockingOffers(supabase, team.id);
       const blocked = blockingInflight.length > 0 || prizeBlocked || offersBlocked;
 
       if (!blocked) {
