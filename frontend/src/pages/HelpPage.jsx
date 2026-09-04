@@ -16,6 +16,7 @@ import {
   TabList,
   Tab,
   PageLoader,
+  ChevronRightIcon,
 } from "../components/ui";
 import {
   InfoIcon,
@@ -923,6 +924,7 @@ export default function HelpPage() {
                           className="mt-3 inline-flex items-center gap-1 text-xs text-cz-accent-t hover:underline font-medium"
                         >
                           {block.cta.label}
+                          <ChevronRightIcon size={12} aria-hidden="true" />
                         </Link>
                       )}
                       {block.disclaimer && (

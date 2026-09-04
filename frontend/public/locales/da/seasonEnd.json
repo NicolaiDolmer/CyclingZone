@@ -55,8 +55,8 @@
     "oneDay": "Enkeltdagsløb"
   },
   "division": "Division {div}",
-  "promotionNote": "Top 2 rykker op ↑",
-  "relegationNote": "Bund 4 rykker ned ↓",
+  "promotionNote": "Top 2 rykker op",
+  "relegationNote": "Bund 4 rykker ned",
   "table": {
     "rank": "#",
     "team": "Hold",

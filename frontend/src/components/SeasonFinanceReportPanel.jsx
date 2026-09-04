@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { supabase } from "../lib/supabase";
 import { formatNumber, formatDate as formatDateIntl } from "../lib/intl";
-import { Card, Button, Spinner } from "./ui";
+import { Card, Button, Spinner, ChevronLeftIcon } from "./ui";
 import { chartColor } from "../lib/chartPalette";
 import { renderBackendMessage } from "../lib/backendMessage";
 import { resolveLegacyFinanceMessage } from "../lib/legacyFinanceMessage";
@@ -353,7 +353,7 @@ export default function SeasonFinanceReportPanel({ seasonId, teamId, onBack }) {
         <h2 className="text-cz-danger font-semibold mb-2">{t("report.loadError")}</h2>
         <p className="text-cz-2 text-sm">{error}</p>
         {onBack && (
-          <Button variant="ghost" size="sm" className="mt-4" onClick={onBack}>
+          <Button variant="ghost" size="sm" className="mt-4" iconLeft={<ChevronLeftIcon size={13} aria-hidden="true" />} onClick={onBack}>
             {t("report.back")}
           </Button>
         )}
@@ -384,7 +384,7 @@ export default function SeasonFinanceReportPanel({ seasonId, teamId, onBack }) {
               {report.viewer?.is_admin && !report.viewer?.is_owner && t("report.adminView")}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onBack}>
+          <Button variant="ghost" size="sm" iconLeft={<ChevronLeftIcon size={13} aria-hidden="true" />} onClick={onBack}>
             {t("report.back")}
           </Button>
         </div>

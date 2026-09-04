@@ -61,7 +61,7 @@
     "noContract": "Free agent",
     "buttons": {
       "accept": "✓ Accept",
-      "counter": "↔ Counter",
+      "counter": "Counter",
       "reject": "✕ Reject",
       "send": "Send",
       "acceptCounter": "✓ Accept ({amount} CZ$)",
@@ -94,7 +94,7 @@
     "counterTag": "(counter)",
     "buttons": {
       "accept": "✓ Accept",
-      "counter": "↔ Counter",
+      "counter": "Counter",
       "reject": "✕ Reject",
       "acceptCounter": "✓ Accept counter",
       "send": "Send",
@@ -201,8 +201,8 @@
     "confirmedAwaiting": "✅ Confirmed · awaiting the other party's confirmation",
     "dealCancelled": "Deal cancelled",
     "transferRejected": "Transfer rejected",
-    "counterSent": "↔ Counter sent",
-    "newOfferSent": "↔ New offer sent",
+    "counterSent": "Counter sent",
+    "newOfferSent": "New offer sent",
     "offerWithdrawn": "Offer withdrawn",
     "offerArchived": "Offer archived",
     "updated": "✅ Updated",

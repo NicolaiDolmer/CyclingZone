@@ -8,7 +8,7 @@
 // der lander her uden at gå via Dashboard.
 
 import { useTranslation } from "react-i18next";
-import { ClipboardIcon } from "./ui/icons";
+import { ClipboardIcon, ChevronRightIcon } from "./ui/icons";
 
 const EMPTY_STATE_PLANS = [
   { id: "oneYear",   badge: "1" },
@@ -65,9 +65,10 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={onOpenWizard}
-          className="w-full sm:w-auto bg-cz-accent text-cz-on-accent px-4 py-2.5 rounded-lg text-sm font-bold hover:brightness-110 transition-all"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-1 bg-cz-accent text-cz-on-accent px-4 py-2.5 rounded-lg text-sm font-bold hover:brightness-110 transition-all"
         >
           {t("emptyState.ctaNegotiate")}
+          <ChevronRightIcon size={14} aria-hidden="true" />
         </button>
         {onStartTour && (
           <button

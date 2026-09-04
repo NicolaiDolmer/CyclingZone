@@ -806,10 +806,16 @@ export default function SeasonEndPage() {
                       vise en falsk nedrykningsadvarsel til bundtieren, som ikke kan rykke
                       længere ned. */}
                   {isCompleted && div > RULES_NUMBERS.minDivision && (
-                    <span className="text-xs text-cz-3">{t("promotionNote")}</span>
+                    <span className="inline-flex items-center gap-0.5 text-xs text-cz-3">
+                      <ArrowUpIcon size={10} aria-hidden="true" />
+                      {t("promotionNote")}
+                    </span>
                   )}
                   {isCompleted && div < RULES_NUMBERS.maxDivision && (
-                    <span className="text-xs text-cz-3">{t("relegationNote")}</span>
+                    <span className="inline-flex items-center gap-0.5 text-xs text-cz-3">
+                      <ArrowDownIcon size={10} aria-hidden="true" />
+                      {t("relegationNote")}
+                    </span>
                   )}
                 </div>
                 <Table data-sort-exempt="Slutstilling, iboende point-orden + op/nedryknings-zoner">

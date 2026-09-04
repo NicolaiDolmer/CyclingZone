@@ -17,6 +17,7 @@
 
 import { useTranslation } from "react-i18next";
 import { riderTypeRating } from "../../../lib/riderRating.js";
+import { ChevronRightIcon } from "../../ui/icons";
 
 // Spektrum-orden (flade spurtere → klatrere) så beslægtede typer ligger ved siden af
 // hinanden og polygonen får en aflæselig form. Nøgler = RIDER_TYPE_KEYS (SSOT).
@@ -227,9 +228,10 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
           <button
             type="button"
             onClick={onGoScouting}
-            className="ms-auto py-1 -my-1 text-2xs text-cz-accent-t hover:underline"
+            className="ms-auto inline-flex items-center gap-0.5 py-1 -my-1 text-2xs text-cz-accent-t hover:underline"
           >
             {t("profile.overview.radar.allTypes")}
+            <ChevronRightIcon size={11} aria-hidden="true" />
           </button>
         )}
       </div>

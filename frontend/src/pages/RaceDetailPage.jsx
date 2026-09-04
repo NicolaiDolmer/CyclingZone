@@ -35,6 +35,7 @@ import {
   // locale-strengen. Pile er ikke ikoner — de arver linjehoejde, rammer ikke
   // baseline og ser forskellige ud pr. platform. Nu et stroke-chevron + ren tekst.
   ChevronLeftIcon,
+  ChevronDownIcon,
 } from "../components/ui";
 import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
@@ -1810,8 +1811,10 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
         action={collapsible && (
           <button type="button" onClick={() => setExpanded(e => !e)}
             aria-pressed={expanded}
-            className="text-xs font-medium text-cz-accent-t hover:underline shrink-0">
+            className="inline-flex items-center gap-0.5 text-xs font-medium text-cz-accent-t hover:underline shrink-0">
             {expanded ? t("detail.showLess") : t("detail.showAll", { count: rows.length })}
+            <ChevronDownIcon size={13} aria-hidden="true"
+              className={`transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
           </button>
         )}
       />

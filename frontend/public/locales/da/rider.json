@@ -401,7 +401,7 @@
         "title": "Ryttertyper",
         "subtitle": "rating pr. type",
         "legendNow": "Nu",
-        "allTypes": "Alle typer →",
+        "allTypes": "Alle typer",
         "role": "Hans rolle",
         "readsHighest": "Læser højest lige nu",
         "notARanking": "Rollerne består af forskellige evner, så tallene er ikke en rangliste over hvad han bør være."
@@ -409,7 +409,7 @@
       "physio": {
         "title": "Fysiologi",
         "weight": "{kg} kg",
-        "link": "Watt-kurve & zoner →"
+        "link": "Watt-kurve & zoner"
       }
     },
     "development": {
@@ -750,7 +750,7 @@
     "squadWarning": "Auktion startet.\n\nOBS: leder nu auktioner svarende til {total} ryttere (max {max}). Loftet er en hård grænse, så du kan ikke vinde flere ryttere end din trup kan rumme."
   },
   "directOffer": {
-    "buttonOpen": "↔ Send transfertilbud",
+    "buttonOpen": "Send transfertilbud",
     "amountPlaceholder": "Tilbudsbeløb i CZ$",
     "messagePlaceholder": "Besked (valgfri)",
     "submit": "Send tilbud",

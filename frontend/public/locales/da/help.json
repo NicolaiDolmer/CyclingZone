@@ -662,7 +662,7 @@
       "fullTable": {
         "title": "Den fulde pointtabel",
         "text": "Under Resultater, Point & præmier finder du alle løbsklassers komplette point- og præmieskala med alle pladser.",
-        "ctaLabel": "Åbn Point & præmier →",
+        "ctaLabel": "Åbn Point & præmier",
         "ctaTo": "/resultater?tab=points",
         "disclaimer": "Præmiebeløb kan stadig justeres i løbet af den åbne beta."
       }

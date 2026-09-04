@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
 import {
   Card, PageLoader, EmptyState, ErrorState, Button,
-  CoinIcon, InfoIcon,
+  CoinIcon, InfoIcon, ChevronDownIcon,
 } from "../components/ui";
 import { SCROLLER, TABLE, thClass, tdClass, trClass } from "../components/ui/dataTableStyles.js";
 // Frontend single source of truth for PRIZE_PER_POINT (mirrors backend economyConstants.js).
@@ -258,9 +258,11 @@ export default function RacePointsPage() {
                   <div className="px-4 py-2 border-t border-cz-border">
                     <button
                       onClick={() => toggleExpand(expandKey)}
-                      className="text-xs text-cz-accent-t hover:underline"
+                      className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline"
                     >
                       {isExpanded ? t("points.showLess") : t("points.showAll", { count: rows.length })}
+                      <ChevronDownIcon size={13} aria-hidden="true"
+                        className={`transition-transform duration-150 ${isExpanded ? "rotate-180" : ""}`} />
                     </button>
                   </div>
                 )}

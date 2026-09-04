@@ -5,7 +5,7 @@ import { useLanguage } from "../lib/language.jsx";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import FounderSupporterWaitlistForm from "../components/waitlist/FounderSupporterWaitlistForm.jsx";
 import { Wordmark, Monogram } from "../components/Brand.jsx";
-import { CheckIcon, XIcon, ChevronDownIcon, StarIcon } from "../components/ui/icons/index.jsx";
+import { CheckIcon, XIcon, ChevronDownIcon, ChevronLeftIcon, StarIcon } from "../components/ui/icons/index.jsx";
 import { formatCurrency, currencyForLocale } from "../lib/intl.js";
 import {
   TIER_PRICES_DKK,
@@ -402,7 +402,8 @@ export default function FounderSupporterPage() {
             <Link to={lang === "en" ? "/terms" : "/handelsbetingelser"} className="hover:text-cz-1 transition-colors">
               {t("footerTerms")}
             </Link>
-            <Link to="/" className="hover:text-cz-1 transition-colors">
+            <Link to="/" className="inline-flex items-center gap-0.5 hover:text-cz-1 transition-colors">
+              <ChevronLeftIcon size={12} aria-hidden="true" />
               {t("footerBack")}
             </Link>
           </div>

@@ -55,8 +55,8 @@
     "oneDay": "One-day race"
   },
   "division": "Division {div}",
-  "promotionNote": "Top 2 promoted ↑",
-  "relegationNote": "Bottom 4 relegated ↓",
+  "promotionNote": "Top 2 promoted",
+  "relegationNote": "Bottom 4 relegated",
   "table": {
     "rank": "#",
     "team": "Team",
