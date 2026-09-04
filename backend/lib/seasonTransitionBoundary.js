@@ -82,3 +82,61 @@ export async function fetchSeasonTransitionBoundary(supabase) {
     return null;
   }
 }
+
+// #4129 — nøglen er fremadrettet forberedt (se filhovedet), men blev ALDRIG sat af
+// kode: kun manuelt via SQL på selve S2→S3-cutover-aftenen 23/8, og ryddet igen
+// samme aften (docs/audits/2026-08-23-generalproeve-cutover.md §0). Guarden kørte
+// derfor på det rene start_date-gæt hver eneste dag imellem. Denne skrivning gør
+// gættet eksplicit PRÆCIS når det bliver relevant: når en kommende sæsons kalender
+// oprettes/apply'es (buildSeasonCalendar.js --apply), ikke ved selve transitionen.
+//
+// Idempotent ON-CONFLICT-DO-UPDATE-semantik via upsert: skriver KUN når nøglen
+// mangler, eller når den nuværende værdi er ÆLDRE end den nye sæsons start_date —
+// dvs. tydeligvis en efterladenskab fra en TIDLIGERE sæsons cutover, ikke et
+// bevidst sat tidspunkt for netop denne sæson. En værdi der allerede ligger på
+// eller efter den nye sæsons start_date rører vi IKKE ved: den kan ikke være vores
+// egen beregning (den ligger altid FØR start_date), så den er enten en bevidst
+// afvigende ejer-indsat værdi eller en anomali — begge dele skal et menneske se,
+// ikke en stille overskrivning.
+export async function ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate, now = new Date() } = {}) {
+  if (!supabase?.from) return { updated: false, reason: "no-supabase" };
+  if (!seasonStartDate) return { updated: false, reason: "no-season-start-date" };
+
+  const target = computeSeasonTransitionBoundary({ upcomingSeasonStartDate: seasonStartDate });
+  if (!target) return { updated: false, reason: "no-target" };
+
+  const { data: cfg, error: readErr } = await supabase
+    .from("app_config")
+    .select("value")
+    .eq("key", SEASON_TRANSITION_PLANNED_AT_KEY)
+    .maybeSingle();
+  if (readErr) throw new Error(`kunne ikke læse ${SEASON_TRANSITION_PLANNED_AT_KEY}: ${readErr.message}`);
+
+  const existingRaw = cfg?.value ?? null;
+  const existing = existingRaw ? new Date(existingRaw) : null;
+  const existingValid = existing && !Number.isNaN(existing.getTime());
+  const seasonStart = new Date(`${String(seasonStartDate).slice(0, 10)}T00:00:00Z`);
+
+  if (existingValid && existing.getTime() === target.getTime()) {
+    return { updated: false, reason: "already-correct", value: target.toISOString() };
+  }
+  if (existingValid && existing.getTime() >= seasonStart.getTime()) {
+    return { updated: false, reason: "existing-value-not-stale", existing: existingRaw };
+  }
+
+  const { error: writeErr } = await supabase.from("app_config").upsert(
+    {
+      key: SEASON_TRANSITION_PLANNED_AT_KEY,
+      value: target.toISOString(),
+      description:
+        "Eksplicit planlagt tidspunkt for sæson-transitionen (#4004-guardens anker). " +
+        "Sat automatisk af buildSeasonCalendar.js --apply ved sæson-oprettelse (#4129); " +
+        "overskriv manuelt hvis cutover flyttes.",
+      updated_at: now.toISOString(),
+    },
+    { onConflict: "key" }
+  );
+  if (writeErr) throw new Error(`kunne ikke skrive ${SEASON_TRANSITION_PLANNED_AT_KEY}: ${writeErr.message}`);
+
+  return { updated: true, value: target.toISOString(), previous: existingRaw, reason: existingValid ? "stale" : "missing" };
+}

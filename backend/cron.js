@@ -48,6 +48,7 @@ import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMandateAutoAcceptCron } from "./lib/boardMandateAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
+import { checkSeasonTransitionKeyDrift } from "./lib/seasonTransitionKeyGuard.js"; // #4129
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
 import { runAiRecoverySweep } from "./lib/aiRecoverySweep.js";
@@ -452,6 +453,9 @@ async function runSeasonAutoTransitionCron() {
 // transitions på 30 min). Hvis admin_log viser >1 sæson-transition per døgn
 // → alert til Discord + Sentry. Pure read + notify, ingen DB-writes.
 
+const SEASON_TRANSITION_KEY_DRIFT_ALERT_KEY = "season-transition-key-drift";
+const SEASON_TRANSITION_KEY_DRIFT_REALERT_MS = 24 * 60 * 60 * 1000;
+
 async function runDailySeasonCountCheck() {
   const result = await processDailySeasonCountCheck({
     supabase,
@@ -465,6 +469,45 @@ async function runDailySeasonCountCheck() {
     console.error(
       `🚨 Daily season-count check: ${result.transitionCount} transitions seneste 24h (>1 alert fyret)`
     );
+  }
+
+  // #4129: forward-guard for season_transition_planned_at (#4004-guardens anker).
+  // buildSeasonCalendar.js --apply sætter nu nøglen selv ved sæson-oprettelse —
+  // dette er sikkerhedsnettet for de veje der springer det uden om (manuel SQL,
+  // glemt --apply). Read-only; se seasonTransitionKeyGuard.js.
+  let drift;
+  try {
+    drift = await checkSeasonTransitionKeyDrift({ supabase, now: new Date() });
+  } catch (err) {
+    console.error("Cron error (season-transition-key drift check):", err.message);
+    sentryCapture(err, { tags: { cron: "season-transition-key-drift" } });
+    return;
+  }
+  if (drift.drift) {
+    // Signaturen skifter når årsag/forventet/faktisk ændrer sig — en uændret
+    // "missing" for samme sæson alarmerer først igen efter re-alert-gulvet
+    // (samme #4752-mønster som AI-trim-stall-vagten ovenfor).
+    const signature = buildAlertSignature([
+      String(drift.reason), String(drift.seasonNumber ?? ""), String(drift.expected ?? ""), String(drift.existing ?? ""),
+    ]);
+    const { alert } = await shouldAlertOnChange({
+      supabase,
+      alertKey: SEASON_TRANSITION_KEY_DRIFT_ALERT_KEY,
+      signature,
+      reAlertAfterMs: SEASON_TRANSITION_KEY_DRIFT_REALERT_MS,
+      captureExceptionFn: sentryCapture,
+    });
+    if (alert) {
+      console.error(
+        `🚨 season_transition_planned_at ${drift.reason}: sæson ${drift.seasonNumber} starter ${Math.round(drift.daysUntilStart)}d ude ` +
+        `(forventet ${drift.expected}, faktisk ${drift.existing ?? "(mangler)"}) — #4129`
+      );
+      sentryCapture(new Error(`season_transition_planned_at ${drift.reason} < 7 dage før sæsonstart (#4129)`), {
+        tags: { cron: "season-transition-key-drift" },
+        fingerprint: ["season-transition-key-drift"],
+        extra: drift,
+      });
+    }
   }
 }
 
