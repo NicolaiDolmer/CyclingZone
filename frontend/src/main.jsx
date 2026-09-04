@@ -29,7 +29,12 @@ import "./index.css";
 // lazy chunk hentet EFTER et deploy stadig findes. Første statement, så pinnen
 // står før den første dynamiske import. No-op i alt andet end et Vercel
 // PRODUCTION-build med Skew Protection slået til.
-installSkewProtection();
+// HOTFIX 4/9 kl. 11:55 (#2423): cookie-pinnen SLÅET FRA. Målt i prod: Vercel pinner
+// asset-requests (Sec-Fetch-Dest: script) til cookiens deployment, men serverer
+// DOKUMENTET fra det nyeste deployment ved browser-navigationer. Efter hvert deploy
+// fik alle spillere med en cookie fra forrige deploy ny HTML + 404 på alle chunks.
+// index.html rydder cookien inline før preloads. Genbesøg i #2423 før gen-tænding.
+void installSkewProtection;
 
 // Stale-chunk recovery (#906): et globalt net der fanger dynamic-import/preload-
 // fejl efter et deploy FØR React's error-boundary kan ramme dem — både Vite's
