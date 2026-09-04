@@ -211,6 +211,7 @@
     "forum_body_required": "En besked er påkrævet",
     "forum_body_too_long": "Beskeden er for lang",
     "forum_missing_id": "Manglende id",
+    "forum_missing_user": "Din session er udløbet. Log ind igen",
     "forum_post_not_found": "Opslaget blev ikke fundet. Det kan være blevet fjernet.",
     "forum_reply_not_found": "Svaret blev ikke fundet. Det kan være blevet fjernet.",
     "forum_poll_admin_only": "Kun admin kan vedhæfte afstemninger",
