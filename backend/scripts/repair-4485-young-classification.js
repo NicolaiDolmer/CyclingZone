@@ -329,7 +329,7 @@ function toRaceResultRow(row, resultType) {
  * at skrive noget. Bruges af BÅDE dry-run og apply (apply genbruger PRÆCIS samme
  * plan som lige er rapporteret — ingen "second guess" mellem rapport og skrivning).
  */
-export async function buildRepairPlan({ supabase, seasonId = SEASON_3_ID, log = () => {} }) {
+export async function buildRepairPlan({ supabase, seasonId = SEASON_3_ID, _log = () => {} }) {
   const { data: season, error: seasonErr } = await supabase.from("seasons").select("id, number").eq("id", seasonId).maybeSingle();
   if (seasonErr) throw new Error(`seasons: ${seasonErr.message}`);
   if (!season) throw new Error(`sæson ${seasonId} findes ikke`);
