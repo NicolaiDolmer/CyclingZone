@@ -110,7 +110,7 @@ export async function ensureSeasonTransitionPlannedAt({ supabase, seasonStartDat
     .select("value")
     .eq("key", SEASON_TRANSITION_PLANNED_AT_KEY)
     .maybeSingle();
-  if (readErr) throw new Error(`kunne ikke læse ${SEASON_TRANSITION_PLANNED_AT_KEY}: ${readErr.message}`);
+  if (readErr) throw new Error(`could not read ${SEASON_TRANSITION_PLANNED_AT_KEY}: ${readErr.message}`);
 
   const existingRaw = cfg?.value ?? null;
   const existing = existingRaw ? new Date(existingRaw) : null;
