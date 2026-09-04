@@ -21,7 +21,8 @@
 > står ordret.
 >
 > Verificeret mod kode på `main` og mod prod **30/8 2026** (Europe/Copenhagen). To åbne PR'er
-> rører området lige nu - se §9.
+> rører området lige nu - se §9. **Ejerens retning for det næste (Discord 2/9) står i §12** og er
+> hensigt, ikke bygget adfærd.
 
 ---
 
@@ -151,7 +152,44 @@ sessionen** (`SESSION_INTENSITY`, `backend/lib/trainingDayTypes.js:71-83`).
 | Hvile (`rest`) | ingen | `rest` | Ingen udvikling overhovedet. Fokus bevares i kolonnen så valget ikke går tabt |
 | Aktiv restitution (`recovery`) | ingen | `recovery` | Egen fokus-nøgle `restitution` → kun evnen `recovery`. Sænker træthed, men mindre end hvile |
 | Færdighed (`skill`) | `technique`, `aero`, `loebslaere` | `easy` | Rammes af håndværks-loftet på raten, §2.1 |
-| Træning (`training`) | `endurance` (let) · `tempo` (normal) · `vo2max`, `threshold`, `sprint` (hård) | følger sessionen | Niveauet ER intensiteten |
+| Træning (`training`) | `endurance` (let) · `tempo` (normal) · `vo2max`, `vo2max_climb`, `vo2max_punch`, `threshold`, `sprint` (hård) | følger sessionen | Niveauet ER intensiteten |
+
+### 3.1 Intervaldagen er tre pakker, ikke én (#4631, ejer 2/9)
+
+Ejeren slog fast at climbing og punch ikke hører sammen i ét bundt, fordi de har
+vidt forskellige lofter: en rytter der er færdig i den ene taber en del af hver
+eneste intervaldag. Splittet er derfor **tre sessioner på samme niveau**:
+
+| Session | Evner | Rolle |
+|---|---|---|
+| `vo2max` | climbing · punch · tempo | **Hybriden. Uændret.** Nøglen er bevidst ikke omdøbt: hver gemt plan i `training_plans` peger allerede på den, så der er ingen datamigration og ingen manager der vågner op til en anden session end i går |
+| `vo2max_climb` | climbing · tempo | Specialiseret. Punch trænes ikke den dag |
+| `vo2max_punch` | punch · tempo | Specialiseret. Climbing trænes ikke den dag |
+
+**Hvorfor pakkerne har vægte.** Den daglige delta beregnes pr. evne og deler ikke
+et budget (§2.1), så en evne på sit loft koster ingenting - den giver bare nul.
+Uden et ekstra led ville hybriden derfor være svagt dominerende, og ingen ville
+nogensinde vælge en specialiseret session: et valg uden forskel er ikke et valg.
+`FOCUS_ABILITY_WEIGHT` (`backend/lib/training.js`) ganges derfor på fokus-evnerne;
+den evne der forlader pakken efterlader sin andel til den evne pakken er opkaldt
+efter, og den fælles motor-evne står uændret.
+
+**Invarianten der holder splittet ærligt:** summen af vægte er den SAMME i alle
+tre sessioner (`focusWeightSum`, pinnet i `training.test.js`). Splittet flytter
+udbytte inden for en dag; det skaber ikke nyt. Fokus uden en post i
+`FOCUS_ABILITY_WEIGHT` vejer 1,0 pr. evne, altså bit-identisk med før.
+
+**Ingen automatisk omfordeling.** Rammer en evne alligevel sit loft, er svaret
+stadig nul - motoren flytter ikke udbyttet et andet sted hen. Det er ejerens
+princip B (§12.1), ikke en forglemmelse.
+
+`smartDefaultFocus` er uændret: de to nye nøgler står bevidst ikke i den frosne
+`SMART_DEFAULT_FOCUS_KEYS`, så assistentens valg for tusindvis af ryttere ikke
+flytter sig som sideeffekt (§samme regel som #3762).
+
+**Målt i prod 3/9** (aktiv sæson): 2.541 aktive planer, heraf **933 på hybriden**.
+Af de 933 har 73 climbing på loftet og 22 punch på loftet; 63 har kun climbing
+død og 12 kun punch død. Det er de rækker splittet er lavet til.
 
 **Hvorfor modellen blev vendt om:** de gamle 6 fokus × 4 intensiteter gav 24 kombinationer,
 hvoraf mindst en tredjedel var meningsløse, og spillet lod dig vælge dem. Målt 14/8 mod 4.588
@@ -415,7 +453,7 @@ Hver post er ÉN ting der mangler at blive afgjort. Ingen af dem må gættes på
 
 | # | Spørgsmålet | Hvorfor det er åbent |
 |---|---|---|
-| 1 | **Hvad skal bestemme en rytters udbytte på en løbsdag, når planen ikke længere må være input?** Ejerens dom 24/8 siger planen ikke skal gælde; koden bruger den som input. Der er ingen besluttet erstatning (etapens profil alene? en fast løbs-rate? rytterens rolle i udtagelsen?) | §6.2, #4192. Skal afgøres FØR `race_day_development_enabled` tændes igen til S4 |
+| 1 | **Hvad skal bestemme en rytters udbytte på en løbsdag, når planen ikke længere må være input?** Ejerens dom 24/8 siger planen ikke skal gælde; koden bruger den som input. Der er ingen besluttet erstatning (etapens profil alene? en fast løbs-rate? rytterens rolle i udtagelsen?) | §6.2, #4192. Skal afgøres FØR `race_day_development_enabled` tændes igen til S4. **Retning fra ejeren 2/9 (ikke besluttet spec): en intention pr. rytter pr. løbsdag, fem trin fra grupetto til all-out, er dagens "session"**, se §12 og [#4632](https://github.com/NicolaiDolmer/CyclingZone/issues/4632) |
 | 2 | **Skal restitutionen have sit eget tidspunkt i døgnet, adskilt fra trænings-tick'et?** I dag er der ét tick, og et manager-klik kl. 08 bruger døgnets eneste restitution før etaperne kl. 11-19 | #3461, åben, priority:high. Ingen besluttet retning: nat-tick, to-delt tick, eller restitution løsrevet fra træning |
 | 3 | **Skal `aiRecoverySweep.js` slettes?** Den er en garanteret no-op så længe `race_day_engine_enabled` er on, men står stadig i cron og forbruger et 5-minutters slot | `aiRecoverySweep.js:144-154` lover sletning "i en opfølgnings-PR efter 23/8-verifikation". Sletningen kræver en beslutning om hvorvidt `race_day_engine_enabled` nogensinde skal kunne slukkes igen |
 | 4 | **Hvad er den rigtige måldistribution for træthed, og gælder den hele bestanden eller kun menneskehold?** Målt 30/8: hele bestandens median er 41, mens D3 blev kalibreret mod en menneske-median på 57 i 40-60-båndet | §5.3. Uden en besluttet definition kan ingen vagt måle om D3 stadig holder |
@@ -505,3 +543,48 @@ trænings-motorens output, i modsætning til kalenderens
 `staffTrainingBonus.test.js` · `seasonFatigueReset.test.js` · `aiRecoverySweep.test.js` ·
 `trainingSlotHealth.test.js` · `apiTrainingMeRaceDay.routes.test.js` ·
 `frontend/…/TrainingPage.raceDay.test.js`
+
+---
+
+## 12. Ejerens retning for træningen (Discord 2/9 2026)
+
+> **Status: retning, ikke spec.** Ejeren skrev det åbent til spillerne i #dansk-strategi 2/9 kl. 12:20-13:20
+> (dansk tid) som svar på "hvad mangler I i træningen?". Alt her er hensigt der endnu ikke er bygget,
+> og intet af det ændrer §1-§7 før en PR gør det. Hvert punkt har et issue; issuet er stedet
+> beslutninger træffes. Spillerne har fået en engelsk udgave i #the-roadbook
+> (`docs/discord/2026-09-02-roadbook-traening-en.md`). Wireframes ejeren kan sende med:
+> `docs/design/wireframes-training-2026-09-02/`.
+
+### 12.1 De fire principper ejeren slog fast
+
+| # | Princip | Ejerens ord (ordret) | Konsekvens for design |
+|---|---|---|---|
+| A | **Lofter skal føles fraværende; hastighed er begrænsningen** | "Jo yngre din rytter er, jo bedre træner han. Jo længere fra rytterens 'max' i sin evne han er, jo bedre træner han. Jo lavere evnen er, jo hurtigere træner rytteren." · "Begrænsninger er tiltænkt - Hårde (låste) begrænsninger er ikke." | Bund-lofter (det hårde sikkerhedsnet ved dobbelt svaghed) hæves eller blødgøres; GC-rytterens punch-loft hæves. [#4634](https://github.com/NicolaiDolmer/CyclingZone/issues/4634). Matcher `PROGRESSION_RULES.md`: raten er det væsentlige, loftet det uvæsentlige |
+| B | **Flere valg, ikke håndholdt omfordeling** | "Umiddelbart er det ikke planlagt at jeg vil 'håndholde' spillerne på den måde, fordi så synes jeg faktisk, at man gør valget af træning mindre vigtig ... Jeg vil hellere give langt flere muligheder for spilleren, selv at undgå at det sker i første omgang." | Spildt træning på en evne på loftet løses ved at splitte pakker og give flere sessioner, ALDRIG ved at motoren flytter udbyttet til en anden evne. Afviser den "overflow"-løsning tre spillere foreslog samme dag. Første split: punch og climbing, [#4631](https://github.com/NicolaiDolmer/CyclingZone/issues/4631) (refs #3705) - **bygget, se §3.1** (afventer ejerens go før merge) |
+| C | **Program i stedet for dagligt klik** | "Jeg regner med, at vi på sigt går over mod, at man laver et 'træningsprogram' i stedet for at man behøver at ændre træningen hver eneste dag." · "Indenfor en månedstid, cirka." (om ugeplan med session pr. dag) | Ugeplanen bærer en SESSION pr. ugedag (ikke intensitet, som §4 beskriver i dag), og et program er en navngivet 7-dages skabelon. 10-25 default-programmer ("Sprinter", "Bakkerytter", "Brostensrytter"...). [#4629](https://github.com/NicolaiDolmer/CyclingZone/issues/4629) (lukker #4116). Egne programmer + deling i en community-workshop: [#4630](https://github.com/NicolaiDolmer/CyclingZone/issues/4630) |
+| D | **Løb ELLER træning er dagens ene valg; inde i løbet vælger man hvor dybt man går** | "Fordi du vælger jo træning eller løb. Det er 1 valg. Og inde i løbet tror jeg det giver sig selv - Jeg har bjergdag og vil gerne angribe .. Eller 'jeg har flad etape idag og vil slappe af med min kaptajn'." | Ejerens skitse til dagens valg: Hvile · Træning (aktiv restitution / let-teknisk / mellem / hård) · Løb (grupetto / stille og roligt / normal / arbejd-angrib-udbrud / voldsom aggressivitet). Det er retningen for §8 punkt 1. [#4632](https://github.com/NicolaiDolmer/CyclingZone/issues/4632) (refs #3459, #4192) |
+
+### 12.2 Øvrige tilsagn samme dag
+
+| Tilsagn | Ejerens ord | Issue |
+|---|---|---|
+| Formtræning for alle, ikke kun ældre ryttere | "Det tænker jeg kommer for alle (Y)" | [#4633](https://github.com/NicolaiDolmer/CyclingZone/issues/4633) (refs #3763, #4271) |
+| Evner skal kunne trænes i flere pakker | "Også noget jeg arbejder på kommer med ind i spillet (Y)" | noteret i #3705 |
+| Assistenten foreslår træning, spilleren accepterer alle/udvalgte/kun ryttere uden plan | ejer-direktiv 31/8 (#feedback-from-dolmer) | [#4522](https://github.com/NicolaiDolmer/CyclingZone/issues/4522) (eksisterede) |
+| 25 %-bonussen for selv at klikke "Træn i dag" forsvinder en dag | "Jeg forventer at de 25% ekstra træning ved selv at trykke på knappen, en dag bliver slettet af spillet." (#løse-informationer 26/8) | ingen dato, ingen issue. `DAILY_TRAINING_CONFIG.bonusMult` i §1 er derfor en midlertidig mekanik |
+
+### 12.3 Hvad spillerne bad om (samme tråd), og hvad ejeren svarede
+
+| Ønske | Fra | Ejerens svar |
+|---|---|---|
+| Formtræning for ryttere der ikke jager evner | thelamba | kommer for alle (12.2) |
+| Færdigheder i flere pakker | thelamba | arbejdes på (12.2) |
+| Overskydende træning flyder over i andre evner når én er på loftet | thelamba, knud_r_flink | **afvist**, princip B |
+| Træn en ryttertype (alle relevante evner på én gang) i stedet for et sæt evner | egomadsen, knud_r_flink, robsteren | imødekommes af default-programmer navngivet efter typen (princip C), ikke af en ny fokus-akse |
+| Ugeplan med komplet session pr. dag, ikke kun intensitet | egomadsen, friisisch | ja, ca. en måned (princip C) |
+| De gamle tre intensitetsniveauer tilbage | robsteren | "på vej mod" flere valg, både i træning og i løbet (princip D) |
+| Blødt loft: træn videre over loftet, bare 10x langsommere | robsteren | findes allerede i princippet; de hårde net er det der skal væk (princip A) |
+
+**Hvad dette afsnit IKKE ændrer:** kadencen (§1), tick-rækkefølgen (§2), dagstype-stigen (§3),
+ugerytmens prioritet (§4), restitution/form/skader (§5), løbsdags-flaget (§6), træner/facilitet (§7).
+Når et af issuerne merges, flyttes indholdet ind i det relevante afsnit, og rækken her slettes.

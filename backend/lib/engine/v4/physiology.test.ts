@@ -15,7 +15,7 @@ import {
   tickPhysiology,
   tickPhysiologyOverSegment,
 } from "./physiology.ts";
-import { PHYSIOLOGY_SUBTICK_TUNING, RACE_V4_TUNING } from "./tuning.ts";
+import { PHYSIOLOGY_SUBTICK_TUNING, PHYSIOLOGY_WPRIME_DRAIN_TUNING, RACE_V4_TUNING } from "./tuning.ts";
 import type { AbilityKey } from "./types.ts";
 
 function abilities(overrides: Partial<Record<AbilityKey, number>> = {}): Record<AbilityKey, number> {
@@ -245,4 +245,50 @@ test("tickPhysiologyOverSegment: deterministisk (samme input -> samme output, ge
     subTick: PHYSIOLOGY_SUBTICK_TUNING,
   };
   assert.deepEqual(tickPhysiologyOverSegment(args), tickPhysiologyOverSegment(args));
+});
+
+// ── #4604: W'-taeringens tidskonstant ────────────────────────────────────────
+
+test("#4604 W'-taering skaleres af tidskonstanten (reserven er ikke laengere binaer)", () => {
+  const T = PHYSIOLOGY_WPRIME_DRAIN_TUNING.timeConstantSeconds;
+  // 0,1 normaliseret over CP i praecis T sekunder skal koste 0,1 af reserven.
+  const tick = tickPhysiology({
+    cp: 0.5, wprimeMax: 0.4, wprime: 0.4, demand: 0.6, dtSeconds: T, rechargeRate: 0,
+  });
+  assert.ok(
+    Math.abs(tick.wprime - 0.3) < 1e-9,
+    `0,1 over CP i ${T}s skal koste 0,1 af reserven, fik ${tick.wprime}`,
+  );
+
+  // Regressionsvagten mod selve fejlen: FOER fixet toemte ét helt segment
+  // (typisk 2.000-5.000 s) reserven ved selv et minimalt overforbrug.
+  const wholeSegment = tickPhysiology({
+    cp: 0.5, wprimeMax: 0.4, wprime: 0.4, demand: 0.505, dtSeconds: 3600, rechargeRate: 0,
+  });
+  assert.ok(
+    wholeSegment.wprime > 0,
+    "et minimalt overforbrug (0,005 over CP) over en hel time maa ikke toemme reserven helt",
+  );
+});
+
+test("#4604 taeringen er fortsat sub-tick-invariant (lineaer ODE)", () => {
+  const args = { cp: 0.5, wprimeMax: 0.5, wprime: 0.5, demand: 0.7, rechargeRate: 0 };
+  const one = tickPhysiology({ ...args, dtSeconds: 600 });
+  let wprime = args.wprime;
+  for (let i = 0; i < 10; i++) {
+    wprime = tickPhysiology({ ...args, wprime, dtSeconds: 60 }).wprime;
+  }
+  assert.ok(Math.abs(one.wprime - wprime) < 1e-9, "ét stort skridt og ti smaa skal give samme taering");
+});
+
+test("#4604 tidskonstanten kan injiceres (kalibrerbar uden global tuning-aendring)", () => {
+  const slow = tickPhysiology({
+    cp: 0.5, wprimeMax: 0.4, wprime: 0.4, demand: 0.6, dtSeconds: 240,
+    rechargeRate: 0, wprimeDrainTimeConstantSeconds: 2400,
+  });
+  const fast = tickPhysiology({
+    cp: 0.5, wprimeMax: 0.4, wprime: 0.4, demand: 0.6, dtSeconds: 240,
+    rechargeRate: 0, wprimeDrainTimeConstantSeconds: 24,
+  });
+  assert.ok(slow.wprime > fast.wprime, "hoejere tidskonstant => langsommere taering");
 });

@@ -55,8 +55,8 @@
     "oneDay": "Enkeltdagsløb"
   },
   "division": "Division {div}",
-  "promotionNote": "Top 2 rykker op ↑",
-  "relegationNote": "Bund 4 rykker ned ↓",
+  "promotionNote": "Top 2 rykker op",
+  "relegationNote": "Bund 4 rykker ned",
   "table": {
     "rank": "#",
     "team": "Hold",
@@ -65,8 +65,8 @@
     "progression": "Udvikling"
   },
   "you": "Dig",
-  "promotion": "↑ Op",
-  "relegation": "↓ Ned",
+  "promotion": "Op",
+  "relegation": "Ned",
   "myProgression": "Dit holds pointudvikling",
   "loadError": "Kunne ikke indlæse sæsonen. Prøv igen.",
   "retry": "Prøv igen",
@@ -82,8 +82,8 @@
     },
     "rankLine": "#{rank} af {size} i division {division}",
     "movement": {
-      "promoted": "↑ Rykket op",
-      "relegated": "↓ Rykket ned",
+      "promoted": "Rykket op",
+      "relegated": "Rykket ned",
       "maintained": "Holdt division {division}"
     },
     "highlight": {

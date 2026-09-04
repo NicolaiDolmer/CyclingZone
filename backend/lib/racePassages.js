@@ -12,6 +12,7 @@ export const GREEN_FINISH_SCALES = Object.freeze({
   rolling:       Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
   hilly:         Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
   classic:       Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
+  gravel:        Object.freeze([30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2]),
   mountain:      Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
   high_mountain: Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),
   itt:           Object.freeze([20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]),

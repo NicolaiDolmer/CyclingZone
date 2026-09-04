@@ -1,16 +1,25 @@
 import * as Sentry from "@sentry/react";
-import { useEffect } from "react";
-import { documentIsStillLoadable, isChunkLoadError, shouldAttemptChunkReload } from "./chunkErrors.js";
+import { useEffect, useState } from "react";
+import {
+  documentIsStillLoadable,
+  isChunkLoadError,
+  isUnambiguousChunkLoadError,
+  shouldAttemptChunkReload,
+} from "./chunkErrors.js";
 // Direkte imports (IKKE barrel) — saa main-bundlen kun traekker ErrorState +
 // Button (+ deres ikon/styles) ind, ikke hele ui-laget (#479). #671 Plan 3.
 import ErrorState from "../components/ui/ErrorState.jsx";
 import Button from "../components/ui/Button.jsx";
 // denyUrls-moenstre i ren .js-fil (unit-testbar uden JSX-import), se #2018.
-import { DENY_URLS } from "./sentryDenyUrls.js";
+import { DENY_URLS, isKnownExtensionNoise } from "./sentryDenyUrls.js";
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
 const ENABLED = import.meta.env.PROD && Boolean(DSN);
 const RELEASE = import.meta.env.VITE_SENTRY_RELEASE || import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA;
+
+// Ét fingerprint for alle chunk-load-fejl, saa de lander i EN gruppe der kan
+// arkiveres i Sentry i stedet for at blive slettet i klienten (#4545).
+const CHUNK_ERROR_FINGERPRINT = "frontend-chunk-load-error";
 
 let started = false;
 
@@ -36,15 +45,41 @@ export function initSentry() {
       if (/ResizeObserver loop completed|NetworkError when attempting to fetch resource/i.test(value)) {
         return null;
       }
-      // #881: stale-chunk-fejl efter deploy er recoverable (appen auto-reloader til
-      // ny version) — drop dem som støj. Deploy-sundhed overvåges via Vercel, ikke her.
-      if (event.tags?.frontend_error_kind === "chunk_load_error" || isChunkLoadError({ message: value })) {
+      // #4499: erstatter den tidligere URL-baserede webkit-masked-url-regel i
+      // denyUrls (fjernet — den droppede ALLE WebKit-modul-fejl, ikke kun
+      // extension-stoej, se sentryDenyUrls.js). Matcher paa selve beskeden,
+      // som WebKit ikke maskerer.
+      if (isKnownExtensionNoise(value)) {
         return null;
+      }
+      // #4545: chunk-fejl blev FOER droppet helt (#881: "recoverable stoej,
+      // deploy-sundhed overvaages via Vercel"). Det kostede to ting paa én gang:
+      // fejl-id'et fallbacken viser spilleren pegede paa et event der aldrig blev
+      // sendt, og omfanget var umaaleligt — foerste signal paa haendelsen 1/9 var
+      // en Discord-besked fra en spiller, ikke dashboardet.
+      //
+      // De sendes nu som warning under ÉT fingerprint. Saa bliver de én gruppe man
+      // kan arkivere i Sentry: stoejen styres der hvor man kan se hvad man slaar
+      // fra, i stedet for her hvor man ikke kan.
+      //
+      // KUN de utvetydige moenstre grupperes. isChunkLoadError() matcher ogsaa
+      // React.lazy-interne strenge som almindelig kode kan producere (se
+      // chunkErrors.js) — at samle dem her ville begrave et aegte crash i en
+      // daempet chunk-gruppe, hvilket er praecis den fejl vi retter.
+      if (event.tags?.frontend_error_kind === "chunk_load_error" || isUnambiguousChunkLoadError({ message: value })) {
+        event.level = "warning";
+        event.fingerprint = [CHUNK_ERROR_FINGERPRINT];
       }
       return event;
     },
   });
   started = true;
+}
+
+export function classifyFrontendError(error) {
+  if (isUnambiguousChunkLoadError(error)) return "chunk_load_error";
+  if (isChunkLoadError(error)) return "possible_chunk_load_error";
+  return "render_error";
 }
 
 export function SentryBoundary({ children }) {
@@ -55,7 +90,12 @@ export function SentryBoundary({ children }) {
   return (
     <Sentry.ErrorBoundary
       beforeCapture={(scope, error) => {
-        scope.setTag("frontend_error_kind", isChunkLoadError(error) ? "chunk_load_error" : "render_error");
+        // Tre vaerdier, ikke to (#4545): "possible_chunk_load_error" er de
+        // React.lazy-interne signaturer som almindelig kode ogsaa kan producere.
+        // Recovery behandler dem stadig som chunk-fejl (billigt at tage fejl),
+        // men de daempes ikke i Sentry — saa et aegte crash forbliver synligt,
+        // og du kan maale hvor stor den tvetydige bunke faktisk er.
+        scope.setTag("frontend_error_kind", classifyFrontendError(error));
         if (RELEASE) scope.setTag("frontend_release", RELEASE);
       }}
       fallback={(props) => <AppErrorFallback {...props} />}
@@ -81,22 +121,38 @@ function getPreferredLanguage() {
 
 function AppErrorFallback({ error, eventId, resetError }) {
   const chunkError = isChunkLoadError(error);
+  // Sat naar auto-recovery er opbrugt for denne release — se effecten nedenfor.
+  const [recoveryExhausted, setRecoveryExhausted] = useState(false);
+  // "Stuck" = chunk-fejl hvor der IKKE kommer et automatisk reload. Copyen skal
+  // sige hvad der faktisk sker, og give spilleren det skridt der virker: et
+  // haardt gen-indlaes, og ellers rydning af sidens data. Et almindeligt reload
+  // henter ikke en `immutable`-cachet ressource igen, saa knappen ovenfor kan
+  // ikke loese det (#4545).
+  const stuck = chunkError && recoveryExhausted;
   const lang = getPreferredLanguage().toLowerCase().startsWith("da") ? "da" : "en";
   const copy = lang === "da"
     ? {
-        title: chunkError ? "Cycling Zone er opdateret" : "Siden kunne ikke vises",
-        body: chunkError
-          ? "Din browser havde en ældre version af siden åben. Vi prøver at genindlæse den nye version automatisk."
-          : "Der skete en fejl i appen. Fejlen er registreret, og du kan prøve at genindlæse siden.",
+        title: stuck
+          ? "Siden kunne ikke indlæses"
+          : chunkError ? "Cycling Zone er opdateret" : "Siden kunne ikke vises",
+        body: stuck
+          ? "Genindlæsning løste det ikke. Et hårdt gen-indlæs plejer at virke: hold Shift nede, og klik Genindlæs. Sker det stadig, så ryd sidens gemte data i browserens indstillinger."
+          : chunkError
+            ? "Din browser havde en ældre version af siden åben. Vi prøver at genindlæse den nye version automatisk."
+            : "Der skete en fejl i appen. Fejlen er registreret, og du kan prøve at genindlæse siden.",
         reload: "Genindlæs siden",
         retry: "Prøv igen",
         event: "Fejl-id",
       }
     : {
-        title: chunkError ? "Cycling Zone was updated" : "The page could not be shown",
-        body: chunkError
-          ? "Your browser had an older version of the page open. We are trying to reload the new version automatically."
-          : "The app hit an error. The error has been recorded, and you can try reloading the page.",
+        title: stuck
+          ? "The page could not be loaded"
+          : chunkError ? "Cycling Zone was updated" : "The page could not be shown",
+        body: stuck
+          ? "Reloading did not fix it. A hard refresh usually does: hold Shift and click Reload. If it keeps happening, clear this site's saved data in your browser settings."
+          : chunkError
+            ? "Your browser had an older version of the page open. We are trying to reload the new version automatically."
+            : "The app hit an error. The error has been recorded, and you can try reloading the page.",
         reload: "Reload page",
         retry: "Try again",
         event: "Error ID",
@@ -134,7 +190,14 @@ function AppErrorFallback({ error, eventId, resetError }) {
       });
       if (shouldReload) {
         window.location.reload();
+        return;
       }
+      // #4545: dokumentet ER i live, men loop-guarden er braendt — ét reload er
+      // allerede brugt paa denne release. Der sker altsaa INTET automatisk herfra,
+      // og copyen maa ikke blive ved med at love det. Uden dette flag sad
+      // spilleren 1/9 i en loekke: samme "vi genindlaeser automatisk", nyt fejl-id,
+      // i det uendelige, uden at faa at vide hvad han selv kunne goere.
+      setRecoveryExhausted(true);
     });
 
     return () => {
@@ -161,7 +224,10 @@ function AppErrorFallback({ error, eventId, resetError }) {
               <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
                 {copy.reload}
               </Button>
-              {!chunkError && (
+              {/* #4545: "Proev igen" skjules mens et automatisk reload er paa vej,
+                  men vises igen naar recovery er opbrugt — saa spilleren har en
+                  udvej ud over den knap der beviseligt ikke hjalp ham. */}
+              {(!chunkError || stuck) && (
                 <Button variant="secondary" size="sm" onClick={() => resetError?.()}>
                   {copy.retry}
                 </Button>

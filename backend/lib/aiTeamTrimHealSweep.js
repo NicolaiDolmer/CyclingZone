@@ -52,6 +52,8 @@ import {
   targetAiCountForPool,
   isRealManager,
 } from "./aiTeamGenerator.js";
+import { teamHasLiveTransferOffers } from "./aiTeamRetirement.js";
+import { isAiTeamRetireEnabled } from "./aiTeamRetireFlag.js";
 
 // #2434: defense-in-depth-backstop. Den PRIMÆRE stale-detektion er løbs-bevidst
 // (alarmér når det blokerende løb selv er stallet). Denne backstop fanger blokeringer
@@ -125,6 +127,12 @@ export async function runAiTeamTrimHealSweep({
   // udskudt indtil FK-semantikken er afgjort — det rapporteres via `stale`, aldrig
   // tvangsslettet (backstoppen sletter ikke, den melder).
   hasBlockingOffers = teamHasBlockingTransferOffers,
+  // #4753: under nedlæggelses-tilstanden slettes intet, så en DØD tilbudsrække kan
+  // ikke blokere noget — kun LEVENDE tilbud udskyder (spiller-hensyn: en manager står
+  // midt i en forhandling). Netop dette led er grunden til at 13 AI-hold sad
+  // permanent fast: deres eneste blokering var withdrawn/accepted/rejected-rækker.
+  hasLiveOffers = teamHasLiveTransferOffers,
+  isRetireEnabled = isAiTeamRetireEnabled,
   removeTeam = deleteAiTeamById,
   // #2407: pr.-pulje trim-budget (hard-gate mod at slette under target) + rydning
   // af forældede markører. Injicerbare for test.
@@ -151,6 +159,9 @@ export async function runAiTeamTrimHealSweep({
 
   const inflightRaceIds = await getInflightIds(supabase);
   const stalledRaceIds = new Set(await getStalledIds(supabase, now));
+  // #4753: læses ÉN gang pr. sweep (ikke pr. hold) — tilstanden må ikke kunne skifte
+  // midt i et loop hvor budgettet allerede er beregnet.
+  const retire = await isRetireEnabled(supabase);
   const backstopMs = backstopHours * 60 * 60 * 1000;
 
   // #2407 Fejl 2: hard-gate — hvor mange sletninger tåler hver pulje FØR den rammer
@@ -192,9 +203,13 @@ export async function runAiTeamTrimHealSweep({
         ? false
         : await hasUnpaidPrizes(supabase, team.id);
       // #4233: tredje selvstændige grund, samme kortslutnings-mønster som ovenfor.
+      // #4753: hvilken tilbuds-guard der gælder afhænger af tilstanden — se
+      // `hasLiveOffers`-doc'en i signaturen.
       const offersBlocked = blockingInflight.length > 0 || prizeBlocked
         ? false
-        : await hasBlockingOffers(supabase, team.id);
+        : retire
+          ? await hasLiveOffers(supabase, team.id)
+          : await hasBlockingOffers(supabase, team.id);
       const blocked = blockingInflight.length > 0 || prizeBlocked || offersBlocked;
 
       if (!blocked) {
@@ -227,10 +242,35 @@ export async function runAiTeamTrimHealSweep({
         });
       }
     } catch (err) {
-      failed += 1;
-      errors.push({ teamId: team.id, message: err?.message || String(err) });
+      const message = err?.message || String(err);
       // Per-hold isolation: én fejl må ikke stoppe resten af sweep'en.
-      console.error(`[aiTeamTrimHealSweep] hold ${team.id} fejlede:`, err?.message || err);
+      console.error(`[aiTeamTrimHealSweep] hold ${team.id} fejlede:`, message);
+
+      // #4594: en GENUIN exception (ikke bare "blokeret") der bliver ved med at
+      // ramme SAMME hold ved hver eneste tick alarmerede FØR dette et NYT Sentry-
+      // event pr. 5-min-tick, for evigt — CYCLINGZONE-49 fyrede 221 gange over 27
+      // dage på ét hold, uden at nogen så det (#3414 blev lukket på symptomet).
+      // Samme løbs-bevidste backstop som den blokerede-gren (linje ~214-216)
+      // afgør her om fejlen er blevet PERSISTENT: over STALE_BACKSTOP_HOURS gammel
+      // → hold + fejlbesked eskaleres til `stale` (ÉN aggregeret, fingerprintet
+      // Sentry-alarm pr. tick, #2434) i stedet for endnu en `failed`-alarm. Under
+      // backstoppen forbliver det en akut per-hold-fejl (uændret, cron.js:775-782).
+      const ageMs = now.getTime() - new Date(team.pending_removal_at).getTime();
+      if (ageMs > backstopMs) {
+        stale.push({
+          teamId: team.id,
+          name: team.name,
+          poolId: team.league_division_id,
+          pendingSince: team.pending_removal_at,
+          ageHours: Math.round(ageMs / (60 * 60 * 1000)),
+          reason: "error_exceeds_backstop",
+          message,
+        });
+        continue;
+      }
+
+      failed += 1;
+      errors.push({ teamId: team.id, message });
     }
   }
 

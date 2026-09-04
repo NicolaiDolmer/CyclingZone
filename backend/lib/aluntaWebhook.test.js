@@ -12,6 +12,7 @@ const SCHEMA_FILES = [
   "schema.sql",
   "2026-06-26-cz-pro-subscriptions.sql",
   "2026-08-06-alunta-subscriptions-last-event-at.sql",
+  "2026-05-11-player-events.sql", // #4646 — checkout_completed skrives hertil
 ];
 
 // Minimal supabase-lignende adapter oven på PGlite. Understøtter det udsnit
@@ -57,6 +58,23 @@ function pgliteSupabase(db) {
       return {
         select(_cols, opts) {
           return new SelectQuery(db, table, opts);
+        },
+        // #4646: plain INSERT (ikke upsert) til player_events-testene. Kaster
+        // ALDRIG (supabase-js-mønster: fejl kommer tilbage som {error}, se
+        // lint-dropped-supabase-error.mjs's filhoved), så en FK-/constraint-
+        // fejl (fx user_id-lookup der fejler i en test uden auth.users-række)
+        // rammer captureExceptionFn i stedet for at vælte serveren.
+        insert: async (row) => {
+          try {
+            const cols = Object.keys(row);
+            const colList = cols.join(", ");
+            const placeholders = cols.map((_, i) => `$${i + 1}`).join(", ");
+            const values = cols.map((c) => (row[c] && typeof row[c] === "object" ? JSON.stringify(row[c]) : row[c]));
+            await db.query(`INSERT INTO public.${table} (${colList}) VALUES (${placeholders})`, values);
+            return { error: null };
+          } catch (err) {
+            return { error: { message: err.message } };
+          }
         },
         // Dynamisk kolonneliste (kun keys der rent faktisk er i row), ligesom ægte
         // supabase-js upsert — en udeladt kolonne (fx is_founder ved cancel) rører
@@ -143,6 +161,26 @@ test("checkout.completed med korrekt secret flipper subscription til active", as
     assert.equal(res.status, 200);
     const { rows } = await db.query("SELECT status FROM public.subscriptions WHERE team_id=$1", ["00000000-0000-0000-0000-000000000009"]);
     assert.equal(rows[0].status, "active");
+  });
+});
+
+// #4541: Alunta sender plan_interval som TAL (måneder pr. periode). Rå '6' må
+// aldrig lande i DB'en — LTV-estimat og admin-UI forventer 'semiannual'.
+test("plan_interval som tal (6) normaliseres til 'semiannual' før upsert (#4541)", async () => {
+  await withServer(async (base) => {
+    const payload = {
+      event: "subscription.started",
+      data: {
+        external_customer_id: "00000000-0000-0000-0000-000000000009",
+        subscription_uuid: "sub_1", customer_uuid: "cus_1", plan_interval: 6,
+        current_period_end: new Date(Date.now() + 180 * 864e5).toISOString(),
+      },
+      timestamp: "2026-09-02T10:05:54Z", test_mode: true,
+    };
+    const res = await fireWebhook(base, payload);
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT plan_interval FROM public.subscriptions WHERE team_id=$1", ["00000000-0000-0000-0000-000000000009"]);
+    assert.equal(rows[0].plan_interval, "semiannual");
   });
 });
 
@@ -526,6 +564,199 @@ test("events uden timestamp faar stadig lov (fail-open) naar der ikke er en lagr
     const { rows } = await db.query("SELECT status FROM public.subscriptions WHERE team_id=$1", [teamId]);
     assert.equal(rows[0].status, "active");
   });
+});
+
+// ── #4648: nested Alunta-payload (data.customer.*, subscription.*-events' data.uuid) ──
+// Rod-årsag: koden læste kun FLADE feltnavne. Aluntas ægte REST-kontrakt
+// (BILLING_STACK.md §5) nester external_customer_id/customer-uuid under
+// `data.customer`, og bruger `interval` (ikke `plan_interval`) + `uuid` (ikke
+// `subscription_uuid`) på subscription.*-events. Se postmortem:
+// .claude/learnings/2026-09-02-alunta-webhook-nested-external-customer-id.md
+
+test("#4648: subscription.started med NESTED payload (data.customer.*, data.uuid, data.interval) opdaterer korrekt team", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000050";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'NestedForm') ON CONFLICT DO NOTHING", [teamId]);
+    const periodEnd = new Date(Date.now() + 180 * 864e5).toISOString();
+    const res = await fireWebhook(base, {
+      event: "subscription.started",
+      data: {
+        uuid: "sub_nested_1", // subscription.*-event -> tilladt fallback for subscription-id
+        customer: { uuid: "cus_nested_1", external_customer_id: teamId },
+        interval: 6, // Aluntas REST-feltnavn, TAL
+        current_period_end: periodEnd,
+      },
+      timestamp: "2026-09-02T10:00:00Z",
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query(
+      "SELECT status, plan_interval, alunta_customer_id, alunta_subscription_id, current_period_end FROM public.subscriptions WHERE team_id=$1",
+      [teamId],
+    );
+    assert.equal(rows[0].status, "active");
+    assert.equal(rows[0].plan_interval, "semiannual");
+    assert.equal(rows[0].alunta_customer_id, "cus_nested_1");
+    assert.equal(rows[0].alunta_subscription_id, "sub_nested_1");
+    assert.equal(new Date(rows[0].current_period_end).toISOString(), periodEnd);
+  });
+});
+
+test("#4648: checkout.completed bruger ALDRIG data.uuid som subscription-id (checkout-session-id er ikke et abonnement)", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000051";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'CheckoutUuidGuard') ON CONFLICT DO NOTHING", [teamId]);
+    const res = await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        uuid: "checkout_session_abc", // IKKE et abonnements-id — må ikke havne som alunta_subscription_id
+        customer: { uuid: "cus_guard", external_customer_id: teamId },
+        plan_interval: "monthly",
+        current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT alunta_subscription_id, alunta_customer_id FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows[0].alunta_subscription_id, null);
+    assert.equal(rows[0].alunta_customer_id, "cus_guard");
+  });
+});
+
+test("#4648: flad external_customer_id vinder over nested customer.external_customer_id naar begge er sat", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000052";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'FlatWins') ON CONFLICT DO NOTHING", [teamId]);
+    const res = await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId,
+        customer: { external_customer_id: "99999999-9999-9999-9999-999999999999", uuid: "cus_flat" },
+        subscription_uuid: "sub_flat", customer_uuid: "cus_flat_top",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query("SELECT alunta_customer_id FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].alunta_customer_id, "cus_flat_top"); // flad customer_uuid vandt over nested customer.uuid
+  });
+});
+
+// ── #4646: checkout_completed player_events-funnel-event ────────────────────
+
+test("#4646: checkout.completed skriver player_events 'checkout_completed' med plan_interval + currency", async () => {
+  await withServer(async (base) => {
+    // #4646-test-fixture: teams.user_id -> public.users(id) (schema.sql), mens
+    // player_events.user_id -> auth.users(id) (2026-05-11-player-events.sql) —
+    // to forskellige "users"-tabeller i PGlite-testskemaet (spejler prod, hvor
+    // public.users mirror'er auth.users på SAMME id). Begge rækker skal
+    // eksistere med samme id for at begge FK'er holder.
+    const { rows: [{ id: userId }] } = await db.query("INSERT INTO auth.users DEFAULT VALUES RETURNING id");
+    await db.query(
+      "INSERT INTO public.users (id, email, username) VALUES ($1, 'pe-test@example.test', 'pe-test-user') ON CONFLICT DO NOTHING",
+      [userId],
+    );
+    const teamId = "00000000-0000-0000-0000-000000000060";
+    await db.query("INSERT INTO public.teams (id, name, user_id) VALUES ($1,'PlayerEventTeam',$2) ON CONFLICT DO NOTHING", [teamId, userId]);
+    const res = await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_pe", customer_uuid: "cus_pe",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+        currency: "DKK",
+      },
+    });
+    assert.equal(res.status, 200);
+    const { rows } = await db.query(
+      "SELECT event_name, team_id, user_id, event_data FROM public.player_events WHERE team_id=$1 AND event_name='checkout_completed'",
+      [teamId],
+    );
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].user_id, userId);
+    assert.deepEqual(rows[0].event_data, { plan_interval: "monthly", currency: "DKK" });
+  });
+});
+
+test("#4646: checkout.completed for et hold uden user_id (ingen auth-bruger) springer player_events-skrivning stille over", async () => {
+  await withServer(async (base) => {
+    const teamId = "00000000-0000-0000-0000-000000000061";
+    await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'NoUserTeam') ON CONFLICT DO NOTHING", [teamId]); // user_id NULL
+    const res = await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_nu", customer_uuid: "cus_nu",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    assert.equal(res.status, 200); // stadig 200 — player_events er sidegevinst, ikke betalings-kritisk
+    const { rows } = await db.query("SELECT * FROM public.player_events WHERE team_id=$1", [teamId]);
+    assert.equal(rows.length, 0);
+    const { rows: subRows } = await db.query("SELECT status FROM public.subscriptions WHERE team_id=$1", [teamId]);
+    assert.equal(subRows[0].status, "active"); // hovedflowet upåvirket
+  });
+});
+
+// ── #4648: scopet reconcile-for-team fire-and-forget efter checkout.completed ──
+
+test("#4648: checkout.completed kalder reconcileForTeamFn naar en Alunta-klient er injiceret", async () => {
+  const calls = [];
+  const teamId = "00000000-0000-0000-0000-000000000053";
+  await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'ReconcileTrigger') ON CONFLICT DO NOTHING", [teamId]);
+  const fakeClient = { listSubscriptions: async () => ({ data: [] }) };
+  const reconcileForTeamFn = async (args) => { calls.push(args); return { ran: true, applied: false }; };
+  await withServer(async (base) => {
+    const res = await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_rt", customer_uuid: "cus_rt",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    assert.equal(res.status, 200);
+  }, { client: fakeClient, reconcileForTeamFn });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].teamId, teamId);
+  assert.equal(calls[0].client, fakeClient);
+});
+
+test("#4648: reconcileForTeamFn kaldes IKKE for andre events end checkout.completed", async () => {
+  const calls = [];
+  const teamId = "00000000-0000-0000-0000-000000000055";
+  await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'ReconcileOnlyCheckout') ON CONFLICT DO NOTHING", [teamId]);
+  const fakeClient = { listSubscriptions: async () => ({ data: [] }) };
+  const reconcileForTeamFn = async (args) => { calls.push(args); return { ran: true, applied: false }; };
+  await withServer(async (base) => {
+    const res = await fireWebhook(base, {
+      event: "subscription.started",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_no_rt", customer_uuid: "cus_no_rt",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    assert.equal(res.status, 200);
+  }, { client: fakeClient, reconcileForTeamFn });
+  assert.equal(calls.length, 0);
+});
+
+test("#4648: fejl i reconcileForTeamFn fanges via captureExceptionFn og paavirker ikke 200-svaret", async () => {
+  const captured = [];
+  const teamId = "00000000-0000-0000-0000-000000000054";
+  await db.query("INSERT INTO public.teams (id, name) VALUES ($1,'ReconcileFails') ON CONFLICT DO NOTHING", [teamId]);
+  const fakeClient = { listSubscriptions: async () => ({ data: [] }) };
+  const reconcileForTeamFn = async () => { throw new Error("boom-reconcile"); };
+  await withServer(async (base) => {
+    const res = await fireWebhook(base, {
+      event: "checkout.completed",
+      data: {
+        external_customer_id: teamId, subscription_uuid: "sub_rf", customer_uuid: "cus_rf",
+        plan_interval: "monthly", current_period_end: new Date(Date.now() + 30 * 864e5).toISOString(),
+      },
+    });
+    assert.equal(res.status, 200);
+  }, { client: fakeClient, reconcileForTeamFn, captureExceptionFn: (err, ctx) => captured.push({ err, ctx }) });
+  assert.equal(captured.length, 1);
+  assert.match(captured[0].err.message, /boom-reconcile/);
+  assert.equal(captured[0].ctx.tags.stage, "webhook-reconcile-team");
+  assert.equal(captured[0].ctx.teamId, teamId);
 });
 
 // ── Observability (#2817) — tavse fejl-exits skal logge/capture'e ────────────

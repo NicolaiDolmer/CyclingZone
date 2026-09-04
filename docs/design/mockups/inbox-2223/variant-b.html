@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inbox rework - Variant B: Grouped by type + filter chips (#2223)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1; --border:#e5e0d5;
+    --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+    --accent-t:#a07800; --on-accent:#1a1f38;
+    --success:#15772f; --success-bg:rgba(21,119,47,.08);
+    --danger:#a81e1e; --danger-bg:rgba(168,30,30,.08);
+    --warning:#9a5b00; --warning-bg:rgba(154,91,0,.08);
+    --info:#1a47c0; --info-bg:rgba(26,71,192,.08);
+    --sidebar:#1a1f38;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-body);color:var(--text-1);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;}
+  .review-bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:var(--sidebar);color:#fff;font-size:12px;}
+  .review-bar b{font-weight:600}
+  .review-bar a{color:#d8d3c4;text-decoration:none;margin-left:14px;padding:4px 9px;border:1px solid rgba(255,255,255,.18);border-radius:5px;}
+  .review-bar a.current{color:#fff;border-color:rgba(255,255,255,.55);}
+  .review-bar a:hover{border-color:rgba(255,255,255,.55);}
+  .intro{max-width:1280px;margin:18px auto 0;padding:0 20px;font-size:12.5px;color:var(--text-2);line-height:1.55;}
+  .intro b.warn{color:var(--warning);}
+  .stage{display:flex;gap:28px;align-items:flex-start;padding:20px;overflow-x:auto;}
+  .frame-col{flex:0 0 auto;}
+  .frame-label{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;}
+  .frame{border:1px solid var(--border);border-radius:5px;background:var(--bg-body);overflow:hidden;}
+  .frame-scroll{overflow-y:auto;}
+  .desktop .frame{width:1280px;}
+  .desktop .frame-scroll{max-height:1000px;}
+  .mobile .frame{width:375px;}
+  .mobile .frame-scroll{max-height:900px;}
+  .pg-d{padding:28px 32px 48px;}
+  .pg-m{padding:20px 16px 40px;}
+
+  .hdr{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;}
+  .hdr h1{font-size:20px;font-weight:700;letter-spacing:-0.01em;margin:0;}
+  .hdr p{font-size:13px;color:var(--text-2);margin:4px 0 0;}
+  .mobile .hdr{flex-direction:column;align-items:flex-start;gap:10px;}
+  .btn{font-size:12px;font-weight:500;padding:6px 12px;border-radius:5px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-1);cursor:default;white-space:nowrap;}
+  .btn:hover{background:var(--bg-subtle);}
+
+  .chiprow{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;margin-bottom:20px;}
+  .chip{flex:0 0 auto;font-size:12px;font-weight:500;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-2);white-space:nowrap;}
+  .chip.active{color:var(--text-1);background:var(--bg-subtle);border-color:var(--text-3);}
+  .chip .n{font-variant-numeric:tabular-nums;color:var(--text-3);margin-left:4px;}
+
+  .group{border:1px solid var(--border);border-radius:5px;background:var(--bg-card);margin-bottom:14px;}
+  .group-hdr{display:flex;align-items:baseline;justify-content:space-between;padding:14px 16px 0;margin-bottom:14px;}
+  .group-hdr .gt{display:flex;align-items:center;gap:8px;}
+  .group-hdr h2{font-size:15px;font-weight:600;margin:0;}
+  .group-hdr .meta{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);}
+  .g-ic{width:22px;height:22px;color:var(--text-2);}
+  .row{display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-top:1px solid var(--border);}
+  .row .rt{flex:1;min-width:0;}
+  .row .rt-title{font-size:13.5px;font-weight:500;color:var(--text-1);}
+  .row .rt-meta{font-size:11px;color:var(--text-3);margin-top:2px;text-transform:uppercase;letter-spacing:.04em;font-variant-numeric:tabular-nums;}
+  .tag-action{flex-shrink:0;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;color:var(--danger);background:var(--danger-bg);}
+  .row-btn{flex-shrink:0;}
+
+  .note{font-size:12px;color:var(--text-2);margin-top:6px;}
+  .lang{max-width:1280px;margin:24px auto 40px;padding:16px 20px;font-size:12.5px;color:var(--text-2);}
+  .lang h3{font-size:13px;color:var(--text-1);margin:0 0 8px;}
+  .lang table{border-collapse:collapse;width:100%;font-size:12px;}
+  .lang td{padding:5px 8px;border-top:1px solid var(--border);vertical-align:top;}
+  .lang td.en{color:var(--text-1);width:45%;}
+  .lang td.da{color:var(--text-2);}
+</style>
+</head>
+<body>
+  <div class="review-bar">
+    <div><b>Inbox rework #2223</b> - Variant B · Grouped by type + filter chips</div>
+    <div>
+      <a href="variant-a.html">A · Needs you / Happened</a>
+      <a class="current" href="variant-b.html">B · Grouped by type</a>
+      <a href="variant-c.html">C · Timeline</a>
+      <a href="README.md">Recommendation</a>
+    </div>
+  </div>
+  <p class="intro">
+    <b>Alternative, not recommended.</b> Everything grouped by game area (Auctions, Transfers, Board, Races, Finance,
+    Scouting), with a red "Action" tag marking the items that need a decision inside each group. Filter chips narrow
+    to one area. <b class="warn">Tension with TASTE.md P1/§3:</b> a chip row next to five group cards is the same
+    "second sorting idiom next to structure that already sorts" pattern the audit flagged on Transfers - kept here
+    only so the trade-off is visible side by side with A.
+  </p>
+
+  <div class="stage">
+    <div class="frame-col desktop">
+      <div class="frame-label">Desktop - 1280px</div>
+      <div class="frame"><div class="frame-scroll"><div class="pg-d">
+
+        <div class="hdr">
+          <div>
+            <h1>Inbox</h1>
+            <p>7 need you now, across 4 areas</p>
+          </div>
+          <button class="btn">Mark all read</button>
+        </div>
+
+        <div class="chiprow">
+          <span class="chip active">All <span class="n">18</span></span>
+          <span class="chip">Auctions <span class="n">3</span></span>
+          <span class="chip">Transfers <span class="n">3</span></span>
+          <span class="chip">Board <span class="n">2</span></span>
+          <span class="chip">Races <span class="n">2</span></span>
+          <span class="chip">Finance <span class="n">3</span></span>
+          <span class="chip">Scouting <span class="n">2</span></span>
+          <span class="chip">Academy <span class="n">1</span></span>
+          <span class="chip">System <span class="n">2</span></span>
+        </div>
+
+        <div class="group">
+          <div class="group-hdr"><div class="gt"><span class="g-ic" data-icon="lightning"></span><h2>Auctions</h2></div><span class="meta">3 items</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">You've been outbid on Andrea Riva - closes in 4h 12m</div><div class="rt-meta">4h ago</div></div><span class="tag-action">Action</span><button class="btn row-btn">Bid</button></div>
+          <div class="row"><div class="rt"><div class="rt-title">Auction won: Kenji Abe for 2,100,000 CZ$</div><div class="rt-meta">2 days ago</div></div></div>
+          <div class="row"><div class="rt"><div class="rt-title">New bid received on Marco Delacroix - you're leading</div><div class="rt-meta">3 days ago</div></div></div>
+        </div>
+
+        <div class="group">
+          <div class="group-hdr"><div class="gt"><span class="g-ic" data-icon="exchange"></span><h2>Transfers</h2></div><span class="meta">3 items</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">Transfer offer for Florian Wolf: 4,200,000 CZ$ - expires in 22h</div><div class="rt-meta">1h ago</div></div><span class="tag-action">Action</span><button class="btn row-btn">Review</button></div>
+          <div class="row"><div class="rt"><div class="rt-title">Haruto Yoshida's contract expires in 5 days</div><div class="rt-meta">Today</div></div><span class="tag-action">Action</span><button class="btn row-btn">Renew</button></div>
+          <div class="row"><div class="rt"><div class="rt-title">3 riders on your watchlist were listed for transfer</div><div class="rt-meta">2 days ago</div></div></div>
+        </div>
+
+        <div class="group">
+          <div class="group-hdr"><div class="gt"><span class="g-ic" data-icon="clipboard"></span><h2>Board</h2></div><span class="meta">2 items</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">Board demands a squad sale before Monday</div><div class="rt-meta">Today</div></div><span class="tag-action">Action</span><button class="btn row-btn">Review</button></div>
+          <div class="row"><div class="rt"><div class="rt-title">Squad below minimum: 14 of 16 required riders</div><div class="rt-meta">Today</div></div><span class="tag-action">Action</span><button class="btn row-btn">Sign</button></div>
+        </div>
+
+        <div class="group">
+          <div class="group-hdr"><div class="gt"><span class="g-ic" data-icon="flag"></span><h2>Races</h2></div><span class="meta">2 items</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">Set your lineup: Stage 4, Tour de Rhône - auto-pick in 6h</div><div class="rt-meta">Today</div></div><span class="tag-action">Action</span><button class="btn row-btn">Set lineup</button></div>
+          <div class="row"><div class="rt"><div class="rt-title">Stage 3: Florian Wolf finished 2nd, Haruto Yoshida 14th, Kenji Abe 31st</div><div class="rt-meta">Yesterday</div></div></div>
+        </div>
+
+        <div class="group">
+          <div class="group-hdr"><div class="gt"><span class="g-ic" data-icon="coin"></span><h2>Finance</h2></div><span class="meta">3 items</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">Weekly salaries paid: -412,000 CZ$</div><div class="rt-meta">Yesterday</div></div></div>
+          <div class="row"><div class="rt"><div class="rt-title">Sponsor payment received: +180,000 CZ$</div><div class="rt-meta">Yesterday</div></div></div>
+        </div>
+
+        <div class="group">
+          <div class="group-hdr"><div class="gt"><span class="g-ic" data-icon="search"></span><h2>Scouting</h2></div><span class="meta">2 items</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">Scout report ready for 2 riders</div><div class="rt-meta">3 days ago</div></div></div>
+          <div class="row"><div class="rt"><div class="rt-title">Mateo Costa is ready to graduate from the academy</div><div class="rt-meta">Today</div></div><span class="tag-action">Action</span><button class="btn row-btn">Decide</button></div>
+        </div>
+
+      </div></div></div>
+    </div>
+
+    <div class="frame-col mobile">
+      <div class="frame-label">Mobile - 375px</div>
+      <div class="frame"><div class="frame-scroll"><div class="pg-m">
+
+        <div class="hdr">
+          <div>
+            <h1>Inbox</h1>
+            <p>7 need you now</p>
+          </div>
+          <button class="btn">Mark all read</button>
+        </div>
+
+        <div class="chiprow">
+          <span class="chip active">All <span class="n">18</span></span>
+          <span class="chip">Auctions <span class="n">3</span></span>
+          <span class="chip">Transfers <span class="n">3</span></span>
+          <span class="chip">Board <span class="n">2</span></span>
+          <span class="chip">Races <span class="n">2</span></span>
+          <span class="chip">Finance <span class="n">3</span></span>
+        </div>
+
+        <div class="group">
+          <div class="group-hdr"><div class="gt"><span class="g-ic" data-icon="lightning"></span><h2>Auctions</h2></div><span class="meta">3</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">Outbid on Andrea Riva - closes 4h 12m</div><div class="rt-meta">4h ago</div></div><span class="tag-action">Action</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">Auction won: Kenji Abe, 2,100,000 CZ$</div><div class="rt-meta">2 days ago</div></div></div>
+        </div>
+
+        <div class="group">
+          <div class="group-hdr"><div class="gt"><span class="g-ic" data-icon="exchange"></span><h2>Transfers</h2></div><span class="meta">3</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">Offer for Florian Wolf: 4,200,000 CZ$</div><div class="rt-meta">1h ago</div></div><span class="tag-action">Action</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">Haruto Yoshida's contract expires in 5 days</div><div class="rt-meta">Today</div></div><span class="tag-action">Action</span></div>
+        </div>
+
+        <div class="group">
+          <div class="group-hdr"><div class="gt"><span class="g-ic" data-icon="clipboard"></span><h2>Board</h2></div><span class="meta">2</span></div>
+          <div class="row"><div class="rt"><div class="rt-title">Board demands a squad sale before Monday</div><div class="rt-meta">Today</div></div><span class="tag-action">Action</span></div>
+        </div>
+
+      </div></div></div>
+    </div>
+  </div>
+
+  <div class="lang">
+    <h3>Danish reference (DA-second - the shipped page renders one locale, not both)</h3>
+    <table>
+      <tr><td class="en">Inbox / All / Auctions / Transfers / Board / Races / Finance / Scouting / Academy / System</td><td class="da">Indbakke / Alle / Auktioner / Transfers / Bestyrelse / Løb / Økonomi / Scouting / Akademi / System</td></tr>
+      <tr><td class="en">Action</td><td class="da">Handling</td></tr>
+      <tr><td class="en">Board demands a squad sale before Monday</td><td class="da">Bestyrelsen kraever et truppe-salg foer mandag</td></tr>
+      <tr><td class="en">Squad below minimum: 14 of 16 required riders</td><td class="da">Trup under minimum: 14 af 16 paakraevede ryttere</td></tr>
+    </table>
+  </div>
+
+<script>
+const ICONS = {
+  alert: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  exchange: '<path d="M4 9h13M14 6l3 3-3 3"/><path d="M20 15H7M10 12l-3 3 3 3"/>',
+  coin: '<circle cx="12" cy="12" r="9"/><path d="M15 8.5a4 4 0 1 0 0 7"/><path d="M7 11h6M7 13.5h5"/>',
+  flag: '<path d="M5 21V4"/><path d="M5 5h13l-2.5 4 2.5 4H5z"/><path d="M5 9h11M11.5 5v8"/>',
+  clipboard: '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
+  lightning: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+};
+document.querySelectorAll('[data-icon]').forEach(el => {
+  const key = el.getAttribute('data-icon');
+  const inner = ICONS[key] || '';
+  el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="100%" height="100%">${inner}</svg>`;
+});
+</script>
+</body>
+</html>

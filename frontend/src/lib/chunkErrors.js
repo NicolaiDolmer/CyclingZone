@@ -1,4 +1,6 @@
-const CHUNK_ERROR_PATTERNS = [
+// Moenstre der KUN kan stamme fra en fejlet modul-/chunk-load. Sikre nok til
+// beslutninger hvor en falsk positiv koster noget — se isUnambiguousChunkLoadError.
+const UNAMBIGUOUS_CHUNK_ERROR_PATTERNS = [
   /failed to fetch dynamically imported module/i,
   /error loading dynamically imported module/i,
   /importing a module script failed/i,
@@ -6,14 +8,25 @@ const CHUNK_ERROR_PATTERNS = [
   /chunkloaderror/i,
   /module script.*mime type/i,
   /expected a javascript module script/i,
-  // React.lazy intern-state efter en fejlet dynamic import (#881), Firefox/Safari:
-  // "e._result is undefined" / "undefined is not an object (evaluating 'e._result.default')".
+];
+
+// React.lazy's INTERNE fejl efter en fejlet dynamic import (#881/#906). De er den
+// dominerende signatur i praksis, men de samme strenge kan komme fra almindelig
+// kode der laeser .default paa undefined. De hoerer derfor kun til i recovery,
+// hvor prisen for en falsk positiv er ét unoedigt reload — ikke i klassifikation,
+// hvor prisen er et aegte crash begravet i chunk-bunken (#4545).
+//   Firefox/Safari: "e._result is undefined" / "evaluating 'e._result.default'".
+//   V8/Chromium (Chrome/Edge): "Cannot read properties of undefined (reading 'default')"
+//   — den dominerende, U-genkendte signatur i Sentry (#906, CYCLINGZONE-D).
+const AMBIGUOUS_CHUNK_ERROR_PATTERNS = [
   /_result is undefined/i,
   /_result\.default/i,
-  // Samme React.lazy-fejl i V8/Chromium (Chrome/Edge): "Cannot read properties of
-  // undefined (reading 'default')". Var den dominerende, U-genkendte signatur i
-  // Sentry (#906, CYCLINGZONE-D) → blev fejlklassificeret som render_error-støj.
   /cannot read properties of undefined \(reading 'default'\)/i,
+];
+
+const CHUNK_ERROR_PATTERNS = [
+  ...UNAMBIGUOUS_CHUNK_ERROR_PATTERNS,
+  ...AMBIGUOUS_CHUNK_ERROR_PATTERNS,
 ];
 
 export function getErrorText(error) {
@@ -30,6 +43,15 @@ export function getErrorText(error) {
 export function isChunkLoadError(error) {
   const text = getErrorText(error);
   return CHUNK_ERROR_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+// Snaevrere end isChunkLoadError: kun moenstre der ikke kan vaere andet end en
+// fejlet modul-load. Brug denne naar en falsk positiv er dyr — fx til at gruppere
+// og daempe events i Sentry, hvor et fejlklassificeret crash forsvinder ned i en
+// arkiveret chunk-gruppe i stedet for at blive set (#4545).
+export function isUnambiguousChunkLoadError(error) {
+  const text = getErrorText(error);
+  return UNAMBIGUOUS_CHUNK_ERROR_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 export function getChunkReloadKey(release = "unknown") {

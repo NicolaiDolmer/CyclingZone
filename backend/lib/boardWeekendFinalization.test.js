@@ -513,6 +513,66 @@ test("skriver board_satisfaction_events pr. board når race medsendes", async ()
   assert.equal(ev.reason_category, "results");
 });
 
+// ── #3514 fase 1-rest: skyggemodellens weekend-sync ─────────────────────────
+
+test("#3514: kalder mandat-motorens weekend-sync for 1yr-boardet med den GENBRUGTE evaluering", async () => {
+  const season = { id: "s2", number: 2, status: "active", race_days_completed: 10, race_days_total: 40 };
+  const state = {
+    teams: [{ id: "t1", user_id: "u1", name: "Alpha", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+    board_profiles: [{ id: "b1", team_id: "t1", plan_type: "1yr", is_baseline: false, negotiation_status: "completed", satisfaction: 50, seasons_completed: 0 }],
+    season_standings: [{ team_id: "t1", season_id: "s2", division: 1, stage_wins: 1, gc_wins: 0 }],
+    riders: [], loans: [], board_plan_snapshots: [], board_satisfaction_events: [],
+  };
+  const supabase = makeFakeSupabase(state);
+  const evaluation = { feedback: { satisfaction_delta: 3, strongest_category: "results" } };
+  const calls = [];
+  await processBoardWeekendFinalization({
+    supabase, season, previousRaceDaysCompleted: 8,
+    race: { id: "r9", name: "Critérium du Dauphiné" },
+    deps: {
+      isBoardTestModeActive: async () => false,
+      loadGoalContext: async () => ({}),
+      computeWeekendUpdate: () => ({
+        previousSatisfaction: 50, newSatisfaction: 53, appliedDelta: 3,
+        newModifier: 1.0, goalsMet: 2, goalsTotal: 3, evaluation,
+      }),
+      applyMandateWeekendSync: async (sb, args) => { calls.push(args); return { confidence: 61 }; },
+    },
+  });
+  assert.equal(calls.length, 1, "kaldes for det ikke-baseline 1yr-board");
+  assert.equal(calls[0].teamId, "t1");
+  assert.equal(calls[0].seasonId, "s2");
+  assert.equal(calls[0].evaluation, evaluation, "genbruger evalueringen 1:1, regner intet nyt");
+  assert.equal(calls[0].raceId, "r9");
+  assert.equal(calls[0].raceName, "Critérium du Dauphiné");
+});
+
+test("#3514: en fejlende mandat-sync vælter ALDRIG den spillervendte weekend-opdatering", async () => {
+  const season = { id: "s2", number: 2, status: "active", race_days_completed: 10, race_days_total: 40 };
+  const state = {
+    teams: [{ id: "t1", user_id: "u1", name: "Alpha", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+    board_profiles: [{ id: "b1", team_id: "t1", plan_type: "1yr", is_baseline: false, negotiation_status: "completed", satisfaction: 50, seasons_completed: 0 }],
+    season_standings: [{ team_id: "t1", season_id: "s2", division: 1, stage_wins: 1, gc_wins: 0 }],
+    riders: [], loans: [], board_plan_snapshots: [], board_satisfaction_events: [],
+  };
+  const supabase = makeFakeSupabase(state);
+  const summary = await processBoardWeekendFinalization({
+    supabase, season, previousRaceDaysCompleted: 8,
+    deps: {
+      isBoardTestModeActive: async () => false,
+      loadGoalContext: async () => ({}),
+      computeWeekendUpdate: () => ({
+        previousSatisfaction: 50, newSatisfaction: 53, appliedDelta: 3,
+        newModifier: 1.0, goalsMet: 2, goalsTotal: 3, evaluation: { feedback: {} },
+      }),
+      applyMandateWeekendSync: async () => { throw new Error("boom"); },
+    },
+  });
+  assert.equal(state.board_profiles[0].satisfaction, 53, "board_profiles er stadig opdateret");
+  assert.equal(summary.mandate_relations_synced, 0);
+  assert.equal(summary.errors, 1);
+});
+
 test("skriver IKKE event når race mangler", async () => {
   const season = { id: "s2", number: 2, status: "active", race_days_completed: 10, race_days_total: 40 };
   const state = {

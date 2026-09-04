@@ -6,7 +6,7 @@
       "destination": "https://cyclingzone-production.up.railway.app/api/email/unsubscribe"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/|fonts/|brand/|locales/).*)",
       "destination": "/app.html"
     }
   ],
@@ -77,6 +77,15 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=604800, stale-while-revalidate=2592000"
+        }
+      ]
+    },
+    {
+      "source": "/chunk-selfheal.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
         }
       ]
     }

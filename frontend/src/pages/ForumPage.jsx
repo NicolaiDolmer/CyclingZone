@@ -8,6 +8,10 @@ import {
   SkeletonLines, Modal, Field, Input, Textarea,
 } from "../components/ui";
 import { InboxIcon } from "../components/ui/icons/index.jsx";
+import FounderMark from "../components/FounderMark.jsx";
+// #4751: datoformatteren bor nu i det delte forum-modul (en side skal ikke
+// vaere kilde for en komponent — ForumAuthorIdentity bruger den samme).
+import { formatForumDate } from "../components/forum/forumIdentity.js";
 
 // #3199 — Forum v1 (plan låst 6/8): to kategorier (General · Feedback & ideas),
 // opslag + svar-tråde, ejer-opslag kan pinnes og bære afstemninger. T1 standard
@@ -24,17 +28,6 @@ const TITLE_MAX = 120;
 const BODY_MAX = 4000;
 // Modul-konstant: en inline-array ville re-subscribe Realtime-kanalen hver render.
 const FORUM_TABLES = ["forum_posts", "forum_replies"];
-
-export function formatForumDate(iso, language) {
-  if (!iso) return "";
-  return new Date(iso).toLocaleString(language === "da" ? "da-DK" : "en-GB", {
-    timeZone: "Europe/Copenhagen",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function PostRow({ post, t, language }) {
   return (
@@ -68,6 +61,8 @@ function PostRow({ post, t, language }) {
         <span className="truncate">
           {t("list.by", { name: post.author?.username || post.author?.team_name || "?" })}
         </span>
+        {/* #4649: Founder-mærke ved forfatterlinjen. */}
+        <FounderMark teamId={post.author?.team_id} />
         <span>·</span>
         <span>{t(`categories.${post.category}`)}</span>
         <span>·</span>
@@ -220,6 +215,10 @@ export default function ForumPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  // #3451: "Markér alle som læst" — sekundær knap (gold er reserveret til
+  // "New post"), samme markingAll/loading-mønster som NotificationsPage.
+  const [markingAll, setMarkingAll] = useState(false);
+  const [markAllError, setMarkAllError] = useState(null);
 
   const tError = useCallback(
     (code) => (code && i18n.exists(`errors:api.${code}`) ? tErrors(`api.${code}`) : t("errors.submitFailed")),
@@ -261,7 +260,24 @@ export default function ForumPage() {
 
   useEffect(() => { load(null); }, [load]);
 
-  const refetch = useCallback(() => { load(null); }, [load]);
+  // #3451: "Markér alle som læst" skal vises ud fra det SAMME globale signal
+  // som nav-prikken (GET /api/forum/unread-status) — ikke den kategori-
+  // filtrerede/paginerede liste, som aldrig ser tråde uden for aktuel fane/
+  // side. Samme fetch-recipe som Layout.jsx's fetchForumUnread.
+  const [hasUnread, setHasUnread] = useState(false);
+  const refreshUnread = useCallback(async () => {
+    const headers = await authHeaders();
+    if (!headers || !API) return;
+    try {
+      const res = await fetch(`${API}/api/forum/unread-status`, { headers });
+      if (!res.ok) return;
+      const data = await res.json().catch(() => null);
+      if (typeof data?.has_unread === "boolean") setHasUnread(data.has_unread);
+    } catch { /* ignore — prikken/knappen beholder sidst kendte tilstand */ }
+  }, []);
+  useEffect(() => { refreshUnread(); }, [refreshUnread]);
+
+  const refetch = useCallback(() => { load(null); refreshUnread(); }, [load, refreshUnread]);
   useRealtimeRefetch("forum-live", FORUM_TABLES, refetch);
 
   async function handleLoadMore() {
@@ -273,6 +289,34 @@ export default function ForumPage() {
 
   function setCategoryParam(next) {
     setSearchParams(next ? { category: next } : {}, { replace: true });
+  }
+
+  async function handleMarkAllRead() {
+    if (markingAll) return;
+    setMarkingAll(true);
+    setMarkAllError(null);
+    try {
+      const headers = await authHeaders();
+      if (!headers || !API) throw new Error("no session");
+      const res = await fetch(`${API}/api/forum/threads/read-all`, { method: "PATCH", headers });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Klar prikken lokalt med det samme (ikke reload) — samme
+      // is_unread-felt PostRow allerede læser.
+      setState((s) => ({
+        ...s,
+        pinned: s.pinned.map((p) => ({ ...p, is_unread: false })),
+        items: s.items.map((p) => ({ ...p, is_unread: false })),
+      }));
+      setHasUnread(false);
+      // Samme window-event som ForumPostPage bruger, så Layout.jsx's
+      // nav-prik forsvinder MED DET SAMME i stedet for at vente på næste
+      // heartbeat/realtime-tick.
+      window.dispatchEvent(new Event("cz:forum-thread-read"));
+    } catch {
+      setMarkAllError(t("errors.markAllReadFailed"));
+    } finally {
+      setMarkingAll(false);
+    }
   }
 
   const language = i18n.language;
@@ -288,11 +332,25 @@ export default function ForumPage() {
         title={t("page.title")}
         subtitle={t("page.subtitle")}
         actions={
-          <Button variant="primary" size="sm" onClick={() => setComposeOpen(true)}>
-            {t("page.newPost")}
-          </Button>
+          <>
+            {/* #3451: sekundær — gold er reserveret til "New post" herunder. Kun
+                synlig når der rent faktisk er ulæste tråde (samme signal som
+                nav-prikken den skal fjerne). */}
+            {hasUnread && (
+              <Button variant="secondary" size="sm" onClick={handleMarkAllRead}
+                loading={markingAll} disabled={markingAll}>
+                {markingAll ? t("page.markingAllRead") : t("page.markAllRead")}
+              </Button>
+            )}
+            <Button variant="primary" size="sm" onClick={() => setComposeOpen(true)}>
+              {t("page.newPost")}
+            </Button>
+          </>
         }
       />
+      {markAllError && (
+        <p role="alert" className="mb-4 text-xs text-cz-danger">{markAllError}</p>
+      )}
 
       <nav className="mb-6 flex gap-1 border-b border-cz-border overflow-x-auto" aria-label={t("compose.categoryLabel")}>
         {tabs.map((tab) => (

@@ -68,6 +68,17 @@ export const CRON_MONITOR_10MIN = {
   failureIssueThreshold: 2,
   timezone: "Etc/UTC",
 };
+// #4147: 15-min-kadence til halv-finaliserings-vagten. Samme deploy-tolerance som
+// 10MIN ovenfor — marginen skal kunne rumme en Railway-genstartsklynge uden at
+// bekræfte to misses i træk, mens en reelt død vagt stadig alarmerer inden for
+// 2×15+15 = 45 min.
+export const CRON_MONITOR_15MIN = {
+  schedule: { type: "interval", value: 15, unit: "minute" },
+  checkinMargin: 15,
+  maxRuntime: 25,
+  failureIssueThreshold: 2,
+  timezone: "Etc/UTC",
+};
 export const CRON_MONITOR_30MIN = {
   schedule: { type: "interval", value: 30, unit: "minute" },
   checkinMargin: 15,
@@ -121,6 +132,7 @@ export const ALL_CRON_MONITORS = [
   ["selection-warning", CRON_MONITOR_5MIN],
   ["debt-warnings", CRON_MONITOR_24H],
   ["board-auto-accept", CRON_MONITOR_30MIN],
+  ["board-mandate-auto-accept", CRON_MONITOR_30MIN],
   ["board-mid-season", CRON_MONITOR_30MIN],
   ["daily-season-count-check", CRON_MONITOR_24H],
   ["discord-bot-token-check", CRON_MONITOR_24H],
@@ -139,6 +151,9 @@ export const ALL_CRON_MONITORS = [
   ["deferred-transfer-heal", CRON_MONITOR_5MIN],
   ["auto-prize", CRON_MONITOR_5MIN],
   ["stage-scheduler", CRON_MONITOR_5MIN],
+  // #4147 — halv-finaliserings-vagt. Read-only; ikke gated bag et flag (en vagt der
+  // som default er slukket er præcis den fejl den findes for at fange).
+  ["race-finalize-watch", CRON_MONITOR_15MIN],
   ["ranking-matview-refresh", CRON_MONITOR_10MIN],
   ["global-rank-weekly-snapshot", CRON_MONITOR_24H],
   ["stall-watchdog", CRON_MONITOR_30MIN],
@@ -159,10 +174,12 @@ export const ALL_CRON_MONITORS = [
   // samme kadence som discord-dm-outbox-drain/discord-webhook-outbox-drain.
   ["email-retry-drain", CRON_MONITOR_5MIN],
   ["discord-race-digest", CRON_MONITOR_60MIN],
-  ["alunta-subscription-reconcile", CRON_MONITOR_24H],
+  ["alunta-subscription-reconcile", CRON_MONITOR_60MIN],
   // #4514 — forfalds-vagt. Ikke gated bag et flag: en vagt der er slukket som
   // default er præcis den fejl den findes for at fange. Den skriver intet.
   ["alunta-overdue-watch", CRON_MONITOR_24H],
+  // #4555 — periode-rul-vagt. Read-only, samme rationale som overdue-watch.
+  ["alunta-period-roll-watch", CRON_MONITOR_24H],
   // #3402: sæsondokumentar-sweep — polleren der fylder season_documentaries op
   // for de seneste completed sæsoner (60 min-kadence, samme som entry-generator/
   // discord-race-digest). Idempotent no-op når intet mangler.

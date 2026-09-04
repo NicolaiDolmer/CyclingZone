@@ -1,5 +1,15 @@
+// #2423: første import med vilje, men vær præcis om hvad det køber os.
+// Entry-chunken, dens STATISKE imports og alle modulepreloads er allerede hentet
+// før den første linje JS overhovedet kører — dem kan cookien ikke nå at
+// påvirke, og de har heller ikke brug for den: de kom fra samme deployment som
+// HTML'en. Det kaldet nedenfor faktisk garanterer, er at `__vdpl` er sat før den
+// første LAZY `import()` (React.lazy-ruter og andre dynamiske imports), altså
+// præcis de requests der ellers rammer en 404 efter et deploy.
+// Se lib/skewProtection.js for mekanikken.
+import { installSkewProtection, SKEW_PROTECTION_ENABLED } from "./lib/skewProtection.js";
 import React from "react";
 import { hydrateRoot, createRoot } from "react-dom/client";
+import * as Sentry from "@sentry/react";
 import App from "./App.jsx";
 import { AppProviders } from "./AppProviders.jsx";
 import { initSentry } from "./lib/sentry.jsx";
@@ -14,6 +24,25 @@ import "./index.css";
 // blokerede boot uden gevinst. CSS'en scopes nu til de to moduler der faktisk
 // renderer flag: `Flag.jsx` og `LanguageSwitcher.jsx` — Vite deduper importen,
 // så den loades præcis én gang, første gang et flag-modul indlæses.
+
+// Skew Protection (#2423): pin denne klient til det deployment den kører, så en
+// lazy chunk hentet EFTER et deploy stadig findes. Første statement, så pinnen
+// står før den første dynamiske import. No-op i alt andet end et Vercel
+// PRODUCTION-build med Skew Protection slået til.
+// HOTFIX 4/9 kl. 11:55 (#2423): cookie-pinnen SLÅET FRA. Målt i prod: Vercel pinner
+// asset-requests (Sec-Fetch-Dest: script) til cookiens deployment, men serverer
+// DOKUMENTET fra det nyeste deployment ved browser-navigationer. Efter hvert deploy
+// fik alle spillere med en cookie fra forrige deploy ny HTML + 404 på alle chunks.
+// index.html rydder cookien inline før preloads. Genbesøg i #2423 før gen-tænding.
+// `SKEW_PROTECTION_ENABLED` (lib/skewProtection.js) er SSOT for den slukkede
+// tilstand — `scripts/check-skew-protection.mjs` læser samme flag for at afgøre
+// om dets gate 2/2b skal køre. Sæt ALDRIG flaget til `true` uden eksplicit
+// ejer-go (læs begge #2423-postmortems i .claude/learnings/ FØRST).
+if (SKEW_PROTECTION_ENABLED) {
+  installSkewProtection();
+} else {
+  void installSkewProtection;
+}
 
 // Stale-chunk recovery (#906): et globalt net der fanger dynamic-import/preload-
 // fejl efter et deploy FØR React's error-boundary kan ramme dem — både Vite's
@@ -114,5 +143,30 @@ captureFirstTouch();
   } else {
     if (rootEl.firstElementChild) rootEl.replaceChildren();
     createRoot(rootEl).render(tree);
+  }
+
+  // #4595 review: appen har nu booted — boot-vagten i public/chunk-selfheal.js
+  // skal stoppe med at reagere paa modul-fejl herefter (en fejl efter et
+  // vellykket mount er ikke et boot-problem, og haandteres af andre lag som
+  // lazyWithRetry.js).
+  window.__czAppBooted = true;
+
+  // #4595 review: spor selv-helbredte deploys i Sentry som et lavstoej
+  // "warning"-signal, saa vi kan se hvor tit boot-vagten reddede en session
+  // uden at forurene fejl-raten. Rapporteres hoejst én gang pr. session (egen
+  // sessionStorage-nøgle), og kun hvis vagtens tidsstempel er friskt (<5 min) —
+  // en gammel noegle fra en tidligere session i samme fane er ikke "lige skete".
+  try {
+    const selfHealAt = Number(window.sessionStorage.getItem("cz_chunk_selfheal_at"));
+    const alreadyReported = window.sessionStorage.getItem("cz_chunk_selfheal_reported");
+    if (selfHealAt && !alreadyReported && Date.now() - selfHealAt < 5 * 60 * 1000) {
+      Sentry.captureMessage("chunk-selfheal reloaded", {
+        level: "warning",
+        extra: { pathname: window.location.pathname, referrer: document.referrer },
+      });
+      window.sessionStorage.setItem("cz_chunk_selfheal_reported", "1");
+    }
+  } catch {
+    // sessionStorage utilgaengelig — samme fail-closed holdning som selve vagten.
   }
 })();

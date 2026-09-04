@@ -662,7 +662,7 @@
       "fullTable": {
         "title": "The full points table",
         "text": "Under Results, Points & prizes you'll find every race class's complete points and prize scale with all places.",
-        "ctaLabel": "Open Points & prizes →",
+        "ctaLabel": "Open Points & prizes",
         "ctaTo": "/resultater?tab=points",
         "disclaimer": "Prize amounts may still be adjusted during the open beta."
       }
@@ -856,12 +856,12 @@
           [
             "Climber",
             "Long climbs and sustained mountain tempo.",
-            "Intervals (Climbing, Punch, Tempo)"
+            "Climbing intervals (Climbing, Tempo)"
           ],
           [
             "Puncheur",
             "Short, steep efforts and hilly finales.",
-            "Intervals (Punch, Tempo)"
+            "Punch intervals (Punch, Tempo)"
           ],
           [
             "Cobbles specialist",
@@ -903,7 +903,7 @@
       },
       "u25u23": {
         "title": "U25 and U23 riders",
-        "text": "Riders under 25 and 23 years old are tagged. You can filter on U25/U23 in the rider database and watchlist."
+        "text": "U25 riders are 25 and younger in the season's reference year (the UCI rule), and U23 riders are 22 and younger. You can filter on U25/U23 in the rider database and watchlist."
       }
     },
     "dailytraining": {
@@ -917,7 +917,7 @@
         "steps": [
           "Go to Daily Training in the navigation.",
           "Find a rider and choose what kind of day it is: Rest, Active recovery, a Skill day or Training.",
-          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Intervals, Threshold or Sprint (hard). On a skill day: Technique, Aero or Race craft.",
+          "On a training day, pick the session: Long ride (easy), Tempo (medium), or Mixed intervals, Climbing intervals, Punch intervals, Threshold or Sprint (hard). On a skill day: Technique, Aero or Race craft.",
           "Save. The day runs every day until you change it.",
           "There is no cap on how many riders can have a program: you can set one for your entire squad."
         ]
@@ -928,15 +928,15 @@
       },
       "focusAbilities": {
         "title": "What each session trains",
-        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Intervals train Climbing, Punch and Tempo. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending and Cobbles. Aero trains Time trial and Flat. Race craft trains Positioning, Tactics and Aggression. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard; technique, aero and race craft are all easy. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
+        "text": "Each session develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Long ride trains Endurance, Recovery and Durability. Tempo trains Tempo, Flat and Durability. Mixed intervals train Climbing, Punch and Tempo at an even share. Climbing intervals train Climbing and Tempo, and Climbing gains more than it does in the mixed session, but Punch is not trained at all. Punch intervals are the mirror image: Punch and Tempo, with Punch gaining more and Climbing left out. The three cover the same amount of work, so picking one over another moves your gains, it does not add any. Threshold trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Technique trains Descending and Cobbles. Aero trains Time trial and Flat. Race craft trains Positioning, Tactics and Aggression. The effort comes with the session and is not a separate choice: a long ride is easy, tempo is medium, and intervals, threshold and sprint are hard; technique, aero and race craft are all easy. Hard sessions build more fatigue than easy ones, but carry no risk of losing progress."
       },
       "typeGating": {
         "title": "Why does a focus grow faster for some riders?",
-        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. Two separate things decide what an ability becomes: how high it can reach, and how fast it gets there. His type sets both. An ability his primary type is built for reaches highest and builds fastest. His secondary type is close behind, around 85% as high. Positioning and tactics are craft: nobody is born with them, so every rider can reach around 73% as high, but they build slowly. An ability outside both his roles reaches around half as high and builds slowly. An ability his type actively works against barely moves at all. Check both type badges before picking a focus, and note that reaching high and getting there quickly are no longer the same thing: an ability can have plenty of room left and still take years to fill it."
+        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. Two separate things decide what an ability becomes: how high it can reach, and how fast it gets there. His type sets both. An ability his primary type is built for reaches highest and builds fastest. His secondary type is close behind, around 85% as high. Positioning and tactics are craft: nobody is born with them, so every rider can reach around 73% as high, but they build slowly. An ability outside both his roles reaches around half as high and builds slowly. An ability his type actively works against barely moves at all. Check both type badges before picking a focus, and note that reaching high and getting there quickly are no longer the same thing: an ability can have plenty of room left and still take years to fill it. The pace is adjusted from time to time as part of ongoing game balancing, so a rider's daily progress can feel different from one update to the next even though nothing about him personally has changed."
       },
       "ceilingReached": {
         "title": "My rider's ability has stopped rising",
-        "text": "That is now unusual. Every ability still has a lifetime ceiling set by type and potential, but riders no longer simply arrive there. How close a rider gets, and on which abilities, is decided by how you train him. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline rather than grow, and what he has is what he keeps. Or the ability already sits above what his type and potential would build on their own, which happens with riders carried over from an earlier version of the game. Nothing is taken away from him, it simply will not climb further. Every ability has its own line on the Daily Training page and the rider profile, and a finished one reads 'done' where the others show progress."
+        "text": "That is now unusual. Every ability still has a lifetime ceiling set by type and potential, but riders no longer simply arrive there. How close a rider gets, and on which abilities, is decided by how you train him. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline rather than grow, and what he has is what he keeps. Or the ability already sits above what his type and potential would build on their own, which happens with riders carried over from an earlier version of the game. Nothing is taken away from him, it simply will not climb further. Every ability has its own line on the Daily Training page and the rider profile, and a finished one reads 'done' where the others show progress. The number next to an ability is always its current value, never the ceiling itself, which is never shown as a number anywhere in the game, and progress naturally slows the closer a rider gets, so a value that holds still for a few days doesn't necessarily mean it's finished."
       },
       "trainToday": {
         "title": "Train today and the +25% boost",
@@ -952,7 +952,7 @@
       },
       "assistantSuggestions": {
         "title": "Get suggestions from the assistant",
-        "text": "The 'Get suggestions from the assistant' button in the Daily Training header opens a review panel with a type-matched focus for every rider (the same suggestion the smart default uses). Each row shows the rider, a 'No plan' marker when they have no focus set yet, and what the assistant would set. Nothing is applied until you accept: tick the riders you want and click 'Accept selected', or click 'Accept all'. Turn on 'Only riders without a plan' to review just the riders who aren't trained yet. Accepting never overwrites a rider who already has their own focus set, the same rule as the roster's 'Smart focus' bulk option."
+        "text": "The 'Get suggestions from the assistant' button in the Daily Training header opens a review panel with a type-matched focus for every rider (the same suggestion the smart default uses). Each row shows the rider, a 'No plan' or 'Your plan' marker, and what the assistant would set. Nothing is applied until you accept: tick the riders you want and click 'Accept selected', or click 'Accept all', which covers every rider marked 'No plan'. Turn on 'Only riders without a plan' to review just the riders who aren't trained yet. Accepting never overwrites a rider who already has their own focus set, the same rule as the roster's 'Smart focus' bulk option, so rows marked 'Your plan' cannot be ticked. Clear that rider's focus first if you want the assistant to take over."
       },
       "formFatigue": {
         "title": "Form and Fatigue",
@@ -1149,7 +1149,7 @@
       },
       "coachingGroups": {
         "title": "Coaching groups: U23 vs Senior",
-        "text": "A Sports Director's coaching group focus shows which age group they train best. U23 covers Academy riders and young pros up to 25; Senior covers riders 26 and up. This is a chief's own specialisation, separate from your club's Senior/U23/Junior squad structure: a coaching group is about which riders a chief trains best, not which squad a rider belongs to."
+        "text": "A Sports Director's coaching group focus shows which age group they train best. U23 covers Academy riders and young pros up to 25; Senior covers riders 26 and up. This is a chief's own specialisation, separate from the club squad structure (Junior team and U23 team are coming soon): a coaching group is about which riders a chief trains best, not which squad a rider belongs to."
       },
       "costs": {
         "title": "Costs: one-time build price + recurring upkeep",
@@ -1180,7 +1180,7 @@
       },
       "suitability": {
         "title": "Reading the selection table",
-        "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. Injured riders can't be picked; use Hide injured to remove them from the list while you choose."
+        "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. A rider still injured on the race's own start date can't be picked for it; use Hide injured to remove them from the list while you choose. A rider whose injury ends before the race starts is not marked injured here, even if he's injured right now, so you can plan a race weeks ahead without waiting for him to heal first."
       },
       "roles": {
         "title": "Captain, sprint captain, breakaway hunter and free role",
@@ -1201,6 +1201,10 @@
       "fatigue": {
         "title": "Fatigue matters",
         "text": "Tired helpers support their captain less, and racing builds fatigue. Rotating your squad between races keeps your stars fresh for the days that matter."
+      },
+      "assistantFill": {
+        "title": "When the assistant fills a line-up",
+        "text": "The assistant never overwrites a line-up you set yourself, and it never touches a race day you cleared on purpose. What it does on its own depends on the setting we run: it can leave every line-up to you, it can fill a race you left completely empty shortly before it starts, or you can switch it on for your team and let it pick. Whatever the setting, a team that is empty or below six riders when the race starts is still filled up to six so you take the start."
       },
       "scouting": {
         "title": "Scouting other divisions",
@@ -1231,7 +1235,7 @@
     },
     "overlappingRaces": {
       "q": "How do overlapping races and squad distribution work?",
-      "a": "Races overlap when their stages fall on the same in-game race-day, and a rider can only start one race per in-game day, so spreading your squad across overlapping races is a strategic choice. Several races can share the same calendar date without conflicting when they sit on different in-game days. Each race shows its race day (for example Race day 11), so two races on the same afternoon are clearly different game days; reusing a rider across two race days is allowed, but he carries fatigue into the later race, so it is a trade-off. The squad distribution view (Planning -> Team selection) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it, but remove him and he is immediately available again for another race. Your edits are kept locally until you press Save changes (a banner warns you if you try to leave with unsaved edits). You can save a partial line-up too: any slots you leave open are filled automatically from your available riders when the race runs. If you do not want to enter a race, withdraw from it and you simply do not start; the column then tells you your team is voluntarily not starting, and a saved selection can no longer be sent into that race. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed."
+      "a": "Races overlap when their stages fall on the same in-game race-day, and a rider can only start one race per in-game day, so spreading your squad across overlapping races is a strategic choice. Several races can share the same calendar date without conflicting when they sit on different in-game days. Each race shows its race day (for example Race day 11), so two races on the same afternoon are clearly different game days; reusing a rider across two race days is allowed, but he carries fatigue into the later race, so it is a trade-off. The squad distribution view (Planning -> Team selection) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it, but remove him and he is immediately available again for another race. Your edits are kept locally until you press Save changes (a banner warns you if you try to leave with unsaved edits). You can save a partial line-up too: any slots you leave open are filled automatically from your available riders when the race runs. If you do not want to enter a race, withdraw from it and you simply do not start; the column then tells you your team is voluntarily not starting, and a saved selection can no longer be sent into that race. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed. The season overview's Calendar tab counts differently: it shows 'Day N of M', the season's calendar day, not the race-day slot, so the same afternoon can read Race day 11 in Team selection and Day 8 of 27 in the calendar."
     },
     "stageRaceLockout": {
       "q": "Why is my rider locked out during a stage race?",
@@ -1287,7 +1291,7 @@
     },
     "auctionExpiry": {
       "q": "When does an auction expire?",
-      "a": "When you list your own rider you pick the exact time the auction ends, from 1 to 48 hours ahead. Auctions started by the bank run for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day. Example: an auction started at 19:40 ends the same evening at 20:40. An auction started at 23:30 ends the next morning at 08:30."
+      "a": "When you list your own rider, you pick the exact time the auction ends, from 1 to 48 hours ahead. An auction on a free rider (no team) runs for at least 12 active hours by default: whoever starts it, and whatever made the rider free (self-started, the bank, the academy or the youth market), so you don't miss a young talent just because you were asleep or at work. The one exception is a Flash Auction, which always lasts exactly 30 minutes. Night hours don't count: the active window is 08:00 to 24:00 every day. Example: an auction started at 19:40 ends the same evening at 20:40. An auction started at 23:30 ends the next morning at 08:30."
     },
     "flashAuction": {
       "q": "What is a Flash Auction?",
@@ -1331,7 +1335,7 @@
     },
     "riderSalaryView": {
       "q": "How do I see a rider's salary?",
-      "a": "Salary is a visible column in the Rider Database and watchlist, and can be sorted and filtered on. You can filter on a salary range under 'Salary CZ$ (min-max)' in the filter panel. A rider's salary is a fixed share of his current production value, which is what the game expects him to deliver this season at his current abilities. It is not based on his market value: value prices his whole remaining career, salary prices this season only. The share is the same for every team in every division, so the same rider costs the same wherever he plays. A rider whose abilities grow gets more expensive at his next contract, and one whose abilities fade gets cheaper."
+      "a": "Salary is a visible column in the Rider Database and watchlist, and can be sorted and filtered on. You can filter on a salary range under 'Salary CZ$ (min-max)' in the filter panel. A rider's salary is a fixed share of his current production value, which is what the game expects him to deliver this season at his current abilities. It is not based on his market value: value prices his whole remaining career, salary prices this season only. The share is the same for every team in every division, so the same rider costs the same wherever he plays. A rider whose abilities grow gets more expensive at his next contract, and one whose abilities fade gets cheaper. One thing to know before you renew: his current salary is frozen from the moment he signs and never moves on its own, so if his abilities have grown a lot since then, the renewal offer can look like a big jump even though nothing about how it's calculated has changed."
     },
     "riderDevelopment": {
       "q": "Where can I see whether a rider is developing?",
@@ -1359,7 +1363,7 @@
     },
     "flatCobblesHardTrainingFaq": {
       "q": "Why can't I train Flat or Cobbles at Hard intensity?",
-      "a": "By design, no Hard session targets those two abilities today. The three Hard sessions are Intervals (Climbing, Punch, Tempo), Threshold (Time trial, Tempo) and Sprint (Sprint, Acceleration). Flat is trained by Tempo (Normal) and Aero (Easy); Cobbles only by Technique (Easy). There's currently no way to push either one at Hard."
+      "a": "By design, no Hard session targets those two abilities today. The Hard sessions are Mixed intervals (Climbing, Punch, Tempo), Climbing intervals (Climbing, Tempo), Punch intervals (Punch, Tempo), Threshold (Time trial, Tempo) and Sprint (Sprint, Acceleration). Flat is trained by Tempo (Normal) and Aero (Easy); Cobbles only by Technique (Easy). There's currently no way to push either one at Hard."
     },
     "scoutNetworkOwnRidersFaq": {
       "q": "Does a better scouting network also improve how well I see my own riders?",
@@ -1531,7 +1535,7 @@
     },
     "clubDnaEffects": {
       "q": "What does club DNA do exactly?",
-      "a": "DNA affects three things: (1) Your 5-year plans get an extra DNA tradition target (e.g. 'at least one Monument podium' for italian_classics or 'min. 2 stage jerseys/season' for sprint_commercial) as a bonus target on top of the focus-based ones. (2) Targets that match the DNA's priorities get boosted satisfaction bonus + penalty (italian_classics × 1.6 on monument_podium targets, if you win, the board cheers extra; if you miss, the penalty is larger). (3) When the chairman is replaced (after 2× plan expiry below 30% satisfaction), DNA bonus tips the alignment score towards archetypes that match the club's identity (italian_classics gives +4 to classics_purist and -2 to gc_lover, so the chairman reflects the DNA over time)."
+      "a": "DNA affects three things: (1) Your 5-year plans get an extra DNA tradition target (e.g. 'at least one Monument podium' for italian_classics or 'min. 2 stage jerseys over the plan period' for sprint_commercial) as a bonus target on top of the focus-based ones. (2) Targets that match the DNA's priorities get boosted satisfaction bonus + penalty (italian_classics × 1.6 on monument_podium targets, if you win, the board cheers extra; if you miss, the penalty is larger). (3) When the chairman is replaced (after 2× plan expiry below 30% satisfaction), DNA bonus tips the alignment score towards archetypes that match the club's identity (italian_classics gives +4 to classics_purist and -2 to gc_lover, so the chairman reflects the DNA over time)."
     },
     "midSeasonCheckFaq": {
       "q": "What is the mid-season check, and why am I getting an 'Action required' notification mid-season?",
@@ -1615,7 +1619,7 @@
     },
     "dayFormFaq": {
       "q": "Why do race results vary from day to day?",
-      "a": "Every rider gets a day form for each race day, so the same rider can fly one day and struggle the next. On rare days a rider cracks completely and loses big, and favorites are not immune. Riders in good form crack less often, and form also counts more in the result itself, so form management pays twice. Over a long stage race the good and bad days largely even out, but a single collapse on a mountain stage can decide a GC, just like in real cycling."
+      "a": "Every rider gets a day form for each race day, so the same rider can fly one day and struggle the next. On rare days a rider cracks completely and loses big, and favorites are not immune. Riders in good form crack less often, and form also counts more in the result itself, so form management pays twice. Over a long stage race the good and bad days largely even out, but a single collapse on a mountain stage can decide a GC, just like in real cycling. Your own riders now tell you how their day went in their own words, a short line under their name on the stage results, but you never see this for other teams' riders."
     },
     "crashesFaq": {
       "q": "What are crashes and abandons?",

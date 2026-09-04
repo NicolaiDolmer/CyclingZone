@@ -32,6 +32,7 @@
 // stage_number (1..N uafbrudt). restDays udeladt/0 ⇒ ét segment ⇒ bit-identisk med #3469.
 
 import { grandTourRestDayPositions, GRAND_TOUR_REST_DAYS } from "./grandTourRestDays.js";
+import { MONUMENT_MIN_CALENDAR_GAP_DAYS, MONUMENT_MIN_CALENDAR_SPREAD_DAYS } from "./calendarTierCaps.js";
 
 // B2 (#4075, spec §3.4, ejer-låst 21/8): monumenter har en NORMAL game_day i deres eget
 // tidsslot — 100000-sentinelen (MONUMENT_GAMEDAY_BASE) er fjernet. Løbsdagen er EKSKLUSIV
@@ -39,6 +40,7 @@ import { grandTourRestDayPositions, GRAND_TOUR_REST_DAYS } from "./grandTourRest
 // datoens øvrige slots. Se slot-konsumeringsloopet i layoutStream for konstruktionen.
 
 const lenOf = (r) => Math.max(1, Number(r.stages) || 1);
+const isMonument = (r) => r?.race_class === "Monuments";
 const byBigThenId = (a, b) => lenOf(b) - lenOf(a) || String(a.id).localeCompare(String(b.id));
 const hasFraction = (r) => typeof r.seasonFraction === "number" && Number.isFinite(r.seasonFraction);
 const byPhaseThenBigThenId = (a, b) => a.seasonFraction - b.seasonFraction || lenOf(b) - lenOf(a) || String(a.id).localeCompare(String(b.id));
@@ -206,6 +208,25 @@ function raceFootprint(race, spineMinStages) {
 //   R6 to GT'er deler aldrig en kalenderdato, mindst een dags mellemrum (#3472)
 //   R7 hoejst MAX_GT_STAGES_PER_DAY GT-etaper pr. kalenderdato (#4103)
 //   R8 en GT's spaend er hoejst MAX_GT_SPAN_DAYS kalenderdatoer
+//   R9  et monument ligger ALDRIG inde i et Grand Tours loebsdags-spaend (#4203)
+//   R10 mindst MIN_GAP kalenderdage mellem to nabo-monumenter (§4)
+//   R11 mindst MIN_SPREAD kalenderdage fra foerste til sidste monument (§4)
+//
+// R9-R11 er #4203's leverance og er AKTIVE naar `monumentRules` er sat. Foer dem var
+// monumenternes placering et biprodukt: de er 1-etapes loeb som alle andre endagsloeb,
+// og identiteterne blev paasat EFTER soegningen, i den raekkefoelge fase-sorteringen gav.
+// Soegningen kunne derfor ikke se forskel paa et monument og en tilfaeldig klassiker,
+// og S3 endte med 4 af 5 monumenter inde i et GT-vindue.
+//
+// HVORFOR DET IKKE KUNNE FIKSES EFTER SOEGNINGEN. Den oplagte lap - byt monumentets slot
+// med en klassikers, siden begge er 1-etapes og dermed ombyttelige - er MAALT umulig for
+// S4: paa den plan soegningen fandt uden R9-R11 laa kun 7 af D1's 19 endagsloebs-slots
+// uden for et GT-vindue, fordelt paa to klumper (4 + 3 datoer i traek). Med kravet om 2
+// kalenderdage mellem naboer kan der hoejst vaelges 2 fra hver klump = 4 slots til 5
+// monumenter, og spredningen ville blive 12 dage mod kravet 14. Der FINDES flere frie
+// datoer i sae­sonen (de tre efter sidste GT), men ingen af dem baerer et endagsloeb - og
+// hvilke datoer der baerer et endagsloeb afgoeres netop af soegningen. Derfor er reglen
+// noedt til at vaere en BINDING i soegningen, ikke en oprydning bagefter.
 //
 // Baandstoerrelsen er VARIABEL - en dato er faerdig naar den har D etaper. Fast K =
 // ceil(D/cap) var for stift: en GT kunne da hoejst koere 2 etaper pr. dato, saa 18 etaper
@@ -213,20 +234,74 @@ function raceFootprint(race, spineMinStages) {
 //
 // Maalt mod prod-kataloget loeses alle fire divisioner med alle otte bindinger aktive
 // (D1 paa 709 skridt / 3 ms). R8 er den stramme: den afskar 609 forsoeg i D1.
-function solveContiguousStarts({ races, D, days, cap, spineMinStages, maxSteps = 20000000 }) {
+function solveContiguousStarts({ races, D, days, cap, spineMinStages, monumentRules = null, maxSteps = 20000000 }) {
   const items = races
-    .map((race, i) => ({ i, race, fp: raceFootprint(race, spineMinStages), gt: spineMinStages != null && lenOf(race) >= spineMinStages }))
+    .map((race, i) => ({
+      i, race, fp: raceFootprint(race, spineMinStages),
+      gt: spineMinStages != null && lenOf(race) >= spineMinStages,
+      // Monument-rollen findes KUN naar reglerne er aktive. Uden dem er et monument et
+      // endagsloeb som alle andre - praecis som foer #4203 - og soegningen er dermed
+      // bit-identisk med den gamle paa andet forsoeg (se layoutContiguous).
+      mon: Boolean(monumentRules) && isMonument(race),
+    }))
+    // SORTERINGEN ER UROERT (fodaftryks-laengde faldende, saa id). Et foerste forsoeg lagde
+    // `mon` ind som sorteringsnoegle, saa monumenterne laa samlet og dublet-springet i
+    // vaelg() (der kigger paa k-1) ramte oftere. MAALT var det en klar regression: paa
+    // tierCalendarMaterializer-testens syntetiske D1-katalog (tre 21-etapers GT'er) gik
+    // soegningen fra 4,1 s til at loebe TOER for skridt - baade med og uden monument-
+    // reglerne - og faldt ned i det afslappede layout med 17 uplacerede endagsloeb.
+    // Soegeraekkefoelgen er en foelsom parameter i sig selv; #4203 aendrer BINDINGERNE,
+    // ikke raekkefoelgen.
     .sort((a, b) => b.fp.length - a.fp.length || String(a.race.id).localeCompare(String(b.race.id)));
 
   if (items.reduce((n, it) => n + lenOf(it.race), 0) !== D * days) return null;
+
+  const mr = monumentRules;
+  const monAntal = items.filter((it) => it.mon).length;
+  if (mr && monAntal === 0) return null; // kalderen skal ikke bede om monument-regler uden monumenter
+
+  // Symmetri-kollaps: to loeb med samme fodaftryk OG samme rolle (GT / monument / almindeligt)
+  // er ombyttelige i soegningen - identiteterne paasaettes bagefter i fase-raekkefoelge - saa
+  // kun det FOERSTE ubrugte af dem behoever proeves. Foer #4203 blev det afgjort ved at kigge
+  // paa naboen k-1, hvilket kun virkede fordi sorteringen lagde ombyttelige loeb ved siden af
+  // hinanden. Da monumenter blev en egen rolle, braekkede den antagelse: id-sorteringen giver
+  // c1-od-* / mon-* / owa-od-*, saa endagsloebene efter monumenterne ikke laengere havde en
+  // ombyttelig NABO og derfor blev proevet forfra som selvstaendige grene. MAALT paa
+  // tierCalendarMaterializer-testens syntetiske D1-katalog: soegningen loeb toer for skridt
+  // (55 s, 17 uplacerede endagsloeb) mod 4,1 s foer. Klassen slaas derfor op direkte i stedet
+  // for at blive udledt af naboskab.
+  const klasseAf = items.map((it) => `${it.fp.join("")}|${it.gt ? "G" : ""}${it.mon ? "M" : ""}`);
+  const forrigeAfKlasse = new Array(items.length).fill(-1);
+  const sidsteIKlasse = new Map();
+  for (let k = 0; k < items.length; k++) {
+    if (sidsteIKlasse.has(klasseAf[k])) forrigeAfKlasse[k] = sidsteIKlasse.get(klasseAf[k]);
+    sidsteIKlasse.set(klasseAf[k], k);
+  }
 
   const brugt = new Array(items.length).fill(false);
   const startAf = new Array(items.length).fill(-1);
   const bandSizes = [];
   let steps = 0;
 
-  const dfs = (g, iBaand, dato, brugtIDato, gtIDato, aktive, restStages, gtStartDato, sidsteGtSlut) => {
+  const dfs = (g, iBaand, dato, brugtIDato, gtIDato, aktive, restStages, gtStartDato, sidsteGtSlut,
+    monFoerste, monSidste, monRest) => {
     if (++steps > maxSteps) return false;
+
+    // R10/R11 som FREMADRETTEDE snit, ikke som en dom til sidst. Uden dem ville soegningen
+    // bygge en hel kalender faerdig og foerst dér opdage at det sidste monument ikke kan
+    // ligge langt nok fra det forrige - og saa gaa hele vejen tilbage.
+    if (mr) {
+      if (monRest > 0) {
+        const tidligst = monSidste == null ? dato : Math.max(dato, monSidste + mr.minGapDays);
+        if (tidligst + (monRest - 1) * mr.minGapDays > days - 1) return false;         // R10
+        if (monAntal >= 2 && monFoerste != null
+            && (days - 1) - monFoerste < mr.minSpreadDays) return false;               // R11
+      } else if (monAntal >= 2 && monFoerste != null
+          && monSidste - monFoerste < mr.minSpreadDays) {
+        return false;                                                                  // R11
+      }
+    }
+
     if (dato === days) return aktive.length === 0 && brugt.every(Boolean);
     if (restStages !== (days - dato) * D - brugtIDato) return false;
 
@@ -256,13 +331,22 @@ function solveContiguousStarts({ races, D, days, cap, spineMinStages, maxSteps =
         if (rest === 0) { kandidater.push([...acc]); return; }
         for (let k = fra; k < items.length; k++) {
           if (brugt[k]) continue;
-          // Loeb med identisk fodaftryk er ombyttelige i soegningen; identiteterne
-          // paasaettes bagefter i fase-raekkefoelge. Springer dubletter over.
-          if (k > 0 && !brugt[k - 1] && items[k].fp.length === items[k - 1].fp.length
-              && items[k].gt === items[k - 1].gt && k - 1 >= fra) continue;
+          // Springer et ombytteligt loeb over hvis et tidligere, ubrugt loeb af SAMME
+          // klasse allerede er i spil i dette scan (se klasseAf/forrigeAfKlasse ovenfor).
+          const forrige = forrigeAfKlasse[k];
+          if (forrige >= fra && !brugt[forrige]) continue;
           if (items[k].gt) {
             if (gtAktiv || acc.some((x) => items[x].gt)) continue;                  // R6
             if (sidsteGtSlut != null && dato < sidsteGtSlut + 2) continue;          // R6
+            if (mr && acc.some((x) => items[x].mon)) continue;                      // R9
+          }
+          if (mr && items[k].mon) {
+            // R9: `gtAktiv` er praecis "en GT's loebsdags-spaend daekker denne loebsdag" -
+            // en GT paa hviledag bliver liggende i `aktive` med fodaftryk 0, og gaten
+            // detectMonumentsInsideGrandTours maaler paa samme spaend (first..last).
+            if (gtAktiv || acc.some((x) => items[x].gt)) continue;                  // R9
+            if (acc.some((x) => items[x].mon)) continue;                            // R10 (samme dato)
+            if (monSidste != null && dato - monSidste < mr.minGapDays) continue;    // R10
           }
           acc.push(k); brugt[k] = true;
           vaelg(k + 1, rest - 1, acc);
@@ -295,13 +379,21 @@ function solveContiguousStarts({ races, D, days, cap, spineMinStages, maxSteps =
         const naesteGtStart = gtSlutter ? null : nyGtStart;
         const naesteGtSlut = gtSlutter ? dato : sidsteGtSlut;
 
+        // vaelg() tillader hoejst EET monument pr. dato (R10), saa tallet her er 0 eller 1.
+        const monNu = kombi.reduce((n, k) => n + (items[k].mon ? 1 : 0), 0);
+        const nyMonFoerste = monNu && monFoerste == null ? dato : monFoerste;
+        const nyMonSidste = monNu ? dato : monSidste;
+        const nyMonRest = monRest - monNu;
+
         let ok = false;
         if (datoFaerdig) {
           bandSizes.push(iBaand + 1);
-          ok = dfs(g + 1, 0, dato + 1, 0, 0, efter, restStages - load, naesteGtStart, naesteGtSlut);
+          ok = dfs(g + 1, 0, dato + 1, 0, 0, efter, restStages - load, naesteGtStart, naesteGtSlut,
+            nyMonFoerste, nyMonSidste, nyMonRest);
           if (!ok) bandSizes.pop();
         } else {
-          ok = dfs(g + 1, iBaand + 1, dato, nyBrugt, gtNu, efter, restStages - load, naesteGtStart, naesteGtSlut);
+          ok = dfs(g + 1, iBaand + 1, dato, nyBrugt, gtNu, efter, restStages - load, naesteGtStart, naesteGtSlut,
+            nyMonFoerste, nyMonSidste, nyMonRest);
         }
         if (ok) return true;
         for (const k of kombi) { brugt[k] = false; startAf[k] = -1; }
@@ -310,14 +402,15 @@ function solveContiguousStarts({ races, D, days, cap, spineMinStages, maxSteps =
     return false;
   };
 
-  if (!dfs(0, 0, 0, 0, 0, [], D * days, null, null)) return null;
+  if (!dfs(0, 0, 0, 0, 0, [], D * days, null, null, null, null, monAntal)) return null;
 
   const dateOfGameDay = [];
   bandSizes.forEach((b, d) => { for (let i = 0; i < b; i++) dateOfGameDay.push(d); });
   return {
     dateOfGameDay,
     G: dateOfGameDay.length,
-    placeringer: items.map((it, k) => ({ race: it.race, fp: it.fp, g0: startAf[k] })),
+    placeringer: items.map((it, k) => ({ race: it.race, fp: it.fp, mon: it.mon, g0: startAf[k] })),
+    steps,
   };
 }
 
@@ -413,16 +506,49 @@ function layoutContiguous({ stageRaces, classics, monuments, density: D, days, c
   const alle = [...gts, ...others, ...classics, ...monuments];
   if (!alle.length) return null;
 
-  const loest = solveContiguousStarts({ races: alle, D, days, cap, spineMinStages });
+  // #4203: monument-reglerne (R9-R11) er en BINDING i soegningen, ikke en oprydning
+  // bagefter - se solveContiguousStarts' doc-blok for maalingen bag det valg.
+  //
+  // TO FORSOEG, og det er bevidst. Findes der ingen lovlig pakning MED monument-reglerne,
+  // faldt vi foer #4203 ned i layoutContiguousRelaxed, som slaekker paa den EKSAKTE kvote
+  // (§1b) og kan efterlade underfyldte kalenderdage. Det ville betale for en placerings-
+  // regel med en kvote-regel - en daarlig byttehandel, og en tavs een. Andet forsoeg
+  // koerer derfor uden monument-reglerne og giver den kalender vi ville have faaet i
+  // forvejen. Den er ikke stille: `detectMonumentsInsideGrandTours` er en HAARD gate uden
+  // override i baade scorecardet og buildSeasonCalendar --apply, saa udfaldet bliver
+  // rapporteret hoejlydt i stedet for at forsvinde i en fallback.
+  const monumentRules = monuments.length
+    ? { minGapDays: MONUMENT_MIN_CALENDAR_GAP_DAYS, minSpreadDays: MONUMENT_MIN_CALENDAR_SPREAD_DAYS }
+    : null;
+  const forsoeg = [];
+  let loest = monumentRules
+    ? solveContiguousStarts({
+      races: alle, D, days, cap, spineMinStages, monumentRules,
+      maxSteps: MONUMENT_SOLVE_MAX_STEPS,
+    })
+    : null;
+  if (monumentRules) forsoeg.push({ rules: true, ok: Boolean(loest), steps: loest?.steps ?? null });
+  const monumentRulesHeld = Boolean(loest);
+  if (!loest) {
+    loest = solveContiguousStarts({ races: alle, D, days, cap, spineMinStages });
+    forsoeg.push({ rules: false, ok: Boolean(loest), steps: loest?.steps ?? null });
+  }
   if (!loest) return layoutContiguousRelaxed({ races: alle, D, days, cap, spineMinStages });
   const { dateOfGameDay, G, placeringer } = loest;
 
   // Identiteterne paasaettes i fase-raekkefoelge inden for hver fodaftryks-klasse, saa et
   // loeb lander samme sted i saesonen som i virkeligheden (#3469). Uden seasonFraction
   // falder vi tilbage til byBigThenId - stadig deterministisk, ogsaa ved omvendt input.
+  //
+  // #4203: monumenter faar deres EGEN gruppe. Uden det ville de 1-etapes slots blive delt
+  // ud over alle endagsloeb i samlet fase-raekkefoelge, og et monument kunne lande i en
+  // klassikers slot - altsaa praecis inde i et GT-vindue igen, EFTER at soegningen havde
+  // holdt R9-R11. Med en egen gruppe faar monumenterne netop de slots soegningen
+  // reserverede til dem, i deres indbyrdes fase-raekkefoelge (Sanremo -> Ronde -> Roubaix
+  // -> Liege -> Lombardia).
   const grupper = new Map();
   for (const pl of placeringer) {
-    const noegle = `${pl.fp.length}|${pl.fp.join("")}`;
+    const noegle = `${pl.fp.length}|${pl.fp.join("")}|${pl.mon ? "M" : ""}`;
     if (!grupper.has(noegle)) grupper.set(noegle, []);
     grupper.get(noegle).push(pl);
   }
@@ -464,7 +590,7 @@ function layoutContiguous({ stageRaces, classics, monuments, density: D, days, c
     sts.forEach((st, i) => { st.lane = i; });
   }
 
-  return { placements: [...placementsById.values()], timelineLength: G };
+  return { placements: [...placementsById.values()], timelineLength: G, monumentRulesHeld, solveAttempts: forsoeg };
 }
 
 // #4103 (ejer-direktiv 21/8 + ejer-aftale med spillerne i #feedback-and-ideas 22/8 20:27):
@@ -514,6 +640,22 @@ export const MAX_GT_STAGES_PER_DAY = 4;
 // modsat #3546 B's forkastede forsoeg, som flyttede GT'ens ANKER og dermed pressede
 // GT'erne mod hinanden indtil to af dem delte en kalenderdag.
 export const MAX_GT_SPAN_DAYS = 6;
+
+// Skridt-loft for det MONUMENT-BUNDNE soegeforsoeg (#4203). Det almindelige forsoeg beholder
+// solveContiguousStarts' eget loft paa 20 mio.
+//
+// HVORFOR ET EGET, LAVERE LOFT. Monument-reglerne kan vaere uopfyldelige for et givet
+// katalog - fx tre 21-etapers Grand Tours i en 28-dages saeson, som
+// tierCalendarMaterializer.test.js's syntetiske D1-katalog har: GT'erne fylder da saa mange
+// datoer at fem monumenter ikke kan faa hver sin, med to kalenderdages mellemrum, uden for
+// dem alle. Uden et loft brugte forsoeget hele 20-mio.-budgettet (ca. 50 s) foer det gav op,
+// og det ANDET forsoeg - det der leverer kalenderen - blev udskudt lige saa laenge.
+//
+// 2 mio. er maalt, ikke gaettet: prods S4-plan loeser D1 MED reglerne paa 110.519 skridt
+// (dry-run 3/9), altsaa med en faktor 18 i luft. Rammer et fremtidigt katalog loftet, staar
+// det i `solveAttempts` i dry-runnet, og gaten detectMonumentsInsideGrandTours stopper
+// --apply - loftet kan da haeves med en maaling i haanden i stedet for paa fornemmelse.
+export const MONUMENT_SOLVE_MAX_STEPS = 2000000;
 
 
 // Diagnostik fra placements (ÆGTE binding-overlap fra FAKTISK afviklede etaper pr. game-dag,
@@ -592,8 +734,41 @@ function diagnose(placements, days, D, cap, timelineLength, layoutMode, spineMin
   const daysWithoutDecision = [];
   for (let d = 0; d < days; d++) if (!decisionDaySet.has(d)) daysWithoutDecision.push(d);
 
+  // #4203-diagnostik: hvor monumenterne endte, maalt paa BEGGE akser. Rent rapporterings-
+  // data (dry-run + tests); dommen selv ligger i calendarPlacementGates.js.
+  // insideGrandTour maales paa LOEBSDAGS-aksen (game_day), gap/spredning paa
+  // KALENDER-aksen (real_day) - de to regler bruger med vilje hver sin akse (§0/§4).
+  const gtGameDaySpans = spineMinStages == null ? [] : placements
+    .filter((p) => (p.stages ?? 1) >= spineMinStages)
+    .map((p) => ({
+      first: Math.min(...p.stagesPlaced.map((s) => s.game_day)),
+      last: Math.max(...p.stagesPlaced.map((s) => s.game_day)),
+    }));
+  const monPlacements = placements
+    .filter((p) => p.race_class === "Monuments")
+    .map((p) => ({
+      id: p.id,
+      gameDay: Math.min(...p.stagesPlaced.map((s) => s.game_day)),
+      realDay: Math.min(...p.stagesPlaced.map((s) => s.real_day)),
+    }))
+    .sort((a, b) => a.realDay - b.realDay || a.gameDay - b.gameDay);
+  const monGaps = monPlacements.slice(1).map((m, i) => m.realDay - monPlacements[i].realDay);
+  const monuments = {
+    count: monPlacements.length,
+    gameDays: monPlacements.map((m) => m.gameDay),
+    realDays: monPlacements.map((m) => m.realDay),
+    minGapDays: monGaps.length ? Math.min(...monGaps) : null,
+    spreadDays: monPlacements.length >= 2
+      ? monPlacements[monPlacements.length - 1].realDay - monPlacements[0].realDay
+      : 0,
+    insideGrandTour: monPlacements.filter(
+      (m) => gtGameDaySpans.some((g) => m.gameDay >= g.first && m.gameDay <= g.last),
+    ).length,
+  };
+
   return {
     load, racesPerDay: racesOnDay.map((s) => s.size), days, density: D, overlapCap: cap, layoutMode, timelineLength,
+    monuments,
     emptyDays: load.filter((x) => x === 0).length,
     underfilledDays: load.filter((x) => x < D).length,
     overlapDays: racesOnDay.map((s) => s.size).filter((n) => n >= 2).length,
@@ -669,6 +844,13 @@ export function packLaneCalendar({
     ...diag,
     unplaced: stageRaces.filter((r) => !placedIds.has(r.id)).map((r) => r.id),
     leftoverSingles: oneDayRaces.filter((r) => !placedIds.has(r.id)).map((r) => r.id),
+    // #4203: true naar pakningen blev fundet MED monument-reglerne (R9-R11) aktive.
+    // false betyder enten "ingen monumenter i denne division" eller "der fandtes ingen
+    // lovlig pakning med reglerne, saa den kalender du ser her er anden-forsoeget".
+    monumentRulesHeld: Boolean(res.monumentRulesHeld),
+    // Skridt-forbrug pr. soegeforsoeg. Rent diagnostik: soegningen er den dyreste del af
+    // pakningen, og et forsoeg der loeber toer ser ud som "ingen lovlig pakning".
+    solveAttempts: res.solveAttempts ?? [],
     grandTourRestDays: res.gtRestDayReport ?? [], // #3470: dry-run-diagnostik (tom uden GT-hviledage)
   };
 }

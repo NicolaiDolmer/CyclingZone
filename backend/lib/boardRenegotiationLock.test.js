@@ -1,15 +1,23 @@
-// #915 · Tests for getBoardRenegotiationLock — guard mod gen-forhandling af en
-// allerede-signeret bestyrelsesplan midt i en igangværende sæson.
+// #915/#3575/#4377 · Tests for getBoardRenegotiationLock — guard mod
+// gen-forhandling af en allerede-signeret bestyrelsesplan.
 //
 // Dækker eksplicit bypass-vektorerne fra undersøgelsen:
 //   (1) første signering (intet board / pending) må altid passere
-//   (2) sæsonstart (race_days_completed = 0) må passere
-//   (3) flerårig plan mid-plan i sæson 2+ skal låses — uafhængigt af season_id
-//   (4) fornyelse af udløbet (pending) plan må passere
-//   + tærskel-grænser (49% vs 50%) og slutfase-vinduet (sidste 5 race-days).
+//   (2) sæsonstart (race_days_completed = 0) må passere for 1yr-planer
+//   (3) flerårig plan (3yr/5yr) er FØRST gen-underskrivbar når den er udløbet
+//       (negotiation_status flippet til "pending") — uanset sæson-fremdrift.
+//       Ejer-valg 1/9 lukker re-roll-hullet hvor en aktiv, ikke-udløbet
+//       flerårsplan kunne gen-underskrives tidligt i en NY sæson og dermed
+//       nulstille seasons_completed/cumulative_*_wins/plan_start_season_number.
+//   (4) fornyelse af udløbet (pending) plan må passere — også for 3yr/5yr
+//   (5) 1yr-planer er UÆNDREDE: kun same-sæson race-day-progress/vindue låser dem
+//   + tærskel-grænser (49% vs 50%) og slutfase-vinduet (sidste 5 race-days) for 1yr.
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   getBoardRenegotiationLock,
@@ -67,7 +75,7 @@ test("slutfase (≤5 race-days tilbage) → låst (WINDOW)", () => {
 test("flerårig plan mid-plan (sæson 2+) låses uafhængigt af season_id", () => {
   // Vector 3: en 5yr-plan signeret i en tidligere sæson (season_id ≠ aktiv) må
   // IKKE kunne gen-forhandles midt i en senere sæson. Guarden ser kun på
-  // negotiation_status + sæson-progress, så season_id-mismatch redder ikke exploiten.
+  // negotiation_status + plan_type, så season_id-mismatch redder ikke exploiten.
   const board = completedPlan({
     plan_type: "5yr",
     season_id: "00000000-0000-0000-0000-000000000001",
@@ -76,6 +84,81 @@ test("flerårig plan mid-plan (sæson 2+) låses uafhængigt af season_id", () =
   });
   const r = getBoardRenegotiationLock({ board, activeSeason: { ...season(60), id: "different-season-id", number: 2 } });
   assert.equal(r.locked, true);
+  assert.equal(r.code, "BOARD_RENEGOTIATION_LOCKED_PLAN_ACTIVE");
+});
+
+// ── #3575/#4377 · Ejer-valg 1/9: flerårsplan FØRST gen-underskrivbar ved udløb ──
+
+for (const planType of ["3yr", "5yr"]) {
+  test(`(a) aktiv ${planType}-plan kan IKKE gen-underskrives tidligt i en NY sæson (re-roll-exploitet)`, () => {
+    // Den nøjagtige exploit-vektor fra #3575/#4377: planen er fortsat "completed"
+    // (ikke udløbet endnu, kun 1 af fx 5 sæsoner kørt), men den AKTUELLE sæson er
+    // lige startet (lav race_days_completed) — den gamle guard læste kun dette
+    // tal og returnerede locked:false, selvom planen reelt havde flere sæsoner
+    // tilbage af sin periode.
+    const board = completedPlan({
+      plan_type: planType,
+      plan_start_season_number: 1,
+      plan_end_season_number: planType === "5yr" ? 5 : 3,
+      seasons_completed: 1,
+    });
+    const r = getBoardRenegotiationLock({ board, activeSeason: season(2, 27) }); // sæson 2, kun 2 løbsdage kørt
+    assert.equal(r.locked, true);
+    assert.equal(r.code, "BOARD_RENEGOTIATION_LOCKED_PLAN_ACTIVE");
+    assert.equal(r.errorCode, "board_renegotiation_locked_plan_active");
+    assert.deepEqual(r.errorParams, { planType });
+  });
+
+  test(`(a) aktiv ${planType}-plan er også låst ved sæsonstart (0 race-days kørt) — sæsonstart-undtagelsen gælder KUN 1yr`, () => {
+    const board = completedPlan({ plan_type: planType });
+    const r = getBoardRenegotiationLock({ board, activeSeason: season(0) });
+    assert.equal(r.locked, true);
+    assert.equal(r.code, "BOARD_RENEGOTIATION_LOCKED_PLAN_ACTIVE");
+  });
+
+  test(`(a) aktiv ${planType}-plan er låst uanset activeSeason (også null/manglende sæson)`, () => {
+    const board = completedPlan({ plan_type: planType });
+    assert.equal(getBoardRenegotiationLock({ board, activeSeason: null }).locked, true);
+  });
+
+  test(`(b) udløbet (pending) ${planType}-plan KAN gen-underskrives, selv tidligt i en ny sæson`, () => {
+    const board = completedPlan({ plan_type: planType, negotiation_status: "pending" });
+    const r = getBoardRenegotiationLock({ board, activeSeason: season(2, 27) });
+    assert.equal(r.locked, false);
+  });
+}
+
+test("(c) 1yr-plan er UÆNDRET af flerårs-låsen: sæsonstart passerer fortsat", () => {
+  const r = getBoardRenegotiationLock({ board: completedPlan({ plan_type: "1yr" }), activeSeason: season(0) });
+  assert.equal(r.locked, false);
+});
+
+test("(c) 1yr-plan er UÆNDRET af flerårs-låsen: same-sæson progress/vindue-reglerne gælder stadig", () => {
+  const early = getBoardRenegotiationLock({ board: completedPlan({ plan_type: "1yr" }), activeSeason: season(2, 27) });
+  assert.equal(early.locked, false);
+
+  const late = getBoardRenegotiationLock({ board: completedPlan({ plan_type: "1yr" }), activeSeason: season(50) });
+  assert.equal(late.locked, true);
+  assert.equal(late.code, "BOARD_RENEGOTIATION_LOCKED_PROGRESS");
+});
+
+test("(d) et afvist forsøg (locked:true) mutér ikke det inputtede board-objekt", () => {
+  // getBoardRenegotiationLock er en ren funktion — selve gate-beslutningen rører
+  // aldrig board-rækkens tællere. Den faktiske garanti for at et AFVIST /board/sign-
+  // kald ikke nulstiller seasons_completed/cumulative_*_wins ligger i at api.js
+  // returnerer 409 FØR upsertData bygges (verificeret af kilde-scan-testen nedenfor) —
+  // denne test låser blot at guarden selv er sideeffektfri.
+  const board = completedPlan({
+    plan_type: "5yr",
+    seasons_completed: 3,
+    cumulative_stage_wins: 7,
+    cumulative_gc_wins: 2,
+    plan_start_season_number: 1,
+  });
+  const snapshot = JSON.parse(JSON.stringify(board));
+  const r = getBoardRenegotiationLock({ board, activeSeason: season(2, 27) });
+  assert.equal(r.locked, true);
+  assert.deepEqual(board, snapshot);
 });
 
 test("manglende/0 race_days_total → ikke låst (fail-open, ingen falsk blokering)", () => {
@@ -110,4 +193,78 @@ test("#2512: gammel bug-signatur (524 completed / 60 total) ville have låst per
   // SKRIVER begge felter i den lille, korrekte enhed — ikke i denne funktion.
   const r = getBoardRenegotiationLock({ board: completedPlan(), activeSeason: season(524, 60) });
   assert.equal(r.locked, true); // uundgåeligt for guarden selv — kilden er nu fixet i seasonRaceDays.js
+});
+
+// #4377 · Denne DOKUMENTATION-test (ikke en fix) beskrev tidligere præcis den
+// gap #3575 lukker: en igangværende, ikke-udløbet flerårsplan kunne gen-
+// signeres tidligt i en ny sæson og nulstille cumulative-historik. #4377
+// noterede eksplicit at ejer-beslutning var krævet før det blev rettet — #3575
+// ER den beslutning (se postmortem .claude/learnings/2026-09-01-flerarsplan-
+// genforhandling-reroll.md). Guarden låser nu denne præcise vektor
+// unconditionally (dækket af "(a) aktiv {planType}-plan kan IKKE gen-
+// underskrives tidligt i en NY sæson"-testene ovenfor), så den gamle
+// locked:false-assertion her er blevet forkert og er fjernet i stedet for
+// opdateret til det modsatte (ville være en duplikat af (a)-testene).
+
+// ── (d) kilde-scan: signLock skal håndhæves FØR counter-reset i /board/sign ──
+//
+// Garanterer at et AFVIST forsøg (signLock.locked) aldrig når frem til
+// upsertData-blokken der nulstiller seasons_completed/cumulative_*_wins/
+// plan_start_season_number — uden at kræve en live DB/supertest-harness
+// (samme kilde-scan-mønster som boardBankGuard.routes.test.js).
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const apiSource = readFileSync(resolve(__dirname, "../routes/api.js"), "utf8");
+
+test("(d) /board/sign afviser (return) på signLock.locked FØR upsertData bygges", () => {
+  const signIdx = apiSource.indexOf('router.post("/board/sign"');
+  assert.ok(signIdx !== -1, "POST /board/sign skal findes");
+
+  const signLockCallIdx = apiSource.indexOf("getBoardRenegotiationLock({ board: existingBoard, activeSeason })", signIdx);
+  assert.ok(signLockCallIdx !== -1, "/board/sign skal kalde getBoardRenegotiationLock med existingBoard");
+
+  const returnIdx = apiSource.indexOf("if (signLock.locked)", signLockCallIdx);
+  assert.ok(returnIdx !== -1, "/board/sign skal tjekke signLock.locked");
+
+  const upsertIdx = apiSource.indexOf("seasons_completed: 0,", signLockCallIdx);
+  assert.ok(upsertIdx !== -1, "/board/sign skal nulstille seasons_completed i upsertData");
+
+  // Guarden (og dens return) skal stå FØR counter-reset-blokken i kildeteksten —
+  // ellers kunne et afvist forsøg stadig nå frem til upsert'en.
+  assert.ok(returnIdx < upsertIdx, "signLock.locked-guarden skal stå FØR upsertData's counter-reset");
+});
+
+test("(d) /board/renew afviser (return) på renewLock.locked FØR negotiation_status sættes til pending", () => {
+  const renewIdx = apiSource.indexOf('router.post("/board/renew"');
+  assert.ok(renewIdx !== -1, "POST /board/renew skal findes");
+
+  const renewLockCallIdx = apiSource.indexOf("getBoardRenegotiationLock({ board: existingBoard, activeSeason })", renewIdx);
+  assert.ok(renewLockCallIdx !== -1, "/board/renew skal kalde getBoardRenegotiationLock med existingBoard");
+
+  const returnIdx = apiSource.indexOf("if (renewLock.locked)", renewLockCallIdx);
+  assert.ok(returnIdx !== -1, "/board/renew skal tjekke renewLock.locked");
+
+  const updateIdx = apiSource.indexOf('negotiation_status: "pending"', renewLockCallIdx);
+  assert.ok(updateIdx !== -1, "/board/renew skal sætte negotiation_status til pending");
+
+  assert.ok(returnIdx < updateIdx, "renewLock.locked-guarden skal stå FØR negotiation_status-updaten");
+});
+
+// #4553 CodeRabbit-fund (PR-review): /board/renew returnerede kun error+code,
+// ikke errorCode/errorParams — resolveApiError() (frontend) læser KUN
+// errorCode/errorParams, så uden dem faldt EN-spillere tilbage til den danske
+// `error`-råtekst. Samme { code, params }-kontrakt som /board/sign allerede
+// bruger for denne guard skal gælde begge steder.
+test("(d) /board/renew returnerer errorCode + errorParams (ikke kun error/code) på renewLock.locked", () => {
+  const renewIdx = apiSource.indexOf('router.post("/board/renew"');
+  assert.ok(renewIdx !== -1, "POST /board/renew skal findes");
+
+  const returnIdx = apiSource.indexOf("if (renewLock.locked)", renewIdx);
+  assert.ok(returnIdx !== -1, "/board/renew skal tjekke renewLock.locked");
+
+  // Næste ~700 tegn efter selve if-blokken dækker res.status(409).json({...})
+  // inkl. kommentarblokken der forklarer errorCode/errorParams-feltene.
+  const responseBlock = apiSource.slice(returnIdx, returnIdx + 700);
+  assert.match(responseBlock, /errorCode:\s*renewLock\.errorCode/, "/board/renew skal returnere renewLock.errorCode");
+  assert.match(responseBlock, /errorParams:\s*renewLock\.errorParams/, "/board/renew skal returnere renewLock.errorParams");
 });

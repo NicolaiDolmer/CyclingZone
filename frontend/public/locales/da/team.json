@@ -18,6 +18,7 @@
     "ownAuctionsBanner": "{count, plural, one {# af dine ryttere er på auktion} other {# af dine ryttere er på auktion}} · se auktioner"
   },
   "tabs": {
+    "ariaLabel": "Holdets afsnit",
     "squad": "Trup ({count})",
     "development": "Udvikling",
     "stats": "Statistik",
@@ -46,6 +47,7 @@
   },
   "squad": {
     "view": {
+      "ariaLabel": "Trup-visning",
       "current": "Nuværende trup ({count})",
       "upcoming": "Næste sæson ({count})",
       "upcomingHint": "Viser truppen når ventende transfers er gennemført."
@@ -75,11 +77,11 @@
       "popularityTitle": "Fan-popularitet (0-100). Bruges af bestyrelsens 5-års-plan-mål om stjerneryttere.",
       "type": "Type",
       "contract": "Kontrakt",
-      "contractValue": "Udløber efter S{season}",
-      "contractShort": "S{season}",
+      "contractUntil": "Til sæson {season}",
       "action": "Handling"
     },
     "mode": {
+      "ariaLabel": "Tabellens kolonner",
       "overview": "Overblik",
       "abilities": "Evner"
     },
@@ -148,7 +150,7 @@
     "errorPrefix": ""
   },
   "profile": {
-    "back": "← Tilbage",
+    "back": "Tilbage",
     "notFound": "Hold ikke fundet",
     "loadError": {
       "message": "Holdet kunne ikke hentes. Intet gik tabt. Prøv igen.",

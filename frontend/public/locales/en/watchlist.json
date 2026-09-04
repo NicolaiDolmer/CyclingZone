@@ -28,7 +28,7 @@
   "removeFailed": "Could not remove the rider from your watchlist. Please try again.",
   "noteSaveFailed": "Could not save the note. Please try again.",
   "pagination": "Showing {from}–{to} of {total}",
-  "prev": "← Previous",
-  "next": "Next →",
+  "prev": "Previous",
+  "next": "Next",
   "auctionStarted": "Auction started.\n\nNote: you now lead auctions equal to {total} riders (max {max}). The cap is a hard limit, so you cannot win more riders than your squad can hold."
 }

@@ -20,6 +20,7 @@ import { buildTierMaterializationPlan } from "./tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "./calendarStartDate.js";
 import { GRAND_TOUR_MIN_STAGES, GRAND_TOUR_REST_DAYS } from "./grandTourRestDays.js";
 import { MAX_GT_STAGES_PER_DAY, MAX_GT_SPAN_DAYS } from "./raceCalendarLanePacker.js";
+import { MONUMENT_MIN_CALENDAR_GAP_DAYS, MONUMENT_MIN_CALENDAR_SPREAD_DAYS } from "./calendarTierCaps.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(__dirname, "__fixtures__", "racePoolCatalog.prod.json");
@@ -130,12 +131,29 @@ test("monumenterne ligger spredt over sæsonen, ikke i klynge", () => {
     .sort((a, b) => a.d.localeCompare(b.d));
 
   assert.ok(mon.length >= 3, "fixturen skal have mindst tre monumenter");
+
+  // #4203 (3/9): §4's spredningsregel er ikke laengere kun MAALT her - den er en BINDING i
+  // pakkerens soegning (R10/R11 i raceCalendarLanePacker.js), og tallene bor i
+  // calendarTierCaps.js. Testen er derfor gaaet fra kendt-tilstand-vagt (der accepterede
+  // EET for taet nabopar ved 28 dage) til at haandhaeve reglen. Fejler den, er det enten en
+  // regression i pakkeren eller et katalog hvor reglen ikke kan opfyldes - i begge
+  // tilfaelde falder ogsaa `monumentRulesHeld` og den haarde gate
+  // detectMonumentsInsideGrandTours.
+  const forTaet = [];
   for (let i = 1; i < mon.length; i++) {
     const dage = (Date.parse(mon[i].d) - Date.parse(mon[i - 1].d)) / 86_400_000;
-    assert.ok(dage >= 2, `${mon[i - 1].navn} (${mon[i - 1].d}) og ${mon[i].navn} (${mon[i].d}) ligger for tæt`);
+    if (dage < MONUMENT_MIN_CALENDAR_GAP_DAYS) forTaet.push(`${mon[i - 1].navn} (${mon[i - 1].d}) og ${mon[i].navn} (${mon[i].d})`);
   }
+  assert.deepEqual(
+    forTaet, [],
+    `monument-nabopar under ${MONUMENT_MIN_CALENDAR_GAP_DAYS} kalenderdage: ${forTaet.join(" · ")} — se docs/CALENDAR_RULES.md §4`,
+  );
+
   const spredning = (Date.parse(mon[mon.length - 1].d) - Date.parse(mon[0].d)) / 86_400_000;
-  assert.ok(spredning >= 14, `monumenterne spænder kun ${spredning} dage — de skal fordeles over sæsonen`);
+  assert.ok(
+    spredning >= MONUMENT_MIN_CALENDAR_SPREAD_DAYS,
+    `monumenterne spænder kun ${spredning} dage (krav ${MONUMENT_MIN_CALENDAR_SPREAD_DAYS}) — de skal fordeles over sæsonen`,
+  );
 });
 
 test("#3546 H: et ikke-GT etapeløb strækkes aldrig ud over etaper + 3 kalenderdage", () => {

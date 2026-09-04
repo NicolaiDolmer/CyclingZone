@@ -1527,6 +1527,10 @@ import {
   TEAM_BOARD_MEMBERS_COUNT,
   REPLACEMENT_TRIGGER_THRESHOLD,
 } from "./boardEngine.js";
+// #3514 S-M2a · REACTION_BUCKETS/MANDATE_VOICE_BUCKETS er ikke re-eksporteret
+// via boardEngine.js-facaden (bevidst, ingen kaldere har brug for dem der
+// endnu), importeres direkte fra kildemodulet.
+import { REACTION_BUCKETS, MANDATE_VOICE_BUCKETS } from "./boardArchetypes.js";
 
 const FRENCH_GC_BASIS = {
   season_number_observed: 1,
@@ -1558,8 +1562,44 @@ test("BOARD_ARCHETYPES contains exactly 9 archetypes med 30 reactions hver (Q-ba
     const arc = BOARD_ARCHETYPES[key];
     assert.ok(arc, `archetype ${key} mangler`);
     assert.ok(arc.label && arc.emoji);
-    const total = Object.values(arc.reactions).reduce((sum, list) => sum + list.length, 0);
-    assert.equal(total, 30, `${key} skal have 30 reactions (har ${total})`);
+    // Det oprindelige Q9-bucket-sæt (feedback_*/goal_*) er UÆNDRET af #3514
+    // S-M2a's nye Mandat-buckets, tælles isoleret fra dem her.
+    const legacyTotal = REACTION_BUCKETS.reduce((sum, bucket) => sum + (arc.reactions[bucket]?.length || 0), 0);
+    assert.equal(legacyTotal, 30, `${key} skal have 30 legacy reactions (har ${legacyTotal})`);
+  }
+});
+
+// #3514 S-M2a · Mandat-buckets (addendum "Stemme-kontrakten" punkt 4): kun
+// sponsoraten + ungdomsidealisten har reelt indhold (ejer-tone-prøve 1/9);
+// de 7 øvrige har bevidst tomme arrays indtil deres tone-prøve godkendes.
+test("MANDATE_VOICE_BUCKETS: alle 9 arketyper har mindst 4 varianter pr. bucket (ejer-godkendt 1/9)", () => {
+  for (const key of BOARD_ARCHETYPE_KEYS) {
+    const arc = BOARD_ARCHETYPES[key];
+    for (const bucket of MANDATE_VOICE_BUCKETS) {
+      const variants = arc.reactions[bucket] || [];
+      assert.ok(variants.length >= 4, `${key}.reactions.${bucket} har under 4 varianter (har ${variants.length})`);
+    }
+  }
+});
+
+// Karakter-adskillelse (koordinator-krav 1/9): ingen to arketyper må dele en
+// ORDRET identisk linje. Det er en grov, men automatiserbar proxy for at hver
+// arketype skal have sin egen, ikke-forvekslelige stemme, en helt generisk
+// linje ville typisk blive genbrugt (bevidst eller ved copy-paste) på tværs.
+test("MANDATE_VOICE_BUCKETS: ingen to arketyper deler en ordret identisk linje (karakter-adskillelse)", () => {
+  const seen = new Map(); // linje → arketype der først brugte den
+  for (const key of BOARD_ARCHETYPE_KEYS) {
+    const arc = BOARD_ARCHETYPES[key];
+    for (const bucket of MANDATE_VOICE_BUCKETS) {
+      for (const line of arc.reactions[bucket] || []) {
+        const existing = seen.get(line);
+        assert.ok(
+          !existing || existing === key,
+          `Linjen "${line}" bruges ordret af både ${existing} og ${key}, arketyperne skal ikke kunne forveksles`,
+        );
+        seen.set(line, key);
+      }
+    }
   }
 });
 
@@ -1859,6 +1899,129 @@ test("regenerateBoardMembersForTeam rebuilds 5 members with selected DNA", async
   assert.equal(members.length, TEAM_BOARD_MEMBERS_COUNT);
   assert.equal(members.filter((m) => m.is_chairman).length, 1);
   assert.ok(members.some((m) => m.archetype_key === "klassiker_purist"));
+});
+
+// #4664 · Rod-årsag: DELETE + INSERT er to separate kald. Fejler INSERT'et
+// efter DELETE'et er committet, stod holdet tidligere tilbage med 0 board-
+// medlemmer PERMANENT (DNA uændret → requiresBoardDnaChoice er false →
+// DNA-vælgeren vises aldrig igen, ingen naturlig reparations-sti). Disse to
+// tests låser selv-helbredelsen: et fejlet regenereringsforsøg må ALDRIG
+// efterlade holdet dårligere stillet end før kaldet.
+test("regenerateBoardMembersForTeam restores the previous members when the reinsert fails (#4664)", async () => {
+  const state = {
+    team_board_members: [
+      { id: "old-1", team_id: "team-1", archetype_key: "gc_elsker", selection_kind: "identity", alignment_score: 4, is_chairman: true },
+      { id: "old-2", team_id: "team-1", archetype_key: "traditionalisten", selection_kind: "wildcard", alignment_score: 2, is_chairman: false },
+    ],
+  };
+  const base = createFakeSupabase(state);
+  let insertCalls = 0;
+  const supabase = {
+    ...base,
+    from(table) {
+      const real = base.from(table);
+      if (table !== "team_board_members") return real;
+      return {
+        ...real,
+        insert(payload) {
+          insertCalls += 1;
+          // Første insert (det NYE sæt) fejler transient. Restore-forsøget
+          // (andet insert) rammer den ægte fake og lykkes.
+          if (insertCalls === 1) {
+            return Promise.resolve({ data: null, error: { message: "transient insert failure" } });
+          }
+          return real.insert(payload);
+        },
+      };
+    },
+  };
+
+  await assert.rejects(
+    () => regenerateBoardMembersForTeam({
+      supabase,
+      teamId: "team-1",
+      identityBasis: FRENCH_GC_BASIS,
+      dnaKey: "italiensk_klassiker",
+    }),
+    /Could not insert team board members/,
+  );
+
+  // Holdet er IKKE efterladt boardless — de gamle 2 medlemmer er gendannet.
+  const members = state.team_board_members.filter((m) => m.team_id === "team-1");
+  assert.equal(members.length, 2);
+  assert.deepEqual(members.map((m) => m.archetype_key).sort(), ["gc_elsker", "traditionalisten"]);
+});
+
+test("regenerateBoardMembersForTeam captures (not swallows) a double failure — new insert AND restore both fail (#4664)", async () => {
+  const state = {
+    team_board_members: [
+      { id: "old-1", team_id: "team-1", archetype_key: "gc_elsker", selection_kind: "identity", alignment_score: 4, is_chairman: true },
+    ],
+  };
+  const supabase = makeFakeSupabase(state, { failInsertOn: "team_board_members" });
+
+  await assert.rejects(
+    () => regenerateBoardMembersForTeam({
+      supabase,
+      teamId: "team-1",
+      identityBasis: FRENCH_GC_BASIS,
+      dnaKey: "italiensk_klassiker",
+    }),
+    /insert blew up/,
+  );
+
+  // Begge inserts fejlede (samme fejlsimulerede tabel) → holdet ER boardless.
+  // Testen dokumenterer at dette IKKE er en tavs fejl (fejlen bobler stadig
+  // op til kalderen, som allerede håndterer den — se #878-atomicitets-testen).
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, 0);
+});
+
+test("chooseDnaForTeam (idempotent same-DNA recovery) restores members when the reinsert fails, DNA stays unchanged (#4664)", async () => {
+  // Reproducerer selve prod-signaturen fra #4664: team_dna_key SAT, board
+  // ALLEREDE fuldt (5 medlemmer) — spilleren rammer /board/dna-choose igen
+  // (dobbelt-indsendelse/retry) med SAMME nøgle. Uden #4664-fixet ville en
+  // transient INSERT-fejl her tømme boardet permanent, fordi denne gren
+  // (existing.team_dna_key === dnaKey) ikke selv har noget try/catch —
+  // beskyttelsen skal komme fra regenerateBoardMembersForTeam selv.
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: "fransk_klatrer", team_dna_chosen_at: "2026-06-01T00:00:00Z", season_1_identity_basis: FRENCH_GC_BASIS }],
+    team_board_members: [
+      { id: "m-1", team_id: "team-1", archetype_key: "traditionalisten", selection_kind: "identity", alignment_score: 5, is_chairman: true },
+      { id: "m-2", team_id: "team-1", archetype_key: "gc_elsker", selection_kind: "identity", alignment_score: 4, is_chairman: false },
+      { id: "m-3", team_id: "team-1", archetype_key: "talentspejderen", selection_kind: "identity", alignment_score: 3, is_chairman: false },
+      { id: "m-4", team_id: "team-1", archetype_key: "sponsoraten", selection_kind: "wildcard", alignment_score: 1, is_chairman: false },
+      { id: "m-5", team_id: "team-1", archetype_key: "ungdomsidealisten", selection_kind: "wildcard", alignment_score: 1, is_chairman: false },
+    ],
+  };
+  const base = createFakeSupabase(state);
+  let insertCalls = 0;
+  const supabase = {
+    ...base,
+    from(table) {
+      const real = base.from(table);
+      if (table !== "team_board_members") return real;
+      return {
+        ...real,
+        insert(payload) {
+          insertCalls += 1;
+          if (insertCalls === 1) {
+            return Promise.resolve({ data: null, error: { message: "transient insert failure" } });
+          }
+          return real.insert(payload);
+        },
+      };
+    },
+  };
+
+  await assert.rejects(
+    () => chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "fransk_klatrer" }),
+    /Could not insert team board members/,
+  );
+
+  // DNA er stadig uændret (grenen skriver den aldrig om), og boardet er
+  // gendannet til det oprindelige 5-medlems-sæt — ALDRIG 0.
+  assert.equal(state.teams[0].team_dna_key, "fransk_klatrer");
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, 5);
 });
 
 test("repairBoardMembersAfterDna is idempotent and skips teams without DNA", async () => {

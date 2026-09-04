@@ -96,6 +96,12 @@ export type ProfileType =
   | "mountain"
   | "high_mountain"
   | "cobbles"
+  // gravel (#4105): additiv udvidelse af profil-UNIONEN, ikke af StageInput/StageOutput's
+  // form. Segment-modellen er UAENDRET: en grus-sektor bliver et "cobbles"-segment, fordi
+  // fysikken er den samme (loest/ujaevnt underlag, lav laesgevinst, hoej styrt-risiko) og
+  // ejer-rammen 3/9 er "naesten samme type der er god til den slags loeb". Forskellen
+  // mellem grus og brosten bor i etapens profile_type + demand_vector, ikke i segmentet.
+  | "gravel"
   | "classic"
   | "itt"
   | "itt_hilly"
@@ -130,9 +136,20 @@ export type Entrant = {
   condition: number; // 0-1, dag-til-dag-slid (M7 forbruger i F3; F2 baerer feltet)
 };
 
-// M5 (udbruds-ordrer)/M14 (AI-taktik), F3-scope. F2 accepterer en tom liste;
-// formen er et bevidst LOEST placeholder-kontrakt-udkast (ikke frosset som §2's
-// oevrige typer) — F3-workeren der bygger M5/M14 praeciserer `kind`/`params`.
+// M5 (udbruds-ordrer)/M6 (leadout)/M14 (AI-taktik). Formen er en AABEN
+// konvolut (`kind` + `params`), ikke en lukket kontrakt: hver mekanik
+// fortolker sin egen `kind` og ignorerer resten (`mechanics/breakaway.ts`'s
+// `parseBreakawayOrders` for "team_tactics", `mechanics/leadout.ts`'s
+// `parseLeadoutOrders` for "leadout").
+//
+// BEVIDST IKKE FROSSET TIL T3-FORMEN (#4615): tactics-orders-specens
+// `{team_id, breakaway_stance, riders[]}` er den form spilleren og AI'en
+// producerer — `orders/teamOrdersAdapter.ts` og `ai/teamOrderContract.ts`
+// baerer den. Men rolle-vs-ordre-modsigelsen (#4246: `hunter` vs `try_break`,
+// `sprint_captain` vs `leadout_for`) er ejer-gated og IKKE afgjort her. At
+// fryse konvolutten om til T3 nu ville laase netop den beslutning ind i en
+// frossen kontrakt. Konvolutten baerer derfor begge vokabularer side om side
+// indtil #4246 er afgjort; naar den er det, kollapser wrapperne til identitet.
 export type TeamOrder = {
   team_id: string;
   kind: string;
@@ -337,6 +354,17 @@ export type EngineState = {
   groups: RaceGroup[];
   riders: Record<string, RiderState>;
   virtual_gc: Record<string, number>; // rider_id -> virtuel GC-deficit sekunder (F2: alle 0)
+  // Placerings-raekkefolge i maal, saettes af finale-hooket (#4615). INTERN
+  // simulations-tilstand — IKKE en del af §2's frosne StageOutput.
+  //
+  // HVORFOR (felt-sammenhaengs-ankeret, #4604/#4615): et massespurt-opgoer skal
+  // give HELE den ankomne gruppe SAMME tid (gruppe-tids-princippet, mor-spec
+  // §3.2) og samtidig en entydig placerings-raekkefolge. Uden dette felt kunne
+  // raekkefolgen kun udtrykkes gennem tiden, saa finalen var noedt til at give
+  // hver rytter sit eget tids-tier — hvilket satte felt-sammenhaengen paa flade
+  // etaper til naesten nul. `index.ts` rangerer paa (tid, denne raekkefolge,
+  // rider_id), saa lige tid stadig giver stabile, evne-ordnede placeringer.
+  finish_order?: string[];
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────
@@ -354,6 +382,10 @@ export type SegmentHookContext = {
   entrants: Readonly<Record<string, Entrant>>;
   tuning: EngineTuning;
   rngFor: RngForFn; // bundet til etapens seed; kald med (mechanic, riderId?)
+  // StageInput.orders raat videregivet (#4615). Hver mekanik parser sin egen
+  // `kind` og ignorerer resten; en tom liste er den neutrale default (T4 i
+  // tactics-orders-specen — kernen kraever ALDRIG ordrer).
+  orders: readonly TeamOrder[];
 };
 
 export type SegmentHookResult = {
@@ -371,8 +403,13 @@ export type DescentHook = (state: EngineState, ctx: SegmentHookContext) => Segme
 // M4: punch-finale placerings-opgoer. Kaldes paa etapens sidste segment.
 export type FinaleHook = (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult;
 
+// M5: udbrud v2 + holdordrer. Kaldes paa HVERT segment (ikke kind-gated):
+// formation forsoeges paa foerste segment, jagt-fremdrift paa de oevrige.
+export type BreakawayHook = (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult;
+
 export type MechanicHooks = {
   climbSelection: ClimbSelectionHook;
   descent: DescentHook;
   finale: FinaleHook;
+  breakaway: BreakawayHook;
 };

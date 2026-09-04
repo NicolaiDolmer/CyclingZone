@@ -70,8 +70,13 @@ test("root path redirects to dashboard", async ({ page }) => {
 const TRANSLATED_PAGE_SMOKE = [
   {
     path: "/dashboard",
-    en: [/Active auctions/i, /Transfers & Offers/i],
-    da: [/Aktive auktioner/i, /Transfers & tilbud/i],
+    // #4647: canary'erne var "Transfers & Offers" / "Transfers & tilbud" og
+    // matchede ikke laengere copyen. Dashboardet blev bygget om i #4625, hvor
+    // kortet fik sentence case og "and"/"og" i stedet for "&"
+    // (locales/{en,da}/dashboard.json -> cards.transfers.title). Testen var
+    // dermed roed paa main, ikke kun her - samme klasse som #4548.
+    en: [/Active auctions/i, /Transfers and offers/i],
+    da: [/Aktive auktioner/i, /Transfers og tilbud/i],
     rawKeys: ["dashboard:cards.transfers.title", "cards.transfers.title", "cards.auctions.title"],
   },
   {
@@ -113,10 +118,25 @@ const TRANSLATED_PAGE_SMOKE = [
     rawKeys: ["finance:page.title", "page.title", "loans.active.title"],
   },
   {
+    // #4519: preview-mocken for /api/board/status skiftede fra baseline-fase
+    // (alle planer null) til en aktiv 1-årsplan med request_options, så
+    // board-request-preview-flowet (BoardRequestPanel) rent faktisk har noget
+    // at rendere. "The board is observing your first season" hørte til
+    // baseline-fasen og vises ikke længere som standard — canary'en peger nu
+    // på "Se forslaget"-knappen (request.preview), som er selve indgangen til
+    // den nye bekræftelsesdialog (Accept / Behold nuværende plan).
     path: "/board",
-    en: [/Board/i, /The board is observing your first season/i],
-    da: [/Bestyrelse/i, /Bestyrelsen observerer din første sæson/i],
-    rawKeys: ["board:page.title", "page.title", "baseline.title"],
+    en: [/Board/i, /See suggestion/i],
+    da: [/Bestyrelse/i, /Se forslaget/i],
+    rawKeys: ["board:request.preview", "request.preview", "requestDefs.lower_results_pressure.label"],
+    // Mocken har kun 1yr konfigureret (5yr/3yr er null) → siden lander som
+    // standard på 5-års-fanen, som er tom ("Configured automatically...").
+    // BoardRequestPanel/canary'en herover bor under 1-års-fanens "Show
+    // details"-udvidelse (DashboardPlanPanel's detailOpen, lukket by default).
+    beforeAssert: async (page) => {
+      await page.getByRole("tab", { name: /1-year plan/i }).click();
+      await page.getByRole("button", { name: /Show details/i }).click();
+    },
   },
   {
     path: "/notifications",
@@ -218,6 +238,9 @@ test("translated manager pages do not leak raw i18n keys or hardcoded Danish in 
     await page.goto(spec.path);
     await forceEnglish(page);
     await expect(page.locator("main")).toBeVisible();
+    // #4519: per-side setup FØR canary-assertions (fx skift til en anden
+    // fane) for sider hvor den ønskede copy ikke er på standard-visningen.
+    if (spec.beforeAssert) await spec.beforeAssert(page);
 
     for (const canary of spec.en) {
       await expect(page.locator("main")).toContainText(canary);

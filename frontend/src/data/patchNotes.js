@@ -1,7 +1,7 @@
 export const PATCHES = [
   {
-    "version": "7.227",
-    "date": "2026-09-01",
+    "version": "7.250",
+    "date": "2026-09-04",
     "label": "Beta",
     "changes": [
       {
@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Sponsors",
         "en": {
           "title": "Your sponsor deal now reacts when you change division",
-          "body": "A sponsor deal is priced for the division you were in when you signed it. If you were promoted, you paid the new division's upkeep from day one while the deal still paid the old amount. Your signed deal is unchanged, and it stays unchanged: instead, a separate division adjustment of half the difference between the two divisions is paid on top, every season the difference lasts. Promotion from Division 3 to Division 1 is 130,000 CZ$ per season. Every offer now shows what the adjustment would be before you sign. Season 3 is already under way, so only the upward half applies this season; if you were relegated you keep your relegation payment exactly as before."
+          "body": "A sponsor deal is priced for the division you were in when you signed it. If you were promoted, you paid the new division's upkeep from day one while the deal still paid the old amount. Your signed deal is unchanged, and it stays unchanged: instead, a separate division adjustment is paid on top every season the difference lasts. It lifts you to the base of the division just below your new one, then adds half of what remains up to your new division's base — for example, promotion from Division 4 straight to Division 1 is 185,000 CZ$ per season on top of your 315,000 CZ$ base. Every offer now shows what the adjustment would be before you sign. Season 3 is already under way, so only the upward half applies this season; if you were relegated you keep your relegation payment exactly as before."
         },
         "da": {
           "title": "Din sponsoraftale reagerer nu når du skifter division",
-          "body": "En sponsoraftale er prissat til den division du var i da du skrev under. Rykkede du op, betalte du den nye divisions upkeep fra dag ét mens aftalen stadig udbetalte det gamle beløb. Din underskrevne aftale er uændret, og den forbliver uændret: i stedet udbetales et separat divisions-tillæg på halvdelen af forskellen mellem de to divisioner oveni, hver sæson forskellen findes. Oprykning fra Division 3 til Division 1 giver 130.000 CZ$ pr. sæson. Alle tilbud viser nu hvad tillægget ville være, før du skriver under. Sæson 3 er allerede i gang, så kun den opadgående halvdel gælder i denne sæson; er du rykket ned, beholder du din nedrykningsbetaling uændret."
+          "body": "En sponsoraftale er prissat til den division du var i da du skrev under. Rykkede du op, betalte du den nye divisions upkeep fra dag ét mens aftalen stadig udbetalte det gamle beløb. Din underskrevne aftale er uændret, og den forbliver uændret: i stedet udbetales et separat divisions-tillæg oveni, hver sæson forskellen findes. Det løfter dig til basen for divisionen lige under din nye, og lægger derefter halvdelen af resten op til din nye divisions base oveni — for eksempel giver oprykning fra Division 4 direkte til Division 1 185.000 CZ$ pr. sæson oveni din base på 315.000 CZ$. Alle tilbud viser nu hvad tillægget ville være, før du skriver under. Sæson 3 er allerede i gang, så kun den opadgående halvdel gælder i denne sæson; er du rykket ned, beholder du din nedrykningsbetaling uændret."
         },
         "refs": [4376]
       },
@@ -31,6 +31,753 @@ export const PATCHES = [
           "body": "Regelsiden sagde at din sponsorudbetaling var loftet til 720.000 CZ$ i sæson 1 og 900.000 CZ$ fra sæson 2. Det loft blev afløst for længe siden og kører ikke længere nogen steder i spillet. Siden beskriver nu det loft der faktisk gælder, og viser Division 4's sponsorbase, som manglede."
         },
         "refs": [4376]
+      }
+    ]
+  },
+  {
+    "version": "7.248",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Manager and team names in a thread are now clickable",
+          "body": "Every post and reply opens with the writer's badge: manager name links to their manager profile, team name links to their team page. A short line under the text shows the writer's team and division, unless they already wrote the team name themselves."
+        },
+        "da": {
+          "title": "Manager- og holdnavne i en tråd kan nu klikkes",
+          "body": "Hvert indlæg og svar starter med skribentens mærke: managernavnet fører til managerprofilen, holdnavnet til holdsiden. En kort linje under teksten viser skribentens hold og division, medmindre de selv har skrevet holdnavnet."
+        },
+        "refs": [
+          4751
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.247",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Mark all forum threads as read in one click",
+          "body": "A new button on the forum overview clears the unread dot on every thread at once, the same idea as the inbox. It only shows up when something is actually unread."
+        },
+        "da": {
+          "title": "Markér alle forum-tråde som læst med ét klik",
+          "body": "En ny knap på forum-oversigten rydder ulæst-prikken på alle tråde på én gang, samme idé som i indbakken. Den vises kun, når der faktisk er noget ulæst."
+        },
+        "refs": [
+          3451
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.246",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Pages that went blank after an update now repair themselves",
+          "body": "If your browser had cached a missing file from an earlier update, the page could stay blank until you forced a reload. The app now detects this, clears the cached file and reloads once on its own. Your browser also stays on the version you loaded for half an hour after an update, so a page open during a deploy no longer breaks mid-session."
+        },
+        "da": {
+          "title": "Sider der blev tomme efter en opdatering reparerer nu sig selv",
+          "body": "Havde din browser gemt en manglende fil fra en tidligere opdatering, kunne siden blive tom, indtil du tvang en genindlæsning. Appen opdager det nu selv, rydder den gemte fil og genindlæser én gang. Din browser bliver også på den version du åbnede i en halv time efter en opdatering, så en side der er åben under et deploy ikke længere går i stykker midt i det hele."
+        },
+        "refs": [
+          4595,
+          2423
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Weak abilities can grow further before hitting their ceiling",
+          "body": "A rider's weakest abilities were capped hard at a low level, so many young riders showed as done in training while still far below what their type allows. The floor for weak abilities is now higher, and GC riders get a higher punch ceiling. Weak abilities still develop slowly; this only removes the hard stop. The done markers update at the next nightly training pass."
+        },
+        "da": {
+          "title": "Svage evner kan udvikle sig længere, før de rammer loftet",
+          "body": "En rytters svageste evner havde et hårdt, lavt loft, så mange unge ryttere stod som færdige i træningen, selvom de lå langt under, hvad deres type tillader. Gulvet for svage evner er nu højere, og GC-ryttere får et højere punch-loft. Svage evner udvikler sig stadig langsomt; det er kun det hårde stop, der er væk. Færdig-mærkerne opdateres ved næste natlige træningskørsel."
+        },
+        "refs": [
+          4634,
+          4098
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.245",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Text arrows replaced with real icons across the app",
+          "body": "Promotion and relegation badges on the standings, the board negotiation buttons, the season recap and rider stats used typed arrow characters as icons. They now use the same stroke icons as the rest of the app, so they sit on the baseline and scale correctly on mobile. A lint rule keeps new text arrows out."
+        },
+        "da": {
+          "title": "Tekstpile erstattet af rigtige ikoner i hele appen",
+          "body": "Op- og nedrykningsbadges på ranglisten, bestyrelsens forhandlingsknapper, sæsonopsummeringen og rytterstatistikken brugte skrevne piletegn som ikoner. De bruger nu de samme stregikoner som resten af appen, så de sidder på linjen og skalerer rigtigt på mobil. En lint-regel holder nye tekstpile ude."
+        },
+        "refs": [
+          3422
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.244",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Assistant suggestions: Accept now works on a fully planned squad",
+          "body": "The assistant never overwrites a rider you've already set a focus for, but the suggestion panel still offered a checkbox for them, so a squad with a plan on every rider got \"Updated 0 riders\" no matter what you ticked. Those rows now show \"Your plan\" and can't be ticked, and Accept all only covers riders marked \"No plan\"."
+        },
+        "da": {
+          "title": "Assistentens forslag: Accepter virker nu på et fuldt planlagt hold",
+          "body": "Assistenten overskriver aldrig en rytter du selv har sat et fokus for, men forslagspanelet tilbød stadig en aktiv boks for dem, så et hold med en plan på hver rytter fik \"Updated 0 riders\" uanset hvad du markerede. De rækker viser nu \"Din plan\" og kan ikke markeres, og Accepter alle dækker kun ryttere markeret \"Ingen plan\"."
+        },
+        "refs": [4699]
+      }
+    ]
+  },
+  {
+    "version": "7.243",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Race results now show how the prize money adds up",
+          "body": "The \"How your team did\" card on your dashboard has a \"See breakdown\" link under this race's points and prize money. Open it to see the prize split by stage placing, classification and team bonus, with the rider who earned each amount, plus your sponsor's race-day payout as its own line instead of only a separate message."
+        },
+        "da": {
+          "title": "Løbsresultatet viser nu hvordan præmien er sammensat",
+          "body": "\"Sådan gik det for dit hold\"-kortet på dit dashboard har et \"Se sammensætning\"-link under løbets point og præmiepenge. Åbn det for at se præmien delt op i etapeplacering, klassifikation og holdbonus, med den rytter der tjente hvert beløb, plus din sponsors løbsdagsudbetaling som egen linje i stedet for kun en separat besked."
+        },
+        "refs": [4697, 4698]
+      }
+    ]
+  },
+  {
+    "version": "7.242",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race selection",
+        "en": {
+          "title": "Injured riders can be picked for races that start after they heal",
+          "body": "You can now pick an injured rider for a race, either yourself or via assistant auto-fill, as long as the race itself starts after the injury is over. Previously the app checked injury status right now, so a race weeks away still waited for the rider to fully recover."
+        },
+        "da": {
+          "title": "Skadede ryttere kan udtages til løb der starter efter skaden er ovre",
+          "body": "Du kan nu udtage en skadet rytter til et løb, enten selv eller via assistentens auto-udfyldning, så længe løbet starter efter skaden er ovre. Før tjekkede appen skadestatus lige nu, så et løb uger ude stadig ventede på at rytteren blev rask."
+        },
+        "refs": [4701]
+      }
+    ]
+  },
+  {
+    "version": "7.241",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions, tidied up",
+          "body": "Your balance, reserved bids and squad size are now one line under the title instead of four stat cards, the view filters are underline tabs, and the full filter panel sits behind \"More filters\". The bid buttons in the table are plain buttons again, so gold means one thing."
+        },
+        "da": {
+          "title": "Auktioner er ryddet op",
+          "body": "Din saldo, dine reserverede bud og din trupstørrelse er nu samlet på én linje under titlen i stedet for fire stat-kort, visningsfiltrene er blevet til understregede faner, og hele filterpanelet ligger bag \"Flere filtre\". Bud-knapperne i tabellen er almindelige knapper igen, så guld betyder én ting."
+        },
+        "refs": [4628, 4625, 4670]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Hide auctions you've been outbid on",
+          "body": "In \"My auctions\" a small X lets you hide an auction you've been outbid on. It only changes what you see, your bid still stands and the auction keeps running, and \"Show hidden (N)\" brings them back. Academy also lost its wall of gold buttons, and \"Release\" is no longer a red box in every row."
+        },
+        "da": {
+          "title": "Skjul auktioner du er overbudt på",
+          "body": "I \"Mine auktioner\" kan du med det lille X skjule en auktion, du er blevet overbudt på. Det ændrer kun det, du ser, dit bud står stadig og auktionen kører videre, og \"Vis skjulte (N)\" henter dem frem igen. Akademiet har også mistet sin mur af guld-knapper, og \"Fyr\" er ikke længere en rød kasse i hver række."
+        },
+        "refs": [4262, 4670]
+      }
+    ]
+  },
+  {
+    "version": "7.240",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders & Transfers",
+        "en": {
+          "title": "Riders and Transfers, tidied up",
+          "body": "The filter panel on both pages is now a single row, search, country and rider type, with everything else behind \"More filters\" instead of an always-open panel. The ability code legend moved below the table, the Transfers balance moved into the page header, and the eight sort buttons are gone because the column headers already sort."
+        },
+        "da": {
+          "title": "Ryttere og Transfers er ryddet op",
+          "body": "Filterpanelet på begge sider er nu én linje, søg, land og ryttertype, mens resten ligger bag \"Flere filtre\" i stedet for et panel der altid var åbent. Forklaringen på evne-koderne er flyttet ned under tabellen, balancen på Transfers er flyttet op i sidehovedet, og de otte sorteringsknapper er væk, fordi kolonneoverskrifterne allerede sorterer."
+        },
+        "refs": [4628, 4625, 4622, 4671]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team pages",
+        "en": {
+          "title": "My Team, team pages and manager profiles, tidied up",
+          "body": "Tabs on My Team are underline tabs now, and the squad filters sit inside the table instead of floating above it. Contract length reads \"Until season 4\" here too. On phones the team page keeps every column, the rider name stays pinned while the rest scrolls, and the manager profile no longer cuts off its fourth stat."
+        },
+        "da": {
+          "title": "Mit hold, holdsider og managerprofiler er ryddet op",
+          "body": "Fanerne på Mit hold er understregede faner nu, og trup-filtrene sidder inde i tabellen i stedet for at svæve over den. Kontraktlængden står som \"Til sæson 4\" her også. På mobil beholder holdsiden alle kolonner, rytternavnet står fast mens resten scroller, og managerprofilen klipper ikke længere sit fjerde tal af."
+        },
+        "refs": [4628, 4625, 4622, 4381, 4666]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Calendar day shows your division's full slate",
+          "body": "The calendar day cell now shows as many stages as your division actually runs (5/4/3/2) instead of a flat 4, so Division 1's busiest days no longer hide behind \"+N more\" as often. The season planner now uses the same small terrain glyph as the calendar for each stage instead of its own icons."
+        },
+        "da": {
+          "title": "Kalenderdagen viser hele din divisions program",
+          "body": "Kalenderens dagcelle viser nu lige så mange etaper som din division faktisk kører (5/4/3/2) i stedet for et fast loft på 4, så Division 1's travleste dage gemmer sig sjældnere bag \"+N mere\". Sæsonplanlæggeren bruger nu den samme lille terræn-glyf som kalenderen for hver etape i stedet for sine egne ikoner."
+        },
+        "refs": [4143, 4386, 4685]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board requests show you the suggestion first",
+          "body": "Clicking a board request option now shows you the suggested plan change, current plan versus proposed plan, before anything is applied. Nothing is written until you press Accept; you can still keep your current plan instead."
+        },
+        "da": {
+          "title": "Bestyrelsesanmodninger viser nu forslaget først",
+          "body": "Et klik på en bestyrelsesanmodning viser nu det foreslåede planskift, nuværende plan mod foreslået plan, før noget bliver anvendt. Intet skrives før du trykker Accepter; du kan stadig vælge at beholde din nuværende plan."
+        },
+        "refs": [4519, 4688]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "CZ Pro",
+        "en": {
+          "title": "CZ Pro v1.1: Founder badge, season history, saved filters",
+          "body": "A visible Founder supporter badge now shows on standings, team pages and the forum, not just your own sidebar. Rider Development gets a Pro season-by-season ability history, and the rider list gets saved filters you can name and reapply."
+        },
+        "da": {
+          "title": "CZ Pro v1.1: Founder-mærke, sæsonhistorik, gemte filtre",
+          "body": "Et synligt Founder-supporter-mærke vises nu i stillingen, på holdsider og i forummet, ikke kun i din egen sidebar. Rytterens Udvikling-fane får en Pro sæson-for-sæson evnehistorik, og rytterlisten får gemte filtre du kan navngive og bruge igen."
+        },
+        "refs": [4649, 2806, 4662]
+      }
+    ]
+  },
+  {
+    "version": "7.239",
+    "date": "2026-09-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Cleaner race page, one stage profile",
+          "body": "The race page is tidier: the stage profile is drawn once with full climb detail on the upcoming stage, your breakaway hunter is picked from one ranked list, and races with results get a quick shortcut to them."
+        },
+        "da": {
+          "title": "Renere løbsside, én etapeprofil",
+          "body": "Løbssiden er ryddet op: etapeprofilen tegnes nu én gang med fuld stigningsdetalje på den kommende etape, din udbrudsjæger vælges fra én rangeret liste, og løb med resultater får en hurtig genvej til dem."
+        },
+        "refs": [4628, 2810, 1884, 2794, 4668]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race tactics",
+        "en": {
+          "title": "Injured riders are locked in stage tactics",
+          "body": "A rider who has crashed out or is injured can no longer be edited in the stage tactics tab; the row now shows a clear status instead."
+        },
+        "da": {
+          "title": "Skadede ryttere er låst i etape-taktikken",
+          "body": "En rytter der er styrtet ud eller skadet kan ikke længere redigeres i etape-taktik-fanen; rækken viser nu en tydelig status i stedet."
+        },
+        "refs": [4538, 4681]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rider profile",
+        "en": {
+          "title": "Days in jersey counts only your own jersey days",
+          "body": "Days in jersey on a rider's profile now counts only the stages he actually led the classification, instead of every stage he started."
+        },
+        "da": {
+          "title": "Dage i trøje tæller nu kun dine egne trøjedage",
+          "body": "Dage i trøje på en rytterprofil tæller nu kun de etaper han faktisk førte klassificeringen, i stedet for hver etape han startede."
+        },
+        "refs": [4588, 4676]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rider contracts",
+        "en": {
+          "title": "Contract extension explains the new salary demand",
+          "body": "The contract extension panel now explains that a rider's new salary demand follows this season's output, not the frozen salary he signed at."
+        },
+        "da": {
+          "title": "Kontraktforlængelse forklarer det nye lønkrav",
+          "body": "Panelet for kontraktforlængelse forklarer nu at en rytters nye lønkrav følger denne sæsons præstation, ikke den fastfrosne løn han blev underskrevet til."
+        },
+        "refs": [3442, 4695]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Standings",
+        "en": {
+          "title": "Squad strength no longer crashes the Rankings page",
+          "body": "Switching to the Squad strength view on the Rankings page for a division with no teams yet no longer crashes the page."
+        },
+        "da": {
+          "title": "Holdstyrke crasher ikke længere Ranglister-siden",
+          "body": "Skift til Holdstyrke-visningen på Ranglister-siden for en division uden hold endnu crasher ikke længere siden."
+        },
+        "refs": [4374, 4672]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Auction FAQ corrected, duplicate transfer row removed",
+          "body": "The FAQ about free agent auction length now matches the actual 12-hour floor instead of the old 1-hour claim, and a rare case where a rider's transfer history could show the same sale twice is fixed."
+        },
+        "da": {
+          "title": "Auktions-FAQ rettet, dobbelt transferrække fjernet",
+          "body": "FAQ'en om varigheden af fri agent-auktioner matcher nu det faktiske 12-timers-gulv i stedet for den gamle påstand om 1 time, og et sjældent tilfælde hvor en rytters transferhistorik kunne vise det samme salg to gange er rettet."
+        },
+        "refs": [4177, 4297, 4674]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Interval training is now three packages",
+          "body": "Interval training is now three packages instead of one: the original mixed session, plus a climbing-focused and a punch-focused option that trade one ability's gains for the other without adding extra progress."
+        },
+        "da": {
+          "title": "Intervaltræning er nu tre pakker",
+          "body": "Intervaltræning er nu tre pakker i stedet for én: den oprindelige blandede session, plus en klatre- og en punch-fokuseret mulighed der bytter fremgang mellem de to evner uden at lægge noget ekstra til."
+        },
+        "refs": [4631, 4128, 4677]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Daily Training",
+        "en": {
+          "title": "Current value is not the ceiling",
+          "body": "Daily Training now makes clear that a rider's current ability value is not the ceiling, with a tooltip explaining why progress can slow down near the top."
+        },
+        "da": {
+          "title": "Nuværende værdi er ikke loftet",
+          "body": "Daglig træning gør nu tydeligt at en rytters nuværende evneværdi ikke er loftet, med en tooltip der forklarer hvorfor fremgangen kan gå langsommere tæt på toppen."
+        },
+        "refs": [4128, 4675]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Help now explains why training pace can vary",
+          "body": "Help now explains that cobblestone sessions are always trained at an easy pace and that overall training pace shifts sometimes as part of ongoing balancing, not a bug."
+        },
+        "da": {
+          "title": "Hjælp forklarer nu hvorfor træningstempoet kan variere",
+          "body": "Hjælp forklarer nu at brosten-sessioner altid trænes i et let tempo, og at det generelle træningstempo justeres løbende som en del af balanceringen, ikke er en fejl."
+        },
+        "refs": [3966, 4678]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Teams without a board have been restored",
+          "body": "A small number of teams could end up without a board, the panel behind your budget bonus or penalty; affected teams have been restored and the underlying bug is fixed."
+        },
+        "da": {
+          "title": "Hold uden bestyrelse er blevet genoprettet",
+          "body": "Et lille antal hold kunne ende uden en bestyrelse, panelet bag dit budget-bonus eller -straf; de ramte hold er genoprettet, og den underliggende fejl er rettet."
+        },
+        "refs": [4664, 4557, 4656, 4669]
+      }
+    ]
+  },
+  {
+    "version": "7.238",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Cleaner Dashboard and Inbox",
+          "body": "Empty cards on the Dashboard now tell you what to do next and give you a button to do it, card titles are consistent, and the text arrows are gone. The Inbox shows one clear next step when a category is empty instead of a box inside a box."
+        },
+        "da": {
+          "title": "Renere Dashboard og Indbakke",
+          "body": "Tomme kort på Dashboardet fortæller nu hvad du kan gøre som det næste og giver dig en knap til det, kort-titlerne er ensartede, og tekst-pilene er væk. Indbakken viser ét tydeligt næste skridt når en kategori er tom, i stedet for en kasse i en kasse."
+        },
+        "refs": [4625, 4624, 4657]
+      }
+    ]
+  },
+  {
+    "version": "7.237",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro lands right after you pay",
+          "body": "New subscriptions could sit without the Pro badge for up to an hour because the payment provider's confirmation was read in the wrong shape. The confirmation is now read correctly, the subscription is synced the moment you pay, and you cannot start a second subscription by accident."
+        },
+        "da": {
+          "title": "Pro lander med det samme du har betalt",
+          "body": "Nye abonnementer kunne stå uden Pro-mærke i op til en time, fordi betalingsudbyderens bekræftelse blev læst i den forkerte form. Bekræftelsen læses nu rigtigt, abonnementet synkes i samme øjeblik du betaler, og du kan ikke ved et uheld starte et abonnement nummer to."
+        },
+        "refs": [4648, 2816, 4655]
+      }
+    ]
+  },
+  {
+    "version": "7.236",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro no longer drops at renewal",
+          "body": "A Pro subscription could lose its badge and Pro view at the turn of the month even though the subscription had renewed. Renewals are now picked up within the hour, and Pro stays on for a short buffer after the period end while the renewal is confirmed. A cancelled subscription still ends exactly when its paid period does."
+        },
+        "da": {
+          "title": "Pro falder ikke længere væk ved fornyelse",
+          "body": "Et Pro-abonnement kunne miste mærket og Pro-visningen ved månedsskiftet, selvom abonnementet var fornyet. Fornyelser fanges nu inden for en time, og Pro bliver stående i en kort buffer efter periodens udløb mens fornyelsen bekræftes. Et opsagt abonnement slutter stadig præcis når den betalte periode gør."
+        },
+        "refs": [4512, 4541]
+      }
+    ]
+  },
+  {
+    "version": "7.235",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy previews the coming Junior and U23 teams",
+          "body": "The Academy page now shows a Youth squads card with Junior team and U23 team, each marked Coming soon with a one-line description and a link to the roadmap. Today's academy riders still show as one combined roster until the squads are built."
+        },
+        "da": {
+          "title": "Akademiet forhåndsviser de kommende Junior- og U23-hold",
+          "body": "Akademi-siden viser nu et Ungdomshold-kort med Juniorhold og U23-hold, begge markeret Kommer snart med en kort beskrivelse og et link til roadmappet. Dagens akademi-ryttere vises stadig som én samlet trup, indtil holdene er bygget."
+        },
+        "refs": [4618, 2492]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board plans can only be renegotiated once they expire",
+          "body": "Multi-year board plans could be renegotiated early, resetting season and win progress before the plan was done. Renegotiation is now only available once the plan has run its course, and the confirmation text says exactly what will reset."
+        },
+        "da": {
+          "title": "Bestyrelsesplaner kan først genforhandles når de er udløbet",
+          "body": "Flerårige bestyrelsesplaner kunne genforhandles tidligt, hvilket nulstillede sæson- og sejrsfremgang før planen var færdig. Genforhandling er nu kun mulig når planen har kørt sin periode, og bekræftelsesteksten siger præcis hvad der nulstilles."
+        },
+        "refs": [3575, 4377]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board sponsor growth goal now tracks real income",
+          "body": "The sponsor growth goal always showed 0% progress, no matter how sponsor income actually moved. It now compares real payouts season over season."
+        },
+        "da": {
+          "title": "Bestyrelsens mål for sponsorvækst måler nu den rigtige indtægt",
+          "body": "Målet for sponsorvækst viste altid 0% fremgang, uanset hvordan sponsorindtægten reelt bevægede sig. Det sammenligner nu de faktiske udbetalinger sæson for sæson."
+        },
+        "refs": [3494]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Jersey win goal in five-year plans now counts the whole plan",
+          "body": "The board's goal for jersey wins in a five-year plan only counted the current season, resetting every year even though the goal spans the plan. It now adds up across the full plan period."
+        },
+        "da": {
+          "title": "Trøjesejrsmålet i femårsplaner tæller nu hele planen",
+          "body": "Bestyrelsens mål for trøjesejre i en femårsplan talte kun den aktuelle sæson og blev nulstillet hvert år, selvom målet dækker hele planen. Det lægger nu sammen over hele planperioden."
+        },
+        "refs": [4377]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Protected role conflicts now resolve the same way every time",
+          "body": "When two riders on the same team had a protected role (captain or sprint captain) on the same stage, which one counted could change between views. The same rider is now picked consistently."
+        },
+        "da": {
+          "title": "Konflikter om beskyttet rolle løses nu ens hver gang",
+          "body": "Når to ryttere på samme hold havde en beskyttet rolle (kaptajn eller sprintkaptajn) på samme etape, kunne det skifte hvilken der talte fra visning til visning. Den samme rytter vælges nu konsekvent."
+        },
+        "refs": [4357]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Fair play",
+        "en": {
+          "title": "Fair play checks now cover direct trades too",
+          "body": "Fair play reviews previously looked only at auctions and swaps. They now also cover direct trades, and weigh repeated patterns more heavily than the amount involved."
+        },
+        "da": {
+          "title": "Fair play-tjek dækker nu også direkte handler",
+          "body": "Fair play-gennemgange kiggede tidligere kun på auktioner og bytter. De dækker nu også direkte handler og vægter gentagne mønstre højere end det involverede beløb."
+        },
+        "refs": [3818]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Privacy",
+        "en": {
+          "title": "Cookie banner now names Vercel Web Analytics",
+          "body": "The Analytics category in the cookie banner now lists Vercel Web Analytics alongside Clarity and Google Analytics, matching what actually runs."
+        },
+        "da": {
+          "title": "Cookie-banneret nævner nu Vercel Web Analytics",
+          "body": "Analyse-kategorien i cookie-banneret nævner nu Vercel Web Analytics sammen med Clarity og Google Analytics, så det matcher hvad der rent faktisk kører."
+        },
+        "refs": [435]
+      }
+    ]
+  },
+  {
+    "version": "7.233",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Your riders tell you how the day went",
+          "body": "A short line now appears under each of your own riders in the stage results, in their own words. You never see it for other teams' riders."
+        },
+        "da": {
+          "title": "Dine ryttere fortæller hvordan dagen gik",
+          "body": "En kort linje vises nu under hver af dine egne ryttere i etaperesultatet, med deres egne ord. Du ser den aldrig for andre holds ryttere."
+        },
+        "refs": [4598]
+      }
+    ]
+  },
+  {
+    "version": "7.232",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race results",
+        "en": {
+          "title": "Story bubbles now show on every stage of long races",
+          "body": "Races with many stages could silently drop the newest stages' story bubbles (Peak, Outsider, and the rest). Fixed."
+        },
+        "da": {
+          "title": "Historie-bobler vises nu på alle etaper i lange løb",
+          "body": "Løb med mange etaper kunne stille miste historie-boblerne (Peak, Outsider og de øvrige) på de nyeste etaper. Rettet."
+        },
+        "refs": [4566]
+      }
+    ]
+  },
+  {
+    "version": "7.231",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race pages load faster, especially in long stage races",
+          "body": "The race page now loads only the stage you're viewing instead of the whole race at once. Long Grand Tours that used to take several seconds to open now load much quicker."
+        },
+        "da": {
+          "title": "Løbssider indlæser hurtigere, især i lange etapeløb",
+          "body": "Løbssiden henter nu kun den etape du kigger på i stedet for hele løbet på én gang. Lange grand tours der før tog flere sekunder at åbne, indlæser nu meget hurtigere."
+        },
+        "refs": [4581]
+      }
+    ]
+  },
+  {
+    "version": "7.230",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro checkout is open",
+          "body": "Cycling Zone Pro is live for purchase at /pro, a way to back the project's development. The free game stays exactly as competitive as always, and Pro never buys an edge."
+        },
+        "da": {
+          "title": "Pro er åbent for køb",
+          "body": "Cycling Zone Pro er nu live for køb på /pro, en måde at bakke projektets udvikling op på. Det gratis spil forbliver lige så konkurrencedygtigt som altid, og Pro giver aldrig en fordel."
+        },
+        "refs": [2813, 2806, 4074]
+      }
+    ]
+  },
+  {
+    "version": "7.229",
+    "date": "2026-09-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "U25 now includes 25-year-olds",
+          "body": "25-year-olds now count as U25, matching real-world cycling. Badges and filters follow the same rule."
+        },
+        "da": {
+          "title": "U25 inkluderer nu 25-årige",
+          "body": "25-årige tæller nu med i U25, ligesom i virkelighedens cykelsport. Badges og filtre følger samme regel."
+        },
+        "refs": [4587]
+      }
+    ]
+  },
+  {
+    "version": "7.228",
+    "date": "2026-09-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board reactions now show a name, not just a role",
+          "body": "When a board member reacts to a goal or the season outlook, and when a chairman is replaced, you now see their name alongside their role."
+        },
+        "da": {
+          "title": "Bestyrelsesreaktioner viser nu et navn, ikke kun en rolle",
+          "body": "Når et bestyrelsesmedlem reagerer på et mål eller sæsonudsigten, og når en formand udskiftes, ser du nu deres navn ved siden af deres rolle."
+        },
+        "refs": [4556]
+      }
+    ]
+  },
+  {
+    "version": "7.227",
+    "date": "2026-09-01",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Stability",
+        "en": {
+          "title": "The 'Cycling Zone was updated' screen no longer gets stuck",
+          "body": "After an update, that screen could keep coming back no matter how many times you reloaded. It now recovers properly, and when reloading will not help, it tells you what does."
+        },
+        "da": {
+          "title": "'Cycling Zone er opdateret'-skærmen sætter sig ikke længere fast",
+          "body": "Efter en opdatering kunne den skærm blive ved med at komme igen, uanset hvor mange gange du genindlæste. Den kommer nu ordentligt videre, og hvis et genindlæs ikke hjælper, fortæller den hvad der gør."
+        },
+        "refs": [4545]
       }
     ]
   },
@@ -108,6 +855,20 @@ export const PATCHES = [
           "body": "Holdudtagelsens sæsonvisning har nu et gitter med ryttere gange løbsdage. Hvert løb har sine egne kolonner, én pr. løbsdag. Klik på en celle for at tildele en rolle, skift linse for at se rutematch, belastning eller kun problemer, og hop til en dags board og tilbage igen. Bygget på tester-feedback: gem-fejl forklarer nu sig selv, og en låst rytter fortæller den rigtige årsag."
         },
         "refs": [1146]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Youth classification no longer includes 26-year-olds",
+          "body": "The youth (U25) leaderboard measured age against the calendar year a season happened to start in, not the season's own reference year. From season 3 onward that drifted from your rider's real season age, so riders who were already 26 by the season's cycling-age convention could still appear in the youth classification. It now uses the exact same reference year as the age shown on your rider's profile."
+        },
+        "da": {
+          "title": "Ungdomsklassementet inkluderer ikke længere 26-årige",
+          "body": "Ungdoms(U25)-klassementet målte alder mod det kalenderår en sæson tilfældigvis startede i, ikke sæsonens eget referenceår. Fra sæson 3 og frem drev det væk fra din rytters reelle sæson-alder, så ryttere der allerede var 26 efter sæsonens cykel-alderskonvention stadig kunne stå i ungdomsklassementet. Det bruger nu præcis samme referenceår som alderen på din rytters profil."
+        },
+        "refs": [4485]
       }
     ]
   },

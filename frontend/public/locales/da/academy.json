@@ -3,14 +3,30 @@
   "subtitle": "Signér unge talenter, udvikl dem, og bestem hvornår de skal rykke op eller sælges.",
   "slots": "Akademi: {used} / {max} pladser",
   "balance": "Saldo: {amount} CZ$",
-  "disabledNote": "Akademiet kommer snart. Hold dig opdateret.",
+  "disabledTitle": "Følg akademiet på vores roadmap",
+  "disabledNote": "Akademiet er ikke åbnet på din konto endnu.",
+  "disabledAction": "Se vores roadmap",
   "graduationHeading": "Ryttere der forlader akademiet",
   "intakeHeading": "Kandidater",
   "rosterHeading": "Akademihold",
   "emptyIntake": "Ingen kandidater lige nu. Nye kandidater kommer hver søndag.",
-  "emptyIntakeTitle": "Ingen kandidater på tilbud",
-  "emptyRoster": "Signér en kandidat ovenfor for at begynde at udvikle dine egne ryttere.",
-  "emptyRosterTitle": "Dit akademi er tomt",
+  "emptyAction": "Gå til auktioner",
+  "emptyIntakeTitle": "Find en ung rytter i auktionerne",
+  "emptyRoster": "Unge ryttere dukker også op i de live auktioner, og signerede kandidater lander her.",
+  "emptyRosterTitle": "Signér din første akademirytter",
+  "youthSquads": {
+    "title": "Ungdomshold",
+    "roadmap": "Roadmap",
+    "comingSoon": "Kommer snart",
+    "junior": {
+      "title": "Juniorhold",
+      "description": "16-18 år. Egne løb og stillinger."
+    },
+    "u23": {
+      "title": "U23-hold",
+      "description": "19-22 år. Egne løb, divisioner og oprykning."
+    }
+  },
   "seriousBadge": "Seriøs kandidat",
   "potential": "Potentiale",
   "ageLabel": "{age} år",

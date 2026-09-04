@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { supabase } from "../lib/supabase";
-import { Card } from "./ui";
+import { Card, ArrowUpIcon } from "./ui";
 import RiderLink from "./RiderLink";
 
 const API = import.meta.env.VITE_API_URL;
@@ -108,7 +108,10 @@ export default function DevTransitionCard() {
                   <td className="py-1.5 px-2 text-right font-mono tabular-nums text-cz-2">{r.rating ?? "—"}</td>
                   <td className="py-1.5 px-2 text-right font-mono tabular-nums text-cz-3">{r.loftFoer ?? "—"}</td>
                   <td className={`py-1.5 px-2 text-right font-mono tabular-nums ${lifted ? "text-cz-success" : lowered ? "text-cz-2" : "text-cz-2"}`}>
-                    {r.loftNu ?? "—"}{lifted ? " ↑" : ""}
+                    <span className="inline-flex items-center justify-end gap-0.5">
+                      {r.loftNu ?? "—"}
+                      {lifted && <ArrowUpIcon size={10} aria-hidden="true" />}
+                    </span>
                   </td>
                   <td className="py-1.5 ps-2 text-right font-mono tabular-nums text-cz-1 font-semibold">
                     {r.prog ? `${r.prog.lo}–${r.prog.hi}` : "—"}

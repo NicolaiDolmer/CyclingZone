@@ -15,6 +15,8 @@ import { statColor, statTextColor } from "../../lib/statColor";
 import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
 import { Flag } from "../Flag";
 import { StarIcon, FlagIcon } from "../ui";
+import TerrainGlyph from "../calendar/TerrainGlyph.jsx";
+import { toTerrainBucket } from "../../lib/terrainBucket";
 import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName, formatRaceDateLabel, formatOrdinalShort } from "./plannerShared";
 
 const VBW = 940, RAIL = 190, RRAIL = 132;
@@ -26,15 +28,6 @@ const CX = RAIL, CW = VBW - RAIL - RRAIL;
 // 20 ryttere ~2000px lodret — man scrollede i stedet for at overskue. 64 giver
 // ~1400px for samme trup uden at gøre form-kurverne uaflæselige.
 const AXIS = 48, LANE = 64, TOP_PAD = 10, BOT_PAD = 12;
-
-function TerrainGlyph({ x, y, terrain }) {
-  const c = CZ.ink;
-  if (terrain === "mountain") return <path d={`M${x - 7} ${y + 4} L${x - 1} ${y - 6} L${x + 2} ${y - 1} L${x + 5} ${y - 7} L${x + 8} ${y + 4} Z`} fill={c} opacity="0.82" />;
-  if (terrain === "hilly") return <path d={`M${x - 7} ${y + 4} Q${x - 2} ${y - 5} ${x + 1} ${y + 1} Q${x + 4} ${y - 4} ${x + 8} ${y + 4} Z`} fill={c} opacity="0.82" />;
-  if (terrain === "itt" || terrain === "ttt") return <g><circle cx={x} cy={y - 0.5} r="4.5" fill="none" stroke={c} strokeWidth="1.6" /><line x1={x} y1={y - 0.5} x2={x + 3} y2={y - 3.5} stroke={c} strokeWidth="1.6" /></g>;
-  if (terrain === "cobbles") return <g>{[0, 1, 2].map((i) => <rect key={i} x={x - 6 + i * 5} y={y - 1 + (i % 2) * 2} width="3.5" height="3.5" fill={c} opacity="0.8" />)}</g>;
-  return <rect x={x - 7} y={y + 1} width="15" height="3" fill={c} opacity="0.8" />;
-}
 
 export default function MasterCanvas({ riders, races, today, leadupDays, filter, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider, onRetarget, onCreatePeak }) {
   const { t } = useTranslation(["planner", "riderTypes"]);
@@ -164,10 +157,40 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
         const targeted = (riders || []).some((rd) => rd.peaks.some((p) => !p.isSuggestion && p.targetRaceId === r.id));
         const gap = i === 0 || rx - x(visRaces[i - 1].ord) > 34;
         const active = r.id === selectedRaceId;
+        // #4143 v2: r.terrain kommer fra samme kalender-model som CalendarPage.jsx
+        // (buildCalendarModel, backend/lib/raceCalendar.js) og bør derfor allerede
+        // være en af TerrainGlyph's buckets — men backend har mindst ét andet
+        // terræn-vokabular for samme data (plannerBoard.js's terrainKey(), som
+        // kalder samme bucket "flat" i stedet for "sprint"). toTerrainBucket() er
+        // den defensive normalisering (lib/terrainBucket.ts), delt med kalenderen,
+        // så glyffen aldrig falder tilbage til en forkert silhuet.
+        const terrainBucket = toTerrainBucket(r.terrain);
+        const terrainLabel = t(`terrain.${terrainBucket}`);
         return (
           <g key={r.id}>
             <line x1={rx} y1={AXIS} x2={rx} y2={H} stroke={targeted ? CZ.goldDeep : CZ.border} strokeWidth={targeted ? 1.2 : 1} strokeDasharray="1 3" opacity={targeted ? 0.6 : 0.5} />
-            {gap && <TerrainGlyph x={rx} y={AXIS - 18} terrain={r.terrain} />}
+            {/* #4143 v2 (ejeren afviste bogstavkoder 3/9): samme miniature-
+                terræn-silhuet som kalenderen (TerrainGlyph, components/calendar/
+                TerrainGlyph.jsx), indlejret via foreignObject — samme mønster
+                som Flag/StarIcon længere nede i dette canvas. Glyffen bærer sin
+                egen title/aria-label (terrænnavnet); hit-området nedenfor bærer
+                stadig den fulde navn · dato · terræn-label. */}
+            {gap && (
+              <foreignObject x={rx - 10} y={AXIS - 24} width="20" height="13" pointerEvents="none">
+                <div
+                  xmlns="http://www.w3.org/1999/xhtml"
+                  title={terrainLabel}
+                  aria-label={terrainLabel}
+                  role="img"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: "100%", height: "100%", color: CZ.ink, pointerEvents: "auto",
+                  }}
+                >
+                  <TerrainGlyph bucket={terrainBucket} width={20} height={12} />
+                </div>
+              </foreignObject>
+            )}
             {/* #2519 item 1 (rev. 2): kalenderen er så tæt (~4px/dag på 618px
                 sæsons-spænd) at "label hvor der er plads" (gap) næsten aldrig
                 fires. Datoen skal derfor være garanteret på de løb manageren
@@ -198,7 +221,7 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
               x={rx - 6} y={AXIS} width="12" height={H - AXIS}
               fill={active ? CZ.gold : "transparent"} opacity={active ? 0.12 : 1}
               tabIndex={0} role="button"
-              aria-label={`${r.name} · ${formatRaceDateLabel(r, months)} · ${t(`terrain.${r.terrain}`)}`}
+              aria-label={`${r.name} · ${formatRaceDateLabel(r, months)} · ${terrainLabel}`}
               style={{ cursor: "pointer" }}
               onClick={() => onSelectRace(r.id)}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectRace(r.id); } }}

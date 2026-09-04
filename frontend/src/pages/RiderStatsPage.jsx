@@ -51,6 +51,7 @@ import RiderOverviewPhysiology from "../components/rider/profile/RiderOverviewPh
 import RiderPhysiologyTab from "../components/rider/profile/RiderPhysiologyTab.jsx";
 import RiderTrainingTab from "../components/rider/profile/RiderTrainingTab.jsx";
 import RiderDevelopmentTab from "../components/rider/profile/RiderDevelopmentTab.jsx";
+import RiderAbilityHistoryPro from "../components/rider/profile/RiderAbilityHistoryPro.jsx";
 import RiderScoutingTab from "../components/rider/profile/RiderScoutingTab.jsx";
 import RiderHistoryTab from "../components/rider/profile/RiderHistoryTab.jsx";
 import RiderResultsTab from "../components/rider/profile/RiderResultsTab.jsx";
@@ -242,7 +243,8 @@ function DirectOfferButton({ rider, seasonYear }) {
         </div>
       )}
       {/* Primær CTA i scouting-visningen (én accent-knap pr. kontekst). */}
-      <button type="button" onClick={() => setShow(!show)} className={triggerClass(false, "primary")}>
+      <button type="button" onClick={() => setShow(!show)} className={`${triggerClass(false, "primary")} inline-flex items-center gap-1`}>
+        <ExchangeIcon size={14} aria-hidden="true" />
         {t("directOffer.buttonOpen")}
       </button>
       {show && (
@@ -411,7 +413,8 @@ function TransferListButton({ rider, onChanged }) {
           )}
         </div>
       ) : (
-        <button type="button" onClick={() => setShow(!show)} className={triggerClass(show)}>
+        <button type="button" onClick={() => setShow(!show)} className={`${triggerClass(show)} inline-flex items-center gap-1`}>
+          <ExchangeIcon size={14} aria-hidden="true" />
           {t("sellRider.buttonOpen")}
         </button>
       )}
@@ -2055,6 +2058,15 @@ export default function RiderStatsPage() {
           viewer={isMyRider ? "own" : "scouting"}
           projection={projection}
         />
+      )}
+
+      {/* #4649 Pro v1.1 del B: Pro-lag OVENPÅ Udvikling-fanen — evne-kurver
+          pr. sæson (alle 15 evner, ikke kun type-ratingen ovenfor). Gratis
+          spillere ser en kort Pro-note; intet gratis fjernes eller skjules. */}
+      {tab === "development" && (
+        <div className="mt-[13px]">
+          <RiderAbilityHistoryPro riderId={rider.id} myTeamId={myTeamId} />
+        </div>
       )}
 
       {tab === "physiology" && (

@@ -4,6 +4,8 @@ import {
   isSubscriptionActive,
   estimateSubscriptionLtvCents,
   buildCustomerRows,
+  hasEverPaid,
+  partitionSubscriptions,
   summarizeNps,
   PLAN_PRICE_CENTS,
 } from "./growthSnapshot.js";
@@ -55,6 +57,14 @@ test("estimateSubscriptionLtvCents: semiannual bruger 6-måneders periode-pris",
   assert.equal(estimateSubscriptionLtvCents(sub, NOW), 1 * PLAN_PRICE_CENTS.semiannual);
 });
 
+test("estimateSubscriptionLtvCents: Aluntas rå tal 6 prissættes som semiannual, 1 som monthly (#4541)", () => {
+  const base = { status: "active", created_at: "2026-02-04T00:00:00Z", current_period_end: "2026-08-04T00:00:00Z" };
+  assert.equal(estimateSubscriptionLtvCents({ ...base, plan_interval: 6 }, NOW), 1 * PLAN_PRICE_CENTS.semiannual);
+  assert.equal(estimateSubscriptionLtvCents({ ...base, plan_interval: "6" }, NOW), 1 * PLAN_PRICE_CENTS.semiannual);
+  // 180 dage som månedlig = 6 perioder à 49 kr, ikke 1 periode à 265 kr.
+  assert.equal(estimateSubscriptionLtvCents({ ...base, plan_interval: "1" }, NOW), 6 * PLAN_PRICE_CENTS.monthly);
+});
+
 test("estimateSubscriptionLtvCents: ukendt/manglende plan_interval falder tilbage til monthly-pris", () => {
   const sub = { status: "active", plan_interval: null, created_at: "2026-08-03T00:00:00Z", current_period_end: "2026-09-03T00:00:00Z" };
   assert.equal(estimateSubscriptionLtvCents(sub, NOW), PLAN_PRICE_CENTS.monthly);
@@ -83,6 +93,41 @@ test("buildCustomerRows: manglende team -> team_name null, kraslher ikke", () =>
   const subs = [{ team_id: "ukendt", status: "active", plan_interval: "monthly", created_at: "2026-08-01T00:00:00Z", current_period_end: "2026-09-01T00:00:00Z" }];
   const rows = buildCustomerRows(subs, {}, NOW);
   assert.equal(rows[0].team_name, null);
+});
+
+test("buildCustomerRows: rå plan_interval '1' vises normaliseret som 'monthly' (#4541)", () => {
+  const subs = [{ team_id: "t", status: "active", plan_interval: "1", created_at: "2026-08-01T00:00:00Z", current_period_end: "2026-09-01T00:00:00Z" }];
+  assert.equal(buildCustomerRows(subs, {}, NOW)[0].plan_interval, "monthly");
+});
+
+// #4636: vilkårsaccept uden betaling er ikke en kunde. Den ægte prod-form 2/9:
+// status='inactive' (kolonne-default), alt andet null, kun terms_accepted_at sat.
+test("hasEverPaid: terms-only-række (checkout startet, aldrig betalt) -> false", () => {
+  const termsOnly = { team_id: "t", status: "inactive", plan_interval: null, current_period_end: null, alunta_subscription_id: null, terms_accepted_at: "2026-09-02T10:30:49Z", created_at: "2026-09-02T10:30:49Z" };
+  assert.equal(hasEverPaid(termsOnly), false);
+  assert.equal(hasEverPaid(null), false);
+});
+
+test("hasEverPaid: Alunta-abonnements-id, Pro-relevant status ELLER dækket periode -> true", () => {
+  assert.equal(hasEverPaid({ status: "inactive", alunta_subscription_id: "sub-1", current_period_end: null }), true, "udløbet kunde med Alunta-id har betalt engang");
+  assert.equal(hasEverPaid({ status: "active", alunta_subscription_id: null, current_period_end: null }), true, "checkout.completed uden felter (prod 2/9) tæller");
+  assert.equal(hasEverPaid({ status: "cancelled", alunta_subscription_id: null, current_period_end: null }), true);
+  assert.equal(hasEverPaid({ status: "past_due", alunta_subscription_id: null, current_period_end: null }), true);
+  assert.equal(hasEverPaid({ status: "inactive", alunta_subscription_id: null, current_period_end: "2026-08-31T21:59:59Z" }), true, "udløbet uden id: perioden var dækket");
+});
+
+test("partitionSubscriptions: prod-billedet 2/9 -> 2 betalende, 3 checkout-only, rækkefølge bevaret", () => {
+  const subs = [
+    { team_id: "wander", status: "inactive", current_period_end: null, alunta_subscription_id: null },
+    { team_id: "lidl", status: "active", current_period_end: null, alunta_subscription_id: null },
+    { team_id: "bacon", status: "inactive", current_period_end: null, alunta_subscription_id: null },
+    { team_id: "badnames", status: "inactive", current_period_end: null, alunta_subscription_id: null },
+    { team_id: "lorraine", status: "active", current_period_end: "2026-08-31T21:59:59Z", alunta_subscription_id: "sub-real" },
+  ];
+  const { paying, checkoutOnly } = partitionSubscriptions(subs);
+  assert.deepEqual(paying.map(s => s.team_id), ["lidl", "lorraine"]);
+  assert.deepEqual(checkoutOnly.map(s => s.team_id), ["wander", "bacon", "badnames"]);
+  assert.deepEqual(partitionSubscriptions(null), { paying: [], checkoutOnly: [] });
 });
 
 test("summarizeNps: klassificerer promoters(9-10)/passives(7-8)/detractors(0-6) + standard NPS-formel", () => {

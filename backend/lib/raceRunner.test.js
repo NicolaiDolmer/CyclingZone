@@ -13,6 +13,7 @@ import { PRIZE_PER_POINT } from "./economyConstants.js";
 import { ABILITY_KEYS, stableSeed } from "./raceSimulator.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 const ALLOWED_RESULT_TYPES = new Set([
   "stage", "gc", "points", "mountain", "young", "team",
@@ -536,20 +537,23 @@ test("loadEntrantsForRace: race_entries-forespørgslen har eksplicit ORDER BY (t
   ]);
 });
 
-// ── U25 sæson-derivering (#109/#2073) ─────────────────────────────────────────
+// ── U25 sæson-derivering (#109/#2073), UCI-reglen (ejer-beslutning 2/9-2026) ──
 // Den lagrede riders.is_u25 er statisk (DEFAULT FALSE) og re-deriveres aldrig →
 // 16-18-årige oprettet uden flag manglede i ungdomsklassementet. U25 udledes nu
-// sæson-korrekt fra birthdate: fødselsår > sæsonens år - 25.
-test("deriveIsU25FromBirthdate: fødselsår > referenceår-25 ⇔ U25", () => {
+// sæson-korrekt fra birthdate: fødselsår ≥ sæsonens år - 25 (25-årige tæller
+// stadig med, matcher UCIs hvide trøje). Tidligere konvention var "> ... - 25",
+// dvs. sæson-alder < 25.
+test("deriveIsU25FromBirthdate: fødselsår ≥ referenceår-25 ⇔ U25", () => {
   assert.equal(deriveIsU25FromBirthdate("2010-06-15", 2026), true);  // 16
   assert.equal(deriveIsU25FromBirthdate("2002-01-01", 2026), true);  // 24
-  assert.equal(deriveIsU25FromBirthdate("2001-01-01", 2026), false); // 25 (boundary)
+  assert.equal(deriveIsU25FromBirthdate("2001-01-01", 2026), true);  // 25 (boundary, UCI-reglen)
+  assert.equal(deriveIsU25FromBirthdate("2000-06-15", 2026), false); // 26 (boundary)
   assert.equal(deriveIsU25FromBirthdate("1990-01-01", 2026), false); // 36
 });
 
 test("deriveIsU25FromBirthdate: sæson-drevet — samme rytter skifter ved sæsonskift", () => {
-  assert.equal(deriveIsU25FromBirthdate("2002-06-15", 2026), true);  // 24
-  assert.equal(deriveIsU25FromBirthdate("2002-06-15", 2027), false); // 25
+  assert.equal(deriveIsU25FromBirthdate("2001-06-15", 2026), true);  // 25 (stadig U25 under UCI-reglen)
+  assert.equal(deriveIsU25FromBirthdate("2001-06-15", 2027), false); // 26
 });
 
 test("deriveIsU25FromBirthdate: robust ved manglende birthdate/referenceår", () => {
@@ -563,7 +567,9 @@ test("deriveIsU25FromBirthdate: robust ved manglende birthdate/referenceår", ()
 // startfeltet, fordi motoren udleder fra birthdate + sæsonens referenceår.
 test("loadEntrantsForRace: is_u25 sæson-afledt fra birthdate (overstyrer stale flag)", async () => {
   const supabase = makeSupabase(padToFloor({
-    seasons: [{ start_date: "2026-06-22" }],
+    // #4485: referenceåret læses fra seasons.number (SSOT-formlen), ikke start_date.
+    // number: 1 → referenceår 2026 (LAUNCH_REFERENCE_YEAR), samme forventning som før.
+    seasons: [{ number: 1 }],
     race_entries: [{ rider_id: "young", team_id: "T1" }, { rider_id: "old", team_id: "T1" }],
     riders: [
       // Stale flag=false men 16 år (født 2010) → skal blive U25 via birthdate.
@@ -593,6 +599,28 @@ test("loadEntrantsForRace: falder tilbage til lagret is_u25 når sæson-år mang
   const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x", season_id: "s1" } });
   // Trods 36 år bevares det lagrede flag=true, fordi sæson-året ikke kunne læses.
   assert.equal(entrants.find((e) => e.rider_id === "r1").is_u25, true);
+});
+
+// #4485 forward-guard: raceRunner-U25-gaten skal bruge SAMME referenceår som SSOT'ens
+// ageForSeason, ikke seasons.start_date (wall-clock-tidspunktet for sæsonskiftet). En
+// rytter født 2002 er 26 år i sæson 3 (ageForSeason) — han må ALDRIG kunne stå i
+// ungdomsklassementet, uanset hvornår på kalenderåret sæson 3 rent faktisk startede.
+test("#4485 loadEntrantsForRace: U25-gate matcher ageForSeason for sæson 3 (ikke 26-årig i ungdomsklassementet)", async () => {
+  const bornYear2002 = "2002-06-15"; // ageForSeason(., 3) = 2026 + 2 - 2002 = 26
+  assert.equal(ageForSeason(bornYear2002, 3), 26, "test-forudsætning: rytteren er 26 i sæson 3");
+
+  const supabase = makeSupabase(padToFloor({
+    // start_date sat til wall-clock-tidspunktet for skiftet (kalenderåret 2026, som i
+    // prod) — hvis loadSeasonReferenceYear stadig læste dette år ville rytteren fejlagtigt
+    // blive U25 (2002 > 2026-25=2001). number: 3 er sæson-SSOT'en og skal vinde.
+    seasons: [{ id: "s3", number: 3, start_date: "2026-08-30" }],
+    race_entries: [{ rider_id: "r26", team_id: "T1" }],
+    riders: [{ id: "r26", team_id: "T1", firstname: "Kaito", lastname: "Yoshida", is_u25: false, birthdate: bornYear2002 }],
+    rider_derived_abilities: [{ rider_id: "r26", ...abil() }],
+  }, "T1"));
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x", season_id: "s3" } });
+  assert.equal(entrants.find((e) => e.rider_id === "r26").is_u25, false,
+    "26-årig (sæson-alder) må ikke stå i ungdomsklassementet, selvom seasons.start_date stadig er kalenderåret 2026");
 });
 
 // #1993: entrants beriges med team_name (holdets navn på løbstidspunktet) så

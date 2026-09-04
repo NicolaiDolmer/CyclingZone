@@ -127,7 +127,13 @@ function excerpt(text) {
  * Batch-opslag af afsendere (users) + hold (teams) for en mængde rækker.
  * Ingen PostgREST-embeds: user_id peger på auth.users, ikke public.users,
  * så der er ingen FK at embedde igennem (samme begrundelse som feedbackInbox).
- * Spiller-fladen får KUN username + holdnavn — aldrig email.
+ * Spiller-fladen får KUN username + holdnavn + division — aldrig email.
+ *
+ * #4751 (profil-identitet i forummet): teams-selecten bærer nu også `division`,
+ * så forfatterlinjen kan vise auto-signaturen (holdnavn + division) uden en
+ * ekstra rundtur pr. indlæg. Kolonnen er allerede offentlig (vises på
+ * /managers/:teamId og i stillingerne) og koster intet ekstra kald — samme
+ * bounded IN-select som før, stadig aldrig N+1.
  */
 async function resolveAuthors({ supabase, rows }) {
   const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))];
@@ -138,7 +144,7 @@ async function resolveAuthors({ supabase, rows }) {
       ? supabase.from("users").select("id, username").in("id", userIds).limit(userIds.length)
       : Promise.resolve({ data: [], error: null }),
     teamIds.length
-      ? supabase.from("teams").select("id, name").in("id", teamIds).limit(teamIds.length)
+      ? supabase.from("teams").select("id, name, division").in("id", teamIds).limit(teamIds.length)
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (usersResult.error) throw new Error(`forum: could not resolve authors: ${usersResult.error.message}`);
@@ -156,6 +162,13 @@ function shapeAuthor(row, usersById, teamsById) {
   return {
     username: user?.username ?? null,
     team_name: team?.name ?? null,
+    // #4649: team_id (ikke-sensitivt — allerede en offentlig FK) så fronten kan
+    // slå Founder-mærket op via useFounderTeams uden en ekstra rundtur.
+    team_id: row.team_id ?? null,
+    // #4751: division driver auto-signaturen under indlægget. Offentligt tal
+    // (står allerede på managerprofilen og i stillingerne); null for
+    // admin-opslag uden hold.
+    division: team?.division ?? null,
   };
 }
 
@@ -483,6 +496,37 @@ export async function getForumUnreadStatus({ supabase, userId }) {
   const readsByPostId = await resolveThreadReads({ supabase, userId, postIds: rows.map((r) => r.id) });
   const hasUnread = rows.some((row) => isThreadUnread(row, readsByPostId.get(row.id)));
   return { has_unread: hasUnread };
+}
+
+/**
+ * PATCH /api/forum/threads/read-all (#3451 — spillerønske 26/8: "a button,
+ * like in the inbox, where you can mark all threads as read"). Samme
+ * bounded-scan-grænse som getForumUnreadStatus (én kilde til "alle tråde"),
+ * men i modsætning til den stopper vi IKKE ved første ulæste — hver tråd skal
+ * have sin egen (bruger, tråd)-række opdateret. Bulk-upsert i ét kald, samme
+ * onConflict-mønster som markForumThreadRead. Idempotent: kør den to gange i
+ * træk og resultatet er det samme (last_read_at rykker bare frem).
+ */
+export async function markAllForumThreadsRead({ supabase, userId, now = new Date() }) {
+  if (!userId) return { status: 401, body: { error: "Missing user", errorCode: "forum_missing_user" } };
+
+  const { data: postRows, error } = await supabase
+    .from("forum_posts")
+    .select("id")
+    .is("deleted_at", null)
+    .limit(UNREAD_STATUS_SCAN_LIMIT);
+  if (error) throw new Error(`forum: could not list posts for mark-all-read: ${error.message}`);
+  const postIds = (postRows || []).map((r) => r.id);
+  if (!postIds.length) return { status: 200, body: { ok: true, marked: 0 } };
+
+  const nowIso = now.toISOString();
+  const { error: upsertError } = await supabase.from("forum_thread_reads").upsert(
+    postIds.map((postId) => ({ user_id: userId, post_id: postId, last_read_at: nowIso })),
+    { onConflict: "user_id,post_id" }
+  );
+  if (upsertError) throw new Error(`forum: could not mark all threads read: ${upsertError.message}`);
+
+  return { status: 200, body: { ok: true, marked: postIds.length } };
 }
 
 function validatePollOptions(pollOptions) {

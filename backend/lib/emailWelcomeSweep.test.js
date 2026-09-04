@@ -34,7 +34,15 @@ function makeSupabase(teamRows, userEmails = {}) {
         return {
           select() { return this; },
           eq(_col, id) { userId = id; return this; },
-          maybeSingle: async () => ({ data: userEmails[userId] ? { email: userEmails[userId] } : null, error: null }),
+          // userEmails values may be a bare email string (language omitted,
+          // legacy fixture shape) or { email, language } for the language-
+          // selection tests below.
+          maybeSingle: async () => {
+            const entry = userEmails[userId];
+            if (!entry) return { data: null, error: null };
+            const data = typeof entry === "string" ? { email: entry } : { email: entry.email, language: entry.language };
+            return { data, error: null };
+          },
         };
       }
       throw new Error(`unexpected table: ${table}`);
@@ -127,6 +135,43 @@ test("per-team failures are isolated (one throws, the rest still send)", async (
   assert.equal(result.candidates, 2);
   assert.equal(result.sent, 1);
   assert.equal(result.failed, 1);
+});
+
+// ─── #2853 DA follow-up: users.language selects the mail's copy ───────────
+
+test("users.language 'da' renders the Danish welcome copy", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const recent = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+  const rows = [mk("da-user", { created_at: recent })];
+  const supabase = makeSupabase(rows, { "user-da-user": { email: "da@example.com", language: "da" } });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailWelcomeSweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  assert.equal(sendCalls[0].subject, "Dit hold er på startlinjen");
+  assert.ok(sendCalls[0].html.includes("Velkommen til Cycling Zone"));
+});
+
+test("any users.language other than 'da' (including missing) renders the English welcome copy", async () => {
+  const now = new Date("2026-07-20T12:00:00Z");
+  const recent = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+  const rows = [
+    mk("no-lang", { created_at: recent }),
+    mk("unknown-lang", { created_at: recent }),
+  ];
+  const supabase = makeSupabase(rows, {
+    "user-no-lang": { email: "a@example.com" }, // language omitted
+    "user-unknown-lang": { email: "b@example.com", language: "fr" },
+  });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailWelcomeSweep({ supabase, now, isActive: async () => true, send, unsubSecret: "test-secret" });
+
+  for (const call of sendCalls) {
+    assert.equal(call.subject, "Your team is on the start line");
+  }
 });
 
 test("skips (does not throw) a team whose user has no email on file", async () => {

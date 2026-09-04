@@ -65,7 +65,7 @@ test.describe("#3708 — transferhistorik-oprydning (no-sale + AI-hold fallback)
 
     await login(page);
     await page.goto("/team");
-    await page.getByRole("button", { name: /Transferhistorik|Transfer history/ }).click();
+    await page.getByRole("tab", { name: /Transferhistorik|Transfer history/ }).click();
     await expect(page.getByRole("heading", { name: /Transferhistorik|Transfer history/ })).toBeVisible();
 
     // Vis alle (inkl. no_sale) er irrelevant her — det garanterede salg er IKKE
@@ -124,7 +124,7 @@ test.describe("#3708 — transferhistorik-oprydning (no-sale + AI-hold fallback)
 
     await login(page);
     await page.goto("/team");
-    await page.getByRole("button", { name: /Transferhistorik|Transfer history/ }).click();
+    await page.getByRole("tab", { name: /Transferhistorik|Transfer history/ }).click();
     await expect(page.getByRole("heading", { name: /Transferhistorik|Transfer history/ })).toBeVisible();
     await page.screenshot({ path: evidenceShotPath(`pr-screens/3708-team-history-mobile-${testInfo.project.name}.png`), fullPage: true });
 

@@ -12,6 +12,8 @@ import {
   buildBoardProposal,
   buildDnaTraditionGoal,
   computeDnaSuggestions,
+  evaluateGoal,
+  evaluateGoalProgress,
   getDnaArchetypeAlignmentBonus,
   getDnaByKey,
   getDnaGoalWeightMultiplier,
@@ -236,6 +238,24 @@ test("buildDnaTraditionGoal returnerer null for ukendt DNA", () => {
   assert.equal(buildDnaTraditionGoal("ukendt"), null);
 });
 
+// #4377 · sprint_kommerciel's jersey_wins tradition-mål tilføjes KUN til 5yr-
+// forslag (buildBoardProposal: `planType === "5yr" && dnaKey`) og er derfor
+// altid multi-year — men manglede `cumulative: true` i selve DNA-dataen.
+// evaluateGoal/evaluateGoalProgress (boardGoals.js) grener jersey_wins på netop
+// dette felt: uden det læses seasonJerseyWins (nulstiller hvert sæsonskifte) i
+// stedet for cumulativeJerseyWins (summerer over hele plan-perioden) — spiller-
+// rapport: "trøjer vundet sidste sæson glemmes, målet står 0/2".
+test("#4377 · sprint_kommerciel tradition-mål (jersey_wins) er cumulative, så det ikke nulstilles hvert sæsonskifte", () => {
+  const dnaGoal = BOARD_CLUB_DNA.sprint_kommerciel.tradition_goal;
+  assert.equal(dnaGoal.type, "jersey_wins");
+  assert.equal(dnaGoal.cumulative, true, "DNA-kildedata skal markere målet cumulative");
+  assert.ok(!dnaGoal.label.includes("pr. sæson"), "label må ikke love per-sæson-nulstilling for et multi-year-mål");
+  assert.ok(dnaGoal.label.includes("over planperioden"), "label skal matche resten af de kumulative mål-labels");
+
+  const built = buildDnaTraditionGoal("sprint_kommerciel");
+  assert.equal(built.cumulative, true, "buildDnaTraditionGoal skal bevare cumulative-flaget uændret");
+});
+
 test("#3095 · buildDnaTraditionGoal(italiensk_klassiker, tier) gates monument_podium mod tier-whitelisten", () => {
   // tier 1: unrestricted (TIER_CLASS_WHITELIST[1] === null) → altid opnåeligt.
   assert.ok(buildDnaTraditionGoal("italiensk_klassiker", 1));
@@ -342,6 +362,71 @@ test("#3095 · buildBoardProposal injicerer monument_podium-tradition-mål i tie
 
   const traditionGoal = proposal.goals.find((g) => g.type === "monument_podium" && g.source === "club_dna");
   assert.ok(traditionGoal, "tier 2's whitelist overlapper CLASSIC_RACE_CLASSES (OtherWorldTourB/C) — målet er opnåeligt");
+});
+
+// #4377 · End-to-end regression: en 5yr-plan med sprint_kommerciel-DNA hvor
+// spilleren vandt 2 trøjer i sæson 1, men ingen i sæson 2 (indeværende sæson).
+// Før fixet ville dette gengive "0/2" (seasonJerseyWins=0), fordi tradition-
+// målet ikke var flagget cumulative — bestyrelsen "glemte" sidste sæsons trøjer.
+test("#4377 · sprint_kommerciel jersey_wins-mål: trøjer fra sidste sæson tæller stadig i indeværende sæson", () => {
+  const team = { division: 2, riders: [], sponsor_income: 100, balance: 500000 };
+  const proposal = buildBoardProposal({
+    focus: "star_signing",
+    planType: "5yr",
+    team,
+    riders: [],
+    standing: { rank_in_division: 4 },
+    dnaKey: "sprint_kommerciel",
+  });
+
+  const jerseyGoal = proposal.goals.find((g) => g.type === "jersey_wins" && g.source === "club_dna");
+  assert.ok(jerseyGoal, "sprint_kommerciel skal injicere jersey_wins tradition-mål på 5yr-forslag");
+  assert.equal(jerseyGoal.cumulative, true);
+
+  // Sæson 2 af planen: 2 trøjer vundet i sæson 1 (cumulativeJerseyWins summerer
+  // over hele plan-vinduet, jf. loadGoalContextForBoard), 0 vundet i sæson 2.
+  const context = {
+    cumulativeJerseyWins: 2,
+    seasonJerseyWins: 0,
+    seasonsCompleted: 2,
+    planDuration: 5,
+    isFinalSeason: false,
+  };
+
+  assert.equal(
+    evaluateGoal(jerseyGoal, null, team, context),
+    true,
+    "cumulative jersey_wins-mål skal være opfyldt ud fra hele plan-historikken, ikke kun indeværende sæson"
+  );
+
+  const progress = evaluateGoalProgress(jerseyGoal, null, team, context);
+  assert.equal(progress.actual, 2, "progress skal vise den kumulative trøje-optælling, ikke sæsonens 0");
+  assert.equal(progress.met, true);
+});
+
+// #4377 · Invariant: en spillers cumulative jersey_wins-fremgang må aldrig falde
+// fra én sæson-evaluering til den næste, selvom indeværende sæsons egen optælling
+// (seasonJerseyWins) er lavere end en tidligere sæsons. Låser den regel der
+// forhindrer #4377-klassens "glemt fremdrift".
+test("#4377 · cumulative jersey_wins falder aldrig ved sæsonskifte, selvom seasonJerseyWins nulstilles", () => {
+  const goal = { type: "jersey_wins", target: 2, cumulative: true };
+  const team = { riders: [] };
+
+  const seasonTwoProgress = evaluateGoalProgress(goal, null, team, {
+    cumulativeJerseyWins: 2, seasonJerseyWins: 2, seasonsCompleted: 1, planDuration: 5,
+  });
+  const seasonThreeProgress = evaluateGoalProgress(goal, null, team, {
+    // Ny sæson startet — seasonJerseyWins nulstiller til 0, men den kumulative
+    // optælling (fra loadGoalContextForBoard's plan-vindue-query) skal forblive
+    // mindst lige så høj.
+    cumulativeJerseyWins: 2, seasonJerseyWins: 0, seasonsCompleted: 2, planDuration: 5,
+  });
+
+  assert.ok(
+    seasonThreeProgress.actual >= seasonTwoProgress.actual,
+    "kumulativ trøje-fremdrift må aldrig falde ved et sæsonskifte"
+  );
+  assert.equal(seasonThreeProgress.met, true, "allerede opnået mål skal forblive opnået");
 });
 
 test("buildBoardProposal duplikerer IKKE tradition-mål når base-pakken allerede har samme type", () => {

@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
 import LeaderBadge from "../components/LeaderBadge";
+import FounderMark from "../components/FounderMark";
 import CompareDrawer from "../components/CompareDrawer";
 import { formatNumber } from "../lib/intl";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
@@ -14,6 +15,7 @@ import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import useFlipRows from "../hooks/useFlipRows";
 import {
   EmptyState, ErrorState, Input, Select, Button, DataTable, ZonePill, SkeletonLines, PodiumIcon, BlockedNote,
+  ArrowUpIcon, ArrowDownIcon,
 } from "../components/ui";
 import { useBlockedAction } from "../lib/useBlockedAction.js";
 import { WRAP } from "../components/ui/dataTableStyles.js";
@@ -373,7 +375,10 @@ export default function StandingsPage() {
     .filter(s => matchesPoolTab(rowPoolId(s), poolTab, hasPoolSubtabs))
     .sort((a, b) => effectivePts(b) - effectivePts(a));
   // Linse B sorteres efter trup-værdi; Linse A efter point. Søgning filtrerer begge.
-  const strengthVal = (s) => (strength?.[s.team_id]?.totalValue || 0);
+  // #4374: s kan være undefined (tom division/pulje giver divRanked[0] === undefined,
+  // linje ~446) — samme forsvars-mønster som effectivePts (linje 355). Uden `s?.` her
+  // crashede hele Linse B ("Squad strength virker ikke", knud_r_flink 28/8).
+  const strengthVal = (s) => (strength?.[s?.team_id]?.totalValue || 0);
   const divRanked = lens === LENS_STRENGTH
     ? [...divStandingsBase].sort((a, b) => strengthVal(b) - strengthVal(a))
     : divStandingsBase;
@@ -481,6 +486,8 @@ export default function StandingsPage() {
             stopPropagation: rækken selv har et onClick (navigate, via rowProps) —
             uden dette ville linket først navigere, og row-klikket bagefter forsøge igen. */}
         <TeamLink id={s.team_id} tab="results" stopPropagation className="truncate">{s.team?.name}</TeamLink>
+        {/* #4649: Founder-mærke — synligt for ALLE, ikke kun køberen selv. */}
+        <FounderMark teamId={s.team_id} />
         {isLeader && <LeaderBadge className={leaderPulse ? "cz-chip-pulse" : ""} />}
         {s.team_id === myTeamId && (
           <span className="shrink-0 rounded-full px-1.5 py-0.5 text-3xs font-bold uppercase"
@@ -495,8 +502,18 @@ export default function StandingsPage() {
             {t("aiBadge")}
           </span>
         )}
-        {isPromotionRow(s) && <ZonePill tone="success">{t("promotionBadge")}</ZonePill>}
-        {isRelegationRow(s) && <ZonePill tone="danger">{t("relegationBadge")}</ZonePill>}
+        {isPromotionRow(s) && (
+          <ZonePill tone="success">
+            <ArrowUpIcon size={10} className="inline -mt-px me-0.5" aria-hidden="true" />
+            {t("promotionBadge")}
+          </ZonePill>
+        )}
+        {isRelegationRow(s) && (
+          <ZonePill tone="danger">
+            <ArrowDownIcon size={10} className="inline -mt-px me-0.5" aria-hidden="true" />
+            {t("relegationBadge")}
+          </ZonePill>
+        )}
       </>
     );
   }

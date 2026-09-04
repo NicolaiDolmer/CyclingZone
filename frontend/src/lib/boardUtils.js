@@ -11,16 +11,18 @@ export function getPlanDuration(planType) {
 /**
  * #1451 · Trend-pil fra det seneste løbs-event (in-season, modsat den
  * sæson-slut-baserede getSatisfactionTrend i BoardPage). Returnerer null når
- * ingen events. Glyfferne/farverne matcher getSatisfactionTrend.
+ * ingen events. Farverne matcher getSatisfactionTrend.
+ * #3422: `glyph` (var ▲/▼/→ rå unicode) fjernet — feltet var dødt, render
+ * bruger altid et stroke-ikon via `key`, aldrig glyph direkte.
  */
 export function getEventSatisfactionTrend(events) {
   if (!events?.length) return null;
   const latest = events.reduce((a, b) =>
     (b.created_at ?? "") > (a.created_at ?? "") ? b : a);
   const delta = latest?.satisfaction_delta ?? 0;
-  if (delta > 0) return { glyph: "▲", color: "text-cz-success", key: "up", delta };
-  if (delta < 0) return { glyph: "▼", color: "text-cz-danger", key: "down", delta };
-  return { glyph: "→", color: "text-cz-3", key: "flat", delta: 0 };
+  if (delta > 0) return { color: "text-cz-success", key: "up", delta };
+  if (delta < 0) return { color: "text-cz-danger", key: "down", delta };
+  return { color: "text-cz-3", key: "flat", delta: 0 };
 }
 
 /**
@@ -76,26 +78,27 @@ export function satisfactionToModifier(satisfaction) {
  * midt-i-plan for cumulative/multi-year-typer og ville markere et mål som
  * opnået på "on pace" frem for "fuldt nået" → over-tælling på 3yr/5yr-planer.
  *
- * Fallbacken (kun de 8 legacy-typer) bruges udelukkende når der ingen
+ * Fallbacken (nu 7 legacy-typer) bruges udelukkende når der ingen
  * backend-evaluering er — fx hvis `outlook` mangler fordi boardet endnu ikke
- * er evalueret. For de nye typer kan fallbacken ikke afgøre noget og returnerer
- * `false`, hvilket er det sikre svar uden evaluering.
+ * er evalueret. For de nye typer OG for `sponsor_growth` (#3494 · kræver
+ * aggregerede sponsor_contracts-udbetalinger over sæsoner, ikke rekonstruerbart
+ * fra frontend-state; teams.sponsor_income var det døde felt der forårsagede
+ * bugget) kan fallbacken ikke afgøre noget og returnerer `false`, hvilket er
+ * det sikre svar uden evaluering.
  *
  * @param {object} goal       Mål-objekt fra board.current_goals.
  * @param {object} [evaluation] outlook.goal_evaluations[i] for samme indeks (med `met`).
- * @param {object} [ctx]       Fallback-kontekst: { cumulativeStats, riders, standing, team, board, activeLoanCount }.
+ * @param {object} [ctx]       Fallback-kontekst: { cumulativeStats, riders, standing, activeLoanCount }.
  */
 export function isBoardGoalAchieved(goal, evaluation, ctx = {}) {
   if (typeof evaluation?.met === "boolean") return evaluation.met;
   if (!goal) return false;
 
-  const { cumulativeStats, riders = [], standing, team, board, activeLoanCount = 0 } = ctx;
+  const { cumulativeStats, riders = [], standing, activeLoanCount = 0 } = ctx;
   if (goal.cumulative) {
     if (goal.type === "stage_wins") return (cumulativeStats?.stage_wins || 0) >= goal.target;
     if (goal.type === "gc_wins") return (cumulativeStats?.gc_wins || 0) >= goal.target;
   }
-  const sponsorIncome = team?.sponsor_income ?? 0;
-  const planStartSponsorIncome = board?.plan_start_sponsor_income ?? sponsorIncome;
   switch (goal.type) {
     case "min_u25_riders":
       return riders.filter(r => r.is_u25).length >= goal.target;
@@ -111,10 +114,10 @@ export function isBoardGoalAchieved(goal, evaluation, ctx = {}) {
       return standing ? (standing.gc_wins || 0) >= goal.target : false;
     case "no_outstanding_debt":
       return activeLoanCount === 0;
-    case "sponsor_growth": {
-      if (!planStartSponsorIncome) return false;
-      return ((sponsorIncome - planStartSponsorIncome) / planStartSponsorIncome * 100) >= goal.target;
-    }
+    // #3494 · sponsor_growth kan IKKE afgøres uden backend-evaluering (kræver
+    // aggregerede sponsor_contracts-udbetalinger over sæsoner) — teams.sponsor_income
+    // er det døde felt der var rod-årsagen til bugget. Fallback uden `evaluation.met`
+    // returnerer derfor false her, samme sikre svar som de øvrige S-02d-typer.
     default:
       return false;
   }

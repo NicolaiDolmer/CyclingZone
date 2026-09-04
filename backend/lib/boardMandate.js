@@ -17,6 +17,8 @@
  */
 
 import { clamp, clampSatisfaction, roundNumber } from "./boardUtils.js";
+import { stampGoalsOwners } from "./boardMembers.js";
+import { addGoalMetadata, buildGoalKey, buildNegotiatedGoal, buildStretchGoal } from "./boardGoals.js";
 
 // ---------------------------------------------------------------------------
 // 1. Migrations-vægte (ejer-beslutning 7 af 7/8)
@@ -306,8 +308,13 @@ export const MANDATE_MAX_GOALS = 5;
  * allerede har forhandlet sig frem til. `goal_count_outside_range` rapporteres i
  * scorecardet så afvigelsen er synlig i stedet for stiltiende rettet.
  */
-export function planToMandate(plan = {}, goals = [], { confidence } = {}) {
-  const goalList = Array.isArray(goals) ? goals : [];
+export function planToMandate(plan = {}, goals = [], { confidence, assignedMembers = null } = {}) {
+  // #3514 S-M2a · owner_archetype_key stemples ÉN gang på mandatets mål-JSON
+  // hvis kalderen har teamets assignede medlemmer ved hånden (opt-in,
+  // bagudkompatibelt no-op ellers). Mål der allerede har feltet rører vi
+  // ikke, se boardMembers.js::stampGoalsOwners.
+  const rawGoalList = Array.isArray(goals) ? goals : [];
+  const goalList = assignedMembers ? stampGoalsOwners(rawGoalList, { assignedMembers }) : rawGoalList;
   return {
     focus: plan?.focus ?? null,
     goals: goalList,
@@ -356,4 +363,104 @@ export function consequenceLayersFor(confidence) {
 
 export function isBonusBand(confidence) {
   return Number(confidence) > MANDATE_BONUS_OFFER_ABOVE;
+}
+
+// ---------------------------------------------------------------------------
+// 7. Årsmødets justeringer (Easier / Keep / Stretch — spec §4.2, #4557)
+// ---------------------------------------------------------------------------
+
+/** Justerings-budget: Easier og Stretch koster 1 hver, Keep koster 0. */
+export function goalAdjustmentCost(choice) {
+  return choice === "easier" || choice === "stretch" ? 1 : 0;
+}
+
+function pickMandateOptionFields(goal) {
+  return {
+    target: goal.target,
+    label: goal.label,
+    satisfaction_bonus: goal.satisfaction_bonus ?? 0,
+    satisfaction_penalty: goal.satisfaction_penalty ?? 0,
+  };
+}
+
+/**
+ * De tre forudberegnede valg (Easier/Keep/Stretch) for ét mandat-mål — rå
+ * data til `GET /board/meeting` (spec §4.8), så frontend aldrig selv skal
+ * kende regnestykket. `null` for easier/stretch betyder: knappen er
+ * deaktiveret, ingen reel lempelse/stramning mulig for netop dette mål
+ * (#3012-klassen — aldrig et dødt klik).
+ */
+export function buildMandateGoalOptions(goal, { generosity = 1.0 } = {}) {
+  const enrichedGoal = addGoalMetadata(goal);
+  const easier = buildNegotiatedGoal(enrichedGoal);
+  const stretch = buildStretchGoal(enrichedGoal, { generosity });
+  return {
+    easier: easier ? pickMandateOptionFields(easier) : null,
+    keep: pickMandateOptionFields(enrichedGoal),
+    stretch: stretch ? pickMandateOptionFields(stretch) : null,
+  };
+}
+
+export class MandateAdjustmentBudgetError extends Error {
+  constructor(used, allowed) {
+    super(`Mandatets justerings-budget er overskredet: ${used} valgt, ${allowed} tilladt.`);
+    this.name = "MandateAdjustmentBudgetError";
+    this.status = 409;
+    this.errorCode = "board_mandate_adjustment_budget_exceeded";
+    this.used = used;
+    this.allowed = allowed;
+  }
+}
+
+/**
+ * Anvend manageren valg (Easier/Keep/Stretch pr. mål, ved `goalKey` —
+ * `boardGoals.js::buildGoalKey`, indholdsbaseret, IKKE et id) på mandatets
+ * mål-liste. SERVERENS autoritative kilde (spec §4.5) — klienten sender kun
+ * hensigten, aldrig de færdige tal. Et ukendt/manglende valg for et mål
+ * betyder "Keep" (ingen ændring). Håndhæver justerings-budgettet
+ * (`adjustments_used <= adjustments_allowed`): kaster
+ * `MandateAdjustmentBudgetError` ved brud, så kaldestedet (routen) kan svare
+ * 409 uden selv at kende reglen.
+ */
+export function finalizeMandateGoals({
+  goals = [],
+  adjustments = [],
+  generosity = 1.0,
+  adjustmentsAllowed = 0,
+} = {}) {
+  const choiceByGoalKey = new Map();
+  for (const adjustment of adjustments || []) {
+    if (!adjustment?.goalKey) continue;
+    choiceByGoalKey.set(adjustment.goalKey, adjustment.choice);
+  }
+
+  let adjustmentsUsed = 0;
+  const finalGoals = (goals || []).map((goal) => {
+    const enrichedGoal = addGoalMetadata(goal);
+    const choice = choiceByGoalKey.get(buildGoalKey(enrichedGoal)) || "keep";
+
+    if (choice === "easier") {
+      const negotiated = buildNegotiatedGoal(enrichedGoal);
+      if (negotiated) {
+        adjustmentsUsed += goalAdjustmentCost("easier");
+        return negotiated;
+      }
+      return enrichedGoal; // Ingen reel lempelse mulig — no-op, ingen budget brugt.
+    }
+    if (choice === "stretch") {
+      const stretched = buildStretchGoal(enrichedGoal, { generosity });
+      if (stretched) {
+        adjustmentsUsed += goalAdjustmentCost("stretch");
+        return stretched;
+      }
+      return enrichedGoal; // Ingen reel stramning mulig — no-op, ingen budget brugt.
+    }
+    return enrichedGoal;
+  });
+
+  if (adjustmentsUsed > adjustmentsAllowed) {
+    throw new MandateAdjustmentBudgetError(adjustmentsUsed, adjustmentsAllowed);
+  }
+
+  return { goals: finalGoals, adjustments_used: adjustmentsUsed };
 }

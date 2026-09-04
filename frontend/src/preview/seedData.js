@@ -590,6 +590,12 @@ export const SEED_RACE_STAGE_MOMENTS = [
   { id: "mom-d2-s1-2", race_id: "race-done-2", stage_number: 1, moment_key: "tag_outsider_win", params: { riderId: RIDERS[0].id }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [] },
   { id: "mom-d2-s1-3", race_id: "race-done-2", stage_number: 1, moment_key: "sprint_win", params: { riderId: RIDERS[0].id, gapSeconds: 1 }, significance: 50, rider_ids: [RIDERS[0].id], team_ids: [TEST_TEAM.id] },
   { id: "mom-d2-s1-4", race_id: "race-done-2", stage_number: 1, moment_key: "tag_aggression_no_cost", params: { riderId: RIDERS[1].id }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
+  // #4598 (ejer-design 2/9): dayform_line-preview — Ada (RIDERS[0], TEST_TEAM,
+  // "mit hold" i preview) skal vise sin replik, Mikkel (RIDERS[1], RIVAL_TEAM)
+  // skal IKKE vise sin, selvom begge momenter er i samme moments-array (samme
+  // fog-of-war-mønster som prod: client-side filtrering på team_ids).
+  { id: "mom-d2-s1-5", race_id: "race-done-2", stage_number: 1, moment_key: "dayform_line", params: { riderId: RIDERS[0].id, band: 3 }, significance: 30, rider_ids: [RIDERS[0].id], team_ids: [TEST_TEAM.id] },
+  { id: "mom-d2-s1-6", race_id: "race-done-2", stage_number: 1, moment_key: "dayform_line", params: { riderId: RIDERS[1].id, band: -2 }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [RIVAL_TEAM.id] },
   { id: "mom-d2-s2-1", race_id: "race-done-2", stage_number: 2, moment_key: "gc_takeover", params: { riderId: RIDERS[1].id, previousLeaderId: RIDERS[0].id }, significance: 80, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
   { id: "mom-d2-s2-2", race_id: "race-done-2", stage_number: 2, moment_key: "final_gc", params: { riderIds: [RIDERS[1].id, RIDERS[0].id] }, significance: 90, rider_ids: [RIDERS[1].id, RIDERS[0].id], team_ids: [] },
   { id: "mom-d2-s2-3", race_id: "race-done-2", stage_number: 2, moment_key: "tag_crash_ruined", params: { riderId: "rider-99", kind: "crash", outcome: "abandon" }, significance: 30, rider_ids: ["rider-99"], team_ids: [] },
@@ -602,6 +608,10 @@ export const SEED_RACE_STAGE_MOMENTS = [
   // (ikke altid jour_sans-teksten som Adas tag_jour_sans ovenfor).
   { id: "mom-d2-s2-8", race_id: "race-done-2", stage_number: 2, moment_key: "favorite_off_day", params: { riderId: RIDERS[1].id, rank: 22, reason: "helper_work" }, significance: 65, rider_ids: [RIDERS[1].id], team_ids: [] },
   { id: "mom-d2-s2-9", race_id: "race-done-2", stage_number: 2, moment_key: "tag_favorite_collapse", params: { riderId: RIDERS[1].id, rank: 22, reason: "helper_work" }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [] },
+  // #4598: Mikkel (RIVAL_TEAM) also has a dayform_line on stage 2, where he
+  // actually appears as a "stage" result row — lets a manual preview check
+  // confirm his line stays hidden on stage 2's "Etape" sub-tab too (fog-of-war).
+  { id: "mom-d2-s2-10", race_id: "race-done-2", stage_number: 2, moment_key: "dayform_line", params: { riderId: RIDERS[1].id, band: -2 }, significance: 30, rider_ids: [RIDERS[1].id], team_ids: [RIVAL_TEAM.id] },
 ];
 
 // #3398 (Maiden Win Engine) — rider_career_events preview-seed. Ada Pedersen
@@ -1193,6 +1203,24 @@ export const SEED_SELECTION = {
     : null,
 };
 
+// #4538: GET /api/races/:raceId/stage-roles — Etape-taktik-fanens preview-seed
+// (StageRoleMatrix). race-live-1 (stages=5, stages_completed=2, se SEED_RACES)
+// giver BÅDE låste (kørte) og redigerbare (kommende) etaper i samme
+// skærmbillede. "rider-98" er en fiktiv udgået/skadet rytter — samme
+// fiktiv-rytter-mønster som "rider-99" i SEED_RACE_INCIDENTS ovenfor — så den
+// låste taktik-række kan vises uden at røre den delte race_entries-seed (kun
+// Ada/RIDERS[0] er reelt udtaget til race-live-1 der).
+export const SEED_STAGE_ROLES = {
+  enabled: true,
+  stages_completed: 2,
+  stage_count: 5,
+  riders: [
+    { rider_id: RIDERS[0].id, name: `${RIDERS[0].firstname} ${RIDERS[0].lastname}`, race_role: "captain", abandoned: false },
+    { rider_id: "rider-98", name: "Malthe Juul", race_role: "helper", abandoned: true },
+  ],
+  overrides: [],
+};
+
 // GET /api/races/strategy — holdets strategi + roster + kommende mål-løb.
 // Modelleret på api.js res.json (~L1935): roster[{id,name,primaryType,secondaryType,
 // suitabilities}], a_chain, captain_priorities, role_rules, target_race_ids, upcoming.
@@ -1699,7 +1727,16 @@ export const SEED_TRAINING = {
     "rider-1": { sprint: "strength", acceleration: "strength", vo2max: "limited", threshold: "limited" },
     "rider-2": { vo2max: "strength", sprint: "blocked", aero: "limited" },
   },
-  smartDefaultFocus: { "rider-2": "vo2max" },
+  // #4699 preview-udvidelse: Ada (rider-1) har allerede en plan (se `plans`
+  // ovenfor) OG et smartDefaultFocus-hit — det er den nye "din plan"-tilstand
+  // AssistantSuggestionsPanel skal vise (badge + slået-fra checkbox), og fordi
+  // hun er den ENESTE rytter på TEST_TEAM i preview (RIDERS-arrayet har kun
+  // rider-1 med team_id=TEST_TEAM.id — Mikkel/rider-2 hører til RIVAL_TEAM),
+  // bliver acceptableCount 0 og "Accept all" viser deaktiveret-noten. Samme
+  // scenarie som prod 3/9: 65/241 hold har en plan på hver ikke-pensioneret
+  // rytter (#4699-issuet). rider-2 beholdt uændret — bruges ikke af dette
+  // panel (hun er ikke i TEST_TEAM's roster), men andre flader kan læse den.
+  smartDefaultFocus: { "rider-1": "sprint", "rider-2": "vo2max" },
   weekPlan: null,
   riderWeekPlans: {},
 };

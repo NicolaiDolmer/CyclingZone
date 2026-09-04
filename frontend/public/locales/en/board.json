@@ -68,7 +68,7 @@
         "text": "division placement at season end"
       }
     },
-    "ctaNegotiate": "Negotiate your first plan with the board →",
+    "ctaNegotiate": "Negotiate your first plan with the board",
     "ctaShowTour": "Show me around"
   },
   "planLabels": {
@@ -120,6 +120,7 @@
     "memberReacts": "{member} reacts",
     "relativeRankDetail": "You are #{rank} of {total} managers in the division, beating {actual} (target: {target}{check}).",
     "rankInDivisionShort": "You are #{rank} of {total} managers in the division.",
+    "sponsorGrowthDetail": "Sponsor growth is {actual}% against the {target}% target due by now.",
     "progress": "Progress",
     "obligatory": "Mandatory",
     "boardReaction": "The board's reaction"
@@ -142,7 +143,8 @@
     "heading": "How is this measured?",
     "signature_rider": "Counts riders the board recognizes as star riders, using the same bar as the board's star-rider count: renown weighted with UCI points, combined into one score. Renown counts more than points, so a well-known rider can qualify without a big point haul.",
     "top_n_finish": "Evaluated on your final standing in the last season of the plan, not an average across the plan's seasons.",
-    "u25_development_delta": "The average stat-point gain per U25 rider per season. Develop young riders so their stats rise over the season."
+    "u25_development_delta": "The average stat-point gain per U25 rider per season. Develop young riders so their stats rise over the season.",
+    "sponsor_growth": "Compares your sponsor's season payout (contract base, prorated if your team joined mid-season, plus race-day income) between this season and the plan's first season. One-time bonuses (signing, results, objectives) are not counted. Only shown from the plan's second season onward, once a real baseline season exists."
   },
   "drivers": {
     "heading": "What drives this board?",
@@ -260,7 +262,7 @@
       "label": "Sprint-focused commercial team",
       "shortDescription": "Wins at the line, sponsors on the wheel",
       "longDescription": "Our rider should be first across the line and first in front of the cameras. Sponsor growth comes from visibility, and visibility comes from stage wins.",
-      "traditionGoalLabel": "Club DNA: win at least 2 stage-race jerseys per season (sprint focus)"
+      "traditionGoalLabel": "Club DNA: win at least 2 stage-race jerseys over the plan period (sprint focus)"
     },
     "fransk_klatrer": {
       "label": "French climbing heritage",
@@ -326,7 +328,15 @@
     "focusLabel": "Focus",
     "sending": "Sending...",
     "send": "Send request",
-    "errorFallback": "Could not send the board request."
+    "errorFallback": "Could not send the board request.",
+    "preview": "See suggestion",
+    "previewing": "Loading suggestion...",
+    "previewHeading": "Suggested change",
+    "previewSubheading": "Nothing is applied yet. Review it, then accept or keep your current plan.",
+    "accept": "Accept",
+    "applying": "Applying...",
+    "keepCurrent": "Keep current plan",
+    "previewErrorFallback": "Could not load the suggestion."
   },
   "consequence": {
     "heading": "Active consequences",
@@ -369,7 +379,7 @@
   },
   "plan": {
     "autoConfigured": "Configured automatically at next season start",
-    "negotiateExpired": "Negotiate new plan →",
+    "negotiateExpired": "Negotiate new plan",
     "goalsLabel": "Targets",
     "seasonsRemaining": "{count, plural, one {1 season left} other {# seasons left}}",
     "hideDetails": "Hide details",
@@ -383,6 +393,7 @@
     "renew": "Renew plan (status quo)",
     "renewing": "Renewing…",
     "renewLocked": "Renegotiation is locked for the rest of the season.",
+    "renewLockedPlanActive": "This plan is still active. It can only be renegotiated once its full term is complete.",
     "standingHeading": "Standing",
     "negotiationOrder": "Plans are negotiated longest-first: 5 → 3 → 1 years."
   },
@@ -414,7 +425,7 @@
     "horizonLabel": "Time horizon",
     "horizonDuration": "The plan spans {count, plural, one {1 season} other {# seasons}}, targets evaluated continuously",
     "requirementsHeading": "The board's requirements",
-    "startNegotiation": "Start negotiation →",
+    "startNegotiation": "Start negotiation",
     "startBlockedNoRequirements": "No requirements were generated for this focus. Try a different focus.",
     "errorProposal": "Could not fetch the board's proposal.",
     "errorSign": "Could not sign the board plan.",
@@ -422,18 +433,19 @@
     "step2Subtitle": "Review the board's requirements one at a time",
     "goalCounter": "Target {current}/{total}",
     "alreadyNegotiated": "Already negotiated",
-    "negotiateDown": "Negotiate down ↓",
+    "negotiateDown": "Negotiate down",
     "cannotNegotiate": "Can't be negotiated",
-    "accept": "Accept →",
+    "accept": "Accept",
     "compromiseHeading": "The board has accepted a compromise",
     "compromiseBody": "Penalty halved. Accept the negotiated target?",
-    "acceptNegotiated": "Accept negotiated target →",
+    "acceptNegotiated": "Accept negotiated target",
     "negotiationsUsed": "{count, plural, one {1 negotiation used} other {# negotiations used}}",
     "step3Title": "Signature",
     "step3Subtitle": "{plan}, spans {count, plural, one {1 season} other {# seasons}}",
     "agreedHeading": "Agreed targets",
     "signing": "Saving...",
     "sign": "Sign contract ✍",
+    "resetNotice": "Signing resets this plan's counters (seasons completed, cumulative wins) and starts a new plan window. It does not reset your board request for this season. That stays locked until next season.",
     "obligatory": "Required",
     "negotiatedTick": "Negotiated ✓",
     "steps": {
@@ -449,9 +461,9 @@
     "multiRenewalBodyLast": "Last plan in the queue.",
     "singleRenewalHeading": "{plan} expired",
     "singleRenewalBody": "Negotiate a new {plan} with the board.",
-    "back": "← Back",
-    "backToPlan": "← Back to {plan}",
-    "backToOverview": "← Back to overview",
+    "back": "Back",
+    "backToPlan": "Back to {plan}",
+    "backToOverview": "Back to overview",
     "dialogAria": "Board plan negotiation"
   },
   "a11y": {
@@ -608,6 +620,72 @@
           "We are bleeding more than expected.",
           "The investors are asking questions now.",
           "This puts next season's sponsor negotiation at risk."
+        ],
+        "receipt_positive": [
+          "The budget holds, and the sponsors are calling to renew.",
+          "We hit the target without touching the reserve.",
+          "Three quarters in the black in a row. That is not luck, that is discipline.",
+          "The books look better than my forecast. That is rare."
+        ],
+        "receipt_negative": [
+          "We are dipping into the reserve again. That number needs to turn.",
+          "Sponsor income is under budget for the third month running.",
+          "I cannot defend this number at the next meeting.",
+          "The debt is growing faster than the revenue. That is not sustainable."
+        ],
+        "meeting_easier": [
+          "A lower target means a lower ceiling for the sponsors. I will take it, but I am noting it.",
+          "This is the cautious road. Fine by me.",
+          "Eased, but still a number I can stand behind to the sponsors.",
+          "I prefer a target we hit over one we chase."
+        ],
+        "meeting_keep": [
+          "Same number, same expectation. I respect that.",
+          "No change to the budget, no change in how I am watching.",
+          "We hold the course. That is often the right call.",
+          "Kept, as it should be while the numbers still add up."
+        ],
+        "meeting_stretch": [
+          "A higher target needs better books behind it. Show me that.",
+          "I am tightening my watch exactly as much as the target is tightened.",
+          "Ambitious. The sponsors will ask how we are funding it.",
+          "A stretch target I accept, but I am keeping the books on every month."
+        ],
+        "midseason_status": [
+          "We are halfway. The numbers on the table today are ones I can stand behind.",
+          "Halfway through the season, and the board wants an honest picture, not a dressed up one.",
+          "This status is not a verdict. It is a snapshot we act on.",
+          "I have seen worse halfway books than this."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, and the books confirm it. That is rare, both at once.",
+          "We celebrate this, and then the board finds the next target for the empty slot.",
+          "Reached ahead of schedule. The sponsors notice that kind of thing.",
+          "A closed chapter with a clean set of books. Good work."
+        ],
+        "milestone_missed": [
+          "The milestone slips, and it costs trust, not just the number.",
+          "We have to look these numbers in the eye without dressing them up.",
+          "Not catastrophic, but the board expected more by now.",
+          "I am writing it down. We will take it up again at the next annual meeting."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting. The numbers cannot wait for the next annual meeting.",
+          "This is not routine. We meet now, not at the usual time.",
+          "I asked for an extra meeting. The books require it.",
+          "We are gathering off cycle, because something here cannot wait."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair with the books in order. That is the legacy I wanted.",
+          "My time as chairman ends here. Look after the numbers after me.",
+          "I am stepping down. The club's finances stand better than when I took over.",
+          "The chair moves on. I will keep my worries to myself from here."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the first thing I do is read the books.",
+          "New chairman, same demands on the numbers.",
+          "I am going into this with my eyes open and the calculator ready.",
+          "It is my turn now. I promise no miracles, only an honest set of books."
         ]
       }
     },
@@ -657,6 +735,72 @@
           "This would never have happened in the old days.",
           "We are losing ground on the home turf we own.",
           "Where has the pride gone?"
+        ],
+        "receipt_positive": [
+          "The club still looks like itself. That is worth more than any single result.",
+          "We are writing another page the old guard would recognize.",
+          "This is the club I signed up to protect, alive and well.",
+          "History does not repeat itself here, it continues."
+        ],
+        "receipt_negative": [
+          "We are drifting from what this club has always stood for.",
+          "The badge deserves better than this.",
+          "I do not recognize us in this.",
+          "The old members would not stand for this, and neither should we."
+        ],
+        "meeting_easier": [
+          "A lighter target does not erase our history. I can live with that.",
+          "The club has survived quieter seasons than this before.",
+          "Eased, but the crest on the jersey stays the same.",
+          "Fine, as long as we do not ease off what we stand for."
+        ],
+        "meeting_keep": [
+          "Kept as is. Continuity is half of what this club is.",
+          "No change, and the old members would approve of that steadiness.",
+          "We hold the line the way the club always has.",
+          "Same target. This club does not chase every new trend."
+        ],
+        "meeting_stretch": [
+          "A bigger ambition, as long as it still looks like us when we get there.",
+          "Stretch it, but do not stretch away from who we are.",
+          "I accept a harder target for a club with this much history behind it.",
+          "Ambitious, and the archives will remember which era did this."
+        ],
+        "midseason_status": [
+          "Halfway through, and the club still looks like the one on the old photographs.",
+          "This status report belongs in the club's own history, good or bad.",
+          "We are judged at midseason the same way every board before us was judged.",
+          "Halfway, and I still recognize the team we sent out in spring."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, and it belongs in the club's own record books.",
+          "Another chapter written the way the founders would have wanted.",
+          "This is the kind of moment the old members talk about for years.",
+          "Reached, and the history of this club just grew a little longer."
+        ],
+        "milestone_missed": [
+          "The milestone slips, and it hurts more here than a number should.",
+          "This club has faced worse and stayed itself. It will again.",
+          "We owe the old members better than a missed milestone.",
+          "Not the ending this chapter deserved. We write the next one properly."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting. Some things cannot wait for the calendar.",
+          "This is not routine, and the club's history says we act when it matters.",
+          "I asked for us to gather now. The badge is worth an early meeting.",
+          "Extraordinary meeting, because the club deserves more than a shrug."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair. The club stood here long before me and will stand long after.",
+          "My time ends here, but the history I was trusted with continues.",
+          "I am stepping down having kept the club looking like itself. That was the job.",
+          "The chair moves on. Someone else carries the old flag now."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the first thing I do is read the club's own history.",
+          "New chairman, same respect for what came before me.",
+          "I am going into this knowing exactly whose shoulders I stand on.",
+          "It is my turn now. I promise to leave the badge exactly as proud as I found it."
         ]
       }
     },
@@ -706,6 +850,72 @@
           "Talent takes longer to recover from this.",
           "We lost something we built over years.",
           "Better rotation would have solved this."
+        ],
+        "receipt_positive": [
+          "I flagged that rider two seasons ago. The numbers are finally catching up to the eye test.",
+          "Another name from my list is starting to deliver.",
+          "This is exactly the kind of potential I scout for, showing up on schedule.",
+          "Found early, developed patiently, and now it shows."
+        ],
+        "receipt_negative": [
+          "A talent I flagged is stalling, and that is on the development plan, not the rider.",
+          "The potential is real. The pathway to use it is not.",
+          "I do not scout riders to watch them sit still.",
+          "Somewhere a scout at another club is writing down the name we are wasting."
+        ],
+        "meeting_easier": [
+          "A lower bar buys the pipeline more time to mature, I will take that trade.",
+          "Eased, and that means fewer forced calls on riders who are not ready yet.",
+          "Fine by me. Potential needs patience more than pressure.",
+          "I would rather protect the long game than chase this season's number."
+        ],
+        "meeting_keep": [
+          "Same target. My scouting list does not change on a whim either.",
+          "Kept as is, and the projections I have made still hold.",
+          "No change needed, the pipeline is on the timeline I mapped out.",
+          "Fine, the numbers I am tracking do not need a new target to move."
+        ],
+        "meeting_stretch": [
+          "A higher bar is fine if it does not force a half-ready name onto the start list.",
+          "Stretch it, but do not stretch a nineteen-year-old past what the data says he can take.",
+          "I accept it, as long as the pipeline gets the time it needs behind it.",
+          "Ambitious, and I will hold the club to protecting development while chasing it."
+        ],
+        "midseason_status": [
+          "Halfway through, and I want to know which names on my list actually got minutes.",
+          "The status report should show me curves, not just this week's placings.",
+          "I measure this season by how many prospects moved up my list, not just the table.",
+          "Halfway, and three names I flagged in preseason are trending exactly as projected."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, and a name from my old shortlist made it happen.",
+          "This proves the scouting model works, not just the roster.",
+          "Reached, and it started as a hunch on a spreadsheet three years ago.",
+          "This is the payoff for betting on potential before the results existed."
+        ],
+        "milestone_missed": [
+          "The milestone slips, and I am checking whether the pipeline was ever given a real chance.",
+          "Not catastrophic, but a few names on my list needed more minutes than they got.",
+          "We owe the development pathway a harder look before the next attempt.",
+          "I am noting which prospects were held back. That data does not disappear."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting, and I want the pipeline's needs on the table.",
+          "This cannot wait, and neither can the window some of these prospects have.",
+          "I asked for us to gather now. A scouting window does not reopen on request.",
+          "Extraordinary meeting, because a decision here shapes names on my list for years."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair. The shortlist I built stays behind for whoever follows.",
+          "My time ends here, but the names I flagged keep developing without me.",
+          "I am stepping down having found more talent than I got credit for.",
+          "The chair moves on. Keep an eye on the ones I marked, they are not done yet."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the first thing I do is read every scouting report on file.",
+          "New chairman, same eye for what a rider could become in three years.",
+          "I am going into this looking past this season's roster, toward the next one.",
+          "It is my turn now. I promise to find the names nobody else was watching yet."
         ]
       }
     },
@@ -755,6 +965,72 @@
           "Step forward and explain.",
           "That is not a team, it is an excuse.",
           "The next plan sharpens the demands considerably."
+        ],
+        "receipt_positive": [
+          "A win is a win. Keep them coming.",
+          "We are climbing the standings, and that is the only chart I read.",
+          "Podiums. Finally something worth talking about.",
+          "This is what winning looks like. More of it."
+        ],
+        "receipt_negative": [
+          "No wins is no wins. Excuses do not count on a scoreboard.",
+          "We are slipping down the table, and I do not accept slow.",
+          "Second place is the first loser, and we have collected too many of those.",
+          "This losing streak needs to end this week, not next."
+        ],
+        "meeting_easier": [
+          "A lower target still needs to end in wins, or it is not a target.",
+          "Fine, but easy still means a win at the finish line, not a good try.",
+          "Eased, and I expect it back up the moment we start winning.",
+          "I accept it grudgingly. This club does not aim low for long."
+        ],
+        "meeting_keep": [
+          "Same target. Winning does not need a discount.",
+          "Kept, because the standard should not move for anyone.",
+          "No change. We were hired to win, not to renegotiate.",
+          "Fine, the number stays. Now go win it."
+        ],
+        "meeting_stretch": [
+          "A harder target. Finally somebody in this room wants to win.",
+          "Stretch it. I would have asked for more anyway.",
+          "Good. Ambition is the only thing I ever agree to without a fight.",
+          "Set it higher. This club should be uncomfortable chasing anything less."
+        ],
+        "midseason_status": [
+          "Halfway, and I am counting wins, not effort.",
+          "This status report is one number to me: how many times have we won.",
+          "Midseason is not for excuses. It is for a scoreboard.",
+          "Halfway through, and I want more wins than we have in the second half."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, because we won when it mattered.",
+          "Finally a milestone that matches what this club should be doing.",
+          "Reached. Now find the next one, higher.",
+          "This is what the board should always look like: wins on the board."
+        ],
+        "milestone_missed": [
+          "The milestone slips, and that is unacceptable at this level.",
+          "We had the roster to hit this. We did not hit it. Explain that.",
+          "Missing this costs more than the milestone itself. It costs credibility.",
+          "Next attempt gets a sharper target and zero patience for excuses."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting. Losing streaks like this do not wait for the calendar.",
+          "This is not routine. We meet now, because the standings do not fix themselves.",
+          "I demanded an extra meeting. Nobody loses this many races without a hard conversation.",
+          "Extraordinary meeting, because acceptable is not a word I use about this record."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair. Judge me on the wins, that was always the deal.",
+          "My time ends here. I never asked to be liked, only to win.",
+          "I am stepping down. The trophy cabinet says whether I did my job.",
+          "The chair moves on. Whoever takes it should want to win as badly as I did."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the first thing I do is look at last season's results.",
+          "New chairman, same demand: win now, explain never.",
+          "I am going into this to win, not to manage expectations.",
+          "It is my turn now. I promise nothing except that losing will not be comfortable here."
         ]
       }
     },
@@ -804,6 +1080,72 @@
           "We will choose the next plan with tighter demands.",
           "This worries me more than it should.",
           "The board expects an open evaluation."
+        ],
+        "receipt_positive": [
+          "The risk and the reward finally line up. That is all I ever ask for.",
+          "Nothing spectacular, but nothing exposed either. I will take that.",
+          "This is the kind of balanced week that actually builds something.",
+          "We are winning on more fronts than we are losing on. Good enough is good."
+        ],
+        "receipt_negative": [
+          "The scale has tipped, and I do not like which way.",
+          "We are losing a little on every front. That adds up faster than one big loss.",
+          "This is not a crisis yet, but it stops being fine if it repeats.",
+          "The trade-off we accepted is not paying off the way it should."
+        ],
+        "meeting_easier": [
+          "A lower target is a fair trade for a season that needs room to breathe.",
+          "Eased, and that is a reasonable adjustment, not a retreat.",
+          "I can live with lower, as long as it is a decision and not a drift.",
+          "Fine. Sometimes the balanced choice is the smaller number."
+        ],
+        "meeting_keep": [
+          "Same target. It was balanced when we set it, and nothing has changed that.",
+          "Kept as is. I do not move a number just because someone is impatient.",
+          "No change needed, the trade-off still holds up under scrutiny.",
+          "Fine as it stands. A steady target is worth more than a reactive one."
+        ],
+        "meeting_stretch": [
+          "A higher target, as long as we are honest about what we are risking for it.",
+          "Stretch it, but I want the downside written down before we sign.",
+          "I accept it if the upside genuinely outweighs what could go wrong.",
+          "Ambitious is fine. Reckless is not, and I will keep an eye on the line."
+        ],
+        "midseason_status": [
+          "Halfway through, and the picture is neither as good nor as bad as it feels.",
+          "This status is a snapshot, not a verdict. Let us treat it that way.",
+          "Some things are up, some are down. That is a normal season, not a crisis.",
+          "Halfway, and the balance still holds, barely, which is exactly why we watch it."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, and the trade-offs along the way were worth it.",
+          "Reached without breaking anything else to get there. That is the real win.",
+          "This is what a balanced plan looks like when it pays off.",
+          "Good outcome, and I would make the same trade-offs again."
+        ],
+        "milestone_missed": [
+          "The milestone slips. Not the end of the plan, but worth a hard look at why.",
+          "We miscalculated the trade-off somewhere. Let us find where.",
+          "Disappointing, but not a reason to abandon the balanced approach.",
+          "I am noting it. The next plan adjusts the weighting, not the philosophy."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting. The balance has tipped enough to warrant it.",
+          "This is not routine, but it is not panic either. We are simply adjusting early.",
+          "I asked for an earlier meeting because waiting would cost more than meeting does.",
+          "Extraordinary meeting, weighed calmly against waiting for the usual date."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair with the books and the roster both in reasonable shape.",
+          "My time ends here. I never chased the spectacular, only the sustainable.",
+          "I am stepping down having kept more balances steady than tipped over.",
+          "The chair moves on. Whoever follows should weigh both sides, always."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the first thing I do is weigh what is working against what is not.",
+          "New chairman, same instinct to look for the trade-off before the headline.",
+          "I am going into this looking for balance, not applause.",
+          "It is my turn now. I promise measured decisions, not dramatic ones."
         ]
       }
     },
@@ -853,6 +1195,72 @@
           "We owe the young riders a better structure.",
           "A damaging signal to future talents.",
           "If this continues, the academy will not call."
+        ],
+        "receipt_positive": [
+          "A debutant took his first win today. That is the whole point of this.",
+          "The young riders get room, and they are using it.",
+          "Another U25 rider took a step today. That is how a generation is built.",
+          "This team is developing talent, not just spending it."
+        ],
+        "receipt_negative": [
+          "The young riders are on the bench again. That is hard to watch.",
+          "We promise development and deliver standing still.",
+          "Another debutant without race days in his legs this month.",
+          "The talent is there. The chance is not."
+        ],
+        "meeting_easier": [
+          "An eased target means more patience with the young riders. I will gladly take that.",
+          "Fewer points to chase, more room to let a debutant learn.",
+          "Eased is fine, as long as the development is not eased along with it.",
+          "I accept this, if it means more races for the U25 squad."
+        ],
+        "meeting_keep": [
+          "Same target, same promise to the young riders that they are seen.",
+          "Kept as is. The young riders deserve consistency, not shifting ground.",
+          "No change, and that is fine. Development takes the time it takes.",
+          "We hold the course for the sake of the youth."
+        ],
+        "meeting_stretch": [
+          "A tighter target must not come at the expense of the debutants.",
+          "I accept the stretch target, but I am watching who gets to race.",
+          "Ambitious is fine, as long as the young riders still get their chance.",
+          "Set the target higher. Just do not forget who has to reach it."
+        ],
+        "midseason_status": [
+          "We are halfway, and I want to know how many debutants have raced since last time.",
+          "The halfway picture should show development, not just placings.",
+          "I measure the season by how many young riders moved forward, not only by podiums.",
+          "Halfway through, and the young riders still have my full attention."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, and a debutant helped make it happen. That is how it should look.",
+          "Reached, and the board is already finding the next target for the young riders to grow toward.",
+          "This proves the development path works.",
+          "A future that was promised is now a future that was delivered."
+        ],
+        "milestone_missed": [
+          "The milestone slips, and I ask myself if the young riders got enough time.",
+          "Not the end of the world, but the development needs to speed up.",
+          "We owe the young riders a better plan from here.",
+          "I am noting it. The next annual meeting needs to give them a real chance again."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting. I want the young riders' conditions on the agenda.",
+          "This meeting cannot wait, and neither can the development work.",
+          "I asked for us to gather now. The talent must not suffer while we wait.",
+          "Extraordinary meeting, because something here hits the young riders directly."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair. Take good care of the academy after me.",
+          "My time ends here, but the young riders I made room for keep growing.",
+          "I am stepping down with a clear conscience. The youth got their chance under me.",
+          "The chair moves on. Do not forget who is building the future."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the young riders get my full attention from day one.",
+          "New chairman, same belief that the future starts in the U25 squad.",
+          "I am going into this for the sake of the young riders, not my own.",
+          "It is my turn now. I promise room for those who have not had their chance yet."
         ]
       }
     },
@@ -902,6 +1310,72 @@
           "We have let down more than just the board.",
           "This makes recruitment harder.",
           "We are losing ground we cannot win back easily."
+        ],
+        "receipt_positive": [
+          "Our own riders carried the flag today, and the fans heard their own language in the bunch.",
+          "This is a home-grown result, and that matters more than the points.",
+          "The national core delivered, exactly as a club like ours should.",
+          "Our flag was at the front today. That is worth more than the margin."
+        ],
+        "receipt_negative": [
+          "Fewer home riders on the results sheet, and fewer fans see themselves in this team.",
+          "We are becoming a club of imported names, and the home crowd notices.",
+          "The national core is thinning, and that is a slower disaster than any loss.",
+          "Our own flag is drifting toward the back of the peloton."
+        ],
+        "meeting_easier": [
+          "A lower target for the national core, as long as the core itself does not shrink.",
+          "Eased, but I want the home riders still on the start list, not just the number.",
+          "Fine, so long as it is patience with our own, not a quiet retreat from them.",
+          "I accept it, if it buys the home talent more time to grow into the role."
+        ],
+        "meeting_keep": [
+          "Same target. Our national identity does not get renegotiated on a whim.",
+          "Kept as is, and the home fans deserve that consistency.",
+          "No change. The flag on the jersey stays exactly as important as before.",
+          "Fine as it stands. This club's core was never up for discount."
+        ],
+        "meeting_stretch": [
+          "A higher target for the national core, and I will hold everyone to it.",
+          "Stretch it. It is about time this club leaned harder into who we are.",
+          "I accept it, as long as it means more home names, not just a bigger number.",
+          "Ambitious, and the home fans will finally see themselves more often."
+        ],
+        "midseason_status": [
+          "Halfway through, and I want to know how many home riders actually raced.",
+          "This status means little to me without a count of our own flag on the start lists.",
+          "I measure the season by how much of this team still feels like home.",
+          "Halfway, and the national core is holding, which is the number that matters to me."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, and a home rider was at the front when it happened.",
+          "Reached, and the whole country gets to claim this one.",
+          "This is the kind of milestone that makes the home fans proud to wear the colors.",
+          "Our own flag delivered when it counted. That will be remembered."
+        ],
+        "milestone_missed": [
+          "The milestone slips, and I ask whether the home riders were given the chance to carry it.",
+          "Not catastrophic, but the national core deserved better positioning here.",
+          "We owe the home fans a clearer path to this milestone next time.",
+          "I am noting it. The flag comes back to the front at the next annual meeting."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting, and I want the national core's standing on the agenda.",
+          "This cannot wait, and neither can a fading connection to the home fans.",
+          "I asked for us to gather now. Our identity is not something we let drift while we wait.",
+          "Extraordinary meeting, because something here touches what this club is supposed to represent."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair. The flag still flies at the front, and that was always the mission.",
+          "My time ends here, but the home core I protected keeps carrying this club.",
+          "I am stepping down with the national identity intact. That is my legacy here.",
+          "The chair moves on. Do not let the home core become an afterthought after me."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the first thing I do is count how many home riders are on this roster.",
+          "New chairman, same belief that a club without a national core is just a sponsor in jerseys.",
+          "I am going into this for the home fans, the ones who see themselves in this team.",
+          "It is my turn now. I promise the flag stays at the front of every conversation."
         ]
       }
     },
@@ -951,6 +1425,72 @@
           "This rips the heart out of the classics soul.",
           "We need to reinvent the spring plan.",
           "No one takes the club seriously on the Roubaix ramp after this."
+        ],
+        "receipt_positive": [
+          "That was a proper cobbled performance. The spring campaign is alive.",
+          "We rode like a classics team today, and it showed on the stones.",
+          "A result like that belongs on the Roubaix velodrome, not just the results sheet.",
+          "This is what a monument-shaped season looks like in April."
+        ],
+        "receipt_negative": [
+          "No cobbles, no spring form, no story worth telling this April.",
+          "We looked lost the moment the road turned to stones.",
+          "A classics team that avoids the cobbles is not a classics team.",
+          "The Monuments will not remember a season like this one."
+        ],
+        "meeting_easier": [
+          "A lighter spring target, as long as we still show up for the stones that matter.",
+          "Eased, but the Monuments do not care about our excuses either way.",
+          "Fine, if it means we build properly toward Roubaix instead of forcing it.",
+          "I accept it, as long as classics identity is not what got lowered."
+        ],
+        "meeting_keep": [
+          "Same target. The cobbles do not get easier because we ask nicely.",
+          "Kept as is. Spring does not renegotiate its calendar for anyone.",
+          "No change. A classics club holds its ambition through the mud.",
+          "Fine as it stands. The Monuments deserve a fixed target, not a moving one."
+        ],
+        "meeting_stretch": [
+          "A harder spring target. Finally something worthy of the cobbles.",
+          "Stretch it. This club should be uncomfortable aiming at anything less than a Monument.",
+          "I accept it, gladly. The classics deserve real ambition, not a modest one.",
+          "Ambitious, and the spring campaign just got the pressure it needed."
+        ],
+        "midseason_status": [
+          "Halfway through, and I am still judging this season on what happened in April.",
+          "The status report matters less to me than whether we had a real spring.",
+          "This club lives or dies on the cobbles, and the rest of the season is just aftermath.",
+          "Halfway, and the Monuments already told us most of what we need to know."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, and it happened on the roads that matter to this club.",
+          "Reached, with cobbles under the wheels. That is how it should be done.",
+          "This is the kind of milestone the classics history books will actually mention.",
+          "A monument-worthy result. That is what this club exists for."
+        ],
+        "milestone_missed": [
+          "The milestone slips, and a spring without a real result stings more than any other season.",
+          "Not catastrophic, but the cobbled campaign owed us more than this.",
+          "We owe the classics identity a sharper spring next year.",
+          "I am noting it. The next attempt starts building for April immediately."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting. Spring does not wait for the usual calendar.",
+          "This is not routine, but neither is losing our shot at the Monuments.",
+          "I asked for us to gather now. A cobbled campaign built in a rush never wins anything.",
+          "Extraordinary meeting, because April is closer than the board seems to think."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair. We chased the Monuments honestly, and that was the whole point.",
+          "My time ends here, but the classics spirit I fought for should not leave with me.",
+          "I am stepping down having never once let this club forget the cobbles.",
+          "The chair moves on. Whoever follows had better still believe in April."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the first thing I do is check the spring calendar.",
+          "New chairman, same belief that Roubaix means more than any stage race podium.",
+          "I am going into this for the cobbles, the ones that made me love this sport.",
+          "It is my turn now. I promise this club will not forget what April is for."
         ]
       }
     },
@@ -1000,6 +1540,72 @@
           "This is a regression, not an adjustment.",
           "The mountains crushed us, this must never happen again.",
           "We lack a plan for where the star is going to come from."
+        ],
+        "receipt_positive": [
+          "That climb was Tour form. We are building something real for July.",
+          "The GC picture looks better every week. This is how a stage-race project is built.",
+          "A performance like that belongs in the mountains of a Grand Tour, not a one-day race.",
+          "We are riding like a team with a three-week ambition, finally."
+        ],
+        "receipt_negative": [
+          "No GC presence, no mountain legs, no Tour project worth the name.",
+          "We fell apart the moment the road went uphill for more than a stage.",
+          "A team without a real GC threat is not building toward anything I care about.",
+          "The Tour is further away this week than it was last month."
+        ],
+        "meeting_easier": [
+          "A lighter GC target, as long as we still ride the three weeks like they matter.",
+          "Eased, but I want the mountain legs built regardless of the number.",
+          "Fine, if it buys the climbers time before we ask them for a Grand Tour.",
+          "I accept it, as long as the Tour is still the horizon we are riding toward."
+        ],
+        "meeting_keep": [
+          "Same target. The mountains do not care whether we feel like it this week.",
+          "Kept as is. A three-week project does not renegotiate its own timeline.",
+          "No change. The Tour is not moved back because we asked for a discount.",
+          "Fine as it stands. GC ambition should not be the first thing we cut."
+        ],
+        "meeting_stretch": [
+          "A higher GC target. Finally something with a Tour-sized ambition.",
+          "Stretch it. This club should always be aiming at three weeks, not one day.",
+          "I accept it gladly. The mountains deserve real ambition behind them.",
+          "Ambitious, and that is the only setting this project should run in."
+        ],
+        "midseason_status": [
+          "Halfway through, and I am judging this season on where the GC project stands, not the sprints.",
+          "The status report matters less than whether we have a real leader for July.",
+          "This club exists for three weeks in summer. Everything else is preparation.",
+          "Halfway, and the mountain legs are coming, which is the only number I track."
+        ],
+        "milestone_achieved": [
+          "The milestone is reached, and it happened with real GC weight behind it.",
+          "Reached, on the kind of climb that decides a Grand Tour.",
+          "This is the kind of result that says the Tour project is real, not a dream.",
+          "A three-week-worthy result. That is what this club is built to chase."
+        ],
+        "milestone_missed": [
+          "The milestone slips, and a Grand Tour project without it loses a whole season of momentum.",
+          "Not catastrophic, but the mountains owed us more than this.",
+          "We owe the GC project a sharper build toward next year's three weeks.",
+          "I am noting it. The road to the Tour starts being rebuilt today."
+        ],
+        "extraordinary_meeting": [
+          "The board is calling an extraordinary meeting. A Tour project does not wait for the usual calendar.",
+          "This is not routine, but neither is losing our shot at three weeks in July.",
+          "I asked for us to gather now. Mountain legs are not built in a rush at the last minute.",
+          "Extraordinary meeting, because the Tour is closer than the board seems to think."
+        ],
+        "chairman_departure": [
+          "I am leaving the chair. We built toward the mountains honestly, and that was the whole point.",
+          "My time ends here, but the Tour ambition I fought for should not leave with me.",
+          "I am stepping down having never once let this club forget what three weeks means.",
+          "The chair moves on. Whoever follows had better still dream about July."
+        ],
+        "chairman_arrival": [
+          "I am taking the chair, and the first thing I do is check who can survive three weeks in the mountains.",
+          "New chairman, same belief that nothing in this sport matters more than the Tour.",
+          "I am going into this for July, the only month that really counts.",
+          "It is my turn now. I promise this club will not forget what three weeks means."
         ]
       }
     }
@@ -1176,5 +1782,201 @@
     "loginRequired": "You must be logged in.",
     "requestFallback": "Could not send the board request.",
     "renewFallback": "The plan could not be renewed. Nothing was changed."
+  },
+  "boardroom": {
+    "route": {
+      "loading": "Loading boardroom"
+    },
+    "header": {
+      "title": "Boardroom",
+      "subtitle": "{chair}, chair · {dna}",
+      "subtitleChairOnly": "{chair}, chair",
+      "subtitleNoChair": "The board",
+      "enterMeetingCta": "Enter annual meeting"
+    },
+    "status": {
+      "on_track": "On track",
+      "at_risk": "At risk",
+      "behind": "Behind",
+      "achieved": "Achieved",
+      "failed": "Failed"
+    },
+    "confidence": {
+      "cardTitle": "Board confidence",
+      "updated": "Updated {date}",
+      "weekDeltaUp": "+{delta} this week",
+      "weekDeltaDown": "{delta} this week",
+      "weekDeltaFlat": "No change this week",
+      "categories": {
+        "results": "Results",
+        "economy": "Economy",
+        "identity": "Identity",
+        "ranking": "Ranking"
+      },
+      "noConsequenceDefault": "No active consequences. Wage cap activates below 40."
+    },
+    "mandate": {
+      "cardTitle": "Season mandate · S{season}",
+      "cardTitleGeneric": "Season mandate",
+      "goalsMeta": "{count} goals · signed {date}",
+      "achievedTarget": "Achieved {achieved} / target {target}",
+      "stretch": "Stretch",
+      "discussTarget": "Discuss target",
+      "discussTargetDisabledHint": "Discussing targets opens at the annual meeting.",
+      "receipt": {
+        "countedPrefix": "Counted:",
+        "lastMovementPrefix": "Last movement:",
+        "weightedByPrefix": "Weighted by {name}."
+      },
+      "empty": {
+        "title": "No mandate signed yet",
+        "description": "The board has not signed this season's mandate. Check back after the annual meeting."
+      },
+      "goalLabels": {
+        "keepResultAboveZero": "Keep season result above zero",
+        "academyDebuts": "Give {count} academy riders a debut"
+      },
+      "receipts": {
+        "winRaceDays": {
+          "counted": "confirmed race-day wins across the season.",
+          "lastMovement": "Stage win, {race}",
+          "weightedByLine": "He rates wins over everything else."
+        },
+        "economyResult": {
+          "counted": "season income minus wages, transfers and race costs.",
+          "lastMovement": "{amount} race-day income",
+          "weightedByLine": "He values steady margins over big swings."
+        },
+        "academyDebuts": {
+          "counted": "academy riders given a first-team race start.",
+          "lastMovement": "Debut: {name}, {age}",
+          "weightedByLine": "She counts every debut as a promise kept."
+        },
+        "clubRankingTopN": {
+          "counted": "current position on the global club ranking.",
+          "lastMovement": "No movement this week",
+          "weightedByLine": "He watches the ranking every single week."
+        }
+      }
+    },
+    "vision": {
+      "cardTitle": "Club vision",
+      "meta": "S{start} to S{end}",
+      "seasonLabel": "S{season}",
+      "currentSeasonLabel": "S{season} · You are here",
+      "explainer": "Milestones are judged in their target season. A missed milestone costs confidence once, then the vision moves on.",
+      "empty": {
+        "title": "No vision set yet",
+        "description": "The club vision has not been established yet."
+      },
+      "milestoneLabels": {
+        "establishDivision3": "Establish in Division 3",
+        "promotionPush": "Promotion push",
+        "monumentPodium": "Monument podium",
+        "clubRankingTop30": "Top 30 club ranking"
+      }
+    },
+    "board": {
+      "cardTitle": "The board",
+      "minutesLink": "Meeting minutes",
+      "role": {
+        "chair": "Chair",
+        "results": "Results",
+        "economy": "Economy",
+        "identity": "Identity",
+        "ranking": "Ranking"
+      },
+      "mood": {
+        "positive": "Pleased with you",
+        "neutral": "Watching closely",
+        "negative": "Unhappy with you"
+      },
+      "chairmanQuoteFixture": "We see the direction. Keep the wage bill honest and the results will follow.",
+      "chairmanContextFixture": "after the Sunday review"
+    },
+    "member": {
+      "viewHint": "View member",
+      "portraitLabel": "Portrait",
+      "ownsGoalsCount": "{count, plural, one {owns 1 goal} other {owns # goals}}",
+      "sinceSeason": "on the board since S{season}",
+      "personalityHeading": "Personality",
+      "ownsGoalsHeading": "Owns these goals",
+      "ownWordsHeading": "In his own words",
+      "confidenceMove": "{sign}{delta} confidence · {date}",
+      "footerNote": "Portraits arrive in a later round. The voice is the identity.",
+      "close": "Close"
+    },
+    "minutesFixture": {
+      "stageWin": "Stage win, Vuelta a Andalucía. “That is what I signed up for.”",
+      "youthDebut": "Youth debut: {name}, {age}. “This is the Nordic way.”",
+      "deficitWeek": "Deficit week, {amount}. “Margins, not miracles.”",
+      "captainSaleWarning": "We do not sell a captain mid-season without a plan. “Show me the plan.”"
+    },
+    "meeting": {
+      "route": {
+        "loading": "Loading annual meeting"
+      },
+      "header": {
+        "title": "Annual meeting · Season {season}",
+        "subtitle": "The board proposes your mandate. Adjust it, make one request, sign.",
+        "confidenceMeta": "Confidence {confidence} · {count} adjustments available",
+        "confidenceMetaNoValue": "{count} adjustments available",
+        "deadline": "Unanswered mandates sign automatically in {days, plural, one {# day} other {# days}}"
+      },
+      "steps": {
+        "focus": "Focus",
+        "mandate": "Mandate",
+        "request": "Request",
+        "sign": "Sign"
+      },
+      "focus": {
+        "label": "Focus"
+      },
+      "mandate": {
+        "title": "Proposed mandate · focus: {focus}",
+        "meta": "{count, plural, one {# goal} other {# goals}} · {used} of {allowed} adjustments used",
+        "reward": "Reward +{bonus} confidence · miss -{penalty}",
+        "rewardWas": "Reward +{bonus} confidence · miss -{penalty} · was {was}",
+        "choice": {
+          "easier": "Easier",
+          "keep": "Keep",
+          "stretch": "Stretch"
+        },
+        "choiceDisabledEasier": "This goal can't be eased further.",
+        "choiceDisabledStretch": "This goal can't be stretched further.",
+        "choiceDisabledBudget": "You've used all your adjustments for this meeting.",
+        "reactionAttribution": "{name} backs the {choice}"
+      },
+      "visionSlot": {
+        "title": "The board proposes a new milestone",
+        "targetSeason": "Target: season {season}",
+        "accept": "Accept",
+        "decline": "Decline"
+      },
+      "request": {
+        "title": "Your request · 1 per meeting",
+        "meta": "A refusal always comes with a counter-offer",
+        "changeRequest": "Change request",
+        "select": "Select",
+        "none": "No request this meeting"
+      },
+      "sign": {
+        "hint": "Fastest path: accept the proposal and sign. Two clicks.",
+        "back": "Back",
+        "button": "Sign mandate",
+        "signing": "Signing",
+        "error": "Something went wrong. Try again.",
+        "focusChangeError": "Couldn't update the focus. Try again."
+      }
+    }
+  },
+  "vision": {
+    "title": {
+      "skandinavisk_udvikling": "The Nordic project",
+      "italiensk_klassiker": "The Classics heritage",
+      "sprint_kommerciel": "The Sprint express",
+      "fransk_klatrer": "The Mountain legacy",
+      "britisk_allrounder": "The All-rounder project"
+    }
   }
 }

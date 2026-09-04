@@ -13,6 +13,7 @@ import {
 import {
   buildGoalLabel,
   buildNegotiatedGoal,
+  buildStretchGoal,
   computeU25StatSum,
   countGoalsMet,
   evaluateGoal,
@@ -107,6 +108,76 @@ test("jersey_wins evaluateGoal cumulative=false reads seasonJerseyWins", () => {
     evaluateGoal(goal, null, {}, { seasonJerseyWins: 1 }),
     false,
   );
+});
+
+// #4377 · Forward-guard: en persisteret jersey_wins-goal med source:"club_dna"
+// og uden cumulative:true kan KUN være en pre-#4377-fix current_goals-række
+// (efter fixet er ethvert club_dna jersey_wins-mål altid cumulative, da det
+// kun injiceres på 5yr-forslag). Den skal ikke fejle stille — evalueringen
+// skal advare, så database/2026-09-01-4377-jersey-wins-cumulative-repair.sql's
+// fremdrift er målbar i logs/Sentry, ikke kun i en engangs-SQL-optælling.
+test("#4377 · evaluateGoal advarer når et persisteret club_dna jersey_wins-mål mangler cumulative:true", () => {
+  const goal = { type: "jersey_wins", target: 2, source: "club_dna", dna_key: "sprint_kommerciel" };
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  try {
+    const result = evaluateGoal(goal, null, {}, { seasonJerseyWins: 0 });
+    // Evalueringen skal stadig returnere et resultat (fail-soft), ikke kaste.
+    assert.equal(result, false);
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.equal(warnings.length, 1, "et unflagget persisteret club_dna jersey_wins-mål skal trigge præcis én advarsel");
+  assert.match(warnings[0][0], /#4377/);
+  assert.match(warnings[0][0], /cumulative/);
+});
+
+test("#4377 · evaluateGoalProgress advarer på samme stale persisteret club_dna jersey_wins-mål", () => {
+  const goal = { type: "jersey_wins", target: 2, source: "club_dna", dna_key: "sprint_kommerciel" };
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  try {
+    evaluateGoalProgress(goal, null, { riders: [] }, { seasonJerseyWins: 2 });
+  } finally {
+    console.warn = originalWarn;
+  }
+  // evaluateGoalProgress kalder internt evaluateGoal (for at beregne det
+  // autoritative `met`-flag, #55) OG har sin egen jersey_wins-gren — begge
+  // rammer guarden på det samme stale mål, så >=1 (ikke et præcist tal) er
+  // den robuste kontrakt her.
+  assert.ok(warnings.length >= 1, "evaluateGoalProgress skal advare på samme betingelse som evaluateGoal");
+});
+
+test("#4377 · evaluateGoal advarer IKKE når club_dna jersey_wins-målet allerede er cumulative (post-fix/post-migration)", () => {
+  const goal = { type: "jersey_wins", target: 2, source: "club_dna", cumulative: true };
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  try {
+    evaluateGoal(goal, null, {}, { cumulativeJerseyWins: 2 });
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.equal(warnings.length, 0, "et allerede migreret/nyt cumulative:true-mål skal IKKE advare");
+});
+
+test("#4377 · evaluateGoal advarer IKKE på et almindeligt (ikke-club_dna) per-sæson jersey_wins-mål", () => {
+  // Non-DNA jersey_wins-mål findes ikke i dag (kun DNA-tradition-goal bruger
+  // typen), men guarden skal være specifik til source==="club_dna", ikke til
+  // typen alene — ellers ville en fremtidig, bevidst per-sæson jersey_wins-
+  // variant udenfor DNA-systemet false-positive advare for evigt.
+  const goal = { type: "jersey_wins", target: 2 };
+  const originalWarn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args);
+  try {
+    evaluateGoal(goal, null, {}, { seasonJerseyWins: 2 });
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.equal(warnings.length, 0, "ikke-club_dna jersey_wins-mål er (i dag) bevidst per-sæson og skal ikke advare");
 });
 
 // =====================================================================
@@ -359,6 +430,54 @@ test("buildNegotiatedGoal halves penalty + reduces target where possible", () =>
     type: "relative_rank", target: 3, satisfaction_penalty: 8,
   });
   assert.equal(rank.target, 2);
+});
+
+// =====================================================================
+// #4557 S-M2c · buildStretchGoal — spejlfunktion af buildNegotiatedGoal
+// =====================================================================
+
+test("buildStretchGoal strammer target ét trin (spejl af relaxGoalTarget) og ×1,5 bonus+straf, pr. type", () => {
+  const cases = [
+    { in: { type: "top_n_finish", target: 4, satisfaction_bonus: 10, satisfaction_penalty: 6 }, target: 2 },
+    { in: { type: "stage_wins", target: 2, satisfaction_bonus: 10, satisfaction_penalty: 4 }, target: 3 },
+    { in: { type: "gc_wins", target: 1, satisfaction_bonus: 20, satisfaction_penalty: 8 }, target: 2 },
+    { in: { type: "min_u25_riders", target: 5, satisfaction_bonus: 10, satisfaction_penalty: 6 }, target: 6 },
+    { in: { type: "min_national_riders", target: 3, satisfaction_bonus: 8, satisfaction_penalty: 8 }, target: 4 },
+    { in: { type: "sponsor_growth", target: 10, satisfaction_bonus: 10, satisfaction_penalty: 8 }, target: 15 },
+    { in: { type: "jersey_wins", target: 2, cumulative: true, satisfaction_bonus: 10, satisfaction_penalty: 6 }, target: 3 },
+    { in: { type: "signature_rider", target: 1, satisfaction_bonus: 12, satisfaction_penalty: 8 }, target: 2 },
+    { in: { type: "profitable_transfers", target: 200_000, satisfaction_bonus: 10, satisfaction_penalty: 6 }, target: 250_000 },
+    { in: { type: "relative_rank", target: 3, satisfaction_bonus: 8, satisfaction_penalty: 8 }, target: 4 },
+  ];
+  for (const c of cases) {
+    const stretched = buildStretchGoal(c.in, { generosity: 1.0 });
+    assert.ok(stretched, `buildStretchGoal(${c.in.type}) skal ikke være null`);
+    assert.equal(stretched.target, c.target, `${c.in.type}: forkert stretch-target`);
+    assert.equal(stretched.satisfaction_bonus, Math.round(c.in.satisfaction_bonus * 1.5), `${c.in.type}: bonus skal være ×1,5`);
+    assert.equal(stretched.satisfaction_penalty, Math.round(c.in.satisfaction_penalty * 1.5), `${c.in.type}: straf skal være ×1,5`);
+    assert.equal(stretched.stretch, true);
+  }
+});
+
+test("buildStretchGoal: min_riders respekterer max_target-loftet i stedet for at overstramme", () => {
+  const goal = { type: "min_riders", target: 20, max_target: 22, satisfaction_bonus: 5, satisfaction_penalty: 10 };
+  const stretched = buildStretchGoal(goal, { generosity: 1.0 });
+  assert.equal(stretched.target, 22, "target+3 (23) klippes til max_target (22)");
+});
+
+test("buildStretchGoal: binært mål (no_outstanding_debt) returnerer null — ingen no-op-rabat den anden vej", () => {
+  assert.equal(buildStretchGoal({
+    type: "no_outstanding_debt", target: 0, satisfaction_bonus: 12, satisfaction_penalty: 8,
+  }), null);
+});
+
+test("buildStretchGoal: generosity skalerer KUN bonussen, aldrig straffen (ejer-svar 2/9 spørgsmål 1: A)", () => {
+  const goal = { type: "gc_wins", target: 1, satisfaction_bonus: 20, satisfaction_penalty: 10 };
+  const trusted = buildStretchGoal(goal, { generosity: 1.25 });
+  const strained = buildStretchGoal(goal, { generosity: 0.80 });
+  assert.equal(trusted.satisfaction_bonus, Math.round(20 * 1.5 * 1.25));
+  assert.equal(strained.satisfaction_bonus, Math.round(20 * 1.5 * 0.80));
+  assert.equal(trusted.satisfaction_penalty, strained.satisfaction_penalty, "straffen er UAFHÆNGIG af tillids-trappen");
 });
 
 // =====================================================================

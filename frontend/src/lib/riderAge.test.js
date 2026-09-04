@@ -83,13 +83,16 @@ test("ageBadgeKey — <23 → u23 (yngste gældende)", () => {
   assert.equal(ageBadgeKey({ birthdate: "2010-01-01" }, S1), "u23"); // 16
 });
 
-test("ageBadgeKey — 23–24 → u25", () => {
+// UCI-reglen (ejer-beslutning 2/9-2026): en 25-årig tæller stadig som U25
+// (var tidligere "23–24 → u25", dvs. sæson-alder < 25).
+test("ageBadgeKey - 23-25 -> u25 (UCI-reglen)", () => {
   assert.equal(ageBadgeKey({ birthdate: "2003-01-01" }, S1), "u25"); // 23
   assert.equal(ageBadgeKey({ birthdate: "2002-01-01" }, S1), "u25"); // 24
+  assert.equal(ageBadgeKey({ birthdate: "2001-01-01" }, S1), "u25"); // 25, UCI-reglen
 });
 
-test("ageBadgeKey — ≥25 → ingen alders-badge", () => {
-  assert.equal(ageBadgeKey({ birthdate: "2001-01-01" }, S1), null); // 25
+test("ageBadgeKey - >=26 -> ingen alders-badge", () => {
+  assert.equal(ageBadgeKey({ birthdate: "2000-01-01" }, S1), null); // 26
   assert.equal(ageBadgeKey({ birthdate: "1990-01-01" }, S1), null); // 36
 });
 
@@ -141,24 +144,31 @@ test("getRiderAge delegerer til ageForSeason med det givne sæson-referenceår",
   assert.equal(getRiderAge("2004-12-31", S1), 22);
 });
 
-// #109/#2073: U25 sæson-afledt — < 25 år ved referenceåret ⇔ født > referenceår-25.
-test("isU25 — sæson-alder < 25 er U25", () => {
+// #109/#2073 + UCI-reglen (ejer-beslutning 2/9-2026): U25 sæson-afledt, ≤ 25 år
+// ved referenceåret ⇔ født ≥ referenceår-25. Tidligere konvention var "< 25"
+// (født > referenceår-25); ændret fordi spillerne forventede at en 25-årig
+// talte som U25 (feedback 1/9), ligesom UCIs hvide trøje.
+test("isU25 - sæson-alder ≤ 25 er U25", () => {
   assert.equal(isU25("2010-06-15", 2026), true); // 16
   assert.equal(isU25("2005-06-15", 2026), true); // 21
   assert.equal(isU25("2002-01-01", 2026), true); // 24
 });
 
-test("isU25 — boundary: præcis 25 år er IKKE U25", () => {
-  // 25-årig: født referenceår-25. birthYear = 2001 = 2026-25 → IKKE > 2026-25.
-  assert.equal(isU25("2001-01-01", 2026), false); // 25
-  assert.equal(isU25("2001-12-31", 2026), false); // stadig fødselsår 2001 → 25
+test("isU25 - boundary: præcis 25 år ER STADIG U25 (UCI-reglen)", () => {
+  // 25-årig: født referenceår-25. birthYear = 2001 = 2026-25 → ≥ 2026-25 → U25.
+  assert.equal(isU25("2001-01-01", 2026), true); // 25
+  assert.equal(isU25("2001-12-31", 2026), true); // stadig fødselsår 2001 → 25
+});
+
+test("isU25 - boundary: præcis 26 år er IKKE U25", () => {
   assert.equal(isU25("2000-06-15", 2026), false); // 26
+  assert.equal(isU25("2000-01-01", 2026), false); // 26
 });
 
 test("isU25 — sæson-drevet: samme rytter kan falde ud af U25 ved sæsonskift", () => {
-  // Født 2002 → U25 i 2026 (24), men IKKE i 2027 (25). Følger sæsonen, ikke fødselsdag.
-  assert.equal(isU25("2002-06-15", 2026), true);  // 24
-  assert.equal(isU25("2002-06-15", 2027), false); // 25
+  // Født 2001 → U25 i 2026 (25, UCI-reglen), men IKKE i 2027 (26). Følger sæsonen, ikke fødselsdag.
+  assert.equal(isU25("2001-06-15", 2026), true);  // 25
+  assert.equal(isU25("2001-06-15", 2027), false); // 26
 });
 
 test("isU25 — robust ved manglende fødselsdato/ugyldigt referenceår", () => {

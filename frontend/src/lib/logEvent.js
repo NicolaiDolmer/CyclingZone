@@ -98,6 +98,10 @@ export const KNOWN_EVENTS = Object.freeze([
   "feature_rider_development_tab_opened",
   "feature_board_consequences_panel_viewed",
   "feature_finance_forecast_card_viewed",
+  // feature_dayform_line_viewed (#4598, ejer-design 2/9): fyrer fra
+  // RaceDetailPage.jsx's StageTab når en spiller ser en etapes resultater MED
+  // mindst én egen dagsform-replik synlig (team_ids-scopet, aldrig andres).
+  "feature_dayform_line_viewed",
   "feature_hall_of_fame_opened",
   // survey_banner_shown/clicked/dismissed fjernet (#2467): SurveyBanner.jsx
   // slettet — admin-preview uden ægte Tally-URL loggede shown ved hver mount og
@@ -114,6 +118,16 @@ export const KNOWN_EVENTS = Object.freeze([
   // Naturligt 0 indtil træningsmotoren er aktiv for spillere.
   "training_focus_set_bulk",
   "training_run_today",
+  // #4557 (S-M2d) · instrumentering for aarsmoedet/Boardroom (#1141:
+  // mødegennemførelse + kvitterings-åbninger). feature_board_meeting_opened
+  // (canary, kun ved mount) og board_meeting_signed (funnel-modstykke, kun
+  // ved succesfuld underskrift) fyrer fra AnnualMeetingPage.jsx.
+  // board_receipt_opened fyrer fra Boardroom-kortenes egen GoalReceipt-
+  // expand (MandateCard.jsx). Naturligt 0 indtil board_mandate_model_enabled
+  // flippes for flere end admin/beta-testere.
+  "feature_board_meeting_opened",
+  "board_meeting_signed",
+  "board_receipt_opened",
   // action_rejected (#3767) — fyrer fra actionTelemetry.js når en spiller-
   // handling bliver afvist af en regel (for lavt bud, kontraktloft nået).
   // Flyttet hertil fra Sentry, hvor de fem `player action rejected`-issues stod

@@ -12,6 +12,7 @@ import {
   countSlop,
   countColor,
   countEmoji,
+  countArrow,
   scanSource,
   scanRepo,
   compareAgainstBaseline,
@@ -72,9 +73,25 @@ test("countColor flags raw Tailwind palette colours but not cz-tokens", () => {
   assert.equal(countColor("// avoid bg-red-500 in new UI"), 0); // comment stripped
 });
 
-test("scanSource returns per-category counts (hex/slop/colour/emoji)", () => {
-  const r = scanSource('<div className="rounded-2xl bg-red-500" style={{color:"#fff"}}>🏁</div>');
-  assert.deepEqual(r, { hex: 1, slop: 1, colour: 1, emoji: 1 });
+test("countArrow flags unicode arrow glyphs used as icons", () => {
+  assert.equal(countArrow("Se alle →"), 1);
+  assert.equal(countArrow("← Forrige   Næste →"), 2);
+  assert.equal(countArrow("↔ Sæt til salg"), 1);
+  assert.equal(countArrow("↑ Op   ↓ Ned"), 2);
+  assert.equal(countArrow("↩ Fortryd ↪ Gentag"), 2);
+  assert.equal(countArrow("plain ascii text"), 0);
+});
+
+test("countArrow ignores arrows inside comments", () => {
+  assert.equal(countArrow("// flow: A → B"), 0);
+  assert.equal(countArrow("/* ↑ scroll to top */"), 0);
+});
+
+test("scanSource returns per-category counts (hex/slop/colour/emoji/arrowglyph)", () => {
+  const r = scanSource(
+    '<div className="rounded-2xl bg-red-500" style={{color:"#fff"}}>🏁 Se alle →</div>'
+  );
+  assert.deepEqual(r, { hex: 1, slop: 1, colour: 1, emoji: 1, arrowglyph: 1 });
 });
 
 test("compareAgainstBaseline only flags increases over baseline", () => {
@@ -92,6 +109,14 @@ test("compareAgainstBaseline flags a new raw-colour increase", () => {
   const { newViolations } = compareAgainstBaseline(findings, baseline);
   assert.equal(newViolations.length, 1);
   assert.match(newViolations[0], /colour/);
+});
+
+test("compareAgainstBaseline flags a new arrowglyph increase", () => {
+  const findings = { "c.jsx": { hex: 0, slop: 0, colour: 0, emoji: 0, arrowglyph: 3 } };
+  const baseline = { files: { "c.jsx": { hex: 0, slop: 0, colour: 0, emoji: 0, arrowglyph: 2 } } };
+  const { newViolations } = compareAgainstBaseline(findings, baseline);
+  assert.equal(newViolations.length, 1);
+  assert.match(newViolations[0], /arrowglyph/);
 });
 
 test("compareAgainstBaseline reports stale baseline when violations shrink", () => {

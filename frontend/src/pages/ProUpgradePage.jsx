@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { Trans, useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useSubscription } from "../lib/useSubscription";
+import { resolveApiError } from "../lib/apiError";
 import { TERMS_VERSION } from "../lib/termsVersion.js";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import {
@@ -27,13 +28,14 @@ const PLANS = [
   { key: "semiannual", priceKey: "semiannualPrice", noteKey: "semiannualNote" },
 ];
 
-// #2813: køb er pauset indtil handelsbetingelser + accept-flow er live.
-// Backend afviser også (503 checkout_paused i billingCheckout.js) — dette flag
-// styrer kun visningen og skal holdes i sync med CHECKOUT_PAUSED dér.
-const CHECKOUT_PAUSED = true;
+// #2813: ejer-beslutning 2/9 ("åbn nu, ret bagefter") flipper checkout åben.
+// Backend afviser også hvis flaget er sat (503 checkout_paused i
+// billingCheckout.js) — dette flag styrer kun visningen og skal holdes i sync
+// med CHECKOUT_PAUSED dér.
+const CHECKOUT_PAUSED = false;
 
 export default function ProUpgradePage() {
-  const { t, i18n } = useTranslation("pro");
+  const { t, i18n } = useTranslation(["pro", "errors"]);
   const [teamId, setTeamId] = useState(null);
   // Full-page load-gate (#2849 bølge 4): siden havde INGEN loading-state før —
   // team-opslaget kunne fejle stille og efterlade en "ikke-Pro"-flig af siden
@@ -106,7 +108,15 @@ export default function ProUpgradePage() {
           terms_version: TERMS_VERSION,
         }),
       });
-      if (!res.ok) throw new Error("checkout failed");
+      if (!res.ok) {
+        // #2816: 409 already_subscribed m.fl. skal vise den specifikke besked,
+        // ikke det generiske "kunne ikke starte betaling" — men FALD ALDRIG
+        // tilbage til en rå/engelsk debug-streng i UI'et.
+        const data = await res.json().catch(() => null);
+        setErr(resolveApiError(data, t, t("error")));
+        setBusy(false);
+        return;
+      }
       const { checkout_url } = await res.json();
       // Navigér ALDRIG til en tom/undefined URL — det bliver en relativ SPA-route
       // (/undefined -> dashboard-redirect) og ligner "der skete ingenting" (#1903).

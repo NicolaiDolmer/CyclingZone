@@ -33,6 +33,7 @@ import {
   SEED_DISTRIBUTION,
   SEED_BROWSE,
   SEED_SELECTION,
+  SEED_STAGE_ROLES,
   SEED_STRATEGY,
   SEED_ACADEMY,
   SEED_ACADEMY_PNL,
@@ -88,8 +89,32 @@ export function rpcResponse(name) {
     // #3190: løbsdage pr. rytter — Mit Holds Stats-fane.
     case "get_rider_race_days":
       return SEED_RIDER_RACE_DAYS;
+    // #4649: offentligt Founder-mærke (database/2026-09-03-4649-founder-public.sql).
+    // Ny RPC — intet eksisterende preview/e2e-forløb kalder den, så seeded data
+    // her ændrer ikke nogen eksisterende fladeadfærd. TEST_TEAM + RIVAL_TEAM
+    // seedes som Founders, så Standings/holdside/forum kan skærmbilledes uden
+    // ekstra opsætning.
+    case "founder_public_list":
+      return [
+        { team_id: TEST_TEAM.id, founder_number: 7 },
+        { team_id: RIVAL_TEAM.id, founder_number: 23 },
+      ];
     default:
       return undefined;
+  }
+}
+
+// #4649: Pro-tilstanden i preview styres af localStorage cz_mock_pro ("1"=Pro,
+// alt andet/uset=fri) — DEFAULT UÆNDRET (ingen flag sat → samme "{}"-fallback
+// som subscriptions altid har haft, se restRows/restObject nedenfor), så
+// eksisterende Layout.jsx-sidebar-badge-adfærd på andre skærmbilleder/e2e ikke
+// flytter sig. Kun skærmbilleder til DENNE PR sætter flaget eksplicit.
+export function mockProEnabled() {
+  try {
+    if (typeof localStorage === "undefined") return false;
+    return localStorage.getItem("cz_mock_pro") === "1";
+  } catch {
+    return false;
   }
 }
 
@@ -275,10 +300,22 @@ export function restRows(table, requestUrl = "") {
     }
     case "race_results": {
       // Den race-scopede query (RaceDetailPage: race_id=eq.<id>) får seed-resultater.
+      // #4581-rest: RaceDetailPage henter nu KUN den viste etapes race_results
+      // (.eq("race_id", id).eq("stage_number", n)) og APPENDER on-demand-hentede
+      // etaper til den eksisterende liste (linje ~552 i RaceDetailPage.jsx). Uden
+      // stage_number-filtret her svarer mocken med HELE datasættet for løbet ved
+      // hvert kald, og samme række dubleres i visningen. Samme filter-mønster som
+      // raceResultsRoute() i frontend/tests/e2e/fixtures.js.
       const idMatch = url.search.match(/race_id=eq\.([^&]+)/);
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
-        return SEED_RACE_RESULTS.filter(r => r.race_id === id);
+        const rows = SEED_RACE_RESULTS.filter(r => r.race_id === id);
+        const stageMatch = url.search.match(/stage_number=eq\.([^&]+)/);
+        if (stageMatch) {
+          const stageNumber = decodeURIComponent(stageMatch[1]);
+          return rows.filter(r => String(r.stage_number ?? 1) === stageNumber);
+        }
+        return rows;
       }
       // #1997 S1: rytter-scopede query (RiderStatsPage.fetchAllRiderSeasonRows →
       // Resultater-/Palmarès-fanen: rider_id=eq.<id>) får palmarès-seedet
@@ -430,6 +467,12 @@ export function restRows(table, requestUrl = "") {
       return [ACTIVE_SEASON];
     case "transfer_windows":
       return [{ id: "window-e2e", status: "open" }];
+    // #4649: kun tilstedeværende når cz_mock_pro="1" — ellers uændret default
+    // (tom liste → useSubscription ser {} → isPro/isFounder false, som i dag).
+    case "subscriptions":
+      return mockProEnabled()
+        ? [{ team_id: TEST_TEAM.id, status: "active", current_period_end: "2099-01-01T00:00:00Z", is_founder: true }]
+        : [];
     default:
       return [];
   }
@@ -445,6 +488,10 @@ export function restObject(table, requestUrl = "") {
       return ACTIVE_SEASON;
     case "transfer_windows":
       return { id: "window-e2e", status: "open" };
+    case "subscriptions":
+      return mockProEnabled()
+        ? { team_id: TEST_TEAM.id, status: "active", current_period_end: "2099-01-01T00:00:00Z", is_founder: true }
+        : {};
     default:
       return restRows(table, requestUrl)[0] || {};
   }
@@ -478,7 +525,12 @@ export function managerProfile(teamId) {
 
 // #3199 — forum-seed til preview/Playwright. Pinned ejer-opslag med poll +
 // almindelige spiller-opslag, samme shape som backend/lib/forum.js serverer.
-const FORUM_AUTHOR_OWNER = { username: "dolmer", team_name: null };
+// #4751: forfatter-shapen baerer nu ogsaa division (auto-signaturen). Ejeren
+// har intet hold — bevidst, saa preview ogsaa viser den ulinkede tilstand.
+const FORUM_AUTHOR_OWNER = { username: "dolmer", team_name: null, team_id: null, division: null };
+const FORUM_AUTHOR_PETE = { username: "peloton_pete", team_name: "Thunder Cycling", team_id: RIVAL_TEAM.id, division: RIVAL_TEAM.division };
+const FORUM_AUTHOR_SOFIE = { username: "sofie_r", team_name: "Nordjysk CC", team_id: "team-nordjysk", division: 4 };
+const FORUM_AUTHOR_E2E = { username: "e2e", team_name: "E2E Racing", team_id: TEST_TEAM.id, division: TEST_TEAM.division };
 // #4118/#3451: is_unread pr. tråd — pinned-1 og post-3 er læst (demonstrerer
 // den umarkerede tilstand), post-2 og post-4 er ulæst (prik + fed titel på
 // preview/e2e), så unread-status-mocken nedenfor har noget ægte at svare på.
@@ -511,7 +563,7 @@ const FORUM_POSTS = [
     last_reply_at: "2026-08-06T06:10:00Z",
     has_poll: false,
     is_unread: true,
-    author: { username: "peloton_pete", team_name: "Thunder Cycling" },
+    author: FORUM_AUTHOR_PETE,
   },
   {
     id: "forum-post-3",
@@ -526,7 +578,7 @@ const FORUM_POSTS = [
     last_reply_at: "2026-08-05T08:00:00Z",
     has_poll: false,
     is_unread: false,
-    author: { username: "sofie_r", team_name: "Nordjysk CC" },
+    author: FORUM_AUTHOR_SOFIE,
   },
   {
     id: "forum-post-4",
@@ -541,7 +593,7 @@ const FORUM_POSTS = [
     last_reply_at: null,
     has_poll: false,
     is_unread: true,
-    author: { username: "e2e", team_name: "E2E Racing" },
+    author: FORUM_AUTHOR_E2E,
   },
 ];
 
@@ -557,7 +609,7 @@ export function forumPostDetail(postId) {
         seq: 1,
         created_at: "2026-08-05T21:05:00Z",
         body: "Great initiative. My vote went to race replays, the finale deserves it.",
-        author: { username: "peloton_pete", team_name: "Thunder Cycling" },
+        author: FORUM_AUTHOR_PETE,
         is_mine: false,
         support_count: 6,
         supported_by_me: true,
@@ -568,7 +620,7 @@ export function forumPostDetail(postId) {
         seq: 2,
         created_at: "2026-08-06T07:20:00Z",
         body: "Agreed, and thanks for asking us directly in the game instead of only on Discord.",
-        author: { username: "sofie_r", team_name: "Nordjysk CC" },
+        author: FORUM_AUTHOR_SOFIE,
         is_mine: false,
         support_count: 2,
         supported_by_me: false,
@@ -577,7 +629,7 @@ export function forumPostDetail(postId) {
           id: `${post.id}-r1`,
           removed: false,
           excerpt: "Great initiative. My vote went to race replays, the finale deserves it.",
-          author: { username: "peloton_pete", team_name: "Thunder Cycling" },
+          author: FORUM_AUTHOR_PETE,
         },
       },
       {
@@ -585,7 +637,7 @@ export function forumPostDetail(postId) {
         seq: 3,
         created_at: "2026-08-06T07:45:00Z",
         body: "Whatever the original comment said, I second it.",
-        author: { username: "e2e", team_name: "E2E Racing" },
+        author: FORUM_AUTHOR_E2E,
         is_mine: true,
         support_count: 0,
         supported_by_me: false,
@@ -693,10 +745,55 @@ export function apiResponse(pathname, search = "") {
   }
 
   if (pathname.endsWith("/api/board/status")) {
+    // #4519: en aktiv, forhandlet 1-årsplan (negotiation_status='completed')
+    // med et bredt request_options-sæt, så board-request-preview-flowet
+    // (BoardRequestPanel) kan klikkes igennem og skærmbilledes i preview —
+    // uden dette faldt siden altid tilbage til baseline-fasen (plans: alle
+    // null), hvor request-panelet aldrig renderer noget at klikke på.
     return {
-      is_baseline_phase: true,
+      is_baseline_phase: false,
       setup_next_plan_type: null,
-      plans: { "5yr": null, "3yr": null, "1yr": null },
+      plans: {
+        "5yr": null,
+        "3yr": null,
+        "1yr": {
+          board: {
+            id: "board-preview-1yr",
+            team_id: TEST_TEAM.id,
+            plan_type: "1yr",
+            focus: "star_signing",
+            satisfaction: 62,
+            budget_modifier: 1.10,
+            negotiation_status: "completed",
+            current_goals: "[]",
+            seasons_completed: 0,
+            cumulative_stage_wins: 0,
+            cumulative_gc_wins: 0,
+            plan_start_season_number: 1,
+            renew_locked: false,
+            renew_lock_code: null,
+          },
+          plan_duration: 1,
+          seasons_remaining: 1,
+          seasons_completed: 0,
+          plan_progress_pct: 40,
+          cumulative_stats: {},
+          snapshots: [],
+          satisfaction_events: [],
+          is_expired: false,
+          outlook: null,
+          request_status: { active_season_number: 1, used_this_season: false, latest_request: null, supported: true },
+          request_options: [
+            { type: "lower_results_pressure", label_key: "requestDefs.lower_results_pressure.label", description_key: "requestDefs.lower_results_pressure.description", tradeoff_preview_key: "requestDefs.lower_results_pressure.tradeoffPreview", disabled: false, disabled_reason: null, disabled_reason_key: null, disabled_reason_params: {} },
+            { type: "more_youth_focus", label_key: "requestDefs.more_youth_focus.label", description_key: "requestDefs.more_youth_focus.description", tradeoff_preview_key: "requestDefs.more_youth_focus.tradeoffPreview", disabled: false, disabled_reason: null, disabled_reason_key: null, disabled_reason_params: {} },
+            { type: "more_results_focus", label_key: "requestDefs.more_results_focus.label", description_key: "requestDefs.more_results_focus.description", tradeoff_preview_key: "requestDefs.more_results_focus.tradeoffPreview", disabled: true, disabled_reason: null, disabled_reason_key: "requestReason.majorPivotUsed", disabled_reason_params: {} },
+            { type: "ease_identity_requirements", label_key: "requestDefs.ease_identity_requirements.label", description_key: "requestDefs.ease_identity_requirements.description", tradeoff_preview_key: "requestDefs.ease_identity_requirements.tradeoffPreview", disabled: false, disabled_reason: null, disabled_reason_key: null, disabled_reason_params: {} },
+          ],
+          satisfaction_progress: null,
+          passive_modifier: null,
+          bonus_offer_progress: null,
+        },
+      },
       team: TEST_TEAM,
       riders: RIDERS.filter(rider => rider.team_id === TEST_TEAM.id),
       standing: null,
@@ -1035,6 +1132,11 @@ export function apiResponse(pathname, search = "") {
   }
   // Fake sequential placeholder ID (not a secret; Discord client IDs are public) so the preview shows the connected DM-settings state.
   if (pathname.endsWith("/api/me/discord-status")) return { discord_id: "123456789012345678", dm_enabled: true, dm_prefs: { board_update: false }, bot_configured: true }; // gitleaks:allow
+  // #4201: assistentens tilstand. Preview viser opt_in-tilstanden, saa kontakten
+  // paa Profil-siden er synlig uden at noget flippes i prod (den staar proactive).
+  if (pathname.endsWith("/api/me/assistant-settings")) {
+    return { mode: "opt_in", late_fill_hours: 24, autopick_enabled: true };
+  }
   // #3102 etape 3: verdens-kataloget bor i Resultat-hubbens Arkiv-fane nu.
   // Returnerede før en tom liste med forkert shape ({pool, summary} forventes)
   // → fladen så død ud på preview. Lille men ægte pulje, så ejer-gennemklik
@@ -1070,6 +1172,8 @@ export function apiResponse(pathname, search = "") {
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
   // S5: udtagelses-panel (RaceSelectionPanel + HunterExplainer). /api/races/:id/selection.
   if (/\/api\/races\/[^/]+\/selection$/.test(pathname)) return SEED_SELECTION;
+  // #4538: etape-taktik-panelet (StageRoleMatrix). /api/races/:id/stage-roles.
+  if (/\/api\/races\/[^/]+\/stage-roles$/.test(pathname)) return SEED_STAGE_ROLES;
   // NB: i preview-interceptoren (installPreviewMock) fanges /api/scouting/me af
   // scoutingMock.js FØR denne blok (med scoutSystemEnabled: true, så Scouting-
   // centralen kan klikkes igennem). Denne variant — uden flag — rammes kun af
@@ -1141,6 +1245,28 @@ export function apiResponse(pathname, search = "") {
       ],
       stage_wins: 1,
       totals: { points: 80, prize_money: 194000 },
+      // #4697/#4698 — samme form som buildPrizeBreakdown/buildSponsorPayoutLine
+      // (backend/lib/myTeamLatestResult.js), håndkomponeret så preview kan vise
+      // fold-ud-sammensætningen uden at duplikere backend-beregningen her.
+      // Grupperne summer til totals.prize_money (60000 + 120000 + 14000).
+      prize_breakdown: {
+        prize_total: 194000,
+        points_total: 80,
+        stages: [
+          { stage_number: 1, amount: 60000, points: 40, riders: [{ rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", rank: 1, amount: 60000 }] },
+        ],
+        classifications: [
+          { classification: "gc", amount: 120000, points: 40, riders: [{ rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", rank: 2, amount: 120000 }] },
+        ],
+        team_bonus: { amount: 14000, points: 0 },
+      },
+      sponsor_payout: {
+        total: 6000,
+        items: [
+          { type: "sponsor_race_day", amount: 4500 },
+          { type: "sponsor_result_bonus", amount: 1500 },
+        ],
+      },
       history: seasonRaces.filter((r) => r.race_id !== "race-done-2"),
       season_totals: {
         points: seasonRaces.reduce((s, r) => s + r.points, 0),

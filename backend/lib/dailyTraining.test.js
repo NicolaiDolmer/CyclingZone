@@ -5,7 +5,7 @@ import {
   growthFractionForAge, abilityMult, dailyAbilityDelta, applyDailyTick,
   computeAcademySeasonCeiling, applyRaceDevelopmentTick, RACE_PROFILE_ABILITY_MAP, RACE_DEV_CONFIG,
 } from "./dailyTraining.js";
-import { TRAINING_CONFIG } from "./training.js";
+import { TRAINING_CONFIG, TRAINING_FOCUSES } from "./training.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { youthRateForPotential } from "./riderProgression.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
@@ -480,4 +480,55 @@ test("applyRaceDevelopmentTick: muterer ikke input, deterministisk pr. (rider,da
   assert.deepEqual(progress, { climbing: 0.2 }, "input-progress urørt");
   const out2 = applyRaceDevelopmentTick(raceDevFixture({ profileType: "mountain", abilities: { ...abilities }, progress: { ...progress } }));
   assert.deepEqual(out1, out2, "samme (rider,dato)-seed ⇒ identisk output");
+});
+
+// ── #4631 · punch og climbing trænes hver for sig ───────────────────────────
+
+test("#4631 · den specialiserede pakke træner sin evne hurtigere end hybriden", () => {
+  const hybrid = { focus: "vo2max", intensity: "hard" };
+  const climb = { focus: "vo2max_climb", intensity: "hard" };
+  const punch = { focus: "vo2max_punch", intensity: "hard" };
+  assert.ok(abilityMult("climbing", climb) > abilityMult("climbing", hybrid));
+  assert.ok(abilityMult("punch", punch) > abilityMult("punch", hybrid));
+  // Prisen: den anden evne falder til off-fokus, præcis som enhver anden evne
+  // uden for pakken. Der er ingen omfordeling af "spildt" træning (ejer 2/9).
+  assert.equal(abilityMult("punch", climb), TRAINING_CONFIG.offFocusMult);
+  assert.equal(abilityMult("climbing", punch), TRAINING_CONFIG.offFocusMult);
+  assert.equal(abilityMult("tempo", climb), abilityMult("tempo", hybrid), "motor-evnen står uændret");
+});
+
+test("#4631 · UDBYTTE-SUMMEN over pakkens egne evner er ens i de tre intervaldage", () => {
+  const sum = (focus) => TRAINING_FOCUSES[focus]
+    .reduce((total, ability) => total + abilityMult(ability, { focus, intensity: "hard" }), 0);
+  assert.equal(sum("vo2max_climb"), sum("vo2max"));
+  assert.equal(sum("vo2max_punch"), sum("vo2max"));
+});
+
+test("#4631 · hviledag og off-fokus er uændret for de nye pakker", () => {
+  assert.equal(abilityMult("climbing", { focus: "vo2max_climb", intensity: "rest" }), 0, "hvile giver 0 for ALLE evner");
+  assert.equal(abilityMult("sprint", { focus: "vo2max_punch", intensity: "hard" }), TRAINING_CONFIG.offFocusMult);
+});
+
+test("#4631 · en evne på sit loft giver stadig nul, også i den specialiserede pakke", () => {
+  // Splittet fjerner ikke loftet; det giver spilleren en vej UDEN OM et dødt
+  // slot. Rammer han loftet alligevel, er svaret stadig nul, ikke omfordeling.
+  const delta = dailyAbilityDelta({
+    ability: "climbing", current: 70, cap: 70, age: 22,
+    program: { focus: "vo2max_climb", intensity: "hard" },
+    conditionMult: 1, bonus: false, noise: 1, potentiale: 70,
+  });
+  assert.equal(delta, 0);
+});
+
+test("#4631 · en eksisterende hybrid-plan er BIT-IDENTISK med før splittet", () => {
+  // Vægt-leddet er 1,0 for hvert fokus uden en post i FOCUS_ABILITY_WEIGHT, så
+  // ingen plan i prod må flytte sig af denne PR.
+  const args = {
+    ability: "climbing", current: 50, cap: 70, age: 22,
+    program: { focus: "vo2max", intensity: "hard" },
+    conditionMult: 1, bonus: false, noise: 1, potentiale: 70,
+  };
+  const base = 20 * growthFractionForAge(22) * DAILY_TRAINING_CONFIG.dailyBudgetBoost / DAILY_TRAINING_CONFIG.daysPerSeason;
+  const forventet = base * TRAINING_CONFIG.focusGrowthMult.hard * youthMultiplier(22) * youthRateForPotential(70);
+  assert.ok(Math.abs(dailyAbilityDelta(args) - forventet) < 1e-12);
 });

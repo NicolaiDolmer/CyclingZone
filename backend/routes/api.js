@@ -35,7 +35,9 @@ import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
 import { handleEmailUnsubscribe } from "../lib/emailUnsubRoute.js";
 import { createCheckoutHandler } from "../lib/billingCheckout.js";
 import { createPortalHandler } from "../lib/billingPortal.js";
+import { createAluntaClient } from "../lib/alunta.js"; // #4648 — scopet reconcile-for-team efter checkout.completed
 import { getFounderSeats } from "../lib/founderSeats.js";
+import { createProRiderHistoryHandler } from "../lib/proRiderHistory.js";
 import {
   ACTIVE_AUCTION_STATUSES,
   OPEN_SWAP_STATUSES,
@@ -151,6 +153,7 @@ import {
   deleteForumReply,
   getForumReportCounts,
   markForumThreadRead,
+  markAllForumThreadsRead,
   getForumUnreadStatus,
   toggleForumReaction,
 } from "../lib/forum.js";
@@ -188,7 +191,7 @@ import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked }
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
-import { applyRiderEligibilityFilter, isRiderInjured } from "../lib/riderEligibility.js";
+import { applyRiderEligibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
@@ -202,6 +205,8 @@ import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
+import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
+import { isDormantManager } from "../lib/managerActivity.js";
 import { INTAKE_OFFER_EXPIRY_DAYS } from "../lib/academyIntakeExpirySweep.js";
 import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, demoteSalary } from "../lib/academyTransfer.js";
@@ -329,6 +334,17 @@ import {
   declineBonusOffer,
   getActiveConsequencesForTeam,
 } from "../lib/boardConsequences.js";
+// #3514/#4557 S-M2b · Mandatets Boardroom-endpoint (GET /board/room).
+import { isBoardMandateModelEnabled } from "../lib/boardMandateFlag.js";
+import { buildBoardRoomPayload } from "../lib/boardRoom.js";
+// #4557 S-M2c · Årsmødet (GET/POST /board/meeting/*).
+import {
+  buildBoardMeetingPayload,
+  regenerateMandateFocus,
+  signMandate,
+  MandateSignConflictError,
+} from "../lib/boardMandateMeeting.js";
+import { MandateAdjustmentBudgetError } from "../lib/boardMandate.js";
 import { computeWeekendSatisfactionUpdate } from "../lib/boardWeekendUpdate.js";
 import { computeBonusOfferProgress, computePassiveModifierInfo } from "../lib/boardTransparency.js";
 import { isBoardTestModeActive } from "../lib/boardTestMode.js";
@@ -367,7 +383,7 @@ import { recordIdentityEvent } from "../lib/identityTelemetry.js";
 import { evaluateAuctionEntryGate, readNewAccountGateConfig } from "../lib/newAccountGates.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
-import { buildCustomerRows, summarizeNps } from "../lib/growthSnapshot.js";
+import { buildCustomerRows, partitionSubscriptions, summarizeNps } from "../lib/growthSnapshot.js";
 import { BALANCE_DRIFT_BANDS, ALARM_ELIGIBLE_METRICS, findConsecutiveBreaches, findConsecutiveTierBreaches } from "../lib/balanceDriftMetrics.js";
 import { isBotUserAgent } from "../lib/botDetection.js";
 import { computeVisitHash, dayString } from "../lib/visitHash.js";
@@ -417,12 +433,13 @@ import {
   getCacheStats,
 } from "../lib/responseCache.js";
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
+import { readAssistantSelectionConfig, ASSISTANT_MODES } from "../lib/assistantSelectionMode.js";
 import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { selectInChunks } from "../lib/dbChunk.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
-import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory } from "../lib/myTeamLatestResult.js";
+import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory, buildPrizeBreakdown, buildSponsorPayoutLine } from "../lib/myTeamLatestResult.js";
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
 import { fetchLatestGate as fetchLatestLevelCorrectionGate, getDryRunReport as getLevelCorrectionDryRunReport } from "../scripts/marketValueLevelCorrectionApply.js";
 
@@ -824,7 +841,10 @@ async function requireOwner(req, res, next) {
 // Rå body wired i server.js (express.raw på pathen før express.json).
 const billingCheckout = createCheckoutHandler({ supabase });
 const billingPortal = createPortalHandler({ supabase });
-router.post("/billing/alunta-webhook", (req, res) => handleAluntaWebhook({ req, res, supabase }));
+// #4648: lazy — kaster først ved faktisk kald hvis ALUNTA_API_TOKEN mangler,
+// samme mønster som cron.js's modul-niveau aluntaClient.
+const aluntaClient = createAluntaClient();
+router.post("/billing/alunta-webhook", (req, res) => handleAluntaWebhook({ req, res, supabase, client: aluntaClient }));
 router.post("/billing/checkout", requireAuth, billingLimiter, (req, res) => billingCheckout(req, res));
 // #2813: self-service opsigelse — signeret auto-login-link til Alunta-portalen.
 router.post("/billing/portal", requireAuth, billingLimiter, (req, res) => billingPortal(req, res));
@@ -836,6 +856,11 @@ router.get("/billing/founder-seats", async (req, res) => {
     res.sendStatus(500);
   }
 });
+
+// ── Pro v1.1-perks (#4649) ────────────────────────────────────────────────────
+// Foerste rute der bruger isPro()-helperen til at gate funktionalitet (#2806).
+const proRiderHistory = createProRiderHistoryHandler({ supabase });
+router.get("/pro/rider-history/:riderId", requireAuth, presencePulseLimiter, (req, res) => proRiderHistory(req, res));
 
 // ── Email unsubscribe (#2725) — one-click opt-out, INGEN requireAuth (link
 // lever i selve e-mailen, læses af mailklienter der aldrig er logget ind).
@@ -4121,7 +4146,9 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       // #2637: stages_completed er nu med — panelet skal kunne se om løbet er "live"
       // (0 < stages_completed < stages), så det kan forhindre TILFØJELSER til en
       // frosset trup client-side (fjernelse er stadig altid tilladt, se PUT /selection).
-      .select("id, name, race_type, race_class, stages, stages_completed, status, season_id, league_division_id")
+      // #4701: scheduled_for skal med — getSelectionContext vurderer skadesstatus mod
+      // LØBETS startdato, ikke "nu" (raceSelectionReferenceDateStr, riderEligibility.js).
+      .select("id, name, race_type, race_class, stages, stages_completed, status, season_id, league_division_id, scheduled_for")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -4581,7 +4608,9 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     const { data: races } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text)")
+      // #4701: scheduled_for skal med — getSelectionContext (kaldt pr. kolonne nedenfor)
+      // vurderer skadesstatus mod LØBETS startdato, ikke "nu".
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text), scheduled_for")
       .eq("season_id", season.id);
     const raceIds = (races || []).map((r) => r.id);
     // #1984/#2195 rod-årsag: load MED game_day, så binding-vinduet regnes i in-game-dag-rum —
@@ -4969,7 +4998,9 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       .from("races")
       // #3070: season_id SKAL med — loadTeamBindingContext bruger den til at
       // udelukke forrige-sæsons entries fra binding (game_day er sæson-relativt).
-      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
+      // #4701: scheduled_for SKAL med — prepareSelectionChange → getSelectionContext
+      // vurderer skadesstatus mod LØBETS startdato, ikke "nu".
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -5146,7 +5177,10 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
 
     const { data: raceRows, error: racesErr } = await supabase
       .from("races")
-      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
+      // #4701: scheduled_for SKAL med — prepareSelectionChange → getSelectionContext
+      // vurderer skadesstatus mod LØBETS startdato, ikke "nu" (samme regel som
+      // single-endpointet ovenfor, så matrixens "Gem plan" ikke afviger).
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for")
       .in("id", raceIds);
     if (racesErr) return res.status(500).json({ error: racesErr.message });
     const raceById = new Map((raceRows || []).map((r) => [r.id, r]));
@@ -5309,7 +5343,9 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
 
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, season_id")
+      // #4701: scheduled_for skal med — skadesstatus for kandidat-poolen nedenfor
+      // vurderes mod LØBETS startdato, ikke "nu".
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -5359,7 +5395,9 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (condErr) return res.status(500).json({ error: condErr.message });
     const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
     const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
-    const todayStr = copenhagenDateString();
+    // #4701: reference-dato = løbets EGEN startdato, ikke "nu" — assistenten må gerne
+    // fylde en rytter ind der er skadet i dag, men rask inden dette løb starter.
+    const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
     // #3896: kanonisk skades-predikat (riderEligibility.isRiderInjured).
     const injuredIds = new Set(
       (conditions || []).filter((c) => isRiderInjured(c.injured_until, todayStr)).map((c) => c.rider_id)
@@ -5479,6 +5517,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
       stagesCompleted: ctx.stages_completed,
       teamRiderIds: ctx.teamRiderIds,
       baseRoleByRider: ctx.baseRoleByRider,
+      abandonedRiderIds: ctx.abandonedRiderIds,
     });
     if (!result.ok) {
       const status = result.errors[0] === "stage_roles_race_completed" ? 409 : 400;
@@ -5687,7 +5726,9 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     if (!season) return res.status(409).json({ error: "no_active_season" });
 
     const { data: races } = await supabase
-      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id").eq("season_id", season.id);
+      // #4701: scheduled_for skal med — injuredIds-kandidatpoolen nedenfor vurderes mod
+      // regenerings-DAGENS løbsdato, ikke "nu" (raceSelectionReferenceDateStr).
+      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id, scheduled_for").eq("season_id", season.id);
     const raceIds = (races || []).map((r) => r.id);
     // #1984/#2195: load MED game_day, så autofill-bindingen regnes i in-game-dag-rum — SAMME
     // nøgle-rum som save-guarden. Uden game_day (CET-ordinal) ville autofill nægte at placere en
@@ -5746,7 +5787,13 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // #2637/#3896: skadede ryttere (kanonisk isRiderInjured) må ALDRIG auto-udtages —
     // spejler raceRunner.fillMissingTeamEntries (spec 6.5, #1306) og raceEntryGenerator-sweepet.
     // Dette endpoint er spillerens EGEN "auto-udfyld"-knap; manglede samme guard.
-    const todayStr = copenhagenDateString();
+    // #4701: reference-dato = den REGENERÉREDE dags egen løbsdato, ikke "nu" — target
+    // deler alle samme board-dag, så mindste scheduled_for blandt dem er dagens dato
+    // (konservativ: aldrig senere end nogen af dagens faktiske løb).
+    const todayStr = target.reduce((min, r) => {
+      const ref = raceSelectionReferenceDateStr(r, copenhagenDateString());
+      return min === null || ref < min ? ref : min;
+    }, null) ?? copenhagenDateString();
     const injuredIds = new Set(
       (conditions || []).filter((c) => isRiderInjured(c.injured_until, todayStr)).map((c) => c.rider_id)
     );
@@ -8904,11 +8951,17 @@ router.get("/admin/growth/snapshots", requireAdmin, async (req, res) => {
 // kunde + konverteringer. Beta-populationen er lille (håndfulde betalende
 // kunder), så det er trygt at hente ALLE subscriptions-rows og beregne LTV i
 // Node (backend/lib/growthSnapshot.js, unit-testet) frem for en RPC.
+//
+// #4636: en subscriptions-række er IKKE automatisk en kunde. Checkout-flowet
+// skriver vilkårsaccepten som en række FØR betalingen (billingCheckout.js), så
+// rækker uden betalingsspor (hasEverPaid) rapporteres separat som
+// "startede checkout, betalte ikke" og tæller hverken i kunder, LTV eller
+// konvertering.
 router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
   try {
     const { data: subs, error: subsErr } = await supabase
       .from("subscriptions")
-      .select("team_id, status, plan_interval, is_founder, current_period_end, created_at")
+      .select("team_id, status, plan_interval, is_founder, current_period_end, alunta_subscription_id, terms_accepted_at, created_at")
       .order("created_at", { ascending: false });
     if (subsErr) throw subsErr;
 
@@ -8924,9 +8977,17 @@ router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
     }
 
     const now = new Date();
-    const customers = buildCustomerRows(subs, teamsById, now);
+    const { paying, checkoutOnly } = partitionSubscriptions(subs);
+    const customers = buildCustomerRows(paying, teamsById, now);
     const active = customers.filter(c => c.is_active);
     const ltvTotalCents = customers.reduce((sum, c) => sum + c.ltv_cents, 0);
+    const checkoutStarted = checkoutOnly
+      .map(s => ({
+        team_id: s.team_id,
+        team_name: teamsById[s.team_id]?.name || null,
+        terms_accepted_at: s.terms_accepted_at || s.created_at,
+      }))
+      .sort((a, b) => new Date(b.terms_accepted_at) - new Date(a.terms_accepted_at));
 
     // Waitlist-konvertering (samme kilde som AdminWaitlistPage): hvor mange af
     // dem der SIGNEDE UP på waitlisten er også blevet betalende kunder — join
@@ -8940,6 +9001,7 @@ router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
 
     res.json({
       customers,
+      checkout_started: checkoutStarted,
       summary: {
         total_customers: customers.length,
         active_customers: active.length,
@@ -8947,6 +9009,7 @@ router.get("/admin/growth/customers", requireAdmin, async (req, res) => {
         ltv_avg_cents: customers.length ? Math.round(ltvTotalCents / customers.length) : null,
         total_registered: totalRegistered || 0,
         conversion_pct: totalRegistered ? Math.round((customers.length / totalRegistered) * 1000) / 10 : null,
+        checkout_started_unpaid: checkoutStarted.length,
       },
     });
   } catch (error) {
@@ -9121,6 +9184,46 @@ router.get("/admin/balance-drift", requireAdmin, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message || "Kunne ikke hente balance-drift-data" });
   }
+});
+
+// ── /api/me/assistant-settings — #4201 ────────────────────────────────────────
+//
+// Assistentens udtagelses-tilstand (app_config.assistant_selection_mode) plus
+// spillerens eget til/fra-valg. Fladen viser KUN kontakten naar tilstanden er
+// "opt_in" — i proactive og late_fill er der intet at vaelge, og en synlig
+// kontakt uden virkning ville vaere en loegn. Se docs/ASSISTANT_RULES.md §1b.
+router.get("/me/assistant-settings", requireAuth, presencePulseLimiter, async (req, res) => {
+  const { mode, lateFillHours } = await readAssistantSelectionConfig(supabase);
+  res.json({
+    mode,
+    late_fill_hours: lateFillHours,
+    // Kolonnen kommer med database/2026-09-03-4201-assistant-mode.sql. Er den
+    // ikke applied endnu, er vaerdien undefined = ikke fravalgt.
+    autopick_enabled: req.team?.assistant_autopick_enabled !== false,
+  });
+});
+
+router.patch("/me/assistant-settings", requireAuth, marketWriteLimiter, async (req, res) => {
+  const { enabled } = req.body || {};
+  if (typeof enabled !== "boolean") {
+    return res.status(400).json({ error: "enabled must be a boolean", errorCode: "enabled_must_be_boolean" });
+  }
+  if (!req.team?.id) {
+    return res.status(400).json({ error: "You need a team first", errorCode: "team_required" });
+  }
+  // Skriv kun naar valget faktisk betyder noget — ellers ville en gammel klient
+  // kunne gemme en praeference der ser ud til at virke, men ikke goer det.
+  const { mode } = await readAssistantSelectionConfig(supabase);
+  if (mode !== ASSISTANT_MODES.OPT_IN) {
+    return res.status(409).json({
+      error: "The assistant is not opt-in right now",
+      errorCode: "assistant_opt_in_not_active",
+    });
+  }
+  const { error } = await supabase
+    .from("teams").update({ assistant_autopick_enabled: enabled }).eq("id", req.team.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, autopick_enabled: enabled });
 });
 
 // ── /api/me — current user's Discord DM preferences ───────────────────────────
@@ -11956,7 +12059,7 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     const raceMeta = raceMetaById.get(raceId);
     const finalStage = raceMeta.stages ?? 1;
 
-    const [myRowsRes, recapRows, incidentsRes, seasonRacesRes] = await Promise.all([
+    const [myRowsRes, recapRows, incidentsRes, seasonRacesRes, sponsorRowsRes] = await Promise.all([
       // pagination-safe: one team's own results in one race — bounded by
       // squad/stage-count, nowhere near the 1000-row cap (#3331 audit).
       supabase
@@ -11991,6 +12094,16 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
         p_league_division_id: req.team.league_division_id ?? null,
         p_limit: MY_TEAM_SEASON_RACES_LIMIT,
       }),
+      // pagination-safe: #4698 sponsor-race-day + resultat-bonus for DETTE
+      // løb/hold — bundet til ét race_id + team_id, samme størrelsesorden som
+      // myRowsRes ovenfor (højst to rækker: race-day + resultat-bonus, se
+      // sponsorRaceDayIncome.js — én idempotency-nøgle pr. type pr. race+team).
+      supabase
+        .from("finance_transactions")
+        .select("type, amount")
+        .eq("race_id", raceId)
+        .eq("team_id", req.team.id)
+        .in("type", ["sponsor_race_day", "sponsor_result_bonus"]),
     ]);
     if (myRowsRes.error) throw myRowsRes.error;
     // recapRows came from fetchAllRows(), which throws on error — no separate
@@ -11998,6 +12111,9 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
     // race_incidents kan mangle i ældre miljøer (v3-flag) — degradér til tom
     // liste i stedet for at vælte hele kortet (samme holdning som RaceDetailPage).
     const incidents = incidentsRes.error ? [] : (incidentsRes.data || []);
+    // #4698: samme degraderings-holdning — en fejlet sponsor-slice må ikke
+    // vælte hele kortet, den skjuler blot sponsor-udbetalings-linjen.
+    const sponsorRows = sponsorRowsRes.error ? [] : (sponsorRowsRes.data || []);
 
     // #2886 historik-fejl kastes — MED én snæver undtagelse: "funktionen findes
     // ikke" (PostgREST PGRST202 / Postgres 42883) i vinduet mellem merge og
@@ -12042,6 +12158,9 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       raceMeta,
       myRows: myRowsRes.data || [],
     });
+    // #4697/#4698: samme myRows/sponsorRows — ren aggregering, ingen ekstra query.
+    const prize_breakdown = buildPrizeBreakdown({ myRows: myRowsRes.data || [] });
+    const sponsor_payout = buildSponsorPayoutLine({ sponsorRows });
     const lastImport = (participation || []).find((p) => p.race_id === raceId)?.imported_at ?? null;
 
     res.json({
@@ -12061,6 +12180,11 @@ router.get("/dashboard/my-latest-result", requireAuth, cached({
       placements,
       stage_wins,
       totals,
+      // #4697: foldbar sammensætning af totals.prize_money (etape/klassifikation/
+      // holdbonus). #4698: sponsor-udbetalingen for DETTE løb som egen linje —
+      // null hvis holdet ikke fik nogen (ingen tom linje i UI'et).
+      prize_breakdown,
+      sponsor_payout,
       // #2886: de foregående løb (uden det viste) + sæson til dato.
       history,
       season_totals,
@@ -12118,6 +12242,79 @@ router.post("/dashboard/my-latest-result/seen", requireAuth, presencePulseLimite
   } catch (e) {
     captureException(e);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Season Signup Routes (#4592 del 3 / #452) ─────────────────────────────────
+//
+// "Tilmeld dig næste sæson"-knap. Bag app_config-flaget season_signup_enabled
+// (fælles med parkerings-forberedelsen, del 2 — seasonSignupFlag.js). Skriver
+// KUN teams.next_season_signup_at — cutoveren (managerParking.selectTeamsToPark)
+// respekterer feltet: en manager der har tilmeldt sig eksplicit parkeres
+// ALDRIG, uanset inaktivitet. Denne PR flipper IKKE flaget.
+
+// GET /api/season/signup-status — status til Dashboard-kortet. `eligible`
+// afspejler SAMME inaktivitets-definition som parkerings-sweepen
+// (isDormantManager, managerActivity.js — 30 dage uden login) OR allerede
+// parkeret, så kortet kun vises for de managere sweepen faktisk ville ramme.
+router.get("/season/signup-status", requireAuth, presencePulseLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isSeasonSignupEnabled(supabase, { isBetaTester });
+    // En fejlet/manglende users-række gør userRow null/undefined, og
+    // isDormantManager behandler det som inaktiv (samme fallback-retning som
+    // resten af #4592 — "manglende bruger tæller som inaktiv", se
+    // managerActivity.js) — det er den sikre retning for et gate der styrer
+    // synligheden af en RENT DEFENSIV knap, ikke en penge-/data-mutation.
+    const { data: userRow } = await supabase
+      .from("users").select("last_seen").eq("id", req.user.id).maybeSingle(); // best-effort: se kommentar ovenfor
+    const parked = req.team.parked_at != null;
+    const dormant = isDormantManager(userRow, new Date());
+    const nextSeasonNumber = (await getActiveSeasonNumber()) + 1;
+    res.json({
+      enabled,
+      eligible: enabled && (parked || dormant),
+      parked,
+      signed_up: req.team.next_season_signup_at != null,
+      next_season_number: nextSeasonNumber,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/season/signup — bekræft tilmelding. Idempotent (gentagne kald
+// opdaterer blot timestampet). Ingen eligibility-gate her med vilje: at
+// tilmelde sig tidligt/uopfordret kan aldrig skade — feltet er udelukkende
+// beskyttende (forhindrer fremtidig parkering).
+router.post("/season/signup", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isSeasonSignupEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "season_signup_flag_disabled" });
+
+    const now = new Date();
+    const { data, error } = await supabase
+      .from("teams")
+      .update({ next_season_signup_at: now.toISOString() })
+      .eq("id", req.team.id)
+      .select("next_season_signup_at")
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+
+    const nextSeasonNumber = (await getActiveSeasonNumber()) + 1;
+    res.json({
+      ok: true,
+      signed_up: true,
+      next_season_signup_at: data?.next_season_signup_at ?? now.toISOString(),
+      next_season_number: nextSeasonNumber,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -14029,6 +14226,21 @@ router.get("/forum/unread-status", requireAuth, async (req, res) => {
   }
 });
 
+// PATCH /api/forum/threads/read-all — markér ALLE tråde læst for requesteren
+// (#3451, spillerønske 26/8: "a button, like in the inbox, where you can mark
+// all threads as read"). Samme skrive-mønster som forum-postruterne herunder
+// (forumWriteLimiter), selvom handlingen ikke opretter indhold — den skriver
+// stadig en række pr. tråd i forum_thread_reads.
+router.patch("/forum/threads/read-all", requireAuth, forumWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await markAllForumThreadsRead({ supabase, userId: req.user.id });
+    res.status(status).json(body);
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/forum/posts/:id — opslag + svar + evt. poll (aggregater + egen stemme).
 router.get("/forum/posts/:id", requireAuth, async (req, res) => {
   try {
@@ -14837,6 +15049,11 @@ router.get("/board/status", requireAuth, async (req, res) => {
           isExpired,
           // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
           assignedMembers: teamBoardMembers,
+          // #4556 S-M2b addendum · navne-afledning (samme kontrakt som
+          // Boardroom-siden/boardRoom.js): uden teamId udelades full_name/
+          // initials i stedet for at opfinde et navn.
+          teamId,
+          dnaKey: teamDnaKey,
         },
       });
 
@@ -14910,6 +15127,10 @@ router.get("/board/status", requireAuth, async (req, res) => {
         })
         : [];
 
+      // #915/#3575 · Beregnes én gang og deles af renew_locked + renew_lock_code
+      // nedenfor (én lås-evaluering pr. plan, ikke to).
+      const renegotiationLock = getBoardRenegotiationLock({ board, activeSeason });
+
       const planEntry = {
         board,
         plan_duration: planDuration,
@@ -14929,7 +15150,10 @@ router.get("/board/status", requireAuth, async (req, res) => {
         is_expired: isExpired,
         // #915 · Gen-forhandling låst når sæsonen er for langt fremme — frontend
         // skjuler "Forny"-knappen så låsen ikke kun håndhæves server-side.
-        renew_locked: getBoardRenegotiationLock({ board, activeSeason }).locked,
+        // #3575 · renew_lock_code lader frontend vise EN PRÆCIS årsag (flerårsplan
+        // stadig aktiv vs. same-sæson vindue/progress) i stedet for én generisk tekst.
+        renew_locked: renegotiationLock.locked,
+        renew_lock_code: renegotiationLock.code ?? null,
         // #2310 punkt 2 · retnings-pil ("62% → på vej mod 71").
         satisfaction_progress: satisfactionProgress,
         // #2310 punkt 7 · lag 1 (passiv sponsor-modifier), hidtil usynlig i UI.
@@ -15041,6 +15265,155 @@ router.get("/board/status", requireAuth, async (req, res) => {
       active_consequences: activeConsequences,
       bonus_offer: bonusOffer,
     });
+  } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// #3514/#4557 S-M2b · GET /api/board/room — Mandatets Boardroom-side.
+// Samme auth/team-scoping som GET /board/status. Flag off (mandat-modellen
+// er ikke aktiv for denne viewer) → 200 {enabled:false} og INTET andet
+// (ingen skygge-tabel-læsning). Aggregeringen ligger i lib/boardRoom.js så
+// den kan unit-testes uden Express — se modul-headeren dér for kontrakten
+// og de rapporterede afvigelser.
+// #530 · rate-limit-coverage-guard: presencePulseLimiter (samme mønster som
+// guardens egen eksempel-tekst) — polles på route-change/tab-focus ligesom de
+// andre presence-pulse-dækkede reads, IKKE grandfathered ind i den eksisterende
+// ~76-rute-baseline af (endnu) udækkede GET-ruter (bl.a. GET /board/status
+// selv, som forbliver udækket dér — ny kode skal ikke vokse den bunke).
+router.get("/board/room", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+    // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
+
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isBoardMandateModelEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false });
+
+    const payload = await buildBoardRoomPayload({ supabase, teamId });
+    res.json(payload);
+  } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// #4557 S-M2c · Årsmødet (spec §4.7-4.8). Samme auth/team-scoping som
+// GET /board/room. Flag off → `{ available: false }` (samme konvention som
+// Boardroom's `{ enabled: false }`) — INTET andet læses.
+router.get("/board/meeting", requireAuth, presencePulseLimiter, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
+
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isBoardMandateModelEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ available: false });
+
+    const payload = await buildBoardMeetingPayload({ supabase, teamId });
+    res.json(payload);
+  } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// #4557 S-M2c · Regenererer det foreslåede mandat for et NYT fokus (spec
+// §4.8) — nulstiller justeringerne (nye mål = 0 brugt). Kun mens mandatet
+// står i status 'proposed'.
+router.post("/board/meeting/focus", requireAuth, boardWriteLimiter, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
+
+    const { focus } = req.body || {};
+    if (!isValidBoardFocus(focus)) {
+      return res.status(400).json({ error: "Invalid focus" });
+    }
+
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isBoardMandateModelEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(404).json({ error: "Mandat-modellen er ikke aktiv", available: false });
+
+    const payload = await regenerateMandateFocus(supabase, { teamId, focus, isBetaTester });
+    if (!payload) return res.status(404).json({ error: "Mandat-modellen er ikke aktiv", available: false });
+    if (payload.available === false) {
+      return res.status(404).json({ error: "Intet foreslået mandat at ændre fokus på", available: false });
+    }
+    res.json(payload);
+  } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// #4557 S-M2c · Underskriv årsmødet i ét kald (spec §4.5). Idempotent på
+// mandate.id + status 'proposed'. Body:
+//   { mandateId, focus?, adjustments: [{ goalKey, choice }], request: { type } | null, visionSlot: { accept } | null }
+router.post("/board/meeting/sign", requireAuth, boardWriteLimiter, async (req, res) => {
+  try {
+    const teamId = req.team?.id;
+    if (!teamId) return res.status(404).json({ error: "No team" });
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
+
+    const { mandateId, mandate_id, focus, adjustments, request, visionSlot, vision_slot } = req.body || {};
+    const resolvedMandateId = mandateId || mandate_id;
+    if (!resolvedMandateId) {
+      return res.status(400).json({ error: "mandateId is required", errorCode: "mandate_id_required" });
+    }
+    if (focus != null && !isValidBoardFocus(focus)) {
+      return res.status(400).json({ error: "Invalid focus" });
+    }
+    if (request?.type && !isValidBoardRequestType(request.type)) {
+      return res.status(400).json({ error: "Invalid request_type" });
+    }
+
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isBoardMandateModelEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(404).json({ error: "Mandat-modellen er ikke aktiv", available: false });
+
+    let payload;
+    try {
+      payload = await signMandate(supabase, {
+        teamId,
+        mandateId: resolvedMandateId,
+        focus: focus || null,
+        adjustments: Array.isArray(adjustments) ? adjustments : [],
+        request: request?.type ? { type: request.type } : null,
+        visionSlot: visionSlot ?? vision_slot ?? null,
+        isBetaTester,
+        signedVia: "manager",
+      });
+    } catch (signError) {
+      if (signError instanceof MandateAdjustmentBudgetError) {
+        return res.status(409).json({
+          error: signError.message,
+          errorCode: signError.errorCode,
+          used: signError.used,
+          allowed: signError.allowed,
+        });
+      }
+      if (signError instanceof MandateSignConflictError) {
+        return res.status(signError.status || 409).json({ error: signError.message, errorCode: signError.errorCode });
+      }
+      throw signError;
+    }
+    if (!payload) return res.status(404).json({ error: "Mandat-modellen er ikke aktiv", available: false });
+
+    res.json(payload);
   } catch (e) {
     captureApiRouteError(e, req);
     res.status(500).json({ error: e.message });
@@ -15466,123 +15839,187 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
   }
 });
 
-router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) => {
+// #4519 · Delt kerne for POST /board/request og POST /board/request/preview:
+// validering + kontekst-load + resolveBoardRequest. Preview-endpointet kalder
+// DENNE og stopper der (ingen writes, se dens handler); det skrivende endpoint
+// kalder DEN SAMME funktion og fortsætter til board_profiles.update +
+// board_request_log.insert. Én kilde til forretningslogikken, så et preview
+// aldrig kan vise noget andet end hvad et faktisk Accept-klik ville skrive —
+// spilleren skal kunne stole på "nuværende plan → foreslået plan" (#4519).
+//
+// Returnerer enten { ok:false, status, error, errorCode? } (send direkte som
+// res.status(status).json({error, ...})) eller { ok:true, teamId, plan_type,
+// request_type, board, activeSeason, requestResult, requestUsedThisSeason }.
+async function computeBoardRequestOutcome(req) {
+  const teamId = req.team?.id;
+  if (!teamId) return { ok: false, status: 404, error: "No team" };
+  // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
+  // Håndhæves OGSÅ eksplicit i selve route-handleren lige efter requireAuth
+  // (bevidst duplikat — spejler #1077-guard-mønstret de tre andre /board-
+  // handlere bruger, og boardBankGuard.routes.test.js scanner netop den
+  // placering). Denne kopi er defense-in-depth for direkte kald af funktionen.
+  if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+    return { ok: false, status: 403, error: "Bestyrelsen er kun for manager-hold" };
+  }
+
+  const { plan_type, request_type } = req.body || {};
+  if (!isValidBoardPlanType(plan_type)) {
+    return { ok: false, status: 400, error: "Invalid plan_type" };
+  }
+  if (!isValidBoardRequestType(request_type)) {
+    return { ok: false, status: 400, error: "Invalid request_type" };
+  }
+
+  const context = await loadBoardPlanningContext(teamId);
+  const { activeSeason, boards, riders, standing, team } = context;
+  const board = boards.find(b => b.plan_type === plan_type) || null;
+
+  if (!board) return { ok: false, status: 404, error: "No active board plan for this plan type" };
+  if (!activeSeason) return { ok: false, status: 409, error: "No active season" };
+  if (board.negotiation_status !== "completed") {
+    return { ok: false, status: 409, error: "Board plan must be active before requests" };
+  }
+
+  const [loansRes, snapshotsRes, requestLogRes] = await Promise.all([
+    supabase.from("loans").select("id", { count: "exact", head: true })
+      .eq("team_id", teamId).eq("status", "active"),
+    supabase.from("board_plan_snapshots")
+      .select("goals_met, goals_total, satisfaction_delta")
+      .eq("board_id", board.id)
+      .order("created_at", { ascending: false })
+      .limit(3),
+    supabase.from("board_request_log")
+      .select("id")
+      .eq("board_id", board.id)
+      .eq("season_number", activeSeason.number)
+      .order("created_at", { ascending: false })
+      .limit(1),
+  ]);
+
+  if (loansRes.error) return { ok: false, status: 500, error: loansRes.error.message };
+  if (snapshotsRes.error) return { ok: false, status: 500, error: snapshotsRes.error.message };
+  if (isMissingTable(requestLogRes.error, "board_request_log")) {
+    // #678 Track 3: intern SQL/migration-instruktion må ALDRIG eksponeres til
+    // spilleren. Log til ops og returnér en generisk, lokaliserbar besked.
+    console.warn("[board/request] board_request_log-tabellen mangler — kør SQL-migrationen for board_request_log");
+    return { ok: false, status: 503, error: "Board features aren't available yet", errorCode: "board_unavailable" };
+  }
+  if (requestLogRes.error) return { ok: false, status: 500, error: requestLogRes.error.message };
+
+  const requestUsedThisSeason = Boolean(requestLogRes.data?.length);
+
+  if (requestUsedThisSeason) {
+    return { ok: false, status: 409, error: "Board request already used this season" };
+  }
+
+  // #2469 · /board/request var den fjerde context-sti som #2308 ikke dækkede:
+  // den håndbyggede sin egen context UDEN isFinalSeason og UDEN goal-context
+  // (divisionManagerCount/divisionTeamCount + cumulative metrics), men fodrede
+  // samme motor (resolveBoardRequest → calculateBoardPerformance). Scoren der
+  // afgør om bestyrelsen accepterer forhandlingen blev dermed beregnet på et
+  // andet grundlag end det /board/status netop viste spilleren: relative_rank
+  // pinnedes til awaiting_data (0.6) og results-competitiveness-gulvet
+  // kollapsede til 0. Samme loader + samme delte bygger som de øvrige stier.
+  // Best-effort som i /board/status: fejler loaderen, degraderer vi til
+  // evaluering uden de kumulative metrics frem for at vælte requesten.
+  let goalContext = {};
   try {
-    const teamId = req.team?.id;
-    if (!teamId) return res.status(404).json({ error: "No team" });
+    goalContext = await loadGoalContextForBoard({
+      supabase,
+      teamId,
+      boardId: board.id,
+      currentSeasonId: activeSeason.id,
+      division: standing?.division ?? null,
+      // #1608 · pulje-rang: divisionManagerCount tælles pr. pulje når holdet
+      // er pulje-allokeret (ellers tier-bredt fallback).
+      leagueDivisionId: standing?.league_division_id ?? null,
+      // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
+      planStartSeasonNumber: board.plan_start_season_number,
+    });
+  } catch (e) {
+    console.warn(`[board/request] loadGoalContextForBoard failed for board ${board.id}:`, e?.message);
+  }
+
+  const requestResult = resolveBoardRequest({
+    board,
+    requestType: request_type,
+    team: {
+      ...(team || {}),
+      riders,
+    },
+    standing,
+    context: buildBoardEvalContext({
+      board,
+      standing,
+      activeLoanCount: loansRes.count || 0,
+      currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
+      recentSnapshots: snapshotsRes.data || [],
+      goalContext,
+      extra: {
+        isExpired: board.negotiation_status === "pending",
+        requestUsedThisSeason,
+        // S-02g · Window-blokering + mid-cycle-låsning + tradeoff/pivot-tracking
+        raceDaysLeft: activeSeason
+          ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
+          : null,
+        satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
+        activeSeasonId: activeSeason?.id ?? null,
+      },
+    }),
+  });
+
+  return { ok: true, teamId, plan_type, request_type, board, activeSeason, requestResult, requestUsedThisSeason };
+}
+
+// #4519 · POST /board/request/preview — SAMME beregning som /board/request,
+// INGEN writes. Spilleren skal se "nuværende plan → foreslået plan" FØR et
+// klik anvender det (thelamba 31/8: en board-request blev anvendt uden
+// bekræftelse, og at fortryde krævede en hel genforhandling). Bruger IKKE
+// af sæsonens ene request-forsøg — kun /board/request (Accept-klikket)
+// forbruger det, via board_request_log.insert nedenfor.
+router.post("/board/request/preview", requireAuth, boardWriteLimiter, async (req, res) => {
+  try {
     // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
     if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
       return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
     }
-
-    const { plan_type, request_type } = req.body || {};
-    if (!isValidBoardPlanType(plan_type)) {
-      return res.status(400).json({ error: "Invalid plan_type" });
-    }
-    if (!isValidBoardRequestType(request_type)) {
-      return res.status(400).json({ error: "Invalid request_type" });
-    }
-
-    const context = await loadBoardPlanningContext(teamId);
-    const { activeSeason, boards, riders, standing, team } = context;
-    const board = boards.find(b => b.plan_type === plan_type) || null;
-
-    if (!board) return res.status(404).json({ error: "No active board plan for this plan type" });
-    if (!activeSeason) return res.status(409).json({ error: "No active season" });
-    if (board.negotiation_status !== "completed") {
-      return res.status(409).json({ error: "Board plan must be active before requests" });
-    }
-
-    const [loansRes, snapshotsRes, requestLogRes] = await Promise.all([
-      supabase.from("loans").select("id", { count: "exact", head: true })
-        .eq("team_id", teamId).eq("status", "active"),
-      supabase.from("board_plan_snapshots")
-        .select("goals_met, goals_total, satisfaction_delta")
-        .eq("board_id", board.id)
-        .order("created_at", { ascending: false })
-        .limit(3),
-      supabase.from("board_request_log")
-        .select("id")
-        .eq("board_id", board.id)
-        .eq("season_number", activeSeason.number)
-        .order("created_at", { ascending: false })
-        .limit(1),
-    ]);
-
-    if (loansRes.error) return res.status(500).json({ error: loansRes.error.message });
-    if (snapshotsRes.error) return res.status(500).json({ error: snapshotsRes.error.message });
-    if (isMissingTable(requestLogRes.error, "board_request_log")) {
-      // #678 Track 3: intern SQL/migration-instruktion må ALDRIG eksponeres til
-      // spilleren. Log til ops og returnér en generisk, lokaliserbar besked.
-      console.warn("[board/request] board_request_log-tabellen mangler — kør SQL-migrationen for board_request_log");
-      return res.status(503).json({
-        error: "Board features aren't available yet",
-        errorCode: "board_unavailable",
+    const outcome = await computeBoardRequestOutcome(req);
+    if (!outcome.ok) {
+      return res.status(outcome.status).json({
+        error: outcome.error,
+        ...(outcome.errorCode ? { errorCode: outcome.errorCode } : {}),
       });
     }
-    if (requestLogRes.error) return res.status(500).json({ error: requestLogRes.error.message });
-
-    const requestUsedThisSeason = Boolean(requestLogRes.data?.length);
-
-    if (requestUsedThisSeason) {
-      return res.status(409).json({ error: "Board request already used this season" });
-    }
-
-    // #2469 · /board/request var den fjerde context-sti som #2308 ikke dækkede:
-    // den håndbyggede sin egen context UDEN isFinalSeason og UDEN goal-context
-    // (divisionManagerCount/divisionTeamCount + cumulative metrics), men fodrede
-    // samme motor (resolveBoardRequest → calculateBoardPerformance). Scoren der
-    // afgør om bestyrelsen accepterer forhandlingen blev dermed beregnet på et
-    // andet grundlag end det /board/status netop viste spilleren: relative_rank
-    // pinnedes til awaiting_data (0.6) og results-competitiveness-gulvet
-    // kollapsede til 0. Samme loader + samme delte bygger som de øvrige stier.
-    // Best-effort som i /board/status: fejler loaderen, degraderer vi til
-    // evaluering uden de kumulative metrics frem for at vælte requesten.
-    let goalContext = {};
-    try {
-      goalContext = await loadGoalContextForBoard({
-        supabase,
-        teamId,
-        boardId: board.id,
-        currentSeasonId: activeSeason.id,
-        division: standing?.division ?? null,
-        // #1608 · pulje-rang: divisionManagerCount tælles pr. pulje når holdet
-        // er pulje-allokeret (ellers tier-bredt fallback).
-        leagueDivisionId: standing?.league_division_id ?? null,
-        // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
-        planStartSeasonNumber: board.plan_start_season_number,
-      });
-    } catch (e) {
-      console.warn(`[board/request] loadGoalContextForBoard failed for board ${board.id}:`, e?.message);
-    }
-
-    const requestResult = resolveBoardRequest({
-      board,
-      requestType: request_type,
-      team: {
-        ...(team || {}),
-        riders,
+    const { board, requestResult } = outcome;
+    res.json({
+      ok: true,
+      request_result: requestResult,
+      board_changes: {
+        focus_before: board.focus,
+        focus_after: requestResult.updated_board?.focus ?? board.focus,
+        goal_changes: requestResult.goal_changes || [],
       },
-      standing,
-      context: buildBoardEvalContext({
-        board,
-        standing,
-        activeLoanCount: loansRes.count || 0,
-        currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
-        recentSnapshots: snapshotsRes.data || [],
-        goalContext,
-        extra: {
-          isExpired: board.negotiation_status === "pending",
-          requestUsedThisSeason,
-          // S-02g · Window-blokering + mid-cycle-låsning + tradeoff/pivot-tracking
-          raceDaysLeft: activeSeason
-            ? Math.max(0, (activeSeason.race_days_total ?? 0) - (activeSeason.race_days_completed ?? 0))
-            : null,
-          satisfactionDeltaPct: Math.abs((board.satisfaction ?? 50) - 50),
-          activeSeasonId: activeSeason?.id ?? null,
-        },
-      }),
     });
+  } catch (e) {
+    captureApiRouteError(e, req);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) => {
+  try {
+    // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
+    const outcome = await computeBoardRequestOutcome(req);
+    if (!outcome.ok) {
+      return res.status(outcome.status).json({
+        error: outcome.error,
+        ...(outcome.errorCode ? { errorCode: outcome.errorCode } : {}),
+      });
+    }
+    const { teamId, request_type, board, activeSeason, requestResult } = outcome;
 
     let updatedBoard = board;
 
@@ -15713,7 +16150,16 @@ router.post("/board/renew", requireAuth, boardWriteLimiter, async (req, res) => 
     const existingBoard = boards.find(b => b.plan_type === plan_type) || null;
     const renewLock = getBoardRenegotiationLock({ board: existingBoard, activeSeason });
     if (renewLock.locked) {
-      return res.status(409).json({ error: renewLock.reason, code: renewLock.code });
+      return res.status(409).json({
+        error: renewLock.reason,
+        code: renewLock.code,
+        // #4553 CodeRabbit-fund: resolveApiError() læser errorCode/errorParams,
+        // ikke `code` — uden dem faldt frontend tilbage til den danske
+        // `error`-tekst for EN-spillere. Samme { code, params }-kontrakt som
+        // /board/sign returnerer for samme guard.
+        errorCode: renewLock.errorCode,
+        errorParams: renewLock.errorParams,
+      });
     }
 
     const { data: board, error } = await supabase.from("board_profiles")

@@ -1,0 +1,207 @@
+{
+  "enabled": true,
+  "team": { "dnaKey": "skandinavisk_udvikling" },
+  "confidence": {
+    "value": 71,
+    "weekDelta": 3,
+    "updatedAt": "2026-08-30T18:00:00Z",
+    "categories": [
+      { "key": "results", "score": 74 },
+      { "key": "economy", "score": 63 },
+      { "key": "identity", "score": 82 },
+      { "key": "ranking", "score": 58 }
+    ],
+    "consequence": { "active": false, "lineKey": null, "lineParams": null }
+  },
+  "mandate": {
+    "seasonNumber": 3,
+    "signedAt": "2026-08-28",
+    "goals": [
+      {
+        "id": "g1",
+        "type": "stage_wins",
+        "target": 3,
+        "label": "Mindst 3 etapesejre i sæsonen",
+        "labelKey": null,
+        "labelParams": null,
+        "achievedDisplay": "2",
+        "targetDisplay": "3",
+        "unitKey": "raceDays",
+        "status": "on_track",
+        "awaitingData": false,
+        "isStretch": false,
+        "owner": { "archetypeKey": "resultatjaegeren", "name": "Jørgen Brandt", "initials": "JB" },
+        "receipt": {
+          "countedKey": "boardroom.mandate.receipts.winRaceDays.counted",
+          "countedParams": null,
+          "lastMovementKey": "archetypes.resultatjaegeren.reactions.receipt_positive.0",
+          "lastMovementParams": null,
+          "lastMovementAt": "2026-08-29T12:00:00Z",
+          "weightedByName": "Jørgen Brandt",
+          "weightedByLineKey": "boardroom.mandate.receipts.winRaceDays.weightedByLine"
+        }
+      },
+      {
+        "id": "g2",
+        "type": null,
+        "target": 0,
+        "label": "Hold sæsonresultatet over nul",
+        "labelKey": "boardroom.mandate.goalLabels.keepResultAboveZero",
+        "labelParams": null,
+        "achievedDisplay": "+412.000 CZ$",
+        "targetDisplay": "0 CZ$",
+        "unitKey": "cz",
+        "status": "on_track",
+        "awaitingData": false,
+        "isStretch": false,
+        "owner": { "archetypeKey": "sponsoraten", "name": "Søren Lindqvist", "initials": "SL" },
+        "receipt": {
+          "countedKey": "boardroom.mandate.receipts.economyResult.counted",
+          "countedParams": null,
+          "lastMovementKey": null,
+          "lastMovementParams": null,
+          "lastMovementAt": null,
+          "weightedByName": "Søren Lindqvist",
+          "weightedByLineKey": "boardroom.mandate.receipts.economyResult.weightedByLine"
+        }
+      },
+      {
+        "id": "g3",
+        "type": null,
+        "target": 2,
+        "label": "Giv 2 akademiryttere en debut",
+        "labelKey": "boardroom.mandate.goalLabels.academyDebuts",
+        "labelParams": { "count": 2 },
+        "achievedDisplay": "1",
+        "targetDisplay": "2",
+        "unitKey": "riders",
+        "status": "at_risk",
+        "awaitingData": false,
+        "isStretch": false,
+        "owner": { "archetypeKey": "ungdomsidealisten", "name": "Astrid Holm", "initials": "AH" },
+        "receipt": {
+          "countedKey": "boardroom.mandate.receipts.academyDebuts.counted",
+          "countedParams": null,
+          "lastMovementKey": null,
+          "lastMovementParams": null,
+          "lastMovementAt": null,
+          "weightedByName": "Astrid Holm",
+          "weightedByLineKey": "boardroom.mandate.receipts.academyDebuts.weightedByLine"
+        }
+      },
+      {
+        "id": "g4",
+        "type": "top_n_finish",
+        "target": 40,
+        "label": "Top 40 i klubranglisten",
+        "labelKey": null,
+        "labelParams": null,
+        "achievedDisplay": "46",
+        "targetDisplay": "40",
+        "unitKey": "rank",
+        "status": "behind",
+        "awaitingData": false,
+        "isStretch": true,
+        "owner": { "archetypeKey": "nationalist_purist", "name": "Niels Østergaard", "initials": "NO" },
+        "receipt": {
+          "countedKey": "boardroom.mandate.receipts.clubRankingTopN.counted",
+          "countedParams": null,
+          "lastMovementKey": null,
+          "lastMovementParams": null,
+          "lastMovementAt": null,
+          "weightedByName": "Niels Østergaard",
+          "weightedByLineKey": "boardroom.mandate.receipts.clubRankingTopN.weightedByLine"
+        }
+      }
+    ]
+  },
+  "vision": {
+    "startSeason": 3,
+    "endSeason": 6,
+    "titleKey": "vision.title.skandinavisk_udvikling",
+    "milestones": [
+      {
+        "id": "m1",
+        "seasonNumber": 3,
+        "labelKey": "boardroom.vision.milestoneLabels.establishDivision3",
+        "labelParams": null,
+        "status": "current",
+        "isCurrentSeason": true
+      },
+      {
+        "id": "m2",
+        "seasonNumber": 4,
+        "labelKey": "boardroom.vision.milestoneLabels.promotionPush",
+        "labelParams": null,
+        "status": "upcoming",
+        "isCurrentSeason": false
+      },
+      {
+        "id": "m3",
+        "seasonNumber": 5,
+        "labelKey": "boardroom.vision.milestoneLabels.monumentPodium",
+        "labelParams": null,
+        "status": "upcoming",
+        "isCurrentSeason": false
+      },
+      {
+        "id": "m4",
+        "seasonNumber": 6,
+        "labelKey": "boardroom.vision.milestoneLabels.clubRankingTop30",
+        "labelParams": null,
+        "status": "upcoming",
+        "isCurrentSeason": false
+      }
+    ]
+  },
+  "board": {
+    "members": [
+      { "archetypeKey": "traditionalisten", "name": "Ellen Kjær", "initials": "EK", "role": "chair", "mood": "positive", "sinceSeason": 1 },
+      { "archetypeKey": "resultatjaegeren", "name": "Jørgen Brandt", "initials": "JB", "role": "results", "mood": "positive", "sinceSeason": 1 },
+      { "archetypeKey": "sponsoraten", "name": "Søren Lindqvist", "initials": "SL", "role": "economy", "mood": "neutral", "sinceSeason": 2 },
+      { "archetypeKey": "ungdomsidealisten", "name": "Astrid Holm", "initials": "AH", "role": "identity", "mood": "positive", "sinceSeason": 2 },
+      { "archetypeKey": "nationalist_purist", "name": "Niels Østergaard", "initials": "NO", "role": "ranking", "mood": "negative" }
+    ],
+    "chairmanQuote": {
+      "textKey": "boardroom.board.chairmanQuoteFixture",
+      "textParams": null,
+      "memberName": "Ellen Kjær",
+      "contextKey": "boardroom.board.chairmanContextFixture"
+    },
+    "minutes": []
+  },
+  "minutes": [
+    {
+      "id": "min1",
+      "delta": 2,
+      "textKey": "boardroom.minutesFixture.stageWin",
+      "textParams": null,
+      "memberName": "Jørgen Brandt",
+      "occurredAt": "2026-08-30"
+    },
+    {
+      "id": "min2",
+      "delta": 1,
+      "textKey": "boardroom.minutesFixture.youthDebut",
+      "textParams": { "name": "Mikkel Iversen", "age": 18 },
+      "memberName": "Astrid Holm",
+      "occurredAt": "2026-08-29"
+    },
+    {
+      "id": "min3",
+      "delta": -1,
+      "textKey": "boardroom.minutesFixture.deficitWeek",
+      "textParams": { "amount": "-86.000 CZ$" },
+      "memberName": "Søren Lindqvist",
+      "occurredAt": "2026-08-26"
+    },
+    {
+      "id": "min4",
+      "delta": -1,
+      "textKey": "boardroom.minutesFixture.captainSaleWarning",
+      "textParams": null,
+      "memberName": "Jørgen Brandt",
+      "occurredAt": "2026-08-12"
+    }
+  ]
+}

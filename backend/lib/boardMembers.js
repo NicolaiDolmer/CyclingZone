@@ -20,6 +20,7 @@ import {
   getArchetypeByKey,
 } from "./boardArchetypes.js";
 import { getDnaArchetypeAlignmentBonus } from "./boardClubDna.js";
+import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { captureException } from "./sentry.js";
 
 export const TEAM_BOARD_MEMBERS_COUNT = 5;
@@ -185,6 +186,27 @@ export async function regenerateBoardMembersForTeam({ supabase, teamId, identity
     return { assigned: 0, deleted: 0, skipped: true, reason: "missing_dna", members: [] };
   }
 
+  // #4664 · Root cause: DELETE og INSERT er to separate, ikke-transaktionelle
+  // Supabase-kald. Kaster INSERT'et (assignBoardMembersForTeam) EFTER at
+  // DELETE'et allerede er committet — transient netværksfejl, en samtidig
+  // dobbelt-indsendelse, eller et Railway-deploy der dræber processen midt i —
+  // stod holdet tidligere tilbage med 0 board-medlemmer PERMANENT: DNA er
+  // uændret (allerede sat), så `requiresBoardDnaChoice` (routes/api.js) er
+  // false, og DNA-vælgeren vises aldrig igen. Ingen naturlig sti reparerede
+  // det. Målt i prod 2-3/9 (#4664): adskillige hold med `team_dna_key` SAT
+  // men 0 rækker i `team_board_members` — netop denne signatur.
+  //
+  // Fix: gem de eksisterende rækker FØR delete, og gendan dem best-effort hvis
+  // assignBoardMembersForTeam kaster. Et fejlet regenereringsforsøg efterlader
+  // dermed ALDRIG holdet dårligere stillet end før kaldet — enten lykkes hele
+  // regenereringen, eller også ender holdet med det gamle sæt (og fejlen
+  // bobler stadig op til kalderen, som i forvejen håndterer den).
+  const { data: existingRows, error: readError } = await supabase
+    .from("team_board_members")
+    .select("archetype_key, selection_kind, alignment_score, is_chairman")
+    .eq("team_id", teamId);
+  throwIfSupabaseError(readError, "Could not read existing team board members before regenerate");
+
   const { data: deleted, error: deleteError } = await supabase
     .from("team_board_members")
     .delete()
@@ -192,7 +214,25 @@ export async function regenerateBoardMembersForTeam({ supabase, teamId, identity
     .select("id");
   throwIfSupabaseError(deleteError, "Could not delete existing team board members");
 
-  const result = await assignBoardMembersForTeam({ supabase, teamId, identityBasis, dnaKey });
+  let result;
+  try {
+    result = await assignBoardMembersForTeam({ supabase, teamId, identityBasis, dnaKey });
+  } catch (assignError) {
+    if ((existingRows || []).length > 0) {
+      const restoreRows = existingRows.map((row) => ({ team_id: teamId, ...row }));
+      const { error: restoreError } = await supabase.from("team_board_members").insert(restoreRows);
+      if (restoreError) {
+        // Dobbelt-fejl: kunne hverken indsætte det nye sæt eller gendanne det
+        // gamle. Holdet ER boardless nu — capture, saa det ikke er tavst.
+        captureException(
+          new Error(`Could not restore team board members after failed regenerate: ${restoreError.message}`),
+          { tags: { flow: "board-members", stage: "regenerate-restore" }, extra: { teamId } },
+        );
+      }
+    }
+    throw assignError;
+  }
+
   return {
     ...result,
     deleted: (deleted || []).length,
@@ -495,6 +535,82 @@ export function selectDominantMember({
 }
 
 /**
+ * #3514 S-M2a · Stabilt mål-ejerskab (addendum "Stemme-kontrakten" punkt 1).
+ * =========================================================================
+ * Før i dag beregnede `selectDominantMember` "hvem taler om det her mål"
+ * PÅ NY hver gang en visning skete, kategori-alignment mod de 5 assignede
+ * medlemmer. Det er fint til feedback-strimlen (ingen persisteret identitet
+ * nødvendig der), men forkert for et mål: samme mål skal ALTID tilhøre
+ * samme medlem, ellers skifter et mål stemme mellem to visninger, hvilket
+ * addendummet eksplicit forbyder ("selectDominantMember-genudregningen
+ * udgår for mål-attribution").
+ *
+ * `computeGoalOwnerArchetypeKey` er den RENE udregning (samme kategori-
+ * alignment-regel som selectDominantMember, deterministisk uanset
+ * rækkefølgen på `assignedMembers` fra DB, da input sorteres på
+ * archetype_key FØR udvælgelse). `stampGoalOwner`/`stampGoalsOwners` sætter
+ * feltet ÉN GANG: er `owner_archetype_key` allerede sat på målet, røres det
+ * ALDRIG (aldrig genberegnet, aldrig overskrevet). `resolveGoalOwnerArchetypeKey`
+ * er læse-stien for eksisterende mål uden feltet: samme regel, INGEN write-back
+ * (reparation af historiske mål er ejer-gated, jf. opgavens grænser).
+ *
+ * Persisteres i målets egen JSON (board_profiles.current_goals[].owner_archetype_key
+ * og board_mandates.goals[].owner_archetype_key) af kaldere der har adgang til
+ * teamets team_board_members-liste ved generering/underskrift — ingen ny
+ * DB-kolonne, samme mønster som `category`/`importance` på goal-objektet i dag.
+ */
+export function computeGoalOwnerArchetypeKey({
+  assignedMembers = [],
+  category = null,
+  fallbackChairmanKey = null,
+} = {}) {
+  if (!assignedMembers.length) return fallbackChairmanKey ?? null;
+
+  // Sortér en KOPI på archetype_key før udvælgelse, så resultatet er
+  // deterministisk uanset hvilken rækkefølge Supabase returnerede rækkerne
+  // i (ingen ORDER BY garanteres af de eksisterende .select()-kald).
+  // selectDominantMembers tie-break (chairman vinder, ellers array-orden)
+  // bliver dermed også alfabetisk-stabilt ved uafgjort alignment.
+  const stableMembers = [...assignedMembers].sort((a, b) =>
+    String(a?.archetype_key ?? "").localeCompare(String(b?.archetype_key ?? ""))
+  );
+
+  const dominant = selectDominantMember({ assignedMembers: stableMembers, category, fallbackChairmanKey });
+  return dominant?.key ?? fallbackChairmanKey ?? null;
+}
+
+/**
+ * Læse-tids-afledning for mål der IKKE har `owner_archetype_key` persisteret
+ * endnu (migrerede/historiske mål). Regner samme regel, skriver ALDRIG
+ * tilbage til målet, kalderen beslutter selv om resultatet skal caches.
+ */
+export function resolveGoalOwnerArchetypeKey({ goal = {}, assignedMembers = [], fallbackChairmanKey = null } = {}) {
+  if (goal?.owner_archetype_key) return goal.owner_archetype_key;
+  return computeGoalOwnerArchetypeKey({ assignedMembers, category: goal?.category ?? null, fallbackChairmanKey });
+}
+
+/**
+ * Sæt `owner_archetype_key` på ÉT mål, ÉN gang. No-op (samme reference
+ * returneret) hvis feltet allerede er sat, hvis der ikke er nogen
+ * assignede medlemmer, eller hvis der intet ejerskab kan udledes.
+ */
+export function stampGoalOwner(goal, { assignedMembers = [], fallbackChairmanKey = null } = {}) {
+  if (!goal || goal.owner_archetype_key) return goal;
+  const ownerArchetypeKey = computeGoalOwnerArchetypeKey({
+    assignedMembers,
+    category: goal?.category ?? null,
+    fallbackChairmanKey,
+  });
+  if (!ownerArchetypeKey) return goal;
+  return { ...goal, owner_archetype_key: ownerArchetypeKey };
+}
+
+/** Samme som stampGoalOwner, anvendt på en hel mål-liste. */
+export function stampGoalsOwners(goals = [], opts = {}) {
+  return (goals || []).map((goal) => stampGoalOwner(goal, opts));
+}
+
+/**
  * Sample en reaktion fra den dominerende arketype, baseret på feedback-tone.
  * Brugt af buildBoardOutlook til at attache 'dominant_member' til feedback.
  *
@@ -567,6 +683,48 @@ export function sampleReactionForGoal({ archetype, goalContext = {}, seed = "" }
     quote_key: `archetypes.${archetype.key}.reactions.${bucket}.${idx}`,
     bucket,
   };
+}
+
+/**
+ * #4556 S-M2b addendum, "Stemme-kontrakten" punkt 2 · decorer én reaction
+ * (fra sampleReactionForFeedback/sampleReactionForGoal) med `full_name` +
+ * `initials` afledt via generateBoardMemberNames, SAMME determinisme-nøgle
+ * (teamId, archetype_key, dnaKey) som Boardroom-siden (boardRoom.js/
+ * boardVoice.js) bruger, så et hold ser samme navn på begge sider.
+ *
+ * Opfinder ALDRIG et navn: mangler teamId i konteksten, returneres reaction
+ * uændret (frontend falder tilbage til label alene, jf. spec).
+ *
+ * Review-fund (faldgrube 2 i addendummet): generateBoardMemberNames bruger et
+ * `taken`-set der salter et navn ved kollision INDEN FOR samme
+ * (teamId, dnaKey)-kald (boardMandateNames.js). Genereres kun ét medlem ad
+ * gangen, ser kollisions-logikken aldrig kollisionen, og et medlem der reelt
+ * fik salt 1 fordi boardRoom.js navngiver HELE holdet samlet ville få salt 0
+ * her, samme person, to navne på to flader. Fixet: send `members` (den fulde
+ * medlemsliste, SAMME rækkefølge som boardRoom.js bruger) med, så hele
+ * holdet navngives i ét kald og `reaction.archetype_key` slås op i
+ * resultatet. Mangler `members`, eller indeholder den ikke archetype_key'en,
+ * falder vi tilbage til enkelt-medlems-stien (bedre end intet navn, men kan
+ * afvige fra Boardroom-siden ved en reel kollision).
+ *
+ * @param {object|null} reaction - fra sampleReactionForFeedback/sampleReactionForGoal.
+ * @param {{ teamId?: string, dnaKey?: string|null, members?: Array<string|{archetype_key:string}> }} [ctx]
+ * @returns {object|null} samme reaction, evt. beriget med full_name + initials.
+ */
+export function decorateReactionWithName(reaction, { teamId, dnaKey = null, members = null } = {}) {
+  if (!reaction?.archetype_key || !teamId) return reaction;
+
+  const archetypeKeys = Array.isArray(members)
+    ? members.map((m) => (typeof m === "string" ? m : m?.archetype_key)).filter(Boolean)
+    : [];
+
+  const named = archetypeKeys.includes(reaction.archetype_key)
+    ? generateBoardMemberNames({ teamId, members: archetypeKeys, dnaKey })
+      .find((m) => m.archetype_key === reaction.archetype_key)
+    : generateBoardMemberNames({ teamId, members: [reaction.archetype_key], dnaKey })[0];
+
+  if (!named?.full_name) return reaction;
+  return { ...reaction, full_name: named.full_name, initials: named.initials };
 }
 
 /**
@@ -652,6 +810,9 @@ export async function processReplacementTrigger({
     old_chairman_key: replacement.old_chairman_key,
     new_chairman_key: replacement.new_chairman_key,
     new_chairman_label: replacement.new_chairman_label,
+    // #4556 review-fund: videreformidler replaceChairman's fulde
+    // post-udskiftnings-medlemsliste, se kommentaren der.
+    new_board_member_keys: replacement.new_board_member_keys,
   };
 }
 
@@ -734,5 +895,12 @@ async function replaceChairman({ supabase, teamId, identityBasis, dnaKey = null 
     old_chairman_key: oldChairman.archetype_key,
     new_chairman_key: newChairmanCandidate.key,
     new_chairman_label: newChairmanCandidate.archetype.label,
+    // #4556 review-fund (faldgrube 2): den FULDE post-udskiftnings-medlemsliste,
+    // så en kalder kan navngive hele holdet i ét generateBoardMemberNames-kald
+    // (samme mønster som boardRoom.js) i stedet for kun formandens nøgle
+    // isoleret, hvilket kan salte anderledes ved en navne-kollision. Rækkefølge:
+    // de 4 tilbageværende medlemmer (uændret query-orden) + den nye formand sidst
+    // (matcher insert-rækkefølgen en efterfølgende team_board_members-select ser).
+    new_board_member_keys: [...remainingMembers.map((m) => m.archetype_key), newChairmanCandidate.key],
   };
 }

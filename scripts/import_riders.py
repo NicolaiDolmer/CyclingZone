@@ -38,7 +38,7 @@ STAT_MAP = {
     "stat_ftr": "charac_i_baroudeur",
 }
 
-U25_CUTOFF_YEAR = date.today().year - 25  # born after this year = U25
+U25_CUTOFF_YEAR = date.today().year - 25  # born in/after this year = U25 (UCI rule, owner decision 2/9-2026)
 
 # ── Manual UCI-name overrides for cases automated matching can't handle ────────
 # Key: PCM IDcyclist (pcm_id).  Value: exact normalized UCI name string.
@@ -360,9 +360,13 @@ def parse_birthdate(raw) -> date | None:
 
 
 def is_u25(birthdate: date | None) -> bool:
+    # UCI rule (owner decision 2/9-2026): U25 = born in or after (reference year - 25),
+    # i.e. season age <= 25 -- a 25-year-old still counts, matching UCI's white jersey.
+    # Was "> U25_CUTOFF_YEAR" (season age < 25); flipped to ">=" for the same boundary
+    # all other copies of this rule now share (backend/lib/riderSeasonAge.js SSOT).
     if birthdate is None:
         return False
-    return birthdate.year > U25_CUTOFF_YEAR
+    return birthdate.year >= U25_CUTOFF_YEAR
 
 
 def normalize_name(name: str) -> str:

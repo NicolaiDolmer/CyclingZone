@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Link, useParams, useSearchParams, useLocation } from "react-router";
@@ -30,8 +30,15 @@ import {
   RoadIcon,
   TeamIcon,
   CobblesIcon,
+  SkeletonLines,
+  // #4628 (TASTE P7): tilbage-linket bar en unicode-pil ("← Race library") i selve
+  // locale-strengen. Pile er ikke ikoner — de arver linjehoejde, rammer ikke
+  // baseline og ser forskellige ud pr. platform. Nu et stroke-chevron + ren tekst.
+  ChevronLeftIcon,
+  ChevronDownIcon,
 } from "../components/ui";
 import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 import { formatNumber } from "../lib/intl";
 import { resultEntity } from "../lib/raceResultEntity.js";
 import { buildRaceRecap } from "../lib/raceRecap.js";
@@ -41,9 +48,17 @@ import { logEvent } from "../lib/logEvent";
 import { deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { buildLiveStandings } from "../lib/raceLiveStandings.js";
 import { classificationRowsForStage } from "../lib/raceStageClassifications.js";
+import {
+  deriveStageNumbers,
+  overallSeedStageNumber,
+  validateInitialStage,
+  stagesToPreload,
+  jerseyHoldersForStage,
+} from "../lib/raceResultsSelectors.js";
 import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
-import { whyBeatsForStage, storyTagsForRider } from "../lib/raceStageMoments.js";
+import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
+import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
 import { groupPassagesForStage } from "../lib/raceStagePassages.js";
 import { classificationPointTotals } from "../lib/raceClassificationTotals.js";
 import { hasRouteData } from "../lib/stageRouteProfile.js";
@@ -106,6 +121,30 @@ const JERSEYS = [
   { dayType: "young_day",    bg: "rgb(var(--jersey-young-bg))",    fg: "rgb(var(--jersey-young-fg))" },
 ];
 
+// #4581: race_results-kolonnelisten er UÆNDRET fra før — nu bare genbrugt to steder
+// (initial preload i loadAll + on-demand etapeskift, se fetchStageResultRows
+// nedenfor) i stedet for duplikeret. Siden hentede tidligere ALLE etapers ALLE
+// klassementer på hvert load (Giro della Penisola 14/18 etaper: 11.947 rækker,
+// 2,43 MB, 12 sekventielle round-trips — #4581). Nu hentes kun én stage_number ad
+// gangen: alle result_types for DEN etape er strukturelt bounded af feltstørrelsen
+// (issue-audit 1/9: ~180-250 rækker/dag-type/etape), men den sidste etape af et
+// FÆRDIGT løb bærer BÅDE dag-typerne OG de definitive slut-klassementer (gc/points/
+// mountain/young/team) på samme stage_number, hvilket kan nærme sig/overstige
+// PostgREST's 1.000-rækkers-loft — fetchAllRows bruges derfor ubetinget (pagination-
+// safe via delegering, ikke en antaget grænse).
+const RACE_RESULT_SELECT = "id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, sprint_points, kom_points, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name)), team:team_id(id, name)";
+
+function fetchStageResultRows(raceId, stageNumber) {
+  return fetchAllRows(() =>
+    supabase
+      .from("race_results")
+      .select(RACE_RESULT_SELECT)
+      .eq("race_id", raceId)
+      .eq("stage_number", stageNumber)
+      .order("id")
+  );
+}
+
 // Sub-4 (#2448): ét sted der afgør om en etape får den ægte rute-graf eller
 // #1484-piktogrammet. Ingen rutedata → ingen syntetisk kurve (ejer-princip).
 // #2818: hasClassifications = findes bjerg-/pointkonkurrencen overhovedet i
@@ -136,6 +175,7 @@ const TERRAIN_ICON_BY_PROFILE = {
   itt_hilly: TimeTrialIcon,
   ttt: TeamIcon,
   cobbles: CobblesIcon,
+  gravel: CobblesIcon, // #4105: grus deler ikon med brosten (samme terraen-familie)
   classic: RoadIcon,
 };
 
@@ -249,6 +289,10 @@ export default function RaceDetailPage() {
 
   const [race, setRace] = useState(null);
   const [results, setResults] = useState([]);
+  // #3519/#4581: whole-race "stage"-type-rækker (smal projektion, ingen embeds) til
+  // classificationPointTotals's kumulative trøje-punkt-total — se stagePointsPromise
+  // i loadAll for hvorfor denne IKKE kan deles med `results`s per-etape-scope.
+  const [stagePointsRows, setStagePointsRows] = useState([]);
   const [stageProfiles, setStageProfiles] = useState([]);
   const [schedule, setSchedule] = useState([]);
   const [incidents, setIncidents] = useState([]);
@@ -265,11 +309,30 @@ export default function RaceDetailPage() {
   const [loadError, setLoadError] = useState(false);
   const [teamFilter, setTeamFilter] = useState("all"); // "all" | "mine" | teamId
   const [myTeamId, setMyTeamId] = useState(null);
+  // #4581: hvilke stage_number'e er der allerede hentet race_results for (initial
+  // preload + etapeskift on-demand) — `results` er UNIONEN af disse, aldrig hentet
+  // to gange for samme etape i én session. Nulstilles i loadAll ved raceId-skift.
+  const [loadedStages, setLoadedStages] = useState(() => new Set());
+  const stageFetchInFlightRef = useRef(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     const s = searchParams.get("stage");
     return s ? `stage-${s}` : "samlet";
   });
+  // #4581: ?stage= til loadAll's initial-etape-preload, holdt i en ref i stedet for
+  // en useCallback-dependency. loadAll skal IKKE genskabes (og dermed genkøre via
+  // useEffect(() => { loadAll(); }, [loadAll]) nedenfor) hver gang ?stage= ændrer
+  // sig — det sker ved HVERT etapeskift (changeTab skriver ?stage=), hvilket ville
+  // udløse en fuld gen-hentning af race/moments/incidents m.m. og underminere
+  // etapeskiftets on-demand-design. En ref undgår det uden et eslint-disable-
+  // direktiv (#4332-ratchet'en tillader ikke flere i denne fil): den initialiseres
+  // synkront ved første render (dækker mount), og holdes i sync ved senere
+  // searchParams-ændringer af effekten lige nedenfor — samme "xRef.current = x i
+  // useEffect"-mønster som fx RacePointModelSection.jsx/useRealtimeRefetch.js.
+  const initialStageParamRef = useRef(searchParams.get("stage"));
+  useEffect(() => {
+    initialStageParamRef.current = searchParams.get("stage");
+  }, [searchParams]);
 
   // #1500: deep-link til en bestemt etape via ?stage=N. Hold activeTab og URL i
   // sync, så et link fra holdresultater åbner den rigtige etape — og fanen kan
@@ -324,13 +387,54 @@ export default function RaceDetailPage() {
       return myTeam?.id ?? null;
     })();
 
-    const rowsPromise = fetchAllRows(() =>
+    // #4581: løbssiden hentede tidligere ALLE etapers ALLE klassementer på hvert
+    // load (Giro della Penisola 14/18 etaper: 11.947 rækker, 2,43 MB, 12 sekventielle
+    // round-trips). Nu hentes kun: (1) en evt. dyb-linket etape (?stage=N, valideret
+    // mod stages_completed — se validateInitialStage) og (2) "samlet"-fanens seed-
+    // etape (den definitive slut-klassement ELLER den løbende stilling lever begge på
+    // stage_number = stages_completed, se overallSeedStageNumber). Yderligere etaper
+    // hentes on-demand ved etapeskift (useEffect nedenfor, cachet i loadedStages så
+    // samme etape aldrig hentes to gange i én session). `results`/`rows` beholder
+    // nøjagtig samme rækkeform som før — kun MÆNGDEN er reduceret.
+    //
+    // ?stage= læses via initialStageParamRef (deklareret ovenfor ved searchParams),
+    // IKKE via searchParams direkte — det holder searchParams UDE af loadAll's
+    // dependency-array uden et eslint-disable-direktiv. Skulle searchParams stå i
+    // dependency-arrayet, ville et etapeskift (som selv sætter ?stage= via changeTab)
+    // retrigge en fuld gen-hentning af race/moments/incidents m.m. og underminere
+    // hele on-demand-designet.
+    const stageParam = initialStageParamRef.current;
+    const initialStage = validateInitialStage(stageParam, { stagesCompleted: raceRow.stages_completed });
+    const overallSeedStage = overallSeedStageNumber({ stagesCompleted: raceRow.stages_completed });
+    const preloadStages = stagesToPreload({ initialStage, overallSeedStage });
+
+    const rowsPromise = preloadStages.length
+      ? Promise.all(preloadStages.map((n) => fetchStageResultRows(raceId, n))).then((parts) => parts.flat())
+      : Promise.resolve([]);
+
+    // #3519/#4581 (korrekthedsrettelse): jersey-punkt-totalerne ("Trøjepoint"-
+    // kolonnen i klassement-tabellerne, classificationPointTotals) er en KUMULATIV
+    // sum af sprint_points/kom_points på tværs af ALLE spillede etaper — ikke kun
+    // den enkelte etape #4581s per-etape-preload ovenfor henter. En race_id-scoped
+    // per-etape-fetch alene ville derfor vise en FORKERT (kun seed-etapens bidrag)
+    // total på "samlet"-fanen. Smal projektion (ingen rytter/hold-embeds, kun de 7
+    // felter totalen rent faktisk bruger, se raceClassificationTotals.js) af
+    // result_type="stage" ALENE, hele løbet — samme "whole-race, ikke del af
+    // #4581s per-etape-scope"-mønster som moments/incidents/passages ovenfor
+    // (uændrede). Startes her (ikke i Promise.all-arrayet nedenfor, som PR #4568
+    // også rører — se dens momentsPromise-blok) og afventes SEPARAT bagefter, så
+    // den stadig kører PARALLELT med resten uden at ændre den eksisterende linje.
+    const stagePointsPromise = fetchAllRows(() =>
       supabase
         .from("race_results")
-        .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, sprint_points, kom_points, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name)), team:team_id(id, name)")
+        .select("id, stage_number, result_type, rank, rider_id, sprint_points, kom_points")
         .eq("race_id", raceId)
+        .eq("result_type", "stage")
         .order("id")
-    );
+    ).catch((err) => {
+      console.warn("race_results (stage point totals) fetch failed:", err.message);
+      return [];
+    });
 
     // #1484 Stiliseret terræn-indikator. race_stage_profiles er læsbar for
     // authenticated (siden er auth-gated via ProtectedRoute). Degraderer pænt:
@@ -368,10 +472,26 @@ export default function RaceDetailPage() {
     // anvendes først af ejeren POST-merge, og v3-scoring var allerede ON i prod
     // FØR denne migration, så en fejl her er FORVENTET indtil ejeren har anvendt
     // den. Må ALDRIG vælte race-siden.
-    const momentsPromise = supabase
-      .from("race_stage_moments")
-      .select("id, stage_number, moment_key, params, significance, rider_ids, team_ids")
-      .eq("race_id", raceId);
+    //
+    // #4566 (spillerverificeret 1/9): denne query er IKKE stage-scoped (den
+    // henter HELE løbet på én gang, i modsætning til useHeroAgonyMoment.js's
+    // per-etape-slice) — et 13-etapes løb har allerede ramt 1.345 momenter mod
+    // PostgREST's tavse 1.000-rækkers-loft, hvilket tavst slugte etape 11-13's
+    // story-tags. fetchAllRows bruges (som race_results/race_stage_passages
+    // ovenfor) fordi et langt etapeløb strukturelt kan overstige 1000 rækker;
+    // fejl fanges lokalt så den ALDRIG vælter race-siden (samme mønster som
+    // passagesPromise).
+    const momentsPromise = fetchAllRows(() =>
+      supabase
+        .from("race_stage_moments")
+        .select("id, stage_number, moment_key, params, significance, rider_ids, team_ids")
+        .eq("race_id", raceId)
+        .order("stage_number", { ascending: true })
+        .order("id", { ascending: true })
+    ).catch((err) => {
+      console.warn("race_stage_moments fetch failed (table may not be migrated yet):", err.message);
+      return [];
+    });
 
     // #3398 (Maiden Win Engine): career-firsts for DETTE løb (maiden win/første
     // podium/første trøje/klub-milepæl). Samme degradér-ærligt-mønster —
@@ -398,22 +518,28 @@ export default function RaceDetailPage() {
       return [];
     });
 
-    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }, { data: momentRows, error: momentsError }, { data: careerEventRows, error: careerEventsError }, passageRows] = await Promise.all([
+    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }, { data: incidentRows, error: incidentsError }, momentRows, { data: careerEventRows, error: careerEventsError }, passageRows] = await Promise.all([
       myTeamPromise, rowsPromise, profilesPromise, schedulePromise, incidentsPromise, momentsPromise, careerEventsPromise, passagesPromise,
     ]);
     if (incidentsError) {
       console.warn("race_incidents fetch failed (table may not be migrated yet):", incidentsError.message);
     }
-    if (momentsError) {
-      console.warn("race_stage_moments fetch failed (table may not be migrated yet):", momentsError.message);
-    }
     if (careerEventsError) {
       console.warn("rider_career_events fetch failed (table may not be migrated yet):", careerEventsError.message);
     }
+    // Afventes separat (se stagePointsPromise ovenfor for hvorfor den ikke er i
+    // Promise.all-arrayet ovenfor) — den er allerede kørt parallelt siden den blev
+    // oprettet, dette blokerer kun på det der ikke allerede er landet.
+    const stagePointsRowsResult = await stagePointsPromise;
 
     setMyTeamId(myTeamId);
     setRace(raceRow);
     setResults(rows);
+    setStagePointsRows(stagePointsRowsResult);
+    // #4581: nulstiller (ikke tilføjer til) det tidligere loaded-set — et raceId-skift
+    // er et helt nyt løb, gamle stage-numre fra det forrige løb må ikke overleve.
+    setLoadedStages(new Set(preloadStages));
+    stageFetchInFlightRef.current = new Set();
     setStageProfiles(profiles ?? []);
     setSchedule(scheduleRows ?? []);
     setIncidents(incidentRows ?? []);
@@ -425,6 +551,34 @@ export default function RaceDetailPage() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  // #4581: etapeskift — hent DEN valgte etapes race_results on-demand, cachet i
+  // loadedStages så en etape aldrig hentes to gange i samme session. Kører kun for
+  // stage-N-faner ("samlet" har allerede sine data fra loadAll's overallSeedStage-
+  // preload). in-flight-refen forhindrer et dobbelt round-trip + duplikerede rækker
+  // hvis brugeren klikker væk og tilbage før første hentning er landet.
+  useEffect(() => {
+    if (!activeTab.startsWith("stage-")) return;
+    const n = Number(activeTab.slice("stage-".length));
+    if (!Number.isFinite(n) || loadedStages.has(n) || stageFetchInFlightRef.current.has(n)) return;
+
+    let cancelled = false;
+    stageFetchInFlightRef.current.add(n);
+    fetchStageResultRows(raceId, n)
+      .catch((err) => {
+        console.warn("race_results per-stage fetch failed:", err.message);
+        return [];
+      })
+      .then((newRows) => {
+        if (cancelled) return;
+        if (newRows.length) setResults((prev) => [...prev, ...newRows]);
+        setLoadedStages((prev) => new Set(prev).add(n));
+      })
+      .finally(() => {
+        stageFetchInFlightRef.current.delete(n);
+      });
+    return () => { cancelled = true; };
+  }, [activeTab, raceId, loadedStages]);
+
   useEffect(() => {
     if (race?.id) logEvent("race_viewed", { race_id: race.id });
   }, [race?.id]);
@@ -435,13 +589,15 @@ export default function RaceDetailPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Etaper med faktiske etape-data (result_type="stage"), sorteret.
-  const stageNumbers = useMemo(() => {
-    const set = new Set(
-      results.filter(r => r.result_type === "stage").map(r => r.stage_number ?? 1)
-    );
-    return [...set].sort((a, b) => a - b);
-  }, [results]);
+  // #4581: etaper med faktiske etape-data — afledt af races.stages_completed (samme
+  // kilde som backend's "næste etape", skrevet atomisk sammen med etapens resultat-
+  // rækker) i stedet for at scanne results.filter(result_type==="stage") som FØR.
+  // Den gamle afledning krævede at ALLE etapers rækker allerede var hentet, hvilket
+  // var netop den over-fetch #4581 fjerner — se raceResultsSelectors.js.
+  const stageNumbers = useMemo(
+    () => deriveStageNumbers({ raceType: race?.race_type, stagesCompleted: race?.stages_completed }),
+    [race?.race_type, race?.stages_completed],
+  );
 
   const isStageRace = race?.race_type === "stage_race" && stageNumbers.length > 0;
 
@@ -525,13 +681,15 @@ export default function RaceDetailPage() {
   // den, så en spiller kan ikke se HVOR TÆT/LANGT han er fra podiet. Live =
   // "efter seneste kørte etape" (samme etape som liveStandings.stage); Final =
   // alle etaper (løbet er afgjort). Begge kun relevante mens der er resultater.
+  // #4581: bruger stagePointsRows (whole-race "stage"-type-rækker), IKKE results —
+  // results er nu per-etape-scoped, og totalen er kumulativ på tværs af etaper.
   const liveClassificationTotals = useMemo(
-    () => (liveStandings ? classificationPointTotals(results, profileByStage, liveStandings.stage) : null),
-    [results, profileByStage, liveStandings],
+    () => (liveStandings ? classificationPointTotals(stagePointsRows, profileByStage, liveStandings.stage) : null),
+    [stagePointsRows, profileByStage, liveStandings],
   );
   const finalClassificationTotals = useMemo(
-    () => classificationPointTotals(results, profileByStage, null),
-    [results, profileByStage],
+    () => classificationPointTotals(stagePointsRows, profileByStage, null),
+    [stagePointsRows, profileByStage],
   );
 
   // #2081: "mit hold" løses til den faktiske team_id (kan være ukendt hvis ikke logget
@@ -615,6 +773,14 @@ export default function RaceDetailPage() {
     document.getElementById("race-selection-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  // #4628 (billig delløsning af #2794): har løbet resultater, står de længere nede
+  // bag hero, etape-stribe og evt. karriere-momentkort — især på mobil. En stille
+  // genvej i sidehovedet springer direkte derned. Ingen fane-rework, ingen ny IA:
+  // samme anker-mekanik som #selection-linket ovenfor.
+  const scrollToResults = useCallback(() => {
+    document.getElementById("race-results-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   // Full-bleed-ruten får ingen Layout-padding — loading/fejl/not-found-grenene
   // sætter derfor selv side-padding, nu efter T3-kort-revisionens ydre
   // container-opskrift (#2849 bølge 5c: pt-4 md:pt-6, samme som kortet nedenfor).
@@ -626,7 +792,7 @@ export default function RaceDetailPage() {
 
   if (loadError) return (
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
-      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">{backLabel}</Link>
+      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"><ChevronLeftIcon size={13} aria-hidden="true" />{backLabel}</Link>
       <ErrorState
         description={t("detail.loadError.message")}
         action={<Button size="sm" variant="secondary" onClick={loadAll}>{t("detail.loadError.retry")}</Button>}
@@ -636,8 +802,19 @@ export default function RaceDetailPage() {
 
   if (notFound) return (
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
-      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">{backLabel}</Link>
-      <EmptyState icon={<FlagIcon size={26} aria-hidden="true" />} title={t("empty.raceNotFound")} />
+      <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"><ChevronLeftIcon size={13} aria-hidden="true" />{backLabel}</Link>
+      {/* #4625/#4628: EmptyState kræver en vej videre (TASTE fork 4) — en tom
+          flade der kun beskriver hvad der mangler var 6 af de 10 værste audit-fund. */}
+      <EmptyState
+        icon={<FlagIcon size={26} aria-hidden="true" />}
+        title={t("empty.raceNotFound")}
+        description={t("empty.raceNotFoundHint")}
+        action={
+          <Link to="/resultater?tab=archive" className={buttonClass({ variant: "secondary", size: "sm" })}>
+            {t("detail.backToLibrary")}
+          </Link>
+        }
+      />
     </div>
   );
 
@@ -678,6 +855,7 @@ export default function RaceDetailPage() {
           metadata). */}
       <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
         <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3">
+          <ChevronLeftIcon size={13} aria-hidden="true" />
           {backLabel}
         </Link>
 
@@ -694,16 +872,20 @@ export default function RaceDetailPage() {
                 </span>
               </div>
             </div>
-            {/* #3914: sidens ENE gold-knap FØR resultater findes — "Review tactics"
-                (genbruger discoverCta-scroll-mekanikken, ny tekst). Når løbet har
-                resultater flytter gold-rollen til "Watch the race film" på
-                etape-fanen i stedet (se StoryOfTheStageSection) — aldrig begge
-                samtidig (PAGE_TEMPLATES.md: én gold primary-knap pr. view). */}
-            {!hasAnyResults && race.status === "scheduled" && (
-              <div className="flex gap-2 flex-none">
-                <Button size="sm" onClick={scrollToSelection}>{t("raceCentre.action.reviewTactics")}</Button>
-              </div>
-            )}
+            {/* #4628: sidehovedets handling er STILLE (secondary). Den var guld, men
+                udtagelses-panelets "Gem udtagelse" er også guld og står på SAMME
+                skærm — to guld-primære pr. view (audit 2026-09 række #4, TASTE P3).
+                Gem er den handling der faktisk ændrer noget; sidehovedet er en
+                genvej. Når løbet har resultater bærer "Watch the race film" på
+                etape-fanen guld-rollen (StoryOfTheStageSection) — aldrig to. */}
+            <div className="flex gap-2 flex-none">
+              {!hasAnyResults && race.status === "scheduled" && (
+                <Button size="sm" variant="secondary" onClick={scrollToSelection}>{t("raceCentre.action.reviewTactics")}</Button>
+              )}
+              {hasAnyResults && (
+                <Button size="sm" variant="secondary" onClick={scrollToResults}>{t("detail.jumpToResults")}</Button>
+              )}
+            </div>
           </div>
           <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
             {statBlocks.map((b, i) => (
@@ -768,12 +950,11 @@ export default function RaceDetailPage() {
               race.status==="scheduled" (som OGSÅ dækker et løb der er live,
               #1825), hvilket stablede dem oven på resultat-fanerne. Se
               resultat-tilstanden længere nede for den nye rækkefølge. */}
-          {!hasAnyResults && race.status === "scheduled" && (
-            <StageDetailPanel
-              profile={profileByStage[scheduledStage]}
-              stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
-            />
-          )}
+          {/* #4628: den frittstående StageDetailPanel er VÆK herfra. Den tegnede
+              etapeprofilen i fuld bredde, og StageProfileCard tegnede den SAMME
+              profil igen 400 px længere nede — 1.754 px før første rytterrække i
+              holdudtagelsen (audit 2026-09 række #4). Panelet lever nu ÉT sted:
+              inde i udtagelses-blokken nedenfor, hvor ruten faktisk bruges. */}
 
           {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
               race-engine-flaget (renderer intet når backend siger enabled=false).
@@ -783,16 +964,17 @@ export default function RaceDetailPage() {
           {!hasAnyResults && race.status === "scheduled" && (
             <div id="race-selection-anchor" className="flex flex-col gap-3">
               {/* Sub-4 (#2448): ruten SKAL være synlig mens man udtager — man udtager
-                  til et parcours, ikke til et navn. Kompakt tier: bånd, kategori-chips,
-                  km-akse og race-read, men ingen højdeakse eller navne (pladsen bruges
-                  på selve udtagelsen). Ingen rutedata → intet kort, panelet står som før. */}
-              {hasRouteData(profileByStage[scheduledStage]) && (
-                <StageProfileCard
-                  profile={profileByStage[scheduledStage]}
-                  stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
-                  tier="compact"
-                />
-              )}
+                  til et parcours, ikke til et navn.
+                  #2810 + #4628: ÉT panel (rute + terræn-navn + finale + terræn-DNA)
+                  i `full`-tier, så stigningernes navn, længde og gradient kan aflæses
+                  netop hvor holdet sættes. Før stod der to grafer af samme etape her,
+                  begge i den tier der SKJULER de tal man planlægger efter. */}
+              <StageDetailPanel
+                profile={profileByStage[scheduledStage]}
+                stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
+                tier="full"
+                hasClassifications={race.race_type === "stage_race"}
+              />
               <RaceSelectionPanel
                 raceId={race.id}
                 selectedStageIndex={scheduledStageNums.indexOf(scheduledStage) >= 0 ? scheduledStageNums.indexOf(scheduledStage) : 0}
@@ -817,7 +999,16 @@ export default function RaceDetailPage() {
           )}
 
           {!hasAnyResults && race.status !== "scheduled" && (
-            <EmptyState icon={<FlagIcon size={28} aria-hidden="true" />} title={t("empty.noResultsImportedRace")} />
+            <EmptyState
+              icon={<FlagIcon size={26} aria-hidden="true" />}
+              title={t("empty.noResultsImportedRace")}
+              description={t("empty.noResultsImportedRaceHint")}
+              action={
+                <Link to="/resultater?tab=archive" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("empty.noResultsImportedRaceCta")}
+                </Link>
+              }
+            />
           )}
 
           {/* #3914: LØB MED RESULTATER (live eller completed) — resultatet
@@ -825,7 +1016,7 @@ export default function RaceDetailPage() {
               tidligere altid-åbne panellerne (opstilling, taktik) flyttet ned i
               foldede sektioner nedenfor. */}
           {hasAnyResults && isStageRace && (
-            <div className="flex flex-col gap-[14px]">
+            <div id="race-results-anchor" className="flex flex-col gap-[14px] scroll-mt-4">
               {/* Etape-stribe (Overall/etape-N) sidder under kortet, se ovenfor. */}
               {teamFilterBar}
 
@@ -843,19 +1034,28 @@ export default function RaceDetailPage() {
                   </SectionStack>
                 </div>
               )}
+              {/* #4581: etapens race_results hentes on-demand ved skift (se effekten
+                  ovenfor) — mens den er undervejs viser vi kortets kanoniske
+                  sektions-loading (docs/design/PAGE_TEMPLATES.md: skeleton-linjer
+                  inde i en Section, aldrig en spinner) i stedet for et tomt/forkert
+                  resultat. */}
               {stageNumbers.map(n => activeTab === `stage-${n}` && (
-                <StageTab key={n} stage={n} results={results} profile={profileByStage[n]} profileByStage={profileByStage}
-                  filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
-                  moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
-                  raceId={race.id} raceName={race.name} passages={passages} t={t} />
+                loadedStages.has(n)
+                  ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
+                      filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
+                      moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
+                      raceId={race.id} raceName={race.name} passages={passages} t={t} />
+                  : <Section key={n}><SkeletonLines lines={6} /></Section>
               ))}
             </div>
           )}
 
           {/* Enkeltdagsløb — ingen faner, bare måltavlen (+ holdklassement hvis det findes) */}
           {hasAnyResults && !isStageRace && (
-            <div className="flex flex-col gap-[14px]">
-              <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="full" hasClassifications={false} />
+            <div id="race-results-anchor" className="flex flex-col gap-[14px] scroll-mt-4">
+              {/* #2810: løbet er kørt — ruten er kontekst, ikke beslutningsgrundlag.
+                  Den store graf hører hjemme på den KOMMENDE etape. */}
+              <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="compact" hasClassifications={false} />
               {teamFilterBar}
               <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
                 <SectionStack>
@@ -866,6 +1066,7 @@ export default function RaceDetailPage() {
                     myOwnTeamId={myTeamId}
                     moments={moments}
                     stageNumber={1}
+                    raceId={race.id}
                   />
                   {finalByType.team?.length > 0 && (
                     <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} />
@@ -896,13 +1097,14 @@ export default function RaceDetailPage() {
             <div id="race-selection-anchor" className="flex flex-col gap-[14px]">
               <CollapsibleSection title={t("selection.title")} defaultOpen={location.hash === "#selection"}>
                 <div className="flex flex-col gap-3">
-                  {hasRouteData(profileByStage[scheduledStage]) && (
-                    <StageProfileCard
-                      profile={profileByStage[scheduledStage]}
-                      stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
-                      tier="compact"
-                    />
-                  )}
+                  {/* #4628: samme ÉNE panel som på den kommende flade, blot i
+                      `compact` — folden er allerede en detalje, og løbet er i gang. */}
+                  <StageDetailPanel
+                    profile={profileByStage[scheduledStage]}
+                    stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
+                    tier="compact"
+                    hasClassifications={race.race_type === "stage_race"}
+                  />
                   <RaceSelectionPanel
                     raceId={race.id}
                     selectedStageIndex={scheduledStageNums.indexOf(scheduledStage) >= 0 ? scheduledStageNums.indexOf(scheduledStage) : 0}
@@ -1250,6 +1452,22 @@ function StoryTagBadges({ moments, riderId, stageNumber, t }) {
   );
 }
 
+// #4598 (ejer-design 2/9): dagsform som en lille linje under rytteren, KUN for
+// spillerens EGET hold (isMine, se ResultEntityCell/ResultTable's isMine-
+// beregning) — aldrig for andres ryttere, aldrig som tal. Egen komponent
+// (ikke StoryTagBadges ovenfor) fordi designet er en linje UNDER navnet, ikke
+// en inline badge, og fordi dayform_line ikke er et 'tag_'-moment (vises for
+// ALLE 11 trin, også 0, modsat story-tags der kun fyrer ved markant udfald).
+// Samme lille, dæmpede typografi (text-3xs/text-cz-3) som story-tags ovenfor,
+// men som prosa-sætning, ikke en uppercase-pille.
+function DayformLine({ moments, riderId, stageNumber, raceId, t }) {
+  const found = dayformLineMoment(moments, riderId, stageNumber);
+  if (!found) return null;
+  const key = dayformLineI18nKey({ raceId, stageNumber, riderId, band: found.band });
+  if (!key) return null;
+  return <span className="block text-3xs text-cz-3 mt-0.5 leading-snug">{t(key)}</span>;
+}
+
 // #3519: mountain/points-klassementerne er point-baserede (ikke tids-baserede)
 // — rangordenen alene fortæller ikke en spiller HVOR TÆT/LANGT han er fra
 // podiet. pointsTotals={mountain,sprint} (raceClassificationTotals.js) bærer
@@ -1299,7 +1517,7 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
   );
 }
 
-function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, t }) {
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, t }) {
   const [classTab, setClassTab] = useState("stage");
   const [finalKmOpen, setFinalKmOpen] = useState(false);
 
@@ -1307,10 +1525,29 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
 
   // #3519: point-totaler "efter etape {stage}" for mountain/points-sub-fanen —
   // samme SSOT-genbrug som Overall-fanerne (raceClassificationTotals.js).
+  // #4581: stagePointsRows (whole-race "stage"-type-rækker), IKKE results — se
+  // samme begrundelse ved liveClassificationTotals/finalClassificationTotals ovenfor
+  // i RaceDetailPage. "Efter etape {stage}" er kumulativt (stage 1..stage), hvilket
+  // results (nu per-etape-scoped) ikke længere garanteret dækker.
   const stagePointsTotals = useMemo(
-    () => classificationPointTotals(results, profileByStage, stage),
-    [results, profileByStage, stage],
+    () => classificationPointTotals(stagePointsRows, profileByStage, stage),
+    [stagePointsRows, profileByStage, stage],
   );
+
+  // #4598 (ejer-design 2/9): instrumentering — hvor mange EGNE dayform-
+  // replikker findes for DENNE etape (uafhængig af classTab, da linjen kun
+  // vises i "stage"-sub-fanens rytterrækker, men "set resultatsiden med
+  // mindst én egen replik" er et etape-niveau-signal). team_ids er hvordan
+  // raceNarrative.js knytter momentet til et hold (se dayform_line-pushet).
+  const myDayformLineCount = useMemo(() => {
+    if (myOwnTeamId == null) return 0;
+    return momentsForStage(moments, stage).filter(
+      (m) => m.moment_key === "dayform_line" && (m.team_ids || []).map(String).includes(String(myOwnTeamId))
+    ).length;
+  }, [moments, stage, myOwnTeamId]);
+  useEffect(() => {
+    if (myDayformLineCount > 0) logEvent("feature_dayform_line_viewed", { count: myDayformLineCount, stage });
+  }, [myDayformLineCount, stage]);
 
   // Sub-2 (#2770): passage-grupper (KOM/mellemsprint) for DENNE etape — kun
   // relevante i "stage"-sub-fanen (måltavlen), ikke under de øvrige klassement-
@@ -1336,9 +1573,7 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
 
   // #2081: dag-rækkerne er nu FULDE klassementer (rank 1..N pr. etape) — trøje-
   // bæreren er eksplicit rank 1 (legacy-etaper har kun rank-1-rækker; samme filter).
-  const jerseys = JERSEYS
-    .map(j => ({ ...j, holder: results.find(r => r.result_type === j.dayType && (r.stage_number ?? 1) === stage && (r.rank ?? 1) === 1) }))
-    .filter(j => j.holder);
+  const jerseys = jerseyHoldersForStage(results, stage, JERSEYS);
 
   const title = classTab === "stage"
     ? t("detail.stageFinishOrder", { number: stage })
@@ -1372,7 +1607,7 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
         <SectionStack>
-          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} />
+          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId} />
           {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
         </SectionStack>
         <SectionStack>
@@ -1431,8 +1666,10 @@ function StageTab({ stage, results, profile, profileByStage, filterRows, myTeamI
       {/* #3914 (bølge 3, point 3 i kontrakten): fuld profilgraf flyttet NED i
           en foldet (default lukket) sektion — resultatet er etapens vigtigste
           indhold nu, ikke ruten. */}
+      {/* #2810: kørt etape → den lille graf. Den store bor på den kommende etape,
+          hvor stigningernes navn/længde/gradient er det man planlægger efter. */}
       <CollapsibleSection title={t("detail.stageProfile.sectionTitle")} defaultOpen={false}>
-        <StageProfileSlot profile={profile} passages={passages} tier="full" />
+        <StageProfileSlot profile={profile} passages={passages} tier="compact" />
       </CollapsibleSection>
     </div>
   );
@@ -1500,7 +1737,7 @@ function YouBadge({ t }) {
   );
 }
 
-function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumber }) {
+function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumber, raceId }) {
   const entity = resultEntity(row);
   const isWinner = highlightWinner && row.rank === 1;
   if (entity.kind === "team") {
@@ -1529,6 +1766,12 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
         {entity.linkId && <StoryTagBadges moments={moments} riderId={entity.linkId} stageNumber={stageNumber} t={t} />}
         {isMine && <YouBadge t={t} />}
       </span>
+      {/* #4598: dagsform-replikken, KUN eget hold (isMine), KUN på en konkret
+          etape (stageNumber != null — "samlet"-fanen aggregerer på tværs af
+          etaper og har ingen ENKELT dagsform at vise). */}
+      {isMine && stageNumber != null && entity.linkId && (
+        <DayformLine moments={moments} riderId={entity.linkId} stageNumber={stageNumber} raceId={raceId} t={t} />
+      )}
     </RiderLink>
   );
 }
@@ -1538,7 +1781,7 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
 // UDEN scroller. Audit-fund: tabellen manglede en horizontal-scroll-wrapper, så
 // et bredt felt (5 kolonner: rank/rytter/hold/tid/point) kunne klippes af på
 // mobil i stedet for at scrolle — body må ALDRIG scrolle horisontalt ved 375px.
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = null }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement
@@ -1568,8 +1811,10 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
         action={collapsible && (
           <button type="button" onClick={() => setExpanded(e => !e)}
             aria-pressed={expanded}
-            className="text-xs font-medium text-cz-accent-t hover:underline shrink-0">
+            className="inline-flex items-center gap-0.5 text-xs font-medium text-cz-accent-t hover:underline shrink-0">
             {expanded ? t("detail.showLess") : t("detail.showAll", { count: rows.length })}
+            <ChevronDownIcon size={13} aria-hidden="true"
+              className={`transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
           </button>
         )}
       />
@@ -1620,7 +1865,7 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                   >
                     <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                     <td className="px-2 py-2">
-                      <ResultEntityCell row={r} highlightWinner={highlightWinner} isMine={isMine} t={t} moments={moments} stageNumber={stageNumber} />
+                      <ResultEntityCell row={r} highlightWinner={highlightWinner} isMine={isMine} t={t} moments={moments} stageNumber={stageNumber} raceId={raceId} />
                     </td>
                     {showTeamCol && (
                       <td className="px-2 py-2 text-cz-3 text-xs">

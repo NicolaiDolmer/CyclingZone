@@ -15,7 +15,7 @@ import {
   STAR_RIDER_SCORE_THRESHOLD,
 } from "./boardIdentity.js";
 import { applyDnaWeightingToGoals, buildDnaTraditionGoal } from "./boardClubDna.js";
-import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import { stampGoalsOwners } from "./boardMembers.js";
 import {
   clamp,
   clampToStep,
@@ -28,6 +28,29 @@ import {
 
 export function getPlanDuration(planType) {
   return PLAN_DURATIONS[planType] ?? 1;
+}
+
+// #4578 · Stabil mål-nøgle UDEN id. Prod-fund (2/9): mål i board_mandates.goals[]
+// har ALDRIG haft id'er — issue #4578 antog fejlagtigt "stabile id'er", det
+// holder ikke. Nøglen er indholdsbaseret (type + target + nationality_code +
+// race_scope + cumulative), deterministisk og uafhængig af felt-rækkefølge og
+// ekstra felter på mål-objektet (fx satisfaction_bonus/label/category må gerne
+// variere uden at nøglen ændrer sig). Målt mod prod: 0 dubletter blandt de 237
+// aktive mandater på denne nøgle.
+//
+// Bevidst: et forhandlet mål med et NYT target giver en NY nøgle — en
+// genforhandling af et mål ER et nyt mål i kvitterings-forstand (dets
+// historik/bevægelser starter forfra), ikke en fortsættelse af det gamle måls
+// historik. Bruges BÅDE når motoren skriver mål-tilstande (boardMandateEngine.js)
+// og når boardRoom.js læser dem tilbage — samme nøgle begge steder er hele
+// pointen.
+export function buildGoalKey(goal = {}) {
+  const type = goal?.type ?? "";
+  const target = goal?.target ?? "";
+  const nationalityCode = goal?.nationality_code ?? "";
+  const raceScope = goal?.race_scope ?? "";
+  const cumulative = goal?.cumulative ? 1 : 0;
+  return `${type}|${target}|${nationalityCode}|${raceScope}|${cumulative}`;
 }
 
 export function parseBoardGoals(rawGoals) {
@@ -46,6 +69,12 @@ export function generateBoardGoals({
   team = null,
   riders = [],
   standing = null,
+  // #3514 S-M2a · Opt-in mål-ejerskab (addendum "Stemme-kontrakten" punkt 1).
+  // Sendes IKKE af eksisterende kaldere i dag (bagudkompatibelt no-op), men
+  // en kalder der har teamets team_board_members ved hånden kan sende dem
+  // ind for at få `owner_archetype_key` stemplet på hvert genereret mål ÉN
+  // gang. Se boardMembers.js::stampGoalOwner for kontrakten.
+  assignedMembers = null,
 } = {}) {
   const planDuration = getPlanDuration(planType);
   const isMultiYear = planDuration > 1;
@@ -314,10 +343,11 @@ export function generateBoardGoals({
     // strukturelle driver bag den høje konsekvens-rate (#1187-B). Beholdes på
     // multi-year-planer, hvor sponsor-indkomsten reelt kan vokse over sæsoner.
     .filter((goal) => isMultiYear || goal.type !== "sponsor_growth");
-  return selectedGoals.map((goal) => addGoalMetadata({
+  const enrichedGoals = selectedGoals.map((goal) => addGoalMetadata({
     ...goal,
     satisfaction_penalty: Math.round(goal.satisfaction_penalty * penaltyModifier),
   }));
+  return assignedMembers ? stampGoalsOwners(enrichedGoals, { assignedMembers }) : enrichedGoals;
 }
 
 // #1234 · Returnerer den forhandlede (lempede) variant af et mål — eller NULL
@@ -404,6 +434,102 @@ function relaxGoalTarget(enrichedGoal) {
     }
     // Binære mål (target er allerede absolut minimum) + ukendte typer:
     // intet meningsfuldt at lempe.
+    case "no_outstanding_debt":
+    default:
+      return null;
+  }
+}
+
+// #4557 (S-M2c, ejer-svar 2/9 spørgsmål 1: A) · Returnerer den STRAMMEDE
+// ("Stretch") variant af et mål på årsmødet — eller NULL når målet ikke
+// reelt kan strammes (samme "ingen no-op-rabat"-garanti som buildNegotiatedGoal,
+// bare i den modsatte retning). `stretchGoalTarget` er en bevidst SPEJLING af
+// `relaxGoalTarget` pr. type (samme trin, modsat fortegn) — se den funktion
+// for typernes semantik. Binære mål (`no_outstanding_debt`) kan hverken
+// lempes eller strammes → null, knappen deaktiveres i UI'en (#3012-klassen).
+export function buildStretchGoal(goal, { generosity = 1.0 } = {}) {
+  const enrichedGoal = addGoalMetadata(goal);
+  const stretched = stretchGoalTarget(enrichedGoal);
+
+  // Intet reelt hårdere target at tilbyde → ingen Stretch-option.
+  if (!stretched || stretched.target === enrichedGoal.target) return null;
+
+  const generosityFactor = Number.isFinite(Number(generosity)) ? Number(generosity) : 1.0;
+
+  return addGoalMetadata({
+    ...enrichedGoal,
+    target: stretched.target,
+    label: stretched.label,
+    // Ejer-svar 2/9 §9.1: bonus OG straf × 1,5; tillids-trappen (generosity,
+    // 0,80/1,00/1,25) skalerer KUN bonussen, aldrig straffen — en betroet
+    // manager får mere ud af at strække sig, uden at risikoen bliver mindre.
+    satisfaction_bonus: Math.round((enrichedGoal.satisfaction_bonus || 0) * 1.5 * generosityFactor),
+    satisfaction_penalty: Math.round((enrichedGoal.satisfaction_penalty || 0) * 1.5),
+    stretch: true,
+  });
+}
+
+// Beregner det STRAMMEDE target pr. mål-type — spejlfunktion af relaxGoalTarget
+// ovenfor (samme trin-størrelse, modsat retning). Returnerer null for typer der
+// aldrig kan strammes (binære mål + ukendte typer). Et target identisk med
+// originalen (fx top_n_finish der allerede er på target=1) filtreres af
+// buildStretchGoal.
+function stretchGoalTarget(enrichedGoal) {
+  switch (enrichedGoal.type) {
+    case "top_n_finish": {
+      const target = Math.max(1, enrichedGoal.target - 2);
+      return { target, label: `Top ${target} i divisionen` };
+    }
+    case "stage_wins": {
+      const target = enrichedGoal.target + 1;
+      return {
+        target,
+        label: enrichedGoal.cumulative
+          ? `Mindst ${target} sejre over planperioden`
+          : `Mindst ${target} sejr${target !== 1 ? "e" : ""}`,
+      };
+    }
+    case "gc_wins": {
+      const target = enrichedGoal.target + 1;
+      return {
+        target,
+        label: enrichedGoal.cumulative
+          ? `Mindst ${target} samlede sejre over planperioden`
+          : `Mindst ${target} samlet sejr${target !== 1 ? "e" : ""}`,
+      };
+    }
+    case "min_u25_riders": {
+      const target = enrichedGoal.target + 1;
+      return { target, label: `Min. ${target} U25-ryttere pa holdet` };
+    }
+    case "min_national_riders": {
+      const target = enrichedGoal.target + 1;
+      return { target, label: buildGoalLabel({ ...enrichedGoal, target }) };
+    }
+    case "min_riders": {
+      const uncapped = enrichedGoal.target + 3;
+      const target = enrichedGoal.max_target != null ? Math.min(enrichedGoal.max_target, uncapped) : uncapped;
+      return { target, label: `Hold pa min. ${target} ryttere` };
+    }
+    case "sponsor_growth": {
+      const target = enrichedGoal.target + 5;
+      return { target, label: `Sponsor-indkomst vokset med ${target}%` };
+    }
+    case "monument_podium":
+    case "signature_rider":
+    case "jersey_wins":
+    case "u25_development_delta":
+    case "relative_rank":
+    case "domestic_dominance": {
+      const target = enrichedGoal.target + 1;
+      return { target, label: buildGoalLabel({ ...enrichedGoal, target }) };
+    }
+    case "profitable_transfers": {
+      const target = enrichedGoal.target + 50_000;
+      return { target, label: buildGoalLabel({ ...enrichedGoal, target }) };
+    }
+    // Binære mål (target er allerede absolut minimum) + ukendte typer:
+    // intet meningsfuldt at stramme.
     case "no_outstanding_debt":
     default:
       return null;
@@ -742,6 +868,29 @@ export function inferNegotiationIndexesFromGoals({
   return selectedIndexes;
 }
 
+// #4377 · Forward-guard mod stale, pre-fix persisterede current_goals-rækker.
+// EFTER #4377-fixet er ethvert club_dna-kilde jersey_wins-mål ALTID multi-year
+// (kun injiceret på 5yr-forslag, boardGoals.js:480/buildBoardProposal) og skal
+// derfor ALTID bære `cumulative: true`. Et mål med `source: "club_dna"` og
+// jersey_wins-type der IKKE er cumulative kan derfor kun være en
+// current_goals-JSON persisteret FØR fixet (en board_profiles-række der endnu
+// ikke er kørt igennem database/2026-09-01-4377-jersey-wins-cumulative-
+// repair.sql). Uden dette guard ville en sådan række stille blive evalueret
+// som per-sæson (den præcise #4377-fejl) uden nogen synlig advarsel i
+// logs/Sentry — reparations-scriptets fremdrift ville være umulig at måle.
+// Ren logging, ingen kastede exceptions: evalueringen skal stadig returnere
+// et resultat (fallback til per-sæson-grenen), bare synligt flagget som stale.
+function warnIfStalePersistedJerseyGoal(enrichedGoal, callerLabel) {
+  if (enrichedGoal.type === "jersey_wins" && enrichedGoal.source === "club_dna" && !enrichedGoal.cumulative) {
+    console.warn(
+      `[boardGoals.${callerLabel}] #4377: persisted jersey_wins club_dna-goal mangler cumulative:true `
+      + `— pre-migration current_goals-række, evalueres midlertidigt per-sæson (stale). `
+      + `Kør database/2026-09-01-4377-jersey-wins-cumulative-repair.sql for at lukke gabet.`,
+      { dnaKey: enrichedGoal.dna_key ?? null }
+    );
+  }
+}
+
 export function evaluateGoal(goal, standing, team, context = {}) {
   const enrichedGoal = addGoalMetadata(goal);
   const {
@@ -755,8 +904,9 @@ export function evaluateGoal(goal, standing, team, context = {}) {
     // det er ikke en workaround for denne default, se kommentaren dér.
     isFinalSeason = false,
     activeLoanCount = 0,
-    planStartSponsorIncome,
-    currentSponsorIncome,
+    // #3494 · sponsor_growth genanvender IKKE længere planStartSponsorIncome/
+    // currentSponsorIncome (begge kilder er det døde teams.sponsor_income-felt)
+    // — se sponsorGrowthBaselineIncome/sponsorGrowthCurrentIncome nedenfor.
     cumulativeStats: _cumulativeStats,
     cumulativeMonumentPodiums,
     cumulativeJerseyWins,
@@ -766,6 +916,8 @@ export function evaluateGoal(goal, standing, team, context = {}) {
     planStartU25StatSum,
     planStartU25Count,
     divisionManagerCount,
+    sponsorGrowthCurrentIncome,
+    sponsorGrowthBaselineIncome,
   } = context;
 
   switch (enrichedGoal.type) {
@@ -792,9 +944,15 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       if (!isFinalSeason) return null;
       return activeLoanCount === 0;
     case "sponsor_growth":
+      // #3494 · Re-pointet til ægte sponsor_contracts-udbetalinger (boardGoalContext.js).
+      // Ingen baseline (plan-sæson 1, endnu ingen afsluttet sæson at måle fra) eller
+      // ingen aktuel måling (query-fejl) → null, samme "ikke talt med"-semantik som
+      // stage_wins/gc_wins cumulative ovenfor — IKKE en fejlet evaluering.
       if (!isFinalSeason) return null;
-      if (!planStartSponsorIncome || planStartSponsorIncome === 0) return null;
-      return ((currentSponsorIncome - planStartSponsorIncome) / planStartSponsorIncome * 100) >= enrichedGoal.target;
+      if (!sponsorGrowthBaselineIncome || sponsorGrowthBaselineIncome <= 0) return null;
+      if (sponsorGrowthCurrentIncome == null) return null;
+      return ((sponsorGrowthCurrentIncome - sponsorGrowthBaselineIncome) / sponsorGrowthBaselineIncome * 100)
+        >= enrichedGoal.target;
     // S-02d · 7 nye mål-typer
     case "monument_podium": {
       // Cumulative over plan-perioden (Q-A) — mindst N podie-placeringer.
@@ -813,6 +971,7 @@ export function evaluateGoal(goal, standing, team, context = {}) {
         if (cumulativeJerseyWins == null) return null;
         return cumulativeJerseyWins >= enrichedGoal.target;
       }
+      warnIfStalePersistedJerseyGoal(enrichedGoal, "evaluateGoal");
       if (seasonJerseyWins == null) return null;
       return seasonJerseyWins >= enrichedGoal.target;
     case "signature_rider":
@@ -1015,21 +1174,38 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       status = actual === 0 ? "ahead" : actual === 1 ? "watch" : "behind";
       break;
     case "sponsor_growth": {
-      const planStartSponsorIncome = context.planStartSponsorIncome;
-      if (!planStartSponsorIncome || planStartSponsorIncome <= 0) {
+      // #3494 · Re-pointet til ægte sponsor_contracts-udbetalinger. Baseline =
+      // planens FØRSTE afsluttede sæsons faktiske udbetaling (boardGoalContext.js);
+      // FINDES DEN IKKE (plan-sæson 1, eller historikken mangler) → awaiting_data,
+      // ALDRIG et fallback til teams.sponsor_income/SPONSOR_INCOME_BASE (rod-årsagen
+      // til at målet strukturelt altid viste 0/N, jf. docs/BOARD_RULES.md §3).
+      // awaiting_data tæller IKKE imod goalsMet (samme non-punishing semantik som
+      // de øvrige "mangler data endnu"-grene ovenfor) — se PR-body for beviset for
+      // at dette ALDRIG kan gøre en plan dårligere stillet end den dødfødte 0%-måling.
+      const baseline = context.sponsorGrowthBaselineIncome;
+      const currentIncome = context.sponsorGrowthCurrentIncome;
+      if (!baseline || baseline <= 0 || currentIncome == null) {
         missingData = true;
         score = 0.6;
         status = "awaiting_data";
         break;
       }
 
-      const currentSponsorIncome = context.currentSponsorIncome ?? team?.sponsor_income ?? SPONSOR_INCOME_BASE;
-      actual = ((currentSponsorIncome - planStartSponsorIncome) / planStartSponsorIncome) * 100;
+      // #3494 (CodeRabbit-fund, PR #4550) · score/status regnes af den RAA
+      // (uafrundede) procent, IKKE den afrundede visnings-værdi. roundNumber
+      // (3 decimaler) kan rundes en reel 11.9996 % op til visnings-12 %, hvilket
+      // ville vise "ahead" (12 >= target 12) selvom evaluateGoal's autoritative
+      // `met`-flag (rå, uafrundet, samme linje 804 ovenfor) korrekt siger false
+      // for 11.9996 < 12 — en selvmodsigelse mellem kortets status og den
+      // "kilde til sandhed" isBoardGoalAchieved bruger. `actual` afrundes KUN
+      // til visning, aldrig til beregning.
+      const rawActual = ((currentIncome - baseline) / baseline) * 100;
+      actual = roundNumber(rawActual);
       target = isFinalSeason
         ? enrichedGoal.target
         : Math.max(1, enrichedGoal.target * (seasonsCompleted / planDuration));
-      score = scoreHigherBetter(actual, target);
-      status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
+      score = scoreHigherBetter(rawActual, target);
+      status = rawActual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
     }
     // S-02d · 7 nye mål-typer
@@ -1066,6 +1242,7 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
           ? enrichedGoal.target
           : Math.max(1, Math.ceil(enrichedGoal.target * (seasonsCompleted / planDuration)));
       } else {
+        warnIfStalePersistedJerseyGoal(enrichedGoal, "evaluateGoalProgress");
         const seasonCount = context.seasonJerseyWins;
         if (seasonCount == null) {
           missingData = true;

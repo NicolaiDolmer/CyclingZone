@@ -23,6 +23,7 @@ import {
   deleteForumReply,
   getForumReportCounts,
   markForumThreadRead,
+  markAllForumThreadsRead,
   getForumUnreadStatus,
   toggleForumReaction,
 } from "./forum.js";
@@ -61,8 +62,8 @@ function seedState(overrides = {}) {
       { id: "admin1", username: "dolmer", email: "owner@example.com", role: "admin" },
     ],
     teams: [
-      { id: "t1", name: "Team Alpha" },
-      { id: "t2", name: "Team Beta" },
+      { id: "t1", name: "Team Alpha", division: 1, balance: 500000 },
+      { id: "t2", name: "Team Beta", division: 3, balance: 250000 },
     ],
     ...overrides,
   };
@@ -115,6 +116,52 @@ test("listForumPosts: pinned i egen blok på side 1, hovedliste nyeste først, f
   assert.equal(result.items[0].author.team_name, "Team Beta");
   assert.equal(result.items[0].has_poll, false);
   assert.equal(result.next_cursor, null);
+});
+
+// #4751 — profil-identitet i forummet: forfatterlinjen skal bære det fronten
+// bruger til at linke til /managers/:teamId + tegne auto-signaturen (holdnavn +
+// division), og INTET andet. Testen er både en kontrakt-test (feltet findes) og
+// en lækage-vagt (email/user_id/balance må aldrig nå spiller-fladen).
+const ALLOWED_AUTHOR_KEYS = ["username", "team_name", "team_id", "division"];
+
+function assertAuthorShape(author) {
+  assert.deepEqual(Object.keys(author).sort(), [...ALLOWED_AUTHOR_KEYS].sort());
+}
+
+test("forfatter-shape: username + holdnavn + team_id + division, aldrig email/user_id/balance", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", seq: 1, user_id: "u1", team_id: "t1" })],
+    forum_replies: [
+      { id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u2", team_id: "t2", body: "Reply", quoted_reply_id: null, deleted_at: null },
+    ],
+  }));
+
+  const list = await listForumPosts({ supabase: fake, userId: "u1" });
+  assertAuthorShape(list.items[0].author);
+  assert.equal(list.items[0].author.division, 1);
+  assert.equal(list.items[0].author.team_name, "Team Alpha");
+
+  const detail = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  assertAuthorShape(detail.body.post.author);
+  assert.equal(detail.body.post.author.division, 1);
+  assertAuthorShape(detail.body.replies[0].author);
+  assert.equal(detail.body.replies[0].author.division, 3);
+  assert.equal(detail.body.replies[0].author.team_name, "Team Beta");
+
+  const serialized = JSON.stringify(detail.body);
+  assert.ok(!serialized.includes("@example.com"), "email må aldrig nå spiller-fladen");
+  assert.ok(!serialized.includes("balance"), "team-økonomi må aldrig nå forfatterlinjen");
+});
+
+test("forfatter-shape: division er null når opslaget ikke har et hold (admin-opslag)", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p9", seq: 9, user_id: "admin1", team_id: null })],
+  }));
+
+  const detail = await getForumPost({ supabase: fake, id: "p9", userId: "admin1" });
+  assert.equal(detail.body.post.author.username, "dolmer");
+  assert.equal(detail.body.post.author.team_name, null);
+  assert.equal(detail.body.post.author.division, null);
 });
 
 test("listForumPosts: kategori-filter + keyset-cursor (sammensat aktivitet+seq), pinned kun på side 1", async () => {
@@ -242,6 +289,37 @@ test("getForumUnreadStatus: has_unread er false uden brugte tråde/manglende use
   }));
   assert.deepEqual(await getForumUnreadStatus({ supabase: withPosts, userId: "u1" }), { has_unread: false });
   assert.deepEqual(await getForumUnreadStatus({ supabase: withPosts, userId: "u2" }), { has_unread: true }); // u2 har aldrig læst p1
+});
+
+test("markAllForumThreadsRead: upserter last_read_at for ALLE ikke-slettede tråde, idempotent, kræver userId", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      post({ id: "p1", seq: 1 }),
+      post({ id: "p2", seq: 2 }),
+      post({ id: "p3", seq: 3, deleted_at: "2026-08-01T00:00:00Z" }), // slettet — springes over
+    ],
+    // p1 har allerede en (ældre) læst-række — den skal rykkes frem, ikke duplikeres.
+    forum_thread_reads: [{ user_id: "u1", post_id: "p1", last_read_at: "2026-08-01T10:00:00Z" }],
+  }));
+
+  const missingUser = await markAllForumThreadsRead({ supabase: fake, userId: null });
+  assert.equal(missingUser.status, 401);
+
+  const now = new Date("2026-08-22T10:00:00Z");
+  const result = await markAllForumThreadsRead({ supabase: fake, userId: "u1", now });
+  assert.deepEqual(result, { status: 200, body: { ok: true, marked: 2 } });
+  assert.equal(fake.state.forum_thread_reads.length, 2); // p1 (opdateret) + p2 (ny) — p3 er udeladt
+  const byPostId = new Map(fake.state.forum_thread_reads.map((r) => [r.post_id, r.last_read_at]));
+  assert.equal(byPostId.get("p1"), now.toISOString());
+  assert.equal(byPostId.get("p2"), now.toISOString());
+  assert.equal(byPostId.has("p3"), false);
+
+  // Idempotent: en gentagelse dubler ikke rækkerne.
+  await markAllForumThreadsRead({ supabase: fake, userId: "u1", now: new Date("2026-08-23T10:00:00Z") });
+  assert.equal(fake.state.forum_thread_reads.length, 2);
+
+  // has_unread bliver false for u1 efter mark-all-read.
+  assert.deepEqual(await getForumUnreadStatus({ supabase: fake, userId: "u1" }), { has_unread: false });
 });
 
 // ── Detalje + poll ──────────────────────────────────────────────────────────

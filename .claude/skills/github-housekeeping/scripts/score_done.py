@@ -59,6 +59,9 @@ STRONG_PATTERNS = [
     r'\bcycling-zone\.vercel\.app\b.*200\s*OK',
     r'merget\s+til\s+main.*deployet\s+til\s+prod',
     r'(?:Migration\s+)?anvendt\s+p[åa]\s+prod',
+    # 2026-09-03: orkestratorens done-flip efter en natboelge ("Shipped i PR #N (squash <hash>)").
+    # Hashen verificeres i sweepen med `git merge-base --is-ancestor <hash> origin/main`.
+    r'Shipped\s+i\s+PR\s+#\d+\s*\(squash\s+[0-9a-f]{7,}\)',
 ]
 
 NEG_KEYWORDS = [

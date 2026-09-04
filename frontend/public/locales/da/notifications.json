@@ -34,10 +34,14 @@
   "empty": {
     "noneUnread": "Ingen ulæste notifikationer",
     "noneInCategory": "Ingen notifikationer i denne kategori",
+    "noneHint": "Notifikationer i andre kategorier kan stadig vente.",
+    "showAllCta": "Vis alle notifikationer",
     "noPending": "Intet venter på din beslutning",
     "noPendingHint": "Tilbud og byttehandler du skal svare på dukker op her",
+    "browseMarketCta": "Se markedet",
     "noFeed": "Ingen aktivitet endnu",
-    "noFeedHint": "Start auktioner og handler for at se aktivitet her"
+    "noFeedHint": "Start auktioner og handler for at se aktivitet her",
+    "goToAuctionsCta": "Gå til auktioner"
   },
   "aggregate": {
     "countSuffix": "(×{count})",

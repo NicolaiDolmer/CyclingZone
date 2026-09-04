@@ -22,7 +22,7 @@ Dataflow ved et køb:
 Spiller → /pro → POST /api/billing/checkout → Alunta /checkout-sessions
        → Aluntas hostede betalingsside → Stripe trækker kort
        → Alunta opretter faktura → Dinero bogfører
-       → webhook + daglig reconcile → Supabase subscriptions → isPro i appen
+       → webhook + time-reconcile → Supabase subscriptions → isPro i appen
 ```
 
 ## 2. Alunta
@@ -196,9 +196,12 @@ Rettes en fejlkonfiguration, **gensynkroniseres berørte fakturaer ikke automati
 | Felt | Skrives af | Bemærkning |
 |---|---|---|
 | `alunta_customer_id`, `alunta_subscription_id` | Webhook + reconcile | Kan mangle på gamle rækker |
-| `status`, `current_period_end`, `plan_interval` | Reconcile (dagligt) | Sandheden ligger i Alunta |
+| `status`, `current_period_end`, `plan_interval` | Reconcile (hver time + ved boot) | Sandheden ligger i Alunta. `plan_interval` normaliseres til `monthly`/`semiannual` (Alunta sender tal, #4541) |
+| `updated_at` | Reconcile, kun ved reel ændring (#4542) | Aflæs hvornår cachen sidst rykkede sig |
 | `is_founder` | Webhook | Permanent, jf. handelsbetingelserne |
 | `terms_version`, `terms_accepted_at` | Checkout, før købet | Null på kunder fra før accept-flowet |
+
+**En række er ikke en kunde.** Vilkårsaccepten skrives FØR betalingen, så en spiller der lukker Alunta-siden efterlader en række med `status='inactive'` og intet andet. "Har betalt" = `alunta_subscription_id` sat, ELLER status i {active, cancelled, past_due}, ELLER `current_period_end` sat (`hasEverPaid()` i `backend/lib/growthSnapshot.js`, samme definition i `compute_daily_growth_snapshot`). Resten vises i admin som "startede checkout, betalte ikke" (#4636).
 | `last_event_id` | Webhook | Fallback-format `<event>:<timestamp>` betyder at `data.uuid` manglede i payloaden |
 
 ### `computeIsPro()` 📄
@@ -206,12 +209,13 @@ Rettes en fejlkonfiguration, **gensynkroniseres berørte fakturaer ikke automati
 `frontend/src/lib/proEntitlement.js`, holdt i sync med `backend/lib/entitlement.js`:
 
 ```js
-status ∈ {active, cancelled, past_due}  OG  current_period_end > nu
+status ∈ {active, past_due}  OG  current_period_end + 3 døgn > nu     (respit, #4512/#4541)
+status = cancelled            OG  current_period_end > nu              (betalt tid æres præcis)
 ```
 
-`cancelled` tæller stadig som Pro indtil periodens udløb — betalt tid æres.
+`current_period_end` er en **cache** af Aluntas sandhed. Respitten på 3 døgn dækker cache-lag (én reconcile-time + et deploy) og Aluntas egen rykkerproces, hvor status bliver stående på active/past_due. Afslutter Alunta abonnementet (`subscription.ended` → `inactive`), falder Pro med det samme. Konstanten hedder `PRO_GRACE_AFTER_PERIOD_END_MS` og findes i BEGGE filer — de skal ændres sammen.
 
-**Fælde:** `current_period_end` er et hårdt udløb. Fornyes abonnementet ikke, falder kunden ud af Pro uden varsling. Se #4512.
+**Historik:** før 2/9 var udløbet hårdt, og den eneste betalende kunde mistede Pro ved fornyelsen 1/9 mens Alunta sagde `active` med ny periode. Reconcilen kørte reelt aldrig (se nedenfor).
 
 `isPro` gater i dag kun UI: `Layout.jsx:326` (`isPro || isFounder`), `ProfilePage.jsx:541`, `ProUpgradePage.jsx:151`. Ingen spilfunktion er hårdt gatet — se #2806.
 
@@ -231,7 +235,26 @@ Signaturverifikation er obligatorisk (`ALUNTA_WEBHOOK_SECRET`).
 
 Flag: `app_config.alunta_reconcile_enabled` (true siden 2026-08-03).
 
-**Kører dagligt.** Betaler en kunde nu, følger entitlementet først med ved næste kørsel. Se #4512.
+**Svarform ✅ målt 2026-09-02** (REST `GET /subscriptions` og `GET /subscriptions/{uuid}` mod prod, #4541). Hvert element i `data[]` bærer:
+
+| felt | form | eksempel |
+|---|---|---|
+| `uuid` | Alunta abonnements-id | `b9d010fc-…` |
+| `customer.uuid`, `customer.external_customer_id` | **nested** under `customer`; `external_customer_id` = vores `team_id` | `dd7665b4-…` |
+| `external_customer_id` (top-niveau) | abonnementets egen eksterne reference (sat af checkout, samme værdi som `customer.external_customer_id`) | |
+| `status` | streng: `pending`/`active`/`under_cancellation`/`cancelled` (OpenAPI) | `active` |
+| `interval` | **tal**, måneder pr. periode (feltet hedder `interval`, ikke `plan_interval`) | `1`, `6` |
+| `current_period_start`, `current_period_end` | ISO med mikrosekunder | `2027-03-01T22:59:59.999999Z` |
+| `plan.uuid`, `plan.name` | nested | `CZ Pro 6 Months` |
+| `scheduled_plan_change`, `scheduled_price_changes[]` | kun i REST | |
+
+Dry-run-scriptet printer `extractSubscriptionFields`-**resultatet** (`externalCustomerId`, `planInterval` …), ikke Aluntas rå feltnavne — læs de to ting hver for sig.
+
+**Kadence:** hver time PLUS en boot-run ved hvert backend-deploy (#4541). Før 2/9: et 24-timers `setInterval` uden boot-run, som nulstilles ved deploy — med flere backend-deploys om dagen kørte den reelt aldrig, og fornyelsen 1/9 blev ikke synket.
+
+Betaler en kunde nu, følger entitlementet med inden for en time; webhooken dækker det øjeblikkelige.
+
+**Forward-guard:** siger Alunta `active`/`past_due` om et abonnement hvis periode er udløbet ud over respitten, sender reconcilen en Sentry-alarm (`alunta-reconcile-active-but-expired`) i stedet for at tie.
 
 ## 6. Kode og konfiguration
 
@@ -241,7 +264,7 @@ Flag: `app_config.alunta_reconcile_enabled` (true siden 2026-08-03).
 | `backend/lib/billingCheckout.js` | Checkout-endpoint, terms-validering, pause-flag |
 | `backend/lib/billingPortal.js` | Portal-link |
 | `backend/lib/aluntaWebhook.js` | Webhook-modtager + signaturverifikation |
-| `backend/lib/aluntaSubscriptionReconcile.js` | Daglig afstemning |
+| `backend/lib/aluntaSubscriptionReconcile.js` | Afstemning hver time + ved boot |
 | `backend/lib/founderSeats.js` | Founder-pladser (50 stk.) |
 | `backend/scripts/alunta-setup-plans.js` | Engangs-opsætning af planer via API |
 | `frontend/src/pages/ProUpgradePage.jsx` | /pro-siden |
@@ -311,7 +334,7 @@ Begge MCP-forbindelser er `local scope`: kun denne bruger, kun dette projekt, in
 5. **"Betalingen gik igennem" ≠ "entitlement er korrekt."** Læs rækken.
 6. **Plan-UUID bor i Railway.** Skift plan uden env-opdatering = gammel pris sælges videre.
 7. **`CHECKOUT_PAUSED` findes to steder.**
-8. **Reconcile er daglig, ikke øjeblikkelig.**
+8. **Reconcile er time-vis, ikke øjeblikkelig.** Og et `setInterval` uden boot-run kører aldrig på en service der deployer flere gange om dagen.
 9. **Et 2xx fra en gateway er ikke bevis for at der er flyttet penge.**
 10. **MCP og REST bruger forskellige feltnavne for samme data.** `prices[]/amount_minor` mod `renewal_intervals[]/price`. Mål svaret før du læser felter af det.
 11. **MCP'en viser ikke alt.** Planlagte planskift og prisændringer findes kun i REST'ens `scheduled_plan_change` / `scheduled_price_changes`. Konkludér aldrig "det skete ikke" fordi MCP'en ikke viser det — vælg en kilde der *kan* vise fænomenet, før du læser noget ud af dens tavshed.
@@ -325,6 +348,20 @@ infisical run --env=dev -- node scripts/alunta-setup-plans.js
 Køres fra `backend/`. Sammenligner Aluntas faktiske planer mod den forventede opsætning, rapporterer afvigelser og udfasede planer der stadig er aktive, og exit'er 1 ved drift. **Retter aldrig en pris** — en plan med aktive abonnenter kan alligevel ikke reprises. `--create-missing` opretter manglende planer.
 
 Erstatter den tidligere adfærd, hvor scriptet stiltiende sprang eksisterende planer over på navn og dermed lod en forkert pris overleve enhver gen-kørsel.
+
+Kataloget (`PLANS`/`RETIRED`/`INTERVAL_MONTHS`) er udtrukket til `backend/scripts/lib/aluntaPlanCatalog.js` (#4645) — uændrede tal, men flyttet så de kan læses uden at trigge dette scripts top-level Alunta-kald.
+
+### Pris-forward-guard (#4645)
+
+`alunta-setup-plans.js` sammenligner kun Alunta mod SIN EGEN konstant — ikke mod det spilleren rent faktisk ser på `/pro`. Det gav 2/9 en reel fejlpris: `pro.json` viste 265 kr., Alunta trak 295 kr. (regnefejl i en issue-kommentar, "6 × 49 = 294" blev læst som 295; se `.claude/learnings/2026-09-02-halvaarspris-fejlregning-kunde-betalte-30-kr-for-meget.md`).
+
+```bash
+node scripts/check-pro-prices.mjs
+```
+
+Ingen netværk — læser `aluntaPlanCatalog.js` + `frontend/public/locales/{en,da}/pro.json` og fejler (exit 1) hvis `round(price_excl_minor * 1.25) / 100` ikke matcher BÅDE planens egen `inclVat`-deklaration OG det viste tal i begge sprog. Beregner også rabatpåstanden (6 mdr. mod 6× månedlig) i stedet for at den håndskrives i docs. Regnestykket er unit-testet mod fixture-data (`node --test scripts/check-pro-prices.test.mjs`) — ikke mod de ægte repo-filer, så testen forbliver grøn uanset aktuel drift; kør selve scriptet for at se den ægte tilstand.
+
+**Kendt åben drift pr. 2026-09-02:** scriptet rapporterer i dag at `CZ Pro 6 Months` (23600 øre i `aluntaPlanCatalog.js`) beregner til 295 kr., mens `pro.json` viser 265 kr. Alunta-planen er allerede reprised live til 21200 øre (#4645, verificeret via `get_plan_catalog`), men den lokale scriptkonstant og EUR-planerne (`CZ Pro 1 month EUR` 519 cent, `CZ Pro 6 Months EUR` 2799 cent, allerede oprettet i Alunta men `available_in_checkout: false`) venter på PR #4608/#4616 (ejer-kørt, Railway-env + checkout-flag). Se `docs/NOW.md`/#4616 for status.
 
 ## 10. Relateret
 

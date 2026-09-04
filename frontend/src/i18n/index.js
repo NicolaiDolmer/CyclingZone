@@ -16,7 +16,9 @@
 //     fra language-chunken uden at tilføje ny payload. Listen (og kravet om
 //     ready-gate) håndhæves af INLINE_EXEMPT i guard-scriptet.
 //   • supportedLngs: ['en','da','en-XA'] — pseudo-locale aktiveres
-//     ved at sætte ?pseudo=1 i URL (kun dev/preview, ikke production-safe)
+//     ved at sætte ?pseudo=1 i URL (kun dev/preview, ikke production-safe).
+//     `?pseudo=1&pad=30` forlænger derudover hver streng med ~30 % af sin egen
+//     længde (tysk/fransk-proxy) — layout-overflow-testen på #4733 bruger det.
 //
 // Sprog-prioritet (initial detection):
 //   1. localStorage 'cz_lang' (sat af LanguageProvider efter login)
@@ -30,6 +32,8 @@ import { initReactI18next } from "react-i18next";
 import HttpBackend from "i18next-http-backend";
 import LanguageDetector from "i18next-browser-languagedetector";
 import ICU from "i18next-icu";
+
+import { SUPPORTED_LANGS, PSEUDO_LANG } from "./languages.js";
 
 import commonDa from "../../public/locales/da/common.json";
 import commonEn from "../../public/locales/en/common.json";
@@ -80,16 +84,38 @@ import landingEn from "../../public/locales/en/landing.json";
 import globalRankDa from "../../public/locales/da/globalRank.json";
 import globalRankEn from "../../public/locales/en/globalRank.json";
 
-const PSEUDO_ENABLED = (() => {
-  if (typeof window === "undefined") return false;
+// Pseudo-locale-flag læses ÉN gang ved modul-init.
+//
+// `?pseudo=1` alene wrapper hver streng i `[…·••]` — 5 faste tegn. Det er nok
+// til at afsløre hardcodede strenge, men det er IKKE en længde-simulering: 5
+// tegn er +50 % på en 10-tegns knap-label og +8 % på en 60-tegns hjælpetekst.
+// Tysk/fransk ligger typisk 25-35 % over engelsk PÅ TVÆRS af længder, så et
+// fast tillæg kan ikke stå i stedet for det.
+//
+// Derfor `?pseudo=1&pad=30`: hver streng forlænges med ~30 % af sin EGEN længde.
+// Bruges af tests/e2e/i18n-layout-overflow.spec.js. Samme gate som i dag —
+// padding findes kun når pseudo er slået til, altså aldrig i produktion.
+const PSEUDO = (() => {
+  const off = { enabled: false, padPercent: 0 };
+  if (typeof window === "undefined") return off;
   try {
-    return new URLSearchParams(window.location.search).get("pseudo") === "1";
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("pseudo") !== "1") return off;
+    const raw = Number.parseInt(params.get("pad") ?? "", 10);
+    // Clamp: en vildfaren `pad=100000` skal ikke hænge browseren på en
+    // milliard-tegns streng.
+    const padPercent = Number.isFinite(raw) ? Math.min(Math.max(raw, 0), 200) : 0;
+    return { enabled: true, padPercent };
   } catch {
-    return false;
+    return off;
   }
 })();
 
-const SUPPORTED = PSEUDO_ENABLED ? ["en", "da", "en-XA"] : ["en", "da"];
+const PSEUDO_ENABLED = PSEUDO.enabled;
+
+// #4733: afledt af languages.js's SUPPORTED_LANGS i stedet for hardcodet her —
+// et nyt sprog i LANGUAGES lander automatisk i supportedLngs.
+const SUPPORTED = PSEUDO_ENABLED ? [...SUPPORTED_LANGS, PSEUDO_LANG] : SUPPORTED_LANGS;
 
 i18n
   .use(ICU)
@@ -141,7 +167,7 @@ i18n
 
 if (PSEUDO_ENABLED) {
   i18n.changeLanguage("en-XA");
-  applyPseudoTransform(i18n);
+  applyPseudoTransform(i18n, PSEUDO.padPercent);
 }
 
 // Dev-only debug-handle — gør i18next inspectable fra DevTools så
@@ -154,10 +180,40 @@ if (typeof window !== "undefined" && (import.meta.env.DEV || import.meta.env.VIT
   window.__i18n = i18n;
 }
 
-function applyPseudoTransform(instance) {
+/**
+ * Byg ~`percent` % ekstra tegn til en streng af længde `length`.
+ *
+ * Padding'en er ORDDELT (bidder på maks 6 tegn adskilt af mellemrum), ikke én
+ * lang uafbrudt kæde. Et enkelt 40-tegns token kan ikke ombrydes og ville
+ * flyde ud af ENHVER smal kolonne — så ville testen fejle på padding'ens form
+ * i stedet for på sidens layout. Tysk laver lange ord, men det laver også
+ * mellemrum; ordbidder rammer den virkelighed uden at fabrikere overflow.
+ *
+ * @param {number} length
+ * @param {number} percent
+ * @returns {string}
+ */
+function buildPadding(length, percent) {
+  const extra = Math.ceil((length * percent) / 100);
+  if (extra <= 0) return "";
+  let out = "";
+  while (out.length < extra) {
+    const remaining = extra - out.length;
+    out += ` ${"x".repeat(Math.min(6, Math.max(1, remaining - 1)))}`;
+  }
+  return out;
+}
+
+/**
+ * @param {import("i18next").i18n} instance
+ * @param {number} padPercent  0 = ren wrap (gammel adfærd), 30 = tysk-proxy
+ */
+function applyPseudoTransform(instance, padPercent = 0) {
   const wrap = (input) => {
     if (typeof input !== "string") return input;
-    return `[${input}·••]`;
+    // Padding lægges INDE i brackets, efter den oversatte værdi: t() er allerede
+    // interpoleret på dette punkt, så ingen ICU-placeholder kan rammes.
+    return `[${input}${buildPadding(input.length, padPercent)}·••]`;
   };
   const origT = instance.t.bind(instance);
   instance.t = (key, options) => {

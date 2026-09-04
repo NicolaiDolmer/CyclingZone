@@ -70,8 +70,11 @@ async function setup(page) {
 test("Alle-fanen markerer top 2 op + bund 4 ned i HVER pulje (#1760)", async ({ page }) => {
   await setup(page);
   // 2 puljer × top 2 = 4 op-badges; 2 puljer × bund 4 = 8 ned-badges.
-  await expect(page.getByText(/↑ (Up|Op)/)).toHaveCount(4);
-  await expect(page.getByText(/↓ (Down|Ned)/)).toHaveCount(8);
+  // #3422: badge-teksten er ren "Op"/"Ned" (ArrowUpIcon/ArrowDownIcon renderer nu
+  // pilen som stroke-ikon i stedet for unicode-tegn i locale-strengen) —
+  // eksakt-match saa vi ikke rammer andre "op"/"ned"-forekomster på siden.
+  await expect(page.getByText(/^(Up|Op)$/)).toHaveCount(4);
+  await expect(page.getByText(/^(Down|Ned)$/)).toHaveCount(8);
 });
 
 test("en enkelt pulje viser kun dén puljes zone (#1760)", async ({ page }) => {
@@ -79,8 +82,8 @@ test("en enkelt pulje viser kun dén puljes zone (#1760)", async ({ page }) => {
   // Pulje-vælgeren er fortsat et eget Select i filter-baren (kun vist når tieren
   // har flere puljer) — vælg via dens value (poolens id), ikke label-teksten.
   await page.getByRole("combobox", { name: /^(Pool|Pulje)$/ }).selectOption(POOL_A);
-  await expect(page.getByText(/↑ (Up|Op)/)).toHaveCount(2);
-  await expect(page.getByText(/↓ (Down|Ned)/)).toHaveCount(4);
+  await expect(page.getByText(/^(Up|Op)$/)).toHaveCount(2);
+  await expect(page.getByText(/^(Down|Ned)$/)).toHaveCount(4);
 });
 
 test("dormant Division 4 viser udskydelses-note (#1760)", async ({ page }) => {

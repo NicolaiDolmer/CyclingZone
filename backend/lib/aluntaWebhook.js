@@ -68,6 +68,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { FOUNDER_SEAT_CAP, getFounderSeats } from "./founderSeats.js";
 import { captureException } from "./sentry.js";
+import { normalizePlanInterval } from "./subscriptionPlanInterval.js";
+import { runAluntaSubscriptionReconcileForTeam } from "./aluntaSubscriptionReconcile.js";
 
 export function verifyWebhookSignature(req, secret) {
   if (!secret) return false;
@@ -106,6 +108,28 @@ function parseEventTimestamp(raw) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+// #4648 — ROD-ÅRSAG: koden læste kun de FLADE feltnavne (data.external_customer_id
+// m.fl.), som virker for et syntetisk fladt test-eksempel, men Aluntas ÆGTE REST-
+// payload (verificeret mod BILLING_STACK.md §5 2026-09-02) nester identitets-
+// felterne under `data.customer` for subscription.*-events. En fornyelse/
+// aktivering fra den ægte Alunta ramte derfor `teamId=null` → webhooken ignorerede
+// eventet roligt (200, "mangler event eller team_id") og entitlementet blev
+// aldrig opdateret. Postmortem: .claude/learnings/2026-09-02-alunta-webhook-
+// nested-external-customer-id.md.
+//
+// PUR: udtrækker de tre identitetsfelter med flad-FØR-nested fallback.
+// subscriptionUuid falder KUN tilbage til data.uuid på subscription.*-events —
+// på checkout.completed er data.uuid checkout-SESSIONENS id, ikke abonnementets,
+// og må aldrig skrives som alunta_subscription_id.
+export function extractWebhookIdentity(event, data) {
+  const d = data || {};
+  const teamId = d.external_customer_id ?? d.customer?.external_customer_id ?? null;
+  const customerUuid = d.customer_uuid ?? d.customer?.uuid ?? null;
+  const isSubscriptionEvent = typeof event === "string" && event.startsWith("subscription.");
+  const subscriptionUuid = d.subscription_uuid ?? (isSubscriptionEvent ? (d.uuid ?? null) : null);
+  return { teamId, customerUuid, subscriptionUuid };
+}
+
 export async function handleAluntaWebhook({
   req,
   res,
@@ -114,6 +138,12 @@ export async function handleAluntaWebhook({
   // Testbarheds-seam, samme mønster som activeSeasonLookup.js/aluntaSubscriptionReconcile.js
   // m.fl.: defaulter til den ægte Sentry-capture, tests kan injicere en spy.
   captureExceptionFn = captureException,
+  // #4648: Alunta-klient til den scopede reconcile-kald efter checkout.completed
+  // (se nedenfor). Uden en klient (test-default) springes reconcile-kaldet over
+  // — de mange eksisterende webhook-tests injicerer ingen klient og skal fortsat
+  // køre uden netværk.
+  client = undefined,
+  reconcileForTeamFn = runAluntaSubscriptionReconcileForTeam,
 }) {
   // #2817: forventet-men-interessant afvisning — console.warn, ikke captureException.
   // Logger ALDRIG payload/signatur/headers/secret, kun at det skete.
@@ -135,7 +165,8 @@ export async function handleAluntaWebhook({
   }
 
   const { event, data } = payload || {};
-  const teamId = data?.external_customer_id;
+  // #4648: flad-FØR-nested — se extractWebhookIdentity()'s header for hvorfor.
+  const { teamId, customerUuid, subscriptionUuid } = extractWebhookIdentity(event, data);
   if (!event || !teamId) {
     // #2817: kun event-type + team-id (UUID, ikke-følsomt) logges — ALDRIG resten af data.
     console.warn("[alunta-webhook] ignoreret: mangler event eller team_id", { event: event ?? null, teamId: teamId ?? null });
@@ -177,9 +208,13 @@ export async function handleAluntaWebhook({
   const lastEventAt = eventTimestamp ? eventTimestamp.toISOString() : (existing?.last_event_at ?? null);
 
   if (isTierChange) {
-    if (data.plan_interval == null) return res.sendStatus(200); // intet at ændre
+    // #4648: data.interval er Aluntas REST-feltnavn (BILLING_STACK.md §5);
+    // data.plan_interval er den ældre/webhook-specifikke variant — flad-før-nested.
+    const rawInterval = data.plan_interval ?? data.interval;
+    if (rawInterval == null) return res.sendStatus(200); // intet at ændre
+    // #4541: Alunta sender plan_interval som tal (måneder) — normalisér før DB.
     const { error } = await supabase.from("subscriptions").upsert(
-      { team_id: teamId, plan_interval: data.plan_interval, last_event_id: eventId, last_event_at: lastEventAt },
+      { team_id: teamId, plan_interval: normalizePlanInterval(rawInterval), last_event_id: eventId, last_event_at: lastEventAt },
       { onConflict: "team_id" }
     );
     if (error) {
@@ -195,9 +230,11 @@ export async function handleAluntaWebhook({
   const row = {
     team_id: teamId,
     status,
-    plan_interval: data.plan_interval ?? existing?.plan_interval ?? null,
-    alunta_customer_id: data.customer_uuid ?? existing?.alunta_customer_id ?? null,
-    alunta_subscription_id: data.subscription_uuid ?? existing?.alunta_subscription_id ?? null,
+    // #4541/#4648: normaliseres også for existing, så en gammel rå '1' rettes
+    // ved næste event; data.interval er Aluntas REST-feltnavn, flad-før-nested.
+    plan_interval: normalizePlanInterval(data.plan_interval ?? data.interval ?? existing?.plan_interval) ?? null,
+    alunta_customer_id: customerUuid ?? existing?.alunta_customer_id ?? null,
+    alunta_subscription_id: subscriptionUuid ?? existing?.alunta_subscription_id ?? null,
     current_period_end: data.current_period_end ?? existing?.current_period_end ?? null,
     last_event_id: eventId,
     last_event_at: lastEventAt,
@@ -227,5 +264,43 @@ export async function handleAluntaWebhook({
     return res.sendStatus(500); // Alunta retry'er
   }
 
-  return res.sendStatus(200);
+  res.sendStatus(200); // Aluntas 3-sekunders-grænse (se filhovedet) — svar FØR checkout.completed-sidegevinsterne nedenfor.
+
+  // #4646/#4648: kun på selve førstekøbet — checkout_started (billingCheckout.js)
+  // er allerede skrevet, dette lukker funnellen. Fejl her må ALDRIG få eventet
+  // til at fremstå som en fejlet betaling for kunden — klienten har allerede 200.
+  if (event === "checkout.completed") {
+    try {
+      // #4646: samme player_events-skema som frontend/src/lib/logEvent.js, men
+      // skrevet server-side via service-role (ingen RLS/consent-gate her — dette
+      // er betalings-telemetri, ikke spilleradfærd, og bærer ingen PII).
+      // user_id er NOT NULL på tabellen, så opslaget er nødvendigt.
+      const { data: teamRow, error: teamErr } = await supabase.from("teams").select("user_id").eq("id", teamId).maybeSingle();
+      if (teamErr) throw new Error(`teams-opslag (player_events) fejlede: ${teamErr.message}`);
+      if (teamRow?.user_id) {
+        const { error: evErr } = await supabase.from("player_events").insert({
+          team_id: teamId,
+          user_id: teamRow.user_id,
+          event_name: "checkout_completed",
+          event_data: { plan_interval: row.plan_interval ?? null, currency: data.currency ?? null },
+        });
+        if (evErr) throw new Error(`player_events checkout_completed insert fejlede: ${evErr.message}`);
+      }
+    } catch (err) {
+      captureExceptionFn(err, { tags: { flow: "billing", stage: "webhook-player-event" }, teamId, event });
+    }
+
+    // #4648: reconcilen er ellers time-vis (aluntaSubscriptionReconcile.js) —
+    // dette henter Aluntas fulde billing-felter for DETTE ene hold straks efter
+    // et førstekøb, så current_period_end ikke mangler unødigt længe (dækket i
+    // mellemtiden af PRO_GRACE_NO_PERIOD_END_MS, entitlement.js). Springes over
+    // uden en injiceret klient (test-default) — se parameterkommentaren ovenfor.
+    if (client) {
+      try {
+        await reconcileForTeamFn({ supabase, client, teamId, captureExceptionFn });
+      } catch (err) {
+        captureExceptionFn(err, { tags: { flow: "billing", stage: "webhook-reconcile-team" }, teamId, event });
+      }
+    }
+  }
 }

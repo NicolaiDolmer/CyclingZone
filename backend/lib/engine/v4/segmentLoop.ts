@@ -40,11 +40,13 @@ import type {
   SegmentGroupSnapshot,
   SegmentKind,
   StageInput,
+  TeamOrder,
   TimelineEvent,
 } from "./types.ts";
 import { boundRngFor } from "./rng.ts";
 import { deriveCp, deriveRechargeRate, tickPhysiologyOverSegment } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
+import { GROUP_DRAFT_EXTRA_TUNING } from "./tuning.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -69,6 +71,7 @@ export const DEFAULT_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: noopHook,
   descent: noopHook,
   finale: noopHook,
+  breakaway: noopHook,
 };
 
 // ── Kollektiv-CP + hastighed ───────────────────────────────────────────────────
@@ -85,12 +88,39 @@ function riderCpForSegment(entrant: Entrant, riderState: RiderState, segment: Se
   return Math.max(0, baseCp + riderState.dayform);
 }
 
-function computeSegmentSpeedKmh(collectiveCp: number, kind: SegmentKind, tuning: EngineTuning): number {
+/**
+ * Gruppe-lae-fart-gevinst (M1, #4604): den relative fart en gruppe paa
+ * `riderCount` holder UD OVER en solo-rytter med samme kollektive CP.
+ *
+ * Eksporteret for property-testbarhed. Tre egenskaber testene laaser:
+ *   1. `riderCount <= 1` giver praecis 0 — en solo-rytter faar aldrig laegevinst.
+ *   2. Monotont ikke-faldende i `riderCount` (log-kurve, clampet til [0, 1]).
+ *   3. Terraen-vaegten er `1 - draftFactor[kind]`, saa gevinsten er stoerst paa
+ *      flad vej og mindst op ad bakke — samme rangorden som hjul-rabatten selv.
+ *
+ * Ren aritmetik: ingen RNG, ingen state. Paavirker KUN gruppe-tider (mellem
+ * grupper), aldrig raekkefolgen inden for en gruppe — monotoni-invarianten
+ * (SS2 §2 invariant 3) er derfor uberoert per konstruktion.
+ */
+export function groupDraftSpeedGain(riderCount: number, kind: SegmentKind, tuning: EngineTuning): number {
+  if (!Number.isFinite(riderCount) || riderCount <= 1) return 0;
+  const { maxSpeedGain, referenceSize } = GROUP_DRAFT_EXTRA_TUNING;
+  const sizeFactor = clamp(Math.log(riderCount) / Math.log(referenceSize), 0, 1);
+  const terrainShare = clamp(1 - tuning.work.draftFactor[kind], 0, 1);
+  return maxSpeedGain * terrainShare * sizeFactor;
+}
+
+function computeSegmentSpeedKmh(
+  collectiveCp: number,
+  kind: SegmentKind,
+  tuning: EngineTuning,
+  riderCount: number,
+): number {
   const baseSpeed = tuning.terrain.baseSpeedKmh[kind];
   const baseDemand = tuning.terrain.baseDemand[kind];
   const [lo, hi] = tuning.terrain.speedMultiplierBounds;
   const multiplier = clamp(1 + tuning.terrain.strengthSpeedGain * (collectiveCp - baseDemand), lo, hi);
-  return baseSpeed * multiplier;
+  return baseSpeed * multiplier * (1 + groupDraftSpeedGain(riderCount, kind, tuning));
 }
 
 function computeGroupTempo(
@@ -112,7 +142,7 @@ function computeGroupTempo(
   const frontSlice = ranked.slice(0, frontCount);
   const frontRiderIds = new Set(frontSlice.map(([id]) => id));
   const collectiveCp = frontSlice.length > 0 ? frontSlice.reduce((s, [, cp]) => s + cp, 0) / frontSlice.length : 0;
-  const speedKmh = computeSegmentSpeedKmh(collectiveCp, segment.kind, tuning);
+  const speedKmh = computeSegmentSpeedKmh(collectiveCp, segment.kind, tuning, ranked.length);
   const distanceSegmentKm = Math.max(0, segment.to_km - segment.from_km);
   const dtSeconds = speedKmh > 0 ? (distanceSegmentKm / speedKmh) * 3600 : 0;
   return { collectiveCp, frontRiderIds, cpByRider, dtSeconds };
@@ -127,7 +157,25 @@ function tickGroupRiders(
   tuning: EngineTuning,
 ): Record<string, RiderState> {
   const next: Record<string, RiderState> = {};
-  const baseDemand = tuning.terrain.baseDemand[segment.kind];
+  // #4604 (bjerg-anker): kravet er RELATIVT til gruppens kollektive CP — den
+  // samme stoerrelse §4 punkt 1 allerede afleder front-tempoet af.
+  //
+  // FOER var `terrain.baseDemand[kind]` en ABSOLUT 0-1-vaerdi maalt mod en
+  // evne-VAEGTET CP. Konstanterne blev valgt ud fra en antaget middel-evne
+  // omkring midt-skala; den aegte S3-populations median-CP paa climb er 0,097
+  // mod et krav paa 0,720. Maalt 2/9 over 5.938 ryttere: 100 % af feltet laa
+  // over CP paa climb, 92 % paa flat, 89 % paa descent — altsaa ogsaa nedad.
+  // Det er ikke en balance-praeference, det er en skala-fejl: uanset hvor
+  // staerkt eller svagt et felt er, kan det ikke ligge over sit EGET tempo.
+  // #4606's tidskonstant gjorde taeringen langsom nok til at vaere maalbar;
+  // uden dette led taerer den stadig for ALLE, hele tiden.
+  //
+  // `baseDemand[kind]` beholder sin kalibrering, men laeses nu som "andel af
+  // gruppens baeredygtige tempo dette terraen kraever". Terraenets indbyrdes
+  // ordning (climb 0,8 > cobbles 0,65 > flat 0,55 > descent 0,3) er uaendret,
+  // og fortolkningen er population-uafhaengig: en staerkere eller svagere
+  // aargang giver samme selektions-dynamik i stedet for et kollaps.
+  const groupDemand = tempo.collectiveCp * tuning.terrain.baseDemand[segment.kind];
   const segmentLengthKm = Math.max(0, segment.to_km - segment.from_km);
   for (const riderId of group.rider_ids) {
     const entrant = entrantsById[riderId];
@@ -137,7 +185,7 @@ function tickGroupRiders(
     const positionFactor = tempo.frontRiderIds.has(riderId)
       ? tuning.work.frontWorkFactor[segment.kind]
       : tuning.work.draftFactor[segment.kind];
-    const demand = baseDemand * positionFactor;
+    const demand = groupDemand * positionFactor;
     const rechargeRate = deriveRechargeRate(entrant.abilities, tuning.physiology);
     // #4030 fixture-fund: sub-tick i stedet for ét Euler-skridt over hele
     // segmentet (tuning.ts's PHYSIOLOGY_SUBTICK_TUNING, physiology.ts's
@@ -184,6 +232,9 @@ export type SegmentLoopResult = {
  */
 export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT_MECHANIC_HOOKS): SegmentLoopResult {
   const { route, startlist, seed, tuning } = input;
+  // T4 (tactics-orders-specen): kernen kraever ALDRIG ordrer — en manglende
+  // eller tom liste er den neutrale default.
+  const orders: readonly TeamOrder[] = input.orders ?? [];
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
 
@@ -246,6 +297,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       entrants: entrantsById,
       tuning,
       rngFor: rngForFn,
+      orders,
     };
     if (segment.kind === "climb") {
       const result = hooks.climbSelection(state, ctx);
@@ -256,6 +308,19 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       state = result.state;
       timeline.push(...result.events);
     }
+
+    // M5 (#4615): udbrud v2 koeres paa HVERT segment — formation paa det
+    // foerste, jagt-fremdrift paa de oevrige. Placeret EFTER climb/descent (saa
+    // selektionen paa dagens terraen allerede har fundet sted) og FOER finale-
+    // hooket (saa M4 ser det korrekte frontgruppe-billede naar en overlevet
+    // udbryder skal placeres) — praecis den raekkefolge breakaway.ts's egen
+    // wiring-note foreskriver.
+    {
+      const result = hooks.breakaway(state, ctx);
+      state = result.state;
+      timeline.push(...result.events);
+    }
+
     const isLastSegment = segmentIndex === segments.length - 1;
     if (isLastSegment) {
       // M3-angreb paa selve finale-segmentet giver angrebsgruppen negativt gap

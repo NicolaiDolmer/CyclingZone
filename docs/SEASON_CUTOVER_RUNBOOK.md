@@ -138,6 +138,71 @@ SQL-blokke tæt på cutover-dagen, ikke ugen før.
    fejl for de first-time-berørte hold (spot-check et par nyoprykkede D1-hold
    + et par nyrelegerede D4-hold i deres nye puljers kalender).
 
+## S3 → S4 (28/9 2026) - kun det der er ANDERLEDES
+
+Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod prod 3/9 2026.
+
+1. **Kalenderen bygges FØR cutoveren, ikke som fase 17.** S2→S3's punkt 1 var et valg
+   mellem A (manuelt script) og B (`auto_calendar_enabled='on'`). Valget står fast på A,
+   og scriptet er nu det eneste sted længden og gatene bor:
+   `node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-days N`.
+   Fuld opskrift + gate-tabel: `docs/CALENDAR_RULES.md` §2d.
+
+2. **Sæsonlængden er ikke 31.** S3 kørte 31 løbsdatoer, fordi den startede en fredag.
+   S4 starter **mandag 28/9** (S3 slutter søndag 27/9), og §2's søndags-regel tillader
+   derfor kun hele uger. 35 dage er målt umuligt (D3 får 18 kalenderdage uden løb).
+   Ejeren skal vælge længden eksplicit; `--apply` nægter at køre på scriptets forslag.
+
+3. **`seasons`-rækken for S4 findes ikke - og årsmødet er dødt indtil den gør.**
+   `proposeNextMandate` slår næste sæson op på `number` og springer alle hold over med
+   `target_season_not_found`. Rækken oprettes af `--apply` med status `'upcoming'`;
+   `insertSeasonIfMissing` promoverer den selv til `'active'` ved cutoveren.
+   Kontrakten er låst i `backend/lib/seasonLookup.js` + `seasonLookup.test.js`.
+
+4. **Inaktive managere parkeres ved dette skifte** (#4592/#4307): 30 dage uden login
+   (`users.last_seen`) → uden for divisionerne, hvilket frigør pladser i puljerne.
+   Definitionen + rapporteringen findes; selve parkeringen er del 2 og skal verificeres
+   som bygget FØR cutoveren, ikke antages.
+
+5. **Fire gates var røde i tørkørslen 3/9** og skal lukkes før kalenderen bygges:
+   D2's komposition (kuperet/bjerg), D1's brosten-i-etapeløb og D1's nedkørsels-finaler.
+   To af dem peger på kataloget (§5b), ikke på generatoren - de kan altså ikke kalibreres
+   væk. Fund, tal og beslutningsliste: `docs/audits/season4-calendar-dryrun-2026-09-03.md`.
+
+6. **`season_transition_planned_at` sættes nu AUTOMATISK af `--apply` (#4129).**
+   Sæsonskifte-guarden (#4004) læser `app_config.season_transition_planned_at` for at
+   afgøre hvornår en auktion ville krydse selve sæsonskiftet. Nøglen blev historisk
+   KUN sat manuelt, én gang, på selve S2→S3-cutover-aftenen 23/8 (og ryddet igen samme
+   aften) — ingen kode satte den, så guarden kørte i praksis på det uskrevne
+   start_date-gæt hele vejen indtil da (se #4129). `buildSeasonCalendar.js --apply`
+   sætter nu nøglen selv (sæsonstart minus 1 dag kl. 18:00 dansk tid, samme værdi som
+   fallbacken) idempotent, som en del af trin 1 ovenfor — intet manuelt SQL-trin
+   behøves længere for det NORMALE forløb. Verificér alligevel FØR selve cutoveren
+   (Supabase MCP `execute_sql` eller `psql`, read-only):
+
+   ```sql
+   select key, value, updated_at from app_config where key = 'season_transition_planned_at';
+   select number, status, start_date from seasons where status = 'upcoming';
+   ```
+
+   Forvent `value` = S4's `start_date` minus 1 dag kl. 18:00 dansk tid (fx S4 starter
+   28/9 → `"2026-09-27T16:00:00+00:00"` UTC = 18:00 CEST). Afviger den (eller mangler
+   nøglen), sæt den eksplicit før cutoveren:
+
+   ```sql
+   insert into app_config (key, value)
+   values ('season_transition_planned_at', '"2026-09-27T18:00:00+02:00"'::jsonb)
+   on conflict (key) do update set value = excluded.value, updated_at = now();
+   ```
+
+   En daglig read-only cron-vagt (`runDailySeasonCountCheck` i `backend/cron.js`,
+   se `backend/lib/seasonTransitionKeyGuard.js`) alarmerer selv (Sentry) hvis nøglen
+   mangler/afviger > 12t fra fallbacken mens der er < 7 dage til næste sæsonstart —
+   men vent ikke på den alarm, tjek proaktivt som en del af selve cutover-trinene.
+
+> **Uændret og stadig bindende:** §2c's "én regenerering pr. sæsonkalender". Er S4's
+> kalender skrevet, er formen låst for S4 - en fejl bagefter står til S5.
+
 ## Reference
 
 - `docs/SEASON_TRANSITION_CHECKLIST.md` — S1→S2-drejebogen (komprimerings-specifik,

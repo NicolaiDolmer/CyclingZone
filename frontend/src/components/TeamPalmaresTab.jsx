@@ -18,6 +18,7 @@ import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { buildSeasonHistory, teamCareerTotals, groupHallOfFame } from "../lib/teamPalmares.js";
 import { formatNumber } from "../lib/intl";
+import { ArrowUpIcon, ArrowDownIcon } from "./ui/icons/index.jsx";
 
 async function loadTeamPalmares(teamId) {
   const [standingsRows, hofRows] = await Promise.all([
@@ -43,15 +44,15 @@ async function loadTeamPalmares(teamId) {
 function MovementBadge({ movement, t }) {
   if (movement === "promoted") {
     return (
-      <span className="font-mono text-3xs font-bold px-1.5 py-[2px] rounded bg-cz-success-bg text-cz-success whitespace-nowrap">
-        {"↑ "}{t("profile.palmares.movementPromoted")}
+      <span className="inline-flex items-center gap-0.5 font-mono text-3xs font-bold px-1.5 py-[2px] rounded bg-cz-success-bg text-cz-success whitespace-nowrap">
+        <ArrowUpIcon size={10} aria-hidden="true" />{t("profile.palmares.movementPromoted")}
       </span>
     );
   }
   if (movement === "relegated") {
     return (
-      <span className="font-mono text-3xs font-bold px-1.5 py-[2px] rounded bg-cz-danger-bg text-cz-danger whitespace-nowrap">
-        {"↓ "}{t("profile.palmares.movementRelegated")}
+      <span className="inline-flex items-center gap-0.5 font-mono text-3xs font-bold px-1.5 py-[2px] rounded bg-cz-danger-bg text-cz-danger whitespace-nowrap">
+        <ArrowDownIcon size={10} aria-hidden="true" />{t("profile.palmares.movementRelegated")}
       </span>
     );
   }

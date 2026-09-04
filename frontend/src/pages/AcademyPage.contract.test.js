@@ -147,3 +147,62 @@ test("intake-kandidat-navnet linker ALDRIG til rytterprofilen (#3142)", () => {
     "intake-kandidatkortet må ikke linke til /riders/:id — profilen er RLS-skjult for 'offered'-kandidater og giver altid 'rider not found'",
   );
 });
+
+// #4618 (slice 0 af epic #2492) — "Youth squads"-kortet: to rækker (Junior
+// team, U23 team), hver med en Coming soon-pille og ét roadmap-link, kun
+// synligt når roster-grenen renderer (academy_enabled=true). Isolér den
+// slukkede-flag-gren (mellem "Flag slukket" og den efterfølgende T2-kommentar)
+// og den aktiverede hoved-retur (fra samme T2-kommentar til filens slutning)
+// samme mønster som INTAKE/ROSTER-isolationen ovenfor.
+const disabledBranch = (() => {
+  const start = pageSource.indexOf("// Flag slukket");
+  assert.ok(start > 0, "kunne ikke finde !enabled-grenen (\"Flag slukket\")");
+  const end = pageSource.indexOf("// #3454: T1 (max-w-4xl)", start);
+  assert.ok(end > start, "kunne ikke finde slutningen af !enabled-grenen");
+  return pageSource.slice(start, end);
+})();
+
+const enabledBranch = (() => {
+  const start = pageSource.indexOf("// #3454: T1 (max-w-4xl)");
+  assert.ok(start > 0, "kunne ikke finde den aktiverede hoved-retur");
+  return pageSource.slice(start);
+})();
+
+test("Youth squads-kortet renderer to Coming soon-piller og et roadmap-link (#4618)", () => {
+  assert.match(enabledBranch, /youthSquads\.title/, "Youth squads-kortets titel mangler");
+  assert.match(
+    enabledBranch,
+    /<SectionAction\s+as=\{Link\}\s+to="\/roadmap">\s*\{t\("youthSquads\.roadmap"\)\}/,
+    "kortets quiet action skal linke til /roadmap via SectionAction",
+  );
+  assert.match(enabledBranch, /youthSquads\.junior\.title/, "Junior team-rækkens titel mangler");
+  assert.match(enabledBranch, /youthSquads\.junior\.description/, "Junior team-rækkens sætning mangler");
+  assert.match(enabledBranch, /youthSquads\.u23\.title/, "U23 team-rækkens titel mangler");
+  assert.match(enabledBranch, /youthSquads\.u23\.description/, "U23 team-rækkens sætning mangler");
+  // Pillen renderes én gang i JSX'en (mappet over rows = to piller i DOM'en),
+  // så kildeteksten skal indeholde netop ét t("youthSquads.comingSoon")-kald.
+  const comingSoonCalls = enabledBranch.match(/t\("youthSquads\.comingSoon"\)/g) || [];
+  assert.equal(comingSoonCalls.length, 1, "Coming soon-pillen skal renderes via t(\"youthSquads.comingSoon\") i den fælles row-map");
+  const rowKeys = enabledBranch.match(/key:\s*"(junior|u23)"/g) || [];
+  assert.equal(rowKeys.length, 2, "der skal være netop to rækker (junior, u23), som hver får sin egen Coming soon-pille i DOM'en");
+});
+
+test("Youth squads-kortet renderer IKKE i EmptyState-grenen (academy_enabled=false, #4618)", () => {
+  assert.doesNotMatch(
+    disabledBranch,
+    /youthSquads/,
+    "Youth squads-kortet må ikke optræde når akademiet er slukket — EmptyState-grenen er urørt",
+  );
+});
+
+test("Youth squads-kortet har ingen guld-primary-knap (kun quiet action, PAGE_TEMPLATES.md)", () => {
+  const cardStart = enabledBranch.indexOf("youthSquads.title");
+  const cardEnd = enabledBranch.indexOf("Akademi-regnskab", cardStart);
+  assert.ok(cardEnd > cardStart, "kunne ikke afgrænse Youth squads-kortet frem til regnskabs-sektionen");
+  const card = enabledBranch.slice(cardStart, cardEnd);
+  assert.doesNotMatch(
+    card,
+    /variant="primary"/,
+    "Youth squads-kortet må ikke have en guld-primær knap — kun SectionAction (P3, ét guld-primært element pr. view)",
+  );
+});

@@ -23,6 +23,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/PROGRESSION_RULES.md` | Rytterudvikling, træning, potentiale, lofter, rating, ryttertyper |
 | `docs/ASSISTANT_RULES.md` | **SSOT for assistenten:** auto-udtagelse, sen redning ved afvikling, peak-forslag, automatisk træningsfokus · hvad den ikke må bryde · kendte afvigelser (#3957, #3743) |
 | `docs/TRAINING_RULES.md` | **SSOT for træningsmaskinen:** det daglige tick, dagstyper, ugerytme, restitution, træner- og facilitets-effekt, løbsdages forhold til træning. Lofter og rating bor i PROGRESSION_RULES |
+| `docs/YOUTH_RULES.md` | **SSOT for ungdommen:** akademiet som paraply, Junior team (16-18) og U23 team (19-22) med aldersloft, frit flyt, én kontraktmodel, egne ungdomskalendere og pyramider, Graduation Day, "kommer snart"-reglen. Skabelse bor i RIDER_GENERATION, udvikling i PROGRESSION/TRAINING |
 | `docs/TRANSFER_MARKET_RULES.md` | **SSOT for transfermarkedet:** auktionens livscyklus og timere, bud og autobud, frie agenter, annullering, finalisering, lån, udskudte holdskifter, trup-lofter, misbrugs-gates |
 | `docs/SOCIAL_RULES.md` | **SSOT for de sociale features:** Discord-kobling og rollesync, DM-udsendelse og præferencer, notifikationer, achievements, holdprofiler, ranglister. Forummets indhold bor i FORUM_RULES |
 | `docs/GAME_INVARIANTS.md` | Game-balance konstanter (sponsor/balance/gældsloft/upload-grænser) |
@@ -30,6 +31,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/ALUNTA_OPS.md` | Alunta webhook/reconcile-opsætning · Infisical-nøgler · hvilke dashboard-events skal slås til · pre-fornyelses-tjekliste (#2736) |
 | `docs/BUSINESS_STRATEGY.md` | Monetization-spørgsmål · tier-struktur · validation sprint · UCI/IP-risiko · dansk finansiering · fact-check krav |
 | `docs/SPRINT_DASHBOARD.md` | Live status på 30-dages validation sprint · metrics-snapshot · uge-checkbox-tasks · founder-track · decision log |
+| `docs/AGENT_PLAYBOOK.md` | Hvornår Fable/Opus/Sonnet, hvornår én agent vs bølge · verifikations-trappen (bevisbyrde pr. påstandstype) · faste faldgruber (gennemsnit/median, vindue/tilstand, id/kategori, sæson/sæson, klasse/fil) · fleet-prompt-regler · orkestratorens pligter · hvad det koster |
 | `docs/AGENT_ARCHITECTURE.md` | Cross-agent bug · parallel-session-setup · failure-mode lookup (auto-gen fra learnings) |
 | `docs/WORKTREE_WORKFLOW.md` | Setup af parallelle Claude Code-sessioner via git worktrees · `new-worktree.ps1` / `remove-worktree.ps1` · node_modules-sharing · memory-junction · branch-collision gotchas |
 | `docs/PARALLEL_WORKTREE_ORCHESTRATION.md` | 7-step protokol + **fire spoergsmaal foer spawn** (verifikationsniveau: kun een FULL e2e ad gangen · filkonflikt-kort · kadence + ret til wip-commits · `worker-status.ps1`) for parallel worktree-orchestration (3+ subagents, ~30 min wall-clock vs. 2-3h sekventielt) · candidate-selection · sub-agent prompt template · token-budget · pitfalls |

@@ -46,11 +46,13 @@ export { TIER_DENSITY, TIER_OVERLAP_CAP };
 
 // Etape-tids-slots pr. division: bane k → slots[k] (ejer-låst: div 3 = 12/15/18). Antal slots =
 // density, så en dag aldrig har flere etaper end slots.
+// #4270 (ejer-beslutning 3/9): D4 2 -> 3 slots, samme klokkeslaet som D3 (12/15/18).
+// Antal slots skal FOELGE TIER_DENSITY - en dag maa aldrig have flere etaper end slots.
 export const TIER_STAGE_SLOTS = Object.freeze({
   1: ["11:00", "13:00", "15:00", "17:00", "19:00"],
   2: ["12:00", "14:00", "16:00", "18:00"],
   3: ["12:00", "15:00", "18:00"],
-  4: ["12:00", "18:00"],
+  4: ["12:00", "15:00", "18:00"],
 });
 
 function isRealManagerRow(t) {
@@ -382,7 +384,16 @@ export function buildTierMaterializationPlan({
     // fordeling: se reshapeCobblesFractionToTwoWindows' docstring. isCobbles kigger op i
     // catalogById (denne funktions egen scope), så den rene shaping-funktion i
     // raceCalendarLanePacker.js forbliver katalog-uafhængig.
-    const isCobbledClassic = (r) => catalogById.get(r.id)?.terrain_archetype === "cobbled_classic";
+    //
+    // #4203 (3/9): MONUMENTER er undtaget. To af katalogets cobbled_classic er monumenter
+    // (De Vlaamse Ronde 5/4 og L'Enfer du Nord 12/4), og omformningen skubbede dem ud i
+    // det SENE vindue (0,75-0,90). Det braekkede monument-kronologien: La Doyenne des
+    // Ardennes (26/4) laa foer begge i den pakkede kalender, altsaa Liege foer Ronde og
+    // Roubaix. #3546 F's rod-aarsag var brostens-FORSYNINGENS monotone fald hen over
+    // saesonen (29->24->18->8 pr. uge); de to monumenter er ikke forsyning, de er
+    // saesonens faste holdepunkter, og deres plads i kalenderen er selve pointen.
+    const isCobbledClassic = (r) => catalogById.get(r.id)?.terrain_archetype === "cobbled_classic"
+      && r.race_class !== "Monuments";
     const enrichedOneDayRaces = reshapeCobblesFractionToTwoWindows(withSeasonFraction(sel.oneDayRaces), isCobbledClassic);
     const packed = packLaneCalendar({
       stageRaces: enrichedStageRaces, oneDayRaces: enrichedOneDayRaces,
@@ -447,6 +458,11 @@ export function buildTierMaterializationPlan({
       // "rapportér, gater ikke her"-princip som de øvrige dry-run-tal ovenfor.
       daysWithoutDecision: packed.daysWithoutDecision ?? [],
       daysWithoutDecisionCount: packed.daysWithoutDecisionCount ?? 0,
+      // #4203: monument-placeringen, maalt paa begge akser + om pakningen blev fundet MED
+      // reglerne aktive. Dommen selv ligger i calendarPlacementGates.js.
+      monuments: packed.monuments ?? null,
+      monumentRulesHeld: Boolean(packed.monumentRulesHeld),
+      solveAttempts: packed.solveAttempts ?? [],
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
       chronologyRaces, // #3469: se docstring ved fractionByRaceId ovenfor.
       grandTourRestDays: packed.grandTourRestDays, // #3470: dry-run-diagnostik, se packLaneCalendar's docstring.
@@ -619,6 +635,11 @@ export async function materializeTierCalendars({
       // apply-stien har ingen brug for det, og summary'en skal ikke bære unødig vægt.
       if (dryRun) {
         tierPlan.seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant }));
+        // #4270: de PRÆCIS samme profiler dæknings-verifikationen (og dermed insert'et)
+        // bruger — så kalender-scorecardet i buildSeasonCalendar.js's dry-run måler det
+        // parcours der ville blive skrevet, med tilt og re-draw indregnet, og ikke et nyt
+        // træk. Kun dry-run: apply-stien har ingen brug for dem.
+        tierPlan.profilesByPoolRaceId = profiles;
       }
     }
 
@@ -690,6 +711,15 @@ export async function materializeTierCalendars({
       log(`  pulje ${poolPlan.leagueDivisionId} (tier ${tierPlan.tier}): +${inserted.length} løb · ${profileRows.length} profiler · ${schedRows.length} etape-tider`);
     }
     summary.tiers.push(tLine);
+  }
+
+  // #4270: den RÅ plan (pulje-rækker, etape-tider, profiler) videregives KUN i dry-run,
+  // så kalender-scorecardet (lib/calendarScorecardReport.js) kan score den kalender der
+  // faktisk ville blive skrevet. Apply-stiens summary er uændret — seasonTransition.js
+  // logger `applied`-summary'en i admin-loggen, og den må ikke vokse med hele planen.
+  if (dryRun) {
+    summary.planTiers = tierPlans;
+    summary.archetypeByPoolRace = archetypeByPoolRace;
   }
 
   // #3990: materialisér seasons.race_days_total fra den FAKTISKE kalender så snart

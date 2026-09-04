@@ -64,8 +64,11 @@ export default function useHeroAgonyMoment(teamId, teamName) {
 
       const [raceRes, momentsRes, stageRowsRes] = await Promise.all([
         supabase.from("races").select("id, name, race_type, stages").eq("id", latest.race_id).maybeSingle(),
-        // race_stage_moments er ikke deny-listet (lille rækkemængde pr. etape,
-        // samme antagelse som RaceDetailPage.jsx's momentsPromise).
+        // pagination-safe: race_id+stage_number-scoped — bounded af den
+        // enkelte etapes feltstørrelse, verificeret max 117 rækker/etape
+        // prod-audit 1/9 (#4566). IKKE samme shape som RaceDetailPage.jsx's
+        // (tidligere) race_id-only momentsPromise, som ramte PostgREST's
+        // 1.000-rækkers-loft på et 13-etapes løb — se #4566.
         supabase.from("race_stage_moments")
           .select("id, moment_key, params, significance, rider_ids, team_ids")
           .eq("race_id", latest.race_id)

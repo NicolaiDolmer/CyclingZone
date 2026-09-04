@@ -40,7 +40,7 @@ import dotenv from "dotenv";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { formatSupabaseAuditError } from "./audit-error-classifier.js";
+import { classifySupabaseAuditError, formatSupabaseAuditError } from "./audit-error-classifier.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -243,6 +243,15 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // spillere paa Vercel-preview mod prod-backenden foer UI-merge. Fjern begge
   // entries naar matrix-PR'en er merged.
   "GET /races/selection/season",
+  // Mandatets Boardroom-side (#4557/#3514, PR #4570): API-first, samme moenster
+  // som saesonmatrixens to entries ovenfor. UI-kalderen bygges parallelt i
+  // frontend-PR #4569 mod den bindende response-kontrakt i #4557. Endpointet
+  // returnerer {enabled:false} og laeser INGEN skygge-tabel naar mandat-
+  // modellens kill-switch (board_mandate_model_enabled) er off, saa der er
+  // ingen data-liveness-risiko ved at lade det staa uden kalder indtil #4569
+  // merges. Fjern denne entry naar #4569 er merged og faktisk kalder
+  // GET /board/room — grep efter "board/room" i frontend/src/.
+  "GET /board/room",
   // #2455 planner-assistent (PR #2506): HAR en frontend-kalder — usePlanner.js:96
   // kalder mutate("/dismiss-suggestions", "POST") hvor helperen prefikser
   // /peak-plans, så den statiske path-scan kan ikke matche det fulde endpoint.
@@ -428,16 +437,35 @@ function relPath(p) {
 // Detector A — write-but-no-data
 // ---------------------------------------------------------------------------
 
+// #4754: RPC'en fejlede 4/9 med "canceling statement due to statement
+// timeout" — én blokeret tabel (lock-kontention) åd hele 2-minutters-
+// budgettet. database/2026-09-04-4754-feature-liveness-count-lock-timeout.sql
+// gør RPC'en robust i sig selv (per-tabel lock_timeout + reltuples-fallback);
+// denne retry er et sekundært sikkerhedsnet for GENUINT transiente
+// belastningstoppe (fx en samtidig migration eller trafikspike), IKKE en
+// erstatning for DB-fixet. Kun statement-timeout-klassen retries — andre
+// fejl (auth, manglende RPC) fejler straks som før.
+const TABLE_COUNTS_RETRY_DELAYS_MS = [1000, 3000];
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchTableCounts() {
-  const { data, error } = await supabase.rpc("feature_liveness_table_counts");
-  if (error) {
-    throw new Error(formatSupabaseAuditError(
-      "feature_liveness_table_counts RPC",
-      error,
-      "Apply database/2026-05-10-feature-liveness-helper.sql first."
-    ));
+  let lastError;
+  for (let attempt = 0; attempt <= TABLE_COUNTS_RETRY_DELAYS_MS.length; attempt++) {
+    const { data, error } = await supabase.rpc("feature_liveness_table_counts");
+    if (!error) return data || [];
+    lastError = error;
+    const retryable = classifySupabaseAuditError(error).retryable === true;
+    if (!retryable || attempt === TABLE_COUNTS_RETRY_DELAYS_MS.length) break;
+    await sleep(TABLE_COUNTS_RETRY_DELAYS_MS[attempt]);
   }
-  return data || [];
+  throw new Error(formatSupabaseAuditError(
+    "feature_liveness_table_counts RPC",
+    lastError,
+    "Apply database/2026-05-10-feature-liveness-helper.sql first."
+  ));
 }
 
 // Live app_config-snapshot til FLAG_GATED_EMPTY_TABLES — læses fra samme
@@ -488,6 +516,16 @@ export function evaluateDetectorARow(row, { insertPaths, flags }) {
   }
   if (WHITELIST_EMPTY_TABLES.has(row.table_name)) return null;
   if (PERMANENT_EMPTY_TABLES.has(row.table_name)) return null;
+
+  // #4754: row_count==0 kan være et reltuples-ESTIMAT (RPC'en falder tilbage
+  // til pg_class.reltuples når et lock_timeout rammer det pågældende bord —
+  // se database/2026-09-04-4754-feature-liveness-count-lock-timeout.sql).
+  // reltuples kan være stale/0 lige efter en tabels allerførste rows, FØR
+  // autovacuum-analyze har kørt. Et estimeret 0-tal er derfor IKKE nok
+  // evidens for "død feature" — spring over i stedet for at risikere en
+  // falsk-positiv (row_count>0 håndteres ovenfor og er ikke ramt af dette,
+  // et ikke-nul estimat er stadig god evidens for "har data").
+  if (row.estimated === true) return null;
 
   // Flag-bevidst gate: tom tabel er den FORVENTEDE tilstand mens flaget er off
   // (intet fund) — men IKKE længere når flaget er sat til beta/dry_run/on, hvor
@@ -570,20 +608,34 @@ async function listBackendEndpoints() {
 
 async function findFrontendApiCalls() {
   const files = await walk(FRONTEND_SRC, (n) => /\.(jsx?|tsx?)$/.test(n));
-  // Match enhver template-literal med `${X}/api/...` form — fanger både inline
-  // fetch() og URL-built-then-fetched-mønstret hvor URL'en konstrueres på en
-  // tidligere linje. Excluder PatchNotesPage for at undgå markdown-eksempler.
-  const re = /[`'"]\$\{[^}]+\}\/api\/([^`'"?\s,]+)/g;
+  // To former, fordi frontenden bruger to kald-mønstre:
+  //   1) INLINE — `${API}/api/foo` direkte i fetch(), eller URL'en bygget på en
+  //      tidligere linje og fetchet bagefter.
+  //   2) PATH-KONSTANT — en bar streng "/api/foo" sendt til en delt helper der
+  //      selv præfixer ${API} (fx postJson() i pages/annualMeeting/meetingApi.js).
+  //      Uden denne form falsk-flagede Detector B POST /board/meeting/focus og
+  //      /sign som orphaned selv om frontenden kalder dem (#4557, merget 2/9),
+  //      og gjorde dermed `audit` rød på main.
+  const RE_INLINE = /[`'"]\$\{[^}]+\}\/api\/([^`'"?\s,]+)/g;
+  const RE_PATH_CONST = /[`'"]\/api\/([^`'"?\s,]+)/g;
   const calls = new Set();
   for (const file of files) {
+    // PatchNotesPage: markdown-eksempler, ikke rigtige kald.
     if (file.endsWith("PatchNotesPage.jsx")) continue;
+    // src/preview/*: mock-interceptors der SVARER på endpoints (pathname
+    // .endsWith("/api/...")), ikke kalder dem. At tælle dem som callers ville
+    // lade en mock alene holde et dødt endpoint "levende".
+    const rel = file.slice(FRONTEND_SRC.length).replace(/\\/g, "/");
+    if (rel.startsWith("/preview/")) continue;
     const text = await readFile(file, "utf8");
-    let m;
-    while ((m = re.exec(text)) !== null) {
-      // Strip query-strings og template-expressions; behold path-segmentet
-      let path = "/" + m[1].replace(/\$\{[^}]+\}/g, ":param");
-      path = path.replace(/\/$/, "");
-      calls.add(path);
+    for (const re of [RE_INLINE, RE_PATH_CONST]) {
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        // Strip query-strings og template-expressions; behold path-segmentet
+        let path = "/" + m[1].replace(/\$\{[^}]+\}/g, ":param");
+        path = path.replace(/\/$/, "");
+        calls.add(path);
+      }
     }
   }
   return calls;

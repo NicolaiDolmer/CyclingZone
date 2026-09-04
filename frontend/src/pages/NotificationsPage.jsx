@@ -563,12 +563,19 @@ export default function NotificationsPage() {
               />
             </Section>
           ) : filteredNotifs.length === 0 ? (
-            <Section>
-              <EmptyState
-                icon={<BellIcon size={32} />}
-                title={mineFilter === "unread" ? t("empty.noneUnread") : t("empty.noneInCategory")}
-              />
-            </Section>
+            // #4625 (slice 3 af #4622, Indbakke = audit-fund #5, 4.012 sessioner/30d)
+            // — EmptyState er selv en hairline-boks; en ekstra Section udenom var
+            // "kasse i kasse". Filtret nulstilles i stedet for et generisk link.
+            <EmptyState
+              icon={<BellIcon size={32} />}
+              title={mineFilter === "unread" ? t("empty.noneUnread") : t("empty.noneInCategory")}
+              description={t("empty.noneHint")}
+              action={
+                <Button size="sm" variant="secondary" onClick={() => setMineFilter("all")}>
+                  {t("empty.showAllCta")}
+                </Button>
+              }
+            />
           ) : (
             <Section>
             <div className="flex flex-col gap-2">
@@ -710,13 +717,16 @@ export default function NotificationsPage() {
           {pendingLoading && !pendingLoaded ? (
             <Section><SkeletonLines lines={5} /></Section>
           ) : pending.counts.total === 0 ? (
-            <Section>
-              <EmptyState
-                icon={<CheckIcon size={32} />}
-                title={t("empty.noPending")}
-                description={t("empty.noPendingHint")}
-              />
-            </Section>
+            <EmptyState
+              icon={<CheckIcon size={32} />}
+              title={t("empty.noPending")}
+              description={t("empty.noPendingHint")}
+              action={
+                <Button size="sm" variant="secondary" onClick={() => navigate("/transfers")}>
+                  {t("empty.browseMarketCta")}
+                </Button>
+              }
+            />
           ) : (
             <Section>
             <div className="flex flex-col gap-2">
@@ -775,13 +785,16 @@ export default function NotificationsPage() {
               />
             </Section>
           ) : filteredEvents.length === 0 ? (
-            <Section>
-              <EmptyState
-                icon={<FlagIcon size={32} aria-hidden="true" />}
-                title={t("empty.noFeed")}
-                description={t("empty.noFeedHint")}
-              />
-            </Section>
+            <EmptyState
+              icon={<FlagIcon size={32} aria-hidden="true" />}
+              title={t("empty.noFeed")}
+              description={t("empty.noFeedHint")}
+              action={
+                <Button size="sm" variant="secondary" onClick={() => navigate("/auctions")}>
+                  {t("empty.goToAuctionsCta")}
+                </Button>
+              }
+            />
           ) : (
             <Section>
             <div className="flex flex-col gap-2">

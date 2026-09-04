@@ -14,22 +14,24 @@
 //     "NS_ERROR_NOT_INITIALIZED", "window.parent is null"). Ankeret paa stien
 //     "/_next-live/feedback/instrument" er bevidst SNAEVERT — det matcher kun
 //     toolbar-bundlen, ikke vores egen app-kode, saa aegte fejl stadig fanges.
-//   - WebKit-maskeret extension-injektion (CYCLINGZONE-4B): Safari/iOS
-//     eksponerer IKKE en extensions rigtige URL til siden — den erstattes af
-//     "webkit-masked-url://hidden/". Derfor slap iOS-extensions forbi
-//     safari-extension:-moensteret ovenfor (prod 7-8/8: "Cannot destructure
-//     property 'tabId' from null or undefined" i en frame ved navn
-//     setupExtension — tredjeparts-kode, ikke vores). Moensteret er sikkert
-//     bredt: WebKit maskerer kun scripts hvis URL ikke maa eksponeres til
-//     siden (extensions/user scripts). Vores egen bundle serveres fra
-//     cyclingzone.org og maskeres aldrig, og appen indlaeser ingen scripts fra
-//     blob:-URL'er (de eneste createObjectURL-kald er CSV-downloads), saa en
-//     aegte app-fejl kan ikke faa en maskeret blame-frame.
+//
+// #4499 (rettet — se isKnownExtensionNoise nedenfor): "webkit-masked-url://"
+// var IKKE i dette array laengere. CYCLINGZONE-4B (7-8/8) antog fejlagtigt at
+// maskeringen var extension-specifik, men WebKit maskerer "blame"-URL'en for
+// ALLE ES-module-script-fejl (dynamisk `import()`, som vores lazy-loadede
+// routes bruger) — ikke kun tredjeparts-extensions. Et denyUrls-match paa
+// selve skemaet er derfor blindt for FORSKELLEN mellem "en extension kastede"
+// og "vores egen RaceDetailPage-chunk kastede": begge faar praecis samme
+// culprit-URL, "webkit-masked-url://hidden/". Fra denne regel landede
+// (a4856b689, 9/8) og frem droppede den derfor STILLE alle WebKit-fejl fra
+// lazy-loadede sider — Sentry saa 0 events fra Firefox/iOS 25.-31/8, mens
+// Clarity registrerede 50 JS-fejl samme periode/platform paa netop de
+// lazy-loadede ruter (/training, /planning, /races/*, /riders). Se postmortem
+// .claude/learnings/2026-09-03-webkit-masked-url-denylist-blind-spot.md.
 export const DENY_URLS = [
   /^chrome-extension:\/\//,
   /^moz-extension:\/\//,
   /^safari-(web-)?extension:\/\//,
-  /^webkit-masked-url:\/\//,
   /\/_next-live\/feedback\/instrument/,
 ];
 
@@ -39,4 +41,20 @@ export const DENY_URLS = [
 export function isDeniedUrl(url) {
   if (!url) return false;
   return DENY_URLS.some((pattern) => pattern.test(url));
+}
+
+// #4499: CYCLINGZONE-4B-stoejen ("Cannot destructure property 'tabId' from
+// null or undefined" i en frame ved navn setupExtension — en 3.-parts
+// browser-extension, IKKE vores kode) filtreres nu paa FEJLBESKEDEN, ikke
+// paa den maskerede URL. WebKit maskerer URL'en, men IKKE selve beskeden
+// eller frame-funktionsnavnet, saa det er det eneste sikre anker der ikke
+// ogsaa rammer aegte app-fejl. "tabId" er ikke et begreb i vores kodebase
+// (grep bekraeftet #4499) — moensteret kan derfor ikke ramme egen kode.
+export const EXTENSION_NOISE_MESSAGE_PATTERNS = [
+  /Cannot destructure property 'tabId' from null or undefined/,
+];
+
+export function isKnownExtensionNoise(message) {
+  if (!message) return false;
+  return EXTENSION_NOISE_MESSAGE_PATTERNS.some((pattern) => pattern.test(message));
 }

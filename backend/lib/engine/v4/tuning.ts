@@ -86,7 +86,20 @@ const tuning: EngineTuning = {
       descent: 55, // intern illustrativ basishastighed, descent
       cobbles: 32, // intern illustrativ basishastighed, cobbles
     },
-    strengthSpeedGain: 0.25, // skalering af hastigheds-multiplikator pr. enhed kollektiv-CP over/under baseDemand
+    // #4604: kalibreret 2/9 fra 0,25 mod #2415's ejer-godkendte bjerg-top-10-baand
+    // (180-240 s) paa hele S3-kalenderen, 180-rytters felt — praecis den kalibrering
+    // filens header lovede ("START-KANDIDATER ... kalibreres i head-to-head-harnesset").
+    // Denne konstant styrer hvor meget tempo-drift der akkumulerer MELLEM grupper
+    // efter selektionen, og var den dominerende gap-kilde: 85 % (488 af 574 s) af
+    // 10.-plads-gappet paa bjergetaper var drift EFTER selektionen, ikke selve
+    // selektionen — gaps voksede endda paa flade run-in-kilometre.
+    // Kalibreret OVEN PAA #4606 (W'-tidskonstant + gruppe-lae-fart-gevinst).
+    // Ét seed svinger betydeligt (#4606's fund), saa kalibreringen er koert over
+    // 5 seeds x 426 etaper. Middel (spaend) af bjerg-top-10-spredningen:
+    //   0,12 -> 211 s (177-237) · 0,13 -> 230 s (193-258) · 0,25 -> 447 s (418-486)
+    // 0,12 rammer baandets midte med den mindste afvigelse paa tvaers af seeds
+    // (ét seed 3 s under 180; 0,13 laegger til gengaeld to seeds ~15 s over 240).
+    strengthSpeedGain: 0.12, // skalering af hastigheds-multiplikator pr. enhed kollektiv-CP over/under baseDemand
     speedMultiplierBounds: [0.7, 1.3], // clamp paa hastigheds-multiplikatoren (undgaar urealistiske yderpunkter)
   },
 
@@ -152,6 +165,32 @@ const finaleExtra = {
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
 export const FINALE_EXTRA_TUNING = deepFreeze(finaleExtra);
 
+// ── M1 (segmentLoop.ts, #4604) — ADDITIV gruppe-lae-tuning ────────────────────
+// Samme "bevidst separat eksport"-moenster som finaleExtra ovenfor: SS2's
+// frosne EngineTuning-kontrakt (types.ts, arkitekt-only) har ingen noegle for
+// dette, saa segmentLoop.ts importerer konstanten direkte.
+//
+// HVORFOR (maalt 2/9, #4604): gruppe-hastigheden blev udelukkende afledt af
+// gruppens staerkeste ryttere (computeGroupTempo's kollektive CP) UDEN noget
+// stoerrelses-led. En enkelt elite-rytter fik derfor hoejere kollektiv CP end
+// en 180-mands peloton — og dermed hoejere fart — saa ethvert solo-udbrud
+// voksede monotont resten af etapen. Maalt paa S3-kalenderen ankom 83 % af de
+// flade etaper til finalen med en front-pulje paa ÉN rytter, og massespurten
+// blev derfor afgjort af en solo-rytter i stedet for af sprinterne.
+// tuning.work.draftFactor modellerede allerede laeen paa OMKOSTNINGS-siden
+// (W'-forbrug); dette er den manglende halvdel paa FART-siden.
+//
+// Terraen-vaegten genbruges bevidst fra draftFactor (1 - draftFactor) i stedet
+// for en ny per-terraen-tabel: laegevinsten er stor hvor hjul-rabatten er stor
+// (flad) og lille hvor den er lille (klatring). Ét sted at kalibrere, ikke to.
+const groupDraftExtra = {
+  maxSpeedGain: 0.12, // loft paa den relative fart-gevinst en fuldt bemandet gruppe faar over en solo-rytter med samme kollektive CP, FOER terraen-vaegtning
+  referenceSize: 60, // gruppe-stoerrelse hvor stoerrelses-faktoren naar 1 (logaritmisk aftagende marginalnytte derunder; stoerre grupper clampes til 1)
+};
+
+/** M1 additiv gruppe-lae-tuning (deep-frosset). Se groupDraftExtra-kommentaren ovenfor. */
+export const GROUP_DRAFT_EXTRA_TUNING = deepFreeze(groupDraftExtra);
+
 // ── M13 (mechanics/teamTimeTrial.ts, #4030) — ADDITIV TTT-tuning ──────────────
 // Samme moenster som finaleExtra ovenfor: TTT er IKKE en del af SS2's frosne
 // EngineTuning-kontrakt (types.ts, arkitekt-only), saa dens haandtag lever
@@ -201,6 +240,47 @@ const bonusSecondsExtra = {
 /** M9 additiv bonussekunder-tuning (deep-frosset). Se bonusSecondsExtra-kommentaren ovenfor. */
 export const BONUS_SECONDS_EXTRA_TUNING = deepFreeze(bonusSecondsExtra);
 
+// ── M3 (mechanics/descent.ts, #4604) — ADDITIV nedkoersels-regruppering ───────
+// SS2's frosne DescentTuning (types.ts) baerer KUN angrebs-/risiko-haandtagene;
+// den kender ingen regruppering. Samme "bevidst separat eksport"-moenster som
+// finaleExtra ovenfor: mechanics/descent.ts importerer denne DIREKTE, saa den
+// frosne kontrakt (arkitekt-only) staar uroert.
+//
+// HVORFOR den findes (#4604, F3-anker 3): segmentLoop's generiske gap-bogfoering
+// er `gap = max(0, gap + (dtGruppe - dtFront))` — monotont IKKE-faldende for
+// enhver gruppe bagude, paa ALLE terraen-kinds. En nedkoersel kunne derfor kun
+// skabe tid, aldrig give den tilbage, og M3's eneste tids-effekt var et SPLIT.
+// Virkeligheden er den modsatte: en nedkoersel udligner typisk smaa huller
+// (hastigheden er tyngde-/aerodynamik-domineret, ikke effekt-domineret, saa en
+// jagende gruppe taber ikke terraen paa at vaere svagere), og skaber sjaeldent
+// store. Uden dette lag blev nedkoersels-finaler lige saa spredte som
+// bjergankomster (nedkoersels-/summit-ratio ~1,1 mod kravet <= 0,5).
+const descentExtra = {
+  regroupSecondsPerKm: 0, // MIDTVEJS-nedkoersel, absolut led. BEVIDST 0 i denne PR: enhver regruppering paa en midtvejs-nedkoersel trækker direkte fra bjerg-top10-spredningen (#2415-baandet), og de to ankre deler etaper. Midtvejs-regruppering hoerer til en faelles kalibrering af begge baand, ikke til denne PR - se #4610
+  regroupGapFractionPerKm: 0, // MIDTVEJS-nedkoersel, proportionalt led. Samme begrundelse som ovenfor
+  regroupMaxGapFractionPerSegment: 0.85, // haardt loft: ét nedkoersels-segment maa ALDRIG udradere mere end denne andel af et hul — en aegte selektion skal kunne overleve en nedkoersel
+  regroupTechnicalityFactor: { 1: 1.3, 2: 1.0, 3: 0.65 } as Record<1 | 2 | 3, number>, // T1 udligner mest (bred, hurtig vej), T3 mindst (teknisk vej lader en staerk descender forsvare hullet)
+  regroupFinishSecondsPerKm: 10, // FINALE-nedkoersel, absolut led: sekunder af hullet til gruppen foran der lukkes pr. km
+  regroupFinishGapFractionPerKm: 0.15, // FINALE-nedkoersel, proportionalt led: andel af et stort hul der lukkes pr. km
+  regroupAbilitySpanPoints: 25, // descending-evne-forskel (0-99-skala) mellem jagende og forankoerende gruppe der giver fuldt udslag paa lukkehastigheden
+  regroupAbilityFactorBounds: [0.9, 1.1] as const, // clamp paa evne-faktoren — en svagere gruppe lukker mindre, en staerkere mere, men ALDRIG negativt (et hul kan aldrig VOKSE af regrupperingen)
+  // Angrebs-kvalifikationens OEVRE reference (#4604). DescentTuning.minAbilityGapForAttack
+  // maaler mod gruppens SVAGESTE descender: i et felt paa 150+ ryttere ligger
+  // minimum saa lavt at stort set hele feltet kvalificerer, og "angrebet" bliver
+  // et split hvor 60-70 % af feltet koerer fra resten. Maalt paa syntetiske felter
+  // foer fixet: 96 af 150 og 122 af 180 ryttere i "angrebsgruppen". Dette vindue
+  // maaler i stedet mod gruppens BEDSTE descender, saa kun de reelt bedste gaar —
+  // og bevarer praefiks-egenskaben monotoni-beviset i descent.ts hviler paa
+  // (det er fortsat en ren evne-taerskel, saa den kvalificerende delmaengde er
+  // altid et sammenhaengende praefiks sorteret paa faldende descending-evne).
+  attackAbilityWindowPoints: 8, // kun ryttere inden for saa mange descending-point af gruppens bedste descender kan gaa med i et nedkoersels-angreb
+  maxGroupSizeForAttack: 40, // et nedkoersels-angreb gaar normalt kun fra en ALLEREDE reduceret gruppe. Man koerer ikke 20 sekunder fra en samlet hovedgruppe paa en nedkoersel — dér er der altid nogen paa hjulet. Uden gaten udloeste M3 et angreb ud af selve feltet paa hver eneste tekniske nedkoersel
+  minTechnicalityForLargeGroupAttack: 3, // undtagelsen: fra en STOR gruppe kan der stadig angribes, men kun paa den svaereste vejtype (T3). Ellers ville gruppestoerrelses-gaten slaa M3's angreb (ejer-beslutning 6) helt ihjel paa et realistisk felt
+} as const;
+
+/** M3 additiv regrupperings-tuning (deep-frosset). Se descentExtra-kommentaren ovenfor. */
+export const DESCENT_EXTRA_TUNING = deepFreeze(descentExtra);
+
 // ── M10 (mechanics/incidents.ts, #4030 #4080) — ADDITIV incidents-tuning ──────
 // SS2's frosne EngineTuning-kontrakt (types.ts) baerer INGEN incidents-sektion
 // (arkitekten har ikke tilfoejet den) — samme "bevidst separat eksport"-moenster
@@ -217,7 +297,7 @@ const incidentsExtra = {
   } as Record<SegmentKind, number>,
   positioningDampening: 0.00006, // risiko-reduktion pr. positioning-evne-point (0-99-skala) — samme daempnings-moenster som descent.ts's incidentRiskDescendingDampening, ALDRIG omvendt fortegn
   threeKmRuleWindowKm: 3, // "3 km-reglen"-vinduet fra maalstregen (mor-spec §8 beslutning 8)
-  flatProfileTypes: ["flat", "rolling", "cobbles", "classic"] as ProfileType[], // "FLADE etaper" i 3 km-reglens forstand — MODSAT bjergetaper; hilly/mountain/high_mountain udelukket (afgoerende gradient ved maal, M4-punch-territorium), itt/itt_hilly/ttt udelukket (ingen bundt-placering at beskytte). Start-kandidat, justerbar i head-to-head
+  flatProfileTypes: ["flat", "rolling", "cobbles", "gravel", "classic"] as ProfileType[], // "FLADE etaper" i 3 km-reglens forstand — MODSAT bjergetaper; hilly/mountain/high_mountain udelukket (afgoerende gradient ved maal, M4-punch-territorium), itt/itt_hilly/ttt udelukket (ingen bundt-placering at beskytte). Start-kandidat, justerbar i head-to-head
   unprotectedTimeLossSecondsRange: [5, 25] as readonly [number, number], // sekunder tabt ved et styrt UDEN 3 km-reglens beskyttelse — rent uheld, bevidst IKKE evne-skaleret (crash-alvor er ikke en testet evne, jf. monotoni-invarianten der kun gaelder evne-testede mekanikker)
 };
 
@@ -361,3 +441,28 @@ const physiologySubTick = {
 
 /** Sub-tick-fysiologi-tuning (deep-frosset). Se physiologySubTick-kommentaren ovenfor. */
 export const PHYSIOLOGY_SUBTICK_TUNING = deepFreeze(physiologySubTick);
+
+// ── W'-taerings-tidskonstant (#4604) — ADDITIV physiology-tuning ──────────────
+// SS2's frosne PhysiologyTuning-kontrakt baerer ikke dette felt; samme
+// additiv-praecedens som finaleExtra ovenfor.
+//
+// HVORFOR (maalt 2/9): §5-formlen taerer W' som `(demand - cp) * dtSeconds`.
+// wprimeMax er NORMALISERET (0-1, maks 1,0 ved punch=accel=sprint=99), mens
+// dtSeconds er et helt segments varighed - typisk 2.000-5.000 sekunder. Et
+// overforbrug paa bare 0,001 over CP toemte derfor hele reserven paa ét
+// segment. W' var i praksis BINAER: enten praecis fuld (strengt under CP hele
+// vejen) eller nul. Maalt paa S3-kalenderen betoed det at 179 af 180 ryttere
+// stod med wprime <= 0 ved etapens foerste stigning, hvorefter M2's
+// wprime-tvungne selektion shellede hele feltet i ét skridt - ogsaa paa
+// etaper klassificeret som massespurt.
+//
+// Tidskonstanten er den manglende bro mellem de to enheder: hvor mange
+// sekunder ved et normaliseret overforbrug paa 1,0 der skal til for at toemme
+// en FULD reserve. Genopladnings-grenen har allerede sin egen tidsskala
+// (rechargeRateBase, ~1/0,0006 s) og roeres ikke.
+const physiologyWprimeDrain = {
+  timeConstantSeconds: 240, // sekunder ved normaliseret overforbrug 1,0 der toemmer en fuld reserve; en rytter 0,1 over CP holder ~40 min paa en halv reserve
+};
+
+/** W'-taerings-tidskonstant (deep-frosset). Se physiologyWprimeDrain-kommentaren ovenfor. */
+export const PHYSIOLOGY_WPRIME_DRAIN_TUNING = deepFreeze(physiologyWprimeDrain);

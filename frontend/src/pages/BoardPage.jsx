@@ -9,6 +9,7 @@ import { formatNumber } from "../lib/intl";
 import { Flag } from "../components/Flag";
 import { Link } from "react-router";
 import BoardEmptyState from "../components/BoardEmptyState";
+import MonogramAvatar from "../components/MonogramAvatar";
 import BoardSatisfactionTimeline from "../components/BoardSatisfactionTimeline";
 import SponsorOfferModal from "../components/SponsorOfferModal";
 import OnboardingTour from "../components/OnboardingTour";
@@ -56,6 +57,7 @@ import {
   ChevronUpIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  ChevronLeftIcon,
   StarIcon,
   ClipboardIcon,
   FlagIcon,
@@ -134,14 +136,14 @@ function getSatisfactionTrend(snapshots) {
   const latest = snapshots.reduce((a, b) =>
     (b.season_within_plan ?? b.season_number ?? 0) > (a.season_within_plan ?? a.season_number ?? 0) ? b : a);
   const delta = latest?.satisfaction_delta ?? 0;
-  if (delta > 0) return { glyph: "▲", color: "text-cz-success", key: "up" };
-  if (delta < 0) return { glyph: "▼", color: "text-cz-danger", key: "down" };
-  return { glyph: "→", color: "text-cz-3", key: "flat" };
+  if (delta > 0) return { color: "text-cz-success", key: "up" };
+  if (delta < 0) return { color: "text-cz-danger", key: "down" };
+  return { color: "text-cz-3", key: "flat" };
 }
 
-// #2849 bølge 6 · trend.glyph (▲/▼/→) er rå unicode-chrome fra getSatisfactionTrend/
-// getEventSatisfactionTrend (delt lib, ikke rørt her) — render altid via stroke-ikon
-// i stedet for at printe trend.glyph direkte.
+// #2849 bølge 6 → #3422: trend.glyph (var ▲/▼/→ rå unicode-chrome) er fjernet fra
+// getSatisfactionTrend/getEventSatisfactionTrend (delt lib) — feltet var dødt,
+// render har altid brugt TREND_ICON via key, aldrig trend.glyph direkte.
 const TREND_ICON = { up: ArrowUpIcon, down: ArrowDownIcon, flat: MinusIcon };
 function getTrendIcon(key) {
   return TREND_ICON[key] || MinusIcon;
@@ -606,18 +608,47 @@ function ClubDnaDialog({ dna, onClose, canRechoose = false }) {
   );
 }
 
-// Medlem-citat-panel inde i GoalCard expand eller PlanCard outlook-feedback.
+// #4556 · Fallback-initialer NÅR backend ikke kunne afledde et navn (intet
+// teamId i konteksten), ren visnings-forkortelse af den allerede synlige
+// label, INTET opfundet navn. Matcher MonogramAvatar's øvrige forbrugere.
+function labelFallbackInitials(label) {
+  const words = String(label || "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return "";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
+
+// Medlem-citat-panel inde i GoalCard expand, GoalMiniDialog eller PlanCard
+// outlook-feedback. #4556 S-M2b addendum ("Stemme-kontrakten" punkt 2) ·
+// viser PERSONEN bag reaktionen (monogram-initialer + fuldt navn), ikke kun
+// arketype-label+emoji. full_name/initials afledes backend-side
+// (decorateReactionWithName, boardMembers.js) og degraderer HER pænt til
+// label alene når de mangler: ingen crash, intet opfundet navn, ingen
+// "undefined". Genbruger samme MonogramAvatar som Boardroom-siden
+// (frontend/src/pages/boardroom) så de to sider ikke driver fra hinanden.
 function MemberReactionPanel({ reaction, compact = false }) {
   const { t } = useTranslation("board");
   if (!reaction?.quote) return null;
+  const label = resolveMemberLabel(t, reaction);
+  const hasName = Boolean(reaction.full_name);
+  const initials = reaction.initials || labelFallbackInitials(label);
   return (
     <div className={`flex items-start gap-2 ${compact ? "p-2" : "p-3"} bg-cz-subtle border border-cz-border rounded-cz`}>
-      <div className={`${compact ? "w-8 h-8 text-base" : "w-10 h-10 text-xl"} rounded-full
-        bg-cz-card border border-cz-border flex items-center justify-center flex-shrink-0`}>
-        <span aria-hidden>{reaction.emoji}</span>
-      </div>
+      <MonogramAvatar
+        sizeClass={compact ? "h-8 w-8" : "h-10 w-10"}
+        initials={initials}
+        initialsClass={compact ? "text-xs" : "text-sm"}
+        navy
+      />
       <div className="flex-1 min-w-0">
-        <p className={`text-cz-1 font-medium ${compact ? "text-xs" : "text-sm"}`}>{resolveMemberLabel(t, reaction)}</p>
+        <p className={`text-cz-1 font-medium ${compact ? "text-xs" : "text-sm"}`}>
+          {hasName ? reaction.full_name : label}
+        </p>
+        {hasName && (
+          <p className={`text-cz-3 ${compact ? "text-3xs" : "text-2xs"} uppercase tracking-[.06em] mt-0.5`}>
+            {label}
+          </p>
+        )}
         <p className={`text-cz-2 italic mt-0.5 ${compact ? "text-2xs" : "text-xs"} leading-relaxed`}>
           &ldquo;{resolveReactionQuote(t, reaction)}&rdquo;
         </p>
@@ -666,6 +697,21 @@ function goalProgressPct(current, target) {
   return Math.min(100, Math.round(((current ?? 0) / target) * 100));
 }
 
+// #3494 · sponsor_growth's actual/target er begge PROCENTER (ikke enheder som
+// "etaper" eller "ryttere") — den rå "0/8"-visning uden enhed er selve rod-
+// årsagen til spiller-klagen. Appendér "%" her så det korte header-tal i det
+// mindste bærer sin egen enhed; den fulde sætning står i sponsorGrowthDetail-
+// sublinen (GoalCard/GoalMiniDialog).
+function formatGoalActualTarget(goal, evaluation) {
+  if (goal.type === "top_n_finish") {
+    return { actual: `#${evaluation.actual}`, target: `top ${evaluation.target}` };
+  }
+  if (goal.type === "sponsor_growth") {
+    return { actual: `${evaluation.actual}%`, target: `${evaluation.target}%` };
+  }
+  return { actual: evaluation.actual, target: evaluation.target };
+}
+
 function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) {
   const { t } = useTranslation("board");
   const [identityExpanded, setIdentityExpanded] = useState(false);
@@ -707,7 +753,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
             <span className={`text-sm font-medium ${achieved ? "text-cz-success" : "text-cz-2"} group-hover/goal:text-cz-1`}>{getBoardGoalLabel(t, goal)}</span>
             {!achieved && evaluation?.actual != null && (
               <span className="text-xs font-mono text-cz-3 flex-shrink-0">
-                {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
+                {formatGoalActualTarget(goal, evaluation).actual}/{formatGoalActualTarget(goal, evaluation).target}
               </span>
             )}
           </button>
@@ -716,7 +762,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
             <p className={`text-sm font-medium ${achieved ? "text-cz-success" : "text-cz-2"}`}>{getBoardGoalLabel(t, goal)}</p>
             {!achieved && evaluation?.actual != null && (
               <span className="text-xs font-mono text-cz-3 flex-shrink-0">
-                {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}/{goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
+                {formatGoalActualTarget(goal, evaluation).actual}/{formatGoalActualTarget(goal, evaluation).target}
               </span>
             )}
           </div>
@@ -744,6 +790,17 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
               actual: evaluation.actual ?? 0,
               target: evaluation.target,
               check: evaluation.actual >= evaluation.target ? " ✓" : "",
+            })}
+          </p>
+        )}
+        {/* #3494 · sponsor_growth-tælleren/-nævneren er begge pro-raterede procenter
+            ("0/8") uden enhed — uforståeligt uden forklaring (rod-årsag til spiller-
+            klagen). Subline i naturligt sprog med de samme tal. */}
+        {goal.type === "sponsor_growth" && evaluation?.actual != null && (
+          <p className="text-2xs text-cz-3 mt-1.5 leading-relaxed">
+            {t("goal.sponsorGrowthDetail", {
+              actual: evaluation.actual,
+              target: evaluation.target,
             })}
           </p>
         )}
@@ -795,8 +852,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
               onClick={() => setMemberExpanded(v => !v)}
               className="inline-flex items-center gap-1 text-2xs text-cz-2 hover:text-cz-1 underline-offset-2 hover:underline transition-colors"
             >
-              <span>{memberReaction.emoji}</span>
-              <span>{t("goal.memberReacts", { member: memberReaction.label })}</span>
+              <span>{t("goal.memberReacts", { member: memberReaction.full_name || resolveMemberLabel(t, memberReaction) })}</span>
               {memberExpanded
                 ? <ChevronUpIcon size={11} aria-hidden="true" className="text-cz-3" />
                 : <ChevronDownIcon size={11} aria-hidden="true" className="text-cz-3" />}
@@ -856,9 +912,9 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
         <div className="bg-cz-subtle rounded-cz px-4 py-3 mb-4 flex items-center justify-between">
           <span className="text-cz-3 text-sm">{t("goal.progress")}</span>
           <span className="font-mono text-cz-1 text-sm font-semibold">
-            {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}
+            {formatGoalActualTarget(goal, evaluation).actual}
             {" / "}
-            {goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
+            {formatGoalActualTarget(goal, evaluation).target}
           </span>
         </div>
       )}
@@ -868,6 +924,17 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
           {t("goal.rankInDivisionShort", {
             rank: evaluation.rank_in_division,
             total: evaluation.division_manager_count,
+          })}
+        </p>
+      )}
+
+      {/* #3494 · Samme naturligt-sprog-subline som GoalCard — tæller/nævner er begge
+          procenter uden enhed, uforståelige uden forklaring. */}
+      {goal.type === "sponsor_growth" && evaluation?.actual != null && (
+        <p className="text-cz-3 text-sm mb-4 leading-relaxed">
+          {t("goal.sponsorGrowthDetail", {
+            actual: evaluation.actual,
+            target: evaluation.target,
           })}
         </p>
       )}
@@ -1206,7 +1273,56 @@ const OUTCOME_STYLE = {
   rejected: { accent: "text-cz-danger",     box: "border-cz-danger/30 bg-cz-danger-bg" },
 };
 
-function BoardRequestPanel({ requestOptions, requestStatus, requestError, requestingType, onRequest }) {
+// #4519 · Delt "hvad ændrer sig"-blok (fokus-skift + mål-før/efter). Bruges
+// BÅDE af det ikke-anvendte forslag (preview, før Accept) og af historikken
+// (latestRequest, efter et tidligere Accept) — samme kort, to datakilder, så
+// "sådan ser en ændring ud" aldrig driver mellem de to steder.
+function BoardRequestChangeList({ t, focusChanged, focusBefore, focusAfter, goalChanges }) {
+  if (!focusChanged && goalChanges.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {focusChanged && (
+        <div className="bg-cz-subtle border border-cz-border rounded-cz p-3">
+          <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("request.focusLabel")}</p>
+          <p className="text-cz-2 text-sm mt-1">
+            {getFocusLabel(t, focusBefore)} → {getFocusLabel(t, focusAfter)}
+          </p>
+        </div>
+      )}
+      {goalChanges.map((change, index) => {
+        const kind = GOAL_CHANGE_STYLE[change.kind] ? change.kind : "replaced";
+        const style = GOAL_CHANGE_STYLE[kind];
+        return (
+          <div key={`${change.kind}-${index}`} className={`border rounded-cz p-3 ${style.box}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                {/* #1750 · Type-oversæt via getBoardGoalLabel når backend
+                    sender strukturerede before/after-mål; ellers fallback
+                    til de rå labels (allerede-persisterede requests). */}
+                <p className="text-cz-2 text-sm">
+                  {change.before_goal
+                    ? getBoardGoalLabel(t, change.before_goal)
+                    : formatBoardCopy(change.before_label)}
+                </p>
+                <p className="text-cz-3 text-xs mt-1">
+                  → {change.after_goal
+                    ? getBoardGoalLabel(t, change.after_goal)
+                    : formatBoardCopy(change.after_label)}
+                </p>
+              </div>
+              <span className={`text-3xs font-semibold uppercase tracking-wider ${style.accent}`}>
+                {t(`changeKind.${kind}`)}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BoardRequestPanel({ requestOptions, requestStatus, requestError, requestingType, previewingType,
+  preview, onRequest, onAcceptPreview, onCancelPreview }) {
   const { t } = useTranslation("board");
   const latestRequest = requestStatus?.latest_request;
   const usedThisSeason = Boolean(requestStatus?.used_this_season);
@@ -1217,6 +1333,19 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
   const focusChanged = Boolean(focusBefore && focusAfter && focusBefore !== focusAfter);
   const outcomeKey = latestRequest?.outcome && OUTCOME_STYLE[latestRequest.outcome] ? latestRequest.outcome : "partial";
   const latestStyle = OUTCOME_STYLE[outcomeKey];
+
+  // #4519 · Et hentet, endnu-ikke-anvendt forslag. Så længe det står her, er
+  // options-gitteret nedenfor skjult: én skærm har kun ÉT gold primary-klik
+  // (Accept), aldrig et gitter af gold-knapper OG et separat accept-klik.
+  const previewResult = preview?.requestResult;
+  const previewChanges = preview?.boardChanges;
+  const previewFocusBefore = previewChanges?.focus_before;
+  const previewFocusAfter = previewChanges?.focus_after;
+  const previewFocusChanged = Boolean(previewFocusBefore && previewFocusAfter && previewFocusBefore !== previewFocusAfter);
+  const previewGoalChanges = previewChanges?.goal_changes || [];
+  const previewOutcomeKey = previewResult?.outcome && OUTCOME_STYLE[previewResult.outcome] ? previewResult.outcome : "partial";
+  const previewStyle = OUTCOME_STYLE[previewOutcomeKey];
+  const accepting = Boolean(requestingType);
 
   return (
     <Section>
@@ -1262,44 +1391,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
           {(focusChanged || goalChanges.length > 0) && (
             <div className="mt-4 pt-4 border-t border-cz-border">
               <p className="text-cz-3 text-3xs uppercase tracking-wider mb-3">{t("request.changesHeading")}</p>
-              <div className="flex flex-col gap-2">
-                {focusChanged && (
-                  <div className="bg-cz-subtle border border-cz-border rounded-cz p-3">
-                    <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("request.focusLabel")}</p>
-                    <p className="text-cz-2 text-sm mt-1">
-                      {getFocusLabel(t, focusBefore)} → {getFocusLabel(t, focusAfter)}
-                    </p>
-                  </div>
-                )}
-                {goalChanges.map((change, index) => {
-                  const kind = GOAL_CHANGE_STYLE[change.kind] ? change.kind : "replaced";
-                  const style = GOAL_CHANGE_STYLE[kind];
-                  return (
-                    <div key={`${change.kind}-${index}`} className={`border rounded-cz p-3 ${style.box}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          {/* #1750 · Type-oversæt via getBoardGoalLabel når backend
-                              sender strukturerede before/after-mål; ellers fallback
-                              til de rå labels (allerede-persisterede requests). */}
-                          <p className="text-cz-2 text-sm">
-                            {change.before_goal
-                              ? getBoardGoalLabel(t, change.before_goal)
-                              : formatBoardCopy(change.before_label)}
-                          </p>
-                          <p className="text-cz-3 text-xs mt-1">
-                            → {change.after_goal
-                              ? getBoardGoalLabel(t, change.after_goal)
-                              : formatBoardCopy(change.after_label)}
-                          </p>
-                        </div>
-                        <span className={`text-3xs font-semibold uppercase tracking-wider ${style.accent}`}>
-                          {t(`changeKind.${kind}`)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <BoardRequestChangeList t={t} focusChanged={focusChanged} focusBefore={focusBefore} focusAfter={focusAfter} goalChanges={goalChanges} />
             </div>
           )}
         </div>
@@ -1311,25 +1403,85 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
         </div>
       )}
 
-      {supported && (
+      {/* #4519 · Forslag hentet men IKKE anvendt endnu — "nuværende plan →
+          foreslået plan" med et eksplicit Accept/Behold-valg. Erstatter
+          options-gitteret nedenfor mens det står åbent, så siden aldrig har
+          mere end ét gold primary-klik ad gangen (thelamba 31/8: et klik
+          anvendte planen uden mulighed for at sige nej). */}
+      {supported && preview && (
+        <div className={`rounded-cz border p-4 mt-4 ${previewStyle.box}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("request.previewHeading")}</p>
+              <p className="text-cz-1 text-sm font-semibold">{resolveBoardCopy(t, previewResult?.title_code, previewResult?.title)}</p>
+              <p className="text-cz-2 text-xs mt-1">{resolveBoardCopy(t, previewResult?.request_label_key, previewResult?.request_label)}</p>
+            </div>
+            <span className={`text-xs font-semibold uppercase tracking-wider ${previewStyle.accent}`}>
+              {t(`outcome.${previewOutcomeKey}`)}
+            </span>
+          </div>
+          <p className="text-cz-2 text-sm mt-2">
+            {formatBoardCopy(resolveBoardCopy(t, previewResult?.summary_code, previewResult?.summary, previewResult?.summary_params || {}))}
+          </p>
+          {previewResult?.tradeoff_summary && (
+            <p className="text-cz-2 text-sm mt-2">
+              {formatBoardCopy(resolveBoardCopy(t, previewResult?.tradeoff_summary_code, previewResult?.tradeoff_summary))}
+            </p>
+          )}
+          {(previewFocusChanged || previewGoalChanges.length > 0) && (
+            <div className="mt-4 pt-4 border-t border-cz-border">
+              <p className="text-cz-3 text-3xs uppercase tracking-wider mb-3">{t("request.changesHeading")}</p>
+              <BoardRequestChangeList t={t} focusChanged={previewFocusChanged} focusBefore={previewFocusBefore} focusAfter={previewFocusAfter} goalChanges={previewGoalChanges} />
+            </div>
+          )}
+          <p className="text-cz-3 text-xs mt-4 pt-4 border-t border-cz-border">{t("request.previewSubheading")}</p>
+          <div className="flex flex-col sm:flex-row gap-2 mt-3">
+            <button
+              type="button"
+              onClick={onAcceptPreview}
+              disabled={accepting}
+              className="flex-1 py-2.5 rounded-cz text-sm font-semibold border transition-all
+                bg-cz-accent text-cz-on-accent border-cz-accent/40 hover:brightness-110
+                disabled:bg-cz-subtle disabled:text-cz-3 disabled:border-cz-border disabled:cursor-not-allowed"
+            >
+              {accepting ? t("request.applying") : t("request.accept")}
+            </button>
+            <button
+              type="button"
+              onClick={onCancelPreview}
+              disabled={accepting}
+              className="flex-1 py-2.5 rounded-cz text-sm font-semibold border border-cz-border text-cz-2
+                hover:text-cz-1 hover:border-cz-border/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t("request.keepCurrent")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {supported && !preview && (
         <div className="grid sm:grid-cols-2 gap-3 mt-4">
           {(requestOptions || []).map((option) => {
             const disabled = Boolean(option.disabled);
-            const isBusy = requestingType === option.type;
+            const isBusy = previewingType === option.type;
             return (
               <div key={option.type} className="bg-cz-subtle border border-cz-border rounded-cz p-4">
                 {/* #1084 · requestDefs-keys resolves via board.json (dansk = fallback). */}
                 <p className="text-cz-1 font-semibold text-sm">{resolveBoardCopy(t, option.label_key, option.label)}</p>
                 <p className="text-cz-2 text-sm mt-1">{resolveBoardCopy(t, option.description_key, option.description)}</p>
                 <p className="text-cz-3 text-xs mt-3">{resolveBoardCopy(t, option.tradeoff_preview_key, option.tradeoff_preview)}</p>
+                {/* #4519 · Klikket henter nu et forslag (POST /board/request/preview,
+                    ingen writes) i stedet for at anvende ændringen med det samme.
+                    Neutral outline-knap, ikke gold: den ENESTE handling der reelt
+                    ændrer planen er "Accept" i preview-panelet ovenfor. */}
                 <button
                   onClick={() => onRequest(option.type)}
-                  disabled={disabled || Boolean(requestingType)}
-                  className="w-full mt-4 py-2.5 rounded-cz text-sm font-semibold border transition-all
-                    bg-cz-accent text-cz-on-accent border-cz-accent/40 hover:brightness-110
-                    disabled:bg-cz-subtle disabled:text-cz-3 disabled:border-cz-border disabled:cursor-not-allowed"
+                  disabled={disabled || Boolean(previewingType)}
+                  className="w-full mt-4 py-2.5 rounded-cz text-sm font-semibold border border-cz-border text-cz-2
+                    hover:text-cz-1 hover:border-cz-border/80 transition-all
+                    disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isBusy ? t("request.sending") : t("request.send")}
+                  {isBusy ? t("request.previewing") : t("request.preview")}
                 </button>
                 {disabled && option.disabled_reason && (
                   <p className="text-cz-3 text-xs mt-2">
@@ -1653,10 +1805,24 @@ function TradeoffWarningLine({ payload }) {
 // ── S-02h · DashboardPlanPanel — kompakt panel i 3-kolonne grid ───────────────
 
 function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCount, team,
-  requestError, requestingType, onRequest, onRenew, renewBusy = false, renewError = "",
+  requestError, requestingType, previewingType, preview, onRequest, onAcceptPreview, onCancelPreview,
+  onRenew, renewBusy = false, renewError = "",
   onNegotiate, onGoalClick }) {
   const { t } = useTranslation("board");
   const [detailOpen, setDetailOpen] = useState(false);
+
+  // #3575 · flerårsplaner (3yr/5yr) er nu låst FULDT ud af planperioden (ikke kun
+  // same-sæson vindue/progress som 1yr) — vis den PRÆCISE grund frem for én
+  // generisk "låst resten af sæsonen"-tekst der ville være vildledende her.
+  // #3012: knappen skal forblive synlig men blokeret (useBlockedAction/BlockedNote),
+  // ikke bare forsvinde. Hooket kaldes UBETINGET (før planData-early-return'et
+  // nedenfor) — planData kan være null her, deraf optional chaining.
+  const renewBlockReason = planData?.renew_locked
+    ? (planData.renew_lock_code === "BOARD_RENEGOTIATION_LOCKED_PLAN_ACTIVE"
+      ? t("plan.renewLockedPlanActive")
+      : t("plan.renewLocked"))
+    : null;
+  const renewBlock = useBlockedAction(renewBlockReason);
 
   if (!planData) {
     return (
@@ -1671,7 +1837,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
   }
 
   const { board, plan_duration, seasons_remaining, seasons_completed, plan_progress_pct,
-    cumulative_stats, snapshots, satisfaction_events, is_expired, renew_locked, outlook, request_status, request_options,
+    cumulative_stats, snapshots, satisfaction_events, is_expired, outlook, request_status, request_options,
     satisfaction_progress, passive_modifier, bonus_offer_progress } = planData;
 
   const goals = typeof board.current_goals === "string"
@@ -1741,8 +1907,9 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
         {is_expired ? (
           <button onClick={onNegotiate}
-            className="w-full py-2.5 text-sm font-semibold bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded-cz hover:bg-cz-accent/20 transition-all">
+            className="w-full py-2.5 text-sm font-semibold bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded-cz hover:bg-cz-accent/20 transition-all inline-flex items-center justify-center gap-1">
             {t("plan.negotiateExpired")}
+            <ChevronRightIcon size={14} aria-hidden="true" />
           </button>
         ) : (
           <>
@@ -1871,22 +2038,32 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
             requestStatus={request_status}
             requestError={requestError}
             requestingType={requestingType}
+            previewingType={previewingType}
+            preview={preview}
             onRequest={onRequest}
+            onAcceptPreview={onAcceptPreview}
+            onCancelPreview={onCancelPreview}
           />
 
-          {!is_expired && !renew_locked && (
+          {/* #3012/#3575 · knappen forbliver synlig og forklaret når den er
+              blokeret (useBlockedAction/BlockedNote) i stedet for at forsvinde —
+              en fjernet knap er ikke selv-forklarende for spilleren. */}
+          {!is_expired && (
             <>
-              <button type="button" onClick={onRenew} disabled={renewBusy} aria-busy={renewBusy || undefined}
-                className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-cz hover:text-cz-2 hover:border-cz-border/80 transition-all disabled:opacity-50">
+              <button type="button" onClick={renewBlock.guard(onRenew)} disabled={renewBusy}
+                aria-busy={renewBusy || undefined} {...renewBlock.blockedProps}
+                className="w-full py-2 text-xs border border-cz-border text-cz-3 rounded-cz hover:text-cz-2 hover:border-cz-border/80 transition-all disabled:opacity-50 aria-disabled:opacity-50">
                 {renewBusy ? t("plan.renewing") : t("plan.renew")}
               </button>
+              {renewBlock.blocked && (
+                <BlockedNote id={renewBlock.reasonId} pulseKey={renewBlock.pulseKey} className="text-3xs justify-center mt-1">
+                  {renewBlock.reason}
+                </BlockedNote>
+              )}
               {renewError && (
                 <p role="alert" className="text-cz-danger text-3xs text-center mt-1">{renewError}</p>
               )}
             </>
-          )}
-          {!is_expired && renew_locked && (
-            <p className="text-cz-3 text-3xs text-center">{t("plan.renewLocked")}</p>
           )}
         </div>
       )}
@@ -1989,9 +2166,10 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
         disabled={previewLoading}
         {...startBlock.blockedProps}
         className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110
-          disabled:opacity-50 transition-all"
+          disabled:opacity-50 transition-all inline-flex items-center justify-center gap-1"
       >
         {t("wizard.startNegotiation")}
+        <ChevronRightIcon size={14} aria-hidden="true" />
       </button>
       {startBlock.blocked && (
         <BlockedNote id={startBlock.reasonId} pulseKey={startBlock.pulseKey} className="text-xs justify-center mt-2">
@@ -2021,7 +2199,8 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
         {/* #1240 · Tilbage uden at miste valg: forrige mål, eller trin 1 fra første mål. */}
         {onBack && (
           <button type="button" onClick={onBack}
-            className="text-cz-3 hover:text-cz-2 text-xs flex-shrink-0 transition-colors">
+            className="text-cz-3 hover:text-cz-2 text-xs flex-shrink-0 transition-colors inline-flex items-center gap-0.5">
+            <ChevronLeftIcon size={13} aria-hidden="true" />
             {t("wizard.back")}
           </button>
         )}
@@ -2077,11 +2256,19 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
               ? t("wizard.alreadyNegotiated")
               : !hasNegotiationOption
                 ? t("wizard.cannotNegotiate")
-                : t("wizard.negotiateDown")}
+                : (
+                  <span className="inline-flex items-center justify-center gap-1">
+                    <ArrowDownIcon size={13} aria-hidden="true" />
+                    {t("wizard.negotiateDown")}
+                  </span>
+                )}
           </button>
           <button onClick={onAccept}
             className="flex-1 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 transition-all">
-            {t("wizard.accept")}
+            <span className="inline-flex items-center justify-center gap-1">
+              {t("wizard.accept")}
+              <ChevronRightIcon size={15} aria-hidden="true" />
+            </span>
           </button>
         </div>
       ) : (
@@ -2092,7 +2279,10 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
           </div>
           <button onClick={onAcceptNegotiated}
             className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 transition-all">
-            {t("wizard.acceptNegotiated")}
+            <span className="inline-flex items-center justify-center gap-1">
+              {t("wizard.acceptNegotiated")}
+              <ChevronRightIcon size={15} aria-hidden="true" />
+            </span>
           </button>
         </div>
       )}
@@ -2104,7 +2294,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
   );
 }
 
-function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
+function WizardStep3({ finalGoals, planType, onSign, saving, onBack, hasExistingBoard = false }) {
   const { t } = useTranslation("board");
   const duration = getPlanDuration(planType);
   return (
@@ -2112,7 +2302,8 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
       {/* #1240 · Tilbage til forhandlingen (sidste mål) uden at miste valg. */}
       {onBack && (
         <button type="button" onClick={onBack}
-          className="text-cz-3 hover:text-cz-2 text-xs mb-4 transition-colors">
+          className="text-cz-3 hover:text-cz-2 text-xs mb-4 transition-colors inline-flex items-center gap-0.5">
+          <ChevronLeftIcon size={13} aria-hidden="true" />
           {t("wizard.back")}
         </button>
       )}
@@ -2151,6 +2342,15 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
           ))}
         </div>
       </Section>
+
+      {/* #3575 · ærlig reset-copy: hvad underskriften nulstiller, og hvad den
+          IKKE gør (bestyrelses-requests forbliver låst sæsonen ud). Vist FØR
+          bekræftelsen — den oprindelige klage var at info kom for sent. */}
+      {hasExistingBoard && (
+        <p className="text-cz-3 text-xs bg-cz-subtle border border-cz-border rounded-cz p-3 mb-4">
+          {t("wizard.resetNotice")}
+        </p>
+      )}
 
       <button onClick={onSign} disabled={saving}
         className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz
@@ -2217,6 +2417,14 @@ export default function BoardPage() {
   const [saving, setSaving] = useState(false);
   const [requestingType, setRequestingType] = useState("");
   const [requestErrors, setRequestErrors] = useState({ "5yr": "", "3yr": "", "1yr": "" });
+  // #4519 · Board-request-forslaget skal ses FØR det anvendes (thelamba 31/8:
+  // et klik anvendte en flerårsplan-ændring uden bekræftelse, og at fortryde
+  // krævede en hel genforhandling). previewingType er samme "planType:requestType"-
+  // nøgle-mønster som requestingType ovenfor. boardRequestPreview bærer det
+  // seneste hentede forslag, keyed på planType — kun ét forslag ad gangen pr.
+  // plan-fane er meningsfuldt (bruger kan skifte fane mens et forslag står åbent).
+  const [previewingType, setPreviewingType] = useState("");
+  const [boardRequestPreview, setBoardRequestPreview] = useState({});
   // #2718-sweep: "Forny plan" havde hverken loading- eller fejl-state.
   const [renewingType, setRenewingType] = useState("");
   const [renewErrors, setRenewErrors] = useState({ "5yr": "", "3yr": "", "1yr": "" });
@@ -2608,6 +2816,47 @@ export default function BoardPage() {
     }
   }
 
+  // #4519 · Trin 1: hent forslaget UDEN at anvende det (POST /board/request/preview,
+  // ingen writes server-side). Erstatter det direkte "onRequest → skriver med det
+  // samme"-klik med et preview spilleren skal godkende eksplicit.
+  async function previewBoardRequest(planType, requestType) {
+    const key = `${planType}:${requestType}`;
+    setPreviewingType(key);
+    setRequestErrors(e => ({ ...e, [planType]: "" }));
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setRequestErrors(e => ({ ...e, [planType]: t("errors.loginRequired") }));
+        return;
+      }
+
+      const res = await fetch(`${API}/api/board/request/preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ plan_type: planType, request_type: requestType }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRequestErrors(e => ({ ...e, [planType]: resolveApiError(data, t, t("request.previewErrorFallback")) }));
+        return;
+      }
+
+      setBoardRequestPreview(p => ({
+        ...p,
+        [planType]: { requestType, requestResult: data.request_result, boardChanges: data.board_changes },
+      }));
+    } catch {
+      setRequestErrors(e => ({ ...e, [planType]: t("auth:error.connectionFailed") }));
+    } finally {
+      setPreviewingType("");
+    }
+  }
+
+  // #4519 · Trin 2a: brugeren accepterer forslaget → NU skrives det (uændret
+  // POST /board/request bag denne bekræftelse).
   async function sendBoardRequest(planType, requestType) {
     const key = `${planType}:${requestType}`;
     setRequestingType(key);
@@ -2633,12 +2882,19 @@ export default function BoardPage() {
         return;
       }
 
+      setBoardRequestPreview(p => { const next = { ...p }; delete next[planType]; return next; });
       await loadAll();
     } catch {
       setRequestErrors(e => ({ ...e, [planType]: t("auth:error.connectionFailed") }));
     } finally {
       setRequestingType("");
     }
+  }
+
+  // #4519 · Trin 2b: "Behold nuværende plan" — kasserer forslaget, ingen skrivning.
+  function cancelBoardRequestPreview(planType) {
+    setBoardRequestPreview(p => { const next = { ...p }; delete next[planType]; return next; });
+    setRequestErrors(e => ({ ...e, [planType]: "" }));
   }
 
   // S-02e · Bonus-offer accept/decline (lag 6)
@@ -2943,7 +3199,18 @@ export default function BoardPage() {
                   ? requestingType.split(":").slice(1).join(":")
                   : ""
               }
-              onRequest={(requestType) => sendBoardRequest(activePlanTab, requestType)}
+              previewingType={
+                previewingType.startsWith(`${activePlanTab}:`)
+                  ? previewingType.split(":").slice(1).join(":")
+                  : ""
+              }
+              preview={boardRequestPreview[activePlanTab] || null}
+              onRequest={(requestType) => previewBoardRequest(activePlanTab, requestType)}
+              onAcceptPreview={() => {
+                const pending = boardRequestPreview[activePlanTab];
+                if (pending) sendBoardRequest(activePlanTab, pending.requestType);
+              }}
+              onCancelPreview={() => cancelBoardRequestPreview(activePlanTab)}
               onRenew={() => renewContract(activePlanTab)}
               renewBusy={renewingType === activePlanTab}
               renewError={renewErrors[activePlanTab] || ""}
@@ -3092,6 +3359,11 @@ export default function BoardPage() {
                 onSign={signContract}
                 saving={saving}
                 onBack={handleWizardBack}
+                // #3575 · ærlig reset-copy vises FØR underskrift (ikke først bagefter,
+                // som var den oprindelige spillerklage). Kun relevant når der ER en
+                // eksisterende plan at (gen)underskrive over — en helt ny førstegangs-
+                // signering har ingen tællere at nulstille.
+                hasExistingBoard={Boolean(wizardExistingPlanData?.board)}
               />
             )}
 
@@ -3110,7 +3382,8 @@ export default function BoardPage() {
                   setNegotiated({});
                   setPendingNegotiate(false);
                 }}
-                className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors">
+                className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors inline-flex items-center justify-center gap-0.5">
+                <ChevronLeftIcon size={13} aria-hidden="true" />
                 {t("wizard.backToPlan", { plan: getPlanLabel(t, renewalQueue[renewalQueueIdx - 1]) })}
               </button>
             )}
@@ -3119,7 +3392,8 @@ export default function BoardPage() {
                 #2104: følger wizardClosable, så DNA-mangel-guarden også viser knappen. */}
             {wizardClosable && (
               <button onClick={closeWizard}
-                className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors">
+                className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors inline-flex items-center justify-center gap-0.5">
+                <ChevronLeftIcon size={13} aria-hidden="true" />
                 {t("wizard.backToOverview")}
               </button>
             )}

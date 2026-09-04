@@ -166,6 +166,21 @@
       }
     },
     {
+      "name": "matrix-4535-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone-worktrees/feat-4535-matrix-calendar-strip/frontend"
+      ],
+      "port": 5216,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
+    },
+    {
       "name": "matrix-1146-mock",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
@@ -175,6 +190,21 @@
         "C:/dev/CyclingZone-worktrees/feat-1146-season-matrix-grid/frontend"
       ],
       "port": 5215,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
+    },
+    {
+      "name": "traening-4522-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone/.claude/worktrees/wf_58c9d011-157-3/frontend"
+      ],
+      "port": 5222,
       "autoPort": true,
       "env": {
         "VITE_PREVIEW_MOCK": "1"
@@ -191,6 +221,36 @@
         "docs/brand"
       ],
       "port": 4173
+    },
+    {
+      "name": "dayform-4603-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/Dev/CyclingZone/.claude/worktrees/agent-ac0ede0b84703d5f8/frontend"
+      ],
+      "port": 5230,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
+    },
+    {
+      "name": "pro-4608-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "C:/dev/CyclingZone-worktrees/feat-4074-pro-eur-dkk-by-language/frontend"
+      ],
+      "port": 5231,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
     }
   ]
 }

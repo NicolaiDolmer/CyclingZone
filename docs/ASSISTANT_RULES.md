@@ -86,6 +86,60 @@ knapper (A/B) og fra den sene redning (C) - ikke fra en proaktiv sweep.
 
 ---
 
+## 1b. Udtagelses-tilstanden (`assistant_selection_mode`)
+
+> [#4201](https://github.com/NicolaiDolmer/CyclingZone/issues/4201) (fem spillere 24/8) +
+> [#2622](https://github.com/NicolaiDolmer/CyclingZone/issues/2622) (horisonten).
+> Kode: `backend/lib/assistantSelectionMode.js`. **Ingen tilstand er flippet** - prod står
+> på `proactive`, som er §1 ord for ord.
+
+Grundreglen i §1 er nu **én af tre valgbare tilstande**, sat runtime i `app_config` uden
+deploy. Kun den proaktive sweep (`runRaceEntryGenerator`) læser den; A, B, C, D og E er
+uberørte, og spillerens egne knapper virker ens i alle tre.
+
+| `assistant_selection_mode` | Hold **uden** bruger (AI) | Hold **med** bruger |
+|---|---|---|
+| `proactive` (default) | fyldes som i dag | røres aldrig ([#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217)) |
+| `late_fill` | fyldes som i dag | kun **helt tomme** (race,team)-enheder, og kun når første etape starter inden for `assistant_late_fill_hours` |
+| `opt_in` | fyldes som i dag | kun hold med `teams.assistant_autopick_enabled = true`; ellers som `proactive` for dem |
+
+| Regel | Værdi | Fil |
+|---|---|---|
+| Nøgle | `assistant_selection_mode` | `app_config`, læst via `featureStage.readFlagStage` |
+| Horisont-nøgle | `assistant_late_fill_hours`, default **24** (spillernes eget forslag, #4201) | samme |
+| Gyldigt interval for horisonten | 1-168 timer; uden for → default | `assistantSelectionMode.js` |
+| Fail-safe | ukendt værdi · manglende nøgle · DB-fejl · manglende `teams`-kolonne → **`proactive`** | `assistantSelectionMode.js`, `raceEntryGenerator.js` |
+| Spillerens eget valg | `teams.assistant_autopick_enabled`, default **true** | `database/2026-09-03-4201-assistant-mode.sql` (ikke applied) |
+
+**Fem egenskaber der er faktiske og skal kendes før nogen rører tilstanden:**
+
+1. **AI-hold er uberørte i alle tre tilstande.** Uden dem starter deres løb tomme - den
+   balance-binding #2622 rejser, er ikke løst her, den er bevaret.
+2. **"Nær" måles på wall-clock, ikke på binding-vinduet.** `raceBindingWindow` er
+   in-game-dag-granulær (§7 gate 10) og kan ikke svare på "om N timer"; horisonten måles
+   derfor på første etapes `scheduled_at` - det tal spilleren selv ser i kalenderen.
+3. **`late_fill` rører kun en enhed uden ÉN eneste række - manuel eller auto.** Spillerens
+   egen "Auto-udfyld"-knap skriver også `is_auto_filled=true` (A/B), så "tom" må ikke
+   defineres som "ingen manuelle": så ville sweepen diffe spillerens egne bestilte picks.
+   Følgen er at en **delvis** trup ikke top-fyldes i `late_fill`; den bor hos den sene
+   redning (§6), som fylder til gulvet på 6 ved etape 1.
+4. **En sprunget `late_fill`-enhed låser hele sin trup i sit binding-vindue.** Ellers ville
+   spillerens egne ryttere regnes som frie og blive udtaget til et overlappende naboløb -
+   samme fejlklasse som #3113/#1823 i §13.
+5. **Ryd-markeringen (gate 3) vinder også inde i horisonten.** Den har ingen udløbsdato:
+   "Ryd dag"/"Ryd alt" er spillerens eksplicitte nej, og `late_fill` ændrer ikke på det.
+
+**Kun sweepen læser tilstanden.** Sæson-transitionen (`seasonTransition.js`) og admin-genvejen
+(`POST /admin/seasons/:id/generate-entries`) kalder generatoren uden `mode` og kører derfor
+altid `proactive`. Skal de følge tilstanden, er det en selvstændig beslutning - se §12.
+
+**Fladen:** kontakten ("Assistant fills my line-up automatically", `ProfilePage.jsx`) vises
+**kun** når tilstanden er `opt_in`, og `PATCH /api/me/assistant-settings` afviser med
+`409 assistant_opt_in_not_active` i de to andre. En synlig kontakt uden virkning ville være
+en løgn om hvad spilleren styrer.
+
+---
+
 ## 2. De indgange der findes
 
 | Indgang | Flade | Kalder | Scope |
@@ -507,6 +561,12 @@ et fund fra kode-gennemgangen 30/8, ikke et rapporteret symptom. Hører til
 
 Hver post er ÉN ting der mangler at blive afgjort. Ingen af dem må gættes på plads.
 
+0. **Hvilken tilstand skal prod køre?** Mekanikken findes nu (§1b), men flippet er ejerens:
+   `proactive` (i dag), `late_fill` (og med hvilken horisont - 24 t er kun defaulten), eller
+   `opt_in`. Skal sæson-transitionen og admin-genvejen følge tilstanden, eller altid køre
+   proaktivt som i dag? Og skal `late_fill` på sigt også top-fylde en **delvis** trup, eller
+   forbliver det den sene rednings job? *(#4201/#2622, `assistantSelectionMode.js`)*
+
 1. **Skal assistenten kunne lade en plads stå tom?** I dag fylder den altid op til
    `sizeRule.max` (7 til Københavns Klassiker) uanset hvor lav match-scoren er. Skal der være en
    egnetheds-bundgrænse, og hvad er tallet? Uden svar kan #3957 ikke lukkes.
@@ -604,4 +664,6 @@ omgang, og må ikke antages dækket:
   ordet "assistent" i kommentarer, men hører til AI-hold og bestyrelsen
   ([`BOARD_RULES.md`](BOARD_RULES.md)).
 - **Hjælp/FAQ-teksterne** (`help.json` en+da) om assistenten er ikke gennemgået for om de
-  stemmer med adfærden dokumenteret her.
+  stemmer med adfærden dokumenteret her. #4201 tilføjede ét nyt afsnit
+  (`raceSelection.assistantFill`), som er skrevet så det holder i alle tre tilstande i §1b;
+  de øvrige assistent-tekster er stadig ikke efterprøvet.

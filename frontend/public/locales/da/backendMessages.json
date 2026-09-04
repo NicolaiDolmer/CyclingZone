@@ -142,7 +142,8 @@
     },
     "boardChairmanReplaced": {
       "title": "Bestyrelsen har valgt en ny formand",
-      "message": "Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. {chairmanLabel} overtager. Forvent ny tone i de kommende forhandlinger."
+      "message": "Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. {chairmanLabel} overtager. Forvent ny tone i de kommende forhandlinger.",
+      "messageWithName": "Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. {chairmanName}, klubbens nye {chairmanLabel}, overtager. Forvent ny tone i de kommende forhandlinger."
     },
     "boardForcedListing": {
       "title": "Bestyrelsen kræver salg",
@@ -277,6 +278,23 @@
     "boardAutoAccepted": {
       "title": "Bestyrelsen valgte {planLabel} for dig",
       "message": "Du nåede ikke at forhandle din {planLabel}. Bestyrelsen valgte focus \"{focus}\" og standardmål. Du kan stadig anmode om ændringer når planen kører."
+    },
+    "boardMandateOpened": {
+      "title": "Din bestyrelse er klar til årsmødet",
+      "message": "Din bestyrelse har foreslået næste sæsons mandat. Tag den tid du har brug for. Du får en påmindelse, før bestyrelsen underskriver selv."
+    },
+    "boardMandateT3Reminder": {
+      "title": "Bestyrelsen venter på dit mandat",
+      "message": "Du har {daysLeft} dage tilbage til at forhandle dit årsmandat. Hvis du ikke gør noget, underskriver bestyrelsen for dig."
+    },
+    "boardMandateT1Reminder": {
+      "title": "Sidste chance: underskriv dit mandat",
+      "messageSingle": "Bestyrelsen underskriver selv om {daysLeft} dag. Åbn årsmødet nu.",
+      "messageMulti": "Bestyrelsen underskriver selv om {daysLeft} dage. Åbn årsmødet nu."
+    },
+    "boardMandateAutoAccepted": {
+      "title": "Bestyrelsen underskrev dit mandat for dig",
+      "message": "Du nåede ikke at underskrive dit mandat i tide. Bestyrelsen beholdt det foreslåede mandat og underskrev på dine vegne. Du kan stadig anmode om ændringer når sæsonen er i gang."
     },
     "autoBidPlaced": {
       "title": "Autobud afgivet",

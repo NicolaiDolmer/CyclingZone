@@ -7,12 +7,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { computeAttackGainSeconds, descentHook, incidentProbability } from "./descent.ts";
+import { computeAttackGainSeconds, computeRegroupSeconds, descentHook, incidentProbability } from "./descent.ts";
 import { boundRngFor } from "../rng.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
 import type {
   AbilityKey,
   DescentSegment,
+  GroupKind,
   Entrant,
   EngineState,
   RaceGroup,
@@ -95,6 +96,7 @@ function buildSingleGroupScenario(
     entrants: entrantsById,
     tuning: RACE_V4_TUNING,
     rngFor: boundRngFor(seed),
+    orders: [],
   };
   return { state, ctx };
 }
@@ -303,4 +305,133 @@ test("monotoni (hardt krav): en daarligere descender tager ALDRIG tid paa en bed
     }),
     { numRuns: 200, seed: 4030 },
   );
+});
+
+// ── Regruppering (#4604) ────────────────────────────────────────────────────
+// Fire garantier fra descent.ts's regrupperings-kommentar, laast som tests.
+
+/** Bygger N grupper med givne (gap, descending-evne, antal ryttere). */
+function buildMultiGroupScenario(
+  groupSpecs: Array<{ gap: number; descending: number; size: number }>,
+  technicality: 1 | 2 | 3,
+  lengthKm = 8,
+): { state: EngineState; ctx: SegmentHookContext } {
+  const entrantsById: Record<string, Entrant> = {};
+  const riders: Record<string, RiderState> = {};
+  const groups: RaceGroup[] = groupSpecs.map((spec, gi) => {
+    const id = `g${gi}`;
+    const riderIds: string[] = [];
+    for (let i = 0; i < spec.size; i++) {
+      const riderId = `g${gi}r${i}`;
+      entrantsById[riderId] = makeEntrant(riderId, spec.descending);
+      riders[riderId] = makeRiderState(riderId, id);
+      riderIds.push(riderId);
+    }
+    return { id, kind: "peloton" as GroupKind, rider_ids: riderIds, gap_seconds: spec.gap, cohesion: 1 };
+  });
+  const segment = descentSegment(technicality, 40, 40 + lengthKm);
+  // Nedkoerslen ER finalen: regrupperingen er kalibreret paa finale-nedkoersler
+  // (midtvejs-leddet er bevidst 0, se DESCENT_EXTRA_TUNING i tuning.ts).
+  const route: RouteV2 = { ...ROUTE_STUB, segments: [segment] };
+  return {
+    state: { km: 40, groups, riders, virtual_gc: {} },
+    ctx: {
+      segment, segmentIndex: 0, route, entrants: entrantsById,
+      tuning: RACE_V4_TUNING, rngFor: boundRngFor("regroup-seed"), orders: [],
+    },
+  };
+}
+
+test("regruppering: et hul kan kun KRYMPE paa en nedkoersel, aldrig vokse", () => {
+  const { state, ctx } = buildMultiGroupScenario(
+    [{ gap: 0, descending: 80, size: 5 }, { gap: 120, descending: 40, size: 20 }, { gap: 400, descending: 30, size: 60 }],
+    2,
+  );
+  const result = descentHook(state, ctx);
+  for (const before of state.groups) {
+    const after = result.state.groups.find((g) => g.id === before.id);
+    assert.ok(after, `gruppe ${before.id} skal stadig findes`);
+    assert.ok(
+      after!.gap_seconds <= before.gap_seconds + 1e-9,
+      `gruppe ${before.id}: gap voksede (${before.gap_seconds} -> ${after!.gap_seconds})`,
+    );
+  }
+});
+
+test("regruppering: raekkefolgen mellem grupper er invariant — ingen jagende gruppe overhaler den foran", () => {
+  const { state, ctx } = buildMultiGroupScenario(
+    [{ gap: 0, descending: 20, size: 3 }, { gap: 30, descending: 99, size: 40 }, { gap: 90, descending: 99, size: 40 }],
+    1,
+    20,
+  );
+  const result = descentHook(state, ctx);
+  const gapOf = (id: string) => result.state.groups.find((g) => g.id === id)!.gap_seconds;
+  assert.ok(gapOf("g0") <= gapOf("g1") + 1e-9, "g1 maa aldrig ende foran g0");
+  assert.ok(gapOf("g1") <= gapOf("g2") + 1e-9, "g2 maa aldrig ende foran g1");
+});
+
+test("regruppering: computeRegroupSeconds lukker aldrig mere end hullet og aldrig mindre end nul (fast-check)", () => {
+  fc.assert(
+    fc.property(
+      fc.double({ min: 0, max: 3000, noNaN: true }),
+      fc.double({ min: 0, max: 40, noNaN: true }),
+      fc.constantFrom<1 | 2 | 3>(1, 2, 3),
+      fc.integer({ min: 0, max: 99 }),
+      fc.integer({ min: 0, max: 99 }),
+      (gap, km, tech, chase, ahead) => {
+        const closed = computeRegroupSeconds(gap, km, tech, chase, ahead, undefined, true);
+        assert.ok(closed >= 0, `lukning blev negativ: ${closed}`);
+        assert.ok(closed <= gap + 1e-9, `lukning (${closed}) oversteg hullet (${gap})`);
+      },
+    ),
+    { numRuns: 300, seed: 4604 },
+  );
+});
+
+test("regruppering: en gruppe med bedre descending-evne lukker mindst lige saa meget som en svagere", () => {
+  const mk = (chaseDescending: number) =>
+    computeRegroupSeconds(300, 12, 2, chaseDescending, 50, undefined, true);
+  const weak = mk(20);
+  const mid = mk(50);
+  const strong = mk(90);
+  assert.ok(weak <= mid + 1e-9, `svag (${weak}) lukkede mere end middel (${mid})`);
+  assert.ok(mid <= strong + 1e-9, `middel (${mid}) lukkede mere end staerk (${strong})`);
+});
+
+test("regruppering: en ikke-teknisk finale-nedkoersel regrupperer selvom den ALDRIG kan udloese et angreb", () => {
+  const { state, ctx } = buildMultiGroupScenario(
+    [{ gap: 0, descending: 50, size: 5 }, { gap: 200, descending: 50, size: 30 }],
+    1, // under minTechnicalityForAttack — gammel kode returnerede uaendret state
+    15,
+  );
+  const result = descentHook(state, ctx);
+  const after = result.state.groups.find((g) => g.id === "g1")!;
+  assert.ok(after.gap_seconds < 200, "T1-nedkoerslen skal stadig lukke en del af hullet");
+  assert.equal(eventsOfType(result.events, "finale_attack").length, 0, "T1 maa ikke udloese angreb");
+});
+
+test("angreb: en samlet hovedgruppe kan ikke koere fra sig selv paa en T2-nedkoersel", () => {
+  const big = Array.from({ length: 150 }, (_, i) => [`r${i}`, i % 100] as [string, number]);
+  const { state, ctx } = buildSingleGroupScenario(big, 2);
+  const result = descentHook(state, ctx);
+  assert.equal(
+    eventsOfType(result.events, "finale_attack").length,
+    0,
+    "angreb ud af en 150-rytters gruppe kraever den svaereste vejtype",
+  );
+});
+
+test("angreb: kun de bedste descendere gaar med — ikke hele gruppen", () => {
+  const pairs: Array<[string, number]> = [
+    ["elite1", 95], ["elite2", 92], ["mid1", 70], ["mid2", 65], ["weak1", 40], ["weak2", 30],
+  ];
+  const { state, ctx } = buildSingleGroupScenario(pairs, 3);
+  const result = descentHook(state, ctx);
+  const attack = eventsOfType(result.events, "finale_attack")[0];
+  assert.ok(attack, "der skal vaere et angreb ved stor evne-forskel paa T3");
+  const attackerIds = attack.params.rider_ids as string[];
+  assert.ok(attackerIds.length < pairs.length, "angrebet maa ikke omfatte hele gruppen");
+  for (const id of attackerIds) {
+    assert.ok(id.startsWith("elite"), `${id} burde ikke kvalificere som angriber`);
+  }
 });

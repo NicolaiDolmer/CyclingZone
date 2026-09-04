@@ -74,6 +74,8 @@ const BOARD_HANDLERS = [
   { name: "GET /board/status", marker: 'router.get("/board/status"' },
   { name: "POST /board/sign", marker: 'router.post("/board/sign"' },
   { name: "POST /board/request", marker: 'router.post("/board/request"' },
+  // #4519 · preview-endpoint skal have samme guard som det skrivende endpoint.
+  { name: "POST /board/request/preview", marker: 'router.post("/board/request/preview"' },
   { name: "POST /board/renew", marker: 'router.post("/board/renew"' },
 ];
 

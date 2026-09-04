@@ -602,6 +602,26 @@ function createSeasonEndSupabase({
               };
             }
 
+            // #3494 · loadGoalContextForBoard sponsor_growth-query (kontrakt-base +
+            // løbsdags-indtægt). Empty data er neutralt for disse tests — de
+            // tester ikke sponsor_growth, og tom respons giver blot awaiting_data.
+            if (columns === "amount, season_id") {
+              return {
+                eq(_col1, _val1) {
+                  return {
+                    in(col2, _values2) {
+                      assert.equal(col2, "reason_code");
+                      return {
+                        in() {
+                          return Promise.resolve({ data: [], error: null });
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            }
+
             assert.equal(columns, "id");
             assert.deepEqual(options, { count: "exact", head: true });
             const filters = {};
@@ -1779,6 +1799,72 @@ test("processSeasonEnd sends replacement notification when processReplacementTri
   );
   assert.ok(replacementNotif, "replacement notification must be sent when replaced=true");
   assert.ok(replacementNotif.message.includes("Resultatjægeren"), "notification must include new chairman label");
+  // #4556 · uden new_chairman_key kan intet navn afledes, bagudkompatibelt
+  // fallback til den uændrede label-only-kode.
+  assert.equal(replacementNotif.metadata?.messageCode, "notif.boardChairmanReplaced.message");
+  assert.equal(replacementNotif.metadata?.messageParams?.chairmanName, undefined);
+});
+
+// #4556 S-M2b addendum · "Stemme-kontrakten" punkt 2: formandsskifte-notifikationen
+// skal nævne den nye formand ved NAVN + arketype-label (ikke kun label+emoji).
+test("#4556 · processSeasonEnd navngiver den nye formand i replacement-notifikationen naar new_chairman_key er sat", async () => {
+  const supabase = makePlanCompleteSupabase();
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      processReplacementTrigger: async () => ({
+        counter: 0,
+        replaced: true,
+        new_chairman_key: "resultatjaegeren",
+        new_chairman_label: "The Results Hunter",
+      }),
+    }),
+  });
+
+  const replacementNotif = supabase.state.inserts.notifications.find(
+    (n) => n.title === "The board has chosen a new chairman"
+  );
+  assert.ok(replacementNotif, "replacement notification must be sent when replaced=true");
+  assert.equal(replacementNotif.metadata?.messageCode, "notif.boardChairmanReplaced.messageWithName");
+  assert.ok(replacementNotif.metadata?.messageParams?.chairmanName, "messageParams skal bære chairmanName");
+  assert.equal(replacementNotif.metadata.messageParams.chairmanLabel, "The Results Hunter");
+  assert.ok(
+    replacementNotif.message.includes(replacementNotif.metadata.messageParams.chairmanName),
+    "den raa fallback-besked skal ogsaa naevne navnet",
+  );
+
+  // Determinisme: samme (teamId, archetype_key, dnaKey) som resten af
+  // "Stemme-kontrakten" (boardVoice.js/boardRoom.js/decorateReactionWithName).
+  const { generateBoardMemberNames } = await import("./boardMandateNames.js");
+  const [expected] = generateBoardMemberNames({
+    teamId: "team-1",
+    members: ["resultatjaegeren"],
+    dnaKey: "skandinavisk_udvikling",
+  });
+  assert.equal(replacementNotif.metadata.messageParams.chairmanName, expected.full_name);
+});
+
+test("#4556 · replacement-notifikation uden new_chairman_key falder korrekt tilbage til label alene (intet opfundet navn)", async () => {
+  const supabase = makePlanCompleteSupabase();
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      processReplacementTrigger: async () => ({
+        counter: 0,
+        replaced: true,
+        new_chairman_key: null,
+        new_chairman_label: "The Results Hunter",
+      }),
+    }),
+  });
+
+  const replacementNotif = supabase.state.inserts.notifications.find(
+    (n) => n.title === "The board has chosen a new chairman"
+  );
+  assert.ok(replacementNotif, "notifikationen skal stadig sendes uden new_chairman_key");
+  assert.equal(replacementNotif.metadata?.messageCode, "notif.boardChairmanReplaced.message");
+  assert.equal(replacementNotif.metadata?.messageParams?.chairmanName, undefined);
+  assert.equal(replacementNotif.message.includes("undefined"), false, "aldrig 'undefined' i beskeden");
 });
 
 test("processSeasonEnd passes consecutiveLowExpirations=2 when replacement triggers (triggerDoublePlanLapse)", async () => {
@@ -1811,6 +1897,41 @@ test("processSeasonEnd passes consecutiveLowExpirations=0 when no replacement oc
   assert.ok(consequencesArgs, "evaluateAndApplyConsequences must be called");
   assert.equal(consequencesArgs.consecutiveLowExpirations, 0,
     "triggerDoublePlanLapse=false when not replaced → consecutiveLowExpirations must be 0");
+});
+
+// ── #3514 fase 1-rest: skyggemodellens sæson-slut-sync ──────────────────────
+
+test("#3514: processSeasonEnd kalder mandat-motorens sæson-slut-sync ÉN gang pr. hold, EFTER boards-loopet", async () => {
+  const supabase = makePlanCompleteSupabase();
+  let callArgs = null;
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      applyMandateSeasonEndSync: async (sb, args) => { callArgs = args; return { confidence: 70 }; },
+    }),
+  });
+
+  assert.ok(callArgs, "applyMandateSeasonEndSync skal kaldes");
+  assert.equal(callArgs.teamId, "team-1");
+  assert.equal(callArgs.seasonId, "season-5");
+  assert.equal(callArgs.seasonNumber, 5);
+  assert.ok(callArgs.mandateEvaluation, "1yr-boardets FULDE evaluering skal genbruges (spec §3.1)");
+  assert.equal(typeof callArgs.mandateEvaluation.feedback?.satisfaction_delta, "number");
+  assert.deepEqual(callArgs.milestoneContexts, [], "intet 3yr/5yr-board i denne fixture → ingen milepæls-kontekster");
+});
+
+test("#3514: en fejlende sæson-slut-sync vælter ALDRIG den rigtige sæson-slut-evaluering", async () => {
+  const supabase = makePlanCompleteSupabase();
+  await processSeasonEnd("season-5", {
+    supabase,
+    ...baseDeps({
+      applyMandateSeasonEndSync: async () => { throw new Error("boom"); },
+    }),
+  });
+
+  // board_profiles-opdateringen (den spillervendte sti) er sket uændret,
+  // selvom skygge-syncet fejlede.
+  assert.equal(supabase.state.board.negotiation_status, "pending");
 });
 
 test("processSeasonEnd continues and completes season when processReplacementTrigger throws", async () => {
@@ -5732,6 +5853,68 @@ test("processSeasonEnd fail-safe: manglende/fejlende flag-opslag = motorens norm
 
   assert.ok(counter.count >= 1, "fail-safe default skal bygge pulje-træet som før #2851");
   assert.equal(supabase.state.season.status, "completed");
+});
+
+// ─── [epic #4592 del 2] Parkerings-wiring ──────────────────────────────────
+//
+// processSeasonEnd skal kalde parkDormantTeams KUN når season_signup_enabled
+// er 'on', og en fejlende parkerings-sweep må ALDRIG vælte resten af
+// sæsonskiftet (samme fail-isolerende mønster som notifikations-loopet).
+
+test("[epic #4592] processSeasonEnd kalder INGEN parkering når season_signup_enabled er off (default/fail-safe)", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  let parkCalled = false;
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true, // undgå at røre league_divisions-mocken her
+    isSeasonSignupEnabled: async () => false,
+    parkDormantTeams: async () => { parkCalled = true; return { candidates: 0, parked: 0, skipped: 0, parkedTeamIds: [] }; },
+  });
+
+  assert.equal(parkCalled, false, "parkDormantTeams må ikke kaldes når flaget er off");
+  assert.equal(supabase.state.season.status, "completed");
+});
+
+test("[epic #4592] processSeasonEnd kalder parkDormantTeams når season_signup_enabled er on, og fortsætter uændret", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+  let parkArgs = null;
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    isSeasonSignupEnabled: async () => true,
+    parkDormantTeams: async (args) => { parkArgs = args; return { candidates: 3, parked: 2, skipped: 1, parkedTeamIds: ["t1", "t2"] }; },
+  });
+
+  assert.ok(parkArgs, "parkDormantTeams skal kaldes når flaget er on");
+  assert.equal(parkArgs.supabase, supabase);
+  assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre normalt efter parkeringen");
+});
+
+test("[epic #4592] processSeasonEnd: en fejlende parkerings-sweep vælter IKKE resten af sæsonskiftet", async () => {
+  const supabase = createSeasonEndSupabase(makeSeasonEndGateFixture());
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    now: FIXED_SEASON_END_NOW,
+    processLoanInterest: async () => {},
+    createEmergencyLoan: async () => {},
+    updateRiderValues: async () => {},
+    isSeasonEndDivisionMovementSkipped: async () => true,
+    isSeasonSignupEnabled: async () => true,
+    parkDormantTeams: async () => { throw new Error("boom"); },
+  });
+
+  assert.equal(supabase.state.season.status, "completed", "sæson-slut skal fuldføre selv om parkeringen fejler");
 });
 
 // ─── #2912/#2919/#2920 · Gælds-/pengemotor-cluster ────────────────────────────

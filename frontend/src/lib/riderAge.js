@@ -5,8 +5,9 @@
 //
 // Badge-beslutning (#837, ejer 31. maj): vis kun den yngste gældende —
 //   alder < 23 → "u23"
-//   alder 23–24 → "u25"
-//   alder ≥ 25 → ingen alders-badge (aldrig begge på samme rytter).
+//   alder 23–25 → "u25" (UCI-reglen, ejer-beslutning 2/9-2026, se #4557-opfølger:
+//     en 25-årig tæller stadig som U25, ligesom UCIs hvide trøje)
+//   alder ≥ 26 → ingen alders-badge (aldrig begge på samme rytter).
 
 // #3071: FRYSET SÆSON-ALDER-BUG. Frontend brugte wall-clock (`now.getFullYear()`)
 // som alders-reference, mens backend (riderProgressionEngine.js:46) altid har
@@ -95,15 +96,17 @@ export function isU23(birthdate, seasonYear) {
   return age != null && age < 23;
 }
 
-// U25-status afledt SÆSON-korrekt fra fødselsdato (#109/#2073): en rytter er U25
-// når sæson-alderen (referenceåret − fødselsår) er < 25, dvs. født efter
-// `seasonYear - 25` — præcis samme konvention som backend-generatoren
-// (`birthYear > referenceYear - 25`) og import_riders.py. Erstatter det lagrede
+// U25-status afledt SÆSON-korrekt fra fødselsdato (#109/#2073), efter UCI-reglen
+// (ejer-beslutning 2/9-2026): en rytter er U25 når sæson-alderen (referenceåret
+// − fødselsår) er ≤ 25, dvs. født i eller efter `seasonYear - 25`. Matcher
+// UCIs hvide trøje-regel og backend-SSOT'en (riderSeasonAge.isU25ForReferenceYear,
+// `birthYear >= referenceYear - 25`). Tidligere konvention var "< 25"; spillerne
+// forventede at en 25-årig talte som U25 (feedback 1/9). Erstatter det lagrede
 // `is_u25`-flag som badge-/filter-kilde, så U25 ikke fryser ved oprettelse men
 // følger sæsonen. Returnerer false ved manglende fødselsdato/ugyldigt referenceår.
 export function isU25(birthdate, seasonYear) {
   const age = ageForSeason(birthdate, seasonYear);
-  return age != null && age < 25;
+  return age != null && age <= 25;
 }
 
 // Returnér badge-nøglen for rytterens alders-tier, eller null. Nøglen er en
@@ -113,7 +116,7 @@ export function ageBadgeKey(rider, seasonYear) {
   const age = getRiderAge(rider?.birthdate, seasonYear);
   if (age == null) return null;
   if (age < 23) return "u23";
-  if (age < 25) return "u25";
+  if (age <= 25) return "u25"; // UCI-reglen (ejer-beslutning 2/9-2026): 25 er stadig U25.
   return null;
 }
 

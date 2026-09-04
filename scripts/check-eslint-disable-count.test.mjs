@@ -168,11 +168,11 @@ test("nul ubegrundede direktiver paa nuvaerende traae", () => {
   );
 });
 
-test("ResultaterPage.jsx:179 (real file) is not counted as a directive", () => {
+test("ResultaterPage.jsx:180 (real file) is not counted as a directive", () => {
   const here = dirname(fileURLToPath(import.meta.url));
   const repoRoot = join(here, "..");
   const src = readFileSync(join(repoRoot, "frontend/src/pages/ResultaterPage.jsx"), "utf8");
-  const line179 = src.split("\n")[178]; // 0-indexed
-  assert.match(line179, /eslint-disable/);
-  assert.equal(countDisableDirectives(line179), 0);
+  const line180 = src.split("\n")[179]; // 0-indexed
+  assert.match(line180, /eslint-disable/);
+  assert.equal(countDisableDirectives(line180), 0);
 });

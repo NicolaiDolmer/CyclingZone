@@ -1,0 +1,106 @@
+{
+  "page": {
+    "title": "Privacy policy",
+    "langSwitchLabel": "Dansk",
+    "back": "Back",
+    "intro": "Last updated: 3 August 2026. Cycling Zone is an open beta operated by Dolmer Digital (Danish CVR 46524861). We process as little data as possible, and you decide what we may measure."
+  },
+  "sections": {
+    "controller": {
+      "heading": "Who is the data controller?",
+      "paragraph1": "<bold>Dolmer Digital</bold> (Danish CVR 46524861), a sole proprietorship operated by Nicolai Dolmer Mikkelsen. Cycling Zone is a product of Dolmer Digital.",
+      "paragraph2": "Requests regarding your data (access, deletion, portability, objection) can be sent via Discord (preferred) or via an email listed on the <helpLink>Help page</helpLink>. We normally respond within a few days, and at the latest within one month per GDPR art. 12."
+    },
+    "dataTypes": {
+      "heading": "What data do we process?",
+      "items": [
+        "<bold>Account:</bold> email, username, chosen team name and manager name (required to log in and play).",
+        "<bold>Game data:</bold> your team's economy, riders, auctions, board status, season results (everything created by playing).",
+        "<bold>Optional:</bold> your Discord ID if you add it to receive DM notifications.",
+        "<bold>Technical:</bold> IP address in access logs for up to 30 days, used for operations and security.",
+        "<bold>Analytics (consent only):</bold> anonymous behavioural data via Microsoft Clarity (e.g. where users click in vain or scroll in frustration), anonymous traffic/source statistics via Google Analytics (e.g. which page you arrived from) and anonymous page views via Vercel Web Analytics (e.g. how many people visit a page). Used only to fix bad UX and understand where players find the game.",
+        "<bold>Acquisition source (legitimate interest):</bold> when you create an account we record how you first reached the site (a referring link, any campaign tags in the URL, and the page you landed on) so we can see which channels bring new players. First-party only, no cross-site tracking, and you can object at any time.",
+        "<bold>Aggregate traffic statistics (no consent needed):</bold> we count anonymous, aggregated page views and engagement (e.g. how many visitors a page received and whether they engaged) without cookies and without storing IP addresses or any data that can identify you. We also record which page a visit came from and any campaign tags in the URL, so we can see which channels bring visitors. That is information about the referring link, not about you. Because it cannot be linked to you, this requires no consent.",
+        "<bold>Fair play (legitimate interest):</bold> to detect and document multi-account cheating, we record technical signals when an account is created and when value-bearing actions happen in the game (for example accepted transfers, auction bids and loans taken): IP address, browser information (user agent), language setting and timezone. This data is used solely for fair-play enforcement, is never visible to other players, is not shared with third parties, and is deleted automatically after 180 days. If you delete your account, it is deleted with it. The legal basis is our legitimate interest in a fair game (GDPR art. 6(1)(f)), and you can object at any time."
+      ]
+    },
+    "founderWaitlist": {
+      "heading": "Founder waitlist (non-binding expression of interest)",
+      "intro": "If you sign up for our \"Founder\" waitlist, we process the following data based on your explicit consent (GDPR art. 6(1)(a)):",
+      "items": [
+        "<bold>Contact:</bold> email and/or Discord handle (at least one required so we can reach back).",
+        "<bold>Intent:</bold> interest level, preferred tier, main reason, valued benefits, perceived fairness red lines (free text).",
+        "<bold>Follow-up:</bold> consent to personal follow-up (separate yes/no).",
+        "<bold>Attribution:</bold> where you came from (UTM parameter or manual tag, e.g. \"discord_launch\").",
+        "<bold>Timestamp:</bold> when you gave consent (proof of lawful basis)."
+      ],
+      "purpose": "<bold>Purpose:</bold> to administer the waitlist, contact you regarding launch, and measure which channels generate real interest.",
+      "retention": "<bold>Retention:</bold> until you ask to be deleted, or after 24 months of inactivity, whichever comes first. You can write to us at any time to be deleted.",
+      "important": "<bold>Important:</bold> a waitlist sign-up is <em>not</em> a purchase and <em>not</em> binding. No payment is collected before a potential later launch, at which point you must actively accept commercial terms."
+    },
+    "thirdParties": {
+      "heading": "Third parties (data processors)",
+      "items": [
+        "<bold>Supabase (EU, Frankfurt):</bold> database and authentication (data processing agreement in place).",
+        "<bold>Vercel:</bold> frontend hosting (EU/US edge). Vercel sees IP addresses in access logs.",
+        "<bold>Railway:</bold> backend hosting.",
+        "<bold>Microsoft Clarity:</bold> only loaded if you have accepted the \"Analytics\" category.",
+        "<bold>Google Analytics:</bold> only loaded if you have accepted the \"Analytics\" category. Ad signals are turned off.",
+        "<bold>Vercel Web Analytics:</bold> only loaded if you have accepted the \"Analytics\" category.",
+        "<bold>Discord (via Discord Inc.):</bold> only if you voluntarily add your Discord ID, or contact us on Discord. Discord is an independent data controller for any content you send us there."
+      ],
+      "footnote": "We do not sell or share your data with third parties for marketing purposes. A link to Discord is not a data transfer, only when you click and write to us yourself."
+    },
+    "retention": {
+      "heading": "How long do we keep data?",
+      "items": [
+        "<bold>Account and game data:</bold> as long as your account is active. If you delete your account, personally identifiable data is removed within 30 days; aggregated game history (e.g. past season results) may be retained in anonymised form.",
+        "<bold>Waitlist data:</bold> until you ask to be deleted, or 24 months of inactivity, whichever comes first.",
+        "<bold>Access logs (IP):</bold> automatically deleted after 30 days.",
+        "<bold>Fair-play telemetry (IP and device signals):</bold> deleted automatically after 180 days.",
+        "<bold>Consent proof (consent timestamp + choices):</bold> for as long as the related data is processed, so we can document lawful basis."
+      ]
+    },
+    "rights": {
+      "heading": "Your GDPR rights",
+      "intro": "You have the right to:",
+      "items": [
+        "<bold>Access</bold>: to know what data we hold about you.",
+        "<bold>Rectification</bold>: to have incorrect data corrected.",
+        "<bold>Erasure</bold> (\"right to be forgotten\").",
+        "<bold>Data portability</bold>: to receive your data in a machine-readable format.",
+        "<bold>Object</bold> to processing based on legitimate interest.",
+        "<bold>Withdraw consent</bold>: applies going forward and stops collection. Data gathered before withdrawal cannot be removed from anonymous aggregates."
+      ],
+      "complaint": "<bold>Complain to the Danish Data Protection Authority</bold>: <datatilsynetLink>datatilsynet.dk/english</datatilsynetLink>.",
+      "complaintUrl": "https://www.datatilsynet.dk/english",
+      "consentButton": "Change my consent choices"
+    },
+    "cookies": {
+      "heading": "Cookies and local storage",
+      "intro": "We use <em>strictly necessary</em> cookies/localStorage and first-party storage for:",
+      "items": [
+        "<bold>Login session</bold> (Supabase auth): required to keep you logged in.",
+        "<bold>Theme choice</bold> (light/dark): stored locally in your browser.",
+        "<bold>Consent choices</bold> (<code>cz_consent_v1</code> in localStorage): so we remember your selection and don't ask again.",
+        "<bold>Version pinning</bold> (<code>__vdpl</code>): keeps your browser on the version of the app you loaded, so the page does not break mid-session."
+      ],
+      "outro": "These do not require consent under the ePrivacy directive (strictly necessary). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> and <bold>Vercel Web Analytics</bold> are only loaded if you have actively accepted the \"Analytics\" category. You can change your choice on this page at any time."
+    },
+    "currentChoices": {
+      "heading": "Your current choices",
+      "necessary": "Necessary",
+      "alwaysOn": "always on",
+      "analytics": "Analytics",
+      "marketing": "Marketing",
+      "email": "Email",
+      "accepted": "accepted",
+      "denied": "denied",
+      "lastUpdated": "Last updated: {date}"
+    },
+    "changes": {
+      "heading": "Changes to this policy",
+      "paragraph": "We update this policy when new tools or features are introduced. Major changes are announced in the in-game patch notes; you can always find the latest version here."
+    }
+  }
+}

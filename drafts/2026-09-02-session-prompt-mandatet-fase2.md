@@ -1,5 +1,7 @@
 # Session: Mandatet fase 1-apply + fase 2-byg, S4-fundamentet, og kvalitets-baren op
 
+> **PARALLEL-START 1/9 aften:** 1/9-sessionen (Session A) lukker sideløbende og ejer KUN: merge af PR #4550 + #4553 (rebase-CI kører) og bølgens close-out. RØR IKKE de to PR'er, #4388, eller close-out-committene. Status pr. start: React 19 + 5 board-PR'er MERGET (#4547/#4533/#4549/#4546/#4558/#4559), #4377-datareparation applied+verificeret, prod grøn. #4388 afventer stadig ejerens A/B/C. Koordinér via `docs/NOW.md`s Working agent-blok; pull-rebase main før docs-commits.
+
 Kør som multiagent-session: **Fable som arkitekt, sonnet-workers til udførelse, Explore-agenter til sweeps.** Workflows til fan-out (find → adversarial verify), aldrig som erstatning for samtalen. Jeg er til stede: én beslutning ad gangen med tal i selve spørgsmålet, visuelt undervejs (mockups/canvas — ALDRIG preview-server på uafklaret design), og merge intet uden mit go.
 
 ## Arbejdsregler (uændrede fra 1/9, bindende)
@@ -21,7 +23,7 @@ Læs `docs/NOW.md`, `docs/slices/09-board-mandate-rework-MASTER.md` (revideret 1
 3. **Fase 2-UI start (#4557):** S-M2b Boardroom-siden bag kill-switch, tro mod `docs/design/board-mandate-mockups/`. Afvigelser vises mig som mockup-opdatering FØR bygning.
 4. **S4-fundamentet:** S4-kalenderen laves (min 7-dages-frist fra 1/9, jf. #4176-fristen) → derefter #4543: aktiverings-fix + divisor-guard målt mod den FÆRDIGE kalender.
 5. **Penge-værnet (#4555):** periode-rul-vagten (dagligt tjek, fejler højt). Dry-run mod prod før merge.
-6. **Hygiejne-slottet (bølgens faste, ejer-kadence 1/9):** #4551 dependabot/allowlist-vagten (kør mod brudt tilstand FØR merge) + #4552 auto-merge m. cooldown.
+6. **Hygiejne-slottet (bølgens faste, ejer-kadence 1/9):** FØRST de fire ventende Dependabot-PR'er (#4560-#4563, alle minor/patch-grupper + gha — verificér grøn CI, merge, `npm run sync-deps` efter pull). DERNÆST #4552 auto-merge m. 7d cooldown (så næste bølges patch/minor kører selv) + #4551 dependabot/allowlist-vagten (kør mod brudt tilstand FØR merge).
 7. **Kvalitets-challenge (udfordre status quo):** når fase 2-slices lander, kør en adversarial review-workflow på HELE board-modulet (find-dimensioner → verify-panel, jf. Workflow-mønstrene) — målet er at flippet møder spillerne fejlfrit, ikke bare "grønt". Fundene bliver issues eller fixes i samme bølge, aldrig en liste der rådner.
 
 ## Åbne ejer-beslutninger (stil dem enkeltvist, med tal)

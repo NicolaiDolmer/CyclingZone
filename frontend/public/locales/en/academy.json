@@ -3,14 +3,30 @@
   "subtitle": "Sign young talent, develop it, and decide when to promote or sell.",
   "slots": "Academy: {used} / {max} places",
   "balance": "Balance: {amount} CZ$",
-  "disabledNote": "The Academy is coming soon. Stay tuned.",
+  "disabledTitle": "Follow the academy on the roadmap",
+  "disabledNote": "The academy is not open on your account yet.",
+  "disabledAction": "See the roadmap",
   "graduationHeading": "Graduating riders",
   "intakeHeading": "Intake candidates",
   "rosterHeading": "Academy roster",
   "emptyIntake": "No intake candidates right now. New candidates arrive every Sunday.",
-  "emptyIntakeTitle": "No candidates on offer",
-  "emptyRoster": "Sign a candidate above to start developing your own riders.",
-  "emptyRosterTitle": "Your academy is empty",
+  "emptyAction": "Go to auctions",
+  "emptyIntakeTitle": "Find a young rider in the auctions",
+  "emptyRoster": "Young riders come up in the live auctions too, and signed candidates land here.",
+  "emptyRosterTitle": "Sign your first academy rider",
+  "youthSquads": {
+    "title": "Youth squads",
+    "roadmap": "Roadmap",
+    "comingSoon": "Coming soon",
+    "junior": {
+      "title": "Junior team",
+      "description": "Ages 16-18. Own races and standings."
+    },
+    "u23": {
+      "title": "U23 team",
+      "description": "Ages 19-22. Own races, divisions and promotion."
+    }
+  },
   "seriousBadge": "Serious prospect",
   "potential": "Potential",
   "ageLabel": "{age} y/o",

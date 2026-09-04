@@ -5,14 +5,21 @@
 // Interceptoren må ALDRIG kaste: enhver umatchet route eller fejl falder tilbage
 // til den ægte fetch, så Vite-assets/HMR/WS stadig virker. Bag VITE_PREVIEW_MOCK-
 // guarden i main.jsx ⇒ prod tree-shaker hele preview/-mappen væk.
-import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, apiResponse } from "./mockHandlers.js";
+import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, apiResponse, mockProEnabled } from "./mockHandlers.js";
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
+import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
-  SEED_DEV_TRANSITION,
+  SEED_DEV_TRANSITION, ACTIVE_SEASON,
 } from "./seedData.js";
+
+// [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — statefuld in-memory
+// toggle, samme princip som klubMock/plannerMock: POST flipper den, GET
+// spejler den, så et før/efter-screenshot-par kan tages på ægte klik i
+// stedet for to statiske payloads.
+let previewSeasonSignupSignedUp = false;
 
 // Læs Accept-headeren robust: init.headers kan være en Headers-instans, et plain
 // objekt, eller helt fraværende (når input er et Request-objekt med egne headers).
@@ -108,6 +115,17 @@ export function installPreviewMock() {
         if (res) return jsonResponse(res.body, res.status);
       }
 
+      // #4557 (S-M2c): statefuld aarsmoede-mock — rout /api/board/room +
+      // /api/board/meeting* FØR den generiske /api-blok, saa fokus-skift og
+      // underskrift muterer in-memory-state (samme moenster som clubMock).
+      if (/\/api\/board\/(room|meeting)/.test(url)) {
+        const u = new URL(url, window.location.origin);
+        let body = null;
+        if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
+        const res = boardMeetingMockRoute(method, u.pathname, body);
+        if (res) return jsonResponse(res.body, res.status);
+      }
+
       // #2454: potentiale-estimaterne. Preview faldt før igennem til den
       // generiske /api-blok og fik `{ ok: true }` på denne POST, så hver
       // potentiale-celle stod tom — inklusive de ti flader landing 1 lægger om.
@@ -160,6 +178,97 @@ export function installPreviewMock() {
       }
       if (method === "GET" && /\/api\/training\/me$/.test(url)) {
         return jsonResponse(SEED_TRAINING);
+      }
+
+      // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — dashboard-kortet.
+      // Bevidst KUN her og ikke i mockHandlers.js (samme lagdeling som
+      // onboarding-/dev-transition-mocken lige ovenfor): Playwright-fixtures
+      // deler mockHandlers via frontend/tests/e2e/fixtures.js, og et synligt
+      // kort her ville flytte de eksisterende dashboard-snapshots. `enabled:
+      // true, eligible: true` er et BEVIDST preview-override af den ægte
+      // fail-safe off-default (season_signup_enabled i app_config er 'off' i
+      // prod), så ejeren kan se og gennemklikke kortet på preview FØR flaget
+      // nogensinde flippes (docs' "ejeren skal kunne teste på preview"-regel).
+      if (method === "GET" && /\/api\/season\/signup-status$/.test(url)) {
+        return jsonResponse({
+          enabled: true,
+          // Forbliver true efter signup: server-siden nulstiller aldrig
+          // eligible ved tilmelding (kun signed_up ændrer sig) — kortets
+          // bekræftelses-tilstand skal kunne SES efter klik, ikke forsvinde.
+          eligible: true,
+          parked: false,
+          signed_up: previewSeasonSignupSignedUp,
+          next_season_number: ACTIVE_SEASON.number + 1,
+        });
+      }
+      if (method === "POST" && /\/api\/season\/signup$/.test(url)) {
+        previewSeasonSignupSignedUp = true;
+        return jsonResponse({
+          ok: true,
+          signed_up: true,
+          next_season_signup_at: new Date().toISOString(),
+          next_season_number: ACTIVE_SEASON.number + 1,
+        });
+      }
+
+      // #4649 · Pro v1.1-ruter. Ny funktionalitet (ingen eksisterende preview/
+      // e2e-forløb rammer disse paths), styret af SAMME cz_mock_pro-flag som
+      // subscriptions-mocken ovenfor, så et skærmbillede af BEGGE tilstande
+      // (Pro og fri) kan tages ved blot at sætte flaget før reload.
+      if (method === "GET" && /\/api\/pro\/rider-history\//.test(url)) {
+        if (!mockProEnabled()) {
+          return jsonResponse({ error: "Pro required", errorCode: "pro_required" }, 403);
+        }
+        return jsonResponse({
+          abilityCeiling: 99,
+          seasons: [
+            { season_number: 1, abilities: { climbing: 52, tempo: 55, punch: 48, sprint: 40, acceleration: 44, flat: 50, time_trial: 47, endurance: 58, durability: 53, recovery: 51, aggression: 45, tactics: 42, descending: 49, cobblestone: 38, positioning: 46 } },
+            { season_number: 2, abilities: { climbing: 61, tempo: 60, punch: 53, sprint: 43, acceleration: 47, flat: 54, time_trial: 52, endurance: 63, durability: 57, recovery: 54, aggression: 47, tactics: 46, descending: 52, cobblestone: 40, positioning: 49 } },
+            { season_number: 3, abilities: { climbing: 68, tempo: 64, punch: 57, sprint: 45, acceleration: 49, flat: 57, time_trial: 55, endurance: 67, durability: 60, recovery: 56, aggression: 48, tactics: 49, descending: 54, cobblestone: 41, positioning: 51 } },
+          ],
+        });
+      }
+      // Offentligt (uafhaengigt af cz_mock_pro) — samme seat-tal som RPC-listen ovenfor.
+      if (method === "GET" && /\/api\/billing\/founder-seats$/.test(url)) {
+        return jsonResponse({ taken: 2, cap: 50 });
+      }
+
+      // #4519: board-request-preview-mock — "nuværende plan → foreslået plan"
+      // uden en rigtig backend, så BoardRequestPanel's Accept/Behold-flow kan
+      // klikkes igennem og skærmbilledes i preview. Hardkodet outcome (samme
+      // mønster som season/signup ovenfor) — ikke en genimplementering af
+      // resolveBoardRequest, kun en troværdig demo-payload.
+      if (method === "POST" && /\/api\/board\/request\/preview$/.test(url)) {
+        let body = null;
+        try { body = init && init.body ? JSON.parse(init.body) : null; } catch { body = null; }
+        const requestType = body?.request_type || "more_youth_focus";
+        const isYouth = requestType === "more_youth_focus";
+        return jsonResponse({
+          ok: true,
+          request_result: {
+            outcome: "approved",
+            title: isYouth ? "The board embraces the youth pivot" : "The board reviews your request",
+            request_label: isYouth ? "More youth focus" : requestType,
+            request_label_key: `requestDefs.${requestType}.label`,
+            summary: isYouth
+              ? "The board agrees to shift the plan toward developing young talent."
+              : "The board adjusts the plan.",
+            tradeoff_summary: isYouth
+              ? "The U25 identity goal becomes more central to the active plan."
+              : "",
+          },
+          board_changes: {
+            focus_before: "star_signing",
+            focus_after: isYouth ? "youth_development" : "star_signing",
+            goal_changes: isYouth
+              ? [{
+                kind: "replaced",
+                before_label: "Sign at least 1 marquee star rider",
+                after_label: "Give 2 U25 riders their debut this season",
+              }]
+              : [],
+          },
+        });
       }
 
       // Express-API (/api/...).

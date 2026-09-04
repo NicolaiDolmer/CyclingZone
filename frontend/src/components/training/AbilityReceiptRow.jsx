@@ -42,8 +42,15 @@ export default function AbilityReceiptRow({ row, inFocus = false }) {
         {label}
       </span>
 
-      {/* Nu */}
-      <span className="flex-none w-[24px] text-right font-mono tabular-nums text-2xs text-cz-1">
+      {/* Nu — #4128: rytteren ser undertiden dette tal og læser det som loftet, fordi
+          det stopper med at stige uden nogen synlig grund (aftagende tilvækst nær
+          loftet). Rå loft-tal må aldrig vises (#1162), så markøren er en tooltip på
+          selve tallet, kun når evnen IKKE er låst — er den låst, er "færdig"-mærket
+          allerede den entydige besked, og en "ikke loftet"-tooltip ville modsige det. */}
+      <span
+        className="flex-none w-[24px] text-right font-mono tabular-nums text-2xs text-cz-1 cursor-help"
+        title={locked ? undefined : t("receipt.nowTooltip")}
+      >
         {value ?? "—"}
       </span>
 

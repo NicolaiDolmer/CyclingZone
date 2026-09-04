@@ -8,7 +8,8 @@ import {
   SkeletonLines, Modal, Field, Textarea,
 } from "../components/ui";
 import { InboxIcon, ArrowUpIcon, UndoIcon } from "../components/ui/icons/index.jsx";
-import { formatForumDate } from "./ForumPage.jsx";
+import ForumAuthorIdentity, { ForumSignature } from "../components/forum/ForumAuthorIdentity.jsx";
+import { authorDisplayName } from "../components/forum/forumIdentity.js";
 
 // #3199 — tråd-detalje: opslag + evt. ejer-poll + svar. T1 (max-w-4xl).
 // Afstemning: single choice, genafstemning tilladt (backend upserter). Kun
@@ -21,6 +22,14 @@ import { formatForumDate } from "./ForumPage.jsx";
 // svar over eget svar, med et klikbart spring til originalen (#reply-<id>).
 // Et citat af et siden slettet svar viser ALDRIG dets indhold — backend
 // shaper allerede { id, removed: true } for den gren (getForumPost).
+//
+// #4751 (ejer-direktiv 3/9) — profil-identitet: hvert indlaeg og svar aabner nu
+// med ForumAuthorIdentity (avatar + klikbart managernavn/holdnavn), og lukker
+// med auto-signaturen (holdnavn + division). Forfatteren er derfor FLYTTET fra
+// sidehovedets undertekst ned i selve indlaegget — samme oplysning to steder er
+// data-slop (TASTE §3), og identiteten hoerer sammen med teksten den staar bag.
+// Traadlisten (ForumPage) faar IKKE links: hele raekken er allerede ét <Link>,
+// og et link inde i et link er ugyldig HTML.
 
 const QUOTE_PREVIEW_LENGTH = 140;
 
@@ -36,17 +45,6 @@ const REASON_MAX = 500;
 // FORUM_REPORT_REASON_MIN_LENGTH i backend/lib/forum.js.
 const REASON_MIN = 10;
 const FORUM_POST_TABLES = ["forum_replies", "forum_posts"];
-
-function AuthorLine({ author, createdAt, language, t }) {
-  return (
-    <div className="flex items-center gap-2 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
-      <span className="truncate">{t("list.by", { name: author?.username || author?.team_name || "?" })}</span>
-      {author?.team_name && author?.username && <span className="truncate normal-case">{author.team_name}</span>}
-      <span>·</span>
-      <span className="tabular-nums">{formatForumDate(createdAt, language)}</span>
-    </div>
-  );
-}
 
 function ReportModal({ open, onClose, onSubmit, t }) {
   const [reason, setReason] = useState("");
@@ -175,7 +173,7 @@ function QuotedReplyBlock({ quoted, onJump, t }) {
       className="mb-2 block w-full border-l-2 border-cz-border pl-2.5 text-left text-2xs text-cz-3 transition-colors hover:border-cz-accent/50"
     >
       <span className="font-data uppercase tracking-[.04em] text-cz-3">
-        {t("list.by", { name: quoted.author?.username || quoted.author?.team_name || "?" })}
+        {t("list.by", { name: authorDisplayName(quoted.author) })}
       </span>
       <p className="mt-0.5 truncate text-cz-2">{quoted.excerpt}</p>
     </button>
@@ -419,16 +417,22 @@ export default function ForumPostPage() {
         />
       ) : (
         <>
-        <PageHeader
-          title={post.title}
-          subtitle={`${post.author?.username || post.author?.team_name || "?"}${post.author?.team_name && post.author?.username ? ` · ${post.author.team_name}` : ""} · ${t(`categories.${post.category}`)} · ${formatForumDate(post.created_at, language)}`}
-        />
+        <PageHeader title={post.title} subtitle={t(`categories.${post.category}`)} />
         <SectionStack>
           <Section>
             {post.is_pinned && (
               <div className="mb-2 font-data text-2xs uppercase tracking-[.08em] text-cz-accent-t">{t("post.pinnedTag")}</div>
             )}
-            <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{post.body}</p>
+            <ForumAuthorIdentity
+              author={post.author}
+              body={post.body}
+              createdAt={post.created_at}
+              language={language}
+              size="md"
+              t={t}
+            />
+            <p className="mt-3 whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{post.body}</p>
+            <ForumSignature author={post.author} body={post.body} t={t} />
             {poll && <PollBlock poll={poll} onVote={handleVote} voting={voting} t={t} />}
             <div className="mt-4 flex items-center gap-2 border-t border-cz-border pt-3">
               <SupportButton
@@ -464,22 +468,32 @@ export default function ForumPostPage() {
               <div className="divide-y divide-cz-border">
                 {replies.map((reply) => (
                   <div key={reply.id} id={`reply-${reply.id}`} className="py-[13px] scroll-mt-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <AuthorLine author={reply.author} createdAt={reply.created_at} language={language} t={t} />
-                        <QuotedReplyBlock quoted={reply.quoted} onJump={handleJumpToOriginal} t={t} />
-                        <p className="mt-1.5 whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{reply.body}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <SupportButton
-                            active={reply.supported_by_me}
-                            count={reply.support_count ?? 0}
-                            onToggle={() => handleToggleReaction("reply", reply.id)}
-                            disabled={reactingKey === `reply:${reply.id}`}
-                            t={t}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
+                    <ForumAuthorIdentity
+                      author={reply.author}
+                      body={reply.body}
+                      createdAt={reply.created_at}
+                      language={language}
+                      size="sm"
+                      t={t}
+                    />
+                    {/* Indrykket til avatarens hoejre kant (28px + 10px gap), saa
+                        svarets tekst, signatur og handlinger ligger i én kolonne
+                        under forfatterlinjen. #4751: handlingerne laa foer i en
+                        hoejre-kolonne ved siden af teksten — paa 412px klemte de
+                        svarteksten ned i ~150px (TASTE P10). Nu ligger de under
+                        teksten, praecis som paa selve opslaget. */}
+                    <div className="mt-2 ps-[38px]">
+                      <QuotedReplyBlock quoted={reply.quoted} onJump={handleJumpToOriginal} t={t} />
+                      <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{reply.body}</p>
+                      <ForumSignature author={reply.author} body={reply.body} t={t} />
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <SupportButton
+                          active={reply.supported_by_me}
+                          count={reply.support_count ?? 0}
+                          onToggle={() => handleToggleReaction("reply", reply.id)}
+                          disabled={reactingKey === `reply:${reply.id}`}
+                          t={t}
+                        />
                         <Button variant="ghost" size="sm" onClick={() => handleQuote(reply)}>
                           <UndoIcon size={14} aria-hidden="true" className="me-1 inline -mt-0.5" />
                           {t("quote.action")}
@@ -506,7 +520,7 @@ export default function ForumPostPage() {
                 <div className="flex items-start justify-between gap-3 rounded-cz border border-cz-border bg-cz-subtle px-3 py-2">
                   <div className="min-w-0">
                     <span className="font-data text-2xs uppercase tracking-[.04em] text-cz-3">
-                      {t("quote.replyingTo", { name: quoteTarget.author?.username || quoteTarget.author?.team_name || "?" })}
+                      {t("quote.replyingTo", { name: authorDisplayName(quoteTarget.author) })}
                     </span>
                     <p className="mt-0.5 truncate text-2xs text-cz-2">{quoteTarget.excerpt}</p>
                   </div>

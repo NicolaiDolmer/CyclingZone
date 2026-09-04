@@ -35,6 +35,18 @@ import {
   buildRacePointsLookup,
   PRIZE_PER_POINT,
 } from "./raceResultsEngine.js";
+// #4148: rene måle-hjælpere (ingen adfærdsændring) — se finalizeInstrumentation.js.
+import { wrapSupabaseWithCallCounter, formatPhaseLogLine } from "./finalizeInstrumentation.js";
+// #4147: trin-markering der gør afslutningen genoptagelig efter en afbrydelse.
+import { isRaceFinalizeResumableEnabled } from "./raceFinalizeResumableFlag.js";
+import {
+  applicableSteps as finalizeApplicableSteps,
+  buildFinalizeState,
+  isAttemptOnceStep,
+  normalizeFinalizeState,
+  readFinalizeState,
+  writeFinalizeState,
+} from "./raceFinalizeState.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
@@ -55,6 +67,7 @@ import {
   serializeStageRoleOverrides,
 } from "./raceStageRoles.js";
 import { autopickTeamSelection, selectionSizeForRace, MIN_RACE_ENTRIES } from "./raceAutopick.js";
+import { seasonReferenceYear, isU25ForReferenceYear } from "./riderSeasonAge.js";
 // S5 (#2224): form-peaks — I/O-loadere (peak-planer + stage-datoer) +
 // traeningskvalitet-seam. KUN kaldt når v3=true (flag-off skal forblive bit-
 // identisk); peak-inputs går ind på entrants/stages via de samme v3-gates som S3.
@@ -1031,24 +1044,27 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   return rows.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id, race_role: r.race_role }));
 }
 
-// U25 afledt SÆSON-korrekt fra birthdate (#109/#2073). Den lagrede riders.is_u25-
-// kolonne er statisk (DEFAULT FALSE) og re-deriveres aldrig → 16-18-årige oprettet
-// uden flag (akademi/intake/generatorer) forblev false for evigt og manglede i
-// ungdomsklassementet. Konventionen matcher fictionalRiderGenerator + import_riders.py:
-//   U25 = fødselsår > referenceår - 25  ⇔  (referenceår − fødselsår) < 25.
-// referenceåret er SÆSONENS år (seasons.start_date), ikke wall-clock — så gaten er
-// sæson-drevet. Manglende birthdate/ugyldigt referenceår → false (kan ikke bekræftes).
+// U25 afledt SÆSON-korrekt fra birthdate (#109/#2073), efter UCI-reglen (ejer-
+// beslutning 2/9-2026): Den lagrede riders.is_u25-kolonne er statisk (DEFAULT
+// FALSE) og re-deriveres aldrig → 16-18-årige oprettet uden flag (akademi/
+// intake/generatorer) forblev false for evigt og manglede i ungdomsklassementet.
+// Selve grænsen bor nu ÉT sted (riderSeasonAge.isU25ForReferenceYear):
+//   U25 = fødselsår ≥ referenceår - 25  ⇔  (referenceår − fødselsår) ≤ 25.
+// referenceåret er SÆSONENS SSOT-år (riderSeasonAge.seasonReferenceYear), ikke
+// wall-clock/seasons.start_date (#4485), så gaten er sæson-drevet.
 export function deriveIsU25FromBirthdate(birthdate, seasonYear) {
-  if (!birthdate || !Number.isFinite(seasonYear)) return false;
-  const birthYear = new Date(birthdate).getFullYear();
-  if (!Number.isFinite(birthYear)) return false;
-  return birthYear > seasonYear - 25;
+  return isU25ForReferenceYear(birthdate, seasonYear);
 }
 
-// Sæsonens referenceår = året for seasons.start_date. Additiv/degraderende opslag
-// (som condition-/team_name-berigelsen): fejler det, falder vi tilbage til at bruge
-// det lagrede is_u25-flag frem for at blokere finalization. race.season_id er
-// garanteret af kalderne (runRaceFinalization/finalizeRaceStage kaster uden det).
+// Sæsonens referenceår = SSOT-formlen i riderSeasonAge.js (LAUNCH_REFERENCE_YEAR +
+// (sæsonnummer − 1)), IKKE året for seasons.start_date (#4485). start_date sættes til
+// WALL-CLOCK-tidspunktet for sæsonskiftet (seasonTransition.js), som ikke er sæsonens
+// alders-referenceår — samme fejlklasse #riderSeasonAge.js's topkommentar advarer mod
+// (#3071/#3081): fire tidligere kopier af aldersformlen, hver med sin egen wall-clock-
+// afvigelse. Additiv/degraderende opslag (som condition-/team_name-berigelsen): fejler
+// det, falder vi tilbage til at bruge det lagrede is_u25-flag frem for at blokere
+// finalization. race.season_id er garanteret af kalderne (runRaceFinalization/
+// finalizeRaceStage kaster uden det).
 async function loadSeasonReferenceYear({ supabase, seasonId }) {
   if (!seasonId) return null;
   try {
@@ -1057,16 +1073,14 @@ async function loadSeasonReferenceYear({ supabase, seasonId }) {
     // enhver uventet throw degraderer til null (fallback til lagret is_u25).
     const { data, error } = await supabase
       .from("seasons")
-      .select("start_date")
+      .select("number")
       .eq("id", seasonId);
     if (error) {
       console.error(`season reference-year lookup failed (falling back to stored is_u25): ${error.message}`);
       return null;
     }
-    const startDate = Array.isArray(data) ? data[0]?.start_date : data?.start_date;
-    if (!startDate) return null;
-    const year = new Date(startDate).getFullYear();
-    return Number.isFinite(year) ? year : null;
+    const seasonNumber = Array.isArray(data) ? data[0]?.number : data?.number;
+    return seasonReferenceYear(seasonNumber);
   } catch (e) {
     console.error(`season reference-year lookup threw (falling back to stored is_u25): ${e.message}`);
     return null;
@@ -2193,10 +2207,35 @@ export async function simulateStageByIndex({
   loadPeakPlans: loadPeakPlansFn = loadPeakPlans,
   loadStageDayOrdinals: loadStageDayOrdinalsFn = loadStageDayOrdinals,
   resolvePeakTrainingQualities: resolveTQsFn = resolvePeakTrainingQualities,
+  // #4147: injectable, default læser den ægte kill-switch
+  // (app_config.race_finalize_resumable_enabled). OFF → ingen markering skrives,
+  // ingen læses, og hele funktionen opfører sig bit-identisk med før #4147.
+  checkFinalizeResumable = isRaceFinalizeResumableEnabled,
+  readFinalizeStateFn = readFinalizeState,
+  writeFinalizeStateFn = writeFinalizeState,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
   if (!Number.isInteger(stageIndex) || stageIndex < 0) throw new Error("stageIndex must be a non-negative integer");
+
+  // #4148: instrumentér afslutningsstien — måler varighed + Supabase-kald pr. fase
+  // uden at ændre nogen forespørgsels adfærd (se finalizeInstrumentation.js).
+  // `supabase` genbindes til den tællende klient, så ALLE nedstrøms hjælpere i
+  // resten af funktionen (samme reference) tælles med, uanset hvor mange lag
+  // kaldet går igennem (loadEntrantsForRace, persistRuns, applyStageResult, …).
+  const { client: countedSupabase, counter: __callCounter } = wrapSupabaseWithCallCounter(supabase);
+  supabase = countedSupabase;
+  const __finalizePhases = [];
+  let __phaseStartMs = Date.now();
+  let __phaseStartCalls = __callCounter.calls;
+  const __markPhase = (name) => {
+    __finalizePhases.push({ name, ms: Date.now() - __phaseStartMs, calls: __callCounter.calls - __phaseStartCalls });
+    __phaseStartMs = Date.now();
+    __phaseStartCalls = __callCounter.calls;
+  };
+  const __logFinalizePhases = () => {
+    console.log(formatPhaseLogLine(`finalize race=${race.id} stage=${stageNumber}/${totalStages} final=${isFinalStage}`, __finalizePhases));
+  };
 
   // Checkpoint FØR afviklingen — board-weekend bruger previous-vs-new race_days.
   const { data: seasonBefore } = await supabase
@@ -2223,13 +2262,101 @@ export async function simulateStageByIndex({
   const totalStages = stagesSorted.length;
   const completedBefore = Number(race.stages_completed) || 0;
 
+  // ── #4147: genoptagelig afslutning ────────────────────────────────────────────
+  // Trin-markeringen (races.finalize_state) fortæller hvor langt afslutningen af
+  // PRÆCIS denne etape nåede sidst. Læses friskt her frem for at kræve kolonnen i
+  // hvert kalder-select — så kan markeringen ikke stille forsvinde fordi ét
+  // call-site glemte den (adminSimulateRace, admin-routes, tests).
+  //
+  // Flaget OFF (default) → resumeEnabled=false → intet læses, intet skrives, og
+  // resten af funktionen er bit-identisk med før #4147: den grovkornede
+  // finalizationPending-recovery (P0 2/7) er stadig den eneste redningsvej.
+  const resumeEnabled = !dryRun && (await checkFinalizeResumable(supabase));
+  const finalizeStartedAt = new Date().toISOString();
+  let finalizeDone = [];
+  let resumedState = null;
+  if (resumeEnabled) {
+    const row = await readFinalizeStateFn(supabase, race.id);
+    resumedState = normalizeFinalizeState(row?.finalize_state, { stageNumber });
+    if (resumedState) finalizeDone = [...resumedState.done];
+  }
+  // "resuming" = markeringen siger at result-write ALLEREDE er committet for denne
+  // etape. Så må vi under ingen omstændigheder køre apply_stage_result igen (den ville
+  // tabe låsen og afbryde), men vi SKAL køre de resterende trin. Simuleringen er
+  // seedet (stableSeed(raceSeedInput(race.id, stageNumber))) og entrants er frosset til
+  // etape-1-snapshottet, så en genkørsel producerer PRÆCIS de samme rækker — det er dét
+  // der gør enrichment/notify genoptagelige uden at modsige de skrevne race_results.
+  const resuming = resumeEnabled && finalizeDone.includes("write");
+  // Hviledags-restitutionen kører kun når der FAKTISK er et game_day-hul til næste
+  // etape. Uden dette ville markeringen love et trin der aldrig kører, og vagten
+  // ville se løbet som evigt ufuldstændigt.
+  const hasRestDayGap = (() => {
+    if (race.race_type !== "stage_race" || stageIndex + 1 >= stagesSorted.length) return false;
+    const nextGd = stagesSorted[stageIndex + 1]?.game_day;
+    const curGd = thisStage.game_day;
+    return Number.isFinite(nextGd) && Number.isFinite(curGd) && nextGd - curGd - 1 > 0;
+  })();
+  const finalizeSteps = finalizeApplicableSteps({ isFinalStage, hasRestDay: hasRestDayGap });
+  const stepDone = (name) => resumeEnabled && finalizeDone.includes(name);
+  /**
+   * Markér ét trin færdigt. IDEMPOTENTE trin kaldes efter succes (fejler trinnet,
+   * står markeringen ikke → næste tick kører det igen). ENGANGS-trin (fatigue/
+   * rest-day/notify) kaldes efter FORSØGET, uanset udfald: de akkumulerer eller
+   * sender udad, så en gentagelse er værre end en manglende.
+   */
+  const markFinalizeStep = async (name) => {
+    if (!resumeEnabled || finalizeDone.includes(name)) return;
+    finalizeDone.push(name);
+    await writeFinalizeStateFn(
+      supabase,
+      race.id,
+      buildFinalizeState({ stageIndex, stageNumber, isFinalStage, startedAt: resumedState?.started_at ?? finalizeStartedAt, done: finalizeDone }),
+    );
+  };
+  /** Afslutningen af denne etape er i mål → ryd markeringen (NULL = intet i gang). */
+  const clearFinalizeState = async () => {
+    if (!resumeEnabled) return;
+    await writeFinalizeStateFn(supabase, race.id, null);
+  };
+  /** Kør ét trin hvis det ikke allerede er markeret. Returnerer true hvis det kørte. */
+  const runFinalizeStep = async (name, fn) => {
+    if (!finalizeSteps.includes(name)) return false;
+    if (stepDone(name)) return false;
+    if (isAttemptOnceStep(name)) {
+      // Engangs-trin: markér FØR/uanset udfald. `fn` sluger selv sine fejl
+      // (fatigue/rest-day/notify er alle best-effort i forvejen).
+      try {
+        await fn();
+      } finally {
+        await markFinalizeStep(name);
+      }
+      return true;
+    }
+    await fn();
+    await markFinalizeStep(name);
+    return true;
+  };
+  if (resuming) {
+    console.log(
+      `  ♻️  race ${race.id} etape ${stageNumber}: genoptager afslutning (#4147) — færdige trin: ${finalizeDone.join(",") || "ingen"}`,
+    );
+  }
+
   // ── FIX 1 (re-entrant recovery): et løb hvis ALLE etaper er afviklet
   // (stages_completed >= stages) men status ENDNU ikke er 'completed' sidder fast i
   // "finalization pending" (et crash mellem stages_completed-bump og status-flip, eller
   // mellem finalization-trin). Det skal kunne genoptages idempotent → kør KUN finalization
   // (resultater/standings ER allerede skrevet; vi rør dem ikke igen). isFinalStage SKAL
   // gælde her — recovery giver kun mening for final-etapen.
+  //
+  // #4147: en genoptagelse (resuming) går ALDRIG denne vej. Den grovkornede
+  // finalizationPending-sti springer hele `if (!finalizationPending)`-blokken over og
+  // kan derfor ikke køre de trin der bor derinde (enrichment, fatigue, standings) —
+  // det var netop hullet der efterlod 34 etaper uden race_simulation_runs. Med en
+  // markering ved vi PRÆCIS hvilke trin der mangler, så vi går den normale vej igennem
+  // og springer kun de færdige trin over.
   const finalizationPending = !dryRun
+    && !resuming
     && isFinalStage
     && completedBefore >= totalStages
     && race.status !== "completed";
@@ -2237,13 +2364,28 @@ export async function simulateStageByIndex({
   // ── FIX 3 (status-guard, defense-in-depth): et FÆRDIGT løb (status='completed')
   // må ikke gen-afvikles via denne sti — finalization er per definition allerede kørt.
   // Recovery-tilfældet ovenfor er det modsatte (status != completed), så de udelukker hinanden.
-  if (!dryRun && race.status === "completed") {
+  //
+  // #4147-undtagelsen: et løb kan nå status='completed' og STADIG bære en markering,
+  // hvis processen døde mellem status-flippet og rydningen — eller hvis et tidligere
+  // trin blev sprunget over. Det er ikke en gen-afvikling: `resuming` kræver at
+  // `write` ER markeret for PRÆCIS denne etape, og genoptagelsen rører aldrig
+  // apply_stage_result. Er alle trin færdige, rydder vi bare markeringen; ellers
+  // falder vi igennem og kører de manglende trin (alle idempotente eller engangs-
+  // markerede) færdige.
+  if (!dryRun && race.status === "completed" && !resuming) {
     throw new Error(`Race ${race.id} already simulated (status=completed) — re-simulation blocked`);
+  }
+  if (!dryRun && race.status === "completed" && resuming && finalizeSteps.every((s) => finalizeDone.includes(s))) {
+    await clearFinalizeState();
+    return { stageNumber, isFinalStage, rowsImported: 0, rows: 0, entrants: 0, stages: totalStages, resumed: true, alreadyComplete: true };
   }
 
   // Entries auto-fyldes KUN ved første etape (persist=false fra etape 2). I recovery
   // springer vi entrants/resultatberegning helt over — intet skal genberegnes.
-  const persistEntries = !dryRun && !finalizationPending && stageIndex === 0;
+  // #4147: en genoptagelse skal heller ikke re-persistere entries — de blev skrevet af
+  // den afbrudte kørsel, og feltet SKAL være uændret for at re-simuleringen kan
+  // reproducere de allerede skrevne race_results.
+  const persistEntries = !dryRun && !finalizationPending && !resuming && stageIndex === 0;
 
   let entrants = [];
   let resultRows = [];
@@ -2407,19 +2549,39 @@ export async function simulateStageByIndex({
     // vinder. Taberen ser lockWon=false → afbryd FØR standings, så standings/præmier
     // ikke dobbelt-anvendes. status sættes IKKE her (FIX 1: status flippes sidst).
     //
+    // #4148: lukker "sim"-fasen (entrants-load + etape-bygning ovenfor) FØR den
+    // atomære result-write nedenfor — se __markPhase-opsætningen ved funktionens start.
+    __markPhase("sim");
+
     // resultRows er allerede afgrænset til DENNE etape (linje ~691), og rækkerne har
     // points_earned/prize_money udledt via buildRacePointsLookup — RPC'en persisterer
     // dem 1:1 (samme normaliserede kolonne-mapping som applyRaceResults). Balance-NEUTRAL.
-    const { lockWon, rowsImported } = await applyStageResult(supabase, {
-      raceId: race.id,
-      stageIndex,
-      stageNumber,
-      totalStages,
-      resultRows,
-    });
+    //
+    // #4147: er `write` allerede markeret færdig, ER rækkerne skrevet og counteren
+    // bumpet af den afbrudte kørsel. Et nyt RPC-kald ville tabe låsen (prædikatet
+    // stages_completed = stageIndex holder ikke længere) og afbryde os FØR de
+    // manglende trin — så vi springer det over og genoptager kæden nedenfor.
+    let lockWon = true;
+    let rowsImported = 0;
+    if (stepDone("write")) {
+      __markPhase("write-resumed");
+    } else {
+      ({ lockWon, rowsImported } = await applyStageResult(supabase, {
+        raceId: race.id,
+        stageIndex,
+        stageNumber,
+        totalStages,
+        resultRows,
+      }));
+      __markPhase("write");
+      // Markeringen skrives KUN når låsen blev vundet: en taber har ikke skrevet
+      // noget og må ikke efterlade en markering der ser ud som halvt arbejde.
+      if (lockWon) await markFinalizeStep("write");
+    }
     if (!lockWon) {
       // Konkurrerende run vandt (eller stages_completed er allerede forbi denne etape).
       // RPC'en kørte INGEN side-effekter → sikkert at afbryde uden dobbelt-anvendelse.
+      __logFinalizePhases();
       return {
         stageNumber, isFinalStage, skipped: "concurrent_lock_lost",
         rowsImported: 0, rows: 0, entrants: entrants.length, stages: totalStages,
@@ -2444,13 +2606,26 @@ export async function simulateStageByIndex({
     // har med at gøre (19 etaper i 14 løb tabt permanent, målt i prod 25/7). Fanget +
     // Sentry-capturet (synligt, ikke tavst skjult) — standings retter sig selv ved
     // næste etape/recompute; berigelsen nedenfor skrives uanset udfaldet her.
-    try {
-      await ensureSeasonStandings(race.season_id);
-      await updateStandings(race.season_id, race.id);
-    } catch (err) {
-      console.error(`  ⚠️  standings recompute failed after stage ${stageNumber} (race ${race.id}) — enrichment continues, standings will self-heal on next recompute: ${err.message}`);
-      captureException(err, { tags: { flow: "race-run", stage: "standings-recompute" }, raceId: race.id, stageNumber });
+    //
+    // #4147: markeringen skrives kun når recomputen faktisk LYKKEDES. Fejler den,
+    // fanger vi den (uændret, jf. #2877) OG lader trinnet stå umarkeret, så en
+    // genoptagelse kører det igen i stedet for at lade løbet stå med stale standings.
+    if (!stepDone("standings")) {
+      let standingsOk = true;
+      try {
+        await ensureSeasonStandings(race.season_id);
+        await updateStandings(race.season_id, race.id);
+      } catch (err) {
+        standingsOk = false;
+        console.error(`  ⚠️  standings recompute failed after stage ${stageNumber} (race ${race.id}) — enrichment continues, standings will self-heal on next recompute: ${err.message}`);
+        captureException(err, { tags: { flow: "race-run", stage: "standings-recompute" }, raceId: race.id, stageNumber });
+      }
+      // #4147: markér KUN ved succes. #2877-adfærden er uændret (fejlen vælter ikke
+      // berigelsen nedenfor); forskellen er alene at et fejlet trin forbliver umarkeret
+      // og derfor genoptages, i stedet for at løbet står med stale standings.
+      if (standingsOk) await markFinalizeStep("standings");
     }
+    __markPhase("standings");
 
     // #3193: samme flytning som fuld-løb-stien ovenfor — refresh rangliste-
     // matviews LIGE EFTER season_standings er opdateret, ikke efter board-
@@ -2460,9 +2635,18 @@ export async function simulateStageByIndex({
     // dette isFinalStage-tjek ville hver mellem-etape trigge en unødig 4x-RPC-
     // refresh — cron-fallback (10 min) dækker allerede mellem-etaper.
     if (isFinalStage) {
-      await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+      const ran = await runFinalizeStep("matview", async () => {
+        await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+      });
+      __markPhase(ran ? "matview" : "matview-resumed");
     }
 
+    // #4147: HELE berigelsen er ét trin. Alle skrivningerne indeni er delete-then-insert
+    // scopet til denne etape (persistRuns/persistPassages/persistIncidents/…), altså
+    // idempotente — men de er IKKE indbyrdes atomare, så markeringen sættes først når
+    // hele blokken er nået igennem. En afbrydelse midtvejs kører hele blokken igen, og
+    // fordi simuleringen er seedet, skrives præcis de samme rækker.
+    await runFinalizeStep("enrichment", async () => {
     await persistRuns({ supabase, race, runs, source: runSource });
     // Sub-2 (#2770): samme scoping-mønster (denne etape alene) — data-gated,
     // no-op'er ved tom liste (legacy-løb uden rutedata).
@@ -2497,19 +2681,27 @@ export async function simulateStageByIndex({
       supabase, race, resultRows, stageNumbers: [stageNumber],
       seasonNumber: seasonBefore?.number ?? null,
     });
+    }); // ── #4147: slut på "enrichment"-trinnet ───────────────────────────────────
 
     // #1306 spec 6.4: træthed bygges af DENNE etapes belastning — PRÆCIS ét kald
     // (ikke 1..N: de tidligere etaper akkumulerede deres last i tidligere invokationer).
-    try {
-      // S3 (#2034): denne etapes effort pr. rytter (kun når v3=true) — se
-      // raceFatigue.applyRaceFatigue's jsdoc.
-      const effortByRider = v3 ? effortByRiderForStage(stageRoleOverrides, stageNumber) : null;
-      await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type, effortByRider });
-    } catch (err) {
-      // #2389 A2: mirror fuld-sim-grenen ovenfor — capture.
-      console.error(`  ⚠️  race fatigue upsert failed (stage ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
-      captureException(err, { tags: { flow: "race-run", stage: "fatigue-upsert" }, raceId: race.id, stageNumber });
-    }
+    //
+    // #4147: ENGANGS-trin. applyRaceFatigue LÆGGER belastning TIL rider_condition.fatigue
+    // — den er ikke idempotent, og to kørsler ville gøre feltet dobbelt trætte. Markeringen
+    // sættes derfor efter FORSØGET (runFinalizeStep's attempt-once-gren), uanset udfald:
+    // en manglende trætheds-skrivning er langt mindre skadelig end en dobbelt.
+    await runFinalizeStep("fatigue", async () => {
+      try {
+        // S3 (#2034): denne etapes effort pr. rytter (kun når v3=true) — se
+        // raceFatigue.applyRaceFatigue's jsdoc.
+        const effortByRider = v3 ? effortByRiderForStage(stageRoleOverrides, stageNumber) : null;
+        await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type, effortByRider });
+      } catch (err) {
+        // #2389 A2: mirror fuld-sim-grenen ovenfor — capture.
+        console.error(`  ⚠️  race fatigue upsert failed (stage ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
+        captureException(err, { tags: { flow: "race-run", stage: "fatigue-upsert" }, raceId: race.id, stageNumber });
+      }
+    });
 
     // #3470: eksplicit hviledags-restitution — game_day-hul til NÆSTE etape (GT-rest-dag)
     // tickes HER, umiddelbart efter DENNE etapes egen fatigue-skrivning (post-lock, samme
@@ -2520,11 +2712,16 @@ export async function simulateStageByIndex({
     // restituerede rider_condition.fatigue som en frisk DB-læsning — ingen ekstra kode
     // nødvendig i simuleringsstien (samme mekanik buildStageRowsAccumulated's docstring
     // beskriver: "…plus evt. restitution mellem etapedage").
-    if (race.race_type === "stage_race" && stageIndex + 1 < stagesSorted.length) {
-      const nextGd = stagesSorted[stageIndex + 1]?.game_day;
-      const curGd = thisStage.game_day;
-      const restDays = Number.isFinite(nextGd) && Number.isFinite(curGd) ? Math.max(0, nextGd - curGd - 1) : 0;
-      if (restDays > 0) {
+    //
+    // #4147: ENGANGS-trin af samme grund som fatigue ovenfor — restitutionen TRÆKKER FRA
+    // rider_condition.fatigue, så en dobbelt-anvendelse ville give feltet en hviledag det
+    // aldrig havde. Kun markeret som et trin når der faktisk ER et game_day-hul
+    // (hasRestDayGap), så markeringen aldrig lover et trin der ikke skal køre.
+    if (hasRestDayGap) {
+      await runFinalizeStep("rest-day", async () => {
+        const nextGd = stagesSorted[stageIndex + 1]?.game_day;
+        const curGd = thisStage.game_day;
+        const restDays = Math.max(0, nextGd - curGd - 1);
         try {
           const recoveryAbilityByRider = new Map(entrants.map((e) => [e.rider_id, e.abilities?.recovery]));
           await applyGrandTourRestDayFatigueFn({
@@ -2534,8 +2731,10 @@ export async function simulateStageByIndex({
           console.error(`  ⚠️  GT hviledags-restitution fejlede (race ${race.id} efter etape ${stageNumber}, ${restDays} hviledage): ${err.message}`);
           captureException(err, { tags: { flow: "race-run", stage: "gt-rest-day-fatigue" }, raceId: race.id, stageNumber });
         }
-      }
+      });
     }
+    // #4148: lukker "enrichment"-fasen (persistRuns/…/fatigue ovenfor).
+    __markPhase("enrichment");
 
     // ── Mellem-etape: INGEN finalization. status forbliver scheduled (binær enum). ──
     if (!isFinalStage) {
@@ -2544,14 +2743,23 @@ export async function simulateStageByIndex({
       // notifyInApp's samlede klassements-notifikation, så en manager aldrig får
       // to beskeder for samme etape. Best-effort (samme mønster som notifyDiscord/
       // notifyInApp): en notif-fejl må ikke vælte afviklingen.
-      if (notifyStageInApp) {
+      //
+      // #4147: ENGANGS-trin — den sender udad. Markeres efter forsøget, så en
+      // genoptagelse aldrig giver managere to beskeder om samme etape.
+      await runFinalizeStep("notify", async () => {
+        if (!notifyStageInApp) return;
         try {
           await notifyStageInApp({ race, stageNumber, totalStages });
         } catch {
           // best-effort: notificationService capturer internt, tavs slugning er bevidst.
         }
-      }
-      return { stageNumber, isFinalStage, rowsImported: applied.rowsImported, rows: resultRows.length, entrants: entrants.length, stages: totalStages };
+      });
+      __markPhase("notify");
+      // #4147: mellem-etapen er i mål — ryd markeringen. NULL = intet i gang, og det er
+      // netop fraværet af en markering vagten bruger til at se at alt er godt.
+      await clearFinalizeState();
+      __logFinalizePhases();
+      return { stageNumber, isFinalStage, rowsImported: applied.rowsImported, rows: resultRows.length, entrants: entrants.length, stages: totalStages, ...(resuming ? { resumed: true } : {}) };
     }
   }
 
@@ -2559,6 +2767,11 @@ export async function simulateStageByIndex({
   // FIX 1: kør finalization FØR status='completed'. recomputeSeasonRaceDays er idempotent
   // og processBoardWeekend er sikker at gen-køre; et crash her efterlader status != completed
   // → recovery-stien ovenfor genoptager. status flippes KUN hvis finalization lykkes.
+  //
+  // #4147: recomputeSeasonRaceDays + processBoardWeekend er ÉT trin. Begge er
+  // idempotente (re-derivation henholdsvis previous-vs-new-diff), så en afbrydelse
+  // midtvejs betyder blot at trinnet kører helt om ved næste tick.
+  const __boardRan = await runFinalizeStep("board", async () => {
   const newRaceDaysCompleted = await recomputeRaceDays({ supabase, seasonId: race.season_id });
 
   if (seasonBefore?.id) {
@@ -2583,7 +2796,17 @@ export async function simulateStageByIndex({
       captureException(error, { tags: { flow: "race-run", stage: "board-weekend" }, raceId: race.id });
     }
   }
+  }); // ── #4147: slut på "board"-trinnet ──────────────────────────────────────────
+  __markPhase(__boardRan ? "board" : "board-resumed");
 
+  // #4147: ENGANGS-trin. Discord-embed + in-app-notifikation SENDER UDAD; en
+  // gentagelse er synlig for spillerne. Markeres efter forsøget.
+  //
+  // Sidegevinst ved markeringen: den gamle finalizationPending-recovery sprang
+  // notifikationen HELT over (den kunne ikke vide om den var sendt), så et løb der
+  // crashede før notify aldrig fortalte nogen at det var kørt. Med markeringen ved vi
+  // det præcist — og sender netop den besked der mangler.
+  const __notifyRan = await runFinalizeStep("notify", async () => {
   if (notifyDiscord) {
     try {
       // Embed = HELE løbets race_results (alle etaper) genlæst fra DB, ikke kun
@@ -2640,6 +2863,8 @@ export async function simulateStageByIndex({
       // capturer internt (#2394), så en tavs slugning her er bevidst (#2395).
     }
   }
+  }); // ── #4147: slut på "notify"-trinnet ─────────────────────────────────────────
+  __markPhase(__notifyRan ? "notify" : "notify-resumed");
 
   // FIX 1: status='completed' sættes SIDST — efter al finalization er lykkedes. Idempotent
   // (en recovery-genkørsel sætter samme værdi). stages_completed sættes også (recovery-sti
@@ -2648,6 +2873,11 @@ export async function simulateStageByIndex({
   // dette tidspunkt; fejler status-flaget tavst, står løbet som "ikke afviklet"
   // trods skrevne race_results — og recovery-genkørslen vil forsøge at afvikle
   // det igen oven på dem. Tjek + kast, så retry-laget kan gribe det.
+  //
+  // #4147: status-flippet + de to flush'es er ÉT trin, og det er det SIDSTE. Alt der
+  // kan gå galt før dette punkt efterlader status != 'completed' — hvilket er præcis
+  // den tilstand både den gamle recovery-sti OG vagten kan se og handle på.
+  const __statusFlushRan = await runFinalizeStep("status-flush", async () => {
   const { error: statusError } = await supabase
     .from("races")
     .update({ status: "completed", stages_completed: totalStages })
@@ -2667,6 +2897,8 @@ export async function simulateStageByIndex({
   await flushDeferredTransfersSafe({ supabase, race });
   // #4423: løbet er finaliseret → flush udskudte akademi-optagelser for deltagerne.
   await flushDeferredAcademySigningsSafe({ supabase, race });
+  }); // ── #4147: slut på "status-flush"-trinnet ───────────────────────────────────
+  __markPhase(__statusFlushRan ? "status-flush" : "status-flush-resumed");
 
   // #3193: normal final-etape-afvikling refresher allerede tidligere i denne
   // funktion (lige efter updateStandings, isFinalStage-gated) — et kald her
@@ -2677,13 +2909,25 @@ export async function simulateStageByIndex({
   // stadig refreshe her, ellers forbliver global_rank_mv stale efter en
   // crash-recovery-genoptagelse indtil næste 10-min cron-tick.
   if (finalizationPending) {
-    await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+    await runFinalizeStep("matview", async () => {
+      await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+    });
+    __markPhase("matview");
   }
+
+  // #4147: afslutningen er i mål — ryd markeringen. Fra dette øjeblik har løbet igen
+  // ingen igangværende afslutning, og vagten (raceFinalizeWatch.js) ser intet.
+  await clearFinalizeState();
+
+  // #4148: sidste log-linje for denne invokation — dækker BÅDE normal
+  // final-etape-afvikling og recovery-genoptagelse (finalizationPending).
+  __logFinalizePhases();
 
   return {
     stageNumber, isFinalStage,
     rowsImported: applied.rowsImported, rows: resultRows.length,
     entrants: entrants.length, stages: totalStages,
     ...(finalizationPending ? { recovered: true } : {}),
+    ...(resuming ? { resumed: true } : {}),
   };
 }

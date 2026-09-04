@@ -18,6 +18,7 @@ import { fetchAllRows } from "../../lib/supabasePagination";
 import StageProfileGraph from "./StageProfileGraph.jsx";
 import {
   Card,
+  ChevronRightIcon,
   EmptyState,
   FlagIcon,
   Section,
@@ -267,6 +268,7 @@ export default function CompletedRacesExplorer() {
                   <Link to={`/races/${selectedRace.id}`}
                     className="inline-flex items-center gap-1 mb-4 text-xs font-medium text-cz-accent-t hover:underline">
                     {selectedRace.race_type === "stage_race" ? t("calendar.viewFullWithStages") : t("calendar.viewFull")}
+                    <ChevronRightIcon size={12} aria-hidden="true" />
                   </Link>
                   {RESULT_TYPES.map(rt => {
                     const rows = selectedRace.results.filter(r => r.result_type === rt.key).slice(0, 10);

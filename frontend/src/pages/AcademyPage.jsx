@@ -22,6 +22,7 @@
 // backend-fejl (#2796: en 500'er viste før "Akademiet kommer snart").
 
 import { useMemo, useState } from "react";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAcademy } from "../lib/useAcademy.js";
 import PotentialeStars from "../components/PotentialeStars.jsx";
@@ -34,13 +35,17 @@ import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
 import { AcademyReleaseConfirmModal } from "../components/AcademyReleaseConfirmModal.jsx";
 import AcademyPnl from "../components/AcademyPnl.jsx";
-import { Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, DataTable } from "../components/ui";
+import {
+  Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, DataTable,
+  Section, SectionHeader, SectionAction,
+} from "../components/ui";
 import { projectSeniorSalary, getRiderMarketValue } from "../lib/marketValues.js";
 import { keepsExistingContractOnPromote } from "../lib/academyPromoteContract.js";
 import { formatNumber } from "../lib/intl.js";
 import { getRiderAge } from "../lib/riderAge.js";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { useTableSort } from "../lib/useTableSort.js";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 import { scoutSortValue } from "../lib/scouting.js";
 
 // #2796: var hardkodet Intl.NumberFormat("en-US") midt på en side der ellers
@@ -212,18 +217,26 @@ export default function AcademyPage() {
     // holdsiden. Blokeres når senior-truppen er fuld.
     // #4009: Fyr sidder ved siden af Promovér — samme handling som ELLERS kun
     // var tilgængelig via gradueringsvinduet (ryttere ≥22). Ejer-ja 20/8:
-    // fyring skal virke på alle ryttere, ikke kun graduerede. Sekundær/danger-
-    // variant, ikke gold — én gold primær pr. view (Promovér beholder den).
+    // fyring skal virke på alle ryttere, ikke kun graduerede.
+    // #4628: raekkeknapper er ALTID secondary (T2: "row action buttons are
+    // secondary sm, never gold in rows") — Promovér var primary og blev
+    // tvunget om af kittet med et console.error (#4625/#4657). Fyr var en
+    // roed outline-knap, altsaa en indrammet danger-flade i hver eneste
+    // raekke; den er nu en destruktiv TEKST-handling (ghost + --danger),
+    // saa raekken har én indrammet knap og roedt kun som farve.
+    // En rigtig handlings-menu (Dropdown) er fravalgt her: DataTable's WRAP er
+    // overflow-hidden og SCROLLER overflow-x-auto, saa et absolut placeret
+    // panel i en raekke ville blive klippet af tabellens egen scroller.
     {
       key: "action",
       header: t("colAction"),
       render: (r) => {
         const busy = actionState[r.id] != null;
         return (
-          <div className="flex gap-1.5 justify-end">
+          <div className="flex items-center gap-1.5 justify-end">
             <Button
               size="sm"
-              variant="primary"
+              variant="secondary"
               onClick={() => handlePromote(r)}
               disabled={busy || seniorFull}
               loading={actionState[r.id] === "promoting"}
@@ -233,7 +246,8 @@ export default function AcademyPage() {
             </Button>
             <Button
               size="sm"
-              variant="danger"
+              variant="ghost"
+              className="text-cz-danger hover:text-cz-danger"
               onClick={() => handleReleaseOpen(r)}
               disabled={busy}
             >
@@ -396,7 +410,17 @@ export default function AcademyPage() {
     return (
       <div className="max-w-[1600px] mx-auto">
         <PageHeader title={t("title")} />
-        <EmptyState title={t("title")} description={t("disabledNote")} />
+        {/* #4628 (TASTE fork 4): en tom tilstand uden vej videre er et fund —
+            EmptyState kraever nu `action` (#4625). */}
+        <EmptyState
+          title={t("disabledTitle")}
+          description={t("disabledNote")}
+          action={
+            <Link to="/roadmap" className={buttonClass({ variant: "secondary", size: "sm" })}>
+              {t("disabledAction")}
+            </Link>
+          }
+        />
       </div>
     );
   }
@@ -438,7 +462,11 @@ export default function AcademyPage() {
           er pending graduates (call-to-action, ikke permanent tom-tilstand). */}
       {graduations.length > 0 && (
         <section>
-          <h2 className="font-data text-2xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("graduationHeading")}</h2>
+          {/* #4628: eyebrow-idiomet (11px uppercase meta) var sidens fjerde
+              overskrifts-stil og fik Youth squads-kortets kanoniske 15/600-titel
+              til at skille sig ud fra sine naboer (audit 2026-09, /academy).
+              Alle fire blokke bruger nu SectionHeader-recipen. */}
+          <SectionHeader title={t("graduationHeading")} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {graduations.map((g) => {
               const busy = actionState[g.riderId] != null;
@@ -481,8 +509,13 @@ export default function AcademyPage() {
 
                   {err && <p className="text-xs text-cz-danger">{err}</p>}
 
+                  {/* #4628: kortene gentages (ét pr. graduerende rytter), saa en
+                      guld-primary pr. kort giver N guld-knapper paa ét view.
+                      Guld er rationeret til ÉN primaer handling pr. view
+                      (TASTE P3 / fork 3) — kort-handlingerne er secondary,
+                      og den destruktive er en ghost i --danger. */}
                   <div className="flex gap-2 mt-auto pt-1">
-                    <Button size="sm" variant="primary" className="flex-1"
+                    <Button size="sm" variant="secondary" className="flex-1"
                       onClick={() => handleGraduate(g.riderId, "promote")}
                       disabled={busy} loading={actionState[g.riderId] === "promote"}>
                       {t("promoteBtn")}
@@ -492,7 +525,7 @@ export default function AcademyPage() {
                       disabled={busy} loading={actionState[g.riderId] === "sell"}>
                       {t("sellBtn")}
                     </Button>
-                    <Button size="sm" variant="ghost" className="flex-1"
+                    <Button size="sm" variant="ghost" className="flex-1 text-cz-danger hover:text-cz-danger"
                       onClick={() => handleGraduate(g.riderId, "release")}
                       disabled={busy} loading={actionState[g.riderId] === "release"}>
                       {t("releaseBtn")}
@@ -507,7 +540,7 @@ export default function AcademyPage() {
 
       {/* INTAKE-sektion */}
       <section>
-        <h2 className="font-data text-2xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("intakeHeading")}</h2>
+        <SectionHeader title={t("intakeHeading")} />
 
         {/* #3550 (ejer-beslutning 19/8, ungdomspakken): pull-baseret intake.
             intakePull.enabled=false (default indtil cutover-flip 23/8) → uændret
@@ -525,9 +558,25 @@ export default function AcademyPage() {
             </Button>
           </Card>
         ) : intake.length === 0 && intakePull.enabled ? (
-          <EmptyState title={t("emptyIntakeTitle")} description={t("intakePull.emptyAfterPull")} />
+          <EmptyState
+            title={t("emptyIntakeTitle")}
+            description={t("intakePull.emptyAfterPull")}
+            action={
+              <Link to="/auctions" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                {t("emptyAction")}
+              </Link>
+            }
+          />
         ) : intake.length === 0 ? (
-          <EmptyState title={t("emptyIntakeTitle")} description={t("emptyIntake")} />
+          <EmptyState
+            title={t("emptyIntakeTitle")}
+            description={t("emptyIntake")}
+            action={
+              <Link to="/auctions" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                {t("emptyAction")}
+              </Link>
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {intake.map((item) => {
@@ -631,15 +680,17 @@ export default function AcademyPage() {
                   {err && <p className="text-xs text-cz-danger">{err}</p>}
 
                   {/* Handlingsknapper */}
+                  {/* #4628: samme guld-rationering som gradueringskortene —
+                      tre "Signer"-kort gav tre guld-knapper (audit 2026-09). */}
                   <div className="flex gap-2 mt-auto pt-1">
-                    <Button size="sm" variant="primary" className="flex-1"
+                    <Button size="sm" variant="secondary" className="flex-1"
                       onClick={() => handleSign(rider.id)}
                       disabled={busy || isFull || tooExpensive}
                       loading={actionState[rider.id] === "signing"}
                       title={isFull ? t("fullTooltip", { max: slots.max }) : tooExpensive ? t("error.insufficientBalance") : undefined}>
                       {t("signBtn")}
                     </Button>
-                    <Button size="sm" variant="secondary" className="flex-1"
+                    <Button size="sm" variant="ghost" className="flex-1"
                       onClick={() => handleReject(rider.id)}
                       disabled={busy} loading={actionState[rider.id] === "rejecting"}>
                       {t("rejectBtn")}
@@ -663,10 +714,18 @@ export default function AcademyPage() {
       {/* ROSTER-sektion — #3045: DataTable (T2-recipen), sticky navnekolonne +
           Type/Værdi foldet ind i portræt-underlinjen (se rosterColumns). */}
       <section>
-        <h2 className="font-data text-2xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-3">{t("rosterHeading")}</h2>
+        <SectionHeader title={t("rosterHeading")} />
 
         {roster.length === 0 ? (
-          <EmptyState title={t("emptyRosterTitle")} description={t("emptyRoster")} />
+          <EmptyState
+            title={t("emptyRosterTitle")}
+            description={t("emptyRoster")}
+            action={
+              <Link to="/auctions" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                {t("emptyAction")}
+              </Link>
+            }
+          />
         ) : (
           <DataTable
             label={t("rosterHeading")}
@@ -679,6 +738,41 @@ export default function AcademyPage() {
           />
         )}
       </section>
+
+      {/* YOUTH SQUADS-kort (#4618, slice 0 af epic #2492) — "Kommer snart"-rammen
+          for Junior team og U23 team, jf. docs/YOUTH_RULES.md §3 og artboard 3b
+          (docs/design/youth-tiers/HANDOFF.md beslutning 10). Lægges UNDER
+          roster-kortet, ikke over (fold-disciplin, PAGE_TEMPLATES.md). Ingen
+          nye nav-punkter, ingen tomme tabeller, ingen tal — kun en pille
+          (FacilityTrackCard-mønstret) + én sætning pr. trup + ét roadmap-link
+          (P11 "ingenting opdigtet", TASTE.md). Dagens akademi-ryttere forbliver
+          én samlet trup ("Academy roster" ovenfor) indtil slice 1.
+          Beskrivelseslinjen er en fuld sætning, ikke en meta-label, så den
+          IKKE bruger PAGE_TEMPLATES' uppercase-11px-meta-stil (den stil er til
+          korte labels/tal, ikke løbende tekst) — samme valg som
+          FacilityTrackCard's egen "coming soon"-linje (text-xs text-cz-2). */}
+      <Section>
+        <SectionHeader
+          title={t("youthSquads.title")}
+          action={<SectionAction as={Link} to="/roadmap">{t("youthSquads.roadmap")}</SectionAction>}
+        />
+        <div className="divide-y divide-cz-border">
+          {[
+            { key: "junior", title: t("youthSquads.junior.title"), description: t("youthSquads.junior.description") },
+            { key: "u23", title: t("youthSquads.u23.title"), description: t("youthSquads.u23.description") },
+          ].map((row) => (
+            <div key={row.key} className="py-[13px] flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[13.5px] font-medium text-cz-1">{row.title}</p>
+                <p className="text-xs text-cz-2 mt-0.5">{row.description}</p>
+              </div>
+              <span className="shrink-0 text-3xs uppercase tracking-wide rounded-cz px-[7px] py-[2px] text-cz-accent-t bg-cz-accent/10">
+                {t("youthSquads.comingSoon")}
+              </span>
+            </div>
+          ))}
+        </div>
+      </Section>
 
       {/* Akademi-regnskab (#2485) — P&L for udvikl-og-sælg. */}
       <AcademyPnl />

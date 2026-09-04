@@ -215,6 +215,19 @@ test("is_u25 opdateres når rytter passerer 25 (board #813 ser aldringen)", asyn
   assert.equal(state.riders[0].is_u25, false, "rytter på 26 er ikke længere U25");
 });
 
+// UCI-reglen (ejer-beslutning 2/9-2026): sæson-alder ≤ 25, dvs. den 25-årige
+// er STADIG U25 (tidligere konvention var < 25, hvor 25 allerede var falsk).
+test("is_u25 - boundary 25 er STADIG U25 under UCI-reglen (ejer-beslutning 2/9)", async () => {
+  // født 2004 → ved sæson 4 (2029) er 25 år (2029-2004=25).
+  const state = seedState({
+    riders: [{ id: "r1", primary_type: "rouleur", potentiale: 3, birthdate: "2004-01-01", base_value: 50000, is_u25: true, is_retired: false, team_id: null, firstname: "X", lastname: "Y" }],
+    abilities: [{ rider_id: "r1", flat: 60, ability_caps: null }],
+  });
+  const supabase = createMockSupabase(state);
+  await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4, model: MODEL });
+  assert.equal(state.riders[0].is_u25, true, "rytter på 25 er stadig U25 (UCI-reglen)");
+});
+
 test("pensionerede ryttere udvikles ikke (filtreret på is_retired)", async () => {
   const state = seedState({
     riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: true, team_id: null, firstname: "Pen", lastname: "Sioneret" }],

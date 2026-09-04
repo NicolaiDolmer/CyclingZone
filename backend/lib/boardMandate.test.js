@@ -8,20 +8,25 @@ import {
   MILESTONE_MISS_MAX_PENALTY,
   adjustmentsAllowedFor,
   buildCategoryScores,
+  buildMandateGoalOptions,
   buildMilestoneKey,
   computeMigratedConfidence,
   computeMilestoneHitReward,
   computeMilestoneMissPenalty,
   consequenceLayersFor,
   counterofferGenerosityFor,
+  finalizeMandateGoals,
   getTrustTier,
+  goalAdjustmentCost,
   isBonusBand,
   isHeadlineMilestone,
   isUnsignedLongPlan,
+  MandateAdjustmentBudgetError,
   mergeCategoryScoresForMigration,
   planToMandate,
   planToMilestones,
 } from "./boardMandate.js";
+import { buildGoalKey } from "./boardGoals.js";
 import { CONSEQUENCE_CONSTANTS } from "./boardConsequences.js";
 
 // ── Migrations-vægte (ejer-beslutning 7) ─────────────────────────────────────
@@ -229,6 +234,32 @@ test("1-års-planens mål overføres UÆNDRET - ingen genforhandling påtvinges"
   assert.equal(mandate.source.from_board_id, "board-1");
 });
 
+// ── #3514 S-M2a · Stabilt mål-ejerskab i mandatets goals-JSON ────────────────
+
+test("planToMandate stempler owner_archetype_key naar assignedMembers sendes med", () => {
+  const goals = [{ type: "no_outstanding_debt", category: "economy", target: 0 }];
+  const assignedMembers = [
+    { archetype_key: "sponsoraten", is_chairman: true },
+    { archetype_key: "ungdomsidealisten", is_chairman: false },
+  ];
+  const mandate = planToMandate({ focus: "balanced" }, goals, { confidence: 66, assignedMembers });
+  assert.equal(mandate.goals[0].owner_archetype_key, "sponsoraten");
+});
+
+test("planToMandate er bagudkompatibel: ingen assignedMembers giver samme goals-reference", () => {
+  const goals = [stageWinGoal];
+  const mandate = planToMandate({ focus: "balanced" }, goals, { confidence: 66 });
+  assert.deepEqual(mandate.goals, goals);
+  assert.ok(!("owner_archetype_key" in mandate.goals[0]));
+});
+
+test("planToMandate roerer aldrig et allerede stemplet owner_archetype_key", () => {
+  const goals = [{ type: "no_outstanding_debt", category: "economy", target: 0, owner_archetype_key: "traditionalisten" }];
+  const assignedMembers = [{ archetype_key: "sponsoraten", is_chairman: true }];
+  const mandate = planToMandate({ focus: "balanced" }, goals, { confidence: 66, assignedMembers });
+  assert.equal(mandate.goals[0].owner_archetype_key, "traditionalisten");
+});
+
 test("mandatet får tillids-trappens justeringer ved migrationen", () => {
   assert.equal(planToMandate({}, [], { confidence: 20 }).adjustments_allowed, 1);
   assert.equal(planToMandate({}, [], { confidence: 66 }).adjustments_allowed, 2);
@@ -259,4 +290,101 @@ test("konsekvens-lag aflæses korrekt af et tillidstal", () => {
   assert.deepEqual(consequenceLayersFor(9).sort(), [2, 3, 4, 5]);
   assert.equal(isBonusBand(76), true);
   assert.equal(isBonusBand(75), false, "lag 6 kræver STRENGT over 75, som i dag");
+});
+
+// ── #4557 S-M2c · Årsmødets Easier/Keep/Stretch-budget ──────────────────────
+
+const topNGoal = { type: "top_n_finish", target: 4, satisfaction_bonus: 10, satisfaction_penalty: 6 };
+const binaryGoal = { type: "no_outstanding_debt", target: 0, satisfaction_bonus: 12, satisfaction_penalty: 8 };
+
+test("goalAdjustmentCost: Easier/Stretch koster 1, Keep koster 0", () => {
+  assert.equal(goalAdjustmentCost("easier"), 1);
+  assert.equal(goalAdjustmentCost("stretch"), 1);
+  assert.equal(goalAdjustmentCost("keep"), 0);
+  assert.equal(goalAdjustmentCost(undefined), 0);
+});
+
+test("buildMandateGoalOptions: standard generosity (1.0) — Stretch strammer target ét trin, bonus+straf ×1,5", () => {
+  const options = buildMandateGoalOptions(topNGoal, { generosity: 1.0 });
+  assert.equal(options.keep.target, 4);
+  assert.equal(options.easier.target, 6, "Easier = spejl af relax (target+2 for top_n_finish)");
+  assert.equal(options.easier.satisfaction_penalty, 3, "Easier halverer straffen");
+  assert.equal(options.stretch.target, 2, "Stretch = target-2 for top_n_finish");
+  assert.equal(options.stretch.satisfaction_bonus, 15, "10 × 1,5 × generosity(1.0)");
+  assert.equal(options.stretch.satisfaction_penalty, 9, "6 × 1,5 — straffen skaleres IKKE af generosity");
+});
+
+test("buildMandateGoalOptions: tillids-trappens generosity (0,80/1,25) skalerer KUN Stretch-bonussen", () => {
+  const trusted = buildMandateGoalOptions(topNGoal, { generosity: 1.25 });
+  assert.equal(trusted.stretch.satisfaction_bonus, 19, "round(10 × 1,5 × 1,25) = round(18,75) = 19");
+  assert.equal(trusted.stretch.satisfaction_penalty, 9, "straffen er den SAMME uanset generosity");
+
+  const strained = buildMandateGoalOptions(topNGoal, { generosity: 0.80 });
+  assert.equal(strained.stretch.satisfaction_bonus, 12, "round(10 × 1,5 × 0,80) = round(12) = 12");
+  assert.equal(strained.stretch.satisfaction_penalty, 9);
+});
+
+test("buildMandateGoalOptions: binært mål kan hverken lempes eller strammes — begge knapper deaktiveret (#3012-klassen)", () => {
+  const options = buildMandateGoalOptions(binaryGoal, { generosity: 1.0 });
+  assert.equal(options.easier, null);
+  assert.equal(options.stretch, null);
+  assert.equal(options.keep.target, 0);
+});
+
+test("finalizeMandateGoals: ingen adjustments → alle mål uændrede, 0 justeringer brugt", () => {
+  const { goals, adjustments_used } = finalizeMandateGoals({
+    goals: [topNGoal, binaryGoal],
+    adjustments: [],
+    adjustmentsAllowed: 2,
+  });
+  assert.equal(adjustments_used, 0);
+  assert.equal(goals[0].target, 4);
+  assert.equal(goals[1].target, 0);
+});
+
+test("finalizeMandateGoals: Easier + Stretch inden for budget anvendes begge, budget håndhæves", () => {
+  const { goals, adjustments_used } = finalizeMandateGoals({
+    goals: [topNGoal, binaryGoal],
+    adjustments: [
+      { goalKey: buildGoalKey(topNGoal), choice: "stretch" },
+      { goalKey: buildGoalKey(binaryGoal), choice: "easier" }, // binært mål — no-op, koster intet
+    ],
+    generosity: 1.0,
+    adjustmentsAllowed: 1,
+  });
+  assert.equal(adjustments_used, 1, "binært måls no-op-forsøg tæller ikke mod budgettet");
+  assert.equal(goals[0].target, 2, "top_n_finish er strammet til Stretch-target");
+  assert.equal(goals[0].stretch, true);
+  assert.equal(goals[1].target, 0, "binært mål forbliver uændret (ingen reel lempelse mulig)");
+});
+
+test("finalizeMandateGoals: budget-overskridelse kaster MandateAdjustmentBudgetError (409-klassen)", () => {
+  const secondGoal = { type: "stage_wins", target: 3, satisfaction_bonus: 8, satisfaction_penalty: 5 };
+  assert.throws(
+    () => finalizeMandateGoals({
+      goals: [topNGoal, secondGoal],
+      adjustments: [
+        { goalKey: buildGoalKey(topNGoal), choice: "stretch" },
+        { goalKey: buildGoalKey(secondGoal), choice: "easier" },
+      ],
+      adjustmentsAllowed: 1,
+    }),
+    (err) => {
+      assert.ok(err instanceof MandateAdjustmentBudgetError);
+      assert.equal(err.used, 2);
+      assert.equal(err.allowed, 1);
+      assert.equal(err.status, 409);
+      return true;
+    }
+  );
+});
+
+test("finalizeMandateGoals: ukendt goalKey i adjustments påvirker intet (Keep-default)", () => {
+  const { goals, adjustments_used } = finalizeMandateGoals({
+    goals: [topNGoal],
+    adjustments: [{ goalKey: "ukendt-noegle", choice: "stretch" }],
+    adjustmentsAllowed: 2,
+  });
+  assert.equal(adjustments_used, 0);
+  assert.equal(goals[0].target, 4);
 });

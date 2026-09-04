@@ -18,7 +18,12 @@ const MOUNTAIN_TONE = { borderColor: "rgb(var(--jersey-mountain-bg) / 0.45)", co
 const READ_TONE_STYLE = { summit: MOUNTAIN_TONE, valley: MOUNTAIN_TONE };
 const READ_TONE_CLASS = { technical: "border-cz-accent/50 text-cz-accent-t" };
 
-export default function StageProfileCard({ profile, stageLabel, passages = [], tier = "full", hasClassifications = true }) {
+// #4628: `asCard=false` renderer indholdet UDEN kort-rammen, saa StageDetailPanel
+// kan samle rute-graf + terraen-navn + finale + terraen-DNA i EET kort. Uden det
+// blev de to kort tegnet oven paa hinanden paa kommende-fladen (samme profil to
+// gange, 1.754 px foer holdudtagelsen — audit 2026-09 raekke #4) og et kort-i-kort
+// var alternativet (PAGE_TEMPLATES: "never wrap in another Card").
+export default function StageProfileCard({ profile, stageLabel, passages = [], tier = "full", hasClassifications = true, asCard = true }) {
   const { t } = useTranslation("races");
   const waypoints = useMemo(() => waypointsFor(profile), [profile]);
   const reads = useMemo(() => routeReadKeys(profile), [profile]);
@@ -30,8 +35,8 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
   if (!hasRouteData(profile)) return null;
   const stageNumber = profile.stage_number ?? 1;
 
-  return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+  const body = (
+    <>
       <div className="flex justify-between items-end gap-4 border-b border-cz-border pb-2 flex-wrap">
         <p className="text-cz-3 text-3xs uppercase tracking-wider font-semibold">
           {stageLabel || t("detail.stageProfile.label")}
@@ -74,11 +79,15 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
         </div>
       )}
 
+      {/* #2810/#4628: samme bredde i begge tiers, kun hoejden skifter. Grafen
+          skalerer med containeren (`w-full h-auto`), saa den GAMLE "compact"
+          (430x200) blev renderet HOEJERE end "full" (900x340) paa en 5xl-side:
+          faerre oplysninger paa mere plads. Nu er compact ogsaa visuelt lille. */}
       <StageProfileGraph
         profile={profile}
         tier={tier}
-        width={tier === "full" ? 900 : 430}
-        height={tier === "full" ? 340 : 200}
+        width={900}
+        height={tier === "full" ? 340 : 210}
         uid={`sp-${stageNumber}`}
         activeWaypoint={selected}
         onWaypointSelect={setSelected}
@@ -86,6 +95,9 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
       />
 
       <StageWaypointReadout waypoint={selected} passages={passages} stageNumber={stageNumber} hasClassifications={hasClassifications} />
-    </div>
+    </>
   );
+
+  if (!asCard) return body;
+  return <div className="bg-cz-card border border-cz-border rounded-cz p-4">{body}</div>;
 }

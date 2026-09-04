@@ -53,6 +53,15 @@ test("auto-bid Save explains itself instead of dying silently (#2719)", async ({
   // Et klik på den blokerede knap åbner ikke bekræftelses-dialogen. `force`
   // springer Playwright's aria-bevidste enabled-gate over og efterligner det
   // faktiske bruger-tryk (som browseren VIL levere til vores handler).
+  //
+  // #4628: centrér knappen først. `force` springer OGSÅ "receives events"-gaten
+  // over og fyrer et rigtigt musetryk på knappens midterkoordinat — ligger det
+  // punkt under den fixede MobileQuickNav-bar, rammer trykket nav-ikonet i
+  // stedet (målt på mobile-chromium 393×852: knappen stod i y≈795 uden scroll,
+  // baren dækker fra y≈776, og klikket navigerede til /auctions og nulstillede
+  // fanen). Knappen er nåbar for en bruger — der er 382 px scroll tilbage — så
+  // det er koordinatvalget der skal være robust, ikke assertionen.
+  await save.evaluate(el => el.scrollIntoView({ block: "center" }));
   await save.click({ force: true });
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(reason).toBeVisible();

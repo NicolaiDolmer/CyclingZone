@@ -149,6 +149,64 @@ if ($SkipTests) {
   }
 }
 
+# --- 2b. Kalender-scorecard: pakkerens output mod docs/CALENDAR_RULES.md (#4215) ---
+# #4176 punkt 3 kraever scorecardet TRE steder: CI mod pakkerens output (findes,
+# .github/workflows/calendar-scorecard-gate.yml), saesonskifte-preflighten (HER,
+# tilfoejet i denne PR) og verify-invariants mod prod (staar stadig aaben, se
+# #4215-PR-body -- calendarScorecard4218.mjs kan i dag KUN maale offline/fixture,
+# raceRouteRealismScorecard.js's --mod-prod fra #4219 er en anden gate).
+Write-Section "Kalender-scorecard -- pakkerens output mod docs/CALENDAR_RULES.md (#4215)"
+
+$scorecardScript = Join-Path $backendRoot "scripts\dev\calendarScorecard4218.mjs"
+if ($SkipTests) {
+  Write-Host "  [skip] -SkipTests sat -- sprunget over" -ForegroundColor Yellow
+  $warn += "Kalender-scorecard sprunget over (-SkipTests) -- koer uden flaget foer den rigtige cutover."
+} elseif (-not $nodeCmd) {
+  $warn += "Kalender-scorecard sprunget over -- node mangler."
+} elseif (-not (Test-Path $scorecardScript)) {
+  $warn += "Kalender-scorecard ikke fundet ($scorecardScript) -- muligvis omdoebt/flyttet. Ret stien i dette script."
+  Write-Host "  [warn] scriptet findes ikke: $scorecardScript" -ForegroundColor Yellow
+} else {
+  # 100 % offline (fixture + rene funktioner) -- ingen secrets, ingen prod-adgang,
+  # samme mekanik som CI-gaten. Scriptet tager i dag INGEN --season-flag: dets
+  # first-day/days-defaults er S3s ejer-besluttede parametre (25/8), saa maalingen er
+  # PRAECIS relevant naar ToSeasonNumber=3 og et REGRESSIONS-tjek af selve pakkeren
+  # for enhver anden overgang (parametrisering til vilkaarlig ToSeason er ikke bygget
+  # her -- se PR-body).
+  Push-Location $backendRoot
+  try {
+    $scOut = & $nodeCmd.Source $scorecardScript 2>&1
+    $scExit = $LASTEXITCODE
+  } finally {
+    Pop-Location
+  }
+  $domLinje = @($scOut) | Where-Object { $_ -match '^SAMLET:' } | Select-Object -First 1
+  if ($domLinje) { Write-Host "  $domLinje" }
+
+  if ($ToSeasonNumber -eq 3) {
+    if ($scExit -eq 0) {
+      $ok += "Kalender-scorecard (#4215) groent mod S3-parametrene -- den planlagte kalender overholder docs/CALENDAR_RULES.md."
+      Write-Host "  [ok] scorecard groent" -ForegroundColor Green
+    } else {
+      $fail += "Kalender-scorecard (#4215) er ROEDT for S3: den kalender der ville blive skrevet bryder docs/CALENDAR_RULES.md. Se detaljer i den fulde koersel: node scripts/dev/calendarScorecard4218.mjs (fra backend/)."
+      Write-Host "  [NO-GO] scorecard roedt -- se node scripts/dev/calendarScorecard4218.mjs for detaljer" -ForegroundColor Red
+      @($scOut) | Select-Object -Last 15 | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
+    }
+  } else {
+    # scorecardet er stadig hardkodet til S3s dato/katalog-parametre og maaler derfor
+    # IKKE S$ToSeasonNumber's kommende kalender -- kun at pakkeren/generatoren selv
+    # stadig producerer en gyldig kalender under de kendte parametre. Behandles derfor
+    # som advisory (warn), ikke NO-GO, for enhver anden overgang end S2->S3.
+    if ($scExit -eq 0) {
+      $ok += "Kalender-scorecard groent mod S3s hardkodede parametre (regressions-tjek af pakkeren -- IKKE en maaling af S$ToSeasonNumber, scriptet tager endnu ingen --season-parameter for en vilkaarlig fremtidig saeson)."
+      Write-Host "  [ok] scorecard groent (regressions-tjek, ikke S$ToSeasonNumber-specifik)" -ForegroundColor Green
+    } else {
+      $warn += "Kalender-scorecard er ROEDT mod S3s hardkodede parametre. Ikke noedvendigvis relevant for S$ToSeasonNumber, men indikerer at pakkeren/generatoren selv er i ustabil tilstand -- undersoeg FOER cutover uanset."
+      Write-Host "  [warn] scorecard roedt mod S3-parametrene (se ovenfor)" -ForegroundColor Yellow
+    }
+  }
+}
+
 # --- 3. Statisk kode-tilstedevaerelse (scripts/migrationer kaeden kraever) ---
 Write-Section "Kode-/script-tilstedevaerelse"
 
@@ -340,6 +398,24 @@ where season_id='$fromSeasonId' and division=4
 group by 1 order by 1;
 "@
 Write-Host $sqlDivisions
+
+$manual += "Aktive mennesker pr. pool (7 d) -- epic #4592 (inaktiv-manager, ejer-design 2/9). Del 2 (parkering af inaktive hold ved S4) er IKKE bygget endnu -- dette er kun rapportering, saa ejeren ser tallet foer S4-parkeringen designes/bygges. Definitionen (30 dage = inaktiv) matcher backend/lib/managerActivity.js; samme opgoerelse kan koeres read-only via 'node scripts/dormantTeamsReport.js' eller docs/audits/dormant-teams-s3-template.sql:"
+$sqlActivePerPool = @"
+select t.division,
+       coalesce(ld.label, '(ukendt pulje ' || t.league_division_id || ')') as pool_label,
+       count(*) as total_teams,
+       count(*) filter (where u.last_seen is not null and now() - u.last_seen <= interval '7 days') as active_7d,
+       count(*) filter (where u.last_seen is not null and now() - u.last_seen > interval '7 days' and now() - u.last_seen < interval '30 days') as away_8_30d,
+       count(*) filter (where u.last_seen is null or now() - u.last_seen >= interval '30 days') as dormant_30d,
+       count(*) filter (where t.is_frozen) as already_frozen
+from teams t
+left join league_divisions ld on ld.id = t.league_division_id
+left join users u on u.id = t.user_id
+where t.is_ai = false and t.is_bank = false and t.is_test_account = false
+group by t.division, pool_label
+order by t.division, pool_label;
+"@
+Write-Host $sqlActivePerPool
 
 $manual += "Readiness-gate (API, ikke SQL): GET /api/admin/season-transition/preview -- alle checks groenne undtagen evt. no_active_auctions (kryds-tjek mod pensions-listen ovenfor foer force=true)."
 

@@ -119,7 +119,7 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
   {
     table: "board_mandates",
     disposition: CARRY_OVER_DISPOSITION.RESET_BY_DESIGN,
-    why: "#3514 'Mandatet': mandatet ER 1-årigt og forhandles forfra på årsmødet ved hvert sæsonskifte. En kopi til den nye sæson ville netop fjerne det årsmøde spillet er bygget om for at få. Selve relationen (board_relations.confidence) og visionen (board_vision_milestones) er IKKE sæson-scopede og overlever af sig selv, så manageren mister ingen historik. Tabellen er tom og ulæst indtil kill-switchen board_mandate_model_enabled flippes.",
+    why: "#3514/#4557 'Mandatet': mandatet ER 1-årigt og forhandles forfra på årsmødet ved hvert sæsonskifte. En kopi til den nye sæson ville netop fjerne det årsmøde spillet er bygget om for at få — næste sæsons mandat skrives i stedet EGET (status 'proposed') af boardMandateEngine.js::advanceMandateAtSeasonEnd, kaldt fra economyEngine.js's processTeamSeasonEnd, samme sæson-slut-fase dette registers dokumenterer. Selve relationen (board_relations.confidence) og visionen (board_vision_milestones) er IKKE sæson-scopede og overlever af sig selv, så manageren mister ingen historik. Tabellen er stadig tom og ulæst indtil kill-switchen board_mandate_model_enabled flippes.",
   },
   {
     table: "team_race_strategy",
@@ -192,6 +192,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     table: "season_standings",
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "Motor-beregnet stilling pr. sæson. Nulstilles korrekt af sig selv fordi den nye sæson starter uden resultater.",
+  },
+  {
+    table: "backup_4485_season_standings_20260904",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "Engangs-backup-tabel til #4485-reparationen (ungdomsklassement, sæson 3) — et FØR-billede af season_standings taget lige inden repair-4485-young-classification.js's updateStandings()-kald. Ren revisions-kopi, ikke en manager-opsætning; har season_id fordi kilde-rækkerne er sæson-scopede, ikke fordi manageren konfigurerer noget her. Droppes efter reparationen er verificeret stabil (se DDL-filens 'OPRYDNING'-afsnit).",
   },
   {
     table: "season_documentaries",
