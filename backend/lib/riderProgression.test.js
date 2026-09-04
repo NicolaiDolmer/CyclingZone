@@ -511,7 +511,6 @@ test("#4634 C2: gulvet rører KUN gc — samme (primær, sekundær, evne) med gc
   // Gulvet er nøglet på PRIMARYTYPE === gc, ikke på om gc indgår som sekundær.
   for (const primary of ["climber", "rouleur", "sprinter", "puncheur", "baroudeur", "brostensrytter", "tt"]) {
     const withGcSecondary = youthAbilityCap(3, primary, "gc", "punch");
-    const withoutGc = youthAbilityCap(3, primary, "climber", "punch"); // climber har samme fortegn-mønster for punch i de fleste tilfælde er ligegyldigt her — vi tester kun at gc-sekundær ikke trigger gulvet
     assert.ok(withGcSecondary <= 93, `${primary}/gc punch (${withGcSecondary}) skal IKKE floores af GC-punch-gulvet`);
   }
   // gc's øvrige evner er uændrede af punch-gulvet (fx climbing, hvor gc er primær-signatur).
