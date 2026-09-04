@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.253",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The board now judges your finances on net position, not loan count",
+          "body": "The finance goal only counted active loans. A manager with a full treasury and one loan was marked worried, while an empty treasury with no loans got top marks. The board now looks at balance minus debt against your wage bill. Loans still weigh a little, but never on their own. The goal is renamed to Positive net position at season end."
+        },
+        "da": {
+          "title": "Bestyrelsen bedømmer nu din økonomi på nettostilling, ikke antal lån",
+          "body": "Økonomi-målet talte kun aktive lån. En manager med fyldt kasse og ét lån blev markeret bekymret, mens en tom kasse uden lån fik topkarakter. Bestyrelsen ser nu på saldo minus gæld mod din lønsum. Lån vejer stadig lidt, men aldrig alene. Målet hedder nu Positiv nettostilling ved sæsonslut."
+        },
+        "refs": [
+          1237
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.252",
     "date": "2026-09-04",
     "label": "Beta",
