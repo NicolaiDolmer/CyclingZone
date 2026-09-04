@@ -946,6 +946,7 @@ const FORUM_CATEGORY_LABELS = {
   feedback_ideas: "Feedback & ideas",
   questions: "Questions & answers",
   tactics: "Tactics & strategy",
+  transfers: "Transfers",
   off_topic: "Off-topic",
 };
 

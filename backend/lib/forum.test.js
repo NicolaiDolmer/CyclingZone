@@ -89,8 +89,8 @@ test("parseForumCursor accepterer kun positive heltal, ellers null (ingen 500)",
   assert.equal(parseForumCursor("42"), 42);
 });
 
-test("isValidForumCategory matcher DB-CHECK'en (#4492: 5 kategorier)", () => {
-  assert.deepEqual(FORUM_CATEGORIES, ["general", "feedback_ideas", "questions", "tactics", "off_topic"]);
+test("isValidForumCategory matcher DB-CHECK'en (#4492: 6 kategorier)", () => {
+  assert.deepEqual(FORUM_CATEGORIES, ["general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"]);
   for (const category of FORUM_CATEGORIES) assert.ok(isValidForumCategory(category), category);
   assert.ok(!isValidForumCategory("random"));
   // #4492: "archive" er et visnings-filter, ALDRIG en gyldig category-værdi
@@ -436,7 +436,7 @@ test("createForumPost: validering af kategori/titel/body", async () => {
   assert.equal(fake.state.forum_posts.length, 0);
 });
 
-test("createForumPost: alle 5 kategorier (#4492: questions/tactics/off_topic tilføjet) accepteres", async () => {
+test("createForumPost: alle 6 kategorier (#4492: questions/tactics/transfers/off_topic tilføjet) accepteres", async () => {
   const fake = createFakeSupabase(seedState());
   for (const category of FORUM_CATEGORIES) {
     const result = await createForumPost({

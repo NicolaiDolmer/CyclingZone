@@ -6,8 +6,9 @@
 // opslag/svar (#3201 — selve pinget sker i api.js-routen, ikke her).
 //
 // #4492 (ejer-beslutning 4/9, "kategorier skal vi have flere af"): udvidet
-// fra to til fem kategorier (questions, tactics, off_topic tilføjet) + et
-// arkiv-FILTER (ikke en kategori — se FORUM_ARCHIVE_FILTER nedenfor).
+// fra to til seks kategorier (questions, tactics, transfers, off_topic
+// tilføjet) + et arkiv-FILTER (ikke en kategori — se FORUM_ARCHIVE_FILTER
+// nedenfor).
 //
 // Handler-logikken bor her (ikke inline i api.js) af samme grund som
 // feedbackInbox.js: api.js kræver en live Supabase-klient og kan ikke
@@ -37,7 +38,7 @@
 // forummet forbi denne skala kræver sorteringen en DB-side generated
 // `last_activity_at`-kolonne i stedet for JS-scanningen.
 
-export const FORUM_CATEGORIES = ["general", "feedback_ideas", "questions", "tactics", "off_topic"];
+export const FORUM_CATEGORIES = ["general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"];
 // #4492: arkiv er et BEREGNET visnings-filter, ikke en gyldig category-værdi
 // — et opslag kan aldrig oprettes eller stå permanent i "archive" (isValid-
 // ForumCategory afviser den bevidst, se nedenfor). En tråd er arkiveret når

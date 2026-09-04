@@ -1651,7 +1651,7 @@
     },
     "forumFaq": {
       "q": "What is the Forum?",
-      "a": "The Forum is the in-game discussion board, found in the Clubhouse menu. Post in five categories (General, Feedback & ideas, Questions & answers, Tactics & strategy, Off-topic), reply in threads, and vote in polls attached to pinned announcements from the admin. Threads with no activity in 60 days move to the Archive tab; you can still open and reply to them, which brings them back."
+      "a": "The Forum is the in-game discussion board, found in the Clubhouse menu. Post in six categories (General, Feedback & ideas, Questions & answers, Tactics & strategy, Transfers, Off-topic), reply in threads, and vote in polls attached to pinned announcements from the admin. Threads with no activity in 60 days move to the Archive tab; you can still open and reply to them, which brings them back."
     },
     "forumPollsFaq": {
       "q": "How do forum polls work?",

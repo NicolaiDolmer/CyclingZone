@@ -15,18 +15,18 @@ import FounderMark from "../components/FounderMark.jsx";
 // content (docs/design/PAGE_TEMPLATES.md): max-w-4xl, sektionskort, én gold
 // primary ("New post"), hairline-borders, tabular figures på al numerik.
 //
-// #4492 (ejer-beslutning 4/9): tre nye kategorier (questions, tactics,
-// off_topic) + en "archive"-fane. Archive er IKKE en postable kategori — den
-// er kun et filter (backend beregner den ud fra 60 dages inaktivitet), så
-// POST_CATEGORIES (compose-modalens vælger) og FILTER_TABS (oversigtens
-// fanerække) er bevidst to forskellige lister.
+// #4492 (ejer-beslutning 4/9): fire nye kategorier (questions, tactics,
+// transfers, off_topic) + en "archive"-fane. Archive er IKKE en postable
+// kategori — den er kun et filter (backend beregner den ud fra 60 dages
+// inaktivitet), så POST_CATEGORIES (compose-modalens vælger) og FILTER_TABS
+// (oversigtens fanerække) er bevidst to forskellige lister.
 //
 // Data læses via backend-API (service-role bag requireAuth) — RLS på
 // forum-tabellerne tillader ikke klient-queries til andet end Realtime-events,
 // som her kun bruges som refetch-trigger (useRealtimeRefetch-mønstret).
 
 const API = import.meta.env.VITE_API_URL;
-const POST_CATEGORIES = ["general", "feedback_ideas", "questions", "tactics", "off_topic"];
+const POST_CATEGORIES = ["general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"];
 const ARCHIVE_FILTER = "archive";
 const FILTER_TABS = [...POST_CATEGORIES, ARCHIVE_FILTER];
 const TITLE_MAX = 120;
