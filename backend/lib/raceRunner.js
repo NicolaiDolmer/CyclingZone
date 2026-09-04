@@ -87,6 +87,11 @@ import { extractStageMoments } from "./raceNarrative.js";
 // første klassifikationstrøje/klub-milepæle) — UAFHÆNGIG af v3-flaget (læser
 // kun result_type/rank/rider_id/team_id, som ALLE løb altid skriver).
 import { detectCareerFirsts } from "./careerFirsts.js";
+// #1099 (omdømme-motor): hændelsesbog + rytter-omdømme. Flag-gated INDE i selve
+// hook'en (rider_reputation_enabled, default off → øjeblikkeligt no-op), og
+// UAFHÆNGIG af v3 af samme grund som career-firsts: den læser kun
+// result_type/rank/rider_id/team_id, som ALLE løb altid skriver.
+import { runReputationDetectionSafe } from "./reputationHook.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
@@ -1742,6 +1747,14 @@ export async function simulateRace({
     stageNumbers: stages.map((s) => s.stage_number || 1),
     seasonNumber: seasonBefore?.number ?? null,
   });
+  // #1099 (omdømme): samme placering, scoping og best-effort-kontrakt som
+  // career-firsts ovenfor. Flaget læses inde i hook'en — med default `off`
+  // returnerer den før motoren og skriver INTET.
+  await runReputationDetectionSafe({
+    supabase, race, resultRows,
+    stageNumbers: stages.map((s) => s.stage_number || 1),
+    seasonNumber: seasonBefore?.number ?? null,
+  });
   // #2898: race_results er allerede skrevet på dette tidspunkt — recovery-logikken
   // (fx den stage-scheduler-baserede retry-sti #2878) læner sig på at status='completed'
   // er pålideligt sat. Et tavst-fejlet update ville efterlade løbet stående som
@@ -2678,6 +2691,13 @@ export async function simulateStageByIndex({
     // begrundelse som simulateRace's call-site). Dækker BÅDE mellem-etaper og
     // final-etapen (denne blok kører før mellem-etapens early-return nedenfor).
     await runCareerFirstsDetection({
+      supabase, race, resultRows, stageNumbers: [stageNumber],
+      seasonNumber: seasonBefore?.number ?? null,
+    });
+    // #1099 (omdømme): samme scoping-mønster (denne etape alene). Dækker BÅDE
+    // mellem-etaper (førertrøje-dage, etapesejre) og final-etapen (GC, trøjer).
+    // Flag-gated inde i hook'en — default `off` skriver intet.
+    await runReputationDetectionSafe({
       supabase, race, resultRows, stageNumbers: [stageNumber],
       seasonNumber: seasonBefore?.number ?? null,
     });
