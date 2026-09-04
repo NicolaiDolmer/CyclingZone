@@ -2,7 +2,9 @@
   "page": {
     "title": "Forum",
     "subtitle": "Snak med de andre managere og del dine idéer",
-    "newPost": "Nyt opslag"
+    "newPost": "Nyt opslag",
+    "markAllRead": "Markér alle som læst",
+    "markingAllRead": "Markerer..."
   },
   "categories": {
     "all": "Alle",
@@ -76,6 +78,7 @@
   "errors": {
     "loadFailed": "Forummet kunne ikke indlæses. Intet er gået tabt.",
     "submitFailed": "Kunne ikke sende. Prøv igen.",
-    "retry": "Prøv igen"
+    "retry": "Prøv igen",
+    "markAllReadFailed": "Kunne ikke markere alle tråde som læst. Prøv igen."
   }
 }
