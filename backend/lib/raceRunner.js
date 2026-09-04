@@ -2771,7 +2771,7 @@ export async function simulateStageByIndex({
   // #4147: recomputeSeasonRaceDays + processBoardWeekend er ÉT trin. Begge er
   // idempotente (re-derivation henholdsvis previous-vs-new-diff), så en afbrydelse
   // midtvejs betyder blot at trinnet kører helt om ved næste tick.
-  await runFinalizeStep("board", async () => {
+  const __boardRan = await runFinalizeStep("board", async () => {
   const newRaceDaysCompleted = await recomputeRaceDays({ supabase, seasonId: race.season_id });
 
   if (seasonBefore?.id) {
@@ -2797,7 +2797,7 @@ export async function simulateStageByIndex({
     }
   }
   }); // ── #4147: slut på "board"-trinnet ──────────────────────────────────────────
-  __markPhase("board");
+  __markPhase(__boardRan ? "board" : "board-resumed");
 
   // #4147: ENGANGS-trin. Discord-embed + in-app-notifikation SENDER UDAD; en
   // gentagelse er synlig for spillerne. Markeres efter forsøget.
@@ -2806,7 +2806,7 @@ export async function simulateStageByIndex({
   // notifikationen HELT over (den kunne ikke vide om den var sendt), så et løb der
   // crashede før notify aldrig fortalte nogen at det var kørt. Med markeringen ved vi
   // det præcist — og sender netop den besked der mangler.
-  await runFinalizeStep("notify", async () => {
+  const __notifyRan = await runFinalizeStep("notify", async () => {
   if (notifyDiscord) {
     try {
       // Embed = HELE løbets race_results (alle etaper) genlæst fra DB, ikke kun
@@ -2864,7 +2864,7 @@ export async function simulateStageByIndex({
     }
   }
   }); // ── #4147: slut på "notify"-trinnet ─────────────────────────────────────────
-  __markPhase("notify");
+  __markPhase(__notifyRan ? "notify" : "notify-resumed");
 
   // FIX 1: status='completed' sættes SIDST — efter al finalization er lykkedes. Idempotent
   // (en recovery-genkørsel sætter samme værdi). stages_completed sættes også (recovery-sti
@@ -2877,7 +2877,7 @@ export async function simulateStageByIndex({
   // #4147: status-flippet + de to flush'es er ÉT trin, og det er det SIDSTE. Alt der
   // kan gå galt før dette punkt efterlader status != 'completed' — hvilket er præcis
   // den tilstand både den gamle recovery-sti OG vagten kan se og handle på.
-  await runFinalizeStep("status-flush", async () => {
+  const __statusFlushRan = await runFinalizeStep("status-flush", async () => {
   const { error: statusError } = await supabase
     .from("races")
     .update({ status: "completed", stages_completed: totalStages })
@@ -2898,7 +2898,7 @@ export async function simulateStageByIndex({
   // #4423: løbet er finaliseret → flush udskudte akademi-optagelser for deltagerne.
   await flushDeferredAcademySigningsSafe({ supabase, race });
   }); // ── #4147: slut på "status-flush"-trinnet ───────────────────────────────────
-  __markPhase("status-flush");
+  __markPhase(__statusFlushRan ? "status-flush" : "status-flush-resumed");
 
   // #3193: normal final-etape-afvikling refresher allerede tidligere i denne
   // funktion (lige efter updateStandings, isFinalStage-gated) — et kald her

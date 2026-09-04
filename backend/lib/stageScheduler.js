@@ -136,6 +136,9 @@ export async function runStageScheduler({
   // Aktive (ikke-completede) løb i sæsonen, indekseret på id.
   const { data: races, error: rErr } = await supabase
     .from("races")
+    // schema-columns-ok: finalize_state tilfoejes af
+    // database/2026-09-04-4147-race-finalize-state.sql, som CI applier ved merge.
+    // Snapshottet refreshes af ejer/orkestrator post-merge (#3586-kontrakten).
     // #4147: finalize_state med — den fortæller om en tidligere kørsel døde midt i
     // afslutningen af en etape, så vi kan tage netop dén etape op igen (se
     // resumeRaces nedenfor). NULL for alle løb før migrationen/flaget er i brug.
@@ -284,6 +287,8 @@ export async function runStageScheduler({
       await runStageFn({ raceId: race.id, stageIndex: Number(race.finalize_state.stage_index), resume: true });
       resumed++;
     } catch (err) {
+      // catch-ok: failRace logger struktureret OG captureException'er (dedupet
+      // pr. loeb/dag, eskaleret efter 3 timer) - fejlen sluges ikke.
       failRace(race, err);
     }
   }

@@ -143,6 +143,9 @@ export function buildFinalizeState({ stageIndex, stageNumber, isFinalStage, star
  */
 export async function readFinalizeState(supabase, raceId) {
   try {
+    // schema-columns-ok: finalize_state/finalize_updated_at tilfoejes af
+    // database/2026-09-04-4147-race-finalize-state.sql, som CI applier ved merge.
+    // Snapshottet refreshes af ejer/orkestrator post-merge (#3586-kontrakten).
     const { data, error } = await supabase
       .from("races")
       .select("finalize_state, finalize_updated_at")
@@ -151,6 +154,8 @@ export async function readFinalizeState(supabase, raceId) {
     if (error) return null;
     return data ?? null;
   } catch {
+    // best-effort: en markerings-LAESNING maa aldrig kunne vaelte selve
+    // afviklingen. Uden markering falder vi tilbage til adfaerden med flaget OFF.
     return null;
   }
 }
@@ -170,6 +175,8 @@ export async function writeFinalizeState(supabase, raceId, state, { now = new Da
       .eq("id", raceId);
     return !error;
   } catch {
+    // best-effort: samme begrundelse som readFinalizeState. En fejlet SKRIVNING
+    // betyder at trinnet forbliver umarkeret og koeres om - den sikre retning.
     return false;
   }
 }

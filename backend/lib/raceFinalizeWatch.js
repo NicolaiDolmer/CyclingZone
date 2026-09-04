@@ -181,6 +181,9 @@ export async function runHalfFinalizedRaceWatch({
   // Fund 1 er globalt: en markering er per definition en igangværende afslutning, og
   // den kan sidde på et løb i en hvilken som helst sæson. Partial index på
   // (finalize_updated_at) WHERE finalize_state IS NOT NULL gør opslaget nærmest gratis.
+  // schema-columns-ok: finalize_state/finalize_updated_at tilfoejes af
+  // database/2026-09-04-4147-race-finalize-state.sql, som CI applier ved merge.
+  // Snapshottet refreshes af ejer/orkestrator post-merge (#3586-kontrakten).
   const { data: markerRows, error: markerErr } = await supabase
     .from("races")
     .select("id, name, season_id, status, stages, stages_completed, finalize_state, finalize_updated_at")
@@ -190,16 +193,22 @@ export async function runHalfFinalizedRaceWatch({
     // Kolonnen findes måske endnu ikke (migrationen ikke kørt) — det er ikke en
     // hændelse værd at capture hver 15. minut, men vagten skal heller ikke tie helt:
     // vi fortsætter til fund 2/3, som ikke afhænger af markeringen.
-    logger.warn?.(`[race-finalize-watch] finalize_state-opslag fejlede (fortsætter uden fund 1): ${markerErr.message}`);
+    logger.warn?.(`[race-finalize-watch] finalize_state-opslag fejlede (fortsaetter uden fund 1): ${markerErr.message}`);
   }
 
   let stuck = [];
   if (markerRows?.length) {
-    const { data: claims } = await supabase
+    const { data: claims, error: claimsErr } = await supabase
       .from("race_stage_claims")
       .select("race_id, stage_index, claimed_at")
       .in("race_id", markerRows.map((r) => r.id));
-    stuck = selectStuckMarkers(markerRows, claims ?? [], { now });
+    if (claimsErr) {
+      // Fail-mod-for-meget: uden claim-data kan vi ikke vide om en genoptagelse er
+      // paa vej, og vi undertrykker derfor INTET. En overfloedig alarm er billigere
+      // end et fastlaast loeb ingen hoerer om (samme retning som opsAlertDedupe).
+      logger.warn?.(`[race-finalize-watch] race_stage_claims-opslag fejlede - ingen undertrykkelse: ${claimsErr.message}`);
+    }
+    stuck = selectStuckMarkers(markerRows, claimsErr ? [] : (claims ?? []), { now });
   }
 
   // Fund 2 og 3 er afgrænset til den AKTIVE sæson: historiske sæsoner er lukkede
@@ -228,10 +237,20 @@ export async function runHalfFinalizedRaceWatch({
     if (candidates.length) {
       const capped = candidates.slice(0, MAX_CANDIDATES);
       const ids = capped.map((r) => r.id);
-      const { data: sched } = await supabase
+      // #3331: `capped` er hard-capped til MAX_CANDIDATES løb, og et løb har maks 21
+      // etaper (verificeret rækketal i GAME_INVARIANTS) → svaret kan ikke nå PostgRESTs
+      // tavse 1000-rækkers-loft. Det eksplicitte .limit() gør bundetheden synlig frem
+      // for at hvile på et argument, og følger med hvis MAX_CANDIDATES hæves.
+      const { data: sched, error: schedErr } = await supabase
         .from("race_stage_schedule")
         .select("race_id, scheduled_at")
-        .in("race_id", ids);
+        .in("race_id", ids)
+        .limit(MAX_CANDIDATES * 25);
+      if (schedErr) {
+        // Samme retning: uden sluttidspunkter falder alderskravet vaek, og alle
+        // kandidater medtages. Fundene bliver stoejende, ikke tavse.
+        logger.warn?.(`[race-finalize-watch] race_stage_schedule-opslag fejlede - alderskrav udelades: ${schedErr.message}`);
+      }
       const lastStageAtByRace = new Map();
       for (const row of sched ?? []) {
         const prev = lastStageAtByRace.get(row.race_id);
@@ -285,7 +304,7 @@ export async function runHalfFinalizedRaceWatch({
   if (alert) {
     for (const line of formatFindings(findings)) logger.error?.(line);
     captureExceptionFn(
-      new Error(`Halvt afsluttede løb: ${findings.length} fund (${byType.stuck_marker} fastlåst markering, ${byType.results_without_status} uden status-flip, ${byType.completed_without_prize} uden præmieudbetaling)`),
+      new Error(`Halvt afsluttede loeb: ${findings.length} fund (${byType.stuck_marker} fastlaast markering, ${byType.results_without_status} uden status-flip, ${byType.completed_without_prize} uden praemieudbetaling)`),
       {
         tags: { cron: "race-finalize-watch", flow: "race-run" },
         // Fast fingerprint: ALLE fund samles i ÉT Sentry-issue. Uden det ville hver

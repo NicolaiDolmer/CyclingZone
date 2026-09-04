@@ -182,7 +182,7 @@ test("runHalfFinalizedRaceWatch: fastlåst markering → ÉN Sentry-capture med 
   assert.equal(res.alerted, true);
   assert.equal(captured.length, 1);
   assert.deepEqual(captured[0].ctx.fingerprint, [RACE_FINALIZE_ALERT_KEY]);
-  assert.match(captured[0].err.message, /Halvt afsluttede løb: 1 fund/);
+  assert.match(captured[0].err.message, /Halvt afsluttede loeb: 1 fund/);
 });
 
 test("runHalfFinalizedRaceWatch: UÆNDRET fund alarmerer ikke igen (dedupe)", async () => {
