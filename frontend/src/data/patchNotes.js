@@ -1,5 +1,76 @@
 export const PATCHES = [
   {
+    "version": "7.252",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Pro",
+        "en": {
+          "title": "Pro now shows and charges in euro outside Denmark",
+          "body": "Pro's price and checkout used kroner for everyone, even when your game language was set to English. If your language is English, Pro now shows and charges in euro. Danish stays in kroner, no change there."
+        },
+        "da": {
+          "title": "Pro viser og opkræver nu i euro uden for Danmark",
+          "body": "Pros pris og checkout brugte kroner for alle, selv når dit spilsprog var sat til engelsk. Er dit sprog engelsk, viser og opkræver Pro nu i euro. Dansk forbliver i kroner, ingen ændring der."
+        },
+        "refs": [
+          4074
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Sponsor contracts get a division top-up each season start",
+          "body": "A promoted team kept paying its sponsor's old, lower-division price while covering the new division's costs. From every season start, a team playing above its contract's division now gets an automatic top-up on its own line: lifted to the level just below the current division, plus half of what's left. The contract itself is never touched, and a relegated team keeps what it signed. A timing bug in the automatic renewal also mispriced some contracts right at a season start; that's fixed too. 83 teams got the top-up paid out today for the current season."
+        },
+        "da": {
+          "title": "Sponsoraftaler får et divisionstillæg ved hver sæsonstart",
+          "body": "Et oprykket hold blev ved med at betale sponsorens gamle, lavere-divisions-pris, mens det dækkede den nye divisions udgifter. Fra hver sæsonstart får et hold, der spiller i en højere division end aftalen er prissat til, nu automatisk et tillæg som sin egen linje: løftet til niveauet lige under den nuværende division, plus halvdelen af resten. Selve aftalen bliver aldrig rørt, og et nedrykket hold beholder det, de skrev under på. En timing-fejl i den automatiske fornyelse fejlprissatte også nogle aftaler lige ved en sæsonstart; det er også rettet. 83 hold har fået tillægget udbetalt i dag for den nuværende sæson."
+        },
+        "refs": [
+          4376
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Youth classification: this season's finished stage races recalculated",
+          "body": "The youth (U25) age fix now also covers races you already finished this season. Every completed stage race affected by the old rule has been recalculated: where your team was overpaid, the difference has been pulled back, where you were underpaid, it's been paid out, and youth points are corrected both ways. 40 teams are affected in total, and no team's balance went below zero."
+        },
+        "da": {
+          "title": "Ungdomsklassementet: sæsonens afsluttede etapeløb genberegnet",
+          "body": "Ungdoms(U25)-aldersrettelsen dækker nu også løb, du allerede har afsluttet i denne sæson. Hvert afsluttet etapeløb, der var ramt af den gamle regel, er genberegnet: hvor dit hold fik for meget udbetalt, er differencen trukket tilbage, hvor I fik for lidt, er den betalt ud, og ungdomspoint er rettet begge veje. 40 hold er berørt i alt, og ingen holds saldo endte under nul."
+        },
+        "refs": [
+          4485
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Season overview now says Day N of M",
+          "body": "The season overview's calendar tab showed race days using a different count than Team selection's own day numbers, so the same day carried two different labels depending on where you looked. The calendar tab now says Day N of M, using its own day count; Team selection is unchanged."
+        },
+        "da": {
+          "title": "Sæsonoversigten siger nu \"Dag N af M\"",
+          "body": "Sæsonoversigtens kalenderfane viste løbsdage med et andet antal end holdudtagelsens egne dagnumre, så samme dag havde to forskellige labels afhængig af hvor du kiggede. Kalenderfanen siger nu \"Dag N af M\", med sit eget dagantal; holdudtagelsen er uændret."
+        },
+        "refs": [
+          4318
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.251",
     "date": "2026-09-04",
     "label": "Beta",
