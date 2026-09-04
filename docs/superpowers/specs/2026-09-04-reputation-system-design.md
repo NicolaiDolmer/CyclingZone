@@ -64,6 +64,18 @@ ProSeries 0,25 · Class1 0,15 · Class2 0,10.
 Class1/Class2 giver ingen gulv-kredit. `team`/`team_day`-resultater tæller ikke (hold-omdømme afledes i §6).
 Alle vægte bor i én konstantfil (`backend/lib/reputationConstants.js`) og kalibreres i harnessen (§9).
 
+**Afvigelser fra tabellen, fundet i PR 1 (#4780, 4-5/9) og accepteret:**
+- Endagsløb har i prod ingen `stage`-rækker; resultatet ligger som `result_type='gc'` (83.504 rækker). Motoren læser
+  endagssejr/podium/top-10 fra `gc` når `race_type='single'`.
+- Trøjer får hver sin `event_kind` (`jersey_points_win`, `jersey_mountain_win`, `jersey_young_win`), så tre trøjer til
+  samme rytter på sidste etape ikke kolliderer på `dedupe_key`.
+- Hook'en bor i `backend/lib/reputationHook.js` (kaldes fra `raceRunner.js`), så "flag off = ingen DB-adgang" kan testes.
+- Hård clamp til 100 klemte 29 ryttere på præcis 100 i første kalibrering. Erstattes af et blødt loft
+  (`reputation = 100 · tanh(raw / SOFT_CAP)`, raw = floor + form); endelige konstanter står i
+  `docs/audits/reputation-calibration-2026-09-05.md` (kørsel 2) og i konstantfilen.
+- Datadækning: 55,6 % af S1's og 37,3 % af S2's resultatrækker har `rider_id = NULL` (ryttere slettet siden). Det er
+  ryttere der ikke findes mere, så nulevende rytteres tal påvirkes ikke; S3 har fuld dækning.
+
 ## 5. Datamodel
 
 - Ny tabel `rider_reputation_events`: `id, rider_id, team_id, race_id, stage_number, season_id, event_kind,
