@@ -169,7 +169,8 @@
       "forced_debt_sale": "Forced sale (debt ceiling)",
       "squad_violation_fine": "Squad-size fine",
       "starting_budget": "Starting budget",
-      "division_adjustment": "Division adjustment"
+      "division_adjustment": "Division adjustment",
+      "sponsor_division_correction_clawback": "Sponsor correction (refund)"
     }
   },
   "timeAgo": {
