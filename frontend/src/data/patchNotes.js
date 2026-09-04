@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.247",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Three new forum categories, plus an archive",
+          "body": "Questions & answers, Tactics & strategy and Off-topic join General and Feedback & ideas. Threads with no new activity in 60 days move to the new Archive tab, out of the main list. You can still open and reply to an archived thread; replying brings it straight back."
+        },
+        "da": {
+          "title": "Tre nye forum-kategorier, plus et arkiv",
+          "body": "Spørgsmål og svar, Taktik og strategi og Off-topic kommer til, ved siden af Generelt og Feedback & idéer. Tråde uden ny aktivitet i 60 dage flytter til den nye Arkiv-fane, ude af hovedlisten. Du kan stadig åbne og svare på en arkiveret tråd; et svar tager den straks tilbage."
+        },
+        "refs": [
+          4492
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.246",
     "date": "2026-09-04",
     "label": "Beta",

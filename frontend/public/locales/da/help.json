@@ -1651,7 +1651,7 @@
     },
     "forumFaq": {
       "q": "Hvad er Forummet?",
-      "a": "Forummet er spillets debatside og findes i Klubhus-menuen. Skriv opslag i to kategorier (Generelt og Feedback & idéer), svar i tråde, og stem i afstemninger som admin vedhæfter fastgjorte opslag."
+      "a": "Forummet er spillets debatside og findes i Klubhus-menuen. Skriv opslag i fem kategorier (Generelt, Feedback & idéer, Spørgsmål og svar, Taktik og strategi, Off-topic), svar i tråde, og stem i afstemninger som admin vedhæfter fastgjorte opslag. Tråde uden aktivitet i 60 dage flytter til Arkiv-fanen; du kan stadig åbne og svare på dem, hvilket tager dem tilbage."
     },
     "forumPollsFaq": {
       "q": "Hvordan virker forum-afstemninger?",

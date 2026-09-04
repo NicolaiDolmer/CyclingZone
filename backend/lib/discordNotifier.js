@@ -939,6 +939,16 @@ const FORUM_KIND_META = {
   report: { label: "🚩 Forum report", color: 0xe74c3c },
 };
 
+// #4492: SKAL matche FORUM_CATEGORIES i backend/lib/forum.js — udvid begge
+// sammen. Kun labels til Discord-pinget; ingen valideringsrolle her.
+const FORUM_CATEGORY_LABELS = {
+  general: "General",
+  feedback_ideas: "Feedback & ideas",
+  questions: "Questions & answers",
+  tactics: "Tactics & strategy",
+  off_topic: "Off-topic",
+};
+
 export async function notifyForumActivity({
   kind,
   title,
@@ -956,7 +966,7 @@ export async function notifyForumActivity({
 
   const fields = [];
   if (username) fields.push({ name: "By", value: teamName ? `${username} (${teamName})` : username, inline: true });
-  if (category) fields.push({ name: "Category", value: category === "feedback_ideas" ? "Feedback & ideas" : "General", inline: true });
+  if (category) fields.push({ name: "Category", value: FORUM_CATEGORY_LABELS[category] || "General", inline: true });
 
   const payload = {
     embeds: [{

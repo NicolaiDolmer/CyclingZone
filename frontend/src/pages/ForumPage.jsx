@@ -15,12 +15,20 @@ import FounderMark from "../components/FounderMark.jsx";
 // content (docs/design/PAGE_TEMPLATES.md): max-w-4xl, sektionskort, én gold
 // primary ("New post"), hairline-borders, tabular figures på al numerik.
 //
+// #4492 (ejer-beslutning 4/9): tre nye kategorier (questions, tactics,
+// off_topic) + en "archive"-fane. Archive er IKKE en postable kategori — den
+// er kun et filter (backend beregner den ud fra 60 dages inaktivitet), så
+// POST_CATEGORIES (compose-modalens vælger) og FILTER_TABS (oversigtens
+// fanerække) er bevidst to forskellige lister.
+//
 // Data læses via backend-API (service-role bag requireAuth) — RLS på
 // forum-tabellerne tillader ikke klient-queries til andet end Realtime-events,
 // som her kun bruges som refetch-trigger (useRealtimeRefetch-mønstret).
 
 const API = import.meta.env.VITE_API_URL;
-const CATEGORIES = ["general", "feedback_ideas"];
+const POST_CATEGORIES = ["general", "feedback_ideas", "questions", "tactics", "off_topic"];
+const ARCHIVE_FILTER = "archive";
+const FILTER_TABS = [...POST_CATEGORIES, ARCHIVE_FILTER];
 const TITLE_MAX = 120;
 const BODY_MAX = 4000;
 // Modul-konstant: en inline-array ville re-subscribe Realtime-kanalen hver render.
@@ -89,7 +97,7 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (open) setCategory(CATEGORIES.includes(defaultCategory) ? defaultCategory : "general");
+    if (open) setCategory(POST_CATEGORIES.includes(defaultCategory) ? defaultCategory : "general");
   }, [open, defaultCategory]);
 
   function handleClose() {
@@ -150,16 +158,22 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Field label={t("compose.categoryLabel")}>
-          <div role="group" aria-label={t("compose.categoryLabel")} className="inline-flex rounded border border-cz-border overflow-hidden">
-            {CATEGORIES.map((key) => (
+          {/* #4492: 5 kategorier passer ikke altid på én linje (mobil,
+              lange labels som "Questions & answers") — flex-wrap frem for
+              det gamle inline-flex+overflow-hidden segment, der ville
+              klippe knapper af i stedet for at brydes om. */}
+          <div role="group" aria-label={t("compose.categoryLabel")} className="flex flex-wrap gap-1.5">
+            {POST_CATEGORIES.map((key) => (
               <button
                 key={key}
                 type="button"
                 disabled={submitting}
                 onClick={() => setCategory(key)}
                 aria-pressed={category === key}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
-                  category === key ? "bg-cz-accent text-cz-on-accent" : "text-cz-2 hover:bg-cz-subtle"
+                className={`rounded-cz border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+                  category === key
+                    ? "border-cz-accent bg-cz-accent text-cz-on-accent"
+                    : "border-cz-border text-cz-2 hover:bg-cz-subtle"
                 }`}
               >
                 {t(`categories.${key}`)}
@@ -217,7 +231,7 @@ export default function ForumPage() {
   const { t, i18n } = useTranslation("forum");
   const { t: tErrors } = useTranslation("errors");
   const [searchParams, setSearchParams] = useSearchParams();
-  const category = CATEGORIES.includes(searchParams.get("category")) ? searchParams.get("category") : "";
+  const category = FILTER_TABS.includes(searchParams.get("category")) ? searchParams.get("category") : "";
 
   const [state, setState] = useState({ status: "loading", pinned: [], items: [], nextCursor: null });
   const [loadingMore, setLoadingMore] = useState(false);
@@ -279,10 +293,11 @@ export default function ForumPage() {
   }
 
   const language = i18n.language;
+  const isArchiveTab = category === ARCHIVE_FILTER;
   const tabs = [
     { key: "", label: t("categories.all") },
-    { key: "general", label: t("categories.general") },
-    { key: "feedback_ideas", label: t("categories.feedback_ideas") },
+    ...POST_CATEGORIES.map((key) => ({ key, label: t(`categories.${key}`) })),
+    { key: ARCHIVE_FILTER, label: t("categories.archive") },
   ];
 
   return (
@@ -337,15 +352,17 @@ export default function ForumPage() {
             </Section>
           )}
           <Section>
-            <SectionHeader title={t("list.latestHeading")} />
+            <SectionHeader title={isArchiveTab ? t("list.archiveHeading") : t("list.latestHeading")} />
             {state.items.length === 0 && state.pinned.length === 0 ? (
               <EmptyState
                 icon={<InboxIcon size={26} aria-hidden="true" />}
-                title={t("list.emptyTitle")}
-                description={t("list.emptyDescription")}
+                title={isArchiveTab ? t("list.archiveEmptyTitle") : t("list.emptyTitle")}
+                description={isArchiveTab ? t("list.archiveEmptyDescription") : t("list.emptyDescription")}
               />
             ) : state.items.length === 0 ? (
-              <p className="py-2 text-[13px] text-cz-2">{t("list.emptyDescription")}</p>
+              <p className="py-2 text-[13px] text-cz-2">
+                {isArchiveTab ? t("list.archiveEmptyDescription") : t("list.emptyDescription")}
+              </p>
             ) : (
               <div className="divide-y divide-cz-border">
                 {state.items.map((post) => (
