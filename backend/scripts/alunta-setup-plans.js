@@ -6,9 +6,15 @@
 // Printer KUN navne, priser og UUID'er — aldrig tokenet.
 //
 // VIGTIGT om priser (#4005, kostede en fejlpris på den første betalende kunde):
-// Alunta gemmer beløb i ØRE EKSKL. MOMS og lægger momsen oveni når charge_vat
-// er true. 3920 gemt => 39,20 ekskl. => 49,00 kr. INKL. moms for kunden.
-// Ejer-beslutning 31/8: prisen er 49 kr. INKL. moms. Se docs/BILLING_STACK.md §2.
+// Alunta gemmer beløb i MINDSTE ENHED (øre/cent) EKSKL. MOMS og lægger momsen
+// oveni når charge_vat er true. 3920 gemt => 39,20 ekskl. => 49,00 kr. INKL.
+// moms for kunden. Ejer-beslutning 31/8: prisen er 49 kr. INKL. moms.
+//
+// #4074 (ejer-beslutning 2/9): internationale spillere (spilsprog != dansk)
+// ser/betaler EUR, danske spillere (spilsprog dansk) ser/betaler DKK. Fire
+// planer i alt — to DKK (uændret) + to nye EUR. 25% dansk moms lægges oveni
+// begge valutaer i dag (jf. docs/BILLING_STACK.md §4 momstabel). Se
+// docs/BILLING_STACK.md §2.
 //
 // Denne version SKIPPER ikke længere stiltiende en eksisterende plan: den
 // sammenligner prisen og rapporterer afvigelser. Den gamle adfærd betød at en
@@ -36,6 +42,11 @@ const APPLY = process.argv.includes("--create-missing");
 // #4645: PLANS/RETIRED/INTERVAL_MONTHS flyttet til lib/aluntaPlanCatalog.js —
 // samme data, uændret — så scripts/check-pro-prices.mjs kan læse dem uden at
 // trigge denne fils top-level Alunta-kald (se den fils filhoved).
+
+// Valuta-bevidst visning af inklusiv-pris i output-linjerne.
+function formatIncl(currency, inclVat) {
+  return currency === "EUR" ? `€${inclVat}` : `${inclVat} kr.`;
+}
 
 async function api(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
@@ -75,7 +86,7 @@ for (const plan of PLANS) {
 
   if (!found) {
     if (!APPLY) {
-      console.log(`MANGLER   ${plan.name} (${plan.amount} øre = ${plan.inclVat} kr. inkl.) — kør med --create-missing for at oprette`);
+      console.log(`MANGLER   ${plan.name} (${plan.amount} ${plan.currency} minor units = ${formatIncl(plan.currency, plan.inclVat)} inkl.) — kør med --create-missing for at oprette`);
       drift++;
       continue;
     }
@@ -88,15 +99,15 @@ for (const plan of PLANS) {
 
   const actual = storedAmount(found, INTERVAL_MONTHS[plan.interval]);
   if (actual === plan.amount) {
-    console.log(`OK        ${plan.name}: ${actual} øre = ${plan.inclVat} kr. inkl.  (${found.uuid})`);
+    console.log(`OK        ${plan.name}: ${actual} ${plan.currency} minor units = ${formatIncl(plan.currency, plan.inclVat)} inkl.  (${found.uuid})`);
     continue;
   }
 
   drift++;
-  const actualIncl = actual == null ? "ukendt" : (actual * 1.25 / 100).toFixed(2).replace(".", ",");
+  const actualIncl = actual == null ? "ukendt" : formatIncl(plan.currency, (actual * 1.25 / 100).toFixed(2).replace(".", ","));
   console.log(
-    `AFVIGER   ${plan.name}: Alunta har ${actual} øre (= ${actualIncl} kr. inkl.), ` +
-    `forventet ${plan.amount} øre (= ${plan.inclVat} kr. inkl.)  (${found.uuid})`,
+    `AFVIGER   ${plan.name}: Alunta har ${actual} ${plan.currency} minor units (= ${actualIncl} inkl.), ` +
+    `forventet ${plan.amount} ${plan.currency} minor units (= ${formatIncl(plan.currency, plan.inclVat)} inkl.)  (${found.uuid})`,
   );
   console.log(`          Rettes IKKE af scriptet. Har planen aktive abonnenter, kan prisen ikke redigeres —`);
   console.log(`          opret ny plan, opdatér Railway-env, flyt abonnenter, arkivér den gamle.`);
@@ -110,7 +121,8 @@ for (const name of RETIRED) {
   }
 }
 
-console.log("\nHusk: plan-UUID'erne skal ligge i Railway som ALUNTA_CZ_PRO_PLAN_ID_MONTHLY / ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL.");
+console.log("\nHusk: plan-UUID'erne skal ligge i Railway som ALUNTA_CZ_PRO_PLAN_ID_MONTHLY / ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL");
+console.log("(DKK) og ALUNTA_CZ_PRO_PLAN_ID_MONTHLY_EUR / ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL_EUR (EUR).");
 console.log("Skiftes en plan uden at env-nøglen følger med, sælger appen fortsat den gamle plan.");
 
 if (drift > 0) {

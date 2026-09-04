@@ -7,10 +7,14 @@
 // derfor flyttet HERTIL uændret; alunta-setup-plans.js importerer dem tilbage,
 // så der stadig kun findes ÉT sted planerne er skrevet.
 //
-// amount = øre EKSKL. moms. inclVat er kun til menneskelig kontrol i outputtet
-// og bruges af check-pro-prices.mjs til at verificere at round(amount*1.25)/100
-// matcher BÅDE inclVat-feltet HER og den viste pris i pro.json (#4645 — se
-// docs/BILLING_STACK.md §9a).
+// #4074 (ejer-beslutning 2/9): internationale spillere (spilsprog != dansk)
+// ser/betaler EUR, danske spillere (spilsprog dansk) ser/betaler DKK. Fire
+// planer i alt — to DKK + to EUR. Se docs/BILLING_STACK.md §2.
+//
+// amount = mindste enhed (øre/cent) EKSKL. moms. inclVat er kun til
+// menneskelig kontrol i outputtet og bruges af check-pro-prices.mjs til at
+// verificere at round(amount*1.25)/100 matcher BÅDE inclVat-feltet HER og den
+// viste pris i pro.json (#4645 — se docs/BILLING_STACK.md §9a).
 
 export const PLANS = [
   {
@@ -23,9 +27,25 @@ export const PLANS = [
   },
   {
     name: "CZ Pro 6 Months",
-    amount: 23600,
-    inclVat: "295,00",
+    amount: 21200,
+    inclVat: "265,00",
     currency: "DKK",
+    interval: "half-yearly",
+    description: "Cycling Zone Pro, billed every 6 months.",
+  },
+  {
+    name: "CZ Pro 1 month EUR",
+    amount: 519,
+    inclVat: "6,49",
+    currency: "EUR",
+    interval: "monthly",
+    description: "Cycling Zone Pro, billed monthly.",
+  },
+  {
+    name: "CZ Pro 6 Months EUR",
+    amount: 2799,
+    inclVat: "34,99",
+    currency: "EUR",
     interval: "half-yearly",
     description: "Cycling Zone Pro, billed every 6 months.",
   },

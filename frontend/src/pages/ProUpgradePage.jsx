@@ -94,6 +94,12 @@ export default function ProUpgradePage() {
   const initializing = teamLoading || subLoading;
   const seatsLeft = seats ? Math.max(seats.cap - seats.taken, 0) : null;
 
+  // #4074 (ejer-beslutning 2/9): spilsprog vælger valuta — dansk spilsprog
+  // betaler i kroner, alt andet i euro. Aluntas hostede betalingsside er
+  // dansk uanset sprog (kan ikke styres via API), men prisen/planen følger
+  // valutaen herfra.
+  const currency = i18n.language?.startsWith("da") ? "DKK" : "EUR";
+
   async function startCheckout(selectedInterval) {
     setBusy(true);
     setErr(null);
@@ -104,6 +110,7 @@ export default function ProUpgradePage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
         body: JSON.stringify({
           interval: selectedInterval,
+          currency,
           terms_accepted: termsAccepted === true,
           terms_version: TERMS_VERSION,
         }),
@@ -206,6 +213,7 @@ export default function ProUpgradePage() {
                   eksplicit + pro-rata-forklaring (foerste traek var 13 kr og lignede
                   en fejl). Pro-rata kun ved maanedlig, hvor adfaerden er bekraeftet. */}
               <p className="mt-2 text-2xs leading-relaxed text-cz-3">{t("vatNote")}</p>
+              <p className="mt-1 text-2xs leading-relaxed text-cz-3">{t("currencyNote")}</p>
               {interval === "monthly" && (
                 <p className="mt-1 text-2xs leading-relaxed text-cz-3">{t("prorataNote")}</p>
               )}

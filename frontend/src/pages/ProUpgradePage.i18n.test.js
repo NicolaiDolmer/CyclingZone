@@ -31,4 +31,28 @@ for (const lng of ["en", "da"]) {
     assert.match(pro.founderSeatsTaken, /\{cap\}/);
     assert.match(pro.founderSeatsRemaining, /\{remaining\}/);
   });
+
+  // #4074: internationale spillere (spilsprog != dansk) betaler i euro, danske
+  // spillere i kroner — ProUpgradePage.jsx vælger valuta ud fra i18n.language.
+  // currencyNote skal findes for begge locales, og prisnøglerne skal afspejle
+  // den rigtige valuta pr. locale (ellers viser siden fx "€49" eller "265 kr"
+  // til den forkerte målgruppe).
+  test(`pro.json (${lng}): currencyNote-nøgle findes og er ikke tom`, () => {
+    assert.equal(typeof pro.currencyNote, "string");
+    assert.ok(pro.currencyNote.length > 0);
+  });
+
+  test(`pro.json (${lng}): pris-nøgler bruger rigtig valuta for locale`, () => {
+    if (lng === "en") {
+      assert.match(pro.monthlyPrice, /€/);
+      assert.match(pro.semiannualPrice, /€/);
+      assert.match(pro.semiannualNote, /€/);
+      assert.doesNotMatch(pro.monthlyPrice, /\bkr\b/);
+    } else {
+      assert.match(pro.monthlyPrice, /kr/);
+      assert.match(pro.semiannualPrice, /kr/);
+      assert.match(pro.semiannualNote, /kr/);
+      assert.doesNotMatch(pro.monthlyPrice, /€/);
+    }
+  });
 }

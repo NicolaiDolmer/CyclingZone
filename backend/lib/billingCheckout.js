@@ -9,9 +9,18 @@ const ALREADY_SUBSCRIBED_STATUSES = new Set(["active", "past_due"]);
 
 // Plan-id'er kommer fra Infisical (oprettes i Alunta). Læses ved modul-load;
 // hvis de mangler (endnu ikke sat), fejler checkout pænt med 400.
+// #4074 (ejer-beslutning 2/9): internationale spillere (spilsprog != dansk)
+// ser/betaler EUR, danske spillere (spilsprog dansk) ser/betaler DKK. DKK
+// genbruger de eksisterende nøgler; EUR har egne plan-id'er (se docs/BILLING_STACK.md §6).
 export const PLAN_IDS = {
-  monthly: process.env.ALUNTA_CZ_PRO_PLAN_ID_MONTHLY,
-  semiannual: process.env.ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL,
+  DKK: {
+    monthly: process.env.ALUNTA_CZ_PRO_PLAN_ID_MONTHLY,
+    semiannual: process.env.ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL,
+  },
+  EUR: {
+    monthly: process.env.ALUNTA_CZ_PRO_PLAN_ID_MONTHLY_EUR,
+    semiannual: process.env.ALUNTA_CZ_PRO_PLAN_ID_SEMIANNUAL_EUR,
+  },
 };
 
 // #2813: ejer-beslutning 2/9 ("åbn nu, ret bagefter") flipper checkout åben.
@@ -25,7 +34,7 @@ export const CHECKOUT_PAUSED = false;
 // Skal matche TERMS_VERSION i frontend/src/lib/termsVersion.js — mismatch
 // afvises med 400, så en klient med forældet vilkårstekst tvinges til reload
 // og re-accept af den gældende version.
-export const CURRENT_TERMS_VERSION = "2026-07-30";
+export const CURRENT_TERMS_VERSION = "2026-09-02";
 
 export function createCheckoutHandler({
   client = createAluntaClient(),
@@ -39,8 +48,24 @@ export function createCheckoutHandler({
     if (paused) return res.status(503).json({ error: "Checkout paused", errorCode: "checkout_paused" });
     if (!req.team) return res.status(400).json({ error: "No team found" });
     const interval = req.body?.interval;
-    const planId = planIds[interval];
-    if (!planId) return res.status(400).json({ error: "Unknown plan interval", errorCode: "unknown_interval" });
+    // #4074: mangler currency (ældre klient), antages DKK bagudkompatibelt.
+    const currency = req.body?.currency ?? "DKK";
+    if (currency !== "DKK" && currency !== "EUR") {
+      return res.status(400).json({ error: "Unknown currency", errorCode: "unknown_currency" });
+    }
+    const plansForCurrency = planIds[currency] ?? {};
+    const planId = plansForCurrency[interval];
+    if (!planId) {
+      // Gyldig currency + kendt interval, men intet plan-id sat op for netop
+      // den kombination (fx EUR-nøgle endnu ikke sat i Railway) -> plan_unavailable.
+      // Ukendt interval-streng (fx "weekly") -> uændret unknown_interval.
+      const knownInterval = interval === "monthly" || interval === "semiannual";
+      return res.status(400).json(
+        knownInterval
+          ? { error: "Plan unavailable", errorCode: "plan_unavailable" }
+          : { error: "Unknown plan interval", errorCode: "unknown_interval" },
+      );
+    }
 
     // #2813: eksplicit accept af handelsbetingelser + straks-leverings-waiver er
     // et lovkrav (forbrugeraftaleloven) — ingen accept, ingen checkout.
@@ -113,7 +138,7 @@ export function createCheckoutHandler({
         if (supabase && req.user?.id) {
           supabase
             .from("player_events")
-            .insert({ team_id: req.team.id, user_id: req.user.id, event_name: "checkout_started", event_data: { interval, currency: null } })
+            .insert({ team_id: req.team.id, user_id: req.user.id, event_name: "checkout_started", event_data: { interval, currency } })
             .then(({ error: evErr }) => {
               if (evErr) {
                 captureException(new Error(`player_events checkout_started insert fejlede: ${evErr.message}`), {
@@ -137,7 +162,7 @@ export function createCheckoutHandler({
     } catch (err) {
       // #2389 A2: betalings-/omsætningskritisk flow — en fejlet checkout var kun
       // synlig som 502 hos klienten, aldrig i Sentry-triage.
-      captureException(err, { tags: { flow: "billing", stage: "checkout" }, teamId: req.team.id, interval });
+      captureException(err, { tags: { flow: "billing", stage: "checkout", currency }, teamId: req.team.id, interval });
       return res.status(502).json({ error: "Checkout failed", detail: String(err.message || err) });
     }
   };
