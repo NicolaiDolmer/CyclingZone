@@ -41,6 +41,7 @@
     "replyPlaceholder": "Write a reply",
     "replySubmit": "Reply",
     "noReplies": "No replies yet. Be the first to answer.",
+    "earlierReplies": "{count, plural, =1 {1 earlier reply} other {# earlier replies}}",
     "report": "Report",
     "delete": "Delete",
     "pin": "Pin",

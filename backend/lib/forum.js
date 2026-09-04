@@ -397,10 +397,20 @@ export async function getForumPost({ supabase, id, userId }) {
   // #3517: opbaknings-tal — post og svar er to forskellige target_type'r,
   // hentet i to bounded kald (samme "det eksisterende trådkald"-krav som
   // resolveThreadReads: ingen N+1 pr. indlæg).
-  const [postReactions, replyReactions] = await Promise.all([
+  //
+  // #3451: samme kald slår også brugerens FORRIGE last_read_at op — dvs.
+  // tidspunktet FØR dette besøg. Routen kalder markForumThreadRead som en
+  // best-effort side-effekt EFTER at have afventet getForumPost færdig (se
+  // routes/api.js), så denne læsning sker altid FØR den skrivning: værdien
+  // herunder er aldrig "forurenet" af selve dette kalds egen markering.
+  // Klienten bruger den til at beregne fold/scroll til første ulæste svar,
+  // FØR den (visuelt) betragter tråden som læst.
+  const [postReactions, replyReactions, readsByPostId] = await Promise.all([
     resolveReactionSummaries({ supabase, targetType: "post", targetIds: [id], userId }),
     resolveReactionSummaries({ supabase, targetType: "reply", targetIds: replies.map((r) => r.id), userId }),
+    resolveThreadReads({ supabase, userId, postIds: [id] }),
   ]);
+  const viewerLastReadAt = readsByPostId.get(id) ?? null;
 
   function shapeQuoted(quotedReplyId) {
     if (!quotedReplyId) return null;
@@ -445,6 +455,8 @@ export async function getForumPost({ supabase, id, userId }) {
         quoted: shapeQuoted(r.quoted_reply_id),
       })),
       poll,
+      // #3451: null ved første besøg (ingen forum_thread_reads-række endnu).
+      viewer_last_read_at: viewerLastReadAt,
     },
   };
 }
