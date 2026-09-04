@@ -12,6 +12,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- #4595 boot-vagt: en 404 paa et hashed chunk under et deploy caches
+         `immutable` i et aar (Vercel-headers matcher paa sti, ikke status), og
+         entry-modulet fejler derefter STILLE ved hver navigation — sort side,
+         ingen console-fejl. Vagten refetcher modul-URL'erne med cache:'reload'
+         og genindlaeser ÉN gang. Classic script og placeret FOER Vites
+         modulepreloads, fordi den skal lytte allerede naar den foerste
+         ressource-fejl fyrer — og fordi intet af app-grafen koerer i netop det
+         scenarie. Se frontend/public/chunk-selfheal.js. -->
+    <script src="/chunk-selfheal.js"></script>
+
     <title>Cycling Zone</title>
     <meta name="description" content="Cycling Zone: fair, browser-based cycling manager MMO. Tactics, long-term planning and community rivalry. No pay-to-win, ever." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
