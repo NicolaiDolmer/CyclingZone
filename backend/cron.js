@@ -57,6 +57,7 @@ import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
+import { runHalfFinalizedRaceWatch } from "./lib/raceFinalizeWatch.js"; // #4147
 import { refreshRankingMatviewsSafe } from "./lib/refreshRankingMatviews.js";
 import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot.js";
 import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
@@ -111,6 +112,7 @@ import {
   CRON_MONITOR_1MIN,
   CRON_MONITOR_5MIN,
   CRON_MONITOR_10MIN,
+  CRON_MONITOR_15MIN,
   CRON_MONITOR_30MIN,
   CRON_MONITOR_60MIN,
   CRON_MONITOR_24H,
@@ -1042,7 +1044,7 @@ async function runStageSchedulerCron() {
       isStageSchedulerEnabled,
       isRaceEngineV2Enabled,
       seenKeys: stageSchedulerSeenKeys,
-      runStageFn: async ({ raceId, stageIndex }) => {
+      runStageFn: async ({ raceId, stageIndex, resume = false }) => {
         const notifyDiscord = async ({ race, resultRows, incidents }) => {
           const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
           if (!urls.length) return;
@@ -1067,7 +1069,10 @@ async function runStageSchedulerCron() {
           runSource: "scheduler", // FIX 4: kun scheduler-runs tæller i den daglige cap
           // #2090 defense-in-depth: løbet må KUN afvikle præcis den etape scheduleren
           // udvalgte som forfalden — er løbet imens bumpet af et andet run, 409'es der.
-          expectedStageIndex: stageIndex,
+          expectedStageIndex: resume ? null : stageIndex,
+          // #4147: genoptagelse — etapen er GIVET af trin-markeringen, ikke udledt af
+          // stages_completed (som den afbrudte kørsel allerede har bumpet).
+          resumeStageIndex: resume ? stageIndex : null,
           ensureSeasonStandings: ensureSeasonStandingsCron,
           updateStandings,
           notifyDiscord,
@@ -1076,11 +1081,26 @@ async function runStageSchedulerCron() {
         });
       },
     });
-    if (result.ran || result.errors || result.recovered) {
-      console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.recovered || 0} finalization-recovery, ${result.errors} fejl`);
+    if (result.ran || result.errors || result.recovered || result.resumed) {
+      console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.recovered || 0} finalization-recovery, ${result.resumed || 0} genoptaget afslutning, ${result.errors} fejl`);
     }
   } finally {
     stageSchedulerTickRunning = false;
+  }
+}
+
+// ─── Halv-finaliserings-vagt (#4147) ─────────────────────────────────────────
+// Read-only. Finder løb der sidder fast midt i afslutningen: en trin-markering der
+// har stået stille i over 10 minutter, et løb hvor alle etaper er kørt uden at status
+// blev flippet (Llanera-tilstanden 23/8), eller et færdigt løb hvis præmier aldrig
+// blev udbetalt. Alarmerer via Sentry med fast fingerprint + opsAlertDedupe, så én
+// uafklaret tilstand giver ÉT issue og ikke 96 events i døgnet. Reparerer INTET —
+// genopretningen sker (bag flag) i raceRunner.simulateStageByIndex's genoptagelses-
+// sti, og alt derudover er ejer-beslutning.
+async function runRaceFinalizeWatchCron() {
+  const r = await runHalfFinalizedRaceWatch({ supabase, captureExceptionFn: sentryCapture });
+  if (r.findings) {
+    console.warn(`🚨 Halv-finaliserings-vagt: ${r.findings} fund (alarmeret: ${r.alerted})`);
   }
 }
 
@@ -1726,6 +1746,15 @@ export function startCron() {
   setInterval(
     trackedTick("stage scheduler", monitorCron("stage-scheduler", runStageSchedulerCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
+  );
+
+  // Every 15 minutes: halv-finaliserings-vagt (#4147) — read-only detektion af løb
+  // der sidder fast midt i afslutningen. Bevidst INGEN immediate-run: en alarm skal
+  // ikke fyre ved hver genstart (mirror stage-scheduler/stall-watchdog-mønstret), og
+  // 15 min efter boot er tidligt nok til at fange en afbrydelse fra selve deployet.
+  setInterval(
+    trackedTick("race-finalize-watch", monitorCron("race-finalize-watch", runRaceFinalizeWatchCron, CRON_MONITOR_15MIN)),
+    15 * 60 * 1000
   );
 
   // Every 10 minutes: rangliste-matview refresh (#2175) — fallback for race-
