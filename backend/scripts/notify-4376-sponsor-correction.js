@@ -83,7 +83,7 @@ export function buildSponsorCorrectionMessage(language) {
   }
   return {
     title: TITLE_EN,
-    message: `${MESSAGE_EN}\n\n${MESSAGE_DA}`,
+    message: MESSAGE_EN, // ejer 4/9: sprogspecifik, ingen DA-appendix for ikke-DA
   };
 }
 
