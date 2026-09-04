@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   computeSeasonTransitionBoundary,
   fetchSeasonTransitionBoundary,
+  ensureSeasonTransitionPlannedAt,
   SEASON_TRANSITION_PLANNED_AT_KEY,
   TRANSITION_FALLBACK_HOUR_COPENHAGEN,
 } from "./seasonTransitionBoundary.js";
@@ -95,4 +96,95 @@ test("fetchSeasonTransitionBoundary: fail-open ved manglende/ugyldig supabase-cl
 test("fetchSeasonTransitionBoundary: fail-open ved en fejlende DB-forespørgsel → null (ikke en kastet fejl)", async () => {
   const supabase = makeSupabase({ upcomingSeason: { start_date: "2026-08-24" }, throwOnTable: "app_config" });
   assert.equal(await fetchSeasonTransitionBoundary(supabase), null);
+});
+
+// ── ensureSeasonTransitionPlannedAt — idempotent write (#4129) ────────────────
+
+function makeWritableSupabase({ appConfigRow = null, readError = null, writeError = null } = {}) {
+  const upsertCalls = [];
+  return {
+    upsertCalls,
+    from(table) {
+      assert.equal(table, "app_config");
+      return {
+        select() {
+          return { eq() { return { maybeSingle() { return Promise.resolve({ data: appConfigRow, error: readError }); } }; } };
+        },
+        upsert(payload, opts) {
+          upsertCalls.push({ payload, opts });
+          return Promise.resolve({ error: writeError });
+        },
+      };
+    },
+  };
+}
+
+test("ensureSeasonTransitionPlannedAt: nøgle mangler → skriver den beregnede fallback", async () => {
+  const supabase = makeWritableSupabase({ appConfigRow: null });
+  const result = await ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate: "2026-08-24" });
+  assert.equal(result.updated, true);
+  assert.equal(result.reason, "missing");
+  assert.equal(result.value, "2026-08-23T16:00:00.000Z");
+  assert.equal(supabase.upsertCalls.length, 1);
+  assert.equal(supabase.upsertCalls[0].payload.key, SEASON_TRANSITION_PLANNED_AT_KEY);
+  assert.equal(supabase.upsertCalls[0].payload.value, "2026-08-23T16:00:00.000Z");
+  assert.deepEqual(supabase.upsertCalls[0].opts, { onConflict: "key" });
+});
+
+test("ensureSeasonTransitionPlannedAt: værdien er allerede korrekt → ingen skrivning", async () => {
+  const supabase = makeWritableSupabase({ appConfigRow: { value: "2026-08-23T16:00:00.000Z" } });
+  const result = await ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate: "2026-08-24" });
+  assert.equal(result.updated, false);
+  assert.equal(result.reason, "already-correct");
+  assert.equal(supabase.upsertCalls.length, 0);
+});
+
+test("ensureSeasonTransitionPlannedAt: forældet værdi fra en TIDLIGERE sæsons cutover → overskrives", async () => {
+  // Efterladenskab fra S2→S3 (23/8), ny sæson starter 2026-11-30.
+  const supabase = makeWritableSupabase({ appConfigRow: { value: "2026-08-23T17:30:00.000Z" } });
+  const result = await ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate: "2026-11-30" });
+  assert.equal(result.updated, true);
+  assert.equal(result.reason, "stale");
+  assert.equal(result.previous, "2026-08-23T17:30:00.000Z");
+  assert.equal(supabase.upsertCalls.length, 1);
+});
+
+test("ensureSeasonTransitionPlannedAt: eksisterende værdi PÅ/EFTER ny sæsons start_date → rører ikke ved den", async () => {
+  // En anomali (eller en bevidst ejer-indsat værdi der ikke passer beregningen) —
+  // vores egen beregning ligger altid FØR start_date, så dette kan ikke være os.
+  const supabase = makeWritableSupabase({ appConfigRow: { value: "2026-12-01T00:00:00.000Z" } });
+  const result = await ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate: "2026-11-30" });
+  assert.equal(result.updated, false);
+  assert.equal(result.reason, "existing-value-not-stale");
+  assert.equal(supabase.upsertCalls.length, 0);
+});
+
+test("ensureSeasonTransitionPlannedAt: ingen seasonStartDate → no-op", async () => {
+  const supabase = makeWritableSupabase();
+  const result = await ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate: null });
+  assert.equal(result.updated, false);
+  assert.equal(result.reason, "no-season-start-date");
+  assert.equal(supabase.upsertCalls.length, 0);
+});
+
+test("ensureSeasonTransitionPlannedAt: manglende supabase-client → no-op (kaster ikke)", async () => {
+  const result = await ensureSeasonTransitionPlannedAt({ supabase: null, seasonStartDate: "2026-08-24" });
+  assert.equal(result.updated, false);
+  assert.equal(result.reason, "no-supabase");
+});
+
+test("ensureSeasonTransitionPlannedAt: læsefejl kastes (må ikke stille sluge en DB-fejl ved en skrivning)", async () => {
+  const supabase = makeWritableSupabase({ readError: { message: "connection reset" } });
+  await assert.rejects(
+    () => ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate: "2026-08-24" }),
+    /connection reset/
+  );
+});
+
+test("ensureSeasonTransitionPlannedAt: skrivefejl kastes", async () => {
+  const supabase = makeWritableSupabase({ appConfigRow: null, writeError: { message: "constraint violation" } });
+  await assert.rejects(
+    () => ensureSeasonTransitionPlannedAt({ supabase, seasonStartDate: "2026-08-24" }),
+    /constraint violation/
+  );
 });

@@ -8,6 +8,7 @@ import {
   RACE_V3_TUNING,
   GC_RELEVANT_PROFILES,
   FLAT_LEADOUT_PROFILES,
+  VALID_RACE_ROLES,
 } from "./raceRoles.js";
 
 // ── work_cost(rolle, etapeprofil, effort) — spec §6 ───────────────────────────
@@ -104,4 +105,23 @@ test("WORK_COST_HELPER_GC er i spec-intervallet -0.03..-0.06", () => {
 
 test("GC_RELEVANT_PROFILES og FLAT_LEADOUT_PROFILES er disjunkte", () => {
   for (const p of GC_RELEVANT_PROFILES) assert.ok(!FLAT_LEADOUT_PROFILES.has(p), p);
+});
+
+// ── Rolle-vokabular forward-guard (#4246, docs/RACE_ENGINE_RULES.md §1) ───────
+// SSOT: "Fem værdier. De er defineret i den frosne kontrakt —
+// backend/lib/engine/v4/types.ts:35" og skrevet 100k+ gange i race_entries/
+// race_stage_roles. Denne test låser PRÆCIS de fem — et sjette ord på en ny
+// flade skal fejle her, ikke opdages i prod (modsigelse 3, nu løst).
+
+test("VALID_RACE_ROLES er præcis de fem kanoniske værdier fra RACE_ENGINE_RULES.md §1", () => {
+  assert.deepEqual(
+    [...VALID_RACE_ROLES].sort(),
+    ["captain", "free_role", "helper", "hunter", "sprint_captain"]
+  );
+});
+
+test("VALID_RACE_ROLES afviser et sjette/ukendt ord", () => {
+  for (const bogus of ["breakaway_leader", "gc_leader", "", "Captain", "hunter "]) {
+    assert.ok(!VALID_RACE_ROLES.includes(bogus), bogus);
+  }
 });

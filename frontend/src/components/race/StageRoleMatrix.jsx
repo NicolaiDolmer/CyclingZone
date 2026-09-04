@@ -254,6 +254,12 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
               <tr key={rider.rider_id} className="border-b border-cz-border last:border-0">
                 <td className="sticky left-0 bg-cz-card px-4 py-2 text-cz-1 font-medium whitespace-nowrap">
                   {rider.name || "—"}
+                  {/* #4538: udgået/skadet rytter — hvorfor rækken er låst forbi kørte etaper. */}
+                  {rider.abandoned && (
+                    <span className="ms-1.5 text-3xs font-normal normal-case text-cz-3">
+                      ({t("stageTactics.riderAbandoned")})
+                    </span>
+                  )}
                 </td>
                 {stageNumbers.map((sn) => {
                   const locked = sn <= stagesCompleted;
@@ -268,6 +274,21 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
                           {overridden && cell.effort !== "normal" && (
                             <span className="text-cz-3"> · {t(`stageTactics.effort.${cell.effort}`)}</span>
                           )}
+                        </span>
+                      </td>
+                    );
+                  }
+                  // #4538: kommende etape, men rytteren er udgået/skadet — låst
+                  // række med status-label i stedet for de to redigerbare
+                  // <select>-felter (cybersimon 31/8, #4538). Serveren afviser
+                  // desuden overrides for ham (stage_roles_rider_abandoned),
+                  // så dette er ikke kun kosmetisk.
+                  if (rider.abandoned) {
+                    return (
+                      <td key={sn} className="px-2.5 py-2 text-center text-xs text-cz-3">
+                        <span className="inline-flex items-center gap-1">
+                          <LockIcon size={10} aria-hidden="true" className="text-cz-3" />
+                          {t("stageTactics.riderAbandoned")}
                         </span>
                       </td>
                     );

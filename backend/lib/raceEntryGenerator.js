@@ -9,6 +9,10 @@ import {
   windowsOverlap, raceBindingWindow,
   isRiderDayInvariantViolation, isConstraintNotDeferrable,
 } from "./raceBinding.js";
+import {
+  ASSISTANT_MODES, DEFAULT_ASSISTANT_MODE, DEFAULT_LATE_FILL_HOURS,
+  normalizeAssistantMode, normalizeLateFillHours,
+} from "./assistantSelectionMode.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
@@ -133,17 +137,30 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
  * (race_withdrawals) springes over. Én (race,team)-enheds fejl aborterer ikke
  * resten — se failed_units/errors i resultatet.
  *
- * @param {{ supabase: object, seasonId: string, dryRun?: boolean }} args
+ * #4201: `mode` afgoer om MANAGER-hold overhovedet er med. Default (proactive) er
+ * bit-for-bit dagens adfaerd — kun hold uden bruger. Se assistantSelectionMode.js
+ * og docs/ASSISTANT_RULES.md §1b. `now` injiceres af tests (hard rule 16).
+ *
+ * @param {{ supabase: object, seasonId: string, dryRun?: boolean, mode?: string,
+ *           lateFillHours?: number, now?: number|Date }} args
  * @returns {Promise<{dryRun:boolean, races:number, teams:number, generated:number,
  *   skipped:number, inserted:number, removed:number, role_updated:number,
- *   failed_units:number, errors:Array<string>}>}
+ *   failed_units:number, errors:Array<string>, mode:string}>}
  */
-export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true }) {
+export async function runRaceEntryGenerator({
+  supabase, seasonId, dryRun = true,
+  mode: rawMode = DEFAULT_ASSISTANT_MODE,
+  lateFillHours: rawLateFillHours = DEFAULT_LATE_FILL_HOURS,
+  now = Date.now(),
+}) {
+  let mode = normalizeAssistantMode(rawMode);
+  const lateFillHours = normalizeLateFillHours(rawLateFillHours);
+  const nowMs = now instanceof Date ? now.getTime() : Number(now);
   // 1. Sæsonens løb.
   const { data: races, error: raceErr } = await supabase
     .from("races").select("id, race_class, league_division_id, stages_completed").eq("season_id", seasonId);
   if (raceErr) throw new Error(`races: ${raceErr.message}`);
-  if (!races || !races.length) return { dryRun, races: 0, teams: 0, generated: 0, skipped: 0 };
+  if (!races || !races.length) return { dryRun, races: 0, teams: 0, generated: 0, skipped: 0, mode };
   const raceIds = races.map((r) => r.id);
   const raceById = new Map(races.map((r) => [r.id, r])); // #2436: retry rebygger sizeRule pr. race_class
   // Frys (#1825): et igangværende etapeløb (stages_completed>0) må ALDRIG regenereres —
@@ -175,6 +192,20 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   const windowByRace = new Map();
   for (const r of races) {
     windowByRace.set(r.id, raceBindingWindow(schedByRace.get(r.id)));
+  }
+  // #4201 (late_fill): foerste etapes faktiske starttid. Binding-vinduet ovenfor er
+  // in-game-dag-granulaert (raceBindingWindow) og kan derfor IKKE bruges til "N timer
+  // foer start" — det tal skal maales paa wall-clock (scheduled_at), som er den tid
+  // spilleren selv ser i kalenderen.
+  const firstStartByRace = new Map();
+  for (const [raceId, rows] of schedByRace) {
+    let earliest = null;
+    for (const row of rows) {
+      const t = row.scheduled_at ? Date.parse(row.scheduled_at) : NaN;
+      if (!Number.isFinite(t)) continue;
+      if (earliest === null || t < earliest) earliest = t;
+    }
+    if (earliest !== null) firstStartByRace.set(raceId, earliest);
   }
 
   // 3. Etapeprofiler pr. løb (autopick scorer på dem), sorteret på stage_number.
@@ -216,11 +247,47 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   // Spillerens EGEN auto-fill-knap er upåvirket: den går gennem selectionAutoFill.js, som
   // kalder assignTeamAcrossRaces direkte og aldrig denne funktion. Assistenten er dermed
   // pull, ikke push (#4201).
+  //
+  // #4201: `mode` aabner doeren for MANAGER-hold igen, men aldrig paa dagens
+  // praemisser. late_fill lader dem med, og LOEBS-gaten nedenfor (trin 9) afgoer
+  // resten: kun tomme trupper, kun inden for lateFillHours. opt_in lader kun de
+  // hold med der selv har slaaet assistenten til. proactive = uaendret #4217.
   const { data: allTeams, error: teamErr } = await supabase
     .from("teams").select("id, is_test_account, is_frozen, league_division_id, user_id")
     .or("is_test_account.is.null,is_test_account.eq.false");
   if (teamErr) throw new Error(`teams: ${teamErr.message}`);
-  const eligibleTeams = (allTeams || []).filter((t) => !t.is_frozen && !t.user_id);
+
+  // opt_in: laes spillerens eget valg. Kolonnen kommer med database/2026-09-03-4201-
+  // assistant-mode.sql; er den ikke applied endnu, fejler selecten → fail-safe
+  // tilbage til proactive i stedet for at gaette at alle har sagt ja.
+  let optInTeamIds = null;
+  if (mode === ASSISTANT_MODES.OPT_IN) {
+    // schema-columns-ok: assistant_autopick_enabled tilfoejes af
+    // database/2026-09-03-4201-assistant-mode.sql, som foerst koeres EFTER merge
+    // under #2642-rammerne (idempotent + post-verify). schema-snapshot.json er et
+    // spejl af prod og opdateres derfor foerst naar migrationen er applied - ikke
+    // i denne PR, hvor kolonnen endnu ikke findes i prod.
+    const { data: optInRows, error: optInErr } = await supabase
+      .from("teams").select("id, assistant_autopick_enabled");
+    if (optInErr) {
+      mode = DEFAULT_ASSISTANT_MODE;
+    } else {
+      // Default TRUE: en NULL-raekke (foer backfill) betyder "ikke fravalgt".
+      optInTeamIds = new Set((optInRows || [])
+        .filter((t) => t.assistant_autopick_enabled !== false).map((t) => t.id));
+    }
+  }
+
+  const eligibleTeams = (allTeams || []).filter((t) => {
+    if (t.is_frozen) return false;
+    if (!t.user_id) return true; // AI-hold: uaendret i ALLE tilstande (#2622-bindingen).
+    if (mode === ASSISTANT_MODES.LATE_FILL) return true;
+    if (mode === ASSISTANT_MODES.OPT_IN) return optInTeamIds?.has(t.id) === true;
+    return false; // proactive (#4217): sweepen udtager aldrig paa en spillers vegne.
+  });
+  const ownerTeamIds = new Set(
+    (allTeams || []).filter((t) => t.user_id).map((t) => t.id)
+  );
   const teamsByPool = new Map();
   for (const t of eligibleTeams) {
     const key = t.league_division_id ?? null;
@@ -301,6 +368,51 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   });
   if (clearErr) throw new Error(`race_entry_clears: ${clearErr.message}`);
   const clearedRaceTeamKeys = new Set((clearRows || []).map((c) => `${c.race_id}|${c.team_id}`));
+
+  // 7c. #4201 (kun late_fill): naere loeb + hvad der ALLEREDE staar i dem.
+  //
+  // "Naer" maales paa foerste etapes scheduled_at, ikke paa binding-vinduet (§1b i
+  // docs/ASSISTANT_RULES.md). Kun for naere loeb — og for de loeb hvis binding-vindue
+  // OVERLAPPER et naert loeb — skal vi kende holdets eksisterende raekker: de laases,
+  // saa en tom trup i naboloebet ikke faar en rytter der allerede koerer et andet loeb
+  // samme in-game-dag (samme fejlklasse som #1823/#3113).
+  //
+  // Manager-hold i late_fill roeres KUN naar enheden er HELT tom (hverken manuelle
+  // eller auto-raekker). Spillerens egen "Auto-udfyld"-knap skriver ogsaa
+  // is_auto_filled=true (selectionAutoFill.js), saa "tom" maa ikke defineres som
+  // "ingen manuelle" — ellers ville sweepen diffe spillerens egne bestilte picks.
+  const nearRaceIds = new Set();
+  const entriesByRaceTeam = new Map(); // "race|team" → [rider_id]
+  if (mode === ASSISTANT_MODES.LATE_FILL) {
+    const horizonMs = lateFillHours * 60 * 60 * 1000;
+    for (const r of races) {
+      const start = firstStartByRace.get(r.id);
+      if (start === undefined) continue; // uden starttid kan naerhed ikke afgoeres.
+      if (start - nowMs <= horizonMs) nearRaceIds.add(r.id);
+    }
+    const bindingRelevantRaceIds = new Set(nearRaceIds);
+    for (const r of races) {
+      if (bindingRelevantRaceIds.has(r.id)) continue;
+      const w = windowByRace.get(r.id);
+      if (!w) continue;
+      for (const nearId of nearRaceIds) {
+        const nw = windowByRace.get(nearId);
+        if (nw && windowsOverlap(w, nw)) { bindingRelevantRaceIds.add(r.id); break; }
+      }
+    }
+    if (bindingRelevantRaceIds.size) {
+      const { data: nearEntryRows, error: nearErr } = await selectInChunks({
+        supabase, table: "race_entries", columns: "race_id, team_id, rider_id",
+        inColumn: "race_id", ids: [...bindingRelevantRaceIds], orderBy: ["race_id", "rider_id"], // PK (#2375)
+      });
+      if (nearErr) throw new Error(`race_entries (late-fill scan): ${nearErr.message}`);
+      for (const e of nearEntryRows || []) {
+        const key = `${e.race_id}|${e.team_id}`;
+        if (!entriesByRaceTeam.has(key)) entriesByRaceTeam.set(key, []);
+        entriesByRaceTeam.get(key).push(e.rider_id);
+      }
+    }
+  }
 
   // 8. Ryttere + abilities + fatigue for alle egnede hold (på tværs af puljer).
   const eligibleTeamIds = eligibleTeams.map((t) => t.id);
@@ -405,8 +517,16 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
         // udtagelse sletter markeringen, se raceSelection.js, men hasManual vinder alligevel
         // defensivt hvis sletningen skulle fejle/forsinkes).
         const isCleared = !hasManual && clearedRaceTeamKeys.has(key);
+        // #4201 (late_fill): et manager-hold er kun med naar loebet starter inden for
+        // horisonten OG enheden er helt tom. "Ryd dag"/"Ryd alt" (isCleared ovenfor)
+        // vinder fortsat ubetinget — ogsaa inden for horisonten; markeringen er
+        // spillerens eksplicitte "nej" og har aldrig en udloebsdato (gate 3, §7).
+        const existingUnitRiders = entriesByRaceTeam.get(key) || [];
+        const lateFillBlocked = mode === ASSISTANT_MODES.LATE_FILL
+          && ownerTeamIds.has(team.id)
+          && (!nearRaceIds.has(race.id) || existingUnitRiders.length > 0);
         // Afmeldt, igangværende, ryddet, eller FULD manuel trup → spring over (lås rytter-tid).
-        if (isWithdrawn || fullManual || isStarted || isCleared) {
+        if (isWithdrawn || fullManual || isStarted || isCleared || lateFillBlocked) {
           skipped += 1;
           // #3119-opfølgning (CYCLINGZONE-44, prod 5/8): en FULD manuel trup skal stadig
           // PRUNES. Enheden genererer ingen picks, men dens forældede is_auto_filled=true-
@@ -422,7 +542,10 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
           // Kun fullManual prunes: et AFMELDT løbs entries bevares bevidst (#1823, gen-
           // tilmelding giver samme trup), et IGANGVÆRENDE løbs felt er frosset (#1825), og
           // en RYDDET enhed (#2599) er uden for dette fixs scope.
-          if (fullManual && !isWithdrawn && !isStarted && !isCleared) {
+          // #4201: en late_fill-blokeret enhed maa ALDRIG stages med tomme picks —
+          // det ville diffe spillerens egne raekker vaek (hans auto-udfyld skriver
+          // ogsaa is_auto_filled=true). Sweepen skriver kun ind i tomme enheder.
+          if (fullManual && !isWithdrawn && !isStarted && !isCleared && !lateFillBlocked) {
             staged.push({ race_id: race.id, team_id: team.id, picks: [] });
           }
           // Manuelt ELLER igangværende løb låser sine ryttere i sit vindue (afmeldte/ryddede gør ikke).
@@ -440,6 +563,10 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
             const lockedRiderIds = new Set();
             if (hasManual) for (const rid of manualRiders) lockedRiderIds.add(rid);
             if (isStarted) for (const rid of startedRidersByRaceTeam.get(key) || []) lockedRiderIds.add(rid);
+            // #4201: en sprunget late_fill-enhed laaser HELE sin trup (manuel OG auto) —
+            // ellers regnes spillerens egne ryttere som frie og bliver udtaget til et
+            // overlappende naboloeb → dobbeltbooking (samme klasse som #3113).
+            if (lateFillBlocked) for (const rid of existingUnitRiders) lockedRiderIds.add(rid);
             if (lockedRiderIds.size) lockedWindows.push({ window, riderIds: [...lockedRiderIds] });
           }
           continue;
@@ -962,6 +1089,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
 
   return {
     dryRun,
+    mode, // #4201: den EFFEKTIVE tilstand (fail-safe kan have sat den til proactive).
     races: usableRaces.length,
     teams: processedTeamIds.size,
     generated,

@@ -33,6 +33,7 @@ import {
   ErrorState,
   TrophyIcon,
   BikeIcon,
+  ChevronRightIcon,
   CalendarIcon,
   PodiumIcon,
   FlagIcon,
@@ -536,7 +537,7 @@ export default function ResultaterPage() {
                       ))}
                     </div>
                     <div className="px-4 py-2 border-t border-cz-border">
-                      <Link to="/standings" className="text-xs text-cz-accent-t hover:underline">{t("seeAllStandings")}</Link>
+                      <Link to="/standings" className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline">{t("seeAllStandings")}<ChevronRightIcon size={12} aria-hidden="true" /></Link>
                     </div>
                   </Card>
                 )}
@@ -575,7 +576,7 @@ export default function ResultaterPage() {
                       ))}
                     </div>
                     <div className="px-4 py-2 border-t border-cz-border">
-                      <Link to="/standings?tab=riders" className="text-xs text-cz-accent-t hover:underline">{t("seeAllRiders")}</Link>
+                      <Link to="/standings?tab=riders" className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline">{t("seeAllRiders")}<ChevronRightIcon size={12} aria-hidden="true" /></Link>
                     </div>
                   </Card>
                 )}

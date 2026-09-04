@@ -1,6 +1,6 @@
 {
   "$comment": "Mirror of the live public schema (relation -> columns) + single-column foreign keys. Read by scripts/lint-schema-columns.mjs to reject selects against columns that do not exist. Generated — do NOT hand-edit. Refresh: node scripts/lint-schema-columns.mjs --update-snapshot (requires SUPABASE_DB_URL via Infisical). Refs #3586.",
-  "generatedAt": "2026-08-25T17:36:50.086Z",
+  "generatedAt": "2026-09-03T19:34:28.674Z",
   "relations": {
     "academy_graduation": {
       "kind": "table",
@@ -478,6 +478,81 @@
         "backed_up_at"
       ]
     },
+    "backup_4236_race_entries": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "rider_id",
+        "team_id",
+        "is_auto_filled",
+        "created_at",
+        "race_role",
+        "binding_span"
+      ]
+    },
+    "backup_4236_race_entry_clears": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "team_id",
+        "cleared_at"
+      ]
+    },
+    "backup_4236_race_stage_roles": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "stage_number",
+        "rider_id",
+        "race_role",
+        "effort",
+        "updated_at"
+      ]
+    },
+    "backup_4236_race_withdrawals": {
+      "kind": "table",
+      "columns": [
+        "race_id",
+        "team_id",
+        "withdrawn_at",
+        "withdrawn_reason"
+      ]
+    },
+    "backup_4236_rider_peak_plans": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "season_id",
+        "target_race_id",
+        "window_start",
+        "window_end",
+        "locked_at",
+        "created_at"
+      ]
+    },
+    "backup_4294_rider_peak_plans": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "season_id",
+        "target_race_id",
+        "window_start",
+        "window_end",
+        "locked_at",
+        "created_at",
+        "backed_up_at"
+      ]
+    },
+    "backup_4576_academy_intake_20260903": {
+      "kind": "table",
+      "columns": [
+        "row_id",
+        "row_before",
+        "captured_at"
+      ]
+    },
     "backup_academy_freeagent_fix_20260628": {
       "kind": "table",
       "columns": [
@@ -596,6 +671,58 @@
         "major_pivot_used_at",
         "season_start_satisfaction",
         "season_start_anchor_season_id"
+      ]
+    },
+    "backup_board_profiles_3514_rebuild_20260901": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "plan_type",
+        "focus",
+        "satisfaction",
+        "budget_modifier",
+        "current_goals",
+        "season_id",
+        "created_at",
+        "updated_at",
+        "negotiation_status",
+        "proposed_goals",
+        "negotiation_rounds",
+        "negotiated_at",
+        "plan_start_season_number",
+        "plan_end_season_number",
+        "seasons_completed",
+        "cumulative_stage_wins",
+        "cumulative_gc_wins",
+        "plan_start_balance",
+        "plan_start_sponsor_income",
+        "is_baseline",
+        "tradeoff_active_until_season_id",
+        "tradeoff_payload",
+        "major_pivot_used_at",
+        "season_start_satisfaction",
+        "season_start_anchor_season_id"
+      ]
+    },
+    "backup_board_vision_milestones_stale_20260901": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "team_id",
+        "milestone_key",
+        "goal",
+        "target_season_number",
+        "origin",
+        "weight",
+        "is_headline",
+        "status",
+        "evaluated_at",
+        "confidence_delta",
+        "created_at",
+        "updated_at",
+        "achieved_early",
+        "slot_open"
       ]
     },
     "backup_boardgoals_formation_20260630": {
@@ -957,6 +1084,32 @@
         "starter_depth_topped_up_at"
       ]
     },
+    "backup_fairplay_auctions_20260831": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "rider_id",
+        "seller_team_id",
+        "starting_price",
+        "current_price",
+        "current_bidder_id",
+        "min_increment",
+        "requested_start",
+        "calculated_end",
+        "actual_end",
+        "status",
+        "extension_count",
+        "created_at",
+        "is_guaranteed_sale",
+        "guaranteed_price",
+        "is_flash",
+        "cancelled_at",
+        "cancelled_by_user_id",
+        "is_youth",
+        "expired_intake_team_id",
+        "backed_up_at"
+      ]
+    },
     "backup_gate_log_3449_20260823": {
       "kind": "table",
       "columns": [
@@ -1192,6 +1345,14 @@
         "season_start_anchor_season_id"
       ]
     },
+    "board_profiles_4377_backup_20260901": {
+      "kind": "table",
+      "columns": [
+        "board_id",
+        "current_goals_before",
+        "captured_at"
+      ]
+    },
     "board_relations": {
       "kind": "table",
       "columns": [
@@ -1241,7 +1402,8 @@
         "reason_category",
         "created_at",
         "mandate_id",
-        "milestone_id"
+        "milestone_id",
+        "goal_states"
       ]
     },
     "board_vision_milestones": {
@@ -1259,7 +1421,9 @@
         "evaluated_at",
         "confidence_delta",
         "created_at",
-        "updated_at"
+        "updated_at",
+        "achieved_early",
+        "slot_open"
       ]
     },
     "countries": {
@@ -1276,6 +1440,15 @@
         "reputation_seed",
         "is_active",
         "created_at",
+        "updated_at"
+      ]
+    },
+    "cron_checkins": {
+      "kind": "table",
+      "columns": [
+        "job_slug",
+        "last_checkin_at",
+        "expected_cadence_seconds",
         "updated_at"
       ]
     },
@@ -2413,6 +2586,20 @@
         "synced_at"
       ]
     },
+    "rider_value_sunday_log": {
+      "kind": "table",
+      "columns": [
+        "id",
+        "run_date",
+        "started_at",
+        "completed_at",
+        "scanned",
+        "changed",
+        "written",
+        "market_sweep_ran",
+        "market_sweep_written"
+      ]
+    },
     "rider_watchlist": {
       "kind": "table",
       "columns": [
@@ -2473,7 +2660,8 @@
         "market_value",
         "generation_tag",
         "valuation_type",
-        "archetype_draw"
+        "archetype_draw",
+        "pending_academy_signing"
       ]
     },
     "riders_3570_backup_20260811": {
@@ -2497,6 +2685,14 @@
         "rider_id",
         "archetype_draw_before",
         "secondary_type_before",
+        "captured_at"
+      ]
+    },
+    "riders_4587_is_u25_backup_20260902": {
+      "kind": "table",
+      "columns": [
+        "rider_id",
+        "is_u25_before",
         "captured_at"
       ]
     },
@@ -2749,7 +2945,9 @@
         "proposing_confirmed",
         "receiving_confirmed",
         "created_at",
-        "updated_at"
+        "updated_at",
+        "proposing_archived_at",
+        "receiving_archived_at"
       ]
     },
     "team_board_members": {
@@ -2885,7 +3083,10 @@
         "pending_removal_at",
         "onboarding_progress_dismissed_at",
         "my_result_seen_race_id",
-        "dev_transition_dismissed_at"
+        "dev_transition_dismissed_at",
+        "next_season_signup_at",
+        "parked_at",
+        "assistant_autopick_enabled"
       ]
     },
     "traffic_events": {
@@ -2897,7 +3098,13 @@
         "path",
         "device",
         "is_bot",
-        "visit_hash"
+        "visit_hash",
+        "referrer",
+        "referrer_host",
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "landing_path"
       ]
     },
     "training_day_runs": {
@@ -3020,7 +3227,8 @@
         "discord_dm_prefs",
         "email_prefs",
         "discord_dm_failure_count",
-        "discord_disconnected_at"
+        "discord_disconnected_at",
+        "browser_language"
       ]
     },
     "value_transition_preview": {
@@ -3100,6 +3308,7 @@
     "board_profiles.season_start_anchor_season_id": "seasons",
     "board_profiles.team_id": "teams",
     "board_profiles.tradeoff_active_until_season_id": "seasons",
+    "board_profiles_4377_backup_20260901.board_id": "board_profiles",
     "board_relations.team_id": "teams",
     "board_request_log.board_id": "board_profiles",
     "board_request_log.season_id": "seasons",
@@ -3200,6 +3409,7 @@
     "riders.pending_team_id": "teams",
     "riders.team_id": "teams",
     "riders_3593_backup_20260811.rider_id": "riders",
+    "riders_4587_is_u25_backup_20260902.rider_id": "riders",
     "roadmap_votes.item_id": "roadmap_items",
     "scout_actions.rider_id": "riders",
     "scout_actions.season_id": "seasons",

@@ -21,6 +21,7 @@ import { reportActionFailure } from "../lib/actionTelemetry.js";
 import {
   ExchangeIcon, CheckIcon, PageLoader, ToastViewport,
   PageHeader, Button, DataTable, EmptyState, StarIcon, FilterIcon,
+  ChevronLeftIcon, ChevronRightIcon,
 } from "../components/ui";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
@@ -493,10 +494,12 @@ export default function WatchlistPage() {
               {/* Pagination */}
               <div className="mt-3 flex justify-end gap-2">
                 <Button variant="secondary" size="sm" disabled={safePage <= 1}
+                  iconLeft={<ChevronLeftIcon size={13} aria-hidden="true" />}
                   onClick={() => setPage(p => Math.max(1, p - 1))}>
                   {t("prev")}
                 </Button>
                 <Button variant="secondary" size="sm" disabled={safePage >= pageCount}
+                  iconRight={<ChevronRightIcon size={13} aria-hidden="true" />}
                   onClick={() => setPage(p => Math.min(pageCount, p + 1))}>
                   {t("next")}
                 </Button>

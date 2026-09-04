@@ -68,7 +68,7 @@
         "text": "division-placering ved sæsonafslutning"
       }
     },
-    "ctaNegotiate": "Forhandl din første plan med bestyrelsen →",
+    "ctaNegotiate": "Forhandl din første plan med bestyrelsen",
     "ctaShowTour": "Vis mig rundt"
   },
   "planLabels": {
@@ -328,7 +328,15 @@
     "focusLabel": "Fokus",
     "sending": "Sender...",
     "send": "Send request",
-    "errorFallback": "Kunne ikke sende bestyrelsesforespørgslen."
+    "errorFallback": "Kunne ikke sende bestyrelsesforespørgslen.",
+    "preview": "Se forslaget",
+    "previewing": "Henter forslag...",
+    "previewHeading": "Foreslået ændring",
+    "previewSubheading": "Intet er anvendt endnu. Se det igennem, og accepter eller behold din nuværende plan.",
+    "accept": "Accepter",
+    "applying": "Anvender...",
+    "keepCurrent": "Behold nuværende plan",
+    "previewErrorFallback": "Kunne ikke hente forslaget."
   },
   "consequence": {
     "heading": "Aktive konsekvenser",
@@ -371,7 +379,7 @@
   },
   "plan": {
     "autoConfigured": "Konfigureres automatisk ved næste sæsonstart",
-    "negotiateExpired": "Forhandl ny plan →",
+    "negotiateExpired": "Forhandl ny plan",
     "goalsLabel": "Mål",
     "seasonsRemaining": "{count, plural, one {1 sæson tilbage} other {# sæsoner tilbage}}",
     "hideDetails": "Skjul detaljer",
@@ -417,7 +425,7 @@
     "horizonLabel": "Tidshorisont",
     "horizonDuration": "Planen løber over {count, plural, one {1 sæson} other {# sæsoner}}, mål evalueres løbende",
     "requirementsHeading": "Bestyrelsens krav",
-    "startNegotiation": "Start forhandling →",
+    "startNegotiation": "Start forhandling",
     "startBlockedNoRequirements": "Der blev ikke genereret nogen krav til dette fokus. Prøv et andet fokus.",
     "errorProposal": "Kunne ikke hente bestyrelsens forslag.",
     "errorSign": "Kunne ikke signere bestyrelsesplanen.",
@@ -425,12 +433,12 @@
     "step2Subtitle": "Gennemgå bestyrelsens krav ét ad gangen",
     "goalCounter": "Mål {current}/{total}",
     "alreadyNegotiated": "Allerede forhandlet",
-    "negotiateDown": "Forhandl ned ↓",
+    "negotiateDown": "Forhandl ned",
     "cannotNegotiate": "Kan ikke forhandles",
-    "accept": "Accepter →",
+    "accept": "Accepter",
     "compromiseHeading": "Bestyrelsen har accepteret kompromis",
     "compromiseBody": "Straf halveret. Accepter det forhandlede mål?",
-    "acceptNegotiated": "Accepter forhandlet mål →",
+    "acceptNegotiated": "Accepter forhandlet mål",
     "negotiationsUsed": "{count, plural, one {1 forhandling brugt} other {# forhandlinger brugt}}",
     "step3Title": "Underskrift",
     "step3Subtitle": "{plan}, løber over {count, plural, one {1 sæson} other {# sæsoner}}",
@@ -453,9 +461,9 @@
     "multiRenewalBodyLast": "Sidste plan i køen.",
     "singleRenewalHeading": "{plan} udløbet",
     "singleRenewalBody": "Forhandl en ny {plan} med bestyrelsen.",
-    "back": "← Tilbage",
-    "backToPlan": "← Tilbage til {plan}",
-    "backToOverview": "← Tilbage til oversigt",
+    "back": "Tilbage",
+    "backToPlan": "Tilbage til {plan}",
+    "backToOverview": "Tilbage til oversigt",
     "dialogAria": "Forhandling af bestyrelsesplan"
   },
   "a11y": {
@@ -1783,7 +1791,8 @@
       "title": "Bestyrelseslokalet",
       "subtitle": "{chair}, formand · {dna}",
       "subtitleChairOnly": "{chair}, formand",
-      "subtitleNoChair": "Bestyrelsen"
+      "subtitleNoChair": "Bestyrelsen",
+      "enterMeetingCta": "Gå til årsmødet"
     },
     "status": {
       "on_track": "På sporet",
@@ -1902,6 +1911,63 @@
       "youthDebut": "Ungdomsdebut: {name}, {age}. “Det er den nordiske vej.”",
       "deficitWeek": "Underskudsuge, {amount}. “Marginer, ikke mirakler.”",
       "captainSaleWarning": "Vi sælger ikke en kaptajn midt i sæsonen uden en plan. “Vis mig planen.”"
+    },
+    "meeting": {
+      "route": {
+        "loading": "Indlæser årsmøde"
+      },
+      "header": {
+        "title": "Årsmøde · sæson {season}",
+        "subtitle": "Bestyrelsen foreslår dit mandat. Justér det, stil ét ønske, underskriv.",
+        "confidenceMeta": "Tillid {confidence} · {count} justeringer tilbage",
+        "confidenceMetaNoValue": "{count} justeringer tilbage",
+        "deadline": "Ubesvarede mandater underskrives automatisk om {days, plural, one {# dag} other {# dage}}"
+      },
+      "steps": {
+        "focus": "Fokus",
+        "mandate": "Mandat",
+        "request": "Anmodning",
+        "sign": "Underskriv"
+      },
+      "focus": {
+        "label": "Fokus"
+      },
+      "mandate": {
+        "title": "Foreslået mandat · fokus: {focus}",
+        "meta": "{count, plural, one {# mål} other {# mål}} · {used} af {allowed} justeringer brugt",
+        "reward": "Gevinst +{bonus} tillid · tab -{penalty}",
+        "rewardWas": "Gevinst +{bonus} tillid · tab -{penalty} · var {was}",
+        "choice": {
+          "easier": "Lettere",
+          "keep": "Behold",
+          "stretch": "Stræk"
+        },
+        "choiceDisabledEasier": "Dette mål kan ikke lempes yderligere.",
+        "choiceDisabledStretch": "Dette mål kan ikke strækkes yderligere.",
+        "choiceDisabledBudget": "Du har brugt alle dine justeringer til dette møde.",
+        "reactionAttribution": "{name} bakker op om {choice}"
+      },
+      "visionSlot": {
+        "title": "Bestyrelsen foreslår en ny milepæl",
+        "targetSeason": "Mål: sæson {season}",
+        "accept": "Accepter",
+        "decline": "Afvis"
+      },
+      "request": {
+        "title": "Din anmodning · 1 pr. møde",
+        "meta": "Et afslag kommer altid med et modtilbud",
+        "changeRequest": "Skift anmodning",
+        "select": "Vælg",
+        "none": "Ingen anmodning denne gang"
+      },
+      "sign": {
+        "hint": "Hurtigste vej: accepter forslaget og underskriv. To klik.",
+        "back": "Tilbage",
+        "button": "Underskriv mandat",
+        "signing": "Underskriver",
+        "error": "Noget gik galt. Prøv igen.",
+        "focusChangeError": "Kunne ikke opdatere fokus. Prøv igen."
+      }
     }
   },
   "vision": {

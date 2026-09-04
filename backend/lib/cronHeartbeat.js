@@ -34,6 +34,7 @@
 
 import { ALL_CRON_MONITORS } from "./cronMonitorRegistry.js";
 import { withOpsMention } from "./opsWebhook.js";
+import { shouldAlertOnChange } from "./opsAlertDedupe.js";
 
 export const CRON_CHECKINS_TABLE = "cron_checkins";
 const HEARTBEAT_ALERT_KEY = "cron-heartbeat";
@@ -205,42 +206,31 @@ export async function runCronHeartbeatSweepCron({
     .sort()
     .join(",");
 
-  const { data: stateRow, error: stateErr } = await supabase
-    .from("ops_alert_state")
-    .select("signature")
-    .eq("alert_key", HEARTBEAT_ALERT_KEY)
-    .maybeSingle();
-  if (stateErr) {
-    captureExceptionFn?.(new Error(`ops_alert_state read (cron-heartbeat): ${stateErr.message}`), {
-      tags: { cron: "cron-heartbeat-sweep" },
-    });
-    return { overdue, alerted: false };
-  }
-  const changed = (stateRow?.signature ?? "") !== signature;
+  // #2738: dedup-read/upsert-dansen flyttet til den delte opsAlertDedupe.js
+  // (#4752/#4754). alertOnReadError:false bevarer denne vagts oprindelige
+  // fail-safe-STILLE semantik ved en ops_alert_state-læsefejl (kan vi ikke
+  // afgøre om sættet er nyt, tier vi hellere end at risikere gen-spam) — det
+  // er IKKE hjælperens egen default (fail-open), se opsAlertDedupe.js's header.
+  const { alert: changed } = await shouldAlertOnChange({
+    supabase,
+    alertKey: HEARTBEAT_ALERT_KEY,
+    signature,
+    now,
+    captureExceptionFn,
+    alertOnReadError: false,
+  });
 
-  if (overdue.length > 0 && changed) {
+  // "changed" alene er ikke nok til at sende Discord-besked: en tom overdue-
+  // liste (recovery) ÆNDRER signaturen (og skal persisteres), men er ikke i
+  // sig selv alarmværdig — samme skel som før migreringen.
+  const alerted = overdue.length > 0 && changed;
+
+  if (alerted) {
     const url = getOpsWebhookFn ? await getOpsWebhookFn() : null;
     if (url && sendWebhookFn) {
       await sendWebhookFn(url, withOpsMention(buildOverdueEmbed(overdue, now)));
     }
   }
 
-  if (changed) {
-    const { error: upsertErr } = await supabase.from("ops_alert_state").upsert(
-      {
-        alert_key: HEARTBEAT_ALERT_KEY,
-        signature,
-        ...(overdue.length > 0 ? { last_alerted_at: now.toISOString() } : {}),
-        updated_at: now.toISOString(),
-      },
-      { onConflict: "alert_key" }
-    );
-    if (upsertErr) {
-      captureExceptionFn?.(new Error(`ops_alert_state upsert (cron-heartbeat): ${upsertErr.message}`), {
-        tags: { cron: "cron-heartbeat-sweep" },
-      });
-    }
-  }
-
-  return { overdue, alerted: overdue.length > 0 && changed };
+  return { overdue, alerted };
 }

@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { runEmailRaceDigestSweep, DIGEST_HOUR_COPENHAGEN, DIGEST_ACTIVITY_WINDOW_MS } from "./emailRaceDigestSweep.js";
-import { copenhagenHour, copenhagenMidnightUTC } from "./copenhagenTime.js";
-
-// #2853: same-day timestamp as IN_WINDOW_NOW, well inside the 14-day
-// activity window, used as the default last_seen for any fixture user row
-// that doesn't explicitly test the activity filter.
-const DEFAULT_ACTIVE_LAST_SEEN = "2026-07-20T10:00:00Z";
+import {
+  runEmailRaceDigestSweep,
+  DIGEST_HOUR_COPENHAGEN,
+  DIGEST_ABSENCE_WINDOW_MS,
+  DIGEST_MAX_PER_ABSENCE,
+} from "./emailRaceDigestSweep.js";
+import { copenhagenHour, copenhagenIsoWeekString } from "./copenhagenTime.js";
 
 // July -> CEST (UTC+2). 17:15 UTC = 19:15 Copenhagen (inside the digest hour);
 // 16:15 UTC = 18:15 Copenhagen (outside it). Asserted via copenhagenHour
@@ -15,28 +15,25 @@ const DEFAULT_ACTIVE_LAST_SEEN = "2026-07-20T10:00:00Z";
 const IN_WINDOW_NOW = new Date("2026-07-20T17:15:00Z");
 const OUT_OF_WINDOW_NOW = new Date("2026-07-20T16:15:00Z");
 
-function makeSupabase({ raceResultRows = [], userRows = [] } = {}) {
+// Well inside DIGEST_ABSENCE_WINDOW_MS (3 days) before IN_WINDOW_NOW -- the
+// default last_seen for a fixture user that should count as absent, unless a
+// test overrides it to probe the boundary or the "still active" case.
+const ABSENT_LAST_SEEN = new Date(IN_WINDOW_NOW.getTime() - DIGEST_ABSENCE_WINDOW_MS - 24 * 60 * 60 * 1000).toISOString();
+
+function makeSupabase({ teamRows = [], userRows = [], emailLogRows = [], raceResultsByTeam = {} } = {}) {
   return {
     from(table) {
-      if (table === "race_results") {
+      if (table === "teams") {
         const eqFilters = [];
-        let gteFilter = null;
         let notNullCol = null;
         const b = {
           select() { return b; },
-          gte(col, val) { gteFilter = [col, val]; return b; },
           eq(col, val) { eqFilters.push([col, val]); return b; },
           not(col, op, val) { if (op === "is" && val === null) notNullCol = col; return b; },
           order() { return b; },
           range() {
-            let out = [...raceResultRows];
-            if (gteFilter) out = out.filter((r) => r.imported_at >= gteFilter[1]);
-            for (const [col, val] of eqFilters) {
-              const key = col.includes(".") ? col.split(".")[1] : col;
-              out = out.filter((r) =>
-                col.startsWith("team.") ? (r.team?.[key] ?? false) === val : (r[key] ?? null) === val
-              );
-            }
+            let out = [...teamRows];
+            for (const [col, val] of eqFilters) out = out.filter((r) => (r[col] ?? false) === val);
             if (notNullCol) out = out.filter((r) => r[notNullCol] != null);
             return Promise.resolve({ data: out, error: null });
           },
@@ -46,286 +43,438 @@ function makeSupabase({ raceResultRows = [], userRows = [] } = {}) {
       if (table === "users") {
         return {
           select() { return this; },
-          // #2853: default every fixture row to "recently active, no opt-out"
-          // unless a test explicitly overrides last_seen/email_prefs, so the
-          // pre-#2853 tests don't all need updating just to add an activity
-          // timestamp.
-          in: async (_col, ids) => ({
-            data: userRows
-              .filter((u) => ids.includes(u.id))
-              .map((u) => ({ last_seen: DEFAULT_ACTIVE_LAST_SEEN, email_prefs: {}, ...u })),
-            error: null,
-          }),
+          in: async (_col, ids) => ({ data: userRows.filter((u) => ids.includes(u.id)), error: null }),
         };
+      }
+      if (table === "email_log") {
+        let typeFilter = null;
+        let idsFilter = [];
+        const b = {
+          select() { return b; },
+          eq(col, val) { if (col === "email_type") typeFilter = val; return b; },
+          in(_col, ids) { idsFilter = ids; return b; },
+          order() { return b; },
+          range() {
+            let out = emailLogRows.filter((r) => idsFilter.includes(r.user_id));
+            if (typeFilter) out = out.filter((r) => r.email_type === typeFilter);
+            return Promise.resolve({ data: out, error: null });
+          },
+        };
+        return b;
+      }
+      if (table === "race_results") {
+        let teamId = null;
+        let sinceFilter = null;
+        let notNullCol = null;
+        const b = {
+          select() { return b; },
+          eq(col, val) { if (col === "team_id") teamId = val; return b; },
+          gte(col, val) { if (col === "imported_at") sinceFilter = val; return b; },
+          not(col, op, val) { if (op === "is" && val === null) notNullCol = col; return b; },
+          order() { return b; },
+          range() {
+            let out = raceResultsByTeam[teamId] || [];
+            if (sinceFilter) out = out.filter((r) => r.imported_at >= sinceFilter);
+            if (notNullCol) out = out.filter((r) => r[notNullCol] != null);
+            return Promise.resolve({ data: out, error: null });
+          },
+        };
+        return b;
       }
       throw new Error(`unexpected table: ${table}`);
     },
   };
 }
 
-const row = ({ rank, rider_name, team_id, userId, raceId, raceName, imported_at = "2026-07-20T10:00:00Z", human = {} }) => ({
-  rank, rider_name, team_id,
-  race: { id: raceId, name: raceName },
-  team: { user_id: userId, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, ...human },
-  imported_at,
+const team = (id, extra) => ({
+  id, name: `Team ${id}`, user_id: `user-${id}`,
+  is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, ...extra,
 });
+
+// consent_preferences defaults to an explicit email_marketing opt-in so the
+// pre-existing tests below (absence window, dedupe, cap, results) exercise
+// an already-consented manager and don't need to know about #4654 -- the
+// dedicated consent-gate section further down overrides this per case.
+const user = (id, extra) => ({
+  id,
+  email: `${id}@example.com`,
+  last_seen: ABSENT_LAST_SEEN,
+  email_prefs: {},
+  consent_preferences: { email_marketing: true },
+  ...extra,
+});
+
+const result = ({ raceId, raceName, rank, riderName, importedAt }) => ({
+  rank, rider_name: riderName, race_id: raceId, race: { id: raceId, name: raceName }, imported_at: importedAt,
+});
+
+// ─── hour gate (unchanged from before #4650) ───────────────────────────────
 
 test("efter kl. 19 samme dag (deploy-restart catch-up) koerer sweepen stadig (#3475-klassen)", async () => {
   const CATCHUP_NOW = new Date("2026-07-20T18:15:00Z"); // 20:15 Copenhagen
   assert.ok(copenhagenHour(CATCHUP_NOW) > DIGEST_HOUR_COPENHAGEN);
-  const supabase = makeSupabase({ raceResultRows: [], userRows: [] });
+  const supabase = makeSupabase({});
   const result = await runEmailRaceDigestSweep({ supabase, now: CATCHUP_NOW, isActive: async () => true });
   assert.notEqual(result.skippedReason, "outside_hour_window");
 });
 
 test("outside the 19:00-19:59 Copenhagen hour, the sweep does no DB work at all", async () => {
   assert.ok(copenhagenHour(OUT_OF_WINDOW_NOW) < DIGEST_HOUR_COPENHAGEN);
-  const supabase = {
-    from() { throw new Error("must not query any table outside the digest hour"); },
-  };
-  const result = await runEmailRaceDigestSweep({
+  const supabase = { from() { throw new Error("must not query any table outside the digest hour"); } };
+  const res = await runEmailRaceDigestSweep({
     supabase, now: OUT_OF_WINDOW_NOW, isActive: async () => true,
     send: async () => { throw new Error("must not send"); },
   });
-  assert.equal(result.skippedReason, "outside_hour_window");
-  assert.equal(result.sent, 0);
+  assert.equal(res.skippedReason, "outside_hour_window");
+  assert.equal(res.sent, 0);
 });
 
-test("inside the digest hour but flag inactive: no-op", async () => {
+test("inside the digest hour but flag inactive: no-op, no team/user query", async () => {
   assert.equal(copenhagenHour(IN_WINDOW_NOW), DIGEST_HOUR_COPENHAGEN);
-  const supabase = makeSupabase({ raceResultRows: [row({ rank: 1, rider_name: "R", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })] });
-  const result = await runEmailRaceDigestSweep({
+  const supabase = { from() { throw new Error("must not query any table when the flag is inactive"); } };
+  const res = await runEmailRaceDigestSweep({
     supabase, now: IN_WINDOW_NOW, isActive: async () => false,
     send: async () => { throw new Error("must not send"); },
   });
-  assert.deepEqual(result, { candidates: 0, sent: 0, skipped: 0, failed: 0 });
+  assert.deepEqual(res, { candidates: 0, sent: 0, skipped: 0, failed: 0 });
 });
+
+// ─── human-team filter (unchanged) ──────────────────────────────────────────
 
 test("excludes AI/bank/frozen/test-account teams from the digest", async () => {
-  const rows = [
-    row({ rank: 1, rider_name: "Human Rider", team_id: "t-human", userId: "user-human", raceId: "race-1", raceName: "Race One" }),
-    row({ rank: 1, rider_name: "AI Rider", team_id: "t-ai", userId: "user-ai", raceId: "race-1", raceName: "Race One", human: { is_ai: true } }),
-    row({ rank: 1, rider_name: "Bank Rider", team_id: "t-bank", userId: "user-bank", raceId: "race-1", raceName: "Race One", human: { is_bank: true } }),
-    row({ rank: 1, rider_name: "Frozen Rider", team_id: "t-frozen", userId: "user-frozen", raceId: "race-1", raceName: "Race One", human: { is_frozen: true } }),
-    row({ rank: 1, rider_name: "Test Rider", team_id: "t-test", userId: "user-test", raceId: "race-1", raceName: "Race One", human: { is_test_account: true } }),
+  const teamRows = [
+    team("t-human", {}),
+    team("t-ai", { is_ai: true }),
+    team("t-bank", { is_bank: true }),
+    team("t-frozen", { is_frozen: true }),
+    team("t-test", { is_test_account: true }),
   ];
-  const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "user-human", email: "human@example.com" }] });
+  const userRows = teamRows.map((t) => user(t.user_id));
+  const raceResultsByTeam = Object.fromEntries(
+    teamRows.map((t) => [t.id, [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "Rider", importedAt: "2026-07-19T10:00:00Z" })]])
+  );
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const result = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
 
-  assert.equal(result.candidates, 1);
-  assert.deepEqual(sendCalls.map((c) => c.userId), ["user-human"]);
+  assert.equal(res.candidates, 1);
+  assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-human"]);
 });
 
-test("picks the best (lowest) rank per race per manager, never invents data", async () => {
-  const rows = [
-    row({ rank: 5, rider_name: "Rider A", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race One" }),
-    row({ rank: 2, rider_name: "Rider B", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race One" }),
-    row({ rank: 10, rider_name: "Rider C", team_id: "t1", userId: "u1", raceId: "race-2", raceName: "Race Two" }),
-  ];
-  const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "u1", email: "u1@example.com" }] });
+// ─── #4650 · 3-day absence window (opposite direction from the pre-#4650 rule) ─
+
+test("a manager seen within the last 3 days is never sent to (still active, not absent)", async () => {
+  const activeLastSeen = new Date(IN_WINDOW_NOW.getTime() - 24 * 60 * 60 * 1000).toISOString(); // 1 day ago
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1", { last_seen: activeLastSeen })];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const send = async () => { throw new Error("must not send to a still-active manager"); };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.candidates, 0);
+  assert.equal(res.sent, 0);
+});
+
+test("a manager seen EXACTLY 3 days ago is not yet absent (< cutoff, not <=)", async () => {
+  const boundaryLastSeen = new Date(IN_WINDOW_NOW.getTime() - DIGEST_ABSENCE_WINDOW_MS).toISOString();
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1", { last_seen: boundaryLastSeen })];
+  const supabase = makeSupabase({ teamRows, userRows });
+  const send = async () => { throw new Error("must not send at the exact boundary"); };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.candidates, 0);
+});
+
+test("a manager seen just over 3 days ago IS absent and is considered", async () => {
+  const justOver = new Date(IN_WINDOW_NOW.getTime() - DIGEST_ABSENCE_WINDOW_MS - 60 * 1000).toISOString();
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1", { last_seen: justOver })];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
 
+  assert.equal(res.candidates, 1);
   assert.equal(sendCalls.length, 1);
-  // sendCalls[0] is the args object passed to `send` (built by buildRaceDigestEmail
-  // internally, so we assert through the rendered html instead of raw results).
+});
+
+test("a manager with no last_seen at all is excluded, never treated as absent", async () => {
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1", { last_seen: null })];
+  const supabase = makeSupabase({ teamRows, userRows });
+  const send = async () => { throw new Error("must not send without a last_seen timestamp"); };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.candidates, 0);
+});
+
+test("email_prefs race_digest=false (or all=false) is excluded even though absent", async () => {
+  const teamRows = [team("t-off"), team("t-all-off"), team("t-in")];
+  const userRows = [
+    user("user-t-off", { email_prefs: { race_digest: false } }),
+    user("user-t-all-off", { email_prefs: { all: false } }),
+    user("user-t-in", {}),
+  ];
+  const raceResultsByTeam = { "t-in": [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.candidates, 1, "only the opted-in absentee counts as a candidate");
+  assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-in"]);
+});
+
+// ─── #4654 · consent gate (consent_preferences.email_marketing opt-in) ────
+
+test("only an EXPLICIT consent_preferences.email_marketing=true is sent to -- false, null, and a missing object/key all exclude", async () => {
+  const teamRows = [
+    team("t-true"), team("t-false"), team("t-null"), team("t-no-object"), team("t-no-key"),
+  ];
+  const userRows = [
+    user("user-t-true", { consent_preferences: { email_marketing: true } }),
+    user("user-t-false", { consent_preferences: { email_marketing: false } }),
+    user("user-t-null", { consent_preferences: { email_marketing: null } }),
+    user("user-t-no-object", { consent_preferences: null }), // DB default -- banner never answered post-login
+    user("user-t-no-key", { consent_preferences: { analytics: true, marketing: true } }), // answered, but not this category
+  ];
+  const raceResultsByTeam = Object.fromEntries(
+    teamRows.map((t) => [t.id, [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })]])
+  );
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.candidates, 1, "only the explicit email_marketing=true user counts as a candidate");
+  assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-true"]);
+});
+
+test("email_marketing=true alone isn't enough: the consent gate combines with the existing email_prefs opt-out", async () => {
+  const teamRows = [team("t-both-in"), team("t-unsubbed")];
+  const userRows = [
+    user("user-t-both-in", { consent_preferences: { email_marketing: true }, email_prefs: {} }),
+    user("user-t-unsubbed", { consent_preferences: { email_marketing: true }, email_prefs: { race_digest: false } }),
+  ];
+  const raceResultsByTeam = Object.fromEntries(
+    teamRows.map((t) => [t.id, [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })]])
+  );
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.candidates, 1);
+  assert.deepEqual(sendCalls.map((c) => c.userId), ["user-t-both-in"]);
+});
+
+// ─── #4650 · at most 1 per ISO week (dedupe key) ───────────────────────────
+
+test("dedupeKey embeds the Copenhagen ISO week, not a calendar date", async () => {
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1")];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(sendCalls[0].dedupeKey, `digest:user-t1:${copenhagenIsoWeekString(IN_WINDOW_NOW)}`);
+  assert.equal(sendCalls[0].type, "race_digest");
+});
+
+// ─── #4650 · at most 2 per absence period ──────────────────────────────────
+
+test("a manager already sent 2 digests since their current last_seen is skipped (cap reached)", async () => {
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1")];
+  const emailLogRows = [
+    { user_id: "user-t1", email_type: "race_digest", created_at: new Date(new Date(ABSENT_LAST_SEEN).getTime() + 60 * 60 * 1000).toISOString() },
+    { user_id: "user-t1", email_type: "race_digest", created_at: new Date(new Date(ABSENT_LAST_SEEN).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() },
+  ];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, emailLogRows, raceResultsByTeam });
+  const send = async () => { throw new Error("must not send a 3rd digest for the same absence period"); };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.candidates, 1);
+  assert.equal(res.sent, 0);
+  assert.equal(res.skipped, 1);
+  assert.equal(DIGEST_MAX_PER_ABSENCE, 2);
+});
+
+test("a manager with only 1 prior digest this absence period can still receive a 2nd", async () => {
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1")];
+  const emailLogRows = [
+    { user_id: "user-t1", email_type: "race_digest", created_at: new Date(new Date(ABSENT_LAST_SEEN).getTime() + 60 * 60 * 1000).toISOString() },
+  ];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, emailLogRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.sent, 1);
+  assert.equal(sendCalls.length, 1);
+});
+
+test("digests sent BEFORE the player's most recent visit don't count toward the cap (a fresh absence period resets it)", async () => {
+  // The player came back (last_seen is now recent-ish, but still >3 days old
+  // relative to IN_WINDOW_NOW) AFTER those 2 old digests were sent -- a new
+  // absence period has started since, so the 2-per-absence cap must not see
+  // rows from the PREVIOUS period.
+  const priorLastSeen = new Date(new Date(ABSENT_LAST_SEEN).getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const currentLastSeen = ABSENT_LAST_SEEN; // player returned since, then went absent again
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1", { last_seen: currentLastSeen })];
+  const emailLogRows = [
+    { user_id: "user-t1", email_type: "race_digest", created_at: new Date(new Date(priorLastSeen).getTime() + 60 * 60 * 1000).toISOString() },
+    { user_id: "user-t1", email_type: "race_digest", created_at: new Date(new Date(priorLastSeen).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() },
+  ];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, emailLogRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.sent, 1, "the 2 old digests belong to a prior absence period the player already returned from");
+  assert.equal(sendCalls.length, 1);
+});
+
+// ─── #4650 · only results since the player's last visit ───────────────────
+
+test("only includes race_results imported at or after the player's last_seen, never earlier ones", async () => {
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1")];
+  const beforeLastSeen = new Date(new Date(ABSENT_LAST_SEEN).getTime() - 60 * 60 * 1000).toISOString();
+  const afterLastSeen = new Date(new Date(ABSENT_LAST_SEEN).getTime() + 60 * 60 * 1000).toISOString();
+  const raceResultsByTeam = {
+    t1: [
+      result({ raceId: "r-old", raceName: "Old Race", rank: 1, riderName: "Old Rider", importedAt: beforeLastSeen }),
+      result({ raceId: "r-new", raceName: "New Race", rank: 1, riderName: "New Rider", importedAt: afterLastSeen }),
+    ],
+  };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.ok(sendCalls[0].html.includes("New Rider"));
+  assert.ok(!sendCalls[0].html.includes("Old Rider"), "a result from before the player's last visit must never appear");
+});
+
+test("no results since the player's last visit: no email sent at all (never an empty digest)", async () => {
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1")];
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam: {} });
+  const send = async () => { throw new Error("must not send an empty come-back digest"); };
+
+  const res = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
+  assert.equal(res.candidates, 1);
+  assert.equal(res.sent, 0);
+  assert.equal(res.skipped, 1);
+});
+
+test("picks the best (lowest) rank per race, never invents data", async () => {
+  const teamRows = [team("t1")];
+  const userRows = [user("user-t1")];
+  const raceResultsByTeam = {
+    t1: [
+      result({ raceId: "race-1", raceName: "Race One", rank: 5, riderName: "Rider A", importedAt: "2026-07-19T10:00:00Z" }),
+      result({ raceId: "race-1", raceName: "Race One", rank: 2, riderName: "Rider B", importedAt: "2026-07-19T11:00:00Z" }),
+      result({ raceId: "race-2", raceName: "Race Two", rank: 10, riderName: "Rider C", importedAt: "2026-07-19T12:00:00Z" }),
+    ],
+  };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
+  const sendCalls = [];
+  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
+
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
+
   assert.ok(sendCalls[0].html.includes("Rider B"), "keeps the best (rank 2) result for race-1");
   assert.ok(!sendCalls[0].html.includes("Rider A"), "drops the worse (rank 5) duplicate for the same race");
   assert.ok(sendCalls[0].html.includes("Rider C"), "keeps the single result for race-2");
 });
 
-test("dedupeKey includes the Copenhagen calendar date", async () => {
-  const rows = [row({ rank: 1, rider_name: "R", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
-  const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "u1", email: "u1@example.com" }] });
+test("subject and body carry the manager's real team name", async () => {
+  const teamRows = [team("t1", { name: "Team Velodrome" })];
+  const userRows = [user("user-t1")];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
 
-  assert.equal(sendCalls[0].dedupeKey, "digest:u1:2026-07-20");
-  assert.equal(sendCalls[0].type, "race_digest");
+  assert.equal(sendCalls[0].subject, "Team Velodrome raced while you were away");
 });
 
-test("only includes results imported today (Copenhagen day) via imported_at >= copenhagenMidnightUTC", async () => {
-  const sinceIso = copenhagenMidnightUTC(IN_WINDOW_NOW).toISOString();
-  const yesterday = new Date(new Date(sinceIso).getTime() - 60 * 60 * 1000).toISOString(); // 1h before today's Copenhagen midnight
-  const rows = [
-    row({ rank: 1, rider_name: "Today Rider", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race", imported_at: sinceIso }),
-    row({ rank: 1, rider_name: "Yesterday Rider", team_id: "t2", userId: "u2", raceId: "race-2", raceName: "Race Two", imported_at: yesterday }),
-  ];
-  const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "u1", email: "u1@example.com" }, { id: "u2", email: "u2@example.com" }] });
+// ─── #2853 DA follow-up: users.language selects the mail's copy ───────────
+
+test("users.language 'da' renders the Danish digest copy", async () => {
+  const teamRows = [team("t1", { name: "Team Velodrome" })];
+  const userRows = [user("user-t1", { language: "da" })];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
 
-  const result = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
 
-  assert.equal(result.candidates, 1);
-  assert.deepEqual(sendCalls.map((c) => c.userId), ["u1"]);
+  assert.equal(sendCalls[0].subject, "Team Velodrome kørte mens du var væk");
+  assert.ok(sendCalls[0].html.includes("placering 1 i Race"));
 });
 
-// ─── #3399 · narrative headline leads the digest ──────────────────────────
-
-test("passes the narrative headline for the manager's BEST (lowest-rank) race today to buildRaceDigestEmail", async () => {
-  const rows = [
-    row({ rank: 5, rider_name: "Rider A", team_id: "t1", userId: "u1", raceId: "race-worse", raceName: "Race Worse" }),
-    row({ rank: 1, rider_name: "Rider B", team_id: "t1", userId: "u1", raceId: "race-best", raceName: "Race Best" }),
-  ];
-  const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "u1", email: "u1@example.com" }] });
+test("any users.language other than 'da' (including missing) renders the English digest copy", async () => {
+  const teamRows = [team("t1", { name: "Team Velodrome" })];
+  const userRows = [user("user-t1", { language: undefined })];
+  const raceResultsByTeam = { t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R", importedAt: "2026-07-19T10:00:00Z" })] };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
   const sendCalls = [];
   const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
-  const narrativeCalls = [];
-  const fetchNarrative = async ({ race }) => {
-    narrativeCalls.push(race.id);
-    return race.id === "race-best" ? { headlineText: "Krogh takes the sprint", ranksByUser: new Map() } : null;
-  };
 
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret", fetchNarrative });
+  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s" });
 
-  assert.deepEqual(narrativeCalls, ["race-best"], "kun det bedste løb slår rubrik op, ikke det ringere");
-  assert.ok(sendCalls[0].html.includes("Krogh takes the sprint"));
-});
-
-test("narrative fetch failure degrades to no headline, never throws", async () => {
-  const rows = [row({ rank: 1, rider_name: "Rider A", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
-  const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "u1", email: "u1@example.com" }] });
-  const sendCalls = [];
-  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
-  const result = await runEmailRaceDigestSweep({
-    supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret",
-    fetchNarrative: async () => { throw new Error("boom"); },
-  });
-  assert.equal(result.sent, 1);
-  assert.ok(!sendCalls[0].html.includes("Your best moment"));
-});
-
-test("narrative lookup is memoized per raceId across managers sharing the same race", async () => {
-  const rows = [
-    row({ rank: 1, rider_name: "Rider A", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" }),
-    row({ rank: 2, rider_name: "Rider B", team_id: "t2", userId: "u2", raceId: "race-1", raceName: "Race" }),
-  ];
-  const supabase = makeSupabase({ raceResultRows: rows, userRows: [{ id: "u1", email: "u1@example.com" }, { id: "u2", email: "u2@example.com" }] });
-  const send = async () => ({ status: "dry_run" });
-  let calls = 0;
-  const fetchNarrative = async () => { calls += 1; return { headlineText: "Krogh takes the sprint", ranksByUser: new Map() }; };
-
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret", fetchNarrative });
-
-  assert.equal(calls, 1, "samme raceId slås kun op én gang, uanset hvor mange managere deler den");
+  assert.equal(sendCalls[0].subject, "Team Velodrome raced while you were away");
 });
 
 test("per-manager failures are isolated", async () => {
-  const rows = [
-    row({ rank: 1, rider_name: "R1", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" }),
-    row({ rank: 1, rider_name: "R2", team_id: "t2", userId: "u2", raceId: "race-1", raceName: "Race" }),
-  ];
-  const supabase = makeSupabase({
-    raceResultRows: rows,
-    userRows: [{ id: "u1", email: "u1@example.com" }, { id: "u2", email: "u2@example.com" }],
-  });
+  const teamRows = [team("t1"), team("t2")];
+  const userRows = [user("user-t1"), user("user-t2")];
+  const raceResultsByTeam = {
+    t1: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R1", importedAt: "2026-07-19T10:00:00Z" })],
+    t2: [result({ raceId: "r1", raceName: "Race", rank: 1, riderName: "R2", importedAt: "2026-07-19T10:00:00Z" })],
+  };
+  const supabase = makeSupabase({ teamRows, userRows, raceResultsByTeam });
   const send = async (args) => {
-    if (args.userId === "u1") throw new Error("resend down");
+    if (args.userId === "user-t1") throw new Error("resend down");
     return { status: "dry_run" };
   };
 
-  const result = await runEmailRaceDigestSweep({
-    supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret", captureExceptionFn: () => {},
+  const res = await runEmailRaceDigestSweep({
+    supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "s", captureExceptionFn: () => {},
   });
 
-  assert.equal(result.candidates, 2);
-  assert.equal(result.sent, 1);
-  assert.equal(result.failed, 1);
-});
-
-// ─── #2853 · 14-day activity + email_prefs consent filter ─────────────────
-
-test("a manager who hasn't been seen in over 14 days is skipped, never sent to", async () => {
-  const staleLastSeen = new Date(IN_WINDOW_NOW.getTime() - DIGEST_ACTIVITY_WINDOW_MS - 60 * 60 * 1000).toISOString(); // just over 14d ago
-  const rows = [row({ rank: 1, rider_name: "R", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
-  const supabase = makeSupabase({
-    raceResultRows: rows,
-    userRows: [{ id: "u1", email: "u1@example.com", last_seen: staleLastSeen }],
-  });
-  const send = async () => { throw new Error("must not send to an inactive manager"); };
-
-  const result = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
-
-  assert.equal(result.candidates, 1, "still counted among today's racers");
-  assert.equal(result.sent, 0);
-  assert.equal(result.skipped, 1);
-});
-
-test("a manager seen exactly at the 14-day boundary is still included (>=, not >)", async () => {
-  const boundaryLastSeen = new Date(IN_WINDOW_NOW.getTime() - DIGEST_ACTIVITY_WINDOW_MS).toISOString();
-  const rows = [row({ rank: 1, rider_name: "R", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
-  const supabase = makeSupabase({
-    raceResultRows: rows,
-    userRows: [{ id: "u1", email: "u1@example.com", last_seen: boundaryLastSeen }],
-  });
-  const sendCalls = [];
-  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
-
-  await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
-
-  assert.deepEqual(sendCalls.map((c) => c.userId), ["u1"]);
-});
-
-test("a manager with no last_seen at all (never returned) is skipped, not treated as active", async () => {
-  const rows = [row({ rank: 1, rider_name: "R", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
-  const supabase = makeSupabase({
-    raceResultRows: rows,
-    userRows: [{ id: "u1", email: "u1@example.com", last_seen: null }],
-  });
-  const send = async () => { throw new Error("must not send without a last_seen timestamp"); };
-
-  const result = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
-
-  assert.equal(result.sent, 0);
-  assert.equal(result.skipped, 1);
-});
-
-test("email_prefs race_digest=false (or all=false) is skipped, reusing the existing opt-out rule", async () => {
-  const rows = [
-    row({ rank: 1, rider_name: "R1", team_id: "t1", userId: "u-type-off", raceId: "race-1", raceName: "Race" }),
-    row({ rank: 1, rider_name: "R2", team_id: "t2", userId: "u-all-off", raceId: "race-1", raceName: "Race" }),
-    row({ rank: 1, rider_name: "R3", team_id: "t3", userId: "u-opted-in", raceId: "race-1", raceName: "Race" }),
-  ];
-  const supabase = makeSupabase({
-    raceResultRows: rows,
-    userRows: [
-      { id: "u-type-off", email: "a@example.com", email_prefs: { race_digest: false } },
-      { id: "u-all-off", email: "b@example.com", email_prefs: { all: false } },
-      { id: "u-opted-in", email: "c@example.com", email_prefs: {} },
-    ],
-  });
-  const sendCalls = [];
-  const send = async (args) => { sendCalls.push(args); return { status: "dry_run" }; };
-
-  const result = await runEmailRaceDigestSweep({ supabase, now: IN_WINDOW_NOW, isActive: async () => true, send, unsubSecret: "test-secret" });
-
-  assert.deepEqual(sendCalls.map((c) => c.userId), ["u-opted-in"]);
-  assert.equal(result.candidates, 3);
-  assert.equal(result.sent, 1);
-  assert.equal(result.skipped, 2);
-});
-
-test("an inactive/opted-out manager never triggers the narrative lookup (filtered before that work happens)", async () => {
-  const staleLastSeen = new Date(IN_WINDOW_NOW.getTime() - DIGEST_ACTIVITY_WINDOW_MS - 60 * 60 * 1000).toISOString();
-  const rows = [row({ rank: 1, rider_name: "R", team_id: "t1", userId: "u1", raceId: "race-1", raceName: "Race" })];
-  const supabase = makeSupabase({
-    raceResultRows: rows,
-    userRows: [{ id: "u1", email: "u1@example.com", last_seen: staleLastSeen }],
-  });
-  const fetchNarrative = async () => { throw new Error("must not fetch a narrative for a filtered-out manager"); };
-
-  const result = await runEmailRaceDigestSweep({
-    supabase, now: IN_WINDOW_NOW, isActive: async () => true,
-    send: async () => ({ status: "dry_run" }), unsubSecret: "test-secret", fetchNarrative,
-  });
-
-  assert.equal(result.skipped, 1);
+  assert.equal(res.candidates, 2);
+  assert.equal(res.sent, 1);
+  assert.equal(res.failed, 1);
 });

@@ -32,9 +32,12 @@ import {
   computeMilestoneMissPenalty,
   getTrustTier,
 } from "./boardMandate.js";
-import { buildGoalKey, evaluateGoalProgress } from "./boardGoals.js";
+import { buildGoalKey, evaluateGoalProgress, generateBoardGoals } from "./boardGoals.js";
 import { clampSatisfaction } from "./boardUtils.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
+import { resolveThresholds } from "./boardNegotiationThresholds.js";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function ensureSupabase(supabase) {
   if (!supabase?.from) throw new Error("Supabase client is required");
@@ -389,7 +392,7 @@ async function fetchActiveMandateRow(supabase, teamId, seasonId) {
   if (!seasonId) return null;
   const { data, error } = await supabase
     .from("board_mandates")
-    .select("id")
+    .select("id, focus")
     .eq("team_id", teamId)
     .eq("season_id", seasonId)
     .eq("status", "active")
@@ -597,4 +600,242 @@ export async function unlockExtraordinaryRequestForTeam(supabase, {
   const mandate = await fetchActiveMandateRow(supabase, teamId, seasonId);
   if (!mandate) return { unlocked: false, reason: "no_active_mandate" };
   return unlockExtraordinaryRequest(supabase, { mandateId: mandate.id });
+}
+
+// ---------------------------------------------------------------------------
+// 6. Årsmødet: proposeNextMandate (spec §4.1, #4557 S-M2c)
+// ---------------------------------------------------------------------------
+
+/**
+ * Marker holdets AKTIVE mandat for `seasonId` completed. Kaldes ved
+ * sæson-slut, FØR næste sæsons mandat foreslås (spec §4.1 punkt 1) — det
+ * aktive mandats kvittering (season_end) er allerede skrevet af
+ * `applySeasonEndSync`, denne funktion rører kun status-feltet.
+ */
+export async function completeActiveMandate(supabase, { teamId, seasonId } = {}) {
+  ensureSupabase(supabase);
+  if (!seasonId) return { updated: false };
+  const { data, error } = await supabase
+    .from("board_mandates")
+    .update({ status: "completed", updated_at: new Date().toISOString() })
+    .eq("team_id", teamId)
+    .eq("season_id", seasonId)
+    .eq("status", "active")
+    .select("id");
+  if (error) throw new Error(`board_mandates complete failed: ${error.message}`);
+  return { updated: Array.isArray(data) ? data.length > 0 : Boolean(data) };
+}
+
+/**
+ * Sikrer at holdet har en `board_relations`-række (confidence 50, neutral
+ * kvittering) — nødvendig for nye hold (spec §4.1 punkt 2: "confidence =
+ * relationens start (50)"), som ellers ikke har en skyggerelation før
+ * `mandateShadowRebuild3514.mjs` har kørt for dem. Idempotent: rører ALDRIG
+ * en eksisterende række.
+ */
+export async function ensureRelationForTeam(supabase, teamId) {
+  ensureSupabase(supabase);
+  const existing = await fetchRelationRow(supabase, teamId);
+  if (existing) return existing;
+
+  const { data, error } = await supabase
+    .from("board_relations")
+    .insert({
+      team_id: teamId,
+      confidence: 50,
+      category_scores: {},
+      confidence_source: { method: "team_formation" },
+    })
+    .select("id, team_id, confidence, category_scores, confidence_source")
+    .single();
+  if (error) throw new Error(`board_relations insert failed: ${error.message}`);
+  return data;
+}
+
+/**
+ * Foreslå ét mandat for `targetSeasonNumber` (spec §4.1): status 'proposed',
+ * mål via `generateBoardGoals`, tillids-trappen (`allocateNegotiationPower`)
+ * frosset i `source.negotiation_power`, deadline fra `resolveThresholds`
+ * (ejer-svar 2/9 spørgsmål 3: A — 5/10 kalenderdage, SAMME regel som den
+ * gamle `board_profiles`-auto-accept-cron, delt via
+ * `boardNegotiationThresholds.js`). Kaldt BÅDE af årsmøde-hooket ved
+ * sæson-slut (`advanceMandateAtSeasonEnd`) og direkte ved ny-holdformation
+ * (`proposeMandateForNewTeam`) — se de to kaldere for hvordan
+ * `targetSeasonNumber` afgøres i hvert tilfælde (næste sæson vs. nuværende).
+ *
+ * Skriver INTET og returnerer `{ skipped: <reason> }` når:
+ *  - flaget er off
+ *  - sæson-rækken for `targetSeasonNumber` ikke findes endnu (kalenderen er
+ *    ikke materialiseret så langt frem — ingen gættet FK; en manglende
+ *    reference er ikke bedre end en forkert, samme princip som #3494)
+ *  - der allerede findes et mandat for (team, den sæson) — idempotent no-op,
+ *    så funktionen trygt kan kaldes flere gange (retry, dry-run efterfulgt
+ *    af en rigtig kørsel)
+ */
+export async function proposeNextMandate(supabase, {
+  teamId,
+  targetSeasonNumber,
+  confidence,
+  previousFocus = null,
+  team = null,
+  riders = [],
+  standing = null,
+  assignedMembers = null,
+  lastSeenSource = null,
+  now = new Date(),
+  isBetaTester = false,
+} = {}) {
+  ensureSupabase(supabase);
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+  if (!teamId) throw new Error("teamId is required");
+
+  const seasonNumber = Number(targetSeasonNumber);
+  if (!Number.isFinite(seasonNumber)) return { skipped: "invalid_season_number" };
+
+  const { data: targetSeason, error: seasonError } = await supabase
+    .from("seasons")
+    .select("id, number")
+    .eq("number", seasonNumber)
+    .maybeSingle();
+  if (seasonError) throw new Error(`seasons lookup failed: ${seasonError.message}`);
+  if (!targetSeason?.id) {
+    return { skipped: "target_season_not_found", season_number: seasonNumber };
+  }
+
+  const { data: existingMandate, error: existingError } = await supabase
+    .from("board_mandates")
+    .select("id, status")
+    .eq("team_id", teamId)
+    .eq("season_id", targetSeason.id)
+    .maybeSingle();
+  if (existingError) throw new Error(`board_mandates lookup failed: ${existingError.message}`);
+  if (existingMandate) {
+    return { skipped: "already_exists", mandate_id: existingMandate.id, status: existingMandate.status };
+  }
+
+  const focus = previousFocus || "balanced";
+  const goals = generateBoardGoals({ focus, planType: "1yr", team, riders, standing, assignedMembers });
+  const negotiationPower = allocateNegotiationPower(confidence);
+  const thresholds = resolveThresholds(lastSeenSource, now);
+  const deadline = new Date(now.getTime() + thresholds.AUTO_ACCEPT * DAY_MS);
+
+  const row = {
+    team_id: teamId,
+    season_id: targetSeason.id,
+    season_number: seasonNumber,
+    status: "proposed",
+    focus,
+    goals,
+    adjustments_allowed: negotiationPower.adjustments_allowed,
+    adjustments_used: 0,
+    request_used: false,
+    extraordinary_request_unlocked: false,
+    extraordinary_request_used: false,
+    proposed_at: now.toISOString(),
+    auto_accept_deadline: deadline.toISOString(),
+    source: {
+      method: "annual_meeting",
+      negotiation_power: negotiationPower,
+    },
+  };
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("board_mandates")
+    .insert(row)
+    .select("id")
+    .single();
+  if (insertError) throw new Error(`board_mandates insert failed: ${insertError.message}`);
+
+  return {
+    mandate_id: inserted.id,
+    season_number: seasonNumber,
+    goal_count: goals.length,
+    adjustments_allowed: negotiationPower.adjustments_allowed,
+    auto_accept_deadline: row.auto_accept_deadline,
+  };
+}
+
+/**
+ * Sæson-slut-hooket (spec §4.1 punkt 1): kaldes fra economyEngine.js's
+ * `processTeamSeasonEnd`, EFTER `applySeasonEndSync` (rækkefølgen er
+ * bindende — confidence skal være sæsonens FÆRDIGE tal, før tillids-trappen
+ * for NÆSTE mandat allokeres). Fuldstændig no-op (ingen læsning/skrivning)
+ * når flaget er off eller holdet ikke har en skyggerelation endnu (samme
+ * "no_shadow_relation"-afgrænsning som applySeasonEndSync/applyWeekendSync).
+ */
+export async function advanceMandateAtSeasonEnd(supabase, {
+  teamId,
+  seasonId,
+  currentSeasonNumber,
+  team = null,
+  riders = [],
+  standing = null,
+  assignedMembers = null,
+  lastSeenSource = null,
+  now = new Date(),
+  isBetaTester = false,
+} = {}) {
+  ensureSupabase(supabase);
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+
+  const relation = await fetchRelationRow(supabase, teamId);
+  if (!relation) return { skipped: "no_shadow_relation" };
+
+  const activeMandate = await fetchActiveMandateRow(supabase, teamId, seasonId);
+  if (activeMandate) {
+    await completeActiveMandate(supabase, { teamId, seasonId });
+  }
+
+  const proposal = await proposeNextMandate(supabase, {
+    teamId,
+    targetSeasonNumber: Number(currentSeasonNumber) + 1,
+    confidence: relation.confidence,
+    previousFocus: activeMandate?.focus ?? null,
+    team,
+    riders,
+    standing,
+    assignedMembers,
+    lastSeenSource,
+    now,
+    isBetaTester,
+  });
+
+  return { completed_active: Boolean(activeMandate), proposal };
+}
+
+/**
+ * Ny-holds-hooket (spec §4.1 punkt 2): kaldes ved holddannelse/DNA-valg for
+ * S2+-hold (kill-switch-gated, samme som alle andre indgange). Confidence =
+ * 50 (relationens start), og mandatet foreslås for HOLDETS NUVÆRENDE sæson
+ * (ikke "næste") — et nyt hold skal kunne se sit første mandat med det
+ * samme, ikke vente til et årsmøde der aldrig kommer for dem alene (de har
+ * ingen "forrige sæson" at afslutte).
+ */
+export async function proposeMandateForNewTeam(supabase, {
+  teamId,
+  currentSeasonNumber,
+  team = null,
+  riders = [],
+  standing = null,
+  assignedMembers = null,
+  now = new Date(),
+  isBetaTester = false,
+} = {}) {
+  ensureSupabase(supabase);
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+
+  const relation = await ensureRelationForTeam(supabase, teamId);
+
+  return proposeNextMandate(supabase, {
+    teamId,
+    targetSeasonNumber: currentSeasonNumber,
+    confidence: relation.confidence ?? 50,
+    previousFocus: null,
+    team,
+    riders,
+    standing,
+    assignedMembers,
+    now,
+    isBetaTester,
+  });
 }

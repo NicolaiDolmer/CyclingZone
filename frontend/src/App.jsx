@@ -54,6 +54,9 @@ const RankingsHubPage = lazy(() => import("./pages/RankingsHubPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 // #4557 (S-M2b): tynd kill-switch-wrapper — se pages/boardroom/BoardroomRoute.jsx.
 const BoardroomRoute = lazy(() => import("./pages/boardroom/BoardroomRoute"));
+// #4557 (S-M2c): aarsmoedet — fuldskaerms-takeover, UDEN for Layout/sidebar
+// (spec §4.7: navy-baandet spaender hele bredden, matcher mockuppen 1:1).
+const AnnualMeetingRoute = lazy(() => import("./pages/annualMeeting/AnnualMeetingRoute"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
 const TeamProfilePage = lazy(() => import("./pages/TeamProfilePage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
@@ -66,7 +69,6 @@ const PatchNotesPage = lazy(() => import("./pages/PatchNotesPage"));
 const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
 const RulesPage = lazy(() => import("./pages/RulesPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
-const PrivacyPolicyPageEn = lazy(() => import("./pages/PrivacyPolicyPageEn"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
 const TermsPageEn = lazy(() => import("./pages/TermsPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
@@ -250,7 +252,7 @@ export default function App() {
           <Route path="/login" element={<LoginRoute session={session} />} />
           <Route path="/reset-password" element={<ResetPasswordPage session={session} />} />
           <Route path="/privatlivspolitik" element={<PrivacyPolicyPage />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage forceLang="en" />} />
           <Route path="/handelsbetingelser" element={<TermsPage />} />
           <Route path="/terms" element={<TermsPageEn />} />
           <Route path="/founder-supporter" element={<I18nReadyGate ns="founder"><FounderSupporterPage /></I18nReadyGate>} />
@@ -266,6 +268,16 @@ export default function App() {
           {/* Bart domæne (#672): ikke-loggede-ind ser den offentlige landing,
               loggede-ind ryger til appen. */}
           <Route path="/" element={session ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+
+          {/* #4557 (S-M2c) — aarsmoedet er en fuldskaerms-takeover UDEN for
+              Layout (ingen sidebar, spec §4.7's navy-baand spaender hele
+              bredden). Egen ProtectedRoute-instans, registreret foer Layout-
+              blokken saa den aldrig arver sidebaren. */}
+          <Route path="/board/meeting" element={
+            <ProtectedRoute session={session}>
+              <I18nReadyGate ns="board"><I18nReadyGate ns="backendMessages"><AnnualMeetingRoute /></I18nReadyGate></I18nReadyGate>
+            </ProtectedRoute>
+          } />
 
           {/* App-flader: pathless protected layout-route — URL'erne (/dashboard, /riders ...)
               er uændrede, men "/" er ikke længere forælder, så landing kan eje roden. */}

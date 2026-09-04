@@ -75,13 +75,33 @@ export function checkCalendarOverlapInvariants({
   // på noget der er tilladt. Den regel der ER tilbage, at monumenterne ligger spredt over
   // sæsonen, er ikke kvantificeret og kan derfor ikke tælles her; se docs/CALENDAR_RULES.md §4.
 
-  // Diagnostik: er aksen fladet ud? For Div 1-3 skal der ligge FLERE in-game-dage inden i
-  // hver kalenderdag (mindst ceil(density/cap), i Div 1 typisk 3-5). Falder antallet af
+  // Diagnostik: er aksen fladet ud? Der skal ligge FLERE in-game-dage inden i hver
+  // kalenderdag (mindst ceil(density/cap), i Div 1 typisk 3-5). Falder antallet af
   // distinkte game_days sammen med antallet af kalenderdage, er game_day skrevet som en ren
-  // dato-offset. For Div 4 er ét til én derimod korrekt. Se #4161.
-  const minGameDaysPerCalendarDay = tier == null ? null : minGameDaysPerRealDay(tier);
-  const gameDayCount = racesByGameDay.size;
-  const realDayCount = realDays.size;
+  // dato-offset. Se #4161.
+  //
+  // ⚠ K UDLEDES AF DATA, IKKE AF KONSTANTEN (#4270, 3/9). Tidligere kom K fra
+  // `minGameDaysPerRealDay(tier)`, altså fra `TIER_DENSITY` som den ser ud LIGE NU. Det gør
+  // invarianten forkert i det øjeblik en densitet ændres: da D4 gik fra 2 til 3 etaper om
+  // dagen for sæson 4, blev sæson 3's ALLEREDE SKREVNE og fuldstændig korrekte D4-kalender
+  // (2 etaper/dag, cap 2 → K = 1, én game_day pr. kalenderdag) pludselig meldt som
+  // "kollapset akse" i alle 8 puljer. Nat-vagten gik rød på en kalender ingen havde rørt.
+  //
+  // En invariant mod PROD skal måle den kalender der står der, mod den tæthed den er
+  // BYGGET med — ikke mod den tæthed en fremtidig sæson skal have. Densiteten er direkte
+  // målbar: etaper ÷ kalenderdage. Konstanten bruges kun som fallback når rækkerne ingen
+  // `scheduled_at` har (det gamle nøglerum), hvor der ikke er noget at måle på.
+  //
+  // Samme fejlklasse som `.claude/learnings/2026-08-28-now-md-laest-som-sandhedskilde-...`:
+  // et tal blev læst som sandhed om noget det ikke længere beskrev.
+  const gameDayCountRaw = racesByGameDay.size;
+  const realDayCountRaw = realDays.size;
+  const observedDensity = realDayCountRaw > 0 ? scheduleRows.length / realDayCountRaw : null;
+  const minGameDaysPerCalendarDay = (observedDensity != null && cap != null)
+    ? Math.ceil(observedDensity / cap)
+    : (tier == null ? null : minGameDaysPerRealDay(tier));
+  const gameDayCount = gameDayCountRaw;
+  const realDayCount = realDayCountRaw;
   const axisLooksCollapsed = Boolean(
     minGameDaysPerCalendarDay && minGameDaysPerCalendarDay > 1 &&
     realDayCount > 0 && gameDayCount <= realDayCount
@@ -93,6 +113,6 @@ export function checkCalendarOverlapInvariants({
     stageRepeatViolations: stageRepeatViolations.slice(0, maxViolations),
     stageRepeatViolationCount: stageRepeatViolations.length,
     maxOverlap, overlapCap: cap,
-    gameDayCount, realDayCount, minGameDaysPerCalendarDay, axisLooksCollapsed,
+    gameDayCount, realDayCount, observedDensity, minGameDaysPerCalendarDay, axisLooksCollapsed,
   };
 }

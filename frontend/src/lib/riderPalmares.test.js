@@ -41,6 +41,21 @@ test("buildTrophyCase: GC-sejr, etapesejre, trøjer, trøjedage, podier", () => 
   assert.equal(trophy.podiums, 3, "VB-sejr + Trofeo Alba-sejr + Coppa Meridiana 3.-plads (Giro Emiliano 4. tæller ikke)");
 });
 
+test("#4588: jerseyDays tæller kun etaper rytteren faktisk BAR trøjen (rank===1), ikke enhver etape i feltet", () => {
+  // raceRunner skriver en leader/points_day/mountain_day/young_day-række pr.
+  // rytter i klassifikationen hver etape (GC-gap-visning); en midterfelts-
+  // placering er IKKE en trøje-dag. Spillerrapport 1/9: rytter der aldrig bar
+  // en trøje viste alligevel dage i trøjen.
+  const rows = [
+    { race: stageRace, result_type: "leader", stage_number: 1, rank: 45, points_earned: 0, prize_money: 0 },
+    { race: stageRace, result_type: "leader", stage_number: 2, rank: 38, points_earned: 0, prize_money: 0 },
+    { race: stageRace, result_type: "points_day", stage_number: 1, rank: 12, points_earned: 0, prize_money: 0 },
+  ];
+  const trophy = buildTrophyCase(groupRiderRaces(rows));
+  assert.equal(trophy.jerseyDays, 0, "ingen af rækkerne har rank===1 → 0 trøjedage, ikke 3");
+  assert.deepEqual(trophy.jerseyDaysByType, { leader: 0, mountain_day: 0, points_day: 0, young_day: 0 });
+});
+
 test("careerTotals: win-rate er careerWins/antal løb, ikke pr. etape", () => {
   const totals = careerTotals(groupRiderRaces(ROWS));
   assert.equal(totals.totalRaces, 5);

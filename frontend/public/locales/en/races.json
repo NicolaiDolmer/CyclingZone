@@ -16,11 +16,11 @@
     "stagesGt": "{count} stages · GT",
     "stagesOnly": "{count} stages",
     "monument": "Monument · exclusive race day",
-    "bandAria": "{name}, race day {day}. Open its day board.",
+    "bandAria": "{name}, day {day} of {total}. Open its day board.",
     "dayPanel": {
-      "title": "Race day {day} · {date}",
+      "title": "Day {day} of {total} · {date}",
       "meta": "{races, plural, one {# race} other {# races}} · {saved, plural, one {# selection saved} other {# selections saved}} · {open} open",
-      "openBoard": "Open day board →"
+      "openBoard": "Open day board"
     },
     "legend": {
       "label": "LEGEND",
@@ -249,13 +249,12 @@
       "tooltip": "How likely a breakaway is to stay away on this terrain. The hunter is always a breakaway candidate."
     },
     "hunterExplainer": {
-      "title": "How the breakaway hunter works",
-      "body": "The hunter is always sent into the day's breakaway and rides harder to stay clear. Whether the move holds to the finish depends on the terrain.",
       "strengthLine": "On this race's terrain, a breakaway has {strength} odds of staying away.",
-      "candidatesTitle": "Best hunters in your squad",
       "candidatesHint": "Ranked by aggression: the urge to attack and commit to a move.",
       "noCandidates": "Pick riders for this race to see your best hunters.",
-      "aggression": "Aggression"
+      "aggression": "Aggression",
+      "pickTitle": "Pick your breakaway hunter",
+      "noHunter": "No hunter"
     },
     "fit": {
       "label": "Fit",
@@ -322,7 +321,10 @@
     "noRacesMatch": "No races match the filters",
     "raceNotFound": "Race not found",
     "noResultsImportedRace": "No results imported for this race yet",
-    "noHistory": "No data found for \"{name}\""
+    "noHistory": "No data found for \"{name}\"",
+    "raceNotFoundHint": "The link may be old, or the race was removed. Open the race library to find another one.",
+    "noResultsImportedRaceHint": "This race has no result rows yet. Other races in the library already have theirs.",
+    "noResultsImportedRaceCta": "Open the race library"
   },
   "calendar": {
     "upcoming": "Upcoming",
@@ -332,8 +334,8 @@
     "expectedPoolTooltip": "Live-calculated expected pool based on race class × race type × stages",
     "selectPrompt": "Select a race to see details",
     "noResultsYet": "No results imported yet",
-    "viewFull": "View full results →",
-    "viewFullWithStages": "View full results + all stages →"
+    "viewFull": "View full results",
+    "viewFullWithStages": "View full results + all stages"
   },
   "library": {
     "searchLabel": "Search races",
@@ -354,7 +356,7 @@
     "thClass": "Class",
     "thType": "Type",
     "thStatus": "Status",
-    "seasonLink": "Season {number} →"
+    "seasonLink": "Season {number}"
   },
   "world": {
     "loading": "Loading world calendar…",
@@ -384,8 +386,8 @@
     "thRank": "Rank",
     "thPoints": "Points",
     "thPrize": "Prize",
-    "showLess": "Hide ↑",
-    "showAll": "Show all {count} ranks ↓",
+    "showLess": "Hide",
+    "showAll": "Show all {count} ranks",
     "prizeExample": {
       "tourWin": "Grand Tour win",
       "monumentWin": "Monument win",
@@ -457,7 +459,6 @@
     "willNotStartShort": "Under {min} riders. Does not start.",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
-    "hunter": "Breakaway hunter (optional)",
     "freeRole": "Free role",
     "noRole": "None",
     "thRider": "Rider",
@@ -551,6 +552,7 @@
     "stageCol": "Stage {number}",
     "roleAria": "Role for {rider}, stage {stage}",
     "effortAria": "Effort for {rider}, stage {stage}",
+    "riderAbandoned": "Out of the race",
     "role": {
       "free_role": "Free role"
     },
@@ -586,6 +588,7 @@
       "stage_roles_invalid_effort": "One of the effort settings isn't valid.",
       "stage_roles_role_overlap": "Only one rider can be captain, and only one can be sprint captain, per stage.",
       "stage_roles_duplicate": "The same rider appears twice for the same stage.",
+      "stage_roles_rider_abandoned": "One of the riders is out of the race and can't be given tactics anymore.",
       "stage_roles_race_completed": "This race is finished, so tactics can't be changed anymore.",
       "generic": "Couldn't save your tactics. Try again."
     }
@@ -751,8 +754,8 @@
       "season": "Season",
       "nextStage": "Next stage"
     },
-    "backToLibrary": "← Race library",
-    "back": "← Back",
+    "backToLibrary": "Race library",
+    "back": "Back",
     "raceDnaLabel": "This race:",
     "terrainDna": {
       "label": "Terrain DNA · what the stage rewards",
@@ -816,8 +819,8 @@
       "all": "All teams",
       "mine": "My team"
     },
-    "showAll": "Show all {count} ↓",
-    "showLess": "Hide ↑",
+    "showAll": "Show all {count}",
+    "showLess": "Hide",
     "team": {
       "winner": "Winner"
     },
@@ -1170,6 +1173,7 @@
       "itt_hilly": "Hilly time trial",
       "ttt": "Team time trial",
       "cobbles": "Cobbles",
+      "gravel": "Gravel",
       "classic": "Classic"
     },
     "finaleType": {
@@ -1220,6 +1224,10 @@
         "cobbles": {
           "label": "{count} cobbled sectors",
           "note": "positioning & power over pavé"
+        },
+        "gravel": {
+          "label": "{count} gravel sectors",
+          "note": "handling & power on loose ground"
         }
       },
       "waypoint": {
@@ -1245,14 +1253,15 @@
     "table": {
       "prizePoints": "Prize points",
       "jerseyPoints": "Jersey points"
-    }
+    },
+    "jumpToResults": "See results"
   },
   "history": {
     "loadError": {
       "message": "Could not load the race history. Please try again.",
       "retry": "Try again"
     },
-    "backToLibrary": "← Race library",
+    "backToLibrary": "Race library",
     "editionsCount": "{count, plural, one {# edition} other {# editions}}",
     "editions": "Editions",
     "season": "Season {number}",

@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { startTour, TOUR_PAGE_BY_STEP } from "../lib/onboardingTour";
+import { CheckIcon, ChevronRightIcon, XIcon } from "./ui";
 
 // #2288 Slice A: 4 ægte spiller-handlinger (se backend/routes/api.js's
 // /me/onboarding-progress-kommentar for hvorfor de gamle team_named/
@@ -42,13 +43,12 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
     <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-accent/30 rounded-cz">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
-            {/* #1569: editorial accent-markør i stedet for emoji-eyebrow (anti-AI-slop) */}
-            <span className="w-1 h-4 bg-cz-accent rounded-full flex-shrink-0" aria-hidden="true" />
-            <p className="text-cz-1 text-sm font-semibold">
-              {t("onboardingProgress.header", { completed: completed_count, total: total_count })}
-            </p>
-          </div>
+          {/* #4625 (slice 3 af #4622, TASTE §3) — den tidligere venstre-accent-
+              markør (#1569) er selv et femte prioritetssignal; kortet står
+              allerede med en accent-hairline (border-cz-accent/30). */}
+          <p className="text-cz-1 text-sm font-semibold mb-2">
+            {t("onboardingProgress.header", { completed: completed_count, total: total_count })}
+          </p>
           <div className="bg-cz-subtle rounded-full h-1.5 mb-3">
             <div
               className="h-1.5 bg-cz-accent rounded-full transition-all"
@@ -62,11 +62,16 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
               const isNext = !step.done && step === nextStep;
               return (
                 <li key={step.key} className="flex items-center gap-2 text-xs">
-                  <span className={
-                    step.done ? "text-cz-success" : isNext ? "text-cz-accent-t" : "text-cz-3"
-                  }>
-                    {step.done ? "✓" : isNext ? "▸" : "○"}
-                  </span>
+                  {/* #4625 — stroke-ikon/dot i stedet for tekst-glyfferne ✓/▸/○
+                      (TASTE forbudsliste: "tekst-glyffer som ikoner"). */}
+                  {step.done ? (
+                    <CheckIcon size={13} className="text-cz-success flex-shrink-0" aria-hidden="true" />
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isNext ? "bg-cz-accent-t" : "border border-cz-3"}`}
+                    />
+                  )}
                   <span className={
                     step.done
                       ? "text-cz-3 line-through"
@@ -79,9 +84,10 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
                   {isNext && (
                     <Link
                       to={target}
-                      className="ms-auto text-cz-accent-t text-xs hover:underline font-medium"
+                      className="ms-auto inline-flex items-center gap-0.5 text-cz-accent-t text-xs hover:underline font-medium"
                     >
-                      {t(`onboardingProgress.ctas.${step.key}`, { defaultValue: "→" })}
+                      {t(`onboardingProgress.ctas.${step.key}`, { defaultValue: step.key })}
+                      <ChevronRightIcon size={13} aria-hidden="true" />
                     </Link>
                   )}
                 </li>
@@ -101,10 +107,10 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
         </div>
         <button
           onClick={onDismiss}
-          className="text-cz-3 hover:text-cz-1 text-lg leading-none px-1 flex-shrink-0"
+          className="text-cz-3 hover:text-cz-1 p-1 flex-shrink-0"
           aria-label={t("onboardingProgress.dismissAria")}
         >
-          ×
+          <XIcon size={16} aria-hidden="true" />
         </button>
       </div>
     </div>

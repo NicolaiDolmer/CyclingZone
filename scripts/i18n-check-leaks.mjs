@@ -97,7 +97,7 @@ export const EXEMPT_FILES = new Map([
   ["frontend/src/pages/AdminRetentionPage.jsx", "Admin-only retention-scorecard (#2360)."],
   ["frontend/src/pages/PatchNotesPage.jsx", "Patch notes-side: bilingual chrome via da?-ternary (samme mønster som FounderSupporterPage); indholdet ligger i data/patchNotes.js."],
   ["frontend/src/data/patchNotes.js", "Patch notes er bilingual i-fil data (EN+DA pr. entry) — DA-strenge er by design."],
-  ["frontend/src/pages/PrivacyPolicyPage.jsx", "DA-udgaven i dual-page-mønster (PrivacyPolicyPageEn.jsx er EN)."],
+  ["frontend/src/pages/PrivacyPolicyPage.jsx", "#4733/#413: merget til ét namespace (privacy.json, begge sprog); det eneste tilbageværende hardkodede er document-head-metadata (titel/beskrivelse) i HEAD_META, bevidst uden for i18n så <title> ikke kan flashe en rå nøgle før namespacet er hentet."],
   ["frontend/src/pages/TermsPage.jsx", "DA-udgaven i dual-page-mønster (#2813, TermsPageEn.jsx er EN)."],
   ["frontend/src/pages/TermsPageEn.jsx", "EN-side, men citerer danske klageorganers egennavne (Nævnenes Hus / Center for Klageløsning) i juridisk tekst (#2813)."],
   ["backend/lib/seasonTransitionReadiness.js", "Admin-only readiness-gate (#1346): detail-/fejl-strenge vises kun i admin-UI (DA-konvention) og admin_log."],
@@ -108,6 +108,7 @@ export const EXEMPT_FILES = new Map([
   ["backend/lib/marketValueLevelCorrectionGate.js", "Ren cron-/ops-kode (#3449/#3750): søndags-gate-målingen har ingen route, intet res.json() nogensinde — kaldes kun fra cron.js' trackedTick (console.log/Sentry). GET /api/admin/market-value-level-correction/gate læser kun den PERSISTEREDE gate-log-række (allerede-oversat felter, ikke denne fils console/throw-strenge) — rammer aldrig en spiller-synlig API-response."],
   ["backend/lib/activeSeasonLookup.js", "Fælles sæson-lookup for cron-sweeps (#2743): ingen route, intet res.json() nogensinde. Alle tre forbrugere (stageScheduler.js, raceEntryGeneratorSweep.js, tierCalendarMaterializer.js' reconcilePoolCalendarOnActivation) fanger enten selv i cron.js' trackedTick, ELLER (teamProfileEngine.js' team-signup-kald) er eksplicit try/catch'et som ikke-fatalt (console.error + Sentry, signup fortsætter). Fler-aktiv-alarmens danske fejlbesked rammer derfor aldrig en spiller-synlig API-response."],
   ["backend/lib/marketValueLevelCorrectionNeutrality.js", "Rene matematik-funktioner (#3449/#3750) uden route-adgang overhovedet: throw'ne valideringsfejl (ugyldig rate/A/c) fanges kun af det kaldende CLI-script (marketValueLevelCorrectionApply.js's konsol-output) eller unit-tests. Admin-ruterne kalder ALDRIG disse funktioner direkte (kun de read-only gate/dry-run-læsninger) — samme kategori som marketValueModel.js ovenfor."],
+  ["backend/lib/cronRuntimeGuard.js", "#4721: ren evaluerings-funktion uden route-adgang overhovedet — ingen res.json() nogensinde. Dens 'reason'-streng læses kun af cron.js' egne console.error/console.warn-kald ved proces-boot (server-log), aldrig af en API-response eller en spiller-synlig UI. Samme kategori som aluntaSubscriptionReconcile.js/marketValueModel.js ovenfor."],
 ]);
 
 // ---------------------------------------------------------------------------

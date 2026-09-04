@@ -62,6 +62,14 @@ Uanset udfald vises **begge akser**: dato-kalenderen som ramme, løbsdags-stribe
 4. **Forslag er aldrig beslutninger.** Peak-FORSLAG består (de skriver planer, ikke udtagelser), men optager aldrig en plads, tæller aldrig som peaks og forbliver afvist ([#4212](https://github.com/NicolaiDolmer/CyclingZone/issues/4212)/PR #4359).
 5. **Spiller-initieret udfyld er lovligt** via de tre eksisterende indgange (dagsboardet, `PlannerAssistantCard` for peaks, `/selection/auto`). En fjerde indgang må ikke opstå.
 
+**Tilstanden er nu valgbar runtime (#4201, 3/9).** Regel 1-5 ovenfor er `proactive`-tilstanden,
+som er prod i dag. `app_config.assistant_selection_mode` kan skifte til `late_fill` (assistenten
+udfylder KUN en helt tom trup, og først inden for `assistant_late_fill_hours` før start) eller
+`opt_in` (holdet skal selv have slået assistenten til). Reglerne pr. tilstand, fail-safen og
+gaterne bor i [`ASSISTANT_RULES.md`](ASSISTANT_RULES.md) §1b - dupliker dem ikke her. **Intet er
+flippet**, og regel 1's forbud mod nye proaktive assistent-FLADER gælder uændret i alle tre
+tilstande; den eneste nye flade er én til/fra-kontakt på Profil, synlig kun i `opt_in`.
+
 **Kendt rest (kode, hører til P3):** symmetriske kontroller (man kan rydde dag OG sæson, men kun udfylde en dag), én forklarende linje på boardet, Hjælp-afsnit (en+da). AI-holds autofill er uændret (felterne afhænger af den, jf. #2622-bindingen).
 
 ---
@@ -81,6 +89,8 @@ Rute-match som fladedækkende linse er fravalgt: kalender-svaret bærer hverken 
 **Belastnings-linsen, præcist (#4245).** `load.raceDays` tæller de distinkte `race_stage_schedule.game_day` rytteren er tilmeldt, kun i den AKTIVE sæson (`race_entries` er ikke sæson-scopet i sig selv). Løb uden brugbare `game_day`-rækker falder tilbage til løbets etapetal, mindst 1, og det fallback deles af både Race Hub'en og planner-boardet, så de to chips aldrig kan divergere.
 
 Belastning er ikke binding: bindingen er hele spændet `min(game_day)..max(game_day)` og er tilsigtet (ejer-direktiv 25/8, [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217), `docs/CALENDAR_RULES.md` §2b + §8). Belastningen er de løbsdage rytteren faktisk kører på. For et løb med spring i serien er de to tal forskellige, og det er meningen.
+
+**Grand Tour-hviledage (låst 4/9 2026, ejer-beslutning 3/9, [#4209](https://github.com/NicolaiDolmer/CyclingZone/issues/4209)).** En GT-rytter står IKKE som ledig på GT'ens hviledage — hviledagen er en løbsdag GT'en optager (`docs/CALENDAR_RULES.md` §3), så bindingen dækker den, og planner-fladen viser rytteren som optaget. Fladen har intet eget tilgængeligheds-filter: `windowsOverlap` i `frontend/src/lib/raceHubLogic.js` skærer `bindingWindow.days`, som backendens `raceBindingWindow` serialiserer som HELE spændet. Belastnings-chippen (`load.raceDays`) tæller derimod stadig kun de kørte etapedage — hviledagen binder, men koster ikke belastning.
 
 **Ordet "løbsdag" (ejer-beslutning 27/8).** En løbsdag er BINDINGS-enheden (`game_day`), som i `docs/CALENDAR_RULES.md` §0. Sponsor-økonomien lånte samme ord i `help.json` og `finance.json` for sin betalings-enhed; den hedder nu ETAPE / stage i al spiller-vendt tekst. Økonomien er uændret, kun ordene.
 

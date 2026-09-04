@@ -68,7 +68,7 @@
         "text": "division placement at season end"
       }
     },
-    "ctaNegotiate": "Negotiate your first plan with the board →",
+    "ctaNegotiate": "Negotiate your first plan with the board",
     "ctaShowTour": "Show me around"
   },
   "planLabels": {
@@ -328,7 +328,15 @@
     "focusLabel": "Focus",
     "sending": "Sending...",
     "send": "Send request",
-    "errorFallback": "Could not send the board request."
+    "errorFallback": "Could not send the board request.",
+    "preview": "See suggestion",
+    "previewing": "Loading suggestion...",
+    "previewHeading": "Suggested change",
+    "previewSubheading": "Nothing is applied yet. Review it, then accept or keep your current plan.",
+    "accept": "Accept",
+    "applying": "Applying...",
+    "keepCurrent": "Keep current plan",
+    "previewErrorFallback": "Could not load the suggestion."
   },
   "consequence": {
     "heading": "Active consequences",
@@ -371,7 +379,7 @@
   },
   "plan": {
     "autoConfigured": "Configured automatically at next season start",
-    "negotiateExpired": "Negotiate new plan →",
+    "negotiateExpired": "Negotiate new plan",
     "goalsLabel": "Targets",
     "seasonsRemaining": "{count, plural, one {1 season left} other {# seasons left}}",
     "hideDetails": "Hide details",
@@ -417,7 +425,7 @@
     "horizonLabel": "Time horizon",
     "horizonDuration": "The plan spans {count, plural, one {1 season} other {# seasons}}, targets evaluated continuously",
     "requirementsHeading": "The board's requirements",
-    "startNegotiation": "Start negotiation →",
+    "startNegotiation": "Start negotiation",
     "startBlockedNoRequirements": "No requirements were generated for this focus. Try a different focus.",
     "errorProposal": "Could not fetch the board's proposal.",
     "errorSign": "Could not sign the board plan.",
@@ -425,12 +433,12 @@
     "step2Subtitle": "Review the board's requirements one at a time",
     "goalCounter": "Target {current}/{total}",
     "alreadyNegotiated": "Already negotiated",
-    "negotiateDown": "Negotiate down ↓",
+    "negotiateDown": "Negotiate down",
     "cannotNegotiate": "Can't be negotiated",
-    "accept": "Accept →",
+    "accept": "Accept",
     "compromiseHeading": "The board has accepted a compromise",
     "compromiseBody": "Penalty halved. Accept the negotiated target?",
-    "acceptNegotiated": "Accept negotiated target →",
+    "acceptNegotiated": "Accept negotiated target",
     "negotiationsUsed": "{count, plural, one {1 negotiation used} other {# negotiations used}}",
     "step3Title": "Signature",
     "step3Subtitle": "{plan}, spans {count, plural, one {1 season} other {# seasons}}",
@@ -453,9 +461,9 @@
     "multiRenewalBodyLast": "Last plan in the queue.",
     "singleRenewalHeading": "{plan} expired",
     "singleRenewalBody": "Negotiate a new {plan} with the board.",
-    "back": "← Back",
-    "backToPlan": "← Back to {plan}",
-    "backToOverview": "← Back to overview",
+    "back": "Back",
+    "backToPlan": "Back to {plan}",
+    "backToOverview": "Back to overview",
     "dialogAria": "Board plan negotiation"
   },
   "a11y": {
@@ -1783,7 +1791,8 @@
       "title": "Boardroom",
       "subtitle": "{chair}, chair · {dna}",
       "subtitleChairOnly": "{chair}, chair",
-      "subtitleNoChair": "The board"
+      "subtitleNoChair": "The board",
+      "enterMeetingCta": "Enter annual meeting"
     },
     "status": {
       "on_track": "On track",
@@ -1902,6 +1911,63 @@
       "youthDebut": "Youth debut: {name}, {age}. “This is the Nordic way.”",
       "deficitWeek": "Deficit week, {amount}. “Margins, not miracles.”",
       "captainSaleWarning": "We do not sell a captain mid-season without a plan. “Show me the plan.”"
+    },
+    "meeting": {
+      "route": {
+        "loading": "Loading annual meeting"
+      },
+      "header": {
+        "title": "Annual meeting · Season {season}",
+        "subtitle": "The board proposes your mandate. Adjust it, make one request, sign.",
+        "confidenceMeta": "Confidence {confidence} · {count} adjustments available",
+        "confidenceMetaNoValue": "{count} adjustments available",
+        "deadline": "Unanswered mandates sign automatically in {days, plural, one {# day} other {# days}}"
+      },
+      "steps": {
+        "focus": "Focus",
+        "mandate": "Mandate",
+        "request": "Request",
+        "sign": "Sign"
+      },
+      "focus": {
+        "label": "Focus"
+      },
+      "mandate": {
+        "title": "Proposed mandate · focus: {focus}",
+        "meta": "{count, plural, one {# goal} other {# goals}} · {used} of {allowed} adjustments used",
+        "reward": "Reward +{bonus} confidence · miss -{penalty}",
+        "rewardWas": "Reward +{bonus} confidence · miss -{penalty} · was {was}",
+        "choice": {
+          "easier": "Easier",
+          "keep": "Keep",
+          "stretch": "Stretch"
+        },
+        "choiceDisabledEasier": "This goal can't be eased further.",
+        "choiceDisabledStretch": "This goal can't be stretched further.",
+        "choiceDisabledBudget": "You've used all your adjustments for this meeting.",
+        "reactionAttribution": "{name} backs the {choice}"
+      },
+      "visionSlot": {
+        "title": "The board proposes a new milestone",
+        "targetSeason": "Target: season {season}",
+        "accept": "Accept",
+        "decline": "Decline"
+      },
+      "request": {
+        "title": "Your request · 1 per meeting",
+        "meta": "A refusal always comes with a counter-offer",
+        "changeRequest": "Change request",
+        "select": "Select",
+        "none": "No request this meeting"
+      },
+      "sign": {
+        "hint": "Fastest path: accept the proposal and sign. Two clicks.",
+        "back": "Back",
+        "button": "Sign mandate",
+        "signing": "Signing",
+        "error": "Something went wrong. Try again.",
+        "focusChangeError": "Couldn't update the focus. Try again."
+      }
     }
   },
   "vision": {

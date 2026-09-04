@@ -41,7 +41,6 @@ const LOCALES_DIR = "frontend/public/locales";
 const PROSE_FILES = [
   "frontend/src/pages/PatchNotesPage.jsx",
   "frontend/src/pages/PrivacyPolicyPage.jsx",
-  "frontend/src/pages/PrivacyPolicyPageEn.jsx",
   "frontend/src/pages/TermsPage.jsx",
   "frontend/src/pages/TermsPageEn.jsx",
 ];

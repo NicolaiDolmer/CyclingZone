@@ -7,8 +7,10 @@ import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, corsHeaders, json } from "./fixtures.js";
 
 // Fixture-mocks: /api/transfers → [], så markeds-fanen viser sin empty-state.
-const MARKET_EMPTY = /No riders for sale|Ingen ryttere til salg/i;
-const RECEIVED_EMPTY = /No received offers|Ingen modtagne tilbud/i;
+// #4628: empty-states blev omskrevet til handlings-titler (TASTE fork 4) — se
+// transfers.json "empty.marketNoListings" / "empty.received".
+const MARKET_EMPTY = /List a rider for sale|Sæt en rytter til salg/i;
+const RECEIVED_EMPTY = /Browse the market while you wait|Kig på markedet imens/i;
 
 test.beforeEach(async ({ page }) => {
   await installNetworkMocks(page);

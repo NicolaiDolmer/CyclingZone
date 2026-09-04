@@ -101,6 +101,57 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      # #2423: gaten maaler det BYGGEDE output, ikke konfigurationen. Den fejler
+      # hvis nogen bygget URL baerer "?dpl=" — praecis den omskrivning der
+      # knaekkede hele appen i prod 4/9 (PR #4745, revertet). Skew Protection
+      # koerer via __vdpl-cookien i stedet, som ikke roerer en eneste URL.
+      - name: Test skew-protection guard
+        working-directory: .
+        run: node --test scripts/check-skew-protection.test.mjs
+
+      - name: Run skew-protection guard
+        working-directory: .
+        run: node scripts/check-skew-protection.mjs
+
+      # Uden de naeste steps er vagten ovenfor en attrap: CI bygger uden skew-env,
+      # saa gate 1 har intet "?dpl=" at finde og gate 2 skipper. #4745's
+      # regression ville altsaa vaere gaaet groent igennem. Her bygges der MED
+      # env slaaet til, saa gate 2/2b maaler noget den dag SKEW_PROTECTION_ENABLED
+      # i frontend/src/lib/skewProtection.js er `true` igen. Lige nu (hotfix 4/9,
+      # #2423) er flaget `false` — koden kalder aldrig installSkewProtection(),
+      # saa disse steps bygger og verificerer reelt kun gate 1 igen; vagten
+      # printer "[skip] Skew Protection er slaaet fra i koden (#2423)" og er
+      # groen, hvilket er den tilsigtede tilstand, ikke en attrap.
+      - name: Build frontend with Skew Protection enabled (#2423)
+        env:
+          VERCEL_SKEW_PROTECTION_ENABLED: "1"
+          VERCEL_DEPLOYMENT_ID: dpl_ci_test
+          VERCEL_ENV: production
+        run: npm run build
+
+      - name: Run skew-protection guard (skew-enabled build)
+        working-directory: .
+        env:
+          VERCEL_DEPLOYMENT_ID: dpl_ci_test
+          VERCEL_ENV: production
+        run: node scripts/check-skew-protection.mjs
+
+      # Preview-deploys maa aldrig pinnes: samme env, men VERCEL_ENV=preview skal
+      # give et build UDEN deployment-id, og vagten skal bekraefte det.
+      - name: Build frontend as a preview deploy (#2423)
+        env:
+          VERCEL_SKEW_PROTECTION_ENABLED: "1"
+          VERCEL_DEPLOYMENT_ID: dpl_ci_test
+          VERCEL_ENV: preview
+        run: npm run build
+
+      - name: Run skew-protection guard (preview build must not pin)
+        working-directory: .
+        env:
+          VERCEL_DEPLOYMENT_ID: dpl_ci_test
+          VERCEL_ENV: preview
+        run: node scripts/check-skew-protection.mjs
+
   warning-budget:
     runs-on: ubuntu-latest
     permissions:
@@ -133,6 +184,13 @@ jobs:
     # Fejler KUN paa NYE raa hex / slop-tells (rounded-xl/2xl/3xl, glow,
     # backdrop-blur, blob-blur) / emoji-som-ikon ud over scripts/ui-slop-baseline.json
     # (ratchet — maa kun skrumpe). Kendte callsites + emoji er Plan 4's job.
+    #
+    # #4626 (slice 4 af #4622, docs/design/TASTE.md §3): samme job koerer OGSAA
+    # check-anti-slop.mjs, de fire TASTE-forbudte moenstre lint-ui-slop.mjs
+    # ikke daekker (unicode-pile-som-ikon, arbitraer text-[Npx] under 12px,
+    # shadow-* uden for shadow-overlay, CSS/Tailwind-gradient). Samlet i dette
+    # job i stedet for et nyt, fordi begge er rene node-scripts uden npm ci
+    # (#4330: flere jobs = flere checkout/setup-node-runners for to kommandoer).
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -147,6 +205,12 @@ jobs:
 
       - name: Run anti-drift guard
         run: node scripts/lint-ui-slop.mjs
+
+      - name: Test anti-slop guard
+        run: node --test scripts/check-anti-slop.test.mjs
+
+      - name: Run anti-slop guard
+        run: node scripts/check-anti-slop.mjs
 
   eslint-disable-guard:
     runs-on: ubuntu-latest
@@ -391,6 +455,34 @@ jobs:
 
       - name: Run fetchAllRows order guard
         run: node scripts/check-fetchallrows-order.mjs
+
+  maybesingle-unique-scope-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod .maybeSingle()-kald der ikke daekker tabellens fulde
+    # flerkolonne-UNIQUE (#4496, rodaarsagen bag #4484). .maybeSingle() svarer
+    # med BAADE en fejl OG data: null naar mere end én raekke matcher filteret
+    # - fire kaldsteder laeste det som "ingen raekke findes" i stedet for
+    # "flertydig forespoergsel", og graduerings-sweepet fejlede 23 gange paa
+    # én nat. Usynlig i review (linjen ser rigtig ud) og usynlig for en naiv
+    # mock (#3620-klassen). Constraints laeses statisk fra database/*.sql +
+    # database/schema-snapshot.json - ingen DB-adgang. Opt-out:
+    # "maybesingle-scope-ok: <begrundelse>".
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Test maybeSingle unique-scope guard
+        run: node --test scripts/check-maybesingle-unique-scope.test.mjs
+
+      - name: Run maybeSingle unique-scope guard
+        run: node scripts/check-maybesingle-unique-scope.mjs
 
   rls-classification-guard:
     runs-on: ubuntu-latest

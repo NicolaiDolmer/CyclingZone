@@ -31,12 +31,17 @@ import { generateBoardMemberNames } from "./boardMandateNames.js";
 import {
   evaluateAndApplyConsequences,
 } from "./boardConsequences.js";
-import { applySeasonEndSync as applyMandateSeasonEndSyncShared } from "./boardMandateEngine.js";
+import {
+  applySeasonEndSync as applyMandateSeasonEndSyncShared,
+  advanceMandateAtSeasonEnd as advanceMandateAtSeasonEndShared,
+} from "./boardMandateEngine.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
 import { developRidersForSeason } from "./riderProgressionEngine.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
+// #4148: bag flag, default OFF — se riderValuesBulkWriteFlag.js.
+import { isRiderValuesBulkWriteEnabled } from "./riderValuesBulkWriteFlag.js";
 import {
   DEBT_CEILING_BY_DIVISION,
   DIVISION_BONUSES,
@@ -62,6 +67,8 @@ import {
 } from "./economyConstants.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
+import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
+import { parkDormantTeams } from "./managerParking.js";
 import { buildTierInputs, planRealTeamReseed } from "./poolBalance.js";
 import { isPoolReseedEnabled, readPoolReseedThreshold } from "./poolReseedFlag.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -1422,6 +1429,32 @@ export async function processSeasonEnd(seasonId, deps = {}) {
     }
   }
 
+  // [epic #4592 del 2] Parkerings-forberedelse — KUN når season_signup_enabled
+  // er 'on' (fælles flag med tilmeld-knappen, del 3). Kører UDENFOR if/else'en
+  // ovenfor, BEVIDST uafhængig af #2851-skip-flaget (den er en engangs-undtagelse
+  // for S1→S2-pyramide-kompriмering og har intet med parkering af inaktive hold
+  // at gøre) — parkFn bruger heller intet fra poolTree. Placeres alligevel EFTER
+  // hele op/nedryknings-blokken (når den kører), så vores league_division_id=null
+  // altid er sidste ord for et parkeret holds plads (processDivisionEnd kan
+  // ellers overskrive den igen hvis holdet også rangerer til op/nedrykning).
+  // Fail-safe: manglende flag/fejl → false → ingen parkering (motorens uændrede
+  // adfærd).
+  const isSignupEnabledFn = deps.isSeasonSignupEnabled ?? isSeasonSignupEnabled;
+  const signupEnabled = await isSignupEnabledFn(supabaseClient);
+  if (signupEnabled) {
+    try {
+      const parkFn = deps.parkDormantTeams ?? parkDormantTeams;
+      // Ingen teams/users her: parkFn henter selv (menneskehold-diskriminator
+      // + last_seen), samme pagineret mønster som dormantTeamsReport.js.
+      const parkResult = await parkFn({ supabase: supabaseClient, now: notificationNow });
+      console.log(`  🅿️  Parkering (#4592 del 2): ${parkResult.parked}/${parkResult.candidates} inaktive hold parkeret (${parkResult.skipped} sprunget over).`);
+    } catch (parkErr) {
+      // Parkering må ALDRIG vælte resten af sæsonskiftet — logges + Sentry, cutoveren fortsætter.
+      console.error("  ❌ Parkerings-sweep fejlede (#4592 del 2):", parkErr?.message || parkErr);
+      captureException(parkErr, { tags: { flow: "season_end", stage: "manager_parking" }, extra: { seasonId } });
+    }
+  }
+
   // Mark season as completed
   const { error: completeError } = await supabaseClient.from("seasons")
     .update({ status: "completed" })
@@ -1621,6 +1654,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   // #3514 fase 1-rest: skyggemodellens sæson-slut-sync. Flag-gated INDENI
   // funktionen selv (returnerer null øjeblikkeligt når kill-switchen er off).
   const applyMandateSeasonEndSyncFn = deps.applyMandateSeasonEndSync ?? applyMandateSeasonEndSyncShared;
+  // #4557 S-M2c · Årsmødet: næste sæsons mandat foreslås (status 'proposed')
+  // EFTER skyggemodellens sæson-slut-sync ovenfor. Samme fail-safe-disciplin
+  // som applyMandateSeasonEndSyncFn: flag-gated indeni, no-op når 'off'.
+  const advanceMandateAtSeasonEndFn = deps.advanceMandateAtSeasonEnd ?? advanceMandateAtSeasonEndShared;
   // #805 · forudhentet af processSeasonEnd (én query), fallback til egen lookup
   // hvis kaldt direkte (fx repair-stien).
   const boardTestMode = deps.boardTestMode ?? await isBoardTestModeActive(supabaseClient);
@@ -2039,6 +2076,42 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       captureException(error, { tags: { flow: "season-transition", stage: "mandate-shadow" }, teamId: team.id });
     }
   }
+
+  // #4557 S-M2c · Årsmødet: EFTER skyggemodellens sæson-slut-sync (spec §4.1
+  // punkt 1, rækkefølgen er bindende — confidence skal være sæsonens FÆRDIGE
+  // tal før tillids-trappen for næste mandat allokeres). No-op (fail-safe
+  // inde i kaldet) når kill-switchen er 'off' eller holdet ikke har en
+  // skyggerelation endnu. En fejl her må ALDRIG vælte en rigtig sæson-slut —
+  // samme isolerede try/catch-disciplin som skygge-syncet ovenfor.
+  if (teamStanding) {
+    try {
+      // best-effort: en fejlende opslag her degraderer bare til assignedMembers=null
+      // (proposeNextMandate genererer stadig mål, blot uden owner_archetype_key
+      // stemplet) — den ydre catch nedenfor fanger uanset, dette er ikke en ekstra
+      // fejlkilde, kun en tydeliggørelse af at fejlen er set og accepteret her.
+      const { data: assignedMembers, error: membersError } = await supabaseClient
+        .from("team_board_members")
+        .select("archetype_key, is_chairman")
+        .eq("team_id", team.id);
+      if (membersError) {
+        console.warn(`  ⚠️  team_board_members lookup failed for ${team.name} (mandate proposal continues without owner stamping):`, membersError.message);
+      }
+
+      await advanceMandateAtSeasonEndFn(supabaseClient, {
+        teamId: team.id,
+        seasonId,
+        currentSeasonNumber,
+        standing: teamStanding,
+        team,
+        riders: team.riders || [],
+        assignedMembers: assignedMembers?.length ? assignedMembers : null,
+        now: deps.now ?? new Date(),
+      });
+    } catch (error) {
+      console.error(`  ⚠️  mandate annual-meeting proposal failed for ${team.name}:`, error.message);
+      captureException(error, { tags: { flow: "season-transition", stage: "mandate-annual-meeting" }, teamId: team.id });
+    }
+  }
 }
 
 // ─── Rider Value & Salary Recalculation ──────────────────────────────────────
@@ -2050,6 +2123,28 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
 // over this many seasons, dividing by the window size even before it is full
 // (owner decision 2026-06-08). See updateRiderValues JSDoc.
 const VALUATION_WINDOW_SEASONS = 3;
+
+// #4148: bulk-skrivestien — ét RPC-kald i stedet for ét PATCH pr. rytter (op til
+// 25.562 kald/time målt 23/8). Chunk-loftet spejler RPC'ens egen guard
+// (database/2026-09-03-4148-bulk-update-rider-values.sql) med margin.
+const RIDER_VALUES_BULK_RPC = "bulk_update_rider_prize_earnings_bonus";
+const RIDER_VALUES_BULK_CHUNK_SIZE = 2000;
+
+/**
+ * Ren beregningsfunktion: samme udledning som updateRiderValues' loop, adskilt
+ * så den kan testes/genbruges UAFHÆNGIGT af hvilken sti (per-rytter-PATCH eller
+ * bulk-RPC) der persisterer resultatet — begge stier fodres af NØJAGTIGT samme
+ * payload, så de er byte-identiske pr. rytter ved konstruktion (#4148).
+ */
+export function computeRiderValueUpdates({ allRiders = [], riderSeasonEarnings = {}, seasonIds = [], divisor = VALUATION_WINDOW_SEASONS } = {}) {
+  return (allRiders || []).map((rider) => {
+    const earningsSum = seasonIds.reduce(
+      (sum, sid) => sum + (riderSeasonEarnings[rider.id]?.[sid] || 0),
+      0
+    );
+    return { id: rider.id, prize_earnings_bonus: Math.round(earningsSum / divisor) };
+  });
+}
 
 /**
  * Recalculates prize_earnings_bonus for every rider.
@@ -2078,7 +2173,7 @@ const VALUATION_WINDOW_SEASONS = 3;
  * salary er en GENERATED STORED column (se database/2026-06-10-value-cutover-base-value.sql)
  * — DB genberegner automatisk når base_value eller prize_earnings_bonus opdateres (#1101).
  */
-export async function updateRiderValues(supabaseClient) {
+export async function updateRiderValues(supabaseClient, opts = {}) {
   const { data: activeSeason } = await supabaseClient
     .from("seasons")
     .select("id, number")
@@ -2164,36 +2259,43 @@ export async function updateRiderValues(supabaseClient) {
   // owner decision 2026-06-08). seasonIds still scopes the numerator below.
   const divisor = VALUATION_WINDOW_SEASONS;
 
-  const updates = [];
+  const updates = computeRiderValueUpdates({ allRiders, riderSeasonEarnings, seasonIds, divisor });
 
-  for (const rider of allRiders || []) {
-    const earningsSum = seasonIds.reduce(
-      (sum, sid) => sum + (riderSeasonEarnings[rider.id]?.[sid] || 0),
-      0
-    );
-    const newBonus = Math.round(earningsSum / divisor);
+  // #4148: bag flag (default OFF — opts.forceBulkWrite er KUN til tests, der
+  // ikke skal afhænge af en app_config-DB-læsning for at vælge sti deterministisk).
+  const useBulkWrite = opts.forceBulkWrite ?? await isRiderValuesBulkWriteEnabled(supabaseClient);
+  let writeCalls = 0;
 
-    updates.push({
-      id: rider.id,
-      prize_earnings_bonus: newBonus,
-    });
-  }
-
-  for (let i = 0; i < updates.length; i += RIDER_VALUE_PATCH_CONCURRENCY) {
-    const batch = updates.slice(i, i + RIDER_VALUE_PATCH_CONCURRENCY);
-    // withSupabaseRetry (#2392): opdateringen er idempotent (samme payload pr. rytter),
-    // så et transient gateway-hikke midt i tusindvis af PATCHes skal ikke vælte recalc'en.
-    await Promise.all(batch.map(({ id, ...payload }) => withSupabaseRetry(async () => {
-      const { error } = await supabaseClient
-        .from("riders")
-        .update(payload)
-        .eq("id", id);
-      if (error) throw error;
-    })));
+  if (useBulkWrite) {
+    for (let i = 0; i < updates.length; i += RIDER_VALUES_BULK_CHUNK_SIZE) {
+      const chunk = updates.slice(i, i + RIDER_VALUES_BULK_CHUNK_SIZE);
+      if (!chunk.length) continue;
+      writeCalls += 1;
+      // withSupabaseRetry (#2392): samme idempotens-begrundelse som per-rytter-
+      // stien nedenfor — et transient gateway-hikke må ikke vælte hele recalc'en.
+      await withSupabaseRetry(async () => {
+        const { error } = await supabaseClient.rpc(RIDER_VALUES_BULK_RPC, { p_updates: chunk });
+        if (error) throw error;
+      });
+    }
+  } else {
+    for (let i = 0; i < updates.length; i += RIDER_VALUE_PATCH_CONCURRENCY) {
+      const batch = updates.slice(i, i + RIDER_VALUE_PATCH_CONCURRENCY);
+      // withSupabaseRetry (#2392): opdateringen er idempotent (samme payload pr. rytter),
+      // så et transient gateway-hikke midt i tusindvis af PATCHes skal ikke vælte recalc'en.
+      await Promise.all(batch.map(({ id, ...payload }) => withSupabaseRetry(async () => {
+        const { error } = await supabaseClient
+          .from("riders")
+          .update(payload)
+          .eq("id", id);
+        if (error) throw error;
+      })));
+      writeCalls += batch.length;
+    }
   }
 
   const ridersUpdated = allRiders?.length || 0;
-  console.log(`  🏅 Rider values recalculated: ${ridersUpdated} ryttere opdateret`);
+  console.log(`  🏅 Rider values recalculated: ${ridersUpdated} ryttere opdateret (bulk=${useBulkWrite}, write_calls=${writeCalls})`);
   return { ridersUpdated };
 }
 

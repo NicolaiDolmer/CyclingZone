@@ -43,7 +43,10 @@ function round5(n) { return Math.round(n / 5) * 5; }
 export const DISTANCE_BANDS = Object.freeze({
   flat: [150, 200], rolling: [150, 190], hilly: [160, 210],
   mountain: [150, 190], high_mountain: [140, 180],
-  cobbles: [150, 170], classic: [200, 260],
+  // gravel (#4105): grusklassikeren er LAENGERE end brostensklassikeren og kortere end
+  // monumentet — Strade Bianche-typen ligger i 180-215 km med sektorerne spredt over
+  // anden halvdel. Baandet er sat mellem cobbles og classic, ikke lig med nogen af dem.
+  cobbles: [150, 170], gravel: [180, 215], classic: [200, 260],
   itt: [15, 40], ttt: [25, 45], itt_hilly: [15, 30],
 });
 
@@ -66,12 +69,47 @@ export const CLASS_DISTANCE_BANDS = Object.freeze({
   Monuments: [250, 290],
 });
 
+// #4288 (ejer-beslutning 3/9): en Grand Tour er spillets laengste loeb, og dens etaper
+// skal maales mod virkeligheden - ikke mod den samme skabelon som en firedages Class2-tur.
+// Ejeren satte tre tal: samlet snit INKL. enkeltstart 155-170 km, landevejsetaper 165-185
+// km i snit, prolog 8-14 km og rigtige enkeltstarter 25-40 km. #4709 gOEr dem til en gate
+// (GRAND_TOUR_DISTANCE_RULES i raceRouteRealismMetrics.js).
+//
+// HVORFOR ET EGET BAAND OG IKKE EN JUSTERING AF DISTANCE_BANDS: terraen-baandene daekker
+// HELE kataloget - 200+ loeb fra endagsklassikere til firedages-ture. Loefter man dem, faar
+// en Class2-tur i Portugal 190 km flade etaper, og #4104's monument-loesning (klasse slaar
+// terraen) ville skulle laves om igen. Maalt paa S3's LEVENDE kalender laa GT-snittene paa
+// 153,0 / 155,6 / 162,6 km - Touren under gulvet, de to andre i den nederste kant - fordi
+// GT'en arvede baandene fra et gennemsnitsloeb. GT'en har sit eget baand, praecis som
+// monumentet fik sit i #4104.
+//
+// KALIBRERING: baandene er sat saa landevejssnittet lander paa ~176 km (midt i 165-185 og
+// hoejt nok til at det SAMLEDE snit stadig rammer 155-170 naar to korte tempoetaper traekker
+// det ned). Spredningen er smallere end terraen-baandenes 40-50 km, fordi et bredt baand
+// giver et snit der falder ud af 155-170 i hver tredje traekning. Raekkefoelgen mellem
+// typerne foelger virkeligheden: kuperede og flade etaper er de laengste, hoejbjerget det
+// korteste (klatringen begraenser hvad der kan koeres paa en etapedag).
+export const GRAND_TOUR_DISTANCE_BANDS = Object.freeze({
+  flat: [170, 190], rolling: [165, 190], hilly: [170, 195],
+  mountain: [165, 185], high_mountain: [160, 180],
+  // Ejerens 25-40 km. itt_hilly holdes i den korte ende af det samme baand (klatringen
+  // begraenser distancen), men ALDRIG under 25 - gulvet er det samme for alle rigtige
+  // enkeltstarter i en GT.
+  itt: [25, 40], itt_hilly: [25, 35],
+});
+
 // Sub-3 (#2771) Task 6: prolog-arketype. profile_type FORBLIVER "itt" (design-
 // beslutning låst i spec §6 + plan Task 6 self-review) — prolog er en DISTANCE-
 // egenskab afgjort her i pass 2, ikke en ny arketype i pass 1 (som forbliver
 // urørt/bit-identisk). KUN etape 1 i et etapeløb kan trække en prolog.
 export const PROLOGUE_PROBABILITY = 0.6;
 export const PROLOGUE_DISTANCE_BAND = [5, 8];
+// #4288: en GT-prolog er 8-14 km (ejer-beslutning 3/9). Baandet er GT-specifikt, saa en
+// prolog i en almindelig etapeuge stadig maa vaere de 5-8 km den altid har vaeret.
+export const GRAND_TOUR_PROLOGUE_DISTANCE_BAND = [8, 14];
+// Arketypen der udpeger en Grand Tour. Samme noegle som ARCHETYPE_PROFILES.grand_tour i
+// raceStageProfileGenerator.js og isGrandTourArchetype i raceRouteRealismMetrics.js.
+const GRAND_TOUR_ARCHETYPE = "grand_tour";
 // Climb-antal + kategori-pool pr. profil (spec §4.1).
 const CLIMB_SPEC = Object.freeze({
   flat: { count: [0, 1], cats: ["4"] },
@@ -82,6 +120,9 @@ const CLIMB_SPEC = Object.freeze({
   // etapens klimaks i buildClimbs() nedenfor.
   high_mountain: { count: [2, 4], cats: ["1", "2"] },
   cobbles: { count: [0, 2], cats: ["3", "4"] },
+  // gravel: flere og lidt haardere korte stigninger end brosten (toscanske bakker),
+  // men aldrig kat 1/HC — saa bliver det en bjergetape med grus paa, ikke en grusklassiker.
+  gravel: { count: [2, 4], cats: ["2", "3", "4"] },
   classic: { count: [2, 5], cats: ["1", "2", "3"] },
   itt: { count: [0, 0], cats: [] },
   ttt: { count: [0, 0], cats: [] },
@@ -105,7 +146,7 @@ export const UPHILL_FINISH_SHARE = Object.freeze({ hilly: 0.35, rolling: 0.20 })
 // Basis-højdemeter (ikke-kategoriseret bølgeterræn) pr. profil.
 const BASE_ELEVATION = Object.freeze({
   flat: 200, rolling: 500, hilly: 700, mountain: 900, high_mountain: 1100,
-  cobbles: 400, classic: 900, itt: 80, ttt: 120,
+  cobbles: 400, gravel: 800, classic: 900, itt: 80, ttt: 120,
   // itt_hilly (#3546 D): moderat: mere end den flade ITT, men langt under en hel
   // hilly-etape (kortere distance holder det samlede højdemeter-tal nede).
   itt_hilly: 350,
@@ -129,6 +170,14 @@ const SECTOR_TOKENS = Object.freeze({
   it: ["Settore Pavé", "Tratto in Pietra"],
   fr: ["Secteur de Pavés", "Trouée d'Arenberg-type", "Carrefour de l'Arbre-type"],
   default: ["Cobbled Sector", "Pavé Stretch"],
+});
+// #4105: grus-sektorerne har deres egne navne. Et grusloeb der kalder sine sektorer
+// "Settore Pave" er den samme indholdsfejl som at Terre di Toscana var brosten.
+const GRAVEL_SECTOR_TOKENS = Object.freeze({
+  es: ["Sector de Grava", "Tramo de Tierra"],
+  it: ["Settore Sterrato", "Tratto di Strada Bianca"],
+  fr: ["Secteur de Terre", "Chemin Blanc"],
+  default: ["Gravel Sector", "White Road"],
 });
 const REGION_HINTS = Object.freeze([
   { re: /vuelta|espa|anda|burg|navarra|castilla|cantabria|picos|almer|llanera|cami|gran premio de|clásica|morvedre|mediterr/i, region: "es" },
@@ -154,8 +203,8 @@ export function makeRegionNamer(rng, region) {
       used.add(name);
       return name;
     },
-    sector(i) {
-      const pool = SECTOR_TOKENS[region];
+    sector(i, kind = "cobbles") {
+      const pool = (kind === "gravel" ? GRAVEL_SECTOR_TOKENS : SECTOR_TOKENS)[region];
       return `${pool[randInt(rng, 0, pool.length - 1)]} ${i + 1}`;
     },
   };
@@ -330,17 +379,29 @@ function buildSprints(rng, profileType, finaleType, distanceKm, isStageRace, cli
   return sprints;
 }
 
+// #4105: sektor-KIND foelger profiltypen. `gravel` faar GARANTERET mindst een sektor
+// (undergraensen er 5, ikke 0), fordi brostensevnen kun taeller paa etaper med brosten
+// eller grus (ejer-regel 3/9) — en grus-etape uden sektorer ville lade
+// DEMAND_VECTORS.gravel's dominerende cobblestone-vaegt hvile paa ingenting. Grus-
+// sektorerne er FLERE og LAENGERE end brostens-sektorerne: grusklassikeren har typisk
+// 8-11 sektorer paa 1-12 km mod brostenens 3-6 paa 1-3 km.
+const SECTOR_SPEC = Object.freeze({
+  cobbles: { count: [3, 6], length: [1.0, 3.0], kind: "cobbles" },
+  gravel: { count: [5, 8], length: [1.5, 6.0], kind: "gravel" },
+  classic: { count: [0, 3], length: [1.0, 3.0], kind: "cobbles" }, // Roubaix-type; typisk 0
+});
+
 export function buildSectors(rng, profileType, distanceKm, namer) {
-  let n = 0;
-  if (profileType === "cobbles") n = randInt(rng, 3, 6);
-  else if (profileType === "classic") n = randInt(rng, 0, 3); // Roubaix-type; typisk 0
+  const spec = SECTOR_SPEC[profileType];
+  if (!spec) return [];
+  const n = randInt(rng, spec.count[0], spec.count[1]);
   if (n === 0) return [];
   const sectors = [];
-  let cursor = Math.round(distanceKm * 0.45); // brosten koncentreres i 2. halvdel
+  let cursor = Math.round(distanceKm * 0.45); // brosten/grus koncentreres i 2. halvdel
   for (let i = 0; i < n; i++) {
-    const length_km = randFloat(rng, 1.0, 3.0, 1);
+    const length_km = randFloat(rng, spec.length[0], spec.length[1], 1);
     if (cursor + length_km > distanceKm - 2) break;
-    sectors.push({ kind: "cobbles", start_km: Math.round(cursor), length_km, name: namer.sector(i) });
+    sectors.push({ kind: spec.kind, start_km: Math.round(cursor), length_km, name: namer.sector(i, spec.kind) });
     cursor += length_km + randInt(rng, 4, 12);
   }
   return sectors;
@@ -370,13 +431,19 @@ export function attachRoute(stage, race, isStageRace) {
   // falder uændret gennem det normale bånd (pass 1 forbliver bit-identisk;
   // determinisme: samme race-identitet + etape → samme afgørelse hver gang).
   const isProlog = pt === "itt" && stage.stage_number === 1 && isStageRace && rng() < PROLOGUE_PROBABILITY;
+  // #4288: GT-baandet slaar terraen-baandet (samme foelge-orden som #4104's klasse-baand),
+  // men KUN for etaper i et etapeloeb med grand_tour-arketypen. Valget koster INGEN
+  // rng-traekning, saa alle andre loeb er bit-identiske med foer.
+  const isGrandTour = isStageRace && race?.terrain_archetype === GRAND_TOUR_ARCHETYPE;
   // #4104: klasse-baandet vinder over terraen-baandet, men KUN for endagsloeb (et
   // monument er pr. definition et endagsloeb) og KUN naar race_class faktisk er sat.
   // Kalder-stier der bygger et delvist seedRace-objekt uden race_class falder derfor
   // uaendret gennem terraen-baandet i stedet for at kaste - samme defensive linje som
   // #3620's "undefined er ikke det samme som null"-laering.
   const classBand = !isStageRace && race?.race_class ? CLASS_DISTANCE_BANDS[race.race_class] : null;
-  const [lo, hi] = isProlog ? PROLOGUE_DISTANCE_BAND : (classBand ?? DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat);
+  const prologueBand = isGrandTour ? GRAND_TOUR_PROLOGUE_DISTANCE_BAND : PROLOGUE_DISTANCE_BAND;
+  const grandTourBand = isGrandTour ? GRAND_TOUR_DISTANCE_BANDS[pt] : null;
+  const [lo, hi] = isProlog ? prologueBand : (classBand ?? grandTourBand ?? DISTANCE_BANDS[pt] ?? DISTANCE_BANDS.flat);
   let distance_km = isTimeTrialProfile(pt) ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
   if (distance_km < lo) distance_km = lo; // round5 må aldrig skyde under båndet
   if (distance_km > hi) distance_km = hi;

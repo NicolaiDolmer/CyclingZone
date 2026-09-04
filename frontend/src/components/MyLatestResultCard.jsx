@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { Card } from "./ui";
+import { Card, ChevronRightIcon } from "./ui";
 import { buttonClass } from "./ui/buttonStyles.js";
 import RiderLink from "./RiderLink";
 import { Flag } from "./Flag";
@@ -48,6 +48,38 @@ const META_LABEL = "font-data text-2xs uppercase tracking-[.08em] text-cz-3";
 function placementName(p) {
   if (p.firstname || p.lastname) return `${p.firstname ?? ""} ${p.lastname ?? ""}`.trim();
   return p.rider_name || "—";
+}
+
+// Ret-runde PR #4728, fund #2: buildPrizeBreakdown() (backend/lib/
+// myTeamLatestResult.js) samlede allerede en riders[]-liste pr. etape/
+// klassifikations-gruppe, men den blev kasseret her — kun gruppens SUM blev
+// vist, uden rytternavn. Det modsagde #4697's udtrykkeligt bekræftede krav
+// ("+ rider in the same view?" → "Yes") og reporterens egen begrundelse (at se
+// hvilken af hans 2 klatrere der tjente hvad). Når to ryttere scorer i samme
+// gruppe, får hver deres EGEN linje med deres EGEN andel (riders[].amount,
+// ikke gruppens total) — netop den detalje der blev efterspurgt. Kun når
+// gruppen slet ingen rytternavne har (bør ikke ske efter #4697/#4698-filtret,
+// men samme forsigtige "ærligt på gulvet"-holdning som backend-kommentaren)
+// falder den tilbage til én anonym sum-linje frem for at vise en tom liste.
+function breakdownRiderRows({ group, keyPrefix, label }) {
+  if (group.riders?.length > 0) {
+    return group.riders.map((r, i) => (
+      <li key={`${keyPrefix}-${r.rider_id ?? i}`} className="flex items-center justify-between gap-3 py-1 text-xs">
+        <span className="text-cz-2">
+          {label}
+          {" · "}
+          {r.rider_name}
+        </span>
+        <span className="font-data tabular-nums text-cz-1">{formatNumber(r.amount)} CZ$</span>
+      </li>
+    ));
+  }
+  return [
+    <li key={keyPrefix} className="flex items-center justify-between gap-3 py-1 text-xs">
+      <span className="text-cz-2">{label}</span>
+      <span className="font-data tabular-nums text-cz-1">{formatNumber(group.amount)} CZ$</span>
+    </li>,
+  ];
 }
 
 // "Nyt"-markering indtil set (#2593 del 2): SERVER-flaget (race.seen) er nu
@@ -153,6 +185,9 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
   const { t, i18n } = useTranslation(["dashboard", "races"]);
   const isNew = useSeenBadge(data?.race);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  // #4697/#4698: fold-out for prize_breakdown/sponsor_payout — lukket som
+  // udgangspunkt (samme "et klik væk"-idiom som Earlier races-historikken).
+  const [breakdownExpanded, setBreakdownExpanded] = useState(false);
   // #3310 comeback-buen: uset første resultat → dashboardets landings-øjeblik.
   const firstRaceMoment = isFirstRaceMoment(data);
   // #3398: løbssejr/GC-sejr-fejring for egne ryttere (se useWinCelebration).
@@ -180,8 +215,17 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
     totals,
     history = [],
     season_totals: seasonTotals = null,
+    prize_breakdown: prizeBreakdown = null,
+    sponsor_payout: sponsorPayout = null,
   } = data;
   const visibleHistory = historyExpanded ? history : history.slice(0, COLLAPSED_HISTORY_ROWS);
+  // #4697: kun tilbyd fold-ud når der reelt ER en sammensætning at vise —
+  // et løb uden nogen placeringspræmie (kun deltagelse) skal ikke have en
+  // knap der folder ud til ingenting.
+  const hasBreakdown = Boolean(
+    prizeBreakdown && (prizeBreakdown.stages.length || prizeBreakdown.classifications.length || prizeBreakdown.team_bonus)
+  );
+  const hasSponsorPayout = Boolean(sponsorPayout?.items?.length);
   // #3398: GC-sejr (etapeløb) vs. løbssejr (endagsløb) — samme skelnen som
   // resten af kortet allerede bruger (race.race_type === "stage_race").
   const winConfettiTitle = race?.race_type === "stage_race"
@@ -213,8 +257,9 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
         </div>
         {race && !firstRaceMoment && (
           <Link to={`/races/${race.id}`} state={{ from: "dashboard" }}
-            className="text-xs text-cz-accent-t hover:underline flex-shrink-0">
+            className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline flex-shrink-0">
             {t("dashboard:cards.myResult.linkFull")}
+            <ChevronRightIcon size={13} aria-hidden="true" />
           </Link>
         )}
       </div>
@@ -222,8 +267,9 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
       {!race ? (
         <div className="text-center py-4">
           <p className="text-cz-3 text-sm">{t("dashboard:cards.myResult.empty")}</p>
-          <Link to="/planning?tab=calendar" className="text-cz-accent-t text-xs hover:underline mt-1 inline-block">
+          <Link to="/planning?tab=calendar" className="inline-flex items-center gap-0.5 text-cz-accent-t text-xs hover:underline mt-1">
             {t("dashboard:cards.myResult.emptyCta")}
+            <ChevronRightIcon size={13} aria-hidden="true" />
           </Link>
         </div>
       ) : (
@@ -350,7 +396,60 @@ export default function MyLatestResultCard({ data, nextRace = null, nextRaceStar
                 <span className="font-data font-bold text-cz-accent-t tabular-nums">{formatNumber(totals.prize_money)} CZ$</span>
               </span>
             )}
+            {(hasBreakdown || hasSponsorPayout) && (
+              <button
+                type="button"
+                onClick={() => setBreakdownExpanded((v) => !v)}
+                aria-expanded={breakdownExpanded}
+                className="text-xs font-medium text-cz-accent-t hover:underline"
+              >
+                {breakdownExpanded
+                  ? t("dashboard:cards.myResult.breakdown.hide")
+                  : t("dashboard:cards.myResult.breakdown.show")}
+              </button>
+            )}
           </div>
+
+          {/* #4697/#4698 — hvordan totals.prize_money er sammensat (etape-
+              placeringer, klassifikationer, holdbonus) + sponsor-udbetalingen
+              for dette løb som egen linje med kilde (race-day/resultat-bonus),
+              i stedet for kun en separat besked (#3315). Ren visning af tal
+              backend allerede har beregnet — se buildPrizeBreakdown/
+              buildSponsorPayoutLine, backend/lib/myTeamLatestResult.js. */}
+          {breakdownExpanded && (hasBreakdown || hasSponsorPayout) && (
+            <ul className="flex flex-col mt-1 pt-1">
+              {(prizeBreakdown?.stages || []).flatMap((s) =>
+                breakdownRiderRows({
+                  group: s,
+                  keyPrefix: `stage-${s.stage_number}`,
+                  label: t("dashboard:cards.myResult.breakdown.stage", { number: s.stage_number }),
+                }),
+              )}
+              {(prizeBreakdown?.classifications || []).flatMap((c) =>
+                breakdownRiderRows({
+                  group: c,
+                  keyPrefix: `cls-${c.classification}`,
+                  label: t(`races:detail.classification.${c.classification}`),
+                }),
+              )}
+              {prizeBreakdown?.team_bonus && (
+                <li className="flex items-center justify-between gap-3 py-1 text-xs">
+                  <span className="text-cz-2">{t("dashboard:cards.myResult.breakdown.teamBonus")}</span>
+                  <span className="font-data tabular-nums text-cz-1">{formatNumber(prizeBreakdown.team_bonus.amount)} CZ$</span>
+                </li>
+              )}
+              {(sponsorPayout?.items || []).map((item) => (
+                <li key={item.type} className="flex items-center justify-between gap-3 py-1 text-xs border-t border-cz-border first:border-0">
+                  <span className="text-cz-2">
+                    {t("dashboard:cards.myResult.breakdown.sponsor")}
+                    {" · "}
+                    {t(`dashboard:cards.myResult.breakdown.${item.type === "sponsor_race_day" ? "sponsorRaceDay" : "sponsorResultBonus"}`)}
+                  </span>
+                  <span className="font-data tabular-nums text-cz-accent-t">{formatNumber(item.amount)} CZ$</span>
+                </li>
+              ))}
+            </ul>
+          )}
 
           {/* #2886 — de foregående løb. Det viste løb er allerede filtreret fra
               server-side, så listen starter ved løbet FØR det. */}

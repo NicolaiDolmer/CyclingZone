@@ -27,5 +27,32 @@
   "loadError": {
     "message": "Vi kunne ikke hente dine abonnementsoplysninger. Intet er gået tabt, og din konto er upåvirket.",
     "retry": "Prøv igen"
+  },
+  "founderMark": {
+    "label": "Founder-supporter",
+    "aria": "Founder-supporter nr. {n} af {cap}",
+    "heroLine": "Founder-supporter nr. {n} af {cap}"
+  },
+  "gate": {
+    "note": "Pro viser dette på tværs af alle sæsoner, ikke kun den nuværende.",
+    "cta": "Se Pro"
+  },
+  "riderHistory": {
+    "title": "Sæsonhistorik",
+    "cta": "Se Pro",
+    "note": "Pro viser alle evner på tværs af alle sæsoner, ikke kun den nuværende.",
+    "ceilingLegend": "Skala-loft (99)",
+    "empty": "Ingen sæsonhistorik registreret endnu."
+  },
+  "savedFilters": {
+    "title": "Gemte filtre",
+    "save": "Gem nuværende filter",
+    "namePlaceholder": "Navngiv filteret",
+    "saveConfirm": "Gem",
+    "cancel": "Annullér",
+    "remove": "Fjern",
+    "empty": "Ingen gemte filtre endnu.",
+    "note": "Pro lader dig gemme filtre med navn og hoppe direkte tilbage til dem.",
+    "cta": "Se Pro"
   }
 }

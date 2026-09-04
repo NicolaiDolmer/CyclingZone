@@ -40,27 +40,23 @@
   },
   "stats": {
     "balance": "Balance",
-    "balanceAvailable": "{amount} CZ$ tilgængelig",
     "reserved": "Reserveret i bud",
-    "auctionsLeading": "{count, plural, one {1 auktion} other {# auktioner}} du leder",
     "ridersNow": "Ryttere nu",
-    "projection": "Projektion",
-    "incoming": "+{count} ind",
-    "outgoing": "−{count} ud"
+    "projection": "Projektion"
   },
   "filter": {
     "mySituation": "Mine auktioner ({count})",
     "all": "Alle ({count})",
     "otherManagers": "Andre managers ({count})",
     "wishlistButton": "Kun ønskeliste",
-    "wishlistTitleOn": "Vis alle ryttere",
-    "wishlistTitleOff": "Vis kun ryttere på din ønskeliste",
     "feedButton": "Live bud",
     "feedTitleOn": "Skjul live bud-panelet",
+    "searchPlaceholder": "Søg efter ryttere",
+    "searchAria": "Søg efter ryttere på auktion",
+    "moreFilters": "Flere filtre",
     "feedTitleOff": "Vis live bud-panelet"
   },
   "nav": {
-    "active": "Aktive ({count})",
     "history": "Historik"
   },
   "history": {
@@ -137,6 +133,11 @@
     "line": "Fører: {name}",
     "none": "Ingen bud endnu"
   },
+  "overbidHidden": {
+    "hideTitle": "Skjul denne auktion fra din liste",
+    "hideAria": "Skjul auktionen på {name} fra din liste",
+    "showAgain": "Vis skjulte ({count})"
+  },
   "list": {
     "countLine": "Viser {shown} af {total} auktioner"
   },
@@ -207,6 +208,9 @@
     "noResults": "Ingen auktioner i denne kategori",
     "wishlistHelp": "Slå 'Kun ønskeliste' fra eller tilføj ryttere fra rytter-oversigten",
     "browseSuggestion": "Skift til 'Alle' for at browse markedet",
+    "actionClearWishlist": "Vis alle auktioner",
+    "actionBrowseAll": "Se alle auktioner",
+    "actionStartAuction": "Gå til ryttere",
     "startAuctionSuggestion": "Gå til Ryttere og start en auktion"
   },
   "feed": {

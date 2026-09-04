@@ -14,7 +14,7 @@ import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, installBoardStatusMock, login, makeBoardStatus, stabilizePage } from "./fixtures.js";
 
 // Samme fixture-form som board-wizard-back.spec.js (#1240): udløbet 5yr-plan →
-// "Forhandl ny plan →"-flowet. Duplikeret bevidst — specs skal kunne ændre deres
+// "Forhandl ny plan"-flowet. Duplikeret bevidst — specs skal kunne ændre deres
 // egen fixture uden at påvirke #1240-regressionstesten.
 const EXPIRED_BOARD = {
   is_baseline_phase: false,
@@ -124,21 +124,21 @@ test("wizard negotiates a goal, signs, and POSTs the correct payload (#2463)", a
   await page.goto("/board");
 
   // Udløbet plan → wizard trin 1.
-  await page.getByRole("button", { name: "Forhandl ny plan →" }).click();
+  await page.getByRole("button", { name: "Forhandl ny plan" }).click();
   await expect(page.getByRole("heading", { name: "Bestyrelsens forslag" })).toBeVisible();
-  await page.getByRole("button", { name: "Start forhandling →" }).click();
+  await page.getByRole("button", { name: "Start forhandling" }).click();
 
   // Mål 1/3: forhandl ned (negotiations-arrayet må ikke være tomt) → accepter kompromiset.
   await expect(page.getByText("Mål 1/3")).toBeVisible();
-  await page.getByRole("button", { name: "Forhandl ned ↓" }).click();
+  await page.getByRole("button", { name: "Forhandl ned" }).click();
   await expect(page.getByText("Bestyrelsen har accepteret kompromis")).toBeVisible();
-  await page.getByRole("button", { name: "Accepter forhandlet mål →" }).click();
+  await page.getByRole("button", { name: "Accepter forhandlet mål" }).click();
 
   // Mål 2/3 + 3/3: almindelig accept, ingen forhandling.
   await expect(page.getByText("Mål 2/3")).toBeVisible();
-  await page.getByRole("button", { name: "Accepter →" }).click();
+  await page.getByRole("button", { name: "Accepter" }).click();
   await expect(page.getByText("Mål 3/3")).toBeVisible();
-  await page.getByRole("button", { name: "Accepter →" }).click();
+  await page.getByRole("button", { name: "Accepter" }).click();
 
   // Trin 3: underskrift — de forhandlede/accepterede mål er alle synlige.
   await expect(page.getByRole("heading", { name: "Underskrift" })).toBeVisible();
@@ -160,7 +160,7 @@ test("wizard negotiates a goal, signs, and POSTs the correct payload (#2463)", a
   await expect(page.getByRole("dialog")).toHaveCount(0);
   // … og siden viser den fornyede (refetchede) plan — ikke længere udløbet,
   // med de forhandlede mål synlige i dashboard-panelet.
-  await expect(page.getByRole("button", { name: "Forhandl ny plan →" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Forhandl ny plan" })).toHaveCount(0);
   await expect(page.getByText("Top 7 i divisionen")).toBeVisible();
   await expect(page.getByText("Mindst 3 sejre")).toBeVisible();
 });

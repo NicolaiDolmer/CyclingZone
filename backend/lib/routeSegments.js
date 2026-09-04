@@ -72,7 +72,9 @@ function weightedPick(rng, items) {
 // mountain/classic-familien fyldes rolling (bølget mellem climbs).
 const GAP_KIND_BY_PROFILE = Object.freeze({
   flat: "flat", rolling: "rolling", hilly: "rolling", mountain: "rolling",
-  high_mountain: "rolling", cobbles: "flat", classic: "rolling",
+  // #4105: grus fyldes ROLLING mellem sektorerne (toscansk boelgeterraen), ikke flad som
+  // brosten — det er forskellen paa en nordfransk transport-etape og en grusklassiker.
+  high_mountain: "rolling", cobbles: "flat", gravel: "rolling", classic: "rolling",
   itt: "flat", itt_hilly: "flat", ttt: "flat",
 });
 // Spec §3.1: "flad har hoejst smaa rolling-stykker" — kun for profile_type "flat", og kun
@@ -157,6 +159,10 @@ export function buildSegments(rng, route) {
   for (const s of sectors) {
     const from = clampNum(Number(s.start_km), 0, distanceKm);
     const to = clampNum(from + Number(s.length_km), from, distanceKm);
+    // #4105: BAADE brostens- og grus-sektorer bliver "cobbles"-SEGMENTER. Segment-
+    // modellen beskriver fysikken (loest/ujaevnt underlag: lav laesgevinst, hoej
+    // styrt-risiko, hoej work-cost), og den er den samme for de to underlag — ejer-
+    // rammen 3/9. Underlaget selv staar i etapens profile_type og i sectors[].kind.
     raw.push({ kind: "cobbles", from, to, sector_name: s.name });
   }
   raw.sort((a, b) => a.from - b.from || a.to - b.to);
@@ -230,7 +236,7 @@ const WEATHER_WEIGHTS = Object.freeze([
   { value: "sun", weight: 55 }, { value: "overcast", weight: 25 },
   { value: "rain", weight: 12 }, { value: "wind", weight: 8 },
 ]);
-const WIND_EXPOSED_FAMILY = new Set(["flat", "rolling", "cobbles"]);
+const WIND_EXPOSED_FAMILY = new Set(["flat", "rolling", "cobbles", "gravel"]);
 
 export function buildWeather(rng, profileType) {
   const kind = weightedPick(rng, WEATHER_WEIGHTS);

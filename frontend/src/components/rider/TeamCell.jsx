@@ -1,4 +1,5 @@
 import TeamLink from "../TeamLink";
+import { ChevronRightIcon } from "../ui/icons/index.jsx";
 
 // Holdnavn (rytterens pro-hold) som klikbart link. Uden hold vises fri-agent-
 // label. Bruges som <td>-indhold — kaldersiden styrer <td>-wrapper og bredde.
@@ -35,7 +36,7 @@ export default function TeamCell({
         aria-label={pendingTitle || undefined}
         className="inline-flex items-center gap-1 rounded bg-cz-accent/15 px-1.5 py-0.5 text-3xs leading-none text-cz-accent-t"
       >
-        <span aria-hidden="true">→</span>
+        <ChevronRightIcon size={11} aria-hidden="true" />
         <TeamLink id={pendingTeam.id} stopPropagation={stopPropagation} className="font-semibold hover:underline">
           {pendingTeam.name}
         </TeamLink>

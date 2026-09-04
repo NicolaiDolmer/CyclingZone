@@ -32,7 +32,7 @@ test("bestyrelses-wizarden kommer ud af loading naar proposal-kaldet aldrig naar
   await stabilizePage(page);
   await installNetworkMocks(page);
 
-  // Udløbet 5yr-plan → "Forhandl ny plan →" åbner wizardens trin 1, som straks
+  // Udløbet 5yr-plan → "Forhandl ny plan" åbner wizardens trin 1, som straks
   // henter et proposal. Samme fixture-form som board-wizard-back.spec.js.
   const board = makeBoardStatus();
   board.plans["5yr"].is_expired = true;
@@ -49,7 +49,7 @@ test("bestyrelses-wizarden kommer ud af loading naar proposal-kaldet aldrig naar
   await login(page);
   await page.goto("/board");
 
-  await page.getByRole("button", { name: "Forhandl ny plan →" }).click();
+  await page.getByRole("button", { name: "Forhandl ny plan" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
 

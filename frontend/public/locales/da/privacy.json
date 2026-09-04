@@ -1,0 +1,106 @@
+{
+  "page": {
+    "title": "Privatlivspolitik",
+    "langSwitchLabel": "English",
+    "back": "Tilbage",
+    "intro": "Senest opdateret: 3. august 2026. Cycling Zone er en åben beta drevet af Dolmer Digital (CVR 46524861). Vi behandler så lidt data som muligt, og du bestemmer selv hvad vi må måle."
+  },
+  "sections": {
+    "controller": {
+      "heading": "Hvem er dataansvarlig?",
+      "paragraph1": "<bold>Dolmer Digital</bold> (CVR 46524861), enkeltmandsvirksomhed v/ Nicolai Dolmer Mikkelsen. Cycling Zone er et produkt af Dolmer Digital.",
+      "paragraph2": "Henvendelser om dine data (indsigt, sletning, dataportabilitet, indsigelse) kan sendes via Discord (foretrukket) eller via en e-mail oplyst på <helpLink>Hjælp-siden</helpLink>. Vi svarer normalt inden for få dage, senest inden for én måned jf. GDPR art. 12."
+    },
+    "dataTypes": {
+      "heading": "Hvilke data behandler vi?",
+      "items": [
+        "<bold>Konto:</bold> e-mail, brugernavn, valgt holdnavn og manager-navn (nødvendigt for at logge ind og deltage).",
+        "<bold>Spildata:</bold> dit holds økonomi, ryttere, auktioner, bestyrelses-status, sæsonresultater (alt skabt ved at spille).",
+        "<bold>Frivilligt:</bold> Discord-ID hvis du selv tilføjer det for at modtage DM-notifikationer.",
+        "<bold>Teknisk:</bold> IP-adresse i adgangslogs i op til 30 dage til drift og sikkerhed.",
+        "<bold>Analyse (kun med dit samtykke):</bold> anonyme adfærdsdata via Microsoft Clarity (fx hvor brugere klikker forgæves eller skroller frustreret), anonym trafik-/kildestatistik via Google Analytics (fx hvilken side du kom fra) og anonyme sidevisninger via Vercel Web Analytics (fx hvor mange der besøger en side). Bruges udelukkende til at rette dårlig UX og forstå hvor spillere finder spillet.",
+        "<bold>Tilmeldingskilde (legitim interesse):</bold> når du opretter en konto, registrerer vi hvordan du først nåede siden (et henvisende link, eventuelle kampagne-tags i URL'en og den side du landede på), så vi kan se hvilke kanaler der bringer nye spillere. Kun first-party, ingen cross-site-tracking, og du kan til enhver tid gøre indsigelse.",
+        "<bold>Aggregeret trafikstatistik (kræver ikke samtykke):</bold> vi tæller anonyme, aggregerede sidevisninger og engagement (fx hvor mange besøgende en side fik, og om de engagerede sig) uden cookies og uden at gemme IP-adresser eller andre data der kan identificere dig. Vi registrerer også hvilken side besøget kom fra og eventuelle kampagne-tags i URL'en, så vi kan se hvilke kanaler der bringer besøgende. Det er oplysninger om det henvisende link, ikke om dig. Da det ikke kan henføres til dig, kræver det ikke samtykke.",
+        "<bold>Fair play (legitim interesse):</bold> for at kunne opdage og dokumentere snyd med flere konti registrerer vi tekniske signaler ved kontooprettelse og ved værdibærende handlinger i spillet (fx accepterede transfers, auktionsbud og optagne lån): IP-adresse, browser-oplysninger (user-agent), sprogindstilling og tidszone. Disse data bruges udelukkende til fair play-håndhævelse, er aldrig synlige for andre spillere, deles ikke med tredjeparter og slettes automatisk efter 180 dage. Sletter du din konto, slettes de sammen med den. Grundlaget er vores legitime interesse i et retfærdigt spil (GDPR art. 6, stk. 1, litra f), og du kan til enhver tid gøre indsigelse."
+      ]
+    },
+    "founderWaitlist": {
+      "heading": "Founder-waitlist (uforpligtende interessetilkendegivelse)",
+      "intro": "Hvis du tilmelder dig vores waitlist for \"Founder\"-status, behandler vi følgende data baseret på dit udtrykkelige samtykke (GDPR art. 6, stk. 1, litra a):",
+      "items": [
+        "<bold>Kontakt:</bold> e-mail og/eller Discord-handle (mindst én kræves så vi kan vende tilbage).",
+        "<bold>Intent:</bold> interesseniveau, foretrukken tier, primær årsag, hvilke fordele du værdsætter, hvad du opfatter som unfair (fritekst).",
+        "<bold>Opfølgning:</bold> samtykke til personlig opfølgning (separat ja/nej).",
+        "<bold>Attribution:</bold> hvor du kom fra (UTM-parameter eller manuelt tag, fx \"discord_launch\").",
+        "<bold>Tidspunkt:</bold> hvornår du gav samtykke (tidsstempel som bevis)."
+      ],
+      "purpose": "<bold>Formål:</bold> at administrere waitlisten, kontakte dig vedrørende lancering, og måle hvilke kanaler der genererer reel interesse.",
+      "retention": "<bold>Opbevaring:</bold> indtil du beder os slette dig, eller efter 24 måneders inaktivitet, hvad der kommer først. Du kan til enhver tid skrive til os og blive slettet.",
+      "important": "<bold>Vigtigt:</bold> en waitlist-tilmelding er <em>ikke</em> et køb og <em>ikke</em> bindende. Der opkræves ingen betaling før en eventuel senere lancering, hvor du aktivt skal acceptere salgsvilkår."
+    },
+    "thirdParties": {
+      "heading": "Tredjeparter (databehandlere)",
+      "items": [
+        "<bold>Supabase (EU, Frankfurt):</bold> database og autentificering (databehandleraftale i kraft).",
+        "<bold>Vercel:</bold> hosting af frontend (EU/US edge). Vercel kan se IP i adgangslogs.",
+        "<bold>Railway:</bold> hosting af backend.",
+        "<bold>Microsoft Clarity:</bold> kun aktiveret hvis du har accepteret \"Analyse\"-kategorien.",
+        "<bold>Google Analytics:</bold> kun aktiveret hvis du har accepteret \"Analyse\"-kategorien. Annonce-signaler er slået fra.",
+        "<bold>Vercel Web Analytics:</bold> kun aktiveret hvis du har accepteret \"Analyse\"-kategorien.",
+        "<bold>Discord (via Discord Inc.):</bold> kun hvis du frivilligt tilføjer dit Discord-ID, eller skriver til os på Discord. Discord er en selvstændig dataansvarlig for det indhold du sender til os der."
+      ],
+      "footnote": "Vi sælger eller deler ikke dine data med tredjeparter til marketing. Et link til Discord er ikke en data-overførsel, først når du selv klikker og skriver til os."
+    },
+    "retention": {
+      "heading": "Hvor længe gemmer vi data?",
+      "items": [
+        "<bold>Konto- og spildata:</bold> så længe din konto er aktiv. Sletter du kontoen, fjernes personhenførbare data inden for 30 dage; aggregeret spillehistorik (fx tidligere sæsonresultater) kan bevares anonymiseret.",
+        "<bold>Waitlist-data:</bold> indtil du beder os slette dig, eller 24 måneders inaktivitet, hvad der kommer først.",
+        "<bold>Adgangslogs (IP):</bold> automatisk slettet efter 30 dage.",
+        "<bold>Fair play-telemetri (IP og enhedssignaler):</bold> automatisk slettet efter 180 dage.",
+        "<bold>Samtykke-bevis (consent_given_at + valg):</bold> så længe det relaterede data behandles, så vi kan dokumentere lovligt grundlag."
+      ]
+    },
+    "rights": {
+      "heading": "Dine rettigheder under GDPR",
+      "intro": "Du har ret til:",
+      "items": [
+        "<bold>Indsigt</bold>: at få at vide hvilke data vi har om dig.",
+        "<bold>Berigtigelse</bold>: at få forkerte data rettet.",
+        "<bold>Sletning</bold> (\"ret til at blive glemt\").",
+        "<bold>Dataportabilitet</bold>: at få dine data udleveret i et maskinlæsbart format.",
+        "<bold>Indsigelse</bold> mod behandling baseret på legitim interesse.",
+        "<bold>Tilbagetrækning af samtykke</bold>: gælder fremadrettet og stopper indsamlingen. Data hentet før tilbagetrækningen kan ikke fjernes fra anonyme aggregater."
+      ],
+      "complaint": "<bold>Klage til Datatilsynet</bold>: <datatilsynetLink>datatilsynet.dk</datatilsynetLink>.",
+      "complaintUrl": "https://www.datatilsynet.dk",
+      "consentButton": "Skift mine samtykke-valg"
+    },
+    "cookies": {
+      "heading": "Cookies og lokal lagring",
+      "intro": "Vi bruger <em>nødvendige</em> cookies/localStorage og first-party-lagring til:",
+      "items": [
+        "<bold>Login-session</bold> (Supabase auth): nødvendig for at holde dig logget ind.",
+        "<bold>Temavalg</bold> (lys/mørk): gemt lokalt i din browser.",
+        "<bold>Samtykke-valg</bold> (<code>cz_consent_v1</code> i localStorage): så vi husker dine valg og ikke spørger igen.",
+        "<bold>Version-fastholdelse</bold> (<code>__vdpl</code>): holder din browser på den version af spillet du indlæste, så siden ikke går i stykker midt i en session."
+      ],
+      "outro": "Disse kræver ikke samtykke jf. ePrivacy-direktivet (strengt nødvendige). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> og <bold>Vercel Web Analytics</bold> indlæses kun hvis du aktivt har accepteret \"Analyse\"-kategorien. Du kan til enhver tid skifte valg her på siden."
+    },
+    "currentChoices": {
+      "heading": "Dit nuværende valg",
+      "necessary": "Nødvendige",
+      "alwaysOn": "altid på",
+      "analytics": "Analyse",
+      "marketing": "Marketing",
+      "email": "E-mail",
+      "accepted": "accepteret",
+      "denied": "afvist",
+      "lastUpdated": "Sidst opdateret: {date}"
+    },
+    "changes": {
+      "heading": "Ændringer i politikken",
+      "paragraph": "Vi opdaterer politikken når nye værktøjer eller funktioner introduceres. Større ændringer annonceres i patch-noter; du kan altid se den nyeste version her."
+    }
+  }
+}

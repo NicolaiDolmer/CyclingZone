@@ -45,6 +45,25 @@ export const REQUIRED_TEAM_COUNT = 24;
 export const TOP_CANDIDATES = 5;
 const PAGE_SIZE = 1000;
 
+// #4753: hvor længe må et hold være markeret `pending_removal_at` og STADIG holdes
+// uden for invariant-tællingen? #2639 ekskluderede dem ubetinget, og det gjorde
+// auditen blind for præcis den overtrædelse den blev bygget til at fange: prod 4/9
+// stod 4 af 15 puljer på 25 hold, hver med præcis ét markeret hold — auditen talte
+// dem som 24 og var grøn hele august. Markørerne var sat 28/8 og ville aldrig
+// forsvinde (holdene var blokeret af DØDE transfer_offers, som ikke går væk af sig
+// selv, #4233).
+//
+// Tallet er IKKE nyt: det er aiTeamTrimHealSweep.STALE_BACKSTOP_HOURS. Sweep'en
+// bruger allerede 120 timer som grænsen for "denne udskydelse er ikke længere en
+// lovlig ventetid, den er fastlåst" — auditen deler nu den definition i stedet for
+// at have sin egen. Under grænsen: en lovlig udskydelse (et kørende etapeløb, en
+// præmieudbetaling der lander om lidt) → holdet tælles ikke med. Over grænsen:
+// puljen HAR reelt for mange hold, og det skal ses.
+// Duplikeret som konstant frem for importeret, samme grund som fetchAllRows
+// nedenfor: scriptet er bevidst et selvstændigt CLI-værktøj uden runtime-
+// afhængighed på backend/lib.
+export const PENDING_REMOVAL_GRACE_HOURS = 120;
+
 // Kanonisk paginering (spejler backend/lib/supabasePagination.js — dupliceret
 // lokalt i stedet for importeret, så scriptet forbliver et selvstændigt,
 // let-testbart CLI-værktøj uden en runtime-afhængighed på backend/lib).
@@ -87,6 +106,8 @@ export async function runLeagueSizeAudit({
   supabase,
   requiredCount = REQUIRED_TEAM_COUNT,
   topCandidates = TOP_CANDIDATES,
+  now = new Date(),
+  pendingGraceHours = PENDING_REMOVAL_GRACE_HOURS,
 }) {
   const [divisions, teams, riderRows] = await Promise.all([
     fetchAllRows(() =>
@@ -124,7 +145,19 @@ export async function runLeagueSizeAudit({
   // auditen en "overtrædelse" for en pulje der reelt HAR 24 aktive hold, og
   // checket bliver rødt på ALLE PR'er i dagevis (målt 23/7: 11 markerede hold i
   // 5 puljer, hver med 6-7 igangværende løb; hver pulje = præcis 24 uden dem).
-  const realTeams = teams.filter((t) => !t.is_bank && t.pending_removal_at == null);
+  // #4753: eksklusionen er nu TIDSBEGRÆNSET (PENDING_REMOVAL_GRACE_HOURS) — se
+  // konstantens doc. En markør der er ældre end grænsen er ikke en ventetid, den er
+  // en fastlåsning, og så skal puljen tælle holdet med igen.
+  const graceCutoffMs = now.getTime() - pendingGraceHours * 60 * 60 * 1000;
+  const isWithinPendingGrace = (team) => {
+    if (team.pending_removal_at == null) return false;
+    const markedAt = new Date(team.pending_removal_at).getTime();
+    // Uparsbar markør → behandl som fastlåst (fail-loud: en ulæselig dato må ikke
+    // kunne skjule et overskudshold på ubestemt tid).
+    if (!Number.isFinite(markedAt)) return false;
+    return markedAt > graceCutoffMs;
+  };
+  const realTeams = teams.filter((t) => !t.is_bank && !isWithinPendingGrace(t));
 
   // Teams uden league_division_id (endnu ikke pulje-allokeret — typisk
   // dev/test-hold, jf. #1608 "NULL = endnu ikke pulje-allokeret") hører ikke

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { readTour, advanceTour, endTour } from "../lib/onboardingTour";
 import { findVisibleTarget } from "../lib/onboardingTourTarget.js";
 import { computeTooltipPlacement } from "../lib/onboardingTourPlacement.js";
+import { ChevronRightIcon } from "./ui/icons";
 
 // #3008: MobileQuickNav (fixed bund-nav, kun < md) er 56px høj — tooltip'en må
 // ikke lægge sig bag den på mobil. Samme breakpoint som Tailwinds md:hidden.
@@ -207,9 +208,14 @@ export default function OnboardingTour({ pageKey, steps }) {
           </button>
           <button
             onClick={handleNext}
-            className="bg-cz-accent text-cz-on-accent px-3 py-1.5 rounded-cz text-xs font-bold hover:brightness-110 transition-all"
+            className="inline-flex items-center gap-0.5 bg-cz-accent text-cz-on-accent px-3 py-1.5 rounded-cz text-xs font-bold hover:brightness-110 transition-all"
           >
-            {isLast ? t("onboardingTour.done") : t("onboardingTour.next")}
+            {isLast ? t("onboardingTour.done") : (
+              <>
+                {t("onboardingTour.next")}
+                <ChevronRightIcon size={12} aria-hidden="true" />
+              </>
+            )}
           </button>
         </div>
       </div>

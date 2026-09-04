@@ -468,10 +468,66 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
   ];
 }
 
+/**
+ * 5-seed-middel med spaend (ejer-beslutning 2/9, #4604 modsigelse 8): et
+ * enkelt-seed-tal kan hverken erklaere et anker groent eller roedt, fordi
+ * etaper med samme etapenummer deler feltsample OG motor-seed. Gaten maales
+ * derfor som MIDLET over flere seeds, med min/max som spaend.
+ *
+ * Domme aggregeres IKKE ved at taelle PASS'er: middelvaerdien doemmes mod
+ * baandet én gang, praecis som et enkelt-seed-scorecard goer. Et anker hvor
+ * ALLE seeds er N/A forbliver N/A; er bare ét seed maalt, taeller kun de maalte.
+ *
+ * @param {Array<ReturnType<typeof buildScorecard>>} scorecards  ét pr. seed
+ * @returns {Array<object>}  samme form som buildScorecard, plus .spread pr. motor
+ */
+export function aggregateScorecards(scorecards) {
+  if (!Array.isArray(scorecards) || scorecards.length === 0) return [];
+  if (scorecards.length === 1) return scorecards[0];
+
+  const bandById = {
+    field_cohesion_flat: ANCHOR_BANDS.fieldCohesionFlat,
+    descent_vs_summit_gap_ratio: ANCHOR_BANDS.descentToSummitGapRatio,
+    punch_correlation: { min: 0.2 },
+    favorite_win_rate: ANCHOR_BANDS.favoriteWinRate,
+    same_team_top10_share_4plus: ANCHOR_BANDS.sameTeamTop10Share4Plus,
+    itt_correlation: ANCHOR_BANDS.ittCorrelationMinAbs,
+    sprinter_win_rate_flat: ANCHOR_BANDS.sprinterWinRateFlat,
+    mountain_top10_spread: ANCHOR_BANDS.mountainTop10SpreadSeconds,
+    gt_winner_margin: ANCHOR_BANDS.gtWinnerMarginSeconds,
+  };
+
+  const aggregateEngine = (cells, band) => {
+    const measured = cells.filter((c) => c.verdict !== "N/A" && Number.isFinite(c.value));
+    if (measured.length === 0) {
+      return { ...cells[0], sampleCount: 0, spread: null };
+    }
+    const values = measured.map((c) => c.value);
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    const sampleCount = measured.reduce((sum, c) => sum + c.sampleCount, 0);
+    const judged = band ? judge(avg, band, sampleCount) : { value: avg, sampleCount, verdict: measured[0].verdict, naReason: null };
+    return {
+      ...judged,
+      display: cells[0].display,
+      spread: { min: Math.min(...values), max: Math.max(...values), seeds: values.length },
+    };
+  };
+
+  return scorecards[0].map((anchor, index) => {
+    const band = bandById[anchor.id] ?? null;
+    const v3Cells = scorecards.map((card) => card[index].v3);
+    const v4Cells = scorecards.map((card) => card[index].v4);
+    return { ...anchor, v3: aggregateEngine(v3Cells, band), v4: aggregateEngine(v4Cells, band) };
+  });
+}
+
 function formatCell(entry) {
   if (entry.verdict === "N/A") return `n/a (${entry.naReason})`;
   const display = entry.display || ((v) => String(v));
-  return `${display(entry.value)} [${entry.verdict}] (n=${entry.sampleCount})`;
+  const spread = entry.spread
+    ? ` spaend ${display(entry.spread.min)}-${display(entry.spread.max)} over ${entry.spread.seeds} seeds`
+    : "";
+  return `${display(entry.value)} [${entry.verdict}] (n=${entry.sampleCount})${spread}`;
 }
 
 /**

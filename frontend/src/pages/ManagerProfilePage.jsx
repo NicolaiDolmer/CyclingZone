@@ -22,6 +22,7 @@ import {
   TabList,
   Tab,
   TabPanel,
+  HeroStats,
   Table,
   Tr,
   Th,
@@ -95,17 +96,10 @@ function AchievementProgress({ achievement }) {
   );
 }
 
-// #2849 bølge 5 — T3 hero stat-blok (label 10px uppercase · value 20px/650
-// data-font tabular). Samme lokale opskrift som RaceDetailPage (bølge 3);
-// sidste blok i rækken udelader højre-rule.
-function HeroStatBlock({ label, value, last = false }) {
-  return (
-    <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
-      <div className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
-      <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
-    </div>
-  );
-}
+// #2849 bølge 5 gav siden en lokal HeroStatBlock-kopi (ren flex +
+// overflow-x-auto). #4628: opskriften bor nu i kittet (components/ui/HeroStats)
+// og stabler i to kolonner på mobil — den lokale kopi klippede det fjerde tal
+// helt væk på 375px (audit 2026-09, række #37).
 
 export default function ManagerProfilePage() {
   const { teamId } = useParams();
@@ -281,11 +275,7 @@ export default function ManagerProfilePage() {
             )}
           </div>
 
-          <div className="flex mt-5 pt-4 border-t border-cz-border overflow-x-auto">
-            {statBlocks.map((b, i) => (
-              <HeroStatBlock key={b.label} label={b.label} value={b.value} last={i === statBlocks.length - 1} />
-            ))}
-          </div>
+          <HeroStats items={statBlocks} />
         </section>
 
         {/* Faner UNDER kortet på sidens baggrund — TabList bærer sin egen

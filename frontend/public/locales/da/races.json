@@ -16,11 +16,11 @@
     "stagesGt": "{count} etaper · GT",
     "stagesOnly": "{count} etaper",
     "monument": "Monument · eksklusiv løbsdag",
-    "bandAria": "{name}, løbsdag {day}. Åbn dagens board.",
+    "bandAria": "{name}, dag {day} af {total}. Åbn dagens board.",
     "dayPanel": {
-      "title": "Løbsdag {day} · {date}",
+      "title": "Dag {day} af {total} · {date}",
       "meta": "{races, plural, one {# løb} other {# løb}} · {saved, plural, one {# udtagelse gemt} other {# udtagelser gemt}} · {open, plural, one {# åben} other {# åbne}}",
-      "openBoard": "Åbn dagens board →"
+      "openBoard": "Åbn dagens board"
     },
     "legend": {
       "label": "SIGNATUR",
@@ -249,13 +249,12 @@
       "tooltip": "Hvor sandsynligt et udbrud er at holde hjem på dette terræn. Jægeren er altid udbruds-kandidat."
     },
     "hunterExplainer": {
-      "title": "Sådan virker udbrudsjægeren",
-      "body": "Jægeren sendes altid med i dagens udbrud og kører hårdere for at holde sig væk. Om udbruddet holder til mål afhænger af terrænet.",
       "strengthLine": "På dette løbs terræn har et udbrud {strength} chance for at holde hjem.",
-      "candidatesTitle": "Bedste jægere i din trup",
       "candidatesHint": "Rangeret efter aggression: lysten til at angribe og satse på et ryk.",
       "noCandidates": "Vælg ryttere til løbet for at se dine bedste jægere.",
-      "aggression": "Aggression"
+      "aggression": "Aggression",
+      "pickTitle": "Vælg din udbrudsjæger",
+      "noHunter": "Ingen jæger"
     },
     "fit": {
       "label": "Match",
@@ -322,7 +321,10 @@
     "noRacesMatch": "Ingen løb matcher filtrene",
     "raceNotFound": "Løbet blev ikke fundet",
     "noResultsImportedRace": "Ingen resultater importeret for dette løb endnu",
-    "noHistory": "Ingen data fundet for \"{name}\""
+    "noHistory": "Ingen data fundet for \"{name}\"",
+    "raceNotFoundHint": "Linket kan være gammelt, eller løbet er fjernet. Åbn løbsbiblioteket og find et andet.",
+    "noResultsImportedRaceHint": "Dette løb har ingen resultatrækker endnu. Andre løb i biblioteket har deres.",
+    "noResultsImportedRaceCta": "Åbn løbsbiblioteket"
   },
   "calendar": {
     "upcoming": "Kommende",
@@ -332,8 +334,8 @@
     "expectedPoolTooltip": "Live-beregnet forventet pulje baseret på race-class × race-type × etaper",
     "selectPrompt": "Vælg et løb for at se detaljer",
     "noResultsYet": "Ingen resultater importeret endnu",
-    "viewFull": "Se fulde resultater →",
-    "viewFullWithStages": "Se fulde resultater + alle etaper →"
+    "viewFull": "Se fulde resultater",
+    "viewFullWithStages": "Se fulde resultater + alle etaper"
   },
   "library": {
     "searchLabel": "Søg løb",
@@ -354,7 +356,7 @@
     "thClass": "Klasse",
     "thType": "Type",
     "thStatus": "Status",
-    "seasonLink": "Sæson {number} →"
+    "seasonLink": "Sæson {number}"
   },
   "world": {
     "loading": "Indlæser verdens-kalender…",
@@ -384,8 +386,8 @@
     "thRank": "Plads",
     "thPoints": "Point",
     "thPrize": "Præmie",
-    "showLess": "Skjul ↑",
-    "showAll": "Vis alle {count} pladser ↓",
+    "showLess": "Skjul",
+    "showAll": "Vis alle {count} pladser",
     "prizeExample": {
       "tourWin": "Grand Tour-sejr",
       "monumentWin": "Monument-sejr",
@@ -457,7 +459,6 @@
     "willNotStartShort": "Under {min} ryttere. Stiller ikke op.",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
-    "hunter": "Udbruds-jæger (valgfri)",
     "freeRole": "Fri rolle",
     "noRole": "Ingen",
     "thRider": "Rytter",
@@ -551,6 +552,7 @@
     "stageCol": "Etape {number}",
     "roleAria": "Rolle for {rider}, etape {stage}",
     "effortAria": "Indsats for {rider}, etape {stage}",
+    "riderAbandoned": "Udgået af løbet",
     "role": {
       "free_role": "Fri rolle"
     },
@@ -586,6 +588,7 @@
       "stage_roles_invalid_effort": "En af indsats-indstillingerne er ugyldig.",
       "stage_roles_role_overlap": "Kun én rytter kan være kaptajn, og kun én kan være spurtkaptajn, pr. etape.",
       "stage_roles_duplicate": "Samme rytter optræder to gange for samme etape.",
+      "stage_roles_rider_abandoned": "En af rytterne er udgået af løbet og kan ikke længere tildeles taktik.",
       "stage_roles_race_completed": "Løbet er afsluttet, så taktikken kan ikke længere ændres.",
       "generic": "Kunne ikke gemme din taktik. Prøv igen."
     }
@@ -751,8 +754,8 @@
       "season": "Sæson",
       "nextStage": "Næste etape"
     },
-    "backToLibrary": "← Løbsbibliotek",
-    "back": "← Tilbage",
+    "backToLibrary": "Løbsbibliotek",
+    "back": "Tilbage",
     "raceDnaLabel": "Dette løb:",
     "terrainDna": {
       "label": "Terræn-DNA · hvad etapen belønner",
@@ -816,8 +819,8 @@
       "all": "Alle hold",
       "mine": "Mit hold"
     },
-    "showAll": "Vis alle {count} ↓",
-    "showLess": "Skjul ↑",
+    "showAll": "Vis alle {count}",
+    "showLess": "Skjul",
     "team": {
       "winner": "Vinder"
     },
@@ -1170,6 +1173,7 @@
       "itt_hilly": "Kuperet enkeltstart",
       "ttt": "Holdtidskørsel",
       "cobbles": "Brosten",
+      "gravel": "Grus",
       "classic": "Klassiker"
     },
     "finaleType": {
@@ -1220,6 +1224,10 @@
         "cobbles": {
           "label": "{count} brostenssektorer",
           "note": "positionering og styrke over brostenene"
+        },
+        "gravel": {
+          "label": "{count} grussektorer",
+          "note": "køreteknik og styrke på løst underlag"
         }
       },
       "waypoint": {
@@ -1245,14 +1253,15 @@
     "table": {
       "prizePoints": "Præmiepoint",
       "jerseyPoints": "Trøjepoint"
-    }
+    },
+    "jumpToResults": "Se resultater"
   },
   "history": {
     "loadError": {
       "message": "Kunne ikke hente løbshistorikken. Prøv igen.",
       "retry": "Prøv igen"
     },
-    "backToLibrary": "← Løbsbibliotek",
+    "backToLibrary": "Løbsbibliotek",
     "editionsCount": "{count, plural, one {# udgave} other {# udgaver}}",
     "editions": "Udgaver",
     "season": "Sæson {number}",

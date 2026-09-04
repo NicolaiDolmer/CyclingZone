@@ -99,6 +99,8 @@
       "loading": "Loading training…",
       "focus": {
         "vo2max": "VO2max",
+        "vo2max_climb": "VO2max (climbing)",
+        "vo2max_punch": "VO2max (punch)",
         "threshold": "Threshold",
         "sprint": "Sprint",
         "endurance": "Endurance",
@@ -240,6 +242,7 @@
         "flat_sprint": "Flat",
         "long_sprint_classic": "Rolling",
         "cobbled_classic": "Cobbles",
+        "gravel_classic": "Gravel",
         "puncheur": "Hilly",
         "hilly_classic": "Hilly",
         "mountain_classic": "Mountain",
@@ -398,7 +401,7 @@
         "title": "Rider types",
         "subtitle": "rating per type",
         "legendNow": "Now",
-        "allTypes": "All types →",
+        "allTypes": "All types",
         "role": "His role",
         "readsHighest": "Reads highest now",
         "notARanking": "Roles are built from different abilities, so these numbers are not a ranking of what he should be."
@@ -406,7 +409,7 @@
       "physio": {
         "title": "Physiology",
         "weight": "{kg} kg",
-        "link": "Power curve & zones →"
+        "link": "Power curve & zones"
       }
     },
     "development": {
@@ -747,7 +750,7 @@
     "squadWarning": "Auction started.\n\nNote: you are now running auctions equal to {total} riders (max {max}). The cap is a hard limit, so you cannot win more riders than your squad can hold."
   },
   "directOffer": {
-    "buttonOpen": "↔ Send transfer offer",
+    "buttonOpen": "Send transfer offer",
     "amountPlaceholder": "Offer amount in CZ$",
     "messagePlaceholder": "Message (optional)",
     "submit": "Send offer",
@@ -758,7 +761,7 @@
     }
   },
   "sellRider": {
-    "buttonOpen": "↔ List for sale",
+    "buttonOpen": "List for sale",
     "description": "List the rider for sale at a fixed price on the transfer list. You can edit the price or remove the listing at any time.",
     "pricePlaceholder": "Asking price in CZ$",
     "submit": "List for sale",
@@ -783,6 +786,7 @@
       "description": "Extend this rider's contract by one season at a renegotiated salary.",
       "currentSalary": "Current salary",
       "newSalary": "New salary",
+      "newSalaryHint": "Follows what he's delivering this season. Current salary stays fixed until you renew.",
       "newContract": "New contract",
       "newContractValue": "Through season {season}",
       "confirm": "Confirm extension",
@@ -890,7 +894,9 @@
     "slotsLeft": "{remaining}/{total} focus slots",
     "focus": "Focus",
     "intensity": "Intensity",
-    "focus_vo2max": "VO2max (climbing intervals)",
+    "focus_vo2max": "VO2max (mixed intervals)",
+    "focus_vo2max_climb": "VO2max (climbing intervals)",
+    "focus_vo2max_punch": "VO2max (punch intervals)",
     "focus_threshold": "Threshold / TT",
     "focus_sprint": "Sprint",
     "focus_tempo": "Tempo",

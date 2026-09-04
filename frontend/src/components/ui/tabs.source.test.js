@@ -18,6 +18,23 @@ test("TabList er role=tablist med pil-navigation", () => {
   assert.match(src, /tabListClass\(/);
 });
 
+// #4625 (slice 3 af #4622) — fuldt WAI-ARIA tabs-mønster (Home/End + orientation).
+test("TabList understoetter Home/End og saetter aria-orientation", () => {
+  assert.match(src, /"Home"/);
+  assert.match(src, /"End"/);
+  assert.match(src, /aria-orientation="horizontal"/);
+});
+
+// Tabs tegnes som en underline (border-b-2 + aktiv border-cz-accent), aldrig
+// som kantede knapper — det praecis /team-fundet fra audit 2026-09 (fanerne
+// tegnet som fire kantede knapper, ikke skabelonens underline-tabs).
+test("Tab er en underline-tab, ikke en knap-flade", () => {
+  const styles = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "tabsStyles.js"), "utf8");
+  assert.match(styles, /border-b-2/);
+  assert.match(styles, /border-cz-accent/);
+  assert.doesNotMatch(styles, /bg-cz-(?:card|subtle|accent)\b/, "Tab maa ikke have en udfyldt knap-baggrund");
+});
+
 test("Tab er role=tab med aria-selected + roving tabindex + tabClass", () => {
   assert.match(src, /role="tab"/);
   assert.match(src, /aria-selected=\{active\}/);

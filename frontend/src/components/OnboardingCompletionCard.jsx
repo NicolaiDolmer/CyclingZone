@@ -5,6 +5,7 @@
 
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
+import { XIcon } from "./ui";
 
 // #1569: ikon-emoji erstattet af editorial accent-markør (anti-AI-slop).
 const NEXT_LINKS = [
@@ -18,20 +19,19 @@ export default function OnboardingCompletionCard({ onDismiss }) {
   return (
     <div className="mb-4 px-5 py-4 bg-cz-card border border-cz-success/30 rounded-cz">
       <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          {/* #1569: editorial accent-markør i stedet for celebration-emoji (anti-AI-slop) */}
-          <span className="w-1 h-10 bg-cz-success rounded-full flex-shrink-0 mt-0.5" aria-hidden="true" />
-          <div className="min-w-0">
-            <p className="text-cz-1 text-base font-semibold">{t("onboardingComplete.title")}</p>
-            <p className="text-cz-2 text-xs mt-0.5">{t("onboardingComplete.body")}</p>
-          </div>
+        {/* #4625 (slice 3 af #4622, TASTE §3) — den tidligere venstre-accent-
+            markør (#1569) er selv et femte prioritetssignal; kortet står
+            allerede med en success-hairline (border-cz-success/30). */}
+        <div className="min-w-0">
+          <p className="text-cz-1 text-base font-semibold">{t("onboardingComplete.title")}</p>
+          <p className="text-cz-2 text-xs mt-0.5">{t("onboardingComplete.body")}</p>
         </div>
         <button
           onClick={onDismiss}
-          className="text-cz-3 hover:text-cz-1 text-lg leading-none px-1 flex-shrink-0"
+          className="text-cz-3 hover:text-cz-1 p-1 flex-shrink-0"
           aria-label={t("onboardingComplete.dismissAria")}
         >
-          ×
+          <XIcon size={16} aria-hidden="true" />
         </button>
       </div>
 
@@ -40,7 +40,7 @@ export default function OnboardingCompletionCard({ onDismiss }) {
           <Link
             key={link.to}
             to={link.to}
-            className="bg-cz-subtle border border-cz-border rounded-lg p-3 hover:border-cz-accent/40 transition-all"
+            className="bg-cz-subtle border border-cz-border rounded-cz p-3 hover:border-cz-accent/40 transition-all"
           >
             <div className="flex items-center gap-2 mb-1">
               <span className="w-0.5 h-3.5 bg-cz-accent rounded-full flex-shrink-0" aria-hidden="true" />

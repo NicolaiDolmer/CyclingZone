@@ -226,8 +226,18 @@ Ejer-godkendt 7/8 med 10 låste beslutninger. Erstatter tre planer med **én rel
 | `board_vision_milestones` | 2.059 |
 | `team_board_members` | 1.085 (5 pr. hold) |
 | Backup | `backup_board_profiles_3514_20260823`, 649 rækker |
-| Fase 2 (Boardroom-side, årsmøde) | **Findes ikke.** `BoardPage.jsx` er stadig monolitten |
+| Fase 2 (Boardroom-side, årsmøde) | Boardroom-siden (S-M2b) + årsmødets **backend** (S-M2c, #4557) findes nu bag flaget. Frontend-mødet (`/board/meeting`-UI'et) er en separat, senere worker (S-M2c-frontend) |
 | Issue-label | `claude:done` — med tomme fase-checkbokse |
+
+**Opdateret 3/9 (#4557, S-M2c a+b):** `boardMandateEngine.js::advanceMandateAtSeasonEnd` og
+`::proposeMandateForNewTeam` er nu wiret ind i `economyEngine.js::processTeamSeasonEnd` (efter
+`applySeasonEndSync`, samme fail-safe try/catch-disciplin) — næste sæsons mandat foreslås (status
+`proposed`) automatisk ved sæson-slut for hold der har en skyggerelation. `GET/POST /board/meeting/*`
+(§4.8 i slice-spec'en) + en ny 30-min-cron (`boardMandateAutoAccept.js`) er bygget, alt stadig
+flag-gated. **Dette ændrer IKKE tabellen ovenfor:** `board_mandate_model_enabled` er stadig `off`,
+og de 237 aktive mandater rammes først ved sæson-slut 27/9 (S3→S4), hvor det første rigtige årsmøde
+opstår automatisk — se `backend/scripts/proposeNextMandateDryRun.js` for tørkørslen ejeren skal se
+FØR flip.
 
 **Konsekvensen af at flippe flaget i dag:** `boardMandateEngine.js` er den eneste runtime-skriver af
 `board_relations`, og den er flag-gated. Skyggemodellen har derfor stået stille i seks dage mens
@@ -254,6 +264,29 @@ kun i tillid.** Penge forbliver i lag 6 og modifieren.
 | 9 | **`expireSeasonScopedConsequences` er død kode.** Funktionen findes i `boardConsequences.js:167` og testes i `boardConsequences.test.js:968`, men kaldes **ingen steder** i produktionsstien. Lag 5 udløber via en separat inline-update (`economyEngine.js:471`); **lag 6 udløber aldrig**. Målt 31/8: 37 bonustilbud står stadig `active` på sæson 1 og 2, som begge er `completed`. Et hold kan i princippet stadig indløse et to sæsoner gammelt tilbud til 200.000 CZ$. Ikke rettet her: et fix fjerner penge fra 37 hold og er en ejer-beslutning | `boardConsequences.js:167`, målt 31/8 |
 
 ---
+
+## 8. Bestyrelsesmedlemmer (`team_board_members`)
+
+Hvert menneskehold (`is_ai=false`) har **altid 5 bestyrelsesmedlemmer** (`TEAM_BOARD_MEMBERS_COUNT`,
+`boardMembers.js`) — 3 identity-matched + 2 non-conflicting wildcards, én formand. Tildeles af
+`assignBoardMembersForTeam` (idempotent: no-op hvis holdet allerede har 5), enten første gang en
+manager vælger Klub-DNA (`chooseDnaForTeam`, `POST /board/dna-choose`) eller via
+`regenerateBoardMembersForTeam` (DNA-genvalg, auto-accept, reparation).
+
+**#4664 (2-3/9):** op til 40 menneskehold målt uden fuldt board — heraf en delmængde med
+`team_dna_key` SAT men 0 rækker i `team_board_members`, en tilstand koden selv antog var umulig
+(atomiske rollback-guards i to af tre `chooseDnaForTeam`-grene). Rod-årsag:
+`regenerateBoardMembersForTeam` slettede holdets rækker FØR den indsatte det nye sæt — to separate,
+ikke-transaktionelle Supabase-kald. Fejlede insert'et efter delete'et var committet (transient
+netværksfejl, dobbelt-indsendelse, et deploy der dræbte processen midtvejs), stod holdet permanent
+uden bestyrelse: `requiresBoardDnaChoice` (`season_1_identity_basis && !team_dna_key`) er `false` når
+DNA allerede er sat, så DNA-vælgeren — den eneste sti der (gen)tildeler — vises aldrig igen. Fixet:
+`regenerateBoardMembersForTeam` gemmer nu det gamle sæt før delete og gendanner det best-effort hvis
+re-insert fejler (aldrig værre stillet end før kaldet). Backfill: `repairMissingBoardMembers.js`
+(dry-run default, `--apply` skriver via `assignBoardMembersForTeam`). Forward-guard: invariant F i
+`ownershipInvariantWatch.js` (daglig, read-only, Sentry-capture med fast fingerprint
+`human-team-without-board-members`). Postmortem:
+`.claude/learnings/2026-09-03-new-teams-without-board-members.md`.
 
 ## Kildedokumenter
 

@@ -56,6 +56,46 @@ test("statiske mapper falder IKKE tilbage til app.html (#4545)", () => {
   }
 });
 
+// #4595: /assets/(.*) stempler ALLE svar `immutable`, ogsaa 404 — Vercels
+// header-regler matcher paa sti, ikke paa status, og der findes ingen
+// dokumenteret maade at betinge dem paa statuskode (vercel.com/docs/headers/
+// cache-control-headers). Vi beholder derfor `immutable` paa hashede assets og
+// lader boot-vagten i public/chunk-selfheal.js rydde op. Den vagt maa af samme
+// grund ALDRIG selv ende bag en lang cache-header: bliver den forkert cachet,
+// findes der ikke noget lag over den.
+test("boot-vagten (chunk-selfheal.js) har ingen lang cache-header (#4595)", () => {
+  const longCacheSources = config.headers
+    .filter((h) => /immutable|max-age=(\d{5,})/.test(h.headers.find((x) => x.key === "Cache-Control")?.value ?? ""))
+    .map((h) => h.source);
+
+  for (const source of longCacheSources) {
+    assert.ok(
+      !new RegExp(`^${source}$`).test("/chunk-selfheal.js"),
+      `/chunk-selfheal.js matcher "${source}" som har lang cache — en fejlcachet boot-vagt kan intet lag reparere`,
+    );
+  }
+});
+
+// Review 4/9 (#4760): boot-vagten skal have en KORT, revaliderende cache — ikke
+// bare "ikke-immutable". Uden en eksplicit header falder den tilbage til
+// Vercels default (ofte lang nok til at genindfoere præcis samme faelde: en
+// fejlcachet 404 der overlever langt ind i det næste deploy).
+test("chunk-selfheal.js har en eksplicit KORT cache-header (#4595 review)", () => {
+  const rule = config.headers.find((h) => h.source === "/chunk-selfheal.js");
+  assert.ok(rule, "der skal vaere en dedikeret header-regel for /chunk-selfheal.js");
+
+  const cacheControl = rule.headers.find((h) => h.key === "Cache-Control")?.value ?? "";
+  assert.equal(
+    cacheControl,
+    "public, max-age=300, stale-while-revalidate=86400",
+    "boot-vagten skal cache kort (5 min) og revalidere i baggrunden, aldrig immutable",
+  );
+
+  const maxAge = Number(cacheControl.match(/max-age=(\d+)/)?.[1]);
+  assert.ok(Number.isFinite(maxAge) && maxAge <= 300, "max-age skal vaere kort nok til at et nyt deploy vinder hurtigt");
+  assert.ok(!/immutable/.test(cacheControl), "boot-vagten maa ALDRIG vaere immutable");
+});
+
 test("alle mapper med lang cache-header er undtaget fra fallback", () => {
   // Forward-guard: tilfoejes en ny mappe med lang max-age, skal den ogsaa undtages,
   // ellers genopstaar praecis den samme faelde et nyt sted.

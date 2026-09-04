@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
+import { ChevronRightIcon } from "./ui/icons";
 
 // #1569: ikon-emoji erstattet af editorial accent-markør (anti-AI-slop). Bemærk:
 // OnboardingModal renderes ikke længere på dashboardet (#1140-konsolidering), men
@@ -53,8 +54,9 @@ export default function OnboardingModal({ onClose }) {
               <div className="min-w-0">
                 <p className="text-cz-1 font-semibold text-sm">{t(`onboardingModal.cards.${card.id}.title`)}</p>
                 <p className="text-cz-2 text-xs mt-0.5 mb-2 leading-relaxed">{t(`onboardingModal.cards.${card.id}.desc`)}</p>
-                <Link to={card.link} onClick={onClose} className="text-cz-accent-t text-xs hover:underline font-medium">
+                <Link to={card.link} onClick={onClose} className="inline-flex items-center gap-0.5 text-cz-accent-t text-xs hover:underline font-medium">
                   {t(`onboardingModal.cards.${card.id}.cta`)}
+                  <ChevronRightIcon size={12} aria-hidden="true" />
                 </Link>
               </div>
             </div>
@@ -65,9 +67,10 @@ export default function OnboardingModal({ onClose }) {
           <Link
             to="/help"
             onClick={onClose}
-            className="text-cz-3 text-xs hover:text-cz-accent-t transition-colors font-medium"
+            className="inline-flex items-center gap-0.5 text-cz-3 text-xs hover:text-cz-accent-t transition-colors font-medium"
           >
             {t("onboardingModal.help")}
+            <ChevronRightIcon size={12} aria-hidden="true" />
           </Link>
           <button
             onClick={onClose}

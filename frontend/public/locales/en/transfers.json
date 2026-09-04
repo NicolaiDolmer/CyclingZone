@@ -2,10 +2,10 @@
   "page": {
     "title": "Transfers",
     "subtitle": "Negotiate directly with other managers",
+    "subtitleWithBalance": "Negotiate directly with other managers · Balance {balance} CZ$",
     "balance": "Balance",
     "loadingAria": "Loading transfers"
   },
-  "marketIntro": "The transfer market is where managers list their own riders for a fixed price. Buy instantly or send an offer. Auctions are separate (timed bidding).",
   "tabs": {
     "received": "Received offers",
     "sent": "Sent offers",
@@ -61,7 +61,7 @@
     "noContract": "Free agent",
     "buttons": {
       "accept": "✓ Accept",
-      "counter": "↔ Counter",
+      "counter": "Counter",
       "reject": "✕ Reject",
       "send": "Send",
       "acceptCounter": "✓ Accept ({amount} CZ$)",
@@ -94,7 +94,7 @@
     "counterTag": "(counter)",
     "buttons": {
       "accept": "✓ Accept",
-      "counter": "↔ Counter",
+      "counter": "Counter",
       "reject": "✕ Reject",
       "acceptCounter": "✓ Accept counter",
       "send": "Send",
@@ -178,13 +178,19 @@
     "archivedSentProposals": "Archived sent proposals"
   },
   "empty": {
-    "received": "No received offers",
-    "receivedHint": "Other managers can send offers on your riders from the rider's page",
-    "sent": "You haven't sent any offers yet",
-    "sentHint": "Find a rider and click \"Send transfer offer\" on their page",
-    "archive": "Nothing archived yet",
-    "marketNoListings": "No riders for sale",
-    "marketNoMatches": "No riders match the filter"
+    "received": "Browse the market while you wait",
+    "receivedHint": "Other managers send offers on your riders from the rider's page.",
+    "sent": "Send your first offer",
+    "sentHint": "Open a rider's page and click \"Send transfer offer\".",
+    "archive": "Check your open negotiations",
+    "archiveHint": "Deals you close or reject land here.",
+    "marketNoListings": "List a rider for sale",
+    "marketNoListingsHint": "Nothing is on the transfer list right now. Set an asking price from your squad.",
+    "marketNoMatches": "Widen your filter",
+    "marketNoMatchesHint": "No rider on the list matches the current filter.",
+    "ctaBrowseMarket": "Open the market",
+    "ctaSeeSent": "See sent offers",
+    "ctaListRider": "Open my squad"
   },
   "toast": {
     "offerSent": "✅ Offer sent!",
@@ -195,8 +201,8 @@
     "confirmedAwaiting": "✅ Confirmed · awaiting the other party's confirmation",
     "dealCancelled": "Deal cancelled",
     "transferRejected": "Transfer rejected",
-    "counterSent": "↔ Counter sent",
-    "newOfferSent": "↔ New offer sent",
+    "counterSent": "Counter sent",
+    "newOfferSent": "New offer sent",
     "offerWithdrawn": "Offer withdrawn",
     "offerArchived": "Offer archived",
     "updated": "✅ Updated",
@@ -224,33 +230,9 @@
     }
   },
   "marketSort": {
-    "label": "Sort",
-    "newest": "Newest first",
-    "price_asc": "Price: lowest first",
-    "price_desc": "Price: highest first",
-    "value_desc": "Value: highest first",
-    "value_asc": "Value: lowest first",
-    "age_asc": "Age: youngest first",
-    "age_desc": "Age: oldest first",
-    "abilityLabel": "Sort by ability",
-    "abilityPlaceholder": "By ability",
-    "abilities": {
-      "climbing": "Climbing",
-      "tempo": "Tempo",
-      "punch": "Punch",
-      "sprint": "Sprint",
-      "acceleration": "Acceleration",
-      "flat": "Flat",
-      "time_trial": "Time trial",
-      "endurance": "Endurance",
-      "durability": "Durability",
-      "recovery": "Recovery",
-      "aggression": "Aggression",
-      "tactics": "Tactics",
-      "descending": "Descending",
-      "cobblestone": "Cobbles",
-      "positioning": "Positioning"
-    }
+    "label": "Sort by",
+    "ascAria": "Sort ascending",
+    "descAria": "Sort descending"
   },
   "marketRow": {
     "nation": "Nation",

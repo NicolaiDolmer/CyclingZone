@@ -342,6 +342,42 @@ export const FACIT_MODELDRIFT = Object.freeze([
       + "en dybere maksimal sænkning under den flade model. Retningen er forventet for max "
       + "alene; steg medianen også, var noget galt.",
   }),
+  // ── #4634 (variant C2, ejer-beslutning 4/9) ─────────────────────────────────
+  // roleTags.svaghed hæves 25→45 (riderProgression.js) og GC-punch-gulvet
+  // (GC_PUNCH_FLOOR = 80) indføres: enhver gc-rytters punch-tag løftes til mindst
+  // 80, uanset klassificering (se GC_PUNCH_FLOOR-kommentaren i riderProgression.js).
+  // Scriptet selv er URØRT — det er kun buildCapsForRider-formlen der flytter sig,
+  // præcis den slags drift ledgeren findes for. Begge ændringer kan kun LØFTE tag,
+  // aldrig sænke dem, så retningen herunder er entydig: færre planlagte lofter
+  // ligger under rytterens nuværende evne, og de sænkninger der er tilbage er mindre.
+  Object.freeze({
+    dato: "2026-09-04",
+    ref: "#4634",
+    felt: "loftSaenketAntal",
+    fra: 5783,
+    til: 4384,
+    hvorfor:
+      "Svaghedstaget 25→45 løfter loftet for enhver (rytter, evne) klassificeret som "
+      + "svaghed, og GC-punch-gulvet løfter punch-taget for alle gc-ryttere til mindst 80. "
+      + "Begge er rene MAX-løft (ingen tag kan falde), så færre par har et formel-loft "
+      + "under nuværende evne.",
+  }),
+  Object.freeze({
+    dato: "2026-09-04",
+    ref: "#4634",
+    felt: "saenkningMedian",
+    fra: 19,
+    til: 15,
+    hvorfor: "Følger direkte af de hævede tag: de resterende sænkninger er mindre.",
+  }),
+  Object.freeze({
+    dato: "2026-09-04",
+    ref: "#4634",
+    felt: "saenkningP90",
+    fra: 40,
+    til: 32,
+    hvorfor: "Samme årsag som sænkning-medianen.",
+  }),
 ]);
 
 /** Det godkendte facit med ledgerens bevidste drift lagt oven på. */

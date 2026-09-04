@@ -147,13 +147,13 @@ Stående vagter der kører med uanset: #4555 periode-rul-vagt før 1/10, #4645 p
 
 ## §2 Mål pr. 2/10 (forslag, ejeren godkender)
 
-| Mandagstal | Baseline 2/9 | Mål 2/10 |
-|---|---|---|
-| MRR ekskl. moms / aktive abonnementer | 113,87 kr. / 3 | ≥ 450 kr. / ≥ 10 |
-| Checkout gennemført / startet, rullende 7 d | 2 / 5 (40 %) | ≥ 60 % |
-| D7 seneste fulde kohorte | 18 % (uge 24/8) | ≥ 45 % |
-| Aktive/7d | 83 | ≥ 100 |
-| Mail-loop | off | on, 0 failed |
+| Mandagstal | Baseline 2/9 kl. 17 | Målt 2/9 kl. 21:30 | Mål 2/10 |
+|---|---|---|---|
+| MRR ekskl. moms / aktive abonnementer | 113,87 kr. / 3 | **188,40 kr. / 5** (to nye Founders 17:25 og 19:08, Alunta-verificeret) | ≥ 450 kr. / ≥ 10 |
+| Checkout gennemført / startet, rullende 7 d | 2 / 5 (40 %) | **4 / 7 (57 %)** | ≥ 60 % |
+| D7 seneste fulde kohorte | 18 % (uge 24/8) | 18 % | ≥ 45 % |
+| Aktive/7d | 83 | 83 | ≥ 100 |
+| Mail-loop | off | off (tekster låst, PR #4654) | on, 0 failed |
 
 ## §3 Rækkefølge for byg (ejer 2/9 kl. 19:55, områder)
 

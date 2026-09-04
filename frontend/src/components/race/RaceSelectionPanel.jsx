@@ -681,14 +681,9 @@ export default function RaceSelectionPanel({
             disabled={busy}
             onChange={(v) => setRole("sprintCaptainId", v)}
           />
-          <RoleSelect
-            label={t("selection.hunter")}
-            value={sel.hunterId}
-            riders={selectedRiders}
-            emptyLabel={t("selection.noRole")}
-            disabled={busy}
-            onChange={(v) => setRole("hunterId", v)}
-          />
+          {/* #1884: jaeger-dropdownen er VAEK herfra — valget bor i
+              HunterExplainer nedenfor, hvor forklaringen af rollen og
+              aggressions-rangeringen allerede stod. Een kilde til valget. */}
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -760,13 +755,15 @@ export default function RaceSelectionPanel({
         )}
       </div>
 
-      {/* S5 (Lag 3): forklar jæger-rollen + terræn-bevidst udbruds-styrke + bedste
-          jæger-kandidater (rangeret efter aggression) fra den valgte trup. */}
+      {/* S5 (Lag 3) + #1884: VÆLG jægeren her — terræn-bevidst udbruds-styrke +
+          truppen rangeret efter aggression, og rækken er selve kontrollen. */}
       <HunterExplainer
         riders={selectedRiders}
         profileType={selectedStageProfileType}
         finaleType={selectedStageFinaleType}
         hunterId={sel.hunterId}
+        disabled={busy}
+        onSelect={(v) => setRole("hunterId", v)}
       />
 
       {/* #3520: rytterens profil-popup — åbnes af navneklikket ovenfor, ændrer ALDRIG

@@ -88,8 +88,19 @@ export const ABILITY_DIMENSIONS = Object.freeze([
 // (aldrig fra filler-vægte/kataloget selv), se orderAndBuildGrandTour/toGrandTourFinale
 // nedenfor. En GT's ANDEN enkeltstart (hvis filler ruller en) er itt_hilly i stedet for en
 // strukturelt identisk flad itt: retter #3546's "7 D1-løb kører 2 identiske ITT'er".
+// gravel (#4105, ejer-direktiv 21/8: "Terre di Toscana skal blive et grusvejs loeb og ikke
+// et brostensloeb"): EGEN profiltype, ikke en cobbles-variant. Ejer-rammen 3/9 er "det skal
+// vaere naesten samme type der er god til den slags loeb" — saa brostensevnen dominerer
+// stadig demand-vektoren (se DEMAND_VECTORS.gravel), men grusklassikeren er laengere,
+// mere nedslidende og mere lotteri-agtig end en brostensklassiker, og den afgoeres oftere
+// paa en kort stejl rampe end i en samlet gruppe. To ting foelger af at den er sin egen
+// type i stedet for en etikette paa cobbles:
+//   1. terraen-familien (kalenderens daekning) kan mappe grus ind i brostensfamilien UDEN
+//      at kalenderen mister evnen til at skelne dem — regel-sporet ejer den mapping.
+//   2. brostensevnen taeller kun paa etaper med brosten/grus (ejer-regel 3/9): gravel faar
+//      GARANTEREDE grus-sektorer i buildSectors, saa vaegten aldrig falder paa gulvet.
 export const PROFILE_TYPES = Object.freeze([
-  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "classic",
+  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "gravel", "classic",
 ]);
 
 export const FINALE_TYPES = Object.freeze([
@@ -115,6 +126,15 @@ export const DEMAND_VECTORS = Object.freeze({
   itt_hilly:     Object.freeze({ time_trial: 0.46, climbing: 0.18, positioning: 0.20, flat: 0.04, randomness: 0.12 }),
   ttt:           Object.freeze({ time_trial: 0.50, tactics: 0.18, positioning: 0.14, endurance: 0.12, randomness: 0.06 }),
   cobbles:       Object.freeze({ cobblestone: 0.66, flat: 0.08, punch: 0.06, positioning: 0.06, endurance: 0.06, randomness: 0.08 }),
+  // gravel (#4105): "naesten samme type der er god til den slags loeb" som brosten —
+  // brostensevnen er stadig den dominerende dimension, saa en brostensrytter vinder
+  // grusloeb. Forskellen er tekstur, ikke rytter-type: den vaegt der tages fra
+  // cobblestone lander paa udholdenhed (grusklassikeren er laengere og mere
+  // nedslidende), punch/climbing (den toscanske rampe-finale) og randomness (loest
+  // underlag = flere afgoerelser der ikke er rene watt). Vaegten paa `flat` og
+  // `positioning` er lavere end paa brosten, fordi grus sjaeldnere afgoeres af en
+  // samlet gruppe. Sum 1.0, som alle oevrige vektorer.
+  gravel:        Object.freeze({ cobblestone: 0.58, endurance: 0.12, punch: 0.08, climbing: 0.05, flat: 0.03, positioning: 0.03, randomness: 0.11 }),
   classic:       Object.freeze({ endurance: 0.18, punch: 0.16, climbing: 0.12, cobblestone: 0.10, tempo: 0.06, flat: 0.06, positioning: 0.06, tactics: 0.04, sprint: 0.04, randomness: 0.18 }),
 });
 
@@ -149,6 +169,13 @@ const FINALE_WEIGHTS_BY_PROFILE = Object.freeze({
   ttt:           Object.freeze([{ value: "solo_tt", weight: 100 }]),
   // fladt 30-50 % → 45 · udbrud 40-60 % → 55.
   cobbles:       Object.freeze([{ value: "reduced_sprint", weight: 45 }, { value: "breakaway", weight: 55 }]),
+  // gravel (#4105) staar — som `classic` — IKKE i ejerens baand-tabel fra #4272; den
+  // tabel blev godkendt tal for tal 26/8 og daekker de terraener der fandtes dengang.
+  // Vaegtene her er derfor en REALISME-blanding, ikke et gated baand: grusklassikeren
+  // afgoeres oftest af et lille udbrud eller en solo, med en stejl rampe-finale som
+  // naeststoerste udfald og en samlet gruppe som mindretal. Scorecardet RAPPORTERER
+  // fordelingen (som for classic) men gater den ikke, indtil ejeren har sat et baand.
+  gravel:        Object.freeze([{ value: "breakaway", weight: 55 }, { value: "punch", weight: 25 }, { value: "reduced_sprint", weight: 20 }]),
   // `classic` står IKKE i ejerens bånd-tabel (den dækker de otte genererede terræner,
   // classic er monument-arketypen). Den beholder derfor sin egen realistiske blanding
   // — Lombardia/Liège slutter opad, Sanremo/Roubaix samlet — og er RAPPORTERET men
@@ -176,7 +203,7 @@ const STAGE_FILLER_WEIGHTS = Object.freeze([
 // flad altid er stage 1 og bjerg/high_mountain altid sidst — en bevidst (tunbar)
 // grand-tour-form, ikke et tilfælde.
 const STAGE_ORDER_HINT = Object.freeze({
-  flat: 1, rolling: 2, cobbles: 3, hilly: 3, classic: 4, itt: 5, itt_hilly: 5, ttt: 5, mountain: 6, high_mountain: 7,
+  flat: 1, rolling: 2, cobbles: 3, gravel: 3, hilly: 3, classic: 4, itt: 5, itt_hilly: 5, ttt: 5, mountain: 6, high_mountain: 7,
 });
 
 // Arketype-fordelinger (jf. spec §4). kind:"single" → endagsløbs-profilvægte;
@@ -190,6 +217,9 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   // SAMME karakter (tekstur, ikke karakterskift): hilly↔classic, mountain↔high_mountain.
   flat_sprint:         { kind: "single", weights: [{ value: "flat", weight: 1 }] },
   cobbled_classic:     { kind: "single", weights: [{ value: "cobbles", weight: 1 }] },
+  // #4105: grusklassikeren (Strade Bianche-typen). Fast kerneterraen som de oevrige
+  // endagsloebs-arketyper — et endagsloebs karakter aendrer sig ikke aar til aar.
+  gravel_classic:      { kind: "single", weights: [{ value: "gravel", weight: 1 }] },
   puncheur:            { kind: "single", weights: [{ value: "hilly", weight: 1 }] },
   hilly_classic:       { kind: "single", weights: [{ value: "hilly", weight: 60 }, { value: "classic", weight: 40 }] },
   mountain_classic:    { kind: "single", weights: [{ value: "high_mountain", weight: 50 }, { value: "mountain", weight: 50 }] },

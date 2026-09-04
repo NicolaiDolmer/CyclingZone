@@ -23,6 +23,7 @@ import {
   deleteForumReply,
   getForumReportCounts,
   markForumThreadRead,
+  markAllForumThreadsRead,
   getForumUnreadStatus,
   toggleForumReaction,
 } from "./forum.js";
@@ -242,6 +243,37 @@ test("getForumUnreadStatus: has_unread er false uden brugte tråde/manglende use
   }));
   assert.deepEqual(await getForumUnreadStatus({ supabase: withPosts, userId: "u1" }), { has_unread: false });
   assert.deepEqual(await getForumUnreadStatus({ supabase: withPosts, userId: "u2" }), { has_unread: true }); // u2 har aldrig læst p1
+});
+
+test("markAllForumThreadsRead: upserter last_read_at for ALLE ikke-slettede tråde, idempotent, kræver userId", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      post({ id: "p1", seq: 1 }),
+      post({ id: "p2", seq: 2 }),
+      post({ id: "p3", seq: 3, deleted_at: "2026-08-01T00:00:00Z" }), // slettet — springes over
+    ],
+    // p1 har allerede en (ældre) læst-række — den skal rykkes frem, ikke duplikeres.
+    forum_thread_reads: [{ user_id: "u1", post_id: "p1", last_read_at: "2026-08-01T10:00:00Z" }],
+  }));
+
+  const missingUser = await markAllForumThreadsRead({ supabase: fake, userId: null });
+  assert.equal(missingUser.status, 401);
+
+  const now = new Date("2026-08-22T10:00:00Z");
+  const result = await markAllForumThreadsRead({ supabase: fake, userId: "u1", now });
+  assert.deepEqual(result, { status: 200, body: { ok: true, marked: 2 } });
+  assert.equal(fake.state.forum_thread_reads.length, 2); // p1 (opdateret) + p2 (ny) — p3 er udeladt
+  const byPostId = new Map(fake.state.forum_thread_reads.map((r) => [r.post_id, r.last_read_at]));
+  assert.equal(byPostId.get("p1"), now.toISOString());
+  assert.equal(byPostId.get("p2"), now.toISOString());
+  assert.equal(byPostId.has("p3"), false);
+
+  // Idempotent: en gentagelse dubler ikke rækkerne.
+  await markAllForumThreadsRead({ supabase: fake, userId: "u1", now: new Date("2026-08-23T10:00:00Z") });
+  assert.equal(fake.state.forum_thread_reads.length, 2);
+
+  // has_unread bliver false for u1 efter mark-all-read.
+  assert.deepEqual(await getForumUnreadStatus({ supabase: fake, userId: "u1" }), { has_unread: false });
 });
 
 // ── Detalje + poll ──────────────────────────────────────────────────────────

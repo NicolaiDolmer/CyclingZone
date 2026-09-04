@@ -1,21 +1,78 @@
 // Email templates for the transactional retention loop (#2725): welcome (D0),
-// day1 nudge (D1), race_digest (daily). English only for v1 — the frontend's
-// i18n locale (users.language) is not consulted here because the backend has
-// no equivalent copy catalogue for transactional email today; adding a
-// Danish variant is a follow-up once the owner has approved the English
-// copy (tracked in the PR, not blocking #2725).
+// day1 nudge (D1), race_digest (come-back mail, #4650). Localized on
+// users.language (#2853 DA follow-up, 2026-09-03): 'da' renders the Danish
+// copy below, anything else (including missing/unset) renders English. The
+// caller (emailWelcomeSweep.js / emailDay1Sweep.js / emailRaceDigestSweep.js)
+// reads users.language and passes it through as `language`; this module never
+// queries the database itself.
 //
-// Tone: personal solo-dev voice, no marketing fluff, no em-dashes, no emoji,
-// no "free forever", no invented features/numbers — every fact in a template
-// is either static (URL, product name) or passed in by the caller from real
-// data (team name, race results). Every template ends with an unsubscribe
-// link line, required by CAN-SPAM/GDPR/CASL for every commercial/bulk email.
+// #2853 v2 (owner tone session 2026-09-02): EN copy + layout locked verbatim
+// in docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md — DO NOT reword
+// without going back to the owner. The DA copy below is a follow-up
+// translation of that same locked text (see the doc's "DA-oversaettelse"
+// section added in this PR), faithful to the EN structure and placeholders,
+// not a separate copy pass. Hybrid layout (owner pick: band+footer from "A",
+// numbered-step rows from "B"): a navy (#1B2A4A) band with a text wordmark
+// ("CYCLING ZONE", ZONE in gold — no image file in this PR) and a short gold
+// eyebrow, a white body, one gold primary CTA button, a shared Discord
+// outline CTA + line, and the signature "Dolmer, Cycling Zone" (unchanged in
+// both languages, it is a name) — all rendered once by wrapHtml/wrapText so
+// every template only supplies its own paragraphs + primary CTA.
+//
+// Tone: personal solo-dev voice ("Dolmer", not "the Cycling Zone team"), no
+// marketing fluff, no em-dashes, no emoji, no "free forever", no invented
+// features/numbers — every fact in a template is either static (URL, product
+// name) or passed in by the caller from real data (team name, race results).
+// Every template ends with an unsubscribe link line, required by CAN-SPAM/
+// GDPR/CASL for every commercial/bulk email.
 
 export const TEMPLATE_TYPES = Object.freeze(["welcome", "day1", "race_digest"]);
 
 const DASHBOARD_URL = "https://cyclingzone.org/dashboard";
 const RESULTS_URL = "https://cyclingzone.org/resultater";
-const RACES_URL = "https://cyclingzone.org/races";
+const DISCORD_URL = "https://discord.gg/ykysBrWUyC";
+
+const NAVY = "#1B2A4A";
+const GOLD = "#C9A227";
+
+// Only "da" renders Danish; everything else (undefined, "en", an unknown
+// locale) falls back to English — same default-to-EN rule the frontend's
+// i18n LanguageProvider uses for users.language.
+function normalizeLanguage(language) {
+  return language === "da" ? "da" : "en";
+}
+
+// Shared strings rendered once by wrapHtml/wrapText for every template
+// (Discord line + button, unsubscribe footer, CTA button labels). Per-
+// template subject/body copy lives in each build*Email function below.
+const COPY = {
+  en: {
+    greeting: "Hi,",
+    discordLine: "Something broken or confusing? Come say hi on Discord, I read everything.",
+    discordButton: "Join the Discord",
+    unsubLine: "You are receiving this because you have a Cycling Zone account.",
+    unsubLinkText: "Unsubscribe from these emails",
+    dashboardButton: "Open your dashboard",
+    resultsButton: "See all results",
+    fallbackTeamName: "your team",
+    fallbackTeamNameCap: "Your team",
+  },
+  da: {
+    greeting: "Hej,",
+    discordLine: "Er noget i stykker eller uklart? Kom forbi Discord, jeg læser alt.",
+    discordButton: "Deltag i Discord",
+    unsubLine: "Du modtager denne mail fordi du har en Cycling Zone-konto.",
+    unsubLinkText: "Afmeld disse mails",
+    dashboardButton: "Åbn dit dashboard",
+    resultsButton: "Se alle resultater",
+    fallbackTeamName: "dit hold",
+    fallbackTeamNameCap: "Dit hold",
+  },
+};
+
+function copyFor(language) {
+  return COPY[normalizeLanguage(language)];
+}
 
 // #2853: tag every CTA link with the SAME utm_source/utm_medium/utm_campaign
 // parameter names the existing traffic_events/signup_attribution channel
@@ -24,6 +81,8 @@ const RACES_URL = "https://cyclingzone.org/races";
 // is always "email" (the channel), utm_medium/utm_campaign are the loop
 // type (welcome/day1/race_digest) so each mail's clicks are distinguishable
 // in the existing channel funnel without inventing a new tracking mechanism.
+// The Discord CTA is deliberately NOT tagged — it leaves the funnel this
+// pipeline measures.
 function withEmailUtm(url, type) {
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}utm_source=email&utm_medium=${encodeURIComponent(type)}&utm_campaign=${encodeURIComponent(type)}`;
@@ -44,12 +103,24 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-// Shared layout: max ~600px column, system font stack, minimal inline CSS
-// (no external stylesheet, no web fonts — renders consistently across mail
-// clients that strip <style> blocks). bodyHtml/bodyText are the
-// template-specific paragraphs; the signature + unsubscribe line are common
-// to all three templates.
-function wrapHtml({ bodyHtml, unsubscribeUrl }) {
+// A gold, dark-text button — the ONE primary CTA per mail (house design rule:
+// one gold primary action per view, mirrored here for email since
+// docs/design/TASTE.md's "one gold primary button" applies to player-facing
+// surfaces generally, not just app pages).
+function primaryButtonHtml(url, label) {
+  return `<a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 28px;background:${GOLD};color:${NAVY};font-weight:700;text-decoration:none;font-size:14px;">${escapeHtml(label)}</a>`;
+}
+
+// Shared layout (#2853 v2, docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md):
+// max ~600px column, table-based, system font stack, minimal inline CSS (no
+// external stylesheet, no web fonts — renders consistently across mail
+// clients that strip <style> blocks). bodyHtml is template-specific (its own
+// paragraphs + primary CTA button, and — welcome only — the numbered-step
+// rows); the navy band, the Discord CTA line, the "Dolmer, Cycling Zone"
+// signature and the unsubscribe footer are identical across all three
+// templates and live here, once, localized via COPY[language].
+function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language }) {
+  const copy = copyFor(language);
   return `<!doctype html>
 <html>
   <body style="margin:0;padding:0;background:#f4f4f4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -58,12 +129,24 @@ function wrapHtml({ bodyHtml, unsubscribeUrl }) {
         <td align="center">
           <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;">
             <tr>
-              <td style="padding:32px 24px;color:#1a1a1a;font-size:15px;line-height:1.6;">
+              <td style="background:${NAVY};padding:20px 24px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="font-size:16px;font-weight:700;letter-spacing:1px;color:#ffffff;text-transform:uppercase;">CYCLING <span style="color:${GOLD};">ZONE</span></td>
+                    <td align="right" style="font-size:11px;font-weight:700;letter-spacing:1px;color:${GOLD};text-transform:uppercase;">${escapeHtml(eyebrow)}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px 24px;color:#1a1a1a;font-size:15px;line-height:1.55;">
                 ${bodyHtml}
-                <p style="margin:32px 0 0;">Nicolai, Cycling Zone</p>
+                <p style="margin:32px 0 12px;">${escapeHtml(copy.discordLine)}</p>
+                <p style="margin:0 0 32px;"><a href="${escapeHtml(DISCORD_URL)}" style="display:inline-block;padding:9px 20px;border:1px solid ${NAVY};color:${NAVY};font-weight:600;text-decoration:none;font-size:13px;">${escapeHtml(copy.discordButton)}</a></p>
+                <p style="margin:0;font-weight:700;">Dolmer, Cycling Zone</p>
                 <p style="margin:24px 0 0;font-size:12px;color:#767676;">
-                  You are receiving this because you have a Cycling Zone account.
-                  <a href="${escapeHtml(unsubscribeUrl)}" style="color:#767676;">Unsubscribe from these emails</a>.
+                  ${escapeHtml(copy.unsubLine)}
+                  <a href="${escapeHtml(unsubscribeUrl)}" style="color:#767676;">${escapeHtml(copy.unsubLinkText)}</a>.
                 </p>
               </td>
             </tr>
@@ -75,47 +158,92 @@ function wrapHtml({ bodyHtml, unsubscribeUrl }) {
 </html>`;
 }
 
-function wrapText({ bodyText, unsubscribeUrl }) {
-  return `${bodyText}\n\nNicolai, Cycling Zone\n\nYou are receiving this because you have a Cycling Zone account. Unsubscribe from these emails: ${unsubscribeUrl}`;
+function wrapText({ bodyText, unsubscribeUrl, language }) {
+  const copy = copyFor(language);
+  return [
+    bodyText,
+    copy.discordLine,
+    `${copy.discordButton}: ${DISCORD_URL}`,
+    "Dolmer, Cycling Zone",
+    `${copy.unsubLine} ${copy.unsubLinkText}: ${unsubscribeUrl}`,
+  ].join("\n\n");
 }
+
+// Welcome-only numbered steps, rendered as table rows (owner pick: rows, not
+// an <ol>) — a navy circle number, a bold title, a grey subtext line.
+function welcomeStepsHtml(steps) {
+  const rows = steps
+    .map(
+      (step, index) => `
+      <tr>
+        <td width="36" valign="top" style="padding:0 12px 16px 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="28" style="background:${NAVY};border-radius:50%;">
+            <tr><td align="center" style="width:28px;height:28px;color:#ffffff;font-size:13px;font-weight:700;">${index + 1}</td></tr>
+          </table>
+        </td>
+        <td valign="top" style="padding:0 0 16px;">
+          <p style="margin:0;font-weight:700;">${escapeHtml(step.title)}</p>
+          <p style="margin:2px 0 0;color:#5a5a5a;font-size:13px;">${escapeHtml(step.sub)}</p>
+        </td>
+      </tr>`
+    )
+    .join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">${rows}</table>`;
+}
+
+const WELCOME_STEPS = {
+  en: [
+    { title: "Bid on a rider you like", sub: "You learn the market by losing an auction or two." },
+    { title: "Sign a young rider", sub: "Your academy already has riders waiting. You can sign one today." },
+    { title: "Training and lineup", sub: "Set the week's training, and pick who starts your next race." },
+  ],
+  da: [
+    { title: "Byd på en rytter du kan lide", sub: "Du lærer markedet at kende ved at tabe en auktion eller to." },
+    { title: "Skriv en ung rytter under kontrakt", sub: "Dit akademi har allerede ryttere klar. Du kan skrive en under kontrakt i dag." },
+    { title: "Træning og opstilling", sub: "Sæt ugens træning, og vælg hvem der starter dit næste løb." },
+  ],
+};
 
 /**
  * D0 welcome email, sent shortly after signup.
- * @param {{teamName: string, unsubscribeUrl: string}} args
+ * @param {{teamName: string, unsubscribeUrl: string, language?: string}} args
  */
-export function buildWelcomeEmail({ teamName, unsubscribeUrl }) {
-  const name = escapeHtml(teamName) || "your team";
-  const subject = "Your team is on the start line";
+export function buildWelcomeEmail({ teamName, unsubscribeUrl, language }) {
+  const lang = normalizeLanguage(language);
+  const copy = copyFor(lang);
+  const name = escapeHtml(teamName) || copy.fallbackTeamName;
+  const plainName = teamName || copy.fallbackTeamName;
+  const subject = lang === "da" ? "Dit hold er på startlinjen" : "Your team is on the start line";
+  const eyebrow = lang === "da" ? "STARTLINJE" : "START LINE";
   const dashboardUrl = withEmailUtm(DASHBOARD_URL, "welcome");
+  const steps = WELCOME_STEPS[lang];
+
+  const intro =
+    lang === "da"
+      ? `Velkommen til Cycling Zone, og tak fordi du oprettede ${name}. Kom og gå som du vil, sæsonen kører uanset. Dit hold deltager i løb automatisk. Du behøver ikke gøre noget for det, men dine ryttere kører bedre, når du gør.`
+      : `Welcome to Cycling Zone, and thanks for creating ${name}. Come and go as you like, the season runs regardless. Your team takes part in races automatically. You do not have to do anything for that, but your riders ride better when you do.`;
+  const introPlain =
+    lang === "da"
+      ? `Velkommen til Cycling Zone, og tak fordi du oprettede ${plainName}. Kom og gå som du vil, sæsonen kører uanset. Dit hold deltager i løb automatisk. Du behøver ikke gøre noget for det, men dine ryttere kører bedre, når du gør.`
+      : `Welcome to Cycling Zone, and thanks for creating ${plainName}. Come and go as you like, the season runs regardless. Your team takes part in races automatically. You do not have to do anything for that, but your riders ride better when you do.`;
 
   const bodyHtml = `
-    <p style="margin:0 0 16px;">Hi,</p>
-    <p style="margin:0 0 16px;">${name} is set up and ready to go.</p>
-    <p style="margin:0 0 16px;">Here is what is already happening today: your riders race today or tomorrow automatically as part of the season calendar, and auctions for new riders are live right now.</p>
-    <p style="margin:0 0 8px;">Three things worth doing in your first session:</p>
-    <ol style="margin:0 0 16px;padding-left:20px;">
-      <li style="margin-bottom:6px;">Place a bid on a rider in an open auction.</li>
-      <li style="margin-bottom:6px;">Set your training plan for the week.</li>
-      <li style="margin-bottom:6px;">Pick your race lineup.</li>
-    </ol>
-    <p style="margin:0 0 16px;"><a href="${escapeHtml(dashboardUrl)}" style="color:#1a1a1a;font-weight:600;">Go to your dashboard</a></p>
+    <p style="margin:0 0 16px;">${copy.greeting}</p>
+    <p style="margin:0 0 16px;">${intro}</p>
+    ${welcomeStepsHtml(steps)}
+    <p style="margin:0 0 8px;">${primaryButtonHtml(dashboardUrl, copy.dashboardButton)}</p>
   `.trim();
 
-  const bodyText = [
-    "Hi,",
-    `${teamName || "Your team"} is set up and ready to go.`,
-    "Here is what is already happening today: your riders race today or tomorrow automatically as part of the season calendar, and auctions for new riders are live right now.",
-    "Three things worth doing in your first session:",
-    "1. Place a bid on a rider in an open auction.",
-    "2. Set your training plan for the week.",
-    "3. Pick your race lineup.",
-    `Go to your dashboard: ${dashboardUrl}`,
-  ].join("\n\n");
+  const stepsText = steps
+    .map((step, index) => `${index + 1}. ${step.title}\n   ${step.sub}`)
+    .join("\n");
+
+  const bodyText = [copy.greeting, introPlain, stepsText, `${copy.dashboardButton}: ${dashboardUrl}`].join("\n\n");
 
   return {
     subject,
-    html: wrapHtml({ bodyHtml, unsubscribeUrl }),
-    text: wrapText({ bodyText, unsubscribeUrl }),
+    html: wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language: lang }),
+    text: wrapText({ bodyText, unsubscribeUrl, language: lang }),
   };
 }
 
@@ -124,149 +252,158 @@ export function buildWelcomeEmail({ teamName, unsubscribeUrl }) {
  *
  * Two truthful variants gated on hasResults (review fix, PR #2728):
  * production data shows only ~1/3 of new teams have race_results within
- * 24h, so claiming "your results are already on the board" for everyone
- * would be an invented claim for the other ~2/3 — the caller
- * (emailDay1Sweep.js) checks race_results per team and passes the real
- * answer in.
- * #3912: the CTA additionally deep-links to the specific stage the results
- * are for (`?stage=N`, a contract RaceDetailPage.jsx already reads to open
- * on that stage's tab) when the caller (emailDay1Sweep.js) has a stage
- * number for the latest race_results row. `latestStageNumber` is OPTIONAL
- * and purely additive: omitting it (or a non-positive-integer value) falls
- * back to the pre-#3912 `/races/<id>` link with no stage context, which is
- * also the correct behaviour for single-day races or legacy rows without a
- * stage number.
- * @param {{teamName: string, hasResults: boolean, latestRaceId?: string|null, latestStageNumber?: number|null, unsubscribeUrl: string}} args
+ * 24h, so claiming results exist for everyone would be an invented claim for
+ * the other ~2/3 — the caller (emailDay1Sweep.js) checks race_results per
+ * team and passes the real answer in.
+ *
+ * #2853 v2: the CTA is a single "Open your dashboard" link in both variants,
+ * per the locked copy in docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md
+ * — the #3310/#3912 per-race/per-stage deep link this template used to build
+ * from an optional latestRaceId/latestStageNumber is dropped along with it
+ * (emailDay1Sweep.js no longer looks those columns up either).
+ * @param {{teamName: string, hasResults: boolean, unsubscribeUrl: string, language?: string}} args
  */
-export function buildDay1Email({ teamName, hasResults, latestRaceId = null, latestStageNumber = null, unsubscribeUrl }) {
-  const name = escapeHtml(teamName) || "Your team";
-  const plainName = teamName || "Your team";
+export function buildDay1Email({ teamName, hasResults, unsubscribeUrl, language }) {
+  const lang = normalizeLanguage(language);
+  const copy = copyFor(lang);
+  const name = escapeHtml(teamName) || copy.fallbackTeamNameCap;
+  const plainName = teamName || copy.fallbackTeamNameCap;
+  const dashboardUrl = withEmailUtm(DASHBOARD_URL, "day1");
+  const eyebrow = lang === "da" ? "DAG 1" : "DAY 1";
 
   if (hasResults) {
-    const subject = "Day 1: your first results are in";
-    const hasStage = Number.isInteger(latestStageNumber) && latestStageNumber > 0;
-    const baseCtaUrl = latestRaceId
-      ? `${RACES_URL}/${latestRaceId}${hasStage ? `?stage=${latestStageNumber}` : ""}`
-      : DASHBOARD_URL;
-    const ctaUrl = withEmailUtm(baseCtaUrl, "day1");
+    const subject = lang === "da" ? "Dag 1: dine ryttere har allerede kørt" : "Day 1: your riders have already raced";
+    const line =
+      lang === "da"
+        ? `${name} kørte mens du var væk. Resultaterne er klar. Se hvem der klarede sig godt og hvem der ikke gjorde det, og tjek de auktioner der lukker i dag, før en anden tager den rytter du ville have.`
+        : `${name} raced while you were away. The results are up. Have a look at who did well and who did not, and check the auctions closing today before someone else takes the rider you wanted.`;
+    const linePlain =
+      lang === "da"
+        ? `${plainName} kørte mens du var væk. Resultaterne er klar. Se hvem der klarede sig godt og hvem der ikke gjorde det, og tjek de auktioner der lukker i dag, før en anden tager den rytter du ville have.`
+        : `${plainName} raced while you were away. The results are up. Have a look at who did well and who did not, and check the auctions closing today before someone else takes the rider you wanted.`;
 
     const bodyHtml = `
-      <p style="margin:0 0 16px;">Hi,</p>
-      <p style="margin:0 0 16px;">${name} raced while you were away. Your results are already on the board.</p>
-      <p style="margin:0 0 16px;">Worth checking today: your race results, and any auctions ending today that you might still want to bid on.</p>
-      <p style="margin:0 0 16px;"><a href="${escapeHtml(ctaUrl)}" style="color:#1a1a1a;font-weight:600;">See your results and auctions</a></p>
+      <p style="margin:0 0 16px;">${copy.greeting}</p>
+      <p style="margin:0 0 16px;">${line}</p>
+      <p style="margin:0 0 8px;">${primaryButtonHtml(dashboardUrl, copy.dashboardButton)}</p>
     `.trim();
 
-    const bodyText = [
-      "Hi,",
-      `${plainName} raced while you were away. Your results are already on the board.`,
-      "Worth checking today: your race results, and any auctions ending today that you might still want to bid on.",
-      `See your results and auctions: ${ctaUrl}`,
-    ].join("\n\n");
+    const bodyText = [copy.greeting, linePlain, `${copy.dashboardButton}: ${dashboardUrl}`].join("\n\n");
 
     return {
       subject,
-      html: wrapHtml({ bodyHtml, unsubscribeUrl }),
-      text: wrapText({ bodyText, unsubscribeUrl }),
+      html: wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language: lang }),
+      text: wrapText({ bodyText, unsubscribeUrl, language: lang }),
     };
   }
 
-  const subject = "Day 1: your first race is coming up";
-  const dashboardUrl = withEmailUtm(DASHBOARD_URL, "day1");
+  const subject = lang === "da" ? "Dag 1: dit første løb er på kalenderen" : "Day 1: your first race is on the calendar";
+  const line =
+    lang === "da"
+      ? `${name}s første løb er på kalenderen og kører af sig selv. I dag: tjek de auktioner der lukker i aften, og vælg selv din opstilling til det første løb. Gør du ingenting, fylder assistenten hullerne, men dine egne valg er bedre.`
+      : `${name}'s first race is on the calendar and runs by itself. Today: check the auctions closing tonight, and pick your own lineup for the first race. If you do nothing, the assistant fills the gaps, but your own picks are better.`;
+  const linePlain =
+    lang === "da"
+      ? `${plainName}s første løb er på kalenderen og kører af sig selv. I dag: tjek de auktioner der lukker i aften, og vælg selv din opstilling til det første løb. Gør du ingenting, fylder assistenten hullerne, men dine egne valg er bedre.`
+      : `${plainName}'s first race is on the calendar and runs by itself. Today: check the auctions closing tonight, and pick your own lineup for the first race. If you do nothing, the assistant fills the gaps, but your own picks are better.`;
 
   const bodyHtml = `
-    <p style="margin:0 0 16px;">Hi,</p>
-    <p style="margin:0 0 16px;">${name}'s first races are on the calendar and will run automatically, so there is nothing you need to set up for that.</p>
-    <p style="margin:0 0 16px;">Worth doing today: check any auctions ending today, and pick your race lineup.</p>
-    <p style="margin:0 0 16px;"><a href="${escapeHtml(dashboardUrl)}" style="color:#1a1a1a;font-weight:600;">Go to your dashboard</a></p>
+    <p style="margin:0 0 16px;">${copy.greeting}</p>
+    <p style="margin:0 0 16px;">${line}</p>
+    <p style="margin:0 0 8px;">${primaryButtonHtml(dashboardUrl, copy.dashboardButton)}</p>
   `.trim();
 
-  const bodyText = [
-    "Hi,",
-    `${plainName}'s first races are on the calendar and will run automatically, so there is nothing you need to set up for that.`,
-    "Worth doing today: check any auctions ending today, and pick your race lineup.",
-    `Go to your dashboard: ${dashboardUrl}`,
-  ].join("\n\n");
+  const bodyText = [copy.greeting, linePlain, `${copy.dashboardButton}: ${dashboardUrl}`].join("\n\n");
 
   return {
     subject,
-    html: wrapHtml({ bodyHtml, unsubscribeUrl }),
-    text: wrapText({ bodyText, unsubscribeUrl }),
+    html: wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language: lang }),
+    text: wrapText({ bodyText, unsubscribeUrl, language: lang }),
   };
 }
 
 /**
- * Daily race-digest email, sent for managers whose riders raced today.
+ * Race-digest "you were away" email (#4650). No longer a daily report — the
+ * caller (emailRaceDigestSweep.js) only reaches this template for a manager
+ * who has been absent 3+ days and has at least one result since their last
+ * visit. `results` is already reduced to the manager's best (lowest rank)
+ * placement per race since that visit — never invented, every line comes
+ * straight from a race_results row the caller fetched.
  *
- * #3399: optionally leads with today's narrative headline (e.g. "Krogh takes
- * the sprint", derived from race_stage_moments by
- * raceNarrativeNotification.js's buildRaceResultNarrative/buildStageResultNarrative
- * — see emailRaceDigestSweep.js) plus the manager's own best moment (the
- * lowest-rank entry already present in `results` — no invented data, purely
- * a re-sort of what the caller passed in). `headline` is OPTIONAL and purely
- * additive: omitting it (existing callers) renders byte-identical to before
- * #3399 — the bullet list below is never removed, only led into.
- * @param {{teamName: string, results: Array<{riderName: string, rank: number|null, raceName: string}>, headline?: string|null, unsubscribeUrl: string}} args
+ * #2853 v2: the #3399 narrative-headline/"best moment" lead-in this template
+ * used to render is dropped — the locked copy in
+ * docs/drafts/mailtekster-2853-v2-dolmer-2026-09-02.md goes straight from the
+ * greeting to the result lines, no room left for a headline paragraph.
+ * @param {{teamName: string, results: Array<{riderName: string, rank: number|null, raceName: string}>, unsubscribeUrl: string, language?: string}} args
  */
-export function buildRaceDigestEmail({ teamName, results, headline = null, unsubscribeUrl }) {
-  const subject = "Race day: how your team did today";
+export function buildRaceDigestEmail({ teamName, results, unsubscribeUrl, language }) {
+  const lang = normalizeLanguage(language);
+  const copy = copyFor(lang);
+  const name = escapeHtml(teamName) || copy.fallbackTeamNameCap;
+  const plainName = teamName || copy.fallbackTeamNameCap;
+  const subject = lang === "da" ? `${plainName} kørte mens du var væk` : `${plainName} raced while you were away`;
   const rows = Array.isArray(results) ? results.filter((r) => r && r.riderName && r.raceName) : [];
-  const best = rows.length ? [...rows].sort((a, b) => (a.rank ?? Infinity) - (b.rank ?? Infinity))[0] : null;
+  const resultsUrl = withEmailUtm(RESULTS_URL, "race_digest");
+
+  // #4654 (Danish rank wording): "placering" is the term backend/lib's own
+  // race-result notifications already use for this exact shape (see
+  // frontend/public/locales/da/backendMessages.json's "Din bedste: {rider},
+  // placering {position}." string) — reused here instead of inventing a new
+  // Danish word ("plads") for the same concept.
+  const noResultsLine =
+    lang === "da" ? "Dit holds resultater siden dit sidste besøg er klar." : "Your team's results since your last visit are ready.";
+  const introLine =
+    lang === "da" ? `${name} kørte mens du var væk. Bedste resultater siden dit sidste besøg:` : `${name} raced while you were away. Best results since your last visit:`;
+  const introLinePlain =
+    lang === "da"
+      ? `${plainName} kørte mens du var væk. Bedste resultater siden dit sidste besøg:`
+      : `${plainName} raced while you were away. Best results since your last visit:`;
 
   const linesHtml = rows.length
-    ? `<ul style="margin:0 0 16px;padding-left:20px;">${rows
+    ? `<ul style="margin:0 0 24px;padding-left:20px;">${rows
         .map((r) => {
           const rider = escapeHtml(r.riderName);
           const race = escapeHtml(r.raceName);
-          const line = r.rank != null ? `${rider}: rank ${escapeHtml(r.rank)} in ${race}` : `${rider}: results in ${race}`;
+          const line =
+            r.rank != null
+              ? lang === "da"
+                ? `${rider}: placering ${escapeHtml(r.rank)} i ${race}`
+                : `${rider}: rank ${escapeHtml(r.rank)} in ${race}`
+              : lang === "da"
+                ? `${rider}: resultater i ${race}`
+                : `${rider}: results in ${race}`;
           return `<li style="margin-bottom:6px;">${line}</li>`;
         })
         .join("")}</ul>`
-    : `<p style="margin:0 0 16px;">Your team's results from today are ready.</p>`;
+    : `<p style="margin:0 0 24px;">${noResultsLine}</p>`;
 
   const linesText = rows.length
     ? rows
         .map((r) =>
           r.rank != null
-            ? `${r.riderName}: rank ${r.rank} in ${r.raceName}`
-            : `${r.riderName}: results in ${r.raceName}`
+            ? lang === "da"
+              ? `${r.riderName}: placering ${r.rank} i ${r.raceName}`
+              : `${r.riderName}: rank ${r.rank} in ${r.raceName}`
+            : lang === "da"
+              ? `${r.riderName}: resultater i ${r.raceName}`
+              : `${r.riderName}: results in ${r.raceName}`
         )
         .join("\n")
-    : "Your team's results from today are ready.";
+    : noResultsLine;
 
-  // Best-moment line only makes sense alongside a headline (it is the
-  // headline's personal counterpart) and only when we actually have a ranked
-  // result to point to — degrades to nothing (never invented) otherwise.
-  const bestMomentText = headline && best && best.rank != null
-    ? `Your best moment: ${best.riderName} placed rank ${best.rank} in ${best.raceName}.`
-    : null;
-
-  const headlineHtml = headline ? `<p style="margin:0 0 8px;font-weight:600;">${escapeHtml(headline)}</p>` : "";
-  const bestMomentHtml = bestMomentText ? `<p style="margin:0 0 16px;">${escapeHtml(bestMomentText)}</p>` : "";
-
-  const name = escapeHtml(teamName) || "Your team";
-  const resultsUrl = withEmailUtm(RESULTS_URL, "race_digest");
   const bodyHtml = `
-    <p style="margin:0 0 16px;">Hi,</p>
-    ${headlineHtml}${bestMomentHtml}
-    <p style="margin:0 0 16px;">${name}'s best results from today:</p>
+    <p style="margin:0 0 16px;">${copy.greeting}</p>
+    <p style="margin:0 0 16px;">${introLine}</p>
     ${linesHtml}
-    <p style="margin:0 0 16px;"><a href="${escapeHtml(resultsUrl)}" style="color:#1a1a1a;font-weight:600;">See all results</a></p>
+    <p style="margin:0 0 8px;">${primaryButtonHtml(resultsUrl, copy.resultsButton)}</p>
   `.trim();
 
-  const bodyText = [
-    "Hi,",
-    ...(headline ? [headline] : []),
-    ...(bestMomentText ? [bestMomentText] : []),
-    `${teamName || "Your team"}'s best results from today:`,
-    linesText,
-    `See all results: ${resultsUrl}`,
-  ].join("\n\n");
+  const bodyText = [copy.greeting, introLinePlain, linesText, `${copy.resultsButton}: ${resultsUrl}`].join("\n\n");
 
   return {
     subject,
-    html: wrapHtml({ bodyHtml, unsubscribeUrl }),
-    text: wrapText({ bodyText, unsubscribeUrl }),
+    html: wrapHtml({ eyebrow: lang === "da" ? "VELKOMMEN TILBAGE" : "WELCOME BACK", bodyHtml, unsubscribeUrl, language: lang }),
+    text: wrapText({ bodyText, unsubscribeUrl, language: lang }),
   };
 }
 

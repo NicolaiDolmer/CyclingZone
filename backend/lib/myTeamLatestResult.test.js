@@ -8,6 +8,8 @@ import {
   summarizeTeamRace,
   trimRecapRows,
   buildSeasonHistory,
+  buildPrizeBreakdown,
+  buildSponsorPayoutLine,
 } from "./myTeamLatestResult.js";
 
 // ── pickLatestTeamRace ────────────────────────────────────────────────────────
@@ -191,4 +193,125 @@ test("buildSeasonHistory: ingen rækker → tom historik og season_totals null (
   assert.deepEqual(buildSeasonHistory({ rows: [], latestRaceId: "x" }), { history: [], season_totals: null });
   assert.deepEqual(buildSeasonHistory({ rows: null }), { history: [], season_totals: null });
   assert.deepEqual(buildSeasonHistory(), { history: [], season_totals: null });
+});
+
+// ── buildPrizeBreakdown (#4697/#4698) ────────────────────────────────────────
+
+test("buildPrizeBreakdown: folder etapeplacering, klassifikation og holdbonus i tre grupper", () => {
+  const myRows = [
+    { result_type: "stage", stage_number: 1, rank: 2, rider_id: "r1", rider_name: "Naoki Goto", points_earned: 40, prize_money: 3000 },
+    { result_type: "stage", stage_number: 3, rank: 1, rider_id: "r1", rider_name: "Naoki Goto", points_earned: 60, prize_money: 4500 },
+    { result_type: "gc", stage_number: 4, rank: 3, rider_id: "r1", rider_name: "Naoki Goto", points_earned: 100, prize_money: 7500 },
+    { result_type: "team", stage_number: 4, rank: 3, rider_id: null, rider_name: null, points_earned: 30, prize_money: 2250 },
+    // rank 9999/prize 0 — skal IKKE tælle med (ingen tom "0 CZ$"-linje).
+    { result_type: "stage", stage_number: 2, rank: 45, rider_id: "r2", rider_name: "Someone Else", points_earned: 0, prize_money: 0 },
+  ];
+  const b = buildPrizeBreakdown({ myRows });
+
+  assert.equal(b.prize_total, 3000 + 4500 + 7500 + 2250);
+  assert.equal(b.points_total, 40 + 60 + 100 + 30);
+
+  assert.equal(b.stages.length, 2);
+  assert.equal(b.stages[0].stage_number, 1);
+  assert.equal(b.stages[0].amount, 3000);
+  assert.equal(b.stages[0].riders[0].rider_name, "Naoki Goto");
+  assert.equal(b.stages[1].stage_number, 3);
+  assert.equal(b.stages[1].amount, 4500);
+
+  assert.equal(b.classifications.length, 1);
+  assert.equal(b.classifications[0].classification, "gc");
+  assert.equal(b.classifications[0].amount, 7500);
+
+  assert.deepEqual(b.team_bonus, { amount: 2250, points: 30 });
+});
+
+test("buildPrizeBreakdown: dagstrøje-mikrobonusser (mountain_day/points_day/young_day/leader) lægges under deres slutklassifikation", () => {
+  const myRows = [
+    { result_type: "leader", stage_number: 2, rank: 1, rider_id: "r1", rider_name: "A", points_earned: 5, prize_money: 375 },
+    { result_type: "mountain_day", stage_number: 2, rank: 1, rider_id: "r2", rider_name: "B", points_earned: 5, prize_money: 375 },
+    { result_type: "points_day", stage_number: 2, rank: 2, rider_id: "r1", rider_name: "A", points_earned: 3, prize_money: 225 },
+    { result_type: "young_day", stage_number: 2, rank: 1, rider_id: "r3", rider_name: "C", points_earned: 5, prize_money: 375 },
+  ];
+  const b = buildPrizeBreakdown({ myRows });
+  assert.equal(b.stages.length, 0);
+  assert.equal(b.team_bonus, null);
+  assert.equal(b.classifications.length, 4);
+  const byKey = Object.fromEntries(b.classifications.map((c) => [c.classification, c]));
+  assert.equal(byKey.gc.amount, 375); // leader → gc
+  assert.equal(byKey.mountain.amount, 375);
+  assert.equal(byKey.points.amount, 225);
+  assert.equal(byKey.young.amount, 375);
+});
+
+test("buildPrizeBreakdown: klassifikations-rækkefølgen er altid gc→points→mountain→young, uanset inputrækkefølge", () => {
+  const myRows = [
+    { result_type: "young", stage_number: 4, rank: 1, rider_id: "r1", rider_name: "A", points_earned: 20, prize_money: 1500 },
+    { result_type: "gc", stage_number: 4, rank: 1, rider_id: "r1", rider_name: "A", points_earned: 100, prize_money: 7500 },
+  ];
+  const b = buildPrizeBreakdown({ myRows });
+  assert.deepEqual(b.classifications.map((c) => c.classification), ["gc", "young"]);
+});
+
+test("buildPrizeBreakdown: tom/ugyldig input → nul-total og tomme grupper, ingen kast", () => {
+  assert.deepEqual(buildPrizeBreakdown({ myRows: [] }), {
+    prize_total: 0, points_total: 0, stages: [], classifications: [], team_bonus: null,
+  });
+  assert.deepEqual(buildPrizeBreakdown({ myRows: null }), {
+    prize_total: 0, points_total: 0, stages: [], classifications: [], team_bonus: null,
+  });
+  assert.deepEqual(buildPrizeBreakdown(), {
+    prize_total: 0, points_total: 0, stages: [], classifications: [], team_bonus: null,
+  });
+});
+
+// Ret-runde PR #4728 fund #1/#2: to ryttere der begge scorer i SAMME etape/
+// klassifikation må ikke smelte sammen til én anonym sum uden navn — hver
+// rytters riders[]-entry skal bære sin EGEN andel, ikke gruppens total, ellers
+// kan frontend ikke vise "hvilken rytter tjente hvad" (#4697's kernekrav).
+test("buildPrizeBreakdown: to ryttere i samme etape/klassifikation-gruppe beholder hver deres EGEN andel i riders[].amount", () => {
+  const myRows = [
+    { result_type: "stage", stage_number: 5, rank: 3, rider_id: "r1", rider_name: "Naoki Goto", points_earned: 30, prize_money: 2250 },
+    { result_type: "stage", stage_number: 5, rank: 7, rider_id: "r2", rider_name: "Someone Else", points_earned: 10, prize_money: 750 },
+    { result_type: "gc", stage_number: 6, rank: 5, rider_id: "r1", rider_name: "Naoki Goto", points_earned: 20, prize_money: 1500 },
+    { result_type: "gc", stage_number: 6, rank: 8, rider_id: "r2", rider_name: "Someone Else", points_earned: 5, prize_money: 375 },
+  ];
+  const b = buildPrizeBreakdown({ myRows });
+
+  assert.equal(b.stages[0].amount, 3000); // gruppetotal uændret
+  assert.equal(b.stages[0].riders.length, 2);
+  assert.deepEqual(
+    b.stages[0].riders.map((r) => [r.rider_name, r.amount]).sort(),
+    [["Naoki Goto", 2250], ["Someone Else", 750]].sort(),
+  );
+
+  assert.equal(b.classifications[0].amount, 1875);
+  assert.deepEqual(
+    b.classifications[0].riders.map((r) => [r.rider_name, r.amount]).sort(),
+    [["Naoki Goto", 1500], ["Someone Else", 375]].sort(),
+  );
+});
+
+// ── buildSponsorPayoutLine (#4698) ───────────────────────────────────────────
+
+test("buildSponsorPayoutLine: summerer race-day + resultat-bonus til én linje med begge kilder", () => {
+  const line = buildSponsorPayoutLine({
+    sponsorRows: [
+      { type: "sponsor_race_day", amount: 6000 },
+      { type: "sponsor_result_bonus", amount: 1500 },
+    ],
+  });
+  assert.deepEqual(line, {
+    total: 7500,
+    items: [
+      { type: "sponsor_race_day", amount: 6000 },
+      { type: "sponsor_result_bonus", amount: 1500 },
+    ],
+  });
+});
+
+test("buildSponsorPayoutLine: ingen sponsor-udbetaling for løbet → null (ingen tom linje i UI'et)", () => {
+  assert.equal(buildSponsorPayoutLine({ sponsorRows: [] }), null);
+  assert.equal(buildSponsorPayoutLine({ sponsorRows: null }), null);
+  assert.equal(buildSponsorPayoutLine(), null);
+  assert.equal(buildSponsorPayoutLine({ sponsorRows: [{ type: "sponsor_race_day", amount: 0 }] }), null);
 });

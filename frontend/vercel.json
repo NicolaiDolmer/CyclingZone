@@ -79,6 +79,15 @@
           "value": "public, max-age=604800, stale-while-revalidate=2592000"
         }
       ]
+    },
+    {
+      "source": "/chunk-selfheal.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      ]
     }
   ],
   "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in dependabot/*)exit 0;;main)exit 1;;*)git fetch -q --depth=50 origin main||exit 1;b=$(git merge-base HEAD FETCH_HEAD)||exit 1;git diff --quiet $b HEAD -- .;;esac"

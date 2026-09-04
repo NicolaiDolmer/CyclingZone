@@ -202,7 +202,13 @@ function sliceBetween(source, startMarker, endMarker) {
 }
 
 test("#2469 forward-guard: /board/request bygger context via buildBoardEvalContext + loadGoalContextForBoard", () => {
-  const block = sliceBetween(apiSource, 'router.post("/board/request"', 'router.post("/board/renew"');
+  // #4519: konteksten bygges nu i computeBoardRequestOutcome — den delte kerne
+  // for BÅDE /board/request og /board/request/preview (defineret lige før
+  // begge routes) — i stedet for inline i selve route-handleren. Startmarkøren
+  // følger den flytning; slutmarkøren (/board/renew) dækker fortsat begge nye
+  // routes, så testen stadig beviser at POST-stien (Accept-klikket) rent
+  // faktisk bruger byggeren, ikke kun preview'et.
+  const block = sliceBetween(apiSource, "async function computeBoardRequestOutcome", 'router.post("/board/renew"');
   assert.match(block, /buildBoardEvalContext\(/, "/board/request skal bruge den delte context-bygger");
   assert.match(block, /loadGoalContextForBoard\(/, "/board/request skal loade goal-context (divisionManagerCount m.fl.)");
 });

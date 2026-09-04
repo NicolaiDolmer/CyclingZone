@@ -11,11 +11,17 @@
 //   brug cz-*-tokens), INGEN emoji som ikon i JSX ELLER i locale-vaerdier
 //   (brug ui/icons/).
 //
-// FIRE kategorier ratchet'es per fil i scripts/ui-slop-baseline.json:
-//   hex    — raa #rrggbb i frontend/src (WP2)
-//   slop   — rounded-xl/2xl/3xl, glow, backdrop-blur, blob-blur (WP0 = denne)
-//   colour — raa Tailwind-palette-utility (bg/text/border-{farve}-{shade}) (WP2)
-//   emoji  — Extended_Pictographic i frontend/src JSX *og* i locale-JSON (WP1)
+// FEM kategorier ratchet'es per fil i scripts/ui-slop-baseline.json:
+//   hex        — raa #rrggbb i frontend/src (WP2)
+//   slop       — rounded-xl/2xl/3xl, glow, backdrop-blur, blob-blur (WP0 = denne)
+//   colour     — raa Tailwind-palette-utility (bg/text/border-{farve}-{shade}) (WP2)
+//   emoji      — Extended_Pictographic i frontend/src JSX *og* i locale-JSON (WP1)
+//   arrowglyph — unicode-pile (← → ↔ ↑ ↓ ↩ ↪ ↕) brugt som ikon i JSX *og* i
+//                locale-JSON (#3422). Samme svaghed som emoji havde før WP1:
+//                pile er `Symbol, Math` i Unicode, ikke Extended_Pictographic,
+//                saa de slap 100% forbi emoji-detektoren. Brug stroke-ikoner
+//                (ChevronRightIcon/ChevronLeftIcon/ArrowUpIcon/ArrowDownIcon/
+//                ExternalLinkIcon/ExchangeIcon) — PAGE_TEMPLATES.md.
 //
 // FORWARD-GUARD, ikke retroaktivt brud: de eksisterende callsites + al
 // nuvaerende emoji/raa-farve er WP1/WP2's job. Kendte overtraedelser ligger i
@@ -98,6 +104,12 @@ export const SLOP_PATTERNS = [
 const EMOJI_RE = /\p{Extended_Pictographic}/gu;
 const EMOJI_TEXT_EXEMPT = new Set(["©", "®", "™"]); // © ® ™
 
+// Unicode-pile brugt som ikoner (#3422): U+2190-2195 (← ↑ → ↓ ↔ ↕) + U+21A9/
+// U+21AA (↩ ↪, "tilbage/gentag"-pile set i nogle quiet-actions). Rene tekst-
+// pile i copy ("A → B" i en hjaelpetekst) rammes ogsaa — det er bevidst;
+// locale-siden laeses igennem manuelt (#3422 punkt 3), ikke auto-fixes.
+const ARROW_RE = /[←-↕↩↪]/g;
+
 // Raa Tailwind-palette-farve (#1578 WP0, ratchet ned i WP2): en utility-prefix
 // (bg/text/border/ring/from/to/via/fill/stroke/divide/outline/decoration/
 // placeholder/accent/caret/shadow) + en stock-palette-farve + numerisk shade,
@@ -142,6 +154,12 @@ export function countEmoji(src) {
   return matches.filter((ch) => !EMOJI_TEXT_EXEMPT.has(ch)).length;
 }
 
+export function countArrow(src) {
+  const clean = stripComments(src);
+  ARROW_RE.lastIndex = 0;
+  return (clean.match(ARROW_RE) ?? []).length;
+}
+
 export function countColor(src) {
   TW_COLOR_RE.lastIndex = 0;
   return (stripComments(src).match(TW_COLOR_RE) ?? []).length;
@@ -153,6 +171,7 @@ export function scanSource(src) {
     slop: countSlop(src),
     colour: countColor(src),
     emoji: countEmoji(src),
+    arrowglyph: countArrow(src),
   };
 }
 
@@ -174,30 +193,32 @@ function walk(dir, match, out = []) {
 const matchSource = (f) => /\.(jsx?|css)$/.test(f) && !/\.test\.(jsx?|mjs)$/.test(f);
 const matchLocale = (f) => /\.json$/.test(f);
 
-// Returnér { "<rel-sti>": {hex, slop, colour, emoji} } for filer med >0 i mindst
-// én kategori. frontend/src scannes for alle fire; locale-JSON kun for emoji
-// (raa-farve/radius giver ikke mening i copy).
+// Returnér { "<rel-sti>": {hex, slop, colour, emoji, arrowglyph} } for filer
+// med >0 i mindst én kategori. frontend/src scannes for alle fem; locale-JSON
+// kun for emoji + arrowglyph (raa-farve/radius giver ikke mening i copy).
 export function scanRepo() {
   const counts = {};
   for (const file of walk(SRC_DIR, matchSource)) {
     const rel = relative(ROOT, file).replaceAll("\\", "/");
     if (EXEMPT_FILES.has(rel)) continue;
     const r = scanSource(readFileSync(file, "utf8"));
-    if (r.hex || r.slop || r.colour || r.emoji) counts[rel] = r;
+    if (r.hex || r.slop || r.colour || r.emoji || r.arrowglyph) counts[rel] = r;
   }
   for (const file of walk(LOCALES_DIR, matchLocale)) {
     const rel = relative(ROOT, file).replaceAll("\\", "/");
     if (EXEMPT_FILES.has(rel)) continue;
-    const emoji = countEmoji(readFileSync(file, "utf8"));
-    if (emoji) counts[rel] = { hex: 0, slop: 0, colour: 0, emoji };
+    const src = readFileSync(file, "utf8");
+    const emoji = countEmoji(src);
+    const arrowglyph = countArrow(src);
+    if (emoji || arrowglyph) counts[rel] = { hex: 0, slop: 0, colour: 0, emoji, arrowglyph };
   }
   return counts;
 }
 
 // --- Baseline-ratchet (kun stigninger fejler) -----------------------------
 
-const CATS = ["hex", "slop", "colour", "emoji"];
-const ZERO = { hex: 0, slop: 0, colour: 0, emoji: 0 };
+const CATS = ["hex", "slop", "colour", "emoji", "arrowglyph"];
+const ZERO = { hex: 0, slop: 0, colour: 0, emoji: 0, arrowglyph: 0 };
 
 export function compareAgainstBaseline(findings, baseline) {
   const base = baseline.files || {};
@@ -230,7 +251,7 @@ function buildBaseline(findings) {
   for (const file of Object.keys(findings).sort()) files[file] = findings[file];
   return {
     $comment:
-      "Kendte UI-anti-drift-overtraedelser (ratchet — maa kun skrumpe). Kategorier: hex/slop/colour/emoji. Genereret af scripts/lint-ui-slop.mjs --update-baseline. Refs #671 Plan 3, #1578 WP0. Nye overtraedelser maa IKKE tilfoejes her — brug ui/-primitiver + tokens, eller (legitimt) udvid EXEMPT_FILES i scriptet med begrundelse. WP1 skrumper emoji, WP2 skrumper colour/hex.",
+      "Kendte UI-anti-drift-overtraedelser (ratchet — maa kun skrumpe). Kategorier: hex/slop/colour/emoji/arrowglyph. Genereret af scripts/lint-ui-slop.mjs --update-baseline. Refs #671 Plan 3, #1578 WP0, #3422. Nye overtraedelser maa IKKE tilfoejes her — brug ui/-primitiver + tokens, eller (legitimt) udvid EXEMPT_FILES i scriptet med begrundelse. WP1 skrumper emoji, WP2 skrumper colour/hex, #3422 skrumper arrowglyph.",
     files,
   };
 }
@@ -244,7 +265,7 @@ function main() {
   if (updateBaseline) {
     writeFileSync(BASELINE_PATH, JSON.stringify(buildBaseline(findings), null, 2) + "\n");
     const total = Object.values(findings).reduce(
-      (s, c) => s + c.hex + c.slop + (c.colour || 0) + c.emoji,
+      (s, c) => s + c.hex + c.slop + (c.colour || 0) + c.emoji + (c.arrowglyph || 0),
       0
     );
     console.log(`✅ Baseline skrevet til scripts/ui-slop-baseline.json (${Object.keys(findings).length} filer, ${total} overtraedelser).`);
@@ -273,6 +294,10 @@ Fix:
   - Colour    → brug cz-*-token (cz-success/danger/warning/info/accent), ikke raa
                 Tailwind-palette (bg-red-500, text-slate-400, …).
   - Emoji     → brug et ui/icons/-ikon i stedet for emoji-tegn (gaelder ogsaa locale-copy).
+  - Arrowglyph → brug stroke-ikoner (ChevronRightIcon/ChevronLeftIcon/ArrowUpIcon/
+                ArrowDownIcon/ExternalLinkIcon/ExchangeIcon) i stedet for unicode-pile
+                (← → ↔ ↑ ↓ ↩ ↪) — PAGE_TEMPLATES.md. Gaelder ogsaa locale-copy hvor
+                pilen er ren knap-/link-chrome.
   - Legitim undtagelse? → udvid EXEMPT_FILES i scripts/lint-ui-slop.mjs med begrundelse.
 Baseline maa IKKE udvides med nye overtraedelser (ratchet, Refs #671, #1578).`);
     process.exit(1);
