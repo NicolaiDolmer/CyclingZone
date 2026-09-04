@@ -155,7 +155,7 @@
       },
       "anonymityAndReveal": {
         "title": "Anonymous bidding, then a full reveal",
-        "text": "While an auction is running, bids are anonymous: you see amounts and whether you're winning, never who else is bidding. That protects everyone's auto-bid cap and strategy from being read by rivals. Once the hammer falls, the full bid war is revealed. From a completed auction in Auctions → History, click 'View bid war' to see every realized bid in order, with the bidder's name, and you'll also be told who won it if you lost. Auto-bid caps and active strategies are never revealed, before or after the auction closes. Only the bids that were actually placed are ever shown."
+        "text": "While an auction is running, bids are anonymous: you see amounts and whether you're winning, never who else is bidding. That protects everyone's auto-bid cap and strategy from being read by rivals. Once the hammer falls, the full bid war is revealed. From a completed auction in Auctions -> History, click 'View bid war' to see every realized bid in order, with the bidder's name, and you'll also be told who won it if you lost. Auto-bid caps and active strategies are never revealed, before or after the auction closes. Only the bids that were actually placed are ever shown."
       },
       "tieRule": {
         "title": "Ties on equal bids",
@@ -437,7 +437,7 @@
           "Action required: Offers awaiting your reply, counters you've received, deals awaiting your confirmation and auctions ending within 1 hour. Opens by default.",
           "Auctions: All active auctions where you're seller or bidder.",
           "Transfers: Offers you've received and offers you've sent that are still active.",
-          "Watchlist: Compact view of your saved riders with market status. Click → for the full watchlist.",
+          "Watchlist: Compact view of your saved riders with market status. Click -> for the full watchlist.",
           "History: Completed auctions and closed transfers."
         ]
       },
@@ -956,7 +956,7 @@
       },
       "formFatigue": {
         "title": "Form and Fatigue",
-        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Every day, after 22:00 Danish time (or right away if you click 'Train today' yourself), each rider also recovers some Fatigue: rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds it up over the day. Under a heavy race calendar and hard workload, Fatigue can still bunch up near 100 because recovery doesn't always keep pace; that's a known balance area we're working on. A high Recovery rating speeds daily recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
+        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Every day, after 22:00 Danish time (or right away if you click 'Train today' yourself), each rider also recovers some Fatigue: rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds it up over the day. Under a heavy race calendar and hard workload, Fatigue can still bunch up near 100 because recovery doesn't always keep pace; that's a known balance area I'm working on. A high Recovery rating speeds daily recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
       },
       "injuryRisk": {
         "title": "Injury risk",
@@ -1204,7 +1204,7 @@
       },
       "assistantFill": {
         "title": "When the assistant fills a line-up",
-        "text": "The assistant never overwrites a line-up you set yourself, and it never touches a race day you cleared on purpose. What it does on its own depends on the setting we run: it can leave every line-up to you, it can fill a race you left completely empty shortly before it starts, or you can switch it on for your team and let it pick. Whatever the setting, a team that is empty or below six riders when the race starts is still filled up to six so you take the start."
+        "text": "The assistant never overwrites a line-up you set yourself, and it never touches a race day you cleared on purpose. What it does on its own depends on the setting I run: it can leave every line-up to you, it can fill a race you left completely empty shortly before it starts, or you can switch it on for your team and let it pick. Whatever the setting, a team that is empty or below six riders when the race starts is still filled up to six so you take the start."
       },
       "scouting": {
         "title": "Scouting other divisions",
@@ -1471,7 +1471,7 @@
     },
     "forgotToNegotiatePlan": {
       "q": "What happens if I forget to negotiate my plan?",
-      "a": "The board takes over. If you haven't signed a new plan before race day 5 is passed, the board automatically signs a plan with default focus derived from your team's identity (U25-heavy → youth development, star profile → star signing, otherwise balanced) and standard targets. You first get an info reminder at race day 2 ('The board is waiting for your N-year plan'), then an 'Action required' notification at race day 4 ('Last chance'), and after that it's the board's pick. You can still request changes via a board request once the plan is running. If you check the Board page often, you'll also see a live countdown banner with race days remaining."
+      "a": "The board takes over. If you haven't signed a new plan before race day 5 is passed, the board automatically signs a plan with default focus derived from your team's identity (U25-heavy -> youth development, star profile -> star signing, otherwise balanced) and standard targets. You first get an info reminder at race day 2 ('The board is waiting for your N-year plan'), then an 'Action required' notification at race day 4 ('Last chance'), and after that it's the board's pick. You can still request changes via a board request once the plan is running. If you check the Board page often, you'll also see a live countdown banner with race days remaining."
     },
     "boardMembersFaq": {
       "q": "Who are the members of my board?",
@@ -1479,7 +1479,7 @@
     },
     "boardChairman": {
       "q": "What does the board chairman do?",
-      "a": "The chairman is the member with the highest alignment to your team. He speaks when in doubt: if the board's assessment doesn't have a clear dominant category, it's the chairman's voice you hear. He's also the one who gets replaced if the board loses patience: 2× consecutive plan expiry below 30% satisfaction → a new chairman is picked from the 4 unassigned archetypes. You get a 'The board has picked a new chairman' notification when it happens."
+      "a": "The chairman is the member with the highest alignment to your team. He speaks when in doubt: if the board's assessment doesn't have a clear dominant category, it's the chairman's voice you hear. He's also the one who gets replaced if the board loses patience: 2× consecutive plan expiry below 30% satisfaction -> a new chairman is picked from the 4 unassigned archetypes. You get a 'The board has picked a new chairman' notification when it happens."
     },
     "memberReactions": {
       "q": "Why do different board members react to different targets?",
@@ -1495,7 +1495,7 @@
     },
     "balancedRelativeRank": {
       "q": "What is 'finish ahead of X other managers' in balanced plans?",
-      "a": "Balanced focus now gets a 5th target: 'Finish ahead of at least 3 other managers in the division'. It's not about absolute ranking, but relative: you need to beat over half in your division. Scales automatically when more managers join: if there are 5 human managers in your division and you're rank 1, you've beaten 4. If you're rank 4, you've only beaten 1 → target not met. It's read from your current rank in the division against the number of human managers in it."
+      "a": "Balanced focus now gets a 5th target: 'Finish ahead of at least 3 other managers in the division'. It's not about absolute ranking, but relative: you need to beat over half in your division. Scales automatically when more managers join: if there are 5 human managers in your division and you're rank 1, you've beaten 4. If you're rank 4, you've only beaten 1 -> target not met. It's read from your current rank in the division against the number of human managers in it."
     },
     "boardUnsatisfiedConsequences": {
       "q": "What happens when the board is very unhappy, can I be fired?",
@@ -1539,7 +1539,7 @@
     },
     "midSeasonCheckFaq": {
       "q": "What is the mid-season check, and why am I getting an 'Action required' notification mid-season?",
-      "a": "When half of the season's race days are over, the board checks your plan status. If satisfaction is under 50% OR at least half of your plan targets are 'behind' after half-time → you get a 'Mid-season check' notification in the inbox 'Action required'. The notification is informational: the board is worried but doesn't act automatically. You can respond by sending a board request (pivot plan targets), requesting a budget loan on the Economy page, or simply sharpening focus for the rest of the season. The banner only fires once per season per board."
+      "a": "When half of the season's race days are over, the board checks your plan status. If satisfaction is under 50% OR at least half of your plan targets are 'behind' after half-time -> you get a 'Mid-season check' notification in the inbox 'Action required'. The notification is informational: the board is worried but doesn't act automatically. You can respond by sending a board request (pivot plan targets), requesting a budget loan on the Economy page, or simply sharpening focus for the rest of the season. The banner only fires once per season per board."
     },
     "majorPivotCooldown": {
       "q": "What is pivot cooldown and a 'major pivot'?",
@@ -1567,7 +1567,7 @@
     },
     "season1RaceCalendarFaq": {
       "q": "Which races run in season 1?",
-      "a": "Season 1's calendar is designed before the window closes and is published under Planning → Team selection. WorldTour races (Tour de France, Giro, Vuelta, monuments) are not run in season 1 by decision in the opening phase, so managers can find their footing in ProSeries and lower classes first. The full list shows up in the Races tab as soon as admin has approved the calendar."
+      "a": "Season 1's calendar is designed before the window closes and is published under Planning -> Team selection. WorldTour races (Tour de France, Giro, Vuelta, monuments) are not run in season 1 by decision in the opening phase, so managers can find their footing in ProSeries and lower classes first. The full list shows up in the Races tab as soon as admin has approved the calendar."
     },
     "howToWinRace": {
       "q": "How do I win a race, and what decides the result?",

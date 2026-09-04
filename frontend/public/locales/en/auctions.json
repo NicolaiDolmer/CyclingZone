@@ -163,8 +163,8 @@
   "bidGate": {
     "bothFull": "No room in your academy (8/8) or senior squad (30/30). Sell a rider to bid.",
     "seniorFull": "Your senior squad is full (30/30). Sell a rider to bid.",
-    "toSenior": "→ joins your senior squad",
-    "toAcademy": "→ joins your academy"
+    "toSenior": "-> joins your senior squad",
+    "toAcademy": "-> joins your academy"
   },
   "bid": {
     "minBid": "Min. {amount} CZ$",
@@ -182,7 +182,7 @@
       "blockedBelowMin": "Your auto-bid limit must be at least {amount} CZ$, the current minimum bid.",
       "blockedExpired": "This auction has ended. Refresh to see the result.",
       "display": "Auto-bid: max {amount} CZ$",
-      "help": "We bid up to this for you, 1 CZ$ at a time. You only lose the lead if someone goes above your cap. Your cap stays private.",
+      "help": "I bid up to this for you, 1 CZ$ at a time. You only lose the lead if someone goes above your cap. Your cap stays private.",
       "set": "Set auto-bid limit",
       "edit": "Change auto-bid limit",
       "remove": "Remove auto-bid",

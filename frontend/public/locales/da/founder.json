@@ -97,7 +97,7 @@
   ],
   "formSectionTitle": "Skriv dig på Founder-waitlisten",
   "formSectionSub": "Det er IKKE bindende. Du opkræves ingenting i dag. Formålet er at se, om der er nok interesse i at støtte projektet økonomisk, inden jeg tilføjer betaling.",
-  "faqTitle": "Spørgsmål vi har hørt",
+  "faqTitle": "Spørgsmål jeg har hørt",
   "faqItems": [
     {
       "q": "Bliver Cycling Zone pay-to-win?",
@@ -128,7 +128,7 @@
   "footerTerms": "Handelsbetingelser",
   "footerBack": "Tilbage til Cycling Zone",
   "form": {
-    "contactLegend": "Sådan kontakter vi dig",
+    "contactLegend": "Sådan kontakter jeg dig",
     "contactHelp": "Mindst én af felterne skal udfyldes.",
     "emailLabel": "Email",
     "emailPlaceholder": "din@email.dk",
@@ -151,10 +151,10 @@
     "privacyPath": "/privatlivspolitik",
     "submit": "Skriv mig på Founder-waitlisten",
     "submitLoading": "Sender...",
-    "submitDisclaimer": "Vi sender ikke spam og deler aldrig din info. Du kan altid skrive til os for at blive slettet.",
+    "submitDisclaimer": "Jeg sender ikke spam og deler aldrig din info. Du kan altid skrive til mig for at blive slettet.",
     "honeypotLabel": "Lad dette felt være tomt",
     "successTitle": "Du er på listen!",
-    "successBody": "Tak fordi du vil være med fra start. Vi sender en mail når premium åbner, og inden da hvis vi har spørgsmål til hvad du synes.",
+    "successBody": "Tak fordi du vil være med fra start. Jeg sender en mail når premium åbner, og inden da hvis jeg har spørgsmål til hvad du synes.",
     "successNextTitle": "Næste skridt:",
     "successNext": [
       { "text": "Tilmeld dig vores Discord for opdateringer og spørgsmål" },
@@ -212,7 +212,7 @@
       "gdprConsent": "Du skal acceptere privatlivspolitikken for at fortsætte"
     },
     "insertErrors": {
-      "duplicate": "Du står allerede på listen. Tjek din inbox (og spam) for vores første mail.",
+      "duplicate": "Du står allerede på listen. Tjek din inbox (og spam) for min første mail.",
       "rls": "Adgang nægtet. Genindlæs siden og prøv igen. Kontakt support hvis problemet fortsætter.",
       "network": "Kunne ikke kontakte serveren. Tjek din forbindelse og prøv igen.",
       "unknown": "Noget gik galt. Prøv igen om lidt."

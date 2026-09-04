@@ -48,7 +48,7 @@
           "Fra starten af sæson 1 vælger du først Klub-DNA. Derefter åbner bestyrelsen sekventielt: 5-årsplan, 3-årsplan, 1-årsplan.",
           "Vælg en fokus-retning (Balanceret, Ungdomsudvikling, Stjernesignering) og forhandl hvert mål én gang i wizard'en.",
           "Dit Klub-DNA er obligatorisk før første plan: det farver både mål-forslag og bestyrelsens sammensætning.",
-          "Glemmer du at vælge DNA og forhandle inden race-day 5, vælger systemet det bedst matchede DNA-forslag, tildeler bestyrelsen og signer en plan med default-fokus afledt af dit identity-snapshot.",
+          "Glemmer du at vælge DNA og forhandle inden løbsdag 5, vælger systemet det bedst matchede DNA-forslag, tildeler bestyrelsen og signer en plan med default-fokus afledt af dit identity-snapshot.",
           "Derefter fornyes 1yr-planen hvert år, 3yr-planen hvert 3. år og 5yr-planen hvert 5. år. Aldrig alle tre på én gang igen."
         ]
       },
@@ -106,11 +106,11 @@
       },
       "requestsAndLocks": {
         "title": "Board requests og drej-låsninger",
-        "text": "Én gang pr. sæson kan du sende en board request for at dreje din plan (fx 'mere stjernefokus'). Svaret er godkendt, delvist, afvist eller godkendt med tradeoff. Store drejninger (ungdom/stjerne) tillades kun én gang pr. plan-livscyklus. 5yr/3yr-planer kan ikke drejes de første 50% af løbetiden medmindre tilfredsheden er ændret >30 point. I de sidste 5 race-days af en sæson er alle requests blokeret."
+        "text": "Én gang pr. sæson kan du sende en board request for at dreje din plan (fx 'mere stjernefokus'). Svaret er godkendt, delvist, afvist eller godkendt med tradeoff. Store drejninger (ungdom/stjerne) tillades kun én gang pr. plan-livscyklus. 5yr/3yr-planer kan ikke drejes de første 50% af løbetiden medmindre tilfredsheden er ændret >30 point. I de sidste 5 løbsdage af en sæson er alle requests blokeret."
       },
       "midSeasonCheck": {
         "title": "Mid-season check",
-        "text": "Midt i sæsonen (halvdelen af race-days gennemført) tjekker bestyrelsen automatisk din plan-status. Hvis tilfredshed <50% eller mindst halvdelen af målbare mål er 'behind', modtager du en 'Skal handles'-notif i Indbakken. Mid-season-punktet er også det første hårde checkpoint: er tilfredsheden faldet under konsekvens-tærsklerne på det tidspunkt, anvender bestyrelsen de tilsvarende konsekvens-lag (det andet checkpoint er sæson-slut). Mellem checkpoints bevæger tilfredsheden sig frit uden at udløse hårde konsekvenser."
+        "text": "Midt i sæsonen (halvdelen af løbsdagene gennemført) tjekker bestyrelsen automatisk din plan-status. Hvis tilfredshed <50% eller mindst halvdelen af målbare mål er 'behind', modtager du en 'Skal handles'-notif i Indbakken. Mid-season-punktet er også det første hårde checkpoint: er tilfredsheden faldet under konsekvens-tærsklerne på det tidspunkt, anvender bestyrelsen de tilsvarende konsekvens-lag (det andet checkpoint er sæson-slut). Mellem checkpoints bevæger tilfredsheden sig frit uden at udløse hårde konsekvenser."
       },
       "multiYearLifecycle": {
         "title": "Sådan kører 3- og 5-årsplanen",
@@ -155,7 +155,7 @@
       },
       "anonymityAndReveal": {
         "title": "Anonyme bud, derefter fuldt reveal",
-        "text": "Mens en auktion kører, er buddene anonyme: du ser beløb og om du fører, aldrig hvem andre der byder. Det beskytter alles autobud-loft og strategi mod at blive aflæst af rivaler. Når hammeren falder, afsløres hele budkrigen. Fra en afsluttet auktion under Auktioner → Historik kan du klikke 'Se budkrigen' for at se alle realiserede bud i rækkefølge, med budgiverens navn, og du får også at vide hvem der vandt, hvis du tabte. Autobud-lofter og aktive strategier afsløres aldrig, hverken før eller efter auktionen lukker. Kun de bud der reelt blev lagt, vises."
+        "text": "Mens en auktion kører, er buddene anonyme: du ser beløb og om du fører, aldrig hvem andre der byder. Det beskytter alles autobud-loft og strategi mod at blive aflæst af rivaler. Når hammeren falder, afsløres hele budkrigen. Fra en afsluttet auktion under Auktioner -> Historik kan du klikke 'Se budkrigen' for at se alle realiserede bud i rækkefølge, med budgiverens navn, og du får også at vide hvem der vandt, hvis du tabte. Autobud-lofter og aktive strategier afsløres aldrig, hverken før eller efter auktionen lukker. Kun de bud der reelt blev lagt, vises."
       },
       "tieRule": {
         "title": "Uafgjort ved ens bud",
@@ -252,7 +252,7 @@
       },
       "accountSettings": {
         "title": "Skift brugernavn eller email",
-        "text": "Under Min Profil, Konto kan du skifte dit brugernavn og din email. Et brugernavn er 3-20 tegn (bogstaver, tal, understreg eller bindestreg) og skal være unikt. Når du skifter email, sender vi et bekræftelseslink til den nye adresse; skiftet træder først i kraft, når du klikker på linket, så dit login virker indtil da."
+        "text": "Under Min Profil, Konto kan du skifte dit brugernavn og din email. Et brugernavn er 3-20 tegn (bogstaver, tal, understreg eller bindestreg) og skal være unikt. Når du skifter email, sender jeg et bekræftelseslink til den nye adresse; skiftet træder først i kraft, når du klikker på linket, så dit login virker indtil da."
       },
       "theme": {
         "title": "Tema (lyst / mørkt)",
@@ -437,7 +437,7 @@
           "Kræver handling: Tilbud du skal svare på, modbud du har modtaget, aftaler der afventer din bekræftelse og auktioner der slutter inden for 1 time. Åbnes som standard.",
           "Auktioner: Alle aktive auktioner hvor du er sælger eller byder.",
           "Transfers: Tilbud du har modtaget og tilbud du har sendt, der stadig er aktive.",
-          "Ønskeliste: Kompakt visning af dine gemte ryttere med markedsstatus. Klik → for fuld ønskeliste.",
+          "Ønskeliste: Kompakt visning af dine gemte ryttere med markedsstatus. Klik -> for fuld ønskeliste.",
           "Historik: Afsluttede auktioner og lukkede transfers."
         ]
       },
@@ -956,7 +956,7 @@
       },
       "formFatigue": {
         "title": "Form og Træthed",
-        "text": "Alle ryttere har en Form-værdi og en Træthed-værdi, begge på en skala fra 0 til 100, synlige på rytterprofilen. Træning og løb opbygger Træthed. Hver dag, efter kl. 22 dansk tid (eller straks hvis du selv klikker 'Træn i dag'), restituerer hver rytter noget Træthed: hvile- og rolige dage restituerer mest, normal træning lander på et bæredygtigt niveau, og hård træning bygger den stadig op i løbet af dagen. Ved tæt løbskalender og hård belastning kan Træthed alligevel klumpe tæt på 100, fordi restitutionen ikke altid kan følge med; det er et kendt balance-område vi arbejder på. En høj Restitution gør den daglige genopretning hurtigere. Form følger balancen mellem de to: høj Træthed holder Form nede, mens en udhvilet rytters Form stiger. Begge værdier opdateres dagligt. I løb (aktivt siden sæson 1-relaunchen) giver god form en lille scoringsfavour og høj træthed en lille straf, begrænset til ca. ±3% så favoritterne stadig vinder på evne. Løbsdage opbygger træthed efter etapeprofil: bjergetaper koster mest, flad etaper mindst. Skadede ryttere indmeldes ikke automatisk i løb."
+        "text": "Alle ryttere har en Form-værdi og en Træthed-værdi, begge på en skala fra 0 til 100, synlige på rytterprofilen. Træning og løb opbygger Træthed. Hver dag, efter kl. 22 dansk tid (eller straks hvis du selv klikker 'Træn i dag'), restituerer hver rytter noget Træthed: hvile- og rolige dage restituerer mest, normal træning lander på et bæredygtigt niveau, og hård træning bygger den stadig op i løbet af dagen. Ved tæt løbskalender og hård belastning kan Træthed alligevel klumpe tæt på 100, fordi restitutionen ikke altid kan følge med; det er et kendt balance-område jeg arbejder på. En høj Restitution gør den daglige genopretning hurtigere. Form følger balancen mellem de to: høj Træthed holder Form nede, mens en udhvilet rytters Form stiger. Begge værdier opdateres dagligt. I løb (aktivt siden sæson 1-relaunchen) giver god form en lille scoringsfavour og høj træthed en lille straf, begrænset til ca. ±3% så favoritterne stadig vinder på evne. Løbsdage opbygger træthed efter etapeprofil: bjergetaper koster mest, flad etaper mindst. Skadede ryttere indmeldes ikke automatisk i løb."
       },
       "injuryRisk": {
         "title": "Skaderisiko",
@@ -1204,7 +1204,7 @@
       },
       "assistantFill": {
         "title": "Hvornår assistenten udfylder et hold",
-        "text": "Assistenten overskriver aldrig et hold du selv har sat, og den rører aldrig en løbsdag du bevidst har ryddet. Hvad den gør af sig selv afhænger af den indstilling vi kører: den kan overlade alle udtagelser til dig, den kan udfylde et løb du har efterladt helt tomt kort før start, eller du kan slå den til for dit hold og lade den udtage. Uanset indstillingen bliver et hold der er tomt eller under seks ryttere ved løbsstart stadig fyldt op til seks, så du kommer til start."
+        "text": "Assistenten overskriver aldrig et hold du selv har sat, og den rører aldrig en løbsdag du bevidst har ryddet. Hvad den gør af sig selv afhænger af den indstilling jeg kører: den kan overlade alle udtagelser til dig, den kan udfylde et løb du har efterladt helt tomt kort før start, eller du kan slå den til for dit hold og lade den udtage. Uanset indstillingen bliver et hold der er tomt eller under seks ryttere ved løbsstart stadig fyldt op til seks, så du kommer til start."
       },
       "scouting": {
         "title": "Scout andre divisioner",
@@ -1466,12 +1466,12 @@
       "a": "Ja. Bestyrelsen er låst op fra starten af sæson 1, så du kan vælge dit Klub-DNA og forhandle dine 5-, 3- og 1-årsplaner med det samme. Indtil du signer din første plan holdes sponsor-modifier på 1.0×, så sæson-1-sponsoren er neutral mens du sætter op. Selv uden en signeret plan følger bestyrelsens tilfredshed allerede dine løbsresultater (placering blandt de andre rigtige hold i din gruppe) og din økonomi weekend for weekend, og bevæger sig inden for et interval på 30-75. Den udløser bare ikke hårde konsekvenser endnu. Bestyrelsen *læser* også dit hold (hvilken nation dominerer, hvor stor er U25-andelen, hvilken specialisering peger holdet mod, og hvor synlige er dine stjerner) og gemmer dette 'identity-snapshot' på dit hold permanent som grundlag for dine 5-årsplan-forslag."
     },
     "buildOnCoreBadge": {
-      "q": "Hvad betyder 'Bygger paa din kerne'-badgen på 5-årsmål?",
-      "a": "Det er identity-feeding. Når bestyrelsen foreslår 5-årsmål i sæson 2, annoteres relevante mål med en lille badge der forklarer hvorfor netop dét mål eksisterer. Eksempel: 'Bygger paa din FR-kerne (5/8 ryttere)' når dit sæson-1-hold havde fem franske ryttere ud af otte. Klik badgen for fuld forklaring. Badgen viser den frosne sæson-1-observation, dvs. selv hvis du senere skifter ud, husker bestyrelsen hvilket signal der oprindeligt drev målet."
+      "q": "Hvad betyder 'Bygger på din kerne'-badgen på 5-årsmål?",
+      "a": "Det er identity-feeding. Når bestyrelsen foreslår 5-årsmål i sæson 2, annoteres relevante mål med en lille badge der forklarer hvorfor netop dét mål eksisterer. Eksempel: 'Bygger på din FR-kerne (5/8 ryttere)' når dit sæson-1-hold havde fem franske ryttere ud af otte. Klik badgen for fuld forklaring. Badgen viser den frosne sæson-1-observation, dvs. selv hvis du senere skifter ud, husker bestyrelsen hvilket signal der oprindeligt drev målet."
     },
     "forgotToNegotiatePlan": {
       "q": "Hvad sker der hvis jeg glemmer at forhandle min plan?",
-      "a": "Bestyrelsen tager over. Hvis du ikke har signet en ny plan inden race-day 5 er passeret, signer bestyrelsen automatisk en plan med default-fokus afledt af dit holds identitet (U25-tungt → ungdomsudvikling, stjerneprofil → stjernesignering, ellers balanceret) og standardmål. Du får først en info-reminder ved race-day 2 ('Bestyrelsen venter paa din N-aarsplan'), derefter en 'Skal handles'-notif ved race-day 4 ('Sidste chance'), og derefter er det bestyrelsens valg. Du kan stadig anmode om ændringer via en board request når planen kører. Tjekker du Bestyrelse-siden ofte, ser du også et live countdown-banner med antal race-days tilbage."
+      "a": "Bestyrelsen tager over. Hvis du ikke har signet en ny plan inden løbsdag 5 er passeret, signer bestyrelsen automatisk en plan med default-fokus afledt af dit holds identitet (U25-tungt -> ungdomsudvikling, stjerneprofil -> stjernesignering, ellers balanceret) og standardmål. Du får først en info-reminder ved løbsdag 2 ('Bestyrelsen venter på din N-årsplan'), derefter en 'Skal handles'-notif ved løbsdag 4 ('Sidste chance'), og derefter er det bestyrelsens valg. Du kan stadig anmode om ændringer via en board request når planen kører. Tjekker du Bestyrelse-siden ofte, ser du også et live countdown-banner med antal løbsdage tilbage."
     },
     "boardMembersFaq": {
       "q": "Hvem er medlemmerne i min bestyrelse?",
@@ -1479,7 +1479,7 @@
     },
     "boardChairman": {
       "q": "Hvad gør bestyrelsesformanden?",
-      "a": "Formanden er medlemmet med højeste alignment til dit hold. Han taler ved tvivl: hvis bestyrelsens vurdering ikke har en tydelig dominerende kategori, er det formandens stemme du hører. Han er også den der udskiftes hvis bestyrelsen mister tålmodigheden: 2× plan-udløb i træk under 30% tilfredshed → ny formand vælges fra de 4 ikke-tildelte arketyper. Du får en 'Bestyrelsen har valgt en ny formand'-notif når det sker."
+      "a": "Formanden er medlemmet med højeste alignment til dit hold. Han taler ved tvivl: hvis bestyrelsens vurdering ikke har en tydelig dominerende kategori, er det formandens stemme du hører. Han er også den der udskiftes hvis bestyrelsen mister tålmodigheden: 2× plan-udløb i træk under 30% tilfredshed -> ny formand vælges fra de 4 ikke-tildelte arketyper. Du får en 'Bestyrelsen har valgt en ny formand'-notif når det sker."
     },
     "memberReactions": {
       "q": "Hvorfor reagerer forskellige bestyrelsesmedlemmer på forskellige mål?",
@@ -1495,7 +1495,7 @@
     },
     "balancedRelativeRank": {
       "q": "Hvad er 'slut foran X andre managers' i balanced-planer?",
-      "a": "Balanced-fokus får nu et 5. mål: 'Slut foran mindst 3 andre managers i divisionen'. Det handler ikke om absolut rangering, men om relativ: du skal slå over halvdelen i din division. Skalerer automatisk når flere managers joiner: hvis der er 5 humane managers i din division og du er rank 1, har du slået 4. Hvis du er rank 4, har du kun slået 1 → målet er ikke opfyldt. Det aflæses af din aktuelle placering i divisionen mod antallet af humane managers i den."
+      "a": "Balanced-fokus får nu et 5. mål: 'Slut foran mindst 3 andre managers i divisionen'. Det handler ikke om absolut rangering, men om relativ: du skal slå over halvdelen i din division. Skalerer automatisk når flere managers joiner: hvis der er 5 humane managers i din division og du er rank 1, har du slået 4. Hvis du er rank 4, har du kun slået 1 -> målet er ikke opfyldt. Det aflæses af din aktuelle placering i divisionen mod antallet af humane managers i den."
     },
     "boardUnsatisfiedConsequences": {
       "q": "Hvad sker der når bestyrelsen er meget utilfreds, kan jeg blive fyret?",
@@ -1535,19 +1535,19 @@
     },
     "clubDnaEffects": {
       "q": "Hvad gør klub-DNA helt konkret?",
-      "a": "DNA påvirker tre ting: (1) Dine 5-årsplaner får et ekstra DNA-tradition-mål (fx 'mindst ét Monument-podie' for italiensk_klassiker eller 'min. 2 etape-trøjer over planperioden' for sprint_kommerciel) som bonus-mål oven på de focus-baserede mål. (2) Mål der matcher DNA'ets prioriteter får boostet satisfaction-bonus + penalty (italiensk_klassiker × 1.6 på monument_podium-mål, vinder du, jubler bestyrelsen ekstra; misser du, er straffen større). (3) Når formanden udskiftes (efter 2× plan-udløb under 30% tilfredshed), tipper DNA-bonus alignment-scoren mod arketyper der matcher klubbens identitet (italiensk_klassiker giver +4 til klassiker_purist og -2 til gc_elsker, så formanden reflekterer DNA'et over tid)."
+      "a": "DNA påvirker tre ting: (1) Dine 5-årsplaner får et ekstra DNA-tradition-mål (fx 'mindst ét Monument-podie' for italiensk_klassiker eller 'min. 2 etape-trøjer over planperioden' for sprint_kommerciel) som bonus-mål oven på de fokus-baserede mål. (2) Mål der matcher DNA'ets prioriteter får boostet satisfaction-bonus + penalty (italiensk_klassiker × 1.6 på monument_podium-mål, vinder du, jubler bestyrelsen ekstra; misser du, er straffen større). (3) Når formanden udskiftes (efter 2× plan-udløb under 30% tilfredshed), tipper DNA-bonus alignment-scoren mod arketyper der matcher klubbens identitet (italiensk_klassiker giver +4 til klassiker_purist og -2 til gc_elsker, så formanden reflekterer DNA'et over tid)."
     },
     "midSeasonCheckFaq": {
       "q": "Hvad er mid-season check, og hvorfor får jeg pludselig en 'Skal handles'-notif midt i sæsonen?",
-      "a": "Når halvdelen af sæsonens race-days er ovre, tjekker bestyrelsen din plan-status. Hvis tilfredsheden er under 50% ELLER mindst halvdelen af dine plan-mål ligger 'bagud' efter halvtid → får du en 'Mid-season check'-notif i Indbakke 'Skal handles'. Notifen er informativ: bestyrelsen er bekymret men handler ikke automatisk. Du kan reagere ved at sende en board request (dreje plan-mål), anmode om budget-lån på Økonomi-siden, eller bare skærpe focus resten af sæsonen. Banneret fyrer kun én gang pr. sæson pr. board."
+      "a": "Når halvdelen af sæsonens løbsdage er ovre, tjekker bestyrelsen din plan-status. Hvis tilfredsheden er under 50% ELLER mindst halvdelen af dine plan-mål ligger 'bagud' efter halvtid -> får du en 'Mid-season check'-notif i Indbakke 'Skal handles'. Notifen er informativ: bestyrelsen er bekymret men handler ikke automatisk. Du kan reagere ved at sende en board request (dreje plan-mål), anmode om budget-lån på Økonomi-siden, eller bare skærpe fokus resten af sæsonen. Banneret fyrer kun én gang pr. sæson pr. board."
     },
     "majorPivotCooldown": {
       "q": "Hvad er drej-cooldown og 'stor drejning'?",
-      "a": "En stor drejning er et focus-skift mellem extremer: fra ungdomsudvikling til stjernesignering eller omvendt. Dem må du kun gennemføre én gang pr. plan-livscyklus. Når du fx accepterer 'mere stjerner nu' fra et ungdomsspor, noterer bestyrelsen at du har brugt din store drejning på denne plan, og næste tilsvarende request bliver afvist med 'Bestyrelsen har allerede accepteret en stor drejning'. Det nulstilles når planen bliver fornyet (frisk plan = frisk cool-down). Drejninger til/fra balanced er ikke store: du kan stadig dreje gradvist via en balanceret mellemstation."
+      "a": "En stor drejning er et fokus-skift mellem ekstremer: fra ungdomsudvikling til stjernesignering eller omvendt. Dem må du kun gennemføre én gang pr. plan-livscyklus. Når du fx accepterer 'mere stjerner nu' fra et ungdomsspor, noterer bestyrelsen at du har brugt din store drejning på denne plan, og næste tilsvarende request bliver afvist med 'Bestyrelsen har allerede accepteret en stor drejning'. Det nulstilles når planen bliver fornyet (frisk plan = frisk cool-down). Drejninger til/fra balanced er ikke store: du kan stadig dreje gradvist via en balanceret mellemstation."
     },
     "endOfSeasonBlock": {
       "q": "Hvorfor kan jeg ikke sende board requests i sæsonens slutfase?",
-      "a": "I de sidste 5 race-days af en sæson er alle requests blokeret. Bestyrelsen vil ikke risikere at planen bliver drejet umiddelbart før evalueringen, det ville miste forbindelsen mellem dine valg og resultatet. Når der er mindre end 6 race-days tilbage, ser du 'Saesonens slutfase er begyndt'-besked på alle request-knapper. Window'et åbner igen ved sæson-start. Brug fasen til at score sidste point i stedet."
+      "a": "I de sidste 5 løbsdage af en sæson er alle requests blokeret. Bestyrelsen vil ikke risikere at planen bliver drejet umiddelbart før evalueringen, det ville miste forbindelsen mellem dine valg og resultatet. Når der er mindre end 6 løbsdage tilbage, ser du 'Sæsonens slutfase er begyndt'-besked på alle request-knapper. Window'et åbner igen ved sæson-start. Brug fasen til at score sidste point i stedet."
     },
     "multiYearPlanLock": {
       "q": "Hvorfor kan jeg ikke dreje min 5-årsplan før den er halvt færdig?",
@@ -1559,7 +1559,7 @@
     },
     "relativeRankLive": {
       "q": "Hvordan virker 'slut foran X andre managers'-mål live?",
-      "a": "På Bestyrelse-siden viser balanced-planens relative_rank-mål nu live status: 'Du staar #4 af 8 managers i divisionen, slaar 4 (maal: 3 ✓)'. Tallet opdateres efter hver race-day når stillingen genberegnes. Måler relativt til antallet af humane managers i din division, så det skalerer naturligt fra ~19 nu til 100+ managers efter open beta uden cross-division-støj."
+      "a": "På Bestyrelse-siden viser balanced-planens relative_rank-mål nu live status: 'Du står #4 af 8 managers i divisionen, slår 4 (mål: 3 ✓)'. Tallet opdateres efter hver løbsdag når stillingen genberegnes. Måler relativt til antallet af humane managers i din division, så det skalerer naturligt fra ~19 nu til 100+ managers efter open beta uden cross-division-støj."
     },
     "season0To1Special": {
       "q": "Hvad sker der ved overgangen fra sæson 0 til sæson 1?",
@@ -1567,7 +1567,7 @@
     },
     "season1RaceCalendarFaq": {
       "q": "Hvilke løb køres i sæson 1?",
-      "a": "Sæson 1's kalender designes inden vinduet lukker og publiseres under Planlægning → Holdudtagelse. WorldTour-løb (Tour de France, Giro, Vuelta, monumenter) køres ikke i sæson 1 efter beslutning i opstartsfasen, så managere kan finde fodfæste på ProSeries og lavere klasser først. Den fulde liste vises i Løb-tabben så snart admin har godkendt kalenderen."
+      "a": "Sæson 1's kalender designes inden vinduet lukker og publiseres under Planlægning -> Holdudtagelse. WorldTour-løb (Tour de France, Giro, Vuelta, monumenter) køres ikke i sæson 1 efter beslutning i opstartsfasen, så managere kan finde fodfæste på ProSeries og lavere klasser først. Den fulde liste vises i Løb-tabben så snart admin har godkendt kalenderen."
     },
     "howToWinRace": {
       "q": "Hvordan vinder jeg et løb, og hvad afgør resultatet?",

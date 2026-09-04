@@ -397,7 +397,7 @@
       "rangeSuffix": "({from}–{to})"
     },
     "multiSeason": {
-      "title": "Sæson for sæson (estimat fra sæson {from} →)",
+      "title": "Sæson for sæson (estimat fra sæson {from} ->)",
       "headers": {
         "season": "Sæson",
         "sponsor": "Sponsor",

@@ -4,7 +4,7 @@
     "scaleLow": "Not likely",
     "scaleHigh": "Very likely",
     "reasonLabel": "What's the main reason? (optional)",
-    "reasonPlaceholder": "Tell us in a sentence or two",
+    "reasonPlaceholder": "Tell me in a sentence or two",
     "submit": "Send",
     "notNow": "Not now",
     "thanks": "Thanks for the feedback.",
@@ -12,8 +12,8 @@
     "dismissAriaLabel": "Dismiss feedback prompt"
   },
   "consent": {
-    "title": "We use data to make the game better",
-    "intro": "You decide what we may measure. You can always change your choices in your profile under \"Privacy\".",
+    "title": "I use data to make the game better",
+    "intro": "You decide what I may measure. You can always change your choices in your profile under \"Privacy\".",
     "privacyLink": "Read the privacy policy",
     "closeAriaLabel": "Close without changing",
     "alwaysOn": "(always on)",
@@ -28,11 +28,11 @@
       },
       "analytics": {
         "label": "Analytics",
-        "desc": "We anonymously measure how the game is used: which buttons frustrate players (Microsoft Clarity), where players come from (Google Analytics) and page views (Vercel Web Analytics), so we can fix bad UX."
+        "desc": "I anonymously measure how the game is used: which buttons frustrate players (Microsoft Clarity), where players come from (Google Analytics) and page views (Vercel Web Analytics), so I can fix bad UX."
       },
       "marketing": {
         "label": "Marketing",
-        "desc": "Not used today. If we later show ads or remarket, it only happens if you say yes here."
+        "desc": "Not used today. If I later show ads or remarket, it only happens if you say yes here."
       },
       "email_marketing": {
         "label": "Email",

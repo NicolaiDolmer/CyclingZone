@@ -63,7 +63,7 @@
     "rider_state_changed": "This rider is no longer on your team",
     "cannot_afford_release": "You can't afford the buyout fee ({fee} CZ$). Your balance is {balance} CZ$",
     "cannot_release_squad_risk": "You can't drop below {minRiders} riders once contract expiry and retirement risk at the next season change are counted. {atRiskCount} rider(s) currently count as at-risk: {atRiskNames}",
-    "checkout_paused": "Purchases are temporarily paused while we finish the terms of sale",
+    "checkout_paused": "Purchases are temporarily paused while I finish the terms of sale",
     "terms_not_accepted": "You must accept the terms of sale before completing your purchase",
     "terms_version_mismatch": "The terms of sale have been updated. Please review and accept the latest version",
     "no_subscription": "You don't have an active subscription",
