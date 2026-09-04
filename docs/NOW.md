@@ -24,6 +24,6 @@
 - **Grundregler (rytter, værdi/løn, økonomi-balance) udskudt til efter 27/9** (ejer 28/8 + 4/9).
 - **Mekanik:** PR'er merges med `--admin` én ad gangen, ÉT deploy-vindue pr. bølge; `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Workers: maks 3 tunge, "push senest efter 15 min", fremdrift måles på branchens sidste push.
 
-> **🤖 Working agent:** Ingen aktiv session (Fable lukkede 4/9 kl. ~19:30).
+> **🤖 Working agent:** Fable, 4/9 aften fra kl. 19:50 (post-verify #4753 + næste kort).
 
 _Historik i git-log, issue-tråde + docs/audits/._
