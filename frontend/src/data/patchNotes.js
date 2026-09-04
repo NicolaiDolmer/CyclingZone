@@ -5,7 +5,7 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
-        "category": "fix",
+        "category": "fixed",
         "audience": "player",
         "topic": "Board",
         "en": {
