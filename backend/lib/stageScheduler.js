@@ -136,7 +136,10 @@ export async function runStageScheduler({
   // Aktive (ikke-completede) løb i sæsonen, indekseret på id.
   const { data: races, error: rErr } = await supabase
     .from("races")
-    .select("id, season_id, name, stages, stages_completed, status, league_division_id")
+    // #4147: finalize_state med — den fortæller om en tidligere kørsel døde midt i
+    // afslutningen af en etape, så vi kan tage netop dén etape op igen (se
+    // resumeRaces nedenfor). NULL for alle løb før migrationen/flaget er i brug.
+    .select("id, season_id, name, stages, stages_completed, status, league_division_id, finalize_state")
     .eq("season_id", season.id)
     .neq("status", "completed");
   if (rErr) throw new Error(`races: ${rErr.message}`);
@@ -159,8 +162,29 @@ export async function runStageScheduler({
     .filter((r) => (r.stages_completed || 0) >= (r.stages || 1) && !inEmptyPool(r))
     .slice(0, RECOVERY_MAX_PER_TICK);
 
-  if (!dueSchedule?.length && !recoveryRaces.length) {
-    return { ran: 0, errors: 0, recovered: 0, skipped: "no_due_stages" };
+  // #4147: genoptagelse af en afbrudt afslutning. recoveryRaces ovenfor fanger KUN løb
+  // hvor alle etaper er kørt — en afbrydelse midt i en MELLEM-etape (write committet,
+  // enrichment aldrig kørt) har hverken et "næste etape"-slot der peger tilbage eller
+  // en færdig etape-tæller, og blev derfor aldrig taget op. Prod-målingen 4/9 fandt 34
+  // etaper i den tilstand, permanent uden race_simulation_runs. Markeringen fortæller
+  // præcis hvilken etape der mangler at blive gjort færdig.
+  //
+  // Tælles IKKE i den daglige stage-cap: ingen ny etape simuleres til DB — de allerede
+  // skrevne resultater genbruges (simuleringen er seedet), og kun de manglende trin
+  // køres.
+  const resumeRaces = (races || [])
+    .filter((r) => {
+      const st = r.finalize_state;
+      if (!st || typeof st !== "object") return false;
+      if (inEmptyPool(r)) return false;
+      const idx = Number(st.stage_index);
+      return Number.isInteger(idx) && idx >= 0 && idx < (r.stages || 1);
+    })
+    .slice(0, RECOVERY_MAX_PER_TICK);
+  const resumeRaceIds = new Set(resumeRaces.map((r) => r.id));
+
+  if (!dueSchedule?.length && !recoveryRaces.length && !resumeRaces.length) {
+    return { ran: 0, errors: 0, recovered: 0, resumed: 0, skipped: "no_due_stages" };
   }
 
   // Vælg PRÆCIS de schedule-rækker hvis stage_number = løbets næste uafviklede etape.
@@ -175,6 +199,10 @@ export async function runStageScheduler({
     const nextStageNumber = (race.stages_completed || 0) + 1;
     if (s.stage_number !== nextStageNumber) continue; // ikke næste etape → ikke due endnu
     if (inEmptyPool(race)) { seen.add(s.race_id); skippedEmptyPool++; continue; }
+    // #4147: har løbet en ufuldstændig afslutning fra en TIDLIGERE etape, skal den
+    // gøres færdig først. At køre etape N+1 oven på en halv etape N ville cementere
+    // hullet (standings/berigelse for etape N ville aldrig blive skrevet).
+    if (resumeRaceIds.has(s.race_id)) { seen.add(s.race_id); continue; }
     seen.add(s.race_id);
     dueRaces.push(race);
   }
@@ -186,6 +214,7 @@ export async function runStageScheduler({
   let ran = 0;
   let errors = 0;
   let recovered = 0;
+  let resumed = 0;
   let benignSkips = 0;
   const failRace = (race, err) => {
     // #4026: benign 409 = forventet samtidigheds-skip (etape claimet af et andet
@@ -249,7 +278,19 @@ export async function runStageScheduler({
     captureExceptionFn(err, { tags: { cron: "stage-scheduler" }, raceId: race.id, raceName: race.name });
   };
 
+  // #4147: genoptagelser FØRST — de er blokerende for løbets videre afvikling.
+  for (const race of resumeRaces) {
+    try {
+      await runStageFn({ raceId: race.id, stageIndex: Number(race.finalize_state.stage_index), resume: true });
+      resumed++;
+    } catch (err) {
+      failRace(race, err);
+    }
+  }
+
   for (const race of recoveryRaces) {
+    if (resumeRaceIds.has(race.id)) continue; // netop genoptaget ovenfor
+
     try {
       await runStageFn({ raceId: race.id, stageIndex: Math.max((race.stages || 1) - 1, 0), recovery: true });
       recovered++;
@@ -268,7 +309,7 @@ export async function runStageScheduler({
       failRace(race, err);
     }
   }
-  return { ran, errors, recovered, benignSkips };
+  return { ran, errors, recovered, resumed, benignSkips };
 }
 
 export { MAX_STAGES_PER_DAY };

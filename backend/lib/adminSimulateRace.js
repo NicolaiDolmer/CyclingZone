@@ -233,6 +233,12 @@ export async function runAdminSimulateStage({
   // run, matcher den friske stages_completed ikke længere → 409 i stedet for at
   // køre en etape hvis scheduled_at ligger i fremtiden.
   expectedStageIndex = null,
+  // #4147: genoptagelse af en afbrudt afslutning. Sat af stage-scheduleren når et løb
+  // bærer en ufuldstændig trin-markering (races.finalize_state). Er den sat, er etapen
+  // GIVET af markeringen — ikke udledt af stages_completed, som allerede er bumpet af
+  // den afbrudte kørsel. Derfor springer den både stages_completed-udledningen og
+  // stale-tick-guarden over: der ER ingen "næste etape" at være enig med.
+  resumeStageIndex = null,
   ensureSeasonStandings,
   updateStandings,
   notifyDiscord = null,
@@ -256,13 +262,17 @@ export async function runAdminSimulateStage({
   if (error) throw new Error(error.message);
   if (!race) throw httpError(404, "Race not found");
 
-  if (race.status === "completed") {
+  // #4147: et løb kan nå status='completed' og STADIG bære en markering, hvis processen
+  // døde mellem status-flippet og rydningen. Det er ikke en gen-afvikling at komme
+  // tilbage og rydde op — simulateStageByIndex ser at alle trin er markeret færdige,
+  // rydder markeringen og returnerer uden at røre resultaterne.
+  if (race.status === "completed" && resumeStageIndex == null) {
     throw httpError(409, "Race already simulated — all stages run");
   }
 
   const totalStages = race.stages || 1;
-  let stageIndex = race.stages_completed || 0;
-  if (stageIndex >= totalStages) {
+  let stageIndex = resumeStageIndex ?? race.stages_completed ?? 0;
+  if (resumeStageIndex == null && stageIndex >= totalStages) {
     // P0 2/7 (recovery): alle etaper ER kørt, men status blev aldrig flippet til
     // 'completed' (crash mellem stages_completed-bump og finalization — incidenten
     // 30/6-2/7 efterlod 13 løb her). Fald igennem til simulateStageByIndex'
@@ -280,7 +290,7 @@ export async function runAdminSimulateStage({
   // friske tilstand peger på en anden (et andet run har bumpet stages_completed
   // i mellemtiden). Kør ALDRIG en anden etape end den udvalgte — den kan ligge
   // i fremtiden (Volta Algarvia-hændelsen 2/7: 10 etaper kørt før scheduled_at).
-  if (expectedStageIndex != null && stageIndex !== expectedStageIndex) {
+  if (resumeStageIndex == null && expectedStageIndex != null && stageIndex !== expectedStageIndex) {
     // benign (#4026): guarden GJORDE sit arbejde — det er et forventet skip ved
     // overlappende ticks, ikke en haendelse. Scheduleren info-logger uden Sentry.
     throw benignHttpError(409, `Stale tick: expected stage index ${expectedStageIndex}, race is at ${stageIndex} — skipping`);
