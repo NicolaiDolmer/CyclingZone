@@ -71,6 +71,7 @@ import { resolveCalendarFrom, resolveSeasonWindow, SEASON_RACE_DAYS_DEFAULT } fr
 import { gatePlan } from "../lib/seasonCalendarGate.js";
 import { scoreCalendarPlan, formatScorecard, scorecardGateGroups } from "../lib/calendarScorecardReport.js";
 import { findNextSeason } from "../lib/seasonLookup.js";
+import { ensureSeasonTransitionPlannedAt } from "../lib/seasonTransitionBoundary.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -313,6 +314,21 @@ if (isMain) {
         const { error } = await supabase.from("seasons").insert({ id: seasonId, number: seasonNumber, status: "upcoming", start_date: firstDay, end_date: null });
         if (error) throw new Error(`kunne ikke oprette sæson-rækken: ${error.message}`);
         console.log(`\n  ✓ sæson ${seasonNumber} oprettet med status='upcoming' (transitionen promoverer den til 'active').`);
+      }
+
+      // #4129: sæt/opdatér season_transition_planned_at eksplicit HER — samtidig
+      // med at sæsonen oprettes/apply'es. Guarden (#4004) læste hidtil kun det
+      // uskrevne start_date-gæt, fordi ingen kode nogensinde satte nøglen (kun
+      // manuel SQL på selve cutover-aftenen, se issue #4129). Idempotent — se
+      // ensureSeasonTransitionPlannedAt for hvornår den (ikke) overskriver.
+      const transitionKeyResult = await ensureSeasonTransitionPlannedAt({
+        supabase,
+        seasonStartDate: seasonRow?.start_date ?? firstDay,
+      });
+      if (transitionKeyResult.updated) {
+        console.log(`  ✓ season_transition_planned_at sat til ${transitionKeyResult.value} (#4129, årsag: ${transitionKeyResult.reason}).`);
+      } else {
+        console.log(`  · season_transition_planned_at ikke ændret (${transitionKeyResult.reason}).`);
       }
 
       console.log(`\n── APPLY ──`);

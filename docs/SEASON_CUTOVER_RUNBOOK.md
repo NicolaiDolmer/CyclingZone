@@ -169,6 +169,37 @@ Alt ovenfor gælder stadig som mekanik. Fem ting er nye, målt read-only mod pro
    To af dem peger på kataloget (§5b), ikke på generatoren - de kan altså ikke kalibreres
    væk. Fund, tal og beslutningsliste: `docs/audits/season4-calendar-dryrun-2026-09-03.md`.
 
+6. **`season_transition_planned_at` sættes nu AUTOMATISK af `--apply` (#4129).**
+   Sæsonskifte-guarden (#4004) læser `app_config.season_transition_planned_at` for at
+   afgøre hvornår en auktion ville krydse selve sæsonskiftet. Nøglen blev historisk
+   KUN sat manuelt, én gang, på selve S2→S3-cutover-aftenen 23/8 (og ryddet igen samme
+   aften) — ingen kode satte den, så guarden kørte i praksis på det uskrevne
+   start_date-gæt hele vejen indtil da (se #4129). `buildSeasonCalendar.js --apply`
+   sætter nu nøglen selv (sæsonstart minus 1 dag kl. 18:00 dansk tid, samme værdi som
+   fallbacken) idempotent, som en del af trin 1 ovenfor — intet manuelt SQL-trin
+   behøves længere for det NORMALE forløb. Verificér alligevel FØR selve cutoveren
+   (Supabase MCP `execute_sql` eller `psql`, read-only):
+
+   ```sql
+   select key, value, updated_at from app_config where key = 'season_transition_planned_at';
+   select number, status, start_date from seasons where status = 'upcoming';
+   ```
+
+   Forvent `value` = S4's `start_date` minus 1 dag kl. 18:00 dansk tid (fx S4 starter
+   28/9 → `"2026-09-27T16:00:00+00:00"` UTC = 18:00 CEST). Afviger den (eller mangler
+   nøglen), sæt den eksplicit før cutoveren:
+
+   ```sql
+   insert into app_config (key, value)
+   values ('season_transition_planned_at', '"2026-09-27T18:00:00+02:00"'::jsonb)
+   on conflict (key) do update set value = excluded.value, updated_at = now();
+   ```
+
+   En daglig read-only cron-vagt (`runDailySeasonCountCheck` i `backend/cron.js`,
+   se `backend/lib/seasonTransitionKeyGuard.js`) alarmerer selv (Sentry) hvis nøglen
+   mangler/afviger > 12t fra fallbacken mens der er < 7 dage til næste sæsonstart —
+   men vent ikke på den alarm, tjek proaktivt som en del af selve cutover-trinene.
+
 > **Uændret og stadig bindende:** §2c's "én regenerering pr. sæsonkalender". Er S4's
 > kalender skrevet, er formen låst for S4 - en fejl bagefter står til S5.
 
