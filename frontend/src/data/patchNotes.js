@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.251",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "A forum thread now opens at your first unread reply",
+          "body": "Replies you already read are folded into one line you can open for the full history. The first new reply gets a thin accent line on the left, and the page scrolls straight to it, so you land where you left off instead of scrolling from the top."
+        },
+        "da": {
+          "title": "En forumtråd åbner nu ved dit første ulæste svar",
+          "body": "Svar du allerede har læst foldes sammen til én linje, du kan åbne for at se hele historikken. Det første nye svar får en tynd accentlinje til venstre, og siden scroller direkte hen til det, så du lander der, hvor du slap, i stedet for at scrolle fra toppen."
+        },
+        "refs": [
+          3451
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.249",
     "date": "2026-09-04",
     "label": "Beta",
