@@ -184,11 +184,20 @@ export default function SeasonView({ onSwitchView }) {
     const rail = seasonRange(bands);
     // Boardets ?day=-akse er forankret i sæsonens TIDLIGSTE dato på tværs af
     // ALLE puljer (seasonDayAxis) — ikke egen pulje. Udled den af alle entries.
+    // Sidste dato udledes samme vej, så totalDays matcher backendens
+    // seasonDayAxis (#4318: "Day N of M" skal vise sæsonens rigtige M, ikke
+    // et opdigtet tal).
     let seasonFirstIso = null;
+    let seasonLastIso = null;
     for (const e of data.entries || []) {
-      const d = e.stageSchedule?.[0]?.date ?? e.date;
-      if (d && (seasonFirstIso == null || d < seasonFirstIso)) seasonFirstIso = d;
+      const dates = e.stageSchedule?.length ? e.stageSchedule.map((s) => s.date).filter(Boolean) : [e.date];
+      for (const d of dates) {
+        if (!d) continue;
+        if (seasonFirstIso == null || d < seasonFirstIso) seasonFirstIso = d;
+        if (seasonLastIso == null || d > seasonLastIso) seasonLastIso = d;
+      }
     }
+    const totalDays = seasonDayOrdinal(seasonLastIso, seasonFirstIso);
     const packed = packLanes(padVisualSpan(bands, 2));
     // Baner med en subline-bærer (flerdages/monument) er høje; rene endags-baner lave.
     const laneHeights = [];
@@ -203,7 +212,7 @@ export default function SeasonView({ onSwitchView }) {
     const focusBands = focusIso ? bandsCoveringDay(bands, focusIso) : [];
     const activeNumber = (data.availableSeasons || []).find((s) => s.status === "active")?.number ?? null;
     return {
-      bands, packed, rail, seasonFirstIso, laneTops,
+      bands, packed, rail, seasonFirstIso, totalDays, laneTops,
       areaHeight: Math.max(y - 8, 44),
       ticks: rail ? buildWeekTicks(rail.startIso, rail.endIso) : [],
       todayPct: rail ? dateToPct(todayIso, rail.startIso, rail.endIso) : null,
@@ -397,7 +406,7 @@ export default function SeasonView({ onSwitchView }) {
                     type="button"
                     onClick={() => openDay(clampToRunning(b))}
                     disabled={model.readOnly}
-                    aria-label={t("seasonView.bandAria", { name: b.name, day: ordinal ?? "?" })}
+                    aria-label={t("seasonView.bandAria", { name: b.name, day: ordinal ?? "?", total: model.totalDays ?? "?" })}
                     className={`absolute rounded px-2 py-1 text-left overflow-hidden transition-opacity ${bandClasses(b)} ${model.readOnly ? "cursor-default" : "hover:opacity-85"}`}
                     style={{ left: `${rect.leftPct}%`, width: `${rect.widthPct}%`, top: `${laneTops[b.lane]}px` }}
                   >
@@ -420,6 +429,7 @@ export default function SeasonView({ onSwitchView }) {
                 <span className="font-data text-2xs font-semibold text-cz-1">
                   {t("seasonView.dayPanel.title", {
                     day: seasonDayOrdinal(focusIso, model.seasonFirstIso) ?? "?",
+                    total: model.totalDays ?? "?",
                     date: fmt.panel(focusIso),
                   })}
                 </span>
