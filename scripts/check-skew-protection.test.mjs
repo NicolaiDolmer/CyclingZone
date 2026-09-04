@@ -115,6 +115,31 @@ test("fails when the cookie call was tree-shaken away", () => {
   }
 });
 
+test("run() accepts a preview build that deliberately bakes no deployment id", () => {
+  const dir = makeDist({
+    "app.html": '<!doctype html><script type="module" src="/assets/main-A1.js"></script>',
+    "assets/main-A1.js": `document.cookie="${VDPL_COOKIE_NAME}=";`,
+  });
+  try {
+    const res = run(dir, { VERCEL_DEPLOYMENT_ID: DPL, VERCEL_ENV: "preview" });
+    assert.equal(res.ok, true);
+    assert.ok(res.lines.some((l) => l.includes("previewet pinnes ikke")));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("run() fails when a preview build DID bake the deployment id (must never pin)", () => {
+  const dir = goodDist();
+  try {
+    const res = run(dir, { VERCEL_DEPLOYMENT_ID: DPL, VERCEL_ENV: "preview" });
+    assert.equal(res.ok, false);
+    assert.ok(res.lines.some((l) => l.includes("Kun production må pinnes")));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("run() skips the pin check when the build had no Skew Protection env", () => {
   const dir = goodDist();
   try {
@@ -126,10 +151,10 @@ test("run() skips the pin check when the build had no Skew Protection env", () =
   }
 });
 
-test("run() verifies the pin when VERCEL_DEPLOYMENT_ID is set", () => {
+test("run() verifies the pin on a production build", () => {
   const dir = goodDist();
   try {
-    const res = run(dir, { VERCEL_DEPLOYMENT_ID: DPL });
+    const res = run(dir, { VERCEL_DEPLOYMENT_ID: DPL, VERCEL_ENV: "production" });
     assert.equal(res.ok, true);
     assert.ok(res.lines.some((l) => l.includes("deployment-id bagt ind")));
   } finally {

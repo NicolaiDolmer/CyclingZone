@@ -41,24 +41,48 @@ test("pins to the deployment id on a fresh build", () => {
   assert.equal(Number(attrs["max-age"]), PIN_WINDOW_MS / 1000);
 });
 
-test("max-age shrinks with deployment age and never extends the window", () => {
-  const oneHour = 60 * 60 * 1000;
+// Det der betyder noget er ikke max-age i sig selv, men hvornår pinnen ABSOLUT
+// ophører: aldrig senere end build + PIN_WINDOW_MS, uanset hvornår klienten
+// booter. Ellers kan et deployment nå at aldre ud af Vercels Maximum Age mens en
+// cookie stadig peger på det, og så er der hård 404 uden selvheling.
+function absoluteExpiry(cookie, now) {
+  return now + Number(parse(cookie).attrs["max-age"]) * 1000;
+}
+
+test("the pin never expires later than build + PIN_WINDOW_MS, whenever the client boots", () => {
+  const deadline = BUILD + PIN_WINDOW_MS;
+  for (const offsetMin of [0, 1, 5, 15, 29]) {
+    const now = BUILD + offsetMin * 60 * 1000;
+    const cookie = buildVdplCookie({ deploymentId: "dpl_abc123", buildTimeMs: BUILD, now });
+    assert.ok(
+      absoluteExpiry(cookie, now) <= deadline,
+      `boot ${offsetMin} min inde: absolut udløb må ikke ligge efter build + vinduet`
+    );
+  }
+});
+
+test("a reload does not extend the pin (max-age shrinks with deployment age)", () => {
+  const tenMin = 10 * 60 * 1000;
   const cookie = buildVdplCookie({
     deploymentId: "dpl_abc123",
     buildTimeMs: BUILD,
-    now: BUILD + oneHour,
+    now: BUILD + tenMin,
   });
-  assert.equal(Number(parse(cookie).attrs["max-age"]), (PIN_WINDOW_MS - oneHour) / 1000);
+  assert.equal(Number(parse(cookie).attrs["max-age"]), (PIN_WINDOW_MS - tenMin) / 1000);
 
-  // Et reload 3 timer inde forlænger IKKE pinnen — cookien udløber stadig
-  // PIN_WINDOW_MS efter buildet. Det er værnet mod at mure en bruger fast på et
-  // deployment der senere aldrer ud af Vercels Maximum Age og begynder at 404'e.
   const later = buildVdplCookie({
     deploymentId: "dpl_abc123",
     buildTimeMs: BUILD,
-    now: BUILD + 3 * oneHour,
+    now: BUILD + 2 * tenMin,
   });
-  assert.equal(Number(parse(later).attrs["max-age"]), oneHour / 1000);
+  assert.equal(Number(parse(later).attrs["max-age"]), (PIN_WINDOW_MS - 2 * tenMin) / 1000);
+  assert.equal(absoluteExpiry(later, BUILD + 2 * tenMin), BUILD + PIN_WINDOW_MS);
+});
+
+test("the pin window is short enough that a bad deploy cannot outlive its own rollback", () => {
+  // __vdpl pinner ogsaa dokument-navigationer: vinduet ER hvor længe et ødelagt
+  // build overlever sin egen revert for en ramt spiller.
+  assert.ok(PIN_WINDOW_MS <= 30 * 60 * 1000, "over 30 min gør en revert virkningsløs for pinnede klienter");
 });
 
 test("clears the cookie once the deployment is older than the pin window", () => {
@@ -73,13 +97,22 @@ test("clears the cookie once the deployment is older than the pin window", () =>
   assert.equal(Number(attrs["max-age"]), 0, "expires the pin so the client falls back to latest");
 });
 
-test("clock skew backwards does not produce a window larger than PIN_WINDOW_MS", () => {
-  const cookie = buildVdplCookie({
-    deploymentId: "dpl_abc123",
-    buildTimeMs: BUILD,
-    now: BUILD - 10 * 60 * 60 * 1000,
-  });
-  assert.equal(Number(parse(cookie).attrs["max-age"]), PIN_WINDOW_MS / 1000);
+test("clock skew backwards yields no pin at all (never a window we cannot bound)", () => {
+  // Med et ur der går bagud kan vi ikke beregne et pålideligt absolut udløb, og
+  // en for lang cookie kan overleve deploymentet i Vercels Maximum Age → hård
+  // 404. Så hellere ingen pin.
+  assert.equal(
+    buildVdplCookie({ deploymentId: "dpl_abc123", buildTimeMs: BUILD, now: BUILD - 1 }),
+    null
+  );
+  assert.equal(
+    buildVdplCookie({
+      deploymentId: "dpl_abc123",
+      buildTimeMs: BUILD,
+      now: BUILD - 10 * 60 * 60 * 1000,
+    }),
+    null
+  );
 });
 
 test("the cookie value never carries a query string (the #4745 failure mode)", () => {

@@ -38,8 +38,14 @@ Vite-SPA'en serverer content-hashede chunks. Deployer vi mens en bruger har appe
 Vercels edge ruter så både dokumentet og alle assets til netop det deployment
 klienten kører. Deployment-id og build-tidspunkt bages ind via `define` i
 `frontend/vite.config.js` fra `VERCEL_DEPLOYMENT_ID` — kun når
-`VERCEL_SKEW_PROTECTION_ENABLED === "1"`. Uden begge env-variabler er buildet
-bit-for-bit uændret og cookien sættes aldrig.
+`VERCEL_SKEW_PROTECTION_ENABLED === "1"` **og** `VERCEL_ENV === "production"`.
+Uden alle tre betingelser er buildet bit-for-bit uændret og cookien sættes aldrig.
+
+**Kun production pinnes.** Preview-deploys må aldrig sætte cookien: ejeren tester
+rettelser på samme branch-alias, og en pinnet klient ville hænge fast på det
+gamle preview-build. Værre er at previews fjernes af retention — en cookie mod et
+slettet deployment giver hård 404. Vagten håndhæver begge retninger: den fejler
+hvis et production-build mangler id'et, OG hvis et preview-build har det med.
 
 **Asset-URL'er må ALDRIG stemples med `?dpl=`.** Første forsøg (PR #4745) brugte
 Vites `experimental.renderBuiltUrl` og knækkede hele appen i prod: entry-HTML og
@@ -48,20 +54,32 @@ dynamiske imports fik query-strengen, men Vites statiske chunk-imports
 React og ConsentProvider blev instantieret to gange, React #418 på alle sider.
 Postmortem: `.claude/learnings/2026-09-04-skew-protection-dpl-query-brak-hele-appen.md`.
 
-- **Pin-vindue:** cookiens `Max-Age` er "resten af 4 timer efter build-tidspunktet"
-  og kan ikke forlænges ved reload. Vinduet ligger langt under Vercels Maximum Age
-  (default 1 døgn), så en pinnet request aldrig kan nå at blive 404'et, og en
-  bruger falder automatisk tilbage på seneste deployment efter 4 timer.
-  Konstanten er `PIN_WINDOW_MS` i `frontend/src/lib/skewProtection.js`. Sættes
-  Vercels Maximum Age under 4 timer, skal konstanten ned tilsvarende.
-- **Trade-off:** cookien pinner også dokument-navigationer, så en aktiv bruger kan
-  køre op til 4 timer på et gammelt deployment. Skal et hotfix ud med det samme,
-  brug Vercels **Custom Skew Protection Threshold** på det nye deployment.
+- **Pin-vindue: 30 minutter.** Cookiens `Max-Age` er "resten af 30 minutter efter
+  build-tidspunktet" og kan ikke forlænges ved reload. Vercels **Maximum Age** på
+  projektet er målt til **12 timer** (ejerens screenshot 4/9), så en pinnet
+  request kan aldrig nå at blive for gammel. Konstanten er `PIN_WINDOW_MS` i
+  `frontend/src/lib/skewProtection.js`; sættes Maximum Age nogensinde under 30
+  minutter, skal konstanten under den.
+- **Hvorfor kun 30 min:** `__vdpl` pinner også **dokument-navigationer**. En
+  spiller der har loadet et ødelagt build bliver på det ved både reload og ny
+  fane, indtil cookien udløber. Pin-vinduet er derfor lig med "hvor længe et
+  dårligt deploy overlever sin egen rettelse". 30 minutter dækker det reelle
+  stale-chunk-vindue (minutter efter et deploy) uden at gøre en revert
+  virkningsløs i timevis. Lange sessioner dækkes af selvhelingen i #4595.
+- **⚠️ Hotfix-vejen er IKKE at fjerne deployments.** *Custom Skew Protection
+  Threshold*, sletning af et deployment, eller en Maximum Age under pin-vinduet
+  giver pinnede klienter en **hård 404 uden selvheling** — appen svarer ikke,
+  og der er ingen JS til at rette op på det. Brug det aldrig som hotfix-vej.
+  **Rigtig vej:** deploy fixet og vent maks. 30 minutter (pin-vinduet), så er
+  alle klienter selv rullet over.
 - **Forward-guard:** `npm run check:skew-protection`
   (`scripts/check-skew-protection.mjs`) kører i CI's `frontend-build`-job og
-  fejler hvis NOGEN bygget URL i `frontend/dist/` bærer `?dpl=`. Er
-  `VERCEL_DEPLOYMENT_ID` sat, verificerer den desuden at id'et og cookienavnet
-  faktisk er bagt ind i en JS-chunk.
+  fejler hvis NOGEN bygget URL i `frontend/dist/` bærer `?dpl=`. CI bygger
+  desuden eksplicit med `VERCEL_SKEW_PROTECTION_ENABLED=1
+  VERCEL_DEPLOYMENT_ID=dpl_ci_test VERCEL_ENV=production` og kører vagten mod
+  DET build, så gate 2 faktisk måler noget — et CI-build uden skew-env ville
+  ellers lade #4745's regression passere ubemærket. Til sidst bygges der med
+  `VERCEL_ENV=preview`, hvor vagten kræver at id'et IKKE er bagt ind.
 - `frontend/vercel.json`s rewrites/headers matcher på sti og er upåvirkede —
   cookien ændrer ingen URL.
 - **Effekt måles:** deploy-verifys chunk-fejl-rate-gate (budget 25/24 t,

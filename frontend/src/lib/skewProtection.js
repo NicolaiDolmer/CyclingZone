@@ -22,19 +22,27 @@
 //
 // SIKKERHEDSVENTILEN (vigtig): en pin uden udløb er farlig. Vercel 404'er en
 // request hvis den pinnede deployment er ældre end projektets "Maximum Age"
-// (default 1 døgn) — en evigt fornyet cookie ville altså kunne mure en bruger
-// ude uden nogen vej tilbage. Derfor er pinnen bundet til BUILD-TIDSPUNKTET, ikke
-// til brugerens session: cookiens Max-Age er altid "resten af PIN_WINDOW_MS efter
-// buildet". Den kan aldrig forlænges ved reload, den udløber præcis
-// PIN_WINDOW_MS efter deploymentet blev bygget, og derefter falder brugeren
-// automatisk tilbage på seneste deployment. Vinduet skal derfor være markant
-// mindre end Vercels Maximum Age.
+// (målt til 12 timer på vores projekt, 4/9) — en evigt fornyet cookie ville altså
+// kunne mure en bruger ude uden nogen vej tilbage. Derfor er pinnen bundet til
+// BUILD-TIDSPUNKTET, ikke til brugerens session: cookiens Max-Age er altid
+// "resten af PIN_WINDOW_MS efter buildet". Den kan aldrig forlænges ved reload,
+// den udløber præcis PIN_WINDOW_MS efter deploymentet blev bygget, og derefter
+// falder brugeren automatisk tilbage på seneste deployment. Vinduet skal derfor
+// være markant mindre end Vercels Maximum Age.
 export const VDPL_COOKIE = "__vdpl"; // gitleaks:allow — Vercel-cookienavn, ikke en hemmelighed
 
-// Hvor længe et deployment må pinne klienter til sig selv. 4 timer dækker
-// realistiske sessioner i spillet og ligger langt under Vercels default Maximum
-// Age (1 døgn), så en pinnet request aldrig kan nå at blive 404'et.
-export const PIN_WINDOW_MS = 4 * 60 * 60 * 1000;
+// Hvor længe et deployment må pinne klienter til sig selv.
+//
+// HVORFOR KUN 30 MINUTTER (og ikke timer): `__vdpl` pinner OGSÅ dokument-
+// navigationer. En spiller der har loadet et ødelagt build bliver derfor på det
+// build ved reload OG i en ny fane, indtil cookien udløber — en revert eller et
+// hotfix virker først for ham når pin-vinduet er udløbet. Vinduets længde er
+// altså direkte lig med "hvor længe et dårligt deploy kan overleve sin egen
+// rettelse". 30 minutter dækker det reelle stale-chunk-vindue (minutter efter et
+// deploy, ikke timer) uden at gøre rollback virkningsløs i timevis. Rigtig lange
+// sessioner er IKKE denne mekanismes opgave — de dækkes af selvhelings-fixet
+// i #4595 (separat PR).
+export const PIN_WINDOW_MS = 30 * 60 * 1000;
 
 /**
  * Bygger den `document.cookie`-streng der skal skrives — eller null hvis der
@@ -52,8 +60,13 @@ export function buildVdplCookie({ deploymentId, buildTimeMs, now }) {
   if (!Number.isFinite(now)) return null;
 
   // Negativ alder = klientens ur går bagud i forhold til build-containeren.
-  // Behandl som 0 (fuldt vindue) i stedet for at give et vindue > PIN_WINDOW_MS.
-  const age = Math.max(0, now - buildTimeMs);
+  // Vi kan så ikke beregne et pålideligt ABSOLUT udløb: sætter vi Max-Age til
+  // det fulde vindue, udløber cookien PIN_WINDOW_MS efter klientens *forkerte*
+  // nu, altså potentielt længe efter deploymentet er aldret ud af Vercels
+  // Maximum Age → hård 404 uden selvheling. En bruger med skævt ur skal hellere
+  // undvære pinnen end risikere at blive muret ude. Ingen pin, ingen ændring.
+  const age = now - buildTimeMs;
+  if (age < 0) return null;
   const remainingMs = PIN_WINDOW_MS - age;
 
   // Deploymentet er for gammelt til at pinne nogen. Ryd en evt. cookie fra et

@@ -18,6 +18,10 @@
 //      Protection slået til): deployment-id'et og cookienavnet `__vdpl` skal
 //      faktisk være bagt ind i en JS-chunk. Ellers er `define`-wiringen død og
 //      pinnen ville aldrig blive sat — grøn config, ingen effekt.
+//   2b. Er VERCEL_ENV sat til noget ANDET end "production", vender gate 2 om og
+//      fejler hvis id'et ER bagt ind: preview-deploys må aldrig pinnes, fordi de
+//      slettes af retention og en cookie mod et slettet deployment giver hård
+//      404 uden selvheling.
 //
 // Brug (fra repo-roden, EFTER et build):
 //   node scripts/check-skew-protection.mjs [dist-dir]
@@ -146,6 +150,25 @@ export function run(distDir = DEFAULT_DIST_DIR, env = process.env) {
       "[skip] VERCEL_DEPLOYMENT_ID ikke sat — buildet kørte uden Skew Protection, " +
         "der er intet pin-id at verificere."
     );
+    return { ok: true, lines };
+  }
+
+  // Preview/development: buildet SKAL have bagt et tomt id ind, selvom Vercel
+  // har sat VERCEL_DEPLOYMENT_ID i env'en. Gaten vender derfor om og fejler hvis
+  // id'et ER med — en pinnet preview-klient hænger fast på et build der bliver
+  // slettet af retention, og får så hård 404 uden selvheling.
+  const vercelEnv = env.VERCEL_ENV;
+  if (vercelEnv && vercelEnv !== "production") {
+    const leaked = checkDeploymentIdBaked(distDir, deploymentId);
+    if (leaked.ok) {
+      lines.push(
+        `[FEJL] VERCEL_ENV="${vercelEnv}" men deployment-id'et "${deploymentId}" er bagt ind i ` +
+          `${path.basename(leaked.idFile)}. Kun production må pinnes ` +
+          "(frontend/vite.config.js kræver VERCEL_ENV === \"production\")."
+      );
+      return { ok: false, lines };
+    }
+    lines.push(`[ok] VERCEL_ENV="${vercelEnv}": intet deployment-id bagt ind, previewet pinnes ikke`);
     return { ok: true, lines };
   }
 

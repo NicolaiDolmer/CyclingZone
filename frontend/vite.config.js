@@ -61,7 +61,14 @@ const explicitPort = process.env.PORT ? Number(process.env.PORT) : undefined;
 // postmortem: `experimental.renderBuiltUrl` med `?dpl=` gav dobbelt-loadede
 // moduler og knækkede hele appen). Uden begge Vercel-env-variabler er buildet
 // bit-for-bit uændret: id = "" og build-tid = 0 ⇒ cookie-koden er en no-op.
-const skewProtectionEnabled = process.env.VERCEL_SKEW_PROTECTION_ENABLED === "1";
+//
+// KUN PRODUCTION. Preview-deploys må ALDRIG pinnes: ejeren tester rettelser på
+// samme branch-alias, og en pinnet klient ville hænge fast på det gamle
+// preview-build. Værre: previews fjernes rutinemæssigt af retention, og en
+// cookie der peger på et slettet deployment giver en HÅRD 404 uden selvheling.
+// Derfor kræves både Vercels toggle OG `VERCEL_ENV === "production"`.
+const skewProtectionEnabled =
+  process.env.VERCEL_SKEW_PROTECTION_ENABLED === "1" && process.env.VERCEL_ENV === "production";
 const skewDeploymentId = skewProtectionEnabled ? process.env.VERCEL_DEPLOYMENT_ID || "" : "";
 const skewBuildTime = skewDeploymentId ? Date.now() : 0;
 
