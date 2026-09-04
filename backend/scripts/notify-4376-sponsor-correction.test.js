@@ -21,12 +21,12 @@ test("buildSponsorCorrectionMessage: 'da' giver ren DA-tekst", () => {
   assert.doesNotMatch(message, /Sponsor deals were priced/);
 });
 
-test("buildSponsorCorrectionMessage: EN, ukendt kode og manglende sprog giver EN + tom linje + DA", () => {
+test("buildSponsorCorrectionMessage: EN, ukendt kode og manglende sprog giver ren EN-tekst (ejer 4/9)", () => {
   for (const language of ["en", "fr", null, undefined, ""]) {
     const { title, message } = buildSponsorCorrectionMessage(language);
     assert.equal(title, "Your sponsor deal got a division top-up");
     assert.match(message, /Sponsor deals were priced against the division/);
-    assert.match(message, /\n\nSponsoraftaler blev prissat efter den division/);
+    assert.doesNotMatch(message, /Sponsoraftaler blev prissat/);
   }
 });
 
