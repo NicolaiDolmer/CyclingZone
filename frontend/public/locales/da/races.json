@@ -895,7 +895,8 @@
     "incidents": {
       "title": "Udgåede",
       "crash": "Styrt",
-      "mechanical": "Mekanisk defekt"
+      "mechanical": "Mekanisk defekt",
+      "injury": "Ikke-starter"
     },
     "why": {
       "title": "Det store billede",

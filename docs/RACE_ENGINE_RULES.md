@@ -112,6 +112,23 @@ læring om at et scorecard der hænger på et absolut tal måler feltstørrelsen
 
 ---
 
+## 2c. Incidents — hvad koster hvad (M10)
+
+Et uheld har to akser der afgøres uafhængigt: **arten** (`kind`: styrt eller mekanisk defekt) og **udfaldet** (`outcome`: tabt tid eller udgåelse). De må ikke forveksles.
+
+| | tabt tid | udgåelse (DNF) |
+|---|---|---|
+| **styrt** | tid lagt til etapetiden | ude af resten af løbet **+ skade i et antal dage** |
+| **mekanisk defekt** | tid lagt til etapetiden | ude af resten af løbet, **ingen skade** |
+
+**Reglen ([#4520](https://github.com/NicolaiDolmer/CyclingZone/issues/4520), fastlagt 5/9):** kun et **styrt** kan skade rytteren. En mekanisk udgang koster løbet, ikke kroppen — rytteren er klar til næste løbsdag. Håndhæves to steder: `raceIncidents.rollIncidents` sætter `injury_days` udelukkende på `kind:'crash'`, og `raceRunner.persistIncidents` skriver kun `rider_condition.injured_until`/`injury_cause='race_crash'` for styrt-udgange. Indtil 5/9 gav ALLE udgåelser skade uanset art — spillerne så en mekanisk defekt koste dage på sidelinjen, hvilket ingen doc lovede.
+
+**Ejeren kan omgøre den.** Vil en mekanisk udgang også koste dage (fx som "rytteren kom hjem sent og mistede træning"), er det et bevidst designvalg, ikke en fejl — men så skal det stå her OG i `help.json` (en+da) samtidig, ellers er reglen usynlig for spilleren.
+
+**Tredje art: `kind:'injury'`** ([#4418](https://github.com/NicolaiDolmer/CyclingZone/issues/4418)) er ikke et uheld i løbet. Det er en rytter der var skadet i forvejen og derfor ikke kunne stille til start på en etape. Skaden ejes af `rider_condition` og må aldrig overskrives af løbsmotoren. I UI'en er han en **ikke-starter**, ikke en udgået — en label-mapping der behandler alt ikke-styrt som "mekanisk defekt" er derfor forkert.
+
+---
+
 ## 3. Invarianter (property-testede, må aldrig brydes)
 
 1. **Determinisme.** Samme input ⇒ byte-identisk output. Per-rytter-hash, så én ekstra tilmelding ikke flytter andres relative udfald.

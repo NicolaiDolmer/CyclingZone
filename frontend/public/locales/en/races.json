@@ -895,7 +895,8 @@
     "incidents": {
       "title": "Abandons",
       "crash": "Crash",
-      "mechanical": "Mechanical"
+      "mechanical": "Mechanical",
+      "injury": "Non-starter"
     },
     "why": {
       "title": "The bigger picture",

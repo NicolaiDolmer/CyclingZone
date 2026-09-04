@@ -135,9 +135,9 @@ function captureStageResult() {
   return { applyStageResult, rows: () => captured };
 }
 
-// ── Stage 2: uheldet OPSTÅR (b4 abandon), persisteres + skader rytteren ───────
+// ── Stage 2: uheldet OPSTÅR (b4 abandon), persisteres ────────────────────────
 
-test("S4: stage 2 (v3=true) — b4 udgår, ingen 'stage'-række for ham, race_incidents + rider_condition persisteres", async () => {
+test("S4: stage 2 (v3=true) — b4 udgår (mekanisk), ingen 'stage'-række for ham, race_incidents persisteres UDEN skade (#4520)", async () => {
   const supabase = cannedFor();
   const cap = captureStageResult();
   await simulateStageByIndex({
@@ -160,7 +160,11 @@ test("S4: stage 2 (v3=true) — b4 udgår, ingen 'stage'-række for ham, race_in
   assert.equal(row.stage_number, 2);
   assert.equal(row.rider_id, "b4");
   assert.equal(row.outcome, "abandon");
-  assert.equal(row.injury_days, 3);
+  // #4520: b4's udgang er MEKANISK. Foer fixet fik han 3 dages skade her —
+  // netop det spillerne rapporterede. En mekanisk udgang koster loebet, ikke
+  // kroppen: injury_days er null og rider_condition roeres slet ikke.
+  assert.equal(row.kind, "mechanical");
+  assert.equal(row.injury_days, null);
   assert.equal(row.time_loss_seconds, null);
 
   // Idempotent delete-then-insert scoped til DENNE etape (spejler persistRuns).
@@ -168,11 +172,45 @@ test("S4: stage 2 (v3=true) — b4 udgår, ingen 'stage'-række for ham, race_in
   assert.ok(incidentDel, "race_incidents delete (idempotens) mangler");
   assert.deepEqual(incidentDel.ins, [["stage_number", [2]]]);
 
+  assert.ok(
+    !supabase.__writes.some((w) => w.table === "rider_condition" && w.op === "upsert"),
+    "#4520: en MEKANISK udgang maa ikke skrive rider_condition (ingen skade)",
+  );
+});
+
+// ── Stage 2, styrt-varianten: samme flow, men skaden SKAL skrives ─────────────
+// Race-id fundet ved samme udtoemmende scan som RACE_ID: etape 1 og 3 er rene,
+// etape 2 giver praecis ét uheld — b2, kind='crash', outcome='abandon'.
+const CRASH_RACE_ID = "race-crash-scan-9";
+const CRASH_STAGE_RACE = { ...STAGE_RACE, id: CRASH_RACE_ID };
+
+test("S4: stage 2 (v3=true) — b2 udgår efter STYRT: race_incidents + rider_condition-skade persisteres (#4520)", async () => {
+  const supabase = cannedFor(CRASH_STAGE_RACE);
+  const cap = captureStageResult();
+  await simulateStageByIndex({
+    supabase, race: CRASH_STAGE_RACE, stageIndex: 1,
+    ...NOOP_DEPS,
+    applyStageResult: cap.applyStageResult,
+  });
+
+  const rows = cap.rows();
+  assert.ok(!rows.some((r) => r.result_type === "stage" && r.rider_id === "b2"),
+    "b2 udgik PÅ denne etape — ingen 'stage'-række for ham");
+
+  const incidentIns = supabase.__writes.find((w) => w.table === "race_incidents" && w.op === "insert");
+  assert.ok(incidentIns, "race_incidents blev ikke persisteret");
+  assert.equal(incidentIns.rows.length, 1);
+  const row = incidentIns.rows[0];
+  assert.equal(row.rider_id, "b2");
+  assert.equal(row.kind, "crash");
+  assert.equal(row.outcome, "abandon");
+  assert.ok(Number.isFinite(row.injury_days) && row.injury_days > 0, "et styrt-abandon skal baere injury_days");
+
   const conditionUpsert = supabase.__writes.find((w) => w.table === "rider_condition" && w.op === "upsert");
   assert.ok(conditionUpsert, "rider_condition upsert (skade) mangler");
   assert.equal(conditionUpsert.rows.length, 1);
   const cond = conditionUpsert.rows[0];
-  assert.equal(cond.rider_id, "b4");
+  assert.equal(cond.rider_id, "b2");
   assert.equal(cond.injury_cause, "race_crash");
   assert.match(cond.injured_until, /^\d{4}-\d{2}-\d{2}$/, "injured_until skal være en YYYY-MM-DD-dato");
   // rider_condition-upserten rører KUN rider_id/injured_until/injury_cause —

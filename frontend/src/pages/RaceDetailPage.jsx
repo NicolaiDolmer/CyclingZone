@@ -1331,6 +1331,11 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
 // med den FULDE liste af udgåede for den valgte etape/hele løbet (navn, etape,
 // årsag). Dormant hvis incidents=[] (flag off/tabel ikke migreret endnu) —
 // ingen fejl-UI, bare intet render (samme mønster som RaceRecap).
+//
+// #4520: eksplicit kind→nøgle-map. Den gamle binære "crash ellers mechanical"
+// mærkede #4418's ikke-startere (kind='injury') som mekanisk defekt.
+const INCIDENT_KIND_KEYS = { crash: "crash", mechanical: "mechanical", injury: "injury" };
+
 function DnfSection({ incidents, scopeType, stageNumber, t }) {
   const rows = useMemo(() => {
     const abandons = (incidents || []).filter((inc) => inc.outcome === "abandon");
@@ -1355,7 +1360,7 @@ function DnfSection({ incidents, scopeType, stageNumber, t }) {
               </RiderLink>
               <span className="text-cz-3 text-xs shrink-0 font-mono">
                 {scopeType !== "stage" && `${t("detail.tabStage", { number: inc.stage_number ?? 1 })} · `}
-                {t(`detail.incidents.${inc.kind === "crash" ? "crash" : "mechanical"}`)}
+                {t(`detail.incidents.${INCIDENT_KIND_KEYS[inc.kind] ?? "crash"}`)}
               </span>
             </li>
           );
