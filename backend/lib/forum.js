@@ -488,6 +488,37 @@ export async function getForumUnreadStatus({ supabase, userId }) {
   return { has_unread: hasUnread };
 }
 
+/**
+ * PATCH /api/forum/threads/read-all (#3451 — spillerønske 26/8: "a button,
+ * like in the inbox, where you can mark all threads as read"). Samme
+ * bounded-scan-grænse som getForumUnreadStatus (én kilde til "alle tråde"),
+ * men i modsætning til den stopper vi IKKE ved første ulæste — hver tråd skal
+ * have sin egen (bruger, tråd)-række opdateret. Bulk-upsert i ét kald, samme
+ * onConflict-mønster som markForumThreadRead. Idempotent: kør den to gange i
+ * træk og resultatet er det samme (last_read_at rykker bare frem).
+ */
+export async function markAllForumThreadsRead({ supabase, userId, now = new Date() }) {
+  if (!userId) return { status: 401, body: { error: "Missing user", errorCode: "forum_missing_user" } };
+
+  const { data: postRows, error } = await supabase
+    .from("forum_posts")
+    .select("id")
+    .is("deleted_at", null)
+    .limit(UNREAD_STATUS_SCAN_LIMIT);
+  if (error) throw new Error(`forum: could not list posts for mark-all-read: ${error.message}`);
+  const postIds = (postRows || []).map((r) => r.id);
+  if (!postIds.length) return { status: 200, body: { ok: true, marked: 0 } };
+
+  const nowIso = now.toISOString();
+  const { error: upsertError } = await supabase.from("forum_thread_reads").upsert(
+    postIds.map((postId) => ({ user_id: userId, post_id: postId, last_read_at: nowIso })),
+    { onConflict: "user_id,post_id" }
+  );
+  if (upsertError) throw new Error(`forum: could not mark all threads read: ${upsertError.message}`);
+
+  return { status: 200, body: { ok: true, marked: postIds.length } };
+}
+
 function validatePollOptions(pollOptions) {
   if (!Array.isArray(pollOptions)) return null;
   const labels = pollOptions

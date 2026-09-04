@@ -153,6 +153,7 @@ import {
   deleteForumReply,
   getForumReportCounts,
   markForumThreadRead,
+  markAllForumThreadsRead,
   getForumUnreadStatus,
   toggleForumReaction,
 } from "../lib/forum.js";
@@ -14219,6 +14220,21 @@ router.get("/forum/posts", requireAuth, async (req, res) => {
 router.get("/forum/unread-status", requireAuth, async (req, res) => {
   try {
     res.json(await getForumUnreadStatus({ supabase, userId: req.user.id }));
+  } catch (e) {
+    captureException(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH /api/forum/threads/read-all — markér ALLE tråde læst for requesteren
+// (#3451, spillerønske 26/8: "a button, like in the inbox, where you can mark
+// all threads as read"). Samme skrive-mønster som forum-postruterne herunder
+// (forumWriteLimiter), selvom handlingen ikke opretter indhold — den skriver
+// stadig en række pr. tråd i forum_thread_reads.
+router.patch("/forum/threads/read-all", requireAuth, forumWriteLimiter, async (req, res) => {
+  try {
+    const { status, body } = await markAllForumThreadsRead({ supabase, userId: req.user.id });
+    res.status(status).json(body);
   } catch (e) {
     captureException(e);
     res.status(500).json({ error: e.message });
