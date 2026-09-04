@@ -79,6 +79,7 @@ import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
+import { buildAlertSignature, shouldAlertOnChange } from "./lib/opsAlertDedupe.js";
 import { runTrainingSlotHealthWatch } from "./lib/trainingSlotHealthWatch.js"; // #3639
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
@@ -751,6 +752,14 @@ async function runRiderDeriveHealSweepCron() {
 // det er længere end noget realistisk etapeløb varer, så det signalerer et
 // strukturelt problem, ikke bare "løbet er ikke færdigt endnu".
 
+// #4752 (CYCLINGZONE-58): persistent-stall-alarmen fyrede pr. 5-min-tick — 378
+// Sentry-events på 32 t, ~95 % af Railway-loggens error-linjer. Fundet er ægte,
+// men betingelsen kan kun løftes af en ejer-beslutning (FK-semantikken i #4233),
+// så den kan stå i dagevis. Edge-trigget dedupe: nyt/ændret sæt alarmerer straks,
+// et uændret sæt højst én gang i døgnet.
+const AI_TRIM_STALL_ALERT_KEY = "ai-trim-persistent-stall";
+const AI_TRIM_STALL_REALERT_MS = 24 * 60 * 60 * 1000;
+
 async function runAiTeamTrimHealSweepCron() {
   const result = await runAiTeamTrimHealSweep({ supabase, now: new Date() });
   if (result.healed) {
@@ -793,16 +802,30 @@ async function runAiTeamTrimHealSweepCron() {
       },
     });
   }
-  if (result.stale?.length) {
-    // #2434: ÉN aggregeret capture pr. tick med FAST fingerprint (før: én Error pr.
-    // hold pr. tick → CYCLINGZONE-31 spammede 200+ events, 65 hold × 5-min-kadence).
-    // stale[] er nu løbs-bevidst (blokerende løb selv stallet el. > backstop), ikke
-    // ren alder >48t — så et lovligt kørende multi-dag etapeløb alarmerer ikke længere.
+  // #4752: signaturen afgør om alarmen er ny information. Kaldet sker OGSÅ når
+  // sættet er tomt — ellers ville en tilstand der kom sig efterlade sin gamle
+  // signatur i ops_alert_state, og et senere brud ville se "uændret" ud og tie.
+  const staleList = result.stale ?? [];
+  // Hold + årsag, ikke alder: ageHours ticker hvert femte minut og ville få hver
+  // eneste tick til at ligne en ændring.
+  const staleSignature = buildAlertSignature(staleList.map((s) => `${s.teamId}:${s.reason}`));
+  const { alert: staleAlert } = await shouldAlertOnChange({
+    supabase,
+    alertKey: AI_TRIM_STALL_ALERT_KEY,
+    signature: staleSignature,
+    reAlertAfterMs: staleList.length ? AI_TRIM_STALL_REALERT_MS : null,
+    captureExceptionFn: sentryCapture,
+  });
+
+  if (staleList.length && staleAlert) {
+    // #2434: ÉN aggregeret capture med FAST fingerprint (før: én Error pr. hold pr.
+    // tick → CYCLINGZONE-31 spammede 200+ events, 65 hold × 5-min-kadence).
+    // stale[] er løbs-bevidst (blokerende løb selv stallet el. > backstop), ikke ren
+    // alder >48t — så et lovligt kørende multi-dag etapeløb alarmerer ikke længere.
     // #4594: en PERSISTENT genuin fejl (samme hold, samme exception, hver tick i
-    // >120t) eskaleres nu her i stedet for at blive ved med at spamme `failed`
-    // (reason="error_exceeds_backstop", carries `message`) — samme [Object]-fix
-    // som ovenfor: teams flades til strenge i extra.
-    const n = result.stale.length;
+    // >120t) eskaleres her i stedet for at blive ved med at spamme `failed`
+    // (reason="error_exceeds_backstop", carries `message`) — teams flades til strenge.
+    const n = staleList.length;
     console.error(
       `🚨 AI-trim heal-sweep: ${n} AI-hold reelt fastlåst (blokerende løb stallet, > backstop, el. vedvarende fejl) — se Sentry (#2187/#2434/#4594)`
     );
@@ -811,7 +834,7 @@ async function runAiTeamTrimHealSweepCron() {
       fingerprint: ["ai-trim-persistent-stall"],
       extra: {
         count: n,
-        teams: result.stale.map((s) =>
+        teams: staleList.map((s) =>
           `${s.teamId} (pool ${s.poolId}): ${s.reason}, ${s.ageHours}t${s.message ? ` — ${s.message}` : ""}`
         ),
       },
