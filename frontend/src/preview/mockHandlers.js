@@ -592,12 +592,20 @@ const FORUM_POSTS = [
   },
 ];
 
+// #3451: forum-pinned-1's "sidst læst FØR dette besøg" — sat mellem r2
+// (07:20) og r3 (07:45) herunder, så preview/e2e viser den fulde fold+scroll-
+// adfærd (2 tidligere svar foldet, r3 markeret som første ulæste) uden en
+// separat seed-tråd. De andre tråde har ingen gemt læse-række (null =
+// første besøg, uændret adfærd — samme default som en frisk konto).
+const FORUM_VIEWER_LAST_READ_AT = { "forum-pinned-1": "2026-08-06T07:30:00Z" };
+
 export function forumPostDetail(postId) {
   const post = FORUM_POSTS.find((p) => p.id === postId) || FORUM_POSTS[0];
   return {
     // #3517: opbakning på selve opslaget — statisk seed-tal, preview-mocken
     // sporer ikke reelle toggles (samme begrænsning som poll-stemmer nedenfor).
     post: { ...post, is_mine: post.author.username === "e2e", support_count: 14, supported_by_me: false },
+    viewer_last_read_at: FORUM_VIEWER_LAST_READ_AT[post.id] ?? null,
     replies: post.id !== "forum-post-4" ? [
       {
         id: `${post.id}-r1`,
