@@ -42,6 +42,8 @@
     "test:lint-constraint-form": "node --test scripts/lint-constraint-form.test.mjs",
     "probe:asset-miss": "node scripts/check-asset-miss-behaviour.mjs",
     "test:probe-asset-miss": "node --test scripts/check-asset-miss-behaviour.test.mjs",
+    "check:skew-protection": "node scripts/check-skew-protection.mjs",
+    "test:skew-protection": "node --test scripts/check-skew-protection.test.mjs",
     "lint:ui-slop": "node scripts/lint-ui-slop.mjs",
     "test:lint-ui-slop": "node --test scripts/lint-ui-slop.test.mjs",
     "check:ui-slop-baseline": "node scripts/lint-ui-slop.mjs --update-baseline",
