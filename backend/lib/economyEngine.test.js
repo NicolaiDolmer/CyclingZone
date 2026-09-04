@@ -3628,10 +3628,10 @@ test("#4376: processSeasonStart krediterer divisions-tillæg til et oprykket hol
     runSeasonPayroll: async () => ({ results: [], summary: {} }),
   });
 
-  const expected = Math.round(
-    PARACHUTE_FACTOR * (SPONSOR_INCOME_BY_DIVISION[1] - SPONSOR_INCOME_BY_DIVISION[3])
-  );
-  assert.equal(expected, 130000, "sanity: D3→D1 er 130.000");
+  // "Gulv + 50 %" (ejer-beslutning 4/9): gulv til D2 = 400.000 − 340.000 = 60.000,
+  // plus 0,5 × (600.000 − 400.000) = 100.000 → 160.000. divisionAdjustment.test.js
+  // dækker formlen isoleret; sanity her holder motor-testen synkron med den.
+  const expected = 160000;
 
   const row = supabase.state.financeRows.find((r) => r.type === "division_adjustment");
   assert.ok(row, "Ingen division_adjustment finance-row fundet");
@@ -3650,9 +3650,11 @@ test("#4376: processSeasonStart krediterer divisions-tillæg til et oprykket hol
   assert.equal(sponsorRow.amount, 170_000, "guaranteed_base må ikke være rørt af tillægget");
 });
 
-test("#4376: fradrag + faldskærm går i nul for et nedrykket hold med løbende aftale (sæson 4)", async () => {
-  // Designets bærende egenskab, målt gennem HELE motoren og ikke kun i den rene funktion:
-  // et nedrykket hold beholder sin høje base, og faldskærmen bliver derfor netop ophævet.
+test("#4376: nedad giver intet fradrag gennem motoren mens DOWNWARD_ADJUSTMENT_ENABLED er slået fra (default)", async () => {
+  // Ejer-beslutning 4/9: nedad-formlen findes i koden fra sæson 4, men er IKKE
+  // automatisk. Med flaget slået fra (default) skal motoren kun bogføre faldskærmen —
+  // ingen division_adjustment-row for et nedrykket hold. Selve formlens symmetri med
+  // faldskærmen (når flaget ER tændt) er dækket isoleret af divisionAdjustment.test.js.
   const seasonId = "season-divadj-down";
   const supabase = createSeasonStartSupabase({
     season: { id: seasonId, number: 4 },
@@ -3695,18 +3697,18 @@ test("#4376: fradrag + faldskærm går i nul for et nedrykket hold med løbende 
   const parachuteRow = supabase.state.financeRows.find((r) => r.type === "parachute");
   const adjustmentRow = supabase.state.financeRows.find((r) => r.type === "division_adjustment");
   assert.ok(parachuteRow, "faldskærmen skal stadig udbetales");
-  assert.ok(adjustmentRow, "fradraget skal stadig bogføres");
-  assert.equal(parachuteRow.amount, 100000);
-  assert.equal(adjustmentRow.amount, -100000);
   assert.equal(
-    parachuteRow.amount + adjustmentRow.amount,
-    0,
-    "de to skal ophæve hinanden EKSAKT — bryder dette, er faktoren afkoblet fra PARACHUTE_FACTOR"
+    adjustmentRow,
+    undefined,
+    "flaget er slået fra som default — der må ALDRIG bogføres et nedad-fradrag uden ejerens eksplicitte tænding"
   );
+  assert.equal(parachuteRow.amount, 100000);
 
-  // Begge står som deres egne linjer, så manageren kan se hvorfor nettoet er nul.
+  // Ingen division_adjustment-linje, så holdet beholder både den høje base og hele
+  // faldskærmen — bevidst overkompensation, indtil ejeren tænder flaget.
   assert.equal(outcome.parachute.total, 100000);
-  assert.equal(outcome.divisionAdjustment.total, -100000);
+  assert.equal(outcome.divisionAdjustment.count, 0);
+  assert.equal(outcome.divisionAdjustment.total, 0);
 });
 
 test("#1980: processSeasonStart betaler INGEN parachute ved D3→D4-nedrykning (bevidst ekskluderet — D4-upkeep=0)", async () => {
