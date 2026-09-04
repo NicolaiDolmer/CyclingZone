@@ -49,6 +49,7 @@
     "replyPlaceholder": "Skriv et svar",
     "replySubmit": "Svar",
     "noReplies": "Ingen svar endnu. Vær den første til at svare.",
+    "earlierReplies": "{count, plural, =1 {1 tidligere svar} other {# tidligere svar}}",
     "report": "Rapportér",
     "delete": "Slet",
     "pin": "Fastgør",

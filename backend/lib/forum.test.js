@@ -471,6 +471,34 @@ test("getForumPost: support_count/supported_by_me på post og svar", async () =>
   assert.equal(asU2.body.replies[0].supported_by_me, true);
 });
 
+// #3451 · getForumPost: viewer_last_read_at er brugerens FORRIGE besøg —
+// upåvirket af selve dette kald (routen sætter det nye tidspunkt separat,
+// EFTER at have afventet getForumPost, se routes/api.js). Klienten bruger
+// feltet til at beregne fold/scroll FØR den (visuelt) betragter tråden som
+// læst.
+test("getForumPost: viewer_last_read_at er null ved første besøg, ellers FORRIGE last_read_at", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1" })],
+  }));
+
+  const first = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  assert.equal(first.body.viewer_last_read_at, null);
+
+  await markForumThreadRead({ supabase: fake, userId: "u1", postId: "p1", now: new Date("2026-08-20T10:00:00Z") });
+  const second = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  assert.equal(second.body.viewer_last_read_at, "2026-08-20T10:00:00.000Z");
+
+  // Endnu et besøg (ny markForumThreadRead simulerer routens side-effekt)
+  // viser den NYE forrige værdi — getForumPost selv rykker aldrig tidspunktet.
+  await markForumThreadRead({ supabase: fake, userId: "u1", postId: "p1", now: new Date("2026-08-21T10:00:00Z") });
+  const third = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  assert.equal(third.body.viewer_last_read_at, "2026-08-21T10:00:00.000Z");
+
+  // En anden bruger, der aldrig har læst tråden, får stadig null.
+  const asU2 = await getForumPost({ supabase: fake, id: "p1", userId: "u2" });
+  assert.equal(asU2.body.viewer_last_read_at, null);
+});
+
 // #3517 · citér-svar: kompakt uddrag med forfatter, ALDRIG indhold fra et slettet svar.
 test("getForumPost: citeret svar giver uddrag+forfatter, citeret SLETTET svar lækker aldrig indhold", async () => {
   const fake = createFakeSupabase(seedState({

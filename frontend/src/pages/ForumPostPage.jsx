@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch.js";
+import { computeForumUnreadFold } from "../lib/forumUnreadFold.js";
 import {
   Button, PageHeader, Section, SectionStack, SectionHeader, EmptyState, ErrorState,
   SkeletonLines, Modal, Field, Textarea,
 } from "../components/ui";
-import { InboxIcon, ArrowUpIcon, UndoIcon } from "../components/ui/icons/index.jsx";
+import { InboxIcon, ArrowUpIcon, UndoIcon, ChevronDownIcon } from "../components/ui/icons/index.jsx";
 import ForumAuthorIdentity, { ForumSignature } from "../components/forum/ForumAuthorIdentity.jsx";
 import { authorDisplayName } from "../components/forum/forumIdentity.js";
 
@@ -244,6 +245,14 @@ export default function ForumPostPage() {
   const [reportTarget, setReportTarget] = useState(null); // { type, id } | null
   const [reactingKey, setReactingKey] = useState(null); // "post:<id>" | "reply:<id>" | null
   const [quoteTarget, setQuoteTarget] = useState(null); // { id, excerpt, author } | null
+  // #3451: "sidst læst" FØR dette besøg — fanget fra det FØRSTE svar fra
+  // backend og aldrig opdateret igen (undefined = endnu ikke fanget, null =
+  // fanget som "aldrig besøgt før"). Bruges til at beregne fold + scroll til
+  // første ulæste svar; backend markerer selv tråden læst som en side-effekt
+  // af GET'et, SÅ vi må fange værdien før den ændrer sig, ikke slå den op
+  // igen senere.
+  const [initialReadAt, setInitialReadAt] = useState(undefined);
+  const hasScrolledToUnreadRef = useRef(false);
 
   const tError = useCallback(
     (code) => (code && i18n.exists(`errors:api.${code}`) ? tErrors(`api.${code}`) : t("errors.submitFailed")),
@@ -273,6 +282,10 @@ export default function ForumPostPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setState({ status: "ready", post: data.post, replies: data.replies || [], poll: data.poll || null });
+      // #3451: fang KUN på det første succesfulde load — senere reloads (svar
+      // sendt, realtime-refetch) må ikke flytte basislinjen, ellers folder
+      // siden sig om hver gang nyt data kommer ind.
+      setInitialReadAt((prev) => (prev === undefined ? (data.viewer_last_read_at ?? null) : prev));
       // #4118/#3451: backend markerer tråden læst som side-effekt af dette
       // kald (GET /api/forum/posts/:id) — fortæl Layout.jsx's nav-prik at
       // genberegne med det samme i stedet for at vente på næste heartbeat.
@@ -284,6 +297,24 @@ export default function ForumPostPage() {
 
   useEffect(() => { load(); }, [load]);
   useRealtimeRefetch(`forum-post-${postId}`, FORUM_POST_TABLES, load);
+
+  // #3451: fold + scroll-mål, beregnet mod den FRØSNE `initialReadAt` — nye
+  // svar der tikker ind via realtime imens man allerede kigger på tråden
+  // lander i `unreadReplies` (uden at flytte foldet igen).
+  const unreadFold = useMemo(
+    () => computeForumUnreadFold({ replies: state.replies, previousReadAt: initialReadAt ?? null }),
+    [state.replies, initialReadAt]
+  );
+
+  // Scroller til det første ulæste svar ÉN gang pr. trådbesøg, når fold-
+  // beregningen er klar. `id="reply-<id>"` + `scroll-mt-4` findes allerede
+  // på hver svar-række (genbrugt af citat-spring-funktionen nedenfor).
+  useEffect(() => {
+    if (hasScrolledToUnreadRef.current) return;
+    if (state.status !== "ready" || !unreadFold.firstUnreadId) return;
+    hasScrolledToUnreadRef.current = true;
+    document.getElementById(`reply-${unreadFold.firstUnreadId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [state.status, unreadFold.firstUnreadId]);
 
   async function handleReply(e) {
     e.preventDefault();
@@ -394,6 +425,65 @@ export default function ForumPostPage() {
   const language = i18n.language;
   const { post, replies, poll } = state;
 
+  // #3451: én svar-række — udtrukket så den kan bruges både i den foldede
+  // "tidligere svar"-blok og i den synlige ulæst-liste uden at duplikere
+  // markup. `isFirstUnread` sætter den diskrete markering (b/c i #3451):
+  // hairline accent-kant til venstre, ingen animation, samme mønster som den
+  // eksisterende citat-blok (border-l-2) — bare med accentfarven.
+  function renderReply(reply) {
+    const isFirstUnread = reply.id === unreadFold.firstUnreadId;
+    return (
+      <div
+        key={reply.id}
+        id={`reply-${reply.id}`}
+        className={`py-[13px] scroll-mt-4 ${isFirstUnread ? "border-l-2 border-cz-accent/50 pl-2.5 -ms-2.5" : ""}`}
+      >
+        <ForumAuthorIdentity
+          author={reply.author}
+          body={reply.body}
+          createdAt={reply.created_at}
+          language={language}
+          size="sm"
+          t={t}
+        />
+        {/* Indrykket til avatarens hoejre kant (28px + 10px gap), saa
+            svarets tekst, signatur og handlinger ligger i én kolonne
+            under forfatterlinjen. #4751: handlingerne laa foer i en
+            hoejre-kolonne ved siden af teksten — paa 412px klemte de
+            svarteksten ned i ~150px (TASTE P10). Nu ligger de under
+            teksten, praecis som paa selve opslaget. */}
+        <div className="mt-2 ps-[38px]">
+          <QuotedReplyBlock quoted={reply.quoted} onJump={handleJumpToOriginal} t={t} />
+          <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{reply.body}</p>
+          <ForumSignature author={reply.author} body={reply.body} t={t} />
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <SupportButton
+              active={reply.supported_by_me}
+              count={reply.support_count ?? 0}
+              onToggle={() => handleToggleReaction("reply", reply.id)}
+              disabled={reactingKey === `reply:${reply.id}`}
+              t={t}
+            />
+            <Button variant="ghost" size="sm" onClick={() => handleQuote(reply)}>
+              <UndoIcon size={14} aria-hidden="true" className="me-1 inline -mt-0.5" />
+              {t("quote.action")}
+            </Button>
+            {!reply.is_mine && (
+              <Button variant="ghost" size="sm" onClick={() => setReportTarget({ type: "reply", id: reply.id })}>
+                {t("post.report")}
+              </Button>
+            )}
+            {isAdmin && (
+              <Button variant="danger" size="sm" onClick={() => handleAdminDelete("reply", reply.id)}>
+                {t("post.delete")}
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       <Link to="/forum" className="mb-4 inline-block text-xs text-cz-accent-t hover:underline">
@@ -466,52 +556,31 @@ export default function ForumPostPage() {
               <p className="py-2 text-[13px] text-cz-2">{t("post.noReplies")}</p>
             ) : (
               <div className="divide-y divide-cz-border">
-                {replies.map((reply) => (
-                  <div key={reply.id} id={`reply-${reply.id}`} className="py-[13px] scroll-mt-4">
-                    <ForumAuthorIdentity
-                      author={reply.author}
-                      body={reply.body}
-                      createdAt={reply.created_at}
-                      language={language}
-                      size="sm"
-                      t={t}
-                    />
-                    {/* Indrykket til avatarens hoejre kant (28px + 10px gap), saa
-                        svarets tekst, signatur og handlinger ligger i én kolonne
-                        under forfatterlinjen. #4751: handlingerne laa foer i en
-                        hoejre-kolonne ved siden af teksten — paa 412px klemte de
-                        svarteksten ned i ~150px (TASTE P10). Nu ligger de under
-                        teksten, praecis som paa selve opslaget. */}
-                    <div className="mt-2 ps-[38px]">
-                      <QuotedReplyBlock quoted={reply.quoted} onJump={handleJumpToOriginal} t={t} />
-                      <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{reply.body}</p>
-                      <ForumSignature author={reply.author} body={reply.body} t={t} />
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <SupportButton
-                          active={reply.supported_by_me}
-                          count={reply.support_count ?? 0}
-                          onToggle={() => handleToggleReaction("reply", reply.id)}
-                          disabled={reactingKey === `reply:${reply.id}`}
-                          t={t}
-                        />
-                        <Button variant="ghost" size="sm" onClick={() => handleQuote(reply)}>
-                          <UndoIcon size={14} aria-hidden="true" className="me-1 inline -mt-0.5" />
-                          {t("quote.action")}
-                        </Button>
-                        {!reply.is_mine && (
-                          <Button variant="ghost" size="sm" onClick={() => setReportTarget({ type: "reply", id: reply.id })}>
-                            {t("post.report")}
-                          </Button>
-                        )}
-                        {isAdmin && (
-                          <Button variant="danger" size="sm" onClick={() => handleAdminDelete("reply", reply.id)}>
-                            {t("post.delete")}
-                          </Button>
-                        )}
-                      </div>
+                {/* #3451: allerede læste svar fra FØR dette besøg foldes til
+                    én linje inde i selve svar-listen — kun når der rent
+                    faktisk er nyere ulæste svar at åbne direkte ved
+                    (unreadFold.hasFold). Native <details> (samme
+                    fold-mønster som CollapsibleSection, #3914), men uden dens
+                    egen kort-ramme — den sidder allerede inde i tråd-kortet,
+                    og en ekstra boks-i-boks er et fund efter TASTE P3. */}
+                {unreadFold.hasFold && (
+                  <details className="group py-[13px]">
+                    <summary className="flex cursor-pointer list-none items-center gap-2 select-none">
+                      <ChevronDownIcon
+                        size={14}
+                        className="shrink-0 text-cz-3 transition-transform duration-150 group-open:rotate-180"
+                        aria-hidden="true"
+                      />
+                      <span className="font-data text-2xs uppercase tracking-[.06em] text-cz-3">
+                        {t("post.earlierReplies", { count: unreadFold.earlierReplies.length })}
+                      </span>
+                    </summary>
+                    <div className="mt-1 divide-y divide-cz-border border-t border-cz-border">
+                      {unreadFold.earlierReplies.map((reply) => renderReply(reply))}
                     </div>
-                  </div>
-                ))}
+                  </details>
+                )}
+                {(unreadFold.hasFold ? unreadFold.unreadReplies : replies).map((reply) => renderReply(reply))}
               </div>
             )}
 

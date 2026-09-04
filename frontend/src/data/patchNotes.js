@@ -1,22 +1,24 @@
 export const PATCHES = [
   {
-    "version": "7.252",
+    "version": "7.251",
     "date": "2026-09-04",
     "label": "Beta",
     "changes": [
       {
         "category": "improved",
         "audience": "player",
-        "topic": "Pro",
+        "topic": "Forum",
         "en": {
-          "title": "Pro is priced in euro for international managers",
-          "body": "Playing in English now shows and charges CZ Pro prices in euro. Danish players still pay in kroner, and the 6-month plan can now be purchased too."
+          "title": "A forum thread now opens at your first unread reply",
+          "body": "Replies you already read are folded into one line you can open for the full history. The first new reply gets a thin accent line on the left, and the page scrolls straight to it, so you land where you left off instead of scrolling from the top."
         },
         "da": {
-          "title": "Pro prissættes i euro for internationale managere",
-          "body": "Spiller du på engelsk, vises og opkræves CZ Pro nu i euro. Danske spillere betaler stadig i kroner, og 6-måneders planen kan nu også købes."
+          "title": "En forumtråd åbner nu ved dit første ulæste svar",
+          "body": "Svar du allerede har læst foldes sammen til én linje, du kan åbne for at se hele historikken. Det første nye svar får en tynd accentlinje til venstre, og siden scroller direkte hen til det, så du lander der, hvor du slap, i stedet for at scrolle fra toppen."
         },
-        "refs": [4074]
+        "refs": [
+          3451
+        ]
       }
     ]
   },
