@@ -23,10 +23,10 @@ function fakeClient({ team, user }) {
 test("resolveDmRecipient returns discordId + prefs via the teamId path", async () => {
   const client = fakeClient({
     team: { user_id: "u1" },
-    user: { discord_id: "d1", discord_dm_enabled: true, discord_dm_prefs: { auction_won: false } },
+    user: { discord_id: "d1", discord_dm_enabled: true, discord_dm_prefs: { auction_won: false }, language: "da" },
   });
   const res = await resolveDmRecipient({ teamId: "t1", client });
-  assert.deepEqual(res, { discordId: "d1", prefs: { auction_won: false } });
+  assert.deepEqual(res, { discordId: "d1", prefs: { auction_won: false }, language: "da" });
 });
 
 test("resolveDmRecipient resolves the userId path without a team lookup", async () => {
@@ -35,7 +35,8 @@ test("resolveDmRecipient resolves the userId path without a team lookup", async 
     user: { discord_id: "d2", discord_dm_enabled: true, discord_dm_prefs: {} },
   });
   const res = await resolveDmRecipient({ userId: "u2", client });
-  assert.deepEqual(res, { discordId: "d2", prefs: {} });
+  // #4734: language mangler i raekken → null, som normaliseres til EN ved render.
+  assert.deepEqual(res, { discordId: "d2", prefs: {}, language: null });
 });
 
 test("resolveDmRecipient returns null when the master switch is off", async () => {
@@ -63,5 +64,15 @@ test("resolveDmRecipient defaults prefs to {} when the column is null", async ()
     user: { discord_id: "d5", discord_dm_enabled: true, discord_dm_prefs: null },
   });
   const res = await resolveDmRecipient({ userId: "u5", client });
-  assert.deepEqual(res, { discordId: "d5", prefs: {} });
+  assert.deepEqual(res, { discordId: "d5", prefs: {}, language: null });
+});
+
+// #4734: DM-teksten rendres i modtagerens sprog, saa users.language SKAL med ud
+// af resolveren — ellers falder hver DM tavst tilbage til EN.
+test("resolveDmRecipient carries users.language through to the caller", async () => {
+  const client = fakeClient({
+    user: { discord_id: "d6", discord_dm_enabled: true, discord_dm_prefs: {}, language: "da" },
+  });
+  const res = await resolveDmRecipient({ userId: "u6", client });
+  assert.equal(res.language, "da");
 });

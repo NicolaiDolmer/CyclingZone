@@ -9256,12 +9256,14 @@ router.get("/me/discord-status", requireAuth, async (req, res) => {
 router.post("/me/discord-dm-test", requireAuth, marketWriteLimiter, async (req, res) => {
   const { data: user } = await supabase
     .from("users")
-    .select("discord_id")
+    .select("discord_id, language")
     .eq("id", req.user.id)
     .single();
   if (!user?.discord_id) return res.status(400).json({ error: "Add your Discord ID first", errorCode: "discord_id_required_first" });
   try {
-    await sendTestDM(user.discord_id);
+    // #4734: test-DM'en er en spillervendt besked og skal vaere paa samme sprog
+    // som de rigtige DM'er, dvs. modtagerens users.language.
+    await sendTestDM(user.discord_id, { language: user.language });
     res.json({ ok: true });
   } catch (err) {
     res.status(400).json({ error: err.message });

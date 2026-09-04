@@ -574,5 +574,45 @@
     "explanation": {
       "variable": "Base {base} + variable {variable} based on last season's points/rank."
     }
+  },
+  "discord": {
+    "typeLabel": {
+      "auction_new": "New auction",
+      "auction_outbid": "Outbid",
+      "auction_won": "Auction won",
+      "transfer_offer": "Transfer offer",
+      "transfer_accepted": "Transfer accepted",
+      "transfer_rejected": "Transfer rejected",
+      "transfer_completed": "Transfer completed",
+      "swap_completed": "Swap completed",
+      "season_started": "Season started",
+      "season_ended": "Season ended",
+      "watchlist_rider_auction": "Watchlisted rider on auction",
+      "board_update": "Board update",
+      "board_critical": "The board is unhappy",
+      "race_result_digest": "Race results"
+    },
+    "field": {
+      "newBid": "New bid",
+      "bidBy": "Bid by",
+      "autoBidFrom": "Auto-bid from",
+      "finalPrice": "Final price",
+      "offer": "Offer",
+      "counterOffer": "Counter-offer",
+      "ends": "Ends"
+    },
+    "dm": {
+      "outbid": "You have been outbid on {rider}.",
+      "outbidAuto": "An auto-bid has outbid you on {rider}.",
+      "outbidExhausted": "Your auto-bid on {rider} hit its cap and was outbid.",
+      "auctionWon": "You won the auction for {rider}.",
+      "transferOffer": "{buyer} has sent an offer for {rider}.",
+      "transferAccepted": "Your offer on {rider} was accepted.",
+      "transferCountered": "Your offer on {rider} got a counter-offer.",
+      "transferRejected": "Your offer on {rider} was rejected.",
+      "watchlistRiderAuction": "A rider on your watchlist is up for auction: {rider}.",
+      "testTitle": "Discord DM works",
+      "testDescription": "You will now receive DMs from Cycling Zone for auctions, transfers and board updates."
+    }
   }
 }

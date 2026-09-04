@@ -574,5 +574,45 @@
     "explanation": {
       "variable": "Base {base} + variabel {variable} baseret på sidste sæsons point/rang."
     }
+  },
+  "discord": {
+    "typeLabel": {
+      "auction_new": "Ny auktion",
+      "auction_outbid": "Overbudt",
+      "auction_won": "Auktion vundet",
+      "transfer_offer": "Transfertilbud",
+      "transfer_accepted": "Transfer accepteret",
+      "transfer_rejected": "Transfer afvist",
+      "transfer_completed": "Transfer gennemført",
+      "swap_completed": "Bytte gennemført",
+      "season_started": "Sæson startet",
+      "season_ended": "Sæson slut",
+      "watchlist_rider_auction": "Rytter fra din ønskeliste på auktion",
+      "board_update": "Bestyrelsesopdatering",
+      "board_critical": "Bestyrelsen er utilfreds",
+      "race_result_digest": "Løbsresultater"
+    },
+    "field": {
+      "newBid": "Nyt bud",
+      "bidBy": "Bud af",
+      "autoBidFrom": "Autobud fra",
+      "finalPrice": "Slutpris",
+      "offer": "Tilbud",
+      "counterOffer": "Modbud",
+      "ends": "Slutter"
+    },
+    "dm": {
+      "outbid": "Du er blevet overbudt på {rider}.",
+      "outbidAuto": "Et autobud har overbudt dig på {rider}.",
+      "outbidExhausted": "Dit autobud på {rider} ramte sit loft og blev overbudt.",
+      "auctionWon": "Du vandt auktionen på {rider}.",
+      "transferOffer": "{buyer} har sendt et tilbud på {rider}.",
+      "transferAccepted": "Dit tilbud på {rider} blev accepteret.",
+      "transferCountered": "Dit tilbud på {rider} fik et modbud.",
+      "transferRejected": "Dit tilbud på {rider} blev afvist.",
+      "watchlistRiderAuction": "En rytter fra din ønskeliste er på auktion: {rider}.",
+      "testTitle": "Discord-DM virker",
+      "testDescription": "Du modtager nu DM'er fra Cycling Zone om auktioner, transfers og bestyrelsen."
+    }
   }
 }
