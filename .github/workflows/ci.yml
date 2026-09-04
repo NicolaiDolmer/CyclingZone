@@ -116,7 +116,12 @@ jobs:
       # Uden de naeste steps er vagten ovenfor en attrap: CI bygger uden skew-env,
       # saa gate 1 har intet "?dpl=" at finde og gate 2 skipper. #4745's
       # regression ville altsaa vaere gaaet groent igennem. Her bygges der MED
-      # env slaaet til, saa begge gates faktisk maaler noget.
+      # env slaaet til, saa gate 2/2b maaler noget den dag SKEW_PROTECTION_ENABLED
+      # i frontend/src/lib/skewProtection.js er `true` igen. Lige nu (hotfix 4/9,
+      # #2423) er flaget `false` — koden kalder aldrig installSkewProtection(),
+      # saa disse steps bygger og verificerer reelt kun gate 1 igen; vagten
+      # printer "[skip] Skew Protection er slaaet fra i koden (#2423)" og er
+      # groen, hvilket er den tilsigtede tilstand, ikke en attrap.
       - name: Build frontend with Skew Protection enabled (#2423)
         env:
           VERCEL_SKEW_PROTECTION_ENABLED: "1"
