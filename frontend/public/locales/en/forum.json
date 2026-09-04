@@ -57,6 +57,12 @@
     "ariaOff": "{count, plural, =0 {Support this} one {Support this (1 supporter)} other {Support this (# supporters)}}",
     "count": "{count, plural, =0 {No support yet} one {1 supporter} other {# supporters}}"
   },
+  "identity": {
+    "profileAria": "Open the manager profile for {name}"
+  },
+  "signature": {
+    "division": "Division {division}"
+  },
   "quote": {
     "action": "Quote",
     "cancel": "Cancel",

@@ -57,6 +57,12 @@
     "ariaOff": "{count, plural, =0 {Bak op om dette} one {Bak op om dette (1 opbakker)} other {Bak op om dette (# opbakkere)}}",
     "count": "{count, plural, =0 {Ingen opbakning endnu} one {1 opbakker} other {# opbakkere}}"
   },
+  "identity": {
+    "profileAria": "Åbn managerprofilen for {name}"
+  },
+  "signature": {
+    "division": "Division {division}"
+  },
   "quote": {
     "action": "Citér",
     "cancel": "Annullér",
