@@ -203,6 +203,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "#3402: genereret narrativ-cache pr. (season_id, team_id), skrevet ÉN gang af backend/lib/seasonDocumentarySweep.js efter sæsonslut. Samme skema som academy_season_intake_runs — manageren konfigurerer intet her, og en carry-over ville være direkte skadelig: en kopieret dokumentar ville fortælle den GAMLE sæsons historie under den NYE sæsons overskrift. Den nye sæson starter korrekt tom (ingen række) og sweepen fylder den op efter NÆSTE sæsonslut.",
   },
+  {
+    table: "rider_reputation_events",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#1099: omdømme-hændelsesbog, skrevet af løbsafslutningen (backend/lib/reputationHook.js). Ren motor-output — manageren konfigurerer intet her. Rækkerne er UDØDELIGE og må hverken kopieres eller ryddes ved sæsonskiftet: karriere-gulvet (riders.reputation_floor) er summen af floor_credit over HELE karrieren, og formen halveres netop ved at hændelsen BEHOLDER sit oprindelige season_id mens den aktive sæson rykker (spec §3). En kopi ville dublere gulvet; en nulstilling ville slette karrieren.",
+  },
 ]);
 
 /** Tabeller registret kender, som et Set. */

@@ -85,8 +85,9 @@ export async function runReputationDetectionSafe(args) {
   try {
     return await runReputationForFinalization(args);
   } catch (err) {
+    // EN-first operator-log (#1068): ingen rå dansk i backend-strenge.
     console.warn(
-      `  ⚠️  reputation-hook fejlede for race ${args?.race?.id} (tabellen kan mangle indtil migrationen er applied — degraderer til intet omdømme): ${err.message}`,
+      `  ⚠️  reputation hook failed for race ${args?.race?.id} (table may not be migrated yet — degrading to no reputation): ${err.message}`,
     );
     captureException(err, { tags: { flow: "race-finalization", stage: "reputation-hook" }, raceId: args?.race?.id });
     return { stage: REPUTATION_STAGE.OFF, events: 0, inserted: 0, deduped: 0, ridersUpdated: 0, failed: true };
