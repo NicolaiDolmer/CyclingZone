@@ -806,3 +806,47 @@ test("#4664 springer AI-, bank-, frosne og test-hold over, samt hold uden identi
   });
   assert.equal(result.findings.teamsMissingBoardMembers, 0, "ingen af de fem skal tælle med");
 });
+
+// ─── Invariant G (#4495): fastlåst akademi-graduate ────────────────────────────
+// Prædikatet ligger i stuckAcademyGraduates.js (delt med reparations-scriptet);
+// disse to tests låser fast at vagten faktisk bruger det og alarmerer med et
+// stabilt fingerprint.
+
+// ageForSeason(birthdate, 3) = 2028 − fødselsår.
+const STUCK_GRADUATE = {
+  id: "r-stuck-grad", team_id: "team-A", is_academy: true, is_retired: false, birthdate: "2006-04-11",
+};
+
+test("#4495 invariant G — akademirytter over graduerings-alderen uden aktiv auktion alarmerer", async () => {
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ riders: [STUCK_GRADUATE] }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+  });
+
+  assert.equal(result.findings.stuckAcademyGraduates, 1);
+  assert.equal(result.alerted, true);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0].ctx.fingerprint, ["stuck-academy-graduate"]);
+  assert.equal(calls[0].ctx.extra.sample[0].riderId, "r-stuck-grad");
+  assert.equal(calls[0].ctx.extra.sample[0].age, 22);
+});
+
+test("#4495 invariant G — rytter i et åbent override-vindue alarmerer ikke", async () => {
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({
+      riders: [STUCK_GRADUATE],
+      graduations: [{
+        id: "g-open", rider_id: "r-stuck-grad", status: "pending",
+        // Deadline langt ude i fremtiden → manageren har stadig sit valg.
+        deadline: "2099-01-01T00:00:00.000Z", created_at: "2026-09-01T00:00:00.000Z",
+      }],
+    }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+  });
+
+  assert.equal(result.findings.stuckAcademyGraduates, 0);
+  assert.equal(result.alerted, false);
+  assert.equal(calls.length, 0);
+});

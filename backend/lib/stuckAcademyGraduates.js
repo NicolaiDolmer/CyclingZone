@@ -74,7 +74,7 @@ export async function fetchActiveSeasonNumber(supabase) {
  *
  * @param {object} supabase
  * @param {{ now?: Date, seasonNumber?: number|null, graceHours?: number }} [opts]
- * @returns {Promise<{seasonNumber:number|null, checked:number, stuck:Array<{riderId:string, teamId:string, aiTeamId:string|null, age:number, birthdate:string, firstname:string, lastname:string, pendingGraduationId:string|null, pendingDeadline:string|null}>}>}
+ * @returns {Promise<{seasonNumber:number|null, checked:number, stuck:Array<{riderId:string, teamId:string, aiTeamId:string|null, age:number, birthdate:string, firstname:string, lastname:string, pendingGraduationId:string|null, pendingDeadline:string|null, graduationStatuses:string[]}>}>}
  */
 export async function findStuckAcademyGraduates(supabase, {
   now = new Date(),
@@ -118,25 +118,36 @@ export async function findStuckAcademyGraduates(supabase, {
       .order("rider_id"));
   const onOpenAuction = new Set(openAuctions.map((a) => a.rider_id));
 
-  const pendingGrads = await fetchAllRows(() =>
+  // ALLE grad-raekker for kandidaterne, ikke kun de pending: statusserne er
+  // selve diagnosen. En rytter med en 'sold'-raekke er #4495's kerne-case
+  // (auktionen blev aldrig til noget), mens en rytter UDEN nogen raekke aldrig
+  // har faaet sit override-vindue overhovedet — to forskellige historier, og
+  // reparations-scriptet skal kunne vise ejeren forskellen.
+  const grads = await fetchAllRows(() =>
     supabase
       .from("academy_graduation")
-      .select("id, rider_id, deadline")
+      .select("id, rider_id, status, deadline, created_at")
       .in("rider_id", riderIds)
-      .eq("status", "pending")
       .order("rider_id"));
 
+  const gradsByRider = new Map();
+  for (const g of grads) {
+    if (!gradsByRider.has(g.rider_id)) gradsByRider.set(g.rider_id, []);
+    gradsByRider.get(g.rider_id).push(g);
+  }
+
   const graceCutoff = now.getTime() - graceHours * 3_600_000;
-  const inGraceWindow = new Map();
-  for (const g of pendingGrads) {
+  const pendingById = new Map();
+  const inGraceWindow = new Set();
+  for (const g of grads) {
+    if (g.status !== "pending") continue;
+    if (!pendingById.has(g.rider_id)) pendingById.set(g.rider_id, g);
     // Fail-OPEN paa en uparsebar deadline: vi vil hellere lade vagten alarmere
     // paa en raekke vi ikke kan datere end tie om en fastlaast rytter.
     const deadlineMs = g.deadline ? new Date(g.deadline).getTime() : NaN;
     if (Number.isNaN(deadlineMs) || deadlineMs <= graceCutoff) continue;
-    inGraceWindow.set(g.rider_id, g);
+    inGraceWindow.add(g.rider_id);
   }
-
-  const pendingById = new Map(pendingGrads.map((g) => [g.rider_id, g]));
 
   const stuck = overAge
     .filter(({ rider }) => !onOpenAuction.has(rider.id) && !inGraceWindow.has(rider.id))
@@ -150,6 +161,8 @@ export async function findStuckAcademyGraduates(supabase, {
       lastname: rider.lastname,
       pendingGraduationId: pendingById.get(rider.id)?.id ?? null,
       pendingDeadline: pendingById.get(rider.id)?.deadline ?? null,
+      // Historikken bag rytteren: [] = han fik aldrig et override-vindue.
+      graduationStatuses: (gradsByRider.get(rider.id) ?? []).map((g) => g.status),
     }));
 
   return { seasonNumber: season, checked: academy.length, stuck };
