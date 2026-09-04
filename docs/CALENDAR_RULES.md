@@ -135,7 +135,7 @@ Det er en regel om KALENDERDAGE, ikke løbsdage, og den gælder pr. division. En
 
 **Spænd, ikke mængde.** [#4173](https://github.com/NicolaiDolmer/CyclingZone/issues/4173) gjorde 24/8 bindingen til mængden af de løbsdage et løb faktisk kører. Det lod en rytter forlade et etapeløb midt i og køre et andet løb i springet — målt 25/8: 5.074 udtagelses-par på 1.694 ryttere, fx Julien Faure i Giro della Penisola (løbsdag 10-29) OG Milano-Riviera på løbsdag 14. Rettet i [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4214).
 
-> ⚠ **Springene i et løbs løbsdage er IKKE hviledage.** En løbsdag er et halvdags-slot, og slot-tælleren løber videre for de øvrige løb i puljen imens. La Corsa dei Due Mari kører 7 etaper på løbsdag 10, 13, 17, 20, 23, 27, 28 — over 6 kalenderdage. De spring kan ikke lukkes i kalenderen (løbet ville køre 7 etaper på to dage); de skal bindes. Kun 9 af 199 flerdagsløb har et ægte kalenderdags-hul, og de 9 er GT-hviledagene — som spænd-bindingen dækker af sig selv ([#4209](https://github.com/NicolaiDolmer/CyclingZone/issues/4209)).
+> ⚠ **Springene i et løbs løbsdage er IKKE hviledage.** En løbsdag er et halvdags-slot, og slot-tælleren løber videre for de øvrige løb i puljen imens. La Corsa dei Due Mari kører 7 etaper på løbsdag 10, 13, 17, 20, 23, 27, 28 — over 6 kalenderdage. De spring kan ikke lukkes i kalenderen (løbet ville køre 7 etaper på to dage); de skal bindes. Kun 9 af 199 flerdagsløb har et ægte kalenderdags-hul, og de 9 er GT-hviledagene — som spænd-bindingen dækker af sig selv ([#4209](https://github.com/NicolaiDolmer/CyclingZone/issues/4209), verificeret mod prod og låst 4/9, se §3).
 
 ---
 
@@ -245,6 +245,8 @@ Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no day
 **Hviledage, præcist (ejer 26/8, #4236).** Antallet er **2 for enhver GT** — en spilregel, ikke en egenskab udledt af det virkelige løbs datoer. Før blev det regnet som `clamp(spanDays - stages, 0, 3)` fra `date_text`, hvilket gav 0-3 afhængigt af kataloget, og 0 når feltet manglede. To GT'er i samme sæson kunne dermed have forskelligt antal uden at nogen havde besluttet det.
 
 **En hviledag ER en løbsdag** som GT'en optager uden at køre på. Spændet er derfor `etaper + 2` sammenhængende løbsdage, og rytteren er bundet henover — som i virkeligheden, hvor man ikke forlader Giroen på hviledagen for at køre et andet løb. Det er allerede hvad spænd-bindingen (#4217) gør, så det ændrer intet for spilleren. Positionerne er efter etape 9 og 15 (`GT_REST_DAY_PATTERN[2]`).
+
+> 🔒 **Låst 4/9 2026 (ejer-beslutning 3/9, [#4209](https://github.com/NicolaiDolmer/CyclingZone/issues/4209) L = A): en rytter udtaget til en Grand Tour er bundet på ALLE løbsdage i GT'ens spænd, hviledagene inkluderet, og kan ikke udtages til noget andet løb undervejs.** Håndhæves af `race_entry_days_rebuild`'s `generate_series(min(game_day), max(game_day))` (#4217) + `no_rider_double_booking_day`, spejlet af `raceBindingWindow` (JS-pre-flight) og `replace_race_selection`-guarden (#4283). Målt read-only mod prod 4/9: **0** GT-ryttere udtaget til et andet løb på en hviledag i de to ikke-afviklede S3-GT'er. Regressions-vagt: `backend/lib/testdb/raceEntryDaysGtRestDay.integration.test.js` (bevist rød uden #4217) + `scripts/race-entry-days-drift-audit.sql`.
 
 ### Hvor meget slæk er der faktisk? Ikke det du tror
 

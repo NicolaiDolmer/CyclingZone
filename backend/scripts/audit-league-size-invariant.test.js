@@ -107,17 +107,23 @@ test("excludes bank teams from the invariant count", async () => {
 // dette filter rapporterede auditen "overtrædelse" for puljer der reelt har 24
 // aktive hold — og checket var rødt på ALLE PR'er (målt 23/7: 11 markerede hold
 // i 5 puljer, hver med 6-7 igangværende løb).
+// #4753: markørens ALDER afgør nu om den giver fritagelse. NOW er fast i disse
+// tests, så "frisk" (12t) og "fastlåst" (30 dage) kan udtrykkes eksplicit.
+const NOW = new Date("2026-07-20T22:00:00Z");
+const FRESH_PENDING = "2026-07-20T10:00:00Z";   // 12t gammel — inden for grace
+const STALE_PENDING = "2026-06-20T10:00:00Z";   // 30 dage gammel — langt over grace
+
 test("hold markeret til fjernelse tæller ikke med i invarianten (#2639)", async () => {
   const divisions = [makeDivision(1, 4, 0, "Division 4 — C")];
   const teams = [
     ...Array.from({ length: 24 }, (_, i) => makeTeam(`t${i}`, { league_division_id: 1 })),
     ...Array.from({ length: 3 }, (_, i) => makeTeam(`pending${i}`, {
-      league_division_id: 1, is_ai: true, pending_removal_at: "2026-07-20T10:00:00Z",
+      league_division_id: 1, is_ai: true, pending_removal_at: FRESH_PENDING,
     })),
   ];
   const supabase = makeMock({ divisions, teams, riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: NOW });
   assert.equal(summary.total_findings, 0, "27 hold hvoraf 3 er markeret til fjernelse = 24 aktive → ingen finding");
 });
 
@@ -125,13 +131,58 @@ test("en pulje der er under 24 EFTER pending-filtrering flagges stadig (#2639)",
   const divisions = [makeDivision(1, 4, 0, "Division 4 — C")];
   const teams = [
     ...Array.from({ length: 23 }, (_, i) => makeTeam(`t${i}`, { league_division_id: 1 })),
-    makeTeam("pending0", { league_division_id: 1, is_ai: true, pending_removal_at: "2026-07-20T10:00:00Z" }),
+    makeTeam("pending0", { league_division_id: 1, is_ai: true, pending_removal_at: FRESH_PENDING }),
   ];
   const supabase = makeMock({ divisions, teams, riders: [] });
 
-  const summary = await runLeagueSizeAudit({ supabase });
+  const summary = await runLeagueSizeAudit({ supabase, now: NOW });
   assert.equal(summary.total_findings, 1, "filteret må ikke skjule en ægte underbemanding");
   assert.equal(summary.findings[0].delta, -1);
+});
+
+// #4753 — den bug denne ændring lukker. Prod 4/9: 4 af 15 puljer stod på 25 hold,
+// hver med præcis ét hold markeret 28/8. #2639's UBETINGEDE eksklusion talte dem
+// som 24, så auditen var GRØN på præcis den overtrædelse den blev bygget til at
+// fange. Markørerne kunne aldrig forsvinde — holdene var blokeret af DØDE
+// transfer_offers, og døde rækker går ikke væk af sig selv (#4233).
+test("en markør ældre end grace-vinduet giver IKKE længere fritagelse (#4753)", async () => {
+  const divisions = [makeDivision(1, 4, 0, "Division 4 — A")];
+  const teams = [
+    ...Array.from({ length: 24 }, (_, i) => makeTeam(`t${i}`, { league_division_id: 1 })),
+    makeTeam("stuck", { league_division_id: 1, is_ai: true, pending_removal_at: STALE_PENDING }),
+  ];
+  const supabase = makeMock({ divisions, teams, riders: [] });
+
+  const summary = await runLeagueSizeAudit({ supabase, now: NOW });
+  assert.equal(summary.total_findings, 1, "en fastlåst markør må ikke kunne skjule et 25. hold");
+  assert.equal(summary.findings[0].count, 25);
+  assert.equal(summary.findings[0].delta, 1);
+});
+
+test("en uparsbar pending_removal_at fritager ikke (fail-loud, #4753)", async () => {
+  const divisions = [makeDivision(1, 4, 0, "Division 4 — A")];
+  const teams = [
+    ...Array.from({ length: 24 }, (_, i) => makeTeam(`t${i}`, { league_division_id: 1 })),
+    makeTeam("garbage", { league_division_id: 1, is_ai: true, pending_removal_at: "ikke-en-dato" }),
+  ];
+  const supabase = makeMock({ divisions, teams, riders: [] });
+
+  const summary = await runLeagueSizeAudit({ supabase, now: NOW });
+  assert.equal(summary.total_findings, 1, "en ulæselig dato må ikke give tidsubegrænset fritagelse");
+});
+
+// #4753: et nedlagt hold har league_division_id = NULL og er derfor allerede uden
+// for enhver pulje — auditen ser puljen som 24 UDEN at kende til retired_at.
+test("et nedlagt AI-hold tæller ikke i sin gamle pulje (#4753)", async () => {
+  const divisions = [makeDivision(1, 4, 0, "Division 4 — A")];
+  const teams = [
+    ...Array.from({ length: 24 }, (_, i) => makeTeam(`t${i}`, { league_division_id: 1 })),
+    { ...makeTeam("retired", { league_division_id: null, is_ai: true }), retired_at: "2026-07-20T09:00:00Z" },
+  ];
+  const supabase = makeMock({ divisions, teams, riders: [] });
+
+  const summary = await runLeagueSizeAudit({ supabase, now: NOW });
+  assert.equal(summary.total_findings, 0);
 });
 
 test("teams with no league_division_id are outside the invariant (not flagged)", async () => {

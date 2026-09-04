@@ -16,9 +16,9 @@
     "stagesGt": "{count} stages · GT",
     "stagesOnly": "{count} stages",
     "monument": "Monument · exclusive race day",
-    "bandAria": "{name}, race day {day}. Open its day board.",
+    "bandAria": "{name}, day {day} of {total}. Open its day board.",
     "dayPanel": {
-      "title": "Race day {day} · {date}",
+      "title": "Day {day} of {total} · {date}",
       "meta": "{races, plural, one {# race} other {# races}} · {saved, plural, one {# selection saved} other {# selections saved}} · {open} open",
       "openBoard": "Open day board"
     },

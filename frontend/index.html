@@ -11,7 +11,36 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- HOTFIX 4/9 (#2423): fjern __vdpl-cookien FØR preload-scanneren beder om assets.
+         Vercel pinnede assets til cookiens deployment men serverede nyeste HTML, så en
+         cookie fra forrige deploy gav 404 på alle chunks. Findes cookien: ryd + genindlæs én gang. -->
+    <script>
+      (function () {
+        try {
+          if (/(^|;\s*)__vdpl=/.test(document.cookie)) {
+            document.cookie = "__vdpl=; Path=/; Max-Age=0; SameSite=Lax; Secure";
+            var k = "cz_vdpl_cleared_at";
+            var last = Number(sessionStorage.getItem(k) || 0);
+            if (Date.now() - last > 60000) {
+              sessionStorage.setItem(k, String(Date.now()));
+              location.reload();
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- #4595 boot-vagt: en 404 paa et hashed chunk under et deploy caches
+         `immutable` i et aar (Vercel-headers matcher paa sti, ikke status), og
+         entry-modulet fejler derefter STILLE ved hver navigation — sort side,
+         ingen console-fejl. Vagten refetcher modul-URL'erne med cache:'reload'
+         og genindlaeser ÉN gang. Classic script og placeret FOER Vites
+         modulepreloads, fordi den skal lytte allerede naar den foerste
+         ressource-fejl fyrer — og fordi intet af app-grafen koerer i netop det
+         scenarie. Se frontend/public/chunk-selfheal.js. -->
+    <script src="/chunk-selfheal.js"></script>
+
     <title>Cycling Zone</title>
     <meta name="description" content="Cycling Zone: fair, browser-based cycling manager MMO. Tactics, long-term planning and community rivalry. No pay-to-win, ever." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

@@ -40,7 +40,7 @@ import dotenv from "dotenv";
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { formatSupabaseAuditError } from "./audit-error-classifier.js";
+import { classifySupabaseAuditError, formatSupabaseAuditError } from "./audit-error-classifier.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -437,16 +437,35 @@ function relPath(p) {
 // Detector A — write-but-no-data
 // ---------------------------------------------------------------------------
 
+// #4754: RPC'en fejlede 4/9 med "canceling statement due to statement
+// timeout" — én blokeret tabel (lock-kontention) åd hele 2-minutters-
+// budgettet. database/2026-09-04-4754-feature-liveness-count-lock-timeout.sql
+// gør RPC'en robust i sig selv (per-tabel lock_timeout + reltuples-fallback);
+// denne retry er et sekundært sikkerhedsnet for GENUINT transiente
+// belastningstoppe (fx en samtidig migration eller trafikspike), IKKE en
+// erstatning for DB-fixet. Kun statement-timeout-klassen retries — andre
+// fejl (auth, manglende RPC) fejler straks som før.
+const TABLE_COUNTS_RETRY_DELAYS_MS = [1000, 3000];
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchTableCounts() {
-  const { data, error } = await supabase.rpc("feature_liveness_table_counts");
-  if (error) {
-    throw new Error(formatSupabaseAuditError(
-      "feature_liveness_table_counts RPC",
-      error,
-      "Apply database/2026-05-10-feature-liveness-helper.sql first."
-    ));
+  let lastError;
+  for (let attempt = 0; attempt <= TABLE_COUNTS_RETRY_DELAYS_MS.length; attempt++) {
+    const { data, error } = await supabase.rpc("feature_liveness_table_counts");
+    if (!error) return data || [];
+    lastError = error;
+    const retryable = classifySupabaseAuditError(error).retryable === true;
+    if (!retryable || attempt === TABLE_COUNTS_RETRY_DELAYS_MS.length) break;
+    await sleep(TABLE_COUNTS_RETRY_DELAYS_MS[attempt]);
   }
-  return data || [];
+  throw new Error(formatSupabaseAuditError(
+    "feature_liveness_table_counts RPC",
+    lastError,
+    "Apply database/2026-05-10-feature-liveness-helper.sql first."
+  ));
 }
 
 // Live app_config-snapshot til FLAG_GATED_EMPTY_TABLES — læses fra samme
@@ -497,6 +516,16 @@ export function evaluateDetectorARow(row, { insertPaths, flags }) {
   }
   if (WHITELIST_EMPTY_TABLES.has(row.table_name)) return null;
   if (PERMANENT_EMPTY_TABLES.has(row.table_name)) return null;
+
+  // #4754: row_count==0 kan være et reltuples-ESTIMAT (RPC'en falder tilbage
+  // til pg_class.reltuples når et lock_timeout rammer det pågældende bord —
+  // se database/2026-09-04-4754-feature-liveness-count-lock-timeout.sql).
+  // reltuples kan være stale/0 lige efter en tabels allerførste rows, FØR
+  // autovacuum-analyze har kørt. Et estimeret 0-tal er derfor IKKE nok
+  // evidens for "død feature" — spring over i stedet for at risikere en
+  // falsk-positiv (row_count>0 håndteres ovenfor og er ikke ramt af dette,
+  // et ikke-nul estimat er stadig god evidens for "har data").
+  if (row.estimated === true) return null;
 
   // Flag-bevidst gate: tom tabel er den FORVENTEDE tilstand mens flaget er off
   // (intet fund) — men IKKE længere når flaget er sat til beta/dry_run/on, hvor

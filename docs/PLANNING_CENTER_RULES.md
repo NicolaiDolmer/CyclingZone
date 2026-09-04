@@ -90,6 +90,8 @@ Rute-match som fladedækkende linse er fravalgt: kalender-svaret bærer hverken 
 
 Belastning er ikke binding: bindingen er hele spændet `min(game_day)..max(game_day)` og er tilsigtet (ejer-direktiv 25/8, [#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217), `docs/CALENDAR_RULES.md` §2b + §8). Belastningen er de løbsdage rytteren faktisk kører på. For et løb med spring i serien er de to tal forskellige, og det er meningen.
 
+**Grand Tour-hviledage (låst 4/9 2026, ejer-beslutning 3/9, [#4209](https://github.com/NicolaiDolmer/CyclingZone/issues/4209)).** En GT-rytter står IKKE som ledig på GT'ens hviledage — hviledagen er en løbsdag GT'en optager (`docs/CALENDAR_RULES.md` §3), så bindingen dækker den, og planner-fladen viser rytteren som optaget. Fladen har intet eget tilgængeligheds-filter: `windowsOverlap` i `frontend/src/lib/raceHubLogic.js` skærer `bindingWindow.days`, som backendens `raceBindingWindow` serialiserer som HELE spændet. Belastnings-chippen (`load.raceDays`) tæller derimod stadig kun de kørte etapedage — hviledagen binder, men koster ikke belastning.
+
 **Ordet "løbsdag" (ejer-beslutning 27/8).** En løbsdag er BINDINGS-enheden (`game_day`), som i `docs/CALENDAR_RULES.md` §0. Sponsor-økonomien lånte samme ord i `help.json` og `finance.json` for sin betalings-enhed; den hedder nu ETAPE / stage i al spiller-vendt tekst. Økonomien er uændret, kun ordene.
 
 ---

@@ -48,6 +48,7 @@ import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMandateAutoAcceptCron } from "./lib/boardMandateAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
+import { checkSeasonTransitionKeyDrift } from "./lib/seasonTransitionKeyGuard.js"; // #4129
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
 import { runAiRecoverySweep } from "./lib/aiRecoverySweep.js";
@@ -57,6 +58,7 @@ import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
+import { runHalfFinalizedRaceWatch } from "./lib/raceFinalizeWatch.js"; // #4147
 import { refreshRankingMatviewsSafe } from "./lib/refreshRankingMatviews.js";
 import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot.js";
 import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
@@ -79,6 +81,7 @@ import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
+import { buildAlertSignature, shouldAlertOnChange } from "./lib/opsAlertDedupe.js";
 import { runTrainingSlotHealthWatch } from "./lib/trainingSlotHealthWatch.js"; // #3639
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
 import { runEmailDay1Sweep } from "./lib/emailDay1Sweep.js"; // #2725
@@ -110,6 +113,7 @@ import {
   CRON_MONITOR_1MIN,
   CRON_MONITOR_5MIN,
   CRON_MONITOR_10MIN,
+  CRON_MONITOR_15MIN,
   CRON_MONITOR_30MIN,
   CRON_MONITOR_60MIN,
   CRON_MONITOR_24H,
@@ -451,6 +455,9 @@ async function runSeasonAutoTransitionCron() {
 // transitions på 30 min). Hvis admin_log viser >1 sæson-transition per døgn
 // → alert til Discord + Sentry. Pure read + notify, ingen DB-writes.
 
+const SEASON_TRANSITION_KEY_DRIFT_ALERT_KEY = "season-transition-key-drift";
+const SEASON_TRANSITION_KEY_DRIFT_REALERT_MS = 24 * 60 * 60 * 1000;
+
 async function runDailySeasonCountCheck() {
   const result = await processDailySeasonCountCheck({
     supabase,
@@ -464,6 +471,45 @@ async function runDailySeasonCountCheck() {
     console.error(
       `🚨 Daily season-count check: ${result.transitionCount} transitions seneste 24h (>1 alert fyret)`
     );
+  }
+
+  // #4129: forward-guard for season_transition_planned_at (#4004-guardens anker).
+  // buildSeasonCalendar.js --apply sætter nu nøglen selv ved sæson-oprettelse —
+  // dette er sikkerhedsnettet for de veje der springer det uden om (manuel SQL,
+  // glemt --apply). Read-only; se seasonTransitionKeyGuard.js.
+  let drift;
+  try {
+    drift = await checkSeasonTransitionKeyDrift({ supabase, now: new Date() });
+  } catch (err) {
+    console.error("Cron error (season-transition-key drift check):", err.message);
+    sentryCapture(err, { tags: { cron: "season-transition-key-drift" } });
+    return;
+  }
+  if (drift.drift) {
+    // Signaturen skifter når årsag/forventet/faktisk ændrer sig — en uændret
+    // "missing" for samme sæson alarmerer først igen efter re-alert-gulvet
+    // (samme #4752-mønster som AI-trim-stall-vagten ovenfor).
+    const signature = buildAlertSignature([
+      String(drift.reason), String(drift.seasonNumber ?? ""), String(drift.expected ?? ""), String(drift.existing ?? ""),
+    ]);
+    const { alert } = await shouldAlertOnChange({
+      supabase,
+      alertKey: SEASON_TRANSITION_KEY_DRIFT_ALERT_KEY,
+      signature,
+      reAlertAfterMs: SEASON_TRANSITION_KEY_DRIFT_REALERT_MS,
+      captureExceptionFn: sentryCapture,
+    });
+    if (alert) {
+      console.error(
+        `🚨 season_transition_planned_at ${drift.reason}: sæson ${drift.seasonNumber} starter ${Math.round(drift.daysUntilStart)}d ude ` +
+        `(forventet ${drift.expected}, faktisk ${drift.existing ?? "(mangler)"}) — #4129`
+      );
+      sentryCapture(new Error(`season_transition_planned_at ${drift.reason} < 7 dage før sæsonstart (#4129)`), {
+        tags: { cron: "season-transition-key-drift" },
+        fingerprint: ["season-transition-key-drift"],
+        extra: drift,
+      });
+    }
   }
 }
 
@@ -751,6 +797,14 @@ async function runRiderDeriveHealSweepCron() {
 // det er længere end noget realistisk etapeløb varer, så det signalerer et
 // strukturelt problem, ikke bare "løbet er ikke færdigt endnu".
 
+// #4752 (CYCLINGZONE-58): persistent-stall-alarmen fyrede pr. 5-min-tick — 378
+// Sentry-events på 32 t, ~95 % af Railway-loggens error-linjer. Fundet er ægte,
+// men betingelsen kan kun løftes af en ejer-beslutning (FK-semantikken i #4233),
+// så den kan stå i dagevis. Edge-trigget dedupe: nyt/ændret sæt alarmerer straks,
+// et uændret sæt højst én gang i døgnet.
+const AI_TRIM_STALL_ALERT_KEY = "ai-trim-persistent-stall";
+const AI_TRIM_STALL_REALERT_MS = 24 * 60 * 60 * 1000;
+
 async function runAiTeamTrimHealSweepCron() {
   const result = await runAiTeamTrimHealSweep({ supabase, now: new Date() });
   if (result.healed) {
@@ -793,16 +847,30 @@ async function runAiTeamTrimHealSweepCron() {
       },
     });
   }
-  if (result.stale?.length) {
-    // #2434: ÉN aggregeret capture pr. tick med FAST fingerprint (før: én Error pr.
-    // hold pr. tick → CYCLINGZONE-31 spammede 200+ events, 65 hold × 5-min-kadence).
-    // stale[] er nu løbs-bevidst (blokerende løb selv stallet el. > backstop), ikke
-    // ren alder >48t — så et lovligt kørende multi-dag etapeløb alarmerer ikke længere.
+  // #4752: signaturen afgør om alarmen er ny information. Kaldet sker OGSÅ når
+  // sættet er tomt — ellers ville en tilstand der kom sig efterlade sin gamle
+  // signatur i ops_alert_state, og et senere brud ville se "uændret" ud og tie.
+  const staleList = result.stale ?? [];
+  // Hold + årsag, ikke alder: ageHours ticker hvert femte minut og ville få hver
+  // eneste tick til at ligne en ændring.
+  const staleSignature = buildAlertSignature(staleList.map((s) => `${s.teamId}:${s.reason}`));
+  const { alert: staleAlert } = await shouldAlertOnChange({
+    supabase,
+    alertKey: AI_TRIM_STALL_ALERT_KEY,
+    signature: staleSignature,
+    reAlertAfterMs: staleList.length ? AI_TRIM_STALL_REALERT_MS : null,
+    captureExceptionFn: sentryCapture,
+  });
+
+  if (staleList.length && staleAlert) {
+    // #2434: ÉN aggregeret capture med FAST fingerprint (før: én Error pr. hold pr.
+    // tick → CYCLINGZONE-31 spammede 200+ events, 65 hold × 5-min-kadence).
+    // stale[] er løbs-bevidst (blokerende løb selv stallet el. > backstop), ikke ren
+    // alder >48t — så et lovligt kørende multi-dag etapeløb alarmerer ikke længere.
     // #4594: en PERSISTENT genuin fejl (samme hold, samme exception, hver tick i
-    // >120t) eskaleres nu her i stedet for at blive ved med at spamme `failed`
-    // (reason="error_exceeds_backstop", carries `message`) — samme [Object]-fix
-    // som ovenfor: teams flades til strenge i extra.
-    const n = result.stale.length;
+    // >120t) eskaleres her i stedet for at blive ved med at spamme `failed`
+    // (reason="error_exceeds_backstop", carries `message`) — teams flades til strenge.
+    const n = staleList.length;
     console.error(
       `🚨 AI-trim heal-sweep: ${n} AI-hold reelt fastlåst (blokerende løb stallet, > backstop, el. vedvarende fejl) — se Sentry (#2187/#2434/#4594)`
     );
@@ -811,7 +879,7 @@ async function runAiTeamTrimHealSweepCron() {
       fingerprint: ["ai-trim-persistent-stall"],
       extra: {
         count: n,
-        teams: result.stale.map((s) =>
+        teams: staleList.map((s) =>
           `${s.teamId} (pool ${s.poolId}): ${s.reason}, ${s.ageHours}t${s.message ? ` — ${s.message}` : ""}`
         ),
       },
@@ -1019,7 +1087,7 @@ async function runStageSchedulerCron() {
       isStageSchedulerEnabled,
       isRaceEngineV2Enabled,
       seenKeys: stageSchedulerSeenKeys,
-      runStageFn: async ({ raceId, stageIndex }) => {
+      runStageFn: async ({ raceId, stageIndex, resume = false }) => {
         const notifyDiscord = async ({ race, resultRows, incidents }) => {
           const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
           if (!urls.length) return;
@@ -1044,7 +1112,10 @@ async function runStageSchedulerCron() {
           runSource: "scheduler", // FIX 4: kun scheduler-runs tæller i den daglige cap
           // #2090 defense-in-depth: løbet må KUN afvikle præcis den etape scheduleren
           // udvalgte som forfalden — er løbet imens bumpet af et andet run, 409'es der.
-          expectedStageIndex: stageIndex,
+          expectedStageIndex: resume ? null : stageIndex,
+          // #4147: genoptagelse — etapen er GIVET af trin-markeringen, ikke udledt af
+          // stages_completed (som den afbrudte kørsel allerede har bumpet).
+          resumeStageIndex: resume ? stageIndex : null,
           ensureSeasonStandings: ensureSeasonStandingsCron,
           updateStandings,
           notifyDiscord,
@@ -1053,11 +1124,26 @@ async function runStageSchedulerCron() {
         });
       },
     });
-    if (result.ran || result.errors || result.recovered) {
-      console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.recovered || 0} finalization-recovery, ${result.errors} fejl`);
+    if (result.ran || result.errors || result.recovered || result.resumed) {
+      console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.recovered || 0} finalization-recovery, ${result.resumed || 0} genoptaget afslutning, ${result.errors} fejl`);
     }
   } finally {
     stageSchedulerTickRunning = false;
+  }
+}
+
+// ─── Halv-finaliserings-vagt (#4147) ─────────────────────────────────────────
+// Read-only. Finder løb der sidder fast midt i afslutningen: en trin-markering der
+// har stået stille i over 10 minutter, et løb hvor alle etaper er kørt uden at status
+// blev flippet (Llanera-tilstanden 23/8), eller et færdigt løb hvis præmier aldrig
+// blev udbetalt. Alarmerer via Sentry med fast fingerprint + opsAlertDedupe, så én
+// uafklaret tilstand giver ÉT issue og ikke 96 events i døgnet. Reparerer INTET —
+// genopretningen sker (bag flag) i raceRunner.simulateStageByIndex's genoptagelses-
+// sti, og alt derudover er ejer-beslutning.
+async function runRaceFinalizeWatchCron() {
+  const r = await runHalfFinalizedRaceWatch({ supabase, captureExceptionFn: sentryCapture });
+  if (r.findings) {
+    console.warn(`🚨 Halv-finaliserings-vagt: ${r.findings} fund (alarmeret: ${r.alerted})`);
   }
 }
 
@@ -1703,6 +1789,15 @@ export function startCron() {
   setInterval(
     trackedTick("stage scheduler", monitorCron("stage-scheduler", runStageSchedulerCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
+  );
+
+  // Every 15 minutes: halv-finaliserings-vagt (#4147) — read-only detektion af løb
+  // der sidder fast midt i afslutningen. Bevidst INGEN immediate-run: en alarm skal
+  // ikke fyre ved hver genstart (mirror stage-scheduler/stall-watchdog-mønstret), og
+  // 15 min efter boot er tidligt nok til at fange en afbrydelse fra selve deployet.
+  setInterval(
+    trackedTick("race-finalize-watch", monitorCron("race-finalize-watch", runRaceFinalizeWatchCron, CRON_MONITOR_15MIN)),
+    15 * 60 * 1000
   );
 
   // Every 10 minutes: rangliste-matview refresh (#2175) — fallback for race-
