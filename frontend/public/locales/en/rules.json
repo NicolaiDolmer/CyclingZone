@@ -34,7 +34,7 @@
         },
         "sponsor": {
           "title": "Sponsor income",
-          "text": "Season-1 sponsor income is scaled by division so a competent team is sustainable: Division 1 {sponsorD1} CZ$, Division 2 {sponsorD2} CZ$, Division 3 {sponsorD3} CZ$. The final payout is capped at {sponsorCeilingS1} CZ$ in season 1 and {sponsorCeilingS2} CZ$ from season 2 onwards (after board modifiers)."
+          "text": "Sponsor income is scaled by division so a competent team is sustainable: Division 1 {sponsorD1} CZ$, Division 2 {sponsorD2} CZ$, Division 3 {sponsorD3} CZ$, Division 4 {sponsorD4} CZ$. Your signed deal keeps its guaranteed base for its full length. If you change division while it runs, a separate division adjustment of {divisionAdjustmentPct} percent of the difference between the two divisions is paid on top, every season the difference lasts."
         },
         "upkeep": {
           "title": "Upkeep",

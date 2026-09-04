@@ -60,7 +60,8 @@
       "bonus": "Division bonus",
       "interest": "Interest",
       "adminAdjustment": "Admin adjustment"
-    }
+    },
+    "divisionAdjustment": "Division adjustment · deal priced for Division {signedDivision}, racing in Division {currentDivision}"
   },
   "forecast": {
     "warning": {

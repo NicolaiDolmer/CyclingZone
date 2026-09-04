@@ -14,7 +14,7 @@
     "unitDefinition": "Din sponsor betaler pr. etape dit hold stiller til start i. Ikke pr. kalenderdag, og ikke pr. løbsdag.",
     "unitCount": "Division {division} kører {count} etaper i sæson {season}, og hver eneste af dem betaler.",
     "unitPerDay": "De ligger fordelt over {days} kalenderdage, så de fleste dage bærer omkring {perDay} etaper.",
-    "divisionNote": "Din maksimale udbetaling ændrer sig ikke, uanset hvilken division du vælger ovenfor. Division ændrer kun hvor mange etaper du har til at tjene den over, og det sætter satsen pr. etape.",
+    "divisionNote": "Selve aftalen udbetaler det samme maksimum uanset hvilken division du vælger ovenfor. Divisionen ændrer kun hvor mange etaper du tjener det over, og det sætter raten pr. etape. Divisions-tillægget er en separat linje og vises ovenfor når det gælder.",
     "divisionPicker": "Se rate for en division",
     "divisionPill": "Division {division} · {count} etaper",
     "deadline": "Dit valg låses når sæson {season} starter. Vælger du ikke, underskriver klubben den sikre 1-sæsons aftale for dig.",
@@ -26,7 +26,9 @@
     "signDeal": "Underskriv aftale",
     "cancel": "Annullér",
     "guaranteedShare": "{pct} % af aftalen er garanteret",
-    "boardNote": "Bestyrelsens tilfredshed justerer den garanterede del med op til ±20 %. Den rører ikke etape-pengene eller bonusserne: de udbetales fuldt ud oveni, i takt med at du tjener dem."
+    "boardNote": "Bestyrelsens tilfredshed justerer den garanterede del med op til ±20 %. Den rører ikke etape-pengene eller bonusserne: de udbetales fuldt ud oveni, i takt med at du tjener dem.",
+    "divisionAdjustmentUp": "Kører du i Division {division} på denne aftale, udbetales et divisions-tillæg på {amount} CZ$ oveni hver sæson, fordi aftalen er prissat til Division {signed}.",
+    "divisionAdjustmentDown": "Kører du i Division {division} på denne aftale, trækkes {amount} CZ$ hver sæson, fordi aftalen er prissat til Division {signed}."
   },
   "variant": {
     "safe": "Den sikre aftale",

@@ -65,6 +65,10 @@ import {
   UPKEEP_BEFORE_FIRST_RACE_ENABLED,
   UPKEEP_BY_DIVISION,
 } from "./economyConstants.js";
+import {
+  resolveDivisionAdjustment,
+  divisionAdjustmentIdempotencyKey,
+} from "./divisionAdjustment.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { isSeasonEndDivisionMovementSkipped } from "./seasonEndMovementFlag.js";
 import { isSeasonSignupEnabled } from "./seasonSignupFlag.js";
@@ -293,6 +297,8 @@ export async function processSeasonStart(seasonId, deps = {}) {
   // #1980 · nedrykningsfaldskærm — aggregeret summary (antal + total) returneret
   // sammen med sponsor/payroll, så transition-loggen kan surface den.
   const parachuteSummary = { count: 0, total: 0 };
+  // #4376 · divisions-tillæg — samme summary-mønster, så transition-loggen kan surface det.
+  const divisionAdjustmentSummary = { count: 0, total: 0 };
 
   for (const team of teams || []) {
     const boards = team.board_profiles || [];
@@ -438,6 +444,55 @@ export async function processSeasonStart(seasonId, deps = {}) {
       }
     }
 
+    // #4376 · Divisions-tillæg — korrektion når holdets division ikke er den aftalen blev
+    // prissat mod. Spejler faldskærmen ovenfor med modsat fortegn: for et NEDRYKKET hold
+    // med løbende aftale ophæver de to hinanden eksakt, så holdet beholder sin høje base
+    // uden også at få faldskærm. Regel + de fem ejer-valg: docs/SPONSOR_RULES.md §3.
+    //
+    // Ganges med SAMME modifier som den garanterede base (ejer-valg 4), og krediteres som
+    // sin EGEN finance-linje så spilleren kan se korrektionen for sig selv.
+    // Idempotent pr. (hold, sæson) — S3-efterbetalingsscriptet bruger nøjagtig samme nøgle
+    // og samme funktioner, så de to stier ikke kan dobbeltbetale eller drive fra hinanden.
+    const divisionAdjustment = resolveDivisionAdjustment({
+      team,
+      contract: activeContract,
+      seasonNumber,
+      modifier,
+    });
+
+    if (divisionAdjustment.applies) {
+      const { skipped: adjustmentSkipped } = await creditTeam(
+        team.id,
+        divisionAdjustment.payout,
+        "division_adjustment",
+        null,
+        seasonId,
+        supabaseClient,
+        {
+          idempotent: true,
+          metadata: {
+            code: "tx.divisionAdjustment",
+            params: {
+              signedDivision: divisionAdjustment.signedDivision,
+              currentDivision: divisionAdjustment.currentDivision,
+            },
+          },
+          audit: {
+            sourcePath: "economyEngine.processSeasonStart.divisionAdjustment",
+            reasonCode: FINANCE_REASON.SEASON_START_DIVISION_ADJUSTMENT,
+            idempotencyKey: divisionAdjustmentIdempotencyKey(team.id, seasonId),
+          },
+        }
+      );
+      if (!adjustmentSkipped) {
+        divisionAdjustmentSummary.count += 1;
+        divisionAdjustmentSummary.total += divisionAdjustment.payout;
+        console.log(
+          `  🔀 ${team.name}: ${divisionAdjustment.payout > 0 ? "+" : ""}${divisionAdjustment.payout} pts divisions-tillæg (aftale prissat i D${divisionAdjustment.signedDivision}, kører i D${divisionAdjustment.currentDivision})`
+        );
+      }
+    }
+
     // Ensure all three plan types exist
     const existingPlanTypes = new Set(boards.map(b => b.plan_type));
     for (const planType of ["5yr", "3yr", "1yr"]) {
@@ -560,6 +615,9 @@ export async function processSeasonStart(seasonId, deps = {}) {
     // #1980 · nedrykningsfaldskærm — { count, total } mirror'er sponsor/payroll-
     // summary-mønstret, så transition-loggen (seasonTransition.js) kan surface den.
     parachute: parachuteSummary,
+    // #4376 · divisions-tillæg — samme mønster. `total` kan være negativ fra sæson 4,
+    // hvor den nedadgående korrektion også gælder.
+    divisionAdjustment: divisionAdjustmentSummary,
   };
 }
 

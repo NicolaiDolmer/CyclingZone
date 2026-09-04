@@ -79,7 +79,7 @@ Der findes ingen CI-gate eller prod-vagt der fanger det i dag — se §8.
 
 | Tidspunkt | Hvad der skrives | Hvad der genberegnes |
 |---|---|---|
-| **Valg** (`acceptOffer`) | `guaranteed_base`, `guaranteed_fraction`, `race_day_share`, `length_seasons`, `bonus_clauses` (frosset i **kroner**, ikke andele), `sponsor_name` | — |
+| **Valg** (`acceptOffer`) | `guaranteed_base`, `guaranteed_fraction`, `race_day_share`, `length_seasons`, `bonus_clauses` (frosset i **kroner**, ikke andele), `sponsor_name`, `signed_division` | — |
 | **Aktivering** (`expireAndRenewContracts`, pending → active) | `status`, signing-bonus krediteres | **KUN `per_race_day_rate`**, mod holdets faktiske etapetal (#2913) |
 | **Hver sæsonstart derefter** | — | Intet. Basen bæres uændret med, hele løbetiden |
 | **Udløb** | `status = 'expired'` | Nye tilbud genereres mod da-aktuel division + renown |
@@ -92,21 +92,44 @@ afhænge af et live-driftende `renownTarget` — det var lektien fra #2589.
 
 ---
 
-## 3. Divisions-tillægget (ejer-besluttet 29/8 — IKKE bygget endnu)
+## 3. Divisions-tillægget (ejer-besluttet 29/8, opad-reglen ændret 4/9 · afventer merge + apply)
 
 Aftalen er prissat mod den division holdet var i da det valgte. Rykker holdet op, betaler det den
 nye divisions upkeep fra dag ét mod en sponsor prissat til den gamle. Rykker det ned, beholder det
 en for høj base **og** får en nedrykningsfaldskærm for et fald der aldrig skete.
 
-**Reglen, ejer-godkendt 29/8 efter fem beslutninger (se §3.1):**
+**Opadgående regel — "gulv + 50 %" (ejer-beslutning 4/9 kl. ~15:45, erstatter den oprindelige
+0,5 × hele forskellen fra 29/8):**
+
+```
+tillæg = max(0, base[D−1] − base[prissat]) + 0,5 × (base[D] − base[D−1])
+```
+
+hvor `D` er holdets nuværende division og `D−1` er divisionen lige under (D2 for D1, D3 for D2,
+D4 for D3 — D4 har ingen D−1, men kan omvendt aldrig modtage en opadgående korrektion, da intet er
+billigere end D4). Holdet løftes FØRST til gulvet (basen for D−1), derefter halvdelen af resten op
+til egen divisions fulde base. Ved ét-trins oprykning (D−1 = den prissatte division) er gulvet 0,
+og reglen er uændret 50 % af hele forskellen — ingen ændring for det almindelige tilfælde.
+Eksempel (ejer, 4/9): D1-hold med D4-aftale = gulv til D2 (400.000−315.000=85.000) + 0,5×(600.000−
+400.000=100.000) = **185.000** oveni basen 315.000 = 500.000 (samme total som et hold der selv
+sidder på en D2-aftale i D1). D2-hold med D4-aftale = (340.000−315.000=25.000) + 0,5×(400.000−
+340.000=30.000) = **55.000** oveni 315.000 = 370.000.
+
+**Nedadgående regel (uændret formel siden 29/8, men fra 4/9 bag et eksplicit tænd/sluk-flag):**
 
 ```
 tillæg = 0,5 × ( SPONSOR_INCOME_BY_DIVISION[nuværende division]
                − SPONSOR_INCOME_BY_DIVISION[den division aftalen blev prissat mod] )
 ```
 
-- Udbetales **kontant ved hver sæsonstart** hvor forskellen findes, som sin egen finance-linje
-  ved siden af den garanterede base.
+I S3 er nedad slået fra (grandfathering, §3.1 punkt 5, uændret). Fra S4 findes formlen i koden,
+men er IKKE automatisk: `DOWNWARD_ADJUSTMENT_ENABLED` i `backend/lib/divisionAdjustment.js`
+(og den tilsvarende frontend-konstant) er `false` som default. Ejeren sætter den til `true`
+bevidst ved et sæsonskifte — korrektion 4/9, fordi ejeren vil tænde den selv, ikke få den
+automatisk tændt af et sæsonnummer alene.
+
+- Begge dele udbetales **kontant ved hver sæsonstart** hvor forskellen findes, som sin egen
+  finance-linje ved siden af den garanterede base.
 - **Ganges med bestyrelsens budget-modifier** præcis som basen (§5).
 - `guaranteed_base` og `per_race_day_rate` røres ikke. Aftalen er stadig den underskrevne.
 - **Prissætnings-divisionen skal lagres på kontrakten, ikke rekonstrueres.** Den er den division
@@ -117,39 +140,87 @@ tillæg = 0,5 × ( SPONSOR_INCOME_BY_DIVISION[nuværende division]
   `start_season`, læst fra `season_standings` — virker ikke. Målt 29/8: **23 af 230 hold har ingen
   standing i den sæson**, alle oprettet efter 27/7, altså midt i en sæson. For dem er
   rekonstruktionen udefineret, og en udefineret prissætnings-division gør tillægget uberegneligt.
-  **Backfill af eksisterende rækker:** brug standingen hvor den findes; hvor den ikke gør, sæt
-  `signed_division` = holdets nuværende division. Det er korrekt for netop de 23, fordi et hold der
-  kom ind midt i en sæson ikke har nået at skifte division — tillægget bliver 0, hvilket er det
-  rigtige svar. **Fallback i drift:** manglende `signed_division` → tillæg 0, aldrig et gæt.
+  **Backfill af eksisterende rækker må IKKE bruge standingen alene.** Det var første udkast, og
+  det er forkert for **38 af 230** aktive kontrakter (målt 29/8). Grunden er sekvensen ved et
+  sæsonskifte: komprimeringen skriver den nye division **før** `expireAndRenewContracts` genererer
+  default-aftaler, så en transitions-skabt kontrakt er prissat mod holdets NYE division mens dets
+  standing fra forrige sæson stadig peger på den gamle. Målt eksempel: et hold med
+  `guaranteed_base` 772.800 (= target 840.000 = D1 × 1,40) fik standings-division 3, hvilket ville
+  have udløst +130.000 til et hold der allerede er korrekt baseret.
 
-**Symmetrien med faldskærmen er ikke tilfældig — den er hele designet.** `PARACHUTE_FACTOR = 0,5`
-(#1980, ejer-låst 5/7) udbetaler `0,5 × (base[gammel] − base[ny])` ved nedrykning. Tillæggets
-fradrag er nøjagtig samme beløb med modsat fortegn. For et nedrykket hold med **løbende** aftale
-ophæver de to hinanden eksakt, så holdet beholder sin høje base uden også at få faldskærm. For et
-hold hvis aftale er **udløbet og fornyet** i den nye division findes ingen forskel, så tillægget er
-0 og faldskærmen står uændret. **Ingen undtagelse i koden, ingen særtilfælde.** Enhver anden faktor
-end 0,5 bryder dette.
+  **Reglen der bruges i stedet** er invarianten fra §1: `target` skal ligge i
+  `[base[d] ; base[d] × 1,40]`. Find alle divisioner der opfylder båndet; er holdets
+  standings-division blandt dem, vinder den; ellers vinder en entydig enekandidat; ellers **NULL**.
+  Et tvetydigt bånd (target 400.000 passer både D2 × 1,00, D3 × 1,18 og D4 × 1,27) er ikke noget at
+  gætte på. Målt: 209 af 230 opløses, 21 forbliver NULL.
+  **Fallback i drift:** manglende `signed_division` → tillæg 0, aldrig et gæt.
 
-Konkrete beløb: D3→D1 **+130.000** · D2→D1 **+100.000** · D4→D1 **+142.500** · D4→D3 **+12.500** ·
-D2→D3 **−30.000** · D3→D4 **−12.500**. Ved 50 % dækker tillægget ca. to tredjedele af upkeep-springet.
+  **Timing-hul lukket 4/9 (`docs/audits/auto-sponsor-aftaler-2026-09-04.md` +
+  `docs/audits/sponsor-timing-hul-alle-divisioner-2026-09-04.md`).** `expireAndRenewContracts`s
+  default-gren ('safe'-aftalen der oprettes ved et ikke-valg, #2914) kaldte `getOffers` og skrev
+  `signed_division` mod `teams.division` **på skrivetidspunktet** — men komprimeringen har allerede
+  skrevet sæsonskiftets oprykninger/nedrykninger til `teams.division` FØR
+  `expireAndRenewContracts` kører i samme batch. En auto-fornyet 'safe'-aftale for et oprykket hold
+  låste derfor den NYE divisions fulde base i stedet for den gamle — præcis den fælde §3 ellers
+  lukker for manuelt valgte aftaler. Målt i prod 4/9: 30 hold ramt (D1 3, D2 15, D3 12), ~2,3 mio.
+  CZ$/sæson for meget. `expireAndRenewContracts` prissætter nu (og skriver `signed_division`) mod
+  holdets `season_standings`-division fra sæsonen der lige sluttede (samme kilde som
+  backfill-heuristikken ovenfor), IKKE `teams.division` — så auto- og manuelt valgte aftaler
+  prissættes ens uanset hvornår på sæsonen de opstår. Sæsonstart-aftaler (auto-tildelte og
+  manuelle) prissættes altså mod divisionen holdet var i FØR oprykningen, og divisions-tillægget
+  (gulv+50 %) topper derefter op til den nye divisions niveau.
 
-### 3.1 De fem beslutninger bag (ejer, 29/8)
+**Symmetrien med faldskærmen gælder NEDAD-formlen — det er hele designet dér.**
+`PARACHUTE_FACTOR = 0,5` (#1980, ejer-låst 5/7) udbetaler `0,5 × (base[gammel] − base[ny])` ved
+nedrykning. Nedad-tillæggets fradrag er nøjagtig samme beløb med modsat fortegn. For et nedrykket
+hold med **løbende** aftale ophæver de to hinanden eksakt, så holdet beholder sin høje base uden
+også at få faldskærm. For et hold hvis aftale er **udløbet og fornyet** i den nye division findes
+ingen forskel, så tillægget er 0 og faldskærmen står uændret. **Ingen undtagelse i koden.** Enhver
+anden faktor end 0,5 for nedad-formlen bryder dette. Opad-reglen (gulv + 50 %) bruger samme 0,5 i
+sit sidste trin, men er ikke længere en ren spejling af faldskærmen — det var ejerens bevidste valg
+4/9.
+
+Konkrete beløb (opad, ny regel): D3→D1 **+160.000** · D2→D1 **+100.000** · D4→D1 **+185.000** ·
+D4→D3 **+12.500** · D4→D2 **+55.000**. Nedad (uændret formel, kun ved flag+S4): D2→D3 **−30.000** ·
+D3→D4 **−12.500**.
+
+### 3.1 De fem beslutninger bag (ejer, 29/8) — og korrektionen 4/9
 
 | # | Valg | Begrundelse der blev vejet |
 |---|---|---|
 | 1 | **Hver sæson** forskellen findes, ikke engangs | Holdet betaler den nye divisions upkeep hver sæson. 212 af 230 aftaler udløber alligevel efter S3, så det rammer kun 11 hold |
-| 2 | **50 %** af forskellen | Ejer-låst `PARACHUTE_FACTOR`. Kun ved 0,5 ophæver op og ned hinanden eksakt |
+| 2 | **50 %** af forskellen (nu: af resten over gulvet, se korrektion 4/9 nedenfor) | Ejer-låst `PARACHUTE_FACTOR`. Kun ved 0,5 ophæver op og ned hinanden eksakt for nedad-formlen |
 | 3 | **Kontant ved sæsonstart**, ikke fordelt i aftalens form | Upkeep trækkes på dag ét. En fordeling i aftalens form ville sende over halvdelen af hjælpen ud i en strøm der lander efter regningen |
 | 4 | **Ganget med bestyrelsens modifier** | Konsistens: hver sponsorkrone i sæsonstart-udbetalingen går gennem modifieren. En umodificeret linje ville være endnu en undtagelse |
-| 5 | **I S3 kun opad** (79 hold, +4.825.333 CZ$); fradraget nedad først fra S4 | Ingen mister penge midt i en sæson — grandfathering-princippet fra #1234 |
+| 5 | **I S3 kun opad** (54 hold efter backfill-rettelsen af 29/8, +3.901.500 CZ$ efter modifier); nedad kun via eksplicit flag fra S4 | Ingen mister penge midt i en sæson — grandfathering-princippet fra #1234. De 10 hold der ligger for højt i S3 beholder pengene (ejer-beslutning 4/9): alle 10 aftaler udløber efter S3 |
 
-**Overgangsreglen for S3 er en éngangs-undtagelse med en udløbsdato.** Fra S4 gælder reglen begge
-veje uden undtagelse. Konsekvensen i S3: de 10 D2→D3-hold med løbende aftale beholder både den høje
-base og faldskærmen på 30.000 — én sæsons overkompensation, bevidst accepteret.
+**Korrektion 4/9 kl. ~15:45 (ejer, ét spørgsmål ad gangen):** opad-reglen ændret fra ren 50 % af
+hele forskellen til **"gulv + 50 %"** — se formlen øverst i §3. Nedad-formlen er uændret, men er
+nu bag et eksplicit `DOWNWARD_ADJUSTMENT_ENABLED`-flag (default `false`) i stedet for kun at være
+gated af sæsonnummer — ejeren tænder den bevidst ved et sæsonskifte, ikke automatisk.
+
+**Overgangsreglen for S3 er en éngangs-undtagelse med en udløbsdato.** Fra S4 kan nedad tændes af
+ejeren; opad gælder altid.
 
 **Beslutningsgrundlaget** (spiller-vendt, EN+DA): artefakt `4c8ed4bc-62c7-47e8-9beb-72c5787d4d08`.
-Sporet i #4376. **Design-go: ejer 29/8** — hard rule 25's design-gate er dermed opfyldt for
-implementeringen; PR-body skal referere denne dato.
+Sporet i #4376. **Design-go: ejer 29/8, korrigeret 4/9** — hard rule 25's design-gate er dermed opfyldt.
+
+### 3.2 Hvor det er implementeret
+
+| Enhed | Ansvar |
+|---|---|
+| `backend/lib/divisionAdjustment.js` | Ren kerne: faktor, overgangsregel, modifier-loft, idempotency-nøgle. Ingen I/O |
+| `sponsor_contracts.signed_division` | Den prissatte division. Skrives af `acceptOffer`, `acceptOfferImmediately`, `expireAndRenewContracts` (default-grenen) og `midSeasonSponsor` |
+| `economyEngine.processSeasonStart` | Krediterer tillægget som egen `division_adjustment`-transaktion, efter faldskærmen |
+| `financeForecast.js` | `projected_division_adjustment` — fuldt modellérbart, indgår i `projected_net` |
+| `SponsorOfferModal.jsx` | Viser beløbet pr. division **før** underskrift (spillerens forbehold) |
+| `scripts/creditDivisionAdjustment-4376.mjs` | Éngangs-efterbetaling for S3, samme funktioner og samme idempotency-nøgle som motoren |
+
+**Invarianten der holder designet sammen** er en test, ikke en kommentar:
+`divisionAdjustment.test.js` fejler hvis `DIVISION_ADJUSTMENT_FACTOR ≠ PARACHUTE_FACTOR`, og hvis
+fradrag + faldskærm ikke summer til nul for D1→D2 og D2→D3. `divisionAdjustmentParity.test.js`
+fejler hvis frontendens projektion afviger fra motoren for nogen kombination af divisioner —
+uden den kunne en spiller se ét beløb i modalen og få et andet udbetalt (#4345's fejlklasse).
 
 ---
 
@@ -235,7 +306,7 @@ Klausul-typen `top_half` (før 3/8) og `top_40pct` (efter) lever side om side i
 | 1 | **Ingen invariant fanger et target uden for båndet.** 36 af 230 hold lå under gulvet 29/8 og ingen vagt sagde noget. Fejlen levede fra 23/8 til den blev fundet i en Discord-triage | §1 |
 | 2 | **Løbsdags-raten er sat mod et etapetal der ikke gælder.** D1 brugte divisor 140 mod 155 faktiske, D2 112 mod 124, D4 56 mod 62 for 47 hold. 102 hold tjener ca. 10,7 % mere race-day-penge end `race_day_share × target`. Kalibrerings-invarianten i spec §4.1 holder ikke | målt 29/8 |
 | 3 | **Tilbuds-modalen viser en rate op til 2,6× for høj når den kommende sæsons kalender ikke findes endnu.** `loadSeasonStageCounts` falder tilbage på `FULL_CALENDAR_DAYS = 60`; D1 kører 155. En spiller så 5.800 og ville få 2.245. Rod-årsag til [#4345](https://github.com/NicolaiDolmer/CyclingZone/issues/4345) | verificeret mod spiller-rapport 28/8 |
-| 4 | **`/rules` lover et sponsor-loft der ikke findes.** `FINAL_SPONSOR_PAYOUT_CEILING` (720k/900k) har intet kaldested i backend, men står som prosa på `/rules` i begge sprog og som levende regel i `GAME_INVARIANTS.md:30`. Det reelle loft er `guaranteed_base × 1,20` | grep + locale |
+| 4 | ~~`/rules` lover et sponsor-loft der ikke findes~~ — **LØST 29/8.** `FINAL_SPONSOR_PAYOUT_CEILING` er slettet fra `economyConstants.js` og `rulesNumbers.js`, prosaen på `/rules` (en+da) beskriver nu det kontrakt-bevidste loft, og `GAME_INVARIANTS.md` er rettet. D4's sponsor-base manglede også på `/rules` og er tilføjet | PR #4376 |
 | 5 | **Spec 21/6 §4.3 siger `per_race_day_rate` er låst.** #2913 gjorde den om til noget der genberegnes ved aktivering. Bevidst ændring, spec aldrig opdateret — SSOT-gæld, ikke fejl | §2 |
 | 6 | **Sponsoren kører på omdømme-proxy v1** (division + resultat-historik), eksplicit markeret midlertidig i spec §9 indtil #1099 lander. Der findes **ingen aftalt udgang**: ingen dato, intet issue der ejer hvad der sker med løbende kontrakter den dag den rigtige motor kommer | §8, inventaret §5 |
 | 7 | **Renown-multiplieren mætter i praksis.** Alle 24 D1-hold har `resultsScore = 1,0` → multiplier 1,40, fordi de alle blev forfremmet og derfor lå i toppen af deres pulje. Proxy'en giver nul differentiering inden for den øverste division | målt 29/8 |

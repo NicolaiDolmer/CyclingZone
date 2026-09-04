@@ -638,10 +638,16 @@ function buildSponsorPreviewRow(
     ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
     : [];
 
-  // Samme input som sponsorContractsService.loadRenownTargetValue henter i drift:
-  // holdets NUVÆRENDE division + forrige sæsons standing/divisionsfelt.
+  // #4376 timing-fix: prissæt previewets default-aftale mod PRÆCIS samme division
+  // som expireAndRenewContracts nu gør — holdets division FØR denne transitions
+  // oprykning/nedrykning (lastSeasonStanding.division), ikke team.division. På
+  // preview-tidspunktet har komprimeringen allerede skrevet den nye division til
+  // teams (samme rækkefølge som i den rigtige transition), så team.division ville
+  // vise den nye division og lade previewet love et tillæg der aldrig udbetales
+  // (eller omvendt: skjule det tillæg der faktisk udbetales).
+  const priceDivision = lastSeasonStanding?.division ?? team.division ?? null;
   const renownTargetValue = renownTarget({
-    division: team.division ?? lastSeasonStanding?.division ?? null,
+    division: priceDivision,
     lastSeasonStanding,
     divisionStandings,
   });
@@ -651,6 +657,9 @@ function buildSponsorPreviewRow(
     activeContract: contracts.activeContract ?? null,
     pendingContract: contracts.pendingContract ?? null,
     renownTargetValue,
+    // #4376: previewets default-aftale skal baere samme signed_division som
+    // fornyelsen skriver, ellers viser previewet et divisions-tillaeg der ikke opstaar.
+    teamDivision: priceDivision,
   });
 
   const breakdown = computeSponsorForSeason({

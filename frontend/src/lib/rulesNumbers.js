@@ -28,8 +28,13 @@ export const RULES_NUMBERS = {
   sponsorD1: 600000, // SPONSOR_INCOME_BY_DIVISION[1]
   sponsorD2: 400000, // SPONSOR_INCOME_BY_DIVISION[2]
   sponsorD3: 340000, // SPONSOR_INCOME_BY_DIVISION[3]
-  sponsorCeilingS1: 720000, // FINAL_SPONSOR_PAYOUT_CEILING.S1
-  sponsorCeilingS2: 900000, // FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS
+  sponsorD4: 315000, // SPONSOR_INCOME_BY_DIVISION[4] (#1608 form-frys; manglede her indtil 29/8)
+  // #4376 · divisions-tillægget: 0,5 × forskellen mellem to divisioners sponsor-base.
+  divisionAdjustmentPct: 50, // DIVISION_ADJUSTMENT_FACTOR (0.5) × 100
+  // sponsorCeilingS1/S2 FJERNET 29/8 (#4376): FINAL_SPONSOR_PAYOUT_CEILING havde intet
+  // kaldested i backend og blev afløst af det kontrakt-bevidste loft (guaranteed_base ×
+  // MAX_BOARD_MODIFIER) i #1663. /rules lovede spillerne et loft spillet ikke har.
+  // Se docs/SPONSOR_RULES.md §8. Samme fejlklasse som salaryRatePct nedenfor.
   // #4479: stod 6.7 og var pinnet til LEGACY-konstanten SALARY_RATE (0.067 ×
   // market_value), som ingen signeringssti har brugt siden #3989. Den kørende
   // formel er current_production_value × SALARY_RATE_PRODUCTION, så /rules og

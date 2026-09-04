@@ -20,6 +20,7 @@ import {
 import { renownTarget } from "./renownEngine.js";
 import { generateOffers, FULL_CALENDAR_DAYS } from "./sponsorOffers.js";
 import { FINANCE_REASON } from "./economyConstants.js";
+import { computeDivisionAdjustment } from "./divisionAdjustment.js";
 
 // ─── Faithful service_role-mock ────────────────────────────────────────────────
 // Modelleret efter prizePayoutEngine.test.js. Dækker præcis de queries servicen
@@ -1123,13 +1124,16 @@ test("expireAndRenewContracts falder tilbage til default 'safe' når ingen match
   assert.deepEqual(inserted.bonus_clauses, []);
 });
 
-test("expireAndRenewContracts default-fornyer med ELEVERET renown for et hold der skiftede division (#2909)", async () => {
+test("expireAndRenewContracts default-fornyer med ELEVERET renown for et hold der skiftede division (#2909, opdateret for #4376 timing-fix)", async () => {
   // Hold der IKKE selv valgte sponsor (ingen pending) → default-forny rammer
-  // getOffers → loadRenownTargetValue. Holdets nye division er 2; sidste sæson
-  // kørte det suverænt i D3. Regressions-fælden: hvis renewal-stien filtrerer
-  // season_standings på holdets NYE division FØR opslag, findes t1's egen
-  // række aldrig, og den fornyede kontrakts guaranteed_base falder til den
-  // flade 1.0-multiplikator-værdi i stedet for at afspejle D3-formen.
+  // getOffers → loadRenownTargetValue. Holdets nye division er 2 (efter
+  // oprykning); sidste sæson kørte det suverænt i D3. #4376 timing-fixet:
+  // prissætningen (og signed_division) skal ramme den GAMLE division (3) —
+  // holdets season_standings-række fra sæsonen der lige sluttede — ikke
+  // teams.division 2, som komprimeringen allerede har skrevet på dette
+  // tidspunkt. Samtidig skal den elevated-renown-regression fra #2909 stadig
+  // holde: rank-1-formen i D3 skal stadig løfte target over D3s flade base,
+  // ikke falde tilbage til 1,0-multiplikatoren.
   const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
   const prevSeason = { id: "s1", number: 2 };
   const standings = [
@@ -1151,12 +1155,14 @@ test("expireAndRenewContracts default-fornyer med ELEVERET renown for et hold de
   const inserted = supabase.state.inserts[0];
   assert.equal(inserted.status, "active");
   assert.equal(inserted.variant, "safe");
+  // #4376 timing-fix: prissat mod GAMMEL division (3), ikke ny (2).
+  assert.equal(inserted.signed_division, 3);
 
   // Facit: samme renownTarget som motoren beregner direkte fra holdets EGEN
-  // (D3-)standing — ikke den flade division-2-base (400000).
+  // (D3-)standing, prissat mod D3 — ikke den flade division-2-base (400000).
   const mine = standings.find((s) => s.team_id === "t1");
   const divisionStandings = standings.filter((s) => s.division === 3);
-  const expectedTarget = renownTarget({ division: 2, lastSeasonStanding: mine, divisionStandings });
+  const expectedTarget = renownTarget({ division: 3, lastSeasonStanding: mine, divisionStandings });
   const safeVariant = generateOffers({
     teamId: "t1",
     seasonNumber: 3,
@@ -1165,9 +1171,68 @@ test("expireAndRenewContracts default-fornyer med ELEVERET renown for et hold de
 
   assert.equal(inserted.guaranteed_base, safeVariant.guaranteedBase);
   assert.ok(
-    inserted.guaranteed_base > Math.round(400000 * 0.92),
-    `guaranteed_base skal afspejle D3-formen, fik ${inserted.guaranteed_base}`,
+    inserted.guaranteed_base > Math.round(340000 * 0.92),
+    `guaranteed_base skal afspejle D3-formens ELEVEREDE renown (rank 1), fik ${inserted.guaranteed_base}`,
   );
+});
+
+test("expireAndRenewContracts (#4376 timing-fix): auto-'safe'-fornyelse ved oprykning prissættes mod GAMMEL division, divisions-tillægget topper derefter op", async () => {
+  // Regressions-fælden det lukker (docs/audits/sponsor-timing-hul-alle-divisioner-2026-09-04.md):
+  // komprimeringen skriver den nye division til teams FØR expireAndRenewContracts
+  // kører i samme sæsonskifte-batch. Uden fixet ville et oprykket holds auto-
+  // 'safe'-aftale låse den NYE divisions fulde base (600000×0,92) i stedet for
+  // den gamle (400000×0,92) — nøjagtig fejlen der ramte "Bad At Names"/"TR
+  // Cycling"/"Apex Cycling" i prod S3.
+  const expiring = { id: "c-exp", team_id: "t1", status: "active", expires_after_season: 2 };
+  const prevSeason = { id: "s1", number: 2 };
+  // t1 ligger midt i feltet i D2 sidste sæson (ingen elevated-renown-støj) →
+  // ren division-prissætning at teste imod.
+  const standings = [
+    { season_id: "s1", team_id: "t1", division: 2, rank_in_division: 5, total_points: 400 },
+    { season_id: "s1", team_id: "t2b", division: 2, rank_in_division: 6, total_points: 380 },
+  ];
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 1 }, // NYE division: dobbelt-/hurtig-oprykket til D1
+    seasonsByNumber: { 2: prevSeason },
+    standingsBySeasonId: { s1: standings },
+    activeContractByTeam: { t1: expiring },
+    pendingContractByTeam: { t1: null },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  assert.equal(supabase.state.inserts.length, 1);
+  const inserted = supabase.state.inserts[0];
+  // Prissat (og signed_division) mod GAMMEL division 2, ikke NY division 1.
+  assert.equal(inserted.signed_division, 2);
+
+  const mine = standings.find((s) => s.team_id === "t1");
+  const divisionStandings = standings.filter((s) => s.division === 2);
+  const expectedTarget = renownTarget({ division: 2, lastSeasonStanding: mine, divisionStandings });
+  const safeVariant = generateOffers({
+    teamId: "t1",
+    seasonNumber: 3,
+    renownTargetValue: expectedTarget,
+  }).find((o) => o.variant === "safe");
+  assert.equal(inserted.guaranteed_base, safeVariant.guaranteedBase);
+
+  // guaranteed_base skal IKKE afspejle D1s fulde base (600000×0,92=552000) — det
+  // var netop timing-hullet.
+  assert.ok(
+    inserted.guaranteed_base < Math.round(600000 * 0.92),
+    `guaranteed_base laakkede D1s fulde base i stedet for D2s, fik ${inserted.guaranteed_base}`,
+  );
+
+  // Divisions-tillægget (backend/lib/divisionAdjustment.js) topper derefter op
+  // til D1-niveau med "gulv + 50 %" — aftalen selv rører sig ikke.
+  const adjustment = computeDivisionAdjustment({
+    currentDivision: 1,
+    signedDivision: inserted.signed_division,
+    seasonNumber: 3,
+  });
+  // D1 m. D2-aftale (ét trin op): gulv 0, halvdelen af hele forskellen.
+  assert.equal(adjustment, Math.round(0.5 * (600000 - 400000)));
+  assert.ok(adjustment > 0, "hold der rykkede op skal have et POSITIVT divisions-tillæg");
 });
 
 test("expireAndRenewContracts fornyer et hold helt uden kontrakt (default 'safe')", async () => {

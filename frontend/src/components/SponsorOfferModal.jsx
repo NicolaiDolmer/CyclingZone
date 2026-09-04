@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { projectDivisionAdjustment } from "../lib/divisionAdjustment";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import Modal from "./ui/Modal.jsx";
@@ -108,6 +109,15 @@ export default function SponsorOfferModal({
   const stagesPerDay =
     Number(raceDays) > 0 && calendarDays > 0 ? Number(raceDays) / calendarDays : null;
 
+  // #4376 · Divisions-tillaegget. Aftalen prissaettes mod holdets NUVAERENDE division;
+  // ender holdet i en anden, lægges korrektionen oveni hver saeson forskellen findes.
+  // Den vises HER, foer underskriften — det var spillerens eksplicitte forbehold da
+  // reglen blev valgt. Kun relevant naar manageren kigger paa en anden division end sin egen.
+  const divisionAdjustment = projectDivisionAdjustment({
+    targetDivision: activeDivision,
+    signedDivision: Number(teamDivision),
+  });
+
   const confirmingOffer = offers.find((o) => o.variant === confirming) || null;
 
   function projections(offer) {
@@ -206,6 +216,20 @@ export default function SponsorOfferModal({
                       perDay: Math.round(stagesPerDay),
                     })}
                   </>
+                )}
+              </p>
+            )}
+            {divisionAdjustment !== 0 && (
+              <p className="mt-1 text-xs tabular-nums text-cz-2">
+                {t(
+                  divisionAdjustment > 0
+                    ? "offers.divisionAdjustmentUp"
+                    : "offers.divisionAdjustmentDown",
+                  {
+                    division: activeDivision,
+                    signed: Number(teamDivision),
+                    amount: formatNumber(Math.abs(divisionAdjustment)),
+                  }
                 )}
               </p>
             )}

@@ -298,7 +298,18 @@ CREATE TABLE sponsor_contracts (
   expires_after_season INTEGER NOT NULL,
   status               TEXT NOT NULL DEFAULT 'active'
     CHECK (status IN ('active', 'expired', 'replaced', 'pending')),
-  created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- #2948 "Sponsorvalg 2.0" (2026-07-25-sponsor-choice-2.sql). Disse seks kolonner
+  -- fandtes i prod men manglede i dette spejl indtil 29/8 — verificeret mod
+  -- information_schema og tilføjet her, så en frisk DB matcher prod.
+  variant              TEXT,
+  guaranteed_fraction  NUMERIC,
+  race_day_share       NUMERIC,
+  bonus_clauses        JSONB NOT NULL DEFAULT '[]'::jsonb,
+  results_bonus_paid   BIGINT NOT NULL DEFAULT 0,
+  activated_at         TIMESTAMPTZ,
+  -- #4376 (2026-08-29-division-adjustment.sql): den division aftalen blev prissat mod.
+  signed_division      INTEGER
 );
 COMMENT ON TABLE sponsor_contracts IS
   'Sponsor-kontrakter (#1663, Økonomi Fase 2): forhandlet sponsor-indkomst pr. hold. status pending->active ved sæson-skifte; active->expired/replaced.';

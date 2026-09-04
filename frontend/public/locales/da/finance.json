@@ -168,7 +168,8 @@
       "auto_squad_sale": "Automatisk trup-salg",
       "forced_debt_sale": "Tvunget salg (gældsloft)",
       "squad_violation_fine": "Trupstørrelse-bøde",
-      "starting_budget": "Startbudget"
+      "starting_budget": "Startbudget",
+      "division_adjustment": "Divisions-tillæg"
     }
   },
   "timeAgo": {

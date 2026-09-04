@@ -14,7 +14,7 @@
     "unitDefinition": "Your sponsor pays per stage your team starts. Not per calendar day, and not per race day.",
     "unitCount": "Division {division} rides {count} stages in season {season}, and every one of them pays.",
     "unitPerDay": "They are spread over {days} calendar days, so most days carry about {perDay} stages.",
-    "divisionNote": "Your maximum payout stays the same no matter which division you pick above. Division only changes how many stages you have to earn it over, and that sets the rate per stage.",
+    "divisionNote": "The deal itself pays the same maximum whichever division you pick above. Division only changes how many stages you earn it over, and that sets the rate per stage. The division adjustment is a separate line and is shown above when it applies.",
     "divisionPicker": "Preview rate for a division",
     "divisionPill": "Division {division} · {count} stages",
     "deadline": "Your choice locks when season {season} starts. If you don't choose, the club signs the 1-season safe deal for you.",
@@ -26,7 +26,9 @@
     "signDeal": "Sign deal",
     "cancel": "Cancel",
     "guaranteedShare": "{pct}% of the deal is guaranteed",
-    "boardNote": "Board satisfaction adjusts the guaranteed part by up to ±20%. It does not touch per-stage money or bonuses: those are paid in full, on top, as you earn them."
+    "boardNote": "Board satisfaction adjusts the guaranteed part by up to ±20%. It does not touch per-stage money or bonuses: those are paid in full, on top, as you earn them.",
+    "divisionAdjustmentUp": "If you race in Division {division} on this deal, a division adjustment of {amount} CZ$ is paid on top every season, because the deal is priced for Division {signed}.",
+    "divisionAdjustmentDown": "If you race in Division {division} on this deal, {amount} CZ$ is deducted every season, because the deal is priced for Division {signed}."
   },
   "variant": {
     "safe": "The safe deal",

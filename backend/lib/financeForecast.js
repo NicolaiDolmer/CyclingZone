@@ -25,6 +25,7 @@ import {
   buildSponsorStandingsContext,
   computeSponsorForSeason,
 } from "./sponsorEngine.js";
+import { resolveDivisionAdjustment } from "./divisionAdjustment.js";
 import { UPKEEP_BY_DIVISION, UPKEEP_BEFORE_FIRST_RACE_ENABLED } from "./economyConstants.js";
 import { getFacilityUpkeepTotal } from "./facilityEngine.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -153,6 +154,9 @@ export const FINANCE_FORECAST_TYPE_COVERAGE = Object.freeze({
   facility_upkeep: { modeled: true, field: "projected_facility_upkeep" },
   staff_salary: { modeled: true, field: "projected_staff_salary" },
   academy_drift: { modeled: true, field: "projected_academy_drift" },
+  // #4376: fuldt forudsigelig — bestemt af holdets division og kontraktens
+  // signed_division, uden nogen fremtidig begivenhed eller manager-beslutning.
+  division_adjustment: { modeled: true, field: "projected_division_adjustment" },
 
   // ── Deliberately excluded: result-/event-dependent, not forecastable ────
   sponsor_race_day: { modeled: false, reason: "ongoing variable sponsor pool — result-dependent (race days not yet raced)" },
@@ -247,6 +251,18 @@ export function computeFinanceForecast({
   const projectedSponsorBase = Math.round(sponsorBreakdown.base * boardModifier * pulloutFactor);
   const projectedSponsorVariable = projectedSponsor - projectedSponsorBase;
 
+  // #4376 · divisions-tillæg. Egen linje, ikke en del af sponsor-linjerne — spilleren
+  // skal kunne se korrektionen for sig selv, og den udbetales som sin egen
+  // finance_transactions-række. Samme modifier-stak som basen (ejer-valg 4 af 29/8).
+  // Bruger SAMME kontrakt-gren som sponsoren ovenfor, så prognosen ikke kan modellere et
+  // tillæg fra en aftale der slet ikke er aktiv i target-sæsonen.
+  const projectedDivisionAdjustment = resolveDivisionAdjustment({
+    team,
+    contract: contractForSeason,
+    seasonNumber,
+    modifier: boardModifier * pulloutFactor,
+  }).payout;
+
   // Præmie-estimat = sum af riders.prize_earnings_bonus, som DB allerede beregner
   // som rolling avg over sidste 1-3 afsluttede sæsoner. Roster'ets "track record"
   // er den mest robuste prognose vi har for næste sæson.
@@ -340,6 +356,7 @@ export function computeFinanceForecast({
   // ved sæsonskiftet, og lånerenten rører aldrig teams.balance.
   const projectedNet =
     projectedSponsor +
+    projectedDivisionAdjustment +
     projectedPrize +
     projectedSalary +
     projectedUpkeep +
@@ -396,6 +413,10 @@ export function computeFinanceForecast({
     // variabel (rang/point-baseret) — sum == projected_sponsor.
     projected_sponsor_base: projectedSponsorBase,
     projected_sponsor_variable: projectedSponsorVariable,
+    // #4376: divisions-tillægget står som sin EGEN linje og indgår i projected_net.
+    // Det lægges bevidst ikke ind i projected_sponsor: de to har hver sin
+    // finance_transactions-type, og at slå dem sammen ville gøre den ene usynlig.
+    projected_division_adjustment: projectedDivisionAdjustment,
     projected_prize: projectedPrize,
     // #3899: interval i stedet for punktestimat — se computePrizeInterval.
     prize_low: prizeInterval.low,
