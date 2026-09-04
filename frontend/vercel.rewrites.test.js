@@ -76,6 +76,26 @@ test("boot-vagten (chunk-selfheal.js) har ingen lang cache-header (#4595)", () =
   }
 });
 
+// Review 4/9 (#4760): boot-vagten skal have en KORT, revaliderende cache — ikke
+// bare "ikke-immutable". Uden en eksplicit header falder den tilbage til
+// Vercels default (ofte lang nok til at genindfoere præcis samme faelde: en
+// fejlcachet 404 der overlever langt ind i det næste deploy).
+test("chunk-selfheal.js har en eksplicit KORT cache-header (#4595 review)", () => {
+  const rule = config.headers.find((h) => h.source === "/chunk-selfheal.js");
+  assert.ok(rule, "der skal vaere en dedikeret header-regel for /chunk-selfheal.js");
+
+  const cacheControl = rule.headers.find((h) => h.key === "Cache-Control")?.value ?? "";
+  assert.equal(
+    cacheControl,
+    "public, max-age=300, stale-while-revalidate=86400",
+    "boot-vagten skal cache kort (5 min) og revalidere i baggrunden, aldrig immutable",
+  );
+
+  const maxAge = Number(cacheControl.match(/max-age=(\d+)/)?.[1]);
+  assert.ok(Number.isFinite(maxAge) && maxAge <= 300, "max-age skal vaere kort nok til at et nyt deploy vinder hurtigt");
+  assert.ok(!/immutable/.test(cacheControl), "boot-vagten maa ALDRIG vaere immutable");
+});
+
 test("alle mapper med lang cache-header er undtaget fra fallback", () => {
   // Forward-guard: tilfoejes en ny mappe med lang max-age, skal den ogsaa undtages,
   // ellers genopstaar praecis den samme faelde et nyt sted.

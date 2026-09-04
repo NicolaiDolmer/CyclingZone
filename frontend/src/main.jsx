@@ -1,5 +1,6 @@
 import React from "react";
 import { hydrateRoot, createRoot } from "react-dom/client";
+import * as Sentry from "@sentry/react";
 import App from "./App.jsx";
 import { AppProviders } from "./AppProviders.jsx";
 import { initSentry } from "./lib/sentry.jsx";
@@ -114,5 +115,30 @@ captureFirstTouch();
   } else {
     if (rootEl.firstElementChild) rootEl.replaceChildren();
     createRoot(rootEl).render(tree);
+  }
+
+  // #4595 review: appen har nu booted — boot-vagten i public/chunk-selfheal.js
+  // skal stoppe med at reagere paa modul-fejl herefter (en fejl efter et
+  // vellykket mount er ikke et boot-problem, og haandteres af andre lag som
+  // lazyWithRetry.js).
+  window.__czAppBooted = true;
+
+  // #4595 review: spor selv-helbredte deploys i Sentry som et lavstoej
+  // "warning"-signal, saa vi kan se hvor tit boot-vagten reddede en session
+  // uden at forurene fejl-raten. Rapporteres hoejst én gang pr. session (egen
+  // sessionStorage-nøgle), og kun hvis vagtens tidsstempel er friskt (<5 min) —
+  // en gammel noegle fra en tidligere session i samme fane er ikke "lige skete".
+  try {
+    const selfHealAt = Number(window.sessionStorage.getItem("cz_chunk_selfheal_at"));
+    const alreadyReported = window.sessionStorage.getItem("cz_chunk_selfheal_reported");
+    if (selfHealAt && !alreadyReported && Date.now() - selfHealAt < 5 * 60 * 1000) {
+      Sentry.captureMessage("chunk-selfheal reloaded", {
+        level: "warning",
+        extra: { pathname: window.location.pathname, referrer: document.referrer },
+      });
+      window.sessionStorage.setItem("cz_chunk_selfheal_reported", "1");
+    }
+  } catch {
+    // sessionStorage utilgaengelig — samme fail-closed holdning som selve vagten.
   }
 })();
