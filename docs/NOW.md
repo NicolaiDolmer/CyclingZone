@@ -4,32 +4,26 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (morgen 4/9, ejer-only, én ad gangen):** **1) PR #4745 (#2423 Skew Protection):** læs PR-body, giv go → merge → slå Skew Protection TIL i Vercel (Settings → Advanced) → chunk-budget-gaten i deploy-verify (232/24 t mod 25) skal falde inden for et døgn. **2) Tænd bulk-skrivningen fra #4148** når du vil: `app_config.rider_values_bulk_write_enabled = true` (SQL i #4148-kommentaren 3/9) → mål `values(...)`-tallet i loggen. **3) Retningssamtale om træningssiden (#4613):** retning B ligger i PR #4736 (draft); start med hvad siden skal gøre for spilleren på en almindelig dag. **4) S4-apply-kæden (#4270, inden 10/9):** vælg drift-flag ELLER katalog-løft. **5) Nøgleblok #4616 → PR #4608 → mail dry_run (#2853)** · `npm run sync-deps` lokalt (react mangler i hoved-checkout, låst rolldown-fil) · Discord-post 7.239 + afstemning #4714 · mandagstal 7/9 kl. 09.
+> **🎯 Next action (næste session, ejer-styret, ét kort ad gangen):** **1) Forum + Community fredag:** prompt ligger klar i `docs/drafts/session-prompt-forum-community-fredag-2026-09-04.md`. **2) #4485 U25-reparation:** ejer-GO givet 4/9; PR #4761 er merget → kør `node backend/scripts/repair-4485-young-classification.js --dry-run` → `--apply` (B, begge veje) → post-verify 0 → spillerbesked-udkast. **3) #4753 flag:** når de 24 igangværende etapeløb er kørt: ejer-GO → `ai_team_retire_enabled = on` → heal-sweepen nedlægger 4 markerede hold → puljer 8/10/11/15 = 24. **4) #4147 flag:** efter et døgn med vagten → ejer-GO → `race_finalize_resumable_enabled = on`. **5) Næste analyseopgaver (ejer 4/9):** #2749 S1-præmier for meget (frist 11/9) · #2457 AI-kvalitet pr. division (mål) · #4765 svaghedsrate (frist 11/9) · #2161 Discord-login (byg) · #4582 demote-kontrakt (WIP i worktree) · #3512 (rebaset, backend-tests rød) · #3426 måling. **6) Ejer-klik:** #4616 (EUR-planer i checkout + Stripe + 2 Railway-nøgler) → merge PR #4608 · visuelt go på draft-PR'er #4757, #4768, #4769.
 
-> **⏳ Venter på DIN beslutning (én ad gangen):** **#4629** træningsprogrammer §8 · **#4632** løbsdagens intention (model C) · **#4201** assistent-tilstand (mekanik merget, flag off) · **#4700** luk eller hold 14 dage · **#3426** nedkørsel, ventet 4 uger på din observation · **#4376/PR #4388** S3-kompensation (A) · **#4177** `CUSTOM_END_MIN_HOURS` · **#4576** intake-apply · #4485 · #4448 · #4098 · #3512 (anbefalet lukket) · **#4627** kræver at du kører `/design-sync`.
+> **⏳ Venter på DIN beslutning:** **#4376/PR #4388** sponsor-korrektion (IKKE godkendt, drøftes) · **#4629** træningsprogrammer · **#4632** løbsdagens intention · **#4613** træningssiden (PR #4736 draft) · **#4714** afstemning · #4627 design-sync · 12 punkter i `docs/audits/stale-issues-audit-2026-09-04.md` spand D (ét ad gangen).
 
-> **🔴 Åbne fund:** **#4753** 4 puljer på 25 hold (13 AI-hold utrimbare, FK-beslutning fra #4233 aldrig truffet) · **#4595** chunk-fejl (rodfix = #2423, PR klar) · **#4453** Railway-logvagt mangler secret · **#4537** fair play 2 hold · **#2960** React 19 egen session · #4146 · #4530 · #4531 · #4423 · **#4109** planlægnings-fladen kræver mockups · webkit-hydration #418 set intermitterende på PR-CI (datapunkt på #4370).
+> **🔴 Åbne fund:** **#2423** Skew Protection via `__vdpl`-cookie er SLÅET FRA (hotfix 057622162): Vercel pinner assets men ikke dokumentet ved browser-navigation → alle spillere med cookie fik 404 efter hvert deploy. Kun selvheling (#4595, live) + deploy-disciplin (ét vindue pr. bølge). · **CYCLINGZONE-56** chunk-fejl skal falde nu · **#4453** Railway-logvagt mangler secret · #4537 · #4530 · #4531 · #4109.
 
-> **✅ Aftenbølge 3/9** (`docs/audits/night-wave-2026-09-03-aften.md`): 5 PR merget (#4740-#4744), #2423 PR #4745 afventer go, 166 locale-pile udestår på #3422.
+> **✅ Session 4/9 (Fable):** prod-udfald 08:16-08:36 (PR #4745 `?dpl=`) revertet; rod-årsag cachede 404 + immutable fundet → selvheling live (#4595, PR #4760) · merget: #4755 audit-timeout, #4756 alarm-dedupe (#2738), #4762 AI-hold nedlægges (flag OFF), #4766 GT-hviledags-vagt, #4767 genoptagelig afslutning (flag OFF), #4763 sæsonskifte-nøgle, #4761 U25-script, #4770 lofter 25→45 + GC punch 80 · prod-mutationer m. ejer-go: #4148 flag on, #4576 105 rækker expired, #3069 6 dubletter slettet, kolonner finalize_state/retired_at applied manuelt (auto-migrate stoppede på #4755-SQL, rettet caddc1b94) · 25+ beslutninger truffet, 20 issues lukket, 21 balance-issues flyttet fra needs-decision til sæsonskifte-kø · postmortems i `.claude/learnings/2026-09-04-*.md` (4 stk.).
 
-> **🔍 Sentry/Railway-triage 4/9:** 4 Sentry-issues resolvet (støj/allerede fikset) · **PR #4754** (#4752) dedupe AI-trim-alarmen: 288 events i døgnet → 1, backend-only, 8330 tests grønne, **afventer dit go** (`audit`-check rød på en Supabase statement-timeout, urelateret — se PR-kommentar) · **#4753** rejst: 4 puljer på 25 hold fordi døde `transfer_offers` gør 13 AI-hold utrimbare — **kræver dit A/B/C-valg** (anbefaling: C).
+> **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). 12 betalende (MRR 436 kr). #4616: EUR-planer findes i Alunta men ikke i checkout, Railway mangler EUR-nøgler → ejer-klik. #4514: kunden beholder Pro (ejer 4/9). B2C-only ønske (#4511/#4616 pkt 8).
 
-> **📌 Til næste session:** 1) verificér PR #4754's CI + merge efter go · 2) **#3069** triageret 4/9: 6 af 7 "drift"-fund er kun formatuoverensstemmelse i `schema_migrations` (6 rækker uden `database/`-præfiks mod 391 med) — normaliserings-SQL ligger klar i kommentaren og **afventer dit go**; det 7. fund (`expire-stale-bonus-offers-4482.sql` applied, repoet har `restore-s2-end-...`) er ægte og skal ses af et menneske · 3) **#2738** rest: migrér `balanceDriftWatch` + `cronHeartbeat` til den nye `opsAlertDedupe`-hjælper.
-
-> **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). PR #4608 efter #4616. Pro v1.1 live. #4645 pris-vagt (synk efter #4608). #4646 udskudt 3/9. #4512 dunning · #4511 EU-moms.
-
-> **💰 Værdier, fast dato søn 6/9:** markedsblendet 15 % (ejer-go 30/8, #4449). Før flip: runtime læser v2-artefakt, tørkørsel mod prod, ejer-go, spillerbesked. SSOT `ECONOMY_RULES.md` §9.
-
-> **✅ S3 kører:** 529 løb / 1.239 etaper, 28/8 → søn 27/9. Kalender-invariant-audit grøn 3/9.
+> **✅ S3 kører:** 529 løb, 28/8 → søn 27/9. Etaper kører hver hele time; scheduler hvert 5. min.
 
 ## Standing context (forever-relaunch)
 
 - **Liga:** 4-divisions-pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
-- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag**. **Pension:** afsluttet sæsons alder. Alders-referenceår = `riderSeasonAge.js` (S3=2028).
-- **Race engine:** v3 låst fallback; v4-flip ejer-only, gate = 5-seed-middel; F3-ankre grønne 2/9. Næste: #4707. **Bonustilbud (Regel A):** ét tilbud lever præcis én sæson.
-- **Økonomi/værdier S3:** låst. **Sikkerhed:** kun #691 åben. **Spiller-kommunikation:** MAN uge-note · ONS ét spørgsmål · SØN ugens øjeblik (#428).
-- **Mekanik:** PR'er merges med `--admin` (én ad gangen); `database/*.sql` applies af auto-migrate.yml ved merge, Claude laver kun post-verify.
+- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (GT-hviledage bundet, #4209). **Pension:** afsluttet sæsons alder. Alders-referenceår = `riderSeasonAge.js` (S3=2028). U25 = 25 og yngre.
+- **Race engine:** v3 låst fallback; v4-flip ejer-only. Krav til v4 (ejer 4/9): #2789 rute-huller, #2944 graduerede styrt + mekaniske uheld uden DNF, #2582 tidsgrænse.
+- **Grundregler (rytter, værdi/løn, økonomi-balance) udskudt til efter 27/9** (ejer 28/8 + 4/9).
+- **Mekanik:** PR'er merges med `--admin` én ad gangen, ÉT deploy-vindue pr. bølge; `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Workers: maks 3 tunge, "push senest efter 15 min", fremdrift måles på branchens sidste push.
 
-> **🤖 Working agent:** Ingen aktiv session (Fable lukkede aftenbølgen 3/9 kl. ~00:50; ejeren sov fra 23:55).
+> **🤖 Working agent:** Ingen aktiv session (Fable lukkede 4/9 kl. ~12:15).
 
 _Historik i git-log, issue-tråde + docs/audits/._
