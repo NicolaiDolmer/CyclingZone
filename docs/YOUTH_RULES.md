@@ -71,6 +71,8 @@ Ejer, ordret: *"Spilleren skal som udgangspunkt selv vælge hvor rytterne er. [.
 | Opad er altid tilladt | En 17-årig må stå på U23 team, en 20-årig på Senior team. Kræver ledig plads i mål-truppen |
 | Nedad kun inden for aldersloftet | En 24-årig kan ikke flyttes til U23 team. En 19-årig kan ikke flyttes til Junior team |
 | Alderen tvinger kun opad | Ved sæsonskifte får spilleren listen over ryttere der er vokset ud af deres trup (Graduation Day). Han flytter selv. Gør han intet inden fristen, flytter systemet rytteren én trup op hvis der er plads og råd, ellers sælges han, ellers slippes han (dagens default-kæde, `academyGraduationSweep.js`) |
+| **Salget skal terminere** (#4495, 5/9) | Vælges "sælg", oprettes en senior-auktion og rytteren bliver bevidst stående `is_academy=true` (uden for cap) mens auktionen kører. **Ender auktionen uden bud, slippes rytteren: fri agent** (`team_id=NULL`, `is_academy=false`, kontraktfelter nullet) — sidste led i default-kæden, samme udfald som `resolveGraduation`s release-gren. Kæden må aldrig ende i en tilstand hvor rytteren hverken er solgt, promoveret eller sluppet. Kode: `academyGraduation.releaseUnsoldGraduate`, kaldt fra `auctionFinalization.js`s no-bid-gren |
+| **Ingen akademirytter over graduerings-alderen** (#4495) | En rytter med `is_academy=true` og sæsonalder ≥ `GRADUATE_AGE` må kun eksistere mens (a) hans override-vindue er åbent, eller (b) han er på en aktiv auktion. Alt andet er et invariant-brud. Vagt: `ownershipInvariantWatch` invariant G (dagligt, read-only, alarmerer kun). Prædikat + grace-vindue: `backend/lib/stuckAcademyGraduates.js`. Reparation: `backend/scripts/repairStuckAcademyGraduates.js` (`--dry-run` default, `--apply --owner-go` ejer-gated) |
 | Det tvungne valg flytter fra 22 til 23 | I dag: akademi 16-21, `GRADUATE_AGE: 22`. Nyt: ud af U23 ved 23. Bevidst regelændring |
 | Flyt er gratis og øjeblikkeligt | Ingen transfervindue, ingen gebyr. Rytteren beholder kontrakt og løn (§2.4). Kan ikke flyttes mens han er i aktiv auktion eller midt i et etapeløb (dagens gates i `academyTransfer.js` bevares) |
 | 1 rytter = 1 løb pr. løbsdag | Urørt. Flyt midt på en løbsdag ændrer ikke dagens udtagelse |
@@ -157,6 +159,8 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 | Drift | `ACADEMY.DRIFT_PER_SEASON`, opkræves i `processSeasonStart` | pr. besat plads pr. sæson |
 | Plads-loft | `academy_full` ved `academy_count >= 8` | 8 (erstattes af loft pr. trup) |
 | Graduering | `backend/lib/academyGraduation.js` `GRADUATE_AGE: 22`, `DEADLINE_DAYS: 7`; sweep i `academyGraduationSweep.js` | pending-række pr. rytter ≥ 22, default-kæde promovér → sælg → slip |
+| Usolgt graduate-auktion (#4495, 5/9) | `academyGraduation.releaseUnsoldGraduate`, kaldt fra `auctionFinalization.js` | ingen bud → fri agent (§2.2). Conditional + idempotent; retter samtidig grad-rækkens fejlagtige `sold`-stempling til `released` |
+| Vagt: fastlåst akademi-graduate (#4495) | `backend/lib/stuckAcademyGraduates.js` + `ownershipInvariantWatch` invariant G | dagligt read-only tjek, grace `STUCK_GRADUATE_GRACE_HOURS` (48t) så et åbent/nyligt override-vindue ikke alarmerer |
 | Flyt op/ned uden for graduering | `backend/lib/academyTransfer.js` `promote()`/`demote()`; RPC `demote_rider_to_academy` i `database/2026-06-25-academy-promote-demote.sql` | ned kræver sæsonalder ≤ 22, ingen aktiv auktion, akademi ikke fuldt |
 | U23/U25-grænser | `backend/lib/riderSeasonAge.js` `isU23ForSeason` (< 23), `isU25ForSeason` (≤ 25, UCI-regel #4587, 2/9) | ét sted for alle kopier |
 | Årgangsmærke | `riders.generation_tag` ('s<sæson>') | sættes på alle ungdoms-genererede ryttere (#2493-fundament) |
@@ -206,6 +210,7 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 | 4 | `GAME_INVARIANTS.md`: "8-plads akademi-cap håndhæves på ENHVER akademi-tilføjelse" | Gælder indtil slice 1. Rettes i samme PR som loft pr. trup (filen er frossen, ejer-godkender) |
 | 5 | `help.json:1151` lover en trupstruktur der ikke findes | Slice 0 |
 | 6 | Akademi-promotion-spec 18/6: tvunget valg ved 22 | Denne fil §2.2: ved 23 (ud af U23) |
+| 7 | `academy_graduation.status='sold'` stemples når auktionen **oprettes**, ikke når den **afgøres** — status siger "listet", ikke "solgt" (#4495 punkt 2) | Indtil videre: `releaseUnsoldGraduate` retter rækken til `released` når salget ikke blev til noget. En egentlig `listed` → `sold`/`unsold`-livscyklus kræver migration + ejer-go og er ikke bygget |
 
 ---
 
@@ -220,6 +225,6 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 
 **Byggestatus:** `docs/FEATURE_STATUS.md` (Academy-afsnittene) · epic [#2492](https://github.com/NicolaiDolmer/CyclingZone/issues/2492) · [#932](https://github.com/NicolaiDolmer/CyclingZone/issues/932) · [#958](https://github.com/NicolaiDolmer/CyclingZone/issues/958) (lukket, superseded)
 
-**Kode (verificér altid mod denne):** `backend/lib/academyFlag.js` · `academyIntake.js` · `academyGraduation.js` · `academyGraduationSweep.js` · `academyTransfer.js` · `sundayIntakeTick.js` · `academyIntakeExpirySweep.js` · `academyPnl.js` · `riderSeasonAge.js` · `frontend/src/pages/AcademyPage.jsx` · `database/2026-06-25-academy-promote-demote.sql`
+**Kode (verificér altid mod denne):** `backend/lib/academyFlag.js` · `academyIntake.js` · `academyGraduation.js` · `academyGraduationSweep.js` · `academyTransfer.js` · `stuckAcademyGraduates.js` · `sundayIntakeTick.js` · `academyIntakeExpirySweep.js` · `academyPnl.js` · `riderSeasonAge.js` · `frontend/src/pages/AcademyPage.jsx` · `database/2026-06-25-academy-promote-demote.sql`
 
 **Design:** `docs/design/PAGE_TEMPLATES.md` (bindende) · `docs/design/youth-tiers/` (wireframes + brief)

@@ -320,6 +320,12 @@ async function restampSoldGraduationAsReleased(supabase, { teamId, riderId, now 
       .eq("id", data.id);
     if (updErr) throw new Error(updErr.message);
   } catch (err) {
+    // best-effort: restemplingen er en BOGFOERINGS-rettelse, ikke selve
+    // udgangen. Rytteren er paa dette tidspunkt allerede frigivet (conditional
+    // update bekraeftet), saa en fejl her maa ALDRIG kaste og rulle den
+    // frigivelse tilbage — den logges for synlighed og fanges naeste gang af
+    // ownershipInvariantWatch invariant G. Samme moenster som
+    // resolvePendingGraduationOnSale nedenfor.
     console.error(`restampSoldGraduationAsReleased failed (${riderId}):`, err.message);
   }
 }
