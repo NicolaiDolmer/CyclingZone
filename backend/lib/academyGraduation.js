@@ -217,7 +217,113 @@ export async function defaultResolveGraduate(supabase, {
   }
 }
 
+/**
+ * #4495 — UDGANGEN for en graduate-auktion der sluttede UDEN bud.
+ *
+ * Kontrakten har hele tiden staaet i createGraduateAuction's docblok: rytteren
+ * forbliver `is_academy=true` (uden for cap) indtil auktions-finalization
+ * saetter `is_academy=false` ved salg / **fri agent ved ingen bud**. Den anden
+ * halvdel fandtes bare aldrig i koden: `graduatePatch` i auctionFinalization.js
+ * saettes KUN paa vinder-stien, saa en auktion uden bud lukkede som 'completed'
+ * uden at nogen roerte rytteren — han blev liggende hos saelgeren med
+ * `is_academy=true`, mens grad-raekken allerede var stemplet 'sold'. Ingen sti
+ * tilbage: hverken solgt, promoveret, sluppet eller fri agent (#4495, #4484).
+ *
+ * Udfaldet er det dokumenterede og foelger YOUTH_RULES §2.2's default-kaede
+ * (promovér → saelg → slip): salget mislykkedes, saa rytteren SLIPPES. Samme
+ * felter som resolveGraduation's release-gren, af samme #1309-grund (kontrakter
+ * kun paa ejede ryttere — ellers "arver" et senere erhvervelses-kald
+ * fejlagtigt akademi-kontrakten via contractOnAcquirePatch).
+ *
+ * IDEMPOTENT + GENKOERBAR: opdateringen er conditional (id + team_id +
+ * is_academy=true), saa et gentaget kald — cron-retry, reparations-script der
+ * koeres to gange, eller en rytter der imens er kommet videre ad en anden sti —
+ * rammer 0 raekker og rapporterer `released:false` i stedet for at flytte en
+ * rytter der ikke laengere er fanget.
+ *
+ * @param {object} supabase
+ * @param {{teamId:string, riderId?:string, rider?:object, now?:Date, notify?:Function}} args
+ * @returns {Promise<{released:boolean, riderId:string, reason?:string}>}
+ */
+export async function releaseUnsoldGraduate(supabase, {
+  teamId, riderId, rider = null, now = new Date(), notify = notifyTeamOwner,
+} = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  const id = riderId ?? rider?.id;
+  if (!teamId || !id) throw new Error("releaseUnsoldGraduate: teamId + riderId required");
+
+  let target = rider;
+  if (!target) {
+    const { data, error } = await supabase.from("riders")
+      .select("id, team_id, is_academy, firstname, lastname")
+      .eq("id", id).maybeSingle();
+    if (error) throw new Error(`releaseUnsoldGraduate rider lookup: ${error.message}`);
+    target = data;
+  }
+  if (!target) return { released: false, riderId: id, reason: "rider_not_found" };
+  if (target.is_academy !== true) return { released: false, riderId: id, reason: "not_academy" };
+  if (target.team_id !== teamId) return { released: false, riderId: id, reason: "not_on_team" };
+
+  const { data: updated, error } = await supabase.from("riders")
+    .update({
+      team_id: null, is_academy: false,
+      salary: null, contract_length: null, contract_end_season: null,
+    })
+    .eq("id", id).eq("team_id", teamId).eq("is_academy", true)
+    .select("id");
+  if (error) throw new Error(`releaseUnsoldGraduate update: ${error.message}`);
+  if ((updated ?? []).length === 0) return { released: false, riderId: id, reason: "already_resolved" };
+
+  // #1906 defense-in-depth: samme oprydning som release-grenen — rytteren har
+  // forladt holdet, saa hans fremtidige race_entries maa ikke haenge ved.
+  await clearFutureRaceEntriesSafe({ supabase, riderId: id, label: "academy_unsold_graduate" });
+
+  // Grad-raekken blev stemplet 'sold' i det oejeblik auktionen blev OPRETTET,
+  // ikke da den blev afgjort (#4495 punkt 2). Salget skete aldrig, saa raekken
+  // rettes til det der faktisk skete. Best-effort: en fejl her maa ikke rulle
+  // en gennemfoert frigivelse tilbage — rytteren er allerede ude af akademiet.
+  await restampSoldGraduationAsReleased(supabase, { teamId, riderId: id, now });
+
+  await notify({
+    supabase, teamId, type: "academy_graduated", relatedId: id,
+    title: "Academy graduate released",
+    message: `${target.firstname} ${target.lastname} drew no bids and left your academy as a free agent.`,
+    metadata: {
+      titleCode: "notif.academyGraduated.unsoldTitle",
+      messageCode: "notif.academyGraduated.unsold",
+      titleParams: { name: `${target.firstname} ${target.lastname}` },
+    },
+  });
+
+  return { released: true, riderId: id };
+}
+
 // ─── interne helpers ──────────────────────────────────────────────────────────
+
+// #4495: ret den 'sold'-stemplede grad-raekke til 'released' naar salget aldrig
+// blev til noget. Nyeste raekke foerst — en rytter kan have grad-raekker i flere
+// saesoner (UNIQUE(rider_id, season_id), #4484), og det er den seneste der
+// hoerer til den netop afsluttede auktion. Best-effort som
+// resolvePendingGraduationOnSale: log og fortsaet.
+async function restampSoldGraduationAsReleased(supabase, { teamId, riderId, now }) {
+  try {
+    const { data, error } = await supabase.from("academy_graduation")
+      .select("id")
+      .eq("team_id", teamId).eq("rider_id", riderId).eq("status", "sold")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return;
+    const { error: updErr } = await supabase.from("academy_graduation")
+      .update({ status: "released", resolved_at: now.toISOString() })
+      .eq("id", data.id);
+    if (updErr) throw new Error(updErr.message);
+  } catch (err) {
+    console.error(`restampSoldGraduationAsReleased failed (${riderId}):`, err.message);
+  }
+}
+
 
 async function finishGraduation(supabase, { gradId, status, teamId, rider, now, action, notify = notifyTeamOwner }) {
   const { error } = await supabase.from("academy_graduation")
@@ -240,6 +346,10 @@ async function finishGraduation(supabase, { gradId, status, teamId, rider, now, 
 // Opret en senior-salgs-auktion for en graduate (spejler youthMarket.js, men med
 // seller_team_id=holdet + is_youth=false). Rytteren forbliver is_academy=true til
 // auktions-finalization (Task 6) sætter is_academy=false ved salg / free agent ved ingen bud.
+// #4495: "free agent ved ingen bud" fandtes IKKE i koden før 5/9 — kun vinder-stien
+// flippede flaget, så en usolgt graduate blev fanget i akademiet for evigt.
+// Udgangen er nu releaseUnsoldGraduate ovenfor, kaldt fra auctionFinalization.js's
+// no-bid-gren; vagten mod klassen er ownershipInvariantWatch invariant G.
 //
 // #4004: hvis den beregnede sluttid ville krydse sæson-transitionen, springes
 // oprettelsen over (returnerer false, ingen insert, ingen fejl) i stedet for at

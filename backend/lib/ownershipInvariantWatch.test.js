@@ -15,9 +15,43 @@ import { runOwnershipInvariantWatch } from "./ownershipInvariantWatch.js";
 //                   buildere thenable. Default er TOMME lister = "ingen kører
 //                   et aktivt etapeløb", hvilket bevarer alle eksisterende
 //                   forventninger uændret.
-function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEntries = [], auctionsError = null, teams = [], teamBoardMembers = [] } = {}) {
+//   seasons/academy_graduation: #4495 — invariant G's prædikat
+//                   (stuckAcademyGraduates.findStuckAcademyGraduates) slår den
+//                   aktive sæson op (sæson-diskret alder) og filtrerer ryttere
+//                   med et åbent/nyligt override-vindue fra. Default-sæsonen
+//                   holder de eksisterende fixtures uændrede: ingen af dem har
+//                   birthdate, så ageForSeason giver null og ingen bliver flagget.
+function makeMock({ auctions = [], riders = [], intake = [], races = [], raceEntries = [], auctionsError = null, teams = [], teamBoardMembers = [], activeSeason = { number: 3 }, graduations = [] } = {}) {
   return {
     from(table) {
+      if (table === "seasons") {
+        // Eneste query: select("number").eq("status","active").order().limit(1).maybeSingle()
+        const b = {
+          select() { return b; },
+          eq() { return b; },
+          order() { return b; },
+          limit() { return b; },
+          maybeSingle() { return Promise.resolve({ data: activeSeason, error: null }); },
+        };
+        return b;
+      }
+      if (table === "academy_graduation") {
+        let inIds = null;
+        const eqFilters = [];
+        const b = {
+          select() { return b; },
+          in(_col, ids) { inIds = ids; return b; },
+          eq(col, val) { eqFilters.push([col, val]); return b; },
+          order() { return b; },
+          range(from, to) {
+            let out = graduations.filter((g) => (inIds ? inIds.includes(g.rider_id) : true));
+            out = out.filter((g) => eqFilters.every(([c, v]) => g[c] === v));
+            out = out.slice(from, to + 1);
+            return Promise.resolve({ data: out, error: null });
+          },
+        };
+        return b;
+      }
       if (table === "auctions") {
         const filters = [];
         const b = {
@@ -176,7 +210,7 @@ test("#2647 clean fixture — ingen brud, ingen capture, alerted=false", async (
   });
   assert.equal(calls.length, 0);
   assert.equal(result.alerted, false);
-  assert.deepEqual(result.findings, { youthOwned: 0, sellerlessOwned: 0, staleIntake: 0, strandedAcademy: 0, stalePendingTransfer: 0, teamsMissingBoardMembers: 0 });
+  assert.deepEqual(result.findings, { youthOwned: 0, sellerlessOwned: 0, staleIntake: 0, strandedAcademy: 0, stalePendingTransfer: 0, teamsMissingBoardMembers: 0, stuckAcademyGraduates: 0 });
   assert.equal(result.checked, 2);
 });
 
