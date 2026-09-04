@@ -92,21 +92,44 @@ afhænge af et live-driftende `renownTarget` — det var lektien fra #2589.
 
 ---
 
-## 3. Divisions-tillægget (ejer-besluttet 29/8 · bygget 29/8, afventer merge + apply)
+## 3. Divisions-tillægget (ejer-besluttet 29/8, opad-reglen ændret 4/9 · afventer merge + apply)
 
 Aftalen er prissat mod den division holdet var i da det valgte. Rykker holdet op, betaler det den
 nye divisions upkeep fra dag ét mod en sponsor prissat til den gamle. Rykker det ned, beholder det
 en for høj base **og** får en nedrykningsfaldskærm for et fald der aldrig skete.
 
-**Reglen, ejer-godkendt 29/8 efter fem beslutninger (se §3.1):**
+**Opadgående regel — "gulv + 50 %" (ejer-beslutning 4/9 kl. ~15:45, erstatter den oprindelige
+0,5 × hele forskellen fra 29/8):**
+
+```
+tillæg = max(0, base[D−1] − base[prissat]) + 0,5 × (base[D] − base[D−1])
+```
+
+hvor `D` er holdets nuværende division og `D−1` er divisionen lige under (D2 for D1, D3 for D2,
+D4 for D3 — D4 har ingen D−1, men kan omvendt aldrig modtage en opadgående korrektion, da intet er
+billigere end D4). Holdet løftes FØRST til gulvet (basen for D−1), derefter halvdelen af resten op
+til egen divisions fulde base. Ved ét-trins oprykning (D−1 = den prissatte division) er gulvet 0,
+og reglen er uændret 50 % af hele forskellen — ingen ændring for det almindelige tilfælde.
+Eksempel (ejer, 4/9): D1-hold med D4-aftale = gulv til D2 (400.000−315.000=85.000) + 0,5×(600.000−
+400.000=100.000) = **185.000** oveni basen 315.000 = 500.000 (samme total som et hold der selv
+sidder på en D2-aftale i D1). D2-hold med D4-aftale = (340.000−315.000=25.000) + 0,5×(400.000−
+340.000=30.000) = **55.000** oveni 315.000 = 370.000.
+
+**Nedadgående regel (uændret formel siden 29/8, men fra 4/9 bag et eksplicit tænd/sluk-flag):**
 
 ```
 tillæg = 0,5 × ( SPONSOR_INCOME_BY_DIVISION[nuværende division]
                − SPONSOR_INCOME_BY_DIVISION[den division aftalen blev prissat mod] )
 ```
 
-- Udbetales **kontant ved hver sæsonstart** hvor forskellen findes, som sin egen finance-linje
-  ved siden af den garanterede base.
+I S3 er nedad slået fra (grandfathering, §3.1 punkt 5, uændret). Fra S4 findes formlen i koden,
+men er IKKE automatisk: `DOWNWARD_ADJUSTMENT_ENABLED` i `backend/lib/divisionAdjustment.js`
+(og den tilsvarende frontend-konstant) er `false` som default. Ejeren sætter den til `true`
+bevidst ved et sæsonskifte — korrektion 4/9, fordi ejeren vil tænde den selv, ikke få den
+automatisk tændt af et sæsonnummer alene.
+
+- Begge dele udbetales **kontant ved hver sæsonstart** hvor forskellen findes, som sin egen
+  finance-linje ved siden af den garanterede base.
 - **Ganges med bestyrelsens budget-modifier** præcis som basen (§5).
 - `guaranteed_base` og `per_race_day_rate` røres ikke. Aftalen er stadig den underskrevne.
 - **Prissætnings-divisionen skal lagres på kontrakten, ikke rekonstrueres.** Den er den division
@@ -132,33 +155,40 @@ tillæg = 0,5 × ( SPONSOR_INCOME_BY_DIVISION[nuværende division]
   gætte på. Målt: 209 af 230 opløses, 21 forbliver NULL.
   **Fallback i drift:** manglende `signed_division` → tillæg 0, aldrig et gæt.
 
-**Symmetrien med faldskærmen er ikke tilfældig — den er hele designet.** `PARACHUTE_FACTOR = 0,5`
-(#1980, ejer-låst 5/7) udbetaler `0,5 × (base[gammel] − base[ny])` ved nedrykning. Tillæggets
-fradrag er nøjagtig samme beløb med modsat fortegn. For et nedrykket hold med **løbende** aftale
-ophæver de to hinanden eksakt, så holdet beholder sin høje base uden også at få faldskærm. For et
-hold hvis aftale er **udløbet og fornyet** i den nye division findes ingen forskel, så tillægget er
-0 og faldskærmen står uændret. **Ingen undtagelse i koden, ingen særtilfælde.** Enhver anden faktor
-end 0,5 bryder dette.
+**Symmetrien med faldskærmen gælder NEDAD-formlen — det er hele designet dér.**
+`PARACHUTE_FACTOR = 0,5` (#1980, ejer-låst 5/7) udbetaler `0,5 × (base[gammel] − base[ny])` ved
+nedrykning. Nedad-tillæggets fradrag er nøjagtig samme beløb med modsat fortegn. For et nedrykket
+hold med **løbende** aftale ophæver de to hinanden eksakt, så holdet beholder sin høje base uden
+også at få faldskærm. For et hold hvis aftale er **udløbet og fornyet** i den nye division findes
+ingen forskel, så tillægget er 0 og faldskærmen står uændret. **Ingen undtagelse i koden.** Enhver
+anden faktor end 0,5 for nedad-formlen bryder dette. Opad-reglen (gulv + 50 %) bruger samme 0,5 i
+sit sidste trin, men er ikke længere en ren spejling af faldskærmen — det var ejerens bevidste valg
+4/9.
 
-Konkrete beløb: D3→D1 **+130.000** · D2→D1 **+100.000** · D4→D1 **+142.500** · D4→D3 **+12.500** ·
-D2→D3 **−30.000** · D3→D4 **−12.500**. Ved 50 % dækker tillægget ca. to tredjedele af upkeep-springet.
+Konkrete beløb (opad, ny regel): D3→D1 **+160.000** · D2→D1 **+100.000** · D4→D1 **+185.000** ·
+D4→D3 **+12.500** · D4→D2 **+55.000**. Nedad (uændret formel, kun ved flag+S4): D2→D3 **−30.000** ·
+D3→D4 **−12.500**.
 
-### 3.1 De fem beslutninger bag (ejer, 29/8)
+### 3.1 De fem beslutninger bag (ejer, 29/8) — og korrektionen 4/9
 
 | # | Valg | Begrundelse der blev vejet |
 |---|---|---|
 | 1 | **Hver sæson** forskellen findes, ikke engangs | Holdet betaler den nye divisions upkeep hver sæson. 212 af 230 aftaler udløber alligevel efter S3, så det rammer kun 11 hold |
-| 2 | **50 %** af forskellen | Ejer-låst `PARACHUTE_FACTOR`. Kun ved 0,5 ophæver op og ned hinanden eksakt |
+| 2 | **50 %** af forskellen (nu: af resten over gulvet, se korrektion 4/9 nedenfor) | Ejer-låst `PARACHUTE_FACTOR`. Kun ved 0,5 ophæver op og ned hinanden eksakt for nedad-formlen |
 | 3 | **Kontant ved sæsonstart**, ikke fordelt i aftalens form | Upkeep trækkes på dag ét. En fordeling i aftalens form ville sende over halvdelen af hjælpen ud i en strøm der lander efter regningen |
 | 4 | **Ganget med bestyrelsens modifier** | Konsistens: hver sponsorkrone i sæsonstart-udbetalingen går gennem modifieren. En umodificeret linje ville være endnu en undtagelse |
-| 5 | **I S3 kun opad** (79 hold, +4.825.333 CZ$); fradraget nedad først fra S4 | Ingen mister penge midt i en sæson — grandfathering-princippet fra #1234 |
+| 5 | **I S3 kun opad** (54 hold efter backfill-rettelsen af 29/8, +3.901.500 CZ$ efter modifier); nedad kun via eksplicit flag fra S4 | Ingen mister penge midt i en sæson — grandfathering-princippet fra #1234. De 10 hold der ligger for højt i S3 beholder pengene (ejer-beslutning 4/9): alle 10 aftaler udløber efter S3 |
 
-**Overgangsreglen for S3 er en éngangs-undtagelse med en udløbsdato.** Fra S4 gælder reglen begge
-veje uden undtagelse. Konsekvensen i S3: de 10 D2→D3-hold med løbende aftale beholder både den høje
-base og faldskærmen på 30.000 — én sæsons overkompensation, bevidst accepteret.
+**Korrektion 4/9 kl. ~15:45 (ejer, ét spørgsmål ad gangen):** opad-reglen ændret fra ren 50 % af
+hele forskellen til **"gulv + 50 %"** — se formlen øverst i §3. Nedad-formlen er uændret, men er
+nu bag et eksplicit `DOWNWARD_ADJUSTMENT_ENABLED`-flag (default `false`) i stedet for kun at være
+gated af sæsonnummer — ejeren tænder den bevidst ved et sæsonskifte, ikke automatisk.
+
+**Overgangsreglen for S3 er en éngangs-undtagelse med en udløbsdato.** Fra S4 kan nedad tændes af
+ejeren; opad gælder altid.
 
 **Beslutningsgrundlaget** (spiller-vendt, EN+DA): artefakt `4c8ed4bc-62c7-47e8-9beb-72c5787d4d08`.
-Sporet i #4376. **Design-go: ejer 29/8** — hard rule 25's design-gate er dermed opfyldt.
+Sporet i #4376. **Design-go: ejer 29/8, korrigeret 4/9** — hard rule 25's design-gate er dermed opfyldt.
 
 ### 3.2 Hvor det er implementeret
 

@@ -8,17 +8,28 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { projectDivisionAdjustment, DIVISION_ADJUSTMENT_FRACTION } from "./divisionAdjustment.js";
+import {
+  projectDivisionAdjustment,
+  DIVISION_ADJUSTMENT_FRACTION,
+  DOWNWARD_ADJUSTMENT_ENABLED as FRONTEND_DOWNWARD_ENABLED,
+} from "./divisionAdjustment.js";
 import {
   computeDivisionAdjustment,
   DIVISION_ADJUSTMENT_FACTOR,
   FIRST_SEASON_WITH_DOWNWARD_ADJUSTMENT,
+  DOWNWARD_ADJUSTMENT_ENABLED as BACKEND_DOWNWARD_ENABLED,
 } from "../../../backend/lib/divisionAdjustment.js";
 
 const DIVISIONS = [1, 2, 3, 4];
 
 test("faktoren er den samme i frontend og backend", () => {
   assert.equal(DIVISION_ADJUSTMENT_FRACTION, DIVISION_ADJUSTMENT_FACTOR);
+});
+
+test("nedad-flaget er i sync mellem frontend og backend", () => {
+  // Ejer-beslutning 4/9: nedad er ikke automatisk. De to konstanter deles ikke ved
+  // import (separate npm-pakker) og kan derfor divergere stille — denne test fanger det.
+  assert.equal(FRONTEND_DOWNWARD_ENABLED, BACKEND_DOWNWARD_ENABLED);
 });
 
 test("projektionen matcher motoren for hver kombination af divisioner", () => {
