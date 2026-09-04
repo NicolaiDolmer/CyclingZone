@@ -1,33 +1,12 @@
 {
   "$comment": "Kendte UI-anti-drift-overtraedelser (ratchet — maa kun skrumpe). Kategorier: hex/slop/colour/emoji/arrowglyph. Genereret af scripts/lint-ui-slop.mjs --update-baseline. Refs #671 Plan 3, #1578 WP0, #3422. Nye overtraedelser maa IKKE tilfoejes her — brug ui/-primitiver + tokens, eller (legitimt) udvid EXEMPT_FILES i scriptet med begrundelse. WP1 skrumper emoji, WP2 skrumper colour/hex, #3422 skrumper arrowglyph.",
   "files": {
-    "frontend/public/locales/da/activity.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
-    "frontend/public/locales/da/admin.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
     "frontend/public/locales/da/auctions.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 0,
       "arrowglyph": 2
-    },
-    "frontend/public/locales/da/auth.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 6
     },
     "frontend/public/locales/da/backendMessages.json": {
       "hex": 0,
@@ -41,7 +20,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 2,
-      "arrowglyph": 7
+      "arrowglyph": 6
     },
     "frontend/public/locales/da/dashboard.json": {
       "hex": 0,
@@ -55,21 +34,14 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 4
-    },
-    "frontend/public/locales/da/founder.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
+      "arrowglyph": 2
     },
     "frontend/public/locales/da/help.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 9
+      "arrowglyph": 8
     },
     "frontend/public/locales/da/klub.json": {
       "hex": 0,
@@ -97,28 +69,14 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 10
-    },
-    "frontend/public/locales/da/results.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 2
+      "arrowglyph": 1
     },
     "frontend/public/locales/da/rider.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 19,
-      "arrowglyph": 4
-    },
-    "frontend/public/locales/da/seasonEnd.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 2
+      "emoji": 18,
+      "arrowglyph": 1
     },
     "frontend/public/locales/da/training.json": {
       "hex": 0,
@@ -131,29 +89,15 @@
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 18,
-      "arrowglyph": 4
+      "emoji": 14,
+      "arrowglyph": 0
     },
     "frontend/public/locales/da/watchlist.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 1,
-      "arrowglyph": 2
-    },
-    "frontend/public/locales/en/activity.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
-    "frontend/public/locales/en/admin.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
+      "arrowglyph": 0
     },
     "frontend/public/locales/en/auctions.json": {
       "hex": 0,
@@ -161,13 +105,6 @@
       "colour": 0,
       "emoji": 0,
       "arrowglyph": 2
-    },
-    "frontend/public/locales/en/auth.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 6
     },
     "frontend/public/locales/en/backendMessages.json": {
       "hex": 0,
@@ -181,7 +118,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 2,
-      "arrowglyph": 7
+      "arrowglyph": 6
     },
     "frontend/public/locales/en/dashboard.json": {
       "hex": 0,
@@ -195,21 +132,14 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 4
-    },
-    "frontend/public/locales/en/founder.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
+      "arrowglyph": 2
     },
     "frontend/public/locales/en/help.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 9
+      "arrowglyph": 8
     },
     "frontend/public/locales/en/klub.json": {
       "hex": 0,
@@ -237,28 +167,14 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 10
-    },
-    "frontend/public/locales/en/results.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 2
+      "arrowglyph": 1
     },
     "frontend/public/locales/en/rider.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 19,
-      "arrowglyph": 4
-    },
-    "frontend/public/locales/en/seasonEnd.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 2
+      "emoji": 18,
+      "arrowglyph": 1
     },
     "frontend/public/locales/en/training.json": {
       "hex": 0,
@@ -271,15 +187,15 @@
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 18,
-      "arrowglyph": 4
+      "emoji": 14,
+      "arrowglyph": 0
     },
     "frontend/public/locales/en/watchlist.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 1,
-      "arrowglyph": 2
+      "arrowglyph": 0
     },
     "frontend/src/components/SetupWizardModal.jsx": {
       "hex": 0,

@@ -61,7 +61,7 @@
     "noContract": "Fri agent",
     "buttons": {
       "accept": "✓ Accepter",
-      "counter": "↔ Modbud",
+      "counter": "Modbud",
       "reject": "✕ Afvis",
       "send": "Send",
       "acceptCounter": "✓ Accepter ({amount} CZ$)",
@@ -94,7 +94,7 @@
     "counterTag": "(modbud)",
     "buttons": {
       "accept": "✓ Accepter",
-      "counter": "↔ Modbud",
+      "counter": "Modbud",
       "reject": "✕ Afvis",
       "acceptCounter": "✓ Accepter modbud",
       "send": "Send",
@@ -201,8 +201,8 @@
     "confirmedAwaiting": "✅ Bekræftet · afventer den anden parts bekræftelse",
     "dealCancelled": "Handel annulleret",
     "transferRejected": "Transfer afvist",
-    "counterSent": "↔ Modbud sendt",
-    "newOfferSent": "↔ Nyt bud sendt",
+    "counterSent": "Modbud sendt",
+    "newOfferSent": "Nyt bud sendt",
     "offerWithdrawn": "Tilbud trukket tilbage",
     "offerArchived": "Tilbud arkiveret",
     "updated": "✅ Opdateret",

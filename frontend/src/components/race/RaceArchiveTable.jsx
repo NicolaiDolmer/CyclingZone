@@ -9,6 +9,7 @@ import { useSortState, sortRows } from "../../lib/useTableSort.js";
 import { RACE_CLASS_OPTIONS, RACE_STATUS_OPTIONS } from "../../lib/raceFilterOptions.js";
 import {
   Card, Input, Select, EmptyState, FlagIcon, Section, DataTable, SkeletonLines, ErrorState, Button,
+  ChevronRightIcon,
 } from "../ui";
 import { labelClass } from "../ui/fieldStyles.js";
 
@@ -222,8 +223,9 @@ export default function RaceArchiveTable() {
                 r.season ? (
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate(`/seasons/${r.season.id}`); }}
-                    className="text-cz-accent-t hover:underline">
+                    className="inline-flex items-center gap-0.5 text-cz-accent-t hover:underline">
                     {t("library.seasonLink", { number: r.season.number })}
+                    <ChevronRightIcon size={12} aria-hidden="true" />
                   </button>
                 ) : "—",
             },

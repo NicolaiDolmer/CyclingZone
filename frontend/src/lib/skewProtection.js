@@ -29,6 +29,25 @@
 // den udløber præcis PIN_WINDOW_MS efter deploymentet blev bygget, og derefter
 // falder brugeren automatisk tilbage på seneste deployment. Vinduet skal derfor
 // være markant mindre end Vercels Maximum Age.
+
+// SSOT for om Skew Protection reelt er slået til i koden (#2423).
+//
+// HOTFIX 4/9 kl. 11:55 (#2423, se main.jsx): cookie-pinnen pinner asset-requests
+// men ikke browser-navigationer i Vercels edge — dokumentet kommer altid fra
+// nyeste deployment, mens assets følger den gamle cookie → 404 på alle chunks
+// efter hvert deploy. Se
+// `.claude/learnings/2026-09-04-vercel-vdpl-cookie-pinner-assets-men-ikke-dokumentet.md`.
+// `main.jsx` kalder KUN `installSkewProtection()` når dette flag er `true`.
+// `scripts/check-skew-protection.mjs` læser flaget statisk fra denne fil for at
+// afgøre om dets gate 2/2b (deployment-id bagt ind i en JS-chunk) skal køre —
+// er flaget `false`, kaldes funktionen aldrig, så intet id bliver nogensinde
+// bagt ind. Det er PRÆCIS den tilsigtede, slukkede tilstand, ikke en regression.
+//
+// GEN-TÆNDING ER EJER-ONLY (#2423). Sæt aldrig denne til `true` uden eksplicit
+// ejer-go — læs begge #2423-postmortems FØRST (denne + #4745-varianten:
+// `.claude/learnings/2026-09-04-skew-protection-dpl-query-brak-hele-appen.md`).
+export const SKEW_PROTECTION_ENABLED = false;
+
 export const VDPL_COOKIE = "__vdpl"; // gitleaks:allow — Vercel-cookienavn, ikke en hemmelighed
 
 // Hvor længe et deployment må pinne klienter til sig selv.

@@ -6,7 +6,7 @@
 // første LAZY `import()` (React.lazy-ruter og andre dynamiske imports), altså
 // præcis de requests der ellers rammer en 404 efter et deploy.
 // Se lib/skewProtection.js for mekanikken.
-import { installSkewProtection } from "./lib/skewProtection.js";
+import { installSkewProtection, SKEW_PROTECTION_ENABLED } from "./lib/skewProtection.js";
 import React from "react";
 import { hydrateRoot, createRoot } from "react-dom/client";
 import * as Sentry from "@sentry/react";
@@ -34,7 +34,15 @@ import "./index.css";
 // DOKUMENTET fra det nyeste deployment ved browser-navigationer. Efter hvert deploy
 // fik alle spillere med en cookie fra forrige deploy ny HTML + 404 på alle chunks.
 // index.html rydder cookien inline før preloads. Genbesøg i #2423 før gen-tænding.
-void installSkewProtection;
+// `SKEW_PROTECTION_ENABLED` (lib/skewProtection.js) er SSOT for den slukkede
+// tilstand — `scripts/check-skew-protection.mjs` læser samme flag for at afgøre
+// om dets gate 2/2b skal køre. Sæt ALDRIG flaget til `true` uden eksplicit
+// ejer-go (læs begge #2423-postmortems i .claude/learnings/ FØRST).
+if (SKEW_PROTECTION_ENABLED) {
+  installSkewProtection();
+} else {
+  void installSkewProtection;
+}
 
 // Stale-chunk recovery (#906): et globalt net der fanger dynamic-import/preload-
 // fejl efter et deploy FØR React's error-boundary kan ramme dem — både Vite's

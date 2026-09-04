@@ -211,6 +211,7 @@
     "forum_body_required": "A message is required",
     "forum_body_too_long": "The message is too long",
     "forum_missing_id": "Missing id",
+    "forum_missing_user": "Your session has expired. Log in again",
     "forum_post_not_found": "The post was not found. It may have been removed.",
     "forum_reply_not_found": "The reply was not found. It may have been removed.",
     "forum_poll_admin_only": "Only the admin can attach polls",

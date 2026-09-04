@@ -13,11 +13,27 @@
 // som ikke rører en eneste URL. Gaten måler derfor det BYGGEDE output:
 //
 //   1. HÅRD: ingen fil i dist/ må indeholde `?dpl=` / `&dpl=` (asset-URL-
-//      omskrivning er permanent forbudt — kører altid, også uden Vercel-env).
-//   2. Når VERCEL_DEPLOYMENT_ID er sat i env (dvs. buildet KØRTE med Skew
-//      Protection slået til): deployment-id'et og cookienavnet `__vdpl` skal
-//      faktisk være bagt ind i en JS-chunk. Ellers er `define`-wiringen død og
-//      pinnen ville aldrig blive sat — grøn config, ingen effekt.
+//      omskrivning er permanent forbudt — kører altid, også uden Vercel-env,
+//      og UANSET om Skew Protection er slået til eller fra i koden).
+//
+//   FLAG-GATE FØR GATE 2 (#2423, hotfix 4/9): `SKEW_PROTECTION_ENABLED` i
+//   frontend/src/lib/skewProtection.js er SSOT for om koden reelt kalder
+//   `installSkewProtection()` (main.jsx gør det kun når flaget er `true`).
+//   Er flaget `false` — den nuværende, ejer-besluttede tilstand efter
+//   prod-hændelsen 4/9 — kaldes funktionen aldrig, så intet deployment-id
+//   bliver nogensinde bagt ind i en chunk. Det er PRÆCIS det gate 2 ellers ville
+//   opdage som fejl, men her er det tilsigtet, ikke en regression. Gate 2/2b
+//   nedenfor SPRINGES DERFOR OVER når flaget er `false` — kun gate 1 forbliver
+//   hård og ubetinget. Se
+//   `.claude/learnings/2026-09-04-vercel-vdpl-cookie-pinner-assets-men-ikke-dokumentet.md`.
+//   Genaktivering af flaget er ejer-only; gate 2/2b vender automatisk tilbage
+//   til at måle noget den dag flaget flippes til `true`.
+//
+//   2. Kun når flaget er `true` OG VERCEL_DEPLOYMENT_ID er sat i env (dvs.
+//      buildet KØRTE med Skew Protection slået til): deployment-id'et og
+//      cookienavnet `__vdpl` skal faktisk være bagt ind i en JS-chunk. Ellers
+//      er `define`-wiringen død og pinnen ville aldrig blive sat — grøn
+//      config, ingen effekt.
 //   2b. Er VERCEL_ENV sat til noget ANDET end "production", vender gate 2 om og
 //      fejler hvis id'et ER bagt ind: preview-deploys må aldrig pinnes, fordi de
 //      slettes af retention og en cookie mod et slettet deployment giver hård
@@ -37,6 +53,12 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 const DEFAULT_DIST_DIR = path.join("frontend", "dist");
+const DEFAULT_SKEW_SOURCE_FILE = path.join(
+  "frontend",
+  "src",
+  "lib",
+  "skewProtection.js"
+);
 // Kun det browseren faktisk eksekverer/henter URL'er fra. Sourcemaps (.map) er
 // bevidst UDE: de bærer `sourcesContent` med den originale kode, hvor netop
 // denne fejlklasse er dokumenteret i prosa — det ville give en falsk positiv på
@@ -48,6 +70,32 @@ const SCANNED_EXTENSIONS = new Set([".html", ".js", ".mjs", ".css"]);
 export const DPL_QUERY_RE = /[?&]dpl=/;
 
 export const VDPL_COOKIE_NAME = "__vdpl"; // gitleaks:allow — Vercel-cookienavn, ikke en hemmelighed
+
+const SKEW_PROTECTION_ENABLED_RE =
+  /export\s+const\s+SKEW_PROTECTION_ENABLED\s*=\s*(true|false)\s*;/;
+
+/**
+ * Læser SSOT-flaget `SKEW_PROTECTION_ENABLED` STATISK fra kildefilen (ikke fra
+ * det byggede output — flaget skal styre om gate 2/2b overhovedet giver
+ * mening, uafhængigt af hvad bundleren tree-shaker væk).
+ * @returns {{ok: boolean, enabled?: boolean, reason?: string}}
+ */
+export function readSkewProtectionEnabledFlag(sourceFile = DEFAULT_SKEW_SOURCE_FILE) {
+  if (!existsSync(sourceFile)) {
+    return { ok: false, reason: `${sourceFile} findes ikke — kan ikke læse SKEW_PROTECTION_ENABLED.` };
+  }
+  const source = readFileSync(sourceFile, "utf8");
+  const match = source.match(SKEW_PROTECTION_ENABLED_RE);
+  if (!match) {
+    return {
+      ok: false,
+      reason:
+        `fandt ikke "export const SKEW_PROTECTION_ENABLED = true|false;" i ${sourceFile} — ` +
+        "flaget er flyttet, omdøbt eller skrevet om til noget gaten ikke kan parse statisk.",
+    };
+  }
+  return { ok: true, enabled: match[1] === "true" };
+}
 
 /** Alle scannede filer under `dir`, rekursivt. */
 export function listBuiltFiles(dir) {
@@ -121,7 +169,11 @@ export function checkDeploymentIdBaked(distDir, deploymentId) {
   return { ok: true, idFile, cookieFile };
 }
 
-export function run(distDir = DEFAULT_DIST_DIR, env = process.env) {
+export function run(
+  distDir = DEFAULT_DIST_DIR,
+  env = process.env,
+  { skewSourceFile = DEFAULT_SKEW_SOURCE_FILE } = {}
+) {
   const lines = [];
   if (!existsSync(distDir)) {
     return { ok: false, lines: [`[fejl] ${distDir} findes ikke — kør et build først.`] };
@@ -143,6 +195,18 @@ export function run(distDir = DEFAULT_DIST_DIR, env = process.env) {
     return { ok: false, lines };
   }
   lines.push(`[ok] ingen "?dpl=" i ${noQuery.scanned} byggede filer under ${distDir}`);
+
+  const flag = readSkewProtectionEnabledFlag(skewSourceFile);
+  if (!flag.ok) {
+    lines.push(`[FEJL] ${flag.reason}`);
+    return { ok: false, lines };
+  }
+  if (!flag.enabled) {
+    lines.push(
+      "[skip] Skew Protection er slået fra i koden (#2423): gate 2 springes over, gate 1 kørt: OK"
+    );
+    return { ok: true, lines };
+  }
 
   const deploymentId = env.VERCEL_DEPLOYMENT_ID;
   if (!deploymentId) {

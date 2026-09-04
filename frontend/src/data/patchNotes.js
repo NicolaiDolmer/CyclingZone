@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.247",
+    "version": "7.248",
     "date": "2026-09-04",
     "label": "Beta",
     "changes": [
@@ -18,6 +18,29 @@ export const PATCHES = [
         },
         "refs": [
           4751
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.247",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Mark all forum threads as read in one click",
+          "body": "A new button on the forum overview clears the unread dot on every thread at once, the same idea as the inbox. It only shows up when something is actually unread."
+        },
+        "da": {
+          "title": "Markér alle forum-tråde som læst med ét klik",
+          "body": "En ny knap på forum-oversigten rydder ulæst-prikken på alle tråde på én gang, samme idé som i indbakken. Den vises kun, når der faktisk er noget ulæst."
+        },
+        "refs": [
+          3451
         ]
       }
     ]

@@ -300,10 +300,11 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
               {t("offerCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
-              className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
+              className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all inline-flex items-center justify-center gap-1
                 ${mode === "counter"
                   ? "bg-cz-warning-bg text-cz-warning border-cz-warning/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
+              <ExchangeIcon size={13} aria-hidden="true" />
               {t("offerCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
@@ -622,8 +623,9 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
               {t("swapCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
-              className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
+              className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all inline-flex items-center justify-center gap-1
                 ${mode === "counter" ? "bg-cz-warning-bg text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
+              <ExchangeIcon size={13} aria-hidden="true" />
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
@@ -674,8 +676,9 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
               {t("swapCard.buttons.acceptCounter")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
-              className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all
+              className={`min-h-[44px] flex-1 py-2 rounded-cz text-sm font-medium border transition-all inline-flex items-center justify-center gap-1
                 ${mode === "counter" ? "bg-cz-warning-bg text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
+              <ExchangeIcon size={13} aria-hidden="true" />
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("withdraw")} disabled={loading}

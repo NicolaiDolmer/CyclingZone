@@ -28,6 +28,18 @@ Hvis Vercel-projekt, Railway-service eller domæner ændres, skal denne fil opda
 
 ## Skew Protection (#2423)
 
+> **⚠️ Status 4/9: SLÅET FRA i koden.** Hotfix 057622162 fjernede kaldet af
+> `installSkewProtection()` fra `frontend/src/main.jsx`, efter at cookie-pinnen
+> viste sig at pinne asset-requests men IKKE browser-navigationer i Vercels
+> edge — se
+> `.claude/learnings/2026-09-04-vercel-vdpl-cookie-pinner-assets-men-ikke-dokumentet.md`.
+> Vercel-projektets egen Skew Protection-indstilling (Settings → Advanced) kan
+> stadig stå slået TIL — det er koden herunder der bevidst ikke bruger den.
+> SSOT for tilstanden er `SKEW_PROTECTION_ENABLED` i
+> `frontend/src/lib/skewProtection.js` (i dag `false`); genaktivering er
+> ejer-only. Resten af dette afsnit beskriver mekanikken SOM DEN VIRKER NÅR
+> flaget er `true`.
+
 Vite-SPA'en serverer content-hashede chunks. Deployer vi mens en bruger har appen
 åben, forsvinder de gamle chunk-filnavne, og næste lazy `import()` rammer en 404
 → fejlskærm (#4595/#4545). **Skew Protection** er slået TIL i Vercel-projektet
@@ -74,12 +86,22 @@ Postmortem: `.claude/learnings/2026-09-04-skew-protection-dpl-query-brak-hele-ap
   alle klienter selv rullet over.
 - **Forward-guard:** `npm run check:skew-protection`
   (`scripts/check-skew-protection.mjs`) kører i CI's `frontend-build`-job og
-  fejler hvis NOGEN bygget URL i `frontend/dist/` bærer `?dpl=`. CI bygger
-  desuden eksplicit med `VERCEL_SKEW_PROTECTION_ENABLED=1
-  VERCEL_DEPLOYMENT_ID=dpl_ci_test VERCEL_ENV=production` og kører vagten mod
-  DET build, så gate 2 faktisk måler noget — et CI-build uden skew-env ville
-  ellers lade #4745's regression passere ubemærket. Til sidst bygges der med
-  `VERCEL_ENV=preview`, hvor vagten kræver at id'et IKKE er bagt ind.
+  fejler HÅRDT, altid, hvis NOGEN bygget URL i `frontend/dist/` bærer `?dpl=`
+  (gate 1 — kører uafhængigt af om Skew Protection er slået til i koden).
+  Gate 2 (id + `__vdpl`-cookiekoden faktisk bagt ind i en JS-chunk) og gate 2b
+  (preview-builds må ALDRIG bage id'et ind) kører KUN når
+  `SKEW_PROTECTION_ENABLED` i `frontend/src/lib/skewProtection.js` er `true`
+  — vagten læser flaget statisk fra kildefilen. Er flaget `false` (den
+  nuværende tilstand, se boksen øverst i dette afsnit), printer vagten
+  `[skip] Skew Protection er slået fra i koden (#2423) — gate 2 springes over;
+  gate 1 kørt: OK` og bliver grøn, fordi koden aldrig kalder
+  `installSkewProtection()` — intet id kan nogensinde blive bagt ind, og det
+  er tilsigtet, ikke en regression. CI bygger desuden eksplicit med
+  `VERCEL_SKEW_PROTECTION_ENABLED=1 VERCEL_DEPLOYMENT_ID=dpl_ci_test
+  VERCEL_ENV=production` og kører vagten mod DET build (og til sidst et
+  tilsvarende build med `VERCEL_ENV=preview`), så gate 2/2b måler noget den
+  dag flaget flippes til `true` igen — uden det ville #4745's regressionsklasse
+  kunne passere ubemærket.
 - `frontend/vercel.json`s rewrites/headers matcher på sti og er upåvirkede —
   cookien ændrer ingen URL.
 - **Effekt måles:** deploy-verifys chunk-fejl-rate-gate (budget 25/24 t,

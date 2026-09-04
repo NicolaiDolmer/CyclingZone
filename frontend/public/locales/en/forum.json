@@ -2,7 +2,9 @@
   "page": {
     "title": "Forum",
     "subtitle": "Talk with the other managers and share your ideas",
-    "newPost": "New post"
+    "newPost": "New post",
+    "markAllRead": "Mark all as read",
+    "markingAllRead": "Marking..."
   },
   "categories": {
     "all": "All",
@@ -82,6 +84,7 @@
   "errors": {
     "loadFailed": "The forum could not be loaded. Nothing was lost.",
     "submitFailed": "Could not submit. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "markAllReadFailed": "Could not mark all threads as read. Try again."
   }
 }

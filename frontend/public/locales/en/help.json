@@ -662,7 +662,7 @@
       "fullTable": {
         "title": "The full points table",
         "text": "Under Results, Points & prizes you'll find every race class's complete points and prize scale with all places.",
-        "ctaLabel": "Open Points & prizes →",
+        "ctaLabel": "Open Points & prizes",
         "ctaTo": "/resultater?tab=points",
         "disclaimer": "Prize amounts may still be adjusted during the open beta."
       }

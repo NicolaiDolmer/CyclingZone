@@ -41,6 +41,7 @@ function RepayButton({ maxRepay, onStart, t }) {
     <div className="flex flex-col items-stretch gap-1">
       <Button
         variant="secondary" size="sm" fullWidth
+        iconRight={<ChevronRightIcon size={14} aria-hidden="true" />}
         {...block.blockedProps}
         onClick={block.guard(onStart)}
       >
