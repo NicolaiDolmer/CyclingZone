@@ -56,6 +56,26 @@ test("statiske mapper falder IKKE tilbage til app.html (#4545)", () => {
   }
 });
 
+// #4595: /assets/(.*) stempler ALLE svar `immutable`, ogsaa 404 — Vercels
+// header-regler matcher paa sti, ikke paa status, og der findes ingen
+// dokumenteret maade at betinge dem paa statuskode (vercel.com/docs/headers/
+// cache-control-headers). Vi beholder derfor `immutable` paa hashede assets og
+// lader boot-vagten i public/chunk-selfheal.js rydde op. Den vagt maa af samme
+// grund ALDRIG selv ende bag en lang cache-header: bliver den forkert cachet,
+// findes der ikke noget lag over den.
+test("boot-vagten (chunk-selfheal.js) har ingen lang cache-header (#4595)", () => {
+  const longCacheSources = config.headers
+    .filter((h) => /immutable|max-age=(\d{5,})/.test(h.headers.find((x) => x.key === "Cache-Control")?.value ?? ""))
+    .map((h) => h.source);
+
+  for (const source of longCacheSources) {
+    assert.ok(
+      !new RegExp(`^${source}$`).test("/chunk-selfheal.js"),
+      `/chunk-selfheal.js matcher "${source}" som har lang cache — en fejlcachet boot-vagt kan intet lag reparere`,
+    );
+  }
+});
+
 test("alle mapper med lang cache-header er undtaget fra fallback", () => {
   // Forward-guard: tilfoejes en ny mappe med lang max-age, skal den ogsaa undtages,
   // ellers genopstaar praecis den samme faelde et nyt sted.
