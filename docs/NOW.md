@@ -12,7 +12,9 @@
 
 > **✅ Aftenbølge 3/9** (`docs/audits/night-wave-2026-09-03-aften.md`): 5 PR merget (#4740-#4744), #2423 PR #4745 afventer go, 166 locale-pile udestår på #3422.
 
-> **🔍 Sentry/Railway-triage 4/9:** 4 issues resolvet (støj/allerede fikset) · **PR #4754** (#4752) dedupe AI-trim-alarmen: 288 Sentry-events i døgnet → 1, backend-only, 8330 tests grønne, **afventer dit go** · **#4753** rejst: 4 puljer på 25 hold fordi døde `transfer_offers` gør 13 AI-hold utrimbare — kræver dit A/B/C-valg (anbefaling: C).
+> **🔍 Sentry/Railway-triage 4/9:** 4 Sentry-issues resolvet (støj/allerede fikset) · **PR #4754** (#4752) dedupe AI-trim-alarmen: 288 events i døgnet → 1, backend-only, 8330 tests grønne, **afventer dit go** (`audit`-check rød på en Supabase statement-timeout, urelateret — se PR-kommentar) · **#4753** rejst: 4 puljer på 25 hold fordi døde `transfer_offers` gør 13 AI-hold utrimbare — **kræver dit A/B/C-valg** (anbefaling: C).
+
+> **📌 Til næste session:** 1) verificér PR #4754's CI + merge efter go · 2) **#3069** triageret 4/9: 6 af 7 "drift"-fund er kun formatuoverensstemmelse i `schema_migrations` (6 rækker uden `database/`-præfiks mod 391 med) — normaliserings-SQL ligger klar i kommentaren og **afventer dit go**; det 7. fund (`expire-stale-bonus-offers-4482.sql` applied, repoet har `restore-s2-end-...`) er ægte og skal ses af et menneske · 3) **#2738** rest: migrér `balanceDriftWatch` + `cronHeartbeat` til den nye `opsAlertDedupe`-hjælper.
 
 > **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). PR #4608 efter #4616. Pro v1.1 live. #4645 pris-vagt (synk efter #4608). #4646 udskudt 3/9. #4512 dunning · #4511 EU-moms.
 
