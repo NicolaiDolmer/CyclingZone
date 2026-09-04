@@ -1,6 +1,24 @@
-// Reparation #4376 — sæson 3s sponsor-timing-hul + divisions-tillæg-efterbetaling i ét script.
+// Reparation #4376 — sæson 3s sponsor-timing-hul + divisions-tillæg-efterbetaling
+// + tilbageførsel af det for meget udbetalte, i ét script.
 //
-// TO TING I ÉN KØRSEL (ejer-beslutning 4/9 kl. ~16:15, `gh issue view 4376 --comments`):
+// UDBETALINGSMODEL FOR guaranteed_base (bevis, verificeret FØR trin (c) blev bygget):
+//   `guaranteed_base` er et ENGANGSBELØB udbetalt ved sæsonstart, IKKE en løbende
+//   ydelse. Bevis: docs/SPONSOR_RULES.md linje 27 ("Den garanterede del, udbetalt
+//   ved sæsonstart" / "Frosset ved valg-tidspunktet. Rører sig ALDRIG i kontraktens
+//   løbetid"); backend/lib/sponsorContractsService.js linje ~559 ("INGEN
+//   guaranteed_base-udbetaling her. Basen krediteres udelukkende af
+//   economyEngine.processSeasonStart ved den næste RIGTIGE sæson-start"); og denne
+//   fils EGEN oprindelige (a)-kommentar ("guaranteed_base var allerede udbetalt som
+//   engangsbeløb ved sæsonstart 23/8"). Ingen finance_transactions-rækker at
+//   forholdsmæssigt nedskalere — HELE beløbet ramte balancen én gang. Derfor er
+//   tilbageførslen model (a) fra opgavebeskrivelsen: clawback = base_før − base_efter
+//   (fuldt), ikke en sum af delvise udbetalinger.
+//
+// TRE TING I ÉN KØRSEL (ejer-beslutning 4/9 kl. ~16:15 om selve timing-hullet,
+// `gh issue view 4376 --comments`; ejer-beslutning 4/9 kl. ~17:10 om tilbageførslen:
+// "De hold der skal miste penge skal også gøre det i dag, og få det fjernet fra
+// deres konto. Dem der har manglet penge skal få dem nu." — dette OVERSKRIVER (a)'s
+// oprindelige "ingen nedad-korrektion i S3"-grandfathering for netop disse 29 hold):
 //
 //   (a) NED — TIMING-HUL (docs/audits/auto-sponsor-aftaler-2026-09-04.md +
 //       docs/audits/sponsor-timing-hul-alle-divisioner-2026-09-04.md): 30 hold (D1 3,
@@ -12,12 +30,18 @@
 //       `guaranteed_base` og `signed_division` på deres AKTIVE kontrakt til hvad
 //       fornyelsen VILLE have skrevet med timing-fixet på plads — samme
 //       renownTarget/generateOffers-kæde som motoren selv bruger, prissat mod holdets
-//       season_standings-division fra sæsonen der lige sluttede (S2).
-//       INGEN balance-bevægelse her: `guaranteed_base` var allerede udbetalt som
-//       engangsbeløb ved sæsonstart 23/8, og `per_race_day_rate` røres IKKE — ejeren
-//       besluttede eksplicit "ingen nedad-korrektion i S3" (samme grandfathering som
-//       #4376s øvrige S3-overgangsregel). Dette er en ren data-rettelse af kontraktens
-//       eget felt, ikke en pengetransaktion.
+//       season_standings-division fra sæsonen der lige sluttede (S2). Selve UPDATE'et
+//       flytter ingen penge — det er trin (c) nedenfor der gør det.
+//
+//   (c) NED — TILBAGEFØRSEL AF FOR MEGET UDBETALT (ny, 4/9 ~17:10): for de hold hvor
+//       (a) rettede `guaranteed_base` NED (base_efter < base_før — 29 af de 30, ét
+//       hold havde kun forkert signed_division, ikke forkert beløb), trækkes
+//       differencen (base_før − base_efter) fra holdets saldo via DEN SAMME
+//       atomiske sti som (b) (incrementBalanceWithAudit/debitTeam-mønstret,
+//       negativt delta), reason_code `sponsor_division_correction_clawback` (egen
+//       kode, IKKE genbrugt fra SPONSOR_DIVISION_CORRECTION — den er opad, denne er
+//       nedad). Egen idempotency_key pr. kontrakt (sponsorDivisionClawbackIdempotencyKey)
+//       — kan ikke dobbelt-trækkes ved gentagen kørsel.
 //
 //   (b) OP — DIVISIONS-TILLÆGGET (backend/lib/divisionAdjustment.js, "gulv + 50 %"):
 //       ALLE hold prissat under deres NUVÆRENDE division — inklusive de 30 fra (a),
@@ -29,6 +53,11 @@
 //       eller scripts/creditDivisionAdjustment-4376.mjs, uanset kørselsrækkefølge.
 //       Ejer-valg 5 (29/8): kun opad i S3 — computeDivisionAdjustment håndhæver det
 //       selv via DOWNWARD_ADJUSTMENT_ENABLED=false, scriptet gætter ikke.
+//
+//   NETTO PR. HOLD: (c) og (b) er to SEPARATE transaktioner (revisionsspor — ingen
+//   sammenlægning i selve bogføringen), men rapporteres samlet som `netByTeam` og
+//   bruges samlet i negativ-saldo-guarden: et hold der ville gå under 0 CZ$ efter
+//   BEGGE bevægelser stopper HELE apply (samme abort-mønster som repair-4485).
 //
 // MODELLERET PRÆCIS EFTER repair-4485-young-classification.js: samme dry-run/apply-
 // struktur, samme backup-før-skrivning-disciplin, samme negativ-saldo-guard, samme
@@ -218,6 +247,94 @@ export function findNegativeBalanceRisk(divisionAdjustments, teamById) {
   return risks;
 }
 
+/**
+ * Tilbageførsel (c): guaranteed_base var et ENGANGSBELØB udbetalt ved sæsonstart
+ * (se header-kommentar for beviset) — clawback pr. hold er derfor det FULDE
+ * for-meget-udbetalte: guaranteed_base_before − guaranteed_base_after. Hold hvor
+ * (a) kun rettede signed_division (basen var allerede korrekt) får INGEN clawback.
+ *
+ * @param {Array<object>} timingHoleCorrections  fra buildTimingHoleCorrections, filtreret til needsUpdate
+ * @param {Map<string,object>} teamById
+ */
+export function buildClawbacks(timingHoleCorrections, teamById = new Map()) {
+  const out = [];
+  for (const c of timingHoleCorrections) {
+    const diff = c.guaranteed_base_before - c.guaranteed_base_after;
+    if (!(diff > 0)) continue; // 0 eller negativ (basen gik ikke ned) → ingen clawback
+    const team = teamById.get(c.team_id);
+    out.push({
+      contract_id: c.contract_id,
+      team_id: c.team_id,
+      team_name: c.team_name,
+      division_now: c.division_now,
+      base_before: c.guaranteed_base_before,
+      base_after: c.guaranteed_base_after,
+      already_paid: c.guaranteed_base_before,
+      clawback_cz: diff,
+      balance_now: team?.balance ?? null,
+    });
+  }
+  return out;
+}
+
+/**
+ * Idempotency-nøgle for tilbageførslen — pr. kontrakt (kontrakten flyttes aldrig,
+ * så nøglen er stabil på tværs af gentagne kørsler; samme mønster som
+ * divisionAdjustmentIdempotencyKey i divisionAdjustment.js).
+ */
+export function sponsorDivisionClawbackIdempotencyKey(teamId, contractId) {
+  return `sponsor_division_correction_clawback:${teamId}:${contractId}`;
+}
+
+/**
+ * Nettoeffekt pr. hold af (b) divisions-tillæg OG (c) clawback — til rapportering
+ * (`netByTeam`) og til den kombinerede negativ-saldo-guard. (b) og (c) forbliver
+ * to separate bogførte transaktioner; dette er kun en beregnet oversigt.
+ */
+export function buildNetByTeam({ divisionAdjustments = [], clawbacks = [], teamById = new Map() }) {
+  const byTeam = new Map();
+  const ensure = (teamId) => {
+    if (!byTeam.has(teamId)) {
+      const team = teamById.get(teamId);
+      byTeam.set(teamId, {
+        team_id: teamId,
+        team_name: team?.name ?? null,
+        division_adjustment_cz: 0,
+        clawback_cz: 0,
+      });
+    }
+    return byTeam.get(teamId);
+  };
+  for (const adj of divisionAdjustments) {
+    ensure(adj.team_id).division_adjustment_cz += adj.correction_cz;
+  }
+  for (const c of clawbacks) {
+    ensure(c.team_id).clawback_cz += c.clawback_cz;
+  }
+  return [...byTeam.values()].map((r) => ({ ...r, net_cz: r.division_adjustment_cz - r.clawback_cz }));
+}
+
+/**
+ * Negativ-saldo-guard for den KOMBINEREDE effekt af (b)+(c) — erstatter den rene
+ * (b)-only findNegativeBalanceRisk ovenfor i selve rapporten/apply-guarden, fordi
+ * (c) (nyt 4/9) kan trække et hold under 0 selvom (b) alene aldrig kan (S3 er
+ * kun-opad for divisions-tillægget).
+ */
+export function findCombinedNegativeBalanceRisk({ divisionAdjustments = [], clawbacks = [], teamById = new Map() }) {
+  const net = buildNetByTeam({ divisionAdjustments, clawbacks, teamById });
+  const risks = [];
+  for (const r of net) {
+    if (r.net_cz >= 0) continue;
+    const team = teamById.get(r.team_id);
+    const balance = team?.balance || 0;
+    const projected = balance + r.net_cz;
+    if (projected < 0) {
+      risks.push({ team_id: r.team_id, team_name: r.team_name, balance, net_cz: r.net_cz, projectedBalance: projected });
+    }
+  }
+  return risks;
+}
+
 // ─── Orkestrering (DB injiceres — testbar uden createClient) ───────────────────
 
 // #2642: signed_division findes først efter database/2026-08-29-division-adjustment.sql
@@ -339,8 +456,15 @@ export async function buildRepairPlan({ supabase, seasonNumber = SEASON_NUMBER, 
   const divisionAdjustments = buildDivisionAdjustments({
     contractByTeamId, teamById, effectiveSignedDivisionByTeamId, modifierByTeamId, seasonNumber,
   });
-  const negativeBalanceRisk = findNegativeBalanceRisk(divisionAdjustments, teamById);
   const teamsToPay = divisionAdjustments.filter((d) => d.correction_cz !== 0);
+
+  // (c) tilbageførsel — kun de timing-hul-hold hvor guaranteed_base faktisk gik NED
+  // (se buildClawbacks). Beregnes af NEEDS-UPDATE-listen (timingHoleCorrections),
+  // ikke allTimingHoleCorrections — et hold der allerede er korrekt har intet at
+  // tilbageføre.
+  const clawbacks = buildClawbacks(timingHoleCorrections, teamById);
+  const netByTeam = buildNetByTeam({ divisionAdjustments: teamsToPay, clawbacks, teamById });
+  const negativeBalanceRisk = findCombinedNegativeBalanceRisk({ divisionAdjustments: teamsToPay, clawbacks, teamById });
 
   return {
     migrationApplied: true,
@@ -352,6 +476,8 @@ export async function buildRepairPlan({ supabase, seasonNumber = SEASON_NUMBER, 
     timingHoleAlreadyCorrect,
     divisionAdjustments,
     teamsToPay,
+    clawbacks,
+    netByTeam,
     negativeBalanceRisk,
   };
 }
@@ -384,6 +510,15 @@ export async function runRepair({ supabase, seasonNumber = SEASON_NUMBER, dryRun
     };
   }
 
+  // netByTeam bærer balance_after (net af BEGGE bevægelser) — merges ind i hver
+  // clawback-række, så dry-run-rapporten kan vise det uden en ekstra opslags-tabel.
+  const netByTeamId = new Map(plan.netByTeam.map((r) => [r.team_id, r]));
+  const clawbacksWithBalanceAfter = plan.clawbacks.map((c) => {
+    const net = netByTeamId.get(c.team_id);
+    const balanceAfter = c.balance_now == null || !net ? null : c.balance_now + net.net_cz;
+    return { ...c, balance_after: balanceAfter };
+  });
+
   const report = {
     dryRun,
     seasonNumber,
@@ -392,6 +527,8 @@ export async function runRepair({ supabase, seasonNumber = SEASON_NUMBER, dryRun
     timingHoleAlreadyCorrect: plan.timingHoleAlreadyCorrect.length,
     timingHoleTotalsByDivision: timingHoleTotalsByDivision(plan.timingHoleCorrections),
     divisionAdjustments: plan.divisionAdjustments,
+    clawbacks: clawbacksWithBalanceAfter,
+    netByTeam: plan.netByTeam,
     negativeBalanceRisk: plan.negativeBalanceRisk,
     totals: {
       timingHoleTeams: plan.timingHoleCorrections.length,
@@ -399,11 +536,13 @@ export async function runRepair({ supabase, seasonNumber = SEASON_NUMBER, dryRun
       adjustmentTotalCz: plan.teamsToPay.reduce((s, d) => s + d.correction_cz, 0),
       adjustmentUpwardCz: plan.teamsToPay.filter((d) => d.correction_cz > 0).reduce((s, d) => s + d.correction_cz, 0),
       adjustmentDownwardCz: plan.teamsToPay.filter((d) => d.correction_cz < 0).reduce((s, d) => s + d.correction_cz, 0),
+      clawbackTeams: plan.clawbacks.length,
+      clawbackTotalCz: plan.clawbacks.reduce((s, c) => s + c.clawback_cz, 0),
     },
   };
 
   if (dryRun) {
-    log(`[4376] DRY-RUN — ${report.totals.timingHoleTeams} hold timing-hul-rettet, ${report.totals.adjustmentTeams} hold divisions-tillæg (${report.totals.adjustmentTotalCz} CZ$ i alt), intet skrevet.`);
+    log(`[4376] DRY-RUN — ${report.totals.timingHoleTeams} hold timing-hul-rettet, ${report.totals.adjustmentTeams} hold divisions-tillæg (${report.totals.adjustmentTotalCz} CZ$), ${report.totals.clawbackTeams} hold tilbageførsel (${report.totals.clawbackTotalCz} CZ$ i alt), intet skrevet.`);
     return report;
   }
 
@@ -423,23 +562,59 @@ export async function runRepair({ supabase, seasonNumber = SEASON_NUMBER, dryRun
     const { error: backupContractsErr } = await supabase.from(BACKUP_CONTRACTS_TABLE).upsert(contractRows, { onConflict: "id" });
     if (backupContractsErr) throw new Error(`backup sponsor_contracts: ${backupContractsErr.message}`);
   }
-  if (plan.teamsToPay.length) {
-    const teamsBackup = plan.teamsToPay.map((d) => ({
-      team_id: d.team_id,
-      balance_before: plan.teamById.get(d.team_id)?.balance ?? null,
+  // Backup-tabellen for saldi skal dække ALLE hold der rammes af (b) ELLER (c) —
+  // union af de to lister, ét backup-forsøg pr. hold (upsert on team_id).
+  const teamsTouchedByMoney = new Map();
+  for (const d of plan.teamsToPay) teamsTouchedByMoney.set(d.team_id, true);
+  for (const c of plan.clawbacks) teamsTouchedByMoney.set(c.team_id, true);
+  if (teamsTouchedByMoney.size) {
+    const teamsBackup = [...teamsTouchedByMoney.keys()].map((teamId) => ({
+      team_id: teamId,
+      balance_before: plan.teamById.get(teamId)?.balance ?? null,
       captured_at: new Date().toISOString(),
     }));
     const { error: backupTeamsErr } = await supabase.from(BACKUP_TEAMS_TABLE).upsert(teamsBackup, { onConflict: "team_id" });
     if (backupTeamsErr) throw new Error(`backup teams: ${backupTeamsErr.message}`);
   }
 
-  // ── Trin (a): NED — ren datarettelse, INGEN balance-bevægelse ──────────────
+  // ── Trin (a): NED — ren datarettelse, INGEN balance-bevægelse i sig selv ────
   for (const c of plan.timingHoleCorrections) {
     const { error } = await supabase
       .from("sponsor_contracts")
       .update({ guaranteed_base: c.guaranteed_base_after, signed_division: c.signed_division_after })
       .eq("id", c.contract_id);
     if (error) throw new Error(`update sponsor_contracts ${c.contract_id}: ${error.message}`);
+  }
+
+  // ── Trin (c): NED — tilbageførsel af det for meget udbetalte (ejer 4/9 ~17:10) ──
+  let clawedBack = 0, clawbackSkipped = 0, totalClawedBack = 0;
+  for (const c of plan.clawbacks) {
+    const { skipped: wasSkipped } = await incrementBalanceWithAudit(
+      supabase,
+      {
+        teamId: c.team_id,
+        delta: -c.clawback_cz,
+        payload: {
+          type: "sponsor_division_correction_clawback",
+          amount: -c.clawback_cz,
+          description: "Reparation #4376 — tilbageførsel af for meget udbetalt garanteret base (timing-hul), sæson 3",
+          season_id: plan.seasonId,
+          metadata: { code: "tx.sponsorDivisionCorrectionClawback", params: { contractId: c.contract_id, baseBefore: c.base_before, baseAfter: c.base_after } },
+          actor_type: FINANCE_ACTOR_TYPE.MIGRATION,
+          related_entity_type: FINANCE_RELATED_ENTITY.SEASON,
+          related_entity_id: plan.seasonId,
+          source_path: "repair-4376-sponsor-division-correction.runRepair",
+          reason_code: FINANCE_REASON.SPONSOR_DIVISION_CORRECTION_CLAWBACK,
+          // #4376: egen nøgle pr. kontrakt (ikke sæson) — forhindrer dobbelt-træk
+          // ved gentagen kørsel, uafhængigt af (b)'s divisionAdjustmentIdempotencyKey.
+          idempotency_key: sponsorDivisionClawbackIdempotencyKey(c.team_id, c.contract_id),
+        },
+      },
+      { allowDuplicate: true }
+    );
+    if (wasSkipped) { clawbackSkipped += 1; continue; }
+    clawedBack += 1;
+    totalClawedBack += c.clawback_cz;
   }
 
   // ── Trin (b): OP — divisions-tillæg via den eksisterende atomiske balance-sti ──
@@ -480,13 +655,17 @@ export async function runRepair({ supabase, seasonNumber = SEASON_NUMBER, dryRun
   report.paidCount = paid;
   report.skippedCount = skipped;
   report.totalPaid = totalPaid;
+  report.clawedBackCount = clawedBack;
+  report.clawbackSkippedCount = clawbackSkipped;
+  report.totalClawedBack = totalClawedBack;
   report.postVerifyRemainingTimingHole = postVerify.timingHoleCorrections?.length ?? null;
   report.postVerifyRemainingAdjustments = postVerify.teamsToPay?.length ?? null;
+  report.postVerifyRemainingClawbacks = postVerify.clawbacks?.length ?? null;
 
   if (report.postVerifyRemainingTimingHole > 0) {
     log(`[4376] ADVARSEL: post-verify finder stadig ${report.postVerifyRemainingTimingHole} timing-hul-kontrakter der afviger.`);
   } else {
-    log(`[4376] APPLY færdig — 0 timing-hul-kontrakter tilbage, ${paid} divisions-tillæg betalt (${skipped} sprunget over som allerede betalt).`);
+    log(`[4376] APPLY færdig — 0 timing-hul-kontrakter tilbage, ${paid} divisions-tillæg betalt (${skipped} sprunget over), ${clawedBack} tilbageførsler trukket (${clawbackSkipped} sprunget over som allerede trukket).`);
   }
   return report;
 }

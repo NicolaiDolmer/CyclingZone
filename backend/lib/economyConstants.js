@@ -366,6 +366,12 @@ export const FINANCE_REASON = Object.freeze({
   // (divisionAdjustmentIdempotencyKey) som motoren bruger, så de to stier
   // stadig ikke kan dobbeltbetale.
   SPONSOR_DIVISION_CORRECTION: "sponsor_division_correction",
+  // #4376 · ejer-beslutning 4/9 kl. ~17:10: de 29 timing-hul-hold der fik udbetalt
+  // for meget garanteret base (engangsbeløb ved sæsonstart, prissat mod deres FEJL-
+  // oprykkede division) skal have det for meget udbetalte trukket tilbage samme dag
+  // guaranteed_base-feltet rettes. Egen reason_code — ikke slået sammen med
+  // SPONSOR_DIVISION_CORRECTION ovenfor (den er en OPad-betaling, denne er NEDad).
+  SPONSOR_DIVISION_CORRECTION_CLAWBACK: "sponsor_division_correction_clawback",
   // #3730 · forholdsmæssig sponsor til et hold der oprettes MIDT i en sæson. Sponsoren
   // udbetales ellers kun ved sæsonstart, så et hold oprettet undervejs fik nul resten af
   // sæsonen (målt sæson 2: 43 af 43 nye hold, median-indtægt 31.125 mod 326.596 for de

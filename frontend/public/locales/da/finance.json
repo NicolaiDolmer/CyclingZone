@@ -169,7 +169,8 @@
       "forced_debt_sale": "Tvunget salg (gældsloft)",
       "squad_violation_fine": "Trupstørrelse-bøde",
       "starting_budget": "Startbudget",
-      "division_adjustment": "Divisions-tillæg"
+      "division_adjustment": "Divisions-tillæg",
+      "sponsor_division_correction_clawback": "Sponsor-korrektion (tilbageførsel)"
     }
   },
   "timeAgo": {

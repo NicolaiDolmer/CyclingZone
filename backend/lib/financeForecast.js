@@ -157,6 +157,8 @@ export const FINANCE_FORECAST_TYPE_COVERAGE = Object.freeze({
   // #4376: fuldt forudsigelig — bestemt af holdets division og kontraktens
   // signed_division, uden nogen fremtidig begivenhed eller manager-beslutning.
   division_adjustment: { modeled: true, field: "projected_division_adjustment" },
+  // #4376: engangs-tilbagefoersel i S3 (timing-hullet), ingen fremtidig forekomst at modellere.
+  sponsor_division_correction_clawback: { modeled: false, reason: "one-off S3 correction (#4376) - not a recurring flow" },
 
   // ── Deliberately excluded: result-/event-dependent, not forecastable ────
   sponsor_race_day: { modeled: false, reason: "ongoing variable sponsor pool — result-dependent (race days not yet raced)" },
