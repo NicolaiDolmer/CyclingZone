@@ -1,36 +1,47 @@
 export const PATCHES = [
   {
-    "version": "7.250",
+    "version": "7.251",
     "date": "2026-09-04",
     "label": "Beta",
     "changes": [
       {
         "category": "improved",
         "audience": "player",
-        "topic": "Sponsors",
+        "topic": "Forum",
         "en": {
-          "title": "Your sponsor deal now reacts when you change division",
-          "body": "A sponsor deal is priced for the division you were in when you signed it. If you were promoted, you paid the new division's upkeep from day one while the deal still paid the old amount. Your signed deal is unchanged, and it stays unchanged: instead, a separate division adjustment is paid on top every season the difference lasts. It lifts you to the base of the division just below your new one, then adds half of what remains up to your new division's base: for example, promotion from Division 4 straight to Division 1 is 185,000 CZ$ per season on top of your 315,000 CZ$ base. Every offer now shows what the adjustment would be before you sign. Season-start deals, including automatically renewed ones, are now also priced against the division you were in before that season's promotions and relegations were applied, so the deal and the adjustment always agree on your starting point. Season 3 is already under way, so only the upward half applies this season; if you were relegated you keep your relegation payment exactly as before."
+          "title": "A forum thread now opens at your first unread reply",
+          "body": "Replies you already read are folded into one line you can open for the full history. The first new reply gets a thin accent line on the left, and the page scrolls straight to it, so you land where you left off instead of scrolling from the top."
         },
         "da": {
-          "title": "Din sponsoraftale reagerer nu når du skifter division",
-          "body": "En sponsoraftale er prissat til den division du var i da du skrev under. Rykkede du op, betalte du den nye divisions upkeep fra dag ét mens aftalen stadig udbetalte det gamle beløb. Din underskrevne aftale er uændret, og den forbliver uændret: i stedet udbetales et separat divisions-tillæg oveni, hver sæson forskellen findes. Det løfter dig til basen for divisionen lige under din nye, og lægger derefter halvdelen af resten op til din nye divisions base oveni: for eksempel giver oprykning fra Division 4 direkte til Division 1 185.000 CZ$ pr. sæson oveni din base på 315.000 CZ$. Alle tilbud viser nu hvad tillægget ville være, før du skriver under. Sæsonstart-aftaler, også automatisk fornyede, prissættes nu også mod den division du var i FØR sæsonens oprykninger og nedrykninger blev anvendt, så aftalen og tillægget altid er enige om dit udgangspunkt. Sæson 3 er allerede i gang, så kun den opadgående halvdel gælder i denne sæson; er du rykket ned, beholder du din nedrykningsbetaling uændret."
+          "title": "En forumtråd åbner nu ved dit første ulæste svar",
+          "body": "Svar du allerede har læst foldes sammen til én linje, du kan åbne for at se hele historikken. Det første nye svar får en tynd accentlinje til venstre, og siden scroller direkte hen til det, så du lander der, hvor du slap, i stedet for at scrolle fra toppen."
         },
-        "refs": [4376]
-      },
+        "refs": [
+          3451
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.249",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
       {
-        "category": "fixed",
+        "category": "new",
         "audience": "player",
-        "topic": "Rules",
+        "topic": "Forum",
         "en": {
-          "title": "The rules page promised a sponsor cap that does not exist",
-          "body": "The rules page said your sponsor payout was capped at 720,000 CZ$ in season 1 and 900,000 CZ$ from season 2. That cap was replaced long ago and no longer runs anywhere in the game. The page now describes the cap that actually applies, and lists Division 4's sponsor base, which was missing."
+          "title": "Four new forum categories, plus an archive",
+          "body": "Questions & answers, Tactics & strategy, Transfers and Off-topic join General and Feedback & ideas. Threads with no new activity in 60 days move to the new Archive tab, out of the main list. You can still open and reply to an archived thread; replying brings it straight back."
         },
         "da": {
-          "title": "Regelsiden lovede et sponsorloft der ikke findes",
-          "body": "Regelsiden sagde at din sponsorudbetaling var loftet til 720.000 CZ$ i sæson 1 og 900.000 CZ$ fra sæson 2. Det loft blev afløst for længe siden og kører ikke længere nogen steder i spillet. Siden beskriver nu det loft der faktisk gælder, og viser Division 4's sponsorbase, som manglede."
+          "title": "Fire nye forum-kategorier, plus et arkiv",
+          "body": "Spørgsmål og svar, Taktik og strategi, Transfers og Off-topic kommer til, ved siden af Generelt og Feedback & idéer. Tråde uden ny aktivitet i 60 dage flytter til den nye Arkiv-fane, ude af hovedlisten. Du kan stadig åbne og svare på en arkiveret tråd; et svar tager den straks tilbage."
         },
-        "refs": [4376]
+        "refs": [
+          4492
+        ]
       }
     ]
   },

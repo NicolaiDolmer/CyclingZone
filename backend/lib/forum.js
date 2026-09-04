@@ -5,6 +5,11 @@
 // admin-sletning (soft delete), ejer notificeres via Discord ved nye
 // opslag/svar (#3201 — selve pinget sker i api.js-routen, ikke her).
 //
+// #4492 (ejer-beslutning 4/9, "kategorier skal vi have flere af"): udvidet
+// fra to til seks kategorier (questions, tactics, transfers, off_topic
+// tilføjet) + et arkiv-FILTER (ikke en kategori — se FORUM_ARCHIVE_FILTER
+// nedenfor).
+//
 // Handler-logikken bor her (ikke inline i api.js) af samme grund som
 // feedbackInbox.js: api.js kræver en live Supabase-klient og kan ikke
 // unit-testes direkte, mens rene handlere kan køres mod createFakeSupabase.
@@ -33,7 +38,16 @@
 // forummet forbi denne skala kræver sorteringen en DB-side generated
 // `last_activity_at`-kolonne i stedet for JS-scanningen.
 
-export const FORUM_CATEGORIES = ["general", "feedback_ideas"];
+export const FORUM_CATEGORIES = ["general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"];
+// #4492: arkiv er et BEREGNET visnings-filter, ikke en gyldig category-værdi
+// — et opslag kan aldrig oprettes eller stå permanent i "archive" (isValid-
+// ForumCategory afviser den bevidst, se nedenfor). En tråd er arkiveret når
+// dens seneste aktivitet er ældre end FORUM_ARCHIVE_AFTER_DAYS; svarer nogen,
+// falder den automatisk ud af arkivet igen (aktivitets-nøglen er den samme
+// som #4118's sortering).
+export const FORUM_ARCHIVE_FILTER = "archive";
+export const FORUM_ARCHIVE_AFTER_DAYS = 60;
+const FORUM_ARCHIVE_AFTER_MS = FORUM_ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
 export const FORUM_TITLE_MAX_LENGTH = 120;
 export const FORUM_BODY_MAX_LENGTH = 4000;
 export const FORUM_REPORT_REASON_MAX_LENGTH = 500;
@@ -78,6 +92,11 @@ export function isValidForumCategory(category) {
   return FORUM_CATEGORIES.includes(category);
 }
 
+/** GET /api/forum/posts?category=… accepterer de rigtige kategorier + "archive". */
+export function isValidForumListFilter(filter) {
+  return filter === FORUM_ARCHIVE_FILTER || isValidForumCategory(filter);
+}
+
 /** Aktivitets-nøgle for sortering: seneste svar, ellers oprettelse. */
 function activityAt(row) {
   return row.last_reply_at || row.created_at;
@@ -85,6 +104,11 @@ function activityAt(row) {
 
 function activityEpoch(row) {
   return Date.parse(activityAt(row));
+}
+
+/** #4492: ingen aktivitet i FORUM_ARCHIVE_AFTER_DAYS → arkiveret. */
+function isArchived(row, now) {
+  return now.getTime() - activityEpoch(row) > FORUM_ARCHIVE_AFTER_MS;
 }
 
 /** Nyeste aktivitet først; seq desc som stabilt tiebreak (delt tidsstempel). */
@@ -256,11 +280,21 @@ async function resolveReactionSummaries({ supabase, targetType, targetIds, userI
  * separat `pinned`-blok på FØRSTE side (ingen cursor) og er udeladt af den
  * paginerede hovedliste. `userId` (valgfri — tests kan udelade den) driver
  * pr.-tråd is_unread (#3451).
+ *
+ * #4492 · `category: "archive"` er et visnings-filter, ikke en DB-kategori:
+ * hovedlisten viser NORMALT kun tråde med aktivitet inden for
+ * FORUM_ARCHIVE_AFTER_DAYS ("all"/en almindelig kategori ekskluderer
+ * arkiverede tråde); med `category=archive` vendes filteret om (KUN
+ * arkiverede, på tværs af kategori). Pinned-blokken er upåvirket af arkiv-
+ * filteret og springes helt over ved `category=archive` — pins er admins
+ * bevidste "hold denne synlig"-signal, ikke noget der hører hjemme i en
+ * arkiv-fane. `now` er injicerbar for tests (default: rigtig tid).
  */
-export async function listForumPosts({ supabase, category = null, limit, cursor, userId = null }) {
+export async function listForumPosts({ supabase, category = null, limit, cursor, userId = null, now = new Date() }) {
   const pageSize = parseForumLimit(limit);
   const afterCursor = parseForumActivityCursor(cursor);
-  const categoryFilter = isValidForumCategory(category) ? category : null;
+  const archiveFilter = category === FORUM_ARCHIVE_FILTER;
+  const categoryFilter = !archiveFilter && isValidForumCategory(category) ? category : null;
 
   let query = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
     .is("deleted_at", null)
@@ -273,14 +307,18 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
   if (error) throw new Error(`forum: could not list posts: ${error.message}`);
 
   const sortedRows = sortByActivityDesc(data || []);
+  // #4492: arkiv-filteret anvendes FØR cursor-filtreringen, så paginering
+  // over en arkiv-fane (eller en almindelig fane der udelukker arkivet)
+  // arbejder på det samme udsnit på tværs af sider.
+  const scopedRows = sortedRows.filter((row) => isArchived(row, now) === archiveFilter);
   const afterFiltered = afterCursor == null
-    ? sortedRows
-    : sortedRows.filter((row) => isAfterActivityCursor(row, afterCursor));
+    ? scopedRows
+    : scopedRows.filter((row) => isAfterActivityCursor(row, afterCursor));
   const hasMore = afterFiltered.length > pageSize;
   const pageRows = afterFiltered.slice(0, pageSize);
 
   let pinnedRows = [];
-  if (afterCursor == null) {
+  if (afterCursor == null && !archiveFilter) {
     let pinnedQuery = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
       .is("deleted_at", null)
       .eq("is_pinned", true);
@@ -407,10 +445,20 @@ export async function getForumPost({ supabase, id, userId }) {
   // #3517: opbaknings-tal — post og svar er to forskellige target_type'r,
   // hentet i to bounded kald (samme "det eksisterende trådkald"-krav som
   // resolveThreadReads: ingen N+1 pr. indlæg).
-  const [postReactions, replyReactions] = await Promise.all([
+  //
+  // #3451: samme kald slår også brugerens FORRIGE last_read_at op — dvs.
+  // tidspunktet FØR dette besøg. Routen kalder markForumThreadRead som en
+  // best-effort side-effekt EFTER at have afventet getForumPost færdig (se
+  // routes/api.js), så denne læsning sker altid FØR den skrivning: værdien
+  // herunder er aldrig "forurenet" af selve dette kalds egen markering.
+  // Klienten bruger den til at beregne fold/scroll til første ulæste svar,
+  // FØR den (visuelt) betragter tråden som læst.
+  const [postReactions, replyReactions, readsByPostId] = await Promise.all([
     resolveReactionSummaries({ supabase, targetType: "post", targetIds: [id], userId }),
     resolveReactionSummaries({ supabase, targetType: "reply", targetIds: replies.map((r) => r.id), userId }),
+    resolveThreadReads({ supabase, userId, postIds: [id] }),
   ]);
+  const viewerLastReadAt = readsByPostId.get(id) ?? null;
 
   function shapeQuoted(quotedReplyId) {
     if (!quotedReplyId) return null;
@@ -455,6 +503,8 @@ export async function getForumPost({ supabase, id, userId }) {
         quoted: shapeQuoted(r.quoted_reply_id),
       })),
       poll,
+      // #3451: null ved første besøg (ingen forum_thread_reads-række endnu).
+      viewer_last_read_at: viewerLastReadAt,
     },
   };
 }
