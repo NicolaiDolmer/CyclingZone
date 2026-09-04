@@ -99,7 +99,7 @@
     "minRiders": "Keep at least {target} riders",
     "sponsorGrowth": "Sponsor income up {target}%",
     "sponsorGrowthPlanPeriod": "Sponsor income up {target}% over the plan period",
-    "noOutstandingDebt": "Positive net position at season end",
+    "noOutstandingDebt": "No outstanding debt at season end",
     "monumentPodium": "Top 3 in at least {target} Monument {target, plural, one {race} other {races}}",
     "monumentPodiumPlanPeriod": "At least {target} podium {target, plural, one {finish} other {finishes}} in Monument races over the plan period",
     "classicsPodium": "Top 3 in at least {target} classic {target, plural, one {race} other {races}} (incl. Monuments)",

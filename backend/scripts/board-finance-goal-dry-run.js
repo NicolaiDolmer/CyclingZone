@@ -10,6 +10,10 @@
 // Usage:
 //   node backend/scripts/board-finance-goal-dry-run.js
 //   node backend/scripts/board-finance-goal-dry-run.js --json
+//   node backend/scripts/board-finance-goal-dry-run.js --raw-ids   (LOKAL brug kun —
+//     viser rigtige team_id-UUID'er; commit ALDRIG raw-ids-output, repoet er offentligt
+//     læsbart. Default-output er anonymiseret til report-lokale labels, CodeRabbit
+//     PR #4779.)
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY (service-role, læse-only brug)
 
@@ -54,13 +58,18 @@ async function run() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 
   const asJson = process.argv.includes("--json");
+  // #4779 (CodeRabbit) · rå team_id'er er ikke anonyme i et offentligt læsbart
+  // repo — default anonymiserer output til report-lokale labels ("Hold A", …);
+  // --raw-ids viser de rigtige UUID'er, kun til lokal brug (aldrig commit).
+  const showRawIds = process.argv.includes("--raw-ids");
 
   // Rigtige managere: is_ai=false, user_id sat, ikke bank/test/frosne.
   const teams = await fetchAllRows(() => supabase
     .from("teams")
-    .select("id, name, balance, user_id, is_ai, is_bank, is_test_account")
+    .select("id, name, balance, user_id, is_ai, is_bank, is_frozen, is_test_account")
     .eq("is_ai", false)
     .eq("is_bank", false)
+    .eq("is_frozen", false)
     .eq("is_test_account", false)
     .not("user_id", "is", null)
     .order("id", { ascending: true }));
@@ -142,12 +151,18 @@ async function run() {
 
   rows.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
   const top10 = rows.slice(0, 10);
+  // #4779 (CodeRabbit) · report-lokal label i stedet for rå team_id, medmindre
+  // --raw-ids er sat eksplicit (lokal brug — se usage-kommentaren øverst).
+  const top10Labeled = top10.map((r, i) => ({
+    ...r,
+    team_id: showRawIds ? r.team_id : `Hold ${String.fromCharCode(65 + i)}`,
+  }));
 
   const report = {
     teams_evaluated: teams.length,
     before_buckets: Object.fromEntries(beforeCounts),
     after_buckets: Object.fromEntries(afterCounts),
-    top_10_changes: top10,
+    top_10_changes: top10Labeled,
   };
 
   if (asJson) {
@@ -162,7 +177,7 @@ async function run() {
     console.log(b.label.padEnd(26), String(beforeCounts.get(b.label)).padStart(6), String(afterCounts.get(b.label)).padStart(6));
   }
 
-  console.log("\nDe 10 største ændringer (anonymt team_id):\n");
+  console.log(`\nDe 10 største ændringer (${showRawIds ? "RÅ team_id — kun lokal brug" : "anonymt"}):\n`);
   console.log(
     "team_id".padEnd(10),
     "balance".padStart(12),
@@ -170,7 +185,7 @@ async function run() {
     "loans".padStart(6),
     "old→new".padStart(14)
   );
-  for (const r of top10) {
+  for (const r of top10Labeled) {
     console.log(
       String(r.team_id).padEnd(10),
       String(r.balance).padStart(12),

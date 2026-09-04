@@ -117,10 +117,12 @@ export function isBoardGoalAchieved(goal, evaluation, ctx = {}) {
     case "gc_wins":
       return standing ? (standing.gc_wins || 0) >= goal.target : false;
     case "no_outstanding_debt":
-      // #1237 · nettostilling (balance minus aktiv gæld) når kalderen sender dem;
-      // ellers uændret gammel regel (aldrig et gæt på et manglende activeDebt-tal).
-      if (typeof activeDebt === "number") {
-        return (team?.balance ?? 0) - activeDebt >= 0;
+      // #1237 · nettostilling (balance minus aktiv gæld) når kalderen sender BEGGE
+      // felter; ellers uændret gammel regel (aldrig et gæt på et manglende balance-
+      // eller activeDebt-tal — CodeRabbit-fund, PR #4779: et manglende `team.balance`
+      // gættede tidligere 0, hvilket kunne gøre nettostillingen for optimistisk).
+      if (typeof activeDebt === "number" && typeof team?.balance === "number") {
+        return team.balance - activeDebt >= 0;
       }
       return activeLoanCount === 0;
     // #3494 · sponsor_growth kan IKKE afgøres uden backend-evaluering (kræver

@@ -99,7 +99,7 @@
     "minRiders": "Hold på min. {target} ryttere",
     "sponsorGrowth": "Sponsor-indkomst vokset med {target}%",
     "sponsorGrowthPlanPeriod": "Sponsor-indkomst vokset med {target}% over planperioden",
-    "noOutstandingDebt": "Positiv nettostilling ved sæsonslut",
+    "noOutstandingDebt": "Ingen udestående gæld ved sæsonslut",
     "monumentPodium": "Top-3 i mindst {target} Monuments-løb",
     "monumentPodiumPlanPeriod": "Mindst {target} podie-{target, plural, one {placering} other {placeringer}} i Monuments-løb over planperioden",
     "classicsPodium": "Top-3 i mindst {target} klassiker-løb (inkl. Monuments)",

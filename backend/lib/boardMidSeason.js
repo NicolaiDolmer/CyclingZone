@@ -34,6 +34,7 @@ import { parseBoardGoals, evaluateGoalProgress } from "./boardGoals.js";
 // #1237 · wageBillPerSeason-input til no_outstanding_debt (scoreFinanceHealthGoal).
 import { sumRiderSalaries } from "./boardUtils.js";
 import { unlockExtraordinaryRequestForTeam as unlockExtraordinaryRequestForTeamShared } from "./boardMandateEngine.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 export const MID_SEASON_TITLE_PREFIX = "Mid-season check";
 
@@ -85,15 +86,19 @@ export async function processMidSeasonReviewCron({
   if (!humanTeams?.length) return summary;
 
   // #1237 · aktiv gæld pr. hold (batch), samme mønster som boardWeekendFinalization.js.
-  const { data: activeLoansAll, error: loansError } = await supabase
+  // fetchAllRows: PostgREST's 1000-rækker-loft kan ellers stille miste lån på
+  // store hold-populationer og undervurdere nettostillingen (CodeRabbit, PR #4779).
+  const activeLoansAll = await fetchAllRows(() => supabase
     .from("loans")
-    .select("team_id, amount_remaining")
+    .select("id, team_id, amount_remaining")
     .eq("status", "active")
-    .in("team_id", humanTeams.map((t) => t.id));
-  if (loansError) throw loansError;
+    .in("team_id", humanTeams.map((t) => t.id))
+    .order("id", { ascending: true }));
   const debtByTeam = new Map();
+  const loanCountByTeam = new Map();
   for (const loan of activeLoansAll || []) {
     debtByTeam.set(loan.team_id, (debtByTeam.get(loan.team_id) || 0) + (loan.amount_remaining || 0));
+    loanCountByTeam.set(loan.team_id, (loanCountByTeam.get(loan.team_id) || 0) + 1);
   }
 
   // 3. Batch-load standings for sæsonen — bruges af evaluateGoalProgress + relative_rank
@@ -146,6 +151,7 @@ export async function processMidSeasonReviewCron({
         divisionManagerCount: key != null ? divisionManagerCounts.get(key) || null : null,
         // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
         activeDebt: debtByTeam.get(team.id) || 0,
+        activeLoanCount: loanCountByTeam.get(team.id) || 0,
         notifyUser,
         now,
         deps,
@@ -174,6 +180,7 @@ async function processTeamMidSeason({
   divisionManagerCount,
   // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
   activeDebt = 0,
+  activeLoanCount = 0,
   notifyUser,
   now,
   deps = {},
@@ -250,6 +257,7 @@ async function processTeamMidSeason({
     divisionManagerCount,
     // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
     activeDebt,
+    activeLoanCount,
   });
 
   if (!trigger) return { banner_sent: false };
@@ -280,8 +288,11 @@ export async function evaluateMidSeasonTrigger({
   divisionManagerCount,
   // #1237 · nettostilling-input til no_outstanding_debt (scoreFinanceHealthGoal,
   // boardUtils.js). balance kommer fra `team.balance`; wageBillPerSeason afledes
-  // her af rytterfeltet (samme formel som de øvrige context-byggere).
+  // her af rytterfeltet (samme formel som de øvrige context-byggere). activeLoanCount
+  // er scoreFinanceHealthGoal's sekundære lån-antal-fradrag (CodeRabbit, PR #4779) —
+  // uden den falder scoren tilbage til 0 lån for alle hold, uanset faktisk gæld.
   activeDebt = 0,
+  activeLoanCount = 0,
 }) {
   if (Number(satisfaction) < 50) {
     return { trigger: true, reason: "low_satisfaction" };
@@ -294,6 +305,7 @@ export async function evaluateMidSeasonTrigger({
   const financeContext = {
     balance: team?.balance ?? 0,
     activeDebt,
+    activeLoanCount,
     wageBillPerSeason: sumRiderSalaries(riders),
   };
 

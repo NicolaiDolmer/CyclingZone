@@ -504,15 +504,21 @@ export async function buildBoardRoomPayload({
     ["board_vision_milestones", milestonesRes],
     ["teams", teamRes],
     ["board_satisfaction_events", eventsRes],
+    // #1237 · loans er IKKE best-effort (CodeRabbit, PR #4779): activeDebt/
+    // activeLoanCount fodrer no_outstanding_debt-scoren direkte, og en fejlet
+    // lookup faldt før tilbage til `[]` = "ingen gæld" = falsk topscore. Kast
+    // i stedet, samme retning som boardWeekendFinalization.js's fetchAllRows
+    // for samme query (propagerer via Promise.all, ingen stille nul-gæld).
+    ["loans", loansRes],
   ]) {
     if (res.error) throw new Error(`${label} lookup failed: ${res.error.message}`);
   }
-  // season_standings/riders/loans/seasons-listen er best-effort — et hold uden
+  // season_standings/riders/seasons-listen er (stadig) best-effort — et hold uden
   // aktiv sæson-standing (fx helt nyt) skal stadig kunne se sit Boardroom, og
   // en fejlende sæson-liste skal kun koste sinceSeason (null), ikke hele siden.
   const standing = standingRes.error ? null : (standingRes.data ?? null);
   const riders = ridersRes.error ? [] : (ridersRes.data ?? []);
-  const activeLoanRows = loansRes.error ? [] : (loansRes.data ?? []);
+  const activeLoanRows = loansRes.data ?? [];
   const activeLoanCount = activeLoanRows.length;
   // #1237 · nettostilling-input til no_outstanding_debt (scoreFinanceHealthGoal).
   const activeDebt = sumActiveLoanDebt(activeLoanRows);

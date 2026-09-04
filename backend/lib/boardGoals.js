@@ -903,9 +903,10 @@ export function evaluateGoal(goal, standing, team, context = {}) {
     // (den autoritative "met"-beregning i evaluateGoalProgress) er UÆNDRET —
     // det er ikke en workaround for denne default, se kommentaren dér.
     isFinalSeason = false,
-    activeLoanCount = 0,
     // #1237 · nettostilling-felter til no_outstanding_debt (se scoreFinanceHealthGoal,
-    // boardUtils.js, for den fulde begrundelse).
+    // boardUtils.js, for den fulde begrundelse). activeLoanCount bruges IKKE her —
+    // kun i evaluateGoalProgress's scoreFinanceHealthGoal-kald (eslint no-unused-vars,
+    // PR #4779 warning-budget).
     balance = 0,
     activeDebt = 0,
     // #3494 · sponsor_growth genanvender IKKE længere planStartSponsorIncome/
