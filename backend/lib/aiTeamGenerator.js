@@ -34,7 +34,7 @@ import {
   aiValueCapForTier,
   generateAiRiderBatchWithCap,
 } from "./starterSquadAllocator.js";
-import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
+import { generateFictionalRiders, AI_SIGNATURE_CFG } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { fetchExistingFoldedNamesForAi, makeAiTeamName } from "./aiTeamNames.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
@@ -743,6 +743,12 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
     poolPayload = generateAiRiderBatchWithCap({
       count: AI_SQUAD.TOTAL_SIZE, tierFractions, valueCap: aiValueCapForTier(pool.tier),
       seed, referenceYear, existingFoldedNames,
+      // #3458 fase 2 PR2: mildere signatur-hovedrum end markeds-/launch-populationen
+      // (ADULT_SIGNATURE_CFG) — en pålideligt SATURERET specialist-evne gør enhver
+      // korrekt klassificeret AI-kandidat værd flere millioner (værdimodellens
+      // speciale-led), langt over tier 1/2's AI_TIER_VALUE_CAP (#2065-sikkerhedsnet,
+      // urørt). Se AI_SIGNATURE_CFG's kommentar i fictionalRiderGenerator.js.
+      signatureCfg: AI_SIGNATURE_CFG,
     }).map((r) => ({ ...r, team_id: teamId }));
   } else {
     const { core: coreWindow, tail: tailWindow } = aiStatWindowsForTier(pool.tier);
