@@ -203,7 +203,7 @@ export function run(
   }
   if (!flag.enabled) {
     lines.push(
-      "[skip] Skew Protection er slået fra i koden (#2423) — gate 2 springes over; gate 1 kørt: OK"
+      "[skip] Skew Protection er slået fra i koden (#2423): gate 2 springes over, gate 1 kørt: OK"
     );
     return { ok: true, lines };
   }
