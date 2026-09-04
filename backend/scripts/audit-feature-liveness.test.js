@@ -125,6 +125,34 @@ test("ikke-flag-gated tabel: 0 rows uden insert path = intet fund (ingen backend
   assert.equal(finding, null);
 });
 
+// #4754: feature_liveness_table_counts() falder tilbage til et
+// pg_class.reltuples-ESTIMAT (row.estimated=true) når et per-tabel
+// lock_timeout rammer — se database/2026-09-04-4754-feature-liveness-count-
+// lock-timeout.sql. Et estimeret 0-tal er ikke troværdigt nok til at flage
+// som "død feature" (reltuples kan være stale lige efter tabellens
+// allerførste rows), så Detector A skal springe estimerede 0-rækker over.
+test("#4754: estimeret (lock-timeout-fallback) 0 rows springes over — ikke nok evidens", () => {
+  const flags = new Map();
+  const insertPaths = paths("some_other_table", "backend/lib/someOtherModule.js");
+
+  const finding = evaluateDetectorARow(
+    { table_name: "some_other_table", row_count: 0, estimated: true },
+    { insertPaths, flags }
+  );
+  assert.equal(finding, null, "et estimeret 0-tal må ikke udløse en write-but-no-data-flag");
+});
+
+test("#4754: ikke-estimeret (exact) 0 rows flager som hidtil — regressionsguard for fallback-ændringen", () => {
+  const flags = new Map();
+  const insertPaths = paths("some_other_table", "backend/lib/someOtherModule.js");
+
+  const finding = evaluateDetectorARow(
+    { table_name: "some_other_table", row_count: 0, estimated: false },
+    { insertPaths, flags }
+  );
+  assert.ok(finding, "exact 0-tal (estimated=false/undefined) skal stadig flages som før");
+});
+
 test("statisk WHITELIST_EMPTY_TABLES-entry (hall_of_fame) undertrykker stadig uden flag", () => {
   const flags = new Map();
   const insertPaths = paths("hall_of_fame", "backend/lib/seasonTransition.js");
