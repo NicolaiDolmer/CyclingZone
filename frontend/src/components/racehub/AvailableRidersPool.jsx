@@ -26,7 +26,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
     if (c.withdrawn) continue;
     for (const id of c.selection?.rider_ids || []) if (!raceByRider.has(id)) raceByRider.set(id, c.name);
   }
-  const isLocked = (riderId) => !columns.some((c) => canAddRiderToColumn({ column: c, bindingMap, riderId }));
+  const isLocked = (rider) => !columns.some((c) => canAddRiderToColumn({ column: c, bindingMap, riderId: rider.id, outgoing: Boolean(rider.outgoing) }));
   return (
     /* #2819: tour-anker — trin 2 i /races-rundvisningen peger på puljen. */
     <div data-tour="races-pool" className="border border-cz-border rounded-cz bg-cz-subtle">
@@ -56,7 +56,11 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
         onDrop={(e) => { e.preventDefault(); setDragOver(false); onDropRider?.(e.dataTransfer.getData("text/plain")); }}
       >
         {roster.map((r) => {
-          const locked = isLocked(r.id);
+          const locked = isLocked(r);
+          // #4119: solgt rytter der stadig kører for holdet indtil det igangværende
+          // løb er kørt. Han stod slet ikke i puljen før — to spillere troede de
+          // havde mistet en rytter midt i et løb. Nu står han med sin egen linje.
+          const outgoing = Boolean(r.outgoing);
           // #2772: sæson-belastning (løbsdage) pr. rytter — samme tal som formplanen
           // viser, så overtopning kan opdages dér hvor udtagelsen faktisk sker.
           const load = seasonLoadByRider[r.id] ?? null;
@@ -65,7 +69,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
           // #2256: er lås-grunden et løb UDEN FOR brættet (ekstern binding), står navnet på
           // binding-entry'en i stedet for i en kolonne.
           const externalName = (bindingMap?.[r.id] || []).find((e) => e.name)?.name ?? null;
-          const boundRace = locked ? (raceByRider.get(r.id) ?? externalName) : null;
+          const boundRace = locked && !outgoing ? (raceByRider.get(r.id) ?? externalName) : null;
           return (
             <div key={r.id} className="relative flex flex-col items-start gap-0.5">
               <button
@@ -73,7 +77,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
                 disabled={busy}
                 draggable={!locked && !busy}
                 onDragStart={(e) => e.dataTransfer.setData("text/plain", encodeDrag({ riderId: r.id, fromRaceId: null }))}
-                title={boundRace ? t("racehub.boundNamed", { race: boundRace }) : undefined}
+                title={outgoing ? t("racehub.lockOutgoing") : boundRace ? t("racehub.boundNamed", { race: boundRace }) : undefined}
                 onClick={() => setOpenRiderId(openRiderId === r.id ? null : r.id)}
                 className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${
                   locked
@@ -90,6 +94,11 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
                   >{t("racehub.pool.loadShort", { days: load.raceDays })}</span>
                 )}
               </button>
+              {outgoing && (
+                <span className="pl-1.5 text-3xs text-cz-danger max-w-[160px] truncate" title={t("racehub.lockOutgoing")}>
+                  {t("racehub.outgoingShort")}
+                </span>
+              )}
               {boundRace && (
                 <span className="pl-1.5 text-3xs text-cz-3 flex items-center gap-1 max-w-[160px] truncate">
                   <LockIcon size={9} aria-hidden="true" />{t("racehub.boundNamed", { race: boundRace })}

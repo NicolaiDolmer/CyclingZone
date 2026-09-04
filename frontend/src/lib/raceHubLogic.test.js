@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, riderLockReason, riderLockLabel, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel, raceGameDayLabel, toDisplayRaceDay, raceDayOverlaps, raceDayClashes, countDistinctClashRiders, RACE_DAY_DISPLAY_OFFSET } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, riderLockReason, riderLockLabel, freeRiderCountForColumn, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel, raceGameDayLabel, toDisplayRaceDay, raceDayOverlaps, raceDayClashes, countDistinctClashRiders, RACE_DAY_DISPLAY_OFFSET } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -206,6 +206,41 @@ test("riderColumnState: riding / overlap / available / locked (#1984)", () => {
   assert.equal(riderColumnState({ column: colChe, bindingMap, riderId: "yonas" }), "overlap");
   assert.equal(riderColumnState({ column: colMun, bindingMap, riderId: "yonas" }), "available");
   assert.equal(riderColumnState({ column: colDone, bindingMap, riderId: "yonas" }), "locked");
+});
+
+// #4119: solgt rytter der kører løbet færdigt for sælgeren.
+test("riderColumnState: outgoing — 'riding' vinder, men han kan ikke tilføjes et nyt løb (#4119)", () => {
+  const colBur = { id: "bur", name: "Burgalesa", bindingWindow: W(3), selection: { rider_ids: ["yonas"] } };
+  const colMun = { id: "mun", name: "Münsterland", bindingWindow: W(5), selection: { rider_ids: [] } };
+  const bindingMap = draftBindingMap([colBur, colMun]);
+  // Han kører allerede Burgalesa — det løb skal han køre færdigt, så tilstanden er "riding".
+  assert.equal(riderColumnState({ column: colBur, bindingMap, riderId: "yonas", outgoing: true }), "riding");
+  // Münsterland ville ellers være ledig; som udgående kan han ikke udtages.
+  assert.equal(riderColumnState({ column: colMun, bindingMap, riderId: "yonas", outgoing: true }), "outgoing");
+  assert.equal(canAddRiderToColumn({ column: colMun, bindingMap, riderId: "yonas", outgoing: true }), false);
+  // Uden flaget er adfærden PRÆCIS som før.
+  assert.equal(canAddRiderToColumn({ column: colMun, bindingMap, riderId: "yonas" }), true);
+});
+
+test("riderLockReason/riderLockLabel: udgående rytter får sin egen forklaring (#4119)", () => {
+  const colMun = { id: "mun", name: "Münsterland", bindingWindow: W(5), selection: { rider_ids: [] } };
+  const bindingMap = draftBindingMap([colMun]);
+  const reason = riderLockReason({ riderId: "yonas", columns: [colMun], bindingMap, outgoing: true });
+  assert.deepEqual(reason, { code: "outgoing_transfer", raceId: null, raceName: null });
+  assert.equal(riderLockLabel({ reason, t: (k) => k }), "racehub.lockOutgoing");
+  // Ikke udgående → ingen lås (kolonnen er ledig).
+  assert.equal(riderLockReason({ riderId: "yonas", columns: [colMun], bindingMap }), null);
+});
+
+test("freeRiderCountForColumn: udgående ryttere tæller ikke som frie (#4119)", () => {
+  const colMun = { id: "mun", name: "Münsterland", bindingWindow: W(5), selection: { rider_ids: [] } };
+  const bindingMap = draftBindingMap([colMun]);
+  const roster = [
+    { id: "a", injured: false },
+    { id: "b", injured: false, outgoing: true },
+    { id: "c", injured: true },
+  ];
+  assert.equal(freeRiderCountForColumn({ column: colMun, roster, bindingMap }), 1);
 });
 
 test("findSelectionOverlaps: én rytter i to overlappende løb → konflikt med begge navne (#1983/#1984)", () => {

@@ -264,6 +264,8 @@
     },
     "boundNamed": "Låst · kører {race}",
     "lockBoundUnnamed": "Låst · kører allerede et overlappende løb",
+    "outgoingShort": "Forlader holdet efter dette løb",
+    "lockOutgoing": "Forlader holdet efter det igangværende løb · kan ikke udtages til et nyt",
     "lockAllStarted": "Låst · alle dagens løb er allerede begyndt",
     "lockAllWithdrawn": "Låst · du har meldt fra alle dagens løb",
     "lockUnavailable": "Låst · ingen af dagens løb kan ændres",
