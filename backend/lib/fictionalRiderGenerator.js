@@ -782,14 +782,14 @@ export function generateFictionalRiders({
   // fødte 85 % af ryttere med secondary=null (PR'ens oprindelige hybrid-model)
   // ville genindføre præcis det svigt #3634 målte: 72 ryttere på tre døgn fik
   // deres secondary_type udpeget af klassifikatoren i stedet for af anlægget.
+  // REBASE-NOTE 4/9 (#3512): sekundæren trækkes fra DEFAULT_DISTRIBUTION i BEGGE
+  // grene — IKKE fra den tier-modificerede fordeling. Prøvet og forkastet: en
+  // tier-modificeret sekundær-fordeling fælder #3631's gate
+  // ("sekundær-fordelingen følger DEFAULT_DISTRIBUTION", L1 ≤ 8 pp — målt 8,3 pp).
+  // TIER_ARCHETYPE_MODIFIER er en udtalelse om hvilke LEDER-typer der hører til i
+  // hvilket værdi-tier, ikke om hvilket bi-anlæg en rytter fødes med.
   const secondaryRng = makeRng((seed + 0x9e3779b9) >>> 0);
-  const secondarySeq = typeSeq.map((primary, i) =>
-    drawSecondaryArchetype(
-      secondaryRng,
-      primary,
-      usingLegacyTypeWeights ? undefined : { distribution: distributionForTier(tierSeq[i].value) },
-    ),
-  );
+  const secondarySeq = typeSeq.map((primary) => drawSecondaryArchetype(secondaryRng, primary));
 
   // Byg nationalitets-sekvens: garanterede nationer først, resten vægtet, så
   // deterministisk blandet, så garanterede ikke altid klumper i starten.
