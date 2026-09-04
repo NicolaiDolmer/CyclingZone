@@ -194,6 +194,11 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
     why: "Motor-beregnet stilling pr. sæson. Nulstilles korrekt af sig selv fordi den nye sæson starter uden resultater.",
   },
   {
+    table: "backup_4485_season_standings_20260904",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "Engangs-backup-tabel til #4485-reparationen (ungdomsklassement, sæson 3) — et FØR-billede af season_standings taget lige inden repair-4485-young-classification.js's updateStandings()-kald. Ren revisions-kopi, ikke en manager-opsætning; har season_id fordi kilde-rækkerne er sæson-scopede, ikke fordi manageren konfigurerer noget her. Droppes efter reparationen er verificeret stabil (se DDL-filens 'OPRYDNING'-afsnit).",
+  },
+  {
     table: "season_documentaries",
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "#3402: genereret narrativ-cache pr. (season_id, team_id), skrevet ÉN gang af backend/lib/seasonDocumentarySweep.js efter sæsonslut. Samme skema som academy_season_intake_runs — manageren konfigurerer intet her, og en carry-over ville være direkte skadelig: en kopieret dokumentar ville fortælle den GAMLE sæsons historie under den NYE sæsons overskrift. Den nye sæson starter korrekt tom (ingen række) og sweepen fylder den op efter NÆSTE sæsonslut.",
