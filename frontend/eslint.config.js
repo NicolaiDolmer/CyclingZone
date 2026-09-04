@@ -13,7 +13,12 @@ export default [
     files: ["**/*.{js,jsx}"],
     plugins: { react, "react-hooks": reactHooks },
     languageOptions: {
-      globals: { ...globals.browser },
+      globals: {
+        ...globals.browser,
+        // #2423: bagt ind af `define` i vite.config.js (Vercel Skew Protection).
+        __CZ_SKEW_DEPLOYMENT_ID__: "readonly",
+        __CZ_SKEW_BUILD_TIME__: "readonly",
+      },
       ecmaVersion: 2022,
       sourceType: "module",
       parserOptions: { ecmaFeatures: { jsx: true } },

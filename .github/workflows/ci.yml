@@ -101,6 +101,52 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      # #2423: gaten maaler det BYGGEDE output, ikke konfigurationen. Den fejler
+      # hvis nogen bygget URL baerer "?dpl=" — praecis den omskrivning der
+      # knaekkede hele appen i prod 4/9 (PR #4745, revertet). Skew Protection
+      # koerer via __vdpl-cookien i stedet, som ikke roerer en eneste URL.
+      - name: Test skew-protection guard
+        working-directory: .
+        run: node --test scripts/check-skew-protection.test.mjs
+
+      - name: Run skew-protection guard
+        working-directory: .
+        run: node scripts/check-skew-protection.mjs
+
+      # Uden de naeste steps er vagten ovenfor en attrap: CI bygger uden skew-env,
+      # saa gate 1 har intet "?dpl=" at finde og gate 2 skipper. #4745's
+      # regression ville altsaa vaere gaaet groent igennem. Her bygges der MED
+      # env slaaet til, saa begge gates faktisk maaler noget.
+      - name: Build frontend with Skew Protection enabled (#2423)
+        env:
+          VERCEL_SKEW_PROTECTION_ENABLED: "1"
+          VERCEL_DEPLOYMENT_ID: dpl_ci_test
+          VERCEL_ENV: production
+        run: npm run build
+
+      - name: Run skew-protection guard (skew-enabled build)
+        working-directory: .
+        env:
+          VERCEL_DEPLOYMENT_ID: dpl_ci_test
+          VERCEL_ENV: production
+        run: node scripts/check-skew-protection.mjs
+
+      # Preview-deploys maa aldrig pinnes: samme env, men VERCEL_ENV=preview skal
+      # give et build UDEN deployment-id, og vagten skal bekraefte det.
+      - name: Build frontend as a preview deploy (#2423)
+        env:
+          VERCEL_SKEW_PROTECTION_ENABLED: "1"
+          VERCEL_DEPLOYMENT_ID: dpl_ci_test
+          VERCEL_ENV: preview
+        run: npm run build
+
+      - name: Run skew-protection guard (preview build must not pin)
+        working-directory: .
+        env:
+          VERCEL_DEPLOYMENT_ID: dpl_ci_test
+          VERCEL_ENV: preview
+        run: node scripts/check-skew-protection.mjs
+
   warning-budget:
     runs-on: ubuntu-latest
     permissions:

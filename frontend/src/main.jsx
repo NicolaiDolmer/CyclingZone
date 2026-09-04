@@ -1,3 +1,12 @@
+// #2423: første import med vilje, men vær præcis om hvad det køber os.
+// Entry-chunken, dens STATISKE imports og alle modulepreloads er allerede hentet
+// før den første linje JS overhovedet kører — dem kan cookien ikke nå at
+// påvirke, og de har heller ikke brug for den: de kom fra samme deployment som
+// HTML'en. Det kaldet nedenfor faktisk garanterer, er at `__vdpl` er sat før den
+// første LAZY `import()` (React.lazy-ruter og andre dynamiske imports), altså
+// præcis de requests der ellers rammer en 404 efter et deploy.
+// Se lib/skewProtection.js for mekanikken.
+import { installSkewProtection } from "./lib/skewProtection.js";
 import React from "react";
 import { hydrateRoot, createRoot } from "react-dom/client";
 import App from "./App.jsx";
@@ -14,6 +23,12 @@ import "./index.css";
 // blokerede boot uden gevinst. CSS'en scopes nu til de to moduler der faktisk
 // renderer flag: `Flag.jsx` og `LanguageSwitcher.jsx` — Vite deduper importen,
 // så den loades præcis én gang, første gang et flag-modul indlæses.
+
+// Skew Protection (#2423): pin denne klient til det deployment den kører, så en
+// lazy chunk hentet EFTER et deploy stadig findes. Første statement, så pinnen
+// står før den første dynamiske import. No-op i alt andet end et Vercel
+// PRODUCTION-build med Skew Protection slået til.
+installSkewProtection();
 
 // Stale-chunk recovery (#906): et globalt net der fanger dynamic-import/preload-
 // fejl efter et deploy FØR React's error-boundary kan ramme dem — både Vite's
