@@ -26,38 +26,6 @@ Hvis Vercel-projekt, Railway-service eller domæner ændres, skal denne fil opda
 
 ---
 
-## Skew Protection (#2423 P1)
-
-Vite-SPA'en serverer content-hashede chunks. Under et deploy kan en klient på den
-gamle `index.html` ramme en edge-node der allerede kører den nye deployment, og
-forespørge en chunk der er roteret væk — se #4595/#4545. **Skew Protection**
-pinner asset-requests til den deployment klienten kører, og fjerner racet.
-
-Vite/Vite-SPA har ikke indbygget support (kun Next.js/SvelteKit/Nuxt-adapters har
-det). Wiret manuelt i `frontend/vite.config.js` via Vites
-`experimental.renderBuiltUrl`-hook: når Vercel sætter `VERCEL_SKEW_PROTECTION_ENABLED=1`
-+ `VERCEL_DEPLOYMENT_ID` på build-containeren, bærer hver bygget asset-URL
-(entry-HTML'ens `<script>`/`<link>` OG chunk-preload-koden bag dynamic `import()`)
-`?dpl=<deployment-id>` — Vercels egen dokumenterede mekanisme
-(https://vercel.com/docs/skew-protection). Uden begge env-variabler er buildet
-100 % uændret.
-
-- **Ejer-skridt (kræves, ikke automatiseret):** slå "Skew Protection" til i
-  Vercel-projektets settings → Advanced. Kræver Pro-plan (projektet er allerede
-  på Pro).
-- **Forward-guard:** `npm run check:skew-protection` (script
-  `scripts/check-skew-protection.mjs`) kører efter et build med env sat og
-  verificerer at entry-HTML'en (`app.html`/`index.html`) og mindst én dynamisk
-  chunk-reference bærer `dpl=`.
-- Vercels `headers`/`rewrites`-regler i `frontend/vercel.json` matcher på sti,
-  ikke på query-string, så `?dpl=` ødelægger ikke `/assets/(.*)`-cache-headeren
-  eller SPA-catch-all-rewriten.
-- **Effekt måles:** deploy-verifys chunk-fejl-rate-gate (budget 25/24t,
-  `.github/workflows/deploy-verify.yml`) + Sentry CYCLINGZONE-56 en uge efter
-  ejerens Vercel-setting er slået til.
-
----
-
 ## Observability env vars
 
 Sentry er canonical error-tracking for browser- og Node-runtime errors. GitHub Actions er canonical for CI/deploy/audit-status, og Supabase audits er canonical for DB/RLS/liveness drift.
