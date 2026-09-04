@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.248",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Manager and team names in a thread are now clickable",
+          "body": "Every post and reply opens with the writer's badge: manager name links to their manager profile, team name links to their team page. A short line under the text shows the writer's team and division, unless they already wrote the team name themselves."
+        },
+        "da": {
+          "title": "Manager- og holdnavne i en tråd kan nu klikkes",
+          "body": "Hvert indlæg og svar starter med skribentens mærke: managernavnet fører til managerprofilen, holdnavnet til holdsiden. En kort linje under teksten viser skribentens hold og division, medmindre de selv har skrevet holdnavnet."
+        },
+        "refs": [
+          4751
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.247",
     "date": "2026-09-04",
     "label": "Beta",

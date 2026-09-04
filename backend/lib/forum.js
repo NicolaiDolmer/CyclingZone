@@ -127,7 +127,13 @@ function excerpt(text) {
  * Batch-opslag af afsendere (users) + hold (teams) for en mængde rækker.
  * Ingen PostgREST-embeds: user_id peger på auth.users, ikke public.users,
  * så der er ingen FK at embedde igennem (samme begrundelse som feedbackInbox).
- * Spiller-fladen får KUN username + holdnavn — aldrig email.
+ * Spiller-fladen får KUN username + holdnavn + division — aldrig email.
+ *
+ * #4751 (profil-identitet i forummet): teams-selecten bærer nu også `division`,
+ * så forfatterlinjen kan vise auto-signaturen (holdnavn + division) uden en
+ * ekstra rundtur pr. indlæg. Kolonnen er allerede offentlig (vises på
+ * /managers/:teamId og i stillingerne) og koster intet ekstra kald — samme
+ * bounded IN-select som før, stadig aldrig N+1.
  */
 async function resolveAuthors({ supabase, rows }) {
   const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))];
@@ -138,7 +144,7 @@ async function resolveAuthors({ supabase, rows }) {
       ? supabase.from("users").select("id, username").in("id", userIds).limit(userIds.length)
       : Promise.resolve({ data: [], error: null }),
     teamIds.length
-      ? supabase.from("teams").select("id, name").in("id", teamIds).limit(teamIds.length)
+      ? supabase.from("teams").select("id, name, division").in("id", teamIds).limit(teamIds.length)
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (usersResult.error) throw new Error(`forum: could not resolve authors: ${usersResult.error.message}`);
@@ -159,6 +165,10 @@ function shapeAuthor(row, usersById, teamsById) {
     // #4649: team_id (ikke-sensitivt — allerede en offentlig FK) så fronten kan
     // slå Founder-mærket op via useFounderTeams uden en ekstra rundtur.
     team_id: row.team_id ?? null,
+    // #4751: division driver auto-signaturen under indlægget. Offentligt tal
+    // (står allerede på managerprofilen og i stillingerne); null for
+    // admin-opslag uden hold.
+    division: team?.division ?? null,
   };
 }
 

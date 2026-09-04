@@ -62,8 +62,8 @@ function seedState(overrides = {}) {
       { id: "admin1", username: "dolmer", email: "owner@example.com", role: "admin" },
     ],
     teams: [
-      { id: "t1", name: "Team Alpha" },
-      { id: "t2", name: "Team Beta" },
+      { id: "t1", name: "Team Alpha", division: 1, balance: 500000 },
+      { id: "t2", name: "Team Beta", division: 3, balance: 250000 },
     ],
     ...overrides,
   };
@@ -116,6 +116,52 @@ test("listForumPosts: pinned i egen blok på side 1, hovedliste nyeste først, f
   assert.equal(result.items[0].author.team_name, "Team Beta");
   assert.equal(result.items[0].has_poll, false);
   assert.equal(result.next_cursor, null);
+});
+
+// #4751 — profil-identitet i forummet: forfatterlinjen skal bære det fronten
+// bruger til at linke til /managers/:teamId + tegne auto-signaturen (holdnavn +
+// division), og INTET andet. Testen er både en kontrakt-test (feltet findes) og
+// en lækage-vagt (email/user_id/balance må aldrig nå spiller-fladen).
+const ALLOWED_AUTHOR_KEYS = ["username", "team_name", "team_id", "division"];
+
+function assertAuthorShape(author) {
+  assert.deepEqual(Object.keys(author).sort(), [...ALLOWED_AUTHOR_KEYS].sort());
+}
+
+test("forfatter-shape: username + holdnavn + team_id + division, aldrig email/user_id/balance", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", seq: 1, user_id: "u1", team_id: "t1" })],
+    forum_replies: [
+      { id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u2", team_id: "t2", body: "Reply", quoted_reply_id: null, deleted_at: null },
+    ],
+  }));
+
+  const list = await listForumPosts({ supabase: fake, userId: "u1" });
+  assertAuthorShape(list.items[0].author);
+  assert.equal(list.items[0].author.division, 1);
+  assert.equal(list.items[0].author.team_name, "Team Alpha");
+
+  const detail = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  assertAuthorShape(detail.body.post.author);
+  assert.equal(detail.body.post.author.division, 1);
+  assertAuthorShape(detail.body.replies[0].author);
+  assert.equal(detail.body.replies[0].author.division, 3);
+  assert.equal(detail.body.replies[0].author.team_name, "Team Beta");
+
+  const serialized = JSON.stringify(detail.body);
+  assert.ok(!serialized.includes("@example.com"), "email må aldrig nå spiller-fladen");
+  assert.ok(!serialized.includes("balance"), "team-økonomi må aldrig nå forfatterlinjen");
+});
+
+test("forfatter-shape: division er null når opslaget ikke har et hold (admin-opslag)", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p9", seq: 9, user_id: "admin1", team_id: null })],
+  }));
+
+  const detail = await getForumPost({ supabase: fake, id: "p9", userId: "admin1" });
+  assert.equal(detail.body.post.author.username, "dolmer");
+  assert.equal(detail.body.post.author.team_name, null);
+  assert.equal(detail.body.post.author.division, null);
 });
 
 test("listForumPosts: kategori-filter + keyset-cursor (sammensat aktivitet+seq), pinned kun på side 1", async () => {
