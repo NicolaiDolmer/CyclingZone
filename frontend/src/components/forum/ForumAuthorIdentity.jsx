@@ -25,9 +25,14 @@ import {
 // TASTE: ingen skygger/gradienter, 5px radius via komponenten, stroke-ikoner
 // (FounderMark), tabular figures paa datoen, sentence case.
 
-export default function ForumAuthorIdentity({ author, createdAt, language, size = "md", t }) {
+// `body` bruges KUN til at afgoere hvor holdnavnet hoerer hjemme: staar det i
+// auto-signaturen nedenunder, gentages det ikke paa forfatterlinjen. Praecis ét
+// af de to steder baerer holdnavnet — aldrig begge (TASTE §3, data-slop) og
+// aldrig ingen af dem.
+export default function ForumAuthorIdentity({ author, body, createdAt, language, size = "md", t }) {
   const name = authorDisplayName(author);
   const teamId = author?.team_id || null;
+  const teamNameInSignature = shouldShowSignature(body, author);
   const avatarName = author?.team_name || name;
   const avatar = <Avatar name={avatarName} size={size} />;
 
@@ -55,7 +60,7 @@ export default function ForumAuthorIdentity({ author, createdAt, language, size 
         ) : (
           <span className="truncate font-semibold text-cz-2">{name}</span>
         )}
-        {showsSeparateTeamName(author) && (
+        {!teamNameInSignature && showsSeparateTeamName(author) && (
           teamId ? (
             <Link
               to={`/teams/${teamId}`}
@@ -69,8 +74,12 @@ export default function ForumAuthorIdentity({ author, createdAt, language, size 
         )}
         {/* #4649: Founder-maerke ved forfatterlinjen. */}
         <FounderMark teamId={teamId} />
-        <span aria-hidden="true">·</span>
-        <span className="tabular-nums">{formatForumDate(createdAt, language)}</span>
+        {/* Separator + dato holdes sammen i ét nowrap-element: paa 412px brød
+            linjen ellers mellem prikken og datoen. */}
+        <span className="whitespace-nowrap tabular-nums">
+          <span aria-hidden="true">· </span>
+          {formatForumDate(createdAt, language)}
+        </span>
       </div>
     </div>
   );
@@ -82,9 +91,16 @@ export default function ForumAuthorIdentity({ author, createdAt, language, size 
 // skrevet holdnavnet i teksten (se shouldShowSignature).
 export function ForumSignature({ author, body, t }) {
   if (!shouldShowSignature(body, author)) return null;
+  const teamId = author.team_id || null;
   return (
     <p className="mt-2.5 font-data text-2xs uppercase tracking-[.08em] text-cz-3">
-      <span className="normal-case">{author.team_name}</span>
+      {teamId ? (
+        <Link to={`/teams/${teamId}`} className="normal-case transition-colors hover:text-cz-accent-t">
+          {author.team_name}
+        </Link>
+      ) : (
+        <span className="normal-case">{author.team_name}</span>
+      )}
       <span aria-hidden="true"> · </span>
       <span className="tabular-nums">{t("signature.division", { division: author.division })}</span>
     </p>

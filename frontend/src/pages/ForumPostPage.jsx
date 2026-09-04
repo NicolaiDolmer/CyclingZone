@@ -425,6 +425,7 @@ export default function ForumPostPage() {
             )}
             <ForumAuthorIdentity
               author={post.author}
+              body={post.body}
               createdAt={post.created_at}
               language={language}
               size="md"
@@ -467,34 +468,32 @@ export default function ForumPostPage() {
               <div className="divide-y divide-cz-border">
                 {replies.map((reply) => (
                   <div key={reply.id} id={`reply-${reply.id}`} className="py-[13px] scroll-mt-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <ForumAuthorIdentity
-                          author={reply.author}
-                          createdAt={reply.created_at}
-                          language={language}
-                          size="sm"
+                    <ForumAuthorIdentity
+                      author={reply.author}
+                      body={reply.body}
+                      createdAt={reply.created_at}
+                      language={language}
+                      size="sm"
+                      t={t}
+                    />
+                    {/* Indrykket til avatarens hoejre kant (28px + 10px gap), saa
+                        svarets tekst, signatur og handlinger ligger i én kolonne
+                        under forfatterlinjen. #4751: handlingerne laa foer i en
+                        hoejre-kolonne ved siden af teksten — paa 412px klemte de
+                        svarteksten ned i ~150px (TASTE P10). Nu ligger de under
+                        teksten, praecis som paa selve opslaget. */}
+                    <div className="mt-2 ps-[38px]">
+                      <QuotedReplyBlock quoted={reply.quoted} onJump={handleJumpToOriginal} t={t} />
+                      <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{reply.body}</p>
+                      <ForumSignature author={reply.author} body={reply.body} t={t} />
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <SupportButton
+                          active={reply.supported_by_me}
+                          count={reply.support_count ?? 0}
+                          onToggle={() => handleToggleReaction("reply", reply.id)}
+                          disabled={reactingKey === `reply:${reply.id}`}
                           t={t}
                         />
-                        {/* Indrykket til avatarens hoejre kant (28px + 10px gap),
-                            saa svarets tekst, signatur og opbakning ligger i én
-                            kolonne under forfatterlinjen. */}
-                        <div className="mt-2 ps-[38px]">
-                          <QuotedReplyBlock quoted={reply.quoted} onJump={handleJumpToOriginal} t={t} />
-                          <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{reply.body}</p>
-                          <ForumSignature author={reply.author} body={reply.body} t={t} />
-                          <div className="mt-2 flex items-center gap-2">
-                            <SupportButton
-                              active={reply.supported_by_me}
-                              count={reply.support_count ?? 0}
-                              onToggle={() => handleToggleReaction("reply", reply.id)}
-                              disabled={reactingKey === `reply:${reply.id}`}
-                              t={t}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
                         <Button variant="ghost" size="sm" onClick={() => handleQuote(reply)}>
                           <UndoIcon size={14} aria-hidden="true" className="me-1 inline -mt-0.5" />
                           {t("quote.action")}
