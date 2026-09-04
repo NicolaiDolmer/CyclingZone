@@ -5,6 +5,11 @@
 // admin-sletning (soft delete), ejer notificeres via Discord ved nye
 // opslag/svar (#3201 — selve pinget sker i api.js-routen, ikke her).
 //
+// #4492 (ejer-beslutning 4/9, "kategorier skal vi have flere af"): udvidet
+// fra to til seks kategorier (questions, tactics, transfers, off_topic
+// tilføjet) + et arkiv-FILTER (ikke en kategori — se FORUM_ARCHIVE_FILTER
+// nedenfor).
+//
 // Handler-logikken bor her (ikke inline i api.js) af samme grund som
 // feedbackInbox.js: api.js kræver en live Supabase-klient og kan ikke
 // unit-testes direkte, mens rene handlere kan køres mod createFakeSupabase.
@@ -33,7 +38,16 @@
 // forummet forbi denne skala kræver sorteringen en DB-side generated
 // `last_activity_at`-kolonne i stedet for JS-scanningen.
 
-export const FORUM_CATEGORIES = ["general", "feedback_ideas"];
+export const FORUM_CATEGORIES = ["general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"];
+// #4492: arkiv er et BEREGNET visnings-filter, ikke en gyldig category-værdi
+// — et opslag kan aldrig oprettes eller stå permanent i "archive" (isValid-
+// ForumCategory afviser den bevidst, se nedenfor). En tråd er arkiveret når
+// dens seneste aktivitet er ældre end FORUM_ARCHIVE_AFTER_DAYS; svarer nogen,
+// falder den automatisk ud af arkivet igen (aktivitets-nøglen er den samme
+// som #4118's sortering).
+export const FORUM_ARCHIVE_FILTER = "archive";
+export const FORUM_ARCHIVE_AFTER_DAYS = 60;
+const FORUM_ARCHIVE_AFTER_MS = FORUM_ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
 export const FORUM_TITLE_MAX_LENGTH = 120;
 export const FORUM_BODY_MAX_LENGTH = 4000;
 export const FORUM_REPORT_REASON_MAX_LENGTH = 500;
@@ -78,6 +92,11 @@ export function isValidForumCategory(category) {
   return FORUM_CATEGORIES.includes(category);
 }
 
+/** GET /api/forum/posts?category=… accepterer de rigtige kategorier + "archive". */
+export function isValidForumListFilter(filter) {
+  return filter === FORUM_ARCHIVE_FILTER || isValidForumCategory(filter);
+}
+
 /** Aktivitets-nøgle for sortering: seneste svar, ellers oprettelse. */
 function activityAt(row) {
   return row.last_reply_at || row.created_at;
@@ -85,6 +104,11 @@ function activityAt(row) {
 
 function activityEpoch(row) {
   return Date.parse(activityAt(row));
+}
+
+/** #4492: ingen aktivitet i FORUM_ARCHIVE_AFTER_DAYS → arkiveret. */
+function isArchived(row, now) {
+  return now.getTime() - activityEpoch(row) > FORUM_ARCHIVE_AFTER_MS;
 }
 
 /** Nyeste aktivitet først; seq desc som stabilt tiebreak (delt tidsstempel). */
@@ -127,7 +151,13 @@ function excerpt(text) {
  * Batch-opslag af afsendere (users) + hold (teams) for en mængde rækker.
  * Ingen PostgREST-embeds: user_id peger på auth.users, ikke public.users,
  * så der er ingen FK at embedde igennem (samme begrundelse som feedbackInbox).
- * Spiller-fladen får KUN username + holdnavn — aldrig email.
+ * Spiller-fladen får KUN username + holdnavn + division — aldrig email.
+ *
+ * #4751 (profil-identitet i forummet): teams-selecten bærer nu også `division`,
+ * så forfatterlinjen kan vise auto-signaturen (holdnavn + division) uden en
+ * ekstra rundtur pr. indlæg. Kolonnen er allerede offentlig (vises på
+ * /managers/:teamId og i stillingerne) og koster intet ekstra kald — samme
+ * bounded IN-select som før, stadig aldrig N+1.
  */
 async function resolveAuthors({ supabase, rows }) {
   const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))];
@@ -138,7 +168,7 @@ async function resolveAuthors({ supabase, rows }) {
       ? supabase.from("users").select("id, username").in("id", userIds).limit(userIds.length)
       : Promise.resolve({ data: [], error: null }),
     teamIds.length
-      ? supabase.from("teams").select("id, name").in("id", teamIds).limit(teamIds.length)
+      ? supabase.from("teams").select("id, name, division").in("id", teamIds).limit(teamIds.length)
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (usersResult.error) throw new Error(`forum: could not resolve authors: ${usersResult.error.message}`);
@@ -159,6 +189,10 @@ function shapeAuthor(row, usersById, teamsById) {
     // #4649: team_id (ikke-sensitivt — allerede en offentlig FK) så fronten kan
     // slå Founder-mærket op via useFounderTeams uden en ekstra rundtur.
     team_id: row.team_id ?? null,
+    // #4751: division driver auto-signaturen under indlægget. Offentligt tal
+    // (står allerede på managerprofilen og i stillingerne); null for
+    // admin-opslag uden hold.
+    division: team?.division ?? null,
   };
 }
 
@@ -246,11 +280,21 @@ async function resolveReactionSummaries({ supabase, targetType, targetIds, userI
  * separat `pinned`-blok på FØRSTE side (ingen cursor) og er udeladt af den
  * paginerede hovedliste. `userId` (valgfri — tests kan udelade den) driver
  * pr.-tråd is_unread (#3451).
+ *
+ * #4492 · `category: "archive"` er et visnings-filter, ikke en DB-kategori:
+ * hovedlisten viser NORMALT kun tråde med aktivitet inden for
+ * FORUM_ARCHIVE_AFTER_DAYS ("all"/en almindelig kategori ekskluderer
+ * arkiverede tråde); med `category=archive` vendes filteret om (KUN
+ * arkiverede, på tværs af kategori). Pinned-blokken er upåvirket af arkiv-
+ * filteret og springes helt over ved `category=archive` — pins er admins
+ * bevidste "hold denne synlig"-signal, ikke noget der hører hjemme i en
+ * arkiv-fane. `now` er injicerbar for tests (default: rigtig tid).
  */
-export async function listForumPosts({ supabase, category = null, limit, cursor, userId = null }) {
+export async function listForumPosts({ supabase, category = null, limit, cursor, userId = null, now = new Date() }) {
   const pageSize = parseForumLimit(limit);
   const afterCursor = parseForumActivityCursor(cursor);
-  const categoryFilter = isValidForumCategory(category) ? category : null;
+  const archiveFilter = category === FORUM_ARCHIVE_FILTER;
+  const categoryFilter = !archiveFilter && isValidForumCategory(category) ? category : null;
 
   let query = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
     .is("deleted_at", null)
@@ -263,14 +307,18 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
   if (error) throw new Error(`forum: could not list posts: ${error.message}`);
 
   const sortedRows = sortByActivityDesc(data || []);
+  // #4492: arkiv-filteret anvendes FØR cursor-filtreringen, så paginering
+  // over en arkiv-fane (eller en almindelig fane der udelukker arkivet)
+  // arbejder på det samme udsnit på tværs af sider.
+  const scopedRows = sortedRows.filter((row) => isArchived(row, now) === archiveFilter);
   const afterFiltered = afterCursor == null
-    ? sortedRows
-    : sortedRows.filter((row) => isAfterActivityCursor(row, afterCursor));
+    ? scopedRows
+    : scopedRows.filter((row) => isAfterActivityCursor(row, afterCursor));
   const hasMore = afterFiltered.length > pageSize;
   const pageRows = afterFiltered.slice(0, pageSize);
 
   let pinnedRows = [];
-  if (afterCursor == null) {
+  if (afterCursor == null && !archiveFilter) {
     let pinnedQuery = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
       .is("deleted_at", null)
       .eq("is_pinned", true);

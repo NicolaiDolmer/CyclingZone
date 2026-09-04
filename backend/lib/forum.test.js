@@ -4,12 +4,15 @@ import assert from "node:assert/strict";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
 import {
   FORUM_CATEGORIES,
+  FORUM_ARCHIVE_FILTER,
+  FORUM_ARCHIVE_AFTER_DAYS,
   FORUM_LIST_DEFAULT_LIMIT,
   FORUM_LIST_MAX_LIMIT,
   parseForumLimit,
   parseForumCursor,
   parseForumActivityCursor,
   isValidForumCategory,
+  isValidForumListFilter,
   listForumPosts,
   getForumPost,
   createForumPost,
@@ -62,8 +65,8 @@ function seedState(overrides = {}) {
       { id: "admin1", username: "dolmer", email: "owner@example.com", role: "admin" },
     ],
     teams: [
-      { id: "t1", name: "Team Alpha" },
-      { id: "t2", name: "Team Beta" },
+      { id: "t1", name: "Team Alpha", division: 1, balance: 500000 },
+      { id: "t2", name: "Team Beta", division: 3, balance: 250000 },
     ],
     ...overrides,
   };
@@ -87,11 +90,20 @@ test("parseForumCursor accepterer kun positive heltal, ellers null (ingen 500)",
   assert.equal(parseForumCursor("42"), 42);
 });
 
-test("isValidForumCategory matcher DB-CHECK'en", () => {
-  assert.deepEqual(FORUM_CATEGORIES, ["general", "feedback_ideas"]);
-  assert.ok(isValidForumCategory("general"));
-  assert.ok(isValidForumCategory("feedback_ideas"));
+test("isValidForumCategory matcher DB-CHECK'en (#4492: 6 kategorier)", () => {
+  assert.deepEqual(FORUM_CATEGORIES, ["general", "feedback_ideas", "questions", "tactics", "transfers", "off_topic"]);
+  for (const category of FORUM_CATEGORIES) assert.ok(isValidForumCategory(category), category);
   assert.ok(!isValidForumCategory("random"));
+  // #4492: "archive" er et visnings-filter, ALDRIG en gyldig category-værdi
+  // (et opslag kan hverken oprettes eller stå permanent i den).
+  assert.ok(!isValidForumCategory(FORUM_ARCHIVE_FILTER));
+});
+
+test("isValidForumListFilter accepterer kategorierne + archive-filteret", () => {
+  for (const category of FORUM_CATEGORIES) assert.ok(isValidForumListFilter(category), category);
+  assert.ok(isValidForumListFilter(FORUM_ARCHIVE_FILTER));
+  assert.ok(!isValidForumListFilter("random"));
+  assert.ok(!isValidForumListFilter(""));
 });
 
 // ── Liste ───────────────────────────────────────────────────────────────────
@@ -116,6 +128,52 @@ test("listForumPosts: pinned i egen blok på side 1, hovedliste nyeste først, f
   assert.equal(result.items[0].author.team_name, "Team Beta");
   assert.equal(result.items[0].has_poll, false);
   assert.equal(result.next_cursor, null);
+});
+
+// #4751 — profil-identitet i forummet: forfatterlinjen skal bære det fronten
+// bruger til at linke til /managers/:teamId + tegne auto-signaturen (holdnavn +
+// division), og INTET andet. Testen er både en kontrakt-test (feltet findes) og
+// en lækage-vagt (email/user_id/balance må aldrig nå spiller-fladen).
+const ALLOWED_AUTHOR_KEYS = ["username", "team_name", "team_id", "division"];
+
+function assertAuthorShape(author) {
+  assert.deepEqual(Object.keys(author).sort(), [...ALLOWED_AUTHOR_KEYS].sort());
+}
+
+test("forfatter-shape: username + holdnavn + team_id + division, aldrig email/user_id/balance", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p1", seq: 1, user_id: "u1", team_id: "t1" })],
+    forum_replies: [
+      { id: "r1", seq: 1, created_at: "2026-08-01T11:00:00Z", post_id: "p1", user_id: "u2", team_id: "t2", body: "Reply", quoted_reply_id: null, deleted_at: null },
+    ],
+  }));
+
+  const list = await listForumPosts({ supabase: fake, userId: "u1" });
+  assertAuthorShape(list.items[0].author);
+  assert.equal(list.items[0].author.division, 1);
+  assert.equal(list.items[0].author.team_name, "Team Alpha");
+
+  const detail = await getForumPost({ supabase: fake, id: "p1", userId: "u1" });
+  assertAuthorShape(detail.body.post.author);
+  assert.equal(detail.body.post.author.division, 1);
+  assertAuthorShape(detail.body.replies[0].author);
+  assert.equal(detail.body.replies[0].author.division, 3);
+  assert.equal(detail.body.replies[0].author.team_name, "Team Beta");
+
+  const serialized = JSON.stringify(detail.body);
+  assert.ok(!serialized.includes("@example.com"), "email må aldrig nå spiller-fladen");
+  assert.ok(!serialized.includes("balance"), "team-økonomi må aldrig nå forfatterlinjen");
+});
+
+test("forfatter-shape: division er null når opslaget ikke har et hold (admin-opslag)", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [post({ id: "p9", seq: 9, user_id: "admin1", team_id: null })],
+  }));
+
+  const detail = await getForumPost({ supabase: fake, id: "p9", userId: "admin1" });
+  assert.equal(detail.body.post.author.username, "dolmer");
+  assert.equal(detail.body.post.author.team_name, null);
+  assert.equal(detail.body.post.author.division, null);
 });
 
 test("listForumPosts: kategori-filter + keyset-cursor (sammensat aktivitet+seq), pinned kun på side 1", async () => {
@@ -189,6 +247,75 @@ test("listForumPosts: slettede opslag vises aldrig", async () => {
   }));
   const result = await listForumPosts({ supabase: fake });
   assert.deepEqual(result.items.map((p) => p.id), ["p1"]);
+});
+
+// ── Arkiv-filter (#4492: 60 dage uden aktivitet) ────────────────────────────
+
+test("listForumPosts: en tråd uden aktivitet i FORUM_ARCHIVE_AFTER_DAYS er væk fra 'all'/en kategori, men vises under category=archive", async () => {
+  const now = new Date("2026-09-04T12:00:00Z");
+  const staleDays = FORUM_ARCHIVE_AFTER_DAYS + 1;
+  const staleCreatedAt = new Date(now.getTime() - staleDays * 24 * 60 * 60 * 1000).toISOString();
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      post({ id: "fresh", seq: 1, created_at: "2026-09-01T10:00:00Z" }),
+      post({ id: "stale", seq: 2, created_at: staleCreatedAt }),
+    ],
+  }));
+
+  const allList = await listForumPosts({ supabase: fake, now });
+  assert.deepEqual(allList.items.map((p) => p.id), ["fresh"]);
+
+  const archiveList = await listForumPosts({ supabase: fake, category: "archive", now });
+  assert.deepEqual(archiveList.items.map((p) => p.id), ["stale"]);
+});
+
+test("listForumPosts: et nyt svar tager tråden ud af arkivet igen (aktivitets-nøgle = last_reply_at)", async () => {
+  const now = new Date("2026-09-04T12:00:00Z");
+  const staleDays = FORUM_ARCHIVE_AFTER_DAYS + 1;
+  const staleCreatedAt = new Date(now.getTime() - staleDays * 24 * 60 * 60 * 1000).toISOString();
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      // Oprettet for længst, men fik et svar for nylig — IKKE arkiveret.
+      post({ id: "revived", seq: 1, created_at: staleCreatedAt, last_reply_at: "2026-09-03T10:00:00Z" }),
+    ],
+  }));
+
+  const allList = await listForumPosts({ supabase: fake, now });
+  assert.deepEqual(allList.items.map((p) => p.id), ["revived"]);
+
+  const archiveList = await listForumPosts({ supabase: fake, category: "archive", now });
+  assert.deepEqual(archiveList.items, []);
+});
+
+test("listForumPosts: pinned-blokken springes over under category=archive (pins er ikke arkiv-materiale)", async () => {
+  const now = new Date("2026-09-04T12:00:00Z");
+  const staleCreatedAt = new Date(now.getTime() - (FORUM_ARCHIVE_AFTER_DAYS + 5) * 24 * 60 * 60 * 1000).toISOString();
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      post({ id: "old-pin", seq: 1, created_at: staleCreatedAt, is_pinned: true }),
+      post({ id: "stale", seq: 2, created_at: staleCreatedAt }),
+    ],
+  }));
+
+  const archiveList = await listForumPosts({ supabase: fake, category: "archive", now });
+  assert.deepEqual(archiveList.pinned, []);
+  assert.deepEqual(archiveList.items.map((p) => p.id), ["stale"]);
+});
+
+test("listForumPosts: category=archive kombinerer med en almindelig kategori-værdi ignoreres ikke stille — archive vinder", async () => {
+  const now = new Date("2026-09-04T12:00:00Z");
+  const staleCreatedAt = new Date(now.getTime() - (FORUM_ARCHIVE_AFTER_DAYS + 1) * 24 * 60 * 60 * 1000).toISOString();
+  const fake = createFakeSupabase(seedState({
+    forum_posts: [
+      post({ id: "stale-general", seq: 1, category: "general", created_at: staleCreatedAt }),
+      post({ id: "stale-questions", seq: 2, category: "questions", created_at: staleCreatedAt }),
+    ],
+  }));
+
+  // "archive" er selve category-parameteren (ikke et ekstra filter oveni en
+  // kategori) — arkivet er kategori-uafhængigt, matcher UI'ets egen fane.
+  const archiveList = await listForumPosts({ supabase: fake, category: "archive", now });
+  assert.deepEqual(archiveList.items.map((p) => p.id).sort(), ["stale-general", "stale-questions"]);
 });
 
 // ── Ulæst-status pr. tråd (#3451) ───────────────────────────────────────────
@@ -378,11 +505,24 @@ test("createForumPost: validering af kategori/titel/body", async () => {
   const fake = createFakeSupabase(seedState());
   const base = { supabase: fake, userId: "u1", teamId: "t1" };
   assert.equal((await createForumPost({ ...base, category: "nope", title: "T", body: "B" })).body.errorCode, "forum_invalid_category");
+  // #4492: "archive" er et visnings-filter, aldrig en gyldig kategori at poste i.
+  assert.equal((await createForumPost({ ...base, category: "archive", title: "T", body: "B" })).body.errorCode, "forum_invalid_category");
   assert.equal((await createForumPost({ ...base, category: "general", title: "  ", body: "B" })).body.errorCode, "forum_title_required");
   assert.equal((await createForumPost({ ...base, category: "general", title: "x".repeat(121), body: "B" })).body.errorCode, "forum_title_too_long");
   assert.equal((await createForumPost({ ...base, category: "general", title: "T", body: "" })).body.errorCode, "forum_body_required");
   assert.equal((await createForumPost({ ...base, category: "general", title: "T", body: "x".repeat(4001) })).body.errorCode, "forum_body_too_long");
   assert.equal(fake.state.forum_posts.length, 0);
+});
+
+test("createForumPost: alle 6 kategorier (#4492: questions/tactics/transfers/off_topic tilføjet) accepteres", async () => {
+  const fake = createFakeSupabase(seedState());
+  for (const category of FORUM_CATEGORIES) {
+    const result = await createForumPost({
+      supabase: fake, userId: "u1", teamId: "t1", category, title: `Post in ${category}`, body: "Body",
+    });
+    assert.equal(result.status, 200, category);
+  }
+  assert.equal(fake.state.forum_posts.length, FORUM_CATEGORIES.length);
 });
 
 test("createForumPost: almindelig spiller kan oprette; poll kræver admin (403, intet opslag)", async () => {

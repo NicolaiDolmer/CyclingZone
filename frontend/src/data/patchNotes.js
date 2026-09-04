@@ -1,7 +1,7 @@
 export const PATCHES = [
   {
-    "version": "7.248",
-    "date": "2026-09-02",
+    "version": "7.252",
+    "date": "2026-09-04",
     "label": "Beta",
     "changes": [
       {
@@ -17,6 +17,52 @@ export const PATCHES = [
           "body": "Spiller du på engelsk, vises og opkræves CZ Pro nu i euro. Danske spillere betaler stadig i kroner, og 6-måneders planen kan nu også købes."
         },
         "refs": [4074]
+      }
+    ]
+  },
+  {
+    "version": "7.249",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Four new forum categories, plus an archive",
+          "body": "Questions & answers, Tactics & strategy, Transfers and Off-topic join General and Feedback & ideas. Threads with no new activity in 60 days move to the new Archive tab, out of the main list. You can still open and reply to an archived thread; replying brings it straight back."
+        },
+        "da": {
+          "title": "Fire nye forum-kategorier, plus et arkiv",
+          "body": "Spørgsmål og svar, Taktik og strategi, Transfers og Off-topic kommer til, ved siden af Generelt og Feedback & idéer. Tråde uden ny aktivitet i 60 dage flytter til den nye Arkiv-fane, ude af hovedlisten. Du kan stadig åbne og svare på en arkiveret tråd; et svar tager den straks tilbage."
+        },
+        "refs": [
+          4492
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.248",
+    "date": "2026-09-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Forum",
+        "en": {
+          "title": "Manager and team names in a thread are now clickable",
+          "body": "Every post and reply opens with the writer's badge: manager name links to their manager profile, team name links to their team page. A short line under the text shows the writer's team and division, unless they already wrote the team name themselves."
+        },
+        "da": {
+          "title": "Manager- og holdnavne i en tråd kan nu klikkes",
+          "body": "Hvert indlæg og svar starter med skribentens mærke: managernavnet fører til managerprofilen, holdnavnet til holdsiden. En kort linje under teksten viser skribentens hold og division, medmindre de selv har skrevet holdnavnet."
+        },
+        "refs": [
+          4751
+        ]
       }
     ]
   },

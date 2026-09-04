@@ -238,6 +238,21 @@
       }
     },
     {
+      "name": "forum-4492-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "frontend"
+      ],
+      "port": 5240,
+      "autoPort": true,
+      "env": {
+        "VITE_PREVIEW_MOCK": "1"
+      }
+    },
+    {
       "name": "pro-4608-mock",
       "runtimeExecutable": "npm",
       "runtimeArgs": [

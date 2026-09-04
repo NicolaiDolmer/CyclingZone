@@ -9,16 +9,24 @@
   "categories": {
     "all": "Alle",
     "general": "Generelt",
-    "feedback_ideas": "Feedback & idéer"
+    "feedback_ideas": "Feedback & idéer",
+    "questions": "Spørgsmål og svar",
+    "tactics": "Taktik og strategi",
+    "transfers": "Transfers",
+    "off_topic": "Off-topic",
+    "archive": "Arkiv"
   },
   "list": {
     "pinnedHeading": "Fastgjort",
     "latestHeading": "Seneste opslag",
+    "archiveHeading": "Arkiv",
     "replies": "{count, plural, =0 {Ingen svar} one {1 svar} other {# svar}}",
     "poll": "Afstemning",
     "loadMore": "Hent flere",
     "emptyTitle": "Ingen opslag endnu",
     "emptyDescription": "Vær den første til at starte en samtale.",
+    "archiveEmptyTitle": "Intet arkiveret endnu",
+    "archiveEmptyDescription": "Tråde flytter herover automatisk efter 60 dage uden ny aktivitet.",
     "by": "Af {name}",
     "unread": "Ulæst"
   },
@@ -58,6 +66,12 @@
     "ariaOn": "{count, plural, =0 {Fjern din opbakning} one {Fjern din opbakning (1 opbakker)} other {Fjern din opbakning (# opbakkere)}}",
     "ariaOff": "{count, plural, =0 {Bak op om dette} one {Bak op om dette (1 opbakker)} other {Bak op om dette (# opbakkere)}}",
     "count": "{count, plural, =0 {Ingen opbakning endnu} one {1 opbakker} other {# opbakkere}}"
+  },
+  "identity": {
+    "profileAria": "Åbn managerprofilen for {name}"
+  },
+  "signature": {
+    "division": "Division {division}"
   },
   "quote": {
     "action": "Citér",

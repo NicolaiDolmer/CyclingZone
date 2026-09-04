@@ -9,16 +9,24 @@
   "categories": {
     "all": "All",
     "general": "General",
-    "feedback_ideas": "Feedback & ideas"
+    "feedback_ideas": "Feedback & ideas",
+    "questions": "Questions & answers",
+    "tactics": "Tactics & strategy",
+    "transfers": "Transfers",
+    "off_topic": "Off-topic",
+    "archive": "Archive"
   },
   "list": {
     "pinnedHeading": "Pinned",
     "latestHeading": "Latest posts",
+    "archiveHeading": "Archive",
     "replies": "{count, plural, =0 {No replies} one {1 reply} other {# replies}}",
     "poll": "Poll",
     "loadMore": "Load more",
     "emptyTitle": "No posts yet",
     "emptyDescription": "Be the first to start a conversation.",
+    "archiveEmptyTitle": "Nothing archived yet",
+    "archiveEmptyDescription": "Threads move here automatically after 60 days without new activity.",
     "by": "By {name}",
     "unread": "Unread"
   },
@@ -58,6 +66,12 @@
     "ariaOn": "{count, plural, =0 {Remove your support} one {Remove your support (1 supporter)} other {Remove your support (# supporters)}}",
     "ariaOff": "{count, plural, =0 {Support this} one {Support this (1 supporter)} other {Support this (# supporters)}}",
     "count": "{count, plural, =0 {No support yet} one {1 supporter} other {# supporters}}"
+  },
+  "identity": {
+    "profileAria": "Open the manager profile for {name}"
+  },
+  "signature": {
+    "division": "Division {division}"
   },
   "quote": {
     "action": "Quote",
