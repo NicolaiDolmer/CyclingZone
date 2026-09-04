@@ -74,7 +74,7 @@ export async function loadSeasons(supabase) {
  * @returns {{events:Array, byRider:Map, perSeasonClass:Array, racesWithEvents:number,
  *            skippedResults:number, unknownRaceIds:Set<string>}}
  */
-export function replayEvents({ races = [], results = [], seasons = [] } = {}) {
+export function replayEvents({ races = [], results = [], seasons = [], constants = null } = {}) {
   const raceById = new Map(races.map((r) => [r.id, r]));
   const seasonNumberById = new Map(seasons.map((s) => [s.id, Number(s.number)]));
 
@@ -114,7 +114,7 @@ export function replayEvents({ races = [], results = [], seasons = [] } = {}) {
   // Deterministisk rækkefølge (race-id) — to kørsler skal give identisk output.
   for (const raceId of [...resultsByRace.keys()].sort()) {
     const race = raceById.get(raceId);
-    const raceEvents = eventsFromResultRows({ race, resultRows: resultsByRace.get(raceId) });
+    const raceEvents = eventsFromResultRows({ race, resultRows: resultsByRace.get(raceId), constants });
     if (!raceEvents.length) continue;
     racesWithEvents += 1;
     for (const event of raceEvents) {

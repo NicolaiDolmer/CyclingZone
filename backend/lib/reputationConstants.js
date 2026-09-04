@@ -39,10 +39,14 @@ export const WORLD_TOUR_CLASSES = Object.freeze([
   "OtherWorldTourB",
   "OtherWorldTourC",
 ]);
-// Spec §4: "Class1/Class2 giver ingen gulv-kredit." Listen står eksplicit, så
-// reglen kan testes direkte i stedet for at være en stiltiende konsekvens af
-// at klasserne mangler i tabellerne nedenfor.
-export const NO_FLOOR_CREDIT_CLASSES = Object.freeze(["Class1", "Class2"]);
+// Spec §4 sagde oprindelig "Class1/Class2 giver ingen gulv-kredit". Kørsel 2
+// (docs/audits/reputation-calibration-2026-09-05.md, punkt 2) fandt at 93 %
+// af ALLE hændelser ligger i ProSeries/Class1/Class2 — uden en Class1-kredit
+// kunne en rytter vinde 31 løb og stadig have et karriere-gulv på 22, hvilket
+// holdt to af de 20 mest vindende ryttere i S1-S3 under Stjerne-tærsklen 70.
+// Class1 har derfor fået en lille kredit (se FLOOR_CREDITS nedenfor); Class2
+// står stadig uden — det var IKKE nødvendigt for at ramme spec §9's mål.
+export const NO_FLOOR_CREDIT_CLASSES = Object.freeze(["Class2"]);
 
 // ── Hændelsestyper (spec §4 + §5's dedupe_key) ──────────────────────────────
 // event_kind = `<base>_<outcome>`. Base'en fortæller HVAD der blev vundet,
@@ -100,13 +104,22 @@ export const TOP10_MAX_RANK = 10;
 // ── Karriere-gulv-kreditter (spec §4, KUN ved sejr) ─────────────────────────
 // Podium og top 10 giver 0 — gulvet er "hvad du har vundet", ikke "hvad du har
 // været tæt på". Slås op pr. (base, race_class); manglende opslag = 0.
+//
+// KØRSEL 2 (docs/audits/reputation-calibration-2026-09-05.md): ProSeries- og
+// Class1-sejre er sat op fra spec §4's udgangspunkt (ProSeries 1 → 2, Class1
+// 0 → 1). Uden det holdt en gulv-kredit på 1 for en ProSeries-sejr og 0 for
+// Class1 to af de 20 mest vindende ryttere i S1-S3 under Stjerne-tærsklen 70
+// — 93 % af alle hændelser ligger netop i ProSeries/Class1/Class2. Grid-
+// varianten er valgt, ikke gættet: se harnessens `GRID_VARIANTS` og
+// audit-rapportens "Kørsel 2"-afsnit.
 export const FLOOR_CREDITS = Object.freeze({
   [EVENT_BASE.ONE_DAY]: Object.freeze({
     Monuments: 15,
     OtherWorldTourA: 6,
     OtherWorldTourB: 6,
     OtherWorldTourC: 6,
-    ProSeries: 1,
+    ProSeries: 2,
+    Class1: 1,
   }),
   [EVENT_BASE.GC]: Object.freeze({
     TourFrance: 20,
@@ -114,7 +127,8 @@ export const FLOOR_CREDITS = Object.freeze({
     OtherWorldTourA: 6,
     OtherWorldTourB: 6,
     OtherWorldTourC: 6,
-    ProSeries: 1,
+    ProSeries: 2,
+    Class1: 1,
   }),
   [EVENT_BASE.STAGE]: Object.freeze({
     TourFrance: 4,
@@ -133,12 +147,34 @@ export const FLOOR_CREDITS = Object.freeze({
 export const FLOOR_CAP = 60;
 export const REPUTATION_MIN = 0;
 export const REPUTATION_MAX = 100;
-// Vægten på "ry ved ankomst" (riders.popularity). Spec §9: harnessen må sænke
-// den til 0,5 hvis for mange seedede Stjerner uden resultater lander ≥ 70.
+// Vægten på "ry ved ankomst" (riders.popularity). Kørsel 1 (spec §9's
+// bekymring: for mange seedede Stjerner uden resultater) viste 0 sådanne
+// tilfælde i data — ejer-godkendt 4/9: bliver på 1,0
+// (docs/audits/reputation-calibration-2026-09-05.md punkt 3).
 export const SEED_FLOOR_WEIGHT = 1.0;
+// Bevaret KUN fordi kørsel 1's harness-kode sammenlignede mod den — selve
+// vægten er ikke længere en åben beslutning. Ny kalibrering rører den ikke.
 export const SEED_FLOOR_WEIGHT_ALTERNATIVE = 0.5;
 // Form halveres ved hvert sæsonskifte.
 export const SEASON_DECAY_FACTOR = 0.5;
+
+// ── Blødt loft (kørsel 2, docs/audits/reputation-calibration-2026-09-05.md) ─
+// Kørsel 1 viste at den hårde `clamp(floor + form, 0, 100)` klemte 29 ryttere
+// fast på præcis 100 (rå formpoint op til 3× loftet), mens Stjerne-båndet
+// (70-89) samtidig var for tyndt. Et blødt loft løser begge på én gang:
+// `reputation = 100 · tanh(raw / SOFT_CAP)`, raw = floor + form. FLOOR_CAP
+// (60) er stadig det RÅ gulv og er UÆNDRET af det bløde loft — kun selve
+// slutresultatet mætter i stedet for at klemmes. tanh(x) → 1 for store x, så
+// reputation nærmer sig 100 asymptotisk uden nogensinde at ramme det eksakt
+// (bortset fra afrunding ved POINT_DECIMALS ved ekstreme raw-værdier).
+//
+// 74 er valgt af harnessens 8-variant-grid (docs/audits/reputation-
+// calibration-2026-09-05.md, kørsel 2): sammen med gulv-kredit-ændringerne
+// nedenfor er det den LAVESTE værdi i det afsøgte interval [70, 95] der
+// rammer BÅDE Stjerne- (1-2 %) og Legende-målet (≤ 0,3 %) samtidig, uden en
+// eneste rytter ≥ 99 (mod 70, som klarer star-målet men lander 1 rytter på
+// 99,1 — for tæt på det gamle "klemt på 100"-problem).
+export const SOFT_CAP = 74;
 
 // Alle numeriske resultater afrundes hertil. Uden en fast afrunding ville
 // 0,1-multiplikatoren og W_CLASS tilsammen give flydende-komma-hale
@@ -165,3 +201,57 @@ export const REPUTATION_BANDS = Object.freeze([
 // opfinder sit eget tal. Ingen forbruger læser den endnu.
 export const STAR_BAND_THRESHOLD = 70;
 export const LEGEND_BAND_THRESHOLD = 90;
+
+// ── Kalibrerings-overrides (KUN kalibrerings-harnessen — reputationEngine.js'
+// produktionssti importerer W_CLASS/FLOOR_CREDITS/SOFT_CAP direkte og ser
+// ALDRIG denne fil, uanset hvad harnessen kaldes med) ────────────────────────
+//
+// defaultConstantsBundle() kopierer (aldrig muterer) de frosne exports til én
+// almindelig, overskrivbar bundle. buildConstants(overrides) tager en flad
+// liste af `{ "sti.til.felt": værdi }` (fra CLI `--set` eller en grid-
+// variant i harnessen) og returnerer en NY bundle — de originale konstanter
+// ovenfor rører den aldrig.
+export function defaultConstantsBundle() {
+  return {
+    W_CLASS: { ...W_CLASS },
+    FLOOR_CREDITS: Object.fromEntries(
+      Object.entries(FLOOR_CREDITS).map(([base, byClass]) => [base, { ...byClass }]),
+    ),
+    NO_FLOOR_CREDIT_CLASSES: [...NO_FLOOR_CREDIT_CLASSES],
+    BASE_FORM_POINTS: { ...BASE_FORM_POINTS },
+    OUTCOME_MULTIPLIER: { ...OUTCOME_MULTIPLIER },
+    LEADER_DAY_FORM_POINTS,
+    FLOOR_CAP,
+    SOFT_CAP,
+    SEED_FLOOR_WEIGHT,
+    SEASON_DECAY_FACTOR,
+    DEFAULT_CLASS_WEIGHT,
+  };
+}
+
+function setAtPath(root, path, value) {
+  const parts = path.split(".");
+  let node = root;
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    const key = parts[i];
+    if (typeof node[key] !== "object" || node[key] === null) node[key] = {};
+    node = node[key];
+  }
+  node[parts[parts.length - 1]] = value;
+}
+
+/**
+ * @param {Record<string, number|string|Array>} overrides  dot-path → værdi.
+ *   `"W_CLASS.ProSeries" -> 0.35`, `"SOFT_CAP" -> 80`,
+ *   `"FLOOR_CREDITS.one_day.Class1" -> 1`,
+ *   `"NO_FLOOR_CREDIT_CLASSES" -> ["Class2"]` (erstatter HELE listen).
+ * @returns {object} ny, ikke-frosset konstant-bundle. Modulets egne frosne
+ *   exports er UÆNDREDE.
+ */
+export function buildConstants(overrides = {}) {
+  const bundle = defaultConstantsBundle();
+  for (const [path, value] of Object.entries(overrides)) {
+    setAtPath(bundle, path, value);
+  }
+  return bundle;
+}

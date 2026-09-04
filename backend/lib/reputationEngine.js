@@ -42,6 +42,7 @@ import {
   REPUTATION_MAX,
   SEED_FLOOR_WEIGHT,
   SEASON_DECAY_FACTOR,
+  SOFT_CAP,
   REPUTATION_BANDS,
   eventKind,
   roundPoints,
@@ -64,8 +65,11 @@ const FINAL_STAGE_ONLY_BASES = new Set([
   EVENT_BASE.JERSEY_YOUNG,
 ]);
 
-export function classWeight(raceClass) {
-  const w = W_CLASS[raceClass];
+// `wClass` er en valgfri override af W_CLASS (KUN kalibrerings-harnessen —
+// se reputationConstants.js's `buildConstants`). Udelades den, er dette
+// funktionelt identisk med før: modulets frosne W_CLASS.
+export function classWeight(raceClass, wClass = W_CLASS) {
+  const w = wClass[raceClass];
   return Number.isFinite(w) ? w : DEFAULT_CLASS_WEIGHT;
 }
 
@@ -77,18 +81,25 @@ export function outcomeForRank(rank) {
   return null;
 }
 
-export function formPointsFor({ base, outcome, raceClass }) {
-  const basePoints = BASE_FORM_POINTS[base];
+export function formPointsFor({ base, outcome, raceClass, wClass = W_CLASS, baseFormPoints = BASE_FORM_POINTS }) {
+  const basePoints = baseFormPoints[base];
   const multiplier = OUTCOME_MULTIPLIER[outcome];
   if (!Number.isFinite(basePoints) || !Number.isFinite(multiplier)) return 0;
-  return roundPoints(basePoints * multiplier * classWeight(raceClass));
+  return roundPoints(basePoints * multiplier * classWeight(raceClass, wClass));
 }
 
-export function floorCreditFor({ base, outcome, raceClass }) {
-  // Spec §4: gulv-kredit gives kun ved sejr, og aldrig i Class1/Class2.
+export function floorCreditFor({
+  base,
+  outcome,
+  raceClass,
+  floorCredits = FLOOR_CREDITS,
+  noFloorCreditClasses = NO_FLOOR_CREDIT_CLASSES,
+}) {
+  // Spec §4: gulv-kredit gives kun ved sejr, og aldrig i Class1/Class2
+  // (medmindre kalibrerings-harnessen eksplicit overstyrer listen).
   if (outcome !== EVENT_OUTCOME.WIN) return 0;
-  if (NO_FLOOR_CREDIT_CLASSES.includes(raceClass)) return 0;
-  const credit = FLOOR_CREDITS[base]?.[raceClass];
+  if (noFloorCreditClasses.includes(raceClass)) return 0;
+  const credit = floorCredits[base]?.[raceClass];
   return Number.isFinite(credit) ? credit : 0;
 }
 
@@ -116,6 +127,9 @@ function oneDayResultTypeInUse(results) {
  * @param {Array<{rider_id, team_id, result_type, rank}>} args.results
  *   DENNE etapes rækker (samme form som race_results/resultRows).
  * @param {string|Date|null} [args.occurredAt]
+ * @param {object|null} [args.constants]  KALIBRERINGS-override (fra
+ *   `reputationConstants.buildConstants`) — udelades, bruges modulets egne
+ *   frosne konstanter (produktionsstien, uændret).
  * @returns {Array<object>} hændelser klar til `rider_reputation_events`.
  */
 export function eventsFromStageResults({
@@ -124,8 +138,15 @@ export function eventsFromStageResults({
   isLastStage,
   results = [],
   occurredAt = null,
+  constants = null,
 } = {}) {
   if (!race?.id || !Array.isArray(results) || !results.length) return [];
+
+  const wClass = constants?.W_CLASS ?? W_CLASS;
+  const floorCredits = constants?.FLOOR_CREDITS ?? FLOOR_CREDITS;
+  const noFloorCreditClasses = constants?.NO_FLOOR_CREDIT_CLASSES ?? NO_FLOOR_CREDIT_CLASSES;
+  const baseFormPoints = constants?.BASE_FORM_POINTS ?? BASE_FORM_POINTS;
+  const leaderDayFormPoints = constants?.LEADER_DAY_FORM_POINTS ?? LEADER_DAY_FORM_POINTS;
 
   const raceClass = race.race_class ?? null;
   const isSingle = race.race_type === "single";
@@ -164,7 +185,7 @@ export function eventsFromStageResults({
         season_id: race.season_id ?? null,
         event_kind: kind,
         race_class: raceClass,
-        form_points: roundPoints(LEADER_DAY_FORM_POINTS * classWeight(raceClass)),
+        form_points: roundPoints(leaderDayFormPoints * classWeight(raceClass, wClass)),
         floor_credit: 0,
         occurred_at: occurredAt,
         dedupe_key: key,
@@ -201,8 +222,8 @@ export function eventsFromStageResults({
       season_id: race.season_id ?? null,
       event_kind: kind,
       race_class: raceClass,
-      form_points: formPointsFor({ base, outcome, raceClass }),
-      floor_credit: floorCreditFor({ base, outcome, raceClass }),
+      form_points: formPointsFor({ base, outcome, raceClass, wClass, baseFormPoints }),
+      floor_credit: floorCreditFor({ base, outcome, raceClass, floorCredits, noFloorCreditClasses }),
       occurred_at: occurredAt,
       dedupe_key: key,
     });
@@ -216,7 +237,7 @@ export function eventsFromStageResults({
  * resultatrækker pr. etape og udleder hændelser for hver. Bruges af hook'en
  * (simulateRace afvikler alle etaper i ét kald), backfill og harness.
  */
-export function eventsFromResultRows({ race, resultRows = [], occurredAt = null } = {}) {
+export function eventsFromResultRows({ race, resultRows = [], occurredAt = null, constants = null } = {}) {
   if (!race?.id || !resultRows.length) return [];
   const byStage = new Map();
   for (const row of resultRows) {
@@ -233,6 +254,7 @@ export function eventsFromResultRows({ race, resultRows = [], occurredAt = null 
       isLastStage: stageNumber === lastStage,
       results,
       occurredAt,
+      constants,
     }));
   }
   return events;
@@ -279,6 +301,7 @@ export function computeReputation({
     seedFloorWeight = SEED_FLOOR_WEIGHT,
     floorCap = FLOOR_CAP,
     decayFactor = SEASON_DECAY_FACTOR,
+    softCap = SOFT_CAP,
   } = options;
 
   const seedFloor = seedFloorFor(seedPopularity, { seedFloorWeight, floorCap });
@@ -299,7 +322,13 @@ export function computeReputation({
 
   const floor = roundPoints(Math.min(floorCap, Math.max(0, seedFloor + floorCredits)));
   const roundedForm = roundPoints(form);
-  const reputation = roundPoints(clampReputation(floor + roundedForm));
+  // Blødt loft (kalibrering kørsel 2, reputationConstants.js's SOFT_CAP-
+  // kommentar): raw = gulv + form kan overstige 100 uden problemer — tanh
+  // mætter mod 1 i stedet for at klemme raw fladt til 100. floorCap sikrer
+  // stadig raw ≥ 0 (floor er allerede clamp'et til [0, floorCap], form er
+  // altid ≥ 0 i praksis), så clampReputation her er kun et sikkerhedsnet.
+  const raw = floor + roundedForm;
+  const reputation = roundPoints(clampReputation(100 * Math.tanh(raw / softCap)));
 
   return { floor, form: roundedForm, reputation, band: bandFor(reputation) };
 }
