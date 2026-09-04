@@ -27,3 +27,31 @@ test("formatted auth failures do not suggest applying migrations", () => {
   assert.match(formatted, /auth-failure/);
   assert.doesNotMatch(formatted, /Apply database/);
 });
+
+// #4754: 4/9 fejlede feature_liveness_table_counts med denne præcise
+// Postgres-fejlbesked (statement_timeout=2min, arvet af service_role).
+test("classifies statement_timeout cancellation as retryable statement-timeout", () => {
+  const classification = classifySupabaseAuditError({
+    message: "canceling statement due to statement timeout",
+  });
+  assert.equal(classification.kind, "statement-timeout");
+  assert.equal(classification.retryable, true);
+});
+
+test("statement-timeout classification also matches the bare Postgres SQLSTATE 57014", () => {
+  assert.equal(
+    classifySupabaseAuditError({ message: "query cancelled", code: "57014" }).kind,
+    "statement-timeout"
+  );
+});
+
+test("other error kinds are not marked retryable", () => {
+  assert.notEqual(
+    classifySupabaseAuditError({ message: "Invalid API key" }).retryable,
+    true
+  );
+  assert.notEqual(
+    classifySupabaseAuditError({ message: "relation public.foo does not exist" }).retryable,
+    true
+  );
+});
