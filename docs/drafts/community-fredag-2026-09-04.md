@@ -134,3 +134,37 @@ Full explanation and what you'll see on your finance page here: [link to forum p
 
 Ungdomsklassementet havde en fejl, der lukkede for gamle ryttere ind. Jeg har rettet den og rettet penge og point begge veje for 40 hold, ingen er gået i minus.
 Fuld forklaring og hvad du ser på din økonomiside her: [link til forumindlæg]
+
+---
+
+# Forum post
+
+**Title:** Sponsor contracts: the division top-up, and a fix
+
+## EN
+
+Sponsor contracts get priced against the division your team is in when you sign them. That's fine until you get promoted mid-contract: you start paying the new division's costs, but your sponsor is still priced for the old one. I'm fixing that today with a new standing rule. From every season start, a team playing above its contract's division gets a top-up on its own line: lifted to the level just below its current division, plus half of what's left up to its own division. The contract itself is never touched.
+
+83 teams got that top-up paid out today for this season. A smaller group also hit a timing bug of mine: their contract auto-renewed priced against the division they were about to move up into, so I've brought their base down to match what other promoted teams got, and pulled back what they were overpaid. They get the same top-up as everyone else, so they land in the same place.
+
+Teams that get relegated keep the contract they signed. You get what you signed up for.
+
+This one was my mistake, not yours. Fire away with questions.
+
+## DA
+
+Sponsoraftaler bliver prissat mod den division dit hold står i, når I skriver under. Det er fint, indtil du rykker op midt i aftalen: du begynder at betale den nye divisions udgifter, men sponsoren er stadig prissat til den gamle. Det retter jeg i dag med en ny fast regel. Fra hver sæsonstart får et hold, der kører i en højere division end aftalen er prissat til, et tillæg som sin egen linje: løftet til niveauet lige under jeres nuværende division, plus halvdelen af resten op til jeres egen division. Selve aftalen bliver aldrig rørt.
+
+83 hold har fået det tillæg udbetalt i dag for denne sæson. En mindre gruppe ramte også en timing-fejl fra min side: deres aftale blev automatisk fornyet prissat mod den division, de var på vej op i, så jeg har sat deres base ned til det, andre oprykkere fik, og trukket det for meget udbetalte fra. De får samme tillæg som alle andre, så de ender samme sted.
+
+Hold der rykker ned, beholder den aftale de skrev under på. I får det, I skrev under på.
+
+Fejlen er min, ikke jeres. Spørg endelig løs.
+
+---
+
+# Discord note (2 lines)
+
+**EN:** New sponsor rule: teams promoted above their contract's division now get an automatic top-up each season start. 83 teams got paid out today (a timing bug for some has also been fixed). Full post in [forum link].
+
+**DA:** Ny sponsorregel: hold der rykker op over deres aftales division, får nu et automatisk tillæg hver sæsonstart. 83 hold fik udbetalt i dag (en timing-fejl for nogle er også rettet). Fuldt opslag i [forum-link].
