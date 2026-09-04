@@ -55,6 +55,10 @@ export const REASON_LABEL = Object.freeze({
   // #4376: egen label, ikke slået sammen med "Sponsor" — hele pointen med tillægget er
   // at manageren kan se korrektionen for sig selv, adskilt fra selve aftalen.
   [FINANCE_REASON.SEASON_START_DIVISION_ADJUSTMENT]: "Division adjustment",
+  // #4376 · repair-4376-sponsor-division-correction.js's éngangs-efterbetaling for
+  // sæson 3 (timing-hul + tillæg). Egen label, ikke slået sammen med den løbende
+  // "Division adjustment" ovenfor, så manageren kan se det var en engangsreparation.
+  [FINANCE_REASON.SPONSOR_DIVISION_CORRECTION]: "Division adjustment (one-time correction)",
   [FINANCE_REASON.SEASON_START_ACADEMY_DRIFT]: "Academy drift",
   // #1441 Fase 3 A1: facilitets-upkeep + staff-sæsonløn (payroll gold sinks)
   [FINANCE_REASON.SEASON_START_FACILITY_UPKEEP]: "Facility upkeep",

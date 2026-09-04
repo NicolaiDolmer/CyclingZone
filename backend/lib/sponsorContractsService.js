@@ -335,14 +335,22 @@ export async function loadTeamDivision({ supabase, teamId }) {
 // Beregner holdets renownTarget for en kommende sæson ud fra forrige sæsons
 // placering. Frisk hold (ingen forrige sæson / ingen placering) → renownTarget
 // falder tilbage til division-base × 1,0.
-async function loadRenownTargetValue({ supabase, teamId, seasonNumber }) {
+//
+// `priceDivision` (#4376 timing-fix): override af den division tilbuddet
+// prissættes mod. Bruges KUN af expireAndRenewContracts' default-fornyelse
+// (se dér) til at prissætte mod holdets division FØR sæsonskiftets
+// oprykninger/nedrykninger — ellers er `team.division` allerede den NYE
+// værdi (komprimeringen skriver den FØR denne funktion kaldes) og aftalen
+// låser den nye divisions fulde base. Alle andre kaldere (interaktiv
+// tilbudsvisning/-valg) lader den stå på null og beholder eksisterende adfærd.
+async function loadRenownTargetValue({ supabase, teamId, seasonNumber, priceDivision = null }) {
   const { data: team, error: teamError } = await supabase
     .from("teams")
     .select("id, division")
     .eq("id", teamId)
     .single();
   if (teamError) throw teamError;
-  const division = team?.division ?? null;
+  const division = Number.isInteger(priceDivision) ? priceDivision : (team?.division ?? null);
 
   // Forrige sæsons id (number = seasonNumber - 1).
   const prevNumber = seasonNumber - 1;
@@ -383,14 +391,44 @@ async function loadRenownTargetValue({ supabase, teamId, seasonNumber }) {
   return renownTarget({ division, lastSeasonStanding, divisionStandings });
 }
 
-export async function getOffers({ supabase, teamId, seasonNumber }) {
+export async function getOffers({ supabase, teamId, seasonNumber, priceDivision = null }) {
   const renownTargetValue = await loadRenownTargetValue({
     supabase,
     teamId,
     seasonNumber,
+    priceDivision,
   });
   const calendarDays = await loadCalendarDays({ supabase });
   return generateOffers({ teamId, seasonNumber, renownTargetValue, calendarDays });
+}
+
+// #4376 timing-fix: holdets division i sæsonen der lige sluttede (season_standings
+// for newSeasonNumber-1), IKKE teams.division — komprimeringen (compressPyramid)
+// skriver oprykninger/nedrykninger til teams.division FØR expireAndRenewContracts
+// kører i samme sæsonskifte-batch, så et opslag mod teams her ville prissætte den
+// auto-fornyede 'safe'-aftale mod divisionen EFTER flytningen. Samme kilde som
+// database/2026-08-29-division-adjustment.sql's signed_division-backfill bruger
+// som primær kandidat. Batch-hentet ÉN gang for hele transitionen (ikke pr. hold)
+// — samme mønster som loadSeasonStageCounts.
+async function loadPreTransitionDivisions({ supabase, newSeasonNumber }) {
+  const prevNumber = newSeasonNumber - 1;
+  if (prevNumber < 1) return new Map();
+
+  const { data: prevSeason, error: seasonError } = await supabase
+    .from("seasons")
+    .select("id")
+    .eq("number", prevNumber)
+    .maybeSingle();
+  if (seasonError) throw seasonError;
+  if (!prevSeason?.id) return new Map();
+
+  const { data: rows, error: standingsError } = await supabase
+    .from("season_standings")
+    .select("team_id, division")
+    .eq("season_id", prevSeason.id);
+  if (standingsError) throw standingsError;
+
+  return new Map((rows || []).map((r) => [r.team_id, r.division]));
 }
 
 // #2948: varianten persisteres nu på rækken → stabil markering af managerens
@@ -771,6 +809,12 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
   // Ét opslag for divisorer + holdenes nye pulje/tier (komprimeringen har kørt
   // FØR transitionen, jf. drejebogen — teams bærer S2-værdierne her).
   const stageCounts = await loadSeasonStageCounts({ supabase, seasonNumber: newSeasonNumber });
+  // #4376 timing-fix: holdenes division FØR denne transitions oprykninger/
+  // nedrykninger — bruges KUN til at prissætte default-fornyelsen (se dér).
+  const preTransitionDivisionByTeam = await loadPreTransitionDivisions({
+    supabase,
+    newSeasonNumber,
+  });
   // #3014 · teamIds er ALLE menneske-hold i spillet (kaldes ved hver
   // sæson-transition, seasonTransition.js) — vokser med spillerbasen ligesom
   // sæsonens løb gjorde. Chunket for at undgå samme PostgREST URL-længde-cap.
@@ -819,10 +863,22 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
     }
 
     // Ingen matchende pending → default-forny med 'safe' for den nye sæson (#2914).
+    //
+    // #4376 timing-fix: prissæt mod holdets division FØR denne transitions
+    // oprykning/nedrykning (season_standings-rækken fra sæsonen der lige sluttede),
+    // ikke teams.division — komprimeringen har allerede skrevet den NYE division på
+    // dette tidspunkt (jf. drejebogen ovenfor), så et opslag mod teams her ville give
+    // en auto-'safe'-aftale den fulde nye divisions base i stedet for den gamle.
+    // Målt i prod 4/9 (docs/audits/sponsor-timing-hul-alle-divisioner-2026-09-04.md):
+    // 30 hold ramt på tværs af D1-D3. Falder tilbage til teams.division for hold
+    // uden en standings-række (nyoprettet midt i sæson — ingen flytning at ramme af).
+    const priceDivision =
+      preTransitionDivisionByTeam.get(teamId) ?? teamById.get(teamId)?.division ?? null;
     const offers = await getOffers({
       supabase,
       teamId,
       seasonNumber: newSeasonNumber,
+      priceDivision,
     });
     const chosen = offers.find((o) => o.variant === DEFAULT_RENEW_VARIANT);
     if (!chosen) throw new Error(`Ukendt variant: ${DEFAULT_RENEW_VARIANT}`);
@@ -841,10 +897,10 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
       guaranteed_fraction: chosen.guaranteedFraction,
       race_day_share: chosen.raceDayShare,
       bonus_clauses: chosen.clauses,
-      // #4376: default-fornyelsen genererer tilbuddet mod holdets NYE division
-      // (komprimeringen har koert foer transitionen), saa den er ogsaa prissaetnings-
-      // divisionen — og tillaegget bliver dermed korrekt 0 for disse hold.
-      signed_division: teamById.get(teamId)?.division ?? null,
+      // #4376: samme division tilbuddet lige blev prissat mod ovenfor — et hold der
+      // rykkede op/ned får dermed et divisions-tillæg (gulv+50%) i stedet for at
+      // aftalen tavst låser den nye divisions fulde base.
+      signed_division: priceDivision,
     };
     const { error } = await supabase
       .from("sponsor_contracts")

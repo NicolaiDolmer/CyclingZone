@@ -155,6 +155,21 @@ automatisk tændt af et sæsonnummer alene.
   gætte på. Målt: 209 af 230 opløses, 21 forbliver NULL.
   **Fallback i drift:** manglende `signed_division` → tillæg 0, aldrig et gæt.
 
+  **Timing-hul lukket 4/9 (`docs/audits/auto-sponsor-aftaler-2026-09-04.md` +
+  `docs/audits/sponsor-timing-hul-alle-divisioner-2026-09-04.md`).** `expireAndRenewContracts`s
+  default-gren ('safe'-aftalen der oprettes ved et ikke-valg, #2914) kaldte `getOffers` og skrev
+  `signed_division` mod `teams.division` **på skrivetidspunktet** — men komprimeringen har allerede
+  skrevet sæsonskiftets oprykninger/nedrykninger til `teams.division` FØR
+  `expireAndRenewContracts` kører i samme batch. En auto-fornyet 'safe'-aftale for et oprykket hold
+  låste derfor den NYE divisions fulde base i stedet for den gamle — præcis den fælde §3 ellers
+  lukker for manuelt valgte aftaler. Målt i prod 4/9: 30 hold ramt (D1 3, D2 15, D3 12), ~2,3 mio.
+  CZ$/sæson for meget. `expireAndRenewContracts` prissætter nu (og skriver `signed_division`) mod
+  holdets `season_standings`-division fra sæsonen der lige sluttede (samme kilde som
+  backfill-heuristikken ovenfor), IKKE `teams.division` — så auto- og manuelt valgte aftaler
+  prissættes ens uanset hvornår på sæsonen de opstår. Sæsonstart-aftaler (auto-tildelte og
+  manuelle) prissættes altså mod divisionen holdet var i FØR oprykningen, og divisions-tillægget
+  (gulv+50 %) topper derefter op til den nye divisions niveau.
+
 **Symmetrien med faldskærmen gælder NEDAD-formlen — det er hele designet dér.**
 `PARACHUTE_FACTOR = 0,5` (#1980, ejer-låst 5/7) udbetaler `0,5 × (base[gammel] − base[ny])` ved
 nedrykning. Nedad-tillæggets fradrag er nøjagtig samme beløb med modsat fortegn. For et nedrykket

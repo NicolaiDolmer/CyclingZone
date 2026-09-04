@@ -358,6 +358,14 @@ export const FINANCE_REASON = Object.freeze({
   // #4376 · divisions-tillæg — korrektion når holdets division ikke er den aftalen blev
   // prissat mod. Spejler faldskærmen med modsat fortegn (docs/SPONSOR_RULES.md §3).
   SEASON_START_DIVISION_ADJUSTMENT: "season_start_division_adjustment",
+  // #4376 · éngangs-reparation (repair-4376-sponsor-division-correction.js): S3s
+  // timing-hul-korrektion (30 hold, jf. docs/audits/sponsor-timing-hul-alle-
+  // divisioner-2026-09-04.md) + S3s divisions-tillæg-efterbetaling i ét script.
+  // Egen reason_code adskiller éngangs-reparationen fra den løbende
+  // SEASON_START_DIVISION_ADJUSTMENT i rapportering — samme idempotency_key
+  // (divisionAdjustmentIdempotencyKey) som motoren bruger, så de to stier
+  // stadig ikke kan dobbeltbetale.
+  SPONSOR_DIVISION_CORRECTION: "sponsor_division_correction",
   // #3730 · forholdsmæssig sponsor til et hold der oprettes MIDT i en sæson. Sponsoren
   // udbetales ellers kun ved sæsonstart, så et hold oprettet undervejs fik nul resten af
   // sæsonen (målt sæson 2: 43 af 43 nye hold, median-indtægt 31.125 mod 326.596 for de
