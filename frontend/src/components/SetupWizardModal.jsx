@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { getAttribution } from "../lib/attribution";
+import { ChevronRightIcon } from "./ui/icons";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -120,9 +121,14 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
           onClick={handleSave}
           disabled={saving}
           className="w-full py-2.5 bg-cz-accent hover:brightness-110 text-white font-bold rounded-lg
-            text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1"
         >
-          {saving ? t("setupWizard.submitLoading") : t("setupWizard.submitIdle")}
+          {saving ? t("setupWizard.submitLoading") : (
+            <>
+              {t("setupWizard.submitIdle")}
+              <ChevronRightIcon size={14} aria-hidden="true" />
+            </>
+          )}
         </button>
 
         <p className="text-center text-xs text-cz-3 mt-3">

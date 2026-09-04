@@ -13,6 +13,7 @@
 // Token-only; tal = font-mono tabular. Skjules helt hvis fysiologi-profilen mangler.
 
 import { useTranslation } from "react-i18next";
+import { ChevronRightIcon } from "../../ui/icons";
 
 // Universelle forkortelser (oversættes ikke, jf. abilities.js' korte labels).
 const STAT_DEFS = [
@@ -66,6 +67,7 @@ export default function RiderOverviewPhysiology({ physiology, weight, onGoFysiol
         className="mt-3 inline-flex items-center gap-1.5 py-1 text-2xs font-semibold text-cz-accent-t hover:underline bg-transparent border-0"
       >
         {t("profile.overview.physio.link")}
+        <ChevronRightIcon size={12} aria-hidden="true" />
       </button>
     </div>
   );

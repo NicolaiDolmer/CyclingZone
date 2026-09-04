@@ -20,7 +20,7 @@
     "dayPanel": {
       "title": "Dag {day} af {total} · {date}",
       "meta": "{races, plural, one {# løb} other {# løb}} · {saved, plural, one {# udtagelse gemt} other {# udtagelser gemt}} · {open, plural, one {# åben} other {# åbne}}",
-      "openBoard": "Åbn dagens board →"
+      "openBoard": "Åbn dagens board"
     },
     "legend": {
       "label": "SIGNATUR",
@@ -334,8 +334,8 @@
     "expectedPoolTooltip": "Live-beregnet forventet pulje baseret på race-class × race-type × etaper",
     "selectPrompt": "Vælg et løb for at se detaljer",
     "noResultsYet": "Ingen resultater importeret endnu",
-    "viewFull": "Se fulde resultater →",
-    "viewFullWithStages": "Se fulde resultater + alle etaper →"
+    "viewFull": "Se fulde resultater",
+    "viewFullWithStages": "Se fulde resultater + alle etaper"
   },
   "library": {
     "searchLabel": "Søg løb",
@@ -356,7 +356,7 @@
     "thClass": "Klasse",
     "thType": "Type",
     "thStatus": "Status",
-    "seasonLink": "Sæson {number} →"
+    "seasonLink": "Sæson {number}"
   },
   "world": {
     "loading": "Indlæser verdens-kalender…",
@@ -386,8 +386,8 @@
     "thRank": "Plads",
     "thPoints": "Point",
     "thPrize": "Præmie",
-    "showLess": "Skjul ↑",
-    "showAll": "Vis alle {count} pladser ↓",
+    "showLess": "Skjul",
+    "showAll": "Vis alle {count} pladser",
     "prizeExample": {
       "tourWin": "Grand Tour-sejr",
       "monumentWin": "Monument-sejr",
@@ -819,8 +819,8 @@
       "all": "Alle hold",
       "mine": "Mit hold"
     },
-    "showAll": "Vis alle {count} ↓",
-    "showLess": "Skjul ↑",
+    "showAll": "Vis alle {count}",
+    "showLess": "Skjul",
     "team": {
       "winner": "Vinder"
     },
@@ -1261,7 +1261,7 @@
       "message": "Kunne ikke hente løbshistorikken. Prøv igen.",
       "retry": "Prøv igen"
     },
-    "backToLibrary": "← Løbsbibliotek",
+    "backToLibrary": "Løbsbibliotek",
     "editionsCount": "{count, plural, one {# udgave} other {# udgaver}}",
     "editions": "Udgaver",
     "season": "Sæson {number}",

@@ -401,7 +401,7 @@
         "title": "Rider types",
         "subtitle": "rating per type",
         "legendNow": "Now",
-        "allTypes": "All types →",
+        "allTypes": "All types",
         "role": "His role",
         "readsHighest": "Reads highest now",
         "notARanking": "Roles are built from different abilities, so these numbers are not a ranking of what he should be."
@@ -409,7 +409,7 @@
       "physio": {
         "title": "Physiology",
         "weight": "{kg} kg",
-        "link": "Power curve & zones →"
+        "link": "Power curve & zones"
       }
     },
     "development": {
@@ -750,7 +750,7 @@
     "squadWarning": "Auction started.\n\nNote: you are now running auctions equal to {total} riders (max {max}). The cap is a hard limit, so you cannot win more riders than your squad can hold."
   },
   "directOffer": {
-    "buttonOpen": "↔ Send transfer offer",
+    "buttonOpen": "Send transfer offer",
     "amountPlaceholder": "Offer amount in CZ$",
     "messagePlaceholder": "Message (optional)",
     "submit": "Send offer",

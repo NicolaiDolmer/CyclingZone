@@ -20,7 +20,7 @@
     "dayPanel": {
       "title": "Day {day} of {total} · {date}",
       "meta": "{races, plural, one {# race} other {# races}} · {saved, plural, one {# selection saved} other {# selections saved}} · {open} open",
-      "openBoard": "Open day board →"
+      "openBoard": "Open day board"
     },
     "legend": {
       "label": "LEGEND",
@@ -334,8 +334,8 @@
     "expectedPoolTooltip": "Live-calculated expected pool based on race class × race type × stages",
     "selectPrompt": "Select a race to see details",
     "noResultsYet": "No results imported yet",
-    "viewFull": "View full results →",
-    "viewFullWithStages": "View full results + all stages →"
+    "viewFull": "View full results",
+    "viewFullWithStages": "View full results + all stages"
   },
   "library": {
     "searchLabel": "Search races",
@@ -356,7 +356,7 @@
     "thClass": "Class",
     "thType": "Type",
     "thStatus": "Status",
-    "seasonLink": "Season {number} →"
+    "seasonLink": "Season {number}"
   },
   "world": {
     "loading": "Loading world calendar…",
@@ -386,8 +386,8 @@
     "thRank": "Rank",
     "thPoints": "Points",
     "thPrize": "Prize",
-    "showLess": "Hide ↑",
-    "showAll": "Show all {count} ranks ↓",
+    "showLess": "Hide",
+    "showAll": "Show all {count} ranks",
     "prizeExample": {
       "tourWin": "Grand Tour win",
       "monumentWin": "Monument win",
@@ -819,8 +819,8 @@
       "all": "All teams",
       "mine": "My team"
     },
-    "showAll": "Show all {count} ↓",
-    "showLess": "Hide ↑",
+    "showAll": "Show all {count}",
+    "showLess": "Hide",
     "team": {
       "winner": "Winner"
     },
@@ -1261,7 +1261,7 @@
       "message": "Could not load the race history. Please try again.",
       "retry": "Try again"
     },
-    "backToLibrary": "← Race library",
+    "backToLibrary": "Race library",
     "editionsCount": "{count, plural, one {# edition} other {# editions}}",
     "editions": "Editions",
     "season": "Season {number}",

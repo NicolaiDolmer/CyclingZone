@@ -15,7 +15,7 @@ import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
-import { Spinner, EmptyState, ErrorState, FlagIcon, Button } from "../ui";
+import { Spinner, EmptyState, ErrorState, FlagIcon, Button, ChevronRightIcon } from "../ui";
 import SeasonDayToggle from "./SeasonDayToggle.jsx";
 import SeasonPicker, { neighborSeasons } from "./SeasonPicker.jsx";
 import SeasonChangeoverNote from "./SeasonChangeoverNote.jsx";
@@ -439,9 +439,10 @@ export default function SeasonView({ onSwitchView }) {
                 <button
                   type="button"
                   onClick={() => openDay(focusIso)}
-                  className="ms-auto font-data text-xs font-semibold text-cz-accent-t hover:underline"
+                  className="ms-auto inline-flex items-center gap-0.5 font-data text-xs font-semibold text-cz-accent-t hover:underline"
                 >
                   {t("seasonView.dayPanel.openBoard")}
+                  <ChevronRightIcon size={12} aria-hidden="true" />
                 </button>
               </div>
             )}

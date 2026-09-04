@@ -118,8 +118,10 @@ test("#2908 bunddivisionen (4) kan rykke op, men kan IKKE rykke ned", () => {
 });
 
 test("#2908 de to buggede grænsebetingelser (div < 3 / div > 1) er væk fra promotion/relegation-blokkene", () => {
-  const promoBlockMatch = code.match(/isCompleted && div [<>] [^\s]+ &&\s*\(\s*<span[^>]*>\{t\("promotionNote"\)\}/);
-  const releBlockMatch = code.match(/isCompleted && div [<>] [^\s]+ &&\s*\(\s*<span[^>]*>\{t\("relegationNote"\)\}/);
+  // #3422: span'en fik et stroke-ikon (ArrowUp/DownIcon) foran t()-kaldet, så
+  // matchet tillader nu vilkårligt indhold mellem <span> og {t(...)}.
+  const promoBlockMatch = code.match(/isCompleted && div [<>] [^\s]+ &&\s*\(\s*<span[^>]*>[\s\S]*?\{t\("promotionNote"\)\}/);
+  const releBlockMatch = code.match(/isCompleted && div [<>] [^\s]+ &&\s*\(\s*<span[^>]*>[\s\S]*?\{t\("relegationNote"\)\}/);
   assert.ok(promoBlockMatch, "promotionNote-blokken skal stadig findes");
   assert.ok(releBlockMatch, "relegationNote-blokken skal stadig findes");
   assert.match(promoBlockMatch[0], /div > RULES_NUMBERS\.minDivision/, "promotion kræver div > MIN_DIVISION (kan rykke op) — ikke det gamle 'div < 3'");

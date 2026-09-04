@@ -243,7 +243,8 @@ function DirectOfferButton({ rider, seasonYear }) {
         </div>
       )}
       {/* Primær CTA i scouting-visningen (én accent-knap pr. kontekst). */}
-      <button type="button" onClick={() => setShow(!show)} className={triggerClass(false, "primary")}>
+      <button type="button" onClick={() => setShow(!show)} className={`${triggerClass(false, "primary")} inline-flex items-center gap-1`}>
+        <ExchangeIcon size={14} aria-hidden="true" />
         {t("directOffer.buttonOpen")}
       </button>
       {show && (

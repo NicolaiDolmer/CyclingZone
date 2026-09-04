@@ -7,7 +7,7 @@ import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
 import {
-  FlagIcon, ChevronRightIcon, Button,
+  FlagIcon, ChevronRightIcon, ChevronLeftIcon, Button,
   PageHeader, Section, SectionStack, SectionHeader,
   EmptyState, ErrorState, SkeletonLines,
 } from "../components/ui";
@@ -125,7 +125,8 @@ export default function RaceHistoryPage() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* #3102 etape 2: arkivet bor i Resultat-hubben nu. */}
-      <Link to="/resultater?tab=archive" className="mb-4 inline-block text-xs text-cz-accent-t hover:underline">
+      <Link to="/resultater?tab=archive" className="mb-4 inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline">
+        <ChevronLeftIcon size={13} aria-hidden="true" />
         {t("history.backToLibrary")}
       </Link>
 
