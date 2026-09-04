@@ -16,9 +16,9 @@
     "stagesGt": "{count} etaper · GT",
     "stagesOnly": "{count} etaper",
     "monument": "Monument · eksklusiv løbsdag",
-    "bandAria": "{name}, løbsdag {day}. Åbn dagens board.",
+    "bandAria": "{name}, dag {day} af {total}. Åbn dagens board.",
     "dayPanel": {
-      "title": "Løbsdag {day} · {date}",
+      "title": "Dag {day} af {total} · {date}",
       "meta": "{races, plural, one {# løb} other {# løb}} · {saved, plural, one {# udtagelse gemt} other {# udtagelser gemt}} · {open, plural, one {# åben} other {# åbne}}",
       "openBoard": "Åbn dagens board →"
     },
