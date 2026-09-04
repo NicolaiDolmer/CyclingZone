@@ -65,6 +65,9 @@ import { isBoardTestModeActive } from "./boardTestMode.js";
 import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
+// #1237 · sumRiderSalaries = wageBillPerSeason-input til no_outstanding_debt
+// (scoreFinanceHealthGoal, boardUtils.js).
+import { sumRiderSalaries } from "./boardUtils.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { fetchAllRows } from "./supabasePagination.js";
 
@@ -251,7 +254,9 @@ export async function processBoardWeekendFinalization({
     withPaginationErrorLabel(
       fetchAllRows(() => supabase
         .from("loans")
-        .select("id, team_id")
+        // #1237 · amount_remaining tilføjet: nettostilling-input til
+        // no_outstanding_debt (scoreFinanceHealthGoal, boardUtils.js).
+        .select("id, team_id, amount_remaining")
         .eq("status", "active")
         .in("team_id", teamIds)
         .order("id", { ascending: true })),
@@ -278,8 +283,11 @@ export async function processBoardWeekendFinalization({
   }
 
   const loanCountByTeam = new Map();
+  // #1237 · sum af amount_remaining pr. hold — activeDebt-input til nettostillingen.
+  const debtByTeam = new Map();
   for (const loan of loansData || []) {
     loanCountByTeam.set(loan.team_id, (loanCountByTeam.get(loan.team_id) || 0) + 1);
+    debtByTeam.set(loan.team_id, (debtByTeam.get(loan.team_id) || 0) + (loan.amount_remaining || 0));
   }
 
   // 3. Checkpoint + test-mode (én gang pr. kørsel).
@@ -400,6 +408,10 @@ export async function processBoardWeekendFinalization({
           board,
           standing,
           activeLoanCount: loanCountByTeam.get(team.id) || 0,
+          // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
+          balance: team.balance || 0,
+          activeDebt: debtByTeam.get(team.id) || 0,
+          wageBillPerSeason: sumRiderSalaries(riders),
           currentSponsorIncome: team.sponsor_income,
           recentSnapshots,
           goalContext,

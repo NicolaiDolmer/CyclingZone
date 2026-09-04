@@ -124,6 +124,9 @@ import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { resolveGoalOwnerArchetypeKey } from "./boardMembers.js";
 import { buildGoalKey, evaluateGoalProgress } from "./boardGoals.js";
 import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
+// #1237 · nettostilling-hjælpere (activeDebt/wageBillPerSeason) til
+// no_outstanding_debt (scoreFinanceHealthGoal, boardUtils.js).
+import { sumActiveLoanDebt, sumRiderSalaries } from "./boardUtils.js";
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
 import { MANDATE_CATEGORIES } from "./boardMandate.js";
 import { getActiveConsequencesForTeam, getLayerLabelKey } from "./boardConsequences.js";
@@ -466,7 +469,9 @@ export async function buildBoardRoomPayload({
       .order("target_season_number", { ascending: true }),
     // #4579 · sponsor_income tilføjet: buildBoardEvalContext's currentSponsorIncome
     // (sponsor_growth-målets ikke-baseline-halvdel, se boardGoalContext.js).
-    supabase.from("teams").select("team_dna_key, created_at, sponsor_income").eq("id", teamId).maybeSingle(),
+    // #1237 · balance tilføjet: nettostilling-input til no_outstanding_debt
+    // (scoreFinanceHealthGoal).
+    supabase.from("teams").select("team_dna_key, created_at, sponsor_income, balance").eq("id", teamId).maybeSingle(),
     supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle(),
     // #4557 (1/9-tillæg) · Hele sæson-listen, kun til board.members[].sinceSeason
     // (deriveFoundingSeasonNumber). Lille tabel (én række pr. sæson) — billig
@@ -475,7 +480,9 @@ export async function buildBoardRoomPayload({
     supabase.from("season_standings").select("*").eq("team_id", teamId)
       .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
-    supabase.from("loans").select("id", { count: "exact", head: true })
+    // #1237 · amount_remaining tilføjet (droppet head:true): activeDebt-input til
+    // nettostillingen (scoreFinanceHealthGoal).
+    supabase.from("loans").select("id, amount_remaining")
       .eq("team_id", teamId).eq("status", "active"),
     // #4578 · goal_states tilføjet: mål-for-mål-snapshottet deriveGoalMovements
     // sammenligner naboer af pr. goal_key (se boardMandateEngine.js).
@@ -505,7 +512,10 @@ export async function buildBoardRoomPayload({
   // en fejlende sæson-liste skal kun koste sinceSeason (null), ikke hele siden.
   const standing = standingRes.error ? null : (standingRes.data ?? null);
   const riders = ridersRes.error ? [] : (ridersRes.data ?? []);
-  const activeLoanCount = loansRes.error ? 0 : (loansRes.count || 0);
+  const activeLoanRows = loansRes.error ? [] : (loansRes.data ?? []);
+  const activeLoanCount = activeLoanRows.length;
+  // #1237 · nettostilling-input til no_outstanding_debt (scoreFinanceHealthGoal).
+  const activeDebt = sumActiveLoanDebt(activeLoanRows);
   const seasonsList = seasonsListRes.error ? [] : (seasonsListRes.data ?? []);
 
   const relation = relationRes.data ?? null;
@@ -720,6 +730,10 @@ export async function buildBoardRoomPayload({
       board: oneYearBoard ?? { plan_type: "1yr", seasons_completed: 0 },
       standing,
       activeLoanCount,
+      // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
+      balance: teamRes.data?.balance ?? 0,
+      activeDebt,
+      wageBillPerSeason: sumRiderSalaries(riders),
       currentSponsorIncome: teamRes.data?.sponsor_income ?? null,
       goalContext,
       extra: { assignedMembers },

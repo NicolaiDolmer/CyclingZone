@@ -23,7 +23,7 @@ import {
   safeJsonParse,
   scoreHigherBetter,
   scoreLowerBetter,
-  scoreDebtGoal,
+  scoreFinanceHealthGoal,
 } from "./boardUtils.js";
 
 export function getPlanDuration(planType) {
@@ -211,7 +211,7 @@ export function generateBoardGoals({
       {
         type: "no_outstanding_debt",
         target: 0,
-        label: "Ingen udestaende gaeld ved saesonslut",
+        label: "Positiv nettostilling ved saesonslut",
         satisfaction_bonus: 12,
         satisfaction_penalty: 8,
       },
@@ -314,7 +314,7 @@ export function generateBoardGoals({
       {
         type: "no_outstanding_debt",
         target: 0,
-        label: "Ingen udestaende gaeld ved saesonslut",
+        label: "Positiv nettostilling ved saesonslut",
         satisfaction_bonus: 12,
         satisfaction_penalty: 8,
       },
@@ -904,6 +904,10 @@ export function evaluateGoal(goal, standing, team, context = {}) {
     // det er ikke en workaround for denne default, se kommentaren dér.
     isFinalSeason = false,
     activeLoanCount = 0,
+    // #1237 · nettostilling-felter til no_outstanding_debt (se scoreFinanceHealthGoal,
+    // boardUtils.js, for den fulde begrundelse).
+    balance = 0,
+    activeDebt = 0,
     // #3494 · sponsor_growth genanvender IKKE længere planStartSponsorIncome/
     // currentSponsorIncome (begge kilder er det døde teams.sponsor_income-felt)
     // — se sponsorGrowthBaselineIncome/sponsorGrowthCurrentIncome nedenfor.
@@ -942,7 +946,10 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       return (team?.riders || []).length >= enrichedGoal.target;
     case "no_outstanding_debt":
       if (!isFinalSeason) return null;
-      return activeLoanCount === 0;
+      // #1237 · binært "opnået"-gulv = nettostilling ikke negativ (balance dækker
+      // aktiv gæld) — den absolutte minimumsgrænse, ikke den fulde buffer-mod-løn som
+      // score-kurven (scoreFinanceHealthGoal) glider mod 1.0 ved. Se boardUtils.js.
+      return (balance || 0) - (activeDebt || 0) >= 0;
     case "sponsor_growth":
       // #3494 · Re-pointet til ægte sponsor_contracts-udbetalinger (boardGoalContext.js).
       // Ingen baseline (plan-sæson 1, endnu ingen afsluttet sæson at måle fra) eller
@@ -1168,11 +1175,26 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       score = scoreHigherBetter(actual, target);
       status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
-    case "no_outstanding_debt":
-      actual = context.activeLoanCount ?? 0;
-      score = scoreDebtGoal(actual, isFinalSeason);
-      status = actual === 0 ? "ahead" : actual === 1 ? "watch" : "behind";
+    case "no_outstanding_debt": {
+      // #1237 · nettostilling (balance minus aktiv gæld) med buffer mod sæsonens
+      // lønsum — antal lån er kun et sekundært, lille fradrag. Se scoreFinanceHealthGoal
+      // (boardUtils.js) for den fulde formel + begrundelse.
+      const debtBalance = context.balance ?? 0;
+      const debtActiveDebt = context.activeDebt ?? 0;
+      const debtWageBill = context.wageBillPerSeason ?? 0;
+      const debtActiveLoanCount = context.activeLoanCount ?? 0;
+      actual = debtBalance - debtActiveDebt;
+      target = Math.max(debtWageBill || 0, 1);
+      score = scoreFinanceHealthGoal({
+        balance: debtBalance,
+        activeDebt: debtActiveDebt,
+        activeLoanCount: debtActiveLoanCount,
+        wageBillPerSeason: debtWageBill,
+        isFinalSeason,
+      });
+      status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
+    }
     case "sponsor_growth": {
       // #3494 · Re-pointet til ægte sponsor_contracts-udbetalinger. Baseline =
       // planens FØRSTE afsluttede sæsons faktiske udbetaling (boardGoalContext.js);
@@ -1412,7 +1434,7 @@ export function buildGoalLabel(goal = {}) {
         ? `Sponsor-indkomst vokset med ${goal.target}% over planperioden`
         : `Sponsor-indkomst vokset med ${goal.target}%`;
     case "no_outstanding_debt":
-      return "Ingen udestaende gaeld ved saesonslut";
+      return "Positiv nettostilling ved saesonslut";
     // S-02d · 7 nye mål-typer
     case "monument_podium":
       // #1238 · race_scope "classics" dækker alle WT-endagsløb (inkl. Monuments).

@@ -31,6 +31,8 @@
 
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { parseBoardGoals, evaluateGoalProgress } from "./boardGoals.js";
+// #1237 · wageBillPerSeason-input til no_outstanding_debt (scoreFinanceHealthGoal).
+import { sumRiderSalaries } from "./boardUtils.js";
 import { unlockExtraordinaryRequestForTeam as unlockExtraordinaryRequestForTeamShared } from "./boardMandateEngine.js";
 
 export const MID_SEASON_TITLE_PREFIX = "Mid-season check";
@@ -70,15 +72,29 @@ export async function processMidSeasonReviewCron({
   if (completed < midpoint) return summary;
 
   // 2. Human teams
+  // #1237 · balance tilføjet: nettostilling-input til no_outstanding_debt
+  // (scoreFinanceHealthGoal, boardUtils.js) — bruges af evaluateMidSeasonTrigger.
   const { data: humanTeams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name, division, season_1_identity_basis")
+    .select("id, user_id, name, division, season_1_identity_basis, balance")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
     .eq("is_test_account", false);
   if (teamsError) throw teamsError;
   if (!humanTeams?.length) return summary;
+
+  // #1237 · aktiv gæld pr. hold (batch), samme mønster som boardWeekendFinalization.js.
+  const { data: activeLoansAll, error: loansError } = await supabase
+    .from("loans")
+    .select("team_id, amount_remaining")
+    .eq("status", "active")
+    .in("team_id", humanTeams.map((t) => t.id));
+  if (loansError) throw loansError;
+  const debtByTeam = new Map();
+  for (const loan of activeLoansAll || []) {
+    debtByTeam.set(loan.team_id, (debtByTeam.get(loan.team_id) || 0) + (loan.amount_remaining || 0));
+  }
 
   // 3. Batch-load standings for sæsonen — bruges af evaluateGoalProgress + relative_rank
   const { data: standingsAll, error: standingsError } = await supabase
@@ -128,6 +144,8 @@ export async function processMidSeasonReviewCron({
         activeSeason,
         standing,
         divisionManagerCount: key != null ? divisionManagerCounts.get(key) || null : null,
+        // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
+        activeDebt: debtByTeam.get(team.id) || 0,
         notifyUser,
         now,
         deps,
@@ -154,6 +172,8 @@ async function processTeamMidSeason({
   activeSeason,
   standing,
   divisionManagerCount,
+  // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
+  activeDebt = 0,
   notifyUser,
   now,
   deps = {},
@@ -228,6 +248,8 @@ async function processTeamMidSeason({
     team,
     getRiders,
     divisionManagerCount,
+    // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
+    activeDebt,
   });
 
   if (!trigger) return { banner_sent: false };
@@ -256,6 +278,10 @@ export async function evaluateMidSeasonTrigger({
   team,
   getRiders,
   divisionManagerCount,
+  // #1237 · nettostilling-input til no_outstanding_debt (scoreFinanceHealthGoal,
+  // boardUtils.js). balance kommer fra `team.balance`; wageBillPerSeason afledes
+  // her af rytterfeltet (samme formel som de øvrige context-byggere).
+  activeDebt = 0,
 }) {
   if (Number(satisfaction) < 50) {
     return { trigger: true, reason: "low_satisfaction" };
@@ -265,18 +291,25 @@ export async function evaluateMidSeasonTrigger({
 
   const riders = typeof getRiders === "function" ? await getRiders() : (team?.riders || []);
   const teamWithRiders = { ...(team || {}), riders };
+  const financeContext = {
+    balance: team?.balance ?? 0,
+    activeDebt,
+    wageBillPerSeason: sumRiderSalaries(riders),
+  };
 
   const behindCount = countBehindGoals({
     goals,
     standing,
     team: teamWithRiders,
     divisionManagerCount,
+    financeContext,
   });
   const measurable = countMeasurableGoals({
     goals,
     standing,
     team: teamWithRiders,
     divisionManagerCount,
+    financeContext,
   });
 
   if (measurable === 0) return { trigger: false, reason: null };
@@ -286,25 +319,27 @@ export async function evaluateMidSeasonTrigger({
   return { trigger: false, reason: null };
 }
 
-function countMeasurableGoals({ goals, standing, team, divisionManagerCount }) {
+function countMeasurableGoals({ goals, standing, team, divisionManagerCount, financeContext = {} }) {
   return goals.filter((goal) => {
     const progress = evaluateGoalProgress(goal, standing, team, {
       divisionManagerCount,
       planDuration: 1,
       seasonsCompleted: 1,
       isFinalSeason: false,
+      ...financeContext,
     });
     return !progress.missing_data;
   }).length;
 }
 
-function countBehindGoals({ goals, standing, team, divisionManagerCount }) {
+function countBehindGoals({ goals, standing, team, divisionManagerCount, financeContext = {} }) {
   return goals.filter((goal) => {
     const progress = evaluateGoalProgress(goal, standing, team, {
       divisionManagerCount,
       planDuration: 1,
       seasonsCompleted: 1,
       isFinalSeason: false,
+      ...financeContext,
     });
     if (progress.missing_data) return false;
     return progress.status === "behind";

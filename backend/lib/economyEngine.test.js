@@ -254,6 +254,15 @@ function createSeasonEndSupabase({
                       });
                     }
 
+                    // #1237 · processTeamSeasonEnd henter nu balance samme sted som
+                    // sponsor_income (nettostilling til no_outstanding_debt).
+                    if (columns === "sponsor_income, balance") {
+                      return Promise.resolve({
+                        data: { sponsor_income: selectedTeam.sponsor_income, balance: selectedTeam.balance },
+                        error: null,
+                      });
+                    }
+
                     if (columns === "user_id") {
                       return Promise.resolve({
                         data: { user_id: selectedTeam.user_id },
@@ -286,9 +295,10 @@ function createSeasonEndSupabase({
 
       if (table === "loans") {
         return {
-          select(columns, options) {
-            assert.equal(columns, "id");
-            assert.deepEqual(options, { count: "exact", head: true });
+          // #1237 · droppet head:true — processTeamSeasonEnd henter nu amount_remaining
+          // (activeDebt til no_outstanding_debt-nettostillingen), ikke kun en count.
+          select(columns) {
+            assert.equal(columns, "id, amount_remaining");
             return {
               eq(column, value) {
                 assert.equal(column, "team_id");
@@ -298,7 +308,7 @@ function createSeasonEndSupabase({
                     assert.equal(secondColumn, "status");
                     assert.equal(secondValue, "active");
                     return Promise.resolve({
-                      count: activeLoanCount,
+                      data: Array.from({ length: activeLoanCount }, (_, i) => ({ id: `loan-${i}`, amount_remaining: 0 })),
                       error: null,
                     });
                   },

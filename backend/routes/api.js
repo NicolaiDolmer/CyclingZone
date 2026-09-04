@@ -317,6 +317,9 @@ import {
   isWithinFirstSeasonForTeam,
   resolveBoardRequest,
 } from "../lib/boardEngine.js";
+// #1237 · nettostilling-hjælpere (activeDebt/wageBillPerSeason) til no_outstanding_debt
+// (scoreFinanceHealthGoal, boardUtils.js) — /board/status + /board/request.
+import { sumActiveLoanDebt, sumRiderSalaries } from "../lib/boardUtils.js";
 import {
   confirmSwapOffer,
   confirmTransferOffer,
@@ -14847,7 +14850,9 @@ router.get("/board/status", requireAuth, async (req, res) => {
       supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
       supabase.from("season_standings").select("*").eq("team_id", teamId)
         .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
-      supabase.from("loans").select("id", { count: "exact", head: true })
+      // #1237 · amount_remaining tilføjet (droppet head:true): activeDebt-input til
+      // no_outstanding_debt-målets nettostilling (scoreFinanceHealthGoal).
+      supabase.from("loans").select("id, amount_remaining")
         .eq("team_id", teamId).eq("status", "active"),
       supabase.from("transfer_windows")
         .select("board_negotiation_state")
@@ -14873,7 +14878,11 @@ router.get("/board/status", requireAuth, async (req, res) => {
     const allBoards = boardsRes.data || [];
     const activeSeason = seasonRes.data || null;
     const boardNegotiationState = windowRes.data?.board_negotiation_state ?? "locked";
-    const activeLoanCount = loansRes.count || 0;
+    const activeLoanRows = loansRes.data || [];
+    const activeLoanCount = activeLoanRows.length;
+    // #1237 · nettostilling-input til no_outstanding_debt (scoreFinanceHealthGoal).
+    const activeDebt = sumActiveLoanDebt(activeLoanRows);
+    const wageBillPerSeason = sumRiderSalaries(ridersRes.data || []);
     const currentStanding = standingRes.data || null;
     const currentTeam = { ...(teamRes.data || {}), riders: ridersRes.data || [] };
 
@@ -15042,6 +15051,10 @@ router.get("/board/status", requireAuth, async (req, res) => {
         board,
         standing: currentStanding,
         activeLoanCount,
+        // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
+        balance: teamRes.data?.balance ?? 0,
+        activeDebt,
+        wageBillPerSeason,
         currentSponsorIncome: teamRes.data?.sponsor_income ?? SPONSOR_INCOME_BASE,
         recentSnapshots: boardSnapshots.slice(-3).reverse(),
         goalContext,
@@ -15881,7 +15894,9 @@ async function computeBoardRequestOutcome(req) {
   }
 
   const [loansRes, snapshotsRes, requestLogRes] = await Promise.all([
-    supabase.from("loans").select("id", { count: "exact", head: true })
+    // #1237 · amount_remaining tilføjet (droppet head:true): activeDebt-input til
+    // no_outstanding_debt-målets nettostilling (scoreFinanceHealthGoal).
+    supabase.from("loans").select("id, amount_remaining")
       .eq("team_id", teamId).eq("status", "active"),
     supabase.from("board_plan_snapshots")
       .select("goals_met, goals_total, satisfaction_delta")
@@ -15951,7 +15966,11 @@ async function computeBoardRequestOutcome(req) {
     context: buildBoardEvalContext({
       board,
       standing,
-      activeLoanCount: loansRes.count || 0,
+      activeLoanCount: (loansRes.data || []).length,
+      // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
+      balance: team?.balance ?? 0,
+      activeDebt: sumActiveLoanDebt(loansRes.data || []),
+      wageBillPerSeason: sumRiderSalaries(riders),
       currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
       recentSnapshots: snapshotsRes.data || [],
       goalContext,
