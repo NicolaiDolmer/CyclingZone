@@ -165,7 +165,7 @@ async function main() {
   if (args.json) {
     // Hændelseslisten selv er titusinder af rækker — den hører ikke i et
     // rapport-JSON. Tallene gør.
-    const { events, seasons, ...summary } = plan;
+    const { events: _events, seasons: _seasons, ...summary } = plan;
     console.log(JSON.stringify(summary, null, 2));
   } else {
     printPlan(plan);

@@ -96,6 +96,12 @@ ALTER TABLE public.riders
   ADD COLUMN IF NOT EXISTS reputation_floor NUMERIC,
   ADD COLUMN IF NOT EXISTS reputation_form NUMERIC,
   ADD COLUMN IF NOT EXISTS reputation_updated_at TIMESTAMPTZ;
+-- Kolonne-grants (riders er kolonne-privilegie-gated, #2238): filen var allerede
+-- applied uden dem, så selve granten i prod kommer fra
+-- 2026-09-05-1099-reputation-column-grants.sql; linjerne her holder vagten
+-- (scripts/lint-riders-column-grant.mjs) grøn og dokumenterer intentionen.
+GRANT SELECT (reputation, reputation_floor, reputation_form, reputation_updated_at)
+  ON public.riders TO anon, authenticated;
 
 COMMENT ON COLUMN public.riders.reputation IS
   '#1099: clamp(reputation_floor + reputation_form, 0, 100). NULL = endnu ikke beregnet.';
