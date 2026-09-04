@@ -44,6 +44,7 @@
 
 import { captureException as defaultCaptureException } from "./sentry.js";
 import { parseTimestamp } from "./aluntaOverdueWatch.js";
+import { shouldAlertOnChange } from "./opsAlertDedupe.js";
 
 const ALERT_KEY = "alunta-period-roll-missing-invoice"; // nøgle i ops_alert_state
 
@@ -159,20 +160,19 @@ export async function runAluntaPeriodRollWatch({
   // re-spammer. Signaturen er den sorterede liste af team-id'er (kort — ikke
   // hele find-objektet, som ville skifte på tidsstempler alene).
   const signature = missing.length ? missing.map((m) => m.teamId).sort().join(",") : "";
-  const { data: stateRow, error: stateErr } = await supabase
-    .from("ops_alert_state")
-    .select("signature")
-    .eq("alert_key", ALERT_KEY)
-    .maybeSingle();
-  if (stateErr) {
-    captureExceptionFn(new Error(`period-roll-watch: ops_alert_state-læsning fejlede: ${stateErr.message}`), {
-      tags: { flow: "billing", stage: "period-roll-watch" },
-    });
-    // Fail-safe: uden dedup-state kan vi ikke afgøre om fundet er nyt — vær
-    // STILLE frem for at re-spamme (mirror balanceDriftWatch.js's rationale).
-    return { checked: (rows ?? []).length, rolls: rolls.length, missing: missing.length, alerted: false };
-  }
-  const changed = (stateRow?.signature ?? "") !== signature;
+  // #2738: read/upsert-dansen mod ops_alert_state flyttet til den delte
+  // opsAlertDedupe.js (#4752/#4754). alertOnReadError:false bevarer denne
+  // vagts oprindelige fail-safe-STILLE semantik ved en læsefejl ("kan vi ikke
+  // afgøre om fundet er nyt, vær stille frem for at re-spamme" — mirror
+  // balanceDriftWatch.js's rationale) — IKKE hjælperens egen default (fail-open).
+  const { alert: changed } = await shouldAlertOnChange({
+    supabase,
+    alertKey: ALERT_KEY,
+    signature,
+    now,
+    captureExceptionFn,
+    alertOnReadError: false,
+  });
 
   const lines = formatMissingInvoiceFindings(missing);
   const alerted = missing.length > 0 && changed;
@@ -182,23 +182,6 @@ export async function runAluntaPeriodRollWatch({
       new Error(`period-roll-watch: ${missing.length} hold med periode-rulning uden fundet faktura i vinduet`),
       { tags: { flow: "billing", stage: "period-roll-watch" }, extra: { sample: missing.slice(0, 20) } },
     );
-  }
-
-  if (changed) {
-    const { error: stateUpsertErr } = await supabase.from("ops_alert_state").upsert(
-      {
-        alert_key: ALERT_KEY,
-        signature,
-        ...(alerted ? { last_alerted_at: now.toISOString() } : {}),
-        updated_at: now.toISOString(),
-      },
-      { onConflict: "alert_key" },
-    );
-    if (stateUpsertErr) {
-      captureExceptionFn(new Error(`period-roll-watch: ops_alert_state-upsert fejlede: ${stateUpsertErr.message}`), {
-        tags: { flow: "billing", stage: "period-roll-watch" },
-      });
-    }
   }
 
   return { checked: (rows ?? []).length, rolls: rolls.length, missing: missing.length, alerted };
