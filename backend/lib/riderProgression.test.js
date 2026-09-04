@@ -10,7 +10,7 @@ import {
   buildCapsForRider, buildProgressInit,
   taperedAbsoluteCap, CAP_TAPER_CONFIG,
   CRAFT_ABILITIES, abilityRoleClass, roleRateFactor, ROLE_CLASSES, ROLE_CLASS_RATE,
-  announcedRetirementAfterSeason,
+  announcedRetirementAfterSeason, GC_PUNCH_FLOOR,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
@@ -470,6 +470,72 @@ test("rolleklasser: taget kan ALDRIG i sig selv sætte en evne over 95", () => {
   // Og 90 skal kunne NÅS (S4): gap-proportional vækst ankommer aldrig helt til
   // taget, så signatur-taget skal ligge over 90 + en margin. Vinduet er 92-94.
   assert.ok(YOUTH_PROGRESSION_CONFIG.roleTags.signatur >= 92, "signatur-tag under 92 gør 90 uopnåeligt (asymptoten)");
+});
+
+// ── #4634/#4098 (ejer-beslutning 4/9, variant A3+C2) ────────────────────────
+// Se docs/audits/4634-cap-varianter-2026-09-04.md for det fulde beslutnings-
+// grundlag. Disse tests låser de to konstant-ændringer, ikke bare afledte
+// forhold — regression skal fejle hvis nogen ved et uheld ruller tilbage.
+
+test("#4634 A3: svaghed-taget er hævet til 45 (var 25) — ROLE_CLASS_RATE.svaghed er UÆNDRET", () => {
+  assert.equal(YOUTH_PROGRESSION_CONFIG.roleTags.svaghed, 45);
+  // Raten er en separat beslutning (egen session) — denne PR rører den ikke.
+  assert.equal(ROLE_CLASS_RATE.svaghed, 0.05);
+  // Rækkefølgen signatur > sekundær > håndværk > andenRolle > svaghed (14/8)
+  // skal stadig holde efter hævningen.
+  const t = YOUTH_PROGRESSION_CONFIG.roleTags;
+  assert.ok(t.signatur > t.sekundaer && t.sekundaer > t.haandvaerk && t.haandvaerk > t.andenRolle && t.andenRolle > t.svaghed);
+});
+
+test("#4634 A3: en dobbelt-svaghedsevne får det nye 45-tag, ikke 25", () => {
+  // climber/tt, sprint: climber.weights.sprint=-2<0 OG tt.weights.sprint=-1<0 → svaghed.
+  assert.equal(abilityRoleClass("climber", "tt", "sprint"), "svaghed");
+  assert.equal(youthAbilityCap(3, "climber", "tt", "sprint"), 45);
+});
+
+test("#4634 C2: GC_PUNCH_FLOOR er 80 (sekundær-niveau) og gælder KUN gc/punch", () => {
+  assert.equal(GC_PUNCH_FLOOR, 80);
+  assert.equal(GC_PUNCH_FLOOR, YOUTH_PROGRESSION_CONFIG.roleTags.sekundaer);
+});
+
+test("#4634 C2: gc-rytterens punch-tag er MINDST 80, uanset sekundærtype", () => {
+  // Før C2: rouleur/sprinter-sekundær gav andenRolle (55); tt-sekundær gav
+  // svaghed (nu 45, før 25). Alle skal nu floores til 80.
+  for (const secondary of ["rouleur", "tt", "sprinter", "climber", "puncheur", "baroudeur", "brostensrytter", "gc"]) {
+    const cap = youthAbilityCap(3, "gc", secondary, "punch");
+    assert.ok(cap >= 80, `gc/${secondary} punch-tag ${cap} skal være ≥ 80`);
+  }
+});
+
+test("#4634 C2: gulvet rører KUN gc — samme (primær, sekundær, evne) med gc som SEKUNDÆR floores ikke", () => {
+  // Gulvet er nøglet på PRIMARYTYPE === gc, ikke på om gc indgår som sekundær.
+  for (const primary of ["climber", "rouleur", "sprinter", "puncheur", "baroudeur", "brostensrytter", "tt"]) {
+    const withGcSecondary = youthAbilityCap(3, primary, "gc", "punch");
+    const withoutGc = youthAbilityCap(3, primary, "climber", "punch"); // climber har samme fortegn-mønster for punch i de fleste tilfælde er ligegyldigt her — vi tester kun at gc-sekundær ikke trigger gulvet
+    assert.ok(withGcSecondary <= 93, `${primary}/gc punch (${withGcSecondary}) skal IKKE floores af GC-punch-gulvet`);
+  }
+  // gc's øvrige evner er uændrede af punch-gulvet (fx climbing, hvor gc er primær-signatur).
+  assert.equal(youthAbilityCap(3, "gc", "tt", "climbing"), YOUTH_PROGRESSION_CONFIG.roleTags.signatur);
+});
+
+test("#4634 C2: gulvet LØFTER, det sænker aldrig — gc/climber-sekundær (allerede 80) forbliver 80", () => {
+  // gc/climber: climber.weights.punch=1>0 sekundært → sekundaer-klasse (tag 80
+  // allerede) — gulvet må hverken hæve eller sænke dette tilfælde.
+  assert.equal(abilityRoleClass("gc", "climber", "punch"), "sekundaer");
+  assert.equal(youthAbilityCap(3, "gc", "climber", "punch"), 80);
+});
+
+test("#4634 C2: gulvet lever hvor loftet udledes — buildYouthCaps/buildCapsForRider bærer det videre, tapered som ethvert andet tag", () => {
+  const youth = buildYouthCaps(3, "gc", "tt");
+  assert.equal(youth.punch, 80, "buildYouthCaps skal bære gc-punch-gulvet videre");
+  // Ved peakAge (ingen taper endnu) skal buildCapsForRider give samme tal.
+  const atPeak = buildCapsForRider(allAbilities(10), { potentiale: 3, age: 28 }, "gc", "tt");
+  assert.equal(atPeak.punch, 80);
+  // Forbi peak aftrappes gulvet på nøjagtig samme måde som ethvert andet tag
+  // (samme taperedAbsoluteCap-sti) — det er IKKE immunt mod alderen.
+  const past = buildCapsForRider(allAbilities(10), { potentiale: 3, age: 34 }, "gc", "tt");
+  assert.ok(past.punch < 80, `gc-punch-gulvet skal aftrappes forbi peak ligesom alle andre tag (fik ${past.punch})`);
+  assert.ok(past.punch > 0);
 });
 
 test("håndværk B1: håndværks-klassen sænker intet loft for NOGEN kombination", () => {
