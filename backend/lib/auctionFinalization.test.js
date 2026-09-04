@@ -580,7 +580,7 @@ test("finalizeAuctionById blocks a winner whose squad would exceed the hard cap 
   assert.equal(notifications.length, 2);
   assert.deepEqual(riderUpdates, []);
   assert.equal(notifications[0].teamId, "buyer-team");
-  assert.match(notifications[0].message, /maks\. have 30 ryttere/);
+  assert.match(notifications[0].message, /can hold at most 30 riders/);
 });
 
 // #267: når transfervinduet er lukket (post-cutoff) er hard-cap igen gældende
@@ -633,7 +633,7 @@ test("finalizeAuctionById hard-caps at deal time (#16 always-open, no window gra
   assert.equal(result.ok, true);
   assert.equal(result.code, "squad_full");
   assert.equal(notifications.length, 2);
-  assert.match(notifications[0].message, /maks\. have 30 ryttere/);
+  assert.match(notifications[0].message, /can hold at most 30 riders/);
   assert.deepEqual(riderUpdates, []);
 });
 
@@ -800,7 +800,7 @@ test("finalizeAuctionById completes even if the contract-expiring notification t
   assert.equal(financeInserts.length, 2);
   // "Auktion afsluttet"-notifikationen (efter guarden) blev stadig sendt.
   assert.ok(
-    notifications.some((n) => n.title === "Auktion afsluttet"),
+    notifications.some((n) => n.title === "Auction finished"),
     "post-guard-notifikationer skal stadig sendes"
   );
 });
@@ -1007,7 +1007,7 @@ test("finalizeAuctionById cancels a stale auction when another human manager own
   assert.equal(notifications.length, 2);
   assert.equal(notifications[0].teamId, "buyer-team");
   assert.equal(notifications[1].teamId, "initiator-team");
-  assert.match(notifications[0].message, /anden manager/);
+  assert.match(notifications[0].message, /belongs to another manager/);
 });
 
 // #2918: en rytter kan pensioneres (is_retired=true) mens hans auktion stadig
@@ -2074,7 +2074,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
   // to næsten identiske notifikationer om samme hammerslag. Nu: kun ÉN.
   assert.equal(notifications.length, 1, "#3549: sælger-beskeden skal IKKE dubleres når køber og sælger er samme hold");
   assert.equal(notifications[0].teamId, "initiator-team");
-  assert.match(notifications[0].title, /vandt/i);
+  assert.match(notifications[0].title, /you won the auction/i);
 });
 
 test("finalizeAuctionById completes when the initiator is the sole bidder on a free-agent auction", async () => {
@@ -2175,7 +2175,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
   // (uden nogen reel sælger, fri agent) === effektiv køber her.
   assert.equal(notifications.length, 1, "#3549: sælger-beskeden skal IKKE dubleres når køber og sælger er samme hold");
   assert.equal(notifications[0].teamId, "initiator-team");
-  assert.match(notifications[0].title, /vandt/i);
+  assert.match(notifications[0].title, /you won the auction/i);
 });
 
 // #3963: en manager fyrede sin EGEN rytter (POST /riders/:id/release) mens
@@ -2258,7 +2258,7 @@ test("finalizeAuctionById refuses an implicit self-bid when the rider has no own
   // han "vandt" sin egen rytter.
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0].teamId, "initiator-team");
-  assert.doesNotMatch(notifications[0].title, /vandt/i);
+  assert.doesNotMatch(notifications[0].title, /you won/i);
 });
 
 // ── #1309 kontrakt-on-acquire ────────────────────────────────────────────────
@@ -3506,5 +3506,5 @@ test("finalizeAuctionById parkerer holdskiftet når rytteren er i et aktivt etap
   assert.deepEqual(riderUpdates, [{ pending_team_id: "buyer-team", updated_at: "2026-07-03T11:00:00.000Z" }]);
   // Vinder-beskeden forklarer at rytteren ankommer efter løbet.
   const won = notifications.find((n) => n.type === "auction_won" && n.teamId === "buyer-team");
-  assert.match(won.message, /etapeløb/);
+  assert.match(won.message, /ongoing stage race/);
 });

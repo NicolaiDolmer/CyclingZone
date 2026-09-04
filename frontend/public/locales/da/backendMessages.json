@@ -507,6 +507,36 @@
         "title": "Sponsorudbetaling",
         "message": "{sponsor} udbetalte {amount} CZ$ for at opfylde jeres sæsonmål."
       }
+    },
+    "auction": {
+      "wonTitle": "Du vandt auktionen",
+      "wonMessage": "{rider} er nu på dit hold for {price} CZ$",
+      "wonMessageDeferred": "{rider} er købt for {price} CZ$. Han skifter til dit hold, når hans igangværende etapeløb er kørt færdigt.",
+      "wonYouthTitle": "Du vandt ungdomsauktionen",
+      "wonYouthSeniorMessage": "{rider} er nu på dit hold (senior-truppen) for {price} CZ$",
+      "wonYouthAcademyMessage": "{rider} er nu i dit akademi for {price} CZ$",
+      "cancelledTitle": "Auktion annulleret",
+      "cancelledUnaffordable": "Du havde ikke råd til {rider}.",
+      "cancelledBuyerBalance": "Du havde ikke råd til {rider}. Saldo: {balance} CZ$",
+      "cancelledBuyerBalanceSeller": "Køber manglede balance. {rider} blev ikke overdraget.",
+      "cancelledAlreadyTaken": "{rider} blev optaget af et andet hold.",
+      "cancelledOwnerChanged": "{rider} kunne ikke overdrages, fordi rytteren nu tilhører en anden manager.",
+      "cancelledNotOnTeam": "{rider} står ikke længere på dit hold. Auktionen blev derfor annulleret.",
+      "cancelledNoRoomTitle": "Auktion annulleret: ingen plads",
+      "cancelledNoRoomMessage": "Både din senior-trup og dit akademi ({slots} pladser) er fulde. {rider} kunne ikke optages.",
+      "cancelledSquadFullTitle": "Auktion annulleret: hold fuldt",
+      "cancelledSquadFullMessage": "Dit hold (Div {division}) kan maks. have {maxRiders} ryttere. {rider} kunne ikke overdrages. Sælg en rytter først.",
+      "cancelledWinnerSquadFull": "{rider} kunne ikke overdrages, fordi vinderens hold var fuldt.",
+      "cancelledSellerFloorBuyer": "{rider} kunne ikke overdrages, fordi sælgerens hold ville falde under løbs-minimummet ({minRiders}).",
+      "cancelledSellerFloorTitle": "Auktion annulleret: dit hold ville falde under minimum",
+      "cancelledSellerFloorSeller": "{rider} blev ikke overdraget, fordi dit hold ville falde under {minRiders} ryttere (løbs-minimum) ved salget. Sælg ham igen når din trup har plads til det.",
+      "soldTitle": "Auktion afsluttet",
+      "soldMessage": "{rider} solgt for {price} CZ$",
+      "boughtMessage": "{rider} blev købt for {price} CZ$",
+      "soldToAiTitle": "Rytter solgt til AI",
+      "soldToAiMessage": "{rider} er solgt til AI for {price} CZ$ (garanteret pris)",
+      "expiredNoBidsTitle": "Auktion udløb uden bud",
+      "expiredNoBidsMessage": "Ingen bød på {rider}"
     }
   },
   "error": {

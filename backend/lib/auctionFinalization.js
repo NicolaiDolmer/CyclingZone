@@ -16,7 +16,7 @@ import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRp
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
-import { buildContractExpiringNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
+import { buildContractExpiringNotification, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
@@ -30,6 +30,22 @@ export const AUCTION_SQUAD_LIMITS = MARKET_SQUAD_LIMITS;
 
 const FINALIZABLE_STATUSES = ["active", "extended"];
 const NOOP = async () => {};
+
+// #4734 · Auktions-notifikationer baerer noegle + parametre.
+//
+// Foer: hvert kaldsted skrev title/message som HARDCODET DANSK prosa, ogsaa til
+// managers med users.language = "en". Nu kommer baade koden og EN-fallbacken fra
+// samme noegle i frontend/public/locales/*/backendMessages.json, saa frontend kan
+// rendre dem i modtagerens sprog (#666-kontrakten) og et 3. sprog daekkes
+// automatisk af delta-oversaetteren (#4733).
+//
+// notifyTeamOwner-signaturen her er positionel (teamId, type, title, message,
+// relatedId, metadata) og injiceres af kalderen, saa helperen leverer de tre
+// felter i den raekkefoelge frem for at aendre alle kaldsteder til objekt-form.
+function auctionNotify(notifyTeamOwner, teamId, type, keys, relatedId, metadata = {}) {
+  const payload = buildKeyedNotification({ ...keys, metadata });
+  return notifyTeamOwner(teamId, type, payload.title, payload.message, relatedId, payload.metadata);
+}
 
 export function sellerOwnsAuctionRider(auction) {
   return Boolean(auction?.rider && auction.rider.team_id === auction.seller_team_id);
@@ -489,11 +505,15 @@ async function tryPlaceYouthWinnerOnSenior({
   );
 
   await awardXP(bidderId, "auction_won");
-  await notifyTeamOwner(
+  await auctionNotify(
+    notifyTeamOwner,
     bidderId,
     "auction_won",
-    "Du vandt ungdomsauktionen! 🎉",
-    `${rider.firstname} ${rider.lastname} er nu på dit hold (senior-truppen) for ${price} CZ$`,
+    {
+      titleCode: "notif.auction.wonYouthTitle",
+      messageCode: "notif.auction.wonYouthSeniorMessage",
+      messageParams: { rider: `${rider.firstname} ${rider.lastname}`, price },
+    },
     auction.id,
     { riderId: rider.id }
   );
@@ -602,11 +622,15 @@ async function finalizeYouthAuctionRecord({
   // steder) → annullér + slet (#2456; en holdløs ungdomsrytter = spøgelsesrytter).
   if (senior.reason === "insufficient_balance") {
     await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
-    await notifyTeamOwner(
+    await auctionNotify(
+      notifyTeamOwner,
       bidderId,
       "auction_lost",
-      "Auktion annulleret",
-      `Du havde ikke råd til ${rider.firstname} ${rider.lastname}.`,
+      {
+        titleCode: "notif.auction.cancelledTitle",
+        messageCode: "notif.auction.cancelledUnaffordable",
+        messageParams: { rider: `${rider.firstname} ${rider.lastname}` },
+      },
       auction.id,
       { riderId: rider.id }
     );
@@ -676,11 +700,15 @@ async function finalizeYouthAuctionRecord({
   // dette er nu primært en race-backstop (plads fyldt efter buddet blev afgivet).
   if (acq?.code === "academy_full") {
     await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
-    await notifyTeamOwner(
+    await auctionNotify(
+      notifyTeamOwner,
       bidderId,
       "auction_lost",
-      "Auktion annulleret — ingen plads",
-      `Både din senior-trup og dit akademi (${ACADEMY.SLOTS} pladser) er fulde. ${rider.firstname} ${rider.lastname} kunne ikke optages.`,
+      {
+        titleCode: "notif.auction.cancelledNoRoomTitle",
+        messageCode: "notif.auction.cancelledNoRoomMessage",
+        messageParams: { rider: `${rider.firstname} ${rider.lastname}`, slots: ACADEMY.SLOTS },
+      },
       auction.id,
       { riderId: rider.id }
     );
@@ -697,11 +725,15 @@ async function finalizeYouthAuctionRecord({
   // ikke optaget → han slettes (#2456, samme begrundelse som academy_full).
   if (acq?.code === "insufficient_balance") {
     await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
-    await notifyTeamOwner(
+    await auctionNotify(
+      notifyTeamOwner,
       bidderId,
       "auction_lost",
-      "Auktion annulleret",
-      `Du havde ikke råd til ${rider.firstname} ${rider.lastname}.`,
+      {
+        titleCode: "notif.auction.cancelledTitle",
+        messageCode: "notif.auction.cancelledUnaffordable",
+        messageParams: { rider: `${rider.firstname} ${rider.lastname}` },
+      },
       auction.id,
       { riderId: rider.id }
     );
@@ -713,11 +745,15 @@ async function finalizeYouthAuctionRecord({
   // debit (lukker det omvendte tab: køber debiteret uden at få rytteren).
   if (acq?.code === "already_assigned") {
     await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
-    await notifyTeamOwner(
+    await auctionNotify(
+      notifyTeamOwner,
       bidderId,
       "auction_lost",
-      "Auktion annulleret",
-      `${rider.firstname} ${rider.lastname} blev optaget af et andet hold.`,
+      {
+        titleCode: "notif.auction.cancelledTitle",
+        messageCode: "notif.auction.cancelledAlreadyTaken",
+        messageParams: { rider: `${rider.firstname} ${rider.lastname}` },
+      },
       auction.id,
       { riderId: rider.id }
     );
@@ -747,11 +783,15 @@ async function finalizeYouthAuctionRecord({
   });
 
   await awardXP(bidderId, "auction_won");
-  await notifyTeamOwner(
+  await auctionNotify(
+    notifyTeamOwner,
     bidderId,
     "auction_won",
-    "Du vandt ungdomsauktionen! 🎉",
-    `${rider.firstname} ${rider.lastname} er nu i dit akademi for ${price} CZ$`,
+    {
+      titleCode: "notif.auction.wonYouthTitle",
+      messageCode: "notif.auction.wonYouthAcademyMessage",
+      messageParams: { rider: `${rider.firstname} ${rider.lastname}`, price },
+    },
     auction.id,
     { riderId: rider.id }
   );
@@ -954,22 +994,30 @@ async function finalizeAuctionRecord({
     });
 
     if (auction.current_bidder_id) {
-      await notifyTeamOwner(
+      await auctionNotify(
+        notifyTeamOwner,
         auction.current_bidder_id,
         "auction_lost",
-        "Auktion annulleret",
-        `${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages, fordi rytteren nu tilhører en anden manager.`,
+        {
+          titleCode: "notif.auction.cancelledTitle",
+          messageCode: "notif.auction.cancelledOwnerChanged",
+          messageParams: { rider: `${auction.rider.firstname} ${auction.rider.lastname}` },
+        },
         auction.id,
         { riderId: auction.rider.id }
       );
     }
 
     if (auction.seller_team_id) {
-      await notifyTeamOwner(
+      await auctionNotify(
+        notifyTeamOwner,
         auction.seller_team_id,
         "auction_lost",
-        "Auktion annulleret",
-        `${auction.rider.firstname} ${auction.rider.lastname} står ikke længere på dit hold. Auktionen blev derfor annulleret.`,
+        {
+          titleCode: "notif.auction.cancelledTitle",
+          messageCode: "notif.auction.cancelledNotOnTeam",
+          messageParams: { rider: `${auction.rider.firstname} ${auction.rider.lastname}` },
+        },
         auction.id,
         { riderId: auction.rider.id }
       );
@@ -1002,21 +1050,32 @@ async function finalizeAuctionRecord({
         sellerOwned,
       });
 
-      await notifyTeamOwner(
+      await auctionNotify(
+        notifyTeamOwner,
         effectiveBidderId,
         "auction_lost",
-        "Auktion annulleret",
-        `Du havde ikke råd til ${auction.rider.firstname} ${auction.rider.lastname}. Saldo: ${buyer?.balance || 0} CZ$`,
+        {
+          titleCode: "notif.auction.cancelledTitle",
+          messageCode: "notif.auction.cancelledBuyerBalance",
+          messageParams: {
+            rider: `${auction.rider.firstname} ${auction.rider.lastname}`,
+            balance: buyer?.balance || 0,
+          },
+        },
         auction.id,
         { riderId: auction.rider.id }
       );
 
       if (auction.seller_team_id) {
-        await notifyTeamOwner(
+        await auctionNotify(
+          notifyTeamOwner,
           auction.seller_team_id,
           "auction_lost",
-          "Auktion annulleret",
-          `Køber manglede balance. ${auction.rider.firstname} ${auction.rider.lastname} blev ikke overdraget.`,
+          {
+            titleCode: "notif.auction.cancelledTitle",
+            messageCode: "notif.auction.cancelledBuyerBalanceSeller",
+            messageParams: { rider: `${auction.rider.firstname} ${auction.rider.lastname}` },
+          },
           auction.id,
           { riderId: auction.rider.id }
         );
@@ -1047,23 +1106,33 @@ async function finalizeAuctionRecord({
         sellerOwned,
       });
 
-      const buyerMessage = `Dit hold (Div ${buyer.division || 3}) kan maks. have ${squadViolation.maxRiders} ryttere. ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages — sælg en rytter først.`;
-
-      await notifyTeamOwner(
+      await auctionNotify(
+        notifyTeamOwner,
         effectiveBidderId,
         "auction_lost",
-        "Auktion annulleret — hold fuldt",
-        buyerMessage,
+        {
+          titleCode: "notif.auction.cancelledSquadFullTitle",
+          messageCode: "notif.auction.cancelledSquadFullMessage",
+          messageParams: {
+            rider: `${auction.rider.firstname} ${auction.rider.lastname}`,
+            division: buyer.division || 3,
+            maxRiders: squadViolation.maxRiders,
+          },
+        },
         auction.id,
         { riderId: auction.rider.id }
       );
 
       if (auction.seller_team_id) {
-        await notifyTeamOwner(
+        await auctionNotify(
+          notifyTeamOwner,
           auction.seller_team_id,
           "auction_lost",
-          "Auktion annulleret",
-          `${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages, fordi vinderens hold var fuldt.`,
+          {
+            titleCode: "notif.auction.cancelledTitle",
+            messageCode: "notif.auction.cancelledWinnerSquadFull",
+            messageParams: { rider: `${auction.rider.firstname} ${auction.rider.lastname}` },
+          },
           auction.id,
           { riderId: auction.rider.id }
         );
@@ -1109,20 +1178,34 @@ async function finalizeAuctionRecord({
           sellerOwned,
         });
 
-        await notifyTeamOwner(
+        await auctionNotify(
+          notifyTeamOwner,
           effectiveBidderId,
           "auction_lost",
-          "Auktion annulleret",
-          `${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages, fordi sælgerens hold ville falde under løbs-minimummet (${sellerFloorViolation.minRiders}).`,
+          {
+            titleCode: "notif.auction.cancelledTitle",
+            messageCode: "notif.auction.cancelledSellerFloorBuyer",
+            messageParams: {
+              rider: `${auction.rider.firstname} ${auction.rider.lastname}`,
+              minRiders: sellerFloorViolation.minRiders,
+            },
+          },
           auction.id,
           { riderId: auction.rider.id }
         );
 
-        await notifyTeamOwner(
+        await auctionNotify(
+          notifyTeamOwner,
           actualSellerTeamId,
           "auction_lost",
-          "Auktion annulleret — dit hold ville falde under minimum",
-          `${auction.rider.firstname} ${auction.rider.lastname} blev ikke overdraget, fordi dit hold ville falde under ${sellerFloorViolation.minRiders} ryttere (løbs-minimum) ved salget. Sælg ham igen når din trup har plads til det.`,
+          {
+            titleCode: "notif.auction.cancelledSellerFloorTitle",
+            messageCode: "notif.auction.cancelledSellerFloorSeller",
+            messageParams: {
+              rider: `${auction.rider.firstname} ${auction.rider.lastname}`,
+              minRiders: sellerFloorViolation.minRiders,
+            },
+          },
           auction.id,
           { riderId: auction.rider.id }
         );
@@ -1283,13 +1366,15 @@ async function finalizeAuctionRecord({
       await awardXP(auction.seller_team_id, "auction_sold");
     }
 
-    await notifyTeamOwner(
+    await auctionNotify(
+      notifyTeamOwner,
       effectiveBidderId,
       "auction_won",
-      "Du vandt auktionen! 🎉",
-      deferTeamChange
-        ? `${auction.rider.firstname} ${auction.rider.lastname} er købt for ${price} CZ$ — han skifter til dit hold, når hans igangværende etapeløb er kørt færdigt.`
-        : `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${price} CZ$`,
+      {
+        titleCode: "notif.auction.wonTitle",
+        messageCode: deferTeamChange ? "notif.auction.wonMessageDeferred" : "notif.auction.wonMessage",
+        messageParams: { rider: `${auction.rider.firstname} ${auction.rider.lastname}`, price },
+      },
       auction.id,
       { riderId: auction.rider.id }
     );
@@ -1345,15 +1430,17 @@ async function finalizeAuctionRecord({
     // Modtageren har allerede fået hele historien via købs-beskeden, så
     // sælger-beskeden er ren støj i det tilfælde.
     if (auction.seller_team_id && auction.seller_team_id !== effectiveBidderId) {
-      await notifyTeamOwner(
+      await auctionNotify(
+        notifyTeamOwner,
         auction.seller_team_id,
         // #3549 forward-guard: egen type (ikke "auction_won") så købers og
         // sælgers besked aldrig igen kan kollidere på type alene.
         "auction_sold",
-        "Auktion afsluttet",
-        sellerOwned
-          ? `${auction.rider.firstname} ${auction.rider.lastname} solgt for ${price} CZ$`
-          : `${auction.rider.firstname} ${auction.rider.lastname} blev købt for ${price} CZ$`,
+        {
+          titleCode: "notif.auction.soldTitle",
+          messageCode: sellerOwned ? "notif.auction.soldMessage" : "notif.auction.boughtMessage",
+          messageParams: { rider: `${auction.rider.firstname} ${auction.rider.lastname}`, price },
+        },
         auction.id,
         { riderId: auction.rider.id }
       );
@@ -1476,22 +1563,30 @@ async function finalizeAuctionRecord({
       },
     }, { allowDuplicate: true });
 
-    await notifyTeamOwner(
+    await auctionNotify(
+      notifyTeamOwner,
       auction.seller_team_id,
       // #3549 forward-guard: samme sælger-type som den almindelige sælger-besked
       // ovenfor — "solgt" er den semantisk korrekte type, ikke "vundet".
       "auction_sold",
-      "Rytter solgt til AI",
-      `${auction.rider.firstname} ${auction.rider.lastname} er solgt til AI for ${salePrice} CZ$ (garanteret pris)`,
+      {
+        titleCode: "notif.auction.soldToAiTitle",
+        messageCode: "notif.auction.soldToAiMessage",
+        messageParams: { rider: `${auction.rider.firstname} ${auction.rider.lastname}`, price: salePrice },
+      },
       auction.id,
       { riderId: auction.rider.id }
     );
   } else if (auction.seller_team_id) {
-    await notifyTeamOwner(
+    await auctionNotify(
+      notifyTeamOwner,
       auction.seller_team_id,
       "auction_lost",
-      "Auktion udløb uden bud",
-      `Ingen bød på ${auction.rider.firstname} ${auction.rider.lastname}`,
+      {
+        titleCode: "notif.auction.expiredNoBidsTitle",
+        messageCode: "notif.auction.expiredNoBidsMessage",
+        messageParams: { rider: `${auction.rider.firstname} ${auction.rider.lastname}` },
+      },
       auction.id,
       { riderId: auction.rider.id }
     );

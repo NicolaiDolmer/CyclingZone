@@ -507,6 +507,36 @@
         "title": "Sponsor payout",
         "message": "{sponsor} paid out {amount} CZ$ for meeting your season objective."
       }
+    },
+    "auction": {
+      "wonTitle": "You won the auction",
+      "wonMessage": "{rider} is now on your team for {price} CZ$",
+      "wonMessageDeferred": "{rider} is bought for {price} CZ$. He joins your team once his ongoing stage race is finished.",
+      "wonYouthTitle": "You won the youth auction",
+      "wonYouthSeniorMessage": "{rider} is now in your senior squad for {price} CZ$",
+      "wonYouthAcademyMessage": "{rider} is now in your academy for {price} CZ$",
+      "cancelledTitle": "Auction cancelled",
+      "cancelledUnaffordable": "You could not afford {rider}.",
+      "cancelledBuyerBalance": "You could not afford {rider}. Balance: {balance} CZ$",
+      "cancelledBuyerBalanceSeller": "The buyer was short on funds. {rider} was not transferred.",
+      "cancelledAlreadyTaken": "{rider} was signed by another team.",
+      "cancelledOwnerChanged": "{rider} could not be transferred, because he now belongs to another manager.",
+      "cancelledNotOnTeam": "{rider} is no longer on your team, so the auction was cancelled.",
+      "cancelledNoRoomTitle": "Auction cancelled: no room",
+      "cancelledNoRoomMessage": "Both your senior squad and your academy ({slots} places) are full. {rider} could not be signed.",
+      "cancelledSquadFullTitle": "Auction cancelled: squad full",
+      "cancelledSquadFullMessage": "Your team (Div {division}) can hold at most {maxRiders} riders. {rider} could not be transferred. Sell a rider first.",
+      "cancelledWinnerSquadFull": "{rider} could not be transferred, because the winner's squad was full.",
+      "cancelledSellerFloorBuyer": "{rider} could not be transferred, because the seller's squad would drop below the race minimum ({minRiders}).",
+      "cancelledSellerFloorTitle": "Auction cancelled: your squad would drop below the minimum",
+      "cancelledSellerFloorSeller": "{rider} was not transferred, because your squad would drop below {minRiders} riders (the race minimum). List him again when your squad has room for it.",
+      "soldTitle": "Auction finished",
+      "soldMessage": "{rider} sold for {price} CZ$",
+      "boughtMessage": "{rider} was bought for {price} CZ$",
+      "soldToAiTitle": "Rider sold to AI",
+      "soldToAiMessage": "{rider} was sold to the AI for {price} CZ$ (guaranteed price)",
+      "expiredNoBidsTitle": "Auction expired without bids",
+      "expiredNoBidsMessage": "Nobody bid on {rider}"
     }
   },
   "error": {
