@@ -27,6 +27,8 @@ helt forskellige regler. Det er den hyppigste fejlkilde i området.
 | `guaranteed_base` | Den garanterede del, udbetalt ved sæsonstart | **Frosset ved valg-tidspunktet.** Rører sig ALDRIG i kontraktens løbetid — heller ikke ved divisions-skift (se §3) |
 | `per_race_day_rate` | Betaling pr. **etape** holdet starter i | Frosset ved valg, men **genberegnes ved aktivering** mod divisionens etapetal (#2913). Det er den ene af de tre der ikke er låst som spec 21/6 §4.3 lover |
 
+**#4376-tilføjelse (4/9):** fordi `guaranteed_base` er et engangsbeløb (ikke en løbende ydelse), tilbagefører S3-korrektionen (`backend/scripts/repair-4376-sponsor-division-correction.js`) det for meget udbetalte fra timing-hul-hold direkte via `incrementBalanceWithAudit`, samme dag basen rettes ned.
+
 **Fælden:** `renownTarget` er ikke gemt nogen steder. Enhver kode der vil kende et holds aftale-værdi
 skal udlede den fra `guaranteed_base / guaranteed_fraction` — præcis som `recomputeActivationRate`
 og `contractRaceDayPool` gør. Gæt aldrig på divisionen; udled fra fraktionen.

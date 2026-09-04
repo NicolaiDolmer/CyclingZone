@@ -10,6 +10,10 @@ import {
   buildTimingHoleCorrections,
   buildDivisionAdjustments,
   findNegativeBalanceRisk,
+  buildClawbacks,
+  sponsorDivisionClawbackIdempotencyKey,
+  buildNetByTeam,
+  findCombinedNegativeBalanceRisk,
 } from "./repair-4376-sponsor-division-correction.js";
 import { generateOffers } from "../lib/sponsorOffers.js";
 import { renownTarget } from "../lib/renownEngine.js";
@@ -212,4 +216,106 @@ test("findNegativeBalanceRisk: flager et hold hvis et (hypotetisk, fremtidig-sæ
   const risks = findNegativeBalanceRisk(divisionAdjustments, teamById);
   assert.equal(risks.length, 1);
   assert.equal(risks[0].projectedBalance, -40000);
+});
+
+// ─── buildClawbacks ─────────────────────────────────────────────────────────
+
+function makeCorrection(overrides = {}) {
+  return {
+    contract_id: "c1", team_id: "t1", team_name: "Bad At Names", division_now: 1,
+    signed_division_before: 1, signed_division_after: 2,
+    guaranteed_base_before: 772800, guaranteed_base_after: 515200,
+    needsUpdate: true,
+    ...overrides,
+  };
+}
+
+test("buildClawbacks: hold hvor basen gik NED får det fulde for-meget-udbetalte tilbageført", () => {
+  const teamById = new Map([["t1", { id: "t1", name: "Bad At Names", balance: 300000 }]]);
+  const out = buildClawbacks([makeCorrection()], teamById);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].base_before, 772800);
+  assert.equal(out[0].base_after, 515200);
+  assert.equal(out[0].already_paid, 772800);
+  assert.equal(out[0].clawback_cz, 772800 - 515200);
+  assert.equal(out[0].balance_now, 300000);
+});
+
+test("buildClawbacks: hold hvor kun signed_division afveg (basen UÆNDRET) får INGEN clawback", () => {
+  const teamById = new Map([["t1", { id: "t1", name: "Team", balance: 100000 }]]);
+  const correction = makeCorrection({ guaranteed_base_before: 500000, guaranteed_base_after: 500000 });
+  const out = buildClawbacks([correction], teamById);
+  assert.equal(out.length, 0);
+});
+
+test("buildClawbacks: hold hvor basen (usædvanligt) gik OP giver heller ingen clawback (kun negativ diff udelukkes)", () => {
+  const teamById = new Map([["t1", { id: "t1", name: "Team", balance: 100000 }]]);
+  const correction = makeCorrection({ guaranteed_base_before: 400000, guaranteed_base_after: 500000 });
+  const out = buildClawbacks([correction], teamById);
+  assert.equal(out.length, 0);
+});
+
+test("buildClawbacks: springer hold uden kendt team over uden at kaste", () => {
+  const out = buildClawbacks([makeCorrection({ team_id: "unknown" })], new Map());
+  assert.equal(out.length, 1);
+  assert.equal(out[0].balance_now, null);
+});
+
+// ─── sponsorDivisionClawbackIdempotencyKey ──────────────────────────────────
+
+test("sponsorDivisionClawbackIdempotencyKey: stabil pr. (team, kontrakt), ikke pr. sæson", () => {
+  const k1 = sponsorDivisionClawbackIdempotencyKey("t1", "c1");
+  const k2 = sponsorDivisionClawbackIdempotencyKey("t1", "c1");
+  const k3 = sponsorDivisionClawbackIdempotencyKey("t1", "c2");
+  assert.equal(k1, k2);
+  assert.notEqual(k1, k3);
+  assert.match(k1, /^sponsor_division_correction_clawback:t1:c1$/);
+});
+
+// ─── buildNetByTeam ──────────────────────────────────────────────────────────
+
+test("buildNetByTeam: netter (b) tillæg og (c) clawback pr. hold", () => {
+  const divisionAdjustments = [{ team_id: "t1", correction_cz: 50000 }];
+  const teamById = new Map([["t1", { id: "t1", name: "Bad At Names", balance: 300000 }]]);
+  const clawback = buildClawbacks([makeCorrection()], teamById);
+  const out = buildNetByTeam({ divisionAdjustments, clawbacks: clawback, teamById });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].division_adjustment_cz, 50000);
+  assert.equal(out[0].clawback_cz, 772800 - 515200);
+  assert.equal(out[0].net_cz, 50000 - (772800 - 515200));
+});
+
+test("buildNetByTeam: hold med KUN clawback (ingen tillæg) rapporteres også", () => {
+  const teamById = new Map([["t1", { id: "t1", name: "Team", balance: 100000 }]]);
+  const clawback = buildClawbacks([makeCorrection()], teamById);
+  const out = buildNetByTeam({ divisionAdjustments: [], clawbacks: clawback, teamById });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].division_adjustment_cz, 0);
+  assert.equal(out[0].net_cz, -(772800 - 515200));
+});
+
+// ─── findCombinedNegativeBalanceRisk ────────────────────────────────────────
+
+test("findCombinedNegativeBalanceRisk: clawback ALENE kan sende et hold under 0 (i modsætning til (b) alene i S3)", () => {
+  const teamById = new Map([["t1", { id: "t1", name: "Fattig FC", balance: 100000 }]]);
+  const clawback = buildClawbacks([makeCorrection({ guaranteed_base_before: 300000, guaranteed_base_after: 0 })], teamById);
+  const risks = findCombinedNegativeBalanceRisk({ divisionAdjustments: [], clawbacks: clawback, teamById });
+  assert.equal(risks.length, 1);
+  assert.equal(risks[0].team_id, "t1");
+  assert.equal(risks[0].projectedBalance, 100000 - 300000);
+});
+
+test("findCombinedNegativeBalanceRisk: (b)-tillægget kan redde et hold clawbacken ellers ville sende under 0", () => {
+  const teamById = new Map([["t1", { id: "t1", name: "Team", balance: 100000 }]]);
+  const clawback = buildClawbacks([makeCorrection({ guaranteed_base_before: 300000, guaranteed_base_after: 0 })], teamById);
+  const divisionAdjustments = [{ team_id: "t1", correction_cz: 250000 }];
+  const risks = findCombinedNegativeBalanceRisk({ divisionAdjustments, clawbacks: clawback, teamById });
+  assert.equal(risks.length, 0);
+});
+
+test("findCombinedNegativeBalanceRisk: tom når nettoeffekten er ikke-negativ eller balancen dækker den", () => {
+  const teamById = new Map([["t1", { id: "t1", name: "Team", balance: 1000000 }]]);
+  const clawback = buildClawbacks([makeCorrection()], teamById);
+  const risks = findCombinedNegativeBalanceRisk({ divisionAdjustments: [], clawbacks: clawback, teamById });
+  assert.equal(risks.length, 0);
 });

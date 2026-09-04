@@ -59,6 +59,10 @@ export const REASON_LABEL = Object.freeze({
   // sæson 3 (timing-hul + tillæg). Egen label, ikke slået sammen med den løbende
   // "Division adjustment" ovenfor, så manageren kan se det var en engangsreparation.
   [FINANCE_REASON.SPONSOR_DIVISION_CORRECTION]: "Division adjustment (one-time correction)",
+  // #4376 · tilbageførsel af den for meget udbetalte garanterede base for de 29
+  // timing-hul-hold (ejer-beslutning 4/9). Egen label — nedad, ikke slået sammen
+  // med tillægget ovenfor.
+  [FINANCE_REASON.SPONSOR_DIVISION_CORRECTION_CLAWBACK]: "Sponsor overpayment clawback (one-time correction)",
   [FINANCE_REASON.SEASON_START_ACADEMY_DRIFT]: "Academy drift",
   // #1441 Fase 3 A1: facilitets-upkeep + staff-sæsonløn (payroll gold sinks)
   [FINANCE_REASON.SEASON_START_FACILITY_UPKEEP]: "Facility upkeep",
