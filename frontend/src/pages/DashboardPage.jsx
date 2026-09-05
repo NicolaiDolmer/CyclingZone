@@ -64,6 +64,9 @@ import {
 } from "../lib/seasonStartGuide";
 import SeasonWrapNudgeCard from "../components/SeasonWrapNudgeCard";
 import { readSeasonWrapDismissed, writeSeasonWrapDismissed } from "../lib/seasonWrapNudge";
+import {
+  readContractExpiryDismissed, writeContractExpiryDismissed, shouldShowContractExpiryNotice,
+} from "../lib/contractExpiryNotice";
 import SeasonSignupCard from "../components/SeasonSignupCard"; // [epic #4592 del 3] #452
 import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
 import { resolveSeasonMovement } from "../lib/seasonRecapData.js";
@@ -226,6 +229,13 @@ export default function DashboardPage() {
   // sæson, ikke per aktiv — se lib/seasonWrapNudge.js). null = intet at vise
   // endnu (ikke hentet, eller ingen af mit holds rækker fundet).
   const [seasonWrapDismissed, setSeasonWrapDismissed] = useState(false);
+
+  // #4387 — kontrakt-udløbs-advarslen (#1150) kan nu lukkes for resten af
+  // sæsonen. Vi gemmer SÆTTET af rytter-id'er der var udløbende ved lukning,
+  // ikke bare et boolean, så en ny rytter i vinduet siden lukning viser
+  // beskeden igen (se lib/contractExpiryNotice.js). null = intet gemt dismiss
+  // fundet endnu (læses i en effekt, ikke i render — se seasonStartDismissed).
+  const [contractExpiryDismissedIds, setContractExpiryDismissedIds] = useState(null);
   const [completedSeasonRecap, setCompletedSeasonRecap] = useState(null);
 
   // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — status fra
@@ -727,6 +737,13 @@ export default function DashboardPage() {
     setSeasonWrapDismissed(readSeasonWrapDismissed(completedSeasonRecap?.seasonId));
   }, [completedSeasonRecap?.seasonId]);
 
+  // #4387 — dismiss for kontrakt-udløbs-advarslen huskes pr. HOLD + aktiv
+  // sæson-nummer (se lib/contractExpiryNotice.js). Læses i en effekt, ikke i
+  // render, samme princip som seasonStartDismissed ovenfor.
+  useEffect(() => {
+    setContractExpiryDismissedIds(readContractExpiryDismissed(team?.id, seasonInfo?.number));
+  }, [team?.id, seasonInfo?.number]);
+
   // #1583: flush en ventende signup når brugeren er authenticated på dashboardet.
   // Dækker confirm-on-flowet (prod), hvor LoginPage ingen session havde i selve
   // signup-øjeblikket. No-op hvis ingen ventende markør / manglende consent.
@@ -843,6 +860,15 @@ export default function DashboardPage() {
     setSeasonWrapDismissed(true);
   }
 
+  // #4387 — X-knappen og "Forstået, lad den udløbe"-knappen har begge samme
+  // effekt: gem det NUVÆRENDE sæt af udløbende rytter-id'er som lukket for
+  // resten af sæsonen.
+  function dismissContractExpiryNotice() {
+    const ids = expiringRiders.map((r) => r.id);
+    writeContractExpiryDismissed(team?.id, seasonInfo?.number, ids);
+    setContractExpiryDismissedIds(ids);
+  }
+
   // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452). Ingen optimistisk
   // lokal state FØR svaret (til forskel fra dismissOnboarding ovenfor) — en
   // fejlet POST skal IKKE vise en falsk bekræftelse for noget så vigtigt som
@@ -933,9 +959,17 @@ export default function DashboardPage() {
   // ikke-handling frigiver rytteren ved skiftet, så dette skal være svært at
   // overse i modsætning til den passive badge alene (170 af 180 menneskehold
   // ramt ved S2→S3, dry-run 5/8, se scripts/dryRunContractExpirySeasonEnd.js).
-  const expiringContractCount = riders.filter(
+  const expiringRiders = riders.filter(
     (r) => isContractExpiringAtTransition(r.contract_end_season, seasonInfo?.number)
-  ).length;
+  );
+  const expiringContractCount = expiringRiders.length;
+  // #4387 — beskeden er lukket for resten af sæsonen MEDMINDRE mindst én af de
+  // nuværende udløbende ryttere ikke var med i sættet fra sidste lukning (ny
+  // rytter i vinduet siden da, se lib/contractExpiryNotice.js).
+  const showContractExpiryNotice = shouldShowContractExpiryNotice(
+    expiringRiders.map((r) => r.id),
+    contractExpiryDismissedIds
+  );
 
   // #2328 — "Kommende løb"-kortet: de 3 faktisk kommende løb efter ægte
   // race_stage_schedule-tid (nextStageByRace), ikke den statiske PCM-dato som
@@ -1126,16 +1160,39 @@ export default function DashboardPage() {
       )}
 
       {/* #1150 · Contract renewal warning — separat fra squad-cap-warningen
-          ovenfor (anden årsag, samme visuelle sprog). Vises altid når der er
-          udløbende kontrakter, uanset squad-cap-status. */}
-      {expiringContractCount > 0 && (
-        <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2 bg-cz-warning-bg text-cz-warning border-cz-warning/30">
+          ovenfor (anden årsag, samme visuelle sprog). Vises når der er
+          udløbende kontrakter, uanset squad-cap-status — MEDMINDRE spilleren
+          har lukket den for resten af sæsonen (#4387, ejer-go i Discord-tråden
+          29/8) og ingen NY rytter er kommet ind i vinduet siden da. */}
+      {expiringContractCount > 0 && showContractExpiryNotice && (
+        <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex flex-wrap items-center gap-2 bg-cz-warning-bg text-cz-warning border-cz-warning/30">
           <AlertTriangleIcon size={16} className="flex-shrink-0" />
-          <span>{t("dashboard:contractWarning.message", { count: expiringContractCount })}</span>
-          <Link to="/team" className="ms-auto inline-flex items-center gap-0.5 text-xs underline opacity-70 hover:opacity-100">
-            {t("dashboard:contractWarning.cta")}
-            <ChevronRightIcon size={13} aria-hidden="true" />
-          </Link>
+          <span className="flex-1 min-w-[200px]">{t("dashboard:contractWarning.message", { count: expiringContractCount })}</span>
+          {/* #4387 — egen flex-gruppe (i stedet for løse ms-auto-børn på det
+              yderste flex-wrap) så handlingerne wrapper som ÉN blok under
+              beskeden på mobil, i stedet for at knække midt i teksten. */}
+          <div className="flex items-center gap-2 flex-shrink-0 ms-auto">
+            <Link to="/team" className="inline-flex items-center gap-0.5 text-xs underline opacity-70 hover:opacity-100">
+              {t("dashboard:contractWarning.cta")}
+              <ChevronRightIcon size={13} aria-hidden="true" />
+            </Link>
+            {/* Sekundær handling: samme effekt som X-knappen (dismiss for resten
+                af sæsonen), for spilleren der aktivt vælger at lade kontrakten
+                udløbe fremfor blot at lukke en advarsel. */}
+            <button
+              type="button"
+              onClick={dismissContractExpiryNotice}
+              className="text-xs underline opacity-70 hover:opacity-100">
+              {t("dashboard:contractWarning.letExpire")}
+            </button>
+            <button
+              type="button"
+              onClick={dismissContractExpiryNotice}
+              className="text-cz-warning hover:opacity-100 opacity-70 leading-none px-1"
+              aria-label={t("dashboard:contractWarning.dismissAria")}>
+              <XIcon size={16} aria-hidden="true" />
+            </button>
+          </div>
         </div>
       )}
 

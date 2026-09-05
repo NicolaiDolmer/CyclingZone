@@ -84,7 +84,9 @@
   },
   "contractWarning": {
     "message": "{count, plural, one {1 rytters kontrakt udløber} other {# rytteres kontrakter udløber}} ved sæsonskiftet. Forlæng fra rytterens profil for at beholde dem, ellers frigives de som fri agenter.",
-    "cta": "Se kontrakter"
+    "cta": "Se kontrakter",
+    "letExpire": "Forstået, lad den udløbe",
+    "dismissAria": "Luk for resten af sæsonen"
   },
   "discordNudge": {
     "title": "Få DMs ved overbud, transfertilbud og bestyrelses-signaler",
