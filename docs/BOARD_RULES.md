@@ -117,17 +117,18 @@ Mål genereres af `generateBoardGoals` ud fra fokus × klub-DNA × dynamisk kali
 `sponsor_growth` filtreres bort for 1-årige planer (#1267: sponsorindkomst kan ikke flyttes inden
 for én sæson).
 
-**To måltyper er i praksis defekte:**
+**Én måltype er i praksis stadig et skelet:**
 
-- **`sponsor_growth` kan matematisk aldrig opfyldes.** Målet regner
-  `(currentSponsorIncome − planStartSponsorIncome) / planStartSponsorIncome`, og begge sider læser
-  `teams.sponsor_income`. Målt 29/8: **kolonnen er 240.000 for alle 230 hold**, og
-  `plan_start_sponsor_income` er 240.000 for alle 680 profiler. Resultatet er 0 % vækst, for alle,
-  altid. Ejeren besluttede 7/8 (#3494) at målet skal pege på `sponsor_contracts`-udbetalinger og
-  **aldrig** det døde felt. **Det er ikke bygget.** 135 profiler har båret målet (112 i S1, 23 i S2);
-  ingen i S3, men måltypen kan stadig genereres til flerårige planer.
 - **`domestic_dominance`** er et skelet uden implementering. Mandat-spec'en §3.6 siger det skal
   afsluttes eller slettes.
+
+~~**`sponsor_growth` kunne matematisk aldrig opfyldes**~~ **Rettet 2/9 (PR #4550, #3494/#4377):**
+målet regnede `(currentSponsorIncome − planStartSponsorIncome) / planStartSponsorIncome`, hvor
+begge sider læste `teams.sponsor_income` — en kolonne der aldrig opdateres efter sæson 1 (målt
+29/8: 240.000 for alle 230 hold). Målet er nu re-pointet til ægte `sponsor_contracts`-udbetalinger
+(kontrakt-base + løbsdags-indtægt, `finance_transactions` via `SPONSOR_GROWTH_REASON_CODES`,
+`boardGoalContext.js`), med baseline = planens første afsluttede sæson. Ingen baseline (plan-sæson
+1) eller ingen måling → `awaiting_data`, aldrig et fallback til det døde felt.
 
 ---
 
@@ -259,7 +260,7 @@ kun i tillid.** Penge forbliver i lag 6 og modifieren.
 | 4 | **Hvorfor flaget blev sat `off` 17/8 kan ikke findes** — hverken i commits eller issue-tekst. Fem dage før den migration det gater | inventaret §5 |
 | 5 | **Tre satisfaction-tal, ét gennemsnit.** Spillerne ser tre tal på bestyrelsessiden og ét i økonomien. Rod-årsag til mindst 8 rapporterede fejl | §1 |
 | 6 | **`domestic_dominance` er et dødt skelet** der stadig kan genereres | §3 |
-| 7 | **#4377 er ubesvaret:** flerårsmåls-tællere ignorerer historik (trøjer 0/2, sponsor 0/8 → 0/12). Formodet fælles rod-årsag med #1, men ikke verificeret for trøje-delen | #4377 |
+| 7 | ~~**#4377: flerårsmåls-tællere ignorerede historik** (trøjer 0/2, sponsor 0/8 → 0/12)~~ **Lukket 5/9:** trøjer rettet af PR #4549 (kode: `sprint_kommerciel`-DNA'ens jersey_wins-tradition-mål er nu altid `cumulative:true`) + `database/2026-09-01-4377-jersey-wins-cumulative-repair.sql` (data, applied 1/9, post-verify OK). Sponsor-indkomst rettet af PR #4550 (§3, samme dag som #3494 blev lukket — sponsor_growth måler nu ægte `sponsor_contracts`-udbetalinger, ikke det døde `teams.sponsor_income`-felt). Sejre var allerede sit eget spor (#3948, PR #4046, 21/8). Re-audit 5/9 mod prod (`backend/scripts/audit-4377-board-goal-counters.js`): 0 af 120 aktive jersey_wins-mål stadig unflagged | #4377, #4549, #4550, #4046, #3948 |
 | 8 | ~~**#4382:** plan-livscyklussen er udokumenteret~~ **Lukket 31/8:** livscyklussen står nu i §1.1, og spiller-siden i `help.json` → `sections.board.multiYearLifecycle` (EN+DA). Afsnittet skal opdateres ved #3514 fase 2, jf. #3522 | §1.1, #4382 |
 | 9 | **`expireSeasonScopedConsequences` er død kode.** Funktionen findes i `boardConsequences.js:167` og testes i `boardConsequences.test.js:968`, men kaldes **ingen steder** i produktionsstien. Lag 5 udløber via en separat inline-update (`economyEngine.js:471`); **lag 6 udløber aldrig**. Målt 31/8: 37 bonustilbud står stadig `active` på sæson 1 og 2, som begge er `completed`. Et hold kan i princippet stadig indløse et to sæsoner gammelt tilbud til 200.000 CZ$. Ikke rettet her: et fix fjerner penge fra 37 hold og er en ejer-beslutning | `boardConsequences.js:167`, målt 31/8 |
 
