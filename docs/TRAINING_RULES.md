@@ -120,24 +120,43 @@ Deltaen er en lille float. Den lægges i en fremdrifts-bar pr. evne
 (`rider_derived_abilities.ability_progress`), og hver gang baren passerer 1,0 konverteres den
 til ét helt evnepoint (`dailyTraining.js:205-217`).
 
-**Der er præcis to lofter i produktionsstien:**
+**Der er præcis tre lofter i produktionsstien:**
 
 | Loft | Hvad det gør | Hvor |
 |---|---|---|
-| `min(99, ability_caps[evne])` | while-løkken stopper med at udbetale point når evnen rammer sit livstidsloft eller 99. Baren beholder resten (klippet ved 0,999) | `dailyTraining.js:210-217` og `:295-302` |
+| `hardDailyCap: 1` | while-løkken stopper med at udbetale point efter maks ÉT point pr. evne pr. dag, uanset hvor stor deltaen er. Overskydende bar bæres videre til i morgen (se nedenfor) | `dailyTraining.js:210-217` og `:295-302` |
+| `min(99, ability_caps[evne])` | while-løkken stopper med at udbetale point når evnen rammer sit livstidsloft eller 99. Baren klippes ved 0,999 i dette tilfælde - en evne på loftet får aldrig mere delta beregnet i morgen alligevel (se næste række) | samme linjer |
 | `gap = 0 → return 0` | en evne på sit loft får slet ingen delta beregnet | `dailyTraining.js:118-119` |
 
-**Der findes IKKE længere et dagligt spring-loft.** `hardDailyCap` er stadig en valgfri
-parameter i signaturen, men **produktionsstien sender den aldrig** - søg efter `hardDailyCap`
-i `dailyTrainingEngine.js` og der er nul forekomster. Ligeledes er `academyRateMult`
-(interim-knappen fra #2437) og `computeAcademySeasonCeiling` ude af produktionsstien:
-`tickCaps = caps`, altså livstidsloftet for alle aldre (`dailyTrainingEngine.js:331`). Begge
-blev fjernet i #3709 trin 5 (ejer 14/8) med den begrundelse at de bremsede en model der
-mættede, og at trin 4 fjernede mætningen ved roden.
+**Permanent dagligt loft: maks +1 pr. evne pr. dag, for ALLE ryttere (#4750, ejer 5/9 -
+omgør #3709 trin 5, ejer 14/8).** Ejerens beslutning, ordret: *"Det skal aldrig være muligt
+at stige x2 samme dag i en evne."* Motoren sender derfor `hardDailyCap: 1` betingelsesløst i
+`sharedTickArgs` (`dailyTrainingEngine.js`, per-rytter-loopet) - ikke kun på erhvervelsesdagen,
+og ikke kun for akademi-alder. `academyRateMult` (interim-knappen fra #2437) og
+`computeAcademySeasonCeiling` forbliver ude af produktionsstien: `tickCaps = caps`, altså
+livstidsloftet for alle aldre (`dailyTrainingEngine.js:331`) - DEN del af #3709 trin 5 står
+uændret. Det er kun "intet dagligt spring-loft"-halvdelen af trin 5 der er omgjort.
+
+**Ejerens langsigtede retning (5/9, uafsluttet):** den rigtige løsning er at
+udviklingsraterne kalibreres så et enkelt tick sjældent eller aldrig producerer et gap stort
+nok til at ramme loftet - loftet skal være et sikkerhedsnet, ikke den daglige norm. Måling af
+hvor ofte S3-populationen historisk har ramt ≥2 i en snapshot-til-snapshot-evne (alder ×
+potentiale-bånd) ligger i `backend/scripts/measure4750AcademyIntakeGain.mjs` og er
+datagrundlaget for et separat kalibrerings-issue - se PR-body for #4801 (opdateret 5/9).
+
+**Overskydende fremdrift går ALDRIG tabt.** Rammer while-løkken `hardDailyCap`, mens baren
+stadig er ≥ 1 (deltaen var større end det udbetalte point), bæres RESTEN af baren videre til
+i morgen uklippet - IKKE det generelle 0,999-loft (det gælder kun når baren allerede er under
+1, som flydertals-sikkerhed mod en bar på præcis 1,0). Fixet i samme PR som #4750/ejer 5/9:
+den gamle ubetingede `Math.min(bar, 0.999)` klippede tidligere op til flere hele point væk på
+en enkelt erhvervelsesdag. Bevist som en regnskabs-invariant (rå deltaer over N dage == hele
+point + slutbar) i `dailyTraining.test.js` og som engine-niveau-regression i
+`dailyTrainingEngine.test.js` ("#4750/ejer 5/9"-testene: erhvervelsesdagen OG dagen efter
+giver begge gains=1 med bevaret restfremdrift).
 
 **Konsekvens der skal kendes:** træner- og facilitets-bonusserne kan aldrig udvide et loft.
-De skalerer kun deltaen; while-løkken klipper stadig ved `ability_caps`
-(`backend/lib/staffTrainingBonus.js`, invariant 3).
+De skalerer kun deltaen; while-løkken klipper stadig ved `ability_caps` og ved
+`hardDailyCap` (`backend/lib/staffTrainingBonus.js`, invariant 3).
 
 ---
 
@@ -458,7 +477,7 @@ Hver post er ÉN ting der mangler at blive afgjort. Ingen af dem må gættes på
 | 3 | **Skal `aiRecoverySweep.js` slettes?** Den er en garanteret no-op så længe `race_day_engine_enabled` er on, men står stadig i cron og forbruger et 5-minutters slot | `aiRecoverySweep.js:144-154` lover sletning "i en opfølgnings-PR efter 23/8-verifikation". Sletningen kræver en beslutning om hvorvidt `race_day_engine_enabled` nogensinde skal kunne slukkes igen |
 | 4 | **Hvad er den rigtige måldistribution for træthed, og gælder den hele bestanden eller kun menneskehold?** Målt 30/8: hele bestandens median er 41, mens D3 blev kalibreret mod en menneske-median på 57 i 40-60-båndet | §5.3. Uden en besluttet definition kan ingen vagt måle om D3 stadig holder |
 | 5 | **Skal 31 % af alle aktive planer stå på Hvile?** Tallet kan være et rationelt spillervalg (friske ryttere bliver udtaget) eller et symptom på at træning ikke betaler sig nok | §3, målt 30/8. Kræver en ejer-udmelding om hvad den ønskede fordeling er, før nogen kan kalde tallet forkert |
-| 6 | **Skal `slotsPerSeason` og `hardDailyCap` slettes, eller er de reserveret til noget?** Begge er inerte i dag (`unlimitedSlots: true`; `hardDailyCap` sendes aldrig fra produktionsstien), men står stadig i signaturer og konfiguration | `training.js:20-24`, `dailyTraining.js:206`. Død kode eller planlagt genbrug er ikke afgjort |
+| 6 | **Skal `slotsPerSeason` slettes, eller er den reserveret til noget?** Inert i dag (`unlimitedSlots: true`), men står stadig i signaturer og konfiguration. **`hardDailyCap` er IKKE længere en del af dette spørgsmål** - den er bindende produktionsadfærd siden #4750/ejer 5/9 (§2.2), sendt betingelsesløst fra `dailyTrainingEngine.js` | `training.js:20-24`. Død kode eller planlagt genbrug er ikke afgjort |
 | 7 | **Er `STAFF_TRAINING_BONUS_CONFIG` nogensinde blevet kalibreret?** Konstanterne er selv-markeret som "konservative start-værdier; Task 8 kalibrerer dem mod scorecardet" | `staffTrainingBonus.js:35-42`. Jeg har ikke fundet evidens for at Task 8 er kørt. **Ikke verificeret negativt** - det kan findes et sted jeg ikke har set |
 
 **Ikke undersøgt inden for tidsbudgettet** (og derfor hverken bekræftet eller afvist her):

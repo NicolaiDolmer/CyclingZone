@@ -381,8 +381,19 @@ export async function runTeamTrainingDay({
         conditionMult: condMult,
         bonus,
         potentiale: rider.potentiale,
-        // ── TRIN 5 (#3709, beslutning 13, ejer 14/8): ÉN MODEL ────────────────
-        // `hardDailyCap` og `academyRateMult` er FJERNET. Begge fandtes kun for
+        // #4750/ejer 5/9 (omgør #3709 trin 5, ejer 14/8): PERMANENT dagligt loft
+        // på +1 pr. evne pr. dag — gælder ALLE ryttere, ikke kun erhvervelses-
+        // dagen. Ejerens beslutning 5/9, ordret: "Det skal aldrig være muligt at
+        // stige x2 samme dag i en evne." #3709 trin 5's "intet dagligt loft
+        // resten af karrieren" er dermed omgjort — se TRAINING_RULES.md §2.2.
+        // Overskydende fremdrift (bar) går IKKE tabt: den bæres videre i
+        // ability_progress til næste dags tick (se dailyTraining.js's
+        // applyDailyTick/applyRaceDevelopmentTick — `bar` beskæres kun til 0.999,
+        // resten forbliver i progress-baren).
+        hardDailyCap: 1,
+        // ── TRIN 5 (#3709, beslutning 13, ejer 14/8) — DELVIST OMGJORT ────────
+        // `academyRateMult` er FORTSAT fjernet for resten af karrieren (uændret).
+        // Begge knapper fandtes kun for
         // at bremse en model der mættede: da hver evne nåede sit loft inden for
         // karrieren under alle indstillinger, var akademi-alderens høje rate en
         // spike der skulle dæmpes. Trin 4 fjerner mætningen ved roden — rolle-

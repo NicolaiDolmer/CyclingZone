@@ -223,7 +223,15 @@ export function applyDailyTick({
       gains[ability] = (gains[ability] ?? 0) + 1;
     }
     if (gains[ability]) nextAbilities[ability] = current + gains[ability];
-    nextProgress[ability] = Math.min(bar, 0.999);
+    // #4750/ejer 5/9: hardDailyCap kan stoppe while-loopet FØR baren er under 1
+    // (ceilingen er ramt, ikke evnens cap) — resten af baren er ÆGTE optjent
+    // fremdrift og skal bæres videre til i morgen, IKKE klippes væk. Den gamle
+    // ubetingede `Math.min(bar, 0.999)` mistede den overskydende fremdrift her
+    // (fx delta=3.3 med hardDailyCap=1 gav bar=2.3 → klippet til 0.999, 1.3
+    // point forsvandt). 0.999-klippet bevares KUN når baren allerede er < 1
+    // (flydertals-sikkerhed mod at en bar der lander på præcis 1.0 udløser en
+    // gratis gevinst i morgen uden ny delta).
+    nextProgress[ability] = bar >= 1 ? bar : Math.min(bar, 0.999);
   }
 
   return {
@@ -308,7 +316,10 @@ export function applyRaceDevelopmentTick({
       gains[ability] = (gains[ability] ?? 0) + 1;
     }
     if (gains[ability]) nextAbilities[ability] = current + gains[ability];
-    nextProgress[ability] = Math.min(bar, 0.999);
+    // #4750/ejer 5/9: samme fix som applyDailyTick ovenfor — hardDailyCap kan
+    // stoppe loopet før baren er under 1; resten er ægte fremdrift og skal
+    // bæres videre, ikke klippes væk af det ubetingede 0.999-loft.
+    nextProgress[ability] = bar >= 1 ? bar : Math.min(bar, 0.999);
   }
 
   return {
