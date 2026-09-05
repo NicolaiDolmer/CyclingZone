@@ -3,13 +3,33 @@
 // `shadow-[10px_0_16px_-16px_…]`-skygge der var copy-pastet i 8+ filer.
 
 export const WRAP = "overflow-hidden rounded-cz border border-cz-border bg-cz-card";
-export const SCROLLER = "overflow-x-auto";
+// #4747: headeren skal laases i toppen ved lodret scroll. `overflow-x-auto`
+// alene braekker `position: sticky` for theaden — CSS'ens overflow-x/-y-par
+// tvinger overflow-y til ogsaa at blive en scroll-container (CSS2.1 §11.1.1),
+// og saa laenge DEN container aldrig faktisk scroller internt (ubegraenset
+// hoejde), regner den sticky-forankring i forhold til SIN EGEN boks i stedet
+// for viewportet — theaden "haenger fast" ved boksens top og scroller vaek
+// sammen med resten af siden (verificeret empirisk, ikke kun teori). Auktioner
+// og Transferliste omgaar det allerede ved at give scrolleren en reel
+// begraenset hoejde (egen scrollbar, samme mønster her): `--table-sticky-offset`
+// er den CSS-variabel opgaven bad om i stedet for et hardcodet tal pr. side —
+// den rummer AL chrome over selve tabel-kortet (sidehoved + evt. filterbar);
+// index.css's default er et generelt skoen (samme størrelsesorden som
+// AuctionsPage/TransfersPage's egne 220-260px), sider med usaedvanligt meget
+// chrome over tabellen kan overstyre variablen lokalt.
+export const SCROLLER = "overflow-auto max-h-[calc(100dvh-var(--table-sticky-offset))]";
 export const TABLE = "w-full border-collapse";
 // Count-linjen under tabellen ("Showing 8 of 412 riders").
 export const COUNT = "mt-2 font-data text-xs text-cz-3";
 
 // Mobil-pin: navnekolonnen holder ~148px mens numerik scroller under den.
-const STICKY = "sticky left-0 z-sticky min-w-[148px] border-r border-cz-border";
+// Ingen z-index her med vilje (#4747): en sticky TOP-header og en sticky
+// VENSTRE-kolonne kombineres nu i alle DataTable-tabeller, og #2952s lokale
+// table-head/table-col-skala kraever at hver rolle faar sin EGEN z-klasse
+// (thClass laegger allerede z-table-head paa alle header-celler via `base`;
+// tdClass laegger z-table-col paa nedenstaaende). To z-index-utilities paa
+// samme element ville vaere en cascade-kaprace mod Tailwinds output-raekkefoelge.
+const STICKY = "sticky left-0 min-w-[148px] border-r border-cz-border";
 
 // Sticky-celler SKAL være opake (kolonner scroller ind under dem). I dark theme
 // er --success-bg/--danger-bg translucente, så tinten lægges som gradient oven
@@ -56,9 +76,13 @@ function gutter(compact, tight) {
   return compact ? "px-2" : "px-4";
 }
 
+// #4747: `sticky top-0 z-table-head` paa ALLE header-celler (ikke kun den
+// pinnede navnekolonne) — hele overskriftsraekken laases i toppen ved lodret
+// scroll. Hjoernecellen (col.sticky) faar OGSAA `left-0` via STICKY nedenfor,
+// saa den staar fast paa begge akser (top+venstre) samtidig.
 export function thClass({ numeric = false, sticky = false, compact = false, tight = false, dense = false } = {}) {
   const base =
-    `whitespace-nowrap bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3`;
+    `whitespace-nowrap bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3 sticky top-0 z-table-head`;
   return [base, numeric ? "text-right" : "text-left", sticky ? STICKY : ""]
     .filter(Boolean)
     .join(" ");
@@ -76,7 +100,7 @@ export function tdClass({ numeric = false, sticky = false, zone = null, edgeTop 
   return [
     `${gutter(compact, tight)} ${dense ? "py-[7px]" : "py-[13px]"} text-sm text-cz-1`,
     numeric ? "text-right font-data tabular-nums" : "text-left",
-    sticky ? STICKY : "",
+    sticky ? `${STICKY} z-table-col` : "",
     bg,
     ...rules,
   ]
