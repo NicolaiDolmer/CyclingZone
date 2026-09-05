@@ -15538,14 +15538,17 @@ router.post("/board/bonus-offer/accept", requireAuth, boardWriteLimiter, async (
           // der aldrig bærer baseline).
           let baseline = null;
           if (loaded.extra_goal.type === "signature_rider") {
-            const { data: currentRiders } = await supabase
+            const { data: currentRiders, error: currentRidersErr } = await supabase
               .from("riders")
+              // pagination-safe: ét holds trup er bounded af rostergrænsen (~30-40 ryttere)
               .select(BOARD_IDENTITY_RIDER_SELECT)
               .eq("team_id", req.team.id);
+            if (currentRidersErr) throw new Error(`riders (bonus-offer baseline): ${currentRidersErr.message}`);
             baseline = countTeamStarRiders(currentRiders || []);
           } else if (loaded.extra_goal.type === "monument_podium") {
-            const { data: activeSeasonForBaseline } = await supabase
+            const { data: activeSeasonForBaseline, error: activeSeasonErr } = await supabase
               .from("seasons").select("id").eq("status", "active").maybeSingle();
+            if (activeSeasonErr) throw new Error(`seasons (bonus-offer baseline): ${activeSeasonErr.message}`);
             if (activeSeasonForBaseline?.id) {
               const baselineContext = await loadGoalContextForBoard({
                 supabase,
