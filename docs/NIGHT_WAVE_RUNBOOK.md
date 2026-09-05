@@ -89,6 +89,15 @@ Kombinér: `status="running"` ≠ fremdrift (jf. memory `feedback_verify_backgro
 - **Go-kort bygges på diffen:** to kort blev afvist fordi parafrasen af PR-body var forkert (#4695 "markedsværdi", #4675 "19 / 25"). Citer locale-strengene ordret (memory `feedback_present_pr_from_diff_not_body`).
 - **Rollback-SQL må ikke ligge i `database/2026-*.sql`** (auto-migrate ville køre den ved merge, #4677): manual-only-scripts i `database/manual/` med markøren `KOERES IKKE AUTOMATISK`.
 
+## Læringer 5-6/9 (26 spor, 7 workflows, 28 PR'er; 6 frosne agenter)
+
+- **En frossen agent holder sin plads i workflowets samtidigheds-loft.** Per-spor-timeout (hard rule 21) lader lanen gå videre, men det nye `agent()`-kald står i kø bag den frosne, så kapaciteten falder tavst (bølge A kørte 2 af 6 laner i 2,5 time). Enkelt-agenter kan ikke stoppes. **Ved bekræftet frys (transcript-mtime > 25 min + ingen worktree-fremdrift): stop hele workflowet og relancér de ustartede spor som ny bølge + recovery af de frosne i SAMME worktrees.** Vent aldrig på timeouten. Postmortem: `.claude/learnings/2026-09-06-frozen-workflow-agents-hold-concurrency-slots.md`.
+- **Frys er sporadisk, ikke et kommandomønster:** de seks hang på `git push`, `sed -n`, `node --test`, `gh pr checks | grep`, `cat` og `sleep 5; cat`. Samme mønstre lykkedes 98/99 gange hos andre. Kommandodisciplin (én linje, absolutte stier, ingen `sleep`) gør recovery lettere, men forebygger ikke.
+- **Recovery-brief = målt WIP-status** (commits ahead, pushet?, dirty filer, sidste kommando) + "reset aldrig". Fem af seks frosne spor havde arbejde på disk; intet gik tabt.
+- **Dispatch-forfilteret skal læse sidste ejer-kommentar,** ikke kun state + merged PR'er: #4404 havde en låst beslutning 4/9 der pegede modsat briefen; #4377 var allerede rettet af tre PR'er. Workers fangede begge selv, men det kostede spor-tid.
+- **Briefs må ikke referere tal fra hukommelsen:** "18 dubletpar" stod i MASTERPLAN fra 31/8-auditten, briefen pegede på 4/9-filen (0 fundet). Slå filen op før du skriver tallet ind.
+- Generér bølge-scripts fra ét kildescript (`make-wave-e.js`-mønstret: KEEP-liste + recovery-note) i stedet for at genskrive prompter; backticks i indsat tekst skal escapes som `\``.
+
 ## Vercel deploy-rate-limit (høj-tempo-bølger)
 
 **Status 2026-06-23: projektet er på Vercel Pro** — det aggressive hobby-rate-limit ("retry in 24 hours", ramt 2026-06-20 efter ~13 hurtige merges) gælder derfor ikke længere i praksis. *Historisk på hobby-tier:* en høj-tempo-bølge kunne fryse **frontend-prod på sidste gode deploy** indtil reset/manuel re-deploy; **Railway (backend) var upåvirket**. Pro kan teoretisk stadig ramme et loft ved ekstreme bølger — overvåg, men forvent ikke 24t-frys.
