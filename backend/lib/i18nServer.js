@@ -40,9 +40,9 @@ function loadBundle() {
   try {
     bundleCache = JSON.parse(readFileSync(BUNDLE_FILE, "utf8"));
   } catch {
-    // En manglende bundle maa ALDRIG vaelte den spilhandling der udloeste
-    // notifikationen. translate() falder saa tilbage til noeglen selv, og
-    // scripts/build-backend-locales.mjs --check fanger tilstanden i CI.
+    // best-effort: en manglende bundle maa ALDRIG vaelte den spilhandling der
+    // udloeste notifikationen. translate() falder saa tilbage til noeglen
+    // selv, og scripts/build-backend-locales.mjs --check fanger tilstanden i CI.
     bundleCache = {};
   }
   return bundleCache;
@@ -215,6 +215,8 @@ export async function resolveUserLanguage(supabase, userId) {
     if (error) return DEFAULT_LANGUAGE;
     return normalizeLanguage(data?.language);
   } catch {
+    // best-effort: fejler opslaget, falder vi tilbage til EN, en DM paa
+    // forkert sprog er bedre end ingen DM (samme kontrakt som docstringen ovenfor).
     return DEFAULT_LANGUAGE;
   }
 }
