@@ -61,7 +61,8 @@ export function incidentProbability({ stageProfile, positioning = null, tuning =
  * Rul uheld for ét felt på ÉN etape. Pr. rytter: dedikeret rng-stream
  * (`incident:${stageSeed}:${riderId}`) — u1 = Bernoulli-hit vs. p; på hit:
  * u2 = udfald (abandon vs. time_loss), u3 = art (crash vs. mechanical),
- * u4 = magnitude (sekunder eller skadedage). Rækkefølgen er FAST, så en
+ * u4 = magnitude (sekunder eller skadedage). u4 trækkes ALTID ved hit, ogsaa
+ * naar den ikke bruges (mekanisk abandon, #4520). Rækkefølgen er FAST, så en
  * senere ændring af p/tuning aldrig flytter en ANDEN rytters draw-sekvens
  * (streamen er per-rytter, uafhængig af andre riders behandlingsrækkefølge).
  *
@@ -70,6 +71,9 @@ export function incidentProbability({ stageProfile, positioning = null, tuning =
  * stabil tiebreak på rider_id.
  *
  * @param {{entrants:Array<{rider_id:string, abilities?:{positioning?:number}}>, stageProfile:object, stageSeed:number, tuning?:object}} args
+ * SKADE-REGLEN (#4520): injury_days sættes KUN paa `abandon` med `kind:'crash'`.
+ * En mekanisk udgang er en DNF uden skade — se docs/RACE_ENGINE_RULES.md §2c.
+ *
  * @returns {Array<{rider_id:string, kind:'crash'|'mechanical', outcome:'time_loss'|'abandon', time_loss_seconds:number|null, injury_days:number|null, u:number}>}
  */
 export function rollIncidents({ entrants = [], stageProfile, stageSeed, tuning = RACE_V3_TUNING } = {}) {
@@ -101,7 +105,11 @@ export function rollIncidents({ entrants = [], stageProfile, stageSeed, tuning =
       time_loss_seconds = Math.round(
         tuning.INCIDENT_TIME_LOSS_MIN_S + u4 * (tuning.INCIDENT_TIME_LOSS_MAX_S - tuning.INCIDENT_TIME_LOSS_MIN_S)
       );
-    } else {
+    } else if (kind === "crash") {
+      // #4520: KUN et styrt skader rytteren. En mekanisk udgang koster loebet,
+      // ikke kroppen — injury_days forbliver null, og persistIncidents rører
+      // derfor ikke rider_condition for den rytter. u4 trækkes ovenfor UANSET
+      // udfald, saa determinisme-streamen er uændret af denne regel.
       injury_days = Math.round(
         tuning.INCIDENT_INJURY_MIN_DAYS + u4 * (tuning.INCIDENT_INJURY_MAX_DAYS - tuning.INCIDENT_INJURY_MIN_DAYS)
       );

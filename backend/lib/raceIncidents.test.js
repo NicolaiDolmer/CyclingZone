@@ -152,15 +152,62 @@ test("rollIncidents: magnitude-bounds — time_loss_seconds ∈ [MIN,MAX], injur
         assert.equal(h.injury_days, null);
         assert.ok(h.time_loss_seconds >= HIGH_P_TUNING.INCIDENT_TIME_LOSS_MIN_S && h.time_loss_seconds <= HIGH_P_TUNING.INCIDENT_TIME_LOSS_MAX_S,
           `time_loss_seconds ${h.time_loss_seconds} uden for [${HIGH_P_TUNING.INCIDENT_TIME_LOSS_MIN_S},${HIGH_P_TUNING.INCIDENT_TIME_LOSS_MAX_S}]`);
-      } else {
+      } else if (h.kind === "crash") {
         assert.equal(h.time_loss_seconds, null);
         assert.ok(h.injury_days >= HIGH_P_TUNING.INCIDENT_INJURY_MIN_DAYS && h.injury_days <= HIGH_P_TUNING.INCIDENT_INJURY_MAX_DAYS,
           `injury_days ${h.injury_days} uden for [${HIGH_P_TUNING.INCIDENT_INJURY_MIN_DAYS},${HIGH_P_TUNING.INCIDENT_INJURY_MAX_DAYS}]`);
+      } else {
+        // #4520: mekanisk udgang = DNF uden skade.
+        assert.equal(h.time_loss_seconds, null);
+        assert.equal(h.injury_days, null);
       }
       assert.ok(["crash", "mechanical"].includes(h.kind));
       assert.ok(["time_loss", "abandon"].includes(h.outcome));
     }
   }
+});
+
+// ── #4520: skade-reglen — kun et STYRT kan skade rytteren ───────────────────
+// docs/RACE_ENGINE_RULES.md §2c: "kun et styrt kan skade rytteren. En mekanisk
+// udgang koster loebet, ikke kroppen."
+
+test("rollIncidents (#4520): mekanisk abandon har ALDRIG injury_days; crash-abandon har det ALTID", () => {
+  let mechanicalAbandons = 0;
+  let crashAbandons = 0;
+  for (let seed = 0; seed < 120; seed++) {
+    const hits = rollIncidents({ entrants: field(80, 0), stageProfile: { profile_type: "flat" }, stageSeed: seed, tuning: HIGH_P_TUNING });
+    for (const h of hits) {
+      if (h.outcome !== "abandon") continue;
+      if (h.kind === "mechanical") {
+        mechanicalAbandons++;
+        assert.equal(h.injury_days, null, `mekanisk abandon (seed ${seed}, ${h.rider_id}) fik skade`);
+      } else {
+        crashAbandons++;
+        assert.ok(Number.isFinite(h.injury_days) && h.injury_days > 0, `crash-abandon (seed ${seed}, ${h.rider_id}) mangler skade`);
+      }
+    }
+  }
+  assert.ok(mechanicalAbandons > 20, `for få mekaniske abandons til en meningsfuld test (${mechanicalAbandons})`);
+  assert.ok(crashAbandons > 20, `for få crash-abandons til en meningsfuld test (${crashAbandons})`);
+});
+
+test("rollIncidents (#4520): skade-reglen flytter IKKE rng-streamen — kind/outcome/time_loss uændret", () => {
+  // u4 traekkes uanset udfald, saa kun injury_days paa mekaniske abandons maa
+  // aendre sig. Dette er determinisme-invarianten (RACE_ENGINE_RULES §3.1)
+  // udtrykt som en fingeraftryks-sammenligning af ALT ANDET end injury_days.
+  const fingerprint = [];
+  for (let seed = 0; seed < 25; seed++) {
+    const hits = rollIncidents({ entrants: field(60, 0), stageProfile: { profile_type: "flat" }, stageSeed: seed, tuning: HIGH_P_TUNING });
+    for (const h of hits) fingerprint.push(`${seed}|${h.rider_id}|${h.kind}|${h.outcome}|${h.time_loss_seconds}`);
+  }
+  // Frosset: samme liste skal komme ud af en kørsel med identisk input.
+  const again = [];
+  for (let seed = 0; seed < 25; seed++) {
+    const hits = rollIncidents({ entrants: field(60, 0), stageProfile: { profile_type: "flat" }, stageSeed: seed, tuning: HIGH_P_TUNING });
+    for (const h of hits) again.push(`${seed}|${h.rider_id}|${h.kind}|${h.outcome}|${h.time_loss_seconds}`);
+  }
+  assert.deepEqual(again, fingerprint);
+  assert.ok(fingerprint.length > 50, `for lille fingeraftryk (${fingerprint.length})`);
 });
 
 // ── rollIncidents: CAP-håndhævelse ─────────────────────────────────────────

@@ -1386,7 +1386,8 @@ function addDaysToDate(dateStr, days) {
 
 // S4 (#1176): persistér race_incidents (idempotent delete-then-insert pr.
 // (race_id, stageNumbers i DENNE kørsel) — spejrer persistRuns' mønster) +
-// upsert rider_condition.injured_until/injury_cause for abandons. KUN kaldt
+// upsert rider_condition.injured_until/injury_cause for STYRT-abandons (#4520 —
+// en mekanisk udgang koster løbet, ikke kroppen). KUN kaldt
 // når v3=true OG incidents ikke er tom (kald-stedets ansvar). Upsert-semantikken
 // (supabase-js: UPDATE-stien rører KUN de angivne kolonner) betyder form/fatigue
 // ALDRIG røres her — spejler raceFatigue.applyRaceFatigue's samme garanti.
@@ -1422,7 +1423,12 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers }) {
   const { error } = await supabase.from("race_incidents").insert(rows);
   if (error) throw new Error(`race_incidents: ${error.message}`);
 
-  const abandons = incidents.filter((inc) => inc.outcome === "abandon");
+  // #4520: KUN styrt-udgange skader rytteren. En mekanisk udgang (og en
+  // #4418-injury-række, hvis skade ejes af rider_condition i forvejen) maa
+  // ALDRIG skrive injured_until/injury_cause='race_crash'. rollIncidents
+  // sætter allerede injury_days=null for mekaniske abandons; dette filter er
+  // andet lag, saa en fremtidig kaldsvej ikke kan genindføre koblingen.
+  const abandons = incidents.filter((inc) => inc.outcome === "abandon" && inc.kind === "crash");
   if (!abandons.length) return;
   const today = copenhagenDateString();
   const injuryRows = abandons.map((inc) => ({

@@ -57,13 +57,15 @@ test("simulateStage v3=true: time_loss-uheld (seed 2) — stemplet i components.
   void withoutIncidentSeed; // kun for at dokumentere kontrasten — ingen assert nødvendig her
 });
 
-// Seed 62 giver PRÆCIS ét uheld: freeC, abandon (injury_days=3).
+// Seed 62 giver PRÆCIS ét uheld: freeC, MEKANISK abandon. #4520: en mekanisk
+// udgang er en DNF uden skade — injury_days er null (før 5/9 var den 3).
 test("simulateStage v3=true: abandon-uheld (seed 62) — rytteren FJERNES fra ranked, rank er sammenhængende 1..N-1", () => {
   const { ranked, incidents } = simulateStage({ entrants: ENTRANTS, stageProfile: COBBLES, seed: 62, v3: true });
   assert.equal(incidents.length, 1);
   assert.equal(incidents[0].rider_id, "freeC");
   assert.equal(incidents[0].outcome, "abandon");
-  assert.equal(incidents[0].injury_days, 3);
+  assert.equal(incidents[0].kind, "mechanical");
+  assert.equal(incidents[0].injury_days, null, "#4520: mekanisk udgang giver ingen skade");
 
   assert.equal(ranked.length, ENTRANTS.length - 1, "abandon skal fjerne PRÆCIS én rytter fra ranked");
   assert.ok(!ranked.some((r) => r.rider_id === "freeC"), "freeC må IKKE optræde i ranked (DNF)");
