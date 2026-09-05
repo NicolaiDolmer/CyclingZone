@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.256",
+    "date": "2026-09-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Sponsors get their own page",
+          "body": "Sponsors now live under Clubhouse next to Board, with tabs for your deal, this season's payments, and next season's offers. Choosing next season's sponsor has moved here too."
+        },
+        "da": {
+          "title": "Sponsorer får deres egen side",
+          "body": "Sponsorer bor nu under Klubhus ved siden af Bestyrelse, med faner til din aftale, sæsonens udbetalinger og næste sæsons tilbud. Valget af næste sæsons sponsor er også flyttet hertil."
+        },
+        "refs": [4265]
+      }
+    ]
+  },
+  {
     "version": "7.255",
     "date": "2026-09-05",
     "label": "Beta",
