@@ -24,6 +24,6 @@
 - **Grundregler (rytter, værdi/løn, økonomi-balance) udskudt til efter 27/9** (ejer 28/8 + 4/9). **Træning: maks +1 pr. evne pr. dag** (ejer 5/9, lander med #4801).
 - **Mekanik:** PR'er merges med `--admin` én ad gangen, ÉT deploy-vindue pr. bølge; `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Workers: maks 3 tunge, push senest efter 15 min, fremdrift måles på branchens sidste push.
 
-> **🤖 Working agent:** Ingen aktiv session (Fable lukkede 5/9 kl. ~10:00).
+> **🤖 Working agent:** Fable (Claude Code, desktop) - session 6/9 fra ~09:00: #4836 merge, #4789 samtale, traeningspakke (#4613/#4801/#4629/#4632), #4835 PAT. Pick-up kraever ejer-ok (#559).
 
 _Historik i git-log, issue-tråde + docs/audits/._
