@@ -110,6 +110,7 @@ export {
   getDnaByKey,
   isValidDnaKey,
   computeDnaSuggestions,
+  dnaCopyPayload,
   getDnaArchetypeAlignmentBonus,
   getDnaGoalWeightMultiplier,
   buildDnaTraditionGoal,

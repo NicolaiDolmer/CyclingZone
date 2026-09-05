@@ -53,7 +53,10 @@ test("isValidDnaKey + getDnaByKey", () => {
   assert.equal(isValidDnaKey("italiensk_klassiker"), true);
   assert.equal(isValidDnaKey("ukendt_dna"), false);
   assert.equal(isValidDnaKey(null), false);
-  assert.equal(getDnaByKey("italiensk_klassiker").label, "Italiensk klassiker-traditionalist");
+  // #4734: fallback-labelet er EN-first (den oversatte udgave hentes via
+  // label_key fra frontend/public/locales/<lng>/board.json).
+  assert.equal(getDnaByKey("italiensk_klassiker").label, "Italian classics traditionalist");
+  assert.equal(getDnaByKey("italiensk_klassiker").label_key, "dna.italiensk_klassiker.label");
   assert.equal(getDnaByKey("ukendt"), null);
 });
 
@@ -249,8 +252,11 @@ test("#4377 · sprint_kommerciel tradition-mål (jersey_wins) er cumulative, så
   const dnaGoal = BOARD_CLUB_DNA.sprint_kommerciel.tradition_goal;
   assert.equal(dnaGoal.type, "jersey_wins");
   assert.equal(dnaGoal.cumulative, true, "DNA-kildedata skal markere målet cumulative");
-  assert.ok(!dnaGoal.label.includes("pr. sæson"), "label må ikke love per-sæson-nulstilling for et multi-year-mål");
-  assert.ok(dnaGoal.label.includes("over planperioden"), "label skal matche resten af de kumulative mål-labels");
+  // #4734: labelet er nu EN-first, og den danske udgave lever i
+  // frontend/public/locales/da/board.json under dnaGoal.label_key. Guarden
+  // gælder BEGGE sprog — boardClubDnaI18n.test.js binder dem til hinanden.
+  assert.ok(!dnaGoal.label.includes("per season"), "label må ikke love per-sæson-nulstilling for et multi-year-mål");
+  assert.ok(dnaGoal.label.includes("over the plan period"), "label skal matche resten af de kumulative mål-labels");
 
   const built = buildDnaTraditionGoal("sprint_kommerciel");
   assert.equal(built.cumulative, true, "buildDnaTraditionGoal skal bevare cumulative-flaget uændret");

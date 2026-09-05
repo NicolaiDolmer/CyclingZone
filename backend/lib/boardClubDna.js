@@ -38,10 +38,13 @@ export const DNA_KEYS = [
 export const BOARD_CLUB_DNA = {
   skandinavisk_udvikling: {
     key: "skandinavisk_udvikling",
-    label: "Skandinavisk udviklingshold",
+    label: "Scandinavian development team",
+    label_key: "dna.skandinavisk_udvikling.label",
     emoji: "🌲",
-    short_description: "Ungdom, balance og nordisk arv",
-    long_description: "Vi bygger ryttere op fra grunden — tålmodighed, struktur og nordisk arbejdsmoral. Sponsorerne forventer udvikling, ikke fyrværkeri.",
+    short_description: "Youth, balance and Nordic heritage",
+    short_description_key: "dna.skandinavisk_udvikling.shortDescription",
+    long_description: "We build riders from the ground up: patience, structure and Nordic work ethic. Sponsors expect development, not fireworks.",
+    long_description_key: "dna.skandinavisk_udvikling.longDescription",
     policy_axes: {
       results_pressure: "low",
       financial_caution: "high",
@@ -69,7 +72,7 @@ export const BOARD_CLUB_DNA = {
     tradition_goal: {
       type: "u25_development_delta",
       target: 3,
-      label: "Klub-DNA: udvikl talenterne — gnsn. +3 stat-pts/sæson på U25",
+      label: "Club DNA: develop the talents, average +3 stat points per season for U25 riders",
       label_key: "dna.skandinavisk_udvikling.traditionGoalLabel",
       satisfaction_bonus: 16,
       satisfaction_penalty: 8,
@@ -78,10 +81,13 @@ export const BOARD_CLUB_DNA = {
 
   italiensk_klassiker: {
     key: "italiensk_klassiker",
-    label: "Italiensk klassiker-traditionalist",
+    label: "Italian classics traditionalist",
+    label_key: "dna.italiensk_klassiker.label",
     emoji: "🪨",
-    short_description: "Foråret er hellig — monumenter er målet",
-    long_description: "Klubben er bygget på asfalt fra Lombardiet og Strade Bianche. Vores fans drømmer om Sanremo og Lombardia — ikke om Tour de France-podier.",
+    short_description: "Spring is sacred. Monuments are the goal",
+    short_description_key: "dna.italiensk_klassiker.shortDescription",
+    long_description: "The club is built on the roads of Lombardia and Strade Bianche. Our fans dream of Sanremo and Lombardia, not Tour de France podiums.",
+    long_description_key: "dna.italiensk_klassiker.longDescription",
     policy_axes: {
       results_pressure: "high",
       financial_caution: "medium",
@@ -114,7 +120,7 @@ export const BOARD_CLUB_DNA = {
       // klassikere, kanonisk mapping i boardConstants.js) — en bestyrelse der
       // er glad for monumenter, er også glad for klassikere generelt.
       race_scope: "classics",
-      label: "Klub-DNA: mindst ét podie i en klassiker (inkl. Monuments) pr. plan-cyklus",
+      label: "Club DNA: at least one podium in a classic (incl. Monuments) per plan cycle",
       label_key: "dna.italiensk_klassiker.traditionGoalLabel",
       satisfaction_bonus: 22,
       satisfaction_penalty: 12,
@@ -123,10 +129,13 @@ export const BOARD_CLUB_DNA = {
 
   sprint_kommerciel: {
     key: "sprint_kommerciel",
-    label: "Sprint-fokuseret kommerciel",
+    label: "Sprint-focused commercial team",
+    label_key: "dna.sprint_kommerciel.label",
     emoji: "⚡",
-    short_description: "Sejre i mål — sponsorer i ryggen",
-    long_description: "Vores rytter skal være den første over stregen og foran kameraerne. Sponsorvækst kommer fra synlighed, og synlighed kommer fra etapesejre.",
+    short_description: "Wins at the line, sponsors on the wheel",
+    short_description_key: "dna.sprint_kommerciel.shortDescription",
+    long_description: "Our rider should be first across the line and first in front of the cameras. Sponsor growth comes from visibility, and visibility comes from stage wins.",
+    long_description_key: "dna.sprint_kommerciel.longDescription",
     policy_axes: {
       results_pressure: "high",
       financial_caution: "low",
@@ -164,7 +173,7 @@ export const BOARD_CLUB_DNA = {
       type: "jersey_wins",
       target: 2,
       cumulative: true,
-      label: "Klub-DNA: vind mindst 2 etape-trøjer over planperioden (sprint-fokus)",
+      label: "Club DNA: win at least 2 stage-race jerseys over the plan period (sprint focus)",
       label_key: "dna.sprint_kommerciel.traditionGoalLabel",
       satisfaction_bonus: 18,
       satisfaction_penalty: 10,
@@ -173,10 +182,13 @@ export const BOARD_CLUB_DNA = {
 
   fransk_klatrer: {
     key: "fransk_klatrer",
-    label: "Fransk klatrer-arv",
+    label: "French climbing heritage",
+    label_key: "dna.fransk_klatrer.label",
     emoji: "⛰️",
-    short_description: "Tour-bjerge er klubbens hjem",
-    long_description: "Vi har klatret med Anquetil, Hinault og Pinot. Bjergene definerer os — og Tour de France er stadig kalenderens vigtigste søndag.",
+    short_description: "The Tour mountains are the club's home",
+    short_description_key: "dna.fransk_klatrer.shortDescription",
+    long_description: "We have climbed with Anquetil, Hinault and Pinot. The mountains define us, and the Tour de France is still the most important Sunday on the calendar.",
+    long_description_key: "dna.fransk_klatrer.longDescription",
     policy_axes: {
       results_pressure: "high",
       financial_caution: "medium",
@@ -205,7 +217,7 @@ export const BOARD_CLUB_DNA = {
       type: "min_national_riders",
       target: 4,
       nationality_code: "FR",
-      label: "Klub-DNA: min. 4 franske ryttere i truppen",
+      label: "Club DNA: at least 4 French riders in the squad",
       label_key: "dna.fransk_klatrer.traditionGoalLabel",
       satisfaction_bonus: 18,
       satisfaction_penalty: 10,
@@ -214,10 +226,13 @@ export const BOARD_CLUB_DNA = {
 
   britisk_allrounder: {
     key: "britisk_allrounder",
-    label: "Britisk all-rounder",
+    label: "British all-rounder",
+    label_key: "dna.britisk_allrounder.label",
     emoji: "🎯",
-    short_description: "Disciplin på tværs — datadrevet og bredt",
-    long_description: "Sky-skolen lever videre. Vi vinder på struktur, marginal gains og bredde — fra Roubaix til Andorra. Ingen disciplin er klubbens, men alle er.",
+    short_description: "Discipline across the board, data-led and broad",
+    short_description_key: "dna.britisk_allrounder.shortDescription",
+    long_description: "The Sky school lives on. We win through structure, marginal gains and depth, from Roubaix to Andorra. No discipline owns the club, but every discipline belongs here.",
+    long_description_key: "dna.britisk_allrounder.longDescription",
     policy_axes: {
       results_pressure: "medium",
       financial_caution: "medium",
@@ -245,7 +260,7 @@ export const BOARD_CLUB_DNA = {
     tradition_goal: {
       type: "relative_rank",
       target: 3,
-      label: "Klub-DNA: top-3 i division (bred præstation)",
+      label: "Club DNA: top 3 in the division (broad performance)",
       label_key: "dna.britisk_allrounder.traditionGoalLabel",
       satisfaction_bonus: 16,
       satisfaction_penalty: 8,
@@ -320,18 +335,35 @@ export function computeDnaSuggestions(identityBasis = null) {
   ].filter(Boolean);
 }
 
+/**
+ * #4734 · Den spillervendte DNA-copy som API'et sender: hver tekst ledsages af
+ * sin locale-noegle, saa frontend rendrer i modtagerens sprog (BoardPage.jsx'
+ * getDnaCopy) og teksten selv kun er fallback for en manglende noegle.
+ *
+ * Noeglerne staar paa selve DNA-definitionen ovenfor — foer #4734 blev de
+ * konstrueret som `dna.${key}.label` fire steder (her + tre svar i
+ * backend/routes/api.js), saa en omdoebt noegle skulle rettes fire gange.
+ */
+export function dnaCopyPayload(dna) {
+  if (!dna?.key) return null;
+  return {
+    key: dna.key,
+    label: dna.label,
+    label_key: dna.label_key,
+    emoji: dna.emoji,
+    short_description: dna.short_description,
+    short_description_key: dna.short_description_key,
+    long_description: dna.long_description,
+    long_description_key: dna.long_description_key,
+  };
+}
+
 function annotateSlot(scoredEntry, slot, ctx) {
   if (!scoredEntry?.dna) return null;
   const dna = scoredEntry.dna;
   return {
     key: dna.key,
-    label: dna.label,
-    label_key: `dna.${dna.key}.label`,
-    emoji: dna.emoji,
-    short_description: dna.short_description,
-    short_description_key: `dna.${dna.key}.shortDescription`,
-    long_description: dna.long_description,
-    long_description_key: `dna.${dna.key}.longDescription`,
+    ...dnaCopyPayload(dna),
     suggestion_slot: slot,
     ...buildSuggestionRationale(slot, dna, ctx),
     score: scoredEntry.score,
@@ -345,7 +377,7 @@ function buildSuggestionRationale(slot, dna, ctx) {
       rationaleKey: "dna.suggestionRationale.nationalMatch",
       rationale_params: { nationalCode: ctx.nationalCode },
       rationaleParams: { nationalCode: ctx.nationalCode },
-      rationale: `Matcher din ${ctx.nationalCode}-kerne fra sæson 1`,
+      rationale: `Matches your ${ctx.nationalCode} core from season 1`,
     };
   }
   if (slot === "specialization_match" && dna.specialization_affinity.includes(ctx.primarySpec)) {
@@ -354,7 +386,7 @@ function buildSuggestionRationale(slot, dna, ctx) {
       rationaleKey: "dna.suggestionRationale.specializationMatch",
       rationale_params: { primarySpec: ctx.primarySpec },
       rationaleParams: { primarySpec: ctx.primarySpec },
-      rationale: `Matcher dit ${getLegacySpecLabel(ctx.primarySpec)}`,
+      rationale: `Matches your ${getLegacySpecLabel(ctx.primarySpec)}`,
     };
   }
   return {
@@ -362,18 +394,21 @@ function buildSuggestionRationale(slot, dna, ctx) {
     rationaleKey: "dna.suggestionRationale.wildcard",
     rationale_params: {},
     rationaleParams: {},
-    rationale: "Et nyt spor — bestyrelsen vil følge med uanset retning",
+    rationale: "A new path. The board will follow wherever it leads",
   };
 }
 
+// #4734: fallback-labels for det tilfaelde at frontend ikke kan slaa
+// dna.specLabel.<spec> op. EN-first som resten af backendens fallback-tekst;
+// den oversatte udgave lever i frontend/public/locales/<lng>/board.json.
 function getLegacySpecLabel(primarySpec) {
   return {
-    gc: "GC-fokus",
-    sprint: "sprint-fokus",
-    classics: "klassiker-fokus",
-    breakaway: "breakaway-stil",
-    youth: "ungdomsaftryk",
-    balanced: "balancerede profil",
+    gc: "GC focus",
+    sprint: "sprint focus",
+    classics: "classics focus",
+    breakaway: "breakaway style",
+    youth: "youth imprint",
+    balanced: "balanced profile",
   }[primarySpec] || primarySpec;
 }
 

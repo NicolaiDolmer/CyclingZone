@@ -300,6 +300,7 @@ import {
   buildBoardOutlook,
   buildBoardProposal,
   computeDnaSuggestions,
+  dnaCopyPayload,
   deriveTeamIdentityProfile,
   finalizeBoardGoals,
   getArchetypeByKey,
@@ -15239,14 +15240,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
       identity_profile: identityProfile,
       identity_basis: identityBasis,
       team_dna: dnaArchetype ? {
-        key: dnaArchetype.key,
-        label: dnaArchetype.label,
-        label_key: `dna.${dnaArchetype.key}.label`,
-        emoji: dnaArchetype.emoji,
-        short_description: dnaArchetype.short_description,
-        short_description_key: `dna.${dnaArchetype.key}.shortDescription`,
-        long_description: dnaArchetype.long_description,
-        long_description_key: `dna.${dnaArchetype.key}.longDescription`,
+        ...dnaCopyPayload(dnaArchetype),
         chosen_at: teamRes.data?.team_dna_chosen_at || null,
         // #102 · "Hvad vægter dette board?"-panel: eksponér DNA'ets mål-vægtning
         // (referencedata, ikke følsomt) så frontenden kan vise de højest-vægtede
@@ -15601,14 +15595,7 @@ router.get("/board/dna-suggestions", requireAuth, async (req, res) => {
       return res.json({
         already_chosen: true,
         can_rechoose: canRechoose,
-        team_dna: dna ? {
-          key: dna.key,
-          label: dna.label,
-          label_key: `dna.${dna.key}.label`,
-          emoji: dna.emoji,
-          short_description: dna.short_description,
-          short_description_key: `dna.${dna.key}.shortDescription`,
-        } : null,
+        team_dna: dnaCopyPayload(dna),
         suggestions: canRechoose && team.season_1_identity_basis
           ? computeDnaSuggestions(team.season_1_identity_basis)
           : [],
@@ -15664,16 +15651,7 @@ router.post("/board/dna-choose", requireAuth, boardWriteLimiter, async (req, res
     const dna = getDnaByKey(result.dnaKey);
     res.json({
       ok: true,
-      team_dna: dna ? {
-        key: dna.key,
-        label: dna.label,
-        label_key: `dna.${dna.key}.label`,
-        emoji: dna.emoji,
-        short_description: dna.short_description,
-        short_description_key: `dna.${dna.key}.shortDescription`,
-        long_description: dna.long_description,
-        long_description_key: `dna.${dna.key}.longDescription`,
-      } : null,
+      team_dna: dnaCopyPayload(dna),
       team_members: decorateTeamBoardMembers(result.members || []),
     });
   } catch (e) {
