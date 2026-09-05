@@ -125,6 +125,39 @@
         ]
       }
     },
+    "mandate": {
+      "label": "The Mandate",
+      "whatMandate": {
+        "title": "What the Mandate is",
+        "text": "The Mandate is your relationship with the board gathered in one place. One confidence score instead of three separate satisfaction numbers, one set of targets for the season you are in, and a club vision of milestones further out. It all lives on the Board page under Clubhouse, split into four tabs: Overview, Mandate, Vision and Board. The board still cannot fire you, and its consequences are still graduated and announced before they bite."
+      },
+      "confidence": {
+        "title": "Confidence replaces the three satisfaction numbers",
+        "text": "Confidence is a single score from 0 to 100 for how the board sees your work. Four areas feed it: results, economy, identity and ranking. The confidence card shows the score, the movement since last week, a meter per area and a plain line naming any limit the board currently has on you. Confidence also drives your sponsor modifier, so one number now explains both what the board thinks and what the sponsor pays. Every target you meet or miss moves confidence, never your balance directly."
+      },
+      "annualMeeting": {
+        "title": "The annual meeting",
+        "text": "Once a season, at the season changeover, the board calls you in and proposes the mandate for the season ahead. It is a single full-screen meeting, and the fastest way through it is to accept the proposal and sign. Two clicks.",
+        "steps": [
+          "A gold button appears on the Board page when the meeting is ready. Before that there is no button, not a greyed-out one.",
+          "You pick a focus first. Changing focus makes the board rebuild its proposal around it.",
+          "The proposal is 3 to 5 targets. Each one can be kept as it stands, made easier, or stretched. A stretched target pays more confidence if you make it and costs more if you miss it.",
+          "You get a set number of adjustments per meeting, shown at the top. A board that is confident in you grants more of them and stretches further in its counter-offers.",
+          "The board may propose a new milestone for the club vision, with the season it should be reached in. Accept it or decline it.",
+          "You get one request per meeting. A refusal always comes back with a counter-offer, never a flat no.",
+          "Sign, and the mandate is active for the season. Until it is signed it stays a proposal.",
+          "If you never answer, the board signs its own proposal for you when the deadline shown at the top of the meeting runs out. You keep the mandate, you just did not shape it."
+        ]
+      },
+      "bonusOffers": {
+        "title": "Bonus offers",
+        "text": "When a season is going well the board can put a bonus offer on the table: cash paid into your balance now, in return for one extra target added to this season's mandate. The offer shows up as a stripe on the mandate in the Overview tab, and in full in the Mandate tab. Accept it and the money is credited immediately, the extra target counts from the moment you accept, and it is judged at season end with the rest of the mandate. Decline it and it is gone. An untouched offer expires at the end of the season it was made in, and the board makes at most one offer per season."
+      },
+      "clubDnaAndBoard": {
+        "title": "Club DNA and your five board members",
+        "text": "Club DNA is the first choice you make, from five archetypes, and it shapes the whole Mandate. It decides who sits on your board: three of the five named members match your DNA and your team's identity, two are wildcards that bring contrast, and the closest match is chair. It leans the targets you are offered towards what that DNA cares about, and it names your club vision. Each member owns one area and reads your season in their own voice, which is why the same result can move one member and leave another cold. You can change your DNA until your first season ends, which seats a new board; after that it is locked. The Board tab shows all five, their mood towards you and the minutes in their own words."
+      }
+    },
     "auctions": {
       "label": "Auctions",
       "whatAuctions": {
