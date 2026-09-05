@@ -131,10 +131,10 @@ async function run() {
   }
 }
 
-// #4377 · Guard mod at et almindeligt `import` (fra audit-4377-board-goal-
-// counters.test.js, som kun vil bruge den rene isStaleJerseyGoal-funktion)
-// stille rammer prod. Samme main-guard-mønster som audit-league-size-
-// invariant.js: kør kun run() når filen selv er entry-point'et.
+// #4377 · Guard mod at et almindeligt `import` af denne fil fra dens
+// tilhørende test-fil (som kun vil bruge den rene isStaleJerseyGoal-funktion)
+// stille rammer prod. Samme main-guard-mønster som
+// audit-league-size-invariant.js: kør kun run() når filen selv er entry-point'et.
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 if (isMain) {
   run().catch((err) => {
