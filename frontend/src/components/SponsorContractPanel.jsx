@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
@@ -10,9 +11,10 @@ import { CoinIcon, FlagIcon, PodiumIcon, TrophyIcon } from "./ui/icons/index.jsx
 const API = import.meta.env.VITE_API_URL;
 
 // #1663/#2948 · Read-only sponsorkontrakt-panel paa Finance-fanen. Forhandlingen
-// sker paa Board-fladen (SponsorOfferModal) — her vises den aktive kontrakt,
-// dens bonusklausuler og hvad aftalen faktisk har indbragt (earnings pr. kilde).
+// sker paa Sponsors-siden (#4265) — her vises den aktive kontrakt, dens
+// bonusklausuler og hvad aftalen faktisk har indbragt (earnings pr. kilde).
 // Henter selv sine data; cleanup via alive-flag.
+// #4265: sponsornavnet er indgangen til den fulde flade — ét link, ingen ny CTA.
 function Row({ label, value }) {
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-cz-border last:border-0">
@@ -98,9 +100,12 @@ export default function SponsorContractPanel() {
         <>
           <div className="mb-3">
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("contract.sponsorName")}</p>
-            <p className="text-cz-accent-t font-display text-2xl leading-none tracking-[.01em]">
+            <Link
+              to="/sponsors"
+              className="text-cz-accent-t font-display text-2xl leading-none tracking-[.01em] hover:underline"
+            >
               {contract.sponsor_name}
-            </p>
+            </Link>
             {contract.variant && (
               <p className="text-cz-3 text-xs mt-1">
                 {t(`variant.${contract.variant}`, { defaultValue: "" })}

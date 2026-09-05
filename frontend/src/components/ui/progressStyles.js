@@ -5,6 +5,11 @@ const FILL_TONE = {
   success: "bg-cz-success",
   danger: "bg-cz-danger",
   warning: "bg-cz-warning",
+  // #4265: monokromt fyld til maalere der KUN viser fremdrift uden status
+  // (Sponsors-sidens "stages ridden"). Guld er rationeret til fire steder
+  // (TASTE.md §3 / fork 3), og en neutral tael-maaler er ikke et af dem —
+  // den ejer-godkendte mockup 6/9 tegner netop denne maaler i --text-1.
+  neutral: "bg-cz-1",
 };
 
 export function trackClass({ className = "" } = {}) {

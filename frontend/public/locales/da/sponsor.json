@@ -1,5 +1,104 @@
 {
   "tab": "Sponsor",
+  "page": {
+    "title": "Sponsorer",
+    "subtitle": "Sæson {season}-aftalen og hvad den giver.",
+    "subtitleNoSeason": "Din aftale og hvad den giver.",
+    "chooseCta": "Vælg næste sæsons sponsor",
+    "seasonMeta": "Sæson {season} · division {division}",
+    "seasonMetaNoDivision": "Sæson {season}",
+    "dealLine": "{variant} · underskrevet til sæson {season}",
+    "goToNextSeason": "Gå til Næste sæson",
+    "howMoneyWorks": "Sådan virker sponsorpengene",
+    "perStageLine": "Pr. etape {rate} CZ$, {count, plural, one {# etape tilbage er} other {# etaper tilbage er}} {worth} CZ$ værd",
+    "nextSeasonOpen": "Næste sæson: {count, plural, one {# tilbud er} other {# tilbud er}} åbne, valget låses når sæson {season} starter",
+    "nextSeasonClosed": "Næste sæson: tilbuddene åbner når sæson {season} slutter",
+    "errorTitle": "Kunne ikke hente dine sponsorer",
+    "error": "Intet gik tabt, og din aftale er sikker. Prøv igen.",
+    "retry": "Prøv igen",
+    "tab": {
+      "overview": "Overblik",
+      "deal": "Aftalen",
+      "payments": "Udbetalinger",
+      "next": "Næste sæson"
+    },
+    "stat": {
+      "paidSoFar": "Udbetalt indtil nu",
+      "guaranteed": "Garanteret",
+      "earnedOnTop": "Tjent oveni",
+      "stagesRidden": "Etaper kørt",
+      "stagesOf": "{ridden} af {total}"
+    },
+    "noContract": {
+      "title": "Underskriv din første sponsoraftale",
+      "description": "Tilbuddene åbner under Næste sæson, så snart din klub kan forhandle.",
+      "action": "Gå til Næste sæson"
+    },
+    "deal": {
+      "paidDayOne": "Udbetalt på dag ét",
+      "stagesInDivision": "{count} etaper i division {division}",
+      "overTheSeason": "{amount} CZ$ over sæsonen",
+      "divisionAdjustment": "Divisions-tillæg",
+      "divisionAdjustmentSub": "Aftalen er prissat til division {signed}, du kører i division {current}",
+      "everySeason": "Hver sæson",
+      "signingBonus": "Underskriftsbonus",
+      "signingBonusSub": "Udbetalt ved underskrift",
+      "stageWinBonus": "Etapesejrsbonus",
+      "stageWinBonusSub": "Pr. etapesejr",
+      "podiumBonus": "Podiebonus",
+      "podiumBonusSub": "Pr. podie, 2. til 3. plads",
+      "capPerSeason": "Loft {amount} CZ$ pr. sæson",
+      "seasonObjective": "Sæsonmålsbonus",
+      "seasonObjectiveTop40": "Slut i øverste 40% af din division",
+      "seasonObjectiveTopHalf": "Slut i øverste halvdel af din division",
+      "runsThrough": "Løber sæson {season} ud"
+    },
+    "payments": {
+      "title": "Udbetalt i denne sæson",
+      "source": "Kilde",
+      "stages": "Etaper",
+      "amount": "Beløb",
+      "total": "I alt",
+      "group": {
+        "guaranteed": "Garanteret",
+        "stagesAt": "Etaper à {rate} CZ$",
+        "stages": "Etaper",
+        "bonuses": "Bonusser"
+      },
+      "row": {
+        "seasonBase": "Sæsonbase",
+        "seasonBaseSub": "Kontraktens garanti",
+        "divisionAdjustment": "Divisions-tillæg",
+        "divisionAdjustmentSub": "Aftalen er prissat til division {division}",
+        "stageWin": "Etapesejr",
+        "podium": "Podie",
+        "resultBonus": "Resultatbonus"
+      },
+      "empty": {
+        "title": "Se din første udbetaling lande",
+        "description": "Sponsorpengene dukker op her, når sæsonbasen er krediteret, og dit hold begynder at køre.",
+        "action": "Se aftalen"
+      }
+    },
+    "next": {
+      "title": "Næste sæson",
+      "meta": "{count, plural, one {# tilbud} other {# tilbud}} · division {division} · {stages} etaper",
+      "metaClosed": "Tilbuddene åbner når sæson {season} slutter",
+      "dealType": "{variant} · {count, plural, one {# sæson} other {# sæsoner}}",
+      "ifEveryStage": "{amount} CZ$ hvis du kører hver etape",
+      "noBonuses": "Ingen",
+      "pricingTitle": "Sådan prissættes tilbuddene",
+      "column": {
+        "sponsor": "Sponsor",
+        "bonuses": "Bonusser oveni"
+      },
+      "empty": {
+        "title": "Tilbuddene åbner når sæson {season} slutter",
+        "description": "Alle fem tilbud åbner den dag din nuværende aftale slutter.",
+        "action": "Læs sponsorreglerne"
+      }
+    }
+  },
   "cta": {
     "title": "Vælg din sponsor til sæson {season}",
     "body": "Fem sponsorer sidder ved bordet, hver med sin egen måde at betale dig på. Sammenlign aftalerne og sikr din opbakning.",
@@ -25,6 +124,7 @@
     "confirmBody": "Underskriv med {sponsor} i {count, plural, one {# sæson} other {# sæsoner}}? Du kan ændre dit valg indtil sæson {season} starter.",
     "signDeal": "Underskriv aftale",
     "cancel": "Annullér",
+    "acceptFailed": "Aftalen blev ikke underskrevet. Intet er ændret. Prøv igen.",
     "guaranteedShare": "{pct} % af aftalen er garanteret",
     "boardNote": "Bestyrelsens tilfredshed justerer den garanterede del med op til ±20 %. Den rører ikke etape-pengene eller bonusserne: de udbetales fuldt ud oveni, i takt med at du tjener dem.",
     "divisionAdjustmentUp": "Kører du i Division {division} på denne aftale, udbetales et divisions-tillæg på {amount} CZ$ oveni hver sæson, fordi aftalen er prissat til Division {signed}.",
