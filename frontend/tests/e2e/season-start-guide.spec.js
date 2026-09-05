@@ -113,7 +113,37 @@ test("done state follows the data, and unknown never renders as done", async ({ 
   await expect(card.getByRole("link", { name: /Build your squad/i })).not.toContainText(/Done/i);
 });
 
-test("dismissing the guide hides it", async ({ page }) => {
+test("dismissing the guide hides it", async ({ page }, testInfo) => {
+  // #4424: testen timeouter sporadisk PAA KUN mobile-webkit under CI-belastning
+  // (root-cause-check 30/8: SeasonStartGuideCard.jsx renderer dismiss-knappen i
+  // SAMME render-pass som kortet, ingen separat async-gate - saa hypotesen om en
+  // sen mount holder ikke). 3x lokal koersel her (5,4-5,7s) og en tidligere
+  // isoleret 4/4-koersel var begge groenne, samme moenster som #4292/#4305:
+  // webkit under CI-parallelitet naar sommetider ikke at male/resolve
+  // locatoren, ikke en produktfejl. Karantaenet HER (kun dette projekt); en
+  // separat @flaky-mærket kopi nedenfor daekker mobile-webkit ikke-blokerende
+  // via playwright-smoke.yml's --grep @flaky-mekanisme (#4647/PR #4665). Fjern
+  // skip'et + kopien naar flake-raten er maalt under reel CI-belastning og
+  // enten viser sig ikke-eksisterende eller peger paa en konkret rettelse.
+  test.skip(testInfo.project.name === "mobile-webkit", "Karantaenet paa mobile-webkit - se @flaky-kopien nedenfor (#4424).");
+
+  await gotoDashboardInEnglish(page);
+  const card = page.getByTestId("season-start-guide");
+  await expect(card).toBeVisible();
+
+  await card.getByRole("button", { name: /Dismiss the season start guide/i }).click();
+  await expect(card).toHaveCount(0);
+});
+
+// #4424 karantaene-kopi: KUN mobile-webkit, tagget @flaky saa
+// playwright-smoke.yml's `--grep-invert @flaky` holder den ude af det
+// blokerende step, mens `--grep @flaky` koerer den i det ikke-blokerende
+// karantaene-step (samme mekanisme som #4647/PR #4665). Fjern denne test
+// sammen med skip'et ovenfor naar #4424 er lukket (enten roden er rettet, eller
+// maalingen viser at flaket ikke laengere forekommer).
+test("dismissing the guide hides it @flaky (mobile-webkit, #4424)", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-webkit", "Kun karantaene-kopi for mobile-webkit; de andre to projekter daekkes af testen ovenfor.");
+
   await gotoDashboardInEnglish(page);
   const card = page.getByTestId("season-start-guide");
   await expect(card).toBeVisible();

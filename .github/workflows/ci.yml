@@ -176,21 +176,28 @@ jobs:
       - name: Check lint warning budgets
         run: node scripts/check-eslint-warning-budget.mjs
 
-  ui-anti-drift:
+  static-guards:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # #671 Plan 3 (spec DEL-C C1): forward-guard mod slop-drift i frontend/src.
-    # Fejler KUN paa NYE raa hex / slop-tells (rounded-xl/2xl/3xl, glow,
-    # backdrop-blur, blob-blur) / emoji-som-ikon ud over scripts/ui-slop-baseline.json
-    # (ratchet — maa kun skrumpe). Kendte callsites + emoji er Plan 4's job.
-    #
-    # #4626 (slice 4 af #4622, docs/design/TASTE.md §3): samme job koerer OGSAA
-    # check-anti-slop.mjs, de fire TASTE-forbudte moenstre lint-ui-slop.mjs
-    # ikke daekker (unicode-pile-som-ikon, arbitraer text-[Npx] under 12px,
-    # shadow-* uden for shadow-overlay, CSS/Tailwind-gradient). Samlet i dette
-    # job i stedet for et nyt, fordi begge er rene node-scripts uden npm ci
-    # (#4330: flere jobs = flere checkout/setup-node-runners for to kommandoer).
+    # #4505 (udskilt fra #4330): saml de ti IKKE-required, lette statiske
+    # guards (ingen npm ci) i ét job med én checkout + én setup-node, i stedet
+    # for ti separate runnere for at koere to node-kommandoer hver. Hver guard
+    # er stadig sit eget "Test X" + "Run X" par af steps under samme job, med
+    # `if: ${{ !cancelled() }}` paa hvert TRIN: uden det ville et rødt
+    # guard-trin stoppe alle EFTERFØLGENDE guards i dette job, og man ville
+    # miste det de separate jobs gav gratis - at se ALLE fejlende guards i ét
+    # hug. Ingen continue-on-error: alle ti er ikke-required i branch
+    # protection (raadgivende for merge, jf. scripts/ci-required-checks.json),
+    # men INGEN af dem havde continue-on-error paa step-niveau som separate
+    # jobs - et rødt fund skal stadig faa DETTE job til at rapportere rødt,
+    # praecis som da hver guard var sit eget job. Rør IKKE de øvrige statiske
+    # guards (migration-idempotency, postgrest-cap-guard, getuser-guard,
+    # rankings-fetch-guard, riders-column-grant-guard, swallowed-catch-guard,
+    # silent-mutation-guard, finance-type-guard, dropped-supabase-error-guard,
+    # maybesingle-unique-scope-guard, workflow-output-guard,
+    # dependabot-exceptions-guard): de foerste ni er required status checks,
+    # de sidste tre var ikke blandt #4505's ti navngivne kandidater.
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -200,66 +207,222 @@ jobs:
         with:
           node-version: 24
 
+      # --- ui-anti-drift ---
+      # #671 Plan 3 (spec DEL-C C1): forward-guard mod slop-drift i frontend/src.
+      # Fejler KUN paa NYE raa hex / slop-tells (rounded-xl/2xl/3xl, glow,
+      # backdrop-blur, blob-blur) / emoji-som-ikon ud over scripts/ui-slop-baseline.json
+      # (ratchet — maa kun skrumpe). Kendte callsites + emoji er Plan 4's job.
+      #
+      # #4626 (slice 4 af #4622, docs/design/TASTE.md §3): samme job koerer OGSAA
+      # check-anti-slop.mjs, de fire TASTE-forbudte moenstre lint-ui-slop.mjs
+      # ikke daekker (unicode-pile-som-ikon, arbitraer text-[Npx] under 12px,
+      # shadow-* uden for shadow-overlay, CSS/Tailwind-gradient). Samlet i dette
+      # job i stedet for et nyt, fordi begge er rene node-scripts uden npm ci
+      # (#4330: flere jobs = flere checkout/setup-node-runners for to kommandoer).
       - name: Test anti-drift guard
+        if: ${{ !cancelled() }}
         run: node --test scripts/lint-ui-slop.test.mjs
 
       - name: Run anti-drift guard
+        if: ${{ !cancelled() }}
         run: node scripts/lint-ui-slop.mjs
 
       - name: Test anti-slop guard
+        if: ${{ !cancelled() }}
         run: node --test scripts/check-anti-slop.test.mjs
 
       - name: Run anti-slop guard
+        if: ${{ !cancelled() }}
         run: node scripts/check-anti-slop.mjs
 
-  eslint-disable-guard:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    # #4332 forward-guard: ratchet mod stille vaekst i antallet af
-    # eslint-disable-direktiver. Fejler KUN paa flere direktiver end
-    # scripts/eslint-disable-baseline.json tillader (ratchet — maa kun
-    # skrumpe) eller en ny fil med direktiver. Laaser blot det nuvaerende
-    # tal (42 frontend/src + 1 backend) — gennemgangen af om de 42
-    # exhaustive-deps-disables skjuler en reel dependency-bug staar aaben.
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
+      # --- eslint-disable-guard ---
+      # #4332 forward-guard: ratchet mod stille vaekst i antallet af
+      # eslint-disable-direktiver. Fejler KUN paa flere direktiver end
+      # scripts/eslint-disable-baseline.json tillader (ratchet — maa kun
+      # skrumpe) eller en ny fil med direktiver. Laaser blot det nuvaerende
+      # tal (42 frontend/src + 1 backend) — gennemgangen af om de 42
+      # exhaustive-deps-disables skjuler en reel dependency-bug staar aaben.
       - name: Test eslint-disable guard
+        if: ${{ !cancelled() }}
         run: node --test scripts/check-eslint-disable-count.test.mjs
 
       - name: Run eslint-disable guard
+        if: ${{ !cancelled() }}
         run: node scripts/check-eslint-disable-count.mjs
 
-  t2-container-guard:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    # #3454 forward-guard: en side der bruger den kanoniske <DataTable>
-    # (T2 "wide data"-recipe, docs/design/PAGE_TEMPLATES.md) hører ikke hjemme
-    # i en T1-container (max-w-4xl) — samme fejlklasse ramte production tre
-    # gange (#1675, #1186, #2446, #3454). Lille, lukket allowlist (ikke en
-    # ratchet) — hver undtagelse kræver en eksplicit begrundelse i scriptet.
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
+      # --- t2-container-guard ---
+      # #3454 forward-guard: en side der bruger den kanoniske <DataTable>
+      # (T2 "wide data"-recipe, docs/design/PAGE_TEMPLATES.md) hører ikke hjemme
+      # i en T1-container (max-w-4xl) — samme fejlklasse ramte production tre
+      # gange (#1675, #1186, #2446, #3454). Lille, lukket allowlist (ikke en
+      # ratchet) — hver undtagelse kræver en eksplicit begrundelse i scriptet.
       - name: Test T2-container guard
+        if: ${{ !cancelled() }}
         run: node --test scripts/lint-t2-container-guard.test.mjs
 
       - name: Run T2-container guard
+        if: ${{ !cancelled() }}
         run: node scripts/lint-t2-container-guard.mjs
+
+      # --- pagination-guard ---
+      # Forward-guard mod PostgREST's TAVSE 1000-rækkers-loft på selects (#3331).
+      # Samme bug-klasse har ramt to gange: PCM rytter-matcher (2026-05-30, 88%
+      # af ryttere usynlige for matching) og sponsor race-day-bonus (#3315,
+      # 2026-08-04, ét menneskehold underbetalt 94%) — begge fanget af en
+      # spiller, ikke en test. Flagger `.from(<deny-listet tabel>).select(...)`
+      # uden `.limit()/.single()/.maybeSingle()/.range()` eller delegering til en
+      # fetchAllRows*-pagineringshelper. Deny-liste: race_results, riders,
+      # race_entries, race_stage_schedule, race_stage_profiles,
+      # finance_transactions, notifications, race_stage_moments (#4566).
+      # Baseline-ratchet (samme mønster som
+      # lint-ui-slop.mjs) grandfatherer ~120 pre-eksisterende, prod-verificerede
+      # sikre fund (single-team/single-race-scoping) — kun NYE overtrædelser
+      # fejler builden. Opt-out: `pagination-safe: <begrundelse>`-kommentar.
+      - name: Test pagination guard
+        if: ${{ !cancelled() }}
+        run: node --test scripts/lint-pagination-guard.test.mjs
+
+      - name: Run pagination guard
+        if: ${{ !cancelled() }}
+        run: node scripts/lint-pagination-guard.mjs
+
+      # --- fetchallrows-order-guard ---
+      # Forward-guard: every fetchAllRows(...) call MUST carry a stable .order()
+      # (#3391). fetchAllRows (backend/lib/supabasePagination.js) pages through a
+      # table with .range() — without a stable, unique sort, PostgREST can return
+      # rows in a different order between pages: SILENT data loss (rows
+      # duplicated or dropped across pages), not a thrown error. Same bug class
+      # cost 88%/38% data loss in #2951/#2962; #3391 found 15 call sites still
+      # violating the contract (a comment-only requirement drifts). No opt-out —
+      # a fetchAllRows(...) call has no legitimate reason to omit .order().
+      - name: Test fetchAllRows order guard
+        if: ${{ !cancelled() }}
+        run: node --test scripts/check-fetchallrows-order.test.mjs
+
+      - name: Run fetchAllRows order guard
+        if: ${{ !cancelled() }}
+        run: node scripts/check-fetchallrows-order.mjs
+
+      # --- rls-classification-guard ---
+      # #4440 forward-guard: en tabel der er NAEVNT i
+      # docs/decisions/rls-no-policy-classification.md skal ogsaa vaere
+      # KLASSIFICERET der - egen sektion med mindst een fil:linje-reference for
+      # hvem der tilgaar den, eller en eksplicit konstatering af at ingen kodesti
+      # goer. #4439 listede 26 driftstabeller uden at klassificere nogen af dem;
+      # regnestykket gik op, dokumentet saa faerdigt ud, og det tog et
+      # selvstaendigt issue at opdage. Vagten er ren dokument-intern konsistens
+      # (ingen DB-adgang), saa den kan koere paa enhver PR.
+      - name: Test RLS classification guard
+        if: ${{ !cancelled() }}
+        run: node --test scripts/check-rls-classification-coverage.test.mjs
+
+      - name: Run RLS classification guard
+        if: ${{ !cancelled() }}
+        run: node scripts/check-rls-classification-coverage.mjs
+
+      # --- rate-limit-coverage-guard ---
+      # Forward-guard (#530): every requireAuth/requireAdmin route must have
+      # rate-limit coverage — an inline <x>Limiter middleware, or fall under a
+      # router.use(<prefix>, <x>Limiter) mount (e.g. the /admin-wide
+      # adminApiLimiter). Audit found 88 currently-uncovered routes (76 GET + 12
+      # POST, none of them under /admin — the 39 admin GET routes ARE already
+      # covered by the /admin mount) — too many to fix in one PR, so a baseline
+      # ratchet grandfathers them; only NEW uncovered routes fail the build. Not
+      # added to required status checks yet — owner decision, see PR body.
+      - name: Test rate-limit coverage guard
+        if: ${{ !cancelled() }}
+        run: node --test scripts/check-rate-limit-coverage.test.mjs
+
+      - name: Run rate-limit coverage guard
+        if: ${{ !cancelled() }}
+        run: node scripts/check-rate-limit-coverage.mjs
+
+      # --- unguarded-fetch-guard ---
+      # Forward-guard mod NYE `await fetch(...)` uden try/catch i frontend/src
+      # (#3628). fetch() REJECTER ved netvaerksudfald (mobil-WebKit: "TypeError:
+      # Load failed"), saa et bart await efter en setLoading(true) springer
+      # oprydningen over: knappen staar i "Gemmer..." og er typisk disabled.
+      # Samme fejlklasse slap igennem to backwards-checks i traek (#2719 -> #3619
+      # -> #3628), derfor en ratchet pr. fil: baseline laast efter #3628's
+      # oprydning, en net-ny ubeskyttet fetch fejler CI. Statisk scanner, ingen
+      # DB/runtime noedvendig.
+      - name: Test unguarded-fetch guard
+        if: ${{ !cancelled() }}
+        run: node --test scripts/lint-unguarded-fetch-in-handler.test.mjs
+
+      - name: Run unguarded-fetch guard
+        if: ${{ !cancelled() }}
+        run: node scripts/lint-unguarded-fetch-in-handler.mjs
+
+      # --- schema-column-guard ---
+      # Forward-guard mod "select mod en kolonne der ikke findes" (#3586). To bugs
+      # af nøjagtig samme klasse landede på én dag: #3572
+      # (season_standings.prize_money, latent i tre måneder) og Day-1-mailen
+      # (race_results.created_at, latent bag en feature-gate). Ingen af de tre lag
+      # kunne fange dem: createFakeSupabase er projektion-aware men ikke
+      # skema-aware (en manglende kolonne bliver bare `undefined`), fixturerne
+      # spejlede fejlen, og intet i CI læste det faktiske skema. Guarden opløser
+      # hver `.from("<relation>").select(...)` i backend/ mod
+      # database/schema-snapshot.json — en committet spejling af prods public-skema
+      # — og fejler på en kolonne skemaet ikke har. Statisk: CI rører ALDRIG
+      # databasen, den læser kun den committede JSON. Alt der ikke kan opløses
+      # EKSAKT (dynamisk tabel/select-argument, relation uden for snapshottet,
+      # uopløseligt embed) springes over og TÆLLES — falske positiver er værre end
+      # manglende dækning. Snapshot-refresh (kræver SUPABASE_DB_URL, kun lokalt):
+      # node scripts/lint-schema-columns.mjs --update-snapshot
+      - name: Test schema-column guard
+        if: ${{ !cancelled() }}
+        run: node --test scripts/lint-schema-columns.test.mjs
+
+      - name: Run schema-column guard
+        if: ${{ !cancelled() }}
+        run: node scripts/lint-schema-columns.mjs
+
+      # Forward-guard for #4333: public rummer 66 operationelle backup-tabeller
+      # fra tidligere haendelses-oprydninger (maalt mod prod 31/8/2026: 207
+      # relationer i information_schema.tables + 4 materialiserede views = 211,
+      # heraf 66 backups og 145 aegte). De holdes ude af de genererede typer,
+      # frontend/src/types/database.types.ts. De bliver med vilje BEVARET i
+      # database/schema-snapshot.json, fordi schema-column-guarden ovenfor skal
+      # kunne verificere de backend-scripts der faktisk selecter fra dem -
+      # se doc-blokken i scripts/lib/operational-backup-relations.mjs. Testen
+      # fejler hvis en `supabase gen types typescript` bliver committet uden
+      # strip-trinnet som `npm run types:gen` nu kaeder paa. Tabellerne selv
+      # roeres ikke: drop er destruktiv klasse, ejer-gated under #2259.
+      - name: Test backup-tables-out-of-types guard
+        if: ${{ !cancelled() }}
+        run: node --test scripts/strip-backup-tables-from-types.test.mjs
+
+      - name: Run backup-tables-out-of-types guard
+        if: ${{ !cancelled() }}
+        run: node scripts/strip-backup-tables-from-types.mjs --check
+
+      # --- supabase-ops-scripts ---
+      # Unit-tests for scripts/ops/*.mjs (#4014 logflade-vagt + #3978 advisor-
+      # sweep + #4453 Railway-logstroem-vagt) — ren klassifikationslogik
+      # (spike/ny-fejlklasse-detektion, allowlist-diff, tag-daekning), ingen
+      # netvaerkskald. De workflows der bruger scripterne
+      # (supabase-log-watch.yml, supabase-advisor-sweep.yml,
+      # railway-log-watch.yml) kalder Supabase Management-API'et hhv. Railway
+      # CLI'en med egne tokens og koeres ikke her.
+      - name: Test log-watch classification logic
+        if: ${{ !cancelled() }}
+        run: node --test scripts/ops/supabase-log-watch.test.mjs
+
+      - name: Test advisor-sweep allowlist diff
+        if: ${{ !cancelled() }}
+        run: node --test scripts/ops/supabase-advisor-sweep.test.mjs
+
+      # Indeholder forward-guarden fra #4453: fejler hvis et nyt
+      # console.<niveau>("[tag]") i backendens runtime hverken har en taerskel
+      # eller staar paa ignore-listen i railway-log-thresholds.json.
+      # Bemaerk: dette job (static-guards) staar IKKE blandt main's required
+      # status checks, saa denne guard er raadgivende - den goer jobbet roedt,
+      # men blokerer ikke merge. Skal den blokere, tilfoej jobbet til
+      # branch-protection og til scripts/ci-required-checks.json.
+      - name: Test railway-log-watch classification + tag coverage
+        if: ${{ !cancelled() }}
+        run: node --test scripts/ops/railway-log-watch.test.mjs
 
   migration-idempotency:
     runs-on: ubuntu-latest
@@ -397,65 +560,6 @@ jobs:
       - name: Run postgrest-cap guard
         run: node scripts/lint-postgrest-in-cap.mjs
 
-  pagination-guard:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    # Forward-guard mod PostgREST's TAVSE 1000-rækkers-loft på selects (#3331).
-    # Samme bug-klasse har ramt to gange: PCM rytter-matcher (2026-05-30, 88%
-    # af ryttere usynlige for matching) og sponsor race-day-bonus (#3315,
-    # 2026-08-04, ét menneskehold underbetalt 94%) — begge fanget af en
-    # spiller, ikke en test. Flagger `.from(<deny-listet tabel>).select(...)`
-    # uden `.limit()/.single()/.maybeSingle()/.range()` eller delegering til en
-    # fetchAllRows*-pagineringshelper. Deny-liste: race_results, riders,
-    # race_entries, race_stage_schedule, race_stage_profiles,
-    # finance_transactions, notifications, race_stage_moments (#4566).
-    # Baseline-ratchet (samme mønster som
-    # lint-ui-slop.mjs) grandfatherer ~120 pre-eksisterende, prod-verificerede
-    # sikre fund (single-team/single-race-scoping) — kun NYE overtrædelser
-    # fejler builden. Opt-out: `pagination-safe: <begrundelse>`-kommentar.
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Test pagination guard
-        run: node --test scripts/lint-pagination-guard.test.mjs
-
-      - name: Run pagination guard
-        run: node scripts/lint-pagination-guard.mjs
-
-  fetchallrows-order-guard:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    # Forward-guard: every fetchAllRows(...) call MUST carry a stable .order()
-    # (#3391). fetchAllRows (backend/lib/supabasePagination.js) pages through a
-    # table with .range() — without a stable, unique sort, PostgREST can return
-    # rows in a different order between pages: SILENT data loss (rows
-    # duplicated or dropped across pages), not a thrown error. Same bug class
-    # cost 88%/38% data loss in #2951/#2962; #3391 found 15 call sites still
-    # violating the contract (a comment-only requirement drifts). No opt-out —
-    # a fetchAllRows(...) call has no legitimate reason to omit .order().
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Test fetchAllRows order guard
-        run: node --test scripts/check-fetchallrows-order.test.mjs
-
-      - name: Run fetchAllRows order guard
-        run: node scripts/check-fetchallrows-order.mjs
-
   maybesingle-unique-scope-guard:
     runs-on: ubuntu-latest
     permissions:
@@ -483,60 +587,6 @@ jobs:
 
       - name: Run maybeSingle unique-scope guard
         run: node scripts/check-maybesingle-unique-scope.mjs
-
-  rls-classification-guard:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    # #4440 forward-guard: en tabel der er NAEVNT i
-    # docs/decisions/rls-no-policy-classification.md skal ogsaa vaere
-    # KLASSIFICERET der - egen sektion med mindst een fil:linje-reference for
-    # hvem der tilgaar den, eller en eksplicit konstatering af at ingen kodesti
-    # goer. #4439 listede 26 driftstabeller uden at klassificere nogen af dem;
-    # regnestykket gik op, dokumentet saa faerdigt ud, og det tog et
-    # selvstaendigt issue at opdage. Vagten er ren dokument-intern konsistens
-    # (ingen DB-adgang), saa den kan koere paa enhver PR.
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Test RLS classification guard
-        run: node --test scripts/check-rls-classification-coverage.test.mjs
-
-      - name: Run RLS classification guard
-        run: node scripts/check-rls-classification-coverage.mjs
-
-  rate-limit-coverage-guard:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    # Forward-guard (#530): every requireAuth/requireAdmin route must have
-    # rate-limit coverage — an inline <x>Limiter middleware, or fall under a
-    # router.use(<prefix>, <x>Limiter) mount (e.g. the /admin-wide
-    # adminApiLimiter). Audit found 88 currently-uncovered routes (76 GET + 12
-    # POST, none of them under /admin — the 39 admin GET routes ARE already
-    # covered by the /admin mount) — too many to fix in one PR, so a baseline
-    # ratchet grandfathers them; only NEW uncovered routes fail the build. Not
-    # added to required status checks yet — owner decision, see PR body.
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Test rate-limit coverage guard
-        run: node --test scripts/check-rate-limit-coverage.test.mjs
-
-      - name: Run rate-limit coverage guard
-        run: node scripts/check-rate-limit-coverage.mjs
 
   getuser-guard:
     runs-on: ubuntu-latest
@@ -642,33 +692,6 @@ jobs:
       - name: Run swallowed-catch guard
         run: node scripts/lint-swallowed-catches.mjs
 
-  unguarded-fetch-guard:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    # Forward-guard mod NYE `await fetch(...)` uden try/catch i frontend/src
-    # (#3628). fetch() REJECTER ved netvaerksudfald (mobil-WebKit: "TypeError:
-    # Load failed"), saa et bart await efter en setLoading(true) springer
-    # oprydningen over: knappen staar i "Gemmer..." og er typisk disabled.
-    # Samme fejlklasse slap igennem to backwards-checks i traek (#2719 -> #3619
-    # -> #3628), derfor en ratchet pr. fil: baseline laast efter #3628's
-    # oprydning, en net-ny ubeskyttet fetch fejler CI. Statisk scanner, ingen
-    # DB/runtime noedvendig.
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Test unguarded-fetch guard
-        run: node --test scripts/lint-unguarded-fetch-in-handler.test.mjs
-
-      - name: Run unguarded-fetch guard
-        run: node scripts/lint-unguarded-fetch-in-handler.mjs
-
   silent-mutation-guard:
     runs-on: ubuntu-latest
     permissions:
@@ -759,93 +782,6 @@ jobs:
 
       - name: Run unchecked-supabase-mutation guard
         run: node scripts/lint-unchecked-supabase-mutation.mjs
-
-  schema-column-guard:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    # Forward-guard mod "select mod en kolonne der ikke findes" (#3586). To bugs
-    # af nøjagtig samme klasse landede på én dag: #3572
-    # (season_standings.prize_money, latent i tre måneder) og Day-1-mailen
-    # (race_results.created_at, latent bag en feature-gate). Ingen af de tre lag
-    # kunne fange dem: createFakeSupabase er projektion-aware men ikke
-    # skema-aware (en manglende kolonne bliver bare `undefined`), fixturerne
-    # spejlede fejlen, og intet i CI læste det faktiske skema. Guarden opløser
-    # hver `.from("<relation>").select(...)` i backend/ mod
-    # database/schema-snapshot.json — en committet spejling af prods public-skema
-    # — og fejler på en kolonne skemaet ikke har. Statisk: CI rører ALDRIG
-    # databasen, den læser kun den committede JSON. Alt der ikke kan opløses
-    # EKSAKT (dynamisk tabel/select-argument, relation uden for snapshottet,
-    # uopløseligt embed) springes over og TÆLLES — falske positiver er værre end
-    # manglende dækning. Snapshot-refresh (kræver SUPABASE_DB_URL, kun lokalt):
-    # node scripts/lint-schema-columns.mjs --update-snapshot
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Test schema-column guard
-        run: node --test scripts/lint-schema-columns.test.mjs
-
-      - name: Run schema-column guard
-        run: node scripts/lint-schema-columns.mjs
-
-      # Forward-guard for #4333: public rummer 66 operationelle backup-tabeller
-      # fra tidligere haendelses-oprydninger (maalt mod prod 31/8/2026: 207
-      # relationer i information_schema.tables + 4 materialiserede views = 211,
-      # heraf 66 backups og 145 aegte). De holdes ude af de genererede typer,
-      # frontend/src/types/database.types.ts. De bliver med vilje BEVARET i
-      # database/schema-snapshot.json, fordi schema-column-guarden ovenfor skal
-      # kunne verificere de backend-scripts der faktisk selecter fra dem -
-      # se doc-blokken i scripts/lib/operational-backup-relations.mjs. Testen
-      # fejler hvis en `supabase gen types typescript` bliver committet uden
-      # strip-trinnet som `npm run types:gen` nu kaeder paa. Tabellerne selv
-      # roeres ikke: drop er destruktiv klasse, ejer-gated under #2259.
-      - name: Test backup-tables-out-of-types guard
-        run: node --test scripts/strip-backup-tables-from-types.test.mjs
-
-      - name: Run backup-tables-out-of-types guard
-        run: node scripts/strip-backup-tables-from-types.mjs --check
-
-  supabase-ops-scripts:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    # Unit-tests for scripts/ops/*.mjs (#4014 logflade-vagt + #3978 advisor-
-    # sweep + #4453 Railway-logstroem-vagt) — ren klassifikationslogik
-    # (spike/ny-fejlklasse-detektion, allowlist-diff, tag-daekning), ingen
-    # netvaerkskald. De workflows der bruger scripterne
-    # (supabase-log-watch.yml, supabase-advisor-sweep.yml,
-    # railway-log-watch.yml) kalder Supabase Management-API'et hhv. Railway
-    # CLI'en med egne tokens og koeres ikke her.
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Test log-watch classification logic
-        run: node --test scripts/ops/supabase-log-watch.test.mjs
-
-      - name: Test advisor-sweep allowlist diff
-        run: node --test scripts/ops/supabase-advisor-sweep.test.mjs
-
-      # Indeholder forward-guarden fra #4453: fejler hvis et nyt
-      # console.<niveau>("[tag]") i backendens runtime hverken har en taerskel
-      # eller staar paa ignore-listen i railway-log-thresholds.json.
-      # Bemaerk: supabase-ops-scripts staar IKKE blandt main's required status
-      # checks, saa guarden er raadgivende - den goer jobbet roedt, men
-      # blokerer ikke merge. Skal den blokere, tilfoej jobbet til
-      # branch-protection og til scripts/ci-required-checks.json.
-      - name: Test railway-log-watch classification + tag coverage
-        run: node --test scripts/ops/railway-log-watch.test.mjs
 
   calendar-invariant-ci-gate:
     runs-on: ubuntu-latest

@@ -243,15 +243,6 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // spillere paa Vercel-preview mod prod-backenden foer UI-merge. Fjern begge
   // entries naar matrix-PR'en er merged.
   "GET /races/selection/season",
-  // Mandatets Boardroom-side (#4557/#3514, PR #4570): API-first, samme moenster
-  // som saesonmatrixens to entries ovenfor. UI-kalderen bygges parallelt i
-  // frontend-PR #4569 mod den bindende response-kontrakt i #4557. Endpointet
-  // returnerer {enabled:false} og laeser INGEN skygge-tabel naar mandat-
-  // modellens kill-switch (board_mandate_model_enabled) er off, saa der er
-  // ingen data-liveness-risiko ved at lade det staa uden kalder indtil #4569
-  // merges. Fjern denne entry naar #4569 er merged og faktisk kalder
-  // GET /board/room — grep efter "board/room" i frontend/src/.
-  "GET /board/room",
   // #2455 planner-assistent (PR #2506): HAR en frontend-kalder — usePlanner.js:96
   // kalder mutate("/dismiss-suggestions", "POST") hvor helperen prefikser
   // /peak-plans, så den statiske path-scan kan ikke matche det fulde endpoint.
