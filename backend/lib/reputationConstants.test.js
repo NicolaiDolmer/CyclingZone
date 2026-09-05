@@ -10,7 +10,6 @@ import {
   W_CLASS,
   FLOOR_CREDITS,
   SOFT_CAP,
-  NO_FLOOR_CREDIT_CLASSES,
   defaultConstantsBundle,
   buildConstants,
 } from "./reputationConstants.js";
