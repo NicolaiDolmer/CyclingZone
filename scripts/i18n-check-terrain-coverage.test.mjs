@@ -2,7 +2,7 @@
 // Kør: node --test scripts/i18n-check-terrain-coverage.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { findMissingTerrainKeys, singleRaceArchetypes } from "./i18n-check-terrain-coverage.mjs";
+import { findMissingTerrainKeys, singleRaceArchetypes, findMissingIconCoverage } from "./i18n-check-terrain-coverage.mjs";
 
 test("findMissingTerrainKeys: intet mangler når alle værdier har nøgler i alle sprog", () => {
   const missing = findMissingTerrainKeys(
@@ -51,16 +51,29 @@ test("singleRaceArchetypes: filtrerer kind:\"stage\" fra (tour/week-arketyper vi
   assert.deepEqual(values.sort(), ["flat_sprint", "itt_classic"]);
 });
 
+test("findMissingIconCoverage: fanger en profile_type uden glyf-navn", () => {
+  const missing = findMissingIconCoverage(["flat", "rolling", "gravel"], { flat: "RoadIcon", rolling: "RollingIcon" });
+  assert.deepEqual(missing, ["gravel"]);
+});
+
+test("findMissingIconCoverage: tom liste naar alt har et glyf-navn", () => {
+  const missing = findMissingIconCoverage(["flat", "rolling"], { flat: "RoadIcon", rolling: "RollingIcon" });
+  assert.deepEqual(missing, []);
+});
+
 // Integrationstjek: importér de ÆGTE generator-konstanter + de ÆGTE locale-filer
 // og kør samme sammenligning som CLI-scriptet. Dette er selve forward-guarden —
-// den fejler hvis nogen tilføjer en ny CALENDAR_TERRAIN_BUCKETS-bucket eller en ny
-// kind:"single"-arketype uden at tilføje de tilsvarende en+da-locale-nøgler.
-test("integration: alle CALENDAR_TERRAIN_BUCKETS + kind:single-arketyper har en+da-dækning i de ægte locale-filer", async () => {
+// den fejler hvis nogen tilføjer en ny CALENDAR_TERRAIN_BUCKETS-bucket, en ny
+// kind:"single"-arketype eller en ny PROFILE_TYPE_KEYS-værdi (#4748/#4487) uden
+// at tilføje de tilsvarende en+da-locale-nøgler / glyf-navn.
+test("integration: alle CALENDAR_TERRAIN_BUCKETS + kind:single-arketyper + PROFILE_TYPE_KEYS har en+da-dækning i de ægte locale-filer", async () => {
   const { readFileSync } = await import("node:fs");
   const { join } = await import("node:path");
   const { fileURLToPath } = await import("node:url");
   const { CALENDAR_TERRAIN_BUCKETS } = await import("../backend/lib/raceCalendar.js");
   const { ARCHETYPE_PROFILES } = await import("../backend/lib/raceStageProfileGenerator.js");
+  const { PROFILE_TYPE_KEYS } = await import("../frontend/src/lib/stageProfileConfig.js");
+  const { TERRAIN_TYPE_ICON_NAME } = await import("../frontend/src/lib/terrainTypeIcons.ts");
 
   const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
   const LOCALES_DIR = join(ROOT, "frontend", "public", "locales");
@@ -68,6 +81,7 @@ test("integration: alle CALENDAR_TERRAIN_BUCKETS + kind:single-arketyper har en+
 
   const plannerByLng = { en: loadJSON("en", "planner"), da: loadJSON("da", "planner") };
   const riderByLng = { en: loadJSON("en", "rider"), da: loadJSON("da", "rider") };
+  const racesByLng = { en: loadJSON("en", "races"), da: loadJSON("da", "races") };
 
   const calendarMissing = findMissingTerrainKeys(CALENDAR_TERRAIN_BUCKETS, plannerByLng, "terrain");
   assert.deepEqual(calendarMissing, [], `planner.json terrain mangler: ${JSON.stringify(calendarMissing)}`);
@@ -75,4 +89,10 @@ test("integration: alle CALENDAR_TERRAIN_BUCKETS + kind:single-arketyper har en+
   const archetypeValues = singleRaceArchetypes(ARCHETYPE_PROFILES);
   const archetypeMissing = findMissingTerrainKeys(archetypeValues, riderByLng, "profile.results.terrain");
   assert.deepEqual(archetypeMissing, [], `rider.json profile.results.terrain mangler: ${JSON.stringify(archetypeMissing)}`);
+
+  const profileLabelMissing = findMissingTerrainKeys(PROFILE_TYPE_KEYS, racesByLng, "detail.profileType");
+  assert.deepEqual(profileLabelMissing, [], `races.json detail.profileType mangler: ${JSON.stringify(profileLabelMissing)}`);
+
+  const iconMissing = findMissingIconCoverage(PROFILE_TYPE_KEYS, TERRAIN_TYPE_ICON_NAME);
+  assert.deepEqual(iconMissing, [], `terrainTypeIcons.ts TERRAIN_TYPE_ICON_NAME mangler: ${JSON.stringify(iconMissing)}`);
 });

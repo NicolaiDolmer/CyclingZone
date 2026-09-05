@@ -4,6 +4,7 @@ import { hasRouteData, finaleFactorPct } from "../../lib/stageRouteProfile.js";
 import StageProfileCard from "./StageProfileCard.jsx";
 import TerrainDNABar from "./TerrainDNABar.jsx";
 import Tooltip from "../ui/Tooltip.jsx";
+import TerrainTypeGlyph from "./TerrainTypeGlyph.jsx";
 
 // Valgt-etape-panel for et KOMMENDE loeb: ruten + finale-typen + terraen-DNA i
 // EET kort. profile mangler/ukendt terraen → null (graceful, som StageProfileCard).
@@ -70,8 +71,13 @@ export default function StageDetailPanel({
         {/* #4628: etape-nummeret staar allerede i graf-kortets overskrift naar
             ruten findes — gentag det ikke her (PAGE_TEMPLATES: "Nothing appears
             twice"). Uden rutedata er denne linje eneste sted det staar. */}
-        <p className="text-cz-1 text-sm font-semibold">
+        <p className="text-cz-1 text-sm font-semibold inline-flex items-center gap-1.5">
           {!routed && stageLabel && <span className="text-cz-3 font-normal me-1.5">{stageLabel} ·</span>}
+          {/* #4748/#4487: samme ikon + label-tabel som StageStripe og
+              RaceDetailPage's StageTerrainTag — sprint og rolling får hver sit
+              ikon her, ikke kun i striben. Teksten var allerede synlig (ikke
+              hover-only); ikonet gør den også skelnelig ved et blik. */}
+          <TerrainTypeGlyph profileType={profile.profile_type} size={14} />
           {t(`detail.${labelKey}`)}
         </p>
         {/* #2756: uforklarede stage-ending-typer ("Summit"/"Downhill" var indlysende,

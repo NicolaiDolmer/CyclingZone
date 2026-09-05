@@ -334,6 +334,19 @@ export function SprintIcon(props) {
   );
 }
 
+// #4748/#4487: bolget/rolling-etaper delte foer RoadIcon (flad linje) med sprint-
+// etaper, selvom ejeren og spillerne (staff-chat 3/9) er enige om at de to profiler
+// ikke er samme terraen ("sprint og boelget er ikke samme profil og dna"). Et blidt
+// dobbelt-boelge-forloeb er den mindste form der laeser tydeligt anderledes end
+// RoadIcon's rette linje OG MountainIcon's spidse toppe ved 13-14 px.
+export function RollingIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M2 16c2.5-6 4.5-6 7 0s4.5 6 7 0 4.5-6 6-3" />
+    </IconBase>
+  );
+}
+
 export function TimeTrialIcon(props) {
   return (
     <IconBase {...props}>

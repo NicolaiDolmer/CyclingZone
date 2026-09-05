@@ -666,7 +666,7 @@
     },
     "buckets": {
       "flat": "Flat",
-      "hilly": "Hills",
+      "hilly": "Hilly",
       "mountain": "Mountains",
       "cobbles": "Cobbles",
       "itt": "Time trial"
