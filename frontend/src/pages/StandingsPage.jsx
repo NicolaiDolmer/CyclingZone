@@ -15,7 +15,7 @@ import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import useFlipRows from "../hooks/useFlipRows";
 import {
   EmptyState, ErrorState, Input, Select, Button, DataTable, ZonePill, SkeletonLines, PodiumIcon, BlockedNote,
-  ArrowUpIcon, ArrowDownIcon,
+  ArrowUpIcon, ArrowDownIcon, CheckIcon,
 } from "../components/ui";
 import { useBlockedAction } from "../lib/useBlockedAction.js";
 import { WRAP } from "../components/ui/dataTableStyles.js";
@@ -462,6 +462,10 @@ export default function StandingsPage() {
   // toggle/rang, online-prik, holdlink, badges (leder/dig/AI) + zone-pill
   // (op-/nedrykning). Delt mellem Linse A- og B-kolonnerne så adfærden er identisk
   // uanset sortering.
+  // #4749: rang-badgen ER compare-checkboxen, men uden en synlig kant lignede den
+  // bare et rangtal — ingen affordance for at den kunne klikkes. Fast hairline-
+  // kant (også i hvile) + udfyldt accent-kant + CheckIcon ved valg gør den
+  // genkendelig som en checkbox, ikke som statisk tekst.
   function renderTeamCell(s, i) {
     const isSelected = selected.includes(s.team_id);
     const isLeader = lens === LENS_STANDINGS && i === 0;
@@ -473,10 +477,12 @@ export default function StandingsPage() {
           aria-pressed={isSelected}
           aria-label={t("compare.select", { team: s.team?.name })}
           title={t("compare.selectHint")}
-          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz font-data text-xs font-bold transition-colors
-            ${isSelected ? "bg-cz-accent/15 text-cz-accent-t" : "hover:bg-cz-subtle " + (i === 0 ? "text-cz-accent-t" : i <= 2 ? "text-cz-2" : "text-cz-3")}`}
+          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-cz border font-data text-xs font-bold transition-colors
+            ${isSelected
+              ? "border-cz-accent bg-cz-accent text-cz-on-accent"
+              : "border-cz-border hover:border-cz-accent/50 hover:bg-cz-subtle " + (i === 0 ? "text-cz-accent-t" : i <= 2 ? "text-cz-2" : "text-cz-3")}`}
         >
-          {i + 1}
+          {isSelected ? <CheckIcon size={13} aria-hidden="true" /> : (i + 1)}
         </button>
         {/* Online-prik (#1609, foldet ind fra TeamsPage): grøn = last_seen < 5 min. */}
         <span aria-hidden="true"
@@ -702,6 +708,12 @@ export default function StandingsPage() {
           />
         </div>
         <div className="ms-auto flex flex-col items-end gap-1">
+          {/* #4749: fast tæller ("1 af 2 valgt") uafhængigt af blokeret-tilstanden
+              nedenfor — den skal vise fremdrift ved 0/1/2 valgte, ikke kun forklare
+              hvorfor knappen er låst. */}
+          <p className="text-cz-3 text-3xs tabular-nums">
+            {t("compare.counter", { count: selected.length, max: 2 })}
+          </p>
           <Button
             variant="secondary" size="sm"
             onClick={compareBlock.guard(openCompare)}
