@@ -12464,13 +12464,24 @@ const SPONSOR_INCOME_TX_TYPES = [
   "sponsor_objective_bonus",
 ];
 
+// #4265: Sponsors-sidens Payments-fane viser divisions-tillægget (#4376) i
+// Guaranteed-gruppen — det ER sponsorpenge (SPONSOR_RULES.md §3), men det
+// krediteres som sin EGEN finance-type ('division_adjustment'), ikke som
+// 'sponsor'. Kun den SÆSON-scopede liste udvides: livstids-`earnings` (og
+// dermed Finance-sidens kontraktpanel) beholder præcis den betydning den
+// altid har haft.
+const SPONSOR_SEASON_TX_TYPES = [...SPONSOR_INCOME_TX_TYPES, "division_adjustment"];
+
 // GET /api/sponsor/contract — holdets aktive sponsor-kontrakt (eller null) +
 // akkumuleret sponsorindtjening siden kontraktstart (#2948: kontraktpanelet
 // viser hvad aftalen faktisk har givet, pr. kilde).
 //
 // Udvidet med `season` — RÅ (ugrupperede) sponsor-transaktioner for den
 // AKTIVE sæson, til Finance-sidens "Sponsor income"-sektion (ejer-godkendt
-// mockup 4/8). Grupperings-/
+// mockup 4/8) og Sponsors-sidens Payments-fane (#4265). `season.stagesTotal`
+// er sæsonens etapetal for holdets EGEN pulje — uden det kan Sponsors-siden
+// hverken vise "stages ridden X of Y" eller hvad de resterende etaper er værd.
+// Grupperings-/
 // summerings-logikken er bevidst IKKE her — den bor som en ren, unit-testet
 // funktion i frontend/src/lib/sponsorIncomeBreakdown.js, så den kan testes
 // uden en DB. Racenavn embedded via FK (samme mønster som finance-report).
@@ -12517,11 +12528,28 @@ router.get("/sponsor/contract", requireAuth, async (req, res) => {
           .select("id, type, amount, description, metadata, created_at, race_id, race:race_id(name)")
           .eq("team_id", req.team.id)
           .eq("season_id", activeSeason.id)
-          .in("type", SPONSOR_INCOME_TX_TYPES)
+          .in("type", SPONSOR_SEASON_TX_TYPES)
           .order("created_at", { ascending: true });
         if (seasonTxError) throw seasonTxError;
+        // #4265: sæsonens etapetal for holdets EGEN pulje. Uden det kan
+        // Sponsors-siden hverken vise "stages ridden 33 of 124" eller hvad de
+        // resterende etaper er værd — og et gæt er forbudt (P11: mangler tallet,
+        // vises det ikke). pagination-safe: ét hold, én pulje, én sæson — S3's
+        // største pulje har under 100 løb, langt under PostgREST-loftet.
+        let stagesTotal = null;
+        if (req.team.league_division_id) {
+          const { data: poolRaces, error: poolRacesError } = await supabase
+            .from("races")
+            .select("stages")
+            .eq("season_id", activeSeason.id)
+            .eq("league_division_id", req.team.league_division_id);
+          if (poolRacesError) throw poolRacesError;
+          const summed = (poolRaces || []).reduce((sum, r) => sum + (Number(r.stages) || 1), 0);
+          stagesTotal = summed > 0 ? summed : null;
+        }
         season = {
           number: activeSeason.number,
+          stagesTotal,
           transactions: (seasonRows || []).map((r) => ({
             id: r.id,
             type: r.type,

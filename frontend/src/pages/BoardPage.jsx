@@ -11,7 +11,6 @@ import { Link } from "react-router";
 import BoardEmptyState from "../components/BoardEmptyState";
 import MonogramAvatar from "../components/MonogramAvatar";
 import BoardSatisfactionTimeline from "../components/BoardSatisfactionTimeline";
-import SponsorOfferModal from "../components/SponsorOfferModal";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
@@ -2435,10 +2434,8 @@ export default function BoardPage() {
   const [dnaDialogOpen, setDnaDialogOpen] = useState(false);
   const [renewalQueue, setRenewalQueue] = useState([]); // ['3yr', '1yr'] sorted by PLAN_SEQUENCE
   const [renewalQueueIdx, setRenewalQueueIdx] = useState(0);
-  // #1663 · sponsor-forhandling: state hentet fra GET /api/sponsor/offers
-  const [sponsorState, setSponsorState] = useState(null); // { negotiable, upcomingSeasonNumber, offers, pendingVariant } | null
-  const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
-  const [accepting, setAccepting] = useState(false);
+  // #4265: sponsor-forhandlingen bor paa /sponsors nu (ejer-direktiv 25/8,
+  // BOARD_RULES.md §5) — Board har ikke laengere state, fetch eller modal for den.
   // #2463 · loadAll() kører ved HVER realtime-refetch (ikke kun mount). Uden denne
   // guard genåbner auto-open-blokken nedenfor setup-wizarden ved hver refetch, selv
   // efter spilleren har lukket den via fejl-udgangen (previewError → wizardClosable) —
@@ -2451,16 +2448,6 @@ export default function BoardPage() {
   // bestyrelsen ændrer sig; /board manglede denne — så modifier/mål kunne stå
   // stale indtil manuel reload. Samme mønster + debounce som DashboardPage.
   useRealtimeRefetch("board-live", BOARD_REALTIME_TABLES, loadAll);
-
-  // #1663 · hent sponsor-forhandlings-state (fejl håndteres stille — må ikke vælte Board)
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const state = await fetchSponsorOffers();
-      if (alive && state) setSponsorState(state);
-    })();
-    return () => { alive = false; };
-  }, []);
 
   useEffect(() => {
     if (!wizardPlanType) return;
@@ -2570,51 +2557,6 @@ export default function BoardPage() {
     }
 
     setLoading(false);
-  }
-
-  // #1663 · GET /api/sponsor/offers → { negotiable, upcomingSeasonNumber, offers, pendingVariant }.
-  // Returnerer null ved fejl (kalderen lader Board stå urørt).
-  async function fetchSponsorOffers() {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return null;
-      const res = await fetch(`${API}/api/sponsor/offers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return null;
-      return await res.json().catch(() => null);
-    } catch (e) {
-      console.error("BoardPage sponsor offers load failed", e);
-      return null;
-    }
-  }
-
-  // #1663 · POST /api/sponsor/offers/accept { variant }. Ved succes: refetch state
-  // (så pendingVariant opdateres) + luk modal. Fejl håndteres stille (logget).
-  async function handleAcceptSponsor(variant) {
-    setAccepting(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return;
-      const res = await fetch(`${API}/api/sponsor/offers/accept`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ variant }),
-      });
-      if (!res.ok) {
-        console.error("BoardPage sponsor accept failed", res.status);
-        return;
-      }
-      const refreshed = await fetchSponsorOffers();
-      if (refreshed) setSponsorState(refreshed);
-      setSponsorModalOpen(false);
-    } catch (e) {
-      console.error("BoardPage sponsor accept error", e);
-    } finally {
-      setAccepting(false);
-    }
   }
 
   // KONTRAKT (#3628): denne funktion KASTER ALDRIG. Den returnerer enten
@@ -3070,37 +3012,19 @@ export default function BoardPage() {
 
       <BoardIdentityCard identityProfile={identityProfile} teamDna={teamDna} />
 
-      {/* #1663 · Sponsor-CTA — kun når der reelt er åbne tilbud at vælge imellem.
-          #1795 · HELE kortet er klik-target (var flest rage clicks i spillet: kortet
-          så klikbart ud, men kun knappen virkede). Følger ClubDnaBadge-mønstret —
-          ydre <button> + den indre CTA som visuel affordance (span, ikke nested
-          knap, som er ugyldig HTML). */}
-      {sponsorState?.negotiable && sponsorState.offers.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setSponsorModalOpen(true)}
-          className="w-full text-left bg-cz-card border border-cz-border rounded-cz p-5 mt-5
-            hover:border-cz-accent/40 hover:bg-cz-subtle/40 transition-colors group"
+      {/* #4265 (ejer-direktiv 25/8: "bestyrelsen og sponsorere adskilles i ui") —
+          sponsor-forhandlingen ejes af /sponsors nu. Board beholder ét stille
+          link, ikke et kort med guld-CTA: bestyrelsen bestemmer ikke aftalens
+          størrelse, kun modifieren (BOARD_RULES.md §5). */}
+      <div className="mt-5">
+        <Link
+          to="/sponsors"
+          className="inline-flex items-center gap-1 text-xs font-medium text-cz-accent-t hover:underline"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-cz-1 font-semibold text-sm">
-                {sponsorState.pendingVariant
-                  ? tSponsor("cta.pendingTitle", { season: sponsorState.upcomingSeasonNumber })
-                  : tSponsor("cta.title", { season: sponsorState.upcomingSeasonNumber })}
-              </h2>
-              <p className="text-cz-3 text-sm mt-1">
-                {sponsorState.pendingVariant ? tSponsor("cta.pendingBody") : tSponsor("cta.body")}
-              </p>
-            </div>
-            <span
-              className="flex-shrink-0 py-2 px-4 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-cz group-hover:brightness-110 transition-all"
-            >
-              {sponsorState.pendingVariant ? tSponsor("cta.changeButton") : tSponsor("cta.button")}
-            </span>
-          </div>
-        </button>
-      )}
+          {tSponsor("page.title")}
+          <ChevronRightIcon size={13} aria-hidden="true" />
+        </Link>
+      </div>
 
       {/* S-02f · Klub-DNA */}
       {!isBaselinePhase && teamDna && <ClubDnaBadge dna={teamDna} onSelect={() => setDnaDialogOpen(true)} />}
@@ -3422,18 +3346,6 @@ export default function BoardPage() {
         <ClubDnaDialog dna={teamDna} onClose={() => setDnaDialogOpen(false)} canRechoose={dnaCanRechoose} />
       )}
 
-      {/* #1663 · Sponsor-tilbuds-modal — forhandling for kommende sæson */}
-      <SponsorOfferModal
-        open={sponsorModalOpen}
-        onClose={() => setSponsorModalOpen(false)}
-        offers={sponsorState?.offers ?? []}
-        pendingVariant={sponsorState?.pendingVariant}
-        upcomingSeasonNumber={sponsorState?.upcomingSeasonNumber}
-        stageCounts={sponsorState?.stageCounts ?? null}
-        teamDivision={sponsorState?.teamDivision ?? null}
-        onAccept={handleAcceptSponsor}
-        accepting={accepting}
-      />
     </div>
   );
 }
