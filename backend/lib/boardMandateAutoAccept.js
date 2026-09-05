@@ -45,10 +45,12 @@ export async function processMandateAutoAcceptCron({
   const summary = { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, errors: 0 };
 
   // Kill-switch: samme fail-safe-disciplin som alle andre mandat-indgange.
-  // Ingen isBetaTester-parameter her — cronen kører for HELE populationen
-  // (samme "off/beta/on" opslag som resten, beta-testere er en subset af
-  // "on" for enkelt-viewer-endpoints, ikke relevant for en batch-cron).
-  if (!await isBoardMandateModelEnabled(supabase)) return summary;
+  // Ingen isBetaTester-parameter her — cronen kører for HELE populationen og
+  // har ingen viewer at spørge. #4839: derfor `engineWrite: true`, så 'beta'
+  // behandles som 'on' for denne SKRIVNING; uden den stod cronen stille i beta,
+  // og mandater hobede sig op i 'proposed' forbi deres auto_accept_deadline.
+  // 'off' stopper stadig alt.
+  if (!await isBoardMandateModelEnabled(supabase, { engineWrite: true })) return summary;
 
   const { data: proposedMandates, error } = await supabase
     .from("board_mandates")
@@ -130,6 +132,10 @@ async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, n
       request: null,
       visionSlot: null,
       now,
+      // #4839: cron-skrivning uden viewer — 'beta' skal underskrive for alle
+      // hold, ellers returnerer signMandate null og cronen tæller et
+      // auto_accepted der aldrig skete.
+      engineWrite: true,
       signedVia: "auto_accept",
     });
     result.auto_accepted = true;

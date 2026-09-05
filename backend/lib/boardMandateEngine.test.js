@@ -807,3 +807,81 @@ test("proposeMandateForNewTeam: nyt hold får confidence=50 + mandat for NUVÆRE
   assert.equal(row.season_id, "s3");
   assert.equal(row.focus, "balanced", "intet forrige fokus → default balanced");
 });
+
+// =============================================================================
+// #4839 · Skrive-gaten i beta: motoren bygger skyggedata for ALLE hold, mens
+// læse-gaten (loadRelation / Boardroom) stadig kun er åben for beta-testere.
+// =============================================================================
+
+test("#4839 applyWeekendSync: beta uden viewer → skriver kvittering for alle hold", async () => {
+  const captures = {};
+  const supabase = makeShadowSupabase({ flagValue: "beta", captures });
+  const result = await applyWeekendSync(supabase, {
+    teamId: "t1", seasonId: "s1", evaluation: weekendEvaluation, raceId: "race-9", raceName: "Giro",
+  });
+  assert.equal(result.confidence, 65);
+  assert.equal(captures.relationUpdates.length, 1, "board_relations.updated_at skal bevæge sig i beta");
+  assert.equal(captures.events[0].mandate_id, "mandate-1");
+});
+
+test("#4839 applySeasonEndSync: beta uden viewer → skriver sæson-slut-kvittering", async () => {
+  const captures = {};
+  const supabase = makeShadowSupabase({ flagValue: "beta", captures });
+  const result = await applySeasonEndSync(supabase, {
+    teamId: "t1", seasonId: "s1", seasonNumber: 3, standing: {}, team: teamWithRiders,
+    mandateEvaluation: weekendEvaluation,
+  });
+  assert.ok(result && !result.skipped);
+  assert.ok(captures.events.length >= 1);
+});
+
+test("#4839 unlockExtraordinaryRequestForTeam: beta uden viewer → låser op", async () => {
+  const supabase = makeShadowSupabase({ flagValue: "beta" });
+  const result = await unlockExtraordinaryRequestForTeam(supabase, { teamId: "t1", seasonId: "s1" });
+  assert.equal(result.unlocked, true);
+});
+
+test("#4839 proposeNextMandate: beta uden viewer → foreslår mandat", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    flagValue: "beta",
+    seasons: [{ id: "season-4", number: 4 }],
+  });
+  const result = await proposeNextMandate(supabase, { teamId: "t1", targetSeasonNumber: 4, confidence: 60 });
+  assert.equal(result.season_number, 4);
+  assert.equal(supabase._state.mandates.length, 1);
+});
+
+test("#4839 proposeMandateForNewTeam: beta uden viewer → foreslår mandat", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    flagValue: "beta",
+    seasons: [{ id: "season-4", number: 4 }],
+  });
+  const result = await proposeMandateForNewTeam(supabase, { teamId: "t1", currentSeasonNumber: 4 });
+  assert.equal(result.season_number, 4);
+});
+
+test("#4839 kill-switch off slår stadig ALT fra, også motor-skrivninger", async () => {
+  const captures = {};
+  const off = makeShadowSupabase({ flagValue: "off", captures });
+  assert.equal(await applyWeekendSync(off, { teamId: "t1", seasonId: "s1", evaluation: weekendEvaluation }), null);
+  assert.equal(await applySeasonEndSync(off, {
+    teamId: "t1", seasonId: "s1", seasonNumber: 3, standing: {}, team: teamWithRiders,
+    mandateEvaluation: weekendEvaluation,
+  }), null);
+  assert.equal(await unlockExtraordinaryRequestForTeam(off, { teamId: "t1", seasonId: "s1" }), null);
+  assert.equal(captures.relationUpdates.length, 0);
+  assert.equal(captures.events.length, 0);
+
+  const offLifecycle = makeMandateLifecycleSupabase({ flagValue: "off", seasons: [{ id: "season-4", number: 4 }] });
+  assert.equal(await proposeNextMandate(offLifecycle, { teamId: "t1", targetSeasonNumber: 4, confidence: 60 }), null);
+  assert.equal(await advanceMandateAtSeasonEnd(offLifecycle, { teamId: "t1", seasonId: "s3", currentSeasonNumber: 3 }), null);
+  assert.equal(await proposeMandateForNewTeam(offLifecycle, { teamId: "t1", currentSeasonNumber: 4 }), null);
+  assert.equal(offLifecycle._state.mandates.length, 0);
+});
+
+test("#4839 læse-gaten er UÆNDRET: beta + almindelig spiller læser ikke", async () => {
+  const supabase = makeSupabase({ flagValue: "beta", relation: { id: "r1", confidence: 66 } });
+  assert.equal(await loadRelation(supabase, "team-1"), null, "ingen viewer-flag → ingen læsning");
+  assert.equal(await loadRelation(supabase, "team-1", { isBetaTester: false }), null);
+  assert.ok(await loadRelation(supabase, "team-1", { isBetaTester: true }), "beta-tester læser stadig");
+});

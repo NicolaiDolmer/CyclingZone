@@ -163,3 +163,38 @@ test("processMandateAutoAcceptCron: en AKTIV spiller (last_seen for nylig) auto-
   assert.equal(result.auto_accepted, 0, "aktiv spiller beskyttes af det lange vindue (#3579-mønsteret)");
   assert.equal(supabase._state.mandates[0].status, "proposed", "urørt");
 });
+
+// ── #4839: cronen er en motor-skrivning — beta tæller som on ─────────────────
+
+test("#4839 processMandateAutoAcceptCron: beta → bestyrelsen underskriver stadig (cron har ingen viewer)", async () => {
+  const openedAt = new Date("2026-09-03T00:00:00Z");
+  const now = new Date(openedAt.getTime() + 5 * 24 * 60 * 60 * 1000 + 1000);
+  const supabase = makeCronSupabase({
+    flagValue: "beta",
+    mandates: [{
+      id: "m1", team_id: "t1", season_number: 4, status: "proposed", focus: "balanced",
+      goals: [{ type: "top_n_finish", target: 4, satisfaction_bonus: 10, satisfaction_penalty: 6 }],
+      adjustments_allowed: 2, proposed_at: openedAt.toISOString(), auto_accept_deadline: null,
+      source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+    }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1" }],
+    users: [{ id: "u1", last_seen: null }],
+  });
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(result.auto_accepted, 1, "beta må ikke efterlade mandater hængende forbi deres deadline");
+  assert.equal(supabase._state.mandates[0].status, "active");
+});
+
+test("#4839 processMandateAutoAcceptCron: off → stadig no-op, også som motor-skrivning", async () => {
+  const supabase = makeCronSupabase({
+    flagValue: "off",
+    mandates: [{ id: "m1", team_id: "t1", status: "proposed", proposed_at: "2026-09-03T00:00:00Z", auto_accept_deadline: null }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1" }],
+    users: [{ id: "u1", last_seen: null }],
+  });
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified) });
+  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, errors: 0 });
+  assert.equal(supabase._state.mandates[0].status, "proposed");
+});

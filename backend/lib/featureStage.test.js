@@ -27,3 +27,22 @@ test("readFlagStage: fail-safe null + happy path", async () => {
   const onClient = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: "beta" }, error: null }) }) }) }) };
   assert.equal(await readFlagStage(onClient, "k"), "beta");
 });
+
+// ── #4839: skrive-gate vs. læse-gate ─────────────────────────────────────────
+
+test("evaluateFlagStage: beta + engineWrite → true (motoren skriver for alle)", () => {
+  assert.equal(evaluateFlagStage("beta", { engineWrite: true }), true);
+  assert.equal(evaluateFlagStage("beta", { engineWrite: true, isBetaTester: false }), true);
+});
+
+test("evaluateFlagStage: off + engineWrite → false (kill-switchen stopper ALT)", () => {
+  for (const v of ["off", false, null, undefined, "garbage"]) {
+    assert.equal(evaluateFlagStage(v, { engineWrite: true }), false, `v=${v}`);
+    assert.equal(evaluateFlagStage(v, { engineWrite: true, isBetaTester: true }), false, `v=${v}`);
+  }
+});
+
+test("evaluateFlagStage: beta uden engineWrite → læse-gaten er uændret", () => {
+  assert.equal(evaluateFlagStage("beta", { engineWrite: false }), false);
+  assert.equal(evaluateFlagStage("beta", { engineWrite: false, isBetaTester: true }), true);
+});

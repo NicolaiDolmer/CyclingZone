@@ -13,6 +13,11 @@
  * funktioner skriver KUN til skyggemodellens egne tabeller (board_relations,
  * board_vision_milestones, board_satisfaction_events.mandate_id/milestone_id).
  *
+ * #4839: alle SKRIVE-indgange her sender `engineWrite: true` til flag-tjekket, så
+ * 'beta' skriver skyggedata for ALLE hold (motoren har ingen viewer at spørge
+ * "er du beta-tester" om). `loadRelation` er den eneste LÆSE-indgang i filen og
+ * bliver derfor ved med at være ren `isBetaTester`-gatet. 'off' stopper begge.
+ *
  * De fire ting motoren gør (spec §3):
  *   1. Weekend-opdatering → ÉT confidence-tal (ikke tre).
  *   2. Milepæls-evaluering: forfaldne i mål-sæsonen (engangs-tillidsslag +
@@ -282,6 +287,9 @@ export function allocateNegotiationPower(confidence) {
 /**
  * Hent holdets relation. Returnerer null hvis flaget er off, så en kalder der
  * glemmer at tjekke flaget ikke ved et uheld kan begynde at læse den nye model.
+ *
+ * #4839: LÆSE-indgang — INGEN `engineWrite`. I `beta` ser kun beta-testere/admin
+ * skyggemodellen, selvom motoren skriver den for alle.
  */
 export async function loadRelation(supabase, teamId, { isBetaTester = false } = {}) {
   ensureSupabase(supabase);
@@ -472,7 +480,7 @@ export async function applyWeekendSync(supabase, {
   isBetaTester = false,
 } = {}) {
   ensureSupabase(supabase);
-  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester, engineWrite: true })) return null;
   if (!evaluation) return null;
 
   const relation = await fetchRelationRow(supabase, teamId);
@@ -527,7 +535,7 @@ export async function applySeasonEndSync(supabase, {
   isBetaTester = false,
 } = {}) {
   ensureSupabase(supabase);
-  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester, engineWrite: true })) return null;
 
   const relation = await fetchRelationRow(supabase, teamId);
   if (!relation) return { skipped: "no_shadow_relation" };
@@ -595,7 +603,7 @@ export async function unlockExtraordinaryRequestForTeam(supabase, {
   isBetaTester = false,
 } = {}) {
   ensureSupabase(supabase);
-  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester, engineWrite: true })) return null;
 
   const mandate = await fetchActiveMandateRow(supabase, teamId, seasonId);
   if (!mandate) return { unlocked: false, reason: "no_active_mandate" };
@@ -686,7 +694,7 @@ export async function proposeNextMandate(supabase, {
   isBetaTester = false,
 } = {}) {
   ensureSupabase(supabase);
-  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester, engineWrite: true })) return null;
   if (!teamId) throw new Error("teamId is required");
 
   const seasonNumber = Number(targetSeasonNumber);
@@ -776,7 +784,7 @@ export async function advanceMandateAtSeasonEnd(supabase, {
   isBetaTester = false,
 } = {}) {
   ensureSupabase(supabase);
-  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester, engineWrite: true })) return null;
 
   const relation = await fetchRelationRow(supabase, teamId);
   if (!relation) return { skipped: "no_shadow_relation" };
@@ -822,7 +830,7 @@ export async function proposeMandateForNewTeam(supabase, {
   isBetaTester = false,
 } = {}) {
   ensureSupabase(supabase);
-  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester, engineWrite: true })) return null;
 
   const relation = await ensureRelationForTeam(supabase, teamId);
 
