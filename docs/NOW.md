@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer-styret, ét kort ad gangen): merge-runden efter natbølge 5-6/9.** Kø + politik pr. PR i `docs/audits/night-wave-2026-09-05.md` (28 PR'er, 0 merget i nat). 1) Ejer-go pr. PR, `--admin` én ad gangen: docs/backend først, de 8 UI-drafts (visuelt go på screenshots) sidst; done-flip PR-for-PR. 2) Én samlet patch note (udkast i sessionens scratchpad, kun det merget). 3) Apply-GO-kort ét ad gangen: #4495 fangne graduates · #4539 dublet-enkeltstart · #4750 tilbagerulning. 4) #4804: bekræft at auto-merge-workflowet fjernes (din beslutning 4/9). 5) Derefter det tidligere: #4147 flag-flip · #4753 post-verify · omdømme PR 2 (#1099, backfill + `shadow`) · #4616 · #3512 · #4736/#4613 retning.
+> **🎯 Next action (ejer-styret, ét kort ad gangen): merge-runden efter natbølge 5-6/9.** Kø + politik pr. PR i `docs/audits/night-wave-2026-09-05.md` (28 PR'er, 0 merget i nat) + **#4824** fra triagen 5/9 (telemetri-boundary, CYCLINGZONE-5B). 1) Ejer-go pr. PR, `--admin` én ad gangen: docs/backend først, de 8 UI-drafts (visuelt go på screenshots) sidst; done-flip PR-for-PR. 2) Én samlet patch note (udkast i sessionens scratchpad, kun det merget). 3) Apply-GO-kort ét ad gangen: #4495 fangne graduates · #4539 dublet-enkeltstart · #4750 tilbagerulning. 4) #4804: bekræft at auto-merge-workflowet fjernes (din beslutning 4/9). 5) Derefter det tidligere: #4147 flag-flip · #4753 post-verify · omdømme PR 2 (#1099, backfill + `shadow`) · #4616 · #3512 · #4736/#4613 retning.
 
 > **⏳ Venter på DIN beslutning:** 6 ejer-valg i `docs/audits/ai-triage-2026-09-06-a.md` (+ del B) · **#4814** foto-plads + /seasons-skygger · **#4629** · **#4632** · **#4613** · **#4714** · #4627 · **#4235** (15/9) · spand D i `stale-issues-audit-2026-09-04.md`.
 
-> **🔴 Åbne fund:** **#2423** skew protection SLÅET FRA (kun selvheling #4595 + ét deploy-vindue pr. bølge) · **#4811** signup-sprog måles ikke (0 rækker) · CYCLINGZONE-56 · #4453 · #4537 · #4530 · #4531 · #4109.
+> **🔴 Åbne fund:** **#2423** skew protection SLÅET FRA (kun selvheling #4595 + ét deploy-vindue pr. bølge) — CYCLINGZONE-56 eskalerer: 113 events/28 spillere på 24 t (5/9), og samme skew gav #4823 (4 spillere fik fejlside) · **#4811** signup-sprog måles ikke (0 rækker) · #4453 · #4537 · #4530 · #4531 · #4109.
 
 > **✅ Natbølge 5-6/9 (Fable):** 26 spor i 7 workflows → 28 PR'er (#4784–#4817), 6 nye issues (#4811–#4816), 6 agenter frøs tavst og blev recoveret i samme worktrees. Læring: frosne agenter holder deres samtidigheds-plads, så stop workflowet og relancér (runbook + `.claude/learnings/2026-09-06-*`).
 
