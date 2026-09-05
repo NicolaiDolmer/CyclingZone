@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { refreshRankingMatviewsSafe } from "./refreshRankingMatviews.js";
 
@@ -77,4 +80,89 @@ test("refreshRankingMatviewsSafe — uden captureExceptionFn kaster den ikke (be
   const supabase = createMockSupabase({ rpcErrors: { refresh_global_rank_mv: "boom" } });
   const result = await refreshRankingMatviewsSafe(supabase);
   assert.equal(result, false);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FORWARD-GUARD (#4866): timeout-budgettet for denne kodesti
+//
+// Rod-årsagen 5/9 var ikke JS-logik, men en manglende rolle-indstilling i
+// databasen: service_role havde ingen rolconfig og arvede authenticator-
+// sessionens statement_timeout=8s, så refresh_team_race_points_mv 500'ede.
+// Der findes derfor ikke noget "forkert kald" at teste imod i JS — kaldet
+// (supabase.rpc) er identisk før og efter fixet. Det der KAN gå tabt igen er
+// koblingen: migrationen slettes/omskrives, eller kodestien flyttes til en
+// anden transport, og så er 60s-loftet væk uden at nogen opdager det.
+//
+// Valgt guard = statisk kontrakt-test (ikke en runtime-mock): den læser
+// migrationsfilen + kildefilen og kræver at BEGGE stadig beskriver aftalen. En
+// runtime-test kunne kun mocke supabase.rpc og ville hverken se rolconfig i
+// prod eller opdage at migrationen forsvandt — den ville være grøn i præcis
+// den situation vi vil fanges i. SQL-kommentarer strippes før matchning, så
+// header-prosa ikke kan snyde testen grøn.
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const TIMEOUT_MIGRATION = path.join(
+  REPO_ROOT,
+  "database",
+  "2026-09-05-4866-service-role-statement-timeout.sql",
+);
+
+function stripSqlComments(sql) {
+  return sql.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+}
+
+test("#4866 forward-guard — migrationen der giver service_role sit eget statement_timeout findes og er intakt", () => {
+  assert.ok(
+    fs.existsSync(TIMEOUT_MIGRATION),
+    `Migrationen ${path.basename(TIMEOUT_MIGRATION)} mangler. Uden den arver service_role ` +
+      `authenticator-sessionens statement_timeout=8s, og matview-refreshene 500'er igen (#4866).`,
+  );
+
+  const statements = stripSqlComments(fs.readFileSync(TIMEOUT_MIGRATION, "utf8"));
+  const match = statements.match(
+    /ALTER\s+ROLE\s+service_role\s+SET\s+statement_timeout\s*(?:=|TO)\s*'?(\d+)\s*(s|min|ms)?'?/i,
+  );
+  assert.ok(
+    match,
+    "Migrationen skal indeholde en faktisk ALTER ROLE service_role SET statement_timeout-sætning " +
+      "(ikke kun i en kommentar).",
+  );
+
+  const [, rawValue, unit = "ms"] = match;
+  const seconds = unit === "min" ? Number(rawValue) * 60 : unit === "s" ? Number(rawValue) : Number(rawValue) / 1000;
+  assert.ok(
+    seconds >= 30,
+    `service_role's statement_timeout er sat til ${rawValue}${unit} (${seconds}s). Målt maksimum for ` +
+      `refresh_*_mv lå på 5,3s med cancels over 8s — under 30s er marginen for tynd (#4866).`,
+  );
+
+  // Spiller-vendte roller må IKKE flyttes af denne migration: anon (3s) og
+  // authenticated (8s) er bevidste værn mod at en enkelt klient-query æder DB'en.
+  assert.doesNotMatch(
+    statements,
+    /ALTER\s+ROLE\s+(anon|authenticated)\b/i,
+    "Denne migration må kun røre service_role — anon/authenticated er spiller-vendte lofter (#4866).",
+  );
+});
+
+test("#4866 forward-guard — kildefilen dokumenterer at den afhænger af service_role-timeouten", () => {
+  const source = fs.readFileSync(new URL("./refreshRankingMatviews.js", import.meta.url), "utf8");
+
+  assert.match(
+    source,
+    /2026-09-05-4866-service-role-statement-timeout\.sql/,
+    "refreshRankingMatviews.js skal pege på migrationen den afhænger af, så koblingen ikke går tabt " +
+      "ved næste refactor (#4866).",
+  );
+  assert.match(
+    source,
+    /service_role/,
+    "Kommentaren skal forklare at kaldene kører som service_role — det er dét der bestemmer loftet (#4866).",
+  );
+  // Den gamle påstand ("loftet er 8s") må ikke stå tilbage som sandhed for denne
+  // kodesti: den var netop den fejlantagelse der gjorde 5/9-timeouten usynlig.
+  assert.match(
+    source,
+    /IKKE\s+8s\s+længere/i,
+    "Kommentaren skal eksplicit sige at 8s-loftet ikke længere gælder denne kodesti (#4866).",
+  );
 });

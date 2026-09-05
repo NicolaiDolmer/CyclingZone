@@ -9,13 +9,28 @@
 // #3013: fire SEPARATE RPC-kald i stedet for ét. REFRESH MATERIALIZED VIEW uden
 // CONCURRENTLY tager ACCESS EXCLUSIVE-lås; den gamle refresh_ranking_matviews()
 // kørte alle fire i ÉN transaktion, så en læser af den HURTIGSTE matview kunne
-// stå og vente på den LANGSOMSTE (målt maks 7,8s i prod mod 8s statement_timeout).
-// Fire separate transaktioner (database/2026-07-27-3013-refresh-matviews-
-// concurrently.sql) frigiver hver lås så snart DEN matview er færdig i stedet for
-// at holde alle fire til den sidste er done. CONCURRENTLY er IKKE muligt her —
-// Postgres afviser den fra enhver funktion kaldt via RPC/SPI, se migrationens
-// header-kommentar. Ægte nul-blokering kræver en transport-ændring (pg_cron eller
-// rå pg-forbindelse), sporet som opfølgning på #3013.
+// stå og vente på den LANGSOMSTE (målt maks 7,8s i prod, dengang mod et
+// statement_timeout på 8s). Fire separate transaktioner (database/2026-07-27-
+// 3013-refresh-matviews-concurrently.sql) frigiver hver lås så snart DEN matview
+// er færdig i stedet for at holde alle fire til den sidste er done. CONCURRENTLY
+// er IKKE muligt her — Postgres afviser den fra enhver funktion kaldt via
+// RPC/SPI, se migrationens header-kommentar. Ægte nul-blokering kræver en
+// transport-ændring (pg_cron eller rå pg-forbindelse), sporet som opfølgning på
+// #3013 i #3121.
+//
+// TIMEOUT-BUDGET (#4866, gældende fra 5/9): de fire RPC'er går gennem PostgREST
+// som service_role. Rollen havde ingen egen rolconfig og arvede derfor
+// authenticator-sessionens statement_timeout=8s — samme loft som spillernes
+// kald — og refresh_team_race_points_mv ramte det (500 til kalderen 5/9 kl.
+// 11:17). database/2026-09-05-4866-service-role-statement-timeout.sql sætter
+// ALTER ROLE service_role SET statement_timeout = '60s'; PostgREST anvender den
+// impersonerede rolles indstillinger transaktions-scoped, så dette loft gælder
+// netop de kald der laves herfra. Loftet er altså IKKE 8s længere for denne
+// kodesti. lock_timeout er BEVIDST ikke hævet (arver 8s): et refresh der venter
+// på ACCESS EXCLUSIVE-låsen trækker hele læser-køen med ned, så fail-fast +
+// cron-retry er den ønskede adfærd. Ændrer du transport (rå pg-forbindelse,
+// pg_cron) eller flytter kaldene væk fra service_role, forsvinder de 60s —
+// forward-guarden i refreshRankingMatviews.test.js fanger det.
 //
 // Heartbeat-atomicitet (#2196 Del 2): den ORIGINALE refresh_ranking_matviews()
 // skrev matview_refresh_heartbeat KUN hvis alle fire REFRESH lykkedes i samme
