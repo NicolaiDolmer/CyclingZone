@@ -1,5 +1,194 @@
 export const PATCHES = [
   {
+    "version": "7.254",
+    "date": "2026-09-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "A mechanical no longer injures your rider",
+          "body": "Abandoning a stage with a mechanical problem now only costs you the race, not your rider's body. He is fit again the next day; only a crash still puts him on the sidelines."
+        },
+        "da": {
+          "title": "En mekanisk defekt skader ikke længere din rytter",
+          "body": "Udgår han med en mekanisk defekt, mister han kun løbet, ikke sin krop. Han er klar igen dagen efter; kun et styrt sætter ham stadig på sidelinjen."
+        },
+        "refs": [4520]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Rolling stages get their own icon",
+          "body": "Rolling stages no longer share an icon with flat and sprint stages. Every stage in the team-selection strip now shows its terrain type as a visible icon, even on mobile, and the hilly and high-mountain wording is now consistent across the app."
+        },
+        "da": {
+          "title": "Rolling-etaper får deres eget ikon",
+          "body": "Rolling-etaper deler ikke længere ikon med flade og sprintetaper. Hver etape i holdudtagelsens etape-stribe viser nu terræntypen som et synligt ikon, også på mobil, og teksten for bjerg og højbjerg er nu ens i hele appen."
+        },
+        "refs": [4748, 4487]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "No more near-identical time trials in the same stage race",
+          "body": "Generated stage races could draw two time trials with almost the same type and distance. A Grand Tour can still have two, but a shorter stage race now gets at most one."
+        },
+        "da": {
+          "title": "To næsten ens enkeltstarter kan ikke længere opstå i samme løb",
+          "body": "Genererede etapeløb kunne trække to enkeltstarter med næsten samme type og distance. Et Grand Tour kan stadig få to, men et kortere etapeløb får nu højst én."
+        },
+        "refs": [4539]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board bonus goals can no longer complete themselves instantly",
+          "body": "A bonus goal from the board could finish itself the same second you accepted it. It now requires real progress made after you accept."
+        },
+        "da": {
+          "title": "Bestyrelsens bonusmål kan ikke længere gennemføre sig selv med det samme",
+          "body": "Et bonusmål fra bestyrelsen kunne fuldføres i samme sekund du accepterede det. Det kræver nu reel fremgang, efter du har accepteret."
+        },
+        "refs": [3574]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Dismiss the contract expiry warning for the season",
+          "body": "You can now close the contract expiry message on your dashboard for the rest of the season, either by dismissing it or by confirming you understand the contract will expire. It returns if a new rider enters the expiry window."
+        },
+        "da": {
+          "title": "Luk kontrakt-udløbsbeskeden for resten af sæsonen",
+          "body": "Du kan nu lukke kontrakt-udløbsbeskeden på dit dashboard for resten af sæsonen, enten ved at afvise den eller ved at bekræfte at du er med på, at kontrakten udløber. Den kommer tilbage, hvis en ny rytter kommer ind i udløbsvinduet."
+        },
+        "refs": [4387]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "Notifications, Discord DMs and club DNA now arrive in your own language",
+          "body": "These used to be written in a single fixed language no matter your own setting, so some managers received them in the wrong one. Your language setting now decides the wording every time."
+        },
+        "da": {
+          "title": "Notifikationer, Discord-DM'er og klub-DNA kommer nu på dit eget sprog",
+          "body": "De blev før skrevet på ét fast sprog uanset din egen indstilling, så nogle managers fik dem på det forkerte. Din sprogindstilling afgør nu ordlyden hver gang."
+        },
+        "refs": [4734]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Dashboard and Daily Training load faster",
+          "body": "Both pages used to wait for every piece of data before showing anything. The main content now appears right away while the rest fills in behind a placeholder."
+        },
+        "da": {
+          "title": "Dashboard og Daglig træning indlæser hurtigere",
+          "body": "Begge sider ventede før på al data, før de viste noget som helst. Hovedindholdet vises nu med det samme, mens resten fyldes ud bag en pladsholder."
+        },
+        "refs": [4160]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rankings",
+        "en": {
+          "title": "Comparing two teams on Rankings is now visible",
+          "body": "The checkbox for picking a team to compare was easy to miss. It now has a clear border and checkmark, with a live counter showing how many teams you have selected."
+        },
+        "da": {
+          "title": "Sammenligning af to hold på Ranglisten er nu synlig",
+          "body": "Afkrydsningsfeltet til at vælge et hold til sammenligning var let at overse. Det har nu en tydelig kant og et flueben, med en tæller der viser hvor mange hold du har valgt."
+        },
+        "refs": [4749]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Table headers stay put when you scroll",
+          "body": "Rankings, Riders, My Team, Watchlist, Academy and Daily Training now lock their column headers at the top while you scroll, the same behavior Auctions and Transfer List already had."
+        },
+        "da": {
+          "title": "Tabeloverskrifter bliver stående, når du scroller",
+          "body": "Rangliste, Ryttere, Mit hold, Ønskeliste, Akademi og Daglig træning låser nu deres kolonneoverskrifter i toppen, mens du scroller, samme adfærd som Auktioner og Transferliste allerede havde."
+        },
+        "refs": [4747]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Dead clicks fixed across the inbox, My Team and rider profile",
+          "body": "Inbox messages with nowhere to go no longer look clickable, and 19 message types that used to show a blank bell now have their own icon and destination. Your balance, salary and division on My Team are real links, and the rider profile no longer shows two arrows that were not buttons."
+        },
+        "da": {
+          "title": "Døde klik rettet i indbakken, Mit hold og rytterprofilen",
+          "body": "Indbakkebeskeder uden en destination ser ikke længere klikbare ud, og 19 beskedtyper der før viste en tom klokke har nu deres eget ikon og sted at føre hen. Din balance, løn og division på Mit hold er rigtige links, og rytterprofilen viser ikke længere to pile der ikke var knapper."
+        },
+        "refs": [4501, 4500, 4498]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "No more tiny text on the race page and rider profile",
+          "body": "Small labels like climb names, chart axes and role legends were hard to read. Nothing on these pages shows below a readable size anymore."
+        },
+        "da": {
+          "title": "Ingen mere lillebitte tekst på løbssiden og rytterprofilen",
+          "body": "Små labels som stigningsnavne, akser og rolleforklaringer var svære at læse. Intet på disse sider vises længere under en læsbar størrelse."
+        },
+        "refs": [4624]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Text reviewed across the app for language slips and consistent wording",
+          "body": "A pass through the app's texts fixed places where English leaked into Danish screens or the wrong voice slipped in, and made terms consistent across pages that used to say the same thing two different ways."
+        },
+        "da": {
+          "title": "Tekster gennemgået for sprogfejl og ensartede begreber",
+          "body": "En gennemgang af appens tekster rettede steder hvor engelsk lækkede ind på danske skærme eller den forkerte stemme sneg sig ind, og gjorde begreber ensartede på tværs af sider der før sagde det samme på to forskellige måder."
+        },
+        "refs": [4110]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "A telemetry hiccup can no longer take down the page",
+          "body": "A failure in error tracking itself could crash the whole app and show you the error page for an unrelated reason. That failure is now isolated, so telemetry problems stay invisible to you."
+        },
+        "da": {
+          "title": "En telemetri-fejl kan ikke længere vælte siden",
+          "body": "En fejl i selve fejlsporingen kunne vælte hele appen og vise dig fejlsiden af en urelateret grund. Den fejl er nu isoleret, så telemetri-problemer forbliver usynlige for dig."
+        },
+        "refs": [4823]
+      }
+    ]
+  },
+  {
     "version": "7.253",
     "date": "2026-09-04",
     "label": "Beta",

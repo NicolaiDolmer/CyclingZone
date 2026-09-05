@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer-styret, ét kort ad gangen): merge-runden efter natbølge 5-6/9.** Kø + politik pr. PR i `docs/audits/night-wave-2026-09-05.md` (28 PR'er, 0 merget i nat) + **#4824** fra triagen 5/9 (telemetri-boundary, CYCLINGZONE-5B). 1) Ejer-go pr. PR, `--admin` én ad gangen: docs/backend først, de 8 UI-drafts (visuelt go på screenshots) sidst; done-flip PR-for-PR. 2) Én samlet patch note (udkast i sessionens scratchpad, kun det merget). 3) Apply-GO-kort ét ad gangen: #4495 fangne graduates · #4539 dublet-enkeltstart · #4750 tilbagerulning. 4) #4804: bekræft at auto-merge-workflowet fjernes (din beslutning 4/9). 5) Derefter det tidligere: #4147 flag-flip · #4753 post-verify · omdømme PR 2 (#1099, backfill + `shadow`) · #4616 · #3512 · #4736/#4613 retning.
+> **🎯 Next action (ejer-styret, ét kort ad gangen): merge-runden efter natbølge 5-6/9.** Kø + politik pr. PR i `docs/audits/night-wave-2026-09-05.md`. 1) v7.254-patch-note + Discord-catchup-udkast (v7.239-7.254) klar i PR docs/patch-note-7254-wave-2026-09-05, 13 merged PR'er dækket, #4801/#4817 udeladt (ikke merget). 2) Apply-GO-kort ét ad gangen: #4495 fangne graduates · #4750 tilbagerulning. 3) #4804: bekræft at auto-merge-workflowet fjernes (din beslutning 4/9). 4) Derefter det tidligere: #4147 flag-flip · #4753 post-verify · omdømme PR 2 (#1099, backfill + `shadow`) · #4616 · #3512 · #4736/#4613 retning.
 
 > **⏳ Venter på DIN beslutning:** 6 ejer-valg i `docs/audits/ai-triage-2026-09-06-a.md` (+ del B) · **#4814** foto-plads + /seasons-skygger · **#4629** · **#4632** · **#4613** · **#4714** · #4627 · **#4235** (15/9) · spand D i `stale-issues-audit-2026-09-04.md`.
 
