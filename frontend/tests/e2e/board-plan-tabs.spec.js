@@ -99,7 +99,7 @@ test("board plans render as tabs; standing label switches per tab (#955)", async
   await expect(tablist.getByRole("tab")).toHaveCount(3);
 
   // #818 · forhandlingsrækkefølgen forklares.
-  await expect(page.getByText("Planer forhandles længst først: 5 → 3 → 1 år.")).toBeVisible();
+  await expect(page.getByText("Planer forhandles længst først: 5 -> 3 -> 1 år.")).toBeVisible();
 
   // Default = 5-årsplan: kvalitativ standing-label (satisfaction 75 → "Stærk").
   const panel = page.getByRole("tabpanel");

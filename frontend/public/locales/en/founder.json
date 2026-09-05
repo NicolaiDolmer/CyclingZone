@@ -128,7 +128,7 @@
   "footerTerms": "Terms of sale",
   "footerBack": "Back to Cycling Zone",
   "form": {
-    "contactLegend": "How we contact you",
+    "contactLegend": "How I contact you",
     "contactHelp": "At least one of the fields below must be filled.",
     "emailLabel": "Email",
     "emailPlaceholder": "you@email.com",
@@ -151,10 +151,10 @@
     "privacyPath": "/privacy-policy",
     "submit": "Join the Founder waitlist",
     "submitLoading": "Sending...",
-    "submitDisclaimer": "We don't spam and never share your info. You can always email us to be removed.",
+    "submitDisclaimer": "I don't spam and never share your info. You can always email me to be removed.",
     "honeypotLabel": "Leave this field empty",
     "successTitle": "You're on the list!",
-    "successBody": "Thanks for joining early. We'll email when premium opens, and before that if we have questions about what you think.",
+    "successBody": "Thanks for joining early. I'll email when premium opens, and before that if I have questions about what you think.",
     "successNextTitle": "Next steps:",
     "successNext": [
       { "text": "Join our Discord for updates and questions" },
@@ -212,7 +212,7 @@
       "gdprConsent": "You must accept the privacy policy to continue"
     },
     "insertErrors": {
-      "duplicate": "You're already on the list. Check your inbox (and spam) for our first email.",
+      "duplicate": "You're already on the list. Check your inbox (and spam) for my first email.",
       "rls": "Access denied. Reload the page and try again. Contact support if the problem persists.",
       "network": "Couldn't reach the server. Check your connection and try again.",
       "unknown": "Something went wrong. Try again in a moment."

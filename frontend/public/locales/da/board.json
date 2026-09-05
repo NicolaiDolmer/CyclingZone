@@ -42,11 +42,11 @@
       }
     },
     "plansFooter": "Alle tre planer kører parallelt. Du forhandler én ad gangen, og hver har sine egne mål og tidshorisont.",
-    "satisfactionLabel": "Tilfredshed → sponsor-modifier",
+    "satisfactionLabel": "Tilfredshed -> sponsor-modifier",
     "bands": {
-      "high": "60–100% → sponsor × 1,10–1,20",
-      "moderate": "40–59% → sponsor × 1,00",
-      "low": "0–39% → sponsor × 0,80–0,90"
+      "high": "60–100% -> sponsor × 1,10–1,20",
+      "moderate": "40–59% -> sponsor × 1,00",
+      "low": "0–39% -> sponsor × 0,80–0,90"
     },
     "satisfactionFooter": "Hvert opfyldt mål øger tilfredsheden. Utilfredse bestyrelser skærper kravene ved næste planforhandling.",
     "kpis": {
@@ -395,7 +395,7 @@
     "renewLocked": "Genforhandling er låst resten af sæsonen.",
     "renewLockedPlanActive": "Denne plan er stadig aktiv. Den kan først genforhandles, når hele planperioden er fuldført.",
     "standingHeading": "Status",
-    "negotiationOrder": "Planer forhandles længst først: 5 → 3 → 1 år."
+    "negotiationOrder": "Planer forhandles længst først: 5 -> 3 -> 1 år."
   },
   "tabs": {
     "aria": "Planhorisonter",
@@ -1704,7 +1704,7 @@
     "noActivePlan": "Ingen aktiv bestyrelsesplan.",
     "planNotActive": "Forhandl en ny plan, før du sender requests.",
     "alreadyUsed": "Du har allerede brugt sæsonens board request.",
-    "windowBlocked": "Sæsonens slutfase er begyndt. Bestyrelsen tager ikke imod requests de sidste {raceDays} race-days.",
+    "windowBlocked": "Sæsonens slutfase er begyndt. Bestyrelsen tager ikke imod requests de sidste {raceDays} løbsdage.",
     "midCycleLocked": "{years}-årsplanen er for tidligt i forløbet til at blive drejet. Bestyrelsen ønsker mindst {percent}% af planen gennemført eller en stor tilfredsheds-ændring før en re-orientering.",
     "majorPivotUsed": "Bestyrelsen har allerede accepteret en stor drejning i denne plan-livscyklus. En ny stor retnings-ændring kræver en frisk plan.",
     "unknown": "Ukendt board request.",

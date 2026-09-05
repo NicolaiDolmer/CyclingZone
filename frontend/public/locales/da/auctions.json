@@ -163,8 +163,8 @@
   "bidGate": {
     "bothFull": "Ingen plads i dit akademi (8/8) eller din senior-trup (30/30). Sælg en rytter for at byde.",
     "seniorFull": "Din senior-trup er fuld (30/30). Sælg en rytter for at byde.",
-    "toSenior": "→ ryger på din senior-trup",
-    "toAcademy": "→ ryger i dit akademi"
+    "toSenior": "-> ryger på din senior-trup",
+    "toAcademy": "-> ryger i dit akademi"
   },
   "bid": {
     "minBid": "Min. {amount} CZ$",
@@ -182,7 +182,7 @@
       "blockedBelowMin": "Dit autobud-loft skal være mindst {amount} CZ$, som er det aktuelle minimumsbud.",
       "blockedExpired": "Denne auktion er slut. Opdatér for at se resultatet.",
       "display": "Autobud: max {amount} CZ$",
-      "help": "Vi byder op til dette for dig, 1 CZ$ ad gangen. Du mister kun føringen hvis nogen går over dit loft. Dit loft forbliver privat.",
+      "help": "Jeg byder op til dette for dig, 1 CZ$ ad gangen. Du mister kun føringen hvis nogen går over dit loft. Dit loft forbliver privat.",
       "set": "Sæt autobud-loft",
       "edit": "Ændr autobud-loft",
       "remove": "Fjern autobud",

@@ -15,10 +15,10 @@
     "salary": "Sæsonlønninger · {count} ryttere",
     "wageDaily": "Dagsløn · {count} ryttere",
     "upkeep": "Drift og vedligehold · Division {division}",
-    "parachute": "Nedrykningsfaldskærm · Division {oldDivision} → {newDivision}",
+    "parachute": "Nedrykningsfaldskærm · Division {oldDivision} -> {newDivision}",
     "academyDrift": "Akademi-drift · {count} pladser × {drift_per_slot} pts",
     "facilityUpkeep": "Facilitets-vedligehold · {tracks} spor",
-    "facilityPurchase": "Facilitetsopgradering: {track} → niveau {tier}",
+    "facilityPurchase": "Facilitetsopgradering: {track} -> niveau {tier}",
     "staffSalary": "Sæsonløn til stab · {count} ansatte",
     "staffSeverance": "Fyrede {role} (fratrædelsesgodtgørelse)",
     "staffRelease": "Fyrede {role} {staffName} (fratrædelsesgodtgørelse)",
@@ -45,7 +45,7 @@
     "transferBuy": "Købt {riderName} via transfer",
     "transferSell": "Solgt {riderName} via transfer",
     "riderRelease": "Fyrede {riderName} (buyout-gebyr)",
-    "swapCash": "Byttehandel kontantbetaling: {offeredName} ↔ {requestedName}",
+    "swapCash": "Byttehandel kontantbetaling: {offeredName} <-> {requestedName}",
     "scoutTravel": "Rejseomkostning for spejder",
     "legacy": {
       "sponsor": "Sponsorindtægt · Sæson {season}",
@@ -277,7 +277,7 @@
     },
     "boardAutoAccepted": {
       "title": "Bestyrelsen valgte {planLabel} for dig",
-      "message": "Du nåede ikke at forhandle din {planLabel}. Bestyrelsen valgte focus \"{focus}\" og standardmål. Du kan stadig anmode om ændringer når planen kører."
+      "message": "Du nåede ikke at forhandle din {planLabel}. Bestyrelsen valgte fokus \"{focus}\" og standardmål. Du kan stadig anmode om ændringer når planen kører."
     },
     "boardMandateOpened": {
       "title": "Din bestyrelse er klar til årsmødet",
@@ -406,8 +406,8 @@
         "buyerCannotAfford": "Handlen på {riderName} kunne ikke gennemføres, fordi køber mangler midler.",
         "offeredMoved": "{offeredName} er ikke længere tilgængelig til byttehandlen.",
         "requestedMoved": "{requestedName} er ikke længere tilgængelig til byttehandlen.",
-        "proposingCannotAfford": "Handlen på {offeredName} ⇄ {requestedName} kunne ikke gennemføres, fordi det foreslående hold mangler midler.",
-        "receivingCannotAfford": "Handlen på {offeredName} ⇄ {requestedName} kunne ikke gennemføres, fordi det modtagende hold mangler midler."
+        "proposingCannotAfford": "Handlen på {offeredName} <-> {requestedName} kunne ikke gennemføres, fordi det foreslående hold mangler midler.",
+        "receivingCannotAfford": "Handlen på {offeredName} <-> {requestedName} kunne ikke gennemføres, fordi det modtagende hold mangler midler."
       },
       "swapProposed": {
         "title": "Byttehandel foreslået",
@@ -416,8 +416,8 @@
       },
       "swapAccepted": {
         "title": "Byttehandel accepteret: bekræft handlen",
-        "message": "{accepterName} accepterede byttehandlen: {offeredName} ⇄ {requestedName}. Bekræft for at gennemføre.",
-        "messageCash": "{accepterName} accepterede byttehandlen: {offeredName} ⇄ {requestedName} · {cashSign}{cash} CZ$. Bekræft for at gennemføre."
+        "message": "{accepterName} accepterede byttehandlen: {offeredName} <-> {requestedName}. Bekræft for at gennemføre.",
+        "messageCash": "{accepterName} accepterede byttehandlen: {offeredName} <-> {requestedName} · {cashSign}{cash} CZ$. Bekræft for at gennemføre."
       },
       "swapRejected": {
         "title": "Byttehandel afvist",
@@ -425,7 +425,7 @@
       },
       "swapCounter": {
         "title": "Modbud på byttehandel",
-        "message": "{counterName} sender modbud: {offeredName} ⇄ {requestedName} ({cashSign}{counterCash} CZ$)"
+        "message": "{counterName} sender modbud: {offeredName} <-> {requestedName} ({cashSign}{counterCash} CZ$)"
       },
       "swapCounterAccepted": {
         "title": "Modbud accepteret: bekræft handlen",
@@ -433,8 +433,8 @@
       },
       "swapCompleted": {
         "title": "Byttehandel gennemført!",
-        "message": "{offeredName} ⇄ {requestedName} er nu skiftet",
-        "messageDeferred": "{offeredName} ⇄ {requestedName} er byttet. Rytterne skifter hold, når deres igangværende etapeløb er kørt færdigt."
+        "message": "{offeredName} <-> {requestedName} er nu skiftet",
+        "messageDeferred": "{offeredName} <-> {requestedName} er byttet. Rytterne skifter hold, når deres igangværende etapeløb er kørt færdigt."
       },
       "swapCancelledStale": {
         "title": "Byttehandel annulleret",
@@ -455,8 +455,8 @@
       },
       "adminSwapCancelled": {
         "title": "Byttehandel annulleret af admin",
-        "message": "Byttehandlen {offeredName} ⇄ {requestedName} er annulleret af en admin.",
-        "messageReason": "Byttehandlen {offeredName} ⇄ {requestedName} er annulleret af en admin: {reason}"
+        "message": "Byttehandlen {offeredName} <-> {requestedName} er annulleret af en admin.",
+        "messageReason": "Byttehandlen {offeredName} <-> {requestedName} er annulleret af en admin: {reason}"
       }
     },
     "welcome": {

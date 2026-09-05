@@ -110,7 +110,7 @@
       "useMax": "Use max",
       "maxZero": "No room for a new loan. Your debt is at the division cap of {ceiling} CZ$.",
       "exceedsMax": "This would push you over the debt cap, because the fee counts towards it. Max loan right now: {value} CZ$.",
-      "costPerSeason": "Interest next season if you repay nothing: {interest} CZ$ → debt would reach {projected} CZ$",
+      "costPerSeason": "Interest next season if you repay nothing: {interest} CZ$ -> debt would reach {projected} CZ$",
       "submit": "Take loan",
       "processing": "Processing..."
     },
@@ -228,7 +228,7 @@
   "seasonSwitch": {
     "loading": "Loading the season switch settlement…",
     "receipt": {
-      "title": "Season {current} → {next} settlement",
+      "title": "Season {current} -> {next} settlement",
       "subtitle": "What happens to your balance when the books close and season {next} starts, in the same order the game actually charges it.",
       "balanceAfter": "Balance: {value} CZ$",
       "step": {

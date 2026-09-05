@@ -42,11 +42,11 @@
       }
     },
     "plansFooter": "All three plans run in parallel. You negotiate one at a time, and each has its own targets and time horizon.",
-    "satisfactionLabel": "Satisfaction → sponsor modifier",
+    "satisfactionLabel": "Satisfaction -> sponsor modifier",
     "bands": {
-      "high": "60–100% → sponsor × 1.10–1.20",
-      "moderate": "40–59% → sponsor × 1.00",
-      "low": "0–39% → sponsor × 0.80–0.90"
+      "high": "60–100% -> sponsor × 1.10–1.20",
+      "moderate": "40–59% -> sponsor × 1.00",
+      "low": "0–39% -> sponsor × 0.80–0.90"
     },
     "satisfactionFooter": "Every met target boosts satisfaction. Dissatisfied boards tighten requirements at the next plan negotiation.",
     "kpis": {
@@ -395,7 +395,7 @@
     "renewLocked": "Renegotiation is locked for the rest of the season.",
     "renewLockedPlanActive": "This plan is still active. It can only be renegotiated once its full term is complete.",
     "standingHeading": "Standing",
-    "negotiationOrder": "Plans are negotiated longest-first: 5 → 3 → 1 years."
+    "negotiationOrder": "Plans are negotiated longest-first: 5 -> 3 -> 1 years."
   },
   "tabs": {
     "aria": "Plan horizons",

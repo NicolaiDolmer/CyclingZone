@@ -399,7 +399,7 @@
       "rangeSuffix": "({from}–{to})"
     },
     "multiSeason": {
-      "title": "Season by season (estimate from season {from} →)",
+      "title": "Season by season (estimate from season {from} ->)",
       "headers": {
         "season": "Season",
         "sponsor": "Sponsor",
