@@ -103,6 +103,38 @@ const TYPE_CONFIG = {
   // related_id (altid sat, se notifyForumThreadReply) overstyrer med den
   // konkrete tråd via den dedikerede regel i notificationLink.js.
   forum_thread_reply:        { Icon: InboxIcon,        color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/forum" },
+
+  // #4501: de 19 typer nedenfor fandtes i backendens NOTIFICATION_TYPES, men
+  // manglede en TYPE_CONFIG-entry og faldt derfor til DEFAULT_TYPE_CONFIG:
+  // generisk klokke, neutral baggrund og INTET link. Kortet beholdt sin
+  // cursor-pointer, så et klik lignede en handling og gjorde ingenting —
+  // Clarity 25/8-5/9 fangede dem som døde klik på netop de beskeder
+  // ("Nyt akademi-talent er ankommet", "Ingen bød på ...", niveau-korrektionen).
+  // Samme defekt som #3505 (board_critical) og selection_warning; parity-guarden
+  // i NotificationsPage.typeConfigParity.test.ts gør den 4. gentagelse umulig.
+  academy_intake_ready:      { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy" },
+  academy_drip:              { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy" },
+  academy_signed:            { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/academy" },
+  academy_rejected:          { Icon: XIcon,            color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/academy" },
+  academy_graduation_ready:  { Icon: RocketIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/academy" },
+  academy_graduated:         { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/academy" },
+  // Forfremmelse/degradering flytter rytteren mellem akademi og seniortrup —
+  // truppen er stedet hvor spilleren ser resultatet.
+  academy_promoted:          { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success/8 border-cz-success/15", link: "/team" },
+  academy_demoted:           { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/team" },
+  academy_intake_expired_compensation: { Icon: CoinIcon, color: "text-cz-warning", bg: "bg-cz-warning/8 border-cz-warning/15", link: "/academy" },
+  auction_cancelled:         { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/auctions" },
+  auction_proxy_outbid:      { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/auctions" },
+  contract_expired_release:  { Icon: UndoIcon,         color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/team" },
+  deadline_day_warning:      { Icon: AlertTriangleIcon, color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/transfers" },
+  emergency_loan_breach:     { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/finance" },
+  // Beskeden selv henviser til dashboardet ("Dit dashboard viser dine egne
+  // ryttere før og efter"), så linket følger teksten.
+  market_value_level_correction: { Icon: CoinIcon,     color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/dashboard" },
+  race_results_imported:     { Icon: PodiumIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/resultater" },
+  rider_retired:             { Icon: FlagIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/team" },
+  squad_below_minimum:       { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/team" },
+  squad_enforced:            { Icon: AlertTriangleIcon, color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/team" },
 };
 
 const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
@@ -110,10 +142,12 @@ const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-sub
 const MINE_FILTER_TYPES = {
   all:       null,
   unread:    null,
-  auctions:  ["bid_received","bid_placed","auction_won","auction_sold","auction_lost","auction_outbid","watchlist_rider_auction"],
-  transfers: ["transfer_offer_received","transfer_offer_accepted","transfer_offer_rejected","transfer_counter","transfer_offer_withdrawn","transfer_interest","watchlist_rider_listed","watchlist_departed","contract_expiring"],
+  // #4501: de nye typer er tilføjet i deres eget filter af samme grund som
+  // #3505 — et filter der hedder "Auktioner" må ikke skjule auktions-beskeder.
+  auctions:  ["bid_received","bid_placed","auction_won","auction_sold","auction_lost","auction_outbid","auction_cancelled","auction_proxy_outbid","watchlist_rider_auction"],
+  transfers: ["transfer_offer_received","transfer_offer_accepted","transfer_offer_rejected","transfer_counter","transfer_offer_withdrawn","transfer_interest","watchlist_rider_listed","watchlist_departed","contract_expiring","contract_expired_release","deadline_day_warning"],
   board:     ["board_update", "board_critical"],
-  finance:   ["salary_paid","sponsor_paid","loan_created","emergency_loan","loan_paid_off"],
+  finance:   ["salary_paid","sponsor_paid","loan_created","emergency_loan","emergency_loan_breach","loan_paid_off"],
 };
 
 // Event-type → config. Label-building handled separately via i18n in component.
@@ -584,21 +618,27 @@ export default function NotificationsPage() {
                   const n = entry.notification;
                   const config = getNotificationConfig(n, i18n);
                   const Icon = config.Icon;
+                  // #3496/#3491: udtrukket til lib/notificationLink.js (ren funktion,
+                  // testbar uden DOM) — se dens header for hvorfor tilbuds-/scout-
+                  // notifikationer ikke længere altid overstyres af den generiske
+                  // rytterprofil-regel.
+                  const link = resolveNotificationLink(n, config.link);
+                  // #4501: cursor-pointer sad på ALLE kort, også dem hvor klikket
+                  // ikke kunne gøre noget (læst besked uden destination). Musen
+                  // lovede en handling der ikke fandtes — derfor var 16 af 17 rage
+                  // clicks på fladen på desktop, hvor cursoren overhovedet ses.
+                  // Nu bærer kun kort med noget at gøre affordancen.
+                  const isActionable = !n.is_read || Boolean(link);
                   return (
                     <div key={n.id}
-                      className={`flex items-start gap-3 p-3 sm:p-4 rounded-cz border transition-colors cursor-pointer
+                      className={`flex items-start gap-3 p-3 sm:p-4 rounded-cz border transition-colors${isActionable ? " cursor-pointer" : ""}
                         ${n.is_read
                           ? "bg-cz-card border-cz-border opacity-60 hover:opacity-80"
                           : config.bg}`}
-                      onClick={() => {
+                      onClick={isActionable ? () => {
                         if (!n.is_read) markRead(n.id);
-                        // #3496/#3491: udtrukket til lib/notificationLink.js (ren funktion,
-                        // testbar uden DOM) — se dens header for hvorfor tilbuds-/scout-
-                        // notifikationer ikke længere altid overstyres af den generiske
-                        // rytterprofil-regel.
-                        const link = resolveNotificationLink(n, config.link);
                         if (link) navigate(link);
-                      }}>
+                      } : undefined}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center
                         flex-shrink-0 mt-0.5 ${config.color}`}>
                         {Icon ? <Icon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}

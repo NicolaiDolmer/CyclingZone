@@ -1249,15 +1249,28 @@ export function TeamPage() {
         subtitle={team?.manager_name ? t("page.managerLabel", { name: team.manager_name }) : undefined}
       />
       {/* Stats-linje (balance/division/cap/løn/værdi) er ikke del af PageHeader-
-          recipen (kun titel/subtitle/actions) — forbliver som eget meta-afsnit. */}
+          recipen (kun titel/subtitle/actions) — forbliver som eget meta-afsnit.
+
+          #4500: linjen var appens tætteste rage-click-klynge på /team (Clarity
+          25/8-5/9: 225 døde klik og 42 rage clicks på netop dette element,
+          maskeret som "▫▫▫.▫▫▫ CZ$Division ▫▫▫/▫"). Balancen stod i
+          `text-cz-accent-t` — guld-teksten er per TASTE §6 fork 3 reserveret til
+          QUIET ACTIONS og aktiv fane, altså appens eget link-signal — og var
+          alligevel et inert <span>. Samme klasse som #1421's fund ("Løn-tal på
+          /team — rage + dead clicks, forventet drill-down"), der aldrig blev
+          rettet, og samme svar som #3188 gav holdnavnet: destinationen FINDES
+          allerede, så et rigtigt link er billigere og mere nyttigt end at fjerne
+          affordancen. Balance og løn peger på /finance (kontobevægelser +
+          løntabellen), division på /standings (divisionstabellen). Resten af
+          linjen er grå tælletekst uden link-signal og forbliver <span>. */}
       <div className="-mt-4 mb-5 flex gap-4 flex-wrap text-sm">
-        <span className="text-cz-accent-t font-mono font-bold" title={t("page.balanceTooltip")}>{t("page.balance", { value: formatNumber(team?.balance ?? 0) })}</span>
-        <span className="text-cz-3" title={t("page.divisionTooltip")}>{t("page.division", { n: team?.division })}</span>
+        <Link to="/finance" className="text-cz-accent-t font-mono font-bold hover:underline" title={t("page.balanceTooltip")}>{t("page.balance", { value: formatNumber(team?.balance ?? 0) })}</Link>
+        <Link to="/standings" className="text-cz-3 hover:text-cz-2 transition-colors" title={t("page.divisionTooltip")}>{t("page.division", { n: team?.division })}</Link>
         <span className={`text-cz-3${seniorCount > squadCap ? " text-cz-danger" : ""}`} title={t("page.seniorCapTooltip", { cap: squadCap })}>{t("page.ridersCount", { count: seniorCount, cap: squadCap })}</span>
         {academyCount > 0 && <span className="text-cz-3 text-xs" title={t("page.academyCapTooltip", { cap: squadCap })}>{t("page.academyCount", { count: academyCount })}</span>}
         {incomingCount > 0 && <span className="text-cz-success text-xs">{t("page.incomingCount", { count: incomingCount })}</span>}
         {outgoingCount > 0 && <span className="text-cz-danger text-xs">{t("page.outgoingCount", { count: outgoingCount })}</span>}
-        <span className="text-cz-3" title={t("page.salaryPerSeasonTooltip")}>{t("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</span>
+        <Link to="/finance" className="text-cz-3 hover:text-cz-2 transition-colors" title={t("page.salaryPerSeasonTooltip")}>{t("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</Link>
         <span className="text-cz-3">{t("page.teamValue", { value: formatNumber(totalValue) })}</span>
       </div>
 

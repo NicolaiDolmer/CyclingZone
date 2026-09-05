@@ -166,7 +166,7 @@
       "interest": "Interest"
     },
     "switcher": {
-      "hint": "‹ › switch rider"
+      "hint": "Arrow keys switch rider"
     },
     "hero": {
       "ratingEyebrow": "Rating",
