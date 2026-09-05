@@ -191,7 +191,7 @@ import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked }
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
-import { applyRiderEligibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
+import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
@@ -4528,8 +4528,11 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
     // rute-match-demand pr. løb (aggregateDemandVector — delt med peak-plans/board).
     // pagination-safe: ét holds ryttere er maks ~30 (samme grænse som getSelectionContext
     // dokumenterer), langt under PostgREST's 1000-rækkers cap.
-    const { data: teamRidersRaw, error: ridersErr } = await applyRiderEligibilityFilter(
-      supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type").eq("team_id", req.team.id)
+    // #4119: synligheds-filteret — sæson-matrixen VISER truppen, den udtager ikke.
+    // En solgt rytter med parkeret holdskifte skal blive stående (markeret udgående),
+    // ikke forsvinde mens han stadig kører løbet færdigt for dette hold.
+    const { data: teamRidersRaw, error: ridersErr } = await applyRosterVisibilityFilter(
+      supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type, pending_team_id").eq("team_id", req.team.id)
     );
     if (ridersErr) throw new Error(`riders (selection/season): ${ridersErr.message}`);
     const teamRiders = teamRidersRaw || [];
@@ -4564,6 +4567,8 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
         secondaryType: r.secondary_type ?? null,
         abilities: ab ? Object.fromEntries(RACE_SIM_ABILITY_KEYS.map((k) => [k, ab[k] ?? null])) : null,
         injured: isRiderInjured(conditionByRider.get(r.id)?.injured_until ?? null, todayStr),
+        // #4119: solgt, men kører løbet færdigt for dette hold. Vises, kan ikke udtages.
+        outgoing: Boolean(r.pending_team_id),
       };
     });
 

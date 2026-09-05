@@ -264,6 +264,8 @@
     },
     "boundNamed": "Locked · racing in {race}",
     "lockBoundUnnamed": "Locked · already racing in an overlapping race",
+    "outgoingShort": "Leaves after this race",
+    "lockOutgoing": "Leaves after the current race · cannot be picked for a new one",
     "lockAllStarted": "Locked · every race today has already started",
     "lockAllWithdrawn": "Locked · you have withdrawn from every race today",
     "lockUnavailable": "Locked · no race today can be changed",
