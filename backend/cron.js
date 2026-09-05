@@ -1269,7 +1269,8 @@ async function runOwnershipInvariantWatchCron() {
       `sellerlessOwned=${result.findings.sellerlessOwned}, staleIntake=${result.findings.staleIntake}, ` +
       `strandedAcademy=${result.findings.strandedAcademy}, ` +
       `stalePendingTransfer=${result.findings.stalePendingTransfer}, ` +
-      `teamsMissingBoardMembers=${result.findings.teamsMissingBoardMembers} (#2647/#3330/#4664)`
+      `teamsMissingBoardMembers=${result.findings.teamsMissingBoardMembers}, ` +
+      `stuckAcademyGraduates=${result.findings.stuckAcademyGraduates} (#2647/#3330/#4664/#4495)`
     );
   }
 }

@@ -8,6 +8,9 @@ import {
   detectGraduates,
   resolveGraduation,
   defaultResolveGraduate,
+  releaseUnsoldGraduate,
+  completeStuckPromotion,
+  resolveNeverGraduated,
 } from "./academyGraduation.js";
 
 // ─── Mock-supabase ─────────────────────────────────────────────────────────────
@@ -31,7 +34,32 @@ function makeSupabase(cfg = {}) {
             return api;
           },
           update(payload) {
-            return { eq() { rec.riderUpdates.push(payload); return Promise.resolve({ error: null }); } };
+            // #4495: releaseUnsoldGraduate bruger en CONDITIONAL update
+            // (.eq(id).eq(team_id).eq(is_academy).select("id")) saa et gentaget
+            // kald rammer 0 raekker i stedet for at flytte en rytter der er
+            // kommet videre. Mocken skal derfor baade kunne kaedes og kunne
+            // svare med raekke-antal — og den skal HAANDHAEVE filtrene mod
+            // cfg.rider, ellers kunne testen for idempotens aldrig fejle.
+            const filters = [];
+            const builder = {
+              eq(col, val) {
+                filters.push([col, val]);
+                return builder;
+              },
+              select() {
+                const row = cfg.rider ?? {};
+                const matches = filters.every(([col, val]) =>
+                  col === "id" ? row.id === val : (row[col] ?? null) === val
+                );
+                if (matches) rec.riderUpdates.push(payload);
+                return Promise.resolve({ data: matches ? [{ id: row.id }] : [], error: null });
+              },
+              then(resolve, reject) {
+                rec.riderUpdates.push(payload);
+                return Promise.resolve({ error: null }).then(resolve, reject);
+              },
+            };
+            return builder;
           },
         };
       }
@@ -386,4 +414,210 @@ test("defaultResolveGraduate: sælger når hold i gæld (konservativ auto-defaul
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: -2000 });
   const res = await defaultResolveGraduate(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, auctionConfig: DEFAULT_AUCTION_CONFIG, notify: spyNotify() });
   assert.equal(res.action, "sold");
+});
+
+// ─── #4495 · usolgt graduate-auktion → fri agent ────────────────────────────────
+// Kontrakten stod i createGraduateAuction's docblok ("free agent ved ingen bud")
+// men fandtes ikke i koden: kun vinder-stien flippede is_academy, så en auktion
+// uden bud efterlod rytteren hos sælgeren med is_academy=true og en grad-række
+// der allerede var stemplet 'sold'. 8 ryttere på 22-23 år på 6 hold i prod 31/8.
+
+const STUCK_ACADEMY_RIDER = {
+  id: "r9", team_id: "t1", is_academy: true, firstname: "Unsold", lastname: "Graduate",
+};
+const SOLD_GRAD = { id: "g-sold", team_id: "t1", rider_id: "r9", status: "sold" };
+
+test("#4495 releaseUnsoldGraduate: usolgt graduate bliver fri agent (team_id NULL, is_academy false, kontraktfelter nullet)", async () => {
+  const { supabase, rec } = makeSupabase({ rider: STUCK_ACADEMY_RIDER, gradRows: [SOLD_GRAD] });
+  const notify = spyNotify();
+  const res = await releaseUnsoldGraduate(supabase, { teamId: "t1", riderId: "r9", notify });
+
+  assert.equal(res.released, true);
+  assert.equal(rec.riderUpdates.length, 1);
+  assert.equal(rec.riderUpdates[0].team_id, null);
+  assert.equal(rec.riderUpdates[0].is_academy, false);
+  // #1309: kontrakter kun på ejede ryttere — ellers arver et senere
+  // contractOnAcquirePatch-kald fejlagtigt akademi-kontrakten.
+  assert.equal(rec.riderUpdates[0].salary, null);
+  assert.equal(rec.riderUpdates[0].contract_length, null);
+  assert.equal(rec.riderUpdates[0].contract_end_season, null);
+  assert.equal(notify.calls.length, 1);
+  assert.equal(notify.calls[0].type, "academy_graduated");
+});
+
+test("#4495 releaseUnsoldGraduate: retter den fejlagtige 'sold'-stempling til 'released'", async () => {
+  const { supabase, rec } = makeSupabase({ rider: STUCK_ACADEMY_RIDER, gradRows: [SOLD_GRAD] });
+  await releaseUnsoldGraduate(supabase, { teamId: "t1", riderId: "r9", notify: spyNotify() });
+  assert.equal(rec.gradUpdates.length, 1);
+  assert.equal(rec.gradUpdates[0].status, "released");
+  assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g-sold"]);
+});
+
+test("#4495 releaseUnsoldGraduate: uden 'sold'-række frigives rytteren stadig (best-effort restempling)", async () => {
+  const { supabase, rec } = makeSupabase({ rider: STUCK_ACADEMY_RIDER, gradRows: [] });
+  const res = await releaseUnsoldGraduate(supabase, { teamId: "t1", riderId: "r9", notify: spyNotify() });
+  assert.equal(res.released, true);
+  assert.equal(rec.gradUpdates.length, 0);
+});
+
+test("#4495 releaseUnsoldGraduate: idempotent — rytter der ikke længere er akademi røres ikke", async () => {
+  const { supabase, rec } = makeSupabase({
+    rider: { ...STUCK_ACADEMY_RIDER, is_academy: false },
+    gradRows: [SOLD_GRAD],
+  });
+  const notify = spyNotify();
+  const res = await releaseUnsoldGraduate(supabase, { teamId: "t1", riderId: "r9", notify });
+  assert.equal(res.released, false);
+  assert.equal(res.reason, "not_academy");
+  assert.equal(rec.riderUpdates.length, 0);
+  assert.equal(notify.calls.length, 0);
+});
+
+test("#4495 releaseUnsoldGraduate: rytter der imens er skiftet hold røres ikke", async () => {
+  const { supabase, rec } = makeSupabase({
+    rider: { ...STUCK_ACADEMY_RIDER, team_id: "t-other" },
+    gradRows: [SOLD_GRAD],
+  });
+  const res = await releaseUnsoldGraduate(supabase, { teamId: "t1", riderId: "r9", notify: spyNotify() });
+  assert.equal(res.released, false);
+  assert.equal(res.reason, "not_on_team");
+  assert.equal(rec.riderUpdates.length, 0);
+});
+
+test("#4495 releaseUnsoldGraduate: ukendt rytter giver rider_not_found uden writes", async () => {
+  const { supabase, rec } = makeSupabase({ rider: null, gradRows: [] });
+  const res = await releaseUnsoldGraduate(supabase, { teamId: "t1", riderId: "r9", notify: spyNotify() });
+  assert.equal(res.released, false);
+  assert.equal(res.reason, "rider_not_found");
+  assert.equal(rec.riderUpdates.length, 0);
+});
+
+// ─── completeStuckPromotion (#4495-reparation, 5/9) ────────────────────────────
+// Tilstand (b): grad-række 'promoted' men is_academy stadig true — samme felter
+// + cap-tjek som resolveGraduation's promote-gren, men UDEN en pending grad-
+// række at resolve'e imod (den findes allerede, afsluttet).
+
+const STUCK_PROMOTED_RIDER = {
+  id: "r11", team_id: "t1", is_academy: true, firstname: "Halfway", lastname: "Promoted",
+  salary: 500, contract_length: null, contract_end_season: null,
+};
+
+test("#4495 completeStuckPromotion: fuldfører — is_academy=false, kontrakt healet, notify", async () => {
+  const { supabase, rec } = makeSupabase({ rider: STUCK_PROMOTED_RIDER });
+  const notify = spyNotify();
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  const res = await completeStuckPromotion(supabase, { teamId: "t1", riderId: "r11", seasonNumber: 3, getMarketState, notify });
+  assert.equal(res.completed, true);
+  assert.equal(rec.riderUpdates.length, 1);
+  assert.equal(rec.riderUpdates[0].is_academy, false);
+  assert.ok(rec.riderUpdates[0].salary > 0);
+  assert.equal(notify.calls[0].type, "academy_graduated");
+  assert.equal(notify.calls[0].metadata.messageCode, "notif.academyGraduated.promote");
+});
+
+test("#4495 completeStuckPromotion: afviser ved fuld senior-trup (squad_cap_violation)", async () => {
+  const { supabase } = makeSupabase({ rider: STUCK_PROMOTED_RIDER });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 });
+  await assert.rejects(
+    () => completeStuckPromotion(supabase, { teamId: "t1", riderId: "r11", seasonNumber: 3, getMarketState, notify: spyNotify() }),
+    /squad_cap_violation/,
+  );
+});
+
+test("#4495 completeStuckPromotion: idempotent — rytter der ikke længere er akademi røres ikke", async () => {
+  const { supabase, rec } = makeSupabase({ rider: { ...STUCK_PROMOTED_RIDER, is_academy: false } });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  const res = await completeStuckPromotion(supabase, { teamId: "t1", riderId: "r11", seasonNumber: 3, getMarketState, notify: spyNotify() });
+  assert.equal(res.completed, false);
+  assert.equal(res.reason, "not_academy");
+  assert.equal(rec.riderUpdates.length, 0);
+});
+
+test("#4495 completeStuckPromotion: rytter der imens er skiftet hold røres ikke", async () => {
+  const { supabase, rec } = makeSupabase({ rider: { ...STUCK_PROMOTED_RIDER, team_id: "t-other" } });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  const res = await completeStuckPromotion(supabase, { teamId: "t1", riderId: "r11", seasonNumber: 3, getMarketState, notify: spyNotify() });
+  assert.equal(res.completed, false);
+  assert.equal(res.reason, "not_on_team");
+  assert.equal(rec.riderUpdates.length, 0);
+});
+
+// ─── resolveNeverGraduated (#4495-reparation, 5/9) ─────────────────────────────
+// Tilstand (c): INGEN grad-række overhovedet — default-kæden (YOUTH_RULES §2.2):
+// promovér hvis plads+råd, ellers sælg, ellers slip. Genbruger completeStuck-
+// Promotion, den eksporterede createGraduateAuction og releaseUnsoldGraduate —
+// ingen ny implementation.
+
+const NEVER_GRADUATED_RIDER = {
+  id: "r12", team_id: "t1", is_academy: true, firstname: "Never", lastname: "Offered",
+  base_value: 100000, prize_earnings_bonus: 0, market_value: 100000,
+  salary: 500, contract_length: null, contract_end_season: null,
+};
+
+test("#4495 resolveNeverGraduated: plads + råd → promoverer (default-kædens 1. led)", async () => {
+  const { supabase, rec } = makeSupabase({ rider: NEVER_GRADUATED_RIDER });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  const res = await resolveNeverGraduated(supabase, { teamId: "t1", riderId: "r12", seasonNumber: 3, getMarketState, notify: spyNotify() });
+  assert.equal(res.action, "promoted");
+  assert.equal(rec.riderUpdates[0].is_academy, false);
+  assert.equal(rec.auctionInserts.length, 0);
+});
+
+test("#4495 resolveNeverGraduated: ingen plads → sælger (default-kædens 2. led, graduate-auktion)", async () => {
+  const { supabase, rec } = makeSupabase({ rider: NEVER_GRADUATED_RIDER });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 });
+  const res = await resolveNeverGraduated(supabase, { teamId: "t1", riderId: "r12", seasonNumber: 3, getMarketState, auctionConfig: DEFAULT_AUCTION_CONFIG, notify: spyNotify() });
+  assert.equal(res.action, "sold");
+  assert.equal(rec.auctionInserts.length, 1);
+  assert.equal(rec.auctionInserts[0].is_youth, false);
+  assert.equal(rec.riderUpdates.length, 0, "is_academy rører IKKE ved salg — uændret til auktionen afgøres");
+});
+
+test("#4495 resolveNeverGraduated: negativ saldo → sælger (default-kædens 2. led)", async () => {
+  const { supabase, rec } = makeSupabase({ rider: NEVER_GRADUATED_RIDER });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: -2000 });
+  const res = await resolveNeverGraduated(supabase, { teamId: "t1", riderId: "r12", seasonNumber: 3, getMarketState, auctionConfig: DEFAULT_AUCTION_CONFIG, notify: spyNotify() });
+  assert.equal(res.action, "sold");
+  assert.equal(rec.auctionInserts.length, 1);
+});
+
+test("#4495 resolveNeverGraduated: salg udskudt af #4004-sæsongrænsen → sidste led, slip", async () => {
+  const { supabase, rec } = makeSupabase({
+    rider: NEVER_GRADUATED_RIDER,
+    upcomingSeason: { start_date: "2026-08-24" }, // grænse = 2026-08-23T18:00 dansk tid
+  });
+  const now = new Date("2026-08-23T10:00:00Z"); // 12t-gulvet presser sluttid forbi grænsen
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 }); // ingen plads → forsøg salg
+  const res = await resolveNeverGraduated(supabase, { teamId: "t1", riderId: "r12", seasonNumber: 3, now, getMarketState, auctionConfig: DEFAULT_AUCTION_CONFIG, notify: spyNotify() });
+  assert.equal(res.action, "released");
+  assert.equal(rec.auctionInserts.length, 0, "auktion ikke oprettet — sæsongrænsen blokerede");
+  assert.equal(rec.riderUpdates[0].team_id, null);
+  assert.equal(rec.riderUpdates[0].is_academy, false);
+});
+
+test("#4495 resolveNeverGraduated: race mellem tjek og skriv (squad_cap_violation) falder til salg", async () => {
+  const { supabase, rec } = makeSupabase({ rider: NEVER_GRADUATED_RIDER });
+  let calls = 0;
+  // Første kald (resolveNeverGraduateds eget tjek) siger plads; andet kald
+  // (completeStuckPromotion's INTERNE tjek, lige før selve skrivningen) siger
+  // fuld trup — modellerer en anden handling der lige har taget pladsen imens.
+  const getMarketState = async () => {
+    calls += 1;
+    return calls === 1
+      ? { squad_limits: { max: 30 }, future_count: 10, balance: 5000 }
+      : { squad_limits: { max: 30 }, future_count: 30, balance: 5000 };
+  };
+  const res = await resolveNeverGraduated(supabase, { teamId: "t1", riderId: "r12", seasonNumber: 3, getMarketState, auctionConfig: DEFAULT_AUCTION_CONFIG, notify: spyNotify() });
+  assert.equal(res.action, "sold");
+  assert.equal(rec.auctionInserts.length, 1);
+  assert.equal(rec.riderUpdates.length, 0, "promote-forsøget skrev intet — kastede squad_cap_violation FØR update");
+});
+
+test("#4495 resolveNeverGraduated: rytter der imens er kommet videre (is_academy=false) springes over", async () => {
+  const { supabase, rec } = makeSupabase({ rider: { ...NEVER_GRADUATED_RIDER, is_academy: false } });
+  const res = await resolveNeverGraduated(supabase, { teamId: "t1", riderId: "r12", seasonNumber: 3, notify: spyNotify() });
+  assert.equal(res.action, "skipped");
+  assert.equal(res.reason, "already_resolved");
+  assert.equal(rec.riderUpdates.length, 0);
+  assert.equal(rec.auctionInserts.length, 0);
 });

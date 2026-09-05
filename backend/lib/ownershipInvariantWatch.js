@@ -46,6 +46,18 @@
 //      (deferredTransferHealSweep.js) reparerer nu proaktivt; DENNE invariant
 //      er backstoppet for hvis den heal-sweep selv fejler/er slukket.
 //
+//   G. (#4495) En FASTLAAST akademi-graduate: is_academy=true, hold-ejet,
+//      saesonalder >= GRADUATION.GRADUATE_AGE, ingen aaben auktion og intet
+//      aabent (eller lige udloebet) override-vindue. Tilstanden opstod fordi en
+//      usolgt graduate-auktion ikke havde nogen udgang: rytteren blev liggende
+//      hos saelgeren med is_academy=true mens grad-raekken allerede var stemplet
+//      'sold' — 8 ryttere paa 22-23 aar paa 6 hold, maalt i prod 31/8. Udgangen
+//      er nu bygget (academyGraduation.releaseUnsoldGraduate, kaldt fra
+//      auctionFinalization's no-bid-gren); DENNE vagt er backstoppet hvis klassen alligevel
+//      opstaar igen ad en anden sti. Praedikatet ejes af
+//      stuckAcademyGraduates.js — SAMME funktion som reparations-scriptet
+//      bruger, saa vagt og reparation aldrig kan divergere.
+//
 // READ-ONLY: ingen DB-writes, ingen ny tabel, ingen migration. Én Sentry-
 // capture pr. invariant pr. tick med FAST fingerprint (mirror ai-trim-
 // invariant-guard #2407/#2434-mønstret i cron.js) — ét Sentry-issue pr.
@@ -55,6 +67,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { findStaleOfferedIntake } from "./academyIntakeReconcile.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { TEAM_BOARD_MEMBERS_COUNT } from "./boardMembers.js";
+import { findStuckAcademyGraduates } from "./stuckAcademyGraduates.js";
 
 const CHUNK = 1000;
 const SAMPLE_LIMIT = 50;
@@ -287,7 +300,7 @@ function auctionFindingSample(auctions, ridersById) {
 }
 
 /**
- * Kør de fem ownership-invariant-tjek. Pure I/O + notify — INGEN writes.
+ * Kør ownership-invariant-tjekkene A-G. Pure I/O + notify — INGEN writes.
  *
  * @param {object}   args
  * @param {object}   args.supabase
@@ -303,7 +316,7 @@ function auctionFindingSample(auctions, ridersById) {
  * @param {(ms:number) => Promise<void>} [args.sleepFn] DI-hook (CYCLINGZONE-4M) —
  *        settle-ventetiden før A/B genlæses. Stubbes i tests, så suiten ikke
  *        bruger 15 sekunder på at bevise en race.
- * @returns {Promise<{checked:number, findings:{youthOwned:number, sellerlessOwned:number, staleIntake:number, strandedAcademy:number, stalePendingTransfer:number}, alerted:boolean}>}
+ * @returns {Promise<{checked:number, findings:{youthOwned:number, sellerlessOwned:number, staleIntake:number, strandedAcademy:number, stalePendingTransfer:number, teamsMissingBoardMembers:number, stuckAcademyGraduates:number}, alerted:boolean}>}
  */
 export async function runOwnershipInvariantWatch({
   supabase,
@@ -383,6 +396,11 @@ export async function runOwnershipInvariantWatch({
 
   // Invariant F (#4664): menneskehold uden bestyrelsesmedlemmer.
   const teamsMissingBoardMembers = await fetchHumanTeamsMissingBoardMembers(supabase);
+
+  // Invariant G (#4495): fastlaaste akademi-graduates. Praedikat + grace-vindue
+  // ejes af stuckAcademyGraduates.js, saa vagten og reparations-scriptet ser
+  // PRAECIS de samme ryttere.
+  const stuckGraduates = (await findStuckAcademyGraduates(supabase, { now })).stuck;
 
   let alerted = false;
 
@@ -485,6 +503,29 @@ export async function runOwnershipInvariantWatch({
     );
   }
 
+  if (stuckGraduates.length > 0) {
+    alerted = true;
+    captureExceptionFn?.(
+      new Error(
+        `Ownership-invariant-brud: ${stuckGraduates.length} akademirytter over graduerings-alderen uden aktiv auktion (#4495)`
+      ),
+      {
+        tags: { cron: "ownership-invariant-watch" },
+        fingerprint: ["stuck-academy-graduate"],
+        extra: {
+          count: stuckGraduates.length,
+          sample: stuckGraduates.slice(0, SAMPLE_LIMIT).map((r) => ({
+            riderId: r.riderId,
+            teamId: r.teamId,
+            age: r.age,
+            pendingGraduationId: r.pendingGraduationId,
+            pendingDeadline: r.pendingDeadline,
+          })),
+        },
+      }
+    );
+  }
+
   return {
     checked: activeAuctions.length,
     findings: {
@@ -494,6 +535,7 @@ export async function runOwnershipInvariantWatch({
       strandedAcademy: strandedAcademy.length,
       stalePendingTransfer: stalePendingTransfer.length,
       teamsMissingBoardMembers: teamsMissingBoardMembers.length,
+      stuckAcademyGraduates: stuckGraduates.length,
     },
     alerted,
   };

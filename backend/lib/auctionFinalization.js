@@ -18,7 +18,7 @@ import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { buildContractExpiringNotification, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
-import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
+import { resolvePendingGraduationOnSale, releaseUnsoldGraduate } from "./academyGraduation.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import {
   FINANCE_ACTOR_TYPE,
@@ -1509,6 +1509,11 @@ async function finalizeAuctionRecord({
           pending_team_id: null,
           acquired_at: actualEnd,
           ...contractOnAcquirePatch(auction.rider, activeSeasonNumber),
+          // #932/#4495: samme graduate-flip som vinder-stien. En akademirytter
+          // der ryger til banken paa en garanteret handel skal lande som SENIOR
+          // — banken har intet akademi, og en is_academy=true rytter hos banken
+          // ville vaere praecis den samme fastlaaste tilstand som #4495.
+          ...(auction.rider?.is_academy ? { is_academy: false } : {}),
         })
         .eq("id", auction.rider.id),
       { context: `guaranteed_bank_sale auction=${auction.id} rider=${auction.rider.id}` }
@@ -1599,6 +1604,33 @@ async function finalizeAuctionRecord({
     actualEnd,
     sellerOwned,
   });
+
+  // #4495: en GRADUATE-auktion uden bud. createGraduateAuction lader bevidst
+  // rytteren stå is_academy=true (uden for senior-cap) mens auktionen kører, og
+  // dens docblok har hele tiden lovet at finalization sætter is_academy=false
+  // ved salg / fri agent ved ingen bud — men kun vinder-stiens graduatePatch
+  // fandtes. Uden denne gren lukkede auktionen som 'completed', ingen penge
+  // flyttede, og rytteren blev liggende hos sælgeren med is_academy=true mens
+  // grad-rækken allerede var stemplet 'sold': hverken solgt, promoveret,
+  // sluppet eller fri agent (8 fastlåste ryttere på 6 hold målt i prod 31/8).
+  //
+  // Placeret EFTER closeAuction af samme grund som #2456's ungdoms-sletning
+  // (deleteUnsoldYouthRider): først når auktionen er lukket kan et nyt bud
+  // ikke længere lande, så frigivelsen kan ikke kappe en levende auktion over.
+  // Selve opdateringen er conditional + idempotent (se releaseUnsoldGraduate),
+  // så en cron-retry på samme auktion ikke rører en rytter der er kommet videre.
+  const soldToBank = Boolean(auction.is_guaranteed_sale && sellerOwned && bankTeam);
+  if (!soldToBank && !auction.is_youth && sellerOwned && auction.seller_team_id && auction.rider?.is_academy === true) {
+    await releaseUnsoldGraduate(supabase, {
+      teamId: auction.seller_team_id,
+      rider: auction.rider,
+      now: new Date(actualEnd),
+      // notifyTeamOwner er positionel her, men objekt-signeret i
+      // notificationService — adaptér, så finalizerens injicerede spy bruges.
+      notify: async ({ teamId, type, title, message, relatedId, metadata }) =>
+        notifyTeamOwner(teamId, type, title, message, relatedId, metadata),
+    });
+  }
 
   return {
     ok: true,

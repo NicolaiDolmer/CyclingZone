@@ -305,7 +305,15 @@ function createFinalizeAuctionSupabase({
                 const resolved = riderUpdateHitsZeroRows
                   ? { data: [], error: null }
                   : { data: [{ id: value }], error: null };
-                return {
+                // #4495: releaseUnsoldGraduate chains EXTRA guard filters
+                // (.eq("team_id", …).eq("is_academy", true)) after the id filter
+                // so a repeated call hits 0 rows instead of moving a rider who
+                // has already moved on. The builder therefore has to stay
+                // chainable — the id assertion above still runs on the first eq.
+                const builder = {
+                  eq() {
+                    return builder;
+                  },
                   select() {
                     return Promise.resolve(resolved);
                   },
@@ -313,6 +321,7 @@ function createFinalizeAuctionSupabase({
                     return Promise.resolve({ error: null }).then(resolve, reject);
                   },
                 };
+                return builder;
               },
             };
           },
@@ -2259,6 +2268,136 @@ test("finalizeAuctionById refuses an implicit self-bid when the rider has no own
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0].teamId, "initiator-team");
   assert.doesNotMatch(notifications[0].title, /you won/i);
+});
+
+// #4495: en GRADUATE-auktion uden bud. createGraduateAuction lader bevidst
+// rytteren stå is_academy=true mens auktionen kører, og dens docblok har hele
+// tiden lovet "free agent ved ingen bud" — men kun vinder-stiens graduatePatch
+// fandtes. Før denne fix lukkede auktionen som completed uden at nogen rørte
+// rytteren: han blev liggende hos sælgeren med is_academy=true, mens grad-rækken
+// allerede var stemplet 'sold'. Hverken solgt, promoveret, sluppet eller fri
+// agent — 8 fastlåste ryttere på 6 hold målt i prod 31/8.
+test("#4495 usolgt graduate-auktion frigiver rytteren som fri agent i stedet for at efterlade ham i akademiet", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-unsold-graduate",
+        status: "active",
+        current_bidder_id: null,
+        current_price: 1200,
+        seller_team_id: "seller-team",
+        is_guaranteed_sale: false,
+        rider: {
+          id: "rider-unsold-graduate",
+          firstname: "Unsold",
+          lastname: "Graduate",
+          // Sælgeren ejer rytteren (sellerOwned) og han er stadig akademi —
+          // præcis den tilstand createGraduateAuction efterlader.
+          team_id: "seller-team",
+          is_academy: true,
+          salary: 900,
+          contract_length: 2,
+          contract_end_season: 4,
+        },
+      },
+      teams: {
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 5000,
+          division: 3,
+          user_id: "user-seller",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "seller-team": { riderCount: 12, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-unsold-graduate",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    now: new Date("2026-08-27T07:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "no_bids");
+  // Ingen penge flytter — udgangen er en frigivelse, ikke et salg.
+  assert.deepEqual(teamUpdates, []);
+  assert.deepEqual(financeInserts, []);
+  // Rytteren forlader akademiet OG holdet, med kontraktfelterne nullet (#1309:
+  // kontrakter kun på ejede ryttere).
+  assert.equal(riderUpdates.length, 1);
+  assert.deepEqual(riderUpdates[0], {
+    team_id: null,
+    is_academy: false,
+    salary: null,
+    contract_length: null,
+    contract_end_season: null,
+  });
+  // Sælgeren får både "udløb uden bud" og frigivelses-beskeden.
+  assert.ok(notifications.some((n) => n.type === "academy_graduated"));
+});
+
+// Forward-guard: den nye frigivelse må ALDRIG ramme en almindelig senior-auktion
+// uden bud. Uden is_academy-gaten ville enhver usolgt auktion fyre sælgerens
+// rytter — langt værre end den bug den skulle rette.
+test("#4495 usolgt SENIOR-auktion rører ikke rytteren (frigivelsen er gated på is_academy)", async () => {
+  const riderUpdates = [];
+  const teamUpdates = [];
+  const financeInserts = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-unsold-senior",
+        status: "active",
+        current_bidder_id: null,
+        current_price: 1200,
+        seller_team_id: "seller-team",
+        is_guaranteed_sale: false,
+        rider: {
+          id: "rider-unsold-senior",
+          firstname: "Unsold",
+          lastname: "Senior",
+          team_id: "seller-team",
+          is_academy: false,
+        },
+      },
+      teams: {
+        "seller-team": {
+          id: "seller-team", name: "Seller", balance: 5000, division: 3,
+          user_id: "user-seller", is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "seller-team": { riderCount: 12, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates: [],
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-unsold-senior",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-08-27T07:00:00.000Z"),
+  });
+
+  assert.equal(result.code, "no_bids");
+  assert.deepEqual(riderUpdates, []);
+  assert.deepEqual(teamUpdates, []);
+  assert.deepEqual(financeInserts, []);
 });
 
 // ── #1309 kontrakt-on-acquire ────────────────────────────────────────────────
