@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { EmptyState, ErrorState, PageLoader, Button, Section, SectionHeader, Tabs, TabList, Tab } from "../components/ui";
+import { EmptyState, ErrorState, PageLoader, Button, Section, SectionHeader, Tabs, TabList, Tab, ChevronRightIcon } from "../components/ui";
 import StaffOverviewPage from "./StaffOverviewPage.jsx";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
 import { formatNumber } from "../lib/intl";
@@ -179,7 +179,7 @@ export default function KlubPage() {
         lines={
           pendingFacility
             ? [
-                { label: t("confirm.newTier"), value: `T${pendingFacility.tier} → T${pendingFacility.tier + 1}` },
+                { label: t("confirm.newTier"), value: <>T{pendingFacility.tier} <ChevronRightIcon size={11} aria-hidden="true" className="inline mx-0.5" /> T{pendingFacility.tier + 1}</> },
                 { label: t("confirm.cost"), value: formatNumber(pendingFacility.upgradePrice) },
               ]
             : []

@@ -437,7 +437,7 @@
           "Action required: Offers awaiting your reply, counters you've received, deals awaiting your confirmation and auctions ending within 1 hour. Opens by default.",
           "Auctions: All active auctions where you're seller or bidder.",
           "Transfers: Offers you've received and offers you've sent that are still active.",
-          "Watchlist: Compact view of your saved riders with market status. Click -> for the full watchlist.",
+          "Watchlist: Compact view of your saved riders with market status. Open it for the full watchlist.",
           "History: Completed auctions and closed transfers."
         ]
       },

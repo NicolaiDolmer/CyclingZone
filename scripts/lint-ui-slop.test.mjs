@@ -87,6 +87,17 @@ test("countArrow ignores arrows inside comments", () => {
   assert.equal(countArrow("/* ↑ scroll to top */"), 0);
 });
 
+test("countArrow flags guillemet-chevrons used as prev/next icons (#3422-rest)", () => {
+  assert.equal(countArrow("‹ Forrige"), 1);
+  assert.equal(countArrow("Næste ›"), 1);
+  assert.equal(countArrow("‹ › switch rider"), 2);
+  assert.equal(countArrow("«Forrige» / «Næste»"), 4);
+});
+
+test("countArrow ignores guillemet-chevrons inside comments", () => {
+  assert.equal(countArrow("// Roster (til ‹ forrige · næste ›), i facilitets-rækkefølge"), 0);
+});
+
 test("scanSource returns per-category counts (hex/slop/colour/emoji/arrowglyph)", () => {
   const r = scanSource(
     '<div className="rounded-2xl bg-red-500" style={{color:"#fff"}}>🏁 Se alle →</div>'

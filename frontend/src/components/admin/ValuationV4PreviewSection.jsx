@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { readAdminJson, adminErrorMessage } from "./shared/useAdminAuth";
+import { ChevronLeftIcon, ChevronRightIcon } from "../ui/icons/index.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 const PAGE_SIZE = 50;
@@ -231,9 +232,9 @@ export default function ValuationV4PreviewSection({ getAuth, onMsg }) {
         <div className="flex items-center justify-between mt-2 text-xs text-cz-3">
           <span>{rows.length.toLocaleString("da-DK")} ryttere</span>
           <div className="flex items-center gap-2">
-            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-2 py-1 rounded bg-cz-subtle disabled:opacity-40">‹</button>
+            <button aria-label="Forrige side" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-2 py-1 rounded bg-cz-subtle disabled:opacity-40"><ChevronLeftIcon size={14} aria-hidden="true" /></button>
             <span>{page} / {totalPages}</span>
-            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 rounded bg-cz-subtle disabled:opacity-40">›</button>
+            <button aria-label="Næste side" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 rounded bg-cz-subtle disabled:opacity-40"><ChevronRightIcon size={14} aria-hidden="true" /></button>
             <button onClick={load} className="ms-2 px-2 py-1 rounded bg-cz-subtle hover:text-cz-1">↻ Genindlæs</button>
           </div>
         </div>

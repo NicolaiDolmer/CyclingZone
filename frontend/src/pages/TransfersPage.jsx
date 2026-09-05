@@ -22,7 +22,7 @@ import SortableTh from "../components/ui/SortableTh.jsx";
 import {
   AmountInput, EmptyState, ExchangeIcon, InboxIcon, PageLoader,
   PageHeader, Section, Button, Select, Tabs, TabList, Tab, BlockedNote,
-  ArrowUpIcon, ArrowDownIcon, BikeIcon,
+  ArrowUpIcon, ArrowDownIcon, BikeIcon, ChevronRightIcon,
 } from "../components/ui";
 import { useBlockedAction } from "../lib/useBlockedAction.js";
 // #2849 bølge 2: markeds-tabellens wrap/border deles med cz-table-recipen (T2),
@@ -1114,7 +1114,7 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
                 <span className="text-cz-2 truncate">{riderNameById.get(p.id)}</span>
                 <span className="font-mono whitespace-nowrap">
                   <span className="text-cz-3">{formatNumber(p.from)}</span>
-                  <span className="text-cz-3 mx-1">→</span>
+                  <ChevronRightIcon size={12} aria-hidden="true" className="inline mx-1 text-cz-3" />
                   <span className={p.changed ? "text-cz-accent-t font-bold" : "text-cz-3"}>{formatNumber(p.to)}</span>
                   <span className="text-cz-3"> CZ$</span>
                 </span>

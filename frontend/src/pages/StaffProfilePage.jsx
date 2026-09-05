@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { EmptyState, PageLoader, Button, Card } from "../components/ui";
+import { EmptyState, PageLoader, Button, Card, ChevronLeftIcon } from "../components/ui";
 import { useStaffProfile } from "../lib/useStaffProfile.js";
 import { useStaffRelease } from "../lib/useStaffRelease.js";
 import TeamLink from "../components/TeamLink.jsx";
@@ -79,7 +79,8 @@ export default function StaffProfilePage() {
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"
         >
-          ‹ {t("back")}
+          <ChevronLeftIcon size={13} aria-hidden="true" />
+          {t("back")}
         </button>
 
         {!isPublic && (
