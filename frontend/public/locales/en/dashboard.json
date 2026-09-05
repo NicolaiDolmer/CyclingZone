@@ -84,7 +84,9 @@
   },
   "contractWarning": {
     "message": "{count, plural, one {1 rider's contract expires} other {# riders' contracts expire}} at the season change. Renew from the rider's profile to keep them, or they'll be released as free agents.",
-    "cta": "Review contracts"
+    "cta": "Review contracts",
+    "letExpire": "I understand, let it expire",
+    "dismissAria": "Dismiss for this season"
   },
   "discordNudge": {
     "title": "Get DMs for overbids, transfer offers, and board signals",
