@@ -1210,12 +1210,17 @@ export const SEED_SELECTION = {
 // fiktiv-rytter-mønster som "rider-99" i SEED_RACE_INCIDENTS ovenfor — så den
 // låste taktik-række kan vises uden at røre den delte race_entries-seed (kun
 // Ada/RIDERS[0] er reelt udtaget til race-live-1 der).
+// #4746: "rider-97" er en ANDEN fiktiv, IKKE-udgået rytter (samme mønster),
+// tilføjet så matrixen har to redigerbare ryttere at vælge "Udbrudsjæger" for
+// — nødvendigt for at kunne screenshotte/reproducere #4746's fix (kun én
+// hunter ad gangen pr. etape) uden at røre den delte race_entries-seed.
 export const SEED_STAGE_ROLES = {
   enabled: true,
   stages_completed: 2,
   stage_count: 5,
   riders: [
     { rider_id: RIDERS[0].id, name: `${RIDERS[0].firstname} ${RIDERS[0].lastname}`, race_role: "captain", abandoned: false },
+    { rider_id: "rider-97", name: "Théo Journal", race_role: "hunter", abandoned: false },
     { rider_id: "rider-98", name: "Malthe Juul", race_role: "helper", abandoned: true },
   ],
   overrides: [],

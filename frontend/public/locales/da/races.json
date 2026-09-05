@@ -586,7 +586,7 @@
       "stage_roles_rider_not_entered": "En af rytterne er ikke tilmeldt dette løb.",
       "stage_roles_invalid_role": "En af rollerne er ugyldig.",
       "stage_roles_invalid_effort": "En af indsats-indstillingerne er ugyldig.",
-      "stage_roles_role_overlap": "Kun én rytter kan være kaptajn, og kun én kan være spurtkaptajn, pr. etape.",
+      "stage_roles_role_overlap": "Kun én rytter kan være kaptajn, kun én kan være spurtkaptajn, og kun én kan være udbrudsjæger, pr. etape.",
       "stage_roles_duplicate": "Samme rytter optræder to gange for samme etape.",
       "stage_roles_rider_abandoned": "En af rytterne er udgået af løbet og kan ikke længere tildeles taktik.",
       "stage_roles_race_completed": "Løbet er afsluttet, så taktikken kan ikke længere ændres.",

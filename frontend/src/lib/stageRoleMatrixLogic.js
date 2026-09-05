@@ -67,8 +67,16 @@ export function isCellOverridden(cell, rider) {
 
 // Roller der højst én rytter må have pr. etape. Spejler backendens guard
 // (raceStageRolesApi.validateStageRoleOverrides) og de partielle unique-
-// indexes på race_entries (uq_race_entries_captain/_sprint_captain).
-export const EXCLUSIVE_ROLES = new Set(["captain", "sprint_captain"]);
+// indexes på race_entries (uq_race_entries_captain/_sprint_captain/_hunter).
+//
+// #4746/#2405: `hunter` manglede her, selvom holdudtagelsen allerede
+// håndhæver den unikt via `uq_race_entries_hunter`. Uden degraderingen
+// kunne manageren sætte en NY hunter på en etape uden at den forrige nogensinde
+// mistede rollen — matrixen viste stiltiende to (op til seks, målt 3/9 i
+// decision-spec §5) samtidige "Udbrudsjæger"-rækker for samme etape. `hunter`
+// er nu med, så `demoteOtherHoldersOfRole` (samme funktion, ingen ny logik)
+// rydder den forrige hunter, ligesom den allerede gør for captain/sprint_captain.
+export const EXCLUSIVE_ROLES = new Set(["captain", "sprint_captain", "hunter"]);
 
 // Ren opdatering af én celle — returnerer en NY matrix (muterer aldrig input).
 export function setCell(matrix, stageNumber, riderId, patch) {

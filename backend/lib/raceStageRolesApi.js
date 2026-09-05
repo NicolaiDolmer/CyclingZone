@@ -69,8 +69,9 @@ export function validateStageRoleOverrides({
     if (!VALID_EFFORTS.includes(o?.effort)) { errors.push("stage_roles_invalid_effort"); break; }
   }
 
-  // >1 captain eller >1 sprint_captain pr. etape for holdet — talt på den
-  // EFFEKTIVE rolle (override → basis-rolle), ikke på bodyens rækker alene.
+  // >1 captain, >1 sprint_captain eller >1 hunter pr. etape for holdet — talt
+  // på den EFFEKTIVE rolle (override → basis-rolle), ikke på bodyens rækker
+  // alene.
   //
   // #4344: bodyen indeholder per kontrakt KUN celler der afviger fra basis-
   // rollen (frontendens diffToOverrides), så en urørt basis-kaptajn er aldrig
@@ -80,15 +81,28 @@ export function validateStageRoleOverrides({
   // Motoren tog så den sidste af de to (raceSimulator.buildTeamContext) og gav
   // beskyttelsen til en rytter spilleren ikke havde valgt.
   //
+  // #4746/#2405: `hunter` var udeladt her, selvom holdudtagelsen
+  // (`race_entries`) allerede håndhæver den unikt via
+  // `uq_race_entries_hunter` (database/2026-06-12-race-entries-roles.sql).
+  // Gabet lod 119 af 760 hold-etape-hunter-grupper stå med mere end én hunter
+  // samtidig (op til 6), målt 3/9 — se decision-spec §5 (option A) og
+  // RACE_ENGINE_RULES.md §7 modsigelse 12. `hunter` er nu med her OG i
+  // frontendens EXCLUSIVE_ROLES (stageRoleMatrixLogic.js), så et gem afvises
+  // konsekvent hvis det alligevel sker (fx et rå API-kald), præcis som for
+  // captain/sprint_captain. Ingen DB-constraint tilføjet her — 119 eksisterende
+  // grupper ville brække en unique-indeks med det samme, og en oprydning af
+  // eksisterende data er ejer-gated (destruktivt), ikke en sidegevinst ved
+  // denne visnings-fejl.
+  //
   // Kun etaper der optræder i bodyen kan overhovedet få en ny leder: en etape
   // uden overrides falder tilbage til race_entries alene, hvor de partielle
-  // unique-indexes (uq_race_entries_captain/_sprint_captain) allerede
+  // unique-indexes (uq_race_entries_captain/_sprint_captain/_hunter) allerede
   // garanterer højst én af hver pr. (løb, hold).
   const stagesInBody = [...new Set(overrides.map((o) => o?.stage_number))];
   const roleOverlap = stagesInBody.some((stageNumber) => {
     const rowsForStage = overrides.filter((o) => o?.stage_number === stageNumber);
     const overriddenRiders = new Set(rowsForStage.map((o) => o?.rider_id));
-    return ["captain", "sprint_captain"].some((role) => {
+    return ["captain", "sprint_captain", "hunter"].some((role) => {
       let count = rowsForStage.filter((o) => o?.race_role === role).length;
       // Ryttere UDEN override på etapen beholder deres basis-rolle.
       for (const riderId of teamRiderIds) {
