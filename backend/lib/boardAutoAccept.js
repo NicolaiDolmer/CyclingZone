@@ -46,6 +46,7 @@ import {
 import { computeDnaSuggestions } from "./boardClubDna.js";
 import { deriveDefaultFocusFromIdentity } from "./boardIdentity.js";
 import { regenerateBoardMembersForTeam } from "./boardMembers.js";
+import { ensureMandateForTeamFormation } from "./boardMandateEngine.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 
 // #4557 · Tærskel-konstanterne + resolveThresholds flyttet til
@@ -519,6 +520,16 @@ async function autoAcceptPendingPlan({
           .eq("id", team.id);
         throw regenError;
       }
+
+      // #4837 · Samme holddannelses-øjeblik som chooseDnaForTeam: cron'en har
+      // netop valgt DNA og tildelt de 5 medlemmer for et hold der aldrig selv
+      // svarede. Uden dette kald ville præcis de hold fødes uden relation og
+      // mandat. Kaster aldrig, idempotent.
+      await ensureMandateForTeamFormation(supabase, {
+        teamId: team.id,
+        seasonNumber: activeSeason?.number ?? null,
+        now,
+      });
     }
   }
 

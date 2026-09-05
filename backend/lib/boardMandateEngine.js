@@ -41,6 +41,9 @@ import { buildGoalKey, evaluateGoalProgress, generateBoardGoals } from "./boardG
 import { clampSatisfaction } from "./boardUtils.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { resolveThresholds } from "./boardNegotiationThresholds.js";
+import { findNextSeason } from "./seasonLookup.js";
+import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
+import { captureException } from "./sentry.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -770,6 +773,17 @@ export async function proposeNextMandate(supabase, {
  * for NÆSTE mandat allokeres). Fuldstændig no-op (ingen læsning/skrivning)
  * når flaget er off eller holdet ikke har en skyggerelation endnu (samme
  * "no_shadow_relation"-afgrænsning som applySeasonEndSync/applyWeekendSync).
+ *
+ * #4838 · NÆSTE-SÆSON-GUARDEN LIGGER FØR `completeActiveMandate`. Rækkefølgen
+ * er ikke kosmetik: `proposeNextMandate` springer over med
+ * `{ skipped: "target_season_not_found" }` når sæson-rækken for næste sæson
+ * ikke er materialiseret endnu (kalenderen er ikke bygget så langt frem).
+ * Lukkede vi det aktive mandat FØRST, ville hvert hold ende med et `completed`
+ * mandat og INTET nyt — og `boardRoom.js` læser kun `status = 'active'`, så
+ * mandatkortet ville være tomt for ALLE hold indtil nogen opdagede det. Målt
+ * 5/9 mod prod: sæson 4 findes ikke, så sæsonskiftet 27/9 ville have ramt 237
+ * hold. Guarden gør skiftet til en ren no-op i stedet: det aktive mandat står
+ * urørt, og næste kørsel (efter sæson 4 er oprettet, #4270) samler op.
  */
 export async function advanceMandateAtSeasonEnd(supabase, {
   teamId,
@@ -789,6 +803,16 @@ export async function advanceMandateAtSeasonEnd(supabase, {
   const relation = await fetchRelationRow(supabase, teamId);
   if (!relation) return { skipped: "no_shadow_relation" };
 
+  const targetSeasonNumber = Number(currentSeasonNumber) + 1;
+  const nextSeason = await findNextSeason({ supabase, currentNumber: Number(currentSeasonNumber) });
+  if (!nextSeason.found) {
+    console.warn(
+      `⚠️  [mandate] sæsonskifte afbrudt for team ${teamId}: sæson ${targetSeasonNumber} findes ikke i 'seasons' — `
+      + "det aktive mandat er IKKE lukket (#4838). Opret næste sæson (#4270) og kør sæsonskiftet igen.",
+    );
+    return { skipped: "target_season_not_found", season_number: targetSeasonNumber };
+  }
+
   const activeMandate = await fetchActiveMandateRow(supabase, teamId, seasonId);
   if (activeMandate) {
     await completeActiveMandate(supabase, { teamId, seasonId });
@@ -796,7 +820,7 @@ export async function advanceMandateAtSeasonEnd(supabase, {
 
   const proposal = await proposeNextMandate(supabase, {
     teamId,
-    targetSeasonNumber: Number(currentSeasonNumber) + 1,
+    targetSeasonNumber,
     confidence: relation.confidence,
     previousFocus: activeMandate?.focus ?? null,
     team,
@@ -846,4 +870,111 @@ export async function proposeMandateForNewTeam(supabase, {
     now,
     isBetaTester,
   });
+}
+
+// ---------------------------------------------------------------------------
+// 7. Holddannelsens indgang til ny-holds-hooket (#4837)
+// ---------------------------------------------------------------------------
+
+/**
+ * Kontekst til `generateBoardGoals` for et NYT hold. Samme felter som
+ * `boardMandateMeeting.js::loadMeetingContext` henter til årsmødet — mål-
+ * genereringen skal se holdets division og trup, ellers får nye hold statiske
+ * default-mål mens alle andre hold får dynamiske.
+ *
+ * Best-effort pr. felt: en fejlende delforespørgsel degraderer til null/[]
+ * (færre stempler på målene), den vælter ikke holddannelsen.
+ */
+async function loadTeamFormationContext(supabase, teamId) {
+  const [teamRes, ridersRes, membersRes] = await Promise.all([
+    supabase.from("teams")
+      .select("id, name, division, balance, sponsor_income, team_dna_key")
+      .eq("id", teamId).maybeSingle(),
+    supabase.from("riders").select("*").eq("team_id", teamId),
+    supabase.from("team_board_members")
+      .select("archetype_key, selection_kind, alignment_score, is_chairman")
+      .eq("team_id", teamId),
+  ]);
+  return {
+    team: teamRes.error ? null : (teamRes.data ?? null),
+    riders: ridersRes.error ? [] : (ridersRes.data ?? []),
+    assignedMembers: membersRes.error || !membersRes.data?.length ? null : membersRes.data,
+  };
+}
+
+/**
+ * #4837 · Holddannelsens ENE indgang til mandat-modellen.
+ *
+ * Baggrund: `proposeMandateForNewTeam`/`ensureRelationForTeam` var skrevet,
+ * testet og eksporteret, men INGEN produktionssti kaldte dem. Alle 237
+ * relationer i prod stammede fra engangs-scriptet `mandateShadowRebuild3514`
+ * (1/9) — hold oprettet efter den dato fik 5 bestyrelsesmedlemmer og en
+ * board_profile, men 0 relation, 0 mandat, 0 milepæle, og deres mandatkort
+ * ville stå tomt for altid.
+ *
+ * Kaldes fra de to steder et nyt menneskehold får sine bestyrelsesmedlemmer:
+ * `boardMembers.js::chooseDnaForTeam` (spillerens eget DNA-valg) og
+ * `boardAutoAccept.js::autoAcceptPendingPlan` (cron'ens auto-valg for hold der
+ * aldrig svarede).
+ *
+ * KASTER ALDRIG. Skyggedata må ikke kunne vælte holddannelsen — hele kroppen
+ * ligger i try/catch, præcis som `economyEngine.js` isolerer skygge-syncet ved
+ * sæson-slut. Idempotent: en eksisterende `board_relations`-række røres aldrig
+ * (`ensureRelationForTeam`), og et eksisterende mandat for (hold, sæson) giver
+ * `{ skipped: "already_exists" }`.
+ *
+ * Skrive-gaten (#4839): `proposeMandateForNewTeam` sender selv `engineWrite:
+ * true` som alle andre skrive-indgange her, så et nyt hold får relation +
+ * mandat i stage 'beta' uanset om manageren selv er beta-tester (ejer-go 6/9)
+ * — se `featureStage.js::evaluateFlagStage`.
+ *
+ * @returns {Promise<object|null>} resultatet fra `proposeMandateForNewTeam`,
+ *   `{ skipped: <reason> }` for de tilstande der ikke er en fejl, eller `null`
+ *   når kill-switchen er off.
+ */
+export async function ensureMandateForTeamFormation(supabase, {
+  teamId,
+  seasonNumber = null,
+  now = new Date(),
+  captureExceptionFn = captureException,
+} = {}) {
+  try {
+    ensureSupabase(supabase);
+    if (!teamId) return { skipped: "missing_team_id" };
+
+    // NB: `Number(null)` er 0, ikke NaN — derfor den eksplicitte gyldigheds-
+    // test i stedet for et bart `Number.isFinite`. Et sæsonnummer 0 findes
+    // ikke, og et gæt her ville binde mandatet til den forkerte sæson.
+    const isSeasonNumber = (value) => Number.isFinite(value) && value > 0;
+
+    let number = Number(seasonNumber);
+    if (!isSeasonNumber(number)) {
+      const active = await loadSingleActiveSeason(supabase, {
+        select: "id, number",
+        tag: "board-mandate-team-formation",
+      });
+      number = Number(active?.number);
+    }
+    if (!isSeasonNumber(number)) return { skipped: "no_active_season" };
+
+    const { team, riders, assignedMembers } = await loadTeamFormationContext(supabase, teamId);
+
+    return await proposeMandateForNewTeam(supabase, {
+      teamId,
+      currentSeasonNumber: number,
+      team,
+      riders,
+      assignedMembers,
+      now,
+    });
+  } catch (error) {
+    console.warn(`⚠️  [mandate] ny-holds-mandat fejlede for team ${teamId}: ${error.message}`);
+    try {
+      captureExceptionFn(error, {
+        tags: { flow: "board-team-formation", stage: "mandate-shadow" },
+        extra: { teamId },
+      });
+    } catch { /* best-effort: en fejlende alarm må aldrig dræbe holddannelsen */ }
+    return { skipped: "error", reason: error.message };
+  }
 }

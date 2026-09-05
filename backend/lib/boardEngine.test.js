@@ -2065,6 +2065,47 @@ test("chooseDnaForTeam (first choice) assigns members and reports chosen key", a
   assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
 });
 
+// #4837 · DNA-valget ER holddannelsen for bestyrelsen. Før denne wiring havde
+// `proposeMandateForNewTeam` INGEN produktions-kaldsti: hold oprettet efter
+// engangs-rebuild'et 1/9 fik 5 medlemmer og en board_profile, men 0 relation,
+// 0 mandat og et permanent tomt mandatkort. Testen låser kaldsstien.
+test("#4837 chooseDnaForTeam giver det nye hold relation + mandat (holddannelsens kaldsti)", async () => {
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: null, team_dna_chosen_at: null, division: 3, season_1_identity_basis: FRENCH_GC_BASIS }],
+    team_board_members: [],
+    app_config: [{ key: "board_mandate_model_enabled", value: "on" }],
+    seasons: [{ id: "season-3", number: 3, status: "active" }],
+    riders: [],
+    board_relations: [],
+    board_mandates: [],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const result = await chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" });
+
+  assert.equal(result.dnaKey, "italiensk_klassiker");
+  assert.equal(state.board_relations.length, 1, "nyt hold får en board_relations-række");
+  assert.equal(state.board_relations[0].confidence, 50);
+  assert.equal(state.board_mandates.length, 1, "nyt hold får sit første mandat");
+  assert.equal(state.board_mandates[0].season_id, "season-3");
+  assert.equal(state.board_mandates[0].status, "proposed");
+});
+
+test("#4837 chooseDnaForTeam: skyggedata er fail-safe — DNA-valget lykkes selv når mandat-hooket ikke kan skrive", async () => {
+  // Ingen app_config/seasons i state → mandat-hooket løber ind i en fejl.
+  // DNA-valget (spillerens faktiske handling) må ikke mærke det.
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: null, team_dna_chosen_at: null, season_1_identity_basis: FRENCH_GC_BASIS }],
+    team_board_members: [],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const result = await chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" });
+
+  assert.equal(result.dnaKey, "italiensk_klassiker");
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
+});
+
 test("chooseDnaForTeam rolls back team_dna_key when member regeneration fails (#878 atomicity)", async () => {
   const state = {
     teams: [{ id: "team-1", team_dna_key: null, team_dna_chosen_at: null, season_1_identity_basis: FRENCH_GC_BASIS }],
