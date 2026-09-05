@@ -75,8 +75,8 @@ import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
   Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ArrowUpIcon, ChevronRightIcon, CheckIcon, DiscordIcon,
-  PageHeader, Section, SectionStack, SectionHeader, SectionAction, Button, ErrorState,
-  Skeleton, SkeletonLines, EmptyState, ProgressMeter,
+  PageLoader, PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState,
+  SkeletonLines, EmptyState, ProgressMeter,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
@@ -279,11 +279,15 @@ export default function DashboardPage() {
       ]);
       // #3751: distinkte race_id'er holdet har mindst een entry i.
       setTeamRaceIds(new Set((teamRaceEntriesRes.data || []).map((e) => e.race_id)));
-      setTeamRaceIdsLoaded(true);
       setLastRaceDayPoints(sumPointsByTeam(lastRaceDayPointsRes.data || []));
     } catch {
-      // best-effort: filteret forbliver ufyldt (kortet viser sit skelet), og
-      // bevaegelses-badges udebliver — ingen af delene vaelter siden.
+      // best-effort: filteret forbliver ufyldt og bevaegelses-badges udebliver.
+      // Ingen af delene vaelter siden (DASHBOARD_RULES.md §3).
+    } finally {
+      // Flaget skal saettes OGSAA paa fejlstien: ellers ville "Kommende loeb"
+      // staa med sit skelet for evigt i stedet for at falde tilbage til sin
+      // empty-state, naar opslaget fejlede.
+      setTeamRaceIdsLoaded(true);
     }
   }
 
@@ -347,9 +351,16 @@ export default function DashboardPage() {
     const token = session?.access_token;
 
     // #4160: de fire valgfrie modul-kald afhaenger KUN af tokenet, ikke af hold
-    // eller saeson. De startes derfor med det samme og afventes ikke — de
-    // hydrerer hver sit kort naar de lander.
-    loadOptionalModules(token);
+    // eller saeson. De startes derfor med det samme, side om side med resten.
+    //
+    // Vi AFVENTER dem til sidst (se nedenfor) i stedet for at lade dem hydrere
+    // frit: tre af de fire kort (onboarding-fremdrift, saeson-tilmelding,
+    // Discord-nudge) sidder OVER sidens hovedindhold, saa et kort der dukker op
+    // efter foerste maling skubber hele dashboardet ned. Maalt: fri hydrering
+    // gav CLS 0,197 mod 0,064 paa main. Ventetiden er gratis, fordi kaldene
+    // starter paa t=0 og er hjemme efter eet tur/retur, mens den blokerende
+    // sti bruger to.
+    const optionalModulesPromise = loadOptionalModules(token);
 
     // #4160: hold-opslaget og saeson-opslaget afhaenger ikke af hinanden, men
     // laa i serie (teams -> seasons). Parallelt sparer de en hel tur/retur paa
@@ -453,12 +464,15 @@ export default function DashboardPage() {
     // FALSK "ikke tilmeldt" for et gammelt hold. `.in("race_id", …)` afgrænser
     // opslaget til netop de kendte, allerede-hentede løb — sekventiel EFTER
     // Promise.all'et, da racesRes' id-liste er forudsætningen.
-    // #4160: de to opslag der KRAEVER Promise.all'ets id-lister koeres nu
-    // indbyrdes parallelt OG uden for den blokerende sti (loadDependentRows
-    // afventes ikke) — de fodrer to badges/et filter, ikke sidens hovedindhold,
-    // og hver ekstra `await` her udskoed HELE foerste maling.
+    // #4160: de to opslag laa foer som to SERIELLE `await`'s her. De koeres nu
+    // indbyrdes parallelt (eet tur/retur i stedet for to) og startes med det
+    // samme, men afventes til sidst i stedet for at hydrere frit: "Kommende
+    // loeb" staar midt paa siden, saa et kort der skifter fra skelet til tre
+    // raekker EFTER foerste maling skubber alt nedenunder. Maalt paa den lokale
+    // harness gav fri hydrering CLS 0,130 mod 0,064 paa main, mod ca. 300 ms
+    // LCP. Skreddet vejer tungere end de 300 ms.
     const racesForTeamCheck = (racesRes.data || []).map((r) => r.id);
-    loadDependentRows(teamData.id, racesForTeamCheck, poolRacesRes.data || []);
+    const dependentRowsPromise = loadDependentRows(teamData.id, racesForTeamCheck, poolRacesRes.data || []);
 
     setReservedBalance(reservedBalanceValue || 0);
     setSeasonInfo(activeSeason || null);
@@ -508,6 +522,14 @@ export default function DashboardPage() {
     // #1140: OnboardingModal (det redundante 3-korts intro-modal) er konsolideret
     // væk — OnboardingProgressCard nedenfor er nu den ENESTE kanoniske dashboard-
     // onboarding-UI. Vi viser ikke længere et separat modal for ny-spillere.
+
+    // #4160: se kommentarerne ved de to kald. Begge er startet saa tidligt som
+    // deres data tillader og har koert parallelt med alt ovenstaaende; dette er
+    // samlepunktet, saa alt er med i FOERSTE maling i stedet for at skubbe
+    // siden ned bagefter. De fire valgfrie modul-kald er gratis (hjemme efter
+    // eet tur/retur mod den blokerende stis to); de to afhaengige opslag koster
+    // eet ekstra tur/retur, som skreddet ellers ville betale for.
+    await Promise.all([optionalModulesPromise, dependentRowsPromise]);
 
     } catch (e) {
       console.error("Dashboard load failed:", e);
@@ -892,40 +914,26 @@ export default function DashboardPage() {
     setCompletionDismissed(true);
   }
 
-  // #4160: den bare <PageLoader /> (een spinner midt paa en ellers tom side)
-  // gav ingen ramme at male ind i — sidehoved og kort opstod alle sammen i
-  // samme oejeblik som data landede. Nu staar sidens skelet fra foerste maling:
-  // sidehoved-blok i samme geometri som det rigtige (h1 20px + subtitle 13px)
-  // og fire kort-skeletter i den kanoniske SectionStack.
-  // PAGE_TEMPLATES.md, "Canonical states": "Loading: skeleton lines 12px tall
-  // ... Never a spinner inside cards." Titlen selv er holdets navn, som foerst
-  // kendes naar teams-opslaget lander, saa header-titlen er ogsaa et skelet —
-  // en placeholder-tekst ville vaere opfundet indhold.
+  // #4160 — MAALT, ikke antaget: et sidehoved- + kort-skelet blev proevet her
+  // (fire Section-skeletter i en SectionStack) og ROLLET TILBAGE igen. Det
+  // koeber ingen LCP: skelet-flader er ikke "contentful", saa LCP afventer
+  // stadig den foerste rigtige tekstblok, og hele gevinsten paa denne side
+  // kommer fra at vandfaldet i loadAll er skaaret ned. Til gengaeld koster det
+  // CLS: dashboardets kort er betingede og varierer i hoejde, saa skelettets
+  // geometri kan ikke ramme indholdets, og indhold der ERSTATTER et placeret
+  // skelet taeller som skred, hvor indhold der bare dukker op ikke goer.
+  // Maalt paa den lokale harness (median af 5, 300 ms kunstig latenstid):
+  // CLS 0,064 -> 0,197 desktop og 0,000 -> 0,154 mobil, med LCP uaendret.
+  // Derfor bliver PageLoader staaende indtil dashboardets kort kan levere en
+  // hoejde foer deres data (hoerer hjemme i CLS-sporet, #2230).
   if (loading) return (
-    <div translate="no" className="max-w-5xl mx-auto" aria-busy="true">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="min-w-0">
-          <Skeleton rounded="rounded" className="h-[20px] w-48" />
-          <Skeleton rounded="rounded" className="mt-2 h-[13px] w-64" />
-        </div>
-        <Skeleton rounded="rounded" className="h-[38px] w-32" />
-      </header>
-      <SectionStack>
-        {[0, 1, 2, 3].map((i) => (
-          <Section key={i}>
-            <Skeleton rounded="rounded" className="mb-4 h-[15px] w-40" />
-            <SkeletonLines lines={3} />
-          </Section>
-        ))}
-      </SectionStack>
-    </div>
+    <PageLoader />
   );
 
   // #3510 — kanonisk ErrorState (docs/design/PAGE_TEMPLATES.md) i stedet for at
   // falde igennem til et fuldt tomt dashboard. Retry gen-kalder loadAll direkte
   // (samme mønster som StandingsPage/#2175); setLoading(true) genviser
-  // load-skeletet ovenfor mens den nye forespørgsel er i flugt (#4160 — det
-  // var en <PageLoader /> indtil da).
+  // PageLoader mens den nye forespørgsel er i flugt.
   if (error) return (
     <div translate="no" className="max-w-5xl mx-auto">
       <ErrorState

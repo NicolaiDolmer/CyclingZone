@@ -1551,10 +1551,12 @@ export default function TrainingPage() {
           // tabellens egen hairline-ramme, ikke et falsk "ingen ryttere" —
           // og ikke en spinner (PAGE_TEMPLATES.md: "Never a spinner inside
           // cards"). Vi kender ikke trupstoerrelsen foer svaret lander, saa
-          // hoejden er sat efter en typisk trup i stedet for eksakt reserveret.
+          // hoejden kan ikke reserveres eksakt; 18 linjer ligger taettere paa
+          // en rigtig trup end 10 og skaerer dermed skreddet ned naar tabellen
+          // erstatter skelettet.
           <div className={WRAP}>
             <div className="p-5">
-              <SkeletonLines lines={10} />
+              <SkeletonLines lines={18} />
             </div>
           </div>
         ) : riders.length === 0 ? (
