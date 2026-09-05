@@ -359,6 +359,26 @@ Begge konstanter bor i `calendarTierCaps.js`. **Spredningen måles fortsat i KAL
 
 > Kodekommentaren ved `CLASS_STAGE_LENGTH_BAND` skrev indtil 3/9 at *"GT'ens 21 etaper er ejer-bekræftet"*. **Ingen GT har 21 etaper** — de har 18, 17 og 17 (§3). Sætningen var en rest fra før kataloget blev det det er i dag, og den er nu fjernet.
 
+### To enkeltstarter i samme etapeløb må ikke ligne hinanden (ejer 31/8, [#4539](https://github.com/NicolaiDolmer/CyclingZone/issues/4539))
+
+**Ordret (ejer 31/8):** *"Jeg er bestemt åben overfor to enkeltstarter i samme løb her og der - Men synes ikke de må minde så meget om hinanden, eller endda som udgangspunkt skal ITT'er heller ikke ligge så tæt på hinanden synes jeg."* Udløst af La Course au Soleil (8 etaper), hvis etape 1 og 3 begge var en 20 km flad `itt` — strukturelt samme etape to gange.
+
+| Regel | Konstant | Værdi | Låst | Fil |
+|---|---|---|---|---|
+| "Ligner hinanden" (predikat) | `looksLikeDuplicateTimeTrial` | samme `profile_type` **og** `distance_km` inden for ± `TT_LOOKALIKE_DISTANCE_BAND_KM` | 4/9 (#4539) | `raceStageProfileGenerator.js` |
+| Distance-bånd | `TT_LOOKALIKE_DISTANCE_BAND_KM` | 8 km | 4/9 (#4539) | `raceStageProfileGenerator.js` |
+| TT-loft, etapeløb ≥ `GRAND_TOUR_MIN_STAGES` | `DEFAULT_TT_CAP` | 2 (uændret, #2029) | 4/9 (#4539) | `raceStageProfileGenerator.js` |
+| TT-loft, etapeløb < `GRAND_TOUR_MIN_STAGES` | `SHORT_RACE_TT_CAP` | **1** | 4/9 (#4539) | `raceStageProfileGenerator.js` |
+
+**To ting løser problemet sammen, ikke hver for sig:**
+
+1. **Kortere etapeløb får kun ÉN tidskørsel.** `timeTrialCap` tog før kun garantier med i betragtning — loftet var 2 uanset løbslængde, så et 8-etapers `balanced_week`-løb (som La Course au Soleil) kunne få sin garanterede `itt` **plus** en filler-rullet ekstra `itt`. Er løbet kortere end en Grand Tour (`GRAND_TOUR_MIN_STAGES`, samme tærskel som §3), er loftet nu **1** — garantier kan stadig hæve det (en fremtidig arketype med 2 garanterede TT'er ville ikke blive trimmet), men filleren kan ikke længere lægge en ekstra oveni.
+2. **Grand Tours kan stadig få 2**, og risikoen for at de to ligner hinanden var allerede lukket af `markSecondIttAsHilly` (#3546 D, 17/8): en GT's ANDEN tidskørsel omdøbes altid til `itt_hilly`. To forskellige `profile_type` tæller ALDRIG som "ligner hinanden" i predikatet ovenfor, uanset distance — det er bevidst, samme "kuperet vs. flad enkeltstart er en anden etape"-logik som resten af terræn-systemet.
+
+**Hvad predikatet IKKE fanger (bevidst, ejerens ordlyd 2. sætning er ikke implementeret endnu):** minimumsafstanden *i etapenummer* mellem to enkeltstarter ("ITT'er ... skal ikke ligge så tæt på hinanden"). Kun *lighed* (type + distance) er håndhævet her. Afstands-reglen kræver et separat ejer-lås af "hvad er for tæt" (antal etaper imellem) og er ikke en del af denne rettelse.
+
+**Invarianten** (`no_duplicate_time_trial_stages` i `verify-invariants.js`) scanner ALLE eksisterende `race_stage_profiles` — ikke kun fremtidige genereringer — og bruger SAMME `findDuplicateTimeTrialPairs`-funktion som generatoren selv, så et fund aldrig kan skyldes to uenige definitioner af "ligner". Den retter intet; `backend/scripts/repairDuplicateItt.js` (dry-run default) foreslår en erstatningsprofil for det SENESTE af hvert par og nægter at røre en etape der allerede er kørt (`races.stages_completed`).
+
 ---
 
 ## 5. Terræn-dækning

@@ -16,6 +16,7 @@ import {
   computeRaceResultDuplicates,
   normalizeRaceResultDuplicatesRpc,
 } from "../lib/raceResultDuplicateInvariant.js";
+import { findDuplicateTimeTrialPairs } from "../lib/raceStageProfileGenerator.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ENV = path.resolve(SCRIPT_DIR, "../.env");
@@ -345,6 +346,34 @@ async function main() {
   // hvor den gamle optælling ligger som reference/fallback og er bevist ækvivalent med
   // SQL'en mod en ægte Postgres-motor.
 
+  // ---- #4539: to enkeltstarter i samme etapeløb der ligner hinanden ----
+  // ALLE etapeløb (ikke kun aktiv sæson) — en dublet-fejl fra generatoren kan sidde
+  // i en tidligere sæsons allerede-afviklede kalender lige så godt som i den aktive.
+  // SAMME predikat som generatoren selv bruger (findDuplicateTimeTrialPairs,
+  // raceStageProfileGenerator.js), så audit og generator aldrig kan være uenige om
+  // hvad "ligner hinanden" betyder. Retter intet — se repairDuplicateItt.js.
+  const stageRaceRows = await fetch_("races", "id,name", { race_type: "eq.stage_race" });
+  const stageRaceNameById = new Map(stageRaceRows.map((r) => [r.id, r.name]));
+  const stageRaceIds = new Set(stageRaceRows.map((r) => r.id));
+  const allStageProfileRows = await fetch_("race_stage_profiles", "race_id,stage_number,profile_type,distance_km", undefined, "race_id");
+  const profilesByRace = new Map();
+  for (const row of allStageProfileRows) {
+    if (!stageRaceIds.has(row.race_id)) continue;
+    if (!profilesByRace.has(row.race_id)) profilesByRace.set(row.race_id, []);
+    profilesByRace.get(row.race_id).push(row);
+  }
+  const duplicateTimeTrialViolations = [];
+  for (const [raceId, stages] of profilesByRace.entries()) {
+    for (const [a, b] of findDuplicateTimeTrialPairs(stages)) {
+      duplicateTimeTrialViolations.push({
+        race_id: raceId,
+        race_name: stageRaceNameById.get(raceId) ?? raceId,
+        stage_a: { stage_number: a.stage_number, profile_type: a.profile_type, distance_km: a.distance_km },
+        stage_b: { stage_number: b.stage_number, profile_type: b.profile_type, distance_km: b.distance_km },
+      });
+    }
+  }
+
   // ---- #4161: kalender-akse + overlap-cap pr. pulje (aktiv saeson) ----
   // `game_day` er den IN-GAME dag der binder en rytter (raceBinding.js), IKKE kalenderdagen.
   // Pakkeren lae­gger K = ceil(density / cap) hele game_days ind i hver kalenderdag, saa
@@ -490,6 +519,13 @@ async function main() {
         ? "OK — ingen rang tildelt to gange i samme klassement"
         : `${raceResultDuplicates.duplicateRankCount} rang(e) tildelt 2+ gange i samme (løb, etape, klassement) (#2898)`,
       raceResultDuplicates.duplicateRanks
+    ),
+    no_duplicate_time_trial_stages: check(
+      duplicateTimeTrialViolations.length === 0,
+      duplicateTimeTrialViolations.length === 0
+        ? `OK — ${profilesByRace.size} etapeløb kontrolleret, ingen tidskørsler der ligner hinanden`
+        : `${duplicateTimeTrialViolations.length} par tidskørsler ligner hinanden i samme etapeløb (samme type + distance inden for båndet, #4539)`,
+      duplicateTimeTrialViolations.slice(0, 50)
     ),
     // #4229 — SKAL stå før kalender-invarianterne herunder. De fire svarer alle
     // "OK — ingen aktiv sæson at kontrollere" når der ingen aktiv sæson er, så
