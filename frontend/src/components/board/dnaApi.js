@@ -1,16 +1,12 @@
 // #4557 · Klub-DNA-kaldene (GET /board/dna-suggestions, POST /board/dna-choose),
 // samlet ét sted så Boardroom og den gamle BoardPage bruger samme kontrakt.
 // INGEN ny rute: begge endpoints findes allerede (backend/routes/api.js).
-
-import { supabase } from "../../lib/supabase";
+//
+// #4348: bruger den KANONISKE authHeaders() (lib/supabase.ts) — enforced af
+// authHeadersCanonical.4348.test.js (ingen ny lokal kopi tilladt).
+import { authHeaders } from "../../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
-
-async function authHeaders() {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : null;
-}
 
 /**
  * Bestyrelsens 3 DNA-forslag + om holdet stadig må skifte.
@@ -18,7 +14,7 @@ async function authHeaders() {
  * (DNA-kortet er en tilbudt handling, ikke sidens data).
  */
 export async function fetchDnaSuggestions() {
-  const headers = await authHeaders();
+  const headers = await authHeaders({ json: false });
   if (!headers) return null;
   try {
     const res = await fetch(`${API}/api/board/dna-suggestions`, { headers });
@@ -37,7 +33,7 @@ export async function postDnaChoice(dnaKey) {
   try {
     res = await fetch(`${API}/api/board/dna-choose`, {
       method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ dna_key: dnaKey }),
     });
   } catch {

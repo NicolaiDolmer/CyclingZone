@@ -154,6 +154,20 @@ function makeMeetingSupabase({
           }),
         };
       }
+      // #4557 (overblik + faner) · boardRoom.js laeser nu ogsaa holdets lag
+      // 6-raekker (bonustilbuddet) naar den bygger payloaden signMandate
+      // returnerer. Ingen bonus-raekker i moede-fixturen: tom liste.
+      if (table === "board_consequences") {
+        const chain = {
+          eq: () => chain,
+          in: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: async () => ({ data: null, error: null }),
+          then: (resolve) => resolve({ data: [], error: null }),
+        };
+        return { select: () => chain };
+      }
       throw new Error(`uventet tabel i test: ${table}`);
     },
   };

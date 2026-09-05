@@ -4,8 +4,10 @@
 //
 // INGEN ny mekanik og ingen ny rute: `POST /api/board/bonus-offer/accept` og
 // `/decline` er dem der allerede findes (backend/routes/api.js).
-
-import { supabase } from "../../lib/supabase";
+//
+// #4348: bruger den KANONISKE authHeaders() (lib/supabase.ts) — enforced af
+// authHeadersCanonical.4348.test.js (ingen ny lokal kopi tilladt).
+import { authHeaders } from "../../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -18,15 +20,14 @@ const API = import.meta.env.VITE_API_URL;
  */
 export async function postBonusOfferAction(action, offerId) {
   if (!offerId) return { ok: false, data: null };
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) return { ok: false, data: null };
+  const headers = await authHeaders();
+  if (!headers) return { ok: false, data: null };
 
   let res;
   try {
     res = await fetch(`${API}/api/board/bonus-offer/${action}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers,
       body: JSON.stringify({ offer_id: offerId }),
     });
   } catch {
