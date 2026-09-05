@@ -10,7 +10,7 @@
 
 > **🔴 Åbne fund:** **#2423** skew protection SLÅET FRA → CYCLINGZONE-56: 133 chunk-fejl/24 t efter 25 deploys 5/9 (deploy-verify rød på budgettet, selvheling #4595 virker) · **#4811** signup-sprog måles ikke · **#4828/#4829** 4 D4-puljer på 25/24, verificér efter Settimana-finalen · #4453 · #4537 · #4530 · #4531 · #4109.
 
-> **✅ 5/9 (Fable, natbølge + merge-runde):** 26 spor → 29 PR'er, **31 merget** i dag (inkl. #4794 #4803 #4824 #4830 #4833 #4834), patch note **7.254** live, CodeQL #356 fixed, 6 frosne agenter recoveret. Audit: **30 lukket**, 550 åbne. 7 nye issues (#4811–#4816, #4831). Læring: frosne agenter holder samtidigheds-plads → stop + relancér (runbook).
+> **✅ 5/9 (Fable, natbølge + merge-runde):** 26 spor → 29 PR'er, **31 merget** i dag (inkl. #4794 #4803 #4824 #4830 #4833 #4834), patch note **7.254** + 7.255 live, CodeQL #356 fixed, 6 frosne agenter recoveret. Audit: **30 lukket**, 550 åbne. 7 nye issues (#4811–#4816, #4831). Læring: frosne agenter holder samtidigheds-plads → stop + relancér (runbook).
 
 > **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). 12 betalende (MRR 436 kr). #4616: EUR-planer i Alunta men ikke i checkout, Railway mangler EUR-nøgler → ejer-klik. #4514: kunden beholder Pro (ejer 4/9). B2C-only ønske (#4511/#4616 pkt 8).
 

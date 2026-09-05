@@ -1,5 +1,40 @@
 export const PATCHES = [
   {
+    "version": "7.255",
+    "date": "2026-09-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "A sold rider stays in your line-up pool until his race is done",
+          "body": "He now shows greyed out with \"Leaves after this race\" under his name in team selection, while your squad count already excludes him. Before, he simply disappeared while he was still out racing for you."
+        },
+        "da": {
+          "title": "En solgt rytter bliver i din holdudtagelses-pulje, indtil hans løb er kørt",
+          "body": "Han vises nu gråtonet med \"Forlader holdet efter dette løb\" under sit navn i holdudtagelsen, mens din trup-tælling allerede udelader ham. Før forsvandt han bare, mens han stadig kørte løbet for dig."
+        },
+        "refs": [4119]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Picking a new breakaway hunter replaces the previous one",
+          "body": "Assigning the role to a second rider on the same stage now moves it, with the message \"The role moved\". Other stages are untouched."
+        },
+        "da": {
+          "title": "At vælge en ny udbrudsjæger erstatter den forrige",
+          "body": "Tildeler du rollen til en anden rytter på samme etape, flyttes den nu, med beskeden \"Rollen flyttede\". Andre etaper er urørt."
+        },
+        "refs": [4746]
+      }
+    ]
+  },
+  {
     "version": "7.254",
     "date": "2026-09-05",
     "label": "Beta",
