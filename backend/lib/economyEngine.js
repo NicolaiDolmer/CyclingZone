@@ -2133,7 +2133,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   // bindende: mandatets ordinære evaluering FØRST, milepælene DEREFTER — se
   // applySeasonEndSync-kommentaren). No-op når kill-switchen er 'off'
   // (fail-safe inde i kaldet) — skriver KUN til skyggetabellerne, aldrig til
-  // board_profiles, som allerede er opdateret uændret ovenfor.
+  // board_profiles, som allerede er opdateret uændret ovenfor. #4839: 'beta'
+  // tæller som 'on' for denne motor-skrivning (engineWrite inde i kaldet).
   if (teamStanding && (mandateSeasonEndEvaluation || mandateMilestoneContexts.length)) {
     try {
       await applyMandateSeasonEndSyncFn(supabaseClient, {
@@ -2157,7 +2158,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   // punkt 1, rækkefølgen er bindende — confidence skal være sæsonens FÆRDIGE
   // tal før tillids-trappen for næste mandat allokeres). No-op (fail-safe
   // inde i kaldet) når kill-switchen er 'off' eller holdet ikke har en
-  // skyggerelation endnu. En fejl her må ALDRIG vælte en rigtig sæson-slut —
+  // skyggerelation endnu; #4839: 'beta' skriver for alle hold (engineWrite).
+  // En fejl her må ALDRIG vælte en rigtig sæson-slut —
   // samme isolerede try/catch-disciplin som skygge-syncet ovenfor.
   if (teamStanding) {
     try {

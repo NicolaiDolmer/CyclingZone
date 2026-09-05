@@ -359,6 +359,10 @@ export async function writeLegacyOneYearBoard(supabase, {
  * `mandate.id` + status `proposed`: er mandatet allerede `active`, skrives
  * INTET igen — funktionen returnerer bare den friske Boardroom-payload
  * (retry-sikkert). Alt andet end `proposed`/`active` er en konflikt.
+ *
+ * #4839: manager-stien (API-ruten) er LÆSE-gatet på `isBetaTester` som før —
+ * en spiller der ikke må se Boardroom må heller ikke underskrive. Cron-stien
+ * sender `engineWrite: true`, så auto-accept virker for alle hold i 'beta'.
  */
 export async function signMandate(supabase, {
   teamId,
@@ -369,10 +373,11 @@ export async function signMandate(supabase, {
   visionSlot = null,
   now = new Date(),
   isBetaTester = false,
+  engineWrite = false,
   signedVia = "manager",
 } = {}) {
   ensureSupabase(supabase);
-  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester, engineWrite })) return null;
   if (!mandateId) throw new Error("mandateId is required");
 
   const { data: mandate, error: mandateError } = await supabase

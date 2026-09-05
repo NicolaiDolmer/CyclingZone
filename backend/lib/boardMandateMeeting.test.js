@@ -325,3 +325,39 @@ test("buildVisionSlotProposal: sæsonen er allerede passeret → næste ledige (
   });
   assert.equal(proposal.target_season_number, 9, "6 (nu) + 3 (3yr-varighed)");
 });
+
+// ── #4839: signMandate — skrive-gate for cronen, læse-gate for manageren ─────
+
+test("#4839 signMandate: beta + engineWrite (cron) → underskriver; beta uden viewer/engineWrite → null", async () => {
+  const makeSupabase = () => makeMeetingSupabase({
+    flagValue: "beta",
+    mandates: [{
+      id: "m1", team_id: "t1", season_number: 4, season_id: "s4", status: "proposed", focus: "balanced",
+      goals: [sampleGoal], adjustments_allowed: 2,
+      source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+    }],
+    relations: [{ id: "rel-1", team_id: "t1", confidence: 55, category_scores: {} }],
+    members: [{ team_id: "t1", archetype_key: "sponsoraten", is_chairman: true }],
+  });
+
+  const cronSupabase = makeSupabase();
+  const payload = await signMandate(cronSupabase, {
+    teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: null,
+    engineWrite: true, signedVia: "auto_accept",
+  });
+  assert.ok(payload);
+  assert.equal(cronSupabase._state.mandates.find((m) => m.id === "m1").status, "active");
+
+  const managerSupabase = makeSupabase();
+  assert.equal(
+    await signMandate(managerSupabase, { teamId: "t1", mandateId: "m1" }),
+    null,
+    "en spiller der ikke må se Boardroom i beta må heller ikke underskrive",
+  );
+  assert.equal(managerSupabase._state.mandates.find((m) => m.id === "m1").status, "proposed");
+});
+
+test("#4839 signMandate: off + engineWrite → stadig null (kill-switchen stopper alt)", async () => {
+  const supabase = makeMeetingSupabase({ flagValue: "off" });
+  assert.equal(await signMandate(supabase, { teamId: "t1", mandateId: "m1", engineWrite: true }), null);
+});
