@@ -8,7 +8,7 @@
 - **Namespaces.** Én JSON-fil pr. namespace (46 i dag: `common`, `auctions`, `races`, `help` osv.). `defaultNS` er `common`.
 - **INLINE vs lazy.** De namespaces der kan ramme first paint er importeret statisk i `frontend/src/i18n/index.js` (`ns`-listen + `resources`). Resten hentes lazy over HTTP. `scripts/i18n-check-namespace-inline.mjs` håndhæver skellet (`INLINE_EXEMPT` er de route-gatede).
 - **Pseudo-locale.** `en-XA` genereres på runtime, har ingen mappe på disk og oversættes aldrig.
-- **Backend-strenge** sendes som nøgler og oversættes i `backendMessages`, altså samme pipeline som resten.
+- **Backend-strenge** sendes som nøgler og oversættes i `backendMessages`, altså samme pipeline som resten. Kontrakten står i [Backend-tekst til spillere](#backend-tekst-til-spillere) nedenfor.
 - **ICU.** Enkelt-klamme MessageFormat via `i18next-icu`: `{count, plural, one {...} other {...}}`. Aldrig `{{dobbelt}}`.
 
 ### Guards i CI
@@ -19,9 +19,33 @@
 | `i18n-check-delta-pending.mjs` | EN-nøgle uden oversættelse (eller `__MISSING__`) i et målsprog. Fejlbeskeden peger på `npm run i18n:translate` |
 | `i18n-check-icu-braces.mjs` | Dobbelt-klammer og brudt ICU |
 | `tone-check-em-dash.mjs` | Em-dash i spillervendt copy |
+| `build-backend-locales.mjs --check` | Backendens locale-bundle er stale i forhold til `frontend/public/locales` (#4734) |
+| `i18n-check-backend-player-strings.mjs` | Hardkodet dansk prosa i backendens spillervendte tekstkilder (#4734) |
 | `i18n-check-duplicate-keys`, `-namespace-inline`, `-nav-strings`, `-page-untranslated`, `-lib-strings`, `-leaks`, `-terrain-coverage`, `-error-codes` | Øvrige struktur- og dækningskrav |
 
 Hele kæden kører lokalt med `npm run check:i18n` (og i `scripts/preflight-pr.ps1`).
+
+## Backend-tekst til spillere
+
+> Refs [#4734](https://github.com/NicolaiDolmer/CyclingZone/issues/4734), [#666](https://github.com/NicolaiDolmer/CyclingZone/issues/666).
+
+**Backend skriver aldrig færdig prosa til en spiller.** Hver spillervendt tekst fra serveren bærer en **nøgle plus parametre**, så modtagerens `users.language` afgør sproget. Det gælder tre kanaler:
+
+| Kanal | Hvor nøglen ligger | Hvem renderer |
+|---|---|---|
+| In-app-notifikationer (`notifications`) | `metadata.titleCode` / `titleParams` / `messageCode` / `messageParams` | Frontend (`frontend/src/lib/backendMessage.js`, kaldt fra `NotificationsPage.jsx`) |
+| Discord-DM'er | `description: { code, params }` og felternes `nameCode` | Backend selv (`backend/lib/discordDmCopy.js`) |
+| Klub-DNA (board) | `label_key` / `short_description_key` / `long_description_key` på DNA'et | Frontend (`BoardPage.jsx`s `getDnaCopy`) |
+
+Regler:
+
+- **`notifications.title` og `.message` er fallback, ikke kilde.** Kolonnerne bliver stående: de er rækkens dedup-nøgle (`type + title + message + related_id`, 24 t) og det gamle klienter og e-mail-digestet læser. Men teksten skal **udledes af nøglen**, ikke skrives ved siden af. Brug `buildKeyedNotification()` / `notifyUserWithKeys()` i `backend/lib/notificationService.js`. Skriver et kaldsted begge dele i hånden, driver de fra hinanden: præcis dét gjorde 20 auktions-notifikationer, som sendte dansk tekst til managers med `users.language = "en"`.
+- **Fallback-teksten er EN.** Ikke fordi EN er finere, men fordi den er den ene streng vi kan garantere findes for alle. Den danske udgave hentes via nøglen.
+- **Discord renderes server-side**, fordi DM'en forlader appen som færdig tekst og ingen frontend kan oversætte den. `resolveDmRecipient` leverer `users.language`, og embedet bygges først derefter.
+- **Ingen nye kolonner til nøgler.** `metadata` (jsonb) bærer dem allerede for hele notifikations-kontrakten; en parallel `title_key`/`message_key`/`params`-kolonnetrio ville være en anden vej til samme sted, og to veje driver fra hinanden.
+- **Undtagelse: dynamisk narrativ.** Løbs- og etaperubrikker (`raceNarrativeNotification.js`) er sammensat af rytternavne og placeringer og har intet katalogopslag. De udelader bevidst `titleCode`/`messageCode`, så frontend falder tilbage til den færdige tekst. Se kommentarerne i `emitRaceResultNotifications`.
+
+Backend kan ikke læse `frontend/public/locales/` i produktion (Railways root directory for backend-servicen er `/backend`). Namespacet `backendMessages` bundles derfor ind i `backend/lib/locales/backendMessages.generated.json` af `scripts/build-backend-locales.mjs`, og `--check` er drift-gaten. Tilføjer du en nøgle i `backendMessages`, skal bundlen regenereres og committes.
 
 ## Delta-oversætteren
 
