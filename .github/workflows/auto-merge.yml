@@ -9,8 +9,19 @@ name: Auto-merge labeled PR
 # fanger #118 (lint-staged 17, mergede 2026-05-08T10:36 uden deploy-verify).
 # workflow_dispatch er undtaget fra safeguard og fyrer altid en ny run.
 #
-# Sikkerheds-net: Branch protection er stadig håndhævet — `gh pr merge` fejler hvis
-# CI ikke grøn eller PR i draft.
+# Hvorfor --admin + AUTO_MERGE_PAT (rettet #4404, ejer-beslutning 5/9): branch
+# protection på main kræver require_code_owner_reviews. CODEOWNER er ejeren selv,
+# og GitHub tillader aldrig at man godkender sin egen PR — så det krav kan
+# strukturelt ALDRIG opfyldes ad normal vej, uanset hvor grøn CI er. `gh pr merge`
+# uden `--admin` fejler derfor altid på selve merge-skridtet (#4389 m.fl., 29/8).
+# Eneste vej til main er --admin-bypass af NETOP review-kravet — de andre gates
+# (high-risk-label, required checks, frontend-smoke, advisory AI-review) bliver
+# stadig håndhævet EKSPLICIT af trinene herunder FØR merge-skridtet, de springes
+# ikke over. GITHUB_TOKEN kan ikke bruge --admin (ingen owner-rettigheder), derfor
+# bruges `secrets.AUTO_MERGE_PAT` — en personal access token under ejerens egen
+# konto — kun til selve merge-kaldet. En merge via labelen tæller dermed som
+# ejerens egen handling, ikke en tredje identitet. Se docs/GITHUB_WORKFLOW.md
+# ("Auto-merge fra mobilen") for hvordan PAT'en oprettes.
 
 on:
   pull_request:
@@ -38,6 +49,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Guard AUTO_MERGE_PAT er sat
+        env:
+          AUTO_MERGE_PAT: ${{ secrets.AUTO_MERGE_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ -z "$AUTO_MERGE_PAT" ]; then
+            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "⛔ **Auto-merge kan ikke køre** — \`AUTO_MERGE_PAT\` mangler som repo-secret, se docs/GITHUB_WORKFLOW.md (afsnit \"Auto-merge fra mobilen\") for hvordan du opretter den."
+            echo "::error::AUTO_MERGE_PAT mangler som repo-secret, se docs/GITHUB_WORKFLOW.md"
+            exit 1
+          fi
+
       - name: Guard high-risk labels
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -135,13 +159,13 @@ jobs:
           echo "Advisory review is still running; leaving PR open for manual follow-up."
           exit 1
 
-      - name: Squash-merge PR
+      - name: Squash-merge PR (admin-bypass af code-owner-review via PAT)
         id: merge
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_PAT }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --squash --delete-branch
+          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --squash --delete-branch --admin
           SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json mergeCommit --jq .mergeCommit.oid)
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Merged to $SHA"
@@ -165,5 +189,5 @@ jobs:
         run: |
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **Auto-merge fejlede** — [se log]($RUN_URL)
 
-          Tjek: er PR i draft? Er der merge-konflikter? Er CI rødt?
-          Workaround: merge manuelt eller re-tilføj \`auto-merge\` label."
+          Tjek: er PR i draft? Er der merge-konflikter? Er CI rødt? Mangler \`AUTO_MERGE_PAT\` som repo-secret?
+          Workaround: merge manuelt (\`gh pr merge --squash --delete-branch --admin\`) eller re-tilføj \`auto-merge\` label."
