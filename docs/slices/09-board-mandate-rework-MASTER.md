@@ -4,9 +4,24 @@
 **Nordstjerne:** Verdens bedste bestyrelse i et managerspil = den første hvor HVER bevægelse har en kvittering, forhandling er en dialog med modtilbud, og alt kan nås på ≤2 klik.
 **Timing (ejer-valg 1/9, afløser 23/8-ankeret):** **Flip i S3 så snart bygget + verificeret.** Datamodellen blev migreret 23/8 (217 hold, bag slukket kill-switch) men er frosset — skyggedata genopbygges og confidence-migrationen re-baselines til flipdagen.
 
-## Status 1/9 aften (målt)
+## Status 6/9 (målt, audit)
 
-Fase 1 KOMPLET: motor-wiring bag kill-switch (#4559) + skyggedata re-baselinet mod prod m. ejer-GO 1/9 (237 relationer/mandater, 2.320 milepæle, post-verificeret — se #3514). S-M2a-fundament merget (#4558); stemme-INDHOLD kun 2/9 arketyper (#4556, gater på tone-prøven). **S-M2b Boardroom LIVE i beta 1/9** (PR #4569/#4570; flag=`beta`, kun admin/beta-testere; alle spillere ser gammel side). Ejer-verdikt på beta: ikke klar til fuld flip — mangler stemmer (#4556), kvitterings-produktion (motoren skriver først events ved fuld aktivering), #4578/#4579. Fase 0-rest (#4550) + A8-låsen (#4553) afventer stadig merge i Session A's spor. Spiller-beta afventer S-M2c (bonustilbud-hullet).
+Flaget er **`beta`** (siden 17/8), ikke slukket, men beta vises kun for admin/beta-testere, og
+prod har 0 beta-testere + 1 admin: **0 reelle seere** har set Boardroom i praksis. `board_relations`
+(237 rækker, 232 af 234 menneskehold, 2 hold oprettet 2/9 og 3/9 mangler; 128 AI-hold har by design
+ingen) er frosset siden rebuild 1/9 15:42: cron-kaldet mangler `isBetaTester`-kontekst, så motoren
+skriver intet i beta (#4839). Samme audit fandt to backend-huller: `proposeMandateForNewTeam` har
+ingen kaldsti, så nye hold aldrig får et skyggemandat (#4837); `advanceMandateAtSeasonEnd` lukker det
+aktive mandat FØR den opdager at næste sæson mangler (#4838, sæson 4 findes ikke endnu, #4270).
+Tørkørsel 5/9 (`proposeNextMandateDryRun.js`): 237 hold simuleret, 176 får 5 mål / 61 får 4,
+tillidstrappe 122 trusted / 108 standard / 7 strained, auto-accept 141 à 5 dage / 96 à 10 dage. Ved
+flip forsvinder tre flader der kun findes i den gamle `BoardPage.jsx`: sponsor-forhandling (→ egen
+Sponsors-side, #4265), bonustilbud (20 aktive lag-6-tilbud i S3) og klub-DNA-valg (7 hold uden DNA).
+Årsmødet (S-M2c) har 0 produktions-evidens: alle 237 mandater står `active`, 0 `proposed`. **Rest før
+flip (ejer-go 6/9 på rækkefølgen):** #4837 + #4838 + #4839 (bygges nu) → Sponsors-side (mockup til
+ejer) → bonustilbud + DNA i Boardroom (mockup til ejer) → help en+da + patch note + Discord-udkast →
+flip på ejer-"go". S4 i DB kører som eget spor efter kalenderpakkeren (`TRAINING_RULES.md` §13,
+beslutning 1).
 
 ## Fase 0 — Korrekthed + arkæologi (start straks, uafhængig af resten)
 
