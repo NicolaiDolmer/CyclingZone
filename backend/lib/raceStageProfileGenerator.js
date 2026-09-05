@@ -24,6 +24,7 @@ import { attachRoute } from "./raceRouteGenerator.js";
 import { seasonSeedSuffix } from "./raceSeedAxis.js";
 import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } from "./raceStageOrderProfiles.js";
 import { attachSegmentsAndWeather } from "./routeSegments.js";
+import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 
 // v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
 // identitet (external_id) via seedIdentityFor. v3 (2026-06-28): arketype-drevet
@@ -430,8 +431,8 @@ function weightedPick(rng, items) {
 // Tidskørsels-profiler (ITT + TTT). Et etapeløb må realistisk kun have få —
 // #2029: en Grand Tour blev genereret med 5 enkeltstarter (4 ITT + 1 TTT), fordi
 // hver filler-plads ruller uafhængigt mod itt/ttt-vægte og intet loft samlede dem.
-const TIME_TRIAL_PROFILES = Object.freeze(["itt", "itt_hilly", "ttt"]);
-const isTimeTrial = (t) => TIME_TRIAL_PROFILES.includes(t);
+export const TIME_TRIAL_PROFILES = Object.freeze(["itt", "itt_hilly", "ttt"]);
+export const isTimeTrial = (t) => TIME_TRIAL_PROFILES.includes(t);
 
 // Konservativt loft på antal tidskørsler pr. etapeløb (#2029). Balance-default:
 // rigtige grand tours har typisk 2 enkeltstarter (lejlighedsvis 3), aldrig 5.
@@ -440,12 +441,28 @@ const isTimeTrial = (t) => TIME_TRIAL_PROFILES.includes(t);
 // loftet re-rulles til ikke-TT-terræn.
 export const DEFAULT_TT_CAP = 2;
 
+// #4539: to enkeltstarter i SAMME etapeløb er kun blevet accepteret som en
+// Grand Tour-egenskab ("her og der", ejer 31/8) — ethvert kortere etapeløb (under
+// GT'ens egen etape-minimum) skal højst have ÉN tidskørsel. La Course au Soleil
+// (8 etaper, arketype balanced_week) fik 2 STRUKTURELT IDENTISKE "itt"-etaper
+// (samme profil, samme distance-bånd), fordi DEFAULT_TT_CAP=2 gjaldt uanset
+// løbslængde og #3546 D's markSecondIttAsHilly kun kører i GT-stien
+// (orderAndBuildGrandTour). Genbruger samme GRAND_TOUR_MIN_STAGES-tærskel som
+// resten af kalenderreglerne (CALENDAR_RULES.md §3) i stedet for et nyt tal.
+export const SHORT_RACE_TT_CAP = 1;
+
 // Udled TT-loftet for en (arketype- eller generisk) fordeling. guarantees kan
 // selv indeholde flere garanterede TT end default'en — dem respekterer vi (hæver
 // loftet), så en fremtidig arketype med 3 faste enkeltstarter ikke får dem trimmet.
-export function timeTrialCap(guaranteedTypes = []) {
+// totalStages: løbets samlede etapeantal. Udeladt (Infinity) = ingen løbslængde-
+// restriktion (bagudkompatibelt med kald der ikke kender løbslængden, fx tests).
+// Er løbet KORTERE end GRAND_TOUR_MIN_STAGES, gælder #4539's stramme loft
+// (SHORT_RACE_TT_CAP) i stedet for DEFAULT_TT_CAP — garantier kan stadig hæve
+// det, ligesom for DEFAULT_TT_CAP.
+export function timeTrialCap(guaranteedTypes = [], totalStages = Number.POSITIVE_INFINITY) {
   const guaranteedTT = guaranteedTypes.filter(isTimeTrial).length;
-  return Math.max(guaranteedTT, DEFAULT_TT_CAP);
+  const baseCap = totalStages < GRAND_TOUR_MIN_STAGES ? SHORT_RACE_TT_CAP : DEFAULT_TT_CAP;
+  return Math.max(guaranteedTT, baseCap);
 }
 
 // Håndhæv TT-loftet på et allerede-bygget types-array. Filler-tilføjede TT ud over
@@ -453,8 +470,8 @@ export function timeTrialCap(guaranteedTypes = []) {
 // re-rullet ikke-TT-filler-terræn. Guarantees (de første protectedCount) røres ikke.
 // Deterministisk: bruger den delte rng, og filtrerer TT ud af filler-vægtene så en
 // erstatning aldrig selv er en TT. Muterer + returnerer types (in-place, som resten).
-function capTimeTrials(rng, types, protectedCount, fillerWeights) {
-  const cap = timeTrialCap(types.slice(0, protectedCount));
+function capTimeTrials(rng, types, protectedCount, fillerWeights, totalStages) {
+  const cap = timeTrialCap(types.slice(0, protectedCount), totalStages);
   const nonTtFiller = fillerWeights.filter((it) => !isTimeTrial(it.value));
   let ttCount = types.filter(isTimeTrial).length;
   // Scan bagfra: senere (filler-)pladser trimmes først; guarantee-regionen beskyttes.
@@ -641,6 +658,46 @@ export function markSecondIttAsHilly(ordered) {
   const out = ordered.slice();
   out[ittIndices[1]] = "itt_hilly";
   return out;
+}
+
+// #4539: SSOT for "to enkeltstarter ligner hinanden i samme løb" (ejer-ordlyd 31/8:
+// "synes ikke de må minde så meget om hinanden"). Defineret som SAMME profile_type
+// OG distance inden for et bånd — to tidskørsler med forskellig profile_type (fx
+// "itt" + "itt_hilly", som markSecondIttAsHilly ovenfor og SHORT_RACE_TT_CAP allerede
+// sikrer for hhv. GT'er og kortere etapeløb) tæller IKKE som ens, uanset distance.
+// Bruges af invariant-auditten (der scanner EKSISTERENDE kalendere for #4539-klassen)
+// og af reparationsscriptet (repairDuplicateItt.js) — samme predikat begge steder, så
+// audit og reparation aldrig kan være uenige om hvad "ens" betyder.
+export const TT_LOOKALIKE_DISTANCE_BAND_KM = 8;
+export function looksLikeDuplicateTimeTrial(a, b) {
+  if (!a || !b) return false;
+  if (!isTimeTrial(a.profile_type) || !isTimeTrial(b.profile_type)) return false;
+  if (a.profile_type !== b.profile_type) return false;
+  // #4539 hærdning: `null`/`undefined` distance_km (historiske rækker fra FØR
+  // pass 2 (rute-generering) eksisterede) må IKKE tælle som "distance 0" —
+  // `Number(null) === 0` ville ellers matche ALLE par uden distance_km som
+  // "identiske" uanset deres faktiske distance. Manglende distance er UKENDT,
+  // ikke "samme", så et sådant par vurderes defensivt IKKE som duplikat.
+  if (a.distance_km == null || b.distance_km == null) return false;
+  const da = Number(a.distance_km);
+  const db = Number(b.distance_km);
+  if (!Number.isFinite(da) || !Number.isFinite(db)) return false;
+  return Math.abs(da - db) <= TT_LOOKALIKE_DISTANCE_BAND_KM;
+}
+
+// Find alle "ligner hinanden"-par blandt en liste tidskørsels-etaper for ÉT løb.
+// stages: [{stage_number, profile_type, distance_km}, ...] (kun løbets egne etaper).
+// Returnerer par sorteret efter stage_number, egnet til både audit-rapportering og
+// til reparationsscriptet (som kun retter det SENESTE af et par, jf. #4539's opgave).
+export function findDuplicateTimeTrialPairs(stages = []) {
+  const tts = stages.filter((s) => isTimeTrial(s?.profile_type));
+  const pairs = [];
+  for (let i = 0; i < tts.length; i++) {
+    for (let j = i + 1; j < tts.length; j++) {
+      if (looksLikeDuplicateTimeTrial(tts[i], tts[j])) pairs.push([tts[i], tts[j]]);
+    }
+  }
+  return pairs;
 }
 
 // GT-finale (#3326-korrektion 2026-08-04): flyt hårdeste terræn (crescendo-scaffoldens
@@ -945,7 +1002,7 @@ function buildStageRaceGeneric(rng, stages, race) {
   if (stages >= 5 && rng() < 0.7) types.push("itt");
   const protectedCount = types.length; // flad+bjerg(+evt. itt) = garantier
   while (types.length < stages) types.push(weightedPick(rng, STAGE_FILLER_WEIGHTS));
-  capTimeTrials(rng, types, protectedCount, STAGE_FILLER_WEIGHTS);
+  capTimeTrials(rng, types, protectedCount, STAGE_FILLER_WEIGHTS, stages);
   return orderAndBuildFinaleDriven(rng, types, stages, race, null, protectedCount);
 }
 
@@ -959,7 +1016,7 @@ function buildStageRaceArchetype(rng, stages, cfg, race) {
   const types = cfg.guarantees.slice(0, stages);
   const protectedCount = types.length; // guarantees = beskyttet region
   while (types.length < stages) types.push(weightedPick(rng, cfg.filler));
-  capTimeTrials(rng, types, protectedCount, cfg.filler);
+  capTimeTrials(rng, types, protectedCount, cfg.filler, stages);
   if (cfg.grandTourOrder) return orderAndBuildGrandTour(rng, types, stages, race, cfg.openingItt ? "itt" : null);
   return orderAndBuildFinaleDriven(rng, types, stages, race, race?.terrain_archetype, protectedCount);
 }

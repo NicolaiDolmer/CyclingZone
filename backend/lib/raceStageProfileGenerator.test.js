@@ -20,12 +20,17 @@ import {
   FINALE_TYPES,
   GENERATOR_VERSION,
   DEFAULT_TT_CAP,
+  SHORT_RACE_TT_CAP,
   timeTrialCap,
   applyOrderArchetype,
   applyOpeningVariety,
   SPRINT_FINALE_EARLY_DECIDER_CHANCE,
   markSecondIttAsHilly,
+  TT_LOOKALIKE_DISTANCE_BAND_KM,
+  looksLikeDuplicateTimeTrial,
+  findDuplicateTimeTrialPairs,
 } from "./raceStageProfileGenerator.js";
+import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 import {
   ORDER_ARCHETYPES,
   DEFAULT_ORDER_WEIGHTS,
@@ -870,4 +875,128 @@ test("#3371 mountain_tour (7 etaper): finalen er IKKE altid den hårdeste, over 
   }
   assert.ok(finales.size > 1, `finalen varierer ikke over 100 seeds: ${[...finales].join(",")}`);
   assert.ok(!MOUNTAIN_FAMILY_TEST.has([...finales][0]) || finales.size > 1, "mindst nogle finaler er ikke-bjerg");
+});
+
+// ── #4539: to enkeltstarter i samme etapeløb må ikke ligne hinanden ─────────────
+// La Course au Soleil (balanced_week, 8 etaper) fik etape 1 + 3 begge som en 20 km
+// flad itt — samme profile_type OG samme distance. Se docs/CALENDAR_RULES.md §4.
+
+test("#4539 SHORT_RACE_TT_CAP er 1 (etapeløb under GRAND_TOUR_MIN_STAGES)", () => {
+  assert.equal(SHORT_RACE_TT_CAP, 1);
+});
+
+test("#4539 timeTrialCap: kort løb (< GRAND_TOUR_MIN_STAGES) capper til 1, langt løb (≥) er uændret 2", () => {
+  assert.equal(timeTrialCap([], 8), 1);
+  assert.equal(timeTrialCap([], GRAND_TOUR_MIN_STAGES - 1), 1);
+  assert.equal(timeTrialCap([], GRAND_TOUR_MIN_STAGES), 2);
+  assert.equal(timeTrialCap([], 21), 2);
+  // garantier hæver stadig loftet, uanset løbslængde (samme regel som før #4539)
+  assert.equal(timeTrialCap(["itt", "itt_hilly"], 8), 2);
+});
+
+test("#4539 timeTrialCap uden totalStages-argument er bagudkompatibel (ingen løbslængde kendt → DEFAULT_TT_CAP)", () => {
+  assert.equal(timeTrialCap([]), DEFAULT_TT_CAP);
+  assert.equal(timeTrialCap(["flat", "itt", "mountain"]), DEFAULT_TT_CAP);
+});
+
+test("#4539 looksLikeDuplicateTimeTrial: samme type + distance inden for båndet → ens", () => {
+  const a = { profile_type: "itt", distance_km: 20 };
+  const b = { profile_type: "itt", distance_km: 20 };
+  assert.equal(looksLikeDuplicateTimeTrial(a, b), true);
+  // lige inden for båndet (grænseværdi)
+  assert.equal(looksLikeDuplicateTimeTrial(a, { profile_type: "itt", distance_km: 20 + TT_LOOKALIKE_DISTANCE_BAND_KM }), true);
+});
+
+test("#4539 looksLikeDuplicateTimeTrial: samme type men uden for distance-båndet → IKKE ens", () => {
+  const a = { profile_type: "itt", distance_km: 20 };
+  const b = { profile_type: "itt", distance_km: 20 + TT_LOOKALIKE_DISTANCE_BAND_KM + 1 };
+  assert.equal(looksLikeDuplicateTimeTrial(a, b), false);
+});
+
+test("#4539 looksLikeDuplicateTimeTrial: FORSKELLIG profile_type → ALDRIG ens, uanset distance (itt vs. itt_hilly)", () => {
+  const a = { profile_type: "itt", distance_km: 20 };
+  const b = { profile_type: "itt_hilly", distance_km: 20 };
+  assert.equal(looksLikeDuplicateTimeTrial(a, b), false);
+});
+
+test("#4539 looksLikeDuplicateTimeTrial: ikke-tidskørsler eller manglende/ugyldig distance → false (defensivt)", () => {
+  assert.equal(looksLikeDuplicateTimeTrial({ profile_type: "flat", distance_km: 180 }, { profile_type: "flat", distance_km: 180 }), false);
+  assert.equal(looksLikeDuplicateTimeTrial(null, { profile_type: "itt", distance_km: 20 }), false);
+  assert.equal(looksLikeDuplicateTimeTrial({ profile_type: "itt", distance_km: null }, { profile_type: "itt", distance_km: 20 }), false);
+});
+
+test("#4539 looksLikeDuplicateTimeTrial: BEGGE distance_km null (historiske rækker fra FØR pass 2) → false, IKKE 'samme (0 km)'", () => {
+  // Number(null) === 0, så en naiv Number()-coercion ville gøre to `null`-rækker
+  // til "identiske 0 km enkeltstarter" — fanget mod prod 4/9 (Vuelta Ibérica m.fl.,
+  // ældre rækker uden distance_km). Manglende distance er UKENDT, ikke "samme".
+  const a = { profile_type: "itt", distance_km: null };
+  const b = { profile_type: "itt", distance_km: null };
+  assert.equal(looksLikeDuplicateTimeTrial(a, b), false);
+});
+
+test("#4539 findDuplicateTimeTrialPairs: finder præcis La Course au Soleil-parret (etape 1 + 3, begge 20 km itt)", () => {
+  const stages = [
+    { stage_number: 1, profile_type: "itt", distance_km: 20 },
+    { stage_number: 2, profile_type: "rolling", distance_km: 170 },
+    { stage_number: 3, profile_type: "itt", distance_km: 20 },
+    { stage_number: 4, profile_type: "flat", distance_km: 180 },
+  ];
+  const pairs = findDuplicateTimeTrialPairs(stages);
+  assert.equal(pairs.length, 1);
+  assert.equal(pairs[0][0].stage_number, 1);
+  assert.equal(pairs[0][1].stage_number, 3);
+});
+
+test("#4539 findDuplicateTimeTrialPairs: GT-mønstret (itt + itt_hilly) giver INGEN par", () => {
+  const stages = [
+    { stage_number: 1, profile_type: "itt", distance_km: 8 },
+    { stage_number: 12, profile_type: "itt_hilly", distance_km: 35 },
+  ];
+  assert.deepEqual(findDuplicateTimeTrialPairs(stages), []);
+});
+
+test("#4539 findDuplicateTimeTrialPairs: ingen tidskørsler → tom liste", () => {
+  const stages = [{ stage_number: 1, profile_type: "flat", distance_km: 180 }];
+  assert.deepEqual(findDuplicateTimeTrialPairs(stages), []);
+});
+
+test("#4539 regression: INGEN kort etapeløbs-arketype (< GRAND_TOUR_MIN_STAGES) producerer et 'ligner hinanden'-par, over mange seeds", () => {
+  const stageArchetypes = Object.entries(ARCHETYPE_PROFILES).filter(([, c]) => c.kind === "stage").map(([k]) => k);
+  for (const arch of stageArchetypes) {
+    for (const n of [3, 4, 5, 6, 7, 8]) {
+      if (n >= GRAND_TOUR_MIN_STAGES) continue;
+      for (let s = 1; s <= 40; s++) {
+        const stages = generateRaceStageProfiles({ id: "r", external_id: `4539-${arch}-${n}-${s}`, terrain_archetype: arch, race_type: "stage_race", stages: n });
+        const pairs = findDuplicateTimeTrialPairs(stages);
+        assert.equal(pairs.length, 0, `${arch} n=${n} seed ${s}: ${pairs.length} duplikat-par fundet (${stages.map((p) => `${p.profile_type}@${p.distance_km}km`).join(",")})`);
+      }
+    }
+  }
+  // Generisk (ukendt arketype) — samme regression.
+  for (const n of [3, 4, 5, 6, 7, 8]) {
+    for (let seed = 1; seed <= 40; seed++) {
+      const stages = generateRaceStageProfiles({ id: "x", race_type: "stage_race", stages: n }, { seed });
+      const pairs = findDuplicateTimeTrialPairs(stages);
+      assert.equal(pairs.length, 0, `generisk n=${n} seed ${seed}: ${pairs.length} duplikat-par fundet`);
+    }
+  }
+});
+
+test("#4539 balanced_week (8 etaper, La Course au Soleils arketype): højst 1 TT over mange seeds (kernen i fixet)", () => {
+  for (let s = 1; s <= 200; s++) {
+    const types = generateRaceStageProfiles({ id: "r", external_id: `4539-bw-${s}`, terrain_archetype: "balanced_week", race_type: "stage_race", stages: 8 }).map((p) => p.profile_type);
+    const ttCount = types.filter((t) => t === "itt" || t === "itt_hilly" || t === "ttt").length;
+    assert.ok(ttCount <= 1, `seed ${s}: ${ttCount} TT (>1): ${types.join(",")}`);
+  }
+});
+
+test("#4539 grand_tour (21, uændret): kan stadig få 2 TT, men de er ALDRIG et 'ligner hinanden'-par (markSecondIttAsHilly forhindrer det)", () => {
+  let sawTwoTT = false;
+  for (let s = 1; s <= 300; s++) {
+    const stages = generateRaceStageProfiles({ id: "r", external_id: `4539-gt-${s}`, terrain_archetype: "grand_tour", race_type: "stage_race", stages: 21 });
+    const ttCount = stages.filter((p) => p.profile_type === "itt" || p.profile_type === "itt_hilly" || p.profile_type === "ttt").length;
+    if (ttCount >= 2) sawTwoTT = true;
+    assert.deepEqual(findDuplicateTimeTrialPairs(stages), [], `gt seed ${s}: duplikat-par trods GT-undtagelsen`);
+  }
+  assert.ok(sawTwoTT, "ingen af de 300 seeds gav 2 TT — testen dækker ikke det tilfælde den skal bevise");
 });

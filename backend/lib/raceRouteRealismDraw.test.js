@@ -61,7 +61,14 @@ const PLAN_SEASON_ID = SNAPSHOT.seasonId;
 // …007 trækker om i tier 3 OG tier 4 (attempt 1 begge steder) mens tier 1 består i
 // første forsøg — resolveSeasonDrawVariants-testen nedenfor kræver præcis den form
 // (variants.get(1) === 0 og variants.get(3) > 0).
-const RETRY_SEASON_ID = "00000000-0000-0000-0000-000000000007";
+//
+// #4539 (4/9): …007 holdt op med at ramme tier 3's re-draw-sti da SHORT_RACE_TT_CAP
+// strammede TT-loftet for etapeløb under GRAND_TOUR_MIN_STAGES (raceStageProfileGenerator.js)
+// — færre filler-rullede ekstra-ITT'er ændrede tier 3's kanoniske parcours-træk nok til at
+// bestå i første forsøg. Præcis den skrøbelighed advarslen forudsiger. Genfundet med samme
+// søgeloop mod det uændrede snapshot: …07d har samme form (tier 3 OG tier 4, attempt 1 begge
+// steder, tier 1 attempt 0).
+const RETRY_SEASON_ID = "00000000-0000-0000-0000-00000000007d";
 
 // Samme idé, men for testen der SPECIFIKT skal bevise "kun ÉN tier brød, og KUN den
 // trækkes om" — fundet via søgeloopet ovenfor mod det regenererede snapshot. Samme
