@@ -1,6 +1,8 @@
-// #1663/#2948 · UI-verifikation for Sponsorvalg 2.0: 5 arketype-tilbud med
-// bonusklausuler, divisionsvælger m. etapetal, deadline-banner og Review &
-// sign-bekræftelse + kontraktpanel med klausuler og earnings. Sponsor-UI'et
+// #1663/#2948 · UI-verifikation for sponsorkontrakt-panelet paa Finance-fanen:
+// aktiv kontrakt, bonusklausuler og hvad aftalen har indbragt. Tilbuds-flowet
+// (5 arketyper, divisionsvaelger, Review & sign) laa ogsaa her indtil #4265
+// flyttede det til /sponsors — det bevogtes nu af 4265-sponsors-page.spec.js.
+// Sponsor-UI'et
 // henter fra BACKEND-API'et (${VITE_API_URL}/api/sponsor/contract +
 // /api/sponsor/offers), IKKE Supabase direkte — så vi mocker disse to endpoints
 // OVEN PÅ installNetworkMocks (catch-all `**/api/**`); senest registrerede
@@ -94,7 +96,7 @@ async function installSponsorMocks(page) {
 }
 
 test.describe("#2948 sponsor UI", () => {
-  test("Finance sponsor tab renders contract + earnings; Board modal shows 5 archetype offers with clauses", async ({ page }, testInfo) => {
+  test("Finance sponsor tab renders contract + earnings", async ({ page }, testInfo) => {
     // Screenshot-artefakterne skrives KUN fra desktop-chromium. Før #2862 skrev
     // alle 3 projekter til samme filnavn, så den committede PNG afhang af hvilket
     // projekt der kørte sidst.
@@ -133,136 +135,6 @@ test.describe("#2948 sponsor UI", () => {
 
     if (capture) {
       await page.screenshot({ path: evidenceShotPath("frontend/tests/screenshots/sponsor-contract-panel.png"), fullPage: true });
-    }
-
-    // ── Board → "Se tilbud"-CTA → tilbuds-modal med 5 arketyper ─────────────
-    await page.goto("/board");
-
-    await expect(page.getByRole("heading", { name: "Vælg din sponsor til sæson 2" })).toBeVisible();
-    const ctaButton = page.getByRole("button", { name: "Se tilbud" });
-    await expect(ctaButton).toBeVisible();
-    await ctaButton.click();
-
-    // Modal åbner (offers.title) med de 5 arketyper (variant.*). exact: true —
-    // CTA-headingen "Vælg din sponsor til sæson 2" er stadig i DOM bag modalen.
-    await expect(page.getByRole("heading", { name: "Vælg din sponsor", exact: true })).toBeVisible();
-    await expect(page.getByText("Den sikre aftale")).toBeVisible();
-    await expect(page.getByText("Den loyale aftale")).toBeVisible();
-    await expect(page.getByText("Løbsaftalen")).toBeVisible();
-    await expect(page.getByText("Resultataftalen")).toBeVisible();
-    await expect(page.getByText("Ambitionsaftalen")).toBeVisible();
-
-    // Enheds-definition + deadline/default-regel (#2862/#1778/#2914).
-    await expect(page.getByText(/Din sponsor betaler pr. etape dit hold stiller til start i/)).toBeVisible();
-    await expect(page.getByText(/Ikke pr. kalenderdag, og ikke pr. løbsdag/)).toBeVisible();
-    await expect(page.getByText(/Vælger du ikke, underskriver klubben den sikre 1-sæsons aftale/)).toBeVisible();
-
-    // #2862: enheden oversat til holdets EGNE tal — etapetal for den valgte
-    // division + forholdet til kalenderdagene (84 etaper / 28 dage = 3 pr. dag).
-    // Det var præcis regnestykket spillerne byggede regneark for at gætte.
-    await expect(
-      page.getByText(/Division 3 kører 84 etaper i sæson 2, og hver eneste af dem betaler/)
-    ).toBeVisible();
-    await expect(
-      page.getByText(/fordelt over 28 kalenderdage, så de fleste dage bærer omkring 3 etaper/)
-    ).toBeVisible();
-
-    // Divisionsvælger med etapetal fra kalenderdata (#2862; #4245: enheden hedder etape).
-    await expect(page.getByRole("button", { name: "Division 3 · 84 etaper" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Division 2 · 112 etaper" })).toBeVisible();
-
-    // cuchiet 25/7 spørgsmål 1: hvorfor flytter totalen sig ikke når man skifter
-    // division? Fordi divisionen kun omfordeler den samme pulje over flere etaper.
-    // #3020 (ejer-beslutning 27/7): eksplicit copy-fix — maks-udbetalingen er den
-    // samme uanset valgt division, kun raten pr. etape ændrer sig.
-    // #4376 omformulerede denne linje: sætningen var sand om AFTALEN, men blev
-    // misvisende da divisions-tillægget kom til (der ER nu noget der ændrer sig med
-    // divisionen — det ligger bare uden for aftalen). Ejer-beslutningen bag #3020
-    // står ved magt og er stadig det denne assertion vogter: svaret på cuchiets
-    // spørgsmål skal være på skærmen.
-    await expect(
-      page.getByText(/udbetaler det samme maksimum uanset hvilken division du vælger/)
-    ).toBeVisible();
-
-    // #4376: tillægget må ikke vises når den valgte division ER holdets egen (D3 her),
-    // fordi der så ingen forskel er at korrigere for.
-    // (Regexet rammer BELØBS-linjen, ikke forklaringen i divisionNote som selv
-    // nævner tillægget — derfor "på ... CZ$" og ikke bare ordet.)
-    await expect(page.getByText(/divisions-tillæg på .* CZ\$/)).toHaveCount(0);
-
-    // ... men skifter man til D2, skal beløbet stå der FØR underskrift — det var
-    // spillerens eksplicitte forbehold da reglen blev valgt. D3→D2 er
-    // 0,5 × (400.000 − 340.000) = 30.000.
-    await page.getByRole("button", { name: "Division 2 · 112 etaper" }).click();
-    await expect(page.getByText(/divisions-tillæg på 30\.000 CZ\$/)).toBeVisible();
-    await page.getByRole("button", { name: "Division 3 · 84 etaper" }).click();
-
-    // cuchiet 25/7 spørgsmål 2: rører bestyrelsens modifier etape-pengene? Nej.
-    await expect(
-      page.getByText(/Den rører ikke etape-pengene eller bonusserne/)
-    ).toBeVisible();
-
-    // Regnestykket på kortene: etaper × sats, og hvad man ender med ved at
-    // stille til start hver etape. Tallene er BEREGNEDE (ikke perRaceDayRate fra
-    // payloaden), så assertionen fanger hvis projektionen driver.
-    await expect(page.getByText("84 etaper × 455 CZ$")).toBeVisible();
-    await expect(page.getByText("478.261 CZ$")).toBeVisible();
-    await expect(page.getByText("84 etaper × 3.300 CZ$")).toBeVisible();
-    await expect(page.getByText("516.240 CZ$")).toBeVisible();
-    await expect(page.getByText(/Hvis du starter hver etape/).first()).toBeVisible();
-    // Betinget bonus-top holdes adskilt fra det sikre beløb (results-kortet).
-    await expect(page.getByText("+239.000 CZ$")).toBeVisible();
-
-    // Skift division → raten skal ændre sig (112 etaper i D2), totalen ikke.
-    await page.getByRole("button", { name: "Division 2 · 112 etaper" }).click();
-    await expect(page.getByText("112 etaper × 342 CZ$")).toBeVisible();
-    await expect(page.getByText("478.261 CZ$")).toBeVisible();
-    await page.getByRole("button", { name: "Division 3 · 84 etaper" }).click();
-
-    // Klausul-linjer på kortene.
-    await expect(page.getByText(/38\.240 CZ\$ underskriftsbonus/)).toBeVisible();
-    await expect(page.getByText(/8\.604 CZ\$ pr\. etapesejr/)).toBeVisible();
-    await expect(page.getByText(/Slut i øverste halvdel af din division/)).toBeVisible();
-
-    // 5 "Gennemgå og underskriv"-knapper (én pr. kort).
-    await expect(page.getByRole("button", { name: "Gennemgå og underskriv" })).toHaveCount(5);
-
-    // Review & sign-flow: bekræftelses-bar med "Underskriv aftale" (eneste gold).
-    // Mobil-viewport: kortet ligger langt nede i modal-scrollen → scroll først.
-    const reviewButton = page.getByRole("button", { name: "Gennemgå og underskriv" }).first();
-    await reviewButton.scrollIntoViewIfNeeded();
-    await reviewButton.click();
-    await expect(page.getByText(/Underskriv med Meridian Bank i 1 sæson\?/)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Underskriv aftale" })).toBeVisible();
-    await page.getByRole("button", { name: "Annullér" }).click();
-
-    if (capture) {
-      // Modalen har intern scroll og står nede ved Review-knappen efter flowet
-      // ovenfor. Rul tilbage til toppen, så artefaktet viser enheds-forklaringen
-      // og ikke bare midten af kort-griddet.
-      const modalTop = page.getByRole("heading", { name: "Vælg din sponsor", exact: true });
-      await modalTop.scrollIntoViewIfNeeded();
-      await page.screenshot({ path: evidenceShotPath("frontend/tests/screenshots/sponsor-offer-modal.png"), fullPage: true });
-
-      // 360px: den smalleste udbredte telefon. Mobil er 54,9 % af trafikken, så
-      // regnestykket på kortet skal kunne læses uden vandret scroll her.
-      await page.setViewportSize({ width: 360, height: 900 });
-      await expect(page.getByText("84 etaper × 455 CZ$")).toBeVisible();
-      await modalTop.scrollIntoViewIfNeeded();
-      await page.screenshot({ path: evidenceShotPath("frontend/tests/screenshots/sponsor-offer-modal-360.png"), fullPage: true });
-      await page.setViewportSize({ width: 1280, height: 800 });
-
-      // #4376: divisions-tillægget er kun synligt når den valgte division IKKE er
-      // holdets egen, så det kræver sit eget artefakt — ellers har ejeren ingen
-      // måde at se den nye linje på uden at klikke sig frem selv (hard rule 26).
-      await page.getByRole("button", { name: "Division 2 · 112 etaper" }).click();
-      await expect(page.getByText(/divisions-tillæg på 30\.000 CZ\$/)).toBeVisible();
-      await modalTop.scrollIntoViewIfNeeded();
-      await page.screenshot({
-        path: evidenceShotPath("frontend/tests/screenshots/sponsor-offer-modal-division-adjustment.png"),
-        fullPage: true,
-      });
-      await page.getByRole("button", { name: "Division 3 · 84 etaper" }).click();
     }
 
     // ── Ingen uncaught fejl undervejs ───────────────────────────────────────
