@@ -1,0 +1,34 @@
+{
+  "already_chosen": false,
+  "identity_basis_missing": false,
+  "can_rechoose": false,
+  "suggestions": [
+    {
+      "key": "skandinavisk_udvikling",
+      "suggestion_slot": "national_match",
+      "label_key": "dna.skandinavisk_udvikling.label",
+      "short_description_key": "dna.skandinavisk_udvikling.shortDescription",
+      "long_description_key": "dna.skandinavisk_udvikling.longDescription",
+      "rationale_key": "dna.suggestionRationale.nationalMatch",
+      "rationale_params": { "nationalCode": "DEN" }
+    },
+    {
+      "key": "sprint_kommerciel",
+      "suggestion_slot": "specialization_match",
+      "label_key": "dna.sprint_kommerciel.label",
+      "short_description_key": "dna.sprint_kommerciel.shortDescription",
+      "long_description_key": "dna.sprint_kommerciel.longDescription",
+      "rationale_key": "dna.suggestionRationale.specializationMatch",
+      "rationale_params": { "primarySpec": "sprinter" }
+    },
+    {
+      "key": "italiensk_klassiker",
+      "suggestion_slot": "wildcard",
+      "label_key": "dna.italiensk_klassiker.label",
+      "short_description_key": "dna.italiensk_klassiker.shortDescription",
+      "long_description_key": "dna.italiensk_klassiker.longDescription",
+      "rationale_key": "dna.suggestionRationale.wildcard",
+      "rationale_params": {}
+    }
+  ]
+}

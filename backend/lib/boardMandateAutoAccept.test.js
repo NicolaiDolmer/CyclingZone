@@ -87,6 +87,20 @@ function makeCronSupabase({ flagValue = "on", mandates = [], teams = [], users =
         const chain = { eq: () => chain, then: (resolve) => resolve({ count: 0, error: null }) };
         return { select: () => chain };
       }
+      // #4557 (overblik + faner) · boardRoom.js laeser nu ogsaa lag 6
+      // (bonustilbuddet) til den payload signMandate returnerer. Ingen
+      // bonus-raekker i auto-accept-fixturen: tom liste.
+      if (table === "board_consequences") {
+        const chain = {
+          eq: () => chain,
+          in: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: async () => ({ data: null, error: null }),
+          then: (resolve) => resolve({ data: [], error: null }),
+        };
+        return { select: () => chain };
+      }
       throw new Error(`uventet tabel i test: ${table}`);
     },
   };

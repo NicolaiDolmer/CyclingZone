@@ -1,17 +1,35 @@
 {
   "enabled": true,
-  "team": { "dnaKey": "skandinavisk_udvikling" },
+  "team": {
+    "dnaKey": "skandinavisk_udvikling"
+  },
   "confidence": {
     "value": 71,
     "weekDelta": 3,
     "updatedAt": "2026-08-30T18:00:00Z",
     "categories": [
-      { "key": "results", "score": 74 },
-      { "key": "economy", "score": 63 },
-      { "key": "identity", "score": 82 },
-      { "key": "ranking", "score": 58 }
+      {
+        "key": "results",
+        "score": 74
+      },
+      {
+        "key": "economy",
+        "score": 63
+      },
+      {
+        "key": "identity",
+        "score": 82
+      },
+      {
+        "key": "ranking",
+        "score": 58
+      }
     ],
-    "consequence": { "active": false, "lineKey": null, "lineParams": null }
+    "consequence": {
+      "active": false,
+      "lineKey": null,
+      "lineParams": null
+    }
   },
   "mandate": {
     "seasonNumber": 3,
@@ -30,7 +48,11 @@
         "status": "on_track",
         "awaitingData": false,
         "isStretch": false,
-        "owner": { "archetypeKey": "resultatjaegeren", "name": "Jørgen Brandt", "initials": "JB" },
+        "owner": {
+          "archetypeKey": "resultatjaegeren",
+          "name": "Jørgen Brandt",
+          "initials": "JB"
+        },
         "receipt": {
           "countedKey": "boardroom.mandate.receipts.winRaceDays.counted",
           "countedParams": null,
@@ -54,7 +76,11 @@
         "status": "on_track",
         "awaitingData": false,
         "isStretch": false,
-        "owner": { "archetypeKey": "sponsoraten", "name": "Søren Lindqvist", "initials": "SL" },
+        "owner": {
+          "archetypeKey": "sponsoraten",
+          "name": "Søren Lindqvist",
+          "initials": "SL"
+        },
         "receipt": {
           "countedKey": "boardroom.mandate.receipts.economyResult.counted",
           "countedParams": null,
@@ -71,14 +97,20 @@
         "target": 2,
         "label": "Giv 2 akademiryttere en debut",
         "labelKey": "boardroom.mandate.goalLabels.academyDebuts",
-        "labelParams": { "count": 2 },
+        "labelParams": {
+          "count": 2
+        },
         "achievedDisplay": "1",
         "targetDisplay": "2",
         "unitKey": "riders",
         "status": "at_risk",
         "awaitingData": false,
         "isStretch": false,
-        "owner": { "archetypeKey": "ungdomsidealisten", "name": "Astrid Holm", "initials": "AH" },
+        "owner": {
+          "archetypeKey": "ungdomsidealisten",
+          "name": "Astrid Holm",
+          "initials": "AH"
+        },
         "receipt": {
           "countedKey": "boardroom.mandate.receipts.academyDebuts.counted",
           "countedParams": null,
@@ -102,7 +134,11 @@
         "status": "behind",
         "awaitingData": false,
         "isStretch": true,
-        "owner": { "archetypeKey": "nationalist_purist", "name": "Niels Østergaard", "initials": "NO" },
+        "owner": {
+          "archetypeKey": "nationalist_purist",
+          "name": "Niels Østergaard",
+          "initials": "NO"
+        },
         "receipt": {
           "countedKey": "boardroom.mandate.receipts.clubRankingTopN.counted",
           "countedParams": null,
@@ -156,11 +192,45 @@
   },
   "board": {
     "members": [
-      { "archetypeKey": "traditionalisten", "name": "Ellen Kjær", "initials": "EK", "role": "chair", "mood": "positive", "sinceSeason": 1 },
-      { "archetypeKey": "resultatjaegeren", "name": "Jørgen Brandt", "initials": "JB", "role": "results", "mood": "positive", "sinceSeason": 1 },
-      { "archetypeKey": "sponsoraten", "name": "Søren Lindqvist", "initials": "SL", "role": "economy", "mood": "neutral", "sinceSeason": 2 },
-      { "archetypeKey": "ungdomsidealisten", "name": "Astrid Holm", "initials": "AH", "role": "identity", "mood": "positive", "sinceSeason": 2 },
-      { "archetypeKey": "nationalist_purist", "name": "Niels Østergaard", "initials": "NO", "role": "ranking", "mood": "negative" }
+      {
+        "archetypeKey": "traditionalisten",
+        "name": "Ellen Kjær",
+        "initials": "EK",
+        "role": "chair",
+        "mood": "positive",
+        "sinceSeason": 1
+      },
+      {
+        "archetypeKey": "resultatjaegeren",
+        "name": "Jørgen Brandt",
+        "initials": "JB",
+        "role": "results",
+        "mood": "positive",
+        "sinceSeason": 1
+      },
+      {
+        "archetypeKey": "sponsoraten",
+        "name": "Søren Lindqvist",
+        "initials": "SL",
+        "role": "economy",
+        "mood": "neutral",
+        "sinceSeason": 2
+      },
+      {
+        "archetypeKey": "ungdomsidealisten",
+        "name": "Astrid Holm",
+        "initials": "AH",
+        "role": "identity",
+        "mood": "positive",
+        "sinceSeason": 2
+      },
+      {
+        "archetypeKey": "nationalist_purist",
+        "name": "Niels Østergaard",
+        "initials": "NO",
+        "role": "ranking",
+        "mood": "negative"
+      }
     ],
     "chairmanQuote": {
       "textKey": "boardroom.board.chairmanQuoteFixture",
@@ -183,7 +253,10 @@
       "id": "min2",
       "delta": 1,
       "textKey": "boardroom.minutesFixture.youthDebut",
-      "textParams": { "name": "Mikkel Iversen", "age": 18 },
+      "textParams": {
+        "name": "Mikkel Iversen",
+        "age": 18
+      },
       "memberName": "Astrid Holm",
       "occurredAt": "2026-08-29"
     },
@@ -191,7 +264,9 @@
       "id": "min3",
       "delta": -1,
       "textKey": "boardroom.minutesFixture.deficitWeek",
-      "textParams": { "amount": "-86.000 CZ$" },
+      "textParams": {
+        "amount": "-86.000 CZ$"
+      },
       "memberName": "Søren Lindqvist",
       "occurredAt": "2026-08-26"
     },
@@ -203,5 +278,16 @@
       "memberName": "Jørgen Brandt",
       "occurredAt": "2026-08-12"
     }
-  ]
+  ],
+  "bonusOffer": {
+    "id": "bo1",
+    "status": "active",
+    "amount": 200000,
+    "acceptedAt": null,
+    "extraGoal": {
+      "type": "monument_podium",
+      "target": 1,
+      "label": "Top 3 i mindst 1 monument"
+    }
+  }
 }

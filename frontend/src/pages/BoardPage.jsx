@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useTranslation, Trans } from "react-i18next";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved, getEventSatisfactionTrend, computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { getBoardGoalLabel } from "../lib/boardGoalLabel";
@@ -20,6 +20,14 @@ import { renderBackendMessage } from "../lib/backendMessage";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import Modal from "../components/ui/Modal";
+// #4557 · Bestyrelses-komponenter der nu deles med Boardroom-siden
+// (frontend/src/components/board/). Flyttet UAENDRET; denne side er visuelt
+// identisk med foer og forbliver fallback naar kill-switchen er slaaet fra.
+import { ClubDnaSelectionCard, ClubDnaRechoosePanel } from "../components/board/ClubDnaSelectionCard.jsx";
+import BonusOfferCard from "../components/board/BonusOfferCard.jsx";
+import { getDnaCopy } from "../components/board/dnaCopy.js";
+import { postBonusOfferAction } from "../components/board/bonusOfferApi.js";
+import { goalProgressPct } from "../components/board/goalProgress.js";
 import {
   resolveBoardCopy,
   resolveBoardFeedbackHeadline,
@@ -38,7 +46,6 @@ import {
   ClockIcon,
   EditIcon,
   EyeIcon,
-  TrophyIcon,
   PageLoader,
   PageHeader,
   Section,
@@ -179,34 +186,6 @@ function getGoalTypeLabel(t, type) {
 function getGoalHelpText(t, goal) {
   if (!goal?.type) return "";
   return t(`goalHelp.${goal.type}`, { target: goal.target, defaultValue: "" });
-}
-
-function getDnaCopy(t, dna, field) {
-  if (!dna?.key) return "";
-  const keyByField = {
-    label: dna.label_key || `dna.${dna.key}.label`,
-    shortDescription: dna.short_description_key || `dna.${dna.key}.shortDescription`,
-    longDescription: dna.long_description_key || `dna.${dna.key}.longDescription`,
-  };
-  const fallbackByField = {
-    label: dna.label,
-    shortDescription: dna.short_description,
-    longDescription: dna.long_description,
-  };
-  return t(keyByField[field], { defaultValue: fallbackByField[field] || "" });
-}
-
-function getDnaRationale(t, suggestion) {
-  const rationaleKey = suggestion?.rationale_key || suggestion?.rationaleKey;
-  if (!rationaleKey) return suggestion?.rationale || "";
-  const params = suggestion.rationale_params || suggestion.rationaleParams || {};
-  return t(rationaleKey, {
-    ...params,
-    specLabel: params.primarySpec
-      ? t(`dna.specLabel.${params.primarySpec}`, { defaultValue: params.primarySpec })
-      : "",
-    defaultValue: suggestion.rationale || "",
-  });
 }
 
 function formatBoardCopy(text) {
@@ -352,125 +331,6 @@ function MemberCategoryWeights({ weights }) {
           </div>
         ))}
       </div>
-    </div>
-  );
-}
-
-// ── S-02f · Klub-DNA-komponenter ───────────────────────────────────────────────
-
-// Vises før første plan-card når manageren er i sæson 2+ (identity_basis findes,
-// is_baseline_phase=false), men endnu ikke har valgt DNA. 3 forslag-kort + Vælg-knap.
-// #878 første-valg + #2022 re-valg i sæson 1. currentKey markerer det aktuelt
-// valgte DNA (re-valg-flowet) med accent-ramme + "Current"-label i stedet for en
-// vælg-knap. *Key-props lader re-valg-panelet vise sin egen copy uden at duplikere
-// markup.
-function ClubDnaSelectionCard({
-  suggestions = [], onChoose, busy = false, error = "", currentKey = null,
-  sectionLabelKey = "dna.sectionLabel", headingKey = "dna.selectHeading",
-  introKey = "dna.selectIntro", chooseLabelKey = "dna.choose",
-}) {
-  const { t } = useTranslation("board");
-  if (!suggestions.length) return null;
-  return (
-    <Section className="mt-4">
-      <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t(sectionLabelKey)}</p>
-          <h2 className="text-cz-1 font-semibold text-base">{t(headingKey)}</h2>
-          <p className="text-cz-2 text-sm mt-1">{t(introKey)}</p>
-        </div>
-      </div>
-      {error && (
-        <div className="mb-3 p-3 rounded-cz border border-cz-danger/30 bg-cz-danger-bg text-cz-danger text-sm">
-          {error}
-        </div>
-      )}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {suggestions.map((suggestion) => {
-          const isCurrent = currentKey != null && suggestion.key === currentKey;
-          return (
-            <div key={suggestion.key}
-              className={`bg-cz-subtle border rounded-cz p-4 flex flex-col gap-3 ${isCurrent ? "border-cz-accent/60" : "border-cz-border"}`}>
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-full bg-cz-card border border-cz-border
-                  flex items-center justify-center text-2xl flex-shrink-0">
-                  <span aria-hidden>{suggestion.emoji}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-cz-3 text-3xs uppercase tracking-wider">
-                    {t(`dna.slot.${suggestion.suggestion_slot}`, { defaultValue: t("dna.slot.fallback") })}
-                  </p>
-                  <p className="text-cz-1 font-semibold text-sm leading-tight">{getDnaCopy(t, suggestion, "label")}</p>
-                </div>
-              </div>
-              <p className="text-cz-2 text-xs leading-relaxed">{getDnaCopy(t, suggestion, "shortDescription")}</p>
-              {getDnaCopy(t, suggestion, "longDescription") && (
-                <p className="text-cz-3 text-2xs italic leading-relaxed line-clamp-3">
-                  {getDnaCopy(t, suggestion, "longDescription")}
-                </p>
-              )}
-              {getDnaRationale(t, suggestion) && (
-                <p className="text-cz-accent-t text-2xs">{getDnaRationale(t, suggestion)}</p>
-              )}
-              {isCurrent ? (
-                <span className="mt-auto py-2 text-center text-cz-accent-t text-sm font-semibold
-                  bg-cz-accent/10 rounded-cz border border-cz-accent/30">
-                  {t("dna.current")}
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => onChoose(suggestion.key)}
-                  className="mt-auto py-2 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-cz
-                    hover:brightness-110 disabled:opacity-50 transition-all"
-                >
-                  {busy ? t("dna.saving") : t(chooseLabelKey)}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </Section>
-  );
-}
-
-// #2022 fase 2 · Re-valg-affordance: så længe holdet er i sin første sæson kan
-// manageren folde forslagene ud og skifte DNA. Det valgte DNA vises stadig som
-// badge ovenfor; dette panel ligger under og er kollapset by default for at holde
-// fladen ren.
-function ClubDnaRechoosePanel({ suggestions = [], currentKey = null, onChoose, busy = false, error = "" }) {
-  const { t } = useTranslation("board");
-  const [open, setOpen] = useState(false);
-  if (!suggestions.length) return null;
-  return (
-    <div className="mt-3">
-      <div className="flex items-start gap-2 mb-2 px-1 text-cz-3 text-xs leading-relaxed">
-        <span>{t("dna.rechoose.hint")}</span>
-      </div>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="w-full flex items-center justify-center gap-2 py-2 border border-cz-border rounded-cz
-          text-cz-2 text-sm font-semibold hover:border-cz-accent/40 hover:bg-cz-subtle/40 transition-colors"
-      >
-        <EditIcon size={14} aria-hidden="true" /> {t("dna.rechoose.toggle")}
-      </button>
-      {open && (
-        <ClubDnaSelectionCard
-          suggestions={suggestions}
-          currentKey={currentKey}
-          onChoose={onChoose}
-          busy={busy}
-          error={error}
-          sectionLabelKey="dna.rechoose.sectionLabel"
-          headingKey="dna.rechoose.heading"
-          introKey="dna.rechoose.intro"
-          chooseLabelKey="dna.switch"
-        />
-      )}
     </div>
   );
 }
@@ -686,14 +546,6 @@ function SatisfactionMeter({ value, modifier }) {
       </div>
     </Section>
   );
-}
-
-// #2307 · NaN-guard: goal.target kan være 0/undefined (fx endnu-uevalueret mål) →
-// division uden guard giver `width: NaN%` / Math.round(NaN) i UI. Brug ALTID
-// denne helper i stedet for rå `(x / goal.target) * 100`.
-function goalProgressPct(current, target) {
-  if (!target) return 0;
-  return Math.min(100, Math.round(((current ?? 0) / target) * 100));
 }
 
 // #3494 · sponsor_growth's actual/target er begge PROCENTER (ikke enheder som
@@ -1559,52 +1411,6 @@ function BoardConsequencesPanel({ consequences = [] }) {
         })}
       </div>
     </Section>
-  );
-}
-
-// S-02e · Bonus-offer card (lag 6). Q-batch 1B Q14: maks 1/sæson, +200K mod ekstra-mål.
-function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
-  const { t } = useTranslation("board");
-  if (!offer) return null;
-  const goalLabel = offer.payload?.extra_goal_label || t("bonusOffer.defaultGoal");
-  const bonus = offer.severity || 0;
-
-  return (
-    <div className="mt-5 rounded-cz p-5 border border-cz-success/40 bg-cz-success-bg">
-      <div className="flex items-start gap-3">
-        <TrophyIcon size={24} aria-hidden="true" className="flex-shrink-0 text-cz-success" />
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-cz-success">{t("bonusOffer.heading")}</p>
-          <p className="text-cz-2 text-xs mt-2 leading-relaxed">
-            <Trans
-              i18nKey="board:bonusOffer.body"
-              values={{ cash: formatCash(bonus), goal: goalLabel }}
-              components={{
-                bonus: <span className="font-mono font-bold text-cz-success" />,
-                goal: <span className="font-medium text-cz-2" />,
-              }}
-            />
-          </p>
-          <p className="text-cz-3 text-xs mt-2 leading-relaxed">{t("bonusOffer.footer")}</p>
-          <div className="flex gap-2 mt-3">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={onAccept}
-              className="px-3 py-2 rounded-cz bg-cz-success/20 hover:bg-cz-success/30 text-cz-success text-xs font-semibold border border-cz-success/40 disabled:opacity-50">
-              {t("bonusOffer.accept")}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={onDecline}
-              className="px-3 py-2 rounded-cz bg-cz-subtle hover:bg-cz-subtle/70 text-cz-2 text-xs font-medium border border-cz-border disabled:opacity-50">
-              {t("bonusOffer.decline")}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -2873,18 +2679,11 @@ export default function BoardPage() {
     if (!bonusOffer || bonusOfferBusy) return;
     setBonusOfferBusy(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) return;
-
-      const res = await fetch(`${API}/api/board/bonus-offer/${action}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ offer_id: bonusOffer.id }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        console.error("Bonus offer action failed:", data.error);
+      // #4557 · Selve kaldet bor nu i components/board/bonusOfferApi.js, delt
+      // med Boardroom-siden. Samme endpoints, samme body som foer.
+      const { ok, data } = await postBonusOfferAction(action, bonusOffer.id);
+      if (!ok) {
+        console.error("Bonus offer action failed:", data?.error);
         return;
       }
       await loadAll();
