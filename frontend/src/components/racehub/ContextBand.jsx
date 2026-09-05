@@ -3,6 +3,7 @@
 // DivisionStartLists). Ejer ikke URL — RaceHubBoard/DivisionStartLists sender
 // day/scope + callbacks ned.
 import { useTranslation } from "react-i18next";
+import { ChevronLeftIcon, ChevronRightIcon } from "../ui/icons/index.jsx";
 
 export default function ContextBand({ scope, day, currentDay, timeline, onScopeChange, onDayChange }) {
   const { t } = useTranslation("races");
@@ -51,7 +52,9 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
         <>
         <div className="flex items-center gap-2">
           <button type="button" aria-label={t("racehub.timeline.prev")} disabled={day <= 1}
-            onClick={() => onDayChange(day - 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">‹</button>
+            onClick={() => onDayChange(day - 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">
+            <ChevronLeftIcon size={14} aria-hidden="true" />
+          </button>
           <div className="flex gap-px flex-1" role="group" aria-label={t("racehub.timeline.dayOf", { day, total })}>
             {days.map((d) => {
               const isFocus = d.day === day;
@@ -77,7 +80,9 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
             })}
           </div>
           <button type="button" aria-label={t("racehub.timeline.next")} disabled={day >= total}
-            onClick={() => onDayChange(day + 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">›</button>
+            onClick={() => onDayChange(day + 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">
+            <ChevronRightIcon size={14} aria-hidden="true" />
+          </button>
         </div>
         <div className="flex justify-end mt-1.5">
           <span className="text-xs text-cz-accent-t font-medium">

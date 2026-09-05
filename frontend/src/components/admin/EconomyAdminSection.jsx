@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { formatCz } from "../../lib/marketValues";
 import { useTableSort } from "../../lib/useTableSort.js";
 import SortableTh from "../ui/SortableTh.jsx";
-import { CheckIcon, AlertTriangleIcon } from "../ui";
+import { CheckIcon, AlertTriangleIcon, ChevronLeftIcon, ChevronRightIcon } from "../ui";
 
 // Økonomi-oversigt (OverviewView) — sorterbare kolonner (#2294). Filtrene
 // (division/søgning/AI/frosne) bestemmer HVILKE rækker der vises via
@@ -716,9 +716,9 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => refresh(Math.max(0, offset - limit))} disabled={loading || offset === 0}
-            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50">‹ Forrige</button>
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 inline-flex items-center gap-1"><ChevronLeftIcon size={13} aria-hidden="true" /> Forrige</button>
           <button onClick={() => refresh(offset + limit)} disabled={loading || offset + limit >= total}
-            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50">Næste ›</button>
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 inline-flex items-center gap-1">Næste <ChevronRightIcon size={13} aria-hidden="true" /></button>
         </div>
       </div>
 
@@ -917,9 +917,9 @@ function AdminLogView({ getAuth, onMsg }) {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => refresh(Math.max(0, offset - limit))} disabled={loading || offset === 0}
-            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50">‹ Forrige</button>
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 inline-flex items-center gap-1"><ChevronLeftIcon size={13} aria-hidden="true" /> Forrige</button>
           <button onClick={() => refresh(offset + limit)} disabled={loading || offset + limit >= total}
-            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50">Næste ›</button>
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 inline-flex items-center gap-1">Næste <ChevronRightIcon size={13} aria-hidden="true" /></button>
         </div>
       </div>
 

@@ -41,7 +41,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 8
+      "arrowglyph": 7
     },
     "frontend/public/locales/da/klub.json": {
       "hex": 0,
@@ -139,7 +139,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 8
+      "arrowglyph": 7
     },
     "frontend/public/locales/en/klub.json": {
       "hex": 0,
@@ -322,20 +322,6 @@
       "colour": 0,
       "emoji": 0,
       "arrowglyph": 0
-    },
-    "frontend/src/pages/KlubPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
-    "frontend/src/pages/TransfersPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
     },
     "frontend/src/pages/admin/AdminEconomyTab.jsx": {
       "hex": 0,

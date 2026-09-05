@@ -16,8 +16,8 @@
 //   slop       — rounded-xl/2xl/3xl, glow, backdrop-blur, blob-blur (WP0 = denne)
 //   colour     — raa Tailwind-palette-utility (bg/text/border-{farve}-{shade}) (WP2)
 //   emoji      — Extended_Pictographic i frontend/src JSX *og* i locale-JSON (WP1)
-//   arrowglyph — unicode-pile (← → ↔ ↑ ↓ ↩ ↪ ↕) brugt som ikon i JSX *og* i
-//                locale-JSON (#3422). Samme svaghed som emoji havde før WP1:
+//   arrowglyph — unicode-pile (← → ↔ ↑ ↓ ↩ ↪ ↕ ‹ › « ») brugt som ikon i JSX
+//                *og* i locale-JSON (#3422). Samme svaghed som emoji havde før WP1:
 //                pile er `Symbol, Math` i Unicode, ikke Extended_Pictographic,
 //                saa de slap 100% forbi emoji-detektoren. Brug stroke-ikoner
 //                (ChevronRightIcon/ChevronLeftIcon/ArrowUpIcon/ArrowDownIcon/
@@ -105,10 +105,15 @@ const EMOJI_RE = /\p{Extended_Pictographic}/gu;
 const EMOJI_TEXT_EXEMPT = new Set(["©", "®", "™"]); // © ® ™
 
 // Unicode-pile brugt som ikoner (#3422): U+2190-2195 (← ↑ → ↓ ↔ ↕) + U+21A9/
-// U+21AA (↩ ↪, "tilbage/gentag"-pile set i nogle quiet-actions). Rene tekst-
-// pile i copy ("A → B" i en hjaelpetekst) rammes ogsaa — det er bevidst;
-// locale-siden laeses igennem manuelt (#3422 punkt 3), ikke auto-fixes.
-const ARROW_RE = /[←-↕↩↪]/g;
+// U+21AA (↩ ↪, "tilbage/gentag"-pile set i nogle quiet-actions) + U+2039/
+// U+203A/U+00AB/U+00BB (‹ › « », "guillemet"-chevrons — samme forbudsliste-
+// række som pilene i TASTE.md P7/§3: "→ ← ↔ ↑ ↓ › «". Fundet i #3422-rest som
+// bare-tekst prev/next-chrome i StaffSwitcherBar/ContextBand/admin-tabeller,
+// samme svaghed som originaltallet: et andet Unicode-blok end pilene, saa de
+// slap forbi den foerste version af denne regex. Rene tekst-pile i copy
+// ("A → B" i en hjaelpetekst) rammes ogsaa — det er bevidst; locale-siden
+// laeses igennem manuelt (#3422 punkt 3), ikke auto-fixes.
+const ARROW_RE = /[←-↕↩↪‹›«»]/g;
 
 // Raa Tailwind-palette-farve (#1578 WP0, ratchet ned i WP2): en utility-prefix
 // (bg/text/border/ring/from/to/via/fill/stroke/divide/outline/decoration/
@@ -296,8 +301,8 @@ Fix:
   - Emoji     → brug et ui/icons/-ikon i stedet for emoji-tegn (gaelder ogsaa locale-copy).
   - Arrowglyph → brug stroke-ikoner (ChevronRightIcon/ChevronLeftIcon/ArrowUpIcon/
                 ArrowDownIcon/ExternalLinkIcon/ExchangeIcon) i stedet for unicode-pile
-                (← → ↔ ↑ ↓ ↩ ↪) — PAGE_TEMPLATES.md. Gaelder ogsaa locale-copy hvor
-                pilen er ren knap-/link-chrome.
+                eller guillemet-chevrons (← → ↔ ↑ ↓ ↩ ↪ ‹ › « ») — PAGE_TEMPLATES.md.
+                Gaelder ogsaa locale-copy hvor pilen er ren knap-/link-chrome.
   - Legitim undtagelse? → udvid EXEMPT_FILES i scripts/lint-ui-slop.mjs med begrundelse.
 Baseline maa IKKE udvides med nye overtraedelser (ratchet, Refs #671, #1578).`);
     process.exit(1);

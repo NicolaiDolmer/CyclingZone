@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { ChevronLeftIcon, ChevronRightIcon } from "../../ui/icons/index.jsx";
 
 // #2849 bølge 5c (T3-revision, ejer 24/7): hero'en er et kort igen, så
 // switcheren skal matche RiderSwitcherBar's indrykkede sticky-kort-look —
@@ -35,7 +36,7 @@ export default function StaffSwitcherBar({ current, roster, onNavigate }) {
           disabled={!prev}
           className="min-h-[44px] flex items-center gap-1.5 text-sm text-cz-2 hover:text-cz-1 disabled:opacity-30 disabled:cursor-default transition-colors min-w-0"
         >
-          <span aria-hidden="true" className="text-cz-3">‹</span>
+          <ChevronLeftIcon size={16} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
           <span className="truncate max-w-[7rem] sm:max-w-[10rem]">{prev ? t(`roles.${prev.role}`) : ""}</span>
         </button>
 
@@ -54,7 +55,7 @@ export default function StaffSwitcherBar({ current, roster, onNavigate }) {
           className="min-h-[44px] flex items-center gap-1.5 text-sm text-cz-2 hover:text-cz-1 disabled:opacity-30 disabled:cursor-default transition-colors min-w-0 justify-end"
         >
           <span className="truncate max-w-[7rem] sm:max-w-[10rem]">{next ? t(`roles.${next.role}`) : ""}</span>
-          <span aria-hidden="true" className="text-cz-3">›</span>
+          <ChevronRightIcon size={16} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
         </button>
       </div>
     </div>
