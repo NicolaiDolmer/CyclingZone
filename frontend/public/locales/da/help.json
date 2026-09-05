@@ -140,7 +140,7 @@
         "text": "Én gang pr. sæson, ved sæsonskiftet, kalder bestyrelsen dig ind og foreslår mandatet for den kommende sæson. Det er ét fuldskærmsmøde, og den hurtigste vej igennem er at acceptere forslaget og underskrive. To klik.",
         "steps": [
           "En guldknap dukker op på Bestyrelses-siden, når mødet er klar. Før det er der ingen knap, ikke en gråtonet en.",
-          "Du vælger et fokus først. Skifter du fokus, bygger bestyrelsen sit forslag op omkring det på ny.",
+          "Du vælger et fokus først. Skifter du fokus, bygger bestyrelsen sit forslag op omkring det på ny, og de justeringer du allerede havde lavet starter forfra.",
           "Forslaget er 3 til 5 mål. Hvert mål kan beholdes som det står, gøres lettere eller strækkes. Et strakt mål giver mere tillid, hvis du når det, og koster mere, hvis du misser.",
           "Du har et fast antal justeringer pr. møde, vist øverst. En bestyrelse med tillid til dig giver flere af dem og strækker sig længere i sine modtilbud.",
           "Bestyrelsen kan foreslå en ny milepæl til klubvisionen, med den sæson den skal nås i. Accepter den eller afvis den.",
@@ -151,7 +151,7 @@
       },
       "bonusOffers": {
         "title": "Bonustilbud",
-        "text": "Går sæsonen godt, kan bestyrelsen lægge et bonustilbud på bordet: penge ind på din konto nu, mod ét ekstra mål lagt til sæsonens mandat. Tilbuddet vises som en stribe på mandatet i Overblik-fanen og i fuld længde i Mandat-fanen. Accepterer du, sættes pengene ind med det samme, det ekstra mål tæller fra det øjeblik du accepterer, og det gøres op ved sæsonens slutning sammen med resten af mandatet. Afviser du, er det væk. Et urørt tilbud udløber ved udgangen af den sæson det blev givet i, og bestyrelsen giver højst ét tilbud pr. sæson."
+        "text": "Går sæsonen godt, kan bestyrelsen lægge et bonustilbud på bordet: penge ind på din konto nu, mod ét ekstra mål lagt til sæsonens mandat. Tilbuddet vises som en stribe på mandatet i Overblik-fanen og i fuld længde i Mandat-fanen. Accepterer du, sættes pengene ind med det samme, det ekstra mål tæller fra det øjeblik du accepterer, og det gøres op ved sæsonens slutning sammen med resten af mandatet. Afviser du, er det væk. Bestyrelsen giver højst ét tilbud pr. sæson, og tilbudskortet nævner den sæson det hører til."
       },
       "clubDnaAndBoard": {
         "title": "Klub-DNA og dine fem bestyrelsesmedlemmer",

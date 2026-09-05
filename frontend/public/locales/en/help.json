@@ -140,7 +140,7 @@
         "text": "Once a season, at the season changeover, the board calls you in and proposes the mandate for the season ahead. It is a single full-screen meeting, and the fastest way through it is to accept the proposal and sign. Two clicks.",
         "steps": [
           "A gold button appears on the Board page when the meeting is ready. Before that there is no button, not a greyed-out one.",
-          "You pick a focus first. Changing focus makes the board rebuild its proposal around it.",
+          "You pick a focus first. Changing focus makes the board rebuild its proposal around it, and any adjustments you had already made start over.",
           "The proposal is 3 to 5 targets. Each one can be kept as it stands, made easier, or stretched. A stretched target pays more confidence if you make it and costs more if you miss it.",
           "You get a set number of adjustments per meeting, shown at the top. A board that is confident in you grants more of them and stretches further in its counter-offers.",
           "The board may propose a new milestone for the club vision, with the season it should be reached in. Accept it or decline it.",
@@ -151,7 +151,7 @@
       },
       "bonusOffers": {
         "title": "Bonus offers",
-        "text": "When a season is going well the board can put a bonus offer on the table: cash paid into your balance now, in return for one extra target added to this season's mandate. The offer shows up as a stripe on the mandate in the Overview tab, and in full in the Mandate tab. Accept it and the money is credited immediately, the extra target counts from the moment you accept, and it is judged at season end with the rest of the mandate. Decline it and it is gone. An untouched offer expires at the end of the season it was made in, and the board makes at most one offer per season."
+        "text": "When a season is going well the board can put a bonus offer on the table: cash paid into your balance now, in return for one extra target added to this season's mandate. The offer shows up as a stripe on the mandate in the Overview tab, and in full in the Mandate tab. Accept it and the money is credited immediately, the extra target counts from the moment you accept, and it is judged at season end with the rest of the mandate. Decline it and it is gone. The board makes at most one offer per season, and the offer card names the season it belongs to."
       },
       "clubDnaAndBoard": {
         "title": "Club DNA and your five board members",
