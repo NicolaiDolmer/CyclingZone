@@ -62,7 +62,7 @@
     "drawerTitle": "Head-to-head",
     "close": "Close comparison",
     "blockedNone": "Select 2 teams to compare",
-    "blockedOne": "1 of 2 selected — pick 1 more team"
+    "blockedOne": "1 of 2 selected, pick 1 more team"
   },
   "preview": {
     "title": "Season Preview",
