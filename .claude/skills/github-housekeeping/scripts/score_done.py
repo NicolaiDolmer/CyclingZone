@@ -62,6 +62,10 @@ STRONG_PATTERNS = [
     # 2026-09-03: orkestratorens done-flip efter en natboelge ("Shipped i PR #N (squash <hash>)").
     # Hashen verificeres i sweepen med `git merge-base --is-ancestor <hash> origin/main`.
     r'Shipped\s+i\s+PR\s+#\d+\s*\(squash\s+[0-9a-f]{7,}\)',
+    # 2026-09-05: merge-rundens done-flip uden hash ("Shipped 5/9 i PR #4805: ..." / "Leveret 5/9: ... (PR #4784 merget)").
+    # Sweepen verificerer PR-nummeret med `gh pr view N --json state` (MERGED) i eet loop.
+    r'Shipped\s+\d{1,2}/\d{1,2}\s+i\s+PR\s+#\d+',
+    r'Leveret\s+\d{1,2}/\d{1,2}:.*PR\s+#\d+',
 ]
 
 NEG_KEYWORDS = [
