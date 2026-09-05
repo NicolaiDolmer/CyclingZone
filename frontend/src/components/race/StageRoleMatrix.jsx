@@ -190,8 +190,8 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
         <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
           {ROLE_OPTIONS.map((r) => (
             <div key={r} className="flex items-baseline gap-1 text-3xs leading-snug">
-              <dt className="font-semibold text-cz-2 whitespace-nowrap">{t(ROLE_LABEL_KEY[r])}:</dt>
-              <dd className="m-0 text-cz-3">{t(ROLE_HELP_KEY[r])}</dd>
+              <dt className="text-3xs font-semibold text-cz-2 whitespace-nowrap">{t(ROLE_LABEL_KEY[r])}:</dt>
+              <dd className="text-3xs m-0 text-cz-3">{t(ROLE_HELP_KEY[r])}</dd>
             </div>
           ))}
         </dl>
@@ -201,8 +201,8 @@ export default function StageRoleMatrix({ raceId, profileByStage = {}, gcRows = 
         <dl className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
           {EFFORT_OPTIONS.map((ef) => (
             <div key={ef} className="flex items-baseline gap-1 text-3xs leading-snug">
-              <dt className="font-semibold text-cz-2 whitespace-nowrap">{t(`stageTactics.effort.${ef}`)}:</dt>
-              <dd className="m-0 text-cz-3">{t(EFFORT_HELP_KEY[ef])}</dd>
+              <dt className="text-3xs font-semibold text-cz-2 whitespace-nowrap">{t(`stageTactics.effort.${ef}`)}:</dt>
+              <dd className="text-3xs m-0 text-cz-3">{t(EFFORT_HELP_KEY[ef])}</dd>
             </div>
           ))}
         </dl>

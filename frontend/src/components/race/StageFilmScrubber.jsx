@@ -63,10 +63,10 @@ function ClimbChip({ climb, x, crestY, uid }) {
     <g key={`${uid}-climb-${climb.crest_km}`}>
       <line x1={x} y1={crestY} x2={x} y2={chipY + 22} stroke="var(--text-3)" strokeOpacity="0.55" strokeWidth="0.6" strokeDasharray="2 2" />
       <rect x={x - w / 2} y={chipY} width={w} height={11} rx="1" fill={catFill(climb.category)} />
-      <text x={x} y={chipY + 8.2} textAnchor="middle" fontSize="7.5" fontWeight="700" fill={catText(climb.category)}>
+      <text x={x} y={chipY + 8.2} textAnchor="middle" className="text-3xs" fontSize="10" fontWeight="700" fill={catText(climb.category)}>
         {climb.category}
       </text>
-      <text x={textX} y={chipY + 20} textAnchor={anchor} fontSize="7.5" fontWeight="600" className="fill-cz-1 font-data" style={{ letterSpacing: "0.04em" }}>
+      <text x={textX} y={chipY + 20} textAnchor={anchor} fontSize="10" fontWeight="600" className="text-3xs fill-cz-1 font-data" style={{ letterSpacing: "0.04em" }}>
         {(climb.name || "").toUpperCase()}
       </text>
     </g>
@@ -154,8 +154,8 @@ function SilhouetteScrubber({ profile, feedEvents, catchKm, gapCurve, scrubKm, d
 
       {/* Delt km-akse (hairline) mellem silhuet og forsprings-kurve. */}
       <line x1={PAD} y1={AXIS_Y} x2={WIDTH - PAD} y2={AXIS_Y} stroke="var(--border)" strokeWidth="1" />
-      <text x={PAD} y={AXIS_Y + 9} className="fill-cz-3 font-data" fontSize="8">{t("detail.film.km", { value: 0 })}</text>
-      <text x={WIDTH - PAD} y={AXIS_Y + 9} textAnchor="end" className="fill-cz-3 font-data" fontSize="8">
+      <text x={PAD} y={AXIS_Y + 9} className="text-3xs fill-cz-3 font-data" fontSize="10">{t("detail.film.km", { value: 0 })}</text>
+      <text x={WIDTH - PAD} y={AXIS_Y + 9} textAnchor="end" className="text-3xs fill-cz-3 font-data" fontSize="10">
         {t("detail.film.km", { value: formatNumber(distanceKm) })}
       </text>
 
@@ -178,7 +178,7 @@ function GapCurveLayer({ gapCurve, distanceKm, progressX, uid, t }) {
   })();
   return (
     <g>
-      <text x={PAD} y={CURVE_TOP - 4} className="fill-cz-3 font-data" fontSize="7.5" style={{ letterSpacing: "0.08em" }}>
+      <text x={PAD} y={CURVE_TOP - 4} className="text-3xs fill-cz-3 font-data" fontSize="10" style={{ letterSpacing: "0.08em" }}>
         {t("detail.film.gapCurveTitle").toUpperCase()}
       </text>
       <line x1={PAD} y1={CURVE_BASE_Y} x2={WIDTH - PAD} y2={CURVE_BASE_Y} stroke="var(--border)" strokeWidth="1" />
@@ -213,8 +213,8 @@ function FallbackScrubber({ climbMarkers, catchKm, scrubKm, distanceKm, t }) {
         <circle cx={X(catchKm, distanceKm)} cy={axisY} r="3.5" fill="var(--bg-card)" stroke="var(--text-2)" strokeWidth="1.5" />
       )}
       <circle cx={progressX} cy={axisY} r="4.5" fill="rgb(var(--accent))" />
-      <text x={PAD} y={height - 2} className="fill-cz-3 font-data" fontSize="9">{t("detail.film.km", { value: 0 })}</text>
-      <text x={WIDTH - PAD} y={height - 2} textAnchor="end" className="fill-cz-3 font-data" fontSize="9">
+      <text x={PAD} y={height - 2} className="text-3xs fill-cz-3 font-data" fontSize="10">{t("detail.film.km", { value: 0 })}</text>
+      <text x={WIDTH - PAD} y={height - 2} textAnchor="end" className="text-3xs fill-cz-3 font-data" fontSize="10">
         {t("detail.film.km", { value: formatNumber(distanceKm) })}
       </text>
     </svg>

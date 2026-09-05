@@ -116,7 +116,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
         {gridVals.map((g) => (
           <g key={`g-${g}`}>
             <line x1={VB.x0} y1={yAt(g).toFixed(1)} x2={VB.x1} y2={yAt(g).toFixed(1)} stroke="var(--border)" strokeWidth="1" strokeDasharray="2 3" opacity="0.7" />
-            <text x={VB.x0 - 4} y={(yAt(g) + 3).toFixed(1)} fontSize="8.5" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="end">{g}</text>
+            <text x={VB.x0 - 4} y={(yAt(g) + 3).toFixed(1)} fontSize="10" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="end">{g}</text>
           </g>
         ))}
         <line x1={VB.x0} y1={VB.y1} x2={VB.x1} y2={VB.y1} stroke="var(--border)" strokeWidth="1" />
@@ -129,7 +129,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
               width={(VB.x1 - xNow).toFixed(1)} height={Math.max(1, Math.abs(ceilBot - ceilTop)).toFixed(1)}
               fill={primaryColor} opacity="0.13"
             />
-            <text x={(VB.x1 - 1).toFixed(1)} y={(Math.min(ceilTop, ceilBot) - 2).toFixed(1)} fontSize="7" fill={primaryColor} fontFamily={DATA_FONT} textAnchor="end" opacity="0.9">
+            <text x={(VB.x1 - 1).toFixed(1)} y={(Math.min(ceilTop, ceilBot) - 2).toFixed(1)} fontSize="10" fill={primaryColor} fontFamily={DATA_FONT} textAnchor="end" opacity="0.9">
               {t("profile.development.projection.ceilingLabel")}
             </text>
             <polygon points={bandArea} fill={primaryColor} opacity="0.1" />
@@ -141,7 +141,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
         {hasProj && (
           <g>
             <line x1={xNow.toFixed(1)} y1={VB.y0 - 2} x2={xNow.toFixed(1)} y2={VB.y1} stroke="var(--border)" strokeWidth="1" />
-            <text x={(xNow + 2).toFixed(1)} y={(VB.y0 + 4).toFixed(1)} fontSize="7.5" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="start">
+            <text x={(xNow + 2).toFixed(1)} y={(VB.y0 + 4).toFixed(1)} fontSize="10" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="start">
               {t("profile.development.projection.now")}
             </text>
           </g>
@@ -161,7 +161,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
               {i > 0 && (
                 <line x1={xAt(seg.startIndex).toFixed(1)} y1={VB.y0 - 2} x2={xAt(seg.startIndex).toFixed(1)} y2={VB.y1} stroke="var(--border)" strokeWidth="1" strokeDasharray="2 3" opacity="0.7" />
               )}
-              <text x={cx.toFixed(1)} y="155" fontSize="8.5" fill={isCurrent ? "var(--text-1)" : "var(--text-3)"} fontFamily={DATA_FONT} textAnchor="middle">{label}</text>
+              <text x={cx.toFixed(1)} y="155" fontSize="10" fill={isCurrent ? "var(--text-1)" : "var(--text-3)"} fontFamily={DATA_FONT} textAnchor="middle">{label}</text>
             </g>
           );
         })}
@@ -180,7 +180,7 @@ function ChartCard({ snapshots, chartTypes, projection, t }) {
           );
         })}
 
-        <text x={(VB.x0 + VB.x1) / 2} y="168" fontSize="7.5" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="middle">
+        <text x={(VB.x0 + VB.x1) / 2} y="168" fontSize="10" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="middle">
           {t(hasProj ? "profile.development.projection.caption" : "profile.development.chart.caption")}
         </text>
       </svg>

@@ -60,11 +60,11 @@ export default function HunterExplainer({
     <section className="bg-cz-subtle border-t border-cz-border px-4 py-3">
       <h3 className="text-xs font-semibold text-cz-1">{t("racehub.hunterExplainer.pickTitle")}</h3>
       <p className="text-2xs leading-snug mt-1">
-        <span className="text-cz-3">{t("racehub.breakawayStrength.label")}: </span>
-        <span className={`font-semibold ${STRENGTH_CLASS[strength]}`}>
+        <span className="text-2xs text-cz-3">{t("racehub.breakawayStrength.label")}: </span>
+        <span className={`text-2xs font-semibold ${STRENGTH_CLASS[strength]}`}>
           {t(`racehub.breakawayStrength.${strength}`)}
         </span>
-        <span className="text-cz-3"> · {t("racehub.hunterExplainer.strengthLine", { strength: strengthWord })}</span>
+        <span className="text-2xs text-cz-3"> · {t("racehub.hunterExplainer.strengthLine", { strength: strengthWord })}</span>
       </p>
 
       <div className="mt-2.5">
@@ -81,7 +81,7 @@ export default function HunterExplainer({
                   aria-pressed={hunterId == null}
                   className={`${ROW_BASE} ${hunterId == null ? ROW_ON : ROW_OFF} disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  <span className="truncate">{t("racehub.hunterExplainer.noHunter")}</span>
+                  <span className="text-2xs truncate">{t("racehub.hunterExplainer.noHunter")}</span>
                 </button>
               </li>
               {ranked.map((r) => {
@@ -95,8 +95,8 @@ export default function HunterExplainer({
                       aria-pressed={on}
                       className={`${ROW_BASE} ${on ? ROW_ON : ROW_OFF} disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      <span className="truncate">{r.name}</span>
-                      <span className="font-mono tabular-nums text-cz-2 flex-shrink-0">
+                      <span className="text-2xs truncate">{r.name}</span>
+                      <span className="text-2xs font-mono tabular-nums text-cz-2 flex-shrink-0">
                         {t("racehub.hunterExplainer.aggression")} {Number.isFinite(r.aggression) ? r.aggression : "—"}
                       </span>
                     </button>

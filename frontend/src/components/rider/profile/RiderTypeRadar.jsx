@@ -173,7 +173,7 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
             key={`ring-label-${rl.value}`}
             x={rl.x}
             y={rl.y}
-            fontSize="6.5"
+            fontSize="10"
             fill="var(--text-3)"
             // Halo mod kort-baggrunden (samme farve som selve kortet, ikke en
             // form) — en høj-ratet rytters polygon-fyld kan række helt op til
@@ -194,7 +194,7 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
             key={`label-${l.key}`}
             x={l.x}
             y={l.y}
-            fontSize="8.5"
+            fontSize="10"
             fontWeight="700"
             letterSpacing="0.3"
             fill={l.isBest ? "rgb(var(--accent-t))" : "var(--text-3)"}

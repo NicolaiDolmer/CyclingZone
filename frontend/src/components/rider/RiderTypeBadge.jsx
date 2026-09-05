@@ -37,8 +37,8 @@ export default function RiderTypeBadge({ primaryType, secondaryType, size = "sm"
         title={full}
         className={`inline-flex flex-col items-start gap-px rounded font-medium leading-tight whitespace-nowrap ${text} ${pad} bg-cz-accent/10 text-cz-accent-t ${className}`}
       >
-        <span>{primaryLabel}</span>
-        {secondaryLabel && <span className="text-cz-2">{secondaryLabel}</span>}
+        <span className={text}>{primaryLabel}</span>
+        {secondaryLabel && <span className={`${text} text-cz-2`}>{secondaryLabel}</span>}
       </span>
     );
   }
@@ -49,11 +49,11 @@ export default function RiderTypeBadge({ primaryType, secondaryType, size = "sm"
       title={full}
       className={`inline-flex items-center gap-1 rounded font-medium leading-none whitespace-nowrap ${text} ${pad} bg-cz-accent/10 text-cz-accent-t ${className}`}
     >
-      <span>{primaryLabel}</span>
+      <span className={text}>{primaryLabel}</span>
       {secondaryLabel && (
         <>
-          <span aria-hidden="true" className="text-cz-3">/</span>
-          <span className="text-cz-2">{secondaryLabel}</span>
+          <span aria-hidden="true" className={`${text} text-cz-3`}>/</span>
+          <span className={`${text} text-cz-2`}>{secondaryLabel}</span>
         </>
       )}
     </span>

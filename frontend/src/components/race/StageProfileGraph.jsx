@@ -105,7 +105,7 @@ export default function StageProfileGraph({
       {full && gridLines.map((m) => (
         <g key={`g${m}`}>
           <line x1={p.l} y1={Y(m)} x2={W - p.r} y2={Y(m)} stroke="var(--text-3)" strokeOpacity="0.2" strokeWidth="0.5" />
-          <text x={p.l - 6} y={Y(m) + 3} textAnchor="end" className="fill-cz-3 font-mono" fontSize="9">{m}</text>
+          <text x={p.l - 6} y={Y(m) + 3} textAnchor="end" className="text-3xs fill-cz-3 font-mono" fontSize="10">{m}</text>
         </g>
       ))}
 
@@ -169,25 +169,25 @@ export default function StageProfileGraph({
             <line x1={cx} y1={cy} x2={cx} y2={labelY + (full ? 30 : 14)}
               stroke="var(--text-3)" strokeOpacity="0.55" strokeWidth="0.6" strokeDasharray="2 2" />
             <rect x={cx - w / 2} y={labelY} width={w} height={12} rx="1" fill={catFill(c.category)} />
-            <text x={cx} y={labelY + 8.8} textAnchor="middle" fontSize="8" fontWeight="700" fill={catText(c.category)}>
+            <text x={cx} y={labelY + 8.8} textAnchor="middle" className="text-3xs" fontSize="10" fontWeight="700" fill={catText(c.category)}>
               {c.category}
             </text>
             {full && (
               <>
                 {hasClassifications && (
-                  <text x={ptsX} y={labelY + 9} textAnchor={ptsAnchor} fontSize="7.5" className="font-mono"
+                  <text x={ptsX} y={labelY + 9} textAnchor={ptsAnchor} fontSize="10" className="text-3xs font-mono"
                     fill="rgb(var(--jersey-mountain-bg))">
                     {waypoints.find((wp) => wp.kind === "kom" && wp.index === i)?.points}p
                   </text>
                 )}
-                <text x={textX} y={labelY + 22} textAnchor={textAnchor} fontSize="8.5" fontWeight="600"
-                  className="fill-cz-1" style={{ letterSpacing: "0.05em" }}>
+                <text x={textX} y={labelY + 22} textAnchor={textAnchor} fontSize="10" fontWeight="600"
+                  className="text-3xs fill-cz-1" style={{ letterSpacing: "0.05em" }}>
                   {(c.name || "").toUpperCase()}
                 </text>
                 {/* Højde ved toppen (#4107 pkt. 1: "kategori-skilt + navn + højde +
                     længde/% ved toppen") — cy er allerede den PIXEL-transformerede
                     Y, den ægte meterhøjde er series.ys[crestIdx] før Y()-transformen. */}
-                <text x={textX} y={labelY + 31} textAnchor={textAnchor} fontSize="8" className="fill-cz-2 font-mono">
+                <text x={textX} y={labelY + 31} textAnchor={textAnchor} fontSize="10" className="text-3xs fill-cz-2 font-mono">
                   {t("detail.route.waypoint.altitude", { m: Math.round(series.ys[crestIdx]) })}
                   {" · "}
                   {t("detail.route.waypoint.gradient", {
@@ -206,7 +206,7 @@ export default function StageProfileGraph({
           {kmTicks.map((k) => (
             <g key={`km${k}`}>
               <line x1={X(k)} y1={axisY} x2={X(k)} y2={axisY + 4} stroke="var(--text-3)" strokeOpacity="0.5" strokeWidth="0.7" />
-              <text x={X(k)} y={axisY + 15} textAnchor="middle" fontSize="9" className="fill-cz-3 font-mono">{k}</text>
+              <text x={X(k)} y={axisY + 15} textAnchor="middle" fontSize="10" className="text-3xs fill-cz-3 font-mono">{k}</text>
             </g>
           ))}
           {waypoints.map((w) => {
@@ -229,7 +229,7 @@ export default function StageProfileGraph({
                     className={onWaypointSelect ? "cursor-pointer" : undefined}
                     onClick={pick(w)} onMouseEnter={pick(w)} />
                   {full && hasClassifications && (
-                    <text x={X(w.km) + 8} y={axisY - 8} fontSize="8" className="font-mono"
+                    <text x={X(w.km) + 8} y={axisY - 8} fontSize="10" className="text-3xs font-mono"
                       fill="rgb(var(--jersey-points-bg))">
                       {t("detail.route.sprintMarker", { points: w.points, bonus: w.bonus })}
                     </text>

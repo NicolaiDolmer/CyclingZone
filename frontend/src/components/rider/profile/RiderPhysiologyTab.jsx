@@ -276,13 +276,13 @@ function CurveSvg({ riderCurve, divCurve, unit, lang, division, t }) {
         {gridVals.map((g) => (
           <g key={`g-${g}`}>
             <line x1="46" y1={yAt(g).toFixed(1)} x2="320" y2={yAt(g).toFixed(1)} stroke="var(--border)" strokeWidth="1" strokeDasharray="2 3" opacity="0.7" />
-            <text x="42" y={(yAt(g) + 3).toFixed(1)} fontSize="8.5" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="end">{unit === "wkg" ? g : g.toLocaleString(lang)}</text>
+            <text x="42" y={(yAt(g) + 3).toFixed(1)} fontSize="10" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="end">{unit === "wkg" ? g : g.toLocaleString(lang)}</text>
           </g>
         ))}
         {zone && (
           <>
             <rect x={zone.x.toFixed(1)} y="20" width={zone.w.toFixed(1)} height="130" fill="rgb(var(--accent) / 0.07)" />
-            <text x={(zone.x + zone.w / 2).toFixed(1)} y="31" fontSize="8" fill="rgb(var(--accent-t))" fontFamily={DATA_FONT} textAnchor="middle">{t("profile.physio.curve.hisZone")}</text>
+            <text x={(zone.x + zone.w / 2).toFixed(1)} y="31" fontSize="10" fill="rgb(var(--accent-t))" fontFamily={DATA_FONT} textAnchor="middle">{t("profile.physio.curve.hisZone")}</text>
           </>
         )}
         {divCurve && <polyline points={ptsOf(divCurve)} fill="none" stroke="var(--text-3)" strokeWidth="1.6" strokeDasharray="4 3" opacity="0.85" />}
@@ -290,11 +290,11 @@ function CurveSvg({ riderCurve, divCurve, unit, lang, division, t }) {
         {riderCurve.map((p, i) => (
           <g key={`d-${p.key}`}>
             <circle cx={xAt(i).toFixed(1)} cy={yAt(valOf(p, unit)).toFixed(1)} r="2.4" fill="rgb(var(--accent-t))" />
-            <text x={xAt(i).toFixed(1)} y={(yAt(valOf(p, unit)) - 7).toFixed(1)} fontSize="8" fontWeight="700" fill="var(--text-1)" fontFamily={DATA_FONT} textAnchor="middle">{fmtVal(p, unit, lang)}</text>
+            <text x={xAt(i).toFixed(1)} y={(yAt(valOf(p, unit)) - 7).toFixed(1)} fontSize="10" fontWeight="700" fill="var(--text-1)" fontFamily={DATA_FONT} textAnchor="middle">{fmtVal(p, unit, lang)}</text>
           </g>
         ))}
         {riderCurve.map((p, i) => (
-          <text key={`x-${p.key}`} x={xAt(i).toFixed(1)} y="190" fontSize="8.5" fill="var(--text-2)" fontFamily={DATA_FONT} textAnchor="middle">{DURATION_LABELS[p.key]}</text>
+          <text key={`x-${p.key}`} x={xAt(i).toFixed(1)} y="190" fontSize="10" fill="var(--text-2)" fontFamily={DATA_FONT} textAnchor="middle">{DURATION_LABELS[p.key]}</text>
         ))}
       </svg>
       <div className="flex gap-4 flex-wrap mt-1.5">
