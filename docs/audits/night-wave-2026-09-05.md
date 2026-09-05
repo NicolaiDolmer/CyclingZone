@@ -42,6 +42,10 @@
 | 25 | AI-triage B | 19 issues | B | sonnet | #4793 | merge 09 | |
 | 26 | Stale-audit spand A+B | #3154 | B | sonnet | #4792 | merge 09 | spand B "18 par" fandtes ikke i 4/9-filen (min brief pegede forkert; de 18 par er fra 31/8-auditten) |
 
+## CI-fixups (bølge G + recovery, 05:05-06:15)
+
+Seks PR'er var røde efter første CI-kørsel; alle rettet af sonnet-fixup-workers uden at røre vagterne: #4802 em-dash i to strenge · #4797 markerede best-effort-catches efter swallowed-catch-guardens regel · #4808 `.order("id")` på fetchAllRows · #4809 error-tjek + paginering i api.js · #4787 e2e-forventning fulgte den rettede pil-streng (en fixup-agent frøs midt i commit, recovery-agent afsluttede) · #4786 var en webkit-flake (9/9 lokalt), shard re-kørt.
+
 ## Afvigelser/læringer
 
 - **Frosne agenter holder deres samtidigheds-plads.** Seks agenter frøs tavst midt i almindelige Bash-kald (push, sed, test, gh, cat). Per-spor-timeout fyrede, men den nye `agent()` stod i kø bag den frosne, så bølge A kørte på 2 laner fra 01:12 til 03:50. Løsning der virkede: stop workflowet, relancér resten som ny bølge, recovery i samme worktrees. Postmortem: `.claude/learnings/2026-09-06-frozen-workflow-agents-hold-concurrency-slots.md`. Runbook opdateret.
