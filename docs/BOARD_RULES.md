@@ -230,8 +230,8 @@ Ejer-godkendt 7/8 med 10 låste beslutninger. Erstatter tre planer med **én rel
 | Fase 2 (Boardroom-side, årsmøde) | Boardroom-siden (S-M2b) + årsmødets **backend** (S-M2c, #4557) findes nu bag flaget. Frontend-mødet (`/board/meeting`-UI'et) er en separat, senere worker (S-M2c-frontend) |
 | Issue-label | `claude:done` — med tomme fase-checkbokse |
 
-**Opdateret 3/9 (#4557, S-M2c a+b):** `boardMandateEngine.js::advanceMandateAtSeasonEnd` og
-`::proposeMandateForNewTeam` er nu wiret ind i `economyEngine.js::processTeamSeasonEnd` (efter
+**Opdateret 3/9 (#4557, S-M2c a+b):** `boardMandateEngine.js::advanceMandateAtSeasonEnd`
+er nu wiret ind i `economyEngine.js::processTeamSeasonEnd` (efter
 `applySeasonEndSync`, samme fail-safe try/catch-disciplin) — næste sæsons mandat foreslås (status
 `proposed`) automatisk ved sæson-slut for hold der har en skyggerelation. `GET/POST /board/meeting/*`
 (§4.8 i slice-spec'en) + en ny 30-min-cron (`boardMandateAutoAccept.js`) er bygget, alt stadig
@@ -244,6 +244,31 @@ FØR flip.
 `board_relations`, og den er flag-gated. Skyggemodellen har derfor stået stille i seks dage mens
 `board_profiles` er kørt videre. Et flip nu ville vise spillerne et tillidstal fra 23/8 og et mandat
 uden S3-fremgang. **Flaget kan ikke flippes uden at skyggedata først genopbygges.**
+
+**Opdateret 6/9 (#4837 + #4838) — to huller i motorens kaldstier lukket:**
+
+1. **Nye hold fik aldrig relation/mandat (#4837).** `proposeMandateForNewTeam` og
+   `ensureRelationForTeam` var skrevet, testet og eksporteret, men INGEN produktionssti kaldte dem
+   (afsnittet ovenfor påstod fejlagtigt at ny-holds-hooket var wiret ved sæson-slut — det var kun
+   `advanceMandateAtSeasonEnd`, og den kræver en EKSISTERENDE relation). Alle 237 relationer stammede
+   derfor fra engangs-scriptet `mandateShadowRebuild3514.mjs` (1/9); to hold oprettet 2/9 og 3/9 havde
+   5 bestyrelsesmedlemmer og en `board_profile`, men 0 relation, 0 mandat, 0 milepæle. Ny
+   `boardMandateEngine.js::ensureMandateForTeamFormation` er nu holddannelsens ene indgang, kaldt fra
+   `boardMembers.js::chooseDnaForTeam` (spillerens DNA-valg) og
+   `boardAutoAccept.js::autoAcceptPendingPlan` (cron'ens auto-valg). Fail-safe (kaster aldrig) og
+   idempotent. Backfill for de allerede fødte hold:
+   `backend/scripts/backfillMandateForTeamsWithoutRelation.js` (dry-run default, `--apply --owner-go`).
+2. **Sæsonskiftet lukkede mandatet før det opdagede at næste sæson manglede (#4838).**
+   `advanceMandateAtSeasonEnd` kaldte `completeActiveMandate` FØR `proposeNextMandate`, som springer
+   over med `target_season_not_found` når sæson-rækken ikke findes. Målt 5/9: sæson 4 er ikke
+   materialiseret, så sæsonskiftet 27/9 ville have efterladt 237 hold med et `completed` mandat og
+   intet nyt — og `boardRoom.js` læser kun `status = 'active'`. Guarden (`findNextSeason`,
+   `seasonLookup.js`) ligger nu FØR lukningen: findes sæsonen ikke, er sæsonskiftet en ren no-op for
+   mandatet. **Uafhængigt krav står stadig: sæson 4 skal i DB før 27/9 (#4270).**
+
+**Flag-note (midlertidig):** `isBoardMandateModelEnabled` accepterer nu `{ engineWrite: true }`, så
+motoren skriver skyggedata i stage `beta` uanset om den enkelte manager er beta-tester (ejer-go 6/9).
+Afløses af #4839, der skiller skrive-gaten fra læse-gaten permanent.
 
 Ejer-valg 4 af 7/8 er stadig bindende uanset flagets tilstand: **mål-bonusser og -straffe udbetales
 kun i tillid.** Penge forbliver i lag 6 og modifieren.

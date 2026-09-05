@@ -10,6 +10,7 @@ import {
   buildGoalStatesFromEvaluation,
   completeActiveMandate,
   computeRelationUpdateFromEvaluation,
+  ensureMandateForTeamFormation,
   ensureRelationForTeam,
   evaluateDueMilestones,
   evaluateEarlyMilestones,
@@ -612,7 +613,15 @@ test("unlockExtraordinaryRequestForTeam: on + aktivt mandat → låser op", asyn
 // advanceMandateAtSeasonEnd / proposeMandateForNewTeam
 // =============================================================================
 
-function makeMandateLifecycleSupabase({ flagValue = "on", seasons = [], mandates = [], relations = [] } = {}) {
+function makeMandateLifecycleSupabase({
+  flagValue = "on",
+  seasons = [],
+  mandates = [],
+  relations = [],
+  teams = [],
+  riders = [],
+  boardMembers = [],
+} = {}) {
   const state = { mandates: [...mandates], relations: [...relations] };
   let mandateSeq = state.mandates.length;
   let relationSeq = state.relations.length;
@@ -637,7 +646,38 @@ function makeMandateLifecycleSupabase({ flagValue = "on", seasons = [], mandates
         return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: flagValue }, error: null }) }) }) };
       }
       if (table === "seasons") {
-        return { select: () => selectChain(seasons) };
+        // Understøtter både findSeasonByNumber (.eq.maybeSingle) og
+        // loadSingleActiveSeason (.eq.order.limit.maybeSingle + head/count).
+        return {
+          select: (_cols, opts) => {
+            if (opts?.head) {
+              return { eq: async () => ({ count: seasons.length, error: null }) };
+            }
+            const filters = {};
+            const chain = {
+              eq(col, value) { filters[col] = value; return chain; },
+              order: () => chain,
+              limit: () => chain,
+              maybeSingle: async () => ({ data: seasons.find((r) => matchAll(r, filters)) ?? null, error: null }),
+            };
+            return chain;
+          },
+        };
+      }
+      if (table === "teams") {
+        return { select: () => selectChain(teams) };
+      }
+      if (table === "riders") {
+        // fetchAllRows-formen: .select().eq().order().range() → én fuld side.
+        const chain = {
+          eq: () => chain,
+          order: () => chain,
+          range: async (from) => ({ data: from === 0 ? riders : [], error: null }),
+        };
+        return { select: () => chain };
+      }
+      if (table === "team_board_members") {
+        return { select: () => ({ eq: async () => ({ data: boardMembers, error: null }) }) };
       }
       if (table === "board_relations") {
         return {
@@ -884,4 +924,142 @@ test("#4839 læse-gaten er UÆNDRET: beta + almindelig spiller læser ikke", asy
   assert.equal(await loadRelation(supabase, "team-1"), null, "ingen viewer-flag → ingen læsning");
   assert.equal(await loadRelation(supabase, "team-1", { isBetaTester: false }), null);
   assert.ok(await loadRelation(supabase, "team-1", { isBetaTester: true }), "beta-tester læser stadig");
+});
+
+// =============================================================================
+// #4838 · Sæsonskiftet må ikke lukke det aktive mandat før næste sæson findes
+// =============================================================================
+
+test("#4838 advanceMandateAtSeasonEnd: næste sæson mangler → det aktive mandat forbliver 'active'", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    flagValue: "on",
+    seasons: [{ id: "s3", number: 3 }], // sæson 4 er IKKE materialiseret
+    relations: [{ id: "rel-1", team_id: "t1", confidence: 70 }],
+    mandates: [{ id: "m-active", team_id: "t1", season_id: "s3", status: "active", focus: "balanced" }],
+  });
+
+  const result = await advanceMandateAtSeasonEnd(supabase, {
+    teamId: "t1", seasonId: "s3", currentSeasonNumber: 3,
+  });
+
+  assert.deepEqual(result, { skipped: "target_season_not_found", season_number: 4 });
+  assert.equal(
+    supabase._state.mandates.find((m) => m.id === "m-active").status,
+    "active",
+    "mandatet må IKKE være completed — ellers står holdet uden mandatkort til sæson 4 findes",
+  );
+  assert.equal(supabase._state.mandates.length, 1, "intet nyt mandat oprettet");
+});
+
+test("#4838 advanceMandateAtSeasonEnd: guarden ligger FØR completeActiveMandate — samme kald lykkes når sæsonen er oprettet", async () => {
+  const seasons = [{ id: "s3", number: 3 }];
+  const supabase = makeMandateLifecycleSupabase({
+    flagValue: "on",
+    seasons,
+    relations: [{ id: "rel-1", team_id: "t1", confidence: 70 }],
+    mandates: [{ id: "m-active", team_id: "t1", season_id: "s3", status: "active", focus: "star_signing" }],
+  });
+
+  await advanceMandateAtSeasonEnd(supabase, { teamId: "t1", seasonId: "s3", currentSeasonNumber: 3 });
+  assert.equal(supabase._state.mandates.find((m) => m.id === "m-active").status, "active");
+
+  // #4270: sæson 4 oprettes → SAMME kald går nu hele vejen igennem.
+  seasons.push({ id: "s4", number: 4 });
+  const result = await advanceMandateAtSeasonEnd(supabase, { teamId: "t1", seasonId: "s3", currentSeasonNumber: 3 });
+
+  assert.equal(result.completed_active, true);
+  assert.equal(supabase._state.mandates.find((m) => m.id === "m-active").status, "completed");
+  const proposed = supabase._state.mandates.find((m) => m.season_id === "s4");
+  assert.equal(proposed.status, "proposed");
+  assert.equal(proposed.focus, "star_signing");
+});
+
+// =============================================================================
+// #4837 · ensureMandateForTeamFormation — holddannelsens kaldsti
+// =============================================================================
+
+function formationSupabase(over = {}) {
+  return makeMandateLifecycleSupabase({
+    flagValue: "on",
+    seasons: [{ id: "s3", number: 3, status: "active" }],
+    teams: [{ id: "t-new", name: "Nyt Hold", division: 3, balance: 800000, sponsor_income: 240000 }],
+    boardMembers: [
+      { archetype_key: "chairman", selection_kind: "identity", alignment_score: 90, is_chairman: true },
+    ],
+    ...over,
+  });
+}
+
+test("#4837 ensureMandateForTeamFormation: nyt hold får relation (confidence 50) + mandat for den AKTIVE sæson", async () => {
+  const supabase = formationSupabase();
+  const result = await ensureMandateForTeamFormation(supabase, { teamId: "t-new" });
+
+  assert.equal(result.season_number, 3, "sæsonnummeret slås op via den aktive sæson når det ikke sendes med");
+  assert.equal(supabase._state.relations.length, 1);
+  assert.equal(supabase._state.relations[0].confidence, 50);
+  assert.equal(supabase._state.relations[0].confidence_source.method, "team_formation");
+  assert.equal(supabase._state.mandates.length, 1);
+  assert.equal(supabase._state.mandates[0].season_id, "s3");
+  assert.equal(supabase._state.mandates[0].status, "proposed");
+  assert.ok(result.goal_count >= 3 && result.goal_count <= 5, "3-5 mål");
+});
+
+test("#4837 ensureMandateForTeamFormation: idempotent — hold med relation OG mandat røres ikke", async () => {
+  const supabase = formationSupabase({
+    relations: [{ id: "rel-eksisterende", team_id: "t-new", confidence: 82 }],
+    mandates: [{ id: "m-eksisterende", team_id: "t-new", season_id: "s3", status: "active" }],
+  });
+
+  const result = await ensureMandateForTeamFormation(supabase, { teamId: "t-new", seasonNumber: 3 });
+
+  assert.deepEqual(result, { skipped: "already_exists", mandate_id: "m-eksisterende", status: "active" });
+  assert.equal(supabase._state.relations.length, 1);
+  assert.equal(supabase._state.relations[0].confidence, 82, "eksisterende tillidstal er urørt");
+  assert.equal(supabase._state.mandates.length, 1);
+  assert.equal(supabase._state.mandates[0].status, "active", "det aktive mandat er urørt");
+});
+
+test("#4837 ensureMandateForTeamFormation: kill-switch off → null, intet skrives", async () => {
+  const supabase = formationSupabase({ flagValue: "off" });
+  const result = await ensureMandateForTeamFormation(supabase, { teamId: "t-new", seasonNumber: 3 });
+
+  assert.equal(result, null);
+  assert.equal(supabase._state.relations.length, 0);
+  assert.equal(supabase._state.mandates.length, 0);
+});
+
+test("#4837 ensureMandateForTeamFormation: stage 'beta' → motoren skriver ALLIGEVEL (engineWrite, ejer-go 6/9)", async () => {
+  const supabase = formationSupabase({ flagValue: "beta" });
+  // Ingen isBetaTester sendes med nogen steder — uden engineWrite-stien ville
+  // evaluateFlagStage("beta", {}) give false og holdet fødes uden skyggedata.
+  const result = await ensureMandateForTeamFormation(supabase, { teamId: "t-new", seasonNumber: 3 });
+
+  assert.equal(result.season_number, 3);
+  assert.equal(supabase._state.relations.length, 1);
+  assert.equal(supabase._state.mandates.length, 1);
+});
+
+test("#4837 ensureMandateForTeamFormation: kaster ALDRIG — en DB-fejl må ikke vælte holddannelsen", async () => {
+  const captured = [];
+  const explodingSupabase = {
+    from() { throw new Error("boom: board_relations utilgængelig"); },
+  };
+  const result = await ensureMandateForTeamFormation(explodingSupabase, {
+    teamId: "t-new",
+    seasonNumber: 3,
+    captureExceptionFn: (err, ctx) => captured.push({ err, ctx }),
+  });
+
+  assert.equal(result.skipped, "error");
+  assert.match(result.reason, /boom/);
+  assert.equal(captured.length, 1, "fejlen er set (Sentry), ikke slugt i stilhed");
+  assert.equal(captured[0].ctx.tags.flow, "board-team-formation");
+});
+
+test("#4837 ensureMandateForTeamFormation: ingen aktiv sæson → tydeligt skip, ingen gættet FK", async () => {
+  const supabase = formationSupabase({ seasons: [] });
+  const result = await ensureMandateForTeamFormation(supabase, { teamId: "t-new" });
+
+  assert.deepEqual(result, { skipped: "no_active_season" });
+  assert.equal(supabase._state.relations.length, 0, "ingen relation uden en sæson at binde mandatet til");
 });
