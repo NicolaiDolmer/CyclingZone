@@ -691,15 +691,15 @@ export default function SponsorsPage() {
                       >
                         <thead>
                           <tr>
-                            <Th className="min-w-[170px]">{t("page.next.column.sponsor")}</Th>
-                            <Th numeric className="min-w-[150px]">
-                              {t("field.guaranteedBase")}
+                            <Th className="min-w-[186px]">{t("page.next.column.sponsor")}</Th>
+                            <Th numeric className="min-w-[158px]">
+                              {t("page.next.column.guaranteed")}
                             </Th>
-                            <Th numeric className="min-w-[78px]">
-                              {t("field.perRaceDay")}
+                            <Th numeric className="min-w-[86px] whitespace-nowrap">
+                              {t("page.next.column.perStage")}
                             </Th>
-                            <Th className="min-w-[200px]">{t("page.next.column.bonuses")}</Th>
-                            <Th className="w-[104px]" />
+                            <Th className="min-w-[196px]">{t("page.next.column.bonuses")}</Th>
+                            <Th className="w-[118px]" />
                           </tr>
                         </thead>
                         <tbody>
@@ -766,7 +766,9 @@ export default function SponsorsPage() {
                                     </p>
                                   )}
                                 </Td>
-                                <Td numeric>{money(p.rate)}</Td>
+                                <Td numeric className="whitespace-nowrap">
+                                  {money(p.rate)}
+                                </Td>
                                 <Td>
                                   {bonusLines.length === 0 ? (
                                     <span className="text-xs text-cz-3">
@@ -778,7 +780,7 @@ export default function SponsorsPage() {
                                     </span>
                                   )}
                                 </Td>
-                                <Td className="text-right">
+                                <Td className="whitespace-nowrap text-right">
                                   <Button
                                     variant="secondary"
                                     size="sm"

@@ -90,6 +90,8 @@
       "pricingTitle": "How the offers are priced",
       "column": {
         "sponsor": "Sponsor",
+        "guaranteed": "Guaranteed",
+        "perStage": "Per stage",
         "bonuses": "Bonuses on top"
       },
       "empty": {

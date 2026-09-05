@@ -90,6 +90,8 @@
       "pricingTitle": "Sådan prissættes tilbuddene",
       "column": {
         "sponsor": "Sponsor",
+        "guaranteed": "Garanteret",
+        "perStage": "Pr. etape",
         "bonuses": "Bonusser oveni"
       },
       "empty": {
