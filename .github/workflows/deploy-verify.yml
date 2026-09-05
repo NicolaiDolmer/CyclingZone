@@ -5,8 +5,9 @@ name: Deploy verify
 #    alle non-GITHUB_TOKEN merges). BEMÆRK: ingen `pull_request: closed`-trigger;
 #    den var redundant med push og gav tvilling-runs for samme merge-commit, som
 #    cancellede hinanden via concurrency-gruppen (falsk "cancelled" i verify-deploy.ps1).
-#  - workflow_dispatch — eksplicit trigger fra auto-merge.yml/dependabot-auto-merge.yml,
-#    fordi GITHUB_TOKEN-merges ikke fyrer push/pull_request events (anti-loop-safeguard).
+#  - workflow_dispatch — eksplicit trigger fra dependabot-auto-merge.yml (auto-merge.yml
+#    fjernet #4404), fordi GITHUB_TOKEN-merges ikke fyrer push/pull_request events
+#    (anti-loop-safeguard).
 # Effekt: Venter på de deployments committet faktisk udløser (Vercel kun ved
 # frontend/-ændringer, Railway kun ved backend/-ændringer — spejler Vercels
 # Ignored Build Step i frontend/vercel.json), smoke-tester prod, kommenterer ✅/❌

@@ -1,6 +1,6 @@
 # GitHub-workflow — Nicolai ↔ Claude
 
-> Verdens bedste Claude+GitHub-opsætning. Ambition: agent-loop hvor Nicolai åbner et issue, Claude implementerer, GitHub merger, alt logges automatisk.
+> Verdens bedste Claude+GitHub-opsætning. Ambition: agent-loop hvor Nicolai åbner et issue, Claude implementerer, CI verificerer, alt logges automatisk. Merge-skridtet er bevidst IKKE automatisk (#4404, ejer-princip 4/9: "ingen andre end mig kan merge — kun mig og min Claude Code").
 
 ## Vision: Agent-loop
 
@@ -17,7 +17,7 @@ Auto-review workflow (Claude reviewer egen PR for kvalitet/sikkerhed)
         ↓
 CI passerer (lint + build + test)
         ↓
-Auto-merge (når alt grønt)
+Manuel merge — ejeren eller Claude Code (`gh pr merge --admin`, #4404)
         ↓
 Nicolai får notifikation, verificerer i prod, lukker issue
 ```
@@ -29,10 +29,10 @@ Mål: Nicolai rører tastatur 2 gange (åbn issue, skriv `@claude`). Resten kør
 | # | Lag | Hvem | Status | Effekt |
 |---|---|---|---|---|
 | 1 | **Claude GitHub App** (`@claude`-trigger i issues/PRs) | Nicolai | ✅ LIVE | Async Claude fra browser/mobil |
-| 2 | **Auto-PR-review** workflow | GitHub Actions | ✅ LIVE, advisory | Hver PR får risikobaseret Claude-review; auto-merge stopper hvis review fejler medmindre `skip-ai-review` er sat |
+| 2 | **Auto-PR-review** workflow | GitHub Actions | ✅ LIVE, advisory | Hver PR får risikobaseret Claude-review; ren advisory-signal (ingen auto-merge til at reagere på den længere, #4404) medmindre `skip-ai-review` er sat |
 | 3 | **Auto-issue-triage** workflow | GitHub Actions | ✅ LIVE | Deterministiske labels først; AI-comment kun for high/investigation for at spare tokens |
 | 4 | **GitHub Projects v2 board** | Claude (gh CLI + GraphQL) | ✅ LIVE 2026-05-10 | [`CyclingZone Roadmap`](https://github.com/users/NicolaiDolmer/projects/2) (#2) — 5 kolonner: 📋 Backlog · 🟢 Ready · 🟡 In Progress · 🔵 Review · ✅ Done. Auto-add via `.github/workflows/add-to-project.yml` (kræver `PROJECTS_PAT`-secret med `project`+`repo` scope; **rotér inden 2026-08-08**) |
-| 5 | **Branch protection + auto-merge** | Claude (gh API) | ✅ LIVE 2026-05-08 | Main beskyttet; PR'er kan auto-merge via label eller ship-keyword |
+| 5 | **Branch protection** | Claude (gh API) | ✅ LIVE 2026-05-08 | Main beskyttet; ingen automatisk merge-vej — ejeren/Claude Code merger manuelt (`--admin`), se #4404 |
 | 6 | **Pre-commit/pre-push hooks lokalt** (`.githooks`) | Repo + `setup-local.ps1` | ✅ LIVE | Lint, secret-safety og PatchNotes-versioner fanges før push |
 | 7 | **Dependabot + CodeQL + dependency review** | GitHub Actions | ✅ LIVE | Dep-PRs, code scanning og PR dependency gate |
 | 8 | **MCP write-fix** (claude.ai GitHub-connector) | Nicolai (disconnect/reconnect) | 🔜 Pending | Min terminal-session skriver MCP direkte i stedet for `gh` CLI fallback |
@@ -41,7 +41,7 @@ Mål: Nicolai rører tastatur 2 gange (åbn issue, skriv `@claude`). Resten kør
 
 **Foundation (Lag 0) ✅ done**:
 - Issue templates: `claude-task`, `claude-investigate`, `bug` + `config.yml` (disable blank issues)
-- `PULL_REQUEST_TEMPLATE.md` med `Refs #X`, test plan og risk/auto-merge check
+- `PULL_REQUEST_TEMPLATE.md` med `Refs #X`, test plan og risk-labels
 - 12 labels: `claude:{todo,in-progress,blocked,done}`, `priority:{high,med,low}`, `type:{bug,feature,refactor,docs,investigation}` _(`claude:done` er valgfri — bruger kan også lukke direkte; se Note nedenfor)_
 - `.claude/settings.json`: GitHub MCP read+write perms + `gh` CLI perms
 - `CLAUDE.md` "Start (eksplicit)" trin 2: tjek `claude:todo` issues ved session-start
@@ -71,9 +71,9 @@ Trade-offet (bevidst): to hver-for-sig-grønne PRs der tilsammen er røde, fange
 
 Historik: GitHubs ægte Merge Queue blev forsøgt 4/8 men kræver et ORG-ejet repo (CyclingZone er bruger-ejet). CI'en er allerede kø-kompatibel (`merge_group`-triggere + pass-throughs, PR #3303, i dvale) — flyttes repoet til en organisation, kan køen tændes med ét ruleset (`scratchpad`-udkastet ligger i PR #3303's beskrivelse). Rollback af dagens ændring: `gh api .../branches/main/protection/required_status_checks -X PATCH -F strict=true`.
 
-## Risk-labels og auto-merge policy
+## Risk-labels
 
-Auto-merge er standard for lav-risiko PRs, men stoppes automatisk hvis en PR har en af disse labels:
+Der er ingen auto-merge længere (#4404) — alle merges er manuelle. Risk-labels er stadig triage-signal for mennesket der merger, og for `github-housekeeping`s auto-close-forbidden-zones (se `docs/GITHUB_WORKFLOW.md#autonom-close-policy-627-fra-2026-05-29`):
 
 - `risk:med`
 - `risk:high`
@@ -81,7 +81,7 @@ Auto-merge er standard for lav-risiko PRs, men stoppes automatisk hvis en PR har
 - `needs-decision`
 - `manual-review`
 
-Hvis auto-review fejler, stopper auto-merge også. Brug `skip-ai-review` kun som bevidst break-glass når fejlen er kendt og ufarlig.
+En PR med en af disse labels kræver ekstra opmærksomhed FØR manuel merge, ikke kun grøn CI. `skip-ai-review` er fortsat break-glass for en kendt/ufarlig advisory-review-fejl.
 
 Typisk label-valg:
 
@@ -104,7 +104,7 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 |---|---|
 | `Prepare #N` | Manus skriver handoff-kommentar og labels, men trigger ikke agent. |
 | `Dispatch #N` | Manus poster dispatch-kommentar. For Claude betyder det en `@claude` issue-comment, som trigger GitHub Action. |
-| `Dispatch #N and ship` | Kun for lavrisiko-scope; Manus kan inkludere ship-keyword, så PR auto-merger når checks er grønne. |
+| `Dispatch #N and ship` | Historisk ship-keyword — trigger ikke længere nogen auto-merge (#4404). PR oprettes som normalt og venter på manuel merge. |
 | `Review agent queue` | Manus læser åbne issues/labels og anbefaler næste handling uden at brugeren skal samle status manuelt. |
 
 ### Du → Claude (du opretter issue)
@@ -175,59 +175,41 @@ gh issue close 42 --reason completed
 # Skriv blot "@claude implementer X" i issue/PR-comment via browser eller mobil GitHub-app
 ```
 
-## Mobile-first ship-loop (Lag 5 — LIVE 2026-05-08)
+## Mobile-first ship-loop (Lag 5 — LIVE 2026-05-08, auto-merge-del fjernet #4404)
 
-> **Status:** Verificeret end-to-end via demo-PR 2026-05-08. `deploy-verify` workflow kørte med `success` på første push — Vercel + Railway + smoke-test alle grønne.
+> **Status 2026-09-05:** `auto-merge`-labelen og `.github/workflows/auto-merge.yml` er fjernet. Rod-årsag (#4404): branch protection kræver `require_code_owner_reviews`, og CODEOWNER er repo-ejeren selv — GitHub tillader aldrig at man godkender sin egen PR, så merge-skridtet fejlede altid uanset hvor grøn CI var. Ejer-princip 4/9: "Ingen andre end mig kan merge — kun mig og min Claude Code." En label-drevet merge med `GITHUB_TOKEN` (eller enhver anden automatisk merge-vej) ville netop være en tredje merge-vej og er derfor bevidst IKKE bygget som erstatning (se issue-kommentar 4/9 på #4404 for det fulde ejer-svar, inkl. hvorfor en admin-PAT-baseret erstatning også blev fravalgt).
 
-**Mål:** Trigge en ændring fra mobilen og få den LIVE uden at åbne PC'en — uden manuel merge-klik.
+**Mål (uændret):** Trigge en ændring fra mobilen. CI kører selv; merge-skridtet kræver stadig at ejeren (eller Claude Code på ejerens vegne) trykker igennem — men det er ét `gh pr merge --admin`-kald, ikke en app-genstart.
 
-### Sådan virker det
+### Sådan virker det i dag
 
 | Trigger | Effekt |
 |---|---|
-| `@claude implementer X **og ship**` | Claude opretter PR + tilføjer `auto-merge` label → PR auto-merger så snart CI grøn |
-| `@claude implementer X` (uden ship-keyword) | Claude opretter PR; manuel merge påkrævet (safety-net for natlige autonome runs) |
-| Tilføj `auto-merge` label til en eksisterende PR | PR sættes i auto-merge-kø — virker fra mobil GitHub-app (2 tryk) |
-| Dependabot patch/minor PR | Auto-mærket med `auto-merge` af `dependabot-auto-merge.yml` → auto-merger |
-| Dependabot major PR | Får IKKE label → manuel review krævet |
+| `@claude implementer X` (med eller uden historisk ship-keyword) | Claude opretter PR; ship-keywords parses ikke længere til noget — PR venter altid på manuel merge |
+| Dependabot patch/minor/major PR | Ingen af dem auto-merger længere; `dependabot-auto-merge.yml` er ikke fjernet i denne PR, men rammer efter alt at dømme SAMME rod-årsag (ingen code-owner-godkendelse mulig) — uverificeret, se separat issue-forslag |
 
-**Ship-keywords der trigger auto-merge** (case-insensitive, parsed af Claude-action fra issue/comment-body):
-- ` ship` (med space foran, så det ikke matcher "shipper" osv.)
-- `--ship`
-- `send live`
-- `auto-merge`
-- `merge når grøn` / `merge naar groen`
+**Ship-keywords fra tidligere** (` ship`, `--ship`, `send live`, `auto-merge`, `merge når grøn`/`merge naar groen`) er nu no-ops i `claude.yml` — dokumenteret der som "INGEN AUTO-MERGE (fjernet #4404)".
 
 ### Workflows involveret
 
-- `.github/workflows/claude.yml` — Claude-action; parser ship-keyword og tilføjer label efter PR-creation
-- `.github/workflows/auto-merge.yml` — lytter på `pull_request: labeled` for `auto-merge`-label, stopper high-risk labels, venter på required checks + advisory AI-review, squash-merger og trigger deploy-verify
-- `.github/workflows/dependabot-auto-merge.yml` — auto-mærker lav-risiko dep-PRs som auto-merge
+- `.github/workflows/claude.yml` — Claude-action; opretter PR, forsøger IKKE længere at labelmærke eller auto-merge
+- `.github/workflows/dependabot-auto-merge.yml` — venter stadig synkront på CI og forsøger `gh pr merge --squash` for patch/minor uden `--admin`; sandsynligvis også ramt af #4404's rod-årsag (ikke bekræftet/rettet i denne PR)
 - `.github/workflows/dependency-review.yml` — blokerer PRs der introducerer high+ dependency vulnerabilities
 - `.github/workflows/playwright-smoke.yml` — PR-check for frontendændringer; kører mocket Playwright smoke + desktop/mobile screenshot-baselines uden live secrets
 - `.github/workflows/deploy-verify.yml` — efter merge til main, venter på Vercel + Railway deploy, smoke-tester prod, upserter én ✅/❌ comment på merged PR
 
-### Sikkerheds-net
+### Merge-mekanik i dag
 
-Auto-merge fjerner IKKE branch protection — required status checks (`backend-tests` + `frontend-build`) skal stadig være grønne før merge sker. Auto-merge er essentielt en **conditional merge-queue**: PR parker sig selv indtil betingelser opfyldt.
+Branch protection er UÆNDRET (required review + code-owner-review, ingen løsnet gate). Merge sker manuelt: `gh pr merge <N> --repo NicolaiDolmer/CyclingZone --squash --delete-branch --admin`, én PR ad gangen, kørt af ejeren eller Claude Code — aldrig af et workflow med et repo-scopet token. `deploy-verify.yml` kører stadig automatisk efter merge og poster ✅/❌ på PR'en.
 
-Hvis CI fejler: PR forbliver åben, ingen merge sker, du får besked via GitHub-notifikation. Hvis prod-smoke-test fejler efter merge: `deploy-verify.yml` poster ❌-comment på den merged PR — du ved live er broken og kan rulle tilbage manuelt.
-
-### Mobile workflow eksempel
+### Mobile workflow eksempel (opdateret)
 
 1. Du sidder på toilettet, ser en bug-report i Discord
 2. Mobil GitHub-app: opret issue eller åben eksisterende
-3. Comment: `@claude fix dette og ship`
-4. Luk telefonen
-5. ~5-15 min senere: notifikation fra GitHub: "Deploy verificeret LIVE for #N"
-6. Hvis ❌: åben mobilen og se hvad der gik galt; rul tilbage via revert-PR (også fra mobil)
-
-### Hvornår SKAL du IKKE bruge ship-keyword
-
-- **Større refaktoreringer** der påvirker delt runtime — kør CI lokalt først eller manuel review
-- **Migrations** der ændrer DB-skema — verificer migration-ordre og rollback-plan først. Post-merge applier Claude selv SQL under #2642-rammerne (merged+idempotent → apply → read-only-verify; destruktive klasser fortsat ejer-gated) — fuld tekst i `AGENTS.md` hard rule 9
-- **Kontrakt-ændringer** mellem frontend/backend — skal koordineres
-- **Nat / autonome opgaver** når du sover — eksisterende manuel-merge-pattern fra `feedback_24_7_automation` er bevidst safety-net
+3. Comment: `@claude fix dette`
+4. Luk telefonen — Claude opretter PR og venter
+5. Når CI er grøn: merge manuelt (mobil GitHub-app "Merge"-knap virker IKKE pga. code-owner-kravet — brug PC/Claude Code til selve merge-tryk)
+6. `deploy-verify.yml` bekræfter LIVE bagefter; ❌ betyder rul tilbage via revert-PR
 
 ## Cross-PC notes
 - `docs/GITHUB_WORKFLOW.md` (denne fil) er git-tracked — synkroniser via `git pull`

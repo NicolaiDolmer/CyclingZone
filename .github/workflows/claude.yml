@@ -66,14 +66,7 @@ jobs:
               - `## Close-out`: bullet-liste over hvilke close-out-filer du opdaterede (NOW.md, FEATURE_STATUS.md, learnings). Hvis du sprang noget over: sig hvorfor.
               - `## Verifikation` med konkret test-procedure
 
-            **AUTO-MERGE (ship-signal):** Efter `gh pr create` afsluttes med succes, parse trigger-eventet (issue/comment-body) for ship-keyword. Hvis brugeren skrev nogen af følgende — ` ship`, `--ship`, `send live`, `auto-merge`, `merge når grøn`, eller `merge naar groen` (case-insensitive, ord-grænser) — kør disse to kommandoer i rækkefølge på den nyoprettede PR:
-            ```
-            gh pr edit <PR-NUMBER> --repo NicolaiDolmer/CyclingZone --add-label "auto-merge"
-            gh pr merge <PR-NUMBER> --repo NicolaiDolmer/CyclingZone --auto --squash --delete-branch
-            ```
-            Det første tilføjer en synlig label-marker. Det andet sætter PR i auto-merge-kø direkte (siden GITHUB_TOKEN-aktivitet i workflows ikke trigger andre workflows er det nødvendigt at kalde merge eksplicit). PR'en merger automatisk når `backend-tests` + `frontend-build` er grønne. Brugeren behøver IKKE klikke merge fra mobilen.
-
-            Hvis ingen ship-keyword: gør INGENTING ekstra (default = manuel merge, det eksisterende safety-net for natlige autonome runs).
+            **INGEN AUTO-MERGE (fjernet #4404):** Branch protection kræver `require_code_owner_reviews`, og CODEOWNER er repo-ejeren selv — GitHub tillader aldrig at man godkender sin egen PR. Et ship-keyword kan derfor IKKE trigge en rigtig merge: `gh pr merge --auto` ville bare sætte PR'en i evig vente (kravet opfyldes aldrig), og `auto-merge`-labelen har ingen lytter længere (workflowet der konsumerede den er slettet, se #4404). Gør INGENTING ekstra efter `gh pr create`, uanset om trigger-teksten indeholder et ship-keyword — heller ikke `gh pr edit --add-label "auto-merge"`. PR'en venter altid på manuel merge (ejeren eller Claude Code kører `gh pr merge --squash --delete-branch --admin`, én ad gangen).
 
             Hvis du støder på blocker (mangler kontekst, fagligt valg, scope-uklarhed): comment på issuet med `claude:blocked` + spørgsmålet, og lav IKKE PR. Bedre at stoppe end at gætte.
 

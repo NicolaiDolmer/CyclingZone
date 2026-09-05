@@ -25,9 +25,8 @@ Refs #
 
 **Hvad jeg verificerede konkret:** <!-- URL + 1-2 sætninger om hvad jeg så -->
 
-## Risk / auto-merge
-<!-- Tilføj label hvis relevant: risk:med, risk:high, security, needs-decision eller manual-review stopper auto-merge. -->
-- [ ] `auto-merge` er kun sat hvis PR'en er lav-risiko og ikke kræver menneskelig beslutning
+## Risk
+<!-- Tilføj label hvis relevant: risk:med, risk:high, security, needs-decision eller manual-review. Ingen af disse trigger auto-merge — den mekanisme er fjernet (#4404), alle PR'er merges manuelt af ejeren/Claude Code. -->
 - [ ] Dependency/security-impact er vurderet hvis `package*.json`, workflows, auth, DB eller upload-flow ændres
 
 ## Afledningstjekliste (KRÆVET ved populations-mutationer)
