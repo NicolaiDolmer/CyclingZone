@@ -43,6 +43,7 @@ import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { resolveThresholds } from "./boardNegotiationThresholds.js";
 import { findNextSeason } from "./seasonLookup.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
+import { fetchAllRows } from "./supabasePagination.js";
 import { captureException } from "./sentry.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -886,18 +887,22 @@ export async function proposeMandateForNewTeam(supabase, {
  * (færre stempler på målene), den vælter ikke holddannelsen.
  */
 async function loadTeamFormationContext(supabase, teamId) {
-  const [teamRes, ridersRes, membersRes] = await Promise.all([
+  const [teamRes, riders, membersRes] = await Promise.all([
     supabase.from("teams")
       .select("id, name, division, balance, sponsor_income, team_dna_key")
       .eq("id", teamId).maybeSingle(),
-    supabase.from("riders").select("*").eq("team_id", teamId),
+    // #3331: `riders` er deny-listed for ubundne selects (PostgREST capper
+    // tavst ved 1000 rækker). En trup er i praksis langt under, men vi
+    // paginerer alligevel — en "provably bounded"-antagelse er præcis dét der
+    // brast to gange før.
+    fetchAllRows(() => supabase.from("riders").select("*").eq("team_id", teamId).order("id")),
     supabase.from("team_board_members")
       .select("archetype_key, selection_kind, alignment_score, is_chairman")
       .eq("team_id", teamId),
   ]);
   return {
     team: teamRes.error ? null : (teamRes.data ?? null),
-    riders: ridersRes.error ? [] : (ridersRes.data ?? []),
+    riders,
     assignedMembers: membersRes.error || !membersRes.data?.length ? null : membersRes.data,
   };
 }

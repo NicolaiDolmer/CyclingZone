@@ -668,7 +668,13 @@ function makeMandateLifecycleSupabase({
         return { select: () => selectChain(teams) };
       }
       if (table === "riders") {
-        return { select: () => ({ eq: async () => ({ data: riders, error: null }) }) };
+        // fetchAllRows-formen: .select().eq().order().range() → én fuld side.
+        const chain = {
+          eq: () => chain,
+          order: () => chain,
+          range: async (from) => ({ data: from === 0 ? riders : [], error: null }),
+        };
+        return { select: () => chain };
       }
       if (table === "team_board_members") {
         return { select: () => ({ eq: async () => ({ data: boardMembers, error: null }) }) };
