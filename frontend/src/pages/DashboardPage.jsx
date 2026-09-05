@@ -905,15 +905,15 @@ export default function DashboardPage() {
     <div translate="no" className="max-w-5xl mx-auto" aria-busy="true">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
-          <Skeleton className="h-[20px] w-48" />
-          <Skeleton className="mt-2 h-[13px] w-64" />
+          <Skeleton rounded="rounded" className="h-[20px] w-48" />
+          <Skeleton rounded="rounded" className="mt-2 h-[13px] w-64" />
         </div>
-        <Skeleton className="h-[38px] w-32" />
+        <Skeleton rounded="rounded" className="h-[38px] w-32" />
       </header>
       <SectionStack>
         {[0, 1, 2, 3].map((i) => (
           <Section key={i}>
-            <Skeleton className="mb-4 h-[15px] w-40" />
+            <Skeleton rounded="rounded" className="mb-4 h-[15px] w-40" />
             <SkeletonLines lines={3} />
           </Section>
         ))}
