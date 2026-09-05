@@ -198,6 +198,48 @@ test("applyDailyTick: uden hardDailyCap (default) kan samme scenarie give mere e
   assert.ok(out.gains.climbing > 1, `forventede >1 uden cap, fik ${out.gains.climbing}`);
 });
 
+// #4750/ejer 5/9: hardDailyCap=1 MÅ ALDRIG smide fremdrift væk — den overskydende
+// del af baren (over ceilingen) skal bæres videre til næste dag, ikke klippes af
+// det gamle ubetingede `Math.min(bar, 0.999)`-loft (se applyDailyTick's docblok-fix).
+// Denne test beviser bevarelsen som en REGNSKABS-invariant, ikke et gæt: kun
+// climbing har et gap (caps={climbing:99}, resten af VISIBLE_ABILITIES mangler i
+// `abilities` ⇒ gap=0 ⇒ 0 delta ⇒ score == climbings RÅ, ukappede dags-delta, jf.
+// applyDailyTick). To dage i træk, kædet (dag 2's abilities/progress er dag 1's
+// output): summen af de to dages RÅ deltaer (out1.score + out2.score) skal
+// modsvare summen af hele-point-gevinster PLUS den fremdrift der stadig står i
+// baren efter dag 2 — intet forsvinder undervejs, det bliver bare fordelt over
+// flere dage end uden loftet.
+test("applyDailyTick: hardDailyCap=1 over to dage — fremdriften summerer til det samme som uden loft (ingen tabt udvikling)", () => {
+  const baseInput = {
+    riderId: "carry1", age: 17,
+    caps: { climbing: 99 },
+    program: { focus: "vo2max", intensity: "hard" },
+    conditionMult: 1, bonus: true, potentiale: 6, hardDailyCap: 1,
+  };
+  const day1 = applyDailyTick({
+    ...baseInput, dateStr: "2026-07-05",
+    abilities: { climbing: 1 }, progress: { climbing: 0 },
+  });
+  // Denne fixtur er valgt fordi den (som testen ovenfor viser) giver en rå delta
+  // godt over 2 — store nok til at hardDailyCap=1 rent faktisk begrænser BEGGE
+  // dage, så carry-over-mekanikken bliver testet, ikke kun triviel (bar<1).
+  assert.equal(day1.gains.climbing, 1, "forudsætning: dag 1 er loft-begrænset");
+  assert.ok(day1.progress.climbing > 0.01, `forudsætning: dag 1 efterlader mærkbar restfremdrift (fik ${day1.progress.climbing})`);
+
+  const day2 = applyDailyTick({
+    ...baseInput, dateStr: "2026-07-06",
+    abilities: day1.abilities, progress: day1.progress,
+  });
+
+  const totalRawDelta = day1.score + day2.score; // == summen af de to dages ukappede climbing-deltaer
+  const totalGained = (day1.gains.climbing ?? 0) + (day2.gains.climbing ?? 0);
+  const finalLeftoverBar = day2.progress.climbing ?? 0;
+  assert.ok(
+    Math.abs(totalRawDelta - (totalGained + finalLeftoverBar)) < 0.02,
+    `regnskab skal gå op (±afrunding): rå deltaer=${totalRawDelta}, gevinster+restbar=${totalGained + finalLeftoverBar}`,
+  );
+});
+
 // ── #2216 A4 (Task 7): staff-trænings-bonus (dimension×niveau, kun under caps, no-op uden staff) ──
 
 // En ren fysisk-ungdoms-coach (physical stærk, mental svag; u23 stærk, senior svag).
