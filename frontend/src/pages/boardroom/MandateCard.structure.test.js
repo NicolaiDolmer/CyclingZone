@@ -15,7 +15,7 @@ test("#4557 mandate: null renderer den kanoniske EmptyState (T1 canonical states
 });
 
 test("#4557/#4570 mandate: mål-titlen bruger den delte type-styrede resolver, ikke rå labelKey-interpolation", () => {
-  assert.match(source, /import \{ formatShortDate, formatWeekdayShortDate, resolveGoalTitle \} from "\.\/boardroomFormat";/);
+  assert.match(source, /import \{[^}]*resolveGoalTitle[^}]*\} from "\.\/boardroomFormat";/);
   assert.match(source, /\{resolveGoalTitle\(t, goal\)\}/);
   assert.doesNotMatch(source, /t\(goal\.labelKey/, "titlen må ikke længere kaldes direkte via t(goal.labelKey, ...) — det er nu KUN resolverens interne fallback-sti");
 });

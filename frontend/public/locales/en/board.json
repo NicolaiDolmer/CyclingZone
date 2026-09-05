@@ -1980,7 +1980,7 @@
     },
     "overview": {
       "goalsAchieved": "{achieved} of {total} goals achieved,",
-      "signedOn": "signed {date}.",
+      "signedOn": "signed {date}",
       "worstGoalNote": "{goal} is at {achieved} against a target of {target}.",
       "openMandate": "Open mandate",
       "openVision": "Open vision",
@@ -1988,7 +1988,8 @@
       "visionLabel": "Club vision",
       "boardLabel": "The board",
       "nextMilestone": "Next milestone: {milestone}, target S{season}.",
-      "boardNoQuote": "The board has not said anything since the last meeting."
+      "boardNoQuote": "The board has not said anything since the last meeting.",
+      "goalValue": "{achieved} / {target}"
     },
     "bonusOffer": {
       "lead": "Bonus offer from the board.",

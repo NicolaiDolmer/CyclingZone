@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Section, SectionHeader, SectionAction, EmptyState, ClipboardIcon, ProgressMeter } from "../../components/ui";
-import { formatShortDate, resolveGoalTitle } from "./boardroomFormat";
+import { endSentence, formatShortDate, resolveGoalTitle } from "./boardroomFormat";
 import { goalProgressPct } from "../../components/board/goalProgress.js";
 import { BonusOfferStripe, BonusAcceptedLine } from "./BonusOffer.jsx";
 import StatusPill from "./StatusPill.jsx";
@@ -38,7 +38,10 @@ function GoalSummary({ goal, t }) {
 
   return (
     <div className="flex min-w-0 flex-col">
-      <p className="mb-1.5 flex-1 text-[12.5px] font-medium leading-snug text-cz-1">
+      {/* Fast to-linjers titelhoejde i stedet for flex-1: med flex-1 aad den
+          KORTESTE titel al slacken i sin gitter-celle, saa maalerne stod i
+          hver sin hoejde ved siden af hinanden (tydeligst paa 390px). */}
+      <p className="mb-1.5 min-h-[2.75em] text-[12.5px] font-medium leading-snug text-cz-1">
         {title}
         {goal.isBonus && (
           <span className="ms-1.5 rounded-cz-pill border border-cz-border px-[7px] py-px align-middle text-3xs font-semibold uppercase tracking-[.08em] text-cz-accent-t">
@@ -47,9 +50,13 @@ function GoalSummary({ goal, t }) {
         )}
       </p>
       <ProgressMeter value={pct} tone={tone} ariaLabel={title} />
-      <div className="mt-1.5 flex items-center justify-between gap-2">
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <span className="font-data text-2xs uppercase tracking-[.06em] tabular-nums text-cz-3">
-          {t("boardroom.mandate.achievedTarget", { achieved: goal.achievedDisplay, target: goal.targetDisplay })}
+          {/* Resuméet baerer den KORTE form ("46 / 40") som mockup'en; den fulde
+              "Achieved 46 / target 40" staar paa maal-raekken i Mandat-fanen.
+              Den lange form ombrød til tre linjer paa 390px og skubbede
+              maalerne ud af flugt (TASTE P5: ens ting staar ens). */}
+          {t("boardroom.overview.goalValue", { achieved: goal.achievedDisplay, target: goal.targetDisplay })}
         </span>
         <StatusPill status={goal.status} t={t} />
       </div>
@@ -90,7 +97,7 @@ export default function MandateSummaryCard({ mandate, bonusOffer = null, onOpenM
         <span className="font-medium text-cz-1">
           {t("boardroom.overview.goalsAchieved", { achieved: achievedCount, total: goals.length })}
         </span>
-        {mandate.signedAt ? ` ${t("boardroom.overview.signedOn", { date: formatShortDate(mandate.signedAt) })}` : ""}
+        {mandate.signedAt ? ` ${endSentence(t("boardroom.overview.signedOn", { date: formatShortDate(mandate.signedAt) }))}` : ""}
         {worst
           ? ` ${t("boardroom.overview.worstGoalNote", {
             goal: resolveGoalTitle(t, worst),

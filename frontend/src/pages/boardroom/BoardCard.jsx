@@ -116,8 +116,12 @@ export default function BoardCard({ board, mandate, minutes = [], dna = null, on
         />
       )}
 
+      {/* #4557 · Ingen venstre-accent-bjaelke paa citatet: den er et femte
+          prioritetssignal oven i de fire guld har lov til (TASTE §3
+          forbudsliste), og mockup'en 6/9 tegner citatet som en ren
+          subtle-flade. */}
       {board?.chairmanQuote && (
-        <div className="mt-4 rounded-r-cz border-l-2 border-cz-accent bg-cz-subtle px-3.5 py-3">
+        <div className="mt-4 rounded-cz bg-cz-subtle px-3.5 py-3">
           <p className="text-[13.5px] leading-relaxed text-cz-1">
             &ldquo;{t(board.chairmanQuote.textKey, board.chairmanQuote.textParams || {})}&rdquo;
           </p>

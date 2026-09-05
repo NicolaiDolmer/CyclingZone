@@ -1980,7 +1980,7 @@
     },
     "overview": {
       "goalsAchieved": "{achieved} af {total} mål nået,",
-      "signedOn": "underskrevet {date}.",
+      "signedOn": "underskrevet {date}",
       "worstGoalNote": "{goal} står på {achieved} mod et mål på {target}.",
       "openMandate": "Åbn mandatet",
       "openVision": "Åbn visionen",
@@ -1988,7 +1988,8 @@
       "visionLabel": "Klubvision",
       "boardLabel": "Bestyrelsen",
       "nextMilestone": "Næste milepæl: {milestone}, mål i S{season}.",
-      "boardNoQuote": "Bestyrelsen har ikke sagt noget siden sidste møde."
+      "boardNoQuote": "Bestyrelsen har ikke sagt noget siden sidste møde.",
+      "goalValue": "{achieved} / {target}"
     },
     "bonusOffer": {
       "lead": "Bonustilbud fra bestyrelsen.",
