@@ -75,7 +75,9 @@ The card header and border stay mounted; only the body swaps between loading / e
 - **Empty:** `EmptyState` — dashed hairline inset; stroke icon 26px `--text-3`; title 15px/600; ONE sentence description (13px `--text-2`, sentence case, e.g. "Draft your first rider in the live auction."); ONE action = the section's primary, size sm. **`action` is a required prop** — `EmptyState` throws in dev when it's missing (#4625, TASTE fork 4: a description-only empty state with no way forward was 6 of the 10 worst audit findings 2026-09). `EmptyState` is already a bordered box — never wrap it in another `Card`/`Section` ("box in a box").
 - **Error:** `ErrorState` — same anatomy; `alert-triangle` icon in danger (no red fills/panels); message says what is safe ("Nothing was lost. Your bids are safe."); retry = **secondary** sm ("Try again"), never gold. **No em-dash in player-facing copy** — `scripts/tone-check-em-dash.mjs` fails the build; use a full stop, comma or colon (rule: `docs/TONE_OF_VOICE.md` §Punktuation).
 
-## Fold-disciplin (binding — ejer-krav 2026-08-20, design-sessionen)
+## Fold-disciplin (binding — ejer-krav 2026-08-20, design-sessionen; skærpet 2026-09-06)
+
+> **Ejer-regel (2/9, gentaget 6/9 efter to afviste mockups): enhver side er OVERBLIK FØRST + FANER UD.** Første skærm (1280×900) er ét overblik der svarer på sidens spørgsmål uden scroll; tabeller, historik, tilbud, indstillinger og alt detaljeret bor i underline-faner (`Tabs`-primitiven). En side må ALDRIG være en stak af kort man scroller ned igennem, heller ikke i en mockup. Ordret 6/9: *"Jeg vil have, at du lærer at lave ting som faner i stedet for de der meget lange sider hvor man bare skal scrolle mere og mere."* Skriv fanerne eksplicit i enhver design-brief/worker-prompt.
 
 Sider må ikke vokse i højden ved at nye features stabler nye kort ovenpå. Reglen:
 
