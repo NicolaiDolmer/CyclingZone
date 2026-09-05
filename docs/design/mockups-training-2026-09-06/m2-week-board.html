@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training week board (mockup 2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens copied from frontend/src/index.css (light). Dark block is a bonus. */
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5; --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --on-accent:#1a1f38;
+  --success:21 119 47; --success-bg:rgba(21,119,47,.08);
+  --danger:168 30 30; --danger-bg:rgba(168,30,30,.08);
+  --radius:5px; --radius-pill:9999px;
+  --font-body:"DM Sans",system-ui,-apple-system,sans-serif;
+  --font-data:"Inter Tight",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+    --border:#2a2d3a; --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+    --accent-t:#ffd966;
+    --success:95 217 138; --success-bg:rgba(95,217,138,.12);
+    --danger:251 132 132; --danger-bg:rgba(251,132,132,.12);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-body); color:var(--text-1);
+  font-family:var(--font-body); font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+.page{max-width:1600px; margin:0 auto; padding:28px 32px 64px}
+
+/* ── page header ─────────────────────────────────────────────── */
+.hdr{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px}
+.hdr h1{font-family:var(--font-data); font-size:20px; font-weight:700; letter-spacing:-.01em; margin:0; line-height:1.2}
+.hdr .sub{font-size:13px; color:var(--text-2); margin-top:2px}
+.hdr-right{display:flex; flex-direction:column; align-items:flex-end; gap:8px}
+.stamp{
+  font-family:var(--font-data); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-3); border:1px solid var(--border); border-radius:var(--radius); padding:2px 7px; white-space:nowrap;
+}
+.cluster{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end}
+
+/* controls */
+.selwrap{position:relative; display:inline-block}
+.selwrap select{
+  appearance:none; -webkit-appearance:none;
+  font-family:var(--font-body); font-size:12.5px; font-weight:500; color:var(--text-1);
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+  height:32px; padding:0 28px 0 10px; line-height:30px;
+}
+.selwrap .chev{position:absolute; right:8px; top:50%; transform:translateY(-50%); pointer-events:none; color:var(--text-3)}
+.btn{
+  display:inline-flex; align-items:center; gap:6px; height:32px; padding:0 12px;
+  font-family:var(--font-body); font-size:12.5px; font-weight:500;
+  border:1px solid var(--border); border-radius:var(--radius);
+  background:var(--bg-card); color:var(--text-1); cursor:pointer;
+}
+.btn-primary{
+  background:rgb(var(--accent)); border-color:rgb(var(--accent)); color:var(--on-accent); font-weight:600;
+}
+
+/* ── tabs ────────────────────────────────────────────────────── */
+.tabs{display:flex; gap:20px; border-bottom:1px solid var(--border); margin-bottom:12px; overflow-x:auto}
+.tab{
+  font-size:14px; font-weight:500; color:var(--text-2); padding:0 0 9px; margin-bottom:-1px;
+  border-bottom:2px solid transparent; white-space:nowrap;
+}
+.tab[aria-selected="true"]{color:var(--accent-t); border-bottom-color:rgb(var(--accent))}
+
+/* ── layout ──────────────────────────────────────────────────── */
+.board{display:grid; grid-template-columns:200px minmax(0,1fr); gap:14px; align-items:start}
+
+/* ── programs column ─────────────────────────────────────────── */
+.card{background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius)}
+.progcard{padding:14px}
+.progcard h2{font-size:15px; font-weight:600; margin:0 0 10px; line-height:1.2}
+.meta-label{
+  font-family:var(--font-data); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3);
+}
+.prog{
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  border-top:1px solid var(--border); padding:6px 6px; margin:0 -6px;
+}
+.prog .nm{font-size:13px; font-weight:500}
+.prog .ct{font-family:var(--font-data); font-size:11px; font-variant-numeric:tabular-nums; color:var(--text-3)}
+.prog.sel{background:var(--bg-subtle)}
+.prog.sel .nm{font-weight:600}
+.prog.sel .ct{color:var(--text-2)}
+.prog-group{margin-top:14px; margin-bottom:2px; display:block}
+.progcard .btn{width:100%; justify-content:center; margin-top:12px}
+.mobile-prog{display:none; margin-bottom:12px}
+
+/* ── table ───────────────────────────────────────────────────── */
+.tablecard{background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden}
+.toolbar{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:8px 12px; border-bottom:1px solid var(--border); overflow-x:auto;
+}
+.seg{display:inline-flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden}
+.seg span{
+  font-size:12px; font-weight:500; color:var(--text-2); padding:4px 10px; white-space:nowrap;
+  border-left:1px solid var(--border);
+}
+.seg span:first-child{border-left:0}
+.seg span[aria-current="true"]{color:var(--accent-t); background:rgb(var(--accent)/.10)}
+.toolmeta{font-family:var(--font-data); font-size:12px; color:var(--text-3); white-space:nowrap; font-variant-numeric:tabular-nums}
+
+.scroller{overflow-x:auto}
+table{border-collapse:collapse; width:100%; min-width:997px}
+th,td{text-align:left}
+thead th{
+  font-family:var(--font-data); font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text-3); padding:8px 4px; border-bottom:1px solid var(--border); white-space:nowrap;
+}
+tbody td{padding:7px 4px; border-bottom:1px solid var(--border); vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+
+.c-name{width:210px; min-width:210px; padding-left:12px !important; padding-right:10px !important;
+  position:sticky; left:0; z-index:1; background:var(--bg-card); border-right:1px solid var(--border)}
+thead .c-name{z-index:2}
+.c-day{width:97px; min-width:97px; text-align:center}
+.c-num{width:44px; min-width:44px; text-align:right; padding-right:6px !important; font-family:var(--font-data);
+  font-size:13px; font-variant-numeric:tabular-nums}
+thead .c-num{text-align:right; padding-right:6px}
+.c-num.last{padding-right:12px !important; width:64px; min-width:64px}
+thead .c-num.last{padding-right:12px}
+.c-num .unit{display:block; font-size:10px; font-weight:400; letter-spacing:0; margin-top:1px}
+
+.rname{font-size:13.5px; font-weight:500; line-height:1.25; display:flex; align-items:center; gap:5px}
+.rsub{font-family:var(--font-data); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); line-height:1.4; white-space:nowrap}
+
+/* today column */
+.today{border-left:1px solid var(--border); border-right:1px solid var(--border)}
+thead th.today{color:var(--accent-t); background:rgb(var(--accent)/.10)}
+
+/* reference row */
+tr.ref td{background:var(--bg-subtle)}
+tr.ref .c-name{background:var(--bg-subtle)}
+tr.ref .rname{font-weight:600}
+
+/* pills */
+.pill{
+  display:inline-block; font-family:var(--font-data); font-size:11px; font-weight:500;
+  line-height:18px; height:18px; padding:0 7px; border-radius:var(--radius-pill);
+  background:var(--bg-subtle); color:var(--text-1); white-space:nowrap;
+}
+.pill.ghost{background:transparent; color:var(--text-3)}
+.pill.over{background:transparent; border:1px solid var(--border); line-height:16px}
+.pill.race{background:var(--text-1); color:var(--bg-card); padding:0 6px}
+.dash{color:var(--text-3); font-family:var(--font-data); font-size:12px}
+.hot{color:rgb(var(--danger)); font-weight:600}
+.warn{color:rgb(var(--danger))}
+
+.countline{font-family:var(--font-data); font-size:12px; color:var(--text-3); margin-top:8px; font-variant-numeric:tabular-nums}
+.legend{font-family:var(--font-data); font-size:11px; color:var(--text-3); margin-top:4px; display:flex; gap:14px; flex-wrap:wrap; align-items:center}
+.legend .pill{margin-right:5px}
+
+/* ── section 2: development ──────────────────────────────────── */
+.annot{
+  border-top:1px dashed var(--border); margin-top:34px; padding-top:10px; margin-bottom:12px;
+  font-family:var(--font-data); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3);
+}
+.devcard{padding:0}
+.devhead{display:flex; align-items:baseline; justify-content:space-between; padding:14px 16px 12px}
+.devhead h2{font-size:15px; font-weight:600; margin:0}
+.dev-c-name{width:210px; min-width:210px; padding-left:16px !important; position:sticky; left:0; z-index:1;
+  background:var(--bg-card); border-right:1px solid var(--border)}
+.dev-c-ability{width:120px; min-width:120px}
+.dev-c-spark{width:auto; min-width:130px; padding-right:16px !important}
+.dev-c-now{width:60px; min-width:60px; text-align:right; font-family:var(--font-data); font-size:13px; font-variant-numeric:tabular-nums}
+.dev-c-today{width:300px; min-width:230px}
+.devtable{min-width:780px}
+.gain{
+  display:inline-block; font-family:var(--font-data); font-size:11px; font-weight:600; line-height:18px; height:18px;
+  padding:0 7px; border-radius:var(--radius-pill); background:var(--success-bg); color:rgb(var(--success)); white-space:nowrap;
+}
+.gain.zero{background:var(--bg-subtle); color:var(--text-2); font-weight:500}
+.note{font-size:11.5px; color:var(--text-2); margin-top:2px}
+.delta{font-family:var(--font-data); font-size:11px; font-weight:600; color:rgb(var(--success)); font-variant-numeric:tabular-nums}
+.sparkrow{display:flex; align-items:center; gap:7px}
+
+/* ── mobile ──────────────────────────────────────────────────── */
+@media (max-width:860px){
+  .page{padding:20px 16px 64px}
+  .hdr{flex-direction:column; align-items:stretch; gap:12px}
+  .hdr-right{align-items:flex-start}
+  .cluster{justify-content:flex-start; width:100%}
+  .cluster .selwrap{flex:1 1 auto}
+  .cluster .selwrap select{width:100%}
+  .stamp{align-self:flex-start}
+  .board{grid-template-columns:minmax(0,1fr)}
+  .progcard{display:none}
+  .mobile-prog{display:block}
+  .mobile-prog .selwrap{display:block}
+  .mobile-prog select{width:100%}
+  .stamp{align-self:flex-end}
+  .toolbar{flex-wrap:wrap; row-gap:8px}
+  .c-name{width:172px; min-width:172px; padding-left:10px !important}
+  .rsub{white-space:normal}
+  .dev-c-name{width:140px; min-width:140px; padding-left:12px !important}
+  .dev-c-ability{width:76px; min-width:76px}
+  .dev-c-now{width:38px; min-width:38px}
+  .dev-c-today{min-width:180px}
+  .dev-c-spark{width:auto; min-width:110px}
+  .devtable{min-width:544px}
+  table{min-width:959px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- page header -->
+  <div class="hdr">
+    <div>
+      <h1>Training</h1>
+      <div class="sub">Season 3, day 9. Assistant runs at 22:00 if you do nothing.</div>
+    </div>
+    <div class="hdr-right">
+      <div class="stamp">Mockup 6 Sep, not final</div>
+      <div class="cluster">
+        <span class="selwrap">
+          <select aria-label="Apply program to">
+            <option>Apply program to…</option>
+            <option>Climber (4 riders)</option>
+            <option>Sprinter (3 riders)</option>
+            <option>Cobbles (2 riders)</option>
+            <option>GC rider (1 rider)</option>
+            <option>Build base (5 riders)</option>
+            <option>Whole squad (18 riders)</option>
+          </select>
+          <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+        <button class="btn btn-primary" type="button">Train today</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- tabs -->
+  <div class="tabs" role="tablist">
+    <div class="tab" role="tab" aria-selected="true">Overview</div>
+    <div class="tab" role="tab" aria-selected="false">Week plan</div>
+    <div class="tab" role="tab" aria-selected="false">Development</div>
+    <div class="tab" role="tab" aria-selected="false">Reports</div>
+  </div>
+
+  <div class="board">
+
+    <!-- programs column -->
+    <aside class="card progcard">
+      <h2>Programs</h2>
+      <div class="prog sel"><span class="nm">Climber</span><span class="ct">4</span></div>
+      <div class="prog"><span class="nm">Sprinter</span><span class="ct">3</span></div>
+      <div class="prog"><span class="nm">Cobbles</span><span class="ct">2</span></div>
+      <div class="prog"><span class="nm">GC rider</span><span class="ct">1</span></div>
+      <div class="prog"><span class="nm">Recovery week</span><span class="ct">0</span></div>
+      <div class="prog"><span class="nm">Build base</span><span class="ct">5</span></div>
+      <div class="prog"><span class="nm">Time trialist</span><span class="ct">0</span></div>
+
+      <span class="meta-label prog-group">My programs</span>
+      <div class="prog"><span class="nm">Cobbles block</span><span class="ct">2</span></div>
+
+      <button class="btn" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        New program
+      </button>
+    </aside>
+
+    <div>
+      <!-- mobile stand-in for the programs column -->
+      <div class="mobile-prog">
+        <span class="selwrap">
+          <select aria-label="Program">
+            <option>Program: Climber (4 riders)</option>
+            <option>Program: Sprinter (3 riders)</option>
+            <option>Program: Cobbles (2 riders)</option>
+            <option>Program: GC rider (1 rider)</option>
+            <option>Program: Recovery week (0 riders)</option>
+            <option>Program: Build base (5 riders)</option>
+            <option>Program: Time trialist (0 riders)</option>
+            <option>My program: Cobbles block (2 riders)</option>
+            <option>New program…</option>
+          </select>
+          <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+      </div>
+
+      <!-- week board -->
+      <div class="tablecard">
+        <div class="toolbar">
+          <div class="seg" role="group" aria-label="Squad view">
+            <span aria-current="true">All 18</span>
+            <span>No plan 1</span>
+            <span>At risk 3</span>
+            <span>Racing 6</span>
+          </div>
+          <div class="toolmeta">Week 2 of season 3 &middot; 7-13 Sep</div>
+        </div>
+
+        <div class="scroller">
+          <table>
+            <thead>
+              <tr>
+                <th class="c-name">Rider</th>
+                <th class="c-day">Mon</th>
+                <th class="c-day today">Tue &middot; today</th>
+                <th class="c-day">Wed</th>
+                <th class="c-day">Thu</th>
+                <th class="c-day">Fri</th>
+                <th class="c-day">Sat</th>
+                <th class="c-day">Sun</th>
+                <th class="c-num">Form<span class="unit">/100</span></th>
+                <th class="c-num last">Fatigue<span class="unit">/100</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="ref">
+                <td class="c-name">
+                  <div class="rname">Program week</div>
+                  <div class="rsub">Climber &middot; reference</div>
+                </td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill">Climbing</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-day"><span class="pill">Threshold</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Climbing</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-num"><span class="dash">&mdash;</span></td>
+                <td class="c-num last"><span class="dash">&mdash;</span></td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Mathis Berger</div><div class="rsub">24 &middot; Climber &middot; Climber</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill race">Race: attack</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-day"><span class="pill">Threshold</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Climbing</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-num">88</td><td class="c-num last">41</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Ada Pedersen</div><div class="rsub">23 &middot; Climber &middot; Climber</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill race">Race: grupetto</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-day"><span class="pill">Threshold</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Climbing</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-num">79</td><td class="c-num last">62</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Rafael Costa</div><div class="rsub">21 &middot; Climber &middot; Climber</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill">Climbing</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-day"><span class="pill">Threshold</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Climbing</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-num">84</td><td class="c-num last">35</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Ivo Marchetti</div><div class="rsub">29 &middot; Climber &middot; Climber</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill">Climbing</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-day"><span class="pill over">Rest</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Climbing</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-num">71</td><td class="c-num last hot">78</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Ola Sandvik</div><div class="rsub">27 &middot; Sprinter &middot; Sprinter</div></td>
+                <td class="c-day"><span class="pill">Tempo</span></td>
+                <td class="c-day today"><span class="pill race">Race: all out</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-day"><span class="pill">Punch</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Sprint</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-num">90</td><td class="c-num last">44</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Kiril Baev</div><div class="rsub">25 &middot; Sprinter &middot; Sprinter</div></td>
+                <td class="c-day"><span class="pill">Tempo</span></td>
+                <td class="c-day today"><span class="pill">Sprint</span></td>
+                <td class="c-day"><span class="pill over">Recovery</span></td>
+                <td class="c-day"><span class="pill">Punch</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Sprint</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-num">76</td><td class="c-num last">69</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Sam Whitlock</div><div class="rsub">30 &middot; Sprinter &middot; Sprinter</div></td>
+                <td class="c-day"><span class="pill">Tempo</span></td>
+                <td class="c-day today"><span class="pill">Sprint</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-day"><span class="pill">Punch</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Sprint</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-num">68</td><td class="c-num last">52</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Luca Bianchi</div><div class="rsub">26 &middot; Puncheur &middot; Cobbles</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill race">Race: normal</span></td>
+                <td class="c-day"><span class="pill">Technique</span></td>
+                <td class="c-day"><span class="pill">Threshold</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Punch</span></td>
+                <td class="c-day"><span class="pill">Tempo</span></td>
+                <td class="c-num">82</td><td class="c-num last">47</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Nils Haugen</div><div class="rsub">31 &middot; Rouleur &middot; Cobbles</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill race">Race: normal</span></td>
+                <td class="c-day"><span class="pill">Technique</span></td>
+                <td class="c-day"><span class="pill">Threshold</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Punch</span></td>
+                <td class="c-day"><span class="pill">Tempo</span></td>
+                <td class="c-num">74</td><td class="c-num last">58</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Jonas Reiter</div><div class="rsub">22 &middot; Time trial &middot; GC rider</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill race">Race: ride easy</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-day"><span class="pill">Intervals</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Climbing</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-num">86</td><td class="c-num last">39</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Tomas Ruzicka</div><div class="rsub">28 &middot; Rouleur &middot; Build base</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill">Tempo</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill over">Rest</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-num">70</td><td class="c-num last hot">81</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Elias Vandeputte</div><div class="rsub">19 &middot; Academy &middot; Build base</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill">Tempo</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Technique</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-num">92</td><td class="c-num last">28</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Noa Ferreira</div><div class="rsub">25 &middot; Sprinter &middot; Build base</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill">Tempo</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Technique</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-num">81</td><td class="c-num last">43</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Aksel Lund</div><div class="rsub">17 &middot; Academy &middot; Build base</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill">Tempo</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Technique</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-num">94</td><td class="c-num last">22</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Milan Novak</div><div class="rsub">20 &middot; Academy &middot; Build base</div></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day today"><span class="pill">Tempo</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Technique</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-num">88</td><td class="c-num last">31</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Th&eacute;o Rousseau</div><div class="rsub">33 &middot; Rouleur &middot; Cobbles block</div></td>
+                <td class="c-day"><span class="pill">Technique</span></td>
+                <td class="c-day today"><span class="pill">Punch</span></td>
+                <td class="c-day"><span class="pill">Tempo</span></td>
+                <td class="c-day"><span class="pill">Punch</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-num">65</td><td class="c-num last hot">74</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Pau Serra</div><div class="rsub">24 &middot; Puncheur &middot; Cobbles block</div></td>
+                <td class="c-day"><span class="pill">Technique</span></td>
+                <td class="c-day today"><span class="pill">Punch</span></td>
+                <td class="c-day"><span class="pill">Tempo</span></td>
+                <td class="c-day"><span class="pill">Punch</span></td>
+                <td class="c-day"><span class="pill ghost">Rest</span></td>
+                <td class="c-day"><span class="pill">Long ride</span></td>
+                <td class="c-day"><span class="pill">Recovery</span></td>
+                <td class="c-num">79</td><td class="c-num last">55</td>
+              </tr>
+
+              <tr>
+                <td class="c-name">
+                  <div class="rname">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="warn" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    Freya Dahl
+                  </div>
+                  <div class="rsub">18 &middot; Academy &middot; No program</div>
+                </td>
+                <td class="c-day"><span class="dash">&mdash;</span></td>
+                <td class="c-day today"><span class="dash">&mdash;</span></td>
+                <td class="c-day"><span class="dash">&mdash;</span></td>
+                <td class="c-day"><span class="dash">&mdash;</span></td>
+                <td class="c-day"><span class="dash">&mdash;</span></td>
+                <td class="c-day"><span class="dash">&mdash;</span></td>
+                <td class="c-day"><span class="dash">&mdash;</span></td>
+                <td class="c-num">91</td><td class="c-num last">19</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="countline">18 riders, 6 racing today, 1 without a plan</div>
+      <div class="legend">
+        <span><span class="pill">Session</span>from program</span>
+        <span><span class="pill over">Session</span>your override</span>
+        <span><span class="pill race">Race: normal</span>race day</span>
+        <span><span class="pill ghost">Rest</span>rest day</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── section 2: the Development tab ───────────────────────── -->
+  <div class="annot">Tab: Development</div>
+
+  <div class="card devcard">
+    <div class="devhead">
+      <h2>Season so far</h2>
+      <span class="meta-label">Max +1 per ability per day</span>
+    </div>
+    <div class="scroller">
+      <table class="devtable">
+        <thead>
+          <tr>
+            <th class="dev-c-name">Rider</th>
+            <th class="dev-c-ability">Ability</th>
+            <th class="dev-c-now">Now</th>
+            <th class="dev-c-today">Today</th>
+            <th class="dev-c-spark">Season</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="dev-c-name"><div class="rname">Ada Pedersen</div><div class="rsub">23 &middot; Climber</div></td>
+            <td class="dev-c-ability">Climbing</td>
+                        <td class="dev-c-now">74</td>
+            <td class="dev-c-today">
+              <span class="gain">+1 today</span>
+              <div class="note">Daily max, rest carried over.</div>
+            </td>
+<td class="dev-c-spark">
+              <span class="sparkrow">
+                <svg width="84" height="22" viewBox="0 0 84 22" aria-hidden="true">
+                  <path d="M0 18 L14 17 L28 15 L42 13 L56 11 L70 8 L82 5 L82 22 L0 22 Z" fill="var(--bg-subtle)"/>
+                  <polyline points="0,18 14,17 28,15 42,13 56,11 70,8 82,5" fill="none" stroke="var(--text-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                  <circle cx="82" cy="5" r="2.4" fill="var(--text-1)"/>
+                </svg>
+                <span class="delta">+6</span>
+              </span>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="dev-c-name"><div class="rname">Elias Vandeputte</div><div class="rsub">19 &middot; Academy</div></td>
+            <td class="dev-c-ability">Punch</td>
+                        <td class="dev-c-now">58</td>
+            <td class="dev-c-today">
+              <span class="gain">+1 today</span>
+              <div class="note">Daily max, rest carried over.</div>
+            </td>
+<td class="dev-c-spark">
+              <span class="sparkrow">
+                <svg width="84" height="22" viewBox="0 0 84 22" aria-hidden="true">
+                  <path d="M0 19 L14 18 L28 16 L42 15 L56 12 L70 9 L82 4 L82 22 L0 22 Z" fill="var(--bg-subtle)"/>
+                  <polyline points="0,19 14,18 28,16 42,15 56,12 70,9 82,4" fill="none" stroke="var(--text-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                  <circle cx="82" cy="4" r="2.4" fill="var(--text-1)"/>
+                </svg>
+                <span class="delta">+8</span>
+              </span>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="dev-c-name"><div class="rname">Noa Ferreira</div><div class="rsub">25 &middot; Sprinter</div></td>
+            <td class="dev-c-ability">Sprint</td>
+                        <td class="dev-c-now">81</td>
+            <td class="dev-c-today">
+              <span class="gain">+1 today</span>
+              <div class="note">Punch sits at its ceiling and gained nothing.</div>
+            </td>
+<td class="dev-c-spark">
+              <span class="sparkrow">
+                <svg width="84" height="22" viewBox="0 0 84 22" aria-hidden="true">
+                  <path d="M0 15 L14 14 L28 14 L42 12 L56 11 L70 10 L82 8 L82 22 L0 22 Z" fill="var(--bg-subtle)"/>
+                  <polyline points="0,15 14,14 28,14 42,12 56,11 70,10 82,8" fill="none" stroke="var(--text-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                  <circle cx="82" cy="8" r="2.4" fill="var(--text-1)"/>
+                </svg>
+                <span class="delta">+3</span>
+              </span>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="dev-c-name"><div class="rname">Tomas Ruzicka</div><div class="rsub">28 &middot; Rouleur</div></td>
+            <td class="dev-c-ability">Threshold</td>
+                        <td class="dev-c-now">69</td>
+            <td class="dev-c-today">
+              <span class="gain zero">+0 today</span>
+              <div class="note">62% of the way to the next point.</div>
+            </td>
+<td class="dev-c-spark">
+              <span class="sparkrow">
+                <svg width="84" height="22" viewBox="0 0 84 22" aria-hidden="true">
+                  <path d="M0 14 L14 13 L28 13 L42 12 L56 12 L70 11 L82 11 L82 22 L0 22 Z" fill="var(--bg-subtle)"/>
+                  <polyline points="0,14 14,13 28,13 42,12 56,12 70,11 82,11" fill="none" stroke="var(--text-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                  <circle cx="82" cy="11" r="2.4" fill="var(--text-1)"/>
+                </svg>
+                <span class="delta">+1</span>
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

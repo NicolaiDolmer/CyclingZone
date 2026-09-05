@@ -1,4 +1,4 @@
-# Discord catch-up: v7.239 to v7.254 (3 to 5 Sep 2026)
+# Discord catch-up: v7.239 to v7.255 (3 to 5 Sep 2026)
 
 Ejeren poster selv. Hver blok herunder er under Discords grænse på 2.000 tegn, så den kan kopieres direkte som ét indlæg. EN-blokkene til `#patch-notes`, DA-blokkene til den danske kanal. Rækkefølgen er valgt så det spillerne mærker mest kommer først. Ingen tal eller tidspunkter i teksten, kun det spillerne mærker (versionsnumre og produktnavne som "CZ Pro v1.1" undtaget).
 
@@ -9,10 +9,12 @@ Allerede annonceret separat (4/9): sponsorernes divisionstillæg og denne sæson
 ## EN 1/4
 
 ```
-**Catch-up: v7.239 to v7.254 (3 to 5 Sep)**
+**Catch-up: v7.239 to v7.255 (3 to 5 Sep)**
 It's been a busy few days behind the scenes. Here's everything since the last catch-up, sorted by what you'll notice most. Full detail as always at cyclingzone.org/patch-notes.
 
 **Racing and rider pages**
+- A sold rider stays in your line-up pool until his race is done, greyed out with "Leaves after this race". Before, he vanished while still racing for you.
+- Picking a new breakaway hunter on a stage now moves the role instead of adding a second one.
 - A mechanical no longer injures your rider. Abandoning with one costs you the race, not the body; only a crash still sidelines him.
 - Rolling stages get their own icon, visible on mobile too, and hilly and high-mountain naming is now consistent everywhere.
 - Generated stage races can no longer draw two near-identical time trials.
@@ -71,10 +73,12 @@ Thanks for sticking around while all this gets tightened up.
 ## DA 1/4
 
 ```
-**Opsamling: v7.239 til v7.254 (3. til 5. sep)**
+**Opsamling: v7.239 til v7.255 (3. til 5. sep)**
 Det har været nogle travle dage bag kulisserne. Her er alt siden sidste opsamling, sorteret efter hvad du mærker mest. Alle detaljer som altid på cyclingzone.org/patch-notes.
 
 **Løb og rytterprofiler**
+- En solgt rytter bliver i din holdudtagelses-pulje indtil hans løb er kørt, gråtonet med "Forlader holdet efter dette løb". Før forsvandt han, mens han stadig kørte for dig.
+- Vælger du en ny udbrudsjæger på en etape, flyttes rollen nu i stedet for at der kommer en ekstra.
 - En mekanisk defekt skader ikke længere din rytter. Udgår han med én, mister han løbet, ikke kroppen; kun et styrt sætter ham stadig på sidelinjen.
 - Rolling-etaper får deres eget ikon, også synligt på mobil, og navnene for kuperet og højbjerg er nu ens overalt.
 - Genererede etapeløb kan ikke længere trække to næsten ens enkeltstarter.
