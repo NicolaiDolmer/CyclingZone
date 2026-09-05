@@ -55,12 +55,14 @@ async function run() {
   // hvilke team_id'er der er AI, for at ekskludere dem fra rapporten.
   const teams = await fetchAllRows(() => supabase
     .from("teams")
-    .select("id, is_ai"));
+    .select("id, is_ai")
+    .order("id"));
   const humanTeamIds = new Set((teams || []).filter((t) => !t.is_ai).map((t) => t.id));
 
   const profiles = await fetchAllRows(() => supabase
     .from("board_profiles")
-    .select("id, team_id, plan_type, negotiation_status, is_baseline, current_goals"));
+    .select("id, team_id, plan_type, negotiation_status, is_baseline, current_goals")
+    .order("id"));
 
   const activeHumanProfiles = (profiles || []).filter((p) =>
     humanTeamIds.has(p.team_id) && !p.is_baseline && p.negotiation_status === "completed"
