@@ -209,9 +209,31 @@ gh issue close 42 --reason completed
 
 ### Sikkerheds-net
 
-Auto-merge fjerner IKKE branch protection — required status checks (`backend-tests` + `frontend-build`) skal stadig være grønne før merge sker. Auto-merge er essentielt en **conditional merge-queue**: PR parker sig selv indtil betingelser opfyldt.
+Auto-merge fjerner IKKE de reelle gates — required status checks (`backend-tests` + `frontend-build`), `frontend-smoke` (fuld Playwright-suite) og advisory AI-review skal stadig være grønne, og high-risk-labels (`risk:med`, `risk:high`, `security`, `needs-decision`, `manual-review`) stopper mergen — FØR selve merge-skridtet køres. Det ENESTE branch protection-krav der bypasses ved merge-skridtet er `require_code_owner_reviews`, fordi det krav strukturelt aldrig kan opfyldes på en PR under ejerens egen konto (se "Auto-merge fra mobilen" herunder for hvorfor). Auto-merge er essentielt en **conditional merge-queue**: PR parker sig selv indtil betingelser opfyldt, og merger så via ejerens egen PAT — ikke en anonym bypass.
 
 Hvis CI fejler: PR forbliver åben, ingen merge sker, du får besked via GitHub-notifikation. Hvis prod-smoke-test fejler efter merge: `deploy-verify.yml` poster ❌-comment på den merged PR — du ved live er broken og kan rulle tilbage manuelt.
+
+### Auto-merge fra mobilen (PAT-setup, rettet #4404 5/9)
+
+**Hvorfor en PAT er nødvendig:** branch protection på `main` kræver `require_code_owner_reviews`. CODEOWNER er ejeren selv, og GitHub tillader aldrig at man godkender sin egen PR — så kravet kan strukturelt aldrig opfyldes ad normal vej, uanset hvor grøn CI er. Eneste vej til main er `--admin`, som kun virker med et token der har ejerens egen admin-rettigheder på repoet. `secrets.GITHUB_TOKEN` (den automatiske Actions-token) har ikke det — derfor bruges en **personal access token under ejerens egen konto**, gemt som repo-secret `AUTO_MERGE_PAT`, og KUN til selve merge-kaldet i `auto-merge.yml`/`dependabot-auto-merge.yml`. En merge via labelen tæller dermed som ejerens egen handling — ikke en tredje merge-identitet, og ikke noget venner-med-skriveadgang kan trigge (actor-guarden i `auto-merge.yml` tjekker stadig `github.event.sender.login == 'NicolaiDolmer'`).
+
+**Sådan opretter du PAT'en (én gang, udløber hver 90. dag):**
+1. GitHub → klik dit profilbillede → **Settings**
+2. Venstre menu, helt nederst → **Developer settings**
+3. **Personal access tokens** → **Tokens (classic)** → **Generate new token (classic)**
+4. Scope: kun `repo` (fuld repo-adgang — nødvendigt for `--admin`-merge). Udløb: **90 dage**
+5. Kopiér token-værdien (vises kun én gang)
+6. Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+7. Navn: `AUTO_MERGE_PAT`, værdi: den kopierede token → **Add secret**
+8. Sæt en kalender-reminder til fornyelse hver 90. dag — udløbet PAT fejler synligt (guard-skridtet i begge workflows tjekker `AUTO_MERGE_PAT` er sat, men opdager ikke en udløbet værdi før selve merge-kaldet fejler)
+
+**Sådan bruges labelen fra telefonen:** åbn PR'en i GitHub-mobilappen → Labels → tilføj `auto-merge` (2 tryk). Workflowet gør resten — venter på required checks + frontend-smoke + advisory review, squash-merger, trigger deploy-verify.
+
+**Hvad stopper den:**
+- `risk:med`, `risk:high`, `security`, `needs-decision` eller `manual-review` label → labelen fjernes automatisk igen + kommentar
+- PR i draft → merge-skridtet fejler
+- Rød required check, rød frontend-smoke, eller rød advisory AI-review (uden `skip-ai-review`) → stopper før merge, labelen fjernes
+- `AUTO_MERGE_PAT` mangler eller er udløbet som repo-secret → guard-skridtet fejler tydeligt med besked på PR'en
 
 ### Mobile workflow eksempel
 
