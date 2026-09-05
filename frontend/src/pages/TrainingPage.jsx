@@ -44,7 +44,7 @@ import SortTh from "../components/rider/RiderSortTh.jsx";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   PageHeader, Card, Button, Select, Checkbox,
-  PageLoader, EmptyState, ChevronDownIcon, TeamIcon,
+  PageLoader, EmptyState, SkeletonLines, ChevronDownIcon, TeamIcon,
   ArrowUpIcon, ArrowDownIcon, FlagIcon, StarIcon,
   Tabs, TabList, Tab, TabPanel, CollapsibleSection,
 } from "../components/ui";
@@ -515,7 +515,14 @@ export default function TrainingPage() {
     async function loadRiders() {
       setRidersLoading(true);
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        // #4160: getSession() laeser den lokale (auto-refreshede) session UDEN
+        // en netvaerkstur; getUser() lavede en ekstra GET /auth/v1/user foran
+        // hele kaeden. session.user baerer samme id, og vaernet er uaendret:
+        // udloebet/uopfriskelig session => session=null => user=null => vi
+        // stopper foer user.id. RLS validerer stadig hvert opslag server-side,
+        // saa den fjernede tur var ren latenstid, ikke et vaern.
+        const { data: { session } } = await supabase.auth.getSession();
+        const user = session?.user ?? null;
         if (!user) return;
         const { data: myTeam } = await supabase
           .from("teams")
@@ -665,7 +672,16 @@ export default function TrainingPage() {
   // invalidere den memo hver eneste gang.
   const today = useMemo(() => new Date(), []);
 
-  const isLoading = loading || ridersLoading;
+  // #4160: sidens helsides-PageLoader ventede foer paa BEGGE kilder. Rytter-
+  // kaeden (session -> teams -> riders) er den laengste, men den fodrer KUN
+  // roster-/development-tabellerne; dagens panel (dagens koersel, status,
+  // rapport) kommer fra useTraining og er sidens stoerste tekstblok — altsaa
+  // LCP-elementet. Ved at gate helsides-loaderen paa useTraining alene males
+  // hovedindholdet efter eet tur/retur i stedet for tre, og trup-tabellerne
+  // hydrerer bagefter i deres eget skelet.
+  // PAGE_TEMPLATES.md, "Canonical states": "The card header and border stay
+  // mounted; only the body swaps between loading / empty / error / content."
+  const isLoading = loading;
 
   // Dags-opsummering til rapportens payoff-stribe (trænede / gennembrud / topform).
   const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
@@ -1434,7 +1450,10 @@ export default function TrainingPage() {
             Uden denne kontrol kunne træthed (den kolonne spillere rent faktisk
             sorterer på for at se hvem der skal have hvile) slet ikke sorteres i
             portræt. */}
-        {riders.length > 0 && (
+        {/* #4160: monteret ogsaa mens truppen hydrerer, saa kontrollen ikke
+            dukker op bagefter og skubber tabellen ned (CLS). At sortere en
+            endnu-tom liste er en no-op. */}
+        {(ridersLoading || riders.length > 0) && (
           <RosterMobileSortControl
             sort={rosterSort.sort}
             sortDir={rosterSort.sortDir}
@@ -1448,7 +1467,9 @@ export default function TrainingPage() {
             i stedet for prosa på siden, ét dæmpet link til Hjælpens Daglig
             Træning-afsnit (recovery, ugerytme, kvitteringen, alt sammen). */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {riders.length > 0 ? (
+          {/* #4160: samme grund som sorterings-kontrollen ovenfor — pladsen
+              holdes fra foerste maling i stedet for at blive skabt bagefter. */}
+          {(ridersLoading || riders.length > 0) ? (
             <Checkbox
               checked={groupByType}
               onChange={(e) => setGroupByType(e.target.checked)}
@@ -1525,7 +1546,20 @@ export default function TrainingPage() {
             forskellige sticky-offsets (left-0/left-10), og group-header-rækker +
             udvidelig ugeplan-række pr. rytter passer ikke DataTable's 1-række-pr-row-
             model. Se HallOfFamePage/StaffOverviewPage for de to varianter af recepten.) */}
-        {riders.length === 0 ? (
+        {ridersLoading ? (
+          // #4160: truppen hydrerer efter sidens foerste maling. Skelet i
+          // tabellens egen hairline-ramme, ikke et falsk "ingen ryttere" —
+          // og ikke en spinner (PAGE_TEMPLATES.md: "Never a spinner inside
+          // cards"). Vi kender ikke trupstoerrelsen foer svaret lander, saa
+          // hoejden kan ikke reserveres eksakt; 18 linjer ligger taettere paa
+          // en rigtig trup end 10 og skaerer dermed skreddet ned naar tabellen
+          // erstatter skelettet.
+          <div className={WRAP}>
+            <div className="p-5">
+              <SkeletonLines lines={18} />
+            </div>
+          </div>
+        ) : riders.length === 0 ? (
           <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
         ) : (
           <>
@@ -1885,7 +1919,13 @@ export default function TrainingPage() {
           spejder-fladerne) — egne ryttere er altid et bånd, så der er ingen
           scout-knap eller slots-tilstand at vise her. */}
       <TabPanel value="development">
-        {riders.length === 0 ? (
+        {ridersLoading ? (
+          // #4160: samme regel som roster-tabellen — skelet mens truppen
+          // hydrerer, aldrig et falsk "ingen ryttere".
+          <Card className="p-5">
+            <SkeletonLines lines={10} />
+          </Card>
+        ) : riders.length === 0 ? (
           <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
         ) : (
           <Card className="p-0 overflow-hidden">

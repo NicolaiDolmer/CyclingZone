@@ -124,6 +124,12 @@ export default function DashboardPage() {
   // selv — squadSelectionMissingRace/nextStageByRace skal fortsat se ALLE
   // puljens løb (selectableRaces filtrerer allerede korrekt på trup-lås).
   const [teamRaceIds, setTeamRaceIds] = useState(() => new Set());
+  // #4160 — race_entries hydrerer nu selvstaendigt EFTER foerste maling, saa et
+  // tomt Set betyder to forskellige ting: "ikke hentet endnu" (kortet skal vise
+  // sit skelet) og "hentet, holdet er ikke tilmeldt noget" (kortet skal vise sin
+  // empty-state). Uden flaget ville "Kommende loeb" blinke falsk-tomt ved hvert
+  // load — samme false-empty-faelde som #3510 loeste for recentResults/riderRanking.
+  const [teamRaceIdsLoaded, setTeamRaceIdsLoaded] = useState(false);
   const [standings, setStandings] = useState([]);
   // vk-movement-signals — hold-point pr. hold for SIDSTE afsluttede
   // løbsdag i egen pulje (team_id → sum af race_points). {} = ingen data endnu
@@ -245,27 +251,130 @@ export default function DashboardPage() {
   // vinduet lukker af sig selv uden reload og uden urent new Date() i render.
   const seasonStartWindowOpen = isSeasonStartWindow(seasonInfo, new Date(nowMs));
 
+  // #4160 — de to opslag der forudsaetter loadAll'ets id-lister. De laa foer som
+  // to ekstra `await`-trin MIDT i loadAll og skoed dermed HELE sidens foerste
+  // maling to tur/retur laengere ud. De fodrer et filter paa "Kommende loeb" og
+  // to bevaegelses-badges paa stillings-modulet — ingen af delene er sidens
+  // hovedindhold, saa de hydrerer nu selvstaendigt. Egen try/catch: DASHBOARD_
+  // RULES.md §3 ("et modul maa aldrig kunne vaelte dashboardet") — en fejl her
+  // maa ikke saette sidens error-state.
+  async function loadDependentRows(teamId, raceIds, poolRaces) {
+    try {
+      // vk-movement-signals: sidste afsluttede loebsdag i egen pulje. Ingen
+      // afsluttet loebsdag endnu → ingen query, {} forbliver ({}=intet at vise).
+      const lastRaceDay = findLastCompletedRaceDay(poolRaces);
+      const [teamRaceEntriesRes, lastRaceDayPointsRes] = await Promise.all([
+        // #3751: holdets EGNE race_entries — kun for de loeb Dashboard rent
+        // faktisk viser. pagination-safe: dobbelt afgraenset — eet hold
+        // (RLS-scoped team_id) OG hoejst 50 race_id'er (racesRes' .limit(50)),
+        // saa raekketallet er langt under PostgREST's 1000-loft (#3331).
+        raceIds.length
+          ? supabase.from("race_entries").select("race_id")
+              .eq("team_id", teamId).in("race_id", raceIds)
+          : Promise.resolve({ data: [] }),
+        lastRaceDay?.raceIds.length
+          ? supabase.from("team_race_points_mv").select("team_id, race_points")
+              .in("race_id", lastRaceDay.raceIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+      // #3751: distinkte race_id'er holdet har mindst een entry i.
+      setTeamRaceIds(new Set((teamRaceEntriesRes.data || []).map((e) => e.race_id)));
+      setLastRaceDayPoints(sumPointsByTeam(lastRaceDayPointsRes.data || []));
+    } catch {
+      // best-effort: filteret forbliver ufyldt og bevaegelses-badges udebliver.
+      // Ingen af delene vaelter siden (DASHBOARD_RULES.md §3).
+    } finally {
+      // Flaget skal saettes OGSAA paa fejlstien: ellers ville "Kommende loeb"
+      // staa med sit skelet for evigt i stedet for at falde tilbage til sin
+      // empty-state, naar opslaget fejlede.
+      setTeamRaceIdsLoaded(true);
+    }
+  }
+
+  // #4160 — fire uafhaengige best-effort-kald der TIDLIGERE laa som fire
+  // serielle `await`'s til sidst i loadAll, EFTER alt hovedindhold var hentet.
+  // Ingen af dem gate'r noget hovedindhold (hver styrer sit eget lille kort),
+  // men fordi de laa inde i loadAll'ets try-blok forsinkede de `setLoading(false)`
+  // med fire fulde tur/retur. Nu: parallelt, uden for den blokerende sti.
+  async function loadOptionalModules(token) {
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    const getJson = async (path) => {
+      try {
+        const res = await fetch(`${API}${path}`, { headers });
+        return res.ok ? await res.json() : null;
+      } catch {
+        return null; // best-effort
+      }
+    };
+    await Promise.all([
+      // Slice 07g · Forecast-widget.
+      getJson("/api/me/finance-forecast").then((data) => { if (data) setForecast(data); }),
+      // Discord nudge — vises hvis brugeren ikke har discord_id (og ikke har dismissed).
+      discordNudgeDismissed
+        ? Promise.resolve()
+        : getJson("/api/me/discord-status").then((dm) => {
+          if (dm && !dm.discord_id) setShowDiscordNudge(true);
+        }),
+      // Onboarding progress — hentes hvis enten progress- eller completion-kortet
+      // kan blive vist. (Eksisterende managers der har dismisset progress skal
+      // stadig kunne se completion-kortet foerste gang.)
+      (onboardingDismissed && completionDismissed)
+        ? Promise.resolve()
+        : getJson("/api/me/onboarding-progress").then((prog) => {
+          if (!prog) return;
+          setOnboardingProgress(prog);
+          // #2439: server er sandheden — et tidligere dismiss (andet device/
+          // session) eller et "etableret hold"-flag skal skjule kortet uden at
+          // manageren skal afvise det igen.
+          if (prog.dismissed || prog.established) setOnboardingDismissed(true);
+        }),
+      // [epic #4592 del 3] "Tilmeld dig naeste saeson" (#452) — fejler kaldet,
+      // forbliver seasonSignupStatus null og kortet renderer intet.
+      getJson("/api/season/signup-status").then((data) => { if (data) setSeasonSignupStatus(data); }),
+    ]);
+  }
+
   async function loadAll() {
     setError(null);
     try {
-    const [{ data: { user } }, { data: { session } }] = await Promise.all([
-      supabase.auth.getUser(),
-      supabase.auth.getSession(),
-    ]);
+    // #4160: getSession() laeser den lokale (auto-refreshede) session UDEN en
+    // netvaerkstur; getUser() lavede en ekstra GET /auth/v1/user foran ALT
+    // andet paa siden. session.user baerer samme id, og #1792-vaernet er
+    // uaendret: udloebet/uopfriskelig session => session=null => user=null =>
+    // vi stopper foer user.id. RLS validerer stadig hvert eneste opslag
+    // server-side, saa den fjernede tur var ren latenstid, ikke et vaern.
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user ?? null;
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (finally rydder loading)
     if (!user) { return; }
-    const { data: teamData } = await supabase
-      .from("teams").select("*").eq("user_id", user.id).single();
+    const token = session?.access_token;
+
+    // #4160: de fire valgfrie modul-kald afhaenger KUN af tokenet, ikke af hold
+    // eller saeson. De startes derfor med det samme, side om side med resten.
+    //
+    // Vi AFVENTER dem til sidst (se nedenfor) i stedet for at lade dem hydrere
+    // frit: tre af de fire kort (onboarding-fremdrift, saeson-tilmelding,
+    // Discord-nudge) sidder OVER sidens hovedindhold, saa et kort der dukker op
+    // efter foerste maling skubber hele dashboardet ned. Maalt: fri hydrering
+    // gav CLS 0,197 mod 0,064 paa main. Ventetiden er gratis, fordi kaldene
+    // starter paa t=0 og er hjemme efter eet tur/retur, mens den blokerende
+    // sti bruger to.
+    const optionalModulesPromise = loadOptionalModules(token);
+
+    // #4160: hold-opslaget og saeson-opslaget afhaenger ikke af hinanden, men
+    // laa i serie (teams -> seasons). Parallelt sparer de en hel tur/retur paa
+    // den blokerende sti foran foerste maling.
+    const [{ data: teamData }, { data: activeSeason }] = await Promise.all([
+      supabase.from("teams").select("*").eq("user_id", user.id).single(),
+      supabase.from("seasons")
+        .select("id, number, status, start_date, end_date, race_days_total, race_days_completed")
+        .eq("status", "active")
+        .single(),
+    ]);
     if (!teamData) { return; }
     setTeam(teamData);
 
-    const { data: activeSeason } = await supabase
-      .from("seasons")
-      .select("id, number, status, start_date, end_date, race_days_total, race_days_completed")
-      .eq("status", "active")
-      .single();
-
-    const token = session?.access_token;
     const boardStatusPromise = token
       ? fetch(`${API}/api/board/status`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -355,25 +464,15 @@ export default function DashboardPage() {
     // FALSK "ikke tilmeldt" for et gammelt hold. `.in("race_id", …)` afgrænser
     // opslaget til netop de kendte, allerede-hentede løb — sekventiel EFTER
     // Promise.all'et, da racesRes' id-liste er forudsætningen.
+    // #4160: de to opslag laa foer som to SERIELLE `await`'s her. De koeres nu
+    // indbyrdes parallelt (eet tur/retur i stedet for to) og startes med det
+    // samme, men afventes til sidst i stedet for at hydrere frit: "Kommende
+    // loeb" staar midt paa siden, saa et kort der skifter fra skelet til tre
+    // raekker EFTER foerste maling skubber alt nedenunder. Maalt paa den lokale
+    // harness gav fri hydrering CLS 0,130 mod 0,064 paa main, mod ca. 300 ms
+    // LCP. Skreddet vejer tungere end de 300 ms.
     const racesForTeamCheck = (racesRes.data || []).map((r) => r.id);
-    const teamRaceEntriesRes = racesForTeamCheck.length
-      // pagination-safe: dobbelt afgrænset — ét hold (RLS-scoped team_id) OG
-      // højst 50 race_id'er (racesRes' .limit(50) ovenfor), så rækketallet er
-      // højst 50 × en løbstrups størrelse, langt under PostgREST's 1000-loft.
-      ? await supabase.from("race_entries").select("race_id")
-          .eq("team_id", teamData.id).in("race_id", racesForTeamCheck)
-      : { data: [] };
-
-    // vk-movement-signals — ÉN ekstra query (sekventiel EFTER
-    // Promise.all'et, da den kræver poolRacesRes' race_id'er): sidste
-    // afsluttede løbsdags hold-point i egen pulje, til divisionsplacering- +
-    // holdpoint-deltaerne på "My division standings"-modulet. Ingen
-    // afsluttet løbsdag endnu → ingen query, {} forbliver ({}=intet at vise).
-    const lastRaceDay = findLastCompletedRaceDay(poolRacesRes.data || []);
-    const lastRaceDayPointsRes = lastRaceDay?.raceIds.length
-      ? await supabase.from("team_race_points_mv").select("team_id, race_points")
-          .in("race_id", lastRaceDay.raceIds)
-      : { data: [] };
+    const dependentRowsPromise = loadDependentRows(teamData.id, racesForTeamCheck, poolRacesRes.data || []);
 
     setReservedBalance(reservedBalanceValue || 0);
     setSeasonInfo(activeSeason || null);
@@ -391,8 +490,6 @@ export default function DashboardPage() {
     const sortedRaces = [...(racesRes.data || [])]
       .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text));
     setNextRaces(sortedRaces);
-    // #3751: distinkte race_id'er holdet har mindst én entry i.
-    setTeamRaceIds(new Set((teamRaceEntriesRes.data || []).map((e) => e.race_id)));
     const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
     setBoard(activePlan?.board || null);
     // #1830 · tilfredsheds-tallet aggregeres på tværs af ALLE planer (samme delte
@@ -410,18 +507,6 @@ export default function DashboardPage() {
       ...(offersRes.sent || []).map(offer => ({ ...offer, _dir: "sent" })),
     ]);
 
-    // Slice 07g · Forecast-widget — best-effort, fejler stille hvis endpoint smider 500.
-    if (token) {
-      try {
-        const forecastRes = await fetch(`${API}/api/me/finance-forecast`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (forecastRes.ok) setForecast(await forecastRes.json());
-      } catch {
-        // best-effort
-      }
-    }
-
     // #3506: AI-hold var tidligere filtreret væk her (før mergeStandings), så
     // de aldrig indgik i rangberegningen — deraf placerings-mismatchet mod
     // Standings-siden. AI-hold tælles nu med, samme scope som Standings-siden.
@@ -433,67 +518,18 @@ export default function DashboardPage() {
     // i stedet for en parallel hand-rullet merge — samme 0-punkts-fallback-shape,
     // der bærer team-objektet (inkl. league_division_id) videre til rangliste-filteret.
     setStandings(mergeStandings(teamsRes.data || [], standingsMap));
-    // vk-movement-signals: se lastRaceDayPointsRes-kommentaren ovenfor.
-    setLastRaceDayPoints(sumPointsByTeam(lastRaceDayPointsRes.data || []));
 
     // #1140: OnboardingModal (det redundante 3-korts intro-modal) er konsolideret
     // væk — OnboardingProgressCard nedenfor er nu den ENESTE kanoniske dashboard-
     // onboarding-UI. Vi viser ikke længere et separat modal for ny-spillere.
 
-    // Discord nudge — vises hvis brugeren ikke har discord_id (og ikke har dismissed)
-    if (!discordNudgeDismissed && token) {
-      try {
-        const dmRes = await fetch(`${API}/api/me/discord-status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (dmRes.ok) {
-          const dm = await dmRes.json();
-          if (!dm.discord_id) setShowDiscordNudge(true);
-        }
-      } catch {
-        // best-effort
-      }
-    }
-
-    // Onboarding progress — fetch hvis enten progress- eller completion-kort kan blive vist.
-    // (Eksisterende managers der har dismisset progress, skal stadig kunne se completion-kortet
-    //  første gang efter v2.19-deploy.)
-    if ((!onboardingDismissed || !completionDismissed) && token) {
-      try {
-        const progRes = await fetch(`${API}/api/me/onboarding-progress`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (progRes.ok) {
-          const prog = await progRes.json();
-          setOnboardingProgress(prog);
-          // #2439: server er sandheden — et tidligere dismiss (andet device/
-          // session) eller et "etableret hold"-flag skal skjule kortet uden at
-          // manageren skal afvise det igen.
-          if (prog.dismissed || prog.established) {
-            setOnboardingDismissed(true);
-          }
-        }
-      } catch {
-        // best-effort
-      }
-    }
-
-    // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — best-effort, samme
-    // mønster som Discord-status/onboarding-progress ovenfor: fejler kaldet,
-    // forbliver seasonSignupStatus null og kortet renderer intet
-    // (docs/DASHBOARD_RULES.md §3: "et modul må aldrig kunne vælte
-    // dashboardet"). Flaget er off som default (seasonSignupFlag.js), så dette
-    // er typisk et enkelt hurtigt 200-svar med enabled:false.
-    if (token) {
-      try {
-        const signupRes = await fetch(`${API}/api/season/signup-status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (signupRes.ok) setSeasonSignupStatus(await signupRes.json());
-      } catch {
-        // best-effort
-      }
-    }
+    // #4160: se kommentarerne ved de to kald. Begge er startet saa tidligt som
+    // deres data tillader og har koert parallelt med alt ovenstaaende; dette er
+    // samlepunktet, saa alt er med i FOERSTE maling i stedet for at skubbe
+    // siden ned bagefter. De fire valgfrie modul-kald er gratis (hjemme efter
+    // eet tur/retur mod den blokerende stis to); de to afhaengige opslag koster
+    // eet ekstra tur/retur, som skreddet ellers ville betale for.
+    await Promise.all([optionalModulesPromise, dependentRowsPromise]);
 
     } catch (e) {
       console.error("Dashboard load failed:", e);
@@ -878,6 +914,18 @@ export default function DashboardPage() {
     setCompletionDismissed(true);
   }
 
+  // #4160 — MAALT, ikke antaget: et sidehoved- + kort-skelet blev proevet her
+  // (fire Section-skeletter i en SectionStack) og ROLLET TILBAGE igen. Det
+  // koeber ingen LCP: skelet-flader er ikke "contentful", saa LCP afventer
+  // stadig den foerste rigtige tekstblok, og hele gevinsten paa denne side
+  // kommer fra at vandfaldet i loadAll er skaaret ned. Til gengaeld koster det
+  // CLS: dashboardets kort er betingede og varierer i hoejde, saa skelettets
+  // geometri kan ikke ramme indholdets, og indhold der ERSTATTER et placeret
+  // skelet taeller som skred, hvor indhold der bare dukker op ikke goer.
+  // Maalt paa den lokale harness (median af 5, 300 ms kunstig latenstid):
+  // CLS 0,064 -> 0,197 desktop og 0,000 -> 0,154 mobil, med LCP uaendret.
+  // Derfor bliver PageLoader staaende indtil dashboardets kort kan levere en
+  // hoejde foer deres data (hoerer hjemme i CLS-sporet, #2230).
   if (loading) return (
     <PageLoader />
   );
@@ -1529,7 +1577,13 @@ export default function DashboardPage() {
             title={t("dashboard:cards.races.title")}
             action={<SectionAction as={Link} to="/planning">{t("dashboard:cards.races.linkAll")}</SectionAction>}
           />
-          {displayedRaces.length === 0 ? (
+          {!teamRaceIdsLoaded ? (
+            // #4160 — race_entries-filteret hydrerer efter foerste maling.
+            // Skelet, ikke et falsk "ingen kommende loeb"-empty-state (samme
+            // false-empty-regel som #3510 ovenfor). Tre linjer = samme hoejde
+            // som de tre loebsraekker kortet viser, saa hydreringen ikke skubber.
+            <SkeletonLines lines={3} />
+          ) : displayedRaces.length === 0 ? (
             <EmptyState
               title={t("dashboard:cards.races.empty")}
               description={t("dashboard:cards.races.emptyHint")}
