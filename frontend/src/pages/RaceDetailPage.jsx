@@ -892,10 +892,10 @@ export default function RaceDetailPage() {
               const counts = bucketCounts(stageProfiles);
               return counts.length ? (
                 <p className="text-cz-3 text-2xs">
-                  <span className="uppercase tracking-wider font-semibold">{t("detail.raceDnaLabel")}</span>
+                  <span className="text-2xs uppercase tracking-wider font-semibold">{t("detail.raceDnaLabel")}</span>
                   {" "}
                   {counts.map((c, i) => (
-                    <span key={c.bucket}>{i > 0 && " · "}{c.count} {t(`strategy.buckets.${c.bucket}`)}</span>
+                    <span key={c.bucket} className="text-2xs">{i > 0 && " · "}{c.count} {t(`strategy.buckets.${c.bucket}`)}</span>
                   ))}
                 </p>
               ) : null;

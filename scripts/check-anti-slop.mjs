@@ -12,9 +12,13 @@
 //              i JSX/JS OG i locale-copy. #3422: pile er `Symbol, Math` i
 //              Unicode, ikke `Extended_Pictographic`, saa de slipper 100%
 //              forbi lint-ui-slop's emoji-kategori, som kun matcher pictographic.
-//   smallpx  : `text-[Npx]` under 12px. PAGE_TEMPLATES.md: kun `text-2xs`
+//   smallpx  : `text-[Npx]` under 12px, OG raa SVG `fontSize="N"` under 10px
+//              (#4624: StageProfileGraph/StageFilmScrubber/RiderTypeRadar m.fl.
+//              havde 7-9.5 som literal <text fontSize="N">-attribut, usynlig
+//              for Tailwind-klasse-regexen). PAGE_TEMPLATES.md: kun `text-2xs`
 //              (11px) og `text-3xs` (10px) er de gyldige mikro-steps; en
-//              arbitraer bracket-vaerdi under 12px er altid en opfindelse.
+//              arbitraer bracket-vaerdi under 12px, eller en raa SVG-attribut
+//              under 10px, er altid en opfindelse.
 //   shadow   : `shadow-*`-klasser og raa `box-shadow`/`boxShadow`-styles.
 //              Sanktioneret undtagelse: `shadow-overlay` (tailwind.config.js
 //              `boxShadow.overlay`), den ENE tilladte overlay-elevation for
@@ -87,6 +91,15 @@ const ARROW_RE = /[←-↕↩↪‹›«»]/gu;
 // text-2xs/text-3xs bruger IKKE bracket-syntaks og kan derfor aldrig matche.
 const SMALL_PX_RE = /\btext-\[(\d+(?:\.\d+)?)px\]/g;
 
+// Raa SVG `fontSize="N"`-attributter under 10 (#4624-fund 5/9: StageProfileGraph/
+// StageFilmScrubber/RiderTypeRadar/RiderPhysiologyTab/RiderDevelopmentTab havde
+// 7-9.5 som literal SVG-praesentationsattribut, usynlige for SMALL_PX_RE ovenfor
+// fordi de IKKE er Tailwind-klasser). `text-3xs` (10px) er gulvet ogsaa for SVG
+// <text> — attributten har ikke et 11px-token-ekvivalent, saa graensen er
+// strengt < 10 (ikke < 12 som bracket-klassen), ellers ville vores egen 10px-
+// oprydning tælle som en NY overtraedelse mod sig selv.
+const SVG_FONTSIZE_RE = /\bfontSize=["'](\d+(?:\.\d+)?)["']/g;
+
 // Tailwind shadow-* utility (bar `shadow`, `shadow-sm/md/lg/xl/2xl/inner`,
 // `shadow-{farve}-{trin}`, arbitraer `shadow-[...]`) + raa CSS/JS-stil.
 // `shadow-overlay` og `shadow-none` er de to legitime undtagelser (se
@@ -112,6 +125,10 @@ export function countSmallPx(src) {
   SMALL_PX_RE.lastIndex = 0;
   while ((m = SMALL_PX_RE.exec(clean)) !== null) {
     if (parseFloat(m[1]) < 12) n++;
+  }
+  SVG_FONTSIZE_RE.lastIndex = 0;
+  while ((m = SVG_FONTSIZE_RE.exec(clean)) !== null) {
+    if (parseFloat(m[1]) < 10) n++;
   }
   return n;
 }
@@ -269,7 +286,8 @@ Fix:
                        ArrowUpIcon/ArrowDownIcon/ExternalLinkIcon), aldrig
                        unicode-pile-tegn som ikon-erstatning.
   - Lille px (smallpx) -> brug text-2xs (11px) eller text-3xs (10px), aldrig
-                       en arbitraer text-[Npx] under 12px.
+                       en arbitraer text-[Npx] under 12px eller en raa SVG
+                       fontSize="N"-attribut under 10px.
   - Skygge (shadow) -> brug shadow-overlay (den ENE sanktionerede overlay-
                        elevation), ingen andre shadow-*-klasser eller raa
                        box-shadow/boxShadow-styles.

@@ -51,7 +51,7 @@ export default function TerrainDNABar({ demandVector, max = 5, finaleFactorPct =
       </div>
       <p className="text-cz-2 text-2xs font-mono mt-1.5 leading-relaxed">
         {segments.map((s, i) => (
-          <span key={s.key} className={i === 0 ? "text-cz-accent-t font-semibold" : (s.key === "__rest" ? "text-cz-3" : "")}>
+          <span key={s.key} className={`text-2xs ${i === 0 ? "text-cz-accent-t font-semibold" : (s.key === "__rest" ? "text-cz-3" : "")}`}>
             {i > 0 && " · "}
             {s.label} {s.pct}%
           </span>

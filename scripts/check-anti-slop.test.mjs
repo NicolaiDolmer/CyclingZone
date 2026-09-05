@@ -43,6 +43,18 @@ test("countSmallPx ignores matches inside comments", () => {
   assert.equal(countSmallPx("// avoid text-[9px] in new UI"), 0);
 });
 
+test("countSmallPx flags raw SVG fontSize=\"N\" attributes only when N < 10 (#4624)", () => {
+  assert.equal(countSmallPx('<text fontSize="9">190</text>'), 1);
+  assert.equal(countSmallPx('<text fontSize="7.5" className="font-mono">1p</text>'), 1);
+  assert.equal(countSmallPx('<text fontSize="10">190</text>'), 0); // text-3xs floor is allowed
+  assert.equal(countSmallPx("<text fontSize='9'>190</text>"), 1); // single-quoted JSX attr
+  assert.equal(countSmallPx('<text fontSize="9">a</text><text fontSize="8.5">b</text>'), 2);
+});
+
+test("countSmallPx ignores raw fontSize matches inside comments", () => {
+  assert.equal(countSmallPx('// old: <text fontSize="8">label</text>'), 0);
+});
+
 test("countShadow flags shadow-* classes but allows shadow-overlay and shadow-none", () => {
   assert.equal(countShadow('className="shadow-xl"'), 1);
   assert.equal(countShadow("shadow shadow-2xl"), 2);
