@@ -2,7 +2,7 @@
 
 > **Ejer-godkendt 13/8** (#3662; spørg før omprioritering). 🔴 brand · 🟠 i gang · 🔵 ejer · ⚪ ikke startet. ≤1.500 tok.
 
-**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Gjaldt FØR S3 — afløst i S3-vinduet af rammen nedenfor (ejer 28/8). **Målt 3/9 aften:** 575 åbne (15 done-gated) · 237 menneskehold · 81 aktive/7d · 7 abo. **Hard regel 23/8:** ingen prod-mutation uden ejer-GO på netop det skridt.
+**Ejer-mandat 13/8:** *"Uden at der er styr på rytterne, har vi nærmest slet ikke nogen sæson 3."* Afløst i S3-vinduet af rammen nedenfor (ejer 28/8). **Målt 5/9:** 550 åbne (21 done-gated) · 237 menneskehold · 12 betalende. **Hard regel 23/8:** ingen prod-mutation uden ejer-GO på netop det skridt.
 
 ## S3 KØRER 28/8 → 27/9 — rammen (ejer-beslutning 28/8)
 
@@ -10,19 +10,18 @@
 
 ## Kø i S3-vinduet (ejer-godkendt 27/8, trimmet 28/8)
 
-0. **FØRST (ejer 28/8): #2758** Discord-triage dagligt + **#4269** daglig Supabase-kontrol (fejler på manglende secret). Køen fyldes af det spillerne møder, ikke af AI-vurdering.
+0. **FØRST (ejer 28/8): #2758** Discord-triage dagligt + **#4269** daglig Supabase-kontrol (mangler secret). Køen fyldes af det spillerne møder.
 1. **#4595** chunk-fejl over budget · **#4259** byg FORFRA · **#4355** taktik-læk.
 2. **#4098** grundregel; blødt-loft-forslag i tråden til ejer-valg (simulér-før-ship).
-3. **Z1 (#1146): matrixen LIVE 31/8.** Akse ejer-låst. Rest: #4535 header (afventer ejer-retning) · #4530 · #4531.
+3. **Z1 (#1146) live 31/8.** Rest: #4535 (ejer-retning) · #4530 · #4531.
 4. **#4176** kalender-SSOT — ejer-frist senest 4/9 OG før S4-kalenderen.
+5. **Træningspakke inden 8/9 (ejer 5/9):** #4801 (+1-loft, draft) + træningssidens retning (#4613/#4736) + valg fra #4629/#4632 → én samlet opdatering.
 
 **Ejer-beslutninger 27-28/8 (genåbn ikke):** løbsdage 1-baseret · afmeldt hold stiller ikke op · løbsdag = bindings-enhed · minimum 6, fladt · to regenereringer forbudt.
 
-Ny gæld + UDSKUDT: rangeret i pengeplan §3. #4265 → G1.
-
 ## Grundreglerne — UDSKUDT til efter 27/9 (ejer 28/8)
 
-- **B · Rytter-pakken** (`PROGRESSION_RULES.md`, låst 13/8, samling #3664): #3512 · #4039 · #4098 · #3668.
+- **B · Rytter-pakken** (`PROGRESSION_RULES.md`, låst 13/8, samling #3664): #3512 · #4039 · #4098 (done-gated 5/9) · #3668 · #4831 (rater så +1-loftet sjældent binder).
 - **B2 · Værdi og løn** (`ECONOMY_RULES.md`): #3755 · #3756 · #3732 · #4001 · #3719 (+#4103) · #3720 · #3987 · #3656.
 - **C · Talent-kanalen:** #3854 (harness-rekalibrering FØR flag-flip) · #3550 flag-flip · #3970.
 
@@ -36,7 +35,7 @@ SSOT: `PLANNING_CENTER_RULES.md`. Z1 v0 shippet (#4083); Z1-designet låst 25/8.
 
 ## D · 30-dages pengeplan (ejer 2/9, SSOT [`2026-09-02-30-dages-pengeplan.md`](superpowers/specs/2026-09-02-30-dages-pengeplan.md); rækkefølge, ikke datoer)
 
-Mandagstal: MRR 113,87 kr / 3 abo · checkout 2 af 5 · D7 18 %. Mål 2/10: ≥ 450 kr / ≥ 10 · ≥ 60 % · ≥ 45 % · aktive/7d ≥ 100.
+Status 5/9: 12 betalende. Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d ≥ 100.
 10. **Pro synlig + købbar:** nøgleblok #4616 → PR #4608 (ejer-go) → #4645 rest (pris-synk efter #4608) → #4646 (udskudt). 11. **Mail-loop:** Mail v2 merget 2/9 (#2853) → ejer-GO dry_run → nøgler (#4616) → on pr. type. 12. **Sæsonskiftet 27/9:** S-M2c+S-M2d merget bag beta-flag (#4557) → #4592 trin 2 (ejer godkender listen) + #452 → S4-opslag. 13. **Win-back** #2760 (77 m. samtykke). 14. **Nye spillere:** ejerens opslag + #4067.
 
 ## G · Design, ungdom, bestyrelse, inaktive (ejer-godkendt 2/9, genåbn ikke før 27/9)
@@ -44,7 +43,7 @@ Mandagstal: MRR 113,87 kr / 3 abo · checkout 2 af 5 · D7 18 %. Mål 2/10: ≥ 
 Ejer 2/9: *"Standarden skal hæves markant. Og vi skal være fri for AI slop nu."* Hård dato: **S3 slutter 27/9**; årsmøde og parkering hører til sæsonskiftet.
 
 - **G1 Mandatet (#3514/#4557), deadline 27/9:** beta-blokkere + stemmer lukket 3/9; S-M2c + S-M2d merget bag `board_mandate_model_enabled` (beta). **Rest før flip:** Sponsors-side (#4265) · S4 i DB (#4270) · 13 hold uden bestyrelse · tørkørsel · ejer-GO.
-- **G2 Design (#4622):** #4623-#4626 leveret; kit-siderne live (7.240/7.241). Rest: #4627 spejl · #4628-rest · **#4613** træningssiden (retning uafklaret 4/9).
+- **G2 Design (#4622):** #4623-#4626 leveret; kit-sider live (7.240/7.241/7.254). Rest: #4627 spejl · #4813 · #4814 · #4815 · **#4613** (S3-kø pkt. 5).
 - **G3 Tre trupper (#2492):** handoff i `YOUTH_RULES.md` §2.6. #4618 slice 0 leveret (lukket 2/9) → **#4619 spec + bag flag, flip ved cutover 28/9** → #4620/#4621 i S4.
 - **G4 Inaktive (#4592), deadline 27/9:** rapport → ejer godkender liste → parkering ved cutover → #452 → #2760.
 
@@ -53,13 +52,13 @@ Ejer 2/9: *"Standarden skal hæves markant. Og vi skal være fri for AI slop nu.
 ## E · Løbende (aldrig hovedspor)
 
 12. 🔴 **Spiller-kommunikation (#428), viger aldrig:** MAN uge-note · ONS spørgsmål · SØN ugens øjeblik. Tråd-bank #4117.
-13. Gæld: cutover-rest (#4010) · i18n-rest (#4734 · #4110). Ops: pengeplan §3 område 2.
+13. Gæld: cutover-rest (#4010) · i18n-rest #4811. Ops: pengeplan §3 område 2 · #4812 · #4816.
 14. 🔵 **Fair play (#3131):** #3138 ENESTE værn. Rest: retnings-/overbetalings-signal · #3438 · #3139. **#4537** to hold på to konti: hold-valg udestår.
 15. ⚪ **Forum:** rolle mod Discord **15/9 (#4235)**. ⚪ **Typelaget:** #4327 #4328 #4333.
 
 ## F · Backlog-bølger (#3154; audit 31/8, beslutningsark `docs/audits/*-2026-08-31.md`)
 
-Lukkemandat: done/dubletter/opslugte frit; won't-do i chat-bundter. **Rest:** 18 dubletpar · 15 gated done (3/9 aften) · W8 · #4119.
+Lukkemandat: done/dubletter/opslugte frit; won't-do i chat-bundter. **Rest:** 21 gated done · W8 · #4119.
 
 ## E2 · Race-oplevelsen (SSOT: `RACE_ENGINE_RULES.md`)
 
