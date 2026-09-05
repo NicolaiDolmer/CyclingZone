@@ -8,7 +8,7 @@
 
 > **⏳ Venter på DIN beslutning:** 6 ejer-valg i `docs/audits/ai-triage-2026-09-06-a.md` (+ del B) · **#4814** foto-plads + /seasons-skygger · **#4629** · **#4632** · **#4613** · **#4714** · #4627 · **#4235** (15/9) · spand D i `stale-issues-audit-2026-09-04.md`.
 
-> **🔴 Åbne fund:** **#2423** skew protection SLÅET FRA (kun selvheling #4595 + ét deploy-vindue pr. bølge) — CYCLINGZONE-56 eskalerer: 113 events/28 spillere på 24 t (5/9), og samme skew gav #4823 (4 spillere fik fejlside) · **#4811** signup-sprog måles ikke (0 rækker) · #4453 · #4537 · #4530 · #4531 · #4109.
+> **🔴 Åbne fund:** **#2423** skew protection SLÅET FRA (kun selvheling #4595 + ét deploy-vindue pr. bølge) — CYCLINGZONE-56 eskalerer: 113 events/28 spillere på 24 t (5/9), og samme skew gav #4823 (4 spillere fik fejlside) · **#4811** signup-sprog måles ikke (0 rækker) · **#4828** 4 D4-puljer kører 25/24 (AI-trim-markører; CYCLINGZONE-58 måler markørens alder, ikke blokeringens) → **#4829** verificér efter Settimana-finalen 5/9 10:00 UTC · #4453 · #4537 · #4530 · #4531 · #4109.
 
 > **✅ Natbølge 5-6/9 (Fable):** 26 spor i 7 workflows → 28 PR'er (#4784–#4817), 6 nye issues (#4811–#4816), 6 agenter frøs tavst og blev recoveret i samme worktrees. Læring: frosne agenter holder deres samtidigheds-plads, så stop workflowet og relancér (runbook + `.claude/learnings/2026-09-06-*`).
 
