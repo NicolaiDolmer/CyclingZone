@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer-styret):** **Næste session = løbsmotor v4 + taktik**, prompt designet med ejeren 6/9: [`docs/drafts/next-session-prompt-2026-09-07.md`](drafts/next-session-prompt-2026-09-07.md) (audit af v4 først → design ét spørgsmål ad gangen → byg-bølge → flip ved S4-start 28/9; bestyrelsens rest #4855-#4859 som sidespor). **Ejer-go der venter:** #4862 patch note 7.256 (Sponsors) · #4801 (+1-loft, ejer: "vent") · #4835 (opret `AUTO_MERGE_PAT`) · #4857 backfill (`--apply --owner-go`) · #4859 flip. **#4789** tages i en anden session. **S4-kalenderen (#4270) må IKKE applies før #4845.**
+> **🎯 Next action (ejer-styret):** **Næste session = løbsmotor v4 + taktik**, prompt designet med ejeren 6/9: [`docs/drafts/next-session-prompt-2026-09-07.md`](drafts/next-session-prompt-2026-09-07.md) (audit af v4 først → design ét spørgsmål ad gangen → byg-bølge → flip ved S4-start 28/9; bestyrelsens rest #4855-#4859 som sidespor). **Ejer-go der venter:** #4801 (+1-loft, ejer: "vent") · #4835 (opret `AUTO_MERGE_PAT`) · #4857 backfill (`--apply --owner-go`) · #4859 flip. **#4789** tages i en anden session. **S4-kalenderen (#4270) må IKKE applies før #4845.**
 
-> **⏳ Venter på DIN beslutning:** Discord-udkast du poster selv: catch-up 7.239-7.255, side-om-side-mockups af træningssiden (spillerne vælger retning, #4613), Sponsors-siden (i PR #4862). Programmets rytme (7 løbsdage vs uge) parkeret. 6 ejer-valg i `docs/audits/ai-triage-2026-09-06-a.md` · #4814 · #4714 · #4627 · #4235 (15/9).
+> **⏳ Venter på DIN beslutning:** Discord-udkast du poster selv: catch-up 7.239-7.255, side-om-side-mockups af træningssiden (spillerne vælger retning, #4613), Sponsors-siden (`docs/drafts/discord-sponsors-page-2026-09-05.md`). Programmets rytme (7 løbsdage vs uge) parkeret. 6 ejer-valg i `docs/audits/ai-triage-2026-09-06-a.md` · #4814 · #4714 · #4627 · #4235 (15/9).
 
 > **🔴 Åbne fund:** **#2423** skew protection SLÅET FRA (CYCLINGZONE-56) · **#4811** signup-sprog måles ikke · **#4828/#4829** D4-puljer, verificér efter Settimana · **#4856** bonustilbud skrives til gammel plan, ikke mandatet (før flip) · #4453 · #4537 · #4530 · #4531 · #4109.
 
