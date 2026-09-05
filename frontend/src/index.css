@@ -137,6 +137,16 @@
   /* #2952: table-local intra-sticky sub-scale (tailwind.config.js zIndex "table-col"/"table-head") — not part of the page-chrome scale above. */
   --z-table-col: 1; --z-table-head: 2;
 
+  /* #4747: reserved chrome height above a DataTable card (page padding + page
+     header + filter bar) so its scroller can be capped at `100dvh - this` and
+     get a real internal scrollbar — the only reliable way to keep the sticky
+     thead pinned to ITS OWN box (see dataTableStyles.js's SCROLLER comment for
+     why an unbounded overflow-x-auto container breaks position:sticky). A
+     general-purpose estimate, same order of magnitude as AuctionsPage's/
+     TransfersPage's own hand-tuned 220-260px; a page with unusually tall chrome
+     above the table can override it locally (`style={{ "--table-sticky-offset": "300px" }}`). */
+  --table-sticky-offset: 240px;
+
   /* "You" marker (#481 PR-3) — neutral, NOT gold (gold now = the leader).
      Navy on the light canvas; channel format so /<alpha> works. */
   --me-ring:      26 31 56;     /* navy #1a1f38 */
