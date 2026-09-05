@@ -75,8 +75,8 @@ import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
   Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ArrowUpIcon, ChevronRightIcon, CheckIcon, DiscordIcon,
-  PageLoader, PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState,
-  SkeletonLines, EmptyState, ProgressMeter,
+  PageHeader, Section, SectionStack, SectionHeader, SectionAction, Button, ErrorState,
+  Skeleton, SkeletonLines, EmptyState, ProgressMeter,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
@@ -892,14 +892,40 @@ export default function DashboardPage() {
     setCompletionDismissed(true);
   }
 
+  // #4160: den bare <PageLoader /> (een spinner midt paa en ellers tom side)
+  // gav ingen ramme at male ind i — sidehoved og kort opstod alle sammen i
+  // samme oejeblik som data landede. Nu staar sidens skelet fra foerste maling:
+  // sidehoved-blok i samme geometri som det rigtige (h1 20px + subtitle 13px)
+  // og fire kort-skeletter i den kanoniske SectionStack.
+  // PAGE_TEMPLATES.md, "Canonical states": "Loading: skeleton lines 12px tall
+  // ... Never a spinner inside cards." Titlen selv er holdets navn, som foerst
+  // kendes naar teams-opslaget lander, saa header-titlen er ogsaa et skelet —
+  // en placeholder-tekst ville vaere opfundet indhold.
   if (loading) return (
-    <PageLoader />
+    <div translate="no" className="max-w-5xl mx-auto" aria-busy="true">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="min-w-0">
+          <Skeleton className="h-[20px] w-48" />
+          <Skeleton className="mt-2 h-[13px] w-64" />
+        </div>
+        <Skeleton className="h-[38px] w-32" />
+      </header>
+      <SectionStack>
+        {[0, 1, 2, 3].map((i) => (
+          <Section key={i}>
+            <Skeleton className="mb-4 h-[15px] w-40" />
+            <SkeletonLines lines={3} />
+          </Section>
+        ))}
+      </SectionStack>
+    </div>
   );
 
   // #3510 — kanonisk ErrorState (docs/design/PAGE_TEMPLATES.md) i stedet for at
   // falde igennem til et fuldt tomt dashboard. Retry gen-kalder loadAll direkte
   // (samme mønster som StandingsPage/#2175); setLoading(true) genviser
-  // PageLoader mens den nye forespørgsel er i flugt.
+  // load-skeletet ovenfor mens den nye forespørgsel er i flugt (#4160 — det
+  // var en <PageLoader /> indtil da).
   if (error) return (
     <div translate="no" className="max-w-5xl mx-auto">
       <ErrorState
