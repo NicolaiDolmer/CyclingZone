@@ -129,6 +129,28 @@ try {
   npm run lint
   if ($LASTEXITCODE -ne 0) { $failed += "frontend-lint" }
   Pop-Location
+
+  # #4783: 4/9 aften blev PR #4780 merget med preflight GRØN, men CI's
+  # riders-column-grant-guard og warning-budget-job blev røde for de to
+  # EFTERFØLGENDE PR'er (#4779, #4781) - ingen af de to var i preflight, saa
+  # en worker der fulgte "preflight grøn -> push" kunne ikke se fejlene
+  # lokalt. Begge kører HELT UBETINGET i CI (ingen paths-filter paa
+  # workflow-niveau, se .github/workflows/ci.yml) - saa de koeres ubetinget
+  # her ogsaa, ellers er "lokal groen" stadig ikke det samme som "CI groen".
+  Write-Host "== riders-column-grant-guard (kolonne-privilegier paa riders/rider_derived_abilities, #2241/#4783) ==" -ForegroundColor Cyan
+  node --test scripts/lint-riders-column-grant.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "riders-column-grant-guard (selvtest)" }
+  node scripts/lint-riders-column-grant.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "riders-column-grant-guard" }
+
+  # Spejler CI's "warning-budget"-job praecis (backend + frontend, max 0
+  # advarsler). Kan tage et minuts tid (kører eslint to gange paa frontend,
+  # én gang via npm run lint ovenfor, én gang her via warning-budget-scriptet
+  # for advarsels-tal) - det er prisen for at fange samme fejlklasse lokalt
+  # som kostede en ekstra PR (#4782) 4/9.
+  Write-Host "== eslint-warning-budget (backend + frontend, max 0 advarsler, #4783) ==" -ForegroundColor Cyan
+  node scripts/check-eslint-warning-budget.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "eslint-warning-budget" }
 }
 finally {
   Pop-Location

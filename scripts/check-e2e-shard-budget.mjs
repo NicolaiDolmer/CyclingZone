@@ -57,6 +57,25 @@ export function parseArgs(argv) {
 }
 
 /**
+ * Tvinger en raa JSON-vaerdi til et sekund-tal - eller til NaN hvis den ikke
+ * ENTYDIGT er et tal. `Number(null)` er 0 i JavaScript, saa en shard der
+ * skriver `"seconds":null` (delvis/afbrudt maaling) blev foer tolket som "0
+ * sekunder" og passerede tidsbudgettet STILLE (CodeRabbit-fund paa #4665,
+ * #4711). `Number(undefined)` er allerede NaN, saa kun `null` var det
+ * utaette hul - men tjekket her er bevidst strengt (kun `number`/`string`
+ * accepteres) saa ingen anden JS-til-tal-coercion (bool, array, object) kan
+ * genintroducere samme klasse.
+ *
+ * @param {unknown} raw
+ * @returns {number} et endeligt sekund-tal, eller NaN hvis maalingen mangler/er ugyldig
+ */
+export function coerceSeconds(raw) {
+  if (typeof raw !== "number" && typeof raw !== "string") return Number.NaN;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : Number.NaN;
+}
+
+/**
  * Laeser shard-maalingerne fra en mappe. Ugyldig JSON og filer uden `project`
  * ignoreres IKKE stille - de bliver til en fejl i evaluateShards via den
  * manglende projekt-maaling, saa gaten aldrig kan blive groen ved at tabe sin
@@ -79,7 +98,7 @@ export function readShardMetrics(dir) {
     if (!parsed || typeof parsed.project !== "string") continue;
     metrics.push({
       project: parsed.project,
-      seconds: Number(parsed.seconds),
+      seconds: coerceSeconds(parsed.seconds),
       exitCode: Number(parsed.exitCode ?? 0),
     });
   }
