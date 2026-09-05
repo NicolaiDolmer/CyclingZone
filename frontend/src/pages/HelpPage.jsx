@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
 import { fetchRecentOpsNotices, pickNoticeCopy, SEVERITY_META } from "../lib/opsNotices.js";
+import { fetchBoardRoom } from "./annualMeeting/meetingApi.js";
 import { formatDate } from "../lib/intl.js";
 import {
   PageHeader,
@@ -42,7 +43,15 @@ import {
   SettingsIcon,
   SearchIcon,
   AlertTriangleIcon,
+  GavelIcon,
 } from "../components/ui/icons/index.jsx";
+
+// #4855 · Sektioner der kun maa vises naar den bagvedliggende model er slaaet
+// til for MANAGEREN. Vaerdien er navnet paa den gate der afgoer det; i dag
+// findes kun én, board_mandate_model_enabled, aflaest via GET /board/room's
+// `enabled` (samme lette kald og samme sikre fallback som BoardroomRoute:
+// fejl, ingen session eller flag off -> sektionen er skjult).
+const FLAG_GATED_SECTIONS = ["mandate"];
 
 const SECTION_DEFS = [
   {
@@ -75,6 +84,23 @@ const SECTION_DEFS = [
       { id: "consequenceTiers", kind: "rows" },
       { id: "requestsAndLocks", kind: "text" },
       { id: "midSeasonCheck", kind: "text" },
+    ],
+  },
+  // #4855 · Mandatet (#3514 fase 2). Sektionen SUPPLERER board-sektionen
+  // ovenfor, den erstatter den ikke: indtil board_mandate_model_enabled er
+  // flippet (#4859) er det board-sektionen der beskriver den model spilleren
+  // faktisk moeder. Derfor er netop denne sektion flag-gated i render'en
+  // nedenfor (FLAG_GATED_SECTIONS) - copy'en ligger klar i help.json en+da
+  // fra i dag, men vises foerst naar manageren rent faktisk har Boardroom.
+  {
+    key: "mandate",
+    Icon: GavelIcon,
+    blocks: [
+      { id: "whatMandate", kind: "text" },
+      { id: "confidence", kind: "text" },
+      { id: "annualMeeting", kind: "textSteps" },
+      { id: "bonusOffers", kind: "text" },
+      { id: "clubDnaAndBoard", kind: "text" },
     ],
   },
   {
@@ -625,15 +651,33 @@ export default function HelpPage() {
     return () => { active = false; };
   }, []);
 
+  // #4855 · Mandat-sektionen vises kun naar manageren faktisk har Boardroom
+  // (board_mandate_model_enabled, #4859). Ét let kald, aldrig blokerende:
+  // fejler det, mangler sessionen eller staar flaget off, forbliver sektionen
+  // skjult og hjaelpen viser den model spilleren rent faktisk moeder.
+  const [mandateModelEnabled, setMandateModelEnabled] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetchBoardRoom()
+      .then((room) => { if (active && room?.enabled) setMandateModelEnabled(true); })
+      .catch(() => { /* ikke-kritisk: sektionen forbliver skjult */ });
+    return () => { active = false; };
+  }, []);
+
   if (!ready) return <PageLoader />;
 
   // #1916: fill the hard game numbers in help prose from RULES_NUMBERS (pinned to
   // the backend constants) so /help can't drift the way it did in #1907.
   const helpNumbers = buildHelpNumbers(i18n.language);
-  const sections = buildSections(t, helpNumbers);
+  const sections = buildSections(t, helpNumbers).filter(
+    (s) => !FLAG_GATED_SECTIONS.includes(s.key) || mandateModelEnabled,
+  );
   const faq = buildFaq(t, helpNumbers);
 
-  const currentSection = sections.find((s) => s.key === activeSection);
+  // Et dyb-link til en gated sektion (?section=mandate uden flaget) maa ikke
+  // efterlade indholdsfeltet tomt - fald tilbage til den foerste sektion.
+  const currentSection = sections.find((s) => s.key === activeSection)
+    || (activeSection === "faq" || activeSection === "knownIssues" ? null : sections[0]);
 
   const filteredFAQ = faq.filter(
     (f) =>
