@@ -4,7 +4,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { parseArgs, evaluateShards, formatDuration, renderSummary } from "./check-e2e-shard-budget.mjs";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { parseArgs, evaluateShards, formatDuration, renderSummary, readShardMetrics, coerceSeconds } from "./check-e2e-shard-budget.mjs";
 
 const PROJECTS = ["desktop-chromium", "mobile-chromium", "mobile-webkit"];
 
@@ -95,6 +99,48 @@ test("ukendt shard i maalingerne er roedt (matrix og --projects ude af sync)", (
   });
   assert.equal(res.ok, false);
   assert.ok(res.lines.some((l) => l.includes("desktop-firefox")));
+});
+
+// #4711 (CodeRabbit-fund paa #4665): en manglende/null tidsmaaling maa ALDRIG
+// tolkes som 0 sekunder - det ville passere budgettet stille.
+test("coerceSeconds: null/undefined/NaN/ikke-tal bliver NaN, ikke 0", () => {
+  assert.equal(coerceSeconds(null), Number.NaN);
+  assert.equal(coerceSeconds(undefined), Number.NaN);
+  assert.equal(coerceSeconds("abc"), Number.NaN);
+  assert.equal(coerceSeconds(Number.NaN), Number.NaN);
+  assert.equal(coerceSeconds(false), Number.NaN, "Number(false)=0 maa ikke smutte igennem");
+  assert.equal(coerceSeconds([]), Number.NaN, "Number([])=0 maa ikke smutte igennem");
+  assert.equal(coerceSeconds({}), Number.NaN);
+});
+
+test("coerceSeconds: gyldige tal (og tal-strenge) bevares", () => {
+  assert.equal(coerceSeconds(0), 0);
+  assert.equal(coerceSeconds(312), 312);
+  assert.equal(coerceSeconds("312"), 312);
+});
+
+test("readShardMetrics: en shard-fil med \"seconds\":null tolkes IKKE som 0s - gaten skal kunne fange den", () => {
+  const dir = mkdtempSync(join(tmpdir(), "shard-budget-null-"));
+  try {
+    writeFileSync(join(dir, "desktop-chromium.json"), JSON.stringify({ project: "desktop-chromium", seconds: 300, exitCode: 0 }));
+    // Simulerer en shard hvis maaling gik tabt/blev afbrudt: feltet er til
+    // stede, men null - IKKE fravaerende (det praecise CodeRabbit-scenarie).
+    writeFileSync(join(dir, "mobile-chromium.json"), JSON.stringify({ project: "mobile-chromium", seconds: null, exitCode: 0 }));
+    writeFileSync(join(dir, "mobile-webkit.json"), JSON.stringify({ project: "mobile-webkit", seconds: 300, exitCode: 0 }));
+
+    const metrics = readShardMetrics(dir);
+    const mobile = metrics.find((m) => m.project === "mobile-chromium");
+    assert.ok(mobile, "mobile-chromium maaling skal stadig laeses (filen findes)");
+    assert.equal(Number.isNaN(mobile.seconds), true, "null-seconds maa ALDRIG blive til 0");
+
+    // Og samle-dommen: en NaN-maaling skal faelde gaten, praecis som en
+    // helt manglende maaling gjorde foer #4711.
+    const res = evaluateShards({ shards: metrics, budgetMinutes: 12, shardsResult: "success", projects: PROJECTS });
+    assert.equal(res.ok, false);
+    assert.ok(res.lines.some((l) => l.includes("mobile-chromium") && l.includes("ikke et tal")));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("formatDuration er laesbar", () => {

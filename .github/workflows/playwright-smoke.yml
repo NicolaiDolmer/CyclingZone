@@ -129,10 +129,10 @@ jobs:
         working-directory: frontend
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: npm
@@ -244,7 +244,7 @@ jobs:
       # selv rødt (gaten må ikke kunne blive grøn ved at tabe sin måling).
       - name: Upload shard metrics
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: e2e-shard-metrics-${{ matrix.project }}
           path: e2e-shard-metrics/
@@ -252,7 +252,7 @@ jobs:
 
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: playwright-report-${{ matrix.project }}
           path: frontend/playwright-report/
@@ -274,10 +274,10 @@ jobs:
       issues: write # #4281: tracking-issue ved rødt på den natlige cron
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
 
@@ -297,7 +297,7 @@ jobs:
 
       - name: Download shard metrics
         if: needs.e2e-shard.result != 'skipped'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: e2e-shard-metrics-*
           merge-multiple: true
@@ -309,7 +309,7 @@ jobs:
 
       - name: Upload flake report
         if: needs.e2e-shard.result != 'skipped'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: e2e-flakes
           path: e2e-flakes.json
@@ -351,7 +351,7 @@ jobs:
       # PR-kørsel har allerede PR-kommentaren ovenfor og fejler sit eget required check.
       - name: Open or update tracking issue (nightly schedule only)
         if: failure() && github.event_name == 'schedule'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const title = '[bot] Playwright Smoke rød på main (nightly)';
