@@ -63,6 +63,8 @@ async function main() {
 
   for (let i = 0; i < riderIds.length; i += CHUNK) {
     const chunk = riderIds.slice(i, i + CHUNK);
+    // pagination-safe: chunk er allerede begrænset til CHUNK (200) id'er ovenfor,
+    // saa .in()-resultatet kan aldrig ramme PostgREST's 1000-raekke-loft (#3331).
     const { data: riders, error: ridersErr } = await supabase
       .from("riders").select("id, acquired_at, is_academy").in("id", chunk);
     if (ridersErr) throw new Error(`riders: ${ridersErr.message}`);
