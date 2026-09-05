@@ -11,7 +11,7 @@
   "currencyNote": "Priser i kroner. Skift spillet til engelsk for at betale i euro.",
   "prorataNote": "Dit første træk dækker kun resten af denne måned og kan derfor være mindre end den viste pris. Fuld pris fra den 1.",
   "cta": "Videre til betaling",
-  "checkoutPaused": "Køb er midlertidigt sat på pause, mens vi færdiggør handelsbetingelser og selvbetjent opsigelse. Eksisterende konti og gratis-spillet er upåvirkede.",
+  "checkoutPaused": "Køb er midlertidigt sat på pause, mens jeg færdiggør handelsbetingelser og selvbetjent opsigelse. Eksisterende konti og gratis-spillet er upåvirkede.",
   "error": "Kunne ikke starte betaling. Prøv igen.",
   "alreadyPro": "Du er Pro. Tak fordi du støtter Cycling Zone.",
   "alreadyFounder": "Du er Founder. Tak fordi du støtter Cycling Zone fra starten.",
@@ -25,7 +25,7 @@
   "renewalNote": "Abonnementet fornyes automatisk indtil du opsiger. Ingen binding ud over den betalte periode; opsig når som helst fra dine kontoindstillinger.",
   "choosePlan": "Vælg din plan",
   "loadError": {
-    "message": "Vi kunne ikke hente dine abonnementsoplysninger. Intet er gået tabt, og din konto er upåvirket.",
+    "message": "Jeg kunne ikke hente dine abonnementsoplysninger. Intet er gået tabt, og din konto er upåvirket.",
     "retry": "Prøv igen"
   },
   "founderMark": {

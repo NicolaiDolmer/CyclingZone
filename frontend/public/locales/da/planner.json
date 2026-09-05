@@ -209,7 +209,7 @@
   ],
   "divisionPending": {
     "title": "Din division i sæson {number} afgøres ved sæsonskiftet",
-    "body": "Op- og nedrykning falder først på plads når den nuværende sæson lukker, så vi kan ikke vise dig hvilken kalender der er din endnu. Alle divisioners løb i sæson {number} står nedenfor, så du kan nå at studere ruterne.",
+    "body": "Op- og nedrykning falder først på plads når den nuværende sæson lukker, så jeg kan ikke vise dig hvilken kalender der er din endnu. Alle divisioners løb i sæson {number} står nedenfor, så du kan nå at studere ruterne.",
     "hint": "Peaks for sæson {number} åbner så snart din division er bekræftet."
   }
 }
