@@ -229,12 +229,43 @@ export function defaultConstantsBundle() {
   };
 }
 
+// CodeQL #356 (js/prototype-pollution-utility): setAtPath skrev tidligere
+// direkte til `node[key]` uden at afvise `__proto__`/`constructor`/
+// `prototype`. En sti som "--set __proto__.polluted=1" (tastefejl, ikke
+// nødvendigvis ondsindet — men harnessen tager CLI-input) ville forurene
+// Object.prototype for HELE processen, ikke kun den returnerede bundle.
+// Disse tre nøgler er derfor forbudte i ethvert segment af stien.
+const FORBIDDEN_PATH_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 function setAtPath(root, path, value) {
   const parts = path.split(".");
+  for (const key of parts) {
+    if (FORBIDDEN_PATH_KEYS.has(key)) {
+      throw new Error(
+        `buildConstants: overrides-stien "${path}" bruger det forbudte segment "${key}" ` +
+          `(__proto__/constructor/prototype er blokeret for at undgå prototype-pollution, #1099). ` +
+          `Tjek for tastefejl i --set.`,
+      );
+    }
+  }
+  // Top-niveau-nøglen skal allerede findes i default-bundlen: en ukendt
+  // konstant er en tastefejl, ikke en gyldig kalibrerings-tilføjelse (harnessen
+  // og CLI'en overskriver/nulstiller kun eksisterende akser, se toppen af
+  // filen). Nestede nøgler (fx en ny race_class i FLOOR_CREDITS.<base>) må
+  // gerne oprettes — det er reel kalibrerings-udforskning.
+  const topKey = parts[0];
+  if (!Object.hasOwn(root, topKey)) {
+    throw new Error(
+      `buildConstants: ukendt konstant "${topKey}" (fra stien "${path}") findes ikke i ` +
+        `default-bundlen — tjek for tastefejl i --set.`,
+    );
+  }
   let node = root;
   for (let i = 0; i < parts.length - 1; i += 1) {
     const key = parts[i];
-    if (typeof node[key] !== "object" || node[key] === null) node[key] = {};
+    if (typeof node[key] !== "object" || node[key] === null || !Object.hasOwn(node, key)) {
+      node[key] = {};
+    }
     node = node[key];
   }
   node[parts[parts.length - 1]] = value;
@@ -245,6 +276,9 @@ function setAtPath(root, path, value) {
  *   `"W_CLASS.ProSeries" -> 0.35`, `"SOFT_CAP" -> 80`,
  *   `"FLOOR_CREDITS.one_day.Class1" -> 1`,
  *   `"NO_FLOOR_CREDIT_CLASSES" -> ["Class2"]` (erstatter HELE listen).
+ * @throws {Error} hvis et stisegment er `__proto__`/`constructor`/`prototype`,
+ *   eller hvis stiens TOP-niveau-nøgle ikke findes i default-bundlen (typisk
+ *   en tastefejl i `--set`).
  * @returns {object} ny, ikke-frosset konstant-bundle. Modulets egne frosne
  *   exports er UÆNDREDE.
  */
