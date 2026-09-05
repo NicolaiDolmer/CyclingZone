@@ -124,6 +124,8 @@ Merge af: Skaanehensyn pr. rytter, Traetheds-graense med reserve-pas.
 - Paa siden: een linje under rytterens program, "over denne traethed: koer dette pas i stedet", og de dage reglen slog til er markeret i ugestriben bagefter.
 
 ### 5. Saesonens udviklingsmaal
+
+> **Afvist af ejeren 6/9:** "Jeg synes faktisk ikke det her lyder som en saerligt god ide til spillet. Jeg vil have mere fog of war inde paa spillet." Kortet goer loftet til et synligt, automatiseret signal. Ikke med i pakken.
 Merge af: Saesonens udviklingsmaal (ingen dublet).
 
 - Spilleren vaelger: to til tre evner i prioriteret raekkefoelge pr. rytter for saesonen. Programmets standardpas og assistentens forslag foelger den raekkefoelge.
@@ -189,7 +191,10 @@ Merge af: Specialpas fra faciliteterne, Enetimer hos chefen, Traenerens opmaerks
 - Stoerrelse: M.
 - Paa siden: sessionslisten viser "Motorpace (kraever traeningsbane niveau 2)" med haengelaas i graa, og naar den er laast op staar der "2 af 3 pladser i dag".
 
-### Byg de fire foerste
+### Byg de fire foerste (ejer-valg 6/9: tre af dem)
+
+> Ejer 6/9: **Belastning** (Let/Normal/Haard, ordet "tempo" afvist), **Holdpas** (variant 2, rollefordelt, alle fem, fra rytterlisten OG som programdag), **Traetheds-graense** (holdregel + undtagelse pr. rytter). Udviklingsmaal afvist (fog of war). Spec: docs/superpowers/specs/2026-09-06-traening-flere-valg-design.md.
+
 Anbefaling: start med nr. 4 (traetheds-graense, S), nr. 5 (saesonens udviklingsmaal, M), nr. 8 (tre tempi, M) og nr. 2 (holdpas, M).
 Grunden er at de fire ikke stoeder paa nogen laast beslutning, ikke afventer game_day-ticket, og daekker de fire hoejeste smertepunkter: assistent-automatik, spildt traening, laast belastning og daglig mikrostyring.
 Nr. 1 og nr. 3 rangerer hoejest paa spillerdaekning, men er L og forudsaetter at loebsdagen er blevet tick-enheden.
