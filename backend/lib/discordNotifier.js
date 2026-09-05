@@ -679,7 +679,7 @@ export async function sendTestDM(discordId, { language = DEFAULT_LANGUAGE } = {}
 function buildEmbed(type, title, description, fields = [], language = DEFAULT_LANGUAGE) {
   return clampEmbedPayload({
     embeds: [{
-      title: `${renderTypeLabel(type, language)}: ${title}`,
+      title: `${renderTypeLabel(type, language)}: ${renderDmText(title, language)}`,
       description: renderDmText(description, language),
       color: COLORS[type] || 0xe8c547,
       fields: renderDmFields(fields, language).map(f => ({ name: f.name, value: String(f.value), inline: f.inline ?? true })),
