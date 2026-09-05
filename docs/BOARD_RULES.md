@@ -7,13 +7,15 @@
 >
 > Bestyrelsen er en af ejerens 10 kernefunktioner og havde indtil 29/8 intet SSOT-dokument.
 > Denne fil beskriver **hvad der kører i dag**, ikke hvad der er besluttet. De to er ikke det samme:
-> Mandat-modellen (#3514) er ejer-godkendt 7/8, migreret 23/8 og **slukket** — se §6.
+> Mandat-modellen (#3514) er ejer-godkendt 7/8, migreret 23/8 og kører i **beta** (0 reelle seere,
+> ingen skyggeskrivning siden 1/9): se §6.
 >
 > Sponsorsiden bor i [`SPONSOR_RULES.md`](SPONSOR_RULES.md). Grænsen mellem de to er §5, og den er
 > selve grunden til at begge filer findes. Økonomiens øvrige regler: [`ECONOMY_RULES.md`](ECONOMY_RULES.md).
 >
 > Verificeret mod kode og prod 29/8; §1.1, §4's checkpoint-afsnit og §7 række 9 er verificeret på ny
-> 31/8 under [#4382](https://github.com/NicolaiDolmer/CyclingZone/issues/4382). Beslutnings-arkæologi:
+> 31/8 under [#4382](https://github.com/NicolaiDolmer/CyclingZone/issues/4382). §6 og §7 række 3 er
+> målt på ny 6/9 (#4837, #4838, #4839). Beslutnings-arkæologi:
 > [`audits/2026-08-29-sponsor-board-decision-inventory.md`](audits/2026-08-29-sponsor-board-decision-inventory.md).
 
 ---
@@ -212,38 +214,30 @@ korrekthedsfejl; #5 er en flytning der kræver at sponsoren får sin egen flade 
 
 ---
 
-## 6. Mandat-modellen (#3514) — godkendt, migreret, slukket
+## 6. Mandat-modellen (#3514): godkendt, migreret, beta uden skyggeskrivning
 
 Ejer-godkendt 7/8 med 10 låste beslutninger. Erstatter tre planer med **én relation** (`confidence`
 0-100), **ét årligt mandat** (3-5 mål) og en **vision** af milepæle med målsæson.
 
-**Faktisk tilstand, målt 29/8:**
+**Faktisk tilstand, målt 6/9 (audit):**
 
 | | Status |
 |---|---|
-| `board_mandate_model_enabled` | **`off`** siden 17/8 12:35 |
-| `board_relations` | 217 rækker, oprettet 23/8 18:38, **ikke opdateret siden** |
-| `board_mandates` | 217, alle `season_number = 3`, status `active` |
-| `board_vision_milestones` | 2.059 |
-| `team_board_members` | 1.085 (5 pr. hold) |
-| Backup | `backup_board_profiles_3514_20260823`, 649 rækker |
-| Fase 2 (Boardroom-side, årsmøde) | Boardroom-siden (S-M2b) + årsmødets **backend** (S-M2c, #4557) findes nu bag flaget. Frontend-mødet (`/board/meeting`-UI'et) er en separat, senere worker (S-M2c-frontend) |
-| Issue-label | `claude:done` — med tomme fase-checkbokse |
+| `board_mandate_model_enabled` | **`beta`** siden 17/8 12:35 (ikke `off`) |
+| Hvem ser beta | Kun admin/beta-testere. Prod: 0 brugere med `is_beta_tester=true`, 1 admin: beta har haft **én mulig seer** |
+| `board_relations` | 237 rækker: 232 af 234 menneskehold (2 hold oprettet 2/9 og 3/9 mangler); 128 AI-hold har by design ingen. `max(updated_at)` = 2026-09-01 15:42:55, rebuild 1/9, **ingen skrivning siden** |
+| Hvorfor motoren ikke skriver | Cron-kaldet kører uden `isBetaTester`-kontekst, så beta-flaget aldrig evaluerer sandt for skrivevejen. `board_mandates`: 237, alle `season_number = 3`, status `active`, 0 `proposed` | #4839 |
+| `proposeMandateForNewTeam` | **Ingen kaldsti i produktion**, kun `advanceMandateAtSeasonEnd` er wiret i `economyEngine.js::processTeamSeasonEnd`. Nye hold får aldrig et skyggemandat | #4837 |
+| `advanceMandateAtSeasonEnd` | Lukker det aktive mandat FØR den opdager at næste sæson mangler. Sæson 4 findes ikke i `seasons` (#4270) | #4838 |
+| Tørkørsel 5/9 (`proposeNextMandateDryRun.js`) | 237 hold simuleret: 176 får 5 mål, 61 får 4. Tillidstrappe: 122 trusted / 108 standard / 7 strained. Auto-accept: 141 hold à 5 dage, 96 à 10 dage |
+| Flader der forsvinder ved flip | Sponsor-forhandling (`SponsorOfferModal`, #4265, flytter til egen Sponsors-side), bonustilbud (`BonusOfferCard`, 20 aktive lag-6-tilbud i S3), klub-DNA-valg (7 hold uden DNA): findes kun i den gamle `BoardPage.jsx` |
+| Årsmødet (S-M2c) | 0 produktions-evidens. Alle 237 mandater står `active`, 0 `proposed` |
+| Issue-label | `claude:done`, stadig med tomme fase-checkbokse |
 
-**Opdateret 3/9 (#4557, S-M2c a+b):** `boardMandateEngine.js::advanceMandateAtSeasonEnd`
-er nu wiret ind i `economyEngine.js::processTeamSeasonEnd` (efter
-`applySeasonEndSync`, samme fail-safe try/catch-disciplin) — næste sæsons mandat foreslås (status
-`proposed`) automatisk ved sæson-slut for hold der har en skyggerelation. `GET/POST /board/meeting/*`
-(§4.8 i slice-spec'en) + en ny 30-min-cron (`boardMandateAutoAccept.js`) er bygget, alt stadig
-flag-gated. **Dette ændrer IKKE tabellen ovenfor:** `board_mandate_model_enabled` er stadig `off`,
-og de 237 aktive mandater rammes først ved sæson-slut 27/9 (S3→S4), hvor det første rigtige årsmøde
-opstår automatisk — se `backend/scripts/proposeNextMandateDryRun.js` for tørkørslen ejeren skal se
-FØR flip.
-
-**Konsekvensen af at flippe flaget i dag:** `boardMandateEngine.js` er den eneste runtime-skriver af
-`board_relations`, og den er flag-gated. Skyggemodellen har derfor stået stille i seks dage mens
-`board_profiles` er kørt videre. Et flip nu ville vise spillerne et tillidstal fra 23/8 og et mandat
-uden S3-fremgang. **Flaget kan ikke flippes uden at skyggedata først genopbygges.**
+**Rest før flip (ejer-go 6/9 på rækkefølgen):** #4837 + #4838 + #4839 (backend, **merget 6/9**: PR #4841 + #4842) →
+Sponsors-side (#4265, PR #4843 grøn, preview) → bonustilbud + DNA i Boardroom som overblik + faner (#4557, PR #4844 grøn, preview) → help en+da
++ patch note + Discord-udkast → flip på ejer-"go". S4 i DB kører som eget spor EFTER
+kalenderpakkeren har fået ens antal løbsdage (`TRAINING_RULES.md` §13, beslutning 1).
 
 **Opdateret 6/9 (#4837 + #4838) — to huller i motorens kaldstier lukket:**
 
@@ -280,8 +274,8 @@ kun i tillid.** Penge forbliver i lag 6 og modifieren.
 | # | Modsigelse | Bevis |
 |---|---|---|
 | 1 | **`sponsor_growth` er umuligt at opfylde** og har været det for alle 135 profiler der bar det. Ejer-beslutning 7/8 om at rette det er ikke bygget | §3, målt 29/8 |
-| 2 | **#3514 bærer `claude:done`** mens fase 2 ikke findes og flaget er slukket. Label-tilstanden lyver om leverancen | `gh issue view 3514` |
-| 3 | **Skyggemodellen er frosset siden 23/8** og driver længere fra `board_profiles` for hver dag. Ingen vagt måler afstanden | §6 |
+| 2 | **#3514 bærer `claude:done`** mens fase 2 ikke er flippet for spillerne (flaget står `beta`, 0 reelle seere). Label-tilstanden lyver om leverancen | `gh issue view 3514` |
+| 3 | **Skyggemodellen er frosset siden rebuild 1/9 15:42** og driver længere fra `board_profiles` for hver dag. Rod-årsag fundet 6/9: cron-kaldet kører uden `isBetaTester`-kontekst, så beta-flaget aldrig evaluerer sandt for skrivevejen. Ingen vagt måler afstanden | §6, #4839 |
 | 4 | **Hvorfor flaget blev sat `off` 17/8 kan ikke findes** — hverken i commits eller issue-tekst. Fem dage før den migration det gater | inventaret §5 |
 | 5 | **Tre satisfaction-tal, ét gennemsnit.** Spillerne ser tre tal på bestyrelsessiden og ét i økonomien. Rod-årsag til mindst 8 rapporterede fejl | §1 |
 | 6 | **`domestic_dominance` er et dødt skelet** der stadig kan genereres | §3 |
