@@ -71,8 +71,13 @@ function main() {
       console.error("   Koer: node scripts/build-backend-locales.mjs");
       process.exit(1);
     }
+    // Normalisér linjeslutninger foer sammenligning: core.autocrlf=true giver
+    // filen CRLF i et Windows-checkout, og uden det her fejler vagten efter
+    // enhver rebase uden at en eneste streng har aendret sig. .gitattributes
+    // pinner filen til LF, men vagten skal ikke afhaenge af at det virkede.
+    const normalize = (s) => s.replace(/\r\n/g, "\n");
     const current = readFileSync(OUT_FILE, "utf8");
-    if (current !== next) {
+    if (normalize(current) !== normalize(next)) {
       console.error("❌ Backendens locale-bundle er stale i forhold til frontend/public/locales.");
       console.error("   Koer: node scripts/build-backend-locales.mjs && git add backend/lib/locales/backendMessages.generated.json");
       process.exit(1);

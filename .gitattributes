@@ -10,3 +10,9 @@ backend/scripts/dev/repair3570Rollback.sql text eol=lf
 # Vagten normaliserer også linjeslutninger, så dette er andet lag — men uden det
 # ville filerne se ændrede ud i `git status` efter hvert checkout på Windows.
 frontend/src/lib/generated/*.js text eol=lf
+
+# Samme mønster for #4734's genererede backend-locale-bundle:
+# build-backend-locales.mjs --check sammenligner filen med generator-outputtet.
+# Bidt under selve #4734 — en rebase gav filen CRLF, og --check fejlede uden at
+# en eneste streng havde ændret sig. Vagten normaliserer også selv.
+backend/lib/locales/*.generated.json text eol=lf
