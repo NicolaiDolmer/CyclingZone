@@ -115,6 +115,26 @@ test(">1 sprint_captain på SAMME etape for holdet → stage_roles_role_overlap"
   assert.ok(result.errors.includes("stage_roles_role_overlap"));
 });
 
+// #4746/#2405: hunter var udeladt fra overlap-tjekket — se decision-spec §5
+// (option A) og RACE_ENGINE_RULES.md §7 modsigelse 12. To huntere på samme
+// etape skal afvises på nøjagtig samme måde som to kaptajner.
+test(">1 hunter på SAMME etape for holdet → stage_roles_role_overlap (#4746/#2405)", () => {
+  const result = ok([
+    { stage_number: 3, rider_id: "r1", race_role: "hunter", effort: "normal" },
+    { stage_number: 3, rider_id: "r2", race_role: "hunter", effort: "normal" },
+  ]);
+  assert.ok(result.errors.includes("stage_roles_role_overlap"));
+});
+
+test("#4746: urørt basis-hunter + forfremmet hjælper på samme etape → overlap", () => {
+  const result = ok(
+    [{ stage_number: 3, rider_id: "r2", race_role: "hunter", effort: "normal" }],
+    { baseRoleByRider: new Map([["r1", "hunter"], ["r2", "helper"], ["r3", "helper"]]) },
+  );
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.includes("stage_roles_role_overlap"));
+});
+
 // ── #4344: overlap skal tælles på EFFEKTIVE roller, ikke på bodyens rækker ────
 //
 // Bodyen indeholder per kontrakt kun celler der AFVIGER fra basis-rollen

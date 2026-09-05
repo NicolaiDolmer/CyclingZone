@@ -588,7 +588,7 @@
       "stage_roles_rider_not_entered": "One of the riders isn't entered in this race.",
       "stage_roles_invalid_role": "One of the roles isn't valid.",
       "stage_roles_invalid_effort": "One of the effort settings isn't valid.",
-      "stage_roles_role_overlap": "Only one rider can be captain, and only one can be sprint captain, per stage.",
+      "stage_roles_role_overlap": "Only one rider can be captain, only one can be sprint captain, and only one can be breakaway hunter, per stage.",
       "stage_roles_duplicate": "The same rider appears twice for the same stage.",
       "stage_roles_rider_abandoned": "One of the riders is out of the race and can't be given tactics anymore.",
       "stage_roles_race_completed": "This race is finished, so tactics can't be changed anymore.",

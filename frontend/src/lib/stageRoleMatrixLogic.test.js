@@ -145,14 +145,28 @@ test("#4344: diffToOverrides sender nu BEGGE ændringer, så guarden kan se dem"
   );
 });
 
-test("#4344: ikke-eksklusive roller degraderer ingen", () => {
+test("#4746/#2405: hunter er nu lige så eksklusiv som captain/sprint_captain", () => {
   const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  // c er basis-hunter. Spilleren gør b til hunter på etape 3 — c skal miste rollen,
+  // ikke stå tilbage som en STILTIENDE anden hunter (den bug #4746 rapporterede:
+  // matrixen viste flere samtidige "Udbrudsjæger"-rækker for samme etape).
   const { matrix: next, demoted } = setCellWithRoleExclusivity({
     matrix, stageNumber: 3, riderId: "b", patch: { race_role: "hunter" },
   });
-  assert.deepEqual(demoted, []);
+  assert.equal(next[3].b.race_role, "hunter");
+  assert.equal(next[3].c.race_role, "helper", "den forrige hunter mister rollen");
   assert.equal(next[3].a.race_role, "captain", "kaptajnen rører man ikke ved et hunter-valg");
-  assert.equal(next[3].c.race_role, "hunter", "to hunters er tilladt");
+  assert.deepEqual(demoted, ["c"], "komponenten skal kunne navngive hvem der blev degraderet");
+});
+
+test("#4746: ikke-eksklusive roller (free_role) degraderer stadig ingen", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  const { matrix: next, demoted } = setCellWithRoleExclusivity({
+    matrix, stageNumber: 3, riderId: "b", patch: { race_role: "free_role" },
+  });
+  assert.deepEqual(demoted, []);
+  assert.equal(next[3].a.race_role, "captain", "kaptajnen rører man ikke ved et fri-rolle-valg");
+  assert.equal(next[3].c.race_role, "hunter", "hunteren rører man ikke ved et fri-rolle-valg");
 });
 
 test("#4344: effort-only patch rører hverken roller eller degraderer", () => {
