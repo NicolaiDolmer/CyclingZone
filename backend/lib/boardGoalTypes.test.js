@@ -217,6 +217,86 @@ test("#3141 · signature_rider evaluateGoal returns false when no rider clears t
 });
 
 // =====================================================================
+// #3574 · Bonustilbuds-mål (source: "bonus_offer") bærer en baseline
+// (routes/api.js, sat på accept-tidspunktet) — signature_rider og
+// monument_podium er begge beholdninger, ikke hændelses-strømme, så uden en
+// baseline var målet "opfyldt" i samme sekund det blev tilføjt, hvis holdet
+// allerede havde en stjerne-rytter/podie. Spillerrapport: "jeg accepterede
+// tilbuddet, og det gennemførte sig selv — jeg gjorde ikke noget."
+// =====================================================================
+
+test("#3574 · signature_rider MED baseline kræver NETTO +target stjerne-ryttere siden accept (reproducerer bugget)", () => {
+  const team = {
+    riders: [
+      // Holdet havde ALLEREDE 1 stjerne-rytter da bonustilbuddet blev
+      // accepteret (typisk — netop derfor blev tilbuddet tilbudt, jf.
+      // isBonusOfferEligible). Uden baseline: evaluateGoal(target:1) === true
+      // med det samme. Med baseline:1 (sat ved accept): stadig false, for
+      // spilleren har ikke signet en NY stjerne endnu.
+      { id: "a", popularity: 90, uci_points: 900 }, // score ~93, klart en stjerne
+    ],
+  };
+  const bugGoal = { type: "signature_rider", target: 1, source: "bonus_offer" }; // pre-fix: ingen baseline
+  assert.equal(
+    evaluateGoal(bugGoal, null, team, {}), true,
+    "uden baseline er målet allerede opfyldt — dette ER #3574-bugget"
+  );
+
+  const fixedGoal = { type: "signature_rider", target: 1, source: "bonus_offer", baseline: 1 };
+  assert.equal(
+    evaluateGoal(fixedGoal, null, team, {}), false,
+    "med baseline:1 (holdets stjerne-antal ved accept) kræver målet en NY stjerne-rytter oveni"
+  );
+});
+
+test("#3574 · signature_rider MED baseline bliver opfyldt når en ny stjerne-rytter signes efter accept", () => {
+  const goal = { type: "signature_rider", target: 1, source: "bonus_offer", baseline: 1 };
+  const teamAfterNewSigning = {
+    riders: [
+      { id: "a", popularity: 90, uci_points: 900 }, // den oprindelige stjerne (talte i baseline)
+      { id: "b", popularity: 85, uci_points: 800 }, // NY stjerne, signet efter accept
+    ],
+  };
+  assert.equal(evaluateGoal(goal, null, teamAfterNewSigning, {}), true);
+});
+
+test("#3574 · signature_rider UDEN baseline (DNA-tradition-mål) er uændret af fixet", () => {
+  // Ingen `source: "bonus_offer"`, intet baseline-felt — samme adfærd som før #3574.
+  const team = { riders: [{ id: "a", popularity: 90, uci_points: 900 }] };
+  const goal = { type: "signature_rider", target: 1 };
+  assert.equal(evaluateGoal(goal, null, team, {}), true);
+});
+
+test("#3574 · signature_rider evaluateGoalProgress viser NETTO-fremgang (0/1), ikke den rå beholdning, når baseline er sat", () => {
+  const team = { riders: [{ id: "a", popularity: 90, uci_points: 900 }] };
+  const goal = { type: "signature_rider", target: 1, source: "bonus_offer", baseline: 1 };
+  const progress = evaluateGoalProgress(goal, null, team, {});
+  assert.equal(progress.actual, 0, "0 NYE stjerner siden accept, selvom holdet har 1 i alt");
+  assert.equal(progress.met, false);
+});
+
+test("#3574 · monument_podium MED baseline kræver et podie EFTER accept (reproducerer bugget)", () => {
+  const bugGoal = { type: "monument_podium", target: 1, source: "bonus_offer" }; // pre-fix
+  const fixedGoal = { type: "monument_podium", target: 1, source: "bonus_offer", baseline: 1 };
+  const context = { isFinalSeason: true, cumulativeMonumentPodiums: 1 }; // 1 podie, vundet FØR accept
+
+  assert.equal(
+    evaluateGoal(bugGoal, null, { riders: [] }, context), true,
+    "uden baseline tæller det podie der blev vundet FØR accept — dette ER #3574-bugget"
+  );
+  assert.equal(
+    evaluateGoal(fixedGoal, null, { riders: [] }, context), false,
+    "med baseline:1 kræver målet et podie OVENI det der allerede stod ved accept"
+  );
+
+  const contextAfterNewPodium = { isFinalSeason: true, cumulativeMonumentPodiums: 2 };
+  assert.equal(
+    evaluateGoal(fixedGoal, null, { riders: [] }, contextAfterNewPodium), true,
+    "et NYT podie efter accept (2 - baseline 1 >= target 1) opfylder målet"
+  );
+});
+
+// =====================================================================
 // 4. profitable_transfers — netto cumulative balance
 // =====================================================================
 

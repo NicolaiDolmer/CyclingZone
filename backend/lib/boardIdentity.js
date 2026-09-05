@@ -407,6 +407,15 @@ export function calculateRiderStarScore(rider = {}) {
   return roundNumber((popularityScore * 0.70) + (uciScore * 0.30));
 }
 
+// #3574 · Samme kriterium som boardGoals.js' signature_rider-evaluator
+// (evaluateGoal/evaluateGoalProgress), eksporteret hertil så en baseline-
+// optælling ved bonustilbuds-accept (routes/api.js) bruger PRÆCIS samme
+// tælling som selve målet efterfølgende evalueres mod — ingen risiko for at
+// baseline og evaluering drifter fra hinanden via to separate implementeringer.
+export function countTeamStarRiders(riders = []) {
+  return (riders || []).filter((rider) => calculateRiderStarScore(rider) >= STAR_RIDER_SCORE_THRESHOLD).length;
+}
+
 function calculateTeamSpecializationScores(riders = [], u25Share = 0) {
   if (!riders.length) {
     return {

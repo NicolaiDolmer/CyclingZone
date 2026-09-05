@@ -316,6 +316,7 @@ import {
   chooseDnaForTeam,
   isWithinFirstSeasonForTeam,
   resolveBoardRequest,
+  countTeamStarRiders,
 } from "../lib/boardEngine.js";
 // #1237 · nettostilling-hjælpere (activeDebt/wageBillPerSeason) til no_outstanding_debt
 // (scoreFinanceHealthGoal, boardUtils.js) — /board/status + /board/request.
@@ -15523,12 +15524,50 @@ router.post("/board/bonus-offer/accept", requireAuth, boardWriteLimiter, async (
           const existingGoals = typeof oneYrBoard.current_goals === "string"
             ? JSON.parse(oneYrBoard.current_goals)
             : (oneYrBoard.current_goals || []);
+          // #3574 · Bonustilbuddets ekstra-mål er en BEHOLDNING (signature_rider:
+          // stjerne-ryttere i truppen NU; monument_podium: podier vundet i
+          // INDEVÆRENDE sæson) — ikke en hændelses-strøm. Uden en baseline
+          // evaluerer evaluateGoal målet mod holdets tilstand FØR accept, så et
+          // hold der allerede kvalificerer sig (hvilket er sandsynligt: netop
+          // det bonustilbuddet kræver, jf. isBonusOfferEligible) er "ahead" i
+          // samme sekund målet tilføjes — spillerrapport #3574 ("det gennemførte
+          // sig selv, jeg gjorde ikke noget"). baseline låser tællingen til
+          // NETTO-fremgang efter accept: boardGoals.js's signature_rider/
+          // monument_podium-grene trækker baseline fra før de sammenligner mod
+          // target, når feltet er sat (uændret adfærd for DNA-tradition-mål,
+          // der aldrig bærer baseline).
+          let baseline = null;
+          if (loaded.extra_goal.type === "signature_rider") {
+            const { data: currentRiders, error: currentRidersErr } = await supabase
+              .from("riders")
+              // pagination-safe: ét holds trup er bounded af rostergrænsen (~30-40 ryttere)
+              .select(BOARD_IDENTITY_RIDER_SELECT)
+              .eq("team_id", req.team.id);
+            if (currentRidersErr) throw new Error(`riders (bonus-offer baseline): ${currentRidersErr.message}`);
+            baseline = countTeamStarRiders(currentRiders || []);
+          } else if (loaded.extra_goal.type === "monument_podium") {
+            const { data: activeSeasonForBaseline, error: activeSeasonErr } = await supabase
+              .from("seasons").select("id").eq("status", "active").maybeSingle();
+            if (activeSeasonErr) throw new Error(`seasons (bonus-offer baseline): ${activeSeasonErr.message}`);
+            if (activeSeasonForBaseline?.id) {
+              const baselineContext = await loadGoalContextForBoard({
+                supabase,
+                teamId: req.team.id,
+                boardId: oneYrBoard.id,
+                currentSeasonId: activeSeasonForBaseline.id,
+              });
+              baseline = baselineContext.cumulativeMonumentPodiums ?? 0;
+            } else {
+              baseline = 0;
+            }
+          }
           const extraGoal = {
             type: loaded.extra_goal.type,
             target: loaded.extra_goal.target,
             cumulative: false,
             source: "bonus_offer",
             label: loaded.extra_goal.label,
+            baseline,
           };
           const updatedGoals = [...existingGoals, extraGoal];
           await supabase.from("board_profiles")

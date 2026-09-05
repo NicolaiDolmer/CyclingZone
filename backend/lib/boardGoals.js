@@ -971,6 +971,13 @@ export function evaluateGoal(goal, standing, team, context = {}) {
         ? context.cumulativeClassicPodiums
         : cumulativeMonumentPodiums;
       if (podiums == null) return null;
+      // #3574 · Bonustilbuddets ekstra-mål (source: "bonus_offer") bærer en
+      // baseline = podier allerede vundet FØR accept (routes/api.js). Uden
+      // dette trækkes intet fra, og et hold der alt havde et podie tidligere
+      // i sæsonen ville se målet opfyldt i samme sekund det blev tilføjt —
+      // den præcise fejl spillerrapporten beskrev. DNA-tradition-mål bærer
+      // aldrig `baseline` og er derfor uændrede (baseline == null → subtraherer 0).
+      if (enrichedGoal.baseline != null) return (podiums - enrichedGoal.baseline) >= enrichedGoal.target;
       return podiums >= enrichedGoal.target;
     }
     case "jersey_wins":
@@ -982,15 +989,25 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       warnIfStalePersistedJerseyGoal(enrichedGoal, "evaluateGoal");
       if (seasonJerseyWins == null) return null;
       return seasonJerseyWins >= enrichedGoal.target;
-    case "signature_rider":
+    case "signature_rider": {
       // Q-C: tjekkes ved evaluerings-tidspunkt (rider-snapshot)
       // #3141 · SAMME kriterium som board-kortets "bestyrelsen anerkender
       // N stjerne-ryttere" (star_profile.star_rider_count, boardIdentity.js
       // #1889) — score = popularity*0.70 + uciScore*0.30 >= 68. Før #3141
       // brugte dette mål rå popularity>=75 alene, så en rytter kunne tælle
       // som "stjerne" på kortet uden at tælle mod 5-års-planens mål.
-      return (team?.riders || []).filter((rider) => calculateRiderStarScore(rider) >= STAR_RIDER_SCORE_THRESHOLD).length
-        >= enrichedGoal.target;
+      const starRiderCount = (team?.riders || [])
+        .filter((rider) => calculateRiderStarScore(rider) >= STAR_RIDER_SCORE_THRESHOLD).length;
+      // #3574 · Samme baseline-mekanik som monument_podium ovenfor: bonus-
+      // tilbuddets "sign 1 star" var i praksis en beholdning ("har mindst 1
+      // stjerne-rytter NU"), ikke en handling — de fleste hold der bliver
+      // TILBUDT bonussen (kræver høj tilfredshed + høj mål-opfyldelse) har
+      // allerede en. baseline = stjerne-antal på accept-tidspunktet, sat af
+      // routes/api.js. Målet kræver nu NETTO +target stjerne-ryttere siden
+      // accept. DNA-tradition-mål bærer aldrig `baseline` og er uændrede.
+      if (enrichedGoal.baseline != null) return (starRiderCount - enrichedGoal.baseline) >= enrichedGoal.target;
+      return starRiderCount >= enrichedGoal.target;
+    }
     case "profitable_transfers":
       // Q-D: cumulative netto-balance over plan-perioden
       if (!isFinalSeason) return null;
@@ -1243,10 +1260,20 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
         status = "awaiting_data";
         break;
       }
-      actual = cum;
-      target = isFinalSeason
-        ? enrichedGoal.target
-        : Math.max(1, Math.ceil(enrichedGoal.target * (seasonsCompleted / planDuration)));
+      // #3574 · Bonustilbuds-mål (baseline sat ved accept, se evaluateGoal
+      // ovenfor) viser fremdrift som NETTO-podier siden accept, ikke den rå
+      // sæson-sum — ellers ville et allerede-vundet podie vise "ahead" på et
+      // mål spilleren endnu ikke har handlet på. Ingen pro-rating: bonus-målet
+      // er altid ét sæson-vindue (1yr-boardet det ligger på).
+      if (enrichedGoal.baseline != null) {
+        actual = Math.max(0, cum - enrichedGoal.baseline);
+        target = enrichedGoal.target;
+      } else {
+        actual = cum;
+        target = isFinalSeason
+          ? enrichedGoal.target
+          : Math.max(1, Math.ceil(enrichedGoal.target * (seasonsCompleted / planDuration)));
+      }
       score = scoreHigherBetter(actual, target);
       status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
@@ -1280,12 +1307,19 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
     }
-    case "signature_rider":
+    case "signature_rider": {
       // #3141 · Samme star-score-SSOT som evaluateGoal ovenfor + board-kortet.
-      actual = riders.filter((rider) => calculateRiderStarScore(rider) >= STAR_RIDER_SCORE_THRESHOLD).length;
+      const starRiderCount = riders.filter((rider) => calculateRiderStarScore(rider) >= STAR_RIDER_SCORE_THRESHOLD).length;
+      // #3574 · Samme netto-siden-accept-visning som monument_podium ovenfor.
+      if (enrichedGoal.baseline != null) {
+        actual = Math.max(0, starRiderCount - enrichedGoal.baseline);
+      } else {
+        actual = starRiderCount;
+      }
       score = scoreHigherBetter(actual, target);
       status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
+    }
     case "profitable_transfers": {
       const balance = context.cumulativeTransferBalance;
       if (balance == null) {

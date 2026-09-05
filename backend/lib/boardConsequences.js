@@ -406,14 +406,20 @@ export function selectBonusExtraGoal(board, tier = null) {
       // star" → target: 1.
       target: 1,
       // EN fallback label for legacy callers; #666 prefers labelKey for i18n.
-      label: "Sign 1 star (popularity ≥75)",
+      // #3574 · "new" + "since accepting" matcher nu den faktiske evaluering
+      // (routes/api.js sætter en baseline ved accept; boardGoals.js kræver
+      // NETTO +target oveni) — teksten lovede før en handling, mens
+      // evaluatoren målte en beholdning. Kriteriet er star-score (#3141), ikke
+      // rå popularity — den gamle "popularity ≥75" var desuden forældet.
+      label: "Sign 1 new high-renown rider (net gain since accepting)",
       labelKey: "consequence.bonusGoal.signatureRider",
     };
   }
   return {
     type: "monument_podium",
     target: 1,
-    label: "Top 3 in at least 1 monument",
+    // #3574 · Samme "efter accept"-præcisering som signature_rider ovenfor.
+    label: "Top 3 in a monument, after accepting",
     labelKey: "consequence.bonusGoal.monumentPodium",
   };
 }
