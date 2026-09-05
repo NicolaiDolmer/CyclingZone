@@ -154,7 +154,7 @@ export async function runTeamTrainingDay({
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
   const { data: riders, error: ridersError } = await supabase
     .from("riders")
-    .select("id, primary_type, secondary_type, potentiale, birthdate, firstname, lastname, team_id, is_academy")
+    .select("id, primary_type, secondary_type, potentiale, birthdate, firstname, lastname, team_id, is_academy, acquired_at")
     .eq("team_id", teamId)
     .eq("is_retired", false);
   if (ridersError) throw new Error(`riders load: ${ridersError.message}`);
@@ -367,6 +367,19 @@ export async function runTeamTrainingDay({
     let tickResult = null;
     if (!injuredToday && age != null) {
       const condMult = conditionMultiplier({ form: Number(cond.form ?? 50), fatigue: preFatigue });
+      // #4750: en rytter der blev erhvervet (akademi-signing, transfer, auktion)
+      // PRÆCIS i dag har sit gap (cap − nuvaerende evne) paa sit LIVSTIDSMAKSIMUM —
+      // det saette den nogensinde vil naa, fordi gapet kun kan blive mindre resten
+      // af karrieren. Kombineret med youthMultiplier (op til 1,5x ved intake-
+      // alderen 16) og det MANGLENDE dagslige loft (#3709 trin 5, ejer-besluttet
+      // 14/8 — bevidst FJERNET for resten af karrieren, se TRAINING_RULES.md §2.2)
+      // kan netop DENNE ene dag give mere end +1 i en enkelt evne, hvor enhver
+      // senere dag ikke kan (gapet er da allerede formindsket af tidligere ticks).
+      // Sikkerhedsnettet rammer KUN erhvervelses-dagen — #3709 trin 5's beslutning
+      // for resten af karrieren er UBERØRT.
+      const acquiredAtDate = rider.acquired_at ? new Date(rider.acquired_at) : null;
+      const joinedToday = !!acquiredAtDate && !Number.isNaN(acquiredAtDate.getTime())
+        && copenhagenDateString(acquiredAtDate) === tickDate;
       // Fælles parametre for begge tick-typer — samme program/condition/staff/
       // facility/academy-kæde uanset kilde (design-krav: skrivestien er blind
       // for kilden, se applyRaceDevelopmentTick's docblok).
@@ -381,8 +394,11 @@ export async function runTeamTrainingDay({
         conditionMult: condMult,
         bonus,
         potentiale: rider.potentiale,
+        ...(joinedToday ? { hardDailyCap: 1 } : {}),
         // ── TRIN 5 (#3709, beslutning 13, ejer 14/8): ÉN MODEL ────────────────
-        // `hardDailyCap` og `academyRateMult` er FJERNET. Begge fandtes kun for
+        // `hardDailyCap` og `academyRateMult` er FJERNET for resten af karrieren
+        // (se dog #4750 lige ovenfor: erhvervelsesdagen er den ENE undtagelse).
+        // Begge fandtes kun for
         // at bremse en model der mættede: da hver evne nåede sit loft inden for
         // karrieren under alle indstillinger, var akademi-alderens høje rate en
         // spike der skulle dæmpes. Trin 4 fjerner mætningen ved roden — rolle-

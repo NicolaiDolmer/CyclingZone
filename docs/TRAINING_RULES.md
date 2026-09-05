@@ -127,13 +127,24 @@ til ét helt evnepoint (`dailyTraining.js:205-217`).
 | `min(99, ability_caps[evne])` | while-løkken stopper med at udbetale point når evnen rammer sit livstidsloft eller 99. Baren beholder resten (klippet ved 0,999) | `dailyTraining.js:210-217` og `:295-302` |
 | `gap = 0 → return 0` | en evne på sit loft får slet ingen delta beregnet | `dailyTraining.js:118-119` |
 
-**Der findes IKKE længere et dagligt spring-loft.** `hardDailyCap` er stadig en valgfri
-parameter i signaturen, men **produktionsstien sender den aldrig** - søg efter `hardDailyCap`
-i `dailyTrainingEngine.js` og der er nul forekomster. Ligeledes er `academyRateMult`
-(interim-knappen fra #2437) og `computeAcademySeasonCeiling` ude af produktionsstien:
+**Der findes IKKE længere et generelt dagligt spring-loft.** `academyRateMult`
+(interim-knappen fra #2437) og `computeAcademySeasonCeiling` er ude af produktionsstien:
 `tickCaps = caps`, altså livstidsloftet for alle aldre (`dailyTrainingEngine.js:331`). Begge
 blev fjernet i #3709 trin 5 (ejer 14/8) med den begrundelse at de bremsede en model der
-mættede, og at trin 4 fjernede mætningen ved roden.
+mættede, og at trin 4 fjernede mætningen ved roden. **Denne beslutning gælder uændret for
+resten af en rytters karriere** - se dog undtagelsen lige nedenfor.
+
+**Undtagelse (#4750, 5/9): erhvervelsesdagens sikkerhedsnet.** En rytter erhvervet i dag
+(akademi-signing, transfer eller auktionsvind - `riders.acquired_at` falder på selve
+`tick_date`) har sit gap (`ability_caps[evne] − nuværende evne`) på sit livstidsmaksimum -
+den eneste dag i karrieren det er tilfældet, fordi gapet kun kan blive mindre herefter.
+Kombineret med `youthMultiplier` (op til 1,5x ved intake-alderen 16) kunne netop DENNE ene
+dag give mere end +1 i én evne (ejer-bekræftet utilsigtet, thelamba i Discord 3/9). Motoren
+sender derfor `hardDailyCap: 1` KUN når `acquired_at`'s danske kalenderdato matcher
+`tick_date` (`dailyTrainingEngine.js`, søg efter `joinedToday`). Enhver senere dag - inklusive
+dagen efter - er fuldstændig urørt af dette: #3709 trin 5's "intet loft"-beslutning står ved
+magt for resten af karrieren, hvilket er bevist i test (`dailyTrainingEngine.test.js`,
+"#4750"-testene, én med gains capped til 1, én identisk dagen efter med gains=2 uncapped).
 
 **Konsekvens der skal kendes:** træner- og facilitets-bonusserne kan aldrig udvide et loft.
 De skalerer kun deltaen; while-løkken klipper stadig ved `ability_caps`

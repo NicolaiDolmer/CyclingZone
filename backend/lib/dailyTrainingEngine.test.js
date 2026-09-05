@@ -473,6 +473,83 @@ test("akademi-alder: hård dags-cap (+1) gælder stadig efter fjernelse af sæso
   assert.equal(rr.gains.climbing, 1, "maks +1/dag selv med stort gap + pot6 + bonus (#2082/#1938-sikkerhedsnettet uændret)");
 });
 
+// ── #4750: erhvervelsesdagens sikkerhedsnet ──────────────────────────────────
+// En rytter erhvervet (akademi-signing/transfer/auktion) PRÆCIS i dag har sit
+// gap på sit livstidsmaksimum — den eneste dag i karrieren det er tilfældet.
+// Uden et loft netop denne dag kan en frisk 16-årig pot6-rytter med et
+// fuldt specialiseret trænings-team (facilitet tier 5 + matchende chef) og
+// manager-bonus krydse fremdrifts-baren TO gange for én evne på ÉN dag — noget
+// der aldrig sker igen i karrieren, fordi gapet kun bliver mindre herefter.
+// riderId "probe-0" + tick_date "2026-06-12" er valgt fordi den PRÆCISE
+// (rytter, dato)-seedede støj for netop denne kombination rammer scenariet
+// (verificeret uden capping nedenfor). Motoren sender nu hardDailyCap=1 KUN
+// når riders.acquired_at falder på selve tick_date.
+function makeFullTrainingStaffState(extra = {}) {
+  return {
+    team_facilities: [{ team_id: TEAM_ID, track: "training", tier: 5 }],
+    team_staff: [{ id: "staff1", team_id: TEAM_ID, name: "Coach", role: "training", tier: 5, status: "active" }],
+    staff_derived_abilities: [{ staff_id: "staff1", overall: 90, dimensions: { physical: 99 }, levels: { u23: 99 } }],
+    ...extra,
+  };
+}
+
+test("#4750: rytter erhvervet I DAG faar hardDailyCap=1 — evnen der ellers ville springe +2 giver kun +1", async () => {
+  const state = {
+    ...seedState({
+      riders: [makeRider({
+        id: "probe-0", is_academy: true, potentiale: 6, birthdate: "2010-01-01", // 16 år (maks youthMultiplier)
+        acquired_at: "2026-06-12T09:00:00+02:00", // SAMME dag som tick_date (NOW = 2026-06-12)
+      })],
+      abilities: [makeAbilityRow("probe-0", { climbing: 1 })], // resten af BASE_ABILITIES=50 (gap kun stort for climbing)
+      conditions: [makeCondition("probe-0", { form: 100, fatigue: 0 })], // conditionMult i loft (1.15)
+      plans: [{ rider_id: "probe-0", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+    }),
+    ...makeFullTrainingStaffState(),
+  };
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  assert.equal(rr.gains.climbing, 1, "erhvervelsesdagen: maks +1 i climbing uanset hvor stort gapet er (#4750-sikkerhedsnettet)");
+
+  // Overskydende fremdrift MÅ IKKE gå tabt — den ligger videre i ability_progress
+  // til i morgen, præcis som det almindelige hardDailyCap-loft i dailyTraining.js.
+  const ab = state.rider_derived_abilities.find((a) => a.rider_id === "probe-0");
+  assert.ok(ab.ability_progress.climbing > 0, "restfremdrift bevaret i progress-baren, ikke tabt");
+});
+
+test("#4750: SAMME rytter/scenarie dagen EFTER erhvervelse — intet loft, gains.climbing er 2 (#3709 trin 5 urørt)", async () => {
+  const state = {
+    ...seedState({
+      riders: [makeRider({
+        id: "probe-0", is_academy: true, potentiale: 6, birthdate: "2010-01-01",
+        acquired_at: "2026-06-11T09:00:00+02:00", // I GÅR — ikke tick_date
+      })],
+      abilities: [makeAbilityRow("probe-0", { climbing: 1 })],
+      conditions: [makeCondition("probe-0", { form: 100, fatigue: 0 })],
+      plans: [{ rider_id: "probe-0", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+    }),
+    ...makeFullTrainingStaffState(),
+  };
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  // Dette ER netop den utilsigtede gevinst #4750 rapporterede: +2 i én evne på ÉN
+  // dag, mulig KUN fordi gapet er på sit livstidsmaksimum. Testen dokumenterer at
+  // #3709 trin 5's "intet dagligt loft"-beslutning for resten af karrieren er
+  // UÆNDRET — sikkerhedsnettet ovenfor rammer kun selve erhvervelsesdagen.
+  assert.equal(rr.gains.climbing, 2, `dagen efter erhvervelse: INTET loft — forventede 2, fik ${rr.gains.climbing} (regressions-guard mod #3709 trin 5)`);
+});
+
 test("akademi-alder: væksten mætter IKKE længere ved et sæson-loft — fortsætter forbi den gamle ~31-grænse over flere dage", async () => {
   // Samme scenarie som den tidligere #2082/#1938-sæson-loft-test (gap=70, pot6, 17 år):
   // frac for alder 17 var 0.16 → gammelt sæson-loft = 20 + 70×0.16 = 31.2. Interim-
