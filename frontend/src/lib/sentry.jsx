@@ -105,6 +105,35 @@ export function SentryBoundary({ children }) {
   );
 }
 
+// AnalyticsBoundary — tavs, isoleret boundary omkring de client-only
+// analytics-/beacon-integrationer (Clarity, WebVitals, Vercel Analytics, GA,
+// TrafficBeacon). CYCLINGZONE-5B (4/9): et deploy-skew gav ClarityIntegration en
+// ANDEN modul-instans af consent.jsx end provider-traeet, saa useConsent() fandt
+// en tom context og kastede. Fordi analytics-blokken laa direkte under
+// SentryBoundary, tog den HELE appen ned i fuldskaerms-fallbacken for 4 spillere
+// — og fejlen klassificeres som "render_error", saa chunk-selvhelingen (#4595)
+// greb den ikke: brugeren sad fast indtil manuel reload.
+//
+// Analytics er per definition ikke-kritisk. En fejl der ALDRIG maa koste
+// spilleren adgang til spillet hoerer hjemme bag sin egen boundary: vi rapporterer
+// den (saa den forbliver synlig i Sentry med sit eget tag) og renderer null.
+// Rod-aarsagen — deploy-skew, #2423 — loeses ikke her; det her sikrer bare at
+// naeste skew-vindue koster telemetri i stedet for hele appen.
+export function AnalyticsBoundary({ children }) {
+  return (
+    <Sentry.ErrorBoundary
+      beforeCapture={(scope, error) => {
+        scope.setTag("frontend_error_kind", classifyFrontendError(error));
+        scope.setTag("frontend_error_scope", "analytics");
+        if (RELEASE) scope.setTag("frontend_release", RELEASE);
+      }}
+      fallback={null}
+    >
+      {children}
+    </Sentry.ErrorBoundary>
+  );
+}
+
 // #1170 slice B-beslutning: boundary-copy herunder er BEVIDST statisk (ingen
 // t()/i18n). Error-boundary kan ramme før i18n er initialiseret eller mens et
 // chunk-load fejler, så den må ikke afhænge af i18n-runtime. EN er default;

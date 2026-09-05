@@ -11,7 +11,7 @@ import CookieBanner from "./components/CookieBanner.jsx";
 // en lazy-suspense-fallback ville ellers give et hydration-mismatch.
 import LandingPage from "./pages/LandingPage.jsx";
 import { logSessionStart } from "./lib/logEvent";
-import { setSentryUser, clearSentryUser } from "./lib/sentry.jsx";
+import { setSentryUser, clearSentryUser, AnalyticsBoundary } from "./lib/sentry.jsx";
 import { safeNextPath } from "./lib/safeNextPath.js";
 
 // Layout + analytics integrations lazy-loaded for #479: public routes
@@ -237,15 +237,20 @@ export default function App() {
     <>
       {/* Analytics + traffic-beacon er client-only (consent/browser-API'er) og lazy.
           Mount FØRST efter hydration, så de ikke indgår i prerenderens server-render
-          — en lazy Suspense-boundary kan ikke fuldføres på serveren → React #419. */}
+          — en lazy Suspense-boundary kan ikke fuldføres på serveren → React #419.
+          AnalyticsBoundary (CYCLINGZONE-5B): telemetri må aldrig tage spillet ned.
+          Uden den bar SentryBoundary fejlen, og et deploy-skew i ClarityIntegration
+          gav 4 spillere fuldskærms-fejlside i stedet for spillet. */}
       {mounted && (
-        <Suspense fallback={null}>
-          <ClarityIntegration />
-          <WebVitalsIntegration />
-          <VercelAnalyticsIntegration />
-          <GaIntegration />
-          <TrafficBeacon session={session} />
-        </Suspense>
+        <AnalyticsBoundary>
+          <Suspense fallback={null}>
+            <ClarityIntegration />
+            <WebVitalsIntegration />
+            <VercelAnalyticsIntegration />
+            <GaIntegration />
+            <TrafficBeacon session={session} />
+          </Suspense>
+        </AnalyticsBoundary>
       )}
       <Suspense fallback={<RouteFallback />}>
         <Routes>
