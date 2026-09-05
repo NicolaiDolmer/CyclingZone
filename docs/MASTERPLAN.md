@@ -42,7 +42,7 @@ Status 5/9: 12 betalende. Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % ·
 
 Ejer 2/9: *"Standarden skal hæves markant. Og vi skal være fri for AI slop nu."* Hård dato: **S3 slutter 27/9**; årsmøde og parkering hører til sæsonskiftet.
 
-- **G1 Mandatet (#3514/#4557), deadline 27/9:** flag `beta` siden 17/8, 0 reelle seere (0 beta-testere, 1 admin); skyggedata frosset siden rebuild 1/9 (cron skriver intet, #4839). Tørkørsel 5/9 klar (237 hold). **Rest før flip (målt 6/9):** #4837 (nye hold får intet mandat) · #4838 (mandat lukkes før S4 findes) · #4839 · Sponsors-side (#4265) · 2 af 234 hold uden bestyrelse · ejer-GO.
+- **G1 Mandatet (#3514/#4557), deadline 27/9:** flag `beta`, kun admin ser den. **Merget 6/9:** #4839 #4837 #4838, Sponsors-side #4843 (live), Boardroom overblik+faner #4844 (beta). **Rest før flip:** #4856 · #4855 · #4857 backfill (ejer-go) · #4859 flip (ejer-go).
 - **G2 Design (#4622):** #4623-#4626 leveret; kit-sider live (7.240/7.241/7.254). Rest: #4627 spejl · #4813 · #4814 · #4815 · **#4613** (S3-kø pkt. 5).
 - **G3 Tre trupper (#2492):** handoff i `YOUTH_RULES.md` §2.6. #4618 slice 0 leveret (lukket 2/9) → **#4619 spec + bag flag, flip ved cutover 28/9** → #4620/#4621 i S4.
 - **G4 Inaktive (#4592), deadline 27/9:** rapport → ejer godkender liste → parkering ved cutover → #452 → #2760.

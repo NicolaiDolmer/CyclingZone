@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training · three choices (mockup 6)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens (copied from frontend/src/index.css, light + dark) ────── */
+:root{
+  color-scheme: light;
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --on-accent:#1a1f38;
+  --radius-sm:5px; --radius-pill:9999px;
+  --success:21 119 47; --danger:168 30 30; --warning:154 91 0;
+  --success-bg:rgba(21,119,47,.08); --danger-bg:rgba(168,30,30,.08);
+  --font-body:'DM Sans',system-ui,-apple-system,sans-serif;
+  --font-data:'Inter Tight',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+    --border:#2a2d3a;
+    --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+    --accent-t:#ffd966; --on-accent:#1a1f38;
+    --success:95 217 138; --danger:251 132 132;
+    --success-bg:rgba(95,217,138,.12); --danger-bg:rgba(251,132,132,.12);
+  }
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-body); color:var(--text-1);
+  font-family:var(--font-body); font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Page shell (T2 wide data: full bleed, capped 1600) ─────────────────── */
+.page{max-width:1600px; margin:0 auto; padding:10px 32px 56px}
+
+/* mockup stamp */
+.stamp{
+  font-family:var(--font-data); font-size:10px; font-weight:600;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--text-3);
+  border:1px solid var(--border); border-radius:var(--radius-sm); padding:2px 8px;
+  white-space:nowrap; align-self:center; margin-left:auto; margin-bottom:7px;
+}
+.stamp-row{display:none; justify-content:flex-end; margin-bottom:8px}
+
+/* ── Page header (the ONE recipe) ───────────────────────────────────────── */
+.pagehead{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px}
+.pagehead h1{
+  font-family:var(--font-data); font-size:20px; font-weight:700;
+  letter-spacing:-.01em; margin:0; line-height:1.15;
+}
+.pagehead .sub{font-size:13px; color:var(--text-2); margin-top:1px}
+.cluster{display:flex; align-items:center; gap:8px; flex-shrink:0}
+.select{
+  display:inline-flex; align-items:center; gap:8px; height:30px; padding:0 9px 0 11px;
+  border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card);
+  font-family:var(--font-data); font-size:12px; font-weight:500; color:var(--text-1);
+}
+.select svg{color:var(--text-3)}
+
+/* ── Tabs (underline) ───────────────────────────────────────────────────── */
+.tabs{display:flex; align-items:flex-end; gap:22px; border-bottom:1px solid var(--border); margin-bottom:6px}
+.tab{
+  font-size:14px; font-weight:500; color:var(--text-2);
+  padding:0 0 7px; margin-bottom:-1px; border-bottom:2px solid transparent;
+}
+.tab.is-active{color:var(--accent-t); font-weight:600; border-bottom-color:rgb(var(--accent))}
+
+/* ── Count strip: four data cells in ONE row, not four cards ────────────── */
+.counts{
+  display:flex; width:max-content; max-width:100%;
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg-card); margin-bottom:8px; overflow:hidden;
+}
+.counts > div{padding:3px 24px 4px; border-left:1px solid var(--border)}
+.counts > div:first-child{border-left:0}
+.counts .v{font-family:var(--font-data); font-size:16px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.2}
+.counts .l{
+  font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--text-3); margin-top:1px;
+}
+.counts .v.risk{color:rgb(var(--danger))}
+
+/* ── Table card ─────────────────────────────────────────────────────────── */
+.tablecard{
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg-card); overflow:hidden;
+}
+.scroller{overflow-x:auto}
+
+/* toolbar: table-only controls, inside the hairline frame */
+.toolbar{
+  display:flex; align-items:center; gap:10px;
+  padding:5px 12px; border-bottom:1px solid var(--border);
+}
+.toolbar .spacer{flex:1}
+.toolmeta{font-family:var(--font-data); font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; white-space:nowrap}
+
+/* buttons */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; height:26px; padding:0 10px;
+  font-family:var(--font-data); font-size:12px; font-weight:500;
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg-card); color:var(--text-1); cursor:pointer; white-space:nowrap;
+}
+.btn svg{color:var(--text-2)}
+.btn-primary{background:rgb(var(--accent)); border-color:rgb(var(--accent)); color:var(--on-accent); font-weight:600}
+.btn-primary svg{color:var(--on-accent)}
+.btn[aria-disabled="true"]{color:var(--text-3); background:var(--bg-subtle)}
+
+/* team session panel: a row under the toolbar, still inside the frame */
+.teampanel{
+  display:flex; align-items:center; gap:12px;
+  padding:6px 12px; border-bottom:1px solid var(--border); background:var(--bg-subtle);
+}
+.teampanel .chain{color:var(--text-2); flex-shrink:0}
+.tp-name{font-size:13px; font-weight:600; white-space:nowrap}
+.tp-sel{
+  display:inline-flex; align-items:center; gap:7px; height:24px; padding:0 7px 0 9px;
+  border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card);
+  font-family:var(--font-data); font-size:12px; font-weight:600; color:var(--text-1); white-space:nowrap;
+}
+.tp-sel svg{color:var(--text-3)}
+.tp-text{font-size:12.5px; color:var(--text-2); min-width:0}
+.tp-ok{font-family:var(--font-data); font-size:11px; font-weight:500; color:var(--text-2); white-space:nowrap}
+.tp-ok b{color:rgb(var(--success)); font-weight:600}
+.tp-actions{display:flex; gap:8px; margin-left:auto; flex-shrink:0}
+
+/* ── Table (cz-table recipe, dense) ─────────────────────────────────────── */
+table{border-collapse:separate; border-spacing:0; width:100%; min-width:1026px}
+th,td{text-align:left; padding:3px 14px; vertical-align:middle}
+th{
+  font-family:var(--font-data); font-size:11px; font-weight:600; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--text-3); padding-top:5px; padding-bottom:5px;
+  border-bottom:1px solid var(--border); background:var(--bg-card); white-space:nowrap;
+}
+tbody tr td{border-bottom:1px solid var(--border)}
+tbody tr:last-child td{border-bottom:0}
+.n{text-align:right; font-family:var(--font-data); font-variant-numeric:tabular-nums}
+
+/* sticky rider column */
+.c-rider{position:sticky; left:0; z-index:1; background:var(--bg-card); border-right:1px solid var(--border); width:214px; min-width:214px}
+th.c-rider{z-index:2}
+.rwrap{display:flex; align-items:flex-start; gap:9px}
+.rname{font-size:13.5px; font-weight:500; line-height:1.25}
+.rmeta{font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin-top:1px}
+.rexc{font-family:var(--font-data); font-size:10px; font-weight:500; letter-spacing:.04em; color:var(--text-2); margin-top:2px}
+
+/* checkbox */
+.cb{width:14px; height:14px; border:1px solid var(--border); border-radius:3px; background:var(--bg-elevated);
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px}
+.cb svg{display:none; color:var(--text-1)}
+.cb.on{background:var(--bg-subtle); border-color:var(--text-3)}
+.cb.on svg{display:block}
+
+/* fatigue + risk */
+.fat{display:inline-flex; align-items:baseline; gap:6px; justify-content:flex-end}
+.pill-risk{
+  font-family:var(--font-data); font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.07em;
+  color:rgb(var(--danger)); background:var(--danger-bg); border-radius:var(--radius-pill); padding:1px 7px;
+}
+td.n.is-risk .v{color:rgb(var(--danger))}
+
+/* session cell: line 1 = session, line 2 = load chips + subline */
+.s1{display:flex; align-items:center; gap:7px}
+.s2{display:flex; align-items:center; gap:9px; margin-top:2px; flex-wrap:wrap}
+.pill{
+  display:inline-flex; align-items:center; font-family:var(--font-data); font-size:11.5px; font-weight:500;
+  background:var(--bg-subtle); border:1px solid transparent; border-radius:var(--radius-pill); padding:1px 10px; line-height:16px;
+  white-space:nowrap;
+}
+.pill.outline{background:transparent; border-color:var(--border)}
+.chain{color:var(--text-2); flex-shrink:0}
+
+/* segmented control (Segmented anatomy: active = gold text on 10% gold) */
+.seg{display:inline-flex; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg-card)}
+.seg span{
+  font-family:var(--font-data); font-size:11.5px; font-weight:500; color:var(--text-2);
+  padding:1px 9px; line-height:16px; border-left:1px solid var(--border); white-space:nowrap;
+}
+.seg span:first-child{border-left:0}
+.seg span.on{color:var(--accent-t); font-weight:600; background:rgb(var(--accent)/.10)}
+
+.subline{font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3)}
+.plain{font-size:12.5px; color:var(--text-2)}
+.note{font-family:var(--font-data); font-size:10px; font-weight:500; letter-spacing:.04em; color:var(--text-2); margin-top:2px}
+.note.warn{color:rgb(var(--danger))}
+
+.count-line{font-family:var(--font-data); font-size:12px; color:var(--text-3); margin-top:8px; font-variant-numeric:tabular-nums}
+.catalog{font-family:var(--font-data); font-size:11px; color:var(--text-3); margin-top:4px}
+
+/* ── Tab annotation between the two sections ────────────────────────────── */
+.tabmark{
+  display:flex; align-items:center; gap:10px;
+  font-family:var(--font-data); font-size:10px; font-weight:600; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--text-3); margin:0 0 7px;
+}
+.tabmark::after{content:""; flex:1; height:1px; background:var(--border)}
+.section{margin-top:34px}
+
+/* ── Fatigue rule line (Program) ────────────────────────────────────────── */
+.rule{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  font-size:12.5px; color:var(--text-2); margin-bottom:8px;
+}
+.rule .k{font-family:var(--font-data); font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--text-3)}
+.quiet{display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:500; color:var(--accent-t)}
+
+/* ── Program table ──────────────────────────────────────────────────────── */
+table.prog{min-width:1150px}
+table.prog th,table.prog td{padding:6px 8px}
+.p-rider{position:sticky; left:0; z-index:1; background:var(--bg-card); border-right:1px solid var(--border);
+  width:212px; min-width:212px; padding-left:14px !important}
+th.p-rider{z-index:2}
+.c-day{width:124px; min-width:124px}
+.c-fat{width:74px; min-width:74px; text-align:right; padding-right:14px !important}
+th.c-fat{text-align:right; padding-right:14px}
+td.today{background:rgb(var(--accent)/.05); border-left:1px solid var(--border); border-right:1px solid var(--border)}
+th.today{background:rgb(var(--accent)/.10); border-left:1px solid var(--border); border-right:1px solid var(--border); color:var(--accent-t)}
+.pill.ghost{background:transparent; color:var(--text-3)}
+.pill.rule{background:transparent; border-color:var(--border); color:var(--text-1)}
+.daynote{font-family:var(--font-data); font-size:10px; font-weight:500; letter-spacing:.04em; color:var(--text-3); margin-top:2px}
+.legend{font-family:var(--font-data); font-size:11px; color:var(--text-3); margin-top:8px; display:flex; gap:18px; flex-wrap:wrap; align-items:center}
+.legend > span{display:inline-flex; align-items:center; white-space:nowrap}
+.legend .pill{margin-right:5px}
+
+/* dark: --bg-subtle sits below --bg-card, so tinted surfaces need lifting */
+@media (prefers-color-scheme: dark){
+  .pill{background:var(--bg-elevated)}
+  .pill.outline,.pill.ghost,.pill.rule{background:transparent}
+  .teampanel{background:var(--bg-elevated)}
+  .cb.on{background:var(--bg-elevated)}
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+@media (max-width:640px){
+  .page{padding:10px 16px 56px}
+  .pagehead{flex-direction:column; align-items:stretch; gap:8px}
+  .cluster .select{flex:1}
+  .tabs{gap:18px; overflow-x:auto}
+  .tabs .stamp{display:none}
+  .stamp-row{display:flex}
+  .counts{display:grid; grid-template-columns:repeat(2,1fr); width:auto}
+  .counts > div{padding:5px 14px 6px}
+  .counts > div:nth-child(3),.counts > div:nth-child(4){border-top:1px solid var(--border)}
+  .counts > div:nth-child(odd){border-left:0}
+  .toolbar{flex-wrap:wrap; row-gap:7px}
+  .toolbar .spacer{display:none}
+  .teampanel{flex-wrap:wrap; row-gap:7px; align-items:flex-start}
+  .tp-text{flex-basis:100%}
+  .tp-actions{margin-left:0}
+  .c-rider{width:148px; min-width:148px}
+  .p-rider{width:148px; min-width:148px}
+  th,td{padding-left:10px; padding-right:10px}
+  .rname{font-size:13px}
+  .s2{gap:6px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="stamp-row"><span class="stamp">Mockup 6 Sep, not final</span></div>
+
+  <!-- ── Page header (no primary: gold is spent on Apply below) ──────────── -->
+  <div class="pagehead">
+    <div>
+      <h1>Training</h1>
+      <div class="sub">Season 3, game day 27. Every rider either races or trains today.</div>
+    </div>
+    <div class="cluster">
+      <div class="select">All riders
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tabs ───────────────────────────────────────────────────────────── -->
+  <div class="tabs" role="tablist">
+    <div class="tab is-active" role="tab" aria-selected="true">Today</div>
+    <div class="tab" role="tab" aria-selected="false">Program</div>
+    <div class="tab" role="tab" aria-selected="false">Development</div>
+    <div class="tab" role="tab" aria-selected="false">Reports</div>
+    <span class="stamp">Mockup 6 Sep, not final</span>
+  </div>
+
+  <!-- ══════════════════════════ TAB: TODAY ═════════════════════════════ -->
+
+  <div class="tabmark">Tab: Today</div>
+
+  <div class="counts">
+    <div><div class="v">6</div><div class="l">Racing today</div></div>
+    <div><div class="v">12</div><div class="l">Training today</div></div>
+    <div><div class="v">5</div><div class="l">In a team session</div></div>
+    <div><div class="v risk">3</div><div class="l">Injury risk</div></div>
+  </div>
+
+  <div class="tablecard">
+
+    <!-- table-only controls, inside the hairline frame -->
+    <div class="toolbar">
+      <span class="seg" role="group" aria-label="Squad view">
+        <span class="on" aria-current="true">Training 12</span>
+        <span>Racing 6</span>
+        <span>All 18</span>
+      </span>
+      <button class="btn" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+        Team session
+      </button>
+      <span class="toolmeta">5 riders selected</span>
+      <span class="spacer"></span>
+      <span class="toolmeta">Assistant runs at 22:00 if you do nothing</span>
+    </div>
+
+    <!-- inline team session panel, shown open -->
+    <div class="teampanel">
+      <svg class="chain" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+      <span class="tp-sel">Sprint train
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </span>
+      <span class="seg" role="group" aria-label="Load">
+        <span>Light</span><span class="on" aria-current="true">Normal</span><span>Hard</span>
+      </span>
+      <span class="tp-text">5 riders: Dubois (sprinter), Vogel (last man), Sund, Rask, Iglesias (helpers)</span>
+      <span class="tp-ok">Requires 1 sprinter: <b>ok</b></span>
+      <span class="tp-actions">
+        <button class="btn" type="button">Cancel</button>
+        <button class="btn btn-primary" type="button">Apply</button>
+      </span>
+    </div>
+
+    <div class="scroller">
+      <table>
+        <colgroup>
+          <col style="width:214px"><col style="width:124px"><col style="width:92px">
+          <col style="width:366px"><col>
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="c-rider">Rider</th>
+            <th>Program</th>
+            <th class="n">Fatigue /100</th>
+            <th>Session and load today</th>
+            <th>Trains</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Jonas Sørensen</div><div class="rmeta">Climber · 19</div></span></div></td>
+            <td class="plain">Climber</td>
+            <td class="n"><span class="fat"><span class="v">41</span></span></td>
+            <td>
+              <div class="s1"><span class="pill">Climbing</span></div>
+              <div class="s2"><span class="seg"><span>Light</span><span>Normal</span><span class="on">Hard</span></span><span class="subline">Fresh legs</span></div>
+            </td>
+            <td><div class="plain">Climbing, tempo</div><div class="note">Hard at fatigue 41 scores high</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Milo Ferreira</div><div class="rmeta">Climber · 21</div></span></div></td>
+            <td class="plain">Climber</td>
+            <td class="n is-risk"><span class="fat"><span class="v">84</span><span class="pill-risk">Risk</span></span></td>
+            <td>
+              <div class="s1"><span class="pill">Climbing</span></div>
+              <div class="s2"><span class="seg"><span class="on">Light</span><span>Normal</span><span>Hard</span></span><span class="subline">Team rule, above 70</span></div>
+            </td>
+            <td><div class="plain">Climbing, small gain</div><div class="note">Fatigue drops overnight</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Yuki Tanabe</div><div class="rmeta">Time trial · 24</div></span></div></td>
+            <td class="plain">GC rider</td>
+            <td class="n is-risk"><span class="fat"><span class="v">78</span><span class="pill-risk">Risk</span></span></td>
+            <td>
+              <div class="s1"><span class="pill">Threshold</span></div>
+              <div class="s2"><span class="seg"><span>Light</span><span>Normal</span><span class="on">Hard</span></span><span class="subline">Rule switched off for today</span></div>
+            </td>
+            <td><div class="plain">Threshold, tempo</div><div class="note warn">Hard at fatigue 78 scores low</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Kim Dubois</div><div class="rmeta">Sprinter · 20</div></span></div></td>
+            <td class="plain">Sprinter</td>
+            <td class="n"><span class="fat"><span class="v">37</span></span></td>
+            <td>
+              <div class="s1">
+                <svg class="chain" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+                <span class="pill">Sprint</span>
+              </div>
+              <div class="s2"><span class="seg"><span>Light</span><span class="on">Normal</span><span>Hard</span></span><span class="subline">Sprint train · sprinter</span></div>
+            </td>
+            <td><div class="plain">Sprint, acceleration</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Otto Vogel</div><div class="rmeta">Sprinter · 30</div></span></div></td>
+            <td class="plain">Sprinter</td>
+            <td class="n"><span class="fat"><span class="v">39</span></span></td>
+            <td>
+              <div class="s1">
+                <svg class="chain" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+                <span class="pill">Sprint</span>
+              </div>
+              <div class="s2"><span class="seg"><span>Light</span><span class="on">Normal</span><span>Hard</span></span><span class="subline">Sprint train · last man</span></div>
+            </td>
+            <td><div class="plain">Sprint, positioning</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Ivar Sund</div><div class="rmeta">Time trial · 23</div></span></div></td>
+            <td class="plain">GC rider</td>
+            <td class="n"><span class="fat"><span class="v">58</span></span></td>
+            <td>
+              <div class="s1">
+                <svg class="chain" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+                <span class="pill">Tempo</span>
+              </div>
+              <div class="s2"><span class="seg"><span>Light</span><span class="on">Normal</span><span>Hard</span></span><span class="subline">Sprint train · helper</span></div>
+            </td>
+            <td><div class="plain">Tempo, endurance</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Sten Rask</div><div class="rmeta">Academy · Rouleur · 18</div></span></div></td>
+            <td class="plain">Build base</td>
+            <td class="n"><span class="fat"><span class="v">26</span></span></td>
+            <td>
+              <div class="s1">
+                <svg class="chain" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+                <span class="pill">Tempo</span>
+              </div>
+              <div class="s2"><span class="seg"><span class="on">Light</span><span>Normal</span><span>Hard</span></span><span class="subline">Sprint train · helper</span></div>
+            </td>
+            <td><div class="plain">Tempo, endurance</div><div class="note">Light while he builds base</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Rafa Iglesias</div><div class="rmeta">Puncheur · 28</div></span></div></td>
+            <td class="plain">Puncheur</td>
+            <td class="n"><span class="fat"><span class="v">44</span></span></td>
+            <td>
+              <div class="s1">
+                <svg class="chain" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+                <span class="pill">Tempo</span>
+              </div>
+              <div class="s2"><span class="seg"><span>Light</span><span class="on">Normal</span><span>Hard</span></span><span class="subline">Sprint train · helper</span></div>
+            </td>
+            <td><div class="plain">Tempo, punch</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Ruben Halvorsen</div><div class="rmeta">Sprinter · 31</div></span></div></td>
+            <td class="plain">Sprinter</td>
+            <td class="n is-risk"><span class="fat"><span class="v">74</span><span class="pill-risk">Risk</span></span></td>
+            <td>
+              <div class="s1"><span class="pill">Active recovery</span></div>
+              <div class="s2"><span class="seg"><span class="on">Light</span><span>Normal</span><span>Hard</span></span><span class="subline">Rider rule, above 60</span></div>
+            </td>
+            <td><div class="plain">Recovery only</div><div class="note">Saves him for stage 14</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Elias Lindqvist</div><div class="rmeta">Rouleur · 26</div></span></div></td>
+            <td class="plain">Cobbles</td>
+            <td class="n"><span class="fat"><span class="v">71</span></span></td>
+            <td>
+              <div class="s1"><span class="pill">Threshold</span></div>
+              <div class="s2"><span class="seg"><span class="on">Light</span><span>Normal</span><span>Hard</span></span><span class="subline">Team rule, above 70</span></div>
+            </td>
+            <td><div class="plain">Threshold, durability</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Aleks Petrov</div><div class="rmeta">Rouleur · 33</div></span></div></td>
+            <td class="plain">Recovery week</td>
+            <td class="n"><span class="fat"><span class="v">29</span></span></td>
+            <td>
+              <div class="s1"><span class="pill">Active recovery</span></div>
+              <div class="s2"><span class="seg"><span class="on">Light</span><span>Normal</span><span>Hard</span></span><span class="subline">Program sets light all week</span></div>
+            </td>
+            <td><div class="plain">Recovery only</div></td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rwrap"><span class="cb"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span><div class="rname">Pau Vargas</div><div class="rmeta">Academy · Puncheur · 17</div></span></div></td>
+            <td class="plain">Build base</td>
+            <td class="n"><span class="fat"><span class="v">22</span></span></td>
+            <td>
+              <div class="s1"><span class="pill">Long ride</span></div>
+              <div class="s2"><span class="seg"><span>Light</span><span class="on">Normal</span><span>Hard</span></span></div>
+            </td>
+            <td><div class="plain">Endurance, durability</div></td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="count-line">Showing the 12 riders training today. 6 are racing.</div>
+
+  <!-- ══════════════════════════ TAB: PROGRAM ═══════════════════════════ -->
+  <div class="section">
+    <div class="tabmark">Tab: Program</div>
+
+    <div class="rule">
+      <span class="k">Team rule</span>
+      <span>Above fatigue 70, ride the day's session on Light instead.</span>
+      <span class="quiet">Change
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </span>
+    </div>
+
+    <div class="tablecard">
+      <div class="toolbar">
+        <span class="seg" role="group" aria-label="Program view">
+          <span class="on" aria-current="true">All 18</span>
+          <span>Climber 4</span>
+          <span>Sprinter 3</span>
+          <span>Build base 5</span>
+        </span>
+        <span class="spacer"></span>
+        <span class="toolmeta">Cycle 4 · game days 22 to 28 of 84</span>
+      </div>
+
+      <div class="scroller">
+        <table class="prog">
+          <thead>
+            <tr>
+              <th class="p-rider">Rider</th>
+              <th class="c-day">Day 1</th>
+              <th class="c-day">Day 2</th>
+              <th class="c-day today">Day 3, now</th>
+              <th class="c-day">Day 4</th>
+              <th class="c-day">Day 5</th>
+              <th class="c-day">Day 6</th>
+              <th class="c-day">Day 7</th>
+              <th class="c-fat">Fatigue</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr>
+              <td class="p-rider"><div class="rname">Kim Dubois</div><div class="rmeta">Sprinter · 20 · Sprinter</div></td>
+              <td class="c-day"><span class="pill">Tempo</span></td>
+              <td class="c-day"><span class="pill">Recovery</span></td>
+              <td class="c-day today"><span class="pill">Sprint</span></td>
+              <td class="c-day">
+                <svg class="chain" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+                <span class="pill">Sprint train</span>
+                <div class="daynote">Saved group, 5 riders</div>
+              </td>
+              <td class="c-day"><span class="pill ghost">Rest</span></td>
+              <td class="c-day"><span class="pill">Sprint</span></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-fat">37</td>
+            </tr>
+
+            <tr>
+              <td class="p-rider"><div class="rname">Otto Vogel</div><div class="rmeta">Sprinter · 30 · Sprinter</div></td>
+              <td class="c-day"><span class="pill">Punch</span></td>
+              <td class="c-day"><span class="pill">Recovery</span></td>
+              <td class="c-day today"><span class="pill">Sprint</span></td>
+              <td class="c-day">
+                <svg class="chain" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+                <span class="pill">Sprint train</span>
+                <div class="daynote">Saved group, 5 riders</div>
+              </td>
+              <td class="c-day"><span class="pill ghost">Rest</span></td>
+              <td class="c-day"><span class="pill">Tempo</span></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-fat">39</td>
+            </tr>
+
+            <tr>
+              <td class="p-rider"><div class="rname">Ivar Sund</div><div class="rmeta">Time trial · 23 · GC rider</div></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-day"><span class="pill">Intervals</span></td>
+              <td class="c-day today"><span class="pill">Tempo</span></td>
+              <td class="c-day">
+                <svg class="chain" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+                <span class="pill">Sprint train</span>
+                <div class="daynote">Saved group, 5 riders</div>
+              </td>
+              <td class="c-day"><span class="pill ghost">Rest</span></td>
+              <td class="c-day"><span class="pill">Threshold</span></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-fat">58</td>
+            </tr>
+
+            <tr>
+              <td class="p-rider"><div class="rname">Sten Rask</div><div class="rmeta">Academy · 18 · Build base</div></td>
+              <td class="c-day"><span class="pill">Technique</span></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-day today"><span class="pill">Tempo</span></td>
+              <td class="c-day">
+                <svg class="chain" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+                <span class="pill">Sprint train</span>
+                <div class="daynote">Saved group, 5 riders</div>
+              </td>
+              <td class="c-day"><span class="pill ghost">Rest</span></td>
+              <td class="c-day"><span class="pill">Technique</span></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-fat">26</td>
+            </tr>
+
+            <tr>
+              <td class="p-rider"><div class="rname">Rafa Iglesias</div><div class="rmeta">Puncheur · 28 · Puncheur</div></td>
+              <td class="c-day"><span class="pill">Punch</span></td>
+              <td class="c-day"><span class="pill">Recovery</span></td>
+              <td class="c-day today"><span class="pill">Tempo</span></td>
+              <td class="c-day">
+                <svg class="chain" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></svg>
+                <span class="pill">Sprint train</span>
+                <div class="daynote">Saved group, 5 riders</div>
+              </td>
+              <td class="c-day"><span class="pill ghost">Rest</span></td>
+              <td class="c-day"><span class="pill">Intervals</span></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-fat">44</td>
+            </tr>
+
+            <tr>
+              <td class="p-rider"><div class="rname">Milo Ferreira</div><div class="rmeta">Climber · 21 · Climber</div></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-day"><span class="pill">Climbing</span></td>
+              <td class="c-day today"><span class="pill rule">Light, rule</span></td>
+              <td class="c-day"><span class="pill">Threshold</span></td>
+              <td class="c-day"><span class="pill rule">Light, rule</span></td>
+              <td class="c-day"><span class="pill">Climbing</span></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-fat">84</td>
+            </tr>
+
+            <tr>
+              <td class="p-rider">
+                <div class="rname">Ruben Halvorsen</div>
+                <div class="rmeta">Sprinter · 31 · Sprinter</div>
+                <div class="rexc">Exception: above 60, Active recovery instead</div>
+              </td>
+              <td class="c-day"><span class="pill">Sprint</span></td>
+              <td class="c-day"><span class="pill">Tempo</span></td>
+              <td class="c-day today"><span class="pill rule">Active recovery, rule</span></td>
+              <td class="c-day"><span class="pill">Punch</span></td>
+              <td class="c-day"><span class="pill ghost">Rest</span></td>
+              <td class="c-day"><span class="pill">Sprint</span></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-fat">74</td>
+            </tr>
+
+            <tr>
+              <td class="p-rider"><div class="rname">Jonas Sørensen</div><div class="rmeta">Climber · 19 · Climber</div></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-day"><span class="pill">Recovery</span></td>
+              <td class="c-day today"><span class="pill">Climbing</span></td>
+              <td class="c-day"><span class="pill">Threshold</span></td>
+              <td class="c-day"><span class="pill ghost">Rest</span></td>
+              <td class="c-day"><span class="pill">Climbing</span></td>
+              <td class="c-day"><span class="pill">Long ride</span></td>
+              <td class="c-fat">41</td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="count-line">Showing 8 of 18 riders. The cycle repeats after day 7.</div>
+    <div class="catalog">Team sessions: Sprint train, Team time trial, Mountain train, Cobbles session, Race craft group.</div>
+    <div class="legend">
+      <span><span class="pill">Session</span>from program</span>
+      <span><span class="pill rule">Light, rule</span>fatigue rule changed the load</span>
+      <span><span class="pill ghost">Rest</span>rest day</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
