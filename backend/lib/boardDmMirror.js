@@ -42,11 +42,18 @@ export function makeBoardDmNotifier({ notifyUser, notifyBoardUpdateDM, supabase 
     // re-sender aldrig DM'en → ingen 30-min-re-forsøg, ingen DM-spam, ingen falsk
     // 100%-skip-streak i #2571-guarden.
     if (result?.delivered && BOARD_DM_TYPES.has(args.type)) {
+      // #4734: baer notifikationens locale-koder med over i DM'en, saa den
+      // rendres i modtagerens users.language i stedet for at spejle den
+      // EN-fallback der ligger i notifications.title/message. Mangler koderne
+      // (fx en dynamisk narrativ besked), sendes teksten som foer.
+      const meta = args.metadata || {};
       notifyBoardUpdateDM({
         userId: args.userId,
         type: args.type,
-        title: args.title,
-        description: args.message,
+        title: meta.titleCode ? { code: meta.titleCode, params: meta.titleParams, text: args.title } : args.title,
+        description: meta.messageCode
+          ? { code: meta.messageCode, params: meta.messageParams, text: args.message }
+          : args.message,
       // best-effort: DM-spejlet må aldrig vælte selve in-app-notifikationen
       // (den ER allerede oprettet ovenfor). Fejlen logges så en død webhook/
       // bot-token stadig er synlig i Railway-logs — tavs sluk var netop

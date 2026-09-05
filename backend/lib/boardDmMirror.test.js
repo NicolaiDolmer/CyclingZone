@@ -38,6 +38,31 @@ test("makeBoardDmNotifier — delivered:true spejler board_update til DM", async
   assert.deepEqual(result, { delivered: true, deduped: false });
 });
 
+// #4734: DM'en må ikke spejle den EN-fallback der ligger i notifications.title/
+// message — den skal bære notifikationens locale-koder videre, så
+// discordNotifier kan rendre den i modtagerens users.language.
+test("makeBoardDmNotifier — locale-koderne følger med over i DM'en", async () => {
+  const { notify, dmCalls } = makeHarness({ delivered: true, deduped: false });
+
+  await notify({
+    ...BOARD_ARGS,
+    metadata: {
+      titleCode: "notif.board.reviewTitle",
+      titleParams: {},
+      messageCode: "notif.board.reviewMessage",
+      messageParams: { season: 3 },
+    },
+  });
+
+  assert.equal(dmCalls.length, 1);
+  assert.deepEqual(dmCalls[0].title, { code: "notif.board.reviewTitle", params: {}, text: BOARD_ARGS.title });
+  assert.deepEqual(dmCalls[0].description, {
+    code: "notif.board.reviewMessage",
+    params: { season: 3 },
+    text: BOARD_ARGS.message,
+  });
+});
+
 // #2619 hoved-fix: en DEDUP-RAMT reminder (24h-vindue) må ALDRIG re-sende DM'en.
 // Dette er præcis den bug der gav 30-min-re-forsøg → DM-spam + falsk
 // CYCLINGZONE-35-alarm. Verificér red mod den gamle ubetingede DM-sti.

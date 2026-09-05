@@ -507,6 +507,36 @@
         "title": "Sponsor payout",
         "message": "{sponsor} paid out {amount} CZ$ for meeting your season objective."
       }
+    },
+    "auction": {
+      "wonTitle": "You won the auction",
+      "wonMessage": "{rider} is now on your team for {price} CZ$",
+      "wonMessageDeferred": "{rider} is bought for {price} CZ$. He joins your team once his ongoing stage race is finished.",
+      "wonYouthTitle": "You won the youth auction",
+      "wonYouthSeniorMessage": "{rider} is now in your senior squad for {price} CZ$",
+      "wonYouthAcademyMessage": "{rider} is now in your academy for {price} CZ$",
+      "cancelledTitle": "Auction cancelled",
+      "cancelledUnaffordable": "You could not afford {rider}.",
+      "cancelledBuyerBalance": "You could not afford {rider}. Balance: {balance} CZ$",
+      "cancelledBuyerBalanceSeller": "The buyer was short on funds. {rider} was not transferred.",
+      "cancelledAlreadyTaken": "{rider} was signed by another team.",
+      "cancelledOwnerChanged": "{rider} could not be transferred, because he now belongs to another manager.",
+      "cancelledNotOnTeam": "{rider} is no longer on your team, so the auction was cancelled.",
+      "cancelledNoRoomTitle": "Auction cancelled: no room",
+      "cancelledNoRoomMessage": "Both your senior squad and your academy ({slots} places) are full. {rider} could not be signed.",
+      "cancelledSquadFullTitle": "Auction cancelled: squad full",
+      "cancelledSquadFullMessage": "Your team (Div {division}) can hold at most {maxRiders} riders. {rider} could not be transferred. Sell a rider first.",
+      "cancelledWinnerSquadFull": "{rider} could not be transferred, because the winner's squad was full.",
+      "cancelledSellerFloorBuyer": "{rider} could not be transferred, because the seller's squad would drop below the race minimum ({minRiders}).",
+      "cancelledSellerFloorTitle": "Auction cancelled: your squad would drop below the minimum",
+      "cancelledSellerFloorSeller": "{rider} was not transferred, because your squad would drop below {minRiders} riders (the race minimum). List him again when your squad has room for it.",
+      "soldTitle": "Auction finished",
+      "soldMessage": "{rider} sold for {price} CZ$",
+      "boughtMessage": "{rider} was bought for {price} CZ$",
+      "soldToAiTitle": "Rider sold to AI",
+      "soldToAiMessage": "{rider} was sold to the AI for {price} CZ$ (guaranteed price)",
+      "expiredNoBidsTitle": "Auction expired without bids",
+      "expiredNoBidsMessage": "Nobody bid on {rider}"
     }
   },
   "error": {
@@ -543,6 +573,46 @@
   "sponsor": {
     "explanation": {
       "variable": "Base {base} + variable {variable} based on last season's points/rank."
+    }
+  },
+  "discord": {
+    "typeLabel": {
+      "auction_new": "New auction",
+      "auction_outbid": "Outbid",
+      "auction_won": "Auction won",
+      "transfer_offer": "Transfer offer",
+      "transfer_accepted": "Transfer accepted",
+      "transfer_rejected": "Transfer rejected",
+      "transfer_completed": "Transfer completed",
+      "swap_completed": "Swap completed",
+      "season_started": "Season started",
+      "season_ended": "Season ended",
+      "watchlist_rider_auction": "Watchlisted rider on auction",
+      "board_update": "Board update",
+      "board_critical": "The board is unhappy",
+      "race_result_digest": "Race results"
+    },
+    "field": {
+      "newBid": "New bid",
+      "bidBy": "Bid by",
+      "autoBidFrom": "Auto-bid from",
+      "finalPrice": "Final price",
+      "offer": "Offer",
+      "counterOffer": "Counter-offer",
+      "ends": "Ends"
+    },
+    "dm": {
+      "outbid": "You have been outbid on {rider}.",
+      "outbidAuto": "An auto-bid has outbid you on {rider}.",
+      "outbidExhausted": "Your auto-bid on {rider} hit its cap and was outbid.",
+      "auctionWon": "You won the auction for {rider}.",
+      "transferOffer": "{buyer} has sent an offer for {rider}.",
+      "transferAccepted": "Your offer on {rider} was accepted.",
+      "transferCountered": "Your offer on {rider} got a counter-offer.",
+      "transferRejected": "Your offer on {rider} was rejected.",
+      "watchlistRiderAuction": "A rider on your watchlist is up for auction: {rider}.",
+      "testTitle": "Discord DM works",
+      "testDescription": "You will now receive DMs from Cycling Zone for auctions, transfers and board updates."
     }
   }
 }

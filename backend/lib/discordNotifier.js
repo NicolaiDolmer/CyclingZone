@@ -18,6 +18,8 @@ import { captureException as sentryCapture } from "./sentry.js";
 import { getOpsWebhookUrl, makeSendOpsWebhook, withOpsMention } from "./opsWebhook.js";
 import { isDmTypeEnabled } from "./discordDmPrefs.js";
 import { resolveDmRecipient } from "./discordDmRecipient.js";
+import { renderTypeLabel, renderDmText, renderDmFields } from "./discordDmCopy.js";
+import { DEFAULT_LANGUAGE } from "./i18nServer.js";
 import { computeResultWebhookUrls } from "./resultWebhookRouting.js";
 import { recordDmAttempt } from "./discordDmRateGuard.js";
 import { attemptWebhookDelivery } from "./discordWebhookDelivery.js";
@@ -79,23 +81,9 @@ const COLORS = {
   race_result_digest:   0x2ecc71, // green
 };
 
-// #2520: spillervendte Discord-labels på engelsk (server er EN-first).
-const TYPE_LABELS = {
-  auction_new:        "🔨 New Auction",
-  auction_outbid:     "⚠️ Outbid!",
-  auction_won:        "🏆 Auction Won",
-  transfer_offer:     "↔️ Transfer Offer",
-  transfer_accepted:  "✅ Transfer Accepted",
-  transfer_rejected:  "❌ Transfer Rejected",
-  transfer_completed: "✅ Transfer Completed",
-  swap_completed:     "🔄 Swap Completed",
-  season_started:     "🚀 Season Started",
-  season_ended:       "🏁 Season Ended",
-  watchlist_rider_auction: "👀 Watchlisted Rider on Auction",
-  board_update:       "📋 Board Update",
-  board_critical:     "⚠️ The Board Is Unhappy",
-  race_result_digest: "🚴 Race Results",
-};
+// #2520 gjorde Discord-labels EN-first. #4734 flyttede dem til
+// backendMessages.discord.typeLabel.* (emoji bliver i discordDmCopy.js), saa en
+// DM til en manager med users.language = "da" faar dansk type-praefiks.
 
 // #2997: supabase-js KASTER ikke — en fejlet routing-læsning returnerer bare
 // { data: null, error }, og uden `error` bundet ser den ud PRÆCIS som "ingen
@@ -601,23 +589,27 @@ export async function drainDiscordWebhookOutbox({ now = new Date() } = {}) {
  * kan asserter DM uden at spamme rigtige managers.
  */
 export async function notifyDiscordDM({ teamId = null, userId = null, type, title, description, fields = [], cronRun = false, client = supabase }) {
-  const payload = buildEmbed(type, title, description, fields);
+  // #4734: embedet bygges FOERST naar modtagerens sprog er kendt — `description`
+  // og felt-navnene kan baere en locale-kode ({ code, params }), og en DM til en
+  // manager med users.language = "da" skal rendres paa dansk. Test-routingen
+  // nedenfor har ingen rigtig modtager og bruger derfor EN.
+  const buildPayload = (language) => buildEmbed(type, title, description, fields, language);
 
   // #203: test-account / staging routing (teamId-scoped smoke-tests only).
   if (teamId) {
     const target = await resolveDmTarget(teamId);
     if (target === "stdout") {
-      console.log("[discord-dm:stdout]", JSON.stringify({ teamId, type, title, description, fields }));
+      console.log("[discord-dm:stdout]", JSON.stringify({ teamId, type, title, payload: buildPayload(DEFAULT_LANGUAGE) }));
       return;
     }
     if (target === "test-channel") {
       const url = process.env.DISCORD_TEST_CHANNEL_WEBHOOK_URL;
       if (!url) {
         console.warn("[discord-dm:test-channel] DISCORD_TEST_CHANNEL_WEBHOOK_URL ikke sat — falder tilbage til stdout");
-        console.log("[discord-dm:stdout]", JSON.stringify({ teamId, type, title, description, fields }));
+        console.log("[discord-dm:stdout]", JSON.stringify({ teamId, type, title, payload: buildPayload(DEFAULT_LANGUAGE) }));
         return;
       }
-      await sendWebhook(url, payload);
+      await sendWebhook(url, buildPayload(DEFAULT_LANGUAGE));
       return;
     }
   }
@@ -644,7 +636,7 @@ export async function notifyDiscordDM({ teamId = null, userId = null, type, titl
   // #2571(b): tæl EFTER selve sendforsøget, ikke ved recipient-resolve — en
   // reel sendDM-fejl (udløbet token, bot fjernet, API-nedbrud) skal tælle som
   // skip, ikke fejlagtigt som "leveret".
-  const delivered = await sendDM(recipient.discordId, payload);
+  const delivered = await sendDM(recipient.discordId, buildPayload(recipient.language));
   recordDmAttempt({ type, skipped: !delivered, cronRun });
 }
 
@@ -652,7 +644,7 @@ export async function notifyDiscordDM({ teamId = null, userId = null, type, titl
  * Verify DM delivery to a specific Discord ID. Throws with a Danish message
  * suitable for displaying to the manager in ProfilePage.
  */
-export async function sendTestDM(discordId) {
+export async function sendTestDM(discordId, { language = DEFAULT_LANGUAGE } = {}) {
   const botToken = getBotToken();
   if (!botToken) throw new Error("DISCORD_BOT_TOKEN/DISCORD_TOKEN er ikke sat på serveren");
   if (!discordId) throw new Error("Intet Discord-ID");
@@ -662,11 +654,12 @@ export async function sendTestDM(discordId) {
   } catch (err) {
     throw new Error(`Kunne ikke åbne DM-kanal — del server med botten og slå "Allow DMs from server members" til (${err.message})`, { cause: err });
   }
-  // #2520: DM-teksten er spillervendt (går til managerens Discord-inbox) → EN.
+  // #2520 gjorde DM-teksten EN (den er spillervendt, ikke ops). #4734: den
+  // rendres nu i managerens eget sprog, som resten af DM-strømmen.
   await postDm(channelId, botToken, {
     embeds: [{
-      title: "✅ Discord DM works",
-      description: "You'll now receive DMs from Cycling Zone for auctions, transfers, and board updates.",
+      title: `✅ ${renderDmText({ code: "discord.dm.testTitle" }, language)}`,
+      description: renderDmText({ code: "discord.dm.testDescription" }, language),
       color: 0x2ecc71,
       footer: { text: "Cycling Zone" },
       timestamp: new Date().toISOString(),
@@ -683,13 +676,13 @@ export async function sendTestDM(discordId) {
  * og fejlen rammer ALLE modtagere af den notifikation på én gang — se
  * discordEmbedLimits.js for hvorfor det var en flok-afkoblings-risiko (#3483).
  */
-function buildEmbed(type, title, description, fields = []) {
+function buildEmbed(type, title, description, fields = [], language = DEFAULT_LANGUAGE) {
   return clampEmbedPayload({
     embeds: [{
-      title: `${TYPE_LABELS[type] || type}: ${title}`,
-      description,
+      title: `${renderTypeLabel(type, language)}: ${renderDmText(title, language)}`,
+      description: renderDmText(description, language),
       color: COLORS[type] || 0xe8c547,
-      fields: fields.map(f => ({ name: f.name, value: String(f.value), inline: f.inline ?? true })),
+      fields: renderDmFields(fields, language).map(f => ({ name: f.name, value: String(f.value), inline: f.inline ?? true })),
       footer: { text: "Cycling Zone" },
       timestamp: new Date().toISOString(),
     }],
@@ -721,14 +714,17 @@ export async function notifyNewAuction({ riderName, riderValue, sellerName, star
 // Person-rettede notifications — DM-only (må ikke broadcastes til kanal)
 export async function notifyOutbid({ riderName, newBid, bidderName, teamId, isAuto = false, exhausted = false }) {
   const fields = [
-    { name: "New bid", value: `${newBid?.toLocaleString("en-US")} CZ$` },
-    { name: isAuto ? "Auto-bid from" : "Bid by", value: bidderName },
+    { nameCode: "discord.field.newBid", value: `${newBid?.toLocaleString("en-US")} CZ$` },
+    { nameCode: isAuto ? "discord.field.autoBidFrom" : "discord.field.bidBy", value: bidderName },
   ];
-  const description = exhausted
-    ? `Your auto-bid on **${riderName}** hit its max cap and was outbid.`
-    : isAuto
-      ? `You've been outbid on **${riderName}** by an auto-bid!`
-      : `You've been outbid on **${riderName}**!`;
+  const description = {
+    code: exhausted
+      ? "discord.dm.outbidExhausted"
+      : isAuto
+        ? "discord.dm.outbidAuto"
+        : "discord.dm.outbid",
+    params: { rider: `**${riderName}**` },
+  };
   await notifyDiscordDM({
     teamId,
     type: "auction_outbid",
@@ -743,20 +739,25 @@ export async function notifyOutbid({ riderName, newBid, bidderName, teamId, isAu
 // (ikke sat), så kun cron.js' eksplicitte cronRun:true fodrer rate-guarden — den
 // manuelle admin-finalize skal ikke kunne forurene et cron-run-streak.
 export async function notifyAuctionWon({ riderName, finalPrice, teamId, cronRun = false }) {
-  const fields = [{ name: "Final price", value: `${finalPrice?.toLocaleString("en-US")} CZ$` }];
+  const fields = [{ nameCode: "discord.field.finalPrice", value: `${finalPrice?.toLocaleString("en-US")} CZ$` }];
   await notifyDiscordDM({
     teamId,
     type: "auction_won",
     title: riderName,
-    description: `You've won the auction for **${riderName}**! 🎉`,
+    // #4734: Discord-markdown (**) foelger med parameteren, ikke locale-strengen,
+    // saa en oversaetter ikke kan tabe eller flytte formateringen.
+    description: { code: "discord.dm.auctionWon", params: { rider: `**${riderName}**` } },
     fields,
     cronRun,
   });
 }
 
 export async function notifyTransferOffer({ riderName, offerAmount, buyerName, teamId }) {
-  const fields = [{ name: "Offer", value: `${offerAmount?.toLocaleString("en-US")} CZ$` }];
-  const description = `**${buyerName}** has sent an offer for **${riderName}**`;
+  const fields = [{ nameCode: "discord.field.offer", value: `${offerAmount?.toLocaleString("en-US")} CZ$` }];
+  const description = {
+    code: "discord.dm.transferOffer",
+    params: { buyer: `**${buyerName}**`, rider: `**${riderName}**` },
+  };
   await notifyDiscordDM({
     teamId,
     type: "transfer_offer",
@@ -769,12 +770,15 @@ export async function notifyTransferOffer({ riderName, offerAmount, buyerName, t
 export async function notifyTransferResponse({ riderName, accepted, teamId, counterAmount }) {
   const type = accepted ? "transfer_accepted" : "transfer_rejected";
   const fields = [];
-  if (counterAmount) fields.push({ name: "Counter-offer", value: `${counterAmount?.toLocaleString("en-US")} CZ$` });
-  const description = accepted
-    ? `Your offer on **${riderName}** was accepted!`
-    : counterAmount
-      ? `Your offer on **${riderName}** got a counter-offer`
-      : `Your offer on **${riderName}** was rejected`;
+  if (counterAmount) fields.push({ nameCode: "discord.field.counterOffer", value: `${counterAmount?.toLocaleString("en-US")} CZ$` });
+  const description = {
+    code: accepted
+      ? "discord.dm.transferAccepted"
+      : counterAmount
+        ? "discord.dm.transferCountered"
+        : "discord.dm.transferRejected",
+    params: { rider: `**${riderName}**` },
+  };
   await notifyDiscordDM({ teamId, type, title: riderName, description, fields });
 }
 
@@ -783,12 +787,12 @@ export async function notifyTransferResponse({ riderName, accepted, teamId, coun
 // `watchlist_rider_auction`-toggle i profilindstillingerne.
 export async function notifyWatchlistRiderAuction({ userId, riderName, endsAt }) {
   const fields = [];
-  if (endsAt) fields.push({ name: "Ends", value: new Date(endsAt).toLocaleString("en-US") });
+  if (endsAt) fields.push({ nameCode: "discord.field.ends", value: new Date(endsAt).toLocaleString("en-US") });
   await notifyDiscordDM({
     userId,
     type: "watchlist_rider_auction",
     title: riderName,
-    description: `A rider on your watchlist is up for auction: **${riderName}**`,
+    description: { code: "discord.dm.watchlistRiderAuction", params: { rider: `**${riderName}**` } },
     fields,
   });
 }
@@ -831,7 +835,8 @@ export async function notifyBoardUpdateDM({
 // financeNotificationContract.test.js's discovery regex treats any
 // `notifyFn({ type: "<literal>" })` call as an in-app notifications.type that
 // must exist in notifications_type_check (database/schema.sql). "race_result_digest"
-// is a Discord-EMBED type (COLORS/TYPE_LABELS above), never inserted into the
+// is a Discord-EMBED type (COLORS above + discord.typeLabel.* in the locale
+// files, see discordDmCopy.js), never inserted into the
 // notifications table, so it must not be discoverable by that guard.
 export async function notifyRaceResultDigestDM({
   teamId = null,

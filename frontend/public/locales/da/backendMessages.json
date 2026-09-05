@@ -507,6 +507,36 @@
         "title": "Sponsorudbetaling",
         "message": "{sponsor} udbetalte {amount} CZ$ for at opfylde jeres sæsonmål."
       }
+    },
+    "auction": {
+      "wonTitle": "Du vandt auktionen",
+      "wonMessage": "{rider} er nu på dit hold for {price} CZ$",
+      "wonMessageDeferred": "{rider} er købt for {price} CZ$. Han skifter til dit hold, når hans igangværende etapeløb er kørt færdigt.",
+      "wonYouthTitle": "Du vandt ungdomsauktionen",
+      "wonYouthSeniorMessage": "{rider} er nu på dit hold (senior-truppen) for {price} CZ$",
+      "wonYouthAcademyMessage": "{rider} er nu i dit akademi for {price} CZ$",
+      "cancelledTitle": "Auktion annulleret",
+      "cancelledUnaffordable": "Du havde ikke råd til {rider}.",
+      "cancelledBuyerBalance": "Du havde ikke råd til {rider}. Saldo: {balance} CZ$",
+      "cancelledBuyerBalanceSeller": "Køber manglede balance. {rider} blev ikke overdraget.",
+      "cancelledAlreadyTaken": "{rider} blev optaget af et andet hold.",
+      "cancelledOwnerChanged": "{rider} kunne ikke overdrages, fordi rytteren nu tilhører en anden manager.",
+      "cancelledNotOnTeam": "{rider} står ikke længere på dit hold. Auktionen blev derfor annulleret.",
+      "cancelledNoRoomTitle": "Auktion annulleret: ingen plads",
+      "cancelledNoRoomMessage": "Både din senior-trup og dit akademi ({slots} pladser) er fulde. {rider} kunne ikke optages.",
+      "cancelledSquadFullTitle": "Auktion annulleret: hold fuldt",
+      "cancelledSquadFullMessage": "Dit hold (Div {division}) kan maks. have {maxRiders} ryttere. {rider} kunne ikke overdrages. Sælg en rytter først.",
+      "cancelledWinnerSquadFull": "{rider} kunne ikke overdrages, fordi vinderens hold var fuldt.",
+      "cancelledSellerFloorBuyer": "{rider} kunne ikke overdrages, fordi sælgerens hold ville falde under løbs-minimummet ({minRiders}).",
+      "cancelledSellerFloorTitle": "Auktion annulleret: dit hold ville falde under minimum",
+      "cancelledSellerFloorSeller": "{rider} blev ikke overdraget, fordi dit hold ville falde under {minRiders} ryttere (løbs-minimum) ved salget. Sælg ham igen når din trup har plads til det.",
+      "soldTitle": "Auktion afsluttet",
+      "soldMessage": "{rider} solgt for {price} CZ$",
+      "boughtMessage": "{rider} blev købt for {price} CZ$",
+      "soldToAiTitle": "Rytter solgt til AI",
+      "soldToAiMessage": "{rider} er solgt til AI for {price} CZ$ (garanteret pris)",
+      "expiredNoBidsTitle": "Auktion udløb uden bud",
+      "expiredNoBidsMessage": "Ingen bød på {rider}"
     }
   },
   "error": {
@@ -543,6 +573,46 @@
   "sponsor": {
     "explanation": {
       "variable": "Base {base} + variabel {variable} baseret på sidste sæsons point/rang."
+    }
+  },
+  "discord": {
+    "typeLabel": {
+      "auction_new": "Ny auktion",
+      "auction_outbid": "Overbudt",
+      "auction_won": "Auktion vundet",
+      "transfer_offer": "Transfertilbud",
+      "transfer_accepted": "Transfer accepteret",
+      "transfer_rejected": "Transfer afvist",
+      "transfer_completed": "Transfer gennemført",
+      "swap_completed": "Bytte gennemført",
+      "season_started": "Sæson startet",
+      "season_ended": "Sæson slut",
+      "watchlist_rider_auction": "Rytter fra din ønskeliste på auktion",
+      "board_update": "Bestyrelsesopdatering",
+      "board_critical": "Bestyrelsen er utilfreds",
+      "race_result_digest": "Løbsresultater"
+    },
+    "field": {
+      "newBid": "Nyt bud",
+      "bidBy": "Bud af",
+      "autoBidFrom": "Autobud fra",
+      "finalPrice": "Slutpris",
+      "offer": "Tilbud",
+      "counterOffer": "Modbud",
+      "ends": "Slutter"
+    },
+    "dm": {
+      "outbid": "Du er blevet overbudt på {rider}.",
+      "outbidAuto": "Et autobud har overbudt dig på {rider}.",
+      "outbidExhausted": "Dit autobud på {rider} ramte sit loft og blev overbudt.",
+      "auctionWon": "Du vandt auktionen på {rider}.",
+      "transferOffer": "{buyer} har sendt et tilbud på {rider}.",
+      "transferAccepted": "Dit tilbud på {rider} blev accepteret.",
+      "transferCountered": "Dit tilbud på {rider} fik et modbud.",
+      "transferRejected": "Dit tilbud på {rider} blev afvist.",
+      "watchlistRiderAuction": "En rytter fra din ønskeliste er på auktion: {rider}.",
+      "testTitle": "Discord-DM virker",
+      "testDescription": "Du modtager nu DM'er fra Cycling Zone om auktioner, transfers og bestyrelsen."
     }
   }
 }

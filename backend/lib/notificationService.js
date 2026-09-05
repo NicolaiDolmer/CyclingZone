@@ -1,4 +1,5 @@
 import { isKnownNotificationType } from "./notificationTypes.js";
+import { DEFAULT_LANGUAGE, translate as translateServer } from "./i18nServer.js";
 import { captureException } from "./sentry.js";
 import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
 import { buildRaceResultNarrative, buildStageResultNarrative, buildPersonalResultText, capitalize, isHeadlineAboutOwnRiders } from "./raceNarrativeNotification.js";
@@ -160,6 +161,60 @@ export async function notifyUser({
   }
 
   return { delivered: true, deduped: false };
+}
+
+/**
+ * #4734 · Byg en notifikations-payload UD FRA noeglerne.
+ *
+ * Kontrakten (#666) er at frontend rendrer `metadata.titleCode/messageCode` i
+ * modtagerens `users.language`, og at `title`/`message` kun er en fallback for
+ * gamle klienter, e-mail-digestet og dedup-noeglen. Foer denne helper skrev hvert
+ * kaldsted BEGGE dele i haanden — og i praksis drev de fra hinanden: 20
+ * auktions-notifikationer i auctionFinalization.js sendte hardcodet DANSK
+ * fallback-tekst til alle managers, ogsaa dem med users.language = 'en'.
+ *
+ * Her udledes fallbacken fra EN-locale-filen via samme noegle som frontend
+ * bruger, saa de to ikke KAN sige noget forskelligt.
+ *
+ * @param {{ titleCode: string, titleParams?: object, messageCode: string,
+ *           messageParams?: object, metadata?: object }} args
+ * @returns {{ title: string, message: string, metadata: object }}
+ */
+export function buildKeyedNotification({
+  titleCode,
+  titleParams = {},
+  messageCode,
+  messageParams = {},
+  metadata = {},
+}) {
+  return {
+    title: translateServer(titleCode, titleParams, { language: DEFAULT_LANGUAGE }),
+    message: translateServer(messageCode, messageParams, { language: DEFAULT_LANGUAGE }),
+    metadata: { ...metadata, titleCode, titleParams, messageCode, messageParams },
+  };
+}
+
+/**
+ * #4734 · notifyUser med noegle + parametre i stedet for faerdig tekst.
+ * Tynd indpakning af buildKeyedNotification + notifyUser, saa nye kaldsteder
+ * ikke selv skal huske at saette baade kode og fallback.
+ */
+export async function notifyUserWithKeys({
+  supabase,
+  userId,
+  type,
+  titleCode,
+  titleParams = {},
+  messageCode,
+  messageParams = {},
+  relatedId = null,
+  metadata = {},
+  dedupeWindowMs = RECENT_DUPLICATE_WINDOW_MS,
+  now = new Date(),
+  notify = notifyUser,
+}) {
+  const payload = buildKeyedNotification({ titleCode, titleParams, messageCode, messageParams, metadata });
+  return notify({ supabase, userId, type, ...payload, relatedId, dedupeWindowMs, now });
 }
 
 export async function notifyTeamOwner({
