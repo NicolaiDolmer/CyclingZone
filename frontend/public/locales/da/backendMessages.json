@@ -529,8 +529,8 @@
     },
     "layerFallback": "Lag {layer}",
     "bonusGoal": {
-      "signatureRider": "Sign 1 stjerne (popularity ≥75)",
-      "monumentPodium": "Top-3 i mindst 1 monument"
+      "signatureRider": "Signér 1 ny rytter med højt omdømme (nettotilvækst siden accept)",
+      "monumentPodium": "Top-3 i et monument, efter accept"
     },
     "unknownRider": "Rytter {id}"
   },

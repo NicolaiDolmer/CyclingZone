@@ -27,6 +27,7 @@ import {
 } from "./boardConsequences.js";
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 import { createFakeSupabase } from "./testUtils/fakeSupabase.js";
+import { countTeamStarRiders } from "./boardIdentity.js";
 
 // =====================================================================
 // Constants + helpers
@@ -170,6 +171,26 @@ test("#3095 · selectBonusExtraGoal giver stadig monument_podium i tier 1 (unres
 test("#3095 · selectBonusExtraGoal uden tier (ukendt) fail-opener til monument_podium (bagudkompatibel)", () => {
   assert.equal(selectBonusExtraGoal({ focus: "balanced" }).type, "monument_podium");
   assert.equal(selectBonusExtraGoal({ focus: "balanced" }, null).type, "monument_podium");
+});
+
+// #3574 · countTeamStarRiders (boardIdentity.js) er den funktion routes/api.js'
+// bonus-offer/accept-route bruger til at fastfryse en baseline PÅ ACCEPT-
+// tidspunktet, så signature_rider-bonusmålet (selectBonusExtraGoal ovenfor)
+// evaluerer NETTO-fremgang siden accept i stedet for holdets rå bestand
+// (boardGoals.js's evaluateGoal/evaluateGoalProgress). Testene her låser at
+// den bruger PRÆCIS samme star-score-tærskel som selve mål-evalueringen
+// (#3141), ellers kunne baseline og evaluering tælle forskelligt.
+test("#3574 · countTeamStarRiders tæller via samme star-score-SSOT som signature_rider-målet (#3141)", () => {
+  const riders = [
+    { id: "a", popularity: 60, uci_points: 500 }, // score 72 — stjerne
+    { id: "b", popularity: 80, uci_points: 0 }, // score 56 — ikke stjerne
+  ];
+  assert.equal(countTeamStarRiders(riders), 1);
+});
+
+test("#3574 · countTeamStarRiders returnerer 0 for tom eller manglende trup (bagudkompatibel default)", () => {
+  assert.equal(countTeamStarRiders([]), 0);
+  assert.equal(countTeamStarRiders(), 0);
 });
 
 // =====================================================================

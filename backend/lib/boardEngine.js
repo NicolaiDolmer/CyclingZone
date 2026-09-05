@@ -17,6 +17,7 @@ export {
   deriveTeamIdentityProfile,
   computeSeasonOneIdentity,
   deriveDefaultFocusFromIdentity,
+  countTeamStarRiders,
 } from "./boardIdentity.js";
 
 export {

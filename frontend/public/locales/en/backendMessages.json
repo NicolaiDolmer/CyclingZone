@@ -529,8 +529,8 @@
     },
     "layerFallback": "Layer {layer}",
     "bonusGoal": {
-      "signatureRider": "Sign 1 star (popularity ≥75)",
-      "monumentPodium": "Top 3 in at least 1 monument"
+      "signatureRider": "Sign 1 new high-renown rider (net gain since accepting)",
+      "monumentPodium": "Top 3 in a monument, after accepting"
     },
     "unknownRider": "Rider {id}"
   },
