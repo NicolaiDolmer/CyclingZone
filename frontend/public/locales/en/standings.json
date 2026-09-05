@@ -58,10 +58,11 @@
     "action": "Compare ({count})",
     "select": "Select {team} for comparison",
     "selectHint": "Select up to 2 teams to compare",
+    "counter": "{count} of {max} selected",
     "drawerTitle": "Head-to-head",
     "close": "Close comparison",
     "blockedNone": "Select 2 teams to compare",
-    "blockedOne": "Select 1 more team to compare"
+    "blockedOne": "1 of 2 selected, pick 1 more team"
   },
   "preview": {
     "title": "Season Preview",

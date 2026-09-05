@@ -58,10 +58,11 @@
     "action": "Sammenlign ({count})",
     "select": "Vælg {team} til sammenligning",
     "selectHint": "Vælg op til 2 hold at sammenligne",
+    "counter": "{count} af {max} valgt",
     "drawerTitle": "Head-to-head",
     "close": "Luk sammenligning",
     "blockedNone": "Vælg 2 hold at sammenligne",
-    "blockedOne": "Vælg 1 hold mere at sammenligne"
+    "blockedOne": "1 af 2 valgt, vælg 1 hold mere"
   },
   "preview": {
     "title": "Sæson Preview",
