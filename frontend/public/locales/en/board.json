@@ -1857,7 +1857,8 @@
           "lastMovement": "No movement this week",
           "weightedByLine": "He watches the ranking every single week."
         }
-      }
+      },
+      "bonus": "Bonus"
     },
     "vision": {
       "cardTitle": "Club vision",
@@ -1892,7 +1893,8 @@
         "negative": "Unhappy with you"
       },
       "chairmanQuoteFixture": "We see the direction. Keep the wage bill honest and the results will follow.",
-      "chairmanContextFixture": "after the Sunday review"
+      "chairmanContextFixture": "after the Sunday review",
+      "dnaExplainer": "Club DNA decides who sits on the board and how they weight your targets."
     },
     "member": {
       "viewHint": "View member",
@@ -1968,6 +1970,33 @@
         "error": "Something went wrong. Try again.",
         "focusChangeError": "Couldn't update the focus. Try again."
       }
+    },
+    "tabs": {
+      "aria": "Boardroom sections",
+      "overview": "Overview",
+      "mandate": "Mandate",
+      "vision": "Vision",
+      "board": "Board"
+    },
+    "overview": {
+      "goalsAchieved": "{achieved} of {total} goals achieved,",
+      "signedOn": "signed {date}.",
+      "worstGoalNote": "{goal} is at {achieved} against a target of {target}.",
+      "openMandate": "Open mandate",
+      "openVision": "Open vision",
+      "openBoard": "Open board",
+      "visionLabel": "Club vision",
+      "boardLabel": "The board",
+      "nextMilestone": "Next milestone: {milestone}, target S{season}.",
+      "boardNoQuote": "The board has not said anything since the last meeting."
+    },
+    "bonusOffer": {
+      "lead": "Bonus offer from the board.",
+      "stripeDetail": "for one extra target: {goal}.",
+      "expires": "Expires at the end of S{season}",
+      "acceptedOn": "Accepted {date}. {cash} credited to the balance. Counted from acceptance, judged at season end.",
+      "accepted": "Offer accepted. {cash} credited to the balance. Counted from acceptance, judged at season end.",
+      "actionFailed": "The board did not answer. Try again."
     }
   },
   "vision": {

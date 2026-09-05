@@ -51,7 +51,38 @@ function MinuteRow({ minute, t }) {
 // uppercase meta-label i stedet for en dead-link (SectionHeader-reglens
 // action/meta er gensidigt udelukkende, og et link uden destination ville
 // genindfoere den dead-click-taethed hele redesignet skal fjerne).
-export default function BoardCard({ board, mandate, minutes = [] }) {
+// #4557 (overblik + faner) · Klub-DNA-linjen efter en hairline nederst i
+// Board-fanen (mockup 6/9). DNA'et afgoer hvem der sidder her og hvordan de
+// vaegter maalene (BOARD_RULES §8), saa forklaringen bor netop her.
+// Foerste saeson: "Change club DNA" (den EKSISTERENDE dna.rechoose-copy og
+// POST /board/dna-choose). Fra saeson 2: samme linje uden knap, med
+// "Locked for the season" i hoejre side (dna.locked.heading).
+function ClubDnaLine({ canRechoose, onChange, t }) {
+  return (
+    <div className="mt-4 flex flex-col gap-2 border-t border-cz-border pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <p className="text-[12.5px] leading-relaxed text-cz-2">
+        {t("boardroom.board.dnaExplainer")}
+        <br />
+        {canRechoose ? t("dna.rechoose.hint") : t("dna.locked.body")}
+      </p>
+      {canRechoose ? (
+        <button
+          type="button"
+          onClick={onChange}
+          className="flex-shrink-0 self-start text-xs font-medium text-cz-accent-t transition-colors hover:underline sm:self-auto"
+        >
+          {t("dna.rechoose.toggle")}
+        </button>
+      ) : (
+        <span className="flex-shrink-0 whitespace-nowrap font-data text-2xs uppercase tracking-[.08em] text-cz-3">
+          {t("dna.locked.heading")}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export default function BoardCard({ board, mandate, minutes = [], dna = null, onChangeDna }) {
   const { t } = useTranslation("board");
   const [selectedKey, setSelectedKey] = useState(null);
   const members = board?.members || [];
@@ -104,6 +135,8 @@ export default function BoardCard({ board, mandate, minutes = [] }) {
           ))}
         </div>
       )}
+
+      {dna?.hasDna && <ClubDnaLine canRechoose={Boolean(dna.canRechoose)} onChange={onChangeDna} t={t} />}
     </Section>
   );
 }

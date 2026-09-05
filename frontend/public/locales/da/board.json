@@ -1857,7 +1857,8 @@
           "lastMovement": "Ingen bevægelse denne uge",
           "weightedByLine": "Han følger ranglisten hver eneste uge."
         }
-      }
+      },
+      "bonus": "Bonus"
     },
     "vision": {
       "cardTitle": "Klubvision",
@@ -1892,7 +1893,8 @@
         "negative": "Utilfreds med dig"
       },
       "chairmanQuoteFixture": "Vi ser retningen. Hold lønbudgettet ærligt, så følger resultaterne med.",
-      "chairmanContextFixture": "efter søndagens gennemgang"
+      "chairmanContextFixture": "efter søndagens gennemgang",
+      "dnaExplainer": "Klub-DNA'et bestemmer hvem der sidder i bestyrelsen, og hvordan de vægter dine mål."
     },
     "member": {
       "viewHint": "Se medlem",
@@ -1968,6 +1970,33 @@
         "error": "Noget gik galt. Prøv igen.",
         "focusChangeError": "Kunne ikke opdatere fokus. Prøv igen."
       }
+    },
+    "tabs": {
+      "aria": "Afsnit i bestyrelseslokalet",
+      "overview": "Overblik",
+      "mandate": "Mandat",
+      "vision": "Vision",
+      "board": "Bestyrelse"
+    },
+    "overview": {
+      "goalsAchieved": "{achieved} af {total} mål nået,",
+      "signedOn": "underskrevet {date}.",
+      "worstGoalNote": "{goal} står på {achieved} mod et mål på {target}.",
+      "openMandate": "Åbn mandatet",
+      "openVision": "Åbn visionen",
+      "openBoard": "Åbn bestyrelsen",
+      "visionLabel": "Klubvision",
+      "boardLabel": "Bestyrelsen",
+      "nextMilestone": "Næste milepæl: {milestone}, mål i S{season}.",
+      "boardNoQuote": "Bestyrelsen har ikke sagt noget siden sidste møde."
+    },
+    "bonusOffer": {
+      "lead": "Bonustilbud fra bestyrelsen.",
+      "stripeDetail": "for ét ekstra mål: {goal}.",
+      "expires": "Udløber ved udgangen af S{season}",
+      "acceptedOn": "Accepteret {date}. {cash} er sat ind på kontoen. Tælles fra accepten, gøres op ved sæsonens slutning.",
+      "accepted": "Tilbuddet er accepteret. {cash} er sat ind på kontoen. Tælles fra accepten, gøres op ved sæsonens slutning.",
+      "actionFailed": "Bestyrelsen svarede ikke. Prøv igen."
     }
   },
   "vision": {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../../lib/supabase";
 import { PageLoader } from "../../components/ui";
@@ -21,42 +21,41 @@ export default function BoardroomRoute({ LegacyBoardPage }) {
   const [status, setStatus] = useState("loading"); // "loading" | "boardroom" | "legacy"
   const [roomData, setRoomData] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  // #4557 (overblik + faner) · Samme kald bruges baade til foerste load og til
+  // `onReload` efter en handling paa siden (accepteret bonustilbud, valgt DNA).
+  // Ét sted der taler med /api/board/room, saa payloaden aldrig kan komme fra
+  // to forskellige stier. En fejlet GENhentning maa ALDRIG smide manageren over
+  // paa legacy-siden midt i en session — derfor `isReload`-grenen.
+  const loadRoom = useCallback(async ({ isReload = false } = {}) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { if (!isReload) setStatus("legacy"); return; }
 
-    async function loadFlag() {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) { if (!cancelled) setStatus("legacy"); return; }
-
-      let res;
-      try {
-        res = await fetch(`${API}/api/board/room`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch (e) {
-        console.error("Boardroom flag check failed:", e);
-        if (!cancelled) setStatus("legacy");
-        return;
-      }
-
-      if (!res.ok) { if (!cancelled) setStatus("legacy"); return; }
-
-      const data = await res.json().catch(() => null);
-      if (cancelled) return;
-      if (data?.enabled) {
-        setRoomData(data);
-        setStatus("boardroom");
-      } else {
-        setStatus("legacy");
-      }
+    let res;
+    try {
+      res = await fetch(`${API}/api/board/room`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (e) {
+      console.error("Boardroom flag check failed:", e);
+      if (!isReload) setStatus("legacy");
+      return;
     }
 
-    loadFlag();
-    return () => { cancelled = true; };
+    if (!res.ok) { if (!isReload) setStatus("legacy"); return; }
+
+    const data = await res.json().catch(() => null);
+    if (data?.enabled) {
+      setRoomData(data);
+      setStatus("boardroom");
+    } else if (!isReload) {
+      setStatus("legacy");
+    }
   }, []);
 
+  useEffect(() => { loadRoom(); }, [loadRoom]);
+
   if (status === "loading") return <PageLoader label={t("boardroom.route.loading")} />;
-  if (status === "boardroom") return <BoardroomPage data={roomData} />;
+  if (status === "boardroom") return <BoardroomPage data={roomData} onReload={() => loadRoom({ isReload: true })} />;
   return <LegacyBoardPage />;
 }

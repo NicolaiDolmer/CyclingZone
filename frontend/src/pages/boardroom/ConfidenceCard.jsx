@@ -6,7 +6,12 @@ import { formatWeekdayShortDate } from "./boardroomFormat";
 // ugedelta, 4 kategorimetre (gold fyld, amber under ~60 pr. mockup) og en
 // konsekvens-forklaringslinje under hairline. Ingen egen loading/error —
 // BoardroomPage swapper hele kort-kroppen ét niveau op (canonical states).
-export default function ConfidenceCard({ confidence }) {
+// #4557 (overblik + faner) · `lastMovement` er referatets NYESTE raekke
+// (payloadens `minutes[0]`) — mockup 6/9's "Last movement: ... Sun 30 Aug." i
+// kortets venstre fod. Mangler den (nyt hold, ingen kvitteringer endnu),
+// udelades linjen HELT; en tom "Last movement:"-etiket ville vaere chrome uden
+// data (TASTE P11), praecis som GoalReceipt allerede goer det pr. maal.
+export default function ConfidenceCard({ confidence, lastMovement = null }) {
   const { t } = useTranslation("board");
   const { value, weekDelta, updatedAt, categories = [], consequence } = confidence;
 
@@ -43,10 +48,19 @@ export default function ConfidenceCard({ confidence }) {
           })}
         </div>
       </div>
-      <div className="mt-4 border-t border-cz-border pt-3 text-[13px] text-cz-2">
-        {consequence?.active
-          ? t(consequence.lineKey, consequence.lineParams || {})
-          : t("boardroom.confidence.noConsequenceDefault")}
+      <div className="mt-4 flex flex-col gap-1.5 border-t border-cz-border pt-3 text-[13px] text-cz-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+        {lastMovement?.textKey ? (
+          <p className="min-w-0">
+            <span className="font-medium text-cz-1">{t("boardroom.mandate.receipt.lastMovementPrefix")}</span>{" "}
+            {t(lastMovement.textKey, lastMovement.textParams || {})}
+            {lastMovement.occurredAt ? `, ${formatWeekdayShortDate(lastMovement.occurredAt)}.` : ""}
+          </p>
+        ) : <span />}
+        <p className="min-w-0 sm:text-end">
+          {consequence?.active
+            ? t(consequence.lineKey, consequence.lineParams || {})
+            : t("boardroom.confidence.noConsequenceDefault")}
+        </p>
       </div>
     </Section>
   );
