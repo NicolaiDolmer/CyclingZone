@@ -24,6 +24,6 @@
 - **Træning:** nyt system (løbsdag som tick, #4850) live senest S4-start 28/9; kalenderpakker #4845 FØR S4-kalender. Grundregler (rytter, værdi/løn, økonomi) udskudt til efter 27/9.
 - **Mekanik:** PR'er merges med `--admin` én ad gangen; `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Workers altid i baggrunden, aldrig blokerende vent (ejer 6/9).
 
-> **🤖 Working agent:** Ingen aktiv session (Fable lukkede 6/9 kl. ~19:30).
+> **🤖 Working agent:** Fable, session 5/9 aften: Sentry/Supabase-tjek + løbsmotor v4-audit (workflow kører) + bestyrelses-sidespor #4855 #4856 (workers). Startet ~19:30.
 
 _Historik i git-log, issue-tråde + docs/audits/._
