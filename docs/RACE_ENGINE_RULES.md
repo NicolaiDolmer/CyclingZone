@@ -140,9 +140,16 @@ skelne de to. Fire ting definerer den:
 | **Segmenter** | en grus-sektor bliver et **`cobbles`-segment** i v4. Segment-modellen er uændret | segmentet beskriver FYSIKKEN (løst/ujævnt underlag: lav læsgevinst, høj styrtrisiko, høj work-cost), og den er den samme. Underlaget står i `profile_type` og i `sectors[].kind` |
 | **Finaler** | udbrud er det hyppigste udfald, rampe-finale det næsthyppigste, samlet gruppe mindretallet | grus bryder feltet tidligere end brosten, og den toscanske type afgøres på en rampe |
 
-**Grus er RAPPORTERET men ikke bånd-gatet** i `stageFinaleMetrics.js` — samme status som
-`classic`. #4272's finale-bånd blev godkendt tal for tal 26/8, og grus fandtes ikke
-dengang; et bånd for den kræver derfor en ejer-beslutning, ikke en PR.
+**RETTET (#4911): grus HAR sit eget bånd siden 3/9, det er kun `classic` der ikke har.**
+Ejer-beslutning 3/9 (#4105/#4270, valg A) gav grus sit eget bånd i
+`stageFinaleMetrics.js`'s `TERRAIN_FINALE_BANDS.gravel` (`up: [15,35], flat: [10,30],
+break: [45,65]`, afledt af grusets egne finale-vægte), håndhævet af
+`stageFinaleMetrics.test.js`. Denne fil sagde indtil 6/9 fejlagtigt "samme status som
+classic" — kun `classic` mangler stadig et bånd (se boksen nedenfor). **Ude af scope for
+denne PR** (uden for docs/scripts/baselines): kommentaren i
+`raceStageProfileGenerator.js:173-178` gentager den samme stale påstand ordret ("gravel
+staar - som classic - IKKE i ejerens baand-tabel... gater den ikke") og bør rettes i en
+selvstændig, lille PR.
 
 > ⚠ **`classic` bærer en brostens-vægt uden garanteret sektor-forsyning.** Grus opfylder
 > ejer-reglen ved konstruktion; `classic` gør det ikke — den trækker 0-3 sektorer og får
