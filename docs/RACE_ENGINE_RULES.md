@@ -224,3 +224,22 @@ Denne fil er kilden til **reglerne**. Design-rationalet bor stadig i:
 [`2026-08-20-race-engine-v4-intra-stage-design.md`](superpowers/specs/2026-08-20-race-engine-v4-intra-stage-design.md) (vision, mekanik-katalog, beslutningslog) · [`2026-08-21-race-engine-v4-f2-core-design.md`](superpowers/specs/2026-08-21-race-engine-v4-f2-core-design.md) (kerne-kontrakten) · [`2026-08-21-race-tactics-orders-v1-design.md`](superpowers/specs/2026-08-21-race-tactics-orders-v1-design.md) (ordre-kontrakten) · [`2026-07-21-realistic-routes-foundation-design.md`](superpowers/specs/2026-07-21-realistic-routes-foundation-design.md) (rutemodellen) · [`2026-07-22-sub2-deep-competitions-design.md`](superpowers/specs/2026-07-22-sub2-deep-competitions-design.md) (passager, pointskalaer) · [`2026-07-22-sub3-route-aware-engine-design.md`](superpowers/specs/2026-07-22-sub3-route-aware-engine-design.md) (gap-model) · [`2026-08-17-race-event-log-stage-timeline-design.md`](superpowers/specs/2026-08-17-race-event-log-stage-timeline-design.md) (tidslinje-taksonomi).
 
 Naboområder: [`CALENDAR_RULES.md`](CALENDAR_RULES.md) (hvornår løbene køres) · [`PROGRESSION_RULES.md`](PROGRESSION_RULES.md) (hvilke evner rytterne møder op med) · [`GAME_INVARIANTS.md`](GAME_INVARIANTS.md).
+
+---
+
+## 9. Ejerbeslutninger 5-6/9: flip-scope og taktik (låst, genåbn ikke)
+
+> Grundlag: [`audits/race-engine-v4-audit-2026-09-05.md`](audits/race-engine-v4-audit-2026-09-05.md). Rationale og byggekø: [`superpowers/specs/2026-09-06-race-engine-v4-flip-and-tactics-design.md`](superpowers/specs/2026-09-06-race-engine-v4-flip-and-tactics-design.md). Afsnit 2c (uheld), 5 (faser) og 7 (modsigelser) er delvist forældede mod disse beslutninger; de rettes i doc-reparations-PR'en (byggekø rk. 9).
+
+**Én motor.** Der findes præcis én v4: `backend/lib/engine/v4`. Ny motor-logik uden for den mappe er forbudt. Mekanik-kataloget skal altid vise **bygget** og **koblet ind** som to kolonner; "bygget" alene betyder at motoren ikke kalder det.
+
+| # | Regel | Ejer |
+|---|---|---|
+| 1 | **Flip-scope = v3-paritet + de tre krav.** v4 må først kaldes klar når alt spillerne har i v3 er koblet ind (styrt, bonussekunder, indsatsvalg, holdspil, vejr/brosten/grus/distance-slid) plus #2789, #2944, #2582, plus flag, kaldssted, output → `race_results`, kill-switch til v3. Ankre grønne før "klar". 28/9 er et mål, ikke en garanti; S3 kører færdig på v3 | 5/9 |
+| 2 | **Intention vælges i holdudtagelsen pr. rytter pr. etape.** Rollen gælder hele løbet og er standard; intentionen er dagens overlay; "ikke valgt" = kører sin rolle. Fem trin i samme felt (`race_stage_roles.effort`: grupetto, save, normal, protect, all_out) | 6/9 |
+| 3 | **Intentionens pris = Model C.** Træthed bagefter (grupetto < save, all_out > protect), holdarbejdets pris (all_out fjerner prisen, loftet til 0, aldrig bonus over egen evne), træningsudbytte den dag. Aldrig gratis alt-ud; svag slår aldrig stærk på samme trin; grupetto er ikke et frikort. v4 M12 lægges oveni ved flip med samme enum | 6/9 |
+| 4 | **Uheldstrappen (M10).** Let styrt = tidstab. Hårdt styrt = stort tidstab + skadedage. Alvorligt styrt = udgår + skadedage, sjældent. Mekanisk uheld = altid kun tid, aldrig udgåelse, aldrig skade; hjælper tæt på = hurtigere hjulskift. Kun styrt kan skade (#4520). v3's loft over uheld pr. etape arves; hyppighed kalibreres mod ca. 1-2 % pr. etape | 6/9 |
+| 5 | **Tidsgrænse = UCI-reglen.** Uden for tidsgrænsen = ude af løbet (etapeløb) / DNF (endagsløb). Stor gruppe der kommer samlet reddes. Grænse pr. etapetype (udgangspunkt 5-20 %), vises aldrig. AI-hold rammes ens. Kun v4. OTL er en udfaldsklasse ved siden af i mål/udgået | 6/9 |
+| 6 | **Alle seks rute-huller lukkes før flip**, inkl. brostens-finaler (sektorer tæt på mål i rutegeneratoren, v4 læser `sectors`, brostens-mekanik ind) og enkeltstarters 80 hm. Efterprøves mod rigtige ruter i harnesset | 6/9 |
+
+**Fog of war (ejer 6/9):** ingen procenter, multiplikatorer eller grænser på spillerens skærm. Han ser "taber 40 sek.", "ude i 4 dage", "uden for tidsgrænsen".
