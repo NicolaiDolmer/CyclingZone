@@ -4,13 +4,13 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer-styret):** **Næste session = løbsmotor v4 + taktik**, prompt designet med ejeren 6/9: [`docs/drafts/next-session-prompt-2026-09-07.md`](drafts/next-session-prompt-2026-09-07.md) (audit af v4 først → design ét spørgsmål ad gangen → byg-bølge → flip ved S4-start 28/9; bestyrelsens rest #4855-#4859 som sidespor). **Ejer-go der venter:** #4801 (+1-loft, ejer: "vent") · #4835 (opret `AUTO_MERGE_PAT`) · #4857 backfill (`--apply --owner-go`) · #4859 flip. **#4789** tages i en anden session. **S4-kalenderen (#4270) må IKKE applies før #4845.**
+> **🎯 Next action (ejer-styret):** **Løbsmotor v4 mod flip ved S4-start 28/9.** Beslutninger låst 5-6/9 i [`RACE_ENGINE_RULES.md`](RACE_ENGINE_RULES.md) §9 + spec [`2026-09-06-race-engine-v4-flip-and-tactics-design.md`](superpowers/specs/2026-09-06-race-engine-v4-flip-and-tactics-design.md). Merget 6/9: flip-fundament #4879, M7-M13+M15+M16 wiret (#4881 #4882 #4891 #4892 #4893 #4897 #4904 #4907 #4908), ordre-kæden #4894, intention-backend #4878. **Næste:** #4909 (M12, konflikt) · løbssiden som faner (`feat/race-page-tabs`, variant A, ejer-go på preview) · #4911 doc-reparation · #4910 hjælpetekster · rute-huller alle seks (#2789) · kalibrering #4707 + #4885 (feltspredning) · #4905 · #4886. **Ejer-go der venter:** #4912 patch note 7.258 · #4884 · #4864 · #4801 · #4835 (`AUTO_MERGE_PAT`) · #4857 backfill · #4859 flip · #4845 kalenderpakker (ejer hjemme). **S4-kalenderen (#4270) må IKKE applies før #4845.**
 
-> **⏳ Venter på DIN beslutning:** Discord-udkast du poster selv: catch-up 7.239-7.255, side-om-side-mockups af træningssiden (spillerne vælger retning, #4613), Sponsors-siden (`docs/drafts/discord-sponsors-page-2026-09-05.md`). Programmets rytme (7 løbsdage vs uge) parkeret. 6 ejer-valg i `docs/audits/ai-triage-2026-09-06-a.md` · #4814 · #4714 · #4627 · #4235 (15/9).
+> **⏳ Åbne ejer-valg (ét ad gangen):** bestyrelse før DNA-valg (#4900) · holdspils-kalibrering (v4 gab 3,0 mod v3 19,4, §2e) · TTT ind i S4-kalenderen (filler pauset siden #2411) · TTT giver ingen point til pointkonkurrencen i v4 (v3 gav) · bonussekunder v4 = eneste kilde (låst 6/9) · #2423 skew protection (758 chunk-fejl/47 spillere på 7 dage, ejer: rør ikke) · Discord: coming-soon-plakater + replay-animation i `docs/design/coming-soon-v4-2026-09-06/` og `replay-v4-2026-09-06/` (ejer poster selv).
 
-> **🔴 Åbne fund:** **#2423** skew protection SLÅET FRA (CYCLINGZONE-56) · **#4811** signup-sprog måles ikke · **#4828/#4829** D4-puljer, verificér efter Settimana · **#4856** bonustilbud skrives til gammel plan, ikke mandatet (før flip) · #4453 · #4537 · #4530 · #4531 · #4109.
+> **🔴 Åbne fund:** #4885 v4 komprimerer feltet (tidsgrænsen inert) · #4905 nedkørsels-uheld fyrer aldrig · #4886 rngFor uden segment-nøgle · #4828/#4829 D4-pulje F 25/24 · #4811 · #4453 · #4537 · #4530 · #4531 · #4109.
 
-> **✅ 6/9 (Fable, design-session med ejeren):** Træning: 6 beslutninger låst (tick pr. løbsdag, samme antal løbsdage, knap+bonus væk, intention i holdudtagelsen, træningsscore = passets kvalitet, kun egen manager, visning) → spec + `TRAINING_RULES.md` §13, epic **#4850** (deadline S4-start), #4851-#4854 (Belastning, Holdpas rollefordelt, Trætheds-grænse; udviklingsmål AFVIST: "mere fog of war"). Discord-analyse 20/8-5/9 → `docs/audits/discord-training-choices-2026-09-06.md`. Bestyrelsen: audit → **merget** #4841 (#4839 kvitteringer i beta), #4842 (#4837 #4838), #4840 (docs), **#4843 Sponsors-side live**, #4844 Boardroom overblik+faner (bag beta). Mockups i `docs/design/mockups-*-2026-09-06/`. Ny bindende regel i PAGE_TEMPLATES: overblik først + faner ud.
+> **✅ 6/9 (Fable):** Sentry/Supabase-triage lukket (#4866 timeout, #4868, #4870, #4871, #4876 heal-loop, #4898 #4901 #4902 #4906); #4865 11 bonus-mål repareret på ejer-go + guard (#4889 #4890). **TIER WAVE + livstegn** indført (ejer 6/9, `AI_OPS_REFERENCE.md` + `NIGHT_WAVE_RUNBOOK.md`); læring: `.claude/learnings/2026-09-06-v4-boelge-frys-tier-wave-og-genstart.md`.
 
 > **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). 12 betalende (MRR 436 kr). #4616 EUR-nøgler → ejer-klik. #4514 kunden beholder Pro.
 
@@ -20,10 +20,10 @@
 
 - **Liga:** 4-divisions-pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8). **Mere fog of war** (ejer 6/9).
 - **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (GT-hviledage bundet, #4209). **Pension:** afsluttet sæsons alder. Alders-referenceår = `riderSeasonAge.js` (S3=2028). U25 = 25 og yngre.
-- **Race engine:** v3 låst fallback; v4-flip ejer-only, mål S4-start. Krav til v4 (ejer 4/9): #2789, #2944, #2582 + #4632 intention.
-- **Træning:** nyt system (løbsdag som tick, #4850) live senest S4-start 28/9; kalenderpakker #4845 FØR S4-kalender. Grundregler (rytter, værdi/løn, økonomi) udskudt til efter 27/9.
-- **Mekanik:** PR'er merges med `--admin` én ad gangen; `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Workers altid i baggrunden, aldrig blokerende vent (ejer 6/9).
+- **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` OFF; v3 kører S3 færdig. Flip-scope = v3-paritet + #2789/#2944/#2582 + intention (§9). Bygget ≠ koblet ind: to kolonner i kataloget.
+- **Træning:** nyt system (løbsdag som tick, #4850) live senest S4-start 28/9; kalenderpakker #4845 FØR S4-kalender.
+- **Mekanik:** PR'er merges med `--admin` én ad gangen med pause (Railway-deploys må ikke overlappe); `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Bølger: TIER WAVE, maks 3 byg-workers, push <10 min + hvert 15. min.
 
-> **🤖 Working agent:** Fable, session 5/9 aften: Sentry/Supabase-tjek + løbsmotor v4-audit (workflow kører) + bestyrelses-sidespor #4855 #4856 (workers). Startet ~19:30.
+> **🤖 Working agent:** Ingen aktiv session.
 
 _Historik i git-log, issue-tråde + docs/audits/._
