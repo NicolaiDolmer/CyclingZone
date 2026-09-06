@@ -239,7 +239,7 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
  * (stage-by-stage), som v3- og timeline-flagene. Slukkes flaget mens et
  * etapeløb kører, ser NÆSTE etapes invokation den nye værdi og kører v3.
  */
-async function resolveRaceEngineV4({
+export async function resolveRaceEngineV4({
   supabase, race, checkV4Enabled,
   loadEngine = loadRaceEngineV4,
   loadOrders = loadTeamOrderRows,
