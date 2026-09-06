@@ -47,6 +47,7 @@ import { boundRngFor } from "./rng.ts";
 import { deriveCp, deriveRechargeRate, tickPhysiologyOverSegment } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
 import { GROUP_DRAFT_EXTRA_TUNING } from "./tuning.ts";
+import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -84,9 +85,32 @@ type GroupTempo = {
   dtSeconds: number;
 };
 
-function riderCpForSegment(entrant: Entrant, riderState: RiderState, segment: Segment, tuning: EngineTuning): number {
+// M7-wiring (#4885, 6/9): distance-slid + dag-til-dag-slid ganges paa base-CP'en
+// EFTER deriveCp og FOER dayform laegges til — praecis det punkt
+// mechanics/distanceFatigue.ts's egen wiring-note udpeger. `segment.from_km` er
+// km tilbagelagt ved segmentets INDGANG og er identisk med loopets `state.km`
+// paa dette tidspunkt (cursoren saettes til forrige segments `to_km` naar
+// segmentet lukkes), men laeses lokalt fra segmentet saa funktionen forbliver
+// ren og state-fri.
+//
+// Multiplikatoren er svagt STIGENDE i endurance og i condition (se
+// distanceFatigue.ts), saa den kan aldrig vende to rytteres indbyrdes CP-orden:
+// invariant 3 (styrke straffes aldrig) holder per konstruktion, ikke per
+// kalibrering. Ingen rng — sliddet er en deterministisk funktion af
+// km/evne/condition.
+//
+// Eksporteret for testbarhed af netop KOBLINGEN — samme praecedens som
+// `groupDraftSpeedGain` nedenfor. En ende-til-ende-test kan ikke skelne "M7 er
+// koblet fra" fra "M7 er koblet til og flyttede ingenting"; en direkte test paa
+// denne funktion kan (segmentLoop.distanceFatigue.test.ts).
+export function riderCpForSegment(entrant: Entrant, riderState: RiderState, segment: Segment, tuning: EngineTuning): number {
   const baseCp = deriveCp(entrant.abilities, segment.kind, tuning.physiology.cpWeights);
-  return Math.max(0, baseCp + riderState.dayform);
+  const worn = applyDistanceFatigueToCp(baseCp, {
+    kmSoFar: segment.from_km,
+    enduranceAbility: entrant.abilities.endurance,
+    condition: entrant.condition,
+  });
+  return Math.max(0, worn + riderState.dayform);
 }
 
 /**
