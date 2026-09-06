@@ -65,9 +65,7 @@ export default function ProfilePage() {
     // #1792: udløbet/ugyldig session → authUser=null; stop før authUser.id (auth-flow redirecter til /login)
     if (!authUser) { setLoading(false); return; }
     const [{ data: userData }, { data: teamData }] = await Promise.all([
-      // single-ok: samme klasse som #4869/userProfile.jsx, men bevidst UDENFOR
-      // denne PR's scope (#3034 lod disse seks role-opslag urørt).
-      supabase.from("users").select("discord_id, username, email, role").eq("id", authUser.id).single(),
+      supabase.from("users").select("discord_id, username, email, role").eq("id", authUser.id).maybeSingle(),
       supabase.from("teams").select("id, name, manager_name").eq("user_id", authUser.id).maybeSingle(),
     ]);
     setUser(userData);
