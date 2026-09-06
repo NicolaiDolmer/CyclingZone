@@ -95,9 +95,12 @@ Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 | M10 | Incidents + 3 km-reglen — graduerede styrt, mekaniske uden DNF | F3 ✅ wiret 6/9 |
 | M11 | Vejr-lag pr. etape, seeded | F3 ✅ wiret 6/9 — se §2f |
 | M12 | Effort pr. rytter (femtrins: `grupetto`/`save`/`normal`/`protect`/`all_out`) | F3 ✅ wiret 6/9 — trinnet ganges på kraftkravet, ikke på CP; `grupetto` er ude af udbruddet og tæller 0 W'-reserve i finalen |
+| M13 | Holdtidskørsel — holdets tid er den k'te rytters passage | F3 ✅ wiret 6/9 — se §2h |
 | M14 | AI-holds ordrer gennem samme type | F3 ✅ wiret 3/9 (harness) |
 | M15 | Tidsgrænsen (UCI-reglen) + OTL som udfaldsklasse | F3 ✅ wiret 6/9 — se §2d |
 | M16 | Holdspil — kaptajnen beskyttes, hjælperen betaler | F3 ✅ wiret 6/9 — se §2e |
+
+**M13 stod ikke i tabellen før 6/9.** Kataloget lukkede 20/8 med M1-M14, men M13-rækken manglede i selve tabellen — mekanikken var bygget (`mechanics/teamTimeTrial.ts`, 17 grønne tests) og uden kaldssted, fordi den krævede et hold-id på rytteren. Det kom med M16 (§2e), og forgreningen er nu på plads.
 
 **M15 og M16 er ejer-besluttede scope-udvidelser, ikke PR-tilføjelser.** Kataloget blev lukket 20/8 med M1-M14. Ejeren besluttede 4/9 at tidsgrænsen ([#2582](https://github.com/NicolaiDolmer/CyclingZone/issues/2582)) er et krav til v4 før flip — *"ikke i v3"* — og låste reglen 6/9. Den står i §2d. **M16** (holdspillet) står i §2e og hviler på samme grundlag: kataloget har ingen holdspils-post, men ejer-beslutning 1 (5/9, §9) gør "holdspil med hold-id på rytteren" til flip-minimum, fordi kaptajn-beskyttelsen og hjælperens pris ellers forsvinder ved flippet.
 
@@ -312,6 +315,31 @@ mangler, ikke en hårdere kalibrering af dette lag.
 3. **Passagerne rører aldrig et resultat.** De ændrer hverken tid, gruppe, placering eller status — kun point, sekunder og tidslinje-events. Invariant 2, 3 og 6 er derfor uberørte per konstruktion, ikke ved en efterfølgende guard.
 
 **Målt paritet** (423 etapekørsler, 141 proxy-etaper × 3 seeds, 180-rytters felt): **pointudbuddet er identisk** — samme samlede spurt-/mål- og bjergpoint, 0 etaper med afvigelse. Med motoren holdt fast (v3's lag kørt på v4's eget resultat) giver de to lag **samme pointtrøje i 3 af 3 løb og samme bjergtrøje i 2 af 3**; top-3 ved de enkelte vejpunkter undervejs er enige i cirka en fjerdedel af tilfældene. Den uenighed **er** modelforskellen fra punkt 1 og skal være der.
+
+---
+
+## 2h. Holdtidskørsel (ejer 6/9) — holdets tid er den k'te rytters passage (M13)
+
+Auditten 5/9 og [#3463](https://github.com/NicolaiDolmer/CyclingZone/issues/3463) fandt samme hul: *"ni ryttere fra samme hold ville hver få deres egen tid"*. Ejeren tog M13 med i paritetsbølgen 6/9.
+
+**Diskriminatoren er `profile_type`, aldrig `finale_type`.** `raceStageProfileGenerator.js` mapper både `itt`, `itt_hilly` og `ttt` til finale-typen `solo_tt` — de kan ikke skelnes på finalen. `simulateStageV4` forgrener derfor på `route.profile_type === "ttt"` og kører `mechanics/teamTimeTrial.ts` i stedet for segment-loopet: en TTT er ikke en vejetape med et ekstra hook på, men en anden gruppemodel.
+
+**Reglerne:**
+
+| | Sådan |
+|---|---|
+| **Holdet** | ét hold = én gruppe, samlet af `adapters/teamRosterAdapter.ts` på `Entrant.team_id` |
+| **Starten** | hvert hold kører fra sit eget nul — hold-vis start, som UCI |
+| **Holdets tid** | den k'te rytters passage over stregen, `TTT_EXTRA_TUNING.countbackRiderRank`, clampet til holdets startantal |
+| **Rytterens tid** | holdets tid, for alle holdets startende ryttere |
+| **Belastningen** | den enkeltes *reelle* forbrug, også for en droppet rytter ([#3459](https://github.com/NicolaiDolmer/CyclingZone/issues/3459)) |
+| **Fronten** | turnus uden styrke-bias — også de svagere tager tørn, ellers giver en stærk TT-hjælper ingen mening |
+
+**Fallback:** en TTT-rute hvor ingen rytter bærer hold-id kører den almindelige vejetape-vej, bit-uændret. De fire golden fixtures er dermed urørte.
+
+**Kalenderen har ingen TTT endnu.** `ttt`-filleren har været slået fra siden [#2411](https://github.com/NicolaiDolmer/CyclingZone/issues/2411) — *"pauset indtil motoren kan simulere ægte hold-TTT"* — og S3 har derfor nul TTT-etaper (de eneste to `ttt`-rækker i basen er S1-rester uden rute). Motor-forudsætningen er væk nu; at lukke TTT ind i kalendergenereringen igen ændrer hvilke etaper spillerne får og er derfor et **ejer-valg**, ikke en wiring-ændring.
+
+> ⚠ **Tre huller står åbne, alle ejer-gatede.** (1) **Uheld og tidsgrænse rører ikke en TTT.** M10 og M15 bor i segment-loopet, som TTT-grenen ikke går igennem. Tidsgrænsen kan ikke bare anvendes uændret: en TTT-ankomstgruppe *er* et helt hold, og grupetto-redningen er kalibreret til et massestartsfelt, så et enkelt langsomt hold ville ryge ud af løbet samlet. (2) **En TTT uddeler ingen point til pointkonkurrencen.** M9's lag uddeler grønne point ved målstregen også på en holdtidskørsel (kun bonussekunderne er undtaget, `racePassages.js:146`); TTT-grenen producerer ingen passager. Det svarer til UCI-praksis, men det er en flip-paritets-afvigelse og dermed et ejer-valg. Inert i dag: kalenderen har nul TTT-etaper. (3) **Massestarts-ankrene måler skævt på TTT.** `same_team_top10_share_4plus` (bånd < 3 %) er strukturelt 100 % på en holdtidskørsel — det vindende holds ryttere *deler* tiden og fylder derfor top 8 med rette. Ankret bør sandsynligvis udelade tidskørsler, men det er en ændring af en ejer-godkendt målestok (§4 *"Et gulv er ikke et mål"*) og ikke noget denne wiring gør på egen hånd.
 
 ---
 

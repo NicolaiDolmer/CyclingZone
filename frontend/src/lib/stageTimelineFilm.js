@@ -10,7 +10,11 @@
 
 // gap_update er kurve-punkter (spec §2.2 "(S) kurvepunkter — valg 2"), ALDRIG en
 // narrativ feed-linje — samme udelukkelse som stageTimelineStory.js.
-const NON_FEED_TYPES = new Set(["gap_update"]);
+// ttt_team_result (M13, #3463) er af samme art: motoren emitterer ÉT resultat-
+// event pr. hold på målstregen, så holdets officielle tid står i tidslinjen som
+// data. Som feed-linjer ville det være hele startlisten af hold på én km — en
+// mur, ikke en broadcast. Vinderen står allerede i `finish`-eventet.
+const NON_FEED_TYPES = new Set(["gap_update", "ttt_team_result"]);
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -64,6 +68,16 @@ export function altitudeAtKm(series, km) {
   return x1 === x0 ? y0 : y0 + ((y1 - y0) * (clamped - x0)) / (x1 - x0);
 }
 
+// Etapetyper hvor der ikke er noget felt at måle en afstand til. Samme tre
+// værdier som backend/lib/raceStageProfileGenerator.js's TIME_TRIAL_PROFILES.
+const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
+
+/** Er etapen en tidskørsel? Aflæses af `stage_start` — det eneste event der bærer profile_type. */
+function isTimeTrialStage(events) {
+  const start = events.find((e) => e?.type === "stage_start");
+  return TIME_TRIAL_PROFILES.has(start?.params?.profile_type);
+}
+
 /**
  * Strukturerer den rå events-liste (spec §2.4-kontraktens `events`) til det
  * scrubberen/feedet/kurven skal bruge: sorteret narrativ-feed (excl. gap_update),
@@ -76,9 +90,16 @@ export function buildFilmTimeline({ events = [], distanceKm = null } = {}) {
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
     .map((e) => ({ km: e.km, category: e.params?.category ?? null, name: e.params?.name ?? null }));
-  const gapCurve = sorted
-    .filter((e) => e?.type === "gap_update")
-    .map((e) => ({ km: e.km, gapSeconds: e.params?.gap_seconds ?? 0 }));
+  // M13 (#3463): på en tidskørsel findes der ingen "afstand til feltet" at
+  // tegne. På en holdtidskørsel er hvert `gap_update` desuden ét HOLDS afstand
+  // til det hurtigste hold — tyve hold flettet ind i én kurve er en zigzag der
+  // ikke beskriver noget. Kurven udelades derfor på tidskørsler (GapCurveLayer
+  // renderer ingenting på en tom liste); tallene bliver stående i tidslinjen.
+  const gapCurve = isTimeTrialStage(sorted)
+    ? []
+    : sorted
+      .filter((e) => e?.type === "gap_update")
+      .map((e) => ({ km: e.km, gapSeconds: e.params?.gap_seconds ?? 0 }));
   const caughtEvent = sorted.find((e) => e?.type === "breakaway_caught");
   const finishEvent = sorted.find((e) => e?.type === "finish");
   const maxKm = distanceKm ?? finishEvent?.km ?? (sorted.length ? sorted[sorted.length - 1].km : 0);
@@ -251,6 +272,15 @@ export function describeEvent(event, { riderNameById } = {}) {
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
       return { key: "finale_attack", params: { rider } };
+    }
+    // M13 (#3463, holdtidskørslen). Det ENESTE dramatiske øjeblik undervejs i
+    // en TTT er at et hold mister en mand — holdet må køre videre med færre til
+    // at tage tørnene. Ingen tal ud over km (fog of war): hverken tempo,
+    // rotation eller hvor tæt holdet er på at miste den næste.
+    case "ttt_rider_dropped": {
+      const rider = riderName(p.rider_id, riderNameById);
+      if (!rider) return null;
+      return { key: "ttt_rider_dropped", params: { rider } };
     }
     case "sprint_decided": {
       // #4879: v4's finale (backend/lib/engine/v4/finale.ts) navngiver vinderen
