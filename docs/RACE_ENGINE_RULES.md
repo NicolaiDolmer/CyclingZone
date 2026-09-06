@@ -345,7 +345,7 @@ Auditten 5/9 og [#3463](https://github.com/NicolaiDolmer/CyclingZone/issues/3463
 
 ## 3. Invarianter (property-testede, må aldrig brydes)
 
-1. **Determinisme.** Samme input ⇒ byte-identisk output. Per-rytter-hash, så én ekstra tilmelding ikke flytter andres relative udfald.
+1. **Determinisme.** Samme input ⇒ byte-identisk output. Per-rytter-hash, så én ekstra tilmelding ikke flytter andres relative udfald. **Rng-streamen er nøglet på segmentet** ([#4886](https://github.com/NicolaiDolmer/CyclingZone/issues/4886)): `SegmentHookContext.rngFor` er bundet til (seed, segment, mekanik, rytter), så en mekanik der kaldes pr. segment ruller nyt hver gang i stedet for at genbruge sin første lodtrækning. En mekanik hvis lodtrækning hører til et vejpunkt eller til målstregen bruger `rngForStage` og begrunder det på kaldstedet.
 2. **Gruppe-tid.** Alle i samme mål-gruppe har identisk `time_seconds`.
 3. **Monotoni.** Inden for samme gruppe kan lavere testet evne aldrig give bedre tid. Støj skalerer magnitude, aldrig fortegn.
 4. **Km-dækning.** `0 ≤ km ≤ distance_km`, monotont ordnet, #2410-taksonomien håndhævet.
