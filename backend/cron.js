@@ -780,10 +780,43 @@ async function runAcademyHealSweepCron() {
 // free agents OG ryttere på hold (hvor markør er sat) som starterSquad/academy-
 // heal-sweepene strukturelt ikke kan se. Idempotent + deterministisk, ingen flag.
 
+// CYCLINGZONE-51: en rytter modellen ikke KAN værdisætte (fx over NPV-motorens
+// alders-horisont, se backfillCores.js' guard-kommentar) forbliver strandet uanset
+// hvor mange gange sweep'en re-deriver ham. Tilstanden er ægte og skal ses, men den
+// kan først forsvinde ved en data-beslutning — derfor samme dedupe-kontrakt som
+// AI-trim-stallet (#4752): ÉN alarm pr. tilstand, gen-alarm én gang i døgnet, aldrig
+// pr. 5-min-tick (den gamle adfærd kostede 189 events på 16 timer).
+const RIDER_UNVALUABLE_ALERT_KEY = "rider-derive-unvaluable";
+const RIDER_UNVALUABLE_REALERT_MS = 24 * 60 * 60 * 1000;
+
 async function runRiderDeriveHealSweepCron() {
   const result = await runRiderDeriveHealSweep({ supabase });
   if (result.healed) {
     console.log(`🩺 Rytter-derive heal-sweep: ${result.healed} strandede ryttere re-derived (${result.remaining ?? 0} tilbage)`);
+  }
+
+  // Kaldet sker OGSÅ når sættet er tomt: ellers ville en tilstand der kom sig
+  // efterlade sin gamle signatur, og et senere brud se "uændret" ud og tie.
+  const unvaluable = result.unvaluable ?? [];
+  const { alert } = await shouldAlertOnChange({
+    supabase,
+    alertKey: RIDER_UNVALUABLE_ALERT_KEY,
+    signature: buildAlertSignature(unvaluable),
+    reAlertAfterMs: unvaluable.length ? RIDER_UNVALUABLE_REALERT_MS : null,
+    captureExceptionFn: sentryCapture,
+  });
+
+  if (unvaluable.length && alert) {
+    console.error(
+      `🚨 Rytter-derive heal-sweep: ${unvaluable.length} rytter(e) kan ikke værdisættes af modellen — se Sentry (CYCLINGZONE-51)`
+    );
+    sentryCapture(new Error(`Rytter-derive: ${unvaluable.length} rytter(e) uden base_value modellen ikke kan værdisætte`), {
+      tags: { cron: "rider-derive-heal" },
+      fingerprint: ["rider-derive-unvaluable"],
+      // Flade strenge, ikke nestede objekter: Sentry-SDK'ens normalizeDepth
+      // kollapser dybe strukturer til "[Object]" og gør triagen blind.
+      extra: { count: unvaluable.length, riderIds: unvaluable.slice(0, 50) },
+    });
   }
 }
 

@@ -352,19 +352,60 @@ test("deriveForRiderIds (tom liste) er no-op", async () => {
 
 // ─── Kilde-guard (#1673): partiel derive må kaste, ikke strande tavst ──────────
 
-test("deriveForRiderIds (apply) KASTER hvis en rytter ikke fik base_value (partiel derive)", async () => {
+test("deriveForRiderIds (apply) KASTER på en ubrugelig værdi-model — FØR den skriver noget", async () => {
   // En brudt valuationModel (a=NaN) → predictBaseValue returnerer null for ALLE
-  // ryttere → riderUpdates har ingen base_value. Det er præcis #1673's tavse
-  // strandings-tilstand; guarden skal nu gøre den til en hård fejl ved kilden.
+  // ryttere. Det er præcis #1673's tavse strandings-tilstand; den afgøres nu på
+  // modellen selv, så vi kaster før nogen skrivning i stedet for at udlede det
+  // bagfra af outputtet (se CYCLINGZONE-51-kommentaren i backfillCores.js).
   const supabase = makeMockSupabase({ riders: [makeRider("r1"), makeRider("r2")] });
   await assert.rejects(
     () => deriveForRiderIds(supabase, ["r1", "r2"], {
       dryRun: false,
       valuationModel: { a: NaN, b: 1, offset: {} },
     }),
-    /partielt derive.*uden base_value/,
-    "guard skal kaste når base_value mangler for de inserterede id'er",
+    /valuation model unusable/,
+    "guard skal kaste når modellens koefficienter ikke er brugbare",
   );
+  assert.equal(supabase.writes.upserts.length, 0, "ingen upsert må være sket før guarden kastede");
+  assert.equal(supabase.writes.updates.length, 0, "ingen update må være sket før guarden kastede");
+});
+
+test("CYCLINGZONE-51: én rytter modellen ikke kan værdisætte fælder IKKE hele derive'en", async () => {
+  // Prod-instansen (6/9) var en rytter over NPV-motorens alders-horisont; DEN
+  // rod-årsag er lukket i #4876/#4880 (modellen er nu total på alder). Klassen
+  // "modellen er brugbar, men kan ikke værdisætte NETOP denne rytter" kan stadig
+  // opstå — predictBaseValueV4 returnerer også null for et ikke-endeligt resultat
+  // og for et evne-sæt uden endelige værdier. Her fremkaldt syntetisk med et
+  // elite-gulv på Infinity: `fit.a/b` er gyldige (modellen er altså brugbar), men
+  // base_value bliver ikke-endelig og dermed null.
+  //
+  // Kontrakten der testes er IKKE "hvordan blev den null", men "hvad koster det":
+  // FØR fældede én sådan rytter hele sweep'en hvert 5. minut i 10 timer og
+  // blokerede et ægte spillerholds start-trup-markør. NU: ability-rækken skrives,
+  // rytteren rapporteres, resten af batchet fuldfører.
+  const supabase = makeMockSupabase({ riders: [makeRider("uvurderbar")] });
+  const res = await deriveForRiderIds(supabase, ["uvurderbar"], {
+    dryRun: false,
+    valuationModel: {
+      version: 4,
+      fit: { a: 1, b: 0.05, offset: {} },
+      discount: 0.8,
+      scale: 1,
+      elite_premium: { floor: Infinity, floor_overall: 0 },
+    },
+  });
+  assert.deepEqual(res.unvaluable, ["uvurderbar"], "rytteren skal rapporteres som uvurderbar");
+  assert.equal(res.valued, 0);
+  assert.ok(
+    supabase.writes.upserts.some((u) => u.table === "rider_derived_abilities"),
+    "ability-rækken skal stadig være skrevet — kun værdien mangler",
+  );
+});
+
+test("deriveForRiderIds rapporterer tom unvaluable-liste når alt kan værdisættes", async () => {
+  const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
+  const res = await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
+  assert.deepEqual(res.unvaluable, []);
 });
 
 test("deriveForRiderIds (apply) KASTER ikke når alle id'er fik fuld derive", async () => {
