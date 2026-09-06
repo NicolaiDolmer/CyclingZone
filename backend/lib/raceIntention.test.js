@@ -342,7 +342,7 @@ test("#4632: PUT /team-orders AFVISER grupetto/all_out når flaget er off", () =
   for (const effort of INTENTION_EFFORTS) {
     const res = validateTeamOrder({
       ...ORDER_BASE,
-      order: { breakaway_stance: "neutral", riders: [{ rider_id: "r1", race_role: "helper", effort, try_break: false }] },
+      order: { breakaway_stance: "neutral", riders: [{ rider_id: "r1", effort, try_break: false }] },
       intentionEnabled: false,
     });
     assert.equal(res.ok, false, effort);
@@ -354,7 +354,7 @@ test("#4632: PUT /team-orders ACCEPTERER alle fem når flaget er on", () => {
   for (const effort of FIVE) {
     const res = validateTeamOrder({
       ...ORDER_BASE,
-      order: { breakaway_stance: "neutral", riders: [{ rider_id: "r1", race_role: "helper", effort, try_break: false }] },
+      order: { breakaway_stance: "neutral", riders: [{ rider_id: "r1", effort, try_break: false }] },
       intentionEnabled: true,
     });
     assert.deepEqual(res, { ok: true, errors: [] }, effort);
@@ -371,7 +371,7 @@ test("#4632: begge skrivestier deler ÉT vokabular (ingen divergens mellem stage
       });
       const b = validateTeamOrder({
         ...ORDER_BASE,
-        order: { breakaway_stance: "neutral", riders: [{ rider_id: "r1", race_role: "helper", effort, try_break: false }] },
+        order: { breakaway_stance: "neutral", riders: [{ rider_id: "r1", effort, try_break: false }] },
         intentionEnabled: on,
       });
       assert.equal(a.ok, false, `${effort}/${on}`);
