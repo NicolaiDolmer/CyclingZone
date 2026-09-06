@@ -22,7 +22,10 @@
 // REN — ingen import fra oevrigt backend, ingen IO/Date/Math.random.
 
 export type BreakawayStance = "chase" | "neutral" | "let_go";
-export type EffortLevel = "protect" | "normal" | "save";
+// #4632: femtrins-intentionen (ejer 5-6/9). Samme fem strenge som types.ts's
+// EffortLevel, v3's raceRoles.js VALID_EFFORTS_FIVE_STEP og DB-constraint'en paa
+// race_stage_roles.effort — ET vokabular paa tvaers af begge motorer.
+export type EffortLevel = "grupetto" | "save" | "normal" | "protect" | "all_out";
 
 export type TeamOrderRider = {
   rider_id: string;
@@ -37,7 +40,7 @@ export type TeamOrder = {
 };
 
 const BREAKAWAY_STANCES: ReadonlySet<BreakawayStance> = new Set(["chase", "neutral", "let_go"]);
-const EFFORT_LEVELS: ReadonlySet<EffortLevel> = new Set(["protect", "normal", "save"]);
+const EFFORT_LEVELS: ReadonlySet<EffortLevel> = new Set(["grupetto", "save", "normal", "protect", "all_out"]);
 
 // Praecise noegle-sæt (spec §"Ordre-kontrakten") — bruges til at afvise
 // side-kanal-felter (ingen ekstra felter kun AI kan saette).
@@ -92,7 +95,7 @@ export function validateTeamOrder(order: unknown): TeamOrderValidationResult {
       seenRiderIds.add(riderObj.rider_id);
     }
     if (typeof riderObj.effort !== "string" || !EFFORT_LEVELS.has(riderObj.effort as EffortLevel)) {
-      errors.push(`riders[${index}].effort skal vaere "protect" | "normal" | "save"`);
+      errors.push(`riders[${index}].effort skal vaere "grupetto" | "save" | "normal" | "protect" | "all_out"`);
     }
     if (typeof riderObj.try_break !== "boolean") {
       errors.push(`riders[${index}].try_break skal vaere boolean`);

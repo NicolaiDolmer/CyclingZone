@@ -36,7 +36,15 @@ export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "fr
 
 // M12 (effort-styring, ejer-valg 20/8 §4). F2 behandler alle ryttere som 'normal'
 // (segmentLoop.ts laeser feltet men mekanik-effekten er F3/M12-scope).
-export type EffortLevel = "protect" | "normal" | "save";
+//
+// #4632 (loebsdagens intention, ejer 5-6/9): udvidet fra tre til FEM trin —
+// samme enum som v3's raceRoles.js VALID_EFFORTS_FIVE_STEP og DB-constraint'en
+// paa race_stage_roles.effort, 1:1. De tre oprindelige vaerdier beholder navn OG
+// semantik; 'grupetto' og 'all_out' er de nye yderpunkter. Ingen wiring aendret
+// her (segmentLoop behandler stadig alle som 'normal' indtil M12 wires) — kun
+// typen, saa M12 arver skalaen i stedet for at genopfinde den.
+// SSOT: docs/superpowers/specs/2026-09-03-race-day-intention-decision.md §4/§6.
+export type EffortLevel = "grupetto" | "save" | "normal" | "protect" | "all_out";
 
 // ── Rute-model v2 (F1, deles med kalenderen) ──────────────────────────────────
 // Segment-felterne matcher backend/lib/routeSegments.js's buildSegments()-output

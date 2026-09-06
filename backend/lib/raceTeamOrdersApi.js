@@ -13,7 +13,7 @@
 // T4: ingen række = neutrale defaults (roller fra lineup, effort normal,
 // stance neutral, intet break-flag). Passivitet straffes aldrig.
 
-import { VALID_RACE_ROLES, VALID_EFFORTS } from "./raceRoles.js";
+import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
 
 export const VALID_BREAKAWAY_STANCES = ["chase", "neutral", "let_go"];
 
@@ -56,6 +56,7 @@ export function isStageLocked({ stageNumber, stagesCompleted = 0, scheduledAt, n
  *   scheduledAt: string|null,
  *   teamRiderIds: Set<string>,
  *   now?: Date,
+ *   intentionEnabled?: boolean,
  * }} args
  * @returns {{ok: boolean, errors: string[]}}
  */
@@ -68,6 +69,10 @@ export function validateTeamOrder({
   scheduledAt = null,
   teamRiderIds = new Set(),
   now = new Date(),
+  // #4632: race_day_intention_enabled. Default FALSE (samme kontrakt som
+  // raceStageRolesApi.validateStageRoleOverrides) — glemt flag = dagens
+  // tre-vaerdi-vokabular, aldrig det udvidede.
+  intentionEnabled = false,
 }) {
   if (raceCompleted) return { ok: false, errors: ["team_orders_race_completed"] };
   if (!Number.isInteger(stageNumber) || stageNumber < 1 || stageNumber > stageCount) {
@@ -92,8 +97,11 @@ export function validateTeamOrder({
   for (const r of riders) {
     if (!VALID_RACE_ROLES.includes(r?.race_role)) { errors.push("team_orders_invalid_role"); break; }
   }
+  // #4632: femtrins-intentionen bag flag — se raceStageRolesApi.js. Begge
+  // skrivestier deler ET vokabular (validEffortsFor) saa de aldrig kan diverge.
+  const validEfforts = validEffortsFor(intentionEnabled);
   for (const r of riders) {
-    if (!VALID_EFFORTS.includes(r?.effort)) { errors.push("team_orders_invalid_effort"); break; }
+    if (!validEfforts.includes(r?.effort)) { errors.push("team_orders_invalid_effort"); break; }
   }
 
   // Højst én captain og én sprint_captain pr. etape (samme regel som

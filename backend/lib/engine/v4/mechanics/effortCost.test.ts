@@ -31,7 +31,7 @@ test("effortDemandMultiplier: normal er neutral (multiplikator 1) med default-tu
 });
 
 test("effortDemandMultiplier: ren funktion — samme effort giver ALTID samme multiplikator", () => {
-  const levels: EffortLevel[] = ["protect", "normal", "save"];
+  const levels: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
   for (const level of levels) {
     const a = effortDemandMultiplier(level);
     const b = effortDemandMultiplier(level);
@@ -40,9 +40,14 @@ test("effortDemandMultiplier: ren funktion — samme effort giver ALTID samme mu
 });
 
 test("effortDemandMultiplier: custom tuning respekteres (ikke hardkodet til default-konstanterne)", () => {
-  const customTuning = { demandMultiplierProtect: 2, demandMultiplierNormal: 1, demandMultiplierSave: 0.1 };
+  const customTuning = {
+    demandMultiplierGrupetto: 0.05, demandMultiplierProtect: 2, demandMultiplierNormal: 1,
+    demandMultiplierSave: 0.1, demandMultiplierAllOut: 3,
+  };
   assert.equal(effortDemandMultiplier("protect", customTuning), 2);
   assert.equal(effortDemandMultiplier("save", customTuning), 0.1);
+  assert.equal(effortDemandMultiplier("grupetto", customTuning), 0.05);
+  assert.equal(effortDemandMultiplier("all_out", customTuning), 3);
 });
 
 test("applyEffortToDemand: skalerer demand, aendrer ALDRIG fortegn (0 -> 0, positiv -> positiv)", () => {
@@ -75,4 +80,30 @@ test("determinisme: gentagne kald med samme input giver byte-identisk resultat",
   const a = applyEffortToDemand(0.42, "protect");
   const b = applyEffortToDemand(0.42, "protect");
   assert.equal(a, b);
+});
+
+// ── #4632 (loebsdagens intention): femtrins-skalaen ──────────────────────────
+test("#4632: effortDemandMultiplier er strengt stigende over alle FEM trin (grupetto < save < normal < protect < all_out)", () => {
+  const scale: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
+  const values = scale.map((level) => effortDemandMultiplier(level));
+  for (let i = 1; i < values.length; i++) {
+    assert.ok(
+      values[i]! > values[i - 1]!,
+      `${scale[i]} (${values[i]}) skal koste MERE end ${scale[i - 1]} (${values[i - 1]})`,
+    );
+  }
+});
+
+test("#4632: all_out koster ALTID strengt mere end normal, grupetto strengt mindre (ingen gratis all-out)", () => {
+  assert.ok(effortDemandMultiplier("all_out") > effortDemandMultiplier("normal"));
+  assert.ok(effortDemandMultiplier("grupetto") < effortDemandMultiplier("normal"));
+});
+
+test("#4632: applyEffortToDemand aendrer aldrig fortegn paa nogen af de fem trin", () => {
+  const scale: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
+  for (const level of scale) {
+    assert.equal(applyEffortToDemand(0, level), 0, level);
+    assert.equal(applyEffortToDemand(-3, level), 0, level);
+    assert.ok(applyEffortToDemand(1.5, level) > 0, level);
+  }
 });

@@ -42,7 +42,9 @@ export type TeamOrderRow = {
 };
 
 const VALID_STANCES: ReadonlySet<string> = new Set(["chase", "neutral", "let_go"]);
-const VALID_EFFORTS: ReadonlySet<string> = new Set(["protect", "normal", "save"]);
+// #4632: femtrins-intentionen. Samme fem strenge som types.ts's EffortLevel —
+// uden dem ville adapteren stille degradere 'grupetto'/'all_out' til 'normal'.
+const VALID_EFFORTS: ReadonlySet<string> = new Set(["grupetto", "save", "normal", "protect", "all_out"]);
 
 /** T4-defaulten for et hold uden gemt raekke. */
 export function neutralOrder(teamId: string): TeamTacticsOrder {

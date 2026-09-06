@@ -79,6 +79,63 @@ export const RACE_V3_TUNING = Object.freeze({
   EFFORT_COST_MULTIPLIER_SAVE: 0.5,
   EFFORT_COST_MULTIPLIER_DEFAULT: 1.0,
 
+  // ── Løbsdagens intention (#4632, ejer-beslutning 5-6/9) ────────────────────
+  // Model C (docs/superpowers/specs/2026-09-03-race-day-intention-decision.md
+  // §4, beslutning 1 = C / beslutning 2 = A): SAMME felt (race_stage_roles.
+  // effort) udvides fra 3 til 5 trin. De to nye yderpunkter lægger sig UDEN OM
+  // save/normal/protect, som beholder både navn og semantik — eksisterende
+  // rækker og kode er derfor upåvirkede.
+  //
+  // Skalaen (spillervendte ord i UI/help, ikke her):
+  //   grupetto  — kører med, ingen egen chance, størst trætheds-besparelse
+  //   save      — kør roligt      (uændret, 0.7)
+  //   normal    — normal dag      (uændret, 1.0)
+  //   protect   — arbejd/angrib   (uændret, 1.2)
+  //   all_out   — alt ud
+  //
+  // ALLE FEM TAL NEDENFOR ER STARTGÆT, KALIBRERES. De er valgt som en
+  // fortsættelse af det allerede kalibrerede spring 0.7 → 1.0 → 1.2, ikke målt
+  // mod population endnu. Dry-run-tal ligger i PR-body; ejer-scorecard mod
+  // realistisk feltstørrelse er en gate FØR flaget flippes (spec §7.4 + §7.6).
+  // Env-override = samme mønster som S1/S2/S4/S5 ovenfor (harness-only; prod og
+  // CI sætter dem ALDRIG).
+  //
+  // Trætheds-siden (effortFatigueMultiplier → raceFatigue.js): grupetto skal
+  // ligge UNDER save, all_out OVER protect. all_out > normal er en invariant,
+  // ikke en kalibreringsknap ("ingen gratis all-out", spec §2).
+  FATIGUE_MULTIPLIER_GRUPETTO: envNum("RACE_INTENTION_FATIGUE_GRUPETTO", 0.5),
+  FATIGUE_MULTIPLIER_ALL_OUT: envNum("RACE_INTENTION_FATIGUE_ALL_OUT", 1.5),
+
+  // Work-cost-siden (workCost → raceSimulator.workCostComponent):
+  //   all_out  = 0 → rytteren betaler INGEN holdarbejds-pris ("går efter det
+  //              for sig selv"). LOFTET: 0 er bunden, aldrig en positiv bonus
+  //              oveni egen evne. Bevidst IKKE env-overstyrbar — en negativ
+  //              env-værdi ville vende fortegnet og gøre all-out til en gratis
+  //              score-gave. workCost() klamper desuden struktuelt (Math.min(0)).
+  //   grupetto = SAMME multiplikator som save. Bevidst ikke lavere: en lavere
+  //              pris end save ville være en resultat-FORDEL, og grupetto må
+  //              per ejer-beslutning give "ingen resultatfordel" — dens gevinst
+  //              er trætheds-besparelsen alene (og, når D2 tændes, prisen er
+  //              det laveste formudbytte + udelukkelse fra udbrud, se
+  //              raceSimulator.selectBreakawayBonuses).
+  EFFORT_COST_MULTIPLIER_GRUPETTO: envNum("RACE_INTENTION_COST_GRUPETTO", 0.5),
+  EFFORT_COST_MULTIPLIER_ALL_OUT: 0,
+
+  // Formudbytte-siden (effortDevelopmentMultiplier → dailyTraining.
+  // applyRaceDevelopmentTick's devTotal, D2). DORMANT indtil BÅDE
+  // race_day_development_enabled OG race_day_intention_enabled er on: kald-
+  // stedet sender intet effort før da, og uden effort er multiplikatoren 1.0
+  // (bit-identisk med i dag). Rækkefølgen grupetto < save < normal < protect <
+  // all_out er selve pointen — uden den er intentionen ligegyldig for
+  // progression (spec §2 "SKAL påvirke", princip B).
+  DEV_MULTIPLIER_BY_EFFORT: Object.freeze({
+    grupetto: envNum("RACE_INTENTION_DEV_GRUPETTO", 0.7),
+    save: envNum("RACE_INTENTION_DEV_SAVE", 0.85),
+    normal: 1.0,
+    protect: envNum("RACE_INTENTION_DEV_PROTECT", 1.1),
+    all_out: envNum("RACE_INTENTION_DEV_ALL_OUT", 1.2),
+  }),
+
   // ── S2 (#2353): dagsform + jour sans + form-vægt (spec §7) ──────────────────
   // Dagsform: per (rytter, etape-seed) seeded normal-komponent — NAVNGIVET
   // varians (optræder i why-rapporten som "stærk/tung dag"), IKKE en skrue på
@@ -213,7 +270,33 @@ export const FLAT_LEADOUT_PROFILES = Object.freeze(new Set(["flat"]));
 export const VALID_RACE_ROLES = Object.freeze([
   "captain", "sprint_captain", "helper", "hunter", "free_role",
 ]);
+// De TRE oprindelige effort-værdier (S1/S3). Uændret liste — den er stadig det
+// gyldige vokabular når `race_day_intention_enabled` er OFF, så et UI der er
+// deployet før flag-flippet ikke kan gemme et femtrins-valg der endnu ikke må
+// virke. Ordnet som i dag (ingen skala-betydning).
 export const VALID_EFFORTS = Object.freeze(["protect", "normal", "save"]);
+
+// #4632: de to NYE yderpunkter. Kun gyldige når intentions-flaget er on.
+export const INTENTION_EFFORTS = Object.freeze(["grupetto", "all_out"]);
+
+// #4632: hele femtrins-skalaen i SKALA-RÆKKEFØLGE (letteste → hårdeste). UI'et
+// må gerne læse rækkefølgen herfra (den er ikke hemmelig — kun multiplikatorerne
+// er, jf. fog-of-war-kravet: API'et returnerer enum-værdier, aldrig tal).
+export const VALID_EFFORTS_FIVE_STEP = Object.freeze([
+  "grupetto", "save", "normal", "protect", "all_out",
+]);
+
+/**
+ * Det gyldige effort-vokabular givet flag-tilstanden (#4632). ÉT sted, så
+ * begge API-stier (raceStageRolesApi + raceTeamOrdersApi) og eventuelle
+ * fremtidige indgange ikke kan diverge.
+ *
+ * @param {boolean} [intentionEnabled=false] race_day_intention_enabled
+ * @returns {readonly string[]}
+ */
+export function validEffortsFor(intentionEnabled = false) {
+  return intentionEnabled ? VALID_EFFORTS_FIVE_STEP : VALID_EFFORTS;
+}
 
 /**
  * Basis-prisen (før effort-skalering) for en rolle på en given etapeprofil.
@@ -249,18 +332,41 @@ function baseWorkCost(role, profileType) {
  * Returnerer den NEGATIVE (eller 0) score-delta der trækkes fra en rytters
  * finalScore for at have arbejdet for holdet. Ren, deterministisk, ingen rng.
  *
+ * #4632 (intention, Model C): effort-skalaen har fem trin. `all_out` sætter
+ * prisen til 0 (rytteren arbejder ikke for holdet i dag) og `grupetto` betaler
+ * samme halve pris som `save`. LOFTET er strukturelt: returværdien klampes til
+ * højst 0, så ingen kombination af rolle × profil × effort nogensinde kan give
+ * en POSITIV work-cost — altså en gratis score-bonus oveni egen evne. Det er
+ * netop den konstruktions-egenskab spec §4 kalder "loftet til maks 0" og
+ * doktrinen i RACE_ENGINE_RULES.md §4 ("styrke straffes aldrig") kræver.
+ *
  * @param {string} role          race_role (captain/sprint_captain/helper/hunter/free_role)
  * @param {string} profileType   stageProfile.profile_type
- * @param {'protect'|'normal'|'save'} [effort='normal']  S3-seam; default 'normal' (fuld pris, som i dag før S3 fylder værdier ind)
- * @returns {number}
+ * @param {'grupetto'|'save'|'normal'|'protect'|'all_out'} [effort='normal']  default 'normal' (fuld pris)
+ * @returns {number} ≤ 0 ALTID
  */
 export function workCost(role, profileType, effort = "normal") {
   const base = baseWorkCost(role, profileType);
   if (base === 0) return 0;
-  const mult = effort === "save"
-    ? RACE_V3_TUNING.EFFORT_COST_MULTIPLIER_SAVE
-    : RACE_V3_TUNING.EFFORT_COST_MULTIPLIER_DEFAULT; // protect + normal = fuld pris (spec §8)
-  return base * mult;
+  const cost = Math.min(0, base * effortCostMultiplier(effort));
+  // Normalisér -0 → 0: `negativ × 0` giver -0 i JS, og -0 ville sive ud i
+  // why-lagets `components.work_cost`-jsonb som et forvirrende "-0".
+  return cost === 0 ? 0 : cost;
+}
+
+/**
+ * Effort → work-cost-multiplikator (#4632). Ukendt/manglende effort →
+ * DEFAULT (fuld pris) — samme defensive fallback som før femtrins-udvidelsen,
+ * så en række med en værdi motoren ikke kender aldrig bliver til en rabat.
+ *
+ * @param {string} [effort='normal']
+ * @returns {number} ≥ 0
+ */
+function effortCostMultiplier(effort = "normal") {
+  if (effort === "save") return RACE_V3_TUNING.EFFORT_COST_MULTIPLIER_SAVE;
+  if (effort === "grupetto") return RACE_V3_TUNING.EFFORT_COST_MULTIPLIER_GRUPETTO;
+  if (effort === "all_out") return RACE_V3_TUNING.EFFORT_COST_MULTIPLIER_ALL_OUT;
+  return RACE_V3_TUNING.EFFORT_COST_MULTIPLIER_DEFAULT; // protect + normal = fuld pris (spec §8)
 }
 
 /**
@@ -269,13 +375,35 @@ export function workCost(role, profileType, effort = "normal") {
  * FATIGUE_MULTIPLIER_*-kommentar ovenfor) — raceFatigue.js's
  * stageEnteringFatigues() ganger raceFatigueLoad(profil) med dette tal.
  *
- * @param {'protect'|'normal'|'save'} [effort='normal']
+ * #4632: femtrins-skalaen lægger grupetto UNDER save og all_out OVER protect.
+ * Ukendt/manglende effort → NORMAL (1.0), som før.
+ *
+ * @param {'grupetto'|'save'|'normal'|'protect'|'all_out'} [effort='normal']
  * @returns {number}
  */
 export function effortFatigueMultiplier(effort = "normal") {
   if (effort === "protect") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_PROTECT;
   if (effort === "save") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_SAVE;
+  if (effort === "grupetto") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_GRUPETTO;
+  if (effort === "all_out") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_ALL_OUT;
   return RACE_V3_TUNING.FATIGUE_MULTIPLIER_NORMAL;
+}
+
+/**
+ * #4632, Model C punkt 3: intentions-skalering af løbsdagens FORMUDBYTTE
+ * (dailyTraining.applyRaceDevelopmentTick's devTotal, D2). Grupetto lavest,
+ * all_out højest — ellers er intentionen ligegyldig for progression.
+ *
+ * DORMANT SEAM: kald-stedet sender kun et effort når BÅDE
+ * race_day_development_enabled (D2) OG race_day_intention_enabled er on.
+ * Manglende/ukendt effort → 1.0 = BIT-IDENTISK med i dag.
+ *
+ * @param {'grupetto'|'save'|'normal'|'protect'|'all_out'|null|undefined} [effort]
+ * @returns {number} > 0
+ */
+export function effortDevelopmentMultiplier(effort) {
+  const m = RACE_V3_TUNING.DEV_MULTIPLIER_BY_EFFORT[effort];
+  return Number.isFinite(m) ? m : 1.0;
 }
 
 /**

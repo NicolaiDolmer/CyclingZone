@@ -356,10 +356,18 @@ export const WEATHER_EXTRA_TUNING = deepFreeze(weatherExtra);
 // raceRoles.RACE_V3_TUNING.FATIGUE_MULTIPLIER_PROTECT/_SAVE/_NORMAL: v3-
 // tallene er allerede spillet ind mod virkelige etaper) som en ren v4-
 // funktion — v4 importerer ALDRIG raceRoles.js selv (renheds-graensen).
+//
+// #4632 (loebsdagens intention, ejer 5-6/9): skalaen er udvidet til FEM trin.
+// De to nye yderpunkter ANKRER paa v3's nye startgaet praecis som de tre gamle
+// ankrede paa v3's kalibrerede tal — raceRoles.RACE_V3_TUNING.
+// FATIGUE_MULTIPLIER_GRUPETTO/_ALL_OUT (0.5 / 1.5). Begge er STARTGAET,
+// KALIBRERES sammen med resten af M12-wiringen; v4 er ikke live.
 const effortCostExtra = {
+  demandMultiplierGrupetto: 0.5, // <save: koerer med i grupettoen, gaar ikke efter noget (raceRoles FATIGUE_MULTIPLIER_GRUPETTO-anker, STARTGAET)
   demandMultiplierProtect: 1.2, // >1: beskytter/traekker for holdet koster ekstra effekt-krav (raceRoles FATIGUE_MULTIPLIER_PROTECT-anker)
   demandMultiplierNormal: 1.0, // =1: baseline, ingen modulation
   demandMultiplierSave: 0.7, // <1: koerer bevidst inden for sig selv (raceRoles FATIGUE_MULTIPLIER_SAVE-anker)
+  demandMultiplierAllOut: 1.5, // >protect: alt ud (raceRoles FATIGUE_MULTIPLIER_ALL_OUT-anker, STARTGAET)
 };
 
 /** M12 additiv effort-cost-tuning (deep-frosset). Se effortCostExtra-kommentaren ovenfor. */
