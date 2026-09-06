@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer-styret):** **Regel 6/9: tre baner** (deadline S4 · forretning viger aldrig · færdiggør før nyt), fuld rækkefølge i [MASTERPLAN.md](MASTERPLAN.md). **Bane 1 nu:** løbssiden som faner PR #4913 (ejer-go på preview) → v4 før flip (#4914 kalibrering, #4885 #4886 #4905, #4915 TTT, #4246, #4911, #4910) → flip (ejer) → S4-kalender #4270 (ikke før #4845) → træning pr. løbsdag #4850 → mandat #4857→#4859 → cutover #4592/#4619/#4860/#4376. **Bane 2:** #4616 nøgleblok (ejer ~30 min) → Pro i euro + mail-loop dry_run. **Bane 3:** ejer-lukkesession for **34 done-gated** issues (30 min, ingen kode) · #4921 feature-register MERGET (PR #4922, gate groen paa main; opfoelger: `dormant`-state) · #4495 akademi-valg. **Ejer-go der venter:** #4857 · #4859 · #4845. **Merget 6/9 aften:** #4912 #4884 #4864 #4835; #4801 lukket umerget (loftet ind i #4850); #4789 får "oprykning før slip" (ejer 6/9) og merges på grøn CI.
+> **🎯 Next action (ejer-styret):** **Regel 6/9: tre baner** (deadline S4 · forretning viger aldrig · færdiggør før nyt), fuld rækkefølge i [MASTERPLAN.md](MASTERPLAN.md). **Bane 1 nu:** v4 før flip (#4914 kalibrering, #4885 #4886 #4905, #4915 TTT, #4246, #4911, #4910) → flip (ejer) → S4-kalender #4270 (ikke før #4845) → træning pr. løbsdag #4850 → mandat #4857→#4859 → cutover #4592/#4619/#4860/#4376. **Bane 2:** #4616 nøgleblok (ejer ~30 min) → Pro i euro + mail-loop dry_run. **Bane 3:** ejer-lukkesession for **34 done-gated** issues (30 min, ingen kode) · #4921 feature-register MERGET (PR #4922, gate groen paa main; opfoelger: `dormant`-state) · #4495 akademi-valg. **Ejer-go der venter:** #4923 patch note 7.260 · #4857 · #4859 · #4845. **Merget 6/9 aften:** #4913 løbsside-faner (live; opfølgere #4917), #4789 akademi-udgang (6 fastlåste promoveret i prod på ejer-go), #4912 #4884 #4864 #4835; #4801 lukket umerget (loftet ind i #4850). Deploy-verify rød = chunk-fejl-raten (#2423, 111/24 t), ikke koden.
 
 > **⏳ Åbne ejer-valg (ét ad gangen):** bestyrelse før DNA-valg (#4900) · holdspils-kalibrering (v4 gab 3,0 mod v3 19,4, §2e) · TTT ind i S4-kalenderen (filler pauset siden #2411) · TTT giver ingen point til pointkonkurrencen i v4 (v3 gav) · bonussekunder v4 = eneste kilde (låst 6/9) · #2423 skew protection (758 chunk-fejl/47 spillere på 7 dage, ejer: rør ikke) · Discord: coming-soon-plakater + replay-animation i `docs/design/coming-soon-v4-2026-09-06/` og `replay-v4-2026-09-06/` (ejer poster selv).
 
@@ -24,6 +24,6 @@
 - **Træning:** nyt system (løbsdag som tick, #4850) live senest S4-start 28/9; kalenderpakker #4845 FØR S4-kalender.
 - **Mekanik:** PR'er merges med `--admin` én ad gangen med pause (Railway-deploys må ikke overlappe); `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Bølger: TIER WAVE, maks 3 byg-workers, push <10 min + hvert 15. min.
 
-> **🤖 Working agent:** Claude Code (Fable, orkestrator) 6/9 aften fra ~19:45 - PR #4913 loebsside-faner (worker) + #4789 (worker); koe-PR'er behandlet.
+> **🤖 Working agent:** Ingen aktiv session (Fable 6/9 aften lukket ~22:00: #4913 + #4789 merget, kø tømt).
 
 _Historik i git-log, issue-tråde + docs/audits/._
