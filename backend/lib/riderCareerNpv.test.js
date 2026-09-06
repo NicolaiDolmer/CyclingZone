@@ -381,3 +381,57 @@ test("#3449: manglende/ugyldig level_correction ⇒ faktor 1 (bagudkompatibel)",
 test("#3449: den committede V4-model bærer c fra 23/8-gaten", () => {
   assert.ok(Math.abs(levelCorrectionFactor(liveModel) - 0.810849161784679) < 1e-12);
 });
+
+// ── #4876 · TOTALITET: alderen alene må aldrig gøre en rytter værdiløs ─────────
+//
+// Rod-årsagen bag #4876: simulateCareer brød loopet på `age_s > 40` FØR sæson 0,
+// så en rytter på 41 fik npv = 0 → predictBaseValueV4 returnerede null → kilde-
+// guarden i deriveForRiderIds (#1673) kastede hvert 5. minut i ~10 timer for ét
+// ægte spillerhold (målt 6/9). Disse tests låser begge halvdele: modellen er
+// TOTAL (aldrig null på alder alene), OG den er værdi-neutral for alle ≤ 40.
+
+test("#4876: en rytter over pensionsalderen får en positiv værdi, ikke null", () => {
+  const abilities = makeAbilities({ sprint: 15, acceleration: 15, tactics: 15 });
+  const rider = { valuation_type: "sprinter", primary_type: "sprinter", potentiale: 2.0, age: 41 };
+
+  const value = predictBaseValueV4(rider, abilities, liveModel);
+  assert.notEqual(value, null, "41-årig må ikke værdisættes til null (det var #4876-loopet)");
+  assert.ok(value > 0, `41-årig skal have en positiv værdi, fik ${value}`);
+
+  // Præcis ÉN sæson: spillet pensionerer garanteret ved 40, så en rytter derover
+  // har kun den igangværende sæson tilbage. Fremskrivningen må IKKE løbe videre.
+  const traj = careerTrajectory(rider, abilities, liveModel);
+  assert.equal(traj.length, 1, "over 40 modelleres præcis den igangværende sæson");
+  assert.equal(traj[0].age, 41, "den ene sæson er rytterens NUVÆRENDE alder");
+});
+
+test("#4876 totalitet: ingen alder mellem 18 og 60 giver null base_value", () => {
+  const abilities = makeAbilities({ sprint: 15, acceleration: 15, tactics: 15 });
+  for (let age = 18; age <= 60; age++) {
+    const value = predictBaseValueV4(
+      { valuation_type: "sprinter", primary_type: "sprinter", potentiale: 2.0, age },
+      abilities,
+      liveModel
+    );
+    assert.ok(value != null && value > 0, `alder ${age} gav ${value} — modellen skal være total på alder`);
+  }
+});
+
+test("#4876 værdi-neutral: alle aldre til og med 40 er uændrede af alders-linjen", () => {
+  // Den gamle linje (`age_s > 40`) og den nye (`s > 0 && age_s > 40`) er identiske
+  // for age0 <= 40, fordi de først kan afvige ved s = 0 — og dér er age_s = age0.
+  // Denne test låser konsekvensen: trajectory'ens FØRSTE sæson er altid rytterens
+  // egen alder, for hele det aldersspænd populationen faktisk ligger i (målt 6/9:
+  // 8.023 af 8.024 aktive ryttere er <= 40).
+  const abilities = makeAbilities();
+  for (let age = 18; age <= 40; age++) {
+    const traj = careerTrajectory(
+      { valuation_type: "rouleur", primary_type: "rouleur", potentiale: 3.5, age },
+      abilities,
+      liveModel
+    );
+    assert.ok(traj.length >= 1, `alder ${age} gav en tom trajectory`);
+    assert.equal(traj[0].age, age, `alder ${age}: sæson 0 skal være rytterens egen alder`);
+    assert.ok(traj.every((r) => r.age <= 41), `alder ${age}: fremskrivningen løb forbi pensionsalderen`);
+  }
+});
