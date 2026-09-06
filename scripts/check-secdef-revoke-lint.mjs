@@ -27,6 +27,30 @@
 //
 // Begrundelsen er obligatorisk — det er den der gør undtagelsen reviewbar.
 //
+// ── Udvidelse #4870 (6/9): kommentarer tæller ikke, og en re-GRANT er et fund ─
+//
+// To huller lukket efter advisor-gennemgangen i #4870:
+//
+//  1. KOMMENTERET REVOKE talte som ægte REVOKE. Vagten samlede alle
+//     `revoke ...;`-strenge i rå filtekst, så en REVOKE i en "Rollback:"-
+//     kommentar — konventionen i næsten hver migration i database/ — kvitterede
+//     for et hul der aldrig blev lukket. Målt eksempel:
+//     database/2026-09-03-4649-founder-public.sql har PRÆCIS den form (den
+//     kørende SQL har kun `GRANT ... TO authenticated;`; REVOKE'en står i
+//     rollback-kommentaren) og passerede vagten. Filens tekst maskeres nu for
+//     kommentarer (`--` og indlejrede `/* */`) FØR REVOKE/GRANT/CREATE-scanning.
+//     Maskeringen bevarer længder, så al index-udregning er uændret; strenge og
+//     dollar-quotede funktionskroppe maskeres ikke.
+//
+//  2. EN EFTERFØLGENDE `GRANT ... TO anon|authenticated` var usynlig. Det er
+//     nøjagtig fælden #2327 beskrev: "CREATE OR REPLACE FUNCTION nulstiller ikke
+//     grants — et efterfølgende GRANT-statement lægger dem bare oveni." En fil
+//     kunne revoke'e korrekt og re-åbne funktionen tre linjer længere nede uden
+//     at vagten sagde noget. En GRANT af EXECUTE til anon eller authenticated på
+//     en SECURITY DEFINER-funktion i SAMME fil er nu et fund i sig selv —
+//     undertrykt af den samme allow-markør, så bevidst klient-kaldbare
+//     funktioner stadig kan skrives, bare synligt og med begrundelse.
+//
 // ── Hvorfor kun ændrede filer spærrer ────────────────────────────────────────
 //
 // Hele database/ har 27 historiske fund, men den LEVENDE database har kun to
@@ -60,6 +84,73 @@ const CREATE_FN =
 // `()` kunne æde sig frem til næste `)` længere nede i filen og fremstå udfyldt.
 const ALLOW_MARKER = /--\s*secdef-lint:\s*allow\s+([a-z0-9_]+)\s*\(([^)\n]*[^)\s\n][^)\n]*)\)/gi;
 
+const DOLLAR_TAG = /^\$[a-z0-9_]*\$/i;
+
+function endOfSingleQuoted(sql, start) {
+  let i = start + 1;
+  while (i < sql.length) {
+    if (sql[i] === "'") {
+      // '' er et escapet apostrof inde i strengen, ikke en afslutning.
+      if (sql[i + 1] === "'") { i += 2; continue; }
+      return i + 1;
+    }
+    i++;
+  }
+  return sql.length;
+}
+
+/**
+ * Erstat alt kommentar-indhold med mellemrum (newlines bevares), så en REVOKE
+ * eller GRANT i en rollback-kommentar ikke tælles som virkende SQL. Længden er
+ * uændret, så index-baseret afgrænsning af funktionskroppe er upåvirket.
+ * Strenge og dollar-quotede kroppe springes over — et `--` derinde er data.
+ */
+export function maskComments(sql) {
+  let out = "";
+  let i = 0;
+  while (i < sql.length) {
+    const two = sql.slice(i, i + 2);
+    if (two === "--") {
+      const nl = sql.indexOf("\n", i);
+      const end = nl === -1 ? sql.length : nl;
+      out += " ".repeat(end - i);
+      i = end;
+      continue;
+    }
+    if (two === "/*") {
+      // Postgres tillader indlejrede blokkommentarer.
+      let depth = 1;
+      let j = i + 2;
+      while (j < sql.length && depth > 0) {
+        const pair = sql.slice(j, j + 2);
+        if (pair === "/*") { depth++; j += 2; }
+        else if (pair === "*/") { depth--; j += 2; }
+        else j++;
+      }
+      out += sql.slice(i, j).replace(/[^\n]/g, " ");
+      i = j;
+      continue;
+    }
+    if (sql[i] === "'") {
+      const j = endOfSingleQuoted(sql, i);
+      out += sql.slice(i, j);
+      i = j;
+      continue;
+    }
+    const tag = DOLLAR_TAG.exec(sql.slice(i))?.[0];
+    if (tag) {
+      const close = sql.indexOf(tag, i + tag.length);
+      const j = close === -1 ? sql.length : close + tag.length;
+      out += sql.slice(i, j);
+      i = j;
+      continue;
+    }
+    out += sql[i];
+    i++;
+  }
+  return out;
+}
+
 /**
  * Find dollar-quote-kroppen der hører til en CREATE FUNCTION, så vi kan afgrænse
  * præcis hvilken tekst der tilhører netop den funktion. Uden det ville en
@@ -73,14 +164,19 @@ function bodyEndIndex(sql, fromIndex) {
   return close === -1 ? -1 : close + tagMatch[1].length;
 }
 
-export function analyzeSql(sql) {
+export function analyzeSql(rawSql) {
   const allowed = new Map();
-  for (const m of sql.matchAll(ALLOW_MARKER)) allowed.set(m[1].toLowerCase(), m[2].trim());
+  // Allow-markøren ER en kommentar og læses derfor i den RÅ tekst.
+  for (const m of rawSql.matchAll(ALLOW_MARKER)) allowed.set(m[1].toLowerCase(), m[2].trim());
 
-  // Alle REVOKE-sætninger i filen, uanset placering. En REVOKE står typisk
-  // EFTER funktionskroppene, så den kan ikke associeres via tekstregion —
-  // vi matcher i stedet på funktionsnavn nævnt i selve sætningen.
+  // Alt andet læses i den maskerede tekst: kun SQL der faktisk kører må tælle.
+  const sql = maskComments(rawSql);
+
+  // Alle REVOKE/GRANT-sætninger i filen, uanset placering. De står typisk EFTER
+  // funktionskroppene, så de kan ikke associeres via tekstregion — vi matcher i
+  // stedet på funktionsnavn nævnt i selve sætningen.
   const revokes = [...sql.matchAll(/\brevoke\b[\s\S]*?;/gi)].map((m) => m[0].toLowerCase());
+  const grants = [...sql.matchAll(/\bgrant\b[\s\S]*?;/gi)].map((m) => m[0].toLowerCase());
 
   const findings = [];
   const secdefFunctions = [];
@@ -98,10 +194,23 @@ export function analyzeSql(sql) {
     if (allowed.has(name)) continue;
 
     const mentioning = revokes.filter((r) => r.includes(name));
-    const missing = ["anon", "authenticated"].filter(
+    const missingRevokeFor = ["anon", "authenticated"].filter(
       (role) => !mentioning.some((r) => new RegExp(`\\b${role}\\b`).test(r)),
     );
-    if (missing.length) findings.push({ function: name, missingRevokeFor: missing });
+    // Rollen skal stå EFTER `TO`, ellers ville en funktion med "anon" i navnet
+    // (eller en revoke-agtig formulering) tælle som en grant.
+    const granting = grants.filter((g) => g.includes(name) && /\bexecute\b/.test(g));
+    const grantedTo = ["anon", "authenticated"].filter((role) =>
+      granting.some((g) => new RegExp(`\\bto\\b[\\s\\S]*\\b${role}\\b`).test(g)),
+    );
+
+    if (missingRevokeFor.length || grantedTo.length) {
+      findings.push({
+        function: name,
+        missingRevokeFor,
+        ...(grantedTo.length ? { grantedTo } : {}),
+      });
+    }
   }
 
   return { secdefFunctions, allowed: [...allowed.keys()], findings };
@@ -147,13 +256,22 @@ async function main() {
   } else if (report.length === 0) {
     console.log(`✅ secdef-grant-lint: ${files.length} SQL-fil(er) gennemgået, ingen fund.`);
   } else {
-    console.error(`❌ secdef-grant-lint: ${report.length} SECURITY DEFINER-funktion(er) uden fuld REVOKE.\n`);
+    console.error(`❌ secdef-grant-lint: ${report.length} SECURITY DEFINER-funktion(er) åben for klient-roller.\n`);
     for (const f of report) {
       console.error(`  ${f.file}`);
-      console.error(`    ${f.function}() — mangler REVOKE EXECUTE FROM ${f.missingRevokeFor.join(", ")}`);
-      console.error(
-        `    Fix: REVOKE EXECUTE ON FUNCTION public.${f.function}(<args>) FROM ${f.missingRevokeFor.join(", ")};`,
-      );
+      if (f.missingRevokeFor.length) {
+        console.error(`    ${f.function}() — mangler REVOKE EXECUTE FROM ${f.missingRevokeFor.join(", ")}`);
+        console.error(
+          `    Fix: REVOKE EXECUTE ON FUNCTION public.${f.function}(<args>) FROM ${f.missingRevokeFor.join(", ")};`,
+        );
+        console.error("    (En REVOKE i en rollback-KOMMENTAR tæller ikke — kun SQL der kører.)");
+      }
+      if (f.grantedTo?.length) {
+        console.error(`    ${f.function}() — GRANT EXECUTE ... TO ${f.grantedTo.join(", ")} i samme fil`);
+        console.error(
+          "    Fix: fjern grant'en (backend kalder med service_role), eller gør eksponeringen eksplicit:",
+        );
+      }
       console.error(
         `    Bevidst klient-kaldbar? Skriv: -- secdef-lint: allow ${f.function} (begrundelse)\n`,
       );
