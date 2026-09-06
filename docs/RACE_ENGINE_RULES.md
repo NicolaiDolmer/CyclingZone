@@ -97,8 +97,9 @@ Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 | M12 | Effort pr. rytter (`protect`/`normal`/`save`) | F3 |
 | M14 | AI-holds ordrer gennem samme type | F3 ✅ wiret 3/9 (harness) |
 | M15 | Tidsgrænsen (UCI-reglen) + OTL som udfaldsklasse | F3 ✅ wiret 6/9 — se §2d |
+| M16 | Holdspil — kaptajnen beskyttes, hjælperen betaler | F3 ✅ wiret 6/9 — se §2e |
 
-**M15 er en ejer-besluttet scope-udvidelse, ikke en PR-tilføjelse.** Kataloget blev lukket 20/8 med M1-M14. Ejeren besluttede 4/9 at tidsgrænsen ([#2582](https://github.com/NicolaiDolmer/CyclingZone/issues/2582)) er et krav til v4 før flip — *"ikke i v3"* — og låste reglen 6/9. Den står i §2d.
+**M15 og M16 er ejer-besluttede scope-udvidelser, ikke PR-tilføjelser.** Kataloget blev lukket 20/8 med M1-M14. Ejeren besluttede 4/9 at tidsgrænsen ([#2582](https://github.com/NicolaiDolmer/CyclingZone/issues/2582)) er et krav til v4 før flip — *"ikke i v3"* — og låste reglen 6/9. Den står i §2d. **M16** (holdspillet) står i §2e og hviler på samme grundlag: kataloget har ingen holdspils-post, men ejer-beslutning 1 (5/9, §9) gør "holdspil med hold-id på rytteren" til flip-minimum, fordi kaptajn-beskyttelsen og hjælperens pris ellers forsvinder ved flippet.
 
 Tre nye stats er ejer-valgt ind (20/8) og fødes skjulte først: dagsform-stabilitet · vejr-teknik · højde-tolerance.
 
@@ -169,7 +170,7 @@ Ejerens klage var at et styrt er et **binært totaltab**: enten sker der intet, 
 To ting er absolutte:
 
 - **Et mekanisk uheld kan aldrig tvinge nogen til at udgå og kan aldrig skade nogen.** Det er håndhævet af kontrolstrømmen i `resolveIncident` (`mechanics/incidents.ts`), ikke af et filter der kan glemmes: der findes præcis én gren der kan sætte skadedage eller udgåelse, og den ligger inde i styrt-grenen. Property-testet over 500 kombinationer.
-- **En hjælper tæt på gør et mekanisk uheld billigere.** "Tæt på" = en anden, stadig kørende rytter med rollen `helper` i **samme gruppe** i det segment — gruppen *er* nærhedsmodellen i v4. (`Entrant` bærer intet `team_id`, så "holdkammerat" kan ikke afgøres i kernen endnu; når feltet lander, strammes definitionen ét sted.)
+- **En hjælper tæt på gør et mekanisk uheld billigere.** "Tæt på" = en anden, stadig kørende rytter i **samme gruppe** i det segment — gruppen *er* nærhedsmodellen i v4 — som enten har rollen `helper` **eller er holdkammerat**. Holdkammerat-halvdelen kunne ikke afgøres da M10 blev wiret 6/9, fordi `Entrant` ikke bar noget `team_id`; M16 landede feltet, og definitionen blev strammet det ene sted noten pegede på (`hasHelperNearby` i `mechanics/incidents.ts`). En holdkammerat tæller uanset rolle — også `free_role`: enhver holdkammerat rækker dig et hjul, og det er et andet spørgsmål end hvem der arbejder for holdet i dag.
 
 **3 km-reglen beskytter tiden, ikke kroppen.** Et hårdt styrt inde på de sidste kilometer på en flad etape giver stadig skadedage — rytteren får gruppens tid, men han er lige så forslået. Et alvorligt styrt udgår uanset km-mærket: en rytter der ikke kører over stregen kan ikke få gruppens tid.
 
@@ -230,6 +231,38 @@ Ukendt eller manglende `profile_type` falder tilbage på 10 % — motoren kaster
 **OTL er en tredje udfaldsklasse**, ikke en variant af de to andre: rytteren *kom* i mål (modsat `abandoned`), men uden for grænsen. `StageResultStatus` er derfor `finished | abandoned | otl` (`types.ts`).
 
 > ⚠ **Reglen er inert mod v4's nuværende output.** Målt 6/9 over 984 etapekørsler (328 proxy-etaper × 3 seeds, 180-rytters felt fra populations-snapshottet): **0 OTL, 0 grupetto-redninger**. Største spredning mellem vinder og sidsteplads var 6,1 % på bjerg — mod en 15 %-grænse. v4 komprimerer feltet langt under virkeligheden, hvor en bjergetapes sidste mand er 20-30 minutter nede. Grænsen er sat efter UCI, ikke efter motorens nuværende spredning; at trimme den ned til under 6 % for at få reglen til at fyre ville gøre reglen forkert i stedet for at gøre motoren rigtig. Det er samme fejlfamilie som modsigelse 6 og 11 i §7. Kaldsstedet er verificeret: med en bredere `strengthSpeedGain` (motorens egen tuning-flade) sætter `simulateStageV4` OTL-status og emitterer eventet som den skal.
+
+---
+
+## 2e. Holdspil (ejer 5/9) — kaptajnen beskyttes, hjælperen betaler (M16)
+
+Auditten 5/9: *"Holdspillet findes ikke i v4. Kaptajnbeskyttelse og hjælperstøtte kræver et hold-id på rytteren, som den frosne kontrakt ikke har. Ved et flip forsvinder både hjælperens pris og kaptajnens fordel."* Ejer-beslutning 1 (5/9, §9) gør *"holdspil med hold-id på rytteren"* til flip-minimum. **M16 er derfor en ejer-besluttet udvidelse af det ellers lukkede katalog i §2, på samme grundlag som M15.**
+
+**Hold-id er nu på rytteren.** `Entrant.team_id` (`types.ts`) er **valgfri** og sættes af `adapters/entrantAdapter.ts` og broen (`raceEngineV4Bridge.js`, som allerede bærer feltet). Rollen alene tænder aldrig holdspillet — begge dele kræves, præcis som v3's `buildTeamContext` springer enhver entrant uden `team_id` **eller** `race_role` over. En startliste uden hold-id kører bit-identisk med før, så de fire golden fixtures er urørte.
+
+**De to kanaler, som i v3:**
+
+| | v3 | v4 (M16) |
+|---|---|---|
+| **Kaptajnen beskyttes** | score-løft, `teamComponent` | CP-faktor **over 1** |
+| **Hjælperen betaler** | negativ score-delta, `workCost` | CP-faktor **under 1** |
+
+Den beskyttede er **sprint-kaptajnen på flade etaper, kaptajnen ellers** — med fald tilbage på den anden, 1:1 med v3. `helper` og `hunter` arbejder; `free_role` bidrager 0 og betaler 0, ubetinget ([#2376](https://github.com/NicolaiDolmer/CyclingZone/issues/2376)). Der skal være mindst én arbejdende holdkammerat i **samme gruppe** — gruppen *er* nærhedsmodellen i v4, samme definition som §2c's *"tæt på"*.
+
+**Valutaen er CP, ikke W'.** Første wiring-forsøg brugte den anaerobe reserve og var *bit-identisk* med og uden hold: siden [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604)'s relative krav-tempo ligger ingen over CP i normaltilstanden, så W' genoplades fuldt hvert segment og enhver delta er visket ud før næste segment læser den. CP er den vedvarende akse — den styrer både gruppens tempo og klatre-selektionen, altså netop de to steder v3's holdspil også slår igennem.
+
+**Fire garantier, konstruktion frem for kalibrering** (property-testet i `mechanics/teamPlay.test.ts`):
+
+1. **Bevarelse.** Kaptajnens bonus overstiger aldrig det holdet faktisk betalte. Holdspil flytter kræfter, det skaber dem ikke — v4's udgave af *"aldrig gratis alt-ud"*.
+2. **Bounded.** Bonussen har desuden et hardt etape-loft: otte hjælpere giver ikke otte gange fordel.
+3. **Intet fortegns-skift.** Prisen er altid ≥ 0. `all_out` **fjerner** prisen (§9 punkt 3), men ingen kombination af rolle × profil × intention kan gøre den negativ, dvs. til gratis CP oveni egen evne. Samme strukturelle loft som v3's `Math.min(0, …)` i `workCost`, spejlet.
+4. **Monotoni (§3 invariant 3).** Faktoren er multiplikativ på rytterens egen CP, aldrig et absolut fradrag, så to ryttere i samme holdrolle-klasse aldrig kan bytte indbyrdes orden. Holdspillet er — som i v3 — en kanal **mellem** roller, ikke støj inden for én.
+
+Prisen er desuden **granularitets-uafhængig**: den betales pr. segment som andel af segmentets km, så en hel etape koster det samme uanset hvor fint rutemodellen har skåret den op. Samme princip som M10's pr.-km-skalering (§2c).
+
+**Intentionen skalerer prisen** (§9 punkt 3, Model C): `all_out` = 0, `save`/`grupetto` = halv, `normal`/`protect` = fuld. Det er work-cost-**aksen** og ikke M12's demand-akse — de to peger med vilje hver sin vej for `all_out`: en rytter der giver alt for **sig selv** brænder mere og arbejder samtidig ikke for holdet.
+
+> ⚠ **Kalibreringen er ikke i mål.** Holddominans-ankeret (`same_team_top10_share_4plus`) ligger på sit **gulv, 0,0 %, i både v3 og v4** og kan derfor hverken bekræfte eller afkræfte at holdspillet virker — det er en regressionsvagt mod det modsatte problem. Derfor måler harnessen nu **beskyttelses-gabet** direkte (`scripts/lib/headToHeadTeamPlay.js`): gennemsnitlig placering pr. rolle, korrigeret for rytterens egen evne-rang i feltet, målt på begge motorer over samme etaper og seeds. **v4's gab er stadig en brøkdel af v3's.** Startværdierne i `TEAM_PLAY_EXTRA_TUNING` er valgt så mekanikken er målbar uden at vælte et eneste anker; at løfte den til fuld v3-paritet er en **kalibrering med ejer-go** (§4 *"Simulér før ship"*), ikke en wiring-ændring. Tallet er en flip-blokker på linje med de øvrige paritets-huller. **Holdarbejdet bogføres bevidst ikke i `RiderLoad.work_norm`**: det tal er segment-loopets arbejde i motorens egne enheder, og et holdspils-led ville skulle opfinde en omregning fra "andel af CP". At holdarbejde også skal koste i træningsudbyttet er rigtigt, men det hører i løbsdags-udviklingen ([#4850](https://github.com/NicolaiDolmer/CyclingZone/issues/4850)/D2) sammen med intentionens egen udbytte-multiplikator — ikke i en opfundet enhed i motoren.
 
 ---
 

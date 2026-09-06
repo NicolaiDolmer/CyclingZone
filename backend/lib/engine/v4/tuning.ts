@@ -10,7 +10,7 @@
 // REN — ingen import fra oevrigt backend. Overridable i harness/tests via
 // spread (`{ ...RACE_V4_TUNING, selection: { ...RACE_V4_TUNING.selection, ... } }`).
 
-import type { EngineTuning, ProfileType, SegmentKind } from "./types.ts";
+import type { EffortLevel, EngineTuning, ProfileType, SegmentKind } from "./types.ts";
 
 // Generisk dyb-freeze: RACE_V3_TUNING's moenster (Object.freeze) er fladt fordi
 // den er en flad tuning-flade; v4's tuning har nestede grupper (§4-5's kategorier)
@@ -576,3 +576,110 @@ const timeLimitExtra = {
 
 /** M15 additiv tidsgraense-tuning (deep-frosset). Se timeLimitExtra-kommentaren ovenfor. */
 export const TIME_LIMIT_EXTRA_TUNING = deepFreeze(timeLimitExtra);
+
+// ── M16 (mechanics/teamPlay.ts, #4246) — ADDITIV holdspils-tuning ────────────
+// Samme additive praecedens som finaleExtra/effortCostExtra ovenfor: SS2's
+// frosne EngineTuning (types.ts) har ingen "teamPlay"-noegle, saa
+// mechanics/teamPlay.ts importerer denne direkte.
+//
+// KONTRAKT (auditten 5/9 + ejer-beslutning 1 og 3, RACE_ENGINE_RULES §9): v3
+// har to holdspils-kanaler som v4 slet ikke har — kaptajnens BESKYTTELSE
+// (raceSimulator.teamComponent: den beskyttede rytter faar holdets arbejde som
+// et bounded score-loeft, vaegt teamRaceWeightV3() x helperSupport) og
+// hjaelperens PRIS (raceRoles.workCost: en negativ score-delta for at have
+// arbejdet). Begge forsvinder ved et flip hvis de ikke findes i v4.
+//
+// VALUTAEN ER CP, IKKE W'. v4 har ingen "score" at laegge et hold-led paa; den
+// har en fysiologi. Den foerste wiring 6/9 forsoegte W' (den anaerobe reserve)
+// og var BIT-IDENTISK med og uden hold: siden #4604's relative krav-tempo
+// ligger ingen over CP i normaltilstanden, saa W' genoplades fuldt hvert
+// segment og enhver delta er visket ud foer naeste segment laeser den. CP er
+// den vedvarende akse — den styrer baade gruppens tempo
+// (segmentLoop.computeGroupTempo) og klatre-selektionen (M2's testedDeficit),
+// altsaa praecis de to steder v3's holdspil ogsaa slaar igennem.
+//
+// BEVARELSE (ikke en kalibrering, en KONSTRUKTION): kaptajnens bonus-fraktion
+// er aldrig stoerre end summen af de omkostnings-fraktioner hans holdkammerater
+// faktisk paadrog sig samme segment, ganget med transferEfficiency <= 1.
+// Holdspil FLYTTER kraefter, det skaber dem ikke — v4's udgave af "aldrig
+// gratis alt-ud" (§9 punkt 3), property-testet, ikke kalibreret.
+//
+// ALLE TAL ER STARTGAET, KALIBRERES VIDERE. Ankret er v3's egne kalibrerede
+// FORHOLD (raceRoles.RACE_V3_TUNING): hjaelperens pris paa GC-relevante
+// profiler er ~9/8 af leadout-prisen paa flad vej, save/grupetto betaler halv
+// pris, og all_out betaler INTET. Selve STOERRELSEN kan ikke arves — v3's tal
+// er score-deltaer paa en 0-1-skala, v4's er andele af egen CP.
+//
+// MAALT 6/9 ved wiringen (426 etaper x 3 seeds, 180-rytters felt,
+// --orders=ai, scripts/lib/headToHeadTeamPlay.js): niveauet nedenfor er
+// LOEFTET 3x fra det foerste gaet, fordi det foerste gav et beskyttelses-gab
+// paa 0,4 pladser mod v3's 19,4 — altsaa en mekanik der var koblet ind og
+// alligevel usynlig. Med niveauet nedenfor er gabet 3,0 pladser (hjaelperen
+// taber 4,0 pladser i forhold til sin egen evne-rang, kaptajnen vinder 5,4),
+// og INTET anker skifter dom: felt-sammenhaeng, nedkoersels-/summit-ratio,
+// punch, brosten, favorit-win-rate, sprinter-rate, ITT og bjerg-top-10 ligger
+// alle inden for deres eget seed-spaend fra foer wiringen.
+//
+// AFSTANDEN TIL v3 ER STADIG STOR (3,0 mod 19,4 pladser) og er et bevidst
+// AABENT punkt, ikke et overset et: v3's gab er domineret af hjaelperens pris,
+// og at hente den fulde afstand kraever et CP-fradrag der efter alt at doemme
+// vil flytte felt-sammenhaeng og bjerg-spredning. Det er en kalibrering med
+// ejer-go (RACE_ENGINE_RULES §4 "Simulér før ship"), ikke en wiring-aendring.
+// Se §2e's advarselsblok.
+const teamPlayExtra = {
+  // Hjaelperens pris over HELE etapen, som andel af hans egen CP. Per segment
+  // paadrages `costFraction x (segmentets km / etapens km)`, og summen over
+  // etapen er derfor praecis costFraction — uafhaengigt af hvor fint
+  // rutemodellen har skaaret etapen op (samme granularitets-uafhaengighed som
+  // M10's pr.-km-skalering, RACE_ENGINE_RULES §2c).
+  helperCostFractionGc: 0.15, // GC-relevante profiler (rolling/hilly/mountain/high_mountain/classic): hjaelperen traekker hele dagen for sin kaptajn — v3's WORK_COST_HELPER_GC-rolle. KALIBRERET 6/9 (3x foerste gaet)
+  helperCostFractionFlat: 0.133, // flade etaper: leadout-arbejde, kortere og senere end en bjergdags tempotraek — v3's 8/9-forhold mellem FLAT og GC bevaret. KALIBRERET 6/9 (3x foerste gaet)
+  helperCostFractionOther: 0.075, // oevrige profiler (brosten/grus/itt/itt_hilly/ttt): v3 giver helper 0 her, men v4's felt koerer stadig samlet paa brosten — halv pris i stedet for nul, saa holdspillet ikke forsvinder paa en klassiker. KALIBRERET 6/9 (3x foerste gaet)
+  hunterCostFraction: 0.05, // `hunter` koerer sit eget loeb (udbruds-kandidat) men bruger stadig kraefter for holdet — lille, profil-uafhaengig pris, praecis som v3's WORK_COST_HUNTER. KALIBRERET 6/9 (3x foerste gaet)
+
+  // Effort-multiplikator paa hjaelperens PRIS (RACE_ENGINE_RULES §9 punkt 3,
+  // ejer 6/9: "holdarbejdets pris (all_out fjerner prisen, loftet til 0, aldrig
+  // bonus over egen evne)"). Dette er work-cost-AKSEN og ikke M12's
+  // demand-akse: de to peger med vilje hver sin vej for all_out — en rytter
+  // der giver alt for SIG SELV braender mere (M12's demandMultiplierAllOut
+  // 1.5) og arbejder samtidig ikke for holdet (0 her). Derfor sit eget saet
+  // konstanter og ikke et delt haandtag med EFFORT_COST_EXTRA_TUNING.
+  // Ankret er raceRoles.RACE_V3_TUNING.EFFORT_COST_MULTIPLIER_* 1:1.
+  effortCostMultiplier: {
+    grupetto: 0.5, // samme halve pris som save (v3: bevidst IKKE lavere — en lavere pris end save ville vaere en resultat-FORDEL, og grupetto maa ikke give en saadan)
+    save: 0.5, // koerer bevidst inden for sig selv: halv pris
+    normal: 1.0, // fuld pris (baseline)
+    protect: 1.0, // fuld pris — `protect` ER holdarbejdet, den rabatteres aldrig
+    all_out: 0, // ejer 6/9: all_out FJERNER prisen. LOFTET er strukturelt (Math.max(0, ...) i mechanics/teamPlay.ts): 0 er bunden, aldrig en negativ pris = gratis CP oveni egen evne
+  } as Record<EffortLevel, number>,
+
+  // Kaptajnens beskyttelse. `transferEfficiency` er den andel af holdets
+  // paadragne pris der naar frem som lae hos den beskyttede rytter; resten er
+  // tabt (vind, positionering, rytteren foran der ogsaa skal koere).
+  // < 1 er baade realistisk OG bevarelses-garantien.
+  transferEfficiency: 0.6, // andel af hjaelpernes pris der bliver til kaptajnens laegevinst. STARTGAET
+  // Hardt loft paa kaptajnens bonus over hele etapen, som andel af hans EGEN
+  // CP. Uden loftet ville et hold med otte hjaelpere kunne give sin kaptajn en
+  // ubegraenset fordel — "bounded fordel-signal" er ejer-formuleringen, og det
+  // er DETTE tal der goer den bounded. Bevidst mindre end hjaelperens pris: en
+  // kaptajn kan aldrig vinde mere end et helt holds arbejde koster.
+  captainMaxBonusFraction: 0.08, // maks. bonus over hele etapen, andel af kaptajnens egen CP. KALIBRERET 6/9
+  // Gulv under holdarbejdets samlede faktor: selv en hjaelper der har trukket
+  // hele dagen for et helt hold er stadig en cykelrytter. Regressionsvagt mod
+  // en fremtidig kalibrering der utilsigtet nulstiller nogens CP.
+  minCpFactor: 0.7,
+
+  // Mindst én arbejdende holdkammerat i SAMME gruppe kraeves (ejer-brief).
+  // Gruppen ER naerheds-modellen i v4 (mor-spec §3.2, samme definition som
+  // mechanics/incidents.ts's hasHelperNearby) — en hjaelper der er koert af
+  // bagud hjaelper ingen.
+  minWorkersForProtection: 1,
+  // Maetning: holdstoerrelsen der giver FULD stoette. Flere end dette flytter
+  // ikke mere (log-kurve, clampet) — samme "kvalitet over kvantitet, naturligt
+  // bounded"-princip som v3's buildTeamContext bruger naar den midler
+  // hjaelper-stoetten i stedet for at summere den.
+  supportSaturationWorkers: 4, // antal arbejdende holdkammerater i gruppen der giver fuld stoette. STARTGAET
+};
+
+/** M16 additiv holdspils-tuning (deep-frosset). Se teamPlayExtra-kommentaren ovenfor. */
+export const TEAM_PLAY_EXTRA_TUNING = deepFreeze(teamPlayExtra);

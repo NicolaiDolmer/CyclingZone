@@ -20,6 +20,7 @@ import { descentHook } from "./mechanics/descent.ts";
 import { breakawayHook } from "./mechanics/breakaway.ts";
 import { applyThreeKmRuleToResults, incidentHook } from "./mechanics/incidents.ts";
 import { cobblesHook } from "./mechanics/cobbles.ts";
+import { teamPlayHook } from "./mechanics/teamPlay.ts";
 import { finaleHook } from "./finale.ts";
 import { sortTimeline } from "./timeline.ts";
 // M15 (#2582, ejer-beslutning 6/9): tidsgraensen. Se wiring-blokken i
@@ -37,8 +38,10 @@ import { applyTimeLimit } from "./mechanics/timeLimit.ts";
 // FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855). Audit'en 5/9 talte otte
 // faerdige mekanikker uden ét eneste kaldssted. M10 (incidents) og M8
 // (brosten/grus) er nu KOBLET IND og staar altsaa ikke laengere paa den liste.
-// Stadig bygget-men-ikke-kaldt: M7 (distance-slid), M9 (bonussekunder),
-// M11 (vejr), M12 (effort), holdtidskoerslen og ordre-adapteren.
+// Stadig bygget-men-ikke-kaldt: M9 (bonussekunder), M11 (vejr), M12 (effort)
+// og holdtidskoerslen. (M7 blev wiret 6/9 i segmentLoop's riderCpForSegment;
+// M16/holdspillet er wiret her nedenfor og gav samtidig `Entrant.team_id`,
+// forudsaetningen for at holdtidskoerslen kan kobles ind.)
 const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: climbSelectionHook,
   descent: descentHook,
@@ -48,6 +51,11 @@ const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   // M8 (#3855, ejer-beslutning 6/9): brosten-/grus-sektorer. Kaldes paa
   // cobbles-segmenter af segmentLoop.ts.
   cobbles: cobblesHook,
+  // M16 (#4246, ejer-beslutning 1 5/9): holdspillet — kaptajnen beskyttes,
+  // hjaelperen betaler. Kaldes paa HVERT segment af segmentLoop.ts, som det
+  // foerste hook. Kraever `Entrant.team_id`; en startliste uden hold-id
+  // (fixtures, haandbyggede testlister) koerer bit-uaendret.
+  teamPlay: teamPlayHook,
 };
 
 function round2(n: number): number {

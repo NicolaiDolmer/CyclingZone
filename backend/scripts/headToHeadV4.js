@@ -42,6 +42,7 @@ import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter
 import { aggregateScorecards, buildScorecard, formatScorecard } from "./lib/headToHeadAnchors.js";
 import { buildStageTeamOrders, formatOrderEffect, sumOrderEffects } from "./lib/headToHeadOrders.js";
 import { sampleField } from "./lib/headToHeadStats.js";
+import { formatTeamPlay, measureTeamPlay } from "./lib/headToHeadTeamPlay.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -93,12 +94,18 @@ function v3EntrantsFromPopulation(riders, roles = null) {
   }));
 }
 
+// M16 (#4246): hold-id foelger med ind i v4's startliste, praecis som det
+// altid har gjort i v3's (`v3EntrantsFromPopulation` ovenfor). Uden det er
+// holdspils-mekanikken en no-op i harnesset, og holddominans-ankeret
+// (same_team_top10_share_4plus) ville maale en verden hvor ingen har et hold.
 function v4EntrantsFromPopulation(riders, roles = null) {
+  const teamByRider = new Map(riders.map((r) => [r.id, r.team_id ?? null]));
   const rows = riders.map((r) => ({ rider_id: r.id, ...r.abilities }));
   return entrantsFromAbilitiesRows(rows, (riderId) => ({
     role: roles?.get(riderId) ?? DEFAULT_ROLE,
     effort: DEFAULT_EFFORT,
     condition: 1,
+    teamId: teamByRider.get(riderId) ?? null,
   }));
 }
 
@@ -315,7 +322,10 @@ export function runHeadToHead({
       // headToHeadAnchors.buildScorecard() (mor-spec §5-scoring). Additiv felt,
       // aendrer intet ved de eksisterende summary-felter ovenfor (bagudkompatibelt
       // med F2-stubbens egne tests).
-      raw: { v3Output, v4Output, route, tuning: RACE_V4_TUNING, stageRow },
+      // `roles` (M16, #4246): rolle-tildelingen for netop DETTE felt, saa
+      // holdspils-maalingen kan gruppere placeringer pr. rolle uden at gaette.
+      // Null naar orders=none (ingen roller tildelt).
+      raw: { v3Output, v4Output, route, tuning: RACE_V4_TUNING, stageRow, roles },
     });
   }
   return rows;
@@ -568,6 +578,15 @@ function main() {
   if (orderEffects.length > 0) {
     console.log("");
     console.log(formatOrderEffect(sumOrderEffects(orderEffects)));
+  }
+
+  // M16 (#4246): holddominans-ankeret ligger paa sit gulv (0,0 %) i BEGGE
+  // motorer og kan derfor hverken bekraefte eller afkraefte at holdspillet
+  // virker. Denne maaling kan — se lib/headToHeadTeamPlay.js's hoved.
+  const teamPlay = measureTeamPlay(allRows, { abilitiesByRider });
+  if (teamPlay.v4.stages > 0) {
+    console.log("");
+    console.log(formatTeamPlay(teamPlay));
   }
 
   const scorecard = aggregateScorecards(scorecards);

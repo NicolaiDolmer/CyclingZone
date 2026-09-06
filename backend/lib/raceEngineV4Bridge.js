@@ -245,8 +245,15 @@ export function incidentRowsFromV4Output(output) {
  * Bruger v4's EGEN entrantAdapter — ingen parallel evne-normalisering her.
  *
  * `condition` er 0-1; raceRunner bærer `fatigue` på 0-100-skalaen, så den
- * inverteres. v4's F2/F3-kerne læser feltet men bruger det ikke endnu (M7 er
- * paritets-scope); mapningen står her så den ikke skal opfindes to gange.
+ * inverteres. M7 (distance-slid) forbruger feltet siden 6/9.
+ *
+ * `team_id` (M16 holdspil, #4246): raceRunner's simEntrant bærer det allerede
+ * (samme felt `rosterForOrders` nedenfor læser). Uden det kan v4 ikke kende
+ * forskel på en kaptajn med tre hjælpere og en kaptajn helt alene — auditten
+ * 5/9's "ved et flip forsvinder både hjælperens pris og kaptajnens fordel".
+ * Rollen alene er IKKE nok: `mechanics/teamPlay.ts` kræver begge, præcis som
+ * v3's `buildTeamContext` springer enhver entrant uden team_id ELLER
+ * race_role over.
  */
 function toV4Entrants(entrants, entrantAdapter) {
   return entrants.map((e) => {
@@ -257,6 +264,7 @@ function toV4Entrants(entrants, entrantAdapter) {
       role: e.race_role,
       effort: e.effort,
       condition,
+      teamId: e.team_id,
     });
   });
 }
