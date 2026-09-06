@@ -12,6 +12,8 @@ import { scoutingMockRoute } from "./scoutingMock.js";
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
+  SEED_TEAM_ORDERS,
+  SEED_TEAM_ORDERS_BY_RACE,
   SEED_DEV_TRANSITION, ACTIVE_SEASON,
 } from "./seedData.js";
 
@@ -179,6 +181,26 @@ export function installPreviewMock() {
       if (method === "GET" && /\/api\/training\/me$/.test(url)) {
         return jsonResponse(SEED_TRAINING);
       }
+
+      // #4030/#4246 · taktik-ordre-kortet (TacticsCard). BEVIDST kun her og
+      // ikke i mockHandlers.js (samme lagdeling som onboarding-mocken ovenfor):
+      // Playwright-fixtures deler mockHandlers, og kortet er dev/preview-gated,
+      // saa et svar dér ville flytte eksisterende race-snapshots.
+      //
+      // Kortet er ejerens eneste vej til at SE kaeden foer v4-flippet, jf.
+      // "ejeren skal kunne teste paa preview"-reglen.
+      // #4613: svaret vaelges paa loebets id, saa Taktik-fanen kan ses i alle
+      // fire tilstande (kommende, midt i afviklingen, endagsloeb, afsluttet).
+      // Ukendt id falder tilbage til etapeloebet midt i afviklingen.
+      const teamOrdersMatch = url.match(/\/api\/races\/([^/?]+)\/team-orders(?:\?|$)/);
+      if (method === "GET" && teamOrdersMatch) {
+        const raceId = decodeURIComponent(teamOrdersMatch[1]);
+        return jsonResponse(SEED_TEAM_ORDERS_BY_RACE[raceId] ?? SEED_TEAM_ORDERS);
+      }
+      if (method === "PUT" && /\/api\/races\/[^/]+\/team-orders\/[0-9]+$/.test(url)) {
+        return jsonResponse({ ok: true });
+      }
+      // Navnene paa kortets ryttere kommer fra scoutingMock's /api/riders/names.
 
       // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — dashboard-kortet.
       // Bevidst KUN her og ikke i mockHandlers.js (samme lagdeling som

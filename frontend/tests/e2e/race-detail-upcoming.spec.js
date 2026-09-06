@@ -67,27 +67,38 @@ test("upcoming race detail: stage stripe + terrain DNA + per-stage route match",
   await login(page);
   await page.goto(`/races/${RACE_ID}`);
 
-  // Header.
+  // Header (hero'en, som staar over fane-striben).
   await expect(page.getByRole("heading", { name: "E2E Vuelta" })).toBeVisible();
+
+  // #4613: loebssiden er T3 (hero + faner). Etape-striben og holdudtagelsen
+  // ligger ikke laengere paa samme scroll-flade — striben bor i Etaper-fanen,
+  // udtagelsen i Hold-fanen. Testen foelger derfor fanerne.
+  await page.getByRole("tab", { name: "Etaper" }).click();
 
   // Race-DNA-gestalt + etape-stribe (2 etaper).
   await expect(page.getByText("Dette løb:")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Etape 1" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Etape 2" })).toBeVisible();
+  // #4632: `name` matcher som SUBSTRING pr. default, og Taktik-fanens
+  // etape-vaelger har knapper der hedder "Intentioner for etape 1".
+  // `exact: true` binder opslaget til stribens egen aria-label.
+  await expect(page.getByRole("button", { name: "Etape 1", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Etape 2", exact: true })).toBeVisible();
 
   // Valgt-etape-panel (default etape 1 = flad): terrain-DNA-bar + massespurt-finale.
   await expect(page.getByText(/Terræn-DNA/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Massespurt" })).toBeVisible();
 
+  // Skift til etape 2 (høj bjerg) → profil + finale opdateres.
+  await page.getByRole("button", { name: "Etape 2", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Bjergfinale" })).toBeVisible();
+
   // Opstilling med per-etape rute-match: label skifter fra "Egnethed" til
-  // "Rute-match". Responsivt panel viser etiketten i tabel-headeren (sm+) ELLER
-  // som per-rytter-label i mobil-kortlisten (<sm) — assertér den synlige variant
+  // "Rute-match". Den valgte etape foelger med over i Hold-fanen (?stage=
+  // bevares af fane-skiftet), saa rute-matchet er etape 2's.
+  // Responsivt panel viser etiketten i tabel-headeren (sm+) ELLER som
+  // per-rytter-label i mobil-kortlisten (<sm) — assertér den synlige variant
   // uanset layout (#1834 mobil-kort).
+  await page.getByRole("tab", { name: "Hold" }).click();
   const panel = page.getByTestId("race-selection-panel");
   await expect(panel).toBeVisible();
   await expect(panel.getByText("Rute-match").filter({ visible: true }).first()).toBeVisible();
-
-  // Skift til etape 2 (høj bjerg) → profil + finale + rute-match opdateres.
-  await page.getByRole("button", { name: "Etape 2" }).click();
-  await expect(page.getByRole("button", { name: "Bjergfinale" })).toBeVisible();
 });

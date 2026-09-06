@@ -108,8 +108,12 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   await login(page);
   await page.goto("/races/race-e2e-1");
 
-  // Header + faner
+  // Header (hero'en) + fane-striben.
   await expect(page.getByRole("heading", { name: "E2E Tour" })).toBeVisible();
+
+  // #4613: løbssiden er T3 (hero + faner), og et kørt løb åbner på Overblik.
+  // Klassementerne og etape-stribens knapper bor i Resultater-fanen.
+  await page.getByRole("tab", { name: "Resultater" }).click();
   await expect(page.getByRole("button", { name: "Samlet" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Etape 1" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Etape 2" })).toBeVisible();
@@ -188,6 +192,8 @@ test("race detail page renders KOM and intermediate sprint passages under stage 
   await login(page);
   await page.goto("/races/race-e2e-1");
 
+  // #4613: passagerne hører til etape-resultatet, som bor i Resultater-fanen.
+  await page.getByRole("tab", { name: "Resultater" }).click();
   await page.getByRole("button", { name: "Etape 1" }).click();
 
   await expect(page.getByText("Mellemresultater")).toBeVisible();
@@ -225,6 +231,9 @@ test("Final Kilometre playback follows the selected stage tab, not always the la
 
   await login(page);
   await page.goto("/races/race-e2e-1");
+
+  // #4613: Final Km hører til etape-resultatet i Resultater-fanen.
+  await page.getByRole("tab", { name: "Resultater" }).click();
 
   // FinalKilometrePlayback renderer i sit eget Card (div.rounded-cz) med
   // "Den sidste kilometer" som <h2> (SectionHeader). Samme streng er ALSO
@@ -297,6 +306,9 @@ test("points and mountain classification show distinct jersey-point vs prize-poi
 
   await login(page);
   await page.goto("/races/race-e2e-1");
+
+  // #4613: klassementerne bor i Resultater-fanen.
+  await page.getByRole("tab", { name: "Resultater" }).click();
 
   // Samlet-fanen (default) viser begge slut-klassementer.
   const pointsCard = page.locator("div.rounded-cz").filter({ has: page.getByRole("heading", { name: "Pointkonkurrence" }) });

@@ -436,6 +436,33 @@ export const SEED_STAGE_PROFILES = [
     sprints: [{ name: "Intermediate Sprint", km: 80, kind: "intermediate" }, { name: "Finish", km: 170, kind: "finish" }],
     sectors: [], demand_vector: { sprint: 0.4, endurance: 0.3, punch: 0.15, positioning: 0.1, randomness: 0.05 } },
 
+  // #4613: de fire OEVRIGE etaper i race-live-1. Uden dem havde loebssidens
+  // Etaper-fane og hero'ens terraen-blok kun én etape at vise paa et loeb der
+  // siger 5 — og Taktik-fanens etape-vaelger stod uden terraen-note.
+  { race_id: "race-live-1", stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint",
+    distance_km: 182, elevation_gain_m: 410,
+    climbs: [],
+    sprints: [{ name: "Intermediate Sprint", km: 92, kind: "intermediate" }, { name: "Finish", km: 182, kind: "finish" }],
+    sectors: [], demand_vector: { sprint: 0.55, positioning: 0.2, endurance: 0.15, randomness: 0.1 } },
+  { race_id: "race-live-1", stage_number: 2, profile_type: "hilly", finale_type: "reduced_sprint",
+    distance_km: 168, elevation_gain_m: 1980,
+    climbs: [{ name: "Colle di Anteprima", category: "2", crest_km: 121, length_km: 6.4, avg_gradient: 6.1, summit_finish: false }],
+    sprints: [{ name: "Intermediate Sprint", km: 70, kind: "intermediate" }, { name: "Finish", km: 168, kind: "finish" }],
+    sectors: [], demand_vector: { punch: 0.4, endurance: 0.3, climbing: 0.2, randomness: 0.1 } },
+  { race_id: "race-live-1", stage_number: 4, profile_type: "high_mountain", finale_type: "summit_finish",
+    distance_km: 154, elevation_gain_m: 3140,
+    climbs: [
+      { name: "Passo Lorse", category: "1", crest_km: 96, length_km: 12.4, avg_gradient: 7.2, summit_finish: false },
+      { name: "Cima Preview", category: "HC", crest_km: 154, length_km: 15.8, avg_gradient: 8.1, summit_finish: true },
+    ],
+    sprints: [{ name: "Intermediate Sprint", km: 41, kind: "intermediate" }, { name: "Finish", km: 154, kind: "finish" }],
+    sectors: [], demand_vector: { climbing: 0.6, endurance: 0.25, randomness: 0.15 } },
+  { race_id: "race-live-1", stage_number: 5, profile_type: "flat", finale_type: "bunch_sprint",
+    distance_km: 121, elevation_gain_m: 260,
+    climbs: [],
+    sprints: [{ name: "Intermediate Sprint", km: 60, kind: "intermediate" }, { name: "Finish", km: 121, kind: "finish" }],
+    sectors: [], demand_vector: { sprint: 0.6, positioning: 0.2, endurance: 0.15, randomness: 0.05 } },
+
   // race-done-1 "Omloop Preview" (kørt endagsløb) — brostensetape, 5 sektorer.
   { race_id: "race-done-1", stage_number: 1, profile_type: "cobbles", finale_type: "breakaway",
     distance_km: 165, elevation_gain_m: 420,
@@ -478,7 +505,11 @@ export const SEED_STAGE_SCHEDULE = [
   { race_id: "race-up-1", stage_number: 2, scheduled_at: "2026-07-13T13:00:00.000Z" },
   { race_id: "race-up-1", stage_number: 3, scheduled_at: "2026-07-14T13:00:00.000Z" },
   { race_id: "race-up-1", stage_number: 4, scheduled_at: "2026-07-15T13:00:00.000Z" },
+  { race_id: "race-live-1", stage_number: 1, scheduled_at: "2026-06-23T13:00:00.000Z" },
+  { race_id: "race-live-1", stage_number: 2, scheduled_at: "2026-06-24T13:00:00.000Z" },
   { race_id: "race-live-1", stage_number: 3, scheduled_at: "2026-06-25T13:00:00.000Z" },
+  { race_id: "race-live-1", stage_number: 4, scheduled_at: "2026-09-30T11:00:00.000Z" },
+  { race_id: "race-live-1", stage_number: 5, scheduled_at: "2026-10-01T11:00:00.000Z" },
   { race_id: "race-done-1", stage_number: 1, scheduled_at: "2026-03-01T13:00:00.000Z" },
   { race_id: "race-done-2", stage_number: 1, scheduled_at: "2026-05-09T13:00:00.000Z" },
   { race_id: "race-done-2", stage_number: 2, scheduled_at: "2026-05-10T13:00:00.000Z" },
@@ -1203,28 +1234,121 @@ export const SEED_SELECTION = {
     : null,
 };
 
-// #4538: GET /api/races/:raceId/stage-roles — Etape-taktik-fanens preview-seed
-// (StageRoleMatrix). race-live-1 (stages=5, stages_completed=2, se SEED_RACES)
-// giver BÅDE låste (kørte) og redigerbare (kommende) etaper i samme
-// skærmbillede. "rider-98" er en fiktiv udgået/skadet rytter — samme
-// fiktiv-rytter-mønster som "rider-99" i SEED_RACE_INCIDENTS ovenfor — så den
-// låste taktik-række kan vises uden at røre den delte race_entries-seed (kun
-// Ada/RIDERS[0] er reelt udtaget til race-live-1 der).
-// #4746: "rider-97" er en ANDEN fiktiv, IKKE-udgået rytter (samme mønster),
-// tilføjet så matrixen har to redigerbare ryttere at vælge "Udbrudsjæger" for
-// — nødvendigt for at kunne screenshotte/reproducere #4746's fix (kun én
-// hunter ad gangen pr. etape) uden at røre den delte race_entries-seed.
-export const SEED_STAGE_ROLES = {
-  enabled: true,
-  stages_completed: 2,
-  stage_count: 5,
-  riders: [
-    { rider_id: RIDERS[0].id, name: `${RIDERS[0].firstname} ${RIDERS[0].lastname}`, race_role: "captain", abandoned: false },
-    { rider_id: "rider-97", name: "Théo Journal", race_role: "hunter", abandoned: false },
-    { rider_id: "rider-98", name: "Malthe Juul", race_role: "helper", abandoned: true },
-  ],
-  overrides: [],
+// #4632: GET /api/races/:raceId/stage-roles — loebsdagens intention
+// (RaceIntentionPanel). Tre preview-tilstande, valgt paa loebets id i
+// mockHandlers, saa ejeren kan se alle tre uden et flag i prod:
+//
+//   race-live-1          femtrins-skalaen (intention_enabled: true) paa et
+//                        etapeloeb midt i afviklingen — etape 1-2 laast, etape 3
+//                        aaben, to ryttere allerede sat.
+//   race-oneday-preview  endagsloebet: ingen etape-vaelger, kolonnen hedder
+//                        "Loebsdag". Loebet ligger i SEED_PREVIEW_ONLY_RACES
+//                        (kun id-opslag) saa lister/dashboards er uroerte.
+//   race-up-1            flaget OFF: serveren sender kun de tre gamle
+//                        vaerdier, og fladen skal derfor vise TRE trin.
+//
+// "rider-98" er en fiktiv udgaaet/skadet rytter (samme fiktiv-rytter-moenster
+// som "rider-99" i SEED_RACE_INCIDENTS ovenfor) saa den laaste raekke kan vises
+// uden at roere den delte race_entries-seed; "rider-97"/"rider-96" er fiktive,
+// IKKE-udgaaede ryttere saa listen har flere roller end kaptajnen.
+// #4613: fit/form/fatigue foelger med paa hver rytter — Hold-fanens kolonner
+// under og efter loebet laeser dem her (backendens getStageRolesContext
+// tilfoejede dem, samme kilder som holdudtagelsen bruger).
+const INTENTION_RIDERS = [
+  { rider_id: RIDERS[0].id, name: `${RIDERS[0].firstname} ${RIDERS[0].lastname}`, race_role: "captain", abandoned: false, fit: 81, form: 74, fatigue: 22 },
+  { rider_id: "rider-97", name: "Théo Journal", race_role: "hunter", abandoned: false, fit: 68, form: 66, fatigue: 31 },
+  { rider_id: "rider-96", name: "Eskil Damgaard", race_role: "helper", abandoned: false, fit: 54, form: 71, fatigue: 18 },
+  { rider_id: "rider-95", name: "Ruben Halvorsen", race_role: "sprint_captain", abandoned: false, fit: 47, form: 58, fatigue: 44 },
+  { rider_id: "rider-98", name: "Malthe Juul", race_role: "helper", abandoned: true, fit: 39, form: 52, fatigue: 61 },
+];
+
+// Femtrins-vokabularet, i skala-raekkefoelge — praecis det serveren sender naar
+// race_day_intention_enabled er ON (raceRoles.VALID_EFFORTS_FIVE_STEP).
+const INTENTION_EFFORTS_FIVE = ["grupetto", "save", "normal", "protect", "all_out"];
+// De tre gamle vaerdier, i serverens egen raekkefoelge (VALID_EFFORTS) — fladen
+// sorterer selv, saa mocken maa IKKE gøre det for den.
+const INTENTION_EFFORTS_THREE = ["protect", "normal", "save"];
+
+export const SEED_STAGE_ROLES_BY_RACE = {
+  "race-live-1": {
+    enabled: true,
+    intention_enabled: true,
+    valid_efforts: INTENTION_EFFORTS_FIVE,
+    stages_completed: 2,
+    stage_count: 5,
+    riders: INTENTION_RIDERS,
+    // To ryttere er allerede sat paa etape 3 (den aabne): kaptajnen kører alt
+    // ud, spurtkaptajnen sparer benene. Rollen foelger med raekken fordi
+    // race_stage_roles baerer begge felter — den aendres ikke af fladen.
+    overrides: [
+      { stage_number: 3, rider_id: RIDERS[0].id, race_role: "captain", effort: "all_out" },
+      { stage_number: 3, rider_id: "rider-95", race_role: "sprint_captain", effort: "grupetto" },
+    ],
+  },
+  "race-oneday-preview": {
+    enabled: true,
+    intention_enabled: true,
+    valid_efforts: INTENTION_EFFORTS_FIVE,
+    stages_completed: 0,
+    stage_count: 1,
+    riders: INTENTION_RIDERS.slice(0, 3),
+    overrides: [
+      { stage_number: 1, rider_id: RIDERS[0].id, race_role: "captain", effort: "all_out" },
+    ],
+  },
+  "race-up-1": {
+    enabled: true,
+    intention_enabled: false,
+    valid_efforts: INTENTION_EFFORTS_THREE,
+    stages_completed: 0,
+    stage_count: 4,
+    riders: INTENTION_RIDERS.slice(0, 4),
+    overrides: [],
+  },
+  // #4613: det AFSLUTTEDE etapeloeb. Hold-fanen viser her rolle + GC-placering
+  // + den intention der blev sat pr. etape (guld) mod rollens standard (graat),
+  // saa begge tilstande er synlige i samme skud.
+  "race-done-2": {
+    enabled: true,
+    intention_enabled: true,
+    valid_efforts: INTENTION_EFFORTS_FIVE,
+    stages_completed: 2,
+    stage_count: 2,
+    riders: INTENTION_RIDERS,
+    overrides: [
+      { stage_number: 1, rider_id: RIDERS[0].id, race_role: "captain", effort: "all_out" },
+      { stage_number: 1, rider_id: "rider-95", race_role: "sprint_captain", effort: "protect" },
+      { stage_number: 2, rider_id: RIDERS[0].id, race_role: "captain", effort: "protect" },
+      { stage_number: 2, rider_id: "rider-97", race_role: "hunter", effort: "all_out" },
+      { stage_number: 2, rider_id: "rider-96", race_role: "helper", effort: "save" },
+    ],
+  },
 };
+
+// Default for ethvert andet loeb i preview (og for Playwright-fixtures der
+// rammer apiResponse direkte): etapeloebet med femtrins-skalaen.
+export const SEED_STAGE_ROLES = SEED_STAGE_ROLES_BY_RACE["race-live-1"];
+
+// #4632: loeb der KUN kan slaas op paa id (RaceDetailPage's .single()) og
+// bevidst IKKE er med i SEED_RACES. Endagsloebet skal kunne aabnes i preview
+// uden at dukke op i kalender-/dashboard-lister, hvor en ekstra raekke ville
+// flytte hvert eneste visuelle snapshot.
+export const SEED_PREVIEW_ONLY_RACES = [
+  {
+    id: "race-oneday-preview",
+    season_id: ACTIVE_SEASON.id,
+    name: "Omloop Preview",
+    race_type: "single",
+    race_class: "Monuments",
+    stages: 1,
+    stages_completed: 0,
+    status: "scheduled",
+    edition_year: 2026,
+    league_division_id: TEST_TEAM.league_division_id,
+    season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number },
+    pool_race: { date_text: "01 Mar" },
+  },
+];
 
 // GET /api/races/strategy — holdets strategi + roster + kommende mål-løb.
 // Modelleret på api.js res.json (~L1935): roster[{id,name,primaryType,secondaryType,
@@ -1804,3 +1928,125 @@ export const SEED_OPS_NOTICES = [
     created_at: "2026-08-18T05:00:00Z",
   },
 ];
+
+// GET /api/races/:raceId/team-orders — Taktik-fanens ordre-halvdel (#4030/#4246,
+// flyttet ind i fanen af #4613).
+//
+// Formen er endpointets 1:1 (backend/routes/api.js): holdets udtagne ryttere med
+// deres ROLLE, rollernes standardordre (regnet af motorens kontrakt) og de
+// etaper der har en gemt ordre.
+//
+// #4613: rytterne er NU de SAMME som intentions-svarets (INTENTION_RIDERS).
+// De to halvdele staar i samme raekke i fanen, saa to forskellige trupper ville
+// give en tabel hvor kolonnerne handlede om hver sit hold.
+export const SEED_TEAM_ORDER_RIDERS = INTENTION_RIDERS.map(({ rider_id, name, race_role }) => ({
+  rider_id, name, race_role,
+}));
+
+// Rollens standardordre — samme tabel som teamOrderContract.defaultOrderForRole:
+// hunter proever udbruddet, hjaelpere koerer spurt-kaptajnens tog, resten koerer
+// deres rolle. Effort er altid 'normal' (RACE_ENGINE_RULES §1b).
+const teamOrderDefaultFor = (role) => ({
+  effort: "normal",
+  try_break: role === "hunter",
+  leadout: role === "helper",
+});
+
+const teamOrderDefaultOrder = {
+  team_id: TEST_TEAM.id,
+  breakaway_stance: "neutral",
+  riders: SEED_TEAM_ORDER_RIDERS.map((r) => ({ rider_id: r.rider_id, ...teamOrderDefaultFor(r.race_role) })),
+};
+
+// Etape-listen for et loeb: alt til og med `completed` er laast, resten aabent.
+// #4613: scheduled_at SKAL komme fra SEED_STAGE_SCHEDULE når løbet har en række
+// der. Løbssidens hero læser schedule-tabellen, mens Taktik-fanen læser
+// team-orders — driver de to fra hver sin kilde, viser SAMME skærm to
+// forskellige låsetider for samme etape (målt 6/9: hero "03:00 PM", fanen
+// "Fri 01:00 PM"). Genererede tider bruges kun for etaper uden schedule-række.
+const scheduleAtFor = (raceId, stageNumber) =>
+  SEED_STAGE_SCHEDULE.find((r) => r.race_id === raceId && r.stage_number === stageNumber)?.scheduled_at ?? null;
+
+const teamOrderStages = (count, completed, firstAt = "2026-09-01T11:00:00.000Z", raceId = null) =>
+  Array.from({ length: count }, (_, i) => {
+    const sn = i + 1;
+    const generated = new Date(new Date(firstAt).getTime() + (sn - 1) * 86_400_000).toISOString();
+    return {
+      stage_number: sn,
+      scheduled_at: (raceId && scheduleAtFor(raceId, sn)) || generated,
+      locked: sn <= completed,
+    };
+  });
+
+// #4613: ét svar pr. loeb, saa Taktik-fanen kan vises i alle fire tilstande paa
+// preview uden et flag i prod. Etape-laasene skal MATCHE stage-roles-svarets
+// stages_completed for det samme loeb — ellers ville vaelgeren sige "aaben" om
+// en etape intentionen selv behandler som koert.
+export const SEED_TEAM_ORDERS_BY_RACE = {
+  // Etapeloeb midt i afviklingen: etape 1-2 laast, etape 3 aaben og allerede
+  // afveget fra rollen (jaegeren bliver i feltet, en hjaelper er ude af toget).
+  "race-live-1": {
+    stage_count: 5,
+    stages_completed: 2,
+    race_completed: false,
+    intention_enabled: true,
+    valid_efforts: INTENTION_EFFORTS_FIVE,
+    // scheduled_at kommer fra SEED_STAGE_SCHEDULE (samme kilde som hero'en), saa
+    // fanen og hero'en ikke kan vise to forskellige laasetider for etape 3.
+    stages: teamOrderStages(5, 2, "2026-09-30T11:00:00.000Z", "race-live-1"),
+    riders: SEED_TEAM_ORDER_RIDERS.map(({ rider_id, race_role }) => ({ rider_id, race_role })),
+    default_order: teamOrderDefaultOrder,
+    orders: [
+      {
+        stage_number: 3,
+        breakaway_stance: "chase",
+        locked_at: null,
+        updated_at: "2026-09-06T09:00:00.000Z",
+        riders: [
+          // Dagens afvigelser fra rollen — resten falder tilbage paa standarden.
+          { rider_id: "rider-97", effort: "normal", try_break: false, leadout: false },
+          { rider_id: "rider-96", effort: "save", try_break: false, leadout: false },
+        ],
+      },
+    ],
+  },
+  // Kommende etapeloeb: intet er laast, intet er sat.
+  "race-up-1": {
+    stage_count: 4,
+    stages_completed: 0,
+    race_completed: false,
+    intention_enabled: false,
+    valid_efforts: INTENTION_EFFORTS_THREE,
+    stages: teamOrderStages(4, 0, "2026-07-12T11:00:00.000Z", "race-up-1"),
+    riders: SEED_TEAM_ORDER_RIDERS.slice(0, 4).map(({ rider_id, race_role }) => ({ rider_id, race_role })),
+    default_order: teamOrderDefaultOrder,
+    orders: [],
+  },
+  // Endagsloebet: én dag, ingen etape-vaelger.
+  "race-oneday-preview": {
+    stage_count: 1,
+    stages_completed: 0,
+    race_completed: false,
+    intention_enabled: true,
+    valid_efforts: INTENTION_EFFORTS_FIVE,
+    stages: teamOrderStages(1, 0, "2026-03-01T11:00:00.000Z", "race-oneday-preview"),
+    riders: SEED_TEAM_ORDER_RIDERS.slice(0, 3).map(({ rider_id, race_role }) => ({ rider_id, race_role })),
+    default_order: teamOrderDefaultOrder,
+    orders: [],
+  },
+  // Afsluttet etapeloeb: alt laast, intet at gemme.
+  "race-done-2": {
+    stage_count: 2,
+    stages_completed: 2,
+    race_completed: true,
+    intention_enabled: true,
+    valid_efforts: INTENTION_EFFORTS_FIVE,
+    stages: teamOrderStages(2, 2, "2026-05-09T11:00:00.000Z", "race-done-2"),
+    riders: SEED_TEAM_ORDER_RIDERS.map(({ rider_id, race_role }) => ({ rider_id, race_role })),
+    default_order: teamOrderDefaultOrder,
+    orders: [],
+  },
+};
+
+// Default for ethvert andet loeb i preview: etapeloebet midt i afviklingen.
+export const SEED_TEAM_ORDERS = SEED_TEAM_ORDERS_BY_RACE["race-live-1"];

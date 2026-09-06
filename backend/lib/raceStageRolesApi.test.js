@@ -300,19 +300,34 @@ test("saveStageRoleOverrides: tomt teamRiderIds → INGEN delete-kald", async ()
 
 // ── getStageRolesContext (I/O, minimal mock-supabase) ─────────────────────────
 
-function makeContextSupabase({ entries = [], riders = [], overrides = [], incidents = [] } = {}) {
+// #4613: kontekst-mocken kender nu ogsaa .order() (race_stage_profiles) samt de
+// tre nye tabeller Hold-fanens fit/form/traethed-kolonner laeser.
+function makeContextSupabase({
+  entries = [], riders = [], overrides = [], incidents = [],
+  abilities = [], conditions = [], profiles = [],
+} = {}) {
   function from(table) {
+    const rowsFor = () => (table === "race_entries" ? entries
+      : table === "riders" ? riders
+      : table === "race_stage_roles" ? overrides
+      : table === "race_incidents" ? incidents
+      : table === "rider_derived_abilities" ? abilities
+      : table === "rider_condition" ? conditions
+      : table === "race_stage_profiles" ? profiles
+      : []);
     const b = {
       select() { return b; },
       eq() { return b; },
       in() { return b; },
+      order() { return b; },
+      // #3331: race_stage_profiles hentes med fetchAllRows, som pagerer via
+      // .range(). Uden den her ville doublen svare paa en KALDSFORM produktions-
+      // koden ikke laengere bruger — og testen ville bestaa paa en fiktion.
+      range(fromIdx, toIdx) {
+        return Promise.resolve({ data: rowsFor().slice(fromIdx, toIdx + 1), error: null });
+      },
       then(resolve, reject) {
-        const data = table === "race_entries" ? entries
-          : table === "riders" ? riders
-          : table === "race_stage_roles" ? overrides
-          : table === "race_incidents" ? incidents
-          : [];
-        return Promise.resolve({ data, error: null }).then(resolve, reject);
+        return Promise.resolve({ data: rowsFor(), error: null }).then(resolve, reject);
       },
     };
     return b;
@@ -328,8 +343,8 @@ test("getStageRolesContext: bygger riders[] med navn + basis-race_role fra race_
   });
   const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 1 }, teamId: "team-1" });
   assert.deepEqual(ctx.riders, [
-    { rider_id: "r1", name: "Tadej P", race_role: "captain", abandoned: false },
-    { rider_id: "r2", name: "Jonas V", race_role: "helper", abandoned: false },
+    { rider_id: "r1", name: "Tadej P", race_role: "captain", abandoned: false, fit: null, form: null, fatigue: null },
+    { rider_id: "r2", name: "Jonas V", race_role: "helper", abandoned: false, fit: null, form: null, fatigue: null },
   ]);
   assert.equal(ctx.stage_count, 5);
   assert.equal(ctx.stages_completed, 1);
@@ -377,4 +392,37 @@ test("getStageRolesContext: ingen entries → tomme riders/overrides, ingen ekst
   const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 0 }, teamId: "team-1" });
   assert.deepEqual(ctx.riders, []);
   assert.deepEqual(ctx.overrides, []);
+});
+
+// ── #4613: fit / form / traethed pr. rytter (Hold-fanens kolonner) ────────────
+
+test("getStageRolesContext: form/fatigue kommer fra rider_condition, fit fra evner x etape-profiler", async () => {
+  const supabase = makeContextSupabase({
+    entries: [{ rider_id: "r1", race_role: "captain" }, { rider_id: "r2", race_role: "helper" }],
+    riders: [{ id: "r1", firstname: "Tadej", lastname: "P" }, { id: "r2", firstname: "Jonas", lastname: "V" }],
+    conditions: [{ rider_id: "r1", form: 74, fatigue: 22 }],
+    abilities: [{ rider_id: "r1", climbing: 80, sprint: 40, endurance: 70, punch: 60, time_trial: 55, positioning: 65, descending: 60, cobbles: 50, recovery: 60, consistency: 60, aggression: 55, tactics: 60, teamwork: 60, resilience: 60, potential: 70 }],
+    profiles: [{ stage_number: 1, profile_type: "mountain", demand_vector: { climbing: 0.7, endurance: 0.3 } }],
+  });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 1, stages_completed: 0 }, teamId: "team-1" });
+  const [r1, r2] = ctx.riders;
+  assert.equal(r1.form, 74);
+  assert.equal(r1.fatigue, 22);
+  assert.equal(typeof r1.fit, "number", "fit skal vaere et tal naar baade evner og profiler findes");
+  assert.ok(r1.fit >= 0 && r1.fit <= 100, "fit er 0-100, samme skala som holdudtagelsen");
+  // Rytter uden kondition/evner degraderer til null — aldrig et opdigtet tal.
+  assert.deepEqual([r2.fit, r2.form, r2.fatigue], [null, null, null]);
+});
+
+test("getStageRolesContext: uden etape-profiler er fit null (ingen syntetisk score)", async () => {
+  const supabase = makeContextSupabase({
+    entries: [{ rider_id: "r1", race_role: "captain" }],
+    riders: [{ id: "r1", firstname: "Tadej", lastname: "P" }],
+    conditions: [{ rider_id: "r1", form: 61, fatigue: 12 }],
+    abilities: [{ rider_id: "r1", climbing: 80 }],
+    profiles: [],
+  });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 3, stages_completed: 0 }, teamId: "team-1" });
+  assert.equal(ctx.riders[0].fit, null);
+  assert.equal(ctx.riders[0].form, 61);
 });

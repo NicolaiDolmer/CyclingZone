@@ -105,6 +105,10 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
   await login(page);
   await page.goto(`/races/${RACE_ID}`);
 
+  // #4613: løbssiden er T3 (hero + faner), og siden åbner på Overblik.
+  // Holdudtagelsen bor i Hold-fanen.
+  await page.getByRole("tab", { name: "Hold" }).click();
+
   // Panelet loader og er synligt.
   const panel = page.getByTestId("race-selection-panel");
   await expect(panel).toBeVisible();
@@ -194,6 +198,10 @@ test("klik på rytternavn åbner profil-popup uden at ændre udtagelsen", async 
   await login(page);
   await page.goto(`/races/${RACE_ID}`);
 
+  // #4613: løbssiden er T3 (hero + faner), og siden åbner på Overblik.
+  // Holdudtagelsen bor i Hold-fanen.
+  await page.getByRole("tab", { name: "Hold" }).click();
+
   const panel = page.getByTestId("race-selection-panel");
   await expect(panel).toBeVisible();
 
@@ -264,6 +272,10 @@ test("klik udenfor rytterprofil-popuppen lukker den (desktop)", async ({ page },
   await login(page);
   await page.goto(`/races/${RACE_ID}`);
 
+  // #4613: løbssiden er T3 (hero + faner), og siden åbner på Overblik.
+  // Holdudtagelsen bor i Hold-fanen.
+  await page.getByRole("tab", { name: "Hold" }).click();
+
   const panel = page.getByTestId("race-selection-panel");
   await panel.getByRole("button", { name: /Rider 0/ }).click();
   const modal = page.getByTestId("rider-mini-profile-modal");
@@ -312,6 +324,10 @@ test("fremmed-pulje-løb viser read-only forklaring, ikke et udtageligt panel", 
 
   await login(page);
   await page.goto(`/races/${RACE_ID}`);
+
+  // #4613: løbssiden er T3 (hero + faner), og siden åbner på Overblik.
+  // Holdudtagelsen bor i Hold-fanen.
+  await page.getByRole("tab", { name: "Hold" }).click();
 
   // Read-only forklaring vises; det fulde udtagelses-panel gør IKKE.
   await expect(page.getByTestId("race-selection-wrong-pool")).toBeVisible();
@@ -366,6 +382,10 @@ test("#4295 delvis trup kan gemmes ved en foerstegangs-udtagelse", async ({ page
 
   await login(page);
   await page.goto(`/races/${RACE_ID}`);
+
+  // #4613: løbssiden er T3 (hero + faner), og siden åbner på Overblik.
+  // Holdudtagelsen bor i Hold-fanen.
+  await page.getByRole("tab", { name: "Hold" }).click();
 
   const panel = page.getByTestId("race-selection-panel");
   await expect(panel).toBeVisible();
@@ -446,6 +466,10 @@ test("#4295 konsekvens-linjen: ingen frie ryttere til dette loeb → holdet stil
   await login(page);
   await page.goto(`/races/${RACE_ID}`);
 
+  // #4613: løbssiden er T3 (hero + faner), og siden åbner på Overblik.
+  // Holdudtagelsen bor i Hold-fanen.
+  await page.getByRole("tab", { name: "Hold" }).click();
+
   const panel = page.getByTestId("race-selection-panel");
   await expect(panel).toBeVisible();
   // Bundne ryttere kan ikke vaelges.
@@ -475,7 +499,12 @@ test("#4295 konsekvens-linjen: ingen frie ryttere til dette loeb → holdet stil
 // loeb der allerede er i gang: raceEntryGenerator fryser ethvert loeb med
 // stages_completed > 0 (#1825) og springer det over for alle hold. Uden `!raceLive`
 // viste panelet to modstridende saetninger samtidig, og hinten var den falske.
-test("#4295 hint-linjen vises ikke naar loebet allerede er i gang", async ({ page }) => {
+//
+// #4613 flyttede vagten et trin op: naar flaget er faldet, er Hold-fanen
+// read-only og udtagelses-panelet renderes slet ikke (RaceTeamTab viser kun
+// RaceSelectionPanel i fase "before"). Den falske hint kan derfor ikke naa
+// skaermen overhovedet — det er DET testen holder fast i nu.
+test("#4295 et loeb i gang har ingen udtagelse og ingen hint-linje", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
 
@@ -511,14 +540,42 @@ test("#4295 hint-linjen vises ikke naar loebet allerede er i gang", async ({ pag
     });
   });
 
+  // #4613: Hold-fanen laeser stage-roles under/efter loebet — /selection gater
+  // selv paa status 'scheduled' og kan derfor ikke bruges her.
+  await page.route(`**/api/races/${RACE_ID}/stage-roles`, (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: corsHeaders(request),
+      body: JSON.stringify({
+        enabled: true,
+        intention_enabled: true,
+        valid_efforts: ["grupetto", "save", "normal", "protect", "all_out"],
+        stages_completed: LIVE_RACE.stages_completed,
+        stage_count: LIVE_RACE.stages,
+        riders: [
+          { rider_id: "sel-r0", name: "Rider 0", race_role: "captain", abandoned: false },
+          { rider_id: "sel-r1", name: "Rider 1", race_role: "helper", abandoned: false },
+        ],
+        overrides: [],
+      }),
+    });
+  });
+
   await login(page);
   await page.goto(`/races/${RACE_ID}`);
 
-  const panel = page.getByTestId("race-selection-panel");
-  await expect(panel).toBeVisible();
+  // #4613: løbssiden er T3 (hero + faner), og siden åbner på Overblik.
+  // Holdudtagelsen bor i Hold-fanen.
+  await page.getByRole("tab", { name: "Hold" }).click();
 
-  // Loebet er i gang: panelet siger at der ikke kan tilfoejes nye ryttere ...
-  await expect(panel.getByText(/Løbet er i gang/i)).toBeVisible();
-  // ... og saa maa det IKKE samtidig love at assistenten fylder de tre aabne pladser.
-  await expect(panel.getByTestId("selection-partial-hint")).toHaveCount(0);
+  // Hold-fanen er den read-only trup, ikke udtagelsen ...
+  await expect(page.getByTestId("race-team-tab")).toBeVisible();
+  await expect(page.getByTestId("race-selection-panel")).toHaveCount(0);
+  // ... og intet sted paa siden loves det at assistenten fylder de tre aabne pladser.
+  await expect(page.getByTestId("selection-partial-hint")).toHaveCount(0);
 });

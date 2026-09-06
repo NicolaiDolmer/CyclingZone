@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.259",
+    "date": "2026-09-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "The race page opens on an overview, with tabs for the rest",
+          "body": "A race now opens on a header with the state of the race and an Overview tab. Team, Tactics, Stages and Results sit beside it, and the tabs follow the race: before the start you pick your line-up and give each rider a role under Team, and set the day's intention plus an order per rider under Tactics. Once the race is done, Results is what you land on."
+        },
+        "da": {
+          "title": "Løbssiden åbner på et overblik, med faner til resten",
+          "body": "Et løb åbner nu på et hoved med løbets tilstand og en Overblik-fane. Hold, Taktik, Etaper og Resultater ligger ved siden af, og fanerne følger løbet: før starten udtager du holdet og giver hver rytter en rolle under Hold, og sætter dagens intention plus en ordre pr. rytter under Taktik. Når løbet er kørt, lander du på Resultater."
+        },
+        "refs": [4613, 4632, 4246]
+      }
+    ]
+  },
+  {
     "version": "7.258",
     "date": "2026-09-06",
     "label": "Beta",

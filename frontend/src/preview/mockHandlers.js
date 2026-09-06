@@ -34,6 +34,8 @@ import {
   SEED_BROWSE,
   SEED_SELECTION,
   SEED_STAGE_ROLES,
+  SEED_STAGE_ROLES_BY_RACE,
+  SEED_PREVIEW_ONLY_RACES,
   SEED_STRATEGY,
   SEED_ACADEMY,
   SEED_ACADEMY_PNL,
@@ -243,7 +245,10 @@ export function restRows(table, requestUrl = "") {
       const idMatch = url.search.match(/[?&]id=eq\.([^&]+)/);
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
-        return SEED_RACES.filter(r => r.id === id);
+        // #4632: preview-only-loeb (fx endagsloebet til intentions-fladen) kan
+        // KUN slaas op paa id — de er bevidst ude af SEED_RACES saa
+        // kalender-/dashboard-snapshots ikke flytter sig af en preview-fixture.
+        return [...SEED_RACES, ...SEED_PREVIEW_ONLY_RACES].filter(r => r.id === id);
       }
       // #3333: Resultat-hubben henter nu status=completed ELLER igangværende
       // etapeløb (.or("status.eq.completed,stages_completed.gt.0")) — status
@@ -1192,8 +1197,15 @@ export function apiResponse(pathname, search = "") {
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
   // S5: udtagelses-panel (RaceSelectionPanel + HunterExplainer). /api/races/:id/selection.
   if (/\/api\/races\/[^/]+\/selection$/.test(pathname)) return SEED_SELECTION;
-  // #4538: etape-taktik-panelet (StageRoleMatrix). /api/races/:id/stage-roles.
-  if (/\/api\/races\/[^/]+\/stage-roles$/.test(pathname)) return SEED_STAGE_ROLES;
+  // #4632: loebsdagens intention (RaceIntentionPanel). /api/races/:id/stage-roles.
+  // Svaret vaelges paa loebets id saa preview kan vise ALLE tre tilstande —
+  // femtrins-skalaen, endagsloebet og flaget OFF (tre trin) — se
+  // SEED_STAGE_ROLES_BY_RACE. Ukendt id falder tilbage til etapeloebet.
+  const stageRolesMatch = pathname.match(/\/api\/races\/([^/]+)\/stage-roles$/);
+  if (stageRolesMatch) {
+    const raceId = decodeURIComponent(stageRolesMatch[1]);
+    return SEED_STAGE_ROLES_BY_RACE[raceId] ?? SEED_STAGE_ROLES;
+  }
   // NB: i preview-interceptoren (installPreviewMock) fanges /api/scouting/me af
   // scoutingMock.js FØR denne blok (med scoutSystemEnabled: true, så Scouting-
   // centralen kan klikkes igennem). Denne variant — uden flag — rammes kun af

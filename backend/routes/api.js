@@ -5605,6 +5605,9 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       // frontend rendrer selv neutralTeamOrder()-formen for dem.
       orders: ctx.orders,
       riders: [...ctx.baseRoleByRider].map(([rider_id, race_role]) => ({ rider_id, race_role })),
+      // #4246: rollens standardordre. Kortet viser "Standard: <rolle>. I dag:
+      // <afvigelse>" ved at sammenholde en gemt etape-ordre med denne.
+      default_order: ctx.default_order,
     });
   } catch (err) {
     captureException(err);

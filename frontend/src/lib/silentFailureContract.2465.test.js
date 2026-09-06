@@ -17,7 +17,7 @@ const riderScoutingTab = read("../components/rider/profile/RiderScoutingTab.jsx"
 const scoutablePotentiale = read("../components/rider/ScoutablePotentiale.jsx");
 const strategyPage = read("../pages/StrategyPage.jsx");
 const trainingPage = read("../pages/TrainingPage.jsx");
-const stageRoleMatrix = read("../components/race/StageRoleMatrix.jsx");
+const raceTacticsTab = read("../components/race/RaceTacticsTab.jsx");
 
 // #3721: the focus chips + intensity segment moved into the shared FocusPanel,
 // so the call sites are now handlePanelSave/handlePanelClear. The CONTRACT is
@@ -89,13 +89,24 @@ test("TrainingPage: roster-row focus/intensity/clear handlers await setPlan/clea
   assert.match(trainingPage, /error=\{planActionError\?\.riderId === focusPanelRiderId \? planActionError\.error : null\}/);
 });
 
-test("StageRoleMatrix: shows a short direction hint per role (not raw tuning numbers)", () => {
-  assert.match(stageRoleMatrix, /ROLE_HELP_KEY/);
-  assert.match(stageRoleMatrix, /stageTactics\.roleHelp\.captain/);
-  assert.match(stageRoleMatrix, /stageTactics\.roleHelp\.helper/);
+// #4632 (variant B) → #4613 (variant A): the per-stage role/effort dropdowns were
+// replaced by the race-day intention picker, so the "what does this choice
+// actually do?" hint moved from a per-ROLE legend to a per-STEP sentence inside
+// the picker. #4613 moved that picker into the race page's Tactics tab, next to
+// the orders for the same stage. The contract is the same one #2465 pinned:
+// every choice explains itself in words, and the calibrated backend constants
+// never reach the surface.
+test("RaceTacticsTab: every intention step explains itself in words (not raw tuning numbers)", () => {
+  assert.match(raceTacticsTab, /intention\.why\.\$\{step\}/);
+  assert.match(raceTacticsTab, /intention\.step\.\$\{step\}/);
   // Must not leak the calibrated backend constants into frontend copy.
-  assert.doesNotMatch(stageRoleMatrix, /WORK_COST_HELPER/);
-  assert.doesNotMatch(stageRoleMatrix, /-0\.03/);
+  assert.doesNotMatch(raceTacticsTab, /WORK_COST_HELPER/);
+  assert.doesNotMatch(raceTacticsTab, /-0\.03/);
+  // Fog of war: the steps come from the server's valid_efforts, never a
+  // hardcoded five-value list in the surface itself.
+  assert.match(raceTacticsTab, /orderedEfforts\(roles\?\.valid_efforts\)/);
+  // A failed load must never be rendered as "nothing set" (#2849).
+  assert.match(raceTacticsTab, /racePage\.tactics\.loadError/);
 });
 
 test("locale keys referenced by the new error surfaces exist in both en + da (key-parity)", () => {
@@ -113,8 +124,13 @@ test("locale keys referenced by the new error surfaces exist in both en + da (ke
 
   const enRaces = JSON.parse(readFileSync(new URL("../../public/locales/en/races.json", import.meta.url), "utf8"));
   const daRaces = JSON.parse(readFileSync(new URL("../../public/locales/da/races.json", import.meta.url), "utf8"));
-  for (const key of ["captain", "sprintCaptain", "helper", "hunter", "freeRole"]) {
-    assert.ok(enRaces.stageTactics.roleHelp[key], `en missing roleHelp.${key}`);
-    assert.ok(daRaces.stageTactics.roleHelp[key], `da missing roleHelp.${key}`);
+  // #4632: the five intention steps each need a label AND a plain-words
+  // sentence in both locales — a missing one would show a raw key on the
+  // surface players make their race-day call on.
+  for (const key of ["grupetto", "save", "normal", "protect", "all_out"]) {
+    assert.ok(enRaces.intention.step[key], `en missing intention.step.${key}`);
+    assert.ok(daRaces.intention.step[key], `da missing intention.step.${key}`);
+    assert.ok(enRaces.intention.why[key], `en missing intention.why.${key}`);
+    assert.ok(daRaces.intention.why[key], `da missing intention.why.${key}`);
   }
 });
