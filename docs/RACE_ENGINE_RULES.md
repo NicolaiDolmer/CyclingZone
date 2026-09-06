@@ -17,6 +17,8 @@ Motoren har to frosne grænseflader. De må ikke forveksles, og ingen af dem må
 
 **Kernen kræver aldrig ordrer.** Adapteren oversætter fravær til neutrale defaults. AI-hold genererer `TeamOrder` gennem præcis samme type — ingen side-kanaler.
 
+**Tre udfaldsklasser, ikke to.** `StageResult.status` er `finished` · `abandoned` · **`otl`** (uden for tidsgrænsen, ejer-beslutning 6/9 — se §2d). De tre er gensidigt udelukkende, og klassement og flip-mapping skal kunne skelne dem: en `abandoned` nåede aldrig målstregen, en `otl` gjorde men for sent. Feltet er additivt udvidet i `types.ts`; hvad flip-laget skal gøre med `otl` står i samme fil og i `mechanics/timeLimit.ts`.
+
 ---
 
 ## 1. Rolle-vokabularet (kanonisk, ikke til forhandling)
@@ -94,6 +96,9 @@ Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 | M11 | Vejr-lag pr. etape, seeded | F3 |
 | M12 | Effort pr. rytter (`protect`/`normal`/`save`) | F3 |
 | M14 | AI-holds ordrer gennem samme type | F3 ✅ wiret 3/9 (harness) |
+| M15 | Tidsgrænsen (UCI-reglen) + OTL som udfaldsklasse | F3 ✅ wiret 6/9 — se §2d |
+
+**M15 er en ejer-besluttet scope-udvidelse, ikke en PR-tilføjelse.** Kataloget blev lukket 20/8 med M1-M14. Ejeren besluttede 4/9 at tidsgrænsen ([#2582](https://github.com/NicolaiDolmer/CyclingZone/issues/2582)) er et krav til v4 før flip — *"ikke i v3"* — og låste reglen 6/9. Den står i §2d.
 
 Tre nye stats er ejer-valgt ind (20/8) og fødes skjulte først: dagsform-stabilitet · vejr-teknik · højde-tolerance.
 
@@ -163,6 +168,45 @@ Et uheld har to akser der afgøres uafhængigt: **arten** (`kind`: styrt eller m
 
 ---
 
+## 2d. Tidsgrænse (ejer 6/9) — kun v4 ([#2582](https://github.com/NicolaiDolmer/CyclingZone/issues/2582))
+
+Ejeren besluttede 4/9 at UCI's tidsgrænser bliver et krav til v4 før flip — ordret *"ikke i v3"* — og låste reglen 6/9. **M15 er en ejer-besluttet udvidelse af det ellers lukkede mekanik-katalog i §2.**
+
+**Reglen i klart sprog.** En rytter der kommer i mål langt nok efter vinderen er ude af løbet. På et etapeløb betyder det at han ikke stiller til start næste dag og ryger ud af alle klassementer; på et endagsløb er det en DNF. Men kommer en stor gruppe samlet i mål efter grænsen, reddes hele gruppen — det er grupettoen, og den findes fordi et helt felt der har opgivet på en bjergetape ikke skal sendes hjem. Hvor sent man må komme afhænger af etapetypen: fladt er strammest, højbjerg mildest.
+
+**Fire ting reglen ALDRIG gør.**
+
+| | |
+|---|---|
+| Viser tallet | Spilleren ser **"uden for tidsgrænsen"** og **"grupettoen på N ryttere reddes"**. Aldrig en procent, aldrig en sekundgrænse. Fog-gaten ([#1791](https://github.com/NicolaiDolmer/CyclingZone/issues/1791)) gælder ubetinget |
+| Skelner spiller fra AI | AI-hold rammes af præcis samme regel. Mekanikken har ingen holdakse overhovedet, så undtagelsen er strukturelt umulig, ikke bare udeladt |
+| Bruger terningen | Ingen rng. Tidsgrænsen er en **regel**, ikke en lodtrækning |
+| Flytter placeringer | Rank, tid, gruppe og rækkefølge er urørte. Kun `status` ændres. Invariant 3 og 6 er derfor uberørte per konstruktion |
+
+**Faktortabellen — grænsen som andel af vindertiden. Alle værdier er STARTGÆT** (samme forbehold som resten af `tuning.ts`), kalibreres i harnesset. Bor i `TIME_LIMIT_EXTRA_TUNING` (`backend/lib/engine/v4/tuning.ts`).
+
+| Etapetype | Andel over vindertiden | Hvorfor |
+|---|---|---|
+| `flat` | 5 % | UCI-båndets bund. Feltet ruller samlet ind |
+| `rolling` | 6 % | Knap over fladt, samme massefinale-dynamik |
+| `cobbles` | 9 % | Kort men nedslidende; sektorerne har allerede splittet feltet |
+| `hilly` | 10 % | Første type hvor selektionen kan hage en svag klatrer af |
+| `gravel` | 11 % | Længere og mere nedslidende end brosten (§2b) |
+| `classic` | 11 % | Monument-arketypen: lang, hård, stor spredning i mål |
+| `mountain` | 15 % | Høj ende af båndet — grupettoen er normen her |
+| `high_mountain` | 20 % | Båndets top (ejer: *"bjerg/summit højest"*) |
+| `itt` · `itt_hilly` · `ttt` | 25 % | UCI-praksis for enkeltstart/holdtidskørsel ligger over massestarts-båndet, fordi en TT spreder feltet af natur |
+
+Ukendt eller manglende `profile_type` falder tilbage på 10 % — motoren kaster aldrig på en type den ikke kender.
+
+**Grupettoen.** En samlet ankomst på mindst **20 % af feltet** (UCI's egen tommelfingerregel), dog altid mindst **8 ryttere**, reddes samlet. "Samlet" måles som en kæde af ankomster hvor der er under **2 minutter** til naboen. Det tal er ikke gruppe-sammensmeltningens tærskel, og det er målt, ikke gættet: finalen lægger hvert placerings-tier mindst merge-tærsklen + margin fra naboen, netop så tierne ikke folder sammen igen — et merge-tærskel-vindue kunne derfor per konstruktion aldrig kæde to tiers til én grupetto, og en grupetto der ankom i to klumper ville blive massakreret. En forward-guard i `timeLimit.test.ts` fælder enhver fremtidig ændring der sætter vinduet tilbage under tier-skridtet.
+
+**OTL er en tredje udfaldsklasse**, ikke en variant af de to andre: rytteren *kom* i mål (modsat `abandoned`), men uden for grænsen. `StageResultStatus` er derfor `finished | abandoned | otl` (`types.ts`).
+
+> ⚠ **Reglen er inert mod v4's nuværende output.** Målt 6/9 over 984 etapekørsler (328 proxy-etaper × 3 seeds, 180-rytters felt fra populations-snapshottet): **0 OTL, 0 grupetto-redninger**. Største spredning mellem vinder og sidsteplads var 6,1 % på bjerg — mod en 15 %-grænse. v4 komprimerer feltet langt under virkeligheden, hvor en bjergetapes sidste mand er 20-30 minutter nede. Grænsen er sat efter UCI, ikke efter motorens nuværende spredning; at trimme den ned til under 6 % for at få reglen til at fyre ville gøre reglen forkert i stedet for at gøre motoren rigtig. Det er samme fejlfamilie som modsigelse 6 og 11 i §7. Kaldsstedet er verificeret: med en bredere `strengthSpeedGain` (motorens egen tuning-flade) sætter `simulateStageV4` OTL-status og emitterer eventet som den skal.
+
+---
+
 ## 3. Invarianter (property-testede, må aldrig brydes)
 
 1. **Determinisme.** Samme input ⇒ byte-identisk output. Per-rytter-hash, så én ekstra tilmelding ikke flytter andres relative udfald.
@@ -172,6 +216,8 @@ Et uheld har to akser der afgøres uafhængigt: **arten** (`kind`: styrt eller m
 5. **Fog-gate ([#1791](https://github.com/NicolaiDolmer/CyclingZone/issues/1791)).** Ingen rå komponenter, vægte eller sandsynligheder i `events[].params`.
 6. **Låst feltstørrelse ([#4615](https://github.com/NicolaiDolmer/CyclingZone/issues/4615)).** Lige så mange i mål som på startlisten, hver rytter præcis én gang, placeringer = en komplet permutation 1..N. Grupper splittes, smelter sammen og bliver til placerings-tiers hele vejen igennem; hvert skridt kan tabe eller duplikere en rytter, og fejlen ville vise sig som et forskudt anker-tal længe før nogen så årsagen. Feltet er nævneren i felt-sammenhængs-ankeret.
 7. **Felt-sammenhæng ([#4615](https://github.com/NicolaiDolmer/CyclingZone/issues/4615)).** En massefinale afgøres på **placering**, ikke på tid: den ankomne pulje deler vindertiden, og rækkefølgen bæres af `EngineState.finish_order`. Selektive finaler (bjerg, punch, nedkørsel, udbrud, ITT) beholder individuelle tids-tiers — dér er tidsforskellene ægte.
+
+8. **Tidsgrænsen flytter kun `status` ([#2582](https://github.com/NicolaiDolmer/CyclingZone/issues/2582), ejer 6/9).** M15 sætter `otl` og rører aldrig `rank`, `time_seconds`, `group_id` eller rækkefølgen. Invariant 3 og 6 er derfor uberørte per konstruktion, ikke ved en efterfølgende guard: en OTL-rytter bliver stående i resultatlisten, han er blot mærket. Hvad der sker med ham i DB'en er flip-lagets ansvar (§2d). Property-testet i `backend/lib/engine/v4/mechanics/timeLimit.test.ts`.
 
 Invariant 6 og 7 er property-testet i `backend/lib/engine/v4/fieldIntegrity.test.ts` over evne-niveauerne 5/11/30/60/99, samme skala-invariant-form som #4604-load-guarden.
 
@@ -219,6 +265,7 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 |---|---|
 | Determinisme, gruppe-tid, monotoni, km-dækning | property-tests (`fast-check`) + golden fixtures |
 | Låst feltstørrelse + felt-sammenhæng | `fieldIntegrity.test.ts` (5 evne-niveauer) |
+| Tidsgrænsen (§2d) + at OTL kun rører `status` | `mechanics/timeLimit.test.ts` (23 tests, 300-runs property-tests + e2e-wiring) |
 | Scorecardets feltstørrelse | `headToHeadV4.js`'s låste default (`--field-size=all` er den eksplicitte vej ud) |
 | Fog-gaten | samme testmønster som `raceTimeline.test.js` |
 | Type-kontrakten | `tsc`-typegate i CI (Node 24 type stripping) |
@@ -246,6 +293,7 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 
 | 12 | **Sprinter-vinderraten (≥ 90 %) og felt-sammenhængen (80-95 %) trækker mod hinanden når M5 er wiret.** Et udbrud der overlever en flad etape gør begge ting på én gang: vinderen er ikke en sprinter, og kun udbryderne deler vindertiden. Målt 3/9 over 5 seeds efter wiringen: felt-sammenhængen steg fra ~1 % til 17,7 % (bånd 80-95 %), mens sprinter-ankeret faldt fra ~91 % til 85,0 %. Begge tal er styret af den samme størrelse — hvor ofte et udbrud går hele vejen — og på en flad etape går det i dag hele vejen langt oftere end i virkeligheden. Det er en kalibrering af jagt-modellen, ikke en wiring-mangel, og den er ejer-gated | [#4615](https://github.com/NicolaiDolmer/CyclingZone/issues/4615) |
 | 13 | **To led i jagt-modellen er absolutte konstanter målt mod en evne-relativ skala** (samme fejlfamilie som #4604/#4606): sen-etape-uroen og udbruddets størrelses-bonus. Mod den ægte population (median-evne 11/99) er de evne-afledte led en brøkdel af deres tiltænkte størrelse mens konstanterne står uændret. En naiv relativisering af begge led blev prøvet og **målt 3/9: den forværrede bjerg-ankeret** (207 → 247 s mod bånd 180-240) og blev rullet tilbage. Rettelsen kræver sin egen kalibrering med ejer-go, ikke en sidegevinst | [#4615](https://github.com/NicolaiDolmer/CyclingZone/issues/4615) |
+| 14 | **v4 komprimerer feltet så hårdt at tidsgrænsen (§2d) aldrig bider.** Målt 6/9 over 984 etapekørsler (328 proxy-etaper × 3 seeds, 180-rytters felt): 0 OTL, 0 grupetto-redninger. Største spredning vinder-til-sidsteplads var 6,1 % på bjerg (median 3,5 %) mod en 15 %-grænse; på fladt var medianen 0,3 %. I virkeligheden er sidste mand på en bjergetape 20-30 minutter nede. Grænsen er sat efter UCI's bånd, som ejeren låste 6/9 — den må **ikke** trimmes ned under motorens nuværende spredning for at få reglen til at fyre; det ville gøre reglen forkert i stedet for at gøre motoren rigtig. Samme fejlfamilie som modsigelse 6 og 11: et sekundbaseret mål mod en for kompakt motor. Mekanikken er bygget, wiret og verificeret (kaldsstedet fyrer med en bredere `strengthSpeedGain`), men er inert indtil spredningen er kalibreret | [#2582](https://github.com/NicolaiDolmer/CyclingZone/issues/2582) · [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604) |
 
 **Bjerg-ankerets måleflade (ejer-beslutning 2/9, [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604)).** Bjerg-top-10-spredningen måles **kun på topankomster** — bjergetaper der slutter på toppen. En bjergetape der slutter på en nedkørsel hører til nedkørsels-ankeret, som netop kræver at de etaper er tættere; da begge ankre tidligere midlede over de samme etaper, kunne de to bånd ikke opfyldes samtidigt.
 

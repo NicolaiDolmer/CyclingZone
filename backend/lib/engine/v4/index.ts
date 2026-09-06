@@ -12,6 +12,9 @@ import { descentHook } from "./mechanics/descent.ts";
 import { breakawayHook } from "./mechanics/breakaway.ts";
 import { finaleHook } from "./finale.ts";
 import { sortTimeline } from "./timeline.ts";
+// M15 (#2582, ejer-beslutning 6/9): tidsgraensen. Se wiring-blokken i
+// simulateStageV4 nedenfor for hvorfor den koeres netop dér.
+import { applyTimeLimit } from "./mechanics/timeLimit.ts";
 
 // Fase C-wiring (#4030) + F3-wiring (#4615): de rigtige M2/M3/M4/M5-
 // implementeringer. M6 (leadout) kaldes inde fra finaleHook, M14 (AI-taktik)
@@ -90,15 +93,37 @@ function buildFinishEvent(results: StageResult[], distanceKm: number): TimelineE
  */
 export function simulateStageV4(input: StageInput): StageOutput {
   const { state, timeline, groupSnapshots } = runSegmentLoop(input, LIVE_MECHANIC_HOOKS);
-  const results = buildResults(state);
+  const rawResults = buildResults(state);
   const loads = buildLoads(state);
+
+  // ── M15: tidsgraensen (#2582, ejer-beslutning 6/9) ─────────────────────────
+  // Koeres HER og ikke i segment-loopet, fordi graensen maales mod VINDERTIDEN:
+  // den findes foerst naar finale.ts har afgjort placeringerne og
+  // runSegmentLoop's afsluttende applyGroupTimes har sat sluttiderne. Modulet
+  // roerer kun `status` — rank, tid og raekkefoelge er uaendrede, saa
+  // monotoni-invarianten (§3 punkt 3) og den laaste feltstoerrelse (§3 punkt 6)
+  // er uberoerte per konstruktion.
+  const timeLimit = applyTimeLimit({
+    results: rawResults,
+    profileType: input.route.profile_type,
+    distanceKm: input.route.distance_km,
+    // Sammenhaengsvinduet er BEVIDST ikke tuning.groups.mergeThresholdSeconds:
+    // finale.ts's placerings-tiers ligger per konstruktion mindst
+    // mergeThresholdSeconds + margin fra hinanden, saa det vindue kunne aldrig
+    // kaede to tiers til én grupetto. Modulet bruger sin egen ANKOMST-graense
+    // (TIME_LIMIT_EXTRA_TUNING.grupettoCohesionWindowSeconds, se maalingen dér).
+  });
+  const results = timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km);
 
   // Hooks emitterer midt-segment-events (fx descent attack ved km 1,27) efter
   // loopets egne graense-events — stable-sort paa km genopretter #2410 §2.3's
   // monotoni uden at flytte raekkefoelgen inden for samme km.
+  // M15's events ligger paa maalstregen og hoerer kronologisk EFTER
+  // finish-eventet: tidsgraensen kan foerst afgoeres naar vinderen er i maal.
+  // Samme km => stabil sortering bevarer den raekkefoelge (#2410 §2.3 regel 4).
   return {
-    timeline: { timeline_version: 2, events: [...sortTimeline(timeline), finishEvent] },
+    timeline: { timeline_version: 2, events: [...sortTimeline(timeline), finishEvent, ...timeLimit.events] },
     results,
     loads,
     groupSnapshots,
