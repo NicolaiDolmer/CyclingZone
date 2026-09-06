@@ -43,9 +43,11 @@ import { EFFORT_COST_EXTRA_TUNING } from "../tuning.ts";
  * funktionerne nedenfor har en navngiven, testbar parameter-type.
  */
 export type EffortCostTuning = {
+  demandMultiplierGrupetto: number; // <save: koerer med, gaar ikke efter noget (#4632, raceRoles FATIGUE_MULTIPLIER_GRUPETTO-anker)
   demandMultiplierProtect: number; // >1: beskytter/traekker for holdet koster ekstra effekt-krav (raceRoles FATIGUE_MULTIPLIER_PROTECT-anker)
   demandMultiplierNormal: number; // =1: baseline, ingen modulation
   demandMultiplierSave: number; // <1: koerer bevidst inden for sig selv (raceRoles FATIGUE_MULTIPLIER_SAVE-anker)
+  demandMultiplierAllOut: number; // >protect: alt ud (#4632, raceRoles FATIGUE_MULTIPLIER_ALL_OUT-anker)
 };
 
 export { EFFORT_COST_EXTRA_TUNING as EFFORT_COST_TUNING };
@@ -61,8 +63,14 @@ export function effortDemandMultiplier(
   effort: EffortLevel,
   tuning: EffortCostTuning = EFFORT_COST_EXTRA_TUNING,
 ): number {
+  // #4632: femtrins-skalaen. 'grupetto' og 'all_out' skal have deres EGEN
+  // multiplikator — faldt de igennem til normal-grenen, ville et femtrins-valg
+  // stille blive til en normal dag, hvilket er praecis den fejlklasse
+  // teamOrdersAdapter's VALID_EFFORTS-sæt ogsaa lukker.
   if (effort === "protect") return tuning.demandMultiplierProtect;
   if (effort === "save") return tuning.demandMultiplierSave;
+  if (effort === "grupetto") return tuning.demandMultiplierGrupetto;
+  if (effort === "all_out") return tuning.demandMultiplierAllOut;
   return tuning.demandMultiplierNormal;
 }
 

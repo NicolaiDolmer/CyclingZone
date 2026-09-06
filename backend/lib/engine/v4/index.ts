@@ -21,6 +21,9 @@ import { breakawayHook } from "./mechanics/breakaway.ts";
 import { applyThreeKmRuleToResults, incidentHook } from "./mechanics/incidents.ts";
 import { finaleHook } from "./finale.ts";
 import { sortTimeline } from "./timeline.ts";
+// M15 (#2582, ejer-beslutning 6/9): tidsgraensen. Se wiring-blokken i
+// simulateStageV4 nedenfor for hvorfor den koeres netop dér.
+import { applyTimeLimit } from "./mechanics/timeLimit.ts";
 
 // Fase C-wiring (#4030) + F3-wiring (#4615, #2944): de rigtige M2/M3/M4/M5/M10-
 // implementeringer. M6 (leadout) kaldes inde fra finaleHook, M14 (AI-taktik)
@@ -135,18 +138,48 @@ export function simulateStageV4(input: StageInput): StageOutput {
 
   // Hooks emitterer midt-segment-events (fx descent attack ved km 1,27) efter
   // loopets egne graense-events — stable-sort paa km genopretter #2410 §2.3's
-  // monotoni uden at flytte raekkefoelgen inden for samme km.
+  // monotoni uden at flytte raekkefoelgen inden for samme km. M10's uheldsevents
+  // (#2944) emitteres inde i segment-loopet og ligger dermed allerede paa deres
+  // egen km her.
   const sortedTimeline = sortTimeline(timeline);
 
   // M10's 3 km-regel er en PLACERINGS-konsekvens og kan derfor foerst paafoeres
   // naar rank eksisterer: efter buildResults, foer finish-eventet bygges paa
   // den endelige raekkefoelge (mechanics/incidents.ts's egen wiring-JSDoc).
-  const results = applyThreeKmRuleToResults(buildResults(state), sortedTimeline);
+  const resultsAfterThreeKmRule = applyThreeKmRuleToResults(buildResults(state), sortedTimeline);
   const loads = buildLoads(state);
+
+  // ── M15: tidsgraensen (#2582, ejer-beslutning 6/9) ───────────────────────
+  // Koeres HER og ikke i segment-loopet, fordi graensen maales mod VINDERTIDEN:
+  // den findes foerst naar finale.ts har afgjort placeringerne og
+  // runSegmentLoop's afsluttende applyGroupTimes har sat sluttiderne. Modulet
+  // roerer kun `status` — rank, tid og raekkefoelge er uaendrede, saa
+  // monotoni-invarianten (§3 punkt 3) og den laaste feltstoerrelse (§3 punkt 6)
+  // er uberoerte per konstruktion.
+  //
+  // Den maaler paa resultatlisten EFTER M10's 3 km-regel (#2944): reglen giver
+  // en styrtet rytter sin gruppes tid, og netop den tid er den graensen skal
+  // doemme ham paa — ellers ville et styrt inden for de sidste 3 km foerst
+  // blive neutraliseret og derefter alligevel udloese OTL. Udgaaede ryttere
+  // (M10's trin 3) roerer M15 ikke: de har allerede en terminal udfaldsklasse.
+  const timeLimit = applyTimeLimit({
+    results: resultsAfterThreeKmRule,
+    profileType: input.route.profile_type,
+    distanceKm: input.route.distance_km,
+    // Sammenhaengsvinduet er BEVIDST ikke tuning.groups.mergeThresholdSeconds:
+    // finale.ts's placerings-tiers ligger per konstruktion mindst
+    // mergeThresholdSeconds + margin fra hinanden, saa det vindue kunne aldrig
+    // kaede to tiers til én grupetto. Modulet bruger sin egen ANKOMST-graense
+    // (TIME_LIMIT_EXTRA_TUNING.grupettoCohesionWindowSeconds, se maalingen dér).
+  });
+  const results = timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km);
 
+  // M15's events ligger paa maalstregen og hoerer kronologisk EFTER
+  // finish-eventet: tidsgraensen kan foerst afgoeres naar vinderen er i maal.
+  // Samme km => stabil sortering bevarer den raekkefoelge (#2410 §2.3 regel 4).
   return {
-    timeline: { timeline_version: 2, events: [...sortedTimeline, finishEvent] },
+    timeline: { timeline_version: 2, events: [...sortedTimeline, finishEvent, ...timeLimit.events] },
     results,
     loads,
     groupSnapshots,

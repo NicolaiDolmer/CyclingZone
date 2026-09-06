@@ -36,7 +36,15 @@ export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "fr
 
 // M12 (effort-styring, ejer-valg 20/8 §4). F2 behandler alle ryttere som 'normal'
 // (segmentLoop.ts laeser feltet men mekanik-effekten er F3/M12-scope).
-export type EffortLevel = "protect" | "normal" | "save";
+//
+// #4632 (loebsdagens intention, ejer 5-6/9): udvidet fra tre til FEM trin —
+// samme enum som v3's raceRoles.js VALID_EFFORTS_FIVE_STEP og DB-constraint'en
+// paa race_stage_roles.effort, 1:1. De tre oprindelige vaerdier beholder navn OG
+// semantik; 'grupetto' og 'all_out' er de nye yderpunkter. Ingen wiring aendret
+// her (segmentLoop behandler stadig alle som 'normal' indtil M12 wires) — kun
+// typen, saa M12 arver skalaen i stedet for at genopfinde den.
+// SSOT: docs/superpowers/specs/2026-09-03-race-day-intention-decision.md §4/§6.
+export type EffortLevel = "grupetto" | "save" | "normal" | "protect" | "all_out";
 
 // ── Rute-model v2 (F1, deles med kalenderen) ──────────────────────────────────
 // Segment-felterne matcher backend/lib/routeSegments.js's buildSegments()-output
@@ -190,7 +198,36 @@ export type TimelineEvent = {
   params: Record<string, unknown>; // fog-gate (#1791): INGEN rå komponenter/vaegte/sandsynligheder
 };
 
-export type StageResultStatus = "finished" | "abandoned";
+// ── Udfaldsklasser (ADDITIV udvidelse, #2582 — ejer-beslutning 6/9) ──────────
+// "otl" (outside time limit) er en TREDJE udfaldsklasse ved siden af
+// finished/abandoned, ikke en variant af nogen af dem: rytteren KOM i maal
+// (i modsaetning til abandoned) men uden for tidsgraensen, saa han er ude af
+// loebet alligevel. Klassement og flip-mapping skal kunne skelne de tre.
+// Mekanikken bor i mechanics/timeLimit.ts (M15); reglen i klartekst staar i
+// docs/RACE_ENGINE_RULES.md §2d.
+//
+// FLIP-KONTRAKT (til `feat/v4-flip-infrastructure` — fuld udgave med fil- og
+// linjehenvisninger staar nederst i mechanics/timeLimit.ts):
+//   1. `race_results` har INGEN status-kolonne. En OTL-rytter faar derfor
+//      INGEN `result_type:'stage'`-raekke for etapen — hverken tid eller rank —
+//      praecis som v3 haandterer en DNF (database/2026-07-12-race-v3-s4-
+//      incidents.sql:13-16). Skriv ikke en halvtom raekke.
+//   2. Markeringen skrives i `race_incidents` som `kind='time_limit'` med
+//      `injury_days = null` (en tidsgraense er ikke en skade, jf.
+//      RACE_ENGINE_RULES.md §2c). Kraever én idempotent migration der udvider
+//      `race_incidents_kind_check`.
+//   3. Etapeloeb: `outcome='abandon'` genbruges, saa `loadAbandonedRiderIds`
+//      (backend/lib/raceIncidents.js:144) filtrerer rytteren ud af naeste
+//      etapes startliste. Vaelges i stedet et nyt `outcome='otl'`, SKAL den
+//      loader udvides — ellers starter han igen. FAELDE: kaldet i
+//      raceRunner.js:2448 er gated paa `if (v3)`, saa den gren skal ogsaa
+//      daekke v4, ellers stiller BAADE udgaaede og OTL-ryttere til start.
+//   4. Klassementet: den manglende etaperaekke fjerner ham automatisk fra ALLE
+//      klassementer via `raceClassifications.filterCompletedEntrants`
+//      (backend/lib/raceClassifications.js:144). Ingen ny kolonne.
+//   5. Endagsloeb: ingen naeste etape, intet klassement — konsekvensen er
+//      punkt 1+2 alene, dvs. DNF.
+export type StageResultStatus = "finished" | "abandoned" | "otl";
 
 export type StageResult = {
   rider_id: string;

@@ -57,3 +57,31 @@ export const RACE_STAGE_TIMELINE_FLAG_KEY = "race_stage_timeline";
 export async function isRaceStageTimelineEnabled(supabase, opts = {}) {
   return evaluateFlagStage(await readFlagStage(supabase, RACE_STAGE_TIMELINE_FLAG_KEY), opts);
 }
+
+// Løbsmotor v4 (#3855, #4707) — den tænd/sluk-knap auditten 5/9 konstaterede
+// ikke fandtes ("Flaget race_engine_v4 findes kun som et ord i en spec").
+// Samme app_config-mønster som de fire flag ovenfor: dormant default OFF
+// (rækken findes ikke → readFlagStage null → evaluateFlagStage false), ét
+// opslag pr. afvikling, INGEN migration — ejeren indsætter rækken den dag der
+// flippes, og sletter/sætter den til "off" for at rulle tilbage.
+//
+// SELVSTÆNDIG kill-switch, IKKE bundet til race_engine_v3_scoring: v4 erstatter
+// hele score-motoren, så v3's score-komponenter er irrelevante mens v4 kører.
+// Slukkes flaget midt i et etapeløb, kører NÆSTE etape v3 uden fejl —
+// klassementet akkumuleres fra race_results og er uafhængigt af hvilken motor
+// der skrev den enkelte etape.
+//
+// MEN: kør ikke v4 med race_engine_v3_scoring OFF. Det er raceRunner's v3-gate
+// der resolver dagens rolle + indsats pr. rytter (raceStageRoles), og v4 læser
+// begge felter. Med v3 off ville hver rytter gå ind i v4 som 'free_role' med
+// 'normal' indsats. v3 er ON i prod, så det er ikke en aktuel risiko — det er
+// en note til den der måtte finde på at slukke begge flag på én gang.
+//
+// 'beta' giver ingen mening her (en etape har ét udfald for ALLE spillere, der
+// er ingen viewer at gate på), men tre-tilstands-maskinen er delt: engineWrite-
+// gaten ville få 'beta' til at betyde "kør v4 for alle". Brug 'on'/'off'.
+export const RACE_ENGINE_V4_FLAG_KEY = "race_engine_v4";
+
+export async function isRaceEngineV4Enabled(supabase, opts = {}) {
+  return evaluateFlagStage(await readFlagStage(supabase, RACE_ENGINE_V4_FLAG_KEY), opts);
+}

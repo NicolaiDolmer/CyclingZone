@@ -48,7 +48,7 @@ export async function loadStageRoleOverrides({ supabase, raceId }) {
  *
  * @param {{rider_id: string, race_role?: string}} entrant  ORIGINAL entrant (base race_role fra race_entries) — ikke en allerede-mutéret sim-entrant
  * @param {Map<string, {race_role:string, effort:string}>} [overridesForStage]  KUN denne etapes overrides
- * @returns {{race_role?: string, effort: 'protect'|'normal'|'save'}} nyt objekt (spread af entrant + resolveret role/effort)
+ * @returns {{race_role?: string, effort: 'grupetto'|'save'|'normal'|'protect'|'all_out'}} nyt objekt (#4632: fem trin) (spread af entrant + resolveret role/effort)
  */
 export function resolveStageEntrant(entrant, overridesForStage) {
   const override = overridesForStage?.get(entrant.rider_id);

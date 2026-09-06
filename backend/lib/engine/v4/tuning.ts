@@ -407,10 +407,18 @@ export const WEATHER_EXTRA_TUNING = deepFreeze(weatherExtra);
 // raceRoles.RACE_V3_TUNING.FATIGUE_MULTIPLIER_PROTECT/_SAVE/_NORMAL: v3-
 // tallene er allerede spillet ind mod virkelige etaper) som en ren v4-
 // funktion — v4 importerer ALDRIG raceRoles.js selv (renheds-graensen).
+//
+// #4632 (loebsdagens intention, ejer 5-6/9): skalaen er udvidet til FEM trin.
+// De to nye yderpunkter ANKRER paa v3's nye startgaet praecis som de tre gamle
+// ankrede paa v3's kalibrerede tal — raceRoles.RACE_V3_TUNING.
+// FATIGUE_MULTIPLIER_GRUPETTO/_ALL_OUT (0.5 / 1.5). Begge er STARTGAET,
+// KALIBRERES sammen med resten af M12-wiringen; v4 er ikke live.
 const effortCostExtra = {
+  demandMultiplierGrupetto: 0.5, // <save: koerer med i grupettoen, gaar ikke efter noget (raceRoles FATIGUE_MULTIPLIER_GRUPETTO-anker, STARTGAET)
   demandMultiplierProtect: 1.2, // >1: beskytter/traekker for holdet koster ekstra effekt-krav (raceRoles FATIGUE_MULTIPLIER_PROTECT-anker)
   demandMultiplierNormal: 1.0, // =1: baseline, ingen modulation
   demandMultiplierSave: 0.7, // <1: koerer bevidst inden for sig selv (raceRoles FATIGUE_MULTIPLIER_SAVE-anker)
+  demandMultiplierAllOut: 1.5, // >protect: alt ud (raceRoles FATIGUE_MULTIPLIER_ALL_OUT-anker, STARTGAET)
 };
 
 /** M12 additiv effort-cost-tuning (deep-frosset). Se effortCostExtra-kommentaren ovenfor. */
@@ -517,3 +525,46 @@ const physiologyWprimeDrain = {
 
 /** W'-taerings-tidskonstant (deep-frosset). Se physiologyWprimeDrain-kommentaren ovenfor. */
 export const PHYSIOLOGY_WPRIME_DRAIN_TUNING = deepFreeze(physiologyWprimeDrain);
+
+// ── M15 (mechanics/timeLimit.ts, #2582) — ADDITIV tidsgraense-tuning ─────────
+// Samme additive praecedens som finaleExtra ovenfor: SS2's frosne EngineTuning
+// (types.ts) har ingen "timeLimit"-noegle, saa mechanics/timeLimit.ts importerer
+// denne direkte. Ejer-beslutning 6/9 (UCI-reglen, docs/RACE_ENGINE_RULES.md §2d).
+//
+// FAKTOR-TABELLEN er andelen af VINDERTIDEN en rytter maa laegge oveni foer han
+// er uden for tidsgraensen. Ejer-rammen: UCI's 5-20 %-baand, flad lavest,
+// bjerg/summit hoejest, enkeltstart/holdtidskoersel efter UCI-praksis. ALLE
+// vaerdier er STARTGAET, kalibreres i harnesset — maalet er "sjaeldent paa flade
+// etaper, maerkbart paa haarde bjergetaper, aldrig en massakre".
+const timeLimitExtra = {
+  factorByProfileType: {
+    flat: 0.05, // fladt: laveste baand-ende (UCI's letteste koefficient) — feltet ruller samlet ind, kun en reelt havareret rytter falder udenfor
+    rolling: 0.06, // rullende: knap over fladt, samme massefinale-dynamik
+    hilly: 0.1, // kuperet: midt i baandet, foerste etapetype hvor selektionen kan hage en svag klatrer af
+    cobbles: 0.09, // brosten: kort men nedslidende; UCI's klassiker-praksis er mild fordi sektorerne allerede har splittet feltet
+    gravel: 0.11, // grus: laengere og mere nedslidende end brosten (RACE_ENGINE_RULES.md §2b), derfor lidt mildere graense
+    classic: 0.11, // monument-arketypen: lang, haard, stor spredning i maal
+    mountain: 0.15, // bjerg: hoej ende af baandet — grupettoen er normen her, ikke undtagelsen
+    high_mountain: 0.2, // hoejbjerg/summit: baandets top (ejer: "bjerg/summit hoejest")
+    itt: 0.25, // enkeltstart: UCI-praksis ligger over 5-20-baandet (typisk 25 %) fordi en TT spreder feltet naturligt
+    itt_hilly: 0.25, // kuperet enkeltstart: samme UCI-praksis som itt
+    ttt: 0.25, // holdtidskoersel: samme UCI-praksis; en rytter sluppet af sit hold maa ikke ryge ud paa en holdopgave
+  } as Record<ProfileType, number>, // graense-faktor pr. etapetype (andel af vindertiden). STARTGAET, kalibreres
+  fallbackFactor: 0.1, // faktor naar profile_type mangler/er ukendt — midt i baandet, saa en ukendt type hverken massakrerer eller slukker reglen
+  grupettoFieldFraction: 0.2, // andel af FELTET en samlet ankomst skal udgoere foer grupetto-redningen udloeses (UCI bruger typisk 20 %). STARTGAET, kalibreres
+  grupettoMinRiders: 8, // absolut gulv: i et lille felt maa 20 % ikke goere enhver lille klump til en grupetto. STARTGAET, kalibreres
+  // MAALT 6/9, ikke gaettet: vinduet kan IKKE vaere tuning.groups.mergeThresholdSeconds (2 s).
+  // finale.ts bygger hvert placerings-tier med et skridt paa mindst
+  // mergeThresholdSeconds + placementGapMarginSeconds (2 + 0,4 s) netop for at
+  // segmentLoop's efterfoelgende mergeGroups IKKE folder tierne sammen igen. Et
+  // 2-sekunders vindue kan derfor per konstruktion aldrig kaede to tiers sammen,
+  // saa en grupetto der ankommer i to klumper ville blive doemt som to smaa
+  // grupper og ryge ud — praecis den massakre reglen skal forhindre. Maalt paa en
+  // etape hvor halen faldt i to klumper 104 s fra hinanden (18 + 12 ryttere,
+  // taerskel 24): 2 s => begge ud, 120 s => samlet og reddet. Vinduet er en
+  // ANKOMST-graense ("kom de ind sammen?"), ikke en loebsdynamik-graense.
+  grupettoCohesionWindowSeconds: 120, // sammenhaengsvindue paa sluttid: hvor langt der maa vaere mellem to naboer i en samlet ankomst. STARTGAET, kalibreres
+};
+
+/** M15 additiv tidsgraense-tuning (deep-frosset). Se timeLimitExtra-kommentaren ovenfor. */
+export const TIME_LIMIT_EXTRA_TUNING = deepFreeze(timeLimitExtra);

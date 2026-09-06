@@ -488,7 +488,18 @@ function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType,
     String(a.rider_id).localeCompare(String(b.rider_id))
   );
   const cut = Math.floor(byTerrain.length * BREAKAWAY_TOP_EXCLUDED);
-  const candidates = byTerrain.filter((e, i) => i >= cut || e.race_role === "hunter");
+  // #4632 (intention, Model C): 'grupetto' = "jeg kører med i dag, jeg går ikke
+  // efter noget". En grupetto-rytter er derfor ALDRIG udbruds-kandidat — heller
+  // ikke en hunter (rollen giver normalt automatisk kandidatur + ekstra vægt;
+  // dagens intention slår rollens standard for netop denne etape). Det er den
+  // ene resultat-side grupetto har: ingen egen chance, mod den største trætheds-
+  // besparelse. Ingen NY mekanik — kun en indsnævring af den eksisterende
+  // kandidatliste, og feltet kan kun være 'grupetto' når
+  // race_day_intention_enabled er on (API'et er eneste skrivevej), så flag-off
+  // er bit-identisk.
+  const candidates = byTerrain.filter(
+    (e, i) => (i >= cut || e.race_role === "hunter") && e.effort !== "grupetto"
+  );
   if (!candidates.length) return bonuses;
 
   const count = Math.min(1 + Math.floor(rng() * BREAKAWAY_MAX_RIDERS), candidates.length);
