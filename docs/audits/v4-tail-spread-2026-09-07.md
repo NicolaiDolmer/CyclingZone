@@ -119,32 +119,79 @@ To led, begge på rod-årsagen ovenfor.
 
 ### Efter (samme 141 etaper × 3 seeds, felt 180)
 
-| etapetype | p90 før | p90 efter | ren maks før | ren maks efter | inden 10 % før | efter |
-|---|---|---|---|---|---|---|
-| flat | 0,19 % | 0,20 % | 1,34 % | 0,83 % | 100 % | 100 % |
-| rolling | 0,46 % | 3,42 % | 4,04 % | 10,33 % | 99,9 % | 99,9 % |
-| hilly | 1,74 % | 5,88 % | 5,37 % | 13,81 % | 100 % | 98,7 % |
-| mountain | 2,71 % | **9,05 %** | 6,10 % | 16,84 % | 100 % | 81,2 % |
-| high_mountain | 2,52 % | **7,17 %** | 6,01 % | 17,66 % | 100 % | 89,2 % |
+> **Genmålt 7/9 efter rebase på main `d7db448ac`.** Alle "før"-tal herunder er den nye
+> main — altså **efter** at #4931 (rng-streams nøglet på segment, [#4886](https://github.com/NicolaiDolmer/CyclingZone/issues/4886))
+> og #4933 (nedkørsels-styrt med gulv, [#4905](https://github.com/NicolaiDolmer/CyclingZone/issues/4905))
+> blev merget. Begge flytter motorens output, så den oprindelige måling mod `2046986cc`
+> er forældet og er erstattet her.
 
-Tidsgrænsen (M15) går fra **0 OTL på alle etapetyper** til at fyre på bjerg, kuperet,
-rullende og klassiker, med grupetto-redninger på 6 etaper. Flade etaper er stadig
-sjældne (0,15 %) — som reglen kræver.
+Hale-spredning, målt som (sidsteplads − vinder) / vindertid. `p50` er medianrytteren i
+feltet (kolonnen `median_rytter_%` i harnessens hovedtabel), `p90`/`ren maks` kommer fra
+diagnose-tabellen, som **ikke findes i main-baselinen** — den blev kørt med harnessens
+tidligere version. Derfor er før/efter-sammenligningen på `p50`, som begge sider har.
 
-### Ankre (headToHeadV4, 3 seeds, før → efter)
+| etapetype | p50 før (main) | p50 efter | p90 efter | ren maks efter | inden 10 % efter |
+|---|---|---|---|---|---|
+| flat | 0,20 % | 0,20 % | 0,20 % | 0,20 % | 100,0 % |
+| rolling | 0,44 % | 3,10 % | 3,41 % | 3,74 % | 99,9 % |
+| hilly | 1,61 % | 5,58 % | 6,02 % | 7,05 % | 98,6 % |
+| cobbles | 1,04 % | 3,07 % | 3,67 % | 4,48 % | 99,9 % |
+| mountain | 2,69 % | **8,26 %** | **9,07 %** | 10,54 % | 81,4 % |
+| high_mountain | 2,71 % | **7,25 %** | **7,25 %** | 9,08 % | 91,2 % |
+| classic | 2,39 % | 7,53 % | 7,53 % | 7,53 % | 98,0 % |
+
+Retningen er den samme som mod den gamle base: bjerg går fra ~2,7 % til ~9 %, fladt står
+stille på 0,2 % (feltet skal netop ikke splittes dér).
+
+**Tidsgrænsen (M15)** efter rettelsen, andel af alle startende der ender uden for grænsen:
+
+| etapetype | otl % | etaper med OTL | grupetto-redninger |
+|---|---|---|---|
+| flat | 0,156 % | 16 | 0 |
+| rolling | 0,764 % | 18 | 6 etaper |
+| hilly | 0,902 % | 59 | 1 etape |
+| mountain | 0,062 % | 7 | 0 |
+| high_mountain | 0 % | 0 | 0 |
+| classic | 2,037 % | 2 | 0 |
+| cobbles / itt / itt_hilly | 0 % | 0 | 0 |
+
+Main-baselinen indeholder ikke M15-tabellen (samme grund som ovenfor), så "før" kan ikke
+citeres seed-for-seed her; 6/9-målingen på `ffe85890e` gav 0 OTL og 0 redninger, og
+main-baselinens bjerg-p50 på 2,7 % er langt inden for grænsen.
+
+### Ankre (headToHeadV4, 3 seeds, main `d7db448ac` → denne gren)
 
 | anker | bånd | s1 | s2 | s3 |
 |---|---|---|---|---|
-| Bjerg-top-10, topankomster | 180-240 s | 200 → 216 ✅ | 182 → 192 ✅ | 216 → 230 ✅ |
-| Felt-sammenhæng, flade | 80-95 % | 26,2 → 29,1 ❌ | 28,2 → 30,5 ❌ | 25,3 → 30,0 ❌ |
-| Nedkørsels-/summit-ratio | ≤ 0,5 | 0,32 → 0,25 ✅ | 0,43 → 0,42 ✅ | 0,39 → 0,39 ✅ |
-| Sprinter-vinderrate, flat | ≥ 90 % | 82,9 → 85,7 ❌ | 97,1 → 97,1 ✅ | 91,4 → 91,4 ✅ |
-| Felt-favoritters win-rate | 25-40 % | 61,0 → 58,9 ❌ | 59,6 → 56,7 ❌ | 58,9 → 62,4 ❌ |
-| Punch-korrelation | > 0,3 | 0,70 → 0,70 ✅ | 0,69 → 0,71 ✅ | 0,69 → 0,72 ✅ |
-| Brostensevnens løft | ≥ 0,03 | 0,224 → 0,221 ✅ | 0,148 → 0,165 ✅ | 0,013 ❌ → 0,105 ✅ |
+| Bjerg-top-10, topankomster | 180-240 s | 220 → **242 ❌** | 177 ❌ → 165 ❌ | 212 → 228 ✅ |
+| Felt-sammenhæng, flade | 80-95 % | 23,7 → 29,2 ❌ | 22,5 → 30,1 ❌ | 25,2 → 31,9 ❌ |
+| Nedkørsels-/summit-ratio | ≤ 0,5 | 0,32 → 0,26 ✅ | 0,46 → 0,49 ✅ | 0,34 → 0,40 ✅ |
+| Descent attack-gevinst | 10-20 s | 20 → 20 ✅ | 20 → 20 ✅ | 20 → 20 ✅ |
+| Sprinter-vinderrate, flat | ≥ 90 % | 77,1 → 80,0 ❌ | 91,4 → 94,3 ✅ | 88,6 ❌ → 91,4 ✅ |
+| Felt-favoritters win-rate | 25-40 % | 53,2 → 53,2 ❌ | 53,2 → 54,6 ❌ | 53,9 → 54,6 ❌ |
+| Punch-korrelation | > 0,2 | 0,70 → 0,70 ✅ | 0,69 → 0,72 ✅ | 0,70 → 0,72 ✅ |
+| Brostensevnens løft | ≥ 0,03 | 0,098 → 0,155 ✅ | 0,110 → 0,163 ✅ | 0,094 → 0,107 ✅ |
+| Samme-hold-top-10 | < 3 % | 0 → 0 ✅ | 0 → 0 ✅ | 0 → 0 ✅ |
+| ITT-korrelation | > 0,3 | 0,86 → 0,85 ✅ | 0,84 → 0,84 ✅ | 0,80 → 0,85 ✅ |
+| Bonussekunder bounded | ≤ 10 s | 10 → 10 ✅ | 10 → 10 ✅ | 10 → 10 ✅ |
 
-Ingen anker gik fra PASS til FAIL på nogen seed; ét gik fra FAIL til PASS. De tre røde
-bånd var røde før og efter, og to af dem flyttede sig mod båndet på alle tre seeds.
+**Ét anker går PASS → FAIL: bjerg-top-10 på s1 (220 → 242 s mod loftet 240).** Ét går
+FAIL → PASS (sprinter-vinderraten på s3). Mod den gamle base holdt bjerg-ankeret på alle
+tre seeds; det gør det ikke længere. To ting flyttede sig samtidig:
+
+1. **Ny main flyttede selv ankeret.** På branchens gamle base (`ffe85890e`-motoren) lå det
+   på 200/182/216 s; på `dddc7f216` — altså rng-streams nøglet på segment
+   ([#4886](https://github.com/NicolaiDolmer/CyclingZone/issues/4886)) — springer det til
+   220/**177**/212, og s2 er dermed **allerede rødt på main**. `d7db448ac`
+   (nedkørsels-gulvet, [#4905](https://github.com/NicolaiDolmer/CyclingZone/issues/4905))
+   rører ikke dette anker: 220/177/212 begge steder. Marginen op til loftet var altså
+   skrumpet fra 40 s til 20 s på s1, før denne PR overhovedet blev lagt ovenpå.
+2. **Halen koster margin i toppen.** Rettelsens overskuds-gren er dæmpet netop for at
+   spare på dette anker, men den er ikke gratis: den lægger 10-22 s på tværs af seeds.
+
+Ankeret er dermed **1 af 3 seeds grønt** (mod 2 af 3 på main selv). Det er en åben
+kalibrerings-beslutning, ikke en wiring-fejl, og den er **ikke** truffet i denne PR — jf.
+§4 *"Simulér før ship"* kræver en dæmpning af overskuds-grenen ejer-go.
 
 ### Hvad rettelsen IKKE løser
 Felt-sammenhængen på flade etaper (#4707) er stadig 29-31 % mod 80-95 %. Halen på fladt
