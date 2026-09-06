@@ -181,6 +181,16 @@
       "title": "Akademi-signing gennemført",
       "message": "Din akademikandidat er nu en del af dit akademi."
     },
+    "academyGraduated": {
+      "title": "Akademi-graduering afgjort",
+      "promote": "{name} er rykket op i din seniortrup.",
+      "sell": "{name} er sat til salg.",
+      "release": "{name} er sluppet fri.",
+      "unsoldPromotedTitle": "Akademirytter rykket op",
+      "unsoldPromoted": "Der kom ingen bud på {name}, så han rykker op i din seniortrup.",
+      "unsoldTitle": "Akademirytter sluppet fri",
+      "unsold": "Der kom ingen bud på {name}, og han forlod dit akademi som fri agent."
+    },
     "academySigningDeferred": {
       "title": "Akademi-signing bekræftet",
       "message": "{riderName} bliver en del af dit akademi, når hans etapeløb er kørt færdigt - han kører stadig for din seniortrup indtil da."
