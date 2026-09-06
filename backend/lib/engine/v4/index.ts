@@ -38,6 +38,11 @@ import { sortTimeline } from "./timeline.ts";
 // M15 (#2582, ejer-beslutning 6/9): tidsgraensen. Se wiring-blokken i
 // simulateStageV4 nedenfor for hvorfor den koeres netop dér.
 import { applyTimeLimit } from "./mechanics/timeLimit.ts";
+// M13 (#3463/#2412, ejer-beslutning 6/9): holdtidskoerslen. Den er IKKE et hook
+// i segment-loopet men en hel ALTERNATIV etape-model (ét hold = én gruppe der
+// koerer sammen), saa den forgrenes i simulateStageV4 — se TTT-blokken dér.
+import { simulateTeamTimeTrialStage } from "./mechanics/teamTimeTrial.ts";
+import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 
 // Fase C-wiring (#4030) + F3-wiring (#4615, #2944, #3855): de rigtige
 // M2/M3/M4/M5/M8/M10-
@@ -56,9 +61,10 @@ import { applyTimeLimit } from "./mechanics/timeLimit.ts";
 // `riderCpForSegment`) og er dermed ikke terraen-udloeste hooks men et lag
 // under dem. M11's anden arm — vejr-forstaerket styrt-risiko — ligger i
 // mechanics/descent.ts og mechanics/cobbles.ts.
-// Stadig bygget-men-ikke-kaldt: M12 (effort) og holdtidskoerslen.
-// (M16/holdspillet gav `Entrant.team_id`, forudsaetningen for at
-// holdtidskoerslen kan kobles ind. Ordre-adapteren kaldes af broen.)
+// Stadig bygget-men-ikke-kaldt: M12 (effort).
+// (M16/holdspillet gav `Entrant.team_id`, forudsaetningen for M13/
+// holdtidskoerslen, der er wiret 6/9 som forgreningen i simulateStageV4
+// nedenfor. Ordre-adapteren kaldes af broen.)
 const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: climbSelectionHook,
   descent: descentHook,
@@ -167,6 +173,32 @@ function buildFinishEvent(results: StageResult[], distanceKm: number): TimelineE
  * -> tidslinje + resultater + belastninger + gruppe-snapshots.
  */
 export function simulateStageV4(input: StageInput): StageOutput {
+  // ── M13: holdtidskoerslen (#3463/#2412, ejer-beslutning 6/9) ─────────────
+  // En TTT er ikke en vejetape med et ekstra hook paa: hele gruppe-modellen er
+  // en anden (ét hold = én gruppe der koerer sammen fra egen start, og holdets
+  // tid er den k'te rytters passage — UCI-reglen, ikke foerstemandens tid).
+  // Derfor en forgrening her og ikke en registrering i LIVE_MECHANIC_HOOKS.
+  //
+  // #3463's fund var praecis den manglende forgrening: "ni ryttere fra samme
+  // hold ville hver faa deres egen tid", fordi `ttt` faldt igennem til
+  // enkeltstarts-vejen. Diskriminatoren er `profile_type` og IKKE `finale_type`
+  // — raceStageProfileGenerator mapper baade itt/itt_hilly OG ttt til
+  // finale_type "solo_tt", saa de kan ikke skelnes paa finalen alene.
+  //
+  // FALLBACK: en TTT-rute hvor INGEN rytter baerer hold-id (fixtures,
+  // haandbyggede testlister) koerer den almindelige vejetape-vej, bit-uaendret
+  // — se teamRostersFromStartlist' null-kontrakt.
+  //
+  // M15 (tidsgraensen) koeres BEVIDST IKKE her. En TTT-ankomstgruppe er et
+  // HELT hold, og grupetto-redningen er kalibreret mod et massestartsfelt
+  // (~20 % af feltet); anvendt uaendret ville et enkelt langsomt hold ryge ud
+  // af loebet samlet. Det er en ejer-beslutning om spillets konsekvenser, ikke
+  // en wiring-detalje — se PR-body'ens aabne punkt.
+  if (input.route.profile_type === "ttt") {
+    const rosters = teamRostersFromStartlist(input.startlist);
+    if (rosters) return simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning);
+  }
+
   const { state, timeline, groupSnapshots } = runSegmentLoop(input, LIVE_MECHANIC_HOOKS);
 
   // Hooks emitterer midt-segment-events (fx descent attack ved km 1,27) efter
