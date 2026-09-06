@@ -183,17 +183,15 @@ function printTheoreticalCeilingSection(income, missionDaysInput) {
 // RLS-policy-funktion `riders`-tabellens "Public read riders"-policy kalder
 // (scoutMissionMaturation.js's egen kommentar navngiver den samme funktion).
 // Verificeret 2026-09-03, ikke rettet her (grant-ændring er ude af scope for
-// en audit-PR) — se docs/audits/scout-cadence-2026-09-03.md. Falder derfor
-// tilbage til worktree'ets backend/.env (SUPABASE_SERVICE_KEY, jf. opgave-
-// briefen) for netop DENNE sektion — stadig kun SELECT, aldrig skriv.
+// en audit-PR) — se docs/audits/scout-cadence-2026-09-03.md.
+// #4868: readonly-forsøget FJERNET helt — det fejlede deterministisk (samme
+// permission-denied hver gang) og hvert forsøg skrev en ægte 401→200-ERROR-
+// linje til prod-Postgres-loggen (328/dag, målt 29/8-5/9), fordi service-
+// klienten alligevel blev instantieret mod SAMME Supabase-projekt lige efter.
+// Scriptet er SELECT-only (jf. opgave-briefen), så worktree'ets backend/.env
+// (SUPABASE_SERVICE_KEY) er den rette og eneste nøglekilde.
 async function printFundRateSection() {
   console.log("── (C) #3853 LIVE READ-ONLY — fund-rate mod ægte free-agent-population ──");
-  dotenv.config({
-    path: path.resolve(SCRIPT_DIR, "../../.codex.local/supabase-readonly.env"),
-    quiet: true,
-  });
-  const readonlyUrl = process.env.SUPABASE_URL;
-  const readonlyKey = process.env.SUPABASE_READONLY_KEY;
 
   // Samme opslag som scoutMissionMaturation's (ueksporterede) resolveSeasonNumber
   // (aktiv sæson, intet seasonId at forankre til her) — uden en sæson giver
@@ -207,42 +205,22 @@ async function printFundRateSection() {
 
   let candidates = null;
   let keySource = null;
-  let lastError = null;
 
-  if (readonlyUrl && readonlyKey) {
-    try {
-      const supabase = createClient(readonlyUrl, readonlyKey);
-      const seasonNumber = await resolveActiveSeasonNumber(supabase);
-      candidates = await defaultLoadCandidates(supabase, "free_agents", seasonNumber);
-      keySource = ".codex.local/supabase-readonly.env (SUPABASE_READONLY_KEY)";
-    } catch (e) {
-      lastError = e;
-      console.log(`  .codex.local/supabase-readonly.env FEJLEDE: ${e.message}`);
-      console.log("  → falder tilbage til backend/.env (SUPABASE_SERVICE_KEY, kun SELECT-kald i dette script)…");
-    }
+  dotenv.config({ path: path.resolve(SCRIPT_DIR, "../.env"), quiet: true });
+  const envUrl = process.env.SUPABASE_URL;
+  const envKey = process.env.SUPABASE_SERVICE_KEY;
+  if (!envUrl || !envKey) {
+    console.log("  SPRUNGET OVER (mangler SUPABASE_URL/SUPABASE_SERVICE_KEY i backend/.env).\n");
+    return null;
   }
-
-  if (!candidates) {
-    dotenv.config({ path: path.resolve(SCRIPT_DIR, "../.env"), quiet: true });
-    const envUrl = process.env.SUPABASE_URL;
-    const envKey = process.env.SUPABASE_SERVICE_KEY;
-    if (!envUrl || !envKey) {
-      if (!readonlyUrl || !readonlyKey) {
-        console.log("  SPRUNGET OVER (mangler SUPABASE_URL + SUPABASE_READONLY_KEY/SUPABASE_SERVICE_KEY).\n");
-      } else {
-        console.log(`  SPRUNGET OVER (readonly-nøglen fejlede, og backend/.env mangler SUPABASE_URL/SUPABASE_SERVICE_KEY): ${lastError?.message}\n`);
-      }
-      return null;
-    }
-    try {
-      const supabase = createClient(envUrl, envKey);
-      const seasonNumber = await resolveActiveSeasonNumber(supabase);
-      candidates = await defaultLoadCandidates(supabase, "free_agents", seasonNumber);
-      keySource = "backend/.env (SUPABASE_SERVICE_KEY, kun SELECT-kald i dette script)";
-    } catch (e) {
-      console.log(`  FEJLEDE (læses ikke som et gate-fail — ejer-review): ${e.message}\n`);
-      return null;
-    }
+  try {
+    const supabase = createClient(envUrl, envKey);
+    const seasonNumber = await resolveActiveSeasonNumber(supabase);
+    candidates = await defaultLoadCandidates(supabase, "free_agents", seasonNumber);
+    keySource = "backend/.env (SUPABASE_SERVICE_KEY, kun SELECT-kald i dette script)";
+  } catch (e) {
+    console.log(`  FEJLEDE (læses ikke som et gate-fail — ejer-review): ${e.message}\n`);
+    return null;
   }
   console.log(`  Nøgle: ${keySource}`);
 

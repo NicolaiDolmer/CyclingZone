@@ -5,6 +5,8 @@ import {
   computeRollingMedians,
   evaluateLevelCorrectionGate,
   runMarketValueLevelCorrectionGateSweep,
+  defaultClaimMeasurement,
+  LEVEL_CORRECTION_GATE_LOG_TABLE,
 } from "./marketValueLevelCorrectionGate.js";
 import {
   DEFAULT_MIN_QUALIFIED_TRADES,
@@ -204,6 +206,37 @@ test("runMarketValueLevelCorrectionGateSweep: kaster uden eksplicit `now`", asyn
     () => runMarketValueLevelCorrectionGateSweep({ supabase: { from: () => ({}) }, ...baseSweepDeps() }),
     /eksplicit `now`/
   );
+});
+
+test("#4868 defaultClaimMeasurement: upsert+ignoreDuplicates — dobbelt-claim samme measured_date giver claimed:false, ALDRIG en 23505-fejl at håndtere", async () => {
+  const rows = [];
+  const supabase = {
+    from(table) {
+      assert.equal(table, LEVEL_CORRECTION_GATE_LOG_TABLE);
+      return {
+        upsert(payload, opts) {
+          assert.deepEqual(opts, { onConflict: "measured_date", ignoreDuplicates: true });
+          const dup = rows.some((r) => r.measured_date === payload.measured_date);
+          return {
+            select(cols) {
+              assert.equal(cols, "measured_date");
+              return {
+                then(resolve) {
+                  if (dup) return Promise.resolve({ data: [], error: null }).then(resolve);
+                  rows.push(payload);
+                  return Promise.resolve({ data: [{ measured_date: payload.measured_date }], error: null }).then(resolve);
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+  const first = await defaultClaimMeasurement({ supabase, measuredDate: "2026-08-09" });
+  assert.deepEqual(first, { claimed: true, tableMissing: false });
+  const second = await defaultClaimMeasurement({ supabase, measuredDate: "2026-08-09" });
+  assert.deepEqual(second, { claimed: false, tableMissing: false });
 });
 
 test("runMarketValueLevelCorrectionGateSweep: kører, måler, og persisterer gate-status via completeMeasurement", async () => {
