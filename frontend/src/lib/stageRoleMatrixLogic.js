@@ -1,5 +1,12 @@
-// Race Engine v3 (#2224), slice S3 (#2034) — ren logik for etape-taktik-matrixen
-// (StageRoleMatrix.jsx). Ingen React, ingen I/O — testbar med node --test.
+// Race Engine v3 (#2224), slice S3 (#2034) — ren logik for intentions-matrixen.
+// Ingen React, ingen I/O — testbar med node --test.
+//
+// #4613: etape-taktik-matrixen (StageRoleMatrix.jsx) og dens rolle-dropdown er
+// væk. Rollen gælder HELE løbet (ejer 6/9) og sættes i holdudtagelsen, så
+// EXCLUSIVE_ROLES / demoteOtherHoldersOfRole / setCellWithRoleExclusivity /
+// jerseyLeaderId / applyJerseyCaptainShortcut havde ingen kaldere tilbage og er
+// slettet. Rolle-eksklusiviteten håndhæves fortsat af backendens
+// validateStageRoleOverrides — den ene tilbageværende vagt, jf. dens kommentar.
 //
 // Matrix-repræsentation (kun REDIGERBARE etaper, dvs. stage_number >
 // stages_completed): { [stageNumber]: { [riderId]: { race_role, effort } } }.
@@ -65,19 +72,6 @@ export function isCellOverridden(cell, rider) {
   return cell.race_role !== baseRoleForRider(rider) || cell.effort !== DEFAULT_EFFORT;
 }
 
-// Roller der højst én rytter må have pr. etape. Spejler backendens guard
-// (raceStageRolesApi.validateStageRoleOverrides) og de partielle unique-
-// indexes på race_entries (uq_race_entries_captain/_sprint_captain/_hunter).
-//
-// #4746/#2405: `hunter` manglede her, selvom holdudtagelsen allerede
-// håndhæver den unikt via `uq_race_entries_hunter`. Uden degraderingen
-// kunne manageren sætte en NY hunter på en etape uden at den forrige nogensinde
-// mistede rollen — matrixen viste stiltiende to (op til seks, målt 3/9 i
-// decision-spec §5) samtidige "Udbrudsjæger"-rækker for samme etape. `hunter`
-// er nu med, så `demoteOtherHoldersOfRole` (samme funktion, ingen ny logik)
-// rydder den forrige hunter, ligesom den allerede gør for captain/sprint_captain.
-export const EXCLUSIVE_ROLES = new Set(["captain", "sprint_captain", "hunter"]);
-
 // Ren opdatering af én celle — returnerer en NY matrix (muterer aldrig input).
 export function setCell(matrix, stageNumber, riderId, patch) {
   const stageCells = matrix[stageNumber] || {};
@@ -89,36 +83,6 @@ export function setCell(matrix, stageNumber, riderId, patch) {
       [riderId]: { ...current, ...patch },
     },
   };
-}
-
-// Fjern rollen fra alle ANDRE ryttere på etapen, så `riderId` står alene med
-// den. Returnerer den nye matrix + hvem der blev degraderet (komponenten viser
-// det — en tavs rolleændring på en rytter spilleren ikke rørte er værre end
-// ingen ændring).
-//
-// #4344: uden dette kunne draften bære to kaptajner. Bodyen indeholder kun
-// afvigelser fra basis-rollen, så en urørt basis-kaptajn var usynlig for
-// backendens gamle tælling, og to kaptajner nåede helt ud i motoren.
-export function demoteOtherHoldersOfRole({ matrix, stageNumber, riderId, role, demotedTo = DEFAULT_ROLE }) {
-  if (!EXCLUSIVE_ROLES.has(role)) return { matrix, demoted: [] };
-  const keep = String(riderId);
-  const demoted = [];
-  let next = matrix;
-  for (const [otherId, cell] of Object.entries(matrix?.[stageNumber] || {})) {
-    if (otherId === keep || cell?.race_role !== role) continue;
-    demoted.push(otherId);
-    next = setCell(next, stageNumber, otherId, { race_role: demotedTo });
-  }
-  return { matrix: next, demoted };
-}
-
-// setCell + rolle-eksklusivitet: sætter cellen OG rydder rollen hos enhver
-// anden rytter på samme etape. Eneste vej ind fra rolle-dropdownen.
-export function setCellWithRoleExclusivity({ matrix, stageNumber, riderId, patch }) {
-  const { matrix: cleared, demoted } = patch?.race_role
-    ? demoteOtherHoldersOfRole({ matrix, stageNumber, riderId, role: patch.race_role })
-    : { matrix, demoted: [] };
-  return { matrix: setCell(cleared, stageNumber, riderId, patch), demoted };
 }
 
 // Diff draft-matrixen → PUT-payloadens overrides-array. REPLACE-semantik: kun
@@ -174,35 +138,4 @@ export function isDirty(draftMatrix, initialMatrix) {
     }
   }
   return false;
-}
-
-// Førertrøje-genvej (#2034 punkt 4): GC-føreren efter seneste kørte etape, KUN
-// hvis han er en af mine ryttere i løbet (ellers ingen genvej at vise).
-// gcRows = klassement-rækker med {rank, rider_id} (fra raceLiveStandings/
-// raceStageClassifications — rank 1 = føreren).
-export function jerseyLeaderId({ gcRows, myRiderIds }) {
-  const leader = (gcRows || []).find((r) => (r.rank ?? 9999) === 1);
-  if (!leader?.rider_id) return null;
-  const mine = new Set((myRiderIds || []).map(String));
-  return mine.has(String(leader.rider_id)) ? leader.rider_id : null;
-}
-
-// Anvender genvejen på draft-matrixen: sætter captain-override for `leaderId`
-// på ALLE kommende etaper, og demoterer en evt. anden resolved captain til
-// helper på de samme etaper (kun rolle — effort røres ikke for de demoterede,
-// så en 'protect'/'save'-indstilling ikke nulstilles ved siden af). Ren — ny
-// matrix returneres, input muteres aldrig. Lander i draft-state; brugeren
-// trykker selv Gem (#2034 punkt 4 — ingen implicit persistering).
-export function applyJerseyCaptainShortcut({ matrix, leaderId, stageNumbers, stagesCompleted }) {
-  const editableStages = (stageNumbers || []).filter((n) => n > stagesCompleted);
-  const leaderKey = String(leaderId);
-  let next = matrix;
-  for (const sn of editableStages) {
-    // #4344: samme degradering som rolle-dropdownen bruger — én kilde til
-    // reglen "kun én kaptajn pr. etape", ikke to der kan drifte fra hinanden.
-    next = demoteOtherHoldersOfRole({ matrix: next, stageNumber: sn, riderId: leaderKey, role: "captain" }).matrix;
-    const leaderCell = next[sn]?.[leaderKey];
-    next = setCell(next, sn, leaderKey, { race_role: "captain", effort: leaderCell?.effort || DEFAULT_EFFORT });
-  }
-  return next;
 }

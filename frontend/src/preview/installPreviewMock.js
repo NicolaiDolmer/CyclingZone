@@ -13,6 +13,7 @@ import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
   SEED_TEAM_ORDERS,
+  SEED_TEAM_ORDERS_BY_RACE,
   SEED_DEV_TRANSITION, ACTIVE_SEASON,
 } from "./seedData.js";
 
@@ -188,8 +189,13 @@ export function installPreviewMock() {
       //
       // Kortet er ejerens eneste vej til at SE kaeden foer v4-flippet, jf.
       // "ejeren skal kunne teste paa preview"-reglen.
-      if (method === "GET" && /\/api\/races\/[^/]+\/team-orders$/.test(url)) {
-        return jsonResponse(SEED_TEAM_ORDERS);
+      // #4613: svaret vaelges paa loebets id, saa Taktik-fanen kan ses i alle
+      // fire tilstande (kommende, midt i afviklingen, endagsloeb, afsluttet).
+      // Ukendt id falder tilbage til etapeloebet midt i afviklingen.
+      const teamOrdersMatch = url.match(/\/api\/races\/([^/?]+)\/team-orders(?:\?|$)/);
+      if (method === "GET" && teamOrdersMatch) {
+        const raceId = decodeURIComponent(teamOrdersMatch[1]);
+        return jsonResponse(SEED_TEAM_ORDERS_BY_RACE[raceId] ?? SEED_TEAM_ORDERS);
       }
       if (method === "PUT" && /\/api\/races\/[^/]+\/team-orders\/[0-9]+$/.test(url)) {
         return jsonResponse({ ok: true });

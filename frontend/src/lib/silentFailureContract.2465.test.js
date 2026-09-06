@@ -17,7 +17,7 @@ const riderScoutingTab = read("../components/rider/profile/RiderScoutingTab.jsx"
 const scoutablePotentiale = read("../components/rider/ScoutablePotentiale.jsx");
 const strategyPage = read("../pages/StrategyPage.jsx");
 const trainingPage = read("../pages/TrainingPage.jsx");
-const raceIntentionPanel = read("../components/race/RaceIntentionPanel.jsx");
+const raceTacticsTab = read("../components/race/RaceTacticsTab.jsx");
 
 // #3721: the focus chips + intensity segment moved into the shared FocusPanel,
 // so the call sites are now handlePanelSave/handlePanelClear. The CONTRACT is
@@ -89,20 +89,24 @@ test("TrainingPage: roster-row focus/intensity/clear handlers await setPlan/clea
   assert.match(trainingPage, /error=\{planActionError\?\.riderId === focusPanelRiderId \? planActionError\.error : null\}/);
 });
 
-// #4632 (variant B): the per-stage role/effort dropdowns were replaced by the
-// race-day intention picker, so the "what does this choice actually do?" hint
-// moved from a per-ROLE legend to a per-STEP sentence inside the picker. The
-// contract is the same one #2465 pinned: every choice explains itself in words,
-// and the calibrated backend constants never reach the surface.
-test("RaceIntentionPanel: every intention step explains itself in words (not raw tuning numbers)", () => {
-  assert.match(raceIntentionPanel, /intention\.why\.\$\{step\}/);
-  assert.match(raceIntentionPanel, /intention\.step\.\$\{step\}/);
+// #4632 (variant B) → #4613 (variant A): the per-stage role/effort dropdowns were
+// replaced by the race-day intention picker, so the "what does this choice
+// actually do?" hint moved from a per-ROLE legend to a per-STEP sentence inside
+// the picker. #4613 moved that picker into the race page's Tactics tab, next to
+// the orders for the same stage. The contract is the same one #2465 pinned:
+// every choice explains itself in words, and the calibrated backend constants
+// never reach the surface.
+test("RaceTacticsTab: every intention step explains itself in words (not raw tuning numbers)", () => {
+  assert.match(raceTacticsTab, /intention\.why\.\$\{step\}/);
+  assert.match(raceTacticsTab, /intention\.step\.\$\{step\}/);
   // Must not leak the calibrated backend constants into frontend copy.
-  assert.doesNotMatch(raceIntentionPanel, /WORK_COST_HELPER/);
-  assert.doesNotMatch(raceIntentionPanel, /-0\.03/);
+  assert.doesNotMatch(raceTacticsTab, /WORK_COST_HELPER/);
+  assert.doesNotMatch(raceTacticsTab, /-0\.03/);
   // Fog of war: the steps come from the server's valid_efforts, never a
   // hardcoded five-value list in the surface itself.
-  assert.match(raceIntentionPanel, /orderedEfforts\(data\?\.valid_efforts\)/);
+  assert.match(raceTacticsTab, /orderedEfforts\(roles\?\.valid_efforts\)/);
+  // A failed load must never be rendered as "nothing set" (#2849).
+  assert.match(raceTacticsTab, /racePage\.tactics\.loadError/);
 });
 
 test("locale keys referenced by the new error surfaces exist in both en + da (key-parity)", () => {

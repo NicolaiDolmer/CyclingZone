@@ -699,6 +699,109 @@
       "free_role": "fri rolle"
     }
   },
+  "racePage": {
+    "tabsAria": "Løbets afsnit",
+    "tab": {
+      "overview": "Overblik",
+      "team": "Hold",
+      "tactics": "Taktik",
+      "stages": "Etaper",
+      "results": "Resultater"
+    },
+    "hero": {
+      "stageLabel": "Etape",
+      "stagesLabel": "Etaper",
+      "terrain": "Terræn",
+      "selected": "Udtaget",
+      "locks": "Låser",
+      "stageLocks": "Etape {number} låser",
+      "yourBest": "Dit bedste",
+      "stageWins": "Etapesejre",
+      "finishers": "Gennemførte",
+      "notStarted": "Ikke startet",
+      "racingNow": "Kører nu",
+      "allRidden": "Alle etaper kørt",
+      "squadLockedIn": "Truppen er sat",
+      "squadFrozen": "Truppen er frosset",
+      "abandons": "{count, plural, one {# udgået} other {# udgåede}}",
+      "chipStageOnRoad": "Etape {number} kører",
+      "chipRacing": "På vejen",
+      "chipFinished": "Slut",
+      "chipStartsAt": "Starter {time}",
+      "chipNotStarted": "Ikke startet"
+    },
+    "stages": {
+      "emptyTitle": "Ingen rute endnu",
+      "emptyHint": "Ruten til det her løb er ikke lagt endnu. Den dukker op her, så snart den er."
+    },
+    "tactics": {
+      "title": "Taktik",
+      "help": "Rollen gælder hele løbet. Intentionen og ordrerne er, hvad du vil have på den etape, du har åben.",
+      "helpRaceDay": "Rollen gælder hele løbet. Intentionen og ordrerne er, hvad du vil have på løbsdagen.",
+      "colOrders": "Ordrer · etape {number}",
+      "colOrdersRaceDay": "Ordrer · løbsdag",
+      "stageMeta": "Etape {number} · låser {time}",
+      "sprintTrainRiders": "{count, plural, =0 {Ingen} one {# rytter} other {# ryttere}} for {name}",
+      "sprintTrainNone": "Holdet har ingen spurtkaptajn.",
+      "locked": "Låst",
+      "lockedStage": "Etape {number} låste kl. {time}. Det her sendte du dem ud med.",
+      "lockedStageNoTime": "Etape {number} er låst. Det her sendte du dem ud med.",
+      "lockedRaceDay": "Løbsdagen er låst. Det her sendte du dem ud med.",
+      "whatYouSet": "Det du satte. Etape {number}: {today}.",
+      "whatYouSetRaceDay": "Det du satte. Løbsdag: {today}.",
+      "loadError": "Kunne ikke hente din taktik til det her løb."
+    },
+    "team": {
+      "title": "Hold",
+      "riderCount": "{count, plural, one {# rytter} other {# ryttere}}",
+      "duringNote": "Truppen er frosset. Det her er dem, der kører, og den rolle du gav dem.",
+      "afterNote": "Der er ikke mere at ændre. Det her sendte du dem ud med, etape for etape.",
+      "legend": "Guld er det, du valgte. Gråt er rollens standard, som du lod stå.",
+      "loadError": "Kunne ikke hente dit hold til det her løb.",
+      "noRiders": "Du har ingen ryttere i det her løb.",
+      "gc": "Samlet",
+      "stageShort": "Et {number}",
+      "dnf": "DNF"
+    },
+    "overview": {
+      "gap": "Tid",
+      "latest": "Seneste fra vejen",
+      "whereYouStand": "Sådan står du",
+      "whereYouStandHelp": "Samlet stilling efter etape {done}. Etape {running} kører stadig.",
+      "whereYouStandHelpOneDay": "Løbet kører.",
+      "noStandingsYet": "Ingen stilling endnu. Den dukker op, når første etape er kørt.",
+      "topOf": "Top 6 af {count}",
+      "today": "I dag · etape {number}",
+      "howItEnded": "Sådan endte det",
+      "howItEndedHelp": "Endeligt samlet klassement.",
+      "otherClassifications": "Point-, bjerg- og holdklassement ligger under Resultater.",
+      "openResults": "Åbn resultater",
+      "raceIsDone": "Der er ikke mere at sætte. Løbet er kørt.",
+      "beforeFlag": "Før flaget",
+      "beforeFlagHelp": "Hvad der stadig står åbent i det her løb.",
+      "nextDecision": "Dit næste valg",
+      "nextDecisionHelp": "De etaper, du stadig kan sætte taktik på.",
+      "stageTactics": "Taktik til etape {number}",
+      "raceDayTactics": "Taktik til løbsdagen",
+      "somethingSet": "Sat",
+      "nothingSet": "Intet valgt",
+      "nothingLeft": "Der er ikke mere at sætte i det her løb.",
+      "nothingSetNote": "Intet valgt betyder, at de kører deres roller.",
+      "setStageTactics": "Sæt taktik til etape {number}",
+      "setRaceDayTactics": "Sæt taktik til løbsdagen",
+      "check": {
+        "teamPicked": "Hold udtaget",
+        "rolesSet": "Roller sat for løbet",
+        "firstStage": "Taktik til etape 1",
+        "laterStages": "Etape {from}–{to}"
+      },
+      "checkValue": {
+        "picked": "{count, plural, one {# rytter} other {# ryttere}}",
+        "rolesDone": "Kaptajn sat",
+        "laterStages": "Åbne indtil hver etape låser"
+      }
+    }
+  },
   "strategy": {
     "title": "Holdstrategi",
     "subtitle": "Stående præferencer din assistent bruger til at bygge hver opstilling.",

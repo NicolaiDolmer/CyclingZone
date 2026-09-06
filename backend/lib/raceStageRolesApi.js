@@ -13,6 +13,8 @@
 
 import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
+import { suitabilityScore } from "./raceAutopick.js";
+import { ABILITY_KEYS } from "./raceSimulator.js";
 
 /**
  * Ren validering af en PUT-body. Ingen DB. Fejlrækkefølge (errors[0] til brugeren,
@@ -95,10 +97,12 @@ export function validateStageRoleOverrides({
   // `uq_race_entries_hunter` (database/2026-06-12-race-entries-roles.sql).
   // Gabet lod 119 af 760 hold-etape-hunter-grupper stå med mere end én hunter
   // samtidig (op til 6), målt 3/9 — se decision-spec §5 (option A) og
-  // RACE_ENGINE_RULES.md §7 modsigelse 12. `hunter` er nu med her OG i
-  // frontendens EXCLUSIVE_ROLES (stageRoleMatrixLogic.js), så et gem afvises
-  // konsekvent hvis det alligevel sker (fx et rå API-kald), præcis som for
-  // captain/sprint_captain. Ingen DB-constraint tilføjet her — 119 eksisterende
+  // RACE_ENGINE_RULES.md §7 modsigelse 12. `hunter` er nu med her, og siden
+  // #4613 er DENNE guard den ENESTE håndhævelse af reglen: rollen sættes ikke
+  // længere pr. etape i UI'et (den gælder hele løbet, ejer 6/9), så frontendens
+  // gamle EXCLUSIVE_ROLES/demoteOtherHoldersOfRole er væk sammen med etape-
+  // taktik-matrixen. Et gem afvises konsekvent hvis en klient alligevel sender
+  // to ledere for samme etape. Ingen DB-constraint tilføjet her — 119 eksisterende
   // grupper ville brække en unique-indeks med det samme, og en oprydning af
   // eksisterende data er ejer-gated (destruktivt), ikke en sidegevinst ved
   // denne visnings-fejl.
@@ -165,13 +169,48 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
     abandonedRiderIds = await loadAbandonedRiderIds({ supabase, raceId: race.id });
   }
 
+  // #4613 (holdfanen på løbssiden): fit / form / træthed pr. rytter. PRÆCIS de
+  // tre tal holdudtagelses-panelet allerede viser (RaceSelectionPanel via
+  // GET /selection → buildRiderRows: `suitability`, `rider_condition.form`,
+  // `rider_condition.fatigue`) — samme kilder, samme skala, ingen anden
+  // afledning. Uden dem taber Holdfanen sine kolonner i det øjeblik løbet er
+  // startet, fordi /selection selv gater på race.status === 'scheduled'.
+  //
+  // FIT = løbs-snittet (suitabilityScore over løbets etape-profiler), ikke en
+  // per-etape-værdi: rollen og udtagelsen gælder HELE løbet, så kolonnen skal
+  // sige det samme hele vejen igennem. Ingen profiler / ingen evner → null
+  // (degraderer til "—" på fladen, aldrig et opdigtet tal).
+  let fitByRider = new Map();
+  let conditionByRider = new Map();
+  if (riderIds.length) {
+    const [abilitiesRes, conditionRes, profilesRes] = await Promise.all([
+      supabase.from("rider_derived_abilities").select(["rider_id", ...ABILITY_KEYS].join(", ")).in("rider_id", riderIds),
+      supabase.from("rider_condition").select("rider_id, form, fatigue").in("rider_id", riderIds),
+      supabase.from("race_stage_profiles").select("stage_number, profile_type, demand_vector")
+        .eq("race_id", race.id).order("stage_number", { ascending: true }),
+    ]);
+    // Degradér ærligt: en fejl på nogen af de tre må ALDRIG vælte taktik-
+    // fladen — den er stadig fuldt brugbar uden kolonnerne.
+    const stages = profilesRes.error ? [] : (profilesRes.data || []);
+    if (!abilitiesRes.error && stages.length) {
+      fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, Math.round(suitabilityScore(ab, stages) * 100)]));
+    }
+    if (!conditionRes.error) {
+      conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));
+    }
+  }
+
   const riders = (entries || []).map((e) => {
     const r = ridersById.get(e.rider_id);
+    const cond = conditionByRider.get(e.rider_id);
     return {
       rider_id: e.rider_id,
       name: [r?.firstname, r?.lastname].filter(Boolean).join(" ") || null,
       race_role: e.race_role ?? null,
       abandoned: abandonedRiderIds.has(e.rider_id),
+      fit: fitByRider.get(e.rider_id) ?? null,
+      form: cond?.form ?? null,
+      fatigue: cond?.fatigue ?? null,
     };
   });
 

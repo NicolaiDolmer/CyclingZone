@@ -30,42 +30,49 @@ function toContractRider(rider) {
 }
 
 /**
- * Hent holdets ordre for ÉN etape + den kontekst kortet skal vise.
+ * Hent HELE holdets ordre-kontekst for løbet: alle etapers lås-meta, alle gemte
+ * ordrer og rollernes standardordre.
  *
- * Returnerer altid en komplet ordre for de udtagne ryttere: har holdet ikke
- * gemt noget for etapen, ER rollernes standardordre svaret (T4 — passivitet
- * straffes aldrig).
+ * Taktik-fanen (#4613) har én etape-vælger for hele fanen og skal derfor kende
+ * ALLE etapers lås-status, ikke kun den åbne. Ét kald, ikke ét pr. etape — et
+ * etape-skift må ikke koste et round-trip når serveren allerede sendte hele
+ * listen. Kaster med serverens fejlkode, så fladen kan vise "kunne ikke hente"
+ * i stedet for en tom taktik (samme silent-degradation-regel som #2849).
  */
-export async function fetchTacticsCard({ raceId, stage }) {
+export async function fetchTeamOrders({ raceId }) {
   const headers = await authHeaders({ json: false }); // ren GET, ingen body
   if (!headers) return null;
-  // TacticsCard.load() fanger og saetter fejl-tilstanden (kortet viser "kunne
-  // ikke hente" + en proev igen-knap). Fejlen skal boble hertil, ikke svelges
-  // her — et tomt kort ville ligne "ingen taktik sat".
-  const res = await fetch(`${API}/api/races/${raceId}/team-orders`, { headers }); // catch-ok: TacticsCard.load()
+  const res = await fetch(`${API}/api/races/${raceId}/team-orders`, { headers }); // catch-ok: kaldstedets load()
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `team_orders_fetch_failed_${res.status}`);
   }
   const body = await res.json();
-  const riders = body.riders ?? [];
-  const riderIds = riders.map((r) => r.rider_id);
-  const savedForStage = (body.orders ?? []).find((o) => o.stage_number === stage) ?? null;
-  const stageMeta = (body.stages ?? []).find((s) => s.stage_number === stage) ?? null;
-
   return {
-    order: mergeOrderWithRoster(
-      savedForStage ?? defaultTeamOrder(riderIds),
-      riderIds,
-      body.default_order ?? null,
-    ),
+    stages: body.stages ?? [],
+    stageCount: body.stage_count ?? (body.stages?.length ?? 0),
+    stagesCompleted: body.stages_completed ?? 0,
+    raceCompleted: body.race_completed === true,
+    riders: body.riders ?? [],
     defaultOrder: body.default_order ?? null,
-    riders,
+    orders: body.orders ?? [],
     effortKeys: body.valid_efforts ?? null,
-    locksAt: stageMeta?.scheduled_at ?? null,
-    locked: stageMeta?.locked === true || body.race_completed === true,
-    hasSavedOrder: savedForStage != null,
   };
+}
+
+/**
+ * Ordren for ÉN etape, udledt af `fetchTeamOrders`-svaret. Har holdet ikke gemt
+ * noget for etapen, ER rollernes standardordre svaret (T4 — passivitet straffes
+ * aldrig). Ren funktion: intet netværk, testbar.
+ */
+export function orderForStage(context, stage) {
+  const riderIds = (context?.riders ?? []).map((r) => r.rider_id);
+  const saved = (context?.orders ?? []).find((o) => o.stage_number === stage) ?? null;
+  return mergeOrderWithRoster(
+    saved ?? defaultTeamOrder(riderIds),
+    riderIds,
+    context?.defaultOrder ?? null,
+  );
 }
 
 /** Gem ÉN etapes overlay. Kaster med serverens fejlkode, så kortet kan vise den. */

@@ -26,16 +26,33 @@ const stageDetailPanel = readFileSync(join(__dirname, "..", "components", "race"
 const stageProfileCard = readFileSync(join(__dirname, "..", "components", "race", "StageProfileCard.jsx"), "utf8");
 const stageProfileGraph = readFileSync(join(__dirname, "..", "components", "race", "StageProfileGraph.jsx"), "utf8");
 const stageWaypointReadout = readFileSync(join(__dirname, "..", "components", "race", "StageWaypointReadout.jsx"), "utf8");
+const raceOverviewTab = readFileSync(join(__dirname, "..", "components", "race", "RaceOverviewTab.jsx"), "utf8");
 
-test("#2818 RaceDetailPage afleder hasClassifications af race_type, aldrig hardcoded true for et løb der kan være enkeltdags", () => {
-  // Den KOMMENDE etape (planlægning) og den foldede sektion (løb i gang) skal
-  // begge spørge race_type — IKKE bare antage stage_race, fordi
-  // StageDetailPanel/StageProfileSlot bruges af begge race-typer.
-  const scheduledMatches = [...raceDetailPage.matchAll(/hasClassifications=\{race\.race_type === "stage_race"\}/g)];
-  assert.ok(
-    scheduledMatches.length >= 2,
-    "forventede mindst 2 steder (kommende-etape-panel + foldet udtagelses-sektion) hvor hasClassifications afledes af race.race_type — ikke hardcodes",
+test("#2818 hvert StageDetailPanel-kaldested afleder hasClassifications af race_type, aldrig hardcoded true", () => {
+  // #4613 flyttede de to gamle kaldesteder (kommende-etape-panelet + den foldede
+  // udtagelses-sektion) ind i faner: Etaper-fanen ejer nu det ene, Overblik-fanen
+  // det andet. Kontrakten er den SAMME — ingen af dem må antage stage_race,
+  // fordi StageDetailPanel/StageProfileSlot bruges af begge race-typer.
+  assert.match(
+    raceDetailPage,
+    /hasClassifications=\{race\.race_type === "stage_race"\}/,
+    "Etaper-fanens panel skal aflede hasClassifications af race.race_type",
   );
+  // Overblik-fanen får race-typen som prop og afleder derfra — den ser aldrig
+  // `race` selv.
+  assert.match(
+    raceDetailPage,
+    /<RaceOverviewTab[\s\S]{0,400}isStageRace=\{race\.race_type === "stage_race"\}/,
+    "Overblik-fanen skal have race-typen som prop, afledt af race.race_type",
+  );
+  const overviewUses = [...raceOverviewTab.matchAll(/hasClassifications=\{isStageRace\}/g)];
+  assert.ok(
+    overviewUses.length >= 1,
+    "Overblik-fanens StageDetailPanel skal aflede hasClassifications af isStageRace, ikke hardcode true",
+  );
+  // Ingen af de to filer må hardcode true på et panel.
+  assert.doesNotMatch(raceDetailPage, /<StageDetailPanel[^>]*hasClassifications=\{true\}/);
+  assert.doesNotMatch(raceOverviewTab, /<StageDetailPanel[^>]*hasClassifications=\{true\}/);
 });
 
 test("#2818 det afsluttede endagsløbs-resultat sætter hasClassifications={false} eksplicit (aldrig default-true)", () => {
