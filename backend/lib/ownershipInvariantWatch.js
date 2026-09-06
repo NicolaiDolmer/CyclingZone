@@ -167,6 +167,25 @@ async function fetchRidersOwnership(supabase, riderIds) {
 // teamProfileEngine.js ensureSeasonIdentityBasis). Et helt nyt hold der endnu
 // ikke har fået identity_basis er en transient millisekund-tilstand midt i
 // signup, ikke et invariant-brud.
+//
+// ── OG: team_dna_key SKAL være sat (CYCLINGZONE-59, målt 6/9) ────────────────
+// identity_basis alene var for tidligt i kæden. Bestyrelsesmedlemmer tildeles af
+// `chooseDnaForTeam` (boardMembers.js) — spillerens EGET Klub-DNA-valg. Indtil han
+// har truffet det, er `team_dna_key` NULL, `requiresBoardDnaChoice` (routes/api.js)
+// er true, og appen viser ham DNA-vælgeren. Nul bestyrelsesmedlemmer er dér den
+// TILSIGTEDE tilstand, ikke et brud — og den kan først forsvinde når spilleren
+// selv logger ind. Vagten alarmerede derfor dagligt for hver ny tilmelding der
+// endnu ikke havde åbnet bestyrelsessiden (18 events på 3 dage).
+//
+// Prod-målingen der afgør det: af 236 menneskehold havde ALLE 227 med et sat
+// team_dna_key deres fulde bestyrelse — #4664-fixet virker. De eneste hold uden
+// bestyrelse var hold UDEN DNA-valg (2 tilmeldt 5/9), plus 7 tidligere pre-DNA-hold
+// der kun har medlemmer fordi repairMissingBoardMembers.js blev kørt på dem.
+//
+// Hold der VENTER på DNA-valget tælles stadig og rapporteres i Sentry-extraen —
+// tallet forsvinder ikke, det holder bare op med at være en alarm. Går tildelingen
+// i stykker EFTER DNA-valget (den klasse #4664 handler om — regenerate'ens
+// delete-før-insert), er team_dna_key sat og vagten alarmerer præcis som før.
 async function fetchHumanTeamsMissingBoardMembers(supabase) {
   const teams = await fetchAllRows(() =>
     supabase
@@ -179,7 +198,7 @@ async function fetchHumanTeamsMissingBoardMembers(supabase) {
       .not("season_1_identity_basis", "is", null)
       .order("id"));
 
-  if (teams.length === 0) return [];
+  if (teams.length === 0) return { breached: [], awaitingDnaChoice: [] };
 
   const memberCounts = new Map();
   for (let i = 0; i < teams.length; i += CHUNK) {
@@ -195,7 +214,31 @@ async function fetchHumanTeamsMissingBoardMembers(supabase) {
     }
   }
 
-  return teams.filter((t) => (memberCounts.get(t.id) || 0) < TEAM_BOARD_MEMBERS_COUNT);
+  const missing = teams.filter((t) => (memberCounts.get(t.id) || 0) < TEAM_BOARD_MEMBERS_COUNT);
+  return splitByDnaChoice(missing, memberCounts);
+}
+
+/**
+ * PUR: del hold uden fuld bestyrelse i "brud" og "venter på spillerens DNA-valg".
+ *
+ * Et hold VENTER kun hvis det både mangler DNA-valget OG har NUL medlemmer — præcis
+ * den tilstand holddannelsen efterlader indtil spilleren vælger Klub-DNA. Har holdet
+ * 1-4 medlemmer, er en tildeling gået i stykker undervejs, og det er et brud uanset
+ * DNA-feltet (den delvise klasse #4664 også dækker).
+ *
+ * @param {Array<{id: string, team_dna_key?: string|null}>} teamsMissingBoard
+ * @param {Map<string, number>} memberCounts
+ * @returns {{ breached: Array<object>, awaitingDnaChoice: Array<object> }}
+ */
+export function splitByDnaChoice(teamsMissingBoard = [], memberCounts = new Map()) {
+  const breached = [];
+  const awaitingDnaChoice = [];
+  for (const t of teamsMissingBoard) {
+    const count = memberCounts.get(t?.id) || 0;
+    if (!t?.team_dna_key && count === 0) awaitingDnaChoice.push(t);
+    else breached.push(t);
+  }
+  return { breached, awaitingDnaChoice };
 }
 
 // Invariant D (#2257): strandede akademi-fri-agenter. Server-side filtreret —
@@ -381,8 +424,11 @@ export async function runOwnershipInvariantWatch({
     : new Set();
   const stalePendingTransfer = agedPending.filter((r) => !stillRacingIds.has(r.id));
 
-  // Invariant F (#4664): menneskehold uden bestyrelsesmedlemmer.
-  const teamsMissingBoardMembers = await fetchHumanTeamsMissingBoardMembers(supabase);
+  // Invariant F (#4664): menneskehold uden bestyrelsesmedlemmer. `breached` er dem
+  // hvor tildelingen FEJLEDE (DNA valgt); `awaitingDnaChoice` venter på spillerens
+  // eget DNA-valg og er ikke et brud — se fetchHumanTeamsMissingBoardMembers.
+  const { breached: teamsMissingBoardMembers, awaitingDnaChoice: teamsAwaitingDnaChoice } =
+    await fetchHumanTeamsMissingBoardMembers(supabase);
 
   let alerted = false;
 
@@ -473,13 +519,17 @@ export async function runOwnershipInvariantWatch({
       {
         tags: { cron: "ownership-invariant-watch" },
         fingerprint: ["human-team-without-board-members"],
+        // Flade strenge, ikke nestede objekter: Sentry-SDK'ens normalizeDepth
+        // kollapser dybe strukturer til "[Object]" og gør triagen blind
+        // (CYCLINGZONE-5G kostede præcis dét et opslag i Railway-loggen).
         extra: {
           count: teamsMissingBoardMembers.length,
-          sample: teamsMissingBoardMembers.slice(0, SAMPLE_LIMIT).map((t) => ({
-            teamId: t.id,
-            name: t.name,
-            teamDnaKey: t.team_dna_key ?? null,
-          })),
+          teams: teamsMissingBoardMembers.slice(0, SAMPLE_LIMIT).map(
+            (t) => `${t.id} (${t.name ?? "?"}) dna=${t.team_dna_key ?? "null"}`
+          ),
+          // Ikke et brud, men tallet skal være synligt: hold der endnu ikke har
+          // valgt Klub-DNA og derfor med vilje står uden bestyrelse.
+          awaitingDnaChoice: teamsAwaitingDnaChoice.length,
         },
       }
     );
@@ -494,6 +544,7 @@ export async function runOwnershipInvariantWatch({
       strandedAcademy: strandedAcademy.length,
       stalePendingTransfer: stalePendingTransfer.length,
       teamsMissingBoardMembers: teamsMissingBoardMembers.length,
+      teamsAwaitingDnaChoice: teamsAwaitingDnaChoice.length,
     },
     alerted,
   };
