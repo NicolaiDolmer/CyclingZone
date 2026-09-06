@@ -36,10 +36,23 @@ async function setup(page, theme) {
   await installNetworkMocks(page);
   await page.addInitScript(t => window.localStorage.setItem("cz-theme", t), theme);
 
-  // teams: list query → all six; single() (my-team lookup) → TEST_TEAM object.
+  // teams: list query → all six; "mit hold"-opslag (user_id=eq.<uid>) → kun
+  // TEST_TEAM.
+  //
+  // #4869: identificeres via user_id=eq.-filteret i URL'en, IKKE længere kun
+  // via Accept-headeren — .maybeSingle() (StandingsPage/Layout skiftede fra
+  // .single() i #4869) sender ikke application/vnd.pgrst.object+json, så et
+  // rent Accept-baseret tjek ramte aldrig denne gren og lod alle 6 hold falde
+  // igennem til postgrest-js's klient-side "1 række"-tjek → PGRST116.
   await page.route("**/rest/v1/teams*", route => {
-    const accept = route.request().headers().accept || "";
-    if (accept.includes("vnd.pgrst.object")) {
+    const request = route.request();
+    const accept = request.headers().accept || "";
+    const wantsObject = accept.includes("vnd.pgrst.object");
+    if (/user_id=eq\.[^&]+/.test(request.url())) {
+      const mine = { ...TEST_TEAM, division: DIV };
+      return json(route, wantsObject ? mine : [mine]);
+    }
+    if (wantsObject) {
       return json(route, { ...TEST_TEAM, division: DIV });
     }
     return json(route, TEAM_ROWS);

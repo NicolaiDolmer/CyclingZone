@@ -49,10 +49,21 @@ const STANDING_ROWS = TEAMS.map(t => ({
 async function setup(page) {
   await stabilizePage(page);
   await installNetworkMocks(page);
+  // #4869: identificeres via user_id=eq.-filteret i URL'en, IKKE længere kun
+  // via Accept-headeren — .maybeSingle() (StandingsPage/Layout skiftede fra
+  // .single() i #4869) sender ikke application/vnd.pgrst.object+json, så et
+  // rent Accept-baseret tjek ramte aldrig denne gren og lod alle 16 hold falde
+  // igennem til postgrest-js's klient-side "1 række"-tjek → PGRST116.
   await page.route("**/rest/v1/teams*", route => {
-    const accept = route.request().headers().accept || "";
-    if (accept.includes("vnd.pgrst.object")) {
-      return json(route, { ...TEST_TEAM, division: 3, league_division_id: POOL_A });
+    const request = route.request();
+    const accept = request.headers().accept || "";
+    const wantsObject = accept.includes("vnd.pgrst.object");
+    const mine = { ...TEST_TEAM, division: 3, league_division_id: POOL_A };
+    if (/user_id=eq\.[^&]+/.test(request.url())) {
+      return json(route, wantsObject ? mine : [mine]);
+    }
+    if (wantsObject) {
+      return json(route, mine);
     }
     return json(route, TEAM_ROWS);
   });
