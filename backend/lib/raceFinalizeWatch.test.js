@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   HALF_FINALIZED_ALERT_AFTER_MS,
+  RESULTS_WITHOUT_STATUS_ALERT_AFTER_MS,
   PRIZE_UNPAID_ALERT_AFTER_MS,
   RACE_FINALIZE_ALERT_KEY,
   formatFindings,
@@ -58,7 +59,7 @@ test("results_without_status: et løb midt i afviklingen er ikke et fund", () =>
 
 test("results_without_status: alle etaper kørt + status stadig 'scheduled' = fund", () => {
   const races = [{ id: "r1", name: "Llanera", status: "scheduled", stages: 1, stages_completed: 1 }];
-  const last = new Map([["r1", minutesAgo(35)]]);
+  const last = new Map([["r1", minutesAgo(50)]]);
   const found = selectResultsWithoutStatus(races, last, { now: NOW });
   assert.equal(found.length, 1);
   assert.equal(found[0].type, "results_without_status");
@@ -68,6 +69,22 @@ test("results_without_status: alle etaper kørt + status stadig 'scheduled' = fu
 test("results_without_status: inden for vinduet tier vi — recovery-stien har 5-min-ticks", () => {
   const races = [{ id: "r1", name: "Llanera", status: "scheduled", stages: 1, stages_completed: 1 }];
   const last = new Map([["r1", minutesAgo(3)]]);
+  assert.deepEqual(selectResultsWithoutStatus(races, last, { now: NOW }), []);
+});
+
+// CYCLINGZONE-5G: den MÅLTE kø-hale, ikke en teoretisk margin.
+// Prod 5/9: Settimana-divisionen c443e3a6 blev alarmeret 10:19:58Z (sidste etape
+// PLANLAGT 10:00Z = 20 minutter) og afsluttet normalt 10:24:58Z, ét tick senere.
+// Ved 10-minutters-tærsklen var det et fund; det må det ikke være.
+test("results_without_status: en division i den normale afslutnings-kø (20 min) er IKKE et fund", () => {
+  const races = [{ id: "c443e3a6", name: "Settimana di Coppi e Bartali Minore", status: "scheduled", stages: 4, stages_completed: 4 }];
+  const last = new Map([["c443e3a6", minutesAgo(20)]]);
+  assert.deepEqual(selectResultsWithoutStatus(races, last, { now: NOW }), []);
+});
+
+test("results_without_status: hele løbsdagens hale (30 min) er stadig lovlig", () => {
+  const races = [{ id: "r1", name: "Tour de la Provence Verte", status: "scheduled", stages: 4, stages_completed: 4 }];
+  const last = new Map([["r1", minutesAgo(30)]]);
   assert.deepEqual(selectResultsWithoutStatus(races, last, { now: NOW }), []);
 });
 
@@ -97,9 +114,17 @@ test("completed_without_prize: 21 præmierækker og NULL efter en time = fund", 
   assert.equal(found[0].payable_rows, 21);
 });
 
-test("tærsklerne er dem issuet beder om: 10 min for halve tilstande, 60 min for præmier", () => {
+test("tærsklerne: 10 min for fastlåst markering, 45 min for status-flip, 60 min for præmier", () => {
+  // stuck_marker måles mod finalize_updated_at (hvornår arbejdet FAKTISK stoppede)
+  // og har ingen kø-hale — den beholder de 10 minutter. results_without_status måles
+  // mod den PLANLAGTE sluttid og skal rumme afslutnings-køens hale (CYCLINGZONE-5G).
   assert.equal(HALF_FINALIZED_ALERT_AFTER_MS, 10 * 60 * 1000);
+  assert.equal(RESULTS_WITHOUT_STATUS_ALERT_AFTER_MS, 45 * 60 * 1000);
   assert.equal(PRIZE_UNPAID_ALERT_AFTER_MS, 60 * 60 * 1000);
+  assert.ok(
+    RESULTS_WITHOUT_STATUS_ALERT_AFTER_MS < PRIZE_UNPAID_ALERT_AFTER_MS,
+    "status-flippet skal stadig fanges FØR den manglende præmieudbetaling",
+  );
 });
 
 test("formatFindings: én linje pr. fund, med løbs-id og årsag", () => {
@@ -183,6 +208,28 @@ test("runHalfFinalizedRaceWatch: fastlåst markering → ÉN Sentry-capture med 
   assert.equal(captured.length, 1);
   assert.deepEqual(captured[0].ctx.fingerprint, [RACE_FINALIZE_ALERT_KEY]);
   assert.match(captured[0].err.message, /Halvt afsluttede loeb: 1 fund/);
+});
+
+// CYCLINGZONE-5G: begge prod-events (4/9 + 5/9) havde `findings: ["[Object]"]` i
+// Sentry — SDK'ens normalizeDepth kollapser nestede objekter, så triagen ikke kunne
+// se HVILKET løb der var fanget uden at grave i Railway-loggen. Extra skal være
+// flade strenge, og løbs-id'et skal kunne læses direkte af et menneske.
+test("runHalfFinalizedRaceWatch: Sentry-extra er FLADE strenge med løbs-id (ikke nestede objekter)", async () => {
+  const supabase = makeWatchSupabase({
+    markerRaces: [{ id: "c443e3a6", name: "Settimana", finalize_state: { stage_index: 1, stage_number: 2, done: ["write"] }, finalize_updated_at: minutesAgo(30) }],
+    seasonRaces: [],
+  });
+  const captured = [];
+  await runHalfFinalizedRaceWatch({
+    supabase, now: NOW,
+    captureExceptionFn: (err, ctx) => captured.push({ err, ctx }),
+    isAutoPrizeEnabled: async () => true,
+    logger: { warn() {}, error() {} },
+  });
+  const extra = captured[0].ctx.extra;
+  assert.ok(extra.findings.every((f) => typeof f === "string"), "findings skal være strenge");
+  assert.match(extra.findings[0], /c443e3a6/, "løbs-id skal stå i den læsbare linje");
+  assert.deepEqual(extra.raceIds, ["stuck_marker:c443e3a6"]);
 });
 
 test("runHalfFinalizedRaceWatch: UÆNDRET fund alarmerer ikke igen (dedupe)", async () => {
