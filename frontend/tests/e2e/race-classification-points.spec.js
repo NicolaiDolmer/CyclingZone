@@ -167,11 +167,12 @@ test("#3519 waypoint-point synlige på etape-resultatsiden", async ({ page }, te
   await login(page);
   await page.goto("/races/race-e2e-3519");
 
-  // #3519 note: race.status="scheduled" (live etapeløb, #2637-konventionen) gør
-  // at BÅDE den kommende-etape-vælger (holdudtagelse) OG resultat-striben viser
-  // "Etape 2"-knapper — nth(1) er resultat-striben (renderes efter holdudtagelses-
-  // blokken i JSX, samme rækkefølge som #2637-panelet ovenfor på siden).
-  await page.getByRole("button", { name: "Etape 2" }).nth(1).click();
+  // #4613: løbssiden er T3 (hero + faner). Etape-resultaterne bor i
+  // Resultater-fanen, og holdudtagelsens egen etape-vælger bor i Hold-fanen —
+  // de to "Etape 2"-knapper deler ikke længere flade, så nth(1)-hacket (som
+  // pegede på resultat-striben på den gamle scroll-side) er ikke længere nødvendigt.
+  await page.getByRole("tab", { name: "Resultater" }).click();
+  await page.getByRole("button", { name: "Etape 2", exact: true }).click();
 
   const passageHeading = page.getByText("Mellemresultater", { exact: true });
   const passageSection = passageHeading.locator("xpath=ancestor::*[contains(@class,'bg-cz-card')][1]");
@@ -197,7 +198,11 @@ test("#3519 løbende bjerg-/pointkonkurrence synlig mens etapeløbet er i gang",
   await login(page);
   await page.goto("/races/race-e2e-3519");
 
-  // "Samlet"-fanen er default — LiveOverallTab (ingen gc-slutrækker endnu).
+  // #4613: klassementerne bor i Resultater-fanen; siden åbner på Overblik.
+  await page.getByRole("tab", { name: "Resultater" }).click();
+
+  // "Samlet"-fanen er default i resultat-striben — LiveOverallTab (ingen
+  // gc-slutrækker endnu).
   await expect(page.getByText("Stillingen efter 2. etape")).toBeVisible();
   const mountainHeading = page.getByRole("heading", { name: "Bjergkonkurrence" });
   const mountainSection = mountainHeading.locator("xpath=ancestor::*[contains(@class,'bg-cz-card')][1]");
