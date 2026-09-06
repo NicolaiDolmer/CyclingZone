@@ -1,4 +1,4 @@
-import { createInitialBoardProfile, generateBoardGoals } from "./boardEngine.js";
+import { createInitialBoardProfile, generateBoardGoals, preserveExternalGoals } from "./boardEngine.js";
 import { computeSeasonOneIdentity } from "./boardIdentity.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
@@ -389,9 +389,13 @@ export async function ensureBoardGoalsCalibrated({ supabase, team } = {}) {
     throw createHttpError(500, "team is required for goal calibration");
   }
 
+  // #4865 · current_goals SKAL med: uden den ville et fremmed-kilde-mål (fx et
+  // accepteret bonustilbuds ekstra-mål lagt på det pending board FØR truppen var
+  // klar) læses som undefined og gå tabt når kalibreringen nedenfor overskriver
+  // rækken — samme hul som /board/sign og auto-accept havde (preserveExternalGoals).
   const { data: boards, error: boardsError } = await supabase
     .from("board_profiles")
-    .select("id, plan_type, focus")
+    .select("id, plan_type, focus, current_goals")
     .eq("team_id", team.id)
     .eq("is_baseline", false)
     .eq("negotiation_status", "pending");
@@ -422,12 +426,18 @@ export async function ensureBoardGoalsCalibrated({ supabase, team } = {}) {
 
   let calibratedAny = false;
   for (const board of boards) {
-    const calibratedGoals = generateBoardGoals({
-      focus: board.focus,
-      planType: board.plan_type,
-      team: teamContext,
-      riders,
-      standing: null,
+    // #4865 · Kalibreringen ejer kun de mål generateBoardGoals selv genererer.
+    // Fremmede mål (source ≠ genereret) på den eksisterende række bæres med
+    // over uændret — samme guard som /board/sign og auto-accept bruger.
+    const calibratedGoals = preserveExternalGoals({
+      rebuiltGoals: generateBoardGoals({
+        focus: board.focus,
+        planType: board.plan_type,
+        team: teamContext,
+        riders,
+        standing: null,
+      }),
+      previousGoals: board.current_goals ?? [],
     });
     const { error: updateError } = await supabase
       .from("board_profiles")
