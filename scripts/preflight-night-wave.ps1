@@ -14,6 +14,9 @@
 #   5. Toolchain: node + gh + node_modules i main-checkout
 #   6. origin/main test-sanity: frontend 'node --test' mod basen (roed base = NO-GO)
 #      — forhindrer at en hel fleet brancher fra en roed origin/main (natbolge 23/6)
+#   7. -StartKeepAwake (#4918): starter scripts/keep-awake.ps1 i eget vindue ved GO,
+#      idempotent (PID-fil i .codex.local/keep-awake.pid) - ingen ny proces hvis en
+#      allerede koerer. Springes over ved NO-GO.
 #
 # Idempotent og read-only som default; -Fix aendrer KUN powercfg-timeouts.
 # Skriver JSON-summary til .codex.local/night-wave-preflight.json.
@@ -24,12 +27,21 @@
 #   pwsh -File scripts/preflight-night-wave.ps1          # read-only kontrol
 #   pwsh -File scripts/preflight-night-wave.ps1 -Fix     # ret standby/hibernate + re-check
 #   pwsh -File scripts/preflight-night-wave.ps1 -SkipPrune  # spring worktree-dry-run over (hurtigere)
+#   pwsh -File scripts/preflight-night-wave.ps1 -Fix -StartKeepAwake  # + auto-start keep-awake ved GO
 
 param(
   [switch] $Fix,
   [switch] $SkipPrune,
   [int] $MinFreeDiskGB = 10,
-  [int] $GhProbeAttempts = 5
+  [int] $GhProbeAttempts = 5,
+  # #4918: start scripts/keep-awake.ps1 automatisk ved GO, i eget vindue, saa
+  # keep-awake ikke er et separat manuelt trin orkestratoren kan glemme midt i
+  # launch-travlheden. Eksplicit switch (ikke auto-on for S0-maskiner uden
+  # spoergsmaal): S0-tellen i sektion 1 er allerede synlig i output, og at
+  # starte en langtidsproces uden at blive bedt om det er en overraskelse
+  # foerste gang scriptet koeres til noget andet end en natboelge (fx en
+  # almindelig dagbolge-preflight uden behov for keep-awake).
+  [switch] $StartKeepAwake
 )
 
 Set-StrictMode -Version Latest
@@ -341,6 +353,47 @@ if ($mainTestSkip) {
     $mainTestStatus = "error"
     $warn += "Kunne ikke sammenligne frontend/ med origin/main (git diff exit $diffExit). Verificer origin/main manuelt foer launch."
     Write-Host "  [warn] git diff mod origin/main fejlede (exit $diffExit) — verificer manuelt" -ForegroundColor Yellow
+  }
+}
+
+# --- 7. Keep-awake (valgfri, -StartKeepAwake) ---
+if ($StartKeepAwake) {
+  Write-Section "Keep-awake (-StartKeepAwake)"
+  if ($fail.Count -gt 0) {
+    Write-Host "  [skip] NO-GO ovenfor - starter ikke keep-awake foer aarsagerne er loest." -ForegroundColor Yellow
+  } else {
+    $stateDirEarly = Join-Path $repoRoot ".codex.local"
+    if (-not (Test-Path $stateDirEarly)) { New-Item -ItemType Directory -Path $stateDirEarly -Force | Out-Null }
+    $keepAwakePidFile = Join-Path $stateDirEarly "keep-awake.pid"
+    $alreadyRunning = $false
+    $existingPid = $null
+    if (Test-Path $keepAwakePidFile) {
+      $existingPidRaw = (Get-Content $keepAwakePidFile -Raw -ErrorAction SilentlyContinue)
+      if ($existingPidRaw) {
+        $existingPidRaw = $existingPidRaw.Trim()
+        $parsedPid = 0
+        if ([int]::TryParse($existingPidRaw, [ref]$parsedPid)) {
+          $existingPid = $parsedPid
+          $existingProc = Get-Process -Id $existingPid -ErrorAction SilentlyContinue
+          if ($existingProc -and ($existingProc.ProcessName -match 'pwsh|powershell')) { $alreadyRunning = $true }
+        }
+      }
+    }
+    if ($alreadyRunning) {
+      $ok += "keep-awake koerer allerede (PID $existingPid)"
+      Write-Host "  [ok] keep-awake koerer allerede (PID $existingPid) - starter ikke en ny (idempotent)." -ForegroundColor Green
+    } else {
+      $keepAwakeScript = Join-Path $PSScriptRoot "keep-awake.ps1"
+      try {
+        $proc = Start-Process -FilePath "pwsh" -ArgumentList @("-NoProfile", "-File", $keepAwakeScript) -WindowStyle Minimized -PassThru
+        Set-Content -Path $keepAwakePidFile -Value $proc.Id -Encoding ascii
+        $ok += "keep-awake startet (PID $($proc.Id))"
+        Write-Host "  [ok] keep-awake startet i eget vindue (PID $($proc.Id)) - lad vinduet staa aabent hele boelgen." -ForegroundColor Green
+      } catch {
+        $warn += "Kunne ikke starte keep-awake automatisk ($($_.Exception.Message)) - koer manuelt: pwsh -File scripts\keep-awake.ps1"
+        Write-Host "  [warn] keep-awake kunne ikke startes automatisk: $($_.Exception.Message)" -ForegroundColor Yellow
+      }
+    }
   }
 }
 
