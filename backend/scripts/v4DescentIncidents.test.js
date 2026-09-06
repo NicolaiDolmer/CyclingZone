@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import {
   measureDescentIncidents,
   summarizeDescentIncidents,
+  summarizeDescentSeverity,
   withForcedWeather,
 } from "./v4DescentIncidents.js";
 
@@ -22,7 +23,7 @@ test("measureDescentIncidents: taeller angreb PR. ANGRIBER (rider_ids.length), i
   const output = stageOutput([
     { km: 40, type: "finale_attack", params: { direction: "descent", rider_ids: ["a", "b", "c"] } },
   ]);
-  assert.deepEqual(measureDescentIncidents(output), { attacks: 3, incidents: 0 });
+  assert.deepEqual(measureDescentIncidents(output), { attacks: 3, incidents: 0, crashes: [] });
 });
 
 test("measureDescentIncidents: kun descent-retningen taeller — climb/finale-angreb ignoreres", () => {
@@ -30,25 +31,83 @@ test("measureDescentIncidents: kun descent-retningen taeller — climb/finale-an
     { km: 20, type: "finale_attack", params: { direction: "climb", rider_ids: ["a", "b"] } },
     { km: 40, type: "finale_attack", params: { direction: "descent", rider_ids: ["c"] } },
   ]);
-  assert.deepEqual(measureDescentIncidents(output), { attacks: 1, incidents: 0 });
+  assert.deepEqual(measureDescentIncidents(output), { attacks: 1, incidents: 0, crashes: [] });
 });
 
 test("measureDescentIncidents: kun cause:descent_attack taeller som uheld — andre incident-causes ignoreres", () => {
   const output = stageOutput([
     { km: 40, type: "finale_attack", params: { direction: "descent", rider_ids: ["a", "b"] } },
-    { km: 41, type: "incident", params: { rider_id: "a", cause: "descent_attack" } },
+    {
+      km: 41,
+      type: "incident",
+      params: { rider_id: "a", cause: "descent_attack", kind: "crash", severity: "light", outcome: "time_loss", time_loss_seconds: 12.5, injury_days: null },
+    },
     { km: 42, type: "incident", params: { rider_id: "x", kind: "mechanical", outcome: "time_loss" } },
   ]);
-  assert.deepEqual(measureDescentIncidents(output), { attacks: 2, incidents: 1 });
+  assert.deepEqual(measureDescentIncidents(output), {
+    attacks: 2,
+    incidents: 1,
+    crashes: [{ severity: "light", outcome: "time_loss", timeLossSeconds: 12.5, injuryDays: null }],
+  });
+});
+
+// ── summarizeDescentSeverity (#4934) ─────────────────────────────────────────
+
+test("summarizeDescentSeverity: tidstab regnes KUN over uheld der faktisk kostede tid", () => {
+  const rows = summarizeDescentSeverity([
+    {
+      crashes: [
+        { severity: "light", outcome: "time_loss", timeLossSeconds: 10, injuryDays: null },
+        { severity: "light", outcome: "time_loss", timeLossSeconds: 20, injuryDays: null },
+        // Beskyttet: intet tidstab — maa ikke traekke gennemsnittet mod 0.
+        { severity: "light", outcome: "protected_three_km_rule", timeLossSeconds: null, injuryDays: null },
+      ],
+    },
+  ]);
+  const light = rows.find((r) => r.severity === "light");
+  assert.equal(light.n, 3);
+  assert.equal(light.timeLossN, 2);
+  assert.equal(light.meanTimeLossSeconds, 15);
+  assert.equal(light.minTimeLossSeconds, 10);
+  assert.equal(light.maxTimeLossSeconds, 20);
+  assert.equal(light.protected, 1);
+});
+
+test("summarizeDescentSeverity: et alvorligt styrt taelles som udgaaet med skadedage, uden tidstab", () => {
+  const rows = summarizeDescentSeverity([
+    { crashes: [{ severity: "serious", outcome: "abandoned", timeLossSeconds: null, injuryDays: 9 }] },
+    { crashes: [{ severity: "hard", outcome: "time_loss", timeLossSeconds: 120, injuryDays: 3 }] },
+  ]);
+  const serious = rows.find((r) => r.severity === "serious");
+  const hard = rows.find((r) => r.severity === "hard");
+  assert.equal(serious.abandoned, 1);
+  assert.equal(serious.meanTimeLossSeconds, null, "en udgaaet rytter har ingen etapetid at tabe");
+  assert.equal(serious.meanInjuryDays, 9);
+  assert.equal(hard.meanTimeLossSeconds, 120);
+  assert.equal(hard.meanInjuryDays, 3);
+  assert.equal(serious.share, 0.5);
+});
+
+test("summarizeDescentSeverity: ingen uheld giver en tom raekke-liste, ikke en fejl", () => {
+  assert.deepEqual(summarizeDescentSeverity([{ crashes: [] }, {}]), []);
+});
+
+test("summarizeDescentSeverity: raekkerne er sorteret paa trin (deterministisk output)", () => {
+  const rows = summarizeDescentSeverity([
+    { crashes: [{ severity: "serious", outcome: "abandoned", timeLossSeconds: null, injuryDays: 5 }] },
+    { crashes: [{ severity: "light", outcome: "time_loss", timeLossSeconds: 5, injuryDays: null }] },
+    { crashes: [{ severity: "hard", outcome: "time_loss", timeLossSeconds: 90, injuryDays: 2 }] },
+  ]);
+  assert.deepEqual(rows.map((r) => r.severity), ["hard", "light", "serious"]);
 });
 
 test("measureDescentIncidents: ingen events => 0/0, ikke en fejl", () => {
-  assert.deepEqual(measureDescentIncidents(stageOutput([])), { attacks: 0, incidents: 0 });
+  assert.deepEqual(measureDescentIncidents(stageOutput([])), { attacks: 0, incidents: 0, crashes: [] });
 });
 
 test("measureDescentIncidents: rider_ids i et ukendt format falder tilbage til 1 angreb (defensivt, taeller aldrig for lidt)", () => {
   const output = stageOutput([{ km: 10, type: "finale_attack", params: { direction: "descent" } }]);
-  assert.deepEqual(measureDescentIncidents(output), { attacks: 1, incidents: 0 });
+  assert.deepEqual(measureDescentIncidents(output), { attacks: 1, incidents: 0, crashes: [] });
 });
 
 // ── withForcedWeather ─────────────────────────────────────────────────────────

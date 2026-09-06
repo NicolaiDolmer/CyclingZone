@@ -67,20 +67,32 @@ const WEATHER_KINDS = Object.freeze(["sun", "overcast", "rain"]);
  * tidslinje. "angreb" taelles PR. ANGRIBER (rider_ids.length), ikke pr.
  * finale_attack-event — incidentProbability rulles individuelt pr. angriber
  * i descent.ts, saa det er den rigtige naevner for "uheld pr. 100 angreb".
- * @returns {{attacks:number, incidents:number}}
+ *
+ * `crashes` (#4934) er den raa post pr. uheld, som trappen (M10's
+ * `resolveCrashIncident`) afgjorde den: alvorstrin, udfald, tidstab og
+ * skadedage. Foer #4934 baerte descent-uheldets event kun `rider_id` + `cause`
+ * — uden konsekvens fandtes der intet at rapportere pr. sværhedsgrad.
+ * @returns {{attacks:number, incidents:number, crashes:Array<{severity:(string|null), outcome:(string|null), timeLossSeconds:(number|null), injuryDays:(number|null)}>}}
  */
 export function measureDescentIncidents(stageOutput) {
   let attacks = 0;
   let incidents = 0;
+  const crashes = [];
   for (const event of stageOutput.timeline.events) {
     if (event.type === "finale_attack" && event.params?.direction === "descent") {
       const riderIds = event.params?.rider_ids;
       attacks += Array.isArray(riderIds) ? riderIds.length : 1;
     } else if (event.type === "incident" && event.params?.cause === "descent_attack") {
       incidents += 1;
+      crashes.push({
+        severity: event.params?.severity ?? null,
+        outcome: event.params?.outcome ?? null,
+        timeLossSeconds: event.params?.time_loss_seconds ?? null,
+        injuryDays: event.params?.injury_days ?? null,
+      });
     }
   }
-  return { attacks, incidents };
+  return { attacks, incidents, crashes };
 }
 
 /** Overskriver ruteens vejr til én bestemt kind (kontrolleret sammenligning). Bevarer wind_exposure. */
@@ -127,7 +139,7 @@ export function runDescentIncidents({
         seed: stageSeedStr,
         tuning,
       });
-      const { attacks, incidents } = measureDescentIncidents(output);
+      const { attacks, incidents, crashes } = measureDescentIncidents(output);
       measurements.push({
         seed,
         stageNumber: stageRow.stage_number,
@@ -135,6 +147,7 @@ export function runDescentIncidents({
         weatherKind: route.weather?.kind ?? "?",
         attacks,
         incidents,
+        crashes,
       });
     }
   }
@@ -168,6 +181,61 @@ export function summarizeDescentIncidents(measurements, keyFn = (m) => m.weather
     .sort((a, b) => String(a.key).localeCompare(String(b.key)));
 }
 
+/**
+ * TIDSTAB PR. SVAERHEDSGRAD (#4934). Efter at nedkoersels-styrtet blev koblet
+ * paa M10's trappe er "uheld pr. 100 angreb" ikke laengere hele historien —
+ * det afgoerende er hvad et uheld KOSTER. Denne aggregering svarer paa det pr.
+ * alvorstrin (light/hard/serious).
+ *
+ * `meanTimeLossSeconds` regnes KUN over uheld der faktisk kostede tid
+ * (`outcome === "time_loss"`): et 3-km-beskyttet styrt har intet tidstab, og et
+ * alvorligt styrt har ingen etapetid at tabe — begge ville traekke gennemsnittet
+ * mod 0 og skjule hvad trinnet reelt koster. De taelles i deres egne kolonner.
+ * @returns {Array<{severity:string, n:number, share:(number|null), timeLossN:number, meanTimeLossSeconds:(number|null), minTimeLossSeconds:(number|null), maxTimeLossSeconds:(number|null), abandoned:number, protected:number, injuryN:number, meanInjuryDays:(number|null)}>}
+ */
+export function summarizeDescentSeverity(measurements) {
+  const groups = new Map();
+  let total = 0;
+  for (const m of measurements) {
+    for (const crash of m.crashes ?? []) {
+      total += 1;
+      const key = crash.severity ?? "?";
+      if (!groups.has(key)) {
+        groups.set(key, { n: 0, timeLossN: 0, timeLossSum: 0, min: null, max: null, abandoned: 0, protected: 0, injuryN: 0, injurySum: 0 });
+      }
+      const g = groups.get(key);
+      g.n += 1;
+      if (crash.outcome === "abandoned") g.abandoned += 1;
+      if (crash.outcome === "protected_three_km_rule") g.protected += 1;
+      if (crash.outcome === "time_loss" && Number.isFinite(crash.timeLossSeconds)) {
+        g.timeLossN += 1;
+        g.timeLossSum += crash.timeLossSeconds;
+        g.min = g.min === null ? crash.timeLossSeconds : Math.min(g.min, crash.timeLossSeconds);
+        g.max = g.max === null ? crash.timeLossSeconds : Math.max(g.max, crash.timeLossSeconds);
+      }
+      if (Number.isFinite(crash.injuryDays) && crash.injuryDays !== null) {
+        g.injuryN += 1;
+        g.injurySum += crash.injuryDays;
+      }
+    }
+  }
+  return [...groups.entries()]
+    .map(([severity, g]) => ({
+      severity,
+      n: g.n,
+      share: total > 0 ? g.n / total : null,
+      timeLossN: g.timeLossN,
+      meanTimeLossSeconds: g.timeLossN > 0 ? g.timeLossSum / g.timeLossN : null,
+      minTimeLossSeconds: g.min,
+      maxTimeLossSeconds: g.max,
+      abandoned: g.abandoned,
+      protected: g.protected,
+      injuryN: g.injuryN,
+      meanInjuryDays: g.injuryN > 0 ? g.injurySum / g.injuryN : null,
+    }))
+    .sort((a, b) => a.severity.localeCompare(b.severity));
+}
+
 // ---------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------
@@ -181,6 +249,29 @@ function formatTable(title, rows) {
   for (const r of rows) {
     lines.push([r.key, r.n, r.attacks, r.incidents, fmt(r.incidentsPer100Attacks)].join("\t"));
   }
+  return lines.join("\n");
+}
+
+function formatSeverityTable(rows) {
+  const lines = [
+    "-- Tidstab pr. svaerhedsgrad for NEDKOERSELS-uheld (#4934, M10-trappen) --",
+    "trin\tn\tandel\tm_tidstab\tmin\tmax\tudgaaet\t3km_beskyttet\tskadede\tm_skadedage",
+  ];
+  for (const r of rows) {
+    lines.push([
+      r.severity,
+      r.n,
+      fmt(r.share, 3),
+      fmt(r.meanTimeLossSeconds, 1),
+      fmt(r.minTimeLossSeconds, 1),
+      fmt(r.maxTimeLossSeconds, 1),
+      r.abandoned,
+      r.protected,
+      r.injuryN,
+      fmt(r.meanInjuryDays, 2),
+    ].join("\t"));
+  }
+  if (rows.length === 0) lines.push("(ingen nedkoersels-uheld i denne koersel)");
   return lines.join("\n");
 }
 
@@ -239,6 +330,8 @@ function main() {
   console.log(formatTable("-- Samme, pr. etapetype x vejrtype --", summarizeDescentIncidents(allMeasurements, (m) => `${m.profileType} | ${m.weatherKind}`)));
   console.log("");
   console.log(formatTable("-- I alt (alle vejrtyper) --", summarizeDescentIncidents(allMeasurements, () => "alle")));
+  console.log("");
+  console.log(formatSeverityTable(summarizeDescentSeverity(allMeasurements)));
 
   if (jsonOut) {
     mkdirSync(dirname(jsonOut), { recursive: true });
