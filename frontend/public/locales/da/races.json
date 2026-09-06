@@ -547,52 +547,81 @@
       "saveAllPartial": "Disse holdudtagelser blev ikke gemt: {races}. Dine ændringer er her stadig, så prøv at gemme igen."
     }
   },
-  "stageTactics": {
-    "title": "Etape-taktik",
-    "help": "Kørte etaper er låst. Ændringer gælder kun kommende etaper.",
-    "riderCol": "Rytter",
-    "stageCol": "Etape {number}",
-    "roleAria": "Rolle for {rider}, etape {stage}",
-    "effortAria": "Indsats for {rider}, etape {stage}",
+  "intention": {
+    "title": "Løbsdagens intention",
+    "help": "Rollen gælder hele løbet. Intentionen er, hvad du vil have ud af ham på den etape, du har åben.",
+    "colRider": "Rytter",
+    "colRole": "Rolle",
+    "colIntention": "Intention · etape {number}",
+    "colIntentionRaceDay": "Intention · løbsdag",
+    "allRace": "Hele løbet",
+    "thisRace": "Dette løb",
+    "stage": "Etape {number}",
+    "stageToday": "Etape {number} · i dag",
+    "stageLower": "etape {number}",
+    "raceDay": "Løbsdag",
+    "raceDayLower": "løbsdagen",
+    "roleFree": "Fri rolle",
+    "notSetNote": "Intet valgt betyder, at han kører rollens standard.",
+    "roleDefault": "Rollens standard · {step}",
+    "roleDefaultTag": "Rollens standard",
+    "nothingSet": "Intet valgt. Han kører sin rolle.",
+    "setIntention": "Sæt intention",
+    "change": "Skift",
+    "close": "Luk",
+    "appliesToStageOnly": "Gælder kun denne etape",
+    "pickerTitle": "{name} · {scope}",
+    "line": "Standard: {role}. I dag: {today}.",
     "riderAbandoned": "Udgået af løbet",
-    "role": {
-      "free_role": "Fri rolle"
-    },
-    "roleHelp": {
-      "captain": "Får holdets støtte til et resultat. Beskyttet: bliver aldrig bedt om at ofre sit eget løb.",
-      "sprintCaptain": "Holdet fører ham op til spurten. Beskyttet, ligesom kaptajnen.",
-      "helper": "Arbejder for holdet. Koster egen placering, styrker kaptajnens resultat.",
-      "hunter": "Sendes af sted alene. Lille omkostning, selvstændigt skud på et resultat.",
-      "freeRole": "Ingen fast opgave. Kører efter hvordan etapen udvikler sig."
-    },
-    "effort": {
-      "protect": "Arbejd",
-      "normal": "Normal",
-      "save": "Spar kræfter"
-    },
-    "effortHelp": {
-      "protect": "Giver alt for holdet i dag. Bygger ekstra træthed.",
-      "normal": "Kører normal indsats.",
-      "save": "Holder igen for at være friskere til dagene der tæller. Mindre træthed."
-    },
-    "jerseyShortcutHint": "{name} er din rytter i førertrøjen.",
-    "jerseyShortcut": "Gør {name} til kaptajn for de resterende etaper",
-    "unsaved": "Du har ikke-gemte ændringer",
-    "demoted": "Rollen flyttede: {rider} er nu {role} på etape {stage}.",
-    "save": "Gem taktik",
+    "copyToStage": "Kopiér til etape {number}",
+    "save": "Gem etape {number}",
+    "saveRaceDay": "Gem løbsdagen",
     "saving": "Gemmer…",
-    "saved": "Taktikken er gemt.",
+    "saved": "Intentionerne er gemt.",
+    "unsaved": "Du har ikke-gemte ændringer",
+    "footer": "Etape {stage}: {set} ryttere sat, {onDefault} på rollens standard",
+    "footerRaceDay": "Løbsdagen: {set} ryttere sat, {onDefault} på rollens standard",
+    "footerUntouchedOne": "etape {stages} urørt",
+    "footerUntouchedMany": "etape {stages} urørte",
+    "step": {
+      "grupetto": "Grupetto",
+      "save": "Kør roligt",
+      "normal": "Normal",
+      "protect": "Arbejd eller angrib",
+      "all_out": "Alt ud"
+    },
+    "why": {
+      "grupetto": "Han kører den hjem i bagerste gruppe. Ingen chance for et resultat.",
+      "save": "Han ligger i feltet og sparer benene til de dage, der tæller.",
+      "normal": "Hans normale løb.",
+      "protect": "Han bruger sig selv for kaptajnen. Rigtig træthed.",
+      "all_out": "Alt ind i dag. Den hårdeste dag i benene."
+    },
+    "today": {
+      "grupetto": "grupetto",
+      "save": "bliv i feltet",
+      "normal": "hans normale løb",
+      "protect": "arbejd eller angrib",
+      "all_out": "alt ud"
+    },
+    "roleWord": {
+      "captain": "kaptajn",
+      "sprint_captain": "spurtkaptajn",
+      "helper": "rytter",
+      "hunter": "jæger",
+      "free_role": "fri rolle"
+    },
     "errors": {
-      "stage_roles_invalid_body": "Kunne ikke gemme din taktik. Prøv igen.",
+      "stage_roles_invalid_body": "Kunne ikke gemme intentionerne. Prøv igen.",
       "stage_roles_stage_locked": "En af ændringerne er på en kørt etape og kan ikke gemmes.",
       "stage_roles_rider_not_entered": "En af rytterne er ikke tilmeldt dette løb.",
       "stage_roles_invalid_role": "En af rollerne er ugyldig.",
-      "stage_roles_invalid_effort": "En af indsats-indstillingerne er ugyldig.",
+      "stage_roles_invalid_effort": "En af intentionerne er ugyldig.",
       "stage_roles_role_overlap": "Kun én rytter kan være kaptajn, kun én kan være spurtkaptajn, og kun én kan være udbrudsjæger, pr. etape.",
       "stage_roles_duplicate": "Samme rytter optræder to gange for samme etape.",
-      "stage_roles_rider_abandoned": "En af rytterne er udgået af løbet og kan ikke længere tildeles taktik.",
-      "stage_roles_race_completed": "Løbet er afsluttet, så taktikken kan ikke længere ændres.",
-      "generic": "Kunne ikke gemme din taktik. Prøv igen."
+      "stage_roles_rider_abandoned": "En af rytterne er udgået af løbet og kan ikke længere få en intention.",
+      "stage_roles_race_completed": "Løbet er afsluttet, så intentionerne kan ikke længere ændres.",
+      "generic": "Kunne ikke gemme intentionerne. Prøv igen."
     }
   },
   "tacticsOrders": {

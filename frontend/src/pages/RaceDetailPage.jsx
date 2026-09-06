@@ -7,7 +7,7 @@ import TeamLink from "../components/TeamLink";
 import CareerFirstMomentRow from "../components/CareerFirstMomentRow";
 import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
 import TacticsCard from "../components/race/TacticsCard.jsx";
-import StageRoleMatrix from "../components/race/StageRoleMatrix.jsx";
+import RaceIntentionPanel from "../components/race/RaceIntentionPanel.jsx";
 import StageStripe from "../components/race/StageStripe.jsx";
 import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
 import { Flag } from "../components/Flag";
@@ -964,13 +964,12 @@ export default function RaceDetailPage() {
             </div>
           )}
 
-          {/* #2034 (Race Engine v3 S3): etape-taktik pr. rytter/etape. */}
-          {!hasAnyResults && race.status === "scheduled" && race.race_type === "stage_race" && race.stages > 1 && (
-            <StageRoleMatrix
-              raceId={race.id}
-              profileByStage={profileByStage}
-              gcRows={liveStandings?.byType?.gc ?? []}
-            />
+          {/* #4632: loebsdagens intention — etape-vaelger + dagens intention pr.
+              rytter. Vises OGSAA for endagsloeb (der hedder kolonnen "Loebsdag"
+              og der er ingen etape-vaelger); panelet gater selv paa
+              race-engine-flaget og paa om holdet har ryttere i loebet. */}
+          {!hasAnyResults && race.status === "scheduled" && (
+            <RaceIntentionPanel raceId={race.id} profileByStage={profileByStage} />
           )}
 
           {!hasAnyResults && race.status !== "scheduled" && (
@@ -1095,15 +1094,9 @@ export default function RaceDetailPage() {
                   det ville duplikere titlen. Mock-drevet preview, se TACTICS_V4_PREVIEW
                   ovenfor. */}
               {TACTICS_V4_PREVIEW && <TacticsCard raceId={race.id} stage={scheduledStage} />}
-              {race.race_type === "stage_race" && race.stages > 1 && (
-                <CollapsibleSection title={t("stageTactics.title")}>
-                  <StageRoleMatrix
-                    raceId={race.id}
-                    profileByStage={profileByStage}
-                    gcRows={liveStandings?.byType?.gc ?? []}
-                  />
-                </CollapsibleSection>
-              )}
+              <CollapsibleSection title={t("intention.title")}>
+                <RaceIntentionPanel raceId={race.id} profileByStage={profileByStage} />
+              </CollapsibleSection>
             </div>
           )}
         </div>

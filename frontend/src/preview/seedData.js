@@ -1203,28 +1203,100 @@ export const SEED_SELECTION = {
     : null,
 };
 
-// #4538: GET /api/races/:raceId/stage-roles — Etape-taktik-fanens preview-seed
-// (StageRoleMatrix). race-live-1 (stages=5, stages_completed=2, se SEED_RACES)
-// giver BÅDE låste (kørte) og redigerbare (kommende) etaper i samme
-// skærmbillede. "rider-98" er en fiktiv udgået/skadet rytter — samme
-// fiktiv-rytter-mønster som "rider-99" i SEED_RACE_INCIDENTS ovenfor — så den
-// låste taktik-række kan vises uden at røre den delte race_entries-seed (kun
-// Ada/RIDERS[0] er reelt udtaget til race-live-1 der).
-// #4746: "rider-97" er en ANDEN fiktiv, IKKE-udgået rytter (samme mønster),
-// tilføjet så matrixen har to redigerbare ryttere at vælge "Udbrudsjæger" for
-// — nødvendigt for at kunne screenshotte/reproducere #4746's fix (kun én
-// hunter ad gangen pr. etape) uden at røre den delte race_entries-seed.
-export const SEED_STAGE_ROLES = {
-  enabled: true,
-  stages_completed: 2,
-  stage_count: 5,
-  riders: [
-    { rider_id: RIDERS[0].id, name: `${RIDERS[0].firstname} ${RIDERS[0].lastname}`, race_role: "captain", abandoned: false },
-    { rider_id: "rider-97", name: "Théo Journal", race_role: "hunter", abandoned: false },
-    { rider_id: "rider-98", name: "Malthe Juul", race_role: "helper", abandoned: true },
-  ],
-  overrides: [],
+// #4632: GET /api/races/:raceId/stage-roles — loebsdagens intention
+// (RaceIntentionPanel). Tre preview-tilstande, valgt paa loebets id i
+// mockHandlers, saa ejeren kan se alle tre uden et flag i prod:
+//
+//   race-live-1          femtrins-skalaen (intention_enabled: true) paa et
+//                        etapeloeb midt i afviklingen — etape 1-2 laast, etape 3
+//                        aaben, to ryttere allerede sat.
+//   race-oneday-preview  endagsloebet: ingen etape-vaelger, kolonnen hedder
+//                        "Loebsdag". Loebet ligger i SEED_PREVIEW_ONLY_RACES
+//                        (kun id-opslag) saa lister/dashboards er uroerte.
+//   race-up-1            flaget OFF: serveren sender kun de tre gamle
+//                        vaerdier, og fladen skal derfor vise TRE trin.
+//
+// "rider-98" er en fiktiv udgaaet/skadet rytter (samme fiktiv-rytter-moenster
+// som "rider-99" i SEED_RACE_INCIDENTS ovenfor) saa den laaste raekke kan vises
+// uden at roere den delte race_entries-seed; "rider-97"/"rider-96" er fiktive,
+// IKKE-udgaaede ryttere saa listen har flere roller end kaptajnen.
+const INTENTION_RIDERS = [
+  { rider_id: RIDERS[0].id, name: `${RIDERS[0].firstname} ${RIDERS[0].lastname}`, race_role: "captain", abandoned: false },
+  { rider_id: "rider-97", name: "Théo Journal", race_role: "hunter", abandoned: false },
+  { rider_id: "rider-96", name: "Eskil Damgaard", race_role: "helper", abandoned: false },
+  { rider_id: "rider-95", name: "Ruben Halvorsen", race_role: "sprint_captain", abandoned: false },
+  { rider_id: "rider-98", name: "Malthe Juul", race_role: "helper", abandoned: true },
+];
+
+// Femtrins-vokabularet, i skala-raekkefoelge — praecis det serveren sender naar
+// race_day_intention_enabled er ON (raceRoles.VALID_EFFORTS_FIVE_STEP).
+const INTENTION_EFFORTS_FIVE = ["grupetto", "save", "normal", "protect", "all_out"];
+// De tre gamle vaerdier, i serverens egen raekkefoelge (VALID_EFFORTS) — fladen
+// sorterer selv, saa mocken maa IKKE gøre det for den.
+const INTENTION_EFFORTS_THREE = ["protect", "normal", "save"];
+
+export const SEED_STAGE_ROLES_BY_RACE = {
+  "race-live-1": {
+    enabled: true,
+    intention_enabled: true,
+    valid_efforts: INTENTION_EFFORTS_FIVE,
+    stages_completed: 2,
+    stage_count: 5,
+    riders: INTENTION_RIDERS,
+    // To ryttere er allerede sat paa etape 3 (den aabne): kaptajnen kører alt
+    // ud, spurtkaptajnen sparer benene. Rollen foelger med raekken fordi
+    // race_stage_roles baerer begge felter — den aendres ikke af fladen.
+    overrides: [
+      { stage_number: 3, rider_id: RIDERS[0].id, race_role: "captain", effort: "all_out" },
+      { stage_number: 3, rider_id: "rider-95", race_role: "sprint_captain", effort: "grupetto" },
+    ],
+  },
+  "race-oneday-preview": {
+    enabled: true,
+    intention_enabled: true,
+    valid_efforts: INTENTION_EFFORTS_FIVE,
+    stages_completed: 0,
+    stage_count: 1,
+    riders: INTENTION_RIDERS.slice(0, 3),
+    overrides: [
+      { stage_number: 1, rider_id: RIDERS[0].id, race_role: "captain", effort: "all_out" },
+    ],
+  },
+  "race-up-1": {
+    enabled: true,
+    intention_enabled: false,
+    valid_efforts: INTENTION_EFFORTS_THREE,
+    stages_completed: 0,
+    stage_count: 4,
+    riders: INTENTION_RIDERS.slice(0, 4),
+    overrides: [],
+  },
 };
+
+// Default for ethvert andet loeb i preview (og for Playwright-fixtures der
+// rammer apiResponse direkte): etapeloebet med femtrins-skalaen.
+export const SEED_STAGE_ROLES = SEED_STAGE_ROLES_BY_RACE["race-live-1"];
+
+// #4632: loeb der KUN kan slaas op paa id (RaceDetailPage's .single()) og
+// bevidst IKKE er med i SEED_RACES. Endagsloebet skal kunne aabnes i preview
+// uden at dukke op i kalender-/dashboard-lister, hvor en ekstra raekke ville
+// flytte hvert eneste visuelle snapshot.
+export const SEED_PREVIEW_ONLY_RACES = [
+  {
+    id: "race-oneday-preview",
+    season_id: ACTIVE_SEASON.id,
+    name: "Omloop Preview",
+    race_type: "single",
+    race_class: "Monuments",
+    stages: 1,
+    stages_completed: 0,
+    status: "scheduled",
+    edition_year: 2026,
+    league_division_id: TEST_TEAM.league_division_id,
+    season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number },
+    pool_race: { date_text: "01 Mar" },
+  },
+];
 
 // GET /api/races/strategy — holdets strategi + roster + kommende mål-løb.
 // Modelleret på api.js res.json (~L1935): roster[{id,name,primaryType,secondaryType,
