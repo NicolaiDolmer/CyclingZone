@@ -42,6 +42,7 @@ import {
   buildBoardProposal,
   finalizeBoardGoals,
   getPlanDuration,
+  preserveExternalGoals,
 } from "./boardGoals.js";
 import { computeDnaSuggestions } from "./boardClubDna.js";
 import { deriveDefaultFocusFromIdentity } from "./boardIdentity.js";
@@ -96,7 +97,12 @@ export const AUTO_ACCEPT_ROLLOUT_FLOOR = new Date("2026-08-15T00:00:00Z");
 // resolveNegotiationOpenedAt() læser (updated_at = hvornår DENNE rækkes
 // forhandling blev åbnet; created_at = fallback når raden mangler helt).
 export const BOARD_AUTO_ACCEPT_SELECT =
-  "id, plan_type, focus, negotiation_status, is_baseline, satisfaction, budget_modifier, tradeoff_payload, created_at, updated_at";
+  // #4865 · `current_goals` SKAL med: autoAcceptPendingPlan bygger et friskt
+  // goals-array og bevarer fremmede mål (bonus_offer) fra den eksisterende
+  // række via preserveExternalGoals. Uden kolonnen her ville existingBoard
+  // være `undefined` på feltet, og hvert auto-accept ville tabe bonus-målet
+  // præcis som /board/sign gjorde for de 11 hold i #4865.
+  "id, plan_type, focus, negotiation_status, is_baseline, satisfaction, budget_modifier, tradeoff_payload, current_goals, created_at, updated_at";
 
 /**
  * #2463 · Find hvornår en pending plan blev "åbnet til forhandling" — ankeret
@@ -563,9 +569,16 @@ async function autoAcceptPendingPlan({
   const startSeasonNumber = activeSeason?.number ?? 1;
   const endSeasonNumber = startSeasonNumber + planDuration - 1;
 
-  const finalGoals = finalizeBoardGoals({
-    goals: proposal.goals,
-    negotiationIndexes: [], // ingen forhandlinger ved auto-accept — status quo
+  // #4865 · Rebuild'en ejer kun de mål motoren selv genererer. Fremmede mål på
+  // den eksisterende række (i dag et accepteret bonustilbuds ekstra-mål,
+  // `source: "bonus_offer"`) bæres med over — pengene er allerede udbetalt,
+  // så kravet må ikke forsvinde når planen fornys.
+  const finalGoals = preserveExternalGoals({
+    rebuiltGoals: finalizeBoardGoals({
+      goals: proposal.goals,
+      negotiationIndexes: [], // ingen forhandlinger ved auto-accept — status quo
+    }),
+    previousGoals: existingBoard?.current_goals ?? [],
   });
 
   const upsertData = {

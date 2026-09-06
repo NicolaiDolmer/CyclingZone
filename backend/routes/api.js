@@ -315,6 +315,7 @@ import {
   isValidBoardRequestType,
   isValidDnaKey,
   loadGoalContextForBoard,
+  preserveExternalGoals,
   chooseDnaForTeam,
   isWithinFirstSeasonForTeam,
   resolveBoardRequest,
@@ -15870,9 +15871,18 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
       }
     }
 
-    const finalGoals = finalizeBoardGoals({
-      goals: proposal.goals,
-      negotiationIndexes,
+    // #4865 · Signeringen genopbygger hele goals-arrayet fra forslaget. Uden
+    // preserveExternalGoals slettede den lydløst ethvert mål en ANDEN sti havde
+    // lagt i `current_goals` — målt i prod: 11 hold mistede deres accepterede
+    // bonustilbuds ekstra-mål (`source: "bonus_offer"`) mellem 23/8 og 1/9,
+    // mens de 200.000 CZ$ blev stående. Rebuild'en ejer kun de GENEREREDE mål;
+    // fremmede kilder bæres med over uændret.
+    const finalGoals = preserveExternalGoals({
+      rebuiltGoals: finalizeBoardGoals({
+        goals: proposal.goals,
+        negotiationIndexes,
+      }),
+      previousGoals: existingBoard?.current_goals ?? [],
     });
 
     const upsertData = {
