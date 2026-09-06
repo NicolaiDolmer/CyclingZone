@@ -1959,11 +1959,23 @@ const teamOrderDefaultOrder = {
 };
 
 // Etape-listen for et loeb: alt til og med `completed` er laast, resten aabent.
-const teamOrderStages = (count, completed, firstAt = "2026-09-01T11:00:00.000Z") =>
+// #4613: scheduled_at SKAL komme fra SEED_STAGE_SCHEDULE når løbet har en række
+// der. Løbssidens hero læser schedule-tabellen, mens Taktik-fanen læser
+// team-orders — driver de to fra hver sin kilde, viser SAMME skærm to
+// forskellige låsetider for samme etape (målt 6/9: hero "03:00 PM", fanen
+// "Fri 01:00 PM"). Genererede tider bruges kun for etaper uden schedule-række.
+const scheduleAtFor = (raceId, stageNumber) =>
+  SEED_STAGE_SCHEDULE.find((r) => r.race_id === raceId && r.stage_number === stageNumber)?.scheduled_at ?? null;
+
+const teamOrderStages = (count, completed, firstAt = "2026-09-01T11:00:00.000Z", raceId = null) =>
   Array.from({ length: count }, (_, i) => {
     const sn = i + 1;
-    const at = new Date(new Date(firstAt).getTime() + (sn - 1) * 86_400_000).toISOString();
-    return { stage_number: sn, scheduled_at: at, locked: sn <= completed };
+    const generated = new Date(new Date(firstAt).getTime() + (sn - 1) * 86_400_000).toISOString();
+    return {
+      stage_number: sn,
+      scheduled_at: (raceId && scheduleAtFor(raceId, sn)) || generated,
+      locked: sn <= completed,
+    };
   });
 
 // #4613: ét svar pr. loeb, saa Taktik-fanen kan vises i alle fire tilstande paa
@@ -1979,11 +1991,9 @@ export const SEED_TEAM_ORDERS_BY_RACE = {
     race_completed: false,
     intention_enabled: true,
     valid_efforts: INTENTION_EFFORTS_FIVE,
-    stages: teamOrderStages(5, 2, "2026-09-30T11:00:00.000Z").map((s, i) => ({
-      ...s,
-      // De to koerte etaper laa i fortiden; de kommende ligger frem i tid.
-      scheduled_at: i < 2 ? `2026-09-0${i + 1}T11:00:00.000Z` : s.scheduled_at,
-    })),
+    // scheduled_at kommer fra SEED_STAGE_SCHEDULE (samme kilde som hero'en), saa
+    // fanen og hero'en ikke kan vise to forskellige laasetider for etape 3.
+    stages: teamOrderStages(5, 2, "2026-09-30T11:00:00.000Z", "race-live-1"),
     riders: SEED_TEAM_ORDER_RIDERS.map(({ rider_id, race_role }) => ({ rider_id, race_role })),
     default_order: teamOrderDefaultOrder,
     orders: [
@@ -2007,7 +2017,7 @@ export const SEED_TEAM_ORDERS_BY_RACE = {
     race_completed: false,
     intention_enabled: false,
     valid_efforts: INTENTION_EFFORTS_THREE,
-    stages: teamOrderStages(4, 0, "2026-07-12T11:00:00.000Z"),
+    stages: teamOrderStages(4, 0, "2026-07-12T11:00:00.000Z", "race-up-1"),
     riders: SEED_TEAM_ORDER_RIDERS.slice(0, 4).map(({ rider_id, race_role }) => ({ rider_id, race_role })),
     default_order: teamOrderDefaultOrder,
     orders: [],
@@ -2019,7 +2029,7 @@ export const SEED_TEAM_ORDERS_BY_RACE = {
     race_completed: false,
     intention_enabled: true,
     valid_efforts: INTENTION_EFFORTS_FIVE,
-    stages: teamOrderStages(1, 0, "2026-03-01T11:00:00.000Z"),
+    stages: teamOrderStages(1, 0, "2026-03-01T11:00:00.000Z", "race-oneday-preview"),
     riders: SEED_TEAM_ORDER_RIDERS.slice(0, 3).map(({ rider_id, race_role }) => ({ rider_id, race_role })),
     default_order: teamOrderDefaultOrder,
     orders: [],
@@ -2031,7 +2041,7 @@ export const SEED_TEAM_ORDERS_BY_RACE = {
     race_completed: true,
     intention_enabled: true,
     valid_efforts: INTENTION_EFFORTS_FIVE,
-    stages: teamOrderStages(2, 2, "2026-05-09T11:00:00.000Z"),
+    stages: teamOrderStages(2, 2, "2026-05-09T11:00:00.000Z", "race-done-2"),
     riders: SEED_TEAM_ORDER_RIDERS.map(({ rider_id, race_role }) => ({ rider_id, race_role })),
     default_order: teamOrderDefaultOrder,
     orders: [],

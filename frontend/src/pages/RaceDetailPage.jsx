@@ -850,7 +850,12 @@ export default function RaceDetailPage() {
     : [];
   const abandonedCount = squadRiders.filter((r) => r.abandoned).length;
 
-  const terrainValue = focusProfile ? t(profileLabelKey(focusProfile.profile_type) ?? "detail.stat.status") : null;
+  // profileLabelKey/finaleLabelKey returnerer nøglen UDEN namespace-præfiks
+  // ("profileType.rolling"), men strengene bor under `detail.` i races.json.
+  // Uden præfikset renderede hero'en den rå nøgle ("profileType.rolling") som
+  // terræn-værdi. Samme opslag som TerrainTypeGlyph/StageDetailPanel gør.
+  const terrainKey = focusProfile ? profileLabelKey(focusProfile.profile_type) : null;
+  const terrainValue = terrainKey ? t(`detail.${terrainKey}`) : null;
   const finaleKey = focusProfile ? finaleLabelKey(focusProfile.finale_type) : null;
 
   // #4613: hero stat-rækken følger fasen (mockup A). Blokke uden ærlig værdi
@@ -894,7 +899,7 @@ export default function RaceDetailPage() {
       ...(terrainValue ? [{
         label: t("racePage.hero.terrain"),
         value: terrainValue,
-        sub: finaleKey ? t(finaleKey) : null,
+        sub: finaleKey ? t(`detail.${finaleKey}`) : null,
       }] : []),
       ...(squadRiders.length ? [{
         label: t("racePage.hero.selected"),

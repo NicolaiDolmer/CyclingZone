@@ -188,6 +188,11 @@ export default function RaceOverviewTab({
     [standingsRows, myTeamId],
   );
 
+  // "Top 6 of {count}" må kun stå når listen FAKTISK er klippet. Et løb med to
+  // ryttere i klassementet viste ellers "Top 6 of 2", som hverken er sandt
+  // eller læseligt.
+  const truncated = extract.length > 0 && standingsRows.length > extract.length;
+
   const nextStage = decisions[0]?.stageNumber ?? null;
   const todayStage = Math.min(stages, (Number(stagesCompleted) || 0) + 1);
   const lastRidden = Number(stagesCompleted) || 0;
@@ -274,7 +279,7 @@ export default function RaceOverviewTab({
           <Section>
             <SectionHeader
               title={t("racePage.overview.howItEnded")}
-              meta={extract.length ? t("racePage.overview.topOf", { count: standingsRows.length }) : null}
+              meta={truncated ? t("racePage.overview.topOf", { count: standingsRows.length }) : null}
             />
             <p className="text-cz-3 text-xs mb-3">{t("racePage.overview.howItEndedHelp")}</p>
             <StandingsExtract t={t} rows={extract} myTeamId={myTeamId} />
@@ -306,7 +311,7 @@ export default function RaceOverviewTab({
         <Section>
           <SectionHeader
             title={t("racePage.overview.whereYouStand")}
-            meta={extract.length ? t("racePage.overview.topOf", { count: standingsRows.length }) : null}
+            meta={truncated ? t("racePage.overview.topOf", { count: standingsRows.length }) : null}
           />
           <p className="text-cz-3 text-xs mb-3">
             {isStageRace
