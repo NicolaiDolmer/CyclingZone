@@ -298,6 +298,17 @@ test("monotoni (hardt krav): en daarligere descender tager ALDRIG tid paa en bed
       const { state, ctx } = buildSingleGroupScenario(pairs, technicality, seed);
       const result = descentHook(state, ctx);
 
+      // #4934: uheldsramte ryttere er UDE af evne-sammenligningen. Invariant 3
+      // (§3) gaelder mekanikker der SAMMENLIGNER ryttere paa den evne segmentet
+      // tester — et styrt er et uheld, ikke en evne-test, og M10 behandler sine
+      // egne uheld praecis sadan (se incidents.ts's monotoni-bemaerkning).
+      // Monotonien for selve uheldet er den SKARPERE form og testes separat
+      // nedenfor: ved samme lodtraekning faar en bedre nedkoerer aldrig et
+      // vaerre udfald. Her maales angrebs-mekanikken alene.
+      const crashed = new Set(
+        eventsOfType(result.events, "incident").map((e) => e.params.rider_id as string),
+      );
+
       const gapById = new Map<string, number>();
       for (const [id] of pairs) {
         const group = findGroupOf(result.state.groups, id);
@@ -310,6 +321,7 @@ test("monotoni (hardt krav): en daarligere descender tager ALDRIG tid paa en bed
           if (i === j) continue;
           const [idA, descA] = pairs[i];
           const [idB, descB] = pairs[j];
+          if (crashed.has(idA) || crashed.has(idB)) continue;
           if (descA > descB) {
             assert.ok(
               gapById.get(idA)! <= gapById.get(idB)! + 1e-9,
