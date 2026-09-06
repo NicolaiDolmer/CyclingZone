@@ -130,6 +130,7 @@ function scenario(specs: Spec[], profileType: ProfileType = "mountain", distance
     entrants,
     tuning: RACE_V4_TUNING,
     rngFor: boundRngFor("team-play-test"),
+    rngForStage: boundRngFor("team-play-test"),
     orders: [],
   };
   return { state, ctx, entrants, riders, group };

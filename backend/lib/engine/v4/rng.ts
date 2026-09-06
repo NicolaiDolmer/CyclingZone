@@ -64,3 +64,38 @@ export function rngFor(seed: string, mechanic: string, riderId?: string): RngFn 
 export function boundRngFor(seed: string): RngForFn {
   return (mechanic: string, riderId?: string): RngFn => rngFor(seed, mechanic, riderId);
 }
+
+/**
+ * Stream-nøglen for én mekanik på ét segment (#4886). Formen `<mekanik>:s<n>`
+ * er den samme som `mechanics/incidents.ts` og `mechanics/cobbles.ts` selv
+ * indførte 6/9 — den bor nu her, så konventionen kun findes ét sted.
+ */
+export function segmentStreamKey(mechanic: string, segmentIndex: number): string {
+  return `${mechanic}:s${segmentIndex}`;
+}
+
+/**
+ * Segment-nøglet indpakning af en etape-bundet `RngForFn` (#4886).
+ *
+ * KONTRAKT: `SegmentHookContext.rngFor` er ALTID segment-nøglet — segmentLoop
+ * pakker etapens stream ind i denne før hvert hook-kald. Uden den er en stream
+ * nøglet på (seed, mekanik, rider_id) alene, og en mekanik der kaldes PR.
+ * SEGMENT får derfor den SAMME første lodtrækning på hvert eneste segment:
+ * rytteren der ruller styrt på dagens første nedkørsel styrter på dem alle, og
+ * selektions-støjen er identisk stigning for stigning. Fejlen blev fundet i
+ * uheldsmodulet 6/9 (#2944/PR #4882) og gælder efter sin natur ENHVER mekanik
+ * der kaldes pr. segment — derfor er nøglingen nu en default i kernen frem for
+ * en disciplin hver mekanik skal huske.
+ *
+ * Per-rytter-hash-egenskaben er uberørt (§3 invariant 1): udfaldet afhænger
+ * stadig kun af (seed, segment, mekanik, rider_id) — aldrig af hvem andre der
+ * er med i feltet eller af hvilken rækkefølge rytterne behandles i.
+ *
+ * En mekanik der LEGITIMT skal have én etape-stabil stream — fordi dens
+ * lodtrækning hører til et vejpunkt eller til målstregen og ikke må skifte hvis
+ * rutens segmentinddeling ændres — bruger `SegmentHookContext.rngForStage` i
+ * stedet, med en begrundelse på kaldstedet.
+ */
+export function segmentRngFor(rngForStage: RngForFn, segmentIndex: number): RngForFn {
+  return (mechanic: string, riderId?: string): RngFn => rngForStage(segmentStreamKey(mechanic, segmentIndex), riderId);
+}

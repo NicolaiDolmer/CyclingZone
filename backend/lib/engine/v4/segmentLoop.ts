@@ -44,7 +44,7 @@ import type {
   TimelineEvent,
   Weather,
 } from "./types.ts";
-import { boundRngFor } from "./rng.ts";
+import { boundRngFor, segmentRngFor } from "./rng.ts";
 import { deriveCp, deriveRechargeRate, tickPhysiologyOverSegment } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
 import { GROUP_DRAFT_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "./tuning.ts";
@@ -406,7 +406,12 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       route,
       entrants: entrantsById,
       tuning,
-      rngFor: rngForFn,
+      // #4886: hooksene får ALTID en segment-nøglet stream. Uden indpakningen
+      // er en stream nøglet på (seed, mekanik, rider_id) alene, og enhver
+      // mekanik der kaldes pr. segment genbruger sin første lodtrækning på
+      // hvert segment. Se rng.ts's segmentRngFor for hele kontrakten.
+      rngFor: segmentRngFor(rngForFn, segmentIndex),
+      rngForStage: rngForFn,
       orders,
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart

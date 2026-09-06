@@ -339,14 +339,14 @@ export function resolveIncident(
  *
  * REN: intet input muteres, samme (state, ctx) -> samme output.
  *
- * RNG-STREAMS ER SEGMENT-NOEGLEDE. `ctx.rngFor(mechanic, riderId)` er noeglet
- * paa (seed, mechanic, riderId) ALENE, saa den samme mekanik-streng ville give
- * den SAMME foerste vaerdi paa hvert eneste segment. For en mekanik der kaldes
- * pr. segment betyder det, at en rytter der styrter paa segment 0 ogsaa styrter
- * paa hvert oevrigt segment af samme kind. Denne fil laegger derfor segment-
- * indekset i mekanik-strengen (`incident:s3`). Per-rytter-hash-egenskaben er
- * uaendret: udfaldet afhaenger stadig KUN af (seed, segment, rider_id) — ikke
- * af hvem andre der er med i loebet.
+ * RNG-STREAMS ER SEGMENT-NOEGLEDE — af KERNEN, ikke af denne fil (#4886).
+ * `ctx.rngFor` er allerede bundet til baade etapens seed og DETTE segment
+ * (segmentLoop.ts -> rng.ts's segmentRngFor), saa en rytter der styrter paa
+ * segment 0 ikke styrter paa hvert oevrige segment. Filen bar selv suffikset
+ * (`incident:s3`) indtil 6/9; det er fjernet igen, fordi en mekanik der laegger
+ * segment-indekset i mekanik-strengen nu dobbelt-noegler streamen. Per-rytter-
+ * hash-egenskaben er uaendret: udfaldet afhaenger KUN af (seed, segment,
+ * rider_id) — ikke af hvem andre der er med i loebet.
  *
  * Fabrikken er eksporteret separat (i stedet for at hardkode INCIDENTS_EXTRA_
  * TUNING inde i funktionskroppen) saa tests kan injicere en rigget tuning —
@@ -393,7 +393,7 @@ export function createIncidentHook(
       if (budget <= 0) break;
 
       const entrant = entrants[riderId]!;
-      const rng = rngFor(`incident:s${segmentIndex}`, riderId);
+      const rng = rngFor("incident", riderId);
       const p = clamp(incidentProbability(entrant.abilities.positioning, segment.kind, tuning) * lengthFactor, 0, 1);
       if (rng() >= p) continue;
 
@@ -404,10 +404,10 @@ export function createIncidentHook(
 
       const resolved = resolveIncident(
         {
-          kind: rngFor(`incident_kind:s${segmentIndex}`, riderId)(),
-          severity: rngFor(`incident_severity:s${segmentIndex}`, riderId)(),
-          magnitude: rngFor(`incident_time_loss:s${segmentIndex}`, riderId)(),
-          injury: rngFor(`incident_injury:s${segmentIndex}`, riderId)(),
+          kind: rngFor("incident_kind", riderId)(),
+          severity: rngFor("incident_severity", riderId)(),
+          magnitude: rngFor("incident_time_loss", riderId)(),
+          injury: rngFor("incident_injury", riderId)(),
         },
         { protectedByRule, helperNearby },
         tuning,

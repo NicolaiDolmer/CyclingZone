@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { boundRngFor, gaussian, mulberry32, rngFor, stableSeed } from "./rng.ts";
+import { boundRngFor, gaussian, mulberry32, rngFor, segmentRngFor, segmentStreamKey, stableSeed } from "./rng.ts";
 
 test("stableSeed: deterministisk og uafhaengig af foregaaende kald", () => {
   assert.equal(stableSeed("hello"), stableSeed("hello"));
@@ -64,6 +64,44 @@ test("rngFor: en ekstra rytter i feltet flytter ALDRIG en andens per-rytter-stre
   for (let i = 0; i < 10; i++) rngFor("stage-9", "dayform", `extra-${i}`)();
   const after = rngFor("stage-9", "dayform", "rider-a")();
   assert.equal(before, after);
+});
+
+// ── #4886: segment-noeglen er kernens default, ikke hver mekaniks disciplin ──
+
+test("segmentRngFor: samme (mekanik, rytter) paa TO segmenter giver forskellige lodtraekninger", () => {
+  const stage = boundRngFor("stage-4886");
+  // Gammel form (den fejlen bestod i): hooksene fik `stage` direkte, saa begge
+  // segmenter kaldte samme (seed, mekanik, rider_id) og fik samme foerste tal.
+  assert.equal(stage("breakaway_join", "r1")(), stage("breakaway_join", "r1")());
+
+  const s0 = segmentRngFor(stage, 0);
+  const s1 = segmentRngFor(stage, 1);
+  assert.notEqual(
+    s0("breakaway_join", "r1")(),
+    s1("breakaway_join", "r1")(),
+    "samme rytter fik samme foerste lodtraekning paa to segmenter — streamen er ikke segment-noeglet (#4886)",
+  );
+});
+
+test("segmentRngFor: SAMME segment er fuldt deterministisk", () => {
+  const stage = boundRngFor("stage-4886");
+  assert.equal(segmentRngFor(stage, 3)("descent_incident", "r1")(), segmentRngFor(stage, 3)("descent_incident", "r1")());
+});
+
+test("segmentRngFor: en ekstra rytter i feltet flytter ALDRIG en andens segment-stream (invariant 1)", () => {
+  const stage = boundRngFor("stage-4886");
+  const before = segmentRngFor(stage, 5)("climbSelection", "rider-a")();
+  for (let i = 0; i < 10; i++) segmentRngFor(stage, 5)("climbSelection", `extra-${i}`)();
+  assert.equal(segmentRngFor(stage, 5)("climbSelection", "rider-a")(), before);
+});
+
+test("segmentRngFor: noeglen er `<mekanik>:s<n>` — mekanikker maa ikke selv laegge suffikset paa", () => {
+  const stage = boundRngFor("stage-4886");
+  assert.equal(segmentStreamKey("incident", 3), "incident:s3");
+  // Praecis den form incidents.ts/cobbles.ts selv bar indtil 6/9: laegger en
+  // mekanik suffikset paa OVEN i kernens, bliver streamen dobbelt-noeglet.
+  assert.equal(segmentRngFor(stage, 3)("incident", "r1")(), stage("incident:s3", "r1")());
+  assert.notEqual(segmentRngFor(stage, 3)("incident:s3", "r1")(), stage("incident:s3", "r1")());
 });
 
 test("boundRngFor: seed-bundet variant matcher rngFor 1:1", () => {

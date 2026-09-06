@@ -22,7 +22,7 @@ import {
   threeKmRuleApplies,
   type IncidentRolls,
 } from "./incidents.ts";
-import { boundRngFor } from "../rng.ts";
+import { boundRngFor, segmentRngFor } from "../rng.ts";
 import { INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
 import type {
   AbilityKey,
@@ -110,7 +110,10 @@ function buildSingleGroupScenario(
     route,
     entrants: entrantsById,
     tuning: {} as SegmentHookContext["tuning"], // incidentHook laeser IKKE ctx.tuning (INCIDENTS_EXTRA_TUNING er additiv)
-    rngFor: boundRngFor(seed),
+    // #4886: riggen spejler produktionen — segmentLoop giver hooksene en
+    // SEGMENT-noeglet stream, ikke etapens raa stream.
+    rngFor: segmentRngFor(boundRngFor(seed), 2),
+    rngForStage: boundRngFor(seed),
     orders: [],
   };
   return { state, ctx };
@@ -780,7 +783,9 @@ test("#2944 (e): rng-streams er SEGMENT-noeglede — samme rytter styrter ikke p
   for (let i = 0; i < 12; i += 1) {
     const segment = flatSegment(i * 40, (i + 1) * 40);
     const { state, ctx } = buildSingleGroupScenario([["a", 50]], segment, route, "segment-stream-seed");
-    const result = hook(state, { ...ctx, segmentIndex: i });
+    // Segment-noeglen bor i KERNEN (#4886): et nyt segment-index betyder ogsaa
+    // en ny stream — praecis som segmentLoop bygger ctx'en.
+    const result = hook(state, { ...ctx, segmentIndex: i, rngFor: segmentRngFor(ctx.rngForStage, i) });
     hits += eventsOfType(result.events, "incident").length;
   }
   assert.ok(hits > 0, "risikoen skal vaere hoej nok til at ramme mindst én gang");

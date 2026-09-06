@@ -83,6 +83,7 @@ function makeCtx(args: {
     entrants: args.entrants,
     tuning: RACE_V4_TUNING,
     rngFor: boundRngFor(args.seed ?? "finale-test-seed"),
+    rngForStage: boundRngFor(args.seed ?? "finale-test-seed"),
     orders: [],
   };
 }

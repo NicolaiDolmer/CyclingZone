@@ -103,6 +103,7 @@ function buildFieldScenario(
     entrants: entrantsById,
     tuning: RACE_V4_TUNING,
     rngFor: boundRngFor(seed),
+    rngForStage: boundRngFor(seed),
     // Ordrerne naar hooket gennem den AABNE TeamOrder-konvolut (#4615) —
     // praecis som orders/teamOrdersAdapter.ts skriver dem i produktion.
     orders: (orders ?? []).map((o) => ({
