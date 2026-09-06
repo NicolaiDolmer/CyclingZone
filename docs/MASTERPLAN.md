@@ -7,7 +7,7 @@
 ## Bane 1 · S4-cutover 27-28/9 (deadline; ca. 3 ugers arbejde, nul buffer)
 
 1. 🔵 **Løbssiden som faner** PR #4913 → ejer-go på preview. Opfølgere #4917.
-2. 🟠 **v4 før flip** (`RACE_ENGINE_RULES.md` §9, spec 6/9): #4914 kalibreringspakke (#4885 feltspredning · #4707 holdspil · M12) · #4886 rngFor · #4905 uheld · #4915 TTT/passage · #4246 hunter vs try_break FØR `TeamOrder` fryses · #4911 docs · #4910 hjælpetekster.
+2. 🟠 **v4 før flip** (`RACE_ENGINE_RULES.md` §9, spec 6/9): **7/9 nat: #4885 hale · #4886 rngFor · #4905 + #4934 nedkørsels-styrt · #4911 docs (ankertabel pinnet) · #4910 hjælpetekster MERGET.** Rest: #4914 kalibreringspakke (holdspil-gab ejer-go · M12 · bjerg-anker-spænd 165-242 s · hale-bånd ejer-valg) → #4936 populations-snapshot FØRST · #4915 TTT/passage (ejer-valg pr. punkt) · #4917 løbsside-opfølgere.
 3. 🔵 **v4-flip** (ejer-only) → #4916 følg løbet live (efter flip).
 4. 🔵 **S4-kalender:** #4270 apply (ejer inden 10/9) · #4845 kalenderpakker · #4203 monumenter ud af GT (done-gated).
 5. 🟠 **Træning pr. løbsdag #4850** (ejer-go 6/9, live senest 28/9): #4846 tick → #4847 fjern Træn i dag → #4851 score → #4852/#4853/#4854 D1-D3 → #4848 vagter → #4849 tests+help+patch note. #4801 +1-loft merges i pakken; #4874 brosten/aggression.
