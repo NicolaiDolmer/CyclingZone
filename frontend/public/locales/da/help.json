@@ -1243,6 +1243,29 @@
         "title": "Scout andre divisioner",
         "text": "Skift race hub'en til 'Min division' eller 'Andre divisioner' for at se enhver puljes kommende startlister, skrivebeskyttet. Startlister åbner syv dage før hvert løb og viser kun bruttotrupper (hvilke ryttere et hold har meldt til), så du kan vurdere det forventede felt. Roller, form og træthed forbliver skjult, og løb længere ude er låst, indtil deres startliste åbner."
       }
+    },
+    "raceDay": {
+      "label": "Løbsdag og taktik",
+      "roleAndIntention": {
+        "title": "Rolle og dagens intention",
+        "text": "Din rolle er den opgave, du gav en rytter, da du satte holdet: kaptajn, spurt-kaptajn, udbruds-jæger, hjælper eller fri rolle. Den gælder hele løbet og skifter sjældent. Intentionen er noget andet: det er, hvad du beder ham om på den etape, du har åben lige nu, og rører du den ikke, kører han bare sin rolle. Fem trin går fra lettest til hårdest: grupetto, kør roligt, normal, arbejd eller angrib og alt ud. Et hårdere trin koster altid mere træthed end et lettere, uanset hvor stærk rytteren er, og grupetto giver ham aldrig et resultat af egen kraft."
+      },
+      "crashesAndIncidents": {
+        "title": "Styrt og uheld",
+        "text": "Et styrt på vejen er ikke længere alt eller intet. Et let styrt koster lidt tid, og rytteren kører videre uskadt. Et hårdt styrt koster meget mere tid og efterlader ham mærket med skadedage, men han kommer stadig i mål. Et alvorligt styrt slutter hans løb og giver også skadedage, og det er sjældent. Et mekanisk uheld, en punktering, en afsprunget kæde, et hjul, koster altid kun tid: det kan aldrig tvinge en rytter til at udgå, og det kan aldrig skade ham, og en holdkammerat tæt på får ham hurtigere op på cyklen igen. Kun et rigtigt styrt kan skade en rytter."
+      },
+      "timeLimitAndGrupetto": {
+        "title": "Tidsgrænsen og grupettoen",
+        "text": "Kommer du for langt bagud i forhold til etapevinderen, er dit løb slut: ude af hele løbet på et etapeløb, DNF på et endagsløb. En stor gruppe, der kommer samlet i mål, reddes i stedet som én, det er grupettoen, og den findes, så et helt udkørt felt ikke sendes hjem på en hård dag. Hvor meget plads du får, afhænger af etapen: flade dage er strengest, højbjerget mest overbærende. Det er en regel, aldrig en lodtrækning, og den behandler et AI-hold præcis som dig. Du ser kun det rene resultat: uden for tidsgrænsen, eller grupettoen reddet."
+      },
+      "teamwork": {
+        "title": "Holdspil på vejen",
+        "text": "Din kaptajn, eller din spurt-kaptajn på en flad etape, beskyttes af det arbejde resten af holdet lægger i det. En hjælper eller en udbruds-jæger betaler for den beskyttelse med sin egen kraft; en rytter i fri rolle hverken hjælper eller betaler. Boosten har et loft, så den aldrig løber løbsk, og den tæller kun, når mindst én holdkammerat stadig kører tæt på ham. Sætter du en rytter til alt ud, holder han op med at betale den pris, fordi han bruger alt på sig selv i stedet. At arbejde for holdet er aldrig gratis, og ingen kombination af rolle og intention kan gøre det til en bonus oven i rytterens egen evne."
+      },
+      "weatherAndCobbles": {
+        "title": "Vejr og brosten",
+        "text": "Hver etape har sit eget vejr. Sol og overskyet er den rolige baseline, intet ændrer sig. Regn sænker hele etapen og rammer en rytter, der er dårlig i regnvejr, hårdere end resten af gruppen. Vind bider mest, hvor vejen er åben; en stigning ligger i læ af sig selv. Regn øger også risikoen for et styrt på brosten, grus og i dristige nedkørsler. Du ser det som én melding i etapens tidslinje, på den kilometer, hvor det begynder at betyde noget, aldrig som et tal knyttet til den."
+      }
     }
   },
   "faq": {

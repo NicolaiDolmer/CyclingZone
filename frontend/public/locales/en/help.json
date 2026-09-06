@@ -1243,6 +1243,29 @@
         "title": "Scouting other divisions",
         "text": "Switch the race hub to 'My division' or 'Other divisions' to browse any pool's upcoming start lists, read-only. Start lists open seven days before each race and show gross squads only (which riders a team has entered), so you can size up the expected field. Roles, form and fatigue stay hidden, and races further out stay locked until their start list opens."
       }
+    },
+    "raceDay": {
+      "label": "Race day and tactics",
+      "roleAndIntention": {
+        "title": "Roles and today's intention",
+        "text": "Your role is the job you picked for a rider when you built your team: captain, sprint captain, breakaway hunter, domestique or free role. It lasts the whole race and rarely changes. Intention is different, it is what you ask him for on the stage you have open right now, and if you leave it alone he simply rides his role. Five settings run from easiest to hardest: grupetto, ride easy, normal, work or attack and all out. A harder setting always costs more fatigue than an easier one, no matter how strong the rider is, and grupetto never earns him a result of his own."
+      },
+      "crashesAndIncidents": {
+        "title": "Crashes and incidents",
+        "text": "A crash on the road is no longer all or nothing. A light crash costs a small amount of time, and the rider rides on unhurt. A hard crash costs a lot more time and leaves him marked with injury days, but he still finishes the stage. A serious crash ends his race and comes with injury days too, and it is rare. A mechanical problem, a puncture, a dropped chain, a wheel, always costs only time: it can never force a rider out and it can never injure him, and a teammate riding nearby gets him back on his bike faster. Only an actual crash can hurt a rider."
+      },
+      "timeLimitAndGrupetto": {
+        "title": "The time limit and the grupetto",
+        "text": "Arrive too far behind the stage winner and your race is over, out of the whole event on a stage race, a DNF on a one-day race. A big group that comes in together is saved as one instead, that is the grupetto, and it exists so a whole tired peloton is not sent home on a brutal day. How much room you get depends on the stage: flat days are the strictest, the high mountains the most forgiving. It is a rule, never a roll of the dice, and it treats an AI team exactly the same way it treats you. All you ever see is the plain result: out of the time limit, or the grupetto saved."
+      },
+      "teamwork": {
+        "title": "Teamwork on the road",
+        "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
+      },
+      "weatherAndCobbles": {
+        "title": "Weather and cobbles",
+        "text": "Every stage carries its own weather. Sun and overcast are the calm baseline, nothing changes. Rain slows the whole stage down and hits a rider who is weak in the wet harder than the rest of the group. Wind mostly bites where the road is open; a climb is sheltered by its own slope. Rain also raises the risk of a crash on cobbles, gravel and daring descents. You will see it as a single note on the stage timeline, on the kilometre where it starts to matter, never as a number attached to it."
+      }
     }
   },
   "faq": {
