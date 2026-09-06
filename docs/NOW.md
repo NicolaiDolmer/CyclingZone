@@ -24,6 +24,6 @@
 - **Træning:** nyt system (løbsdag som tick, #4850) live senest S4-start 28/9; kalenderpakker #4845 FØR S4-kalender.
 - **Mekanik:** PR'er merges med `--admin` én ad gangen med pause (Railway-deploys må ikke overlappe); `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Bølger: TIER WAVE, maks 3 byg-workers, push <10 min + hvert 15. min.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Fable, orkestrator) 7/9 - PR #4913 loebsside-faner: worker faerdiggoer verifikation, ejer-go paa preview.
 
 _Historik i git-log, issue-tråde + docs/audits/._
