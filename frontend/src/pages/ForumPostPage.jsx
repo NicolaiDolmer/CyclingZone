@@ -264,7 +264,7 @@ export default function ForumPostPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
-      const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).single();
+      const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
       if (!cancelled) setIsAdmin(userData?.role === "admin");
     })();
     return () => { cancelled = true; };

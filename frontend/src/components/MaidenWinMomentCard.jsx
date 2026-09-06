@@ -56,7 +56,7 @@ export default function MaidenWinMomentCard() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
+        const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
         if (!myTeam) return;
         // pagination-safe: rider_career_events er lav-volumen pr. hold
         // (career-firsts er sjældne pr. definition) — limit() er alligevel

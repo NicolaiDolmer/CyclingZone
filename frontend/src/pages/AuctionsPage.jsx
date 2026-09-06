@@ -1113,7 +1113,7 @@ export default function AuctionsPage() {
     try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.id) setUserId(user.id);
-    const { data: team } = await supabase.from("teams").select("id, balance, division").eq("user_id", user.id).single();
+    const { data: team } = await supabase.from("teams").select("id, balance, division").eq("user_id", user.id).maybeSingle();
     if (team) { setMyTeamId(team.id); setMyBalance(team.balance); }
     // Load watchlist for clickable star på rytter-celle
     if (user?.id) {
@@ -1353,7 +1353,7 @@ export default function AuctionsPage() {
           // opdateres live uden manuel reload (#1511441112815108157).
           const newBidderId = updated.current_bidder_id;
           if (newBidderId && !teamNameCacheRef.current.has(newBidderId)) {
-            supabase.from("teams").select("id, name").eq("id", newBidderId).single()
+            supabase.from("teams").select("id, name").eq("id", newBidderId).maybeSingle()
               .then(({ data }) => {
                 if (!data) return;
                 teamNameCacheRef.current.set(data.id, data.name);

@@ -77,7 +77,7 @@ export default function GlobalRankPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: mine } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
+      const { data: mine } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
       setMyTeamId(mine?.id || null);
     })();
   }, []);

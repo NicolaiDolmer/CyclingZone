@@ -121,7 +121,7 @@ export default function ManagerProfilePage() {
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) return;
-    const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
+    const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
     if (myTeam) setMyTeamId(myTeam.id);
   }, []);
 
