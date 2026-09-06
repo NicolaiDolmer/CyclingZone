@@ -1302,7 +1302,10 @@ async function runOwnershipInvariantWatchCron() {
       `sellerlessOwned=${result.findings.sellerlessOwned}, staleIntake=${result.findings.staleIntake}, ` +
       `strandedAcademy=${result.findings.strandedAcademy}, ` +
       `stalePendingTransfer=${result.findings.stalePendingTransfer}, ` +
-      `teamsMissingBoardMembers=${result.findings.teamsMissingBoardMembers} (#2647/#3330/#4664)`
+      `teamsMissingBoardMembers=${result.findings.teamsMissingBoardMembers} ` +
+      // Ikke et brud (CYCLINGZONE-59) — men tallet skal stå i samme linje, ellers
+      // ligner "0 brud" en vagt der ikke ser hold der venter på deres DNA-valg.
+      `(afventer DNA-valg: ${result.findings.teamsAwaitingDnaChoice}) (#2647/#3330/#4664)`
     );
   }
 }
