@@ -649,11 +649,12 @@
       "neutral": "Neutral",
       "let_go": "Let it go"
     },
-    "effortSummary": "{protect} work · {normal} normal · {save} save",
     "effort": {
       "protect": "Protect",
       "normal": "Normal",
-      "save": "Save"
+      "save": "Save",
+      "grupetto": "Grupetto",
+      "all_out": "All out"
     },
     "effortAria": "Effort for {name}",
     "tryBreak": "Try the break",
@@ -662,12 +663,41 @@
       "captain": "Captain",
       "sprint_captain": "Sprint captain",
       "hunter": "Breakaway hunter",
-      "helper": "Rider",
+      "helper": "Domestique",
       "free_role": "Free role"
     },
     "save": "Save tactics",
     "saving": "Saving…",
-    "saved": "Tactics saved."
+    "saved": "Tactics saved.",
+    "leadout": "Sprint train",
+    "leadoutAria": "{name} rides in the sprint train",
+    "standardPrefix": "Standard: {role}",
+    "todayPrefix": "Today: {today}",
+    "today": {
+      "ridesRole": "rides their role",
+      "tryBreak": "goes for the break",
+      "stayInBunch": "stays in the bunch",
+      "joinTrain": "rides the sprint train",
+      "leaveTrain": "out of the sprint train",
+      "effort": {
+        "protect": "protects",
+        "normal": "normal effort",
+        "save": "saves",
+        "grupetto": "rides the grupetto",
+        "all_out": "gives everything"
+      }
+    },
+    "riderFallback": "Rider",
+    "loadError": "Could not load your tactics for this stage.",
+    "retry": "Try again",
+    "saveError": "Could not save. Try again.",
+    "roleDefault": {
+      "captain": "protected captain",
+      "sprint_captain": "sprint captain",
+      "hunter": "breakaway hunter",
+      "helper": "domestique",
+      "free_role": "free role"
+    }
   },
   "strategy": {
     "title": "Team strategy",

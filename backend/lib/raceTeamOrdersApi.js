@@ -29,6 +29,7 @@ import {
   BREAKAWAY_STANCE_VALUES,
   TEAM_ORDER_RIDER_FIELDS,
   REJECTED_TEAM_ORDER_RIDER_FIELDS,
+  defaultTeamOrderForRoster,
 } from "./engine/v4/ai/teamOrderContract.ts";
 import { validEffortsFor } from "./raceRoles.js";
 
@@ -211,6 +212,15 @@ export async function getTeamOrdersContext({ supabase, race, teamId }) {
   const scheduleByStage = new Map((schedRes.data || []).map((s) => [s.stage_number, s.scheduled_at]));
 
   return {
+    // #4246: rollens standardordre, regnet af motorens EGEN kontrakt. Fladen
+    // skal kunne skrive "Standard: jæger. I dag: bliv i feltet" uden at
+    // genopfinde rolle-til-ordre-tabellen i frontend (det ville være en femte
+    // kopi af netop den kontrakt denne bølge samler til én). Fog of war
+    // (#1791): kun enum-værdier, aldrig hvad et valg er værd.
+    default_order: defaultTeamOrderForRoster(
+      teamId,
+      entries.map((e) => ({ rider_id: e.rider_id, role: e.race_role ?? "free_role" })),
+    ),
     stage_count: race.stages ?? 0,
     stages_completed: race.stages_completed ?? 0,
     race_completed: race.status === "completed",

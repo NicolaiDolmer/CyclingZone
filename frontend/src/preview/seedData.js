@@ -1876,3 +1876,64 @@ export const SEED_OPS_NOTICES = [
     created_at: "2026-08-18T05:00:00Z",
   },
 ];
+
+// GET /api/races/:raceId/team-orders — taktik-ordre-kortet (#4030/#4246).
+// Formen er endpointets 1:1 (backend/routes/api.js): holdets udtagne ryttere med
+// deres ROLLE, rollernes standardordre (regnet af motorens kontrakt) og de
+// etaper der har en gemt ordre.
+//
+// Seedet viser praecis den historie kortet skal fortaelle: holdet har en
+// kaptajn, en spurt-kaptajn, en udbrudsjaeger og tre hjaelpere, og standarden
+// falder ud af rollerne alene. For etape 3 har manageren afveget: jaegeren
+// bliver i feltet i dag, og en hjaelper er taget ud af sprint-toget.
+export const SEED_TEAM_ORDER_RIDERS = [
+  { rider_id: RIDERS[0].id, name: `${RIDERS[0].firstname} ${RIDERS[0].lastname}`, race_role: "captain" },
+  { rider_id: "rider-90", name: "Théo Journal", race_role: "sprint_captain" },
+  { rider_id: "rider-91", name: "Lars Bisgaard", race_role: "hunter" },
+  { rider_id: "rider-92", name: "Finn Aarsland", race_role: "helper" },
+  { rider_id: "rider-93", name: "Bram Verhoeven", race_role: "helper" },
+  { rider_id: "rider-94", name: "Oskar Lindqvist", race_role: "free_role" },
+];
+
+// Rollens standardordre — samme tabel som teamOrderContract.defaultOrderForRole:
+// hunter proever udbruddet, hjaelpere koerer spurt-kaptajnens tog, resten koerer
+// deres rolle. Effort er altid 'normal' (RACE_ENGINE_RULES §1b).
+const teamOrderDefaultFor = (role) => ({
+  effort: "normal",
+  try_break: role === "hunter",
+  leadout: role === "helper",
+});
+
+export const SEED_TEAM_ORDERS = {
+  stage_count: 5,
+  stages_completed: 2,
+  race_completed: false,
+  intention_enabled: false,
+  valid_efforts: ["protect", "normal", "save"],
+  stages: [
+    { stage_number: 1, scheduled_at: "2026-09-01T11:00:00.000Z", locked: true },
+    { stage_number: 2, scheduled_at: "2026-09-02T11:00:00.000Z", locked: true },
+    { stage_number: 3, scheduled_at: "2026-09-30T11:00:00.000Z", locked: false },
+    { stage_number: 4, scheduled_at: "2026-10-01T11:00:00.000Z", locked: false },
+    { stage_number: 5, scheduled_at: "2026-10-02T11:00:00.000Z", locked: false },
+  ],
+  riders: SEED_TEAM_ORDER_RIDERS.map(({ rider_id, race_role }) => ({ rider_id, race_role })),
+  default_order: {
+    team_id: TEST_TEAM.id,
+    breakaway_stance: "neutral",
+    riders: SEED_TEAM_ORDER_RIDERS.map((r) => ({ rider_id: r.rider_id, ...teamOrderDefaultFor(r.race_role) })),
+  },
+  orders: [
+    {
+      stage_number: 3,
+      breakaway_stance: "chase",
+      locked_at: null,
+      updated_at: "2026-09-06T09:00:00.000Z",
+      riders: [
+        // Dagens afvigelser fra rollen — resten falder tilbage paa standarden.
+        { rider_id: "rider-91", effort: "normal", try_break: false, leadout: false },
+        { rider_id: "rider-93", effort: "save", try_break: false, leadout: false },
+      ],
+    },
+  ],
+};

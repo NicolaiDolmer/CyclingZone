@@ -10,14 +10,18 @@ import {
   setBreakawayStance,
   isOrderLocked,
   teamPlanKey,
+  roleDefaultFor,
+  riderIntentKeys,
+  toggleLeadout,
+  hasSprintCaptain,
 } from "./tacticsPlan.js";
 
 test("defaultTeamOrder — neutrale defaults for hver rytter (T4)", () => {
   const order = defaultTeamOrder(["r1", "r2"]);
   assert.equal(order.breakaway_stance, "neutral");
   assert.deepEqual(order.riders, [
-    { rider_id: "r1", effort: "normal", try_break: false },
-    { rider_id: "r2", effort: "normal", try_break: false },
+    { rider_id: "r1", effort: "normal", try_break: false, leadout: false },
+    { rider_id: "r2", effort: "normal", try_break: false, leadout: false },
   ]);
 });
 
@@ -26,8 +30,8 @@ test("mergeOrderWithRoster — beholder kendte ordrer, tilføjer neutrale for ny
   const merged = mergeOrderWithRoster(saved, ["r1", "r2"]);
   assert.equal(merged.breakaway_stance, "chase");
   assert.deepEqual(merged.riders, [
-    { rider_id: "r1", effort: "protect", try_break: true },
-    { rider_id: "r2", effort: "normal", try_break: false },
+    { rider_id: "r1", effort: "protect", try_break: true, leadout: false },
+    { rider_id: "r2", effort: "normal", try_break: false, leadout: false },
   ]);
 });
 
@@ -84,4 +88,83 @@ test("teamPlanKey — ingen kaptajn giver noCaptain-nøglen uden params", () => 
 test("teamPlanKey — stance + kaptajnnavn giver den rette planbesked-nøgle", () => {
   assert.deepEqual(teamPlanKey("let_go", "Ada Pedersen"), { key: "tacticsOrders.plan.letGo", params: { captain: "Ada Pedersen" } });
   assert.deepEqual(teamPlanKey("neutral", "Mikkel Hansen"), { key: "tacticsOrders.plan.neutral", params: { captain: "Mikkel Hansen" } });
+});
+
+// ── #4246: rollen er standardordren, kortet er dagens overlay ────────────────
+
+const DEFAULT_ORDER = {
+  team_id: "t1",
+  breakaway_stance: "neutral",
+  riders: [
+    { rider_id: "cap", effort: "normal", try_break: false, leadout: false },
+    { rider_id: "hun", effort: "normal", try_break: true, leadout: false },
+    { rider_id: "hlp", effort: "normal", try_break: false, leadout: true },
+  ],
+};
+
+test("roleDefaultFor — serverens rolle-default pr. rytter, neutral for ukendte", () => {
+  assert.deepEqual(roleDefaultFor(DEFAULT_ORDER, "hun"), { rider_id: "hun", effort: "normal", try_break: true, leadout: false });
+  assert.deepEqual(roleDefaultFor(DEFAULT_ORDER, "ny"), { rider_id: "ny", effort: "normal", try_break: false, leadout: false });
+  assert.deepEqual(roleDefaultFor(null, "ny"), { rider_id: "ny", effort: "normal", try_break: false, leadout: false });
+});
+
+test("#4246 mergeOrderWithRoster — en rytter uden gemt valg falder til ROLLENS standard", () => {
+  const saved = { team_id: "t1", breakaway_stance: "chase", riders: [{ rider_id: "cap", effort: "save", try_break: false, leadout: false }] };
+  const merged = mergeOrderWithRoster(saved, ["cap", "hun", "hlp"], DEFAULT_ORDER);
+  assert.equal(merged.breakaway_stance, "chase");
+  assert.equal(merged.riders[0].effort, "save", "dagens valg vinder");
+  assert.equal(merged.riders[1].try_break, true, "jaegeren proever udbruddet uden at spilleren roerer noget");
+  assert.equal(merged.riders[2].leadout, true, "hjaelperen koerer toget som standard");
+});
+
+test("#4246 mergeOrderWithRoster — dropper ryttere der ikke laengere er i truppen", () => {
+  const saved = { team_id: "t1", breakaway_stance: "neutral", riders: [{ rider_id: "vaek", effort: "save", try_break: false }] };
+  const merged = mergeOrderWithRoster(saved, ["hun"], DEFAULT_ORDER);
+  assert.deepEqual(merged.riders.map((r) => r.rider_id), ["hun"]);
+});
+
+test("#4246 riderIntentKeys — ingen afvigelse = koerer sin rolle", () => {
+  const base = roleDefaultFor(DEFAULT_ORDER, "hun");
+  const intent = riderIntentKeys(base, base, "hunter");
+  assert.equal(intent.roleKey, "tacticsOrders.roleDefault.hunter");
+  assert.deepEqual(intent.todayKeys, []);
+});
+
+test("#4246 riderIntentKeys — 'Standard: jaeger. I dag: bliv i feltet'", () => {
+  const base = roleDefaultFor(DEFAULT_ORDER, "hun");
+  const intent = riderIntentKeys({ ...base, try_break: false }, base, "hunter");
+  assert.equal(intent.roleKey, "tacticsOrders.roleDefault.hunter");
+  assert.deepEqual(intent.todayKeys, ["tacticsOrders.today.stayInBunch"]);
+});
+
+test("#4246 riderIntentKeys — tog og indsats vises ogsaa, i fast raekkefoelge", () => {
+  const base = roleDefaultFor(DEFAULT_ORDER, "hlp");
+  const intent = riderIntentKeys({ ...base, try_break: true, leadout: false, effort: "protect" }, base, "helper");
+  assert.deepEqual(intent.todayKeys, [
+    "tacticsOrders.today.tryBreak",
+    "tacticsOrders.today.leaveTrain",
+    "tacticsOrders.today.effort.protect",
+  ]);
+});
+
+test("#4246 toggleLeadout — muterer aldrig input", () => {
+  const order = { breakaway_stance: "neutral", riders: [{ rider_id: "hlp", effort: "normal", try_break: false, leadout: false }] };
+  const next = toggleLeadout(order, "hlp");
+  assert.equal(order.riders[0].leadout, false, "originalen er uroert");
+  assert.equal(next.riders[0].leadout, true);
+});
+
+test("#4246 hasSprintCaptain — toget kan kun saettes naar der er et maal", () => {
+  assert.equal(hasSprintCaptain([{ role: "helper" }, { role: "sprint_captain" }]), true);
+  assert.equal(hasSprintCaptain([{ role: "helper" }, { role: "captain" }]), false);
+  assert.equal(hasSprintCaptain([]), false);
+});
+
+test("#4632 effortCounts — taeller mod serverens vokabular (tre eller fem trin)", () => {
+  const riders = [{ effort: "all_out" }, { effort: "normal" }, { effort: "grupetto" }];
+  assert.deepEqual(effortCounts(riders, ["grupetto", "save", "normal", "protect", "all_out"]), {
+    grupetto: 1, save: 0, normal: 1, protect: 0, all_out: 1,
+  });
+  // Tre-trins-fallback ignorerer de to yderpunkter i staedet for at kaste.
+  assert.deepEqual(effortCounts(riders), { protect: 0, normal: 1, save: 0 });
 });
