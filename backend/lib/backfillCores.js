@@ -236,7 +236,7 @@ export async function deriveForRiderIds(supabase, riderIds, {
     ? Number.isFinite(Number(valModel.fit.a)) && Number.isFinite(Number(valModel.fit.b))
     : Number.isFinite(Number(valModel?.a)) && Number.isFinite(Number(valModel?.b));
   if (!valModelUsable) {
-    throw new Error("deriveForRiderIds: værdi-modellen er ubrugelig (a/b er ikke endelige tal) — afbryder FØR skrivning, ingen rytter ville kunne værdisættes");
+    throw new Error("deriveForRiderIds: valuation model unusable (a/b are not finite numbers) - aborting BEFORE any write, no rider could be valued");
   }
   // #3570: seasonNumber flyttet HERTIL (var tidligere kun hentet ved trin 5) — trin 4
   // (ENDELIG type) skal nu også kende alderen for at vælge baseline.
@@ -452,10 +452,11 @@ export async function deriveForRiderIds(supabase, riderIds, {
   const missingAbilities = riders.filter((r) => !derivedIds.has(r.id)).map((r) => r.id);
   const unvaluable = riderUpdates.filter((u) => u.base_value == null && derivedIds.has(u.id)).map((u) => u.id);
   if (missingAbilities.length > 0) {
-    throw new Error(`deriveForRiderIds: partielt derive — ${missingAbilities.length} uden ability-række (${missingAbilities.slice(0, 5).join(", ")}${missingAbilities.length > 5 ? ", …" : ""}). ${riders.length}/${ids.length} ryttere hentet.`);
+    const detail = `${missingAbilities.length} uden ability-række (${missingAbilities.slice(0, 5).join(", ")}${missingAbilities.length > 5 ? ", …" : ""})`;
+    throw new Error(`deriveForRiderIds: partielt derive — ${detail}. ${riders.length}/${ids.length} ryttere hentet.`);
   }
   if (unvaluable.length > 0) {
-    log(`deriveForRiderIds: ${unvaluable.length} rytter(e) uden base_value trods ability-række (${unvaluable.slice(0, 5).join(", ")}${unvaluable.length > 5 ? ", …" : ""}) — modellen kunne ikke værdisætte dem`);
+    log(`deriveForRiderIds: ${unvaluable.length} rider(s) without base_value despite an ability row (${unvaluable.slice(0, 5).join(", ")}${unvaluable.length > 5 ? ", …" : ""}) - the model could not value them`);
   }
 
   return {

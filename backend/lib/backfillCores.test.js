@@ -363,7 +363,7 @@ test("deriveForRiderIds (apply) KASTER på en ubrugelig værdi-model — FØR de
       dryRun: false,
       valuationModel: { a: NaN, b: 1, offset: {} },
     }),
-    /værdi-modellen er ubrugelig/,
+    /valuation model unusable/,
     "guard skal kaste når modellens koefficienter ikke er brugbare",
   );
   assert.equal(supabase.writes.upserts.length, 0, "ingen upsert må være sket før guarden kastede");
