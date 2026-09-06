@@ -681,7 +681,9 @@ export function runFilms(outDir) {
 //
 // Flere ankre er SEKUND-baserede og skalerer med feltet: samme kode scorede
 // 211 s paa bjerg-top-10-spredningen ved 180 ryttere og 19 s ved hele
-// populationen (5.938), fordi en stor peloton giver en stor frontgruppe.
+// populationen (5.650, jf. backend/scripts/baselines/population-snapshot-2026-07-11.json —
+// #4604 og RACE_ENGINE_RULES §7 refererede foer 6/9 en stale 5.938), fordi en
+// stor peloton giver en stor frontgruppe.
 // Scorecardet maa derfor ikke kunne koere paa en tilfaeldig feltstoerrelse —
 // gaten er kalibreret paa et REALISTISK startfelt (kørsel B, scorecard-
 // metodologien 23/8), og den stoerrelse er nu default i stedet for et flag
@@ -709,9 +711,47 @@ export function resolveSeeds(seedsArg, seedInput) {
   return seeds.length > 0 ? seeds : [seedInput];
 }
 
+// ---------------------------------------------------------------------------
+// --json=<fil> (#4911) — skriver scorecardet som JSON i stedet for kun at
+// printe det. APPEND-ONLY: roerer ingen eksisterende maale-logik, kun et nyt
+// serialiserings-lag ovenpaa det allerede byggede scorecard (samme objekt
+// formatScorecard() laeser). "display"-funktionerne i hver celle er ikke
+// JSON-serialiserbare og er derfor udeladt her; render-scriptet
+// (renderV4AnchorTable.mjs) formaterer selv tallene ud fra id'et.
+// ---------------------------------------------------------------------------
+
+function stripDisplay(cell) {
+  if (!cell || typeof cell !== "object") return cell;
+  const { display, ...rest } = cell;
+  return rest;
+}
+
+/**
+ * @param {ReturnType<typeof aggregateScorecards>} scorecard
+ * @param {object} meta  koersel-metadata (population/stages/seeds/etc.) —
+ *   fil-hashes og git-sha tilfoejes af det kald der GEMMER baseline-filen,
+ *   ikke af selve harnessen, som ikke kender git.
+ * @returns {object}  JSON-klar struktur
+ */
+export function buildJsonExport(scorecard, meta) {
+  return {
+    schema_version: 1,
+    meta,
+    anchors: scorecard.map((anchor) => ({
+      id: anchor.id,
+      label: anchor.label,
+      band_label: anchor.bandLabel,
+      source: anchor.source,
+      v3: stripDisplay(anchor.v3),
+      v4: stripDisplay(anchor.v4),
+    })),
+  };
+}
+
 const USAGE =
   "Usage: node backend/scripts/headToHeadV4.js --population=<fil> --stages=<fil> " +
-  '[--seed=<streng>] [--seeds=<s1,s2,...>] [--orders=none|ai] [--field-size=<n>|all] [--films[=<dir>]]';
+  '[--seed=<streng>] [--seeds=<s1,s2,...>] [--orders=none|ai] [--field-size=<n>|all] ' +
+  "[--films[=<dir>]] [--json=<fil>]";
 
 function main() {
   const populationPath = argValue("population");
@@ -722,6 +762,7 @@ function main() {
   const fieldSize = resolveFieldSize(argValue("field-size"));
   const orderMode = argValue("orders", "none");
   const seeds = resolveSeeds(argValue("seeds"), seedInput);
+  const jsonPath = argValue("json");
 
   if (!populationPath || !stagesPath) {
     console.error(USAGE);
@@ -783,6 +824,21 @@ function main() {
     console.log(`(Ankre nedenfor er MIDLET over ${seeds.length} seeds med spaend — gate-formen ejeren valgte 2/9.)`);
   }
   console.log(formatScorecard(scorecard));
+
+  if (jsonPath) {
+    const json = buildJsonExport(scorecard, {
+      population_file: populationPath,
+      stages_file: stagesPath,
+      population_riders: population.riders?.length ?? 0,
+      seeds,
+      field_size: fieldSize,
+      order_mode: orderMode,
+      generated_at: new Date().toISOString(),
+    });
+    writeFileSync(jsonPath, JSON.stringify(json, null, 2));
+    console.log("");
+    console.log(`JSON-scorecard skrevet til: ${jsonPath}`);
+  }
 
   if (filmsRequested) {
     const paths = runFilms(filmsDir);
