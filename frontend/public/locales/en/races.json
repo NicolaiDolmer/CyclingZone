@@ -547,52 +547,85 @@
       "saveAllPartial": "These lineups weren't saved: {races}. Your changes are still here, so try saving again."
     }
   },
-  "stageTactics": {
-    "title": "Stage tactics",
-    "help": "Completed stages are locked. Changes apply to upcoming stages only.",
-    "riderCol": "Rider",
-    "stageCol": "Stage {number}",
-    "roleAria": "Role for {rider}, stage {stage}",
-    "effortAria": "Effort for {rider}, stage {stage}",
+  "intention": {
+    "title": "Race day intention",
+    "help": "The role runs all race. The intention is what you want from him on the stage you have open.",
+    "helpRaceDay": "The role runs all race. The intention is what you want from him on race day.",
+    "colRider": "Rider",
+    "colRole": "Role",
+    "colIntention": "Intention · stage {number}",
+    "colIntentionRaceDay": "Intention · race day",
+    "allRace": "All race",
+    "thisRace": "This race",
+    "stage": "Stage {number}",
+    "stageToday": "Stage {number} · today",
+    "stageAria": "Intentions for stage {number}",
+    "stageTodayAria": "Intentions for stage {number}, today",
+    "stageLower": "stage {number}",
+    "raceDay": "Race day",
+    "raceDayLower": "race day",
+    "roleFree": "Free role",
+    "notSetNote": "Not set means he rides his role's default.",
+    "roleDefault": "Role default · normal",
+    "listAnd": " and ",
+    "roleDefaultTag": "Role default",
+    "nothingSet": "Nothing set. He rides his role.",
+    "setIntention": "Set intention",
+    "change": "Change",
+    "close": "Close",
+    "appliesToStageOnly": "Applies to this stage only",
+    "pickerTitle": "{name} · {scope}",
+    "line": "Default {role}. Today: {today}.",
     "riderAbandoned": "Out of the race",
-    "role": {
-      "free_role": "Free role"
-    },
-    "roleHelp": {
-      "captain": "Gets the team's support for a result. Protected: never asked to sacrifice his own race.",
-      "sprintCaptain": "The team leads him out for the sprint. Protected, same as captain.",
-      "helper": "Works for the team. Costs his own placing, strengthens the captain's result.",
-      "hunter": "Sent up the road on his own. Small cost, independent shot at a result.",
-      "freeRole": "No fixed job. Rides based on how the stage unfolds."
-    },
-    "effort": {
-      "protect": "Work",
-      "normal": "Normal",
-      "save": "Save legs"
-    },
-    "effortHelp": {
-      "protect": "Gives everything for the team today. Builds extra fatigue.",
-      "normal": "Rides at normal effort.",
-      "save": "Holds back to be fresher for the days that count. Less fatigue."
-    },
-    "jerseyShortcutHint": "{name} is your rider in the leader's jersey.",
-    "jerseyShortcut": "Make {name} captain for the remaining stages",
-    "unsaved": "You have unsaved changes",
-    "demoted": "The role moved: {rider} is now {role} on stage {stage}.",
-    "save": "Save tactics",
+    "copyToStage": "Copy to stage {number}",
+    "save": "Save stage {number}",
+    "saveRaceDay": "Save race day",
     "saving": "Saving…",
-    "saved": "Tactics saved.",
+    "saved": "Intentions saved.",
+    "unsaved": "You have unsaved changes",
+    "footer": "Stage {stage}: {set, plural, one {# rider} other {# riders}} set, {onDefault} on their role default",
+    "footerRaceDay": "Race day: {set, plural, one {# rider} other {# riders}} set, {onDefault} on their role default",
+    "footerUntouchedOne": "stage {stages} untouched",
+    "footerUntouchedMany": "stages {stages} untouched",
+    "step": {
+      "grupetto": "Grupetto",
+      "save": "Ride easy",
+      "normal": "Normal",
+      "protect": "Work or attack",
+      "all_out": "All out"
+    },
+    "why": {
+      "grupetto": "Rides it home in the back group. No shot at a result.",
+      "save": "Sits in and saves legs for the days that count.",
+      "normal": "His normal race.",
+      "protect": "Spends himself for the captain. Real fatigue.",
+      "all_out": "Everything on today. The hardest day on his legs."
+    },
+    "today": {
+      "grupetto": "grupetto",
+      "save": "sit in the bunch",
+      "normal": "his normal race",
+      "protect": "work or attack",
+      "all_out": "all out"
+    },
+    "roleWord": {
+      "captain": "captain",
+      "sprint_captain": "sprint captain",
+      "helper": "rider",
+      "hunter": "hunter",
+      "free_role": "free role"
+    },
     "errors": {
-      "stage_roles_invalid_body": "Couldn't save your tactics. Try again.",
+      "stage_roles_invalid_body": "Couldn't save the intentions. Try again.",
       "stage_roles_stage_locked": "One of the changes is on a completed stage, so it can't be saved.",
       "stage_roles_rider_not_entered": "One of the riders isn't entered in this race.",
       "stage_roles_invalid_role": "One of the roles isn't valid.",
-      "stage_roles_invalid_effort": "One of the effort settings isn't valid.",
+      "stage_roles_invalid_effort": "One of the intentions isn't valid.",
       "stage_roles_role_overlap": "Only one rider can be captain, only one can be sprint captain, and only one can be breakaway hunter, per stage.",
       "stage_roles_duplicate": "The same rider appears twice for the same stage.",
-      "stage_roles_rider_abandoned": "One of the riders is out of the race and can't be given tactics anymore.",
-      "stage_roles_race_completed": "This race is finished, so tactics can't be changed anymore.",
-      "generic": "Couldn't save your tactics. Try again."
+      "stage_roles_rider_abandoned": "One of the riders is out of the race and can't be given an intention anymore.",
+      "stage_roles_race_completed": "This race is finished, so the intentions can't be changed anymore.",
+      "generic": "Couldn't save the intentions. Try again."
     }
   },
   "tacticsOrders": {
