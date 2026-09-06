@@ -647,6 +647,90 @@ const physiologyWprimeDrain = {
 /** W'-taerings-tidskonstant (deep-frosset). Se physiologyWprimeDrain-kommentaren ovenfor. */
 export const PHYSIOLOGY_WPRIME_DRAIN_TUNING = deepFreeze(physiologyWprimeDrain);
 
+// ── #4885 (physiology.ts) — ADDITIV udmattelses-tuning ───────────────────────
+// HVORFOR (maalt 7/9, docs/audits/v4-tail-spread-2026-09-07.md): W' blev taeret
+// og genopladet, men INGEN steder laest tilbage i den baeredygtige troeskel.
+// segmentLoop.riderCpForSegment var deriveCp x distance-slid x holdrolle x vejr
+// + dagsform - en toemt reserve gjorde altsaa ingen rytter langsommere. Feltet
+// havde derfor ingen fysiologisk hale overhovedet: bjerg-p90 laa paa 2,7 % af
+// vindertiden mod virkelighedens 8-15 %, og tidsgraensen (M15) fyrede 0 gange
+// paa 351 bjerg-/kuperet-/brostens-koersler.
+//
+// Eksponenten > 1 er den vigtige del af formen: de foerste procent af reserven
+// er naesten gratis (en rytter der lige har sprintet over en top er ikke koert
+// i saenk), de sidste er dyre. Uden den ville ENHVER rytter der har rykket én
+// gang koere langsommere resten af dagen, og fronten - der ligger under CP i
+// normaltilstanden - ville blive ramt sammen med halen.
+const physiologyWprimeDepletion = {
+  maxCpPenalty: 0.45, // maks andel af CP en FULDSTAENDIG toemt reserve koster. STARTGAET, kalibreret i v4TailSpread-harnesset
+  exponent: 2, // kurve-form: udtoemning^exponent, saa de foerste procent af reserven er naesten gratis
+};
+
+/** Udmattelses-tuning (deep-frosset). Se physiologyWprimeDepletion-kommentaren ovenfor. */
+export const PHYSIOLOGY_WPRIME_DEPLETION_TUNING = deepFreeze(physiologyWprimeDepletion);
+
+// ── #4885 (segmentLoop.computeSegmentSpeedKmh) — ADDITIV styrke/fart-tuning ──
+// HVORFOR (maalt 7/9): fart-multiplikatoren var
+// `1 + strengthSpeedGain * (collectiveCp - baseDemand[kind])` — en ABSOLUT
+// CP-difference mod en konstant kalibreret for et midt-skala felt. Det er
+// PRAECIS den fejlfamilie #4604 rettede i `tickGroupRiders` (jf. dens egen
+// kommentar: "uanset hvor staerkt eller svagt et felt er, kan det ikke ligge
+// over sit EGET tempo"), og den overlevede i fart-modellen. Mod den aegte
+// population (climb-CP 0,010-0,374) betoed det at den staerkest og den svagest
+// taenkelige gruppe hoejst kunne skille sig `strengthSpeedGain x 0,364 ~ 4,4 %`
+// i fart — et hardt loft paa halen, uafhaengigt af enhver mekanik.
+//
+// Formen er nu RELATIV til feltets egen reference-CP paa terraenet
+// (segmentLoop's `referenceCpByKind`, den samme top-frontFraction-regel som
+// gruppens egen kollektive CP): en gruppe der er lige saa staerk som feltets
+// front koerer per definition basishastigheden, uanset om aargangen er staerk
+// eller svag. Population-uafhaengig, praecis som #4604 kraevede.
+//
+// TERRAEN-VAEGTEN er den anden halvdel. I virkeligheden omsaettes styrke til
+// fart naesten fuldt op ad bakke og naesten ikke paa flad vej (aerodynamik og
+// lae dominerer) — derfor henter en afhaegtet gruppe ikke tid tilbage paa
+// nedkoerslen. v4 havde ingen terraen-akse paa styrke overhovedet, men til
+// gengaeld en paa gruppe-lae (groupDraftExtra), saa paa flad vej og nedad
+// vejede STOERRELSE tungere end STYRKE: en nedslidt grupetto paa 130 koerte
+// fra en frisk frontgruppe paa 8 (maalt -2,23 % fart-delta), og den bagerste
+// gruppe hentede 286 s tilbage paa én nedkoersel. Rangordenen er den samme som
+// work.draftFactor's, af samme fysiske grund.
+//
+// UNDERSKUDS-EKSPONENTEN adskiller fronten fra halen. Bjerg-top-10-ankeret
+// (#2415/#4604, 180-240 s) og hale-baandet maaler den SAMME CP-akse i hver sin
+// ende; med en ren lineaer sammenhaeng kan de to baand ikke rammes samtidig
+// (top-10-gruppen ligger ~15 % under fronten, halen ~97 % under — forholdet er
+// 6,7, mens ankrene kraever ~11). En eksponent > 1 paa UNDERSKUDS-grenen goer
+// de sidste procent under referencen dyrere end de foerste: en gruppe taet paa
+// referencetempoet er stadig "med i loebet", en gruppe langt under koerer sit
+// eget. Overskuds-grenen er lineaer og uroert - ingen straf paa styrke.
+const strengthSpeedExtra = {
+  terrainWeight: {
+    climb: 1, // fuld vaegt: op ad bakke er fart naesten proportional med baeredygtig effekt
+    cobbles: 0.6, // brosten: haardt, men underlaget og ikke motoren saetter farten
+    rolling: 0.45, // rullende: mellem
+    flat: 0.3, // fladt: aerodynamik og lae dominerer, styrke betyder lidt
+    descent: 0.2, // nedad: tyngdekraften koerer, styrke betyder mindst
+  },
+  deficitExponent: 1.35, // eksponent paa UNDERSKUDS-grenen (collectiveCp under referencen); overskud er lineaert
+  // OVERSKUDS-VAEGTEN holder FRONTEN paa #4604's kalibrering. Relativiseringen
+  // deler med feltets reference-CP (~0,23 paa climb mod den aegte population),
+  // hvilket goer BEGGE grene ~4x stejlere. Halen skal have den stejlere gren;
+  // fronten skal ikke. Maalt 7/9 uden denne vaegt: bjerg-top-10-spredningen gik
+  // fra 200 s (baand 180-240) til 701 s, mens hale-p90 gik fra 2,7 % til 8,7 %.
+  // Vaegten skruer alene overskuds-grenen tilbage, saa bjerg-ankeret holder.
+  //
+  // Fysisk er asymmetrien den rigtige vej: en gruppe der er STAERKERE end
+  // feltets front koerer allerede paa terraenets og aerodynamikkens graense og
+  // faar aftagende udbytte af mere kraft; en gruppe der er svagere end
+  // loebstempoet mister proportionalt.
+  surplusWeight: 0.35, // vaegt paa OVERSKUDS-grenen (collectiveCp over referencen). STARTGAET, kalibreret mod bjerg-top-10-ankeret
+  deficitWeight: 1.8, // vaegt paa UNDERSKUDS-grenen. STARTGAET, kalibreret mod hale-baandet (bjerg 8-15 %, ejer-gaet)
+};
+
+/** #4885 additiv styrke/fart-tuning (deep-frosset). Se strengthSpeedExtra-kommentaren ovenfor. */
+export const STRENGTH_SPEED_EXTRA_TUNING = deepFreeze(strengthSpeedExtra);
+
 // ── M15 (mechanics/timeLimit.ts, #2582) — ADDITIV tidsgraense-tuning ─────────
 // Samme additive praecedens som finaleExtra ovenfor: SS2's frosne EngineTuning
 // (types.ts) har ingen "timeLimit"-noegle, saa mechanics/timeLimit.ts importerer

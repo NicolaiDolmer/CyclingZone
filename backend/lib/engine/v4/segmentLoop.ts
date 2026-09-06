@@ -45,9 +45,14 @@ import type {
   Weather,
 } from "./types.ts";
 import { boundRngFor, segmentRngFor } from "./rng.ts";
-import { deriveCp, deriveRechargeRate, tickPhysiologyOverSegment } from "./physiology.ts";
+import {
+  deriveCp,
+  deriveRechargeRate,
+  tickPhysiologyOverSegment,
+  wprimeDepletionCpMultiplier,
+} from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
-import { GROUP_DRAFT_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "./tuning.ts";
+import { GROUP_DRAFT_EXTRA_TUNING, STRENGTH_SPEED_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 import { applyEffortToDemand } from "./mechanics/effortCost.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
@@ -139,9 +144,91 @@ export function riderCpForSegment(
   // M11-wiring (#3855): vejrets pris. Multiplikatoren er <= 1 og IKKE-FALDENDE
   // i evne, saa vejret hverken kan haeve en CP eller straffe den staerkeste
   // haardest.
+  //
+  // #4885-wiring (7/9): UDMATTELSEN. Samme plads og samme form som de tre
+  // andre — en proportional faktor paa dagens troeskel FOER dagsformen. Den
+  // laeser rytterens EGEN reserve-andel (`wprime/wprimeMax`) og har ingen
+  // evne-akse, saa to ryttere med samme udtoemning rammes identisk og
+  // invariant 3 holder per konstruktion. Se physiology.ts's
+  // wprimeDepletionCpMultiplier for hvorfor en toemt reserve SKAL koste
+  // troeskel: uden dette led gjorde W' ingen rytter langsommere, kun mindre,
+  // og feltet havde derfor ingen hale.
   const teamFactor = Number.isFinite(riderState.team_cp_factor) ? (riderState.team_cp_factor as number) : 1;
   const weatherFactor = riderWeatherCpMultiplier(entrant, segment, weather);
-  return Math.max(0, worn * teamFactor * weatherFactor + riderState.dayform);
+  const fatigueFactor = wprimeDepletionCpMultiplier(riderState.wprime, riderState.wprimeMax);
+  return Math.max(0, worn * teamFactor * weatherFactor * fatigueFactor + riderState.dayform);
+}
+
+/**
+ * Feltets REFERENCE-CP pr. terraen-type: den kollektive CP en gruppe bestaaende
+ * af HELE startlisten ville have (samme top-`work.frontFraction`-regel som
+ * `computeGroupTempo`), regnet paa den friske `deriveCp` uden slid, vejr eller
+ * dagsform.
+ *
+ * #4885: dette er nulpunktet fart-modellen manglede. `computeSegmentSpeedKmh`
+ * maalte foer gruppens CP mod `terrain.baseDemand[kind]` — en ABSOLUT konstant
+ * kalibreret for et midt-skala felt — hvilket gjorde hele fart-spaendet til
+ * `strengthSpeedGain x (feltets CP-spaend)`, altsaa ~4 % mod den aegte
+ * population. Med feltets egen reference er en gruppe der matcher fronten per
+ * definition paa basishastigheden, uanset aargangens niveau.
+ *
+ * Bevidst STAGE-KONSTANT (regnet én gang, paa den friske CP): var referencen
+ * regnet paa dagens slidte CP, ville hele feltets slid forsvinde ud af
+ * fart-modellen — alle blev lige meget slidte, altsaa lige hurtige — og M7's
+ * distance-slid ville ikke laengere kunne saenke etapens tempo.
+ *
+ * Eksporteret for testbarhed af netop denne definition, samme praecedens som
+ * `groupDraftSpeedGain`.
+ */
+export function referenceCpByKind(
+  startlist: readonly Entrant[],
+  tuning: EngineTuning,
+): Record<SegmentKind, number> {
+  const kinds: SegmentKind[] = ["flat", "rolling", "climb", "descent", "cobbles"];
+  const out = {} as Record<SegmentKind, number>;
+  for (const kind of kinds) {
+    const cps = startlist
+      .map((e) => deriveCp(e.abilities, kind, tuning.physiology.cpWeights))
+      .sort((a, b) => b - a);
+    const frontCount = Math.max(1, Math.ceil(cps.length * tuning.work.frontFraction));
+    const slice = cps.slice(0, frontCount);
+    out[kind] = slice.length > 0 ? slice.reduce((s, v) => s + v, 0) / slice.length : 0;
+  }
+  return out;
+}
+
+/**
+ * Styrke-leddet i fart-multiplikatoren (#4885): gruppens kollektive CP maalt
+ * RELATIVT til feltets reference-CP paa terraenet, terraen-vaegtet, med en
+ * eksponent > 1 paa underskuds-grenen.
+ *
+ * Eksporteret for property-testbarhed. Tre egenskaber testene laaser:
+ *   1. `collectiveCp === referenceCp` giver praecis 0 (basishastighed).
+ *   2. Monotont IKKE-FALDENDE i `collectiveCp` — en staerkere gruppe kan aldrig
+ *      koere langsommere (§3 invariant 3, "styrke straffes aldrig").
+ *   3. Terraen-rangordenen climb > cobbles > rolling > flat > descent, samme
+ *      fysiske grund som work.draftFactor's egen ordning.
+ *
+ * Ren aritmetik: ingen RNG, ingen state.
+ */
+export function groupStrengthSpeedFactor(
+  collectiveCp: number,
+  referenceCp: number,
+  kind: SegmentKind,
+  tuning: EngineTuning,
+): number {
+  if (!(referenceCp > 0)) return 0;
+  const relative = collectiveCp / referenceCp - 1;
+  const exponent = STRENGTH_SPEED_EXTRA_TUNING.deficitExponent;
+  // Overskud er lineaert og daempet (`surplusWeight`), saa fronten beholder
+  // #4604's kalibrering af bjerg-top-10-spredningen; underskud er konvekst, saa
+  // de sidste procent under referencen koster mest. Begge grene er stigende i
+  // collectiveCp, saa styrke aldrig straffes (§3 invariant 3).
+  const shaped =
+    relative >= 0
+      ? STRENGTH_SPEED_EXTRA_TUNING.surplusWeight * relative
+      : -STRENGTH_SPEED_EXTRA_TUNING.deficitWeight * Math.pow(-relative, exponent);
+  return tuning.terrain.strengthSpeedGain * STRENGTH_SPEED_EXTRA_TUNING.terrainWeight[kind] * shaped;
 }
 
 // M11-wiring (#3855, 6/9): vejrets CP-multiplikator for ÉN rytter paa ÉT
@@ -189,11 +276,15 @@ function computeSegmentSpeedKmh(
   kind: SegmentKind,
   tuning: EngineTuning,
   riderCount: number,
+  referenceCp: number,
 ): number {
   const baseSpeed = tuning.terrain.baseSpeedKmh[kind];
-  const baseDemand = tuning.terrain.baseDemand[kind];
   const [lo, hi] = tuning.terrain.speedMultiplierBounds;
-  const multiplier = clamp(1 + tuning.terrain.strengthSpeedGain * (collectiveCp - baseDemand), lo, hi);
+  // #4885: styrke-leddet er RELATIVT til feltets reference-CP, ikke en absolut
+  // difference mod `terrain.baseDemand[kind]`. `baseDemand` beholder sin rolle
+  // paa KRAV-siden (tickGroupRiders), hvor #4604 gjorde den relativ — den var
+  // aldrig et fart-nulpunkt, den blev brugt som ét.
+  const multiplier = clamp(1 + groupStrengthSpeedFactor(collectiveCp, referenceCp, kind, tuning), lo, hi);
   return baseSpeed * multiplier * (1 + groupDraftSpeedGain(riderCount, kind, tuning));
 }
 
@@ -204,6 +295,7 @@ function computeGroupTempo(
   segment: Segment,
   tuning: EngineTuning,
   weather: Weather,
+  referenceCp: number,
 ): GroupTempo {
   const cpByRider = new Map<string, number>();
   for (const riderId of group.rider_ids) {
@@ -217,7 +309,7 @@ function computeGroupTempo(
   const frontSlice = ranked.slice(0, frontCount);
   const frontRiderIds = new Set(frontSlice.map(([id]) => id));
   const collectiveCp = frontSlice.length > 0 ? frontSlice.reduce((s, [, cp]) => s + cp, 0) / frontSlice.length : 0;
-  const speedKmh = computeSegmentSpeedKmh(collectiveCp, segment.kind, tuning, ranked.length);
+  const speedKmh = computeSegmentSpeedKmh(collectiveCp, segment.kind, tuning, ranked.length, referenceCp);
   const distanceSegmentKm = Math.max(0, segment.to_km - segment.from_km);
   const dtSeconds = speedKmh > 0 ? (distanceSegmentKm / speedKmh) * 3600 : 0;
   return { collectiveCp, frontRiderIds, cpByRider, dtSeconds };
@@ -331,6 +423,9 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
 
   const rngForFn = boundRngFor(seed);
+  // #4885: feltets reference-CP pr. terraen — fart-modellens nulpunkt. Regnet
+  // ÉN gang pr. etape af hele startlisten (se referenceCpByKind).
+  const referenceCp = referenceCpByKind(startlist, tuning);
   const virtualGc: Record<string, number> = {};
   for (const entrant of startlist) virtualGc[entrant.rider_id] = 0;
 
@@ -379,7 +474,15 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     const tempoByGroup = new Map<string, GroupTempo>();
     let nextRiders: Record<string, RiderState> = { ...state.riders };
     for (const group of state.groups) {
-      const tempo = computeGroupTempo(group, state.riders, entrantsById, segment, tuning, route.weather);
+      const tempo = computeGroupTempo(
+        group,
+        state.riders,
+        entrantsById,
+        segment,
+        tuning,
+        route.weather,
+        referenceCp[segment.kind],
+      );
       tempoByGroup.set(group.id, tempo);
       const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning);
       nextRiders = { ...nextRiders, ...patch };

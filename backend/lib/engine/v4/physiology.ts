@@ -11,7 +11,11 @@
 
 import type { AbilityKey, DayformTuning, PhysiologyTuning, SegmentKind } from "./types.ts";
 import { gaussian, rngFor } from "./rng.ts";
-import { PHYSIOLOGY_SUBTICK_TUNING, PHYSIOLOGY_WPRIME_DRAIN_TUNING } from "./tuning.ts";
+import {
+  PHYSIOLOGY_SUBTICK_TUNING,
+  PHYSIOLOGY_WPRIME_DEPLETION_TUNING,
+  PHYSIOLOGY_WPRIME_DRAIN_TUNING,
+} from "./tuning.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -114,6 +118,50 @@ export function tickPhysiology(args: {
   }
   const nextWprime = clamp(wprime + rechargeRate * (wprimeMax - wprime) * dtSeconds, 0, wprimeMax);
   return { wprime: nextWprime, secondsOverCp: 0, workNorm };
+}
+
+/**
+ * Udmattelses-CP-multiplikator (0-1]: hvor stor en del af sin bæredygtige
+ * tærskel en rytter kan holde, når den anaerobe reserve er brændt.
+ *
+ * #4885 (7/9). FØR denne funktion læste `segmentLoop.riderCpForSegment` aldrig
+ * W': en rytter med fuldstændig tom reserve kørte på præcis samme tærskel som
+ * en frisk rytter. Den tomme reserve kostede ham kun retten til at blive
+ * hægtet af i M2's selektion — der fandtes ingen mekanisme der gjorde en
+ * kørt-i-sænk gruppe *langsommere*, kun mindre. Det er hele grunden til at
+ * feltet ikke havde en hale (se `docs/audits/v4-tail-spread-2026-09-07.md`).
+ *
+ * Fysiologisk er W'-forbrug netop dét: den brugte reserve kan ikke frigives
+ * igen inden for etapen, og den bæredygtige effekt falder mens den er væk.
+ * Formen er `1 - maxCpPenalty · udtømning^exponent`, hvor udtømningen er
+ * `1 - wprime/wprimeMax`. Eksponenten > 1 gør de første procent af reserven
+ * næsten gratis (en rytter der lige har sprintet over en top er ikke kørt i
+ * sænk) og de sidste dyre.
+ *
+ * MONOTONI (§3 invariant 3): funktionen er svagt STIGENDE i `wprime/wprimeMax`
+ * og indeholder ingen evne-akse overhovedet — to ryttere med samme
+ * reserve-andel rammes identisk, så den kan aldrig vende deres indbyrdes
+ * CP-orden. En stærkere rytter har både større `wprimeMax` (deriveWprimeMax)
+ * og hurtigere genopladning (deriveRechargeRate), så han står per konstruktion
+ * med en HØJERE reserve-andel efter det samme arbejde: udmattelsen straffer
+ * aldrig styrke, den belønner at have og bruge en reserve.
+ *
+ * `wprimeMax <= 0` (ingen anaerob kapacitet overhovedet) giver fuld straf —
+ * samme holdning som `climbSelection.energyDeficit01`, hvor #4604 rettede
+ * præcis den modsatte guard: en rytter uden reserve er maksimalt sårbar, ikke
+ * uudtømmelig.
+ */
+export function wprimeDepletionCpMultiplier(
+  wprime: number,
+  wprimeMax: number,
+  tuning: { maxCpPenalty: number; exponent: number } = PHYSIOLOGY_WPRIME_DEPLETION_TUNING,
+): number {
+  const maxPenalty = clamp(tuning.maxCpPenalty, 0, 1);
+  if (maxPenalty <= 0) return 1;
+  const depletion = wprimeMax > 0 ? clamp(1 - wprime / wprimeMax, 0, 1) : 1;
+  if (depletion <= 0) return 1;
+  const exponent = tuning.exponent > 0 ? tuning.exponent : 1;
+  return clamp(1 - maxPenalty * Math.pow(depletion, exponent), 0, 1);
 }
 
 export type SubTickPlan = {
