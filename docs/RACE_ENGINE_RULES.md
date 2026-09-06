@@ -357,7 +357,7 @@ Auditten 5/9 og [#3463](https://github.com/NicolaiDolmer/CyclingZone/issues/3463
 
 8. **Tidsgrænsen flytter kun `status` ([#2582](https://github.com/NicolaiDolmer/CyclingZone/issues/2582), ejer 6/9).** M15 sætter `otl` og rører aldrig `rank`, `time_seconds`, `group_id` eller rækkefølgen. Invariant 3 og 6 er derfor uberørte per konstruktion, ikke ved en efterfølgende guard: en OTL-rytter bliver stående i resultatlisten, han er blot mærket. Hvad der sker med ham i DB'en er flip-lagets ansvar (§2d). Property-testet i `backend/lib/engine/v4/mechanics/timeLimit.test.ts`.
 
-Invariant 6 og 7 er property-testet i `backend/lib/engine/v4/fieldIntegrity.test.ts` over evne-niveauerne 5/11/30/60/99, samme skala-invariant-form som #4604-load-guarden.
+**Rettet (§7 modsigelse, "to invarianter kaldt property-testede"):** Invariant 6 og 7 er IKKE fast-check-baserede property-tests — `fieldIntegrity.test.ts` importerer ikke biblioteket. De er verificeret over et fast sæt evne-niveauer (5/11/30/60/99), samme skala-sweep-form som #4604-load-guarden. Beskyttelsen er reel (fem uafhængige evne-niveauer, ikke ét), men af en anden testtype end ordet "property-testet" lover andre steder i denne fil (fx invariant 8, `timeLimit.test.ts`, som rent faktisk bruger `fast-check`).
 
 Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldrig vendes.
 
@@ -382,18 +382,18 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 | F0 | Spec ejer-godkendt, 16 valg | ✅ 20/8 |
 | F1 | Rute-SSOT: segmentmodel, vejr-lag, generator, legacy-syntese | ✅ PR #4028 |
 | F2 | Motor-kerne: segment-loop, M1-M4, tidslinje, golden fixtures | ✅ PR #4072, 21/8 |
-| F3 | Mekanik-bølge M5-M12 + taktik-kort | **delvis (2/9)** — se noten |
-| F4 | Skygge-mode: runner-hook, sammenlignings-scorecard | ikke startet |
+| F3 | Mekanik-bølge M5-M16 + taktik-kort | **✅ koblet ind 6/9** — kalibrering udestår, se noten |
+| F4 | Flip-infrastruktur: flag, kaldssted, output → `race_results`, kill-switch | ✅ PR #4879, 6/9 |
 | F5 | Kalibrering i S3 → ejer-gate | ikke startet |
-| F6 | Flag-flip i S3 på en hviledag | **ejer-gated** |
+| F6 | Flag-flip i S4-start (mål, ikke garanti — §9 punkt 1) | **ejer-gated** |
 
-**F3-noten (målt 2/9, [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604), opdateret 3/9 [#4615](https://github.com/NicolaiDolmer/CyclingZone/issues/4615)).** "I gang" stod i denne tabel fra 21/8 til 2/9 uden at være efterprøvet. Tilstanden 2/9 var: `index.ts` kaldte **kun M2, M3 og M4** (plus M1, der bor i selve segment-loopet), og M5-M12 var kode uden kaldssted.
+**F3-noten (rettet, [#4911](https://github.com/NicolaiDolmer/CyclingZone/issues/4911)).** Stod fra 21/8 til 6/9 med en stale "wiret 3/9"-beskrivelse (kun M5+M6 koblet ind, taktik-kort ikke bygget, fire uenige ordre-kontrakter). Alt det er ændret siden:
 
-**Wiret 3/9 (#4615):** `SegmentHookContext` bærer nu `StageInput.orders` rå videre, `MechanicHooks` har et `breakaway`-felt, og motoren kalder **M5** (udbrud, hvert segment — efter climb/descent, før finale) og **M6** (leadout, inde fra finale-hooket, på den usorterede kontendentliste før sortering). **M14** producerer ordrer opstrøms og når kernen gennem `StageInput.orders` — derfor har den intet hook. Head-to-head-harnessen kan nu bygge realistiske holdplaner (`--orders=ai`) i stedet for at give alle `free_role` og en tom ordre-liste, som gjorde M6/M14 målbart død kode i scorecardet.
+- **M7-M13, M15, M16 koblet ind 6/9** (paritets-bølgen, se §2-tabellen for kaldssted pr. mekanik). Tilbage: kalibrering (jagt-modellen, bjerg-ankeret, tidsgrænsens spredning — §7).
+- **Ordre-kæden er lukket** (PR #4894, ejer-beslutning 27/8+2/9 om #4246): `ai/teamOrderContract.ts` er nu DEN ene kontrakt (ikke længere fire uenige kopier), rollen er standardordren (`defaultOrderForRole()`), sprint-toget kan sættes via `leadout`-feltet, og `race_role` afvises med 400 i stedet for at blive gemt (`raceTeamOrdersApi.js:8-10,38`, `ai/teamOrderContract.ts:103`). `TeamOrder` er stadig den åbne `{team_id, kind, params}`-konvolut, men det er nu et bevidst designvalg, ikke en uenighed mellem fire kopier.
+- **Taktik-kortet ER bygget** (PR #4913, 6/9): løbssiden som hero + faner, egen Tactics-fane med etape-vælger, intention og ordrer pr. rytter, ejer-godkendt på preview (screenshots i PR-beskrivelsen).
 
-`TeamOrder` er **bevidst stadig den åbne `{team_id, kind, params}`-konvolut**, ikke T3-formen: hver mekanik parser sin egen `kind`. Rolle-vs-ordre-modsigelsen (#4246, modsigelse 1-2 i §7) er ejer-gated og må ikke låses ind i en frossen kontrakt som sidegevinst ved en wiring-PR. Når #4246 er afgjort, kollapser wrapperne til identitet, og afgørelsen skal bæres af `scripts/lib/headToHeadOrders.js`'s rolle-/ordre-tildeling. Taktik-kortet (UI) er stadig ikke bygget.
-
-**v3 er låst fallback indtil F6.** Flippet er ejer-only og sker aldrig som sidegevinst ved en anden opgave.
+**v3 er låst fallback indtil flip.** Flippet er ejer-only og sker aldrig som sidegevinst ved en anden opgave. Kill-switchen (§0, PR #4879) gør en tilbagerulning billig: broen oversætter v4's output til v3's `ranked`-form, så alt nedstrøms er uændret.
 
 ---
 
@@ -407,7 +407,7 @@ Invariant 3 er den dyre. Den er hele grunden til at støj må skaleres, men aldr
 | Scorecardets feltstørrelse | `headToHeadV4.js`'s låste default (`--field-size=all` er den eksplicitte vej ud) |
 | Fog-gaten | samme testmønster som `raceTimeline.test.js` |
 | Type-kontrakten | `tsc`-typegate i CI (Node 24 type stripping) |
-| Rolle-vokabularet | intet i dag — se modsigelse 3 |
+| Rolle-vokabularet | `backend/lib/raceRoles.test.js` (16/16 pass) — låser de fem rollenavne, låst 3/9. Rettet §7-modsigelse: stod tidligere fejlagtigt som "intet i dag" her, mens §7 punkt 3 kaldte det løst |
 | Balance-bånd | `race:gate` + `balance:check` (advisory) |
 
 ---
