@@ -1,5 +1,25 @@
 export const PATCHES = [
   {
+    "version": "7.258",
+    "date": "2026-09-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Bonus targets you accepted from the board are back",
+          "body": "If you accepted a bonus offer from the board in season 3, the extra target disappeared when you signed your season plan. Eleven teams were affected. The targets are back on the board page, and signing a plan no longer removes them."
+        },
+        "da": {
+          "title": "Bonus-mål du har accepteret fra bestyrelsen er tilbage",
+          "body": "Accepterede du et bonustilbud fra bestyrelsen i sæson 3, forsvandt det ekstra mål da du underskrev din sæsonplan. Elleve hold var ramt. Målene er tilbage på bestyrelsessiden, og at underskrive en plan fjerner dem ikke længere."
+        }
+      }
+    ]
+  },
+  {
     "version": "7.257",
     "date": "2026-09-06",
     "label": "Beta",
