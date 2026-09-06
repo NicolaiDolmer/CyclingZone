@@ -303,10 +303,16 @@ export function applyTimeLimit(args: ApplyTimeLimitArgs): TimeLimitOutcome {
 //    `loadAbandonedRiderIds` (backend/lib/raceIncidents.js:144), som laeser
 //    `race_incidents` paa `outcome='abandon'` og filtrerer bade `entrants` og
 //    `effectiveStartField`. Skrives OTL med `outcome='abandon'`, er
-//    "starter ikke naeste etape" opfyldt UDEN en eneste kodeaendring i
-//    runneren. Vaelges i stedet et nyt `outcome='otl'`, SKAL `loadAbandonedRiderIds`
-//    udvides til `.in("outcome", ["abandon", "otl"])` — ellers stiller
-//    OTL-rytteren til start dagen efter.
+//    "starter ikke naeste etape" opfyldt uden aendringer i selve
+//    filtreringslogikken. Vaelges i stedet et nyt `outcome='otl'`, SKAL
+//    `loadAbandonedRiderIds` udvides til `.in("outcome", ["abandon", "otl"])`
+//    — ellers stiller OTL-rytteren til start dagen efter.
+//
+//    ⚠ FAELDE (verificeret 6/9): hele blokken i raceRunner.js er gated paa
+//    `if (v3) { ... }` (linje 2448). Koeres etapen med v4-motoren uden at den
+//    gren ogsaa daekker v4, bliver BAADE udgaaede OG OTL-ryttere sat paa
+//    startlisten dagen efter — tavst, uden fejl. Gaten skal aabnes for v4 i
+//    flip-PR'en; det er ikke en del af denne PR, som ikke roerer raceRunner.js.
 //
 // 4. KLASSEMENTET: `raceClassifications.filterCompletedEntrants`
 //    (backend/lib/raceClassifications.js:144) kraever at en rytter har raekker

@@ -210,8 +210,10 @@ export type TimelineEvent = {
 //      `race_incidents_kind_check`.
 //   3. Etapeloeb: `outcome='abandon'` genbruges, saa `loadAbandonedRiderIds`
 //      (backend/lib/raceIncidents.js:144) filtrerer rytteren ud af naeste
-//      etapes startliste uden aendringer i raceRunner.js. Vaelges i stedet et
-//      nyt `outcome='otl'`, SKAL den loader udvides — ellers starter han igen.
+//      etapes startliste. Vaelges i stedet et nyt `outcome='otl'`, SKAL den
+//      loader udvides — ellers starter han igen. FAELDE: kaldet i
+//      raceRunner.js:2448 er gated paa `if (v3)`, saa den gren skal ogsaa
+//      daekke v4, ellers stiller BAADE udgaaede og OTL-ryttere til start.
 //   4. Klassementet: den manglende etaperaekke fjerner ham automatisk fra ALLE
 //      klassementer via `raceClassifications.filterCompletedEntrants`
 //      (backend/lib/raceClassifications.js:144). Ingen ny kolonne.
