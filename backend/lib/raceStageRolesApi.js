@@ -15,6 +15,7 @@ import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
 import { suitabilityScore } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 /**
  * Ren validering af en PUT-body. Ingen DB. Fejlrækkefølge (errors[0] til brugeren,
@@ -183,15 +184,24 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
   let fitByRider = new Map();
   let conditionByRider = new Map();
   if (riderIds.length) {
-    const [abilitiesRes, conditionRes, profilesRes] = await Promise.all([
+    const [abilitiesRes, conditionRes, profileRows] = await Promise.all([
       supabase.from("rider_derived_abilities").select(["rider_id", ...ABILITY_KEYS].join(", ")).in("rider_id", riderIds),
       supabase.from("rider_condition").select("rider_id, form, fatigue").in("rider_id", riderIds),
-      supabase.from("race_stage_profiles").select("stage_number, profile_type, demand_vector")
-        .eq("race_id", race.id).order("stage_number", { ascending: true }),
+      // #3331: race_stage_profiles er deny-listed, fordi PostgREST TAVST kapper
+      // et svar ved 1000 rækker. Et enkelt løb har langt færre etaper end det,
+      // men guarden ratcheter på FORMEN og ikke på dagens tal — og et løb er
+      // netop den slags "kan ikke blive stort" der har fejlet før. fetchAllRows
+      // koster ét kald ekstra i værste fald og fjerner spørgsmålet helt.
+      // .catch: samme ærlige degradering som de to andre (fetchAllRows kaster,
+      // hvor PostgREST-klienten returnerer {error}).
+      fetchAllRows(() => supabase.from("race_stage_profiles")
+        .select("stage_number, profile_type, demand_vector")
+        .eq("race_id", race.id)
+        .order("stage_number", { ascending: true })).catch(() => null),
     ]);
     // Degradér ærligt: en fejl på nogen af de tre må ALDRIG vælte taktik-
     // fladen — den er stadig fuldt brugbar uden kolonnerne.
-    const stages = profilesRes.error ? [] : (profilesRes.data || []);
+    const stages = profileRows || [];
     if (!abilitiesRes.error && stages.length) {
       fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, Math.round(suitabilityScore(ab, stages) * 100)]));
     }

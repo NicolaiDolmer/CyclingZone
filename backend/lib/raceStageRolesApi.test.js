@@ -307,21 +307,27 @@ function makeContextSupabase({
   abilities = [], conditions = [], profiles = [],
 } = {}) {
   function from(table) {
+    const rowsFor = () => (table === "race_entries" ? entries
+      : table === "riders" ? riders
+      : table === "race_stage_roles" ? overrides
+      : table === "race_incidents" ? incidents
+      : table === "rider_derived_abilities" ? abilities
+      : table === "rider_condition" ? conditions
+      : table === "race_stage_profiles" ? profiles
+      : []);
     const b = {
       select() { return b; },
       eq() { return b; },
       in() { return b; },
       order() { return b; },
+      // #3331: race_stage_profiles hentes med fetchAllRows, som pagerer via
+      // .range(). Uden den her ville doublen svare paa en KALDSFORM produktions-
+      // koden ikke laengere bruger — og testen ville bestaa paa en fiktion.
+      range(fromIdx, toIdx) {
+        return Promise.resolve({ data: rowsFor().slice(fromIdx, toIdx + 1), error: null });
+      },
       then(resolve, reject) {
-        const data = table === "race_entries" ? entries
-          : table === "riders" ? riders
-          : table === "race_stage_roles" ? overrides
-          : table === "race_incidents" ? incidents
-          : table === "rider_derived_abilities" ? abilities
-          : table === "rider_condition" ? conditions
-          : table === "race_stage_profiles" ? profiles
-          : [];
-        return Promise.resolve({ data, error: null }).then(resolve, reject);
+        return Promise.resolve({ data: rowsFor(), error: null }).then(resolve, reject);
       },
     };
     return b;
