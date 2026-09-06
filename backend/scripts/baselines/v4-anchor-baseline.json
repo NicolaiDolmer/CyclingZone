@@ -1,0 +1,368 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-06T22:26:22.808Z",
+  "main_sha": "d0d7821e531d5f305b9b124071f0f2dc8aed6d4b",
+  "population_file": "backend/scripts/baselines/population-snapshot-2026-07-11.json",
+  "population_file_sha256_16": "e360366e3def2980",
+  "population_riders": 5650,
+  "stages_file": "backend/scripts/baselines/v4-proxy-stages-2026-09-06.json",
+  "stages_file_sha256_16": "bbf6e20ce5293280",
+  "seeds": [
+    "s1",
+    "s2",
+    "s3"
+  ],
+  "field_size": 180,
+  "order_mode": "none",
+  "refresh_command": "node backend/scripts/buildV4AnchorBaseline.mjs && node backend/scripts/renderV4AnchorTable.mjs --write",
+  "anchors": [
+    {
+      "id": "field_cohesion_flat",
+      "label": "Felt-sammenhaeng, flade etaper",
+      "band_label": "80.0%-95.0%",
+      "source": "#3917-maalingen (mor-spec §5: \"80-95% af feltet paa vinderens tid\")",
+      "v3": {
+        "value": 0.04016509146888675,
+        "sampleCount": 96,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 0.03821289774428588,
+          "max": 0.04148046281214384,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": 0.304224537037037,
+        "sampleCount": 96,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 0.29236111111111107,
+          "max": 0.318923611111111,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "descent_vs_summit_gap_ratio",
+      "label": "Nedkoersels-gaps vs. summit-gaps (ratio)",
+      "band_label": "<= 0.5",
+      "source": "#3426-maalingen (mor-spec §5: nedkoersels-gaps vs. summit-gaps, ratio <=0,5 ved p5-p10)",
+      "v3": {
+        "value": 0.5862922233098414,
+        "sampleCount": 42,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 0.49095295536791317,
+          "max": 0.7560810810810812,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": 0.3834921642288957,
+        "sampleCount": 42,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.2610747553354567,
+          "max": 0.4943917769212072,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "descent_attack_gain_bounds",
+      "label": "Descent attack-gevinst (10-20s-loft, aldrig omvendt fortegn i gruppen)",
+      "band_label": "10-20s",
+      "source": "ejer-valg 20/8 (mor-spec §4 M3 / §5: descent attack-gevinst-loft)",
+      "v3": {
+        "value": null,
+        "sampleCount": 0,
+        "verdict": "N/A",
+        "naReason": "v3 har ingen sammenlignelig descent-attack-mekanik",
+        "spread": null
+      },
+      "v4": {
+        "value": 20,
+        "sampleCount": 1175,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 20,
+          "max": 20,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "punch_correlation",
+      "label": "Punch-korrelation (punch-evne vs. placering paa punch-etaper)",
+      "band_label": "spearman > 0.2",
+      "source": "#3965-harnesset (mor-spec §5)",
+      "v3": {
+        "value": 0.6875078103808351,
+        "sampleCount": 51,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.6722169424820272,
+          "max": 0.6968650459198065,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": 0.7124668519599612,
+        "sampleCount": 51,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.7002657412096771,
+          "max": 0.7208551926600384,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "cobblestone_lift_on_sectors",
+      "label": "Brostensevnens loeft paa brosten/grus (spearman-forskel vs. flad)",
+      "band_label": "loeft >= 0.03 (FORSLAG, ikke ejer-godkendt)",
+      "source": "FORSLAG (M8-wiring 6/9, #2789/#4105) — regressionsvagt for ejer-reglen 3/9 \"brostensevnen taeller kun paa etaper med brosten/grus\"; taersklen er valgt af denne harness, ikke ejer-godkendt",
+      "v3": {
+        "value": 0.49682274618131933,
+        "sampleCount": 9,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.47592623210921686,
+          "max": 0.5209364433975658,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": 0.14136191426264663,
+        "sampleCount": 9,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.10660764696372949,
+          "max": 0.162701332023248,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "favorite_win_rate",
+      "label": "Felt-favoritters win-rate",
+      "band_label": "25.0%-40.0%",
+      "source": "v3-spec §2 + ejer-valg 20/8 (mor-spec §5: \"i dag 80-88%\")",
+      "v3": {
+        "value": 0.3569739952718676,
+        "sampleCount": 423,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.3475177304964539,
+          "max": 0.36879432624113473,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": 0.541371158392435,
+        "sampleCount": 423,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 0.5319148936170213,
+          "max": 0.5460992907801419,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "same_team_top10_share_4plus",
+      "label": "Samme-hold-top-10 (andel etaper med 4+ fra ét hold)",
+      "band_label": "< 3.0%",
+      "source": "v3-spec §2 (mor-spec §5: \"4+ fra samme hold i top 10 sjaeldent, < 3%\")",
+      "v3": {
+        "value": 0,
+        "sampleCount": 423,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0,
+          "max": 0,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": 0,
+        "sampleCount": 423,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0,
+          "max": 0,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "breakaway_rate_per_terrain",
+      "label": "Udbruds-rater pr. terraen (descent-dominans 54% skal ned)",
+      "band_label": "race:gate-baand (ingen fast tal her — se gate-konfig)",
+      "source": "race:gate + #3426 (mor-spec §5)",
+      "v3": {
+        "value": 0.2836879432624113,
+        "sampleCount": 423,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.2553191489361702,
+          "max": 0.2978723404255319,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": null,
+        "sampleCount": 0,
+        "verdict": "N/A",
+        "naReason": "M5 (udbruds-/jagt-interesse-mekanik) er F3-scope — v4 F2 klassificerer endnu ikke udbrudssejre",
+        "spread": null
+      }
+    },
+    {
+      "id": "sprinter_win_rate_flat",
+      "label": "Sprinter-vinderrate paa flat (top-20%-sprint-evne vinder)",
+      "band_label": ">= 90.0%",
+      "source": "race:gate + #3149 (mor-spec §5: \"sprinter-vinderrate paa flat >= 90%\")",
+      "v3": {
+        "value": 0.9238095238095237,
+        "sampleCount": 105,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.8857142857142857,
+          "max": 0.9428571428571428,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": 0.8857142857142857,
+        "sampleCount": 105,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 0.8,
+          "max": 0.9428571428571428,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "itt_correlation",
+      "label": "ITT-korrelation (time_trial-evne vs. placering, synlig)",
+      "band_label": "spearman > 0.3",
+      "source": "race:gate + #3149 (mor-spec §5: \"ITT-korrelation synlig\" — tærskel valgt af denne harness)",
+      "v3": {
+        "value": 0.7329635397059384,
+        "sampleCount": 36,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.7242817385310651,
+          "max": 0.7458404052942548,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": 0.8448088346292052,
+        "sampleCount": 36,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.837673640709784,
+          "max": 0.8506273103164211,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "bonus_seconds_bounded",
+      "label": "Bonussekunder GC-effekt bounded (maks ~10s/etape)",
+      "band_label": "<= 10s/etape pr. rytter",
+      "source": "#2413-kravet (mor-spec §5)",
+      "v3": {
+        "value": 13,
+        "sampleCount": 396,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 13,
+          "max": 13,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": 10,
+        "sampleCount": 387,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 10,
+          "max": 10,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "mountain_top10_spread",
+      "label": "Bjergetape top-10-spredning, topankomster (#2415)",
+      "band_label": "180-240s (~3-4 min)",
+      "source": "#2415 (gap-realisme-baand: bjergetape top-10 inden for ~3-4 min, PCS-niveau)",
+      "v3": {
+        "value": 114.25396825396825,
+        "sampleCount": 63,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 105.71428571428571,
+          "max": 118.61904761904762,
+          "seeds": 3
+        }
+      },
+      "v4": {
+        "value": 211.558253968254,
+        "sampleCount": 63,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 164.55428571428553,
+          "max": 242.31428571428583,
+          "seeds": 3
+        }
+      }
+    },
+    {
+      "id": "gt_winner_margin",
+      "label": "GT-vindermargin (#2415)",
+      "band_label": "60-480s (1-8 min)",
+      "source": "#2415 (gap-realisme-baand: GT-vindermargin typisk 1-8 min)",
+      "v3": {
+        "value": null,
+        "sampleCount": 0,
+        "verdict": "N/A",
+        "naReason": "kraever akkumuleret GC over et helt etapeloeb — ikke maalbart etape-for-etape i denne harness-version",
+        "spread": null
+      },
+      "v4": {
+        "value": null,
+        "sampleCount": 0,
+        "verdict": "N/A",
+        "naReason": "kraever akkumuleret GC over et helt etapeloeb — ikke maalbart etape-for-etape i denne harness-version",
+        "spread": null
+      }
+    }
+  ]
+}
