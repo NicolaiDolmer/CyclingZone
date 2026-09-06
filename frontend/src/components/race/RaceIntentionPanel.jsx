@@ -347,6 +347,11 @@ export default function RaceIntentionPanel({ raceId, profileByStage = {} }) {
                   type="button"
                   disabled={locked || saving}
                   aria-pressed={on}
+                  // Eksplicit navn: etape-striben oeverst paa loebssiden har
+                  // ALLEREDE knapper der hedder "Etape 1". To kontroller med
+                  // samme navn paa samme side er tvetydigt for baade skaerm-
+                  // laesere og tests (e2e-strict-mode-brud, maalt 6/9).
+                  aria-label={t(isToday ? "intention.stageTodayAria" : "intention.stageAria", { number: sn })}
                   onClick={() => openStage(sn)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs whitespace-nowrap border-s border-cz-border first:border-s-0 transition-colors disabled:cursor-not-allowed ${
                     on

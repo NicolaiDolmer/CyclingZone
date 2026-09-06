@@ -559,6 +559,8 @@
     "thisRace": "Dette løb",
     "stage": "Etape {number}",
     "stageToday": "Etape {number} · i dag",
+    "stageAria": "Intentioner for etape {number}",
+    "stageTodayAria": "Intentioner for etape {number}, i dag",
     "stageLower": "etape {number}",
     "raceDay": "Løbsdag",
     "raceDayLower": "løbsdagen",

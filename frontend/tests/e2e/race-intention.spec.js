@@ -24,6 +24,12 @@ import {
 
 const RACE_ID = "00000000-0000-4000-8000-000000004632";
 
+// Fladen renderer BEGGE layouts (tabel fra sm og op, stablede kort under) og
+// skjuler det ene med CSS, saa hver tekst findes to gange i DOM'en. Alle
+// opslag scopes derfor til den SYNLIGE variant — samme moenster som
+// race-detail-upcoming.spec.js' rute-match-assert.
+const visible = (locator) => locator.filter({ visible: true }).first();
+
 const FIVE_STEPS = ["grupetto", "save", "normal", "protect", "all_out"];
 // Serverens OFF-vokabular står bevidst i sin EGEN rækkefølge (raceRoles.
 // VALID_EFFORTS) — fladen skal selv sortere det til skala-rækkefølge.
@@ -130,39 +136,39 @@ test("intention: etape-vælger, femtrins-vælger og et gem der ikke taber andre 
   await expect(panel).toBeVisible();
 
   // Etape 1 er kørt: låst i vælgeren. Etape 2 er dagens og står åben.
-  await expect(panel.getByRole("button", { name: /^Etape 1$/ })).toBeDisabled();
-  const stageTwo = panel.getByRole("button", { name: /Etape 2 · i dag/ });
-  await expect(stageTwo).toHaveAttribute("aria-pressed", "true");
-  await expect(panel.getByText("Intention · etape 2")).toBeVisible();
-
+  // Etape-knapperne baerer et eksplicit navn ("Intentioner for etape N") fordi
+  // loebssidens egen etape-stribe allerede har knapper der hedder "Etape N".
+  await expect(visible(panel.getByRole("button", { name: "Intentioner for etape 1" }))).toBeDisabled();
+  await expect(visible(panel.getByRole("button", { name: "Intentioner for etape 2, i dag" })))
+    .toHaveAttribute("aria-pressed", "true");
   // Rollen er ren visning — ingen vælger for den.
   await expect(panel.getByRole("combobox")).toHaveCount(0);
 
   // "Ikke valgt" er en synlig tilstand, ikke et tomt felt.
-  await expect(panel.getByText("Intet valgt. Han kører sin rolle.").first()).toBeVisible();
+  await expect(visible(panel.getByText("Intet valgt. Han kører sin rolle."))).toBeVisible();
 
-  // Udfold vælgeren for Rider One: fem trin, hver med sin sætning i ord.
-  const riderOne = panel.locator("tr", { hasText: "Rider One" }).first();
-  await riderOne.getByRole("button", { name: "Sæt intention" }).click();
-  const picker = panel.locator("tr", { hasText: "Rider One" }).first();
+  // Udfold vælgeren for den foerste rytter (Rider One): fem trin, hver med sin
+  // saetning i ord. Kun én vaelger kan vaere aaben ad gangen, saa trinnene
+  // slaas op paa kortet som helhed.
+  await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
   for (const label of ["Grupetto", "Kør roligt", "Normal", "Arbejd eller angrib", "Alt ud"]) {
-    await expect(picker.getByRole("button", { name: new RegExp(label) }).first()).toBeVisible();
+    await expect(visible(panel.getByRole("button", { name: new RegExp(`^${label}`) }))).toBeVisible();
   }
-  await expect(panel.getByText("Rollens standard").first()).toBeVisible();
+  await expect(visible(panel.getByText("Rollens standard", { exact: true }))).toBeVisible();
 
   await panel.screenshot({ path: evidenceShotPath(`pr-screens/4632-intention-picker-${testInfo.project.name}.png`) });
 
-  await picker.getByRole("button", { name: /Alt ud/ }).first().click();
-  await expect(panel.getByText("Standard: kaptajn. I dag: alt ud.")).toBeVisible();
+  await visible(panel.getByRole("button", { name: /^Alt ud/ })).click();
+  await expect(visible(panel.getByText("Standard: kaptajn. I dag: alt ud."))).toBeVisible();
 
   // Siden må ikke overflowe vandret (#1834-mønster).
   const pageOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(pageOverflow, "siden må ikke overflowe vandret").toBeLessThanOrEqual(1);
 
-  const saveBtn = panel.getByRole("button", { name: "Gem etape 2" });
+  const saveBtn = visible(panel.getByRole("button", { name: "Gem etape 2" }));
   await expect(saveBtn).toBeEnabled();
   await saveBtn.click();
-  await expect(panel.getByText("Intentionerne er gemt.")).toBeVisible();
+  await expect(visible(panel.getByText("Intentionerne er gemt."))).toBeVisible();
 
   // Kun den ændrede rytter på etape 2 — OG etape 3's eksisterende intention,
   // som et REPLACE-gem ellers ville slette.
@@ -186,16 +192,15 @@ test("intention: flaget OFF giver TRE trin på fladen", async ({ page }) => {
   const panel = page.getByTestId("race-intention-panel");
   await expect(panel).toBeVisible();
 
-  const riderOne = panel.locator("tr", { hasText: "Rider One" }).first();
-  await riderOne.getByRole("button", { name: "Sæt intention" }).click();
+  await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
 
   for (const label of ["Kør roligt", "Normal", "Arbejd eller angrib"]) {
-    await expect(riderOne.getByRole("button", { name: new RegExp(label) }).first()).toBeVisible();
+    await expect(visible(panel.getByRole("button", { name: new RegExp(`^${label}`) }))).toBeVisible();
   }
   // De to yderpunkter findes ikke når flaget er off — fladen må ikke tilbyde et
   // valg backenden afviser.
-  await expect(riderOne.getByRole("button", { name: /Grupetto/ })).toHaveCount(0);
-  await expect(riderOne.getByRole("button", { name: /Alt ud/ })).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: /^Grupetto/ })).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: /^Alt ud/ })).toHaveCount(0);
 });
 
 test("intention: endagsløb har ingen etape-vælger", async ({ page }, testInfo) => {
@@ -212,9 +217,11 @@ test("intention: endagsløb har ingen etape-vælger", async ({ page }, testInfo)
   const panel = page.getByTestId("race-intention-panel");
   await expect(panel).toBeVisible();
 
-  await expect(panel.getByText("Intention · løbsdag")).toBeVisible();
-  await expect(panel.getByRole("button", { name: /^Etape \d/ })).toHaveCount(0);
-  await expect(panel.getByRole("button", { name: "Gem løbsdagen" })).toBeVisible();
+  // Ingen etape-vaelger: kun ét "Løbsdag"-maerke, og kolonnen hedder loebsdag
+  // (kolonne-headeren lever kun i desktop-tabellen, derfor toolbar-maerket her).
+  await expect(visible(panel.getByText("Løbsdag", { exact: true }))).toBeVisible();
+  await expect(panel.getByRole("button", { name: /^Intentioner for etape/ })).toHaveCount(0);
+  await expect(visible(panel.getByRole("button", { name: "Gem løbsdagen" }))).toBeVisible();
   // Der er ingen næste etape at kopiere til.
   await expect(panel.getByRole("button", { name: /^Kopiér til etape/ })).toHaveCount(0);
 

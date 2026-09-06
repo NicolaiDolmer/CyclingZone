@@ -559,6 +559,8 @@
     "thisRace": "This race",
     "stage": "Stage {number}",
     "stageToday": "Stage {number} · today",
+    "stageAria": "Intentions for stage {number}",
+    "stageTodayAria": "Intentions for stage {number}, today",
     "stageLower": "stage {number}",
     "raceDay": "Race day",
     "raceDayLower": "race day",

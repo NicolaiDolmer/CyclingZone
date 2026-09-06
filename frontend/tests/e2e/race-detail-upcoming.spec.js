@@ -72,8 +72,12 @@ test("upcoming race detail: stage stripe + terrain DNA + per-stage route match",
 
   // Race-DNA-gestalt + etape-stribe (2 etaper).
   await expect(page.getByText("Dette løb:")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Etape 1" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Etape 2" })).toBeVisible();
+  // #4632: `name` matcher som SUBSTRING pr. default, og intentions-fladen
+  // laengere nede paa siden har nu en etape-vaelger hvis knapper hedder
+  // "Intentioner for etape 1". `exact: true` binder opslaget til stribens egen
+  // aria-label i stedet for at ramme begge.
+  await expect(page.getByRole("button", { name: "Etape 1", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Etape 2", exact: true })).toBeVisible();
 
   // Valgt-etape-panel (default etape 1 = flad): terrain-DNA-bar + massespurt-finale.
   await expect(page.getByText(/Terræn-DNA/)).toBeVisible();
@@ -88,6 +92,6 @@ test("upcoming race detail: stage stripe + terrain DNA + per-stage route match",
   await expect(panel.getByText("Rute-match").filter({ visible: true }).first()).toBeVisible();
 
   // Skift til etape 2 (høj bjerg) → profil + finale + rute-match opdateres.
-  await page.getByRole("button", { name: "Etape 2" }).click();
+  await page.getByRole("button", { name: "Etape 2", exact: true }).click();
   await expect(page.getByRole("button", { name: "Bjergfinale" })).toBeVisible();
 });
