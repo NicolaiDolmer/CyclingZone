@@ -142,7 +142,7 @@ export default function StandingsPage() {
     // #2444 · "mine" (mit hold) og activeSeason er uafhængige af hinanden — kørte
     // tidligere som to sekventielle awaits efter hinanden.
     const [{ data: mine }, { data: activeSeason }] = await Promise.all([
-      supabase.from("teams").select("id, name, division").eq("user_id", user.id).single(),
+      supabase.from("teams").select("id, name, division").eq("user_id", user.id).maybeSingle(),
       supabase.from("seasons").select("*").eq("status", "active").single(),
     ]);
     setMyTeamId(mine?.id);

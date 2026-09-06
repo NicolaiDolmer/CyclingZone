@@ -175,7 +175,7 @@ export default function SeasonEndPage() {
       const { data: { user } } = await supabase.auth.getUser();
       // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
       if (!user) { setLoading(false); return; }
-      const { data: myTeam } = await supabase.from("teams").select("id, division, name").eq("user_id", user.id).single();
+      const { data: myTeam } = await supabase.from("teams").select("id, division, name").eq("user_id", user.id).maybeSingle();
       setMyTeamId(myTeam?.id);
       setMyTeamDivision(myTeam?.division ?? null);
       setMyTeamName(myTeam?.name ?? null);

@@ -64,7 +64,7 @@ export default function ProUpgradePage() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) { if (alive) setTeamLoading(false); return; }
         const { data: team, error } = await supabase
-          .from("teams").select("id").eq("user_id", session.user.id).single();
+          .from("teams").select("id").eq("user_id", session.user.id).maybeSingle();
         if (error) throw error;
         if (alive) { setTeamId(team?.id ?? null); setTeamLoading(false); }
       } catch (e) {

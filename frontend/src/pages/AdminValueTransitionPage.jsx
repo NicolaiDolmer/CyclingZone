@@ -106,6 +106,9 @@ export default function AdminValueTransitionPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setAdminStatus("not_admin"); return; }
       const { data: userData } = await supabase
+        // single-ok: samme klasse som #4869/userProfile.jsx (RLS-skjult profil ved
+        // udløbet session), men bevidst UDENFOR denne PR's scope (#3034 lod
+        // disse seks role-opslag urørt — se userProfile.jsx).
         .from("users").select("role").eq("id", session.user.id).single();
       setAdminStatus(userData?.role === "admin" ? "admin" : "not_admin");
     })();

@@ -264,6 +264,8 @@ export default function ForumPostPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
+      // single-ok: samme klasse som #4869/userProfile.jsx, men bevidst UDENFOR
+      // denne PR's scope (#3034 lod disse seks role-opslag urørt).
       const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).single();
       if (!cancelled) setIsAdmin(userData?.role === "admin");
     })();

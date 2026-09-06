@@ -130,11 +130,11 @@ export default function TeamProfilePage() {
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) { setLoading(false); return; }
-    const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
+    const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
     if (myTeam) setMyTeamId(myTeam.id);
 
     const [teamRes, ridersRes, pendingRes, standingRes, globalRankRes] = await Promise.all([
-      supabase.from("teams").select("*, manager:user_id(last_seen)").eq("id", id).single(),
+      supabase.from("teams").select("*, manager:user_id(last_seen)").eq("id", id).maybeSingle(),
       supabase.from("riders")
         // #1529: evnerne hentes via join (ABILITY_SELECT) + flades op på rytter-objektet
         // med flattenAbilities, så rider.climbing osv. virker i render/sort.

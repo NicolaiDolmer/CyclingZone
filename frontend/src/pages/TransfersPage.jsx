@@ -1213,7 +1213,7 @@ export default function TransfersPage() {
       const { data: { user } } = await supabase.auth.getUser();
       // #1792: udløbet/ugyldig session → user=null; stop før user.id (finally rydder loading)
       if (!user) return;
-      const { data: team } = await supabase.from("teams").select("id, balance").eq("user_id", user.id).single();
+      const { data: team } = await supabase.from("teams").select("id, balance").eq("user_id", user.id).maybeSingle();
       if (!team) return;
       setMyTeamId(team.id);
       setMyBalance(team.balance);

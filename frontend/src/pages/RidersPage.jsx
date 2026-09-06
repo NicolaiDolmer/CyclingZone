@@ -258,7 +258,7 @@ export default function RidersPage() {
       if (!user) return;
       const { data: team } = await supabase.from("teams")
         .select("id, balance, division")
-        .eq("user_id", user.id).single();
+        .eq("user_id", user.id).maybeSingle();
       if (team) setMyTeam(team);
       const token = session?.access_token;
       if (!token) return;

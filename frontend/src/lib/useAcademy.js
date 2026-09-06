@@ -38,7 +38,7 @@ export function useAcademy() {
         .from("teams")
         .select("balance, division")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
       if (team && team.balance != null) setBalance(Number(team.balance));
       if (team && team.division != null) setDivision(Number(team.division));
     } catch {

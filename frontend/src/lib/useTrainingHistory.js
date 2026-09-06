@@ -64,7 +64,7 @@ export function useTrainingHistory() {
         .from("teams")
         .select("id")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
       if (!myTeam) { setRuns([]); setSeasonRuns([]); setSeasonState(SEASON_RECEIPT_UNKNOWN); return; }
 
       // #3709 trin 1: kvitteringens enhed er point pr. SÆSON, så vinduet skal

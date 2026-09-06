@@ -110,7 +110,7 @@ export default function RaceCentrePage() {
       if (!user) { setLoading(false); return; }
 
       const { data: teamData } = await supabase
-        .from("teams").select("id, name, league_division_id").eq("user_id", user.id).single();
+        .from("teams").select("id, name, league_division_id").eq("user_id", user.id).maybeSingle();
       setTeam(teamData || null);
 
       const now = Date.now();
