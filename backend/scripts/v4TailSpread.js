@@ -110,6 +110,25 @@ function maxOf(values) {
   return values.length === 0 ? null : values.reduce((m, v) => (v > m ? v : m), values[0]);
 }
 
+/** Percentil (lineaer interpolation, p i [0,1]). p=0.5 er identisk med median(). */
+export function percentile(values, p) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  if (sorted.length === 1) return sorted[0];
+  const idx = clamp01(p) * (sorted.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+function clamp01(n) {
+  return Math.max(0, Math.min(1, n));
+}
+
+function mean(values) {
+  return values.length === 0 ? null : values.reduce((s, v) => s + v, 0) / values.length;
+}
+
 /** Distance-baand — hele pointen med M7: laengere etape skal give laengere hale. */
 export const DISTANCE_BANDS = Object.freeze([
   { label: "<140 km", min: 0, max: 140 },
@@ -124,19 +143,74 @@ function bandFor(distanceKm) {
 
 /**
  * Hale-spredning for ét v4-etapeoutput.
- * @returns {{spreadPct:number, spreadSeconds:number, winnerSeconds:number, medianGapPct:number}}
+ *
+ * #4885 (genmaaling 7/9): maks-tallet ALENE er ubrugeligt som mekanisme-signal.
+ * Efter uheldstrappen (M10, #4882) kom ind kan ÉN rytter med et haardt styrt
+ * saette hale-maksimum til 20-25 % uden at feltet bagud har en hale
+ * overhovedet — det er tidstab, ikke fysiologi. Maalingen skiller derfor de to:
+ *
+ *   - `p50GapPct`/`p90GapPct`/`p99GapPct` — hele feltets fordeling af gab til
+ *     vinderen. p90 er det tal der svarer til "hvor langt bagud ligger de
+ *     daarligste 10 %", altsaa den FYSIOLOGISKE hale.
+ *   - `cleanMaxGapPct`/`cleanP90GapPct` — samme, men UDEN ryttere der havde et
+ *     uheld paa etapen (`incidents[].rider_id`) og uden udgaaede. Er
+ *     `cleanMaxGapPct` lille mens `maxPct` er stor, er halen uheldsdrevet.
+ *   - `withinNPct` — andel af feltet inden for N % af vinderen. Et samlet felt
+ *     har within2 naer 100; et felt med en aegte hale har den lavere.
+ *   - `otlCount`/`rescuedCount` — fyrer tidsgraensen (M15) overhovedet, og
+ *     redder grupetto-reglen nogen?
+ *
+ * `incidents`/`timeline` er valgfrie paa input (haandbyggede test-outputs har
+ * dem ikke), saa maalingen degenererer sikkert til de rene tids-tal.
  */
 export function measureTailSpread(stageOutput) {
-  const times = stageOutput.results.map((r) => r.time_seconds).sort((a, b) => a - b);
+  const results = stageOutput.results ?? [];
+  const times = results.map((r) => r.time_seconds).sort((a, b) => a - b);
   const winner = times[0] ?? 0;
   const last = times[times.length - 1] ?? 0;
   const medianTime = median(times) ?? winner;
   const spreadSeconds = last - winner;
+  const pct = (t) => (winner > 0 ? ((t - winner) / winner) * 100 : 0);
+  const gapPcts = times.map(pct);
+
+  const incidentRiderIds = new Set((stageOutput.incidents ?? []).map((i) => i.rider_id));
+  const cleanTimes = results
+    .filter((r) => !incidentRiderIds.has(r.rider_id) && r.status !== "abandoned")
+    .map((r) => r.time_seconds)
+    .sort((a, b) => a - b);
+  const cleanGapPcts = cleanTimes.map(pct);
+
+  const shareWithin = (limitPct) =>
+    gapPcts.length === 0 ? 0 : (gapPcts.filter((g) => g <= limitPct).length / gapPcts.length) * 100;
+
+  const events = stageOutput.timeline?.events ?? [];
+  const countRiders = (type) =>
+    events
+      .filter((e) => e.type === type)
+      .reduce((sum, e) => sum + (Number(e.params?.rider_count) || 0), 0);
+
   return {
     winnerSeconds: winner,
     spreadSeconds,
     spreadPct: winner > 0 ? (spreadSeconds / winner) * 100 : 0,
     medianGapPct: winner > 0 ? ((medianTime - winner) / winner) * 100 : 0,
+    p50GapPct: percentile(gapPcts, 0.5) ?? 0,
+    p90GapPct: percentile(gapPcts, 0.9) ?? 0,
+    p99GapPct: percentile(gapPcts, 0.99) ?? 0,
+    cleanP90GapPct: percentile(cleanGapPcts, 0.9) ?? 0,
+    cleanMaxGapPct: maxOf(cleanGapPcts) ?? 0,
+    incidentRiders: incidentRiderIds.size,
+    within1Pct: shareWithin(1),
+    within2Pct: shareWithin(2),
+    within5Pct: shareWithin(5),
+    within10Pct: shareWithin(10),
+    // Antal DISTINKTE sluttider = antal maalgrupper. Gruppe-tids-princippet
+    // (mor-spec §3.2) goer at halen KUN kan komme fra antallet af grupper og
+    // deres indbyrdes gab; er tallet lavt, er der ingen hale at maale.
+    finishGroups: new Set(times.map((t) => Math.round(t * 100))).size,
+    otlCount: countRiders("outside_time_limit"),
+    rescuedCount: countRiders("grupetto_saved"),
+    fieldCount: results.length,
   };
 }
 
@@ -204,6 +278,7 @@ export function summarizeBy(measurements, keyFn) {
     .map(([key, rows]) => {
       const pcts = rows.map((r) => r.spreadPct);
       const secs = rows.map((r) => r.spreadSeconds);
+      const col = (name) => rows.map((r) => r[name] ?? 0);
       return {
         key,
         n: rows.length,
@@ -212,6 +287,23 @@ export function summarizeBy(measurements, keyFn) {
         medianSeconds: median(secs),
         maxSeconds: maxOf(secs),
         medianGapPct: median(rows.map((r) => r.medianGapPct)),
+        // #4885-diagnostik (7/9): fysiologisk hale vs. uheldsdrevet hale.
+        medianP50GapPct: median(col("p50GapPct")),
+        medianP90GapPct: median(col("p90GapPct")),
+        medianP99GapPct: median(col("p99GapPct")),
+        medianCleanP90GapPct: median(col("cleanP90GapPct")),
+        medianCleanMaxGapPct: median(col("cleanMaxGapPct")),
+        maxCleanMaxGapPct: maxOf(col("cleanMaxGapPct")),
+        meanWithin2Pct: mean(col("within2Pct")),
+        meanWithin5Pct: mean(col("within5Pct")),
+        meanWithin10Pct: mean(col("within10Pct")),
+        medianFinishGroups: median(col("finishGroups")),
+        // OTL-rate = andel af alle startende paa disse etaper der endte uden
+        // for tidsgraensen; redningsraten samme naevner.
+        otlPct: (col("otlCount").reduce((s, v) => s + v, 0) / Math.max(1, col("fieldCount").reduce((s, v) => s + v, 0))) * 100,
+        rescuedPct: (col("rescuedCount").reduce((s, v) => s + v, 0) / Math.max(1, col("fieldCount").reduce((s, v) => s + v, 0))) * 100,
+        stagesWithOtl: rows.filter((r) => (r.otlCount ?? 0) > 0).length,
+        stagesWithRescue: rows.filter((r) => (r.rescuedCount ?? 0) > 0).length,
       };
     })
     .sort((a, b) => String(a.key).localeCompare(String(b.key)));
@@ -510,6 +602,47 @@ function formatTable(title, rows) {
   return lines.join("\n");
 }
 
+/**
+ * #4885-diagnose-tabel: skiller den FYSIOLOGISKE hale (p50/p90/p99 + hale uden
+ * uheldsramte) fra den UHELDSDREVNE (maks). Uden denne opdeling kan et
+ * hale-maksimum paa 25 % lige saa godt vaere ét styrt som en aegte grupetto.
+ */
+function formatDiagnosticsTable(title, rows) {
+  const lines = [
+    title,
+    "key\tn\tp50%\tp90%\tp99%\tmaks%\tren_p90%\tren_maks%\tren_maks_top%\tinden_2%\tinden_5%\tinden_10%\tmaalgrupper",
+  ];
+  for (const r of rows) {
+    lines.push(
+      [
+        r.key,
+        r.n,
+        fmt(r.medianP50GapPct),
+        fmt(r.medianP90GapPct),
+        fmt(r.medianP99GapPct),
+        fmt(r.maxPct),
+        fmt(r.medianCleanP90GapPct),
+        fmt(r.medianCleanMaxGapPct),
+        fmt(r.maxCleanMaxGapPct),
+        fmt(r.meanWithin2Pct, 1),
+        fmt(r.meanWithin5Pct, 1),
+        fmt(r.meanWithin10Pct, 1),
+        fmt(r.medianFinishGroups, 0),
+      ].join("\t"),
+    );
+  }
+  return lines.join("\n");
+}
+
+/** M15-tabel: fyrer tidsgraensen, og redder grupetto-reglen nogen? */
+function formatTimeLimitTable(title, rows) {
+  const lines = [title, "key\tn\totl_%\tetaper_m_otl\treddet_%\tetaper_m_redning"];
+  for (const r of rows) {
+    lines.push([r.key, r.n, fmt(r.otlPct, 3), r.stagesWithOtl, fmt(r.rescuedPct, 3), r.stagesWithRescue].join("\t"));
+  }
+  return lines.join("\n");
+}
+
 function argValue(name, fallback = null) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
   return hit ? hit.slice(`--${name}=`.length) : fallback;
@@ -612,7 +745,17 @@ function main() {
 
   const measurements = runTailSpread({ population, stages, seeds, fieldSize });
 
-  console.log(formatTable("-- Pr. etapetype (alle seeds samlet) --", summarizeBy(measurements, (m) => m.profileType)));
+  const byProfileType = summarizeBy(measurements, (m) => m.profileType);
+  console.log(formatTable("-- Pr. etapetype (alle seeds samlet) --", byProfileType));
+  console.log("");
+  console.log(
+    formatDiagnosticsTable(
+      "-- Hale-diagnose pr. etapetype: fysiologisk hale (p90/ren) vs. uheldsdrevet (maks) --",
+      byProfileType,
+    ),
+  );
+  console.log("");
+  console.log(formatTimeLimitTable("-- M15 tidsgraense pr. etapetype --", byProfileType));
   console.log("");
   console.log(formatTable("-- Pr. distance-baand (alle seeds samlet) --", summarizeBy(measurements, (m) => m.band)));
   console.log("");
