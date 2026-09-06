@@ -111,7 +111,7 @@ export const RACE_V3_TUNING = Object.freeze({
   //              for sig selv"). LOFTET: 0 er bunden, aldrig en positiv bonus
   //              oveni egen evne. Bevidst IKKE env-overstyrbar — en negativ
   //              env-værdi ville vende fortegnet og gøre all-out til en gratis
-  //              score-gave. workCost() klamper desuden struktuelt (Math.min(0)).
+  //              score-gave. workCost() klamper desuden strukturelt (Math.min(0)).
   //   grupetto = SAMME multiplikator som save. Bevidst ikke lavere: en lavere
   //              pris end save ville være en resultat-FORDEL, og grupetto må
   //              per ejer-beslutning give "ingen resultatfordel" — dens gevinst
