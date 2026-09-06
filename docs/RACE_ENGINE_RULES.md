@@ -468,17 +468,17 @@ node backend/scripts/buildV4AnchorBaseline.mjs && node backend/scripts/renderV4A
 
 > **Genereret af harnesset, ikke haandskrevet** (#4911). Kilde: `backend/scripts/baselines/v4-anchor-baseline.json`, produceret af `backend/scripts/buildV4AnchorBaseline.mjs` fra den PINNEDE population + de PINNEDE proxy-etaper — samme to filer hver gang, saa et fremtidigt kalibrerings-PR maaler mod netop denne baseline, ikke en tilfaeldig koersel. Spaend i parentes er min-max over seeds.
 >
-> Pinnet: motor-sha `d0d7821e53` · population `backend/scripts/baselines/population-snapshot-2026-07-11.json` (5650 ryttere, sha256 e360366e3def2980) · etaper `backend/scripts/baselines/v4-proxy-stages-2026-09-06.json` (sha256 bbf6e20ce5293280) · seeds s1, s2, s3 · feltstoerrelse 180 · genereret 2026-09-06T22:26:22.808Z.
+> Pinnet: motor-sha `550234b2aa` · population `backend/scripts/baselines/population-snapshot-2026-07-11.json` (5650 ryttere, sha256 e360366e3def2980) · etaper `backend/scripts/baselines/v4-proxy-stages-2026-09-06.json` (sha256 bbf6e20ce5293280) · seeds s1, s2, s3 · feltstoerrelse 180 · genereret 2026-09-06T22:39:38.749Z.
 >
 > **Refresh:** `node backend/scripts/buildV4AnchorBaseline.mjs && node backend/scripts/renderV4AnchorTable.mjs --write`
 
 | Anker | Baand (kilde) | v3 | v4 |
 |---|---|---|---|
-| Felt-sammenhaeng, flade etaper | 80.0%-95.0% (#3917-maalingen (mor-spec §5: "80-95% af feltet paa vinderens tid")) | 4.0 % (3.8 %-4.1 %) [FAIL] | 30.4 % (29.2 %-31.9 %) [FAIL] |
-| Nedkoersels-gaps vs. summit-gaps (ratio) | <= 0.5 (#3426-maalingen (mor-spec §5: nedkoersels-gaps vs. summit-gaps, ratio <=0,5 ved p5-p10)) | 0.59 (0.49-0.76) [FAIL] | 0.38 (0.26-0.49) [PASS] |
+| Felt-sammenhaeng, flade etaper | 80.0%-95.0% (#3917-maalingen (mor-spec §5: "80-95% af feltet paa vinderens tid")) | 4.0 % (3.8 %-4.1 %) [FAIL] | 30.5 % (29.2 %-31.9 %) [FAIL] |
+| Nedkoersels-gaps vs. summit-gaps (ratio) | <= 0.5 (#3426-maalingen (mor-spec §5: nedkoersels-gaps vs. summit-gaps, ratio <=0,5 ved p5-p10)) | 0.59 (0.49-0.76) [FAIL] | 0.39 (0.26-0.50) [PASS] |
 | Descent attack-gevinst (10-20s-loft, aldrig omvendt fortegn i gruppen) | 10-20s (ejer-valg 20/8 (mor-spec §4 M3 / §5: descent attack-gevinst-loft)) | n/a | 20s (20s-20s) [PASS] |
 | Punch-korrelation (punch-evne vs. placering paa punch-etaper) | spearman > 0.2 (#3965-harnesset (mor-spec §5)) | 0.69 (0.67-0.70) [PASS] | 0.71 (0.70-0.72) [PASS] |
-| Brostensevnens loeft paa brosten/grus (spearman-forskel vs. flad) | loeft >= 0.03 (FORSLAG, ikke ejer-godkendt) (FORSLAG (M8-wiring 6/9, #2789/#4105) — regressionsvagt for ejer-reglen 3/9 "brostensevnen taeller kun paa etaper med brosten/grus"; taersklen er valgt af denne harness, ikke ejer-godkendt) | 0.497 (0.476-0.521) [PASS] | 0.141 (0.107-0.163) [PASS] |
+| Brostensevnens loeft paa brosten/grus (spearman-forskel vs. flad) | loeft >= 0.03 (FORSLAG, ikke ejer-godkendt) (FORSLAG (M8-wiring 6/9, #2789/#4105) — regressionsvagt for ejer-reglen 3/9 "brostensevnen taeller kun paa etaper med brosten/grus"; taersklen er valgt af denne harness, ikke ejer-godkendt) | 0.497 (0.476-0.521) [PASS] | 0.142 (0.107-0.163) [PASS] |
 | Felt-favoritters win-rate | 25.0%-40.0% (v3-spec §2 + ejer-valg 20/8 (mor-spec §5: "i dag 80-88%")) | 35.7 % (34.8 %-36.9 %) [PASS] | 54.1 % (53.2 %-54.6 %) [FAIL] |
 | Samme-hold-top-10 (andel etaper med 4+ fra ét hold) | < 3.0% (v3-spec §2 (mor-spec §5: "4+ fra samme hold i top 10 sjaeldent, < 3%")) | 0.0 % (0.0 %-0.0 %) [PASS] | 0.0 % (0.0 %-0.0 %) [PASS] |
 | Udbruds-rater pr. terraen (descent-dominans 54% skal ned) | race:gate-baand (ingen fast tal her — se gate-konfig) (race:gate + #3426 (mor-spec §5)) | 28.4 % (25.5 %-29.8 %) [PASS] | n/a |
