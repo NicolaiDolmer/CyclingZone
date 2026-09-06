@@ -22,7 +22,13 @@ import { deriveCp } from "./physiology.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 import { RACE_V4_TUNING, DISTANCE_FATIGUE_EXTRA_TUNING } from "./tuning.ts";
 import { validateTimelineEvents } from "./timeline.ts";
-import type { AbilityKey, Entrant, RouteV2, Segment, StageInput, StageOutput } from "./types.ts";
+import type { AbilityKey, Entrant, RouteV2, Segment, StageInput, StageOutput, Weather } from "./types.ts";
+
+// M11-wiring (#3855, 6/9): `riderCpForSegment` tager nu ogsaa etapens vejr.
+// Denne fil maaler M7 ISOLERET, saa den bruger baseline-vejret — sol giver
+// praecis multiplikator 1 (mechanics/weather.ts), og M7-tallene herunder er
+// dermed uaendrede af at vejr-laget blev koblet ind.
+const NEUTRAL_WEATHER: Weather = { kind: "sun", wind_exposure: 0 };
 
 const ABILITY_KEYS: AbilityKey[] = [
   "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch",
@@ -140,7 +146,7 @@ test("M7 er KOBLET IND: segment-CP'en er slidt, og sliddet er ALDRIG mindre laen
     status: "racing" as const,
   };
   const at = (fromKm: number) =>
-    riderCpForSegment(entrant, riderState, climbSegment(fromKm, fromKm + 10), RACE_V4_TUNING);
+    riderCpForSegment(entrant, riderState, climbSegment(fromKm, fromKm + 10), RACE_V4_TUNING, NEUTRAL_WEATHER);
 
   const baseCp = deriveCp(entrant.abilities, "climb", RACE_V4_TUNING.physiology.cpWeights);
   const expectedAtStart = applyDistanceFatigueToCp(baseCp, {
