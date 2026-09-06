@@ -44,6 +44,7 @@ import {
   SearchIcon,
   AlertTriangleIcon,
   GavelIcon,
+  CobblesIcon,
 } from "../components/ui/icons/index.jsx";
 
 // #4855 · Sektioner der kun maa vises naar den bagvedliggende model er slaaet
@@ -51,7 +52,16 @@ import {
 // findes kun én, board_mandate_model_enabled, aflaest via GET /board/room's
 // `enabled` (samme lette kald og samme sikre fallback som BoardroomRoute:
 // fejl, ingen session eller flag off -> sektionen er skjult).
-const FLAG_GATED_SECTIONS = ["mandate"];
+//
+// #4910 · "raceDay" er OGSAA flag-gated, men har INGEN tilsvarende letvaegts,
+// globalt GET-endpoint at kalde: race_engine_v4 og race_day_intention_enabled
+// (backend/lib/raceEngineFlag.js, raceIntentionFlag.js) laeses kun server-side
+// og er kun spiller-synlige via `valid_efforts` paa et PER-LOEB endpoint
+// (GET /api/races/:raceId/stage-roles) — Hjaelpesiden har intet raceId at
+// spoerge med. Sektionen holdes derfor HARDKODET skjult (se raceDayEnabled
+// nedenfor) indtil en opgave tilfoejer et globalt flag-svar i samme stil som
+// GET /board/room. Braekker ALDRIG denne kommentar op fra raceDayEnabled.
+const FLAG_GATED_SECTIONS = ["mandate", "raceDay"];
 
 const SECTION_DEFS = [
   {
@@ -418,6 +428,22 @@ const SECTION_DEFS = [
       { id: "scouting", kind: "text" },
     ],
   },
+  // #4910 · Race engine v4 + løbsdagens intention (#4632). Copy'en ligger klar
+  // i help.json en+da fra i dag, men sektionen er flag-gated (se
+  // FLAG_GATED_SECTIONS ovenfor) og forbliver skjult indtil v4-flippet
+  // (RACE_ENGINE_RULES.md §9). Placeret lige efter raceSelection, som den
+  // udvider: samme emne (roller, taktik, uheld), næste lag ovenpå.
+  {
+    key: "raceDay",
+    Icon: CobblesIcon,
+    blocks: [
+      { id: "roleAndIntention", kind: "text" },
+      { id: "crashesAndIncidents", kind: "text" },
+      { id: "timeLimitAndGrupetto", kind: "text" },
+      { id: "teamwork", kind: "text" },
+      { id: "weatherAndCobbles", kind: "text" },
+    ],
+  },
 ];
 
 const FAQ_KEYS = [
@@ -664,13 +690,24 @@ export default function HelpPage() {
     return () => { active = false; };
   }, []);
 
+  // #4910 · "raceDay" har intet globalt flag-endpoint at kalde endnu (se
+  // kommentaren ved FLAG_GATED_SECTIONS). Hardkodet false, ikke et
+  // useState/useEffect-par som mandatet ovenfor: der findes intet kald at
+  // lave, og en fremtidig PR der wirer det rigtige endpoint skal ÆNDRE denne
+  // linje, ikke tilføje endnu en skjult tilstand ved siden af.
+  const raceDayEnabled = false;
+
   if (!ready) return <PageLoader />;
 
   // #1916: fill the hard game numbers in help prose from RULES_NUMBERS (pinned to
   // the backend constants) so /help can't drift the way it did in #1907.
   const helpNumbers = buildHelpNumbers(i18n.language);
+  // #4855/#4910: hvert flag-gated key slaas op i sin egen kilde. En sektion i
+  // FLAG_GATED_SECTIONS uden en linje her er default SKJULT (fail-safe), ikke
+  // synlig-som-fejl.
+  const SECTION_ENABLED = { mandate: mandateModelEnabled, raceDay: raceDayEnabled };
   const sections = buildSections(t, helpNumbers).filter(
-    (s) => !FLAG_GATED_SECTIONS.includes(s.key) || mandateModelEnabled,
+    (s) => !FLAG_GATED_SECTIONS.includes(s.key) || SECTION_ENABLED[s.key] === true,
   );
   const faq = buildFaq(t, helpNumbers);
 
