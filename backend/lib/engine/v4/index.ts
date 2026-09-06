@@ -35,13 +35,17 @@ import { applyTimeLimit } from "./mechanics/timeLimit.ts";
 // segment-loopet. Harness/tests kan stadig injicere egne hooks via
 // runSegmentLoop direkte.
 //
-// FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855). Audit'en 5/9 talte otte
-// faerdige mekanikker uden ét eneste kaldssted. M10 (incidents) og M8
-// (brosten/grus) er nu KOBLET IND og staar altsaa ikke laengere paa den liste.
-// Stadig bygget-men-ikke-kaldt: M9 (bonussekunder), M11 (vejr), M12 (effort)
-// og holdtidskoerslen. (M7 blev wiret 6/9 i segmentLoop's riderCpForSegment;
-// M16/holdspillet er wiret her nedenfor og gav samtidig `Entrant.team_id`,
-// forudsaetningen for at holdtidskoerslen kan kobles ind.)
+// FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855 + #4885 + #4246). Audit'en 5/9
+// talte otte faerdige mekanikker uden ét eneste kaldssted. M10 (incidents), M8
+// (brosten/grus), M7 (distance-slid) og M11 (vejr) er nu KOBLET IND og staar
+// altsaa ikke laengere paa den liste. M7 og M11 har med vilje INTET hook her:
+// de rammer den baeredygtige troeskel i selve segmentloekken (segmentLoop.ts's
+// `riderCpForSegment`) og er dermed ikke terraen-udloeste hooks men et lag
+// under dem. M11's anden arm — vejr-forstaerket styrt-risiko — ligger i
+// mechanics/descent.ts og mechanics/cobbles.ts.
+// Stadig bygget-men-ikke-kaldt: M9 (bonussekunder), M12 (effort) og
+// holdtidskoerslen. (M16/holdspillet er wiret her nedenfor og gav samtidig
+// `Entrant.team_id`, forudsaetningen for at holdtidskoerslen kan kobles ind.)
 const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: climbSelectionHook,
   descent: descentHook,

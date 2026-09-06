@@ -180,6 +180,11 @@ export function runTailSpread({ population, stages, seeds = DEFAULT_SEEDS, field
         distanceKm: route.distance_km,
         band: bandFor(route.distance_km),
         fieldSize: fieldRiders.length,
+        // M11 (#3855-wiring 6/9): vejret er nu koblet ind i kraftkravet, saa
+        // hale-spredningen skal kunne laeses PR. VEJRTYPE — ellers kan man
+        // hverken se om vejret virker, eller om det virker for meget.
+        weatherKind: route.weather?.kind ?? "?",
+        windExposure: route.weather?.wind_exposure ?? 0,
         ...measureTailSpread(output),
       });
     }
@@ -392,6 +397,102 @@ export function runEnduranceExperiment({ seeds = DEFAULT_SEEDS, distances = DIST
 }
 
 // ---------------------------------------------------------------------------
+// Kontrolleret vejr-eksperiment (--weather-experiment)
+// ---------------------------------------------------------------------------
+//
+// M11's wiring-paastand (#3855, 6/9) er "vejret koster kraft og skaerper
+// spredningen". Proxy-kalenderens vejr er konfunderet: vejrtypen er seedet
+// sammen med etapetype og laengde, saa en tabel "hale-spredning pr. vejrtype"
+// blander vejrets effekt sammen med hvilke etaper der tilfaeldigvis fik regn.
+//
+// Dette eksperiment holder ALT fast — samme rute, samme startfelt, samme seed
+// — og varierer KUN route.weather. Forskellen mellem raekkerne er derfor
+// vejrets bidrag og intet andet. Den flade rute er med fordi ejer-spoergsmaalet
+// bag lanen er "spredning paa flade etaper i vind"; bjergruten er med som
+// kontrol paa at vind i lae betyder mindre end vind paa det aabne.
+
+export const WEATHER_EXPERIMENT_CASES = Object.freeze([
+  { label: "sol", weather: { kind: "sun", wind_exposure: 0.15 } },
+  { label: "overskyet", weather: { kind: "overcast", wind_exposure: 0.15 } },
+  { label: "regn", weather: { kind: "rain", wind_exposure: 0.15 } },
+  { label: "vind (lav eksp.)", weather: { kind: "wind", wind_exposure: 0.3 } },
+  { label: "vind (hoej eksp.)", weather: { kind: "wind", wind_exposure: 0.85 } },
+]);
+
+/** Flad rute med KONSTANT form — kun vejret varierer mellem raekkerne. */
+export function flatWeatherRoute(weather, distanceKm = 190) {
+  const at = (a, b) => [Math.round((a / 100) * distanceKm * 100) / 100, Math.round((b / 100) * distanceKm * 100) / 100];
+  const [f1From, f1To] = at(0, 35);
+  const [rFrom, rTo] = at(35, 65);
+  const [f2From, f2To] = at(65, 100);
+  return {
+    distance_km: distanceKm,
+    profile_type: "flat",
+    finale_type: "bunch_sprint",
+    segments: [
+      { kind: "flat", from_km: f1From, to_km: f1To },
+      { kind: "rolling", from_km: rFrom, to_km: rTo },
+      { kind: "flat", from_km: f2From, to_km: f2To },
+    ],
+    weather,
+    waypoints: [{ kind: "finish", index: 0, name: "Maal", km: distanceKm }],
+  };
+}
+
+/**
+ * @returns {Array<{label:string, kind:string, spreadPct:number[], meanPct:number,
+ *   meanWinnerSeconds:number, meanWorkNorm:number, weatherEvents:number}>}
+ */
+export function runWeatherExperiment({
+  population,
+  seeds = DEFAULT_SEEDS,
+  fieldSize = DEFAULT_FIELD_SIZE,
+  routeFn = flatWeatherRoute,
+  cases = WEATHER_EXPERIMENT_CASES,
+}) {
+  return cases.map(({ label, weather }) => {
+    const spreadPct = [];
+    const workNorms = [];
+    const winnerSeconds = [];
+    let weatherEvents = 0;
+    for (const seed of seeds) {
+      // SAMME felt paa tvaers af vejrtyper (feltet seedes uden vejret), saa kun
+      // vejret varierer mellem raekkerne.
+      const rng = makeRng(stableSeed(`${seed}:weather-experiment:field`));
+      const fieldRiders = fieldSize ? sampleField(rng, population.riders, fieldSize) : population.riders;
+      const output = simulateStageV4({
+        route: routeFn(weather),
+        startlist: entrantsForField(fieldRiders),
+        orders: [],
+        // Seeden baerer IKKE vejrtypen: to vejrtyper skal dele rng-stroem, ellers
+        // maaler vi et andet loeb i stedet for det samme loeb i andet vejr.
+        seed: `${seed}:weather-experiment`,
+        tuning: RACE_V4_TUNING,
+      });
+      const measured = measureTailSpread(output);
+      spreadPct.push(measured.spreadPct);
+      // VINDERTIDEN er hovedmaalet for M11's belastnings-arm: vejret saenker
+      // den kollektive CP, og segment-farten er afledt af den. Hale-spredningen
+      // staar ved siden af som kontrol paa at vejret ikke ogsaa river feltet
+      // fra hinanden (det goer det ikke — se PR'ens maaling).
+      winnerSeconds.push(measured.winnerSeconds);
+      workNorms.push(output.loads.reduce((s, l) => s + l.work_norm, 0) / output.loads.length);
+      weatherEvents += output.timeline.events.filter((e) => e.type === "weather").length;
+    }
+    const mean = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+    return {
+      label,
+      kind: weather.kind,
+      spreadPct,
+      meanPct: mean(spreadPct),
+      meanWinnerSeconds: mean(winnerSeconds),
+      meanWorkNorm: mean(workNorms),
+      weatherEvents,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------
 
@@ -462,6 +563,25 @@ function main() {
     return;
   }
 
+  if (process.argv.includes("--weather-experiment")) {
+    console.log(
+      `Kontrolleret vejr-eksperiment: samme rute, samme startfelt (${fieldSize}), samme seed — ` +
+        `kun route.weather varierer. Seeds: ${seeds.join(", ")}.`,
+    );
+    console.log("");
+    console.log("vindertid = hovedmaalet (vejret saenker CP -> lavere kollektiv fart) · hale_% = (sidste - vinder) / vindertid · events = vejr-meldinger i tidslinjen");
+    const weatherRows = runWeatherExperiment({ population, seeds, fieldSize });
+    const baseline = weatherRows[0]?.meanWinnerSeconds ?? 0;
+    console.log(["vejr", "middel_vindertid_s", "vs_sol_%", ...seeds.map((s) => `${s}_hale%`), "middel_hale%", "events"].join("	"));
+    for (const row of weatherRows) {
+      const vsBaseline = baseline > 0 ? ((row.meanWinnerSeconds - baseline) / baseline) * 100 : 0;
+      console.log(
+        [row.label, fmt(row.meanWinnerSeconds, 0), fmt(vsBaseline, 3), ...row.spreadPct.map((p) => fmt(p)), fmt(row.meanPct), row.weatherEvents].join("	"),
+      );
+    }
+    return;
+  }
+
   // Samme offline-kalender kan fodres til headToHeadV4.js's ankre, saa
   // hale-maalingen og anker-maalingen koeres paa PRAECIS de samme etaper —
   // ellers kan et anker-skift ikke tilskrives noget.
@@ -495,6 +615,18 @@ function main() {
   console.log(formatTable("-- Pr. etapetype (alle seeds samlet) --", summarizeBy(measurements, (m) => m.profileType)));
   console.log("");
   console.log(formatTable("-- Pr. distance-baand (alle seeds samlet) --", summarizeBy(measurements, (m) => m.band)));
+  console.log("");
+  // M11 (#3855-wiring 6/9). BEMAERK: denne tabel er KONFUNDERET — vejrtypen er
+  // seedet sammen med etapetypen, saa "regn" og "flad etape" ikke er
+  // uafhaengige. Den er et overblik, ikke et bevis; det rene maal er
+  // `--weather-experiment`.
+  console.log(formatTable("-- Pr. vejrtype (konfunderet, se --weather-experiment) --", summarizeBy(measurements, (m) => m.weatherKind)));
+  console.log("");
+  const flatByWeather = summarizeBy(
+    measurements.filter((m) => m.profileType === "flat"),
+    (m) => `flat | ${m.weatherKind}`,
+  ).filter((r) => r.n >= 3);
+  console.log(formatTable("-- Flade etaper pr. vejrtype (n >= 3) --", flatByWeather));
   console.log("");
   // Etapetype OG distance i samme celle: den rene distance-tabel ovenfor er
   // konfunderet af terraen (flade etaper er typisk de laengste), saa den kan

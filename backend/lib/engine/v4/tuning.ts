@@ -391,6 +391,29 @@ const weatherExtra = {
   sunOvercastIncidentRiskMultiplier: 1.0, // baseline, ingen risiko-effekt ved sol/overskyet
   weatherTechniqueDampeningPerPoint: 0.00015, // daempning pr. "vejr-teknik"(-proxy)-point — samme stoerrelsesorden/subtraktive moenster som tuning.descent.incidentRiskDescendingDampening
   weatherTechniqueProxyWeights: { descending: 0.5, durability: 0.5 }, // proxy-vaegte for den endnu-ufoedte "vejr-teknik"-evne (0-99-skala) — F4 erstatter proxy'en med abilities.weather_technique naar noeglen lander i types.ts
+
+  // ── BELASTNINGS-ARMEN (#3855, M11-wiring 6/9) ────────────────────────────
+  // Risiko-felterne ovenfor var HELE M11 da modulet blev bygget, og de daekker
+  // kun "regn forstaerker styrt-risiko". Men et vejr-lag der udelukkende
+  // flytter uheldstal er usynligt i et resultat, og ejer-reglen (§9 punkt 1)
+  // er at vejret skal vaere koblet ind foer flippet — ikke bare importeret.
+  //
+  // Felterne herunder saenker rytterens CP (baeredygtige troeskel), samme sted
+  // og samme form som distanceFatigueExtra nedenfor. En foerste udgave gangede
+  // i stedet paa KRAFTKRAVET; maalt over 12 loeb pr. vejrtype flyttede det
+  // arbejdet 4-7 % og intet andet (samme grupper, samme splits, samme hale) —
+  // se mechanics/weather.ts's belastnings-blok for hvorfor det er strukturelt
+  // og ikke et kalibreringsspoergsmaal. Vejret skaber i oevrigt ingen ny
+  // splitaarsag: sidevind-selektion (vifter, #2476) er fortsat eget spor.
+  //
+  // STARTGAET, KALIBRERES. Tallene er valgt saa scorecardets ankre bliver
+  // inden for deres eget stoej-spaend over 3 seeds (maalt i wiring-PR'en), ikke
+  // mod en virkeligheds-reference — der findes ingen offentlig "hvad koster
+  // regn"-maaling at ankre i, jf. §4's "et gulv er ikke et maal".
+  rainCpPenalty: 0.05, // regn rammer HELE etapen uanset terraen (vaadt underlag, kulde, flere opbremsninger og genaccelerationer) — andel af CP en rytter UDEN vejr-teknik mister
+  windCpPenaltyMax: 0.07, // vind rammer kun i det omfang etapen er eksponeret: ganges med route.weather.wind_exposure (0-1) OG med terraen-eksponeringen nedenfor
+  windExposureByTerrain: { flat: 1, rolling: 0.85, cobbles: 0.9, descent: 0.5, climb: 0.25 }, // aabent terraen fanger vinden, en stigning ligger i lae af sig selv — samme rangorden som work.draftFactor's terraen-ordning
+  weatherTechniqueCpReliefFraction: 0.6, // andelen af straffen "vejr-teknik" fjerner ved FULD teknik (99); resten betaler alle. Bevidst under 1: vejret er aldrig gratis, heller ikke for den bedste (§9 punkt 3). Det er SPREDNINGEN i dette led — ikke straffens stoerrelse — der differentierer feltet, fordi gruppens kollektive CP falder sammen med den enkeltes
 };
 
 /** M11 additiv vejr-tuning (deep-frosset). Se weatherExtra-kommentaren ovenfor. */
