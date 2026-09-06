@@ -124,9 +124,13 @@ test("RACE_ENGINE_RULES.md's ankertabel matcher den committede baseline-JSON", (
 
   const currentBlock = docText.slice(startIdx, endIdx + END_MARKER.length);
   const expectedBlock = renderAnchorTable(baseline);
+  // EOL-uafhaengig sammenligning: Windows-checkouts (core.autocrlf=true)
+  // normaliserer .md-filer til CRLF, mens renderAnchorTable() arbejder i LF —
+  // se renderV4AnchorTable.mjs's normalizeEol()-kommentar for hvorfor.
+  const stripCr = (s) => s.replace(/\r\n/g, "\n");
   assert.equal(
-    currentBlock,
-    expectedBlock,
+    stripCr(currentBlock),
+    stripCr(expectedBlock),
     "docs-blokken er ude af sync med baseline'en — koer: " +
       "node backend/scripts/renderV4AnchorTable.mjs --write",
   );

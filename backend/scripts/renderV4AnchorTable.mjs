@@ -130,6 +130,24 @@ function extractCurrentBlock(docText) {
   return docText.slice(startIdx, endIdx + END_MARKER.length);
 }
 
+// Windows-checkouts (core.autocrlf=true) normaliserer .md-filer til CRLF ved
+// enhver git-beroering, mens renderAnchorTable() (og Node-vaerktoejer generelt)
+// arbejder i LF. Uden dette matcher --write's egen skrivning ALDRIG git's
+// normaliserede version efter naeste commit — --check ville falsk-fejle paa
+// ren linjeskifts-stoej, ikke paa et reelt indholds-afvig. Sammenlign derfor
+// indhold EOL-uafhaengigt, og skriv altid i dokumentets EGEN EOL-stil.
+function normalizeEol(text) {
+  return text.replace(/\r\n/g, "\n");
+}
+
+function detectEol(docText) {
+  return docText.includes("\r\n") ? "\r\n" : "\n";
+}
+
+function toEol(text, eol) {
+  return eol === "\r\n" ? normalizeEol(text).replace(/\n/g, "\r\n") : normalizeEol(text);
+}
+
 function main() {
   const args = process.argv.slice(2);
   const checkMode = args.includes("--check");
@@ -141,6 +159,7 @@ function main() {
   const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
   const rendered = renderAnchorTable(baseline);
   const docText = readFileSync(docPath, "utf8");
+  const eol = detectEol(docText);
 
   if (checkMode) {
     const current = extractCurrentBlock(docText);
@@ -148,7 +167,7 @@ function main() {
       console.error(`--check: fandt ikke ankertabel-markoererne i ${docPath}`);
       process.exit(1);
     }
-    if (current !== rendered) {
+    if (normalizeEol(current) !== normalizeEol(rendered)) {
       console.error(
         `--check FAILED: ankertabellen i ${docPath} afviger fra ${baselinePath}. ` +
           "Koer uden --check (eller med --write) for at opdatere.",
@@ -159,7 +178,7 @@ function main() {
     return;
   }
 
-  const next = replaceAnchorBlock(docText, rendered);
+  const next = replaceAnchorBlock(docText, toEol(rendered, eol));
   writeFileSync(docPath, next);
   console.log(`Ankertabel skrevet ind i ${docPath}.`);
 }
