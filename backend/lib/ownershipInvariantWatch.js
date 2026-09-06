@@ -52,8 +52,9 @@
 //      usolgt graduate-auktion ikke havde nogen udgang: rytteren blev liggende
 //      hos saelgeren med is_academy=true mens grad-raekken allerede var stemplet
 //      'sold' — 8 ryttere paa 22-23 aar paa 6 hold, maalt i prod 31/8. Udgangen
-//      er nu bygget (academyGraduation.releaseUnsoldGraduate, kaldt fra
-//      auctionFinalization's no-bid-gren); DENNE vagt er backstoppet hvis klassen alligevel
+//      er nu bygget (academyGraduation.resolveUnsoldGraduate, kaldt fra
+//      auctionFinalization's no-bid-gren: oprykning hvis plads+raad, ellers fri
+//      agent — ejer 7/9); DENNE vagt er backstoppet hvis klassen alligevel
 //      opstaar igen ad en anden sti. Praedikatet ejes af
 //      stuckAcademyGraduates.js — SAMME funktion som reparations-scriptet
 //      bruger, saa vagt og reparation aldrig kan divergere.

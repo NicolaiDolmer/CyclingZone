@@ -181,6 +181,16 @@
       "title": "Academy signing complete",
       "message": "Your academy prospect has joined your academy."
     },
+    "academyGraduated": {
+      "title": "Academy graduate resolved",
+      "promote": "{name} was promoted to your senior squad.",
+      "sell": "{name} was listed for transfer.",
+      "release": "{name} was released.",
+      "unsoldPromotedTitle": "Academy graduate promoted",
+      "unsoldPromoted": "{name} drew no bids, so he moves up to your senior squad.",
+      "unsoldTitle": "Academy graduate released",
+      "unsold": "{name} drew no bids and left your academy as a free agent."
+    },
     "academySigningDeferred": {
       "title": "Academy signing confirmed",
       "message": "{riderName} will join your academy once his current stage race is finished. He keeps racing for your senior squad until then."

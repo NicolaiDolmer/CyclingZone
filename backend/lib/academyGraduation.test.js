@@ -9,6 +9,7 @@ import {
   resolveGraduation,
   defaultResolveGraduate,
   releaseUnsoldGraduate,
+  resolveUnsoldGraduate,
   completeStuckPromotion,
   resolveNeverGraduated,
 } from "./academyGraduation.js";
@@ -540,6 +541,133 @@ test("#4495 completeStuckPromotion: rytter der imens er skiftet hold røres ikke
   assert.equal(res.completed, false);
   assert.equal(res.reason, "not_on_team");
   assert.equal(rec.riderUpdates.length, 0);
+});
+
+// ─── resolveUnsoldGraduate (#4495, ejer-ændring 7/9) ──────────────────────────
+// "Kan han ikke automatisk rykkes op på seniorholdet, når han ikke kan være på
+// ungdomsholdet mere?" Udgangen for en graduate-auktion uden bud er nu
+// promovér-FØRST (friskt plads+råd-tjek), slip kun som sidste led.
+
+const UNSOLD_GRADUATE = {
+  id: "r9", team_id: "t1", is_academy: true, firstname: "Unsold", lastname: "Graduate",
+  current_production_value: 12000, salary: 900, contract_length: 2, contract_end_season: 4,
+};
+const ROOM_AND_MONEY = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+
+test("#4495 resolveUnsoldGraduate: plads + råd → promoverer, rytteren BLIVER på holdet", async () => {
+  const { supabase, rec } = makeSupabase({ rider: UNSOLD_GRADUATE, gradRows: [SOLD_GRAD] });
+  const notify = spyNotify();
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, getMarketState: ROOM_AND_MONEY, notify,
+  });
+
+  assert.equal(res.action, "promoted");
+  assert.equal(rec.riderUpdates.length, 1);
+  assert.equal(rec.riderUpdates[0].is_academy, false);
+  // Oprykning flytter IKKE rytteren væk fra holdet, og en komplet kontrakt
+  // arves uændret (#2881/#1309 — regenerér aldrig).
+  assert.equal("team_id" in rec.riderUpdates[0], false);
+  assert.equal("salary" in rec.riderUpdates[0], false);
+  assert.equal(notify.calls.length, 1);
+  assert.equal(notify.calls[0].metadata.messageCode, "notif.academyGraduated.unsoldPromoted");
+});
+
+test("#4495 resolveUnsoldGraduate: promovering restempler den fejlagtige 'sold'-række til 'promoted'", async () => {
+  const { supabase, rec } = makeSupabase({ rider: UNSOLD_GRADUATE, gradRows: [SOLD_GRAD] });
+  await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, getMarketState: ROOM_AND_MONEY, notify: spyNotify(),
+  });
+  assert.equal(rec.gradUpdates.length, 1);
+  assert.equal(rec.gradUpdates[0].status, "promoted");
+  assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g-sold"]);
+});
+
+test("#4495 resolveUnsoldGraduate: fuld seniortrup → slip (sidste led i kæden)", async () => {
+  const { supabase, rec } = makeSupabase({ rider: UNSOLD_GRADUATE, gradRows: [SOLD_GRAD] });
+  const notify = spyNotify();
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, notify,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 }),
+  });
+
+  assert.equal(res.action, "released");
+  assert.equal(rec.riderUpdates.length, 1);
+  assert.equal(rec.riderUpdates[0].team_id, null);
+  assert.equal(rec.riderUpdates[0].is_academy, false);
+  assert.equal(rec.riderUpdates[0].salary, null);
+  assert.equal(rec.gradUpdates[0].status, "released");
+  assert.equal(notify.calls[0].metadata.messageCode, "notif.academyGraduated.unsold");
+});
+
+test("#4495 resolveUnsoldGraduate: negativ saldo → slip (samme råd-kriterium som defaultResolveGraduate)", async () => {
+  const { supabase, rec } = makeSupabase({ rider: UNSOLD_GRADUATE, gradRows: [SOLD_GRAD] });
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, notify: spyNotify(),
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: -1 }),
+  });
+  assert.equal(res.action, "released");
+  assert.equal(rec.riderUpdates[0].team_id, null);
+});
+
+test("#4495 resolveUnsoldGraduate: race mellem tjek og skriv (squad_cap_violation) falder til slip", async () => {
+  const { supabase, rec } = makeSupabase({ rider: UNSOLD_GRADUATE, gradRows: [SOLD_GRAD] });
+  let calls = 0;
+  // 1. kald: resolveUnsoldGraduates eget tjek siger plads. 2. kald:
+  // completeStuckPromotions INTERNE tjek lige før skrivningen siger fuld trup —
+  // en anden handling tog pladsen imens.
+  const getMarketState = async () => {
+    calls += 1;
+    return calls === 1
+      ? { squad_limits: { max: 30 }, future_count: 10, balance: 5000 }
+      : { squad_limits: { max: 30 }, future_count: 30, balance: 5000 };
+  };
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, getMarketState, notify: spyNotify(),
+  });
+  assert.equal(res.action, "released");
+  assert.equal(rec.riderUpdates.length, 1, "promote-forsøget skrev intet — kastede FØR update");
+  assert.equal(rec.riderUpdates[0].team_id, null);
+});
+
+test("#4495 resolveUnsoldGraduate: rytter der ikke længere er akademi røres slet ikke", async () => {
+  const { supabase, rec } = makeSupabase({
+    rider: { ...UNSOLD_GRADUATE, is_academy: false }, gradRows: [SOLD_GRAD],
+  });
+  const notify = spyNotify();
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, getMarketState: ROOM_AND_MONEY, notify,
+  });
+  assert.equal(res.action, "skipped");
+  assert.equal(res.reason, "not_academy");
+  assert.equal(rec.riderUpdates.length, 0);
+  assert.equal(rec.gradUpdates.length, 0);
+  assert.equal(notify.calls.length, 0);
+});
+
+test("#4495 resolveUnsoldGraduate: rytter der imens er skiftet hold røres slet ikke", async () => {
+  const { supabase, rec } = makeSupabase({
+    rider: { ...UNSOLD_GRADUATE, team_id: "t-other" }, gradRows: [SOLD_GRAD],
+  });
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, getMarketState: ROOM_AND_MONEY, notify: spyNotify(),
+  });
+  assert.equal(res.action, "skipped");
+  assert.equal(res.reason, "not_on_team");
+  assert.equal(rec.riderUpdates.length, 0);
+});
+
+test("#4495 resolveUnsoldGraduate: ukendt sæsonnummer springer oprykningen over og slipper", async () => {
+  const { supabase, rec } = makeSupabase({ rider: UNSOLD_GRADUATE, gradRows: [SOLD_GRAD] });
+  let marketReads = 0;
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", notify: spyNotify(),
+    getMarketState: async () => { marketReads += 1; return { squad_limits: { max: 30 }, future_count: 1, balance: 5000 }; },
+  });
+  // Uden sæsonnummer kan contract_end_season ikke dateres — gæt aldrig, slip i
+  // stedet (dokumenteret udgang). Plads/råd slås derfor slet ikke op.
+  assert.equal(res.action, "released");
+  assert.equal(marketReads, 0);
+  assert.equal(rec.riderUpdates[0].team_id, null);
 });
 
 // ─── resolveNeverGraduated (#4495-reparation, 5/9) ─────────────────────────────

@@ -6,7 +6,7 @@
 // liggende hos saelgeren med is_academy=true (uden for senior-cappen) mens
 // grad-raekken allerede var stemplet 'sold' — hverken solgt, promoveret, sluppet
 // eller fri agent. Maalt i prod 31/8: 8 ryttere paa 22-23 aar paa 6 hold.
-// Rod-aarsagen er lukket i samme PR (academyGraduation.releaseUnsoldGraduate,
+// Rod-aarsagen er lukket i samme PR (academyGraduation.resolveUnsoldGraduate,
 // kaldt fra auctionFinalization's no-bid-gren) — dette script rydder op efter
 // de raekker der allerede naaede at laase sig fast.
 //
@@ -18,7 +18,11 @@
 // scriptet vaelger nu handling PR. RYTTER efter hvilken historie han bærer:
 //
 //   (a) grad-raekke 'sold' uden gennemfoert salg → auktionen blev aldrig til
-//       noget → SLIP (releaseUnsoldGraduate, uaendret siden #4495 v1).
+//       noget → PROMOVÉR hvis plads + raad, ellers SLIP (resolveUnsoldGraduate
+//       — praecis samme kaede som runtime-udgangen i auctionFinalization).
+//       Skaerpet 7/9 efter ejerens spoergsmaal: "Kan han ikke automatisk rykkes
+//       op paa seniorholdet, naar han ikke kan vaere paa ungdomsholdet mere?"
+//       Foer 7/9 slap dette led rytteren ubetinget.
 //   (b) grad-raekke 'promoted' men is_academy stadig true → promoveringen kom
 //       ud af trit med rytter-raekken → FULDFOER den (completeStuckPromotion,
 //       samme felter + cap-tjek som resolveGraduation's promote-gren).
@@ -54,7 +58,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { findStuckAcademyGraduates, STUCK_GRADUATE_GRACE_HOURS } from "../lib/stuckAcademyGraduates.js";
-import { releaseUnsoldGraduate, completeStuckPromotion, resolveNeverGraduated } from "../lib/academyGraduation.js";
+import { resolveUnsoldGraduate, completeStuckPromotion, resolveNeverGraduated } from "../lib/academyGraduation.js";
 import { getTeamMarketState } from "../lib/marketUtils.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -101,12 +105,10 @@ export async function planRepair({ supabase, now = new Date(), graceHours = STUC
     } else if (state === "unknown_history") {
       action = "manual_review";
       reason = "uventet kombination af grad-raekke-status — kraever manuelt eftersyn";
-    } else if (state === "sold_no_sale") {
-      action = "release";
-      reason = "auktionen blev aldrig til et salg";
     } else {
-      // promoted_incomplete ELLER no_graduation_row: begge kan ende i "promovér",
-      // begge har brug for plads/raad-svaret til beslutningsgrundlaget.
+      // sold_no_sale, promoted_incomplete OG no_graduation_row kan alle ende i
+      // "promovér" (ejer 7/9), saa alle tre har brug for plads/raad-svaret til
+      // beslutningsgrundlaget.
       const marketState = await getMarketState(supabase, r.teamId);
       const cap = marketState?.squad_limits?.max ?? 30;
       const future = marketState?.future_count ?? marketState?.rider_count ?? 0;
@@ -114,7 +116,19 @@ export async function planRepair({ supabase, now = new Date(), graceHours = STUC
       hasRoom = future + 1 <= cap;
       canAfford = balance >= 0;
 
-      if (state === "promoted_incomplete") {
+      if (state === "sold_no_sale") {
+        // EJER-AENDRING 7/9: den usolgte auktion slipper ikke laengere rytteren
+        // med det samme. Samme kaede som runtime-udgangen
+        // (academyGraduation.resolveUnsoldGraduate): oprykning hvis plads+raad,
+        // ellers slip. Salg proeves IKKE igen — auktionen er lige loebet af
+        // uden bud, saa en ny ville med stor sandsynlighed goere det samme.
+        action = hasRoom && canAfford ? "promote" : "release";
+        reason = hasRoom && canAfford
+          ? "auktionen blev aldrig til et salg — plads og raad, saa han rykker op (ejer 7/9)"
+          : !hasRoom
+            ? "auktionen blev aldrig til et salg, og der er ingen plads i seniortruppen — slip"
+            : "auktionen blev aldrig til et salg, og holdet har negativ saldo — slip";
+      } else if (state === "promoted_incomplete") {
         action = hasRoom ? "promote" : "manual_review";
         reason = hasRoom
           ? "fuldfoerer en promovering der blev haengende"
@@ -175,7 +189,7 @@ export async function planRepair({ supabase, now = new Date(), graceHours = STUC
  * (samme "genkoerbar, ikke stale" moenster som resolveNeverGraduated selv
  * bruger internt). 'manual_review'-kandidater roeres aldrig automatisk.
  *
- * Idempotent — alle tre byggeklodser (releaseUnsoldGraduate,
+ * Idempotent — alle tre byggeklodser (resolveUnsoldGraduate,
  * completeStuckPromotion, resolveNeverGraduated) er conditional, saa en rytter
  * der imens er kommet videre ad en anden sti springes over med en aarsag i
  * stedet for at blive flyttet.
@@ -184,7 +198,7 @@ export async function planRepair({ supabase, now = new Date(), graceHours = STUC
  */
 export async function applyRepair({
   supabase, plan, seasonNumber = plan.season_number, now = new Date(),
-  release = releaseUnsoldGraduate, promote = completeStuckPromotion, resolveNever = resolveNeverGraduated,
+  resolveUnsold = resolveUnsoldGraduate, promote = completeStuckPromotion, resolveNever = resolveNeverGraduated,
 }) {
   const results = [];
   for (const c of plan.candidates) {
@@ -195,9 +209,12 @@ export async function applyRepair({
     try {
       let outcome; let reason; let salary;
       if (c.state === "sold_no_sale") {
-        const res = await release(supabase, { teamId: c.team_id, riderId: c.rider_id, now });
-        outcome = res.released ? "released" : "skipped";
+        // Samme kaede som runtime: oprykning foerst (friskt plads+raad-tjek
+        // paa skrivetidspunktet), slip kun hvis den ikke kan lade sig goere.
+        const res = await resolveUnsold(supabase, { teamId: c.team_id, riderId: c.rider_id, seasonNumber, now });
+        outcome = res.action;
         reason = res.reason;
+        salary = res.salary;
       } else if (c.state === "promoted_incomplete") {
         const res = await promote(supabase, { teamId: c.team_id, riderId: c.rider_id, seasonNumber, now });
         outcome = res.completed ? "promoted" : "skipped";
@@ -229,10 +246,21 @@ export async function applyRepair({
 }
 
 const ACTION_LABEL = Object.freeze({
-  release: "SLIP (fri agent)",
-  promote: "PROMOVÉR (op til seniorholdet)",
-  sell: "SAELG (opret graduate-auktion)",
+  release: "SLIP (fri agent — team_id=NULL, kontraktfelter nullet)",
+  promote: "PROMOVÉR (op til seniorholdet — bliver paa holdet, kontrakt uaendret)",
+  sell: "SAELG (opret ny graduate-auktion — forbliver akademi til den afgoeres)",
   manual_review: "MANUEL GENNEMGANG (ingen automatisk handling)",
+});
+
+// Hvad betyder tilstanden i klar tekst? Dry-run'en er ejerens
+// beslutningsgrundlag, saa historien bag rytteren skal staa PAA linjen, ikke i
+// et issue han skal slaa op.
+const STATE_LABEL = Object.freeze({
+  sold_no_sale: "auktion uden bud",
+  promoted_incomplete: "halv promovering",
+  no_graduation_row: "fik aldrig et graduerings-vindue",
+  pending_overdue: "overskredet pending-raekke",
+  unknown_history: "uventet historik",
 });
 
 function printHuman(plan, { apply }) {
@@ -251,11 +279,26 @@ function printHuman(plan, { apply }) {
     for (const r of riders) {
       const room = r.has_room === null ? "" : `  ·  plads: ${r.has_room ? "ja" : "nej"}`;
       const afford = r.can_afford === null ? "" : `  ·  raad: ${r.can_afford ? "ja" : "nej"}`;
-      console.log(`     - rytter ${r.rider_id}  alder ${r.age}  ·  tilstand: ${r.state}${room}${afford}`);
-      console.log(`       → ${ACTION_LABEL[r.action] ?? r.action}  (${r.reason})`);
+      const stateLabel = STATE_LABEL[r.state] ?? r.state;
+      console.log(`     - rytter ${r.rider_id}  alder ${r.age}  ·  tilstand: ${r.state} (${stateLabel})${room}${afford}`);
+      console.log(`       → HANDLING: ${ACTION_LABEL[r.action] ?? r.action}`);
+      console.log(`         hvorfor: ${r.reason}`);
     }
   }
-  console.log(`\nUdgange: SLIP = fri agent (team_id=NULL, is_academy=false, kontraktfelter nullet). PROMOVÉR = is_academy=false, kontrakt uaendret/healet som resolveGraduation. SAELG = ny senior-graduate-auktion, rytteren forbliver is_academy=true til auktionen afgoeres.`);
+  const planned = plan.candidates.reduce((acc, c) => ({ ...acc, [c.action]: (acc[c.action] || 0) + 1 }), {});
+  console.log(
+    `\nPlanlagt: ${planned.promote || 0} promovér  ·  ${planned.sell || 0} saelg  ·  ` +
+    `${planned.release || 0} slip  ·  ${planned.manual_review || 0} manuel gennemgang.`
+  );
+  console.log(
+    `Udgange: PROMOVÉR = is_academy=false, rytteren BLIVER paa holdet, kontrakt arves uaendret (healet kun hvis den mangler). ` +
+    `SAELG = ny senior-graduate-auktion, rytteren forbliver is_academy=true til auktionen afgoeres. ` +
+    `SLIP = fri agent (team_id=NULL, is_academy=false, kontraktfelter nullet).`
+  );
+  console.log(
+    `Ved apply RE-verificeres plads og raad paa skrivetidspunktet — en "promovér" kan derfor ende som "slip" ` +
+    `hvis truppen naaede at blive fuld imens (og omvendt roeres en rytter der er kommet videre slet ikke).`
+  );
   const manualReview = plan.candidates.filter((c) => c.action === "manual_review");
   if (manualReview.length > 0) {
     console.log(

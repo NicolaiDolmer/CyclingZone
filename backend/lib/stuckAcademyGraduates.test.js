@@ -219,11 +219,13 @@ test("#4495 planRepair tæller ryttere der aldrig fik et override-vindue (ejer-b
   assert.equal(plan.never_offered, 1);
 });
 
-// ─── De tre tilstande → de tre handlinger (ejer-beslutning 5/9) ────────────────
-// (a) 'sold' uden gennemført salg → release. (b) 'promoted' men is_academy=true
-// → fuldfør promoveringen. (c) ingen grad-række → default-kæden (promovér/
-// sælg/slip). Dispatchen sker på plan.candidates[].state, ALDRIG på et separat
-// "hurtigt" query — se docblokken i repairStuckAcademyGraduates.js.
+// ─── De tre tilstande → handlingerne (ejer 5/9, skærpet 7/9) ──────────────────
+// (a) 'sold' uden gennemført salg → promovér hvis plads+råd, ellers slip
+//     (ejer-ændring 7/9 — før slap dette led rytteren ubetinget).
+// (b) 'promoted' men is_academy=true → fuldfør promoveringen.
+// (c) ingen grad-række → default-kæden (promovér/sælg/slip).
+// Dispatchen sker på plan.candidates[].state, ALDRIG på et separat "hurtigt"
+// query — se docblokken i repairStuckAcademyGraduates.js.
 
 const R_SOLD = { id: "r-sold-no-sale", team_id: "t1", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(23) };
 const R_PROMOTED = { id: "r-promoted-incomplete", team_id: "t2", is_academy: true, is_retired: false, birthdate: bornForSeason3Age(22) };
@@ -243,14 +245,38 @@ test("#4495 planRepair klassificerer de tre tilstande korrekt", async () => {
   const plan = await planRepair({ supabase: makeMock(threeStateFixture()), now: NOW, getMarketState: marketWithRoomAndFunds });
   const byId = Object.fromEntries(plan.candidates.map((c) => [c.rider_id, c]));
 
+  // Ejer-ændring 7/9: plads + råd → op på seniorholdet, ikke slip.
   assert.equal(byId["r-sold-no-sale"].state, "sold_no_sale");
-  assert.equal(byId["r-sold-no-sale"].action, "release");
+  assert.equal(byId["r-sold-no-sale"].action, "promote");
+  assert.equal(byId["r-sold-no-sale"].has_room, true);
+  assert.equal(byId["r-sold-no-sale"].can_afford, true);
 
   assert.equal(byId["r-promoted-incomplete"].state, "promoted_incomplete");
   assert.equal(byId["r-promoted-incomplete"].action, "promote");
 
   assert.equal(byId["r-never-graduated"].state, "no_graduation_row");
   assert.equal(byId["r-never-graduated"].action, "promote");
+});
+
+test("#4495 planRepair: sold_no_sale UDEN plads slipper rytteren (sidste led)", async () => {
+  const supabase = makeMock({
+    riders: [R_SOLD],
+    graduations: [{ id: "g-sold", rider_id: "r-sold-no-sale", status: "sold", deadline: "2026-08-01T00:00:00.000Z", created_at: "2026-07-25T00:00:00.000Z" }],
+  });
+  const plan = await planRepair({ supabase, now: NOW, getMarketState: marketNoRoom });
+  assert.equal(plan.candidates[0].state, "sold_no_sale");
+  assert.equal(plan.candidates[0].action, "release");
+  assert.equal(plan.candidates[0].has_room, false);
+});
+
+test("#4495 planRepair: sold_no_sale med negativ saldo slipper rytteren", async () => {
+  const supabase = makeMock({
+    riders: [R_SOLD],
+    graduations: [{ id: "g-sold", rider_id: "r-sold-no-sale", status: "sold", deadline: "2026-08-01T00:00:00.000Z", created_at: "2026-07-25T00:00:00.000Z" }],
+  });
+  const plan = await planRepair({ supabase, now: NOW, getMarketState: marketNoFunds });
+  assert.equal(plan.candidates[0].action, "release");
+  assert.equal(plan.candidates[0].can_afford, false);
 });
 
 test("#4495 planRepair: 'ingen plads' falder til salg (no_graduation_row)", async () => {
@@ -277,11 +303,11 @@ test("#4495 planRepair: promoted_incomplete UDEN plads kræver manuel gennemgang
   assert.equal(plan.candidates[0].action, "manual_review");
 });
 
-test("#4495 applyRepair dispatcher til release/promote/resolveNever efter STATE, ikke handling alene", async () => {
+test("#4495 applyRepair dispatcher til resolveUnsold/promote/resolveNever efter STATE, ikke handling alene", async () => {
   const fixture = threeStateFixture();
   const plan = await planRepair({ supabase: makeMock(fixture), now: NOW, getMarketState: marketWithRoomAndFunds });
 
-  const releaseCalls = [];
+  const unsoldCalls = [];
   const promoteCalls = [];
   const resolveNeverCalls = [];
   const outcome = await applyRepair({
@@ -289,18 +315,38 @@ test("#4495 applyRepair dispatcher til release/promote/resolveNever efter STATE,
     plan,
     seasonNumber: 3,
     now: NOW,
-    release: async (_supabase, args) => { releaseCalls.push(args); return { released: true, riderId: args.riderId }; },
+    resolveUnsold: async (_supabase, args) => { unsoldCalls.push(args); return { riderId: args.riderId, action: "released" }; },
     promote: async (_supabase, args) => { promoteCalls.push(args); return { completed: true, riderId: args.riderId, salary: 1000 }; },
     resolveNever: async (_supabase, args) => { resolveNeverCalls.push(args); return { riderId: args.riderId, action: "promoted", salary: 900 }; },
   });
 
-  assert.deepEqual(releaseCalls.map((c) => c.riderId), ["r-sold-no-sale"]);
+  assert.deepEqual(unsoldCalls.map((c) => c.riderId), ["r-sold-no-sale"]);
+  // Sæsonnummeret SKAL med: uden det kan resolveUnsoldGraduate ikke datere en
+  // evt. ny kontrakt og springer oprykningen over.
+  assert.deepEqual(unsoldCalls.map((c) => c.seasonNumber), [3]);
   assert.deepEqual(promoteCalls.map((c) => c.riderId), ["r-promoted-incomplete"]);
   assert.deepEqual(resolveNeverCalls.map((c) => c.riderId), ["r-never-graduated"]);
   assert.equal(outcome.released, 1);
   assert.equal(outcome.promoted, 2, "1 fra completeStuckPromotion + 1 fra resolveNeverGraduated's promoted-udfald");
   assert.equal(outcome.sold, 0);
   assert.equal(outcome.skipped, 0);
+});
+
+test("#4495 applyRepair: sold_no_sale kan ende som promoveret (ejer-ændring 7/9)", async () => {
+  const fixture = { riders: [R_SOLD], graduations: [{ id: "g-sold", rider_id: "r-sold-no-sale", status: "sold", deadline: "2026-08-01T00:00:00.000Z", created_at: "2026-07-25T00:00:00.000Z" }] };
+  const plan = await planRepair({ supabase: makeMock(fixture), now: NOW, getMarketState: marketWithRoomAndFunds });
+  assert.equal(plan.candidates[0].action, "promote");
+
+  const outcome = await applyRepair({
+    supabase: makeMock(fixture),
+    plan,
+    seasonNumber: 3,
+    now: NOW,
+    resolveUnsold: async (_supabase, args) => ({ riderId: args.riderId, action: "promoted", salary: 1200 }),
+  });
+  assert.equal(outcome.promoted, 1);
+  assert.equal(outcome.released, 0);
+  assert.equal(outcome.results[0].salary, 1200);
 });
 
 test("#4495 applyRepair: manual_review-kandidater rører ALDRIG en af de tre funktioner", async () => {
@@ -326,18 +372,18 @@ test("#4495 applyRepair: manual_review-kandidater rører ALDRIG en af de tre fun
   assert.equal(outcome.results[0].reason, plan.candidates[0].reason);
 });
 
-test("#4495 applyRepair frigiver PRÆCIS dry-run'ens sold_no_sale-kandidat og intet andet", async () => {
+test("#4495 applyRepair rører PRÆCIS dry-run'ens sold_no_sale-kandidat og intet andet", async () => {
   const fixture = { riders: [R_SOLD, YOUNG_21], graduations: [{ id: "g-sold", rider_id: "r-sold-no-sale", status: "sold", deadline: "2026-08-01T00:00:00.000Z", created_at: "2026-07-25T00:00:00.000Z" }] };
-  const plan = await planRepair({ supabase: makeMock(fixture), now: NOW });
+  const plan = await planRepair({ supabase: makeMock(fixture), now: NOW, getMarketState: marketNoRoom });
 
   const calls = [];
   const outcome = await applyRepair({
     supabase: makeMock(fixture),
     plan,
     now: NOW,
-    release: async (_supabase, args) => {
+    resolveUnsold: async (_supabase, args) => {
       calls.push(args);
-      return { released: true, riderId: args.riderId };
+      return { riderId: args.riderId, action: "released" };
     },
   });
 
@@ -349,14 +395,15 @@ test("#4495 applyRepair frigiver PRÆCIS dry-run'ens sold_no_sale-kandidat og in
 
 test("#4495 applyRepair tæller en rytter der imens er kommet videre som skipped (sold_no_sale)", async () => {
   const fixture = { riders: [R_SOLD], graduations: [{ id: "g-sold", rider_id: "r-sold-no-sale", status: "sold", deadline: "2026-08-01T00:00:00.000Z", created_at: "2026-07-25T00:00:00.000Z" }] };
-  const plan = await planRepair({ supabase: makeMock(fixture), now: NOW });
+  const plan = await planRepair({ supabase: makeMock(fixture), now: NOW, getMarketState: marketWithRoomAndFunds });
   const outcome = await applyRepair({
     supabase: makeMock(fixture),
     plan,
     now: NOW,
-    release: async () => ({ released: false, riderId: "r-sold-no-sale", reason: "already_resolved" }),
+    resolveUnsold: async () => ({ riderId: "r-sold-no-sale", action: "skipped", reason: "already_resolved" }),
   });
   assert.equal(outcome.released, 0);
+  assert.equal(outcome.promoted, 0);
   assert.equal(outcome.skipped, 1);
   assert.equal(outcome.results[0].reason, "already_resolved");
 });
@@ -372,7 +419,8 @@ test("#4495 planRepair: en overskredet PENDING grad-række klassificeres pending
   assert.equal(plan.candidates[0].action, "manual_review");
 });
 
-// "Ingen bud"-stien (auctionFinalization.js's no-bid-gren → releaseUnsoldGraduate)
-// er UÆNDRET af dette script — dækket separat i auctionFinalization.test.js.
-// Dette script kalder kun releaseUnsoldGraduate for sold_no_sale-tilstanden,
-// præcis som før #4495-udvidelsen 5/9.
+// "Ingen bud"-stien (auctionFinalization.js's no-bid-gren) og dette script deler
+// nu PRÆCIS samme udgang for sold_no_sale: academyGraduation.resolveUnsoldGraduate
+// (oprykning hvis plads+råd, ellers slip — ejer 7/9). Selve kæden er dækket i
+// academyGraduation.test.js, runtime-indgangen i auctionFinalization.test.js;
+// her testes kun at scriptet dispatcher til den, og med et sæsonnummer.
