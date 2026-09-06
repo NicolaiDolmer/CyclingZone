@@ -323,11 +323,32 @@ test("scoreTypeIntegrity: top-sprint-evne-rytter vinder flad etape -> sprinter_w
 
 // ── scoreBonusSecondsBounded ───────────────────────────────────────────
 
-test("scoreBonusSecondsBounded: v3 strukturelt PASS (racePassages-konstanter), v4 N/A (M9 F3-scope)", () => {
-  const result = scoreBonusSecondsBounded();
-  assert.equal(result.v3.verdict, "PASS");
+test("scoreBonusSecondsBounded: uden etaper i input er BEGGE celler N/A (auditen 5/9: cellen maalte ingenting)", () => {
+  const result = scoreBonusSecondsBounded([]);
+  assert.equal(result.v3.verdict, "N/A");
   assert.equal(result.v4.verdict, "N/A");
-  assert.match(result.v4.naReason, /F3-scope/);
+});
+
+test("scoreBonusSecondsBounded: maaler stoerste SAMLEDE bonus én rytter fik paa én etape, pr. motor", () => {
+  // v3 har intet samlet loft: samme rytter kan tage baade maal- (10) og
+  // spurt-bonus (3) = 13. v4's M9 klemmer under #2413's loft.
+  const rows = [{
+    raw: {
+      v3Passages: { passages: [
+        { kind: "sprint", results: [{ rider_id: "a", points: 20, bonus_seconds: 3 }] },
+        { kind: "finish", results: [{ rider_id: "a", points: 50, bonus_seconds: 10 }] },
+      ] },
+      v4Output: { passage_totals: [
+        { rider_id: "a", sprint_points: 70, kom_points: 0, bonus_seconds: 9 },
+        { rider_id: "b", sprint_points: 30, kom_points: 0, bonus_seconds: 6 },
+      ] },
+    },
+  }];
+  const result = scoreBonusSecondsBounded(rows);
+  assert.equal(result.v3.value, 13);
+  assert.equal(result.v3.verdict, "FAIL", "v3 har intet samlet loft — det er en MAALING, ikke en regression");
+  assert.equal(result.v4.value, 9);
+  assert.equal(result.v4.verdict, "PASS");
 });
 
 // ── scoreGapRealism ──────────────────────────────────────────────────────

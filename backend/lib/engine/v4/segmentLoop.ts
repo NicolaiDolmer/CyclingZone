@@ -78,6 +78,7 @@ export const DEFAULT_MECHANIC_HOOKS: MechanicHooks = {
   incidents: noopHook,
   cobbles: noopHook,
   teamPlay: noopHook,
+  passages: noopHook,
 };
 
 // ── Kollektiv-CP + hastighed ───────────────────────────────────────────────────
@@ -452,6 +453,19 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // etapen helt uden uheld — det er den gamle F2-adfaerd, uaendret.
     if (hooks.incidents) {
       const result = hooks.incidents(state, ctx);
+      state = result.state;
+      timeline.push(...result.events);
+    }
+
+    // M9 (#2770/#2413): passager (bjergtoppe + indlagte spurter). Kaldes paa
+    // HVERT segment — et vejpunkt kan ligge paa et hvilket som helst terraen.
+    // Placeringen er bevidst SIDST i segmentets mekanik-raekke, lige foer
+    // finalen: passagen skal opgoeres paa det gruppe-billede dagens selektion,
+    // udbruddet og uheldene rent faktisk har efterladt ved linjen. Hooket
+    // roerer aldrig state.riders/state.groups — det tilfoejer kun passager, saa
+    // det kan hverken flytte en tid eller en placering.
+    {
+      const result = (hooks.passages ?? noopHook)(state, ctx);
       state = result.state;
       timeline.push(...result.events);
     }

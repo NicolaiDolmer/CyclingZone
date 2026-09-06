@@ -240,6 +240,62 @@ export function incidentRowsFromV4Output(output) {
   return rows.sort((a, b) => String(a.rider_id).localeCompare(String(b.rider_id)));
 }
 
+// ── v4-passager → race_stage_passages/race_results (#2770/#2413) ────────────
+//
+// EJER-BESLUTNING 6/9 (LAAST): naar v4 koerer etapen er MOTORENS EGEN M9-mekanik
+// eneste kilde til spurtpoint, bjergpoint og bonussekunder — laget uden for
+// motoren (racePassages.computePassages) gates AF for netop den etape. Uden
+// gaten ville en rytter faa point og bonussekunder TO gange (auditens aabne
+// punkt 6, spec §4).
+//
+// Formen er PRAECIS computePassages' egen ({passages, perRider}), saa
+// kaldstedet i raceRunner kun skal vaelge kilde — ikke oversaette. Alt
+// nedstrøms (passageRows, pushIndiv, accumulateStageRows, klassementerne) er
+// uaendret og kan ikke se hvilken motor der regnede passagerne.
+
+/**
+ * Har etapen overhovedet rutedata nok til at have passager?
+ *
+ * SAMME data-gate som racePassages.computePassages (#2784): en legacy-raekke
+ * uden BAADE distance, stigninger og spurter er ikke en rute — den ville
+ * ellers faa et fantom-maal ved km 0 og dele Tour-point ud midt i en sæson.
+ * v4's routeAdapter syntetiserer segmenter for saadan en raekke, saa gaten SKAL
+ * ligge her: motoren kan ikke selv se forskel paa en syntese og en rigtig rute.
+ */
+export function stageHasPassageRouteData(stageProfile = {}) {
+  const rawDistance = stageProfile.distance_km;
+  const distance = rawDistance == null ? NaN : Number(rawDistance);
+  const hasDistance = Number.isFinite(distance) && distance > 0;
+  const climbs = Array.isArray(stageProfile.climbs) ? stageProfile.climbs : [];
+  const sprints = Array.isArray(stageProfile.sprints) ? stageProfile.sprints : [];
+  return hasDistance || climbs.length > 0 || sprints.length > 0;
+}
+
+/**
+ * v4's StageOutput → computePassages-kompatibelt passage-lag, eller `null` naar
+ * v4 IKKE er kilden for denne etape (endagsloeb eller rutedata-loes raekke).
+ * `null` betyder "brug det gamle lag" — og det gamle lag returnerer selv tomt
+ * i praecis de to tilfaelde, saa ingen af dem giver point ad bagvejen.
+ *
+ * @param {{passages?: Array, passage_totals?: Array}} output
+ * @param {{stageProfile?: object, isStageRace?: boolean}} ctx
+ * @returns {{passages: Array, perRider: Map<string, {kom_points: number, sprint_points: number, bonus_seconds: number}>}|null}
+ */
+export function passagesFromV4Output(output, { stageProfile = {}, isStageRace = false } = {}) {
+  if (!isStageRace) return null;
+  if (!stageHasPassageRouteData(stageProfile)) return null;
+  const passages = Array.isArray(output?.passages) ? output.passages : [];
+  const perRider = new Map();
+  for (const row of output?.passage_totals ?? []) {
+    perRider.set(row.rider_id, {
+      kom_points: row.kom_points ?? 0,
+      sprint_points: row.sprint_points ?? 0,
+      bonus_seconds: row.bonus_seconds ?? 0,
+    });
+  }
+  return { passages, perRider };
+}
+
 /**
  * raceRunner's simEntrant-form → v4's Entrant (kerne-kontrakten).
  * Bruger v4's EGEN entrantAdapter — ingen parallel evne-normalisering her.
@@ -347,10 +403,10 @@ export function createRaceEngineV4Adapter(modules) {
   return {
     version: ENGINE_VERSION_V4,
     /**
-     * @param {{entrants, stageProfile, seedString, stageNumber, teamOrderRows?}} args
-     * @returns {{ranked: Array, incidents: Array, v4Output: object}}
+     * @param {{entrants, stageProfile, seedString, stageNumber, teamOrderRows?, isStageRace?}} args
+     * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [] }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -365,6 +421,10 @@ export function createRaceEngineV4Adapter(modules) {
         // #4879: M10 (#2944) + M15 (#2582) er koblet ind i motoren, så broen
         // oversætter nu deres udfald til v3's race_incidents-form.
         incidents: incidentRowsFromV4Output(v4Output),
+        // #2770/#2413: v4's egen M9-mekanik ER passage-laget naar motoren
+        // koerer etapen. `null` => kaldstedet bruger det gamle lag (endagsloeb
+        // eller en raekke uden rutedata) — de to kan aldrig begge give point.
+        passages: passagesFromV4Output(v4Output, { stageProfile, isStageRace }),
         // #4879: v4's EGEN tidslinje, valideret mod motorens egen vagt (se
         // safeV4Timeline). Null ⇒ kaldstedet skriver ingen tidslinje for
         // etapen, i stedet for at persistere et artefakt der bryder §2.3.

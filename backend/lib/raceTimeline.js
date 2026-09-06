@@ -508,7 +508,15 @@ export function buildStageTimelineV4({
   }));
   const emit = (km, type, params) => pushEvent(events, clampKm(km, distance), type, params);
 
-  for (const wp of passages) {
+  // #2770/#2413 (ejer 6/9): siden M9 blev koblet ind i v4 udsender MOTOREN selv
+  // sine passage-events. Lægger vi dem på igen her, står hver bjergtop og hver
+  // indlagt spurt to gange i løbsfilmen. Derfor: er der allerede passage-events
+  // i motorens egen række, er de kilden, og dette lag holder sig væk.
+  // Bagudkompatibelt — en v4-kørsel UDEN M9 (eller en gammel, persisteret
+  // motor-tidslinje) har ingen sådanne events og får laget på som før.
+  const engineEmitsPassages = events.some((e) => e.type === "kom_passage" || e.type === "intermediate_sprint");
+
+  for (const wp of engineEmitsPassages ? [] : passages) {
     if (wp.kind === "kom") {
       emit(wp.km, "kom_passage", {
         name: wp.name,

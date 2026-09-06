@@ -179,12 +179,97 @@ test("#3855 (b) flag on: passage-laget (spurt-/bjergpoint + bonussekunder) fylde
   const v4Engine = await loadRaceEngineV4();
   const v4Run = buildRaceResults(baseArgs({ v4Engine }));
   const stageRows = v4Run.resultRows.filter((r) => r.result_type === "stage");
-  // Passage-laget ligger UDEN for motoren (racePassages.js, data-gated på ruten),
-  // så det virker uændret under v4 — kolonnerne er numeriske, ikke null.
+  // #2770/#2413 (ejer 6/9): passagerne kommer nu fra v4's EGEN M9-mekanik, ikke
+  // fra racePassages.js. Kontrakten mod race_results er den samme — kolonnerne
+  // er numeriske, ikke null — og det er præcis dét der gør kilden udskiftelig.
   assert.ok(stageRows.every((r) => Number.isFinite(r.sprint_points)));
   assert.ok(stageRows.every((r) => Number.isFinite(r.kom_points)));
   assert.ok(stageRows.every((r) => Number.isFinite(r.bonus_seconds)));
   assert.ok(v4Run.passageRows.length > 0, "ruten har en mellemspurt + en bjergpassage");
+});
+
+// ── #2770/#2413: v4's egen mekanik er ENESTE kilde (ejer-beslutning 6/9) ────
+
+test("#2770 flag on: passage-rækkerne kommer fra MOTOREN, ikke fra racePassages.js", () => {
+  // Spion-motoren leverer et genkendeligt passage-lag. Kom det gamle lag også
+  // til orde, ville rækkerne indeholde ruten fixturens egne vejpunkter
+  // (Sprint@90 / Col@158) i stedet for spionens ene.
+  const spyPassage = {
+    passages: [{
+      kind: "sprint", index: 0, name: "Motorens spurt", km: 42, category: null,
+      results: [{ rider_id: "r00", passage_rank: 1, points: 20, bonus_seconds: 3 }],
+    }],
+    perRider: new Map([["r00", { sprint_points: 20, kom_points: 0, bonus_seconds: 3 }]]),
+  };
+  const spyEngine = {
+    version: ENGINE_VERSION_V4,
+    simulateStage: ({ entrants }) => ({
+      ranked: entrants.map((e, i) => ({
+        rider_id: e.rider_id, team_id: e.team_id, rank: i + 1, stageGap: i * 5, components: {},
+      })),
+      incidents: [],
+      passages: spyPassage,
+      timeline: null,
+    }),
+  };
+  const run = buildRaceResults(baseArgs({ v4Engine: spyEngine }));
+  assert.deepEqual(
+    [...new Set(run.passageRows.map((r) => r.waypoint_name))],
+    ["Motorens spurt"],
+    "det gamle passage-lag kørte også — rytterne ville få point to gange",
+  );
+  const stage1 = run.resultRows.filter((r) => r.result_type === "stage" && r.stage_number === 1);
+  assert.equal(stage1.find((r) => r.rider_id === "r00").bonus_seconds, 3);
+  assert.equal(stage1.find((r) => r.rider_id === "r00").sprint_points, 20);
+  assert.equal(stage1.find((r) => r.rider_id === "r01").sprint_points, 0);
+});
+
+test("#2770 flag on: leverer motoren INGEN passager, kører det gamle lag som før", () => {
+  // Broens null (endagsløb / rutedata-løs række) må aldrig efterlade etapen
+  // helt uden point — så ville den grønne trøje forsvinde på en v4-dag.
+  const spyEngine = {
+    version: ENGINE_VERSION_V4,
+    simulateStage: ({ entrants }) => ({
+      ranked: entrants.map((e, i) => ({
+        rider_id: e.rider_id, team_id: e.team_id, rank: i + 1, stageGap: i * 5, components: {},
+      })),
+      incidents: [],
+      passages: null,
+      timeline: null,
+    }),
+  };
+  const run = buildRaceResults(baseArgs({ v4Engine: spyEngine }));
+  assert.ok(run.passageRows.length > 0, "fallback til racePassages.js skal stadig give passager");
+  assert.ok(
+    run.passageRows.some((r) => r.waypoint_kind === "finish"),
+    "det gamle lag bygger stadig sin egen målpassage",
+  );
+});
+
+test("#2413 flag on: ingen rytter får mere end det bounded loft i bonussekunder på en etape", async () => {
+  const v4Engine = await loadRaceEngineV4();
+  const run = buildRaceResults(baseArgs({ v4Engine }));
+  const byRiderStage = new Map();
+  for (const row of run.passageRows) {
+    const key = `${row.stage_number}:${row.rider_id}`;
+    byRiderStage.set(key, (byRiderStage.get(key) ?? 0) + (row.bonus_seconds ?? 0));
+  }
+  for (const [key, total] of byRiderStage) {
+    assert.ok(total <= 10 + 1e-9, `${key} fik ${total}s bonus på én etape — over #2413's loft`);
+  }
+});
+
+test("#2770 flag on: løbsfilmen får hver passage PRÆCIS én gang (ingen dublet-events)", async () => {
+  const v4Engine = await loadRaceEngineV4();
+  const run = buildRaceResults(baseArgs({ v4Engine, timeline: true }));
+  for (const timeline of run.timelines) {
+    const passageEvents = timeline.events.filter(
+      (e) => e.type === "kom_passage" || e.type === "intermediate_sprint",
+    );
+    assert.ok(passageEvents.length > 0, "v4's tidslinje skal bære passage-events");
+    const keys = passageEvents.map((e) => `${e.type}@${e.km}:${e.params.name}`);
+    assert.equal(new Set(keys).size, keys.length, `dublerede passage-events: ${keys.join(", ")}`);
+  }
 });
 
 test("#4879 flag on: v4's EGEN tidslinje persisteres under timeline_version 2", async () => {

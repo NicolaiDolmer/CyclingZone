@@ -491,3 +491,101 @@ test("M8-wiring: en flad rute uden cobbles-segmenter er upaavirket (ingen M8-eve
   const out = simulateStageV4(flat);
   assert.equal(out.timeline.events.filter((e) => e.params?.cause === "cobbles_sector").length, 0);
 });
+
+// ── M9 er KOBLET IND, ikke bare bygget (#2770/#2413, ejer-beslutning 6/9) ────
+//
+// Samme "bygget vs. koblet ind"-vagt som M8 ovenfor: bonusSeconds.ts havde
+// groenne tests og NUL kaldssteder. Testene maaler den rigtige
+// LIVE_MECHANIC_HOOKS-sti — at simulateStageV4 selv producerer passager,
+// point og bonussekunder — plus den invariant der goer koblingen sikker:
+// en passage flytter ALDRIG en tid eller en placering.
+
+function passageStageInput(seed: string, overrides: Partial<RouteV2> = {}): StageInput {
+  const startlist: Entrant[] = Array.from({ length: 24 }, (_, i) => ({
+    rider_id: `p${String(i).padStart(2, "0")}`,
+    abilities: (() => {
+      const out = {} as Record<AbilityKey, number>;
+      for (const key of ABILITY_KEYS) out[key] = 30 + (i % 12) * 5;
+      return out;
+    })(),
+    role: "free_role" as const,
+    effort: "normal" as const,
+    condition: 1,
+  }));
+  const route: RouteV2 = {
+    distance_km: 180,
+    profile_type: "rolling",
+    finale_type: "reduced_sprint",
+    segments: [
+      { kind: "flat", from_km: 0, to_km: 60 },
+      { kind: "climb", from_km: 60, to_km: 70, category: "2", avg_gradient: 6, top_elevation_m: 900 },
+      { kind: "flat", from_km: 70, to_km: 180 },
+    ] as Segment[],
+    weather: { kind: "sun", wind_exposure: 0.2 },
+    waypoints: [
+      { kind: "kom", index: 0, name: "Toppen", km: 70, category: "2" },
+      { kind: "sprint", index: 0, name: "Spurten", km: 120 },
+      { kind: "finish", index: 1, name: "Maal", km: 180 },
+    ],
+    ...overrides,
+  };
+  return { route, startlist, orders: [], seed, tuning: RACE_V4_TUNING };
+}
+
+test("M9 er koblet ind: simulateStageV4 producerer bjerg-, spurt- og maalpassager", () => {
+  const out = simulateStageV4(passageStageInput("m9-wiring-1"));
+  const kinds = (out.passages ?? []).map((p) => p.kind);
+  assert.deepEqual(kinds, ["kom", "sprint", "finish"], "motoren kalder ikke M9 for alle tre vejpunkt-arter");
+  const eventTypes = out.timeline.events.map((e) => e.type);
+  assert.ok(eventTypes.includes("kom_passage"), "ingen kom_passage-event paa tidslinjen");
+  assert.ok(eventTypes.includes("intermediate_sprint"), "ingen intermediate_sprint-event paa tidslinjen");
+});
+
+test("M9-wiring: bonussekunder og point naar ud i passage_totals", () => {
+  const out = simulateStageV4(passageStageInput("m9-wiring-2"));
+  const totals = out.passage_totals ?? [];
+  assert.ok(totals.length > 0, "ingen passage_totals — flip-laget ville skrive tomme kolonner");
+  assert.ok(totals.some((t) => t.bonus_seconds > 0), "ingen rytter fik bonussekunder");
+  assert.ok(totals.some((t) => t.kom_points > 0), "ingen rytter fik bjergpoint");
+  assert.ok(totals.some((t) => t.sprint_points > 0), "ingen rytter fik spurtpoint");
+  // #2413: den samlede GC-effekt er bounded pr. rytter pr. etape.
+  for (const t of totals) {
+    assert.ok(t.bonus_seconds <= 10 + 1e-9, `${t.rider_id} fik ${t.bonus_seconds}s bonus — over loftet`);
+  }
+});
+
+test("M9-wiring: passagerne flytter ALDRIG en tid, en gruppe eller en placering", () => {
+  // Samme etape med og uden vejpunkter: resultatlisten skal vaere byte-identisk.
+  const withWaypoints = passageStageInput("m9-wiring-3");
+  const withoutWaypoints: StageInput = {
+    ...withWaypoints,
+    route: { ...withWaypoints.route, waypoints: [] },
+  };
+  const a = simulateStageV4(withWaypoints);
+  const b = simulateStageV4(withoutWaypoints);
+  assert.deepEqual(a.results, b.results, "en passage aendrede resultatlisten");
+  assert.deepEqual(a.loads, b.loads, "en passage aendrede belastningerne");
+  assert.deepEqual(a.groupSnapshots, b.groupSnapshots, "en passage aendrede gruppe-snapshottene");
+  assert.equal((b.passages ?? []).length, 1, "uden vejpunkter er kun maalpassagen tilbage");
+});
+
+test("M9-wiring: enkeltstart giver point, men ALDRIG bonussekunder", () => {
+  const out = simulateStageV4(passageStageInput("m9-wiring-4", {
+    profile_type: "itt",
+    finale_type: "solo_tt",
+    waypoints: [{ kind: "finish", index: 0, name: "Maal", km: 180 }],
+  }));
+  const totals = out.passage_totals ?? [];
+  assert.ok(totals.some((t) => t.sprint_points > 0), "en enkeltstart giver stadig point til klassementet");
+  assert.ok(totals.every((t) => t.bonus_seconds === 0), "en enkeltstart maa aldrig give bonussekunder");
+});
+
+test("M9-wiring: passage-eventsene bryder ikke fog-gaten eller km-monotonien (#2410 §2.3)", () => {
+  const input = passageStageInput("m9-wiring-5");
+  const out = simulateStageV4(input);
+  const violations = validateTimelineEvents(out.timeline.events, {
+    distanceKm: input.route.distance_km,
+    knownRiderIds: new Set(input.startlist.map((e) => e.rider_id)),
+  });
+  assert.deepEqual(violations, []);
+});
