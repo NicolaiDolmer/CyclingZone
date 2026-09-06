@@ -325,6 +325,27 @@ export function resolveIncident(
 }
 
 /**
+ * TRAPPEN for et uheld hvis ART allerede er givet af årsagen (#4934). M3's
+ * nedkørsels-styrt ER et styrt — der er ingen mekanisk defekt at trække lod om,
+ * så `kind`-lodtrækningen springes over og resten af trappen (alvorstrin,
+ * tidstab, skadedage, 3 km-reglen) er ORDRET den samme som M10's egen.
+ *
+ * Det er dét der gør trappen til ÉN model i stedet for to: descent.ts leverer
+ * kun "her skete et uheld for rytter X på km Y", og konsekvensen bor her.
+ *
+ * `kind: 1` ligger pr. konstruktion over `tuning.mechanicalShare` (som er en
+ * andel, altså strengt under 1), så `resolveIncident` tager styrt-grenen —
+ * ingen kopi af grenvalget, ingen risiko for at de to kan drive fra hinanden.
+ */
+export function resolveCrashIncident(
+  rolls: Omit<IncidentRolls, "kind">,
+  context: { protectedByRule: boolean; helperNearby: boolean },
+  tuning: IncidentsTuning,
+): ResolvedIncident {
+  return resolveIncident({ ...rolls, kind: 1 }, context, tuning);
+}
+
+/**
  * M10-mekanikken: incidents med km-maerke + #2944's trappe, kaldt paa ETHVERT
  * segment (til forskel fra M2/M3, som kun kaldes paa hhv. climb/descent).
  *

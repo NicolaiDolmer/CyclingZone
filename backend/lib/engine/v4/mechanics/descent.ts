@@ -24,13 +24,33 @@
 // groups.ts) — der findes ingen individuel tidsforskel INDEN FOR en gruppe at
 // invertere, saa garantien holder ogsaa naar angribernes indbyrdes evne varierer.
 //
-// RISIKO (beslutning 7): styrt-risikoen er REN INFORMATION i F2 — den taeller
-// kun rider.incidents op og emitterer et incident-event; den paavirker IKKE
-// gruppe-tilhoersforhold eller tid. Havde en ulykke fjernet en angribers
-// vundne tid, kunne held/uheld invertere monotonien (en uheldsramt BEDRE
-// descender kunne saa ende bag en heldig SVAGERE descender) — det er netop
-// det haarde krav forbyder. Den fulde konsekvens (abandon/tidsstraf) hoerer
-// til M10 (3 km-reglen, F3-scope) og RiderLoad/status-feltet, ikke M3.
+// RISIKO (beslutning 7 + #4934): styrt-risikoen var REN INFORMATION i F2 — den
+// taalte kun rider.incidents op og emitterede et event. Den er nu koblet ind i
+// M10's uheldstrappe (mechanics/incidents.ts, #2944/#4882): descent leverer KUN
+// "her skete et uheld for rytter X paa km Y med aarsag descent_attack", og
+// incidents.ts's egen `resolveCrashIncident` afgoer alvorstrin, tidstab,
+// skadedage og 3 km-reglen. Der findes ÉN uheldsmodel, ét felt-loft pr. etape
+// (`maxIncidentsForField` over `state.stage_incidents`) og ÉN bogfoering af
+// `riders[id].incidents` — descent hverken kopierer trappen eller taeller dobbelt.
+//
+// KONSEKVENSEN (ejer-beslutning 6/9, RACE_ENGINE_RULES §9 punkt 4): en angriber
+// der styrter MISTER SIN GEVINST. Han splittes ud af den nyoprettede
+// angrebsgruppe med `+gainSeconds` — praecis det delta angrebet gav ham — saa
+// han lander tilbage paa kildegruppens gap, og DEREFTER laegges trappens
+// tidstab (eller `abandonedGapSeconds` ved trin 3) oveni. Et 3-km-beskyttet
+// styrt roerer hverken gruppe eller tid (reglen beskytter TIDEN, jf. incidents.ts).
+//
+// MONOTONIEN HOLDER STADIG, og det er samme argument som M10's egen
+// monotoni-bemaerkning: et uheld er ikke en testet evne-sammenligning. Det
+// haarde krav (mor-spec §3.2) forbyder at en DAARLIGERE rytter tager tid paa en
+// bedre i den evne segmentet tester — og det gaelder angrebs-mekanikken, som er
+// uroert. For selve uheldet holder den skarpere form: VED SAMME LODTRAEKNING
+// faar en bedre nedkoerer aldrig et vaerre udfald. `incidentProbability` er
+// ikke-stigende i descending (gulv-formen, #4905), saa `roll < p(bedre)`
+// medfoerer `roll < p(daarligere)`, og trappens konsekvens er BEVIDST ikke
+// evne-skaleret (incidents.ts's unprotectedTimeLossSecondsRange) — samme roll
+// giver samme sekunder uanset evne. En bedre descender kan derfor kun styrte
+// SJAELDNERE, aldrig haardere.
 
 import type {
   DescentHook,
@@ -41,10 +61,13 @@ import type {
   RiderState,
   SegmentHookContext,
   SegmentHookResult,
+  StageIncident,
   TimelineEvent,
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { DESCENT_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "../tuning.ts";
+import { incidentEvent } from "../timeline.ts";
+import { DESCENT_EXTRA_TUNING, INCIDENTS_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "../tuning.ts";
+import { hasHelperNearby, maxIncidentsForField, resolveCrashIncident, threeKmRuleApplies } from "./incidents.ts";
 import { weatherAdjustedRiskBase } from "./weather.ts";
 
 function round2(n: number): number {
@@ -319,6 +342,17 @@ export const descentHook: DescentHook = (
   let riders: Record<string, RiderState> = state.riders;
   let seq = 0;
 
+  // Etapens uheldsloft (#4934) deles med M10 — det er ÉN model, altsaa ét loft.
+  // `state.stage_incidents` er etapens hidtidige bogfoering (M10 skriver den
+  // samme liste), og segmentLoop kalder descent-hooket FOER incidents-hooket,
+  // saa et nedkoersels-styrt bruger af det samme budget i den raekkefoelge det
+  // sker paa vejen. Budgettet beregnes ÉN gang pr. hook-kald: loftet er pr.
+  // ETAPE, ikke pr. gruppe.
+  const loggedIncidents: StageIncident[] = state.stage_incidents ?? [];
+  const newIncidents: StageIncident[] = [];
+  let incidentBudget = maxIncidentsForField(Object.keys(state.riders).length, INCIDENTS_EXTRA_TUNING)
+    - loggedIncidents.length;
+
   const gapBeforeById = new Map(state.groups.map((g) => [g.id, g.gap_seconds]));
   let changed = groups.some((g) => gapBeforeById.get(g.id) !== g.gap_seconds);
 
@@ -397,6 +431,8 @@ export const descentHook: DescentHook = (
       incidentRiskAbilityDampeningFraction: extra.incidentRiskAbilityDampeningFraction,
     };
     for (const attacker of attackers) {
+      // Loftet er haardt: er etapens budget brugt, rulles der ikke engang.
+      if (incidentBudget <= 0) break;
       const rng = ctx.rngFor("descent_incident", attacker.riderId);
       const p = incidentProbability(attacker.descending, weatherAdjustedDescentTuning);
       const roll = rng();
@@ -404,17 +440,102 @@ export const descentHook: DescentHook = (
       const kmFrac = rng();
       const incidentKm = round2(segment.from_km + kmFrac * (segment.to_km - segment.from_km));
       const riderState = riders[attacker.riderId];
-      if (riderState) {
-        riders = { ...riders, [attacker.riderId]: { ...riderState, incidents: riderState.incidents + 1 } };
+      if (!riderState) continue;
+
+      // ── Trappen (#4934): descent afgoer INTET om konsekvensen ────────────
+      // Egne stream-navne (ikke M10's "incident_severity"/...): rammer baade
+      // M3 og M10 den samme rytter i det samme segment, ville delte streams
+      // give de to uheld IDENTISKE alvorstrin. Per-rytter-hash-egenskaben er
+      // uaendret — udfaldet afhaenger kun af (seed, segment, rider_id), saa én
+      // ekstra tilmelding flytter ikke andres udfald (invariant 1).
+      const protectedByRule = threeKmRuleApplies(
+        incidentKm,
+        ctx.route.distance_km,
+        ctx.route.profile_type,
+        INCIDENTS_EXTRA_TUNING,
+      );
+      // "Hjaelper taet paa" maales i den gruppe han FAKTISK er i nu: den
+      // nyoprettede angrebsgruppe SOM DEN SER UD I DETTE OEJEBLIK (en tidligere
+      // angriber i samme loop kan allerede vaere splittet ud af sit eget
+      // styrt). M10 maaler i rytterens egen gruppe paa samme maade. Feltet bag
+      // ham kan ikke raekke ham et hjul.
+      const attackGroupNow = groups.find((g) => g.id === newGroupId);
+      const helperNearby = hasHelperNearby(
+        attackGroupNow?.rider_ids ?? attackerIds,
+        ctx.entrants,
+        riders,
+        attacker.riderId,
+      );
+      const resolved = resolveCrashIncident(
+        {
+          severity: ctx.rngFor("descent_incident_severity", attacker.riderId)(),
+          magnitude: ctx.rngFor("descent_incident_time_loss", attacker.riderId)(),
+          injury: ctx.rngFor("descent_incident_injury", attacker.riderId)(),
+        },
+        { protectedByRule, helperNearby },
+        INCIDENTS_EXTRA_TUNING,
+      );
+      incidentBudget -= 1;
+
+      riders = {
+        ...riders,
+        [attacker.riderId]: {
+          ...riderState,
+          incidents: riderState.incidents + 1,
+          status: resolved.outcome === "abandoned" ? "abandoned" : riderState.status,
+        },
+      };
+
+      if (resolved.outcome !== "protected_three_km_rule") {
+        // GEVINSTEN BORTFALDER: `+gainSeconds` bringer ham praecis tilbage paa
+        // kildegruppens gap (angrebsgruppen ligger `-gainSeconds` foran den),
+        // og trappens tidstab laegges oveni. Ved trin 3 er "tidstabet"
+        // abandonedGapSeconds — samme repraesentation af "ingen maaltid" som M10.
+        const laterGapDelta = resolved.outcome === "abandoned"
+          ? INCIDENTS_EXTRA_TUNING.abandonedGapSeconds
+          : (resolved.timeLossSeconds ?? 0);
+        groups = splitGroup(groups, newGroupId, [attacker.riderId], {
+          id: makeGroupId("solo", ctx.segmentIndex * 1000 + seq),
+          kind: "solo",
+          gapSecondsDelta: gainSeconds + laterGapDelta,
+        });
+        seq += 1;
+        changed = true;
       }
-      events.push({
+
+      newIncidents.push({
+        rider_id: attacker.riderId,
         km: incidentKm,
-        type: "incident",
-        params: { rider_id: attacker.riderId, cause: "descent_attack" },
+        kind: resolved.kind,
+        severity: resolved.severity,
+        outcome: resolved.outcome,
+        time_loss_seconds: resolved.timeLossSeconds,
+        injury_days: resolved.injuryDays,
+        helper_assist: resolved.helperAssist,
       });
+
+      // Samme event-form som M10's (incidentEvent) + `cause`-feltet M3 altid
+      // har baaret, saa harness/tests kan skelne kanalen uden at der findes to
+      // event-taksonomier.
+      const base = incidentEvent(incidentKm, {
+        riderId: attacker.riderId,
+        kind: resolved.kind,
+        outcome: resolved.outcome,
+        timeLossSeconds: resolved.timeLossSeconds,
+        severity: resolved.severity,
+        injuryDays: resolved.injuryDays,
+        helperAssist: resolved.helperAssist,
+      });
+      events.push({ ...base, params: { ...base.params, cause: "descent_attack" } });
     }
   }
 
+  if (newIncidents.length > 0) {
+    return {
+      state: { ...state, groups, riders, stage_incidents: [...loggedIncidents, ...newIncidents] },
+      events,
+    };
+  }
   if (!changed) return { state, events };
   return { state: { ...state, groups, riders }, events };
 };
