@@ -54,7 +54,7 @@ Refs #
 
 - [ ] **Patch notes** (`frontend/src/data/patchNotes.js`) opdateret med ny version — påkrævet ved enhver brugerrettet ændring (ellers note hvorfor ikke i PR-body)
 - [ ] **`docs/NOW.md`** opdateret: tilføj entry i "Senest leveret", flyt issue ud af "Næste session" hvis listet, hold filen ≤ 30 linjer (arkivér til `docs/archive/` ved behov)
-- [ ] **`docs/FEATURE_STATUS.md`** opdateret hvis kontrakter, runtime-state eller features ændret
+- [ ] **`docs/FEATURE_REGISTRY.yml`** opdateret hvis et flag er flippet, en feature er lukket/retired eller en ny kernefunktion er født (`docs/FEATURE_STATUS.md` genereres: `node scripts/generate-feature-status.mjs`)
 - [ ] **`.claude/learnings/<dato>-<slug>.md`** oprettet hvis denne PR fixer en bug (root cause + fix + læring)
 - [ ] **Issue-comment** med shipped-status + verifikation, label skiftet til `claude:done` (brugeren lukker selv issuet)
 - [ ] **Branch slettet** efter merge (`gh pr merge --delete-branch` håndterer det)

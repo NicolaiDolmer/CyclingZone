@@ -78,7 +78,13 @@ $contextFiles = @(
   # CLAUDE.md, ikke "Start"), så den tæller ikke med i cold-start-aggregatet (ExcludeFromColdStart).
   # Egen gate mod CLAUDE.md close-out punkt 3: "budget ≤1.500 tok" (#3753 - gaten manglede
   # denne helt før nu).
-  @{ Name = "MASTERPLAN.md"; Path = "docs/MASTERPLAN.md"; Warn = 1300; Fail = 1500; ExcludeFromColdStart = $true }
+  @{ Name = "MASTERPLAN.md"; Path = "docs/MASTERPLAN.md"; Warn = 1300; Fail = 1500; ExcludeFromColdStart = $true },
+  # FEATURE_STATUS.md er GENERERET fra docs/FEATURE_REGISTRY.yml (#4921) og auto-loader ikke
+  # (on-demand-doc), saa den taeller ikke med i cold-start (ExcludeFromColdStart). Egen gate,
+  # fordi hele pointen med at erstatte 33 KB prosa er at status-filen skal kunne LAESES af en
+  # agent uden at aede budgettet: #4921's acceptkriterium er <3.000 tok. Vokser registret over
+  # loftet, er svaret at forkorte noter - ikke at haeve graensen.
+  @{ Name = "FEATURE_STATUS.md"; Path = "docs/FEATURE_STATUS.md"; Warn = 2600; Fail = 3000; ExcludeFromColdStart = $true }
 )
 
 $claudeFileTotal = 0
@@ -218,7 +224,8 @@ $claudeMdAnchors = @(
   @{ Anchor = "PAGE_TEMPLATES\.md"; Rule = "bindende page templates (#2849)" },
   @{ Anchor = "PatchNotesPage\.jsx"; Rule = "patch notes ved brugerrettet aendring" },
   @{ Anchor = "check-agent-token-hygiene\.ps1"; Rule = "token-hygiejne ved close-out" },
-  @{ Anchor = "schema-snapshot\.json"; Rule = "slaa kolonnenavne op foer ad-hoc SQL (#3769)" }
+  @{ Anchor = "schema-snapshot\.json"; Rule = "slaa kolonnenavne op foer ad-hoc SQL (#3769)" },
+  @{ Anchor = "FEATURE_REGISTRY\.yml"; Rule = "feature-registret opdateres i samme PR (hard rule 30 (e), #4921)" }
 )
 if (Test-Path "CLAUDE.md") {
   $claudeMdRaw = (Get-Content "CLAUDE.md" -Raw)
