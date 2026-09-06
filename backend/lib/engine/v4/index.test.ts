@@ -415,3 +415,79 @@ test("#2944: skadedage og udgaaelse baeres videre i StageResult + StageOutput.in
   }
   assert.ok(checked > 0, "fandt aldrig et loeb med skade-givende uheld — testen maaler ingenting");
 });
+
+// ── M8 er KOBLET IND, ikke bare bygget (#3855, ejer-beslutning 6/9) ──────────
+//
+// "Bygget" og "koblet ind" er to kolonner (RACE_ENGINE_RULES §9): cobbles.ts
+// havde 100 % groenne tests og NUL kaldssteder indtil denne PR. Testen maaler
+// derfor det eneste der beviser koblingen — at simulateStageV4 (den rigtige
+// LIVE_MECHANIC_HOOKS-sti, ikke et injiceret test-hook) producerer M8's egne
+// events paa en rute med en reel-vaegt brostens-sektor.
+
+function cobblesStageInput(seed: string): StageInput {
+  const cobblesAbilities = (cobblestone: number): Record<AbilityKey, number> => {
+    const out = {} as Record<AbilityKey, number>;
+    for (const key of ABILITY_KEYS) out[key] = 50;
+    out.cobblestone = cobblestone;
+    return out;
+  };
+  const startlist: Entrant[] = Array.from({ length: 24 }, (_, i) => ({
+    rider_id: `c${String(i).padStart(2, "0")}`,
+    // Bred spredning i brostensevnen: selektionen har noget at arbejde med.
+    abilities: cobblesAbilities(i * 4),
+    role: "free_role" as const,
+    effort: "normal" as const,
+    condition: 1,
+  }));
+  const route: RouteV2 = {
+    distance_km: 160,
+    profile_type: "cobbles",
+    finale_type: "reduced_sprint",
+    segments: [
+      { kind: "flat", from_km: 0, to_km: 70 },
+      { kind: "cobbles", from_km: 70, to_km: 73, sector_name: "Sektor Alfa", stars: 5 },
+      { kind: "flat", from_km: 73, to_km: 152 },
+      { kind: "cobbles", from_km: 152, to_km: 155, sector_name: "Sektor Omega", stars: 5 },
+      { kind: "flat", from_km: 155, to_km: 160 },
+    ] as Segment[],
+    weather: { kind: "overcast", wind_exposure: 0.3 },
+    waypoints: [{ kind: "finish", index: 0, name: "Finish", km: 160 }],
+  };
+  return { route, startlist, orders: [], seed, tuning: RACE_V4_TUNING };
+}
+
+test("M8 er koblet ind: simulateStageV4 emitterer cobbles_sector-events paa en brostens-rute", () => {
+  const out = simulateStageV4(cobblesStageInput("m8-wiring-1"));
+  const m8Events = out.timeline.events.filter((e) => e.params?.cause === "cobbles_sector");
+  assert.ok(m8Events.length > 0, "ingen cobbles_sector-events — M8 kaldes ikke af motoren");
+  assert.ok(
+    m8Events.some((e) => e.type === "peloton_splits"),
+    "M8 udloeser aldrig et split — hooket kaldes, men sektoren har ingen effekt",
+  );
+});
+
+test("M8-wiring bryder ikke feltstoerrelsen (invariant 6) og er deterministisk", () => {
+  const input = cobblesStageInput("m8-wiring-2");
+  const a = simulateStageV4(input);
+  const b = simulateStageV4(input);
+  assert.deepEqual(a, b, "samme input gav ikke byte-identisk output");
+  assert.equal(a.results.length, input.startlist.length);
+  assert.deepEqual(
+    a.results.map((r) => r.rank),
+    Array.from({ length: input.startlist.length }, (_, i) => i + 1),
+  );
+});
+
+test("M8-wiring: en flad rute uden cobbles-segmenter er upaavirket (ingen M8-events)", () => {
+  const input = cobblesStageInput("m8-wiring-3");
+  const flat: StageInput = {
+    ...input,
+    route: {
+      ...input.route,
+      profile_type: "flat",
+      segments: [{ kind: "flat", from_km: 0, to_km: 160 }] as Segment[],
+    },
+  };
+  const out = simulateStageV4(flat);
+  assert.equal(out.timeline.events.filter((e) => e.params?.cause === "cobbles_sector").length, 0);
+});

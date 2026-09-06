@@ -73,6 +73,7 @@ export const DEFAULT_MECHANIC_HOOKS: MechanicHooks = {
   finale: noopHook,
   breakaway: noopHook,
   incidents: noopHook,
+  cobbles: noopHook,
 };
 
 // ── Kollektiv-CP + hastighed ───────────────────────────────────────────────────
@@ -306,6 +307,15 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       timeline.push(...result.events);
     } else if (segment.kind === "descent") {
       const result = hooks.descent(state, ctx);
+      state = result.state;
+      timeline.push(...result.events);
+    } else if (segment.kind === "cobbles") {
+      // M8 (#3855-wiring): brosten-/grus-sektor. Samme plads i loopet som M2/M3
+      // — dagens terraen-selektion sker FOER udbruds-hooket og finalen, saa et
+      // brostens-split er med i det billede M5/M4 arbejder videre paa. Grus-
+      // sektorer ER cobbles-segmenter (RACE_ENGINE_RULES §2b), saa denne gren
+      // daekker begge underlag.
+      const result = (hooks.cobbles ?? noopHook)(state, ctx);
       state = result.state;
       timeline.push(...result.events);
     }

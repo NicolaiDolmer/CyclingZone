@@ -19,30 +19,35 @@ import { climbSelectionHook } from "./mechanics/climbSelection.ts";
 import { descentHook } from "./mechanics/descent.ts";
 import { breakawayHook } from "./mechanics/breakaway.ts";
 import { applyThreeKmRuleToResults, incidentHook } from "./mechanics/incidents.ts";
+import { cobblesHook } from "./mechanics/cobbles.ts";
 import { finaleHook } from "./finale.ts";
 import { sortTimeline } from "./timeline.ts";
 // M15 (#2582, ejer-beslutning 6/9): tidsgraensen. Se wiring-blokken i
 // simulateStageV4 nedenfor for hvorfor den koeres netop dér.
 import { applyTimeLimit } from "./mechanics/timeLimit.ts";
 
-// Fase C-wiring (#4030) + F3-wiring (#4615, #2944): de rigtige M2/M3/M4/M5/M10-
+// Fase C-wiring (#4030) + F3-wiring (#4615, #2944, #3855): de rigtige
+// M2/M3/M4/M5/M8/M10-
 // implementeringer. M6 (leadout) kaldes inde fra finaleHook, M14 (AI-taktik)
 // producerer ordrer OPSTROEMS og naar kernen som `StageInput.orders` — der er
 // derfor ikke et hook for hver mekanik, kun for dem der raekker ind i
 // segment-loopet. Harness/tests kan stadig injicere egne hooks via
 // runSegmentLoop direkte.
 //
-// FASEAFGRAENSNING (opdateret 6/9, #2944). Audit'en 5/9 talte otte faerdige
-// mekanikker uden ét eneste kaldssted. M10 (incidents) er nu KOBLET IND og
-// staar altsaa ikke laengere paa den liste. Stadig bygget-men-ikke-kaldt:
-// M7 (distance-slid), M8 (brosten/grus), M9 (bonussekunder), M11 (vejr),
-// M12 (effort), holdtidskoerslen og ordre-adapteren.
+// FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855). Audit'en 5/9 talte otte
+// faerdige mekanikker uden ét eneste kaldssted. M10 (incidents) og M8
+// (brosten/grus) er nu KOBLET IND og staar altsaa ikke laengere paa den liste.
+// Stadig bygget-men-ikke-kaldt: M7 (distance-slid), M9 (bonussekunder),
+// M11 (vejr), M12 (effort), holdtidskoerslen og ordre-adapteren.
 const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: climbSelectionHook,
   descent: descentHook,
   finale: finaleHook,
   breakaway: breakawayHook,
   incidents: incidentHook,
+  // M8 (#3855, ejer-beslutning 6/9): brosten-/grus-sektorer. Kaldes paa
+  // cobbles-segmenter af segmentLoop.ts.
+  cobbles: cobblesHook,
 };
 
 function round2(n: number): number {

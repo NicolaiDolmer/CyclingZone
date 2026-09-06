@@ -367,3 +367,41 @@ test("per-rytter-hash: en ekstra, uafhaengig gruppe paavirker ikke andre grupper
   const splitB = resultB.state.groups.find((g) => g.rider_ids.includes("weak") && !g.rider_ids.includes("strong"))!;
   assert.equal(splitA.gap_seconds, splitB.gap_seconds, "det ekstra feltet maa ikke flytte split-gruppens gap");
 });
+
+// ── #4886: rng-stroemmen skal vaere SEGMENT-noeglet ──────────────────────────
+//
+// `ctx.rngFor(mekanik, riderId)` er noeglet paa (seed, mekanik, rider_id) alene.
+// M8 kaldes pr. SEKTOR (3-6 paa brosten, 5-8 paa grus), saa uden segment-index
+// i noeglen ville hver rytter faa den SAMME lodtraekning paa hver eneste sektor:
+// en rytter der styrter paa dagens foerste sektor ville styrte paa dem alle, og
+// selektionen ville udpege praecis de samme ryttere hver gang. Testen fejler paa
+// den gamle form.
+
+test("#4886: to identiske sektorer paa FORSKELLIGE segment-index giver forskellige lodtraekninger", () => {
+  // 40 ryttere med jaevn evne-spredning: nok stoej-traekninger til at to
+  // uafhaengige stroemme naesten sikkert giver forskellige udfald.
+  const entrants = Array.from({ length: 40 }, (_, i) => entrant(`r${String(i).padStart(2, "0")}`, { cobblestone: i * 2 }));
+  const state = makeState(entrants);
+  const segment = cobblesSegment({ stars: 5 });
+
+  const first = cobblesHook(state, makeCtx(entrants, segment, { seed: "seg-key", segmentIndex: 1 }));
+  const second = cobblesHook(state, makeCtx(entrants, segment, { seed: "seg-key", segmentIndex: 7 }));
+
+  const idsOf = (r: typeof first) => [...splitRiderIdsFrom(r.state)].sort().join(",");
+  assert.notEqual(
+    idsOf(first),
+    idsOf(second),
+    "samme udvalgte ryttere paa to forskellige sektorer — rng-stroemmen er ikke segment-noeglet (#4886)",
+  );
+});
+
+test("#4886: SAMME segment-index er stadig fuldt deterministisk", () => {
+  const entrants = Array.from({ length: 40 }, (_, i) => entrant(`r${String(i).padStart(2, "0")}`, { cobblestone: i * 2 }));
+  const state = makeState(entrants);
+  const segment = cobblesSegment({ stars: 5 });
+
+  const a = cobblesHook(state, makeCtx(entrants, segment, { seed: "seg-key", segmentIndex: 3 }));
+  const b = cobblesHook(state, makeCtx(entrants, segment, { seed: "seg-key", segmentIndex: 3 }));
+  assert.deepEqual(a.events, b.events);
+  assert.deepEqual(a.state.groups, b.state.groups);
+});
