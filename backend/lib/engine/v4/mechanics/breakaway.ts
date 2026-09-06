@@ -210,6 +210,15 @@ function attemptFormation(
     const entrant = ctx.entrants[riderId];
     const riderState = state.riders[riderId];
     if (!entrant || !riderState || riderState.status !== "racing") continue;
+    // M12-wiring (#4632, ejer-beslutning 6/9): en rytter i grupettoen forsoeger
+    // ALDRIG at komme med i udbruddet. Det er ikke en sandsynligheds-daempning
+    // men en udelukkelse af KANDIDAT-listen: "grupetto" betyder ordret at
+    // rytteren har opgivet dagen og koerer med for at komme hjem inden for
+    // tidsgraensen (M15), og et udbrud er det stik modsatte valg. Udelukkelsen
+    // sker FOER rullet, saa den hverken bruger eller forbruger rng-stroemmen
+    // for rytteren — determinismen for de OEVRIGE ryttere er dermed uaendret
+    // (hver rytters rul er seedet paa hans eget rider_id, ikke paa et index).
+    if (entrant.effort === "grupetto") continue;
     const tryBreak = tryBreakRiderIds.has(riderId);
     const score = computeJoinScore(entrant.abilities, tryBreak);
     const p = joinProbability(score);

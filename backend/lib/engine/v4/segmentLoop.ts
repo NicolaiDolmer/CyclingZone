@@ -49,6 +49,7 @@ import { deriveCp, deriveRechargeRate, tickPhysiologyOverSegment } from "./physi
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
 import { GROUP_DRAFT_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
+import { applyEffortToDemand } from "./mechanics/effortCost.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -259,7 +260,24 @@ function tickGroupRiders(
     const positionFactor = tempo.frontRiderIds.has(riderId)
       ? tuning.work.frontWorkFactor[segment.kind]
       : tuning.work.draftFactor[segment.kind];
-    const demand = groupDemand * positionFactor;
+    // M12-wiring (#4632, ejer-beslutning 6/9, model C): rytterens EGET
+    // indsatsvalg ganges paa KRAFTKRAVET — ikke paa CP'en, hvor M7's
+    // distance-slid, M16's team_cp_factor og M11's vejr sidder. Skellet er
+    // ikke kosmetisk: CP er hvad rytteren KAN baere i dag (evne, slid, vejr),
+    // kravet er hvad han VAELGER at lave. `all_out` haever kravet over
+    // gruppens tempo og braender dermed W' hurtigere (stoerre kollaps-risiko
+    // sent paa etapen, hvor climbSelection/finale laeser reserven);
+    // `grupetto` saenker det markant, saa rytteren overlever dagen i stedet
+    // for at koere om noget. Havde valget i stedet ganget paa CP, ville
+    // `save`/`grupetto` GRATIS have haevet dagens baeredygtige troeskel —
+    // altsaa gjort rytteren staerkere af at spare — og `all_out` have gjort
+    // ham svagere; begge dele er den modsatte fysiologi.
+    //
+    // Invariant 3 (styrke straffes aldrig) holder per konstruktion:
+    // multiplikatoren er en ren funktion af rytterens EGET effort-trin, ikke
+    // af hans evner, saa to ryttere paa SAMME trin beholder deres indbyrdes
+    // orden praecis som foer wiringen. Determinismen er uberoert — intet rng.
+    const demand = applyEffortToDemand(groupDemand * positionFactor, entrant.effort);
     const rechargeRate = deriveRechargeRate(entrant.abilities, tuning.physiology);
     // #4030 fixture-fund: sub-tick i stedet for ét Euler-skridt over hele
     // segmentet (tuning.ts's PHYSIOLOGY_SUBTICK_TUNING, physiology.ts's

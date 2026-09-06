@@ -489,6 +489,14 @@ export const WEATHER_EXTRA_TUNING = deepFreeze(weatherExtra);
 // ankrede paa v3's kalibrerede tal — raceRoles.RACE_V3_TUNING.
 // FATIGUE_MULTIPLIER_GRUPETTO/_ALL_OUT (0.5 / 1.5). Begge er STARTGAET,
 // KALIBRERES sammen med resten af M12-wiringen; v4 er ikke live.
+//
+// WIRET 6/9 (#4632, model C): tallene er nu LIVE i segmentLoop.ts's
+// kraftkrav-beregning — men de er stadig startgaet. Maalt paa tvillinger
+// (identiske ryttere, samme loeb, 20 seeds) ved wiringen: all_out koster
+// ~+2.000 work_norm paa en flad etape og ~+4.000 med 12.000 ekstra sekunder
+// over CP paa en bjergetape, grupetto sparer omtrent det samme den anden vej.
+// Det er en STOR arm — den skal kalibreres sammen med bjerg-/hale-
+// kalibreringen (#4707), ikke laases her.
 const effortCostExtra = {
   demandMultiplierGrupetto: 0.5, // <save: koerer med i grupettoen, gaar ikke efter noget (raceRoles FATIGUE_MULTIPLIER_GRUPETTO-anker, STARTGAET)
   demandMultiplierProtect: 1.2, // >1: beskytter/traekker for holdet koster ekstra effekt-krav (raceRoles FATIGUE_MULTIPLIER_PROTECT-anker)

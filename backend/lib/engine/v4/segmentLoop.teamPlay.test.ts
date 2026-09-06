@@ -203,14 +203,27 @@ test("ALL_OUT: en hjaelper der giver alt for sig selv betaler ingen holdpris", (
   for (let i = 0; i < 5; i++) base.push({ id: `h${i}`, level: 55, role: "helper", team: "T1" });
   for (let i = 0; i < 6; i++) base.push({ id: `f${i}`, level: 55, role: "free_role", team: `SOLO-f${i}` });
 
-  const withEffort = (effort: "normal" | "all_out"): number => {
+  // Maalt paa team_cp_factor og IKKE paa placeringen (aendret 6/9 ved M12-
+  // wiringen, #4632). Placeringen var et fair maal saa laenge holdprisen var
+  // den eneste kanal effort-valget havde; nu ganger M12 ogsaa trinnet paa
+  // rytterens EGET kraftkrav, saa en all_out-rytter braender mere W' og kan
+  // sagtens ende daarligere placeret — af sin egen indsats, ikke af holdet.
+  // Udsagnet her er uaendret ("all_out betaler ingen holdpris"); det er nu
+  // bare maalt paa den stoerrelse der faktisk BAERER holdprisen, saa testen
+  // ikke igen faelder en anden mekaniks wiring.
+  const teamFactorOf = (effort: "normal" | "all_out"): number => {
     const startlist = entrantsOf(base).map((e) => (e.rider_id === "h0" ? { ...e, effort } : e));
-    return rankOf(simulateStageV4(stage(startlist, routeOf("mountain"), "allout-1")), "h0");
+    const { state } = runSegmentLoop(stage(startlist, routeOf("mountain"), "allout-1"), {
+      ...DEFAULT_MECHANIC_HOOKS,
+      teamPlay: teamPlayHook,
+    });
+    return state.riders["h0"].team_cp_factor ?? 1;
   };
   assert.ok(
-    withEffort("all_out") <= withEffort("normal"),
-    "all_out fjerner holdarbejdets pris (ejer §9 punkt 3) — den maa aldrig gøre rytteren daarligere via DENNE kanal",
+    teamFactorOf("all_out") >= teamFactorOf("normal"),
+    `all_out fjerner holdarbejdets pris (ejer §9 punkt 3): team_cp_factor ${teamFactorOf("all_out")} skal vaere >= ${teamFactorOf("normal")}`,
   );
+  assert.ok(teamFactorOf("normal") < 1, "en normal hjaelper skal faktisk betale en holdpris — ellers maaler testen ingenting");
 });
 
 // ── Motorens haarde garantier holder MED holdspil ─────────────────────────────

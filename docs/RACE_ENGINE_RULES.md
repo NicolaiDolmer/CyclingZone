@@ -94,7 +94,7 @@ Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 | M9 | Bonussekunder + spurt-/bjergpassager — bounded så bjerg dominerer GC | F3 ✅ wiret 6/9 — se §2g |
 | M10 | Incidents + 3 km-reglen — graduerede styrt, mekaniske uden DNF | F3 ✅ wiret 6/9 |
 | M11 | Vejr-lag pr. etape, seeded | F3 ✅ wiret 6/9 — se §2f |
-| M12 | Effort pr. rytter (`protect`/`normal`/`save`) | F3 |
+| M12 | Effort pr. rytter (femtrins: `grupetto`/`save`/`normal`/`protect`/`all_out`) | F3 ✅ wiret 6/9 — trinnet ganges på kraftkravet, ikke på CP; `grupetto` er ude af udbruddet og tæller 0 W'-reserve i finalen |
 | M14 | AI-holds ordrer gennem samme type | F3 ✅ wiret 3/9 (harness) |
 | M15 | Tidsgrænsen (UCI-reglen) + OTL som udfaldsklasse | F3 ✅ wiret 6/9 — se §2d |
 | M16 | Holdspil — kaptajnen beskyttes, hjælperen betaler | F3 ✅ wiret 6/9 — se §2e |
