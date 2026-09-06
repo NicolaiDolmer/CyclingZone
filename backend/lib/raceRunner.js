@@ -253,7 +253,7 @@ export async function resolveRaceEngineV4({
     ]);
     return { v4Engine, teamOrderRows };
   } catch (err) {
-    console.error(`  ⚠️  race ${race.id}: løbsmotor v4 kunne ikke indlæses (${err?.message}) — kører v3 for denne afvikling`);
+    console.error(`  ⚠️  race ${race.id}: loebsmotor v4 kunne ikke indlaeses (${err?.message}) - koerer v3 for denne afvikling`);
     captureException(err, {
       tags: { flow: "race-run", stage: "race-engine-v4-load" },
       fingerprint: ["race-engine-v4-load-failed"],

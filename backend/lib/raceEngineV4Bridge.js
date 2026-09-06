@@ -178,10 +178,10 @@ export function createRaceEngineV4Adapter(modules) {
      */
     simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [] }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
-        throw new Error("raceEngineV4Bridge: entrants kræves");
+        throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
       if (typeof seedString !== "string" || !seedString) {
-        throw new Error("raceEngineV4Bridge: seedString (streng) kræves");
+        throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({ modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows });
       const v4Output = modules.core.simulateStageV4(input);
@@ -244,12 +244,15 @@ export async function loadTeamOrderRows({ supabase, raceId }) {
       .select("team_id, stage_number, breakaway_stance, riders")
       .eq("race_id", raceId);
     if (error) {
-      console.error(`  ⚠️  race ${raceId}: race_team_orders kunne ikke læses (${error.message}) — v4 kører med neutrale ordrer`);
+      console.error(`  ⚠️  race ${raceId}: race_team_orders kunne ikke laeses (${error.message}) - v4 koerer med neutrale ordrer`);
       return [];
     }
     return (data ?? []).map((row) => ({ ...row, team_id: String(row.team_id) }));
   } catch (err) {
-    console.error(`  ⚠️  race ${raceId}: race_team_orders-opslag fejlede (${err?.message}) — v4 kører med neutrale ordrer`);
+    // best-effort: motoren KRAEVER aldrig ordrer (T4 = neutral default), saa et
+    // fejlet opslag maa aldrig vaelte en etape. Fejlen logges med race-id, og
+    // etapen koerer videre uden holdtaktik i stedet for slet ikke at koere.
+    console.error(`  ⚠️  race ${raceId}: race_team_orders-opslag fejlede (${err?.message}) - v4 koerer med neutrale ordrer`);
     return [];
   }
 }

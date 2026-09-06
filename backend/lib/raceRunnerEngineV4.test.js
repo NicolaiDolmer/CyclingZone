@@ -117,7 +117,7 @@ test("#3855 kill-switch-robusthed: kan v4 ikke indlæses, falder afviklingen til
   } finally {
     console.error = originalError;
   }
-  assert.ok(errors.some((e) => e.includes("v4 kunne ikke indlæses")), "fejlen skal larme i loggen");
+  assert.ok(errors.some((e) => e.includes("v4 kunne ikke indlaeses")), "fejlen skal larme i loggen");
 });
 
 test("#3855 (a) flag off: motoren kaldes ALDRIG, og v3-stien er uændret (engine_version 2)", () => {
