@@ -30,7 +30,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
-import { terrainBucket } from "../../lib/stageTerrain.js";
+import { profileLabelKey } from "../../lib/stageProfileConfig.js";
 import { formatLocalTime } from "../../lib/intl.js";
 import { LockIcon, CheckIcon, Button, Section, SectionHeader, SkeletonLines } from "../ui/index.js";
 import {
@@ -375,7 +375,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     ? t("racePage.tactics.colOrdersRaceDay")
     : t("racePage.tactics.colOrders", { number: activeStage });
   const roleScope = isOneDay ? t("intention.thisRace") : t("intention.allRace");
-  const bucket = terrainBucket(profileByStage[activeStage]?.profile_type);
+  // Samme terraen-ord som hero'ens TERRAIN-blok. Bucket-navnet ("Flat" for en
+  // rolling etape) staar side om side med hero'ens finere label paa den samme
+  // skaerm nu hvor begge er synlige, og to ord for een etape laeses som en fejl.
+  const stageProfileType = profileByStage[activeStage]?.profile_type;
   const toolbarNote = stageLocked
     ? (isOneDay
       ? t("racePage.tactics.lockedRaceDay")
@@ -383,7 +386,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         ? t("racePage.tactics.lockedStage", { number: activeStage, time: lockTime })
         : t("racePage.tactics.lockedStageNoTime", { number: activeStage }))
     : profileByStage[activeStage]
-      ? `${t(`strategy.buckets.${bucket}`)}. ${t("intention.notSetNote")}`
+      ? `${t(`detail.${profileLabelKey(stageProfileType)}`)}. ${t("intention.notSetNote")}`
       : t("intention.notSetNote");
   const footerLine = isOneDay
     ? t("intention.footerRaceDay", counts)
