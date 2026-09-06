@@ -876,6 +876,8 @@
         "finale_attack": "{rider} angriber i finalen.",
         "sprint_decided": "Det bliver tæt mellem {rider} og forfølgerne.",
         "sprint_decided_photo": "Fotofinish: det er tæt for {rider}.",
+        "outside_time_limit": "{count, plural, one {# rytter kommer} other {# ryttere kommer}} i mål uden for tidsgrænsen og er ude af løbet.",
+        "grupetto_saved": "Grupettoen kommer samlet i mål: {count, plural, one {# rytter} other {# ryttere}} reddes.",
         "finish": "{rider} tager etapesejren.",
         "finish_sprint_win": "{rider} vinder massespurten.",
         "finish_close_win": "{rider} vinder en tæt finish.",

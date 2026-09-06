@@ -876,6 +876,8 @@
         "finale_attack": "{rider} attacks in the finale.",
         "sprint_decided": "It comes down to the wire between {rider} and the chasers.",
         "sprint_decided_photo": "Photo finish: it comes down to the wire for {rider}.",
+        "outside_time_limit": "{count, plural, one {# rider finishes} other {# riders finish}} outside the time limit and {count, plural, one {leaves} other {leave}} the race.",
+        "grupetto_saved": "The gruppetto comes home together: {count, plural, one {# rider is} other {# riders are}} saved.",
         "finish": "{rider} takes the stage win.",
         "finish_sprint_win": "{rider} wins the bunch sprint.",
         "finish_close_win": "{rider} wins in a close finish.",

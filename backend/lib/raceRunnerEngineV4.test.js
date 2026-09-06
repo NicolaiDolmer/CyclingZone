@@ -20,6 +20,7 @@ import {
 import { ABILITY_KEYS, ENGINE_VERSION_V3 } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 import { ENGINE_VERSION_V4, loadRaceEngineV4, __resetRaceEngineV4Cache } from "./raceEngineV4Bridge.js";
+import { TIMELINE_VERSION, TIMELINE_VERSION_V4 } from "./raceTimeline.js";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -167,8 +168,11 @@ test("#3855 (b) flag on: race_results-rækkerne har PRÆCIS samme kolonner og ty
   // Motorstemplet + de dokumenterede v4-udeladelser.
   assert.ok(v4Run.runs.every((r) => r.engine_version === ENGINE_VERSION_V4));
   assert.ok(v4Run.runs.every((r) => !("riderScores" in r)), "v4 producerer ingen score-komponenter");
-  assert.deepEqual(v4Run.incidents, [], "v4 har ingen uheldsmekanik endnu");
-  assert.deepEqual(v4Run.moments, [], "neutral fortælling under v4");
+  // #4879: uheld og fortælling er IKKE længere tomme — se de dedikerede
+  // paritets-tests nedenfor. Her låses kun at de ikke lækker score-komponenter
+  // ind i run-rækkerne.
+  assert.ok(Array.isArray(v4Run.incidents));
+  assert.ok(v4Run.moments.length > 0, "#4879: v4 skal give en neutral men IKKE tom fortælling");
 });
 
 test("#3855 (b) flag on: passage-laget (spurt-/bjergpoint + bonussekunder) fyldes stadig ud", async () => {
@@ -183,16 +187,16 @@ test("#3855 (b) flag on: passage-laget (spurt-/bjergpoint + bonussekunder) fylde
   assert.ok(v4Run.passageRows.length > 0, "ruten har en mellemspurt + en bjergpassage");
 });
 
-test("#3855 (b) flag on: tidslinjen persisteres som under v3 (samme version, degraderet indhold)", async () => {
+test("#4879 flag on: v4's EGEN tidslinje persisteres under timeline_version 2", async () => {
   const v4Engine = await loadRaceEngineV4();
   const v3Run = buildRaceResults(baseArgs({ v4Engine: null, timeline: true }));
   const v4Run = buildRaceResults(baseArgs({ v4Engine, timeline: true }));
-  assert.equal(v4Run.timelines.length, v3Run.timelines.length);
-  assert.deepEqual(
-    v4Run.timelines.map((t) => t.timeline_version),
-    v3Run.timelines.map((t) => t.timeline_version),
-    "samme artefakt-version — aftagerne må ikke skulle kende motoren",
-  );
+  assert.equal(v4Run.timelines.length, v3Run.timelines.length, "samme antal etaper får en tidslinje");
+  assert.ok(v3Run.timelines.every((t) => t.timeline_version === TIMELINE_VERSION));
+  // Ny version: v3's tidslinje er SYNTETISK (rng-afledte km-mærker), v4's er
+  // motorens egne hændelser. Samme tabel, samme {km,type,params}-form — men
+  // aftageren skal kunne se hvilken slags artefakt hun læser.
+  assert.ok(v4Run.timelines.every((t) => t.timeline_version === TIMELINE_VERSION_V4));
   assert.ok(v4Run.timelines.every((t) => Array.isArray(t.events) && t.events.length > 0));
 });
 

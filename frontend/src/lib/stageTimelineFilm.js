@@ -173,6 +173,10 @@ export function collectRiderIds(events) {
     const p = event?.params || {};
     for (const id of p.rider_ids || []) add(id);
     add(p.rider_id);
+    // #4879: v4's sprint_decided navngiver vinderen her. Uden nøglen ville
+    // navnet ikke være i batch-opslaget, og describeEvent ville skippe linjen
+    // som "kunne ikke navngives" — netop den tavse fejl #4026 lukkede.
+    add(p.winner_rider_id);
     add(p.new_leader_id);
     add(p.previous_leader_id);
     for (const t of p.top || []) add(t?.rider_id);
@@ -249,9 +253,28 @@ export function describeEvent(event, { riderNameById } = {}) {
       return { key: "finale_attack", params: { rider } };
     }
     case "sprint_decided": {
-      const rider = riderName((p.rider_ids || [])[0], riderNameById);
+      // #4879: v4's finale (backend/lib/engine/v4/finale.ts) navngiver vinderen
+      // direkte i `winner_rider_id`; v3's tidslinje bærer en `rider_ids`-liste
+      // hvor vinderen står først. Uden begge former blev HVER eneste v4-etapes
+      // spurt-linje tavst sprunget over af feedet.
+      const rider = riderName(p.winner_rider_id ?? (p.rider_ids || [])[0], riderNameById);
       if (!rider) return null;
       return { key: p.photo_finish ? "sprint_decided_photo" : "sprint_decided", params: { rider } };
+    }
+    // #2582 (tidsgrænsen, v4's M15). Fog of war: hverken procenten eller
+    // sekundgrænsen må vises — kun at nogen kom uden for tidsgrænsen, og at
+    // grupettoen blev reddet. Derfor et TÆLLETAL og ingen navneliste: et
+    // grupetto-event kan bære 40 ryttere, og en linje med 40 navne er ikke en
+    // broadcast-linje.
+    case "outside_time_limit": {
+      const count = Number(p.rider_count ?? (p.rider_ids || []).length) || 0;
+      if (count <= 0) return null;
+      return { key: "outside_time_limit", params: { count } };
+    }
+    case "grupetto_saved": {
+      const count = Number(p.rider_count ?? (p.rider_ids || []).length) || 0;
+      if (count <= 0) return null;
+      return { key: "grupetto_saved", params: { count } };
     }
     case "finish": {
       const rider = riderName(p.top?.[0]?.rider_id, riderNameById);
