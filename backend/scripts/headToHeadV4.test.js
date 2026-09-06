@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runHeadToHead, summarizeEventParams } from "./headToHeadV4.js";
+import { formatPassageParity, runHeadToHead, summarizeEventParams, summarizePassageParity } from "./headToHeadV4.js";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_DIR = path.join(SCRIPT_DIR, "fixtures", "headToHeadV4-example");
@@ -184,4 +184,38 @@ test("runHeadToHead: fieldSize=null (udeladt) bruger hele populationen paa hver 
   for (const row of rows) {
     assert.equal(row.raw.v4Output.results.length, population.riders.length);
   }
+});
+
+// ── Passage-paritet (#2770/#2413) ──────────────────────────────────────────
+
+test("summarizePassageParity: pointudbuddet er STRUKTURELT ens — skalaerne er ejer-laaste", () => {
+  const population = readJson(POPULATION_PATH);
+  const stagesFile = readJson(STAGES_PATH);
+  const rows = runHeadToHead({ population, stages: stagesFile.stages, seedInput: "parity-seed" });
+  const acc = summarizePassageParity([rows]);
+
+  assert.equal(acc.stages, rows.length);
+  assert.ok(acc.stagesWithPassages > 0, "fixtur-ruterne skal have passager at sammenligne");
+  // Denne er den egentlige vagt: driver en skala fra hinanden mellem
+  // racePassages.js og BONUS_SECONDS_EXTRA_TUNING, aendrer flippet spillernes
+  // groenne/prikkede troeje-regnskab — og dette tal er det eneste sted det ses.
+  assert.equal(acc.stagesWithPointMismatch, 0, "v3 og v4 delte ikke det samme pointudbud");
+  assert.equal(acc.v3SprintPoints, acc.v4SprintPoints);
+  assert.equal(acc.v3KomPoints, acc.v4KomPoints);
+});
+
+test("summarizePassageParity: v4's bonussekunder respekterer #2413's per-rytter-loft, v3's behoever ikke", () => {
+  const population = readJson(POPULATION_PATH);
+  const stagesFile = readJson(STAGES_PATH);
+  const rows = runHeadToHead({ population, stages: stagesFile.stages, seedInput: "parity-seed" });
+  const acc = summarizePassageParity([rows]);
+  assert.ok(acc.maxBonusPerRiderStage <= 10, `v4 gav ${acc.maxBonusPerRiderStage}s til én rytter paa én etape`);
+  assert.ok(acc.v4Bonus <= acc.v3Bonus, "loftet kan kun fjerne bonussekunder, aldrig tilfoeje");
+});
+
+test("formatPassageParity: rapporten er laesbar og siger hvad der er krav og hvad der er model-forskel", () => {
+  const text = formatPassageParity(summarizePassageParity([[]]));
+  assert.match(text, /Passage-paritet/);
+  assert.match(text, /tolerance: 0/);
+  assert.match(text, /MODEL-forskel/);
 });

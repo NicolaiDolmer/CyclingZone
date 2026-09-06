@@ -311,6 +311,43 @@ export type SegmentGroupSnapshot = {
   groups: GroupSnapshotEntry[];
 };
 
+// ── #2770/#2413 M9: passager (bjerg, indlagt spurt, maal) ────────────────────
+// Ejer-beslutning 6/9 (LAAST): naar v4 koerer etapen er MOTORENS EGEN mekanik
+// den eneste kilde til spurt-/bjergpoint og bonussekunder. Laget uden for
+// motoren (backend/lib/racePassages.js) gates AF pr. motor, saa ingen rytter
+// kan faa point to gange.
+//
+// Formen er BEVIDST identisk med racePassages.computePassages' output
+// (kind/index/name/km/category + results[] med passage_rank/points/
+// bonus_seconds): broen kan dermed levere v4's passager direkte til den
+// UAENDREDE race_stage_passages/race_results-pipeline uden et
+// oversaettelseslag der kan drive fra hinanden.
+export type PassageKind = "kom" | "sprint" | "finish";
+
+export type PassageResult = {
+  rider_id: string;
+  passage_rank: number; // 1-baseret placering ved DENNE passage
+  points: number; // spurt-/bjergpoint (offentlig spilinformation, jf. §4)
+  bonus_seconds: number; // GC-bonus; 0 naar passagen ikke giver bonus
+};
+
+export type StagePassage = {
+  kind: PassageKind;
+  index: number; // waypointets index inden for sin egen art (racePassages-konvention)
+  name: string;
+  km: number;
+  category: ClimbCategory | null; // kun kom-passager
+  results: PassageResult[];
+};
+
+/** Etapens samlede udbytte pr. rytter — spejler racePassages' `perRider`-map. */
+export type RiderPassageTotals = {
+  rider_id: string;
+  sprint_points: number;
+  kom_points: number;
+  bonus_seconds: number;
+};
+
 export type StageOutput = {
   timeline: { timeline_version: 2; events: TimelineEvent[] };
   results: StageResult[];
@@ -321,6 +358,13 @@ export type StageOutput = {
   // af den ENE noegle flip-mappingen skal bruge pr. rytter; DENNE liste baerer
   // art/alvor/udfald, dvs. praecis de kolonner v3's `race_incidents` har.
   incidents?: StageIncident[];
+  // #2770/#2413 (ADDITIVT, valgfrit): etapens passager i km-orden, og det
+  // samlede udbytte pr. rytter (sorteret paa rider_id). `passage_totals` er en
+  // ren aggregering af `passages` — den findes fordi flip-laget skriver
+  // PR. RYTTER (race_results.sprint_points/kom_points/bonus_seconds) mens
+  // race_stage_passages skriver pr. passage.
+  passages?: StagePassage[];
+  passage_totals?: RiderPassageTotals[];
 };
 
 // ── EngineTuning (§4-5, default+konstanter i tuning.ts) ───────────────────────
@@ -487,6 +531,16 @@ export type EngineState = {
   // informations-incidents), saa et loft afledt af den ville blive spist af
   // en anden mekanik.
   stage_incidents?: StageIncident[];
+  // #2770/#2413 (M9): etapens passager, akkumuleret af `mechanics/
+  // bonusSeconds.ts` henover segment-loopet. INTERN simulations-tilstand —
+  // index.ts tilfoejer maal-passagen til slut, klemmer bonussekunderne under
+  // per-rytter-loftet og kopierer listen til `StageOutput.passages`.
+  //
+  // HVORFOR STATE og ikke bare events: loftet (#2413, "GC-effekten er bounded")
+  // gaelder rytterens SAMLEDE bonus over hele etapen — maal + alle indlagte
+  // spurter. Hooket kaldes pr. segment og kan ikke se hverken sine egne
+  // tidligere kald eller maalstregen uden en baerer.
+  stage_passages?: StagePassage[];
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────
@@ -550,6 +604,12 @@ export type CobblesHook = (state: EngineState, ctx: SegmentHookContext) => Segme
 // paa praecis samme grundlag som M15 (tidsgraensen), ikke en PR-tilfoejelse.
 export type TeamPlayHook = (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult;
 
+// M9: passager (bjergtoppe + indlagte spurter). Kaldes paa HVERT segment (ikke
+// kind-gated): et sprint- eller kom-vejpunkt kan ligge paa et hvilket som helst
+// terraen. Maal-passagen hoerer ikke til her — den kraever den endelige
+// placeringsraekkefolge og bygges derfor af index.ts efter finalen.
+export type PassagesHook = (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult;
+
 export type MechanicHooks = {
   climbSelection: ClimbSelectionHook;
   descent: DescentHook;
@@ -571,4 +631,7 @@ export type MechanicHooks = {
   // mangler; index.ts's LIVE_MECHANIC_HOOKS saetter det, og index.test.ts
   // laaser at den gør det.
   teamPlay?: TeamPlayHook;
+  // VALGFRI (#2770/#2413 M9-wiring): samme mønster som `cobbles` ovenfor —
+  // segmentLoop.ts falder tilbage til sin egen no-op naar feltet mangler.
+  passages?: PassagesHook;
 };
