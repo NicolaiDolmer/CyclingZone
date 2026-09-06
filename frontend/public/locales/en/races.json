@@ -550,6 +550,7 @@
   "intention": {
     "title": "Race day intention",
     "help": "The role runs all race. The intention is what you want from him on the stage you have open.",
+    "helpRaceDay": "The role runs all race. The intention is what you want from him on race day.",
     "colRider": "Rider",
     "colRole": "Role",
     "colIntention": "Intention · stage {number}",
@@ -563,7 +564,8 @@
     "raceDayLower": "race day",
     "roleFree": "Free role",
     "notSetNote": "Not set means he rides his role's default.",
-    "roleDefault": "Role default · {step}",
+    "roleDefault": "Role default · normal",
+    "listAnd": " and ",
     "roleDefaultTag": "Role default",
     "nothingSet": "Nothing set. He rides his role.",
     "setIntention": "Set intention",
@@ -579,8 +581,8 @@
     "saving": "Saving…",
     "saved": "Intentions saved.",
     "unsaved": "You have unsaved changes",
-    "footer": "Stage {stage}: {set} riders set, {onDefault} on their role default",
-    "footerRaceDay": "Race day: {set} riders set, {onDefault} on their role default",
+    "footer": "Stage {stage}: {set, plural, one {# rider} other {# riders}} set, {onDefault} on their role default",
+    "footerRaceDay": "Race day: {set, plural, one {# rider} other {# riders}} set, {onDefault} on their role default",
     "footerUntouchedOne": "stage {stages} untouched",
     "footerUntouchedMany": "stages {stages} untouched",
     "step": {

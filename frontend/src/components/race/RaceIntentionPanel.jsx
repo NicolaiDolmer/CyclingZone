@@ -70,7 +70,7 @@ function IntentionChip({ t, effort, isDefault }) {
   if (isDefault) {
     return (
       <span className="inline-flex items-center rounded-full border border-dashed border-cz-border px-2.5 py-0.5 text-2xs font-medium text-cz-3 whitespace-nowrap">
-        {t("intention.roleDefault", { step: t(`intention.step.${DEFAULT_EFFORT}`) })}
+        {t("intention.roleDefault")}
       </span>
     );
   }
@@ -304,10 +304,15 @@ export default function RaceIntentionPanel({ raceId, profileByStage = {} }) {
   const footerLine = isOneDay
     ? t("intention.footerRaceDay", counts)
     : t("intention.footer", { stage: activeStage, ...counts });
+  // "etaperne 4 og 5" — ikke "4, 5". Sidste led bindes med sprogets eget ord,
+  // saa linjen laeses som en saetning og ikke som en liste.
+  const stageList = untouched.length <= 1
+    ? untouched.join("")
+    : [untouched.slice(0, -1).join(", "), untouched[untouched.length - 1]].join(t("intention.listAnd"));
   const untouchedLine = untouched.length === 0
     ? null
     : t(untouched.length === 1 ? "intention.footerUntouchedOne" : "intention.footerUntouchedMany", {
-        stages: untouched.join(", "),
+        stages: stageList,
       });
 
   const cellFor = (rider) => ({
@@ -319,7 +324,7 @@ export default function RaceIntentionPanel({ raceId, profileByStage = {} }) {
     <section data-testid="race-intention-panel" className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className="px-4 py-3 border-b border-cz-border">
         <h2 className="font-semibold text-cz-1 text-sm">{t("intention.title")}</h2>
-        <p className="text-cz-3 text-xs mt-0.5">{t("intention.help")}</p>
+        <p className="text-cz-3 text-xs mt-0.5">{t(isOneDay ? "intention.helpRaceDay" : "intention.help")}</p>
       </div>
 
       {/* Etape-vælger: fladens egen toolbar inde i hairline-rammen. Kørte etaper
@@ -377,8 +382,8 @@ export default function RaceIntentionPanel({ raceId, profileByStage = {} }) {
           <tbody>
             {riders.map((rider) => {
               const { effort, open } = cellFor(rider);
-              return (
-                <tr key={rider.rider_id} className="border-b border-cz-border last:border-0">
+              const row = (
+                <tr key={rider.rider_id} className={`border-b border-cz-border ${open ? "" : "last:border-0"}`}>
                   <td className="px-4 py-2.5 align-top text-cz-1 font-medium">{rider.name || "—"}</td>
                   <td className="px-4 py-2.5 align-top">
                     <div className="text-cz-1 text-xs">{t(roleLabelKey(baseRoleForRider(rider)))}</div>
@@ -393,22 +398,29 @@ export default function RaceIntentionPanel({ raceId, profileByStage = {} }) {
                       disabled={saving}
                       onToggle={() => setOpenRiderId(open ? null : rider.rider_id)}
                     />
-                    {open && (
-                      <div className="mt-2.5">
-                        <IntentionPicker
-                          t={t}
-                          rider={rider}
-                          scopeLabel={scopeLabel}
-                          steps={steps}
-                          value={effort}
-                          disabled={saving}
-                          onPick={(step) => pickIntention(rider.rider_id, step)}
-                        />
-                      </div>
-                    )}
                   </td>
                 </tr>
               );
+              // Vaelgeren aabner som sin EGEN raekke i fuld bredde (mockup'ens
+              // pickbox), ikke inde i den smalle intentions-kolonne: saetningen
+              // pr. trin er det vigtigste paa fladen og skal kunne staa paa én
+              // linje ved siden af sit trin-navn.
+              const pickerRow = open ? (
+                <tr key={`${rider.rider_id}-picker`} className="border-b border-cz-border last:border-0 bg-cz-subtle">
+                  <td colSpan={3} className="px-4 pb-3.5 pt-0">
+                    <IntentionPicker
+                      t={t}
+                      rider={rider}
+                      scopeLabel={scopeLabel}
+                      steps={steps}
+                      value={effort}
+                      disabled={saving}
+                      onPick={(step) => pickIntention(rider.rider_id, step)}
+                    />
+                  </td>
+                </tr>
+              ) : null;
+              return [row, pickerRow];
             })}
           </tbody>
         </table>
