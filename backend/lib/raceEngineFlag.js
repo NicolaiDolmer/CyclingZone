@@ -66,10 +66,16 @@ export async function isRaceStageTimelineEnabled(supabase, opts = {}) {
 // flippes, og sletter/sætter den til "off" for at rulle tilbage.
 //
 // SELVSTÆNDIG kill-switch, IKKE bundet til race_engine_v3_scoring: v4 erstatter
-// hele score-motoren, så v3-flaget er irrelevant mens v4 kører (raceRunner
-// vælger motor, ikke score-komponenter). Slukkes flaget midt i et etapeløb,
-// kører NÆSTE etape v3 uden fejl — klassementet akkumuleres fra race_results og
-// er uafhængigt af hvilken motor der skrev den enkelte etape.
+// hele score-motoren, så v3's score-komponenter er irrelevante mens v4 kører.
+// Slukkes flaget midt i et etapeløb, kører NÆSTE etape v3 uden fejl —
+// klassementet akkumuleres fra race_results og er uafhængigt af hvilken motor
+// der skrev den enkelte etape.
+//
+// MEN: kør ikke v4 med race_engine_v3_scoring OFF. Det er raceRunner's v3-gate
+// der resolver dagens rolle + indsats pr. rytter (raceStageRoles), og v4 læser
+// begge felter. Med v3 off ville hver rytter gå ind i v4 som 'free_role' med
+// 'normal' indsats. v3 er ON i prod, så det er ikke en aktuel risiko — det er
+// en note til den der måtte finde på at slukke begge flag på én gang.
 //
 // 'beta' giver ingen mening her (en etape har ét udfald for ALLE spillere, der
 // er ingen viewer at gate på), men tre-tilstands-maskinen er delt: engineWrite-
