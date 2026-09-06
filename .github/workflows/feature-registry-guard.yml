@@ -1,0 +1,109 @@
+name: Feature registry guard
+
+# Billig vagt fra #4929 punkt 4: race-page-tabs-v2 var det foerste konkrete
+# brud paa hard rule 30(e) (AGENTS.md) - en ny kernefunktion (#4913) landede
+# uden at docs/FEATURE_REGISTRY.yml blev opdateret i samme PR. Freshness-jobbet
+# i feature-registry-check.yml fanger IKKE det tilfaelde: der var intet flag at
+# doemme, saa gaten havde intet at reagere paa.
+#
+# ADVISORY ONLY, ligesom patch-notes-coverage-check.yml (#3638): denne vagt
+# gaetter paa baggrund af aendrede stier, ikke paa forstaaelse af diffen - en
+# PR i frontend/src/pages/ eller backend/routes/ er IKKE altid en kernefunktion
+# (kan lige saa godt vaere en bugfix eller refaktorering). Et fejlagtigt rødt
+# jobb her ville blokere ufarlige PR'er og traene folk i at ignorere CI. Jobbet
+# kommenterer, det failer aldrig - samme ejer-mandat som patch-notes-coverage
+# ("Flaggeren boer foreslaa, ikke blokere").
+#
+# Idempotent: kommentaren baerer en skjult marker og genbruges/opdateres pr.
+# PR i stedet for at stable nye kommentarer op ved hver push.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  registry-guard:
+    name: feature-registry-guard (advisory)
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    steps:
+      - name: Husk registret hvis PR'en roerer sider/routes uden registret
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const MARKER = '<!-- feature-registry-guard -->';
+            const TOUCH_RE = /^(frontend\/src\/pages\/|backend\/routes\/)/;
+            const REGISTRY_PATH = 'docs/FEATURE_REGISTRY.yml';
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            const paths = files.map((f) => f.filename);
+            const touchesGuardedPaths = paths.some((p) => TOUCH_RE.test(p));
+            const touchesRegistry = paths.includes(REGISTRY_PATH);
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(MARKER));
+
+            if (!touchesGuardedPaths || touchesRegistry) {
+              // Intet at minde om - men ryd en tidligere paamindelse op hvis
+              // en senere push tilfoejede registret (idempotent, ikke stoej).
+              if (existing) {
+                const resolvedBody = [
+                  MARKER,
+                  '**Husk registret**: loest - PR\'en roerer nu ' +
+                    (touchesRegistry ? '`docs/FEATURE_REGISTRY.yml`.' : 'ikke laengere `frontend/src/pages/` eller `backend/routes/`.'),
+                ].join('\n');
+                if (existing.body !== resolvedBody) {
+                  await github.rest.issues.updateComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    comment_id: existing.id,
+                    body: resolvedBody,
+                  });
+                }
+              }
+              core.info('Ingen reminder noedvendig.');
+              return;
+            }
+
+            const body = [
+              MARKER,
+              '**Husk registret** (hard rule 30(e), [#4921](https://github.com/NicolaiDolmer/CyclingZone/issues/4921)).',
+              '',
+              'Denne PR roerer `frontend/src/pages/` eller `backend/routes/` uden at roere `docs/FEATURE_REGISTRY.yml`.',
+              'Er PR\'en et flag-flip, en feature-lukning/retire eller en ny kernefunktion, skal registret opdateres i SAMME PR' +
+                ' (`node scripts/generate-feature-status.mjs` efter aendringen).',
+              '',
+              'Er dette bare en bugfix eller refaktorering uden aendret tilstand, er der intet at goere - dette job failer aldrig.',
+            ].join('\n');
+
+            if (existing) {
+              if (existing.body !== body) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              }
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }

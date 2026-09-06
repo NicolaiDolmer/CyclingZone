@@ -11,9 +11,14 @@
 // et `flag` mod den faktiske vaerdi.
 //
 // REGLER:
-//   state: live  + flag  -> vaerdien skal vaere on/true
-//   state: beta  + flag  -> vaerdien skal vaere beta
-//   andre states + flag  -> vaerdien maa IKKE vaere on/true
+//   state: live    + flag  -> vaerdien skal vaere on/true
+//   state: beta    + flag  -> vaerdien skal vaere beta
+//   state: dormant + flag  -> vaerdien maa IKKE vaere on/true (identisk med
+//                             building - bygget faerdigt, men bevidst
+//                             slukket, #4928). Kraever `note` i registret,
+//                             haandhaevet af generate-feature-status.mjs'
+//                             validate(), ikke her.
+//   andre states   + flag  -> vaerdien maa IKKE vaere on/true
 //   flag-noegle findes ikke i app_config -> FAIL
 //   verified aeldre end 60 dage -> WARN (exit 0, men printet)
 //

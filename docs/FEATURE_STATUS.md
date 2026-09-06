@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-61 poster: live 41 · beta 1 · building 14 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+61 poster: live 42 · beta 1 · dormant 4 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -18,7 +18,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | v3 scoring components (`race-engine-v3-scoring`) | live | `race_engine_v3_scoring` | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #2353 | 2026-09-06 | Dagsform, jour sans, arbejdsomkostning og rolle-opløsning i raceSimulator. |
 | Team selection, captain and breakaway (`team-selection-and-roles`) | live | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #1307 | 2026-09-06 | - |
 | Race engine v4 (`race-engine-v4`) | building | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #3855 | 2026-09-06 | Dormant nøgle race_engine_v4 (række findes ikke = off); flip planlagt 28/9. |
-| Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #4632 | 2026-09-06 | Dormant nøgle race_day_intention_enabled; M12 er merget ind i v4-broen. |
+| Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #4632 | 2026-09-07 | UI er live i Taktik-fanen (RaceTacticsTab, #4913); motoreffekten venter på v4-flip (dormant nøgle race_day_intention_enabled). |
 
 ## race-day
 
@@ -26,11 +26,11 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | --- | --- | --- | --- | --- | --- | --- |
 | Automatic race entries (`auto-entry-generator`) | live | `auto_entry_generator_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-06 | - |
 | Race day engine (`race-day-engine`) | live | `race_day_engine_enabled` | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | - | 2026-09-06 | - |
-| Race page (`race-detail-page`) | live | - | - | - | 2026-09-06 | RaceDetailPage med faner og live klassement. |
+| Race page (`race-detail-page`) | live | - | - | - | 2026-09-07 | RaceDetailPage som hero + faner (Overblik/Hold/Taktik/Etaper/Resultater) siden #4913. |
+| Race page as tabs (v2) (`race-page-tabs-v2`) | live | - | - | #4613 | 2026-09-07 | PR #4913 merget 6/9 kl. 18:57; patch note 7.259. |
 | Stage replay and timeline film (`race-replay`) | live | `race_stage_timeline` | - | - | 2026-09-06 | FinalKilometrePlayback, TimelineFilmPlayer og StageFilmScrubber. |
 | Stage scheduler (`stage-scheduler`) | live | `stage_scheduler_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-06 | - |
-| Race day development (`race-day-development`) | building | `race_day_development_enabled` | [PROGRESSION_RULES.md](PROGRESSION_RULES.md) | - | 2026-09-06 | - |
-| Race page as tabs (v2) (`race-page-tabs-v2`) | building | - | - | #4613 | 2026-09-06 | PR #4913 er åben. |
+| Race day development (`race-day-development`) | dormant | `race_day_development_enabled` | [PROGRESSION_RULES.md](PROGRESSION_RULES.md) | #4850 | 2026-09-07 | Bygget (D2); flaget åbnes når træningstick-omlægningen (#4850) er klar, senest S4 28/9. |
 
 ## market
 
@@ -39,8 +39,8 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Auctions with proxy bidding (`auctions`) | live | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | - |
 | Direct transfers and offers (`direct-transfers`) | live | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | - |
 | Rider swaps (`rider-swaps`) | live | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | Knap på rytterprofilen; den separate fane er fjernet. |
+| Market value blend sweep (`market-value-blend`) | dormant | `market_value_sweep_enabled` | [ECONOMY_RULES.md](ECONOMY_RULES.md) | #3448 | 2026-09-07 | Bygget; flaget åbnes efter ejer-go (#4449, global vægt 0,15). Kun ren måling kører i dag (#4419). |
 | Auction entry gate (`auction-entry-gate`) | building | `auction_entry_gate_enabled` | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | - |
-| Market value blend sweep (`market-value-blend`) | building | `market_value_sweep_enabled` | [ECONOMY_RULES.md](ECONOMY_RULES.md) | #3448 | 2026-09-06 | Søndagsblendet er kodet men slukket; kun ren måling kører (#4419). |
 | AI and unsolicited bids (`ai-unsolicited-bids`) | idea | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | #1310 | 2026-09-06 | Findes ikke i kode. |
 | Rider loans (`rider-loans`) | retired | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | #1994 | 2026-09-06 | Afviklet; kun finansielle lån findes i dag. |
 
@@ -69,7 +69,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Sunday talent drip (`academy-sunday-drip`) | live | - | [YOUTH_RULES.md](YOUTH_RULES.md) | #2064 | 2026-09-06 | - |
 | Intake offer expiry (`intake-offer-expiry`) | live | `intake_offer_expiry_enabled` | [YOUTH_RULES.md](YOUTH_RULES.md) | - | 2026-09-06 | - |
 | Scouting (`scout-system`) | live | `scout_system_enabled` | [YOUTH_RULES.md](YOUTH_RULES.md) | - | 2026-09-06 | - |
-| Academy intake pull (`academy-intake-pull`) | building | `academy_intake_pull_enabled` | [YOUTH_RULES.md](YOUTH_RULES.md) | - | 2026-09-06 | - |
+| Academy intake pull (`academy-intake-pull`) | dormant | `academy_intake_pull_enabled` | [YOUTH_RULES.md](YOUTH_RULES.md) | #3550 | 2026-09-07 | Bygget; erstatter søndagsdrippet når flaget flippes ved cutover (#3550). |
 | Season academy intake (`season-academy-intake`) | building | `season_academy_intake_enabled` | [YOUTH_RULES.md](YOUTH_RULES.md) | - | 2026-09-06 | - |
 | Three squads (`three-squads`) | spec | - | [YOUTH_RULES.md](YOUTH_RULES.md) | #2492 | 2026-09-06 | Slice 0 er leveret; resten er spec. |
 
@@ -80,8 +80,8 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | AI team retirement (`ai-team-retire`) | live | `ai_team_retire_enabled` | - | - | 2026-09-06 | - |
 | Season recap (`season-end-recap`) | live | - | - | #1311 | 2026-09-06 | SeasonEndPage med recap og hædersbevisninger. |
 | Season transition (`season-transition`) | live | - | [SEASON_TRANSITION_CHECKLIST.md](SEASON_TRANSITION_CHECKLIST.md) | - | 2026-09-06 | - |
+| Season signup (`season-signup`) | dormant | `season_signup_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-07 | Bygget; flaget åbnes ved S4-cutover 27-28/9 (#452, #4592). |
 | Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
-| Season signup (`season-signup`) | building | `season_signup_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-06 | Bygget; flaget åbnes først når tilmeldingen skal være åben. |
 
 ## economy
 

@@ -51,8 +51,14 @@ export const AREAS = [
   "ops",
 ];
 
-/** Sorteringsraekkefoelge: mest live foerst, retired sidst. */
-export const STATES = ["live", "beta", "building", "spec", "idea", "retired"];
+/**
+ * Sorteringsraekkefoelge: mest live foerst, retired sidst.
+ *
+ * `dormant` (#4928) staar lige efter `beta`: bygget faerdigt og flag-styret,
+ * men bevidst slukket - taettere paa "klar" end `building` ("nogen koder paa
+ * det endnu"), som staar lige efter.
+ */
+export const STATES = ["live", "beta", "dormant", "building", "spec", "idea", "retired"];
 
 const REQUIRED_FIELDS = ["id", "area", "title_en", "title_da", "state", "verified"];
 const KNOWN_FIELDS = new Set([...REQUIRED_FIELDS, "flag", "ssot", "epic", "note"]);
@@ -152,6 +158,9 @@ export function validate(entries) {
     if (e.verified && !DATE_RE.test(e.verified)) errors.push(`${label}: verified skal vaere YYYY-MM-DD`);
     if (e.epic && !/^\d+$/.test(e.epic)) errors.push(`${label}: epic skal vaere et issue-nummer uden #`);
     if (e.note && e.note.includes("|")) errors.push(`${label}: note maa ikke indeholde | (bryder tabellen)`);
+    if (e.state === "dormant" && !e.note) {
+      errors.push(`${label}: state dormant kraever en note om hvem/hvad der flipper den (#4928)`);
+    }
   }
   if (entries.length === 0) errors.push("registret er tomt");
   return errors;
