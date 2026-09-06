@@ -40,7 +40,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-hits:
 
 1. **Issue:** `gh issue comment N --body "..."` eller `gh issue close N --reason completed` hvis verificeret. Bruger lukker selv per label-state-maskinen i `GITHUB_WORKFLOW.md`.
 2. **NOW.md:** opdatér hvis aktiv slice ændrer sig — budget **maks ~1.200 tok** (primær gate #1275; ≤30 linjer sekundært, lange linjer tæller). Trim gamle close-out-blokke **direkte**; historikken ligger i git-log + issue-tråde. Opret IKKE `docs/archive/NOW-*.md` (hard-beskyttet af #684-deny, #750). **Obligatorisk:** opdatér **🎯 Next action** + nulstil **🤖 Working agent** til "Ingen aktiv session" (#558/#559).
-3. **MASTERPLAN.md:** opdatér hvis den prioriterede kø ændrede sig (budget ≤1.500 tok; rækkefølgen er ejer-godkendt — spørg før omprioritering). **FEATURE_STATUS.md:** opdatér ved ændrede kontrakter/features.
+3. **MASTERPLAN.md:** opdatér hvis den prioriterede kø ændrede sig (budget ≤1.500 tok; rækkefølgen er ejer-godkendt — spørg før omprioritering). **FEATURE_REGISTRY.yml:** opdatér ved flag-flip, feature-luk eller ny kernefunktion, og kør `node scripts/generate-feature-status.mjs` (FEATURE_STATUS.md er genereret, aldrig håndredigeret).
 4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke). Samme rutine for `help.json` (en+da) ved ny/ændret spilmekanik (#1171).
 5. **Postmortem:** ved bugfix → `.claude/learnings/<dato>-<slug>.md`.
 6. **Token-hygiejne (obligatorisk):** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` — den `exit 1`'er hvis MEMORY.md/NOW.md/docs er over budget. Demotér nye lav-frekvens-HOT-entries til `MEMORY_REFERENCE.md` FØR du lukker.

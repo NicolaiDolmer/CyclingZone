@@ -9,7 +9,9 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/HOOKS.md` | Hooks-konfiguration ændres |
 | `docs/ARCHITECTURE.md` | Cross-domain refactor |
 | `docs/DOMAIN_REFERENCE.md` | Domænegrænse-spørgsmål |
-| `docs/FEATURE_STATUS.md` | Runtime-state usikker |
+| `docs/FEATURE_REGISTRY.yml` | **SSOT for "hvad er live":** én post pr. kernefunktion med state, prod-flag, SSOT, epic og verifikationsdato. Opdateres i samme PR som et flag-flip eller en feature-luk (hard rule 30 (e), #4921) |
+| `docs/FEATURE_STATUS.md` | Runtime-state usikker. **GENERERET** fra registret (`node scripts/generate-feature-status.mjs`) - rediger den aldrig i hånden |
+| `docs/archive/feature-status-narrative-2026-09.md` | Den gamle prosa-status (frosset 6/9-2026, historik) |
 | `docs/archive/feature-status-slice-07a.md` … `feature-status-slice-07h.md` | Historisk implementationsdetail og acceptance-arkiv for Economy Overhaul slice 07a–07h |
 | `docs/CONVENTIONS.md` | Naming/style-spørgsmål |
 | `docs/GITHUB_WORKFLOW.md` | GitHub-workflow eller agent-loop spørgsmål |

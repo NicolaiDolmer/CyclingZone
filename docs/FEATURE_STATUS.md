@@ -1,90 +1,151 @@
 # FEATURE STATUS
 
-_Slim live-state. Historical implementation detail lives in `docs/archive/`._
+> **GENERERET FIL - rediger den ALDRIG i haanden.**
+> Kilde: [`docs/FEATURE_REGISTRY.yml`](FEATURE_REGISTRY.yml)
+> Regenerér: `node scripts/generate-feature-status.mjs`
+> Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-Last reviewed: 2026-06-17 (audit-pass — race v2 + value-model status). GitHub issues are the source of truth for active work.
+61 poster: live 41 · beta 1 · building 14 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
-## Product direction
+Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
-- The approved [Living World Product Doctrine](superpowers/specs/2026-06-08-living-world-product-doctrine-design.md) centers the game on four engines: racing, training, youth development, and transfers/auctions.
-- The hard relaunch target is 2026-06-20; [docs/NOW.md](NOW.md) carries the current delivery sequence.
-- Runtime status below is intentionally high-level. Use linked issues and archive files for implementation history.
+## race-engine
 
-## Live
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Form and fatigue in scoring (`form-and-fatigue`) | live | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #2353 | 2026-09-06 | Vægter reelt ind via formRaceWeightV3, ikke neutrale 0-stubs. |
+| Race engine v3 (`race-engine-v3`) | live | `race_engine_v2_enabled` | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #1306 | 2026-09-06 | Autoritativ motor i prod; flagnavnet er historisk (v2-æraen). |
+| v3 scoring components (`race-engine-v3-scoring`) | live | `race_engine_v3_scoring` | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #2353 | 2026-09-06 | Dagsform, jour sans, arbejdsomkostning og rolle-opløsning i raceSimulator. |
+| Team selection, captain and breakaway (`team-selection-and-roles`) | live | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #1307 | 2026-09-06 | - |
+| Race engine v4 (`race-engine-v4`) | building | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #3855 | 2026-09-06 | Dormant nøgle race_engine_v4 (række findes ikke = off); flip planlagt 28/9. |
+| Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #4632 | 2026-09-06 | Dormant nøgle race_day_intention_enabled; M12 er merget ind i v4-broen. |
 
-- **Core manager loop:** Supabase auth, manager/team setup, rider database, profiles, comparison, watchlist, notifications, and DA/EN localization. Finance legacy rows and Deadline Day countdown/warnings are locale-aware (#1352/#1353).
-- **Market:** auctions with proxy bidding and finalization, direct transfers, swaps, transfer listings, and rider loans. The transfer window is retired (#1996): the market is always open, so confirmed deals — transfers, swaps, loans, and buy-options — register immediately. Riders traded mid-active stage race finish the race for the seller and move via `pending_team_id` at race finalization (#1995, Model B: payment + notification at confirmation).
-- **Rider profile redesign (#2000, live 2026-07-02):** rebuilt profile page per `docs/design/design_handoff_rider_profile/` — roster switcher + hero (rating circle, fuzzy potential stars, market value, compact action row) + tabs Overview/Physiology/Training/Development/History/Results/Interest; Scouting tab is a coming-soon surface linking the roadmap. New auth-gated `GET /api/riders/:id/interest` (scouted-by counts + activity feed; scout team names are owner-only, watchlist events always anonymous). Remaining on the epic: Scouting tab slice, capstone wireframe, ceiling projection (#2100).
-- **Squad and riders:** squad limits, dynamic market values, rider abilities, potential, retirement state, and rider popularity tracking. **Rider contracts (#1309):** `riders.salary` is now frozen at signing (no longer a generated column); `contract_length` (1-3 seasons) and `contract_end_season` are set at acquisition and carried unchanged on trade. Owned riders always have a contract; free agents show an estimated salary until signed. Contract flows (renewal, expiry-to-auction, release, re-signing formula) are fast-follow in the market package (#1310).
-- **Economy:** 800K initial balance, division-scaled sponsor (D1 600K / D2 400K / D3 340K after Fase 1, E2 strict_fair_v1), variable sponsor from season two (0-150K performance bonus), salary at 6.7% of market value frozen at signing, interest/payroll processing, loans, finance ledger, forecast, and risk tiers. **Fase 1 anti-inflation (#1441, on branch pending relaunch review):** seasonal upkeep sink (D1 220K / D2 70K / D3 20K per season, D4 exempt — halved + D4 exemption by owner decision 23/8, locked in #4151; this line held the pre-halving numbers, D1 440K / D2 140K / D3 40K with no D4 mention, until 3/9), sponsor payout hard-capped at 900K (720K season 1) post-modifier, emergency loan ceiling = division ceiling (D1 1.2M / D2 900K / D3 600K, hard-clamped), escalating debt enforcement (transfer freeze at 1 season over ceiling; forced highest-value rider sale at 2 consecutive seasons over ceiling).
-- **Economy Fase 2 — renown-scaled, negotiable sponsor ([#1663](https://github.com/NicolaiDolmer/CyclingZone/issues/1663), on branch):** sponsor income now scales with a club's renown (`renownEngine.js`: division + recent-season results) instead of a flat per-division base, so a fresh/low-standing club is roughly unchanged while a strong, established club earns a bigger sponsor. Sponsors are **negotiable** at season start: three offers (`sponsorOffers.js` — `predictable` / `activity` / `long` variants) trade a guaranteed base against a per-race-day rate and a 1-3 season contract length; the choice is made on the Board page (`SponsorOfferModal`) and the active deal is shown on the Finance Sponsor tab (`SponsorContractPanel`). Contracts persist in a new **`sponsor_contracts`** table (`sponsorContractsService.js`), are auto-renewed at season transition, and back `GET /api/sponsor/contract`, `GET /api/sponsor/offers`, and `POST /api/sponsor/offers/accept`. **New per-race-day income:** a fixed amount per race day the team competes in, credited as races finalize (the per-race-day rate is set by the chosen sponsor deal). Behind the balance harness/calibration gate. **Mid-season onboarding ([#3316](https://github.com/NicolaiDolmer/CyclingZone/issues/3316)):** a team with no active contract (new mid-season signup, or a pre-existing contract-less team) negotiates for the *current* season instead of the next one — `getNegotiationState`'s `immediate` flag routes `POST /api/sponsor/offers/accept` to `acceptOfferImmediately`, which activates the deal on the spot (`activated_at` set, no `pending` wait). Race-day rate and bonus clauses apply from `activated_at` onward only (`sponsor_contracts.activated_at`, enforced in `sponsorRaceDayIncome.js` — no backdated payout for races already completed); the guaranteed base still only pays at the next real season start.
-- **Season and competition:** season lifecycle, race catalogue/import, standings, prize payouts, board goals, season snapshots, and admin transition tooling.
-- **Race calendar — in-game-day chronology (2026-06-28):** each stage has its own in-game `game_day` (decoupled from the IRL `scheduled_at`), so a stage race can run several stages per real day while binding stays "one race per in-game day" (`raceBinding.js`, unchanged). The calendar packer (`raceCalendarLanePacker.js`) caps concurrent binding races per division — **Div 1/2 = 3, Div 3/4 = 2** (`TIER_OVERLAP_CAP`) — with exact density (5/4/3/2 stages/IRL-day), no empty days, and quotas 140/112/84. Div 2/3/4 use a straddle-free "banded" layout (Div 3 = solo+2 mix); Div 1 keeps the stream layout (Grand Tour spine + monuments). **Monuments bind normally and own their race day** (#4075, owner-locked 21/8): no other race shares a monument's `game_day`, though the calendar date is shared. Enforced at three levels — packer tests, season-transition preflight, and `verify-invariants` (`calendar_monument_exclusive_game_day`) — plus a nightly prod audit. Rule SSOT: `docs/CALENDAR_RULES.md`. Spec: `docs/superpowers/specs/2026-06-28-race-calendar-chronology-rebuild-design.md`.
-- **Operations:** Sentry/Clarity instrumentation, player events, admin tools, migration automation, CI guards, and reproducible race-engine calibration gates. **Stage-scheduler hardening (2026-07-02, #2071/#2090):** `updateStandings` chunks race-id filters (455-race season broke the old single `.in()`), finalization-pending races auto-recover, empty pools are skipped, per-race errors hit Sentry, and an overlap-guard + expected-stage-guard ensure a stage can never run before its `scheduled_at`.
-- **CZ Pro billing rails (Slice 1, #1903 — merged 2026-07-02, gated):** Alunta checkout + webhook entitlement (`subscriptions` table, RLS read-own), `isPro` hook, Founder/Pro badge, `/pro` upgrade page (49/md, 265/6-mdr). Checkout OPENED 2026-09-02 (#4597). Language selects currency (owner 2026-09-02): DA = DKK 49/265, EN = EUR 6.49/34.99 — PR #4608 draft, blocked on the Infisical session #4616 (EUR plans + Railway keys). Alunta's hosted checkout page is Danish regardless of language (measured 2026-09-02).
-- **World-class wave 1 chunk A (epic #3395, live 2026-08-06, patch v7.98):** the race-day drama layer. (1) **The Final Kilometre** (#3396): 90-second deterministic finish replay atop RaceDetailPage, built solely from persisted result data (finish gaps, breakaway flags, moments), photo-finish marker <1s, replay button, reduced-motion fallback. (2) **Maiden Win Engine** (#3398): career firsts (first win/podium/jersey per classification, every 25th club win) detected at finalization into the new generic **`rider_career_events`** table (UNIQUE `dedupe_key`, idempotent re-finalization; designed for #2490 reuse) + `career_milestone` notification type + moment cards + permanent palmarès surface + ConfettiModal now fires on race/GC wins. (3) **Hero & Agony** (#3397): one personal moment card per stage on the dashboard (deterministic drama score over `race_stage_moments`, agony weighted equal to triumph) with client-side 1200×675 PNG export. (4) **Narrative delivery** (#3399/#3400): race/stage notifications and the digest email lead with a raceReport-derived headline (honest fallback to plain copy), and Discord-linked players get max one daily result DM at 20:00 Copenhagen (dedupe table `discord_race_digest_log`). Wave plan: `docs/superpowers/specs/2026-08-05-verdensklasse-game-plan.md`; chunk B (#3401 auction reveal, #3402 season documentary) in flight.
-- **Forum v1 (#3199/#3201, live 2026-08-06, patch v7.102):** in-game forum under Clubhouse — two categories (General · Feedback & ideas), posts + reply threads, admin-only polls on pinnable owner posts (single choice, revote = upsert), report button + soft-delete moderation. Five new tables (migration `2026-08-06-3199-forum.sql`): posts/replies carry a SELECT policy solely so Realtime events reach clients — all reads/writes go through the service-role backend (`backend/lib/forum.js`, keyset `seq` cursors); reports/votes/options are deny-all (vote and reporter identities never leave the backend). Owner notification: Discord ping on new post/reply/report (`DISCORD_FORUM_WEBHOOK_URL`, falls back to the ops webhook with @mention) + admin **Forum** tab (report inbox; delete auto-resolves reports). Player-to-player DMs (#3200) are NOT covered — next stage of the social layer.
-- **Forum L1 "puls" (#4238, live 2026-08-25, patch v7.192):** the visibility layer. Thread list now sorts by latest activity (`coalesce(last_reply_at, created_at)`, pins on top, composite keyset cursor) instead of creation, so live threads stop sinking. New table **`forum_thread_reads`** (PK `user_id, post_id`; RLS lets a user read/write only their own rows, unlike posts/replies which are backend-only) carries per-thread unread state — it drives both the dot in the thread list and the gold dot next to **Forum** in the nav, reusing the Patch Notes dot mechanic. It is also our only source of *reader* counts; before it, we could only count writers. New notification type **`forum_thread_reply`** fires when someone else replies to your thread, deduped per thread so a 20-reply thread yields one notification ("N new replies"), never for your own replies. Notification on *every* new post was deliberately NOT built — the nav dot covers it without flooding an inbox that sees 6,152 sessions. Reporting now requires a reason (#3452, owner directive 6/8). Two regressions shipped with it and were fixed same day: a missing `return channel` broke the realtime subscription on every mount (#4244/#4247, 17 players hit) and a CodeQL high-severity format-string taint (#4251). Rules: `FORUM_RULES.md`. Whether the forum wins the conversation back from Discord is measured 15/9 (#4235).
+## race-day
 
-### Economy slice 07 archive
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Automatic race entries (`auto-entry-generator`) | live | `auto_entry_generator_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-06 | - |
+| Race day engine (`race-day-engine`) | live | `race_day_engine_enabled` | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | - | 2026-09-06 | - |
+| Race page (`race-detail-page`) | live | - | - | - | 2026-09-06 | RaceDetailPage med faner og live klassement. |
+| Stage replay and timeline film (`race-replay`) | live | `race_stage_timeline` | - | - | 2026-09-06 | FinalKilometrePlayback, TimelineFilmPlayer og StageFilmScrubber. |
+| Stage scheduler (`stage-scheduler`) | live | `stage_scheduler_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-06 | - |
+| Race day development (`race-day-development`) | building | `race_day_development_enabled` | [PROGRESSION_RULES.md](PROGRESSION_RULES.md) | - | 2026-09-06 | - |
+| Race page as tabs (v2) (`race-page-tabs-v2`) | building | - | - | #4613 | 2026-09-06 | PR #4913 er åben. |
 
-- 07a stale fallbacks and sponsor drift: [details](archive/feature-status-slice-07a.md)
-- 07b TOCTOU and idempotency: [details](archive/feature-status-slice-07b.md)
-- 07c atomic balance updates: [details](archive/feature-status-slice-07c.md)
-- 07d finance/admin audit trail: [details](archive/feature-status-slice-07d.md)
-- 07e admin economy dashboard: [details](archive/feature-status-slice-07e.md)
-- 07f variable sponsor: [details](archive/feature-status-slice-07f.md)
-- 07g finance forecast and risk tier: [details](archive/feature-status-slice-07g.md)
-- 07h season finance close-out: [details](archive/feature-status-slice-07h.md)
+## market
 
-## Beta or feature-flagged
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Auctions with proxy bidding (`auctions`) | live | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | - |
+| Direct transfers and offers (`direct-transfers`) | live | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | - |
+| Rider swaps (`rider-swaps`) | live | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | Knap på rytterprofilen; den separate fane er fjernet. |
+| Auction entry gate (`auction-entry-gate`) | building | `auction_entry_gate_enabled` | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | - |
+| Market value blend sweep (`market-value-blend`) | building | `market_value_sweep_enabled` | [ECONOMY_RULES.md](ECONOMY_RULES.md) | #3448 | 2026-09-06 | Søndagsblendet er kodet men slukket; kun ren måling kører (#4419). |
+| AI and unsolicited bids (`ai-unsolicited-bids`) | idea | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | #1310 | 2026-09-06 | Findes ikke i kode. |
+| Rider loans (`rider-loans`) | retired | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | #1994 | 2026-09-06 | Afviklet; kun finansielle lån findes i dag. |
 
-- **Race engine v2 (light motor):** deterministic simulator, stage profiles, race entries, multi-seed calibration gate (`race:gate`; **#4180, 2026-08-24:** rebuilt from 3 hardcoded seeds judged per-seed to **50 seeds judged on the aggregate** — the old form failed 42 % of random seeds with unchanged code, because 83-93 % of the scorecard variance is population-bound. Structural oracles/liveness/roles stay hard per-seed: 0 failures in 400 seeds. Verdict lives in `evaluateSeedAggregateGate`, measurement harness in `scripts/raceSeedVariance.js`), and admin dry-run are implemented behind `RACE_ENGINE_V2_ENABLED`; go-live code + physiology schema + ability v2 merged (#1428). The `RACE_ENGINE_V2_ENABLED` flag flipped **on** at the 2026-06-18 relaunch (verified `on` in prod `app_config` 2026-06-20), so the race engine is now authoritative; the legacy PCM result path is retained only as a backend fallback and its result-reporting UI was removed in #1532. **Abilities decide outcomes; `form`/`fatigue` are still neutral 0-stubs** — full physiology depth (#1021) is post-launch. **Stage-race classification contract (#2072/#2081):** the stage-by-stage path simulates ONLY the day's stage; GC/points/mountain/young/team are ACCUMULATED from the persisted `race_results` stage rows (`buildStageRowsAccumulated` + `raceClassifications.js`) — final GC always equals the sum of published stage gaps. Intermediate stages persist FULL running classifications under the day-types (`leader`/`points_day`/`mountain_day`/`young_day` carry GC gaps/rank; rank 2+ = 0 points, payout-neutral). **#2081 (2026-07-05):** intermediate running team classification is now ALSO persisted as `team_day` (both engine paths — `buildRaceResults` and the live `buildStageRowsAccumulated`), same payout-neutral pattern (`race_points` has no `team_day__N` entries). Races run before this change (no `team_day` rows) fall back to a frontend-derived team standing from the `leader` rows' gaps (`raceStageClassifications.js`/`raceLiveStandings.js`). A rider who leaves the field mid-race keeps ridden stages' rows/prizes but drops out of the classifications.
-- **Daily training, form, fatigue, and injuries:** development phases are merged behind launch controls; relaunch orchestration and production verification remain.
-- **Board and progression additions:** several post-season and progression surfaces are live but still have owner-verification issues before broad reliance.
-- **Analytics-backed validation:** newer gameplay and funnel events need enough live traffic before product conclusions are stable.
-- **Academy MVP — Fase A ([#1308](https://github.com/NicolaiDolmer/CyclingZone/issues/1308)):** Core pipeline delivered and flag-gated (`academy_enabled`, OFF until relaunch). Covers: season-intake cohort generation (`academy_intake` table), sign/reject flow (0-2 prospects per human team, 8-place cap separate from senior 30-cap, `riders.is_academy`), daily training with youth multiplier, and season upkeep drift (`academy_drift` finance type, 5 000 CZ$/slot/season at payroll). Notification types `academy_intake_ready`, `academy_signed`, `academy_rejected` wired.
-- **Academy MVP — Fase B ([#1308](https://github.com/NicolaiDolmer/CyclingZone/issues/1308), revised by [#2456](https://github.com/NicolaiDolmer/CyclingZone/issues/2456)):** Youth-market loop delivered and flag-gated. A rejected intake candidate is listed as an individual youth auction (`auctions.is_youth`, no seller); the winning club takes the prospect into its academy (8-place cap, youth contract) and pays its bid as an `academy_signing` sink. **#2456 (owner-locked 15/7): the free-agent youth shop is removed** — `signFreeAgentYouth`, `POST /api/academy/free-agent/sign`, the `freeAgents` field on `GET /api/academy/me` and the AcademyPage section are gone. A youth auction that ends without the rider being taken in (no bids, or the winner's academy is full / cannot pay) now **deletes the rider** (he leaves the sport) — guarded by an atomic auction claim (a racing bid always wins over deletion), a `race_results` check (#1847, no new orphans) and a conditional DELETE scoped to `team_id IS NULL`. AuctionsPage keeps the Youth badge. System-wave integration of youth auctions remains the market package [#1310](https://github.com/NicolaiDolmer/CyclingZone/issues/1310).
-- **Academy promotion flow at 22 ([#932](https://github.com/NicolaiDolmer/CyclingZone/issues/932)):** Closes the academy dead-end, flag-gated (`academy_enabled`). At season transition `detectGraduates` puts every academy rider who has passed 21 into a pending `academy_graduation` row (status pending/promoted/sold/released/expired) with a deadline, plus an `academy_graduation_ready` notification; the rider keeps `is_academy=true` (outside the senior cap) while pending. The owner chooses per rider via `POST /api/academy/graduate {riderId, action}`: promote (`is_academy=false` + a fresh senior salary, division squad-cap enforced), sell (lists a normal senior auction, `seller_team_id`=team, `is_youth=false`; auction finalization flips a sold graduate to `is_academy=false` for the winner), or release (free agent). A daily sweep (`runAcademyGraduationSweep`, after 22:00 CET, mirrors the training sweep) auto-resolves expired pending rows via a soft default chain (promote when there is room and the club is solvent, otherwise sell). `GET /api/academy/me` returns `graduations`; AcademyPage shows a graduation section with promote/sell/release + deadline. Open follow-up: an unsold listed graduate stays in the academy (no auto-release on no-bid yet); deadline window (`DEADLINE_DAYS`) pending a sim scorecard + owner sign-off.
-- **Academy Sunday drip — #2064 S0 (LIVE 19/7):** Hvert menneske-hold modtager 2 nye akademi-kandidater hver søndag (Europe/Copenhagen) via `sundayIntakeTick.js` (timelig cron + boot-run; claim-FØRST pr. (hold, dato) i `academy_intake_ticks` — boot-/replica-sikker, fail-closed). Kandidater genereres i det ejer-valgte −3-startbånd (rå 48,5-54 → afledt ~1-12; `YOUTH_GEN_CONFIG`) med **geometrisk potentiale-fordeling** (faktor 0,55 pr. halvt trin, tiers 1,0-6,0, P(6,0)=0,11%; `drawPotentiale`) — seriøs-lotteriet er fjernet, `is_serious` afledes (pot ≥ 4,5). Alle ungdoms-genererede ryttere stemples `riders.generation_tag` ('s<sæson>' — #2493-fundament). Notifikationstype `academy_drip`. Næste slices (spec 2026-07-19): S1 sim-harness → S2 volumen 12/sæson → S3 Årgangsdagen (sæsonens sidste søndag = transition-dag) → S4 verdens-influx-governor → S5 facilitets-skalering.
-- **Academy UX-rework — [#2796](https://github.com/NicolaiDolmer/CyclingZone/issues/2796) (PR #2801, patch 7.44):** Akademi-fladen flyttet ind på design-systemet og gjort beslutnings-bærende. **Kontrakt-tilføjelser på `GET /api/academy/me`** (additive, ingen migration): roster-selecten bærer nu `primary_type`/`secondary_type`/`current_production_value`; intake-rækkerne bærer `signingFee` (= `round(markedsværdi × ACADEMY.SIGNING_FEE_RATE)`, samme udtryk som debiteringen i `signAcademyCandidate`) og `expiresAt` (= `created_at + INTAKE_OFFER_EXPIRY_DAYS`, SSOT i `academyIntakeExpirySweep.js`); `graduations` bærer nu type, `market_value`, `salary` og `nationality_code` og er sorteret på deadline; roster sorteres yngste-først (rækkefølgen var før ikke-deterministisk). `POST /api/academy/sign` mapper nu også `insufficient_balance` og `already_assigned` til 409 i stedet for at falde til captureException + 500. Frontend: roster er `data-sortable` (`Table`/`Th` + `useTableSort`) med Nation/Type/Værdi-kolonner; kandidat- og gradueringskort viser pris, frist, type, værdi og løn; potentiale-labelen kan lægges i tooltip via ny opt-in `labelAsTitle` på `PotentialeStars`/`ScoutablePotentiale` (default false — alle øvrige kald-sites uændrede). Kontrakten er låst af `AcademyPage.contract.test.js`.
-- **Beta-access + feature staging:** feature flags now support three stages — `"off"` / `"beta"` / `"on"` (stored in `app_config`; legacy boolean `true`/`false` still read as on/off). A beta-tester cohort (`users.is_beta_tester`, plus implicit admins; `is_beta_tester()` RPC mirrors `is_admin()`) gets early access to a `"beta"`-staged feature while it stays hidden from regular players. `academy_enabled`, `daily_training_enabled`, and `race_engine_v2_enabled` are evaluated per-request via `evaluateFlagStage`; user-facing endpoints pass the viewer's beta status, while cron/sweep paths stay global (`"on"` only). Admins/beta testers can browse the 800 fictional relaunch riders (type, abilities, base_value) via the read-only **Rider Explorer** admin section (`GET /api/admin/fictional-rider-preview`, no DB writes).
-- **Value tracks developed abilities ([#1364](https://github.com/NicolaiDolmer/CyclingZone/issues/1364)):** `base_value` is a live read of the value model on current abilities (Model 1 — objective rating), so a developed rider gains value and an aging one loses it. `refreshChangedRiderValues` recomputes type + value for the population but writes only the riders whose value actually changed (no daily churn). **Cadence moved by [#4419](https://github.com/NicolaiDolmer/CyclingZone/issues/4419) (owner decision 30/8):** it no longer runs after the daily training sweep, and no longer after manual run-today (that team-scoped call is removed). It now has one single call site, `backend/lib/sundayValueSweep.js`, which runs Sunday from 06:00 Danish time, gated only by a date claim in `rider_value_sunday_log`. It is deliberately NOT gated by `daily_training_enabled` (owner decision 31/8): training and value updates are independent systems, so riders can train every day and values move every Sunday and only on Sundays, whatever state training is in. A failed refresh releases the claim so the next hourly tick retries the same Sunday. `backend/valueWriteEntrypoints.test.js` locks the single call site. The model was re-fit on the 8 rider types and prod `base_value` re-backfilled (#1435, 8994 riders, 0 nulls), so prod values already reflect the current model. No migration. Market-price gliding toward sale price stays a separate premium layer ([#1281](https://github.com/NicolaiDolmer/CyclingZone/issues/1281)). A no-DB balance scorecard (`backend/scripts/valueDevelopSellScorecard.js`) gates the develop-and-sell economics.
-- **Race Hub — eksplicit Gem + delvis trup ([#1961](https://github.com/NicolaiDolmer/CyclingZone/pull/1961), merged 2026-06-28):** trup-board'et auto-gemmer ikke længere (afløser #1906's auto-gem-når-fuld). Hele board'et er én lokal kladde; redigér frit (fjern → straks genbrugbar i et ikke-overlappende løb), og persistér via **"Gem ændringer"** (board-niveau, to-fase frigiv→bind, så 2-vejs-bytte mellem overlappende løb virker). Forlad-vagt (`beforeunload` + dag/scope-bekræft) ved ugemte ændringer. `validateSelection` tillader en **delvis trup** (0..max; kun over-max afvises). _Superseret for spillerhold af #4217/#4222 (ejer-direktiv 25/8, se linjen nedenfor): "top-fylder `raceEntryGenerator` gabet"-adfærden herunder gælder ikke længere spillerhold — kun det senere late-race-redningsnet i `fillMissingTeamEntries` (`docs/PLANNING_CENTER_RULES.md` §4, regel 2) rører en spillers ufyldte trup, og først ved etape 1-afvikling._ Spec: `docs/superpowers/specs/2026-06-28-racehub-save-ux-redesign-design.md`.
-- **Race Hub — explicit "Ryd dag"/"Ryd alt" clear markers ([#2599](https://github.com/NicolaiDolmer/CyclingZone/issues/2599)):** the proactive entry-generator sweep (`runRaceEntryGeneratorSweep`, `auto_entry_generator_enabled="on"` in prod since 2026-06-23) runs hourly + on every deploy-boot across the WHOLE active season. New table **`race_entry_clears`** (`race_id, team_id`) records an explicit, confirmed clear; the sweep originally skipped a (race,team) unit only via this clear marker (plus having no manual entries), mirroring the `race_withdrawals` skip. New endpoint **`POST /api/races/distribution/clear?day=N&scope=day|all`** (`partitionClearTargets`, freeze-guarded like regenerate) deletes entries + writes the marker; the marker is cleared again by a manual save with ≥1 rider or a player-initiated auto-fill/fill-gaps. **Superseded by #4217/#4222 (owner directive 25/8, locked #4201):** the sweep's eligibility boundary moved from this clear-marker mechanism to ownership itself — `runRaceEntryGeneratorSweep` (`backend/lib/raceEntryGenerator.js`) now filters teams to `!is_frozen && !user_id` outright, so it never touches a player-owned team again, clear marker or not, and only ever top-fills AI teams. Three players lost planning work to the old refill-on-clear-loss behavior (#4200) before the boundary moved. `race_entry_clears` and the clear-day/clear-all endpoints still stand (still govern a player's own manual save/auto-fill), but are no longer the mechanism protecting a player's squad from the sweep. The old "Rebuild all" button (`mode=all`, overwrote manual picks with fresh AI suggestions) is replaced by "Clear day" — clears to empty instead of guessing for the player. The backend `mode=all` regenerate path itself is left intact (unused by the UI now, low-risk to keep).
-- **Rider retirement — definitive final-season banner ([#2748](https://github.com/NicolaiDolmer/CyclingZone/issues/2748), live 2026-08-20):** `GET /api/riders/:id/retirement-status` (`requireAuth`, deliberately **no ownership check** — visible to every viewer so a buyer can see it before a bid/trade, not only the owner) returns whether the season-transition engine has already decided the rider retires at the end of the active season. `announcedRetirementAfterSeason` (`backend/lib/riderProgression.js`) computes the exact same seeded decision `processSeasonStart` will actually make at cutover to the next season; `riderProgression.test.js` verifies 0 disagreements against 200 simulated riders. Distinct from the existing `retirementRiskBadgeKey` badge, which only signals probability (age 35-39), not a determined outcome.
-- **Race Hub S3 — Team strategy (Lag 0):** Standing preferences that feed the proactive entry generator, flag-gated by `race_engine_v2_enabled`. A new `/races/strategy` page lets a manager set a ranked **A-chain** (core riders prioritized for target races), **fixed role rules** per rider (`always_captain` / `always_sprint_captain_if_present`), **captains ranked 1/2/3 per terrain bucket** (flat/hills/mountains/cobbles/ITT, with real per-bucket suitability + auto-suggest), and **target races**. Strategy is a deterministic preference layer inside `autopickTeamSelection` (via `assignTeamAcrossRaces` + new `strategy` arg); **`strategy=null` ≡ bit-for-bit unchanged** behaviour (idempotence test) and AI teams keep using the same generator with no strategy row. The layer is read in **both** the bulk generator (`runRaceEntryGenerator`) and the per-team `regenerate` endpoint. New shared pure export `terrainBucket` (`backend/lib/raceTerrain.js`, 9 profile types → 5 buckets). Endpoints: `GET/PUT /api/races/strategy` and `POST /api/races/strategy/preview` (live diff — "how your strategy changes selections"; writes nothing). New tables **`team_race_strategy`** + **`team_rider_role_rules`** (read = own team, write = service_role). Saving strategy never writes entries and never overwrites manual picks.
-- **Sæsonmatrixens API-fundament (#1146, live i prod 28/8, API-first uden UI-kalder endnu):** to nye endpoints til matrixens kladde-model (ejer 25/8: cellen ændrer en kladde, én "Save plan" sender hele diffen). **`GET /api/races/selection/season`** (PR #4365): egen-puljes løb som løbsdags-spænd via `raceGameDaySpan` (display-tal KUN fra `game_day`, aldrig `bindingWindow`), GT-hviledage, trupstørrelser, demand-vektorer, holdets gemte udtagelser + dayDates-mapping. **`PUT /api/races/selection/bulk`** (PR #4316): alt-eller-intet-gem af op til 60 løbs udtagelse i ÉN transaktion via ny RPC **`replace_race_selection_bulk`** (advisory-lås pr. hold, `no_rider_double_booking_day` deferred så swaps er rækkefølge-uafhængige, SQL-forward-guards for frosne/afsluttede løb + #4306-withdrawal-gate spejlet, #2637-auto-releases i samme transaktion). Validering deles med single-endpointet via `prepareSelectionChange` (udtrukket, ingen divergens). UI'et (matrix + celle-popover) ligger i PR #4323 og spillertestes på Vercel-preview mod prod-backenden før merge; begge endpoints er whitelistet i feature-liveness-auditten indtil da.
-- **Club (Facilities & Staff) — #1441 Slice A:** Klub-flade (5 facilitets-spor × 5 tiers + staff-panel) bygget (A3-UI, PR #2215) + rigt staff-system m. evner/profil-side (A4/A4b, PR #2232). Gated bag `app_config.facilities_enabled` (`false`; admin ser den, A4b-testgate) → nav + side skjult for spillere indtil ejer-flip. **Plan B (pre-flip engine-slice) landet:** training-effekten er LIVE — trænings-motoren ganger `1 + effectiveBonus(training)` (facilitets-magnitude) × chef-specialisering (dimension×niveau) ind i daglige trænings-deltas (caps udvides aldrig); `effectLive.training=true` i UI'et. Util-modellen er ability-drevet (staffEffectFactor 0,5→1,0 + rating-drevet løn, Q1, A4-kalibreret) og kommerciel er et bevidst rent sink (Q2, payback ∞). Harness: 6 gate-familier grønne (`docs/audits/2026-07-06-facilities-plan-b-training-wiring.md`). Medical/academy/commercial-effekter aktiveres i takt med deres motorer. **[#2530](https://github.com/NicolaiDolmer/CyclingZone/issues/2530):** scouting-sporet er nu OGSÅ live (`effectLive.scouting=true`) — motoren (Talentspejder Fase 3 #2244) var allerede wired, flippet gør den KØBBAR fra Klub-UI'et: facilitets-tieret bounder hvilken hire-tier chefscout du kan ansætte, chefens overall driver scoutEngine's kapacitet (1/2 opgaver) + præcisions-gulv.
+## squad
 
-## Deferred or not yet live
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Contracts, renewal and expiry (`contracts`) | live | - | [TRANSFER_MARKET_RULES.md](TRANSFER_MARKET_RULES.md) | #1310 | 2026-09-06 | extend-contract, contractExpiryRelease og aiContractAutoRenewal i sæsonskiftet. |
+| Rider comparison and watchlist (`rider-compare-and-watchlist`) | live | - | - | - | 2026-09-06 | - |
+| Squad management (`squad-management`) | live | - | - | - | 2026-09-06 | TeamPage med trup, løn, kontrakter og udviklingsfane. |
 
-- Full race-engine depth from [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676), including richer tactics and breakaway behavior.
-- Academy facility tiers and drip-fed scouting reveals: post-launch, not in the MVP. (The 22-year-old forced choice is now delivered — see above, [#932](https://github.com/NicolaiDolmer/CyclingZone/issues/932).)
-- Contract flows (renewal, expiry-to-auction, release, re-signing salary formula): market package [#1310](https://github.com/NicolaiDolmer/CyclingZone/issues/1310).
-- Season recaps [#1311](https://github.com/NicolaiDolmer/CyclingZone/issues/1311).
-- Hall of Fame and manager XP/login-streak power effects are planned for reduction under [#1139](https://github.com/NicolaiDolmer/CyclingZone/issues/1139).
-- Admin economy dashboard phase-B conveniences remain deferred; see the [07e archive](archive/feature-status-slice-07e.md).
+## training
 
-## Known bugs: top 10
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Daily training (`daily-training`) | live | `daily_training_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
+| Peak planner (`peak-planner`) | live | `peak_planner_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | #2224 | 2026-09-06 | - |
+| Season fatigue and form reset (`season-fatigue-reset`) | live | `season_fatigue_reset_enabled` | [TRAINING_RULES.md](TRAINING_RULES.md) | - | 2026-09-06 | - |
+| Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES.md](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
-Snapshot: 2026-06-12. Ordered by priority, then recency among open `type:bug` issues. See the full [GitHub bug list](https://github.com/NicolaiDolmer/CyclingZone/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22type%3Abug%22).
+## academy
 
-1. [#906](https://github.com/NicolaiDolmer/CyclingZone/issues/906) Lazy-chunk render error after deploy (`priority:high`).
-2. [#45](https://github.com/NicolaiDolmer/CyclingZone/issues/45) Many small loans can exceed the debt ceiling (`priority:high`).
-3. [#31](https://github.com/NicolaiDolmer/CyclingZone/issues/31) Debt negotiation does nothing on click (`priority:high`).
-4. [#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481) Brand identity overhaul remains open (`priority:high` and `priority:med`).
-5. [#1342](https://github.com/NicolaiDolmer/CyclingZone/issues/1342) Playwright Windows workers hang after passing smoke tests (`priority:med`).
-6. [#1337](https://github.com/NicolaiDolmer/CyclingZone/issues/1337) Tone/i18n guards are not required checks, allowing red checks to auto-merge (`priority:med`).
-7. [#1301](https://github.com/NicolaiDolmer/CyclingZone/issues/1301) SEO foundation for cyclingzone.org remains open (`priority:med`).
-8. [#1286](https://github.com/NicolaiDolmer/CyclingZone/issues/1286) Desktop plugin disable settings drift from configured keys (`priority:med`).
-9. [#1285](https://github.com/NicolaiDolmer/CyclingZone/issues/1285) Intermittent GitHub GraphQL 401s during multi-agent waves (`priority:med`).
-10. [#1017](https://github.com/NicolaiDolmer/CyclingZone/issues/1017) Preview deployments block authenticated UI verification (`priority:med`).
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Academy (`academy`) | live | `academy_enabled` | [YOUTH_RULES.md](YOUTH_RULES.md) | #932 | 2026-09-06 | - |
+| Sunday talent drip (`academy-sunday-drip`) | live | - | [YOUTH_RULES.md](YOUTH_RULES.md) | #2064 | 2026-09-06 | - |
+| Intake offer expiry (`intake-offer-expiry`) | live | `intake_offer_expiry_enabled` | [YOUTH_RULES.md](YOUTH_RULES.md) | - | 2026-09-06 | - |
+| Scouting (`scout-system`) | live | `scout_system_enabled` | [YOUTH_RULES.md](YOUTH_RULES.md) | - | 2026-09-06 | - |
+| Academy intake pull (`academy-intake-pull`) | building | `academy_intake_pull_enabled` | [YOUTH_RULES.md](YOUTH_RULES.md) | - | 2026-09-06 | - |
+| Season academy intake (`season-academy-intake`) | building | `season_academy_intake_enabled` | [YOUTH_RULES.md](YOUTH_RULES.md) | - | 2026-09-06 | - |
+| Three squads (`three-squads`) | spec | - | [YOUTH_RULES.md](YOUTH_RULES.md) | #2492 | 2026-09-06 | Slice 0 er leveret; resten er spec. |
 
-## Next-up pipeline
+## season
 
-1. Ship team selection, captain, and breakaway controls: [#1307](https://github.com/NicolaiDolmer/CyclingZone/issues/1307).
-2. Contract data seed delivered (#1309). Contract flows (renewal, expiry, release) are fast-follow in [#1310](https://github.com/NicolaiDolmer/CyclingZone/issues/1310).
-3. Complete academy MVP: [#1308](https://github.com/NicolaiDolmer/CyclingZone/issues/1308).
-4. Finish relaunch verification and flag activation for the 2026-06-20 target: [#1105](https://github.com/NicolaiDolmer/CyclingZone/issues/1105).
-5. Continue the market and recap fast-follow work after the relaunch-critical path: [#1310](https://github.com/NicolaiDolmer/CyclingZone/issues/1310) and [#1311](https://github.com/NicolaiDolmer/CyclingZone/issues/1311).
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| AI team retirement (`ai-team-retire`) | live | `ai_team_retire_enabled` | - | - | 2026-09-06 | - |
+| Season recap (`season-end-recap`) | live | - | - | #1311 | 2026-09-06 | SeasonEndPage med recap og hædersbevisninger. |
+| Season transition (`season-transition`) | live | - | [SEASON_TRANSITION_CHECKLIST.md](SEASON_TRANSITION_CHECKLIST.md) | - | 2026-09-06 | - |
+| Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
+| Season signup (`season-signup`) | building | `season_signup_enabled` | [CALENDAR_RULES.md](CALENDAR_RULES.md) | - | 2026-09-06 | Bygget; flaget åbnes først når tilmeldingen skal være åben. |
+
+## economy
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Automatic prize money (`auto-prize`) | live | `auto_prize_enabled` | [ECONOMY_RULES.md](ECONOMY_RULES.md) | - | 2026-09-06 | - |
+| Finance overview (`finance-overview`) | live | - | [ECONOMY_RULES.md](ECONOMY_RULES.md) | - | 2026-09-06 | - |
+| Bulk rider value writes (`rider-values-bulk-write`) | live | `rider_values_bulk_write_enabled` | [ECONOMY_RULES.md](ECONOMY_RULES.md) | - | 2026-09-06 | - |
+| Sponsors (`sponsors`) | live | - | [SPONSOR_RULES.md](SPONSOR_RULES.md) | #1663 | 2026-09-06 | Fase 2 er live. |
+
+## club
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Facilities (`facilities`) | live | `facilities_enabled` | - | - | 2026-09-06 | Trænings- og scoutingeffekter er live; medical og commercial er ikke bygget. |
+| Staff (`staff`) | live | - | - | - | 2026-09-06 | - |
+
+## board
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Board mandate model (`board-mandate-model`) | beta | `board_mandate_model_enabled` | [BOARD_RULES.md](BOARD_RULES.md) | #3514 | 2026-09-06 | Mandat, vision, tillid, bonus og DNA-valg i Boardroom. |
+| Firing and season review (`board-firing-and-review`) | idea | - | [BOARD_RULES.md](BOARD_RULES.md) | - | 2026-09-06 | Findes ikke i kode. |
+
+## social
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Forum (`forum`) | live | - | [FORUM_RULES.md](FORUM_RULES.md) | #3199 | 2026-09-06 | - |
+| Forum pulse (`forum-pulse`) | live | - | [FORUM_RULES.md](FORUM_RULES.md) | #4238 | 2026-09-06 | - |
+| In-app notifications (`notifications`) | live | - | [SOCIAL_RULES.md](SOCIAL_RULES.md) | - | 2026-09-06 | Cirka 55 typer i backend/lib/notificationTypes.js. |
+
+## stats
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Rider, manager and team profiles (`profiles`) | live | - | - | - | 2026-09-06 | - |
+| Results and race history (`results-archive`) | live | - | - | - | 2026-09-06 | RaceHistoryPage, ResultaterPage og AuctionHistoryPage. |
+| Standings and rankings (`standings-and-rankings`) | live | - | - | - | 2026-09-06 | - |
+| Hall of Fame (`hall-of-fame`) | retired | - | - | #2359 | 2026-09-06 | Redirecter til /standings. |
+
+## onboarding
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| First session onboarding (`onboarding-first-session`) | live | - | - | - | 2026-09-06 | OnboardingProgressCard (4 trin) og OnboardingTour på riders, auctions og board. |
+| Season start guide (`season-start-guide`) | live | - | - | - | 2026-09-06 | - |
+
+## comms
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Email retention loop (`email-loop`) | building | - | [EMAIL_LOOP_GO_LIVE_RUNBOOK.md](EMAIL_LOOP_GO_LIVE_RUNBOOK.md) | #4616 | 2026-09-06 | Dormante nøgler email_loop_* (rækker findes ikke = off); afventer ejer-go. |
+
+## billing
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Alunta reconciliation (`alunta-reconcile`) | live | `alunta_reconcile_enabled` | [ALUNTA_OPS.md](ALUNTA_OPS.md) | - | 2026-09-06 | - |
+| CZ Pro (`cz-pro`) | live | - | [BILLING_STACK.md](BILLING_STACK.md) | - | 2026-09-06 | Betalingsrails og Founder Supporter live; checkout-sprog og EUR er åbent (#4616). |
+
+## ops
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Rider reputation (`rider-reputation`) | building | `rider_reputation_enabled` | - | - | 2026-09-06 | - |
+| Survey banner (`survey-banner`) | building | `survey_banner_enabled` | - | - | 2026-09-06 | - |

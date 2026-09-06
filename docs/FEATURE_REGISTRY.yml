@@ -1,0 +1,602 @@
+# FEATURE REGISTRY — eneste kilde til "hvad er live" (#4921)
+#
+# REGLEN: tilstand afledes, aldrig fortælles. En post beskriver hvad der findes
+# i kode og i prod-flag — ikke hvad vi håber, planlægger eller husker. Er du i
+# tvivl om en tilstand: verificér i kode eller i app_config, eller lad posten
+# være. En gætte-post er værre end ingen post.
+#
+# docs/FEATURE_STATUS.md er GENERERET fra denne fil og redigeres aldrig i hånden:
+#   node scripts/generate-feature-status.mjs           # regenerér
+#   node scripts/generate-feature-status.mjs --check    # CI-gate
+#   node scripts/check-feature-registry-flags.mjs       # gate mod prod app_config
+#
+# SKEMA (ét fladt objekt pr. post, ingen indlejring):
+#   id        kebab-case, unik. Stabil — omdøb ikke uden grund.
+#   area      race-engine | race-day | market | squad | training | academy |
+#             season | economy | club | board | social | stats | onboarding |
+#             comms | billing | ops
+#   title_en  engelsk titel (EN-first, jf. sprogreglen)
+#   title_da  dansk titel
+#   state     idea | spec | building | beta | live | retired
+#   flag      app_config-nøgle (valgfri). Sæt den KUN hvis rækken faktisk findes
+#             i prod app_config — check-feature-registry-flags.mjs fejler på en
+#             nøgle der ikke findes. Dormante flag (rækken findes ikke = off pr.
+#             fail-safe) hører i `note`, ikke i `flag`.
+#   ssot      SSOT-dokument for området (valgfri), sti relativt til repo-roden
+#   epic      GitHub-issue-nummer for epic'en (valgfri, uden #)
+#   verified  YYYY-MM-DD — hvornår tilstanden sidst blev verificeret mod kode/prod
+#   note      max 1 linje. Kun det der ikke kan udledes af felterne ovenfor.
+#
+# FLAG-GATEN (check-feature-registry-flags.mjs):
+#   state: live  + flag → flagværdi skal være on/true
+#   state: beta  + flag → flagværdi skal være beta
+#   andre states + flag → flagværdi må IKKE være on/true
+#   flag der ikke findes i app_config → fail
+#   verified ældre end 60 dage → advarsel (ikke fail)
+#
+# HARD RULE 30 (e): flag-flip, feature-luk/retire eller ny kernefunktion
+# opdaterer denne fil i SAMME PR.
+
+features:
+  # --- race-engine ---------------------------------------------------------
+  - id: race-engine-v3
+    area: race-engine
+    title_en: Race engine v3
+    title_da: Løbsmotor v3
+    state: live
+    flag: race_engine_v2_enabled
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 1306
+    verified: 2026-09-06
+    note: Autoritativ motor i prod; flagnavnet er historisk (v2-æraen).
+
+  - id: race-engine-v3-scoring
+    area: race-engine
+    title_en: v3 scoring components
+    title_da: v3-scorekomponenter
+    state: live
+    flag: race_engine_v3_scoring
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 2353
+    verified: 2026-09-06
+    note: Dagsform, jour sans, arbejdsomkostning og rolle-opløsning i raceSimulator.
+
+  - id: race-engine-v4
+    area: race-engine
+    title_en: Race engine v4
+    title_da: Løbsmotor v4
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 3855
+    verified: 2026-09-06
+    note: Dormant nøgle race_engine_v4 (række findes ikke = off); flip planlagt 28/9.
+
+  - id: form-and-fatigue
+    area: race-engine
+    title_en: Form and fatigue in scoring
+    title_da: Form og træthed i scoren
+    state: live
+    ssot: docs/TRAINING_RULES.md
+    epic: 2353
+    verified: 2026-09-06
+    note: Vægter reelt ind via formRaceWeightV3, ikke neutrale 0-stubs.
+
+  - id: team-selection-and-roles
+    area: race-engine
+    title_en: Team selection, captain and breakaway
+    title_da: Holdudtagelse, kaptajn og udbrud
+    state: live
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 1307
+    verified: 2026-09-06
+
+  - id: race-intention-choice
+    area: race-engine
+    title_en: Stage intention choice
+    title_da: Indsatsvalg pr. etape
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 4632
+    verified: 2026-09-06
+    note: Dormant nøgle race_day_intention_enabled; M12 er merget ind i v4-broen.
+
+  # --- race-day ------------------------------------------------------------
+  - id: race-day-engine
+    area: race-day
+    title_en: Race day engine
+    title_da: Løbsdagsmotor
+    state: live
+    flag: race_day_engine_enabled
+    ssot: docs/RACE_ENGINE_RULES.md
+    verified: 2026-09-06
+
+  - id: stage-scheduler
+    area: race-day
+    title_en: Stage scheduler
+    title_da: Etapeplanlægger
+    state: live
+    flag: stage_scheduler_enabled
+    ssot: docs/CALENDAR_RULES.md
+    verified: 2026-09-06
+
+  - id: auto-entry-generator
+    area: race-day
+    title_en: Automatic race entries
+    title_da: Automatiske løbstilmeldinger
+    state: live
+    flag: auto_entry_generator_enabled
+    ssot: docs/CALENDAR_RULES.md
+    verified: 2026-09-06
+
+  - id: race-detail-page
+    area: race-day
+    title_en: Race page
+    title_da: Løbsside
+    state: live
+    verified: 2026-09-06
+    note: RaceDetailPage med faner og live klassement.
+
+  - id: race-replay
+    area: race-day
+    title_en: Stage replay and timeline film
+    title_da: Etape-replay og tidslinjefilm
+    state: live
+    flag: race_stage_timeline
+    verified: 2026-09-06
+    note: FinalKilometrePlayback, TimelineFilmPlayer og StageFilmScrubber.
+
+  - id: race-page-tabs-v2
+    area: race-day
+    title_en: Race page as tabs (v2)
+    title_da: Løbsside som faner (v2)
+    state: building
+    epic: 4613
+    verified: 2026-09-06
+    note: PR #4913 er åben.
+
+  - id: race-day-development
+    area: race-day
+    title_en: Race day development
+    title_da: Udvikling på løbsdage
+    state: building
+    flag: race_day_development_enabled
+    ssot: docs/PROGRESSION_RULES.md
+    verified: 2026-09-06
+
+  # --- market --------------------------------------------------------------
+  - id: auctions
+    area: market
+    title_en: Auctions with proxy bidding
+    title_da: Auktioner med proxy-bud
+    state: live
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    verified: 2026-09-06
+
+  - id: direct-transfers
+    area: market
+    title_en: Direct transfers and offers
+    title_da: Direkte handler og tilbud
+    state: live
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    verified: 2026-09-06
+
+  - id: rider-swaps
+    area: market
+    title_en: Rider swaps
+    title_da: Rytterbytte
+    state: live
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    verified: 2026-09-06
+    note: Knap på rytterprofilen; den separate fane er fjernet.
+
+  - id: rider-loans
+    area: market
+    title_en: Rider loans
+    title_da: Rytterlån
+    state: retired
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    epic: 1994
+    verified: 2026-09-06
+    note: Afviklet; kun finansielle lån findes i dag.
+
+  - id: auction-entry-gate
+    area: market
+    title_en: Auction entry gate
+    title_da: Adgangsport til auktioner
+    state: building
+    flag: auction_entry_gate_enabled
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    verified: 2026-09-06
+
+  - id: ai-unsolicited-bids
+    area: market
+    title_en: AI and unsolicited bids
+    title_da: AI-bud og uopfordrede bud
+    state: idea
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    epic: 1310
+    verified: 2026-09-06
+    note: Findes ikke i kode.
+
+  - id: market-value-blend
+    area: market
+    title_en: Market value blend sweep
+    title_da: Markedsblend af rytterværdier
+    state: building
+    flag: market_value_sweep_enabled
+    ssot: docs/ECONOMY_RULES.md
+    epic: 3448
+    verified: 2026-09-06
+    note: Søndagsblendet er kodet men slukket; kun ren måling kører (#4419).
+
+  # --- squad ---------------------------------------------------------------
+  - id: contracts
+    area: squad
+    title_en: Contracts, renewal and expiry
+    title_da: Kontrakter, fornyelse og udløb
+    state: live
+    ssot: docs/TRANSFER_MARKET_RULES.md
+    epic: 1310
+    verified: 2026-09-06
+    note: extend-contract, contractExpiryRelease og aiContractAutoRenewal i sæsonskiftet.
+
+  - id: squad-management
+    area: squad
+    title_en: Squad management
+    title_da: Trupstyring
+    state: live
+    verified: 2026-09-06
+    note: TeamPage med trup, løn, kontrakter og udviklingsfane.
+
+  - id: rider-compare-and-watchlist
+    area: squad
+    title_en: Rider comparison and watchlist
+    title_da: Sammenlign ryttere og overvågningsliste
+    state: live
+    verified: 2026-09-06
+
+  # --- training ------------------------------------------------------------
+  - id: daily-training
+    area: training
+    title_en: Daily training
+    title_da: Daglig træning
+    state: live
+    flag: daily_training_enabled
+    ssot: docs/TRAINING_RULES.md
+    verified: 2026-09-06
+
+  - id: peak-planner
+    area: training
+    title_en: Peak planner
+    title_da: Formtopsplanlægger
+    state: live
+    flag: peak_planner_enabled
+    ssot: docs/TRAINING_RULES.md
+    epic: 2224
+    verified: 2026-09-06
+
+  - id: training-tick-system
+    area: training
+    title_en: Training tick system
+    title_da: Tick-baseret træning
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 4850
+    verified: 2026-09-06
+
+  - id: season-fatigue-reset
+    area: training
+    title_en: Season fatigue and form reset
+    title_da: Nulstilling af form og træthed ved sæsonskifte
+    state: live
+    flag: season_fatigue_reset_enabled
+    ssot: docs/TRAINING_RULES.md
+    verified: 2026-09-06
+
+  # --- academy -------------------------------------------------------------
+  - id: academy
+    area: academy
+    title_en: Academy
+    title_da: Akademi
+    state: live
+    flag: academy_enabled
+    ssot: docs/YOUTH_RULES.md
+    epic: 932
+    verified: 2026-09-06
+
+  - id: scout-system
+    area: academy
+    title_en: Scouting
+    title_da: Scouting
+    state: live
+    flag: scout_system_enabled
+    ssot: docs/YOUTH_RULES.md
+    verified: 2026-09-06
+
+  - id: academy-sunday-drip
+    area: academy
+    title_en: Sunday talent drip
+    title_da: Søndagsdryp af talenter
+    state: live
+    ssot: docs/YOUTH_RULES.md
+    epic: 2064
+    verified: 2026-09-06
+
+  - id: intake-offer-expiry
+    area: academy
+    title_en: Intake offer expiry
+    title_da: Udløb af optagelsestilbud
+    state: live
+    flag: intake_offer_expiry_enabled
+    ssot: docs/YOUTH_RULES.md
+    verified: 2026-09-06
+
+  - id: academy-intake-pull
+    area: academy
+    title_en: Academy intake pull
+    title_da: Træk af akademi-optag
+    state: building
+    flag: academy_intake_pull_enabled
+    ssot: docs/YOUTH_RULES.md
+    verified: 2026-09-06
+
+  - id: season-academy-intake
+    area: academy
+    title_en: Season academy intake
+    title_da: Akademi-optag ved sæsonskifte
+    state: building
+    flag: season_academy_intake_enabled
+    ssot: docs/YOUTH_RULES.md
+    verified: 2026-09-06
+
+  - id: three-squads
+    area: academy
+    title_en: Three squads
+    title_da: Tre trupper
+    state: spec
+    ssot: docs/YOUTH_RULES.md
+    epic: 2492
+    verified: 2026-09-06
+    note: Slice 0 er leveret; resten er spec.
+
+  # --- season --------------------------------------------------------------
+  - id: season-transition
+    area: season
+    title_en: Season transition
+    title_da: Sæsonskifte
+    state: live
+    ssot: docs/SEASON_TRANSITION_CHECKLIST.md
+    verified: 2026-09-06
+
+  - id: season-signup
+    area: season
+    title_en: Season signup
+    title_da: Sæsontilmelding
+    state: building
+    flag: season_signup_enabled
+    ssot: docs/CALENDAR_RULES.md
+    verified: 2026-09-06
+    note: Bygget; flaget åbnes først når tilmeldingen skal være åben.
+
+  - id: season-end-recap
+    area: season
+    title_en: Season recap
+    title_da: Sæsonopsamling
+    state: live
+    epic: 1311
+    verified: 2026-09-06
+    note: SeasonEndPage med recap og hædersbevisninger.
+
+  - id: ai-team-retire
+    area: season
+    title_en: AI team retirement
+    title_da: Nedlæggelse af AI-hold
+    state: live
+    flag: ai_team_retire_enabled
+    verified: 2026-09-06
+
+  - id: season-documentary-llm
+    area: season
+    title_en: Season documentary (LLM)
+    title_da: Sæsondokumentar (LLM)
+    state: building
+    flag: season_documentary_llm_enabled
+    verified: 2026-09-06
+
+  # --- economy -------------------------------------------------------------
+  - id: sponsors
+    area: economy
+    title_en: Sponsors
+    title_da: Sponsorer
+    state: live
+    ssot: docs/SPONSOR_RULES.md
+    epic: 1663
+    verified: 2026-09-06
+    note: Fase 2 er live.
+
+  - id: auto-prize
+    area: economy
+    title_en: Automatic prize money
+    title_da: Automatiske præmiepenge
+    state: live
+    flag: auto_prize_enabled
+    ssot: docs/ECONOMY_RULES.md
+    verified: 2026-09-06
+
+  - id: finance-overview
+    area: economy
+    title_en: Finance overview
+    title_da: Økonomioverblik
+    state: live
+    ssot: docs/ECONOMY_RULES.md
+    verified: 2026-09-06
+
+  - id: rider-values-bulk-write
+    area: economy
+    title_en: Bulk rider value writes
+    title_da: Bulk-skrivning af rytterværdier
+    state: live
+    flag: rider_values_bulk_write_enabled
+    ssot: docs/ECONOMY_RULES.md
+    verified: 2026-09-06
+
+  # --- club ----------------------------------------------------------------
+  - id: facilities
+    area: club
+    title_en: Facilities
+    title_da: Faciliteter
+    state: live
+    flag: facilities_enabled
+    verified: 2026-09-06
+    note: Trænings- og scoutingeffekter er live; medical og commercial er ikke bygget.
+
+  - id: staff
+    area: club
+    title_en: Staff
+    title_da: Stab
+    state: live
+    verified: 2026-09-06
+
+  # --- board ---------------------------------------------------------------
+  - id: board-mandate-model
+    area: board
+    title_en: Board mandate model
+    title_da: Bestyrelsens mandatmodel
+    state: beta
+    flag: board_mandate_model_enabled
+    ssot: docs/BOARD_RULES.md
+    epic: 3514
+    verified: 2026-09-06
+    note: Mandat, vision, tillid, bonus og DNA-valg i Boardroom.
+
+  - id: board-firing-and-review
+    area: board
+    title_en: Firing and season review
+    title_da: Fyring og sæsonevaluering
+    state: idea
+    ssot: docs/BOARD_RULES.md
+    verified: 2026-09-06
+    note: Findes ikke i kode.
+
+  # --- social --------------------------------------------------------------
+  - id: forum
+    area: social
+    title_en: Forum
+    title_da: Forum
+    state: live
+    ssot: docs/FORUM_RULES.md
+    epic: 3199
+    verified: 2026-09-06
+
+  - id: forum-pulse
+    area: social
+    title_en: Forum pulse
+    title_da: Forumpuls
+    state: live
+    ssot: docs/FORUM_RULES.md
+    epic: 4238
+    verified: 2026-09-06
+
+  - id: notifications
+    area: social
+    title_en: In-app notifications
+    title_da: Notifikationer i appen
+    state: live
+    ssot: docs/SOCIAL_RULES.md
+    verified: 2026-09-06
+    note: Cirka 55 typer i backend/lib/notificationTypes.js.
+
+  # --- stats ---------------------------------------------------------------
+  - id: standings-and-rankings
+    area: stats
+    title_en: Standings and rankings
+    title_da: Stillinger og ranglister
+    state: live
+    verified: 2026-09-06
+
+  - id: results-archive
+    area: stats
+    title_en: Results and race history
+    title_da: Resultater og løbshistorik
+    state: live
+    verified: 2026-09-06
+    note: RaceHistoryPage, ResultaterPage og AuctionHistoryPage.
+
+  - id: profiles
+    area: stats
+    title_en: Rider, manager and team profiles
+    title_da: Rytter-, manager- og holdprofiler
+    state: live
+    verified: 2026-09-06
+
+  - id: hall-of-fame
+    area: stats
+    title_en: Hall of Fame
+    title_da: Hall of Fame
+    state: retired
+    epic: 2359
+    verified: 2026-09-06
+    note: Redirecter til /standings.
+
+  # --- onboarding ----------------------------------------------------------
+  - id: onboarding-first-session
+    area: onboarding
+    title_en: First session onboarding
+    title_da: Onboarding i første session
+    state: live
+    verified: 2026-09-06
+    note: OnboardingProgressCard (4 trin) og OnboardingTour på riders, auctions og board.
+
+  - id: season-start-guide
+    area: onboarding
+    title_en: Season start guide
+    title_da: Sæsonstartguide
+    state: live
+    verified: 2026-09-06
+
+  # --- comms ---------------------------------------------------------------
+  - id: email-loop
+    area: comms
+    title_en: Email retention loop
+    title_da: E-mail-loop
+    state: building
+    ssot: docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md
+    epic: 4616
+    verified: 2026-09-06
+    note: Dormante nøgler email_loop_* (rækker findes ikke = off); afventer ejer-go.
+
+  # --- billing -------------------------------------------------------------
+  - id: cz-pro
+    area: billing
+    title_en: CZ Pro
+    title_da: CZ Pro
+    state: live
+    ssot: docs/BILLING_STACK.md
+    verified: 2026-09-06
+    note: Betalingsrails og Founder Supporter live; checkout-sprog og EUR er åbent (#4616).
+
+  - id: alunta-reconcile
+    area: billing
+    title_en: Alunta reconciliation
+    title_da: Alunta-afstemning
+    state: live
+    flag: alunta_reconcile_enabled
+    ssot: docs/ALUNTA_OPS.md
+    verified: 2026-09-06
+
+  # --- ops -----------------------------------------------------------------
+  - id: rider-reputation
+    area: ops
+    title_en: Rider reputation
+    title_da: Rytter-omdømme
+    state: building
+    flag: rider_reputation_enabled
+    verified: 2026-09-06
+
+  - id: survey-banner
+    area: ops
+    title_en: Survey banner
+    title_da: Undersøgelsesbanner
+    state: building
+    flag: survey_banner_enabled
+    verified: 2026-09-06
