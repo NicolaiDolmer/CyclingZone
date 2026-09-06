@@ -120,7 +120,7 @@ export function simulateStageV4(input: StageInput): StageOutput {
   // loopets egne graense-events — stable-sort paa km genopretter #2410 §2.3's
   // monotoni uden at flytte raekkefoelgen inden for samme km.
   // M15's events ligger paa maalstregen og hoerer kronologisk EFTER
-  // finish-eventet: tidsgraensen kan foerst afgoeres naar vinderen er i mal.
+  // finish-eventet: tidsgraensen kan foerst afgoeres naar vinderen er i maal.
   // Samme km => stabil sortering bevarer den raekkefoelge (#2410 §2.3 regel 4).
   return {
     timeline: { timeline_version: 2, events: [...sortTimeline(timeline), finishEvent, ...timeLimit.events] },
