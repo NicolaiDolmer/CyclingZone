@@ -466,3 +466,36 @@ const physiologyWprimeDrain = {
 
 /** W'-taerings-tidskonstant (deep-frosset). Se physiologyWprimeDrain-kommentaren ovenfor. */
 export const PHYSIOLOGY_WPRIME_DRAIN_TUNING = deepFreeze(physiologyWprimeDrain);
+
+// ── M15 (mechanics/timeLimit.ts, #2582) — ADDITIV tidsgraense-tuning ─────────
+// Samme additive praecedens som finaleExtra ovenfor: SS2's frosne EngineTuning
+// (types.ts) har ingen "timeLimit"-noegle, saa mechanics/timeLimit.ts importerer
+// denne direkte. Ejer-beslutning 6/9 (UCI-reglen, docs/RACE_ENGINE_RULES.md §2d).
+//
+// FAKTOR-TABELLEN er andelen af VINDERTIDEN en rytter maa laegge oveni foer han
+// er uden for tidsgraensen. Ejer-rammen: UCI's 5-20 %-baand, flad lavest,
+// bjerg/summit hoejest, enkeltstart/holdtidskoersel efter UCI-praksis. ALLE
+// vaerdier er STARTGAET, kalibreres i harnesset — maalet er "sjaeldent paa flade
+// etaper, maerkbart paa haarde bjergetaper, aldrig en massakre".
+const timeLimitExtra = {
+  factorByProfileType: {
+    flat: 0.05, // fladt: laveste baand-ende (UCI's letteste koefficient) — feltet ruller samlet ind, kun en reelt havareret rytter falder udenfor
+    rolling: 0.06, // rullende: knap over fladt, samme massefinale-dynamik
+    hilly: 0.1, // kuperet: midt i baandet, foerste etapetype hvor selektionen kan hage en svag klatrer af
+    cobbles: 0.09, // brosten: kort men nedslidende; UCI's klassiker-praksis er mild fordi sektorerne allerede har splittet feltet
+    gravel: 0.11, // grus: laengere og mere nedslidende end brosten (RACE_ENGINE_RULES.md §2b), derfor lidt mildere graense
+    classic: 0.11, // monument-arketypen: lang, haard, stor spredning i maal
+    mountain: 0.15, // bjerg: hoej ende af baandet — grupettoen er normen her, ikke undtagelsen
+    high_mountain: 0.2, // hoejbjerg/summit: baandets top (ejer: "bjerg/summit hoejest")
+    itt: 0.25, // enkeltstart: UCI-praksis ligger over 5-20-baandet (typisk 25 %) fordi en TT spreder feltet naturligt
+    itt_hilly: 0.25, // kuperet enkeltstart: samme UCI-praksis som itt
+    ttt: 0.25, // holdtidskoersel: samme UCI-praksis; en rytter sluppet af sit hold maa ikke ryge ud paa en holdopgave
+  } as Record<ProfileType, number>, // graense-faktor pr. etapetype (andel af vindertiden). STARTGAET, kalibreres
+  fallbackFactor: 0.1, // faktor naar profile_type mangler/er ukendt — midt i baandet, saa en ukendt type hverken massakrerer eller slukker reglen
+  grupettoFieldFraction: 0.2, // andel af FELTET en samlet ankomst skal udgoere foer grupetto-redningen udloeses (UCI bruger typisk 20 %). STARTGAET, kalibreres
+  grupettoMinRiders: 8, // absolut gulv: i et lille felt maa 20 % ikke goere enhver lille klump til en grupetto. STARTGAET, kalibreres
+  grupettoCohesionWindowSeconds: 2, // sammenhaengsvindue paa sluttid (spejler tuning.groups.mergeThresholdSeconds, jf. groups.ts) — egen konstant saa grupetto-vinduet kan kalibreres uden at flytte selve gruppe-sammensmeltningen
+};
+
+/** M15 additiv tidsgraense-tuning (deep-frosset). Se timeLimitExtra-kommentaren ovenfor. */
+export const TIME_LIMIT_EXTRA_TUNING = deepFreeze(timeLimitExtra);
