@@ -235,16 +235,19 @@ async function defaultFetchNegotiatedRawSales({ supabase, sinceIso }) {
   return rawSales;
 }
 
-async function defaultClaimMeasurement({ supabase, measuredDate }) {
-  const { error } = await supabase
+// upsert+ignoreDuplicates i stedet for insert+23505 (#4868) — samme claim-
+// adfærd (tom `data` = allerede målt i dag, dedup uændret), men uden at
+// Postgres logger en ERROR-linje for hver kollision mod UNIQUE(measured_date).
+export async function defaultClaimMeasurement({ supabase, measuredDate }) {
+  const { data, error } = await supabase
     .from(LEVEL_CORRECTION_GATE_LOG_TABLE)
-    .insert({ measured_date: measuredDate });
-  if (!error) return { claimed: true, tableMissing: false };
-  if (isMissingTableError(error)) return { claimed: false, tableMissing: true };
-  if (error.code === "23505" || /duplicate key|unique constraint/i.test(String(error.message || ""))) {
-    return { claimed: false, tableMissing: false };
+    .upsert({ measured_date: measuredDate }, { onConflict: "measured_date", ignoreDuplicates: true })
+    .select("measured_date");
+  if (error) {
+    if (isMissingTableError(error)) return { claimed: false, tableMissing: true };
+    throw new Error(`market-value-level-correction-gate claim: ${error.message}`);
   }
-  throw new Error(`market-value-level-correction-gate claim: ${error.message}`);
+  return { claimed: !!(data && data.length > 0), tableMissing: false };
 }
 
 async function defaultCompleteMeasurement({ supabase, measuredDate, gate }) {
