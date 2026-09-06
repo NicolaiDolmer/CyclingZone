@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-06T21:30:09.975Z",
-  "main_sha": "ffe85890ec9b9003d4aae66d32e6619407eb960b",
+  "generated_at": "2026-09-06T22:26:22.808Z",
+  "main_sha": "d0d7821e531d5f305b9b124071f0f2dc8aed6d4b",
   "population_file": "backend/scripts/baselines/population-snapshot-2026-07-11.json",
   "population_file_sha256_16": "e360366e3def2980",
   "population_riders": 5650,
   "stages_file": "backend/scripts/baselines/v4-proxy-stages-2026-09-06.json",
-  "stages_file_sha256_16": "a83f400535dc09d6",
+  "stages_file_sha256_16": "bbf6e20ce5293280",
   "seeds": [
     "s1",
     "s2",
@@ -33,13 +33,13 @@
         }
       },
       "v4": {
-        "value": 0.26574074074074067,
+        "value": 0.304224537037037,
         "sampleCount": 96,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
-          "min": 0.25329861111111107,
-          "max": 0.2817708333333333,
+          "min": 0.29236111111111107,
+          "max": 0.318923611111111,
           "seeds": 3
         }
       }
@@ -61,13 +61,13 @@
         }
       },
       "v4": {
-        "value": 0.37825294980698737,
+        "value": 0.3834921642288957,
         "sampleCount": 42,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.3196585058441633,
-          "max": 0.42953680053904314,
+          "min": 0.2610747553354567,
+          "max": 0.4943917769212072,
           "seeds": 3
         }
       }
@@ -86,7 +86,7 @@
       },
       "v4": {
         "value": 20,
-        "sampleCount": 1229,
+        "sampleCount": 1175,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
@@ -113,13 +113,13 @@
         }
       },
       "v4": {
-        "value": 0.6933631574308291,
+        "value": 0.7124668519599612,
         "sampleCount": 51,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.686630471510714,
-          "max": 0.6996469076888635,
+          "min": 0.7002657412096771,
+          "max": 0.7208551926600384,
           "seeds": 3
         }
       }
@@ -141,13 +141,13 @@
         }
       },
       "v4": {
-        "value": 0.12824700373822298,
+        "value": 0.14136191426264663,
         "sampleCount": 9,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.013489677316600224,
-          "max": 0.22352653589155047,
+          "min": 0.10660764696372949,
+          "max": 0.162701332023248,
           "seeds": 3
         }
       }
@@ -169,13 +169,13 @@
         }
       },
       "v4": {
-        "value": 0.5981087470449172,
+        "value": 0.541371158392435,
         "sampleCount": 423,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
-          "min": 0.5886524822695035,
-          "max": 0.6099290780141844,
+          "min": 0.5319148936170213,
+          "max": 0.5460992907801419,
           "seeds": 3
         }
       }
@@ -249,13 +249,13 @@
         }
       },
       "v4": {
-        "value": 0.9047619047619048,
+        "value": 0.8857142857142857,
         "sampleCount": 105,
-        "verdict": "PASS",
+        "verdict": "FAIL",
         "naReason": null,
         "spread": {
-          "min": 0.8285714285714286,
-          "max": 0.9714285714285714,
+          "min": 0.8,
+          "max": 0.9428571428571428,
           "seeds": 3
         }
       }
@@ -277,13 +277,13 @@
         }
       },
       "v4": {
-        "value": 0.8410441888650629,
+        "value": 0.8448088346292052,
         "sampleCount": 36,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.826315338794711,
-          "max": 0.8636693595333557,
+          "min": 0.837673640709784,
+          "max": 0.8506273103164211,
           "seeds": 3
         }
       }
@@ -333,13 +333,13 @@
         }
       },
       "v4": {
-        "value": 199.6395238095238,
+        "value": 211.558253968254,
         "sampleCount": 63,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 182.33428571428573,
-          "max": 216.34380952380957,
+          "min": 164.55428571428553,
+          "max": 242.31428571428583,
           "seeds": 3
         }
       }
