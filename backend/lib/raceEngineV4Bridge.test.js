@@ -19,7 +19,9 @@ import {
   createRaceEngineV4Adapter,
   loadRaceEngineV4,
   loadTeamOrderRows,
+  passagesFromV4Output,
   rankedFromV4Output,
+  stageHasPassageRouteData,
   __resetRaceEngineV4Cache,
 } from "./raceEngineV4Bridge.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
@@ -247,4 +249,78 @@ test("#3855 ydelse: én v4-etape med 180 ryttere på en realistisk bjergrute", a
   // loftet er bevidst LØST (ingen flaky CI-gate), men fanger en katastrofal
   // regression der ville gøre flippet umuligt.
   assert.ok(ms < 60_000, `én etape tog ${ms.toFixed(0)} ms — over 60 s er en flip-blokker`);
+});
+
+// ── 5. Passage-laget (#2770/#2413, ejer-beslutning 6/9) ─────────────────────
+//
+// "v4's egen mekanik er eneste kilde når v4 er on" er en DOBBELT-tildelings-
+// garanti: broen skal levere passagerne, og raceRunner skal springe det gamle
+// lag over. Testene her låser den første halvdel; raceRunner.test.js den anden.
+
+test("#2770 stageHasPassageRouteData: samme data-gate som computePassages (#2784)", () => {
+  assert.equal(stageHasPassageRouteData({ distance_km: 180 }), true);
+  assert.equal(stageHasPassageRouteData({ distance_km: null, climbs: [{ crest_km: 10 }] }), true);
+  assert.equal(stageHasPassageRouteData({ distance_km: null, sprints: [{ km: 10 }] }), true);
+  // Legacy-række: hverken distance, stigninger eller spurter → ikke en rute.
+  assert.equal(stageHasPassageRouteData({ distance_km: null, climbs: [], sprints: [] }), false);
+  assert.equal(stageHasPassageRouteData({ distance_km: 0 }), false);
+});
+
+test("#2770 passagesFromV4Output: computePassages-formen, direkte fra motorens output", () => {
+  const out = {
+    passages: [{ kind: "sprint", index: 0, name: "Spurt", km: 60, category: null, results: [] }],
+    passage_totals: [{ rider_id: "a", sprint_points: 20, kom_points: 5, bonus_seconds: 3 }],
+  };
+  const passage = passagesFromV4Output(out, { stageProfile: stageProfile(), isStageRace: true });
+  assert.equal(passage.passages.length, 1);
+  assert.deepEqual(passage.perRider.get("a"), { sprint_points: 20, kom_points: 5, bonus_seconds: 3 });
+  assert.equal(passage.perRider.get("ukendt"), undefined, "perRider er et Map som v3's, ikke et objekt");
+});
+
+test("#2770 passagesFromV4Output: endagsløb og rutedata-løse etaper falder tilbage til det gamle lag", () => {
+  const out = { passages: [{ kind: "finish", index: 0, name: "Maal", km: 1, category: null, results: [] }], passage_totals: [] };
+  assert.equal(passagesFromV4Output(out, { stageProfile: stageProfile(), isStageRace: false }), null);
+  assert.equal(
+    passagesFromV4Output(out, { stageProfile: { distance_km: null, climbs: [], sprints: [] }, isStageRace: true }),
+    null,
+  );
+});
+
+test("#2770 adapteren leverer v4's egne passager på en etapeløbs-etape (ægte motor)", async () => {
+  __resetRaceEngineV4Cache();
+  const engine = await loadRaceEngineV4();
+  const { passages, v4Output } = engine.simulateStage({
+    entrants: makeEntrants(60),
+    stageProfile: stageProfile(),
+    seedString: "race-v4-passages:1",
+    stageNumber: 1,
+    teamOrderRows: [],
+    isStageRace: true,
+  });
+  assert.ok(passages, "broen skal levere v4's passage-lag for en etapeløbs-etape");
+  // Ruten har én indlagt spurt, to stigninger (den ene summit_finish) og et mål.
+  assert.deepEqual(
+    passages.passages.map((p) => p.kind),
+    ["sprint", "kom", "kom", "finish"],
+    "alle fire vejpunkter skal give en passage",
+  );
+  assert.deepEqual(passages.passages, v4Output.passages, "broen må ikke omforme motorens passager");
+  const totals = [...passages.perRider.values()];
+  assert.ok(totals.some((t) => t.bonus_seconds > 0), "ingen bonussekunder nåede ud af motoren");
+  assert.ok(totals.some((t) => t.kom_points > 0), "ingen bjergpoint nåede ud af motoren");
+  assert.ok(totals.every((t) => t.bonus_seconds <= 10 + 1e-9), "per-rytter-loftet (#2413) skal holde helt ud i broen");
+});
+
+test("#2770 adapteren leverer INGEN passager på et endagsløb (dobbelt-tildeling umulig)", async () => {
+  __resetRaceEngineV4Cache();
+  const engine = await loadRaceEngineV4();
+  const { passages } = engine.simulateStage({
+    entrants: makeEntrants(30),
+    stageProfile: stageProfile(),
+    seedString: "race-v4-passages:2",
+    stageNumber: 1,
+    teamOrderRows: [],
+    isStageRace: false,
+  });
+  assert.equal(passages, null);
 });

@@ -91,7 +91,7 @@ Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 | M6 | Sprint-tog, leadout-roller | F3 ✅ wiret 3/9 |
 | M7 | Distance-slid: monument-effekt + dag-til-dag | F3 ✅ wiret 6/9 |
 | M8 | Brosten-sektorer | F3 ✅ wiret 6/9 |
-| M9 | Bonussekunder — bounded så bjerg dominerer GC | F3 |
+| M9 | Bonussekunder + spurt-/bjergpassager — bounded så bjerg dominerer GC | F3 ✅ wiret 6/9 — se §2g |
 | M10 | Incidents + 3 km-reglen — graduerede styrt, mekaniske uden DNF | F3 ✅ wiret 6/9 |
 | M11 | Vejr-lag pr. etape, seeded | F3 ✅ wiret 6/9 — se §2f |
 | M12 | Effort pr. rytter (`protect`/`normal`/`save`) | F3 |
@@ -291,6 +291,27 @@ Vejret skærper de selektioner der allerede findes; det skaber ingen nye grupper
 kontrollerede kørsler (`backend/scripts/v4TailSpread.js --weather-experiment`) flytter vejret
 etapens tid, ikke feltets sammensætning. Skal vejret kunne SPLITTE et felt, er det viften der
 mangler, ikke en hårdere kalibrering af dette lag.
+
+---
+
+## 2g. Passager og bonussekunder (M9) — hvem ejer point og trøjer ([#2770](https://github.com/NicolaiDolmer/CyclingZone/issues/2770) · [#2413](https://github.com/NicolaiDolmer/CyclingZone/issues/2413))
+
+**Ejer-beslutning 6/9 (låst).** Spurtpoint, bjergpoint og bonussekunder blev indtil nu lagt på **uden for** motoren (`backend/lib/racePassages.js`, kaldt fra `raceRunner`). Auditens åbne punkt 6 var: kobler man v4's egen mekanik ind uden at slukke det lag, får rytterne point **to gange**; gør man ingenting, mangler point og trøjer efter flippet. Valget er: **når v4 kører etapen, er motorens egen M9-mekanik den eneste kilde**, og laget udenfor gates af *for netop den etape*. Kører v3, er alt uændret. Kill-switchen midt i et løb er derfor stadig sikker: hver etape har præcis én kilde.
+
+| | Hvor |
+|---|---|
+| Mekanikken | `backend/lib/engine/v4/mechanics/bonusSeconds.ts` — segment-hook for bjergtoppe og indlagte spurter, målpassagen bygges i `index.ts` på den endelige placeringsrækkefølge |
+| Kontrakten | `StageOutput.passages` + `StageOutput.passage_totals` (additive, `types.ts`) — samme form som `computePassages` |
+| Gaten | `raceEngineV4Bridge.passagesFromV4Output` (`null` ⇒ det gamle lag kører) + kaldsstederne i `raceRunner.js` |
+| Point-skalaerne | ejer-låste Tour-skalaer, **spejlet 1:1** fra `racePassages.js` ind i `BONUS_SECONDS_EXTRA_TUNING`. En paritetstest fælder enhver drift |
+
+**Tre ting er anderledes end i v3, med vilje:**
+
+1. **Hvem der er foran måles, i stedet for at gættes.** v3 havde ingen grupper og udledte "er han med i udbruddet" af en syntetisk status plus et lodtrukket catch-km. v4 læser sit rigtige gruppe-lag: gruppen afgør rækkefølgen ved vejpunktet, evnen afgør inden for gruppen. Det er hele grunden til at flytte passagerne ind i motoren.
+2. **Bonussekunderne har et samlet loft pr. rytter pr. etape** (#2413: *"GC-effekten er bounded"*). v3 har intet — samme rytter kan tage både mål- og spurtbonus. Målt over 423 etapekørsler: v3's største enkeltdag var 13 s, v4's 10 s. Loftet klemmer proportionelt og runder **ned til hele sekunder** (`race_results.bonus_seconds` er en `integer`-kolonne).
+3. **Passagerne rører aldrig et resultat.** De ændrer hverken tid, gruppe, placering eller status — kun point, sekunder og tidslinje-events. Invariant 2, 3 og 6 er derfor uberørte per konstruktion, ikke ved en efterfølgende guard.
+
+**Målt paritet** (423 etapekørsler, 141 proxy-etaper × 3 seeds, 180-rytters felt): **pointudbuddet er identisk** — samme samlede spurt-/mål- og bjergpoint, 0 etaper med afvigelse. Med motoren holdt fast (v3's lag kørt på v4's eget resultat) giver de to lag **samme pointtrøje i 3 af 3 løb og samme bjergtrøje i 2 af 3**; top-3 ved de enkelte vejpunkter undervejs er enige i cirka en fjerdedel af tilfældene. Den uenighed **er** modelforskellen fra punkt 1 og skal være der.
 
 ---
 

@@ -434,23 +434,53 @@ export function scoreTypeIntegrity(rows, abilitiesByRider) {
 // 9. Bonussekunder GC-bounded (STRUKTUREL, ikke rows-afledt — se note)
 // ---------------------------------------------------------------------------
 
-export function scoreBonusSecondsBounded() {
+export function scoreBonusSecondsBounded(rows = []) {
   // v3: racePassages.js's FINISH_BONUS_SECONDS/INTERMEDIATE_BONUS_SECONDS er
-  // FASTE konstanter ([10,6,4] / [3,2,1]) — bounded ved konstruktion, kraever
-  // ingen kørsel for at verificere (samme tal som #2413-kravet).
+  // FASTE konstanter ([10,6,4] / [3,2,1]). v3 har intet SAMLET loft: samme
+  // rytter kan tage baade maal- og spurt-bonus, saa den maalte oevre graense er
+  // 13s, ikke 10. Det er dét tal cellen viser nu — auditen 5/9 fandt at v3-
+  // cellen var haardkodet til bestaaet uden at koere noget.
+  //
+  // v4: MAALT paa StageOutput.passage_totals (M9 er koblet ind, #2770/#2413).
+  // Loftet er en konstruktions-egenskab (clampPassageBonusToPerRiderCap), saa
+  // cellen er en regressionsvagt paa at koblingen faktisk haandhaever den.
+  const band = { max: 10 };
+  let v3Max = 0;
+  let v3Samples = 0;
+  let v4Max = 0;
+  let v4Samples = 0;
+  for (const row of rows) {
+    const v3ByRider = new Map();
+    for (const wp of row.raw?.v3Passages?.passages ?? []) {
+      for (const res of wp.results ?? []) {
+        if (!res.bonus_seconds) continue;
+        v3ByRider.set(res.rider_id, (v3ByRider.get(res.rider_id) ?? 0) + res.bonus_seconds);
+      }
+    }
+    if (v3ByRider.size > 0) {
+      v3Samples += 1;
+      v3Max = Math.max(v3Max, ...v3ByRider.values());
+    }
+    const totals = row.raw?.v4Output?.passage_totals ?? [];
+    const v4Bonus = totals.map((t) => t.bonus_seconds ?? 0).filter((v) => v > 0);
+    if (v4Bonus.length > 0) {
+      v4Samples += 1;
+      v4Max = Math.max(v4Max, ...v4Bonus);
+    }
+  }
+  const display = (v) => `${fmt(v, 0)}s (stoerste samlede bonus én rytter fik paa én etape)`;
   return {
     id: "bonus_seconds_bounded",
     label: "Bonussekunder GC-effekt bounded (maks ~10s/etape)",
-    bandLabel: "maks 10s/etape (maal) + bjerg dominerer stadig GC",
+    bandLabel: `<= ${band.max}s/etape pr. rytter`,
     source: "#2413-kravet (mor-spec §5)",
     v3: {
-      value: 10, sampleCount: 1, verdict: "PASS",
-      naReason: null, display: (v) => `${v}s (racePassages.js FINISH_BONUS_SECONDS=[10,6,4], strukturelt bounded)`,
+      ...judge(v3Samples > 0 ? v3Max : null, band, v3Samples, "ingen etaper med bonussekunder i input"),
+      display,
     },
     v4: {
-      value: null, sampleCount: 0, verdict: "N/A",
-      naReason: "M9 (bonussekunder) er F3-scope — tuning.bonusSeconds er defineret men ikke forbrugt af nogen v4-mekanik endnu",
-      display: (v) => fmt(v, 0),
+      ...judge(v4Samples > 0 ? v4Max : null, band, v4Samples, "ingen etaper med bonussekunder i input"),
+      display,
     },
   };
 }
@@ -532,7 +562,7 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
     ...scoreDominance(rows, { teamByRider, v4EntrantsById }),
     scoreBreakawayRates(rows),
     ...scoreTypeIntegrity(rows, abilitiesByRider),
-    scoreBonusSecondsBounded(),
+    scoreBonusSecondsBounded(rows),
     ...scoreGapRealism(rows),
   ];
 }

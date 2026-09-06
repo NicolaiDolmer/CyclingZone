@@ -455,8 +455,8 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // race_engine_v4 var ON da afviklingen startede; broen oversætter v4's
     // StageOutput til den samme `ranked`-form v3 returnerer, så ALT herunder
     // (pushIndiv, computePassages, akkumulering, klassementer) er uændret.
-    const { ranked, incidents, timeline: v4Timeline = null } = v4Engine
-      ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows })
+    const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
+      ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace })
       : simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
     for (const inc of incidents) {
       allIncidents.push({ stage_number: stageNumber, ...inc });
@@ -470,7 +470,14 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // rng-strømme afledt heraf, jf. racePassages.js). stageEntrants = PRÆCIS de
     // entrants der blev sendt ind i simulateStage (abandons allerede udelukket).
     // Data-gated: computePassages returnerer tomt for endagsløb/rutedata-løse etaper.
-    const passage = computePassages({ ranked, stageProfile: stage, entrants: stageEntrants, seed, isStageRace });
+    //
+    // #2770/#2413 (ejer 6/9): kørte v4 etapen, ER motorens egen M9-mekanik
+    // passage-laget, og dette lag springes over for netop den etape — ellers
+    // ville rytterne få point og bonussekunder to gange. Broen returnerer null
+    // når v4 ikke er kilden (endagsløb / række uden rutedata), og så er det
+    // præcis den gamle sti der kører.
+    const passage = v4Passages
+      ?? computePassages({ ranked, stageProfile: stage, entrants: stageEntrants, seed, isStageRace });
     const passageActive = passage.passages.length > 0;
     const passageAgg = (riderId) => passage.perRider.get(riderId) || { sprint_points: 0, kom_points: 0, bonus_seconds: 0 };
     for (const wp of passage.passages) {
@@ -2157,8 +2164,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const seedInput = raceSeedInput(race.id, stageNumber);
   const seed = stableSeed(seedInput);
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
-  const { ranked, incidents, timeline: v4Timeline = null } = v4Engine
-    ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows })
+  const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
+    ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true })
     : simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
   // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
   const stampedIncidents = incidents.map((inc) => ({ stage_number: stageNumber, ...inc }));
@@ -2169,7 +2176,10 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   // Sub-2 (#2770): passage-lag — SAMME seed som simulateStage ovenfor. Denne
   // funktion kaldes KUN for etapeløb (kald-stedets ansvar, se simulateStageByIndex),
   // så isStageRace er altid true her. Data-gated: tomt for etaper uden rutedata.
-  const passage = computePassages({ ranked, stageProfile: thisStage, entrants: simEntrants, seed, isStageRace: true });
+  // #2770/#2413 (ejer 6/9): v4's egen M9-mekanik ER passage-laget når v4 kørte
+  // etapen — se den tilsvarende note i buildRaceResults.
+  const passage = v4Passages
+    ?? computePassages({ ranked, stageProfile: thisStage, entrants: simEntrants, seed, isStageRace: true });
   const passageActive = passage.passages.length > 0;
   const passageAgg = (riderId) => passage.perRider.get(riderId) || { sprint_points: 0, kom_points: 0, bonus_seconds: 0 };
   for (const wp of passage.passages) {

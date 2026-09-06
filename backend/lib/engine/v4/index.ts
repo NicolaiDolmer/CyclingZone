@@ -11,6 +11,7 @@ import type {
   StageIncident,
   StageInput,
   StageOutput,
+  StagePassage,
   StageResult,
   TimelineEvent,
 } from "./types.ts";
@@ -21,6 +22,17 @@ import { breakawayHook } from "./mechanics/breakaway.ts";
 import { applyThreeKmRuleToResults, incidentHook } from "./mechanics/incidents.ts";
 import { cobblesHook } from "./mechanics/cobbles.ts";
 import { teamPlayHook } from "./mechanics/teamPlay.ts";
+// M9 (#2770, #2413, ejer-beslutning 6/9): passager — bjergpoint, spurtpoint og
+// bonussekunder. Se wiring-blokken i simulateStageV4 for hvorfor maalpassagen
+// bygges efter finalen og ikke i segment-loopet.
+import {
+  buildFinishPassages,
+  clampPassageBonusToPerRiderCap,
+  passageTotals,
+  passagesHook,
+  passagesToTimelineEvents,
+  sortPassages,
+} from "./mechanics/bonusSeconds.ts";
 import { finaleHook } from "./finale.ts";
 import { sortTimeline } from "./timeline.ts";
 // M15 (#2582, ejer-beslutning 6/9): tidsgraensen. Se wiring-blokken i
@@ -35,17 +47,18 @@ import { applyTimeLimit } from "./mechanics/timeLimit.ts";
 // segment-loopet. Harness/tests kan stadig injicere egne hooks via
 // runSegmentLoop direkte.
 //
-// FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855 + #4885 + #4246). Audit'en 5/9
-// talte otte faerdige mekanikker uden ét eneste kaldssted. M10 (incidents), M8
-// (brosten/grus), M7 (distance-slid) og M11 (vejr) er nu KOBLET IND og staar
-// altsaa ikke laengere paa den liste. M7 og M11 har med vilje INTET hook her:
-// de rammer den baeredygtige troeskel i selve segmentloekken (segmentLoop.ts's
+// FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855 + #4885 + #4246 + #2770).
+// Audit'en 5/9 talte otte faerdige mekanikker uden ét eneste kaldssted. M10
+// (incidents), M8 (brosten/grus), M7 (distance-slid), M11 (vejr), M16
+// (holdspil) og M9 (passager/bonussekunder) er nu KOBLET IND og staar altsaa
+// ikke laengere paa den liste. M7 og M11 har med vilje INTET hook her: de
+// rammer den baeredygtige troeskel i selve segmentloekken (segmentLoop.ts's
 // `riderCpForSegment`) og er dermed ikke terraen-udloeste hooks men et lag
 // under dem. M11's anden arm — vejr-forstaerket styrt-risiko — ligger i
 // mechanics/descent.ts og mechanics/cobbles.ts.
-// Stadig bygget-men-ikke-kaldt: M9 (bonussekunder), M12 (effort) og
-// holdtidskoerslen. (M16/holdspillet er wiret her nedenfor og gav samtidig
-// `Entrant.team_id`, forudsaetningen for at holdtidskoerslen kan kobles ind.)
+// Stadig bygget-men-ikke-kaldt: M12 (effort) og holdtidskoerslen.
+// (M16/holdspillet gav `Entrant.team_id`, forudsaetningen for at
+// holdtidskoerslen kan kobles ind. Ordre-adapteren kaldes af broen.)
 const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: climbSelectionHook,
   descent: descentHook,
@@ -60,6 +73,9 @@ const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   // foerste hook. Kraever `Entrant.team_id`; en startliste uden hold-id
   // (fixtures, haandbyggede testlister) koerer bit-uaendret.
   teamPlay: teamPlayHook,
+  // M9 (#2770/#2413, ejer-beslutning 6/9): passager. Kaldes paa hvert segment
+  // af segmentLoop.ts; maalpassagen bygges nedenfor.
+  passages: passagesHook,
 };
 
 function round2(n: number): number {
@@ -195,11 +211,43 @@ export function simulateStageV4(input: StageInput): StageOutput {
   // M15's events ligger paa maalstregen og hoerer kronologisk EFTER
   // finish-eventet: tidsgraensen kan foerst afgoeres naar vinderen er i maal.
   // Samme km => stabil sortering bevarer den raekkefoelge (#2410 §2.3 regel 4).
+  // ── M9: passagerne goeres op (#2770/#2413, ejer-beslutning 6/9) ──────────
+  // Segment-hooket har allerede afgjort bjergtoppene og de indlagte spurter
+  // undervejs (de kraever gruppe-billedet PAA stedet). Maalstregens passager —
+  // maalet selv og enhver bjergtop der ER maalstregen — kan foerst afgoeres
+  // HER: de koeres paa den endelige placeringsraekkefolge, praecis som v3
+  // ("Maalorden ER motorens rangering"), og den findes foerst efter finalen,
+  // 3 km-reglen og tidsgraensen.
+  //
+  // Loftet (#2413: GC-effekten er bounded) klemmes paa BEGGE kilder SAMLET —
+  // en rytter der baade tager en indlagt spurt og maalbonussen skal maales paa
+  // sin sum, ikke pr. kilde.
+  //
+  // Passagerne roerer hverken tid, gruppe eller placering: `results` og `loads`
+  // er faerdige foer denne blok og laeses kun.
+  const finishPassages = buildFinishPassages({
+    results,
+    waypoints: input.route.waypoints,
+    distanceKm: input.route.distance_km,
+    profileType: input.route.profile_type,
+    finaleType: input.route.finale_type,
+    tuning: input.tuning.bonusSeconds,
+  });
+  const passages: StagePassage[] = clampPassageBonusToPerRiderCap(
+    sortPassages([...(state.stage_passages ?? []), ...finishPassages]),
+  );
+  // Passage-eventsene ligger paa deres eget km og sorteres ind blandt motorens
+  // oevrige events; maalpassagen udsender intet eget event (finish-eventet ER
+  // maalstregen), samme konvention som v3's tidslinje.
+  const timelineWithPassages = sortTimeline([...sortedTimeline, ...passagesToTimelineEvents(passages)]);
+
   return {
-    timeline: { timeline_version: 2, events: [...sortedTimeline, finishEvent, ...timeLimit.events] },
+    timeline: { timeline_version: 2, events: [...timelineWithPassages, finishEvent, ...timeLimit.events] },
     results,
     loads,
     groupSnapshots,
     incidents: buildIncidents(state),
+    passages,
+    passage_totals: passageTotals(passages),
   };
 }

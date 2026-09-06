@@ -235,6 +235,59 @@ const bonusSecondsExtra = {
   maxTotalBonusSecondsPerRiderPerStage: 10, // #2413: samlet GC-effekt bounded ~10s/etape, ogsaa naar samme rytter baade tager maal- og indlagt-spurt-bonus
   intermediateSprintQualityWeights: { sprint: 0.5, acceleration: 0.3, positioning: 0.2 }, // evne-vaegte for hvem der tager en indlagt spurt (distinkt fra finale.ts's egne demandVectorByFinaleType, saa spurt-udfaldet ikke er en ren kopi af maal-udfaldet)
   intermediateSprintNoiseSd: 0.06, // seedet stoej-sd paa spurt-scoren (rank-guard-moenstret: stoej flytter afstande, ikke fortegn — se computeIntermediateSprintOrder)
+
+  // ── Passage-POINT (#2770, ejer-beslutning 6/9) ─────────────────────────────
+  // Point-skalaerne er EJER-LAASTE Tour-skalaer (spec §4, 22/7) og staar i dag i
+  // backend/lib/racePassages.js. De er spejlet 1:1 her — IKKE gentunet — fordi
+  // v4's mekanik er den eneste kilde naar motoren er taendt, og det samlede
+  // pointudbud pr. etape derfor skal vaere praecis det samme foer og efter
+  // flippet (ellers ville en motorskifte-dag aendre alle groenne/prikkede
+  // troeje-regnskaber). Skalaerne er offentlig spilinformation (spilleren ser
+  // point i klassementet), ikke en fog-gated vaegt.
+  //
+  // AENDRER DU NOGET HER, aendrer du det ogsaa i racePassages.js — ellers
+  // driver de to lag fra hinanden paa den vaerst taenkelige maade: usynligt.
+  // headToHeadV4.js's paritets-maaling er vagten (--parity-noten i PR-body).
+  finishPointsByProfileType: {
+    flat: [50, 30, 20, 18, 16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2],
+    cobbles: [50, 30, 20, 18, 16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2],
+    rolling: [30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2],
+    hilly: [30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2],
+    classic: [30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2],
+    gravel: [30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2],
+    mountain: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+    high_mountain: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+    itt: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+    itt_hilly: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+    ttt: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+  } as Record<string, readonly number[]>,
+  // Ukendt profile_type falder tilbage paa bjerg-skalaen — samme fallback som
+  // racePassages.scaleFor (GREEN_FINISH_SCALES.mountain). NB: itt_hilly findes
+  // ikke i v3's tabel og ramte derfor netop det fallback; her staar den
+  // eksplicit med samme vaerdier, saa resultatet er uaendret.
+  finishPointsFallbackProfileType: "mountain",
+  intermediateSprintPoints: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1] as readonly number[],
+  komPointsByCategory: {
+    HC: [20, 15, 12, 10, 8, 6, 4, 2],
+    "1": [10, 8, 6, 4, 2, 1],
+    "2": [5, 3, 2, 1],
+    "3": [2, 1],
+    "4": [1],
+  } as Record<string, readonly number[]>,
+  summitFinishPointMultiplier: 2, // HC/1. kategori der SLUTTER paa toppen taeller dobbelt (racePassages.scaleFor)
+  summitFinishDoubledCategories: ["HC", "1"] as readonly string[],
+  // Profil-typer hvor maal-bonussekunder ALDRIG uddeles. v3 gater paa
+  // profile_type (itt/ttt), M9's egen `finishBonusEligibleFinaleTypes` gater paa
+  // finale_type (solo_tt udeladt). BEGGE gates er aktive: en enkeltstart hvis
+  // raekke mangler finale_type (legacy) skal ogsaa vaere daekket.
+  bonusExcludedProfileTypes: ["itt", "itt_hilly", "ttt"] as readonly string[],
+  // Evne-vaegte for hvem der tager en bjergpassage. Spejler racePassages'
+  // KOM_BLEND_BIG/KOM_BLEND_SMALL: de store kategorier er ren klatring +
+  // udholdenhed, de smaa afgoeres af en kort rampe (punch/acceleration).
+  komQualityWeightsBig: { climbing: 0.75, endurance: 0.25 },
+  komQualityWeightsSmall: { climbing: 0.5, punch: 0.35, acceleration: 0.15 },
+  komSmallCategories: ["3", "4"] as readonly string[],
+  komNoiseSd: 0.03, // samme stoej-niveau som racePassages.WAYPOINT_NOISE_SD
 };
 
 /** M9 additiv bonussekunder-tuning (deep-frosset). Se bonusSecondsExtra-kommentaren ovenfor. */
