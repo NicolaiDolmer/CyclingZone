@@ -1361,6 +1361,39 @@ test("#2022 ensureBoardGoalsCalibrated rører ikke et completed/forhandlet board
   assert.deepEqual(supabase.state.board_profiles[0].current_goals, negotiated, "forhandlede mål bevares");
 });
 
+test("#4865 ensureBoardGoalsCalibrated taber aldrig et bonus_offer-mål ved kalibrering", async () => {
+  // #4865 · Kalibreringen overskrev hele current_goals med et FRISKT
+  // generateBoardGoals-array, samme fejlklasse som /board/sign og auto-accept
+  // havde: et accepteret bonustilbuds ekstra-mål (source: "bonus_offer"), lagt
+  // på det pending formations-board FØR truppen var klar, blev slettet
+  // stiltiende af kalibreringen. Denne test fejler uden preserveExternalGoals.
+  const team = { id: "team-1", division: 3, sponsor_income: 100, balance: 0 };
+  const staticGoals = generateBoardGoals({ focus: "balanced", planType: "1yr" });
+  const bonusGoal = {
+    type: "signature_rider", label: "Sign 1 star (popularity ≥75)",
+    source: "bonus_offer", bonus_offer_id: "offer-1", target: 1, cumulative: false,
+  };
+  const board = {
+    id: "bp-1", team_id: "team-1", plan_type: "1yr", focus: "balanced",
+    is_baseline: false, negotiation_status: "pending",
+    current_goals: [...staticGoals, bonusGoal],
+  };
+  const nats = ["FR", "IT", "ES", "BE", "NL", "DE", "GB", "DK", "SE"];
+  const riders = Array.from({ length: 9 }, (_, i) => ({
+    id: `r-${i}`, team_id: "team-1", nationality_code: nats[i], is_u25: i < 3, stat_fl: 60,
+  }));
+  const supabase = createSupabaseDouble({ teams: [team], boardProfiles: [board], riders });
+
+  const updated = await ensureBoardGoalsCalibrated({ supabase, team });
+
+  assert.equal(updated, true);
+  const stored = supabase.state.board_profiles[0].current_goals;
+  const bonusGoals = stored.filter((g) => g.source === "bonus_offer");
+  assert.equal(bonusGoals.length, 1, "bonus-målet må ikke forsvinde med den statiske min_riders-kalibrering");
+  assert.deepEqual(bonusGoals[0], bonusGoal, "bonus-målet bæres ORDRET med over");
+  assert.ok(stored.some((g) => g.type === "min_riders" && g.target !== 15), "kalibreringen af de genererede mål virker stadig");
+});
+
 test("#2022 ensureBoardGoalsCalibrated er no-op når truppen endnu er tom (defensivt)", async () => {
   const team = { id: "team-1", division: 3, sponsor_income: 100, balance: 0 };
   const staticGoals = generateBoardGoals({ focus: "balanced", planType: "1yr" });

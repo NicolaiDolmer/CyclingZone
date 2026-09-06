@@ -312,6 +312,38 @@ test("writeLegacyOneYearBoard: bevarer eksisterende satisfaction/budget_modifier
   assert.equal(written.negotiation_status, "completed");
 });
 
+test("#4865 writeLegacyOneYearBoard taber aldrig et bonus_offer-mål ved genopbygning", async () => {
+  // #4865 · Årsmødets dual-write skrev current_goals som et FRISKT array fra
+  // mandatets mål (`goals`), samme fejlklasse som /board/sign og auto-accept
+  // havde: et accepteret bonustilbuds ekstra-mål (source: "bonus_offer"),
+  // liggende på den eksisterende legacy-1yr-række, blev slettet stiltiende ved
+  // næste årsmøde. Denne test fejler uden preserveExternalGoals i writeLegacyOneYearBoard.
+  const bonusGoal = {
+    type: "signature_rider", label: "Sign 1 star (popularity ≥75)",
+    source: "bonus_offer", bonus_offer_id: "offer-1", target: 1, cumulative: false,
+  };
+  const supabase = makeMeetingSupabase({
+    boardProfiles: [{
+      id: "bp-existing", satisfaction: 72, budget_modifier: 1.1,
+      current_goals: [{ type: "top_n_finish", target: 6 }, bonusGoal],
+    }],
+  });
+
+  await writeLegacyOneYearBoard(supabase, {
+    teamId: "t1", seasonId: "s4", seasonNumber: 4, focus: "balanced",
+    goals: [sampleGoal], team: { balance: 1000, sponsor_income: 200 },
+  });
+
+  const written = supabase._state.boardProfiles[supabase._state.boardProfiles.length - 1];
+  const bonusGoals = (written.current_goals || []).filter((g) => g.source === "bonus_offer");
+  assert.equal(bonusGoals.length, 1, "bonus-målet må ikke forsvinde med den nye mandat-plan");
+  assert.deepEqual(bonusGoals[0], bonusGoal, "bonus-målet bæres ORDRET med over");
+  assert.ok(
+    (written.current_goals || []).some((g) => g.type === sampleGoal.type),
+    "det nye mandat-mål skal stadig være skrevet"
+  );
+});
+
 // ── buildVisionSlotProposal (A7) ────────────────────────────────────────────
 
 test("buildVisionSlotProposal: intet åbent slot → null", () => {
