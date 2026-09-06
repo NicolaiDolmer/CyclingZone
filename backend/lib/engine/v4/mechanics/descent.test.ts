@@ -9,7 +9,7 @@ import fc from "fast-check";
 
 import { computeAttackGainSeconds, computeRegroupSeconds, descentHook, incidentProbability } from "./descent.ts";
 import { boundRngFor } from "../rng.ts";
-import { RACE_V4_TUNING } from "../tuning.ts";
+import { RACE_V4_TUNING, DESCENT_EXTRA_TUNING } from "../tuning.ts";
 import type {
   AbilityKey,
   DescentSegment,
@@ -184,10 +184,14 @@ test("computeAttackGainSeconds: fast-check — altid i baandet for alle gyldige 
   );
 });
 
-// ── Kontrakt: risiko-kobling daempet af descending (beslutning 7) ──────────
+// ── Kontrakt: risiko-kobling daempet af descending (beslutning 7, gulv #4905) ──
 
-test("incidentProbability: daempes strengt monotont af descending-evnen, aldrig omvendt fortegn, clamped [0,1]", () => {
-  const tuning = RACE_V4_TUNING.descent;
+test("incidentProbability: daempes MONOTONT ikke-stigende af descending-evnen, aldrig omvendt fortegn, clamped [0,1]", () => {
+  const tuning = {
+    incidentRiskBase: RACE_V4_TUNING.descent.incidentRiskBase,
+    incidentRiskFloorFraction: DESCENT_EXTRA_TUNING.incidentRiskFloorFraction,
+    incidentRiskAbilityDampeningFraction: DESCENT_EXTRA_TUNING.incidentRiskAbilityDampeningFraction,
+  };
   let prev = incidentProbability(0, tuning);
   assert.ok(prev >= 0 && prev <= 1);
   for (let ability = 1; ability <= 99; ability += 1) {
@@ -196,7 +200,30 @@ test("incidentProbability: daempes strengt monotont af descending-evnen, aldrig 
     assert.ok(p <= prev + 1e-12, `risiko steg ved ability=${ability} (${p} > ${prev}) — omvendt fortegn`);
     prev = p;
   }
-  assert.equal(incidentProbability(99, tuning), 0, "hoej nok descending-evne daemper risikoen helt til 0 (start-tuning)");
+  const atFloor = incidentProbability(99, tuning);
+  const expectedFloor = tuning.incidentRiskBase * tuning.incidentRiskFloorFraction;
+  assert.ok(atFloor > 0, "gulvet (#4905) skal forhindre at risikoen naar 0 ved ability=99 (start-tuning)");
+  assert.ok(Math.abs(atFloor - expectedFloor) < 1e-12, `forventede gulv-vaerdien ${expectedFloor}, fik ${atFloor}`);
+});
+
+test("incidentProbability: gulvet er en NEDRE graense — evnen kan aldrig daempe risikoen under den, uanset dampFraction", () => {
+  fc.assert(
+    fc.property(
+      fc.integer({ min: 0, max: 99 }),
+      fc.float({ min: Math.fround(0), max: Math.fround(1), noNaN: true }),
+      fc.float({ min: Math.fround(0), max: Math.fround(1), noNaN: true }),
+      (ability, floorFraction, dampFraction) => {
+        const tuning = {
+          incidentRiskBase: 0.5,
+          incidentRiskFloorFraction: floorFraction,
+          incidentRiskAbilityDampeningFraction: dampFraction,
+        };
+        const p = incidentProbability(ability, tuning);
+        assert.ok(p >= 0.5 * floorFraction - 1e-9, `p=${p} faldt under gulvet (0.5*${floorFraction})`);
+      },
+    ),
+    { numRuns: 200, seed: 4905 },
+  );
 });
 
 test("descentHook: kun angribere ruller incident-risiko, seeded og deterministisk", () => {
