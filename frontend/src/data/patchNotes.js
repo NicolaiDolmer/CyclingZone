@@ -1,5 +1,26 @@
 export const PATCHES = [
   {
+    "version": "7.260",
+    "date": "2026-09-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy graduates put up for sale no longer get stuck",
+          "body": "If nobody bids on a graduate you put up for sale, he now moves up to your senior squad when you have room and money, and only leaves as a free agent if you do not. Before, he stayed in the academy with no way out."
+        },
+        "da": {
+          "title": "Akademiryttere der sættes til salg sidder ikke længere fast",
+          "body": "Er der ingen bud på en graduate du har sat til salg, rykker han nu op i din seniortrup hvis du har plads og råd, og forlader kun akademiet som fri agent hvis du ikke har. Før blev han stående i akademiet uden udgang."
+        },
+        "refs": [4495]
+      }
+    ]
+  },
+  {
     "version": "7.259",
     "date": "2026-09-06",
     "label": "Beta",
