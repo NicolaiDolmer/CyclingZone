@@ -32,6 +32,10 @@ export {
   createInitialBoardProfile,
   finalizeBoardGoals,
   inferNegotiationIndexesFromGoals,
+  // #4865 · additiv goals-rebuild (bevarer bonus_offer-mål ved plan-signering)
+  preserveExternalGoals,
+  isGeneratedGoalSource,
+  GENERATED_GOAL_SOURCES,
   evaluateGoal,
   countGoalsMet,
   evaluateGoalProgress,
