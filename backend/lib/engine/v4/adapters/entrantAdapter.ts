@@ -78,7 +78,7 @@ export type EntrantAdapterOptions = {
   /** Overstyrer row.rider_id — kraevet hvis raekken ikke selv baerer rider_id. */
   riderId?: string;
   role?: unknown;
-  /** F2 behandler alle som 'normal' (segmentLoop.ts laeser feltet, effekten er M12/F3-scope). */
+  /** Indsatsvalget. Default 'normal'. M12 er wiret (#4632, 6/9): trinnet modulerer rytterens kraftkrav i segmentLoop.ts. */
   effort?: EffortLevel;
   /** 0-1, dag-til-dag-slid (M7/F3-scope). Default 1 (frisk) naar intet andet er kendt. */
   condition?: number;

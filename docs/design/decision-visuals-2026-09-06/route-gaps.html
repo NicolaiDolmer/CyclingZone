@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<link rel="stylesheet" href="fonts.css"><link rel="stylesheet" href="base.css">
+<title>Six route gaps</title>
+<style>
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px}
+  .lg{display:flex;gap:7px;align-items:center;font-size:11.5px;color:var(--text-2)}
+  .dot{width:9px;height:9px;border-radius:9999px;flex:0 0 auto}
+  .dot.g{background:var(--success)}.dot.y{background:var(--warning)}.dot.r{background:var(--danger)}
+
+  .tbl{border:1px solid var(--border);border-radius:var(--r);background:var(--bg-card);overflow:hidden}
+  .thead,.trow{display:grid;grid-template-columns:224px 1fr 1fr 1fr}
+  .thead{background:var(--bg-subtle);border-bottom:1px solid var(--border)}
+  .thead div{font-family:'Inter Tight',sans-serif;font-size:10px;font-weight:600;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--text-2);padding:9px 14px}
+  .trow{border-bottom:1px solid var(--border)}
+  .trow:last-child{border-bottom:0}
+  .trow > div{padding:13px 14px;font-size:12.5px;line-height:1.45;border-left:1px solid var(--border)}
+  .trow > div:first-child{border-left:0}
+  .gap-id{display:flex;gap:8px;align-items:baseline}
+  .gap-no{font-family:'Bebas Neue',Impact,sans-serif;font-size:22px;line-height:.9;color:var(--text-3)}
+  .gap-nm{font-family:'Inter Tight',sans-serif;font-size:12.5px;font-weight:600;line-height:1.25}
+  .status{display:inline-flex;gap:6px;align-items:center;margin-top:9px;font-family:'Inter Tight',sans-serif;
+    font-size:9.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    padding:2px 8px 2px 6px;border-radius:9999px;border:1px solid var(--border)}
+  .status.g{color:var(--success);background:var(--success-bg);border-color:rgba(21,119,47,.3)}
+  .status.y{color:var(--warning);background:var(--warning-bg);border-color:rgba(154,91,0,.3)}
+  .status.r{color:var(--danger);background:var(--danger-bg);border-color:rgba(168,30,30,.3)}
+  .caveat{display:block;margin-top:7px;padding-top:7px;border-top:1px solid var(--border);
+    font-size:11px;color:var(--text-2)}
+  .caveat b{color:var(--warning)}
+  .tally{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;font-family:'Inter Tight',sans-serif;font-size:12px;color:var(--text-2)}
+  .tally b{font-variant-numeric:tabular-nums;color:var(--text-1)}
+
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
+  .opt{border:1px solid var(--border);border-radius:var(--r);background:var(--bg-card);padding:16px}
+  .opt .lh{display:flex;gap:11px;align-items:baseline;padding-bottom:9px;border-bottom:1px solid var(--border)}
+  .opt .ll{font-family:'Bebas Neue',Impact,sans-serif;font-size:26px;line-height:.9}
+  .opt .lt{font-family:'Inter Tight',sans-serif;font-size:14px;font-weight:600;line-height:1.2}
+  .opt p{margin-top:10px;font-size:12.5px;line-height:1.5}
+  .opt p.cost{margin-top:8px;font-size:11.5px;color:var(--text-2)}
+
+  @media (max-width:700px){
+    .thead{display:none}
+    .trow{grid-template-columns:1fr;padding:0}
+    .trow > div{border-left:0;padding:10px 12px}
+    .trow > div:first-child{padding-bottom:2px}
+    .trow > div + div{border-top:1px solid var(--border)}
+    .trow > div + div::before{content:attr(data-l);display:block;font-family:'Inter Tight',sans-serif;
+      font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:3px}
+    .trow{border-bottom:2px solid var(--border)}
+    .opts{grid-template-columns:1fr;gap:12px}
+    .tbl{overflow:visible}
+  }
+</style>
+</head>
+<body><div class="page">
+
+  <div class="eyebrow">Race engine v4 &middot; decision 3 of 3 &middot; #2789</div>
+  <h1>SIX ROUTE GAPS</h1>
+  <div class="h1-da">De seks rute-huller &middot; lukker v4's segmentmodel dem?</div>
+  <p class="lede">Seks steder hvor ruten sagde &eacute;n ting og den motor spillerne k&oslash;rer p&aring; i dag gjorde noget andet. Fundet 22/7 mod de rigtige S2-ruter. Sp&oslash;rgsm&aring;let her er ikke om de skal rettes &mdash; det er om v4's segmentmodel allerede retter dem af sig selv.</p>
+
+  <div class="legend">
+    <span class="lg"><span class="dot g"></span> Gr&oslash;n: v4's opbygning lukker hullet &mdash; problemet kan ikke opst&aring;, fordi den mekanisme ikke findes</span>
+    <span class="lg"><span class="dot y"></span> Gul: lukket i opbygningen, men tallene bag er ukalibrerede</span>
+    <span class="lg"><span class="dot r"></span> R&oslash;d: ikke lukket &mdash; rettelsen ligger et andet sted</span>
+  </div>
+
+  <hr class="rule">
+
+  <div class="tbl">
+    <div class="thead">
+      <div>Hullet</div><div>Hvad ruten siger</div><div>Hvad motoren gjorde</div><div>Hvad v4's segmentmodel g&oslash;r</div>
+    </div>
+
+    <!-- 1 -->
+    <div class="trow">
+      <div><div class="gap-id"><span class="gap-no">1</span><span class="gap-nm">Teknisk finale p&aring; flade spurtetaper</span></div>
+        <span class="status g"><span class="dot g"></span>Lukket</span></div>
+      <div data-l="Hvad ruten siger">Flad etape, massespurt til stregen. Undervejs topper en lille kat-4-bakke 8 km f&oslash;r m&aring;l.</div>
+      <div data-l="Hvad motoren gjorde">Stemplede etapen "teknisk finale" alene p&aring; den bakke. Nedk&oslash;rsel og positionering kom til at afg&oslash;re en massespurt &mdash; p&aring; 68 af 327 flade etaper.</div>
+      <div data-l="Hvad v4 g&oslash;r">Det stempel findes ikke. Finalen sl&aring;r op p&aring; rutens egen finale-type, og hvert rutestykke k&oslash;res for det terr&aelig;n det faktisk har.</div>
+    </div>
+
+    <!-- 2 -->
+    <div class="trow">
+      <div><div class="gap-id"><span class="gap-no">2</span><span class="gap-nm">Loftet mætter dronningeetaperne</span></div>
+        <span class="status y"><span class="dot y"></span>Lukket, ukalibreret</span></div>
+      <div data-l="Hvad ruten siger">Bjergetape med m&aring;l p&aring; toppen af en stigning uden for kategori.</div>
+      <div data-l="Hvad motoren gjorde">Ramte sit eget loft for tidsforskelle p&aring; hvert eneste bjergtopsm&aring;l i h&oslash;jbjerge. Stigningens kategori var dermed helt uden virkning p&aring; de h&aring;rdeste etaper i kalenderen.</div>
+      <div data-l="Hvad v4 g&oslash;r">Intet loft. Tidsforskellene bygges op stykke for stykke gennem stigningen.
+        <span class="caveat"><b>Men:</b> bjerg-ankeret svinger stadig voldsomt mellem k&oslash;rsler, og tuning-tallene er stadig startg&aelig;t &mdash; hullet er lukket, tallene er ikke.</span></div>
+    </div>
+
+    <!-- 3 -->
+    <div class="trow">
+      <div><div class="gap-id"><span class="gap-no">3</span><span class="gap-nm">Udbrudsbonussen kunne kun g&aring; nedad</span></div>
+        <span class="status g"><span class="dot g"></span>Lukket</span></div>
+      <div data-l="Hvad ruten siger">Etapens l&aelig;ngde og hvor mange spurtere der er med skal kunne g&oslash;re et udbrud b&aring;de mere og mindre sandsynligt.</div>
+      <div data-l="Hvad motoren gjorde">Et loft &aring;d hele opad-siden p&aring; omkring to tredjedele af etaperne, alle flade iblandt. Ruten kunne kun d&aelig;mpe udbrud, aldrig fremme dem.</div>
+      <div data-l="Hvad v4 g&oslash;r">Udbrud er sin egen mekanik uden det loft, og den l&aelig;ser rutestykket direkte.
+        <span class="caveat"><b>Men:</b> det kan ikke m&aring;les endnu &mdash; v4 stempler hver eneste etape som "feltfinish", s&aring; udbrudsraten er usynlig i scorecardet.</span></div>
+    </div>
+
+    <!-- 4 -->
+    <div class="trow">
+      <div><div class="gap-id"><span class="gap-no">4</span><span class="gap-nm">Punch-finaler fik dal-rabat</span></div>
+        <span class="status g"><span class="dot g"></span>Lukket</span></div>
+      <div data-l="Hvad ruten siger">Opadg&aring;ende spurt til stregen. Rutedataen kalder selv finalen "punch".</div>
+      <div data-l="Hvad motoren gjorde">L&aelig;ste kun listen af kategoriserede stigninger. Den sidste af dem toppede over 10 km ude, s&aring; 58 punch-finaler blev regnet som en finale nede i en dal.</div>
+      <div data-l="Hvad v4 g&oslash;r">Finalen sl&aring;r direkte op p&aring; rutens egen finale-type i stedet for at gætte ud fra stigningslisten.
+        <span class="caveat"><b>Men:</b> to af de evner finalen v&aelig;gter (positionering og taktik) st&aring;r p&aring; nul hos hver eneste rytter i spillet. Det er en anden fejl, og den g&oslash;r finale-kalibreringen usikker.</span></div>
+    </div>
+
+    <!-- 5 -->
+    <div class="trow">
+      <div><div class="gap-id"><span class="gap-no">5</span><span class="gap-nm">Brostens-finaler kan ikke opst&aring;</span></div>
+        <span class="status r"><span class="dot r"></span>Ikke lukket</span></div>
+      <div data-l="Hvad ruten siger">Brostensetape med sektorer lagt ind i rutedataen.</div>
+      <div data-l="Hvad motoren gjorde">Grenen for brostens-finaler var d&oslash;d kode: ingen af de 93 etaper med sektorer havde en sektor der sluttede inden for 10 km af m&aring;l. En brostens-finale kunne alts&aring; slet ikke opst&aring;.</div>
+      <div data-l="Hvad v4 g&oslash;r">Lukker det ikke. Rute-adapteren erkl&aelig;rer feltet "sektorer", men l&aelig;ser det aldrig, og brostens-mekanikken er f&aelig;rdigbygget uden at v&aelig;re koblet ind. Rettelsen ligger i rutegeneratoren plus en wiring &mdash; ikke i segmentmodellen.</div>
+    </div>
+
+    <!-- 6 -->
+    <div class="trow">
+      <div><div class="gap-id"><span class="gap-no">6</span><span class="gap-nm">Stigninger uden for modellens tabel blev ignoreret</span></div>
+        <span class="status g"><span class="dot g"></span>Lukket</span></div>
+      <div data-l="Hvad ruten siger">311 etaper med rigtige stigninger, deriblandt 9 klassiker-etaper med &aelig;gte bjergtopsm&aring;l.</div>
+      <div data-l="Hvad motoren gjorde">Slog kun op i sin egen tabel over etapetyper. Stod typen ikke i tabellen, blev etapen regnet som en n&aelig;sten-samlet feltfinish &mdash; ogs&aring; n&aring;r der var et bjerg lige f&oslash;r m&aring;l.</div>
+      <div data-l="Hvad v4 g&oslash;r">Ingen tabel. Segmentl&oslash;kken k&oslash;rer hvert eneste rutestykke igennem, uanset hvad etapen hedder.</div>
+    </div>
+  </div>
+
+  <div class="tally">
+    <span><span class="dot g" style="display:inline-block;margin-right:6px"></span><b>4</b> lukket af opbygningen &mdash; 1, 3, 4, 6</span>
+    <span><span class="dot y" style="display:inline-block;margin-right:6px"></span><b>1</b> lukket men ukalibreret &mdash; 2</span>
+    <span><span class="dot r" style="display:inline-block;margin-right:6px"></span><b>1</b> ikke lukket &mdash; 5</span>
+  </div>
+
+  <div class="opts">
+    <div class="opt">
+      <div class="lh"><span class="ll">A</span><span class="lt">Luk alle seks f&oslash;r flip</span></div>
+      <p>Ogs&aring; brostens-sektorerne: rutegeneratoren skal l&aelig;gge sektorer t&aelig;t nok p&aring; m&aring;l til at en brostens-finale kan opst&aring;, og brostens-mekanikken skal kobles ind. Alle seks efterpr&oslash;ves mod de rigtige S3- og S4-ruter, ikke mod opdigtede.</p>
+      <p class="cost">Koster: rutegenerator-&aelig;ndring plus wiring plus en verifikationsk&oslash;rsel &mdash; oven i alt det andet der skal v&aelig;re klar til 28/9.</p>
+    </div>
+    <div class="opt">
+      <div class="lh"><span class="ll">B</span><span class="lt">Luk de fem, tag brostenene efter flip</span></div>
+      <p>Efterpr&oslash;v de fem som segmentmodellen allerede tager (4 gr&oslash;nne + 1 gul) mod de rigtige S3- og S4-ruter, og kalibr&eacute;r bjerg-tallene. Brostens-sektorerne bliver et issue efter flippet.</p>
+      <p class="cost">Koster: brostens-etaper k&oslash;rer videre uden en rigtig brostens-finale &mdash; pr&aelig;cis som de g&oslash;r i dag, s&aring; ingen spiller ser en forv&aelig;rring.</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="ft-l">Til dig</div>
+    <div>
+      <p><b>F&aelig;lles forbehold, og det er det vigtigste p&aring; siden:</b> v4 l&aelig;ser kun &aelig;gte rutestykker hvis de er gemt p&aring; etapen. R&aelig;kker uden f&aring;r <i>tavst</i> opdigtede stykker &mdash; ingen fejlmeddelelse, ingen advarsel &mdash; og ingen har m&aring;lt hvor mange S3- og S4-ruter der faktisk har rigtige segmentdata. Alle fire gr&oslash;nne felter ovenfor er kun gr&oslash;nne p&aring; ruter med &aelig;gte data. Det er den samme f&aelig;lde som de seks huller, bare et lag l&aelig;ngere nede, og den skal m&aring;les f&oslash;r et flip uanset hvad du v&aelig;lger.</p>
+      <p><b>To fund fra samme issue der ikke er med i de seks:</b> tr&aelig;theden er rute-blind (en 6 km prolog koster mere end en 195 km flad etape), og alle enkeltstarter har pr&aelig;cis 80 h&oslash;jdemeter uanset om de er 6 eller 35 km. Ingen af dem lukkes af v4 &mdash; begge h&oslash;rer hjemme i rutegeneratoren.</p>
+      <p style="color:var(--text-3)">Kilder: #2789 (de seks fund, 22/7, ejer-beslutning 4/9 "ind i v4, ikke v3"; S3 k&oslash;rer f&aelig;rdig p&aring; v3), auditen 5/9 &sect;"Ruten l&aelig;ses som segmenter, men er aldrig efterpr&oslash;vet mod &aelig;gte data" og &sect;"Ingen ved hvor mange prod-ruter der har &aelig;gte segmentdata". Verificeret i koden: de fire mekanismer bag hul 1, 2, 3 og 6 findes udelukkende i <span class="tab">raceSimulator.js</span> og har nul forekomster i v4; <span class="tab">finale.ts:240</span> sl&aring;r op p&aring; finale-typen; <span class="tab">segmentLoop.ts:263-265</span> k&oslash;rer alle segmenter; <span class="tab">routeAdapter.ts:60</span> erkl&aelig;rer <span class="tab">sectors</span> uden nogensinde at l&aelig;se det.</p>
+    </div>
+  </div>
+
+</div></body></html>

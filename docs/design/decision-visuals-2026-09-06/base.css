@@ -1,0 +1,116 @@
+/* Cycling Zone decision-visual stylesheet — docs/design/TASTE.md + PAGE_TEMPLATES.md
+   hairline borders, no shadows, 5px radius, tabular figures, stroke icons only. */
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5; --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --navy:#1a1f38;
+  --success:#15772f; --danger:#a81e1e; --warning:#9a5b00; --info:#1a47c0;
+  --success-bg:rgba(21,119,47,.08); --danger-bg:rgba(168,30,30,.08);
+  --warning-bg:rgba(154,91,0,.08); --info-bg:rgba(26,71,192,.08);
+  --r:5px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--bg-body); color:var(--text-1);
+  font-family:'DM Sans',system-ui,sans-serif; font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+.page{padding:28px 28px 24px}
+.num,.tab{font-family:'Inter Tight',system-ui,sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* ── page head ─────────────────────────────────────────────────────────── */
+.eyebrow{font-family:'Inter Tight',sans-serif;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)}
+h1{font-family:'Bebas Neue',Impact,sans-serif;font-weight:400;font-size:42px;line-height:1;letter-spacing:.01em;margin:6px 0 2px}
+.h1-da{font-family:'Inter Tight',sans-serif;font-size:13px;font-weight:500;color:var(--text-2)}
+.lede{margin-top:10px;font-size:13px;color:var(--text-2);max-width:74ch}
+.rule{height:1px;background:var(--border);margin:18px 0 20px;border:0}
+
+/* ── layout ────────────────────────────────────────────────────────────── */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.card + .card{margin-top:0}
+
+/* ── option head ───────────────────────────────────────────────────────── */
+.opt-head{display:flex;gap:12px;align-items:baseline;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.opt-letter{font-family:'Bebas Neue',Impact,sans-serif;font-size:30px;line-height:.9;color:var(--text-1)}
+.opt-title{font-family:'Inter Tight',sans-serif;font-size:15px;font-weight:600;line-height:1.2}
+.opt-title .da{display:block;font-size:11px;font-weight:400;color:var(--text-2);margin-top:1px}
+.opt-lede{margin-top:12px;font-size:12.5px;line-height:1.5}
+.opt-lede .da{display:block;color:var(--text-2);font-size:11.5px;margin-top:3px}
+
+/* ── section label ─────────────────────────────────────────────────────── */
+.slabel{font-family:'Inter Tight',sans-serif;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);
+  margin:18px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.slabel .da{text-transform:none;letter-spacing:0;font-weight:400;color:var(--text-3)}
+
+/* ── timeline ──────────────────────────────────────────────────────────── */
+.tl{list-style:none}
+.tl li{display:grid;grid-template-columns:54px 16px 1fr;gap:0;padding:7px 0;border-bottom:1px solid var(--border)}
+.tl li:last-child{border-bottom:0;padding-bottom:0}
+.tl .km{font-family:'Inter Tight',sans-serif;font-variant-numeric:tabular-nums;font-size:11px;font-weight:500;color:var(--text-3);text-align:right;padding-right:8px;padding-top:2px;white-space:nowrap}
+.tl .rail{position:relative}
+.tl .rail::before{content:"";position:absolute;left:3px;top:0;bottom:-7px;width:1px;background:var(--border)}
+.tl li:last-child .rail::before{bottom:auto;height:8px}
+.tl .rail::after{content:"";position:absolute;left:0;top:6px;width:7px;height:7px;border-radius:9999px;border:1px solid var(--text-3);background:var(--bg-card)}
+.tl li.hit .rail::after{border-color:var(--danger);background:var(--bg-card)}
+.tl li.out .rail::after{border-color:var(--danger);background:var(--danger)}
+.tl li.ok .rail::after{border-color:var(--success)}
+.tl .txt{padding-left:6px;font-size:12.5px;line-height:1.4}
+.tl .txt .da{display:block;color:var(--text-2);font-size:11px;margin-top:2px}
+
+/* ── result rows ───────────────────────────────────────────────────────── */
+.res{width:100%;border-collapse:collapse;font-family:'Inter Tight',sans-serif;font-variant-numeric:tabular-nums}
+.res th{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);text-align:left;padding:0 0 5px;border-bottom:1px solid var(--border)}
+.res th.r,.res td.r{text-align:right}
+.res td{font-size:12.5px;padding:5px 0;border-bottom:1px solid var(--border)}
+.res tr:last-child td{border-bottom:0}
+.res td.rank{width:38px;color:var(--text-2);font-weight:500}
+.res td.time{width:66px;font-weight:500}
+.res .lead td{font-weight:600}
+.res .gap td{padding:2px 0;color:var(--text-3);font-size:11px;letter-spacing:.14em;text-align:center}
+.res .cut td{background:var(--bg-subtle);font-family:'Inter Tight',sans-serif;font-size:10px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);padding:5px 8px}
+.res td.otl{width:38px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--danger)}
+.res td.dnf{width:38px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--text-2)}
+.res .note{display:block;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text-2);margin-top:2px}
+.res .note .da{color:var(--text-3)}
+
+/* ── rider card ────────────────────────────────────────────────────────── */
+.rider{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;background:var(--bg-elevated)}
+.rider + .rider{margin-top:8px}
+.rider svg{flex:0 0 auto;margin-top:1px}
+.rider .nm{font-family:'Inter Tight',sans-serif;font-size:12.5px;font-weight:600}
+.rider .st{font-size:11.5px;color:var(--text-2);margin-top:2px}
+.rider .st .da{display:block;color:var(--text-3);font-size:11px}
+.ic-warn{color:var(--warning)}.ic-ok{color:var(--success)}.ic-bad{color:var(--danger)}.ic-mut{color:var(--text-3)}
+
+/* ── outcome list ──────────────────────────────────────────────────────── */
+.outc{list-style:none}
+.outc li{display:grid;grid-template-columns:112px 1fr;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+.outc li:last-child{border-bottom:0}
+.outc .k{font-family:'Inter Tight',sans-serif;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--text-1)}
+.outc .k .da{display:block;font-weight:400;color:var(--text-3);font-size:10.5px}
+.outc .v .da{display:block;color:var(--text-2);font-size:11px;margin-top:2px}
+
+/* ── pills ─────────────────────────────────────────────────────────────── */
+.pill{display:inline-block;font-family:'Inter Tight',sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;padding:1px 6px;border-radius:9999px;border:1px solid var(--border);color:var(--text-2);vertical-align:1px}
+.pill.rare{border-color:rgba(154,91,0,.35);color:var(--warning);background:var(--warning-bg)}
+.pill.saved{border-color:rgba(21,119,47,.35);color:var(--success);background:var(--success-bg)}
+
+/* ── owner footnote ────────────────────────────────────────────────────── */
+.foot{margin-top:20px;border-top:1px solid var(--border);padding-top:12px;display:grid;grid-template-columns:88px 1fr;gap:14px}
+.foot .ft-l{font-family:'Inter Tight',sans-serif;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.foot p{font-size:12px;color:var(--text-2);max-width:92ch}
+.foot p + p{margin-top:6px}
+
+/* ── mobile ────────────────────────────────────────────────────────────── */
+@media (max-width:700px){
+  .page{padding:16px 14px 18px}
+  h1{font-size:32px}
+  .cols{grid-template-columns:1fr;gap:12px}
+  .card{padding:14px}
+  .tl li{grid-template-columns:48px 14px 1fr}
+  .outc li{grid-template-columns:1fr;gap:2px}
+  .foot{grid-template-columns:1fr;gap:6px}
+}

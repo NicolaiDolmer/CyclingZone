@@ -1,0 +1,205 @@
+/* Design tokens kopieret 1:1 fra frontend/src/index.css (light + dark), samme
+   som docs/design/mockups-intention-2026-09-05/*.html. Rør dem ikke. */
+:root{
+  color-scheme: light;
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --on-accent:#1a1f38;
+  --radius-sm:5px; --radius-pill:9999px;
+  --success:21 119 47; --danger:168 30 30; --warning:154 91 0;
+  --success-bg:rgba(21,119,47,.08); --danger-bg:rgba(168,30,30,.08);
+  --font-body:'DM Sans',system-ui,-apple-system,sans-serif;
+  --font-data:'Inter Tight',system-ui,sans-serif;
+  --font-display:'Bebas Neue',Impact,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-body); color:var(--text-1);
+  font-family:var(--font-body); font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── T3 page shell (profile/detail: max-w-5xl) ──────────────────────────── */
+.page{max-width:1024px; margin:0 auto; padding:16px 32px 56px}
+.back{display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; color:var(--text-2); margin-bottom:10px}
+.back svg{color:var(--text-3)}
+.stamp{
+  font-family:var(--font-data); font-size:10px; font-weight:600;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--text-3);
+  border:1px solid var(--border); border-radius:var(--radius-sm); padding:2px 8px; white-space:nowrap;
+}
+
+/* ── T3 hero (2px gold keyline på overkanten) ───────────────────────────── */
+.hero{position:relative; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); padding:20px; overflow:hidden}
+.hero::before{content:""; position:absolute; inset:0 0 auto 0; height:2px; background:rgb(var(--accent))}
+.herotop{display:flex; align-items:flex-start; justify-content:space-between; gap:20px}
+.hero h1{font-family:var(--font-display); font-size:40px; line-height:.92; letter-spacing:.01em; text-transform:uppercase; margin:2px 0 0; font-weight:400}
+.hero .meta{font-family:var(--font-data); font-size:12px; color:var(--text-2); margin-top:7px}
+.herostats{display:flex; gap:40px; border-top:1px solid var(--border); margin-top:16px; padding-top:16px}
+.herostats .k{font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.1em; color:var(--text-3)}
+.herostats .v{font-family:var(--font-data); font-size:20px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.2; margin-top:2px}
+.herostats .v.sm{font-size:15px; font-weight:600}
+.herostats .s{font-family:var(--font-data); font-size:11px; color:var(--text-3); margin-top:1px}
+.live{display:inline-flex; align-items:center; gap:6px; font-family:var(--font-data); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:rgb(var(--danger)); background:var(--danger-bg); border-radius:var(--radius-pill); padding:3px 10px; white-space:nowrap}
+.live i{width:6px; height:6px; border-radius:50%; background:rgb(var(--danger)); display:inline-block}
+.done-pill{display:inline-flex; align-items:center; gap:6px; font-family:var(--font-data); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--text-2); border:1px solid var(--border); border-radius:var(--radius-pill); padding:3px 10px; white-space:nowrap}
+
+/* ── Tabs (underline, under hero'en, på sidens baggrund) ────────────────── */
+.tabs{display:flex; align-items:flex-end; gap:22px; border-bottom:1px solid var(--border); margin:18px 0 14px}
+.tab{font-size:14px; font-weight:500; color:var(--text-2); padding:0 0 7px; margin-bottom:-1px; border-bottom:2px solid transparent; white-space:nowrap; display:inline-flex; align-items:center; gap:5px}
+.tab.is-active{color:var(--accent-t); font-weight:600; border-bottom-color:rgb(var(--accent))}
+.tab svg{color:var(--text-3)}
+.tabs .stamp{margin-left:auto; margin-bottom:6px}
+
+/* ── Kort (den ENE opskrift) ────────────────────────────────────────────── */
+.card{background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden}
+.card + .card{margin-top:14px}
+.cardhead{display:flex; align-items:baseline; justify-content:space-between; gap:16px; padding:13px 16px; border-bottom:1px solid var(--border)}
+.cardhead h2{font-size:15px; font-weight:600; margin:0}
+.cardhead .sub{font-size:12.5px; color:var(--text-3); margin-top:2px}
+.cardhead .right{font-family:var(--font-data); font-size:12px; color:var(--text-3); white-space:nowrap}
+.cardbody{padding:14px 16px}
+.grid2{display:grid; grid-template-columns:1.5fr 1fr; gap:14px; align-items:start}
+.stack > * + *{margin-top:14px}
+
+/* ── Etape-vælger: kortets egen toolbar-række, inde i hairline-rammen ───── */
+.toolbar{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:8px 16px; border-bottom:1px solid var(--border); background:var(--bg-subtle)}
+.toolbar .note{font-size:12px; color:var(--text-2)}
+.stages{display:inline-flex; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg-card)}
+.stages span{display:inline-flex; align-items:center; gap:5px; font-family:var(--font-data); font-size:12px; font-weight:500; color:var(--text-2); padding:5px 11px; border-left:1px solid var(--border); white-space:nowrap}
+.stages span:first-child{border-left:0}
+.stages span.done{color:var(--text-3)}
+.stages span.on{color:var(--accent-t); font-weight:600; background:rgb(var(--accent)/.10)}
+.stages span.today{color:rgb(var(--danger)); font-weight:600; background:var(--danger-bg)}
+
+/* ── Tabel ──────────────────────────────────────────────────────────────── */
+.scroller{overflow-x:auto}
+table{border-collapse:separate; border-spacing:0; width:100%}
+th,td{text-align:left; padding:9px 10px; vertical-align:middle}
+th:first-child,td:first-child{padding-left:16px}
+th:last-child,td:last-child{padding-right:16px}
+th{font-family:var(--font-data); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); padding-top:7px; padding-bottom:7px; border-bottom:1px solid var(--border)}
+tbody tr td{border-bottom:1px solid var(--border)}
+tbody tr:last-child td{border-bottom:0}
+.n{text-align:right; font-family:var(--font-data); font-variant-numeric:tabular-nums}
+th.n{text-align:right}
+.c-nums .k{display:none}
+.rank{font-family:var(--font-data); font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--text-2); width:26px}
+tr.mine td{background:rgb(var(--accent)/.07)}
+tr.mine td:first-child{box-shadow:inset 3px 0 0 rgb(var(--accent))}
+.you{display:inline-flex; align-items:center; font-family:var(--font-data); font-size:9.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--on-accent); background:rgb(var(--accent)); border-radius:var(--radius-pill); padding:1px 6px; margin-left:6px}
+.rname{font-size:13.5px; font-weight:500; line-height:1.25}
+.rmeta{font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin-top:1px}
+.role{font-size:12.5px; color:var(--text-1)}
+.rolesub{font-family:var(--font-data); font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin-top:2px}
+.pill-risk{font-family:var(--font-data); font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:rgb(var(--danger)); background:var(--danger-bg); border-radius:var(--radius-pill); padding:1px 7px; margin-left:6px}
+
+/* ── Intentions-celle (samme anatomi som RaceIntentionPanel) ────────────── */
+.intent{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.chip{display:inline-flex; align-items:center; font-family:var(--font-data); font-size:12px; font-weight:600; color:var(--accent-t); background:rgb(var(--accent)/.10); border:1px solid rgb(var(--accent)/.30); border-radius:var(--radius-pill); padding:2px 11px; white-space:nowrap}
+.chip.default{color:var(--text-3); background:transparent; border:1px dashed var(--border); font-weight:500}
+.chip.mute{color:var(--text-2); background:var(--bg-subtle); border:1px solid var(--border); font-weight:600}
+.quiet{display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:500; color:var(--accent-t); white-space:nowrap}
+.overlay{font-family:var(--font-data); font-size:11px; color:var(--text-3); margin-top:3px}
+.locknote{display:inline-flex; align-items:center; gap:5px; font-family:var(--font-data); font-size:11px; color:var(--text-3)}
+
+/* ── Segmenteret kontrol + toggle-pille (TacticsCard) ───────────────────── */
+.seg{display:inline-flex; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg-card)}
+.seg span{font-family:var(--font-data); font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.05em; color:var(--text-2); padding:4px 10px; border-left:1px solid var(--border); white-space:nowrap}
+.seg span:first-child{border-left:0}
+.seg span.on{color:var(--accent-t); font-weight:600; background:rgb(var(--accent)/.10)}
+.toggles{display:flex; gap:7px; flex-wrap:wrap}
+.tg{display:inline-flex; align-items:center; gap:5px; font-family:var(--font-data); font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:.05em; color:var(--accent-t); border:1px solid rgb(var(--accent)/.40); border-radius:var(--radius-sm); padding:4px 9px; white-space:nowrap}
+.tg.on{background:rgb(var(--accent)/.10); border-color:rgb(var(--accent)); font-weight:600}
+.tg .mk{width:10px; display:inline-flex}
+.tg.off .mk{visibility:hidden}
+.tg.dim{color:var(--text-3); border-color:var(--border)}
+
+/* ── Kortets fod (én guld-primær pr. view) ──────────────────────────────── */
+.actions{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-top:1px solid var(--border)}
+.count-line{font-family:var(--font-data); font-size:12px; color:var(--text-3)}
+.btnrow{display:flex; gap:8px}
+.btn{display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 13px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card); font-family:var(--font-data); font-size:12.5px; font-weight:500; color:var(--text-1); white-space:nowrap}
+.btn-primary{border:0; background:rgb(var(--accent)); color:var(--on-accent); font-weight:600}
+
+/* ── Etapeprofil-strimmel (mini) ────────────────────────────────────────── */
+.profile{background:var(--bg-subtle); border-bottom:1px solid var(--border); padding:10px 16px 6px}
+.profile .lbl{display:flex; align-items:baseline; justify-content:space-between; gap:12px; font-family:var(--font-data); font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:.07em}
+.profile svg{display:block; width:100%; height:54px}
+
+/* ── Nøgletals-rækker og lister ─────────────────────────────────────────── */
+.kv{display:flex; align-items:baseline; justify-content:space-between; gap:12px; padding:8px 16px; border-bottom:1px solid var(--border)}
+.kv:last-child{border-bottom:0}
+.kv .k{font-family:var(--font-data); font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3)}
+.kv .v{font-family:var(--font-data); font-size:13px; font-weight:600; font-variant-numeric:tabular-nums}
+.evt{display:flex; gap:11px; padding:9px 16px; border-bottom:1px solid var(--border)}
+.evt:last-child{border-bottom:0}
+.evt .t{font-family:var(--font-data); font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--text-3); width:40px; flex-shrink:0; padding-top:1px}
+.evt .b{font-size:12.5px; color:var(--text-1); line-height:1.4}
+.evt .b em{font-style:normal; font-weight:600}
+.evt.hi .b em{color:var(--accent-t)}
+.todo{display:flex; align-items:center; gap:9px; padding:9px 16px; border-bottom:1px solid var(--border); font-size:12.5px}
+.todo:last-child{border-bottom:0}
+.todo .mk{width:15px; flex-shrink:0; display:inline-flex; color:var(--text-3)}
+.todo.ok .mk{color:rgb(var(--success))}
+.todo .rest{margin-left:auto; font-family:var(--font-data); font-size:11.5px; color:var(--text-3); white-space:nowrap}
+.todo.open{background:rgb(var(--accent)/.06)}
+.todo.open .mk{color:var(--accent-t)}
+
+/* ── Tab-strimmel-reference (kun i mockuppet) ───────────────────────────── */
+.ref{border:1px dashed var(--border); border-radius:var(--radius-sm); padding:14px 16px; margin-top:14px; background:transparent}
+.ref h3{font-family:var(--font-data); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--text-3); margin:0 0 10px}
+.refrow{display:flex; align-items:center; gap:14px; padding:7px 0; border-bottom:1px solid var(--border)}
+.refrow:last-child{border-bottom:0}
+.refrow .st{font-family:var(--font-data); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); width:150px; flex-shrink:0}
+.refrow .strip{display:flex; gap:16px; flex-wrap:wrap}
+.refrow .strip b{font-size:12.5px; font-weight:600; color:var(--accent-t)}
+.refrow .strip s{font-size:12.5px; color:var(--text-3); text-decoration:line-through}
+.refrow .strip span{font-size:12.5px; font-weight:500; color:var(--text-2)}
+
+/* ── Copy-annotation (mockup-noter, ikke en del af fladen) ──────────────── */
+.annot{margin-top:30px; border-top:1px solid var(--border); padding-top:12px}
+.annot h3{font-family:var(--font-data); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--text-3); margin:0 0 8px}
+.annot table{width:100%}
+.annot th,.annot td{padding:6px 12px 6px 0; border-bottom:1px solid var(--border); font-size:12px}
+.annot th{font-family:var(--font-data); font-size:10px; letter-spacing:.08em}
+.annot td.en{color:var(--text-1)}
+.annot td.da{color:var(--text-2)}
+.annot .why{font-size:12px; color:var(--text-2); margin-top:10px; max-width:78ch}
+
+/* ── Mobil 390 ──────────────────────────────────────────────────────────── */
+@media (max-width:640px){
+  .page{padding:10px 16px 36px; max-width:none}
+  .hero{padding:16px}
+  .hero h1{font-size:30px}
+  .herotop{flex-direction:column; gap:10px}
+  .herostats{display:grid; grid-template-columns:1fr 1fr; gap:14px 0}
+  .tabs{gap:16px; overflow-x:auto; -webkit-overflow-scrolling:touch}
+  .tabs .stamp{display:none}
+  .grid2{grid-template-columns:1fr}
+  .cardhead{flex-direction:column; align-items:stretch; gap:4px}
+  .cardhead .right{align-self:flex-start}
+  .toolbar{flex-direction:column; align-items:stretch; gap:8px; overflow:hidden}
+  .toolbar > *{min-width:0; max-width:100%}
+  .stages{overflow-x:auto}
+
+  table.roster, table.roster thead, table.roster tbody, table.roster tr, table.roster th, table.roster td{display:block}
+  table.roster thead{display:none}
+  table.roster tbody tr{padding:12px 14px; border-bottom:1px solid var(--border)}
+  table.roster tbody tr:last-child{border-bottom:0}
+  table.roster tbody tr td{border:0; padding:0}
+  td.c-rider{margin-bottom:5px}
+  td.c-nums{display:inline-flex !important; align-items:baseline; margin:0 14px 7px 0; text-align:left; gap:5px}
+  td.c-nums .k{display:inline !important; font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3)}
+  td.c-nums .v{font-family:var(--font-data); font-size:12.5px; font-variant-numeric:tabular-nums; color:var(--text-2)}
+  td.c-role{margin-bottom:7px}
+  td.c-role > div{display:flex; align-items:baseline; gap:8px}
+  td.c-role .rolesub{margin-top:0}
+  td.c-tactics{margin-top:8px}
+  .actions{flex-direction:column; align-items:stretch; gap:10px}
+  .btnrow{justify-content:flex-end}
+  .refrow{flex-direction:column; align-items:flex-start; gap:4px}
+  .refrow .st{width:auto}
+}

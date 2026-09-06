@@ -1040,6 +1040,7 @@
         "favorite_crack": "{rider} cracks and loses contact with the front.",
         "favorite_crack_tt": "{rider} fades in the second half and bleeds time.",
         "finale_attack": "{rider} attacks in the finale.",
+        "ttt_rider_dropped": "{rider} slips off the back of his team.",
         "sprint_decided": "It comes down to the wire between {rider} and the chasers.",
         "sprint_decided_photo": "Photo finish: it comes down to the wire for {rider}.",
         "outside_time_limit": "{count, plural, one {# rider finishes} other {# riders finish}} outside the time limit and {count, plural, one {leaves} other {leave}} the race.",

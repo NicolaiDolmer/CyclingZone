@@ -430,3 +430,60 @@ test("#4879: collectRiderIds fanger v4's winner_rider_id (ellers skippes spurt-l
   ]);
   assert.deepEqual(ids, ["w1"]);
 });
+
+// ── M13: holdtidskørslen (#3463) ─────────────────────────────────────────
+
+const TTT_TIMELINE = {
+  distanceKm: 40,
+  events: [
+    { type: "stage_start", km: 0, params: { field_count: 160, profile_type: "ttt", distance_km: 40 } },
+    { type: "ttt_rider_dropped", km: 12, params: { team_id: "t1", rider_id: "r9", group_id: "ttt-t1" } },
+    { type: "gap_update", km: 20, params: { group_id: "ttt-t1", gap_seconds: 18 } },
+    { type: "gap_update", km: 20, params: { group_id: "ttt-t2", gap_seconds: 4 } },
+    { type: "ttt_team_result", km: 40, params: { team_id: "t1", group_id: "ttt-t1", time_seconds: 3018, counted_rider_id: "r5", dropped_rider_ids: ["r9"] } },
+    { type: "ttt_team_result", km: 40, params: { team_id: "t2", group_id: "ttt-t2", time_seconds: 3000, counted_rider_id: "r1", dropped_rider_ids: [] } },
+    { type: "finish", km: 40, params: { top: [{ rider_id: "r1", rank: 1, gap: 0 }], win_type: "ttt_win" } },
+  ],
+};
+
+test("#3463: ttt_team_result er data, ikke en feed-linje — ét hold pr. linje ville være en mur", () => {
+  const built = buildFilmTimeline(TTT_TIMELINE);
+  assert.equal(built.feedEvents.filter((e) => e.type === "ttt_team_result").length, 0);
+  // ...men de bliver stående i den fulde event-liste (holdenes officielle tider).
+  assert.equal(built.events.filter((e) => e.type === "ttt_team_result").length, 2);
+});
+
+test("#3463: ingen gap-kurve på en tidskørsel — der er intet felt at måle afstand til", () => {
+  assert.deepEqual(buildFilmTimeline(TTT_TIMELINE).gapCurve, []);
+  const itt = { ...TTT_TIMELINE, events: TTT_TIMELINE.events.map((e) => (e.type === "stage_start" ? { ...e, params: { ...e.params, profile_type: "itt" } } : e)) };
+  assert.deepEqual(buildFilmTimeline(itt).gapCurve, []);
+  // Regressionsvagt: massestarts-etaper beholder kurven.
+  assert.ok(buildFilmTimeline(MOUNTAIN_TIMELINE).gapCurve.length > 0);
+});
+
+test("#3463: en droppet rytter får en broadcast-linje, uden rå id og uden tal", () => {
+  const described = describeEvent(
+    { type: "ttt_rider_dropped", km: 12, params: { team_id: "t1", rider_id: "r9" } },
+    { riderNameById: new Map([["r9", "Jonas Vinge"]]) },
+  );
+  assert.deepEqual(described, { key: "ttt_rider_dropped", params: { rider: "Jonas Vinge" } });
+  // Uden navn: ingen linje (samme #4026-regel som resten af feedet).
+  assert.equal(describeEvent({ type: "ttt_rider_dropped", km: 12, params: { rider_id: "r9" } }, { riderNameById: new Map() }), null);
+});
+
+test("#3463: ttt-nøglerne findes i BEGGE locale-filer og lækker ingen tal", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    for (const key of ["ttt_rider_dropped", "stage_start_ttt", "finish_ttt_win"]) {
+      assert.ok(doc.detail.film.event[key], `${lang}: mangler detail.film.event.${key}`);
+    }
+    assert.ok(
+      !/\{seconds\}|\{gap\}|%/.test(doc.detail.film.event.ttt_rider_dropped),
+      `${lang}: ttt_rider_dropped må ikke vise tempo, tid eller procenter (fog of war)`,
+    );
+  }
+});

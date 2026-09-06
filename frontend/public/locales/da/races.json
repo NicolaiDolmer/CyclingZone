@@ -1040,6 +1040,7 @@
         "favorite_crack": "{rider} sprækker og mister kontakten til front.",
         "favorite_crack_tt": "{rider} falder fra hinanden på anden halvdel og taber tid.",
         "finale_attack": "{rider} angriber i finalen.",
+        "ttt_rider_dropped": "{rider} slipper holdets tempo.",
         "sprint_decided": "Det bliver tæt mellem {rider} og forfølgerne.",
         "sprint_decided_photo": "Fotofinish: det er tæt for {rider}.",
         "outside_time_limit": "{count, plural, one {# rytter kommer} other {# ryttere kommer}} i mål uden for tidsgrænsen og er ude af løbet.",
