@@ -4,7 +4,7 @@
 
 ## Hard rules (fælles — fuld tekst i AGENTS.md)
 
-Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér repo-root (`git rev-parse --show-toplevel`) før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før du lister noget som TODO/bug · spørg ved tvivl (70-95%) · patch notes ved enhver brugerrettet ændring · auto-push efter commit · **commit kun bag `guard-commit-branch.sh`** (hard rule 18; committer du via `git -C <dir>`, så giv guarden samme `<dir>` som 2. argument) · SQL/migrationer: Claude applier selv post-merge under #2642-rammer (idempotent + post-verify; destruktive klasser ejer-gated) — hard rule 9 i `AGENTS.md` · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst + slice-close-out-reglen: [`AGENTS.md`](AGENTS.md) (lean core). Cross-PC-detaljer, session-rytme-signaler + loops-quick-ref: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md) (WARM, on-demand — split per #733).
+Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér repo-root (`git rev-parse --show-toplevel`) før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før du lister noget som TODO/bug · spørg ved tvivl (70-95%) · patch notes ved enhver brugerrettet ændring · auto-push efter commit · fler-PR-merge-koe (een ad gangen, vent paa deploy): `scripts/merge-queue.ps1` (#4919) · **commit kun bag `guard-commit-branch.sh`** (hard rule 18; committer du via `git -C <dir>`, så giv guarden samme `<dir>` som 2. argument) · SQL/migrationer: Claude applier selv post-merge under #2642-rammer (idempotent + post-verify; destruktive klasser ejer-gated) — hard rule 9 i `AGENTS.md` · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst + slice-close-out-reglen: [`AGENTS.md`](AGENTS.md) (lean core). Cross-PC-detaljer, session-rytme-signaler + loops-quick-ref: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md) (WARM, on-demand — split per #733).
 
 ## Page templates (binding — ejer-godkendt 23/7, #2849)
 
@@ -44,6 +44,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-hits:
 4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke). Samme rutine for `help.json` (en+da) ved ny/ændret spilmekanik (#1171).
 5. **Postmortem:** ved bugfix → `.claude/learnings/<dato>-<slug>.md`.
 6. **Token-hygiejne (obligatorisk):** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` — den `exit 1`'er hvis MEMORY.md/NOW.md/docs er over budget. Demotér nye lav-frekvens-HOT-entries til `MEMORY_REFERENCE.md` FØR du lukker.
+7. **Boelge-processer:** `pwsh -File scripts/close-out-cleanup.ps1` (dry-run, `-Execute` ved fund — dræber efterladte `gh --watch`/vite/playwright-processer, #4920).
 
 Ingen lokal-only handoff: state, beslutninger og næste skridt skal ligge i GitHub (`docs/NOW.md`, issues, slice-docs) eller OneDrive-context; transcripts, Codex memories og `SESSION_CONTEXT.md` er caches.
 

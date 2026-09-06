@@ -127,6 +127,7 @@ Kombinér i én commit:
 Derefter:
 - `gh issue edit <N> --add-label claude:done --remove-label claude:todo` for hver
 - Optional: `gh issue comment <N> --body-file ...` hvis scope-korrektion eller out-of-scope-fund
+- Efterladte processer: `pwsh -File scripts/close-out-cleanup.ps1` (dry-run) og `-Execute` hvis der er fund - draeber efterladte `gh --watch`/vite-preview/playwright-processer (#4920)
 - Worktree cleanup: `pwsh -File scripts/remove-worktree.ps1 -Branch <branch>` x3
 - Force-delete local branches (squash-merge artifact): `git branch -D <branch> <branch> <branch>`
 - Remote branches auto-slettes typisk af GitHub merge-settings
@@ -221,6 +222,7 @@ START med: `cd "<path>"` ELLER brug `git -C "<path>"`. Arbejd ALDRIG i C:\dev\Cy
 8. `rm .tmp-<N>-pr.md`
 
 # DU MÅ IKKE
+- Starte en watcher eller dev-server der overlever dig (`gh pr checks --watch`, `gh run watch`, `npm run dev`/`vite`, `playwright` i baggrunden, `node --test --watch`). Læs CI-status med enkelte `gh pr checks`-kald i stedet. Efterladte watchers/preview-servere aad CPU og saa ud som "CI tager 3 timer" ved en session-close-out 6/9 (#4920, `scripts/close-out-cleanup.ps1` finder + fjerner dem).
 - Rør docs/NOW.md (centralkoordineret af master-session)
 - Rør frontend/src/data/patchNotes.js. INGEN undtagelser, heller ikke cat:user-feature (ejer-beslutning 27/8 efter #4308: undtagelsen lod PR #4294 røre filen direkte og udløse konfliktkæden). Er ændringen brugervendt: aflever patch note-tekst (EN først, DA under) i din rapport/PR-body i stedet. Orkestratoren skriver ÉN samlet commit til filen efter bølgen (undgår merge-konflikter).
 - Rør MEMORY.md eller andre memory-filer
