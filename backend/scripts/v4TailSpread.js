@@ -250,11 +250,52 @@ export function scaledMountainRoute(distanceKm) {
 }
 
 /**
- * @returns {Array<{distanceKm:number, spreadPct:number[], meanPct:number}>}
+ * Spearman-rangkorrelation mellem en evne og placeringen (rank 1 = bedst).
+ * Positiv = hoejere evne giver bedre placering. Samme maal-form som
+ * headToHeadAnchors' punch-/ITT-korrelationer.
+ */
+export function abilityRankCorrelation(results, abilityByRider) {
+  const rows = results
+    .filter((r) => abilityByRider.has(r.rider_id))
+    .map((r) => ({ rank: r.rank, ability: abilityByRider.get(r.rider_id) }));
+  if (rows.length < 3) return null;
+  const rankOf = (values) => {
+    const order = values.map((v, i) => [v, i]).sort((a, b) => a[0] - b[0]);
+    const out = new Array(values.length);
+    for (let i = 0; i < order.length; ) {
+      let j = i;
+      while (j + 1 < order.length && order[j + 1][0] === order[i][0]) j++;
+      const avg = (i + j) / 2 + 1;
+      for (let k = i; k <= j; k++) out[order[k][1]] = avg;
+      i = j + 1;
+    }
+    return out;
+  };
+  const abilityRanks = rankOf(rows.map((r) => r.ability));
+  const placeRanks = rankOf(rows.map((r) => -r.rank)); // hoej rang = god placering
+  const n = rows.length;
+  const mean = (a) => a.reduce((s, v) => s + v, 0) / n;
+  const ma = mean(abilityRanks);
+  const mp = mean(placeRanks);
+  let num = 0;
+  let da = 0;
+  let dp = 0;
+  for (let i = 0; i < n; i++) {
+    num += (abilityRanks[i] - ma) * (placeRanks[i] - mp);
+    da += (abilityRanks[i] - ma) ** 2;
+    dp += (placeRanks[i] - mp) ** 2;
+  }
+  return da > 0 && dp > 0 ? num / Math.sqrt(da * dp) : null;
+}
+
+/**
+ * @returns {Array<{distanceKm:number, spreadPct:number[], meanPct:number, enduranceCorr:number[], meanEnduranceCorr:number}>}
  */
 export function runDistanceExperiment({ population, seeds = DEFAULT_SEEDS, fieldSize = DEFAULT_FIELD_SIZE, distances = DISTANCE_EXPERIMENT_KM }) {
   return distances.map((distanceKm) => {
-    const spreadPct = seeds.map((seed) => {
+    const spreadPct = [];
+    const enduranceCorr = [];
+    for (const seed of seeds) {
       // SAMME felt paa tvaers af distancer (feltet seedes uden distancen), saa
       // kun laengden varierer mellem raekkerne.
       const rng = makeRng(stableSeed(`${seed}:distance-experiment:field`));
@@ -266,9 +307,88 @@ export function runDistanceExperiment({ population, seeds = DEFAULT_SEEDS, field
         seed: `${seed}:distance-experiment:${distanceKm}`,
         tuning: RACE_V4_TUNING,
       });
-      return measureTailSpread(output).spreadPct;
+      spreadPct.push(measureTailSpread(output).spreadPct);
+      // M7's egen designpaastand (mor-spec §4 M7: "baaret af endurance"):
+      // jo laengere etapen er, jo mere skal udholdenhed afgoere placeringen.
+      enduranceCorr.push(
+        abilityRankCorrelation(output.results, new Map(fieldRiders.map((r) => [r.id, r.abilities.endurance]))) ?? 0,
+      );
+    }
+    const mean = (a) => a.reduce((s, v) => s + v, 0) / a.length;
+    return {
+      distanceKm,
+      spreadPct,
+      meanPct: mean(spreadPct),
+      enduranceCorr,
+      meanEnduranceCorr: mean(enduranceCorr),
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Kontrolleret endurance-eksperiment (--endurance-experiment)
+// ---------------------------------------------------------------------------
+//
+// M7's egen designpaastand (mor-spec §4 M7) er ikke "halen bliver laengere" men
+// "distancen baeres af endurance": jo laengere etapen er, jo mere skal
+// udholdenhed afgoere hvem der er med. Mod en aegte population kan det ikke
+// maales rent — udholdenhed er staerkt korreleret med alle andre evner, saa en
+// korrelation mod placeringen er hoej uanset M7.
+//
+// Feltet her er derfor KLONER der KUN adskiller sig paa endurance. Alt andet
+// (inkl. seed, rute-form og feltstoerrelse) er fastholdt, saa forskellen mellem
+// den bedste og den daarligste udholdenhed er M7's bidrag og intet andet.
+
+const ENDURANCE_EXPERIMENT_LEVELS = Object.freeze([5, 11, 20, 30, 45, 60, 75, 99]);
+const ENDURANCE_EXPERIMENT_BASE_ABILITY = 30;
+const ENDURANCE_ABILITY_KEYS = Object.freeze([
+  "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch",
+  "endurance", "recovery", "durability", "descending", "cobblestone",
+  "positioning", "aggression", "tactics",
+]);
+
+/** Klon-felt: alle evner ens paa basisniveauet, kun endurance varierer. */
+export function enduranceCloneField(perLevel = 5) {
+  const riders = [];
+  for (const level of ENDURANCE_EXPERIMENT_LEVELS) {
+    for (let i = 0; i < perLevel; i++) {
+      const abilities = {};
+      for (const key of ENDURANCE_ABILITY_KEYS) abilities[key] = ENDURANCE_EXPERIMENT_BASE_ABILITY;
+      abilities.endurance = level;
+      riders.push({ id: `e${String(level).padStart(2, "0")}-${i}`, team_id: `t${level}`, abilities, enduranceLevel: level });
+    }
+  }
+  return riders;
+}
+
+/**
+ * @returns {Array<{distanceKm:number, gapPct:number[], meanGapPct:number}>}
+ *   gapPct = (middeltid for laveste endurance-niveau - middeltid for hoejeste) / vindertid.
+ */
+export function runEnduranceExperiment({ seeds = DEFAULT_SEEDS, distances = DISTANCE_EXPERIMENT_KM } = {}) {
+  const riders = enduranceCloneField();
+  const startlist = entrantsForField(riders);
+  const lowest = ENDURANCE_EXPERIMENT_LEVELS[0];
+  const highest = ENDURANCE_EXPERIMENT_LEVELS[ENDURANCE_EXPERIMENT_LEVELS.length - 1];
+  const levelOf = new Map(riders.map((r) => [r.id, r.enduranceLevel]));
+
+  return distances.map((distanceKm) => {
+    const gapPct = seeds.map((seed) => {
+      const output = simulateStageV4({
+        route: scaledMountainRoute(distanceKm),
+        startlist,
+        orders: [],
+        seed: `${seed}:endurance-experiment:${distanceKm}`,
+        tuning: RACE_V4_TUNING,
+      });
+      const meanFor = (level) => {
+        const times = output.results.filter((r) => levelOf.get(r.rider_id) === level).map((r) => r.time_seconds);
+        return times.reduce((s, v) => s + v, 0) / times.length;
+      };
+      const winner = Math.min(...output.results.map((r) => r.time_seconds));
+      return winner > 0 ? ((meanFor(lowest) - meanFor(highest)) / winner) * 100 : 0;
     });
-    return { distanceKm, spreadPct, meanPct: spreadPct.reduce((a, b) => a + b, 0) / spreadPct.length };
+    return { distanceKm, gapPct, meanGapPct: gapPct.reduce((a, b) => a + b, 0) / gapPct.length };
   });
 }
 
@@ -311,6 +431,20 @@ function main() {
   const raceCount = Number(argValue("races", String(DEFAULT_RACE_COUNT)));
   const jsonOut = argValue("json");
 
+  if (process.argv.includes("--endurance-experiment")) {
+    console.log(
+      "Kontrolleret endurance-eksperiment: klon-felt der KUN adskiller sig paa udholdenhed, " +
+        `samme rute-form, kun distance_km skalerer. Seeds: ${seeds.join(", ")}.`,
+    );
+    console.log("gap_% = (middeltid, laveste udholdenhed - middeltid, hoejeste) / vindertid. Stiger den med distancen, virker M7.");
+    console.log("");
+    console.log(["distance_km", ...seeds.map((s) => `${s}_gap%`), "middel_gap%"].join("\t"));
+    for (const row of runEnduranceExperiment({ seeds })) {
+      console.log([row.distanceKm, ...row.gapPct.map((p) => fmt(p)), fmt(row.meanGapPct)].join("\t"));
+    }
+    return;
+  }
+
   const population = readJson(populationPath);
 
   if (process.argv.includes("--distance-experiment")) {
@@ -319,9 +453,12 @@ function main() {
         `kun distance_km skalerer. Seeds: ${seeds.join(", ")}.`,
     );
     console.log("");
-    console.log(["distance_km", ...seeds.map((s) => `${s}_%`), "middel_%"].join("\t"));
+    console.log("hale_% = (sidste - vinder) / vindertid · endurance_r = rangkorrelation mellem udholdenhed og placering");
+    console.log(["distance_km", ...seeds.map((s) => `${s}_hale%`), "middel_hale%", "middel_endurance_r"].join("\t"));
     for (const row of runDistanceExperiment({ population, seeds, fieldSize })) {
-      console.log([row.distanceKm, ...row.spreadPct.map((p) => fmt(p)), fmt(row.meanPct)].join("\t"));
+      console.log(
+        [row.distanceKm, ...row.spreadPct.map((p) => fmt(p)), fmt(row.meanPct), fmt(row.meanEnduranceCorr, 3)].join("\t"),
+      );
     }
     return;
   }

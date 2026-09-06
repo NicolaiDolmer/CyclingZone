@@ -9,8 +9,11 @@ import assert from "node:assert/strict";
 import {
   DISTANCE_BANDS,
   DISTANCE_EXPERIMENT_KM,
+  abilityRankCorrelation,
   buildProxyCalendar,
+  enduranceCloneField,
   measureTailSpread,
+  runEnduranceExperiment,
   runTailSpread,
   scaledMountainRoute,
   summarizeBy,
@@ -126,4 +129,49 @@ test("runTailSpread er deterministisk og maaler én raekke pr. (etape, seed)", (
     assert.ok(row.spreadPct >= 0, "hale-spredning kan aldrig vaere negativ (sidsteplads >= vinder)");
     assert.equal(row.fieldSize, 20);
   }
+});
+
+// ── Endurance-eksperimentet ──────────────────────────────────────────────────
+
+test("endurance-klonfeltet adskiller sig KUN paa udholdenhed", () => {
+  const riders = enduranceCloneField(3);
+  const keysToCompare = Object.keys(riders[0].abilities).filter((k) => k !== "endurance");
+  for (const rider of riders) {
+    for (const key of keysToCompare) {
+      assert.equal(
+        rider.abilities[key],
+        riders[0].abilities[key],
+        `${rider.id} afviger paa "${key}" — saa ville eksperimentet maale mere end udholdenhed`,
+      );
+    }
+  }
+  assert.ok(new Set(riders.map((r) => r.abilities.endurance)).size > 1, "udholdenheden SKAL variere");
+});
+
+test("rangkorrelationen er +1 naar hoejere evne altid giver bedre placering, og -1 omvendt", () => {
+  const results = [
+    { rider_id: "a", rank: 1 },
+    { rider_id: "b", rank: 2 },
+    { rider_id: "c", rank: 3 },
+    { rider_id: "d", rank: 4 },
+  ];
+  const perfect = new Map([["a", 90], ["b", 70], ["c", 50], ["d", 30]]);
+  const inverted = new Map([["a", 30], ["b", 50], ["c", 70], ["d", 90]]);
+  assert.equal(abilityRankCorrelation(results, perfect), 1);
+  assert.equal(abilityRankCorrelation(results, inverted), -1);
+  assert.equal(abilityRankCorrelation(results.slice(0, 2), perfect), null, "for faa ryttere => n/a, ikke 0");
+});
+
+test("runEnduranceExperiment er deterministisk og daekker alle eksperimentets distancer", () => {
+  const args = { seeds: ["e1"], distances: [120, 280] };
+  const rows = runEnduranceExperiment(args);
+  assert.deepEqual(rows.map((r) => r.distanceKm), [120, 280]);
+  assert.deepEqual(rows, runEnduranceExperiment(args));
+  for (const row of rows) {
+    assert.ok(
+      Number.isFinite(row.meanGapPct),
+      "gappet mellem laveste og hoejeste udholdenhed skal vaere et tal, ogsaa naar feltet er kloner",
+    );
+  }
+  assert.equal(DISTANCE_EXPERIMENT_KM[0], 120, "eksperimentets korteste distance er ankeret rapporten laeses mod");
 });

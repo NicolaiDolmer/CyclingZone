@@ -135,6 +135,7 @@ test("M7 er KOBLET IND: segment-CP'en er slidt, og sliddet er ALDRIG mindre laen
     dayform: 0,
     seconds_over_cp: 0,
     work_norm: 0,
+    incidents: 0,
     time_seconds: 0,
     status: "racing" as const,
   };
