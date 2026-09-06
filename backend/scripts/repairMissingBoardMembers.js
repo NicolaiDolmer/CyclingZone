@@ -47,6 +47,7 @@ import { createClient } from "@supabase/supabase-js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { assignBoardMembersForTeam, TEAM_BOARD_MEMBERS_COUNT } from "../lib/boardMembers.js";
+import { fetchAllRows } from "../lib/supabasePagination.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -90,15 +91,30 @@ export function isRepairEligible(team, memberCount) {
  * @param {object} supabase
  */
 export async function fetchRepairSnapshot(supabase) {
-  const { data: teams, error: teamsError } = await supabase
-    .from("teams")
-    .select("id, name, season_1_identity_basis, team_dna_key, is_ai, is_test_account");
-  if (teamsError) throw teamsError;
+  // #4903: PAGINÉR BEGGE. Et bart .select() stopper ved PostgRESTs 1.000-rækkers
+  // default-loft, tavst. Prod 6/9 havde 1.185 rækker i team_board_members, så de
+  // sidste 185 faldt på gulvet og ~37 hold så ud til at mangle medlemmer de HAR:
+  // rapporten sagde 44 boardløse hold (40 "eligible") hvor sandheden var 7.
+  //
+  // Ingen data-skade — assignBoardMembersForTeam gen-tjekker selv og springer et
+  // fuldt board over — men rapporten ER beslutningsgrundlaget, og en afkortning
+  // her rammer BEGGE sider af #4715's delte predikat på én gang: tælling og
+  // apply-loop er enige, bare om det forkerte snapshot.
+  //
+  // fetchAllRows er samme hjælper som ownershipInvariantWatch.js bruger til
+  // nøjagtig de samme to tabeller. teams (373 rækker) er under loftet i dag, men
+  // den vokser med hver tilmelding og hvert AI-hold — begge pagineres.
+  const teams = await fetchAllRows(() =>
+    supabase
+      .from("teams")
+      .select("id, name, season_1_identity_basis, team_dna_key, is_ai, is_test_account")
+      .order("id"));
 
-  const { data: members, error: membersError } = await supabase
-    .from("team_board_members")
-    .select("team_id");
-  if (membersError) throw membersError;
+  const members = await fetchAllRows(() =>
+    supabase
+      .from("team_board_members")
+      .select("team_id")
+      .order("team_id"));
 
   return { teams: teams || [], countByTeam: countMembersByTeam(members) };
 }
