@@ -107,9 +107,11 @@ export function simulateStageV4(input: StageInput): StageOutput {
     results: rawResults,
     profileType: input.route.profile_type,
     distanceKm: input.route.distance_km,
-    // Sammenhaengsvinduet for ankomst-grupper spejler gruppe-sammensmeltningen
-    // (groups.ts's mergeGroups) — samme gruppe = samme tid.
-    cohesionWindowSeconds: input.tuning.groups.mergeThresholdSeconds,
+    // Sammenhaengsvinduet er BEVIDST ikke tuning.groups.mergeThresholdSeconds:
+    // finale.ts's placerings-tiers ligger per konstruktion mindst
+    // mergeThresholdSeconds + margin fra hinanden, saa det vindue kunne aldrig
+    // kaede to tiers til én grupetto. Modulet bruger sin egen ANKOMST-graense
+    // (TIME_LIMIT_EXTRA_TUNING.grupettoCohesionWindowSeconds, se maalingen dér).
   });
   const results = timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km);

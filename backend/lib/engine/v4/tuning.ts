@@ -494,7 +494,17 @@ const timeLimitExtra = {
   fallbackFactor: 0.1, // faktor naar profile_type mangler/er ukendt — midt i baandet, saa en ukendt type hverken massakrerer eller slukker reglen
   grupettoFieldFraction: 0.2, // andel af FELTET en samlet ankomst skal udgoere foer grupetto-redningen udloeses (UCI bruger typisk 20 %). STARTGAET, kalibreres
   grupettoMinRiders: 8, // absolut gulv: i et lille felt maa 20 % ikke goere enhver lille klump til en grupetto. STARTGAET, kalibreres
-  grupettoCohesionWindowSeconds: 2, // sammenhaengsvindue paa sluttid (spejler tuning.groups.mergeThresholdSeconds, jf. groups.ts) — egen konstant saa grupetto-vinduet kan kalibreres uden at flytte selve gruppe-sammensmeltningen
+  // MAALT 6/9, ikke gaettet: vinduet kan IKKE vaere tuning.groups.mergeThresholdSeconds (2 s).
+  // finale.ts bygger hvert placerings-tier med et skridt paa mindst
+  // mergeThresholdSeconds + placementGapMarginSeconds (2 + 0,4 s) netop for at
+  // segmentLoop's efterfoelgende mergeGroups IKKE folder tierne sammen igen. Et
+  // 2-sekunders vindue kan derfor per konstruktion aldrig kaede to tiers sammen,
+  // saa en grupetto der ankommer i to klumper ville blive doemt som to smaa
+  // grupper og ryge ud — praecis den massakre reglen skal forhindre. Maalt paa en
+  // etape hvor halen faldt i to klumper 104 s fra hinanden (18 + 12 ryttere,
+  // taerskel 24): 2 s => begge ud, 120 s => samlet og reddet. Vinduet er en
+  // ANKOMST-graense ("kom de ind sammen?"), ikke en loebsdynamik-graense.
+  grupettoCohesionWindowSeconds: 120, // sammenhaengsvindue paa sluttid: hvor langt der maa vaere mellem to naboer i en samlet ankomst. STARTGAET, kalibreres
 };
 
 /** M15 additiv tidsgraense-tuning (deep-frosset). Se timeLimitExtra-kommentaren ovenfor. */

@@ -23,7 +23,15 @@ import {
   GRUPETTO_SAVED_EVENT,
 } from "./timeLimit.ts";
 import { validateTimelineEvents } from "../timeline.ts";
-import type { ProfileType, StageResult } from "../types.ts";
+import { simulateStageV4 } from "../index.ts";
+import { FINALE_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
+import type { AbilityKey, Entrant, ProfileType, RouteV2, StageResult } from "../types.ts";
+
+const ABILITY_KEYS: AbilityKey[] = [
+  "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch",
+  "endurance", "recovery", "durability", "descending", "cobblestone",
+  "positioning", "aggression", "tactics",
+];
 
 const ALL_PROFILE_TYPES: ProfileType[] = [
   "flat", "rolling", "hilly", "mountain", "high_mountain", "cobbles",
@@ -360,4 +368,127 @@ test("M15 (g): events laekker hverken procent, faktor eller sekundgraense (ejer-
     const serialized = JSON.stringify(event.params);
     assert.ok(!serialized.includes(String(outcome.limitSeconds)), "sekundgraensen maa ikke staa i params");
   }
+});
+
+// ── Forward-guard: vinduet maa aldrig falde tilbage til merge-taersklen ──────
+
+test("M15 forward-guard: ankomst-vinduet er STOERRE end det mindst mulige finale-tier-skridt", () => {
+  // finale.ts bygger hvert placerings-tier med et skridt paa mindst
+  // mergeThresholdSeconds + placementGapMarginSeconds. Falder ankomst-vinduet
+  // ned paa eller under det, kan to tiers per konstruktion ALDRIG kaedes til én
+  // grupetto — og en grupetto der ankommer i to klumper bliver massakreret.
+  const minTierStep = RACE_V4_TUNING.groups.mergeThresholdSeconds + FINALE_EXTRA_TUNING.placementGapMarginSeconds;
+  assert.ok(
+    TIME_LIMIT_TUNING.grupettoCohesionWindowSeconds > minTierStep,
+    `ankomst-vinduet (${TIME_LIMIT_TUNING.grupettoCohesionWindowSeconds}s) skal overstige mindste tier-skridt (${minTierStep}s)`,
+  );
+});
+
+test("M15 forward-guard: en grupetto der ankommer i TO klumper reddes stadig samlet", () => {
+  // Regressionen fra maalingen 6/9: 18 + 12 ryttere, 104 s mellem klumperne,
+  // taerskel 24 — med et 2-sekunders vindue blev begge doemt som for smaa.
+  const winnerTime = 26000;
+  const overLimitTime = 35800; // klart uden for bjerg-graensen
+  const times = [
+    ...Array.from({ length: 90 }, () => winnerTime),
+    ...Array.from({ length: 18 }, () => overLimitTime),
+    ...Array.from({ length: 12 }, () => overLimitTime + 104),
+  ];
+  const results = resultsFromTimes(times);
+  const wide = applyTimeLimit({ results, profileType: "mountain", distanceKm: 200 });
+  assert.equal(wide.otlRiderIds.length, 0, "de to klumper er ÉN ankomst og skal reddes samlet");
+  assert.equal(wide.rescuedRiderIds.length, 30);
+
+  const narrow = applyTimeLimit({ results, profileType: "mountain", distanceKm: 200, cohesionWindowSeconds: 2 });
+  assert.equal(narrow.rescuedRiderIds.length, 0, "negativ-kontrol: et merge-taerskel-vindue laaser redningen ude");
+  assert.equal(narrow.otlRiderIds.length, 30);
+});
+
+// ── End-to-end: mekanikken er WIRET, ikke kun bygget ────────────────────────
+
+test("M15 e2e: simulateStageV4 saetter status otl og emitterer eventet paa maalstregen", () => {
+  // v4's egen default-tuning komprimerer feltet saa haardt at graensen aldrig
+  // bider (maalt 6/9: maks spredning 6,1 % paa bjerg mod en 15 %-graense — se
+  // PR-body og RACE_ENGINE_RULES.md §7). For at bevise at KALDSSTEDET virker,
+  // koeres etapen med et hoejere `strengthSpeedGain` — motorens EGEN
+  // tuning-flade, ikke en test-specifik bagdoer — saa feltet spreder sig som i
+  // virkeligheden.
+  const abilities = (level: number): Record<AbilityKey, number> => {
+    const out = {} as Record<AbilityKey, number>;
+    for (const key of ABILITY_KEYS) out[key] = level;
+    return out;
+  };
+  const startlist: Entrant[] = Array.from({ length: 120 }, (_, i) => ({
+    rider_id: `r${String(i).padStart(3, "0")}`,
+    abilities: abilities(i < 90 ? 90 : 5),
+    role: "free_role",
+    effort: "normal",
+    condition: 1,
+  }));
+  const route: RouteV2 = {
+    distance_km: 200,
+    profile_type: "mountain",
+    finale_type: "long_climb",
+    segments: [
+      { kind: "flat", from_km: 0, to_km: 60 },
+      { kind: "climb", from_km: 60, to_km: 100, category: "HC", avg_gradient: 9, top_elevation_m: 2200 },
+      { kind: "descent", from_km: 100, to_km: 130, technicality: 2 },
+      { kind: "climb", from_km: 130, to_km: 200, category: "HC", avg_gradient: 9, top_elevation_m: 2400 },
+    ],
+    weather: { kind: "sun", wind_exposure: 0.2 },
+    waypoints: [],
+  };
+  const tuning = {
+    ...RACE_V4_TUNING,
+    terrain: { ...RACE_V4_TUNING.terrain, strengthSpeedGain: 0.5, speedMultiplierBounds: [0.35, 1.3] as const },
+  };
+  const output = simulateStageV4({ route, startlist, orders: [], seed: "m15-e2e", tuning });
+
+  const otl = output.results.filter((r) => r.status === "otl");
+  const rescued = output.timeline.events.find((e) => e.type === GRUPETTO_SAVED_EVENT);
+  assert.ok(otl.length > 0 || rescued, "mekanikken skal vaere WIRET: enten otl-status eller en grupetto-redning");
+
+  // Feltstoerrelsen (§3 invariant 6) og rank-permutationen er uroerte.
+  assert.equal(output.results.length, startlist.length);
+  const ranks = output.results.map((r) => r.rank).sort((a, b) => a - b);
+  assert.deepEqual(ranks, Array.from({ length: startlist.length }, (_, i) => i + 1));
+
+  // Tidslinjen er stadig km-monoton og fri for fog-gated noegler.
+  const violations = validateTimelineEvents(output.timeline.events, {
+    distanceKm: route.distance_km,
+    knownRiderIds: new Set(startlist.map((e) => e.rider_id)),
+  });
+  assert.deepEqual(violations, [], `tidslinje-brud: ${JSON.stringify(violations)}`);
+});
+
+test("M15 e2e: default-tuning lader golden-fixture-lignende etaper vaere fuldstaendig uroert", () => {
+  // Ingen ramte => ingen events => ingen aendring i output. Det er det der
+  // holder de fire golden fixtures bit-identiske.
+  const abilities = (level: number): Record<AbilityKey, number> => {
+    const out = {} as Record<AbilityKey, number>;
+    for (const key of ABILITY_KEYS) out[key] = level;
+    return out;
+  };
+  const startlist: Entrant[] = Array.from({ length: 60 }, (_, i) => ({
+    rider_id: `r${String(i).padStart(3, "0")}`,
+    abilities: abilities(30 + (i % 20)),
+    role: "free_role",
+    effort: "normal",
+    condition: 1,
+  }));
+  const route: RouteV2 = {
+    distance_km: 180,
+    profile_type: "flat",
+    finale_type: "bunch_sprint",
+    segments: [
+      { kind: "flat", from_km: 0, to_km: 90 },
+      { kind: "flat", from_km: 90, to_km: 180 },
+    ],
+    weather: { kind: "sun", wind_exposure: 0.2 },
+    waypoints: [],
+  };
+  const output = simulateStageV4({ route, startlist, orders: [], seed: "m15-inert", tuning: RACE_V4_TUNING });
+  assert.ok(output.results.every((r) => r.status === "finished"));
+  assert.equal(output.timeline.events.some((e) => e.type === OUTSIDE_TIME_LIMIT_EVENT), false);
+  assert.equal(output.timeline.events.some((e) => e.type === GRUPETTO_SAVED_EVENT), false);
 });

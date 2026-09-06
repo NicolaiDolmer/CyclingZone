@@ -112,11 +112,16 @@ type ArrivalEntry = { rider_id: string; time_seconds: number };
 
 /**
  * Ankomst-grupper: ryttere sorteret paa sluttid kaedes sammen saa laenge
- * afstanden til naboen er UNDER `windowSeconds` — praecis samme
- * sammenhaengs-semantik som groups.mergeGroups' `mergeThresholdSeconds`
- * (groups.ts), oversat fra gap-rum til sluttids-rum. Gruppe-tids-princippet
- * (mor-spec §3.2) goer at ryttere i samme maalgruppe har PRAECIS samme tid,
- * saa kaeden er i praksis "samme tid" med et smalt slup for finale-tiers.
+ * afstanden til naboen er UNDER `windowSeconds` — samme sammenhaengs-semantik
+ * som groups.mergeGroups (groups.ts), oversat fra gap-rum til sluttids-rum.
+ * Gruppe-tids-princippet (mor-spec §3.2) goer at ryttere i samme maalgruppe
+ * har PRAECIS samme tid, saa en samlet ankomst er én kaede.
+ *
+ * VINDUET er en ANKOMST-graense, ikke groups.mergeThresholdSeconds. finale.ts
+ * lægger hvert placerings-tier mindst mergeThresholdSeconds + margin fra
+ * naboen (netop saa mergeGroups ikke folder tierne sammen igen), saa et
+ * merge-taerskel-vindue kunne per konstruktion aldrig kaede to tiers til én
+ * grupetto — se maalingen ved TIME_LIMIT_EXTRA_TUNING.grupettoCohesionWindowSeconds.
  *
  * Eksporteret for direkte kontrakt-tests. REN: input muteres aldrig,
  * raekkefoelgen er (tid, rider_id) og dermed deterministisk.
@@ -161,9 +166,9 @@ export type ApplyTimeLimitArgs = {
   /** Etapens laengde — events placeres paa maalstregen (#2410 §2.3 regel 4). */
   distanceKm: number;
   /**
-   * Sammenhaengsvindue for ankomst-grupper. Kalderen giver
-   * `tuning.groups.mergeThresholdSeconds` videre (jf. groups.ts); udelades den,
-   * bruges TIME_LIMIT_EXTRA_TUNING's eget vindue.
+   * Sammenhaengsvindue for ankomst-grupper. Udelades den (den normale vej),
+   * bruges TIME_LIMIT_EXTRA_TUNING's eget ANKOMST-vindue. Parameteren findes
+   * for tests/harness der vil sweepe vinduet uden at roere tuning-fladen.
    */
   cohesionWindowSeconds?: number;
   tuning?: TimeLimitTuning;
