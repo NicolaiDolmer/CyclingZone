@@ -92,6 +92,69 @@ test("validate fanger ukendt area, ukendt state, dublet-id og manglende felter",
   assert.match(errors, /mangler paakraevet felt "title_da"/);
 });
 
+test("validate kraever note ved state dormant (#4928)", () => {
+  const entries = parseRegistry(`features:
+  - id: no-note-dormant
+    area: ops
+    title_en: X
+    title_da: X
+    state: dormant
+    flag: x_enabled
+    verified: 2026-09-07
+`);
+  assert.match(validate(entries).join("\n"), /state dormant kraever en note/);
+});
+
+test("validate accepterer state dormant med note", () => {
+  const entries = parseRegistry(`features:
+  - id: has-note-dormant
+    area: ops
+    title_en: X
+    title_da: X
+    state: dormant
+    flag: x_enabled
+    verified: 2026-09-07
+    note: Bygget; flaget aabnes ved cutover.
+`);
+  assert.deepEqual(validate(entries), []);
+});
+
+test("STATES kender dormant og sorterer den lige efter beta", () => {
+  assert.ok(STATES.includes("dormant"));
+  assert.equal(STATES.indexOf("dormant"), STATES.indexOf("beta") + 1);
+});
+
+test("render grupperer dormant-raekker lige efter beta-raekker i samme area", () => {
+  const entries = parseRegistry(`features:
+  - id: building-x
+    area: ops
+    title_en: Building X
+    title_da: Building X
+    state: building
+    verified: 2026-09-07
+  - id: dormant-x
+    area: ops
+    title_en: Dormant X
+    title_da: Dormant X
+    state: dormant
+    flag: dormant_x_enabled
+    verified: 2026-09-07
+    note: Bygget; flaget aabnes senere.
+  - id: beta-x
+    area: ops
+    title_en: Beta X
+    title_da: Beta X
+    state: beta
+    flag: beta_x_enabled
+    verified: 2026-09-07
+`);
+  const markdown = render(entries);
+  const betaIdx = markdown.indexOf("Beta X (`beta-x`)");
+  const dormantIdx = markdown.indexOf("Dormant X (`dormant-x`)");
+  const buildingIdx = markdown.indexOf("Building X (`building-x`)");
+  assert.ok(betaIdx < dormantIdx && dormantIdx < buildingIdx);
+});
+
 test("validate afviser en note med | (ville bryde tabellen)", () => {
   const entries = parseRegistry(`features:
   - id: pipe-note

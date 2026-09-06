@@ -17,20 +17,30 @@
 #             comms | billing | ops
 #   title_en  engelsk titel (EN-first, jf. sprogreglen)
 #   title_da  dansk titel
-#   state     idea | spec | building | beta | live | retired
+#   state     idea | spec | building | dormant | beta | live | retired
+#             dormant = bygget færdigt, men bevidst slukket i prod (#4928) —
+#             adskiller sig fra `building` ("nogen koder på det") ved at koden
+#             er komplet og kun flaget mangler. Kræver `note` med hvem/hvad
+#             der flipper den. Genereret status-fil viser dormant som egen
+#             rækkegruppe efter beta.
 #   flag      app_config-nøgle (valgfri). Sæt den KUN hvis rækken faktisk findes
 #             i prod app_config — check-feature-registry-flags.mjs fejler på en
-#             nøgle der ikke findes. Dormante flag (rækken findes ikke = off pr.
-#             fail-safe) hører i `note`, ikke i `flag`.
+#             nøgle der ikke findes. Dormante flag-NØGLER (rækken findes ikke i
+#             app_config = off pr. fail-safe) hører i `note`, ikke i `flag` —
+#             forveksl ikke med `state: dormant`, som netop KRÆVER en rigtig
+#             `flag`-række (den er bygget og målt, blot slukket).
 #   ssot      SSOT-dokument for området (valgfri), sti relativt til repo-roden
 #   epic      GitHub-issue-nummer for epic'en (valgfri, uden #)
 #   verified  YYYY-MM-DD — hvornår tilstanden sidst blev verificeret mod kode/prod
 #   note      max 1 linje. Kun det der ikke kan udledes af felterne ovenfor.
+#             Obligatorisk ved state: dormant.
 #
 # FLAG-GATEN (check-feature-registry-flags.mjs):
-#   state: live  + flag → flagværdi skal være on/true
-#   state: beta  + flag → flagværdi skal være beta
-#   andre states + flag → flagværdi må IKKE være on/true
+#   state: live    + flag → flagværdi skal være on/true
+#   state: beta    + flag → flagværdi skal være beta
+#   state: dormant + flag → flagværdi må IKKE være on/true (identisk med
+#                            building) — posten skal have en note om flippet
+#   andre states   + flag → flagværdi må IKKE være on/true
 #   flag der ikke findes i app_config → fail
 #   verified ældre end 60 dage → advarsel (ikke fail)
 #
@@ -97,8 +107,8 @@ features:
     state: building
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 4632
-    verified: 2026-09-06
-    note: Dormant nøgle race_day_intention_enabled; M12 er merget ind i v4-broen.
+    verified: 2026-09-07
+    note: UI er live i Taktik-fanen (RaceTacticsTab, #4913); motoreffekten venter på v4-flip (dormant nøgle race_day_intention_enabled).
 
   # --- race-day ------------------------------------------------------------
   - id: race-day-engine
@@ -133,8 +143,8 @@ features:
     title_en: Race page
     title_da: Løbsside
     state: live
-    verified: 2026-09-06
-    note: RaceDetailPage med faner og live klassement.
+    verified: 2026-09-07
+    note: RaceDetailPage som hero + faner (Overblik/Hold/Taktik/Etaper/Resultater) siden #4913.
 
   - id: race-replay
     area: race-day
@@ -149,19 +159,21 @@ features:
     area: race-day
     title_en: Race page as tabs (v2)
     title_da: Løbsside som faner (v2)
-    state: building
+    state: live
     epic: 4613
-    verified: 2026-09-06
-    note: PR #4913 er åben.
+    verified: 2026-09-07
+    note: PR #4913 merget 6/9 kl. 18:57; patch note 7.259.
 
   - id: race-day-development
     area: race-day
     title_en: Race day development
     title_da: Udvikling på løbsdage
-    state: building
+    state: dormant
     flag: race_day_development_enabled
     ssot: docs/PROGRESSION_RULES.md
-    verified: 2026-09-06
+    epic: 4850
+    verified: 2026-09-07
+    note: Bygget (D2); flaget åbnes når træningstick-omlægningen (#4850) er klar, senest S4 28/9.
 
   # --- market --------------------------------------------------------------
   - id: auctions
@@ -222,12 +234,12 @@ features:
     area: market
     title_en: Market value blend sweep
     title_da: Markedsblend af rytterværdier
-    state: building
+    state: dormant
     flag: market_value_sweep_enabled
     ssot: docs/ECONOMY_RULES.md
     epic: 3448
-    verified: 2026-09-06
-    note: Søndagsblendet er kodet men slukket; kun ren måling kører (#4419).
+    verified: 2026-09-07
+    note: Bygget; flaget åbnes efter ejer-go (#4449, global vægt 0,15). Kun ren måling kører i dag (#4419).
 
   # --- squad ---------------------------------------------------------------
   - id: contracts
@@ -335,10 +347,12 @@ features:
     area: academy
     title_en: Academy intake pull
     title_da: Træk af akademi-optag
-    state: building
+    state: dormant
     flag: academy_intake_pull_enabled
     ssot: docs/YOUTH_RULES.md
-    verified: 2026-09-06
+    epic: 3550
+    verified: 2026-09-07
+    note: Bygget; erstatter søndagsdrippet når flaget flippes ved cutover (#3550).
 
   - id: season-academy-intake
     area: academy
@@ -372,11 +386,11 @@ features:
     area: season
     title_en: Season signup
     title_da: Sæsontilmelding
-    state: building
+    state: dormant
     flag: season_signup_enabled
     ssot: docs/CALENDAR_RULES.md
-    verified: 2026-09-06
-    note: Bygget; flaget åbnes først når tilmeldingen skal være åben.
+    verified: 2026-09-07
+    note: Bygget; flaget åbnes ved S4-cutover 27-28/9 (#452, #4592).
 
   - id: season-end-recap
     area: season

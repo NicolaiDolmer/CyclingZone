@@ -54,6 +54,14 @@ test("ikke-live/beta med taendt flag fejler", () => {
   }
 });
 
+test("dormant + flag on fejler, dormant + flag off er OK (#4928, identisk med building)", () => {
+  const [fail] = evaluateFlags([entry({ flag: "f", state: "dormant" })], new Map([["f", "on"]]));
+  assert.equal(fail.level, "FAIL");
+  assert.match(fail.reason, /flaget er taendt/);
+  const [ok] = evaluateFlags([entry({ flag: "f", state: "dormant" })], new Map([["f", "off"]]));
+  assert.equal(ok.level, "OK");
+});
+
 test("ukendt flag-noegle fejler", () => {
   const [row] = evaluateFlags([entry({ flag: "mangler", state: "live" })], new Map());
   assert.equal(row.level, "FAIL");
