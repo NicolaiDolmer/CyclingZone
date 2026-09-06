@@ -50,7 +50,12 @@ import {
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
-import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled } from "./raceEngineFlag.js";
+import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled } from "./raceEngineFlag.js";
+// Løbsmotor v4 (#3855/#4707) — flip-infrastruktur. Broen indlæser v4-kernen
+// DYNAMISK (se raceEngineV4Bridge.js designvalg 2), så flag-off ikke loader ét
+// eneste v4-modul og "flag off ⇒ ingen v4-import" er en hård, testbar garanti.
+// Er flaget off er `v4Engine` null og ALT herunder er uændret v3.
+import { ENGINE_VERSION_V4, loadRaceEngineV4, loadTeamOrderRows } from "./raceEngineV4Bridge.js";
 // #2410 (event-log S1): deterministisk etape-tidslinje-generator — REN funktion,
 // samme build-trin som moments/passages (data er i memory). Bag flag
 // `race_stage_timeline` (raceEngineFlag.js) — se buildRaceResults/
@@ -219,6 +224,46 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
 }
 
 /**
+ * Løbsmotor v4 (#3855/#4707): oversæt kill-switchen til en motor.
+ *
+ * Flag OFF (default) → { v4Engine: null, teamOrderRows: [] }: INGEN dynamisk
+ * import, INGEN ekstra DB-kald, og buildRaceResults/buildStageRowsAccumulated
+ * er bit-identiske med i dag.
+ *
+ * Flag ON → v4-kernen indlæses dynamisk + løbets race_team_orders hentes én
+ * gang. Fejler ét af de to, larmer vi højt og falder tilbage til v3: en etape
+ * må ALDRIG blokere fordi den nye motor ikke kunne loades — v3 er den låste
+ * fallback, og det er hele pointen med at have en kill-switch.
+ *
+ * Læses ÉN gang pr. afvikling (whole-race) / pr. etape-invokation
+ * (stage-by-stage), som v3- og timeline-flagene. Slukkes flaget mens et
+ * etapeløb kører, ser NÆSTE etapes invokation den nye værdi og kører v3.
+ */
+export async function resolveRaceEngineV4({
+  supabase, race, checkV4Enabled,
+  loadEngine = loadRaceEngineV4,
+  loadOrders = loadTeamOrderRows,
+}) {
+  const enabled = await checkV4Enabled(supabase);
+  if (!enabled) return { v4Engine: null, teamOrderRows: [] };
+  try {
+    const [v4Engine, teamOrderRows] = await Promise.all([
+      loadEngine(),
+      loadOrders({ supabase, raceId: race.id }),
+    ]);
+    return { v4Engine, teamOrderRows };
+  } catch (err) {
+    console.error(`  ⚠️  race ${race.id}: loebsmotor v4 kunne ikke indlaeses (${err?.message}) - koerer v3 for denne afvikling`);
+    captureException(err, {
+      tags: { flow: "race-run", stage: "race-engine-v4-load" },
+      fingerprint: ["race-engine-v4-load-failed"],
+      raceId: race.id,
+    });
+    return { v4Engine: null, teamOrderRows: [] };
+  }
+}
+
+/**
  * REN kerne: simulér et helt løb og byg race_results-kompatible rækker + run-metadata.
  * Ingen DB. Determinisk givet (race.id, stages, entrants).
  *
@@ -234,6 +279,13 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
  *     (kald-stedets ansvar at udelade den når v3=false — flag-off skal forblive
  *     bit-identisk). undefined/tom Map = ingen overrides, ren fallback til
  *     entrant.race_role/'normal', bit-identisk med før S3.
+ * @param {object|null} [v4Engine=null]  #3855/#4707 (flag `race_engine_v4`) —
+ *   ikke-null = kør etapen på løbsmotor v4 i stedet for v3's simulateStage.
+ *   Broen (raceEngineV4Bridge.js) oversætter v4's output til den SAMME
+ *   `ranked`-form, så resultatrækkerne har præcis de samme kolonner. null
+ *   (default) = uændret v3-sti, bit-identisk med før #3855.
+ * @param {Array} [teamOrderRows=[]]  #3855 — race_team_orders-rækker for HELE
+ *   løbet; kun læst når v4Engine er sat (hold uden række får T4-defaulten).
  * @returns {{ resultRows, passageRows, runs, finalFatigue, incidents, moments }}
  *   incidents: S4 (#1176) — flad liste af ALLE uheld på tværs af løbets etaper
  *   ({stage_number, rider_id, kind, outcome, time_loss_seconds, injury_days, u}).
@@ -254,7 +306,7 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
  *   timelinen degraderer gracefully (tyndere artefakt) når v3=false, men
  *   genereres stadig hvis flaget er ON.
  */
-export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides, timeline = false }) {
+export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides, timeline = false, v4Engine = null, teamOrderRows = [] }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stages.length) throw new Error("no stage profiles");
   if (!entrants.length) throw new Error("no entrants");
@@ -382,14 +434,24 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       }
     }
     const isFinal = i === stagesSorted.length - 1;
-    const seed = stableSeed(raceSeedInput(race.id, stageNumber));
+    // #3855/#4707: v3 seeder på HELTALLET, v4 på selve STRENGEN (kerne-
+    // kontrakten tager `seed: string`). Begge kommer fra den samme saltede
+    // raceSeedInput, så en etape har ét seed uanset motor.
+    const seedInput = raceSeedInput(race.id, stageNumber);
+    const seed = stableSeed(seedInput);
     // S4 (#1176): abandons fra en TIDLIGERE etape (denne loop-instans' egen
     // abandonedSet — whole-race-stien er ét kald, ingen DB-rundtur nødvendig)
     // udelukkes fra dagens felt, FØR simulateStage kaldes.
     const stageEntrants = abandonedSet.size
       ? simEntrants.filter((se) => !abandonedSet.has(se.rider_id))
       : simEntrants;
-    const { ranked, incidents } = simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
+    // Motorvalget (#3855/#4707). `v4Engine` er non-null PRÆCIS når flaget
+    // race_engine_v4 var ON da afviklingen startede; broen oversætter v4's
+    // StageOutput til den samme `ranked`-form v3 returnerer, så ALT herunder
+    // (pushIndiv, computePassages, akkumulering, klassementer) er uændret.
+    const { ranked, incidents } = v4Engine
+      ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows })
+      : simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
     for (const inc of incidents) {
       allIncidents.push({ stage_number: stageNumber, ...inc });
       if (inc.outcome === "abandon") abandonedSet.add(inc.rider_id);
@@ -430,7 +492,8 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       stage_number: stageNumber,
       seed,
       salt_version: activeSaltVersion(),
-      engine_version: v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION,
+      // 1 = light-motoren (#1102), 2 = v3-scoring (#2352), 4 = v4 (#3855).
+      engine_version: v4Engine ? ENGINE_VERSION_V4 : (v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION),
       entrant_snapshot: simEntrants.map((e) => e.rider_id).sort(),
       input_checksum: stableSeed(JSON.stringify({
         ids: simEntrants.map((e) => e.rider_id).sort(),
@@ -452,7 +515,11 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       // #2352 (Race v3 S1, spec §11.3): komponenter pr. rytter pr. etape — KUN
       // beregnet/vedhæftet når v3 er ON (why-laget/admin-formål). v3=false →
       // ingen riderScores-nøgle → runs-formen er UÆNDRET (determinisme-test-guard).
-      ...(v3 ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
+      // #3855: v4 producerer INGEN score-komponenter (broen sætter kun
+      // components.breakaway, som er en gruppe-observation, ikke en score).
+      // At skrive dem ind i race_simulation_rider_scores ville forgifte
+      // balance-drift-vagtens datasæt med tomme rækker — derfor udelades de.
+      ...(v3 && !v4Engine ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
     });
 
     stageNumbersSoFar.add(stageNumber);
@@ -492,8 +559,14 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // gate for at holde v1-stien 100% urørt/uændret adfærd).
     // #2410: `stageMoments` hoistet til loop-scope (var i stedet for const inde i
     // if-blokken) — tidslinje-genereringen nedenfor genbruger dem, UAFHÆNGIGT af v3.
+    // #3855: v4 → NEUTRAL fortælling. extractStageMoments læser v3's
+    // score-komponenter (terrain/team/work_cost/dayform), som v4 slet ikke
+    // producerer; at bygge momenter på et tomt komponent-objekt ville opdigte
+    // en fortælling motoren ikke har belæg for. Tidslinjen bygges stadig
+    // (buildStageTimeline degraderer gracefully uden momenter, præcis som når
+    // v3-flaget er off). Rigtige v4-momenter hører til paritets-slicen.
     let stageMoments = [];
-    if (v3) {
+    if (v3 && !v4Engine) {
       const roleByRider = new Map(stageEntrants.map((e) => [e.rider_id, e.race_role]));
       const formByRider = new Map(stageEntrants.filter((e) => e.form != null).map((e) => [e.rider_id, e.form]));
       // #3115 gap 1b (D3 DEL 2): dagens resolved effort pr. rytter (S3
@@ -1624,6 +1697,10 @@ export async function simulateRace({
   // (app_config.race_stage_timeline). flag-off → buildRaceResults kaldes med
   // timeline=false → INGEN ekstra DB-kald (samme mønster som checkV3Enabled).
   checkTimelineEnabled = isRaceStageTimelineEnabled,
+  // #3855/#4707 (løbsmotor v4): injectable, default læser den ægte kill-switch
+  // (app_config.race_engine_v4). flag-off → v4Engine=null → ingen dynamisk
+  // import og ingen ekstra DB-kald (samme mønster som checkV3Enabled).
+  checkV4Enabled = isRaceEngineV4Enabled,
   // S3 (#2034): injectable, default læser race_stage_roles. Kun kaldt når v3=true
   // (se nedenfor) — undgår et unødvendigt DB-kald ved flag-off.
   loadStageRoleOverrides: loadStageRoleOverridesFn = loadStageRoleOverrides,
@@ -1663,6 +1740,8 @@ export async function simulateRace({
   const v3 = await checkV3Enabled(supabase);
   // #2410: samme engangs-læsning som v3 ovenfor, UAFHÆNGIGT flag.
   const timelineEnabled = await checkTimelineEnabled(supabase);
+  // #3855/#4707: samme engangs-læsning — hele løbet afvikles med samme motor.
+  const { v4Engine, teamOrderRows } = await resolveRaceEngineV4({ supabase, race, checkV4Enabled });
   // S3 (#2034): overrides hentes KUN når v3=true — v3=false undgår DB-kaldet helt
   // og buildRaceResults modtager undefined, hvilket garanterer bit-identisk flag-off.
   const stageRoleOverrides = v3 ? await loadStageRoleOverridesFn({ supabase, raceId: race.id }) : undefined;
@@ -1670,7 +1749,7 @@ export async function simulateRace({
   // undgår begge DB-kald og buildRaceResults ser ingen peak-felter (bit-identisk).
   if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn });
 
-  const { resultRows, passageRows, runs, incidents, moments, timelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled });
+  const { resultRows, passageRows, runs, incidents, moments, timelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows });
 
   // Dry-run-preview (#1102 runtime-wiring): alt loades og beregnes som ved en
   // ægte afvikling, men INTET skrives — admin kan inspicere udfaldet før flip.
@@ -1947,8 +2026,14 @@ async function loadPriorStageRows({ supabase, raceId, beforeStageNumber }) {
  *   {stage_number, timeline_version, events}-element. ALTID [] når `timeline`=false
  *   (flag `race_stage_timeline`) — UAFHÆNGIGT af v3, se buildRaceResults' note.
  * @param {boolean} [timeline=false]  #2410 — se buildRaceResults' jsdoc.
+ * @param {object|null} [v4Engine=null]  #3855/#4707 (flag `race_engine_v4`) — se
+ *   buildRaceResults' jsdoc. Her ligger kill-switchen: hver etape-invokation
+ *   læser flaget forfra, så etape 1 kan være skrevet af v4 og etape 2 af v3.
+ *   Klassementet akkumuleres fra race_results og er ligeglad med hvilken motor
+ *   der skrev den enkelte etape.
+ * @param {Array} [teamOrderRows=[]]  #3855 — se buildRaceResults' jsdoc.
  */
-export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [], v3 = false, stageRoleOverrides, timeline = false }) {
+export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [], v3 = false, stageRoleOverrides, timeline = false, v4Engine = null, teamOrderRows = [] }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stagesSorted?.length) throw new Error("no stage profiles");
   if (!entrants.length) throw new Error("no entrants");
@@ -1996,8 +2081,13 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   // S5 (#2224): peak-input-signatur til checksum (bagudkompatibel når tom).
   const peakInputs = v3 ? serializePeakInputs(simEntrants) : [];
 
-  const seed = stableSeed(raceSeedInput(race.id, stageNumber));
-  const { ranked, incidents } = simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
+  // #3855/#4707: se buildRaceResults' note — v3 seeder på heltallet, v4 på strengen.
+  const seedInput = raceSeedInput(race.id, stageNumber);
+  const seed = stableSeed(seedInput);
+  // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
+  const { ranked, incidents } = v4Engine
+    ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows })
+    : simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
   // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
   const stampedIncidents = incidents.map((inc) => ({ stage_number: stageNumber, ...inc }));
   // #1499: deskriptive udbruds-etiketter for dagens finish-order (ren read).
@@ -2035,7 +2125,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     stage_number: stageNumber,
     seed,
     salt_version: activeSaltVersion(),
-    engine_version: v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION,
+    // Se buildRaceResults' note: 1 = light, 2 = v3-scoring, 4 = v4.
+    engine_version: v4Engine ? ENGINE_VERSION_V4 : (v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION),
     entrant_snapshot: simEntrants.map((e) => e.rider_id).sort(),
     input_checksum: stableSeed(JSON.stringify({
       ids: simEntrants.map((e) => e.rider_id).sort(),
@@ -2047,8 +2138,9 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
       // S5 (#2224): se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: thisStage.peakDay ?? null } : {}),
     })),
-    // #2352 (Race v3 S1, spec §11.3): se buildRaceResults' tilsvarende note.
-    ...(v3 ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
+    // #2352 (Race v3 S1, spec §11.3) + #3855 (v4-undtagelsen): se
+    // buildRaceResults' tilsvarende note.
+    ...(v3 && !v4Engine ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
   }];
 
   // Dagens etaperækker (samme form som buildRaceResults' stage-emission).
@@ -2115,7 +2207,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const formByRider = new Map(simEntrants.filter((e) => e.form != null).map((e) => [e.rider_id, e.form]));
   // #3115 gap 1b (D3 DEL 2): se buildRaceResults' tilsvarende note.
   const effortByRider = new Map(simEntrants.filter((e) => e.effort != null).map((e) => [e.rider_id, e.effort]));
-  const stageMoments = v3 ? extractStageMoments({
+  // #3855: v4 → neutral fortælling, se buildRaceResults' tilsvarende note.
+  const stageMoments = v3 && !v4Engine ? extractStageMoments({
     stageNumber, isFinal, isStageRace: true,
     profileType: thisStage.profile_type ?? null, // #4373, se buildRaceResults' note
     ranked, roleByRider, formByRider, effortByRider, breakawayStatus,
@@ -2220,6 +2313,10 @@ export async function simulateStageByIndex({
   // #2410 (event-log S1): injectable, default læser den ægte kill-switch
   // (app_config.race_stage_timeline) — se simulateRace's tilsvarende note.
   checkTimelineEnabled = isRaceStageTimelineEnabled,
+  // #3855/#4707: se simulateRace' tilsvarende note. Læses pr. etape-invokation,
+  // hvilket ER kill-switchen: slukkes flaget midt i et etapeløb, kører næste
+  // etape v3, og klassementet akkumuleres uændret fra race_results.
+  checkV4Enabled = isRaceEngineV4Enabled,
   // S3 (#2034): injectable, default læser race_stage_roles. Kun kaldt når v3=true.
   loadStageRoleOverrides: loadStageRoleOverridesFn = loadStageRoleOverrides,
   // S5 (#2224): injectable peak-loadere + tq-resolver. Kun kaldt når v3=true.
@@ -2431,6 +2528,8 @@ export async function simulateStageByIndex({
     const v3 = await checkV3Enabled(supabase);
     // #2410: samme engangs-læsning som v3 ovenfor, UAFHÆNGIGT flag.
     const timelineEnabled = await checkTimelineEnabled(supabase);
+    // #3855/#4707: løbsmotor v4 — se simulateRace' tilsvarende note.
+    const { v4Engine, teamOrderRows } = await resolveRaceEngineV4({ supabase, race, checkV4Enabled });
 
     // #1844: frys feltet til etape-1-snapshot. Et igangværende etapeløbs felt MÅ ikke
     // ændre sig mellem etaper — en rytter der kom ind midt i løbet (manuelt edit pre-#1838,
@@ -2525,14 +2624,14 @@ export async function simulateStageByIndex({
         : [];
       ({ resultRows, passageRows, runs, incidents, moments, timelines } = buildStageRowsAccumulated({
         race, stagesSorted, stageIndex, entrants, pointsLookup, priorStageRows, v3, stageRoleOverrides,
-        timeline: timelineEnabled,
+        timeline: timelineEnabled, v4Engine, teamOrderRows,
       }));
     } else {
       // Endagsløb (1 etape): buildRaceResults ER allerede én selv-konsistent
       // simulation af præcis denne dag — ingen akkumulering at hente. passageRows
       // er data-gated (Sub-2, #2770): computePassages returnerer altid tomt for
       // isStageRace=false, men filtreres for symmetri/fremtidssikring.
-      const { resultRows: allRows, passageRows: allPassageRows, runs: allRuns, incidents: allIncidents, moments: allMoments, timelines: allTimelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled });
+      const { resultRows: allRows, passageRows: allPassageRows, runs: allRuns, incidents: allIncidents, moments: allMoments, timelines: allTimelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows });
       resultRows = allRows.filter((r) => r.stage_number === stageNumber);
       passageRows = (allPassageRows || []).filter((p) => p.stage_number === stageNumber);
       runs = allRuns.filter((r) => r.stage_number === stageNumber);
