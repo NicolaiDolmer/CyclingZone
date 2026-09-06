@@ -176,7 +176,7 @@ test("#2647 clean fixture — ingen brud, ingen capture, alerted=false", async (
   });
   assert.equal(calls.length, 0);
   assert.equal(result.alerted, false);
-  assert.deepEqual(result.findings, { youthOwned: 0, sellerlessOwned: 0, staleIntake: 0, strandedAcademy: 0, stalePendingTransfer: 0, teamsMissingBoardMembers: 0 });
+  assert.deepEqual(result.findings, { youthOwned: 0, sellerlessOwned: 0, staleIntake: 0, strandedAcademy: 0, stalePendingTransfer: 0, teamsMissingBoardMembers: 0, teamsAwaitingDnaChoice: 0 });
   assert.equal(result.checked, 2);
 });
 
@@ -724,7 +724,7 @@ test("#4664 alarmerer på et menneskehold uden nogen bestyrelsesmedlemmer", asyn
   assert.equal(result.alerted, true);
   const f4664Call = calls.find((c) => c.ctx.fingerprint?.[0] === "human-team-without-board-members");
   assert.ok(f4664Call, "invariant F skal capture med sit eget faste fingerprint");
-  assert.equal(f4664Call.ctx.extra.sample[0].name, "Boardless FC");
+  assert.match(f4664Call.ctx.extra.teams[0], /team-1 \(Boardless FC\) dna=fransk_klatrer/);
 });
 
 test("#4664 alarmerer på et hold med kun 3 af 5 medlemmer (delvis brud tæller også)", async () => {
@@ -756,6 +756,55 @@ test("#4664 ingen alarm når holdet har alle 5 medlemmer", async () => {
   assert.equal(result.findings.teamsMissingBoardMembers, 0);
   assert.equal(result.alerted, false);
   assert.equal(calls.length, 0);
+});
+
+// ─── CYCLINGZONE-59: DNA-valget er spillerens, ikke systemets fejl ───────────
+
+test("CYCLINGZONE-59: et hold der endnu ikke har valgt Klub-DNA er IKKE et brud", async () => {
+  // Bestyrelsesmedlemmer tildeles af chooseDnaForTeam. Indtil spilleren har valgt,
+  // er nul medlemmer den TILSIGTEDE tilstand — og den kan kun spilleren opløse.
+  // Vagten alarmerede dagligt for hver ny tilmelding der ikke havde åbnet siden.
+  const teams = [
+    { id: "team-ny", name: "Montillana Scott", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, season_1_identity_basis: { rider_count: 12 }, team_dna_key: null },
+  ];
+  const calls = [];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ teams, teamBoardMembers: [] }),
+    captureExceptionFn: (err, ctx) => calls.push({ err, ctx }),
+  });
+  assert.equal(result.findings.teamsMissingBoardMembers, 0, "ikke et brud");
+  assert.equal(result.findings.teamsAwaitingDnaChoice, 1, "men tallet skal stadig være synligt");
+  assert.equal(calls.find((c) => c.ctx.fingerprint?.[0] === "human-team-without-board-members"), undefined);
+});
+
+test("CYCLINGZONE-59: et hold der HAR valgt DNA men mangler medlemmer er stadig et brud", async () => {
+  // #4664's egentlige klasse: regenerate'ens delete-før-insert fejlede EFTER
+  // DNA-valget, og DNA-vælgeren vises aldrig igen. Den skal stadig alarmere.
+  const teams = [
+    { id: "team-brudt", name: "Boardless FC", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, season_1_identity_basis: { rider_count: 12 }, team_dna_key: "fransk_klatrer" },
+  ];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ teams, teamBoardMembers: [] }),
+    captureExceptionFn: () => {},
+  });
+  assert.equal(result.findings.teamsMissingBoardMembers, 1);
+  assert.equal(result.findings.teamsAwaitingDnaChoice, 0);
+});
+
+test("CYCLINGZONE-59: 1-4 medlemmer UDEN DNA-valg er et brud (delvis tildeling, ikke en ventetilstand)", async () => {
+  const teams = [
+    { id: "team-halv", name: "Half Board FC", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, season_1_identity_basis: { rider_count: 12 }, team_dna_key: null },
+  ];
+  const teamBoardMembers = [
+    { team_id: "team-halv", archetype_key: "gc_elsker" },
+    { team_id: "team-halv", archetype_key: "sponsoraten" },
+  ];
+  const result = await runOwnershipInvariantWatch({
+    supabase: makeMock({ teams, teamBoardMembers }),
+    captureExceptionFn: () => {},
+  });
+  assert.equal(result.findings.teamsMissingBoardMembers, 1, "en halv tildeling er ikke en ventetilstand");
+  assert.equal(result.findings.teamsAwaitingDnaChoice, 0);
 });
 
 test("#4664 springer AI-, bank-, frosne og test-hold over, samt hold uden identity_basis endnu", async () => {
