@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { useAdminAuth, readAdminJson, adminErrorMessage } from "../components/admin/shared/useAdminAuth";
 import {
   Card, Button, Select, Table, Tr, Th, Td,
   PageLoader, EmptyState, ErrorState, SkeletonLines,
@@ -10,6 +10,15 @@ import {
 // en ren indholds-komponent, genbrugt som "Sprint-metrics"-fanen i det samlede
 // vækst-dashboard (AdminGrowthPage.jsx). Admin-gating + sideheader ejes nu af
 // forælderen; ingen andre importerer denne komponent.
+//
+// #4870: tallene hentes via GET /api/admin/growth/sprint-metrics (requireAdmin,
+// service_role) i stedet for to direkte supabase.rpc()-kald. get_sprint_metrics
+// og get_cohort_retention er SECURITY DEFINER over auth.users/player_events og
+// er nu revoked for rollen `authenticated`
+// (database/2026-09-06-4870-revoke-metrics-rpcs.sql) — browseren har ikke
+// længere lov at kalde dem, og skal heller ikke have det.
+
+const API = import.meta.env.VITE_API_URL;
 
 const WINDOW_OPTIONS = [
   { value: "24h",    label: "24 timer" },
@@ -120,6 +129,7 @@ function KpiCard({ label, value, delta, tooltip }) {
 }
 
 export function SprintMetricsContent() {
+  const { getAuth } = useAdminAuth();
   const [windowChoice, setWindowChoice] = useState("7d");
   const [metrics, setMetrics] = useState(null);
   const [cohorts, setCohorts] = useState(null);
@@ -132,22 +142,29 @@ export function SprintMetricsContent() {
   const loadMetrics = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [metricsRes, cohortRes] = await Promise.all([
-      supabase.rpc("get_sprint_metrics", { p_window: windowChoice }),
-      supabase.rpc("get_cohort_retention", { p_weeks: 8 }),
-    ]);
-    if (metricsRes.error) {
-      setError(metricsRes.error.message);
-    } else {
-      setMetrics(metricsRes.data);
+    try {
+      const auth = await getAuth();
+      const res = await fetch(
+        `${API}/api/admin/growth/sprint-metrics?window=${encodeURIComponent(windowChoice)}&weeks=8`,
+        { headers: auth },
+      );
+      const json = await readAdminJson(res);
+      if (!res.ok) {
+        setError(adminErrorMessage(json, res));
+        return;
+      }
+      setMetrics(json.metrics);
       setLastFetched(new Date());
+      // Kohorte-retention er uafhængig af tids-vælgeren; kunne den ikke hentes
+      // (json.cohorts === null), må det ikke skjule hoved-KPI'erne — vi lader
+      // blot den forrige tabel/skelettet stå.
+      if (json.cohorts) setCohorts(json.cohorts);
+    } catch (e) {
+      setError(e.message || "Forbindelsen fejlede");
+    } finally {
+      setLoading(false);
     }
-    // Kohorte-retention er uafhængig af tids-vælgeren; en fejl her må ikke skjule hoved-KPI'erne.
-    if (!cohortRes.error) {
-      setCohorts(cohortRes.data?.cohorts ?? []);
-    }
-    setLoading(false);
-  }, [windowChoice]);
+  }, [windowChoice, getAuth]);
 
   useEffect(() => {
     loadMetrics();
@@ -217,7 +234,7 @@ export function SprintMetricsContent() {
       {error && (
         <ErrorState
           title="Kunne ikke hente metrics"
-          description={error === "forbidden" ? "403 — du er ikke admin." : error}
+          description={error === "Admin only" ? "403 — du er ikke admin." : error}
           action={<Button variant="secondary" size="sm" onClick={loadMetrics}>Prøv igen</Button>}
         />
       )}

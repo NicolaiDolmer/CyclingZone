@@ -65,6 +65,21 @@ Flyttet fra `NOW.md` 2026-05-14 (Phase 4 af `scalable-wobbling-blossom`) for at 
 - **Pulje-fordeling ved pyramide-komprimering** (#4172/#4185, låst 24/8): `distributeCompression` (`backend/lib/pyramidCompression.js`) fordeler tier 4-hold over `d4PoolCount` tier 4-puljer — defaulten er `null` = ALLE eksisterende D4-puljer. Før #4172 var defaulten hardkodet til 2, hvilket ved S1→S2-komprimeringen lod alle 48 D4-hold lande i kun pulje A+B, mens C-H stod tomme med 156 uafviklelige løb i kalenderen. Et eksplicit tal skærer stadig fra toppen af puljelisten (kan bruges til bevidst at reproducere en historisk fordeling).
 - **Sæsonskiftets status-kontrakt** (#4228, låst 25/8): `backend/scripts/dev/seasonRollover.mjs` ejer selv nedetids-vinduet. Kommer sæsonen ind som `active`, sætter scriptet den til `upcoming` under den destruktive ombygning og TILBAGE til `active` bagefter — i et `try/finally`, så tilbage-sætningen også sker hvis et trin undervejs fejler. Kommer sæsonen ind som `upcoming` (operatørens egen tilstand ved indgangen), efterlades den `upcoming` — scriptet tænder ALDRIG en sæson der ikke var tændt i forvejen (at gen-tænde et live system er ejer-only, se `.claude/learnings`/memory om samme regel). Forward-guard: `seasonRolloverRestoresActive.test.js` (verificeret rød mod den gamle udgave, grøn mod den nye). Udløst af 25/8-hændelsen (#4229): sæson 3 stod `upcoming` med 0 løb kørt i ca. 4 timer, fordi et menneske var systemets eneste "finally-blok".
 
+## Matviews eksponeret i API (fog of war-gennemgang 6/9, [#4870](https://github.com/NicolaiDolmer/CyclingZone/issues/4870))
+
+Fire materialized views har `GRANT SELECT ... TO anon, authenticated` og læses direkte af klienten via PostgREST. **Et matview kender ikke RLS** — der er ingen row-policies på dem, så hver kolonne er reelt offentlig for enhver der kan kalde `/rest/v1/<mv>`. Reglen er derfor: en kolonne må kun stå i et matview hvis spilleren alligevel må se tallet.
+
+Gennemgang 6/9 mod fog of war-listen (skjult = potentiale, løn, skjulte stats som dagsform-stabilitet/vejr-teknik/højde-tolerance, interne multiplikatorer, procenter og tærskler — `docs/RACE_ENGINE_RULES.md` §4 + §"Fog of war"): **ingen skjulte tal fundet.** Alle kolonner er aggregater af `race_results` / `season_standings` / `teams`, som spilleren i forvejen ser i resultater og ranglister.
+
+| Matview | Kolonner | Dom |
+|---|---|---|
+| `rider_rankings_mv` | `season_id`, `rider_id`, `points`, `prize_earned`, `stage_wins`, `gc_wins`, `classic_wins`, `pts_wins`, `mtn_wins`, `young_wins`, `yellow_days`, `green_days`, `polka_days`, `white_days`, `top3`, `top10` | ok — alt er COUNT/SUM over `race_results` (offentlige resultater). Ingen rytter-attributter: ingen potentiale, ingen løn, ingen form. |
+| `team_standings_ext_mv` | `season_id`, `team_id`, `comp_wins`, `comp_podiums`, `podiums`, `prize_earned` | ok — samme klasse. Præmiesummen er point × `PRIZE_PER_POINT`, ikke holdets balance eller gæld. |
+| `team_race_points_mv` | `season_id`, `team_id`, `race_id`, `race_name`, `race_points` | ok. Bemærk navnet: `race_points` er `SUM(prize_money)` pr. løb, ikke point — proportionalt (præmie = point × 75), så progressionsgrafen er korrekt, men navnet lyver. |
+| `global_rank_mv` | `team_id`, `name`, `division`, `is_ai`, `banked_points`, `season_points`, `global_points`, `active_recent`, `is_rookie`, `global_rank` | ok — alle vises eller filtreres på af Global Rank-siden. `is_ai` er degenereret: basen filtrerer AI-hold fra (`WHERE ... t.is_ai = false`), så kolonnen er altid `false`. Ingen læk, men kolonnen kan fjernes næste gang matview'et alligevel bygges om. |
+
+Konsekvens for nye kolonner: **tilføjes en kolonne til et af disse matviews, er den offentlig fra det sekund matview'et refreshes.** Skal et nyt tal kun ses af rytterens/holdets ejer, hører det ikke hjemme her — brug en RLS-beskyttet tabel eller et admin-gatet backend-endpoint.
+
 ## Ved ændring
 
 Hvis nogen invariant skal ændres: opdatér både her, relevant kode-fil, og `docs/decisions/` ADR hvis det er en strategisk beslutning (fx sponsor-niveau).

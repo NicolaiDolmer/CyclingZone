@@ -8977,6 +8977,50 @@ router.get("/admin/growth/snapshots", requireAdmin, async (req, res) => {
   }
 });
 
+// GET /api/admin/growth/sprint-metrics — ad hoc DAU/WAU/MAU/D7 + signup-kohorte-
+// retention (#4870, afløser to direkte .rpc()-kald fra browseren).
+//
+// Hvorfor et endpoint og ikke et RPC-kald fra frontend: get_sprint_metrics(text)
+// og get_cohort_retention(int) er SECURITY DEFINER over auth.users +
+// player_events. Så længe `authenticated` havde EXECUTE, kunne ENHVER indlogget
+// spiller ramme /rest/v1/rpc/get_sprint_metrics — funktionernes interne
+// is_admin()-gate holdt dem ude, men eksponeringen stod som advisor-WARN i fire
+// runder (#2327, #2676, #3196 §2, #4870). database/2026-09-06-4870-revoke-
+// metrics-rpcs.sql fjerner grant'en; DETTE er den eneste dør ind nu, og den er
+// requireAdmin + service_role, præcis som /admin/retention og /admin/growth/*.
+//
+// Kohorte-delen er BEVIDST fejl-tolerant: den er en selvstændig blok i UI'et, og
+// en fejl dér må ikke skjule hoved-KPI'erne (samme kontrakt som det tidligere
+// Promise.all-mønster i AdminSprintMetricsPage). Fejler metrics-RPC'en derimod,
+// er svaret 500.
+router.get("/admin/growth/sprint-metrics", requireAdmin, async (req, res) => {
+  try {
+    const windowChoice = ["24h", "7d", "30d", "sprint"].includes(req.query.window)
+      ? req.query.window
+      : "7d";
+    const weeksParam = parseInt(req.query.weeks, 10);
+    const weeks = Number.isFinite(weeksParam) ? Math.min(Math.max(weeksParam, 1), 52) : 8;
+
+    const [metricsRes, cohortRes] = await Promise.all([
+      supabase.rpc("get_sprint_metrics", { p_window: windowChoice }),
+      supabase.rpc("get_cohort_retention", { p_weeks: weeks }),
+    ]);
+    if (metricsRes.error) throw metricsRes.error;
+
+    res.json({
+      window: windowChoice,
+      weeks,
+      metrics: metricsRes.data,
+      // null (ikke []) betyder "kunne ikke hentes" — UI'et skelner det fra
+      // "ingen signups i perioden" (tom liste).
+      cohorts: cohortRes.error ? null : (cohortRes.data?.cohorts ?? []),
+    });
+  } catch (error) {
+    captureException(error);
+    res.status(500).json({ error: error.message || "Kunne ikke hente sprint-metrics" });
+  }
+});
+
 // GET /api/admin/growth/customers — aktive abonnementer + estimeret LTV pr.
 // kunde + konverteringer. Beta-populationen er lille (håndfulde betalende
 // kunder), så det er trygt at hente ALLE subscriptions-rows og beregne LTV i
