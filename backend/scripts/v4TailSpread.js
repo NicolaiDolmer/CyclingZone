@@ -441,7 +441,7 @@ export function flatWeatherRoute(weather, distanceKm = 190) {
 
 /**
  * @returns {Array<{label:string, kind:string, spreadPct:number[], meanPct:number,
- *   meanWorkNorm:number, weatherEvents:number}>}
+ *   meanWinnerSeconds:number, meanWorkNorm:number, weatherEvents:number}>}
  */
 export function runWeatherExperiment({
   population,
@@ -453,6 +453,7 @@ export function runWeatherExperiment({
   return cases.map(({ label, weather }) => {
     const spreadPct = [];
     const workNorms = [];
+    const winnerSeconds = [];
     let weatherEvents = 0;
     for (const seed of seeds) {
       // SAMME felt paa tvaers af vejrtyper (feltet seedes uden vejret), saa kun
@@ -468,7 +469,13 @@ export function runWeatherExperiment({
         seed: `${seed}:weather-experiment`,
         tuning: RACE_V4_TUNING,
       });
-      spreadPct.push(measureTailSpread(output).spreadPct);
+      const measured = measureTailSpread(output);
+      spreadPct.push(measured.spreadPct);
+      // VINDERTIDEN er hovedmaalet for M11's belastnings-arm: vejret saenker
+      // den kollektive CP, og segment-farten er afledt af den. Hale-spredningen
+      // staar ved siden af som kontrol paa at vejret ikke ogsaa river feltet
+      // fra hinanden (det goer det ikke — se PR'ens maaling).
+      winnerSeconds.push(measured.winnerSeconds);
       workNorms.push(output.loads.reduce((s, l) => s + l.work_norm, 0) / output.loads.length);
       weatherEvents += output.timeline.events.filter((e) => e.type === "weather").length;
     }
@@ -478,6 +485,7 @@ export function runWeatherExperiment({
       kind: weather.kind,
       spreadPct,
       meanPct: mean(spreadPct),
+      meanWinnerSeconds: mean(winnerSeconds),
       meanWorkNorm: mean(workNorms),
       weatherEvents,
     };
@@ -561,11 +569,14 @@ function main() {
         `kun route.weather varierer. Seeds: ${seeds.join(", ")}.`,
     );
     console.log("");
-    console.log("hale_% = (sidste - vinder) / vindertid · arbejde = gennemsnitligt work_norm pr. rytter · events = vejr-meldinger i tidslinjen");
-    console.log(["vejr", ...seeds.map((s) => `${s}_hale%`), "middel_hale%", "middel_arbejde", "events"].join("\t"));
-    for (const row of runWeatherExperiment({ population, seeds, fieldSize })) {
+    console.log("vindertid = hovedmaalet (vejret saenker CP -> lavere kollektiv fart) · hale_% = (sidste - vinder) / vindertid · events = vejr-meldinger i tidslinjen");
+    const weatherRows = runWeatherExperiment({ population, seeds, fieldSize });
+    const baseline = weatherRows[0]?.meanWinnerSeconds ?? 0;
+    console.log(["vejr", "middel_vindertid_s", "vs_sol_%", ...seeds.map((s) => `${s}_hale%`), "middel_hale%", "events"].join("	"));
+    for (const row of weatherRows) {
+      const vsBaseline = baseline > 0 ? ((row.meanWinnerSeconds - baseline) / baseline) * 100 : 0;
       console.log(
-        [row.label, ...row.spreadPct.map((p) => fmt(p)), fmt(row.meanPct), fmt(row.meanWorkNorm, 1), row.weatherEvents].join("\t"),
+        [row.label, fmt(row.meanWinnerSeconds, 0), fmt(vsBaseline, 3), ...row.spreadPct.map((p) => fmt(p)), fmt(row.meanPct), row.weatherEvents].join("	"),
       );
     }
     return;

@@ -13,10 +13,13 @@ import {
   buildProxyCalendar,
   enduranceCloneField,
   measureTailSpread,
+  flatWeatherRoute,
   runEnduranceExperiment,
   runTailSpread,
+  runWeatherExperiment,
   scaledMountainRoute,
   summarizeBy,
+  WEATHER_EXPERIMENT_CASES,
 } from "./v4TailSpread.js";
 
 // ── Proxy-kalenderen ─────────────────────────────────────────────────────────
@@ -174,4 +177,63 @@ test("runEnduranceExperiment er deterministisk og daekker alle eksperimentets di
     );
   }
   assert.equal(DISTANCE_EXPERIMENT_KM[0], 120, "eksperimentets korteste distance er ankeret rapporten laeses mod");
+});
+
+// ── Vejr-eksperimentet (#3855, M11-wiring 6/9) ───────────────────────────────
+
+function syntheticPopulation(count = 40) {
+  return {
+    riders: Array.from({ length: count }, (_, i) => ({
+      id: `r${String(i).padStart(3, "0")}`,
+      team_id: `t${i % 8}`,
+      abilities: {
+        climbing: 10 + (i % 40), time_trial: 10 + (i % 30), flat: 15 + (i % 25), tempo: 12 + (i % 35),
+        sprint: 10 + (i % 45), acceleration: 10 + (i % 30), punch: 10 + (i % 28), endurance: 8 + (i % 50),
+        recovery: 10 + (i % 20), durability: 10 + (i % 22), descending: 10 + (i % 26), cobblestone: 10 + (i % 24),
+        positioning: 0, aggression: 10 + (i % 18), tactics: 0,
+      },
+    })),
+  };
+}
+
+test("vejr-eksperimentets rute holder FORMEN konstant naar vejret skifter", () => {
+  const sunny = flatWeatherRoute({ kind: "sun", wind_exposure: 0.1 });
+  const wet = flatWeatherRoute({ kind: "rain", wind_exposure: 0.1 });
+  assert.deepEqual(sunny.segments, wet.segments, "kun vejret maa variere mellem raekkerne");
+  assert.equal(sunny.distance_km, wet.distance_km);
+  assert.notDeepEqual(sunny.weather, wet.weather);
+});
+
+test("runWeatherExperiment er deterministisk og daekker alle vejr-tilfaelde", () => {
+  const args = { population: syntheticPopulation(), seeds: ["w1", "w2"], fieldSize: 20 };
+  const first = runWeatherExperiment(args);
+
+  assert.equal(first.length, WEATHER_EXPERIMENT_CASES.length);
+  assert.deepEqual(first, runWeatherExperiment(args), "samme seeds skal give samme maaling");
+  for (const row of first) {
+    assert.equal(row.spreadPct.length, 2, "én maaling pr. seed");
+    assert.ok(row.meanWinnerSeconds > 0, "vindertiden skal vaere maalt");
+  }
+});
+
+test("vejr-eksperimentet viser M11's retning: sol og overskyet er identiske, daarligt vejr er langsommere", () => {
+  const rows = runWeatherExperiment({ population: syntheticPopulation(), seeds: ["w1", "w2"], fieldSize: 20 });
+  const by = (kind) => rows.filter((r) => r.kind === kind);
+  const sun = by("sun")[0];
+  const overcast = by("overcast")[0];
+  const rain = by("rain")[0];
+
+  assert.equal(sun.meanWinnerSeconds, overcast.meanWinnerSeconds, "sol og overskyet er begge baseline");
+  assert.equal(sun.weatherEvents, 0, "godt vejr melder sig ikke i tidslinjen");
+  assert.ok(overcast.weatherEvents === 0);
+  assert.ok(rain.meanWinnerSeconds > sun.meanWinnerSeconds, "regn skal goere etapen langsommere");
+  assert.ok(rain.weatherEvents > 0, "regn skal melde sig i tidslinjen");
+
+  // Vind: mere eksponering skal koste mere tid (to vind-raekker i tabellen).
+  const windRows = by("wind");
+  assert.equal(windRows.length, 2, "eksperimentet skal daekke to vind-eksponeringer");
+  assert.ok(
+    windRows[1].meanWinnerSeconds > windRows[0].meanWinnerSeconds,
+    "hoej vind-eksponering skal koste mere tid end lav",
+  );
 });

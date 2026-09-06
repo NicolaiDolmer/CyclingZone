@@ -89,11 +89,11 @@ Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 | M4 | Punch-finale — forspring bæres ind i finalen | F2 ✅ |
 | M5 | Udbrud v2 + spiller-ordre, bounded bidrag | F3 ✅ wiret 3/9 |
 | M6 | Sprint-tog, leadout-roller | F3 ✅ wiret 3/9 |
-| M7 | Distance-slid: monument-effekt + dag-til-dag | F3 |
-| M8 | Brosten-sektorer | F3 |
+| M7 | Distance-slid: monument-effekt + dag-til-dag | F3 ✅ wiret 6/9 |
+| M8 | Brosten-sektorer | F3 ✅ wiret 6/9 |
 | M9 | Bonussekunder — bounded så bjerg dominerer GC | F3 |
 | M10 | Incidents + 3 km-reglen — graduerede styrt, mekaniske uden DNF | F3 ✅ wiret 6/9 |
-| M11 | Vejr-lag pr. etape, seeded | F3 |
+| M11 | Vejr-lag pr. etape, seeded | F3 ✅ wiret 6/9 — se §2f |
 | M12 | Effort pr. rytter (`protect`/`normal`/`save`) | F3 |
 | M14 | AI-holds ordrer gennem samme type | F3 ✅ wiret 3/9 (harness) |
 | M15 | Tidsgrænsen (UCI-reglen) + OTL som udfaldsklasse | F3 ✅ wiret 6/9 — se §2d |
@@ -263,6 +263,34 @@ Prisen er desuden **granularitets-uafhængig**: den betales pr. segment som ande
 **Intentionen skalerer prisen** (§9 punkt 3, Model C): `all_out` = 0, `save`/`grupetto` = halv, `normal`/`protect` = fuld. Det er work-cost-**aksen** og ikke M12's demand-akse — de to peger med vilje hver sin vej for `all_out`: en rytter der giver alt for **sig selv** brænder mere og arbejder samtidig ikke for holdet.
 
 > ⚠ **Kalibreringen er ikke i mål.** Holddominans-ankeret (`same_team_top10_share_4plus`) ligger på sit **gulv, 0,0 %, i både v3 og v4** og kan derfor hverken bekræfte eller afkræfte at holdspillet virker — det er en regressionsvagt mod det modsatte problem. Derfor måler harnessen nu **beskyttelses-gabet** direkte (`scripts/lib/headToHeadTeamPlay.js`): gennemsnitlig placering pr. rolle, korrigeret for rytterens egen evne-rang i feltet, målt på begge motorer over samme etaper og seeds. **v4's gab er stadig en brøkdel af v3's.** Startværdierne i `TEAM_PLAY_EXTRA_TUNING` er valgt så mekanikken er målbar uden at vælte et eneste anker; at løfte den til fuld v3-paritet er en **kalibrering med ejer-go** (§4 *"Simulér før ship"*), ikke en wiring-ændring. Tallet er en flip-blokker på linje med de øvrige paritets-huller. **Holdarbejdet bogføres bevidst ikke i `RiderLoad.work_norm`**: det tal er segment-loopets arbejde i motorens egne enheder, og et holdspils-led ville skulle opfinde en omregning fra "andel af CP". At holdarbejde også skal koste i træningsudbyttet er rigtigt, men det hører i løbsdags-udviklingen ([#4850](https://github.com/NicolaiDolmer/CyclingZone/issues/4850)/D2) sammen med intentionens egen udbytte-multiplikator — ikke i en opfundet enhed i motoren.
+
+---
+
+## 2f. Vejret (ejer-scope: flip-paritet) — hvad det gør, wiret 6/9 (M11)
+
+Vejret er ét felt pr. etape (`race_stage_profiles.weather`, seedet i `routeSegments.buildWeather`
+siden F1) med en type og en vind-eksponering. Motoren bruger det to steder:
+
+- **Kraften.** Regn og vind sænker rytterens bæredygtige tærskel (CP) i segmentløkken, samme
+  sted og samme form som M7's distance-slid. Etapen bliver langsommere i dårligt vejr, og den
+  der er dårlig til vejret mister mere end feltet omkring ham. Regn rammer hele etapen; vind
+  rammer kun i det omfang terrænet er åbent — en stigning ligger i læ af sig selv.
+- **Risikoen.** Regn forstærker styrt-risikoen på brosten/grus (`mechanics/cobbles.ts`) og i
+  descent-angreb (`mechanics/descent.ts`).
+
+Sol og overskyet er baseline: en etape i sol er bit-identisk med en etape uden vejr-lag.
+Spilleren ser én melding i tidslinjen ("regn"), på den km hvor vejret begynder at bide, og
+aldrig et tal ud over den km.
+
+**"Vejr-teknik"** er en af de tre ejer-valgte stats fra 20/8 der endnu ikke er født. Indtil da
+bruger motoren en proxy afledt af eksisterende evner. Den giver lindring, aldrig immunitet:
+selv den bedste betaler noget for regnen.
+
+**Sidevind-selektion (vifter) er IKKE med** ([#2476](https://github.com/NicolaiDolmer/CyclingZone/issues/2476)).
+Vejret skærper de selektioner der allerede findes; det skaber ingen nye grupper. Målt over
+kontrollerede kørsler (`backend/scripts/v4TailSpread.js --weather-experiment`) flytter vejret
+etapens tid, ikke feltets sammensætning. Skal vejret kunne SPLITTE et felt, er det viften der
+mangler, ikke en hårdere kalibrering af dette lag.
 
 ---
 
