@@ -1,5 +1,106 @@
 {
   "tab": "Sponsor",
+  "page": {
+    "title": "Sponsors",
+    "subtitle": "Season {season} deal and what it pays.",
+    "subtitleNoSeason": "Your deal and what it pays.",
+    "chooseCta": "Choose next season's sponsor",
+    "seasonMeta": "Season {season} · division {division}",
+    "seasonMetaNoDivision": "Season {season}",
+    "dealLine": "{variant} · signed for season {season}",
+    "goToNextSeason": "Go to Next season",
+    "howMoneyWorks": "How sponsor money works",
+    "perStageLine": "Per stage {rate} CZ$, {count, plural, one {# stage left is} other {# stages left are}} worth {worth} CZ$",
+    "nextSeasonOpen": "Next season: {count, plural, one {# offer is} other {# offers are}} open, pick locks when season {season} starts",
+    "nextSeasonClosed": "Next season: offers open when season {season} ends",
+    "errorTitle": "Couldn't load your sponsors",
+    "error": "Nothing was lost and your deal is safe. Try again.",
+    "retry": "Try again",
+    "tab": {
+      "overview": "Overview",
+      "deal": "Deal",
+      "payments": "Payments",
+      "next": "Next season"
+    },
+    "stat": {
+      "paidSoFar": "Paid so far",
+      "guaranteed": "Guaranteed",
+      "earnedOnTop": "Earned on top",
+      "stagesRidden": "Stages ridden",
+      "stagesOf": "{ridden} of {total}"
+    },
+    "noContract": {
+      "title": "Sign your first sponsor deal",
+      "description": "Offers open on the Next season tab as soon as your club can negotiate.",
+      "action": "Go to Next season"
+    },
+    "deal": {
+      "paidDayOne": "Paid on day one",
+      "stagesInDivision": "{count} stages in division {division}",
+      "overTheSeason": "{amount} CZ$ over the season",
+      "divisionAdjustment": "Division adjustment",
+      "divisionAdjustmentSub": "Deal priced for division {signed}, you race in division {current}",
+      "everySeason": "Every season",
+      "signingBonus": "Signing bonus",
+      "signingBonusSub": "Paid when you sign",
+      "stageWinBonus": "Stage win bonus",
+      "stageWinBonusSub": "Per stage win",
+      "podiumBonus": "Podium bonus",
+      "podiumBonusSub": "Per podium, 2nd to 3rd",
+      "capPerSeason": "Cap {amount} CZ$ per season",
+      "seasonObjective": "Season objective bonus",
+      "seasonObjectiveTop40": "Finish top 40% of your division",
+      "seasonObjectiveTopHalf": "Finish top half of your division",
+      "runsThrough": "Runs through season {season}"
+    },
+    "payments": {
+      "title": "Paid so far this season",
+      "source": "Source",
+      "stages": "Stages",
+      "amount": "Amount",
+      "total": "Total",
+      "group": {
+        "guaranteed": "Guaranteed",
+        "stagesAt": "Stages at {rate} CZ$",
+        "stages": "Stages",
+        "bonuses": "Bonuses"
+      },
+      "row": {
+        "seasonBase": "Season base",
+        "seasonBaseSub": "Contract guarantee",
+        "divisionAdjustment": "Division adjustment",
+        "divisionAdjustmentSub": "Deal priced for division {division}",
+        "stageWin": "Stage win",
+        "podium": "Podium",
+        "resultBonus": "Result bonus"
+      },
+      "empty": {
+        "title": "Watch your first payment land",
+        "description": "Sponsor money shows up here once your season base is credited and your team starts racing.",
+        "action": "See the deal"
+      }
+    },
+    "next": {
+      "title": "Next season",
+      "meta": "{count, plural, one {# offer} other {# offers}} · division {division} · {stages} stages",
+      "metaClosed": "Offers open when season {season} ends",
+      "dealType": "{variant} · {count, plural, one {# season} other {# seasons}}",
+      "ifEveryStage": "{amount} CZ$ if you ride every stage",
+      "noBonuses": "None",
+      "pricingTitle": "How the offers are priced",
+      "column": {
+        "sponsor": "Sponsor",
+        "guaranteed": "Guaranteed",
+        "perStage": "Per stage",
+        "bonuses": "Bonuses on top"
+      },
+      "empty": {
+        "title": "Offers open when season {season} ends",
+        "description": "All five offers open the day your current deal ends.",
+        "action": "Read the sponsor rules"
+      }
+    }
+  },
   "cta": {
     "title": "Choose your sponsor for season {season}",
     "body": "Five sponsors are at the table, each with its own way of paying you. Compare the deals and lock in your backing.",
@@ -25,6 +126,7 @@
     "confirmBody": "Sign with {sponsor} for {count, plural, one {# season} other {# seasons}}? You can change your pick until season {season} starts.",
     "signDeal": "Sign deal",
     "cancel": "Cancel",
+    "acceptFailed": "The deal was not signed. Nothing changed. Try again.",
     "guaranteedShare": "{pct}% of the deal is guaranteed",
     "boardNote": "Board satisfaction adjusts the guaranteed part by up to ±20%. It does not touch per-stage money or bonuses: those are paid in full, on top, as you earn them.",
     "divisionAdjustmentUp": "If you race in Division {division} on this deal, a division adjustment of {amount} CZ$ is paid on top every season, because the deal is priced for Division {signed}.",

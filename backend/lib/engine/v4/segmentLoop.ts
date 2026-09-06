@@ -42,11 +42,15 @@ import type {
   StageInput,
   TeamOrder,
   TimelineEvent,
+  Weather,
 } from "./types.ts";
 import { boundRngFor } from "./rng.ts";
 import { deriveCp, deriveRechargeRate, tickPhysiologyOverSegment } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
-import { GROUP_DRAFT_EXTRA_TUNING } from "./tuning.ts";
+import { GROUP_DRAFT_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "./tuning.ts";
+import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
+import { applyEffortToDemand } from "./mechanics/effortCost.ts";
+import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -72,6 +76,10 @@ export const DEFAULT_MECHANIC_HOOKS: MechanicHooks = {
   descent: noopHook,
   finale: noopHook,
   breakaway: noopHook,
+  incidents: noopHook,
+  cobbles: noopHook,
+  teamPlay: noopHook,
+  passages: noopHook,
 };
 
 // ── Kollektiv-CP + hastighed ───────────────────────────────────────────────────
@@ -83,9 +91,75 @@ type GroupTempo = {
   dtSeconds: number;
 };
 
-function riderCpForSegment(entrant: Entrant, riderState: RiderState, segment: Segment, tuning: EngineTuning): number {
+// M7-wiring (#4885, 6/9): distance-slid + dag-til-dag-slid ganges paa base-CP'en
+// EFTER deriveCp og FOER dayform laegges til — praecis det punkt
+// mechanics/distanceFatigue.ts's egen wiring-note udpeger. `segment.from_km` er
+// km tilbagelagt ved segmentets INDGANG og er identisk med loopets `state.km`
+// paa dette tidspunkt (cursoren saettes til forrige segments `to_km` naar
+// segmentet lukkes), men laeses lokalt fra segmentet saa funktionen forbliver
+// ren og state-fri.
+//
+// Multiplikatoren er svagt STIGENDE i endurance og i condition (se
+// distanceFatigue.ts), saa den kan aldrig vende to rytteres indbyrdes CP-orden:
+// invariant 3 (styrke straffes aldrig) holder per konstruktion, ikke per
+// kalibrering. Ingen rng — sliddet er en deterministisk funktion af
+// km/evne/condition.
+//
+// Eksporteret for testbarhed af netop KOBLINGEN — samme praecedens som
+// `groupDraftSpeedGain` nedenfor. En ende-til-ende-test kan ikke skelne "M7 er
+// koblet fra" fra "M7 er koblet til og flyttede ingenting"; en direkte test paa
+// denne funktion kan (segmentLoop.distanceFatigue.test.ts).
+export function riderCpForSegment(
+  entrant: Entrant,
+  riderState: RiderState,
+  segment: Segment,
+  tuning: EngineTuning,
+  weather: Weather,
+): number {
   const baseCp = deriveCp(entrant.abilities, segment.kind, tuning.physiology.cpWeights);
-  return Math.max(0, baseCp + riderState.dayform);
+  const worn = applyDistanceFatigueToCp(baseCp, {
+    kmSoFar: segment.from_km,
+    enduranceAbility: entrant.abilities.endurance,
+    condition: entrant.condition,
+  });
+  // To proportionale CP-faktorer ganges paa den slidte CP FOER dayform laegges
+  // til. Begge sidder samme sted som M7's slid, og af samme grund: dayform er
+  // et absolut dagsudsving oven paa dagens faktiske troeskel, ikke noget de
+  // skal skalere. Begge er PR. RYTTER PROPORTIONALE (aldrig absolutte
+  // fradrag), saa invariant 3 holder per konstruktion — hverken holdrollen
+  // eller vejret kan vende to rytteres indbyrdes CP-orden.
+  //
+  // M16-wiring (#4246): holdarbejdets pris/kaptajnens lae. Faktoren er
+  // akkumuleret af mechanics/teamPlay.ts i det FORRIGE segment: prisen betales
+  // FREMAD, praecis som i virkeligheden, hvor en tur i vinden koster resten af
+  // dagen og ikke det stykke man allerede har koert. To ryttere med samme
+  // holdrolle beholder deres indbyrdes CP-orden, praecis som i v3, hvor
+  // work_cost er den samme score-delta for alle hjaelpere paa profilen.
+  //
+  // M11-wiring (#3855): vejrets pris. Multiplikatoren er <= 1 og IKKE-FALDENDE
+  // i evne, saa vejret hverken kan haeve en CP eller straffe den staerkeste
+  // haardest.
+  const teamFactor = Number.isFinite(riderState.team_cp_factor) ? (riderState.team_cp_factor as number) : 1;
+  const weatherFactor = riderWeatherCpMultiplier(entrant, segment, weather);
+  return Math.max(0, worn * teamFactor * weatherFactor + riderState.dayform);
+}
+
+// M11-wiring (#3855, 6/9): vejrets CP-multiplikator for ÉN rytter paa ÉT
+// segment. Ganges paa den slidte CP i `riderCpForSegment` ovenfor — samme
+// sted og samme form som M7's distance-slid, jf. weather.ts's belastnings-blok
+// (hvorfor CP og ikke kraftkravet er en MAALT konklusion, se dér).
+//
+// Vejr-teknikken er en PROXY (vaegtet descending+durability) indtil den rigtige
+// evne fødes; se weather.ts's weatherTechniqueProxy-docblock. Ingen rng: vejrets
+// pris er en deterministisk funktion af (vejr, terraen, evne), saa determinisme-
+// invarianten er uberoert og der er intet segment-index-hash-spoergsmaal (#4886).
+//
+// Eksporteret af samme grund som `riderCpForSegment` og `groupDraftSpeedGain`:
+// en ende-til-ende-test kan se AT en regnetape er anderledes, men ikke at netop
+// denne kobling er den der goer det.
+export function riderWeatherCpMultiplier(entrant: Entrant, segment: Segment, weather: Weather): number {
+  const technique = weatherTechniqueProxy(entrant.abilities, WEATHER_EXTRA_TUNING.weatherTechniqueProxyWeights);
+  return weatherCpMultiplier(weather, segment.kind, technique, WEATHER_EXTRA_TUNING);
 }
 
 /**
@@ -129,13 +203,14 @@ function computeGroupTempo(
   entrantsById: Record<string, Entrant>,
   segment: Segment,
   tuning: EngineTuning,
+  weather: Weather,
 ): GroupTempo {
   const cpByRider = new Map<string, number>();
   for (const riderId of group.rider_ids) {
     const entrant = entrantsById[riderId];
     const riderState = riders[riderId];
     if (!entrant || !riderState) continue;
-    cpByRider.set(riderId, riderCpForSegment(entrant, riderState, segment, tuning));
+    cpByRider.set(riderId, riderCpForSegment(entrant, riderState, segment, tuning, weather));
   }
   const ranked = [...cpByRider.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   const frontCount = Math.max(1, Math.ceil(ranked.length * tuning.work.frontFraction));
@@ -185,7 +260,24 @@ function tickGroupRiders(
     const positionFactor = tempo.frontRiderIds.has(riderId)
       ? tuning.work.frontWorkFactor[segment.kind]
       : tuning.work.draftFactor[segment.kind];
-    const demand = groupDemand * positionFactor;
+    // M12-wiring (#4632, ejer-beslutning 6/9, model C): rytterens EGET
+    // indsatsvalg ganges paa KRAFTKRAVET — ikke paa CP'en, hvor M7's
+    // distance-slid, M16's team_cp_factor og M11's vejr sidder. Skellet er
+    // ikke kosmetisk: CP er hvad rytteren KAN baere i dag (evne, slid, vejr),
+    // kravet er hvad han VAELGER at lave. `all_out` haever kravet over
+    // gruppens tempo og braender dermed W' hurtigere (stoerre kollaps-risiko
+    // sent paa etapen, hvor climbSelection/finale laeser reserven);
+    // `grupetto` saenker det markant, saa rytteren overlever dagen i stedet
+    // for at koere om noget. Havde valget i stedet ganget paa CP, ville
+    // `save`/`grupetto` GRATIS have haevet dagens baeredygtige troeskel —
+    // altsaa gjort rytteren staerkere af at spare — og `all_out` have gjort
+    // ham svagere; begge dele er den modsatte fysiologi.
+    //
+    // Invariant 3 (styrke straffes aldrig) holder per konstruktion:
+    // multiplikatoren er en ren funktion af rytterens EGET effort-trin, ikke
+    // af hans evner, saa to ryttere paa SAMME trin beholder deres indbyrdes
+    // orden praecis som foer wiringen. Determinismen er uberoert — intet rng.
+    const demand = applyEffortToDemand(groupDemand * positionFactor, entrant.effort);
     const rechargeRate = deriveRechargeRate(entrant.abilities, tuning.physiology);
     // #4030 fixture-fund: sub-tick i stedet for ét Euler-skridt over hele
     // segmentet (tuning.ts's PHYSIOLOGY_SUBTICK_TUNING, physiology.ts's
@@ -260,16 +352,34 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     distance_km: route.distance_km,
   });
 
+  // M11 (#3855-wiring 6/9): vejr-eventet emitteres ÉN gang, paa det foerste
+  // segment hvor vejret faktisk koster noget. For regn er det km 0 (regn
+  // rammer hele etapen); for vind er det det foerste EKSPONEREDE segment, saa
+  // en bjergetape i vind foerst melder vinden naar feltet kommer ud paa det
+  // aabne — "vind fra km 80", ikke "vind fra km 0". Sol/overskyet melder
+  // ingenting: der er intet at fortaelle spilleren, og etapen skal vaere
+  // byte-identisk med en etape uden vejr-lag.
+  //
+  // Fog-gate (§3 invariant 5, ejer 6/9): params baerer KUN vejrtypen. Ingen
+  // wind_exposure, ingen multiplikator, ingen straf — spilleren ser "regn",
+  // ikke hvad regn koster.
+  let weatherAnnounced = false;
+
   const segments = route.segments;
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const segment = segments[segmentIndex];
+
+    if (!weatherAnnounced && weatherCpPenalty(route.weather, segment.kind, WEATHER_EXTRA_TUNING) > 0) {
+      pushEvent(timeline, segment.from_km, "weather", { kind: route.weather.kind });
+      weatherAnnounced = true;
+    }
 
     // 1+2: krav-tempo + fysiologi-tick, pr. gruppe (baseret paa gruppe-strukturen
     // ved segmentets indgang).
     const tempoByGroup = new Map<string, GroupTempo>();
     let nextRiders: Record<string, RiderState> = { ...state.riders };
     for (const group of state.groups) {
-      const tempo = computeGroupTempo(group, state.riders, entrantsById, segment, tuning);
+      const tempo = computeGroupTempo(group, state.riders, entrantsById, segment, tuning, route.weather);
       tempoByGroup.set(group.id, tempo);
       const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning);
       nextRiders = { ...nextRiders, ...patch };
@@ -299,12 +409,40 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       rngFor: rngForFn,
       orders,
     };
+    // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
+    // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.
+    // Raekkefoelgen er hele pointen: hjaelperen betaler for det arbejde der
+    // lige er tikket, og klatre-/brostens-selektionen laeser derefter den
+    // reserve holdarbejdet efterlod — praecis som i v3, hvor work-cost og
+    // kaptajn-beskyttelse hoerer til SAMME etapes opgoer. Ikke kind-gated:
+    // holdarbejde er ambient (som M10's uheld), en hjaelper traekker paa flad
+    // vej saavel som op ad bakke.
+    //
+    // Hooket er VALGFRIT (types.ts): et hook-saet uden `teamPlay` koerer
+    // etapen helt uden holdspil — den gamle F2-adfaerd, uaendret. Det samme
+    // gaelder enhver startliste uden `team_id` (mechanics/teamPlay.ts's
+    // hoved): mekanikken er da en eksakt no-op.
+    {
+      const result = (hooks.teamPlay ?? noopHook)(state, ctx);
+      state = result.state;
+      timeline.push(...result.events);
+    }
+
     if (segment.kind === "climb") {
       const result = hooks.climbSelection(state, ctx);
       state = result.state;
       timeline.push(...result.events);
     } else if (segment.kind === "descent") {
       const result = hooks.descent(state, ctx);
+      state = result.state;
+      timeline.push(...result.events);
+    } else if (segment.kind === "cobbles") {
+      // M8 (#3855-wiring): brosten-/grus-sektor. Samme plads i loopet som M2/M3
+      // — dagens terraen-selektion sker FOER udbruds-hooket og finalen, saa et
+      // brostens-split er med i det billede M5/M4 arbejder videre paa. Grus-
+      // sektorer ER cobbles-segmenter (RACE_ENGINE_RULES §2b), saa denne gren
+      // daekker begge underlag.
+      const result = (hooks.cobbles ?? noopHook)(state, ctx);
       state = result.state;
       timeline.push(...result.events);
     }
@@ -317,6 +455,35 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // wiring-note foreskriver.
     {
       const result = hooks.breakaway(state, ctx);
+      state = result.state;
+      timeline.push(...result.events);
+    }
+
+    // M10 (#2944): incidents-trappen koeres paa HVERT segment — et uheld er
+    // ambient og hoerer ikke til én terraen-type. Placeringen er bevidst:
+    //   EFTER M2/M3/M5, saa dagens selektion og udbruddet allerede har formet
+    //   grupperne (et uheld rammer den gruppe rytteren FAKTISK er i), og
+    //   FOER M4/finale-hooket, saa et styrt paa sidste segment tager rytteren
+    //   ud af frontgruppen INDEN spurten gøres op — praecis som i virkeligheden.
+    //   FOER merge-trinnet, saa en uheldsramt der kun tabte faa sekunder kan
+    //   smelte tilbage i sin gruppe samme segment.
+    // Hooket er VALGFRIT (types.ts): et hook-saet uden `incidents` koerer
+    // etapen helt uden uheld — det er den gamle F2-adfaerd, uaendret.
+    if (hooks.incidents) {
+      const result = hooks.incidents(state, ctx);
+      state = result.state;
+      timeline.push(...result.events);
+    }
+
+    // M9 (#2770/#2413): passager (bjergtoppe + indlagte spurter). Kaldes paa
+    // HVERT segment — et vejpunkt kan ligge paa et hvilket som helst terraen.
+    // Placeringen er bevidst SIDST i segmentets mekanik-raekke, lige foer
+    // finalen: passagen skal opgoeres paa det gruppe-billede dagens selektion,
+    // udbruddet og uheldene rent faktisk har efterladt ved linjen. Hooket
+    // roerer aldrig state.riders/state.groups — det tilfoejer kun passager, saa
+    // det kan hverken flytte en tid eller en placering.
+    {
+      const result = (hooks.passages ?? noopHook)(state, ctx);
       state = result.state;
       timeline.push(...result.events);
     }

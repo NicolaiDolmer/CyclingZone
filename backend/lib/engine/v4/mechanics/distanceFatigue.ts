@@ -32,19 +32,37 @@
 // — samme "monotoni, ikke bare gaettet"-standard som climbSelection.ts/
 // descent.ts (mor-spec §3.2 haardt krav gaelder principielt kun INDEN FOR en
 // gruppe pr. segment, men modifikatoren er konstrueret saa den aldrig
-// modarbejder det, hvis/naar den wires ind i segmentLoop's cp-udregning).
+// modarbejder det — nu hvor den ER wiret ind i segmentLoop's cp-udregning).
 //
-// WIRING-BEHOV (denne fil roerer IKKE segmentLoop.ts/physiology.ts —
-// orkestratoren wirer hooken ind): segmentLoop.ts's `riderCpForSegment`
-// beregner i dag `baseCp = deriveCp(...); return baseCp + riderState.dayform`.
-// Wiring-punktet er PRAECIS dér: efter deriveCp() og FOER dayform laegges til,
-// gang baseCp med `applyDistanceFatigueToCp(baseCp, { kmSoFar: state.km,
-// enduranceAbility: entrant.abilities.endurance, condition: entrant.condition
-// })`. `state.km` (segmentLoop's cursor, opdateret til `segment.to_km` ved
-// segmentets slutning) er den naturlige "km tilbagelagt saa vidt"-vaerdi ved
-// segmentets INDGANG — samme moenster som computeGroupTempo's eksisterende
-// brug af segment-graenser. F2's segmentLoop kalder ALDRIG denne fil i dag,
-// saa modifikatoren er INERT (multiplikator 1.0 for alle) indtil wiret ind.
+// WIRET 6/9 (#4885): segmentLoop.ts's `riderCpForSegment` kalder
+// `applyDistanceFatigueToCp` efter deriveCp() og FOER dayform laegges til —
+// praecis det punkt denne note foreskrev. `kmSoFar` er `segment.from_km`
+// (identisk med loopets `state.km` ved segmentets indgang, men state-frit).
+//
+// MAALT VED WIRINGEN (v4TailSpread.js, 141 offline-etaper x 3 seeds, 180-
+// rytters felt, den committede juli-population). To ting er vaerd at vide for
+// den naeste der roerer M7, saa maalingen ikke skal koeres forfra:
+//
+//  1. Sliddet kan IKKE lukke #4885's hale-hul. Hale-spredningen (vinder ->
+//     sidsteplads som andel af vindertiden) er i praksis laast af
+//     segmentLoop's fart-model: gruppe-gap'et akkumuleres af
+//     `1 + terrain.strengthSpeedGain * (collectiveCp - baseDemand[kind])`, som
+//     laeser CP-forskelle ABSOLUT mod en konstant kalibreret for et midt-skala
+//     felt. Den aegte populations CP ligger naer 0,1, saa to gruppers fart kan
+//     hoejst skille sig et par procent — uanset hvor haardt en pr.-rytter-
+//     mekanik slider. Diagnostisk maalt (IKKE shippet, ejer-gated kalibrering,
+//     #4707/#4885): alene at haeve `strengthSpeedGain` flytter bjerg-halen fra
+//     ~3,4 % til ~14,9 %, dvs. ind i virkelighedens 8-15 %-baand — og braekker
+//     samtidig felt-sammenhaengen paa flade etaper, saa den skal kalibreres for
+//     sig. Det er samme fejlfamilie som #4604 rettede i `tickGroupRiders`
+//     (absolut konstant mod en evne-relativ skala), og den overlevede i
+//     `computeSegmentSpeedKmh`.
+//  2. Krav-siden er MAETTET og duer ikke som angrebspunkt. En variant hvor
+//     sliddet i stedet ganges paa rytterens `demand` blev bygget og maalt:
+//     effekten var nul, fordi medianrytteren i forvejen ligger over CP stort
+//     set hele etapen (seconds_over_cp ~ etapens varighed) og W' er i bund.
+//     Den variant er derfor IKKE shippet — CP-siden er det rigtige og eneste
+//     angrebspunkt, praecis som denne fil oprindeligt foreskrev.
 
 import { DISTANCE_FATIGUE_EXTRA_TUNING } from "../tuning.ts";
 

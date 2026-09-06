@@ -7,14 +7,17 @@ import fc from "fast-check";
 
 import {
   weatherAdjustedRiskBase,
+  weatherCpMultiplier,
+  weatherCpPenalty,
   weatherRiskMultiplier,
   weatherTechniqueDampening,
   weatherTechniqueProxy,
 } from "./weather.ts";
 import { WEATHER_EXTRA_TUNING } from "../tuning.ts";
-import type { WeatherKind } from "../types.ts";
+import type { SegmentKind, WeatherKind } from "../types.ts";
 
 const KINDS: WeatherKind[] = ["sun", "overcast", "rain", "wind"];
+const SEGMENT_KINDS: SegmentKind[] = ["flat", "rolling", "climb", "descent", "cobbles"];
 
 // ── kontrakt: multiplikator aldrig under 1, regn > vind > sol/overskyet ────
 
@@ -116,10 +119,106 @@ test("weatherTechniqueProxy: fast-check — altid inden for [0,99] for gyldige e
   );
 });
 
+// ── BELASTNINGS-ARMEN (#3855, M11-wiring 6/9) ─────────────────────────────
+
+test("weatherCpPenalty: sol/overskyet koster PRAECIS 0 paa alle terraener (baseline i begge arme)", () => {
+  for (const kind of ["sun", "overcast"] as WeatherKind[]) {
+    for (const segmentKind of SEGMENT_KINDS) {
+      const penalty = weatherCpPenalty({ kind, wind_exposure: 1 }, segmentKind, WEATHER_EXTRA_TUNING);
+      assert.equal(penalty, 0, `${kind} paa ${segmentKind} kostede ${penalty}, ikke 0`);
+    }
+  }
+});
+
+test("weatherCpPenalty: regn er terraen-UAFHAENGIG — en vaad stigning koster som en vaad flade", () => {
+  const penalties = SEGMENT_KINDS.map((segmentKind) =>
+    weatherCpPenalty({ kind: "rain", wind_exposure: 0.4 }, segmentKind, WEATHER_EXTRA_TUNING),
+  );
+  assert.ok(penalties[0] > 0, "regn skal koste noget");
+  for (const p of penalties) assert.equal(p, penalties[0], "regn-straffen maa ikke variere med terraenet");
+});
+
+test("weatherCpPenalty: vind koster mest paa aabent terraen og mindst paa stigning (lae af sig selv)", () => {
+  const at = (segmentKind: SegmentKind) =>
+    weatherCpPenalty({ kind: "wind", wind_exposure: 1 }, segmentKind, WEATHER_EXTRA_TUNING);
+  assert.ok(at("flat") > at("rolling"), "flad, aaben vej skal fange mest vind");
+  assert.ok(at("rolling") > at("descent"), "rullende terraen skal fange mere vind end en nedkoersel");
+  assert.ok(at("descent") > at("climb"), "en stigning ligger i lae af sig selv og skal fange mindst vind");
+  assert.ok(at("climb") > 0, "vind skal stadig koste NOGET paa en stigning");
+});
+
+test("weatherCpPenalty: vind-straffen skalerer med rutens wind_exposure og forsvinder ved 0", () => {
+  const at = (exposure: number) =>
+    weatherCpPenalty({ kind: "wind", wind_exposure: exposure }, "flat", WEATHER_EXTRA_TUNING);
+  assert.equal(at(0), 0, "en etape uden vind-eksponering skal ikke koste noget selv i vindvejr");
+  assert.ok(at(0.5) > at(0.2), "hoejere eksponering skal koste mere");
+  assert.ok(at(1) > at(0.5));
+});
+
+test("weatherCpMultiplier: ALTID i (0, 1] — vejr kan aldrig HAEVE en rytters troeskel (fast-check, 400 runs)", () => {
+  fc.assert(
+    fc.property(
+      fc.constantFrom(...KINDS),
+      fc.constantFrom(...SEGMENT_KINDS),
+      fc.double({ min: 0, max: 1, noNaN: true }),
+      fc.integer({ min: -50, max: 200 }),
+      (kind, segmentKind, exposure, technique) => {
+        const m = weatherCpMultiplier({ kind, wind_exposure: exposure }, segmentKind, technique, WEATHER_EXTRA_TUNING);
+        assert.ok(Number.isFinite(m), `multiplikator ${m} er ikke endelig`);
+        assert.ok(m > 0, `multiplikator ${m} <= 0 for ${kind}/${segmentKind}/exp=${exposure}/tek=${technique}`);
+        assert.ok(m <= 1, `multiplikator ${m} > 1 — vejret haevede CP'en for ${kind}/${segmentKind}`);
+      },
+    ),
+    { numRuns: 400, seed: 3855 },
+  );
+});
+
+// Invariant 3 (§3 punkt 3, "styrke straffes aldrig") paa selve vejr-koblingen:
+// en rytter med hoejere vejr-teknik maa ALDRIG faa en lavere CP-multiplikator
+// end en med lavere teknik. Testet punkt for punkt over hele 0-99-skalaen, ikke
+// stikproevevis — det er den invariant der er dyrest at bryde.
+test("weatherCpMultiplier: monotont IKKE-FALDENDE i vejr-teknik (invariant 3, hele 0-99-skalaen)", () => {
+  for (const kind of KINDS) {
+    for (const segmentKind of SEGMENT_KINDS) {
+      let prev = weatherCpMultiplier({ kind, wind_exposure: 0.7 }, segmentKind, 0, WEATHER_EXTRA_TUNING);
+      for (let technique = 1; technique <= 99; technique += 1) {
+        const m = weatherCpMultiplier({ kind, wind_exposure: 0.7 }, segmentKind, technique, WEATHER_EXTRA_TUNING);
+        assert.ok(
+          m >= prev - 1e-12,
+          `CP-multiplikatoren FALDT ved technique=${technique} (${m} < ${prev}) for ${kind}/${segmentKind} — staerkere rytter straffet`,
+        );
+        prev = m;
+      }
+    }
+  }
+});
+
+test("weatherCpMultiplier: vejr-teknik er maerkbar men aldrig et frikort (§9 punkt 3's 'aldrig gratis')", () => {
+  const weak = weatherCpMultiplier({ kind: "rain", wind_exposure: 0.3 }, "flat", 0, WEATHER_EXTRA_TUNING);
+  const strong = weatherCpMultiplier({ kind: "rain", wind_exposure: 0.3 }, "flat", 99, WEATHER_EXTRA_TUNING);
+  assert.ok(strong > weak, "hoej vejr-teknik skal MAERKES");
+  assert.ok(strong < 1, "selv en rytter paa 99 skal stadig miste noget CP i regnen — aldrig gratis");
+});
+
+test("weatherCpMultiplier: sol/overskyet giver PRAECIS 1 (byte-identisk med en etape uden vejr-lag)", () => {
+  for (const kind of ["sun", "overcast"] as WeatherKind[]) {
+    for (const segmentKind of SEGMENT_KINDS) {
+      for (const technique of [0, 33, 66, 99]) {
+        const m = weatherCpMultiplier({ kind, wind_exposure: 0.9 }, segmentKind, technique, WEATHER_EXTRA_TUNING);
+        assert.equal(m, 1, `${kind}/${segmentKind}/tek=${technique} gav ${m}, ikke praecis 1`);
+      }
+    }
+  }
+});
+
 // ── determinisme: rene funktioner, ingen skjult tilstand ──────────────────
 
 test("determinisme: samme input -> byte-identisk output ved gentagne kald", () => {
   const a = weatherAdjustedRiskBase(0.012, { kind: "rain" }, WEATHER_EXTRA_TUNING);
   const b = weatherAdjustedRiskBase(0.012, { kind: "rain" }, WEATHER_EXTRA_TUNING);
   assert.equal(a, b);
+
+  const c = weatherCpMultiplier({ kind: "wind", wind_exposure: 0.42 }, "flat", 51, WEATHER_EXTRA_TUNING);
+  const d = weatherCpMultiplier({ kind: "wind", wind_exposure: 0.42 }, "flat", 51, WEATHER_EXTRA_TUNING);
+  assert.equal(c, d);
 });

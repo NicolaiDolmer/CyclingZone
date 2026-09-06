@@ -5,25 +5,83 @@
 // Én deterministisk funktion: samme input => byte-identisk output (§2 invariant 1).
 // REN — ingen import fra oevrigt backend.
 
-import type { MechanicHooks, RiderLoad, StageInput, StageOutput, StageResult, TimelineEvent } from "./types.ts";
+import type {
+  MechanicHooks,
+  RiderLoad,
+  StageIncident,
+  StageInput,
+  StageOutput,
+  StagePassage,
+  StageResult,
+  TimelineEvent,
+} from "./types.ts";
 import { runSegmentLoop, type SegmentLoopResult } from "./segmentLoop.ts";
 import { climbSelectionHook } from "./mechanics/climbSelection.ts";
 import { descentHook } from "./mechanics/descent.ts";
 import { breakawayHook } from "./mechanics/breakaway.ts";
+import { applyThreeKmRuleToResults, incidentHook } from "./mechanics/incidents.ts";
+import { cobblesHook } from "./mechanics/cobbles.ts";
+import { teamPlayHook } from "./mechanics/teamPlay.ts";
+// M9 (#2770, #2413, ejer-beslutning 6/9): passager — bjergpoint, spurtpoint og
+// bonussekunder. Se wiring-blokken i simulateStageV4 for hvorfor maalpassagen
+// bygges efter finalen og ikke i segment-loopet.
+import {
+  buildFinishPassages,
+  clampPassageBonusToPerRiderCap,
+  passageTotals,
+  passagesHook,
+  passagesToTimelineEvents,
+  sortPassages,
+} from "./mechanics/bonusSeconds.ts";
 import { finaleHook } from "./finale.ts";
 import { sortTimeline } from "./timeline.ts";
+// M15 (#2582, ejer-beslutning 6/9): tidsgraensen. Se wiring-blokken i
+// simulateStageV4 nedenfor for hvorfor den koeres netop dér.
+import { applyTimeLimit } from "./mechanics/timeLimit.ts";
+// M13 (#3463/#2412, ejer-beslutning 6/9): holdtidskoerslen. Den er IKKE et hook
+// i segment-loopet men en hel ALTERNATIV etape-model (ét hold = én gruppe der
+// koerer sammen), saa den forgrenes i simulateStageV4 — se TTT-blokken dér.
+import { simulateTeamTimeTrialStage } from "./mechanics/teamTimeTrial.ts";
+import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 
-// Fase C-wiring (#4030) + F3-wiring (#4615): de rigtige M2/M3/M4/M5-
+// Fase C-wiring (#4030) + F3-wiring (#4615, #2944, #3855): de rigtige
+// M2/M3/M4/M5/M8/M10-
 // implementeringer. M6 (leadout) kaldes inde fra finaleHook, M14 (AI-taktik)
 // producerer ordrer OPSTROEMS og naar kernen som `StageInput.orders` — der er
 // derfor ikke et hook for hver mekanik, kun for dem der raekker ind i
 // segment-loopet. Harness/tests kan stadig injicere egne hooks via
 // runSegmentLoop direkte.
+//
+// FASEAFGRAENSNING (opdateret 6/9, #2944 + #3855 + #4885 + #4246 + #2770).
+// Audit'en 5/9 talte otte faerdige mekanikker uden ét eneste kaldssted. M10
+// (incidents), M8 (brosten/grus), M7 (distance-slid), M11 (vejr), M16
+// (holdspil) og M9 (passager/bonussekunder) er nu KOBLET IND og staar altsaa
+// ikke laengere paa den liste. M7 og M11 har med vilje INTET hook her: de
+// rammer den baeredygtige troeskel i selve segmentloekken (segmentLoop.ts's
+// `riderCpForSegment`) og er dermed ikke terraen-udloeste hooks men et lag
+// under dem. M11's anden arm — vejr-forstaerket styrt-risiko — ligger i
+// mechanics/descent.ts og mechanics/cobbles.ts.
+// Stadig bygget-men-ikke-kaldt: M12 (effort).
+// (M16/holdspillet gav `Entrant.team_id`, forudsaetningen for M13/
+// holdtidskoerslen, der er wiret 6/9 som forgreningen i simulateStageV4
+// nedenfor. Ordre-adapteren kaldes af broen.)
 const LIVE_MECHANIC_HOOKS: MechanicHooks = {
   climbSelection: climbSelectionHook,
   descent: descentHook,
   finale: finaleHook,
   breakaway: breakawayHook,
+  incidents: incidentHook,
+  // M8 (#3855, ejer-beslutning 6/9): brosten-/grus-sektorer. Kaldes paa
+  // cobbles-segmenter af segmentLoop.ts.
+  cobbles: cobblesHook,
+  // M16 (#4246, ejer-beslutning 1 5/9): holdspillet — kaptajnen beskyttes,
+  // hjaelperen betaler. Kaldes paa HVERT segment af segmentLoop.ts, som det
+  // foerste hook. Kraever `Entrant.team_id`; en startliste uden hold-id
+  // (fixtures, haandbyggede testlister) koerer bit-uaendret.
+  teamPlay: teamPlayHook,
+  // M9 (#2770/#2413, ejer-beslutning 6/9): passager. Kaldes paa hvert segment
+  // af segmentLoop.ts; maalpassagen bygges nedenfor.
+  passages: passagesHook,
 };
 
 function round2(n: number): number {
@@ -39,22 +97,48 @@ function buildResults(state: SegmentLoopResult["state"]): StageResult[] {
   (state.finish_order ?? []).forEach((riderId, index) => orderIndex.set(riderId, index));
   const tieBreak = (riderId: string): number => orderIndex.get(riderId) ?? Number.MAX_SAFE_INTEGER;
 
+  // #2944: en UDGAAET rytter sorterer altid EFTER alle der gennemfoerte.
+  // Han faar stadig en placering (invariant 6, #4615: resultatet er en komplet
+  // permutation 1..N af startlisten), men han kan aldrig staa foran nogen der
+  // koerte over stregen — uanset hvilken tid hans gruppe endte med.
+  const finishedFirst = (statusValue: string): number => (statusValue === "abandoned" ? 1 : 0);
+
   const sorted = Object.values(state.riders).sort(
     (a, b) =>
+      finishedFirst(a.status) - finishedFirst(b.status) ||
       a.time_seconds - b.time_seconds ||
       tieBreak(a.rider_id) - tieBreak(b.rider_id) ||
       a.rider_id.localeCompare(b.rider_id),
   );
+
+  // #2944: skadedage pr. rytter. KUN styrt kan saette dem (#4520) — det er
+  // allerede haandhaevet i mechanics/incidents.ts's resolveIncident; her
+  // spejles blot den vaerdi protokollen baerer. Flere styrt paa samme etape
+  // (muligt: hooket kaldes pr. segment) => den LAENGSTE skade taeller.
+  const injuryDaysByRider = new Map<string, number>();
+  for (const incident of state.stage_incidents ?? []) {
+    if (incident.injury_days == null) continue;
+    const current = injuryDaysByRider.get(incident.rider_id) ?? 0;
+    if (incident.injury_days > current) injuryDaysByRider.set(incident.rider_id, incident.injury_days);
+  }
+
   return sorted.map((rider, index) => ({
     rider_id: rider.rider_id,
     rank: index + 1,
     time_seconds: round2(rider.time_seconds),
     group_id: rider.group_id,
-    // 'racing' -> 'finished' ved etapens slutning: Fase A har ingen abandon-
-    // mekanik (M10/incidents er F3-scope), saa alle der ikke er markeret
-    // abandoned krydser maalstregen.
-    status: rider.status === "abandoned" ? "abandoned" : "finished",
+    // 'racing' -> 'finished' ved etapens slutning. Kun M10's trin 3 (alvorligt
+    // styrt) kan saette 'abandoned' undervejs; alle andre krydser stregen.
+    status: rider.status === "abandoned" ? ("abandoned" as const) : ("finished" as const),
+    injury_days: injuryDaysByRider.get(rider.rider_id) ?? null,
   }));
+}
+
+/** Etapens uheldsprotokol i stabil (km, rider_id)-orden. */
+function buildIncidents(state: SegmentLoopResult["state"]): StageIncident[] {
+  return [...(state.stage_incidents ?? [])].sort(
+    (a, b) => a.km - b.km || a.rider_id.localeCompare(b.rider_id),
+  );
 }
 
 function buildLoads(state: SegmentLoopResult["state"]): RiderLoad[] {
@@ -89,18 +173,113 @@ function buildFinishEvent(results: StageResult[], distanceKm: number): TimelineE
  * -> tidslinje + resultater + belastninger + gruppe-snapshots.
  */
 export function simulateStageV4(input: StageInput): StageOutput {
+  // ── M13: holdtidskoerslen (#3463/#2412, ejer-beslutning 6/9) ─────────────
+  // En TTT er ikke en vejetape med et ekstra hook paa: hele gruppe-modellen er
+  // en anden (ét hold = én gruppe der koerer sammen fra egen start, og holdets
+  // tid er den k'te rytters passage — UCI-reglen, ikke foerstemandens tid).
+  // Derfor en forgrening her og ikke en registrering i LIVE_MECHANIC_HOOKS.
+  //
+  // #3463's fund var praecis den manglende forgrening: "ni ryttere fra samme
+  // hold ville hver faa deres egen tid", fordi `ttt` faldt igennem til
+  // enkeltstarts-vejen. Diskriminatoren er `profile_type` og IKKE `finale_type`
+  // — raceStageProfileGenerator mapper baade itt/itt_hilly OG ttt til
+  // finale_type "solo_tt", saa de kan ikke skelnes paa finalen alene.
+  //
+  // FALLBACK: en TTT-rute hvor INGEN rytter baerer hold-id (fixtures,
+  // haandbyggede testlister) koerer den almindelige vejetape-vej, bit-uaendret
+  // — se teamRostersFromStartlist' null-kontrakt.
+  //
+  // M15 (tidsgraensen) koeres BEVIDST IKKE her. En TTT-ankomstgruppe er et
+  // HELT hold, og grupetto-redningen er kalibreret mod et massestartsfelt
+  // (~20 % af feltet); anvendt uaendret ville et enkelt langsomt hold ryge ud
+  // af loebet samlet. Det er en ejer-beslutning om spillets konsekvenser, ikke
+  // en wiring-detalje — se PR-body'ens aabne punkt.
+  if (input.route.profile_type === "ttt") {
+    const rosters = teamRostersFromStartlist(input.startlist);
+    if (rosters) return simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning);
+  }
+
   const { state, timeline, groupSnapshots } = runSegmentLoop(input, LIVE_MECHANIC_HOOKS);
-  const results = buildResults(state);
-  const loads = buildLoads(state);
-  const finishEvent = buildFinishEvent(results, input.route.distance_km);
 
   // Hooks emitterer midt-segment-events (fx descent attack ved km 1,27) efter
   // loopets egne graense-events — stable-sort paa km genopretter #2410 §2.3's
-  // monotoni uden at flytte raekkefoelgen inden for samme km.
+  // monotoni uden at flytte raekkefoelgen inden for samme km. M10's uheldsevents
+  // (#2944) emitteres inde i segment-loopet og ligger dermed allerede paa deres
+  // egen km her.
+  const sortedTimeline = sortTimeline(timeline);
+
+  // M10's 3 km-regel er en PLACERINGS-konsekvens og kan derfor foerst paafoeres
+  // naar rank eksisterer: efter buildResults, foer finish-eventet bygges paa
+  // den endelige raekkefoelge (mechanics/incidents.ts's egen wiring-JSDoc).
+  const resultsAfterThreeKmRule = applyThreeKmRuleToResults(buildResults(state), sortedTimeline);
+  const loads = buildLoads(state);
+
+  // ── M15: tidsgraensen (#2582, ejer-beslutning 6/9) ───────────────────────
+  // Koeres HER og ikke i segment-loopet, fordi graensen maales mod VINDERTIDEN:
+  // den findes foerst naar finale.ts har afgjort placeringerne og
+  // runSegmentLoop's afsluttende applyGroupTimes har sat sluttiderne. Modulet
+  // roerer kun `status` — rank, tid og raekkefoelge er uaendrede, saa
+  // monotoni-invarianten (§3 punkt 3) og den laaste feltstoerrelse (§3 punkt 6)
+  // er uberoerte per konstruktion.
+  //
+  // Den maaler paa resultatlisten EFTER M10's 3 km-regel (#2944): reglen giver
+  // en styrtet rytter sin gruppes tid, og netop den tid er den graensen skal
+  // doemme ham paa — ellers ville et styrt inden for de sidste 3 km foerst
+  // blive neutraliseret og derefter alligevel udloese OTL. Udgaaede ryttere
+  // (M10's trin 3) roerer M15 ikke: de har allerede en terminal udfaldsklasse.
+  const timeLimit = applyTimeLimit({
+    results: resultsAfterThreeKmRule,
+    profileType: input.route.profile_type,
+    distanceKm: input.route.distance_km,
+    // Sammenhaengsvinduet er BEVIDST ikke tuning.groups.mergeThresholdSeconds:
+    // finale.ts's placerings-tiers ligger per konstruktion mindst
+    // mergeThresholdSeconds + margin fra hinanden, saa det vindue kunne aldrig
+    // kaede to tiers til én grupetto. Modulet bruger sin egen ANKOMST-graense
+    // (TIME_LIMIT_EXTRA_TUNING.grupettoCohesionWindowSeconds, se maalingen dér).
+  });
+  const results = timeLimit.results;
+  const finishEvent = buildFinishEvent(results, input.route.distance_km);
+
+  // M15's events ligger paa maalstregen og hoerer kronologisk EFTER
+  // finish-eventet: tidsgraensen kan foerst afgoeres naar vinderen er i maal.
+  // Samme km => stabil sortering bevarer den raekkefoelge (#2410 §2.3 regel 4).
+  // ── M9: passagerne goeres op (#2770/#2413, ejer-beslutning 6/9) ──────────
+  // Segment-hooket har allerede afgjort bjergtoppene og de indlagte spurter
+  // undervejs (de kraever gruppe-billedet PAA stedet). Maalstregens passager —
+  // maalet selv og enhver bjergtop der ER maalstregen — kan foerst afgoeres
+  // HER: de koeres paa den endelige placeringsraekkefolge, praecis som v3
+  // ("Maalorden ER motorens rangering"), og den findes foerst efter finalen,
+  // 3 km-reglen og tidsgraensen.
+  //
+  // Loftet (#2413: GC-effekten er bounded) klemmes paa BEGGE kilder SAMLET —
+  // en rytter der baade tager en indlagt spurt og maalbonussen skal maales paa
+  // sin sum, ikke pr. kilde.
+  //
+  // Passagerne roerer hverken tid, gruppe eller placering: `results` og `loads`
+  // er faerdige foer denne blok og laeses kun.
+  const finishPassages = buildFinishPassages({
+    results,
+    waypoints: input.route.waypoints,
+    distanceKm: input.route.distance_km,
+    profileType: input.route.profile_type,
+    finaleType: input.route.finale_type,
+    tuning: input.tuning.bonusSeconds,
+  });
+  const passages: StagePassage[] = clampPassageBonusToPerRiderCap(
+    sortPassages([...(state.stage_passages ?? []), ...finishPassages]),
+  );
+  // Passage-eventsene ligger paa deres eget km og sorteres ind blandt motorens
+  // oevrige events; maalpassagen udsender intet eget event (finish-eventet ER
+  // maalstregen), samme konvention som v3's tidslinje.
+  const timelineWithPassages = sortTimeline([...sortedTimeline, ...passagesToTimelineEvents(passages)]);
+
   return {
-    timeline: { timeline_version: 2, events: [...sortTimeline(timeline), finishEvent] },
+    timeline: { timeline_version: 2, events: [...timelineWithPassages, finishEvent, ...timeLimit.events] },
     results,
     loads,
     groupSnapshots,
+    incidents: buildIncidents(state),
+    passages,
+    passage_totals: passageTotals(passages),
   };
 }

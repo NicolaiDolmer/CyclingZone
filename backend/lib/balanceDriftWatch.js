@@ -34,6 +34,29 @@ import { withOpsMention } from "./opsWebhook.js";
 import { shouldAlertOnChange } from "./opsAlertDedupe.js";
 
 const ENGINE_VERSION_V3 = 2; // #2414: race_simulation_runs.engine_version=2 er den DB-interne værdi for "race v3" (flippet 12/7 — se seneste engine_version-skift i prod).
+//
+// BEVIDST v3-ONLY (#3855, løbsmotor v4): filteret udvides IKKE til engine_version=4.
+// Vagten folder race_simulation_rider_scores.components (terrain/team/work_cost/
+// dayform/...) til dominans- og varians-metrikker, og v4 producerer INGEN
+// score-komponenter — raceRunner udelader derfor bevidst riderScores for v4-runs.
+// Tog vi 4 med i filteret, ville hver v4-etape blive en run UDEN scores:
+// observations tomme, båndene ville se grønne ud fordi der intet er at måle.
+// Det er værre end at måle på færre løb.
+//
+// KONSEKVENS, skrevet ned så den ikke overses ved flip: den dag race_engine_v4
+// er ON for alle løb, holder balance-drift-vagten op med at se noget. Paritets-
+// slicen skal enten (a) give v4 et komponentlag der kan skrives til
+// race_simulation_rider_scores, eller (b) give vagten en v4-kilde (gruppe-
+// snapshots + resultater). Ingen af delene hører til flip-infrastrukturen.
+//
+// #4879 (bro-paritet, 6/9): v4 SKRIVER nu race_incidents — uheldstrappen
+// (#2944) og tidsgrænsen (#2582). Uheldsraten nedenfor forbliver alligevel
+// v3-only, og det er tilsigtet: `incidentsByStage` filtreres på `stageKeySet`,
+// som udelukkende bygges af dagens engine_version=2-runs. En v4-etape har
+// ingen run i det sæt, så dens incident-rækker tælles aldrig med. Uden det
+// filter ville v4's uheld blive lagt oven i et v3-etapetal og forskyde båndet
+// uden at nogen kunne se hvorfra. Ovenstående "vagten ser ingenting ved fuldt
+// flip" gælder derfor uændret — også for uheldscellen.
 const ROLLING_WINDOW_DAYS = 14;
 const BALANCE_DRIFT_ALERT_KEY = "balance-drift-breach"; // #2730: nøgle i ops_alert_state for edge-triggered dedup
 

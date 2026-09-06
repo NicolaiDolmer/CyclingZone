@@ -10,7 +10,11 @@
 
 // gap_update er kurve-punkter (spec §2.2 "(S) kurvepunkter — valg 2"), ALDRIG en
 // narrativ feed-linje — samme udelukkelse som stageTimelineStory.js.
-const NON_FEED_TYPES = new Set(["gap_update"]);
+// ttt_team_result (M13, #3463) er af samme art: motoren emitterer ÉT resultat-
+// event pr. hold på målstregen, så holdets officielle tid står i tidslinjen som
+// data. Som feed-linjer ville det være hele startlisten af hold på én km — en
+// mur, ikke en broadcast. Vinderen står allerede i `finish`-eventet.
+const NON_FEED_TYPES = new Set(["gap_update", "ttt_team_result"]);
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -64,6 +68,16 @@ export function altitudeAtKm(series, km) {
   return x1 === x0 ? y0 : y0 + ((y1 - y0) * (clamped - x0)) / (x1 - x0);
 }
 
+// Etapetyper hvor der ikke er noget felt at måle en afstand til. Samme tre
+// værdier som backend/lib/raceStageProfileGenerator.js's TIME_TRIAL_PROFILES.
+const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
+
+/** Er etapen en tidskørsel? Aflæses af `stage_start` — det eneste event der bærer profile_type. */
+function isTimeTrialStage(events) {
+  const start = events.find((e) => e?.type === "stage_start");
+  return TIME_TRIAL_PROFILES.has(start?.params?.profile_type);
+}
+
 /**
  * Strukturerer den rå events-liste (spec §2.4-kontraktens `events`) til det
  * scrubberen/feedet/kurven skal bruge: sorteret narrativ-feed (excl. gap_update),
@@ -76,9 +90,16 @@ export function buildFilmTimeline({ events = [], distanceKm = null } = {}) {
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
     .map((e) => ({ km: e.km, category: e.params?.category ?? null, name: e.params?.name ?? null }));
-  const gapCurve = sorted
-    .filter((e) => e?.type === "gap_update")
-    .map((e) => ({ km: e.km, gapSeconds: e.params?.gap_seconds ?? 0 }));
+  // M13 (#3463): på en tidskørsel findes der ingen "afstand til feltet" at
+  // tegne. På en holdtidskørsel er hvert `gap_update` desuden ét HOLDS afstand
+  // til det hurtigste hold — tyve hold flettet ind i én kurve er en zigzag der
+  // ikke beskriver noget. Kurven udelades derfor på tidskørsler (GapCurveLayer
+  // renderer ingenting på en tom liste); tallene bliver stående i tidslinjen.
+  const gapCurve = isTimeTrialStage(sorted)
+    ? []
+    : sorted
+      .filter((e) => e?.type === "gap_update")
+      .map((e) => ({ km: e.km, gapSeconds: e.params?.gap_seconds ?? 0 }));
   const caughtEvent = sorted.find((e) => e?.type === "breakaway_caught");
   const finishEvent = sorted.find((e) => e?.type === "finish");
   const maxKm = distanceKm ?? finishEvent?.km ?? (sorted.length ? sorted[sorted.length - 1].km : 0);
@@ -128,6 +149,41 @@ function resolvedRiderNames(ids, riderNameById) {
   return (ids || []).map((id) => riderName(id, riderNameById)).filter(Boolean);
 }
 
+// #2944 — incident-trappen. Motoren (backend/lib/engine/v4/mechanics/incidents.ts)
+// emitterer nu fire udfald i stedet for ét: let styrt (tidstab), hårdt styrt
+// (tidstab + skadedage), alvorligt styrt (udgår + skadedage) og mekanisk uheld
+// (ALTID kun tidstab, aldrig udgåelse, aldrig skade — #4520). En hjælper tæt på
+// giver et hurtigere hjulskift, altså mindre tidstab.
+//
+// Her vælges KUN hvilken tekstnøgle udfaldet svarer til; selve sætningen bor i
+// public/locales/{en,da}/races.json (EN først, DA sekundært). Bagudkompatibelt:
+// v3's incident-events (og v4-events fra før trappen) bærer hverken `severity`,
+// `injury_days` eller `outcome`, og falder derfor på den oprindelige nøgle
+// "incident", der stadig kun læser `kind`.
+function incidentCopyKey(p) {
+  // `severity` er trappens markør: v4 sætter den ALTID (null for mekaniske
+  // uheld, der ikke har en alvorsakse), mens v3 og pre-trappe-v4 slet ikke har
+  // nøglen. Uden markøren bruges den oprindelige, art-only sætning — v3 har
+  // sit eget udfaldsvokabular ("abandon" for både styrt og mekanisk), som
+  // trappens tekster ikke beskriver korrekt.
+  if (!Object.prototype.hasOwnProperty.call(p, "severity")) return "incident";
+  if (p.outcome === "abandoned") return "incident_crash_abandon";
+  if (p.outcome === "protected_three_km_rule") return "incident_protected";
+  if (p.kind === "mechanical") return p.helper_assist ? "incident_mechanical_helper" : "incident_mechanical";
+  if (p.severity === "hard") return "incident_crash_hard";
+  if (p.severity === "light") return "incident_crash_time_loss";
+  return "incident";
+}
+
+function incidentCopyParams(p, rider) {
+  return {
+    rider,
+    kind: p.kind === "mechanical" ? "mechanical" : "crash",
+    seconds: Math.round(Number(p.time_loss_seconds) || 0),
+    days: Math.round(Number(p.injury_days) || 0),
+  };
+}
+
 // #4026: alle rider-ids en tidslinjes events refererer — så callers (LiveFilmLine
 // på Race Centre) kan batch-hente navne FØR describeEvent kaldes. Skal dække
 // præcis de param-former describeEvent læser nedenfor.
@@ -138,6 +194,10 @@ export function collectRiderIds(events) {
     const p = event?.params || {};
     for (const id of p.rider_ids || []) add(id);
     add(p.rider_id);
+    // #4879: v4's sprint_decided navngiver vinderen her. Uden nøglen ville
+    // navnet ikke være i batch-opslaget, og describeEvent ville skippe linjen
+    // som "kunne ikke navngives" — netop den tavse fejl #4026 lukkede.
+    add(p.winner_rider_id);
     add(p.new_leader_id);
     add(p.previous_leader_id);
     for (const t of p.top || []) add(t?.rider_id);
@@ -197,7 +257,7 @@ export function describeEvent(event, { riderNameById } = {}) {
     case "incident": {
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
-      return { key: "incident", params: { rider, kind: p.kind === "mechanical" ? "mechanical" : "crash" } };
+      return { key: incidentCopyKey(p), params: incidentCopyParams(p, rider) };
     }
     case "favorite_crack": {
       const rider = riderName(p.rider_id, riderNameById);
@@ -213,10 +273,38 @@ export function describeEvent(event, { riderNameById } = {}) {
       if (!rider) return null;
       return { key: "finale_attack", params: { rider } };
     }
+    // M13 (#3463, holdtidskørslen). Det ENESTE dramatiske øjeblik undervejs i
+    // en TTT er at et hold mister en mand — holdet må køre videre med færre til
+    // at tage tørnene. Ingen tal ud over km (fog of war): hverken tempo,
+    // rotation eller hvor tæt holdet er på at miste den næste.
+    case "ttt_rider_dropped": {
+      const rider = riderName(p.rider_id, riderNameById);
+      if (!rider) return null;
+      return { key: "ttt_rider_dropped", params: { rider } };
+    }
     case "sprint_decided": {
-      const rider = riderName((p.rider_ids || [])[0], riderNameById);
+      // #4879: v4's finale (backend/lib/engine/v4/finale.ts) navngiver vinderen
+      // direkte i `winner_rider_id`; v3's tidslinje bærer en `rider_ids`-liste
+      // hvor vinderen står først. Uden begge former blev HVER eneste v4-etapes
+      // spurt-linje tavst sprunget over af feedet.
+      const rider = riderName(p.winner_rider_id ?? (p.rider_ids || [])[0], riderNameById);
       if (!rider) return null;
       return { key: p.photo_finish ? "sprint_decided_photo" : "sprint_decided", params: { rider } };
+    }
+    // #2582 (tidsgrænsen, v4's M15). Fog of war: hverken procenten eller
+    // sekundgrænsen må vises — kun at nogen kom uden for tidsgrænsen, og at
+    // grupettoen blev reddet. Derfor et TÆLLETAL og ingen navneliste: et
+    // grupetto-event kan bære 40 ryttere, og en linje med 40 navne er ikke en
+    // broadcast-linje.
+    case "outside_time_limit": {
+      const count = Number(p.rider_count ?? (p.rider_ids || []).length) || 0;
+      if (count <= 0) return null;
+      return { key: "outside_time_limit", params: { count } };
+    }
+    case "grupetto_saved": {
+      const count = Number(p.rider_count ?? (p.rider_ids || []).length) || 0;
+      if (count <= 0) return null;
+      return { key: "grupetto_saved", params: { count } };
     }
     case "finish": {
       const rider = riderName(p.top?.[0]?.rider_id, riderNameById);

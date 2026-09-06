@@ -52,6 +52,8 @@ const AdminFairplayPage = lazy(() => import("./pages/AdminFairplayPage")); // #3
 const AdminValueTransitionPage = lazy(() => import("./pages/AdminValueTransitionPage")); // #3750/#4000
 const RankingsHubPage = lazy(() => import("./pages/RankingsHubPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
+// #4265: Sponsors-siden (Klubhus, ved siden af Board).
+const SponsorsPage = lazy(() => import("./pages/SponsorsPage"));
 // #4557 (S-M2b): tynd kill-switch-wrapper — se pages/boardroom/BoardroomRoute.jsx.
 const BoardroomRoute = lazy(() => import("./pages/boardroom/BoardroomRoute"));
 // #4557 (S-M2c): aarsmoedet — fuldskaerms-takeover, UDEN for Layout/sidebar
@@ -309,6 +311,9 @@ export default function App() {
                 links lander uændret på liga-fanen (default). */}
             <Route path="standings" element={<I18nReadyGate ns="standings"><RankingsHubPage /></I18nReadyGate>} />
             <Route path="board" element={<I18nReadyGate ns="board"><I18nReadyGate ns="backendMessages"><BoardroomRoute LegacyBoardPage={BoardPage} /></I18nReadyGate></I18nReadyGate>} />
+            {/* #4265: sponsorerne har egen side under Klubhus — forhandlingen er
+                flyttet af Board-fladen (BOARD_RULES.md §5). */}
+            <Route path="sponsors" element={<I18nReadyGate ns="sponsor"><SponsorsPage /></I18nReadyGate>} />
             <Route path="notifications" element={<I18nReadyGate ns="notifications"><I18nReadyGate ns="backendMessages"><NotificationsPage /></I18nReadyGate></I18nReadyGate>} />
             {/* #3199: forum (opslag + tråd-detalje). */}
             <Route path="forum" element={<I18nReadyGate ns="forum"><ForumPage /></I18nReadyGate>} />

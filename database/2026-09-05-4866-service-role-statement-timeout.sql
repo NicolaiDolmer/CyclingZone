@@ -1,0 +1,93 @@
+-- ============================================================
+-- service_role får sit eget statement_timeout (#4866)
+-- ============================================================
+--
+-- PROBLEM (målt 5/9 mod prod, project ghwvkxzhsbbltzfnuhhz):
+--   pg_roles.rolconfig
+--     authenticator : session_preload_libraries=safeupdate, statement_timeout=8s, lock_timeout=8s
+--     authenticated : statement_timeout=8s
+--     anon          : statement_timeout=3s
+--     service_role  : NULL  ← ingen egen indstilling
+--   Backend-jobs kører som service_role gennem PostgREST, men fordi rollen ikke
+--   har nogen egen indstilling, arver de authenticator-sessionens 8s. Det er for
+--   lidt til matview-refreshene: 5/9 kl. 11:17 dansk tid svarede
+--   POST /rest/v1/rpc/refresh_team_race_points_mv 500 ("canceling statement due to
+--   statement timeout"), kaldt fra backend/lib/refreshRankingMatviews.js.
+--   Hele ugen 29/8-5/9 lå der 2-10 timeout-cancels pr. dag.
+--
+-- HVORFOR EN ROLLE-INDSTILLING VIRKER FOR POSTGREST-KALD:
+--   Postgres selv anvender kun login-rollens (authenticator's) ALTER ROLE-
+--   indstillinger; SET ROLE trækker normalt IKKE målrollens indstillinger med.
+--   PostgREST lukker det hul eksplicit. PostgREST 13-dokumentationen,
+--   "Impersonated Role Settings"
+--   (https://docs.postgrest.org/en/v13/references/transactions.html):
+--
+--     "PostgreSQL applies the connection role (authenticator) settings.
+--      Additionally, PostgREST applies the impersonated roles settings as
+--      transaction-scoped settings. This allows finer-grained control over
+--      actions made by a role."
+--
+--   ...med præcis dette eksempel:
+--
+--     ALTER ROLE authenticator SET statement_timeout TO '10s';
+--     ALTER ROLE anonymous SET statement_timeout TO '1s';
+--
+--   Samme afsnit står i v12- og v14-dokumentationen, så adfærden er ikke ny.
+--   Empirisk bekræftet i VORES egen instans: anon har statement_timeout=3s —
+--   LAVERE end authenticator's 8s. Den indstilling ville være virkningsløs hvis
+--   PostgREST ikke anvendte den impersonerede rolles indstillinger. Supabase
+--   sætter den selv som default, altså er mekanismen aktiv her.
+--   statement_timeout har GUC-context USERSET, så der kræves INGEN
+--   "GRANT SET ON PARAMETER" (PG15+-reglen rammer kun superuser-/reload-
+--   parametre). Postgres 17.6; migrationen køres af auto-migrate.yml som
+--   `postgres`, der har ADMIN OPTION på service_role (verificeret 5/9) og
+--   dermed må sætte rollens session-defaults.
+--
+-- VALG: 60s (ejer-besluttet 5/9). Nuværende maksimum for det tungeste refresh er
+--   5.324 ms (pg_stat_statements, vindue fra 3/9 12:28 UTC, 344 kald,
+--   gennemsnit 1.426 ms) — men et statement der ER blevet cancelled tælles ikke
+--   med i max_exec_time, så det reelle maksimum ligger over 8s. 60s giver
+--   hovedrum til at datamængden vokser (race_results er 1,31 mio. rækker) uden at
+--   være uendeligt.
+--   OMKOSTNING: et løbsk backend-query kan nu holde ressourcer i 60s i stedet for
+--   8s. Accepteret: alternativet er 500'ere til spillere hver gang et refresh
+--   krydser 8s. Spiller-vendte roller (anon 3s, authenticated 8s) er URØRTE —
+--   denne migration flytter kun loftet for backend-jobs.
+--
+-- lock_timeout SÆTTES BEVIDST IKKE her. service_role arver authenticator's
+--   lock_timeout=8s, og det ER den ønskede adfærd: et REFRESH MATERIALIZED VIEW
+--   (uden CONCURRENTLY, jf. #3013) tager ACCESS EXCLUSIVE-lås, og alle læsere der
+--   ankommer imens stiller sig i låse-køen BAG den. Et højt lock_timeout ville
+--   lade refreshet vente op til 60s på låsen og trække hele læser-køen med ned —
+--   præcis de race_results-500'ere spillerne så 5/9 kl. 10:24 og 18:24. 8s
+--   fail-fast er bedre: refreshet opgiver, cron-fallbacken (backend/cron.js)
+--   prøver igen om 10 minutter, og læserne slipper.
+--
+-- IKKE LØST HER: den underliggende ACCESS EXCLUSIVE-lås (#3121). REFRESH
+--   MATERIALIZED VIEW CONCURRENTLY kan IKKE køre inde fra en funktionskrop —
+--   Postgres kræver isTopLevel=true, og alt via PostgREST/SPI er per definition
+--   ikke top-level (dokumenteret i database/2026-07-27-3013-refresh-matviews-
+--   concurrently.sql). Alle fire matviews HAR allerede det UNIQUE-indeks
+--   CONCURRENTLY kræver (verificeret 5/9: rider_rankings_mv_pk,
+--   team_race_points_mv_pk, team_standings_ext_mv_pk, global_rank_mv_pk), så det
+--   der mangler er transporten (pg_cron eller rå pg-forbindelse), ikke skemaet.
+--   Den beslutning er ejerens og hører til i #3121 — den tages ikke her.
+--
+-- IDEMPOTENT: ALTER ROLE ... SET overskriver værdien; gentagne kørsler er no-op.
+-- Ingen data røres, ingen låse tages på tabeller.
+--
+-- ROLLBACK:
+--   ALTER ROLE service_role RESET statement_timeout;   -- tilbage til arvede 8s
+--
+-- POST-VERIFY (kør efter merge + auto-migrate):
+--   select rolname, rolconfig from pg_roles
+--    where rolname in ('service_role','authenticator','authenticated','anon')
+--    order by rolname;
+--   -- forventet: service_role = {statement_timeout=60s};
+--   --            authenticator/authenticated/anon uændrede (8s / 8s / 3s).
+--   -- Effekt-tjek efter et døgn (skal falde mod 0 for refresh_*_mv):
+--   select calls, round(mean_exec_time) mean_ms, round(max_exec_time) max_ms, left(query,60)
+--     from pg_stat_statements where query ilike '%refresh_%_mv%'
+--    order by max_exec_time desc;
+
+ALTER ROLE service_role SET statement_timeout = '60s';

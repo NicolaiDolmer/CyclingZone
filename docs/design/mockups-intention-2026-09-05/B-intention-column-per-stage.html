@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Race day intention · Variant B (own column per stage)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens (copied from frontend/src/index.css, light + dark) ────── */
+:root{
+  color-scheme: light;
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --on-accent:#1a1f38;
+  --radius-sm:5px; --radius-pill:9999px;
+  --success:21 119 47; --danger:168 30 30; --warning:154 91 0;
+  --success-bg:rgba(21,119,47,.08); --danger-bg:rgba(168,30,30,.08);
+  --font-body:'DM Sans',system-ui,-apple-system,sans-serif;
+  --font-data:'Inter Tight',system-ui,sans-serif;
+  --font-display:'Bebas Neue',Impact,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+    --border:#2a2d3a;
+    --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+    --accent-t:#ffd966; --on-accent:#1a1f38;
+    --success:95 217 138; --danger:251 132 132;
+    --success-bg:rgba(95,217,138,.12); --danger-bg:rgba(251,132,132,.12);
+  }
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-body); color:var(--text-1);
+  font-family:var(--font-body); font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── T3 page shell (profile/detail: max-w-5xl) ──────────────────────────── */
+.page{max-width:1024px; margin:0 auto; padding:16px 32px 64px}
+.back{display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:500; color:var(--text-2); margin-bottom:10px}
+.back svg{color:var(--text-3)}
+
+.stamp{
+  font-family:var(--font-data); font-size:10px; font-weight:600;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--text-3);
+  border:1px solid var(--border); border-radius:var(--radius-sm); padding:2px 8px; white-space:nowrap;
+}
+
+/* ── T3 hero card (2px gold keyline on top edge) ────────────────────────── */
+.hero{
+  position:relative; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-sm); padding:20px; overflow:hidden;
+}
+.hero::before{content:""; position:absolute; inset:0 0 auto 0; height:2px; background:rgb(var(--accent))}
+.hero h1{
+  font-family:var(--font-display); font-size:40px; line-height:.92; letter-spacing:.01em;
+  text-transform:uppercase; margin:2px 0 0; font-weight:400;
+}
+.hero .meta{font-family:var(--font-data); font-size:12px; color:var(--text-2); margin-top:7px}
+.herostats{display:flex; gap:44px; border-top:1px solid var(--border); margin-top:16px; padding-top:16px}
+.herostats .k{font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.1em; color:var(--text-3)}
+.herostats .v{font-family:var(--font-data); font-size:20px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.2; margin-top:2px}
+.herostats .v.sm{font-size:16px; font-weight:600}
+
+/* ── Tabs (underline, below the hero, on the page background) ───────────── */
+.tabs{display:flex; align-items:flex-end; gap:22px; border-bottom:1px solid var(--border); margin:18px 0 14px}
+.tab{font-size:14px; font-weight:500; color:var(--text-2); padding:0 0 7px; margin-bottom:-1px; border-bottom:2px solid transparent; white-space:nowrap}
+.tab.is-active{color:var(--accent-t); font-weight:600; border-bottom-color:rgb(var(--accent))}
+.tabs .stamp{margin-left:auto; margin-bottom:6px}
+
+/* ── Card (the ONE recipe) ──────────────────────────────────────────────── */
+.card{background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden}
+.cardhead{display:flex; align-items:baseline; justify-content:space-between; gap:16px; padding:14px 16px; border-bottom:1px solid var(--border)}
+.cardhead h2{font-size:15px; font-weight:600; margin:0}
+.cardhead .sub{font-size:12.5px; color:var(--text-3); margin-top:2px}
+.cardhead .right{font-family:var(--font-data); font-size:12px; color:var(--text-3); white-space:nowrap}
+
+/* stage picker: the table's own toolbar row, inside the hairline frame */
+.toolbar{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  padding:8px 16px; border-bottom:1px solid var(--border); background:var(--bg-subtle);
+}
+.toolbar .note{font-size:12px; color:var(--text-2)}
+.stages{display:inline-flex; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg-card)}
+.stages span{
+  display:inline-flex; align-items:center; gap:5px;
+  font-family:var(--font-data); font-size:12px; font-weight:500; color:var(--text-2);
+  padding:5px 11px; border-left:1px solid var(--border); white-space:nowrap;
+}
+.stages span:first-child{border-left:0}
+.stages span.done{color:var(--text-3)}
+.stages span.done svg{color:var(--text-3)}
+.stages span.on{color:var(--accent-t); font-weight:600; background:rgb(var(--accent)/.10)}
+
+/* ── Table ──────────────────────────────────────────────────────────────── */
+.scroller{overflow-x:auto}
+table{border-collapse:separate; border-spacing:0; width:100%}
+th,td{text-align:left; padding:10px 10px; vertical-align:middle}
+th:first-child,td:first-child{padding-left:16px}
+th:last-child,td:last-child{padding-right:16px}
+th{
+  font-family:var(--font-data); font-size:11px; font-weight:600; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--text-3); padding-top:7px; padding-bottom:7px;
+  border-bottom:1px solid var(--border);
+}
+tbody tr td{border-bottom:1px solid var(--border)}
+tbody tr:last-child td{border-bottom:0}
+.n{text-align:right; font-family:var(--font-data); font-variant-numeric:tabular-nums}
+th.n{text-align:right}
+.c-nums .k{display:none}
+.c-nums .cell{display:inline}
+
+.rname{font-size:13.5px; font-weight:500; line-height:1.25}
+.rmeta{font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin-top:1px}
+.role{font-size:12.5px; color:var(--text-1)}
+.rolesub{font-family:var(--font-data); font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin-top:2px}
+.pill-risk{
+  font-family:var(--font-data); font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.07em;
+  color:rgb(var(--danger)); background:var(--danger-bg); border-radius:var(--radius-pill); padding:1px 7px; margin-left:6px;
+}
+td.n.is-risk .v{color:rgb(var(--danger))}
+
+/* ── Intention cell: chosen chip vs. "not chosen = the role's default" ──── */
+.intent{display:flex; align-items:center; gap:9px}
+.chip{
+  display:inline-flex; align-items:center; font-family:var(--font-data); font-size:12px; font-weight:600;
+  color:var(--accent-t); background:rgb(var(--accent)/.10); border:1px solid rgb(var(--accent)/.30);
+  border-radius:var(--radius-pill); padding:2px 11px; white-space:nowrap;
+}
+.chip.default{
+  color:var(--text-3); background:transparent; border:1px dashed var(--border); font-weight:500;
+}
+.quiet{display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:500; color:var(--accent-t); white-space:nowrap}
+.quiet svg{color:var(--accent-t)}
+.overlay{font-family:var(--font-data); font-size:11px; color:var(--text-3); margin-top:3px}
+
+/* ── Open picker: inline panel inside the row, hairline inset ───────────── */
+tr.picker td{background:var(--bg-subtle); padding:0 16px 14px}
+.pickbox{border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card); overflow:hidden}
+.pickhead{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:9px 14px; border-bottom:1px solid var(--border);
+}
+.pickhead .t{font-size:13px; font-weight:600}
+.pickhead .m{font-family:var(--font-data); font-size:11px; color:var(--text-3)}
+.opt{display:flex; align-items:center; gap:12px; padding:8px 14px; border-bottom:1px solid var(--border)}
+.opt:last-child{border-bottom:0}
+.opt .mark{width:14px; flex-shrink:0; color:var(--accent-t)}
+.opt .lab{font-family:var(--font-data); font-size:12.5px; font-weight:500; width:126px; flex-shrink:0}
+.opt .why{font-size:12px; color:var(--text-2)}
+.opt.on{background:rgb(var(--accent)/.07)}
+.opt.on .lab{color:var(--accent-t); font-weight:600}
+.opt .tag{
+  margin-left:auto; font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--text-3); white-space:nowrap;
+}
+
+/* ── Card footer actions (one gold primary per view) ────────────────────── */
+.actions{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-top:1px solid var(--border)}
+.count-line{font-family:var(--font-data); font-size:12px; color:var(--text-3)}
+.btnrow{display:flex; gap:8px}
+.btn{
+  display:inline-flex; align-items:center; height:30px; padding:0 13px;
+  border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card);
+  font-family:var(--font-data); font-size:12.5px; font-weight:500; color:var(--text-1);
+}
+.btn-primary{border:0; background:rgb(var(--accent)); color:var(--on-accent); font-weight:600}
+
+/* ── Second card: the one-day race ──────────────────────────────────────── */
+.stack{margin-top:14px}
+
+/* ── Copy reference (mockup annotation, not part of the surface) ─────────── */
+.annot{margin-top:34px; border-top:1px solid var(--border); padding-top:12px}
+.annot h3{font-family:var(--font-data); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--text-3); margin:0 0 8px}
+.annot table{width:100%}
+.annot th,.annot td{padding:6px 12px 6px 0; border-bottom:1px solid var(--border); font-size:12px}
+.annot th{font-family:var(--font-data); font-size:10px; letter-spacing:.08em}
+.annot td.en{color:var(--text-1)}
+.annot td.da{color:var(--text-2)}
+.annot .why{font-size:12px; color:var(--text-2); margin-top:10px; max-width:70ch}
+
+/* ── Mobile 390 ─────────────────────────────────────────────────────────── */
+@media (max-width:640px){
+  .page{padding:10px 16px 40px; max-width:none}
+  .hero{padding:16px}
+  .hero h1{font-size:32px}
+  .herostats{display:grid; grid-template-columns:1fr 1fr; gap:14px 0}
+  .tabs{gap:16px; overflow-x:auto}
+  .tabs .stamp{display:none}
+  .cardhead{flex-direction:column; align-items:stretch; gap:4px}
+  .cardhead .right{align-self:flex-start}
+  .toolbar{flex-direction:column; align-items:stretch; gap:8px; overflow:hidden}
+  .toolbar > *{min-width:0; max-width:100%}
+  .stages{overflow-x:auto; -webkit-overflow-scrolling:touch}
+
+  table.roster, table.roster thead, table.roster tbody, table.roster tr, table.roster th, table.roster td{display:block}
+  table.roster thead{display:none}
+  table.roster tbody tr{padding:12px 14px; border-bottom:1px solid var(--border)}
+  table.roster tbody tr:last-child{border-bottom:0}
+  table.roster tbody tr td{border:0; padding:0}
+  td.c-rider{margin-bottom:5px}
+  td.c-nums{display:inline-flex !important; align-items:baseline; margin:0 14px 7px 0; text-align:left}
+  td.c-nums .cell{display:inline-flex !important; align-items:baseline; gap:5px}
+  td.c-nums .k{display:inline !important; font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3)}
+  td.c-nums .v{font-family:var(--font-data); font-size:12.5px; font-variant-numeric:tabular-nums; color:var(--text-2)}
+  td.c-role{margin-bottom:7px}
+  td.c-role > div{display:flex; align-items:baseline; gap:8px}
+  td.c-role .rolesub{margin-top:0}
+  tr.picker{padding:0 !important; background:var(--bg-subtle)}
+  tr.picker td{padding:0 12px 12px !important}
+  .opt{flex-wrap:wrap; gap:6px 10px}
+  .opt .lab{width:auto}
+  .opt .why{width:100%; padding-left:26px}
+  .opt .tag{margin-left:0}
+  .actions{flex-direction:column; align-items:stretch; gap:10px}
+  .btnrow{justify-content:flex-end}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="back">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    Race library
+  </div>
+
+  <!-- T3 hero card -->
+  <div class="hero">
+    <h1>Settimana Preview</h1>
+    <div class="meta">ProSeries &middot; Stage race &middot; 5 stages &middot; Season 3</div>
+    <div class="herostats">
+      <div><div class="k">Stage</div><div class="v">3 / 5</div></div>
+      <div><div class="k">Terrain</div><div class="v sm">Mountain</div></div>
+      <div><div class="k">Selected</div><div class="v">8 / 8</div></div>
+      <div><div class="k">Locks</div><div class="v sm">Sun 11:00</div></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab">Overview</div>
+    <div class="tab is-active">Team selection</div>
+    <div class="tab">Stages</div>
+    <div class="tab">Results</div>
+    <span class="stamp">Variant B &middot; mockup 5 Sep, not final</span>
+  </div>
+
+  <!-- ── Team selection card ─────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="cardhead">
+      <div>
+        <h2>Team selection</h2>
+        <div class="sub">The role runs all race. The intention is what you want from him on the stage you have open.</div>
+      </div>
+      <span class="right">8/8 selected</span>
+    </div>
+
+    <!-- stage picker lives inside the table frame, not as a loose row -->
+    <div class="toolbar">
+      <span class="stages">
+        <span class="done">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Stage 1
+        </span>
+        <span class="done">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Stage 2
+        </span>
+        <span class="on">Stage 3 &middot; today</span>
+        <span>Stage 4</span>
+        <span>Stage 5</span>
+      </span>
+      <span class="note">Mountain, summit finish. Not set means he rides his role's default.</span>
+    </div>
+
+    <div class="scroller">
+      <table class="roster">
+        <colgroup>
+          <col style="width:180px"><col style="width:46px"><col style="width:52px"><col style="width:72px"><col style="width:142px"><col>
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Rider</th>
+            <th class="n">Fit</th>
+            <th class="n">Form</th>
+            <th class="n">Fatigue</th>
+            <th>Role</th>
+            <th>Intention &middot; stage 3</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <tr>
+            <td class="c-rider"><div class="rname">Luca Brenner</div><div class="rmeta">Climber &middot; 27</div></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fit</span><span class="v">88</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Form</span><span class="v">64</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fatigue</span><span class="v">41</span></span></td>
+            <td class="c-role"><div><div class="role">Captain</div><div class="rolesub">All race</div></div></td>
+            <td>
+              <div class="intent">
+                <span class="chip">All out</span>
+                <span class="quiet">Change</span>
+              </div>
+              <div class="overlay">Default captain. Today: all out.</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rname">Th&eacute;o Journal</div><div class="rmeta">Rouleur &middot; 29</div></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fit</span><span class="v">72</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Form</span><span class="v">70</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fatigue</span><span class="v">33</span></span></td>
+            <td class="c-role"><div><div class="role">Breakaway hunter</div><div class="rolesub">All race</div></div></td>
+            <td>
+              <div class="intent">
+                <span class="chip">Ride easy</span>
+                <span class="quiet">Change</span>
+              </div>
+              <div class="overlay">Default hunter. Today: sit in the bunch.</div>
+            </td>
+          </tr>
+
+          <!-- rider being edited: the picker opens inside the row -->
+          <tr>
+            <td class="c-rider"><div class="rname">Mads Okafor</div><div class="rmeta">Climber &middot; 24</div></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fit</span><span class="v">81</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Form</span><span class="v">58</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fatigue</span><span class="v">47</span></span></td>
+            <td class="c-role"><div><div class="role">Rider</div><div class="rolesub">All race</div></div></td>
+            <td>
+              <div class="intent">
+                <span class="chip">Work or attack</span>
+                <span class="quiet">Close</span>
+              </div>
+              <div class="overlay">Default rider. Today: work or attack.</div>
+            </td>
+          </tr>
+          <tr class="picker">
+            <td colspan="6">
+              <div class="pickbox">
+                <div class="pickhead">
+                  <span class="t">Mads Okafor &middot; stage 3</span>
+                  <span class="m">Applies to this stage only</span>
+                </div>
+
+                <div class="opt">
+                  <span class="mark"></span>
+                  <span class="lab">Grupetto</span>
+                  <span class="why">Rides it home in the back group. No shot at a result.</span>
+                </div>
+                <div class="opt">
+                  <span class="mark"></span>
+                  <span class="lab">Ride easy</span>
+                  <span class="why">Sits in and saves legs for the days that count.</span>
+                </div>
+                <div class="opt">
+                  <span class="mark"></span>
+                  <span class="lab">Normal</span>
+                  <span class="why">His normal race.</span>
+                  <span class="tag">Role default</span>
+                </div>
+                <div class="opt on">
+                  <span class="mark">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  </span>
+                  <span class="lab">Work or attack</span>
+                  <span class="why">Spends himself for the captain. Real fatigue.</span>
+                </div>
+                <div class="opt">
+                  <span class="mark"></span>
+                  <span class="lab">All out</span>
+                  <span class="why">Everything on today. The hardest day on his legs.</span>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rname">Ruben Halvorsen</div><div class="rmeta">Sprinter &middot; 31</div></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fit</span><span class="v">34</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Form</span><span class="v">61</span></span></td>
+            <td class="c-nums n is-risk"><span class="cell"><span class="k">Fatigue</span><span class="v">79</span></span><span class="pill-risk">Tired</span></td>
+            <td class="c-role"><div><div class="role">Sprint captain</div><div class="rolesub">All race</div></div></td>
+            <td>
+              <div class="intent">
+                <span class="chip">Grupetto</span>
+                <span class="quiet">Change</span>
+              </div>
+              <div class="overlay">Default sprint captain. Today: grupetto.</div>
+            </td>
+          </tr>
+
+          <!-- the "not chosen" state: the role's default carries the day -->
+          <tr>
+            <td class="c-rider"><div class="rname">Eskil Damgaard</div><div class="rmeta">Rouleur &middot; 22</div></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fit</span><span class="v">58</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Form</span><span class="v">52</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fatigue</span><span class="v">28</span></span></td>
+            <td class="c-role"><div><div class="role">Rider</div><div class="rolesub">All race</div></div></td>
+            <td>
+              <div class="intent">
+                <span class="chip default">Role default &middot; normal</span>
+                <span class="quiet">Set intention</span>
+              </div>
+              <div class="overlay">Nothing set. He rides his role.</div>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="c-rider"><div class="rname">Jonas Kirkeby</div><div class="rmeta">Puncheur &middot; 25</div></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fit</span><span class="v">66</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Form</span><span class="v">55</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fatigue</span><span class="v">62</span></span></td>
+            <td class="c-role"><div><div class="role">Rider</div><div class="rolesub">All race</div></div></td>
+            <td>
+              <div class="intent">
+                <span class="chip default">Role default &middot; normal</span>
+                <span class="quiet">Set intention</span>
+              </div>
+              <div class="overlay">Nothing set. He rides his role.</div>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <span class="count-line">Stage 3: 4 riders set, 2 on their role default &middot; stages 4 and 5 untouched</span>
+      <span class="btnrow">
+        <button class="btn">Copy to stage 4</button>
+        <button class="btn btn-primary">Save stage 3</button>
+      </span>
+    </div>
+  </div>
+
+  <!-- ── The same column on a one-day race: one race day, no stage strip ─── -->
+  <div class="card stack">
+    <div class="cardhead">
+      <div>
+        <h2>Omloop Preview &middot; one-day race</h2>
+        <div class="sub">One race day, so there is one intention per rider. Same column, no stage picker.</div>
+      </div>
+      <span class="right">Sat 13:00</span>
+    </div>
+
+    <div class="toolbar">
+      <span class="stages"><span class="on">Race day</span></span>
+      <span class="note">Cobbles, 12 sectors. Not set means he rides his role's default.</span>
+    </div>
+
+    <div class="scroller">
+      <table class="roster">
+        <colgroup>
+          <col style="width:180px"><col style="width:46px"><col style="width:52px"><col style="width:72px"><col style="width:142px"><col>
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Rider</th>
+            <th class="n">Fit</th>
+            <th class="n">Form</th>
+            <th class="n">Fatigue</th>
+            <th>Role</th>
+            <th>Intention &middot; race day</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="c-rider"><div class="rname">Th&eacute;o Journal</div><div class="rmeta">Rouleur &middot; 29</div></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fit</span><span class="v">91</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Form</span><span class="v">70</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fatigue</span><span class="v">18</span></span></td>
+            <td class="c-role"><div><div class="role">Captain</div><div class="rolesub">This race</div></div></td>
+            <td>
+              <div class="intent">
+                <span class="chip">All out</span>
+                <span class="quiet">Change</span>
+              </div>
+              <div class="overlay">Default captain. Today: all out.</div>
+            </td>
+          </tr>
+          <tr>
+            <td class="c-rider"><div class="rname">Eskil Damgaard</div><div class="rmeta">Rouleur &middot; 22</div></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fit</span><span class="v">74</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Form</span><span class="v">52</span></span></td>
+            <td class="c-nums n"><span class="cell"><span class="k">Fatigue</span><span class="v">28</span></span></td>
+            <td class="c-role"><div><div class="role">Rider</div><div class="rolesub">This race</div></div></td>
+            <td>
+              <div class="intent">
+                <span class="chip default">Role default &middot; normal</span>
+                <span class="quiet">Set intention</span>
+              </div>
+              <div class="overlay">Nothing set. He rides his role.</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Mockup annotation: the Danish half of every string ──────────────── -->
+  <div class="annot">
+    <h3>Copy &middot; EN first, DA second (annotation, not part of the surface)</h3>
+    <table>
+      <tr><th>EN</th><th>DA</th></tr>
+      <tr><td class="en">Grupetto</td><td class="da">Grupetto</td></tr>
+      <tr><td class="en">Ride easy</td><td class="da">K&oslash;r roligt</td></tr>
+      <tr><td class="en">Normal</td><td class="da">Normal</td></tr>
+      <tr><td class="en">Work or attack</td><td class="da">Arbejd eller angrib</td></tr>
+      <tr><td class="en">All out</td><td class="da">Alt ud</td></tr>
+      <tr><td class="en">Intention &middot; stage 3</td><td class="da">Intention &middot; etape 3</td></tr>
+      <tr><td class="en">The role runs all race. The intention is what you want from him on the stage you have open.</td><td class="da">Rollen g&aelig;lder hele l&oslash;bet. Intentionen er, hvad du vil have ud af ham p&aring; den etape, du har &aring;ben.</td></tr>
+      <tr><td class="en">Default hunter. Today: sit in the bunch.</td><td class="da">Standard: j&aelig;ger. I dag: bliv i feltet.</td></tr>
+      <tr><td class="en">Role default &middot; normal</td><td class="da">Rollens standard &middot; normal</td></tr>
+      <tr><td class="en">Nothing set. He rides his role.</td><td class="da">Intet valgt. Han k&oslash;rer sin rolle.</td></tr>
+      <tr><td class="en">Set intention</td><td class="da">S&aelig;t intention</td></tr>
+      <tr><td class="en">Applies to this stage only</td><td class="da">G&aelig;lder kun denne etape</td></tr>
+      <tr><td class="en">Copy to stage 4</td><td class="da">Kopi&eacute;r til etape 4</td></tr>
+      <tr><td class="en">Save stage 3</td><td class="da">Gem etape 3</td></tr>
+    </table>
+    <p class="why">No numbers, no percentages and no ceiling talk on the surface: each option says what happens in words, and the manual lives in Help.</p>
+  </div>
+
+</div>
+</body>
+</html>

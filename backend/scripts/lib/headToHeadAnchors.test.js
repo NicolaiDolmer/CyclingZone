@@ -9,6 +9,7 @@ import {
   scoreDescentVsSummitRatio,
   scoreDescentAttackBounds,
   scorePunchCorrelation,
+  scoreCobblestoneLift,
   scoreDominance,
   scoreBreakawayRates,
   scoreTypeIntegrity,
@@ -206,6 +207,55 @@ test("scorePunchCorrelation: ingen punch-etaper -> N/A", () => {
   assert.equal(result.v4.verdict, "N/A");
 });
 
+// ── scoreCobblestoneLift (M8-wiring, #2789/#4105) ────────────────────────
+
+// Fire ryttere hvor cobblestone er MODSAT rangeret af alle andre evner: paa
+// brosten vinder brostensrytteren, paa flad vinder sprinteren. Det er praecis
+// den relation ejer-reglen 3/9 beskriver.
+const COBBLE_ABILITIES = new Map([
+  ["a", ability({ cobblestone: 90, sprint: 30 })],
+  ["b", ability({ cobblestone: 70, sprint: 50 })],
+  ["c", ability({ cobblestone: 50, sprint: 70 })],
+  ["d", ability({ cobblestone: 30, sprint: 90 })],
+]);
+
+function orderedRow(profile_type, finale_type, order) {
+  return makeRow({
+    profile_type,
+    finale_type,
+    v3Entries: order.map((id, i) => ({ rider_id: id, rank: i + 1, stageGap: i * 5 })),
+    v4Entries: order.map((id, i) => ({ rider_id: id, rank: i + 1, time_seconds: 100 + i * 5 })),
+  });
+}
+
+test("scoreCobblestoneLift: brostensevnen afgoer brosten-etapen men ikke den flade -> positivt loeft -> PASS", () => {
+  const rows = [
+    orderedRow("cobbles", "reduced_sprint", ["a", "b", "c", "d"]),
+    orderedRow("gravel", "punch", ["a", "b", "c", "d"]),
+    orderedRow("flat", "bunch_sprint", ["d", "c", "b", "a"]),
+  ];
+  const result = scoreCobblestoneLift(rows, COBBLE_ABILITIES);
+  assert.equal(result.v4.verdict, "PASS");
+  assert.ok(result.v4.value > 0.03, `loeftet var ${result.v4.value}`);
+});
+
+test("scoreCobblestoneLift: samme rangorden paa brosten som paa flad -> loeft 0 -> FAIL", () => {
+  const rows = [
+    orderedRow("cobbles", "reduced_sprint", ["a", "b", "c", "d"]),
+    orderedRow("flat", "bunch_sprint", ["a", "b", "c", "d"]),
+  ];
+  const result = scoreCobblestoneLift(rows, COBBLE_ABILITIES);
+  assert.equal(result.v4.verdict, "FAIL");
+  assert.equal(result.v4.value, 0);
+});
+
+test("scoreCobblestoneLift: uden flad basis (eller uden brosten) -> N/A, aldrig et fake-0", () => {
+  const onlyCobbles = scoreCobblestoneLift([orderedRow("cobbles", "reduced_sprint", ["a", "b", "c", "d"])], COBBLE_ABILITIES);
+  assert.equal(onlyCobbles.v4.verdict, "N/A");
+  const onlyFlat = scoreCobblestoneLift([orderedRow("flat", "bunch_sprint", ["a", "b", "c", "d"])], COBBLE_ABILITIES);
+  assert.equal(onlyFlat.v4.verdict, "N/A");
+});
+
 // ── scoreDominance (favorite-win-rate + samme-hold-top-10) ──────────────
 
 test("scoreDominance: returnerer to ankre (favorite_win_rate, same_team_top10_share_4plus)", () => {
@@ -273,11 +323,32 @@ test("scoreTypeIntegrity: top-sprint-evne-rytter vinder flad etape -> sprinter_w
 
 // ── scoreBonusSecondsBounded ───────────────────────────────────────────
 
-test("scoreBonusSecondsBounded: v3 strukturelt PASS (racePassages-konstanter), v4 N/A (M9 F3-scope)", () => {
-  const result = scoreBonusSecondsBounded();
-  assert.equal(result.v3.verdict, "PASS");
+test("scoreBonusSecondsBounded: uden etaper i input er BEGGE celler N/A (auditen 5/9: cellen maalte ingenting)", () => {
+  const result = scoreBonusSecondsBounded([]);
+  assert.equal(result.v3.verdict, "N/A");
   assert.equal(result.v4.verdict, "N/A");
-  assert.match(result.v4.naReason, /F3-scope/);
+});
+
+test("scoreBonusSecondsBounded: maaler stoerste SAMLEDE bonus én rytter fik paa én etape, pr. motor", () => {
+  // v3 har intet samlet loft: samme rytter kan tage baade maal- (10) og
+  // spurt-bonus (3) = 13. v4's M9 klemmer under #2413's loft.
+  const rows = [{
+    raw: {
+      v3Passages: { passages: [
+        { kind: "sprint", results: [{ rider_id: "a", points: 20, bonus_seconds: 3 }] },
+        { kind: "finish", results: [{ rider_id: "a", points: 50, bonus_seconds: 10 }] },
+      ] },
+      v4Output: { passage_totals: [
+        { rider_id: "a", sprint_points: 70, kom_points: 0, bonus_seconds: 9 },
+        { rider_id: "b", sprint_points: 30, kom_points: 0, bonus_seconds: 6 },
+      ] },
+    },
+  }];
+  const result = scoreBonusSecondsBounded(rows);
+  assert.equal(result.v3.value, 13);
+  assert.equal(result.v3.verdict, "FAIL", "v3 har intet samlet loft — det er en MAALING, ikke en regression");
+  assert.equal(result.v4.value, 9);
+  assert.equal(result.v4.verdict, "PASS");
 });
 
 // ── scoreGapRealism ──────────────────────────────────────────────────────
@@ -337,7 +408,7 @@ test("buildScorecard: returnerer alle forventede anker-id'er, formatScorecard pr
   const ids = scorecard.map((a) => a.id);
   for (const expectedId of [
     "field_cohesion_flat", "descent_vs_summit_gap_ratio", "descent_attack_gain_bounds",
-    "punch_correlation", "favorite_win_rate", "same_team_top10_share_4plus",
+    "punch_correlation", "cobblestone_lift_on_sectors", "favorite_win_rate", "same_team_top10_share_4plus",
     "breakaway_rate_per_terrain", "sprinter_win_rate_flat", "itt_correlation",
     "bonus_seconds_bounded", "mountain_top10_spread", "gt_winner_margin",
   ]) {

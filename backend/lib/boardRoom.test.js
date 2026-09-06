@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildBoardRoomPayload,
   buildGoalLabelSource,
+  deriveBonusOffer,
   deriveConsequenceLine,
   deriveFoundingSeasonNumber,
   deriveGoalMovements,
@@ -33,6 +34,11 @@ function makeQueryBuilder(rows, { count = false } = {}) {
   const builder = {
     eq(col, value) {
       filtered = filtered.filter((r) => r[col] === value);
+      return builder;
+    },
+    // #4557 · lag 6-laesningen bruger .in("status", [...]).
+    in(col, values) {
+      filtered = filtered.filter((r) => values.includes(r[col]));
       return builder;
     },
     or() {
@@ -1065,4 +1071,91 @@ test("sampleVoiceLineOrNull: andre fejl (ukendt beat/archetype = programmørfejl
     () => sampleVoiceLineOrNull({ sampleFn: throwingFn, beat: "not_a_beat", archetypeKey: "x", seed: "x" }),
     /ukendt beat/
   );
+});
+
+// ── #4557 (overblik + faner) · bonustilbuddet, lag 6 ────────────────────────
+
+const BONUS_ROW = {
+  id: "bo-1",
+  team_id: TEAM_ID,
+  layer: 6,
+  status: "active",
+  severity: 200000,
+  payload: { extra_goal_type: "monument_podium", extra_goal_target: 1, extra_goal_label: "Top 3 i mindst 1 monument" },
+  resolved_at: null,
+  expires_at_season_id: "s3",
+  created_at: "2026-08-30T10:00:00Z",
+};
+
+test("deriveBonusOffer: aktivt tilbud i den aktive saeson -> raa maal-felter + beloeb fra raekken", () => {
+  const offer = deriveBonusOffer({ rows: [BONUS_ROW], currentSeasonId: "s3" });
+  assert.equal(offer.id, "bo-1");
+  assert.equal(offer.status, "active");
+  assert.equal(offer.amount, 200000);
+  assert.equal(offer.acceptedAt, null);
+  assert.deepEqual(offer.extraGoal, { type: "monument_podium", target: 1, label: "Top 3 i mindst 1 monument" });
+});
+
+test("deriveBonusOffer: et tilbud fra en ANDEN saeson bliver ikke staaende paa siden", () => {
+  const offer = deriveBonusOffer({ rows: [{ ...BONUS_ROW, expires_at_season_id: "s2" }], currentSeasonId: "s3" });
+  assert.equal(offer, null);
+});
+
+test("deriveBonusOffer: expires_at_season_id=null (indloeseligt naeste saeson) taeller altid med", () => {
+  const offer = deriveBonusOffer({ rows: [{ ...BONUS_ROW, expires_at_season_id: null }], currentSeasonId: "s3" });
+  assert.equal(offer.id, "bo-1");
+});
+
+test("deriveBonusOffer: et AKTIVT tilbud vinder over et accepteret (der er kun ét at handle paa)", () => {
+  const accepted = { ...BONUS_ROW, id: "bo-0", status: "accepted", resolved_at: "2026-08-29T10:00:00Z" };
+  const offer = deriveBonusOffer({ rows: [accepted, BONUS_ROW], currentSeasonId: "s3" });
+  assert.equal(offer.id, "bo-1");
+  assert.equal(offer.status, "active");
+});
+
+test("deriveBonusOffer: accepteret tilbud baerer resolved_at som acceptedAt (kvitterings-linjen)", () => {
+  const accepted = { ...BONUS_ROW, status: "accepted", resolved_at: "2026-08-30T12:00:00Z" };
+  const offer = deriveBonusOffer({ rows: [accepted], currentSeasonId: "s3" });
+  assert.equal(offer.status, "accepted");
+  assert.equal(offer.acceptedAt, "2026-08-30T12:00:00Z");
+});
+
+test("deriveBonusOffer: ingen raekker -> null (ingen stribe paa siden)", () => {
+  assert.equal(deriveBonusOffer({ rows: [], currentSeasonId: "s3" }), null);
+});
+
+test("deriveConsequenceLine: lag 6 er en beloenning, ikke holdets vaerste konsekvens", () => {
+  // Foer #4557 vandt lag 6 "hoejeste lag vinder"-reduktionen og stod som
+  // konsekvens-linjen paa tillidskortet, samtidig med at det nu vises som et
+  // tilbud i mandat-resuméet. Samme raekke, to modsatte betydninger.
+  assert.deepEqual(
+    deriveConsequenceLine([{ layer: 6 }]),
+    { active: false, lineKey: null, lineParams: {} },
+  );
+  const withPenalty = deriveConsequenceLine([{ layer: 2 }, { layer: 6 }]);
+  assert.equal(withPenalty.active, true);
+  assert.equal(withPenalty.lineKey, "consequence.layer.salaryCap", "lag 2 skal vinde over lag 6");
+});
+
+test("buildBoardRoomPayload: lag 6-raekken bliver til payloadens bonusOffer", async () => {
+  const supabase = makeSupabase(baseTables({ board_consequences: [BONUS_ROW] }));
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+  assert.equal(payload.bonusOffer.id, "bo-1");
+  assert.equal(payload.bonusOffer.amount, 200000);
+  // ... og den staar IKKE ogsaa som en konsekvens paa tillidskortet.
+  assert.equal(payload.confidence.consequence.active, false);
+});
+
+test("buildBoardRoomPayload: uden lag 6-raekker er bonusOffer null", async () => {
+  const supabase = makeSupabase(baseTables());
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+  assert.equal(payload.bonusOffer, null);
+});
+
+test("buildBoardRoomPayload: et accepteret bonus-maal markeres isBonus (ikke isStretch)", async () => {
+  const goal = { type: "stage_wins", target: 2, label: "2 etapesejre", source: "bonus_offer" };
+  const supabase = makeSupabase(tablesWithSingleGoal(goal));
+  const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID });
+  assert.equal(payload.mandate.goals[0].isBonus, true);
+  assert.equal(payload.mandate.goals[0].isStretch, false);
 });

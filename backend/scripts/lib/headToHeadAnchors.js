@@ -65,6 +65,16 @@ export const ANCHOR_BANDS = {
     min: 60, max: 480,
     source: "#2415 (gap-realisme-baand: GT-vindermargin typisk 1-8 min)",
   },
+  // M8-wiring 6/9 (#2789/#4105). FORSLAG — IKKE et ejer-godkendt maal.
+  // Taersklen er valgt af denne harness som REGRESSIONSVAGT for ejer-reglen 3/9
+  // ("brostensevnen taeller kun paa etaper med brosten/grus"), jf.
+  // RACE_ENGINE_RULES §4 "Et gulv er ikke et maal".
+  cobblestoneLiftOnSectors: {
+    min: 0.03,
+    source: "FORSLAG (M8-wiring 6/9, #2789/#4105) — regressionsvagt for ejer-reglen 3/9 "
+      + "\"brostensevnen taeller kun paa etaper med brosten/grus\"; taersklen er valgt af "
+      + "denne harness, ikke ejer-godkendt",
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -218,6 +228,64 @@ export function scorePunchCorrelation(rows, abilitiesByRider) {
 }
 
 // ---------------------------------------------------------------------------
+// 4b. Brostensevnens LOEFT paa brosten-/grus-etaper (M8-wiring, #2789/#4105)
+// ---------------------------------------------------------------------------
+
+const COBBLE_FAMILY_PROFILES = new Set(["cobbles", "gravel"]);
+const FLAT_BASELINE_PROFILES = new Set(["flat", "rolling"]);
+
+/**
+ * Hvorfor et LOEFT og ikke en raa korrelation: alle evner er indbyrdes korrelerede
+ * i den aegte population (en god rytter er god paa flere akser), saa cobblestone
+ * korrelerer med placeringen paa ENHVER etape — maalt 6/9 paa flade etaper: 0,69,
+ * uden at nogen brostens-mekanik var koblet ind. Et absolut tal ville derfor
+ * rapportere "brosten virker" paa en motor der slet ikke laeser evnen. Samme
+ * fejlfamilie som #4604's skala-fund: maal RELATIONER, ikke absolutte tal.
+ *
+ * Ankeret maaler forskellen mellem korrelationen paa brosten-/grus-etaper og paa
+ * flade/rullende etaper i SAMME koersel. Er den ~0, taeller brostensevnen ikke
+ * mere paa brosten end alle andre steder — praecis den tilstand ejer-reglen 3/9
+ * forbyder.
+ */
+export function scoreCobblestoneLift(rows, abilitiesByRider) {
+  const band = ANCHOR_BANDS.cobblestoneLiftOnSectors;
+
+  function meanCorr(subset, getRanked) {
+    const corrs = [];
+    for (const r of subset) {
+      const ranked = getRanked(r);
+      const abilities = ranked.map((x) => abilitiesByRider.get(x.rider_id)?.cobblestone).filter((v) => Number.isFinite(v));
+      if (abilities.length !== ranked.length) continue;
+      const c = spearmanCorrelation(abilities, invertedRanks(ranked));
+      if (c !== null) corrs.push(c);
+    }
+    return { value: mean(corrs), n: corrs.length };
+  }
+
+  const cobbleRows = stagesWhere(rows, (route) => COBBLE_FAMILY_PROFILES.has(route.profile_type));
+  const flatRows = stagesWhere(rows, (route) => FLAT_BASELINE_PROFILES.has(route.profile_type));
+
+  function liftFor(getRanked) {
+    const onCobbles = meanCorr(cobbleRows, getRanked);
+    const onFlat = meanCorr(flatRows, getRanked);
+    if (onCobbles.value === null || onFlat.value === null) return { value: null, n: 0 };
+    return { value: onCobbles.value - onFlat.value, n: onCobbles.n };
+  }
+
+  const v3 = liftFor((r) => r.raw.v3Output.ranked);
+  const v4 = liftFor((r) => r.raw.v4Output.results);
+  const naNote = "kraever BAADE brosten-/grus-etaper og flade/rullende etaper i input (loeftet er en forskel)";
+  return {
+    id: "cobblestone_lift_on_sectors",
+    label: "Brostensevnens loeft paa brosten/grus (spearman-forskel vs. flad)",
+    bandLabel: `loeft >= ${band.min} (FORSLAG, ikke ejer-godkendt)`,
+    source: band.source,
+    v3: { ...judge(v3.value, band, v3.n, naNote), display: (v) => fmt(v, 3) },
+    v4: { ...judge(v4.value, band, v4.n, naNote), display: (v) => fmt(v, 3) },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // 5 + 7. Favorit-win-rate + samme-hold-top-10 (genbruger raceDominanceMetrics'
 //    observeRace/aggregateObservations for v3 OG headToHeadObservers.observeStageV4
 //    for v4 — SAMME output-kontrakt, jf. observers-filens egen docstring, saa
@@ -366,23 +434,53 @@ export function scoreTypeIntegrity(rows, abilitiesByRider) {
 // 9. Bonussekunder GC-bounded (STRUKTUREL, ikke rows-afledt — se note)
 // ---------------------------------------------------------------------------
 
-export function scoreBonusSecondsBounded() {
+export function scoreBonusSecondsBounded(rows = []) {
   // v3: racePassages.js's FINISH_BONUS_SECONDS/INTERMEDIATE_BONUS_SECONDS er
-  // FASTE konstanter ([10,6,4] / [3,2,1]) — bounded ved konstruktion, kraever
-  // ingen kørsel for at verificere (samme tal som #2413-kravet).
+  // FASTE konstanter ([10,6,4] / [3,2,1]). v3 har intet SAMLET loft: samme
+  // rytter kan tage baade maal- og spurt-bonus, saa den maalte oevre graense er
+  // 13s, ikke 10. Det er dét tal cellen viser nu — auditen 5/9 fandt at v3-
+  // cellen var haardkodet til bestaaet uden at koere noget.
+  //
+  // v4: MAALT paa StageOutput.passage_totals (M9 er koblet ind, #2770/#2413).
+  // Loftet er en konstruktions-egenskab (clampPassageBonusToPerRiderCap), saa
+  // cellen er en regressionsvagt paa at koblingen faktisk haandhaever den.
+  const band = { max: 10 };
+  let v3Max = 0;
+  let v3Samples = 0;
+  let v4Max = 0;
+  let v4Samples = 0;
+  for (const row of rows) {
+    const v3ByRider = new Map();
+    for (const wp of row.raw?.v3Passages?.passages ?? []) {
+      for (const res of wp.results ?? []) {
+        if (!res.bonus_seconds) continue;
+        v3ByRider.set(res.rider_id, (v3ByRider.get(res.rider_id) ?? 0) + res.bonus_seconds);
+      }
+    }
+    if (v3ByRider.size > 0) {
+      v3Samples += 1;
+      v3Max = Math.max(v3Max, ...v3ByRider.values());
+    }
+    const totals = row.raw?.v4Output?.passage_totals ?? [];
+    const v4Bonus = totals.map((t) => t.bonus_seconds ?? 0).filter((v) => v > 0);
+    if (v4Bonus.length > 0) {
+      v4Samples += 1;
+      v4Max = Math.max(v4Max, ...v4Bonus);
+    }
+  }
+  const display = (v) => `${fmt(v, 0)}s (stoerste samlede bonus én rytter fik paa én etape)`;
   return {
     id: "bonus_seconds_bounded",
     label: "Bonussekunder GC-effekt bounded (maks ~10s/etape)",
-    bandLabel: "maks 10s/etape (maal) + bjerg dominerer stadig GC",
+    bandLabel: `<= ${band.max}s/etape pr. rytter`,
     source: "#2413-kravet (mor-spec §5)",
     v3: {
-      value: 10, sampleCount: 1, verdict: "PASS",
-      naReason: null, display: (v) => `${v}s (racePassages.js FINISH_BONUS_SECONDS=[10,6,4], strukturelt bounded)`,
+      ...judge(v3Samples > 0 ? v3Max : null, band, v3Samples, "ingen etaper med bonussekunder i input"),
+      display,
     },
     v4: {
-      value: null, sampleCount: 0, verdict: "N/A",
-      naReason: "M9 (bonussekunder) er F3-scope — tuning.bonusSeconds er defineret men ikke forbrugt af nogen v4-mekanik endnu",
-      display: (v) => fmt(v, 0),
+      ...judge(v4Samples > 0 ? v4Max : null, band, v4Samples, "ingen etaper med bonussekunder i input"),
+      display,
     },
   };
 }
@@ -460,10 +558,11 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
     scoreDescentVsSummitRatio(rows),
     scoreDescentAttackBounds(rows),
     scorePunchCorrelation(rows, abilitiesByRider),
+    scoreCobblestoneLift(rows, abilitiesByRider),
     ...scoreDominance(rows, { teamByRider, v4EntrantsById }),
     scoreBreakawayRates(rows),
     ...scoreTypeIntegrity(rows, abilitiesByRider),
-    scoreBonusSecondsBounded(),
+    scoreBonusSecondsBounded(rows),
     ...scoreGapRealism(rows),
   ];
 }
@@ -489,6 +588,7 @@ export function aggregateScorecards(scorecards) {
     field_cohesion_flat: ANCHOR_BANDS.fieldCohesionFlat,
     descent_vs_summit_gap_ratio: ANCHOR_BANDS.descentToSummitGapRatio,
     punch_correlation: { min: 0.2 },
+    cobblestone_lift_on_sectors: ANCHOR_BANDS.cobblestoneLiftOnSectors,
     favorite_win_rate: ANCHOR_BANDS.favoriteWinRate,
     same_team_top10_share_4plus: ANCHOR_BANDS.sameTeamTop10Share4Plus,
     itt_correlation: ANCHOR_BANDS.ittCorrelationMinAbs,

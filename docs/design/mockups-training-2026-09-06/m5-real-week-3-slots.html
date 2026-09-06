@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training program, real week with 3 game days (mockup 5)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens copied from frontend/src/index.css (light). Dark block is a bonus. */
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5; --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --on-accent:#1a1f38;
+  --success:21 119 47; --success-bg:rgba(21,119,47,.08);
+  --danger:168 30 30; --danger-bg:rgba(168,30,30,.08);
+  --radius:5px; --radius-pill:9999px;
+  --font-body:"DM Sans",system-ui,-apple-system,sans-serif;
+  --font-data:"Inter Tight",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+    --border:#2a2d3a; --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+    --accent-t:#ffd966;
+    --success:95 217 138; --success-bg:rgba(95,217,138,.12);
+    --danger:251 132 132; --danger-bg:rgba(251,132,132,.12);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-body); color:var(--text-1);
+  font-family:var(--font-body); font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+.page{max-width:1600px; margin:0 auto; padding:28px 32px 64px}
+
+/* ── page header ─────────────────────────────────────────────── */
+.hdr{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px}
+.hdr h1{font-family:var(--font-data); font-size:20px; font-weight:700; letter-spacing:-.01em; margin:0; line-height:1.2}
+.hdr .sub{font-size:13px; color:var(--text-2); margin-top:2px}
+.hdr-right{display:flex; flex-direction:column; align-items:flex-end; gap:8px}
+.stamp{
+  font-family:var(--font-data); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-3); border:1px solid var(--border); border-radius:var(--radius); padding:2px 7px; white-space:nowrap;
+}
+.nowchip{
+  font-family:var(--font-data); font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--accent-t); background:rgb(var(--accent)/.10); border:1px solid var(--border);
+  border-radius:var(--radius); padding:3px 8px; white-space:nowrap; font-variant-numeric:tabular-nums;
+}
+
+/* controls */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; height:32px; padding:0 12px;
+  font-family:var(--font-body); font-size:12.5px; font-weight:500;
+  border:1px solid var(--border); border-radius:var(--radius);
+  background:var(--bg-card); color:var(--text-1); cursor:pointer;
+}
+.btn-primary{background:rgb(var(--accent)); border-color:rgb(var(--accent)); color:var(--on-accent); font-weight:600}
+.selwrap{position:relative; display:block}
+.selwrap select{
+  appearance:none; -webkit-appearance:none; width:100%;
+  font-family:var(--font-body); font-size:12.5px; font-weight:500; color:var(--text-1);
+  background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius);
+  height:32px; padding:0 28px 0 10px; line-height:30px;
+}
+.selwrap .chev{position:absolute; right:8px; top:50%; transform:translateY(-50%); pointer-events:none; color:var(--text-3)}
+
+/* ── tabs ────────────────────────────────────────────────────── */
+.tabs{display:flex; gap:20px; border-bottom:1px solid var(--border); margin-bottom:12px; overflow-x:auto}
+.tab{
+  font-size:14px; font-weight:500; color:var(--text-2); padding:0 0 9px; margin-bottom:-1px;
+  border-bottom:2px solid transparent; white-space:nowrap;
+}
+.tab[aria-selected="true"]{color:var(--accent-t); border-bottom-color:rgb(var(--accent))}
+
+/* ── layout ──────────────────────────────────────────────────── */
+.board{display:grid; grid-template-columns:190px minmax(0,1fr); gap:14px; align-items:start}
+.card{background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius)}
+
+/* ── programs column ─────────────────────────────────────────── */
+.progcard{padding:14px}
+.progcard h2{font-size:15px; font-weight:600; margin:0 0 10px; line-height:1.2}
+.meta-label{font-family:var(--font-data); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3)}
+.prog{
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  border-top:1px solid var(--border); padding:6px; margin:0 -6px;
+}
+.prog .nm{font-size:13px; font-weight:500}
+.prog .ct{font-family:var(--font-data); font-size:11px; font-variant-numeric:tabular-nums; color:var(--text-3)}
+.prog.sel{background:var(--bg-subtle)}
+.prog.sel .nm{font-weight:600}
+.prog.sel .ct{color:var(--text-2)}
+.prog-group{margin-top:14px; margin-bottom:2px; display:block}
+.progcard .btn{width:100%; margin-top:8px}
+.progcard .btn-primary{margin-top:14px}
+.prognote{font-size:11.5px; color:var(--text-2); margin-top:10px; padding-top:10px; border-top:1px solid var(--border)}
+.mobile-prog{display:none; margin-bottom:12px}
+
+/* ── table ───────────────────────────────────────────────────── */
+.tablecard{background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden}
+.toolbar{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:8px 12px; border-bottom:1px solid var(--border); overflow-x:auto;
+}
+.seg{display:inline-flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden}
+.seg span{font-size:12px; font-weight:500; color:var(--text-2); padding:4px 10px; white-space:nowrap; border-left:1px solid var(--border)}
+.seg span:first-child{border-left:0}
+.seg span[aria-current="true"]{color:var(--accent-t); background:rgb(var(--accent)/.10)}
+.toolmeta{font-family:var(--font-data); font-size:12px; color:var(--text-3); white-space:nowrap; font-variant-numeric:tabular-nums}
+
+.scroller{overflow-x:auto}
+table{border-collapse:collapse; width:100%; min-width:982px}
+th,td{text-align:left}
+thead th{
+  font-family:var(--font-data); font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text-3); padding:7px 4px; border-bottom:1px solid var(--border); white-space:nowrap; vertical-align:bottom;
+}
+tbody td{padding:6px 3px; border-bottom:1px solid var(--border); vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+
+.c-name{width:168px; min-width:168px; padding-left:12px !important; padding-right:10px !important;
+  position:sticky; left:0; z-index:1; background:var(--bg-card); border-right:1px solid var(--border)}
+thead .c-name{z-index:2; vertical-align:bottom}
+.c-num{width:42px; min-width:42px; text-align:right; padding-right:6px !important; font-family:var(--font-data);
+  font-size:13px; font-variant-numeric:tabular-nums}
+thead .c-num{text-align:right; padding-right:6px}
+.c-num.last{padding-right:12px !important; width:58px; min-width:58px}
+thead .c-num.last{padding-right:12px}
+.c-num .unit{display:block; font-size:10px; font-weight:400; letter-spacing:0; margin-top:1px}
+
+/* weekday group head */
+.dgrp{text-align:center; padding-bottom:5px; border-left:1px solid var(--border)}
+.dgrp .dnum{display:block; font-size:12px; font-weight:600; letter-spacing:.06em; color:var(--text-2)}
+.dgrp .dwhen{display:block; font-family:var(--font-data); font-size:10px; font-weight:400; letter-spacing:.02em;
+  text-transform:none; color:var(--text-3); margin-top:1px; font-variant-numeric:tabular-nums}
+.dgrp.tday .dnum, .dgrp.tday .dwhen{color:var(--accent-t)}
+
+
+/* slot head + slot cells */
+th.sl{width:34px; min-width:34px; text-align:center; font-size:10px; letter-spacing:.05em; color:var(--text-3); padding:3px 2px 7px}
+td.slot{width:34px; min-width:34px; text-align:center; padding-left:2px !important; padding-right:2px !important}
+.g1{border-left:1px solid var(--border)}
+th.sl.today{color:var(--accent-t); background:rgb(var(--accent)/.10)}
+td.slot.today{background:rgb(var(--accent)/.06)}
+td.slot.done .ab{opacity:.5}
+th.sl.done{opacity:.65}
+
+.rname{font-size:13.5px; font-weight:500; line-height:1.25; display:flex; align-items:center; gap:5px}
+.rsub{font-family:var(--font-data); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); line-height:1.4; white-space:nowrap}
+
+/* reference row */
+tr.ref td{background:var(--bg-subtle)}
+tr.ref .c-name{background:var(--bg-subtle)}
+tr.ref td.slot.today{background:var(--bg-subtle)}
+tr.ref .rname{font-weight:600}
+
+/* abbreviation blocks */
+.ab{
+  display:inline-block; width:28px; font-family:var(--font-data); font-size:10px; font-weight:500;
+  line-height:17px; height:17px; border-radius:var(--radius-pill);
+  background:var(--bg-subtle); color:var(--text-1); text-align:center; letter-spacing:.02em;
+}
+.ab.ghost{background:transparent; color:var(--text-3)}
+.ab.over{background:transparent; border:1px solid var(--border); line-height:15px}
+.ab.race{background:var(--text-1); color:var(--bg-card); font-weight:600}
+.dash{color:var(--text-3); font-family:var(--font-data); font-size:12px}
+.hot{color:rgb(var(--danger)); font-weight:600}
+.warn{color:rgb(var(--danger))}
+
+.countline{font-family:var(--font-data); font-size:12px; color:var(--text-3); margin-top:8px; font-variant-numeric:tabular-nums}
+.rhythm{font-size:12px; color:var(--text-2); margin-top:6px}
+.legend{font-family:var(--font-data); font-size:11px; color:var(--text-3); margin-top:8px; display:flex; gap:6px 14px; flex-wrap:wrap; align-items:center}
+.legend .ab{margin-right:5px}
+.key{
+  font-family:var(--font-data); font-size:11px; color:var(--text-2); margin-top:6px;
+  display:flex; gap:5px 12px; flex-wrap:wrap; align-items:center;
+}
+.key b{font-weight:600; color:var(--text-1)}
+
+/* ── mobile ──────────────────────────────────────────────────── */
+@media (max-width:860px){
+  .page{padding:20px 16px 64px}
+  .hdr{flex-direction:column; align-items:stretch; gap:12px}
+  .hdr-right{align-items:flex-start; flex-direction:row; justify-content:space-between; width:100%}
+  .board{grid-template-columns:minmax(0,1fr)}
+  .progcard{display:none}
+  .mobile-prog{display:block}
+  .toolbar{flex-wrap:wrap; row-gap:8px}
+  .c-name{width:150px; min-width:150px; padding-left:10px !important}
+  .rsub{white-space:normal}
+  table{min-width:964px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- page header -->
+  <div class="hdr">
+    <div>
+      <h1>Training</h1>
+      <div class="sub">Season 3, game day 27 of 84. On every game day a rider either races or trains.</div>
+    </div>
+    <div class="hdr-right">
+      <div class="stamp">Mockup 6 Sep, not final</div>
+      <div class="nowchip">Now: Tue &middot; midday</div>
+    </div>
+  </div>
+
+  <!-- tabs -->
+  <div class="tabs" role="tablist">
+    <div class="tab" role="tab" aria-selected="false">Overview</div>
+    <div class="tab" role="tab" aria-selected="true">Program</div>
+    <div class="tab" role="tab" aria-selected="false">Development</div>
+    <div class="tab" role="tab" aria-selected="false">Reports</div>
+  </div>
+
+  <div class="board">
+
+    <!-- programs column -->
+    <aside class="card progcard">
+      <h2>Programs</h2>
+      <div class="prog sel"><span class="nm">Climber</span><span class="ct">4</span></div>
+      <div class="prog"><span class="nm">Sprinter</span><span class="ct">3</span></div>
+      <div class="prog"><span class="nm">Cobbles</span><span class="ct">2</span></div>
+      <div class="prog"><span class="nm">GC rider</span><span class="ct">1</span></div>
+      <div class="prog"><span class="nm">Recovery block</span><span class="ct">0</span></div>
+      <div class="prog"><span class="nm">Build base</span><span class="ct">5</span></div>
+
+      <span class="meta-label prog-group">My programs</span>
+      <div class="prog"><span class="nm">Cobbles block</span><span class="ct">2</span></div>
+
+      <button class="btn btn-primary" type="button">Apply to squad</button>
+      <button class="btn" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        New program
+      </button>
+      <div class="prognote">Climber fills 21 game days, Mon to Sun, then starts over on Monday.</div>
+    </aside>
+
+    <div>
+      <!-- mobile stand-in for the programs column -->
+      <div class="mobile-prog">
+        <span class="selwrap">
+          <select aria-label="Program">
+            <option>Program: Climber (4 riders)</option>
+            <option>Program: Sprinter (3 riders)</option>
+            <option>Program: Cobbles (2 riders)</option>
+            <option>Program: GC rider (1 rider)</option>
+            <option>Program: Build base (5 riders)</option>
+            <option>My program: Cobbles block (2 riders)</option>
+            <option>New program</option>
+          </select>
+          <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </span>
+      </div>
+
+      <!-- week board, 3 game days per weekday -->
+      <div class="tablecard">
+        <div class="toolbar">
+          <div class="seg" role="group" aria-label="Squad view">
+            <span aria-current="true">All 18</span>
+            <span>No program 1</span>
+            <span>At risk 3</span>
+            <span>Racing 5</span>
+          </div>
+          <div class="toolmeta">Week 2 of season 3 &middot; 8 to 14 Sep &middot; 21 game days</div>
+        </div>
+
+        <div class="scroller">
+          <table>
+            <thead>
+              <tr>
+                <th class="c-name" rowspan="2">Rider</th>
+                <th class="dgrp" colspan="3"><span class="dnum">Mon</span><span class="dwhen">8 Sep</span></th>
+                <th class="dgrp tday" colspan="3"><span class="dnum">Tue</span><span class="dwhen">9 Sep</span></th>
+                <th class="dgrp" colspan="3"><span class="dnum">Wed</span><span class="dwhen">10 Sep</span></th>
+                <th class="dgrp" colspan="3"><span class="dnum">Thu</span><span class="dwhen">11 Sep</span></th>
+                <th class="dgrp" colspan="3"><span class="dnum">Fri</span><span class="dwhen">12 Sep</span></th>
+                <th class="dgrp" colspan="3"><span class="dnum">Sat</span><span class="dwhen">13 Sep</span></th>
+                <th class="dgrp" colspan="3"><span class="dnum">Sun</span><span class="dwhen">14 Sep</span></th>
+                <th class="c-num" rowspan="2">Form<span class="unit">/100</span></th>
+                <th class="c-num last" rowspan="2">Fatigue<span class="unit">/100</span></th>
+              </tr>
+              <tr>
+                <th class="sl g1 done">Mor</th>
+                <th class="sl done">Mid</th>
+                <th class="sl done">Eve</th>
+                <th class="sl g1 done">Mor</th>
+                <th class="sl today">Mid</th>
+                <th class="sl">Eve</th>
+                <th class="sl g1">Mor</th>
+                <th class="sl">Mid</th>
+                <th class="sl">Eve</th>
+                <th class="sl g1">Mor</th>
+                <th class="sl">Mid</th>
+                <th class="sl">Eve</th>
+                <th class="sl g1">Mor</th>
+                <th class="sl">Mid</th>
+                <th class="sl">Eve</th>
+                <th class="sl g1">Mor</th>
+                <th class="sl">Mid</th>
+                <th class="sl">Eve</th>
+                <th class="sl g1">Mor</th>
+                <th class="sl">Mid</th>
+                <th class="sl">Eve</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="ref">
+                <td class="c-name">
+                  <div class="rname">Program week</div>
+                  <div class="rsub">Climber &middot; reference</div>
+                </td>
+                <td class="slot g1 done"><span class="ab">Lng</span></td>
+                <td class="slot done"><span class="ab">Rec</span></td>
+                <td class="slot done"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1 done"><span class="ab">Clb</span></td>
+                <td class="slot today"><span class="ab">Thr</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Thr</span></td>
+                <td class="slot"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot g1"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="c-num"><span class="dash">&mdash;</span></td>
+                <td class="c-num last"><span class="dash">&mdash;</span></td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Mathis Berger</div><div class="rsub">24 &middot; Climber &middot; Climber</div></td>
+                <td class="slot g1 done"><span class="ab">Lng</span></td>
+                <td class="slot done"><span class="ab">Rec</span></td>
+                <td class="slot done"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1 done"><span class="ab">Clb</span></td>
+                <td class="slot today"><span class="ab race">Race</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Thr</span></td>
+                <td class="slot"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab race">Race</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot g1"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="c-num">88</td><td class="c-num last">41</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Ada Pedersen</div><div class="rsub">23 &middot; Climber &middot; Climber</div></td>
+                <td class="slot g1 done"><span class="ab">Lng</span></td>
+                <td class="slot done"><span class="ab">Rec</span></td>
+                <td class="slot done"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1 done"><span class="ab">Clb</span></td>
+                <td class="slot today"><span class="ab race">Race</span></td>
+                <td class="slot"><span class="ab over">Rec</span></td>
+                <td class="slot g1"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Thr</span></td>
+                <td class="slot"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab race">Race</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot g1"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="c-num">79</td><td class="c-num last">62</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Rafael Costa</div><div class="rsub">21 &middot; Climber &middot; Climber</div></td>
+                <td class="slot g1 done"><span class="ab">Lng</span></td>
+                <td class="slot done"><span class="ab">Rec</span></td>
+                <td class="slot done"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1 done"><span class="ab">Clb</span></td>
+                <td class="slot today"><span class="ab">Thr</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Thr</span></td>
+                <td class="slot"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot g1"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="c-num">84</td><td class="c-num last">35</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Ivo Marchetti</div><div class="rsub">29 &middot; Climber &middot; Climber</div></td>
+                <td class="slot g1 done"><span class="ab">Lng</span></td>
+                <td class="slot done"><span class="ab">Rec</span></td>
+                <td class="slot done"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1 done"><span class="ab over">Rst</span></td>
+                <td class="slot today"><span class="ab over">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Thr</span></td>
+                <td class="slot"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot g1"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="c-num">71</td><td class="c-num last hot">78</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Ola Sandvik</div><div class="rsub">27 &middot; Sprinter &middot; Sprinter</div></td>
+                <td class="slot g1 done"><span class="ab">Tem</span></td>
+                <td class="slot done"><span class="ab">Rec</span></td>
+                <td class="slot done"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1 done"><span class="ab">Spr</span></td>
+                <td class="slot today"><span class="ab race">Race</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab">Tem</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Pun</span></td>
+                <td class="slot"><span class="ab">Spr</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab race">Race</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot g1"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="c-num">90</td><td class="c-num last">44</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Luca Bianchi</div><div class="rsub">26 &middot; Puncheur &middot; Cobbles</div></td>
+                <td class="slot g1 done"><span class="ab">Lng</span></td>
+                <td class="slot done"><span class="ab">Tec</span></td>
+                <td class="slot done"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1 done"><span class="ab">Tec</span></td>
+                <td class="slot today"><span class="ab race">Race</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Tem</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Pun</span></td>
+                <td class="slot"><span class="ab">Thr</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab race">Race</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot g1"><span class="ab">Tem</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="c-num">82</td><td class="c-num last">47</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Jonas Reiter</div><div class="rsub">22 &middot; Time trial &middot; GC rider</div></td>
+                <td class="slot g1 done"><span class="ab">Lng</span></td>
+                <td class="slot done"><span class="ab">Int</span></td>
+                <td class="slot done"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1 done"><span class="ab">Int</span></td>
+                <td class="slot today"><span class="ab race">Race</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Thr</span></td>
+                <td class="slot"><span class="ab">Int</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Clb</span></td>
+                <td class="slot"><span class="ab race">Race</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot g1"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="c-num">86</td><td class="c-num last">39</td>
+              </tr>
+
+              <tr>
+                <td class="c-name"><div class="rname">Tomas Ruzicka</div><div class="rsub">28 &middot; Rouleur &middot; Build base</div></td>
+                <td class="slot g1 done"><span class="ab">Lng</span></td>
+                <td class="slot done"><span class="ab">Tem</span></td>
+                <td class="slot done"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1 done"><span class="ab">Tem</span></td>
+                <td class="slot today"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab over">Rst</span></td>
+                <td class="slot"><span class="ab">Tem</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="slot g1"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab">Tem</span></td>
+                <td class="slot"><span class="ab">Rec</span></td>
+                <td class="slot g1"><span class="ab">Rec</span></td>
+                <td class="slot"><span class="ab">Lng</span></td>
+                <td class="slot"><span class="ab ghost">Rst</span></td>
+                <td class="c-num">70</td><td class="c-num last hot">81</td>
+              </tr>
+
+              <tr>
+                <td class="c-name">
+                  <div class="rname">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="warn" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    Freya Dahl
+                  </div>
+                  <div class="rsub">18 &middot; Academy &middot; No program</div>
+                </td>
+                <td class="slot g1 done"><span class="dash">&mdash;</span></td>
+                <td class="slot done"><span class="dash">&mdash;</span></td>
+                <td class="slot done"><span class="dash">&mdash;</span></td>
+                <td class="slot g1 done"><span class="dash">&mdash;</span></td>
+                <td class="slot today"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="slot g1"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="slot g1"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="slot g1"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="slot g1"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="slot g1"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="slot"><span class="dash">&mdash;</span></td>
+                <td class="c-num">91</td><td class="c-num last">19</td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="countline">18 riders, 5 racing on Tue midday, 1 without a program</div>
+      <div class="rhythm">3 game days per calendar day. Your program repeats every calendar week.</div>
+      <div class="key">
+        <span><b>Mor</b> 08:00</span><span><b>Mid</b> 14:00</span><span><b>Eve</b> 20:00</span>
+        <span><b>Clb</b> Climbing</span><span><b>Thr</b> Threshold</span><span><b>Int</b> Intervals</span>
+        <span><b>Tem</b> Tempo</span><span><b>Spr</b> Sprint</span><span><b>Pun</b> Punch</span>
+        <span><b>Tec</b> Technique</span><span><b>Lng</b> Long ride</span><span><b>Frm</b> Form ride</span>
+        <span><b>Rec</b> Recovery</span><span><b>Rst</b> Rest</span>
+      </div>
+      <div class="legend">
+        <span><span class="ab">Clb</span>from program</span>
+        <span><span class="ab over">Rst</span>your override</span>
+        <span><span class="ab race">Race</span>race day, intention set on the race</span>
+        <span><span class="ab ghost">Rst</span>rest</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

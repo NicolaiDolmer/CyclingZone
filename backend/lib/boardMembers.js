@@ -21,6 +21,7 @@ import {
 } from "./boardArchetypes.js";
 import { getDnaArchetypeAlignmentBonus } from "./boardClubDna.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
+import { ensureMandateForTeamFormation } from "./boardMandateEngine.js";
 import { captureException } from "./sentry.js";
 
 export const TEAM_BOARD_MEMBERS_COUNT = 5;
@@ -279,7 +280,26 @@ export async function isWithinFirstSeasonForTeam({ supabase, teamId } = {}) {
   return rows.length > 0 && rows.every((row) => Number(row.seasons_completed || 0) === 0);
 }
 
+/**
+ * #4837 · Holddannelsens indgang til mandat-modellen.
+ *
+ * DNA-valget er det øjeblik et nyt menneskehold får sine 5 bestyrelses-
+ * medlemmer — og dermed det eneste naturlige sted at give det sin
+ * `board_relations`-række og sit første mandat. Wrapperen kalder kernen først
+ * (uændret adfærd, alle fejl bobler op som før) og hooker skyggemodellen på
+ * bagefter, så ÉT kald dækker alle fire udgange (førstegangsvalg, re-valg,
+ * samme-nøgle-regenerering og recovery).
+ *
+ * `ensureMandateForTeamFormation` kaster aldrig og er idempotent — et hold der
+ * allerede har relation/mandat røres ikke.
+ */
 export async function chooseDnaForTeam({ supabase, teamId, dnaKey } = {}) {
+  const result = await chooseDnaForTeamCore({ supabase, teamId, dnaKey });
+  await ensureMandateForTeamFormation(supabase, { teamId });
+  return result;
+}
+
+async function chooseDnaForTeamCore({ supabase, teamId, dnaKey } = {}) {
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (!teamId) throw new Error("teamId is required");
 

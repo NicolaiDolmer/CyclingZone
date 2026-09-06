@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sponsors, tabs (mockup, #4265)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens copied from frontend/src/index.css (light). Dark block mirrors [data-theme="dark"]. */
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5; --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --on-accent:#1a1f38;
+  --success:21 119 47; --success-bg:rgba(21,119,47,.08);
+  --danger:168 30 30; --danger-bg:rgba(168,30,30,.08);
+  --radius:5px; --radius-pill:9999px;
+  --font-body:"DM Sans",system-ui,-apple-system,sans-serif;
+  --font-data:"Inter Tight",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+    --border:#2a2d3a; --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+    --accent-t:#ffd966;
+    --success:95 217 138; --success-bg:rgba(95,217,138,.12);
+    --danger:251 132 132; --danger-bg:rgba(251,132,132,.12);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-body); color:var(--text-1);
+  font-family:var(--font-body); font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+/* T1 · standard content page: max-w-4xl (896px), pt-7 px-8 pb-16 */
+.page{max-width:896px; margin:0 auto; padding:28px 32px 64px}
+
+/* ── page header (the ONE recipe) ─────────────────────────────── */
+.hdr{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px}
+.hdr h1{font-family:var(--font-data); font-size:20px; font-weight:700; letter-spacing:-.01em; margin:0; line-height:1.2}
+.hdr .sub{font-size:13px; color:var(--text-2); margin-top:2px}
+.hdr .acts{display:flex; align-items:center; gap:10px; flex-shrink:0}
+.stamp{
+  font-family:var(--font-data); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-3); border:1px solid var(--border); border-radius:var(--radius);
+  padding:2px 7px; white-space:nowrap;
+}
+
+/* ── tabs (Tabs primitive anatomy) ────────────────────────────── */
+.tabs{
+  display:flex; gap:22px; border-bottom:1px solid var(--border);
+  margin-bottom:20px; overflow-x:auto; scrollbar-width:none;
+}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  font-size:14px; font-weight:500; color:var(--text-2); background:none; border:0;
+  padding:0 0 9px; margin-bottom:-1px; border-bottom:2px solid transparent;
+  cursor:pointer; white-space:nowrap; font-family:var(--font-body);
+}
+.tab[aria-selected="true"]{color:var(--text-1); border-bottom-color:rgb(var(--accent))}
+
+/* ── section card (the ONE recipe) ────────────────────────────── */
+.card{background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:20px}
+.card + .card{margin-top:14px}
+.cardhead{display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:4px 12px; margin-bottom:16px}
+.cardhead h2{font-size:15px; font-weight:600; margin:0; line-height:1.2}
+.meta{
+  font-family:var(--font-data); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-3); white-space:nowrap; font-variant-numeric:tabular-nums;
+}
+.quiet{
+  display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:500;
+  color:var(--accent-t); white-space:nowrap; text-decoration:none;
+}
+
+/* ── overview: identity line + HeroStats + two lines ──────────── */
+.ident{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap}
+.identname{font-family:var(--font-data); font-size:18px; font-weight:650; line-height:1.15; letter-spacing:-.005em}
+.identtype{
+  font-family:var(--font-data); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-3); margin-top:3px;
+}
+.stats{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:16px;
+  border-top:1px solid var(--border); margin-top:16px; padding-top:16px;
+}
+.stat .lab{
+  font-family:var(--font-data); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3);
+}
+.stat .num{
+  font-family:var(--font-data); font-size:20px; font-weight:650; font-variant-numeric:tabular-nums;
+  line-height:1.2; margin-top:2px; white-space:nowrap; text-align:left;
+}
+.meter{height:4px; border-radius:var(--radius-pill); background:var(--bg-subtle); overflow:hidden; margin-top:9px; max-width:150px}
+.meter span{display:block; height:100%; background:var(--text-1)}
+.lines{border-top:1px solid var(--border); margin-top:16px; padding-top:14px}
+.lines p{margin:0; font-size:13px; font-variant-numeric:tabular-nums}
+.lines p + p{margin-top:6px}
+.lines .soft{color:var(--text-2)}
+.lines .quiet{margin-left:8px}
+
+/* ── row list inside a card (T1 recipe) ───────────────────────── */
+.row{
+  display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+  border-top:1px solid var(--border); padding:11px 0;
+}
+.row .lbl{font-size:13.5px; font-weight:500; min-width:0}
+.row .lblsub{
+  font-family:var(--font-data); font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text-3); margin-top:2px; font-variant-numeric:tabular-nums;
+}
+.row .val{
+  font-family:var(--font-data); font-size:13.5px; font-weight:500; font-variant-numeric:tabular-nums;
+  white-space:nowrap; text-align:right;
+}
+.row .valsub{
+  font-family:var(--font-data); font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text-3); margin-top:2px; text-align:right; white-space:nowrap;
+}
+
+/* ── tables ───────────────────────────────────────────────────── */
+.scroller{overflow-x:auto}
+table{border-collapse:collapse; width:100%}
+th,td{text-align:left}
+thead th{
+  font-family:var(--font-data); font-size:11px; font-weight:500; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--text-3); padding:0 8px 8px 0; border-bottom:1px solid var(--border); white-space:nowrap;
+}
+tbody td{padding:9px 8px 9px 0; border-bottom:1px solid var(--border); vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+.num{
+  text-align:right; font-family:var(--font-data); font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap;
+  padding-right:0 !important;
+}
+thead .num{text-align:right; padding-right:0}
+.pay{min-width:400px}
+.p-src{min-width:200px}
+.stg{width:64px; min-width:64px}
+.amt{width:118px; min-width:118px}
+.grp td{
+  font-family:var(--font-data); font-size:11px; font-weight:500; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-3); padding-top:14px; padding-bottom:6px; border-bottom:1px solid var(--border);
+}
+tr.sum td{font-weight:600; border-top:1px solid var(--border); border-bottom:0; padding-top:11px}
+tr.sum .num{font-weight:650; font-size:13.5px}
+.src{font-size:13px}
+.srcsub{
+  font-family:var(--font-data); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3);
+  margin-top:1px; white-space:nowrap;
+}
+.capline{font-family:var(--font-data); font-size:11px; color:var(--text-3); margin-top:10px; font-variant-numeric:tabular-nums}
+
+/* offers table */
+.offers{min-width:744px; table-layout:fixed}
+.offers th,.offers td{padding-right:14px}
+.o-name{width:180px; min-width:180px; padding-right:12px !important}
+.o-guar{width:158px; min-width:158px}
+.o-rate{width:78px; min-width:78px}
+.o-bonus{width:220px; min-width:220px; padding-left:14px; white-space:normal}
+.none{color:var(--text-3); font-size:12px}
+.o-act{width:96px; min-width:96px; text-align:right; padding-right:0 !important}
+.oname{font-size:13.5px; font-weight:500; line-height:1.25}
+.otype{font-family:var(--font-data); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); margin-top:1px}
+.obonus{
+  font-size:12px; color:var(--text-2); line-height:1.4;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.o-guarval{white-space:nowrap}
+.o-guarsub{
+  font-family:var(--font-data); font-size:10px; letter-spacing:.02em; color:var(--text-3);
+  margin-top:2px; text-align:right; white-space:normal; line-height:1.3;
+}
+tr.picked td{background:var(--bg-subtle)}
+tr.picked .oname{font-weight:600}
+.pill{
+  display:inline-block; font-family:var(--font-data); font-size:10px; font-weight:500; letter-spacing:.06em;
+  text-transform:uppercase; line-height:17px; height:17px; padding:0 7px; border-radius:var(--radius-pill);
+  border:1px solid var(--border); color:var(--text-2); white-space:nowrap; margin-left:6px;
+}
+
+/* ── buttons ──────────────────────────────────────────────────── */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; height:28px; padding:0 11px;
+  font-family:var(--font-body); font-size:12.5px; font-weight:500;
+  border:1px solid var(--border); border-radius:var(--radius);
+  background:var(--bg-card); color:var(--text-1); cursor:pointer; white-space:nowrap;
+}
+.btn-ghost{border-color:transparent; background:transparent; color:var(--text-2)}
+.btn-primary{background:rgb(var(--accent)); border-color:rgb(var(--accent)); color:var(--on-accent); font-weight:600}
+
+/* confirm strip (same anatomy as SponsorOfferModal's review-and-sign) */
+.confirm{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;
+  margin-top:16px; padding:12px 14px; border:1px solid rgb(var(--accent)/.45);
+  border-radius:var(--radius); background:var(--bg-subtle);
+}
+.confirm p{margin:0; font-size:13px}
+.confirm .acts{display:flex; gap:8px}
+.lockline{font-size:13px; color:var(--text-2); margin:0 0 16px}
+
+/* ── empty state (EmptyState recipe) ──────────────────────────── */
+.empty{border:1px dashed var(--border); border-radius:var(--radius); padding:22px 20px; text-align:center}
+.empty svg{color:var(--text-3)}
+.empty h3{font-size:15px; font-weight:600; margin:8px 0 0}
+.empty p{font-size:13px; color:var(--text-2); margin:4px 0 12px}
+
+/* ── mockup annotation (not part of the page) ─────────────────── */
+.annot{display:flex; align-items:center; gap:10px; margin:0 0 10px}
+.section + .section .annot{margin-top:40px}
+.annot .k{
+  font-family:var(--font-data); font-size:10px; font-weight:500; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--text-3); white-space:nowrap;
+}
+.annot .rule{flex:1; height:1px; background:var(--border)}
+.annotnote{
+  font-family:var(--font-data); font-size:10px; letter-spacing:.04em; color:var(--text-3);
+  margin:-4px 0 10px; line-height:1.5;
+}
+
+/* ── mobile ≤640px ────────────────────────────────────────────── */
+@media (max-width:640px){
+  .page{padding:20px 16px 64px}
+  .hdr{flex-direction:column; align-items:stretch; gap:12px}
+  .hdr .acts{justify-content:space-between}
+  .tabs{gap:18px; margin-left:-16px; margin-right:-16px; padding:0 16px}
+  .card{padding:16px}
+  .stats{grid-template-columns:repeat(2,1fr); gap:14px 16px}
+  .meter{max-width:none}
+  .p-src,.o-name{
+    position:sticky; left:0; background:var(--bg-card);
+    border-right:1px solid var(--border); padding-right:10px !important;
+  }
+  thead .p-src,thead .o-name{background:var(--bg-card)}
+  tr.picked .o-name{background:var(--bg-subtle)}
+  .amt{width:104px; min-width:104px}
+  .stg{width:52px; min-width:52px}
+  .confirm{flex-direction:column; align-items:stretch}
+  .confirm .acts{justify-content:flex-end}
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+  <!-- ── page header (the ONE recipe) ─────────────────────────── -->
+  <div class="hdr">
+    <div>
+      <h1>Sponsors</h1>
+      <p class="sub">Season 3 deal and what it pays.</p>
+    </div>
+    <div class="acts">
+      <span class="stamp">Mockup 6 Sep, not final</span>
+      <button class="btn btn-primary" type="button">Choose next season's sponsor</button>
+    </div>
+  </div>
+
+  <!-- ── tabs (below the header, on the page background) ──────── -->
+  <div class="tabs" role="tablist" aria-label="Sponsors">
+    <button class="tab" type="button" role="tab" aria-selected="true">Overview</button>
+    <button class="tab" type="button" role="tab" aria-selected="false">Deal</button>
+    <button class="tab" type="button" role="tab" aria-selected="false">Payments</button>
+    <button class="tab" type="button" role="tab" aria-selected="false">Next season</button>
+  </div>
+
+  <!-- ══ TAB 1 · Overview (default, everything above the fold) ══ -->
+  <div class="section">
+    <div class="annot"><span class="k">Tab: Overview</span><span class="rule"></span></div>
+
+    <section class="card">
+      <div class="ident">
+        <div>
+          <div class="identname">Corvus Aviation</div>
+          <div class="identtype">The results deal · signed for season 2</div>
+        </div>
+        <span class="meta">Season 3 · division 2</span>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="lab">Paid so far</div>
+          <div class="num">278.076 CZ$</div>
+        </div>
+        <div class="stat">
+          <div class="lab">Guaranteed</div>
+          <div class="num">244.200 CZ$</div>
+        </div>
+        <div class="stat">
+          <div class="lab">Earned on top</div>
+          <div class="num">33.876 CZ$</div>
+        </div>
+        <div class="stat">
+          <div class="lab">Stages ridden</div>
+          <div class="num">33 of 124</div>
+          <div class="meter"><span style="width:26.6%"></span></div>
+        </div>
+      </div>
+
+      <div class="lines">
+        <p>Per stage 345 CZ$, 91 stages left are worth 31.395 CZ$</p>
+        <p class="soft">Next season: 5 offers open, pick locks when season 4 starts
+          <a class="quiet" href="#">Go to Next season
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          </a>
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══ TAB 2 · Deal ═════════════════════════════════════════ -->
+  <div class="section">
+    <div class="annot"><span class="k">Tab: Deal</span><span class="rule"></span></div>
+
+    <section class="card">
+      <div class="cardhead">
+        <h2>Corvus Aviation</h2>
+        <a class="quiet" href="#">How sponsor money works
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </a>
+      </div>
+
+      <div class="row">
+        <div><div class="lbl">Guaranteed at season start</div></div>
+        <div>
+          <div class="val">214.200 CZ$</div>
+          <div class="valsub">Paid on day one</div>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lbl">Per stage</div>
+          <div class="lblsub">124 stages in division 2</div>
+        </div>
+        <div>
+          <div class="val">345 CZ$</div>
+          <div class="valsub">42.840 CZ$ over the season</div>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lbl">Division adjustment</div>
+          <div class="lblsub">Deal priced for division 3, you race in division 2</div>
+        </div>
+        <div>
+          <div class="val">30.000 CZ$</div>
+          <div class="valsub">Every season</div>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lbl">Stage win bonus</div>
+          <div class="lblsub">Per stage win</div>
+        </div>
+        <div><div class="val">12.495 CZ$</div></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lbl">Podium bonus</div>
+          <div class="lblsub">Per podium, 2nd to 3rd</div>
+        </div>
+        <div>
+          <div class="val">4.998 CZ$</div>
+          <div class="valsub">Cap 189.210 CZ$ per season</div>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="lbl">Length</div>
+          <div class="lblsub">Runs through season 3</div>
+        </div>
+        <div><div class="val">2 seasons</div></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══ TAB 3 · Payments ═════════════════════════════════════ -->
+  <div class="section">
+    <div class="annot"><span class="k">Tab: Payments</span><span class="rule"></span></div>
+
+    <section class="card">
+      <div class="cardhead">
+        <h2>Paid so far this season</h2>
+        <span class="meta">Season 3 · division 2</span>
+      </div>
+
+      <div class="scroller">
+        <table class="pay">
+          <thead>
+            <tr>
+              <th class="p-src">Source</th>
+              <th class="num stg">Stages</th>
+              <th class="num amt">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="grp"><td colspan="3">Guaranteed</td></tr>
+            <tr>
+              <td class="p-src"><div class="src">Season base</div><div class="srcsub">Contract guarantee</div></td>
+              <td class="num stg"></td>
+              <td class="num amt">214.200 CZ$</td>
+            </tr>
+            <tr>
+              <td class="p-src"><div class="src">Division adjustment</div><div class="srcsub">Deal priced for division 3</div></td>
+              <td class="num stg"></td>
+              <td class="num amt">30.000 CZ$</td>
+            </tr>
+
+            <tr class="grp"><td colspan="3">Stages at 345 CZ$</td></tr>
+            <tr>
+              <td class="p-src src">Giro della Penisola</td>
+              <td class="num stg">18</td>
+              <td class="num amt">6.210 CZ$</td>
+            </tr>
+            <tr>
+              <td class="p-src src">Vuelta a los Pirineos</td>
+              <td class="num stg">6</td>
+              <td class="num amt">2.070 CZ$</td>
+            </tr>
+            <tr>
+              <td class="p-src src">Tour of South Australia</td>
+              <td class="num stg">6</td>
+              <td class="num amt">2.070 CZ$</td>
+            </tr>
+            <tr>
+              <td class="p-src src">Klassieker van Kuurne</td>
+              <td class="num stg">1</td>
+              <td class="num amt">345 CZ$</td>
+            </tr>
+            <tr>
+              <td class="p-src src">Rund um Köln Neu</td>
+              <td class="num stg">1</td>
+              <td class="num amt">345 CZ$</td>
+            </tr>
+            <tr>
+              <td class="p-src src">Ronde van Drenthe Nieuw</td>
+              <td class="num stg">1</td>
+              <td class="num amt">345 CZ$</td>
+            </tr>
+
+            <tr class="grp"><td colspan="3">Bonuses</td></tr>
+            <tr>
+              <td class="p-src"><div class="src">Stage win</div><div class="srcsub">Giro della Penisola</div></td>
+              <td class="num stg"></td>
+              <td class="num amt">12.495 CZ$</td>
+            </tr>
+            <tr>
+              <td class="p-src"><div class="src">Podium</div><div class="srcsub">Vuelta a los Pirineos</div></td>
+              <td class="num stg"></td>
+              <td class="num amt">4.998 CZ$</td>
+            </tr>
+            <tr>
+              <td class="p-src"><div class="src">Podium</div><div class="srcsub">Klassieker van Kuurne</div></td>
+              <td class="num stg"></td>
+              <td class="num amt">4.998 CZ$</td>
+            </tr>
+
+            <tr class="sum">
+              <td class="p-src">Total</td>
+              <td class="num stg">33</td>
+              <td class="num amt">278.076 CZ$</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="capline">Result bonus cap this season: 22.491 of 189.210 CZ$ used.</p>
+    </section>
+  </div>
+
+  <!-- ══ TAB 4 · Next season ══════════════════════════════════ -->
+  <div class="section">
+    <div class="annot"><span class="k">Tab: Next season</span><span class="rule"></span></div>
+    <p class="annotnote">While this tab is open the page header's primary drops to secondary, so Sign deal is the only gold button on screen.</p>
+
+    <section class="card">
+      <div class="cardhead">
+        <h2>Next season</h2>
+        <span class="meta">5 offers · division 2 · 124 stages</span>
+      </div>
+      <p class="lockline">Your choice locks when season 4 starts. If you don't choose, the club signs the 1-season safe deal for you.</p>
+
+      <div class="scroller">
+        <table class="offers">
+          <thead>
+            <tr>
+              <th class="o-name">Sponsor</th>
+              <th class="num o-guar">Guaranteed</th>
+              <th class="num o-rate">Per stage</th>
+              <th class="o-bonus">Bonuses on top</th>
+              <th class="o-act"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="o-name"><div class="oname">Meridian Bank</div><div class="otype">The safe deal · 1 season</div></td>
+              <td class="num o-guar"><div class="o-guarval">412.160 CZ$</div><div class="o-guarsub">448.000 CZ$ if you ride every stage</div></td>
+              <td class="num o-rate">289 CZ$</td>
+              <td class="o-bonus"><span class="none">None</span></td>
+              <td class="o-act"><button class="btn" type="button">Review &amp; sign</button></td>
+            </tr>
+            <tr>
+              <td class="o-name"><div class="oname">Falcon Logistics</div><div class="otype">The loyal deal · 3 seasons</div></td>
+              <td class="num o-guar"><div class="o-guarval">349.440 CZ$</div><div class="o-guarsub">430.080 CZ$ if you ride every stage</div></td>
+              <td class="num o-rate">650 CZ$</td>
+              <td class="o-bonus"><div class="obonus">35.840 CZ$ signing bonus, paid up front</div></td>
+              <td class="o-act"><button class="btn" type="button">Review &amp; sign</button></td>
+            </tr>
+            <tr class="picked">
+              <td class="o-name"><div class="oname">Alta Cycles<span class="pill">Reviewing</span></div><div class="otype">The racing deal · 1 season</div></td>
+              <td class="num o-guar"><div class="o-guarval">224.000 CZ$</div><div class="o-guarsub">483.840 CZ$ if you ride every stage</div></td>
+              <td class="num o-rate">2.095 CZ$</td>
+              <td class="o-bonus"><span class="none">None</span></td>
+              <td class="o-act"><button class="btn" type="button">Review &amp; sign</button></td>
+            </tr>
+            <tr>
+              <td class="o-name"><div class="oname">Vesna Robotics</div><div class="otype">The results deal · 2 seasons</div></td>
+              <td class="num o-guar"><div class="o-guarval">268.800 CZ$</div><div class="o-guarsub">322.560 CZ$ if you ride every stage</div></td>
+              <td class="num o-rate">434 CZ$</td>
+              <td class="o-bonus"><div class="obonus">15.680 CZ$ per stage win, 6.272 CZ$ per podium, cap 237.440 CZ$</div></td>
+              <td class="o-act"><button class="btn" type="button">Review &amp; sign</button></td>
+            </tr>
+            <tr>
+              <td class="o-name"><div class="oname">Larkin Brewing</div><div class="otype">The ambition deal · 2 seasons</div></td>
+              <td class="num o-guar"><div class="o-guarval">313.600 CZ$</div><div class="o-guarsub">403.200 CZ$ if you ride every stage</div></td>
+              <td class="num o-rate">723 CZ$</td>
+              <td class="o-bonus"><div class="obonus">170.240 CZ$ if you finish top 40% of your division</div></td>
+              <td class="o-act"><button class="btn" type="button">Review &amp; sign</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="confirm">
+        <p>Sign with Alta Cycles for 1 season? You can change your pick until season 4 starts.</p>
+        <div class="acts">
+          <button class="btn btn-ghost" type="button">Cancel</button>
+          <button class="btn btn-primary" type="button">Sign deal</button>
+        </div>
+      </div>
+    </section>
+
+    <p class="annotnote" style="margin-top:22px">Variant · the same tab for most of the season, when no offers are open. The header primary is gone too, so the page has no gold.</p>
+    <section class="card">
+      <div class="cardhead">
+        <h2>Next season</h2>
+        <span class="meta">Offers open when season 3 ends</span>
+      </div>
+      <div class="empty">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="7" width="20" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><path d="M2 12h20"/>
+        </svg>
+        <h3>Offers open when season 3 ends</h3>
+        <p>All five offers open the day your current deal ends.</p>
+        <button class="btn" type="button">Read the sponsor rules</button>
+      </div>
+    </section>
+  </div>
+
+</main>
+</body>
+</html>

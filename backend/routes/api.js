@@ -191,14 +191,15 @@ import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked }
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
-import { applyRiderEligibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
+import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "../lib/riderEligibility.js";
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
+import { isRaceDayIntentionEnabled } from "../lib/raceIntentionFlag.js"; // #4632 loebsdagens intention (femtrins-effort), default off
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate, buildGameDayDateMap } from "../lib/raceCalendar.js";
 import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
-import { RACE_V3_TUNING } from "../lib/raceRoles.js";
+import { RACE_V3_TUNING, validEffortsFor } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
 import { injuryRisk } from "../lib/riderCondition.js";
@@ -314,11 +315,15 @@ import {
   isValidBoardRequestType,
   isValidDnaKey,
   loadGoalContextForBoard,
+  preserveExternalGoals,
   chooseDnaForTeam,
   isWithinFirstSeasonForTeam,
   resolveBoardRequest,
-  countTeamStarRiders,
 } from "../lib/boardEngine.js";
+// #4856 · Et accepteret bonustilbuds ekstra-mål skrives BÅDE til
+// board_profiles.current_goals (gammel model) og board_mandates.goals (det
+// Boardroom læser). Se modul-headeren i boardBonusGoal.js.
+import { applyAcceptedBonusGoal } from "../lib/boardBonusGoal.js";
 // #1237 · nettostilling-hjælpere (activeDebt/wageBillPerSeason) til no_outstanding_debt
 // (scoreFinanceHealthGoal, boardUtils.js) — /board/status + /board/request.
 import { sumActiveLoanDebt, sumRiderSalaries } from "../lib/boardUtils.js";
@@ -4528,8 +4533,11 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
     // rute-match-demand pr. løb (aggregateDemandVector — delt med peak-plans/board).
     // pagination-safe: ét holds ryttere er maks ~30 (samme grænse som getSelectionContext
     // dokumenterer), langt under PostgREST's 1000-rækkers cap.
-    const { data: teamRidersRaw, error: ridersErr } = await applyRiderEligibilityFilter(
-      supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type").eq("team_id", req.team.id)
+    // #4119: synligheds-filteret — sæson-matrixen VISER truppen, den udtager ikke.
+    // En solgt rytter med parkeret holdskifte skal blive stående (markeret udgående),
+    // ikke forsvinde mens han stadig kører løbet færdigt for dette hold.
+    const { data: teamRidersRaw, error: ridersErr } = await applyRosterVisibilityFilter(
+      supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type, pending_team_id").eq("team_id", req.team.id)
     );
     if (ridersErr) throw new Error(`riders (selection/season): ${ridersErr.message}`);
     const teamRiders = teamRidersRaw || [];
@@ -4564,6 +4572,8 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
         secondaryType: r.secondary_type ?? null,
         abilities: ab ? Object.fromEntries(RACE_SIM_ABILITY_KEYS.map((k) => [k, ab[k] ?? null])) : null,
         injured: isRiderInjured(conditionByRider.get(r.id)?.injured_until ?? null, todayStr),
+        // #4119: solgt, men kører løbet færdigt for dette hold. Vises, kan ikke udtages.
+        outgoing: Boolean(r.pending_team_id),
       };
     });
 
@@ -5476,7 +5486,11 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
 router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const enabled = await isRaceEngineV3ScoringEnabled(supabase);
+    // #4632: de to flag laeses parallelt — uafhaengige app_config-opslag.
+    const [enabled, intentionEnabled] = await Promise.all([
+      isRaceEngineV3ScoringEnabled(supabase),
+      isRaceDayIntentionEnabled(supabase),
+    ]);
     const { data: race, error } = await supabase
       .from("races")
       .select("id, status, stages, stages_completed")
@@ -5488,6 +5502,10 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
     const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
     res.json({
       enabled,
+      // #4632: fladen skal kunne rendre de rigtige trin uden at kende
+      // multiplikatorerne. FOG OF WAR: kun enum-vaerdier ud, aldrig tal.
+      intention_enabled: intentionEnabled,
+      valid_efforts: validEffortsFor(intentionEnabled),
       stages_completed: ctx.stages_completed,
       stage_count: ctx.stage_count,
       riders: ctx.riders,
@@ -5515,8 +5533,10 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
     if (!Array.isArray(overrides)) return res.status(400).json({ error: "stage_roles_invalid_body" });
 
     const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const result = validateStageRoleOverrides({
       overrides,
+      intentionEnabled,
       raceCompleted: race.status === "completed",
       stageCount: ctx.stage_count,
       stagesCompleted: ctx.stages_completed,
@@ -5562,6 +5582,7 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
+    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const now = new Date();
     const stages = [];
     for (let sn = 1; sn <= ctx.stage_count; sn++) {
@@ -5576,6 +5597,9 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       stage_count: ctx.stage_count,
       stages_completed: ctx.stages_completed,
       race_completed: ctx.race_completed,
+      // #4632: samme kontrakt som stage-roles-endpointet — enum-vaerdier, ingen tal.
+      intention_enabled: intentionEnabled,
+      valid_efforts: validEffortsFor(intentionEnabled),
       stages,
       // T4 på læsesiden: fraværende etaper i `orders` betyder neutral default —
       // frontend rendrer selv neutralTeamOrder()-formen for dem.
@@ -5602,8 +5626,10 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
+    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const result = validateTeamOrder({
       order: req.body || {},
+      intentionEnabled,
       raceCompleted: ctx.race_completed,
       stageNumber,
       stageCount: ctx.stage_count,
@@ -8949,6 +8975,50 @@ router.get("/admin/growth/snapshots", requireAdmin, async (req, res) => {
   } catch (error) {
     captureException(error);
     res.status(500).json({ error: error.message || "Kunne ikke hente vækst-snapshots" });
+  }
+});
+
+// GET /api/admin/growth/sprint-metrics — ad hoc DAU/WAU/MAU/D7 + signup-kohorte-
+// retention (#4870, afløser to direkte .rpc()-kald fra browseren).
+//
+// Hvorfor et endpoint og ikke et RPC-kald fra frontend: get_sprint_metrics(text)
+// og get_cohort_retention(int) er SECURITY DEFINER over auth.users +
+// player_events. Så længe `authenticated` havde EXECUTE, kunne ENHVER indlogget
+// spiller ramme /rest/v1/rpc/get_sprint_metrics — funktionernes interne
+// is_admin()-gate holdt dem ude, men eksponeringen stod som advisor-WARN i fire
+// runder (#2327, #2676, #3196 §2, #4870). database/2026-09-06-4870-revoke-
+// metrics-rpcs.sql fjerner grant'en; DETTE er den eneste dør ind nu, og den er
+// requireAdmin + service_role, præcis som /admin/retention og /admin/growth/*.
+//
+// Kohorte-delen er BEVIDST fejl-tolerant: den er en selvstændig blok i UI'et, og
+// en fejl dér må ikke skjule hoved-KPI'erne (samme kontrakt som det tidligere
+// Promise.all-mønster i AdminSprintMetricsPage). Fejler metrics-RPC'en derimod,
+// er svaret 500.
+router.get("/admin/growth/sprint-metrics", requireAdmin, async (req, res) => {
+  try {
+    const windowChoice = ["24h", "7d", "30d", "sprint"].includes(req.query.window)
+      ? req.query.window
+      : "7d";
+    const weeksParam = parseInt(req.query.weeks, 10);
+    const weeks = Number.isFinite(weeksParam) ? Math.min(Math.max(weeksParam, 1), 52) : 8;
+
+    const [metricsRes, cohortRes] = await Promise.all([
+      supabase.rpc("get_sprint_metrics", { p_window: windowChoice }),
+      supabase.rpc("get_cohort_retention", { p_weeks: weeks }),
+    ]);
+    if (metricsRes.error) throw metricsRes.error;
+
+    res.json({
+      window: windowChoice,
+      weeks,
+      metrics: metricsRes.data,
+      // null (ikke []) betyder "kunne ikke hentes" — UI'et skelner det fra
+      // "ingen signups i perioden" (tom liste).
+      cohorts: cohortRes.error ? null : (cohortRes.data?.cohorts ?? []),
+    });
+  } catch (error) {
+    captureException(error);
+    res.status(500).json({ error: error.message || "Kunne ikke hente sprint-metrics" });
   }
 });
 
@@ -12459,13 +12529,24 @@ const SPONSOR_INCOME_TX_TYPES = [
   "sponsor_objective_bonus",
 ];
 
+// #4265: Sponsors-sidens Payments-fane viser divisions-tillægget (#4376) i
+// Guaranteed-gruppen — det ER sponsorpenge (SPONSOR_RULES.md §3), men det
+// krediteres som sin EGEN finance-type ('division_adjustment'), ikke som
+// 'sponsor'. Kun den SÆSON-scopede liste udvides: livstids-`earnings` (og
+// dermed Finance-sidens kontraktpanel) beholder præcis den betydning den
+// altid har haft.
+const SPONSOR_SEASON_TX_TYPES = [...SPONSOR_INCOME_TX_TYPES, "division_adjustment"];
+
 // GET /api/sponsor/contract — holdets aktive sponsor-kontrakt (eller null) +
 // akkumuleret sponsorindtjening siden kontraktstart (#2948: kontraktpanelet
 // viser hvad aftalen faktisk har givet, pr. kilde).
 //
 // Udvidet med `season` — RÅ (ugrupperede) sponsor-transaktioner for den
 // AKTIVE sæson, til Finance-sidens "Sponsor income"-sektion (ejer-godkendt
-// mockup 4/8). Grupperings-/
+// mockup 4/8) og Sponsors-sidens Payments-fane (#4265). `season.stagesTotal`
+// er sæsonens etapetal for holdets EGEN pulje — uden det kan Sponsors-siden
+// hverken vise "stages ridden X of Y" eller hvad de resterende etaper er værd.
+// Grupperings-/
 // summerings-logikken er bevidst IKKE her — den bor som en ren, unit-testet
 // funktion i frontend/src/lib/sponsorIncomeBreakdown.js, så den kan testes
 // uden en DB. Racenavn embedded via FK (samme mønster som finance-report).
@@ -12512,11 +12593,28 @@ router.get("/sponsor/contract", requireAuth, async (req, res) => {
           .select("id, type, amount, description, metadata, created_at, race_id, race:race_id(name)")
           .eq("team_id", req.team.id)
           .eq("season_id", activeSeason.id)
-          .in("type", SPONSOR_INCOME_TX_TYPES)
+          .in("type", SPONSOR_SEASON_TX_TYPES)
           .order("created_at", { ascending: true });
         if (seasonTxError) throw seasonTxError;
+        // #4265: sæsonens etapetal for holdets EGEN pulje. Uden det kan
+        // Sponsors-siden hverken vise "stages ridden 33 of 124" eller hvad de
+        // resterende etaper er værd — og et gæt er forbudt (P11: mangler tallet,
+        // vises det ikke). pagination-safe: ét hold, én pulje, én sæson — S3's
+        // største pulje har under 100 løb, langt under PostgREST-loftet.
+        let stagesTotal = null;
+        if (req.team.league_division_id) {
+          const { data: poolRaces, error: poolRacesError } = await supabase
+            .from("races")
+            .select("stages")
+            .eq("season_id", activeSeason.id)
+            .eq("league_division_id", req.team.league_division_id);
+          if (poolRacesError) throw poolRacesError;
+          const summed = (poolRaces || []).reduce((sum, r) => sum + (Number(r.stages) || 1), 0);
+          stagesTotal = summed > 0 ? summed : null;
+        }
         season = {
           number: activeSeason.number,
+          stagesTotal,
           transactions: (seasonRows || []).map((r) => ({
             id: r.id,
             type: r.type,
@@ -15501,75 +15599,25 @@ router.post("/board/bonus-offer/accept", requireAuth, boardWriteLimiter, async (
     // Kreditering bekræftet (eller sprunget over i test-mode) — flip status nu.
     await finalizeBonusOfferAccept({ supabase, offerId: loaded.offer.id });
 
-    // Tilføj ekstra-mål til 1yr-board's current_goals. Best-effort: pengene +
-    // status er allerede den atomiske kerne af #3578-fixet; fejler dette,
-    // captures vi til Sentry men lader svaret forblive success, så en
-    // sekundær fejl her ikke gør en allerede-krediteret bonus umulig at
-    // genforsøge (offer'et er nu 'accepted', et retry ville 404'e).
+    // Tilføj ekstra-målet BEGGE steder: `board_profiles.current_goals` (den
+    // gamle model, stadig sandheden for penge/satisfaction) OG holdets aktive
+    // `board_mandates.goals` (det Boardroom-siden læser, #4856). Selve
+    // baseline-mekanikken (#3574) og de to skrivninger bor nu i
+    // `boardBonusGoal.js` — se modul-headeren dér for hvorfor det er en
+    // dobbelt-skrivning og ikke en flytning.
+    //
+    // Best-effort som før: pengene + status er den atomiske kerne af
+    // #3578-fixet; fejler dette, captures vi til Sentry men lader svaret
+    // forblive success, så en sekundær fejl her ikke gør en allerede-krediteret
+    // bonus umulig at genforsøge (offer'et er nu 'accepted', et retry ville 404'e).
     if (loaded.source_board_id) {
       try {
-        const { data: oneYrBoard } = await supabase
-          .from("board_profiles")
-          .select("id, current_goals, plan_type")
-          .eq("team_id", req.team.id)
-          .eq("plan_type", "1yr")
-          .eq("negotiation_status", "completed")
-          .maybeSingle();
-
-        if (oneYrBoard) {
-          const existingGoals = typeof oneYrBoard.current_goals === "string"
-            ? JSON.parse(oneYrBoard.current_goals)
-            : (oneYrBoard.current_goals || []);
-          // #3574 · Bonustilbuddets ekstra-mål er en BEHOLDNING (signature_rider:
-          // stjerne-ryttere i truppen NU; monument_podium: podier vundet i
-          // INDEVÆRENDE sæson) — ikke en hændelses-strøm. Uden en baseline
-          // evaluerer evaluateGoal målet mod holdets tilstand FØR accept, så et
-          // hold der allerede kvalificerer sig (hvilket er sandsynligt: netop
-          // det bonustilbuddet kræver, jf. isBonusOfferEligible) er "ahead" i
-          // samme sekund målet tilføjes — spillerrapport #3574 ("det gennemførte
-          // sig selv, jeg gjorde ikke noget"). baseline låser tællingen til
-          // NETTO-fremgang efter accept: boardGoals.js's signature_rider/
-          // monument_podium-grene trækker baseline fra før de sammenligner mod
-          // target, når feltet er sat (uændret adfærd for DNA-tradition-mål,
-          // der aldrig bærer baseline).
-          let baseline = null;
-          if (loaded.extra_goal.type === "signature_rider") {
-            const { data: currentRiders, error: currentRidersErr } = await supabase
-              .from("riders")
-              // pagination-safe: ét holds trup er bounded af rostergrænsen (~30-40 ryttere)
-              .select(BOARD_IDENTITY_RIDER_SELECT)
-              .eq("team_id", req.team.id);
-            if (currentRidersErr) throw new Error(`riders (bonus-offer baseline): ${currentRidersErr.message}`);
-            baseline = countTeamStarRiders(currentRiders || []);
-          } else if (loaded.extra_goal.type === "monument_podium") {
-            const { data: activeSeasonForBaseline, error: activeSeasonErr } = await supabase
-              .from("seasons").select("id").eq("status", "active").maybeSingle();
-            if (activeSeasonErr) throw new Error(`seasons (bonus-offer baseline): ${activeSeasonErr.message}`);
-            if (activeSeasonForBaseline?.id) {
-              const baselineContext = await loadGoalContextForBoard({
-                supabase,
-                teamId: req.team.id,
-                boardId: oneYrBoard.id,
-                currentSeasonId: activeSeasonForBaseline.id,
-              });
-              baseline = baselineContext.cumulativeMonumentPodiums ?? 0;
-            } else {
-              baseline = 0;
-            }
-          }
-          const extraGoal = {
-            type: loaded.extra_goal.type,
-            target: loaded.extra_goal.target,
-            cumulative: false,
-            source: "bonus_offer",
-            label: loaded.extra_goal.label,
-            baseline,
-          };
-          const updatedGoals = [...existingGoals, extraGoal];
-          await supabase.from("board_profiles")
-            .update({ current_goals: JSON.stringify(updatedGoals), updated_at: new Date().toISOString() })
-            .eq("id", oneYrBoard.id);
-        }
+        await applyAcceptedBonusGoal({
+          supabase,
+          teamId: req.team.id,
+          offerId: loaded.offer.id,
+          extraGoal: loaded.extra_goal,
+        });
       } catch (goalError) {
         captureException(goalError);
       }
@@ -15823,9 +15871,18 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
       }
     }
 
-    const finalGoals = finalizeBoardGoals({
-      goals: proposal.goals,
-      negotiationIndexes,
+    // #4865 · Signeringen genopbygger hele goals-arrayet fra forslaget. Uden
+    // preserveExternalGoals slettede den lydløst ethvert mål en ANDEN sti havde
+    // lagt i `current_goals` — målt i prod: 11 hold mistede deres accepterede
+    // bonustilbuds ekstra-mål (`source: "bonus_offer"`) mellem 23/8 og 1/9,
+    // mens de 200.000 CZ$ blev stående. Rebuild'en ejer kun de GENEREREDE mål;
+    // fremmede kilder bæres med over uændret.
+    const finalGoals = preserveExternalGoals({
+      rebuiltGoals: finalizeBoardGoals({
+        goals: proposal.goals,
+        negotiationIndexes,
+      }),
+      previousGoals: existingBoard?.current_goals ?? [],
     });
 
     const upsertData = {

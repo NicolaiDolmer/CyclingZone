@@ -21,18 +21,19 @@
 // tuning-flade, samme moenster som FINALE_EXTRA_TUNING) — v4 importerer
 // ALDRIG raceRoles.js (renheds-graensen).
 //
-// WIRING-BEHOV (denne fil roerer IKKE segmentLoop.ts/physiology.ts — orkestra-
-// toren wirer hooken ind): segmentLoop.ts's `tickGroupRiders` beregner i dag
-// `demand = baseDemand * positionFactor` (positionFactor = front-/draftFactor
-// fra tuning.work) foer den kaldes ind i physiology.tickPhysiology. Wiring-
-// punktet er PRAECIS dér: gang `demand` med
-// `effortDemandMultiplier(entrant.effort)` FOER tick-kaldet (eller kald
-// `applyEffortToDemand(demand, entrant.effort)` direkte), saa en 'protect'-
-// rytter braender W' hurtigere/krydser CP oftere (betaler for holdarbejdet),
-// og en 'save'-rytter braender langsommere. F2's segmentLoop behandler alle
-// entrants som 'normal' (f2-core-design.md §2), saa denne modulator er INERT
-// (multiplikator 1.0 for alle) indtil wiret ind — ingen eksisterende adfaerd
-// aendres af blot at tilfoeje denne fil.
+// WIRET 6/9 (#4632, ejer-beslutning model C). segmentLoop.ts's
+// `tickGroupRiders` beregner `demand = groupDemand * positionFactor`
+// (positionFactor = front-/draftFactor fra tuning.work) og kalder
+// `applyEffortToDemand(demand, entrant.effort)` FOER
+// physiology.tickPhysiologyOverSegment. Dermed braender en 'protect'-rytter
+// W' hurtigere/krydser CP oftere (betaler for holdarbejdet), en 'save'-rytter
+// langsommere, 'all_out' haardest og 'grupetto' mindst. Modulationen sidder
+// paa KRAVET og aldrig paa CP'en (M7/M11/M16's plads): CP er hvad rytteren kan
+// baere i dag, kravet er hvad han vaelger at lave — se segmentLoop.ts's
+// M12-blok for hele begrundelsen.
+//
+// En startliste hvor ALLE er 'normal' (fixtures, harness-default) koerer
+// bit-uaendret: normal-multiplikatoren er praecis 1.0.
 
 import type { EffortLevel } from "../types.ts";
 import { EFFORT_COST_EXTRA_TUNING } from "../tuning.ts";
@@ -43,9 +44,11 @@ import { EFFORT_COST_EXTRA_TUNING } from "../tuning.ts";
  * funktionerne nedenfor har en navngiven, testbar parameter-type.
  */
 export type EffortCostTuning = {
+  demandMultiplierGrupetto: number; // <save: koerer med, gaar ikke efter noget (#4632, raceRoles FATIGUE_MULTIPLIER_GRUPETTO-anker)
   demandMultiplierProtect: number; // >1: beskytter/traekker for holdet koster ekstra effekt-krav (raceRoles FATIGUE_MULTIPLIER_PROTECT-anker)
   demandMultiplierNormal: number; // =1: baseline, ingen modulation
   demandMultiplierSave: number; // <1: koerer bevidst inden for sig selv (raceRoles FATIGUE_MULTIPLIER_SAVE-anker)
+  demandMultiplierAllOut: number; // >protect: alt ud (#4632, raceRoles FATIGUE_MULTIPLIER_ALL_OUT-anker)
 };
 
 export { EFFORT_COST_EXTRA_TUNING as EFFORT_COST_TUNING };
@@ -61,8 +64,14 @@ export function effortDemandMultiplier(
   effort: EffortLevel,
   tuning: EffortCostTuning = EFFORT_COST_EXTRA_TUNING,
 ): number {
+  // #4632: femtrins-skalaen. 'grupetto' og 'all_out' skal have deres EGEN
+  // multiplikator — faldt de igennem til normal-grenen, ville et femtrins-valg
+  // stille blive til en normal dag, hvilket er praecis den fejlklasse
+  // teamOrdersAdapter's VALID_EFFORTS-sæt ogsaa lukker.
   if (effort === "protect") return tuning.demandMultiplierProtect;
   if (effort === "save") return tuning.demandMultiplierSave;
+  if (effort === "grupetto") return tuning.demandMultiplierGrupetto;
+  if (effort === "all_out") return tuning.demandMultiplierAllOut;
   return tuning.demandMultiplierNormal;
 }
 

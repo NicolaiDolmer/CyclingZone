@@ -11,7 +11,7 @@ import FitBar from "./FitBar.jsx";
 export default function AddRiderPopover({ rider, columns, bindingMap, onPick, onClose }) {
   const { t } = useTranslation("races");
   const targets = columns
-    .filter((c) => canAddRiderToColumn({ column: c, bindingMap, riderId: rider.id }))
+    .filter((c) => canAddRiderToColumn({ column: c, bindingMap, riderId: rider.id, outgoing: Boolean(rider.outgoing) }))
     .map((c) => ({
       c,
       fit: c.riders.find((x) => x.id === rider.id)?.suitability ?? null,

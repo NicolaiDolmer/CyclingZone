@@ -104,14 +104,22 @@ function makeMockSupabase({
       }
       if (table === "scout_sweep_runs") {
         return {
-          insert(payload) {
+          // #4868: upsert+ignoreDuplicates i stedet for insert+23505 — en
+          // kollision giver tomt `data` (ingen error), aldrig en fejl-kode.
+          upsert(payload) {
             const dup = state.sweepRuns.some((r) => r.team_id === payload.team_id && r.tick_date === payload.tick_date);
-            if (dup) {
-              return { then(resolve) { return resolve({ error: { code: "23505", message: "duplicate key" } }); } };
-            }
-            state.sweepRuns.push(payload);
-            state.inserts.scout_sweep_runs.push(payload);
-            return { then(resolve) { return resolve({ error: null }); } };
+            return {
+              select() {
+                return {
+                  then(resolve) {
+                    if (dup) return Promise.resolve({ data: [], error: null }).then(resolve);
+                    state.sweepRuns.push(payload);
+                    state.inserts.scout_sweep_runs.push(payload);
+                    return Promise.resolve({ data: [{ team_id: payload.team_id }], error: null }).then(resolve);
+                  },
+                };
+              },
+            };
           },
         };
       }
@@ -243,6 +251,37 @@ describe("runScoutSweep (#3997: mission uden dags-gate + target-backstop uændre
     const second = await runScoutSweep({ supabase, now: afterWindow });
     assert.deepEqual(second, { swept: 0 }); // target-backstoppets mutex blokerer — a2 IKKE behandlet i dag
     assert.equal(supabase.state.assignments.find((a) => a.id === "a2").status, "active");
+  });
+
+  it("#4868 IDEMPOTENS: dobbelt-kald springer holdet over uden at logge nogen ERROR (upsert+ignoreDuplicates, ikke insert+23505)", async () => {
+    const supabase = makeMockSupabase({
+      assignments: [{
+        id: "a1", team_id: "team-1", kind: "target", status: "active",
+        rider_id: "rider-1", target_level: 1, ready_on: "2026-07-10", season_id: "season-1",
+      }],
+    });
+    // Stub notify (mocket supabase understøtter ikke "teams" — notifyScoutReportReady's
+    // default ville ellers selv logge en (urelateret) ERROR, som ville kontaminere denne
+    // tests egentlige påstand: mutex-kollisionen selv logger ALDRIG en ERROR).
+    const notify = async () => ({ delivered: true });
+    const originalConsoleError = console.error;
+    const errorCalls = [];
+    console.error = (...args) => errorCalls.push(args);
+    try {
+      const first = await runScoutSweep({ supabase, now: afterWindow, notify });
+      assert.deepEqual(first, { swept: 1 });
+
+      supabase.state.assignments.push({
+        id: "a2", team_id: "team-1", kind: "target", status: "active",
+        rider_id: "rider-2", target_level: 1, ready_on: "2026-07-10", season_id: "season-1",
+      });
+      const second = await runScoutSweep({ supabase, now: afterWindow, notify });
+      assert.deepEqual(second, { swept: 0 }); // holdet er allerede swept i dag — a2 springes over
+      assert.equal(supabase.state.assignments.find((a) => a.id === "a2").status, "active");
+    } finally {
+      console.error = originalConsoleError;
+    }
+    assert.deepEqual(errorCalls, [], "dobbelt-kald mod scout_sweep_runs-mutexen må ALDRIG logge en ERROR-linje (#4868)");
   });
 
   it("mission-kind rører IKKE target-backstoppets scout_sweep_runs-mutex (uafhængige stier)", async () => {

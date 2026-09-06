@@ -10,7 +10,7 @@
 // REN — ingen import fra oevrigt backend. Overridable i harness/tests via
 // spread (`{ ...RACE_V4_TUNING, selection: { ...RACE_V4_TUNING.selection, ... } }`).
 
-import type { EngineTuning, ProfileType, SegmentKind } from "./types.ts";
+import type { EffortLevel, EngineTuning, ProfileType, SegmentKind } from "./types.ts";
 
 // Generisk dyb-freeze: RACE_V3_TUNING's moenster (Object.freeze) er fladt fordi
 // den er en flad tuning-flade; v4's tuning har nestede grupper (§4-5's kategorier)
@@ -235,6 +235,59 @@ const bonusSecondsExtra = {
   maxTotalBonusSecondsPerRiderPerStage: 10, // #2413: samlet GC-effekt bounded ~10s/etape, ogsaa naar samme rytter baade tager maal- og indlagt-spurt-bonus
   intermediateSprintQualityWeights: { sprint: 0.5, acceleration: 0.3, positioning: 0.2 }, // evne-vaegte for hvem der tager en indlagt spurt (distinkt fra finale.ts's egne demandVectorByFinaleType, saa spurt-udfaldet ikke er en ren kopi af maal-udfaldet)
   intermediateSprintNoiseSd: 0.06, // seedet stoej-sd paa spurt-scoren (rank-guard-moenstret: stoej flytter afstande, ikke fortegn — se computeIntermediateSprintOrder)
+
+  // ── Passage-POINT (#2770, ejer-beslutning 6/9) ─────────────────────────────
+  // Point-skalaerne er EJER-LAASTE Tour-skalaer (spec §4, 22/7) og staar i dag i
+  // backend/lib/racePassages.js. De er spejlet 1:1 her — IKKE gentunet — fordi
+  // v4's mekanik er den eneste kilde naar motoren er taendt, og det samlede
+  // pointudbud pr. etape derfor skal vaere praecis det samme foer og efter
+  // flippet (ellers ville en motorskifte-dag aendre alle groenne/prikkede
+  // troeje-regnskaber). Skalaerne er offentlig spilinformation (spilleren ser
+  // point i klassementet), ikke en fog-gated vaegt.
+  //
+  // AENDRER DU NOGET HER, aendrer du det ogsaa i racePassages.js — ellers
+  // driver de to lag fra hinanden paa den vaerst taenkelige maade: usynligt.
+  // headToHeadV4.js's paritets-maaling er vagten (--parity-noten i PR-body).
+  finishPointsByProfileType: {
+    flat: [50, 30, 20, 18, 16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2],
+    cobbles: [50, 30, 20, 18, 16, 14, 12, 10, 8, 7, 6, 5, 4, 3, 2],
+    rolling: [30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2],
+    hilly: [30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2],
+    classic: [30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2],
+    gravel: [30, 25, 22, 19, 17, 15, 13, 11, 9, 7, 6, 5, 4, 3, 2],
+    mountain: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+    high_mountain: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+    itt: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+    itt_hilly: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+    ttt: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+  } as Record<string, readonly number[]>,
+  // Ukendt profile_type falder tilbage paa bjerg-skalaen — samme fallback som
+  // racePassages.scaleFor (GREEN_FINISH_SCALES.mountain). NB: itt_hilly findes
+  // ikke i v3's tabel og ramte derfor netop det fallback; her staar den
+  // eksplicit med samme vaerdier, saa resultatet er uaendret.
+  finishPointsFallbackProfileType: "mountain",
+  intermediateSprintPoints: [20, 17, 15, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1] as readonly number[],
+  komPointsByCategory: {
+    HC: [20, 15, 12, 10, 8, 6, 4, 2],
+    "1": [10, 8, 6, 4, 2, 1],
+    "2": [5, 3, 2, 1],
+    "3": [2, 1],
+    "4": [1],
+  } as Record<string, readonly number[]>,
+  summitFinishPointMultiplier: 2, // HC/1. kategori der SLUTTER paa toppen taeller dobbelt (racePassages.scaleFor)
+  summitFinishDoubledCategories: ["HC", "1"] as readonly string[],
+  // Profil-typer hvor maal-bonussekunder ALDRIG uddeles. v3 gater paa
+  // profile_type (itt/ttt), M9's egen `finishBonusEligibleFinaleTypes` gater paa
+  // finale_type (solo_tt udeladt). BEGGE gates er aktive: en enkeltstart hvis
+  // raekke mangler finale_type (legacy) skal ogsaa vaere daekket.
+  bonusExcludedProfileTypes: ["itt", "itt_hilly", "ttt"] as readonly string[],
+  // Evne-vaegte for hvem der tager en bjergpassage. Spejler racePassages'
+  // KOM_BLEND_BIG/KOM_BLEND_SMALL: de store kategorier er ren klatring +
+  // udholdenhed, de smaa afgoeres af en kort rampe (punch/acceleration).
+  komQualityWeightsBig: { climbing: 0.75, endurance: 0.25 },
+  komQualityWeightsSmall: { climbing: 0.5, punch: 0.35, acceleration: 0.15 },
+  komSmallCategories: ["3", "4"] as readonly string[],
+  komNoiseSd: 0.03, // samme stoej-niveau som racePassages.WAYPOINT_NOISE_SD
 };
 
 /** M9 additiv bonussekunder-tuning (deep-frosset). Se bonusSecondsExtra-kommentaren ovenfor. */
@@ -298,7 +351,58 @@ const incidentsExtra = {
   positioningDampening: 0.00006, // risiko-reduktion pr. positioning-evne-point (0-99-skala) — samme daempnings-moenster som descent.ts's incidentRiskDescendingDampening, ALDRIG omvendt fortegn
   threeKmRuleWindowKm: 3, // "3 km-reglen"-vinduet fra maalstregen (mor-spec §8 beslutning 8)
   flatProfileTypes: ["flat", "rolling", "cobbles", "gravel", "classic"] as ProfileType[], // "FLADE etaper" i 3 km-reglens forstand — MODSAT bjergetaper; hilly/mountain/high_mountain udelukket (afgoerende gradient ved maal, M4-punch-territorium), itt/itt_hilly/ttt udelukket (ingen bundt-placering at beskytte). Start-kandidat, justerbar i head-to-head
-  unprotectedTimeLossSecondsRange: [5, 25] as readonly [number, number], // sekunder tabt ved et styrt UDEN 3 km-reglens beskyttelse — rent uheld, bevidst IKKE evne-skaleret (crash-alvor er ikke en testet evne, jf. monotoni-invarianten der kun gaelder evne-testede mekanikker)
+  unprotectedTimeLossSecondsRange: [5, 25] as readonly [number, number], // sekunder tabt ved et LET styrt UDEN 3 km-reglens beskyttelse — rent uheld, bevidst IKKE evne-skaleret (crash-alvor er ikke en testet evne, jf. monotoni-invarianten der kun gaelder evne-testede mekanikker). #2944: dette er trappens TRIN 1
+
+  // ── #2944-trappen (ejer-beslutning 6/9, LAAST) ─────────────────────────────
+  // ALLE vaerdier herunder er STARTGAET, KALIBRERES — de er valgt saa
+  // uheldsraten lander i ejerens maalbaand (1-2 % af rytterne pr. etape) og
+  // maales af backend/scripts/headToHeadV4.js's uhelds-sektion. Ingen af dem
+  // er ejer-godkendte tal; de er regressionsvagt indtil et scorecard siger
+  // andet (doktrinen "et gulv er ikke et maal", #4221).
+
+  // Risikoen er PR. KM, ikke pr. segment: `baseRiskPerSegment` laeses som
+  // risikoen for ét segment af `referenceSegmentKm` laengde og skaleres
+  // lineaert med segmentets faktiske laengde. Uden det ville en rute med 12
+  // korte segmenter give 4x risikoen af en rute med 3 lange — altsaa lod
+  // rute-MODELLENS granularitet, ikke etapens laengde, bestemme uheldsraten.
+  referenceSegmentKm: 40,
+
+  // Art-fordeling. Rest (1 - mechanicalShare) er styrt. v3's tilsvarende
+  // INCIDENT_MECHANICAL_SHARE er 0,3; her lidt hoejere, fordi v4's mekaniske
+  // uheld pr. konstruktion er UFARLIGE (kun tid) og derfor kan vaere hyppigere
+  // uden at goere loebet mere uretfaerdigt (#2944's kerne-klage).
+  mechanicalShare: 0.4,
+
+  // Alvorsaksen INDEN FOR styrt (summen af hard+serious < 1; resten er light).
+  // "serious" er ejerens SJAELDNE trin: ~3 % af styrt, dvs. langt under én pr.
+  // etape ved et normalt felt. Testen incidents.test.ts laaser <= 8 % som
+  // regressions-loft (dokumenteret taerskel, ikke maalet).
+  crashSeverityShares: { hard: 0.22, serious: 0.03 },
+
+  hardCrashTimeLossSecondsRange: [60, 240] as readonly [number, number], // TRIN 2: stort tidstab, men rytteren gennemfoerer
+  hardCrashInjuryDaysRange: [1, 4] as readonly [number, number], // TRIN 2: skade i dage (v3's INCIDENT_INJURY_MIN/MAX_DAYS er 1-5)
+  seriousCrashInjuryDaysRange: [4, 14] as readonly [number, number], // TRIN 3: udgaar + laengere skade
+
+  // TRIN 4: mekanisk uheld (punktering, kaede, hjul). ALDRIG abandoned, ALDRIG
+  // skade — kun tid. Spaendet er smallere end et haardt styrt: et hjulskift
+  // koster typisk mindre end at samle sig selv op.
+  mechanicalTimeLossSecondsRange: [20, 90] as readonly [number, number],
+  // "En hjaelper taet paa giver hurtigere hjulskift": multiplikator paa
+  // tidstabet naar betingelsen holder. STRENGT under 1, saa testen
+  // "hjaelper => strengt mindre tidstab" ikke kan blive vakuoest sand.
+  mechanicalHelperTimeLossFactor: 0.45,
+
+  // HAARDT LOFT pr. etape — ARVET fra v3's RACE_V3_INCIDENT_MAX_FIELD_SHARE
+  // (0,05 = 5 % af feltet). Loftet er REGRESSIONSVAGT, ikke maalet: maalet er
+  // 1-2 %, og et loft der binder er et signal om at basis-risikoen er for hoej.
+  maxIncidentsFieldShare: 0.05,
+
+  // En udgaaet rytter flyttes til sin egen gruppe med dette gap, saa han (a)
+  // aldrig merges tilbage ind i feltet af mergeGroups, (b) ikke laenger
+  // traekker i nogen gruppes tempo, og (c) sorterer sidst uanset opgoer.
+  // Vaerdien er en REPRAESENTATION af "ingen maaltid", ikke en paastand om en
+  // faktisk tid; index.ts sorterer i forvejen abandoned sidst.
+  abandonedGapSeconds: 3600,
 };
 
 /** M10 additiv incidents-tuning (deep-frosset). Se incidentsExtra-kommentaren ovenfor. */
@@ -340,6 +444,29 @@ const weatherExtra = {
   sunOvercastIncidentRiskMultiplier: 1.0, // baseline, ingen risiko-effekt ved sol/overskyet
   weatherTechniqueDampeningPerPoint: 0.00015, // daempning pr. "vejr-teknik"(-proxy)-point — samme stoerrelsesorden/subtraktive moenster som tuning.descent.incidentRiskDescendingDampening
   weatherTechniqueProxyWeights: { descending: 0.5, durability: 0.5 }, // proxy-vaegte for den endnu-ufoedte "vejr-teknik"-evne (0-99-skala) — F4 erstatter proxy'en med abilities.weather_technique naar noeglen lander i types.ts
+
+  // ── BELASTNINGS-ARMEN (#3855, M11-wiring 6/9) ────────────────────────────
+  // Risiko-felterne ovenfor var HELE M11 da modulet blev bygget, og de daekker
+  // kun "regn forstaerker styrt-risiko". Men et vejr-lag der udelukkende
+  // flytter uheldstal er usynligt i et resultat, og ejer-reglen (§9 punkt 1)
+  // er at vejret skal vaere koblet ind foer flippet — ikke bare importeret.
+  //
+  // Felterne herunder saenker rytterens CP (baeredygtige troeskel), samme sted
+  // og samme form som distanceFatigueExtra nedenfor. En foerste udgave gangede
+  // i stedet paa KRAFTKRAVET; maalt over 12 loeb pr. vejrtype flyttede det
+  // arbejdet 4-7 % og intet andet (samme grupper, samme splits, samme hale) —
+  // se mechanics/weather.ts's belastnings-blok for hvorfor det er strukturelt
+  // og ikke et kalibreringsspoergsmaal. Vejret skaber i oevrigt ingen ny
+  // splitaarsag: sidevind-selektion (vifter, #2476) er fortsat eget spor.
+  //
+  // STARTGAET, KALIBRERES. Tallene er valgt saa scorecardets ankre bliver
+  // inden for deres eget stoej-spaend over 3 seeds (maalt i wiring-PR'en), ikke
+  // mod en virkeligheds-reference — der findes ingen offentlig "hvad koster
+  // regn"-maaling at ankre i, jf. §4's "et gulv er ikke et maal".
+  rainCpPenalty: 0.05, // regn rammer HELE etapen uanset terraen (vaadt underlag, kulde, flere opbremsninger og genaccelerationer) — andel af CP en rytter UDEN vejr-teknik mister
+  windCpPenaltyMax: 0.07, // vind rammer kun i det omfang etapen er eksponeret: ganges med route.weather.wind_exposure (0-1) OG med terraen-eksponeringen nedenfor
+  windExposureByTerrain: { flat: 1, rolling: 0.85, cobbles: 0.9, descent: 0.5, climb: 0.25 }, // aabent terraen fanger vinden, en stigning ligger i lae af sig selv — samme rangorden som work.draftFactor's terraen-ordning
+  weatherTechniqueCpReliefFraction: 0.6, // andelen af straffen "vejr-teknik" fjerner ved FULD teknik (99); resten betaler alle. Bevidst under 1: vejret er aldrig gratis, heller ikke for den bedste (§9 punkt 3). Det er SPREDNINGEN i dette led — ikke straffens stoerrelse — der differentierer feltet, fordi gruppens kollektive CP falder sammen med den enkeltes
 };
 
 /** M11 additiv vejr-tuning (deep-frosset). Se weatherExtra-kommentaren ovenfor. */
@@ -356,10 +483,26 @@ export const WEATHER_EXTRA_TUNING = deepFreeze(weatherExtra);
 // raceRoles.RACE_V3_TUNING.FATIGUE_MULTIPLIER_PROTECT/_SAVE/_NORMAL: v3-
 // tallene er allerede spillet ind mod virkelige etaper) som en ren v4-
 // funktion — v4 importerer ALDRIG raceRoles.js selv (renheds-graensen).
+//
+// #4632 (loebsdagens intention, ejer 5-6/9): skalaen er udvidet til FEM trin.
+// De to nye yderpunkter ANKRER paa v3's nye startgaet praecis som de tre gamle
+// ankrede paa v3's kalibrerede tal — raceRoles.RACE_V3_TUNING.
+// FATIGUE_MULTIPLIER_GRUPETTO/_ALL_OUT (0.5 / 1.5). Begge er STARTGAET,
+// KALIBRERES sammen med resten af M12-wiringen; v4 er ikke live.
+//
+// WIRET 6/9 (#4632, model C): tallene er nu LIVE i segmentLoop.ts's
+// kraftkrav-beregning — men de er stadig startgaet. Maalt paa tvillinger
+// (identiske ryttere, samme loeb, 20 seeds) ved wiringen: all_out koster
+// ~+2.000 work_norm paa en flad etape og ~+4.000 med 12.000 ekstra sekunder
+// over CP paa en bjergetape, grupetto sparer omtrent det samme den anden vej.
+// Det er en STOR arm — den skal kalibreres sammen med bjerg-/hale-
+// kalibreringen (#4707), ikke laases her.
 const effortCostExtra = {
+  demandMultiplierGrupetto: 0.5, // <save: koerer med i grupettoen, gaar ikke efter noget (raceRoles FATIGUE_MULTIPLIER_GRUPETTO-anker, STARTGAET)
   demandMultiplierProtect: 1.2, // >1: beskytter/traekker for holdet koster ekstra effekt-krav (raceRoles FATIGUE_MULTIPLIER_PROTECT-anker)
   demandMultiplierNormal: 1.0, // =1: baseline, ingen modulation
   demandMultiplierSave: 0.7, // <1: koerer bevidst inden for sig selv (raceRoles FATIGUE_MULTIPLIER_SAVE-anker)
+  demandMultiplierAllOut: 1.5, // >protect: alt ud (raceRoles FATIGUE_MULTIPLIER_ALL_OUT-anker, STARTGAET)
 };
 
 /** M12 additiv effort-cost-tuning (deep-frosset). Se effortCostExtra-kommentaren ovenfor. */
@@ -372,8 +515,16 @@ export const EFFORT_COST_EXTRA_TUNING = deepFreeze(effortCostExtra);
 // Entrant.condition. Alle vaerdier START-KANDIDATER (kalibreres i head-to-
 // head-harnesset, f2-core-design.md §7), ikke gaettet endeligt her.
 const distanceFatigueExtra = {
-  monumentThresholdKm: 220, // km hvor monument-draeningen begynder — sat lidt under "~250 km" (mor-spec §4 M7) saa rampen er godt i gang PAA monument-distancer
-  monumentRampKm: 60, // km-vindue draeningen naar sit maks over, efter threshold (glidende rampe, ikke et spring) — naar maks ved ~280 km (220+60)
+  // KALIBRERET 6/9 ved wiringen (#4885): rampen laa 220-280 km. Maalt paa en
+  // repraesentativ offline-kalender (v4TailSpread.js, 141 etaper) ligger 3 af
+  // 141 etaper over 220 km — mekanikken var altsaa live paa ~2 % af kalenderen
+  // og doed paa resten. Rampen starter nu ved 150 km og naar sit maks ved 280,
+  // saa "distance-slid" faktisk er en funktion af distancen paa hele
+  // kalenderen, mens MAKSIMUM stadig kun naas paa monument-distancer (mor-spec
+  // §4 M7's "~250 km" ligger paa 77 % af rampen). START-KANDIDATER, kalibreres
+  // videre naar bjerg-/hale-kalibreringen (#4707) er ejer-afgjort.
+  monumentThresholdKm: 150, // km hvor draeningen begynder — under mor-spec'ens "~250 km", saa rampen er godt i gang PAA monument-distancer og maalbar paa lange normal-etaper
+  monumentRampKm: 130, // km-vindue draeningen naar sit maks over, efter threshold (glidende rampe, ikke et spring) — naar maks ved 280 km (150+130)
   monumentMaxCpPenalty: 0.12, // maks CP-reduktion (fraktion, 0-1) ved/efter rampens slutning, FOER endurance-mildning — op til 12% for en gennemsnitlig-endurance rytter
   monumentEnduranceMitigation: 0.6, // 0-1: andel af draeningen fuld endurance-evne (99) mildner — en 99-endurance-rytter oplever kun 40% af den fulde draening
   conditionFloorMultiplier: 0.85, // CP-multiplikator ved condition=0 (vaerst taenkelige dag-til-dag-slid); condition=1 => multiplikator 1 (ingen straf)
@@ -466,3 +617,153 @@ const physiologyWprimeDrain = {
 
 /** W'-taerings-tidskonstant (deep-frosset). Se physiologyWprimeDrain-kommentaren ovenfor. */
 export const PHYSIOLOGY_WPRIME_DRAIN_TUNING = deepFreeze(physiologyWprimeDrain);
+
+// ── M15 (mechanics/timeLimit.ts, #2582) — ADDITIV tidsgraense-tuning ─────────
+// Samme additive praecedens som finaleExtra ovenfor: SS2's frosne EngineTuning
+// (types.ts) har ingen "timeLimit"-noegle, saa mechanics/timeLimit.ts importerer
+// denne direkte. Ejer-beslutning 6/9 (UCI-reglen, docs/RACE_ENGINE_RULES.md §2d).
+//
+// FAKTOR-TABELLEN er andelen af VINDERTIDEN en rytter maa laegge oveni foer han
+// er uden for tidsgraensen. Ejer-rammen: UCI's 5-20 %-baand, flad lavest,
+// bjerg/summit hoejest, enkeltstart/holdtidskoersel efter UCI-praksis. ALLE
+// vaerdier er STARTGAET, kalibreres i harnesset — maalet er "sjaeldent paa flade
+// etaper, maerkbart paa haarde bjergetaper, aldrig en massakre".
+const timeLimitExtra = {
+  factorByProfileType: {
+    flat: 0.05, // fladt: laveste baand-ende (UCI's letteste koefficient) — feltet ruller samlet ind, kun en reelt havareret rytter falder udenfor
+    rolling: 0.06, // rullende: knap over fladt, samme massefinale-dynamik
+    hilly: 0.1, // kuperet: midt i baandet, foerste etapetype hvor selektionen kan hage en svag klatrer af
+    cobbles: 0.09, // brosten: kort men nedslidende; UCI's klassiker-praksis er mild fordi sektorerne allerede har splittet feltet
+    gravel: 0.11, // grus: laengere og mere nedslidende end brosten (RACE_ENGINE_RULES.md §2b), derfor lidt mildere graense
+    classic: 0.11, // monument-arketypen: lang, haard, stor spredning i maal
+    mountain: 0.15, // bjerg: hoej ende af baandet — grupettoen er normen her, ikke undtagelsen
+    high_mountain: 0.2, // hoejbjerg/summit: baandets top (ejer: "bjerg/summit hoejest")
+    itt: 0.25, // enkeltstart: UCI-praksis ligger over 5-20-baandet (typisk 25 %) fordi en TT spreder feltet naturligt
+    itt_hilly: 0.25, // kuperet enkeltstart: samme UCI-praksis som itt
+    ttt: 0.25, // holdtidskoersel: samme UCI-praksis; en rytter sluppet af sit hold maa ikke ryge ud paa en holdopgave
+  } as Record<ProfileType, number>, // graense-faktor pr. etapetype (andel af vindertiden). STARTGAET, kalibreres
+  fallbackFactor: 0.1, // faktor naar profile_type mangler/er ukendt — midt i baandet, saa en ukendt type hverken massakrerer eller slukker reglen
+  grupettoFieldFraction: 0.2, // andel af FELTET en samlet ankomst skal udgoere foer grupetto-redningen udloeses (UCI bruger typisk 20 %). STARTGAET, kalibreres
+  grupettoMinRiders: 8, // absolut gulv: i et lille felt maa 20 % ikke goere enhver lille klump til en grupetto. STARTGAET, kalibreres
+  // MAALT 6/9, ikke gaettet: vinduet kan IKKE vaere tuning.groups.mergeThresholdSeconds (2 s).
+  // finale.ts bygger hvert placerings-tier med et skridt paa mindst
+  // mergeThresholdSeconds + placementGapMarginSeconds (2 + 0,4 s) netop for at
+  // segmentLoop's efterfoelgende mergeGroups IKKE folder tierne sammen igen. Et
+  // 2-sekunders vindue kan derfor per konstruktion aldrig kaede to tiers sammen,
+  // saa en grupetto der ankommer i to klumper ville blive doemt som to smaa
+  // grupper og ryge ud — praecis den massakre reglen skal forhindre. Maalt paa en
+  // etape hvor halen faldt i to klumper 104 s fra hinanden (18 + 12 ryttere,
+  // taerskel 24): 2 s => begge ud, 120 s => samlet og reddet. Vinduet er en
+  // ANKOMST-graense ("kom de ind sammen?"), ikke en loebsdynamik-graense.
+  grupettoCohesionWindowSeconds: 120, // sammenhaengsvindue paa sluttid: hvor langt der maa vaere mellem to naboer i en samlet ankomst. STARTGAET, kalibreres
+};
+
+/** M15 additiv tidsgraense-tuning (deep-frosset). Se timeLimitExtra-kommentaren ovenfor. */
+export const TIME_LIMIT_EXTRA_TUNING = deepFreeze(timeLimitExtra);
+
+// ── M16 (mechanics/teamPlay.ts, #4246) — ADDITIV holdspils-tuning ────────────
+// Samme additive praecedens som finaleExtra/effortCostExtra ovenfor: SS2's
+// frosne EngineTuning (types.ts) har ingen "teamPlay"-noegle, saa
+// mechanics/teamPlay.ts importerer denne direkte.
+//
+// KONTRAKT (auditten 5/9 + ejer-beslutning 1 og 3, RACE_ENGINE_RULES §9): v3
+// har to holdspils-kanaler som v4 slet ikke har — kaptajnens BESKYTTELSE
+// (raceSimulator.teamComponent: den beskyttede rytter faar holdets arbejde som
+// et bounded score-loeft, vaegt teamRaceWeightV3() x helperSupport) og
+// hjaelperens PRIS (raceRoles.workCost: en negativ score-delta for at have
+// arbejdet). Begge forsvinder ved et flip hvis de ikke findes i v4.
+//
+// VALUTAEN ER CP, IKKE W'. v4 har ingen "score" at laegge et hold-led paa; den
+// har en fysiologi. Den foerste wiring 6/9 forsoegte W' (den anaerobe reserve)
+// og var BIT-IDENTISK med og uden hold: siden #4604's relative krav-tempo
+// ligger ingen over CP i normaltilstanden, saa W' genoplades fuldt hvert
+// segment og enhver delta er visket ud foer naeste segment laeser den. CP er
+// den vedvarende akse — den styrer baade gruppens tempo
+// (segmentLoop.computeGroupTempo) og klatre-selektionen (M2's testedDeficit),
+// altsaa praecis de to steder v3's holdspil ogsaa slaar igennem.
+//
+// BEVARELSE (ikke en kalibrering, en KONSTRUKTION): kaptajnens bonus-fraktion
+// er aldrig stoerre end summen af de omkostnings-fraktioner hans holdkammerater
+// faktisk paadrog sig samme segment, ganget med transferEfficiency <= 1.
+// Holdspil FLYTTER kraefter, det skaber dem ikke — v4's udgave af "aldrig
+// gratis alt-ud" (§9 punkt 3), property-testet, ikke kalibreret.
+//
+// ALLE TAL ER STARTGAET, KALIBRERES VIDERE. Ankret er v3's egne kalibrerede
+// FORHOLD (raceRoles.RACE_V3_TUNING): hjaelperens pris paa GC-relevante
+// profiler er ~9/8 af leadout-prisen paa flad vej, save/grupetto betaler halv
+// pris, og all_out betaler INTET. Selve STOERRELSEN kan ikke arves — v3's tal
+// er score-deltaer paa en 0-1-skala, v4's er andele af egen CP.
+//
+// MAALT 6/9 ved wiringen (426 etaper x 3 seeds, 180-rytters felt,
+// --orders=ai, scripts/lib/headToHeadTeamPlay.js): niveauet nedenfor er
+// LOEFTET 3x fra det foerste gaet, fordi det foerste gav et beskyttelses-gab
+// paa 0,4 pladser mod v3's 19,4 — altsaa en mekanik der var koblet ind og
+// alligevel usynlig. Med niveauet nedenfor er gabet 3,0 pladser (hjaelperen
+// taber 4,0 pladser i forhold til sin egen evne-rang, kaptajnen vinder 5,4),
+// og INTET anker skifter dom: felt-sammenhaeng, nedkoersels-/summit-ratio,
+// punch, brosten, favorit-win-rate, sprinter-rate, ITT og bjerg-top-10 ligger
+// alle inden for deres eget seed-spaend fra foer wiringen.
+//
+// AFSTANDEN TIL v3 ER STADIG STOR (3,0 mod 19,4 pladser) og er et bevidst
+// AABENT punkt, ikke et overset et: v3's gab er domineret af hjaelperens pris,
+// og at hente den fulde afstand kraever et CP-fradrag der efter alt at doemme
+// vil flytte felt-sammenhaeng og bjerg-spredning. Det er en kalibrering med
+// ejer-go (RACE_ENGINE_RULES §4 "Simulér før ship"), ikke en wiring-aendring.
+// Se §2e's advarselsblok.
+const teamPlayExtra = {
+  // Hjaelperens pris over HELE etapen, som andel af hans egen CP. Per segment
+  // paadrages `costFraction x (segmentets km / etapens km)`, og summen over
+  // etapen er derfor praecis costFraction — uafhaengigt af hvor fint
+  // rutemodellen har skaaret etapen op (samme granularitets-uafhaengighed som
+  // M10's pr.-km-skalering, RACE_ENGINE_RULES §2c).
+  helperCostFractionGc: 0.15, // GC-relevante profiler (rolling/hilly/mountain/high_mountain/classic): hjaelperen traekker hele dagen for sin kaptajn — v3's WORK_COST_HELPER_GC-rolle. KALIBRERET 6/9 (3x foerste gaet)
+  helperCostFractionFlat: 0.133, // flade etaper: leadout-arbejde, kortere og senere end en bjergdags tempotraek — v3's 8/9-forhold mellem FLAT og GC bevaret. KALIBRERET 6/9 (3x foerste gaet)
+  helperCostFractionOther: 0.075, // oevrige profiler (brosten/grus/itt/itt_hilly/ttt): v3 giver helper 0 her, men v4's felt koerer stadig samlet paa brosten — halv pris i stedet for nul, saa holdspillet ikke forsvinder paa en klassiker. KALIBRERET 6/9 (3x foerste gaet)
+  hunterCostFraction: 0.05, // `hunter` koerer sit eget loeb (udbruds-kandidat) men bruger stadig kraefter for holdet — lille, profil-uafhaengig pris, praecis som v3's WORK_COST_HUNTER. KALIBRERET 6/9 (3x foerste gaet)
+
+  // Effort-multiplikator paa hjaelperens PRIS (RACE_ENGINE_RULES §9 punkt 3,
+  // ejer 6/9: "holdarbejdets pris (all_out fjerner prisen, loftet til 0, aldrig
+  // bonus over egen evne)"). Dette er work-cost-AKSEN og ikke M12's
+  // demand-akse: de to peger med vilje hver sin vej for all_out — en rytter
+  // der giver alt for SIG SELV braender mere (M12's demandMultiplierAllOut
+  // 1.5) og arbejder samtidig ikke for holdet (0 her). Derfor sit eget saet
+  // konstanter og ikke et delt haandtag med EFFORT_COST_EXTRA_TUNING.
+  // Ankret er raceRoles.RACE_V3_TUNING.EFFORT_COST_MULTIPLIER_* 1:1.
+  effortCostMultiplier: {
+    grupetto: 0.5, // samme halve pris som save (v3: bevidst IKKE lavere — en lavere pris end save ville vaere en resultat-FORDEL, og grupetto maa ikke give en saadan)
+    save: 0.5, // koerer bevidst inden for sig selv: halv pris
+    normal: 1.0, // fuld pris (baseline)
+    protect: 1.0, // fuld pris — `protect` ER holdarbejdet, den rabatteres aldrig
+    all_out: 0, // ejer 6/9: all_out FJERNER prisen. LOFTET er strukturelt (Math.max(0, ...) i mechanics/teamPlay.ts): 0 er bunden, aldrig en negativ pris = gratis CP oveni egen evne
+  } as Record<EffortLevel, number>,
+
+  // Kaptajnens beskyttelse. `transferEfficiency` er den andel af holdets
+  // paadragne pris der naar frem som lae hos den beskyttede rytter; resten er
+  // tabt (vind, positionering, rytteren foran der ogsaa skal koere).
+  // < 1 er baade realistisk OG bevarelses-garantien.
+  transferEfficiency: 0.6, // andel af hjaelpernes pris der bliver til kaptajnens laegevinst. STARTGAET
+  // Hardt loft paa kaptajnens bonus over hele etapen, som andel af hans EGEN
+  // CP. Uden loftet ville et hold med otte hjaelpere kunne give sin kaptajn en
+  // ubegraenset fordel — "bounded fordel-signal" er ejer-formuleringen, og det
+  // er DETTE tal der goer den bounded. Bevidst mindre end hjaelperens pris: en
+  // kaptajn kan aldrig vinde mere end et helt holds arbejde koster.
+  captainMaxBonusFraction: 0.08, // maks. bonus over hele etapen, andel af kaptajnens egen CP. KALIBRERET 6/9
+  // Gulv under holdarbejdets samlede faktor: selv en hjaelper der har trukket
+  // hele dagen for et helt hold er stadig en cykelrytter. Regressionsvagt mod
+  // en fremtidig kalibrering der utilsigtet nulstiller nogens CP.
+  minCpFactor: 0.7,
+
+  // Mindst én arbejdende holdkammerat i SAMME gruppe kraeves (ejer-brief).
+  // Gruppen ER naerheds-modellen i v4 (mor-spec §3.2, samme definition som
+  // mechanics/incidents.ts's hasHelperNearby) — en hjaelper der er koert af
+  // bagud hjaelper ingen.
+  minWorkersForProtection: 1,
+  // Maetning: holdstoerrelsen der giver FULD stoette. Flere end dette flytter
+  // ikke mere (log-kurve, clampet) — samme "kvalitet over kvantitet, naturligt
+  // bounded"-princip som v3's buildTeamContext bruger naar den midler
+  // hjaelper-stoetten i stedet for at summere den.
+  supportSaturationWorkers: 4, // antal arbejdende holdkammerater i gruppen der giver fuld stoette. STARTGAET
+};
+
+/** M16 additiv holdspils-tuning (deep-frosset). Se teamPlayExtra-kommentaren ovenfor. */
+export const TEAM_PLAY_EXTRA_TUNING = deepFreeze(teamPlayExtra);

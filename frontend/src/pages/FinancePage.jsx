@@ -228,7 +228,7 @@ export default function FinancePage() {
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (finally rydder loading)
     if (!user) { return; }
     const { data: teamData } = await supabase.from("teams")
-      .select("id, name, balance, division").eq("user_id", user.id).single();
+      .select("id, name, balance, division").eq("user_id", user.id).maybeSingle();
     if (!teamData) { return; }
     setTeam(teamData);
 

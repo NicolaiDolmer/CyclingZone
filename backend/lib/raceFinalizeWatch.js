@@ -53,6 +53,35 @@ export const RACE_FINALIZE_ALERT_KEY = "race-finalize-half-state";
 export const HALF_FINALIZED_ALERT_AFTER_MS = 10 * 60 * 1000;
 
 /**
+ * `results_without_status` har sin EGEN, længere tærskel (CYCLINGZONE-5G, målt 4.-5./9).
+ *
+ * De 10 minutter ovenfor blev valgt som "to scheduler-tick skal have haft chancen".
+ * Antagelsen var at recovery-stien tømmer køen i ét tick. Målingen siger noget andet:
+ * scheduleren kører ÉN etape pr. løb pr. tick SERIELT, og et løb med mange divisioner
+ * afsluttes derfor over flere tick. Prod 5/9, Settimana di Coppi e Bartali Minore
+ * (sidste etape planlagt 10:00Z, 4 etaper, alle divisioner):
+ *
+ *   10:14:58Z  2 divisioner afsluttet
+ *   10:19:58Z  vagten ALARMEREDE på c443e3a6-5f96-444c-9beb-f939f83df47b
+ *              ("alle 4 etaper kørt, men status er stadig 'scheduled'" — Railway-log)
+ *   10:19:59Z  3 divisioner afsluttet
+ *   10:24:58Z  c443e3a6 afsluttet + præmier udbetalt  ← 5 minutter EFTER alarmen
+ *   10:29:58Z  sidste division afsluttet
+ *
+ * Samme mønster 4/9 (Tour de la Provence Verte, 8 divisioner: 10:12 → 10:27).
+ * Køen drænes altså 2-3 løb pr. 5-min-tick, så halen af en stor løbsdag ligger
+ * lovligt 20-30 minutter efter den PLANLAGTE sluttid — som er den akse tærsklen
+ * måles på (`race_stage_schedule.scheduled_at`), ikke hvornår etapen faktisk kørte.
+ *
+ * 45 minutter = ni tick. Det er stadig langt under Llanera-klassen (23/8: timer med
+ * skrevne resultater og status='scheduled', opdaget manuelt), som er den hændelse
+ * vagten findes for — men over den lovlige kø-hale. Fund 1 (`stuck_marker`) beholder
+ * de 10 minutter: DEN måles mod `finalize_updated_at`, altså mod hvornår arbejdet
+ * faktisk stoppede, og har ingen kø-hale at tage højde for.
+ */
+export const RESULTS_WITHOUT_STATUS_ALERT_AFTER_MS = 45 * 60 * 1000;
+
+/**
  * Præmier har et længere gulv: auto-prize-sweepen tikker også hvert 5. minut, men
  * dens arbejde afhænger af rytterværdi-genberegning og kan lovligt tage flere ticks.
  * En time = 12 sweeps uden resultat, hvilket ikke længere kan forklares med travlhed.
@@ -106,7 +135,7 @@ export function selectStuckMarkers(races = [], claims = [], { now = new Date(), 
  * bud på "hvornår burde løbet være færdigt". Mangler tidspunktet (løb uden schedule),
  * medtages løbet: en manglende tidsangivelse må ikke kunne skjule en halv tilstand.
  */
-export function selectResultsWithoutStatus(races = [], lastStageAtByRace = new Map(), { now = new Date(), thresholdMs = HALF_FINALIZED_ALERT_AFTER_MS } = {}) {
+export function selectResultsWithoutStatus(races = [], lastStageAtByRace = new Map(), { now = new Date(), thresholdMs = RESULTS_WITHOUT_STATUS_ALERT_AFTER_MS } = {}) {
   const nowMs = now.getTime();
   const out = [];
   for (const r of races) {
@@ -310,7 +339,17 @@ export async function runHalfFinalizedRaceWatch({
         // Fast fingerprint: ALLE fund samles i ÉT Sentry-issue. Uden det ville hver
         // ny løbs-id blive sit eget issue og triagen drukne i dubletter.
         fingerprint: [RACE_FINALIZE_ALERT_KEY],
-        extra: { findings: findings.slice(0, 20), byType },
+        // FLADE STRENGE, ikke nestede objekter (CYCLINGZONE-5G, 6/9): Sentry-SDK'ens
+        // `normalizeDepth` kollapsede `findings: [{...}]` til literalen "[Object]", så
+        // ingen af de to events kunne fortælle HVILKET løb der var fanget. Triagen
+        // måtte grave løbs-id'et frem i Railway-loggen på en deployment der allerede
+        // var markeret REMOVED. Samme lektie som #4594's `teams`-liste i cron.js.
+        // `formatFindings` er i forvejen den læsbare linje — vi sender netop den.
+        extra: {
+          findings: formatFindings(findings).slice(0, 20),
+          raceIds: findings.slice(0, 20).map((f) => `${f.type}:${f.race_id}`),
+          byType,
+        },
       },
     );
   }

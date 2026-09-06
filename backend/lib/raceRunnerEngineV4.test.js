@@ -1,0 +1,357 @@
+// Løbsmotor v4 — flip-infrastruktur, kaldsstedet i raceRunner (#3855, #4707).
+//
+// Dækker:
+//   (a) flag off ⇒ v4 hverken indlæses, kaldes eller koster et DB-kald,
+//       og v3-stien er uændret;
+//   (b) flag on  ⇒ v4 kaldes, og race_results-rækkerne har PRÆCIS samme
+//       kolonnesæt og resultattyper som en v3-kørsel på samme fixture;
+//   (c) determinisme: samme etape to gange giver de samme rækker;
+//   (d) kill-switch: etape 1 på v4, etape 2 på v3 → GC beregnes uden fejl
+//       og bruger BEGGE etaper.
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  buildRaceResults,
+  buildStageRowsAccumulated,
+  resolveRaceEngineV4,
+} from "./raceRunner.js";
+import { ABILITY_KEYS, ENGINE_VERSION_V3 } from "./raceSimulator.js";
+import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
+import { ENGINE_VERSION_V4, loadRaceEngineV4, __resetRaceEngineV4Cache } from "./raceEngineV4Bridge.js";
+import { TIMELINE_VERSION, TIMELINE_VERSION_V4 } from "./raceTimeline.js";
+
+// ── Fixtures ────────────────────────────────────────────────────────────────
+
+function abil(seed) {
+  const a = {};
+  ABILITY_KEYS.forEach((k, i) => { a[k] = 35 + ((seed * 13 + i * 7) % 55); });
+  return a;
+}
+
+// To hold à 8 = 16 ryttere (over #4295's gulv på 6 pr. hold).
+const ENTRANTS = Array.from({ length: 16 }, (_, i) => ({
+  rider_id: `r${String(i).padStart(2, "0")}`,
+  team_id: i < 8 ? "A" : "B",
+  team_name: i < 8 ? "Team A" : "Team B",
+  rider_name: `Rider ${i}`,
+  is_u25: i % 4 === 0,
+  abilities: abil(i),
+  fatigue: (i * 3) % 30,
+}));
+
+const RACE = { id: "race-v4-runner", race_type: "stage_race", race_class: "ProSeries", season_id: "s1", stages: 2 };
+
+const STAGES = [
+  {
+    stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint",
+    demand_vector: DEMAND_VECTORS.flat, distance_km: 180,
+    climbs: [], sprints: [{ name: "Sprint", km: 90, kind: "intermediate" }],
+    race_id: RACE.id, id: "sp-1",
+  },
+  {
+    stage_number: 2, profile_type: "mountain", finale_type: "long_climb",
+    demand_vector: DEMAND_VECTORS.mountain, distance_km: 165,
+    climbs: [{ name: "Col", crest_km: 158, category: "1", summit_finish: true }],
+    sprints: [{ name: "Sprint", km: 70, kind: "intermediate" }],
+    race_id: RACE.id, id: "sp-2",
+  },
+];
+
+const POINTS = { "stage__1": 100, "stage__2": 60, "gc__1": 200, "gc__2": 120, "leader__1": 50, "team__1": 40, "team_day__1": 20 };
+
+function baseArgs(extra = {}) {
+  return { race: RACE, stages: STAGES, entrants: ENTRANTS, pointsLookup: POINTS, v3: true, ...extra };
+}
+
+/** Kolonnesættet på en resultatrække — kontrakten mod race_results. */
+function columnSignature(rows) {
+  return [...new Set(rows.map((r) => Object.keys(r).sort().join("|")))].sort();
+}
+
+// ── (a) Flag OFF ───────────────────────────────────────────────────────────
+
+test("#3855 (a) flag off: resolveRaceEngineV4 indlæser INTET og laver ingen DB-kald", async () => {
+  let loadEngineCalls = 0;
+  let loadOrderCalls = 0;
+  const result = await resolveRaceEngineV4({
+    supabase: { from: () => { throw new Error("må ikke kaldes ved flag-off"); } },
+    race: RACE,
+    checkV4Enabled: async () => false,
+    loadEngine: async () => { loadEngineCalls += 1; return {}; },
+    loadOrders: async () => { loadOrderCalls += 1; return []; },
+  });
+  assert.deepEqual(result, { v4Engine: null, teamOrderRows: [] });
+  assert.equal(loadEngineCalls, 0);
+  assert.equal(loadOrderCalls, 0);
+});
+
+test("#3855 (a) flag on: motoren indlæses og ordre-rækkerne hentes ÉN gang", async () => {
+  let loadEngineCalls = 0;
+  const rows = [{ team_id: "A", stage_number: 1, breakaway_stance: "chase", riders: [] }];
+  const result = await resolveRaceEngineV4({
+    supabase: {},
+    race: RACE,
+    checkV4Enabled: async () => true,
+    loadEngine: async () => { loadEngineCalls += 1; return { version: ENGINE_VERSION_V4 }; },
+    loadOrders: async () => rows,
+  });
+  assert.equal(loadEngineCalls, 1);
+  assert.equal(result.v4Engine.version, ENGINE_VERSION_V4);
+  assert.deepEqual(result.teamOrderRows, rows);
+});
+
+test("#3855 kill-switch-robusthed: kan v4 ikke indlæses, falder afviklingen tilbage til v3", async () => {
+  const errors = [];
+  const originalError = console.error;
+  console.error = (msg) => errors.push(String(msg));
+  try {
+    const result = await resolveRaceEngineV4({
+      supabase: {},
+      race: RACE,
+      checkV4Enabled: async () => true,
+      loadEngine: async () => { throw new Error("modulet er væk"); },
+      loadOrders: async () => [],
+    });
+    assert.deepEqual(result, { v4Engine: null, teamOrderRows: [] });
+  } finally {
+    console.error = originalError;
+  }
+  assert.ok(errors.some((e) => e.includes("v4 kunne ikke indlaeses")), "fejlen skal larme i loggen");
+});
+
+test("#3855 (a) flag off: motoren kaldes ALDRIG, og v3-stien er uændret (engine_version 2)", () => {
+  let calls = 0;
+  const spyEngine = { version: ENGINE_VERSION_V4, simulateStage: () => { calls += 1; throw new Error("v4 må ikke kaldes ved flag-off"); } };
+
+  const off = buildRaceResults(baseArgs({ v4Engine: null }));
+  assert.equal(calls, 0);
+  assert.ok(off.runs.every((r) => r.engine_version === ENGINE_VERSION_V3));
+  assert.ok(off.runs.every((r) => Array.isArray(r.riderScores) && r.riderScores.length === ENTRANTS.length));
+
+  // Kontrol: samme spion ER non-null → grenen tages, altså er den kun styret af v4Engine.
+  assert.throws(() => buildRaceResults(baseArgs({ v4Engine: spyEngine })));
+  assert.equal(calls, 1);
+});
+
+// ── (b) Flag ON: samme kolonner som v3 ─────────────────────────────────────
+
+test("#3855 (b) flag on: race_results-rækkerne har PRÆCIS samme kolonner og typer som v3", async () => {
+  __resetRaceEngineV4Cache();
+  const v4Engine = await loadRaceEngineV4();
+
+  const v3Run = buildRaceResults(baseArgs({ v4Engine: null }));
+  const v4Run = buildRaceResults(baseArgs({ v4Engine }));
+
+  assert.deepEqual(columnSignature(v4Run.resultRows), columnSignature(v3Run.resultRows),
+    "kolonnesættet på race_results-rækkerne må ikke afhænge af hvilken motor der kørte");
+  assert.deepEqual(
+    [...new Set(v4Run.resultRows.map((r) => r.result_type))].sort(),
+    [...new Set(v3Run.resultRows.map((r) => r.result_type))].sort(),
+    "samme resultattyper (stage/leader/points_day/mountain_day/young_day/team_day/gc/...)",
+  );
+  assert.equal(v4Run.resultRows.length, v3Run.resultRows.length, "samme antal rækker");
+
+  // Ranglisten er komplet og uden huller på hver etape.
+  for (const stage of [1, 2]) {
+    const stageRows = v4Run.resultRows.filter((r) => r.result_type === "stage" && r.stage_number === stage);
+    assert.equal(stageRows.length, ENTRANTS.length);
+    assert.deepEqual(stageRows.map((r) => r.rank).sort((a, b) => a - b), ENTRANTS.map((_, i) => i + 1));
+    assert.ok(stageRows.every((r) => typeof r.finish_time === "string" && r.finish_time.startsWith("+")));
+  }
+
+  // Point/præmie udledes af (result_type, rank) — motoren opfinder dem aldrig.
+  const v4Winner = v4Run.resultRows.find((r) => r.result_type === "stage" && r.stage_number === 1 && r.rank === 1);
+  assert.equal(v4Winner.points_earned, POINTS["stage__1"]);
+
+  // Motorstemplet + de dokumenterede v4-udeladelser.
+  assert.ok(v4Run.runs.every((r) => r.engine_version === ENGINE_VERSION_V4));
+  assert.ok(v4Run.runs.every((r) => !("riderScores" in r)), "v4 producerer ingen score-komponenter");
+  // #4879: uheld og fortælling er IKKE længere tomme — se de dedikerede
+  // paritets-tests nedenfor. Her låses kun at de ikke lækker score-komponenter
+  // ind i run-rækkerne.
+  assert.ok(Array.isArray(v4Run.incidents));
+  assert.ok(v4Run.moments.length > 0, "#4879: v4 skal give en neutral men IKKE tom fortælling");
+});
+
+test("#3855 (b) flag on: passage-laget (spurt-/bjergpoint + bonussekunder) fyldes stadig ud", async () => {
+  const v4Engine = await loadRaceEngineV4();
+  const v4Run = buildRaceResults(baseArgs({ v4Engine }));
+  const stageRows = v4Run.resultRows.filter((r) => r.result_type === "stage");
+  // #2770/#2413 (ejer 6/9): passagerne kommer nu fra v4's EGEN M9-mekanik, ikke
+  // fra racePassages.js. Kontrakten mod race_results er den samme — kolonnerne
+  // er numeriske, ikke null — og det er præcis dét der gør kilden udskiftelig.
+  assert.ok(stageRows.every((r) => Number.isFinite(r.sprint_points)));
+  assert.ok(stageRows.every((r) => Number.isFinite(r.kom_points)));
+  assert.ok(stageRows.every((r) => Number.isFinite(r.bonus_seconds)));
+  assert.ok(v4Run.passageRows.length > 0, "ruten har en mellemspurt + en bjergpassage");
+});
+
+// ── #2770/#2413: v4's egen mekanik er ENESTE kilde (ejer-beslutning 6/9) ────
+
+test("#2770 flag on: passage-rækkerne kommer fra MOTOREN, ikke fra racePassages.js", () => {
+  // Spion-motoren leverer et genkendeligt passage-lag. Kom det gamle lag også
+  // til orde, ville rækkerne indeholde ruten fixturens egne vejpunkter
+  // (Sprint@90 / Col@158) i stedet for spionens ene.
+  const spyPassage = {
+    passages: [{
+      kind: "sprint", index: 0, name: "Motorens spurt", km: 42, category: null,
+      results: [{ rider_id: "r00", passage_rank: 1, points: 20, bonus_seconds: 3 }],
+    }],
+    perRider: new Map([["r00", { sprint_points: 20, kom_points: 0, bonus_seconds: 3 }]]),
+  };
+  const spyEngine = {
+    version: ENGINE_VERSION_V4,
+    simulateStage: ({ entrants }) => ({
+      ranked: entrants.map((e, i) => ({
+        rider_id: e.rider_id, team_id: e.team_id, rank: i + 1, stageGap: i * 5, components: {},
+      })),
+      incidents: [],
+      passages: spyPassage,
+      timeline: null,
+    }),
+  };
+  const run = buildRaceResults(baseArgs({ v4Engine: spyEngine }));
+  assert.deepEqual(
+    [...new Set(run.passageRows.map((r) => r.waypoint_name))],
+    ["Motorens spurt"],
+    "det gamle passage-lag kørte også — rytterne ville få point to gange",
+  );
+  const stage1 = run.resultRows.filter((r) => r.result_type === "stage" && r.stage_number === 1);
+  assert.equal(stage1.find((r) => r.rider_id === "r00").bonus_seconds, 3);
+  assert.equal(stage1.find((r) => r.rider_id === "r00").sprint_points, 20);
+  assert.equal(stage1.find((r) => r.rider_id === "r01").sprint_points, 0);
+});
+
+test("#2770 flag on: leverer motoren INGEN passager, kører det gamle lag som før", () => {
+  // Broens null (endagsløb / rutedata-løs række) må aldrig efterlade etapen
+  // helt uden point — så ville den grønne trøje forsvinde på en v4-dag.
+  const spyEngine = {
+    version: ENGINE_VERSION_V4,
+    simulateStage: ({ entrants }) => ({
+      ranked: entrants.map((e, i) => ({
+        rider_id: e.rider_id, team_id: e.team_id, rank: i + 1, stageGap: i * 5, components: {},
+      })),
+      incidents: [],
+      passages: null,
+      timeline: null,
+    }),
+  };
+  const run = buildRaceResults(baseArgs({ v4Engine: spyEngine }));
+  assert.ok(run.passageRows.length > 0, "fallback til racePassages.js skal stadig give passager");
+  assert.ok(
+    run.passageRows.some((r) => r.waypoint_kind === "finish"),
+    "det gamle lag bygger stadig sin egen målpassage",
+  );
+});
+
+test("#2413 flag on: ingen rytter får mere end det bounded loft i bonussekunder på en etape", async () => {
+  const v4Engine = await loadRaceEngineV4();
+  const run = buildRaceResults(baseArgs({ v4Engine }));
+  const byRiderStage = new Map();
+  for (const row of run.passageRows) {
+    const key = `${row.stage_number}:${row.rider_id}`;
+    byRiderStage.set(key, (byRiderStage.get(key) ?? 0) + (row.bonus_seconds ?? 0));
+  }
+  for (const [key, total] of byRiderStage) {
+    assert.ok(total <= 10 + 1e-9, `${key} fik ${total}s bonus på én etape — over #2413's loft`);
+  }
+});
+
+test("#2770 flag on: løbsfilmen får hver passage PRÆCIS én gang (ingen dublet-events)", async () => {
+  const v4Engine = await loadRaceEngineV4();
+  const run = buildRaceResults(baseArgs({ v4Engine, timeline: true }));
+  for (const timeline of run.timelines) {
+    const passageEvents = timeline.events.filter(
+      (e) => e.type === "kom_passage" || e.type === "intermediate_sprint",
+    );
+    assert.ok(passageEvents.length > 0, "v4's tidslinje skal bære passage-events");
+    const keys = passageEvents.map((e) => `${e.type}@${e.km}:${e.params.name}`);
+    assert.equal(new Set(keys).size, keys.length, `dublerede passage-events: ${keys.join(", ")}`);
+  }
+});
+
+test("#4879 flag on: v4's EGEN tidslinje persisteres under timeline_version 2", async () => {
+  const v4Engine = await loadRaceEngineV4();
+  const v3Run = buildRaceResults(baseArgs({ v4Engine: null, timeline: true }));
+  const v4Run = buildRaceResults(baseArgs({ v4Engine, timeline: true }));
+  assert.equal(v4Run.timelines.length, v3Run.timelines.length, "samme antal etaper får en tidslinje");
+  assert.ok(v3Run.timelines.every((t) => t.timeline_version === TIMELINE_VERSION));
+  // Ny version: v3's tidslinje er SYNTETISK (rng-afledte km-mærker), v4's er
+  // motorens egne hændelser. Samme tabel, samme {km,type,params}-form — men
+  // aftageren skal kunne se hvilken slags artefakt hun læser.
+  assert.ok(v4Run.timelines.every((t) => t.timeline_version === TIMELINE_VERSION_V4));
+  assert.ok(v4Run.timelines.every((t) => Array.isArray(t.events) && t.events.length > 0));
+});
+
+// ── (c) Determinisme ───────────────────────────────────────────────────────
+
+test("#3855 (c) determinisme: samme etape kørt to gange giver identiske race_results-rækker", async () => {
+  const v4Engine = await loadRaceEngineV4();
+  const a = buildRaceResults(baseArgs({ v4Engine }));
+  const b = buildRaceResults(baseArgs({ v4Engine }));
+  assert.equal(JSON.stringify(a.resultRows), JSON.stringify(b.resultRows));
+  assert.equal(JSON.stringify(a.runs), JSON.stringify(b.runs));
+  assert.equal(JSON.stringify(a.passageRows), JSON.stringify(b.passageRows));
+});
+
+// ── (d) Kill-switch midt i et etapeløb ─────────────────────────────────────
+
+test("#3855 (d) kill-switch: etape 1 på v4 + etape 2 på v3 → GC bygges på BEGGE etaper", async () => {
+  const v4Engine = await loadRaceEngineV4();
+  const stagesSorted = STAGES;
+
+  // Etape 1: flaget er ON.
+  const stage1 = buildStageRowsAccumulated({
+    race: RACE, stagesSorted, stageIndex: 0, entrants: ENTRANTS, pointsLookup: POINTS,
+    priorStageRows: [], v3: true, v4Engine,
+  });
+  assert.equal(stage1.runs[0].engine_version, ENGINE_VERSION_V4);
+
+  // Persisterede etaperækker, som loadPriorStageRows ville levere dem.
+  const priorStageRows = stage1.resultRows
+    .filter((r) => r.result_type === "stage")
+    .map((r) => ({
+      stage_number: r.stage_number, result_type: r.result_type, rank: r.rank,
+      rider_id: r.rider_id, team_id: r.team_id, finish_time: r.finish_time,
+      sprint_points: r.sprint_points, kom_points: r.kom_points, bonus_seconds: r.bonus_seconds,
+    }));
+  assert.equal(priorStageRows.length, ENTRANTS.length);
+
+  // Etape 2: flaget er slukket midt i løbet → v4Engine er null.
+  const stage2 = buildStageRowsAccumulated({
+    race: RACE, stagesSorted, stageIndex: 1, entrants: ENTRANTS, pointsLookup: POINTS,
+    priorStageRows, v3: true, v4Engine: null,
+  });
+  assert.equal(stage2.runs[0].engine_version, ENGINE_VERSION_V3, "etape 2 kører v3 uden fejl");
+
+  // GC på slut-etapen: alle ryttere klassificeret, ingen huller, lederen på +0:00.
+  const gc = stage2.resultRows.filter((r) => r.result_type === "gc").sort((a, b) => a.rank - b.rank);
+  assert.equal(gc.length, ENTRANTS.length, "GC-beregningen fejler ikke og udelader ingen");
+  assert.deepEqual(gc.map((r) => r.rank), ENTRANTS.map((_, i) => i + 1));
+  assert.equal(gc[0].finish_time, "+0:00");
+
+  // ... og den bruger FAKTISK begge etaper: GC-tiden for hver rytter er summen
+  // af etape 1's (v4-skrevne) og etape 2's (v3-skrevne) gaps minus bonussekunder.
+  const gapOf = (rows, riderId) => {
+    const row = rows.find((r) => r.rider_id === riderId);
+    const [m, s] = row.finish_time.replace("+", "").split(":").map(Number);
+    return m * 60 + s;
+  };
+  const bonusOf = (rows, riderId) => rows.find((r) => r.rider_id === riderId)?.bonus_seconds ?? 0;
+  const stage2Rows = stage2.resultRows.filter((r) => r.result_type === "stage");
+  const cum = new Map(ENTRANTS.map((e) => [
+    e.rider_id,
+    (gapOf(priorStageRows, e.rider_id) - bonusOf(priorStageRows, e.rider_id))
+    + (gapOf(stage2Rows, e.rider_id) - bonusOf(stage2Rows, e.rider_id)),
+  ]));
+  const leaderTime = Math.min(...cum.values());
+  for (const row of gc) {
+    const [m, s] = row.finish_time.replace("+", "").split(":").map(Number);
+    assert.equal(m * 60 + s, cum.get(row.rider_id) - leaderTime,
+      `GC-tiden for ${row.rider_id} skal være summen af begge etaper, uanset motor`);
+  }
+  // Sanity: mindst én rytter har et gap fra etape 1 med i sin GC-tid.
+  assert.ok([...cum.values()].some((v) => v > leaderTime), "etape 1 skal bidrage til GC");
+});

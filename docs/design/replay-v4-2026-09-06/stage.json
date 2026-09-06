@@ -1,0 +1,3355 @@
+{
+ "generated_by": "docs/design/replay-v4-2026-09-06/build.mjs --sim",
+ "engine": "backend/lib/engine/v4 (simulateStageV4)",
+ "sources": {
+  "population": "backend/scripts/baselines/population-snapshot-2026-07-11.json",
+  "stages": "C:/Users/Nicolai/AppData/Local/Temp/claude/C--Dev-CyclingZone/8e4bb2c5-1686-45fa-833f-629982f30e38/scratchpad/season-3-stages.json"
+ },
+ "pick": {
+  "race_name": "Tour de l'Ain Nouveau",
+  "stage_number": 2,
+  "seed": "replay-v4:Tour de l'Ain Nouveau:2:2",
+  "field_size": 180
+ },
+ "stage_row": {
+  "race_id": "1ef0a727-ca56-4999-b01a-69f7df67349b",
+  "stage_number": 2,
+  "profile_type": "high_mountain",
+  "finale_type": "punch",
+  "demand_vector": {
+   "punch": 0.04,
+   "tempo": 0.08,
+   "tactics": 0.02,
+   "climbing": 0.52,
+   "recovery": 0.06,
+   "endurance": 0.18,
+   "randomness": 0.1
+  },
+  "distance_km": 175,
+  "elevation_gain_m": 2272,
+  "climbs": [
+   {
+    "name": "Mont Granier",
+    "category": "2",
+    "crest_km": 92,
+    "length_km": 5,
+    "avg_gradient": 5.6,
+    "summit_finish": false
+   },
+   {
+    "name": "Mont la Colombière",
+    "category": "HC",
+    "crest_km": 160,
+    "length_km": 9.8,
+    "avg_gradient": 9.1,
+    "summit_finish": false
+   }
+  ],
+  "sprints": [
+   {
+    "km": 82,
+    "kind": "intermediate",
+    "name": "Intermediate Sprint"
+   },
+   {
+    "km": 175,
+    "kind": "finish",
+    "name": "Finish"
+   }
+  ],
+  "sectors": [],
+  "segments": [
+   {
+    "kind": "rolling",
+    "to_km": 87,
+    "from_km": 0
+   },
+   {
+    "kind": "climb",
+    "to_km": 92,
+    "from_km": 87,
+    "category": "2",
+    "avg_gradient": 5.6,
+    "top_elevation_m": 530
+   },
+   {
+    "kind": "descent",
+    "to_km": 95.6,
+    "from_km": 92,
+    "technicality": 2
+   },
+   {
+    "kind": "rolling",
+    "to_km": 150.2,
+    "from_km": 95.6
+   },
+   {
+    "kind": "climb",
+    "to_km": 160,
+    "from_km": 150.2,
+    "category": "HC",
+    "avg_gradient": 9.1,
+    "top_elevation_m": 1422
+   },
+   {
+    "kind": "descent",
+    "to_km": 171.3,
+    "from_km": 160,
+    "technicality": 2
+   },
+   {
+    "kind": "rolling",
+    "to_km": 175,
+    "from_km": 171.3
+   }
+  ],
+  "generator_version": 5,
+  "race_name": "Tour de l'Ain Nouveau"
+ },
+ "route": {
+  "distance_km": 175,
+  "profile_type": "high_mountain",
+  "finale_type": "punch",
+  "segments": [
+   {
+    "kind": "rolling",
+    "to_km": 87,
+    "from_km": 0
+   },
+   {
+    "kind": "climb",
+    "to_km": 92,
+    "from_km": 87,
+    "category": "2",
+    "avg_gradient": 5.6,
+    "top_elevation_m": 530
+   },
+   {
+    "kind": "descent",
+    "to_km": 95.6,
+    "from_km": 92,
+    "technicality": 2
+   },
+   {
+    "kind": "rolling",
+    "to_km": 150.2,
+    "from_km": 95.6
+   },
+   {
+    "kind": "climb",
+    "to_km": 160,
+    "from_km": 150.2,
+    "category": "HC",
+    "avg_gradient": 9.1,
+    "top_elevation_m": 1422
+   },
+   {
+    "kind": "descent",
+    "to_km": 171.3,
+    "from_km": 160,
+    "technicality": 2
+   },
+   {
+    "kind": "rolling",
+    "to_km": 175,
+    "from_km": 171.3
+   }
+  ],
+  "weather": {
+   "kind": "wind",
+   "wind_exposure": 0.71
+  },
+  "waypoints": [
+   {
+    "kind": "sprint",
+    "index": 0,
+    "name": "Intermediate Sprint",
+    "km": 82
+   },
+   {
+    "kind": "kom",
+    "index": 0,
+    "name": "Mont Granier",
+    "km": 92,
+    "category": "2",
+    "summit_finish": false
+   },
+   {
+    "kind": "kom",
+    "index": 1,
+    "name": "Mont la Colombière",
+    "km": 160,
+    "category": "HC",
+    "summit_finish": false
+   },
+   {
+    "kind": "finish",
+    "index": 0,
+    "name": "Finish",
+    "km": 175
+   }
+  ]
+ },
+ "rider_names": {
+  "b043ce14-46f5-44dc-ae48-0d76c6b36b12": "Daniel Bizimana",
+  "411af30d-8d48-4441-a68a-9b172d067430": "Robel Tesfay",
+  "f63b533f-15c5-4872-9ef8-7215ebb28ef4": "Taeyang J. Lim",
+  "124144ce-b641-4391-9faf-849540bf364e": "Kosei R. Fujita",
+  "989fae85-2674-40cc-9bd7-a7f690fa0ed3": "Daniel Herrera",
+  "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5": "Thijs De Jong",
+  "d0e901ff-cbba-462a-ae55-27901fd55366": "Minjun K. Yoon",
+  "26f8d642-9b8a-431d-8b77-42b53f52a695": "Karim Bennani",
+  "6c8ad79e-b3df-4320-8771-8627bff60563": "Simone Caruso",
+  "dd8f6e4d-af58-4b79-8ccc-37dc88f48ac3": "Riku Kobayashi",
+  "32f6c2fe-6b97-4668-a492-eb59455fdabc": "Feng Ma",
+  "a94ce94c-ca3d-4249-adbe-2fe57ef62e21": "Leon Koch",
+  "0a728b7b-f837-4cb1-87b0-461b408da1c3": "Jie Hu",
+  "7a8a27c2-3c40-4ac3-9c0c-8d9c8878f4d5": "Minjun H. Hong",
+  "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3": "Iván Cabrera",
+  "c76ee253-3a65-4ee7-9f9b-814987bb5929": "Liam Doyle",
+  "890c4fd5-84e4-4c66-b1ff-705cfbbb867f": "Lachlan Bennett",
+  "73162a19-eab3-444d-9faf-c23df7b356e0": "Anis Naceri",
+  "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77": "Henrik Sandberg",
+  "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4": "Kai Xie",
+  "786455fc-ddf5-4265-9721-7cc21f65ab9a": "Andrés Molina",
+  "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef": "Tijl Claes",
+  "2dae1857-4669-4796-85f9-ea7902409a88": "Jonas Klein",
+  "067614d4-22b6-47c2-affa-793ff8d59832": "George Carter",
+  "4e8aebdf-0d42-4a67-847e-12f066f5d4ec": "Nathan Bernard",
+  "ec79f4ef-8f8a-4496-a2eb-a45903d4fc46": "Luka Horák",
+  "3391122b-04c5-450e-b396-002ab7bc8fa5": "Pablo Delgado",
+  "ea979009-5d85-4256-aff5-098b10af3c8d": "Adel Brahimi",
+  "cb7f3b7d-239a-475c-8f5d-77297178ded0": "Riku R. Kimura",
+  "0376386f-ed76-414e-8843-71fcf69ec9d9": "Diego Ortega",
+  "2d40fcf0-2622-47a9-85bc-64d75d65d643": "Hugo Charpentier",
+  "ce39fc40-3fcd-42fb-a277-66b1cbbb08d0": "Minjun Y. Cho",
+  "c669210d-36b4-4231-ab6b-6d127f4d67d0": "Reda Ouedraogo",
+  "67b03910-f0b8-43fb-a4af-6cc85ca63c33": "Connor Wilson",
+  "cdead522-1604-442f-bd32-4cc340b867c1": "Cheng K. Zhou",
+  "4578b7db-1ecb-4a0a-b920-f871ada06c69": "Aron Mulueta",
+  "f21e324b-acad-436f-bd8b-891b6b949ab0": "Samuel Habineza",
+  "8df0b734-fb02-4a70-88fc-393e5b2829a1": "Yamato Inoue",
+  "63677a1c-37a1-4cc2-918d-d5cc9e039a5e": "Taiga Fujita",
+  "841f97b4-47bd-4305-b2ee-b761dcc9371a": "Mario J. Bravo",
+  "2aefe1ec-832f-4bed-82cc-e5a3e1c282c4": "Hyun Seo",
+  "f43115d6-8d5b-4e01-8ff9-b3fe59640075": "Sho Sasaki",
+  "f969145f-2dae-490d-aa16-55a7d0b01b86": "Yeonjun S. Han",
+  "31cc714e-2b47-4624-8666-586aeb1913b5": "Junseo H. Choi",
+  "2cdf846a-2bf3-42ba-9652-86f9826221dd": "Yuto Hashimoto",
+  "da58219d-12cf-431a-9a19-b661d038d889": "Joseph Uwizeyimana",
+  "e99a2adb-5db3-48af-9453-1fa60861897a": "Sofiane Meziane",
+  "27999b69-86b7-43c6-8e07-82568c93328d": "Seungho J. Cho",
+  "8eea3a55-35d9-45f4-b38c-b95380c9dd9a": "Valentin Lemaire",
+  "7ef4a61b-243c-4aef-a7fd-647ffa1a8340": "Qiang C. Zhou",
+  "b2dd74a8-9c4e-476d-b918-6c24274a1203": "Minjun H. Jang",
+  "9b036c3b-2f17-40bc-ae65-31ce3e8be5fb": "Riad Mansouri",
+  "4b4d0d9a-eb85-4026-8f3d-5c81921759c3": "Blake Carter",
+  "34333941-5ce7-4d42-b363-28a0245124f0": "Alejandro Ramírez",
+  "30c453dc-0334-4c1f-87ce-f729a0aaeacd": "Óscar I. Vargas",
+  "cd563670-e43b-4308-a08b-b16f553dce16": "Ren T. Ishikawa",
+  "17b3288b-251e-4c11-8325-8081ce6b4517": "Alejandro García",
+  "25975d79-4c34-4e64-aebb-74e6fd651c2a": "Yeonjun Cho",
+  "01e2d691-21da-4ffe-a1e8-f0eb6cc3a07d": "Yassine Ferhat",
+  "c25011b6-b9bb-4d8c-8af7-8f067550515b": "Yeonjun Ahn",
+  "6ebbaac0-8fdc-44ba-a3fb-5581a8e5b9af": "Junseo Hong",
+  "97748dbc-de2c-4491-bb57-b4a2d30dd652": "Doyun S. Ahn",
+  "036d80bd-f0cb-4b97-a0bd-c61eaa868451": "Yassine Tahar",
+  "91321376-200f-4f0e-aeaf-00422ef31190": "Yuki R. Watanabe",
+  "7c460d79-15e1-416b-a991-c4aff244cafa": "Jan Zimmermann",
+  "069c5c12-a640-4ce1-b18b-e5a14a28d7e8": "Ren T. Yamada",
+  "ae490040-4fdb-463d-8faa-2452b03df274": "Adrián Fuentes",
+  "1b77c825-9775-435c-aa1b-bd21997f9262": "Didier Girmay",
+  "4a711876-d8f4-4743-9b19-05bb6f5620f4": "Ming F. Zhang",
+  "ae9b9143-5ce2-461b-9971-9877afdb77fc": "Sho Watanabe",
+  "96459c64-20b0-4de6-9373-62524cfab0d5": "Zakaria Guerrouj",
+  "aa12bf05-65b6-46e3-9d72-2b363461b6fb": "Yonas Mugisha",
+  "7ea6fcf0-6ec3-4753-a2f0-f5982fbe14a6": "Haruto Goto",
+  "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2": "Hui Luo",
+  "4a0207f4-99ac-47b1-94bb-6daa167dbb46": "Jinwoo H. Lim",
+  "19d62e1b-c04e-4a44-8153-545d2db1c789": "Seojun Shin",
+  "b77b5ea4-c22e-488d-996c-1adfa086480e": "Bo L. Gao",
+  "36e86b95-a11c-4aad-ae71-d613f750c1f5": "Sergio D. Fuentes",
+  "84148e8a-6fec-4dfe-a6bd-d22f220d437a": "Daiki Shimizu",
+  "7a762ee0-a917-4cff-8892-dc0c11699dfc": "Marcos Rubio",
+  "ae928ca6-13bc-4e82-9704-fbda08e1b1a6": "Iván P. Mendoza",
+  "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0": "Chen J. Xu",
+  "d92d60cc-c2a0-47fe-a450-b2ec4e4159b0": "Natnael Hagos",
+  "3d5c4eee-ef57-49e9-adae-58d8c3ab8b34": "Federico Moretti",
+  "d539e53d-1236-46b2-8340-9d79cf0cba42": "Haruto Ikeda",
+  "a5c25fac-9833-462f-a297-8b164abb9696": "Daniel A. Molina",
+  "11c23e82-c782-4412-9934-94af83c383f8": "Haruto Maeda",
+  "47b582c9-277a-4c5e-a138-bfcbd777d834": "Valentin Renaud",
+  "3ee7e961-493e-4764-9195-93f98474ed40": "Yuto Ogawa",
+  "8e0213d8-2a78-4a84-9dac-bba7ed19b730": "Adrián Quintero",
+  "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec": "Marcos C. Rubio",
+  "8242767b-3e21-4f87-9d5a-e3f8caee2603": "Rubén H. Cabrera",
+  "0dc29e5e-130b-4aa1-8474-a876dd362618": "Biniam Habineza",
+  "0fa30b34-3f74-43ff-81ff-f0a832dda247": "Qiang Xie",
+  "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f": "Bin He",
+  "dd77303b-382c-4d9c-bd1e-d8e6f3c9374b": "Filip Wiśniewski",
+  "69dacdcd-f858-4ffd-b2f4-2384e976e770": "Riad Guerrouj",
+  "99614f25-d8e6-43cd-b54b-51593e8bb1ec": "Raúl Delgado",
+  "506a86ea-7344-4f2f-97c3-2eca10d23ece": "Walid Meziane",
+  "fccf1b03-da9b-45c1-86dc-d29f65a298d0": "Wout Goossens",
+  "6392f486-86cd-47e3-ab7b-98a5245208be": "Takumi Yoshida",
+  "d88be8c6-b03d-4a73-a9b5-36765c4f65fd": "Sungmin Choi",
+  "2e2f4e1e-53f8-44c3-8210-41c5ea185beb": "Hiroto D. Ito",
+  "08e88032-2cc1-4c76-8d1c-1aeee356c43d": "Javier M. Pardo",
+  "917a7e56-cbd0-444d-9d76-5120e6ad7de9": "Daehyun D. Han",
+  "20af8660-2d6f-496a-b3e5-d39ffc03ecfc": "Mathias Lie",
+  "3b24357c-476d-4f9c-8672-64b5852eeb57": "Hugo Fuentes",
+  "bc0c76c6-c198-44be-a611-e06a72f63857": "Théo Roussel",
+  "ef37f144-05ce-4080-931c-68ead40d782b": "Daniel S. Campos",
+  "7bb89941-a9dc-4b32-b66e-a86248e3e81b": "Bo B. Zheng",
+  "346f64e4-d9d8-490d-9ee1-97996ffbf1bd": "Tobias Schröder",
+  "405afecc-0ca2-42bc-a707-0b169f7ed3d5": "Alejandro S. Martínez",
+  "8ae833b6-bd8e-445e-bfde-e8c0da289e9c": "Youssef Naceri",
+  "5f40c74e-99c4-45d7-9648-04e7e5faa5dc": "Daehyun J. Han",
+  "0650b0e2-e441-40e6-9297-8ce327669e48": "Pieter Cornelis",
+  "4fde7710-670a-49c2-aeb2-270884071f48": "Riad Boukhari",
+  "62b6f4c9-b12d-45e0-9805-aa2a04223003": "Henok Habtom",
+  "b0c66632-7230-4c7e-89b3-a15c1058321b": "Junseo D. Han",
+  "71e440af-288b-4bf9-b397-2e0035ac6dd5": "Lei F. Hu",
+  "5c08273b-039f-42a9-aa1f-999fd9c505ab": "Diego S. Lozano",
+  "14c88380-0826-4649-8f26-023f170ce2d4": "Anis Belkacem",
+  "878385dc-f786-4158-a1bd-8d3965380a77": "Doyun J. Bae",
+  "8e625cf0-5c41-4f74-ae45-0f26346386b1": "Johan Lie",
+  "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0": "Bastien Maillot",
+  "37663f3d-0390-48d8-907a-cef275d5dbaa": "Emmanuel Yohannes",
+  "d57396a6-0713-4e86-91a6-381546abffa3": "Bram Maes",
+  "7c21d4f1-d0e5-451a-83b6-f24de845cf40": "Daniel García",
+  "ff5e284d-8966-4c9c-ae6c-a4a669656fda": "Adrián Vega",
+  "c31a98ce-cc5d-4095-87fa-43a0dad443eb": "Eunwoo J. Lee",
+  "c929e7bd-0a15-44a4-ad35-2b108555e4da": "Hao C. Tang",
+  "bdbf6b37-e160-44f6-b0ea-03c4ed88a658": "Ming H. Sun",
+  "256e0125-2b35-4b48-8602-4be0ae2e5fda": "Seungho Jung",
+  "61b72c2e-ad1b-4334-969a-18844fd6511b": "Eunwoo Kim",
+  "4d619a0b-e4e3-4066-8e03-d49bbf999b9c": "Peng Gao",
+  "5fdd5ec9-1da0-4628-958a-95a879b0381c": "Ruben Tielemans",
+  "4fe5e78a-6bbf-4bdc-a869-1d04b64c51f6": "Ethan Murphy",
+  "ba04d02b-a821-424e-bc7e-1e3fa0f5187d": "Ryo Yamada",
+  "4b0f018c-d656-40a4-a81e-f443a2d9b266": "Adrián Delgado",
+  "4b3575d7-8bcc-477c-8d78-6c2b17cfae7b": "Zakaria S. Meziane",
+  "5a0d0c37-8f4e-491b-b824-1cd0cac9f404": "Peng Liang",
+  "d1a3365a-1682-4a64-a092-752e0a7846b1": "Alejandro R. Romero",
+  "021a150b-015c-45ed-9eaf-892e9c5f8fb2": "Doyun Hwang",
+  "7e1eb9b9-35be-4fd8-8ffb-ba1b0583002f": "Wei F. Tang",
+  "9152d40c-0b5f-459d-b467-e2f37ab3c083": "Filip Nowak",
+  "919b2f41-1e0a-4213-8bb0-335ba9b6a99a": "Kilian Koch",
+  "ee3d4913-9747-49ed-9438-1ca46cc1ee63": "Kosei Watanabe",
+  "cdcfe464-212c-4c4b-b298-cc8b305e62ff": "Jun Zhang",
+  "4ff7d808-0412-4e5f-8622-4109c9d014b8": "Andrés Castro",
+  "8a94d44d-6c0f-46a8-b1c7-da6cfec2be7a": "Javier D. Carmona",
+  "e4519e8e-43f0-4371-87d7-1a8e30c507e3": "Rubén Vargas",
+  "4c185c6a-8109-4029-beb7-f70a18b29a6d": "Takumi Y. Takahashi",
+  "2fc3bd9f-8e09-4563-8ae9-b29f37a69970": "Rubén Fuentes",
+  "2d378dac-4d36-4e1e-9323-4904016915d2": "Taeyang Ahn",
+  "b607b182-5e3f-4e6a-b7a6-abb37207c939": "Javier S. Carmona",
+  "b851ee83-ad57-4fab-9e40-89f32b5dcacb": "Daehyun H. Choi",
+  "7cd22917-4f1e-43ef-9af2-95657ebcf9ec": "Ryo Kimura",
+  "e9d210a1-eeb6-4f0c-afdb-3db349eabd3a": "Kaito H. Ito",
+  "6d0116be-1184-4615-9b61-3d0eb79c84bf": "Sander Aerts",
+  "74157f8c-d04d-496b-b9cc-e918f6a9d382": "Moise Tekle",
+  "ba7b2b62-336a-4d24-b46a-05d44d20dd42": "Mekseb Nsengimana",
+  "359476c5-49bc-49c4-8ef8-489ad532e462": "Connor Kelly",
+  "64943c6f-54bc-46f5-8c18-0b9e1e617a43": "Lars Claes",
+  "fde27fd8-6e2d-4dd7-bd92-29d4cf3c3cda": "Pieter Aerts",
+  "8dc0b809-9555-4a99-b2cb-8ba24972c137": "Riad Slimani",
+  "bc1b192e-99f8-41b0-a7dc-45f3c3669089": "Patrick Manizabayo",
+  "e3dfeb7b-9d65-4fff-bb99-901d6a8f367e": "Loïc Colin",
+  "d7ec1b59-aa01-4811-b687-1fca41660f0a": "Yang P. Lin",
+  "f5740e79-b73a-4464-adfa-171d86725692": "Seungho Choi",
+  "a1524672-084c-40fc-b74c-a4847c3299b3": "Adam Pospíšil",
+  "72edd5e2-e1f4-452d-894a-e53ba93fb03c": "Carlos Aguilar",
+  "985434de-a5e7-46b8-b7a1-dc80d2a8e245": "Connor Holland",
+  "292d2b1c-adf1-4eb5-bf68-651521de2b09": "Hugo S. Carmona",
+  "31b409cf-7a9a-4ecc-b011-8972c7b07ab2": "Seojun J. Yoon",
+  "4861c2b4-f55b-4af3-94a1-73428dd3ce46": "Diogo Antunes",
+  "69e2550f-1967-4350-b871-bd8843cccbc1": "Chen Han",
+  "54b4db45-08a5-4cfa-bb19-1f34876a967b": "Jinwoo W. Shin",
+  "717a8dfa-9c60-4b1a-be23-dd6c994508ba": "Mekseb Tekle",
+  "46c1437c-95ff-4969-9da2-2b6e2810ce8a": "Daiki Sasaki",
+  "bd755569-1683-45d6-b191-c63a591f9e36": "Merhawi Munyaneza",
+  "a79fe73c-5fdb-4c2b-bc2a-1b98de75e4e7": "Jun Hu"
+ },
+ "timeline": {
+  "timeline_version": 2,
+  "events": [
+   {
+    "km": 0,
+    "type": "stage_start",
+    "params": {
+     "field_count": 180,
+     "profile_type": "high_mountain",
+     "distance_km": 175
+    }
+   },
+   {
+    "km": 0,
+    "type": "weather",
+    "params": {
+     "kind": "wind"
+    }
+   },
+   {
+    "km": 53.51,
+    "type": "incident",
+    "params": {
+     "rider_id": "2e2f4e1e-53f8-44c3-8210-41c5ea185beb",
+     "kind": "crash",
+     "outcome": "time_loss",
+     "time_loss_seconds": 15.61,
+     "severity": "light",
+     "injury_days": null,
+     "helper_assist": false
+    }
+   },
+   {
+    "km": 82,
+    "type": "intermediate_sprint",
+    "params": {
+     "name": "Intermediate Sprint",
+     "top": [
+      {
+       "rider_id": "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f",
+       "points": 20,
+       "bonus_seconds": 3
+      },
+      {
+       "rider_id": "3b24357c-476d-4f9c-8672-64b5852eeb57",
+       "points": 17,
+       "bonus_seconds": 2
+      },
+      {
+       "rider_id": "7c21d4f1-d0e5-451a-83b6-f24de845cf40",
+       "points": 15,
+       "bonus_seconds": 1
+      },
+      {
+       "rider_id": "84148e8a-6fec-4dfe-a6bd-d22f220d437a",
+       "points": 13,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "e4519e8e-43f0-4371-87d7-1a8e30c507e3",
+       "points": 11,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "8e0213d8-2a78-4a84-9dac-bba7ed19b730",
+       "points": 10,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "6d0116be-1184-4615-9b61-3d0eb79c84bf",
+       "points": 9,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "ea979009-5d85-4256-aff5-098b10af3c8d",
+       "points": 8,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3",
+       "points": 7,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+       "points": 6,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "4ff7d808-0412-4e5f-8622-4109c9d014b8",
+       "points": 5,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5",
+       "points": 4,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "4b4d0d9a-eb85-4026-8f3d-5c81921759c3",
+       "points": 3,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "c76ee253-3a65-4ee7-9f9b-814987bb5929",
+       "points": 2,
+       "bonus_seconds": 0
+      },
+      {
+       "rider_id": "3391122b-04c5-450e-b396-002ab7bc8fa5",
+       "points": 1,
+       "bonus_seconds": 0
+      }
+     ]
+    }
+   },
+   {
+    "km": 87,
+    "type": "breakaway_formed",
+    "params": {
+     "group_id": "breakaway-0",
+     "rider_ids": [
+      "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77",
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "5fdd5ec9-1da0-4628-958a-95a879b0381c",
+      "9152d40c-0b5f-459d-b467-e2f37ab3c083",
+      "c669210d-36b4-4231-ab6b-6d127f4d67d0",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "dd77303b-382c-4d9c-bd1e-d8e6f3c9374b",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0"
+     ]
+    }
+   },
+   {
+    "km": 87,
+    "type": "gap_update",
+    "params": {
+     "group_id": "peloton-0",
+     "gap_seconds": 25
+    }
+   },
+   {
+    "km": 87,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-0",
+     "gap_seconds": 40.61
+    }
+   },
+   {
+    "km": 92,
+    "type": "peloton_splits",
+    "params": {
+     "group_id": "chase-1000",
+     "source_group_id": "breakaway-0",
+     "rider_ids": [
+      "5fdd5ec9-1da0-4628-958a-95a879b0381c",
+      "9152d40c-0b5f-459d-b467-e2f37ab3c083",
+      "c669210d-36b4-4231-ab6b-6d127f4d67d0",
+      "dd77303b-382c-4d9c-bd1e-d8e6f3c9374b"
+     ],
+     "cause": "wprime_depleted",
+     "gap_seconds": 34.94
+    }
+   },
+   {
+    "km": 92,
+    "type": "peloton_splits",
+    "params": {
+     "group_id": "gruppetto-1001",
+     "source_group_id": "peloton-0",
+     "rider_ids": [
+      "01e2d691-21da-4ffe-a1e8-f0eb6cc3a07d",
+      "021a150b-015c-45ed-9eaf-892e9c5f8fb2",
+      "0376386f-ed76-414e-8843-71fcf69ec9d9",
+      "067614d4-22b6-47c2-affa-793ff8d59832",
+      "069c5c12-a640-4ce1-b18b-e5a14a28d7e8",
+      "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+      "0a728b7b-f837-4cb1-87b0-461b408da1c3",
+      "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5",
+      "0dc29e5e-130b-4aa1-8474-a876dd362618",
+      "0fa30b34-3f74-43ff-81ff-f0a832dda247",
+      "11c23e82-c782-4412-9934-94af83c383f8",
+      "124144ce-b641-4391-9faf-849540bf364e",
+      "14c88380-0826-4649-8f26-023f170ce2d4",
+      "17b3288b-251e-4c11-8325-8081ce6b4517",
+      "19d62e1b-c04e-4a44-8153-545d2db1c789",
+      "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3",
+      "20af8660-2d6f-496a-b3e5-d39ffc03ecfc",
+      "256e0125-2b35-4b48-8602-4be0ae2e5fda",
+      "25975d79-4c34-4e64-aebb-74e6fd651c2a",
+      "27999b69-86b7-43c6-8e07-82568c93328d",
+      "292d2b1c-adf1-4eb5-bf68-651521de2b09",
+      "2aefe1ec-832f-4bed-82cc-e5a3e1c282c4",
+      "2d378dac-4d36-4e1e-9323-4904016915d2",
+      "2d40fcf0-2622-47a9-85bc-64d75d65d643",
+      "2fc3bd9f-8e09-4563-8ae9-b29f37a69970",
+      "30c453dc-0334-4c1f-87ce-f729a0aaeacd",
+      "31b409cf-7a9a-4ecc-b011-8972c7b07ab2",
+      "31cc714e-2b47-4624-8666-586aeb1913b5",
+      "3391122b-04c5-450e-b396-002ab7bc8fa5",
+      "34333941-5ce7-4d42-b363-28a0245124f0",
+      "36e86b95-a11c-4aad-ae71-d613f750c1f5",
+      "3b24357c-476d-4f9c-8672-64b5852eeb57",
+      "3d5c4eee-ef57-49e9-adae-58d8c3ab8b34",
+      "3ee7e961-493e-4764-9195-93f98474ed40",
+      "4578b7db-1ecb-4a0a-b920-f871ada06c69",
+      "46c1437c-95ff-4969-9da2-2b6e2810ce8a",
+      "4a711876-d8f4-4743-9b19-05bb6f5620f4",
+      "4b0f018c-d656-40a4-a81e-f443a2d9b266",
+      "4b3575d7-8bcc-477c-8d78-6c2b17cfae7b",
+      "4b4d0d9a-eb85-4026-8f3d-5c81921759c3",
+      "4c185c6a-8109-4029-beb7-f70a18b29a6d",
+      "4d619a0b-e4e3-4066-8e03-d49bbf999b9c",
+      "4e8aebdf-0d42-4a67-847e-12f066f5d4ec",
+      "4fe5e78a-6bbf-4bdc-a869-1d04b64c51f6",
+      "4ff7d808-0412-4e5f-8622-4109c9d014b8",
+      "506a86ea-7344-4f2f-97c3-2eca10d23ece",
+      "54b4db45-08a5-4cfa-bb19-1f34876a967b",
+      "5a0d0c37-8f4e-491b-b824-1cd0cac9f404",
+      "5f40c74e-99c4-45d7-9648-04e7e5faa5dc",
+      "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f",
+      "62b6f4c9-b12d-45e0-9805-aa2a04223003",
+      "63677a1c-37a1-4cc2-918d-d5cc9e039a5e",
+      "6392f486-86cd-47e3-ab7b-98a5245208be",
+      "64943c6f-54bc-46f5-8c18-0b9e1e617a43",
+      "69dacdcd-f858-4ffd-b2f4-2384e976e770",
+      "69e2550f-1967-4350-b871-bd8843cccbc1",
+      "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "6d0116be-1184-4615-9b61-3d0eb79c84bf",
+      "6ebbaac0-8fdc-44ba-a3fb-5581a8e5b9af",
+      "717a8dfa-9c60-4b1a-be23-dd6c994508ba",
+      "71e440af-288b-4bf9-b397-2e0035ac6dd5",
+      "72edd5e2-e1f4-452d-894a-e53ba93fb03c",
+      "73162a19-eab3-444d-9faf-c23df7b356e0",
+      "74157f8c-d04d-496b-b9cc-e918f6a9d382",
+      "786455fc-ddf5-4265-9721-7cc21f65ab9a",
+      "7a762ee0-a917-4cff-8892-dc0c11699dfc",
+      "7a8a27c2-3c40-4ac3-9c0c-8d9c8878f4d5",
+      "7bb89941-a9dc-4b32-b66e-a86248e3e81b",
+      "7c21d4f1-d0e5-451a-83b6-f24de845cf40",
+      "7c460d79-15e1-416b-a991-c4aff244cafa",
+      "7e1eb9b9-35be-4fd8-8ffb-ba1b0583002f",
+      "7ea6fcf0-6ec3-4753-a2f0-f5982fbe14a6",
+      "7ef4a61b-243c-4aef-a7fd-647ffa1a8340",
+      "84148e8a-6fec-4dfe-a6bd-d22f220d437a",
+      "841f97b4-47bd-4305-b2ee-b761dcc9371a",
+      "878385dc-f786-4158-a1bd-8d3965380a77",
+      "890c4fd5-84e4-4c66-b1ff-705cfbbb867f",
+      "8a94d44d-6c0f-46a8-b1c7-da6cfec2be7a",
+      "8df0b734-fb02-4a70-88fc-393e5b2829a1",
+      "8e0213d8-2a78-4a84-9dac-bba7ed19b730",
+      "8e625cf0-5c41-4f74-ae45-0f26346386b1",
+      "8eea3a55-35d9-45f4-b38c-b95380c9dd9a",
+      "91321376-200f-4f0e-aeaf-00422ef31190",
+      "917a7e56-cbd0-444d-9d76-5120e6ad7de9",
+      "919b2f41-1e0a-4213-8bb0-335ba9b6a99a",
+      "96459c64-20b0-4de6-9373-62524cfab0d5",
+      "97748dbc-de2c-4491-bb57-b4a2d30dd652",
+      "985434de-a5e7-46b8-b7a1-dc80d2a8e245",
+      "99614f25-d8e6-43cd-b54b-51593e8bb1ec",
+      "9b036c3b-2f17-40bc-ae65-31ce3e8be5fb",
+      "a5c25fac-9833-462f-a297-8b164abb9696",
+      "a79fe73c-5fdb-4c2b-bc2a-1b98de75e4e7",
+      "a94ce94c-ca3d-4249-adbe-2fe57ef62e21",
+      "aa12bf05-65b6-46e3-9d72-2b363461b6fb",
+      "ae490040-4fdb-463d-8faa-2452b03df274",
+      "ae928ca6-13bc-4e82-9704-fbda08e1b1a6",
+      "ae9b9143-5ce2-461b-9971-9877afdb77fc",
+      "b2dd74a8-9c4e-476d-b918-6c24274a1203",
+      "b607b182-5e3f-4e6a-b7a6-abb37207c939",
+      "b77b5ea4-c22e-488d-996c-1adfa086480e",
+      "b851ee83-ad57-4fab-9e40-89f32b5dcacb",
+      "ba04d02b-a821-424e-bc7e-1e3fa0f5187d",
+      "bdbf6b37-e160-44f6-b0ea-03c4ed88a658",
+      "c31a98ce-cc5d-4095-87fa-43a0dad443eb",
+      "c76ee253-3a65-4ee7-9f9b-814987bb5929",
+      "c929e7bd-0a15-44a4-ad35-2b108555e4da",
+      "cd563670-e43b-4308-a08b-b16f553dce16",
+      "cdcfe464-212c-4c4b-b298-cc8b305e62ff",
+      "cdead522-1604-442f-bd32-4cc340b867c1",
+      "ce39fc40-3fcd-42fb-a277-66b1cbbb08d0",
+      "d0e901ff-cbba-462a-ae55-27901fd55366",
+      "d1a3365a-1682-4a64-a092-752e0a7846b1",
+      "d57396a6-0713-4e86-91a6-381546abffa3",
+      "d7ec1b59-aa01-4811-b687-1fca41660f0a",
+      "d88be8c6-b03d-4a73-a9b5-36765c4f65fd",
+      "d92d60cc-c2a0-47fe-a450-b2ec4e4159b0",
+      "da58219d-12cf-431a-9a19-b661d038d889",
+      "dd8f6e4d-af58-4b79-8ccc-37dc88f48ac3",
+      "e3dfeb7b-9d65-4fff-bb99-901d6a8f367e",
+      "e4519e8e-43f0-4371-87d7-1a8e30c507e3",
+      "e9d210a1-eeb6-4f0c-afdb-3db349eabd3a",
+      "ea979009-5d85-4256-aff5-098b10af3c8d",
+      "ec79f4ef-8f8a-4496-a2eb-a45903d4fc46",
+      "ee3d4913-9747-49ed-9438-1ca46cc1ee63",
+      "ef37f144-05ce-4080-931c-68ead40d782b",
+      "f43115d6-8d5b-4e01-8ff9-b3fe59640075",
+      "f5740e79-b73a-4464-adfa-171d86725692",
+      "f63b533f-15c5-4872-9ef8-7215ebb28ef4",
+      "f969145f-2dae-490d-aa16-55a7d0b01b86",
+      "fde27fd8-6e2d-4dd7-bd92-29d4cf3c3cda",
+      "ff5e284d-8966-4c9c-ae6c-a4a669656fda"
+     ],
+     "cause": "mixed",
+     "gap_seconds": 41.33
+    }
+   },
+   {
+    "km": 92,
+    "type": "gap_update",
+    "params": {
+     "group_id": "peloton-0",
+     "gap_seconds": 17.68
+    }
+   },
+   {
+    "km": 92,
+    "type": "gap_update",
+    "params": {
+     "group_id": "chase-1000",
+     "gap_seconds": 34.94
+    }
+   },
+   {
+    "km": 92,
+    "type": "gap_update",
+    "params": {
+     "group_id": "gruppetto-1001",
+     "gap_seconds": 59.01
+    }
+   },
+   {
+    "km": 92,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-0",
+     "gap_seconds": 77.24
+    }
+   },
+   {
+    "km": 92,
+    "type": "kom_passage",
+    "params": {
+     "name": "Mont Granier",
+     "category": "2",
+     "top": [
+      {
+       "rider_id": "2dae1857-4669-4796-85f9-ea7902409a88",
+       "points": 5
+      },
+      {
+       "rider_id": "989fae85-2674-40cc-9bd7-a7f690fa0ed3",
+       "points": 3
+      },
+      {
+       "rider_id": "a1524672-084c-40fc-b74c-a4847c3299b3",
+       "points": 2
+      },
+      {
+       "rider_id": "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+       "points": 1
+      }
+     ]
+    }
+   },
+   {
+    "km": 95.6,
+    "type": "finale_attack",
+    "params": {
+     "direction": "descent",
+     "rider_ids": [
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0"
+     ],
+     "group_id": "breakaway-2000",
+     "gained_seconds": 13.33
+    }
+   },
+   {
+    "km": 95.6,
+    "type": "finale_attack",
+    "params": {
+     "direction": "descent",
+     "rider_ids": [
+      "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+      "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+      "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+      "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+      "1b77c825-9775-435c-aa1b-bd21997f9262",
+      "26f8d642-9b8a-431d-8b77-42b53f52a695",
+      "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+      "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+      "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+      "411af30d-8d48-4441-a68a-9b172d067430",
+      "47b582c9-277a-4c5e-a138-bfcbd777d834",
+      "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+      "4fde7710-670a-49c2-aeb2-270884071f48",
+      "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+      "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+      "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+      "61b72c2e-ad1b-4334-969a-18844fd6511b",
+      "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+      "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+      "8242767b-3e21-4f87-9d5a-e3f8caee2603",
+      "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+      "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0",
+      "8dc0b809-9555-4a99-b2cb-8ba24972c137",
+      "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+      "b0c66632-7230-4c7e-89b3-a15c1058321b",
+      "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+      "bc0c76c6-c198-44be-a611-e06a72f63857",
+      "bc1b192e-99f8-41b0-a7dc-45f3c3669089",
+      "bd755569-1683-45d6-b191-c63a591f9e36",
+      "c25011b6-b9bb-4d8c-8af7-8f067550515b",
+      "e99a2adb-5db3-48af-9453-1fa60861897a",
+      "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef",
+      "f21e324b-acad-436f-bd8b-891b6b949ab0",
+      "359476c5-49bc-49c4-8ef8-489ad532e462",
+      "2cdf846a-2bf3-42ba-9652-86f9826221dd",
+      "2dae1857-4669-4796-85f9-ea7902409a88"
+     ],
+     "group_id": "breakaway-2001",
+     "gained_seconds": 10
+    }
+   },
+   {
+    "km": 95.6,
+    "type": "finale_attack",
+    "params": {
+     "direction": "descent",
+     "rider_ids": [
+      "5fdd5ec9-1da0-4628-958a-95a879b0381c"
+     ],
+     "group_id": "solo-2002",
+     "gained_seconds": 13.33
+    }
+   },
+   {
+    "km": 95.6,
+    "type": "gap_update",
+    "params": {
+     "group_id": "breakaway-2001",
+     "gap_seconds": 15.8
+    }
+   },
+   {
+    "km": 95.6,
+    "type": "gap_update",
+    "params": {
+     "group_id": "peloton-0",
+     "gap_seconds": 25.8
+    }
+   },
+   {
+    "km": 95.6,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-2002",
+     "gap_seconds": 36.47
+    }
+   },
+   {
+    "km": 95.6,
+    "type": "gap_update",
+    "params": {
+     "group_id": "chase-1000",
+     "gap_seconds": 49.8
+    }
+   },
+   {
+    "km": 95.6,
+    "type": "gap_update",
+    "params": {
+     "group_id": "gruppetto-1001",
+     "gap_seconds": 71.36
+    }
+   },
+   {
+    "km": 95.6,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-0",
+     "gap_seconds": 98.29
+    }
+   },
+   {
+    "km": 97.86,
+    "type": "incident",
+    "params": {
+     "rider_id": "124144ce-b641-4391-9faf-849540bf364e",
+     "kind": "mechanical",
+     "outcome": "time_loss",
+     "time_loss_seconds": 18.89,
+     "severity": null,
+     "injury_days": null,
+     "helper_assist": true
+    }
+   },
+   {
+    "km": 103.98,
+    "type": "incident",
+    "params": {
+     "rider_id": "5f40c74e-99c4-45d7-9648-04e7e5faa5dc",
+     "kind": "mechanical",
+     "outcome": "time_loss",
+     "time_loss_seconds": 34.8,
+     "severity": null,
+     "injury_days": null,
+     "helper_assist": true
+    }
+   },
+   {
+    "km": 150.2,
+    "type": "breakaway_caught",
+    "params": {
+     "group_id": "breakaway-2000",
+     "rider_ids": [
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0"
+     ]
+    }
+   },
+   {
+    "km": 150.2,
+    "type": "breakaway_caught",
+    "params": {
+     "group_id": "breakaway-2001",
+     "rider_ids": [
+      "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+      "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+      "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+      "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+      "1b77c825-9775-435c-aa1b-bd21997f9262",
+      "26f8d642-9b8a-431d-8b77-42b53f52a695",
+      "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+      "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+      "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+      "411af30d-8d48-4441-a68a-9b172d067430",
+      "47b582c9-277a-4c5e-a138-bfcbd777d834",
+      "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+      "4fde7710-670a-49c2-aeb2-270884071f48",
+      "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+      "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+      "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+      "61b72c2e-ad1b-4334-969a-18844fd6511b",
+      "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+      "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+      "8242767b-3e21-4f87-9d5a-e3f8caee2603",
+      "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+      "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0",
+      "8dc0b809-9555-4a99-b2cb-8ba24972c137",
+      "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+      "b0c66632-7230-4c7e-89b3-a15c1058321b",
+      "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+      "bc0c76c6-c198-44be-a611-e06a72f63857",
+      "bc1b192e-99f8-41b0-a7dc-45f3c3669089",
+      "bd755569-1683-45d6-b191-c63a591f9e36",
+      "c25011b6-b9bb-4d8c-8af7-8f067550515b",
+      "e99a2adb-5db3-48af-9453-1fa60861897a",
+      "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef",
+      "f21e324b-acad-436f-bd8b-891b6b949ab0",
+      "359476c5-49bc-49c4-8ef8-489ad532e462",
+      "2cdf846a-2bf3-42ba-9652-86f9826221dd",
+      "2dae1857-4669-4796-85f9-ea7902409a88",
+      "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77"
+     ]
+    }
+   },
+   {
+    "km": 150.2,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-3000",
+     "gap_seconds": 18.89
+    }
+   },
+   {
+    "km": 150.2,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-3001",
+     "gap_seconds": 34.8
+    }
+   },
+   {
+    "km": 150.2,
+    "type": "gap_update",
+    "params": {
+     "group_id": "chase-1000",
+     "gap_seconds": 80.3
+    }
+   },
+   {
+    "km": 150.2,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-2002",
+     "gap_seconds": 180.82
+    }
+   },
+   {
+    "km": 150.2,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-0",
+     "gap_seconds": 294.56
+    }
+   },
+   {
+    "km": 160,
+    "type": "peloton_splits",
+    "params": {
+     "group_id": "gruppetto-4000",
+     "source_group_id": "breakaway-2000",
+     "rider_ids": [
+      "01e2d691-21da-4ffe-a1e8-f0eb6cc3a07d",
+      "021a150b-015c-45ed-9eaf-892e9c5f8fb2",
+      "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+      "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+      "0376386f-ed76-414e-8843-71fcf69ec9d9",
+      "0650b0e2-e441-40e6-9297-8ce327669e48",
+      "067614d4-22b6-47c2-affa-793ff8d59832",
+      "069c5c12-a640-4ce1-b18b-e5a14a28d7e8",
+      "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+      "0a728b7b-f837-4cb1-87b0-461b408da1c3",
+      "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5",
+      "0dc29e5e-130b-4aa1-8474-a876dd362618",
+      "0fa30b34-3f74-43ff-81ff-f0a832dda247",
+      "11c23e82-c782-4412-9934-94af83c383f8",
+      "14c88380-0826-4649-8f26-023f170ce2d4",
+      "17b3288b-251e-4c11-8325-8081ce6b4517",
+      "19d62e1b-c04e-4a44-8153-545d2db1c789",
+      "1b77c825-9775-435c-aa1b-bd21997f9262",
+      "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3",
+      "20af8660-2d6f-496a-b3e5-d39ffc03ecfc",
+      "256e0125-2b35-4b48-8602-4be0ae2e5fda",
+      "25975d79-4c34-4e64-aebb-74e6fd651c2a",
+      "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77",
+      "26f8d642-9b8a-431d-8b77-42b53f52a695",
+      "27999b69-86b7-43c6-8e07-82568c93328d",
+      "292d2b1c-adf1-4eb5-bf68-651521de2b09",
+      "2aefe1ec-832f-4bed-82cc-e5a3e1c282c4",
+      "2cdf846a-2bf3-42ba-9652-86f9826221dd",
+      "2d378dac-4d36-4e1e-9323-4904016915d2",
+      "2d40fcf0-2622-47a9-85bc-64d75d65d643",
+      "2fc3bd9f-8e09-4563-8ae9-b29f37a69970",
+      "30c453dc-0334-4c1f-87ce-f729a0aaeacd",
+      "31b409cf-7a9a-4ecc-b011-8972c7b07ab2",
+      "31cc714e-2b47-4624-8666-586aeb1913b5",
+      "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+      "3391122b-04c5-450e-b396-002ab7bc8fa5",
+      "34333941-5ce7-4d42-b363-28a0245124f0",
+      "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+      "359476c5-49bc-49c4-8ef8-489ad532e462",
+      "36e86b95-a11c-4aad-ae71-d613f750c1f5",
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "3b24357c-476d-4f9c-8672-64b5852eeb57",
+      "3d5c4eee-ef57-49e9-adae-58d8c3ab8b34",
+      "3ee7e961-493e-4764-9195-93f98474ed40",
+      "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+      "411af30d-8d48-4441-a68a-9b172d067430",
+      "4578b7db-1ecb-4a0a-b920-f871ada06c69",
+      "46c1437c-95ff-4969-9da2-2b6e2810ce8a",
+      "47b582c9-277a-4c5e-a138-bfcbd777d834",
+      "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+      "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+      "4a711876-d8f4-4743-9b19-05bb6f5620f4",
+      "4b0f018c-d656-40a4-a81e-f443a2d9b266",
+      "4b3575d7-8bcc-477c-8d78-6c2b17cfae7b",
+      "4b4d0d9a-eb85-4026-8f3d-5c81921759c3",
+      "4c185c6a-8109-4029-beb7-f70a18b29a6d",
+      "4d619a0b-e4e3-4066-8e03-d49bbf999b9c",
+      "4e8aebdf-0d42-4a67-847e-12f066f5d4ec",
+      "4fde7710-670a-49c2-aeb2-270884071f48",
+      "4fe5e78a-6bbf-4bdc-a869-1d04b64c51f6",
+      "4ff7d808-0412-4e5f-8622-4109c9d014b8",
+      "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+      "506a86ea-7344-4f2f-97c3-2eca10d23ece",
+      "54b4db45-08a5-4cfa-bb19-1f34876a967b",
+      "5a0d0c37-8f4e-491b-b824-1cd0cac9f404",
+      "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+      "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+      "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f",
+      "61b72c2e-ad1b-4334-969a-18844fd6511b",
+      "62b6f4c9-b12d-45e0-9805-aa2a04223003",
+      "63677a1c-37a1-4cc2-918d-d5cc9e039a5e",
+      "6392f486-86cd-47e3-ab7b-98a5245208be",
+      "64943c6f-54bc-46f5-8c18-0b9e1e617a43",
+      "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+      "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+      "69dacdcd-f858-4ffd-b2f4-2384e976e770",
+      "69e2550f-1967-4350-b871-bd8843cccbc1",
+      "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "6d0116be-1184-4615-9b61-3d0eb79c84bf",
+      "6ebbaac0-8fdc-44ba-a3fb-5581a8e5b9af",
+      "717a8dfa-9c60-4b1a-be23-dd6c994508ba",
+      "71e440af-288b-4bf9-b397-2e0035ac6dd5",
+      "72edd5e2-e1f4-452d-894a-e53ba93fb03c",
+      "73162a19-eab3-444d-9faf-c23df7b356e0",
+      "74157f8c-d04d-496b-b9cc-e918f6a9d382",
+      "786455fc-ddf5-4265-9721-7cc21f65ab9a",
+      "7a762ee0-a917-4cff-8892-dc0c11699dfc",
+      "7a8a27c2-3c40-4ac3-9c0c-8d9c8878f4d5",
+      "7bb89941-a9dc-4b32-b66e-a86248e3e81b",
+      "7c21d4f1-d0e5-451a-83b6-f24de845cf40",
+      "7c460d79-15e1-416b-a991-c4aff244cafa",
+      "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+      "7e1eb9b9-35be-4fd8-8ffb-ba1b0583002f",
+      "7ea6fcf0-6ec3-4753-a2f0-f5982fbe14a6",
+      "7ef4a61b-243c-4aef-a7fd-647ffa1a8340",
+      "8242767b-3e21-4f87-9d5a-e3f8caee2603",
+      "84148e8a-6fec-4dfe-a6bd-d22f220d437a",
+      "841f97b4-47bd-4305-b2ee-b761dcc9371a",
+      "878385dc-f786-4158-a1bd-8d3965380a77",
+      "890c4fd5-84e4-4c66-b1ff-705cfbbb867f",
+      "8a94d44d-6c0f-46a8-b1c7-da6cfec2be7a",
+      "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+      "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0",
+      "8dc0b809-9555-4a99-b2cb-8ba24972c137",
+      "8df0b734-fb02-4a70-88fc-393e5b2829a1",
+      "8e0213d8-2a78-4a84-9dac-bba7ed19b730",
+      "8e625cf0-5c41-4f74-ae45-0f26346386b1",
+      "8eea3a55-35d9-45f4-b38c-b95380c9dd9a",
+      "91321376-200f-4f0e-aeaf-00422ef31190",
+      "917a7e56-cbd0-444d-9d76-5120e6ad7de9",
+      "919b2f41-1e0a-4213-8bb0-335ba9b6a99a",
+      "96459c64-20b0-4de6-9373-62524cfab0d5",
+      "97748dbc-de2c-4491-bb57-b4a2d30dd652",
+      "985434de-a5e7-46b8-b7a1-dc80d2a8e245",
+      "99614f25-d8e6-43cd-b54b-51593e8bb1ec",
+      "9b036c3b-2f17-40bc-ae65-31ce3e8be5fb",
+      "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "a5c25fac-9833-462f-a297-8b164abb9696",
+      "a79fe73c-5fdb-4c2b-bc2a-1b98de75e4e7",
+      "a94ce94c-ca3d-4249-adbe-2fe57ef62e21",
+      "aa12bf05-65b6-46e3-9d72-2b363461b6fb",
+      "ae490040-4fdb-463d-8faa-2452b03df274",
+      "ae928ca6-13bc-4e82-9704-fbda08e1b1a6",
+      "ae9b9143-5ce2-461b-9971-9877afdb77fc",
+      "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+      "b0c66632-7230-4c7e-89b3-a15c1058321b",
+      "b2dd74a8-9c4e-476d-b918-6c24274a1203",
+      "b607b182-5e3f-4e6a-b7a6-abb37207c939",
+      "b77b5ea4-c22e-488d-996c-1adfa086480e",
+      "b851ee83-ad57-4fab-9e40-89f32b5dcacb",
+      "ba04d02b-a821-424e-bc7e-1e3fa0f5187d",
+      "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+      "bc0c76c6-c198-44be-a611-e06a72f63857",
+      "bc1b192e-99f8-41b0-a7dc-45f3c3669089",
+      "bd755569-1683-45d6-b191-c63a591f9e36",
+      "bdbf6b37-e160-44f6-b0ea-03c4ed88a658",
+      "c25011b6-b9bb-4d8c-8af7-8f067550515b",
+      "c31a98ce-cc5d-4095-87fa-43a0dad443eb",
+      "c76ee253-3a65-4ee7-9f9b-814987bb5929",
+      "c929e7bd-0a15-44a4-ad35-2b108555e4da",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "cd563670-e43b-4308-a08b-b16f553dce16",
+      "cdcfe464-212c-4c4b-b298-cc8b305e62ff",
+      "cdead522-1604-442f-bd32-4cc340b867c1",
+      "ce39fc40-3fcd-42fb-a277-66b1cbbb08d0",
+      "d0e901ff-cbba-462a-ae55-27901fd55366",
+      "d1a3365a-1682-4a64-a092-752e0a7846b1",
+      "d539e53d-1236-46b2-8340-9d79cf0cba42",
+      "d57396a6-0713-4e86-91a6-381546abffa3",
+      "d7ec1b59-aa01-4811-b687-1fca41660f0a",
+      "d88be8c6-b03d-4a73-a9b5-36765c4f65fd",
+      "d92d60cc-c2a0-47fe-a450-b2ec4e4159b0",
+      "da58219d-12cf-431a-9a19-b661d038d889",
+      "dd8f6e4d-af58-4b79-8ccc-37dc88f48ac3",
+      "e3dfeb7b-9d65-4fff-bb99-901d6a8f367e",
+      "e4519e8e-43f0-4371-87d7-1a8e30c507e3",
+      "e99a2adb-5db3-48af-9453-1fa60861897a",
+      "e9d210a1-eeb6-4f0c-afdb-3db349eabd3a",
+      "ea979009-5d85-4256-aff5-098b10af3c8d",
+      "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef",
+      "ec79f4ef-8f8a-4496-a2eb-a45903d4fc46",
+      "ee3d4913-9747-49ed-9438-1ca46cc1ee63",
+      "ef37f144-05ce-4080-931c-68ead40d782b",
+      "f21e324b-acad-436f-bd8b-891b6b949ab0",
+      "f43115d6-8d5b-4e01-8ff9-b3fe59640075",
+      "f5740e79-b73a-4464-adfa-171d86725692",
+      "f63b533f-15c5-4872-9ef8-7215ebb28ef4",
+      "f969145f-2dae-490d-aa16-55a7d0b01b86",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0",
+      "fde27fd8-6e2d-4dd7-bd92-29d4cf3c3cda",
+      "ff5e284d-8966-4c9c-ae6c-a4a669656fda"
+     ],
+     "cause": "mixed",
+     "gap_seconds": 84.17
+    }
+   },
+   {
+    "km": 160,
+    "type": "peloton_splits",
+    "params": {
+     "group_id": "chase-4001",
+     "source_group_id": "chase-1000",
+     "rider_ids": [
+      "9152d40c-0b5f-459d-b467-e2f37ab3c083",
+      "c669210d-36b4-4231-ab6b-6d127f4d67d0"
+     ],
+     "cause": "wprime_depleted",
+     "gap_seconds": 68.51
+    }
+   },
+   {
+    "km": 160,
+    "type": "gap_update",
+    "params": {
+     "group_id": "gruppetto-4000",
+     "gap_seconds": 84.17
+    }
+   },
+   {
+    "km": 160,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-3000",
+     "gap_seconds": 96.83
+    }
+   },
+   {
+    "km": 160,
+    "type": "gap_update",
+    "params": {
+     "group_id": "chase-1000",
+     "gap_seconds": 124.16
+    }
+   },
+   {
+    "km": 160,
+    "type": "gap_update",
+    "params": {
+     "group_id": "chase-4001",
+     "gap_seconds": 192.67
+    }
+   },
+   {
+    "km": 160,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-2002",
+     "gap_seconds": 243.68
+    }
+   },
+   {
+    "km": 160,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-0",
+     "gap_seconds": 381.25
+    }
+   },
+   {
+    "km": 160,
+    "type": "kom_passage",
+    "params": {
+     "name": "Mont la Colombière",
+     "category": "HC",
+     "top": [
+      {
+       "rider_id": "2dae1857-4669-4796-85f9-ea7902409a88",
+       "points": 20
+      },
+      {
+       "rider_id": "989fae85-2674-40cc-9bd7-a7f690fa0ed3",
+       "points": 15
+      },
+      {
+       "rider_id": "a1524672-084c-40fc-b74c-a4847c3299b3",
+       "points": 12
+      },
+      {
+       "rider_id": "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+       "points": 10
+      },
+      {
+       "rider_id": "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+       "points": 8
+      },
+      {
+       "rider_id": "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+       "points": 6
+      },
+      {
+       "rider_id": "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+       "points": 4
+      },
+      {
+       "rider_id": "f21e324b-acad-436f-bd8b-891b6b949ab0",
+       "points": 2
+      }
+     ]
+    }
+   },
+   {
+    "km": 168.69,
+    "type": "incident",
+    "params": {
+     "rider_id": "f5740e79-b73a-4464-adfa-171d86725692",
+     "kind": "crash",
+     "outcome": "time_loss",
+     "time_loss_seconds": 19.94,
+     "severity": "light",
+     "injury_days": null,
+     "helper_assist": false
+    }
+   },
+   {
+    "km": 171.3,
+    "type": "gap_update",
+    "params": {
+     "group_id": "gruppetto-4000",
+     "gap_seconds": 78.18
+    }
+   },
+   {
+    "km": 171.3,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-5000",
+     "gap_seconds": 98.12
+    }
+   },
+   {
+    "km": 171.3,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-3000",
+     "gap_seconds": 125.69
+    }
+   },
+   {
+    "km": 171.3,
+    "type": "gap_update",
+    "params": {
+     "group_id": "chase-1000",
+     "gap_seconds": 140.39
+    }
+   },
+   {
+    "km": 171.3,
+    "type": "gap_update",
+    "params": {
+     "group_id": "chase-4001",
+     "gap_seconds": 218.86
+    }
+   },
+   {
+    "km": 171.3,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-2002",
+     "gap_seconds": 268.82
+    }
+   },
+   {
+    "km": 171.3,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-0",
+     "gap_seconds": 413
+    }
+   },
+   {
+    "km": 175,
+    "type": "finale_attack",
+    "params": {
+     "kind": "gap_survived",
+     "group_id": "gruppetto-4000",
+     "gap_seconds": 69.75
+    }
+   },
+   {
+    "km": 175,
+    "type": "finale_attack",
+    "params": {
+     "kind": "placement_gap",
+     "group_id": "finale-winner-0",
+     "gap_seconds": 2.87
+    }
+   },
+   {
+    "km": 175,
+    "type": "sprint_decided",
+    "params": {
+     "winner_rider_id": "2dae1857-4669-4796-85f9-ea7902409a88",
+     "group_id": "finale-winner-0",
+     "finale_type": "punch"
+    }
+   },
+   {
+    "km": 175,
+    "type": "gap_update",
+    "params": {
+     "group_id": "finale-tier-1",
+     "gap_seconds": 2.87
+    }
+   },
+   {
+    "km": 175,
+    "type": "gap_update",
+    "params": {
+     "group_id": "gruppetto-4000",
+     "gap_seconds": 69.75
+    }
+   },
+   {
+    "km": 175,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-5000",
+     "gap_seconds": 115.8
+    }
+   },
+   {
+    "km": 175,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-3000",
+     "gap_seconds": 141.98
+    }
+   },
+   {
+    "km": 175,
+    "type": "gap_update",
+    "params": {
+     "group_id": "chase-1000",
+     "gap_seconds": 148.93
+    }
+   },
+   {
+    "km": 175,
+    "type": "gap_update",
+    "params": {
+     "group_id": "chase-4001",
+     "gap_seconds": 232.58
+    }
+   },
+   {
+    "km": 175,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-2002",
+     "gap_seconds": 283.23
+    }
+   },
+   {
+    "km": 175,
+    "type": "gap_update",
+    "params": {
+     "group_id": "solo-0",
+     "gap_seconds": 430.83
+    }
+   },
+   {
+    "km": 175,
+    "type": "finish",
+    "params": {
+     "top": [
+      {
+       "rider_id": "2dae1857-4669-4796-85f9-ea7902409a88",
+       "rank": 1,
+       "gap": 0
+      },
+      {
+       "rider_id": "989fae85-2674-40cc-9bd7-a7f690fa0ed3",
+       "rank": 2,
+       "gap": 2.87
+      },
+      {
+       "rider_id": "a1524672-084c-40fc-b74c-a4847c3299b3",
+       "rank": 3,
+       "gap": 69.76
+      },
+      {
+       "rider_id": "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+       "rank": 4,
+       "gap": 69.76
+      },
+      {
+       "rider_id": "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+       "rank": 5,
+       "gap": 69.76
+      },
+      {
+       "rider_id": "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+       "rank": 6,
+       "gap": 69.76
+      },
+      {
+       "rider_id": "bc0c76c6-c198-44be-a611-e06a72f63857",
+       "rank": 7,
+       "gap": 69.76
+      },
+      {
+       "rider_id": "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+       "rank": 8,
+       "gap": 69.76
+      },
+      {
+       "rider_id": "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+       "rank": 9,
+       "gap": 69.76
+      },
+      {
+       "rider_id": "411af30d-8d48-4441-a68a-9b172d067430",
+       "rank": 10,
+       "gap": 69.76
+      }
+     ],
+     "win_type": "group_finish"
+    }
+   }
+  ]
+ },
+ "incidents": [
+  {
+   "rider_id": "2e2f4e1e-53f8-44c3-8210-41c5ea185beb",
+   "km": 53.51,
+   "kind": "crash",
+   "severity": "light",
+   "outcome": "time_loss",
+   "time_loss_seconds": 15.61,
+   "injury_days": null,
+   "helper_assist": false
+  },
+  {
+   "rider_id": "124144ce-b641-4391-9faf-849540bf364e",
+   "km": 97.86,
+   "kind": "mechanical",
+   "severity": null,
+   "outcome": "time_loss",
+   "time_loss_seconds": 18.89,
+   "injury_days": null,
+   "helper_assist": true
+  },
+  {
+   "rider_id": "5f40c74e-99c4-45d7-9648-04e7e5faa5dc",
+   "km": 103.98,
+   "kind": "mechanical",
+   "severity": null,
+   "outcome": "time_loss",
+   "time_loss_seconds": 34.8,
+   "injury_days": null,
+   "helper_assist": true
+  },
+  {
+   "rider_id": "f5740e79-b73a-4464-adfa-171d86725692",
+   "km": 168.69,
+   "kind": "crash",
+   "severity": "light",
+   "outcome": "time_loss",
+   "time_loss_seconds": 19.94,
+   "injury_days": null,
+   "helper_assist": false
+  }
+ ],
+ "groupSnapshots": [
+  {
+   "km": 87,
+   "groups": [
+    {
+     "group_id": "breakaway-0",
+     "kind": "breakaway",
+     "rider_ids": [
+      "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77",
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "5fdd5ec9-1da0-4628-958a-95a879b0381c",
+      "9152d40c-0b5f-459d-b467-e2f37ab3c083",
+      "c669210d-36b4-4231-ab6b-6d127f4d67d0",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "dd77303b-382c-4d9c-bd1e-d8e6f3c9374b",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0"
+     ],
+     "gap_seconds": 0
+    },
+    {
+     "group_id": "peloton-0",
+     "kind": "peloton",
+     "rider_ids": [
+      "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+      "411af30d-8d48-4441-a68a-9b172d067430",
+      "f63b533f-15c5-4872-9ef8-7215ebb28ef4",
+      "124144ce-b641-4391-9faf-849540bf364e",
+      "989fae85-2674-40cc-9bd7-a7f690fa0ed3",
+      "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5",
+      "d0e901ff-cbba-462a-ae55-27901fd55366",
+      "26f8d642-9b8a-431d-8b77-42b53f52a695",
+      "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "dd8f6e4d-af58-4b79-8ccc-37dc88f48ac3",
+      "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+      "a94ce94c-ca3d-4249-adbe-2fe57ef62e21",
+      "0a728b7b-f837-4cb1-87b0-461b408da1c3",
+      "7a8a27c2-3c40-4ac3-9c0c-8d9c8878f4d5",
+      "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3",
+      "c76ee253-3a65-4ee7-9f9b-814987bb5929",
+      "890c4fd5-84e4-4c66-b1ff-705cfbbb867f",
+      "73162a19-eab3-444d-9faf-c23df7b356e0",
+      "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+      "786455fc-ddf5-4265-9721-7cc21f65ab9a",
+      "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef",
+      "2dae1857-4669-4796-85f9-ea7902409a88",
+      "067614d4-22b6-47c2-affa-793ff8d59832",
+      "4e8aebdf-0d42-4a67-847e-12f066f5d4ec",
+      "ec79f4ef-8f8a-4496-a2eb-a45903d4fc46",
+      "3391122b-04c5-450e-b396-002ab7bc8fa5",
+      "ea979009-5d85-4256-aff5-098b10af3c8d",
+      "0376386f-ed76-414e-8843-71fcf69ec9d9",
+      "2d40fcf0-2622-47a9-85bc-64d75d65d643",
+      "ce39fc40-3fcd-42fb-a277-66b1cbbb08d0",
+      "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+      "cdead522-1604-442f-bd32-4cc340b867c1",
+      "4578b7db-1ecb-4a0a-b920-f871ada06c69",
+      "f21e324b-acad-436f-bd8b-891b6b949ab0",
+      "8df0b734-fb02-4a70-88fc-393e5b2829a1",
+      "63677a1c-37a1-4cc2-918d-d5cc9e039a5e",
+      "841f97b4-47bd-4305-b2ee-b761dcc9371a",
+      "2aefe1ec-832f-4bed-82cc-e5a3e1c282c4",
+      "f43115d6-8d5b-4e01-8ff9-b3fe59640075",
+      "f969145f-2dae-490d-aa16-55a7d0b01b86",
+      "31cc714e-2b47-4624-8666-586aeb1913b5",
+      "2cdf846a-2bf3-42ba-9652-86f9826221dd",
+      "da58219d-12cf-431a-9a19-b661d038d889",
+      "e99a2adb-5db3-48af-9453-1fa60861897a",
+      "27999b69-86b7-43c6-8e07-82568c93328d",
+      "8eea3a55-35d9-45f4-b38c-b95380c9dd9a",
+      "7ef4a61b-243c-4aef-a7fd-647ffa1a8340",
+      "b2dd74a8-9c4e-476d-b918-6c24274a1203",
+      "9b036c3b-2f17-40bc-ae65-31ce3e8be5fb",
+      "4b4d0d9a-eb85-4026-8f3d-5c81921759c3",
+      "34333941-5ce7-4d42-b363-28a0245124f0",
+      "30c453dc-0334-4c1f-87ce-f729a0aaeacd",
+      "cd563670-e43b-4308-a08b-b16f553dce16",
+      "17b3288b-251e-4c11-8325-8081ce6b4517",
+      "25975d79-4c34-4e64-aebb-74e6fd651c2a",
+      "01e2d691-21da-4ffe-a1e8-f0eb6cc3a07d",
+      "c25011b6-b9bb-4d8c-8af7-8f067550515b",
+      "6ebbaac0-8fdc-44ba-a3fb-5581a8e5b9af",
+      "97748dbc-de2c-4491-bb57-b4a2d30dd652",
+      "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+      "91321376-200f-4f0e-aeaf-00422ef31190",
+      "7c460d79-15e1-416b-a991-c4aff244cafa",
+      "069c5c12-a640-4ce1-b18b-e5a14a28d7e8",
+      "ae490040-4fdb-463d-8faa-2452b03df274",
+      "1b77c825-9775-435c-aa1b-bd21997f9262",
+      "4a711876-d8f4-4743-9b19-05bb6f5620f4",
+      "ae9b9143-5ce2-461b-9971-9877afdb77fc",
+      "96459c64-20b0-4de6-9373-62524cfab0d5",
+      "aa12bf05-65b6-46e3-9d72-2b363461b6fb",
+      "7ea6fcf0-6ec3-4753-a2f0-f5982fbe14a6",
+      "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+      "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+      "19d62e1b-c04e-4a44-8153-545d2db1c789",
+      "b77b5ea4-c22e-488d-996c-1adfa086480e",
+      "36e86b95-a11c-4aad-ae71-d613f750c1f5",
+      "84148e8a-6fec-4dfe-a6bd-d22f220d437a",
+      "7a762ee0-a917-4cff-8892-dc0c11699dfc",
+      "ae928ca6-13bc-4e82-9704-fbda08e1b1a6",
+      "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+      "d92d60cc-c2a0-47fe-a450-b2ec4e4159b0",
+      "3d5c4eee-ef57-49e9-adae-58d8c3ab8b34",
+      "d539e53d-1236-46b2-8340-9d79cf0cba42",
+      "a5c25fac-9833-462f-a297-8b164abb9696",
+      "11c23e82-c782-4412-9934-94af83c383f8",
+      "47b582c9-277a-4c5e-a138-bfcbd777d834",
+      "3ee7e961-493e-4764-9195-93f98474ed40",
+      "8e0213d8-2a78-4a84-9dac-bba7ed19b730",
+      "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+      "8242767b-3e21-4f87-9d5a-e3f8caee2603",
+      "0dc29e5e-130b-4aa1-8474-a876dd362618",
+      "0fa30b34-3f74-43ff-81ff-f0a832dda247",
+      "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f",
+      "69dacdcd-f858-4ffd-b2f4-2384e976e770",
+      "99614f25-d8e6-43cd-b54b-51593e8bb1ec",
+      "506a86ea-7344-4f2f-97c3-2eca10d23ece",
+      "6392f486-86cd-47e3-ab7b-98a5245208be",
+      "d88be8c6-b03d-4a73-a9b5-36765c4f65fd",
+      "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+      "917a7e56-cbd0-444d-9d76-5120e6ad7de9",
+      "20af8660-2d6f-496a-b3e5-d39ffc03ecfc",
+      "3b24357c-476d-4f9c-8672-64b5852eeb57",
+      "bc0c76c6-c198-44be-a611-e06a72f63857",
+      "ef37f144-05ce-4080-931c-68ead40d782b",
+      "7bb89941-a9dc-4b32-b66e-a86248e3e81b",
+      "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+      "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+      "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+      "5f40c74e-99c4-45d7-9648-04e7e5faa5dc",
+      "0650b0e2-e441-40e6-9297-8ce327669e48",
+      "4fde7710-670a-49c2-aeb2-270884071f48",
+      "62b6f4c9-b12d-45e0-9805-aa2a04223003",
+      "b0c66632-7230-4c7e-89b3-a15c1058321b",
+      "71e440af-288b-4bf9-b397-2e0035ac6dd5",
+      "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+      "14c88380-0826-4649-8f26-023f170ce2d4",
+      "878385dc-f786-4158-a1bd-8d3965380a77",
+      "8e625cf0-5c41-4f74-ae45-0f26346386b1",
+      "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0",
+      "d57396a6-0713-4e86-91a6-381546abffa3",
+      "7c21d4f1-d0e5-451a-83b6-f24de845cf40",
+      "ff5e284d-8966-4c9c-ae6c-a4a669656fda",
+      "c31a98ce-cc5d-4095-87fa-43a0dad443eb",
+      "c929e7bd-0a15-44a4-ad35-2b108555e4da",
+      "bdbf6b37-e160-44f6-b0ea-03c4ed88a658",
+      "256e0125-2b35-4b48-8602-4be0ae2e5fda",
+      "61b72c2e-ad1b-4334-969a-18844fd6511b",
+      "4d619a0b-e4e3-4066-8e03-d49bbf999b9c",
+      "4fe5e78a-6bbf-4bdc-a869-1d04b64c51f6",
+      "ba04d02b-a821-424e-bc7e-1e3fa0f5187d",
+      "4b0f018c-d656-40a4-a81e-f443a2d9b266",
+      "4b3575d7-8bcc-477c-8d78-6c2b17cfae7b",
+      "5a0d0c37-8f4e-491b-b824-1cd0cac9f404",
+      "d1a3365a-1682-4a64-a092-752e0a7846b1",
+      "021a150b-015c-45ed-9eaf-892e9c5f8fb2",
+      "7e1eb9b9-35be-4fd8-8ffb-ba1b0583002f",
+      "919b2f41-1e0a-4213-8bb0-335ba9b6a99a",
+      "ee3d4913-9747-49ed-9438-1ca46cc1ee63",
+      "cdcfe464-212c-4c4b-b298-cc8b305e62ff",
+      "4ff7d808-0412-4e5f-8622-4109c9d014b8",
+      "8a94d44d-6c0f-46a8-b1c7-da6cfec2be7a",
+      "e4519e8e-43f0-4371-87d7-1a8e30c507e3",
+      "4c185c6a-8109-4029-beb7-f70a18b29a6d",
+      "2fc3bd9f-8e09-4563-8ae9-b29f37a69970",
+      "2d378dac-4d36-4e1e-9323-4904016915d2",
+      "b607b182-5e3f-4e6a-b7a6-abb37207c939",
+      "b851ee83-ad57-4fab-9e40-89f32b5dcacb",
+      "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+      "e9d210a1-eeb6-4f0c-afdb-3db349eabd3a",
+      "6d0116be-1184-4615-9b61-3d0eb79c84bf",
+      "74157f8c-d04d-496b-b9cc-e918f6a9d382",
+      "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+      "359476c5-49bc-49c4-8ef8-489ad532e462",
+      "64943c6f-54bc-46f5-8c18-0b9e1e617a43",
+      "fde27fd8-6e2d-4dd7-bd92-29d4cf3c3cda",
+      "8dc0b809-9555-4a99-b2cb-8ba24972c137",
+      "bc1b192e-99f8-41b0-a7dc-45f3c3669089",
+      "e3dfeb7b-9d65-4fff-bb99-901d6a8f367e",
+      "d7ec1b59-aa01-4811-b687-1fca41660f0a",
+      "f5740e79-b73a-4464-adfa-171d86725692",
+      "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "72edd5e2-e1f4-452d-894a-e53ba93fb03c",
+      "985434de-a5e7-46b8-b7a1-dc80d2a8e245",
+      "292d2b1c-adf1-4eb5-bf68-651521de2b09",
+      "31b409cf-7a9a-4ecc-b011-8972c7b07ab2",
+      "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+      "69e2550f-1967-4350-b871-bd8843cccbc1",
+      "54b4db45-08a5-4cfa-bb19-1f34876a967b",
+      "717a8dfa-9c60-4b1a-be23-dd6c994508ba",
+      "46c1437c-95ff-4969-9da2-2b6e2810ce8a",
+      "bd755569-1683-45d6-b191-c63a591f9e36",
+      "a79fe73c-5fdb-4c2b-bc2a-1b98de75e4e7"
+     ],
+     "gap_seconds": 25
+    },
+    {
+     "group_id": "solo-0",
+     "kind": "solo",
+     "rider_ids": [
+      "2e2f4e1e-53f8-44c3-8210-41c5ea185beb"
+     ],
+     "gap_seconds": 40.61
+    }
+   ]
+  },
+  {
+   "km": 92,
+   "groups": [
+    {
+     "group_id": "breakaway-0",
+     "kind": "breakaway",
+     "rider_ids": [
+      "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77",
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0"
+     ],
+     "gap_seconds": 0
+    },
+    {
+     "group_id": "peloton-0",
+     "kind": "peloton",
+     "rider_ids": [
+      "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+      "411af30d-8d48-4441-a68a-9b172d067430",
+      "989fae85-2674-40cc-9bd7-a7f690fa0ed3",
+      "26f8d642-9b8a-431d-8b77-42b53f52a695",
+      "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+      "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+      "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef",
+      "2dae1857-4669-4796-85f9-ea7902409a88",
+      "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+      "f21e324b-acad-436f-bd8b-891b6b949ab0",
+      "2cdf846a-2bf3-42ba-9652-86f9826221dd",
+      "e99a2adb-5db3-48af-9453-1fa60861897a",
+      "c25011b6-b9bb-4d8c-8af7-8f067550515b",
+      "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+      "1b77c825-9775-435c-aa1b-bd21997f9262",
+      "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+      "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+      "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+      "d539e53d-1236-46b2-8340-9d79cf0cba42",
+      "47b582c9-277a-4c5e-a138-bfcbd777d834",
+      "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+      "8242767b-3e21-4f87-9d5a-e3f8caee2603",
+      "bc0c76c6-c198-44be-a611-e06a72f63857",
+      "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+      "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+      "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+      "0650b0e2-e441-40e6-9297-8ce327669e48",
+      "4fde7710-670a-49c2-aeb2-270884071f48",
+      "b0c66632-7230-4c7e-89b3-a15c1058321b",
+      "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+      "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0",
+      "61b72c2e-ad1b-4334-969a-18844fd6511b",
+      "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+      "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+      "359476c5-49bc-49c4-8ef8-489ad532e462",
+      "8dc0b809-9555-4a99-b2cb-8ba24972c137",
+      "bc1b192e-99f8-41b0-a7dc-45f3c3669089",
+      "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+      "bd755569-1683-45d6-b191-c63a591f9e36"
+     ],
+     "gap_seconds": 17.678157092267384
+    },
+    {
+     "group_id": "chase-1000",
+     "kind": "chase",
+     "rider_ids": [
+      "5fdd5ec9-1da0-4628-958a-95a879b0381c",
+      "9152d40c-0b5f-459d-b467-e2f37ab3c083",
+      "c669210d-36b4-4231-ab6b-6d127f4d67d0",
+      "dd77303b-382c-4d9c-bd1e-d8e6f3c9374b"
+     ],
+     "gap_seconds": 34.93939393939394
+    },
+    {
+     "group_id": "gruppetto-1001",
+     "kind": "gruppetto",
+     "rider_ids": [
+      "01e2d691-21da-4ffe-a1e8-f0eb6cc3a07d",
+      "021a150b-015c-45ed-9eaf-892e9c5f8fb2",
+      "0376386f-ed76-414e-8843-71fcf69ec9d9",
+      "067614d4-22b6-47c2-affa-793ff8d59832",
+      "069c5c12-a640-4ce1-b18b-e5a14a28d7e8",
+      "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+      "0a728b7b-f837-4cb1-87b0-461b408da1c3",
+      "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5",
+      "0dc29e5e-130b-4aa1-8474-a876dd362618",
+      "0fa30b34-3f74-43ff-81ff-f0a832dda247",
+      "11c23e82-c782-4412-9934-94af83c383f8",
+      "124144ce-b641-4391-9faf-849540bf364e",
+      "14c88380-0826-4649-8f26-023f170ce2d4",
+      "17b3288b-251e-4c11-8325-8081ce6b4517",
+      "19d62e1b-c04e-4a44-8153-545d2db1c789",
+      "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3",
+      "20af8660-2d6f-496a-b3e5-d39ffc03ecfc",
+      "256e0125-2b35-4b48-8602-4be0ae2e5fda",
+      "25975d79-4c34-4e64-aebb-74e6fd651c2a",
+      "27999b69-86b7-43c6-8e07-82568c93328d",
+      "292d2b1c-adf1-4eb5-bf68-651521de2b09",
+      "2aefe1ec-832f-4bed-82cc-e5a3e1c282c4",
+      "2d378dac-4d36-4e1e-9323-4904016915d2",
+      "2d40fcf0-2622-47a9-85bc-64d75d65d643",
+      "2fc3bd9f-8e09-4563-8ae9-b29f37a69970",
+      "30c453dc-0334-4c1f-87ce-f729a0aaeacd",
+      "31b409cf-7a9a-4ecc-b011-8972c7b07ab2",
+      "31cc714e-2b47-4624-8666-586aeb1913b5",
+      "3391122b-04c5-450e-b396-002ab7bc8fa5",
+      "34333941-5ce7-4d42-b363-28a0245124f0",
+      "36e86b95-a11c-4aad-ae71-d613f750c1f5",
+      "3b24357c-476d-4f9c-8672-64b5852eeb57",
+      "3d5c4eee-ef57-49e9-adae-58d8c3ab8b34",
+      "3ee7e961-493e-4764-9195-93f98474ed40",
+      "4578b7db-1ecb-4a0a-b920-f871ada06c69",
+      "46c1437c-95ff-4969-9da2-2b6e2810ce8a",
+      "4a711876-d8f4-4743-9b19-05bb6f5620f4",
+      "4b0f018c-d656-40a4-a81e-f443a2d9b266",
+      "4b3575d7-8bcc-477c-8d78-6c2b17cfae7b",
+      "4b4d0d9a-eb85-4026-8f3d-5c81921759c3",
+      "4c185c6a-8109-4029-beb7-f70a18b29a6d",
+      "4d619a0b-e4e3-4066-8e03-d49bbf999b9c",
+      "4e8aebdf-0d42-4a67-847e-12f066f5d4ec",
+      "4fe5e78a-6bbf-4bdc-a869-1d04b64c51f6",
+      "4ff7d808-0412-4e5f-8622-4109c9d014b8",
+      "506a86ea-7344-4f2f-97c3-2eca10d23ece",
+      "54b4db45-08a5-4cfa-bb19-1f34876a967b",
+      "5a0d0c37-8f4e-491b-b824-1cd0cac9f404",
+      "5f40c74e-99c4-45d7-9648-04e7e5faa5dc",
+      "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f",
+      "62b6f4c9-b12d-45e0-9805-aa2a04223003",
+      "63677a1c-37a1-4cc2-918d-d5cc9e039a5e",
+      "6392f486-86cd-47e3-ab7b-98a5245208be",
+      "64943c6f-54bc-46f5-8c18-0b9e1e617a43",
+      "69dacdcd-f858-4ffd-b2f4-2384e976e770",
+      "69e2550f-1967-4350-b871-bd8843cccbc1",
+      "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "6d0116be-1184-4615-9b61-3d0eb79c84bf",
+      "6ebbaac0-8fdc-44ba-a3fb-5581a8e5b9af",
+      "717a8dfa-9c60-4b1a-be23-dd6c994508ba",
+      "71e440af-288b-4bf9-b397-2e0035ac6dd5",
+      "72edd5e2-e1f4-452d-894a-e53ba93fb03c",
+      "73162a19-eab3-444d-9faf-c23df7b356e0",
+      "74157f8c-d04d-496b-b9cc-e918f6a9d382",
+      "786455fc-ddf5-4265-9721-7cc21f65ab9a",
+      "7a762ee0-a917-4cff-8892-dc0c11699dfc",
+      "7a8a27c2-3c40-4ac3-9c0c-8d9c8878f4d5",
+      "7bb89941-a9dc-4b32-b66e-a86248e3e81b",
+      "7c21d4f1-d0e5-451a-83b6-f24de845cf40",
+      "7c460d79-15e1-416b-a991-c4aff244cafa",
+      "7e1eb9b9-35be-4fd8-8ffb-ba1b0583002f",
+      "7ea6fcf0-6ec3-4753-a2f0-f5982fbe14a6",
+      "7ef4a61b-243c-4aef-a7fd-647ffa1a8340",
+      "84148e8a-6fec-4dfe-a6bd-d22f220d437a",
+      "841f97b4-47bd-4305-b2ee-b761dcc9371a",
+      "878385dc-f786-4158-a1bd-8d3965380a77",
+      "890c4fd5-84e4-4c66-b1ff-705cfbbb867f",
+      "8a94d44d-6c0f-46a8-b1c7-da6cfec2be7a",
+      "8df0b734-fb02-4a70-88fc-393e5b2829a1",
+      "8e0213d8-2a78-4a84-9dac-bba7ed19b730",
+      "8e625cf0-5c41-4f74-ae45-0f26346386b1",
+      "8eea3a55-35d9-45f4-b38c-b95380c9dd9a",
+      "91321376-200f-4f0e-aeaf-00422ef31190",
+      "917a7e56-cbd0-444d-9d76-5120e6ad7de9",
+      "919b2f41-1e0a-4213-8bb0-335ba9b6a99a",
+      "96459c64-20b0-4de6-9373-62524cfab0d5",
+      "97748dbc-de2c-4491-bb57-b4a2d30dd652",
+      "985434de-a5e7-46b8-b7a1-dc80d2a8e245",
+      "99614f25-d8e6-43cd-b54b-51593e8bb1ec",
+      "9b036c3b-2f17-40bc-ae65-31ce3e8be5fb",
+      "a5c25fac-9833-462f-a297-8b164abb9696",
+      "a79fe73c-5fdb-4c2b-bc2a-1b98de75e4e7",
+      "a94ce94c-ca3d-4249-adbe-2fe57ef62e21",
+      "aa12bf05-65b6-46e3-9d72-2b363461b6fb",
+      "ae490040-4fdb-463d-8faa-2452b03df274",
+      "ae928ca6-13bc-4e82-9704-fbda08e1b1a6",
+      "ae9b9143-5ce2-461b-9971-9877afdb77fc",
+      "b2dd74a8-9c4e-476d-b918-6c24274a1203",
+      "b607b182-5e3f-4e6a-b7a6-abb37207c939",
+      "b77b5ea4-c22e-488d-996c-1adfa086480e",
+      "b851ee83-ad57-4fab-9e40-89f32b5dcacb",
+      "ba04d02b-a821-424e-bc7e-1e3fa0f5187d",
+      "bdbf6b37-e160-44f6-b0ea-03c4ed88a658",
+      "c31a98ce-cc5d-4095-87fa-43a0dad443eb",
+      "c76ee253-3a65-4ee7-9f9b-814987bb5929",
+      "c929e7bd-0a15-44a4-ad35-2b108555e4da",
+      "cd563670-e43b-4308-a08b-b16f553dce16",
+      "cdcfe464-212c-4c4b-b298-cc8b305e62ff",
+      "cdead522-1604-442f-bd32-4cc340b867c1",
+      "ce39fc40-3fcd-42fb-a277-66b1cbbb08d0",
+      "d0e901ff-cbba-462a-ae55-27901fd55366",
+      "d1a3365a-1682-4a64-a092-752e0a7846b1",
+      "d57396a6-0713-4e86-91a6-381546abffa3",
+      "d7ec1b59-aa01-4811-b687-1fca41660f0a",
+      "d88be8c6-b03d-4a73-a9b5-36765c4f65fd",
+      "d92d60cc-c2a0-47fe-a450-b2ec4e4159b0",
+      "da58219d-12cf-431a-9a19-b661d038d889",
+      "dd8f6e4d-af58-4b79-8ccc-37dc88f48ac3",
+      "e3dfeb7b-9d65-4fff-bb99-901d6a8f367e",
+      "e4519e8e-43f0-4371-87d7-1a8e30c507e3",
+      "e9d210a1-eeb6-4f0c-afdb-3db349eabd3a",
+      "ea979009-5d85-4256-aff5-098b10af3c8d",
+      "ec79f4ef-8f8a-4496-a2eb-a45903d4fc46",
+      "ee3d4913-9747-49ed-9438-1ca46cc1ee63",
+      "ef37f144-05ce-4080-931c-68ead40d782b",
+      "f43115d6-8d5b-4e01-8ff9-b3fe59640075",
+      "f5740e79-b73a-4464-adfa-171d86725692",
+      "f63b533f-15c5-4872-9ef8-7215ebb28ef4",
+      "f969145f-2dae-490d-aa16-55a7d0b01b86",
+      "fde27fd8-6e2d-4dd7-bd92-29d4cf3c3cda",
+      "ff5e284d-8966-4c9c-ae6c-a4a669656fda"
+     ],
+     "gap_seconds": 59.01099760831636
+    },
+    {
+     "group_id": "solo-0",
+     "kind": "solo",
+     "rider_ids": [
+      "2e2f4e1e-53f8-44c3-8210-41c5ea185beb"
+     ],
+     "gap_seconds": 77.24284729854786
+    }
+   ]
+  },
+  {
+   "km": 95.6,
+   "groups": [
+    {
+     "group_id": "breakaway-2000",
+     "kind": "breakaway",
+     "rider_ids": [
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0"
+     ],
+     "gap_seconds": 0
+    },
+    {
+     "group_id": "breakaway-2001",
+     "kind": "breakaway",
+     "rider_ids": [
+      "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+      "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+      "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+      "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+      "1b77c825-9775-435c-aa1b-bd21997f9262",
+      "26f8d642-9b8a-431d-8b77-42b53f52a695",
+      "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+      "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+      "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+      "411af30d-8d48-4441-a68a-9b172d067430",
+      "47b582c9-277a-4c5e-a138-bfcbd777d834",
+      "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+      "4fde7710-670a-49c2-aeb2-270884071f48",
+      "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+      "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+      "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+      "61b72c2e-ad1b-4334-969a-18844fd6511b",
+      "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+      "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+      "8242767b-3e21-4f87-9d5a-e3f8caee2603",
+      "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+      "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0",
+      "8dc0b809-9555-4a99-b2cb-8ba24972c137",
+      "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+      "b0c66632-7230-4c7e-89b3-a15c1058321b",
+      "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+      "bc0c76c6-c198-44be-a611-e06a72f63857",
+      "bc1b192e-99f8-41b0-a7dc-45f3c3669089",
+      "bd755569-1683-45d6-b191-c63a591f9e36",
+      "c25011b6-b9bb-4d8c-8af7-8f067550515b",
+      "e99a2adb-5db3-48af-9453-1fa60861897a",
+      "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef",
+      "f21e324b-acad-436f-bd8b-891b6b949ab0",
+      "359476c5-49bc-49c4-8ef8-489ad532e462",
+      "2cdf846a-2bf3-42ba-9652-86f9826221dd",
+      "2dae1857-4669-4796-85f9-ea7902409a88",
+      "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77"
+     ],
+     "gap_seconds": 15.799999999999997
+    },
+    {
+     "group_id": "peloton-0",
+     "kind": "peloton",
+     "rider_ids": [
+      "989fae85-2674-40cc-9bd7-a7f690fa0ed3",
+      "d539e53d-1236-46b2-8340-9d79cf0cba42",
+      "0650b0e2-e441-40e6-9297-8ce327669e48"
+     ],
+     "gap_seconds": 25.799999999999997
+    },
+    {
+     "group_id": "solo-2002",
+     "kind": "solo",
+     "rider_ids": [
+      "5fdd5ec9-1da0-4628-958a-95a879b0381c"
+     ],
+     "gap_seconds": 36.47
+    },
+    {
+     "group_id": "chase-1000",
+     "kind": "chase",
+     "rider_ids": [
+      "9152d40c-0b5f-459d-b467-e2f37ab3c083",
+      "c669210d-36b4-4231-ab6b-6d127f4d67d0",
+      "dd77303b-382c-4d9c-bd1e-d8e6f3c9374b"
+     ],
+     "gap_seconds": 49.8
+    },
+    {
+     "group_id": "gruppetto-1001",
+     "kind": "gruppetto",
+     "rider_ids": [
+      "01e2d691-21da-4ffe-a1e8-f0eb6cc3a07d",
+      "021a150b-015c-45ed-9eaf-892e9c5f8fb2",
+      "0376386f-ed76-414e-8843-71fcf69ec9d9",
+      "067614d4-22b6-47c2-affa-793ff8d59832",
+      "069c5c12-a640-4ce1-b18b-e5a14a28d7e8",
+      "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+      "0a728b7b-f837-4cb1-87b0-461b408da1c3",
+      "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5",
+      "0dc29e5e-130b-4aa1-8474-a876dd362618",
+      "0fa30b34-3f74-43ff-81ff-f0a832dda247",
+      "11c23e82-c782-4412-9934-94af83c383f8",
+      "124144ce-b641-4391-9faf-849540bf364e",
+      "14c88380-0826-4649-8f26-023f170ce2d4",
+      "17b3288b-251e-4c11-8325-8081ce6b4517",
+      "19d62e1b-c04e-4a44-8153-545d2db1c789",
+      "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3",
+      "20af8660-2d6f-496a-b3e5-d39ffc03ecfc",
+      "256e0125-2b35-4b48-8602-4be0ae2e5fda",
+      "25975d79-4c34-4e64-aebb-74e6fd651c2a",
+      "27999b69-86b7-43c6-8e07-82568c93328d",
+      "292d2b1c-adf1-4eb5-bf68-651521de2b09",
+      "2aefe1ec-832f-4bed-82cc-e5a3e1c282c4",
+      "2d378dac-4d36-4e1e-9323-4904016915d2",
+      "2d40fcf0-2622-47a9-85bc-64d75d65d643",
+      "2fc3bd9f-8e09-4563-8ae9-b29f37a69970",
+      "30c453dc-0334-4c1f-87ce-f729a0aaeacd",
+      "31b409cf-7a9a-4ecc-b011-8972c7b07ab2",
+      "31cc714e-2b47-4624-8666-586aeb1913b5",
+      "3391122b-04c5-450e-b396-002ab7bc8fa5",
+      "34333941-5ce7-4d42-b363-28a0245124f0",
+      "36e86b95-a11c-4aad-ae71-d613f750c1f5",
+      "3b24357c-476d-4f9c-8672-64b5852eeb57",
+      "3d5c4eee-ef57-49e9-adae-58d8c3ab8b34",
+      "3ee7e961-493e-4764-9195-93f98474ed40",
+      "4578b7db-1ecb-4a0a-b920-f871ada06c69",
+      "46c1437c-95ff-4969-9da2-2b6e2810ce8a",
+      "4a711876-d8f4-4743-9b19-05bb6f5620f4",
+      "4b0f018c-d656-40a4-a81e-f443a2d9b266",
+      "4b3575d7-8bcc-477c-8d78-6c2b17cfae7b",
+      "4b4d0d9a-eb85-4026-8f3d-5c81921759c3",
+      "4c185c6a-8109-4029-beb7-f70a18b29a6d",
+      "4d619a0b-e4e3-4066-8e03-d49bbf999b9c",
+      "4e8aebdf-0d42-4a67-847e-12f066f5d4ec",
+      "4fe5e78a-6bbf-4bdc-a869-1d04b64c51f6",
+      "4ff7d808-0412-4e5f-8622-4109c9d014b8",
+      "506a86ea-7344-4f2f-97c3-2eca10d23ece",
+      "54b4db45-08a5-4cfa-bb19-1f34876a967b",
+      "5a0d0c37-8f4e-491b-b824-1cd0cac9f404",
+      "5f40c74e-99c4-45d7-9648-04e7e5faa5dc",
+      "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f",
+      "62b6f4c9-b12d-45e0-9805-aa2a04223003",
+      "63677a1c-37a1-4cc2-918d-d5cc9e039a5e",
+      "6392f486-86cd-47e3-ab7b-98a5245208be",
+      "64943c6f-54bc-46f5-8c18-0b9e1e617a43",
+      "69dacdcd-f858-4ffd-b2f4-2384e976e770",
+      "69e2550f-1967-4350-b871-bd8843cccbc1",
+      "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "6d0116be-1184-4615-9b61-3d0eb79c84bf",
+      "6ebbaac0-8fdc-44ba-a3fb-5581a8e5b9af",
+      "717a8dfa-9c60-4b1a-be23-dd6c994508ba",
+      "71e440af-288b-4bf9-b397-2e0035ac6dd5",
+      "72edd5e2-e1f4-452d-894a-e53ba93fb03c",
+      "73162a19-eab3-444d-9faf-c23df7b356e0",
+      "74157f8c-d04d-496b-b9cc-e918f6a9d382",
+      "786455fc-ddf5-4265-9721-7cc21f65ab9a",
+      "7a762ee0-a917-4cff-8892-dc0c11699dfc",
+      "7a8a27c2-3c40-4ac3-9c0c-8d9c8878f4d5",
+      "7bb89941-a9dc-4b32-b66e-a86248e3e81b",
+      "7c21d4f1-d0e5-451a-83b6-f24de845cf40",
+      "7c460d79-15e1-416b-a991-c4aff244cafa",
+      "7e1eb9b9-35be-4fd8-8ffb-ba1b0583002f",
+      "7ea6fcf0-6ec3-4753-a2f0-f5982fbe14a6",
+      "7ef4a61b-243c-4aef-a7fd-647ffa1a8340",
+      "84148e8a-6fec-4dfe-a6bd-d22f220d437a",
+      "841f97b4-47bd-4305-b2ee-b761dcc9371a",
+      "878385dc-f786-4158-a1bd-8d3965380a77",
+      "890c4fd5-84e4-4c66-b1ff-705cfbbb867f",
+      "8a94d44d-6c0f-46a8-b1c7-da6cfec2be7a",
+      "8df0b734-fb02-4a70-88fc-393e5b2829a1",
+      "8e0213d8-2a78-4a84-9dac-bba7ed19b730",
+      "8e625cf0-5c41-4f74-ae45-0f26346386b1",
+      "8eea3a55-35d9-45f4-b38c-b95380c9dd9a",
+      "91321376-200f-4f0e-aeaf-00422ef31190",
+      "917a7e56-cbd0-444d-9d76-5120e6ad7de9",
+      "919b2f41-1e0a-4213-8bb0-335ba9b6a99a",
+      "96459c64-20b0-4de6-9373-62524cfab0d5",
+      "97748dbc-de2c-4491-bb57-b4a2d30dd652",
+      "985434de-a5e7-46b8-b7a1-dc80d2a8e245",
+      "99614f25-d8e6-43cd-b54b-51593e8bb1ec",
+      "9b036c3b-2f17-40bc-ae65-31ce3e8be5fb",
+      "a5c25fac-9833-462f-a297-8b164abb9696",
+      "a79fe73c-5fdb-4c2b-bc2a-1b98de75e4e7",
+      "a94ce94c-ca3d-4249-adbe-2fe57ef62e21",
+      "aa12bf05-65b6-46e3-9d72-2b363461b6fb",
+      "ae490040-4fdb-463d-8faa-2452b03df274",
+      "ae928ca6-13bc-4e82-9704-fbda08e1b1a6",
+      "ae9b9143-5ce2-461b-9971-9877afdb77fc",
+      "b2dd74a8-9c4e-476d-b918-6c24274a1203",
+      "b607b182-5e3f-4e6a-b7a6-abb37207c939",
+      "b77b5ea4-c22e-488d-996c-1adfa086480e",
+      "b851ee83-ad57-4fab-9e40-89f32b5dcacb",
+      "ba04d02b-a821-424e-bc7e-1e3fa0f5187d",
+      "bdbf6b37-e160-44f6-b0ea-03c4ed88a658",
+      "c31a98ce-cc5d-4095-87fa-43a0dad443eb",
+      "c76ee253-3a65-4ee7-9f9b-814987bb5929",
+      "c929e7bd-0a15-44a4-ad35-2b108555e4da",
+      "cd563670-e43b-4308-a08b-b16f553dce16",
+      "cdcfe464-212c-4c4b-b298-cc8b305e62ff",
+      "cdead522-1604-442f-bd32-4cc340b867c1",
+      "ce39fc40-3fcd-42fb-a277-66b1cbbb08d0",
+      "d0e901ff-cbba-462a-ae55-27901fd55366",
+      "d1a3365a-1682-4a64-a092-752e0a7846b1",
+      "d57396a6-0713-4e86-91a6-381546abffa3",
+      "d7ec1b59-aa01-4811-b687-1fca41660f0a",
+      "d88be8c6-b03d-4a73-a9b5-36765c4f65fd",
+      "d92d60cc-c2a0-47fe-a450-b2ec4e4159b0",
+      "da58219d-12cf-431a-9a19-b661d038d889",
+      "dd8f6e4d-af58-4b79-8ccc-37dc88f48ac3",
+      "e3dfeb7b-9d65-4fff-bb99-901d6a8f367e",
+      "e4519e8e-43f0-4371-87d7-1a8e30c507e3",
+      "e9d210a1-eeb6-4f0c-afdb-3db349eabd3a",
+      "ea979009-5d85-4256-aff5-098b10af3c8d",
+      "ec79f4ef-8f8a-4496-a2eb-a45903d4fc46",
+      "ee3d4913-9747-49ed-9438-1ca46cc1ee63",
+      "ef37f144-05ce-4080-931c-68ead40d782b",
+      "f43115d6-8d5b-4e01-8ff9-b3fe59640075",
+      "f5740e79-b73a-4464-adfa-171d86725692",
+      "f63b533f-15c5-4872-9ef8-7215ebb28ef4",
+      "f969145f-2dae-490d-aa16-55a7d0b01b86",
+      "fde27fd8-6e2d-4dd7-bd92-29d4cf3c3cda",
+      "ff5e284d-8966-4c9c-ae6c-a4a669656fda"
+     ],
+     "gap_seconds": 71.36
+    },
+    {
+     "group_id": "solo-0",
+     "kind": "solo",
+     "rider_ids": [
+      "2e2f4e1e-53f8-44c3-8210-41c5ea185beb"
+     ],
+     "gap_seconds": 98.28999999999999
+    }
+   ]
+  },
+  {
+   "km": 150.2,
+   "groups": [
+    {
+     "group_id": "breakaway-2000",
+     "kind": "peloton",
+     "rider_ids": [
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0",
+      "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+      "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+      "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+      "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+      "1b77c825-9775-435c-aa1b-bd21997f9262",
+      "26f8d642-9b8a-431d-8b77-42b53f52a695",
+      "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+      "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+      "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+      "411af30d-8d48-4441-a68a-9b172d067430",
+      "47b582c9-277a-4c5e-a138-bfcbd777d834",
+      "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+      "4fde7710-670a-49c2-aeb2-270884071f48",
+      "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+      "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+      "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+      "61b72c2e-ad1b-4334-969a-18844fd6511b",
+      "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+      "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+      "8242767b-3e21-4f87-9d5a-e3f8caee2603",
+      "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+      "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0",
+      "8dc0b809-9555-4a99-b2cb-8ba24972c137",
+      "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+      "b0c66632-7230-4c7e-89b3-a15c1058321b",
+      "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+      "bc0c76c6-c198-44be-a611-e06a72f63857",
+      "bc1b192e-99f8-41b0-a7dc-45f3c3669089",
+      "bd755569-1683-45d6-b191-c63a591f9e36",
+      "c25011b6-b9bb-4d8c-8af7-8f067550515b",
+      "e99a2adb-5db3-48af-9453-1fa60861897a",
+      "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef",
+      "f21e324b-acad-436f-bd8b-891b6b949ab0",
+      "359476c5-49bc-49c4-8ef8-489ad532e462",
+      "2cdf846a-2bf3-42ba-9652-86f9826221dd",
+      "2dae1857-4669-4796-85f9-ea7902409a88",
+      "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77",
+      "01e2d691-21da-4ffe-a1e8-f0eb6cc3a07d",
+      "021a150b-015c-45ed-9eaf-892e9c5f8fb2",
+      "0376386f-ed76-414e-8843-71fcf69ec9d9",
+      "067614d4-22b6-47c2-affa-793ff8d59832",
+      "069c5c12-a640-4ce1-b18b-e5a14a28d7e8",
+      "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+      "0a728b7b-f837-4cb1-87b0-461b408da1c3",
+      "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5",
+      "0dc29e5e-130b-4aa1-8474-a876dd362618",
+      "0fa30b34-3f74-43ff-81ff-f0a832dda247",
+      "11c23e82-c782-4412-9934-94af83c383f8",
+      "14c88380-0826-4649-8f26-023f170ce2d4",
+      "17b3288b-251e-4c11-8325-8081ce6b4517",
+      "19d62e1b-c04e-4a44-8153-545d2db1c789",
+      "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3",
+      "20af8660-2d6f-496a-b3e5-d39ffc03ecfc",
+      "256e0125-2b35-4b48-8602-4be0ae2e5fda",
+      "25975d79-4c34-4e64-aebb-74e6fd651c2a",
+      "27999b69-86b7-43c6-8e07-82568c93328d",
+      "292d2b1c-adf1-4eb5-bf68-651521de2b09",
+      "2aefe1ec-832f-4bed-82cc-e5a3e1c282c4",
+      "2d378dac-4d36-4e1e-9323-4904016915d2",
+      "2d40fcf0-2622-47a9-85bc-64d75d65d643",
+      "2fc3bd9f-8e09-4563-8ae9-b29f37a69970",
+      "30c453dc-0334-4c1f-87ce-f729a0aaeacd",
+      "31b409cf-7a9a-4ecc-b011-8972c7b07ab2",
+      "31cc714e-2b47-4624-8666-586aeb1913b5",
+      "3391122b-04c5-450e-b396-002ab7bc8fa5",
+      "34333941-5ce7-4d42-b363-28a0245124f0",
+      "36e86b95-a11c-4aad-ae71-d613f750c1f5",
+      "3b24357c-476d-4f9c-8672-64b5852eeb57",
+      "3d5c4eee-ef57-49e9-adae-58d8c3ab8b34",
+      "3ee7e961-493e-4764-9195-93f98474ed40",
+      "4578b7db-1ecb-4a0a-b920-f871ada06c69",
+      "46c1437c-95ff-4969-9da2-2b6e2810ce8a",
+      "4a711876-d8f4-4743-9b19-05bb6f5620f4",
+      "4b0f018c-d656-40a4-a81e-f443a2d9b266",
+      "4b3575d7-8bcc-477c-8d78-6c2b17cfae7b",
+      "4b4d0d9a-eb85-4026-8f3d-5c81921759c3",
+      "4c185c6a-8109-4029-beb7-f70a18b29a6d",
+      "4d619a0b-e4e3-4066-8e03-d49bbf999b9c",
+      "4e8aebdf-0d42-4a67-847e-12f066f5d4ec",
+      "4fe5e78a-6bbf-4bdc-a869-1d04b64c51f6",
+      "4ff7d808-0412-4e5f-8622-4109c9d014b8",
+      "506a86ea-7344-4f2f-97c3-2eca10d23ece",
+      "54b4db45-08a5-4cfa-bb19-1f34876a967b",
+      "5a0d0c37-8f4e-491b-b824-1cd0cac9f404",
+      "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f",
+      "62b6f4c9-b12d-45e0-9805-aa2a04223003",
+      "63677a1c-37a1-4cc2-918d-d5cc9e039a5e",
+      "6392f486-86cd-47e3-ab7b-98a5245208be",
+      "64943c6f-54bc-46f5-8c18-0b9e1e617a43",
+      "69dacdcd-f858-4ffd-b2f4-2384e976e770",
+      "69e2550f-1967-4350-b871-bd8843cccbc1",
+      "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "6d0116be-1184-4615-9b61-3d0eb79c84bf",
+      "6ebbaac0-8fdc-44ba-a3fb-5581a8e5b9af",
+      "717a8dfa-9c60-4b1a-be23-dd6c994508ba",
+      "71e440af-288b-4bf9-b397-2e0035ac6dd5",
+      "72edd5e2-e1f4-452d-894a-e53ba93fb03c",
+      "73162a19-eab3-444d-9faf-c23df7b356e0",
+      "74157f8c-d04d-496b-b9cc-e918f6a9d382",
+      "786455fc-ddf5-4265-9721-7cc21f65ab9a",
+      "7a762ee0-a917-4cff-8892-dc0c11699dfc",
+      "7a8a27c2-3c40-4ac3-9c0c-8d9c8878f4d5",
+      "7bb89941-a9dc-4b32-b66e-a86248e3e81b",
+      "7c21d4f1-d0e5-451a-83b6-f24de845cf40",
+      "7c460d79-15e1-416b-a991-c4aff244cafa",
+      "7e1eb9b9-35be-4fd8-8ffb-ba1b0583002f",
+      "7ea6fcf0-6ec3-4753-a2f0-f5982fbe14a6",
+      "7ef4a61b-243c-4aef-a7fd-647ffa1a8340",
+      "84148e8a-6fec-4dfe-a6bd-d22f220d437a",
+      "841f97b4-47bd-4305-b2ee-b761dcc9371a",
+      "878385dc-f786-4158-a1bd-8d3965380a77",
+      "890c4fd5-84e4-4c66-b1ff-705cfbbb867f",
+      "8a94d44d-6c0f-46a8-b1c7-da6cfec2be7a",
+      "8df0b734-fb02-4a70-88fc-393e5b2829a1",
+      "8e0213d8-2a78-4a84-9dac-bba7ed19b730",
+      "8e625cf0-5c41-4f74-ae45-0f26346386b1",
+      "8eea3a55-35d9-45f4-b38c-b95380c9dd9a",
+      "91321376-200f-4f0e-aeaf-00422ef31190",
+      "917a7e56-cbd0-444d-9d76-5120e6ad7de9",
+      "919b2f41-1e0a-4213-8bb0-335ba9b6a99a",
+      "96459c64-20b0-4de6-9373-62524cfab0d5",
+      "97748dbc-de2c-4491-bb57-b4a2d30dd652",
+      "985434de-a5e7-46b8-b7a1-dc80d2a8e245",
+      "99614f25-d8e6-43cd-b54b-51593e8bb1ec",
+      "9b036c3b-2f17-40bc-ae65-31ce3e8be5fb",
+      "a5c25fac-9833-462f-a297-8b164abb9696",
+      "a79fe73c-5fdb-4c2b-bc2a-1b98de75e4e7",
+      "a94ce94c-ca3d-4249-adbe-2fe57ef62e21",
+      "aa12bf05-65b6-46e3-9d72-2b363461b6fb",
+      "ae490040-4fdb-463d-8faa-2452b03df274",
+      "ae928ca6-13bc-4e82-9704-fbda08e1b1a6",
+      "ae9b9143-5ce2-461b-9971-9877afdb77fc",
+      "b2dd74a8-9c4e-476d-b918-6c24274a1203",
+      "b607b182-5e3f-4e6a-b7a6-abb37207c939",
+      "b77b5ea4-c22e-488d-996c-1adfa086480e",
+      "b851ee83-ad57-4fab-9e40-89f32b5dcacb",
+      "ba04d02b-a821-424e-bc7e-1e3fa0f5187d",
+      "bdbf6b37-e160-44f6-b0ea-03c4ed88a658",
+      "c31a98ce-cc5d-4095-87fa-43a0dad443eb",
+      "c76ee253-3a65-4ee7-9f9b-814987bb5929",
+      "c929e7bd-0a15-44a4-ad35-2b108555e4da",
+      "cd563670-e43b-4308-a08b-b16f553dce16",
+      "cdcfe464-212c-4c4b-b298-cc8b305e62ff",
+      "cdead522-1604-442f-bd32-4cc340b867c1",
+      "ce39fc40-3fcd-42fb-a277-66b1cbbb08d0",
+      "d0e901ff-cbba-462a-ae55-27901fd55366",
+      "d1a3365a-1682-4a64-a092-752e0a7846b1",
+      "d57396a6-0713-4e86-91a6-381546abffa3",
+      "d7ec1b59-aa01-4811-b687-1fca41660f0a",
+      "d88be8c6-b03d-4a73-a9b5-36765c4f65fd",
+      "d92d60cc-c2a0-47fe-a450-b2ec4e4159b0",
+      "da58219d-12cf-431a-9a19-b661d038d889",
+      "dd8f6e4d-af58-4b79-8ccc-37dc88f48ac3",
+      "e3dfeb7b-9d65-4fff-bb99-901d6a8f367e",
+      "e4519e8e-43f0-4371-87d7-1a8e30c507e3",
+      "e9d210a1-eeb6-4f0c-afdb-3db349eabd3a",
+      "ea979009-5d85-4256-aff5-098b10af3c8d",
+      "ec79f4ef-8f8a-4496-a2eb-a45903d4fc46",
+      "ee3d4913-9747-49ed-9438-1ca46cc1ee63",
+      "ef37f144-05ce-4080-931c-68ead40d782b",
+      "f43115d6-8d5b-4e01-8ff9-b3fe59640075",
+      "f5740e79-b73a-4464-adfa-171d86725692",
+      "f63b533f-15c5-4872-9ef8-7215ebb28ef4",
+      "f969145f-2dae-490d-aa16-55a7d0b01b86",
+      "fde27fd8-6e2d-4dd7-bd92-29d4cf3c3cda",
+      "ff5e284d-8966-4c9c-ae6c-a4a669656fda",
+      "989fae85-2674-40cc-9bd7-a7f690fa0ed3",
+      "d539e53d-1236-46b2-8340-9d79cf0cba42",
+      "0650b0e2-e441-40e6-9297-8ce327669e48"
+     ],
+     "gap_seconds": 0
+    },
+    {
+     "group_id": "solo-3000",
+     "kind": "solo",
+     "rider_ids": [
+      "124144ce-b641-4391-9faf-849540bf364e"
+     ],
+     "gap_seconds": 18.89
+    },
+    {
+     "group_id": "solo-3001",
+     "kind": "solo",
+     "rider_ids": [
+      "5f40c74e-99c4-45d7-9648-04e7e5faa5dc"
+     ],
+     "gap_seconds": 34.8
+    },
+    {
+     "group_id": "chase-1000",
+     "kind": "chase",
+     "rider_ids": [
+      "9152d40c-0b5f-459d-b467-e2f37ab3c083",
+      "c669210d-36b4-4231-ab6b-6d127f4d67d0",
+      "dd77303b-382c-4d9c-bd1e-d8e6f3c9374b"
+     ],
+     "gap_seconds": 80.30146071074869
+    },
+    {
+     "group_id": "solo-2002",
+     "kind": "solo",
+     "rider_ids": [
+      "5fdd5ec9-1da0-4628-958a-95a879b0381c"
+     ],
+     "gap_seconds": 180.8158387335304
+    },
+    {
+     "group_id": "solo-0",
+     "kind": "solo",
+     "rider_ids": [
+      "2e2f4e1e-53f8-44c3-8210-41c5ea185beb"
+     ],
+     "gap_seconds": 294.5635746720245
+    }
+   ]
+  },
+  {
+   "km": 160,
+   "groups": [
+    {
+     "group_id": "breakaway-2000",
+     "kind": "peloton",
+     "rider_ids": [
+      "2dae1857-4669-4796-85f9-ea7902409a88",
+      "989fae85-2674-40cc-9bd7-a7f690fa0ed3"
+     ],
+     "gap_seconds": 0
+    },
+    {
+     "group_id": "gruppetto-4000",
+     "kind": "gruppetto",
+     "rider_ids": [
+      "01e2d691-21da-4ffe-a1e8-f0eb6cc3a07d",
+      "021a150b-015c-45ed-9eaf-892e9c5f8fb2",
+      "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+      "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+      "0376386f-ed76-414e-8843-71fcf69ec9d9",
+      "0650b0e2-e441-40e6-9297-8ce327669e48",
+      "067614d4-22b6-47c2-affa-793ff8d59832",
+      "069c5c12-a640-4ce1-b18b-e5a14a28d7e8",
+      "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+      "0a728b7b-f837-4cb1-87b0-461b408da1c3",
+      "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5",
+      "0dc29e5e-130b-4aa1-8474-a876dd362618",
+      "0fa30b34-3f74-43ff-81ff-f0a832dda247",
+      "11c23e82-c782-4412-9934-94af83c383f8",
+      "14c88380-0826-4649-8f26-023f170ce2d4",
+      "17b3288b-251e-4c11-8325-8081ce6b4517",
+      "19d62e1b-c04e-4a44-8153-545d2db1c789",
+      "1b77c825-9775-435c-aa1b-bd21997f9262",
+      "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3",
+      "20af8660-2d6f-496a-b3e5-d39ffc03ecfc",
+      "256e0125-2b35-4b48-8602-4be0ae2e5fda",
+      "25975d79-4c34-4e64-aebb-74e6fd651c2a",
+      "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77",
+      "26f8d642-9b8a-431d-8b77-42b53f52a695",
+      "27999b69-86b7-43c6-8e07-82568c93328d",
+      "292d2b1c-adf1-4eb5-bf68-651521de2b09",
+      "2aefe1ec-832f-4bed-82cc-e5a3e1c282c4",
+      "2cdf846a-2bf3-42ba-9652-86f9826221dd",
+      "2d378dac-4d36-4e1e-9323-4904016915d2",
+      "2d40fcf0-2622-47a9-85bc-64d75d65d643",
+      "2fc3bd9f-8e09-4563-8ae9-b29f37a69970",
+      "30c453dc-0334-4c1f-87ce-f729a0aaeacd",
+      "31b409cf-7a9a-4ecc-b011-8972c7b07ab2",
+      "31cc714e-2b47-4624-8666-586aeb1913b5",
+      "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+      "3391122b-04c5-450e-b396-002ab7bc8fa5",
+      "34333941-5ce7-4d42-b363-28a0245124f0",
+      "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+      "359476c5-49bc-49c4-8ef8-489ad532e462",
+      "36e86b95-a11c-4aad-ae71-d613f750c1f5",
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "3b24357c-476d-4f9c-8672-64b5852eeb57",
+      "3d5c4eee-ef57-49e9-adae-58d8c3ab8b34",
+      "3ee7e961-493e-4764-9195-93f98474ed40",
+      "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+      "411af30d-8d48-4441-a68a-9b172d067430",
+      "4578b7db-1ecb-4a0a-b920-f871ada06c69",
+      "46c1437c-95ff-4969-9da2-2b6e2810ce8a",
+      "47b582c9-277a-4c5e-a138-bfcbd777d834",
+      "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+      "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+      "4a711876-d8f4-4743-9b19-05bb6f5620f4",
+      "4b0f018c-d656-40a4-a81e-f443a2d9b266",
+      "4b3575d7-8bcc-477c-8d78-6c2b17cfae7b",
+      "4b4d0d9a-eb85-4026-8f3d-5c81921759c3",
+      "4c185c6a-8109-4029-beb7-f70a18b29a6d",
+      "4d619a0b-e4e3-4066-8e03-d49bbf999b9c",
+      "4e8aebdf-0d42-4a67-847e-12f066f5d4ec",
+      "4fde7710-670a-49c2-aeb2-270884071f48",
+      "4fe5e78a-6bbf-4bdc-a869-1d04b64c51f6",
+      "4ff7d808-0412-4e5f-8622-4109c9d014b8",
+      "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+      "506a86ea-7344-4f2f-97c3-2eca10d23ece",
+      "54b4db45-08a5-4cfa-bb19-1f34876a967b",
+      "5a0d0c37-8f4e-491b-b824-1cd0cac9f404",
+      "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+      "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+      "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f",
+      "61b72c2e-ad1b-4334-969a-18844fd6511b",
+      "62b6f4c9-b12d-45e0-9805-aa2a04223003",
+      "63677a1c-37a1-4cc2-918d-d5cc9e039a5e",
+      "6392f486-86cd-47e3-ab7b-98a5245208be",
+      "64943c6f-54bc-46f5-8c18-0b9e1e617a43",
+      "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+      "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+      "69dacdcd-f858-4ffd-b2f4-2384e976e770",
+      "69e2550f-1967-4350-b871-bd8843cccbc1",
+      "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "6d0116be-1184-4615-9b61-3d0eb79c84bf",
+      "6ebbaac0-8fdc-44ba-a3fb-5581a8e5b9af",
+      "717a8dfa-9c60-4b1a-be23-dd6c994508ba",
+      "71e440af-288b-4bf9-b397-2e0035ac6dd5",
+      "72edd5e2-e1f4-452d-894a-e53ba93fb03c",
+      "73162a19-eab3-444d-9faf-c23df7b356e0",
+      "74157f8c-d04d-496b-b9cc-e918f6a9d382",
+      "786455fc-ddf5-4265-9721-7cc21f65ab9a",
+      "7a762ee0-a917-4cff-8892-dc0c11699dfc",
+      "7a8a27c2-3c40-4ac3-9c0c-8d9c8878f4d5",
+      "7bb89941-a9dc-4b32-b66e-a86248e3e81b",
+      "7c21d4f1-d0e5-451a-83b6-f24de845cf40",
+      "7c460d79-15e1-416b-a991-c4aff244cafa",
+      "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+      "7e1eb9b9-35be-4fd8-8ffb-ba1b0583002f",
+      "7ea6fcf0-6ec3-4753-a2f0-f5982fbe14a6",
+      "7ef4a61b-243c-4aef-a7fd-647ffa1a8340",
+      "8242767b-3e21-4f87-9d5a-e3f8caee2603",
+      "84148e8a-6fec-4dfe-a6bd-d22f220d437a",
+      "841f97b4-47bd-4305-b2ee-b761dcc9371a",
+      "878385dc-f786-4158-a1bd-8d3965380a77",
+      "890c4fd5-84e4-4c66-b1ff-705cfbbb867f",
+      "8a94d44d-6c0f-46a8-b1c7-da6cfec2be7a",
+      "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+      "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0",
+      "8dc0b809-9555-4a99-b2cb-8ba24972c137",
+      "8df0b734-fb02-4a70-88fc-393e5b2829a1",
+      "8e0213d8-2a78-4a84-9dac-bba7ed19b730",
+      "8e625cf0-5c41-4f74-ae45-0f26346386b1",
+      "8eea3a55-35d9-45f4-b38c-b95380c9dd9a",
+      "91321376-200f-4f0e-aeaf-00422ef31190",
+      "917a7e56-cbd0-444d-9d76-5120e6ad7de9",
+      "919b2f41-1e0a-4213-8bb0-335ba9b6a99a",
+      "96459c64-20b0-4de6-9373-62524cfab0d5",
+      "97748dbc-de2c-4491-bb57-b4a2d30dd652",
+      "985434de-a5e7-46b8-b7a1-dc80d2a8e245",
+      "99614f25-d8e6-43cd-b54b-51593e8bb1ec",
+      "9b036c3b-2f17-40bc-ae65-31ce3e8be5fb",
+      "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "a5c25fac-9833-462f-a297-8b164abb9696",
+      "a79fe73c-5fdb-4c2b-bc2a-1b98de75e4e7",
+      "a94ce94c-ca3d-4249-adbe-2fe57ef62e21",
+      "aa12bf05-65b6-46e3-9d72-2b363461b6fb",
+      "ae490040-4fdb-463d-8faa-2452b03df274",
+      "ae928ca6-13bc-4e82-9704-fbda08e1b1a6",
+      "ae9b9143-5ce2-461b-9971-9877afdb77fc",
+      "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+      "b0c66632-7230-4c7e-89b3-a15c1058321b",
+      "b2dd74a8-9c4e-476d-b918-6c24274a1203",
+      "b607b182-5e3f-4e6a-b7a6-abb37207c939",
+      "b77b5ea4-c22e-488d-996c-1adfa086480e",
+      "b851ee83-ad57-4fab-9e40-89f32b5dcacb",
+      "ba04d02b-a821-424e-bc7e-1e3fa0f5187d",
+      "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+      "bc0c76c6-c198-44be-a611-e06a72f63857",
+      "bc1b192e-99f8-41b0-a7dc-45f3c3669089",
+      "bd755569-1683-45d6-b191-c63a591f9e36",
+      "bdbf6b37-e160-44f6-b0ea-03c4ed88a658",
+      "c25011b6-b9bb-4d8c-8af7-8f067550515b",
+      "c31a98ce-cc5d-4095-87fa-43a0dad443eb",
+      "c76ee253-3a65-4ee7-9f9b-814987bb5929",
+      "c929e7bd-0a15-44a4-ad35-2b108555e4da",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "cd563670-e43b-4308-a08b-b16f553dce16",
+      "cdcfe464-212c-4c4b-b298-cc8b305e62ff",
+      "cdead522-1604-442f-bd32-4cc340b867c1",
+      "ce39fc40-3fcd-42fb-a277-66b1cbbb08d0",
+      "d0e901ff-cbba-462a-ae55-27901fd55366",
+      "d1a3365a-1682-4a64-a092-752e0a7846b1",
+      "d539e53d-1236-46b2-8340-9d79cf0cba42",
+      "d57396a6-0713-4e86-91a6-381546abffa3",
+      "d7ec1b59-aa01-4811-b687-1fca41660f0a",
+      "d88be8c6-b03d-4a73-a9b5-36765c4f65fd",
+      "d92d60cc-c2a0-47fe-a450-b2ec4e4159b0",
+      "da58219d-12cf-431a-9a19-b661d038d889",
+      "dd8f6e4d-af58-4b79-8ccc-37dc88f48ac3",
+      "e3dfeb7b-9d65-4fff-bb99-901d6a8f367e",
+      "e4519e8e-43f0-4371-87d7-1a8e30c507e3",
+      "e99a2adb-5db3-48af-9453-1fa60861897a",
+      "e9d210a1-eeb6-4f0c-afdb-3db349eabd3a",
+      "ea979009-5d85-4256-aff5-098b10af3c8d",
+      "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef",
+      "ec79f4ef-8f8a-4496-a2eb-a45903d4fc46",
+      "ee3d4913-9747-49ed-9438-1ca46cc1ee63",
+      "ef37f144-05ce-4080-931c-68ead40d782b",
+      "f21e324b-acad-436f-bd8b-891b6b949ab0",
+      "f43115d6-8d5b-4e01-8ff9-b3fe59640075",
+      "f5740e79-b73a-4464-adfa-171d86725692",
+      "f63b533f-15c5-4872-9ef8-7215ebb28ef4",
+      "f969145f-2dae-490d-aa16-55a7d0b01b86",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0",
+      "fde27fd8-6e2d-4dd7-bd92-29d4cf3c3cda",
+      "ff5e284d-8966-4c9c-ae6c-a4a669656fda"
+     ],
+     "gap_seconds": 84.16929463713618
+    },
+    {
+     "group_id": "solo-3000",
+     "kind": "solo",
+     "rider_ids": [
+      "124144ce-b641-4391-9faf-849540bf364e"
+     ],
+     "gap_seconds": 96.83005724274166
+    },
+    {
+     "group_id": "chase-1000",
+     "kind": "chase",
+     "rider_ids": [
+      "dd77303b-382c-4d9c-bd1e-d8e6f3c9374b",
+      "5f40c74e-99c4-45d7-9648-04e7e5faa5dc"
+     ],
+     "gap_seconds": 124.16285873995848
+    },
+    {
+     "group_id": "chase-4001",
+     "kind": "chase",
+     "rider_ids": [
+      "9152d40c-0b5f-459d-b467-e2f37ab3c083",
+      "c669210d-36b4-4231-ab6b-6d127f4d67d0"
+     ],
+     "gap_seconds": 192.67085873995853
+    },
+    {
+     "group_id": "solo-2002",
+     "kind": "solo",
+     "rider_ids": [
+      "5fdd5ec9-1da0-4628-958a-95a879b0381c"
+     ],
+     "gap_seconds": 243.6755672934125
+    },
+    {
+     "group_id": "solo-0",
+     "kind": "solo",
+     "rider_ids": [
+      "2e2f4e1e-53f8-44c3-8210-41c5ea185beb"
+     ],
+     "gap_seconds": 381.253686120147
+    }
+   ]
+  },
+  {
+   "km": 171.3,
+   "groups": [
+    {
+     "group_id": "breakaway-2000",
+     "kind": "peloton",
+     "rider_ids": [
+      "2dae1857-4669-4796-85f9-ea7902409a88",
+      "989fae85-2674-40cc-9bd7-a7f690fa0ed3"
+     ],
+     "gap_seconds": 0
+    },
+    {
+     "group_id": "gruppetto-4000",
+     "kind": "gruppetto",
+     "rider_ids": [
+      "01e2d691-21da-4ffe-a1e8-f0eb6cc3a07d",
+      "021a150b-015c-45ed-9eaf-892e9c5f8fb2",
+      "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+      "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+      "0376386f-ed76-414e-8843-71fcf69ec9d9",
+      "0650b0e2-e441-40e6-9297-8ce327669e48",
+      "067614d4-22b6-47c2-affa-793ff8d59832",
+      "069c5c12-a640-4ce1-b18b-e5a14a28d7e8",
+      "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+      "0a728b7b-f837-4cb1-87b0-461b408da1c3",
+      "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5",
+      "0dc29e5e-130b-4aa1-8474-a876dd362618",
+      "0fa30b34-3f74-43ff-81ff-f0a832dda247",
+      "11c23e82-c782-4412-9934-94af83c383f8",
+      "14c88380-0826-4649-8f26-023f170ce2d4",
+      "17b3288b-251e-4c11-8325-8081ce6b4517",
+      "19d62e1b-c04e-4a44-8153-545d2db1c789",
+      "1b77c825-9775-435c-aa1b-bd21997f9262",
+      "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3",
+      "20af8660-2d6f-496a-b3e5-d39ffc03ecfc",
+      "256e0125-2b35-4b48-8602-4be0ae2e5fda",
+      "25975d79-4c34-4e64-aebb-74e6fd651c2a",
+      "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77",
+      "26f8d642-9b8a-431d-8b77-42b53f52a695",
+      "27999b69-86b7-43c6-8e07-82568c93328d",
+      "292d2b1c-adf1-4eb5-bf68-651521de2b09",
+      "2aefe1ec-832f-4bed-82cc-e5a3e1c282c4",
+      "2cdf846a-2bf3-42ba-9652-86f9826221dd",
+      "2d378dac-4d36-4e1e-9323-4904016915d2",
+      "2d40fcf0-2622-47a9-85bc-64d75d65d643",
+      "2fc3bd9f-8e09-4563-8ae9-b29f37a69970",
+      "30c453dc-0334-4c1f-87ce-f729a0aaeacd",
+      "31b409cf-7a9a-4ecc-b011-8972c7b07ab2",
+      "31cc714e-2b47-4624-8666-586aeb1913b5",
+      "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+      "3391122b-04c5-450e-b396-002ab7bc8fa5",
+      "34333941-5ce7-4d42-b363-28a0245124f0",
+      "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+      "359476c5-49bc-49c4-8ef8-489ad532e462",
+      "36e86b95-a11c-4aad-ae71-d613f750c1f5",
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "3b24357c-476d-4f9c-8672-64b5852eeb57",
+      "3d5c4eee-ef57-49e9-adae-58d8c3ab8b34",
+      "3ee7e961-493e-4764-9195-93f98474ed40",
+      "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+      "411af30d-8d48-4441-a68a-9b172d067430",
+      "4578b7db-1ecb-4a0a-b920-f871ada06c69",
+      "46c1437c-95ff-4969-9da2-2b6e2810ce8a",
+      "47b582c9-277a-4c5e-a138-bfcbd777d834",
+      "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+      "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+      "4a711876-d8f4-4743-9b19-05bb6f5620f4",
+      "4b0f018c-d656-40a4-a81e-f443a2d9b266",
+      "4b3575d7-8bcc-477c-8d78-6c2b17cfae7b",
+      "4b4d0d9a-eb85-4026-8f3d-5c81921759c3",
+      "4c185c6a-8109-4029-beb7-f70a18b29a6d",
+      "4d619a0b-e4e3-4066-8e03-d49bbf999b9c",
+      "4e8aebdf-0d42-4a67-847e-12f066f5d4ec",
+      "4fde7710-670a-49c2-aeb2-270884071f48",
+      "4fe5e78a-6bbf-4bdc-a869-1d04b64c51f6",
+      "4ff7d808-0412-4e5f-8622-4109c9d014b8",
+      "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+      "506a86ea-7344-4f2f-97c3-2eca10d23ece",
+      "54b4db45-08a5-4cfa-bb19-1f34876a967b",
+      "5a0d0c37-8f4e-491b-b824-1cd0cac9f404",
+      "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+      "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+      "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f",
+      "61b72c2e-ad1b-4334-969a-18844fd6511b",
+      "62b6f4c9-b12d-45e0-9805-aa2a04223003",
+      "63677a1c-37a1-4cc2-918d-d5cc9e039a5e",
+      "6392f486-86cd-47e3-ab7b-98a5245208be",
+      "64943c6f-54bc-46f5-8c18-0b9e1e617a43",
+      "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+      "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+      "69dacdcd-f858-4ffd-b2f4-2384e976e770",
+      "69e2550f-1967-4350-b871-bd8843cccbc1",
+      "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "6d0116be-1184-4615-9b61-3d0eb79c84bf",
+      "6ebbaac0-8fdc-44ba-a3fb-5581a8e5b9af",
+      "717a8dfa-9c60-4b1a-be23-dd6c994508ba",
+      "71e440af-288b-4bf9-b397-2e0035ac6dd5",
+      "72edd5e2-e1f4-452d-894a-e53ba93fb03c",
+      "73162a19-eab3-444d-9faf-c23df7b356e0",
+      "74157f8c-d04d-496b-b9cc-e918f6a9d382",
+      "786455fc-ddf5-4265-9721-7cc21f65ab9a",
+      "7a762ee0-a917-4cff-8892-dc0c11699dfc",
+      "7a8a27c2-3c40-4ac3-9c0c-8d9c8878f4d5",
+      "7bb89941-a9dc-4b32-b66e-a86248e3e81b",
+      "7c21d4f1-d0e5-451a-83b6-f24de845cf40",
+      "7c460d79-15e1-416b-a991-c4aff244cafa",
+      "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+      "7e1eb9b9-35be-4fd8-8ffb-ba1b0583002f",
+      "7ea6fcf0-6ec3-4753-a2f0-f5982fbe14a6",
+      "7ef4a61b-243c-4aef-a7fd-647ffa1a8340",
+      "8242767b-3e21-4f87-9d5a-e3f8caee2603",
+      "84148e8a-6fec-4dfe-a6bd-d22f220d437a",
+      "841f97b4-47bd-4305-b2ee-b761dcc9371a",
+      "878385dc-f786-4158-a1bd-8d3965380a77",
+      "890c4fd5-84e4-4c66-b1ff-705cfbbb867f",
+      "8a94d44d-6c0f-46a8-b1c7-da6cfec2be7a",
+      "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+      "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0",
+      "8dc0b809-9555-4a99-b2cb-8ba24972c137",
+      "8df0b734-fb02-4a70-88fc-393e5b2829a1",
+      "8e0213d8-2a78-4a84-9dac-bba7ed19b730",
+      "8e625cf0-5c41-4f74-ae45-0f26346386b1",
+      "8eea3a55-35d9-45f4-b38c-b95380c9dd9a",
+      "91321376-200f-4f0e-aeaf-00422ef31190",
+      "917a7e56-cbd0-444d-9d76-5120e6ad7de9",
+      "919b2f41-1e0a-4213-8bb0-335ba9b6a99a",
+      "96459c64-20b0-4de6-9373-62524cfab0d5",
+      "97748dbc-de2c-4491-bb57-b4a2d30dd652",
+      "985434de-a5e7-46b8-b7a1-dc80d2a8e245",
+      "99614f25-d8e6-43cd-b54b-51593e8bb1ec",
+      "9b036c3b-2f17-40bc-ae65-31ce3e8be5fb",
+      "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "a5c25fac-9833-462f-a297-8b164abb9696",
+      "a79fe73c-5fdb-4c2b-bc2a-1b98de75e4e7",
+      "a94ce94c-ca3d-4249-adbe-2fe57ef62e21",
+      "aa12bf05-65b6-46e3-9d72-2b363461b6fb",
+      "ae490040-4fdb-463d-8faa-2452b03df274",
+      "ae928ca6-13bc-4e82-9704-fbda08e1b1a6",
+      "ae9b9143-5ce2-461b-9971-9877afdb77fc",
+      "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+      "b0c66632-7230-4c7e-89b3-a15c1058321b",
+      "b2dd74a8-9c4e-476d-b918-6c24274a1203",
+      "b607b182-5e3f-4e6a-b7a6-abb37207c939",
+      "b77b5ea4-c22e-488d-996c-1adfa086480e",
+      "b851ee83-ad57-4fab-9e40-89f32b5dcacb",
+      "ba04d02b-a821-424e-bc7e-1e3fa0f5187d",
+      "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+      "bc0c76c6-c198-44be-a611-e06a72f63857",
+      "bc1b192e-99f8-41b0-a7dc-45f3c3669089",
+      "bd755569-1683-45d6-b191-c63a591f9e36",
+      "bdbf6b37-e160-44f6-b0ea-03c4ed88a658",
+      "c25011b6-b9bb-4d8c-8af7-8f067550515b",
+      "c31a98ce-cc5d-4095-87fa-43a0dad443eb",
+      "c76ee253-3a65-4ee7-9f9b-814987bb5929",
+      "c929e7bd-0a15-44a4-ad35-2b108555e4da",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "cd563670-e43b-4308-a08b-b16f553dce16",
+      "cdcfe464-212c-4c4b-b298-cc8b305e62ff",
+      "cdead522-1604-442f-bd32-4cc340b867c1",
+      "ce39fc40-3fcd-42fb-a277-66b1cbbb08d0",
+      "d0e901ff-cbba-462a-ae55-27901fd55366",
+      "d1a3365a-1682-4a64-a092-752e0a7846b1",
+      "d539e53d-1236-46b2-8340-9d79cf0cba42",
+      "d57396a6-0713-4e86-91a6-381546abffa3",
+      "d7ec1b59-aa01-4811-b687-1fca41660f0a",
+      "d88be8c6-b03d-4a73-a9b5-36765c4f65fd",
+      "d92d60cc-c2a0-47fe-a450-b2ec4e4159b0",
+      "da58219d-12cf-431a-9a19-b661d038d889",
+      "dd8f6e4d-af58-4b79-8ccc-37dc88f48ac3",
+      "e3dfeb7b-9d65-4fff-bb99-901d6a8f367e",
+      "e4519e8e-43f0-4371-87d7-1a8e30c507e3",
+      "e99a2adb-5db3-48af-9453-1fa60861897a",
+      "e9d210a1-eeb6-4f0c-afdb-3db349eabd3a",
+      "ea979009-5d85-4256-aff5-098b10af3c8d",
+      "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef",
+      "ec79f4ef-8f8a-4496-a2eb-a45903d4fc46",
+      "ee3d4913-9747-49ed-9438-1ca46cc1ee63",
+      "ef37f144-05ce-4080-931c-68ead40d782b",
+      "f21e324b-acad-436f-bd8b-891b6b949ab0",
+      "f43115d6-8d5b-4e01-8ff9-b3fe59640075",
+      "f63b533f-15c5-4872-9ef8-7215ebb28ef4",
+      "f969145f-2dae-490d-aa16-55a7d0b01b86",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0",
+      "fde27fd8-6e2d-4dd7-bd92-29d4cf3c3cda",
+      "ff5e284d-8966-4c9c-ae6c-a4a669656fda"
+     ],
+     "gap_seconds": 78.18
+    },
+    {
+     "group_id": "solo-5000",
+     "kind": "solo",
+     "rider_ids": [
+      "f5740e79-b73a-4464-adfa-171d86725692"
+     ],
+     "gap_seconds": 98.12
+    },
+    {
+     "group_id": "solo-3000",
+     "kind": "solo",
+     "rider_ids": [
+      "124144ce-b641-4391-9faf-849540bf364e"
+     ],
+     "gap_seconds": 125.69
+    },
+    {
+     "group_id": "chase-1000",
+     "kind": "chase",
+     "rider_ids": [
+      "dd77303b-382c-4d9c-bd1e-d8e6f3c9374b",
+      "5f40c74e-99c4-45d7-9648-04e7e5faa5dc"
+     ],
+     "gap_seconds": 140.39
+    },
+    {
+     "group_id": "chase-4001",
+     "kind": "chase",
+     "rider_ids": [
+      "9152d40c-0b5f-459d-b467-e2f37ab3c083",
+      "c669210d-36b4-4231-ab6b-6d127f4d67d0"
+     ],
+     "gap_seconds": 218.86
+    },
+    {
+     "group_id": "solo-2002",
+     "kind": "solo",
+     "rider_ids": [
+      "5fdd5ec9-1da0-4628-958a-95a879b0381c"
+     ],
+     "gap_seconds": 268.82
+    },
+    {
+     "group_id": "solo-0",
+     "kind": "solo",
+     "rider_ids": [
+      "2e2f4e1e-53f8-44c3-8210-41c5ea185beb"
+     ],
+     "gap_seconds": 413
+    }
+   ]
+  },
+  {
+   "km": 175,
+   "groups": [
+    {
+     "group_id": "finale-winner-0",
+     "kind": "solo",
+     "rider_ids": [
+      "2dae1857-4669-4796-85f9-ea7902409a88"
+     ],
+     "gap_seconds": 0
+    },
+    {
+     "group_id": "finale-tier-1",
+     "kind": "solo",
+     "rider_ids": [
+      "989fae85-2674-40cc-9bd7-a7f690fa0ed3"
+     ],
+     "gap_seconds": 2.870581236293285
+    },
+    {
+     "group_id": "gruppetto-4000",
+     "kind": "gruppetto",
+     "rider_ids": [
+      "01e2d691-21da-4ffe-a1e8-f0eb6cc3a07d",
+      "021a150b-015c-45ed-9eaf-892e9c5f8fb2",
+      "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+      "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+      "0376386f-ed76-414e-8843-71fcf69ec9d9",
+      "0650b0e2-e441-40e6-9297-8ce327669e48",
+      "067614d4-22b6-47c2-affa-793ff8d59832",
+      "069c5c12-a640-4ce1-b18b-e5a14a28d7e8",
+      "08e88032-2cc1-4c76-8d1c-1aeee356c43d",
+      "0a728b7b-f837-4cb1-87b0-461b408da1c3",
+      "0cbe7ce9-6b20-4b81-ae36-f32f2dad60b5",
+      "0dc29e5e-130b-4aa1-8474-a876dd362618",
+      "0fa30b34-3f74-43ff-81ff-f0a832dda247",
+      "11c23e82-c782-4412-9934-94af83c383f8",
+      "14c88380-0826-4649-8f26-023f170ce2d4",
+      "17b3288b-251e-4c11-8325-8081ce6b4517",
+      "19d62e1b-c04e-4a44-8153-545d2db1c789",
+      "1b77c825-9775-435c-aa1b-bd21997f9262",
+      "1cc6687f-cbd1-45af-af4a-8ea84c28d7d3",
+      "20af8660-2d6f-496a-b3e5-d39ffc03ecfc",
+      "256e0125-2b35-4b48-8602-4be0ae2e5fda",
+      "25975d79-4c34-4e64-aebb-74e6fd651c2a",
+      "25e1ccd1-9b1c-4230-96b4-c54bf0e47d77",
+      "26f8d642-9b8a-431d-8b77-42b53f52a695",
+      "27999b69-86b7-43c6-8e07-82568c93328d",
+      "292d2b1c-adf1-4eb5-bf68-651521de2b09",
+      "2aefe1ec-832f-4bed-82cc-e5a3e1c282c4",
+      "2cdf846a-2bf3-42ba-9652-86f9826221dd",
+      "2d378dac-4d36-4e1e-9323-4904016915d2",
+      "2d40fcf0-2622-47a9-85bc-64d75d65d643",
+      "2fc3bd9f-8e09-4563-8ae9-b29f37a69970",
+      "30c453dc-0334-4c1f-87ce-f729a0aaeacd",
+      "31b409cf-7a9a-4ecc-b011-8972c7b07ab2",
+      "31cc714e-2b47-4624-8666-586aeb1913b5",
+      "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+      "3391122b-04c5-450e-b396-002ab7bc8fa5",
+      "34333941-5ce7-4d42-b363-28a0245124f0",
+      "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+      "359476c5-49bc-49c4-8ef8-489ad532e462",
+      "36e86b95-a11c-4aad-ae71-d613f750c1f5",
+      "37663f3d-0390-48d8-907a-cef275d5dbaa",
+      "3b24357c-476d-4f9c-8672-64b5852eeb57",
+      "3d5c4eee-ef57-49e9-adae-58d8c3ab8b34",
+      "3ee7e961-493e-4764-9195-93f98474ed40",
+      "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+      "411af30d-8d48-4441-a68a-9b172d067430",
+      "4578b7db-1ecb-4a0a-b920-f871ada06c69",
+      "46c1437c-95ff-4969-9da2-2b6e2810ce8a",
+      "47b582c9-277a-4c5e-a138-bfcbd777d834",
+      "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+      "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+      "4a711876-d8f4-4743-9b19-05bb6f5620f4",
+      "4b0f018c-d656-40a4-a81e-f443a2d9b266",
+      "4b3575d7-8bcc-477c-8d78-6c2b17cfae7b",
+      "4b4d0d9a-eb85-4026-8f3d-5c81921759c3",
+      "4c185c6a-8109-4029-beb7-f70a18b29a6d",
+      "4d619a0b-e4e3-4066-8e03-d49bbf999b9c",
+      "4e8aebdf-0d42-4a67-847e-12f066f5d4ec",
+      "4fde7710-670a-49c2-aeb2-270884071f48",
+      "4fe5e78a-6bbf-4bdc-a869-1d04b64c51f6",
+      "4ff7d808-0412-4e5f-8622-4109c9d014b8",
+      "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+      "506a86ea-7344-4f2f-97c3-2eca10d23ece",
+      "54b4db45-08a5-4cfa-bb19-1f34876a967b",
+      "5a0d0c37-8f4e-491b-b824-1cd0cac9f404",
+      "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+      "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+      "5faaa5a9-880c-45ec-99ce-19e9de2a1a3f",
+      "61b72c2e-ad1b-4334-969a-18844fd6511b",
+      "62b6f4c9-b12d-45e0-9805-aa2a04223003",
+      "63677a1c-37a1-4cc2-918d-d5cc9e039a5e",
+      "6392f486-86cd-47e3-ab7b-98a5245208be",
+      "64943c6f-54bc-46f5-8c18-0b9e1e617a43",
+      "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+      "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+      "69dacdcd-f858-4ffd-b2f4-2384e976e770",
+      "69e2550f-1967-4350-b871-bd8843cccbc1",
+      "6c8ad79e-b3df-4320-8771-8627bff60563",
+      "6d0116be-1184-4615-9b61-3d0eb79c84bf",
+      "6ebbaac0-8fdc-44ba-a3fb-5581a8e5b9af",
+      "717a8dfa-9c60-4b1a-be23-dd6c994508ba",
+      "71e440af-288b-4bf9-b397-2e0035ac6dd5",
+      "72edd5e2-e1f4-452d-894a-e53ba93fb03c",
+      "73162a19-eab3-444d-9faf-c23df7b356e0",
+      "74157f8c-d04d-496b-b9cc-e918f6a9d382",
+      "786455fc-ddf5-4265-9721-7cc21f65ab9a",
+      "7a762ee0-a917-4cff-8892-dc0c11699dfc",
+      "7a8a27c2-3c40-4ac3-9c0c-8d9c8878f4d5",
+      "7bb89941-a9dc-4b32-b66e-a86248e3e81b",
+      "7c21d4f1-d0e5-451a-83b6-f24de845cf40",
+      "7c460d79-15e1-416b-a991-c4aff244cafa",
+      "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+      "7e1eb9b9-35be-4fd8-8ffb-ba1b0583002f",
+      "7ea6fcf0-6ec3-4753-a2f0-f5982fbe14a6",
+      "7ef4a61b-243c-4aef-a7fd-647ffa1a8340",
+      "8242767b-3e21-4f87-9d5a-e3f8caee2603",
+      "84148e8a-6fec-4dfe-a6bd-d22f220d437a",
+      "841f97b4-47bd-4305-b2ee-b761dcc9371a",
+      "878385dc-f786-4158-a1bd-8d3965380a77",
+      "890c4fd5-84e4-4c66-b1ff-705cfbbb867f",
+      "8a94d44d-6c0f-46a8-b1c7-da6cfec2be7a",
+      "8ae833b6-bd8e-445e-bfde-e8c0da289e9c",
+      "8d489e8e-d3e9-46aa-a1fb-21f16117f3d0",
+      "8dc0b809-9555-4a99-b2cb-8ba24972c137",
+      "8df0b734-fb02-4a70-88fc-393e5b2829a1",
+      "8e0213d8-2a78-4a84-9dac-bba7ed19b730",
+      "8e625cf0-5c41-4f74-ae45-0f26346386b1",
+      "8eea3a55-35d9-45f4-b38c-b95380c9dd9a",
+      "91321376-200f-4f0e-aeaf-00422ef31190",
+      "917a7e56-cbd0-444d-9d76-5120e6ad7de9",
+      "919b2f41-1e0a-4213-8bb0-335ba9b6a99a",
+      "96459c64-20b0-4de6-9373-62524cfab0d5",
+      "97748dbc-de2c-4491-bb57-b4a2d30dd652",
+      "985434de-a5e7-46b8-b7a1-dc80d2a8e245",
+      "99614f25-d8e6-43cd-b54b-51593e8bb1ec",
+      "9b036c3b-2f17-40bc-ae65-31ce3e8be5fb",
+      "a1524672-084c-40fc-b74c-a4847c3299b3",
+      "a5c25fac-9833-462f-a297-8b164abb9696",
+      "a79fe73c-5fdb-4c2b-bc2a-1b98de75e4e7",
+      "a94ce94c-ca3d-4249-adbe-2fe57ef62e21",
+      "aa12bf05-65b6-46e3-9d72-2b363461b6fb",
+      "ae490040-4fdb-463d-8faa-2452b03df274",
+      "ae928ca6-13bc-4e82-9704-fbda08e1b1a6",
+      "ae9b9143-5ce2-461b-9971-9877afdb77fc",
+      "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+      "b0c66632-7230-4c7e-89b3-a15c1058321b",
+      "b2dd74a8-9c4e-476d-b918-6c24274a1203",
+      "b607b182-5e3f-4e6a-b7a6-abb37207c939",
+      "b77b5ea4-c22e-488d-996c-1adfa086480e",
+      "b851ee83-ad57-4fab-9e40-89f32b5dcacb",
+      "ba04d02b-a821-424e-bc7e-1e3fa0f5187d",
+      "ba7b2b62-336a-4d24-b46a-05d44d20dd42",
+      "bc0c76c6-c198-44be-a611-e06a72f63857",
+      "bc1b192e-99f8-41b0-a7dc-45f3c3669089",
+      "bd755569-1683-45d6-b191-c63a591f9e36",
+      "bdbf6b37-e160-44f6-b0ea-03c4ed88a658",
+      "c25011b6-b9bb-4d8c-8af7-8f067550515b",
+      "c31a98ce-cc5d-4095-87fa-43a0dad443eb",
+      "c76ee253-3a65-4ee7-9f9b-814987bb5929",
+      "c929e7bd-0a15-44a4-ad35-2b108555e4da",
+      "cb7f3b7d-239a-475c-8f5d-77297178ded0",
+      "cd563670-e43b-4308-a08b-b16f553dce16",
+      "cdcfe464-212c-4c4b-b298-cc8b305e62ff",
+      "cdead522-1604-442f-bd32-4cc340b867c1",
+      "ce39fc40-3fcd-42fb-a277-66b1cbbb08d0",
+      "d0e901ff-cbba-462a-ae55-27901fd55366",
+      "d1a3365a-1682-4a64-a092-752e0a7846b1",
+      "d539e53d-1236-46b2-8340-9d79cf0cba42",
+      "d57396a6-0713-4e86-91a6-381546abffa3",
+      "d7ec1b59-aa01-4811-b687-1fca41660f0a",
+      "d88be8c6-b03d-4a73-a9b5-36765c4f65fd",
+      "d92d60cc-c2a0-47fe-a450-b2ec4e4159b0",
+      "da58219d-12cf-431a-9a19-b661d038d889",
+      "dd8f6e4d-af58-4b79-8ccc-37dc88f48ac3",
+      "e3dfeb7b-9d65-4fff-bb99-901d6a8f367e",
+      "e4519e8e-43f0-4371-87d7-1a8e30c507e3",
+      "e99a2adb-5db3-48af-9453-1fa60861897a",
+      "e9d210a1-eeb6-4f0c-afdb-3db349eabd3a",
+      "ea979009-5d85-4256-aff5-098b10af3c8d",
+      "eb7c4be4-30f6-4081-98f9-e85bc9d3a0ef",
+      "ec79f4ef-8f8a-4496-a2eb-a45903d4fc46",
+      "ee3d4913-9747-49ed-9438-1ca46cc1ee63",
+      "ef37f144-05ce-4080-931c-68ead40d782b",
+      "f21e324b-acad-436f-bd8b-891b6b949ab0",
+      "f43115d6-8d5b-4e01-8ff9-b3fe59640075",
+      "f63b533f-15c5-4872-9ef8-7215ebb28ef4",
+      "f969145f-2dae-490d-aa16-55a7d0b01b86",
+      "fccf1b03-da9b-45c1-86dc-d29f65a298d0",
+      "fde27fd8-6e2d-4dd7-bd92-29d4cf3c3cda",
+      "ff5e284d-8966-4c9c-ae6c-a4a669656fda"
+     ],
+     "gap_seconds": 69.75451612736066
+    },
+    {
+     "group_id": "solo-5000",
+     "kind": "solo",
+     "rider_ids": [
+      "f5740e79-b73a-4464-adfa-171d86725692"
+     ],
+     "gap_seconds": 115.7959103961519
+    },
+    {
+     "group_id": "solo-3000",
+     "kind": "solo",
+     "rider_ids": [
+      "124144ce-b641-4391-9faf-849540bf364e"
+     ],
+     "gap_seconds": 141.98025140630494
+    },
+    {
+     "group_id": "chase-1000",
+     "kind": "chase",
+     "rider_ids": [
+      "dd77303b-382c-4d9c-bd1e-d8e6f3c9374b",
+      "5f40c74e-99c4-45d7-9648-04e7e5faa5dc"
+     ],
+     "gap_seconds": 148.92662067387465
+    },
+    {
+     "group_id": "chase-4001",
+     "kind": "chase",
+     "rider_ids": [
+      "9152d40c-0b5f-459d-b467-e2f37ab3c083",
+      "c669210d-36b4-4231-ab6b-6d127f4d67d0"
+     ],
+     "gap_seconds": 232.57908773945792
+    },
+    {
+     "group_id": "solo-2002",
+     "kind": "solo",
+     "rider_ids": [
+      "5fdd5ec9-1da0-4628-958a-95a879b0381c"
+     ],
+     "gap_seconds": 283.2252709047731
+    },
+    {
+     "group_id": "solo-0",
+     "kind": "solo",
+     "rider_ids": [
+      "2e2f4e1e-53f8-44c3-8210-41c5ea185beb"
+     ],
+     "gap_seconds": 430.833805815516
+    }
+   ]
+  }
+ ],
+ "results": [
+  {
+   "rider_id": "2dae1857-4669-4796-85f9-ea7902409a88",
+   "rank": 1,
+   "time_seconds": 18907.1,
+   "group_id": "finale-winner-0",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "989fae85-2674-40cc-9bd7-a7f690fa0ed3",
+   "rank": 2,
+   "time_seconds": 18909.97,
+   "group_id": "finale-tier-1",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "a1524672-084c-40fc-b74c-a4847c3299b3",
+   "rank": 3,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "65bfea51-0d9a-4366-a2b0-f29a3af9d0ec",
+   "rank": 4,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "32f6c2fe-6b97-4668-a492-eb59455fdabc",
+   "rank": 5,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "4861c2b4-f55b-4af3-94a1-73428dd3ce46",
+   "rank": 6,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "bc0c76c6-c198-44be-a611-e06a72f63857",
+   "rank": 7,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "b043ce14-46f5-44dc-ae48-0d76c6b36b12",
+   "rank": 8,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "028c8ffd-5f15-4bc7-be83-f8f7b3b379c4",
+   "rank": 9,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "411af30d-8d48-4441-a68a-9b172d067430",
+   "rank": 10,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "036d80bd-f0cb-4b97-a0bd-c61eaa868451",
+   "rank": 11,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "1b77c825-9775-435c-aa1b-bd21997f9262",
+   "rank": 12,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "26f8d642-9b8a-431d-8b77-42b53f52a695",
+   "rank": 13,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "346f64e4-d9d8-490d-9ee1-97996ffbf1bd",
+   "rank": 14,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "37663f3d-0390-48d8-907a-cef275d5dbaa",
+   "rank": 15,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "405afecc-0ca2-42bc-a707-0b169f7ed3d5",
+   "rank": 16,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "47b582c9-277a-4c5e-a138-bfcbd777d834",
+   "rank": 17,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "4a0207f4-99ac-47b1-94bb-6daa167dbb46",
+   "rank": 18,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "4fde7710-670a-49c2-aeb2-270884071f48",
+   "rank": 19,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "501ef4b7-0dae-43f9-b8ab-cf0bfcb817e0",
+   "rank": 20,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "5c08273b-039f-42a9-aa1f-999fd9c505ab",
+   "rank": 21,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "5e6391a2-7682-4bc7-9c2b-78ae7ed22dd2",
+   "rank": 22,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "61b72c2e-ad1b-4334-969a-18844fd6511b",
+   "rank": 23,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "67b03910-f0b8-43fb-a4af-6cc85ca63c33",
+   "rank": 24,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  },
+  {
+   "rider_id": "7cd22917-4f1e-43ef-9af2-95657ebcf9ec",
+   "rank": 25,
+   "time_seconds": 18976.86,
+   "group_id": "gruppetto-4000",
+   "status": "finished",
+   "injury_days": null
+  }
+ ],
+ "result_status_counts": {
+  "finished": 180
+ }
+}

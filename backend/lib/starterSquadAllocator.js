@@ -34,7 +34,7 @@ import { buildCapsForRider } from "./riderProgression.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { computeFrozenSalary, pickStarterContractLength, computeContractEndSeason } from "./contractSeed.js";
 import { applyTypeDampening } from "./riderValuationTypeDampening.js";
-import { birthYearFrom } from "./riderSeasonAge.js";
+import { birthYearFrom, seasonReferenceYear } from "./riderSeasonAge.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
@@ -241,15 +241,17 @@ export function generateAiRiderBatchWithCap({
       // bagefter persisterer — igen #2065-klassen. `age` er allerede regnet ovenfor
       // (den samme værdi gaten bruger til baseline-valg og predictBaseValue).
       //
-      // ÆRLIG AFGRÆNSNING: gatens `age` er computeAge(birthdate, referenceYear), og
-      // referenceYear defaulter til LAUNCH_POPULATION.referenceYear (2026 = sæson 1).
-      // deriveForRiderIds regner ageForSeason(birthdate, AKTIV sæson). Fra sæson 2
-      // er de to derfor ét år fra hinanden. Det er en ÆLDRE uoverensstemmelse der
-      // rammer baseline-valget og værdi-forudsigelsen præcis lige så meget som
-      // loftet — den er hverken indført eller lukket her, og at flytte gatens
-      // alders-akse ville ændre hvilke kandidater der accepteres. Denne linje
-      // fjerner kun divergensen ved UDELADELSE; akse-forskellen står tilbage og
-      // hører hjemme sammen med #3634 (voksen-generatorens anlæg).
+      // AKSE-FORSKELLEN ER LUKKET (#4876, 6/9): gatens `age` er
+      // computeAge(birthdate, referenceYear), og referenceYear defaultede før til
+      // LAUNCH_POPULATION.referenceYear (2026 = sæson 1), mens deriveForRiderIds
+      // regner ageForSeason(birthdate, AKTIV sæson). Fra sæson 2 var de to derfor
+      // ét år fra hinanden, og gaten prissatte en ANDEN rytter end den der siden
+      // blev persisteret. Begge allokerings-indgange (allocateStarterSquadForTeam
+      // + runStarterSquadAllocation) udleder nu referenceYear af den AKTIVE sæson
+      // via seasonReferenceYear(), så denne gate og derive-kæden står på samme
+      // alders-akse. Kalder man med et EKSPLICIT referenceYear (harnesses,
+      // fixtures, launch-replay), gælder den akse i stedet — så divergensen kan
+      // kun genopstå bevidst.
       const caps = buildCapsForRider(abilities, { potentiale: candidate.potentiale, age }, capsSeed.primary, capsSeed.secondary);
       const { primary } = resolveRiderTypes(draw, caps, selectTypesBaseline(age, TYPES_BASELINE, YOUTH_TYPES_BASELINE));
       // v4 kræver alder (candidate bærer allerede potentiale fra generatoren).
@@ -620,8 +622,10 @@ async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, g
 //     TOTAL_SIZE (8 kerne + 4 hale) derive'de ryttere + sæt markøren.
 //   • insert-med-team_id → intet orphan-vindue ved fejl.
 export async function allocateStarterSquadForTeam(supabase, teamId, {
+  // #4876: referenceYear defaultede til LAUNCH_POPULATION.referenceYear (2026 =
+  // sæson 1) — se ALDERS-AKSEN herunder. null = "udled af den aktive sæson".
+  referenceYear = null,
   seed = LAUNCH_POPULATION.seed,
-  referenceYear = LAUNCH_POPULATION.referenceYear,
   generate = generateFictionalRiders,
   derive = deriveForRiderIds,
   now = () => new Date(),
@@ -644,10 +648,22 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
   const startSeason = await fetchActiveSeasonNumber(supabase);
   const contractRng = makeRng(deriveTeamSeed((seed + 2894) >>> 0, teamId));
 
+  // ── ALDERS-AKSEN (#4876) ────────────────────────────────────────────────────
+  // Generatoren klamper alderen til [18, 39] MOD referenceYear
+  // (fictionalRiderGenerator.buildDemographics: birthYear = referenceYear − age).
+  // Med det gamle default (2026) betød "39" i sæson 3 en SÆSON-alder på 41 —
+  // to år over generatorens eget loft og ét år over spillets garanterede
+  // pensionsalder (40, PROGRESSION_CONFIG.retirement.guaranteedAge). Målt i prod
+  // 6/9: 7 menneskehold havde fået en start-trup-rytter på 40-41, som alle
+  // pensioneres ved sæsonskiftet — og den ene på 41 kunne slet ikke værdisættes
+  // (#4876-loopet). startSeason er allerede hentet ovenfor, så den rigtige akse
+  // koster ingen ekstra rundtur. SSOT for formlen: riderSeasonAge.js.
+  const poolReferenceYear = referenceYear ?? seasonReferenceYear(startSeason);
+
   let assigned;
   let recovered = null;
   if (n === 0) {
-    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive, startSeason, contractRng });
+    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng });
     assigned = ids.length;
   } else if (n === SIZE) {
     // Insert lykkedes sidst, men derive/markør fejlede → re-derive (idempotent) + markér.
@@ -667,7 +683,7 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
   } else {
     // 0<n<SIZE: en yderst sjælden delvis-insert. Ryd det halve forsøg + re-allokér rent.
     await deleteRiders(supabase, existingIds);
-    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive, startSeason, contractRng });
+    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear: poolReferenceYear, generate, derive, startSeason, contractRng });
     assigned = ids.length;
     recovered = "cleaned-partial";
   }
@@ -683,12 +699,21 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
 export async function runStarterSquadAllocation(supabase, {
   dryRun = true,
   seed = LAUNCH_POPULATION.seed,
-  referenceYear = LAUNCH_POPULATION.referenceYear,
+  // #4876: null = udled af den aktive sæson (samme akse som
+  // allocateStarterSquadForTeam — se ALDERS-AKSEN dér). Ved launch/replay er
+  // sæson 1 aktiv, så defaulten giver 2026 præcis som før.
+  referenceYear = null,
   getManagerTeams,
   deps = {},
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   const d = { generate: generateFictionalRiders, derive: deriveForRiderIds, ...deps };
+
+  // Hentes FØR pool-bygningen (og dermed også i dry-run), fordi
+  // buildWeakStarterPool nedenfor har brug for aksen. Samme aktive sæson bruges
+  // længere nede som contract_end_season-anker (#2894/#2902).
+  const startSeason = await fetchActiveSeasonNumber(supabase);
+  const poolReferenceYear = referenceYear ?? seasonReferenceYear(startSeason);
 
   let teams;
   if (getManagerTeams) {
@@ -705,11 +730,11 @@ export async function runStarterSquadAllocation(supabase, {
 
   // To svage pools: kerne [50,57] + hale [50,52]. Eget seed-offset pr. pulje.
   const corePayload = buildWeakStarterPool({
-    count: corePerPool, seed: (seed + 1487) >>> 0, referenceYear,
+    count: corePerPool, seed: (seed + 1487) >>> 0, referenceYear: poolReferenceYear,
     existingFoldedNames, window: STARTER_POOL_STAT_WINDOW, generate: d.generate,
   });
   const tailPayload = buildWeakStarterPool({
-    count: tailPerPool, seed: (seed + 1487 + 7) >>> 0, referenceYear,
+    count: tailPerPool, seed: (seed + 1487 + 7) >>> 0, referenceYear: poolReferenceYear,
     existingFoldedNames, window: STARTER_TAIL_STAT_WINDOW, generate: d.generate,
   });
 
@@ -718,8 +743,8 @@ export async function runStarterSquadAllocation(supabase, {
   }
 
   // Delt kerne: insert → derive (data-hale) → læs allokerings-pulje tilbage (begge pools).
-  const corePool = await insertDeriveAndReadPool(supabase, corePayload, { referenceYear, derive: d.derive });
-  const tailPool = await insertDeriveAndReadPool(supabase, tailPayload, { referenceYear, derive: d.derive });
+  const corePool = await insertDeriveAndReadPool(supabase, corePayload, { referenceYear: poolReferenceYear, derive: d.derive });
+  const tailPool = await insertDeriveAndReadPool(supabase, tailPayload, { referenceYear: poolReferenceYear, derive: d.derive });
 
   // Kerne: 4 unge + 4 kerne-dom (starCutoffFraction 0 — hele puljen er svag).
   const { assignments, leftToMarket, stats } = allocateStarterSquads(corePool, teamIds, { seed, starCutoffFraction: 0 });
@@ -732,7 +757,8 @@ export async function runStarterSquadAllocation(supabase, {
   // #3037: pickStarterContractLength (min. 2) i stedet for pickContractLength —
   // denne pulje ER en start-trup-allokering (launch/relaunch), så samme
   // forward-guard mod øjeblikkelig frigivelse ved næste sæsonovergang gælder her.
-  const startSeason = await fetchActiveSeasonNumber(supabase);
+  // startSeason er allerede hentet øverst (#4876 flyttede opslaget derop, fordi
+  // alders-aksen har brug for den FØR pools bygges) — ét opslag, ikke to.
   // #3989: teams-opslaget her hentede kun `division` til løn-satsen. Satsen er
   // global, så hele opslaget er væk — allokeringen læser ikke længere teams.
   const cpvById = new Map([...corePool, ...tailPool].map((r) => [r.id, r.current_production_value]));

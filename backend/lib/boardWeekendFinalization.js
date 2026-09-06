@@ -456,7 +456,10 @@ export async function processBoardWeekendFinalization({
         // regne noget nyt — spec §3.1: "eksisterende evalueringsmotor genbruges".
         // Skriver KUN til board_relations/board_satisfaction_events (skygge-
         // tabeller); board_profiles-opdateringen ovenfor er allerede skrevet
-        // uændret. No-op når kill-switchen er 'off' (fail-safe inde i kaldet).
+        // uændret. No-op når kill-switchen er 'off' (fail-safe inde i kaldet);
+        // #4839: i 'beta' skriver den for ALLE hold (motor-skrivning, ingen
+        // viewer — `engineWrite` inde i applyWeekendSync), mens Boardroom
+        // stadig kun vises for beta-testere/admin.
         if (board.plan_type === "1yr") {
           try {
             const mandateSync = await applyMandateWeekendSyncFn(supabase, {

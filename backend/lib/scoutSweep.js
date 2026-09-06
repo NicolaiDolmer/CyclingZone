@@ -66,17 +66,20 @@ async function runTargetBackstopSweep({ supabase, now, notify }) {
   let failed = 0;
 
   for (const [teamId, assignments] of byTeam) {
-    // Reservation-first mutex (mirror dailyTrainingEngine): 23505 = allerede
-    // swept for dette hold i dag → spring HELE holdet over (idempotent).
-    const { error: reserveError } = await supabase
+    // Reservation-first mutex (mirror dailyTrainingEngine): upsert+ignoreDuplicates
+    // i stedet for insert+23505 (#4868) — samme adfærd (tomt resultat = allerede
+    // swept for dette hold i dag → spring HELE holdet over, idempotent), men
+    // uden at Postgres logger en ERROR-linje for hver kollision.
+    const { data: reserved, error: reserveError } = await supabase
       .from("scout_sweep_runs")
-      .insert({ team_id: teamId, tick_date: tickDate });
+      .upsert({ team_id: teamId, tick_date: tickDate }, { onConflict: "team_id,tick_date", ignoreDuplicates: true })
+      .select("team_id");
     if (reserveError) {
-      if (reserveError.code === "23505") continue;
       failed += 1;
       console.error(`  ❌ scout-sweep (target-backstop) reservation fejlede for hold ${teamId}:`, reserveError.message);
       continue;
     }
+    if (!reserved || reserved.length === 0) continue; // allerede swept for dette hold i dag
 
     for (const assignment of assignments) {
       try {

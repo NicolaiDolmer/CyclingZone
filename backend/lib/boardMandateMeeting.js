@@ -31,7 +31,7 @@
  *     kalde `/board/meeting/focus` først får stadig et korrekt mandat.
  */
 
-import { buildGoalKey, generateBoardGoals, getPlanDuration } from "./boardGoals.js";
+import { buildGoalKey, generateBoardGoals, getPlanDuration, preserveExternalGoals } from "./boardGoals.js";
 import {
   buildMandateGoalOptions,
   buildMilestoneKey,
@@ -319,17 +319,27 @@ export async function writeLegacyOneYearBoard(supabase, {
   ensureSupabase(supabase);
   const { data: existingBoard, error: existingError } = await supabase
     .from("board_profiles")
-    .select("id, satisfaction, budget_modifier")
+    .select("id, satisfaction, budget_modifier, current_goals")
     .eq("team_id", teamId)
     .eq("plan_type", "1yr")
     .maybeSingle();
   if (existingError) throw new Error(`board_profiles lookup failed: ${existingError.message}`);
 
+  // #4865 · Årsmødet genopbygger hele den legacy 1yr-rækkes current_goals fra
+  // mandatets mål. Uden preserveExternalGoals ville et accepteret bonustilbuds
+  // ekstra-mål (`source: "bonus_offer"`), lagt på DENNE række af en tidligere
+  // /board/bonus-goal-accept, blive slettet stiltiende ved næste årsmøde —
+  // samme fejl som #4865 målte for /board/sign, bare på et andet kaldested.
+  const finalGoals = preserveExternalGoals({
+    rebuiltGoals: goals,
+    previousGoals: existingBoard?.current_goals ?? [],
+  });
+
   const upsertData = {
     team_id: teamId,
     focus,
     plan_type: "1yr",
-    current_goals: goals,
+    current_goals: finalGoals,
     satisfaction: existingBoard?.satisfaction ?? 50,
     budget_modifier: existingBoard?.budget_modifier ?? 1.0,
     negotiation_status: "completed",
@@ -359,6 +369,10 @@ export async function writeLegacyOneYearBoard(supabase, {
  * `mandate.id` + status `proposed`: er mandatet allerede `active`, skrives
  * INTET igen — funktionen returnerer bare den friske Boardroom-payload
  * (retry-sikkert). Alt andet end `proposed`/`active` er en konflikt.
+ *
+ * #4839: manager-stien (API-ruten) er LÆSE-gatet på `isBetaTester` som før —
+ * en spiller der ikke må se Boardroom må heller ikke underskrive. Cron-stien
+ * sender `engineWrite: true`, så auto-accept virker for alle hold i 'beta'.
  */
 export async function signMandate(supabase, {
   teamId,
@@ -369,10 +383,11 @@ export async function signMandate(supabase, {
   visionSlot = null,
   now = new Date(),
   isBetaTester = false,
+  engineWrite = false,
   signedVia = "manager",
 } = {}) {
   ensureSupabase(supabase);
-  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
+  if (!await isBoardMandateModelEnabled(supabase, { isBetaTester, engineWrite })) return null;
   if (!mandateId) throw new Error("mandateId is required");
 
   const { data: mandate, error: mandateError } = await supabase

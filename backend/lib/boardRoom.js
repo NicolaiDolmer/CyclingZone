@@ -129,12 +129,16 @@ import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalConte
 import { sumActiveLoanDebt, sumRiderSalaries } from "./boardUtils.js";
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
 import { MANDATE_CATEGORIES } from "./boardMandate.js";
-import { getActiveConsequencesForTeam, getLayerLabelKey } from "./boardConsequences.js";
+import { getActiveConsequencesForTeam, getLayerLabelKey, CONSEQUENCE_LAYERS } from "./boardConsequences.js";
 import { captureException } from "./sentry.js";
 
 const MINUTES_LIMIT = 10;
 const EVENTS_FETCH_LIMIT = 50; // bredere vindue end minutes-loftet, så weekDelta + mood har nok historik
 const MOOD_WINDOW = 5;
+// Højst ét bonustilbud pr. hold pr. sæson (BOARD_RULES §4, expires_at_season_id-
+// guarden), men vi henter et par rækker så sæson-filtreringen i deriveBonusOffer
+// har noget at vælge imellem ved sæsonskifte.
+const BONUS_OFFER_FETCH_LIMIT = 4;
 const WEEK_DELTA_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 // #4578 · Rang-orden for goal_states's `status`, brugt af `deriveGoalMovements`
@@ -363,11 +367,56 @@ export function sampleVoiceLineOrNull({ sampleFn = sampleVoiceLine, ...args } = 
   }
 }
 
-/** Værste (højeste-lag) aktive konsekvens → confidence.consequence-linjen. */
+/**
+ * Værste (højeste-lag) aktive konsekvens → confidence.consequence-linjen.
+ *
+ * #4557 (overblik + faner) · Lag 6 (bonustilbud) filtreres FRA. Det er
+ * bestyrelsens BELØNNING, ikke en straf, og "højeste lag vinder"-reduktionen
+ * lod derfor et aktivt tilbud stå som holdets "værste aktive konsekvens" på
+ * tillidskortet. Tilbuddet har nu sin egen stribe i mandat-resuméet
+ * (`bonusOffer` nedenfor), så samme række ville ellers stå to steder med to
+ * modsatte betydninger.
+ */
 export function deriveConsequenceLine(consequences = []) {
-  if (!consequences?.length) return { active: false, lineKey: null, lineParams: {} };
-  const worst = consequences.reduce((a, b) => (Number(b.layer) > Number(a.layer) ? b : a));
+  const penalties = (consequences || []).filter((c) => Number(c.layer) !== CONSEQUENCE_LAYERS.BONUS_OFFER);
+  if (!penalties.length) return { active: false, lineKey: null, lineParams: {} };
+  const worst = penalties.reduce((a, b) => (Number(b.layer) > Number(a.layer) ? b : a));
   return { active: true, lineKey: getLayerLabelKey(worst.layer), lineParams: {} };
+}
+
+/**
+ * #4557 · Bonustilbuddet (BOARD_RULES §4, lag 6) på Boardroom-payloaden.
+ *
+ * Ren visning — INGEN ny mekanik: rækken læses som den er, og accept/afslag
+ * går uændret til de eksisterende `POST /board/bonus-offer/{accept,decline}`.
+ * `rows` er holdets lag 6-rækker (nyeste først) i status `active`/`accepted`.
+ *
+ * Sæson-scoping: et tilbud hører til den sæson det blev givet i
+ * (`expires_at_season_id`, se `expireSeasonScopedConsequences`). En række med
+ * et ANDET sæson-id end den aktive springes over, så sidste sæsons accepterede
+ * bonus ikke bliver stående på siden. `null` (tilbud der må indløses næste
+ * sæson, re-stemples af sæsonskifte-hooket) tæller altid med.
+ */
+export function deriveBonusOffer({ rows = [], currentSeasonId = null } = {}) {
+  const inSeason = (rows || []).filter((row) => {
+    const seasonId = row?.expires_at_season_id ?? null;
+    return seasonId == null || currentSeasonId == null || seasonId === currentSeasonId;
+  });
+  const row = inSeason.find((r) => r?.status === "active") ?? inSeason.find((r) => r?.status === "accepted") ?? null;
+  if (!row) return null;
+  return {
+    id: row.id,
+    status: row.status,
+    amount: Number(row.severity ?? 0),
+    acceptedAt: row.status === "accepted" ? (row.resolved_at ?? null) : null,
+    // Rå mål-felter, samme form som mandate.goals[] — frontends kanoniske
+    // getBoardGoalLabel læser præcis disse navne (buildGoalLabelSource).
+    extraGoal: {
+      type: row.payload?.extra_goal_type ?? null,
+      target: row.payload?.extra_goal_target ?? null,
+      label: row.payload?.extra_goal_label ?? null,
+    },
+  };
 }
 
 /**
@@ -458,6 +507,7 @@ export async function buildBoardRoomPayload({
     ridersRes,
     loansRes,
     eventsRes,
+    bonusOfferRes,
   ] = await Promise.all([
     supabase.from("board_relations").select("*").eq("team_id", teamId).maybeSingle(),
     supabase.from("team_board_members")
@@ -495,6 +545,19 @@ export async function buildBoardRoomPayload({
       .or("mandate_id.not.is.null,milestone_id.not.is.null")
       .order("created_at", { ascending: false })
       .limit(EVENTS_FETCH_LIMIT),
+    // #4557 (overblik + faner) · Lag 6 (bonustilbud, BOARD_RULES §4). Ren
+    // LÆSNING — accept/afslag går uændret til de eksisterende
+    // POST /board/bonus-offer/{accept,decline}. `getActiveConsequencesForTeam`
+    // ovenfor giver kun de AKTIVE rækker; det accepterede tilbud (kvitteringen
+    // "Accepted 30 Aug, +200.000 CZ$ credited") kræver også status 'accepted'
+    // og rækkens payload/resolved_at, derfor en egen lille query.
+    supabase.from("board_consequences")
+      .select("id, status, severity, payload, resolved_at, expires_at_season_id")
+      .eq("team_id", teamId)
+      .eq("layer", CONSEQUENCE_LAYERS.BONUS_OFFER)
+      .in("status", ["active", "accepted"])
+      .order("created_at", { ascending: false })
+      .limit(BONUS_OFFER_FETCH_LIMIT),
   ]);
 
   for (const [label, res] of [
@@ -523,6 +586,9 @@ export async function buildBoardRoomPayload({
   // #1237 · nettostilling-input til no_outstanding_debt (scoreFinanceHealthGoal).
   const activeDebt = sumActiveLoanDebt(activeLoanRows);
   const seasonsList = seasonsListRes.error ? [] : (seasonsListRes.data ?? []);
+  // Best-effort som season_standings/riders: en fejlet lag 6-læsning må koste
+  // bonus-striben (null), aldrig hele Boardroom-siden.
+  const bonusOfferRows = bonusOfferRes.error ? [] : (bonusOfferRes.data ?? []);
 
   const relation = relationRes.data ?? null;
   const assignedMembers = membersRes.data ?? [];
@@ -804,6 +870,11 @@ export async function buildBoardRoomPayload({
         // nu vise "vi mangler data endnu" i stedet for at læse status som reel.
         awaitingData: evaluation?.missing_data === true,
         isStretch: goal?.importance === "bonus",
+        // #4557 · Et accepteret bonustilbuds ekstra-mål stemples med
+        // `source: "bonus_offer"` af accept-routen (api.js). Det er en ANDEN
+        // ting end `isStretch` (et hårdere forhandlet mandat-mål), og
+        // mockup'en giver de to hver sin mærkat.
+        isBonus: goal?.source === "bonus_offer",
         owner: ownerArchetypeKey ? {
           archetypeKey: ownerArchetypeKey,
           name: ownerName?.full_name ?? null,
@@ -898,6 +969,9 @@ export async function buildBoardRoomPayload({
     team: { dnaKey },
     confidence,
     mandate,
+    // #4557 (overblik + faner) · Lag 6-striben i mandat-resuméet. `null` når
+    // holdet hverken har et aktivt eller et accepteret tilbud i denne sæson.
+    bonusOffer: deriveBonusOffer({ rows: bonusOfferRows, currentSeasonId }),
     vision,
     board: { members: boardMembers, chairmanQuote },
     minutes,

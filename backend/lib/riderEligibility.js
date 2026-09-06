@@ -26,7 +26,20 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 //     entries — se isEligibleRider/filterEligibleEntries, som bevidst IKKE tjekker
 //     pending_team_id, da de bruges til at validere det låste løbs EGNE entries).
 export function applyRiderEligibilityFilter(query) {
-  return query.eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false").is("pending_team_id", null);
+  return applyRosterVisibilityFilter(query).is("pending_team_id", null);
+}
+
+// #4119: SYNLIGHEDS-filteret — samme akademi/pensioneret-gate som ovenfor, men UDEN
+// pending_team_id. En solgt rytter hvis holdskifte er parkeret (#1995/#2579) koerer
+// stadig for saelgeren indtil loebet er koert; han skal derfor STAA i truppen paa de
+// flader der viser "dine ryttere", bare markeret som udgaaende og uden at kunne
+// udtages til NYE loeb. To spillere rapporterede 22/8 at han bare forsvandt.
+//
+// Regel: brug DETTE filter naar du VISER en trup. Brug applyRiderEligibilityFilter
+// naar du afgoer hvem der maa UDTAGES/auto-udfyldes. De to spoergsmaal er ikke det
+// samme, og de blev blandet sammen.
+export function applyRosterVisibilityFilter(query) {
+  return query.eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
 }
 
 // Rent predikat: må `rider` køre for `teamId`? Bruges til at krydse committede

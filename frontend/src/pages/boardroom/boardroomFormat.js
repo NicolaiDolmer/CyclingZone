@@ -23,6 +23,16 @@ export function formatWeekdayOnly(date) {
   return formatDate(date, null, { weekday: "short" });
 }
 
+// #4557 · Saet punktum efter en dato UDEN at doble det. Dansk forkorter maaneder
+// og ugedage med punktum ("28. aug.", "soen. 30. aug."), saa den engelske
+// "{tekst}, {dato}."-form gav "28. aug.." paa dansk — et synligt slop-tegn paa
+// hver kvittering og paa tillidskortets bevaegelses-linje.
+export function endSentence(text) {
+  const value = String(text ?? "");
+  if (!value) return "";
+  return value.endsWith(".") ? value : `${value}.`;
+}
+
 // Delt mellem BoardCard (avatar-grid) og MemberPanel (portræt-header) — samme
 // stemnings-dot-farve begge steder, defineret ét sted.
 export const MOOD_DOT = {

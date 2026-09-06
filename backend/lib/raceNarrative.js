@@ -173,7 +173,7 @@ function dominantReason({ rider, incidentByRider, roleByRider }) {
  * @param {Array<{rider_id, team_id, rank, stageGap, components}>} args.ranked  fra simulateStage
  * @param {Map<string,string>} [args.roleByRider]  rider_id → race_role (denne etapes resolved rolle)
  * @param {Map<string,number>} [args.formByRider]  rider_id → form-snapshot (0-100)
- * @param {Map<string,'protect'|'normal'|'save'>} [args.effortByRider]  #3115 gap 1b (D3 DEL 2):
+ * @param {Map<string,'grupetto'|'save'|'normal'|'protect'|'all_out'>} [args.effortByRider]  #3115 gap 1b (D3 DEL 2):
  *   rider_id → denne etapes resolved effort (race_stage_roles.effort, S3 #2034). Spillerens EGET
  *   taktik-valg — kun anvendt til tag_saved_effort/tag_gave_everything nedenfor. Tom/manglende
  *   Map → ingen effort-tags (v3 uden S3-overrides, eller effort='normal' hele feltet).
@@ -316,15 +316,22 @@ export function extractStageMoments({
   // indsats-forklaring — genbruger spillerens EGEN effort-indstilling
   // (race_stage_roles.effort, sat på Etape-taktik-fanen FØR etapen køres) som
   // narrativ flavour. Fog-gate-konform PER KONSTRUKTION: viewet gengiver kun
-  // den kategori spilleren selv valgte (protect/normal/save) — aldrig
+  // den kategori spilleren selv valgte (de fem intentions-trin) — aldrig
   // work-cost/fatigue-multiplikatoren den skalerer med (raceRoles.js).
-  // 'normal' (default/uændret) giver bevidst intet tag — kun de to yderpunkter
-  // er en fortælleværdig afvigelse fra baseline.
+  // 'normal' (default/uændret) giver bevidst intet tag — kun afvigelser fra
+  // baseline er fortælleværdige.
+  //
+  // #4632: skalaen har nu fem trin. De to nye yderpunkter mapper på de
+  // EKSISTERENDE to tags i samme retning — 'grupetto' er en mere udtalt
+  // 'save', 'all_out' en mere udtalt 'protect'. Bevidst ingen nye moment-nøgler
+  // her: det ville kræve ny spillervendt copy (en+da), og denne PR har ingen
+  // UI/i18n-flade. Uden mapningen ville en rytter på et af de to nye trin
+  // stille miste sit tag, hvilket er værre end et lidt mindre præcist ord.
   for (const r of ranked) {
     const effort = effortByRider.get(r.rider_id);
-    if (effort === "save") {
+    if (effort === "save" || effort === "grupetto") {
       push(moments, { key: "tag_saved_effort", params: { riderId: r.rider_id }, riderIds: [r.rider_id] });
-    } else if (effort === "protect") {
+    } else if (effort === "protect" || effort === "all_out") {
       push(moments, { key: "tag_gave_everything", params: { riderId: r.rider_id }, riderIds: [r.rider_id] });
     }
   }

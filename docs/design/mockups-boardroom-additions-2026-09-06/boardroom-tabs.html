@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boardroom · overview first, tabs out</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens copied from frontend/src/index.css (light). Dark block is a bonus. */
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5; --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --on-accent:#1a1f38;
+  --success:21 119 47; --success-bg:rgba(21,119,47,.08);
+  --danger:168 30 30; --danger-bg:rgba(168,30,30,.08);
+  --warning:154 91 0; --warning-bg:rgba(154,91,0,.08);
+  --bg-sidebar:#1a1f38; --text-sidebar-1:#ffffff; --text-sidebar-2:rgba(255,255,255,.55);
+  --radius:5px; --radius-pill:9999px;
+  --font-body:"DM Sans",system-ui,-apple-system,sans-serif;
+  --font-data:"Inter Tight",system-ui,sans-serif;
+  --font-display:"Bebas Neue",Impact,"Arial Narrow",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+    --border:#2a2d3a; --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+    --accent-t:#ffd966;
+    --success:95 217 138; --success-bg:rgba(95,217,138,.12);
+    --danger:251 132 132; --danger-bg:rgba(251,132,132,.12);
+    --warning:240 168 48; --warning-bg:rgba(240,168,48,.12);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-body); color:var(--text-1);
+  font-family:var(--font-body); font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── app shell ───────────────────────────────────────────────── */
+.shell{display:flex; min-height:100vh; align-items:stretch}
+.side{width:208px; flex:0 0 208px; background:var(--bg-sidebar); padding:20px 0; display:flex; flex-direction:column}
+.wordmark{font-family:var(--font-display); font-size:22px; letter-spacing:.04em; color:var(--text-sidebar-1); padding:0 20px 18px}
+.nav a{display:block; padding:9px 20px; font-size:13px; color:var(--text-sidebar-2); text-decoration:none}
+.nav a.on{color:var(--text-sidebar-1); background:rgba(255,255,255,.06); box-shadow:inset 3px 0 0 0 rgb(var(--accent))}
+.main{flex:1 1 auto; min-width:0; display:flex; justify-content:center; padding:28px 32px 64px}
+.page{width:100%; max-width:896px}
+
+/* ── page header (T1, the ONE recipe) ────────────────────────── */
+.hdr{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px}
+.hdr h1{font-family:var(--font-data); font-size:20px; font-weight:700; letter-spacing:-.01em; margin:0; line-height:1.2}
+.hdr .sub{font-size:13px; color:var(--text-2); margin-top:4px}
+.hdr-right{display:flex; flex-direction:column; align-items:flex-end; gap:8px}
+.stamp{
+  font-family:var(--font-data); font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-3); border:1px solid var(--border); border-radius:var(--radius); padding:2px 7px; white-space:nowrap;
+}
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; height:30px; padding:0 12px;
+  font-family:var(--font-body); font-size:12.5px; font-weight:500;
+  border:1px solid var(--border); border-radius:var(--radius);
+  background:var(--bg-card); color:var(--text-1); cursor:pointer; white-space:nowrap;
+}
+.btn-primary{height:32px; background:rgb(var(--accent)); border-color:rgb(var(--accent)); color:var(--on-accent); font-weight:600}
+.btn-quiet{
+  border:0; background:none; padding:0; height:auto; color:var(--accent-t);
+  font-size:12px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:3px; white-space:nowrap;
+}
+.btn-quiet .chev{margin-top:1px}
+
+/* ── tabs (Tabs primitive anatomy) ───────────────────────────── */
+.tabs{display:flex; gap:4px; overflow-x:auto; border-bottom:1px solid var(--border); margin-bottom:16px; scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  white-space:nowrap; border:0; border-bottom:2px solid transparent; margin-bottom:-1px;
+  background:none; padding:10px 16px; font-family:var(--font-body); font-size:14px; font-weight:500;
+  color:var(--text-3); cursor:pointer;
+}
+.tab.on{border-bottom-color:rgb(var(--accent)); color:var(--text-1)}
+
+/* ── section cards ───────────────────────────────────────────── */
+.stack{display:flex; flex-direction:column; gap:14px}
+.card{background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:20px}
+.card-hd{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px}
+.card-hd h2{font-size:15px; font-weight:600; margin:0; line-height:1.2}
+.meta{font-family:var(--font-data); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); white-space:nowrap}
+.num{font-family:var(--font-data); font-variant-numeric:tabular-nums}
+
+/* ── overview · confidence hero (HeroStats anatomy) ──────────── */
+.conf{display:flex; align-items:center; gap:28px}
+.conf .big{font-family:var(--font-data); font-size:44px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums}
+.conf .delta{font-family:var(--font-data); font-size:12px; font-weight:600; color:rgb(var(--success)); font-variant-numeric:tabular-nums}
+.meters{flex:1 1 auto; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px}
+.mlabel{font-family:var(--font-data); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin-bottom:6px}
+.track{height:6px; background:var(--bg-subtle); border-radius:var(--radius-pill)}
+.fill{height:6px; border-radius:var(--radius-pill); background:rgb(var(--accent))}
+.fill.warn{background:rgb(var(--warning))}
+.mval{font-family:var(--font-data); font-size:20px; font-weight:650; line-height:1.1; font-variant-numeric:tabular-nums; margin-top:5px}
+.foot{
+  border-top:1px solid var(--border); margin-top:14px; padding-top:11px;
+  display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+  font-size:12.5px; color:var(--text-2);
+}
+.foot b{color:var(--text-1); font-weight:500}
+.foot .cash{font-family:var(--font-data); font-weight:600; color:rgb(var(--success)); font-variant-numeric:tabular-nums}
+
+/* ── overview · mandate summary ──────────────────────────────── */
+.sumline{font-size:13px; color:var(--text-2); margin:0 0 12px}
+.sumline b{color:var(--text-1); font-weight:500}
+.goals{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px 16px; align-items:stretch}
+.goal{display:flex; flex-direction:column}
+.goal .gname{flex:1 1 auto; font-size:12.5px; font-weight:500; line-height:1.3; margin-bottom:7px}
+.goal .grow{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px}
+.gval{font-family:var(--font-data); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); font-variant-numeric:tabular-nums}
+.pill{flex:0 0 auto; font-size:11px; font-weight:600; border-radius:var(--radius-pill); padding:2px 9px; font-family:var(--font-body)}
+.pill.ok{color:rgb(var(--success)); background:var(--success-bg)}
+.pill.warn{color:rgb(var(--warning)); background:var(--warning-bg)}
+.pill.bad{color:rgb(var(--danger)); background:var(--danger-bg)}
+
+/* the money stripe: one line, inside the mandate card */
+.stripe{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  margin-top:14px; padding:10px 12px; background:var(--bg-subtle);
+  border:1px solid var(--border); border-radius:var(--radius);
+}
+.stripe .txt{font-size:13px; color:var(--text-2); min-width:0}
+.stripe .txt b{color:var(--text-1); font-weight:500}
+.stripe .cash{font-family:var(--font-data); font-weight:600; color:rgb(var(--success)); font-variant-numeric:tabular-nums}
+.stripe .acts{display:flex; align-items:center; gap:14px; flex:0 0 auto}
+
+/* ── overview · summary rows (résumé lines, not cards) ───────── */
+.sumrows{margin-top:16px}
+.sumrow{display:flex; align-items:center; gap:14px; padding:11px 2px; border-top:1px solid var(--border)}
+.sumrow .lbl{font-family:var(--font-data); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); flex:0 0 96px}
+.sumrow .body{flex:1 1 auto; min-width:0; font-size:13px}
+.sumrow .body .k{font-weight:500}
+.sumrow .body .v{color:var(--text-2)}
+.faces{display:flex; gap:5px; flex:0 0 154px}
+.face-xs{
+  width:26px; height:26px; border-radius:var(--radius); background:#1a1f38; color:#f4f2ec;
+  display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:12px;
+}
+
+/* ── mandate tab · full card ─────────────────────────────────── */
+.row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 0; border-top:1px solid var(--border)}
+.row-l{display:flex; align-items:center; gap:12px; min-width:0}
+.mono{
+  width:28px; height:28px; flex:0 0 28px; border-radius:var(--radius); background:var(--bg-subtle);
+  border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-data); font-size:11px; font-weight:600; color:var(--text-2);
+}
+.rt{font-size:13.5px; font-weight:500}
+.rm{font-family:var(--font-data); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); font-variant-numeric:tabular-nums}
+.tag{
+  display:inline-block; font-family:var(--font-data); font-size:10px; font-weight:600; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--accent-t); border:1px solid var(--border);
+  border-radius:var(--radius-pill); padding:1px 7px; margin-left:6px; vertical-align:middle;
+}
+.receipt{margin:0 0 13px 40px; background:var(--bg-subtle); border-radius:var(--radius); padding:12px 14px}
+.receipt p{margin:0; font-size:12px; line-height:1.5; color:var(--text-2)}
+.receipt .act{margin-top:8px}
+.offer-hd{display:flex; align-items:baseline; justify-content:space-between; gap:12px}
+.offer-hd .t{font-size:13.5px; font-weight:500}
+.offer-body{font-size:13px; color:var(--text-2); margin:6px 0 0; line-height:1.5}
+.offer-body .cash{font-family:var(--font-data); font-weight:600; color:rgb(var(--success)); font-variant-numeric:tabular-nums}
+.offer-body .goal{color:var(--text-1); font-weight:500}
+.offer-note{font-size:12px; color:var(--text-3); margin:8px 0 0; line-height:1.5}
+.offer-acts{display:flex; align-items:center; gap:14px; margin-top:12px}
+.progress-line{margin:0 0 13px 40px; font-size:12px; color:var(--text-2); line-height:1.5}
+.progress-line .cash{font-family:var(--font-data); font-weight:600; color:rgb(var(--success)); font-variant-numeric:tabular-nums}
+
+/* ── vision tab ──────────────────────────────────────────────── */
+.vis{position:relative; padding-top:8px}
+.vis .rail{position:absolute; top:15px; left:40px; right:40px; height:2px; background:var(--border)}
+.vis .steps{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; position:relative}
+.vis .step{text-align:center}
+.dot-now{width:16px; height:16px; border-radius:var(--radius-pill); background:rgb(var(--accent)); border:2px solid #1a1f38; margin:0 auto}
+.dot{width:12px; height:12px; border-radius:var(--radius-pill); background:var(--bg-card); border:2px solid var(--text-3); margin:2px auto 0}
+.vis .slab{font-family:var(--font-data); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin-top:10px}
+.vis .slab.now{color:var(--accent-t); font-weight:600; margin-top:8px}
+.vis .sname{font-size:13px; font-weight:500; margin-top:3px}
+.footnote{border-top:1px solid var(--border); margin-top:16px; padding-top:12px; font-size:12.5px; color:var(--text-2)}
+
+/* ── board tab ───────────────────────────────────────────────── */
+.people{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px}
+.person{text-align:center}
+.face{
+  position:relative; width:44px; height:44px; border-radius:var(--radius); background:#1a1f38; color:#f4f2ec;
+  display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:18px; margin:0 auto;
+}
+.mood{position:absolute; right:-3px; bottom:-3px; width:10px; height:10px; border-radius:var(--radius-pill); border:2px solid var(--bg-card)}
+.mood.ok{background:rgb(var(--success))} .mood.warn{background:rgb(var(--warning))} .mood.bad{background:rgb(var(--danger))}
+.pname{font-size:11px; font-weight:600; margin-top:7px}
+.prole{font-family:var(--font-data); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); margin-top:2px}
+.quote{background:var(--bg-subtle); border-radius:var(--radius); padding:12px 14px; margin-top:16px}
+.quote p{margin:0; font-size:13.5px; line-height:1.5}
+.quote .by{font-family:var(--font-data); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); margin-top:6px}
+.minutes{border-top:1px solid var(--border); margin-top:16px; padding-top:4px}
+.minute{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 0; border-bottom:1px solid var(--border)}
+.minute:last-child{border-bottom:0}
+.minute .txt{font-size:13px}
+.minute .who{font-family:var(--font-data); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); white-space:nowrap}
+.up{font-family:var(--font-data); font-weight:600; color:rgb(var(--success)); font-variant-numeric:tabular-nums}
+.down{font-family:var(--font-data); font-weight:600; color:rgb(var(--danger)); font-variant-numeric:tabular-nums}
+.dna-row{display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--border); margin-top:16px; padding-top:12px}
+.dna-row .cx{font-size:12.5px; color:var(--text-2)}
+.dna-row .lock{font-family:var(--font-data); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); white-space:nowrap}
+
+/* ── club DNA choose card ────────────────────────────────────── */
+.dna-intro{font-size:13px; color:var(--text-2); margin:0 0 16px; line-height:1.5}
+.dna-grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px}
+.dna{border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-subtle); padding:14px; display:flex; flex-direction:column; gap:6px}
+.dna .slot{font-family:var(--font-data); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3)}
+.dna .nm{font-size:13.5px; font-weight:600; line-height:1.25}
+.dna .one{font-size:12px; color:var(--text-2); line-height:1.5}
+.dna .why{font-family:var(--font-data); font-size:11px; color:var(--accent-t)}
+.dna .btn{margin-top:auto; width:100%; background:var(--bg-card)}
+
+/* ── mockup chrome: tab annotations + variant lanes ──────────── */
+.ann{display:flex; align-items:center; gap:10px; margin:0 0 12px}
+.ann span{
+  font-family:var(--font-data); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text-3); white-space:nowrap;
+}
+.ann::after{content:""; flex:1 1 auto; height:1px; background:var(--border)}
+.sect{margin-top:44px}
+.sect:first-of-type{margin-top:0}
+.note{font-size:12.5px; color:var(--text-2); margin:0 0 14px; max-width:660px}
+.cap{font-size:12px; color:var(--text-3); margin:14px 0 10px}
+.nh{position:relative; border:1px dashed var(--text-3); border-radius:var(--radius); padding:14px; margin-top:14px}
+.nh-tag{
+  position:absolute; top:-7px; left:12px; background:var(--bg-card); padding:0 6px;
+  font-family:var(--font-data); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3);
+}
+.nh.on-body{margin-top:0}
+.nh.on-body>.nh-tag{background:var(--bg-body)}
+.nh.on-body>.card{margin:0}
+
+/* ── mobile 390 ──────────────────────────────────────────────── */
+@media (max-width:860px){
+  .side{display:none}
+  .main{padding:20px 16px 48px}
+  .card{padding:16px}
+  .hdr{flex-direction:column; align-items:stretch; gap:12px; margin-bottom:16px}
+  .hdr-right{align-items:stretch; gap:10px}
+  .hdr-right .stamp{align-self:flex-start}
+  .hdr .btn-primary{width:100%; height:40px}
+  .tab{padding:10px 12px}
+  .conf{flex-direction:column; align-items:flex-start; gap:14px}
+  .meters{width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+  .foot{flex-direction:column; gap:6px}
+  .goals{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .goal .gname{min-height:0}
+  .stripe{flex-direction:column; align-items:flex-start; gap:10px}
+  .sumrow{flex-wrap:wrap; gap:8px}
+  .sumrow .lbl{flex:0 0 100%}
+  .sumrow .body{flex:1 1 100%}
+  .vis .rail{display:none}
+  .vis .steps{grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; text-align:left}
+  .vis .step{text-align:left}
+  .dot-now,.dot{margin:0}
+  .people{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .dna-grid{grid-template-columns:minmax(0,1fr)}
+  .receipt,.progress-line{margin-left:0}
+  .row{align-items:flex-start}
+  .minute{align-items:flex-start; flex-direction:column; gap:2px}
+  .minute .who{white-space:normal}
+  .dna-row{flex-direction:column; align-items:flex-start; gap:8px}
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="side">
+    <div class="wordmark">Cycling Zone</div>
+    <nav class="nav">
+      <a href="#">Dashboard</a>
+      <a href="#">Squad</a>
+      <a href="#">Races</a>
+      <a href="#">Market</a>
+      <a href="#">Training</a>
+      <a href="#">Finance</a>
+      <a href="#" class="on">Boardroom</a>
+      <a href="#">Standings</a>
+    </nav>
+  </div>
+
+  <div class="main">
+    <div class="page">
+
+      <!-- ═══════════════════ TAB: OVERVIEW (default) ═══════════════════ -->
+      <div class="sect">
+        <div class="ann"><span>Tab: Overview · default · must not scroll on 1280x900</span></div>
+
+        <div class="hdr">
+          <div>
+            <h1>Boardroom</h1>
+            <div class="sub">Ellen Kjær, chair · Scandinavian development team</div>
+          </div>
+          <div class="hdr-right">
+            <div class="stamp">Mockup 6 Sep, not final</div>
+            <button class="btn btn-primary">Enter annual meeting</button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab on">Overview</button>
+          <button class="tab">Mandate</button>
+          <button class="tab">Vision</button>
+          <button class="tab">Board</button>
+        </div>
+
+        <div class="stack">
+
+          <!-- confidence, HeroStats anatomy -->
+          <section class="card">
+            <div class="card-hd">
+              <h2>Board confidence</h2>
+              <div class="meta">Updated Sun 30 Aug</div>
+            </div>
+            <div class="conf">
+              <div style="display:flex; align-items:baseline; gap:10px">
+                <div class="big">78</div>
+                <div class="delta">+3 this week</div>
+              </div>
+              <div class="meters">
+                <div>
+                  <div class="mlabel">Results</div>
+                  <div class="track"><div class="fill" style="width:82%"></div></div>
+                  <div class="mval">82</div>
+                </div>
+                <div>
+                  <div class="mlabel">Economy</div>
+                  <div class="track"><div class="fill" style="width:76%"></div></div>
+                  <div class="mval">76</div>
+                </div>
+                <div>
+                  <div class="mlabel">Identity</div>
+                  <div class="track"><div class="fill" style="width:84%"></div></div>
+                  <div class="mval">84</div>
+                </div>
+                <div>
+                  <div class="mlabel">Ranking</div>
+                  <div class="track"><div class="fill warn" style="width:58%"></div></div>
+                  <div class="mval">58</div>
+                </div>
+              </div>
+            </div>
+            <div class="foot">
+              <div><b>Last movement:</b> <span class="cash">+86.000 CZ$</span> race-day income, Sun 30 Aug.</div>
+              <div>No active consequences. Wage cap activates below 40.</div>
+            </div>
+          </section>
+
+          <!-- mandate résumé + the money stripe -->
+          <section class="card">
+            <div class="card-hd">
+              <h2>Season mandate · S3</h2>
+              <button class="btn-quiet">Open mandate
+                <svg class="chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+
+            <p class="sumline"><b>3 of 4 goals achieved</b>, signed 28 Aug. The club ranking is behind at 46 against a target of 40.</p>
+
+            <div class="goals">
+              <div class="goal">
+                <div class="gname">Win 3 race days</div>
+                <div class="track"><div class="fill" style="width:100%"></div></div>
+                <div class="grow"><span class="gval">3 / 3</span><span class="pill ok">Achieved</span></div>
+              </div>
+              <div class="goal">
+                <div class="gname">Keep season result above zero</div>
+                <div class="track"><div class="fill" style="width:100%"></div></div>
+                <div class="grow"><span class="gval">+412.000 CZ$</span><span class="pill ok">On track</span></div>
+              </div>
+              <div class="goal">
+                <div class="gname">Give 2 academy riders a debut</div>
+                <div class="track"><div class="fill" style="width:100%"></div></div>
+                <div class="grow"><span class="gval">2 / 2</span><span class="pill ok">Achieved</span></div>
+              </div>
+              <div class="goal">
+                <div class="gname">Finish top 40 of the club ranking</div>
+                <div class="track"><div class="fill warn" style="width:64%"></div></div>
+                <div class="grow"><span class="gval">46 / 40</span><span class="pill bad">Behind</span></div>
+              </div>
+            </div>
+
+            <div class="stripe">
+              <div class="txt"><b>Bonus offer from the board.</b> <span class="cash">+200.000 CZ$</span> for one extra target: Top 3 in at least 1 Monument race.</div>
+              <div class="acts">
+                <button class="btn">Accept offer</button>
+                <button class="btn-quiet">Decline</button>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- vision + board as one-line résumés, not cards -->
+        <div class="sumrows">
+          <div class="sumrow">
+            <div class="lbl">Club vision</div>
+            <div class="faces"></div>
+            <div class="body"><span class="k">The Nordic project.</span> <span class="v">Next milestone: Promotion push, target S4.</span></div>
+            <button class="btn-quiet">Open vision
+              <svg class="chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+          <div class="sumrow">
+            <div class="lbl">The board</div>
+            <div class="faces">
+              <div class="face-xs">EK</div>
+              <div class="face-xs">JB</div>
+              <div class="face-xs">SL</div>
+              <div class="face-xs">AH</div>
+              <div class="face-xs">NØ</div>
+            </div>
+            <div class="body"><span class="v">&ldquo;We see the direction. Keep the wage bill honest and the results will follow.&rdquo; Ellen Kjær</span></div>
+            <button class="btn-quiet">Open board
+              <svg class="chev" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════ TAB: MANDATE ═══════════════════ -->
+      <div class="sect">
+        <div class="ann"><span>Tab: Mandate</span></div>
+        <p class="note">The full mandate card: every goal with its owner, the receipt that shows how it is counted, and the bonus offer in full. This is where the one-line stripe on the overview leads.</p>
+
+        <div class="tabs">
+          <button class="tab">Overview</button>
+          <button class="tab on">Mandate</button>
+          <button class="tab">Vision</button>
+          <button class="tab">Board</button>
+        </div>
+
+        <section class="card">
+          <div class="card-hd">
+            <h2>Season mandate · S3</h2>
+            <div class="meta">4 goals · signed 28 Aug</div>
+          </div>
+
+          <div class="row">
+            <div class="row-l">
+              <div class="mono">JB</div>
+              <div>
+                <div class="rt">Win 3 race days</div>
+                <div class="rm">Achieved 3 / target 3</div>
+              </div>
+            </div>
+            <span class="pill ok">Achieved</span>
+          </div>
+
+          <div class="row">
+            <div class="row-l">
+              <div class="mono">SL</div>
+              <div>
+                <div class="rt">Keep season result above zero</div>
+                <div class="rm">Achieved +412.000 CZ$ / target 0 CZ$</div>
+              </div>
+            </div>
+            <span class="pill ok">On track</span>
+          </div>
+          <div class="receipt">
+            <p>
+              <strong style="color:var(--text-1)">Counted:</strong> season income minus wages, transfers and race costs.<br>
+              <strong style="color:var(--text-1)">Last movement:</strong> +86.000 CZ$ race-day income, Sun 30 Aug.<br>
+              Weighted by Søren Lindqvist. He values steady margins over big swings.
+            </p>
+            <div class="act"><span class="btn-quiet" style="color:var(--text-3)">Discuss target</span></div>
+          </div>
+
+          <div class="row">
+            <div class="row-l">
+              <div class="mono">AH</div>
+              <div>
+                <div class="rt">Give 2 academy riders a debut</div>
+                <div class="rm">Achieved 2 / target 2</div>
+              </div>
+            </div>
+            <span class="pill ok">Achieved</span>
+          </div>
+
+          <div class="row">
+            <div class="row-l">
+              <div class="mono">NØ</div>
+              <div>
+                <div class="rt">Finish top 40 of the club ranking <span class="tag">Stretch</span></div>
+                <div class="rm">Currently 46 / target 40</div>
+              </div>
+            </div>
+            <span class="pill bad">Behind</span>
+          </div>
+
+          <div class="nh">
+            <span class="nh-tag">New here</span>
+            <div class="offer-hd">
+              <div class="t">Bonus offer from the board</div>
+              <div class="meta">Expires at the end of S3</div>
+            </div>
+            <p class="offer-body">
+              The board is impressed. They offer <span class="cash">+200.000 CZ$</span> to the team's balance
+              for one extra target: <span class="goal">Top 3 in at least 1 Monument race</span>.
+            </p>
+            <p class="offer-note">
+              Accept and the budget is credited immediately. The extra target is added to your 1-year plan
+              and evaluated at season end.
+            </p>
+            <div class="offer-acts">
+              <button class="btn">Accept offer</button>
+              <button class="btn-quiet">Decline</button>
+            </div>
+          </div>
+        </section>
+
+        <p class="cap">Variant: offer accepted. The offer block is gone, the extra target is a normal goal row with one progress line under it, and the card meta counts one goal more. The overview loses its stripe and reads &ldquo;5 goals&rdquo;.</p>
+
+        <div class="nh on-body">
+          <span class="nh-tag">New here</span>
+          <section class="card">
+            <div class="card-hd">
+              <h2>Season mandate · S3</h2>
+              <div class="meta">5 goals · signed 28 Aug</div>
+            </div>
+            <div class="row">
+              <div class="row-l">
+                <div class="mono">NØ</div>
+                <div>
+                  <div class="rt">Finish top 40 of the club ranking <span class="tag">Stretch</span></div>
+                  <div class="rm">Currently 46 / target 40</div>
+                </div>
+              </div>
+              <span class="pill bad">Behind</span>
+            </div>
+            <div class="row">
+              <div class="row-l">
+                <div class="mono">EK</div>
+                <div>
+                  <div class="rt">Top 3 in at least 1 Monument race <span class="tag">Bonus</span></div>
+                  <div class="rm">Achieved 0 / target 1</div>
+                </div>
+              </div>
+              <span class="pill ok">On track</span>
+            </div>
+            <p class="progress-line">
+              Accepted 30 Aug. <span class="cash">+200.000 CZ$</span> credited to the balance. Counted from
+              acceptance, judged at season end.
+            </p>
+          </section>
+        </div>
+      </div>
+
+      <!-- ═══════════════════ TAB: VISION ═══════════════════ -->
+      <div class="sect">
+        <div class="ann"><span>Tab: Vision</span></div>
+        <p class="note">The milestone timeline in full. The overview only carries the next milestone and its target season.</p>
+
+        <div class="tabs">
+          <button class="tab">Overview</button>
+          <button class="tab">Mandate</button>
+          <button class="tab on">Vision</button>
+          <button class="tab">Board</button>
+        </div>
+
+        <section class="card">
+          <div class="card-hd">
+            <h2>Club vision · The Nordic project</h2>
+            <div class="meta">S3 to S6</div>
+          </div>
+          <div class="vis">
+            <div class="rail"></div>
+            <div class="steps">
+              <div class="step">
+                <div class="dot-now"></div>
+                <div class="slab now">S3 · You are here</div>
+                <div class="sname">Establish in Division 3</div>
+              </div>
+              <div class="step">
+                <div class="dot"></div>
+                <div class="slab">S4</div>
+                <div class="sname">Promotion push</div>
+              </div>
+              <div class="step">
+                <div class="dot"></div>
+                <div class="slab">S5</div>
+                <div class="sname">Monument podium</div>
+              </div>
+              <div class="step">
+                <div class="dot"></div>
+                <div class="slab">S6</div>
+                <div class="sname">Top 30 club ranking</div>
+              </div>
+            </div>
+          </div>
+          <div class="footnote">Milestones are judged in their target season. A missed milestone costs confidence once, then the vision moves on.</div>
+        </section>
+      </div>
+
+      <!-- ═══════════════════ TAB: BOARD ═══════════════════ -->
+      <div class="sect">
+        <div class="ann"><span>Tab: Board</span></div>
+        <p class="note">The five members with their mood and their voice, the minutes feed, and the club DNA line. During the first season the line also carries the way back.</p>
+
+        <div class="tabs">
+          <button class="tab">Overview</button>
+          <button class="tab">Mandate</button>
+          <button class="tab">Vision</button>
+          <button class="tab on">Board</button>
+        </div>
+
+        <section class="card">
+          <div class="card-hd">
+            <h2>The board</h2>
+            <div class="meta">Meeting minutes</div>
+          </div>
+          <div class="people">
+            <div class="person">
+              <div class="face">EK<span class="mood ok"></span></div>
+              <div class="pname">Ellen Kjær</div>
+              <div class="prole">Chair</div>
+            </div>
+            <div class="person">
+              <div class="face">JB<span class="mood ok"></span></div>
+              <div class="pname">Jørgen Brandt</div>
+              <div class="prole">Results</div>
+            </div>
+            <div class="person">
+              <div class="face">SL<span class="mood warn"></span></div>
+              <div class="pname">Søren Lindqvist</div>
+              <div class="prole">Economy</div>
+            </div>
+            <div class="person">
+              <div class="face">AH<span class="mood ok"></span></div>
+              <div class="pname">Astrid Holm</div>
+              <div class="prole">Identity</div>
+            </div>
+            <div class="person">
+              <div class="face">NØ<span class="mood bad"></span></div>
+              <div class="pname">Niels Østergaard</div>
+              <div class="prole">Ranking</div>
+            </div>
+          </div>
+
+          <div class="quote">
+            <p>&ldquo;We see the direction. Keep the wage bill honest and the results will follow.&rdquo;</p>
+            <div class="by">Ellen Kjær · after the Sunday review</div>
+          </div>
+
+          <div class="minutes">
+            <div class="minute">
+              <div class="txt"><span class="up">+2</span> · Stage win, Vuelta a Andalucía. &ldquo;That is what I signed up for.&rdquo;</div>
+              <div class="who">Jørgen Brandt · Sun</div>
+            </div>
+            <div class="minute">
+              <div class="txt"><span class="up">+1</span> · Youth debut: Mikkel Iversen, 18. &ldquo;This is the Nordic way.&rdquo;</div>
+              <div class="who">Astrid Holm · Sat</div>
+            </div>
+            <div class="minute">
+              <div class="txt"><span class="down">-1</span> · Deficit week, -86.000 CZ$. &ldquo;Margins, not miracles.&rdquo;</div>
+              <div class="who">Søren Lindqvist · Wed</div>
+            </div>
+          </div>
+
+          <div class="nh">
+            <span class="nh-tag">New here</span>
+            <div class="dna-row" style="border-top:0; margin-top:0; padding-top:0">
+              <div class="cx">
+                Club DNA decides who sits here and how they weight your targets.<br>
+                You can still change your club DNA until your first season ends. After that it's locked in.
+              </div>
+              <button class="btn-quiet">Change club DNA</button>
+            </div>
+          </div>
+        </section>
+
+        <p class="cap">From season 2 the same line drops the button and reads &ldquo;Locked for the season&rdquo; on the right.</p>
+      </div>
+
+      <!-- ═══════════════════ VARIANT: OVERVIEW WITHOUT DNA ═══════════════════ -->
+      <div class="sect">
+        <div class="ann"><span>Variant · Tab: Overview · team without DNA</span></div>
+        <p class="note">7 teams have no DNA yet. The choose card takes the top slot on the overview instead of confidence, and the header subtitle falls back to the chair alone. Confidence moves down one place. No gold here: the page's single gold is the annual-meeting button, so every DNA action is a secondary button.</p>
+
+        <div class="hdr">
+          <div>
+            <h1>Boardroom</h1>
+            <div class="sub">Ellen Kjær, chair</div>
+          </div>
+          <div class="hdr-right">
+            <div class="stamp">Mockup 6 Sep, not final</div>
+            <button class="btn btn-primary">Enter annual meeting</button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab on">Overview</button>
+          <button class="tab">Mandate</button>
+          <button class="tab">Vision</button>
+          <button class="tab">Board</button>
+        </div>
+
+        <div class="nh on-body">
+          <span class="nh-tag">New here</span>
+          <section class="card">
+            <div class="card-hd">
+              <h2>Choose your club identity</h2>
+              <div class="meta">Club DNA</div>
+            </div>
+            <p class="dna-intro">
+              The board has observed season 1 and suggests three directions. DNA shapes target weighting,
+              club tradition targets and which board members you get from the first plan.
+            </p>
+            <div class="dna-grid">
+              <div class="dna">
+                <div class="slot">National match</div>
+                <div class="nm">Scandinavian development team</div>
+                <div class="one">Youth, balance and Nordic heritage</div>
+                <div class="why">Matches your DEN core from season 1</div>
+                <button class="btn">Choose this DNA</button>
+              </div>
+              <div class="dna">
+                <div class="slot">Specialisation match</div>
+                <div class="nm">Sprint-focused commercial team</div>
+                <div class="one">Wins at the line, sponsors on the wheel</div>
+                <div class="why">Matches your sprint focus</div>
+                <button class="btn">Choose this DNA</button>
+              </div>
+              <div class="dna">
+                <div class="slot">Wildcard</div>
+                <div class="nm">Italian classics traditionalist</div>
+                <div class="one">Spring is sacred. Monuments are the goal</div>
+                <div class="why">A new path. The board will follow wherever it leads</div>
+                <button class="btn">Choose this DNA</button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <p class="cap">Confidence, the mandate résumé and the two summary rows follow underneath, unchanged. After choosing, the card above is gone for good and the overview is the one at the top of this page.</p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

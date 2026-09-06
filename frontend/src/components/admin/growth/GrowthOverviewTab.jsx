@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "../../../lib/supabase";
 import { useAdminAuth, readAdminJson, adminErrorMessage } from "../shared/useAdminAuth";
 import Card from "../../ui/Card";
 import Button from "../../ui/Button";
@@ -20,10 +19,12 @@ import TrendLineChart from "./TrendLineChart";
 // Datakilde: GET /api/admin/growth/snapshots (growth_metric_snapshots,
 // skrevet dagligt af backend/cron.js runGrowthSnapshotCron). Tabellen er TOM
 // indtil migrationen er kørt + cron'en/backfill-scriptet har kørt mindst én
-// gang — falder da YNDEFULDT tilbage til get_sprint_metrics (samme RPC som
-// den tidligere sprint-metrics-fane, kaldt direkte som authenticated — den er
-// admin-selv-gatet, se database/2026-08-03-growth-snapshots-3196.sql §2) for
-// at vise DAGENS tal, med en tydelig "ingen historik endnu"-note.
+// gang — falder da YNDEFULDT tilbage til GET /api/admin/growth/sprint-metrics
+// (get_sprint_metrics ad hoc) for at vise DAGENS tal, med en tydelig "ingen
+// historik endnu"-note. #4870: fallbacken gik før direkte til
+// supabase.rpc("get_sprint_metrics") med bruger-JWT; RPC'en er nu revoked for
+// `authenticated` (database/2026-09-06-4870-revoke-metrics-rpcs.sql), så den
+// eneste vej ind er backendens requireAdmin-endpoint.
 const API = import.meta.env.VITE_API_URL;
 
 const PERIOD_OPTIONS = [
@@ -86,10 +87,14 @@ export default function GrowthOverviewTab() {
       setSnapshots(json.snapshots || []);
 
       if (!json.snapshots || json.snapshots.length === 0) {
-        // Ingen historik endnu — vis dagens ad hoc-tal (samme RPC som den
-        // tidligere Sprint-metrics-fane bruger direkte, admin-selv-gatet).
-        const { data: metricsData, error: rpcErr } = await supabase.rpc("get_sprint_metrics", { p_window: "7d" });
-        if (!rpcErr) setFallback(metricsData);
+        // Ingen historik endnu — vis dagens ad hoc-tal via samme admin-endpoint
+        // som Sprint-metrics-fanen (#4870). En fejl her må ikke vælte fanen:
+        // hovedindholdet (den tomme historik) er allerede sat.
+        const fbRes = await fetch(`${API}/api/admin/growth/sprint-metrics?window=7d`, { headers: auth });
+        if (fbRes.ok) {
+          const fbJson = await readAdminJson(fbRes);
+          setFallback(fbJson.metrics ?? null);
+        }
       } else {
         setFallback(null);
       }

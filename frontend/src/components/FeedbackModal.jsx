@@ -13,7 +13,7 @@ const API = import.meta.env.VITE_API_URL;
 // #2602: in-game feedback/bug-report/idea-modal — de eneste veje ind for spillere
 // uden Discord. Åbnes fra samme sted som Help i sidebar/bottom-nav (Layout.jsx),
 // aldrig som en flydende knap oven på spilfladen. Genbruger Modal-primitiven
-// (samme mønster som SponsorOfferModal) + Field/Textarea/Button.
+// (samme mønster som de øvrige Modal-baserede flader) + Field/Textarea/Button.
 export default function FeedbackModal({ open, onClose }) {
   const { t } = useTranslation("feedback");
   const location = useLocation();

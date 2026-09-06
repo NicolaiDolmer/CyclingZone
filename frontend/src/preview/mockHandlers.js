@@ -130,10 +130,22 @@ export function restRows(table, requestUrl = "") {
       // "forventede 1 række"-tjek kastede en PGRST116-fejl (2 rækker) — .data
       // endte tavst null, og ethvert "egen kontekst"-default (division/pulje)
       // faldt tilbage til "ingen tilknytning" på preview/e2e.
-      const idMatch = url.search.match(/user_id=eq\.([^&]+)/);
+      const userIdMatch = url.search.match(/user_id=eq\.([^&]+)/);
+      if (userIdMatch) {
+        const id = decodeURIComponent(userIdMatch[1]);
+        return [TEST_TEAM, RIVAL_TEAM].filter(t => t.user_id === id);
+      }
+      // #4869: samme klasse — en .eq("id", <teamId>).maybeSingle()-forespørgsel
+      // (fx TeamProfilePage's "hent DETTE hold" eller en live-budsopslag på
+      // current_bidder_id) manglede id-filteret, så mocken faldt igennem til
+      // BEGGE testhold igen. .single() maskerede det (routede altid til
+      // restObject() → ubetinget TEST_TEAM via Accept-header-genvejen
+      // nedenfor); .maybeSingle() sender IKKE den header og ramte derfor
+      // denne array-gren direkte, hvor 2 rækker udløste samme PGRST116-fejl.
+      const idMatch = url.search.match(/(?:^|[?&])id=eq\.([^&]+)/);
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
-        return [TEST_TEAM, RIVAL_TEAM].filter(t => t.user_id === id);
+        return [TEST_TEAM, RIVAL_TEAM].filter(t => t.id === id);
       }
       return [TEST_TEAM, RIVAL_TEAM];
     }

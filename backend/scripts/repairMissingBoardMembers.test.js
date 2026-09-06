@@ -26,6 +26,8 @@ import { TEAM_BOARD_MEMBERS_COUNT } from "../lib/boardMembers.js";
 // assignBoardMembersForTeam faktisk foretager (select+eq, insert). Thenable
 // query-builder, så både `await ....select(...)` og `await ...select(...).eq(...)`
 // virker uden en rigtig supabase-js-afhængighed.
+const PAGE_CAP = 1000; // PostgRESTs default-loft, som mocken efterligner
+
 function makeSupabase({ teams, members }) {
   const state = {
     teams: teams.map((t) => ({ ...t })),
@@ -34,13 +36,25 @@ function makeSupabase({ teams, members }) {
 
   function selectBuilder(table) {
     let rows = state[table];
+    // #4903: mocken PAGINERER som PostgREST gør. Uden .range()-semantik her kunne
+    // en afkortning i produktionskoden ikke fanges af en test — og det var præcis
+    // den afkortning (1.000-rækkers-loftet) der gjorde rapporten forkert i prod.
+    let range = null;
     const builder = {
       eq(col, val) {
         rows = rows.filter((r) => r[col] === val);
         return builder;
       },
+      order() { return builder; },
+      range(from, to) {
+        range = [from, to];
+        return builder;
+      },
       then(resolve, reject) {
-        Promise.resolve({ data: rows.map((r) => ({ ...r })), error: null }).then(resolve, reject);
+        // Uden .range() opfører mocken sig som PostgREST uden eksplicit range:
+        // maks PAGE_CAP rækker, tavst afkortet.
+        const page = range ? rows.slice(range[0], range[1] + 1) : rows.slice(0, PAGE_CAP);
+        Promise.resolve({ data: page.map((r) => ({ ...r })), error: null }).then(resolve, reject);
       },
     };
     return builder;
@@ -189,4 +203,30 @@ test("fetchRepairSnapshot laeser teams + team_board_members og taeller korrekt",
   assert.equal(teams.length, 7);
   assert.equal(countByTeam.get("t-already-full"), TEAM_BOARD_MEMBERS_COUNT);
   assert.equal(countByTeam.get("t-eligible-1"), undefined);
+});
+
+// ─── #4903: PostgREST-loftet må ikke afkorte snapshottet ─────────────────────
+
+test("#4903 fetchRepairSnapshot pagineret: 1.185 medlemsrækker afkortes ikke ved 1.000", async () => {
+  // Prod 6/9: team_board_members havde 1.185 rækker. Med et bart .select() så
+  // ~37 hold ud til at mangle medlemmer de HAVDE, og rapporten sagde 44 boardløse
+  // hold hvor sandheden var 7. 237 hold × 5 medlemmer = 1.185 rækker — alle med
+  // fuldt board, så det RIGTIGE svar er nul kandidater.
+  const teams = [];
+  const members = [];
+  for (let i = 0; i < 237; i++) {
+    const id = `team-${String(i).padStart(4, "0")}`;
+    teams.push({ id, name: `Team ${i}`, season_1_identity_basis: IDENTITY_BASIS, team_dna_key: "fransk_klatrer", is_ai: false, is_test_account: false });
+    for (let m = 0; m < 5; m++) members.push({ team_id: id, archetype_key: `arch-${m}` });
+  }
+  assert.equal(members.length, 1185, "fixturen skal ligge OVER 1.000-loftet");
+
+  const db = makeSupabase({ teams, members });
+  const { countByTeam } = await fetchRepairSnapshot(db);
+  assert.equal(countByTeam.size, 237, "alle hold skal have en tælling");
+  assert.equal([...countByTeam.values()].filter((n) => n < 5).length, 0, "intet hold må se afkortet ud");
+
+  const res = await runRepairMissingBoardMembers({ supabase: db, apply: false });
+  assert.equal(res.missingCount, 0, "ingen falske kandidater fra en afkortet side");
+  assert.equal(res.repairCandidateIds.length, 0);
 });

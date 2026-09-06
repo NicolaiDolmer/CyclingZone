@@ -35,6 +35,8 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { simulateStage, stableSeed } from "../lib/raceSimulator.js";
+import { computePassages } from "../lib/racePassages.js";
+import { rankedFromV4Output } from "../lib/raceEngineV4Bridge.js";
 import { simulateStageV4 } from "../lib/engine/v4/index.ts";
 import { RACE_V4_TUNING } from "../lib/engine/v4/tuning.ts";
 import { entrantsFromAbilitiesRows } from "../lib/engine/v4/adapters/entrantAdapter.ts";
@@ -42,6 +44,7 @@ import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter
 import { aggregateScorecards, buildScorecard, formatScorecard } from "./lib/headToHeadAnchors.js";
 import { buildStageTeamOrders, formatOrderEffect, sumOrderEffects } from "./lib/headToHeadOrders.js";
 import { sampleField } from "./lib/headToHeadStats.js";
+import { formatTeamPlay, measureTeamPlay } from "./lib/headToHeadTeamPlay.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -93,12 +96,18 @@ function v3EntrantsFromPopulation(riders, roles = null) {
   }));
 }
 
+// M16 (#4246): hold-id foelger med ind i v4's startliste, praecis som det
+// altid har gjort i v3's (`v3EntrantsFromPopulation` ovenfor). Uden det er
+// holdspils-mekanikken en no-op i harnesset, og holddominans-ankeret
+// (same_team_top10_share_4plus) ville maale en verden hvor ingen har et hold.
 function v4EntrantsFromPopulation(riders, roles = null) {
+  const teamByRider = new Map(riders.map((r) => [r.id, r.team_id ?? null]));
   const rows = riders.map((r) => ({ rider_id: r.id, ...r.abilities }));
   return entrantsFromAbilitiesRows(rows, (riderId) => ({
     role: roles?.get(riderId) ?? DEFAULT_ROLE,
     effort: DEFAULT_EFFORT,
     condition: 1,
+    teamId: teamByRider.get(riderId) ?? null,
   }));
 }
 
@@ -157,6 +166,214 @@ function summarizeV4(stageOutput) {
     timeSpreadSeconds: spread,
     winnerId: winner?.rider_id ?? null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Uheldsrate (#2944) — audit-fundet 5/9: "uheldsfrekvensen er aldrig maalt mod
+// virkeligheden" (nul hits paa "incident" i dette script). Ejerens maal er ca.
+// 1-2 % af rytterne pr. etape. Denne sektion summerer v4's uheldsprotokol
+// (StageOutput.incidents) til praecis det tal, plus fordelingen paa trappens
+// fire udfald og DNF-raten.
+// ---------------------------------------------------------------------------
+
+export function summarizeIncidents(rows) {
+  const acc = {
+    stages: 0,
+    riders: 0,
+    incidents: 0,
+    light: 0,
+    hard: 0,
+    serious: 0,
+    mechanical: 0,
+    protectedByRule: 0,
+    helperAssists: 0,
+    dnf: 0,
+  };
+  for (const row of rows) {
+    const output = row.raw?.v4Output;
+    if (!output) continue;
+    acc.stages += 1;
+    acc.riders += output.results.length;
+    acc.dnf += output.results.filter((r) => r.status === "abandoned").length;
+    for (const inc of output.incidents ?? []) {
+      acc.incidents += 1;
+      if (inc.kind === "mechanical") acc.mechanical += 1;
+      else if (inc.severity === "serious") acc.serious += 1;
+      else if (inc.severity === "hard") acc.hard += 1;
+      else acc.light += 1;
+      if (inc.outcome === "protected_three_km_rule") acc.protectedByRule += 1;
+      if (inc.helper_assist) acc.helperAssists += 1;
+    }
+  }
+  return acc;
+}
+
+function pct(part, whole) {
+  return whole > 0 ? `${((100 * part) / whole).toFixed(2)} %` : "n/a";
+}
+
+export function formatIncidentSummary(acc) {
+  const crashes = acc.light + acc.hard + acc.serious;
+  return [
+    "-- Uheld (#2944, v4) --",
+    `Etaper: ${acc.stages}. Rytter-starter i alt: ${acc.riders}.`,
+    `Uheld pr. etape: ${pct(acc.incidents, acc.riders)} af rytterne (${acc.incidents} uheld) — ejer-maal 1-2 %.`,
+    `Fordeling: let styrt ${acc.light} / haardt styrt ${acc.hard} / alvorligt styrt ${acc.serious} / mekanisk ${acc.mechanical}.`,
+    `Andel af STYRT der er alvorlige: ${pct(acc.serious, crashes)} (regressions-taerskel i test: <= 8 %).`,
+    `DNF-rate pr. etape: ${pct(acc.dnf, acc.riders)} af feltet (${acc.dnf} udgaaede).`,
+    `3 km-reglen beskyttede: ${acc.protectedByRule}. Hjulskift med hjaelper taet paa: ${acc.helperAssists}.`,
+  ].join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Passage-paritet (#2770/#2413, ejer-beslutning 6/9) — audit-fundet 5/9:
+// "bonussekund-ankeret maaler ingenting" og "bjerg- og spurtpassager udsendes
+// ikke af v4". Nu goer v4's egen M9-mekanik BEGGE dele, og laget uden for
+// motoren gates af. Spoergsmaalet flippet hviler paa er derfor: flytter
+// skiftet POINT eller TROEJER?
+//
+// To ting maales, og de er forskellige af natur:
+//   * UDBUDDET (samlet point + bonussekunder pr. etape) skal vaere STRUKTURELT
+//     ens: begge motorer bruger de samme ejer-laaste skalaer paa de samme
+//     vejpunkter. Afviger det, er en skala drevet fra hinanden — en fejl.
+//   * FORDELINGEN (hvem der faar dem, og hvem der ender i troejen) er en
+//     MODEL-forskel, ikke en fejl: v3 gaetter "hvem er foran" med en syntetisk
+//     udbruds-status, v4 laeser sit rigtige gruppe-lag. Tallet rapporteres som
+//     enighedsgrad, ikke som et bestaa/dumpe-krav.
+// ---------------------------------------------------------------------------
+
+function sumPassagePoints(passages, kind) {
+  let total = 0;
+  for (const wp of passages ?? []) {
+    if (kind === "kom" ? wp.kind !== "kom" : wp.kind === "kom") continue;
+    for (const res of wp.results ?? []) total += res.points ?? 0;
+  }
+  return total;
+}
+
+function sumPassageBonus(passages) {
+  let total = 0;
+  for (const wp of passages ?? []) {
+    for (const res of wp.results ?? []) total += res.bonus_seconds ?? 0;
+  }
+  return total;
+}
+
+/** rider_id -> samlet point, til troeje-sammenligningen. */
+function accumulatePoints(target, passages, kind) {
+  for (const wp of passages ?? []) {
+    if (kind === "kom" ? wp.kind !== "kom" : wp.kind === "kom") continue;
+    for (const res of wp.results ?? []) {
+      if (!res.points) continue;
+      target.set(res.rider_id, (target.get(res.rider_id) ?? 0) + res.points);
+    }
+  }
+}
+
+function leaderOf(totals) {
+  let best = null;
+  for (const [riderId, points] of totals) {
+    if (!best || points > best.points || (points === best.points && riderId < best.riderId)) {
+      best = { riderId, points };
+    }
+  }
+  return best?.riderId ?? null;
+}
+
+/**
+ * @param {Array<Array>} rowsPerSeed  ét rows-array pr. seed (ét "loeb" hver)
+ */
+export function summarizePassageParity(rowsPerSeed) {
+  const acc = {
+    stages: 0,
+    stagesWithPassages: 0,
+    v3SprintPoints: 0, v4SprintPoints: 0,
+    v3KomPoints: 0, v4KomPoints: 0,
+    v3Bonus: 0, v4Bonus: 0,
+    stagesWithPointMismatch: 0,
+    races: 0,
+    pointsJerseyMatches: 0,
+    komJerseyMatches: 0,
+    maxBonusPerRiderStage: 0,
+    // Isoleret lag-sammenligning: SAMME resultatliste (v4's), to passage-lag.
+    isolatedPointsJerseyMatches: 0,
+    isolatedKomJerseyMatches: 0,
+    isolatedTop3Stages: 0,
+    isolatedTop3Matches: 0,
+  };
+  for (const rows of rowsPerSeed) {
+    acc.races += 1;
+    const v3PointsTotals = new Map();
+    const v4PointsTotals = new Map();
+    const v3KomTotals = new Map();
+    const v4KomTotals = new Map();
+    const isoPointsTotals = new Map();
+    const isoKomTotals = new Map();
+    for (const row of rows) {
+      const v3Passages = row.raw?.v3Passages?.passages ?? [];
+      const v4Passages = row.raw?.v4Output?.passages ?? [];
+      acc.stages += 1;
+      if (v3Passages.length > 0 || v4Passages.length > 0) acc.stagesWithPassages += 1;
+
+      const v3Sprint = sumPassagePoints(v3Passages, "sprint");
+      const v4Sprint = sumPassagePoints(v4Passages, "sprint");
+      const v3Kom = sumPassagePoints(v3Passages, "kom");
+      const v4Kom = sumPassagePoints(v4Passages, "kom");
+      acc.v3SprintPoints += v3Sprint; acc.v4SprintPoints += v4Sprint;
+      acc.v3KomPoints += v3Kom; acc.v4KomPoints += v4Kom;
+      acc.v3Bonus += sumPassageBonus(v3Passages);
+      acc.v4Bonus += sumPassageBonus(v4Passages);
+      if (v3Sprint !== v4Sprint || v3Kom !== v4Kom) acc.stagesWithPointMismatch += 1;
+
+      for (const total of (row.raw?.v4Output?.passage_totals ?? [])) {
+        acc.maxBonusPerRiderStage = Math.max(acc.maxBonusPerRiderStage, total.bonus_seconds ?? 0);
+      }
+
+      accumulatePoints(v3PointsTotals, v3Passages, "sprint");
+      accumulatePoints(v4PointsTotals, v4Passages, "sprint");
+      accumulatePoints(v3KomTotals, v3Passages, "kom");
+      accumulatePoints(v4KomTotals, v4Passages, "kom");
+
+      // ISOLERET: v3's lag paa v4's EGET resultat. Her er motoren holdt fast,
+      // saa forskellen der maales er lagets egen model — hvem der reelt er
+      // foran ved vejpunktet.
+      const isoPassages = row.raw?.v3PassagesOnV4Result?.passages ?? [];
+      accumulatePoints(isoPointsTotals, isoPassages, "sprint");
+      accumulatePoints(isoKomTotals, isoPassages, "kom");
+      for (const wp of v4Passages) {
+        if (wp.kind === "finish") continue; // maalpassagen er per definition ens (samme resultatliste)
+        const iso = isoPassages.find((p) => p.kind === wp.kind && p.index === wp.index);
+        if (!iso) continue;
+        acc.isolatedTop3Stages += 1;
+        const top3 = (p) => (p.results ?? []).slice(0, 3).map((r) => r.rider_id).join(",");
+        if (top3(iso) === top3(wp)) acc.isolatedTop3Matches += 1;
+      }
+    }
+    if (leaderOf(v3PointsTotals) && leaderOf(v3PointsTotals) === leaderOf(v4PointsTotals)) acc.pointsJerseyMatches += 1;
+    if (leaderOf(v3KomTotals) && leaderOf(v3KomTotals) === leaderOf(v4KomTotals)) acc.komJerseyMatches += 1;
+    if (leaderOf(isoPointsTotals) && leaderOf(isoPointsTotals) === leaderOf(v4PointsTotals)) acc.isolatedPointsJerseyMatches += 1;
+    if (leaderOf(isoKomTotals) && leaderOf(isoKomTotals) === leaderOf(v4KomTotals)) acc.isolatedKomJerseyMatches += 1;
+  }
+  return acc;
+}
+
+export function formatPassageParity(acc) {
+  const delta = (a, b) => (a === b ? "identisk" : `AFVIGER (${b - a})`);
+  return [
+    "-- Passage-paritet (#2770/#2413, v3-lag mod v4-mekanik) --",
+    `Etaper: ${acc.stages} (${acc.stagesWithPassages} med passager). Loeb (seeds): ${acc.races}.`,
+    `Samlet spurt-/maalpoint: v3 ${acc.v3SprintPoints} vs v4 ${acc.v4SprintPoints} — ${delta(acc.v3SprintPoints, acc.v4SprintPoints)}.`,
+    `Samlet bjergpoint:       v3 ${acc.v3KomPoints} vs v4 ${acc.v4KomPoints} — ${delta(acc.v3KomPoints, acc.v4KomPoints)}.`,
+    `Etaper med afvigende pointudbud: ${acc.stagesWithPointMismatch} (tolerance: 0 — skalaerne er ejer-laaste og skal vaere ens).`,
+    `Samlede bonussekunder:   v3 ${acc.v3Bonus} vs v4 ${acc.v4Bonus} — v4 er lavere naar per-rytter-loftet (#2413) bider; v3 har intet loft.`,
+    `Stoerste bonus én rytter fik paa én etape (v4): ${acc.maxBonusPerRiderStage}s (loft: 10s).`,
+    `Samme point-troeje som v3 (v3-motor mod v4-motor): ${acc.pointsJerseyMatches}/${acc.races} loeb. Samme bjerg-troeje: ${acc.komJerseyMatches}/${acc.races}.`,
+    "  (Det tal maaler TO ting paa én gang: motorforskellen OG lagforskellen. Linjen nedenfor isolerer laget.)",
+    `ISOLERET (samme resultatliste, to lag): samme point-troeje ${acc.isolatedPointsJerseyMatches}/${acc.races}, samme bjerg-troeje ${acc.isolatedKomJerseyMatches}/${acc.races}.`,
+    `ISOLERET top-3 pr. vejpunkt undervejs: ${acc.isolatedTop3Matches}/${acc.isolatedTop3Stages} passager enige.`,
+    "  (Uenighed her er en MODEL-forskel, ikke en fejl: v3 gaetter hvem der er foran med en syntetisk udbruds-status,",
+    "   v4 laeser sit rigtige gruppe-lag. Det er hele grunden til at flytte passagerne ind i motoren.)",
+  ].join("\n");
 }
 
 function printComparisonTable(rows) {
@@ -258,7 +475,40 @@ export function runHeadToHead({
       // headToHeadAnchors.buildScorecard() (mor-spec §5-scoring). Additiv felt,
       // aendrer intet ved de eksisterende summary-felter ovenfor (bagudkompatibelt
       // med F2-stubbens egne tests).
-      raw: { v3Output, v4Output, route, tuning: RACE_V4_TUNING, stageRow },
+      // `roles` (M16, #4246): rolle-tildelingen for netop DETTE felt, saa
+      // holdspils-maalingen kan gruppere placeringer pr. rolle uden at gaette.
+      // Null naar orders=none (ingen roller tildelt).
+      //
+      // #2770/#2413-paritet: v3's passage-lag paa PRAECIS de samme etaper.
+      // v4's egne passager ligger i v4Output.passages. Sammenligningen
+      // (summarizePassageParity) er den vagt der fanger om flippet ville
+      // flytte point eller troejer.
+      raw: {
+        v3Output,
+        v4Output,
+        route,
+        tuning: RACE_V4_TUNING,
+        stageRow,
+        roles,
+        v3Passages: computePassages({
+          ranked: v3Output.ranked,
+          stageProfile: stageRow,
+          entrants: v3Entrants,
+          seed: v3Seed,
+          isStageRace: true,
+        }),
+        // Den APPLES-TO-APPLES-sammenligning: v3's passage-lag koert paa V4's
+        // EGET resultat. Uden den maaler troeje-sammenligningen to ting paa én
+        // gang (motorforskellen OG lagforskellen), og lagets eget bidrag kan
+        // ikke laeses ud.
+        v3PassagesOnV4Result: computePassages({
+          ranked: rankedFromV4Output(v4Output),
+          stageProfile: stageRow,
+          entrants: v3Entrants,
+          seed: v3Seed,
+          isStageRace: true,
+        }),
+      },
     });
   }
   return rows;
@@ -496,16 +746,35 @@ function main() {
 
   const scorecards = [];
   const orderEffects = [];
+  const allRows = [];
+  const rowsPerSeed = [];
   for (const seed of seeds) {
     const rows = runHeadToHead({ population, stages, seedInput: seed, fieldSize, orderMode });
     if (seeds.length === 1) printComparisonTable(rows);
     for (const row of rows) if (row.orderEffect) orderEffects.push(row.orderEffect);
+    allRows.push(...rows);
+    rowsPerSeed.push(rows);
     scorecards.push(buildScorecard(rows, { teamByRider, abilitiesByRider, v4EntrantsById }));
   }
+
+  console.log("");
+  console.log(formatIncidentSummary(summarizeIncidents(allRows)));
+
+  console.log("");
+  console.log(formatPassageParity(summarizePassageParity(rowsPerSeed)));
 
   if (orderEffects.length > 0) {
     console.log("");
     console.log(formatOrderEffect(sumOrderEffects(orderEffects)));
+  }
+
+  // M16 (#4246): holddominans-ankeret ligger paa sit gulv (0,0 %) i BEGGE
+  // motorer og kan derfor hverken bekraefte eller afkraefte at holdspillet
+  // virker. Denne maaling kan — se lib/headToHeadTeamPlay.js's hoved.
+  const teamPlay = measureTeamPlay(allRows, { abilitiesByRider });
+  if (teamPlay.v4.stages > 0) {
+    console.log("");
+    console.log(formatTeamPlay(teamPlay));
   }
 
   const scorecard = aggregateScorecards(scorecards);

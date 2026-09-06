@@ -147,8 +147,13 @@ test("#4382: bonus-berettigelsen er strengt over 75 %, ikke 75 og derover", () =
 
 // ── Udsagn 5: ekstra-maalet lander ALTID paa 1-aarsplanen ─────────────────────
 // Hjaelpen siger "the extra target is always added to your 1-year plan ...
-// whichever plan the offer came from". Det hviler paa at accept-ruten slaar
+// whichever plan the offer came from". Det hviler paa at accept-stien slaar
 // 1yr-boardet op eksplicit, uanset offer.source_board_id.
+//
+// #4856 · Selve skrivningen bor nu i `boardBonusGoal.js` (api.js delegerer),
+// fordi det samme maal ogsaa skal i `board_mandates.goals`. Vagten foelger med
+// til den nye adresse i stedet for at blive slaeket: BEGGE halvdele checkes —
+// at ruten stadig delegerer, og at modulet stadig rammer 1yr-boardet.
 test("#4382: bonus-accept lægger stadig ekstra-maalet paa 1yr-boardet", () => {
   const src = readSource("backend", "routes", "api.js");
   const acceptBlock = src.slice(src.indexOf("finalizeBonusOfferAccept({ supabase, offerId: loaded.offer.id })"));
@@ -156,13 +161,34 @@ test("#4382: bonus-accept lægger stadig ekstra-maalet paa 1yr-boardet", () => {
   const attachBlock = acceptBlock.slice(0, acceptBlock.indexOf("res.json("));
   assert.match(
     attachBlock,
+    /applyAcceptedBonusGoal\(/,
+    "Accept-ruten vedhaefter ikke laengere ekstra-maalet — hjaelpens bonus-udsagn bliver forkert",
+  );
+
+  const bonusGoal = readSource("backend", "lib", "boardBonusGoal.js");
+  assert.match(
+    bonusGoal,
     /\.eq\("plan_type", "1yr"\)/,
     "Ekstra-maalet lægges ikke laengere paa 1yr-boardet — baade help.json (faq.bonusOffer + multiYearLifecycle) og BOARD_RULES §4 skal rettes",
   );
   assert.match(
-    attachBlock,
+    bonusGoal,
     /source: "bonus_offer"/,
     "Ekstra-maalet markeres ikke laengere som bonus_offer i current_goals",
+  );
+});
+
+// ── #4856: samme maal skal ogsaa i mandatet, som Boardroom laeser ─────────────
+// Adfaerds-daekningen ligger i boardBonusGoal.test.js; denne vagt holder
+// KILDE-udsagnet: der findes stadig en skrivning til board_mandates.goals paa
+// accept-stien. Uden den er Boardroom-siden blind for et accepteret bonusmaal
+// (rod-aarsagen til #4856).
+test("#4856: bonus-accept skriver ogsaa til board_mandates.goals", () => {
+  const bonusGoal = readSource("backend", "lib", "boardBonusGoal.js");
+  assert.match(
+    bonusGoal,
+    /from\("board_mandates"\)[\s\S]{0,800}?\.update\(\{ goals:/,
+    "Mandat-skrivningen er væk — Boardroom viser saa ikke det accepterede bonusmaal (#4856)",
   );
 });
 

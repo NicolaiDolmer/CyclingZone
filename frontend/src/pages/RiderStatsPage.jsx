@@ -1202,7 +1202,7 @@ export default function RiderStatsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) return;
-    const { data: t } = await supabase.from("teams").select("id, balance, division, name").eq("user_id", user.id).single();
+    const { data: t } = await supabase.from("teams").select("id, balance, division, name").eq("user_id", user.id).maybeSingle();
     if (t) { setMyTeamId(t.id); setMyBalance(t.balance || 0); }
 
     // #3066: samme to tællinger som AuctionsPage.jsx's loadAll — akademiryttere

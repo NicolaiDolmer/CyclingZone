@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training squad list mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Inter+Tight:wght@400;500;600;650;700&display=swap" rel="stylesheet">
+<style>
+/* Tokens copied verbatim from frontend/src/index.css (light :root + dark block). */
+:root{
+  color-scheme: light;
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5; --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:160 120 0; --on-accent:#1a1f38;
+  --radius-sm:5px; --radius-pill:9999px;
+  --success:21 119 47; --danger:168 30 30; --warning:154 91 0; --info:26 71 192;
+  --success-bg:rgba(21,119,47,.08); --danger-bg:rgba(168,30,30,.08);
+  --warning-bg:rgba(154,91,0,.08); --info-bg:rgba(26,71,192,.08);
+  --font-ui:"DM Sans",system-ui,-apple-system,sans-serif;
+  --font-data:"Inter Tight",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+    --border:#2a2d3a; --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+    --accent-t:255 217 102;
+    --success:95 217 138; --danger:251 132 132; --warning:240 168 48; --info:122 176 251;
+    --success-bg:rgba(95,217,138,.12); --danger-bg:rgba(251,132,132,.12);
+    --warning-bg:rgba(240,168,48,.12); --info-bg:rgba(122,176,251,.12);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+  --border:#2a2d3a; --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+  --accent-t:255 217 102;
+  --success:95 217 138; --danger:251 132 132; --warning:240 168 48; --info:122 176 251;
+  --success-bg:rgba(95,217,138,.12); --danger-bg:rgba(251,132,132,.12);
+  --warning-bg:rgba(240,168,48,.12); --info-bg:rgba(122,176,251,.12);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-body); color:var(--text-1);
+  font-family:var(--font-ui); font-size:14px; line-height:1.4;
+  -webkit-font-smoothing:antialiased;
+}
+.page{max-width:1600px;margin:0 auto;padding:12px 32px 64px}
+
+/* ── Page header (T2 recipe) ─────────────────────────────── */
+.pagehead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
+.pagehead h1{font-family:var(--font-data);font-size:20px;font-weight:700;letter-spacing:-.01em;margin:0;line-height:1.2}
+.pagehead .sub{font-size:13px;color:var(--text-2);margin-top:2px}
+.headright{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.stamp{
+  font-family:var(--font-data);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text-3);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:2px 6px;white-space:nowrap;
+}
+.cluster{display:flex;align-items:center;gap:8px}
+
+/* ── Controls ────────────────────────────────────────────── */
+.sel{
+  font-family:var(--font-ui);font-size:12.5px;color:var(--text-1);
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:5px 26px 5px 9px;line-height:1.3;appearance:none;
+  background-image:linear-gradient(transparent,transparent);
+}
+.selwrap{position:relative;display:inline-flex;align-items:center}
+.selwrap .chev{position:absolute;right:7px;pointer-events:none;color:var(--text-3);display:flex}
+.btn-primary{
+  font-family:var(--font-ui);font-size:12.5px;font-weight:600;
+  background:rgb(var(--accent));color:var(--on-accent);
+  border:1px solid rgb(var(--accent));border-radius:var(--radius-sm);
+  padding:6px 12px;line-height:1.3;cursor:pointer;
+}
+.btn-secondary{
+  font-family:var(--font-ui);font-size:12.5px;font-weight:500;color:var(--text-1);
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:5px 10px;line-height:1.3;cursor:pointer;
+}
+
+/* ── Tabs (underline) ────────────────────────────────────── */
+.tabs{display:flex;gap:20px;border-bottom:1px solid var(--border);margin-bottom:9px;overflow-x:auto}
+.tab{
+  font-size:14px;font-weight:500;color:var(--text-2);background:none;border:0;
+  padding:0 0 7px;margin-bottom:-1px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;
+}
+.tab[aria-selected="true"]{color:var(--text-1);border-bottom-color:rgb(var(--accent))}
+
+/* ── Toolbar counts (merged into table toolbar, next to the view segment) ── */
+.counts{
+  margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;
+  font-size:12.5px;color:var(--text-2);
+}
+.counts b{font-family:var(--font-data);font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-1)}
+.counts .warn b{color:rgb(var(--warning))}
+.counts .bad b{color:rgb(var(--danger))}
+
+/* ── Filter bar ──────────────────────────────────────────── */
+.filterbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}
+.search{position:relative;width:240px;display:flex;align-items:center}
+.search .ico{position:absolute;left:8px;color:var(--text-3);display:flex}
+.search input{
+  width:100%;font-family:var(--font-ui);font-size:12.5px;color:var(--text-1);
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:5px 9px 5px 28px;
+}
+.search input::placeholder{color:var(--text-3)}
+.check{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-2)}
+.check input{accent-color:rgb(var(--accent));width:14px;height:14px;margin:0}
+.fbmeta{margin-left:auto;display:flex;align-items:center;gap:14px}
+.helplink{font-family:var(--font-data);font-size:11px;color:var(--text-3);text-decoration:underline;text-decoration-style:dotted}
+.metacount{font-family:var(--font-data);font-size:12px;color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* ── Table card ──────────────────────────────────────────── */
+.tablecard{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-card);overflow:hidden}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-bottom:1px solid var(--border);padding:6px 16px}
+.scroller{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{
+  font-family:var(--font-data);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--text-3);text-align:left;padding:6px 16px;white-space:nowrap;background:var(--bg-card);
+}
+th.num,td.num{text-align:right}
+th.tight,td.tight{padding-left:8px;padding-right:8px}
+tbody td{padding:7px 16px;border-top:1px solid var(--border);vertical-align:middle}
+tbody tr:hover td{background:var(--bg-subtle)}
+.stick{position:sticky;background:var(--bg-card);z-index:2}
+thead .stick{z-index:4}
+tbody tr:hover .stick{background:var(--bg-subtle)}
+.c-check{left:0;width:36px;min-width:36px;max-width:36px;padding-left:12px;padding-right:0}
+.c-name{left:36px;border-right:1px solid var(--border);min-width:158px}
+.c-name+th,.c-name+td{padding-left:14px}
+.c-check input{accent-color:rgb(var(--accent));width:14px;height:14px;margin:0}
+.rname{font-size:13.5px;font-weight:500;color:var(--text-1);white-space:nowrap}
+.rmeta{display:none;margin-top:2px;font-family:var(--font-data);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3)}
+.num-val{font-family:var(--font-data);font-size:13px;font-variant-numeric:tabular-nums;color:var(--text-1)}
+.num-val.bad{color:rgb(var(--danger));font-weight:600}
+.meter{display:inline-block;width:38px;height:3px;background:var(--bg-subtle);vertical-align:middle;margin-left:8px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--text-2)}
+.meter i.bad{background:rgb(var(--danger))}
+
+/* ── Pills / badges (one anatomy) ────────────────────────── */
+.pill{
+  display:inline-block;font-family:var(--font-data);font-size:11px;line-height:16px;
+  padding:0 8px;border-radius:var(--radius-pill);border:1px solid var(--border);
+  color:var(--text-2);background:var(--bg-subtle);white-space:nowrap;
+}
+.pill.ghost{background:transparent;border-style:dashed;color:var(--text-3)}
+.pill.info{color:rgb(var(--info));background:var(--info-bg);border-color:transparent}
+.pill.warn{color:rgb(var(--warning));background:var(--warning-bg);border-color:transparent}
+.pill.bad{color:rgb(var(--danger));background:var(--danger-bg);border-color:transparent}
+.pill.good{color:rgb(var(--success));background:var(--success-bg);border-color:transparent}
+
+/* ── Segmented ───────────────────────────────────────────── */
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;background:var(--bg-card)}
+.seg button{
+  font-family:var(--font-ui);font-size:12px;font-weight:500;color:var(--text-2);
+  background:none;border:0;border-left:1px solid var(--border);padding:4px 9px;cursor:pointer;white-space:nowrap;
+}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed="true"],.seg button[aria-selected="true"]{
+  color:rgb(var(--accent-t));background:rgb(var(--accent)/.10);font-weight:600;cursor:default;
+}
+.seg button.icon{display:flex;align-items:center;color:var(--text-3);padding:4px 6px}
+.seg.dim{opacity:.55}
+.seg.race button{padding:4px 8px}
+.choose{
+  display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;max-width:176px;
+  border:1px dashed rgb(var(--warning)/.6);border-radius:var(--radius-sm);
+  background:none;padding:3px 8px;text-align:left;cursor:pointer;
+}
+.choose .lbl{font-size:13px;color:rgb(var(--warning));white-space:nowrap}
+.subline{
+  margin-top:3px;font-family:var(--font-data);font-size:10px;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--text-3);display:flex;align-items:center;gap:4px;
+}
+.subline.race{color:var(--text-2)}
+
+/* ── Week strip ──────────────────────────────────────────── */
+.week{display:inline-flex;align-items:flex-end;gap:2px;vertical-align:middle}
+.week i{display:block;width:9px;height:16px}
+.week i.d-rest{border:1px dashed var(--border)}
+.week i.d-recovery{background:var(--bg-subtle)}
+.week i.d-easy{background:color-mix(in srgb, var(--text-1) 22%, transparent)}
+.week i.d-normal{background:color-mix(in srgb, var(--text-1) 42%, transparent)}
+.week i.d-hard{background:color-mix(in srgb, var(--text-1) 68%, transparent)}
+.week i.d-race{background:var(--text-1)}
+.week i.today{outline:1px solid var(--text-1);outline-offset:1px}
+.weekbtn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;border-radius:var(--radius-sm);background:none;padding:2px 4px;cursor:pointer}
+.weekbtn:hover{border-color:var(--border)}
+
+/* ── Mockup section divider ──────────────────────────────── */
+.mockdiv{
+  display:flex;align-items:center;gap:12px;margin:36px 0 14px;
+  font-family:var(--font-data);font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--text-3);
+}
+.mockdiv::after{content:"";flex:1;height:1px;background:var(--border)}
+
+/* ── Development cells ───────────────────────────────────── */
+.abil{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.abil .v{font-family:var(--font-data);font-size:15px;font-weight:650;font-variant-numeric:tabular-nums;color:var(--text-1)}
+.abil .p{font-family:var(--font-data);font-size:10px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.abil .p.good{color:rgb(var(--success))}
+.trk{width:56px;height:3px;background:var(--bg-subtle);overflow:hidden}
+.trk i{display:block;height:100%;background:var(--text-2)}
+.trk i.good{background:rgb(var(--success))}
+.cardhead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 16px 0}
+.cardhead h2{font-size:15px;font-weight:600;margin:0}
+.cardhead .m{font-family:var(--font-data);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3)}
+.cardnote{padding:4px 16px 12px;font-size:12.5px;color:var(--text-2)}
+#devtable{table-layout:fixed;min-width:640px}
+#devtable th:first-child,#devtable td:first-child{width:34%}
+#devtable th+th,#devtable td+td{width:22%}
+
+/* ── Mobile (≤640px) ─────────────────────────────────────── */
+@media (max-width:640px){
+  .page{padding:16px 16px 48px}
+  .pagehead{flex-direction:column;align-items:stretch;gap:10px}
+  .headright{align-items:stretch}
+  .stamp{align-self:flex-end}
+  .cluster{justify-content:space-between}
+  .cluster .selwrap,.cluster .sel{flex:1}
+  .search{width:100%}
+  .filterbar .selwrap{flex:1 1 46%}
+  .filterbar .sel{width:100%}
+  .fbmeta{margin-left:0;width:100%;justify-content:space-between}
+  .hide-sm{display:none}
+  .rmeta{display:block;max-width:42vw;white-space:normal}
+  .c-name{min-width:150px}
+  thead th,tbody td{padding-left:10px;padding-right:10px}
+  .c-check{padding-left:10px;padding-right:0;width:32px;min-width:32px;max-width:32px}
+  .c-name{left:32px}
+  .toolbar{padding:7px 10px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="pagehead">
+    <div>
+      <h1>Training</h1>
+      <p class="sub">Season 3, day 9. Assistant runs at 22:00 if you do nothing.</p>
+    </div>
+    <div class="headright">
+      <span class="stamp">Mockup 6 Sep, not final</span>
+      <div class="cluster">
+        <span class="selwrap">
+          <select class="sel" aria-label="Set squad program">
+            <option>Set squad program</option>
+            <option>Sprinter</option><option>Climber</option><option>Cobbles</option>
+            <option>GC rider</option><option>Recovery week</option><option>Build base</option>
+          </select>
+          <span class="chev"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+        </span>
+        <button class="btn-primary" type="button">Train today</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Training">
+    <button class="tab" role="tab" aria-selected="true">Overview</button>
+    <button class="tab" role="tab" aria-selected="false">Program</button>
+    <button class="tab" role="tab" aria-selected="false">Week plan</button>
+    <button class="tab" role="tab" aria-selected="false">Development</button>
+    <button class="tab" role="tab" aria-selected="false">Reports</button>
+  </nav>
+
+  <div class="filterbar">
+    <span class="search">
+      <span class="ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg></span>
+      <input type="search" placeholder="Search rider">
+    </span>
+    <span class="selwrap">
+      <select class="sel" aria-label="Rider type">
+        <option>All types</option><option>Climber</option><option>Sprinter</option>
+        <option>Puncheur</option><option>Rouleur</option><option>Time trial</option>
+      </select>
+      <span class="chev"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+    </span>
+    <label class="check"><input type="checkbox"> Group by type</label>
+    <span class="fbmeta">
+      <a class="helplink" href="#">How training works</a>
+      <span class="metacount">Showing 18 of 18 riders</span>
+    </span>
+  </div>
+
+  <div class="tablecard">
+    <div class="toolbar">
+      <div class="seg" role="tablist" aria-label="Squad view">
+        <button role="tab" aria-selected="true">All</button>
+        <button role="tab" aria-selected="false">Missing a day</button>
+        <button role="tab" aria-selected="false">At risk</button>
+        <button role="tab" aria-selected="false">Racing</button>
+      </div>
+      <div class="counts">
+        <span><b>10</b> have a day</span>
+        <span class="warn"><b>3</b> missing a day</span>
+        <span class="bad"><b>2</b> injury risk</span>
+        <span><b>1</b> injured</span>
+        <span><b>4</b> racing</span>
+      </div>
+    </div>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr>
+            <th class="stick c-check"><input type="checkbox" aria-label="Select all"></th>
+            <th class="stick c-name">Rider</th>
+            <th class="hide-sm">Type</th>
+            <th class="num tight hide-sm">Age</th>
+            <th class="tight">Program</th>
+            <th class="tight">Today</th>
+            <th class="tight">Week</th>
+            <th class="num tight hide-sm">Form</th>
+            <th class="num tight hide-sm">Fatigue</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="roster"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ───────────────── Section 2: Development tab ───────────────── -->
+  <div class="mockdiv">Tab: Development</div>
+
+  <nav class="tabs" role="tablist" aria-label="Training, development tab">
+    <button class="tab" role="tab" aria-selected="false">Overview</button>
+    <button class="tab" role="tab" aria-selected="false">Program</button>
+    <button class="tab" role="tab" aria-selected="false">Week plan</button>
+    <button class="tab" role="tab" aria-selected="true">Development</button>
+    <button class="tab" role="tab" aria-selected="false">Reports</button>
+  </nav>
+
+  <div class="tablecard">
+    <div class="cardhead">
+      <h2>Season gains</h2>
+      <span class="m">Season 3, day 9</span>
+    </div>
+    <p class="cardnote">An ability gains at most 1 point per day. Extra progress carries over to tomorrow.</p>
+    <div class="scroller">
+      <table id="devtable">
+        <thead>
+          <tr>
+            <th class="stick c-name" style="left:0">Rider</th>
+            <th class="num tight">Climbing</th>
+            <th class="num tight">Punch</th>
+            <th class="num tight">Endurance</th>
+          </tr>
+        </thead>
+        <tbody id="dev"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* Static example data. Invented riders and numbers, realistic ranges. */
+var CHEV = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+var FLAG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4h9l1 2h6v9h-7l-1-2H4"/></svg>';
+
+var RACE_INTENTS = ["Grupetto","Easy","Normal","Attack","All out"];
+
+var riders = [
+ {n:"Mikkel Bramsen",t:"Rouleur",a:27,p:"Cobbles",mode:"train",day:"Threshold",w:"nhrnven",f:72,q:41,s:null},
+ {n:"Jonas Wielart",t:"Climber",a:24,p:"GC rider",mode:"race",intent:"Normal",w:"Rnerhnv",f:81,q:38,s:null},
+ {n:"Tomas Ferreira",t:"Sprinter",a:29,p:"Sprinter",mode:"train",day:"Sprint",w:"hrenhrv",f:68,q:55,s:null},
+ {n:"Lars Holmqvist",t:"Time trial",a:31,p:"Build base",mode:"train",day:"Tempo",w:"nnerhrv",f:63,q:62,s:null},
+ {n:"Elio Marchetti",t:"Puncheur",a:22,p:"Climber",mode:"train",day:"Punch intervals",w:"hnrehnv",f:74,q:44,s:null},
+ {n:"Aksel Norgaard",t:"Climber",a:19,p:"Climber",mode:"train",day:"Long ride",w:"enrnehv",f:66,q:29,s:{k:"info",l:"Academy"}},
+ {n:"Ruben Salas",t:"Sprinter",a:26,p:"Sprinter",mode:"race",intent:"All out",w:"Rrnehrv",f:77,q:47,s:null},
+ {n:"Pieter Vandaele",t:"Rouleur",a:33,p:"Recovery week",mode:"train",day:"Recovery",w:"vrvevrr",f:58,q:78,s:{k:"warn",l:"Injury risk"}},
+ {n:"Noah Lindqvist",t:"Time trial",a:23,p:null,mode:"none",hint:"Assistant: tempo",w:"rnernhv",f:70,q:35,s:null},
+ {n:"Matteo Bianchi",t:"Climber",a:28,p:"GC rider",mode:"train",day:"Climb intervals",w:"hnrhenv",f:79,q:52,s:null},
+ {n:"Sander de Vries",t:"Puncheur",a:25,p:"Cobbles",mode:"race",intent:"Attack",w:"Rnrehnv",f:72,q:49,s:null},
+ {n:"Kasper Lindholm",t:"Sprinter",a:20,p:"Sprinter",mode:"train",day:"Technique",w:"enrhenv",f:61,q:33,s:{k:"info",l:"Academy"}},
+ {n:"Yannick Berger",t:"Rouleur",a:30,p:"Build base",mode:"train",day:"Rest",w:"rvrnehv",f:55,q:84,s:{k:"warn",l:"Injury risk"}},
+ {n:"Diego Alarcon",t:"Climber",a:21,p:null,mode:"none",hint:"Assistant: long ride",w:"rnehrnv",f:69,q:40,s:null},
+ {n:"Emil Sorensen",t:"Time trial",a:32,p:"Build base",mode:"train",day:"Threshold",w:"hnrenhv",f:64,q:58,s:null},
+ {n:"Luka Petrovic",t:"Puncheur",a:26,p:"Climber",mode:"race",intent:"Grupetto",w:"Rvrnehv",f:60,q:71,s:null},
+ {n:"Owen Hartley",t:"Sprinter",a:17,p:null,mode:"none",hint:"Assistant: technique",w:"ernhenv",f:57,q:22,s:{k:"info",l:"Academy"}},
+ {n:"Finn Aaltonen",t:"Rouleur",a:24,p:"Cobbles",mode:"injured",day:"Rest",w:"rrrrvrv",f:48,q:66,s:{k:"bad",l:"Injured 3 d"}}
+];
+
+var DAYMAP={r:"rest",v:"recovery",e:"easy",n:"normal",h:"hard",R:"race"};
+
+function weekStrip(code){
+  var out='<span class="week" role="img" aria-label="Next 7 days">';
+  for(var i=0;i<code.length;i++){
+    out+='<i aria-hidden="true" class="d-'+DAYMAP[code[i]]+(i===0?' today':'')+'"></i>';
+  }
+  return out+'</span>';
+}
+
+function trainSeg(day,dim){
+  var opts=["Rest","Recovery",day==="Rest"||day==="Recovery"?"Session":day];
+  var active=day==="Rest"?0:(day==="Recovery"?1:2);
+  var h='<div class="seg'+(dim?' dim':'')+'" role="group" aria-label="Today">';
+  for(var i=0;i<opts.length;i++){
+    h+='<button type="button" aria-pressed="'+(i===active)+'">'+opts[i]+'</button>';
+  }
+  h+='<button type="button" class="icon" aria-label="Other sessions">'+CHEV+'</button></div>';
+  return h;
+}
+
+function raceSeg(intent){
+  var h='<div class="seg race" role="group" aria-label="Race intention">';
+  for(var i=0;i<RACE_INTENTS.length;i++){
+    h+='<button type="button" aria-pressed="'+(RACE_INTENTS[i]===intent)+'">'+RACE_INTENTS[i]+'</button>';
+  }
+  return h+'</div><div class="subline race">'+FLAG+'Race day</div>';
+}
+
+function chooseDay(hint){
+  return '<button type="button" class="choose"><span class="lbl">Choose day</span>'+CHEV+'</button>'+
+         '<div class="subline">'+hint+'</div>';
+}
+
+var rows="";
+riders.forEach(function(r){
+  var today;
+  if(r.mode==="race") today=raceSeg(r.intent);
+  else if(r.mode==="none") today=chooseDay(r.hint);
+  else today=trainSeg(r.day,r.mode==="injured");
+
+  var qBad=r.q>=75;
+  var meta=[r.t,"Age "+r.a,"Form "+r.f,"Fatigue "+r.q].join(" · ");
+
+  rows+='<tr>'+
+    '<td class="stick c-check"><input type="checkbox" aria-label="Select '+r.n+'"></td>'+
+    '<td class="stick c-name"><div class="rname">'+r.n+'</div><div class="rmeta">'+meta+'</div></td>'+
+    '<td class="hide-sm"><span class="pill">'+r.t+'</span></td>'+
+    '<td class="num tight hide-sm"><span class="num-val">'+r.a+'</span></td>'+
+    '<td class="tight">'+(r.p?'<span class="pill">'+r.p+'</span>':'<span class="pill ghost">none</span>')+'</td>'+
+    '<td class="tight">'+today+'</td>'+
+    '<td class="tight"><button type="button" class="weekbtn" aria-label="Week plan for '+r.n+'">'+weekStrip(r.w)+'</button></td>'+
+    '<td class="num tight hide-sm"><span class="num-val">'+r.f+'</span><span class="meter"><i style="width:'+r.f+'%"></i></span></td>'+
+    '<td class="num tight hide-sm"><span class="num-val'+(qBad?' bad':'')+'">'+r.q+'</span><span class="meter"><i class="'+(qBad?'bad':'')+'" style="width:'+r.q+'%"></i></span></td>'+
+    '<td>'+(r.s?'<span class="pill '+r.s.k+'">'+r.s.l+'</span>':'')+'</td>'+
+  '</tr>';
+});
+document.getElementById("roster").innerHTML=rows;
+
+/* Development tab: 4 riders, 3 abilities. One cell landed +1 today (hit the
+   daily max, rest carried over); one cell shows progress toward the next point. */
+var dev=[
+ {n:"Jonas Wielart",c:[
+   {v:78,pct:30,tag:"+1 today",note:"Daily max, rest carried over"},
+   {v:64,pct:60,tag:"+0.6 progress"},
+   {v:71,pct:20}]},
+ {n:"Matteo Bianchi",c:[{v:74,pct:35},{v:58,pct:10},{v:69,pct:55}]},
+ {n:"Elio Marchetti",c:[{v:61,pct:45},{v:76,pct:80},{v:66,pct:25}]},
+ {n:"Aksel Norgaard",c:[{v:69,pct:15},{v:55,pct:30},{v:72,pct:70}]}
+];
+
+var drows="";
+dev.forEach(function(r){
+  drows+='<tr><td class="stick c-name" style="left:0"><div class="rname">'+r.n+'</div></td>';
+  r.c.forEach(function(c){
+    var good=!!c.tag&&c.tag.indexOf("+1")===0;
+    drows+='<td class="num tight"><div class="abil">'+
+      '<span class="v">'+c.v+'</span>'+
+      (c.tag?'<span class="p'+(good?' good':'')+'">'+c.tag+'</span>':'<span class="p">'+c.pct+'% to next</span>')+
+      '<span class="trk"><i style="width:'+c.pct+'%"></i></span>'+
+      (c.note?'<span class="p">'+c.note+'</span>':'')+
+    '</div></td>';
+  });
+  drows+='</tr>';
+});
+document.getElementById("dev").innerHTML=drows;
+</script>
+</body>
+</html>

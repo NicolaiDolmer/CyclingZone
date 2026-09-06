@@ -499,7 +499,11 @@ test("getSelectionContext: ghost-entries (akademi/off-roster) udelades fra selec
 // pga. et aktivt etapeløb hos sælger (#1995), må ikke kunne tilføjes en NY udtagelse
 // hos sælgeren — team_id peger stadig på sælger i den periode, så uden dette filter
 // ville han fremstå som en helt almindelig rosterrytter for et andet, ikke-låst løb.
-test("getSelectionContext: rytter med pending_team_id (solgt, afventer flush) er ikke valgbar til en NY udtagelse", async () => {
+// #4119 aendrer kontrakten her: den solgte rytter er MED i ctx.riders (han koerer
+// stadig for saelgeren og skal staa i truppen), men baerer outgoing=true, saa
+// prepareSelectionChange/UI'et naegter at udtage ham til et NYT loeb. Foer forsvandt
+// han helt — to spillere troede de havde mistet en rytter midt i et loeb.
+test("getSelectionContext: rytter med pending_team_id (solgt, afventer flush) staar i truppen som outgoing, men er ikke valgbar til en NY udtagelse", async () => {
   const teamId = "seller";
   const state = {
     riders: [
@@ -517,8 +521,39 @@ test("getSelectionContext: rytter med pending_team_id (solgt, afventer flush) er
   };
   const supabase = makeSelectionSupabase(state);
   const ctx = await getSelectionContext({ supabase, race: { id: "race2", race_class: "Class2" }, teamId });
-  assert.ok(!ctx.riders.some((r) => r.id === "sold-pending"), "solgt-men-parkeret rytter er ikke i den valgbare roster");
-  assert.equal(ctx.riders.length, 5, "kun de 5 ikke-solgte tæller");
+  const sold = ctx.riders.find((r) => r.id === "sold-pending");
+  assert.ok(sold, "#4119: solgt-men-parkeret rytter SKAL stå i truppen — han kører stadig for dette hold");
+  assert.equal(sold.outgoing, true, "han skal være markeret udgående, så UI'et kan sige hvorfor");
+  assert.equal(ctx.riders.length, 6, "alle 6 vises");
+  // Men han er ikke ledig: availableCount er den samme som før fixet.
+  assert.equal(ctx.availableCount, 5, "en udgående rytter tæller ikke som ledig til nye løb");
+  for (const r of ctx.riders) {
+    if (r.id !== "sold-pending") assert.equal(r.outgoing, false, `${r.id} er ikke udgående`);
+  }
+});
+
+// #4119/#2579: gaten mod at UDTAGE ham er flyttet fra synlighed til outgoing-flaget.
+// Denne test vogter at flytningen ikke gjorde ham valgbar.
+test("prepareSelectionChange: en udgående rytter kan ikke udtages til et nyt løb (#4119, bevarer #2579)", async () => {
+  const teamId = "seller";
+  const state = {
+    riders: [
+      ...["r1", "r2", "r3", "r4", "r5"].map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+      { id: "sold-pending", team_id: teamId, pending_team_id: "buyer", is_academy: false, is_retired: false, firstname: "Sold", lastname: "Pending" },
+    ],
+    race_stage_profiles: [{ race_id: "race2", stage_number: 1, profile_type: "flat", demand_vector: { sprint: 0.8 } }],
+    race_entries: [],
+    rider_derived_abilities: ["r1", "r2", "r3", "r4", "r5"].map((id) => ({ rider_id: id, climbing: 50, sprint: 50, aggression: 40 })),
+    rider_condition: [],
+  };
+  const supabase = makeSelectionSupabase(state);
+  const race = { id: "race2", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
+  const out = await prepareSelectionChange({
+    supabase, race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ["r1", "sold-pending"], captain_id: "r1" },
+  });
+  assert.equal(out.ok, false, "udtagelsen skal afvises");
+  assert.equal(out.error, "selection_rider_not_on_team");
 });
 
 // #2376: getSelectionContext skal surface free_role_ids (array — flere ryttere kan dele rollen).

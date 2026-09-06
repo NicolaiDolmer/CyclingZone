@@ -260,15 +260,26 @@ function setAtPath(root, path, value) {
         `default-bundlen — tjek for tastefejl i --set.`,
     );
   }
+  // CodeQL (js/prototype-pollution-utility, #356) genkender kun en vagt der
+  // staar INLINE lige foer tildelingen: derfor gentages sammenligningen her,
+  // selv om loekken ovenfor allerede har kastet. Nye mellemobjekter oprettes
+  // uden prototype, saa et arvet felt aldrig kan blive skrive-maal.
   let node = root;
   for (let i = 0; i < parts.length - 1; i += 1) {
     const key = parts[i];
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      throw new Error(`buildConstants: forbudt segment "${key}" i stien "${path}"`);
+    }
     if (typeof node[key] !== "object" || node[key] === null || !Object.hasOwn(node, key)) {
-      node[key] = {};
+      node[key] = Object.create(null);
     }
     node = node[key];
   }
-  node[parts[parts.length - 1]] = value;
+  const leaf = parts[parts.length - 1];
+  if (leaf === "__proto__" || leaf === "constructor" || leaf === "prototype") {
+    throw new Error(`buildConstants: forbudt segment "${leaf}" i stien "${path}"`);
+  }
+  node[leaf] = value;
 }
 
 /**

@@ -159,6 +159,10 @@ function buildNavGroups(t, academyEnabled = false, facilitiesEnabled = false, sc
         { to: "/finance",        label: t("nav.item.finance") },       // 2.258
         ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []), // 2.054
         { to: "/board",          label: t("nav.item.board") },         // 959
+        // #4265 (ejer-direktiv 25/8): bestyrelsen og sponsorerne er adskilt i
+        // UI'et. Sponsor-forhandlingen laa paa Board-fladen; den har nu sin egen
+        // side ved siden af Board — kontrakten for adskillelsen er BOARD_RULES.md §5.
+        { to: "/sponsors",       label: t("nav.item.sponsors") },
         ...scoutingNavItem(scoutSystemEnabled, t),                     // 689
         ...facilitiesNavItem(facilitiesEnabled, t),                    // 612
         // #3104 etape C: Personale (~400 sessions) er en fane i Klub nu
@@ -608,7 +612,7 @@ export default function Layout() {
       if (!session) return;
       setSession(session);
 
-      const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).single();
+      const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).maybeSingle();
       if (teamData) {
         setTeam(teamData);
         setBalance(teamData.balance);
@@ -717,7 +721,7 @@ export default function Layout() {
       channel.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
         async () => {
           setUnread(await fetchUnreadCount(session.user.id));
-          const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).single();
+          const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).maybeSingle();
           if (t) setBalance(t.balance);
         })
     );

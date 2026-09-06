@@ -111,3 +111,32 @@ test("HEAL_BATCH_LIMIT er en fornuftig positiv cap", () => {
 test("runRiderDeriveHealSweep: kræver en supabase-klient", async () => {
   await assert.rejects(() => runRiderDeriveHealSweep({}), /Supabase client required/);
 });
+
+// ─── CYCLINGZONE-51: uvurderbare ryttere er en TILSTAND, ikke en sweep-fejl ────
+
+test("runRiderDeriveHealSweep: rapporterer uvurderbare ryttere videre uden at kaste", async () => {
+  // Rytteren har ability-række men ingen base_value fordi modellen ikke kan
+  // værdisætte ham (i prod: sæson-alder over NPV-motorens horisont). Sweep'en skal
+  // fuldføre og rapportere ham, så cron'en kan alarmere ÉN gang på tilstanden i
+  // stedet for at fælde hele sweep'en hvert 5. minut.
+  const supabase = makeMock({
+    riders: [{ id: "gammel", base_value: null, is_retired: false }],
+    derived: ["gammel"],
+  });
+  const deriveForRiderIds = async (_sb, ids) => ({ riders: ids.length, unvaluable: ids });
+
+  const res = await runRiderDeriveHealSweep({ supabase, deriveForRiderIds });
+  assert.equal(res.stranded, 1);
+  assert.deepEqual(res.unvaluable, ["gammel"]);
+});
+
+test("runRiderDeriveHealSweep: unvaluable er en tom liste når derive ikke rapporterer nogen", async () => {
+  const supabase = makeMock({
+    riders: [{ id: "s1", base_value: null, is_retired: false }],
+    derived: [],
+  });
+  const deriveForRiderIds = async (_sb, ids) => ({ riders: ids.length });
+
+  const res = await runRiderDeriveHealSweep({ supabase, deriveForRiderIds });
+  assert.deepEqual(res.unvaluable, [], "manglende felt må ikke lække undefined til dedupe-signaturen");
+});

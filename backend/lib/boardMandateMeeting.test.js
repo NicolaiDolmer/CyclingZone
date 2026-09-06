@@ -154,6 +154,20 @@ function makeMeetingSupabase({
           }),
         };
       }
+      // #4557 (overblik + faner) · boardRoom.js laeser nu ogsaa holdets lag
+      // 6-raekker (bonustilbuddet) naar den bygger payloaden signMandate
+      // returnerer. Ingen bonus-raekker i moede-fixturen: tom liste.
+      if (table === "board_consequences") {
+        const chain = {
+          eq: () => chain,
+          in: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: async () => ({ data: null, error: null }),
+          then: (resolve) => resolve({ data: [], error: null }),
+        };
+        return { select: () => chain };
+      }
       throw new Error(`uventet tabel i test: ${table}`);
     },
   };
@@ -298,6 +312,38 @@ test("writeLegacyOneYearBoard: bevarer eksisterende satisfaction/budget_modifier
   assert.equal(written.negotiation_status, "completed");
 });
 
+test("#4865 writeLegacyOneYearBoard taber aldrig et bonus_offer-mål ved genopbygning", async () => {
+  // #4865 · Årsmødets dual-write skrev current_goals som et FRISKT array fra
+  // mandatets mål (`goals`), samme fejlklasse som /board/sign og auto-accept
+  // havde: et accepteret bonustilbuds ekstra-mål (source: "bonus_offer"),
+  // liggende på den eksisterende legacy-1yr-række, blev slettet stiltiende ved
+  // næste årsmøde. Denne test fejler uden preserveExternalGoals i writeLegacyOneYearBoard.
+  const bonusGoal = {
+    type: "signature_rider", label: "Sign 1 star (popularity ≥75)",
+    source: "bonus_offer", bonus_offer_id: "offer-1", target: 1, cumulative: false,
+  };
+  const supabase = makeMeetingSupabase({
+    boardProfiles: [{
+      id: "bp-existing", satisfaction: 72, budget_modifier: 1.1,
+      current_goals: [{ type: "top_n_finish", target: 6 }, bonusGoal],
+    }],
+  });
+
+  await writeLegacyOneYearBoard(supabase, {
+    teamId: "t1", seasonId: "s4", seasonNumber: 4, focus: "balanced",
+    goals: [sampleGoal], team: { balance: 1000, sponsor_income: 200 },
+  });
+
+  const written = supabase._state.boardProfiles[supabase._state.boardProfiles.length - 1];
+  const bonusGoals = (written.current_goals || []).filter((g) => g.source === "bonus_offer");
+  assert.equal(bonusGoals.length, 1, "bonus-målet må ikke forsvinde med den nye mandat-plan");
+  assert.deepEqual(bonusGoals[0], bonusGoal, "bonus-målet bæres ORDRET med over");
+  assert.ok(
+    (written.current_goals || []).some((g) => g.type === sampleGoal.type),
+    "det nye mandat-mål skal stadig være skrevet"
+  );
+});
+
 // ── buildVisionSlotProposal (A7) ────────────────────────────────────────────
 
 test("buildVisionSlotProposal: intet åbent slot → null", () => {
@@ -324,4 +370,40 @@ test("buildVisionSlotProposal: sæsonen er allerede passeret → næste ledige (
     currentSeasonNumber: 6,
   });
   assert.equal(proposal.target_season_number, 9, "6 (nu) + 3 (3yr-varighed)");
+});
+
+// ── #4839: signMandate — skrive-gate for cronen, læse-gate for manageren ─────
+
+test("#4839 signMandate: beta + engineWrite (cron) → underskriver; beta uden viewer/engineWrite → null", async () => {
+  const makeSupabase = () => makeMeetingSupabase({
+    flagValue: "beta",
+    mandates: [{
+      id: "m1", team_id: "t1", season_number: 4, season_id: "s4", status: "proposed", focus: "balanced",
+      goals: [sampleGoal], adjustments_allowed: 2,
+      source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+    }],
+    relations: [{ id: "rel-1", team_id: "t1", confidence: 55, category_scores: {} }],
+    members: [{ team_id: "t1", archetype_key: "sponsoraten", is_chairman: true }],
+  });
+
+  const cronSupabase = makeSupabase();
+  const payload = await signMandate(cronSupabase, {
+    teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: null,
+    engineWrite: true, signedVia: "auto_accept",
+  });
+  assert.ok(payload);
+  assert.equal(cronSupabase._state.mandates.find((m) => m.id === "m1").status, "active");
+
+  const managerSupabase = makeSupabase();
+  assert.equal(
+    await signMandate(managerSupabase, { teamId: "t1", mandateId: "m1" }),
+    null,
+    "en spiller der ikke må se Boardroom i beta må heller ikke underskrive",
+  );
+  assert.equal(managerSupabase._state.mandates.find((m) => m.id === "m1").status, "proposed");
+});
+
+test("#4839 signMandate: off + engineWrite → stadig null (kill-switchen stopper alt)", async () => {
+  const supabase = makeMeetingSupabase({ flagValue: "off" });
+  assert.equal(await signMandate(supabase, { teamId: "t1", mandateId: "m1", engineWrite: true }), null);
 });

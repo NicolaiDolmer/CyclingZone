@@ -5,7 +5,7 @@
 import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRiderEligibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "./riderEligibility.js";
+import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 import { isRiderDayInvariantViolation, teamInRacePool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
 
@@ -157,8 +157,10 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
 
   const result = validateSelection({
     riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
-    teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
-    injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
+    // #4119: udgaaende ryttere er MED i ctx.riders (de skal vises), men maa ikke
+    // udtages til nye loeb — #2579's gate flyttet hertil fra selve synligheden.
+    teamRiderIds: new Set(ctx.riders.filter((r) => !r.outgoing).map((r) => r.id)),
+    injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured && !r.outgoing).map((r) => r.id)),
     sizeRule: ctx.size,
     availableCount: ctx.availableCount,
   });
@@ -304,6 +306,10 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
       // mod udtagelses-endpointet og race-motoren, så holdside/udtagelse/motor viser
       // og håndhæver PRÆCIS samme skadesstatus.
       injured: isRiderInjured(cond?.injured_until ?? null, todayStr),
+      // #4119: rytteren er solgt, men holdskiftet er parkeret til det igangvaerende
+      // loeb er koert (#1995). Han koerer stadig for dette hold — vises i truppen med
+      // egen markering, men kan ikke udtages til et NYT loeb (#2579).
+      outgoing: Boolean(r.pending_team_id),
       // #3809: alle 15 rå evne-værdier — driver holdudtagelsens "Evner"-visning
       // (toggle mellem nuværende kolonner og attributter, samme rå tal som
       // Mit Hold's evne-tilstand, #2906). Egne ryttere → ingen fog-of-war på
@@ -323,8 +329,13 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   const [ridersRes, profilesRes, entriesRes] = await Promise.all([
     // #1307/#1308: akademiryttere er ikke løbs-berettigede. Rod B: delt eligibility-filter.
     // #1747: ryttertype (primary/secondary) med så fronten kan vise typen ved udtagelsen.
-    applyRiderEligibilityFilter(
-      supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type").eq("team_id", teamId)
+    // #4119: SYNLIGHEDS-filteret, ikke eligibility-filteret. En rytter med parkeret
+    // holdskifte (pending_team_id) koerer stadig for dette hold indtil loebet er koert,
+    // og han skal derfor blive staaende i puljen — markeret `outgoing`. Gaten mod at
+    // udtage ham til NYE loeb (#2579) ligger nu paa `outgoing`-flaget i
+    // prepareSelectionChange, ikke paa at han er usynlig.
+    applyRosterVisibilityFilter(
+      supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type, pending_team_id").eq("team_id", teamId)
     ),
     supabase.from("race_stage_profiles").select("stage_number, profile_type, demand_vector")
       .eq("race_id", race.id).order("stage_number", { ascending: true }),
@@ -382,6 +393,8 @@ export async function getSelectionContext({ supabase, race, teamId }) {
     size: selectionSizeForRace(race),
     riders: riderRows,
     selection,
-    availableCount: riderRows.filter((r) => !r.injured).length,
+    // #4119: en udgaaende rytter kan ikke udtages til nye loeb og taeller derfor
+    // ikke som "ledig" — samme skel som cap-taellingen bruger (#1090/#250).
+    availableCount: riderRows.filter((r) => !r.injured && !r.outgoing).length,
   };
 }

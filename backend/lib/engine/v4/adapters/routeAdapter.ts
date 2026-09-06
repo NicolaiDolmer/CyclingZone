@@ -12,7 +12,7 @@
 // moduler (routeSegments.js). Funktionerne er stadig RENE (raekke-objekt ind,
 // type ud — INGEN DB-kald her, det er kaldstedets ansvar at hente raekken).
 
-import { buildWeather, synthesizeSegments } from "../../../routeSegments.js";
+import { buildSegments, buildWeather, synthesizeSegments } from "../../../routeSegments.js";
 import { makeRng } from "../../../fictionalRiderGenerator.js";
 import type {
   ClimbCategory,
@@ -57,7 +57,10 @@ export type StageProfileRow = {
   distance_km?: number | null;
   climbs?: Array<{ name: string; crest_km: number; category?: string; summit_finish?: boolean }> | null;
   sprints?: Array<{ name: string; km: number; kind?: string }> | null;
-  sectors?: unknown;
+  // #2789/#4105: brostens- og grus-sektorer som rutegeneratoren skrev dem
+  // (raceRouteGenerator.buildSectors). Feltet var deklareret men ALDRIG laest
+  // (audit 5/9, denne fils linje 60) — se resolveSegments nedenfor.
+  sectors?: Array<{ kind?: string; name?: string; start_km: number; length_km: number }> | null;
   segments?: Segment[] | null;
   weather?: Weather | null;
 } & Record<string, unknown>;
@@ -70,8 +73,46 @@ function resolveFinaleType(raw: unknown): FinaleType | null {
   return typeof raw === "string" && raw.length > 0 ? (raw as FinaleType) : null;
 }
 
+/**
+ * #2789 fund 5 / audit 5/9: `sectors` var deklareret paa raekken men blev ALDRIG laest.
+ * En legacy-raekke UDEN gemte `segments` men MED sine egne `climbs`/`sectors` fik derfor
+ * synthesizeSegments' blinde gaet — den GENOPFINDER climbs og sektorer ud fra
+ * profile_type alene og smider raekkens faktiske rute paa gulvet. Konsekvensen var at
+ * brostens- og grus-sektorerne som generatoren rent faktisk skrev (93 etaper i S2, som
+ * #2789 talte) aldrig naaede motorens M8-mekanik.
+ *
+ * Rangordenen er nu: (1) gemte segmenter, (2) raekkens EGNE climbs/sectors oversat med
+ * samme buildSegments som den live rute-generator bruger, (3) den blinde syntese som
+ * absolut sidste udvej. Trin 2 er deterministisk: rng-stroemmen afledes af raekkens egen
+ * identitet, saa samme raekke giver samme segmentliste, byte for byte.
+ */
+function segmentsFromOwnFeatures(
+  row: StageProfileRow,
+  profileType: ProfileType,
+  finaleType: FinaleType | null,
+): Segment[] | null {
+  const climbs = Array.isArray(row.climbs) ? row.climbs : [];
+  const sectors = Array.isArray(row.sectors) ? row.sectors : [];
+  if (climbs.length === 0 && sectors.length === 0) return null;
+  const distanceKm = Number(row.distance_km);
+  if (!Number.isFinite(distanceKm) || distanceKm <= 0) return null;
+
+  const identity = row.race_id ?? row.id ?? "adhoc";
+  const rng = makeRng(stableSeed(`${String(identity)}:${row.stage_number ?? 1}:segments`));
+  const segments = buildSegments(rng, {
+    distance_km: distanceKm,
+    profile_type: profileType,
+    finale_type: finaleType,
+    climbs,
+    sectors,
+  }) as Segment[];
+  return segments.length > 0 ? segments : null;
+}
+
 function resolveSegments(row: StageProfileRow, profileType: ProfileType, finaleType: FinaleType | null): Segment[] {
   if (Array.isArray(row.segments) && row.segments.length > 0) return row.segments;
+  const fromOwnFeatures = segmentsFromOwnFeatures(row, profileType, finaleType);
+  if (fromOwnFeatures) return fromOwnFeatures;
   // Legacy-fallback (#3855 F1 punkt 3): deterministisk syntese, selv-afledt
   // seed af raekkens egne felter — INGEN rng-parameter, samme raekke giver
   // samme segmentliste, byte for byte.

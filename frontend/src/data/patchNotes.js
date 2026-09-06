@@ -1,5 +1,102 @@
 export const PATCHES = [
   {
+    "version": "7.258",
+    "date": "2026-09-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Bonus targets you accepted from the board are back",
+          "body": "If you accepted a bonus offer from the board in season 3, the extra target disappeared when you signed your season plan. Eleven teams were affected. The targets are back on the board page, and signing a plan no longer removes them."
+        },
+        "da": {
+          "title": "Bonus-mål du har accepteret fra bestyrelsen er tilbage",
+          "body": "Accepterede du et bonustilbud fra bestyrelsen i sæson 3, forsvandt det ekstra mål da du underskrev din sæsonplan. Elleve hold var ramt. Målene er tilbage på bestyrelsessiden, og at underskrive en plan fjerner dem ikke længere."
+        }
+      }
+    ]
+  },
+  {
+    "version": "7.257",
+    "date": "2026-09-06",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Your starting squad no longer hands you a rider who is already retiring",
+          "body": "New squads were built against the game's launch year instead of the current season, so a new manager could be given a 40- or 41-year-old who would retire at the end of the season. Squads are now built against the season you sign up in, and one rider who could not be valued at all has been given his price back."
+        },
+        "da": {
+          "title": "Din start-trup giver dig ikke længere en rytter der allerede er på vej på pension",
+          "body": "Nye trupper blev bygget mod spillets lanceringsår i stedet for den aktuelle sæson, så en ny manager kunne få en rytter på 40 eller 41, der ville gå på pension ved sæsonens slutning. Trupper bygges nu mod den sæson du melder dig til i, og en enkelt rytter der slet ikke kunne værdisættes har fået sin pris tilbage."
+        },
+        "refs": [4876]
+      }
+    ]
+  },
+  {
+    "version": "7.256",
+    "date": "2026-09-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Sponsors",
+        "en": {
+          "title": "Sponsors get their own page",
+          "body": "Sponsors now live under Clubhouse next to Board, with tabs for your deal, this season's payments, and next season's offers. Choosing next season's sponsor has moved here too."
+        },
+        "da": {
+          "title": "Sponsorer får deres egen side",
+          "body": "Sponsorer bor nu under Klubhus ved siden af Bestyrelse, med faner til din aftale, sæsonens udbetalinger og næste sæsons tilbud. Valget af næste sæsons sponsor er også flyttet hertil."
+        },
+        "refs": [4265]
+      }
+    ]
+  },
+  {
+    "version": "7.255",
+    "date": "2026-09-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "A sold rider stays in your line-up pool until his race is done",
+          "body": "He now shows greyed out with \"Leaves after this race\" under his name in team selection, while your squad count already excludes him. Before, he simply disappeared while he was still out racing for you."
+        },
+        "da": {
+          "title": "En solgt rytter bliver i din holdudtagelses-pulje, indtil hans løb er kørt",
+          "body": "Han vises nu gråtonet med \"Forlader holdet efter dette løb\" under sit navn i holdudtagelsen, mens din trup-tælling allerede udelader ham. Før forsvandt han bare, mens han stadig kørte løbet for dig."
+        },
+        "refs": [4119]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Picking a new breakaway hunter replaces the previous one",
+          "body": "Assigning the role to a second rider on the same stage now moves it, with the message \"The role moved\". Other stages are untouched."
+        },
+        "da": {
+          "title": "At vælge en ny udbrudsjæger erstatter den forrige",
+          "body": "Tildeler du rollen til en anden rytter på samme etape, flyttes den nu, med beskeden \"Rollen flyttede\". Andre etaper er urørt."
+        },
+        "refs": [4746]
+      }
+    ]
+  },
+  {
     "version": "7.254",
     "date": "2026-09-05",
     "label": "Beta",

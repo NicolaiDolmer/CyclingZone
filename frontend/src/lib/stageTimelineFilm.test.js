@@ -291,3 +291,199 @@ test("#4373: alle nye event-nøgler findes i BEGGE locale-filer", async () => {
     }
   }
 });
+
+// ── #2944: incident-trappen → fire udfald i spillerens sprog ────────────────
+
+const INCIDENT_LADDER_KEYS = [
+  "incident_crash_time_loss",
+  "incident_crash_hard",
+  "incident_crash_abandon",
+  "incident_mechanical",
+  "incident_mechanical_helper",
+  "incident_protected",
+];
+
+test("#2944: describeEvent vælger den rigtige nøgle for hvert af trappens udfald", () => {
+  const names = riderNameByIdFixture();
+  const [riderId, riderName] = [...names.entries()][0];
+  const describe = (params) =>
+    describeEvent({ type: "incident", km: 40, params: { rider_id: riderId, ...params } }, { riderNameById: names });
+
+  const light = describe({ kind: "crash", severity: "light", outcome: "time_loss", time_loss_seconds: 12, injury_days: null });
+  assert.equal(light.key, "incident_crash_time_loss");
+  assert.equal(light.params.rider, riderName);
+  assert.equal(light.params.seconds, 12);
+
+  const hard = describe({ kind: "crash", severity: "hard", outcome: "time_loss", time_loss_seconds: 140.4, injury_days: 3 });
+  assert.equal(hard.key, "incident_crash_hard");
+  assert.equal(hard.params.seconds, 140);
+  assert.equal(hard.params.days, 3);
+
+  const abandon = describe({ kind: "crash", severity: "serious", outcome: "abandoned", time_loss_seconds: null, injury_days: 9 });
+  assert.equal(abandon.key, "incident_crash_abandon");
+  assert.equal(abandon.params.days, 9);
+
+  const mechanical = describe({ kind: "mechanical", severity: null, outcome: "time_loss", time_loss_seconds: 60, helper_assist: false });
+  assert.equal(mechanical.key, "incident_mechanical");
+
+  const helped = describe({ kind: "mechanical", severity: null, outcome: "time_loss", time_loss_seconds: 27, helper_assist: true });
+  assert.equal(helped.key, "incident_mechanical_helper");
+  assert.equal(helped.params.seconds, 27);
+
+  const protectedByRule = describe({ kind: "crash", severity: "light", outcome: "protected_three_km_rule", time_loss_seconds: null });
+  assert.equal(protectedByRule.key, "incident_protected");
+});
+
+test("#2944: et gammelt incident-event uden alvorsakse falder tilbage på den oprindelige nøgle", () => {
+  const names = riderNameByIdFixture();
+  const [riderId] = [...names.keys()];
+  const legacy = describeEvent(
+    { type: "incident", km: 40, params: { rider_id: riderId, kind: "mechanical", outcome: "time_loss", time_loss_seconds: 30 } },
+    { riderNameById: names },
+  );
+  assert.equal(legacy.key, "incident", "v3-events (uden severity) skal beholde den art-only sætning");
+  assert.equal(legacy.params.kind, "mechanical");
+});
+
+test("#2944: alle trappens nøgler findes i BEGGE locale-filer", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    for (const key of INCIDENT_LADDER_KEYS) {
+      assert.ok(doc.detail.film.event[key], `${lang}: mangler detail.film.event.${key}`);
+    }
+  }
+});
+
+// ── #4879: filmen skal kunne læse løbsmotor v4's EGNE events ────────────────
+// v4's tidslinje persisteres nu under timeline_version 2 i den samme tabel
+// (backend/lib/raceTimeline.js buildStageTimelineV4). Motorens param-former er
+// ikke identiske med v3's, og en linje filmen ikke forstår springes tavst over
+// — derfor låses de her.
+
+test("#4879: v4's sprint_decided navngiver vinderen via winner_rider_id", () => {
+  const names = riderNameByIdFixture();
+  const [riderId] = [...names.keys()];
+  const d = describeEvent(
+    { type: "sprint_decided", km: 180, params: { winner_rider_id: riderId, group_id: "finale-winner-0", finale_type: "bunch_sprint" } },
+    { riderNameById: names },
+  );
+  assert.ok(d, "v4-formen må ikke springes over");
+  assert.equal(d.key, "sprint_decided");
+  assert.equal(d.params.rider, names.get(riderId));
+});
+
+test("#4879: v3's sprint_decided (rider_ids) virker uændret", () => {
+  const names = riderNameByIdFixture();
+  const [riderId] = [...names.keys()];
+  const d = describeEvent(
+    { type: "sprint_decided", km: 180, params: { rider_ids: [riderId], photo_finish: true } },
+    { riderNameById: names },
+  );
+  assert.equal(d.key, "sprint_decided_photo");
+  assert.equal(d.params.rider, names.get(riderId));
+});
+
+test("#2582: tidsgrænse-events rendres som tælletal — ALDRIG procent eller sekundgrænse", () => {
+  const otl = describeEvent(
+    { type: "outside_time_limit", km: 180, params: { rider_ids: ["a", "b", "c"], rider_count: 3 } },
+    { riderNameById: new Map() },
+  );
+  assert.equal(otl.key, "outside_time_limit");
+  assert.deepEqual(otl.params, { count: 3 });
+
+  const saved = describeEvent(
+    { type: "grupetto_saved", km: 180, params: { rider_ids: ["a", "b"], rider_count: 2 } },
+    { riderNameById: new Map() },
+  );
+  assert.equal(saved.key, "grupetto_saved");
+  assert.deepEqual(saved.params, { count: 2 });
+
+  // Et event uden ryttere er ikke en historie — ingen tom linje i feedet.
+  assert.equal(describeEvent({ type: "outside_time_limit", km: 180, params: { rider_ids: [], rider_count: 0 } }), null);
+});
+
+test("#2582: tidsgrænse-nøglerne findes i BEGGE locale-filer", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    for (const key of ["outside_time_limit", "grupetto_saved"]) {
+      assert.ok(doc.detail.film.event[key], `${lang}: mangler detail.film.event.${key}`);
+      assert.ok(
+        !/%|procent|percent/i.test(doc.detail.film.event[key]),
+        `${lang}: ${key} må ALDRIG vise procenten (fog of war, ejer-beslutning 6/9)`,
+      );
+    }
+  }
+});
+
+test("#4879: collectRiderIds fanger v4's winner_rider_id (ellers skippes spurt-linjen tavst)", () => {
+  const ids = collectRiderIds([
+    { type: "sprint_decided", km: 180, params: { winner_rider_id: "w1", group_id: "g" } },
+    { type: "finish", km: 180, params: { top: [{ rider_id: "w1", rank: 1, gap: 0 }] } },
+  ]);
+  assert.deepEqual(ids, ["w1"]);
+});
+
+// ── M13: holdtidskørslen (#3463) ─────────────────────────────────────────
+
+const TTT_TIMELINE = {
+  distanceKm: 40,
+  events: [
+    { type: "stage_start", km: 0, params: { field_count: 160, profile_type: "ttt", distance_km: 40 } },
+    { type: "ttt_rider_dropped", km: 12, params: { team_id: "t1", rider_id: "r9", group_id: "ttt-t1" } },
+    { type: "gap_update", km: 20, params: { group_id: "ttt-t1", gap_seconds: 18 } },
+    { type: "gap_update", km: 20, params: { group_id: "ttt-t2", gap_seconds: 4 } },
+    { type: "ttt_team_result", km: 40, params: { team_id: "t1", group_id: "ttt-t1", time_seconds: 3018, counted_rider_id: "r5", dropped_rider_ids: ["r9"] } },
+    { type: "ttt_team_result", km: 40, params: { team_id: "t2", group_id: "ttt-t2", time_seconds: 3000, counted_rider_id: "r1", dropped_rider_ids: [] } },
+    { type: "finish", km: 40, params: { top: [{ rider_id: "r1", rank: 1, gap: 0 }], win_type: "ttt_win" } },
+  ],
+};
+
+test("#3463: ttt_team_result er data, ikke en feed-linje — ét hold pr. linje ville være en mur", () => {
+  const built = buildFilmTimeline(TTT_TIMELINE);
+  assert.equal(built.feedEvents.filter((e) => e.type === "ttt_team_result").length, 0);
+  // ...men de bliver stående i den fulde event-liste (holdenes officielle tider).
+  assert.equal(built.events.filter((e) => e.type === "ttt_team_result").length, 2);
+});
+
+test("#3463: ingen gap-kurve på en tidskørsel — der er intet felt at måle afstand til", () => {
+  assert.deepEqual(buildFilmTimeline(TTT_TIMELINE).gapCurve, []);
+  const itt = { ...TTT_TIMELINE, events: TTT_TIMELINE.events.map((e) => (e.type === "stage_start" ? { ...e, params: { ...e.params, profile_type: "itt" } } : e)) };
+  assert.deepEqual(buildFilmTimeline(itt).gapCurve, []);
+  // Regressionsvagt: massestarts-etaper beholder kurven.
+  assert.ok(buildFilmTimeline(MOUNTAIN_TIMELINE).gapCurve.length > 0);
+});
+
+test("#3463: en droppet rytter får en broadcast-linje, uden rå id og uden tal", () => {
+  const described = describeEvent(
+    { type: "ttt_rider_dropped", km: 12, params: { team_id: "t1", rider_id: "r9" } },
+    { riderNameById: new Map([["r9", "Jonas Vinge"]]) },
+  );
+  assert.deepEqual(described, { key: "ttt_rider_dropped", params: { rider: "Jonas Vinge" } });
+  // Uden navn: ingen linje (samme #4026-regel som resten af feedet).
+  assert.equal(describeEvent({ type: "ttt_rider_dropped", km: 12, params: { rider_id: "r9" } }, { riderNameById: new Map() }), null);
+});
+
+test("#3463: ttt-nøglerne findes i BEGGE locale-filer og lækker ingen tal", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    for (const key of ["ttt_rider_dropped", "stage_start_ttt", "finish_ttt_win"]) {
+      assert.ok(doc.detail.film.event[key], `${lang}: mangler detail.film.event.${key}`);
+    }
+    assert.ok(
+      !/\{seconds\}|\{gap\}|%/.test(doc.detail.film.event.ttt_rider_dropped),
+      `${lang}: ttt_rider_dropped må ikke vise tempo, tid eller procenter (fog of war)`,
+    );
+  }
+});

@@ -4,26 +4,26 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (ejer-styret, ét kort ad gangen):** **1) Træningspakke inden 8/9** (ejer 5/9): #4801 (+1-loft, draft klar) + retningssamtale om træningssiden (#4613, draft #4736) + dit valg fra #4629/#4632 → én samlet opdatering til spillerne. **2) Apply-GO-kort:** #4495 (6 fangne graduates; de 4 uden vindue er dit valg: fri agent / gen-åbn / lad stå) · #4539 (etape 3 i La Course au Soleil, kun hvis ukørt). **3) Preview-test → merge:** #4794 solgt rytter i truppen · #4803 udbrudsjæger. **4) #4804:** mobil-merge med PAT, eller fjern (dit princip 4/9 er allerede dækket af code-owner-review). **5) Derefter:** #4147 flag-flip · #4753/#4829 post-verify · omdømme PR 2 (#1099) · #4616 nøgler (+ `railway login`) · #3512.
+> **🎯 Next action (ejer-styret):** **Regel 6/9: tre baner** (deadline S4 · forretning viger aldrig · færdiggør før nyt), fuld rækkefølge i [MASTERPLAN.md](MASTERPLAN.md). **Bane 1 nu:** løbssiden som faner PR #4913 (ejer-go på preview) → v4 før flip (#4914 kalibrering, #4885 #4886 #4905, #4915 TTT, #4246, #4911, #4910) → flip (ejer) → S4-kalender #4270 (ikke før #4845) → træning pr. løbsdag #4850 → mandat #4857→#4859 → cutover #4592/#4619/#4860/#4376. **Bane 2:** #4616 nøgleblok (ejer ~30 min) → Pro i euro + mail-loop dry_run. **Bane 3:** ejer-lukkesession for **34 done-gated** issues (30 min, ingen kode) · #4921 feature-register PR #4922 (draft, worker bygger) · #4495 akademi-valg. **Ejer-go der venter:** #4912 patch note 7.258 · #4884 · #4864 · #4801 · #4835 · #4857 · #4859 · #4845.
 
-> **⏳ Venter på DIN beslutning:** 6 ejer-valg i `docs/audits/ai-triage-2026-09-06-a.md` (+ del B) · **#4814** foto-plads + /seasons-skygger · **#4629** · **#4632** · **#4714** · #4627 · **#4235** (15/9) · spand D i `stale-issues-audit-2026-09-04.md` · Discord catch-up v7.239–7.254 (`docs/drafts/discord-patch-notes-catchup-2026-09-05.md`, du poster).
+> **⏳ Åbne ejer-valg (ét ad gangen):** bestyrelse før DNA-valg (#4900) · holdspils-kalibrering (v4 gab 3,0 mod v3 19,4, §2e) · TTT ind i S4-kalenderen (filler pauset siden #2411) · TTT giver ingen point til pointkonkurrencen i v4 (v3 gav) · bonussekunder v4 = eneste kilde (låst 6/9) · #2423 skew protection (758 chunk-fejl/47 spillere på 7 dage, ejer: rør ikke) · Discord: coming-soon-plakater + replay-animation i `docs/design/coming-soon-v4-2026-09-06/` og `replay-v4-2026-09-06/` (ejer poster selv).
 
-> **🔴 Åbne fund:** **#2423** skew protection SLÅET FRA → CYCLINGZONE-56: 133 chunk-fejl/24 t efter 25 deploys 5/9 (deploy-verify rød på budgettet, selvheling #4595 virker) · **#4811** signup-sprog måles ikke · **#4828/#4829** 4 D4-puljer på 25/24, verificér efter Settimana-finalen · #4453 · #4537 · #4530 · #4531 · #4109.
+> **🔴 Åbne fund:** #4885 v4 komprimerer feltet (tidsgrænsen inert) · #4905 nedkørsels-uheld fyrer aldrig · #4886 rngFor uden segment-nøgle · #4828/#4829 D4-pulje F 25/24 · #4811 · #4453 · #4537 · #4530 · #4531 · #4109.
 
-> **✅ 5/9 (Fable, natbølge + merge-runde):** 26 spor → 29 PR'er, **28 merget** i dag (+ #4824 #4830 #4833), patch note **7.254** live, 6 frosne agenter recoveret. Audit: **30 lukket**, 2 → done, 550 åbne. 7 nye issues (#4811–#4816, #4831). Læring: frosne agenter holder samtidigheds-plads → stop + relancér (runbook).
+> **✅ 6/9 (Fable):** Sentry/Supabase-triage lukket (#4866 #4868 #4870 #4871 #4876 #4898 #4901 #4902 #4906); #4865 bonus-mål repareret (#4889 #4890). **TIER WAVE + livstegn** indført (`AI_OPS_REFERENCE.md`, `NIGHT_WAVE_RUNBOOK.md`). **Docs-drift fundet (8 punkter i FEATURE_STATUS mod kode/prod):** recaps #1311, kaptajn/udbrud #1307, gældsbugs #45/#31, HoF #1139 er lukket; `facilities_enabled` er ON; rytterlån afviklet (#1994); kontraktflows ER bygget (extend-contract, `contractExpiryRelease.js`, `aiContractAutoRenewal.js`); form/fatigue/skader ER live i v3+v4 (`raceSimulator.js`, `physiology.ts`), ikke 0-stubs. Løsning: #4921 register + CI-gate. Masterplan omskrevet til tre baner, artifact republiceret.
 
-> **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). 12 betalende (MRR 436 kr). #4616: EUR-planer i Alunta men ikke i checkout, Railway mangler EUR-nøgler → ejer-klik. #4514: kunden beholder Pro (ejer 4/9). B2C-only ønske (#4511/#4616 pkt 8).
+> **💳 Betaling:** SSOT [`BILLING_STACK.md`](BILLING_STACK.md). 12 betalende (MRR 436 kr). #4616 EUR-nøgler → ejer-klik. #4514 kunden beholder Pro.
 
 > **✅ S3 kører:** 529 løb, 28/8 → søn 27/9. Etaper hver hele time; scheduler hvert 5. min.
 
 ## Standing context (forever-relaunch)
 
-- **Liga:** 4-divisions-pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
+- **Liga:** 4-divisions-pyramide 1/2/4/8. **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8). **Mere fog of war** (ejer 6/9).
 - **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (GT-hviledage bundet, #4209). **Pension:** afsluttet sæsons alder. Alders-referenceår = `riderSeasonAge.js` (S3=2028). U25 = 25 og yngre.
-- **Race engine:** v3 låst fallback; v4-flip ejer-only. Krav til v4 (ejer 4/9): #2789 rute-huller, #2944 graduerede styrt + mekaniske uheld uden DNF, #2582 tidsgrænse.
-- **Grundregler (rytter, værdi/løn, økonomi-balance) udskudt til efter 27/9** (ejer 28/8 + 4/9). **Træning: maks +1 pr. evne pr. dag** (ejer 5/9, lander med #4801).
-- **Mekanik:** PR'er merges med `--admin` én ad gangen, ÉT deploy-vindue pr. bølge; `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Workers: maks 3 tunge, push senest efter 15 min, fremdrift måles på branchens sidste push.
+- **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` OFF; v3 kører S3 færdig. Flip-scope = v3-paritet + #2789/#2944/#2582 + intention (§9). Bygget ≠ koblet ind: to kolonner i kataloget.
+- **Træning:** nyt system (løbsdag som tick, #4850) live senest S4-start 28/9; kalenderpakker #4845 FØR S4-kalender.
+- **Mekanik:** PR'er merges med `--admin` én ad gangen med pause (Railway-deploys må ikke overlappe); `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Bølger: TIER WAVE, maks 3 byg-workers, push <10 min + hvert 15. min.
 
-> **🤖 Working agent:** Ingen aktiv session (Fable lukkede 5/9 kl. ~10:00).
+> **🤖 Working agent:** Claude Code (Fable, orkestrator) 6/9 - #4921 feature-register: build-worker paa PR #4922 (draft), ejer-go paa merge naar klar. Parallel session 7/9 paa PR #4913 (loebsside-faner).
 
 _Historik i git-log, issue-tråde + docs/audits/._

@@ -43,6 +43,21 @@ import { computeCatchKm } from "./racePassages.js";
 
 export const TIMELINE_VERSION = 1;
 
+/**
+ * Artefakt-versionen for en etape skrevet af LØBSMOTOR V4 (#4879/#3855).
+ *
+ * Hvorfor et nyt nummer og ikke bare 1: version 1 er SYNTETISK. v3's
+ * buildStageTimeline nedenfor opfinder km-mærker (rng-afledte
+ * udbruds-/uheldspositioner) ud fra et færdigt resultat, fordi v3 ikke ved
+ * hvor på ruten noget skete. v4 kører hvert rutesegment igennem og udsender
+ * events dér hvor de faktisk sker. Samme tabel, samme {km, type, params}-form,
+ * samme aftagere — men to forskellige troværdighedsniveauer, og
+ * migrationens egen kommentar (database/2026-08-17-2410-race-stage-
+ * timelines.sql) siger at aftagere SKAL kunne se forskellige versioner for
+ * forskellige etaper i samme løb. Det er præcis dét der sker under et flip.
+ */
+export const TIMELINE_VERSION_V4 = 2;
+
 // Samme 200-km-fallback som racePassages/computeCatchKm bruger for etaper uden
 // distance_km (legacy/PCM-data) — ÉN konsistent "effektiv distance" for hele
 // generatoren, så km-mærker forbliver bounded og indbyrdes konsistente selv når
@@ -443,4 +458,88 @@ export function buildStageTimeline({
   events.sort((a, b) => a.km - b.km);
 
   return { timeline_version: TIMELINE_VERSION, events };
+}
+
+/**
+ * #4879 (løbsmotor v4): etapens tidslinje når v4 kørte etapen.
+ *
+ * v4's egen `StageOutput.timeline` ER hændelsesrækken — den er udsendt undervejs
+ * af de koblede mekanikker (udbrud, splits, uheld, finale, tidsgrænse), ikke
+ * bagudsyntetiseret som version 1. Denne funktion opfinder derfor INTET; den
+ * lægger kun de to lag på som bor UDEN for motoren og som fladen allerede
+ * forventer:
+ *
+ *   1. `kom_passage`/`intermediate_sprint` fra passage-laget (#2770,
+ *      racePassages.js). v4 læser ikke rutens vejpunkter (auditten 5/9:
+ *      "bjerg- og spurtpassager udsendes ikke af v4"), så uden dem mistede
+ *      løbsfilmens scrubber sine stignings-markører på hver v4-etape.
+ *   2. `gc_change` — en sammenligning af to klassementer, ikke en
+ *      motorhændelse. Præcis samme udledning som version 1 laver.
+ *
+ * Rækkefølgen: motorens events først (allerede km-sorterede af index.ts),
+ * derefter de to lag, og en stabil sortering på km til sidst. Stabiliteten
+ * betyder at et passage-event og et motor-event på samme km altid lander i
+ * samme indbyrdes orden — determinismen holder hele vejen ud i JSONB'en.
+ *
+ * @param {{events: Array<{km, type, params}>}} engineTimeline  v4's StageOutput.timeline
+ * @param {object} stageProfile
+ * @param {Array} [passages]  computePassages(...).passages (samme form som version 1 læser)
+ * @param {Array|null} [gc]  klassementet EFTER denne etape
+ * @param {Array|null} [previousGc]  klassementet FØR denne etape
+ * @param {boolean} [isStageRace]
+ * @returns {{timeline_version: number, events: Array<{km, type, params}>}}
+ */
+export function buildStageTimelineV4({
+  engineTimeline = null,
+  stageProfile = {},
+  passages = [],
+  gc = null,
+  previousGc = null,
+  isStageRace = false,
+} = {}) {
+  const engineEvents = Array.isArray(engineTimeline?.events) ? engineTimeline.events : [];
+  if (!engineEvents.length) return { timeline_version: TIMELINE_VERSION_V4, events: [] };
+
+  const distance = effectiveDistance(stageProfile);
+  const events = engineEvents.map((e) => ({
+    km: Math.round(Math.max(0, Math.min(distance, Number(e.km) || 0)) * 100) / 100,
+    type: e.type,
+    params: e.params ?? {},
+  }));
+  const emit = (km, type, params) => pushEvent(events, clampKm(km, distance), type, params);
+
+  // #2770/#2413 (ejer 6/9): siden M9 blev koblet ind i v4 udsender MOTOREN selv
+  // sine passage-events. Lægger vi dem på igen her, står hver bjergtop og hver
+  // indlagt spurt to gange i løbsfilmen. Derfor: er der allerede passage-events
+  // i motorens egen række, er de kilden, og dette lag holder sig væk.
+  // Bagudkompatibelt — en v4-kørsel UDEN M9 (eller en gammel, persisteret
+  // motor-tidslinje) har ingen sådanne events og får laget på som før.
+  const engineEmitsPassages = events.some((e) => e.type === "kom_passage" || e.type === "intermediate_sprint");
+
+  for (const wp of engineEmitsPassages ? [] : passages) {
+    if (wp.kind === "kom") {
+      emit(wp.km, "kom_passage", {
+        name: wp.name,
+        category: wp.category ?? null,
+        top: (wp.results || []).map((r) => ({ rider_id: r.rider_id, points: r.points })),
+      });
+    } else if (wp.kind === "sprint") {
+      emit(wp.km, "intermediate_sprint", {
+        name: wp.name,
+        top: (wp.results || []).map((r) => ({ rider_id: r.rider_id, points: r.points, bonus_seconds: r.bonus_seconds })),
+      });
+    }
+    // wp.kind === "finish" udelades — motoren udsender sit eget finish-event.
+  }
+
+  if (isStageRace && gc?.length && previousGc?.length) {
+    const newLeaderId = gc[0].rider_id;
+    const prevLeaderId = previousGc[0].rider_id;
+    if (newLeaderId !== prevLeaderId) {
+      emit(distance, "gc_change", { new_leader_id: newLeaderId, previous_leader_id: prevLeaderId });
+    }
+  }
+
+  events.sort((a, b) => a.km - b.km);
+  return { timeline_version: TIMELINE_VERSION_V4, events };
 }

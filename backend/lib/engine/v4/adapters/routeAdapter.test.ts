@@ -136,3 +136,71 @@ test("routeFromStageProfileRow: to forskellige legacy-raekker (forskellig race_i
   const routeB = routeFromStageProfileRow(rowB);
   assert.notDeepEqual(routeA.segments, routeB.segments);
 });
+
+// ── #2789 fund 5: raekkens EGNE sectors[] skal laeses, ikke genopfindes ──────
+
+test("routeFromStageProfileRow: legacy uden segments MEN med egne sectors -> sektorerne bliver cobbles-segmenter paa deres egne km", () => {
+  const row: StageProfileRow = {
+    id: "sect-1", race_id: "race-sect-1", stage_number: 3,
+    profile_type: "cobbles", finale_type: "reduced_sprint",
+    distance_km: 160,
+    climbs: [], sprints: [],
+    sectors: [
+      { kind: "cobbles", name: "Sektor Alfa", start_km: 72, length_km: 2 },
+      { kind: "cobbles", name: "Sektor Omega", start_km: 152, length_km: 2.5 },
+    ],
+    segments: null, weather: null,
+  };
+  const route = routeFromStageProfileRow(row);
+  const cobbles = route.segments.filter((s) => s.kind === "cobbles");
+  assert.equal(cobbles.length, 2, "begge sektorer skal blive til cobbles-segmenter");
+  assert.deepEqual(
+    cobbles.map((s) => [s.from_km, s.to_km]),
+    [[72, 74], [152, 154.5]],
+    "sektorernes egne km skal baeres videre, ikke genopfindes af synthesizeSegments",
+  );
+  // Ejer-beslutning 6/9: en sektor der slutter taet paa maal skal overleve hele vejen
+  // ind i motorens segmentliste — ellers kan en brostens-finale ikke opstaa.
+  assert.ok(route.distance_km - cobbles[1].to_km <= 10);
+  assert.equal(route.segments[route.segments.length - 1].to_km, 160);
+});
+
+test("routeFromStageProfileRow: grus-sektorer bliver ogsaa cobbles-SEGMENTER (RACE_ENGINE_RULES §2b: fysikken er den samme)", () => {
+  const row: StageProfileRow = {
+    id: "sect-2", race_id: "race-sect-2", stage_number: 1,
+    profile_type: "gravel", finale_type: "punch",
+    distance_km: 200,
+    climbs: [], sprints: [],
+    sectors: [{ kind: "gravel", name: "Strada Bianca 1", start_km: 100, length_km: 5 }],
+    segments: null, weather: null,
+  };
+  const route = routeFromStageProfileRow(row);
+  const cobbles = route.segments.filter((s) => s.kind === "cobbles");
+  assert.equal(cobbles.length, 1);
+  assert.deepEqual([cobbles[0].from_km, cobbles[0].to_km], [100, 105]);
+});
+
+test("routeFromStageProfileRow: sektor-stien er deterministisk (samme raekke -> byte-identisk route)", () => {
+  const row: StageProfileRow = {
+    id: "sect-3", race_id: "race-sect-3", stage_number: 2,
+    profile_type: "cobbles", finale_type: "breakaway",
+    distance_km: 165,
+    climbs: [], sprints: [],
+    sectors: [{ kind: "cobbles", name: "Sektor A", start_km: 80, length_km: 2 }],
+    segments: null, weather: null,
+  };
+  assert.deepEqual(routeFromStageProfileRow(row), routeFromStageProfileRow(row));
+});
+
+test("routeFromStageProfileRow: raekke UDEN egne climbs/sectors bruger stadig den blinde syntese", () => {
+  const row: StageProfileRow = {
+    id: "sect-4", race_id: "race-sect-4", stage_number: 1,
+    profile_type: "cobbles", finale_type: "breakaway",
+    distance_km: 160,
+    climbs: [], sprints: [], sectors: [],
+    segments: null, weather: null,
+  };
+  const route = routeFromStageProfileRow(row);
+  assert.ok(route.segments.length > 0);
+  assert.equal(route.segments[route.segments.length - 1].to_km, 160);
+});

@@ -159,7 +159,7 @@ export default function ActivityPage() {
       const { data: { user } } = await supabase.auth.getUser();
       // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
       if (!user) { return; }
-      const { data: team } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
+      const { data: team } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
       if (!team) { return; }
       setMyTeamId(team.id);
 

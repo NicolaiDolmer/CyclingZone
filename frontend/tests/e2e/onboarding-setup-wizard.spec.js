@@ -9,13 +9,22 @@ test.beforeEach(async ({ page }) => {
   await stabilizePage(page);
 
   // Team uden manager_name → Layout's needsSetup bliver true → wizard'en tvinges
-  // frem. Vi override'r kun .single()-objekt-kaldet (Layout's team-load); array-
-  // kald og writes falder igennem til de delte mocks.
+  // frem. Vi override'r kun Layout's "mit hold"-kald (id: user_id=eq.<uid>);
+  // array-kald og writes falder igennem til de delte mocks.
+  //
+  // #4869: identificeres via user_id=eq.-filteret i URL'en, IKKE længere via
+  // Accept-headeren — .maybeSingle() (Layout's team-load skiftede fra .single()
+  // i #4869) sender ikke application/vnd.pgrst.object+json, så et rent
+  // Accept-baseret tjek ramte aldrig denne gren og lækkede fallback()'s
+  // ufiltrerede array igennem til Layout, som fejlagtigt konkluderede "intet
+  // hold" og forsøgte en anden opsætnings-sti.
   await page.route("**/rest/v1/teams**", async (route) => {
     const request = route.request();
     const wantsObject = (request.headers().accept || "").includes("vnd.pgrst.object");
-    if (request.method() === "GET" && wantsObject) {
-      return json(route, { ...TEST_TEAM, manager_name: null });
+    const isMineQuery = request.method() === "GET" && /user_id=eq\.[^&]+/.test(request.url());
+    if (isMineQuery) {
+      const mine = { ...TEST_TEAM, manager_name: null };
+      return json(route, wantsObject ? mine : [mine]);
     }
     return route.fallback();
   });

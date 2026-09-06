@@ -828,6 +828,82 @@ export function finalizeBoardGoals({ goals = [], negotiationIndexes = [] } = {})
   ));
 }
 
+// ── #4865 · Additiv goals-rebuild ───────────────────────────────────────────
+//
+// Rod-årsagen bag #4865: BÅDE POST /board/sign (routes/api.js) og
+// autoAcceptPendingPlan (boardAutoAccept.js) skriver `current_goals` som et
+// FRISKT array bygget af buildBoardProposal + finalizeBoardGoals. Alt hvad en
+// ANDEN sti tidligere har lagt i arrayet forsvinder derfor lydløst ved næste
+// plan-signering. Målt i prod 5/9 (#4865): 11 hold havde et accepteret
+// bonustilbuds ekstra-mål (`source: "bonus_offer"`) i `current_goals` 23/8;
+// alle 11 rækker bar bagefter et `negotiated: true`-mål (kun /board/sign kan
+// producere det — auto-accept sender altid negotiationIndexes: []) og intet
+// bonus-mål. Pengene var udbetalt, kravet væk.
+//
+// Reglen: en rebuild ejer KUN de mål motoren selv genererer. Mål med en
+// FREMMED `source` (i dag `bonus_offer`; enhver fremtidig kilde arver reglen
+// gratis) bæres med over. Genererede mål er uændrede — helperen tilføjer kun
+// bagest, ændrer aldrig rebuild'ens egne elementer eller deres rækkefølge.
+export const GENERATED_GOAL_SOURCES = Object.freeze(["club_dna"]);
+
+// Basis-planens mål bærer slet ingen `source`; DNA-traditionsmålet bærer
+// "club_dna". Begge regenereres af buildBoardProposal og skal derfor IKKE
+// bevares fra den gamle række (ellers ville et forhandlet/lempet target blive
+// gen-indsat ved siden af sin egen erstatning).
+export function isGeneratedGoalSource(source) {
+  return source == null || source === "" || GENERATED_GOAL_SOURCES.includes(source);
+}
+
+// Fremmede mål dedupliceres på tilbuds-id når det findes (#4856 skriver
+// `bonus_offer_id`), ellers på den indholdsbaserede buildGoalKey — samme
+// fallback som hasBonusGoalForOffer (boardBonusGoal.js) bruger for rækker
+// skrevet før #4856.
+function externalGoalKey(goal) {
+  const source = goal?.source ?? "";
+  return goal?.bonus_offer_id
+    ? `${source}|offer:${goal.bonus_offer_id}`
+    : `${source}|${buildGoalKey(goal)}`;
+}
+
+/**
+ * @param {object}       args
+ * @param {Array}        args.rebuiltGoals  Nyt array fra finalizeBoardGoals.
+ * @param {Array|string} args.previousGoals `board_profiles.current_goals` FØR
+ *   skrivningen. Må være et array ELLER en JSON-streng — accept-stien har
+ *   historisk skrevet `JSON.stringify(...)` ind i jsonb-kolonnen (målt: præcis
+ *   de 11 ramte rækker stod som jsonb-`string`, resten som `array`).
+ * @returns {Array} rebuiltGoals + de fremmede mål der ikke allerede er med.
+ */
+export function preserveExternalGoals({ rebuiltGoals = [], previousGoals = [] } = {}) {
+  const rebuilt = Array.isArray(rebuiltGoals) ? rebuiltGoals : [];
+  const previous = Array.isArray(previousGoals)
+    ? previousGoals
+    : typeof previousGoals === "string" && previousGoals.trim()
+      ? safeJsonParse(previousGoals, [])
+      : [];
+  if (!Array.isArray(previous) || previous.length === 0) return rebuilt;
+
+  const seen = new Set(
+    rebuilt
+      .filter((goal) => !isGeneratedGoalSource(goal?.source))
+      .map((goal) => externalGoalKey(goal))
+  );
+
+  const carried = [];
+  for (const goal of previous) {
+    if (!goal || typeof goal !== "object") continue;
+    if (isGeneratedGoalSource(goal.source)) continue;
+    const key = externalGoalKey(goal);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    // Bevares ORDRET — evalueringsstien kører selv addGoalMetadata ved læsning
+    // (parseBoardGoals), så vi må ikke omskrive det persisterede mål her.
+    carried.push(goal);
+  }
+
+  return carried.length ? [...rebuilt, ...carried] : rebuilt;
+}
+
 export function inferNegotiationIndexesFromGoals({
   goals = [],
   negotiationOptions = [],

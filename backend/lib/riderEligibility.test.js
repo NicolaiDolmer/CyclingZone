@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  isEligibleRider, filterEligibleEntries, applyRiderEligibilityFilter,
+  isEligibleRider, filterEligibleEntries, applyRiderEligibilityFilter, applyRosterVisibilityFilter,
   isRiderInjured, applyInjuredFilter, filterOutInjuredEntries,
   raceSelectionReferenceDateStr,
 } from "./riderEligibility.js";
@@ -124,4 +124,20 @@ test("applyRiderEligibilityFilter: kæder akademi- + pensioneret- + ikke-under-h
     ["or", "is_retired.is.null,is_retired.eq.false"],
     ["is", "pending_team_id", null],
   ]);
+});
+
+// #4119: de to filtre skal skilles ad — synlighed vs. udtagelse.
+test("applyRosterVisibilityFilter: akademi + pensioneret, men IKKE pending_team_id", () => {
+  const calls = [];
+  const q = {
+    eq(col, val) { calls.push(["eq", col, val]); return q; },
+    or(expr) { calls.push(["or", expr]); return q; },
+    is(col, val) { calls.push(["is", col, val]); return q; },
+  };
+  const out = applyRosterVisibilityFilter(q);
+  assert.equal(out, q, "returnerer query'en (kædebar)");
+  assert.deepEqual(calls, [
+    ["eq", "is_academy", false],
+    ["or", "is_retired.is.null,is_retired.eq.false"],
+  ], "en solgt rytter med parkeret holdskifte skal stadig VISES i truppen (#4119)");
 });

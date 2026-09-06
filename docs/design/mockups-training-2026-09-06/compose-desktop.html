@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face {
+    font-family: 'Inter';
+    src: url('../../../frontend/public/fonts/inter-tight-latin-wght-normal.woff2') format('woff2');
+    font-weight: 100 900;
+    font-style: normal;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #f6f4ee;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  .wrap {
+    display: inline-block;
+    padding: 32px;
+    background: #f6f4ee;
+  }
+  .title {
+    font-size: 26px;
+    font-weight: 600;
+    color: #1c1a15;
+    margin: 0 0 28px 0;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  .row {
+    display: flex;
+    flex-direction: row;
+    gap: 32px;
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+    width: 1200px;
+  }
+  .label {
+    font-size: 22px;
+    line-height: 1.3;
+    font-weight: 500;
+    color: #1c1a15;
+    margin: 0 0 16px 0;
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+  .frame {
+    width: 1200px;
+    height: 1497px;
+    overflow: hidden;
+    border: 1px solid #e5e0d5;
+    border-radius: 5px;
+    background: #ffffff;
+    position: relative;
+  }
+  .frame img {
+    display: block;
+    width: 1200px;
+    height: auto;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="title">Training page: three directions. Mockups, not final. Names and numbers are examples.</p>
+    <div class="row">
+      <div class="col">
+        <p class="label">1. Today board: racing and training split, one choice per rider</p>
+        <div class="frame"><img src="m1-today-board-desktop.png"></div>
+      </div>
+      <div class="col">
+        <p class="label">2. Week board: your week as a grid, programs on the left</p>
+        <div class="frame"><img src="m2-week-board-desktop.png"></div>
+      </div>
+      <div class="col">
+        <p class="label">3. Squad list: today's dense roster plus program and race intention</p>
+        <div class="frame"><img src="m3-squad-list-plus-desktop.png"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

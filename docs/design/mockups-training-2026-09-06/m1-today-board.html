@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Training · Today board (mockup 1)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens (copied from frontend/src/index.css, light + dark) ────── */
+:root{
+  color-scheme: light;
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#ffffff; --bg-subtle:#ece9e1;
+  --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:232 197 71; --accent-t:#a07800; --on-accent:#1a1f38;
+  --radius-sm:5px; --radius-pill:9999px;
+  --success:21 119 47; --danger:168 30 30; --warning:154 91 0;
+  --success-bg:rgba(21,119,47,.08); --danger-bg:rgba(168,30,30,.08);
+  --font-body:'DM Sans',system-ui,-apple-system,sans-serif;
+  --font-data:'Inter Tight',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --bg-body:#0e0f15; --bg-card:#161824; --bg-elevated:#1f2233; --bg-subtle:#14161e;
+    --border:#2a2d3a;
+    --text-1:#ededf2; --text-2:#9da0b3; --text-3:#888ba0;
+    --accent-t:#ffd966; --on-accent:#1a1f38;
+    --success:95 217 138; --danger:251 132 132;
+    --success-bg:rgba(95,217,138,.12); --danger-bg:rgba(251,132,132,.12);
+  }
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg-body); color:var(--text-1);
+  font-family:var(--font-body); font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-family:var(--font-data); font-variant-numeric:tabular-nums}
+
+/* ── Page shell (T2 wide data: full bleed, capped 1600) ─────────────────── */
+.page{max-width:1600px; margin:0 auto; padding:16px 32px 64px}
+
+/* mockup stamp */
+.stamp{margin-left:auto; align-self:center; margin-bottom:8px; white-space:nowrap;
+  font-family:var(--font-data); font-size:10px; font-weight:600;
+  letter-spacing:.09em; text-transform:uppercase; color:var(--text-3);
+  border:1px solid var(--border); border-radius:var(--radius-sm); padding:2px 8px;
+}
+
+.stamp-row{display:none; justify-content:flex-end; margin-bottom:10px}
+
+/* ── Page header (the ONE recipe) ───────────────────────────────────────── */
+.pagehead{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px}
+.pagehead h1{
+  font-family:var(--font-data); font-size:20px; font-weight:700;
+  letter-spacing:-.01em; margin:0; line-height:1.15;
+}
+.pagehead .sub{font-size:13px; color:var(--text-2); margin-top:2px}
+.cluster{display:flex; align-items:center; gap:8px; flex-shrink:0}
+
+.select{
+  display:inline-flex; align-items:center; gap:8px; height:30px; padding:0 9px 0 11px;
+  border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--bg-card);
+  font-family:var(--font-data); font-size:12px; font-weight:500; color:var(--text-1);
+}
+.select svg{color:var(--text-3)}
+.btn-primary{
+  display:inline-flex; align-items:center; height:30px; padding:0 14px;
+  border:0; border-radius:var(--radius-sm);
+  background:rgb(var(--accent)); color:var(--on-accent);
+  font-family:var(--font-data); font-size:12.5px; font-weight:600; letter-spacing:.01em;
+}
+
+/* ── Tabs (underline) ───────────────────────────────────────────────────── */
+.tabs{display:flex; align-items:flex-end; gap:22px; border-bottom:1px solid var(--border); margin-bottom:12px}
+.tab{
+  font-size:14px; font-weight:500; color:var(--text-2);
+  padding:0 0 7px; margin-bottom:-1px; border-bottom:2px solid transparent;
+}
+.tab.is-active{color:var(--accent-t); font-weight:600; border-bottom-color:rgb(var(--accent))}
+
+/* ── Count strip: four data cells in ONE row, not four cards ────────────── */
+.counts{
+  display:flex; width:max-content; max-width:100%;
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg-card); margin-bottom:8px; overflow:hidden;
+}
+.counts > div{padding:6px 26px 6px; border-left:1px solid var(--border)}
+.counts > div:first-child{border-left:0}
+.counts .v{font-family:var(--font-data); font-size:17px; font-weight:650; font-variant-numeric:tabular-nums; line-height:1.2}
+.counts .l{
+  font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--text-3); margin-top:1px;
+}
+.counts .v.risk{color:rgb(var(--danger))}
+
+/* ── Table (cz-table recipe, dense) ─────────────────────────────────────── */
+.wrap{
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--bg-card); overflow:hidden;
+}
+.scroller{overflow-x:auto}
+table{border-collapse:separate; border-spacing:0; width:100%; min-width:1140px}
+th,td{text-align:left; padding:7px 16px; vertical-align:middle}
+th{
+  font-family:var(--font-data); font-size:11px; font-weight:600; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--text-3); padding-top:6px; padding-bottom:6px;
+  border-bottom:1px solid var(--border); background:var(--bg-card);
+}
+tbody tr.row td{border-bottom:1px solid var(--border)}
+tbody tr.row:last-child td{border-bottom:0}
+.n{text-align:right; font-family:var(--font-data); font-variant-numeric:tabular-nums}
+
+/* sticky rider column */
+.c-rider{position:sticky; left:0; z-index:1; background:var(--bg-card); border-right:1px solid var(--border); width:220px}
+th.c-rider{z-index:2}
+.rname{font-size:13.5px; font-weight:500; line-height:1.25}
+.rmeta{font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin-top:1px}
+
+/* group header rows inside the table */
+.grp td{
+  background:var(--bg-subtle); border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  padding:5px 16px;
+}
+.grp:first-child td{border-top:0}
+.grp .gwrap{display:flex; align-items:center; justify-content:space-between; gap:16px}
+.grp .gt{display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; color:var(--text-1)}
+.grp .gt svg{color:var(--text-3)}
+.grp .gm{font-family:var(--font-data); font-size:11px; color:var(--text-3)}
+
+/* fatigue + risk */
+.fat{display:inline-flex; align-items:baseline; gap:6px; justify-content:flex-end}
+.pill-risk{
+  font-family:var(--font-data); font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.07em;
+  color:rgb(var(--danger)); background:var(--danger-bg); border-radius:var(--radius-pill); padding:1px 7px;
+}
+td.n.is-risk .v{color:rgb(var(--danger))}
+
+/* segmented control */
+.seg{display:inline-flex; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; background:var(--bg-card)}
+.seg span{
+  font-family:var(--font-data); font-size:12px; font-weight:500; color:var(--text-2);
+  padding:4px 8px; border-left:1px solid var(--border); white-space:nowrap;
+}
+.seg span:first-child{border-left:0}
+.seg span.on{color:var(--accent-t); font-weight:600; background:rgb(var(--accent)/.10)}
+
+/* session pill */
+.pill{
+  display:inline-flex; align-items:center; font-family:var(--font-data); font-size:11.5px; font-weight:500;
+  background:var(--bg-subtle); border:1px solid transparent; border-radius:var(--radius-pill); padding:3px 11px;
+}
+.pill.outline{background:transparent; border-color:var(--border)}
+.ovr{font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin-left:8px}
+.quiet{display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:500; color:var(--accent-t)}
+.subline{font-family:var(--font-data); font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin-top:2px}
+.plain{font-size:12.5px; color:var(--text-2)}
+
+/* week strip */
+.week{display:inline-flex; align-items:flex-end; gap:2px}
+.week i{display:block; width:9px; height:16px; background:var(--bg-subtle)}
+.week i.l1{background:rgb(var(--accent)/.18)}
+.week i.l2{background:rgb(var(--accent)/.38)}
+.week i.l3{background:rgb(var(--accent)/.60)}
+.week i.rest{background:transparent; border:1px dashed var(--border)}
+.week i.race{background:var(--text-1)}
+.week i.today{outline:1px solid var(--text-1); outline-offset:1px}
+
+.count-line{font-family:var(--font-data); font-size:12px; color:var(--text-3); margin-top:10px}
+
+/* ── Development excerpt (second section, clearly marked) ───────────────── */
+.slice{margin-top:40px; border-top:1px solid var(--border); padding-top:10px}
+.slice-head{display:flex; align-items:baseline; justify-content:space-between; gap:16px; margin-bottom:12px}
+.slice-head h2{font-family:var(--font-data); font-size:15px; font-weight:600; margin:0}
+.slice-head .note{font-family:var(--font-data); font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--text-3)}
+.ab{display:flex; flex-direction:column; gap:1px}
+.ab .k{font-family:var(--font-data); font-size:10px; font-weight:500; text-transform:uppercase; letter-spacing:.09em; color:var(--text-3)}
+.ab .row2{display:flex; align-items:baseline; gap:8px}
+.ab .val{font-family:var(--font-data); font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.2}
+.ab .d{font-family:var(--font-data); font-size:11px; font-weight:500; color:var(--text-2); font-variant-numeric:tabular-nums}
+.ab .d.up{color:rgb(var(--success))}
+.ab .cap{font-family:var(--font-data); font-size:10px; color:var(--text-3); margin-top:1px}
+table.dev{min-width:900px}
+table.dev td{padding:9px 16px; vertical-align:top}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+@media (max-width:640px){
+  .page{padding:10px 16px 64px}
+  .pagehead{flex-direction:column; align-items:stretch; gap:10px}
+  .cluster{justify-content:flex-start}
+  .cluster .select{flex:1}
+  .tabs{gap:18px; overflow-x:auto}
+  .stamp-row{display:flex}
+  .tabs .stamp{display:none}
+  .counts{display:grid; grid-template-columns:repeat(2,1fr); width:auto}
+  .counts > div{padding:6px 14px 7px}
+  .counts > div:nth-child(3),.counts > div:nth-child(4){border-top:1px solid var(--border)}
+  .counts > div:nth-child(odd){border-left:0}
+  .c-rider{width:160px}
+  th,td{padding-left:12px; padding-right:12px}
+  .rname{font-size:13px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="stamp-row"><span class="stamp">Mockup 6 Sep, not final</span></div>
+
+  <!-- Page header -->
+  <div class="pagehead">
+    <div>
+      <h1>Training</h1>
+      <div class="sub">Season 3, day 9. Assistant runs at 22:00 if you do nothing.</div>
+    </div>
+    <div class="cluster">
+      <div class="select">All riders
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+      <button class="btn-primary">Train today</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab is-active">Today</div>
+    <div class="tab">Program</div>
+    <div class="tab">Development</div>
+    <div class="tab">Reports</div>
+    <span class="stamp">Mockup 6 Sep, not final</span>
+  </div>
+
+  <!-- Count strip -->
+  <div class="counts">
+    <div><div class="v">6</div><div class="l">Racing today</div></div>
+    <div><div class="v">11</div><div class="l">Training today</div></div>
+    <div><div class="v">1</div><div class="l">No plan</div></div>
+    <div><div class="v risk">2</div><div class="l">Injury risk</div></div>
+  </div>
+
+  <!-- Roster -->
+  <div class="wrap">
+    <div class="scroller">
+      <table>
+        <colgroup>
+          <col><col style="width:124px"><col style="width:96px">
+          <col style="width:352px"><col><col style="width:120px">
+        </colgroup>
+        <tbody>
+
+          <!-- ── Group A: racing ─────────────────────────────────────── -->
+          <tr class="grp">
+            <td colspan="6">
+              <div class="gwrap">
+                <div class="gt">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                  Racing today: Vuelta stage 9, mountain finish
+                </div>
+                <div class="gm">One choice per rider. Racing replaces today's training.</div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th class="c-rider">Rider</th>
+            <th>Role</th>
+            <th class="n">Fatigue /100</th>
+            <th>Intention today</th>
+            <th colspan="2">Costs</th>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Luca Brenner</div><div class="rmeta">Climber · 27</div></td>
+            <td class="plain">Captain</td>
+            <td class="n"><span class="fat"><span class="v">62</span></span></td>
+            <td>
+              <span class="seg"><span>Grupetto</span><span>Ride easy</span><span>Normal</span><span>Work or attack</span><span class="on">All out</span></span>
+            </td>
+            <td class="plain" colspan="2">Big fatigue, most development</td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Mads Okafor</div><div class="rmeta">Climber · 24</div></td>
+            <td class="plain">Helper</td>
+            <td class="n"><span class="fat"><span class="v">48</span></span></td>
+            <td>
+              <span class="seg"><span>Grupetto</span><span>Ride easy</span><span>Normal</span><span class="on">Work or attack</span><span>All out</span></span>
+            </td>
+            <td class="plain" colspan="2">Works for the captain, real fatigue</td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Tomas Nakamura</div><div class="rmeta">Puncheur · 25</div></td>
+            <td class="plain">Helper</td>
+            <td class="n"><span class="fat"><span class="v">55</span></span></td>
+            <td>
+              <span class="seg"><span>Grupetto</span><span>Ride easy</span><span>Normal</span><span class="on">Work or attack</span><span>All out</span></span>
+            </td>
+            <td class="plain" colspan="2">Keeps the break in reach</td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Ruben Halvorsen</div><div class="rmeta">Sprinter · 31</div></td>
+            <td class="plain">Free role</td>
+            <td class="n is-risk"><span class="fat"><span class="v">81</span><span class="pill-risk">Risk</span></span></td>
+            <td>
+              <span class="seg"><span class="on">Grupetto</span><span>Ride easy</span><span>Normal</span><span>Work or attack</span><span>All out</span></span>
+            </td>
+            <td class="plain" colspan="2">Saves him for stage 14</td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Eskil Damgaard</div><div class="rmeta">Rouleur · 22</div></td>
+            <td class="plain">Helper</td>
+            <td class="n"><span class="fat"><span class="v">44</span></span></td>
+            <td>
+              <span class="seg"><span>Grupetto</span><span>Ride easy</span><span class="on">Normal</span><span>Work or attack</span><span>All out</span></span>
+            </td>
+            <td class="plain" colspan="2">Default effort, small fatigue</td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Nico Ferrante</div><div class="rmeta">Time trial · 29</div></td>
+            <td class="plain">Free role</td>
+            <td class="n"><span class="fat"><span class="v">51</span></span></td>
+            <td>
+              <span class="seg"><span>Grupetto</span><span class="on">Ride easy</span><span>Normal</span><span>Work or attack</span><span>All out</span></span>
+            </td>
+            <td class="plain" colspan="2">Low fatigue, little development</td>
+          </tr>
+
+          <!-- ── Group B: training ───────────────────────────────────── -->
+          <tr class="grp">
+            <td colspan="6">
+              <div class="gwrap">
+                <div class="gt">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h4l-2.5 11.5M12 17.5 15 6l-4-2M9 8h4"/></svg>
+                  Training today: from each rider's program
+                </div>
+                <div class="gm">Overrides are outlined. Program sets the session, you can change it.</div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <th class="c-rider">Rider</th>
+            <th>Program</th>
+            <th class="n">Fatigue /100</th>
+            <th>Session today</th>
+            <th>Trains</th>
+            <th>Week</th>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Jonas Sørensen</div><div class="rmeta">Climber · 19</div></td>
+            <td class="plain">Climber</td>
+            <td class="n"><span class="fat"><span class="v">41</span></span></td>
+            <td><span class="pill">Climbing</span></td>
+            <td class="plain">Climbing, tempo</td>
+            <td><span class="week"><i class="l1"></i><i class="l3"></i><i class="rest"></i><i class="l2 today"></i><i class="l1"></i><i class="race"></i><i class="rest"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Aleks Petrov</div><div class="rmeta">Rouleur · 33</div></td>
+            <td class="plain">Recovery week</td>
+            <td class="n"><span class="fat"><span class="v">29</span></span></td>
+            <td><span class="pill">Active recovery</span></td>
+            <td class="plain">Recovery only</td>
+            <td><span class="week"><i class="rest"></i><i class="l1"></i><i class="l1"></i><i class="l1 today"></i><i class="rest"></i><i class="l2"></i><i class="rest"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Kim Dubois</div><div class="rmeta">Sprinter · 20</div></td>
+            <td class="plain">Sprinter</td>
+            <td class="n"><span class="fat"><span class="v">37</span></span></td>
+            <td><span class="pill">Sprint</span></td>
+            <td class="plain">Sprint, acceleration</td>
+            <td><span class="week"><i class="l2"></i><i class="rest"></i><i class="l3"></i><i class="l3 today"></i><i class="l1"></i><i class="race"></i><i class="race"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Pau Vargas</div><div class="rmeta">Academy · Puncheur · 17</div></td>
+            <td class="plain">Build base</td>
+            <td class="n"><span class="fat"><span class="v">22</span></span></td>
+            <td><span class="pill">Long ride</span></td>
+            <td class="plain">Endurance, durability</td>
+            <td><span class="week"><i class="l1"></i><i class="l2"></i><i class="l1"></i><i class="l2 today"></i><i class="rest"></i><i class="l2"></i><i class="l1"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Elias Lindqvist</div><div class="rmeta">Rouleur · 26</div></td>
+            <td class="plain">Cobbles</td>
+            <td class="n"><span class="fat"><span class="v">46</span></span></td>
+            <td><span class="pill">Threshold</span></td>
+            <td class="plain">Threshold, durability</td>
+            <td><span class="week"><i class="l2"></i><i class="l1"></i><i class="rest"></i><i class="l3 today"></i><i class="l1"></i><i class="race"></i><i class="rest"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Ivar Sund</div><div class="rmeta">Time trial · 23</div></td>
+            <td class="plain">GC rider</td>
+            <td class="n"><span class="fat"><span class="v">58</span></span></td>
+            <td><span class="pill">Tempo</span></td>
+            <td class="plain">Tempo, endurance</td>
+            <td><span class="week"><i class="l3"></i><i class="l2"></i><i class="l1"></i><i class="l2 today"></i><i class="rest"></i><i class="l3"></i><i class="l1"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Milo Ferreira</div><div class="rmeta">Climber · 21</div></td>
+            <td class="plain">Climber</td>
+            <td class="n is-risk"><span class="fat"><span class="v">84</span><span class="pill-risk">Risk</span></span></td>
+            <td><span class="pill outline">Rest</span><span class="ovr">Override</span></td>
+            <td class="plain">Nothing today, fatigue drops</td>
+            <td><span class="week"><i class="l3"></i><i class="l3"></i><i class="l2"></i><i class="rest today"></i><i class="l1"></i><i class="l2"></i><i class="rest"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Otto Vogel</div><div class="rmeta">Sprinter · 30</div></td>
+            <td class="plain">Sprinter</td>
+            <td class="n"><span class="fat"><span class="v">39</span></span></td>
+            <td><span class="pill">Punch</span></td>
+            <td class="plain">Punch, tempo</td>
+            <td><span class="week"><i class="l1"></i><i class="l2"></i><i class="rest"></i><i class="l2 today"></i><i class="l3"></i><i class="race"></i><i class="race"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Rafa Iglesias</div><div class="rmeta">Puncheur · 28</div></td>
+            <td class="plain">Puncheur</td>
+            <td class="n"><span class="fat"><span class="v">44</span></span></td>
+            <td><span class="pill">Intervals, punch</span></td>
+            <td class="plain">Punch, tempo</td>
+            <td><span class="week"><i class="l2"></i><i class="l3"></i><i class="l1"></i><i class="l3 today"></i><i class="rest"></i><i class="l2"></i><i class="rest"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Sten Rask</div><div class="rmeta">Academy · Rouleur · 18</div></td>
+            <td class="plain">Build base</td>
+            <td class="n"><span class="fat"><span class="v">26</span></span></td>
+            <td><span class="pill">Technique</span></td>
+            <td class="plain">Technique, handling</td>
+            <td><span class="week"><i class="l1"></i><i class="l1"></i><i class="l2"></i><i class="l1 today"></i><i class="l2"></i><i class="rest"></i><i class="l1"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Yuki Tanabe</div><div class="rmeta">Time trial · 24</div></td>
+            <td class="plain">GC rider</td>
+            <td class="n"><span class="fat"><span class="v">33</span></span></td>
+            <td><span class="pill outline">Form</span><span class="ovr">Override</span></td>
+            <td class="plain">Form only, no ability chase</td>
+            <td><span class="week"><i class="l2"></i><i class="l1"></i><i class="l3"></i><i class="l1 today"></i><i class="l2"></i><i class="race"></i><i class="rest"></i></span></td>
+          </tr>
+
+          <tr class="row">
+            <td class="c-rider"><div class="rname">Bo Kristensen</div><div class="rmeta">Rouleur · 32</div></td>
+            <td class="plain">No program</td>
+            <td class="n"><span class="fat"><span class="v">35</span></span></td>
+            <td>
+              <span class="quiet">Pick session
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </span>
+              <div class="subline">Assistant picks at 22:00</div>
+            </td>
+            <td class="plain">Not decided yet</td>
+            <td><span class="week"><i class="rest"></i><i class="rest"></i><i class="rest"></i><i class="rest today"></i><i class="rest"></i><i class="rest"></i><i class="rest"></i></span></td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="count-line">Showing all 18 riders in your squad.</div>
+
+  <!-- ── Excerpt from another tab ───────────────────────────────────────── -->
+  <div class="slice">
+    <div class="slice-head">
+      <h2>Tab: Development</h2>
+      <div class="note">Excerpt, 4 of 18 riders</div>
+    </div>
+
+    <div class="wrap">
+      <div class="scroller">
+        <table class="dev">
+          <colgroup><col><col><col><col></colgroup>
+          <thead>
+            <tr>
+              <th class="c-rider">Rider</th>
+              <th colspan="3">Season gains, top three abilities</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="row">
+              <td class="c-rider"><div class="rname">Luca Brenner</div><div class="rmeta">Climber · 27</div></td>
+              <td><div class="ab"><div class="k">Climbing</div><div class="row2"><span class="val">78</span><span class="d up">+1 today</span></div><div class="cap">Daily max, rest carried over</div></div></td>
+              <td><div class="ab"><div class="k">Endurance</div><div class="row2"><span class="val">71</span><span class="d">+0.6 progress</span></div></div></td>
+              <td><div class="ab"><div class="k">Tempo</div><div class="row2"><span class="val">69</span><span class="d">+0.3 progress</span></div></div></td>
+            </tr>
+            <tr class="row">
+              <td class="c-rider"><div class="rname">Jonas Sørensen</div><div class="rmeta">Climber · 19</div></td>
+              <td><div class="ab"><div class="k">Climbing</div><div class="row2"><span class="val">61</span><span class="d">+0.8 progress</span></div></div></td>
+              <td><div class="ab"><div class="k">Endurance</div><div class="row2"><span class="val">64</span><span class="d">+0.5 progress</span></div></div></td>
+              <td><div class="ab"><div class="k">Recovery</div><div class="row2"><span class="val">58</span><span class="d">+0.2 progress</span></div></div></td>
+            </tr>
+            <tr class="row">
+              <td class="c-rider"><div class="rname">Kim Dubois</div><div class="rmeta">Sprinter · 20</div></td>
+              <td><div class="ab"><div class="k">Sprint</div><div class="row2"><span class="val">73</span><span class="d">+0.9 progress</span></div></div></td>
+              <td><div class="ab"><div class="k">Acceleration</div><div class="row2"><span class="val">70</span><span class="d">+0.4 progress</span></div></div></td>
+              <td><div class="ab"><div class="k">Endurance</div><div class="row2"><span class="val">52</span><span class="d">+0.1 progress</span></div></div></td>
+            </tr>
+            <tr class="row">
+              <td class="c-rider"><div class="rname">Pau Vargas</div><div class="rmeta">Academy · Puncheur · 17</div></td>
+              <td><div class="ab"><div class="k">Endurance</div><div class="row2"><span class="val">55</span><span class="d">+0.7 progress</span></div></div></td>
+              <td><div class="ab"><div class="k">Durability</div><div class="row2"><span class="val">49</span><span class="d">+0.5 progress</span></div></div></td>
+              <td><div class="ab"><div class="k">Punch</div><div class="row2"><span class="val">44</span><span class="d">+0.2 progress</span></div></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

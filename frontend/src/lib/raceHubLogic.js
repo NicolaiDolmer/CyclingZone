@@ -50,8 +50,8 @@ export function isRiderBound({ bindingMap, riderId, forRaceId, forWindow }) {
 // dækkede overlap — derfor kunne en rytter renderes låst uden en eneste begrundelse. Nu er
 // riderColumnState den ENESTE klassifikator, og denne er dens boolske skygge: tilføjbar ==
 // "available". Rør ikke den ækvivalens uden at rette begge (raceHubLogic.test.js vogter den).
-export function canAddRiderToColumn({ column, bindingMap, riderId }) {
-  return riderColumnState({ column, bindingMap, riderId }) === "available";
+export function canAddRiderToColumn({ column, bindingMap, riderId, outgoing = false }) {
+  return riderColumnState({ column, bindingMap, riderId, outgoing }) === "available";
 }
 
 // #4295: hvor mange af holdets ryttere er FRIE til netop dette løb — raske, ikke bundet i
@@ -63,7 +63,9 @@ export function canAddRiderToColumn({ column, bindingMap, riderId }) {
 // og denne optælling ikke kan blive uenige om hvem der er ledig.
 export function freeRiderCountForColumn({ column, roster = [], bindingMap }) {
   if (!column) return 0;
-  return roster.filter((r) => !r.injured && canAddRiderToColumn({ column, bindingMap, riderId: r.id })).length;
+  // #4119: en udgående rytter er ikke fri til et nyt løb — samme skel som backendens
+  // availableCount bruger, så pulje, popover og tælling ikke kan blive uenige.
+  return roster.filter((r) => !r.injured && canAddRiderToColumn({ column, bindingMap, riderId: r.id, outgoing: Boolean(r.outgoing) })).length;
 }
 
 // #1984: hvilket ANDET kolonne-løb blokerer rytteren fra `column` (det overlappende løb han
@@ -85,9 +87,13 @@ export function overlapConflictColumn({ column, columns = [], bindingMap, riderI
 //   "locked"    — løbet er afmeldt/startet (kan ikke ændres)
 //   "overlap"   — blokeret fordi rytteren er i et tids-overlappende løb
 //   "available" — kan tilføjes
-export function riderColumnState({ column, bindingMap, riderId }) {
+export function riderColumnState({ column, bindingMap, riderId, outgoing = false }) {
   if (!column) return "locked";
   if ((column.selection?.rider_ids || []).includes(riderId)) return "riding";
+  // #4119: solgt rytter med parkeret holdskifte. "riding" vinder over dette — han
+  // kører det løb han allerede er udtaget til færdigt — men han kan ikke tilføjes
+  // et NYT løb (#2579). Før stod han slet ikke i truppen; nu står han med en grund.
+  if (outgoing) return "outgoing";
   if (column.withdrawn || column.lineup_locked) return "locked";
   if (isRiderBound({ bindingMap, riderId, forRaceId: column.id, forWindow: column.bindingWindow })) return "overlap";
   return "available";
@@ -108,13 +114,18 @@ export function riderColumnState({ column, bindingMap, riderId }) {
 //
 // Afmeldte løb navngives ALDRIG som årsag (Rod A, #1823: de låser ikke, og draftBindingMap
 // springer dem over) — derfor kigger navne-opslaget kun på ikke-afmeldte kolonner.
-export function riderLockReason({ riderId, columns = [], bindingMap }) {
-  const states = columns.map((column) => ({ column, state: riderColumnState({ column, bindingMap, riderId }) }));
+export function riderLockReason({ riderId, columns = [], bindingMap, outgoing = false }) {
+  const states = columns.map((column) => ({ column, state: riderColumnState({ column, bindingMap, riderId, outgoing }) }));
   if (states.some((s) => s.state === "available")) return null;
 
   // Det løb han faktisk er udtaget i er den mest handlingsbare forklaring.
   const riding = states.find((s) => s.state === "riding" && !s.column?.withdrawn);
   if (riding) return { code: "bound_overlap", raceId: riding.column.id ?? null, raceName: riding.column.name ?? null };
+
+  // #4119: solgt rytter — den mest handlingsbare forklaring når han ikke allerede
+  // kører et af dagens løb. Skal stå FØR overlap/started/withdrawn: de forklarer
+  // dagens løb, dette forklarer rytteren.
+  if (outgoing) return { code: "outgoing_transfer", raceId: null, raceName: null };
 
   // Ellers: bundet af et overlappende løb — kolonne eller ekstern binding (#2256).
   const overlap = states.find((s) => s.state === "overlap");
@@ -142,6 +153,7 @@ export function riderLockLabel({ reason, t }) {
       ? t("racehub.boundNamed", { race: reason.raceName })
       : t("racehub.lockBoundUnnamed");
   }
+  if (reason.code === "outgoing_transfer") return t("racehub.lockOutgoing");
   if (reason.code === "all_races_started") return t("racehub.lockAllStarted");
   if (reason.code === "all_races_withdrawn") return t("racehub.lockAllWithdrawn");
   return t("racehub.lockUnavailable");

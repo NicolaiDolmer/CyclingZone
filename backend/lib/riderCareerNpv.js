@@ -130,7 +130,27 @@ function simulateCareer(rider, abilities, model) {
   for (let s = 0; ; s++) {
     const age_s = age0 + s;
     // Sikkerheds-cap (s>25) + hård alders-grænse (>40) + survival-udtynding (<1e-4).
-    if (s > 25 || age_s > 40 || !(S >= 1e-4)) break;
+    //
+    // #4876 TOTALITETS-GARANTI: alders-grænsen gælder kun FREMSKRIVNINGEN (s > 0).
+    // Sæson 0 tælles ALTID med, uanset alder. Før denne linje brød loopet FØR
+    // første iteration for en rytter på 41+, så npv blev 0, predictBaseValueV4
+    // returnerede null (npv <= 0), og kilde-guarden i deriveForRiderIds (#1673)
+    // kastede — hvert 5. minut, uendeligt. Målt 6/9: ét ægte spillerhold
+    // (oprettet 5/9 23:49) sad fast i det loop i ~10 timer / ~120 kørsler, fordi
+    // start-trup-generatoren kunne føde en rytter over 40 — den rod-årsag lukkes
+    // i starterSquadAllocator.js i samme PR.
+    //
+    // Hvorfor 40-grænsen ellers er RIGTIG og bliver stående: spillet pensionerer
+    // garanteret ved sæson-alder 40 (PROGRESSION_CONFIG.retirement.guaranteedAge,
+    // riderProgression.js), så en rytter over 40 har præcis én sæson tilbage —
+    // og det er præcis hvad sæson 0 alene modellerer.
+    //
+    // VÆRDI-NEUTRAL for hele den eksisterende population: ved s = 0 er age_s =
+    // age0, og `40 > 40` er false, så enhver rytter på 40 eller derunder får
+    // nøjagtig samme trajectory som før. Målt mod prod 6/9: 8.023 af 8.024
+    // aktive ryttere er ≤ 40. Ændringen gør blot modellen TOTAL — en gyldig
+    // rytter kan ikke længere værdisættes til "ingenting" alene på sin alder.
+    if (s > 25 || (s > 0 && age_s > 40) || !(S >= 1e-4)) break;
 
     const O_s = blendedOutput(ab, type, alpha);
     const prod_s = Math.exp(fit.a + fit.b * O_s + c * O_s * O_s + offset);

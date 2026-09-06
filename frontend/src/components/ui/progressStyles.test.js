@@ -19,6 +19,9 @@ test("fyld er accent som default (noegle-accent) + cz-progress-fill-klasse", () 
 test("tone styrer fyld-farve; ukendt falder tilbage til accent", () => {
   assert.ok(fillClass({ tone: "danger" }).includes("bg-cz-danger"));
   assert.ok(fillClass({ tone: "success" }).includes("bg-cz-success"));
+  // #4265: neutral er monokrom, ikke guld — guld er rationeret (TASTE.md §3).
+  assert.ok(fillClass({ tone: "neutral" }).includes("bg-cz-1"));
+  assert.ok(!fillClass({ tone: "neutral" }).includes("bg-cz-accent"));
   assert.equal(fillClass({ tone: "zz" }), fillClass({ tone: "accent" }));
 });
 

@@ -10,7 +10,7 @@
 // og læg derefter 50 % af resten op til egen divisions base oveni. Samme formel som
 // backendens computeDivisionAdjustment — se den fil for det fulde eksempel og begrundelse.
 // NEDADGÅENDE REGEL: uændret 0,5 × hele forskellen, bag samme tænd/sluk-flag som backend
-// (default fra). Modalen viser altid en KOMMENDE sæson, så kalderen (SponsorOfferModal)
+// (default fra). Tilbuddene gælder altid en KOMMENDE sæson, så kalderen (Sponsors-sidens Next season-fane)
 // beslutter selv om nedad skal vises for den sæson der forhandles om.
 //
 // Ingen konstanter kopieres: divisions-baserne og faktoren kommer fra RULES_NUMBERS, som

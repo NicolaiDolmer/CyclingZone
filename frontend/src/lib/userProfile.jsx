@@ -52,11 +52,14 @@ export function UserProfileProvider({ children }) {
       return;
     }
     setLoading(true);
+    // #4869: .maybeSingle() — 0 rækker er lovligt (udløbet/ugyldig session
+    // giver RLS-skjult profil for egen bruger; se PR-body for RLS-analysen).
+    // .single() gav 406 for dette (68 gange på én bruger, edge_logs 4-5/9).
     const { data, error } = await supabase
       .from("users")
       .select(PROFILE_COLUMNS)
       .eq("id", uid)
-      .single();
+      .maybeSingle();
     setLoading(false);
     if (!error) setProfile(data || null);
   }, []);

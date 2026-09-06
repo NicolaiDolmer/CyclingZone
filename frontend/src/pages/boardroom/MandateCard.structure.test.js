@@ -15,7 +15,7 @@ test("#4557 mandate: null renderer den kanoniske EmptyState (T1 canonical states
 });
 
 test("#4557/#4570 mandate: mål-titlen bruger den delte type-styrede resolver, ikke rå labelKey-interpolation", () => {
-  assert.match(source, /import \{ formatShortDate, formatWeekdayShortDate, resolveGoalTitle \} from "\.\/boardroomFormat";/);
+  assert.match(source, /import \{[^}]*resolveGoalTitle[^}]*\} from "\.\/boardroomFormat";/);
   assert.match(source, /\{resolveGoalTitle\(t, goal\)\}/);
   assert.doesNotMatch(source, /t\(goal\.labelKey/, "titlen må ikke længere kaldes direkte via t(goal.labelKey, ...) — det er nu KUN resolverens interne fallback-sti");
 });
@@ -48,7 +48,22 @@ test("#4570-afstemning: 'Last movement'-linjen udelades HELT når backend ikke h
 test("#4557 mandate: Stretch-badge og statuspil er begge betinget af data (ingen hardcoded skærm-strenge)", () => {
   assert.match(source, /goal\.isStretch &&/);
   assert.match(source, /t\("boardroom\.mandate\.stretch"\)/);
-  assert.match(source, /t\(`boardroom\.status\.\$\{status\}`/);
+  // #4557 (overblik + faner): pillen er udtrukket til StatusPill.jsx, saa
+  // overblikkets resumé-raekke og det fulde kort deler ANATOMI (TASTE P8).
+  assert.match(source, /import StatusPill from "\.\/StatusPill\.jsx"/);
+  assert.match(source, /<StatusPill status=\{goal\.status\} t=\{t\} \/>/);
+});
+
+test("#4557 mandate: bonus-maerkatet er sit eget signal, ikke genbrug af Stretch", () => {
+  assert.match(source, /goal\.isBonus &&/);
+  assert.match(source, /t\("boardroom\.mandate\.bonus"\)/);
+});
+
+test("#4557 mandate: bonustilbuddet i fuld laengde bor i Mandat-fanen, koblet til samme payload-felt", () => {
+  assert.match(source, /import \{ BonusOfferBlock, BonusAcceptedLine \} from "\.\/BonusOffer\.jsx"/);
+  assert.match(source, /<BonusOfferBlock offer=\{bonusOffer\}/);
+  assert.match(source, /<BonusAcceptedLine offer=\{bonusOffer\}/);
+  assert.match(source, /export default function MandateCard\(\{ mandate, bonusOffer = null, onReload \}\)/);
 });
 
 test("#4557 mandate: 'Discuss target' er eksplicit disabled (no-op, årsmødet er S-M2c)", () => {

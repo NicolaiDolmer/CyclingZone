@@ -588,3 +588,37 @@ trænings-motorens output, i modsætning til kalenderens
 **Hvad dette afsnit IKKE ændrer:** kadencen (§1), tick-rækkefølgen (§2), dagstype-stigen (§3),
 ugerytmens prioritet (§4), restitution/form/skader (§5), løbsdags-flaget (§6), træner/facilitet (§7).
 Når et af issuerne merges, flyttes indholdet ind i det relevante afsnit, og rækken her slettes.
+
+---
+
+## 13. Ejerens beslutninger 6/9: træning pr. løbsdag (retning, ikke bygget)
+
+> **Status: låste beslutninger fra design-session 6/9 2026 (Claude Code, ét spørgsmål ad gangen). Intet af det er bygget; §1-§7 gælder indtil en PR ændrer dem. Mål: sæson 4 (fra 28/9), ikke midt i S3. Genåbn dem ikke.**
+
+**Ejerens udgangspunkt (ordret):** *"Jeg vil gerne begynde at designe spillet mod, at man træner på en løbsdag i stedet for hver irl dag. Så er det også nemmere at finde ud, om en rytter kører et løb eller træner den enkelte dag. Jeg vil også gerne have designet vores system til træningsscoren."*
+
+| # | Beslutning | Ejerens ord | Konsekvens |
+|---|---|---|---|
+| 1 | **Tick-enheden er løbsdagen (`game_day`), og alle divisioner har SAMME antal løbsdage pr. sæson** | *"Det skal være samme antal dage ind i spillet. Men divisionerne behøves ikke nødvendigvis at køre lige mange løb. Altså det kan sagtens være, at divisionerne der er lidt lavere, de bare får flere muligheder for at træne."* | Kalenderpakkeren fylder et fast antal løbsdage (fx 3 pr. kalenderdag) i alle divisioner; løbsdage uden løb er rene træningsdage. En rytter enten kører løb eller træner på hver løbsdag (§6.2-afvigelsen forsvinder strukturelt). Restitutionen får sin plads efter hver løbsdag (#3461). Rater rekalibreres så en sæsons samlede udvikling ikke stiger med antallet af ticks; "+1 pr. evne pr. dag" (#4801) betyder pr. løbsdag |
+| 2 | **"Træn i dag"-knappen og 25 %-bonussen fjernes** | valgt 6/9 (anbefaling: fjern begge) | Programmet kører af sig selv når løbsdagen lukker. Ingen fordel af at logge ind ofte. `DAILY_TRAINING_CONFIG.bonusMult` og `POST /api/training/run-today` udgår sammen med omlægningen; spillerens arbejde er program, dagens override og løbsdagens intention |
+| 3 | **Løbsdagens intention vælges i holdudtagelsen pr. etape, sammen med rolle og taktik; standard = Normal** | valgt 6/9 (anbefaling) | Træningssiden viser intentionen read-only ("Race: attack") med link til etapen. Én kilde, tre forbrugere: løbsmotor, træthed, udvikling. Lukker #4632 punkt 1. **`race_entries` har ingen intentions-kolonne i dag** (kolonner: `race_id, rider_id, team_id, is_auto_filled, created_at, race_role, binding_span`), så det er migration + API-kontrakt + holdudtagelses-UI, ikke en aflæsning |
+| 4 | **Træningsscoren måler PASSETS KVALITET (1-99), ikke udbyttet** | *"Tættest på 1 - Men det skal også være alt efter hvor hurtigt/godt han udvikler sig. Sådan store talenter har bedre score, end nær så gode talenter. Derudover skal det også stige, hvis man har bedre træner, hvis man har bedre akademi mv. Altså underforstået, fordi man træner bedre."* | Score = f(potentiale, alder, session/intensitet, form/træthed, fokus-match, træner, faciliteter/akademi), og udviklingen udledes AF scoren. Bekræfter #3564 beslutning 5 og vender kausalretningen om: i dag er `tickResult.score` summen af de deltaer motoren allerede har beregnet (`dailyTraining.js:214, 233`). Scoren må IKKE være cap-afhængig som i dag (`dailyTraining.js:118-119`), hvor en rytter med fokus-evner på loftet får 0 efter et perfekt pas. Udbyttet pr. evne vises fortsat som +point på udviklingsfanen |
+| 5 | **Scoren ses KUN af rytterens egen manager og er ÆRLIG fra dag ét** | valgt 6/9 | RLS som i dag (`training_day_runs_select`-mønsteret: kun holdets ejer kan læse). **#3564 beslutning C frafalder** - ingen støj-gate, ingen "median ≥14 dage før potentialet kan aflæses". Accepteret pris: køb-træn-sælg bliver et scouting-loop. Markedsværdi og fremmede ryttere røres ikke, så #2798-sidekanalen er uændret |
+| 6 | **Visning: kolonne på listen, kort på profilen** | valgt 6/9 | (a) Kolonne "Score" på træningssidens rytterliste: dagens tal + de sidste 7 løbsdage som lille monokrom sparkline (`docs/design/TASTE.md:40`, fork 5), sortérbar. (b) Kort på rytterprofilens træningsfane: dagens tal stort, gennemsnit + bedste over 30 løbsdage, kurve, én linje "hvad trækker op/ned". Kortet **erstatter** den nuværende 30-dages-boks (`RiderTrainingTab.jsx:367-398`: trænede dage/gennembrud/skarpe dage). Løbsdage viser "løb", ikke et tal; kurven har hul |
+
+**Arkitekt-beslutninger (Claude, ikke ejeren, må udfordres):** ét tal pr. rytter pr. løbsdag, ikke pr. evne · egen tabel rytter × løbsdag (fx `rider_training_scores`) i stedet for report-JSON · støj-seed nøgles på løbsdagen, ikke på datoen (`dailyTraining.js:200` bruger i dag kalenderdatoen) · scoren driver udvikling + assistentens forslag, men IKKE AI-holdenes træning og IKKE værdi/løn i første omgang (værdi-koblingen hører til #3564 trin 4).
+
+### 13.1 Parkeret 6/9 (genåbnes senere, ikke afgjort)
+
+| Punkt | Ejerens ord / status |
+|---|---|
+| Programmets rytme når dagen er en løbsdag: 7-løbsdages-cyklus eller den rigtige uge med 3 slots | *"Det virker ikke som om noget af det der det rammer rigtigt for mig."* Ingen af de to varianter valgt |
+| Træningssidens layout | Afgøres af spillernes svar på side-om-side-mockupsene i `docs/design/mockups-training-2026-09-06/` |
+
+### 13.2 Åbne punkter (ikke stillet endnu, ét ad gangen)
+
+Løbsdagens rytme i rigtig tid (antal pr. kalenderdag, klokkeslæt, hvornår tick'et lukker) · hvad der kan nå sæson 4 · om en løbsdag med løb også får en score på samme skala · off-season-hullet mellem to sæsoner · økonomi pr. kalenderdag mod udvikling pr. løbsdag · sweep-kapacitet (ca. 3x writes pr. døgn) · ops-vagter kalibreret pr. kalenderdag · skadesvarighed i løbsdage eller kalenderdage · historikkens akse · rytter solgt mellem divisioner midt i sæsonen · Grand Tour-hviledage · hvad der sker med eksisterende `training_day_runs` uden `game_day`.
+
+**Deadline (ejer 6/9, ordret): "skiftet til det nye træningssystem senest sker til sæson 4 starten"**, dvs. live 28/9 2026; kalender-delen skal før S4-genereringen.
+
+**Fuldt design, faseplan og de konkrete brud pr. fil:linje:** [`docs/superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md`](superpowers/specs/2026-09-06-traening-pr-loebsdag-og-traeningsscore-design.md). Kortlægningen bag den er session-workflow 6/9 (fire lanes: tick, kalender, score, flader + kritiker), verificeret mod `main` og prod.
