@@ -291,3 +291,69 @@ test("#4373: alle nye event-nøgler findes i BEGGE locale-filer", async () => {
     }
   }
 });
+
+// ── #2944: incident-trappen → fire udfald i spillerens sprog ────────────────
+
+const INCIDENT_LADDER_KEYS = [
+  "incident_crash_time_loss",
+  "incident_crash_hard",
+  "incident_crash_abandon",
+  "incident_mechanical",
+  "incident_mechanical_helper",
+  "incident_protected",
+];
+
+test("#2944: describeEvent vælger den rigtige nøgle for hvert af trappens udfald", () => {
+  const names = riderNameByIdFixture();
+  const [riderId, riderName] = [...names.entries()][0];
+  const describe = (params) =>
+    describeEvent({ type: "incident", km: 40, params: { rider_id: riderId, ...params } }, { riderNameById: names });
+
+  const light = describe({ kind: "crash", severity: "light", outcome: "time_loss", time_loss_seconds: 12, injury_days: null });
+  assert.equal(light.key, "incident_crash_time_loss");
+  assert.equal(light.params.rider, riderName);
+  assert.equal(light.params.seconds, 12);
+
+  const hard = describe({ kind: "crash", severity: "hard", outcome: "time_loss", time_loss_seconds: 140.4, injury_days: 3 });
+  assert.equal(hard.key, "incident_crash_hard");
+  assert.equal(hard.params.seconds, 140);
+  assert.equal(hard.params.days, 3);
+
+  const abandon = describe({ kind: "crash", severity: "serious", outcome: "abandoned", time_loss_seconds: null, injury_days: 9 });
+  assert.equal(abandon.key, "incident_crash_abandon");
+  assert.equal(abandon.params.days, 9);
+
+  const mechanical = describe({ kind: "mechanical", severity: null, outcome: "time_loss", time_loss_seconds: 60, helper_assist: false });
+  assert.equal(mechanical.key, "incident_mechanical");
+
+  const helped = describe({ kind: "mechanical", severity: null, outcome: "time_loss", time_loss_seconds: 27, helper_assist: true });
+  assert.equal(helped.key, "incident_mechanical_helper");
+  assert.equal(helped.params.seconds, 27);
+
+  const protectedByRule = describe({ kind: "crash", severity: "light", outcome: "protected_three_km_rule", time_loss_seconds: null });
+  assert.equal(protectedByRule.key, "incident_protected");
+});
+
+test("#2944: et gammelt incident-event uden alvorsakse falder tilbage på den oprindelige nøgle", () => {
+  const names = riderNameByIdFixture();
+  const [riderId] = [...names.keys()];
+  const legacy = describeEvent(
+    { type: "incident", km: 40, params: { rider_id: riderId, kind: "mechanical", outcome: "time_loss", time_loss_seconds: 30 } },
+    { riderNameById: names },
+  );
+  assert.equal(legacy.key, "incident", "v3-events (uden severity) skal beholde den art-only sætning");
+  assert.equal(legacy.params.kind, "mechanical");
+});
+
+test("#2944: alle trappens nøgler findes i BEGGE locale-filer", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    for (const key of INCIDENT_LADDER_KEYS) {
+      assert.ok(doc.detail.film.event[key], `${lang}: mangler detail.film.event.${key}`);
+    }
+  }
+});

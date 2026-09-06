@@ -176,98 +176,112 @@
       "rank": 1,
       "time_seconds": 5244.01,
       "group_id": "finale-winner-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r07",
       "rank": 2,
       "time_seconds": 5277.62,
       "group_id": "breakaway-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r03",
       "rank": 3,
       "time_seconds": 5277.62,
       "group_id": "breakaway-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r09",
       "rank": 4,
       "time_seconds": 5277.62,
       "group_id": "breakaway-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r10",
       "rank": 5,
       "time_seconds": 5277.62,
       "group_id": "breakaway-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r14",
       "rank": 6,
       "time_seconds": 5293.11,
       "group_id": "peloton-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r06",
       "rank": 7,
       "time_seconds": 5293.11,
       "group_id": "peloton-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r13",
       "rank": 8,
       "time_seconds": 5293.11,
       "group_id": "peloton-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r04",
       "rank": 9,
       "time_seconds": 5293.11,
       "group_id": "peloton-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r05",
       "rank": 10,
       "time_seconds": 5293.11,
       "group_id": "peloton-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r12",
       "rank": 11,
       "time_seconds": 5293.11,
       "group_id": "peloton-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r11",
       "rank": 12,
       "time_seconds": 5293.11,
       "group_id": "peloton-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r02",
       "rank": 13,
       "time_seconds": 5293.11,
       "group_id": "peloton-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r08",
       "rank": 14,
       "time_seconds": 5293.11,
       "group_id": "peloton-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     }
   ],
   "loads": [
@@ -470,5 +484,6 @@
         }
       ]
     }
-  ]
+  ],
+  "incidents": []
 }

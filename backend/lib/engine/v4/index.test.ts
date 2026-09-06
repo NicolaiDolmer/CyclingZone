@@ -9,6 +9,7 @@ import { simulateStageV4 } from "./index.ts";
 import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
 import { makeGroupId, splitGroup } from "./groups.ts";
 import { RACE_V4_TUNING } from "./tuning.ts";
+import { validateTimelineEvents } from "./timeline.ts";
 import type {
   AbilityKey,
   Entrant,
@@ -258,4 +259,159 @@ test("fog-gate-sanity: Fase As event-params indeholder ingen raa fysiologi-noegl
     }),
     { numRuns: 100 },
   );
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// #2944 — M10 (incidents) er KOBLET IND i simulateStageV4. Integrations-tests:
+// (f) tidslinje-validatoren faelder ingen af trappens nye events
+// (g) gruppe-tids-invarianten holder stadig for ryttere UDEN uheld
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Et stort, langt loeb der GARANTERET producerer uheld med den rigtige
+ * (u-riggede) tuning: 120 ryttere x 400 km. Rigges IKKE — det er hele pointen
+ * at maale den motor spilleren faar.
+ */
+function buildIncidentHeavyInput(seed: string, profileType: ProfileType = "flat"): StageInput {
+  const startlist: Entrant[] = [];
+  for (let i = 0; i < 120; i += 1) {
+    const base = 20 + (i % 60);
+    const abilityRecord = {} as Record<AbilityKey, number>;
+    for (const key of ABILITY_KEYS) abilityRecord[key] = base;
+    abilityRecord.sprint = 20 + ((i * 7) % 70);
+    abilityRecord.climbing = 20 + ((i * 11) % 70);
+    startlist.push({
+      rider_id: `r${String(i).padStart(3, "0")}`,
+      abilities: abilityRecord,
+      role: ROLES[i % ROLES.length],
+      effort: "normal",
+      condition: 1,
+    });
+  }
+  const route: RouteV2 = {
+    distance_km: 400,
+    profile_type: profileType,
+    finale_type: "bunch_sprint",
+    segments: [
+      { kind: "flat", from_km: 0, to_km: 120 },
+      { kind: "rolling", from_km: 120, to_km: 240 },
+      { kind: "descent", from_km: 240, to_km: 320, technicality: 2 },
+      { kind: "flat", from_km: 320, to_km: 400 },
+    ] as Segment[],
+    weather: { kind: "sun", wind_exposure: 0.2 },
+    waypoints: [{ kind: "finish", index: 0, name: "Maal", km: 400 }],
+  };
+  return { route, startlist, orders: [], seed, tuning: RACE_V4_TUNING };
+}
+
+test("#2944 (f): tidslinje-validatoren faelder ingen af trappens fire udfald (60 loeb)", () => {
+  let incidentEvents = 0;
+  const seenOutcomes = new Set<string>();
+  for (let i = 0; i < 60; i += 1) {
+    const input = buildIncidentHeavyInput(`timeline-validator-2944-${i}`, i % 2 === 0 ? "flat" : "mountain");
+    const out = simulateStageV4(input);
+    const violations = validateTimelineEvents(out.timeline.events, {
+      distanceKm: input.route.distance_km,
+      knownRiderIds: new Set(input.startlist.map((e) => e.rider_id)),
+    });
+    assert.deepEqual(violations, [], `seed ${i}: ${violations.map((v) => v.message).join("; ")}`);
+    for (const ev of out.timeline.events) {
+      if (ev.type !== "incident") continue;
+      incidentEvents += 1;
+      seenOutcomes.add(String(ev.params.outcome));
+      // Fog-gate (invariant 5): kun sekunder og dage — aldrig andele/risici.
+      const allowed = new Set(["rider_id", "kind", "outcome", "time_loss_seconds", "severity", "injury_days", "helper_assist"]);
+      for (const key of Object.keys(ev.params)) {
+        assert.ok(allowed.has(key), `incident-event laekker uventet noegle "${key}"`);
+      }
+    }
+  }
+  assert.ok(incidentEvents > 0, "60 lange loeb skal producere uheld (ellers er testen vakuoest sand)");
+  assert.ok(seenOutcomes.has("time_loss"), `saa aldrig outcome 'time_loss' (saa: ${[...seenOutcomes].join(", ")})`);
+});
+
+test("#2944 (g): gruppe-tids-invarianten holder for ryttere UDEN uheld, med uheld slaaet til (60 loeb)", () => {
+  let checkedStages = 0;
+  let stagesWithIncidents = 0;
+  for (let i = 0; i < 60; i += 1) {
+    const input = buildIncidentHeavyInput(`group-invariant-2944-${i}`, i % 2 === 0 ? "flat" : "mountain");
+    const out = simulateStageV4(input);
+    checkedStages += 1;
+    const victims = new Set((out.incidents ?? []).map((inc) => inc.rider_id));
+    if (victims.size > 0) stagesWithIncidents += 1;
+
+    // Uheld er EKSOGENE: de kan flytte et offer ud af sin gruppe. Men for
+    // alle andre skal gruppe-tids-princippet (invariant 2) staa uroert — et
+    // uheld maa aldrig give to uskadte ryttere i SAMME gruppe forskellig tid,
+    // og dermed heller ikke lade en svagere rytter faa en bedre tid end en
+    // staerkere i samme gruppe.
+    const timeByGroup = new Map<string, number>();
+    for (const r of out.results) {
+      if (victims.has(r.rider_id)) continue;
+      const existing = timeByGroup.get(r.group_id);
+      if (existing === undefined) timeByGroup.set(r.group_id, r.time_seconds);
+      else {
+        assert.equal(
+          r.time_seconds,
+          existing,
+          `seed ${i}: uskadt rytter ${r.rider_id} afviger fra sin gruppes (${r.group_id}) tid`,
+        );
+      }
+    }
+
+    // Invariant 6 (laast feltstoerrelse) skal ogsaa holde MED udgaaelser:
+    // en udgaaet rytter forsvinder ikke fra resultatet, han faar en status.
+    assert.equal(out.results.length, input.startlist.length, `seed ${i}: feltstoerrelsen aendrede sig`);
+    assert.deepEqual(
+      out.results.map((r) => r.rank),
+      out.results.map((_, idx) => idx + 1),
+      `seed ${i}: placeringer er ikke en komplet permutation 1..N`,
+    );
+
+    // En udgaaet rytter kan aldrig staa foran en der gennemfoerte.
+    let seenAbandoned = false;
+    for (const r of out.results) {
+      if (r.status === "abandoned") seenAbandoned = true;
+      else assert.ok(!seenAbandoned, `seed ${i}: ${r.rider_id} gennemfoerte men staar EFTER en udgaaet`);
+    }
+  }
+  assert.equal(checkedStages, 60);
+  assert.ok(stagesWithIncidents > 0, "testen skal have set uheld (ellers maaler den ingenting)");
+});
+
+test("#2944: skadedage og udgaaelse baeres videre i StageResult + StageOutput.incidents", () => {
+  // Scanner til der findes et loeb med mindst ét skade-givende uheld, saa
+  // spejlingen result.injury_days <-> incidents[] faktisk testes paa data.
+  let checked = 0;
+  for (let i = 0; i < 200 && checked < 3; i += 1) {
+    const input = buildIncidentHeavyInput(`injury-mirror-2944-${i}`, "mountain");
+    const out = simulateStageV4(input);
+    const injured = (out.incidents ?? []).filter((inc) => inc.injury_days != null);
+    if (injured.length === 0) continue;
+    checked += 1;
+
+    for (const inc of injured) {
+      assert.equal(inc.kind, "crash", "kun et STYRT kan skade en rytter (#4520)");
+      const row = out.results.find((r) => r.rider_id === inc.rider_id)!;
+      assert.ok(
+        (row.injury_days ?? 0) >= inc.injury_days!,
+        `${inc.rider_id}: StageResult.injury_days (${row.injury_days}) skal spejle protokollen (${inc.injury_days})`,
+      );
+    }
+    for (const inc of out.incidents ?? []) {
+      if (inc.kind !== "mechanical") continue;
+      assert.equal(inc.injury_days, null);
+      assert.notEqual(inc.outcome, "abandoned");
+      const row = out.results.find((r) => r.rider_id === inc.rider_id)!;
+      // Et mekanisk uheld alene maa aldrig give en rytter status 'abandoned'.
+      const alsoCrashed = (out.incidents ?? []).some(
+        (o) => o.rider_id === inc.rider_id && o.outcome === "abandoned",
+      );
+      if (!alsoCrashed) assert.equal(row.status, "finished");
+    }
+    // Protokollen er sorteret paa (km, rider_id) — stabil for aftagere.
+    const sorted = [...(out.incidents ?? [])].sort((a, b) => a.km - b.km || a.rider_id.localeCompare(b.rider_id));
+    assert.deepEqual(out.incidents, sorted);
+  }
+  assert.ok(checked > 0, "fandt aldrig et loeb med skade-givende uheld — testen maaler ingenting");
 });

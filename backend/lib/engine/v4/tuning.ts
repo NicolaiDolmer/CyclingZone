@@ -298,7 +298,58 @@ const incidentsExtra = {
   positioningDampening: 0.00006, // risiko-reduktion pr. positioning-evne-point (0-99-skala) — samme daempnings-moenster som descent.ts's incidentRiskDescendingDampening, ALDRIG omvendt fortegn
   threeKmRuleWindowKm: 3, // "3 km-reglen"-vinduet fra maalstregen (mor-spec §8 beslutning 8)
   flatProfileTypes: ["flat", "rolling", "cobbles", "gravel", "classic"] as ProfileType[], // "FLADE etaper" i 3 km-reglens forstand — MODSAT bjergetaper; hilly/mountain/high_mountain udelukket (afgoerende gradient ved maal, M4-punch-territorium), itt/itt_hilly/ttt udelukket (ingen bundt-placering at beskytte). Start-kandidat, justerbar i head-to-head
-  unprotectedTimeLossSecondsRange: [5, 25] as readonly [number, number], // sekunder tabt ved et styrt UDEN 3 km-reglens beskyttelse — rent uheld, bevidst IKKE evne-skaleret (crash-alvor er ikke en testet evne, jf. monotoni-invarianten der kun gaelder evne-testede mekanikker)
+  unprotectedTimeLossSecondsRange: [5, 25] as readonly [number, number], // sekunder tabt ved et LET styrt UDEN 3 km-reglens beskyttelse — rent uheld, bevidst IKKE evne-skaleret (crash-alvor er ikke en testet evne, jf. monotoni-invarianten der kun gaelder evne-testede mekanikker). #2944: dette er trappens TRIN 1
+
+  // ── #2944-trappen (ejer-beslutning 6/9, LAAST) ─────────────────────────────
+  // ALLE vaerdier herunder er STARTGAET, KALIBRERES — de er valgt saa
+  // uheldsraten lander i ejerens maalbaand (1-2 % af rytterne pr. etape) og
+  // maales af backend/scripts/headToHeadV4.js's uhelds-sektion. Ingen af dem
+  // er ejer-godkendte tal; de er regressionsvagt indtil et scorecard siger
+  // andet (doktrinen "et gulv er ikke et maal", #4221).
+
+  // Risikoen er PR. KM, ikke pr. segment: `baseRiskPerSegment` laeses som
+  // risikoen for ét segment af `referenceSegmentKm` laengde og skaleres
+  // lineaert med segmentets faktiske laengde. Uden det ville en rute med 12
+  // korte segmenter give 4x risikoen af en rute med 3 lange — altsaa lod
+  // rute-MODELLENS granularitet, ikke etapens laengde, bestemme uheldsraten.
+  referenceSegmentKm: 40,
+
+  // Art-fordeling. Rest (1 - mechanicalShare) er styrt. v3's tilsvarende
+  // INCIDENT_MECHANICAL_SHARE er 0,3; her lidt hoejere, fordi v4's mekaniske
+  // uheld pr. konstruktion er UFARLIGE (kun tid) og derfor kan vaere hyppigere
+  // uden at goere loebet mere uretfaerdigt (#2944's kerne-klage).
+  mechanicalShare: 0.4,
+
+  // Alvorsaksen INDEN FOR styrt (summen af hard+serious < 1; resten er light).
+  // "serious" er ejerens SJAELDNE trin: ~3 % af styrt, dvs. langt under én pr.
+  // etape ved et normalt felt. Testen incidents.test.ts laaser <= 8 % som
+  // regressions-loft (dokumenteret taerskel, ikke maalet).
+  crashSeverityShares: { hard: 0.22, serious: 0.03 },
+
+  hardCrashTimeLossSecondsRange: [60, 240] as readonly [number, number], // TRIN 2: stort tidstab, men rytteren gennemfoerer
+  hardCrashInjuryDaysRange: [1, 4] as readonly [number, number], // TRIN 2: skade i dage (v3's INCIDENT_INJURY_MIN/MAX_DAYS er 1-5)
+  seriousCrashInjuryDaysRange: [4, 14] as readonly [number, number], // TRIN 3: udgaar + laengere skade
+
+  // TRIN 4: mekanisk uheld (punktering, kaede, hjul). ALDRIG abandoned, ALDRIG
+  // skade — kun tid. Spaendet er smallere end et haardt styrt: et hjulskift
+  // koster typisk mindre end at samle sig selv op.
+  mechanicalTimeLossSecondsRange: [20, 90] as readonly [number, number],
+  // "En hjaelper taet paa giver hurtigere hjulskift": multiplikator paa
+  // tidstabet naar betingelsen holder. STRENGT under 1, saa testen
+  // "hjaelper => strengt mindre tidstab" ikke kan blive vakuoest sand.
+  mechanicalHelperTimeLossFactor: 0.45,
+
+  // HAARDT LOFT pr. etape — ARVET fra v3's RACE_V3_INCIDENT_MAX_FIELD_SHARE
+  // (0,05 = 5 % af feltet). Loftet er REGRESSIONSVAGT, ikke maalet: maalet er
+  // 1-2 %, og et loft der binder er et signal om at basis-risikoen er for hoej.
+  maxIncidentsFieldShare: 0.05,
+
+  // En udgaaet rytter flyttes til sin egen gruppe med dette gap, saa han (a)
+  // aldrig merges tilbage ind i feltet af mergeGroups, (b) ikke laenger
+  // traekker i nogen gruppes tempo, og (c) sorterer sidst uanset opgoer.
+  // Vaerdien er en REPRAESENTATION af "ingen maaltid", ikke en paastand om en
+  // faktisk tid; index.ts sorterer i forvejen abandoned sidst.
+  abandonedGapSeconds: 3600,
 };
 
 /** M10 additiv incidents-tuning (deep-frosset). Se incidentsExtra-kommentaren ovenfor. */

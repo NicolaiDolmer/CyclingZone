@@ -159,6 +159,63 @@ function summarizeV4(stageOutput) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Uheldsrate (#2944) — audit-fundet 5/9: "uheldsfrekvensen er aldrig maalt mod
+// virkeligheden" (nul hits paa "incident" i dette script). Ejerens maal er ca.
+// 1-2 % af rytterne pr. etape. Denne sektion summerer v4's uheldsprotokol
+// (StageOutput.incidents) til praecis det tal, plus fordelingen paa trappens
+// fire udfald og DNF-raten.
+// ---------------------------------------------------------------------------
+
+export function summarizeIncidents(rows) {
+  const acc = {
+    stages: 0,
+    riders: 0,
+    incidents: 0,
+    light: 0,
+    hard: 0,
+    serious: 0,
+    mechanical: 0,
+    protectedByRule: 0,
+    helperAssists: 0,
+    dnf: 0,
+  };
+  for (const row of rows) {
+    const output = row.raw?.v4Output;
+    if (!output) continue;
+    acc.stages += 1;
+    acc.riders += output.results.length;
+    acc.dnf += output.results.filter((r) => r.status === "abandoned").length;
+    for (const inc of output.incidents ?? []) {
+      acc.incidents += 1;
+      if (inc.kind === "mechanical") acc.mechanical += 1;
+      else if (inc.severity === "serious") acc.serious += 1;
+      else if (inc.severity === "hard") acc.hard += 1;
+      else acc.light += 1;
+      if (inc.outcome === "protected_three_km_rule") acc.protectedByRule += 1;
+      if (inc.helper_assist) acc.helperAssists += 1;
+    }
+  }
+  return acc;
+}
+
+function pct(part, whole) {
+  return whole > 0 ? `${((100 * part) / whole).toFixed(2)} %` : "n/a";
+}
+
+export function formatIncidentSummary(acc) {
+  const crashes = acc.light + acc.hard + acc.serious;
+  return [
+    "-- Uheld (#2944, v4) --",
+    `Etaper: ${acc.stages}. Rytter-starter i alt: ${acc.riders}.`,
+    `Uheld pr. etape: ${pct(acc.incidents, acc.riders)} af rytterne (${acc.incidents} uheld) — ejer-maal 1-2 %.`,
+    `Fordeling: let styrt ${acc.light} / haardt styrt ${acc.hard} / alvorligt styrt ${acc.serious} / mekanisk ${acc.mechanical}.`,
+    `Andel af STYRT der er alvorlige: ${pct(acc.serious, crashes)} (regressions-taerskel i test: <= 8 %).`,
+    `DNF-rate pr. etape: ${pct(acc.dnf, acc.riders)} af feltet (${acc.dnf} udgaaede).`,
+    `3 km-reglen beskyttede: ${acc.protectedByRule}. Hjulskift med hjaelper taet paa: ${acc.helperAssists}.`,
+  ].join("\n");
+}
+
 function printComparisonTable(rows) {
   const header = [
     "stage", "profile_type",
@@ -496,12 +553,17 @@ function main() {
 
   const scorecards = [];
   const orderEffects = [];
+  const allRows = [];
   for (const seed of seeds) {
     const rows = runHeadToHead({ population, stages, seedInput: seed, fieldSize, orderMode });
     if (seeds.length === 1) printComparisonTable(rows);
     for (const row of rows) if (row.orderEffect) orderEffects.push(row.orderEffect);
+    allRows.push(...rows);
     scorecards.push(buildScorecard(rows, { teamByRider, abilitiesByRider, v4EntrantsById }));
   }
+
+  console.log("");
+  console.log(formatIncidentSummary(summarizeIncidents(allRows)));
 
   if (orderEffects.length > 0) {
     console.log("");

@@ -72,6 +72,7 @@ export const DEFAULT_MECHANIC_HOOKS: MechanicHooks = {
   descent: noopHook,
   finale: noopHook,
   breakaway: noopHook,
+  incidents: noopHook,
 };
 
 // ── Kollektiv-CP + hastighed ───────────────────────────────────────────────────
@@ -317,6 +318,22 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // wiring-note foreskriver.
     {
       const result = hooks.breakaway(state, ctx);
+      state = result.state;
+      timeline.push(...result.events);
+    }
+
+    // M10 (#2944): incidents-trappen koeres paa HVERT segment — et uheld er
+    // ambient og hoerer ikke til én terraen-type. Placeringen er bevidst:
+    //   EFTER M2/M3/M5, saa dagens selektion og udbruddet allerede har formet
+    //   grupperne (et uheld rammer den gruppe rytteren FAKTISK er i), og
+    //   FOER M4/finale-hooket, saa et styrt paa sidste segment tager rytteren
+    //   ud af frontgruppen INDEN spurten gøres op — praecis som i virkeligheden.
+    //   FOER merge-trinnet, saa en uheldsramt der kun tabte faa sekunder kan
+    //   smelte tilbage i sin gruppe samme segment.
+    // Hooket er VALGFRIT (types.ts): et hook-saet uden `incidents` koerer
+    // etapen helt uden uheld — det er den gamle F2-adfaerd, uaendret.
+    if (hooks.incidents) {
+      const result = hooks.incidents(state, ctx);
       state = result.state;
       timeline.push(...result.events);
     }

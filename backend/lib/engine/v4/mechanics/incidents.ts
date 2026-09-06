@@ -20,6 +20,30 @@
 // egen kommentar): et styrt UDEN 3 km-reglens beskyttelse splitter rytteren
 // bagud i en ny solo-gruppe med et sekund-tab (rent gruppe-princip, groups.ts).
 //
+// ── #2944 TRAPPEN (ejer-beslutning 6/9, LAAST) ──────────────────────────────
+// Ejerens klage (Discord 1/8, #2944): et styrt er i dag et BINAERT totaltab —
+// enten intet, eller ude af loebet med skadedage. Varians uden mitigering
+// opleves som uretfaerdighed, ikke spaending. Trappen erstatter det binaere:
+//
+//   TRIN 1  let styrt        tidstab, koerer videre               (ingen skade)
+//   TRIN 2  haardt styrt     stort tidstab + skade i dage
+//   TRIN 3  alvorligt styrt  udgaar (status "abandoned") + skadedage. SJAELDENT
+//   TRIN 4  mekanisk uheld   ALTID kun tidstab. ALDRIG udgaaelse, ALDRIG skade.
+//                            En hjaelper taet paa => hurtigere hjulskift =>
+//                            STRENGT mindre tidstab.
+//
+// SKADE-REGLEN (#4520, allerede v3's regel i raceIncidents.js:108-117 og
+// raceRunner.js:1431): KUN et styrt kan skade en rytter. Det er haandhaevet
+// STRUKTURELT her — `resolveIncident` har praecis ÉN gren der kan saette
+// injury_days, og den ligger inde i styrt-grenen. En mekanisk hændelse kan
+// pr. konstruktion ikke naa den (property-testet over 500 seeds).
+//
+// HYPPIGHED: ejerens maal er ca. 1-2 % af rytterne pr. etape (#2944). To ting
+// baerer det: (a) risikoen skaleres PR. KM (referenceSegmentKm) i stedet for
+// pr. segment, saa rute-modellens granularitet ikke bestemmer raten, og (b) et
+// HAARDT LOFT pr. etape arvet fra v3 (INCIDENT_MAX_FIELD_SHARE = 5 % af
+// feltet). Loftet er regressionsvagt; maalet er basis-risikoen.
+//
 // 3 KM-REGLEN (mor-spec §8 beslutning 8): et styrt med km-maerke INDEN FOR
 // tuning.threeKmRuleWindowKm af maalstregen PAA EN FLAD ETAPE (INCIDENTS_EXTRA_
 // TUNING.flatProfileTypes) giver INGEN tidskonsekvens — rytteren bliver i sin
@@ -41,18 +65,26 @@
 
 import type {
   EngineState,
+  Entrant,
+  IncidentKind,
+  IncidentOutcome,
+  IncidentSeverity,
   ProfileType,
   RaceGroup,
   RiderState,
+  Segment,
   SegmentHookContext,
   SegmentHookResult,
   SegmentKind,
+  StageIncident,
   StageResult,
   TimelineEvent,
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { incidentEvent } from "../timeline.ts";
 import { INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
+
+type IncidentsTuning = typeof INCIDENTS_EXTRA_TUNING;
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -111,102 +143,302 @@ export function threeKmRuleApplies(
   return isFlatStageForThreeKmRule(profileType, tuning) && isWithinThreeKmWindow(km, distanceKm, tuning);
 }
 
-type CrashOutcome = { riderId: string; km: number; protectedByRule: boolean; timeLossSeconds: number | null };
+// ── #2944: laengde-skalering, felt-loft, hjaelper-naerhed, trappen ───────────
 
 /**
- * M10-mekanikken: incidents med km-maerke, tiltaenkt kaldt paa ETHVERT
- * segment (til forskel fra M2/M3, som kun kaldes paa hhv. climb/descent — se
- * filens WIRING-BEHOV-note nederst). Behandler hver gruppe uafhaengigt: for
- * hver stadig-racende rytter rulles en seedet, positioning-daempet
- * styrt-risiko; ved styrt afgoer 3 km-reglen konsekvensen (protected = ingen
- * state-aendring, kun event; unprotected = split til egen solo-gruppe med et
- * seedet sekund-tab). REN: intet input muteres, samme (state, ctx) -> samme
- * output.
+ * Laengde-faktoren for ét segment: `baseRiskPerSegment` er defineret for et
+ * segment paa `referenceSegmentKm`, og skaleres LINEAERT med den faktiske
+ * laengde. Uden den bestemmer rute-modellens SEGMENT-ANTAL uheldsraten pr.
+ * etape i stedet for etapens laengde (en bjergetape splittes i 12 segmenter,
+ * en flad i 3 — samme risiko pr. segment ville give 4x raten paa bjerget).
+ *
+ * Aldrig negativ; et 0-km segment giver praecis 0.
+ */
+export function segmentLengthFactor(
+  segment: Pick<Segment, "from_km" | "to_km">,
+  tuning: Pick<IncidentsTuning, "referenceSegmentKm">,
+): number {
+  const lengthKm = Math.max(0, (Number(segment.to_km) || 0) - (Number(segment.from_km) || 0));
+  const reference = tuning.referenceSegmentKm > 0 ? tuning.referenceSegmentKm : 1;
+  return lengthKm / reference;
+}
+
+/**
+ * v3's HAARDE LOFT pr. etape (raceIncidents.rollIncidents' INCIDENT_MAX_FIELD_
+ * SHARE, default 0,05), arvet 1:1 inkl. `Math.ceil`-afrundingen — et lille felt
+ * faar altid mindst ét muligt uheld.
+ *
+ * FORSKEL FRA v3 (bevidst): v3 ruller HELE etapen paa én gang og beholder ved
+ * overskridelse de "mest afgoerende" hits (lavest u1). v4's hook kaldes pr.
+ * SEGMENT og kan ikke se fremad, saa loftet er KRONOLOGISK: etapens foerste N
+ * uheld staar. Begge er deterministiske haarde graenser ved samme andel.
+ */
+export function maxIncidentsForField(
+  fieldSize: number,
+  tuning: Pick<IncidentsTuning, "maxIncidentsFieldShare">,
+): number {
+  const n = Math.max(0, Math.floor(Number(fieldSize) || 0));
+  if (n === 0) return 0;
+  return Math.ceil(tuning.maxIncidentsFieldShare * n);
+}
+
+/**
+ * "En hjaelper taet paa" (ejer-beslutning 6/9). "TAET PAA" er defineret som:
+ * en ANDEN rytter der stadig raser og ligger i SAMME GRUPPE i dette segment.
+ * Gruppen ER naerheds-modellen i v4 (mor-spec §3.2) — der findes ingen finere
+ * positions-akse at maale afstand paa.
+ *
+ * HVORFOR ROLLE og ikke hold: `Entrant` (types.ts, frossen kerne-kontrakt)
+ * baerer INTET team_id — kernen kender rolle, evner, effort og condition, ikke
+ * holdtilhoersforhold. Rollen `helper` er derfor den del af ejerens formulering
+ * ("rolle helper eller holdkammerat i samme gruppe") der faktisk kan afgoeres
+ * her. Naar/hvis team_id lander i Entrant, strammes definitionen til
+ * "holdkammerat ELLER helper i samme gruppe" ved at udvide DENNE ene funktion.
+ */
+export function hasHelperNearby(
+  groupRiderIds: readonly string[],
+  entrants: Readonly<Record<string, Entrant>>,
+  riders: Readonly<Record<string, RiderState>>,
+  victimRiderId: string,
+): boolean {
+  for (const riderId of groupRiderIds) {
+    if (riderId === victimRiderId) continue;
+    if (riders[riderId]?.status !== "racing") continue;
+    if (entrants[riderId]?.role === "helper") return true;
+  }
+  return false;
+}
+
+/** De fire uafhaengige lodtraekninger ét uheld bruger. Alle uniform [0, 1). */
+export type IncidentRolls = {
+  kind: number; // art: mekanisk vs. styrt
+  severity: number; // alvorstrin (kun laest for styrt)
+  magnitude: number; // sekunder inden for trinnets spaend
+  injury: number; // dage inden for trinnets spaend
+};
+
+export type ResolvedIncident = {
+  kind: IncidentKind;
+  severity: IncidentSeverity | null;
+  outcome: IncidentOutcome;
+  timeLossSeconds: number | null;
+  injuryDays: number | null;
+  helperAssist: boolean;
+};
+
+/**
+ * TRAPPEN, som REN funktion (#2944, ejer-beslutning 6/9). Fire lodtraekninger
+ * ind, ét udfald ud — ingen state, ingen rng, ingen tid.
+ *
+ * STRUKTUREL GARANTI: der findes praecis ÉN `return` der kan baere
+ * `injuryDays !== null` eller `outcome === "abandoned"`, og den ligger INDE i
+ * styrt-grenen efter `if (isMechanical) return ...`. En mekanisk haendelse kan
+ * derfor ikke naa dem — det er #4520's regel haandhaevet af kontrolstroemmen,
+ * ikke af et filter der kan glemmes.
+ *
+ * 3 KM-REGLEN og ALVOREN er UAFHAENGIGE akser: reglen beskytter TIDEN (mor-spec
+ * §8 beslutning 8 handler om etapetiden), ikke kroppen. Et haardt styrt inden
+ * for de sidste 3 km giver derfor stadig skadedage — rytteren faar gruppens tid,
+ * men han er lige saa forslaaet. Et ALVORLIGT styrt udgaar uanset km-maerket:
+ * en rytter der ikke koerer over stregen kan ikke faa gruppens tid.
+ */
+export function resolveIncident(
+  rolls: IncidentRolls,
+  context: { protectedByRule: boolean; helperNearby: boolean },
+  tuning: IncidentsTuning,
+): ResolvedIncident {
+  const spanValue = (range: readonly [number, number], u: number): number => range[0] + u * (range[1] - range[0]);
+
+  // ── TRIN 4: mekanisk uheld. Kan pr. konstruktion KUN koste tid. ──────────
+  if (rolls.kind < tuning.mechanicalShare) {
+    const helperAssist = context.helperNearby;
+    const raw = spanValue(tuning.mechanicalTimeLossSecondsRange, rolls.magnitude);
+    const scaled = helperAssist ? raw * tuning.mechanicalHelperTimeLossFactor : raw;
+    return {
+      kind: "mechanical",
+      severity: null,
+      outcome: context.protectedByRule ? "protected_three_km_rule" : "time_loss",
+      timeLossSeconds: context.protectedByRule ? null : round2(scaled),
+      injuryDays: null,
+      helperAssist,
+    };
+  }
+
+  // ── Styrt: alvorstrinnet afgoeres af sin EGEN lodtraekning. ──────────────
+  const { hard, serious } = tuning.crashSeverityShares;
+  const severity: IncidentSeverity =
+    rolls.severity < serious ? "serious" : rolls.severity < serious + hard ? "hard" : "light";
+
+  // TRIN 3: alvorligt styrt — udgaar. Ingen etapetid at tabe.
+  if (severity === "serious") {
+    return {
+      kind: "crash",
+      severity,
+      outcome: "abandoned",
+      timeLossSeconds: null,
+      injuryDays: Math.round(spanValue(tuning.seriousCrashInjuryDaysRange, rolls.injury)),
+      helperAssist: false,
+    };
+  }
+
+  // TRIN 1 (let) og TRIN 2 (haardt). Kun trin 2 skader.
+  const injuryDays =
+    severity === "hard" ? Math.round(spanValue(tuning.hardCrashInjuryDaysRange, rolls.injury)) : null;
+  const lossRange =
+    severity === "hard" ? tuning.hardCrashTimeLossSecondsRange : tuning.unprotectedTimeLossSecondsRange;
+  return {
+    kind: "crash",
+    severity,
+    outcome: context.protectedByRule ? "protected_three_km_rule" : "time_loss",
+    timeLossSeconds: context.protectedByRule ? null : round2(spanValue(lossRange, rolls.magnitude)),
+    injuryDays,
+    helperAssist: false,
+  };
+}
+
+/**
+ * M10-mekanikken: incidents med km-maerke + #2944's trappe, kaldt paa ETHVERT
+ * segment (til forskel fra M2/M3, som kun kaldes paa hhv. climb/descent).
+ *
+ * Pr. stadig-racende rytter rulles en seedet, positioning-daempet og
+ * laengde-skaleret risiko. Ved hit afgoer `resolveIncident` trinnet, og
+ * konsekvensen paafoeres:
+ *   - `protected_three_km_rule`  ingen gruppe-/tidsaendring (kun event +
+ *                                evt. skadedage ved haardt styrt)
+ *   - `time_loss`                split til egen solo-gruppe med sekund-tabet
+ *   - `abandoned`                status "abandoned" + split ud af feltet, saa
+ *                                han hverken traekker tempo eller merges tilbage
+ *
+ * REN: intet input muteres, samme (state, ctx) -> samme output.
+ *
+ * RNG-STREAMS ER SEGMENT-NOEGLEDE. `ctx.rngFor(mechanic, riderId)` er noeglet
+ * paa (seed, mechanic, riderId) ALENE, saa den samme mekanik-streng ville give
+ * den SAMME foerste vaerdi paa hvert eneste segment. For en mekanik der kaldes
+ * pr. segment betyder det, at en rytter der styrter paa segment 0 ogsaa styrter
+ * paa hvert oevrigt segment af samme kind. Denne fil laegger derfor segment-
+ * indekset i mekanik-strengen (`incident:s3`). Per-rytter-hash-egenskaben er
+ * uaendret: udfaldet afhaenger stadig KUN af (seed, segment, rider_id) — ikke
+ * af hvem andre der er med i loebet.
  *
  * Fabrikken er eksporteret separat (i stedet for at hardkode INCIDENTS_EXTRA_
  * TUNING inde i funktionskroppen) saa tests kan injicere en rigget tuning —
  * fx risiko=1 for at gøre et styrt deterministisk uden at braekke
  * rng-stream-kontrakten — uden at aendre den rigtige eksports to-argument
- * (state, ctx)-signatur, som WIRING-BEHOV-noten forudsaetter er strukturelt
- * identisk med ClimbSelectionHook/DescentHook.
+ * (state, ctx)-signatur, som er strukturelt identisk med de oevrige hooks.
  */
 export function createIncidentHook(
-  tuning: typeof INCIDENTS_EXTRA_TUNING,
+  tuning: IncidentsTuning,
 ): (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult {
   return function incidentHookImpl(state: EngineState, ctx: SegmentHookContext): SegmentHookResult {
-    const { segment, route, entrants, rngFor } = ctx;
+    const { segment, route, entrants, rngFor, segmentIndex } = ctx;
     const events: TimelineEvent[] = [];
+
+    const logged: StageIncident[] = state.stage_incidents ?? [];
+    const fieldSize = Object.keys(state.riders).length;
+    let budget = maxIncidentsForField(fieldSize, tuning) - logged.length;
+    if (budget <= 0) return { state, events };
+
+    const lengthFactor = segmentLengthFactor(segment, tuning);
+    if (lengthFactor <= 0) return { state, events };
+
+    // Kandidaterne behandles i STABIL rider_id-orden paa tvaers af ALLE grupper
+    // (ikke gruppe-for-gruppe), saa etape-loftet fordeles uafhaengigt af hvilken
+    // raekkefoelge grupperne tilfaeldigvis staar i — samme disciplin som v3's
+    // rollIncidents, der ogsaa sorterer feltet paa rider_id foer lodtraekningen.
+    const candidates: Array<{ riderId: string; group: RaceGroup }> = [];
+    for (const group of state.groups) {
+      for (const riderId of group.rider_ids) {
+        const riderState = state.riders[riderId];
+        if (!entrants[riderId] || !riderState || riderState.status !== "racing") continue;
+        candidates.push({ riderId, group });
+      }
+    }
+    candidates.sort((a, b) => a.riderId.localeCompare(b.riderId));
 
     let groups: RaceGroup[] = state.groups;
     let riders: Record<string, RiderState> = state.riders;
+    const newIncidents: StageIncident[] = [];
     let seq = 0;
     let changed = false;
 
-    for (const group of state.groups) {
-      const crashes: CrashOutcome[] = [];
+    for (const { riderId, group } of candidates) {
+      if (budget <= 0) break;
 
-      for (const riderId of group.rider_ids) {
-        const entrant = entrants[riderId];
-        const riderState = riders[riderId];
-        if (!entrant || !riderState || riderState.status !== "racing") continue;
+      const entrant = entrants[riderId]!;
+      const rng = rngFor(`incident:s${segmentIndex}`, riderId);
+      const p = clamp(incidentProbability(entrant.abilities.positioning, segment.kind, tuning) * lengthFactor, 0, 1);
+      if (rng() >= p) continue;
 
-        const rng = rngFor("incident", riderId);
-        const p = incidentProbability(entrant.abilities.positioning, segment.kind, tuning);
-        const roll = rng();
-        if (roll >= p) continue;
+      const kmFrac = rng();
+      const incidentKm = round2(segment.from_km + kmFrac * (segment.to_km - segment.from_km));
+      const protectedByRule = threeKmRuleApplies(incidentKm, route.distance_km, route.profile_type, tuning);
+      const helperNearby = hasHelperNearby(group.rider_ids, entrants, riders, riderId);
 
-        const kmFrac = rng();
-        const incidentKm = round2(segment.from_km + kmFrac * (segment.to_km - segment.from_km));
-        const protectedByRule = threeKmRuleApplies(incidentKm, route.distance_km, route.profile_type, tuning);
+      const resolved = resolveIncident(
+        {
+          kind: rngFor(`incident_kind:s${segmentIndex}`, riderId)(),
+          severity: rngFor(`incident_severity:s${segmentIndex}`, riderId)(),
+          magnitude: rngFor(`incident_time_loss:s${segmentIndex}`, riderId)(),
+          injury: rngFor(`incident_injury:s${segmentIndex}`, riderId)(),
+        },
+        { protectedByRule, helperNearby },
+        tuning,
+      );
 
-        let timeLossSeconds: number | null = null;
-        if (!protectedByRule) {
-          const [lo, hi] = tuning.unprotectedTimeLossSecondsRange;
-          const lossFrac = rngFor("incident_time_loss", riderId)();
-          timeLossSeconds = round2(lo + lossFrac * (hi - lo));
-        }
+      budget -= 1;
 
-        crashes.push({ riderId, km: incidentKm, protectedByRule, timeLossSeconds });
+      const rs = riders[riderId];
+      riders = {
+        ...riders,
+        [riderId]: {
+          ...rs,
+          incidents: rs.incidents + 1,
+          status: resolved.outcome === "abandoned" ? "abandoned" : rs.status,
+        },
+      };
 
-        const rs = riders[riderId];
-        riders = { ...riders, [riderId]: { ...rs, incidents: rs.incidents + 1 } };
-      }
-
-      for (const crash of crashes) {
-        if (crash.protectedByRule) {
-          events.push(
-            incidentEvent(crash.km, {
-              riderId: crash.riderId,
-              kind: "crash",
-              outcome: "protected_three_km_rule",
-              timeLossSeconds: null,
-            }),
-          );
-          continue;
-        }
-
-        const newGroupId = makeGroupId("solo", ctx.segmentIndex * 1000 + seq);
-        seq += 1;
-        groups = splitGroup(groups, group.id, [crash.riderId], {
-          id: newGroupId,
+      if (resolved.outcome !== "protected_three_km_rule") {
+        // Baade et tidstab og en udgaaelse tager rytteren UD af sin gruppe:
+        // han skal hverken traekke tempo eller arve gruppens maaltid.
+        const gapDelta =
+          resolved.outcome === "abandoned" ? tuning.abandonedGapSeconds : (resolved.timeLossSeconds ?? 0);
+        groups = splitGroup(groups, group.id, [riderId], {
+          id: makeGroupId("solo", segmentIndex * 1000 + seq),
           kind: "solo",
-          gapSecondsDelta: crash.timeLossSeconds ?? 0,
+          gapSecondsDelta: gapDelta,
         });
+        seq += 1;
         changed = true;
-
-        events.push(
-          incidentEvent(crash.km, {
-            riderId: crash.riderId,
-            kind: "crash",
-            outcome: "time_loss",
-            timeLossSeconds: crash.timeLossSeconds,
-          }),
-        );
       }
+
+      newIncidents.push({
+        rider_id: riderId,
+        km: incidentKm,
+        kind: resolved.kind,
+        severity: resolved.severity,
+        outcome: resolved.outcome,
+        time_loss_seconds: resolved.timeLossSeconds,
+        injury_days: resolved.injuryDays,
+        helper_assist: resolved.helperAssist,
+      });
+
+      events.push(
+        incidentEvent(incidentKm, {
+          riderId,
+          kind: resolved.kind,
+          outcome: resolved.outcome,
+          timeLossSeconds: resolved.timeLossSeconds,
+          severity: resolved.severity,
+          injuryDays: resolved.injuryDays,
+          helperAssist: resolved.helperAssist,
+        }),
+      );
     }
 
-    if (!changed) return { state: { ...state, riders }, events };
-    return { state: { ...state, groups, riders }, events };
+    if (newIncidents.length === 0) return { state, events };
+    const stageIncidents = [...logged, ...newIncidents];
+    if (!changed) return { state: { ...state, riders, stage_incidents: stageIncidents }, events };
+    return { state: { ...state, groups, riders, stage_incidents: stageIncidents }, events };
   };
 }
 
@@ -278,24 +510,22 @@ export function applyThreeKmRuleToResults(
   return reordered.map((r, index) => ({ ...r, rank: index + 1 }));
 }
 
-// ── WIRING-BEHOV (haard regel: jeg maa ikke aendre segmentLoop.ts/types.ts/
-// index.ts — dette er en dokumentation af hvad arkitekten skal koble ind) ────
+// ── WIRING (KOBLET IND 6/9, #2944) ──────────────────────────────────────────
 //
-// 1. incidentHook() har PRAECIS SegmentHookContext -> SegmentHookResult-formen
-//    (samme kontrakt som ClimbSelectionHook/DescentHook/FinaleHook, types.ts §-
-//    mekanik-hooks), MEN skal kaldes paa ETHVERT segment (flat/rolling/climb/
-//    descent/cobbles) — ikke kind-gated som M2/M3. segmentLoop.ts's nuvaerende
-//    MechanicHooks-type har ingen "kald paa alle segmenter"-slot. To muligheder
-//    for arkitekten: (a) tilfoej et additivt `incidents: IncidentHook`-felt til
-//    MechanicHooks (types.ts) + et ubetinget kald i segmentLoop.ts's loop
-//    (efter climb/descent-grenen, foer merge-trinnet saa incidentHook's splits
-//    ogsaa kan mergeGroups-behandles samme segment), ELLER (b) kald
-//    incidentHook() som et efterfoelgende, separat loop-gennemloeb i index.ts
-//    oven paa runSegmentLoop's færdige state+tidslinje pr. segment (kraever at
-//    groupSnapshots'ets km-graenser genbruges som segment-cursor).
-// 2. applyThreeKmRuleToResults() kaldes i index.ts's simulateStageV4 EFTER
+// Mekanikken er ikke laengere doed kode. Den er wired praecis som M10's gamle
+// WIRING-BEHOV-note foreslog (mulighed (a)):
+//
+// 1. `MechanicHooks.incidents` (types.ts, VALGFRIT felt) + et ubetinget kald i
+//    segmentLoop.ts's loop — efter climb/descent-grenen og efter M5 (udbrud),
+//    FOER finale-hooket og foer merge-trinnet, saa et uheld i finalen tager
+//    rytteren ud af frontgruppen inden opgoeret, og saa splits kan merges igen
+//    samme segment.
+// 2. `applyThreeKmRuleToResults()` kaldes i index.ts's simulateStageV4 EFTER
 //    buildResults(state) og FOER buildFinishEvent(...) — se JSDoc'en ovenfor.
-// 3. Rider-status "abandoned" (RiderState.status) er BEVIDST IKKE rørt af
-//    denne fil — et styrt her fører aldrig til udgaaelse, kun tidstab/placering
-//    (mor-spec §4 M10 naevner ikke abandon; det er et separat, ikke-scopet
-//    fremtidigt haandtag paa samme status-felt).
+// 3. Rider-status "abandoned" saettes NU af denne fil, men KUN paa trin 3
+//    (alvorligt styrt) — ejer-beslutning 6/9. Et mekanisk uheld kan pr.
+//    konstruktion aldrig naa dertil (#4520-reglen, se resolveIncident).
+// 4. Skadedage baeres videre som `StageResult.injury_days` +
+//    `StageOutput.incidents[]` (begge additive/valgfrie), saa flip-
+//    infrastrukturen kan persistere dem praecis som v3 goer
+//    (raceRunner.persistIncidents -> race_incidents + rider_condition).
