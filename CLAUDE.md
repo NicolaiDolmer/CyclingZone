@@ -44,6 +44,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-hits:
 4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke). Samme rutine for `help.json` (en+da) ved ny/ændret spilmekanik (#1171).
 5. **Postmortem:** ved bugfix → `.claude/learnings/<dato>-<slug>.md`.
 6. **Token-hygiejne (obligatorisk):** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` — den `exit 1`'er hvis MEMORY.md/NOW.md/docs er over budget. Demotér nye lav-frekvens-HOT-entries til `MEMORY_REFERENCE.md` FØR du lukker.
+7. **Boelge-processer:** `pwsh -File scripts/close-out-cleanup.ps1` (dry-run, `-Execute` ved fund — dræber efterladte `gh --watch`/vite/playwright-processer, #4920).
 
 Ingen lokal-only handoff: state, beslutninger og næste skridt skal ligge i GitHub (`docs/NOW.md`, issues, slice-docs) eller OneDrive-context; transcripts, Codex memories og `SESSION_CONTEXT.md` er caches.
 
