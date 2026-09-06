@@ -162,7 +162,12 @@ type ScoredRider = { riderId: string; score: number };
  *    tid (gruppe-tids-princippet, mor-spec §3.2).
  */
 export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookContext): SegmentHookResult => {
-  const { segment, route, entrants, tuning, rngFor } = ctx;
+  // ETAPE-STABIL STREAM, BEVIDST (#4886): finalen er etapens ENE opgoer og
+  // koerer pr. definition kun paa sidste segment — der findes ingen "naeste
+  // segment" den kan genbruge sin lodtraekning paa. Placerings-jitteren hoerer
+  // til maalstregen, ikke til et segment-indeks, og maa derfor ikke skifte
+  // fordi rutens segmentinddeling aendres. Derfor `rngForStage`.
+  const { segment, route, entrants, tuning, rngForStage: rngFor } = ctx;
   const events: TimelineEvent[] = [];
   const extra = FINALE_EXTRA_TUNING;
 

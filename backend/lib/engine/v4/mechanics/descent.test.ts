@@ -96,6 +96,7 @@ function buildSingleGroupScenario(
     entrants: entrantsById,
     tuning: RACE_V4_TUNING,
     rngFor: boundRngFor(seed),
+    rngForStage: boundRngFor(seed),
     orders: [],
   };
   return { state, ctx };
@@ -337,7 +338,7 @@ function buildMultiGroupScenario(
     state: { km: 40, groups, riders, virtual_gc: {} },
     ctx: {
       segment, segmentIndex: 0, route, entrants: entrantsById,
-      tuning: RACE_V4_TUNING, rngFor: boundRngFor("regroup-seed"), orders: [],
+      tuning: RACE_V4_TUNING, rngFor: boundRngFor("regroup-seed"), rngForStage: boundRngFor("regroup-seed"), orders: [],
     },
   };
 }

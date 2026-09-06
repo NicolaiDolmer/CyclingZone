@@ -311,6 +311,7 @@ test("BELASTNING: holdspillet roerer ALDRIG RiderLoad-kontraktens work_norm", ()
     entrants: Object.fromEntries(entrantsOf(specs).map((e) => [e.rider_id, e])),
     tuning: RACE_V4_TUNING,
     rngFor: () => () => 0,
+    rngForStage: () => () => 0,
     orders: [],
   }).state;
   for (const spec of specs) {

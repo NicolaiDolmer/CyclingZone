@@ -8,7 +8,7 @@ import fc from "fast-check";
 
 import { cobblesHook } from "./cobbles.ts";
 import { COBBLES_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
-import { boundRngFor } from "../rng.ts";
+import { boundRngFor, segmentRngFor } from "../rng.ts";
 import type {
   AbilityKey,
   CobblesSegment,
@@ -100,13 +100,18 @@ function makeCtx(
 ): SegmentHookContext {
   const entrantsById: Record<string, Entrant> = {};
   for (const e of entrants) entrantsById[e.rider_id] = e;
+  const segmentIndex = opts.segmentIndex ?? 0;
+  const stageRng = boundRngFor(opts.seed ?? "cobbles-seed");
   return {
     segment,
-    segmentIndex: opts.segmentIndex ?? 0,
+    segmentIndex,
     route: routeFor([segment], opts.finaleType ?? "bunch_sprint"),
     entrants: entrantsById,
     tuning: RACE_V4_TUNING,
-    rngFor: boundRngFor(opts.seed ?? "cobbles-seed"),
+    // #4886: riggen spejler produktionen — segmentLoop giver hooksene en
+    // SEGMENT-noeglet stream, ikke etapens raa stream.
+    rngFor: segmentRngFor(stageRng, segmentIndex),
+    rngForStage: stageRng,
     orders: [],
   };
 }
@@ -370,12 +375,12 @@ test("per-rytter-hash: en ekstra, uafhaengig gruppe paavirker ikke andre grupper
 
 // ── #4886: rng-stroemmen skal vaere SEGMENT-noeglet ──────────────────────────
 //
-// `ctx.rngFor(mekanik, riderId)` er noeglet paa (seed, mekanik, rider_id) alene.
-// M8 kaldes pr. SEKTOR (3-6 paa brosten, 5-8 paa grus), saa uden segment-index
-// i noeglen ville hver rytter faa den SAMME lodtraekning paa hver eneste sektor:
-// en rytter der styrter paa dagens foerste sektor ville styrte paa dem alle, og
-// selektionen ville udpege praecis de samme ryttere hver gang. Testen fejler paa
-// den gamle form.
+// M8 kaldes pr. SEKTOR (3-6 paa brosten, 5-8 paa grus). Var streamen noeglet paa
+// (seed, mekanik, rider_id) alene, ville hver rytter faa den SAMME lodtraekning
+// paa hver eneste sektor: en rytter der styrter paa dagens foerste sektor ville
+// styrte paa dem alle, og selektionen ville udpege praecis de samme ryttere hver
+// gang. Noeglingen bor nu i kernen (segmentLoop -> rng.ts's segmentRngFor), og
+// riggens makeCtx spejler den — testen fejler paa den gamle form.
 
 test("#4886: to identiske sektorer paa FORSKELLIGE segment-index giver forskellige lodtraekninger", () => {
   // 40 ryttere med jaevn evne-spredning: nok stoej-traekninger til at to

@@ -255,7 +255,14 @@ export function inRacePassageWaypoints(waypoints: readonly Waypoint[], fromKm: n
  * braekke invariant 2/3/6 — det tilfoejer kun til `state.stage_passages`.
  */
 export const passagesHook = (state: EngineState, ctx: SegmentHookContext): SegmentHookResult => {
-  const { segment, route, entrants, rngFor, tuning } = ctx;
+  // ETAPE-STABIL STREAM, BEVIDST (#4886): passagens stream noegles paa selve
+  // VEJPUNKTET (`passage:<kind>:<index>`), og et vejpunkt skal have samme
+  // lodtraekning uanset hvilket segment det tilfaeldigvis falder i — ellers
+  // skifter en indlagt spurt stroem hver gang rutens segmentinddeling aendres.
+  // Derfor `rngForStage` og ikke den segment-noeglede default; vejpunkt-
+  // indekset giver allerede den adskillelse pr. kaldested som segment-noeglen
+  // ellers leverer.
+  const { segment, route, entrants, rngForStage: rngFor, tuning } = ctx;
   const waypoints = inRacePassageWaypoints(route.waypoints, segment.from_km, segment.to_km);
   if (waypoints.length === 0) return { state, events: [] };
 

@@ -559,7 +559,19 @@ export type SegmentHookContext = {
   route: RouteV2;
   entrants: Readonly<Record<string, Entrant>>;
   tuning: EngineTuning;
-  rngFor: RngForFn; // bundet til etapens seed; kald med (mechanic, riderId?)
+  // Bundet til etapens seed OG til DETTE segment (#4886) — kald med
+  // (mechanic, riderId?). segmentLoop pakker etapens stream ind i
+  // `rng.ts`'s segmentRngFor før hvert hook-kald, så en mekanik der kaldes pr.
+  // segment automatisk ruller nyt på hvert segment. En mekanik må derfor
+  // ALDRIG selv lægge segment-indekset i mekanik-strengen: det ville dobbelt-
+  // nøgle streamen (`incident:s3:s3`) uden at tilføje noget.
+  rngFor: RngForFn;
+  // Etape-stabil stream — IKKE segment-nøglet. Kun for mekanikker hvis
+  // lodtrækning hører til et vejpunkt eller til målstregen og derfor ikke må
+  // skifte hvis rutens segmentinddeling ændres (mechanics/bonusSeconds.ts's
+  // passager, finale.ts's placerings-jitter). Bruges den til noget der kaldes
+  // pr. segment, er #4886 tilbage — begrund altid valget på kaldstedet.
+  rngForStage: RngForFn;
   // StageInput.orders raat videregivet (#4615). Hver mekanik parser sin egen
   // `kind` og ignorerer resten; en tom liste er den neutrale default (T4 i
   // tactics-orders-specen — kernen kraever ALDRIG ordrer).

@@ -12,6 +12,16 @@
 // via ctx.rngFor (seedet, per-rytter-hash). Muterer aldrig input-state (samme
 // determinisme-krav som climbSelection.ts/descent.ts).
 //
+// RNG-STREAMS ER SEGMENT-NOEGLEDE af KERNEN (#4886): `ctx.rngFor` er bundet til
+// baade etapens seed og DETTE segment (segmentLoop.ts -> rng.ts's
+// segmentRngFor). Uden det ville en rytter der "ruller" styrt paa dagens
+// foerste brostenssektor styrte paa dem alle, og selektions-stoejen ville vaere
+// identisk sektor for sektor — en brostens-etape har 3-6 sektorer og en
+// grus-etape 5-8, saa fejlen var ikke teoretisk her. Filens egen streamFor()
+// (segment-indekset lagt i mekanik-navnet, 6/9) er derfor fjernet: den ville nu
+// dobbelt-noegle streamen. Per-rytter-hash-egenskaben (§3 invariant 1) er
+// uberoert.
+//
 // SELEKTIONS-MODEL (spejler climbSelection.ts's M2-moenster 1:1, egen tuning-
 // flade COBBLES_EXTRA_TUNING i stedet for tuning.selection, saa M8's
 // kalibrering ikke deler haandtag med M2's): score = deficitWeight *
@@ -63,18 +73,6 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
-/**
- * Segment-noeglet rng-stream (#4886). `ctx.rngFor(mekanik, riderId)` er noeglet paa
- * (seed, mekanik, rider_id) ALENE — en mekanik der kaldes PR. SEGMENT ville derfor
- * faa den SAMME foerste lodtraekning paa hver sektor: en rytter der "ruller" styrt paa
- * dagens foerste brostenssektor ville styrte paa dem alle, og selektions-stoejen ville
- * vaere identisk sektor for sektor. En brostens-etape har 3-6 sektorer og en grus-etape
- * 5-8, saa fejlen er ikke teoretisk her. Segment-indekset gaar derfor ind i
- * mekanik-navnet; per-rytter-hash-egenskaben (§2 invariant 1) er uberoert.
- */
-function streamFor(mechanic: string, segmentIndex: number): string {
-  return `${mechanic}:s${segmentIndex}`;
-}
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -142,7 +140,7 @@ function computeSelections(
     const deficit01 = cobblestoneDeficit01(referenceCobblestone, entrant.abilities.cobblestone);
     const baseScore = deficitWeight * deficit01 * starWeight * starFraction;
 
-    const noise = gaussian(rngFor(streamFor("cobbles_selection", ctx.segmentIndex), riderId), 0, noiseSdBase * baseScore);
+    const noise = gaussian(rngFor("cobbles_selection", riderId), 0, noiseSdBase * baseScore);
     const noisyScore = baseScore + noise;
 
     selections.push({ riderId, baseScore, scoreTriggered: noisyScore > splitThreshold });
@@ -247,7 +245,7 @@ export const cobblesHook: CobblesHook = (state: EngineState, ctx: SegmentHookCon
       if (!entrant || !riderState || riderState.status !== "racing") continue;
 
       const p = riderIncidentProbability(entrant.abilities.cobblestone, entrant.abilities, ctx.route);
-      const rng = ctx.rngFor(streamFor("cobbles_incident", ctx.segmentIndex), riderId);
+      const rng = ctx.rngFor("cobbles_incident", riderId);
       const roll = rng();
       if (roll >= p) continue;
       const kmFrac = rng();

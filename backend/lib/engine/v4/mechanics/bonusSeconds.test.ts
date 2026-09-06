@@ -276,6 +276,7 @@ function buildScenario(args: {
     entrants: args.entrants,
     tuning: RACE_V4_TUNING,
     rngFor: boundRngFor(args.seed ?? "bonus-seed"),
+    rngForStage: boundRngFor(args.seed ?? "bonus-seed"),
     orders: [],
   };
   return { state, ctx };
