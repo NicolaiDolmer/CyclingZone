@@ -242,12 +242,20 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const scoreOf = (riderId: string): number | null => {
     const entrant = entrants[riderId];
     if (!entrant) return null;
-    return computeFinaleAbilityScore(
-      entrant.abilities,
-      wprimeReserveFraction(state.riders[riderId]),
-      demandVector,
-      extra.wprimeReserveWeight,
-    );
+    // M12-wiring (#4632, ejer-beslutning 6/9): en rytter i grupettoen spurter
+    // ikke. Hans W'-reserve taeller derfor som 0 i placerings-opgoeret.
+    //
+    // Det er ikke en straf, men den ANDEN halvdel af grupetto-kontrakten. Det
+    // saenkede kraftkrav (segmentLoop.ts's M12-blok) efterlader ham friskere
+    // end feltet, og W'-reserven er netop den stoerrelse finalen belonner —
+    // uden dette led ville "jeg opgiver dagen" vaere den billigste vej til en
+    // god placering. Ejer-reglen bag femtrins-skalaen er den modsatte:
+    // grupetto maa ALDRIG vaere en resultat-fordel (samme begrundelse som
+    // tuning.ts's teamPlay.effortCostMultiplier.grupetto-kommentar).
+    // Sammen med climbSelection.ts's tilsvarende led er det de eneste to
+    // steder i motoren hvor en W'-reserve bliver til et resultat.
+    const reserve = entrant.effort === "grupetto" ? 0 : wprimeReserveFraction(state.riders[riderId]);
+    return computeFinaleAbilityScore(entrant.abilities, reserve, demandVector, extra.wprimeReserveWeight);
   };
 
   const baseScored: ScoredRider[] = contenderIds

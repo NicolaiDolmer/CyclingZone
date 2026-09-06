@@ -34,15 +34,17 @@ export type AbilityKey =
 // ── Rytterrolle (kopi af raceRoles.js VALID_RACE_ROLES) ───────────────────────
 export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
 
-// M12 (effort-styring, ejer-valg 20/8 §4). F2 behandler alle ryttere som 'normal'
-// (segmentLoop.ts laeser feltet men mekanik-effekten er F3/M12-scope).
+// M12 (effort-styring, ejer-valg 20/8 §4). WIRET 6/9 (#4632, model C):
+// segmentLoop.ts's `tickGroupRiders` ganger mechanics/effortCost.ts's
+// `effortDemandMultiplier(effort)` paa rytterens KRAFTKRAV (ikke paa CP'en),
+// og mechanics/breakaway.ts udelukker 'grupetto' fra udbruds-kandidaterne.
+// Feltet er dermed ikke laengere baaret-men-ubrugt.
 //
 // #4632 (loebsdagens intention, ejer 5-6/9): udvidet fra tre til FEM trin —
 // samme enum som v3's raceRoles.js VALID_EFFORTS_FIVE_STEP og DB-constraint'en
 // paa race_stage_roles.effort, 1:1. De tre oprindelige vaerdier beholder navn OG
-// semantik; 'grupetto' og 'all_out' er de nye yderpunkter. Ingen wiring aendret
-// her (segmentLoop behandler stadig alle som 'normal' indtil M12 wires) — kun
-// typen, saa M12 arver skalaen i stedet for at genopfinde den.
+// semantik; 'grupetto' og 'all_out' er de nye yderpunkter, saa M12 arver
+// skalaen i stedet for at genopfinde den.
 // SSOT: docs/superpowers/specs/2026-09-03-race-day-intention-decision.md §4/§6.
 export type EffortLevel = "grupetto" | "save" | "normal" | "protect" | "all_out";
 
