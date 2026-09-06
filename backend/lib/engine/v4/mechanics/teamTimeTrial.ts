@@ -393,7 +393,13 @@ export function simulateTeamTimeTrialStage(
 
   const winnerTime = results[0]?.time_seconds ?? 0;
   const top = results.slice(0, Math.min(10, results.length)).map((r) => ({ rider_id: r.rider_id, rank: r.rank, gap: round2(r.time_seconds - winnerTime) }));
-  events.push(finishEvent(finishKm, { top, winType: "team_time_trial" }));
+  // `ttt_win` og IKKE "team_time_trial" (wiringen 6/9): det er den win_type
+  // baade v3's raceTimeline.js og loebsfilmen (frontend/src/lib/
+  // stageTimelineFilm.js's WIN_TYPE_KEY) allerede kender, med faerdig
+  // spiller-copy paa en+da ("leads home the fastest team of the day").
+  // Et selvopfundet navn ville tavst falde tilbage paa den generiske
+  // "finish"-linje — mekanikken var bygget foer filmen fik sine TT-varianter.
+  events.push(finishEvent(finishKm, { top, winType: "ttt_win" }));
 
   return {
     timeline: { timeline_version: 2, events: sortTimeline(events) },
