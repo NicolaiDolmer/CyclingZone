@@ -431,8 +431,16 @@ export const EFFORT_COST_EXTRA_TUNING = deepFreeze(effortCostExtra);
 // Entrant.condition. Alle vaerdier START-KANDIDATER (kalibreres i head-to-
 // head-harnesset, f2-core-design.md §7), ikke gaettet endeligt her.
 const distanceFatigueExtra = {
-  monumentThresholdKm: 220, // km hvor monument-draeningen begynder — sat lidt under "~250 km" (mor-spec §4 M7) saa rampen er godt i gang PAA monument-distancer
-  monumentRampKm: 60, // km-vindue draeningen naar sit maks over, efter threshold (glidende rampe, ikke et spring) — naar maks ved ~280 km (220+60)
+  // KALIBRERET 6/9 ved wiringen (#4885): rampen laa 220-280 km. Maalt paa en
+  // repraesentativ offline-kalender (v4TailSpread.js, 141 etaper) ligger 3 af
+  // 141 etaper over 220 km — mekanikken var altsaa live paa ~2 % af kalenderen
+  // og doed paa resten. Rampen starter nu ved 150 km og naar sit maks ved 280,
+  // saa "distance-slid" faktisk er en funktion af distancen paa hele
+  // kalenderen, mens MAKSIMUM stadig kun naas paa monument-distancer (mor-spec
+  // §4 M7's "~250 km" ligger paa 77 % af rampen). START-KANDIDATER, kalibreres
+  // videre naar bjerg-/hale-kalibreringen (#4707) er ejer-afgjort.
+  monumentThresholdKm: 150, // km hvor draeningen begynder — under mor-spec'ens "~250 km", saa rampen er godt i gang PAA monument-distancer og maalbar paa lange normal-etaper
+  monumentRampKm: 130, // km-vindue draeningen naar sit maks over, efter threshold (glidende rampe, ikke et spring) — naar maks ved 280 km (150+130)
   monumentMaxCpPenalty: 0.12, // maks CP-reduktion (fraktion, 0-1) ved/efter rampens slutning, FOER endurance-mildning — op til 12% for en gennemsnitlig-endurance rytter
   monumentEnduranceMitigation: 0.6, // 0-1: andel af draeningen fuld endurance-evne (99) mildner — en 99-endurance-rytter oplever kun 40% af den fulde draening
   conditionFloorMultiplier: 0.85, // CP-multiplikator ved condition=0 (vaerst taenkelige dag-til-dag-slid); condition=1 => multiplikator 1 (ingen straf)
