@@ -31,8 +31,11 @@
 //
 // Refs #4921.
 
-import { createClient } from "@supabase/supabase-js";
-import dotenv from "dotenv";
+// @supabase/supabase-js og dotenv importeres DOVENT inde i main(). Reglerne
+// (evaluateFlags/findStale/normalizeFlagValue) er rene og skal kunne testes i
+// et job der ikke har koert `npm ci` - foerste CI-koersel fejlede praecis der:
+// ERR_MODULE_NOT_FOUND i freshness-jobbet, som med vilje ikke installerer
+// dependencies fordi det kun laver fil-sammenligning.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,8 +45,6 @@ import { parseRegistry, validate } from "./generate-feature-status.mjs";
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const REGISTRY_PATH = join(ROOT, "docs", "FEATURE_REGISTRY.yml");
 const STALE_DAYS = 60;
-
-dotenv.config({ path: join(ROOT, "backend", ".env"), quiet: true });
 
 const ON_VALUES = new Set(["on", "true"]);
 
@@ -137,6 +138,9 @@ function printTable(rows) {
 }
 
 async function main() {
+  const { default: dotenv } = await import("dotenv");
+  dotenv.config({ path: join(ROOT, "backend", ".env"), quiet: true });
+
   const entries = parseRegistry(readFileSync(REGISTRY_PATH, "utf8"));
   const errors = validate(entries);
   if (errors.length > 0) {
@@ -164,6 +168,7 @@ async function main() {
     process.exit(0);
   }
 
+  const { createClient } = await import("@supabase/supabase-js");
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
     auth: { persistSession: false },
   });
