@@ -87,12 +87,12 @@ test("#3855 flag-off-garanti: loadRaceEngineV4 importerer først når den kaldes
 
   assert.equal(specs.length, 0, "intet må være importeret før første kald");
   const engine = await loadRaceEngineV4({ importModule });
-  assert.equal(specs.length, 5, "kernen + tuning + de tre adaptere");
+  assert.equal(specs.length, 6, "kernen + tuning + de tre adaptere + timeline-validatoren (#4879)");
   assert.ok(specs.every((s) => s.includes("engine/v4")));
   assert.equal(engine.version, ENGINE_VERSION_V4);
 
   await loadRaceEngineV4({ importModule });
-  assert.equal(specs.length, 5, "andet kald skal ramme cachen, ikke importere igen");
+  assert.equal(specs.length, 6, "andet kald skal ramme cachen, ikke importere igen");
   __resetRaceEngineV4Cache();
 });
 

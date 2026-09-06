@@ -357,3 +357,76 @@ test("#2944: alle trappens nøgler findes i BEGGE locale-filer", async () => {
     }
   }
 });
+
+// ── #4879: filmen skal kunne læse løbsmotor v4's EGNE events ────────────────
+// v4's tidslinje persisteres nu under timeline_version 2 i den samme tabel
+// (backend/lib/raceTimeline.js buildStageTimelineV4). Motorens param-former er
+// ikke identiske med v3's, og en linje filmen ikke forstår springes tavst over
+// — derfor låses de her.
+
+test("#4879: v4's sprint_decided navngiver vinderen via winner_rider_id", () => {
+  const names = riderNameByIdFixture();
+  const [riderId] = [...names.keys()];
+  const d = describeEvent(
+    { type: "sprint_decided", km: 180, params: { winner_rider_id: riderId, group_id: "finale-winner-0", finale_type: "bunch_sprint" } },
+    { riderNameById: names },
+  );
+  assert.ok(d, "v4-formen må ikke springes over");
+  assert.equal(d.key, "sprint_decided");
+  assert.equal(d.params.rider, names.get(riderId));
+});
+
+test("#4879: v3's sprint_decided (rider_ids) virker uændret", () => {
+  const names = riderNameByIdFixture();
+  const [riderId] = [...names.keys()];
+  const d = describeEvent(
+    { type: "sprint_decided", km: 180, params: { rider_ids: [riderId], photo_finish: true } },
+    { riderNameById: names },
+  );
+  assert.equal(d.key, "sprint_decided_photo");
+  assert.equal(d.params.rider, names.get(riderId));
+});
+
+test("#2582: tidsgrænse-events rendres som tælletal — ALDRIG procent eller sekundgrænse", () => {
+  const otl = describeEvent(
+    { type: "outside_time_limit", km: 180, params: { rider_ids: ["a", "b", "c"], rider_count: 3 } },
+    { riderNameById: new Map() },
+  );
+  assert.equal(otl.key, "outside_time_limit");
+  assert.deepEqual(otl.params, { count: 3 });
+
+  const saved = describeEvent(
+    { type: "grupetto_saved", km: 180, params: { rider_ids: ["a", "b"], rider_count: 2 } },
+    { riderNameById: new Map() },
+  );
+  assert.equal(saved.key, "grupetto_saved");
+  assert.deepEqual(saved.params, { count: 2 });
+
+  // Et event uden ryttere er ikke en historie — ingen tom linje i feedet.
+  assert.equal(describeEvent({ type: "outside_time_limit", km: 180, params: { rider_ids: [], rider_count: 0 } }), null);
+});
+
+test("#2582: tidsgrænse-nøglerne findes i BEGGE locale-filer", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    for (const key of ["outside_time_limit", "grupetto_saved"]) {
+      assert.ok(doc.detail.film.event[key], `${lang}: mangler detail.film.event.${key}`);
+      assert.ok(
+        !/%|procent|percent/i.test(doc.detail.film.event[key]),
+        `${lang}: ${key} må ALDRIG vise procenten (fog of war, ejer-beslutning 6/9)`,
+      );
+    }
+  }
+});
+
+test("#4879: collectRiderIds fanger v4's winner_rider_id (ellers skippes spurt-linjen tavst)", () => {
+  const ids = collectRiderIds([
+    { type: "sprint_decided", km: 180, params: { winner_rider_id: "w1", group_id: "g" } },
+    { type: "finish", km: 180, params: { top: [{ rider_id: "w1", rank: 1, gap: 0 }] } },
+  ]);
+  assert.deepEqual(ids, ["w1"]);
+});

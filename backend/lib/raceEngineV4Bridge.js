@@ -22,22 +22,29 @@
 //     flag-OFF-backend ikke ét eneste modul-load, og "flag off ⇒ ingen v4-
 //     import" er testbart som en hård garanti, ikke en påstand.
 //
-//  3. Ingen incidents. v4 har ingen abandon-mekanik (index.ts's egen note:
-//     status 'abandoned' sættes aldrig i F2/F3), og v3's uheldsmodel er
-//     bevidst ikke genbrugt — mekanikkerne er paritets-slicens arbejde.
-//     `incidents` er derfor ALTID [] fra denne bro. Ryttere v4 alligevel
-//     måtte markere som abandoned udelades af `ranked` (samme konvention som
-//     v3's abandon-gren), så raceClassifications ekskluderer dem fra GC.
+//  3. Uheld OG tidsgrænse persisteres (#4879, opdateret 6/9). Da denne fil blev
+//     skrevet havde v4 hverken uheldstrappe (#2944) eller tidsgrænse (#2582);
+//     `incidents` var derfor hårdkodet til []. Begge mekanikker er nu koblet
+//     ind i motoren, og broen oversætter dem til PRÆCIS de kolonner v3's
+//     `race_incidents` har (se v4RowsFromIncidents nedenfor). Ryttere v4
+//     markerer som `abandoned` ELLER `otl` udelades af `ranked` — flip-
+//     kontrakten i mechanics/timeLimit.ts punkt 1: race_results har ingen
+//     status-kolonne, så en rytter der er ude af løbet får INGEN etape-række,
+//     præcis som v3's DNF. raceClassifications ekskluderer ham derefter
+//     automatisk fra alle klassementer.
 //
-//  4. Neutral fortælling. raceNarrative.extractStageMoments læser v3's
-//     score-komponenter (terrain/team/work_cost/dayform), som v4 ikke
-//     producerer. Kaldstedet springer momenter over når v4 kører (moments =
-//     []); tidslinjen bygges stadig af den SAMME buildStageTimeline som v3,
-//     der degraderer gracefully til et tyndere artefakt uden momenter — samme
-//     mekanisme flaget `race_stage_timeline` allerede dokumenterer for v3=off.
-//     v4's egen (rigere) timeline i StageOutput.timeline kasseres i dette
-//     skridt; at persistere den kræver en beslutning om timeline_version og en
-//     frontend-aftager, og hører til paritets-slicen.
+//  4. Neutral fortælling + v4's EGEN tidslinje (#4879, opdateret 6/9).
+//     raceNarrative.extractStageMoments læser v3's score-komponenter
+//     (terrain/team/work_cost/dayform), som v4 ikke producerer — alle de
+//     grene er komponent-guardede, så kaldstedet kan kalde den med v4's
+//     `ranked` og få Tier 0 (vinder + udfaldstype + udbrud + holddag +
+//     GC-skifte) plus uheldsmomenterne, uden at opdigte et eneste tal.
+//     Tidslinjen er IKKE længere v3's syntetiske buildStageTimeline: v4's egen
+//     `StageOutput.timeline` (timeline_version 2) er den ægte hændelsesrække,
+//     og den persisteres nu under sit eget versionsnummer i den SAMME tabel
+//     (raceTimeline.buildStageTimelineV4). Broen validerer den mod v4's egen
+//     timeline-validator FØR den slippes videre, så et fog-gate-brud aldrig
+//     kan nå en spillerflade.
 
 const V4_MODULE_SPECIFIERS = Object.freeze({
   core: "./engine/v4/index.ts",
@@ -45,6 +52,7 @@ const V4_MODULE_SPECIFIERS = Object.freeze({
   entrants: "./engine/v4/adapters/entrantAdapter.ts",
   route: "./engine/v4/adapters/routeAdapter.ts",
   orders: "./engine/v4/orders/teamOrdersAdapter.ts",
+  timeline: "./engine/v4/timeline.ts",
 });
 
 /**
@@ -86,6 +94,14 @@ export function breakawayRiderIdsFromSnapshots(groupSnapshots = []) {
 }
 
 /**
+ * Udfald der betyder "ude af løbet" og derfor IKKE giver en etaperække.
+ * 'abandoned' = M10's alvorlige styrt (#2944). 'otl' = M15's tidsgrænse
+ * (#2582) — rytteren KOM i mål, men er ude af løbet alligevel, og
+ * `race_results` har ingen status-kolonne at skrive forskellen i.
+ */
+const V4_OUT_OF_RACE_STATUSES = Object.freeze(new Set(["abandoned", "otl"]));
+
+/**
  * v4's StageOutput → v3's `ranked`-form (den eneste form raceRunner kender).
  *
  * @param {{results: Array<{rider_id, rank, time_seconds, status}>, groupSnapshots?: Array}} output
@@ -93,7 +109,7 @@ export function breakawayRiderIdsFromSnapshots(groupSnapshots = []) {
  * @returns {Array<{rider_id, team_id, rank, stageGap, components}>}
  */
 export function rankedFromV4Output(output, { teamIdByRider = new Map() } = {}) {
-  const results = (output?.results ?? []).filter((r) => r.status !== "abandoned");
+  const results = (output?.results ?? []).filter((r) => !V4_OUT_OF_RACE_STATUSES.has(r.status));
   if (!results.length) return [];
   const inBreakaway = breakawayRiderIdsFromSnapshots(output?.groupSnapshots);
   // v4 rangerer allerede (tid, finish_order, rider_id); vinderens tid er
@@ -102,13 +118,126 @@ export function rankedFromV4Output(output, { teamIdByRider = new Map() } = {}) {
   return results.map((r, index) => ({
     rider_id: r.rider_id,
     team_id: teamIdByRider.get(r.rider_id) ?? null,
-    // Re-indekseret: v4's egen rank tælles over HELE feltet inkl. evt.
-    // abandoned, som vi netop har filtreret fra. 1..N uden huller er det
+    // Re-indekseret: v4's egen rank tælles over HELE feltet inkl. de udgåede
+    // og OTL-ryttere, som vi netop har filtreret fra. 1..N uden huller er det
     // nedstrøms-kontrakten (pointopslag, countback) forudsætter.
     rank: index + 1,
     stageGap: clampGap(r.time_seconds - winnerTime),
     components: { breakaway: inBreakaway.has(r.rider_id) ? 1 : 0 },
   }));
+}
+
+// ── v4-uheld → race_incidents (#4879) ────────────────────────────────────────
+//
+// `race_incidents` har UNIQUE (race_id, stage_number, rider_id): PRÆCIS ét
+// uheld pr. rytter pr. etape. v3 opfylder det per konstruktion (én lodtrækning
+// pr. rytter pr. etape); v4's M10-hook kaldes pr. SEGMENT og kan derfor ramme
+// den samme rytter flere gange. Broen folder derfor etapens hændelser sammen
+// til ÉN række pr. rytter efter en fast, deterministisk regel:
+//
+//   * REPRÆSENTANT = den mest indgribende hændelse (udgået > tidsgrænse >
+//     hårdt styrt > let styrt > mekanisk; ved lighed den tidligste km, så
+//     rækken er uafhængig af hook-kaldsrækkefølgen).
+//   * time_loss_seconds = SUMMEN af dagens tidstab for rytteren. Det er dét
+//     han faktisk tabte; at vise kun ét af to uheld ville underdrive dagen.
+//   * injury_days = den LÆNGSTE skade fra et STYRT (#4520: kun styrt skader —
+//     v4's mechanics/incidents.ts håndhæver det allerede i kontrolstrømmen,
+//     her spejles værdien blot). Sættes uanset hvilken række der blev
+//     repræsentant, så en rytter der både styrtede og røg uden for
+//     tidsgrænsen stadig får sine skadedage.
+const V4_INCIDENT_DB_OUTCOME = Object.freeze({
+  abandoned: "abandon",
+  time_loss: "time_loss",
+  protected_three_km_rule: "protected_three_km_rule",
+});
+
+/** Hvor indgribende er hændelsen? Højere tal vinder repræsentant-valget. */
+function incidentWeight(inc) {
+  if (inc.outcome === "abandoned") return 4;
+  if (inc.severity === "hard") return 3;
+  if (inc.severity === "light") return 2;
+  return 1; // mekanisk uheld (severity er null per konstruktion)
+}
+
+function roundSeconds(value) {
+  return Number.isFinite(value) ? Math.round(value) : null;
+}
+
+/**
+ * v4's StageOutput → race_incidents-kompatible rækker (uden race_id/stage_number,
+ * som kaldstedet stempler på — samme form som v3's rollIncidents-output).
+ *
+ * Rækkefølgen er stabil (rider_id) så to identiske kørsler giver identiske
+ * rækker — determinismen skal holde hele vejen ud i databasen, ikke kun i
+ * motoren.
+ *
+ * @param {{incidents?: Array, results?: Array<{rider_id, status, injury_days}>}} output
+ * @returns {Array<{rider_id, kind, severity, outcome, time_loss_seconds, injury_days}>}
+ */
+export function incidentRowsFromV4Output(output) {
+  const perRider = new Map();
+  for (const inc of output?.incidents ?? []) {
+    const current = perRider.get(inc.rider_id) ?? {
+      rider_id: inc.rider_id,
+      representative: null,
+      timeLoss: 0,
+      hasTimeLoss: false,
+      injuryDays: null,
+    };
+    // `Number(null)` er 0, ikke NaN — uden null-tjekket ville en 3 km-beskyttet
+    // rytter (time_loss_seconds = null pr. konstruktion) få skrevet "tabte 0
+    // sekunder" i stedet for "tabte ingen tid". Det er ikke det samme udsagn.
+    const loss = inc.time_loss_seconds == null ? NaN : Number(inc.time_loss_seconds);
+    if (Number.isFinite(loss)) {
+      current.timeLoss += loss;
+      current.hasTimeLoss = true;
+    }
+    // #4520: injury_days er ALDRIG sat på et mekanisk uheld — filteret her er
+    // andet lag, så en fremtidig kaldsvej ikke kan genindføre koblingen.
+    if (inc.kind === "crash" && Number.isFinite(inc.injury_days)) {
+      current.injuryDays = Math.max(current.injuryDays ?? 0, inc.injury_days);
+    }
+    const best = current.representative;
+    if (
+      !best
+      || incidentWeight(inc) > incidentWeight(best)
+      || (incidentWeight(inc) === incidentWeight(best) && inc.km < best.km)
+    ) {
+      current.representative = inc;
+    }
+    perRider.set(inc.rider_id, current);
+  }
+
+  // M15's tidsgrænse (#2582): rytteren har ingen uheldsrække, men SKAL have en
+  // markering — den er hele forklaringen på hvorfor hans etaperække mangler,
+  // og den er dét loadAbandonedRiderIds læser for at holde ham ude af næste
+  // etapes startliste. En udgået rytter kan ikke også være OTL (M15 rører dem
+  // ikke), så de to grene kan aldrig skrive den samme rytter to gange.
+  const otlRiderIds = new Set(
+    (output?.results ?? []).filter((r) => r.status === "otl").map((r) => r.rider_id),
+  );
+
+  const rows = [];
+  for (const riderId of new Set([...perRider.keys(), ...otlRiderIds])) {
+    const folded = perRider.get(riderId);
+    const isOtl = otlRiderIds.has(riderId);
+    const rep = folded?.representative ?? null;
+    const outOfRace = rep?.outcome === "abandoned";
+    // Terminal-udfald vinder over et tidstab: rækken skal forklare hvorfor
+    // rytteren er ude, ikke hvad han tabte undervejs.
+    const kind = outOfRace ? rep.kind : isOtl ? "time_limit" : (rep?.kind ?? "crash");
+    const outcome = outOfRace || isOtl ? "abandon" : V4_INCIDENT_DB_OUTCOME[rep?.outcome] ?? "time_loss";
+    rows.push({
+      rider_id: riderId,
+      kind,
+      severity: kind === "time_limit" ? null : (rep?.severity ?? null),
+      outcome,
+      // En udgået eller OTL-rytter har ingen etapetid at tabe.
+      time_loss_seconds: outOfRace || isOtl ? null : (folded?.hasTimeLoss ? roundSeconds(folded.timeLoss) : null),
+      injury_days: folded?.injuryDays ?? null,
+    });
+  }
+  return rows.sort((a, b) => String(a.rider_id).localeCompare(String(b.rider_id)));
 }
 
 /**
@@ -162,11 +291,45 @@ export function buildV4StageInput({ modules, entrants, stageProfile, seedString,
 }
 
 /**
+ * v4's egen tidslinje, kørt gennem motorens EGEN validator (#2410 §2.3 +
+ * fog-gaten #1791) før den slippes videre til persistering.
+ *
+ * Auditten 5/9 fandt validatoren "bygget og slukket" — den havde nul
+ * kaldssteder i drift. Her er kaldsstedet: præcis dér hvor motorens events
+ * første gang forlader motoren på vej mod en spillerflade.
+ *
+ * KONTRAKT VED BRUD: tidslinjen er et ADDITIVT artefakt oven på resultatet
+ * (spec §2.1) — den må aldrig vælte en etape. Et brud logges (så det larmer i
+ * prod-loggen) og etapen kører videre UDEN tidslinje, hvilket er præcis den
+ * degradering `race_stage_timeline`-flaget allerede beskriver for flag-off.
+ *
+ * @returns {{timeline_version: number, events: Array}|null}
+ */
+function safeV4Timeline({ modules, v4Output, riderIds, distanceKm, stageNumber }) {
+  const timeline = v4Output?.timeline;
+  if (!timeline || !Array.isArray(timeline.events)) return null;
+  const validate = modules?.timeline?.validateTimelineEvents;
+  if (typeof validate !== "function") return timeline;
+  const violations = validate(timeline.events, {
+    distanceKm: Number(distanceKm) || 0,
+    knownRiderIds: new Set(riderIds),
+  });
+  if (violations.length) {
+    console.error(
+      `  ⚠️  loebsmotor v4 etape ${stageNumber}: tidslinjen brød #2410 §2.3 og persisteres IKKE — `
+      + violations.map((v) => `[${v.rule}] ${v.message}`).join("; "),
+    );
+    return null;
+  }
+  return timeline;
+}
+
+/**
  * Byg en drop-in-erstatning for raceSimulator.simulateStage oven på et sæt
  * allerede-indlæste v4-moduler. Eksporteret separat fra loadRaceEngineV4 så
  * tests kan bygge adapteren af rigtige imports uden dynamisk import.
  *
- * @param {object} modules  { core, tuning, entrants, route, orders }
+ * @param {object} modules  { core, tuning, entrants, route, orders, timeline }
  * @returns {{ version: number, simulateStage: Function }}
  */
 export function createRaceEngineV4Adapter(modules) {
@@ -188,8 +351,19 @@ export function createRaceEngineV4Adapter(modules) {
       const teamIdByRider = new Map(entrants.map((e) => [e.rider_id, e.team_id ?? null]));
       return {
         ranked: rankedFromV4Output(v4Output, { teamIdByRider }),
-        // Se designvalg 3 øverst: v4 har ingen uheldsmekanik endnu.
-        incidents: [],
+        // #4879: M10 (#2944) + M15 (#2582) er koblet ind i motoren, så broen
+        // oversætter nu deres udfald til v3's race_incidents-form.
+        incidents: incidentRowsFromV4Output(v4Output),
+        // #4879: v4's EGEN tidslinje, valideret mod motorens egen vagt (se
+        // safeV4Timeline). Null ⇒ kaldstedet skriver ingen tidslinje for
+        // etapen, i stedet for at persistere et artefakt der bryder §2.3.
+        timeline: safeV4Timeline({
+          modules,
+          v4Output,
+          riderIds: entrants.map((e) => e.rider_id),
+          distanceKm: input.route.distance_km,
+          stageNumber,
+        }),
         v4Output,
       };
     },
@@ -207,14 +381,15 @@ let cachedAdapterPromise = null;
 export function loadRaceEngineV4({ importModule = (spec) => import(spec) } = {}) {
   if (cachedAdapterPromise) return cachedAdapterPromise;
   cachedAdapterPromise = (async () => {
-    const [core, tuning, entrants, route, orders] = await Promise.all([
+    const [core, tuning, entrants, route, orders, timeline] = await Promise.all([
       importModule(V4_MODULE_SPECIFIERS.core),
       importModule(V4_MODULE_SPECIFIERS.tuning),
       importModule(V4_MODULE_SPECIFIERS.entrants),
       importModule(V4_MODULE_SPECIFIERS.route),
       importModule(V4_MODULE_SPECIFIERS.orders),
+      importModule(V4_MODULE_SPECIFIERS.timeline),
     ]);
-    return createRaceEngineV4Adapter({ core, tuning, entrants, route, orders });
+    return createRaceEngineV4Adapter({ core, tuning, entrants, route, orders, timeline });
   })().catch((err) => {
     // Fejlet load må ikke forgifte cachen: næste afvikling skal kunne prøve igen
     // (og kaldstedet falder tilbage til v3, se raceRunner's resolveRaceEngine).
