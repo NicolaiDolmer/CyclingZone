@@ -142,6 +142,22 @@ export type Entrant = {
   role: RiderRole;
   effort: EffortLevel;
   condition: number; // 0-1, dag-til-dag-slid (M7 forbruger i F3; F2 baerer feltet)
+  // M16 holdspil (#4246, ADDITIVT og VALGFRIT). Auditten 5/9: "Holdspillet
+  // findes ikke i v4 ... kraever et hold-id paa rytteren, som den frosne
+  // kontrakt ikke har. Ved et flip forsvinder baade hjaelperens pris og
+  // kaptajnens fordel" (mod v3's buildTeamContext, raceSimulator.js:295-320).
+  //
+  // VALGFRIT, ikke paakraevet: de fire golden fixtures og enhver haandbygget
+  // testliste er skrevet UDEN feltet, og et hold-id er per konstruktion det
+  // eneste der kan taende holdspillet (mechanics/teamPlay.ts kraever et
+  // ikke-tomt team_id paa BAADE leder og hjaelper). En startliste uden feltet
+  // koerer derfor praecis som foer — "bygget" og "koblet ind" kan skilles ad
+  // uden at regenerere en eneste fixture.
+  //
+  // ROLLE er IKKE hold: `role` siger hvad rytteren skal i dag, `team_id` hvem
+  // han koerer for. v3 kraever begge (buildTeamContext springer enhver
+  // entrant uden team_id ELLER race_role over), og v4 goer det samme.
+  team_id?: string | null;
 };
 
 // M5 (udbruds-ordrer)/M6 (leadout)/M14 (AI-taktik). Formen er en AABEN
@@ -423,6 +439,24 @@ export type RiderState = {
   incidents: number; // antal incident-events denne rytter har vaeret part i
   status: RiderStatus;
   time_seconds: number; // kumuleret loebstid ved seneste segment-graense
+  // M16 holdspil (#4246, ADDITIVT og VALGFRIT). Multiplikator paa rytterens
+  // CP, akkumuleret af mechanics/teamPlay.ts henover segment-loopet:
+  // < 1 = han har arbejdet for holdet, > 1 = han er blevet baaret af det.
+  // `undefined` (og enhver startliste uden hold-id) betyder 1 = ingen effekt,
+  // saa feltets blotte eksistens aendrer intet.
+  //
+  // HVORFOR CP OG IKKE W': W' genoplades hvert segment, og i et felt hvor
+  // ingen ligger over CP (motorens normaltilstand siden #4604's relative
+  // krav-tempo) er en W'-delta VISKET UD foer naeste segment overhovedet
+  // laeser den. CP er den vedvarende akse — den styrer baade gruppens tempo
+  // (segmentLoop.computeGroupTempo) og klatre-selektionen (M2's
+  // testedDeficit), altsaa netop de to steder v3's holdspil ogsaa slaar
+  // igennem. Maalt 6/9 ved wiringen: med W'-kanalen var udfaldet BIT-IDENTISK
+  // med og uden hold.
+  //
+  // HVORFOR IKKE `dayform`: den er "dagsform" og rapporteres som saadan i
+  // fortaellingen. At laane den til holdarbejde ville goere begge tal loegn.
+  team_cp_factor?: number;
 };
 
 export type EngineState = {
@@ -504,6 +538,18 @@ export type IncidentHook = (state: EngineState, ctx: SegmentHookContext) => Segm
 // underlaget bor i profile_type, fysikken i segmentet).
 export type CobblesHook = (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult;
 
+// M16: holdspil (#4246, ejer-scope: v3-paritet). Kaldes paa HVERT segment
+// (ikke kind-gated) — holdarbejde er ambient, praecis som M10's uheld: en
+// hjaelper traekker for sin kaptajn paa flad vej saavel som op ad bakke.
+//
+// M16 er et NYT nummer, ikke en post kataloget i RACE_ENGINE_RULES §2 allerede
+// havde. Kataloget blev lukket 20/8 med M1-M14 og indeholder ingen holdspils-
+// mekanik; ejer-beslutning 1 (5/9, §9) goer alligevel holdspillet til
+// flip-minimum ("alt spillerne har i v3 i dag koblet ind i v4 ... holdspil med
+// hold-id paa rytteren"). Nummeret er altsaa en ejer-besluttet scope-udvidelse
+// paa praecis samme grundlag som M15 (tidsgraensen), ikke en PR-tilfoejelse.
+export type TeamPlayHook = (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult;
+
 export type MechanicHooks = {
   climbSelection: ClimbSelectionHook;
   descent: DescentHook;
@@ -519,4 +565,10 @@ export type MechanicHooks = {
   // tilbage til sin egen no-op naar feltet mangler; index.ts's LIVE_MECHANIC_HOOKS
   // saetter det, og index.test.ts laaser at den gør det ("bygget" vs "koblet ind").
   cobbles?: CobblesHook;
+  // VALGFRI (#4246 M16-wiring), samme begrundelse som `cobbles` ovenfor:
+  // et hook-saet uden `teamPlay` koerer etapen helt uden holdspil (F2-adfaerd,
+  // uaendret). segmentLoop.ts falder tilbage til sin egen no-op naar feltet
+  // mangler; index.ts's LIVE_MECHANIC_HOOKS saetter det, og index.test.ts
+  // laaser at den gør det.
+  teamPlay?: TeamPlayHook;
 };

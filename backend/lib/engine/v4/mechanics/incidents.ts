@@ -188,12 +188,22 @@ export function maxIncidentsForField(
  * Gruppen ER naerheds-modellen i v4 (mor-spec §3.2) — der findes ingen finere
  * positions-akse at maale afstand paa.
  *
- * HVORFOR ROLLE og ikke hold: `Entrant` (types.ts, frossen kerne-kontrakt)
- * baerer INTET team_id — kernen kender rolle, evner, effort og condition, ikke
- * holdtilhoersforhold. Rollen `helper` er derfor den del af ejerens formulering
- * ("rolle helper eller holdkammerat i samme gruppe") der faktisk kan afgoeres
- * her. Naar/hvis team_id lander i Entrant, strammes definitionen til
- * "holdkammerat ELLER helper i samme gruppe" ved at udvide DENNE ene funktion.
+ * HVEM der er "en hjaelper" er ejerens formulering ordret: **rollen `helper`
+ * ELLER en holdkammerat** (RACE_ENGINE_RULES §2c). Da #2944 blev wiret 6/9
+ * baerte `Entrant` intet team_id, saa kun rolle-halvdelen kunne afgoeres her,
+ * og §2c bar noten "naar feltet lander, strammes definitionen ét sted".
+ * M16 (#4246) landede feltet; DETTE er det ene sted.
+ *
+ * En HOLDKAMMERAT taeller uanset rolle — ogsaa `free_role` og kaptajnen selv.
+ * Ejeren sagde "holdkammerat", ikke "arbejdende holdkammerat", og virkeligheden
+ * giver ham ret: enhver holdkammerat stopper og giver sit hjul. Det er en
+ * ANDEN afgraensning end holdspillets (mechanics/teamPlay.ts's WORKER_ROLES,
+ * hvor `free_role` per ejer-beslutning #2376 har 0 holdbidrag) — bevidst, fordi
+ * det er to forskellige spoergsmaal: "hvem arbejder for holdet i dag" mod "hvem
+ * ville raekke dig et hjul".
+ *
+ * Udvidelsen er strengt ADDITIV (et OR): en startliste uden team_id doemmer
+ * praecis som foer, saa de fire golden fixtures er bit-uaendrede.
  */
 export function hasHelperNearby(
   groupRiderIds: readonly string[],
@@ -201,12 +211,30 @@ export function hasHelperNearby(
   riders: Readonly<Record<string, RiderState>>,
   victimRiderId: string,
 ): boolean {
+  const victimTeamId = teamIdOf(entrants[victimRiderId]);
   for (const riderId of groupRiderIds) {
     if (riderId === victimRiderId) continue;
     if (riders[riderId]?.status !== "racing") continue;
-    if (entrants[riderId]?.role === "helper") return true;
+    const entrant = entrants[riderId];
+    if (entrant?.role === "helper") return true;
+    if (victimTeamId !== null && teamIdOf(entrant) === victimTeamId) return true;
   }
   return false;
+}
+
+/**
+ * Hold-id som en ikke-tom streng, ellers `null` (M16, #4246). Tom/manglende
+ * team_id maa ALDRIG matche et andet tomt team_id — ellers ville hele feltet
+ * af holdloese ryttere vaere holdkammerater, og enhver mekanisk defekt ville
+ * faa hjaelp. Samme normalisering som adapters/entrantAdapter.normalizeTeamId
+ * (genimplementeret her, ikke importeret: mechanics/ maa ikke afhaenge af
+ * adapters/, jf. renheds-raekken i designdoc §1).
+ */
+function teamIdOf(entrant: Entrant | undefined): string | null {
+  const raw = entrant?.team_id;
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 /** De fire uafhaengige lodtraekninger ét uheld bruger. Alle uniform [0, 1). */

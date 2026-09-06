@@ -75,6 +75,7 @@ export const DEFAULT_MECHANIC_HOOKS: MechanicHooks = {
   breakaway: noopHook,
   incidents: noopHook,
   cobbles: noopHook,
+  teamPlay: noopHook,
 };
 
 // ── Kollektiv-CP + hastighed ───────────────────────────────────────────────────
@@ -111,7 +112,19 @@ export function riderCpForSegment(entrant: Entrant, riderState: RiderState, segm
     enduranceAbility: entrant.abilities.endurance,
     condition: entrant.condition,
   });
-  return Math.max(0, worn + riderState.dayform);
+  // M16-wiring (#4246): holdarbejdets pris/kaptajnens lae ganges paa CP'en
+  // paa NOEJAGTIG samme sted som M7's slid — foer dayform laegges til, saa
+  // holdspillet aldrig kan vende to rytteres dagsform-orden. Faktoren er
+  // akkumuleret af mechanics/teamPlay.ts i det FORRIGE segment: prisen betales
+  // FREMAD, praecis som i virkeligheden, hvor en tur i vinden koster resten af
+  // dagen og ikke det stykke man allerede har koert.
+  //
+  // Faktoren er PR. RYTTER PROPORTIONAL (aldrig et absolut fradrag), saa to
+  // ryttere med samme holdrolle beholder deres indbyrdes CP-orden: invariant 3
+  // holder per konstruktion inden for en rolle-klasse, praecis som i v3, hvor
+  // work_cost er den samme score-delta for alle hjaelpere paa profilen.
+  const teamFactor = Number.isFinite(riderState.team_cp_factor) ? (riderState.team_cp_factor as number) : 1;
+  return Math.max(0, worn * teamFactor + riderState.dayform);
 }
 
 /**
@@ -325,6 +338,25 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       rngFor: rngForFn,
       orders,
     };
+    // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
+    // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.
+    // Raekkefoelgen er hele pointen: hjaelperen betaler for det arbejde der
+    // lige er tikket, og klatre-/brostens-selektionen laeser derefter den
+    // reserve holdarbejdet efterlod — praecis som i v3, hvor work-cost og
+    // kaptajn-beskyttelse hoerer til SAMME etapes opgoer. Ikke kind-gated:
+    // holdarbejde er ambient (som M10's uheld), en hjaelper traekker paa flad
+    // vej saavel som op ad bakke.
+    //
+    // Hooket er VALGFRIT (types.ts): et hook-saet uden `teamPlay` koerer
+    // etapen helt uden holdspil — den gamle F2-adfaerd, uaendret. Det samme
+    // gaelder enhver startliste uden `team_id` (mechanics/teamPlay.ts's
+    // hoved): mekanikken er da en eksakt no-op.
+    {
+      const result = (hooks.teamPlay ?? noopHook)(state, ctx);
+      state = result.state;
+      timeline.push(...result.events);
+    }
+
     if (segment.kind === "climb") {
       const result = hooks.climbSelection(state, ctx);
       state = result.state;
