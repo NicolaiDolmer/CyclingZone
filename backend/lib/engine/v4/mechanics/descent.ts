@@ -58,17 +58,37 @@ function clamp(n: number, lo: number, hi: number): number {
 // ── Pure helpers (eksporteret for direkte kontrakt-tests) ────────────────────
 
 /**
- * Seedet styrt-risiko for én angribende rytter (beslutning 7): basis-risiko
- * daempet lineaert af descending-evnen (0-99-skala, point-for-point). ALDRIG
- * omvendt fortegn: risikoen kan kun FALDE med descending-evnen, aldrig stige
- * — clamp [0,1] fanger baade "ingen risiko" og "daempning overstiger basis".
+ * Seedet styrt-risiko for én angribende rytter (beslutning 7, gulv #4905):
+ * basis-risiko daempet MULTIPLIKATIVT af descending-evnen (0-99-skala), med et
+ * GULV paa evne-multiplikatoren saa daempningen aldrig kan naa 0. Den gamle
+ * subtraktive form (`incidentRiskDescendingDampening` i den frosne
+ * DescentTuning-kontrakt, se tuning.ts's kommentar ved feltet) kunne naa
+ * PRAECIS 0 ved enhver descending >= ~67 — netop de ryttere `findAttackers`
+ * altid vaelger som angribere — hvilket gjorde nedkoerselsstyrt statistisk
+ * usynlige, ogsaa i regn (issue-maaling: 40 loeb x 120 angreb = 0 uheld).
+ * Gulvet (`incidentRiskFloorFraction`) og evne-daempningens raekkevidde
+ * (`incidentRiskAbilityDampeningFraction`) bor i DESCENT_EXTRA_TUNING (samme
+ * "additiv tuning uden om den frosne kontrakt"-moenster som #4604's
+ * regrupperings-lag) — ikke i DescentTuning selv.
+ *
+ * ALDRIG omvendt fortegn: evne-multiplikatoren er `max(gulv, faldende
+ * linje-i-ability)` — et max af en konstant og en ikke-stigende funktion er
+ * selv ikke-stigende, saa risikoen kan kun FALDE (eller flade ud ved gulvet)
+ * med descending-evnen, aldrig stige. clamp [0,1] fanger stadig
+ * "ingen risiko" og en evt. urealistisk hoej basis-risiko efter vejr-forstaerkning.
  */
 export function incidentProbability(
   descendingAbility: number,
-  tuning: Pick<DescentTuning, "incidentRiskBase" | "incidentRiskDescendingDampening">,
+  tuning: Pick<DescentTuning, "incidentRiskBase"> & {
+    incidentRiskFloorFraction: number;
+    incidentRiskAbilityDampeningFraction: number;
+  },
 ): number {
   const ability = clamp(Number(descendingAbility) || 0, 0, 99);
-  return clamp(tuning.incidentRiskBase - tuning.incidentRiskDescendingDampening * ability, 0, 1);
+  const floor = clamp(tuning.incidentRiskFloorFraction, 0, 1);
+  const dampFraction = clamp(tuning.incidentRiskAbilityDampeningFraction, 0, 1);
+  const abilityMultiplier = Math.max(floor, 1 - dampFraction * (ability / 99));
+  return clamp(tuning.incidentRiskBase * abilityMultiplier, 0, 1);
 }
 
 /**
@@ -361,13 +381,20 @@ export const descentHook: DescentHook = (
     // descending, og den evne daemper allerede i incidentProbability —
     // to lag ville taelle den samme evne to gange (mechanics/cobbles.ts har
     // ikke det problem, fordi den daemper paa cobblestone).
+    //
+    // GULV (#4905, 6/9): evne-daempningen laegges paa OVENPAA vejr-forstaerkningen
+    // (samme raekkefoelge som foer), men er nu multiplikativ MED et gulv fra
+    // DESCENT_EXTRA_TUNING — se incidentProbability's kommentar. Uden gulvet
+    // naaede den gamle subtraktive daempning 0 for enhver descending >= ~67,
+    // uanset hvor meget vejret havde forstaerket basis-risikoen.
     const weatherAdjustedDescentTuning = {
       incidentRiskBase: weatherAdjustedRiskBase(
         ctx.tuning.descent.incidentRiskBase,
         ctx.route.weather,
         WEATHER_EXTRA_TUNING,
       ),
-      incidentRiskDescendingDampening: ctx.tuning.descent.incidentRiskDescendingDampening,
+      incidentRiskFloorFraction: extra.incidentRiskFloorFraction,
+      incidentRiskAbilityDampeningFraction: extra.incidentRiskAbilityDampeningFraction,
     };
     for (const attacker of attackers) {
       const rng = ctx.rngFor("descent_incident", attacker.riderId);

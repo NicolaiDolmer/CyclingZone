@@ -120,7 +120,17 @@ const tuning: EngineTuning = {
     minTechnicalityForAttack: 2, // kun T2-T3-segmenter kan udloese descent attack
     minAbilityGapForAttack: 15, // minimum descending-evne-forskel (0-99-skala) for at angribe
     incidentRiskBase: 0.01, // basis-styrt-risiko pr. descent-segment ved angreb (seeded)
-    incidentRiskDescendingDampening: 0.00015, // risiko-reduktion pr. descending-evne-point
+    // UBRUGT i formlen efter #4905 (6/9): feltet staar i den frosne DescentTuning-
+    // kontrakt (types.ts, arkitekt-only) og kan ikke fjernes uden at røre den fil.
+    // Den subtraktive form (base - dampening*ability) kunne naa PRAECIS 0 ved
+    // enhver descending >= ~67 (0.01 / 0.00015 ≈ 66,7) — netop de bedste
+    // nedkoerere, som `findAttackers` altid vaelger som angribere. Nedkoersels-
+    // uheld blev derfor statistisk usynlige, ogsaa i regn (issue-maaling: 40
+    // loeb x 120 angreb = 0 uheld). Formlen i mechanics/descent.ts bruger nu
+    // multiplikativ daempning MED GULV fra DESCENT_EXTRA_TUNING i stedet (samme
+    // "additiv tuning uden om den frosne kontrakt"-moenster som #4604's
+    // regrupperings-lag laengere nede i denne fil).
+    incidentRiskDescendingDampening: 0.00015, // risiko-reduktion pr. descending-evne-point (LEGACY, ubrugt — se kommentar ovenfor)
   },
 
   finale: {
@@ -329,6 +339,25 @@ const descentExtra = {
   attackAbilityWindowPoints: 8, // kun ryttere inden for saa mange descending-point af gruppens bedste descender kan gaa med i et nedkoersels-angreb
   maxGroupSizeForAttack: 40, // et nedkoersels-angreb gaar normalt kun fra en ALLEREDE reduceret gruppe. Man koerer ikke 20 sekunder fra en samlet hovedgruppe paa en nedkoersel — dér er der altid nogen paa hjulet. Uden gaten udloeste M3 et angreb ud af selve feltet paa hver eneste tekniske nedkoersel
   minTechnicalityForLargeGroupAttack: 3, // undtagelsen: fra en STOR gruppe kan der stadig angribes, men kun paa den svaereste vejtype (T3). Ellers ville gruppestoerrelses-gaten slaa M3's angreb (ejer-beslutning 6) helt ihjel paa et realistisk felt
+
+  // Styrt-risiko-GULV (#4905, ejer-beslutning 6/9, RACE_ENGINE_RULES §9 pkt. 4):
+  // "styrt skal graduere og vaere en synlig del af loebet; nedkoersler i regn er
+  // den mest realistiske kilde til styrt for netop de gode nedkoerere". Maalt
+  // problem: DescentTuning.incidentRiskDescendingDampening (subtraktiv, frosset
+  // kontrakt) daempede risikoen til PRAECIS 0 for enhver descending >= ~67 —
+  // og `findAttackers` vaelger altid de bedste descendere i gruppen som
+  // angribere, saa uheldet blev statistisk usynligt (40 loeb x 120 angreb = 0
+  // uheld, ogsaa i regn). Erstatter den subtraktive daempning MULTIPLIKATIVT:
+  // mechanics/descent.ts's incidentProbability ganger tuning.descent's
+  // vejr-justerede incidentRiskBase (M11's weatherAdjustedRiskBase, ganger
+  // FOERST) med max(incidentRiskFloorFraction, 1 - incidentRiskAbilityDampeningFraction * ability/99)
+  // — en evne-multiplikator der ALDRIG kan naa 0, saa selv ability=99 bevarer
+  // mindst `incidentRiskFloorFraction` af den faktiske (vejr-forstaerkede)
+  // risiko. Monotont ikke-stigende i evne per konstruktion (max af en konstant
+  // og en faldende linje er selv ikke-stigende) => invariant 3 uberoert: en
+  // bedre descender faar ALDRIG hoejere risiko end en daarligere.
+  incidentRiskFloorFraction: 0.25, // STARTGAET til kalibrering (backend/scripts/v4DescentIncidents.js): andel af den vejr-justerede basisrisiko selv den bedste descender (ability 99) altid beholder
+  incidentRiskAbilityDampeningFraction: 1, // STARTGAET: hvor stor en andel af (1 - gulv) evnen maksimalt kan daempe risikoen med ved ability=99 — 1 => fuld daempning ned til praecis gulvet ved den bedste descender
 } as const;
 
 /** M3 additiv regrupperings-tuning (deep-frosset). Se descentExtra-kommentaren ovenfor. */
