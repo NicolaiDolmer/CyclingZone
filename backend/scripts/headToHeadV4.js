@@ -722,7 +722,9 @@ export function resolveSeeds(seedsArg, seedInput) {
 
 function stripDisplay(cell) {
   if (!cell || typeof cell !== "object") return cell;
-  const { display, ...rest } = cell;
+  // Destruktureret KUN for at udelade den fra `rest` — praefikset `_` matcher
+  // lint-reglens allowed-unused-vars-moenster (/^_/u).
+  const { display: _display, ...rest } = cell;
   return rest;
 }
 
