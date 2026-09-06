@@ -122,12 +122,11 @@ COMMIT;
 --   FROM pg_proc p
 --   JOIN pg_namespace n ON n.oid = p.pronamespace
 --   WHERE n.nspname = 'public'
---     AND p.oid::regprocedure::text IN (
---       'get_cohort_retention(integer)',
---       'get_retention_scorecard_activity(integer)',
---       'get_sprint_metrics(text)',
---       'founder_public_list()'
---     )
+--     -- Filtrér på proname, ikke på regprocedure-teksten: regprocedure skriver
+--     -- kun skemaet foran hvis public IKKE er i sessionens search_path, så en
+--     -- tekst-sammenligning kan tavst returnere nul rækker.
+--     AND p.proname IN ('get_cohort_retention','get_retention_scorecard_activity',
+--                       'get_sprint_metrics','founder_public_list')
 --   ORDER BY 1;
 --
 --   Forventet:
