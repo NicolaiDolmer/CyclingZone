@@ -15,7 +15,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { runSegmentLoop } from "./segmentLoop.ts";
+import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
 import { RACE_V4_TUNING } from "./tuning.ts";
 import type {
   AbilityKey,
@@ -68,7 +68,7 @@ function fourIdenticalSegmentsRoute(): RouteV2 {
 }
 
 function stageInput(seed = "rng-streams-seed"): StageInput {
-  return { route: fourIdenticalSegmentsRoute(), startlist: startlist(20), seed, tuning: RACE_V4_TUNING };
+  return { route: fourIdenticalSegmentsRoute(), startlist: startlist(20), seed, tuning: RACE_V4_TUNING, orders: [] };
 }
 
 type Sample = { segmentIndex: number; segmentValue: number; stageValue: number };
@@ -86,7 +86,7 @@ function samplingHooks(samples: Sample[]): MechanicHooks {
     });
     return { state, events: [] };
   };
-  return { breakaway: probe };
+  return { ...DEFAULT_MECHANIC_HOOKS, breakaway: probe };
 }
 
 test("#4886: ctx.rngFor ruller NYT paa hvert segment — samme mekanik, samme rytter", () => {
