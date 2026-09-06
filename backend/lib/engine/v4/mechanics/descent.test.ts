@@ -8,8 +8,9 @@ import assert from "node:assert/strict";
 import fc from "fast-check";
 
 import { computeAttackGainSeconds, computeRegroupSeconds, descentHook, incidentProbability } from "./descent.ts";
+import { maxIncidentsForField, resolveCrashIncident } from "./incidents.ts";
 import { boundRngFor } from "../rng.ts";
-import { RACE_V4_TUNING, DESCENT_EXTRA_TUNING } from "../tuning.ts";
+import { RACE_V4_TUNING, DESCENT_EXTRA_TUNING, INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
 import type {
   AbilityKey,
   DescentSegment,
@@ -20,6 +21,7 @@ import type {
   RiderState,
   RouteV2,
   SegmentHookContext,
+  SegmentHookResult,
   TimelineEvent,
 } from "../types.ts";
 
@@ -234,6 +236,197 @@ test("descentHook: kun angribere ruller incident-risiko, seeded og deterministis
     assert.equal(ev.params.rider_id, "strong", "kun angriberen (strong) kan ramme incident i dette scenarie");
     assert.ok(ev.km >= 40 && ev.km <= 48, "incident-km skal ligge inden for descent-segmentet");
   }
+});
+
+// ── #4934: uheldet gaar gennem M10's trappe ─────────────────────────────────
+// Én uheldsmodel: descent leverer kun "hvem og hvor", incidents.ts afgoer
+// konsekvensen. Testene laaser at konsekvensen er ORDRET den samme som et
+// tilsvarende M10-uheld, at gevinsten bortfalder, og at etape-loftet deles.
+
+/**
+ * Rigget rngFor: `plan(mekanik, riderId)` leverer streamens vaerdier i
+ * raekkefolge. Alt udenfor planen giver 0.999999, saa ingen anden rytter/
+ * mekanik kan fyre et uheld ved et uheld.
+ */
+function riggedRngFor(plan: (mechanic: string, riderId: string) => number[]): SegmentHookContext["rngFor"] {
+  return (mechanic: string, riderId?: string) => {
+    const values = plan(mechanic, riderId ?? "");
+    let i = 0;
+    return () => (i < values.length ? values[i++]! : 0.999999);
+  };
+}
+
+/** Streams for ÉT rigget styrt hos `victim`: rul-under-p, km-fraktion, og trappens tre lodtraekninger. */
+function crashPlan(
+  victim: string,
+  rolls: { severity: number; magnitude: number; injury: number; kmFrac?: number },
+): (mechanic: string, riderId: string) => number[] {
+  return (mechanic, riderId) => {
+    if (riderId !== victim) return [];
+    if (mechanic === "descent_incident") return [0, rolls.kmFrac ?? 0.5];
+    if (mechanic === "descent_incident_severity") return [rolls.severity];
+    if (mechanic === "descent_incident_time_loss") return [rolls.magnitude];
+    if (mechanic === "descent_incident_injury") return [rolls.injury];
+    return [];
+  };
+}
+
+/** Kildegruppens gap er 0 i buildSingleGroupScenario, saa "kildegruppens gap + X" er bare X. */
+function gapOf(result: SegmentHookResult, riderId: string): number {
+  const group = findGroupOf(result.state.groups, riderId);
+  assert.ok(group, `rytter ${riderId} skal tilhoere en gruppe`);
+  return group!.gap_seconds;
+}
+
+test("#4934: et LET descent-styrt koster praecis det samme som et tilsvarende M10-uheld", () => {
+  const rolls = { severity: 0.9, magnitude: 0.5, injury: 0 }; // severity >= serious+hard => light
+  const { state, ctx } = buildSingleGroupScenario([["weak", 0], ["strong", 99]], 3);
+  const result = descentHook(state, { ...ctx, rngFor: riggedRngFor(crashPlan("strong", rolls)) });
+
+  // Referencen: M10's egen trappe med de SAMME lodtraekninger.
+  const expected = resolveCrashIncident(rolls, { protectedByRule: false, helperNearby: false }, INCIDENTS_EXTRA_TUNING);
+  assert.equal(expected.kind, "crash");
+  assert.equal(expected.severity, "light");
+  assert.equal(expected.injuryDays, null, "trin 1 skader ikke");
+
+  const incident = eventsOfType(result.events, "incident")[0];
+  assert.ok(incident, "der skal vaere et descent-uheld");
+  assert.equal(incident.params.cause, "descent_attack");
+  assert.equal(incident.params.kind, expected.kind);
+  assert.equal(incident.params.severity, expected.severity);
+  assert.equal(incident.params.outcome, expected.outcome);
+  assert.equal(incident.params.time_loss_seconds, expected.timeLossSeconds);
+  assert.equal(incident.params.injury_days, expected.injuryDays);
+
+  // Tiden: kildegruppens gap (0) + trappens tidstab. Gevinsten er VAEK.
+  assert.equal(gapOf(result, "strong"), expected.timeLossSeconds);
+  assert.equal(gapOf(result, "weak"), 0, "resten af gruppen roeres ikke af uheldet");
+  assert.equal(result.state.riders.strong.status, "racing", "et let styrt udgaar ikke");
+});
+
+test("#4934: gevinsten bortfalder — den styrtede angriber ligger BAG gruppen han angreb fra", () => {
+  const { state, ctx } = buildSingleGroupScenario([["weak", 0], ["strong", 99]], 3);
+  const rigged = { ...ctx, rngFor: riggedRngFor(crashPlan("strong", { severity: 0.9, magnitude: 0, injury: 0 })) };
+  const result = descentHook(state, rigged);
+
+  const attack = eventsOfType(result.events, "finale_attack")[0];
+  assert.ok(attack, "angrebet skal stadig ske — uheldet er en konsekvens af det, ikke en annullering");
+  const gained = attack.params.gained_seconds as number;
+  assert.ok(gained > 0);
+
+  // Uden styrtet ville han ligge paa -gained. Med styrtet ligger han paa
+  // +tidstab: hele gevinsten er inddraget, og tidstabet laagt oveni.
+  assert.equal(gapOf(result, "strong"), INCIDENTS_EXTRA_TUNING.unprotectedTimeLossSecondsRange[0]);
+  assert.ok(gapOf(result, "strong") > gapOf(result, "weak"), "han ligger bag kildegruppen, ikke foran den");
+});
+
+test("#4934: et ALVORLIGT descent-styrt udgaar — status abandoned + abandonedGapSeconds, som i M10", () => {
+  const { state, ctx } = buildSingleGroupScenario([["weak", 0], ["strong", 99]], 3);
+  const rolls = { severity: 0.001, magnitude: 0.5, injury: 0.5 }; // under crashSeverityShares.serious
+  const result = descentHook(state, { ...ctx, rngFor: riggedRngFor(crashPlan("strong", rolls)) });
+
+  const expected = resolveCrashIncident(rolls, { protectedByRule: false, helperNearby: false }, INCIDENTS_EXTRA_TUNING);
+  assert.equal(expected.severity, "serious");
+  assert.equal(expected.outcome, "abandoned");
+  assert.ok((expected.injuryDays ?? 0) > 0, "trin 3 skader");
+
+  assert.equal(result.state.riders.strong.status, "abandoned");
+  assert.equal(gapOf(result, "strong"), INCIDENTS_EXTRA_TUNING.abandonedGapSeconds);
+  assert.equal(eventsOfType(result.events, "incident")[0].params.injury_days, expected.injuryDays);
+});
+
+test("#4934: et HAARDT descent-styrt giver stort tidstab OG skadedage", () => {
+  const { state, ctx } = buildSingleGroupScenario([["weak", 0], ["strong", 99]], 3);
+  const rolls = { severity: 0.1, magnitude: 0.25, injury: 0.5 }; // mellem serious og serious+hard
+  const result = descentHook(state, { ...ctx, rngFor: riggedRngFor(crashPlan("strong", rolls)) });
+
+  const expected = resolveCrashIncident(rolls, { protectedByRule: false, helperNearby: false }, INCIDENTS_EXTRA_TUNING);
+  assert.equal(expected.severity, "hard");
+  assert.ok((expected.injuryDays ?? 0) > 0);
+  assert.equal(eventsOfType(result.events, "incident")[0].params.injury_days, expected.injuryDays);
+  assert.equal(gapOf(result, "strong"), expected.timeLossSeconds);
+  assert.equal(result.state.riders.strong.status, "racing", "et haardt styrt gennemfoerer");
+});
+
+test("#4934: ingen dobbelt bogfoering — ét uheld = én taeller, ét stage_incidents-element", () => {
+  const { state, ctx } = buildSingleGroupScenario([["weak", 0], ["strong", 99]], 3);
+  const result = descentHook(state, {
+    ...ctx,
+    rngFor: riggedRngFor(crashPlan("strong", { severity: 0.9, magnitude: 0.5, injury: 0 })),
+  });
+
+  assert.equal(result.state.riders.strong.incidents, 1);
+  assert.equal(result.state.riders.weak.incidents, 0);
+  assert.equal(result.state.stage_incidents?.length, 1);
+  const logged = result.state.stage_incidents![0];
+  assert.equal(logged.rider_id, "strong");
+  assert.equal(logged.kind, "crash");
+  assert.equal(logged.km, eventsOfType(result.events, "incident")[0].km);
+});
+
+test("#4934: etape-loftet deles med M10 — et opbrugt budget giver INGEN descent-uheld", () => {
+  const { state, ctx } = buildSingleGroupScenario([["weak", 0], ["strong", 99]], 3);
+  const budget = maxIncidentsForField(Object.keys(state.riders).length, INCIDENTS_EXTRA_TUNING);
+  const alreadyLogged = Array.from({ length: budget }, (_, i) => ({
+    rider_id: `other-${i}`,
+    km: 1,
+    kind: "crash" as const,
+    severity: "light" as const,
+    outcome: "time_loss" as const,
+    time_loss_seconds: 10,
+    injury_days: null,
+    helper_assist: false,
+  }));
+  const full: EngineState = { ...state, stage_incidents: alreadyLogged };
+  const result = descentHook(full, {
+    ...ctx,
+    rngFor: riggedRngFor(crashPlan("strong", { severity: 0.001, magnitude: 0, injury: 0 })),
+  });
+
+  assert.equal(eventsOfType(result.events, "incident").length, 0, "loftet er haardt — der rulles ikke engang");
+  assert.equal(result.state.stage_incidents?.length, budget);
+  assert.equal(result.state.riders.strong.incidents, 0);
+  assert.equal(result.state.riders.strong.status, "racing");
+  assert.ok(eventsOfType(result.events, "finale_attack").length > 0, "angrebet sker stadig");
+});
+
+test("#4934 monotoni: ved SAMME lodtraekning faar en bedre nedkoerer aldrig et vaerre udfald", () => {
+  // Samme rolls, to forskellige angriber-evner. Trappens konsekvens er bevidst
+  // IKKE evne-skaleret (incidents.ts), og slut-gap'et er kildegruppens gap +
+  // tidstabet — uafhaengigt af hvor stor gevinsten var. Den bedre nedkoerer
+  // kan derfor kun styrte SJAELDNERE (incidentProbability, testet ovenfor),
+  // aldrig haardere.
+  const rolls = { severity: 0.5, magnitude: 0.7, injury: 0.3 };
+  const gapFor = (attackerAbility: number): number => {
+    const { state, ctx } = buildSingleGroupScenario([["weak", 0], ["strong", attackerAbility]], 3);
+    const result = descentHook(state, { ...ctx, rngFor: riggedRngFor(crashPlan("strong", rolls)) });
+    assert.equal(eventsOfType(result.events, "incident").length, 1, "begge scenarier skal styrte ved samme rul");
+    return gapOf(result, "strong");
+  };
+  assert.equal(gapFor(99), gapFor(70), "samme lodtraekning => samme udfald, uanset descending-evne");
+});
+
+test("#4934: 3 km-reglen beskytter TIDEN — ingen gruppe-/tidsaendring, men uheldet bogfoeres", () => {
+  const { state, ctx } = buildSingleGroupScenario([["weak", 0], ["strong", 99]], 3);
+  // Flad etape + descent-segment der slutter paa maalstregen (100 km).
+  const flatRoute: RouteV2 = { ...ROUTE_STUB, profile_type: "flat" };
+  const finalSegment = descentSegment(3, 98, 100);
+  const result = descentHook(state, {
+    ...ctx,
+    route: flatRoute,
+    segment: finalSegment,
+    rngFor: riggedRngFor(crashPlan("strong", { severity: 0.9, magnitude: 0.5, injury: 0, kmFrac: 0.5 })),
+  });
+
+  const incident = eventsOfType(result.events, "incident")[0];
+  assert.ok(incident, "uheldet sker stadig");
+  assert.equal(incident.params.outcome, "protected_three_km_rule");
+  assert.equal(incident.params.time_loss_seconds, null);
+  assert.equal(result.state.riders.strong.incidents, 1, "uheldet bogfoeres");
+  assert.equal(result.state.stage_incidents?.length, 1);
+  // Han beholder angrebsgruppens tid: gap'et er stadig gevinsten, ikke et tab.
+  const gained = eventsOfType(result.events, "finale_attack")[0].params.gained_seconds as number;
+  assert.equal(gapOf(result, "strong"), -gained);
 });
 
 // ── Kontrakt: determinisme + per-rytter-hash-isolation ──────────────────────
