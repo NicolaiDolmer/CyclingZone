@@ -16,7 +16,9 @@ import {
   runStarterSquadAllocation,
 } from "./starterSquadAllocator.js";
 import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
-import { STAT_KEYS } from "./fictionalRiderGenerator.js";
+import { STAT_KEYS, generateFictionalRiders } from "./fictionalRiderGenerator.js";
+import { ageForSeason, seasonReferenceYear } from "./riderSeasonAge.js";
+import { PROGRESSION_CONFIG } from "./riderProgression.js";
 import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { computeFrozenSalary } from "./contractSeed.js";
@@ -710,4 +712,86 @@ test("CYCLINGZONE-42: markør null + FLERE end 12 ryttere → kast, ingen rytter
   assert.equal(store.size, oversized, "ingen ryttere slettet");
   assert.equal([...store.values()].filter((r) => r.team_id === "ai-fill-team").length, oversized);
   assert.equal(teams.get("ai-fill-team").starter_squad_allocated_at, null, "markør IKKE sat ved afvisning");
+});
+
+// ── #4876 · ALDERS-AKSEN: start-trupper skal måles mod den AKTIVE sæson ────────
+//
+// Rod-årsagen bag #4876: referenceYear defaultede til LAUNCH_POPULATION.referenceYear
+// (2026 = sæson 1), mens generatoren klamper alderen til [18, 39] MOD netop det år
+// (birthYear = referenceYear − age). I sæson 3 betød "39" derfor en SÆSON-alder på
+// 41 — over spillets garanterede pensionsalder (40), og over værdimodellens
+// karriere-horisont, så rytteren ikke kunne værdisættes og heal-sweepen loopede.
+// Målt i prod 6/9: 7 menneskehold havde fået en start-trup-rytter på 40-41.
+
+test("#4876: referenceYear udledes af den AKTIVE sæson, ikke af lanceringsåret", async () => {
+  const seenReferenceYears = [];
+  const capturingGenerate = (opts) => {
+    seenReferenceYears.push(opts.referenceYear);
+    return makeFakeGenerate()(opts);
+  };
+  const { supabase, fakeDerive } = createRidersMock({ activeSeasonNumber: 3 });
+
+  await allocateStarterSquadForTeam(supabase, "season-3-team", {
+    seed: 2026, generate: capturingGenerate, derive: fakeDerive,
+  });
+
+  assert.ok(seenReferenceYears.length > 0, "generatoren blev aldrig kaldt");
+  for (const year of seenReferenceYears) {
+    assert.equal(year, seasonReferenceYear(3),
+      `sæson 3 skal generere mod ${seasonReferenceYear(3)}, ikke ${year} (lanceringsåret var 2026)`);
+  }
+});
+
+test("#4876: et EKSPLICIT referenceYear vinder stadig (harnesses/launch-replay)", async () => {
+  const seenReferenceYears = [];
+  const capturingGenerate = (opts) => {
+    seenReferenceYears.push(opts.referenceYear);
+    return makeFakeGenerate()(opts);
+  };
+  const { supabase, fakeDerive } = createRidersMock({ activeSeasonNumber: 3 });
+
+  await allocateStarterSquadForTeam(supabase, "pinned-team", {
+    seed: 2026, referenceYear: 2026, generate: capturingGenerate, derive: fakeDerive,
+  });
+
+  assert.ok(seenReferenceYears.length > 0, "generatoren blev aldrig kaldt");
+  for (const year of seenReferenceYears) {
+    assert.equal(year, 2026, "et eksplicit referenceYear må ikke overskrives af den aktive sæson");
+  }
+});
+
+// DEN TEST DER VILLE HAVE FANGET #4876: kør den ÆGTE generator gennem
+// signup-stien i en sen sæson og mål sæson-alderen på det der faktisk indsættes.
+// En ny spiller må ALDRIG få en rytter der allerede er på eller over den
+// garanterede pensionsalder — han ville forsvinde ved næste sæsonskifte.
+//
+// Hold-id'erne er IKKE tilfældigt valgt: de seks er målt frem som præcis de hold
+// der under det GAMLE default (referenceYear 2026) producerede en rytter på 40-41
+// i sæson 3. Vagten fælder derfor beviseligt den gamle kode — kørt mod hele
+// stien med 2026-aksen giver den 27 overtrædelser ud af 2.400 ryttere (200 hold,
+// ~1 dud pr. 8 nye hold, hvilket matcher de 7 ramte hold målt i prod 6/9), og 0
+// ud af 2.400 med den aktive sæsons akse. Hver allokering får sin EGEN mock, så
+// navne-unikheden ikke flytter puljen mellem holdene.
+test("#4876 forward-guard: ingen start-trup-rytter er på/over pensionsalderen i en sen sæson", async () => {
+  const ACTIVE_SEASON = 3;
+  const RETIREMENT_AGE = PROGRESSION_CONFIG.retirement.guaranteedAge;
+  // Målt: disse hold gav 40-41-årige under den gamle 2026-akse.
+  const teamIds = ["age-probe-1", "age-probe-15", "age-probe-16", "age-probe-18", "age-probe-23", "age-probe-27"];
+
+  for (const teamId of teamIds) {
+    const { supabase, store, fakeDerive } = createRidersMock({ activeSeasonNumber: ACTIVE_SEASON });
+    await allocateStarterSquadForTeam(supabase, teamId, {
+      seed: 2026, generate: generateFictionalRiders, derive: fakeDerive,
+    });
+
+    const riders = [...store.values()].filter((r) => r.team_id === teamId);
+    assert.equal(riders.length, STARTER_SQUAD.TOTAL_SIZE, `${teamId}: 12 ryttere allokeret`);
+    for (const r of riders) {
+      const age = ageForSeason(r.birthdate, ACTIVE_SEASON);
+      assert.ok(age >= STARTER_SQUAD.YOUNG_AGE_MIN,
+        `${teamId}/${r.id}: sæson-alder ${age} er under generatorens gulv (${STARTER_SQUAD.YOUNG_AGE_MIN})`);
+      assert.ok(age < RETIREMENT_AGE,
+        `${teamId}/${r.id}: sæson-alder ${age} er på/over den garanterede pensionsalder (${RETIREMENT_AGE}) — en ny spiller ville miste ham ved sæsonskiftet`);
+    }
+  }
 });
