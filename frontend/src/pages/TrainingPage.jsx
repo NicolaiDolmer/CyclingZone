@@ -528,7 +528,7 @@ export default function TrainingPage() {
           .from("teams")
           .select("id")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
         if (!myTeam) return;
         // #3300: is_academy medtages read-only i samme select (ingen migration,
         // intet nyt kald) — feltet findes allerede på riders, kun mangel på

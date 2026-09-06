@@ -125,6 +125,39 @@
         ]
       }
     },
+    "mandate": {
+      "label": "Mandatet",
+      "whatMandate": {
+        "title": "Hvad Mandatet er",
+        "text": "Mandatet er dit forhold til bestyrelsen samlet ét sted. Ét tillidstal i stedet for tre separate tilfredshedstal, ét sæt mål for den sæson du er i, og en klubvision af milepæle længere ude. Det hele bor på Bestyrelses-siden under Klubhus, delt op i fire faner: Overblik, Mandat, Vision og Bestyrelse. Bestyrelsen kan stadig ikke fyre dig, og konsekvenserne er stadig graduerede og varslede, før de bider."
+      },
+      "confidence": {
+        "title": "Tillid erstatter de tre tilfredshedstal",
+        "text": "Tillid er ét tal fra 0 til 100 for, hvordan bestyrelsen ser dit arbejde. Fire områder fodrer det: resultater, økonomi, identitet og rangliste. Tillidskortet viser tallet, bevægelsen siden sidste uge, en måler pr. område og en klar linje, der nævner de begrænsninger bestyrelsen har lagt på dig lige nu. Tillid driver også din sponsor-modifier, så ét tal nu forklarer både hvad bestyrelsen mener, og hvad sponsoren betaler. Hvert mål du når eller misser flytter tilliden, aldrig din saldo direkte."
+      },
+      "annualMeeting": {
+        "title": "Årsmødet",
+        "text": "Én gang pr. sæson, ved sæsonskiftet, kalder bestyrelsen dig ind og foreslår mandatet for den kommende sæson. Det er ét fuldskærmsmøde, og den hurtigste vej igennem er at acceptere forslaget og underskrive. To klik.",
+        "steps": [
+          "En guldknap dukker op på Bestyrelses-siden, når mødet er klar. Før det er der ingen knap, ikke en gråtonet en.",
+          "Du vælger et fokus først. Skifter du fokus, bygger bestyrelsen sit forslag op omkring det på ny, og de justeringer du allerede havde lavet starter forfra.",
+          "Forslaget er 3 til 5 mål. Hvert mål kan beholdes som det står, gøres lettere eller strækkes. Et strakt mål giver mere tillid, hvis du når det, og koster mere, hvis du misser.",
+          "Du har et fast antal justeringer pr. møde, vist øverst. En bestyrelse med tillid til dig giver flere af dem og strækker sig længere i sine modtilbud.",
+          "Bestyrelsen kan foreslå en ny milepæl til klubvisionen, med den sæson den skal nås i. Accepter den eller afvis den.",
+          "Du har én anmodning pr. møde. Et afslag kommer altid tilbage med et modtilbud, aldrig et rent nej.",
+          "Underskriv, og mandatet er aktivt for sæsonen. Indtil det er underskrevet, står det som et forslag.",
+          "Svarer du aldrig, underskriver bestyrelsen sit eget forslag for dig, når fristen øverst på mødet løber ud. Du får mandatet, du har bare ikke formet det."
+        ]
+      },
+      "bonusOffers": {
+        "title": "Bonustilbud",
+        "text": "Går sæsonen godt, kan bestyrelsen lægge et bonustilbud på bordet: penge ind på din konto nu, mod ét ekstra mål lagt til sæsonens mandat. Tilbuddet vises som en stribe på mandatet i Overblik-fanen og i fuld længde i Mandat-fanen. Accepterer du, sættes pengene ind med det samme, det ekstra mål tæller fra det øjeblik du accepterer, og det gøres op ved sæsonens slutning sammen med resten af mandatet. Afviser du, er det væk. Bestyrelsen giver højst ét tilbud pr. sæson, og tilbudskortet nævner den sæson det hører til."
+      },
+      "clubDnaAndBoard": {
+        "title": "Klub-DNA og dine fem bestyrelsesmedlemmer",
+        "text": "Klub-DNA er det første valg du træffer, blandt fem arketyper, og det former hele Mandatet. Det afgør, hvem der sidder i din bestyrelse: tre af de fem navngivne medlemmer matcher dit DNA og dit holds identitet, to er wildcards, der giver kontrast, og den tætteste match er formand. Det hælder de mål du bliver tilbudt mod det, dit DNA går op i, og det giver din klubvision navn. Hvert medlem ejer ét område og læser din sæson med sin egen stemme, og derfor kan det samme resultat røre ét medlem og lade et andet være uberørt. Du kan skifte dit DNA, indtil din første sæson slutter, hvilket sætter en ny bestyrelse i lokalet; derefter er det låst. Bestyrelses-fanen viser alle fem, deres stemning over for dig og referatet i deres egne ord."
+      }
+    },
     "auctions": {
       "label": "Auktioner",
       "whatAuctions": {

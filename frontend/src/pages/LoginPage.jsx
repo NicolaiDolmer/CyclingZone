@@ -319,11 +319,13 @@ export default function LoginPage() {
         return;
       }
 
+      // #4869: .maybeSingle() — 0 rækker er det forventede/hyppige svar (navnet
+      // er ledigt); .single() gav 406 her 11 gange (edge_logs 4-5/9).
       const { data: existing } = await supabase
         .from("teams")
         .select("id")
         .ilike("name", teamName.trim())
-        .single();
+        .maybeSingle();
 
       if (existing) {
         setError(t("auth:error.teamNameTaken"));

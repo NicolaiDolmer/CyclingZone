@@ -376,7 +376,7 @@ export default function DashboardPage() {
     // laa i serie (teams -> seasons). Parallelt sparer de en hel tur/retur paa
     // den blokerende sti foran foerste maling.
     const [{ data: teamData }, { data: activeSeason }] = await Promise.all([
-      supabase.from("teams").select("*").eq("user_id", user.id).single(),
+      supabase.from("teams").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("seasons")
         .select("id, number, status, start_date, end_date, race_days_total, race_days_completed")
         .eq("status", "active")

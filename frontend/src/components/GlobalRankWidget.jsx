@@ -18,7 +18,7 @@ export default function GlobalRankWidget() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).single();
+        const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
         if (!myTeam) return;
         const [{ data: mv }, { data: weekly }] = await Promise.all([
           supabase.from("global_rank_mv").select("*").eq("team_id", myTeam.id).maybeSingle(),

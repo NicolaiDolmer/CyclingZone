@@ -21,6 +21,16 @@ name: Dependabot auto-merge
 # synkron `gh pr checks --watch` -> eksplicit `gh pr merge --squash` (IKKE
 # --auto) -> eksplicit `workflow_dispatch` af deploy-verify (undtaget fra
 # anti-loop-safeguarden).
+#
+# Hvorfor --admin + AUTO_MERGE_PAT (rettet #4404/#4812, samme rod-aarsag):
+# branch protection paa main kraever require_code_owner_reviews, som ingen kan
+# give paa en Dependabot-PR (ejeren er CODEOWNER og kan ikke godkende en PR han
+# ikke selv har aabnet paa samme normale maade som sin egen). `gh pr merge`
+# uden `--admin` fejlede derfor formentlig altid paa selve merge-skridtet,
+# samme fejlklasse som #4404. Merge-skridtet bruger nu samme
+# `secrets.AUTO_MERGE_PAT` som auto-merge.yml, kun til selve merge-kaldet — de
+# andre gates (required checks, frontend-smoke, advisory AI-review) haandhaeves
+# stadig EKSPLICIT foer merge-skridtet.
 
 on:
   pull_request:
@@ -51,6 +61,20 @@ jobs:
         uses: dependabot/fetch-metadata@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Guard AUTO_MERGE_PAT er sat (patch/minor)
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        env:
+          AUTO_MERGE_PAT: ${{ secrets.AUTO_MERGE_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ -z "$AUTO_MERGE_PAT" ]; then
+            gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "⛔ **Dependabot auto-merge kan ikke køre** — \`AUTO_MERGE_PAT\` mangler som repo-secret, se docs/GITHUB_WORKFLOW.md (afsnit \"Auto-merge fra mobilen\") for hvordan du opretter den."
+            echo "::error::AUTO_MERGE_PAT mangler som repo-secret, se docs/GITHUB_WORKFLOW.md"
+            exit 1
+          fi
 
       # ---------------------------------------------------------------
       # Major: uændret advisory-only kommentar, ingen auto-merge-forsøg.
@@ -164,14 +188,14 @@ jobs:
           echo "Advisory review is still running; leaving PR open for manual follow-up."
           exit 1
 
-      - name: Squash-merge PR (patch/minor)
+      - name: Squash-merge PR (patch/minor, admin-bypass af code-owner-review via PAT)
         id: merge
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_PAT }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --squash --delete-branch
+          gh pr merge "$PR_NUMBER" --repo "${{ github.repository }}" --squash --delete-branch --admin
           SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json mergeCommit --jq .mergeCommit.oid)
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "Merged to $SHA"
@@ -196,4 +220,4 @@ jobs:
         run: |
           gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **Dependabot auto-merge fejlede** — [se log]($RUN_URL)
 
-          Tjek: er CI rødt? Merge-konflikter? Workaround: merge manuelt, eller push et nyt commit for at genkøre."
+          Tjek: er CI rødt? Merge-konflikter? Mangler \`AUTO_MERGE_PAT\` som repo-secret? Workaround: merge manuelt (\`gh pr merge --squash --delete-branch --admin\`), eller push et nyt commit for at genkøre."

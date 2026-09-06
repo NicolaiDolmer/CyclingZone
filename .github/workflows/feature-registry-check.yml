@@ -1,0 +1,99 @@
+name: Feature-register check
+
+# Gate for docs/FEATURE_REGISTRY.yml (#4921).
+#
+# To uafhaengige fejlklasser, to jobs:
+#
+#   registry-freshness — docs/FEATURE_STATUS.md er GENERERET. Bliver den
+#     redigeret i haanden, eller glemmer nogen at koere generatoren efter en
+#     aendring i registret, divergerer status-filen fra sin kilde. Samme
+#     moenster som types-freshness-guarden (#4326): generér og sammenlign.
+#     Rent fil-tjek, ingen secrets - koerer derfor ogsaa for Dependabot.
+#
+#   registry-flags — registret kan sige "live" mens prod-flaget staar off.
+#     Det er den drift der gjorde den gamle FEATURE_STATUS.md misvisende
+#     (facilities stod som gated `false` mens prod sagde `on`). Kraever
+#     SUPABASE_URL + SUPABASE_SERVICE_KEY, som IKKE er tilgaengelige for
+#     Dependabot-triggede pull_request-runs - derfor samme skip-moenster som
+#     feature-liveness-audit.yml.
+#
+# Ugentlig cron fanger den tredje fejlklasse: ingen roerer registret, men
+# ejeren flipper et flag i prod. Ingen PR = ingen gate, indtil cron'en bider.
+
+on:
+  pull_request:
+    paths:
+      - 'docs/FEATURE_REGISTRY.yml'
+      - 'docs/FEATURE_STATUS.md'
+      - 'scripts/generate-feature-status.mjs'
+      - 'scripts/check-feature-registry-flags.mjs'
+      - '.github/workflows/feature-registry-check.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/FEATURE_REGISTRY.yml'
+      - 'docs/FEATURE_STATUS.md'
+      - 'scripts/generate-feature-status.mjs'
+      - 'scripts/check-feature-registry-flags.mjs'
+      - '.github/workflows/feature-registry-check.yml'
+  # Mandag 04:30 UTC - efter feature-liveness-audit (04:00), saa de to
+  # DB-laesende vagter ikke rammer prod samtidig.
+  schedule:
+    - cron: '30 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  registry-freshness:
+    name: registry-freshness
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Generator selftest
+        run: node --test scripts/generate-feature-status.test.mjs
+
+      - name: Flag-gate selftest
+        run: node --test scripts/check-feature-registry-flags.test.mjs
+
+      - name: docs/FEATURE_STATUS.md er i sync med registret
+        run: node scripts/generate-feature-status.mjs --check
+
+  registry-flags:
+    name: registry-flags
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip secret-backed flag check for Dependabot PRs
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        run: echo "Skipping flag check for Dependabot PR because repository secrets are unavailable to Dependabot-triggered pull_request workflows."
+
+      - name: Check out repository
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dependencies
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        run: npm ci
+
+      - name: Registrets tilstand mod prod app_config
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node scripts/check-feature-registry-flags.mjs

@@ -612,7 +612,7 @@ export default function Layout() {
       if (!session) return;
       setSession(session);
 
-      const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).single();
+      const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).maybeSingle();
       if (teamData) {
         setTeam(teamData);
         setBalance(teamData.balance);
@@ -721,7 +721,7 @@ export default function Layout() {
       channel.on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
         async () => {
           setUnread(await fetchUnreadCount(session.user.id));
-          const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).single();
+          const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).maybeSingle();
           if (t) setBalance(t.balance);
         })
     );

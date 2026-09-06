@@ -41,7 +41,7 @@ export default function AdminGrowthPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setAdminStatus("not_admin"); return; }
       const { data: userData } = await supabase
-        .from("users").select("role").eq("id", session.user.id).single();
+        .from("users").select("role").eq("id", session.user.id).maybeSingle();
       setAdminStatus(userData?.role === "admin" ? "admin" : "not_admin");
     })();
   }, []);
