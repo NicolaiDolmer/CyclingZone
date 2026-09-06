@@ -14,6 +14,7 @@ import {
   enduranceCloneField,
   measureTailSpread,
   percentile,
+  TAIL_BANDS,
   flatWeatherRoute,
   runEnduranceExperiment,
   runTailSpread,
@@ -122,6 +123,18 @@ test("maalingen degenererer sikkert naar incidents/timeline mangler", () => {
   assert.equal(m.otlCount, 0);
   assert.equal(m.incidentRiders, 0);
   assert.equal(m.cleanMaxGapPct, 10, "uden uheldsprotokol er hele feltet 'rent'");
+});
+
+test("hale-baandene er velformede og ordnet efter hvor haardt terraenet er", () => {
+  for (const [key, [lo, hi]] of Object.entries(TAIL_BANDS)) {
+    assert.ok(lo >= 0, `${key}: nedre graense kan ikke vaere negativ`);
+    assert.ok(hi > lo, `${key}: oevre graense skal ligge over den nedre`);
+  }
+  // Baandene er et STARTGAET fra virkeligheden, men rangordenen er ikke til
+  // forhandling: et bjerg spreder feltet mere end en flad etape.
+  assert.ok(TAIL_BANDS.mountain[0] > TAIL_BANDS.hilly[0]);
+  assert.ok(TAIL_BANDS.hilly[0] >= TAIL_BANDS.rolling[0]);
+  assert.ok(TAIL_BANDS.rolling[1] > TAIL_BANDS.flat[1]);
 });
 
 test("distance-baandene daekker hele km-aksen uden huller eller overlap", () => {

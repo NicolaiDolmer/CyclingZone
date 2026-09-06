@@ -634,6 +634,44 @@ function formatDiagnosticsTable(title, rows) {
   return lines.join("\n");
 }
 
+/**
+ * HALE-BAAND pr. etapetype (#4885). BEVIDST et RAPPORTERET tal og ikke en
+ * haardt fejlende test: baandene er et STARTGAET fra virkelighedens tal
+ * (en bjergetapes rode lanterne taber typisk 8-15 % af vindertiden, en flad
+ * etape naesten intet) og er IKKE ejer-godkendte. Et gulv er ikke et maal
+ * (RACE_ENGINE_RULES §4) — raekken skal kunne laeses og diskuteres, ikke
+ * blokere en PR.
+ *
+ * Maalt paa p90 og ikke paa maks: maks er uheldsdrevet (se
+ * measureTailSpread's docblock), og en enkelt styrtet rytter maa ikke kunne
+ * melde et baand groent.
+ */
+export const TAIL_BANDS = Object.freeze({
+  flat: [0, 2],
+  rolling: [0, 4],
+  hilly: [2, 8],
+  mountain: [8, 15],
+  high_mountain: [8, 15],
+  cobbles: [1, 6],
+  classic: [3, 10],
+});
+
+function formatTailBandTable(title, rows) {
+  const lines = [
+    title,
+    "STARTGAET, IKKE ejer-godkendt — rapporteret raekke, ikke en gate. Maalt paa p90 (maks er uheldsdrevet).",
+    "key\tn\tp90_%\tbaand\tstatus",
+  ];
+  for (const r of rows) {
+    const band = TAIL_BANDS[r.key];
+    if (!band) continue;
+    const value = r.medianP90GapPct;
+    const inside = value !== null && value >= band[0] && value <= band[1];
+    lines.push([r.key, r.n, fmt(value), `${band[0]}-${band[1]} %`, inside ? "inde" : "ude"].join("\t"));
+  }
+  return lines.join("\n");
+}
+
 /** M15-tabel: fyrer tidsgraensen, og redder grupetto-reglen nogen? */
 function formatTimeLimitTable(title, rows) {
   const lines = [title, "key\tn\totl_%\tetaper_m_otl\treddet_%\tetaper_m_redning"];
@@ -754,6 +792,8 @@ function main() {
       byProfileType,
     ),
   );
+  console.log("");
+  console.log(formatTailBandTable("-- Hale-baand pr. etapetype (rapporteret, ikke en gate) --", byProfileType));
   console.log("");
   console.log(formatTimeLimitTable("-- M15 tidsgraense pr. etapetype --", byProfileType));
   console.log("");
