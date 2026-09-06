@@ -179,6 +179,8 @@ To ting er absolutte:
 
 **Hyppighed.** Ejerens mål er ca. **1-2 % af rytterne pr. etape**. To ting bærer det: risikoen skaleres **pr. km** (ikke pr. segment, så rutemodellens granularitet ikke bestemmer raten), og et **hårdt loft pr. etape** arvet fra v3 (samme andel af feltet). Loftet er regressionsvagt, ikke mål. Målt i `backend/scripts/headToHeadV4.js` over 264 etapekørsler: **1,42 %** uheld pr. etape, DNF-rate **0,02 %** af feltet, og **2,3 %** af styrt var alvorlige.
 
+**Nedkørsels-styrt har et gulv (#4905, ejer 6/9).** Descent attack-risikoen (`mechanics/descent.ts`, koblet til M3's angreb) dæmpes af descending-evnen MULTIPLIKATIVT med et gulv (`DESCENT_EXTRA_TUNING.incidentRiskFloorFraction`, `tuning.ts`) i stedet for den gamle subtraktive form, der kunne ramme PRÆCIS 0 for enhver descending-evne ≥ ~67 — netop de ryttere der altid angriber på en nedkørsel. Uden gulvet var nedkørselsstyrt statistisk usynlige, også i regn, selvom M11 forstærker basis-risikoen der. Målt i `backend/scripts/v4DescentIncidents.js`.
+
 ### v3 — den binære model (gælder indtil flip)
 
 Et uheld har to akser der afgøres uafhængigt: **arten** (`kind`: styrt eller mekanisk defekt) og **udfaldet** (`outcome`: tabt tid eller udgåelse). De må ikke forveksles.
