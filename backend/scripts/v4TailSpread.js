@@ -142,11 +142,10 @@ export function measureTailSpread(stageOutput) {
 
 function entrantsForField(fieldRiders) {
   const rows = fieldRiders.map((r) => ({ rider_id: r.id, ...r.abilities }));
-  return entrantsFromAbilitiesRows(rows, (riderId) => ({
-    role: "free_role",
-    effort: "normal",
-    condition: 1,
-  }));
+  // condition: 1 (frisk). Harnessen kender ikke dag-til-dag-sliddet — den
+  // maaler DISTANCE-armen af M7 isoleret. Condition-armen er daekket af
+  // segmentLoop.distanceFatigue.test.ts.
+  return entrantsFromAbilitiesRows(rows, () => ({ role: "free_role", effort: "normal", condition: 1 }));
 }
 
 /**
