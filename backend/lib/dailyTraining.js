@@ -8,6 +8,7 @@ import { dayTypeForProgram, RECOVERY_INTENSITY } from "./trainingDayTypes.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
+import { effortDevelopmentMultiplier } from "./raceRoles.js";
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -262,6 +263,13 @@ export function applyRaceDevelopmentTick({
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
   primaryType = null, secondaryType = null,
   profileType, devMult = RACE_DEV_CONFIG.devMult,
+  // #4632 (loebsdagens intention, Model C punkt 3): dagens intention for netop
+  // denne rytter paa netop denne etape (race_stage_roles.effort / race_team_
+  // orders.riders[].effort). DORMANT SEAM: kald-stedet i dailyTrainingEngine.js
+  // sender kun et effort naar BAADE race_day_development_enabled (D2) OG
+  // race_day_intention_enabled er on. Udeladt/null/ukendt vaerdi =>
+  // effortDevelopmentMultiplier() giver 1.0 => BIT-IDENTISK med foer #4632.
+  effort = null,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   // Egen seed-namespace ("rtick" vs. "dtick") — samme (rider,dato)-par kan ALDRIG
@@ -286,7 +294,12 @@ export function applyRaceDevelopmentTick({
   }
 
   const relevant = RACE_PROFILE_ABILITY_MAP[profileType] ?? RACE_PROFILE_ABILITY_MAP.rolling ?? [];
-  const devTotal = replacedTotal * devMult;
+  // #4632: intentionen skalerer loebsdagens udbytte (grupetto lavest, all_out
+  // hoejest) OVEN PAA devMult. Uden den ville valget vaere ligegyldigt for
+  // progression — spec §2 "SKAL paavirke", princip B. Multiplikatoren er > 0 og
+  // aendrer aldrig fortegn, saa devTotal forbliver ikke-negativ naar
+  // replacedTotal er det.
+  const devTotal = replacedTotal * devMult * effortDevelopmentMultiplier(effort);
   const perAbility = relevant.length > 0 ? devTotal / relevant.length : 0;
   const dailyCeiling = Number.isFinite(hardDailyCap) ? hardDailyCap : Infinity;
 

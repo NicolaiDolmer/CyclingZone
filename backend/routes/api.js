@@ -195,10 +195,11 @@ import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjure
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled, isRaceEngineV3ScoringEnabled, isPeakPlannerEnabled } from "../lib/raceEngineFlag.js";
+import { isRaceDayIntentionEnabled } from "../lib/raceIntentionFlag.js"; // #4632 loebsdagens intention (femtrins-effort), default off
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate, buildGameDayDateMap } from "../lib/raceCalendar.js";
 import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
-import { RACE_V3_TUNING } from "../lib/raceRoles.js";
+import { RACE_V3_TUNING, validEffortsFor } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
 import { injuryRisk } from "../lib/riderCondition.js";
@@ -5484,7 +5485,11 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
 router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const enabled = await isRaceEngineV3ScoringEnabled(supabase);
+    // #4632: de to flag laeses parallelt — uafhaengige app_config-opslag.
+    const [enabled, intentionEnabled] = await Promise.all([
+      isRaceEngineV3ScoringEnabled(supabase),
+      isRaceDayIntentionEnabled(supabase),
+    ]);
     const { data: race, error } = await supabase
       .from("races")
       .select("id, status, stages, stages_completed")
@@ -5496,6 +5501,10 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
     const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
     res.json({
       enabled,
+      // #4632: fladen skal kunne rendre de rigtige trin uden at kende
+      // multiplikatorerne. FOG OF WAR: kun enum-vaerdier ud, aldrig tal.
+      intention_enabled: intentionEnabled,
+      valid_efforts: validEffortsFor(intentionEnabled),
       stages_completed: ctx.stages_completed,
       stage_count: ctx.stage_count,
       riders: ctx.riders,
@@ -5523,8 +5532,10 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
     if (!Array.isArray(overrides)) return res.status(400).json({ error: "stage_roles_invalid_body" });
 
     const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const result = validateStageRoleOverrides({
       overrides,
+      intentionEnabled,
       raceCompleted: race.status === "completed",
       stageCount: ctx.stage_count,
       stagesCompleted: ctx.stages_completed,
@@ -5570,6 +5581,7 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
+    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const now = new Date();
     const stages = [];
     for (let sn = 1; sn <= ctx.stage_count; sn++) {
@@ -5584,6 +5596,9 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       stage_count: ctx.stage_count,
       stages_completed: ctx.stages_completed,
       race_completed: ctx.race_completed,
+      // #4632: samme kontrakt som stage-roles-endpointet — enum-vaerdier, ingen tal.
+      intention_enabled: intentionEnabled,
+      valid_efforts: validEffortsFor(intentionEnabled),
       stages,
       // T4 på læsesiden: fraværende etaper i `orders` betyder neutral default —
       // frontend rendrer selv neutralTeamOrder()-formen for dem.
@@ -5610,8 +5625,10 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
+    const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const result = validateTeamOrder({
       order: req.body || {},
+      intentionEnabled,
       raceCompleted: ctx.race_completed,
       stageNumber,
       stageCount: ctx.stage_count,

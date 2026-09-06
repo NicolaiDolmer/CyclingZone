@@ -41,6 +41,40 @@ Samme fem står i `race_entries.race_role` og `race_stage_roles.race_role`, skre
 
 ---
 
+## 1b. Løbsdagens intention (ejer-beslutning 5-6/9, [#4632](https://github.com/NicolaiDolmer/CyclingZone/issues/4632))
+
+Rollen svarer på *hvad er din opgave*. Intentionen svarer på *hvor hårdt går du efter den i dag*. Det er **ikke en ny akse** — det er det eksisterende `effort`-felt udvidet fra tre til fem trin. Rollen gælder hele løbet og er standard; intentionen vælges pr. etape, og "ikke valgt" betyder rollens standard (`normal`).
+
+```
+grupetto  <  save  <  normal  <  protect  <  all_out
+```
+
+De tre midterste er de oprindelige S3-værdier med **uændret navn og semantik** — eksisterende rækker og kode er upåvirkede. Oplæggets forslag om at omdøbe `save`/`protect` til `conserve`/`committed` blev **ikke** valgt.
+
+**Hvor værdien bor.** Ét felt, to indgange, ingen ny tabel:
+
+| Lag | Sted |
+|---|---|
+| Data | `race_stage_roles.effort` (v3, live) og `race_team_orders.riders[].effort` (v4-sporet, jsonb) |
+| Vokabular | `backend/lib/raceRoles.js` — `VALID_EFFORTS_FIVE_STEP` / `validEffortsFor(flag)` |
+| Kontrakt (v4) | `backend/lib/engine/v4/types.ts`'s `EffortLevel` + `ai/teamOrderContract.ts` — samme fem strenge 1:1 |
+| Skrivevej | `PUT /api/races/:raceId/stage-roles` og `PUT /api/races/:raceId/team-orders/:stageNumber` |
+| Launch-switch | `app_config.race_day_intention_enabled` (`backend/lib/raceIntentionFlag.js`), default off |
+
+**Hvad intentionen koster (model C).** Den genbruger to mekanismer der allerede er live i v3 og opfinder ingen tredje: trætheds-belastningen efter etapen (`effortFatigueMultiplier`) og work-cost-prisen for roller der har en (`workCost`). Dertil en dormant krok på løbsdagens formudbytte (`applyRaceDevelopmentTick`), som først har en aftager når `race_day_development_enabled` (D2) tændes igen. `grupetto` er desuden udelukket fra udbruds-udvælgelsen — den har den største trætheds-besparelse mod ingen egen chance. v4's `effortDemandMultiplier` (M12) er den dybere fremtidige resultat-mekanik og arver det samme enum. **Præcise multiplikatorer står i koden, ikke her** (§4, offentlighedspolitik) — og de er startgæt indtil ejeren har set et dry-run-scorecard.
+
+**Tre invarianter, property-testet i `backend/lib/raceIntention.test.js`:**
+
+1. `all_out` koster **altid strengt mere** træthed end `normal`. Der findes ingen gratis all-out.
+2. **Monotoni (§3 invariant 3) holder med intention aktiveret.** Inden for samme gruppe kan lavere evne på `all_out` aldrig slå højere evne på `all_out`. Intentionen er en multiplikator oven på evnen, aldrig et fortegns-skift.
+3. **Work-cost bliver aldrig en bonus.** For enhver kombination af rolle × profil × de fem trin er prisen ≤ 0 og aldrig større end fuld pris. Loftet er en konstruktions-egenskab (`Math.min(0, …)`), ikke kun et testkrav.
+
+**Fog of war.** API'et returnerer kun enum-værdien og det gyldige vokabular — aldrig multiplikatorer eller det tal et valg er værd.
+
+**Rækkefølge før flippet** (oplæg §7): data-model + API bag flaget (off) → UI → dry-run-scorecard mod realistisk feltstørrelse → ejer-go → flip. Beslutningsgrundlag: `docs/superpowers/specs/2026-09-03-race-day-intention-decision.md`.
+
+---
+
 ## 2. Mekanik-kataloget (ejer-godkendt 20/8)
 
 Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.

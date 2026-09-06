@@ -412,6 +412,16 @@ export async function runTeamTrainingDay({
         // #3459 D2: profil-typen slås op pr. rytter (racedRiderProfileByRider,
         // fallback 'rolling' allerede sat ovenfor) — devMult følger
         // RACE_DEV_CONFIG's default (1.15) via applyRaceDevelopmentTick.
+        //
+        // #4632 SEAM (løbsdagens intention, Model C punkt 3):
+        // applyRaceDevelopmentTick tager nu et valgfrit `effort` der skalerer
+        // devTotal (grupetto lavest, all_out højest). Det sendes BEVIDST IKKE
+        // her endnu: D2 (race_day_development_enabled) er off i prod, så denne
+        // gren kører slet ikke, og intentionens dags-værdi ville kræve et nyt
+        // race_stage_roles/race_team_orders-opslag pr. rytter pr. dag. Wiringen
+        // hører hjemme i det slice der tænder D2 igen (S4) — den skal læse
+        // dagens effort for netop den etape og sende det med her, bag BÅDE
+        // race_day_development_enabled og race_day_intention_enabled.
         tickResult = applyRaceDevelopmentTick({
           ...sharedTickArgs,
           profileType: racedRiderProfileByRider.get(rider.id) ?? "rolling",

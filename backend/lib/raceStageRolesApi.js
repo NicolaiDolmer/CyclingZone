@@ -11,7 +11,7 @@
 // lukker for redigering; kørte etapers rækker (stage_number <= stages_completed)
 // røres desuden ALDRIG, uanset request-body.
 
-import { VALID_RACE_ROLES, VALID_EFFORTS } from "./raceRoles.js";
+import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
 
 /**
@@ -27,6 +27,7 @@ import { loadAbandonedRiderIds } from "./raceIncidents.js";
  *   teamRiderIds: Set<string>,
  *   baseRoleByRider: Map<string, string|null>,
  *   abandonedRiderIds: Set<string>,
+ *   intentionEnabled: boolean,
  * }} args
  * @returns {{ok: boolean, errors: string[]}}
  */
@@ -38,6 +39,9 @@ export function validateStageRoleOverrides({
   teamRiderIds = new Set(),
   baseRoleByRider = new Map(),
   abandonedRiderIds = new Set(),
+  // #4632: race_day_intention_enabled. Default FALSE — en kalder der glemmer at
+  // sende flaget får dagens tre-værdi-vokabular, aldrig det udvidede.
+  intentionEnabled = false,
 }) {
   if (raceCompleted) return { ok: false, errors: ["stage_roles_race_completed"] };
   if (!Array.isArray(overrides)) return { ok: false, errors: ["stage_roles_invalid_body"] };
@@ -65,8 +69,13 @@ export function validateStageRoleOverrides({
   for (const o of overrides) {
     if (!VALID_RACE_ROLES.includes(o?.race_role)) { errors.push("stage_roles_invalid_role"); break; }
   }
+  // #4632: femtrins-intentionen bag flag. Off = PRÆCIS dagens tre værdier, så
+  // et UI der er deployet før flag-flippet ikke kan gemme 'grupetto'/'all_out'
+  // (og motoren derfor aldrig kan møde dem). Samme fejlkode i begge tilstande —
+  // fladen skal ikke afsløre at der findes flere trin end den kender.
+  const validEfforts = validEffortsFor(intentionEnabled);
   for (const o of overrides) {
-    if (!VALID_EFFORTS.includes(o?.effort)) { errors.push("stage_roles_invalid_effort"); break; }
+    if (!validEfforts.includes(o?.effort)) { errors.push("stage_roles_invalid_effort"); break; }
   }
 
   // >1 captain, >1 sprint_captain eller >1 hunter pr. etape for holdet — talt
