@@ -108,16 +108,39 @@ export function pelotonSplitsEvent(
   });
 }
 
+/**
+ * "incident"-eventet. `severity`/`injuryDays`/`helperAssist` er ADDITIVE og
+ * VALGFRIE (#2944's trappe): udelades de, er param-formen bit-identisk med den
+ * F2-etablerede — v3's og aeldre v4-events beholder altsaa deres form.
+ *
+ * FOG-GATE (#1791, invariant 5): params baerer KUN ting spilleren maa se —
+ * hvem, hvad slags, hvad det kostede i SEKUNDER og DAGE, og om en hjaelper var
+ * fremme. ALDRIG sandsynligheder, alvors-andele eller lodtraekninger. Renderen
+ * (frontend/src/lib/stageTimelineFilm.js) oversaetter disse noegler til
+ * spillerens sprog; motoren skriver aldrig faerdig prosa.
+ */
 export function incidentEvent(
   km: number,
-  args: { riderId: string; kind: string; outcome: string; timeLossSeconds: number | null },
+  args: {
+    riderId: string;
+    kind: string;
+    outcome: string;
+    timeLossSeconds: number | null;
+    severity?: string | null;
+    injuryDays?: number | null;
+    helperAssist?: boolean;
+  },
 ): TimelineEvent {
-  return makeEvent(km, "incident", {
+  const params: Record<string, unknown> = {
     rider_id: args.riderId,
     kind: args.kind,
     outcome: args.outcome,
     time_loss_seconds: args.timeLossSeconds ?? null,
-  });
+  };
+  if (args.severity !== undefined) params.severity = args.severity;
+  if (args.injuryDays !== undefined) params.injury_days = args.injuryDays;
+  if (args.helperAssist !== undefined) params.helper_assist = args.helperAssist;
+  return makeEvent(km, "incident", params);
 }
 
 export function favoriteCrackEvent(km: number, args: { riderId: string; reason: string }): TimelineEvent {

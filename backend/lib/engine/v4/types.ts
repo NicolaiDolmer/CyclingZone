@@ -198,6 +198,40 @@ export type StageResult = {
   time_seconds: number;
   group_id: string;
   status: StageResultStatus;
+  // #2944 (ADDITIVT, valgfrit — v4's incident-trappe). Skadedage fra et STYRT
+  // paa denne etape. `null`/udeladt = ingen skade. Kun styrt kan saette feltet
+  // (#4520, samme regel som v3's raceIncidents.rollIncidents): et mekanisk
+  // uheld er ALDRIG skade. Feltet er VALGFRIT, saa flip-infrastrukturens
+  // mapping (v4 -> race_incidents/rider_condition) kan tages i to skridt uden
+  // at braekke paa en manglende noegle.
+  injury_days?: number | null;
+};
+
+// ── #2944 incident-trappen (mechanics/incidents.ts) ──────────────────────────
+// Ejer-beslutning 6/9 (LAAST): fire udfald, og KUN et styrt kan skade/udgaa.
+//   let styrt       -> tidstab, koerer videre
+//   haardt styrt    -> stort tidstab + skade i dage
+//   alvorligt styrt -> udgaar (abandoned) + skadedage, SJAELDENT
+//   mekanisk uheld  -> ALTID kun tidstab (aldrig abandoned, aldrig skade);
+//                      en hjaelper taet paa giver hurtigere hjulskift
+export type IncidentKind = "crash" | "mechanical";
+export type IncidentSeverity = "light" | "hard" | "serious";
+export type IncidentOutcome = "time_loss" | "protected_three_km_rule" | "abandoned";
+
+/**
+ * Én uheldshaendelse paa én etape. `severity` er `null` for mekaniske uheld
+ * (arten har ingen alvorsakse — den kan pr. konstruktion kun koste tid).
+ * `injury_days` er `null` for alt andet end hard/serious styrt.
+ */
+export type StageIncident = {
+  rider_id: string;
+  km: number;
+  kind: IncidentKind;
+  severity: IncidentSeverity | null;
+  outcome: IncidentOutcome;
+  time_loss_seconds: number | null;
+  injury_days: number | null;
+  helper_assist: boolean; // sand KUN for mekanisk uheld med hjaelper i samme gruppe
 };
 
 // Beslutning 18 (loebsdags-kontrakten, #3459) — traenings-/udviklingssystemet
@@ -229,6 +263,11 @@ export type StageOutput = {
   results: StageResult[];
   loads: RiderLoad[];
   groupSnapshots: SegmentGroupSnapshot[];
+  // #2944 (ADDITIVT, valgfrit): den fulde uheldsprotokol for etapen, sorteret
+  // paa (km, rider_id). `StageResult.injury_days` er en bekvemmeligheds-spejling
+  // af den ENE noegle flip-mappingen skal bruge pr. rytter; DENNE liste baerer
+  // art/alvor/udfald, dvs. praecis de kolonner v3's `race_incidents` har.
+  incidents?: StageIncident[];
 };
 
 // ── EngineTuning (§4-5, default+konstanter i tuning.ts) ───────────────────────
@@ -365,6 +404,18 @@ export type EngineState = {
   // etaper til naesten nul. `index.ts` rangerer paa (tid, denne raekkefolge,
   // rider_id), saa lige tid stadig giver stabile, evne-ordnede placeringer.
   finish_order?: string[];
+  // #2944: etapens uheldsprotokol, akkumuleret af `mechanics/incidents.ts`
+  // henover segment-loopet. INTERN simulations-tilstand — den kopieres til
+  // `StageOutput.incidents` af index.ts.
+  //
+  // HVORFOR STATE og ikke bare events: M10 skal haandhaeve v3's HAARDE LOFT
+  // over antal uheld PR. ETAPE (raceIncidents.rollIncidents' INCIDENT_MAX_
+  // FIELD_SHARE). Hooket kaldes pr. SEGMENT og kan derfor ikke se sine egne
+  // tidligere kald uden en baerer. `RiderState.incidents`-taelleren duer ikke
+  // som kilde: descent.ts og cobbles.ts hæver den ogsaa (deres egne, rene
+  // informations-incidents), saa et loft afledt af den ville blive spist af
+  // en anden mekanik.
+  stage_incidents?: StageIncident[];
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────
@@ -407,9 +458,18 @@ export type FinaleHook = (state: EngineState, ctx: SegmentHookContext) => Segmen
 // formation forsoeges paa foerste segment, jagt-fremdrift paa de oevrige.
 export type BreakawayHook = (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult;
 
+// M10: incidents-trappen (#2944). Kaldes paa HVERT segment (ikke kind-gated) —
+// et uheld er ambient og hoerer ikke til én terraen-type.
+export type IncidentHook = (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult;
+
 export type MechanicHooks = {
   climbSelection: ClimbSelectionHook;
   descent: DescentHook;
   finale: FinaleHook;
   breakaway: BreakawayHook;
+  // VALGFRIT (#2944): et hook-saet uden `incidents` er stadig gyldigt og koerer
+  // etapen helt uden uheld. Bevidst optional saa eksisterende konstruktioner af
+  // MechanicHooks (tests, harness, adaptere) ikke braekker paa en ny paakraevet
+  // noegle — segmentLoop.ts kalder den med `?.`-guard.
+  incidents?: IncidentHook;
 };

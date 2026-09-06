@@ -125,112 +125,128 @@
       "rank": 1,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r02",
       "rank": 2,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r03",
       "rank": 3,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r04",
       "rank": 4,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r14",
       "rank": 5,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r15",
       "rank": 6,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r16",
       "rank": 7,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r09",
       "rank": 8,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r08",
       "rank": 9,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r07",
       "rank": 10,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r06",
       "rank": 11,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r05",
       "rank": 12,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r10",
       "rank": 13,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r11",
       "rank": 14,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r12",
       "rank": 15,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     },
     {
       "rider_id": "r13",
       "rank": 16,
       "time_seconds": 14502.13,
       "group_id": "finale-bunch-0",
-      "status": "finished"
+      "status": "finished",
+      "injury_days": null
     }
   ],
   "loads": [
@@ -423,5 +439,6 @@
         }
       ]
     }
-  ]
+  ],
+  "incidents": []
 }

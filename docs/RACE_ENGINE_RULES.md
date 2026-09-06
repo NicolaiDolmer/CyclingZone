@@ -56,7 +56,7 @@ Scope er lukket. En mekanik uden for listen kræver ejer-go, ikke en PR.
 | M7 | Distance-slid: monument-effekt + dag-til-dag | F3 |
 | M8 | Brosten-sektorer | F3 |
 | M9 | Bonussekunder — bounded så bjerg dominerer GC | F3 |
-| M10 | Incidents + 3 km-reglen | F3 |
+| M10 | Incidents + 3 km-reglen — graduerede styrt, mekaniske uden DNF | F3 ✅ wiret 6/9 |
 | M11 | Vejr-lag pr. etape, seeded | F3 |
 | M12 | Effort pr. rytter (`protect`/`normal`/`save`) | F3 |
 | M14 | AI-holds ordrer gennem samme type | F3 ✅ wiret 3/9 (harness) |
@@ -114,6 +114,30 @@ læring om at et scorecard der hænger på et absolut tal måler feltstørrelsen
 
 ## 2c. Incidents — hvad koster hvad (M10)
 
+To modeller lever side om side indtil v4-flippet: **v4's trappe** (den ejer-besluttede, gældende fremad) og **v3's binære model** (den spillerne møder i dag).
+
+### v4 — trappen (ejer-beslutning 6/9, [#2944](https://github.com/NicolaiDolmer/CyclingZone/issues/2944))
+
+Ejerens klage var at et styrt er et **binært totaltab**: enten sker der intet, eller også ryger rytteren ud af løbet med skadedage oveni. Varians uden mitigering opleves som uretfærdighed, ikke spænding. Trappen erstatter det binære med fire udfald:
+
+| trin | hvad sker der | tid | skade | udgår |
+|---|---|---|---|---|
+| **1. let styrt** | rytteren rejser sig og kører videre | lille tidstab | nej | nej |
+| **2. hårdt styrt** | han kommer i mål, men mærket | stort tidstab | dage | nej |
+| **3. alvorligt styrt** | løbet er slut for ham. **Sjældent** | — | dage | **ja** |
+| **4. mekanisk uheld** (punktering, kæde, hjul) | hjulskift eller cykelskift | tidstab | **aldrig** | **aldrig** |
+
+To ting er absolutte:
+
+- **Et mekanisk uheld kan aldrig tvinge nogen til at udgå og kan aldrig skade nogen.** Det er håndhævet af kontrolstrømmen i `resolveIncident` (`mechanics/incidents.ts`), ikke af et filter der kan glemmes: der findes præcis én gren der kan sætte skadedage eller udgåelse, og den ligger inde i styrt-grenen. Property-testet over 500 kombinationer.
+- **En hjælper tæt på gør et mekanisk uheld billigere.** "Tæt på" = en anden, stadig kørende rytter med rollen `helper` i **samme gruppe** i det segment — gruppen *er* nærhedsmodellen i v4. (`Entrant` bærer intet `team_id`, så "holdkammerat" kan ikke afgøres i kernen endnu; når feltet lander, strammes definitionen ét sted.)
+
+**3 km-reglen beskytter tiden, ikke kroppen.** Et hårdt styrt inde på de sidste kilometer på en flad etape giver stadig skadedage — rytteren får gruppens tid, men han er lige så forslået. Et alvorligt styrt udgår uanset km-mærket: en rytter der ikke kører over stregen kan ikke få gruppens tid.
+
+**Hyppighed.** Ejerens mål er ca. **1-2 % af rytterne pr. etape**. To ting bærer det: risikoen skaleres **pr. km** (ikke pr. segment, så rutemodellens granularitet ikke bestemmer raten), og et **hårdt loft pr. etape** arvet fra v3 (samme andel af feltet). Loftet er regressionsvagt, ikke mål. Målt i `backend/scripts/headToHeadV4.js` over 264 etapekørsler: **1,42 %** uheld pr. etape, DNF-rate **0,02 %** af feltet, og **2,3 %** af styrt var alvorlige.
+
+### v3 — den binære model (gælder indtil flip)
+
 Et uheld har to akser der afgøres uafhængigt: **arten** (`kind`: styrt eller mekanisk defekt) og **udfaldet** (`outcome`: tabt tid eller udgåelse). De må ikke forveksles.
 
 | | tabt tid | udgåelse (DNF) |
@@ -121,7 +145,9 @@ Et uheld har to akser der afgøres uafhængigt: **arten** (`kind`: styrt eller m
 | **styrt** | tid lagt til etapetiden | ude af resten af løbet **+ skade i et antal dage** |
 | **mekanisk defekt** | tid lagt til etapetiden | ude af resten af løbet, **ingen skade** |
 
-**Reglen ([#4520](https://github.com/NicolaiDolmer/CyclingZone/issues/4520), fastlagt 5/9):** kun et **styrt** kan skade rytteren. En mekanisk udgang koster løbet, ikke kroppen — rytteren er klar til næste løbsdag. Håndhæves to steder: `raceIncidents.rollIncidents` sætter `injury_days` udelukkende på `kind:'crash'`, og `raceRunner.persistIncidents` skriver kun `rider_condition.injured_until`/`injury_cause='race_crash'` for styrt-udgange. Indtil 5/9 gav ALLE udgåelser skade uanset art — spillerne så en mekanisk defekt koste dage på sidelinjen, hvilket ingen doc lovede.
+I v3 kan en punktering altså stadig tvinge en rytter til at udgå. Det er præcis det v4's trin 4 afskaffer, og forskellen forsvinder ved flippet.
+
+**Skade-reglen ([#4520](https://github.com/NicolaiDolmer/CyclingZone/issues/4520), fastlagt 5/9) gælder BEGGE modeller:** kun et **styrt** kan skade rytteren. En mekanisk udgang koster løbet, ikke kroppen — rytteren er klar til næste løbsdag. Håndhæves to steder i v3: `raceIncidents.rollIncidents` sætter `injury_days` udelukkende på `kind:'crash'`, og `raceRunner.persistIncidents` skriver kun `rider_condition.injured_until`/`injury_cause='race_crash'` for styrt-udgange. Indtil 5/9 gav ALLE udgåelser skade uanset art — spillerne så en mekanisk defekt koste dage på sidelinjen, hvilket ingen doc lovede.
 
 **Ejeren kan omgøre den.** Vil en mekanisk udgang også koste dage (fx som "rytteren kom hjem sent og mistede træning"), er det et bevidst designvalg, ikke en fejl — men så skal det stå her OG i `help.json` (en+da) samtidig, ellers er reglen usynlig for spilleren.
 

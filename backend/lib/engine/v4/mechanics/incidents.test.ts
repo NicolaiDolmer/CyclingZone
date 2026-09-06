@@ -11,11 +11,16 @@ import {
   applyThreeKmRuleToResults,
   collectThreeKmRuleProtectedRiderIds,
   createIncidentHook,
+  hasHelperNearby,
   incidentHook,
   incidentProbability,
   isFlatStageForThreeKmRule,
   isWithinThreeKmWindow,
+  maxIncidentsForField,
+  resolveIncident,
+  segmentLengthFactor,
   threeKmRuleApplies,
+  type IncidentRolls,
 } from "./incidents.ts";
 import { boundRngFor } from "../rng.ts";
 import { INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
@@ -30,6 +35,7 @@ import type {
   RouteV2,
   Segment,
   SegmentHookContext,
+  StageIncident,
   StageResult,
   TimelineEvent,
 } from "../types.ts";
@@ -118,15 +124,35 @@ function eventsOfType(events: TimelineEvent[], type: string): TimelineEvent[] {
   return events.filter((e) => e.type === type);
 }
 
-// Rigget tuning: risiko=1 for én bestemt segment-kind gør styrt deterministisk
+// Rigget tuning: risiko=1 for én bestemt segment-kind gør et uheld deterministisk
 // for ALLE ryttere i det segment (positioningDampening=0 saa evnen ikke redder nogen).
+// #2944: risikoen skaleres nu ogsaa af segmentets laengde og bindes af et
+// per-etape-loft, saa riggen skal ogsaa neutralisere BEGGE — ellers ville
+// "risiko=1" i praksis stadig give faerre uheld end der er ryttere.
 function alwaysCrashTuning(overrides: Partial<typeof INCIDENTS_EXTRA_TUNING> = {}): typeof INCIDENTS_EXTRA_TUNING {
   return {
     ...INCIDENTS_EXTRA_TUNING,
     baseRiskPerSegment: { flat: 1, rolling: 1, climb: 1, descent: 1, cobbles: 1 },
     positioningDampening: 0,
+    referenceSegmentKm: 0.01, // laengde-faktoren maa ikke daempe riggen
+    maxIncidentsFieldShare: 1, // ingen etape-loft i riggen
     ...overrides,
   };
+}
+
+/**
+ * #2944: riggen ovenfor + trappen tvunget til TRIN 1 (let styrt). Bruges af de
+ * arvede F2-tests, der blev skrevet foer trappen fandtes og derfor forudsaetter
+ * "ét styrt = ét let tidstab".
+ */
+function alwaysLightCrashTuning(
+  overrides: Partial<typeof INCIDENTS_EXTRA_TUNING> = {},
+): typeof INCIDENTS_EXTRA_TUNING {
+  return alwaysCrashTuning({
+    mechanicalShare: 0, // aldrig mekanisk
+    crashSeverityShares: { hard: 0, serious: 0 }, // altid let
+    ...overrides,
+  });
 }
 
 function neverCrashTuning(): typeof INCIDENTS_EXTRA_TUNING {
@@ -206,7 +232,7 @@ test("incidentHook: styrt paa flad etape i sidste 3 km giver INGEN gruppe-/tidsk
   const route = makeRoute("flat", 100);
   const segment = flatSegment(97, 100); // hele segmentet ligger inden for 3 km-vinduet
   const { state, ctx } = buildSingleGroupScenario([["a", 50], ["b", 50]], segment, route, "protected-seed");
-  const hook = createIncidentHook(alwaysCrashTuning());
+  const hook = createIncidentHook(alwaysLightCrashTuning());
   const result = hook(state, ctx);
 
   const incidents = eventsOfType(result.events, "incident");
@@ -228,7 +254,7 @@ test("incidentHook: styrt paa bjergetape i sidste 3 km giver TIDSKONSEKVENS (ing
   const route = makeRoute("mountain", 100);
   const segment = flatSegment(97, 100);
   const { state, ctx } = buildSingleGroupScenario([["a", 50]], segment, route, "mountain-seed");
-  const hook = createIncidentHook(alwaysCrashTuning());
+  const hook = createIncidentHook(alwaysLightCrashTuning());
   const result = hook(state, ctx);
 
   const incidents = eventsOfType(result.events, "incident");
@@ -252,7 +278,7 @@ test("incidentHook: styrt paa flad etape LANGT fra maal (uden for 3 km-vinduet) 
   const route = makeRoute("flat", 100);
   const segment = flatSegment(40, 45); // langt fra maalstregen
   const { state, ctx } = buildSingleGroupScenario([["a", 50], ["b", 50]], segment, route, "far-from-finish-seed");
-  const hook = createIncidentHook(alwaysCrashTuning());
+  const hook = createIncidentHook(alwaysLightCrashTuning());
   const result = hook(state, ctx);
 
   const incidents = eventsOfType(result.events, "incident");
@@ -286,7 +312,7 @@ test("incidentHook: kun status 'racing' ryttere kan styrte", () => {
     "status-seed",
     { b: { status: "abandoned" } },
   );
-  const hook = createIncidentHook(alwaysCrashTuning());
+  const hook = createIncidentHook(alwaysLightCrashTuning());
   const result = hook(state, ctx);
   const incidents = eventsOfType(result.events, "incident");
   assert.equal(incidents.length, 1, "kun 'a' (status racing) kan styrte");
@@ -434,4 +460,347 @@ test("applyThreeKmRuleToResults: fast-check — rank er altid 1..N, time_seconds
     }),
     { numRuns: 200, seed: 4030 },
   );
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// #2944 — TRAPPEN: graduerede styrt + mekaniske uheld uden DNF
+// Ejer-beslutning 6/9 (laast). Hver test herunder laaser ÉT led af beslutningen.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Rigger trappen til ét bestemt trin ved at saette andele til 0/1. */
+function ladderTuning(overrides: Partial<typeof INCIDENTS_EXTRA_TUNING> = {}): typeof INCIDENTS_EXTRA_TUNING {
+  return alwaysCrashTuning(overrides);
+}
+
+const ALWAYS_MECHANICAL = { mechanicalShare: 1 } as const;
+const NEVER_MECHANICAL = { mechanicalShare: 0 } as const;
+
+function rolls(overrides: Partial<IncidentRolls> = {}): IncidentRolls {
+  return { kind: 0.5, severity: 0.5, magnitude: 0.5, injury: 0.5, ...overrides };
+}
+
+// ── (a) Mekanisk uheld kan ALDRIG give abandoned eller injury ────────────────
+
+test("#2944 (a): mekanisk uheld kan ALDRIG give abandoned eller injury — fast-check over 500 kombinationer", () => {
+  fc.assert(
+    fc.property(
+      fc.double({ min: 0, max: 0.999, noNaN: true }),
+      fc.double({ min: 0, max: 0.999, noNaN: true }),
+      fc.double({ min: 0, max: 0.999, noNaN: true }),
+      fc.boolean(),
+      fc.boolean(),
+      (severity, magnitude, injury, protectedByRule, helperNearby) => {
+        const resolved = resolveIncident(
+          // kind = 0 => altid under mechanicalShare => altid mekanisk
+          { kind: 0, severity, magnitude, injury },
+          { protectedByRule, helperNearby },
+          INCIDENTS_EXTRA_TUNING,
+        );
+        assert.equal(resolved.kind, "mechanical");
+        assert.notEqual(resolved.outcome, "abandoned", "et mekanisk uheld maa ALDRIG tvinge en rytter til at udgaa");
+        assert.equal(resolved.injuryDays, null, "et mekanisk uheld maa ALDRIG skade rytteren (#4520)");
+        assert.equal(resolved.severity, null, "mekaniske uheld har ingen alvorsakse");
+      },
+    ),
+    { numRuns: 500, seed: 2944 },
+  );
+});
+
+test("#2944 (a): hele hooket — ingen mekanisk haendelse giver abandoned/injury over 500 seeds", () => {
+  const route = makeRoute("mountain", 200);
+  const segment = flatSegment(50, 60);
+  const hook = createIncidentHook(ladderTuning(ALWAYS_MECHANICAL));
+  let seen = 0;
+  for (let i = 0; i < 500; i += 1) {
+    const { state, ctx } = buildSingleGroupScenario([["a", 50], ["b", 50]], segment, route, `mech-seed-${i}`);
+    const result = hook(state, ctx);
+    for (const ev of eventsOfType(result.events, "incident")) {
+      seen += 1;
+      assert.equal(ev.params.kind, "mechanical");
+      assert.notEqual(ev.params.outcome, "abandoned");
+      assert.equal(ev.params.injury_days, null);
+    }
+    for (const rider of Object.values(result.state.riders)) {
+      assert.notEqual(rider.status, "abandoned", "et mekanisk uheld maa aldrig saette status 'abandoned'");
+    }
+  }
+  assert.ok(seen > 0, "testen skal faktisk have set mekaniske uheld (ellers er den vakuoest sand)");
+});
+
+// ── (b) Alvorlige styrt er SJAELDNE ─────────────────────────────────────────
+
+// DOKUMENTERET TAERSKEL: hoejst 8 % af STYRT maa vaere alvorlige (= udgaaelse).
+// Tunings-andelen er 3 % (INCIDENTS_EXTRA_TUNING.crashSeverityShares.serious);
+// 8 % er regressionsvagten — den fanger en fremtidig tunings-aendring der
+// forvandler trappen tilbage til det binaere totaltab ejeren klagede over
+// (#2944), uden at fejle paa stikproeve-stoej. Maalt i harnessen over 264
+// etape-koerseler: 2,29 % af styrt (9 af 393).
+const SERIOUS_CRASH_SHARE_CEILING = 0.08;
+
+test("#2944 (b): alvorlige styrt er sjaeldne — under den dokumenterede taerskel over 4000 lodtraekninger", () => {
+  let crashes = 0;
+  let serious = 0;
+  const step = 1 / 4000;
+  for (let i = 0; i < 4000; i += 1) {
+    const u = i * step;
+    const resolved = resolveIncident(
+      // kind = 1 => aldrig under mechanicalShare => altid styrt
+      { kind: 0.999999, severity: u, magnitude: 0.5, injury: 0.5 },
+      { protectedByRule: false, helperNearby: false },
+      INCIDENTS_EXTRA_TUNING,
+    );
+    if (resolved.kind !== "crash") continue;
+    crashes += 1;
+    if (resolved.severity === "serious") serious += 1;
+  }
+  assert.ok(crashes > 0);
+  const share = serious / crashes;
+  assert.ok(
+    share <= SERIOUS_CRASH_SHARE_CEILING,
+    `andel alvorlige styrt ${(100 * share).toFixed(2)} % over taersklen ${100 * SERIOUS_CRASH_SHARE_CEILING} %`,
+  );
+  assert.ok(share > 0, "trappen skal stadig HAVE et alvorligt trin — 0 % ville betyde at trin 3 er doedt");
+});
+
+test("#2944 (b): kun trin 3 (alvorligt styrt) kan udgaa, og kun trin 2/3 kan skade", () => {
+  const light = resolveIncident(rolls({ kind: 1, severity: 0.9 }), { protectedByRule: false, helperNearby: false }, INCIDENTS_EXTRA_TUNING);
+  assert.deepEqual([light.kind, light.severity, light.outcome, light.injuryDays], ["crash", "light", "time_loss", null]);
+
+  const hard = resolveIncident(rolls({ kind: 1, severity: 0.1 }), { protectedByRule: false, helperNearby: false }, INCIDENTS_EXTRA_TUNING);
+  assert.equal(hard.severity, "hard");
+  assert.equal(hard.outcome, "time_loss", "et haardt styrt koster tid — rytteren gennemfoerer");
+  assert.ok((hard.injuryDays ?? 0) > 0, "et haardt styrt skader");
+  assert.ok((hard.timeLossSeconds ?? 0) > (light.timeLossSeconds ?? 0), "haardt styrt koster mere tid end let styrt");
+
+  const serious = resolveIncident(rolls({ kind: 1, severity: 0.001 }), { protectedByRule: false, helperNearby: false }, INCIDENTS_EXTRA_TUNING);
+  assert.equal(serious.severity, "serious");
+  assert.equal(serious.outcome, "abandoned");
+  assert.equal(serious.timeLossSeconds, null, "en udgaaet rytter taber ikke etapetid — han har ingen");
+  assert.ok((serious.injuryDays ?? 0) > 0, "et alvorligt styrt skader");
+});
+
+test("#2944 (b): 3 km-reglen beskytter TIDEN, ikke kroppen — et haardt styrt skader ogsaa naar reglen gaelder", () => {
+  const protectedHard = resolveIncident(
+    rolls({ kind: 1, severity: 0.1 }),
+    { protectedByRule: true, helperNearby: false },
+    INCIDENTS_EXTRA_TUNING,
+  );
+  assert.equal(protectedHard.outcome, "protected_three_km_rule");
+  assert.equal(protectedHard.timeLossSeconds, null);
+  assert.ok((protectedHard.injuryDays ?? 0) > 0, "reglen giver gruppens tid, ikke en uskadt rytter");
+
+  const protectedSerious = resolveIncident(
+    rolls({ kind: 1, severity: 0.001 }),
+    { protectedByRule: true, helperNearby: false },
+    INCIDENTS_EXTRA_TUNING,
+  );
+  assert.equal(protectedSerious.outcome, "abandoned", "en rytter der ikke koerer over stregen kan ikke faa gruppens tid");
+});
+
+test("#2944: et ALVORLIGT styrt saetter status 'abandoned' og tager rytteren ud af feltet", () => {
+  const route = makeRoute("mountain", 200);
+  const segment = flatSegment(50, 60);
+  const hook = createIncidentHook(
+    ladderTuning({ ...NEVER_MECHANICAL, crashSeverityShares: { hard: 0, serious: 1 } }),
+  );
+  const { state, ctx } = buildSingleGroupScenario([["a", 50], ["b", 50], ["c", 50]], segment, route, "serious-seed");
+  const result = hook(state, ctx);
+
+  for (const riderId of ["a", "b", "c"]) {
+    assert.equal(result.state.riders[riderId].status, "abandoned", `${riderId} skal vaere udgaaet`);
+  }
+  const events = eventsOfType(result.events, "incident");
+  assert.equal(events.length, 3);
+  for (const ev of events) {
+    assert.equal(ev.params.outcome, "abandoned");
+    assert.equal(ev.params.kind, "crash");
+    assert.equal(ev.params.severity, "serious");
+    assert.ok((ev.params.injury_days as number) > 0);
+  }
+  // Udgaaede ryttere ligger ikke laengere i den oprindelige gruppe.
+  const peloton = result.state.groups.find((g) => g.id === "peloton-0");
+  assert.equal(peloton, undefined, "hele gruppen udgik => kildegruppen forsvinder");
+});
+
+// ── (c) Per-etape-loftet holder ────────────────────────────────────────────
+
+test("#2944 (c): maxIncidentsForField arver v3's andel + ceil-afrunding", () => {
+  const t = INCIDENTS_EXTRA_TUNING; // maxIncidentsFieldShare = 0.05, som v3's RACE_V3_INCIDENT_MAX_FIELD_SHARE
+  assert.equal(maxIncidentsForField(0, t), 0, "tomt felt => intet loft at bruge");
+  assert.equal(maxIncidentsForField(1, t), 1, "ceil: et lille felt faar altid mindst ét muligt uheld");
+  assert.equal(maxIncidentsForField(180, t), 9);
+  assert.equal(maxIncidentsForField(200, t), 10);
+});
+
+test("#2944 (c): fast-check — hooket overskrider ALDRIG etape-loftet, uanset feltstoerrelse og allerede loggede uheld", () => {
+  const route = makeRoute("mountain", 200);
+  const segment = flatSegment(50, 60);
+  // Risiko 1 for alle: uden loftet ville ALLE ryttere faa et uheld.
+  const hook = createIncidentHook(alwaysCrashTuning({ maxIncidentsFieldShare: INCIDENTS_EXTRA_TUNING.maxIncidentsFieldShare }));
+
+  fc.assert(
+    fc.property(fc.integer({ min: 1, max: 60 }), fc.integer({ min: 0, max: 6 }), (fieldSize, alreadyLogged) => {
+      const pairs: Array<[string, number]> = [];
+      for (let i = 0; i < fieldSize; i += 1) pairs.push([`r${String(i).padStart(3, "0")}`, 50]);
+      const { state, ctx } = buildSingleGroupScenario(pairs, segment, route, `cap-${fieldSize}-${alreadyLogged}`);
+      const seeded: StageIncident[] = [];
+      for (let i = 0; i < alreadyLogged; i += 1) {
+        seeded.push({
+          rider_id: `historic-${i}`,
+          km: 1,
+          kind: "crash",
+          severity: "light",
+          outcome: "time_loss",
+          time_loss_seconds: 10,
+          injury_days: null,
+          helper_assist: false,
+        });
+      }
+      const stateWithHistory: EngineState = { ...state, stage_incidents: seeded };
+      const result = hook(stateWithHistory, ctx);
+
+      const cap = maxIncidentsForField(fieldSize, INCIDENTS_EXTRA_TUNING);
+      const total = (result.state.stage_incidents ?? []).length;
+      assert.ok(total <= Math.max(cap, alreadyLogged), `${total} uheld i alt overskrider loftet ${cap}`);
+      const newOnes = eventsOfType(result.events, "incident").length;
+      assert.ok(newOnes <= Math.max(0, cap - alreadyLogged), `${newOnes} nye uheld overskrider resten af loftet`);
+    }),
+    { numRuns: 120, seed: 2944 },
+  );
+});
+
+test("#2944 (c): et opbrugt loft giver et UROERT state tilbage (samme reference)", () => {
+  const route = makeRoute("flat", 200);
+  const segment = flatSegment(50, 60);
+  const hook = createIncidentHook(alwaysCrashTuning({ maxIncidentsFieldShare: 0 }));
+  const { state, ctx } = buildSingleGroupScenario([["a", 50], ["b", 50]], segment, route, "cap-exhausted");
+  const result = hook(state, ctx);
+  assert.equal(result.events.length, 0);
+  assert.strictEqual(result.state, state);
+});
+
+// ── (d) Hjaelper taet paa => STRENGT mindre tidstab ─────────────────────────
+
+test("#2944 (d): hjaelper i samme gruppe giver STRENGT mindre tidstab ved mekanisk uheld", () => {
+  fc.assert(
+    fc.property(fc.double({ min: 0, max: 0.999, noNaN: true }), (magnitude) => {
+      const base = { kind: 0, severity: 0.5, magnitude, injury: 0.5 };
+      const withHelper = resolveIncident(base, { protectedByRule: false, helperNearby: true }, INCIDENTS_EXTRA_TUNING);
+      const without = resolveIncident(base, { protectedByRule: false, helperNearby: false }, INCIDENTS_EXTRA_TUNING);
+      assert.equal(withHelper.helperAssist, true);
+      assert.equal(without.helperAssist, false);
+      assert.ok(
+        (withHelper.timeLossSeconds ?? 0) < (without.timeLossSeconds ?? 0),
+        `hjaelper gav ${withHelper.timeLossSeconds}s, uden gav ${without.timeLossSeconds}s — skal vaere STRENGT mindre`,
+      );
+    }),
+    { numRuns: 200, seed: 2944 },
+  );
+});
+
+test("#2944 (d): hasHelperNearby kraever en ANDEN, stadig racende rytter med rollen helper i SAMME gruppe", () => {
+  const entrants: Record<string, Entrant> = {
+    victim: { ...makeEntrant("victim"), role: "helper" }, // egen rolle taeller ikke
+    mate: { ...makeEntrant("mate"), role: "helper" },
+    rival: { ...makeEntrant("rival"), role: "captain" },
+    dropped: { ...makeEntrant("dropped"), role: "helper" },
+  };
+  const riders: Record<string, RiderState> = {
+    victim: makeRiderState("victim", "g"),
+    mate: makeRiderState("mate", "g"),
+    rival: makeRiderState("rival", "g"),
+    dropped: makeRiderState("dropped", "g", { status: "abandoned" }),
+  };
+  assert.equal(hasHelperNearby(["victim"], entrants, riders, "victim"), false, "man er ikke sin egen hjaelper");
+  assert.equal(hasHelperNearby(["victim", "rival"], entrants, riders, "victim"), false, "en kaptajn er ikke en hjaelper");
+  assert.equal(hasHelperNearby(["victim", "dropped"], entrants, riders, "victim"), false, "en udgaaet hjaelper er ikke taet paa");
+  assert.equal(hasHelperNearby(["victim", "mate"], entrants, riders, "victim"), true);
+  assert.equal(hasHelperNearby(["victim"], entrants, riders, "victim"), false, "en hjaelper i en ANDEN gruppe er ikke i rider_ids");
+});
+
+test("#2944 (d): hooket giver hjulskift-rabatten naar en helper er i gruppen", () => {
+  const route = makeRoute("mountain", 200);
+  const segment = flatSegment(50, 60);
+  const hook = createIncidentHook(ladderTuning(ALWAYS_MECHANICAL));
+
+  function lossFor(withHelper: boolean): number {
+    const { state, ctx } = buildSingleGroupScenario([["a", 50], ["b", 50]], segment, route, "helper-hook-seed");
+    const entrants: Record<string, Entrant> = {
+      ...ctx.entrants,
+      b: { ...ctx.entrants.b, role: withHelper ? "helper" : "captain" },
+    };
+    const result = hook(state, { ...ctx, entrants });
+    const ev = eventsOfType(result.events, "incident").find((e) => e.params.rider_id === "a")!;
+    assert.equal(ev.params.helper_assist, withHelper);
+    return ev.params.time_loss_seconds as number;
+  }
+
+  assert.ok(lossFor(true) < lossFor(false), "hjulskift med hjaelper skal koste strengt mindre tid");
+});
+
+// ── (e) Determinisme ────────────────────────────────────────────────────────
+
+test("#2944 (e): determinisme — samme seed giver byte-identiske uheld, ogsaa med trappen slaaet til", () => {
+  const route = makeRoute("mountain", 200);
+  const segment = flatSegment(20, 60);
+  const pairs: Array<[string, number]> = [];
+  for (let i = 0; i < 40; i += 1) pairs.push([`r${String(i).padStart(2, "0")}`, 30 + (i % 40)]);
+  // Moderat (ikke rigget-til-1) risiko: nok uheld til at der ER noget at
+  // sammenligne, men stadig et blandet billede paa tvaers af trappens trin.
+  const hook = createIncidentHook(
+    alwaysCrashTuning({ baseRiskPerSegment: { flat: 0.4, rolling: 0.4, climb: 0.4, descent: 0.4, cobbles: 0.4 } }),
+  );
+
+  const a = buildSingleGroupScenario(pairs, segment, route, "determinism-2944");
+  const b = buildSingleGroupScenario(pairs, segment, route, "determinism-2944");
+  const runA = hook(a.state, a.ctx);
+  assert.ok(runA.events.length > 0, "riggen skal faktisk producere uheld (ellers er testen vakuoest sand)");
+  assert.deepEqual(runA, hook(b.state, b.ctx));
+  // ... og hele protokollen, ikke kun events.
+  assert.deepEqual(runA.state.stage_incidents, hook(b.state, b.ctx).state.stage_incidents);
+
+  const c = buildSingleGroupScenario(pairs, segment, route, "et-ANDET-seed");
+  const same = JSON.stringify(runA.events) === JSON.stringify(hook(c.state, c.ctx).events);
+  assert.ok(!same, "et andet seed skal give et andet uheldsbillede (ellers er seedet ikke i spil)");
+});
+
+test("#2944 (e): rng-streams er SEGMENT-noeglede — samme rytter styrter ikke paa hvert eneste segment", () => {
+  // Uden segment-noeglen ville (seed, mekanik, rider_id) give SAMME foerste
+  // lodtraekning paa hvert segment => en rytter der styrter paa segment 0
+  // styrter paa dem alle. Her: 12 segmenter af samme kind og laengde, samme
+  // rytter — antallet af uheld skal vaere langt under 12.
+  const route = makeRoute("flat", 480);
+  const tuning = alwaysCrashTuning({
+    baseRiskPerSegment: { flat: 0.5, rolling: 0.5, climb: 0.5, descent: 0.5, cobbles: 0.5 },
+    referenceSegmentKm: 40,
+    maxIncidentsFieldShare: 1,
+  });
+  const hook = createIncidentHook(tuning);
+  let hits = 0;
+  for (let i = 0; i < 12; i += 1) {
+    const segment = flatSegment(i * 40, (i + 1) * 40);
+    const { state, ctx } = buildSingleGroupScenario([["a", 50]], segment, route, "segment-stream-seed");
+    const result = hook(state, { ...ctx, segmentIndex: i });
+    hits += eventsOfType(result.events, "incident").length;
+  }
+  assert.ok(hits > 0, "risikoen skal vaere hoej nok til at ramme mindst én gang");
+  assert.ok(hits < 12, `rytteren ramte paa ALLE ${hits}/12 segmenter — rng-streamen er ikke segment-noeglet`);
+});
+
+// ── Laengde-skalering (grundlaget for at raten kan kalibreres pr. etape) ────
+
+test("#2944: segmentLengthFactor er lineaer i laengden, 0 ved 0 km, aldrig negativ", () => {
+  const t = INCIDENTS_EXTRA_TUNING;
+  assert.equal(segmentLengthFactor({ from_km: 10, to_km: 10 }, t), 0);
+  assert.equal(segmentLengthFactor({ from_km: 0, to_km: t.referenceSegmentKm }, t), 1);
+  assert.equal(segmentLengthFactor({ from_km: 0, to_km: 2 * t.referenceSegmentKm }, t), 2);
+  assert.equal(segmentLengthFactor({ from_km: 50, to_km: 10 }, t), 0, "negativ laengde => 0, aldrig negativ risiko");
+});
+
+test("#2944: to korte segmenter og ét langt af samme samlede laengde giver samme samlede risiko", () => {
+  const t = INCIDENTS_EXTRA_TUNING;
+  const whole = segmentLengthFactor({ from_km: 0, to_km: 60 }, t);
+  const split =
+    segmentLengthFactor({ from_km: 0, to_km: 25 }, t) + segmentLengthFactor({ from_km: 25, to_km: 60 }, t);
+  assert.ok(Math.abs(whole - split) < 1e-12, "rute-modellens segment-granularitet maa ikke aendre uheldsraten");
 });

@@ -128,6 +128,41 @@ function resolvedRiderNames(ids, riderNameById) {
   return (ids || []).map((id) => riderName(id, riderNameById)).filter(Boolean);
 }
 
+// #2944 — incident-trappen. Motoren (backend/lib/engine/v4/mechanics/incidents.ts)
+// emitterer nu fire udfald i stedet for ét: let styrt (tidstab), hårdt styrt
+// (tidstab + skadedage), alvorligt styrt (udgår + skadedage) og mekanisk uheld
+// (ALTID kun tidstab, aldrig udgåelse, aldrig skade — #4520). En hjælper tæt på
+// giver et hurtigere hjulskift, altså mindre tidstab.
+//
+// Her vælges KUN hvilken tekstnøgle udfaldet svarer til; selve sætningen bor i
+// public/locales/{en,da}/races.json (EN først, DA sekundært). Bagudkompatibelt:
+// v3's incident-events (og v4-events fra før trappen) bærer hverken `severity`,
+// `injury_days` eller `outcome`, og falder derfor på den oprindelige nøgle
+// "incident", der stadig kun læser `kind`.
+function incidentCopyKey(p) {
+  // `severity` er trappens markør: v4 sætter den ALTID (null for mekaniske
+  // uheld, der ikke har en alvorsakse), mens v3 og pre-trappe-v4 slet ikke har
+  // nøglen. Uden markøren bruges den oprindelige, art-only sætning — v3 har
+  // sit eget udfaldsvokabular ("abandon" for både styrt og mekanisk), som
+  // trappens tekster ikke beskriver korrekt.
+  if (!Object.prototype.hasOwnProperty.call(p, "severity")) return "incident";
+  if (p.outcome === "abandoned") return "incident_crash_abandon";
+  if (p.outcome === "protected_three_km_rule") return "incident_protected";
+  if (p.kind === "mechanical") return p.helper_assist ? "incident_mechanical_helper" : "incident_mechanical";
+  if (p.severity === "hard") return "incident_crash_hard";
+  if (p.severity === "light") return "incident_crash_time_loss";
+  return "incident";
+}
+
+function incidentCopyParams(p, rider) {
+  return {
+    rider,
+    kind: p.kind === "mechanical" ? "mechanical" : "crash",
+    seconds: Math.round(Number(p.time_loss_seconds) || 0),
+    days: Math.round(Number(p.injury_days) || 0),
+  };
+}
+
 // #4026: alle rider-ids en tidslinjes events refererer — så callers (LiveFilmLine
 // på Race Centre) kan batch-hente navne FØR describeEvent kaldes. Skal dække
 // præcis de param-former describeEvent læser nedenfor.
@@ -197,7 +232,7 @@ export function describeEvent(event, { riderNameById } = {}) {
     case "incident": {
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;
-      return { key: "incident", params: { rider, kind: p.kind === "mechanical" ? "mechanical" : "crash" } };
+      return { key: incidentCopyKey(p), params: incidentCopyParams(p, rider) };
     }
     case "favorite_crack": {
       const rider = riderName(p.rider_id, riderNameById);
