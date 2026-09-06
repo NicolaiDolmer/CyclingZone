@@ -229,7 +229,7 @@ export async function defaultResolveGraduate(supabase, {
  * `is_academy=true`, mens grad-raekken allerede var stemplet 'sold'. Ingen sti
  * tilbage: hverken solgt, promoveret, sluppet eller fri agent (#4495, #4484).
  *
- * EJER-BESLUTNING 7/9: slip er IKKE laengere det foerste svar paa "ingen bud".
+ * EJER-BESLUTNING 6/9: slip er IKKE laengere det foerste svar paa "ingen bud".
  * "Kan han ikke automatisk rykkes op paa seniorholdet, naar han ikke kan vaere
  * paa ungdomsholdet mere?" — jo. Kalderen er nu `resolveUnsoldGraduate`
  * nedenfor, som foerst proever oprykning med et FRISKT plads+raad-tjek og kun
@@ -377,7 +377,7 @@ export async function completeStuckPromotion(supabase, {
 }
 
 /**
- * #4495 (ejer-aendring 7/9) — HELE udgangen for en graduate-auktion der sluttede
+ * #4495 (ejer-aendring 6/9) — HELE udgangen for en graduate-auktion der sluttede
  * UDEN bud: **oprykning foerst, slip kun hvis oprykning ikke kan lade sig goere.**
  *
  * Ejerens ord: "Kan han ikke automatisk rykkes op paa seniorholdet, naar han
@@ -540,7 +540,7 @@ export async function resolveNeverGraduated(supabase, {
 
 // #4495: ret den 'sold'-stemplede grad-raekke til det der FAKTISK skete, naar
 // salget aldrig blev til noget — 'released' hvis rytteren blev sluppet,
-// 'promoted' hvis han i stedet blev rykket op paa seniorholdet (ejer 7/9).
+// 'promoted' hvis han i stedet blev rykket op paa seniorholdet (ejer 6/9).
 // Nyeste raekke foerst — en rytter kan have grad-raekker i flere saesoner
 // (UNIQUE(rider_id, season_id), #4484), og det er den seneste der hoerer til den
 // netop afsluttede auktion. Best-effort som resolvePendingGraduationOnSale:
@@ -586,7 +586,7 @@ async function finishGraduation(supabase, { gradId, status, teamId, rider, now, 
       titleCode: "notif.academyGraduated.title",
       messageCode: `notif.academyGraduated.${action}`,
       titleParams: { name },
-      // #4495 (7/9): messageParams SKAL med — locale-strengene i
+      // #4495 (6/9): messageParams SKAL med — locale-strengene i
       // backendMessages.json bærer nu {name} i selve beskeden. Uden dem ville
       // manageren se den rå placeholder i stedet for rytterens navn.
       messageParams: { name },
@@ -600,7 +600,7 @@ async function finishGraduation(supabase, { gradId, status, teamId, rider, now, 
 // #4495: udgangen ved ingen bud fandtes IKKE i koden før 5/9 — kun vinder-stien
 // flippede flaget, så en usolgt graduate blev fanget i akademiet for evigt.
 // Udgangen er nu resolveUnsoldGraduate ovenfor (oprykning hvis plads + råd, ellers
-// fri agent — ejer 7/9), kaldt fra auctionFinalization.js's no-bid-gren; vagten
+// fri agent — ejer 6/9), kaldt fra auctionFinalization.js's no-bid-gren; vagten
 // mod klassen er ownershipInvariantWatch invariant G.
 //
 // #4004: hvis den beregnede sluttid ville krydse sæson-transitionen, springes

@@ -543,7 +543,7 @@ test("#4495 completeStuckPromotion: rytter der imens er skiftet hold røres ikke
   assert.equal(rec.riderUpdates.length, 0);
 });
 
-// ─── resolveUnsoldGraduate (#4495, ejer-ændring 7/9) ──────────────────────────
+// ─── resolveUnsoldGraduate (#4495, ejer-ændring 6/9) ──────────────────────────
 // "Kan han ikke automatisk rykkes op på seniorholdet, når han ikke kan være på
 // ungdomsholdet mere?" Udgangen for en graduate-auktion uden bud er nu
 // promovér-FØRST (friskt plads+råd-tjek), slip kun som sidste led.

@@ -16,7 +16,7 @@
 // er den vaerste fejlklasse i et reparations-script (laering 3/9).
 //
 // READ-ONLY: ingen writes her. Udgangen (oprykning hvis plads+raad, ellers fri
-// agent — ejer 7/9) ligger i academyGraduation.resolveUnsoldGraduate.
+// agent — ejer 6/9) ligger i academyGraduation.resolveUnsoldGraduate.
 
 import { isGraduateAge } from "./academyGraduation.js";
 import { ageForSeason } from "./riderSeasonAge.js";

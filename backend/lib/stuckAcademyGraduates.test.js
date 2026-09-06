@@ -219,9 +219,9 @@ test("#4495 planRepair tæller ryttere der aldrig fik et override-vindue (ejer-b
   assert.equal(plan.never_offered, 1);
 });
 
-// ─── De tre tilstande → handlingerne (ejer 5/9, skærpet 7/9) ──────────────────
+// ─── De tre tilstande → handlingerne (ejer 5/9, skærpet 6/9) ──────────────────
 // (a) 'sold' uden gennemført salg → promovér hvis plads+råd, ellers slip
-//     (ejer-ændring 7/9 — før slap dette led rytteren ubetinget).
+//     (ejer-ændring 6/9 — før slap dette led rytteren ubetinget).
 // (b) 'promoted' men is_academy=true → fuldfør promoveringen.
 // (c) ingen grad-række → default-kæden (promovér/sælg/slip).
 // Dispatchen sker på plan.candidates[].state, ALDRIG på et separat "hurtigt"
@@ -245,7 +245,7 @@ test("#4495 planRepair klassificerer de tre tilstande korrekt", async () => {
   const plan = await planRepair({ supabase: makeMock(threeStateFixture()), now: NOW, getMarketState: marketWithRoomAndFunds });
   const byId = Object.fromEntries(plan.candidates.map((c) => [c.rider_id, c]));
 
-  // Ejer-ændring 7/9: plads + råd → op på seniorholdet, ikke slip.
+  // Ejer-ændring 6/9: plads + råd → op på seniorholdet, ikke slip.
   assert.equal(byId["r-sold-no-sale"].state, "sold_no_sale");
   assert.equal(byId["r-sold-no-sale"].action, "promote");
   assert.equal(byId["r-sold-no-sale"].has_room, true);
@@ -332,7 +332,7 @@ test("#4495 applyRepair dispatcher til resolveUnsold/promote/resolveNever efter 
   assert.equal(outcome.skipped, 0);
 });
 
-test("#4495 applyRepair: sold_no_sale kan ende som promoveret (ejer-ændring 7/9)", async () => {
+test("#4495 applyRepair: sold_no_sale kan ende som promoveret (ejer-ændring 6/9)", async () => {
   const fixture = { riders: [R_SOLD], graduations: [{ id: "g-sold", rider_id: "r-sold-no-sale", status: "sold", deadline: "2026-08-01T00:00:00.000Z", created_at: "2026-07-25T00:00:00.000Z" }] };
   const plan = await planRepair({ supabase: makeMock(fixture), now: NOW, getMarketState: marketWithRoomAndFunds });
   assert.equal(plan.candidates[0].action, "promote");
@@ -421,6 +421,6 @@ test("#4495 planRepair: en overskredet PENDING grad-række klassificeres pending
 
 // "Ingen bud"-stien (auctionFinalization.js's no-bid-gren) og dette script deler
 // nu PRÆCIS samme udgang for sold_no_sale: academyGraduation.resolveUnsoldGraduate
-// (oprykning hvis plads+råd, ellers slip — ejer 7/9). Selve kæden er dækket i
+// (oprykning hvis plads+råd, ellers slip — ejer 6/9). Selve kæden er dækket i
 // academyGraduation.test.js, runtime-indgangen i auctionFinalization.test.js;
 // her testes kun at scriptet dispatcher til den, og med et sæsonnummer.

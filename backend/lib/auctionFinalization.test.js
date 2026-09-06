@@ -2278,7 +2278,7 @@ test("finalizeAuctionById refuses an implicit self-bid when the rider has no own
 // allerede var stemplet 'sold'. Hverken solgt, promoveret, sluppet eller fri
 // agent — 8 fastlåste ryttere på 6 hold målt i prod 31/8.
 //
-// EJER-ÆNDRING 7/9: udgangen er nu promovér-FØRST. "Kan han ikke automatisk
+// EJER-ÆNDRING 6/9: udgangen er nu promovér-FØRST. "Kan han ikke automatisk
 // rykkes op på seniorholdet, når han ikke kan være på ungdomsholdet mere?" — jo,
 // hvis der er plads og råd. Slip er sidste led, ikke første.
 const UNSOLD_GRADUATE_AUCTION = Object.freeze({
@@ -2312,7 +2312,7 @@ const UNSOLD_GRADUATE_SELLER = Object.freeze({
   is_ai: false,
 });
 
-test("#4495 usolgt graduate-auktion rykker rytteren op på seniorholdet når der er plads og råd (ejer 7/9)", async () => {
+test("#4495 usolgt graduate-auktion rykker rytteren op på seniorholdet når der er plads og råd (ejer 6/9)", async () => {
   const teamUpdates = [];
   const riderUpdates = [];
   const financeInserts = [];

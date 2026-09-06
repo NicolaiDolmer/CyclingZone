@@ -1614,7 +1614,7 @@ async function finalizeAuctionRecord({
   // grad-rækken allerede var stemplet 'sold': hverken solgt, promoveret,
   // sluppet eller fri agent (8 fastlåste ryttere på 6 hold målt i prod 31/8).
   //
-  // EJER-ÆNDRING 7/9: udgangen er IKKE længere "slip" som første svar.
+  // EJER-ÆNDRING 6/9: udgangen er IKKE længere "slip" som første svar.
   // resolveUnsoldGraduate prøver først oprykning til seniortruppen igen med et
   // FRISKT plads+råd-tjek (samme kriterier som default-kædens promovér-trin) og
   // slipper kun rytteren hvis truppen er fuld eller saldoen negativ. Manageren

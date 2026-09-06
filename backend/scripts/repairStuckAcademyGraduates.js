@@ -20,9 +20,9 @@
 //   (a) grad-raekke 'sold' uden gennemfoert salg → auktionen blev aldrig til
 //       noget → PROMOVÉR hvis plads + raad, ellers SLIP (resolveUnsoldGraduate
 //       — praecis samme kaede som runtime-udgangen i auctionFinalization).
-//       Skaerpet 7/9 efter ejerens spoergsmaal: "Kan han ikke automatisk rykkes
+//       Skaerpet 6/9 efter ejerens spoergsmaal: "Kan han ikke automatisk rykkes
 //       op paa seniorholdet, naar han ikke kan vaere paa ungdomsholdet mere?"
-//       Foer 7/9 slap dette led rytteren ubetinget.
+//       Foer 6/9 slap dette led rytteren ubetinget.
 //   (b) grad-raekke 'promoted' men is_academy stadig true → promoveringen kom
 //       ud af trit med rytter-raekken → FULDFOER den (completeStuckPromotion,
 //       samme felter + cap-tjek som resolveGraduation's promote-gren).
@@ -107,7 +107,7 @@ export async function planRepair({ supabase, now = new Date(), graceHours = STUC
       reason = "uventet kombination af grad-raekke-status — kraever manuelt eftersyn";
     } else {
       // sold_no_sale, promoted_incomplete OG no_graduation_row kan alle ende i
-      // "promovér" (ejer 7/9), saa alle tre har brug for plads/raad-svaret til
+      // "promovér" (ejer 6/9), saa alle tre har brug for plads/raad-svaret til
       // beslutningsgrundlaget.
       const marketState = await getMarketState(supabase, r.teamId);
       const cap = marketState?.squad_limits?.max ?? 30;
@@ -117,14 +117,14 @@ export async function planRepair({ supabase, now = new Date(), graceHours = STUC
       canAfford = balance >= 0;
 
       if (state === "sold_no_sale") {
-        // EJER-AENDRING 7/9: den usolgte auktion slipper ikke laengere rytteren
+        // EJER-AENDRING 6/9: den usolgte auktion slipper ikke laengere rytteren
         // med det samme. Samme kaede som runtime-udgangen
         // (academyGraduation.resolveUnsoldGraduate): oprykning hvis plads+raad,
         // ellers slip. Salg proeves IKKE igen — auktionen er lige loebet af
         // uden bud, saa en ny ville med stor sandsynlighed goere det samme.
         action = hasRoom && canAfford ? "promote" : "release";
         reason = hasRoom && canAfford
-          ? "auktionen blev aldrig til et salg — plads og raad, saa han rykker op (ejer 7/9)"
+          ? "auktionen blev aldrig til et salg — plads og raad, saa han rykker op (ejer 6/9)"
           : !hasRoom
             ? "auktionen blev aldrig til et salg, og der er ingen plads i seniortruppen — slip"
             : "auktionen blev aldrig til et salg, og holdet har negativ saldo — slip";
