@@ -42,12 +42,14 @@ import type {
   StageInput,
   TeamOrder,
   TimelineEvent,
+  Weather,
 } from "./types.ts";
 import { boundRngFor } from "./rng.ts";
 import { deriveCp, deriveRechargeRate, tickPhysiologyOverSegment } from "./physiology.ts";
 import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
-import { GROUP_DRAFT_EXTRA_TUNING } from "./tuning.ts";
+import { GROUP_DRAFT_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
+import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -105,26 +107,57 @@ type GroupTempo = {
 // `groupDraftSpeedGain` nedenfor. En ende-til-ende-test kan ikke skelne "M7 er
 // koblet fra" fra "M7 er koblet til og flyttede ingenting"; en direkte test paa
 // denne funktion kan (segmentLoop.distanceFatigue.test.ts).
-export function riderCpForSegment(entrant: Entrant, riderState: RiderState, segment: Segment, tuning: EngineTuning): number {
+export function riderCpForSegment(
+  entrant: Entrant,
+  riderState: RiderState,
+  segment: Segment,
+  tuning: EngineTuning,
+  weather: Weather,
+): number {
   const baseCp = deriveCp(entrant.abilities, segment.kind, tuning.physiology.cpWeights);
   const worn = applyDistanceFatigueToCp(baseCp, {
     kmSoFar: segment.from_km,
     enduranceAbility: entrant.abilities.endurance,
     condition: entrant.condition,
   });
-  // M16-wiring (#4246): holdarbejdets pris/kaptajnens lae ganges paa CP'en
-  // paa NOEJAGTIG samme sted som M7's slid — foer dayform laegges til, saa
-  // holdspillet aldrig kan vende to rytteres dagsform-orden. Faktoren er
+  // To proportionale CP-faktorer ganges paa den slidte CP FOER dayform laegges
+  // til. Begge sidder samme sted som M7's slid, og af samme grund: dayform er
+  // et absolut dagsudsving oven paa dagens faktiske troeskel, ikke noget de
+  // skal skalere. Begge er PR. RYTTER PROPORTIONALE (aldrig absolutte
+  // fradrag), saa invariant 3 holder per konstruktion — hverken holdrollen
+  // eller vejret kan vende to rytteres indbyrdes CP-orden.
+  //
+  // M16-wiring (#4246): holdarbejdets pris/kaptajnens lae. Faktoren er
   // akkumuleret af mechanics/teamPlay.ts i det FORRIGE segment: prisen betales
   // FREMAD, praecis som i virkeligheden, hvor en tur i vinden koster resten af
-  // dagen og ikke det stykke man allerede har koert.
-  //
-  // Faktoren er PR. RYTTER PROPORTIONAL (aldrig et absolut fradrag), saa to
-  // ryttere med samme holdrolle beholder deres indbyrdes CP-orden: invariant 3
-  // holder per konstruktion inden for en rolle-klasse, praecis som i v3, hvor
+  // dagen og ikke det stykke man allerede har koert. To ryttere med samme
+  // holdrolle beholder deres indbyrdes CP-orden, praecis som i v3, hvor
   // work_cost er den samme score-delta for alle hjaelpere paa profilen.
+  //
+  // M11-wiring (#3855): vejrets pris. Multiplikatoren er <= 1 og IKKE-FALDENDE
+  // i evne, saa vejret hverken kan haeve en CP eller straffe den staerkeste
+  // haardest.
   const teamFactor = Number.isFinite(riderState.team_cp_factor) ? (riderState.team_cp_factor as number) : 1;
-  return Math.max(0, worn * teamFactor + riderState.dayform);
+  const weatherFactor = riderWeatherCpMultiplier(entrant, segment, weather);
+  return Math.max(0, worn * teamFactor * weatherFactor + riderState.dayform);
+}
+
+// M11-wiring (#3855, 6/9): vejrets CP-multiplikator for ÉN rytter paa ÉT
+// segment. Ganges paa den slidte CP i `riderCpForSegment` ovenfor — samme
+// sted og samme form som M7's distance-slid, jf. weather.ts's belastnings-blok
+// (hvorfor CP og ikke kraftkravet er en MAALT konklusion, se dér).
+//
+// Vejr-teknikken er en PROXY (vaegtet descending+durability) indtil den rigtige
+// evne fødes; se weather.ts's weatherTechniqueProxy-docblock. Ingen rng: vejrets
+// pris er en deterministisk funktion af (vejr, terraen, evne), saa determinisme-
+// invarianten er uberoert og der er intet segment-index-hash-spoergsmaal (#4886).
+//
+// Eksporteret af samme grund som `riderCpForSegment` og `groupDraftSpeedGain`:
+// en ende-til-ende-test kan se AT en regnetape er anderledes, men ikke at netop
+// denne kobling er den der goer det.
+export function riderWeatherCpMultiplier(entrant: Entrant, segment: Segment, weather: Weather): number {
+  const technique = weatherTechniqueProxy(entrant.abilities, WEATHER_EXTRA_TUNING.weatherTechniqueProxyWeights);
+  return weatherCpMultiplier(weather, segment.kind, technique, WEATHER_EXTRA_TUNING);
 }
 
 /**
@@ -168,13 +201,14 @@ function computeGroupTempo(
   entrantsById: Record<string, Entrant>,
   segment: Segment,
   tuning: EngineTuning,
+  weather: Weather,
 ): GroupTempo {
   const cpByRider = new Map<string, number>();
   for (const riderId of group.rider_ids) {
     const entrant = entrantsById[riderId];
     const riderState = riders[riderId];
     if (!entrant || !riderState) continue;
-    cpByRider.set(riderId, riderCpForSegment(entrant, riderState, segment, tuning));
+    cpByRider.set(riderId, riderCpForSegment(entrant, riderState, segment, tuning, weather));
   }
   const ranked = [...cpByRider.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   const frontCount = Math.max(1, Math.ceil(ranked.length * tuning.work.frontFraction));
@@ -299,16 +333,34 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     distance_km: route.distance_km,
   });
 
+  // M11 (#3855-wiring 6/9): vejr-eventet emitteres ÉN gang, paa det foerste
+  // segment hvor vejret faktisk koster noget. For regn er det km 0 (regn
+  // rammer hele etapen); for vind er det det foerste EKSPONEREDE segment, saa
+  // en bjergetape i vind foerst melder vinden naar feltet kommer ud paa det
+  // aabne — "vind fra km 80", ikke "vind fra km 0". Sol/overskyet melder
+  // ingenting: der er intet at fortaelle spilleren, og etapen skal vaere
+  // byte-identisk med en etape uden vejr-lag.
+  //
+  // Fog-gate (§3 invariant 5, ejer 6/9): params baerer KUN vejrtypen. Ingen
+  // wind_exposure, ingen multiplikator, ingen straf — spilleren ser "regn",
+  // ikke hvad regn koster.
+  let weatherAnnounced = false;
+
   const segments = route.segments;
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const segment = segments[segmentIndex];
+
+    if (!weatherAnnounced && weatherCpPenalty(route.weather, segment.kind, WEATHER_EXTRA_TUNING) > 0) {
+      pushEvent(timeline, segment.from_km, "weather", { kind: route.weather.kind });
+      weatherAnnounced = true;
+    }
 
     // 1+2: krav-tempo + fysiologi-tick, pr. gruppe (baseret paa gruppe-strukturen
     // ved segmentets indgang).
     const tempoByGroup = new Map<string, GroupTempo>();
     let nextRiders: Record<string, RiderState> = { ...state.riders };
     for (const group of state.groups) {
-      const tempo = computeGroupTempo(group, state.riders, entrantsById, segment, tuning);
+      const tempo = computeGroupTempo(group, state.riders, entrantsById, segment, tuning, route.weather);
       tempoByGroup.set(group.id, tempo);
       const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning);
       nextRiders = { ...nextRiders, ...patch };

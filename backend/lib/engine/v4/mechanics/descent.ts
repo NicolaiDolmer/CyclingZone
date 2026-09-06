@@ -44,7 +44,8 @@ import type {
   TimelineEvent,
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { DESCENT_EXTRA_TUNING } from "../tuning.ts";
+import { DESCENT_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "../tuning.ts";
+import { weatherAdjustedRiskBase } from "./weather.ts";
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -349,9 +350,28 @@ export const descentHook: DescentHook = (
     // pr. rytter ("descent_incident"-streamen, per-rytter-hash), daempet af
     // descending-evnen. F2: ren information (counter + event), jf. filens
     // toppe-kommentar — ingen tid/gruppe-effekt (monotoni-vaernet).
+    //
+    // M11-wiring (#3855, 6/9): basis-risikoen er VEJR-FORSTAERKET foer
+    // daempningen — mor-spec §4 M11's egen formulering er "regn forstaerker
+    // ... descent attack-risikoen", og weather.ts's wiring-note udpeger
+    // netop dette kaldssted (mulighed (a), uden ny DescentTuning-noegle).
+    // Raekkefoelgen er bevidst: vejret forstaerker FOERST, evnen daemper
+    // DEREFTER, saa daempningen altid virker paa den faktiske risiko.
+    // weatherTechniqueDampening laegges IKKE oveni her: proxy'en er halvt
+    // descending, og den evne daemper allerede i incidentProbability —
+    // to lag ville taelle den samme evne to gange (mechanics/cobbles.ts har
+    // ikke det problem, fordi den daemper paa cobblestone).
+    const weatherAdjustedDescentTuning = {
+      incidentRiskBase: weatherAdjustedRiskBase(
+        ctx.tuning.descent.incidentRiskBase,
+        ctx.route.weather,
+        WEATHER_EXTRA_TUNING,
+      ),
+      incidentRiskDescendingDampening: ctx.tuning.descent.incidentRiskDescendingDampening,
+    };
     for (const attacker of attackers) {
       const rng = ctx.rngFor("descent_incident", attacker.riderId);
-      const p = incidentProbability(attacker.descending, ctx.tuning.descent);
+      const p = incidentProbability(attacker.descending, weatherAdjustedDescentTuning);
       const roll = rng();
       if (roll >= p) continue;
       const kmFrac = rng();
