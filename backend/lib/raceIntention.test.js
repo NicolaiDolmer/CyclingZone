@@ -40,6 +40,7 @@ import { validateStageRoleOverrides } from "./raceStageRolesApi.js";
 import { validateTeamOrder } from "./raceTeamOrdersApi.js";
 import { applyRaceDevelopmentTick } from "./dailyTraining.js";
 import { RACE_DAY_INTENTION_FLAG_KEY } from "./raceIntentionFlag.js";
+import { extractStageMoments } from "./raceNarrative.js";
 
 const FIVE = ["grupetto", "save", "normal", "protect", "all_out"];
 // Profiler der optræder i motoren; dækker både GC-relevante, flade og de
@@ -427,4 +428,29 @@ test("#4632: applyRaceDevelopmentTick — grupetto giver mindst udbytte, all_out
   for (let i = 1; i < scores.length; i++) {
     assert.ok(scores[i] > scores[i - 1], `${FIVE[i]} (${scores[i]}) ≤ ${FIVE[i - 1]} (${scores[i - 1]})`);
   }
+});
+
+// ── Narrativ: de to nye trin må ikke stille miste deres indsats-tag ──────────
+
+test("#4632: grupetto/all_out arver de eksisterende indsats-tags (ingen tavs rytter)", () => {
+  const ranked = FIVE.map((effort, i) => ({
+    rider_id: `r-${effort}`, team_id: `team-${i}`, rank: i + 1, finalScore: 1 - i * 0.01, stageGap: i * 5,
+    components: { terrain: 0.5, noise: 0, form: 0, fatigue: 0, team: 0, breakaway: 0, finale: 0, work_cost: 0, dayform: 0, jour_sans: 0, peak: 0, long_day: 0, incident: 0 },
+  }));
+  const moments = extractStageMoments({
+    profileType: "mountain",
+    ranked,
+    roleByRider: new Map(ranked.map((r) => [r.rider_id, "helper"])),
+    effortByRider: new Map(FIVE.map((effort) => [`r-${effort}`, effort])),
+  });
+  const keysFor = (id) => moments.filter((m) => m.params?.riderId === id).map((m) => m.moment_key ?? m.key);
+  assert.ok(keysFor("r-grupetto").includes("tag_saved_effort"), "grupetto skal arve tag_saved_effort");
+  assert.ok(keysFor("r-save").includes("tag_saved_effort"));
+  assert.ok(keysFor("r-all_out").includes("tag_gave_everything"), "all_out skal arve tag_gave_everything");
+  assert.ok(keysFor("r-protect").includes("tag_gave_everything"));
+  assert.equal(
+    keysFor("r-normal").filter((k) => k === "tag_saved_effort" || k === "tag_gave_everything").length,
+    0,
+    "normal er baseline og får bevidst intet indsats-tag",
+  );
 });

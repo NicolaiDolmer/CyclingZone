@@ -59,7 +59,7 @@ export function raceFatigueLoad(profileType) {
  *
  * @param {number|null|undefined} startFatigue
  * @param {string[]} profileTypes  etapeprofiler i etape-rækkefølge
- * @param {{effort?: 'protect'|'normal'|'save', efforts?: string[], restDaysBefore?: number[], recoveryAbility?: number}} [opts]
+ * @param {{effort?: 'grupetto'|'save'|'normal'|'protect'|'all_out', efforts?: string[], restDaysBefore?: number[], recoveryAbility?: number}} [opts]
  * @returns {number[]} træthed ved START af hver etape (samme længde som profileTypes)
  */
 export function stageEnteringFatigues(startFatigue, profileTypes, { effort = "normal", efforts, restDaysBefore, recoveryAbility = 50 } = {}) {
