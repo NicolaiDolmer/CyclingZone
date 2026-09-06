@@ -226,6 +226,18 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // #4000: applyTypeDampening() følger TYPE_DAMPENING_ENABLED — flag-tilstanden
   // bor i riderValuationTypeDampening.js (læs den DÉR; flippet 23/8 med ejer-go).
   const valModel = valuationModel || applyTypeDampening(JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8")));
+  // #1673's egentlige beskyttelses-objekt, flyttet FØR skrivningerne (CYCLINGZONE-51):
+  // en UBRUGELIG værdi-model (koefficienter der ikke er endelige tal) efterlader HELE
+  // batchet uden base_value. Den klasse skal fejle hårdt ved kilden — og den kan
+  // afgøres på modellen alene, uden at udlede den af outputtet. Udledningen bagfra var
+  // netop det der gjorde ÉN uvurderbar rytter til den samme hårde fejl som en brudt
+  // model (se guard-kommentaren nederst i denne funktion).
+  const valModelUsable = Number(valModel?.version) >= 4 && valModel?.fit
+    ? Number.isFinite(Number(valModel.fit.a)) && Number.isFinite(Number(valModel.fit.b))
+    : Number.isFinite(Number(valModel?.a)) && Number.isFinite(Number(valModel?.b));
+  if (!valModelUsable) {
+    throw new Error("deriveForRiderIds: valuation model unusable (a/b are not finite numbers) - aborting BEFORE any write, no rider could be valued");
+  }
   // #3570: seasonNumber flyttet HERTIL (var tidligere kun hentet ved trin 5) — trin 4
   // (ENDELIG type) skal nu også kende alderen for at vælge baseline.
   const seasonNumber = await activeSeasonNumber(supabase);
@@ -395,6 +407,7 @@ export async function deriveForRiderIds(supabase, riderIds, {
       abilities: abilities.length,
       typed: typeByRider.size,
       valued: riderUpdates.filter((u) => u.base_value != null).length,
+      unvaluable: riderUpdates.filter((u) => u.base_value == null).map((u) => u.id),
       dryRun: true,
     };
   }
@@ -413,18 +426,37 @@ export async function deriveForRiderIds(supabase, riderIds, {
   // (call-sites er ikke-fatale/idempotente nok til at retry/heal-sweep tager over).
   //
   // Bemærk: et input-id der IKKE findes i `riders` (slettet/ugyldigt) er IKKE en fejl
-  // her — vi verificerer kun de ryttere vi faktisk hentede. base_value må desuden
-  // legitimt være NULL hvis predictBaseValue ikke kunne værdisætte (model-fejl /
-  // ingen abilities); de fanges af "manglende ability-række"-tjekket alligevel, da
-  // ingen abilities → ingen base_value.
+  // her — vi verificerer kun de ryttere vi faktisk hentede.
+  //
+  // ── TO FORSKELLIGE TILSTANDE, ÉN VAR FØR SAMMENBLANDET (CYCLINGZONE-51, 6/9) ──
+  // Guarden kastede oprindeligt også på "abilities skrevet, men base_value NULL", med
+  // begrundelsen at den klasse "fanges af manglende ability-række-tjekket alligevel,
+  // da ingen abilities → ingen base_value". Den antagelse holdt ikke i prod:
+  // predictBaseValueV4 (riderCareerNpv.js::simulateCareer) afbryder karriere-løkken
+  // med det samme når `age_s > 40`, så NPV'en bliver 0 og funktionen returnerer null
+  // — for en rytter med et helt normalt evne-sæt. Fyld-generatoren trækker alder mod
+  // LAUNCH_POPULATION.referenceYear (2026), mens derive'en regner sæson-alder mod den
+  // AKTIVE sæson (sæson 3 = 2028), så et signup i sæson 3 kan lovligt producere en
+  // 41-årig. Resultatet var en uafviselig tilstand: rytteren fik sine abilities hver
+  // gang, men aldrig en base_value, riderDeriveHealSweep valgte ham igen hvert 5.
+  // minut, og guarden kastede — 189 Sentry-events på 16 timer, og
+  // allocateStarterSquadForTeam nåede aldrig at sætte markøren eller skrive
+  // kontrakt-felterne for holdets 12 ryttere (CYCLINGZONE-42, samme rod-årsag).
+  //
+  // Vi kaster derfor KUN på den tilstand guarden blev skrevet til: et input-id der
+  // ikke fik en ability-række (ægte partielt derive — dét er en skrivning der faldt
+  // på gulvet). En rytter MED ability-række men UDEN base_value er en model-grænse,
+  // ikke en tabt skrivning: han rapporteres som `unvaluable`, så kalderen kan
+  // alarmere ÉN gang på tilstanden i stedet for at fælde hele sweepet hver tick.
   const derivedIds = new Set(abilities.map((a) => a.rider_id));
   const missingAbilities = riders.filter((r) => !derivedIds.has(r.id)).map((r) => r.id);
-  const missingValue = riderUpdates.filter((u) => u.base_value == null).map((u) => u.id);
-  if (missingAbilities.length > 0 || missingValue.length > 0) {
-    const parts = [];
-    if (missingAbilities.length) parts.push(`${missingAbilities.length} uden ability-række (${missingAbilities.slice(0, 5).join(", ")}${missingAbilities.length > 5 ? ", …" : ""})`);
-    if (missingValue.length) parts.push(`${missingValue.length} uden base_value (${missingValue.slice(0, 5).join(", ")}${missingValue.length > 5 ? ", …" : ""})`);
-    throw new Error(`deriveForRiderIds: partielt derive — ${parts.join("; ")}. ${riders.length}/${ids.length} ryttere hentet.`);
+  const unvaluable = riderUpdates.filter((u) => u.base_value == null && derivedIds.has(u.id)).map((u) => u.id);
+  if (missingAbilities.length > 0) {
+    const detail = `${missingAbilities.length} uden ability-række (${missingAbilities.slice(0, 5).join(", ")}${missingAbilities.length > 5 ? ", …" : ""})`;
+    throw new Error(`deriveForRiderIds: partielt derive — ${detail}. ${riders.length}/${ids.length} ryttere hentet.`);
+  }
+  if (unvaluable.length > 0) {
+    log(`deriveForRiderIds: ${unvaluable.length} rider(s) without base_value despite an ability row (${unvaluable.slice(0, 5).join(", ")}${unvaluable.length > 5 ? ", …" : ""}) - the model could not value them`);
   }
 
   return {
@@ -433,6 +465,7 @@ export async function deriveForRiderIds(supabase, riderIds, {
     abilities: abilities.length,
     typed: typeByRider.size,
     valued: riderUpdates.filter((u) => u.base_value != null).length,
+    unvaluable,
     written: typedWritten,
   };
 }

@@ -82,14 +82,25 @@ export async function runRiderDeriveHealSweep({
   const batch = Number.isFinite(limit) ? strandedIds.slice(0, limit) : strandedIds;
   log(`[riderDeriveHealSweep] ${strandedIds.length} strandede ryttere (af ${activeCount} aktive) — healer ${batch.length} i dette tick`);
 
-  // deriveForRiderIds kaster nu (kilde-guard, #1673) hvis et batch ikke dækker alle
-  // input-id'er → en partiel fejl bliver synlig i stedet for at strande tavst.
+  // deriveForRiderIds kaster (kilde-guard, #1673) hvis et input-id ikke fik en
+  // ability-række → et ægte partielt derive bliver synligt i stedet for at strande
+  // tavst. CYCLINGZONE-51 (6/9): den kastede FØR også på "ability-række skrevet, men
+  // base_value NULL" — en model-grænse (fx en rytter over NPV-motorens alders-horisont)
+  // som INGEN re-derive kan hele. Den tilstand fældede hele sweepet hvert 5. minut og
+  // efterlod resten af efterslæbet uhealet. Den rapporteres nu i stedet som
+  // `unvaluable`, og kalderen (cron.js) alarmerer ÉN gang pr. tilstand via
+  // opsAlertDedupe i stedet for pr. tick.
   const res = await deriveForRiderIds(supabase, batch, { dryRun: false, log });
+  const unvaluable = Array.isArray(res?.unvaluable) ? res.unvaluable : [];
+  if (unvaluable.length) {
+    log(`[riderDeriveHealSweep] ${unvaluable.length} rytter(e) kan ikke værdisættes af modellen og forbliver strandede: ${unvaluable.slice(0, 5).join(", ")}${unvaluable.length > 5 ? ", …" : ""}`);
+  }
 
   return {
     stranded: strandedIds.length,
     healed: res?.riders ?? batch.length,
     remaining: Math.max(0, strandedIds.length - batch.length),
+    unvaluable,
     activeCount,
   };
 }
