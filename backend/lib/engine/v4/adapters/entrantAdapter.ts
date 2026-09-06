@@ -32,6 +32,8 @@ const VALID_ROLE_SET = new Set<string>(VALID_RACE_ROLES);
  */
 export type AbilitiesRow = {
   rider_id?: string | null;
+  /** M16 (#4246): valgfri berigelse — se team_id-noten i entrantFromAbilitiesRow. */
+  team_id?: unknown;
 } & Partial<Record<AbilityKey, number | string | null | undefined>>
   & Record<string, unknown>;
 
@@ -54,6 +56,19 @@ export function abilitiesFromRow(row: AbilitiesRow): Record<AbilityKey, number> 
   return out;
 }
 
+/**
+ * Hold-id (M16, #4246) -> streng eller null. Alt andet end en ikke-tom streng
+ * (null/undefined/tom/whitespace) bliver til `null` = "intet hold", saa en
+ * blank eller manglende DB-vaerdi aldrig kan samle alle holdloese ryttere i ét
+ * faelles "hold". uuid'er fra DB'en kan komme som ikke-strenge (fx number i en
+ * fremtidig kolonne), derfor String()-konverteringen foer trim.
+ */
+export function normalizeTeamId(teamId: unknown): string | null {
+  if (teamId === null || teamId === undefined) return null;
+  const s = String(teamId).trim();
+  return s.length > 0 ? s : null;
+}
+
 /** Ukendt/manglende rolle -> "free_role" (VALID_RACE_ROLES's laveste-antagelse-rolle). */
 export function normalizeRole(role: unknown): RiderRole {
   return typeof role === "string" && VALID_ROLE_SET.has(role) ? (role as RiderRole) : "free_role";
@@ -67,6 +82,17 @@ export type EntrantAdapterOptions = {
   effort?: EffortLevel;
   /** 0-1, dag-til-dag-slid (M7/F3-scope). Default 1 (frisk) naar intet andet er kendt. */
   condition?: number;
+  /**
+   * Holdet rytteren koerer for (M16 holdspil, #4246). VALGFRIT: udelades det,
+   * baerer den producerede Entrant intet `team_id`, og mechanics/teamPlay.ts
+   * er en eksakt no-op for rytteren — rollen alene taender ALDRIG holdspillet.
+   *
+   * Kilden er `race_entries.team_id` (kaldstedets ansvar at hente den, som
+   * resten af denne adapter). Tom streng behandles som "intet hold", saa en
+   * blank DB-vaerdi ikke bliver til et hold hvor alle uden hold er
+   * holdkammerater.
+   */
+  teamId?: unknown;
 };
 
 /**
@@ -85,6 +111,10 @@ export function entrantFromAbilitiesRow(row: AbilitiesRow, opts: EntrantAdapterO
     role: normalizeRole(opts.role),
     effort: opts.effort ?? "normal",
     condition,
+    // Samme "opts overstyrer raekken"-symmetri som riderId ovenfor:
+    // rider_derived_abilities har ingen team_id-kolonne, men en kalder der
+    // beriger raekken (harness, tests) slipper for at sende feltet to gange.
+    team_id: normalizeTeamId(opts.teamId ?? row.team_id),
   };
 }
 
