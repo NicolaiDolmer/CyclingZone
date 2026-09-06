@@ -103,7 +103,55 @@ ligger 0,2 % fra hinanden, på bjerg splitter det i 21 grupper der ligger 2,7 % 
 hinanden. Motoren producerer i begge tilfælde *mange, tætte* grupper. Det er samme
 rod-årsag: fart-modellen kan ikke skelne en stærk gruppe fra en svag.
 
-## 5. Målekommandoer
+## 5. Rettelsen og hvad den måler
+
+To led, begge på rod-årsagen ovenfor.
+
+1. **`physiology.wprimeDepletionCpMultiplier`** — en tømt anaerob reserve sænker den
+   bæredygtige tærskel (§3c). Ingen evne-akse, stigende i reserve-andelen: invariant 3
+   holder per konstruktion, og en stærkere rytter har både større reserve og hurtigere
+   genopladning, så udmattelsen straffer aldrig styrke.
+2. **`segmentLoop.groupStrengthSpeedFactor` + `referenceCpByKind`** — styrke-leddet i
+   fart-multiplikatoren måles nu relativt til feltets egen reference-CP pr. terræn i
+   stedet for mod en absolut konstant (§3a). Leddet er terræn-vægtet (styrke omsættes til
+   fart op ad bakke, ikke nedad — §3b), og de to grene er adskilt: overskuds-grenen er
+   dæmpet så bjerg-top-10-ankeret holder, underskuds-grenen er konveks så halen vokser.
+
+### Efter (samme 141 etaper × 3 seeds, felt 180)
+
+| etapetype | p90 før | p90 efter | ren maks før | ren maks efter | inden 10 % før | efter |
+|---|---|---|---|---|---|---|
+| flat | 0,19 % | 0,20 % | 1,34 % | 0,83 % | 100 % | 100 % |
+| rolling | 0,46 % | 3,42 % | 4,04 % | 10,33 % | 99,9 % | 99,9 % |
+| hilly | 1,74 % | 5,88 % | 5,37 % | 13,81 % | 100 % | 98,7 % |
+| mountain | 2,71 % | **9,05 %** | 6,10 % | 16,84 % | 100 % | 81,2 % |
+| high_mountain | 2,52 % | **7,17 %** | 6,01 % | 17,66 % | 100 % | 89,2 % |
+
+Tidsgrænsen (M15) går fra **0 OTL på alle etapetyper** til at fyre på bjerg, kuperet,
+rullende og klassiker, med grupetto-redninger på 6 etaper. Flade etaper er stadig
+sjældne (0,15 %) — som reglen kræver.
+
+### Ankre (headToHeadV4, 3 seeds, før → efter)
+
+| anker | bånd | s1 | s2 | s3 |
+|---|---|---|---|---|
+| Bjerg-top-10, topankomster | 180-240 s | 200 → 216 ✅ | 182 → 192 ✅ | 216 → 230 ✅ |
+| Felt-sammenhæng, flade | 80-95 % | 26,2 → 29,1 ❌ | 28,2 → 30,5 ❌ | 25,3 → 30,0 ❌ |
+| Nedkørsels-/summit-ratio | ≤ 0,5 | 0,32 → 0,25 ✅ | 0,43 → 0,42 ✅ | 0,39 → 0,39 ✅ |
+| Sprinter-vinderrate, flat | ≥ 90 % | 82,9 → 85,7 ❌ | 97,1 → 97,1 ✅ | 91,4 → 91,4 ✅ |
+| Felt-favoritters win-rate | 25-40 % | 61,0 → 58,9 ❌ | 59,6 → 56,7 ❌ | 58,9 → 62,4 ❌ |
+| Punch-korrelation | > 0,3 | 0,70 → 0,70 ✅ | 0,69 → 0,71 ✅ | 0,69 → 0,72 ✅ |
+| Brostensevnens løft | ≥ 0,03 | 0,224 → 0,221 ✅ | 0,148 → 0,165 ✅ | 0,013 ❌ → 0,105 ✅ |
+
+Ingen anker gik fra PASS til FAIL på nogen seed; ét gik fra FAIL til PASS. De tre røde
+bånd var røde før og efter, og to af dem flyttede sig mod båndet på alle tre seeds.
+
+### Hvad rettelsen IKKE løser
+Felt-sammenhængen på flade etaper (#4707) er stadig 29-31 % mod 80-95 %. Halen på fladt
+er 0,2 % — feltet ankommer altså sammen i tid; det splittes i finalens placerings-tiers,
+ikke af fart-modellen. Det er en anden rod-årsag i `finale.ts` og hører til #4707.
+
+## 6. Målekommandoer
 
 ```
 node backend/scripts/v4TailSpread.js \

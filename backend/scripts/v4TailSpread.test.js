@@ -13,6 +13,7 @@ import {
   buildProxyCalendar,
   enduranceCloneField,
   measureTailSpread,
+  percentile,
   flatWeatherRoute,
   runEnduranceExperiment,
   runTailSpread,
@@ -69,6 +70,58 @@ test("hale-spredning maales som (sidste - vinder) / vindertid, ikke i sekunder",
 test("hale-spredning er 0 naar hele feltet deler vindertiden (massefinale)", () => {
   const output = { results: [1, 2, 3, 4].map((i) => ({ rider_id: `r${i}`, time_seconds: 900 })) };
   assert.equal(measureTailSpread(output).spreadPct, 0);
+});
+
+// ── #4885: fysiologisk hale vs. uheldsdrevet hale ───────────────────────────
+
+test("percentilen interpolerer og degenererer sikkert paa tomme/enkelt-vaerdier", () => {
+  assert.equal(percentile([], 0.5), null);
+  assert.equal(percentile([7], 0.9), 7);
+  assert.equal(percentile([0, 10], 0.5), 5);
+  assert.equal(percentile([0, 1, 2, 3, 4], 0.5), 2, "p50 skal vaere medianen");
+  assert.equal(percentile([0, 1, 2, 3, 4], 1), 4);
+});
+
+test("maalingen skiller den uheldsdrevne hale fra den fysiologiske", () => {
+  // Ét styrt paa 60 % af vindertiden maa ikke laese som at feltet har en hale.
+  const output = {
+    results: [
+      { rider_id: "a", time_seconds: 1000, status: "finished" },
+      { rider_id: "b", time_seconds: 1005, status: "finished" },
+      { rider_id: "c", time_seconds: 1010, status: "finished" },
+      { rider_id: "crash", time_seconds: 1600, status: "finished" },
+    ],
+    incidents: [{ rider_id: "crash", km: 50 }],
+  };
+  const m = measureTailSpread(output);
+  assert.equal(m.spreadPct, 60, "det raa maks-tal ser stadig styrtet");
+  assert.equal(m.cleanMaxGapPct, 1, "uden den uheldsramte er halen 1 %");
+  assert.equal(m.within2Pct, 75, "3 af 4 ryttere ligger inden for 2 % af vinderen");
+  assert.equal(m.finishGroups, 4);
+});
+
+test("maalingen taeller M15's OTL og grupetto-redninger fra tidslinjen", () => {
+  const output = {
+    results: [{ rider_id: "a", time_seconds: 1000, status: "finished" }],
+    timeline: {
+      events: [
+        { type: "outside_time_limit", params: { rider_count: 3 } },
+        { type: "grupetto_saved", params: { rider_count: 40 } },
+        { type: "finish", params: {} },
+      ],
+    },
+  };
+  const m = measureTailSpread(output);
+  assert.equal(m.otlCount, 3);
+  assert.equal(m.rescuedCount, 40);
+});
+
+test("maalingen degenererer sikkert naar incidents/timeline mangler", () => {
+  const output = { results: [{ rider_id: "a", time_seconds: 1000 }, { rider_id: "b", time_seconds: 1100 }] };
+  const m = measureTailSpread(output);
+  assert.equal(m.otlCount, 0);
+  assert.equal(m.incidentRiders, 0);
+  assert.equal(m.cleanMaxGapPct, 10, "uden uheldsprotokol er hele feltet 'rent'");
 });
 
 test("distance-baandene daekker hele km-aksen uden huller eller overlap", () => {
