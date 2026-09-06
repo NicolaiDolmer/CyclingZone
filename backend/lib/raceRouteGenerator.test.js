@@ -124,6 +124,47 @@ test("cobbles-profil → 3–6 brosten-sektorer inden for distancen", () => {
   assert.ok(r.sectors.every((s) => s.kind === "cobbles" && s.start_km + s.length_km <= r.distance_km));
 });
 
+// ── #2789 fund 5 + ejer-beslutning 6/9: brostens-finaler skal kunne opstå ─────
+test("#2789: cobbles/gravel får ALTID en sektor der slutter inden for 10 km af mål", () => {
+  const n = 200;
+  for (const [pt, finale] of [["cobbles", "reduced_sprint"], ["cobbles", "breakaway"], ["gravel", "punch"], ["gravel", "breakaway"]]) {
+    for (let i = 0; i < n; i++) {
+      const r = attachRoute(stage(pt, finale), { external_id: `fin-${pt}-${finale}-${i}` }, false);
+      assert.ok(r.sectors.length > 0, `${pt}/${finale} seed ${i}: ingen sektorer`);
+      const lastEnd = Math.max(...r.sectors.map((s) => s.start_km + s.length_km));
+      const kmFromFinish = r.distance_km - lastEnd;
+      assert.ok(
+        kmFromFinish <= 10,
+        `${pt}/${finale} seed ${i}: sidste sektor slutter ${kmFromFinish.toFixed(1)} km fra mål (skal være <= 10)`,
+      );
+      // Aldrig HELT på stregen: der skal være en indkørsel hvor forspringet skal holdes.
+      assert.ok(kmFromFinish >= 2, `${pt}/${finale} seed ${i}: sektoren slutter ${kmFromFinish.toFixed(1)} km fra mål (skal være >= 2)`);
+      // Ingen overlap mellem sektorerne (finale-sektoren må ikke lande oven i kroppen).
+      const sorted = [...r.sectors].sort((a, b) => a.start_km - b.start_km);
+      for (let k = 1; k < sorted.length; k++) {
+        assert.ok(
+          sorted[k].start_km >= sorted[k - 1].start_km + sorted[k - 1].length_km,
+          `${pt}/${finale} seed ${i}: sektor ${k} overlapper den forrige`,
+        );
+      }
+    }
+  }
+});
+
+test("#2789: classic er UÆNDRET — ingen garanteret brostens-finale (ejer-gated balance-ændring)", () => {
+  let near = 0;
+  let withSectors = 0;
+  for (let i = 0; i < 200; i++) {
+    const r = attachRoute(stage("classic", "punch"), { external_id: `cl-${i}` }, false);
+    if (r.sectors.length === 0) continue;
+    withSectors += 1;
+    const lastEnd = Math.max(...r.sectors.map((s) => s.start_km + s.length_km));
+    if (r.distance_km - lastEnd <= 10) near += 1;
+  }
+  assert.ok(withSectors > 0, "testen målte ingen classic-etaper med sektorer");
+  assert.equal(near, 0, "classic fik en brostens-finale — den er ejer-gated, ikke en oprydning");
+});
+
 test("etapeløbs-etape → mellemsprint + målspurt; endagsløb → kun målspurt", () => {
   const stageRace = attachRoute(stage("flat", "bunch_sprint"), race, true);
   assert.ok(stageRace.sprints.some((s) => s.kind === "intermediate"));

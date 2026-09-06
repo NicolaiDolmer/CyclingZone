@@ -499,6 +499,11 @@ export type BreakawayHook = (state: EngineState, ctx: SegmentHookContext) => Seg
 // et uheld er ambient og hoerer ikke til én terraen-type.
 export type IncidentHook = (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult;
 
+// M8: brosten-/grus-sektorer. Kaldes paa cobbles-segmenter (grus-sektorer ER
+// cobbles-segmenter, jf. CobblesSegment-kommentaren og RACE_ENGINE_RULES §2b:
+// underlaget bor i profile_type, fysikken i segmentet).
+export type CobblesHook = (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult;
+
 export type MechanicHooks = {
   climbSelection: ClimbSelectionHook;
   descent: DescentHook;
@@ -509,4 +514,9 @@ export type MechanicHooks = {
   // MechanicHooks (tests, harness, adaptere) ikke braekker paa en ny paakraevet
   // noegle — segmentLoop.ts kalder den med `?.`-guard.
   incidents?: IncidentHook;
+  // VALGFRI (#3855 M8-wiring): et hook-loest testkald skal stadig kunne bygge et
+  // MechanicHooks-objekt uden at kende hver ny F3-mekanik. segmentLoop.ts falder
+  // tilbage til sin egen no-op naar feltet mangler; index.ts's LIVE_MECHANIC_HOOKS
+  // saetter det, og index.test.ts laaser at den gør det ("bygget" vs "koblet ind").
+  cobbles?: CobblesHook;
 };

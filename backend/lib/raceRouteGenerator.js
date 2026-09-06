@@ -391,19 +391,59 @@ const SECTOR_SPEC = Object.freeze({
   classic: { count: [0, 3], length: [1.0, 3.0], kind: "cobbles" }, // Roubaix-type; typisk 0
 });
 
+// #2789 fund 5 + ejer-beslutning 6/9 (RACE_ENGINE_RULES §9 raekke 6): en brostens-
+// FINALE kunne ikke opstaa. Sektorerne blev lagt fra 45 % af distancen og fremad med
+// 5-15 km's mellemrum, saa den sidste sektor sluttede langt fra maal — maalt paa en
+// proxy-kalender 6/9: 0 af 17 brostens-/grus-etaper havde en sektor der sluttede inden
+// for 10 km af maal (samme resultat som #2789's maaling mod aegte S2-data: 0 af 93).
+// Konsekvensen var at hele brostens-mekanikken (M8) kunne udloese et split, men feltet
+// havde altid 20-70 km fladt til at koere det ind igen.
+//
+// Rettelsen: paa etaper hvor brostensevnen ER dagens dominerende dimension (cobbles og
+// gravel — begge har GARANTERET sektor-forsyning, jf. #4105) reserveres DEN SIDSTE af
+// de trukne sektorer til finalen og forankres i vinduet nedenfor. Antallet af sektorer
+// er UAENDRET (samme randInt-traek, samme baand) — det er placeringen af den sidste der
+// aendrer sig, praecis som i virkeligheden: Carrefour de l'Arbre og Le Tolfe ligger
+// begge inden for de sidste 15 km af deres loeb.
+//
+// `classic` er BEVIDST IKKE med: den traekker 0-3 sektorer og faar ingen i ca. en
+// fjerdedel af tilfaeldene (RACE_ENGINE_RULES §2b's advarsel). At give monument-
+// arketypen en garanteret brostens-finale er en balance-aendring, ikke en oprydning,
+// og kraever sin egen ejer-beslutning. Dens kodesti er derfor bit-identisk med foer.
+const FINALE_SECTOR_PROFILES = new Set(["cobbles", "gravel"]);
+// Sektorens SLUT maalt fra maalstregen (km). Efter afrundingen af start_km ligger den
+// faktiske slutning i [d-10, d-2] — inden for ejerens 10 km-krav, og aldrig HELT paa
+// stregen, saa der altid er en kort indkoersel hvor forspringet skal holdes.
+const FINALE_SECTOR_END_KM_FROM_FINISH = [2.5, 9.5];
+// Plads reserveret til finale-sektoren: 10 km vindue + laengste sektor (6 km, grus) +
+// et par km luft, saa krops-sektorerne aldrig loeber ind i den.
+const FINALE_SECTOR_RESERVE_KM = 20;
+
 export function buildSectors(rng, profileType, distanceKm, namer) {
   const spec = SECTOR_SPEC[profileType];
   if (!spec) return [];
   const n = randInt(rng, spec.count[0], spec.count[1]);
   if (n === 0) return [];
+  // Forankringen kraever plads til baade krop og finale; en (urealistisk) meget kort
+  // etape falder tilbage til den gamle adfaerd i stedet for at faa sektorer oven i hinanden.
+  const anchorFinale = FINALE_SECTOR_PROFILES.has(profileType) && distanceKm > FINALE_SECTOR_RESERVE_KM * 2;
+  const bodyCount = anchorFinale ? n - 1 : n;
+  const bodyLimitKm = distanceKm - (anchorFinale ? FINALE_SECTOR_RESERVE_KM : 2);
   const sectors = [];
   let cursor = Math.round(distanceKm * 0.45); // brosten/grus koncentreres i 2. halvdel
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < bodyCount; i++) {
     const length_km = randFloat(rng, spec.length[0], spec.length[1], 1);
-    if (cursor + length_km > distanceKm - 2) break;
+    if (cursor + length_km > bodyLimitKm) break;
     sectors.push({ kind: spec.kind, start_km: Math.round(cursor), length_km, name: namer.sector(i, spec.kind) });
     cursor += length_km + randInt(rng, 4, 12);
   }
+  if (!anchorFinale) return sectors;
+
+  const length_km = randFloat(rng, spec.length[0], spec.length[1], 1);
+  const endOffsetKm = randFloat(rng, FINALE_SECTOR_END_KM_FROM_FINISH[0], FINALE_SECTOR_END_KM_FROM_FINISH[1], 1);
+  const start_km = Math.round(distanceKm - endOffsetKm - length_km);
+  if (start_km <= cursor) return sectors; // defensivt: bør ikke ske med reserven ovenfor
+  sectors.push({ kind: spec.kind, start_km, length_km, name: namer.sector(sectors.length, spec.kind) });
   return sectors;
 }
 
