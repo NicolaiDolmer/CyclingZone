@@ -616,11 +616,12 @@
       "neutral": "Neutral",
       "let_go": "Lad det gå"
     },
-    "effortSummary": "{protect} arbejder · {normal} normal · {save} sparer",
     "effort": {
       "protect": "Arbejd",
       "normal": "Normal",
-      "save": "Spar"
+      "save": "Spar",
+      "grupetto": "Grupetto",
+      "all_out": "Alt ud"
     },
     "effortAria": "Indsats for {name}",
     "tryBreak": "Forsøg udbrud",
@@ -629,12 +630,41 @@
       "captain": "Kaptajn",
       "sprint_captain": "Spurt-kaptajn",
       "hunter": "Udbrudsjæger",
-      "helper": "Rytter",
+      "helper": "Hjælper",
       "free_role": "Fri rolle"
     },
     "save": "Gem taktik",
     "saving": "Gemmer…",
-    "saved": "Taktikken er gemt."
+    "saved": "Taktikken er gemt.",
+    "leadout": "Sprint-tog",
+    "leadoutAria": "{name} kører i sprint-toget",
+    "standardPrefix": "Standard: {role}",
+    "todayPrefix": "I dag: {today}",
+    "today": {
+      "ridesRole": "kører sin rolle",
+      "tryBreak": "forsøger udbruddet",
+      "stayInBunch": "bliver i feltet",
+      "joinTrain": "kører sprint-toget",
+      "leaveTrain": "ude af sprint-toget",
+      "effort": {
+        "protect": "arbejder",
+        "normal": "normal indsats",
+        "save": "sparer",
+        "grupetto": "kører grupetto",
+        "all_out": "giver alt"
+      }
+    },
+    "riderFallback": "Rytter",
+    "loadError": "Kunne ikke hente din taktik for denne etape.",
+    "retry": "Prøv igen",
+    "saveError": "Kunne ikke gemme. Prøv igen.",
+    "roleDefault": {
+      "captain": "beskyttet kaptajn",
+      "sprint_captain": "spurt-kaptajn",
+      "hunter": "udbrudsjæger",
+      "helper": "hjælper",
+      "free_role": "fri rolle"
+    }
   },
   "strategy": {
     "title": "Holdstrategi",

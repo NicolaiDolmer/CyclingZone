@@ -1,30 +1,38 @@
-// TacticsCard — taktik-ordre-kortet (race engine v4 v1, #4030), "Variant B" fra
+// TacticsCard — taktik-ordre-kortet (race engine v4, #4030/#4246), "Variant B" fra
 // ejer-mockuppet 21/8 (docs/superpowers/specs/2026-08-21-race-tactics-orders-v1-design.md,
 // §UI-anatomi). T2-kort UNDER lineup-kortet, på etape-niveau (T1-beslutningen).
 //
-// PREVIEW-KORT: orders-API'et bygges parallelt i et andet spor og findes ikke
-// endnu. Al I/O går gennem lib/tacticsOrdersAdapter.js (mock nu, ét-linjes-skift
-// til den rigtige endpoint ved integration — se den fils hoved-kommentar).
-// Renderes derfor KUN i dev/preview (se TACTICS_V4_PREVIEW), aldrig i en rigtig
-// produktions-build, indtil det er wired og ejer-godkendt visuelt.
+// KOBLET PÅ DEN RIGTIGE KÆDE (#4246): kortet talte indtil nu med en hukommelses-
+// mock uden netværk, så ejeren ikke kunne teste kæden på preview (audit 5/9). Al
+// I/O går nu gennem lib/tacticsOrdersAdapter.js mod det live endpoint
+// /api/races/:raceId/team-orders. Kortet er stadig gated til dev/preview
+// (TACTICS_V4_PREVIEW i RaceDetailPage) indtil ejeren har set det og v4-flippet
+// er taget — men det er nu ægte data bag gaten, ikke en attrap.
 //
-// `riders` (de udtagne ryttere: id/name/role) sendes ind fra parent når den
-// allerede har dem (lineup-kortet lige ovenfor); mangler prop'en bruger kortet
-// et deterministisk mock-roster, så det også kan renderes helt isoleret.
+// ROLLEN ER STANDARDORDREN (ejer 2/9). Hver rytterrække viser
+// "Standard: jæger · I dag: bliv i feltet": rollen fra holdudtagelsen, og kun de
+// afvigelser spilleren har valgt for netop denne etape. Har han intet valgt,
+// står der at rytteren kører sin rolle. Standardordren regnes af motorens egen
+// kontrakt og kommer med i GET-svaret — fladen genopfinder den ikke.
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
-import { fetchTacticsCard, saveTacticsCard, mockRosterFor } from "../../lib/tacticsOrdersAdapter.js";
+import { fetchTacticsCard, saveTacticsCard } from "../../lib/tacticsOrdersAdapter.js";
+import { useRiderNames } from "../../lib/useRiderNames.js";
 import {
   BREAKAWAY_STANCES,
-  EFFORT_KEYS,
+  DEFAULT_EFFORT_KEYS,
   effortCounts,
-  setRiderEffort,
-  toggleTryBreak,
-  setBreakawayStance,
+  hasSprintCaptain,
   isOrderLocked,
+  riderIntentKeys,
+  roleDefaultFor,
+  setBreakawayStance,
+  setRiderEffort,
   teamPlanKey,
+  toggleLeadout,
+  toggleTryBreak,
 } from "../../lib/tacticsPlan.js";
 import { formatLocalTime } from "../../lib/intl.js";
 import { Section, SectionHeader, Button, CategoryTag, LockIcon, CheckIcon, Skeleton } from "../ui/index.js";
@@ -40,10 +48,10 @@ function lockMeta(t, locksAt, locked) {
   return t("tacticsOrders.locksAt", { time: `${weekday} ${formatLocalTime(d)}` });
 }
 
-function EffortSegmented({ t, value, disabled, onChange, ariaLabel }) {
+function EffortSegmented({ t, keys, value, disabled, onChange, ariaLabel }) {
   return (
     <div role="group" aria-label={ariaLabel} className="flex rounded-cz border border-cz-border overflow-hidden flex-shrink-0">
-      {EFFORT_KEYS.map((key) => (
+      {keys.map((key) => (
         <button
           key={key}
           type="button"
@@ -60,38 +68,45 @@ function EffortSegmented({ t, value, disabled, onChange, ariaLabel }) {
   );
 }
 
-function TryBreakToggle({ t, active, disabled, onClick, name }) {
+function TogglePill({ label, ariaLabel, active, disabled, onClick }) {
   return (
     <button
       type="button"
       disabled={disabled}
       aria-pressed={active}
-      aria-label={t("tacticsOrders.tryBreakAria", { name })}
+      aria-label={ariaLabel}
       onClick={onClick}
       className={`inline-flex items-center gap-1 rounded-cz border px-2 py-1 text-3xs font-medium uppercase tracking-wide transition-colors flex-shrink-0 disabled:opacity-60 disabled:pointer-events-none
         ${active ? "border-cz-accent bg-cz-accent/10 text-cz-accent-t" : "border-cz-accent/40 text-cz-accent-t bg-transparent hover:bg-cz-accent/5"}`}
     >
-      {active && <CheckIcon size={10} aria-hidden="true" />}
-      {t("tacticsOrders.tryBreak")}
+      {/* Fluebenets plads reserveres altid: uden det skifter pillens BREDDE
+          naar den slaas til, og hele knap-kolonnen hopper sidelaens. */}
+      <CheckIcon size={10} aria-hidden="true" className={active ? "" : "invisible"} />
+      {label}
     </button>
   );
 }
 
-export default function TacticsCard({ raceId, stage = 1, riders: ridersProp }) {
+export default function TacticsCard({ raceId, stage = 1 }) {
   const { t } = useTranslation("races");
-  const [loaded, setLoaded] = useState(null); // { order, locksAt } | null
+  const [loaded, setLoaded] = useState(null); // fetchTacticsCard-svaret | null
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
 
-  const riders = ridersProp && ridersProp.length > 0 ? ridersProp : mockRosterFor(raceId, stage);
-  const riderIds = riders.map((r) => r.id);
-  const ridersKey = riderIds.join(",");
-
   const load = useCallback(async () => {
-    const res = await fetchTacticsCard({ raceId, stage, riderIds: ridersKey ? ridersKey.split(",") : [] });
-    setLoaded(res);
-  }, [raceId, stage, ridersKey]);
+    try {
+      // `null` = henter, `false` = hentningen fejlede. At skelne dem er hele
+      // pointen: en fejlet fetch maa ikke vises som en tom taktik (samme
+      // silent-degradation-fund som RaceDetailPage's loadError, #2849).
+      setLoaded(await fetchTacticsCard({ raceId, stage }));
+    } catch {
+      setLoaded(false);
+    }
+  }, [raceId, stage]);
 
   useEffect(() => { setLoaded(null); load(); }, [load]);
+
+  const riderIds = useMemo(() => (loaded ? (loaded.riders ?? []).map((r) => r.rider_id) : []), [loaded]);
+  const names = useRiderNames(riderIds);
 
   if (!raceId) return null;
   if (loaded === null) {
@@ -106,14 +121,28 @@ export default function TacticsCard({ raceId, stage = 1, riders: ridersProp }) {
       </Section>
     );
   }
+  if (loaded === false) {
+    return (
+      <Section>
+        <SectionHeader title={t("tacticsOrders.title")} />
+        <p className="text-xs text-cz-3">{t("tacticsOrders.loadError")}</p>
+        <div className="mt-3">
+          <Button variant="secondary" size="sm" onClick={load}>{t("tacticsOrders.retry")}</Button>
+        </div>
+      </Section>
+    );
+  }
 
-  const { order, locksAt } = loaded;
-  const locked = isOrderLocked(locksAt);
+  const { order, defaultOrder, riders, locksAt } = loaded;
+  const locked = loaded.locked || isOrderLocked(locksAt);
   const busy = status === "saving";
-  const captain = riders.find((r) => r.role === "captain") || null;
-  const plan = teamPlanKey(order.breakaway_stance, captain?.name || null);
-  const counts = effortCounts(order.riders);
+  const effortKeys = loaded.effortKeys?.length ? loaded.effortKeys : DEFAULT_EFFORT_KEYS;
+  const riderName = (id) => names[id] || t("tacticsOrders.riderFallback");
+  const captain = riders.find((r) => r.race_role === "captain") || null;
+  const plan = teamPlanKey(order.breakaway_stance, captain ? riderName(captain.rider_id) : null);
+  const counts = effortCounts(order.riders, effortKeys);
   const orderByRider = new Map(order.riders.map((r) => [r.rider_id, r]));
+  const teamHasSprintCaptain = hasSprintCaptain(riders.map((r) => ({ role: r.race_role })));
 
   // `transform` regner altid på `cur.order` INDE i den funktionelle updater —
   // aldrig på render-scope'ets `order` direkte. To klik der lander i samme
@@ -129,8 +158,8 @@ export default function TacticsCard({ raceId, stage = 1, riders: ridersProp }) {
   async function handleSave() {
     setStatus("saving");
     try {
-      const res = await saveTacticsCard({ raceId, stage, order });
-      setStatus(res?.ok ? "saved" : "error");
+      await saveTacticsCard({ raceId, stage, order });
+      setStatus("saved");
     } catch {
       setStatus("error");
     }
@@ -176,40 +205,76 @@ export default function TacticsCard({ raceId, stage = 1, riders: ridersProp }) {
         <div>
           <p className="text-3xs uppercase tracking-wide text-cz-3">{t("tacticsOrders.effortLabel")}</p>
           <p className="text-xs text-cz-1 mt-0.5 font-data tabular-nums">
-            {t("tacticsOrders.effortSummary", counts)}
+            {effortKeys.map((k) => `${counts[k] ?? 0} ${t(`tacticsOrders.effort.${k}`).toLowerCase()}`).join(" · ")}
           </p>
         </div>
       </div>
 
-      {/* Rytter-rækker: navn + rolle + effort-segmenteret + "Try the break"-pill. */}
-      <div className="flex flex-col gap-2">
+      {/* Rytter-rækker: navn + rolle, "Standard: X · I dag: Y", og dagens knapper. */}
+      <div className="flex flex-col gap-3">
         {riders.map((rider) => {
-          const ro = orderByRider.get(rider.id) || { effort: "normal", try_break: false };
+          const id = rider.rider_id;
+          const ro = orderByRider.get(id) || { effort: "normal", try_break: false, leadout: false };
+          const base = roleDefaultFor(defaultOrder, id);
+          const intent = riderIntentKeys(ro, base, ROLE_LABEL_KEY[rider.race_role] || "free_role");
+          const name = riderName(id);
           return (
-            <div key={rider.id} className="flex flex-wrap items-center justify-between gap-2 py-1">
-              <span className="text-xs text-cz-1 min-w-0 truncate flex items-baseline gap-1.5">
-                {rider.name}
-                {rider.role && (
+            <div key={id} className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
+              <span className="min-w-0 flex flex-col gap-0.5">
+                <span className="text-xs text-cz-1 truncate flex items-baseline gap-1.5">
+                  {name}
                   <CategoryTag className="flex-shrink-0">
-                    {t(`tacticsOrders.roleLabel.${ROLE_LABEL_KEY[rider.role] || "helper"}`)}
+                    {t(`tacticsOrders.roleLabel.${ROLE_LABEL_KEY[rider.race_role] || "free_role"}`)}
                   </CategoryTag>
-                )}
+                </span>
+                {/* #4246: rollen er standardordren, dagens valg er overlayet. */}
+                <span className="text-3xs text-cz-3">
+                  {t("tacticsOrders.standardPrefix", { role: t(intent.roleKey) })}
+                  {". "}
+                  {t("tacticsOrders.todayPrefix", {
+                    today: intent.todayKeys.length
+                      ? intent.todayKeys.map((k) => t(k)).join(", ")
+                      : t("tacticsOrders.today.ridesRole"),
+                  })}
+                </span>
               </span>
-              <span className="flex items-center gap-2 flex-shrink-0">
+              {/* Kontrollerne wrapper paa smalle skaerme i stedet for at skubbe
+                  raekken ud over kortets kant (mobil 390: "Sprint train" laa
+                  uden for viewporten og gav vandret scroll). */}
+              <span className="flex flex-wrap items-center gap-2 w-full justify-start sm:w-auto sm:justify-end">
                 <EffortSegmented
                   t={t}
+                  keys={effortKeys}
                   value={ro.effort}
                   disabled={locked}
-                  onChange={(effort) => updateOrder((o) => setRiderEffort(o, rider.id, effort))}
-                  ariaLabel={t("tacticsOrders.effortAria", { name: rider.name })}
+                  onChange={(effort) => updateOrder((o) => setRiderEffort(o, id, effort))}
+                  ariaLabel={t("tacticsOrders.effortAria", { name })}
                 />
-                <TryBreakToggle
-                  t={t}
+                <TogglePill
+                  label={t("tacticsOrders.tryBreak")}
+                  ariaLabel={t("tacticsOrders.tryBreakAria", { name })}
                   active={ro.try_break}
                   disabled={locked}
-                  onClick={() => updateOrder((o) => toggleTryBreak(o, rider.id))}
-                  name={rider.name}
+                  onClick={() => updateOrder((o) => toggleTryBreak(o, id))}
                 />
+                {/* Sprint-toget kan kun sættes når holdet har en spurt-kaptajn
+                    at køre for — og han kører aldrig i sit eget tog. Hans plads
+                    holdes åben (`invisible`), så knap-kolonnerne står lige ned
+                    gennem listen i stedet for at forskyde sig på hans række. */}
+                {teamHasSprintCaptain && (
+                  <span
+                    className={rider.race_role === "sprint_captain" ? "hidden sm:inline-flex sm:invisible" : "inline-flex"}
+                    aria-hidden={rider.race_role === "sprint_captain"}
+                  >
+                    <TogglePill
+                      label={t("tacticsOrders.leadout")}
+                      ariaLabel={t("tacticsOrders.leadoutAria", { name })}
+                      active={ro.leadout}
+                      disabled={locked || rider.race_role === "sprint_captain"}
+                      onClick={() => updateOrder((o) => toggleLeadout(o, id))}
+                    />
+                  </span>
+                )}
               </span>
             </div>
           );
@@ -223,6 +288,7 @@ export default function TacticsCard({ raceId, stage = 1, riders: ridersProp }) {
       ) : (
         <div className="mt-4 pt-3 border-t border-cz-border flex items-center justify-end gap-3">
           {status === "saved" && <span className="text-2xs text-cz-success">{t("tacticsOrders.saved")}</span>}
+          {status === "error" && <span className="text-2xs text-cz-danger">{t("tacticsOrders.saveError")}</span>}
           {/* Sekundær knap (ikke guld) — lineup-kortets Gem er allerede holdets
               primære handling på denne side, jf. reglen om én guld-primær pr. view. */}
           <Button variant="secondary" size="sm" onClick={handleSave} loading={busy}>

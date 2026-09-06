@@ -10,7 +10,7 @@
 //
 // jobConfig/kapacitet/fejl-nøgler spejler backend/lib/scoutEngine.js
 // (SCOUT_JOB_CONFIG, DEFAULT_SCOUT, canStartAssignment) — co-SSOT som clubMock.
-import { RIDERS, TEST_TEAM, RIVAL_TEAM } from "./seedData.js";
+import { RIDERS, TEST_TEAM, RIVAL_TEAM, SEED_TEAM_ORDER_RIDERS } from "./seedData.js";
 
 const JOB_CONFIG = Object.freeze({
   targetEtaMinutes: 30,
@@ -169,6 +169,11 @@ function riderNames(body) {
       if (FREE_AGENTS[id]) return { id, name: FREE_AGENTS[id] };
       const r = RIDERS.find((rider) => rider.id === id);
       if (r) return { id, name: [r.firstname, r.lastname].filter(Boolean).join(" ") || null };
+      // #4246: taktik-kortets trup. Ryttere der kun findes i team-orders-seedet
+      // (holdkammerater uden en fuld RIDERS-post) ville ellers falde ud her og
+      // blive vist med kortets navne-fallback.
+      const teamOrderRider = SEED_TEAM_ORDER_RIDERS.find((rider) => rider.rider_id === id);
+      if (teamOrderRider) return { id, name: teamOrderRider.name };
       return null;
     })
     .filter(Boolean);
