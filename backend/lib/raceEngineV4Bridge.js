@@ -148,15 +148,18 @@ function toV4Entrants(entrants, entrantAdapter) {
 export function buildV4StageInput({ modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [] }) {
   const route = modules.route.routeFromStageProfileRow(stageProfile);
   const startlist = toV4Entrants(entrants, modules.entrants);
-  // Ordrer: hold UDEN gemt række får T4-defaulten (neutral) af adapteren selv,
-  // så et løb hvor ingen har rørt taktik-kortet er den neutrale kørsel.
-  const teamIdsInStartlist = [
-    ...new Set(entrants.map((e) => e.team_id).filter((id) => id != null).map(String)),
-  ].sort();
+  // Ordrer (#4246): ROLLEN er standardordren, og etapens gemte række er dagens
+  // overlay oven på den. Adapteren får derfor hele startlistens (hold, rytter,
+  // rolle) — et løb hvor ingen har rørt taktik-kortet kører rollernes egen
+  // standard (en `hunter` prøver udbruddet, et sprint-tog kører for holdets
+  // spurt-kaptajn), ikke en tom neutral ordre.
+  const rosterForOrders = entrants
+    .filter((e) => e.team_id != null && e.rider_id != null)
+    .map((e) => ({ team_id: String(e.team_id), rider_id: String(e.rider_id), role: e.race_role ?? null }));
   const orders = modules.orders.buildStageOrders({
     rows: teamOrderRows,
     stageNumber,
-    teamIdsInStartlist,
+    roster: rosterForOrders,
   });
   return { route, startlist, orders, seed: seedString, tuning: modules.tuning.RACE_V4_TUNING };
 }

@@ -36,6 +36,9 @@ function normAbility(v: number | undefined): number {
 
 // ── Ordre-fortolkning ─────────────────────────────────────────────────────────
 
+/** Konvolut-`kind` M6 fortolker (orders/teamOrdersAdapter.ts's toEngineLeadoutOrder skriver den). */
+export const LEADOUT_ORDER_KIND = "leadout";
+
 /**
  * Lokal fortolkning af TeamOrder.params for `kind === "leadout"`. Ét hold kan
  * kun designere ét sprint-tog pr. etape i v1 (én kaptajn) — flere
@@ -67,7 +70,7 @@ function isLeadoutParams(params: Record<string, unknown> | undefined): params is
 export function parseLeadoutOrders(orders: readonly TeamOrder[]): LeadoutOrder[] {
   const byTeam = new Map<string, LeadoutOrder>();
   for (const order of orders) {
-    if (order.kind !== "leadout") continue;
+    if (order.kind !== LEADOUT_ORDER_KIND) continue;
     if (!isLeadoutParams(order.params)) continue;
     const leadoutRiderIds = order.params.leadout_rider_ids.filter((id): id is string => typeof id === "string");
     if (leadoutRiderIds.length === 0) continue;

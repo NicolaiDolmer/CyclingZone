@@ -1,9 +1,14 @@
 // backend/lib/raceTeamOrdersApi.js
-// F3 taktik-ordrer v1 (#4030/#3855) — GET/PUT /api/races/:raceId/team-orders.
-// race_team_orders er ENESTE sandhed for rolle + effort + udbrud pr.
-// (team, race, stage) (ejer-beslutning 21/8; race_stage_roles udfases efter
-// v4-flippet). Mønster fra raceStageRolesApi.js: ren validering her, DB-kald
-// co-locerede, fejl som snake_case-koder (errors[0] til brugeren).
+// F3 taktik-ordrer v1 (#4030/#3855/#4246) — GET/PUT /api/races/:raceId/team-orders.
+// race_team_orders er ENESTE sandhed for ETAPENS overlay (effort + udbrud +
+// sprint-tog) pr. (team, race, stage) (ejer-beslutning 21/8; race_stage_roles
+// udfases efter v4-flippet). Mønster fra raceStageRolesApi.js: ren validering
+// her, DB-kald co-locerede, fejl som snake_case-koder (errors[0] til brugeren).
+//
+// ROLLEN ER IKKE HER (#4246, ejer 27/8 + 2/9). Den bor i `race_entries.race_role`,
+// gælder hele løbet og ER standardordren; taktik-kortet er dagens overlay oven
+// på den og kan aldrig overskrive den. En PUT der bærer `race_role` afvises
+// derfor med 400 i stedet for at blive gemt.
 //
 // T2 (taktik-spec): ordrer LÅSES ved etapestart — ikke ved løbsstart. Låsen
 // afgøres af race_stage_schedule.scheduled_at (etapens faktiske starttidspunkt);
@@ -13,9 +18,33 @@
 // T4: ingen række = neutrale defaults (roller fra lineup, effort normal,
 // stance neutral, intet break-flag). Passivitet straffes aldrig.
 
-import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
+// #4246 (ejer 27/8 + 2/9): ÉN kontrakt. Vokabular og feltsæt importeres fra
+// motorens egen `teamOrderContract.ts` — den samme fil AI-taktikken og
+// ordre-adapteren bruger — så spiller-stien strukturelt ikke KAN diverge fra
+// den form motoren accepterer. (Auditten 5/9 fandt kontrakten i fire uenige
+// kopier, hvor netop denne fil sendte et `race_role`-felt som motorens
+// kontrakt afviste.) Node 24 kører .ts direkte via type stripping — samme
+// mønster som raceEngineV4Bridge.js's engine-imports, ingen build-step.
+import {
+  BREAKAWAY_STANCE_VALUES,
+  TEAM_ORDER_RIDER_FIELDS,
+  REJECTED_TEAM_ORDER_RIDER_FIELDS,
+} from "./engine/v4/ai/teamOrderContract.ts";
+import { validEffortsFor } from "./raceRoles.js";
 
-export const VALID_BREAKAWAY_STANCES = ["chase", "neutral", "let_go"];
+export const VALID_BREAKAWAY_STANCES = [...BREAKAWAY_STANCE_VALUES];
+
+/** De felter en rytter-ordre må bære. `race_role` er bevidst IKKE et af dem. */
+export const VALID_RIDER_ORDER_FIELDS = [...TEAM_ORDER_RIDER_FIELDS];
+
+/**
+ * Felter der aktivt AFVISES med 400 i stedet for at blive ignoreret.
+ *
+ * Ejer-beslutning 27/8 (#4246): rollen bor i holdudtagelsen og må ALDRIG kunne
+ * overskrives af taktik-kortet. En klient der stadig sender `race_role` skal
+ * derfor have en fejl — ikke en tavs, tabt skrivning der ligner et gemt valg.
+ */
+export const REJECTED_RIDER_ORDER_FIELDS = [...REJECTED_TEAM_ORDER_RIDER_FIELDS];
 
 /**
  * T4-defaulten: den ordre motoren skal se når holdet intet har gemt.
@@ -44,11 +73,11 @@ export function isStageLocked({ stageNumber, stagesCompleted = 0, scheduledAt, n
 /**
  * Ren validering af én PUT-body (ordren for ÉN etape). Fejlrækkefølge
  * (errors[0] vises til brugeren): løb completed → etape-lås → ugyldig body →
- * ugyldig stance → fremmed rytter → ugyldig rolle → ugyldig effort →
- * rolle-overlap → dublet-rytter.
+ * ugyldig stance → fremmed rytter → rolle-felt sendt → ukendt felt →
+ * ugyldig effort → ugyldigt tog-flag → dublet-rytter.
  *
  * @param {{
- *   order: {breakaway_stance?: string, riders?: Array<{rider_id, race_role, effort, try_break}>},
+ *   order: {breakaway_stance?: string, riders?: Array<{rider_id, effort, try_break, leadout}>},
  *   raceCompleted: boolean,
  *   stageNumber: number,
  *   stageCount: number,
@@ -94,8 +123,20 @@ export function validateTeamOrder({
   for (const r of riders) {
     if (!teamRiderIds.has(r?.rider_id)) { errors.push("team_orders_rider_not_entered"); break; }
   }
+  // #4246 (ejer 27/8): rollen er IKKE en del af ordren. En klient der stadig
+  // sender den afvises — rollen sættes i holdudtagelsen og gælder hele løbet.
   for (const r of riders) {
-    if (!VALID_RACE_ROLES.includes(r?.race_role)) { errors.push("team_orders_invalid_role"); break; }
+    if (REJECTED_RIDER_ORDER_FIELDS.some((f) => r != null && f in r)) {
+      errors.push("team_orders_role_not_allowed");
+      break;
+    }
+  }
+  // Ingen side-kanaler: præcis kontraktens felter, hverken flere eller andre.
+  for (const r of riders) {
+    const unknown = Object.keys(r ?? {}).some(
+      (k) => !VALID_RIDER_ORDER_FIELDS.includes(k) && !REJECTED_RIDER_ORDER_FIELDS.includes(k),
+    );
+    if (unknown) { errors.push("team_orders_unknown_field"); break; }
   }
   // #4632: femtrins-intentionen bag flag — se raceStageRolesApi.js. Begge
   // skrivestier deler ET vokabular (validEffortsFor) saa de aldrig kan diverge.
@@ -103,12 +144,11 @@ export function validateTeamOrder({
   for (const r of riders) {
     if (!validEfforts.includes(r?.effort)) { errors.push("team_orders_invalid_effort"); break; }
   }
-
-  // Højst én captain og én sprint_captain pr. etape (samme regel som
-  // stage-roles/selection — backend er sidste vagt, uanset UI).
-  for (const role of ["captain", "sprint_captain"]) {
-    if (riders.filter((r) => r?.race_role === role).length > 1) {
-      errors.push("team_orders_role_overlap");
+  // #4246 (b): sprint-toget. Valgfrit felt — men er det sat, skal det være en
+  // boolean (en streng "false" ville ellers blive til et tog-medlem).
+  for (const r of riders) {
+    if (r?.leadout !== undefined && typeof r.leadout !== "boolean") {
+      errors.push("team_orders_invalid_leadout");
       break;
     }
   }
@@ -120,17 +160,21 @@ export function validateTeamOrder({
 }
 
 /**
- * Normalisér en valideret body til DB-rækkens form: stance-default + kun de
- * fire kontraktfelter pr. rytter, try_break tvunget til boolean. Ren.
+ * Normalisér en valideret body til DB-rækkens form: stance-default + PRÆCIS
+ * kontraktens felter pr. rytter, try_break/leadout tvunget til boolean. Ren.
+ *
+ * `race_role` skrives ikke (#4246, ejer 27/8) — rækken er etapens overlay,
+ * ikke en kopi af holdudtagelsen. Motorens adapter læser rollen fra
+ * `race_entries` og bruger rækken oven på den.
  */
 export function normalizeTeamOrder(order) {
   return {
     breakaway_stance: order.breakaway_stance ?? "neutral",
     riders: (order.riders ?? []).map((r) => ({
       rider_id: r.rider_id,
-      race_role: r.race_role,
       effort: r.effort,
       try_break: r.try_break === true,
+      leadout: r.leadout === true,
     })),
   };
 }

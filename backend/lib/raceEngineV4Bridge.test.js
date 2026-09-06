@@ -159,7 +159,7 @@ test("#3855 breakawayRiderIdsFromSnapshots: kun grupper med kind='breakaway' tæ
   assert.deepEqual([...ids].sort(), ["a", "b"]);
 });
 
-test("#3855 buildV4StageInput: hold uden gemt ordre får T4-defaulten, hold med række får sin egen", () => {
+test("#3855/#4246 buildV4StageInput: adapteren får startlistens roller, ikke bare hold-id'er", () => {
   const modules = {
     route: { routeFromStageProfileRow: () => ({ distance_km: 10, segments: [], waypoints: [] }) },
     entrants: { entrantFromAbilitiesRow: (row, opts) => ({ rider_id: opts.riderId, condition: opts.condition }) },
@@ -171,8 +171,8 @@ test("#3855 buildV4StageInput: hold uden gemt ordre får T4-defaulten, hold med 
   const input = buildV4StageInput({
     modules,
     entrants: [
-      { rider_id: "a", team_id: "T2", abilities: {}, fatigue: 0 },
-      { rider_id: "b", team_id: "T1", abilities: {}, fatigue: 100 },
+      { rider_id: "a", team_id: "T2", race_role: "hunter", abilities: {}, fatigue: 0 },
+      { rider_id: "b", team_id: "T1", race_role: "captain", abilities: {}, fatigue: 100 },
       { rider_id: "c", team_id: null, abilities: {}, fatigue: 50 },
     ],
     stageProfile: stageProfile(),
@@ -183,8 +183,12 @@ test("#3855 buildV4StageInput: hold uden gemt ordre får T4-defaulten, hold med 
 
   assert.equal(input.seed, "race:1");
   assert.deepEqual(input.tuning, { marker: true });
-  // Deterministisk holdliste (sorteret), ryttere uden hold hører ikke til en holdplan.
-  assert.deepEqual(input.orders.teamIdsInStartlist, ["T1", "T2"]);
+  // #4246: rollen ER standardordren, så adapteren skal have (hold, rytter, rolle).
+  // Ryttere uden hold hører ikke til en holdplan og sendes ikke med.
+  assert.deepEqual(input.orders.roster, [
+    { team_id: "T2", rider_id: "a", role: "hunter" },
+    { team_id: "T1", rider_id: "b", role: "captain" },
+  ]);
   assert.equal(input.orders.stageNumber, 1);
   assert.equal(input.orders.rows.length, 1);
   // fatigue 0-100 → condition 1-0.
