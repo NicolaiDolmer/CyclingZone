@@ -141,9 +141,9 @@ export async function installNetworkMocks(page) {
     // #5013: den ENESTE mutation e2e skal kunne se effekten af — ulaest-
     // markeringerne og nav-prikken afledes af valget i mockHandlers.
     if (url.pathname.endsWith("/api/forum/category-mutes") && request.method() === "PUT") {
-      let body = null;
-      try { body = JSON.parse(request.postData() || "{}"); } catch { body = null; }
-      return json(route, setForumCategoryMuteMock(body?.category, body?.muted));
+      let body;
+      try { body = JSON.parse(request.postData() || "{}"); } catch { body = {}; }
+      return json(route, setForumCategoryMuteMock(body.category, body.muted));
     }
 
     if (request.method() !== "GET") return json(route, { ok: true });

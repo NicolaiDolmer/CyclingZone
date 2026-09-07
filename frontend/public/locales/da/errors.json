@@ -208,6 +208,7 @@
     "auction_created_before_account": "Jeres hold blev oprettet efter denne auktion startede, så I kan ikke byde på den. Nyere auktioner er åbne for jer med det samme.",
     "rate_forum": "For mange forum-handlinger på kort tid. Prøv igen om lidt.",
     "forum_invalid_category": "Ugyldig kategori",
+    "forum_invalid_mute_flag": "Ugyldigt valg",
     "forum_title_required": "En titel er påkrævet",
     "forum_title_too_long": "Titlen er for lang",
     "forum_body_required": "En besked er påkrævet",
