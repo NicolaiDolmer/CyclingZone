@@ -120,7 +120,7 @@ export default function ForumImagePicker({ images, onChange, disabled = false, u
                 onClick={() => handleRemove(image.path)}
                 aria-label={t("images.remove")}
                 title={t("images.remove")}
-                className="absolute -end-1.5 -top-1.5 rounded-full border border-cz-border bg-cz-surface p-0.5 text-cz-2 transition-colors hover:text-cz-1 disabled:opacity-50"
+                className="absolute end-1 top-1 rounded-full border border-cz-border bg-cz-surface/90 p-1 text-cz-2 transition-colors hover:text-cz-1 disabled:opacity-50"
               >
                 <XIcon size={12} aria-hidden="true" />
               </button>
