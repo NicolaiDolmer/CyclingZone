@@ -43,4 +43,12 @@ Baseline: `backend/scripts/out/baseline/main-<sha>-s{1,2,3}.txt` + `-tailspread.
 2. Hjælpeteksten "Race day and tactics" (usynlig til flip): læs og godkend/ret i `frontend/public/locales/en/help.json` → `sections.raceDay`.
 3. #4915 TTT/passage-punkter (uheld/tidsgrænse på TTT, TTT-point, TTT i S4-kalender).
 
+## Formiddag 7/9 (07:15 → 09:00, ejer til stede)
+
+- **Ejerbeslutning:** hale-bånd låst til bjerg/højbjerg 6-12 %, fladt 0-2 % (RULES §9 beslutning 13). Gate i harnesset (PR #4945, lane I, sonnet, 23 min).
+- **#4936 snapshot re-eksport (lane J → J2 → J3):** første worker frøs kl. 07:30 uden push i 49 min (fanget af lane-vagten ved 45-min-grænsen plus ejerens "det tager lang tid"). Recovery-worker i SAMME worktree overtog målt WIP (snapshot + fordelings-udskrift lå på disk), rebasede rent og leverede PR #4946 på 18 min. Én CI-fejl: CLI-testen fandt tabel-headeren ved linje-index, og fordelings-blokken øverst forskød den; fix-worker (J3) rettede testen til at finde headeren ved indhold.
+- **Fund der ændrer billedet:** med den rigtige population (5.955 hold-ryttere; prod har 7.880 aktive, forskellen er 1.350 uden hold, 494 akademi og 80 på ekskluderede hold) bliver sprinter-ankeret grønt (96,2 %), men bjerg-top-10 rødt (132 s mod 180-240) og højbjerg-halen rød (5,2 % mod 6-12 %). Alt kalibreret mod juli-filen skal genses. Ejeren: kalibreringen tages i en ny session; brief på #4914, prompt i `docs/drafts/next-session-prompt-2026-09-08-v4-kalibrering.md`.
+- **Nye issues:** #4947 (aggregering mangler 3 ankre + stale grus-kommentar), #4948 (raceDay-hjælp hardkodet skjult, flag-endpoint), #4949 (test-rigge spejler ikke segment-nøgling), #4950 (descent-småfælder), #4951 (flag-rækker i app_config for dormant).
+- **Læring:** en frossen worker kan have gjort det meste; recovery-briefen skal starte med "commit det der ligger" (J2 fik det som første handling og tabte intet). Test der indexerer output-linjer brækker ved enhver ny top-linje; find headere ved indhold.
+
 Refs #3855 #4914 #605
