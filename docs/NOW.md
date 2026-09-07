@@ -26,6 +26,6 @@
 - **Træning:** nyt system (løbsdag som tick, #4850) live senest S4-start 28/9; kalenderpakker #4845 FØR S4-kalender.
 - **Mekanik:** merges én ad gangen (`scripts/merge-queue.ps1`; aldrig HH:57-HH:03); `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Bølger: TIER WAVE, maks 3 byg-workers, push <10 min + hvert 15. min, vagt `scripts/wave-lane-watch.ps1`, briefs `scripts/make-wave-brief.mjs`, frossen worker = recovery i SAMME worktree, commit det der ligger først.
 
-> **🤖 Working agent:** Ingen aktiv session (#4960-målingen 7/9 lukket: H1 bekræftet, H2 afvist, målebrud fundet 1/9; ingen kodeændring, notat i issue-tråden. Næste = #4595).
+> **🤖 Working agent:** Fable, dagbølge 7/9 fra 11:00 (ejer ved maskinen). 15 spor kørt, 13 PR'er (#4966-#4978) + UI-lane #4979/#4980 + recovery #4872. Merge-kø kører (`merge-queue-1.log` i sessionens scratchpad). Rør ikke worktrees under `CyclingZone-worktrees/`.
 
 _Historik i git-log, issue-tråde + docs/audits/._
