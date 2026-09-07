@@ -13,7 +13,7 @@
 
 import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
-import { suitabilityScore } from "./raceAutopick.js";
+import { suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 
@@ -181,6 +181,13 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
   // per-etape-værdi: rollen og udtagelsen gælder HELE løbet, så kolonnen skal
   // sige det samme hele vejen igennem. Ingen profiler / ingen evner → null
   // (degraderer til "—" på fladen, aldrig et opdigtet tal).
+  // #4992 (spillerønske egomadsen 7/9): Taktik-fanens rute-match-kolonne skal
+  // vise egnetheden mod DEN VALGTE ETAPE, ikke løbets snit — man sætter jo
+  // taktik til én dag ad gangen. Tallene beregnes her fordi evnerne og etape-
+  // profilerne ALLEREDE hentes til `fit` lige nedenfor: samme kald, samme
+  // terrainScore, ét ekstra felt. Ingen ny tabel, intet nyt endpoint, og ingen
+  // rå evne-tal på klienten (fog of war) — kun det færdige 0-100-tal.
+  let stageFitByRider = new Map();
   let fitByRider = new Map();
   let conditionByRider = new Map();
   if (riderIds.length) {
@@ -204,6 +211,17 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
     const stages = profileRows || [];
     if (!abilitiesRes.error && stages.length) {
       fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, Math.round(suitabilityScore(ab, stages) * 100)]));
+      // Nøglet på stage_number, ikke på arrayets indeks: rækkerne er sorteret
+      // efter stage_number, men et løb kan mangle en profil-række, og så ville
+      // et indeks-array tavst forskyde alle etaper efter hullet.
+      stageFitByRider = new Map((abilitiesRes.data || []).map((ab) => {
+        const perStage = stageSuitabilityScores(ab, stages);
+        const byStage = {};
+        stages.forEach((s, i) => {
+          if (s?.stage_number != null && Number.isFinite(perStage[i])) byStage[s.stage_number] = perStage[i];
+        });
+        return [ab.rider_id, byStage];
+      }));
     }
     if (!conditionRes.error) {
       conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));
@@ -219,6 +237,9 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
       race_role: e.race_role ?? null,
       abandoned: abandonedRiderIds.has(e.rider_id),
       fit: fitByRider.get(e.rider_id) ?? null,
+      // #4992: { [stage_number]: 0-100 }. null når evner eller profiler mangler
+      // — fladen viser da "—", aldrig et opdigtet tal.
+      stage_fit: stageFitByRider.get(e.rider_id) ?? null,
       form: cond?.form ?? null,
       fatigue: cond?.fatigue ?? null,
     };

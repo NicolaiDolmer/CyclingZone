@@ -343,8 +343,8 @@ test("getStageRolesContext: bygger riders[] med navn + basis-race_role fra race_
   });
   const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 1 }, teamId: "team-1" });
   assert.deepEqual(ctx.riders, [
-    { rider_id: "r1", name: "Tadej P", race_role: "captain", abandoned: false, fit: null, form: null, fatigue: null },
-    { rider_id: "r2", name: "Jonas V", race_role: "helper", abandoned: false, fit: null, form: null, fatigue: null },
+    { rider_id: "r1", name: "Tadej P", race_role: "captain", abandoned: false, fit: null, stage_fit: null, form: null, fatigue: null },
+    { rider_id: "r2", name: "Jonas V", race_role: "helper", abandoned: false, fit: null, stage_fit: null, form: null, fatigue: null },
   ]);
   assert.equal(ctx.stage_count, 5);
   assert.equal(ctx.stages_completed, 1);
@@ -414,6 +414,51 @@ test("getStageRolesContext: form/fatigue kommer fra rider_condition, fit fra evn
   assert.deepEqual([r2.fit, r2.form, r2.fatigue], [null, null, null]);
 });
 
+// ── #4992: rute-match pr. etape (Taktik-fanens kolonne) ──────────────────────
+
+test("getStageRolesContext: stage_fit er ét 0-100-tal pr. etape, nøglet på stage_number", async () => {
+  const climber = {
+    rider_id: "r1", climbing: 85, sprint: 30, endurance: 70, punch: 60, time_trial: 50,
+    positioning: 60, descending: 60, cobbles: 40, recovery: 60, consistency: 60,
+    aggression: 55, tactics: 60, teamwork: 60, resilience: 60, potential: 70,
+  };
+  const supabase = makeContextSupabase({
+    entries: [{ rider_id: "r1", race_role: "captain" }, { rider_id: "r2", race_role: "helper" }],
+    riders: [{ id: "r1", firstname: "Tadej", lastname: "P" }, { id: "r2", firstname: "Jonas", lastname: "V" }],
+    abilities: [climber],
+    profiles: [
+      { stage_number: 1, profile_type: "flat", demand_vector: { sprint: 0.7, endurance: 0.3 } },
+      { stage_number: 2, profile_type: "mountain", demand_vector: { climbing: 0.7, endurance: 0.3 } },
+    ],
+  });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 2, stages_completed: 0 }, teamId: "team-1" });
+  const [r1, r2] = ctx.riders;
+  assert.deepEqual(Object.keys(r1.stage_fit), ["1", "2"], "ét tal pr. etape, nøglet på etapenummeret");
+  for (const v of Object.values(r1.stage_fit)) {
+    assert.ok(Number.isInteger(v) && v >= 0 && v <= 100, "samme 0-100-skala som fit");
+  }
+  // Selve pointen med kolonnen: tallet SKAL variere med etapens profil, ellers
+  // er en pr.-etape-kolonne bare løbs-snittet skrevet fem gange.
+  assert.ok(r1.stage_fit[2] > r1.stage_fit[1], "klatrer passer bedre til bjerg-etapen end til den flade");
+  assert.equal(r2.stage_fit, null, "rytter uden evner degraderer til null, aldrig et opdigtet tal");
+});
+
+test("getStageRolesContext: en etape uden profil-række forskyder ikke de øvrige etapers stage_fit", async () => {
+  const supabase = makeContextSupabase({
+    entries: [{ rider_id: "r1", race_role: "captain" }],
+    riders: [{ id: "r1", firstname: "Tadej", lastname: "P" }],
+    abilities: [{ rider_id: "r1", climbing: 80, endurance: 70 }],
+    // Etape 2 mangler (hul i rutedataen) — etape 3's tal skal stadig ligge på 3.
+    profiles: [
+      { stage_number: 1, profile_type: "flat", demand_vector: { sprint: 1 } },
+      { stage_number: 3, profile_type: "mountain", demand_vector: { climbing: 1 } },
+    ],
+  });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 3, stages_completed: 0 }, teamId: "team-1" });
+  assert.deepEqual(Object.keys(ctx.riders[0].stage_fit), ["1", "3"]);
+  assert.equal(ctx.riders[0].stage_fit[2], undefined, "etapen uden rutedata får intet tal");
+});
+
 test("getStageRolesContext: uden etape-profiler er fit null (ingen syntetisk score)", async () => {
   const supabase = makeContextSupabase({
     entries: [{ rider_id: "r1", race_role: "captain" }],
@@ -424,5 +469,6 @@ test("getStageRolesContext: uden etape-profiler er fit null (ingen syntetisk sco
   });
   const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 3, stages_completed: 0 }, teamId: "team-1" });
   assert.equal(ctx.riders[0].fit, null);
+  assert.equal(ctx.riders[0].stage_fit, null, "#4992: uden rutedata er der heller intet pr.-etape-tal");
   assert.equal(ctx.riders[0].form, 61);
 });
