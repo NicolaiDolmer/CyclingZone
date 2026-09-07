@@ -78,28 +78,34 @@ export default function SurveyInviteCard() {
   }
 
   return (
-    <div className="mb-4 flex items-center gap-3 rounded-cz border border-cz-border bg-cz-card px-4 py-3">
+    // flex-wrap + basis-64 paa tekstblokken: paa 375 px kan teksten ikke
+    // klemmes ned under 256 px, saa handlingerne wrapper til deres egen linje
+    // i stedet for at presse titlen ud i tre linjer. Paa desktop er det een
+    // raekke som de oevrige nudge-kort.
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-cz border border-cz-border bg-cz-card px-4 py-3">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-cz bg-cz-subtle text-cz-3">
         <ClipboardIcon size={16} aria-hidden="true" />
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 basis-64">
         <p className="text-sm font-medium text-cz-1">{t("surveyInvite.title")}</p>
         <p className="mt-0.5 text-xs text-cz-3">{t("surveyInvite.subtitle")}</p>
       </div>
-      <Link
-        to={`/survey/${survey.slug}`}
-        className={`${buttonClass({ variant: "secondary", size: "sm" })} shrink-0`}
-      >
-        {t("surveyInvite.cta")}
-      </Link>
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label={t("surveyInvite.dismissAria")}
-        className="shrink-0 px-1 leading-none text-cz-3 hover:text-cz-1"
-      >
-        <XIcon size={16} aria-hidden="true" />
-      </button>
+      <div className="flex w-full shrink-0 items-center gap-2 ps-11 sm:w-auto sm:ps-0">
+        <Link
+          to={`/survey/${survey.slug}`}
+          className={buttonClass({ variant: "secondary", size: "sm" })}
+        >
+          {t("surveyInvite.cta")}
+        </Link>
+        <button
+          type="button"
+          onClick={dismiss}
+          aria-label={t("surveyInvite.dismissAria")}
+          className="shrink-0 px-1 leading-none text-cz-3 hover:text-cz-1"
+        >
+          <XIcon size={16} aria-hidden="true" />
+        </button>
+      </div>
     </div>
   );
 }

@@ -85,7 +85,11 @@ for (const vp of VIEWPORTS) {
   {
     const { context, page } = await openPage(vp, {});
     await page.goto("/dashboard");
-    await page.getByRole("link", { name: "Svar nu" }).waitFor();
+    const cta = page.getByRole("link", { name: "Svar nu" });
+    await cta.waitFor();
+    // Paa 375 px ligger kortet under folden; uden det her viser billedet
+    // toppen af dashboardet i stedet for kortet.
+    await cta.scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
     await page.screenshot({ path: resolve(OUT, `4943-dashboard-card-${vp.name}.png`) });
     await context.close();
