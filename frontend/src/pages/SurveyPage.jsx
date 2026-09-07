@@ -268,12 +268,18 @@ export default function SurveyPage() {
     setSubmitError(false);
 
     // Skriv alt hvad der stadig venter i en debounce-timer FØR gennemførelsen,
-    // så "Send" aldrig kan lande før det sidste svar.
+    // så "Send" aldrig kan lande før det sidste svar. Kun de spørgsmål der
+    // faktisk har en ventende timer skrives: alt andet er allerede gemt, og en
+    // blind gen-skrivning af alle 12 ville sende en DELETE for hvert ubesvaret
+    // spørgsmål ved hvert klik på Send.
     const timers = timersRef.current;
+    const pendingKeys = [...timers.keys()];
     for (const timer of timers.values()) clearTimeout(timer);
     timers.clear();
     const written = await Promise.all(
-      questions.map((question) => persist(question, answers[question.key] ?? null))
+      questions
+        .filter((question) => pendingKeys.includes(question.key))
+        .map((question) => persist(question, answers[question.key] ?? null))
     );
     // En fejlet svar-skrivning maa ikke blive til en gennemfoert besvarelse:
     // tak-fladen ville sige at alt er landet, mens et svar mangler i databasen.
