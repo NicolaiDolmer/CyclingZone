@@ -921,11 +921,15 @@ test("#5000 deleteForumReply: seneste svars forfatter heler tilbage til forrige 
   assert.equal((await deleteForumReply({ supabase: fake, id: "r2", adminUserId: "admin1" })).status, 200);
   assert.equal(fake.state.forum_posts[0].last_reply_user_id, "u1");
   assert.equal(fake.state.forum_posts[0].last_reply_team_id, "t1");
+  // Tidsstemplet skal hele MED forfatteren: står det på det slettede svar,
+  // viser trådlisten den rigtige forfatter ved siden af det forkerte tidspunkt.
+  assert.equal(fake.state.forum_posts[0].last_reply_at, "2026-08-01T11:00:00Z");
 
   assert.equal((await deleteForumReply({ supabase: fake, id: "r1", adminUserId: "admin1" })).status, 200);
   assert.equal(fake.state.forum_posts[0].reply_count, 0);
   assert.equal(fake.state.forum_posts[0].last_reply_user_id, null);
   assert.equal(fake.state.forum_posts[0].last_reply_team_id, null);
+  assert.equal(fake.state.forum_posts[0].last_reply_at, null);
 });
 
 test("#5000 recordForumThreadView: kalder RPC'en med post+bruger og returnerer det nye tal", async () => {

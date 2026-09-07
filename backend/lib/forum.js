@@ -783,7 +783,7 @@ export async function createForumPost({
 async function recountReplies({ supabase, postId, now = null }) {
   const { data: idRows, error } = await supabase
     .from("forum_replies")
-    .select("id, seq, user_id, team_id")
+    .select("id, seq, user_id, team_id, created_at")
     .eq("post_id", postId)
     .is("deleted_at", null)
     .limit(REPLY_RECOUNT_LIMIT);
@@ -794,8 +794,13 @@ async function recountReplies({ supabase, postId, now = null }) {
     reply_count: rows.length,
     last_reply_user_id: latest?.user_id ?? null,
     last_reply_team_id: latest?.team_id ?? null,
+    // #5000: tidsstemplet heler MED forfatteren. Foer #5000 blev last_reply_at
+    // kun rykket ved nye svar (`now`), saa en sletning af det seneste svar lod
+    // det staa paa den slettede raekke. Med en forfatter ved siden af ville
+    // traadlisten vise den rigtige forrige forfatter ved siden af det forkerte
+    // tidspunkt — parret ville ikke laengere beskrive det samme svar.
+    last_reply_at: now ? now.toISOString() : (latest?.created_at ?? null),
   };
-  if (now) patch.last_reply_at = now.toISOString();
   const { error: updateError } = await supabase.from("forum_posts").update(patch).eq("id", postId);
   if (updateError) throw new Error(`forum: could not update reply count for ${postId}: ${updateError.message}`);
   return patch.reply_count;

@@ -14,7 +14,7 @@ import FounderMark from "../components/FounderMark.jsx";
 import { formatForumDate, authorDisplayName } from "../components/forum/forumIdentity.js";
 // #5000: samme relativ-tid-formatter som dashboardets ForumHighlightsCard —
 // "seneste svar" skal laese ens de to steder det staar.
-import { formatRelativeTime } from "../lib/intl";
+import { formatRelativeTime } from "../lib/intl.js";
 
 // #3199 — Forum v1 (plan låst 6/8): to kategorier (General · Feedback & ideas),
 // opslag + svar-tråde, ejer-opslag kan pinnes og bære afstemninger. T1 standard

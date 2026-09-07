@@ -576,11 +576,13 @@ const FORUM_POSTS = [
     body: "Vote below. I read everything in here, so add a reply if your favourite is missing.",
     is_pinned: true,
     reply_count: 2,
-    last_reply_at: "2026-08-06T07:20:00Z",
-    // #5000: visningstal + seneste svars forfatter, samme shape som
-    // backend/lib/forum.js's shapeListPost serverer.
+    // #5000: seneste svars forfatter/tid skal beskrive det SAMME svar som
+    // forumPostDetail returnerer nederst i traaden (r3, E2E kl. 07:45) —
+    // ellers modellerer preview en liste/detalje-tilstand der ikke kan
+    // opstaa i prod. Gaelder alle tre traade med svar herunder.
+    last_reply_at: "2026-08-06T07:45:00Z",
     view_count: 148,
-    last_reply_author: FORUM_AUTHOR_SOFIE,
+    last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: true,
     is_unread: false,
     author: FORUM_AUTHOR_OWNER,
@@ -595,7 +597,7 @@ const FORUM_POSTS = [
     body: "My squad is thin on climbers, but the auction prices this week are brutal. How are you all planning the last week of the transfer window?",
     is_pinned: false,
     reply_count: 3,
-    last_reply_at: "2026-08-06T06:10:00Z",
+    last_reply_at: "2026-08-06T07:45:00Z",
     view_count: 62,
     last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: false,
@@ -612,9 +614,9 @@ const FORUM_POSTS = [
     body: "It would help new managers learn if we could see what tactics the podium teams used once a race is finished.",
     is_pinned: false,
     reply_count: 1,
-    last_reply_at: "2026-08-05T08:00:00Z",
+    last_reply_at: "2026-08-06T07:45:00Z",
     view_count: 9,
-    last_reply_author: FORUM_AUTHOR_PETE,
+    last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: false,
     is_unread: false,
     author: FORUM_AUTHOR_SOFIE,
