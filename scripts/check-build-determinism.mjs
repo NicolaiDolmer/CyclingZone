@@ -60,6 +60,43 @@ const BUILD_ENV_BASE = {
 };
 
 const META_RE = /<meta[^>]+name=["']cz-release["'][^>]*>/i;
+const viteConfigPath = path.join(frontendDir, "vite.config.js");
+
+// #4595 rod-årsag 2: `@sentry/vite-plugin`s DEFAULT (`release.inject: true`)
+// skriver selv `window.SENTRY_RELEASE={id:"<sha>"}` ind i entry-chunken — en
+// deploy-unik streng i en hashet asset, uafhængigt af `import.meta.env`-vejen
+// #4970 lukkede. Pluginet er kun aktivt når SENTRY_AUTH_TOKEN er sat, så CI's
+// tokenløse markør-build kan ALDRIG observere en regression her via et
+// faktisk build (assertNoMarkersInAssets nedenfor dækker kun det tilfælde
+// hvor nogen kører med et rigtigt token). Denne statiske kontrol kører derfor
+// ALTID — ingen build, intet token nødvendigt — og fejler hvis nogen fjerner
+// `inject: false` fra frontend/vite.config.js igen.
+function assertViteConfigDisablesReleaseInject() {
+  if (!fs.existsSync(viteConfigPath)) {
+    fail(`${path.relative(repoRoot, viteConfigPath)} findes ikke.`);
+  }
+  const source = fs.readFileSync(viteConfigPath, "utf-8");
+  // Fjern linje-kommentarer først — flere af dem citerer kode-snippets med
+  // deres egne krøllede parenteser (fx "Sentry.init({ release })"), som
+  // ellers narrer den simple brace-matching nedenfor til at stoppe for tidligt.
+  const sourceWithoutComments = source
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("//"))
+    .join("\n");
+  const releaseBlockMatch = sourceWithoutComments.match(/release:\s*\{[^}]*\}/s);
+  if (!releaseBlockMatch || !/inject:\s*false/.test(releaseBlockMatch[0])) {
+    fail(
+      "frontend/vite.config.js's sentryVitePlugin({ release: {...} }) mangler `inject: false`.",
+      [
+        "Uden den injicerer pluginet SENTRY_RELEASE (commit-sha) i entry-chunken",
+        "på hvert deploy og roterer alle asset-hashes igen (#4595 rod-årsag 2).",
+        "Releasen skal i stedet komme fra <meta name=\"cz-release\"> via",
+        "frontend/src/lib/release.js — den kilde ligger IKKE i en hashet chunk.",
+      ]
+    );
+  }
+  console.log("✓ sentryVitePlugin({ release: { inject: false } }) er på plads i vite.config.js");
+}
 
 function fail(message, details = []) {
   console.error(`\n❌ Build-determinisme: ${message}`);
@@ -121,6 +158,34 @@ function assertNoMarkersInAssets() {
   console.log(`✓ Ingen deploy-unikke strenge i ${files.length} filer under dist/assets`);
 }
 
+// #4595 rod-årsag 2: fanger @sentry/vite-plugins EGEN release-injektion — kun
+// observerbar i et build hvor SENTRY_AUTH_TOKEN faktisk er sat (`--full` med
+// et rigtigt token, eller Vercels build). `window.SENTRY_RELEASE={id:"<sha>"}`
+// overlever minifikation som literal fordi det er en property-tildeling, ikke
+// et variabelnavn. Et 40-tegns hex-sha i en hashet asset er i sig selv altid
+// forkert (Vites egen churn: kun HTML/meta må bære deploy-unikke bytes).
+const GIT_SHA_RE = /\b[0-9a-f]{40}\b/;
+function assertNoInjectedSentryRelease() {
+  const TEXT_EXT = new Set([".js", ".mjs"]);
+  const files = listAssets().filter((f) => TEXT_EXT.has(path.extname(f).toLowerCase()));
+  const hits = [];
+  for (const file of files) {
+    const text = fs.readFileSync(file, "utf-8");
+    if (text.includes("SENTRY_RELEASE=")) {
+      hits.push(`${path.relative(repoRoot, file)} indeholder "SENTRY_RELEASE=" (pluginets release-injektion)`);
+    } else if (GIT_SHA_RE.test(text)) {
+      hits.push(`${path.relative(repoRoot, file)} indeholder et 40-tegns hex-sha`);
+    }
+  }
+  if (hits.length > 0) {
+    fail(
+      `${hits.length} JS-asset(s) bærer et git-sha — @sentry/vite-plugin har formentlig injiceret SENTRY_RELEASE igen.`,
+      [...hits, "", "Fix: sæt release.inject: false i sentryVitePlugin(...) i frontend/vite.config.js."]
+    );
+  }
+  console.log(`✓ Ingen SENTRY_RELEASE-injektion eller git-sha i ${files.length} JS-assets`);
+}
+
 /** Fejler hvis release-meta-tagget mangler — så guarden ikke kan gå falsk grøn. */
 function assertReleaseMetaPresent() {
   const expected = new Set(Object.values(MARKERS));
@@ -178,6 +243,8 @@ function diffSnapshots(a, b) {
 }
 
 function runFull() {
+  assertViteConfigDisablesReleaseInject();
+
   const shaA = "aaaaaaa1111111111111111111111111111aaaaa";
   const shaB = "bbbbbbb2222222222222222222222222222bbbbb";
 
@@ -213,12 +280,16 @@ function runFull() {
   }
   console.log("✓ <meta name=\"cz-release\"> følger commit-sha'en (index.html)");
 
+  assertNoInjectedSentryRelease();
+
   console.log("\n✅ Build-determinisme OK — et deploy uden frontend-ændringer roterer ikke asset-hashes.");
 }
 
 function runVerifyOnly() {
+  assertViteConfigDisablesReleaseInject();
   assertReleaseMetaPresent();
   assertNoMarkersInAssets();
+  assertNoInjectedSentryRelease();
   console.log("\n✅ Build-determinisme (verify-only) OK — ingen deploy-unikke bytes i hashede assets.");
 }
 
