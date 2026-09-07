@@ -15,12 +15,25 @@
 // Filen er .jsx og ikke .tsx (hard rule 31) af samme grund som Segmented.jsx:
 // CI's `npm run typecheck` mangler @types/react. Se PR-beskrivelsen (#4628).
 //
+// #5008-følgefejl: et femte tal (managerprofilens "Forum posts") gjorde
+// 2-kolonners-mobilgitteret ovenfor til TRE rækker i stedet for to. Den
+// ekstra rækkes højde var nok til at skubbe T3-tablisten (Tabs.jsx) ned i den
+// stribe som Layout.jsx's faste MobileQuickNav-bar (56px, `fixed bottom-0`)
+// dækker på mobil — et reelt klik-igennem-tab (bekræftet på mobile-webkit
+// 390x664: fanerækken landede delvist under baren allerede ved førstegangs-
+// rendering, ikke kun ved scroll), ikke kun et test-artefakt. 3 kolonner fra
+// 5 tal og opefter holder rækkeantallet på to, som før #5008 — ingen tal
+// skjules (TASTE P10 kræver stadig de samme tal på mobil som desktop).
+//
 // props:
 //   items — [{ label, value, sub? }]
 export function HeroStats({ items, className = "" }) {
+  const gridBase = items.length >= 5
+    ? "mt-5 grid grid-cols-3 gap-x-4 gap-y-4 border-t border-cz-border pt-4 sm:flex sm:gap-0 sm:overflow-x-auto"
+    : "mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-cz-border pt-4 sm:flex sm:gap-0 sm:overflow-x-auto";
   return (
     <div
-      className={`mt-5 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-cz-border pt-4 sm:flex sm:gap-0 sm:overflow-x-auto ${className}`.trim()}
+      className={`${gridBase} ${className}`.trim()}
     >
       {items.map((item) => (
         <div
