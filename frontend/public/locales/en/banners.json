@@ -4,10 +4,10 @@
     "scaleLow": "Not likely",
     "scaleHigh": "Very likely",
     "reasonLabel": "What's the main reason? (optional)",
-    "reasonPlaceholder": "Tell me in a sentence or two",
+    "reasonPlaceholder": "Optional: the main reason, in a sentence or two",
     "submit": "Send",
     "notNow": "Not now",
-    "thanks": "Thanks for the feedback.",
+    "thanks": "Thanks. That tells me what to work on next.",
     "regionAriaLabel": "Feedback prompt",
     "dismissAriaLabel": "Dismiss feedback prompt"
   },

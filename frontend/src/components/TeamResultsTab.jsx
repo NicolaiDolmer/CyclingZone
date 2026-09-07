@@ -46,9 +46,11 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
   const [sortKey, setSortKey] = useState("points");
   const [sortDir, setSortDir] = useState("desc");
   const [currentSeason, setCurrentSeason] = useState(null);
-  // #940 In-app NPS: trigger efter første løb-resultat (eget hold + ≥1 resultat).
-  const nps = useNpsPrompt();
-  const { markRaceResultSeen } = nps;
+  // #940/#4997 In-app NPS: hook'en gater selv på "holdet har mindst 3 afsluttede
+  // løbsdage" (team_race_points_mv), så fanen behøver ikke længere trigge den
+  // manuelt. teamId sendes kun for EGET hold — vi spørger aldrig en manager om
+  // sin oplevelse mens han kigger på en andens holdside.
+  const nps = useNpsPrompt({ teamId: isOwnTeam ? teamId : null, surface: "team_results" });
 
   // #4448: t bruges kun i fejlstien nedenfor. Som direkte dependency ville et
   // sprogskifte kalde den paginerede race_results-hentning forfra (op til fem
@@ -99,13 +101,6 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
     const payload = pickFirstRaceResultPayload(results);
     if (payload) logFirstEvent("first_race_result_viewed", payload);
   }, [isOwnTeam, results]);
-
-  // #940 NPS: når en bruger ser sit EGET holds resultater (mindst ét), trigg NPS-
-  // gatingen. markRaceResultSeen er idempotent; gatingen (consent + throttle +
-  // allerede-svaret) sker i useNpsPrompt.
-  useEffect(() => {
-    if (isOwnTeam && results.length > 0) markRaceResultSeen();
-  }, [isOwnTeam, results.length, markRaceResultSeen]);
 
   const availableSeasons = useMemo(() => {
     const set = new Set(results.map((r) => r.race?.season?.number).filter((n) => n != null));

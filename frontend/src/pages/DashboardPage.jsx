@@ -83,6 +83,10 @@ import {
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
+// #4997 — NPS-prompten var kun monteret på Resultater-fanen på egen holdside;
+// se komponent-monteringen nederst i filen.
+import NpsPrompt from "../components/NpsPrompt";
+import { useNpsPrompt } from "../hooks/useNpsPrompt";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
@@ -186,6 +190,15 @@ export default function DashboardPage() {
 
   // Kanonisk "kræver handling"-summary til "Næste træk"-sektionen (#271 Slice B).
   const { pending: actionSummary, loading: actionLoading } = useActionSummary();
+
+  // #4997 — In-app NPS. Dashboardet er den side alle managere lander på; før
+  // #4997 var prompten kun monteret på Resultater-fanen på egen holdside, og kun
+  // 40 af 262 brugere nåede nogensinde at få den vist. Hook'en gater selv (mindst
+  // 3 afsluttede løbsdage, 90-dages-throttle, allerede-svaret) og renderer intet
+  // før beslutningen er truffet — ingen CLS, ingen blokerende modal, og ingen af
+  // opslagene ligger på den blokerende sti (DASHBOARD_RULES.md §3: et modul må
+  // aldrig kunne vælte dashboardet).
+  const nps = useNpsPrompt({ teamId: team?.id, surface: "dashboard" });
 
   // Dashboard-customize (#1005): vis/skjul moduler, persisteret i localStorage.
   const { isVisible, toggleModule, resetToDefault } = useDashboardLayout();
@@ -2032,6 +2045,17 @@ export default function DashboardPage() {
         {isVisible("globalRank") && <GlobalRankWidget />}
 
       </div>
+
+      {/* #4997 — lav, ikke-blokerende bundbar. Fixed overlay, så den ligger
+          uden for sidens indholdsflow og ikke skubber noget. */}
+      <NpsPrompt
+        visible={nps.visible}
+        done={nps.done}
+        submitting={nps.submitting}
+        onSubmit={nps.submit}
+        onDismiss={nps.dismiss}
+        onClose={nps.close}
+      />
     </div>
   );
 }
