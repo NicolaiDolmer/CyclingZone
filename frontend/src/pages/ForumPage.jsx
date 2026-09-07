@@ -80,14 +80,16 @@ function PostRow({ post, t, language }) {
         <FounderMark teamId={post.author?.team_id} />
         <span>·</span>
         <span>{t(`categories.${post.category}`)}</span>
-        <span>·</span>
-        {/* #5000 (ejer-bestilling 7/9): har traaden svar, er trådens
-            oprettelses-dato ikke laengere den interessante tid — seneste svars
-            forfatter + relative tid er. De to udelukker hinanden med vilje:
-            begge paa samme linje ville braekke metalinjen paa 390px, og datoen
-            for et opslag med 40 svar er stoej (TASTE §3). */}
+      </div>
+      {/* #5000 (ejer-bestilling 7/9): tiden staar paa sin EGEN linje, fordi
+          seneste svars forfatter + relativ tid ikke kan vaere paa metalinjen
+          uden at klemme forfatternavnet ned til "BY ..." paa 390px (TASTE P10
+          — maalt paa screenshot, ikke gaettet). Har traaden svar, er trådens
+          oprettelses-dato desuden ikke laengere den interessante tid: de to
+          udelukker hinanden med vilje, saa raekken aldrig baerer to datoer. */}
+      <div className="mt-0.5 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
         {post.last_reply_author ? (
-          <span className="truncate">
+          <span className="block truncate">
             {t("stats.lastReply", {
               name: authorDisplayName(post.last_reply_author),
               time: formatRelativeTime(post.last_reply_at || post.created_at),

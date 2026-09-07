@@ -548,6 +548,9 @@ export function managerProfile(teamId) {
     season_history: SEED_TEAM_SEASON_STANDINGS.filter((row) => row.team_id === team.id),
     achievements: seedManagerAchievements({ unlocked: !isRival }),
     transfer_activity: isRival ? [] : SEED_MANAGER_TRANSFERS,
+    // #5000: antal forumindlaeg (traade + svar). Rival-holdet har et hoejere
+    // tal end e2e-kontoen, saa preview viser begge stoerrelser af tallet.
+    forum_stats: isRival ? { posts: 6, replies: 23, total: 29 } : { posts: 2, replies: 9, total: 11 },
   };
 }
 
@@ -574,6 +577,10 @@ const FORUM_POSTS = [
     is_pinned: true,
     reply_count: 2,
     last_reply_at: "2026-08-06T07:20:00Z",
+    // #5000: visningstal + seneste svars forfatter, samme shape som
+    // backend/lib/forum.js's shapeListPost serverer.
+    view_count: 148,
+    last_reply_author: FORUM_AUTHOR_SOFIE,
     has_poll: true,
     is_unread: false,
     author: FORUM_AUTHOR_OWNER,
@@ -589,6 +596,8 @@ const FORUM_POSTS = [
     is_pinned: false,
     reply_count: 3,
     last_reply_at: "2026-08-06T06:10:00Z",
+    view_count: 62,
+    last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: false,
     is_unread: true,
     author: FORUM_AUTHOR_PETE,
@@ -604,6 +613,8 @@ const FORUM_POSTS = [
     is_pinned: false,
     reply_count: 1,
     last_reply_at: "2026-08-05T08:00:00Z",
+    view_count: 9,
+    last_reply_author: FORUM_AUTHOR_PETE,
     has_poll: false,
     is_unread: false,
     author: FORUM_AUTHOR_SOFIE,
@@ -619,6 +630,10 @@ const FORUM_POSTS = [
     is_pinned: false,
     reply_count: 0,
     last_reply_at: null,
+    // Traad uden svar: last_reply_author er null, og listen viser i stedet
+    // opslagets egen dato — den gren skal ogsaa kunne ses paa preview.
+    view_count: 4,
+    last_reply_author: null,
     has_poll: false,
     is_unread: true,
     author: FORUM_AUTHOR_E2E,
