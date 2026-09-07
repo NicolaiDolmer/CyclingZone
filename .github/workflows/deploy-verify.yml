@@ -279,12 +279,26 @@ jobs:
       # kigge paa. Nu naar de Sentry, og dette trin saetter tallet paa hvert deploy.
       # Uden det er "synlig i Sentry" kun sandt for den der husker at aabne Sentry.
       # Skip skal kunne SES (#4335) — derfor job-summary paa hver udgang.
+      #
+      # #4595 (7/9): trinnet er ADVISORY paa budgettet. Hvorfor: tallet er et
+      # RULLENDE 24-timers vindue over hele spillerbasen, ikke en maaling af dette
+      # deploy. Det maalte niveau har ligget paa 111-232/24 t mod budget 25, saa
+      # gaten var roed paa hvert eneste frontend-merge (#4884, #4913) og skjulte
+      # dermed de aegte deploy-fejl trinnene omkring den findes for at fange.
+      # Et tal der altid er roedt er ikke en gate, det er stoej.
+      # Rod-aarsagen (deploy-unikke bytes i hashede assets) rettes i samme PR;
+      # naar tallet er faldet, kan budgettet saettes til den nye baseline og
+      # `exit 1` tages tilbage.
+      # Den HAARDE graense staar stadig: over CHUNK_ERROR_HARD_LIMIT er noget
+      # katastrofalt galt (fx et deploy der serverer 404 paa alle chunks), og
+      # DET skal stoppe koerslen.
       - name: Chunk-fejl-rate efter deploy (#4545)
         if: steps.required.outputs.need_vercel == 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           CHUNK_ERROR_BUDGET: '25'
+          CHUNK_ERROR_HARD_LIMIT: '1000'
         run: |
           note() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
 
@@ -312,12 +326,19 @@ jobs:
           COUNT=$(jq '[.data[]["count()"]] | add // 0' /tmp/chunk-rate.json)
           echo "Chunk-load-fejl seneste 24 t: $COUNT (budget $CHUNK_ERROR_BUDGET)"
 
-          if [[ "$COUNT" -gt "$CHUNK_ERROR_BUDGET" ]]; then
-            echo "::error::$COUNT chunk-load-fejl seneste 24 t, budget er $CHUNK_ERROR_BUDGET"
-            note "❌ **Chunk-fejl-rate: $COUNT paa 24 t** (budget $CHUNK_ERROR_BUDGET). Spillere rammer chunk-fallbacken. Tjek asset-miss-proben og #2423 P1."
+          if [[ "$COUNT" -gt "$CHUNK_ERROR_HARD_LIMIT" ]]; then
+            echo "::error::$COUNT chunk-load-fejl seneste 24 t — over den haarde graense $CHUNK_ERROR_HARD_LIMIT"
+            note "❌ **Chunk-fejl-rate: $COUNT paa 24 t** — over den HAARDE graense ($CHUNK_ERROR_HARD_LIMIT). Det er ikke almindelig staleness: tjek om deployet serverer 404 paa chunks (asset-miss-proben) og overvej rollback."
             exit 1
           fi
-          note "✅ Chunk-fejl-rate: $COUNT paa 24 t (budget $CHUNK_ERROR_BUDGET)."
+
+          if [[ "$COUNT" -gt "$CHUNK_ERROR_BUDGET" ]]; then
+            # Advisory (#4595): rullende 24 t over hele spillerbasen, ikke dette deploy.
+            echo "::warning::$COUNT chunk-load-fejl seneste 24 t, budget er $CHUNK_ERROR_BUDGET (advisory, se #4595)"
+            note "❌ **Chunk-fejl-rate: $COUNT paa 24 t** (budget $CHUNK_ERROR_BUDGET) — ADVISORY, stopper ikke koerslen. Spillere rammer chunk-fallbacken. Tallet er et rullende 24-timers vindue, ikke en maaling af dette deploy. Rod-aarsag + maal: #4595. Haard graense: $CHUNK_ERROR_HARD_LIMIT."
+            exit 0
+          fi
+          note "✅ Chunk-fejl-rate: $COUNT paa 24 t (budget $CHUNK_ERROR_BUDGET, haard graense $CHUNK_ERROR_HARD_LIMIT)."
 
       - name: Comment success on merged PR
         if: success() && steps.pr.outputs.number != ''

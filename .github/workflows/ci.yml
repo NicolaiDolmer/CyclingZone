@@ -98,8 +98,30 @@ jobs:
       - name: Run frontend tests
         run: npm test -- --test-reporter=spec
 
+      # #4595: buildet koeres med MARKOER-env, saa det naeste trin kan bevise at
+      # ingen deploy-unik streng endte i en hashet asset. Vaerdierne skal matche
+      # MARKERS i scripts/check-build-determinism.mjs (guarden fejler hvis de
+      # driver fra hinanden, saa den kan ikke gaa falsk groen).
+      # VITE_SENTRY_DSN er obligatorisk: uden DSN dead-code-eliminerer Rollup hele
+      # Sentry.init-kaldet, og saa maaler guarden et build der ikke ligner prod.
       - name: Build frontend
+        env:
+          VERCEL_GIT_COMMIT_SHA: c2de7e1211111111111111111111111111111111
+          VITE_VERCEL_GIT_COMMIT_SHA: c2de7e1222222222222222222222222222222222
+          VITE_SENTRY_RELEASE: c2de7e1233333333333333333333333333333333
+          VITE_SENTRY_DSN: https://determinism-guard@o0.ingest.sentry.io/0
         run: npm run build
+
+      # #4595: release-sha'en blev foer bagt ind i entry-chunken (import.meta.env),
+      # saa dens Rollup-hash roterede paa HVERT deploy - ogsaa docs-only commits -
+      # og med den hele grafen af route-chunks. Aabne faner pegede derefter paa
+      # filer der ikke fandtes (CYCLINGZONE-56, 50 spillere paa 7 dage).
+      # Trinnet koster nul ekstra byggetid: det verificerer dist/ fra trinnet
+      # ovenfor. Den fulde variant (`--full`, to builds + byte-sammenligning) er
+      # ~2 x 25 s og koeres lokalt/manuelt, ikke paa hver PR.
+      - name: Run build-determinism guard (#4595)
+        working-directory: .
+        run: node scripts/check-build-determinism.mjs
 
       # #2423: gaten maaler det BYGGEDE output, ikke konfigurationen. Den fejler
       # hvis nogen bygget URL baerer "?dpl=" — praecis den omskrivning der
