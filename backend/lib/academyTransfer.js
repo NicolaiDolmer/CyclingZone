@@ -67,11 +67,18 @@ export function demoteSalary({ current_production_value } = {}) {
 // frisk beregning"-mønster som contractOnAcquirePatch (contractSeed.js) og
 // promote() ovenfor. Delt af demote() OG /riders/:id/academy-demote-quote
 // (api.js) så preview og udførelse aldrig kan divergere (#3784-lektien).
-export function resolveDemoteSalary(rider) {
-  const hasContract = rider?.salary != null
+// CodeRabbit (PR #4973): resolveDemoteSalary og demote() gentog uafhængigt af
+// hinanden den samme "komplet kontrakt"-betingelse — udtrukket her så begge
+// steder deler ÉT udtryk for #1309/#2881/#4589-invarianten (samme
+// fejl-mønster som selve #3620/#4589-bugget denne fil retter).
+export function hasCompleteContract(rider) {
+  return rider?.salary != null
     && rider?.contract_end_season != null
     && rider?.contract_length != null;
-  return hasContract ? rider.salary : demoteSalary(rider);
+}
+
+export function resolveDemoteSalary(rider) {
+  return hasCompleteContract(rider) ? rider.salary : demoteSalary(rider);
 }
 
 /**
@@ -204,9 +211,7 @@ export async function demote(supabase, {
   // akademi-aftalen (løn + term). Dermed er promote/demote hinandens inverse,
   // og en tur gennem akademiet kan hverken forkorte/forlænge en kontrakt eller
   // ændre lønnen.
-  const hasContract = rider.salary != null
-    && rider.contract_end_season != null
-    && rider.contract_length != null;
+  const hasContract = hasCompleteContract(rider);
   const newSalary = resolveDemoteSalary(rider);
   const contractLength = hasContract ? rider.contract_length : ACADEMY.CONTRACT_LENGTH;
   const contractEnd = hasContract

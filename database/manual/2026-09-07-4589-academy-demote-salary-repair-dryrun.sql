@@ -61,9 +61,32 @@
 -- script er kun et engangs-udsnit af den historiske skade siden 28/8 — kan
 -- være en undervurdering, da demote-RPC'en har eksisteret siden 25/6 og
 -- notifikationer ældre end 28/8 ikke er talt med her.
+--
+-- ─── CodeRabbit (PR #4973, 🟠 MAJOR) ────────────────────────────────────────
+-- Den oprindelige version JOIN'ede direkte mod notifications (én række pr.
+-- matchende academy_demoted-notifikation) OG mod rider_ownership_events (én
+-- række pr. matchende trade/swap). En rytter med flere demote-notifikationer
+-- i vinduet ELLER flere kvalificerende ownership-events i 2-dages-vinduet fik
+-- derfor FLERE rækker, og count(*) kunne overvurdere populationen og komme ud
+-- af trit med resultatsættet. Fixet: `demoted_riders` afgrænser populationen
+-- til ét rider_id pr. række (DISTINCT), og to LATERAL-joins vælger
+-- deterministisk NETOP ét notifikations- og ét ownership-event pr. rytter
+-- (seneste academy_demoted-notifikation i vinduet; seneste kvalificerende
+-- trade/swap før netop den notifikation). Begge queries nedenfor gentager den
+-- samme `demoted_riders`-CTE, så hver forbliver selvstændigt kørbar (samme
+-- forudsætning som resten af filen — ingen delt transaktion antaget).
 
 -- ── Review-population (ALLE ryttere stadig i akademiet der blev demotet
 --    siden 28/8) — kør denne, læs output, tag INGEN handling herfra ─────────
+WITH demoted_riders AS (
+  SELECT DISTINCT r.id
+  FROM riders r
+  JOIN notifications n
+    ON n.related_id = r.id
+   AND n.type = 'academy_demoted'
+   AND n.created_at >= '2026-08-28'
+  WHERE r.is_academy = true
+)
 SELECT
   r.id AS rider_id,
   r.firstname,
@@ -73,35 +96,66 @@ SELECT
   r.salary AS current_salary,
   r.current_production_value,
   round(r.salary::numeric / nullif(r.current_production_value, 0), 4) AS salary_to_cpv_ratio_context_only,
-  n.created_at AS demote_notified_at,
-  roe.reason AS preceding_ownership_event,
-  roe.occurred_at AS preceding_event_at
-FROM riders r
-JOIN notifications n
-  ON n.related_id = r.id
- AND n.type = 'academy_demoted'
- AND n.created_at >= '2026-08-28'
+  latest_notif.created_at AS demote_notified_at,
+  preceding_event.reason AS preceding_ownership_event,
+  preceding_event.occurred_at AS preceding_event_at
+FROM demoted_riders dr
+JOIN riders r ON r.id = dr.id
 LEFT JOIN teams t ON t.id = r.team_id
-LEFT JOIN rider_ownership_events roe
-  ON roe.rider_id = r.id
- AND roe.reason IN ('trade', 'swap')
- AND roe.occurred_at <= n.created_at
- AND roe.occurred_at >= n.created_at - INTERVAL '2 days'
-WHERE r.is_academy = true
-ORDER BY n.created_at DESC;
+JOIN LATERAL (
+  -- Deterministisk: seneste academy_demoted-notifikation i vinduet for denne rytter.
+  SELECT n.created_at
+  FROM notifications n
+  WHERE n.related_id = r.id
+    AND n.type = 'academy_demoted'
+    AND n.created_at >= '2026-08-28'
+  ORDER BY n.created_at DESC
+  LIMIT 1
+) latest_notif ON true
+LEFT JOIN LATERAL (
+  -- Deterministisk: seneste kvalificerende trade/swap før netop den notifikation.
+  SELECT roe.reason, roe.occurred_at
+  FROM rider_ownership_events roe
+  WHERE roe.rider_id = r.id
+    AND roe.reason IN ('trade', 'swap')
+    AND roe.occurred_at <= latest_notif.created_at
+    AND roe.occurred_at >= latest_notif.created_at - INTERVAL '2 days'
+  ORDER BY roe.occurred_at DESC
+  LIMIT 1
+) preceding_event ON true
+ORDER BY latest_notif.created_at DESC;
 
 -- ── Kontroltal ───────────────────────────────────────────────────────────
+WITH demoted_riders AS (
+  SELECT DISTINCT r.id
+  FROM riders r
+  JOIN notifications n
+    ON n.related_id = r.id
+   AND n.type = 'academy_demoted'
+   AND n.created_at >= '2026-08-28'
+  WHERE r.is_academy = true
+)
 SELECT
   count(*) AS review_population_is_academy_true,
-  count(*) FILTER (WHERE demote_since.reason IS NOT NULL) AS with_preceding_trade_or_swap
-FROM (
-  SELECT r.id,
-    (SELECT roe.reason FROM rider_ownership_events roe
-      WHERE roe.rider_id = r.id AND roe.reason IN ('trade','swap')
-        AND roe.occurred_at <= n.created_at
-        AND roe.occurred_at >= n.created_at - INTERVAL '2 days'
-      LIMIT 1) AS reason
-  FROM riders r
-  JOIN notifications n ON n.related_id = r.id AND n.type = 'academy_demoted' AND n.created_at >= '2026-08-28'
-  WHERE r.is_academy = true
-) demote_since;
+  count(*) FILTER (WHERE preceding_event.reason IS NOT NULL) AS with_preceding_trade_or_swap
+FROM demoted_riders dr
+JOIN riders r ON r.id = dr.id
+JOIN LATERAL (
+  SELECT n.created_at
+  FROM notifications n
+  WHERE n.related_id = r.id
+    AND n.type = 'academy_demoted'
+    AND n.created_at >= '2026-08-28'
+  ORDER BY n.created_at DESC
+  LIMIT 1
+) latest_notif ON true
+LEFT JOIN LATERAL (
+  SELECT roe.reason
+  FROM rider_ownership_events roe
+  WHERE roe.rider_id = r.id
+    AND roe.reason IN ('trade', 'swap')
+    AND roe.occurred_at <= latest_notif.created_at
+    AND roe.occurred_at >= latest_notif.created_at - INTERVAL '2 days'
+  ORDER BY roe.occurred_at DESC
+  LIMIT 1
+) preceding_event ON true;

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 
-import { promote, demote, demoteSalary, resolveDemoteSalary } from "./academyTransfer.js";
+import { promote, demote, demoteSalary, resolveDemoteSalary, hasCompleteContract } from "./academyTransfer.js";
 import { computeFrozenSalary, computeContractEndSeason, CONTRACT } from "./contractSeed.js";
 import { ACADEMY } from "./academyFlag.js";
 
@@ -472,6 +472,19 @@ test("resolveDemoteSalary: #4589 — arver eksisterende løn uændret; kun kontr
     demoteSalary(contractless),
     "kontraktløs → frisk beregning",
   );
+});
+
+// CodeRabbit (PR #4973, trivial): resolveDemoteSalary og demote() delte
+// tidligere den samme betingelse som TO uafhængige udtryk. hasCompleteContract
+// er nu det ene fælles udtryk for #1309/#2881/#4589-invarianten — lås dens
+// grænseværdier fast direkte, uafhængigt af begge kaldere.
+test("hasCompleteContract: kræver salary + contract_end_season + contract_length ALLE ikke-null", () => {
+  assert.equal(hasCompleteContract(SENIOR_U23_WITH_EXTENDED_CONTRACT), true, "alle tre felter sat");
+  assert.equal(hasCompleteContract({ salary: 9000, contract_end_season: 5, contract_length: null }), false, "mangler contract_length");
+  assert.equal(hasCompleteContract({ salary: 9000, contract_end_season: null, contract_length: 3 }), false, "mangler contract_end_season");
+  assert.equal(hasCompleteContract({ salary: null, contract_end_season: 5, contract_length: 3 }), false, "mangler salary");
+  assert.equal(hasCompleteContract(undefined), false, "rider selv undefined → false (optional chaining)");
+  assert.equal(hasCompleteContract({}), false, "tomt objekt → alle felter undefined");
 });
 
 // Modstykket: en kontraktløs rytter (ingen komplet kontrakt) skal stadig få
