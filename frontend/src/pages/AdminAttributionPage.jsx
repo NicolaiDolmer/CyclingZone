@@ -268,8 +268,21 @@ export function AttributionContent() {
 
       {metrics && (
         <div>
-          <p className="text-cz-3 text-xs uppercase tracking-wide mb-2">
+          <p className="text-cz-3 text-xs uppercase tracking-wide mb-1">
             Engagement · førsteparts, bot-ekskluderet (seneste {metrics.days}d) — #2040
+          </p>
+          {/* #4963: traffic_events (denne sektions kilde) knækkede 1/9 2026 —
+              TrafficBeacon talte tidligere indloggede spilleres ruteskift med i
+              et kort vindue før session-status var afgjort; PR #4547 lukkede
+              vinduet. Perioder der spænder over 1/9 er derfor ikke sammenlignelige.
+              Ingen tidsserie-graf for traffic_events findes i koden i dag (kun
+              dette rullende N-dages-vindue) — noten sidder derfor her i stedet
+              for som en lodret markør i en graf. Se docs/AI_OPS_REFERENCE.md
+              (Metrik-brud-log) for den fulde annotering. */}
+          <p className="text-cz-3 text-xs mb-2 max-w-3xl">
+            Traffic before Sep 2, 2026 is not comparable to later periods — a Sep 1 frontend deploy fixed a bug that had counted logged-in players&apos; page changes as public visits.
+            <br />
+            Trafik før 2. sep. 2026 er ikke sammenlignelig med senere perioder — et frontend-deploy 1/9 rettede en fejl der talte indloggede spilleres sideskift med som offentlige besøg.
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Public visits" value={metrics.traffic.humanVisits} sub={`${Math.round(metrics.traffic.botShare * 100)}% bots ekskluderet`} />

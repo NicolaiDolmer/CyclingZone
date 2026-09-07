@@ -218,6 +218,21 @@ I rækkefølge før jeg foreslår commit:
 
 ---
 
+## Metrik-brud-log (læs FØR du sammenligner traffic_events/Clarity på tværs af en periode)
+
+> **1/9 2026 — `traffic_events`/Clarity brud, ikke brugerfald** (Refs [#4963](https://github.com/NicolaiDolmer/CyclingZone/issues/4963), [#4960](https://github.com/NicolaiDolmer/CyclingZone/issues/4960), [#4547](https://github.com/NicolaiDolmer/CyclingZone/issues/4547), [#2040](https://github.com/NicolaiDolmer/CyclingZone/issues/2040)):
+> `traffic_events` og Microsoft Clarity er usammenlignelige hen over 1/9 2026. **Ny baseline fra 2/9.**
+> Serien FØR 1/9 tæller indloggede spilleres ruteskift med — `TrafficBeacon` fyrede i et kort vindue
+> før sessionen var afgjort; PR #4547 (React 19 + react-router 8) lukkede det vindue, og Clarity blev
+> ramt af samme deploy. De gamle tal var oppustede, de nye er ikke undertrykte.
+> **Beslutning:** beaconens nuværende definition (kun offentlige, udloggede sider — den oprindelige
+> hensigt i #2040) er accepteret som den rigtige. Ingen kodeændring af beaconen.
+> **Ved triage:** brug `player_events`/`growth_metric_snapshots` til **hvor mange** spiller (serverside,
+> kan ikke knække af et frontend-deploy); brug Clarity til **hvordan** de klikker. Sammenlign aldrig en
+> uge før 1/9 med en uge efter på `traffic_events` eller Clarity alene.
+
+---
+
 ## Reference til loops
 
 Se `docs/AI_LOOPS.md` for fuld spec på alle 9 loops (A-I).
@@ -235,4 +250,4 @@ Quick reference:
 
 ---
 
-_Sidst opdateret: 2026-08-31 — PR-preflight/verifikations-tiers + dependency-sync flyttet hertil fra `CLAUDE.md` per [#2682](https://github.com/NicolaiDolmer/CyclingZone/issues/2682) (token-trim). Oprettet 2026-05-29 ved split af `AGENTS.md` per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733); indhold flyttet fra AGENTS.md (delt context-disciplin: GitHub/OneDrive er sandhed, lokale agent-filer er kun caches)._
+_Sidst opdateret: 2026-09-07 — Metrik-brud-log tilføjet (1/9-telemetribrud, [#4963](https://github.com/NicolaiDolmer/CyclingZone/issues/4963)). Forrige: 2026-08-31 — PR-preflight/verifikations-tiers + dependency-sync flyttet hertil fra `CLAUDE.md` per [#2682](https://github.com/NicolaiDolmer/CyclingZone/issues/2682) (token-trim). Oprettet 2026-05-29 ved split af `AGENTS.md` per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733); indhold flyttet fra AGENTS.md (delt context-disciplin: GitHub/OneDrive er sandhed, lokale agent-filer er kun caches)._
