@@ -15,7 +15,7 @@ import { DENY_URLS, isKnownExtensionNoise } from "./sentryDenyUrls.js";
 // #4595: release-sha'en læses fra <meta name="cz-release"> i HTML'en, IKKE fra
 // import.meta.env — en deploy-unik streng i bundlen roterer entry-chunkens hash
 // på hvert deploy og gør alle åbne faner stale. Se lib/release.js.
-import { getSentryRelease } from "./release.js";
+import { getRelease, getSentryRelease } from "./release.js";
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
 const ENABLED = import.meta.env.PROD && Boolean(DSN);
@@ -105,7 +105,8 @@ export function SentryBoundary({ children }) {
         // men de daempes ikke i Sentry — saa et aegte crash forbliver synligt,
         // og du kan maale hvor stor den tvetydige bunke faktisk er.
         scope.setTag("frontend_error_kind", classifyFrontendError(error));
-        if (RELEASE) scope.setTag("frontend_release", RELEASE);
+        const release = getSentryRelease();
+        if (release) scope.setTag("frontend_release", release);
       }}
       fallback={(props) => <AppErrorFallback {...props} />}
     >
@@ -134,7 +135,8 @@ export function AnalyticsBoundary({ children }) {
       beforeCapture={(scope, error) => {
         scope.setTag("frontend_error_kind", classifyFrontendError(error));
         scope.setTag("frontend_error_scope", "analytics");
-        if (RELEASE) scope.setTag("frontend_release", RELEASE);
+        const release = getSentryRelease();
+        if (release) scope.setTag("frontend_release", release);
       }}
       fallback={null}
     >
@@ -223,7 +225,7 @@ function AppErrorFallback({ error, eventId, resetError }) {
       if (cancelled || !alive) return;
       const shouldReload = shouldAttemptChunkReload({
         error,
-        release: RELEASE,
+        release: getRelease(),
         storage: window.sessionStorage,
       });
       if (shouldReload) {
