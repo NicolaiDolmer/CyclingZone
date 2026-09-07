@@ -103,8 +103,14 @@ for (const vp of VIEWPORTS) {
     }
 
     // b/c) Roadmap-fanen som ikke-admin (ingen knap + forklaring) og som admin.
+    //
+    // Vent paa den ROLLE-afhaengige del, ikke bare paa at listen kom: rollen
+    // hentes asynkront, og et billede taget foer den lander ville vise
+    // spiller-tilstanden med "admin" i filnavnet.
     await page.goto("/forum?category=roadmap");
     await page.getByText("What I am building next").first().waitFor();
+    if (role === "admin") await page.getByRole("button", { name: /^New post$/ }).waitFor();
+    else await page.getByText("Only I post here").waitFor();
     await page.screenshot({
       path: resolve(OUT, `${role === "admin" ? "c-roadmap-admin" : "b-roadmap-player"}-${vp.name}.png`),
     });

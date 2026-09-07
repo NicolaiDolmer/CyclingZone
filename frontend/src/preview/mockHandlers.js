@@ -579,14 +579,21 @@ const FORUM_POSTS = [
   {
     id: "forum-roadmap-1",
     seq: 5,
-    created_at: "2026-08-06T08:00:00Z",
+    // Traaden skal vaere aeldre end sit eget seneste svar (07:45), ellers viser
+    // PostRow opslagets egen dato i stedet for svaret — en umulig raekkefoelge.
+    created_at: "2026-08-05T20:00:00Z",
     category: "roadmap",
     title: "What I am building next",
-    excerpt: "Race replays first, then the transfer window rework. Ask me anything in here.",
-    body: "Race replays first, then the transfer window rework. Ask me anything in here.",
+    // Bevidst uden konkrete loefter: seedet vises i preview og paa
+    // PR-screenshots, og en mock maa ikke se ud som et roadmap-tilsagn om
+    // features der ikke er besluttet.
+    excerpt: "This is where I post what I am working on. Ask me anything in here.",
+    body: "This is where I post what I am working on. Ask me anything in here.",
     is_pinned: false,
     reply_count: 3,
     last_reply_at: "2026-08-06T07:45:00Z",
+    // #5000: samme svar som forumPostDetail returnerer nederst i traaden (r3).
+    last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: false,
     is_unread: false,
     author: FORUM_AUTHOR_OWNER,
