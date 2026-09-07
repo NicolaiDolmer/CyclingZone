@@ -269,6 +269,34 @@ export function seededUnit(key) {
   return (h >>> 0) / 4294967296;
 }
 
+// ── #4987: avalanche-mixet variant af seededUnit, til nøgler der gentages
+//    MANGE gange pr. entitet med kun en lille hale-ændring (typisk en dato-
+//    streng, "dtick:{riderId}:{dateStr}") — det mønster hvor rå FNV-1a viste
+//    sig IKKE at blande nok: når kun de sidste tegn i nøglen ændrer sig, får de
+//    kun ÉT ekstra xor+multiply-trin at diffundere igennem, og det er for lidt
+//    avalanche til at bryde korrelationen mellem to nabo-nøgler. Målt i prod
+//    7/9: 25 % af 4.998 menneskeholds-ryttere havde NUL "over"/skarpe dage på
+//    30 dage (forventet ~0,02 % ved uafhængige daglige udfald) — samme rytter
+//    sad fast i samme tredjedel af [0,1) i ugevis.
+//
+// Fix: kør FNV-1a's output gennem murmur3's fmix32-finalizer (3× xor-shift +
+// multiply) FØR division til [0,1). Finaliseren spreder alle 32 input-bit ud
+// over hele output-ordet, så to nøgler der kun adskiller sig i halen (to
+// nabodatoer, to nabo-sæsonnumre) giver visuelt uafhængige resultater — uden
+// at ændre determinismen (samme nøgle → samme output, altid). Vilkårlig
+// streng-nøgle ind, så den også kan bruges til #4846's kommende
+// `(season_id, game_day, rider_id)`-nøgle uden ændring.
+export function seededUnitMixed(key) {
+  let h = seededUnit(key) * 4294967296; // genbrug FNV-1a-kernen, tag rå 32-bit tilbage
+  h = h >>> 0;
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
 // Type-vægt pr. evne (positiv = signatur, negativ = modsat, 0 = neutral/off-type).
@@ -407,7 +435,12 @@ export function retirementDecision(age, riderId, season, cfg = PROGRESSION_CONFI
   if (age < windowStartAge) return { retire: false, notice: false };
   if (age >= guaranteedAge) return { retire: true, notice: true };
   const p = (age - windowStartAge) / (guaranteedAge - windowStartAge);
-  const roll = seededUnit(`retire:${riderId}:${season}`);
+  // #4987-backwards-check: seededUnitMixed, ikke rå seededUnit — konsekutive
+  // sæsonnumre (1,2,3…) rammer samme hale-blandings-svaghed som datostrenge.
+  // Målt: uden mixer sad ~27 % af ryttere fast i samme tredjedel af [0,1) hele
+  // pensionsvinduet igennem (enten "altid under p" ⇒ pensionerer straks
+  // vinduet åbner, eller "altid over p" ⇒ trækker helt til guaranteedAge).
+  const roll = seededUnitMixed(`retire:${riderId}:${season}`);
   return { retire: roll < p, notice: roll < p };
 }
 
@@ -466,7 +499,10 @@ export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRES
     }
     const isSig = signatureFactor(type, ability, cfg) >= 1.0;
     const cap = caps?.[ability] ?? abilityCap(cur, type, ability, rider.potentiale, cfg);
-    const noiseUnit = seededUnit(`grow:${rider.id}:${season}:${ability}`);
+    // #4987-backwards-check: seededUnitMixed — samme sæson-hale-svaghed som
+    // retirementDecision ovenfor (konsekutive sæsonnumre klumper i samme
+    // tredjedel), her på sæsonens vækst/decline-støj (cfg.growthNoise-båndet).
+    const noiseUnit = seededUnitMixed(`grow:${rider.id}:${season}:${ability}`);
     const potRate = youthRateForPotential(rider.potentiale);
     const growthMult = (training
       ? (training.focusAbilities.has(ability) ? training.focusMult : training.offFocusMult)

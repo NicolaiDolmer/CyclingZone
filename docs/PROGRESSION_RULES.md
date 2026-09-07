@@ -105,6 +105,7 @@ Ejer-beslutning 13/8, "tredje vej": potentiale forbliver **1-6 internt**, UI vis
 | Signatur-raten (§1) er ANKERET til dagens ratingniveau, ikke til spidsen | `ROLE_CLASS_RATE.signatur`, kommentar i `riderProgression.js` | ✅ ejer-ramme 15/8 (audit §C17): alle ender lidt lavere i snit, men agens-spændet (det manageren kan påvirke) vokser |
 | Scouting-bånd maskeres FØR bias/halvbredde lægges på (rækkefølgen må ikke byttes) | `scoutingReport.js`, `scoutingInversionHarness.js` | ✅ |
 | Trænings-scorens dagsstøj skal hæves mod en privatlivs-gate (median ≥ X dage før potentiale kan aflæses) | `noiseSpan` i `dailyTraining.js` | ❌ gaten findes ikke |
+| Dags-/sæson-seedet støj (træning, race-dag, skade, aldring, form-nulstilling) SKAL bruge `seededUnitMixed()`, ikke rå `seededUnit()` — rå FNV-1a blander for lidt når kun nøglens hale (dato eller sæsonnummer) ændrer sig, så samme rytter sad fast i samme tredjedel af `[0,1)` i uger/sæsoner ad gangen (målt 7/9: 25 % af ryttere med 0 "over"-dage/30 dage) | `seededUnitMixed()` i `riderProgression.js` | ✅ #4987 |
 | Scouting afslører kun RETNINGEN, aldrig niveauet | — | ❌ ikke bygget, afhænger af trænings-scorens privatliv ovenfor |
 
 ---

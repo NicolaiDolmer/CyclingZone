@@ -2,7 +2,7 @@
 // Genbruger L0'ens budget (growthFractionByAge) delt i daglige bidder med compounding:
 // dag-rate = residual-gap × f(age)/daysPerSeason. Over en sæson ≈ gap×e^(−f) ~ L0's gap×(1−f).
 // dailyBudgetBoost kalibreres i scripts/previewDailyTraining.js så peak rammer 27-28 (spec 5.2).
-import { PROGRESSION_CONFIG, seededUnit, youthRateForPotential, roleRateFactor, ROLE_CLASS_RATE } from "./riderProgression.js";
+import { PROGRESSION_CONFIG, seededUnitMixed, youthRateForPotential, roleRateFactor, ROLE_CLASS_RATE } from "./riderProgression.js";
 import { TRAINING_CONFIG, TRAINING_FOCUSES, focusAbilityWeight, smartDefaultFocus } from "./training.js";
 import { dayTypeForProgram, RECOVERY_INTENSITY } from "./trainingDayTypes.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
@@ -198,7 +198,10 @@ export function applyDailyTick({
   primaryType = null, secondaryType = null, trainingCfg = TRAINING_CONFIG,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
-  const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnit(`dtick:${riderId}:${dateStr}`);
+  // #4987: seededUnitMixed (avalanche-finaliseret), IKKE rå seededUnit — rå FNV-1a
+  // blandede for lidt når kun dato-halen skiftede, så samme rytter sad fast i
+  // samme tredjedel af [0,1) i ugevis (25 % af ryttere med 0 "over"-dage/30 dage).
+  const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnitMixed(`dtick:${riderId}:${dateStr}`);
   const nextAbilities = { ...abilities };
   const nextProgress = { ...(progress ?? {}) };
   const gains = {};
@@ -275,7 +278,8 @@ export function applyRaceDevelopmentTick({
   // Egen seed-namespace ("rtick" vs. "dtick") — samme (rider,dato)-par kan ALDRIG
   // ramme begge stier samme dag (gensidigt udelukkende), men et separat namespace
   // holder de to tick-typers noise uafhængige for læsbarhed/fremtidssikring.
-  const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnit(`rtick:${riderId}:${dateStr}`);
+  // #4987: samme mixer-fix som applyDailyTick ovenfor (avalanche-finaliseret seed).
+  const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnitMixed(`rtick:${riderId}:${dateStr}`);
   const nextAbilities = { ...abilities };
   const nextProgress = { ...(progress ?? {}) };
   const gains = {};

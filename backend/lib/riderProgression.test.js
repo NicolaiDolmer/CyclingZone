@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  PROGRESSION_CONFIG, seededUnit, signatureFactor, headroomForPotential,
+  PROGRESSION_CONFIG, seededUnit, seededUnitMixed, signatureFactor, headroomForPotential,
   peakAgeForType, abilityCap, stepAbility, retirementDecision,
   developRiderSeason, buildCaps,
   youthRoleFactor, YOUTH_PROGRESSION_CONFIG,
@@ -23,6 +23,94 @@ test("seededUnit er deterministisk og ∈ [0,1)", () => {
   assert.equal(a, seededUnit("rider-1:3:climbing"));
   assert.notEqual(a, seededUnit("rider-1:4:climbing"));
   assert.ok(a >= 0 && a < 1);
+});
+
+// ── #4987: seededUnitMixed — avalanche-finaliseret variant til gentagne
+//    nøgler pr. entitet (dato- eller sæson-hale), se retirementDecision/
+//    stepAbility/seasonResetForm (bagudkompatibilitets-check) og
+//    dailyTraining.js's dtick/rtick, samt riderCondition.js's injury-seeds.
+test("seededUnitMixed er deterministisk og ∈ [0,1), som seededUnit", () => {
+  const a = seededUnitMixed("dtick:rider-1:2026-06-20");
+  assert.equal(a, seededUnitMixed("dtick:rider-1:2026-06-20"));
+  assert.notEqual(a, seededUnitMixed("dtick:rider-1:2026-06-21"));
+  assert.ok(a >= 0 && a < 1);
+});
+
+// Regressions-guard for selve #4987-fejlen: rå FNV-1a (seededUnit) blander for
+// lidt når kun hale-tegnene i nøglen ændrer sig (dato der tæller op, eller
+// konsekutive sæsonnumre), så samme rytter sidder fast i samme tredjedel af
+// [0,1) i ugevis/sæsoner. seededUnitMixed SKAL bryde det mønster.
+test("seededUnitMixed: ingen ryttere fastlåst i samme tredjedel over 60 dage (autokorrelations-guard, #4987)", () => {
+  const RIDER_COUNT = 200;
+  const DAY_COUNT = 60;
+  const riderIds = Array.from({ length: RIDER_COUNT }, (_, i) => `4987-guard-rider-${i}-${"x".repeat(i % 7)}`);
+
+  function dateStrFor(dayIndex) {
+    const d = new Date(Date.UTC(2026, 0, 1));
+    d.setUTCDate(d.getUTCDate() + dayIndex);
+    return d.toISOString().slice(0, 10);
+  }
+  const dateStrs = Array.from({ length: DAY_COUNT }, (_, d) => dateStrFor(d));
+
+  let zeroOverRiders = 0;
+  const counts = { over: 0, normal: 0, under: 0 };
+  for (const riderId of riderIds) {
+    let overDays = 0;
+    for (const dateStr of dateStrs) {
+      const unit = seededUnitMixed(`dtick:${riderId}:${dateStr}`);
+      const noise = 1 - 0.15 + 2 * 0.15 * unit; // samme formel som DAILY_TRAINING_CONFIG.noiseSpan=0.15
+      const status = noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal";
+      counts[status]++;
+      if (status === "over") overDays++;
+    }
+    if (overDays === 0) zeroOverRiders++;
+  }
+
+  const zeroOverPct = (100 * zeroOverRiders) / RIDER_COUNT;
+  assert.ok(zeroOverPct < 1, `forventede < 1 % ryttere med 0 over-dage, fik ${zeroOverPct.toFixed(2)} %`);
+
+  // Samlet fordeling skal stadig være ~1/3-1/3-1/3 (chi-i-anden-agtig tolerance:
+  // hver bucket inden for ±5 procentpoint af 33,3 %).
+  const total = RIDER_COUNT * DAY_COUNT;
+  for (const bucket of ["over", "normal", "under"]) {
+    const pct = (100 * counts[bucket]) / total;
+    assert.ok(Math.abs(pct - 33.33) < 5, `${bucket}-andelen ${pct.toFixed(1)} % afviger for meget fra 1/3`);
+  }
+});
+
+// Kontrol-eksempel: BEVISER at problemet var reelt ved at vise at den GAMLE
+// (rå seededUnit) hash på SAMME nøglemønster giver en markant højere andel
+// fastlåste ryttere end den nye mixer — dokumenterer regressionen, ikke kun
+// fraværet af den.
+test("kontrol: rå seededUnit viser MARKANT flere fastlåste ryttere end seededUnitMixed på samme nøgler (#4987 dokumentation)", () => {
+  const RIDER_COUNT = 200;
+  const DAY_COUNT = 60;
+  const riderIds = Array.from({ length: RIDER_COUNT }, (_, i) => `4987-control-rider-${i}`);
+  function dateStrFor(dayIndex) {
+    const d = new Date(Date.UTC(2026, 0, 1));
+    d.setUTCDate(d.getUTCDate() + dayIndex);
+    return d.toISOString().slice(0, 10);
+  }
+  const dateStrs = Array.from({ length: DAY_COUNT }, (_, d) => dateStrFor(d));
+
+  function zeroOverPctFor(hashFn) {
+    let zeroOverRiders = 0;
+    for (const riderId of riderIds) {
+      let overDays = 0;
+      for (const dateStr of dateStrs) {
+        const unit = hashFn(`dtick:${riderId}:${dateStr}`);
+        const noise = 1 - 0.15 + 2 * 0.15 * unit;
+        if (noise > 1.05) overDays++;
+      }
+      if (overDays === 0) zeroOverRiders++;
+    }
+    return (100 * zeroOverRiders) / RIDER_COUNT;
+  }
+
+  const before = zeroOverPctFor(seededUnit);
+  const after = zeroOverPctFor(seededUnitMixed);
+  assert.ok(before > 2, `forventede at rå seededUnit viser en tydelig fejl (>2 %), fik ${before.toFixed(2)} %`);
+  assert.ok(after < 1, `forventede at seededUnitMixed retter fejlen (<1 %), fik ${after.toFixed(2)} %`);
 });
 
 test("developRiderSeason er en ren funktion (samme input → samme output)", () => {
@@ -141,6 +229,35 @@ test("retirement-sandsynlighed stiger med alder (mange ryttere)", () => {
     return n / 500;
   };
   assert.ok(rate(37) > rate(36), "ældre = højere retirement-rate");
+});
+
+// #4987-backwards-check: retirementDecision() bruger seededUnit(`retire:${riderId}:
+// ${season}`) — KONSEKUTIVE sæsonnumre (1,2,3…) rammer samme hale-blandings-svaghed
+// som datostrenge (målt FØR fixet: ~27 % af ryttere fastlåst i samme tredjedel af
+// [0,1) i alle 20 sæsoner). En rytter fastlåst UNDER sin egen retirement-sandsynlighed
+// p ville pensionere PRÆCIS ved windowStartAge, hver gang — en fastlåst OVER p ville
+// aldrig pensionere før guaranteedAge tvinger det. Guard: for en fast alder midt i
+// vinduet (p ≈ 0,5) skal andelen af ryttere hvis roll ligger i SAMME halvdel
+// (over/under p) i ALLE 20 sæsoner være lav (<5 %) — uafhængige rolls ville give
+// (0.5)^20 ≈ 0,0001 %, så 5 % er en rummelig, men reel, regressions-guard.
+test("retirement: ingen ryttere fastlåst i samme halvdel af rollet over 20 sæsoner (autokorrelations-guard, #4987)", () => {
+  const cfg = PROGRESSION_CONFIG;
+  const { windowStartAge, guaranteedAge } = cfg.retirement;
+  const midAge = Math.round((windowStartAge + guaranteedAge) / 2); // p ≈ 0.5
+  const RIDER_COUNT = 300;
+  const SEASON_COUNT = 20;
+
+  let lockedRiders = 0;
+  for (let i = 0; i < RIDER_COUNT; i++) {
+    const riderId = `4987-retire-guard-${i}`;
+    let overCount = 0;
+    for (let season = 1; season <= SEASON_COUNT; season++) {
+      if (retirementDecision(midAge, riderId, season, cfg).retire) overCount++;
+    }
+    if (overCount === 0 || overCount === SEASON_COUNT) lockedRiders++;
+  }
+  const lockedPct = (100 * lockedRiders) / RIDER_COUNT;
+  assert.ok(lockedPct < 5, `forventede < 5 % ryttere fastlåst i samme halvdel over ${SEASON_COUNT} sæsoner, fik ${lockedPct.toFixed(2)} %`);
 });
 
 // ── #2748 pension-minimum: selektor vs. motor ─────────────────────────────────

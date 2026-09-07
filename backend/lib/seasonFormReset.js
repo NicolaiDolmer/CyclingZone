@@ -49,7 +49,7 @@
 //   operatørs "kør sæsonskiftet igen for en sikkerheds skyld" giver dermed
 //   nøjagtig samme sluttilstand som én kørsel.
 
-import { seededUnit } from "./riderProgression.js";
+import { seededUnitMixed } from "./riderProgression.js";
 import { fetchAllPaged } from "./dbChunk.js";
 
 export const SEASON_FORM_RESET_MODE_KEY = "season_form_reset_mode";
@@ -159,7 +159,10 @@ export function seasonResetForm({
     }
     const lo = Math.min(bandMin, bandMax);
     const hi = Math.max(bandMin, bandMax);
-    const unit = seededUnit(`form_reset:${riderId}:${season}`);
+    // #4987-backwards-check: seededUnitMixed — samme sæson-hale-svaghed som
+    // retirementDecision/stepAbility (riderProgression.js): konsekutive
+    // sæsonnumre klumper i samme tredjedel af [0,1) uden avalanche-finalisering.
+    const unit = seededUnitMixed(`form_reset:${riderId}:${season}`);
     return clampInt(lo + unit * (hi - lo), NEUTRAL_FORM);
   }
 
