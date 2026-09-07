@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-07T06:28:21.873Z",
-  "main_sha": "4169218d7bb2a874b5bf3f29964479667b436322",
+  "generated_at": "2026-09-07T12:56:01.590Z",
+  "main_sha": "7153e6aa5f1277929cf5075239ca518c59e9417a",
   "population_file": "backend/scripts/baselines/population-snapshot-2026-09-07.json",
   "population_file_sha256_16": "d59b8cf3d03b2d71",
   "population_riders": 5955,
@@ -33,13 +33,13 @@
         }
       },
       "v4": {
-        "value": 0.31134259259259256,
+        "value": 0.29265046296296293,
         "sampleCount": 96,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
-          "min": 0.2987847222222222,
-          "max": 0.32013888888888886,
+          "min": 0.26597222222222217,
+          "max": 0.31302083333333336,
           "seeds": 3
         }
       }
@@ -61,13 +61,13 @@
         }
       },
       "v4": {
-        "value": 0.3866830838099749,
+        "value": 0.42514372525782584,
         "sampleCount": 42,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.2600597159457706,
-          "max": 0.5164017717561259,
+          "min": 0.2919448558018113,
+          "max": 0.576703613357868,
           "seeds": 3
         }
       }
@@ -86,7 +86,7 @@
       },
       "v4": {
         "value": 20,
-        "sampleCount": 1500,
+        "sampleCount": 1509,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
@@ -113,13 +113,13 @@
         }
       },
       "v4": {
-        "value": 0.8263063760790867,
+        "value": 0.8311875228556506,
         "sampleCount": 51,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.8213057084177485,
-          "max": 0.830550145968031,
+          "min": 0.8279292417884729,
+          "max": 0.8347092800019288,
           "seeds": 3
         }
       }
@@ -141,13 +141,13 @@
         }
       },
       "v4": {
-        "value": 0.06084263909999984,
+        "value": 0.07524360217832582,
         "sampleCount": 9,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.017154855938355085,
-          "max": 0.11211282304678138,
+          "min": 0.03336970999805655,
+          "max": 0.11912322005843334,
           "seeds": 3
         }
       }
@@ -169,13 +169,13 @@
         }
       },
       "v4": {
-        "value": 0.5744680851063829,
+        "value": 0.5366430260047281,
         "sampleCount": 423,
         "verdict": "FAIL",
         "naReason": null,
         "spread": {
-          "min": 0.5319148936170213,
-          "max": 0.6028368794326241,
+          "min": 0.49645390070921985,
+          "max": 0.574468085106383,
           "seeds": 3
         }
       }
@@ -277,13 +277,13 @@
         }
       },
       "v4": {
-        "value": 0.8224248149940699,
+        "value": 0.8330112642569731,
         "sampleCount": 36,
         "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 0.8120888423455366,
-          "max": 0.8324000543086275,
+          "min": 0.8086374709469785,
+          "max": 0.8454537559007026,
           "seeds": 3
         }
       }
@@ -333,13 +333,13 @@
         }
       },
       "v4": {
-        "value": 132.15190476190466,
+        "value": 208.9020634920637,
         "sampleCount": 63,
-        "verdict": "FAIL",
+        "verdict": "PASS",
         "naReason": null,
         "spread": {
-          "min": 120.99857142857165,
-          "max": 147.52380952380918,
+          "min": 198.75476190476166,
+          "max": 227.66285714285792,
           "seeds": 3
         }
       }

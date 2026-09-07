@@ -472,24 +472,24 @@ node backend/scripts/buildV4AnchorBaseline.mjs && node backend/scripts/renderV4A
 
 > **Genereret af harnesset, ikke haandskrevet** (#4911). Kilde: `backend/scripts/baselines/v4-anchor-baseline.json`, produceret af `backend/scripts/buildV4AnchorBaseline.mjs` fra den PINNEDE population + de PINNEDE proxy-etaper — samme to filer hver gang, saa et fremtidigt kalibrerings-PR maaler mod netop denne baseline, ikke en tilfaeldig koersel. Spaend i parentes er min-max over seeds.
 >
-> Pinnet: motor-sha `4169218d7b` · population `backend/scripts/baselines/population-snapshot-2026-09-07.json` (5955 ryttere, sha256 d59b8cf3d03b2d71) · etaper `backend/scripts/baselines/v4-proxy-stages-2026-09-06.json` (sha256 bbf6e20ce5293280) · seeds s1, s2, s3 · feltstoerrelse 180 · genereret 2026-09-07T06:28:21.873Z.
+> Pinnet: motor-sha `7153e6aa5f` · population `backend/scripts/baselines/population-snapshot-2026-09-07.json` (5955 ryttere, sha256 d59b8cf3d03b2d71) · etaper `backend/scripts/baselines/v4-proxy-stages-2026-09-06.json` (sha256 bbf6e20ce5293280) · seeds s1, s2, s3 · feltstoerrelse 180 · genereret 2026-09-07T12:56:01.590Z.
 >
 > **Refresh:** `node backend/scripts/buildV4AnchorBaseline.mjs && node backend/scripts/renderV4AnchorTable.mjs --write`
 
 | Anker | Baand (kilde) | v3 | v4 |
 |---|---|---|---|
-| Felt-sammenhaeng, flade etaper | 80.0%-95.0% (#3917-maalingen (mor-spec §5: "80-95% af feltet paa vinderens tid")) | 2.0 % (1.8 %-2.1 %) [FAIL] | 31.1 % (29.9 %-32.0 %) [FAIL] |
-| Nedkoersels-gaps vs. summit-gaps (ratio) | <= 0.5 (#3426-maalingen (mor-spec §5: nedkoersels-gaps vs. summit-gaps, ratio <=0,5 ved p5-p10)) | 0.56 (0.47-0.61) [FAIL] | 0.39 (0.26-0.52) [PASS] |
+| Felt-sammenhaeng, flade etaper | 80.0%-95.0% (#3917-maalingen (mor-spec §5: "80-95% af feltet paa vinderens tid")) | 2.0 % (1.8 %-2.1 %) [FAIL] | 29.3 % (26.6 %-31.3 %) [FAIL] |
+| Nedkoersels-gaps vs. summit-gaps (ratio) | <= 0.5 (#3426-maalingen (mor-spec §5: nedkoersels-gaps vs. summit-gaps, ratio <=0,5 ved p5-p10)) | 0.56 (0.47-0.61) [FAIL] | 0.43 (0.29-0.58) [PASS] |
 | Descent attack-gevinst (10-20s-loft, aldrig omvendt fortegn i gruppen) | 10-20s (ejer-valg 20/8 (mor-spec §4 M3 / §5: descent attack-gevinst-loft)) | n/a | 20s (20s-20s) [PASS] |
-| Punch-korrelation (punch-evne vs. placering paa punch-etaper) | spearman > 0.2 (#3965-harnesset (mor-spec §5)) | 0.76 (0.75-0.76) [PASS] | 0.83 (0.82-0.83) [PASS] |
-| Brostensevnens loeft paa brosten/grus (spearman-forskel vs. flad) | loeft >= 0.03 (FORSLAG, ikke ejer-godkendt) (FORSLAG (M8-wiring 6/9, #2789/#4105) — regressionsvagt for ejer-reglen 3/9 "brostensevnen taeller kun paa etaper med brosten/grus"; taersklen er valgt af denne harness, ikke ejer-godkendt) | 0.294 (0.277-0.324) [PASS] | 0.061 (0.017-0.112) [PASS] |
-| Felt-favoritters win-rate | 25.0%-40.0% (v3-spec §2 + ejer-valg 20/8 (mor-spec §5: "i dag 80-88%")) | 39.0 % (36.2 %-44.0 %) [PASS] | 57.4 % (53.2 %-60.3 %) [FAIL] |
+| Punch-korrelation (punch-evne vs. placering paa punch-etaper) | spearman > 0.2 (#3965-harnesset (mor-spec §5)) | 0.76 (0.75-0.76) [PASS] | 0.83 (0.83-0.83) [PASS] |
+| Brostensevnens loeft paa brosten/grus (spearman-forskel vs. flad) | loeft >= 0.03 (FORSLAG, ikke ejer-godkendt) (FORSLAG (M8-wiring 6/9, #2789/#4105) — regressionsvagt for ejer-reglen 3/9 "brostensevnen taeller kun paa etaper med brosten/grus"; taersklen er valgt af denne harness, ikke ejer-godkendt) | 0.294 (0.277-0.324) [PASS] | 0.075 (0.033-0.119) [PASS] |
+| Felt-favoritters win-rate | 25.0%-40.0% (v3-spec §2 + ejer-valg 20/8 (mor-spec §5: "i dag 80-88%")) | 39.0 % (36.2 %-44.0 %) [PASS] | 53.7 % (49.6 %-57.4 %) [FAIL] |
 | Samme-hold-top-10 (andel etaper med 4+ fra ét hold) | < 3.0% (v3-spec §2 (mor-spec §5: "4+ fra samme hold i top 10 sjaeldent, < 3%")) | 0.0 % (0.0 %-0.0 %) [PASS] | 0.0 % (0.0 %-0.0 %) [PASS] |
 | Udbruds-rater pr. terraen (descent-dominans 54% skal ned) | race:gate-baand (ingen fast tal her — se gate-konfig) (race:gate + #3426 (mor-spec §5)) | 21.7 % (16.3 %-25.5 %) [PASS] | n/a |
 | Sprinter-vinderrate paa flat (top-20%-sprint-evne vinder) | >= 90.0% (race:gate + #3149 (mor-spec §5: "sprinter-vinderrate paa flat >= 90%")) | 84.8 % (80.0 %-91.4 %) [FAIL] | 96.2 % (91.4 %-100.0 %) [PASS] |
-| ITT-korrelation (time_trial-evne vs. placering, synlig) | spearman > 0.3 (race:gate + #3149 (mor-spec §5: "ITT-korrelation synlig" — tærskel valgt af denne harness)) | 0.75 (0.74-0.76) [PASS] | 0.82 (0.81-0.83) [PASS] |
+| ITT-korrelation (time_trial-evne vs. placering, synlig) | spearman > 0.3 (race:gate + #3149 (mor-spec §5: "ITT-korrelation synlig" — tærskel valgt af denne harness)) | 0.75 (0.74-0.76) [PASS] | 0.83 (0.81-0.85) [PASS] |
 | Bonussekunder GC-effekt bounded (maks ~10s/etape) | <= 10s/etape pr. rytter (#2413-kravet (mor-spec §5)) | 13s (13s-13s) [FAIL] | 10s (10s-10s) [PASS] |
-| Bjergetape top-10-spredning, topankomster (#2415) | 180-240s (~3-4 min) (#2415 (gap-realisme-baand: bjergetape top-10 inden for ~3-4 min, PCS-niveau)) | 109s (107s-111s) [FAIL] | 132s (121s-148s) [FAIL] |
+| Bjergetape top-10-spredning, topankomster (#2415) | 180-240s (~3-4 min) (#2415 (gap-realisme-baand: bjergetape top-10 inden for ~3-4 min, PCS-niveau)) | 109s (107s-111s) [FAIL] | 209s (199s-228s) [PASS] |
 | GT-vindermargin (#2415) | 60-480s (1-8 min) (#2415 (gap-realisme-baand: GT-vindermargin typisk 1-8 min)) | n/a | n/a |
 
 <!-- v4-anchors:end -->
