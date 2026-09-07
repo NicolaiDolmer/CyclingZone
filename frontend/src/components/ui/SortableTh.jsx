@@ -44,17 +44,28 @@ export function SortIndicator({ active, dir }) {
   );
 }
 
+// #4989-fund (CodeRabbit): en <th onClick> uden fokuserbart element/tastatur-
+// handler kan ikke betjenes af tastatur-brugere. Klikket flyttes derfor til en
+// native <button type="button"> INDE i <th> — aria-sort/title/layout-className
+// bliver på <th> uændret (så eksisterende hidden/table-cell/padding-klasser
+// stadig virker), knappen arver farve/typografi via CSS-inheritance og får kun
+// en hairline fokus-ring (ingen skygge, ingen anden visuel ændring).
 export default function SortableTh({ children, sortKey, sort, sortDir, onSort, className = "", title }) {
   const active = sort === sortKey;
   return (
     <th
-      onClick={() => onSort(sortKey)}
       title={title}
       aria-sort={active ? (sortDir === "desc" ? "descending" : "ascending") : "none"}
-      className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}
+      className={className}
     >
-      {children}
-      <SortIndicator active={active} dir={sortDir} />
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={`block w-full bg-transparent border-0 p-0 m-0 text-inherit cursor-pointer select-none transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent-t/60 ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"}`}
+      >
+        {children}
+        <SortIndicator active={active} dir={sortDir} />
+      </button>
     </th>
   );
 }
