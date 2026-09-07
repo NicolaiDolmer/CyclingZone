@@ -1,6 +1,13 @@
--- Rigtige flag-raekker for tre "building"-features der IKKE kunne flyttes til
--- state: dormant i registret (#4928/#4938), fordi de kun har en fravaers-baseret
--- fail-safe i koden (raekken findes ikke = off), ikke en eksplicit row (#4951).
+-- Rigtige flag-raekker for features der IKKE kunne flyttes til state: dormant
+-- i registret (#4928/#4938), fordi de kun havde en fravaers-baseret fail-safe
+-- i koden (raekken findes ikke = off), ikke en eksplicit row (#4951).
+--
+-- #4951 navngav ogsaa "training-tick-system" som ramt, men det registrets-id
+-- peger paa et ANDET, bredere epic-4850-emne (docs/TRAINING_RULES.md) end
+-- race_day_development_enabled - den flag-noegle hoerer allerede til det
+-- separate id `race-day-development` (docs/PROGRESSION_RULES.md), som allerede
+-- var state: dormant + flag-feltet sat FOER denne PR (raekken fandtes allerede
+-- i prod). training-tick-system er derfor IKKE rørt her - se PR-beskrivelsen.
 --
 -- COMMITTES SOM .sql. Idempotent (INSERT ... ON CONFLICT (key) DO NOTHING), saa
 -- den kan koeres flere gange uden effekt. Applies post-merge under #2642-rammerne.

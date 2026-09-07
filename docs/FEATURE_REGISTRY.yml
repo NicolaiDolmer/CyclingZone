@@ -291,11 +291,10 @@ features:
     area: training
     title_en: Training tick system
     title_da: Tick-baseret træning
-    state: dormant
+    state: building
     ssot: docs/TRAINING_RULES.md
     epic: 4850
-    verified: 2026-09-07
-    note: Række race_day_development_enabled = "off" i prod (D1+D2, #4277/#4951). Genindføres til S4 pr. ejer-beslutning 26/8, jf. #4850.
+    verified: 2026-09-06
 
   - id: season-fatigue-reset
     area: training
