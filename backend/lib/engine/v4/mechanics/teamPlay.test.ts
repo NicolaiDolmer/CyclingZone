@@ -21,7 +21,7 @@ import {
   teamPlayHook,
 } from "./teamPlay.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
-import { boundRngFor } from "../rng.ts";
+import { makeHookCtx, rekeyHookCtxForSegment } from "../testUtils/makeHookCtx.ts";
 import type {
   AbilityKey,
   EffortLevel,
@@ -123,16 +123,15 @@ function scenario(specs: Spec[], profileType: ProfileType = "mountain", distance
     riders,
     virtual_gc: Object.fromEntries(specs.map((s) => [s.id, 0])),
   };
-  const ctx: SegmentHookContext = {
+  // #4949: ctx spejler segmentLoop.ts's noegling (segment-noeglet rngFor).
+  const ctx: SegmentHookContext = makeHookCtx({
     segment,
     segmentIndex: 0,
     route,
     entrants,
     tuning: RACE_V4_TUNING,
-    rngFor: boundRngFor("team-play-test"),
-    rngForStage: boundRngFor("team-play-test"),
-    orders: [],
-  };
+    seed: "team-play-test",
+  });
   return { state, ctx, entrants, riders, group };
 }
 
@@ -430,7 +429,10 @@ test("granularitet: prisen over en etape er den samme uanset hvor fint ruten er 
     const width = 200 / count;
     for (let i = 0; i < count; i++) {
       const segment: Segment = { kind: "flat", from_km: i * width, to_km: (i + 1) * width };
-      current = teamPlayHook(current, { ...ctx, segment, segmentIndex: i }).state;
+      // #4949: re-noegler rngFor til det nye segmentIndex (samme rngForStage-
+      // stream genbrugt) — ellers ville hvert segment i loekken faa den SAMME
+      // foerste lodtraekning, praecis den fejlklasse #4886 fandt i produktion.
+      current = teamPlayHook(current, rekeyHookCtxForSegment(ctx, segment, i)).state;
     }
     return { helper: factorOf(current, "h1"), captain: factorOf(current, "cap") };
   };

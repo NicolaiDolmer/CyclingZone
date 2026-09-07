@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import fc from "fast-check";
 
 import { computeFinaleAbilityScore, finaleHook } from "./finale.ts";
-import { boundRngFor } from "./rng.ts";
+import { makeHookCtx } from "./testUtils/makeHookCtx.ts";
 import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
 import { RACE_V4_TUNING } from "./tuning.ts";
 import type {
@@ -68,24 +68,24 @@ function makeCtx(args: {
   segment?: Segment;
   seed?: string;
 }): SegmentHookContext {
+  const segment = args.segment ?? FINALE_SEGMENT;
   const route: RouteV2 = {
     distance_km: 150,
     profile_type: "hilly",
     finale_type: args.finaleType ?? null,
-    segments: [args.segment ?? FINALE_SEGMENT],
+    segments: [segment],
     weather: { kind: "sun", wind_exposure: 0.1 },
     waypoints: [],
   };
-  return {
-    segment: args.segment ?? FINALE_SEGMENT,
+  // #4949: ctx spejler segmentLoop.ts's noegling (segment-noeglet rngFor).
+  return makeHookCtx({
+    segment,
     segmentIndex: 0,
     route,
     entrants: args.entrants,
     tuning: RACE_V4_TUNING,
-    rngFor: boundRngFor(args.seed ?? "finale-test-seed"),
-    rngForStage: boundRngFor(args.seed ?? "finale-test-seed"),
-    orders: [],
-  };
+    seed: args.seed ?? "finale-test-seed",
+  });
 }
 
 function buildState(groups: RaceGroup[], riders: Record<string, RiderState>): EngineState {

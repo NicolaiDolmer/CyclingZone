@@ -16,7 +16,7 @@ import {
   type BreakawayTeamOrder,
   TEAM_TACTICS_ORDER_KIND,
 } from "./breakaway.ts";
-import { boundRngFor } from "../rng.ts";
+import { makeHookCtx, rekeyHookCtxForSegment } from "../testUtils/makeHookCtx.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
 import type { AbilityKey, Entrant, EngineState, RaceGroup, RiderState, RouteV2, TimelineEvent } from "../types.ts";
 
@@ -96,14 +96,14 @@ function buildFieldScenario(
   const group: RaceGroup = { id: "peloton-0", kind: "peloton", rider_ids: riderIds, gap_seconds: 0, cohesion: 1 };
   const state: EngineState = { km: 0, groups: [group], riders, virtual_gc: {} };
   const segment = route.segments[segmentIndex] ?? { kind: "flat" as const, from_km: 0, to_km: 10 };
-  const ctx: BreakawayHookContext = {
+  // #4949: ctx spejler segmentLoop.ts's noegling (segment-noeglet rngFor).
+  const ctx: BreakawayHookContext = makeHookCtx({
     segment,
     segmentIndex,
     route,
     entrants: entrantsById,
     tuning: RACE_V4_TUNING,
-    rngFor: boundRngFor(seed),
-    rngForStage: boundRngFor(seed),
+    seed,
     // Ordrerne naar hooket gennem den AABNE TeamOrder-konvolut (#4615) —
     // praecis som orders/teamOrdersAdapter.ts skriver dem i produktion.
     orders: (orders ?? []).map((o) => ({
@@ -111,7 +111,7 @@ function buildFieldScenario(
       kind: TEAM_TACTICS_ORDER_KIND,
       params: { breakaway_stance: o.breakaway_stance, riders: o.riders },
     })),
-  };
+  });
   return { state, ctx };
 }
 
@@ -321,7 +321,10 @@ test("staerkt sprinterfelt + chase-stance + svagt udbrud: udbruddet fanges (brea
   let state = afterFormation.state;
   let caughtSomewhere = false;
   for (let segIdx = 1; segIdx < route.segments.length; segIdx++) {
-    const ctx = { ...ctx0, segment: route.segments[segIdx], segmentIndex: segIdx };
+    // #4949: re-noegler rngFor til det nye segmentIndex (samme rngForStage-
+    // stream genbrugt) — ellers ville hvert segment i loekken faa den SAMME
+    // foerste lodtraekning, praecis den fejlklasse #4886 fandt i produktion.
+    const ctx = rekeyHookCtxForSegment(ctx0, route.segments[segIdx], segIdx);
     const result = breakawayHook(state, ctx);
     state = result.state;
     const chaseGroup = state.groups.find((g) => g.kind === "peloton" || g.kind === "chase");
@@ -344,7 +347,10 @@ test("staerkt udbrud + let_go-stance: udbruddet overlever til maal (breakaway_su
   let state = afterFormation.state;
   let lastEvents: TimelineEvent[] = [];
   for (let segIdx = 1; segIdx < route.segments.length; segIdx++) {
-    const ctx = { ...ctx0, segment: route.segments[segIdx], segmentIndex: segIdx };
+    // #4949: re-noegler rngFor til det nye segmentIndex (samme rngForStage-
+    // stream genbrugt) — ellers ville hvert segment i loekken faa den SAMME
+    // foerste lodtraekning, praecis den fejlklasse #4886 fandt i produktion.
+    const ctx = rekeyHookCtxForSegment(ctx0, route.segments[segIdx], segIdx);
     const result = breakawayHook(state, ctx);
     state = result.state;
     lastEvents = result.events;
