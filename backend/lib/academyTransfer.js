@@ -11,9 +11,11 @@
 //
 //   • demote(...)   — flyt en U23-senior-rytter NED i akademiet (D5-berettigelse).
 //     Kører via demote_rider_to_academy-RPC'en under advisory-lås (akademi-8-cap +
-//     atomisk sletning af fremtidige race_entries). Løn gen-beregnes til ungdomsrate,
-//     men kontrakt-TERMEN arves uændret hvis rytteren allerede har en komplet
-//     kontrakt (#3620) — kun en kontraktløs rytter får akademi-aftalen.
+//     atomisk sletning af fremtidige race_entries). Løn OG kontrakt-TERM arves
+//     UÆNDRET hvis rytteren allerede har en komplet kontrakt (#4589 — samme
+//     #1309/#2881-invariant som promote() og contractOnAcquirePatch: en
+//     akademi-flytning er ikke en kontrakt-fornyelse); kun en reelt kontraktløs
+//     rytter får en frisk akademi-løn + -aftale (create-if-missing, #3620).
 //
 // Spec: docs/superpowers/specs/2026-06-25-race-hub-program-design.md §5 S7 + D5.
 //
@@ -38,9 +40,45 @@ import { findPendingGraduation } from "./academyGraduation.js";
  * Demote-løn (#2594): samme delte formel som al anden løn —
  * current_production_value × SALARY_RATE_PRODUCTION (computeFrozenSalary, #3989).
  * Ét fælles løn-system (#2083-princippet), nu på produktions-basen.
+ *
+ * Bruges KUN til at prissætte en FRISK akademi-kontrakt (reelt kontraktløs
+ * rytter) — se resolveDemoteSalary for den regel demote() selv anvender.
  */
 export function demoteSalary({ current_production_value } = {}) {
   return computeFrozenSalary({ current_production_value });
+}
+
+// #4589 (bug: "Loennen stiger ved holdskifte + akademi-placering", rapporteret
+// af 3 spillere 1/9, ejer-bekræftet uønsket): demote() genberegnede TIDLIGERE
+// altid lønnen ubetinget — også for en rytter der allerede havde en komplet
+// kontrakt. Det brød den generelle #1309/#2881-invariant ("løn er FROSSEN ved
+// signering", GAME_INVARIANTS.md + YOUTH_RULES.md §"Løn frosset ved signering
+// | Uændret") og var asymmetrisk med promote() (arver ALTID en eksisterende
+// kontrakt uændret, #2881). Rod-årsag til at spring var opad og ikke nedad:
+// #3989 (20/8) hævede produktions-satsen til 0,35 — langt over den gamle
+// signerings-sats (0,067 af market_value) — så en ung, spirende rytter (høj
+// current_production_value relativt til sin oprindelige signeringsbasis)
+// demotes til en HØJERE løn end den han allerede havde, i stedet for den
+// ventede ungdoms-RABAT. Prod-måling 7/9 (SELECT, siden 28/8): 4 ryttere fik
+// et hold-skifte (trade/swap) efterfulgt af akademi-demote inden for 2 dage —
+// alle 4 endte med salary/current_production_value ≈ 0,30-0,35, dvs. netop
+// nyligt genberegnet til produktionssatsen (heriblandt @thelambas rytter,
+// 22.035 CZ$ — tallet fra issuet). Samme "arv uændret, kun kontraktløs får en
+// frisk beregning"-mønster som contractOnAcquirePatch (contractSeed.js) og
+// promote() ovenfor. Delt af demote() OG /riders/:id/academy-demote-quote
+// (api.js) så preview og udførelse aldrig kan divergere (#3784-lektien).
+// CodeRabbit (PR #4973): resolveDemoteSalary og demote() gentog uafhængigt af
+// hinanden den samme "komplet kontrakt"-betingelse — udtrukket her så begge
+// steder deler ÉT udtryk for #1309/#2881/#4589-invarianten (samme
+// fejl-mønster som selve #3620/#4589-bugget denne fil retter).
+export function hasCompleteContract(rider) {
+  return rider?.salary != null
+    && rider?.contract_end_season != null
+    && rider?.contract_length != null;
+}
+
+export function resolveDemoteSalary(rider) {
+  return hasCompleteContract(rider) ? rider.salary : demoteSalary(rider);
 }
 
 /**
@@ -134,9 +172,10 @@ const DEMOTE_ERROR_CODES = new Set([
 /**
  * Demote en U23-senior-rytter ned i akademiet (D5).
  *
- * - newSalary = demoteSalary(rider) = max(1, round(current_production_value ×
- *   SALARY_RATE_PRODUCTION)). Samme delte formel som promote og alle andre
- *   erhvervelses-stier (#2083-princippet: ét fælles løn-system).
+ * - newSalary = resolveDemoteSalary(rider): en rytter med en komplet kontrakt
+ *   beholder sin frosne løn UÆNDRET (#4589/#1309/#2881); kun en reelt
+ *   kontraktløs rytter får en frisk akademi-løn via demoteSalary() = max(1,
+ *   round(current_production_value × SALARY_RATE_PRODUCTION)).
  * - p_season_start_year = LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) (spejler
  *   ageForSeason, så RPC'ens alders-gate matcher motoren).
  * - kalder demote_rider_to_academy-RPC'en (advisory-lås + akademi-cap + atomisk
@@ -158,21 +197,22 @@ export async function demote(supabase, {
   if (!rider) throw new Error("rider_not_found");
 
   // #3989: løn-satsen er global, så demote behøver ikke holdets division længere.
-  const newSalary = demoteSalary(rider);
   const seasonStartYear = LAUNCH_REFERENCE_YEAR + (Number(seasonNumber) - 1);
 
-  // #3620: KONTRAKT-TERMEN følger rytteren ned i akademiet. Før skrev demote
+  // #3620/#4589: KONTRAKT-TERMEN og LØNNEN følger rytteren uændret ned i
+  // akademiet, hvis han allerede har en komplet kontrakt. Før skrev demote
   // ubetinget en frisk 3-sæsoners akademi-aftale forankret i den AKTUELLE sæson
   // — så en rytter manageren havde forlænget til sæson 5 kom ud af akademiet med
-  // udløb i sæson 4 (rapporteret i prod 10/8). Samme create-if-missing /
-  // inherit-if-present-invariant som contractOnAcquirePatch og promote(): kun en
-  // rytter UDEN komplet kontrakt får akademi-aftalen. Dermed er promote/demote
-  // hinandens inverse på kontrakt-termen, og en tur gennem akademiet kan hverken
-  // forkorte eller forlænge en kontrakt.
-  // NB: lønnen gen-beregnes stadig (uændret, #2083/#2594) — kun udløbet er fredet.
-  const hasContract = rider.salary != null
-    && rider.contract_end_season != null
-    && rider.contract_length != null;
+  // udløb i sæson 4 (rapporteret i prod 10/8, #3620) — OG genberegnede lønnen
+  // ubetinget mod produktions-satsen, hvilket sendte en spirende ung rytters løn
+  // OPAD i stedet for den ventede ungdoms-rabat (rapporteret i prod 1/9, #4589).
+  // Samme create-if-missing/inherit-if-present-invariant som
+  // contractOnAcquirePatch og promote(): kun en rytter UDEN komplet kontrakt får
+  // akademi-aftalen (løn + term). Dermed er promote/demote hinandens inverse,
+  // og en tur gennem akademiet kan hverken forkorte/forlænge en kontrakt eller
+  // ændre lønnen.
+  const hasContract = hasCompleteContract(rider);
+  const newSalary = resolveDemoteSalary(rider);
   const contractLength = hasContract ? rider.contract_length : ACADEMY.CONTRACT_LENGTH;
   const contractEnd = hasContract
     ? rider.contract_end_season
