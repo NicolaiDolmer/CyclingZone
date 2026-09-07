@@ -146,6 +146,53 @@ export function isDirty(draftMatrix, initialMatrix) {
   return false;
 }
 
+// #4980 — rollerne spilleren kan vælge i Taktik-fanens ROLE-kolonne, i den
+// rækkefølge de vises. Samme sæt som holdudtagelsen bruger (VALID_RACE_ROLES i
+// backend/lib/raceRoles.js); listen står her fordi fladen skal kunne tegne
+// vælgeren uden et ekstra kald, og backendens validateStageRoleOverrides er
+// stadig den der afviser alt andet.
+export const SELECTABLE_ROLES = Object.freeze([
+  "captain", "sprint_captain", "hunter", "helper", "free_role",
+]);
+
+// Roller der kun ÉN rytter kan have ad gangen pr. etape. Samme tre som
+// backendens rolle-overlaps-guard (raceStageRolesApi.validateStageRoleOverrides)
+// og holdudtagelsens partielle unique-indexes håndhæver — vælges en af dem til
+// en ny rytter, skal den forrige indehaver demoteres i SAMME gem, ellers
+// afvises hele PUT'en med stage_roles_role_overlap.
+export const EXCLUSIVE_ROLES = Object.freeze(["captain", "sprint_captain", "hunter"]);
+
+// #4980 — sæt én rytters rolle på ALLE de opgivne etaper ("rollen gælder resten
+// af løbet", ejer 6/9), og demotér en evt. anden indehaver af en eksklusiv rolle
+// til helper på de samme etaper. Kun rollen røres for de demoterede — deres
+// effort ('protect'/'save') må ikke nulstilles som sidegevinst. Ren: ny matrix
+// returneres, input muteres aldrig.
+//
+// `stages` er de etaper der FAKTISK må skrives — kaldstedet sender kun ulåste
+// etaper, så en igangværende (tidslåst, men endnu ikke afsluttet) etape aldrig
+// får en ny rolle under kørslen. Etaper uden for draft-matrixen oprettes ikke.
+//
+// KALDES ALTID på den FULDE draft-matrix — PUT'ens REPLACE-semantik sletter alle
+// overrides for redigerbare etaper før insert, så en diff bygget på én rytters
+// celle ville nulstille alle andres allerede-satte taktik.
+export function applyRoleForRest({ matrix, riderId, role, stages }) {
+  const riderKey = String(riderId);
+  let next = matrix;
+  for (const sn of stages || []) {
+    if (!next[sn]) continue; // etape uden for draft-matrixen (kørt) — røres aldrig
+    if (EXCLUSIVE_ROLES.includes(role)) {
+      for (const [otherId, cell] of Object.entries(next[sn])) {
+        if (otherId !== riderKey && cell.race_role === role) {
+          next = setCell(next, sn, otherId, { race_role: DEFAULT_ROLE });
+        }
+      }
+    }
+    const current = next[sn]?.[riderKey];
+    next = setCell(next, sn, riderKey, { race_role: role, effort: current?.effort || DEFAULT_EFFORT });
+  }
+  return next;
+}
+
 // #4917/#2034 — førertrøje-genvej: rytteren fra EGET hold der fører det
 // samlede klassement, hvis nogen. `null` når ingen af mine ryttere fører
 // (ingen rang === 1) eller den førende er udgået — genvejen findes da ikke.
@@ -182,18 +229,12 @@ export function isJerseyLeaderCaptainOnAllRemainingStages({ rider, stageNumbers,
 // derfor stille og roligt nulstille alle ANDRE rytteres allerede-satte
 // taktik (fx en 'all_out' sat via Taktik-fanen) i samme gem.
 export function applyJerseyCaptainShortcut({ matrix, leaderId, stageNumbers, stagesCompleted }) {
-  const editableStages = (stageNumbers || []).filter((n) => n > stagesCompleted);
-  const leaderKey = String(leaderId);
-  let next = matrix;
-  for (const sn of editableStages) {
-    const stageCells = next[sn] || {};
-    for (const [riderId, cell] of Object.entries(stageCells)) {
-      if (riderId !== leaderKey && cell.race_role === "captain") {
-        next = setCell(next, sn, riderId, { race_role: "helper" });
-      }
-    }
-    const leaderCell = next[sn]?.[leaderKey];
-    next = setCell(next, sn, leaderKey, { race_role: "captain", effort: leaderCell?.effort || DEFAULT_EFFORT });
-  }
-  return next;
+  // #4980: genvejen ER "sæt kaptajn resten af løbet" — samme operation som
+  // rolle-vælgeren i Taktik-fanen, kun med rollen låst til captain.
+  return applyRoleForRest({
+    matrix,
+    riderId: leaderId,
+    role: "captain",
+    stages: (stageNumbers || []).filter((n) => n > stagesCompleted),
+  });
 }
