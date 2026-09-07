@@ -185,6 +185,9 @@ export async function runAiTeamTrimHealSweep({
   // aiTeamGenerator.js sætter den udelukkende for is_ai=true-kandidater) — men
   // filteret gentages her eksplicit som forsvar i dybden: ægte hold må ALDRIG
   // rammes af denne sweep, uanset hvordan markøren skulle ende sat.
+  // schema-columns-ok: pending_removal_blocked_reason/_since tilføjes af
+  // database/2026-09-07-4828-ai-trim-blocked-since.sql i SAMME PR — snapshottet
+  // opdateres post-merge (#2642-rammen), kolonnerne findes ikke i prod ENDNU.
   const candidates = await fetchAllRows(() =>
     supabase
       .from("teams")
