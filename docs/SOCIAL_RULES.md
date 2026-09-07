@@ -270,11 +270,10 @@ ikke ved modtager-opslag, og en muted bruger tælles **slet ikke** (`discordNoti
 | Regel | Værdi | Hvor |
 |---|---|---|
 | Konfiguration | tabellen `discord_settings` | `schema-snapshot.json` |
-| Kolonner | `webhook_name`, `webhook_url`, `is_default`, `webhook_type`, `league_division_id`, `tier`, `is_summary` | samme |
-| Resultat-routing | gruppekanal (`league_division_id`-match) **plus** tier-samlekanal (`tier`-match og `is_summary`) | `discordNotifier.js:145-178` |
-| Dedupe | division 1 har kun én pulje, så gruppe og samle kan være samme URL; `computeResultWebhookUrls` dedupliker | samme |
-| Fallback | default-webhooken hvis intet division-specifikt findes | samme |
-| Puljelabel i embed | `league_divisions.label`, fx "Division 3 - A"; **null hvis puljen ikke findes, og så skal kalderen udelade puljeidentifikationen** | `discordNotifier.js:139-144` |
+| Kolonner | `webhook_name`, `webhook_url`, `is_default`, `webhook_type`, `league_division_id`, `tier`, `is_summary` (`tier`/`is_summary` bruges ikke længere til resultat-routing, se næste linje) | samme |
+| Resultat-routing | **kun** gruppekanalen (`league_division_id`-match). Division-samlekanalerne (`tier`-match + `is_summary`, fx results-d2/d3/d4) fik posten med indtil #2153 (2026-07-03) — droppet 7/9 for at skære støj (#4999) | `discordNotifier.js:151-179` |
+| Fallback | default-webhooken hvis der slet ikke er konfigureret en gruppekanal endnu | samme |
+| Puljelabel i embed | `league_divisions.label`, fx "Division 3 - A"; **null hvis puljen ikke findes, og så skal kalderen udelade puljeidentifikationen** | `discordNotifier.js:144-149` |
 | Serialisering | pr. URL, så samtidige kaldere ikke sender en byge til samme kanal | `discordNotifier.js:200-204` |
 | Spillervendt sprog | **engelsk**, serveren er EN-first | `discordNotifier.js:81` (`TYPE_LABELS`) |
 
@@ -288,7 +287,8 @@ gør, fordi forum-pings hører hjemme hos ejeren (`discordNotifier.js:881-893`).
 `post`, `reply`, `report`.
 
 **Målt 30/8:** 20 rækker i `discord_settings`, heraf 15 med `league_division_id`, 3 med `is_summary`
-og 1 med `is_default`.
+og 1 med `is_default`. **#4999 (7/9):** de 3 `is_summary`-rækker modtager ikke længere resultat-poster
+(rækkerne/kanalerne er ikke slettet, kun droppet fra routingen).
 
 ### 5.1 Live-messaging-guarden er en hard rule
 

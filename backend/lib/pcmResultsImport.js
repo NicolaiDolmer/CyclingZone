@@ -277,10 +277,10 @@ function finalize(resultRows) {
 // Ren funktion (ingen I/O) → testbar. Bruges af route'en via sendDiscordNotification.
 // #2520: spillervendt Discord-embed på engelsk (server er EN-first).
 // #3897: divisionLabel er puljens spillervendte navn (fx "Division 3 — A"),
-// slået op af kalderen via getResultWebhooksAndLabel — samme kanal-tvetydighed
-// som buildRaceSimEmbed (adminSimulateRace.js): én samlekanal kan modtage
-// import-poster fra flere puljer i samme tier. Valgfri, udelades når
-// leagueDivisionId mangler/ikke findes.
+// slået op af kalderen via getResultWebhooksAndLabel — se samme kommentar i
+// buildRaceSimEmbed (adminSimulateRace.js) om baggrunden og #4999-ændringen
+// (division-samlekanalen droppet). Valgfri, udelades når leagueDivisionId
+// mangler/ikke findes.
 export function buildPcmImportEmbed({ race, preview, resultRows, divisionLabel = null }) {
   const naming = (r) => r.rider_name || r.team_name || "?";
   const fields = [];

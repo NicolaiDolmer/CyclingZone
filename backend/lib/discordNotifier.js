@@ -128,11 +128,13 @@ async function getWebhookByType(type) {
 }
 
 /**
- * Resultat-webhooks for et løb (#2153): gruppe-kanal (league_division_id-match)
- * + tier-samlekanal (tier-match + is_summary). Division 1 har kun én pool, så
- * gruppe og samle kan pege på samme kanal — computeResultWebhookUrls dedupliker.
- * Falder tilbage til default-webhooken hvis intet division-specifikt er
- * konfigureret endnu (fx før Fase 3-wiring), så resultater ikke tavst forsvinder.
+ * Resultat-webhook for et løb (#2153, ændret #4999): KUN gruppe-kanalen
+ * (league_division_id-match). Division-samlekanalerne (tier-match +
+ * is_summary, fx results-d2/d3/d4) fik tidligere også hver post (#2153,
+ * 2026-07-03) — ejeren droppede det 7/9 for at skære støj i Discord (#4999).
+ * Falder tilbage til default-webhooken hvis der slet ikke er konfigureret en
+ * gruppekanal endnu (fx før wiring er færdig), så resultater ikke tavst
+ * forsvinder.
  */
 export async function getResultWebhooks(leagueDivisionId) {
   const { urls } = await getResultWebhooksAndLabel(leagueDivisionId);
@@ -141,16 +143,13 @@ export async function getResultWebhooks(leagueDivisionId) {
 
 /**
  * #3897: samme routing som getResultWebhooks, men returnerer OGSÅ puljens
- * spillervendte label (league_divisions.label, fx "Division 3 — A") — én
- * samlekanal (#results-d3) og hver gruppekanal kan modtage poster fra flere
- * puljer i samme tier, og uden label i selve embed'et læses to poster i
- * samme kanal som "samme løb, to vindere" (thelamba 17/8, #3897).
- * label er null når leagueDivisionId mangler eller ikke findes — kaldere
- * skal udelade pulje-identifikationen i det tilfælde (ingen tvetydighed).
+ * spillervendte label (league_divisions.label, fx "Division 3 — A") til
+ * embed'et. label er null når leagueDivisionId mangler eller ikke findes —
+ * kaldere skal udelade pulje-identifikationen i det tilfælde (ingen
+ * tvetydighed).
  */
 export async function getResultWebhooksAndLabel(leagueDivisionId) {
   let groupUrl = null;
-  let summaryUrl = null;
   let label = null;
   if (leagueDivisionId) {
     const { data: group, error: groupError } = await supabase
@@ -162,28 +161,18 @@ export async function getResultWebhooksAndLabel(leagueDivisionId) {
     reportDiscordConfigReadError(groupError, "discord_settings", { lookup: "group-webhook", leagueDivisionId });
     groupUrl = group?.webhook_url || null;
 
+    // #4999: tier/is_summary-opslaget (division-samlekanalen) er droppet —
+    // vi henter stadig kun label'et til embed'ets pulje-identifikation.
     const { data: ld, error: ldError } = await supabase
       .from("league_divisions")
-      .select("tier, label")
+      .select("label")
       .eq("id", leagueDivisionId)
       .maybeSingle();
     reportDiscordConfigReadError(ldError, "league_divisions", { lookup: "division-label", leagueDivisionId });
     label = ld?.label || null;
-    if (ld?.tier != null) {
-      const { data: summary, error: summaryError } = await supabase
-        .from("discord_settings")
-        .select("webhook_url")
-        .eq("tier", ld.tier)
-        .eq("is_summary", true)
-        .limit(1)
-        .maybeSingle();
-      reportDiscordConfigReadError(summaryError, "discord_settings", { lookup: "summary-webhook", tier: ld.tier });
-      summaryUrl = summary?.webhook_url || null;
-    }
   }
   const urls = computeResultWebhookUrls({
     groupUrl,
-    summaryUrl,
     defaultUrl: await getDefaultWebhook(),
   });
   return { urls, label };
