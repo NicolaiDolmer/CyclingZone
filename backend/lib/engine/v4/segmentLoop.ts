@@ -51,7 +51,7 @@ import {
   tickPhysiologyOverSegment,
   wprimeDepletionCpMultiplier,
 } from "./physiology.ts";
-import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroups } from "./groups.ts";
+import { applyGroupTimes, buildGroupSnapshot, initGroups, initRiderStates, mergeGroupsDetailed } from "./groups.ts";
 import { GROUP_DRAFT_EXTRA_TUNING, STRENGTH_SPEED_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
 import { applyEffortToDemand } from "./mechanics/effortCost.ts";
@@ -610,9 +610,34 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     state = { ...state, groups: rebaselineGroups(state.groups) };
 
     // 4b. Sammensmelt grupper der er kommet inden for merge-taerskel.
-    const mergedGroups = mergeGroups(state.groups, tuning.groups.mergeThresholdSeconds);
+    const { groups: mergedGroups, merges } = mergeGroupsDetailed(
+      state.groups,
+      tuning.groups.mergeThresholdSeconds,
+    );
     state = { ...state, groups: mergedGroups, km: segment.to_km };
     frontElapsedSeconds += dtFront;
+
+    // 4c (#4971). Merget er et REELT gruppeskift, og indtil nu var det TAVST:
+    // en mekanik kunne emittere `peloton_splits` til fx `chase-1000`, hvorefter
+    // merge-trinnet i SAMME segment foldede den gruppe tilbage i `peloton-0` —
+    // og tidslinjens sidste udsagn om de ryttere pegede derefter paa et
+    // gruppe-id der aldrig optraeder i noget snapshot (CodeRabbit paa PR #4971,
+    // golden fixture bjerg-selektion km 65: r04/r05). Snapshots er sandheden om
+    // segment-state; eventet er nu tvunget til at foelge med.
+    //
+    // `breakaway_caught` (M5, mechanics/breakaway.ts) daekker det SPECIFIKKE
+    // tilfaelde "jagten lukkede hullet til et udbrud" og emitteres FOER merget
+    // paa jagt-modellens egne praemisser. `group_merged` er den generelle,
+    // state-afledte kvittering: den siger kun HVEM der endte HVOR, uden
+    // aarsag — aarsagen ejes af den mekanik der flyttede gappet.
+    for (const merge of merges) {
+      pushEvent(timeline, segment.to_km, "group_merged", {
+        group_id: merge.absorbed_group_id,
+        into_group_id: merge.into_group_id,
+        rider_ids: [...merge.rider_ids],
+      });
+      lastEmittedGap.delete(merge.absorbed_group_id);
+    }
 
     for (const g of mergedGroups) {
       if (g.gap_seconds === 0) continue;

@@ -203,6 +203,10 @@ export type KnownTimelineEventType =
   | "breakaway_caught"
   | "breakaway_survived"
   | "peloton_splits"
+  // #4971 (ADDITIV): kvittering for at en gruppe blev opslugt af en anden i
+  // segmentLoop's merge-trin. Uden den kunne tidslinjens sidste udsagn om en
+  // rytter pege paa et gruppe-id der aldrig naaede at optraede i et snapshot.
+  | "group_merged"
   | "incident"
   | "favorite_crack"
   | "finale_attack"

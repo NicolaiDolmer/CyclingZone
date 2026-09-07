@@ -123,12 +123,47 @@ function mergedKind(a: RaceGroup, b: RaceGroup): GroupKind {
  * samme gruppe = samme tid).
  */
 export function mergeGroups(groups: RaceGroup[], mergeThresholdSeconds: number): RaceGroup[] {
-  if (groups.length <= 1) return groups.map((g) => ({ ...g, rider_ids: [...g.rider_ids] }));
+  return mergeGroupsDetailed(groups, mergeThresholdSeconds).groups;
+}
+
+/**
+ * En enkelt sammensmeltning: gruppen `absorbed_group_id` findes ikke laengere
+ * efter merget — dens ryttere ligger nu i `into_group_id`. #4971: segmentLoop
+ * bruger denne log til at emittere `group_merged`, saa tidslinjen ALDRIG
+ * efterlader en rytter i et gruppe-id der ikke findes i naeste snapshot
+ * (gruppe-skift uden event var selve fejlen: et `peloton_splits` til
+ * `chase-1000` som merget saa foldede tilbage i `peloton-0` i samme segment).
+ */
+export type GroupMerge = {
+  absorbed_group_id: string;
+  into_group_id: string;
+  rider_ids: string[];
+};
+
+/**
+ * Samme rene merge som mergeGroups, men returnerer OGSAA hvilke grupper der
+ * blev opslugt af hvem. Kaskader foldes: smelter C ind i B og B ind i A i
+ * samme kald, rapporteres begge med `into_group_id` = A (det id gruppen
+ * FAKTISK baerer i det snapshot segmentLoop bygger bagefter).
+ */
+export function mergeGroupsDetailed(
+  groups: RaceGroup[],
+  mergeThresholdSeconds: number,
+): { groups: RaceGroup[]; merges: GroupMerge[] } {
+  if (groups.length <= 1) {
+    return { groups: groups.map((g) => ({ ...g, rider_ids: [...g.rider_ids] })), merges: [] };
+  }
   const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
   const merged: RaceGroup[] = [];
+  const merges: GroupMerge[] = [];
   for (const group of sorted) {
     const prev = merged[merged.length - 1];
     if (prev && group.gap_seconds - prev.gap_seconds < mergeThresholdSeconds) {
+      merges.push({
+        absorbed_group_id: group.id,
+        into_group_id: prev.id,
+        rider_ids: [...group.rider_ids],
+      });
       merged[merged.length - 1] = {
         id: prev.id,
         kind: mergedKind(prev, group),
@@ -140,7 +175,7 @@ export function mergeGroups(groups: RaceGroup[], mergeThresholdSeconds: number):
     }
     merged.push({ ...group, rider_ids: [...group.rider_ids] });
   }
-  return merged;
+  return { groups: merged, merges };
 }
 
 /**

@@ -703,7 +703,8 @@ export const PHYSIOLOGY_WPRIME_DEPLETION_TUNING = deepFreeze(physiologyWprimeDep
 // 6,7, mens ankrene kraever ~11). En eksponent > 1 paa UNDERSKUDS-grenen goer
 // de sidste procent under referencen dyrere end de foerste: en gruppe taet paa
 // referencetempoet er stadig "med i loebet", en gruppe langt under koerer sit
-// eget. Overskuds-grenen er lineaer og uroert - ingen straf paa styrke.
+// eget. Overskuds-grenen er og bliver LINEAER - ingen straf paa styrke; kun
+// dens vaegt er kalibrerbar (#4914, se surplusWeight nedenfor).
 const strengthSpeedExtra = {
   terrainWeight: {
     climb: 1, // fuld vaegt: op ad bakke er fart naesten proportional med baeredygtig effekt
@@ -713,10 +714,9 @@ const strengthSpeedExtra = {
     descent: 0.2, // nedad: tyngdekraften koerer, styrke betyder mindst
   },
   deficitExponent: 1.35, // eksponent paa UNDERSKUDS-grenen (collectiveCp under referencen); overskud er lineaert
-  // OVERSKUDS-VAEGTEN holder FRONTEN paa #4604's kalibrering. Relativiseringen
-  // deler med feltets reference-CP (~0,23 paa climb mod den aegte population),
-  // hvilket goer BEGGE grene ~4x stejlere. Halen skal have den stejlere gren;
-  // fronten skal ikke. Maalt 7/9 uden denne vaegt: bjerg-top-10-spredningen gik
+  // OVERSKUDS-VAEGTEN daemper FRONTEN. Relativiseringen deler med feltets
+  // reference-CP (~0,23 paa climb mod den aegte population), hvilket goer BEGGE
+  // grene ~4x stejlere. Maalt 7/9 uden denne vaegt: bjerg-top-10-spredningen gik
   // fra 200 s (baand 180-240) til 701 s, mens hale-p90 gik fra 2,7 % til 8,7 %.
   // Vaegten skruer alene overskuds-grenen tilbage, saa bjerg-ankeret holder.
   //
@@ -724,8 +724,22 @@ const strengthSpeedExtra = {
   // feltets front koerer allerede paa terraenets og aerodynamikkens graense og
   // faar aftagende udbytte af mere kraft; en gruppe der er svagere end
   // loebstempoet mister proportionalt.
-  surplusWeight: 0.35, // vaegt paa OVERSKUDS-grenen (collectiveCp over referencen). STARTGAET, kalibreret mod bjerg-top-10-ankeret
-  deficitWeight: 1.8, // vaegt paa UNDERSKUDS-grenen. STARTGAET, kalibreret mod hale-baandet (bjerg 8-15 %, ejer-gaet)
+  //
+  // KALIBRERET 7/9 (#4914, docs/audits/v4-climb-spread-tail-2026-09-07.md) mod
+  // den PINNEDE 7/9-population (5.955 ryttere) + de pinnede proxy-etaper, felt
+  // 180, 5 seeds. Begge tal var foer sat mod JULI-snapshottet, som #4936 viste
+  // var skaevt/forældet: det aegte felt er staerkere og taettere i toppen, saa
+  // samme vaegte gav for lidt spredning i BEGGE ender (bjerg-top-10 126 s mod
+  // baand 180-240, hoejbjerg-hale 4,90 % mod ejer-baandet 6-12 %). Grenene er
+  // hinandens uafhaengige haandtag, maalt hver for sig:
+  //   surplusWeight 0.35 -> 0.55 : top-10 126 -> ~196 s, halen naesten uroert
+  //   deficitWeight  1.8 -> 2.6  : hoejbjerg-hale 4,90 -> 7,65 %, top-10 uroert
+  // Efter (5 seeds): top-10 195,5 s (152,0-227,7) PASS, hoejbjerg-hale 7,65 %
+  // (6,67-8,25) PASS, bjerg-hale 10,19 % PASS, fladt 0,20 % PASS. Ingen andet
+  // anker gik PASS -> FAIL; nedkoersels-/summit-ratio blev endda bedre
+  // (0,417 -> 0,402 mod loftet 0,50).
+  surplusWeight: 0.55, // vaegt paa OVERSKUDS-grenen (collectiveCp over referencen). Kalibreret mod bjerg-top-10-ankeret (#2415, 180-240 s)
+  deficitWeight: 2.6, // vaegt paa UNDERSKUDS-grenen. Kalibreret mod det EJER-LAASTE hale-baand (bjerg/hoejbjerg 6-12 %, RULES §9 raekke 13)
 };
 
 /** #4885 additiv styrke/fart-tuning (deep-frosset). Se strengthSpeedExtra-kommentaren ovenfor. */
