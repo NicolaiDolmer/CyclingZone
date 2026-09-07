@@ -580,22 +580,38 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
  * @param {Array<ReturnType<typeof buildScorecard>>} scorecards  ét pr. seed
  * @returns {Array<object>}  samme form som buildScorecard, plus .spread pr. motor
  */
+// ALLE 13 anker-id'er fra buildScorecard() SKAL have en indgang her (#4947).
+// Et manglende id gjorde at aggregateEngine() faldt tilbage til
+// `measured[0].verdict` — dommen fra FOERSTE seed — i stedet for at doemme
+// 3-seed-middelvaerdien mod baandet, praecis den aggregerings-fejl §7 raekke 8
+// (ejer 2/9: gaten er seed-middel) skulle fjerne. Eksporteret saa
+// headToHeadAnchors.test.js's forward-guard kan verificere at ETHVERT
+// anker-id fra buildScorecard() findes her (fejler hvis et nyt anker
+// tilfoejes uden en tilsvarende indgang).
+// `{}` er et GYLDIGT baand (ingen min/max — anker uden fast taerskel, jf.
+// scoreBreakawayRates' egen `judge(rate, {}, ...)`), ikke det samme som et
+// manglende id: aggregateEngine() bruger stadig judge() og maaler middelvaerdien.
+export const AGGREGATION_BAND_BY_ANCHOR_ID = {
+  field_cohesion_flat: ANCHOR_BANDS.fieldCohesionFlat,
+  descent_vs_summit_gap_ratio: ANCHOR_BANDS.descentToSummitGapRatio,
+  descent_attack_gain_bounds: ANCHOR_BANDS.descentAttackGainSeconds,
+  punch_correlation: { min: 0.2 },
+  cobblestone_lift_on_sectors: ANCHOR_BANDS.cobblestoneLiftOnSectors,
+  favorite_win_rate: ANCHOR_BANDS.favoriteWinRate,
+  same_team_top10_share_4plus: ANCHOR_BANDS.sameTeamTop10Share4Plus,
+  breakaway_rate_per_terrain: {},
+  itt_correlation: ANCHOR_BANDS.ittCorrelationMinAbs,
+  sprinter_win_rate_flat: ANCHOR_BANDS.sprinterWinRateFlat,
+  bonus_seconds_bounded: { max: 10 },
+  mountain_top10_spread: ANCHOR_BANDS.mountainTop10SpreadSeconds,
+  gt_winner_margin: ANCHOR_BANDS.gtWinnerMarginSeconds,
+};
+
 export function aggregateScorecards(scorecards) {
   if (!Array.isArray(scorecards) || scorecards.length === 0) return [];
   if (scorecards.length === 1) return scorecards[0];
 
-  const bandById = {
-    field_cohesion_flat: ANCHOR_BANDS.fieldCohesionFlat,
-    descent_vs_summit_gap_ratio: ANCHOR_BANDS.descentToSummitGapRatio,
-    punch_correlation: { min: 0.2 },
-    cobblestone_lift_on_sectors: ANCHOR_BANDS.cobblestoneLiftOnSectors,
-    favorite_win_rate: ANCHOR_BANDS.favoriteWinRate,
-    same_team_top10_share_4plus: ANCHOR_BANDS.sameTeamTop10Share4Plus,
-    itt_correlation: ANCHOR_BANDS.ittCorrelationMinAbs,
-    sprinter_win_rate_flat: ANCHOR_BANDS.sprinterWinRateFlat,
-    mountain_top10_spread: ANCHOR_BANDS.mountainTop10SpreadSeconds,
-    gt_winner_margin: ANCHOR_BANDS.gtWinnerMarginSeconds,
-  };
+  const bandById = AGGREGATION_BAND_BY_ANCHOR_ID;
 
   const aggregateEngine = (cells, band) => {
     const measured = cells.filter((c) => c.verdict !== "N/A" && Number.isFinite(c.value));
