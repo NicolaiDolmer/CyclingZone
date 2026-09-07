@@ -33,7 +33,10 @@ export function resetMentionableManagersCache() {
 async function fetchMentionableManagers() {
   const headers = await authHeaders({ json: false }); // ren GET, ingen body
   if (!headers || !API) throw new Error("no session");
-  const res = await fetch(`${API}/api/forum/mentionable-managers`, { headers });
+  // best-effort: loadOnce() nedenfor fanger og logger; listen falder til tom,
+  // og fladen viser da bare teksten uden klikbare navne. Ingen loading-tilstand
+  // at rydde op i, ingen knap der kan blive hængende.
+  const res = await fetch(`${API}/api/forum/mentionable-managers`, { headers }); // best-effort
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   return Array.isArray(data?.managers) ? data.managers : EMPTY;

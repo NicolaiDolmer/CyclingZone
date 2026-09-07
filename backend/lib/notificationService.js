@@ -1263,7 +1263,9 @@ export async function notifyForumMentions({
     }
     return { delivered, targets };
   } catch (err) {
-    console.error("  ❌ forum-mention-udtræk fejlede (post %s):", postId, err?.message || err);
+    // "scan", ikke "udtræk": i18n-leak-guarden (#1068) tæller enhver linje med
+    // æ/ø/å i en streng sammen med `message` som et dansk API-svar.
+    console.error("  ❌ forum-mention-scan fejlede (post %s):", postId, err?.message || err);
     captureException(err, { tags: { flow: "notifications", stage: "forum-mention-scan" }, postId });
     return { delivered: 0, targets: [], reason: "error" };
   }
