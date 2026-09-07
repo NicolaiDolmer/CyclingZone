@@ -51,7 +51,14 @@ const DISPLAY_BY_ID = {
   gt_winner_margin: (v) => `${Math.round(v)}s`,
 };
 
-function displayFor(id, value) {
+/**
+ * Anker-id + raa vaerdi -> den streng ankertabellen viser. Eksporteret saa
+ * andre rapport-scripts (fx `teamPlayAbMeasure.mjs`) kan vise de SAMME tal i
+ * de SAMME enheder i stedet for at lave en tredje kopi af tabellen ovenfor —
+ * procent-ankrene er lagret som brøker, og en kopi der glemte x100 ville
+ * rapportere "0,3 %" hvor tabellen siger "30,3 %".
+ */
+export function displayFor(id, value) {
   if (value === null || value === undefined || !Number.isFinite(value)) return "n/a";
   const fn = DISPLAY_BY_ID[id] ?? ((v) => String(v));
   return fn(value);

@@ -34,12 +34,13 @@
 // pointen, ikke A mod ankertabellen.
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { TEAM_PLAY_EXTRA_TUNING } from "../lib/engine/v4/tuning.ts";
+import { displayFor } from "./renderV4AnchorTable.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
@@ -211,22 +212,13 @@ function measure(label, note) {
 // Render
 // ---------------------------------------------------------------------------
 
-const ANCHOR_DECIMALS = {
-  descent_vs_summit_gap_ratio: 2,
-  punch_correlation: 2,
-  cobblestone_lift_on_sectors: 3,
-  itt_correlation: 2,
-};
-
+// Enhederne er IKKE frie: procent-ankrene er lagret som broeker, og en egen
+// kopi der glemte x100 ville rapportere "0,3 %" hvor §7b's tabel siger
+// "30,3 %". Derfor genbruges ankertabellens egen formatter.
 function fmtAnchor(cell, id) {
   if (!cell || cell.verdict === "N/A" || !Number.isFinite(cell.value)) return "n/a";
-  const pct = id.endsWith("_rate") || id.includes("share") || id === "field_cohesion_flat";
-  const seconds = id === "mountain_top10_spread" || id === "gt_winner_margin" || id === "bonus_seconds_gc_effect";
-  const decimals = ANCHOR_DECIMALS[id] ?? (pct ? 1 : 0);
-  const unit = pct ? " %" : seconds ? "s" : "";
-  const v = `${cell.value.toFixed(decimals)}${unit}`;
-  const spread = cell.spread ? ` (${cell.spread.min.toFixed(decimals)}-${cell.spread.max.toFixed(decimals)})` : "";
-  return `${v}${spread} ${cell.verdict}`;
+  const spread = cell.spread ? ` (${displayFor(id, cell.spread.min)}-${displayFor(id, cell.spread.max)})` : "";
+  return `${displayFor(id, cell.value)}${spread} ${cell.verdict}`;
 }
 
 function mean(values) {
@@ -241,13 +233,29 @@ function gapSummary(measurement, engine) {
   return `${mean(values).toFixed(2)} (${Math.min(...values).toFixed(2)}-${Math.max(...values).toFixed(2)})`;
 }
 
+// Samme markoer-moenster som ankertabellen i RACE_ENGINE_RULES.md (#4911):
+// TALLENE genereres, PROSAEN omkring dem skrives af et menneske og overlever
+// en re-render. Uden markoererne ville en genkoersel slette laesningen og
+// anbefalingen ejeren faktisk skal bruge.
+export const START_MARKER = "<!-- teamplay-ab:start -->";
+export const END_MARKER = "<!-- teamplay-ab:end -->";
+
+export function replaceBlock(existingText, block) {
+  const start = existingText.indexOf(START_MARKER);
+  const end = existingText.indexOf(END_MARKER);
+  if (start < 0 || end < 0 || end < start) return null;
+  return `${existingText.slice(0, start)}${block}${existingText.slice(end + END_MARKER.length)}`;
+}
+
 function render(a, b) {
   const lines = [];
   const bA = new Map(b.anchors.map((x) => [x.id, x]));
 
-  lines.push(`# Holdspils-niveau: A/B-maaling (#4914 punkt 3)`);
+  lines.push(START_MARKER);
   lines.push("");
-  lines.push(`Genereret ${a.generated_at} · ${b.generated_at} af \`backend/scripts/teamPlayAbMeasure.mjs\`.`);
+  lines.push("> Alt mellem markoererne er GENERERET af `backend/scripts/teamPlayAbMeasure.mjs --render`. Ret ikke tallene i haanden.");
+  lines.push("");
+  lines.push(`Maalt ${a.generated_at} (A) og ${b.generated_at} (B).`);
   lines.push("");
   lines.push(
     `Samme motor, samme pinnede population (\`${a.population_file}\`), samme pinnede proxy-etaper (\`${a.stages_file}\`), ` +
@@ -256,6 +264,7 @@ function render(a, b) {
   );
   lines.push("");
   lines.push(`**A** (nuvaerende, paa main): ${a.note ?? "-"}`);
+  lines.push("");
   lines.push(`**B**: ${b.note ?? "-"}`);
   lines.push("");
 
@@ -323,8 +332,9 @@ function render(a, b) {
     lines.push(`| \`${key}\` | ${a.team_play_tuning[key]} | ${b.team_play_tuning[key]} |`);
   }
   lines.push("");
+  lines.push(END_MARKER);
 
-  return `${lines.join("\n")}\n`;
+  return lines.join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -339,8 +349,19 @@ function main() {
     if (!aPath || !bPath) throw new Error("--render kraever --a=<fil>.json og --b=<fil>.json");
     const a = JSON.parse(readFileSync(aPath, "utf8"));
     const b = JSON.parse(readFileSync(bPath, "utf8"));
+    const block = render(a, b);
     mkdirSync(dirname(outPath), { recursive: true });
-    writeFileSync(outPath, render(a, b));
+    if (existsSync(outPath)) {
+      const existing = readFileSync(outPath, "utf8");
+      const next = replaceBlock(existing, block);
+      if (next === null) {
+        throw new Error(`${outPath} findes men mangler ${START_MARKER}/${END_MARKER} — nagter at overskrive haandskrevet tekst`);
+      }
+      writeFileSync(outPath, next);
+      console.log(`Tal-blokken opdateret i: ${outPath}`);
+      return;
+    }
+    writeFileSync(outPath, `${block}\n`);
     console.log(`Rapport skrevet: ${outPath}`);
     return;
   }

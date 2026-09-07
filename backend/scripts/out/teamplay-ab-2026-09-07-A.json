@@ -1,0 +1,702 @@
+{
+  "schema_version": 1,
+  "label": "A",
+  "note": "nuvaerende niveau paa main (TEAM_PLAY_EXTRA_TUNING uaendret)",
+  "generated_at": "2026-09-07T10:13:43.720Z",
+  "population_file": "backend/scripts/baselines/population-snapshot-2026-09-07.json",
+  "stages_file": "backend/scripts/baselines/v4-proxy-stages-2026-09-06.json",
+  "seeds": [
+    "s1",
+    "s2",
+    "s3",
+    "s4",
+    "s5"
+  ],
+  "tail_gate_seeds": [
+    "s1",
+    "s2",
+    "s3"
+  ],
+  "field_size": 180,
+  "order_mode": "ai",
+  "team_play_tuning": {
+    "helperCostFractionGc": 0.15,
+    "helperCostFractionFlat": 0.133,
+    "helperCostFractionOther": 0.075,
+    "hunterCostFraction": 0.05,
+    "effortCostMultiplier": {
+      "grupetto": 0.5,
+      "save": 0.5,
+      "normal": 1,
+      "protect": 1,
+      "all_out": 0
+    },
+    "transferEfficiency": 0.6,
+    "captainMaxBonusFraction": 0.08,
+    "minCpFactor": 0.7,
+    "minWorkersForProtection": 1,
+    "supportSaturationWorkers": 4
+  },
+  "team_play": {
+    "per_seed": [
+      {
+        "seed": "s1",
+        "v3Gap": 5.85,
+        "v4Gap": -1.01,
+        "roles": {
+          "captain": {
+            "v3MeanRank": 64.6,
+            "v3Delta": -0.65,
+            "v4MeanRank": 60.4,
+            "v4Delta": 3.74
+          },
+          "sprint_captain": {
+            "v3MeanRank": 81.3,
+            "v3Delta": 2.06,
+            "v4MeanRank": 90.8,
+            "v4Delta": -7.47
+          },
+          "helper": {
+            "v3MeanRank": 112.4,
+            "v3Delta": -5.14,
+            "v4MeanRank": 108.1,
+            "v4Delta": -0.86
+          },
+          "hunter": {
+            "v3MeanRank": 98.4,
+            "v3Delta": 3.27,
+            "v4MeanRank": 99.6,
+            "v4Delta": 2.06
+          },
+          "free_role": {
+            "v3MeanRank": 90.9,
+            "v3Delta": 0.26,
+            "v4MeanRank": 91.1,
+            "v4Delta": 0.06
+          }
+        }
+      },
+      {
+        "seed": "s2",
+        "v3Gap": 9.99,
+        "v4Gap": 1.38,
+        "roles": {
+          "captain": {
+            "v3MeanRank": 64.1,
+            "v3Delta": -2.05,
+            "v4MeanRank": 57.3,
+            "v4Delta": 4.56
+          },
+          "sprint_captain": {
+            "v3MeanRank": 80.3,
+            "v3Delta": 2.89,
+            "v4MeanRank": 87.4,
+            "v4Delta": -4.17
+          },
+          "helper": {
+            "v3MeanRank": 103.8,
+            "v3Delta": -9.56,
+            "v4MeanRank": 95.9,
+            "v4Delta": -1.19
+          },
+          "hunter": {
+            "v3MeanRank": 96.2,
+            "v3Delta": 2.63,
+            "v4MeanRank": 95.8,
+            "v4Delta": 3.03
+          },
+          "free_role": {
+            "v3MeanRank": 91.2,
+            "v3Delta": 0.3,
+            "v4MeanRank": 91.7,
+            "v4Delta": -0.13
+          }
+        }
+      },
+      {
+        "seed": "s3",
+        "v3Gap": 8.74,
+        "v4Gap": -4.11,
+        "roles": {
+          "captain": {
+            "v3MeanRank": 64.3,
+            "v3Delta": -0.7,
+            "v4MeanRank": 60.3,
+            "v4Delta": 3.48
+          },
+          "sprint_captain": {
+            "v3MeanRank": 83.9,
+            "v3Delta": 0.26,
+            "v4MeanRank": 90.3,
+            "v4Delta": -6.05
+          },
+          "helper": {
+            "v3MeanRank": 110.1,
+            "v3Delta": -8.95,
+            "v4MeanRank": 98.3,
+            "v4Delta": 2.83
+          },
+          "hunter": {
+            "v3MeanRank": 98,
+            "v3Delta": 2.96,
+            "v4MeanRank": 98.2,
+            "v4Delta": 2.72
+          },
+          "free_role": {
+            "v3MeanRank": 90.9,
+            "v3Delta": 0.29,
+            "v4MeanRank": 91.2,
+            "v4Delta": -0.02
+          }
+        }
+      },
+      {
+        "seed": "s4",
+        "v3Gap": 3.67,
+        "v4Gap": 0.36,
+        "roles": {
+          "captain": {
+            "v3MeanRank": 63.3,
+            "v3Delta": -2.2,
+            "v4MeanRank": 56.5,
+            "v4Delta": 4.79
+          },
+          "sprint_captain": {
+            "v3MeanRank": 79.9,
+            "v3Delta": 4.84,
+            "v4MeanRank": 88.1,
+            "v4Delta": -3.46
+          },
+          "helper": {
+            "v3MeanRank": 100.6,
+            "v3Delta": -2.35,
+            "v4MeanRank": 98,
+            "v4Delta": 0.31
+          },
+          "hunter": {
+            "v3MeanRank": 98.4,
+            "v3Delta": 0.17,
+            "v4MeanRank": 95.2,
+            "v4Delta": 3.24
+          },
+          "free_role": {
+            "v3MeanRank": 91.1,
+            "v3Delta": 0.36,
+            "v4MeanRank": 91.6,
+            "v4Delta": -0.17
+          }
+        }
+      },
+      {
+        "seed": "s5",
+        "v3Gap": 7.23,
+        "v4Gap": 0.9,
+        "roles": {
+          "captain": {
+            "v3MeanRank": 64,
+            "v3Delta": -2.16,
+            "v4MeanRank": 57.1,
+            "v4Delta": 4.9
+          },
+          "sprint_captain": {
+            "v3MeanRank": 84.6,
+            "v3Delta": 0.72,
+            "v4MeanRank": 89.6,
+            "v4Delta": -4.31
+          },
+          "helper": {
+            "v3MeanRank": 105.1,
+            "v3Delta": -7.95,
+            "v4MeanRank": 97.8,
+            "v4Delta": -0.61
+          },
+          "hunter": {
+            "v3MeanRank": 98.7,
+            "v3Delta": 0.64,
+            "v4MeanRank": 98.3,
+            "v4Delta": 1.18
+          },
+          "free_role": {
+            "v3MeanRank": 90.9,
+            "v3Delta": 0.49,
+            "v4MeanRank": 91.4,
+            "v4Delta": -0.06
+          }
+        }
+      }
+    ],
+    "pooled": {
+      "v3Gap": 7.11,
+      "v4Gap": -0.45,
+      "roles": {
+        "captain": {
+          "v3MeanRank": 64,
+          "v3Delta": -1.58,
+          "v4MeanRank": 58.3,
+          "v4Delta": 4.31
+        },
+        "sprint_captain": {
+          "v3MeanRank": 82,
+          "v3Delta": 2.2,
+          "v4MeanRank": 89.2,
+          "v4Delta": -5.03
+        },
+        "helper": {
+          "v3MeanRank": 106.2,
+          "v3Delta": -6.8,
+          "v4MeanRank": 99.4,
+          "v4Delta": 0.09
+        },
+        "hunter": {
+          "v3MeanRank": 97.9,
+          "v3Delta": 1.92,
+          "v4MeanRank": 97.4,
+          "v4Delta": 2.46
+        },
+        "free_role": {
+          "v3MeanRank": 91,
+          "v3Delta": 0.34,
+          "v4MeanRank": 91.4,
+          "v4Delta": -0.06
+        }
+      }
+    }
+  },
+  "anchors": [
+    {
+      "id": "field_cohesion_flat",
+      "label": "Felt-sammenhaeng, flade etaper",
+      "band_label": "80.0%-95.0%",
+      "source": "#3917-maalingen (mor-spec §5: \"80-95% af feltet paa vinderens tid\")",
+      "v3": {
+        "value": 0.019632213955418733,
+        "sampleCount": 160,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 0.01830012190046033,
+          "max": 0.022313731613181106,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": 0.30295138888888884,
+        "sampleCount": 160,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 0.2928819444444444,
+          "max": 0.31371527777777775,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "descent_vs_summit_gap_ratio",
+      "label": "Nedkoersels-gaps vs. summit-gaps (ratio)",
+      "band_label": "<= 0.5",
+      "source": "#3426-maalingen (mor-spec §5: nedkoersels-gaps vs. summit-gaps, ratio <=0,5 ved p5-p10)",
+      "v3": {
+        "value": 0.5683197319118783,
+        "sampleCount": 70,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 0.4565217391304348,
+          "max": 0.6063694267515923,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": 0.35413494765322406,
+        "sampleCount": 70,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.2559829548295863,
+          "max": 0.5328883183568687,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "descent_attack_gain_bounds",
+      "label": "Descent attack-gevinst (10-20s-loft, aldrig omvendt fortegn i gruppen)",
+      "band_label": "10-20s",
+      "source": "ejer-valg 20/8 (mor-spec §4 M3 / §5: descent attack-gevinst-loft)",
+      "v3": {
+        "value": null,
+        "sampleCount": 0,
+        "verdict": "N/A",
+        "naReason": "v3 har ingen sammenlignelig descent-attack-mekanik",
+        "spread": null
+      },
+      "v4": {
+        "value": 20,
+        "sampleCount": 2553,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 20,
+          "max": 20,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "punch_correlation",
+      "label": "Punch-korrelation (punch-evne vs. placering paa punch-etaper)",
+      "band_label": "spearman > 0.2",
+      "source": "#3965-harnesset (mor-spec §5)",
+      "v3": {
+        "value": 0.7522199646929322,
+        "sampleCount": 85,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.7424577799821069,
+          "max": 0.7637119213456822,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": 0.8231276611886906,
+        "sampleCount": 85,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.8158685604137235,
+          "max": 0.830589798502235,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "cobblestone_lift_on_sectors",
+      "label": "Brostensevnens loeft paa brosten/grus (spearman-forskel vs. flad)",
+      "band_label": "loeft >= 0.03 (FORSLAG, ikke ejer-godkendt)",
+      "source": "FORSLAG (M8-wiring 6/9, #2789/#4105) — regressionsvagt for ejer-reglen 3/9 \"brostensevnen taeller kun paa etaper med brosten/grus\"; taersklen er valgt af denne harness, ikke ejer-godkendt",
+      "v3": {
+        "value": 0.293335811234807,
+        "sampleCount": 15,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.2742954545028642,
+          "max": 0.32289369301269166,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": 0.046930533596321156,
+        "sampleCount": 15,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.019494413642818786,
+          "max": 0.11184270150773212,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "favorite_win_rate",
+      "label": "Felt-favoritters win-rate",
+      "band_label": "25.0%-40.0%",
+      "source": "v3-spec §2 + ejer-valg 20/8 (mor-spec §5: \"i dag 80-88%\")",
+      "v3": {
+        "value": 0.37021276595744684,
+        "sampleCount": 705,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.3404255319148936,
+          "max": 0.4326241134751773,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": 0.5659574468085106,
+        "sampleCount": 705,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 0.5319148936170213,
+          "max": 0.6028368794326241,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "same_team_top10_share_4plus",
+      "label": "Samme-hold-top-10 (andel etaper med 4+ fra ét hold)",
+      "band_label": "< 3.0%",
+      "source": "v3-spec §2 (mor-spec §5: \"4+ fra samme hold i top 10 sjaeldent, < 3%\")",
+      "v3": {
+        "value": 0,
+        "sampleCount": 705,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0,
+          "max": 0,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": 0,
+        "sampleCount": 705,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0,
+          "max": 0,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "breakaway_rate_per_terrain",
+      "label": "Udbruds-rater pr. terraen (descent-dominans 54% skal ned)",
+      "band_label": "race:gate-baand (ingen fast tal her — se gate-konfig)",
+      "source": "race:gate + #3426 (mor-spec §5)",
+      "v3": {
+        "value": 0.22127659574468087,
+        "sampleCount": 705,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.15602836879432624,
+          "max": 0.2624113475177305,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": null,
+        "sampleCount": 0,
+        "verdict": "N/A",
+        "naReason": "M5 (udbruds-/jagt-interesse-mekanik) er F3-scope — v4 F2 klassificerer endnu ikke udbrudssejre",
+        "spread": null
+      }
+    },
+    {
+      "id": "sprinter_win_rate_flat",
+      "label": "Sprinter-vinderrate paa flat (top-20%-sprint-evne vinder)",
+      "band_label": ">= 90.0%",
+      "source": "race:gate + #3149 (mor-spec §5: \"sprinter-vinderrate paa flat >= 90%\")",
+      "v3": {
+        "value": 0.8514285714285714,
+        "sampleCount": 175,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 0.8,
+          "max": 0.9142857142857143,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": 0.96,
+        "sampleCount": 175,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.9142857142857143,
+          "max": 1,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "itt_correlation",
+      "label": "ITT-korrelation (time_trial-evne vs. placering, synlig)",
+      "band_label": "spearman > 0.3",
+      "source": "race:gate + #3149 (mor-spec §5: \"ITT-korrelation synlig\" — tærskel valgt af denne harness)",
+      "v3": {
+        "value": 0.7618617669614408,
+        "sampleCount": 60,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.7467749228037429,
+          "max": 0.7781702530855972,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": 0.8327908476470768,
+        "sampleCount": 60,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 0.8121232720587906,
+          "max": 0.8454523984953873,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "bonus_seconds_bounded",
+      "label": "Bonussekunder GC-effekt bounded (maks ~10s/etape)",
+      "band_label": "<= 10s/etape pr. rytter",
+      "source": "#2413-kravet (mor-spec §5)",
+      "v3": {
+        "value": 13,
+        "sampleCount": 660,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 13,
+          "max": 13,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": 10,
+        "sampleCount": 645,
+        "verdict": "PASS",
+        "naReason": null,
+        "spread": {
+          "min": 10,
+          "max": 10,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "mountain_top10_spread",
+      "label": "Bjergetape top-10-spredning, topankomster (#2415)",
+      "band_label": "180-240s (~3-4 min)",
+      "source": "#2415 (gap-realisme-baand: bjergetape top-10 inden for ~3-4 min, PCS-niveau)",
+      "v3": {
+        "value": 112.3047619047619,
+        "sampleCount": 105,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 109.52380952380952,
+          "max": 117.66666666666667,
+          "seeds": 5
+        }
+      },
+      "v4": {
+        "value": 130.15657142857125,
+        "sampleCount": 105,
+        "verdict": "FAIL",
+        "naReason": null,
+        "spread": {
+          "min": 100.46952380952366,
+          "max": 150.0114285714283,
+          "seeds": 5
+        }
+      }
+    },
+    {
+      "id": "gt_winner_margin",
+      "label": "GT-vindermargin (#2415)",
+      "band_label": "60-480s (1-8 min)",
+      "source": "#2415 (gap-realisme-baand: GT-vindermargin typisk 1-8 min)",
+      "v3": {
+        "value": null,
+        "sampleCount": 0,
+        "verdict": "N/A",
+        "naReason": "kraever akkumuleret GC over et helt etapeloeb — ikke maalbart etape-for-etape i denne harness-version",
+        "spread": null
+      },
+      "v4": {
+        "value": null,
+        "sampleCount": 0,
+        "verdict": "N/A",
+        "naReason": "kraever akkumuleret GC over et helt etapeloeb — ikke maalbart etape-for-etape i denne harness-version",
+        "spread": null
+      }
+    }
+  ],
+  "tail_gate": {
+    "rows": [
+      {
+        "profileType": "classic",
+        "n": 3,
+        "cleanP90Pct": 4.67,
+        "band": "-",
+        "status": "ingen ejer-baand",
+        "meanPerSeedPct": 4.73,
+        "spreadPerSeedPct": "4.39-5.11"
+      },
+      {
+        "profileType": "cobbles",
+        "n": 9,
+        "cleanP90Pct": 2.57,
+        "band": "-",
+        "status": "ingen ejer-baand",
+        "meanPerSeedPct": 2.8,
+        "spreadPerSeedPct": "2.52-3.11"
+      },
+      {
+        "profileType": "flat",
+        "n": 96,
+        "cleanP90Pct": 0.2,
+        "band": "0-2 %",
+        "status": "PASS",
+        "meanPerSeedPct": 0.2,
+        "spreadPerSeedPct": "0.20-0.20"
+      },
+      {
+        "profileType": "high_mountain",
+        "n": 36,
+        "cleanP90Pct": 5.24,
+        "band": "6-12 %",
+        "status": "FAIL",
+        "meanPerSeedPct": 5.13,
+        "spreadPerSeedPct": "4.96-5.43"
+      },
+      {
+        "profileType": "hilly",
+        "n": 114,
+        "cleanP90Pct": 4.45,
+        "band": "-",
+        "status": "ingen ejer-baand",
+        "meanPerSeedPct": 4.41,
+        "spreadPerSeedPct": "4.37-4.45"
+      },
+      {
+        "profileType": "itt",
+        "n": 27,
+        "cleanP90Pct": 1.28,
+        "band": "-",
+        "status": "ingen ejer-baand",
+        "meanPerSeedPct": 1.28,
+        "spreadPerSeedPct": "1.28-1.28"
+      },
+      {
+        "profileType": "itt_hilly",
+        "n": 9,
+        "cleanP90Pct": 3.26,
+        "band": "-",
+        "status": "ingen ejer-baand",
+        "meanPerSeedPct": 3.24,
+        "spreadPerSeedPct": "2.93-3.52"
+      },
+      {
+        "profileType": "mountain",
+        "n": 81,
+        "cleanP90Pct": 6.6,
+        "band": "6-12 %",
+        "status": "PASS",
+        "meanPerSeedPct": 6.57,
+        "spreadPerSeedPct": "6.41-6.67"
+      },
+      {
+        "profileType": "rolling",
+        "n": 48,
+        "cleanP90Pct": 2.54,
+        "band": "-",
+        "status": "ingen ejer-baand",
+        "meanPerSeedPct": 2.36,
+        "spreadPerSeedPct": "2.26-2.54"
+      }
+    ],
+    "allPass": false,
+    "exit_code": 1
+  }
+}
