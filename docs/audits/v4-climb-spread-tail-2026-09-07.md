@@ -68,7 +68,7 @@ Begge knapper bor i `STRENGTH_SPEED_EXTRA_TUNING` (`backend/lib/engine/v4/tuning
 
 **3 seeds (s1-s3 — §7b's egne gate-seeds):** bjerg-top-10 **208,9 s (198,8-227,7)** PASS — alle tre seeds inde i båndet, mod 132 s (121-148) FAIL i §7b. Hale-gaten: højbjerg 7,99 % (7,73-8,25) PASS, bjerg 10,15 % (9,88-10,60) PASS, fladt 0,20 % PASS → `v4TailSpread.js --gate` exit 0.
 
-Ingen anker gik PASS → FAIL på middelværdien. De to røde ankre der forbliver røde (felt-sammenhæng på fladt, felt-favoritters win-rate) hører til punkt 2 og 3 i kalibreringspakken og har egne rod-årsager (`finale.ts`' placerings-tiers henholdsvis M16-holdspils-gabet).
+Ingen anker gik PASS → FAIL på middelværdien. De to røde ankre der forbliver røde (felt-sammenhæng på fladt, felt-favoritters win-rate) hørte til punkt 2 og 3 i kalibreringspakken og havde egne rod-årsager. **Rettet (CodeRabbit-fund, #4975):** felt-sammenhæng-fejlen skyldtes ikke `finale.ts`' placerings-tiers, men at jagt-modellen ikke talte feltets antal med; #4975 rettede den. Punkt 3 var M16-holdspils-gabet, jf. #4988.
 
 ## Bivirkninger værd at kende
 
