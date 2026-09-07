@@ -1,11 +1,11 @@
-# Discord #patch-notes catch-up: v7.256-7.261 (klar 7/9)
+# Discord #patch-notes catch-up: v7.256-7.262 (klar 7/9)
 
 > Ejeren poster selv. Format matcher 20/8-opslaget (v7.148-7.163). Kun
-> EN (kanalen er engelsk). Passer under 2000 tegn, saa det er ÉN
+> EN (kanalen er engelsk). Passer under 2000 tegn (1668), saa det er ÉN
 > Discord-besked (ingen split noedvendig).
 
 ```
-Catch-up: v7.256 to v7.261 (6 to 7 Sep)
+Catch-up: v7.256 to v7.262 (6 to 7 Sep)
 
 Racing
 - The race page now opens on an overview with the race state, and Team, Tactics, Stages and Results sit beside it as tabs that follow where you are in the race
@@ -23,6 +23,10 @@ Money & other
 - Bonus targets you accepted from the board are back on the board page after disappearing when you signed your season plan
 - Sponsors have their own page now, under Clubhouse next to Board, with your deal, this season's payments and next season's offers
 - A backend or docs-only update no longer breaks a tab you already had open
+
+Community
+- The recommend-a-friend question now shows up right on your dashboard once you have raced 3 days this season, instead of hiding on your Results tab where almost nobody found it
+- The roadmap now loads for logged-out visitors too, and the list itself got a refresh: four new ideas are in, including manager DMs and inviting a friend
 
 Full detail as always at cyclingzone.org/patch-notes.
 ```
