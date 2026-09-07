@@ -1221,7 +1221,7 @@
       },
       "stageTactics": {
         "title": "Etapeløb: roller og indsats pr. etape",
-        "text": "I etapeløb har løbssiden et taktik-board etape for etape. Kørte etaper er låst og viser hvad der skete; kommende etaper kan stadig ændres mens løbet køres. Hver rytter kan køre en forskellig rolle pr. etape, plus en indsats: Arbejd giver alt for holdet i dag men bygger ekstra træthed, Normal kører normalt, og Spar kræfter holder igen for at være friskere til de dage der tæller. Tager en rytter førertrøjen, gør en genvej på løbssidens Hold-fane ham til kaptajn for alle resterende etaper med ét klik mens løbet kører — en anden kaptajn på de samme etaper rykkes ned til hjælper. Etaper hvor du intet sætter, bruger blot rytterens løbsrolle."
+        "text": "I etapeløb har løbssiden et taktik-board etape for etape. Kørte etaper er låst og viser hvad der skete; kommende etaper kan stadig ændres mens løbet køres. Hver rytter kan køre en forskellig rolle pr. etape, plus en indsats: Arbejd giver alt for holdet i dag men bygger ekstra træthed, Normal kører normalt, og Spar kræfter holder igen for at være friskere til de dage der tæller. Tager en rytter førertrøjen, gør en genvej på løbssidens Hold-fane ham til kaptajn for alle resterende etaper med ét klik mens løbet kører. En anden kaptajn på de samme etaper rykkes ned til hjælper. Etaper hvor du intet sætter, bruger blot rytterens løbsrolle."
       },
       "strategy": {
         "title": "Holdstrategi (stående præferencer)",
