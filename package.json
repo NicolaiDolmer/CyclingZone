@@ -39,6 +39,8 @@
     "brand:export:banner": "node scripts/brand-export.mjs banner frontend/public/brand/discord-banner.svg frontend/public/brand/discord-banner.png",
     "lint:sql": "node scripts/lint-sql-strings.mjs",
     "test:lint-sql": "node --test scripts/lint-sql-strings.test.mjs",
+    "lint:sql-arity": "node scripts/lint-sql-insert-arity.mjs",
+    "test:lint-sql-arity": "node --test scripts/lint-sql-insert-arity.test.mjs",
     "lint:migrations": "node scripts/lint-migration-idempotency.mjs",
     "test:lint-migrations": "node --test scripts/lint-migration-idempotency.test.mjs",
     "lint:constraint-form": "node scripts/lint-constraint-form.mjs",

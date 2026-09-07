@@ -331,7 +331,7 @@ DELETE FROM public.survey_questions
  WHERE survey_id = (SELECT id FROM public.surveys WHERE slug = '2026-09-features')
    AND key IN ('nps');
 
-INSERT INTO public.surveys (slug, title_en, title_da, status)
+INSERT INTO public.surveys (slug, title_en, title_da)
 VALUES (
   '2026-09-features',
   'What should I build next?',
