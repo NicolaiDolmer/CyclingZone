@@ -173,20 +173,31 @@ export default function ProfilePage() {
       return;
     }
     setSavingDiscordHandle(true);
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    // #1792: udløbet/ugyldig session → authUser=null; stop før authUser.id (auth-flow redirecter til /login)
-    if (!authUser) { setSavingDiscordHandle(false); return; }
-    const { error } = await supabase
-      .from("users")
-      .update({ discord_handle: value })
-      .eq("id", authUser.id);
-    if (error) showMsg(error.message, "error");
-    else {
-      setDiscordHandle(value || "");
-      setUser(prev => ({ ...prev, discord_handle: value }));
-      showMsg(value ? t("discord.handleSaved") : t("discord.handleCleared"));
+    // #3628-mønstret (CodeRabbit-fund på #5012): try/finally om HELE kroppen —
+    // ikke kun happy-path'en. Uden det holder knappen sig i "Gemmer..." for
+    // evigt hvis getUser()/update() kaster (tabt net, udløbet token), fordi
+    // setSavingDiscordHandle(false) i bunden aldrig nås. Samme kur som
+    // toggleDmEnabled/sendTestDm/saveTeamInfo ovenfor.
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      // #1792: udløbet/ugyldig session → authUser=null; stop før authUser.id (auth-flow redirecter til /login)
+      if (!authUser) return;
+      const { error } = await supabase
+        .from("users")
+        .update({ discord_handle: value })
+        .eq("id", authUser.id);
+      if (error) showMsg(error.message, "error");
+      else {
+        setDiscordHandle(value || "");
+        setUser(prev => ({ ...prev, discord_handle: value }));
+        showMsg(value ? t("discord.handleSaved") : t("discord.handleCleared"));
+      }
+    } catch (cause) {
+      showMsg(t("errors:generic.networkError"), "error");
+      reportActionFailure("profile_discord_handle_save", { reason: "network", cause });
+    } finally {
+      setSavingDiscordHandle(false);
     }
-    setSavingDiscordHandle(false);
   }
 
   // #1746: skift brugernavn via backend (case-insensitivt unikheds-tjek +

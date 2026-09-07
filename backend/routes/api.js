@@ -14728,6 +14728,14 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
       userData.is_online = userData.last_seen
         ? (Date.now() - new Date(userData.last_seen).getTime()) < 5 * 60 * 1000
         : false;
+      // #5012 (CodeRabbit-fund): discord_id er det PRIVATE bot-DM-kobling-ID
+      // (#2161) — det har ALDRIG været eksponeret af dette endpoint før denne
+      // PR. Uden dette guard ville enhver authenticated bruger kunne se en
+      // managers rå Discord-snowflake i DevTools/Network, selv hvis vedkommende
+      // aldrig satte det offentlige discord_handle. Frontend renderer allerede
+      // kun discord_id NÅR discord_handle er sat (ManagerProfilePage.jsx) —
+      // dette håndhæver samme regel server-side, hvor det faktisk beskytter data.
+      if (!userData.discord_handle) delete userData.discord_id;
     }
 
     res.json({
