@@ -21,7 +21,15 @@ scripts/__pycache__/
 scripts/**/__pycache__/
 scripts/out/
 audit-output/
-backend/scripts/out/
+# `out/*` og ikke `out/`: en undtagelse kan ikke gen-inkludere en fil hvis selve
+# MAPPEN er ekskluderet — git gaar aldrig ind i den. Alt i mappen er stadig
+# ignoreret paa naer den ene undtagelse nedenfor.
+backend/scripts/out/*
+# #4914: A/B-maalingen af holdspils-niveauet er et BESLUTNINGSGRUNDLAG ejeren
+# skal kunne laese i repoet, ikke et koersels-artefakt. Rapporten + de to raa
+# maale-JSON'er den renderes fra er derfor undtaget (samme moenster som
+# !scripts/race_pool_seed.csv ovenfor).
+!backend/scripts/out/teamplay-ab-*
 backend/out/
 .codex.local/
 .codex/
