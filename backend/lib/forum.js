@@ -77,6 +77,13 @@ const REACTIONS_SCAN_LIMIT = 5000;
 // filosofi. Hele forummet havde ~90 indlaeg i alt efter tre uger, saa 2000 pr.
 // manager er rigeligt hovedrum uden at kunne traekke en stor side hjem.
 const FORUM_AUTHOR_STATS_LIMIT = 2000;
+// #5013: højst én mute-række pr. (bruger, kategori), så antallet af
+// kategorier ER loftet. Konstanten er sat med hovedrum til fremtidige
+// kategorier (#4818) og til rækker for kategorier der senere fjernes.
+const FORUM_CATEGORY_MUTES_LIMIT = 50;
+// #5013: delt tomt sæt, så shapeListPost's default ikke allokerer et nyt
+// Set pr. tråd i lister uden bruger (tests).
+const EMPTY_MUTES = new Set();
 
 export function parseForumLimit(raw) {
   const n = Number.parseInt(raw ?? "", 10);
@@ -232,7 +239,7 @@ function shapeLastReplyAuthor(row, usersById, teamsById) {
   );
 }
 
-function shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId) {
+function shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId, mutedCategories = EMPTY_MUTES) {
   return {
     id: row.id,
     seq: row.seq,
@@ -251,7 +258,12 @@ function shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, us
     // Uden userId (ingen indlogget bruger — kun tests kalder listForumPosts
     // sådan) er der ingen "ulæst for hvem", så feltet falder til false i
     // stedet for at gætte via isThreadUnread's "ingen række = ulæst"-regel.
-    is_unread: userId ? isThreadUnread(row, readsByPostId.get(row.id)) : false,
+    // #5013: en dæmpet kategori giver ALDRIG en ulæst-markering — spilleren
+    // har fravalgt netop dét signal. Tråden vises stadig i listen; kun
+    // "der er nyt her"-prikken forsvinder.
+    is_unread: userId && !mutedCategories.has(row.category)
+      ? isThreadUnread(row, readsByPostId.get(row.id))
+      : false,
     author: shapeAuthor(row, usersById, teamsById),
   };
 }
@@ -273,6 +285,77 @@ async function resolveThreadReads({ supabase, userId, postIds }) {
   if (error) throw new Error(`forum: could not resolve thread reads: ${error.message}`);
   for (const row of data || []) map.set(row.post_id, row.last_read_at);
   return map;
+}
+
+/**
+ * #5013 · Kategorier spilleren har slået FRA. Opt-out-model: ingen række =
+ * spilleren følger kategorien (se database/2026-09-08-5013-forum-category-
+ * mutes.sql for hvorfor mute-rækker og ikke abonnements-rækker). Ét bounded
+ * select pr. request, aldrig N+1 — der er højst én række pr. kategori pr.
+ * bruger, så FORUM_CATEGORIES.length er et hårdt loft.
+ *
+ * Ukendte kategori-nøgler i tabellen (fx en kategori der senere fjernes fra
+ * FORUM_CATEGORIES) beholdes i settet uden at gøre skade: de matcher bare
+ * ingen tråd.
+ */
+export async function resolveMutedCategories({ supabase, userId }) {
+  if (!userId) return new Set();
+  const { data, error } = await supabase
+    .from("forum_category_mutes")
+    .select("category_id")
+    .eq("user_id", userId)
+    .limit(FORUM_CATEGORY_MUTES_LIMIT);
+  if (error) throw new Error(`forum: could not resolve category mutes: ${error.message}`);
+  return new Set((data || []).map((row) => row.category_id));
+}
+
+/**
+ * GET /api/forum/category-mutes — spillerens eget valg, formet som en fuld
+ * liste over kategorierne med `muted` pr. kategori, ikke som en rå mute-liste.
+ * Fladen skal kunne tegne alle seks rækker uden selv at kende rækkefølgen
+ * eller kunne komme til at vise en kategori der ikke findes mere.
+ */
+export async function listForumCategoryMutes({ supabase, userId }) {
+  const muted = await resolveMutedCategories({ supabase, userId });
+  return {
+    categories: FORUM_CATEGORIES.map((category) => ({ category, muted: muted.has(category) })),
+  };
+}
+
+/**
+ * PUT /api/forum/category-mutes — slå ÉN kategori til/fra. Idempotent i begge
+ * retninger: at slå en allerede dæmpet kategori fra igen er en no-op (upsert
+ * på PK'en), og at slå en kategori til der aldrig var dæmpet sletter bare
+ * ingenting. `muted: true` = spilleren følger IKKE længere kategorien.
+ *
+ * Arkiv-filteret (#4492) er bevidst ikke en gyldig værdi her — det er et
+ * visnings-filter på tværs af kategorier, ikke noget man kan abonnere på.
+ */
+export async function setForumCategoryMute({ supabase, userId, category, muted, now = new Date() }) {
+  if (!userId) return { status: 401, body: { error: "Missing user", errorCode: "forum_missing_user" } };
+  if (!isValidForumCategory(category)) {
+    return { status: 400, body: { error: "Invalid category", errorCode: "forum_invalid_category" } };
+  }
+  if (typeof muted !== "boolean") {
+    return { status: 400, body: { error: "Invalid muted flag", errorCode: "forum_invalid_mute_flag" } };
+  }
+
+  if (muted) {
+    const { error } = await supabase.from("forum_category_mutes").upsert(
+      [{ user_id: userId, category_id: category, created_at: now.toISOString() }],
+      { onConflict: "user_id,category_id" }
+    );
+    if (error) throw new Error(`forum: could not mute category ${category}: ${error.message}`);
+  } else {
+    const { error } = await supabase
+      .from("forum_category_mutes")
+      .delete()
+      .eq("user_id", userId)
+      .eq("category_id", category);
+    if (error) throw new Error(`forum: could not unmute category ${category}: ${error.message}`);
+  }
+
+  return { status: 200, body: { ok: true, category, muted } };
 }
 
 /**
@@ -385,10 +468,13 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
   }
 
   const readsByPostId = await resolveThreadReads({ supabase, userId, postIds });
+  // #5013: ét opslag pr. request (ikke pr. tråd) — samme ikke-N+1-mønster
+  // som resolveAuthors/resolveThreadReads.
+  const mutedCategories = await resolveMutedCategories({ supabase, userId });
 
   return {
-    pinned: pinnedRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId)),
-    items: pageRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId)),
+    pinned: pinnedRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId, mutedCategories)),
+    items: pageRows.map((row) => shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId, mutedCategories)),
     next_cursor: hasMore ? encodeForumActivityCursor(pageRows[pageRows.length - 1]) : null,
     limit: pageSize,
   };
@@ -628,12 +714,22 @@ export async function getForumUnreadStatus({ supabase, userId }) {
 
   const { data: postRows, error } = await supabase
     .from("forum_posts")
-    .select("id, seq, created_at, last_reply_at")
+    .select("id, seq, created_at, last_reply_at, category")
     .is("deleted_at", null)
     .order("seq", { ascending: false })
     .limit(UNREAD_STATUS_SCAN_LIMIT);
   if (error) throw new Error(`forum: could not load posts for unread-status: ${error.message}`);
-  const rows = postRows || [];
+  const allRows = postRows || [];
+  if (!allRows.length) return { has_unread: false };
+
+  // #5013: nav-prikken er det bredeste kategori-signal der findes — den skal
+  // aldrig kunne lyse på grund af en kategori spilleren har slået fra.
+  // Filtreringen sker FØR reads-opslaget, så en spiller der kun følger én
+  // kategori også kun slår rækker op for den.
+  const mutedCategories = await resolveMutedCategories({ supabase, userId });
+  const rows = mutedCategories.size
+    ? allRows.filter((row) => !mutedCategories.has(row.category))
+    : allRows;
   if (!rows.length) return { has_unread: false };
 
   const readsByPostId = await resolveThreadReads({ supabase, userId, postIds: rows.map((r) => r.id) });

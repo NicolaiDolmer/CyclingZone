@@ -31,6 +31,9 @@ import {
   toggleForumReaction,
   recordForumThreadView,
   getForumAuthorStats,
+  resolveMutedCategories,
+  listForumCategoryMutes,
+  setForumCategoryMute,
 } from "./forum.js";
 
 function post(overrides = {}) {
@@ -65,6 +68,8 @@ function seedState(overrides = {}) {
     forum_poll_votes: [],
     forum_thread_reads: [],
     forum_reactions: [],
+    // #5013: opt-out-tabel — tom = spilleren følger ALLE kategorier.
+    forum_category_mutes: [],
     users: [
       { id: "u1", username: "alice", email: "alice@example.com", role: "manager" },
       { id: "u2", username: "bob", email: "bob@example.com", role: "manager" },
@@ -376,6 +381,106 @@ test("getForumUnreadStatus: has_unread er false uden brugte tråde/manglende use
   }));
   assert.deepEqual(await getForumUnreadStatus({ supabase: withPosts, userId: "u1" }), { has_unread: false });
   assert.deepEqual(await getForumUnreadStatus({ supabase: withPosts, userId: "u2" }), { has_unread: true }); // u2 har aldrig læst p1
+});
+
+// ── #5013 · Abonnement pr. kategori (opt-out) ───────────────────────────────
+
+test("resolveMutedCategories: tom tabel = følger alt, ingen userId = tomt sæt", async () => {
+  const fake = createFakeSupabase(seedState());
+  assert.equal((await resolveMutedCategories({ supabase: fake, userId: "u1" })).size, 0);
+  assert.equal((await resolveMutedCategories({ supabase: fake, userId: null })).size, 0);
+
+  const muted = createFakeSupabase(seedState({
+    forum_category_mutes: [
+      { user_id: "u1", category_id: "off_topic", created_at: "2026-09-08T10:00:00Z" },
+      { user_id: "u2", category_id: "general", created_at: "2026-09-08T10:00:00Z" },
+    ],
+  }));
+  const forU1 = await resolveMutedCategories({ supabase: muted, userId: "u1" });
+  assert.deepEqual([...forU1], ["off_topic"]); // u2's række må aldrig lække ind
+});
+
+test("listForumCategoryMutes: hele kategori-listen med muted-flag, default false overalt", async () => {
+  const fake = createFakeSupabase(seedState({
+    forum_category_mutes: [{ user_id: "u1", category_id: "transfers", created_at: "2026-09-08T10:00:00Z" }],
+  }));
+  const { categories } = await listForumCategoryMutes({ supabase: fake, userId: "u1" });
+  assert.deepEqual(categories.map((c) => c.category), FORUM_CATEGORIES);
+  assert.deepEqual(
+    categories.filter((c) => c.muted).map((c) => c.category),
+    ["transfers"]
+  );
+
+  // Ny bruger uden rækker følger ALT — det er hele pointen med opt-out.
+  const fresh = await listForumCategoryMutes({ supabase: fake, userId: "u2" });
+  assert.ok(fresh.categories.every((c) => c.muted === false));
+});
+
+test("setForumCategoryMute: validerer input, er idempotent begge veje, arkiv-filteret afvises", async () => {
+  const fake = createFakeSupabase(seedState());
+
+  assert.equal((await setForumCategoryMute({ supabase: fake, userId: null, category: "general", muted: true })).status, 401);
+  assert.equal((await setForumCategoryMute({ supabase: fake, userId: "u1", category: "random", muted: true })).status, 400);
+  // #4492: "archive" er et visnings-filter, ikke noget man kan abonnere på.
+  assert.equal((await setForumCategoryMute({ supabase: fake, userId: "u1", category: FORUM_ARCHIVE_FILTER, muted: true })).status, 400);
+  assert.equal((await setForumCategoryMute({ supabase: fake, userId: "u1", category: "general", muted: "yes" })).status, 400);
+
+  const off = await setForumCategoryMute({ supabase: fake, userId: "u1", category: "off_topic", muted: true });
+  assert.equal(off.status, 200);
+  assert.deepEqual(off.body, { ok: true, category: "off_topic", muted: true });
+  assert.equal(fake.state.forum_category_mutes.length, 1);
+
+  // Samme kald igen: upsert på (user_id, category_id) — ingen dublet.
+  await setForumCategoryMute({ supabase: fake, userId: "u1", category: "off_topic", muted: true });
+  assert.equal(fake.state.forum_category_mutes.length, 1);
+
+  await setForumCategoryMute({ supabase: fake, userId: "u1", category: "off_topic", muted: false });
+  assert.equal(fake.state.forum_category_mutes.length, 0);
+  // Slå til igen på noget der aldrig var slået fra: no-op, ikke en fejl.
+  const again = await setForumCategoryMute({ supabase: fake, userId: "u1", category: "tactics", muted: false });
+  assert.equal(again.status, 200);
+  assert.equal(fake.state.forum_category_mutes.length, 0);
+});
+
+test("listForumPosts: tråde i en dæmpet kategori er aldrig is_unread, andre kategorier upåvirket (#5013)", async () => {
+  const state = seedState({
+    forum_posts: [
+      post({ id: "p-general", seq: 1, category: "general", created_at: "2026-09-01T10:00:00Z" }),
+      post({ id: "p-offtopic", seq: 2, category: "off_topic", created_at: "2026-09-02T10:00:00Z" }),
+    ],
+  });
+  const following = createFakeSupabase(state);
+  const before = await listForumPosts({ supabase: following, userId: "u1", now: new Date("2026-09-08T10:00:00Z") });
+  assert.deepEqual(
+    Object.fromEntries(before.items.map((p) => [p.id, p.is_unread])),
+    { "p-general": true, "p-offtopic": true }
+  );
+
+  const muted = createFakeSupabase(seedState({
+    forum_posts: state.forum_posts,
+    forum_category_mutes: [{ user_id: "u1", category_id: "off_topic", created_at: "2026-09-08T10:00:00Z" }],
+  }));
+  const after = await listForumPosts({ supabase: muted, userId: "u1", now: new Date("2026-09-08T10:00:00Z") });
+  assert.deepEqual(
+    Object.fromEntries(after.items.map((p) => [p.id, p.is_unread])),
+    { "p-general": true, "p-offtopic": false }
+  );
+  // Tråden er stadig i listen — kun signalet er væk, ikke indholdet.
+  assert.equal(after.items.length, 2);
+});
+
+test("getForumUnreadStatus: nav-prikken ignorerer dæmpede kategorier (#5013)", async () => {
+  const posts = [post({ id: "p-offtopic", seq: 1, category: "off_topic", created_at: "2026-09-02T10:00:00Z" })];
+  const following = createFakeSupabase(seedState({ forum_posts: posts }));
+  assert.deepEqual(await getForumUnreadStatus({ supabase: following, userId: "u1" }), { has_unread: true });
+
+  const muted = createFakeSupabase(seedState({
+    forum_posts: posts,
+    forum_category_mutes: [{ user_id: "u1", category_id: "off_topic", created_at: "2026-09-08T10:00:00Z" }],
+  }));
+  assert.deepEqual(await getForumUnreadStatus({ supabase: muted, userId: "u1" }), { has_unread: false });
+  // En anden bruger har sit eget valg — u2 følger stadig kategorien.
+  assert.deepEqual(await getForumUnreadStatus({ supabase: muted, userId: "u2" }), { has_unread: true });
 });
 
 test("markAllForumThreadsRead: upserter last_read_at for ALLE ikke-slettede tråde, idempotent, kræver userId", async () => {
