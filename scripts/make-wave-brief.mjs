@@ -68,7 +68,7 @@ function livstegnBlok(branch) {
   return [
     "# Livstegn (TIER WAVE, ejer-krav 6/9)",
     "",
-    "- Inden 10 min: foerste push (tom commit ok: `wip: lane start`), `git push -u origin " + branch + "`.",
+    "- Inden 10 min: foerste push (tom commit ok: `wip: lane start`), `git push -u origin " + branch + "`, og opret PR'en som DRAFT med det samme (se PR-skabelon) - saa alle efterfoelgende wip-pushes ikke taeller som CodeRabbit-review-forsoeg.",
     "- Derefter push MINDST hvert 15. minut, ogsaa ufaerdigt arbejde. En `wip(...)`-commit slaar altid ingen commit.",
     "- Commit + push FOER du koerer tests, ikke efter.",
     "- Tavshed >45 min = orkestratoren stopper dig og genopretter i SAMME worktree.",
@@ -92,13 +92,22 @@ function verifikationsBlok(tier, verifyCommands) {
   return lines.join("\n");
 }
 
+// PR'en oprettes som DRAFT og markeres ready foerst som SIDSTE handling.
+// Begrundelse (CodeRabbit-attempts, malt 7/9): CodeRabbit (plan Essentials)
+// taeller HVERT push til en ikke-draft PR som et review-forsoeg. Boelge-workers
+// pusher wip-commits hvert 15. minut (livstegn-reglen) - 200 PR'er over 7 dage
+// gav 108 review-forsoeg og CodeRabbits allowance faldt til 1 review/time. En
+// draft-PR faar ingen auto-review foer den er klar, saa CodeRabbit ser kun ét
+// forsoeg pr. PR (efter `gh pr ready`), uanset hvor mange wip-pushes der gik forud.
 function prSkabelonBlok(issue, wd, branch) {
   return [
     "# PR-skabelon",
     "",
     `- PR-body-fil: \`${wd}/.tmp-${issue}-pr.md\`.`,
     "- Skal indeholde `## Brugerverifikation` med mindst ét `- [x]`, ELLER label `docs-only`/`backend-only`.",
-    `- \`gh pr create --base main --head ${branch} --title "..." --body-file "${wd}/.tmp-${issue}-pr.md" --label docs-only\` (skift label efter omfang).`,
+    `- Foerste push: opret PR'en som DRAFT: \`gh pr create --draft --base main --head ${branch} --title "..." --body-file "${wd}/.tmp-${issue}-pr.md" --label docs-only\` (skift label efter omfang).`,
+    "- Push wip-commits mod draften som normalt (livstegn-reglen gaelder uaendret).",
+    "- Markér FOERST PR'en klar naar preflight er groen og PR-body er faerdig, som SIDSTE handling: `gh pr ready <N>` (CodeRabbit-attempts, 7/9 - undgaar at hvert wip-push taeller som et review-forsoeg).",
     `- Refs #${issue} i PR-body, ikke "Closes" - projektets close-protokol er "Refs #N", brugeren lukker selv.`,
   ].join("\n");
 }
