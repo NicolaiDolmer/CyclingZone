@@ -249,8 +249,13 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // placeringerne ikke foldes sammen igen af det EFTERFOELGENDE mergeGroups-
     // kald). Paa en massefinale paa fladt/rullende laegges feltets antals-
     // fordel oveni (#4914) — den er ALDRIG mindre end merge-taersklen, saa
-    // ingen eksisterende gren kan blive strengere af dette led.
-    const catchThreshold = bunchCatch
+    // ingen eksisterende gren kan blive strengere af dette led. Kun
+    // `kind: "peloton"`-grupper faar bonussen: en lille "chase"/"solo"-gruppe
+    // (fx en counter-attack-split, se GroupKind i types.ts) kan matematisk
+    // naa referenceforholdet mod en endnu mindre forsvarer uden at vaere
+    // "feltet" — antals-argumentet (rotation hele vejen ind) gaelder kun den
+    // egentlige peloton (code-review-fund, CodeRabbit).
+    const catchThreshold = bunchCatch && group.kind === "peloton"
       ? Math.max(
           mergeThreshold,
           bunchCatchWindowSeconds(

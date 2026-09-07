@@ -14,7 +14,6 @@ import {
   isBunchCatchRoute,
 } from "./finale.ts";
 import { makeHookCtx } from "./testUtils/makeHookCtx.ts";
-import { boundRngFor } from "./rng.ts";
 import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
 import { FINALE_EXTRA_TUNING, RACE_V4_TUNING } from "./tuning.ts";
 import type {
@@ -454,6 +453,42 @@ test("finaleHook (#4914): et stort nok forspring koerer stadig hjem paa fladt (s
   assert.ok(winnerGroup.rider_ids.every((id) => breakIds.includes(id)), "udbruddet skal vinde naar hullet er stoerre end vinduet");
   const sprintDecided = result.events.find((e) => e.type === "sprint_decided")!;
   assert.ok(breakIds.includes(String(sprintDecided.params.winner_rider_id)));
+});
+
+test("finaleHook (#4914): en lille IKKE-peloton jagtgruppe faar ALDRIG antals-bonussen, selv naar den matematisk naar referenceforholdet (code-review-fund)", () => {
+  // 3 svage "chase"-ryttere (kind: "chase", ikke peloton) mod en solo-leder:
+  // ratio 3/1 = 3 >= referenceRatio (2), saa en peloton-gruppe med samme
+  // stoerrelsesforhold ville faa det FULDE 120s-vindue. En 3-mands gruppe er
+  // ikke "feltet" og skal derfor IKKE nyde antals-fordelen.
+  const leaderId = ["solo-leader"];
+  const chaseIds = ["c1", "c2", "c3"];
+  const entrants: Record<string, Entrant> = {
+    "solo-leader": makeEntrant("solo-leader", abilities({ tempo: 99, endurance: 99, durability: 99, sprint: 99 })),
+    ...Object.fromEntries(chaseIds.map((id) => [id, makeEntrant(id, abilities({ tempo: 1, endurance: 1, aggression: 1, sprint: 1 }))])),
+  };
+  const riders: Record<string, RiderState> = {
+    "solo-leader": makeRiderState("solo-leader", "solo-0", { wprime: 1, wprimeMax: 1 }),
+    ...Object.fromEntries(chaseIds.map((id) => [id, makeRiderState(id, "chase-0", { wprime: 0.1, wprimeMax: 1 })])),
+  };
+  const gap = FINALE_EXTRA_TUNING.bunchCatchMaxSeconds / 2; // langt under svag jagt-evnes egen lukning, men inden for et hypotetisk antals-vindue
+  const groups: RaceGroup[] = [
+    { id: "solo-0", kind: "solo", rider_ids: leaderId, gap_seconds: 0, cohesion: 1 },
+    { id: "chase-0", kind: "chase", rider_ids: chaseIds, gap_seconds: gap, cohesion: 1 },
+  ];
+
+  const result = finaleHook(buildState(groups, riders), makeCtx({
+    entrants,
+    finaleType: "bunch_sprint",
+    profileType: "flat",
+    segment: { kind: "flat", from_km: 149, to_km: 150 },
+  }));
+
+  assert.equal(result.state.groups.length, 2, "chase-gruppen maa IKKE smelte sammen med solo-lederen");
+  const chaseSurvivor = result.state.groups.find((g) => g.rider_ids.includes("c1"))!;
+  assert.ok(
+    chaseSurvivor.gap_seconds > RACE_V4_TUNING.groups.mergeThresholdSeconds,
+    "chase-gruppen skal beholde et reelt gap — den er ikke feltet og faar ikke antals-bonussen",
+  );
 });
 
 test("computeFinaleAbilityScore: monotont ikke-faldende i W'-reserve", () => {
