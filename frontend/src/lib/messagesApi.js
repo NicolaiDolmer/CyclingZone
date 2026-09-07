@@ -8,7 +8,7 @@
 // en oversat tekst op i `errors:api.<code>` frem for at vise backendens
 // engelske fallback-streng.
 
-import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
+import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 
 const API = import.meta.env.VITE_API_URL;
 

@@ -10,7 +10,8 @@
     "emptyBody": "Åbn en managerprofil og skriv til personen bag holdet. En handel er nemmere at lukke, når man kan spørge først.",
     "emptyAction": "Find en manager",
     "you": "Dig",
-    "loadError": "Jeg kunne ikke hente dine beskeder. Prøv igen."
+    "loadError": "Jeg kunne ikke hente dine beskeder. Prøv igen.",
+    "retry": "Prøv igen"
   },
   "thread": {
     "back": "Alle beskeder",

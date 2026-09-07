@@ -1,6 +1,6 @@
 import { Link } from "react-router";
-import { ExchangeIcon, GavelIcon } from "../ui";
-import { formatNumber } from "../../lib/intl";
+import { ExchangeIcon, GavelIcon } from "../ui/index.js";
+import { formatNumber } from "../../lib/intl.js";
 
 // #3200 · Den citerede handel på den første besked fra "Skriv til modparten".
 // Kun tal begge parter i forvejen kan se: rytter, beløb, dato. Ingen skjulte

@@ -4,14 +4,16 @@ import { Link } from "react-router";
 import {
   Avatar, Button, EmptyState, ErrorState, Dropdown, MenuItem, Modal,
   SkeletonLines, Textarea, MessageIcon, MoreIcon, ChevronLeftIcon,
-} from "../ui";
+} from "../ui/index.js";
+import { buttonClass } from "../ui/buttonStyles.js";
+import { combineThreadMessages } from "../../lib/messageThreadMerge.js";
 import MessageBody from "./MessageBody.jsx";
 import MessageQuote from "./MessageQuote.jsx";
-import { formatRelativeTime, formatDateTime } from "../../lib/intl";
+import { formatRelativeTime, formatDateTime } from "../../lib/intl.js";
 import {
   fetchConversations, fetchThread, hideThread, markThreadRead,
   reportThread, sendMessage, setBlocked,
-} from "../../lib/messagesApi";
+} from "../../lib/messagesApi.js";
 
 // #3200 · Beskeder-fanen i indbakken: samtaleliste + tråd.
 //
@@ -90,6 +92,11 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
   const [reporting, setReporting] = useState(false);
 
   const bottomRef = useRef(null);
+  // Monotont voksende id pr. traad-hentning. Et svar for samtale A kan naa
+  // frem EFTER at brugeren har valgt samtale B; uden guarden ville A's
+  // beskeder erstatte B, og menuens Bloker/Anmeld ville ramme A mens URL'en
+  // stadig sagde B.
+  const threadRequestRef = useRef(0);
 
   const loadList = useCallback(async () => {
     try {
@@ -106,16 +113,36 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
 
   useEffect(() => { loadList(); }, [loadList]);
 
-  const loadThread = useCallback(async (id, { silent = false } = {}) => {
+  const loadThread = useCallback(async (id, { silent = false, before = null } = {}) => {
+    const requestId = threadRequestRef.current + 1;
+    threadRequestRef.current = requestId;
     if (!silent) setThreadLoading(true);
     try {
-      const data = await fetchThread(id);
-      setThread(data);
+      const data = await fetchThread(id, { before });
+      if (threadRequestRef.current !== requestId) return;
+      setThread(prev => {
+        // Kun den AELDSTE hentede side ved om der er mere bagud, saa en
+        // poll-opdatering maa ikke nulstille cursoren.
+        const pagedBack = Boolean(before) || Boolean(prev?.pagedBack);
+        return {
+          ...data,
+          messages: prev && prev.conversation?.id === data.conversation?.id
+            ? combineThreadMessages(prev.messages, data.messages, { before, hasMore: data.hasMore })
+            : data.messages,
+          hasMore: before || !pagedBack ? data.hasMore : prev.hasMore,
+          nextBefore: before || !pagedBack ? data.nextBefore : prev.nextBefore,
+          pagedBack,
+        };
+      });
       setThreadError(false);
     } catch {
+      if (threadRequestRef.current !== requestId) return;
       if (!silent) setThreadError(true);
     } finally {
-      if (!silent) setThreadLoading(false);
+      // Ryd ALTID loading naar dette er den seneste hentning, ogsaa hvis den
+      // var silent. En silent hentning (fx efter en blokering) kan overhale en
+      // synlig, og hvis kun !silent ryddede flaget, stod skeletonet for evigt.
+      if (threadRequestRef.current === requestId) setThreadLoading(false);
     }
   }, []);
 
@@ -125,6 +152,7 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
     if (!conversationId) { setThread(null); return; }
     setDraft("");
     setSendError(null);
+    setThread(null);
     loadThread(conversationId);
     markThreadRead(conversationId)
       .then(() => loadList())
@@ -212,7 +240,12 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
   const unreadConversations = conversations.filter(c => c.unreadCount > 0).length;
 
   if (listError) {
-    return <ErrorState description={t("list.loadError")} onRetry={loadList} />;
+    return (
+      <ErrorState
+        description={t("list.loadError")}
+        action={<Button variant="secondary" size="sm" onClick={loadList}>{t("list.retry")}</Button>}
+      />
+    );
   }
 
   if (listLoading) {
@@ -225,11 +258,13 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
         icon={<MessageIcon size={26} aria-hidden="true" />}
         title={t("list.emptyTitle")}
         description={t("list.emptyBody")}
-        action={
-          <Link to="/global-rank">
-            <Button variant="primary" size="sm">{t("list.emptyAction")}</Button>
+        action={(
+          // Link renderer et <a> og Button et <button>: ét interaktivt element,
+          // ikke en knap inde i et link (tastatur/skaermlaeser bliver upaalidelig).
+          <Link to="/global-rank" className={buttonClass({ variant: "primary", size: "sm" })}>
+            {t("list.emptyAction")}
           </Link>
-        }
+        )}
       />
     );
   }
@@ -274,7 +309,14 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
               <p className="text-sm text-cz-3">{t("thread.emptyBody")}</p>
             </div>
           ) : threadError ? (
-            <ErrorState description={t("list.loadError")} onRetry={() => loadThread(conversationId)} />
+            <ErrorState
+              description={t("list.loadError")}
+              action={(
+                <Button variant="secondary" size="sm" onClick={() => loadThread(conversationId)}>
+                  {t("list.retry")}
+                </Button>
+              )}
+            />
           ) : threadLoading || !thread ? (
             <SkeletonLines lines={6} />
           ) : (
@@ -336,7 +378,11 @@ export default function MessagesPanel({ conversationId, onSelectConversation, on
               <div className="max-h-[52vh] min-h-[180px] overflow-y-auto px-3 py-3">
                 {thread.hasMore && (
                   <div className="mb-3 text-center">
-                    <Button variant="secondary" size="sm" onClick={() => loadThread(conversationId)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => loadThread(conversationId, { silent: true, before: thread.nextBefore })}
+                    >
                       {t("thread.loadMore")}
                     </Button>
                   </div>

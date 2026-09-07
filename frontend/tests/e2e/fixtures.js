@@ -599,7 +599,12 @@ export function installMessagesMocks(page, { seedConversation = true, seedOffer 
 
   function conversationRows() {
     return state.conversations.map((conversation) => {
-      const messages = state.messages.filter(m => m.conversationId === conversation.id);
+      // Samme blok-filter som traaden: en blokeret afsenders beskeder er ude
+      // af MIN visning, ogsaa i listens sidste-linje og ulaest-tal. De bliver
+      // liggende i state - det er pointen med at loggen er komplet.
+      const messages = state.messages
+        .filter(m => m.conversationId === conversation.id)
+        .filter(m => !(state.blocked && !m.fromMe));
       const latest = messages[messages.length - 1] || null;
       const cutoff = state.lastReadAt ? Date.parse(state.lastReadAt) : null;
       const unreadCount = messages.filter(m =>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../lib/supabase.js";
 
 // #3200 · "Hvilket hold er MIT?" — det eneste MessageManagerButton behøver for
 // at kunne skjule sig selv på egne opslag og på sin egen profil.
@@ -34,9 +34,14 @@ export function useMyTeamId() {
   useEffect(() => {
     if (cachedTeamId !== undefined) { setTeamId(cachedTeamId); return undefined; }
     let alive = true;
-    inFlight = inFlight || loadMyTeamId().catch(() => null);
+    // Kun en LYKKET opslag caches. Et fejlet kald må ikke fryse "du har intet
+    // hold" fast for resten af sessionen — så ville knappen dukke op på ens
+    // egne opslag, og backenden ville afvise klikket med 400.
+    inFlight = inFlight || loadMyTeamId().then(
+      (id) => { cachedTeamId = id; return id; },
+      () => null,
+    );
     inFlight.then(id => {
-      cachedTeamId = id;
       inFlight = null;
       if (alive) setTeamId(id);
     });

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
-import { Button, Modal, Textarea, MessageIcon } from "../ui";
+import { Button, Modal, Textarea, MessageIcon } from "../ui/index.js";
 import MessageQuote from "./MessageQuote.jsx";
-import { fetchConversationWithTeam, sendMessage } from "../../lib/messagesApi";
+import { fetchConversationWithTeam, sendMessage } from "../../lib/messagesApi.js";
 import { useMyTeamId } from "../../hooks/useMyTeamId.js";
 
 // #3200 · Den ene indgang til en samtale, genbrugt alle de steder ejeren bad

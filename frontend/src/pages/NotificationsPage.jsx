@@ -5,6 +5,7 @@ import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { useNavigate, useSearchParams } from "react-router";
 import ActivityPage from "./ActivityPage.jsx";
 import MessagesPanel from "../components/messages/MessagesPanel.jsx"; // #3200
+import { fetchUnreadSummary } from "../lib/messagesApi.js"; // #3200
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
@@ -290,7 +291,18 @@ export default function NotificationsPage() {
     }, { replace: true });
   }
 
+  // #3200: badgen skal vaere rigtig OGSAA naar man lander paa Mine/Skal
+  // handles/Ligaen/Min Aktivitet. Uden dette kald stod DM-badgen paa 0 indtil
+  // man foerste gang aabnede Beskeder-fanen. MessagesPanel holder den
+  // opdateret bagefter, mens fanen er aaben.
   const [unreadMessages, setUnreadMessages] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    fetchUnreadSummary()
+      .then(summary => { if (alive) setUnreadMessages(summary?.unreadConversations ?? 0); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   // Mine tab
   const [notifications, setNotifications] = useState([]);

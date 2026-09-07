@@ -31,6 +31,22 @@ test("afsluttende tegnsætning hører til sætningen, ikke til URL'en", () => {
   ]);
 });
 
+test("en balanceret parentes INDE i URL'en overlever", () => {
+  assert.deepEqual(splitMessageText("se https://en.wikipedia.org/wiki/Function_(mathematics) her"), [
+    { type: "text", value: "se " },
+    { type: "link", value: "https://en.wikipedia.org/wiki/Function_(mathematics)" },
+    { type: "text", value: " her" },
+  ]);
+});
+
+test("en ubalanceret slutparentes hoerer til saetningen", () => {
+  assert.deepEqual(splitMessageText("(se https://a.dk)"), [
+    { type: "text", value: "(se " },
+    { type: "link", value: "https://a.dk" },
+    { type: "text", value: ")" },
+  ]);
+});
+
 test("flere URL'er i samme besked", () => {
   const parts = splitMessageText("http://a.dk og https://b.dk");
   assert.deepEqual(parts.filter(p => p.type === "link").map(p => p.value), ["http://a.dk", "https://b.dk"]);

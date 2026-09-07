@@ -10,7 +10,8 @@
     "emptyBody": "Open a manager profile and write to the person behind the team. A deal is easier to close when you can ask first.",
     "emptyAction": "Find a manager",
     "you": "You",
-    "loadError": "I could not load your messages. Try again."
+    "loadError": "I could not load your messages. Try again.",
+    "retry": "Try again"
   },
   "thread": {
     "back": "All messages",

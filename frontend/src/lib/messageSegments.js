@@ -20,6 +20,29 @@ const URL_RE = /\bhttps?:\/\/[^\s<>"']+/gi;
 const TRAILING_PUNCTUATION = /[.,;:!?)\]}]+$/;
 
 /**
+ * Fjerner afsluttende tegnsætning, men KUN så længe den ikke lukker en
+ * parentes der faktisk er åbnet inde i URL'en. Wikipedia-links som
+ * https://en.wikipedia.org/wiki/Function_(mathematics) skal beholde deres
+ * sidste ")", mens "se (https://a.dk)" skal aflevere sin.
+ */
+function trimTrailingPunctuation(url) {
+  let trimmed = url;
+  for (;;) {
+    const match = trimmed.match(TRAILING_PUNCTUATION);
+    if (!match) return trimmed;
+    const last = trimmed[trimmed.length - 1];
+    const pairs = { ")": "(", "]": "[", "}": "{" };
+    if (pairs[last]) {
+      const opens = trimmed.split(pairs[last]).length - 1;
+      const closes = trimmed.split(last).length - 1;
+      if (opens >= closes) return trimmed; // parentesen er balanceret: behold den
+    }
+    trimmed = trimmed.slice(0, -1);
+    if (!trimmed) return trimmed;
+  }
+}
+
+/**
  * @param {string} text
  * @returns {Array<{type: "text"|"link", value: string}>}
  */
@@ -32,14 +55,9 @@ export function splitMessageText(text) {
 
   let match = URL_RE.exec(text);
   while (match) {
-    let url = match[0];
-    let end = match.index + url.length;
-
-    const trailing = url.match(TRAILING_PUNCTUATION);
-    if (trailing) {
-      url = url.slice(0, url.length - trailing[0].length);
-      end -= trailing[0].length;
-    }
+    const raw = match[0];
+    const url = trimTrailingPunctuation(raw);
+    const end = match.index + url.length;
 
     if (url.length > 0) {
       if (match.index > cursor) {
