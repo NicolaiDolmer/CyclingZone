@@ -12,6 +12,9 @@ import {
   jerseyLeaderId,
   applyJerseyCaptainShortcut,
   isJerseyLeaderCaptainOnAllRemainingStages,
+  applyRoleForRest,
+  SELECTABLE_ROLES,
+  EXCLUSIVE_ROLES,
 } from "./stageRoleMatrixLogic.js";
 
 const RIDERS = [
@@ -168,4 +171,72 @@ test("applyJerseyCaptainShortcut: bevarer førerens EGEN effort, rører aldrig a
   const next = applyJerseyCaptainShortcut({ matrix, leaderId: "c", stageNumbers: [3], stagesCompleted: 2 });
   assert.deepEqual(next[3].c, { race_role: "captain", effort: "protect" }, "effort bevares, kun rollen sættes");
   assert.deepEqual(next[3].b, { race_role: "hunter", effort: "save" }, "uvedkommende rytters række er urørt");
+});
+
+// #4980 — hurtig rolle-redigering i Taktik-fanens ROLE-kolonne.
+test("applyRoleForRest: rollen sættes på ALLE de opgivne etaper, ikke kun den åbne", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3, 4, 5], stagesCompleted: 2 });
+  const next = applyRoleForRest({ matrix, riderId: "b", role: "sprint_captain", stages: [3, 4, 5] });
+  for (const sn of [3, 4, 5]) {
+    assert.equal(next[sn].b.race_role, "sprint_captain", `etape ${sn}`);
+  }
+});
+
+test("applyRoleForRest: eksklusiv rolle demoterer den forrige indehaver til helper", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3, 4], stagesCompleted: 2 });
+  const next = applyRoleForRest({ matrix, riderId: "b", role: "captain", stages: [3, 4] });
+  assert.equal(next[3].b.race_role, "captain");
+  assert.equal(next[3].a.race_role, "helper", "a var basis-kaptajn og skal demoteres");
+  assert.equal(next[4].a.race_role, "helper");
+  // Invariant: præcis én kaptajn pr. etape — det backenden ellers afviser med
+  // stage_roles_role_overlap.
+  for (const sn of [3, 4]) {
+    const captains = Object.values(next[sn]).filter((c) => c.race_role === "captain");
+    assert.equal(captains.length, 1, `etape ${sn} må kun have én kaptajn`);
+  }
+});
+
+test("applyRoleForRest: hver eksklusiv rolle håndhæves for sig — hunter rører ikke kaptajnen", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  const next = applyRoleForRest({ matrix, riderId: "b", role: "hunter", stages: [3] });
+  assert.equal(next[3].b.race_role, "hunter");
+  assert.equal(next[3].c.race_role, "helper", "c var basis-hunter og demoteres");
+  assert.equal(next[3].a.race_role, "captain", "kaptajnen er en ANDEN eksklusiv rolle og røres ikke");
+});
+
+test("applyRoleForRest: ikke-eksklusiv rolle (helper) demoterer ingen", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  const next = applyRoleForRest({ matrix, riderId: "b", role: "helper", stages: [3] });
+  assert.equal(next[3].a.race_role, "captain");
+  assert.equal(next[3].c.race_role, "hunter");
+  assert.equal(next[3].b.race_role, "helper");
+});
+
+test("applyRoleForRest: bevarer rytterens egen effort og de demoteredes effort", () => {
+  let matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  matrix = setCell(matrix, 3, "b", { effort: "save" });
+  matrix = setCell(matrix, 3, "a", { effort: "protect" });
+  const next = applyRoleForRest({ matrix, riderId: "b", role: "captain", stages: [3] });
+  assert.deepEqual(next[3].b, { race_role: "captain", effort: "save" });
+  assert.deepEqual(next[3].a, { race_role: "helper", effort: "protect" }, "den demoteredes effort må ikke nulstilles");
+});
+
+test("applyRoleForRest: etaper uden for draft-matrixen (kørte/låste) oprettes aldrig", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3, 4], stagesCompleted: 2 });
+  const next = applyRoleForRest({ matrix, riderId: "b", role: "captain", stages: [1, 2, 3, 4] });
+  assert.equal(next[1], undefined);
+  assert.equal(next[2], undefined);
+  assert.equal(next[3].b.race_role, "captain");
+});
+
+test("applyRoleForRest: muterer ikke input-matrixen", () => {
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  const before = JSON.stringify(matrix);
+  applyRoleForRest({ matrix, riderId: "b", role: "captain", stages: [3] });
+  assert.equal(JSON.stringify(matrix), before);
+});
+
+test("SELECTABLE_ROLES: præcis de fem roller backenden kender, kaptajnen først", () => {
+  assert.deepEqual([...SELECTABLE_ROLES], ["captain", "sprint_captain", "hunter", "helper", "free_role"]);
+  assert.deepEqual([...EXCLUSIVE_ROLES], ["captain", "sprint_captain", "hunter"]);
 });
