@@ -12,9 +12,10 @@ import {
   abilityRankCorrelation,
   buildProxyCalendar,
   enduranceCloneField,
+  evaluateTailGate,
   measureTailSpread,
   percentile,
-  TAIL_BANDS,
+  LOCKED_TAIL_BANDS,
   flatWeatherRoute,
   runEnduranceExperiment,
   runTailSpread,
@@ -125,16 +126,107 @@ test("maalingen degenererer sikkert naar incidents/timeline mangler", () => {
   assert.equal(m.cleanMaxGapPct, 10, "uden uheldsprotokol er hele feltet 'rent'");
 });
 
-test("hale-baandene er velformede og ordnet efter hvor haardt terraenet er", () => {
-  for (const [key, [lo, hi]] of Object.entries(TAIL_BANDS)) {
+test("hale-baandene er velformede og laaste til de tre ejer-godkendte etapetyper", () => {
+  for (const [key, [lo, hi]] of Object.entries(LOCKED_TAIL_BANDS)) {
     assert.ok(lo >= 0, `${key}: nedre graense kan ikke vaere negativ`);
     assert.ok(hi > lo, `${key}: oevre graense skal ligge over den nedre`);
   }
-  // Baandene er et STARTGAET fra virkeligheden, men rangordenen er ikke til
-  // forhandling: et bjerg spreder feltet mere end en flad etape.
-  assert.ok(TAIL_BANDS.mountain[0] > TAIL_BANDS.hilly[0]);
-  assert.ok(TAIL_BANDS.hilly[0] >= TAIL_BANDS.rolling[0]);
-  assert.ok(TAIL_BANDS.rolling[1] > TAIL_BANDS.flat[1]);
+  // Ejerbeslutning 7/9 (#4885, RACE_ENGINE_RULES.md §9 raekke 13): KUN disse
+  // tre typer har et bindende baand. Enhver anden etapetype rapporteres uden
+  // gate — genaabnes ikke stiltiende ved at en fremtidig editor tilfoejer en
+  // fjerde noegle her.
+  assert.deepEqual(Object.keys(LOCKED_TAIL_BANDS).sort(), ["flat", "high_mountain", "mountain"]);
+  assert.deepEqual(LOCKED_TAIL_BANDS.mountain, [6, 12]);
+  assert.deepEqual(LOCKED_TAIL_BANDS.high_mountain, [6, 12]);
+  assert.deepEqual(LOCKED_TAIL_BANDS.flat, [0, 2]);
+});
+
+// ── #4885 (7/9): hale-baandet som GATE ──────────────────────────────────────
+
+/** Bygger et minimalt maalings-array direkte, uden at koere v4. */
+function fakeMeasurements(rows) {
+  // rows: [{profileType, seed, cleanP90GapPct}]
+  return rows.map((r) => ({
+    seed: r.seed,
+    profileType: r.profileType,
+    stageNumber: r.stageNumber ?? 1,
+    spreadPct: r.cleanP90GapPct,
+    spreadSeconds: 0,
+    medianGapPct: r.cleanP90GapPct,
+    p50GapPct: r.cleanP90GapPct,
+    p90GapPct: r.cleanP90GapPct,
+    p99GapPct: r.cleanP90GapPct,
+    cleanP90GapPct: r.cleanP90GapPct,
+    cleanMaxGapPct: r.cleanP90GapPct,
+    incidentRiders: 0,
+    within1Pct: 0,
+    within2Pct: 0,
+    within5Pct: 0,
+    within10Pct: 0,
+    finishGroups: 1,
+    otlCount: 0,
+    rescuedCount: 0,
+    fieldCount: 1,
+  }));
+}
+
+test("gaten dommer PASS naar den poolede rene p90 ligger inde i det laaste baand", () => {
+  const measurements = fakeMeasurements([
+    { profileType: "mountain", seed: "s1", cleanP90GapPct: 9 },
+    { profileType: "mountain", seed: "s2", cleanP90GapPct: 9.5 },
+    { profileType: "mountain", seed: "s3", cleanP90GapPct: 8.5 },
+  ]);
+  const result = evaluateTailGate(measurements);
+  const row = result.rows.find((r) => r.profileType === "mountain");
+  assert.equal(row.status, "PASS");
+  assert.ok(result.allPass);
+});
+
+test("gaten dommer FAIL naar den poolede rene p90 ligger uden for det laaste baand", () => {
+  const measurements = fakeMeasurements([
+    { profileType: "flat", seed: "s1", cleanP90GapPct: 5 },
+    { profileType: "flat", seed: "s2", cleanP90GapPct: 5 },
+    { profileType: "flat", seed: "s3", cleanP90GapPct: 5 },
+  ]);
+  const result = evaluateTailGate(measurements);
+  const row = result.rows.find((r) => r.profileType === "flat");
+  assert.equal(row.status, "FAIL");
+  assert.equal(result.allPass, false);
+});
+
+test("gaten rapporterer ikke-laaste etapetyper som 'ingen ejer-baand', ikke PASS/FAIL", () => {
+  const measurements = fakeMeasurements([
+    { profileType: "hilly", seed: "s1", cleanP90GapPct: 99 },
+  ]);
+  const result = evaluateTailGate(measurements);
+  const row = result.rows.find((r) => r.profileType === "hilly");
+  assert.equal(row.status, "ingen ejer-baand");
+  assert.equal(row.gated, false);
+  // En urealistisk hoej ikke-laast type maa ALDRIG kunne faelde den samlede dom.
+  assert.equal(result.gatedRows.length, 0);
+  assert.equal(result.allPass, false, "ingen laaste typer overhovedet = ingen PASS at melde");
+});
+
+test("gaten regner middel og spaend pr. seed som diagnostik ved siden af den poolede gate-vaerdi", () => {
+  const measurements = fakeMeasurements([
+    { profileType: "high_mountain", seed: "s1", cleanP90GapPct: 6 },
+    { profileType: "high_mountain", seed: "s2", cleanP90GapPct: 8 },
+    { profileType: "high_mountain", seed: "s3", cleanP90GapPct: 10 },
+  ]);
+  const result = evaluateTailGate(measurements);
+  const row = result.rows.find((r) => r.profileType === "high_mountain");
+  assert.equal(row.meanPerSeed, 8);
+  assert.equal(row.minPerSeed, 6);
+  assert.equal(row.maxPerSeed, 10);
+});
+
+test("samlet gate-dom er FAIL saa snart mindst én laast etapetype fejler, ogsaa naar andre passer", () => {
+  const measurements = fakeMeasurements([
+    { profileType: "mountain", seed: "s1", cleanP90GapPct: 9 },
+    { profileType: "flat", seed: "s1", cleanP90GapPct: 15 }, // langt over 0-2 %
+  ]);
+  const result = evaluateTailGate(measurements);
+  assert.equal(result.allPass, false);
 });
 
 test("distance-baandene daekker hele km-aksen uden huller eller overlap", () => {

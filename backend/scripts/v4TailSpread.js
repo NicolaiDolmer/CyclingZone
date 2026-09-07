@@ -12,8 +12,14 @@
 // Maalet pr. etape er RELATIVT (andel af vindertiden), ikke sekunder: et
 // sekund-baseret hale-maal skalerer med etapens laengde og med feltstoerrelsen
 // (samme fejlfamilie som #4604's bjerg-anker), og virkelighedens referencetal
-// er selv procenter — en bjergetapes rode lanterne taber typisk 8-15 % af
-// vindertiden, en flad etape langt mindre.
+// er selv procenter — en rytter der taber 20-30 min paa en 5-6 timers
+// bjergetape taber 6-10 % af vindertiden.
+//
+// EJERBESLUTNING 7/9 (#4885, RACE_ENGINE_RULES.md §9 raekke 13, laast —
+// genaabn ikke): bjerg/hoejbjerg har et bindende hale-baand paa 6-12 %,
+// fladt 0-2 %. Se `LOCKED_TAIL_BANDS` og `evaluateTailGate`. Alle andre
+// etapetyper (hilly/rolling/classic/cobbles/itt* m.fl.) har INGEN ejer-baand
+// og rapporteres kun.
 //
 // 100% READ-ONLY og DB-FRIT: population laeses fra den committede snapshot,
 // kalenderen bygges offline af raceStageProfileGenerator (ren funktion, ingen
@@ -24,6 +30,7 @@
 //   node backend/scripts/v4TailSpread.js --seeds=s1,s2,s3 --races=24 --field-size=180
 //   node backend/scripts/v4TailSpread.js --population=<fil> --stages=<fil>
 //   node backend/scripts/v4TailSpread.js --json=<fil>   # skriv raa maalinger
+//   node backend/scripts/v4TailSpread.js --gate         # exit 1 ved FAIL paa et laast baand
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -635,40 +642,117 @@ function formatDiagnosticsTable(title, rows) {
 }
 
 /**
- * HALE-BAAND pr. etapetype (#4885). BEVIDST et RAPPORTERET tal og ikke en
- * haardt fejlende test: baandene er et STARTGAET fra virkelighedens tal
- * (en bjergetapes rode lanterne taber typisk 8-15 % af vindertiden, en flad
- * etape naesten intet) og er IKKE ejer-godkendte. Et gulv er ikke et maal
- * (RACE_ENGINE_RULES §4) — raekken skal kunne laeses og diskuteres, ikke
- * blokere en PR.
+ * HALE-BAAND pr. etapetype — EJER-LAAST 7/9 (#4885, RACE_ENGINE_RULES.md §9
+ * raekke 13, genaabn ikke). Kun bjerg/hoejbjerg og fladt har et bindende
+ * baand; enhver anden etapetype (hilly, rolling, classic, cobbles, itt* m.fl.)
+ * har INGEN ejer-baand og rapporteres uden PASS/FAIL — se `evaluateTailGate`
+ * for selve gaten.
  *
- * Maalt paa p90 og ikke paa maks: maks er uheldsdrevet (se
- * measureTailSpread's docblock), og en enkelt styrtet rytter maa ikke kunne
- * melde et baand groent.
+ * Begrundelse (ejerbeslutning 7/9): en rytter der taber 20-30 min paa en
+ * 5-6 timers etape taber 6-10 % af vindertiden.
+ *
+ * Maalt paa RENSET p90 (`cleanP90GapPct`, dvs. `medianCleanP90GapPct` naar
+ * grupperet pr. etapetype) og ikke paa raa p90 eller maks: maks er
+ * uheldsdrevet (se measureTailSpread's docblock), og en enkelt styrtet
+ * rytter maa ikke kunne faelde eller redde et baand.
  */
-export const TAIL_BANDS = Object.freeze({
+export const LOCKED_TAIL_BANDS = Object.freeze({
+  mountain: [6, 12],
+  high_mountain: [6, 12],
   flat: [0, 2],
-  rolling: [0, 4],
-  hilly: [2, 8],
-  mountain: [8, 15],
-  high_mountain: [8, 15],
-  cobbles: [1, 6],
-  classic: [3, 10],
 });
 
 function formatTailBandTable(title, rows) {
   const lines = [
     title,
-    "STARTGAET, IKKE ejer-godkendt — rapporteret raekke, ikke en gate. Maalt paa p90 (maks er uheldsdrevet).",
-    "key\tn\tp90_%\tbaand\tstatus",
+    "Ejer-laast 7/9 (#4885, RACE_ENGINE_RULES.md §9 raekke 13) for bjerg/hoejbjerg/fladt. Andre typer: ingen ejer-baand. Maalt paa ren p90 (maks er uheldsdrevet).",
+    "key\tn\tren_p90_%\tbaand\tstatus",
   ];
   for (const r of rows) {
-    const band = TAIL_BANDS[r.key];
-    if (!band) continue;
-    const value = r.medianP90GapPct;
+    const band = LOCKED_TAIL_BANDS[r.key];
+    const value = r.medianCleanP90GapPct;
+    if (!band) {
+      lines.push([r.key, r.n, fmt(value), "-", "ingen ejer-baand"].join("\t"));
+      continue;
+    }
     const inside = value !== null && value >= band[0] && value <= band[1];
-    lines.push([r.key, r.n, fmt(value), `${band[0]}-${band[1]} %`, inside ? "inde" : "ude"].join("\t"));
+    lines.push([r.key, r.n, fmt(value), `${band[0]}-${band[1]} %`, inside ? "PASS" : "FAIL"].join("\t"));
   }
+  return lines.join("\n");
+}
+
+/**
+ * HALE-GATE (#4885, ejer-laast 7/9). Evaluerer `LOCKED_TAIL_BANDS` mod
+ * maalingerne og returnerer en ren, testbar dom — ingen I/O, intet
+ * `process.exit` her (det ligger alene i CLI'en, styret af `--gate`).
+ *
+ * Gate-vaerdien pr. etapetype er MEDIAN AF `cleanP90GapPct` POOLED over ALLE
+ * seeds samlet (samme tal som diagnostik-tabellens "ren_p90%"-kolonne naar
+ * den grupperes kun paa etapetype) — ikke et gennemsnit af per-seed-tal.
+ * `meanPerSeed`/`minPerSeed`/`maxPerSeed` er en SEPARAT diagnostik (middel og
+ * spaend pr. seed): en type kan i princippet passere den poolede vaerdi og
+ * stadig sprede sig bredt mellem seeds, og det skal kunne ses uden at det
+ * aendrer selve PASS/FAIL-dommen.
+ *
+ * @param {Array<object>} measurements - fra `runTailSpread`.
+ * @param {Record<string, [number, number]>} [bands] - default `LOCKED_TAIL_BANDS`.
+ * @returns {{rows: Array<object>, gatedRows: Array<object>, allPass: boolean}}
+ */
+export function evaluateTailGate(measurements, bands = LOCKED_TAIL_BANDS) {
+  const profileTypes = [...new Set(measurements.map((m) => m.profileType))].sort();
+  const seeds = [...new Set(measurements.map((m) => m.seed))].sort();
+
+  const rows = profileTypes.map((profileType) => {
+    const rowsForType = measurements.filter((m) => m.profileType === profileType);
+    const pooled = summarizeBy(rowsForType, () => "x")[0] ?? null;
+    const value = pooled?.medianCleanP90GapPct ?? null;
+
+    const perSeedValues = seeds
+      .map((seed) => {
+        const seedRows = rowsForType.filter((m) => m.seed === seed);
+        return seedRows.length ? (summarizeBy(seedRows, () => "x")[0]?.medianCleanP90GapPct ?? null) : null;
+      })
+      .filter((v) => v !== null);
+
+    const band = bands[profileType] ?? null;
+    const gated = band !== null;
+    const status = !gated ? "ingen ejer-baand" : value !== null && value >= band[0] && value <= band[1] ? "PASS" : "FAIL";
+
+    return {
+      profileType,
+      n: rowsForType.length,
+      value,
+      meanPerSeed: perSeedValues.length ? mean(perSeedValues) : null,
+      minPerSeed: perSeedValues.length ? Math.min(...perSeedValues) : null,
+      maxPerSeed: perSeedValues.length ? Math.max(...perSeedValues) : null,
+      band,
+      gated,
+      status,
+    };
+  });
+
+  const gatedRows = rows.filter((r) => r.gated);
+  const allPass = gatedRows.length > 0 && gatedRows.every((r) => r.status === "PASS");
+  return { rows, gatedRows, allPass };
+}
+
+function formatTailGateTable(title, gateResult) {
+  const lines = [title, "key\tn\tren_p90_%_samlet\tbaand\tstatus\tmiddel_pr_seed_%\tspaend_pr_seed_%"];
+  for (const r of gateResult.rows) {
+    const spaend = r.minPerSeed !== null && r.maxPerSeed !== null ? `${fmt(r.minPerSeed)}-${fmt(r.maxPerSeed)}` : "n/a";
+    lines.push(
+      [
+        r.profileType,
+        r.n,
+        fmt(r.value),
+        r.band ? `${r.band[0]}-${r.band[1]} %` : "-",
+        r.status,
+        fmt(r.meanPerSeed),
+        spaend,
+      ].join("\t"),
+    );
+  }
+  lines.push(`Samlet gate-dom: ${gateResult.allPass ? "PASS" : "FAIL"} (${gateResult.gatedRows.length} laaste etapetyper).`);
   return lines.join("\n");
 }
 
@@ -778,7 +862,10 @@ function main() {
       `Etaper: ${stages.length}${stagesPath ? "" : " (offline proxy-kalender)"}. ` +
       `Seeds: ${seeds.join(", ")}. Feltstoerrelse: ${fieldSize ?? "hele populationen"}.`,
   );
-  console.log("Hale-spredning = (sidsteplads - vinder) / vindertid. Virkelighedens reference: bjerg ~8-15 %, fladt lavt.");
+  console.log(
+    "Hale-spredning = (sidsteplads - vinder) / vindertid. Virkelighedens reference: 20-30 min tabt paa en " +
+      "5-6 timers bjergetape = 6-10 % af vindertiden.",
+  );
   console.log("");
 
   const measurements = runTailSpread({ population, stages, seeds, fieldSize });
@@ -793,7 +880,7 @@ function main() {
     ),
   );
   console.log("");
-  console.log(formatTailBandTable("-- Hale-baand pr. etapetype (rapporteret, ikke en gate) --", byProfileType));
+  console.log(formatTailBandTable("-- Hale-baand pr. etapetype (bjerg/hoejbjerg/fladt ejer-laast 7/9, resten rapporteret) --", byProfileType));
   console.log("");
   console.log(formatTimeLimitTable("-- M15 tidsgraense pr. etapetype --", byProfileType));
   console.log("");
@@ -822,11 +909,21 @@ function main() {
   console.log("");
   console.log(formatTable("-- I alt --", summarizeBy(measurements, () => "alle etaper")));
 
+  const gateResult = evaluateTailGate(measurements);
+  console.log("");
+  console.log(formatTailGateTable("-- HALE-GATE (ejer-laast 7/9, #4885, RACE_ENGINE_RULES.md §9 raekke 13) --", gateResult));
+
   if (jsonOut) {
     mkdirSync(dirname(jsonOut), { recursive: true });
     writeFileSync(jsonOut, JSON.stringify({ seeds, fieldSize, measurements }, null, 2));
     console.log("");
     console.log(`Raa maalinger skrevet til ${jsonOut}`);
+  }
+
+  if (process.argv.includes("--gate") && !gateResult.allPass) {
+    console.log("");
+    console.log("GATE FAIL: mindst ét laast hale-baand er ude af band. Exit 1.");
+    process.exitCode = 1;
   }
 }
 
