@@ -191,9 +191,6 @@ export default function MentionAutocomplete({ textareaId, value, onChange, t }) 
 
   return (
     <div
-      id={`${textareaId}-mentions`}
-      role="listbox"
-      aria-label={t("mentions.listLabel")}
       className={`fixed z-dropdown overflow-y-auto ${menuClass()}`}
       style={{
         left: anchor.left,
@@ -202,25 +199,32 @@ export default function MentionAutocomplete({ textareaId, value, onChange, t }) 
         ...(anchor.top == null ? { bottom: anchor.bottom } : { top: anchor.top }),
       }}
     >
-      <p className="px-2.5 pb-1 pt-0.5 font-data text-2xs uppercase tracking-[.08em] text-cz-3">
+      {/* Overskriften står UDEN FOR listboxen: et <p> som barn af role="listbox"
+          er ugyldig ARIA (kun options må ligge der). */}
+      <p
+        id={`${textareaId}-mentions-label`}
+        className="px-2.5 pb-1 pt-0.5 font-data text-2xs uppercase tracking-[.08em] text-cz-3"
+      >
         {t("mentions.listLabel")}
       </p>
-      {suggestions.map((manager, i) => (
-        <button
-          key={manager.team_id || manager.name}
-          id={`${textareaId}-mention-${i}`}
-          type="button"
-          role="option"
-          aria-selected={i === activeSafeIndex}
-          // onMouseDown frem for onClick: et klik ville først tage fokus fra
-          // feltet (blur → listen lukker) og aldrig nå frem til handleren.
-          onMouseDown={(e) => { e.preventDefault(); choose(manager); }}
-          onMouseEnter={() => setActiveIndex(i)}
-          className={menuItemClass({ active: i === activeSafeIndex })}
-        >
-          <span className="truncate">{manager.name}</span>
-        </button>
-      ))}
+      <div id={`${textareaId}-mentions`} role="listbox" aria-labelledby={`${textareaId}-mentions-label`}>
+        {suggestions.map((manager, i) => (
+          <button
+            key={manager.team_id || manager.name}
+            id={`${textareaId}-mention-${i}`}
+            type="button"
+            role="option"
+            aria-selected={i === activeSafeIndex}
+            // onMouseDown frem for onClick: et klik ville først tage fokus fra
+            // feltet (blur → listen lukker) og aldrig nå frem til handleren.
+            onMouseDown={(e) => { e.preventDefault(); choose(manager); }}
+            onMouseEnter={() => setActiveIndex(i)}
+            className={menuItemClass({ active: i === activeSafeIndex })}
+          >
+            <span className="truncate">{manager.name}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
