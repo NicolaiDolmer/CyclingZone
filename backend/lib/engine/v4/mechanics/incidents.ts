@@ -375,6 +375,28 @@ export function resolveCrashIncident(
  * rng-stream-kontrakten — uden at aendre den rigtige eksports to-argument
  * (state, ctx)-signatur, som er strukturelt identisk med de oevrige hooks.
  */
+/**
+ * #4993 (bifund fra #4971-workeren): climbSelection.ts/descent.ts/cobbles.ts
+ * navngiver ALLE deres nye grupper med samme formel som M10 herunder —
+ * `segmentIndex * 1000 + lokal-seq`, hver med sin egen tæller der starter ved
+ * 0. M10 er den ENESTE mekanik der kører på ALLE segment-kinds (de andre er
+ * gensidigt udelukkende via segment.kind), så den er den ene mekanik der reelt
+ * kan dele et segment med en af de andre — og dermed den ene der kan
+ * kollidere med dem alle. Kollisionen er reel, ikke teoretisk: groups.ts's
+ * splitGroup() tjekker ALDRIG om et id allerede findes, så to grupper kan ende
+ * med SAMME group_id i state.groups (se incidents.test.ts's #4993-test).
+ *
+ * Fix: flyt M10s id-rum til sin egen halvdel af segmentets 1000-blok, disjunkt
+ * fra de andre mekanikkers (uændrede) `0..999`-rum. 500 er langt over hvad et
+ * realistisk løb kan producere: M10s EGET loft er maxIncidentsForField (5 % af
+ * feltet, ~9 for et 180-mands felt over HELE etapen — se maxIncidentsForField
+ * ovenfor), og de andre mekanikkers lokale sekvens er bundet af antal GRUPPER
+ * i ét segment, ikke antal ryttere. Ingen af de fire fixtures rammer M10s
+ * hook i dag (0 incidents i alle), så ændringen flytter ingen golden fixture
+ * og ingen §7b-anker (id-strengen indgår ikke i nogen tidsberegning).
+ */
+const INCIDENT_GROUP_ID_OFFSET = 500;
+
 export function createIncidentHook(
   tuning: IncidentsTuning,
 ): (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult {
@@ -452,7 +474,7 @@ export function createIncidentHook(
         const gapDelta =
           resolved.outcome === "abandoned" ? tuning.abandonedGapSeconds : (resolved.timeLossSeconds ?? 0);
         groups = splitGroup(groups, group.id, [riderId], {
-          id: makeGroupId("solo", segmentIndex * 1000 + seq),
+          id: makeGroupId("solo", segmentIndex * 1000 + INCIDENT_GROUP_ID_OFFSET + seq),
           kind: "solo",
           gapSecondsDelta: gapDelta,
         });

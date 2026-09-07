@@ -376,13 +376,23 @@ export function validateGroupMembership(
   for (const snapshot of ordered) {
     // rider_id -> seneste event-udsagn siden forrige snapshot.
     const claims = new Map<string, { groupId: string; eventType: string; km: number }>();
-    // Ryttere M10 har trukket ud i samme vindue (se noten om incident-undtagelsen).
-    const incidentRiders = new Set<string>();
+    // Ryttere M10 (eller M3s indlejrede uheldstrappe) har trukket UD AF DERES
+    // GRUPPE i samme vindue (se noten om incident-undtagelsen). #4993: kun
+    // outcomes der FAKTISK flytter rytteren taeller — incidents.ts's egen gren
+    // (`resolved.outcome !== "protected_three_km_rule"`) er facit for hvilke
+    // det er. Et "protected_three_km_rule"-uheld aendrer INGEN gruppe (rene
+    // information + evt. skadedage), saa det maa ikke undskylde en
+    // ubeslaegtet gruppeskifte-konflikt for samme rytter.
+    const groupChangingIncidentRiders = new Set<string>();
     while (eventIndex < sortedEvents.length && sortedEvents[eventIndex].km <= snapshot.km + 1e-9) {
       const event = sortedEvents[eventIndex];
       eventIndex += 1;
-      if (event.type === "incident" && typeof event.params.rider_id === "string") {
-        incidentRiders.add(event.params.rider_id);
+      if (
+        event.type === "incident"
+        && typeof event.params.rider_id === "string"
+        && event.params.outcome !== "protected_three_km_rule"
+      ) {
+        groupChangingIncidentRiders.add(event.params.rider_id);
       }
       const groupId = groupIdAssertedBy(event);
       if (!groupId) continue;
@@ -404,12 +414,12 @@ export function validateGroupMembership(
       // Rytteren er ude af loebet (DNF/OTL) — ikke et gruppeskift-brud.
       if (actual === undefined) continue;
       if (actual === claim.groupId) continue;
-      // Har rytteren haft et uheld i samme vindue, ER tidslinjen ikke tavs om
-      // ham: M10 (mechanics/incidents.ts) traekker en uheldsramt ud i sin egen
-      // solo-gruppe EFTER at M2 har splittet segmentet, og `incident`-eventet
-      // er den offentlige besked om netop det. Reglen jager tavse gruppeskift,
-      // ikke fortalte.
-      if (incidentRiders.has(riderId)) continue;
+      // Har rytteren haft et GRUPPESKIFTENDE uheld i samme vindue, ER
+      // tidslinjen ikke tavs om ham: M10 (mechanics/incidents.ts) traekker en
+      // uheldsramt ud i sin egen solo-gruppe EFTER at M2 har splittet
+      // segmentet, og `incident`-eventet er den offentlige besked om netop
+      // det. Reglen jager tavse gruppeskift, ikke fortalte.
+      if (groupChangingIncidentRiders.has(riderId)) continue;
       violations.push({
         rule: "group-membership",
         message:

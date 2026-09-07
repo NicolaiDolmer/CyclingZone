@@ -22,10 +22,13 @@ import {
   threeKmRuleApplies,
   type IncidentRolls,
 } from "./incidents.ts";
+import { climbSelectionHook } from "./climbSelection.ts";
 import { boundRngFor, segmentRngFor } from "../rng.ts";
-import { INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
+import { INCIDENTS_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
+import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import type {
   AbilityKey,
+  ClimbSegment,
   Entrant,
   EngineState,
   FlatSegment,
@@ -808,4 +811,61 @@ test("#2944: to korte segmenter og ét langt af samme samlede laengde giver samm
   const split =
     segmentLengthFactor({ from_km: 0, to_km: 25 }, t) + segmentLengthFactor({ from_km: 25, to_km: 60 }, t);
   assert.ok(Math.abs(whole - split) < 1e-12, "rute-modellens segment-granularitet maa ikke aendre uheldsraten");
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// #4993 — solo-id-kollision mellem M10 (dette hook) og M2 (climbSelection.ts)
+// Bifund fra #4971-workeren: begge mekanikker naavner nye grupper med samme
+// formel (segmentIndex*1000+lokal-seq). M10 er den ENESTE mekanik der koerer
+// paa ALLE segment-kinds, saa den kan kollidere med enhver terraen-mekanik
+// (climb/descent/cobbles) i samme segment. Scenariet herunder tvinger BEGGE
+// mekanikker til at producere deres FOERSTE ("seq=0") solo-split i samme
+// klatre-segment, praecis den situation der kolliderer under den gamle formel.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test("#4993: M10s foerste solo-split kolliderer IKKE med M2s foerste solo-split i samme segment", () => {
+  const segmentIndex = 5;
+  const segment: ClimbSegment = {
+    kind: "climb", from_km: 50, to_km: 58, category: "1", avg_gradient: 7, top_elevation_m: 1200,
+  };
+  const route = makeRoute("mountain", 200, [segment]);
+  // "m" og "n" er alfabetisk FOER "z" — incidentHook behandler kandidater i
+  // rider_id-orden paa tvaers af ALLE grupper, saa "m" er M10s foerste offer
+  // og ligger STADIG i peloton-0 (uroert af M2s split). "z" har wprime=0 og
+  // splittes af M2 (samme rig som climbSelection.test.ts's egen W'=0-test).
+  const entrants: Record<string, Entrant> = { m: makeEntrant("m"), n: makeEntrant("n"), z: makeEntrant("z") };
+  const riders: Record<string, RiderState> = {
+    m: makeRiderState("m", "peloton-0"),
+    n: makeRiderState("n", "peloton-0"),
+    z: makeRiderState("z", "peloton-0", { wprime: 0 }),
+  };
+  const group: RaceGroup = { id: "peloton-0", kind: "peloton", rider_ids: ["m", "n", "z"], gap_seconds: 0, cohesion: 1 };
+  const state: EngineState = { km: segment.from_km, groups: [group], riders, virtual_gc: {} };
+  const ctx = makeHookCtx({ segment, route, entrants, tuning: RACE_V4_TUNING, segmentIndex, seed: "collision-4993" });
+
+  // Mimicker segmentLoop.ts's raekkefoelge: M2 (climbSelection) foerst, saa M10
+  // (incidents) — praecis som segmentLoop.runSegmentLoop kalder hooksene.
+  const afterClimb = climbSelectionHook(state, ctx);
+  const climbSplit = afterClimb.state.groups.find((g) => g.id !== "peloton-0");
+  assert.ok(climbSplit, "M2 skal producere en solo-split (z har wprime=0)");
+  assert.equal(climbSplit!.kind, "solo");
+  assert.deepEqual(climbSplit!.rider_ids, ["z"], "kun z (wprime=0) skal splitte i M2");
+
+  const hook = createIncidentHook(alwaysCrashTuning());
+  const afterIncidents = hook(afterClimb.state, ctx);
+
+  const mGroup = afterIncidents.state.groups.find((g) => g.rider_ids.includes("m"));
+  assert.ok(mGroup, "m skal vaere styrtet ud (risiko=1) i sin egen solo-gruppe");
+  assert.notEqual(
+    mGroup!.id,
+    climbSplit!.id,
+    `M10s solo-id for m ("${mGroup!.id}") genbruger M2s solo-id for z ("${climbSplit!.id}") — kollision (#4993)`,
+  );
+
+  const ids = afterIncidents.state.groups.map((g) => g.id);
+  assert.equal(
+    new Set(ids).size,
+    ids.length,
+    `gruppe-id'er skal vaere unikke inden for samme state, fik ${JSON.stringify(ids)}`,
+  );
 });
