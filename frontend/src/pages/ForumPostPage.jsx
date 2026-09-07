@@ -243,6 +243,12 @@ export default function ForumPostPage() {
   const [state, setState] = useState({ status: "loading", post: null, replies: [], poll: null });
   const [replyBody, setReplyBody] = useState("");
   const [replyImages, setReplyImages] = useState([]);
+  // Submit gates paa dette: et upload der stadig koerer ville ellers blive
+  // sendt afsted som "ingen billeder".
+  const [uploadingImage, setUploadingImage] = useState(false);
+  // Admin-slet af ét billede har sin egen fejllinje - den hoerer ikke hjemme
+  // under svar-formularen, hvor handlingen ikke er sket.
+  const [imageActionError, setImageActionError] = useState(null);
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [replyError, setReplyError] = useState(null);
   const [voting, setVoting] = useState(false);
@@ -326,9 +332,9 @@ export default function ForumPostPage() {
 
   async function handleReply(e) {
     e.preventDefault();
-    // #4819: et svar maa gerne vaere "kun et billede" — teksten er ikke laengere
-    // det eneste indhold der taeller. Backend kraever dog stadig en body, saa
-    // knappen er fortsat gatet paa tekst.
+    // #4819: tekst er FORTSAT paakraevet, ogsaa naar der er billeder paa.
+    // Backend'ens forum_body_required er uaendret, og et svar uden ét ord er
+    // ikke en samtale. Billeder er et tillaeg til svaret, ikke svaret selv.
     if (!replyBody.trim()) return;
     setReplySubmitting(true);
     setReplyError(null);
@@ -432,6 +438,7 @@ export default function ForumPostPage() {
   // indlaegget. Backend fjerner stien fra raekken FOER filen slettes, saa et
   // indlaeg aldrig kommer til at pege paa en fil der ikke findes.
   async function handleAdminRemoveImage(type, id, path) {
+    setImageActionError(null);
     try {
       const headers = await authHeaders();
       const res = await fetch(`${API}/api/admin/forum/images`, {
@@ -439,10 +446,16 @@ export default function ForumPostPage() {
         headers,
         body: JSON.stringify({ target_type: type, target_id: id, path }),
       });
-      if (res.ok) await load();
+      if (!res.ok) {
+        // En 403/404/500 maa ikke ende som tavshed: admin skal se at
+        // billedet stadig ligger der, ikke gaette.
+        const data = await res.json().catch(() => ({}));
+        setImageActionError(tError(data?.errorCode));
+        return;
+      }
+      await load();
     } catch {
-      // Visningen staar uaendret; naeste load() retter den op.
-      setReplyError(t("errors.submitFailed"));
+      setImageActionError(t("errors.submitFailed"));
     }
   }
 
@@ -547,6 +560,9 @@ export default function ForumPostPage() {
       ) : (
         <>
         <PageHeader title={post.title} subtitle={t(`categories.${post.category}`)} />
+        {imageActionError && (
+          <p role="alert" className="mb-4 text-xs text-cz-danger">{imageActionError}</p>
+        )}
         <SectionStack>
           <Section>
             {post.is_pinned && (
@@ -656,13 +672,14 @@ export default function ForumPostPage() {
               <ForumImagePicker
                 images={replyImages}
                 onChange={setReplyImages}
+                onBusyChange={setUploadingImage}
                 disabled={replySubmitting}
                 userId={userId}
                 t={t}
               />
               {replyError && <p className="text-xs text-cz-danger">{replyError}</p>}
               <div className="flex justify-end">
-                <Button type="submit" variant="primary" size="sm" loading={replySubmitting} disabled={replySubmitting || !replyBody.trim()}>
+                <Button type="submit" variant="primary" size="sm" loading={replySubmitting} disabled={replySubmitting || uploadingImage || !replyBody.trim()}>
                   {t("post.replySubmit")}
                 </Button>
               </div>

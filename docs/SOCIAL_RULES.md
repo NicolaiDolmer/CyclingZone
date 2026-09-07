@@ -462,7 +462,9 @@ Ejer-direktiv 4/9 ordret: *"Det skal være muligt at indsætte billeder i forumm
 **Upload sker FØR indlægget sendes** — et fejlet upload må aldrig koste brugeren teksten. Prisen er
 forældreløse filer når nogen lukker editoren uden at sende: fjern-krydset sletter filen med det
 samme, og resten ryddes af `scripts/sweep-forum-image-orphans.mjs` (dry-run som default, rører kun
-filer ældre end 24 timer der ikke er refereret af noget indlæg).
+filer ældre end 72 timer der ikke er refereret af noget indlæg). Restrisikoen (en editor der står åben
+længere end grænsen) er et bevidst valg: alternativet er en reservations-tabel server-side, som er
+fravalgt i v1.
 
 ### 8.2 Holdprofil og managerprofil
 

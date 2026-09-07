@@ -22,11 +22,19 @@ import {
 // idempotente scripts/sweep-forum-image-orphans.mjs (se docs/SOCIAL_RULES.md
 // §8.5). Bevidst valg frem for at holde filen lokalt til submit.
 
-export default function ForumImagePicker({ images, onChange, disabled = false, userId, t }) {
+export default function ForumImagePicker({ images, onChange, onBusyChange, disabled = false, userId, t }) {
   const inputRef = useRef(null);
   const inputId = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  // Uploadet er asynkront: uden dette ville et submit MENS et upload koerer
+  // sende den gamle `images`-liste, saa indlaegget manglede billedet og filen
+  // blev foraeldreloes. Formularen gater sin submit-knap paa den her.
+  function setUploading(value) {
+    setBusy(value);
+    onBusyChange?.(value);
+  }
 
   const count = images.length;
   const full = count >= FORUM_IMAGE_MAX_PER_POST;
@@ -38,7 +46,7 @@ export default function ForumImagePicker({ images, onChange, disabled = false, u
     event.target.value = "";
     if (!files.length || !userId) return;
 
-    setBusy(true);
+    setUploading(true);
     setError(null);
     let next = images;
     try {
@@ -61,7 +69,7 @@ export default function ForumImagePicker({ images, onChange, disabled = false, u
         onChange(next);
       }
     } finally {
-      setBusy(false);
+      setUploading(false);
     }
   }
 

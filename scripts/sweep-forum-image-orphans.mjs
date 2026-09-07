@@ -10,9 +10,16 @@
 //
 // SIKKERHED
 // - Dry-run er DEFAULT. Intet slettes uden --execute.
-// - Kun filer ÆLDRE end --min-age-hours (default 24) kommer i betragtning, så
-//   en fil der lige er uploadet til en editor der stadig er åben aldrig
-//   rammes.
+// - Kun filer ÆLDRE end --min-age-hours (default 72) kommer i betragtning, så
+//   en editor der står åben en arbejdsdag eller to aldrig rammes.
+//
+//   RESTRISIKO (bevidst): en editor der står åben LÆNGERE end grænsen kan få
+//   sit valgte billede fejet væk, så indlægget sendes uden det. Alternativet
+//   er en reservations-/kladdetabel server-side med udløb; den er fravalgt i
+//   v1, fordi den koster en tabel, en oprydningsjob og et ekstra kald pr.
+//   upload for at dække en tilstand der kræver et forum-svar man har haft
+//   åbent i tre døgn. Scriptet er dry-run som default og køres manuelt, så
+//   sletningen er altid et bevidst valg foran en liste.
 // - En fil slettes kun hvis dens sti IKKE findes i images-kolonnen på hverken
 //   forum_posts eller forum_replies (slettede indlæg tæller med som
 //   reference — soft delete kan rulles tilbage).
@@ -21,7 +28,7 @@
 // Kør:
 //   node scripts/sweep-forum-image-orphans.mjs                 # dry-run
 //   node scripts/sweep-forum-image-orphans.mjs --execute
-//   node scripts/sweep-forum-image-orphans.mjs --min-age-hours 72
+//   node scripts/sweep-forum-image-orphans.mjs --min-age-hours 168
 //
 // Forudsætninger i backend/.env: SUPABASE_URL, SUPABASE_SERVICE_KEY.
 
@@ -39,12 +46,12 @@ const PAGE_SIZE = 100;
 const ROW_PAGE_SIZE = 1000;
 
 function parseArgs(argv) {
-  const args = { execute: false, minAgeHours: 24 };
+  const args = { execute: false, minAgeHours: 72 };
   for (let i = 2; i < argv.length; i += 1) {
     if (argv[i] === "--execute") args.execute = true;
     else if (argv[i] === "--min-age-hours") args.minAgeHours = Number(argv[i + 1]);
   }
-  if (!Number.isFinite(args.minAgeHours) || args.minAgeHours < 0) args.minAgeHours = 24;
+  if (!Number.isFinite(args.minAgeHours) || args.minAgeHours < 0) args.minAgeHours = 72;
   return args;
 }
 

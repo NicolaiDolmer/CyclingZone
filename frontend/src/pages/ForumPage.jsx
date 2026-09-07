@@ -87,6 +87,9 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, userId, defaultCatego
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [images, setImages] = useState([]);
+  // Submit gates paa dette: et upload der stadig koerer ville ellers blive
+  // sendt afsted som "ingen billeder".
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [pollText, setPollText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -205,6 +208,7 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, userId, defaultCatego
           <ForumImagePicker
             images={images}
             onChange={setImages}
+            onBusyChange={setUploadingImage}
             disabled={submitting}
             userId={userId}
             t={t}
@@ -226,7 +230,7 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, userId, defaultCatego
           <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={submitting}>
             {t("compose.cancel")}
           </Button>
-          <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting}>
+          <Button type="submit" variant="primary" size="sm" loading={submitting} disabled={submitting || uploadingImage}>
             {t("compose.submit")}
           </Button>
         </div>
