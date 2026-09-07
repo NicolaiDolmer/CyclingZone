@@ -12,6 +12,7 @@ import {
   computeFinaleAbilityScore,
   finaleHook,
   isBunchCatchRoute,
+  isBunchSizedChaseGroup,
 } from "./finale.ts";
 import { makeHookCtx } from "./testUtils/makeHookCtx.ts";
 import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
@@ -455,11 +456,82 @@ test("finaleHook (#4914): et stort nok forspring koerer stadig hjem paa fladt (s
   assert.ok(breakIds.includes(String(sprintDecided.params.winner_rider_id)));
 });
 
-test("finaleHook (#4914): en lille IKKE-peloton jagtgruppe faar ALDRIG antals-bonussen, selv naar den matematisk naar referenceforholdet (code-review-fund)", () => {
-  // 3 svage "chase"-ryttere (kind: "chase", ikke peloton) mod en solo-leder:
-  // ratio 3/1 = 3 >= referenceRatio (2), saa en peloton-gruppe med samme
-  // stoerrelsesforhold ville faa det FULDE 120s-vindue. En 3-mands gruppe er
-  // ikke "feltet" og skal derfor IKKE nyde antals-fordelen.
+test("isBunchSizedChaseGroup: andel af feltet med absolut gulv — navnet paa gruppen er irrelevant", () => {
+  const { bunchCatchMinFieldFraction: frac, bunchCatchMinRiders: floor } = FINALE_EXTRA_TUNING;
+  assert.equal(isBunchSizedChaseGroup(3, 4, frac, floor), false, "3 mand er aldrig feltet — det absolutte gulv bider i et lille felt");
+  assert.equal(isBunchSizedChaseGroup(1, 180, frac, floor), false);
+  assert.equal(isBunchSizedChaseGroup(6, 180, frac, floor), false, "6 af 180 er langt under andelen");
+  assert.equal(isBunchSizedChaseGroup(113, 180, frac, floor), true, "en 113-mands klump ER feltet, uanset at splitKindFor kalder den gruppetto");
+  assert.equal(isBunchSizedChaseGroup(0, 180, frac, floor), false);
+  assert.equal(isBunchSizedChaseGroup(50, 0, frac, floor), false, "uden et felt findes der ingen andel");
+  // Monotoni: flere ryttere maa aldrig fjerne en gruppes status som "feltet".
+  fc.assert(
+    fc.property(fc.integer({ min: 1, max: 400 }), fc.integer({ min: 0, max: 400 }), fc.integer({ min: 1, max: 400 }), (count, extra, field) => {
+      if (isBunchSizedChaseGroup(count, field, frac, floor)) {
+        assert.equal(isBunchSizedChaseGroup(count + extra, field, frac, floor), true);
+      }
+    }),
+    { numRuns: 200 },
+  );
+});
+
+test("finaleHook (#4914): en STOR jagtgruppe med et andet kind end peloton faar vinduet (splitKindFor doeber feltet 'gruppetto')", () => {
+  // Regression for gate-valget: `splitKindFor` (climbSelection.ts/cobbles.ts)
+  // kalder ETHVERT fler-rytter-split fra en peloton "gruppetto", uanset om det
+  // er 3 eller 113 mand. En kind-baseret gate laeser derfor feltet som en
+  // gruppetto og fjerner vinduet — maalt fald i felt-sammenhaeng 88,5 -> 69,3 %.
+  const gap = FINALE_EXTRA_TUNING.bunchCatchMaxSeconds / 2;
+  const { entrants, riders, groups, breakIds, pelotonIds } = buildBreakVsPelotonState(gap);
+  const asGruppetto: RaceGroup[] = groups.map((g) => (g.kind === "peloton" ? { ...g, kind: "gruppetto" as const } : g));
+
+  const result = finaleHook(buildState(asGruppetto, riders), makeCtx({
+    entrants,
+    finaleType: "bunch_sprint",
+    profileType: "flat",
+    segment: { kind: "flat", from_km: 149, to_km: 150 },
+  }));
+
+  assert.equal(result.state.groups.length, 1, "feltet henter udbruddet uanset hvad gruppen HEDDER");
+  assert.equal(result.state.groups[0].rider_ids.length, breakIds.length + pelotonIds.length);
+});
+
+test("finaleHook (#4914): en LILLE jagtgruppe der hedder 'peloton' faar ALDRIG vinduet", () => {
+  // Spejlvendingen af testen ovenfor: kind-gaten slap netop denne igennem
+  // (maalt: en 6-mands 'peloton' mod 5 forsvarere fik vinduet). Stoerrelses-
+  // gaten lukker den.
+  const leaderIds = ["l1", "l2"];
+  const chaseIds = ["p1", "p2", "p3", "p4", "p5"];
+  const entrants: Record<string, Entrant> = {
+    ...Object.fromEntries(leaderIds.map((id) => [id, makeEntrant(id, abilities({ tempo: 99, endurance: 99, durability: 99, sprint: 99 }))])),
+    ...Object.fromEntries(chaseIds.map((id) => [id, makeEntrant(id, abilities({ tempo: 1, endurance: 1, aggression: 1, sprint: 1 }))])),
+  };
+  const riders: Record<string, RiderState> = {
+    ...Object.fromEntries(leaderIds.map((id) => [id, makeRiderState(id, "breakaway-0", { wprime: 1, wprimeMax: 1 })])),
+    ...Object.fromEntries(chaseIds.map((id) => [id, makeRiderState(id, "peloton-0", { wprime: 0.1, wprimeMax: 1 })])),
+  };
+  const gap = FINALE_EXTRA_TUNING.bunchCatchMaxSeconds / 2;
+  const groups: RaceGroup[] = [
+    { id: "breakaway-0", kind: "breakaway", rider_ids: leaderIds, gap_seconds: 0, cohesion: 1 },
+    { id: "peloton-0", kind: "peloton", rider_ids: chaseIds, gap_seconds: gap, cohesion: 1 },
+  ];
+
+  const result = finaleHook(buildState(groups, riders), makeCtx({
+    entrants,
+    finaleType: "bunch_sprint",
+    profileType: "flat",
+    segment: { kind: "flat", from_km: 149, to_km: 150 },
+  }));
+
+  assert.equal(result.state.groups.length, 2, "5 mand er ikke feltet — navnet 'peloton' giver ingen antals-fordel");
+  const chaseSurvivor = result.state.groups.find((g) => g.rider_ids.includes("p1"))!;
+  assert.ok(chaseSurvivor.gap_seconds > RACE_V4_TUNING.groups.mergeThresholdSeconds);
+});
+
+test("finaleHook (#4914): en lille jagtgruppe faar ALDRIG antals-bonussen, selv naar den matematisk naar referenceforholdet (code-review-fund)", () => {
+  // 3 svage "chase"-ryttere mod en solo-leder: ratio 3/1 = 3 >= referenceRatio
+  // (2), saa en gruppe der ER feltet ville faa det FULDE 120s-vindue med samme
+  // stoerrelsesforhold. En 3-mands gruppe er ikke feltet og skal derfor IKKE
+  // nyde antals-fordelen.
   const leaderId = ["solo-leader"];
   const chaseIds = ["c1", "c2", "c3"];
   const entrants: Record<string, Entrant> = {

@@ -113,6 +113,30 @@ export function bunchCatchWindowSeconds(
   return Math.max(0, maxSeconds) * advantage;
 }
 
+/**
+ * Er denne jagtgruppe "feltet" (#4914, code-review-fund CodeRabbit)? Antals-
+ * vinduet ovenfor bygger paa at en STOR klump kan skifte foering hele vejen
+ * ind; en lille gruppe kan matematisk naa referenceforholdet mod en endnu
+ * mindre forsvarer uden at have den fordel overhovedet.
+ *
+ * Gaten er STOERRELSE, ikke `group.kind`: `splitKindFor` (climbSelection.ts,
+ * cobbles.ts) doeber ethvert fler-rytter-split fra en peloton "gruppetto"
+ * uanset stoerrelse, saa navnet siger intet om hvorvidt gruppen er feltet — en
+ * 113-mands "gruppetto" er feltet, en 6-mands "peloton" er det ikke (maalt 7/9,
+ * se tuning.ts's bunchCatch-kommentar). Formen er M15's:
+ * `max(minRiders, minFieldFraction * fieldSize)`, saa et lille felt ikke goer
+ * enhver klump til feltet. Eksporteret for direkte enheds-test.
+ */
+export function isBunchSizedChaseGroup(
+  chaseCount: number,
+  fieldSize: number,
+  minFieldFraction: number,
+  minRiders: number,
+): boolean {
+  if (chaseCount <= 0 || fieldSize <= 0) return false;
+  return chaseCount >= Math.max(minRiders, minFieldFraction * fieldSize);
+}
+
 // Kollektiv "flugt"-evne: staying-power til at forsvare et forspring.
 const FLIGHT_KEYS: AbilityKey[] = ["tempo", "endurance", "durability"];
 // Kollektiv "jagt"-evne: villighed/kapacitet til at lukke et hul.
@@ -221,6 +245,9 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // #4914: paa en massefinale paa flad/rullende profil taeller feltets ANTAL i
   // jagten (se bunchCatchWindowSeconds + tuning.ts's bunchCatch*-kommentar).
   const bunchCatch = isBunchCatchRoute(route);
+  // Feltet = alle ryttere der stadig er i en gruppe ved finalen. Andelen (ikke
+  // et absolut rytterantal) er gaten, saa leddet skalerer med feltstoerrelsen.
+  const fieldSize = state.groups.reduce((n, g) => n + g.rider_ids.length, 0);
 
   const sorted = [...state.groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
   const frontPool = sorted.filter((g) => g.gap_seconds === 0);
@@ -249,13 +276,19 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // placeringerne ikke foldes sammen igen af det EFTERFOELGENDE mergeGroups-
     // kald). Paa en massefinale paa fladt/rullende laegges feltets antals-
     // fordel oveni (#4914) — den er ALDRIG mindre end merge-taersklen, saa
-    // ingen eksisterende gren kan blive strengere af dette led. Kun
-    // `kind: "peloton"`-grupper faar bonussen: en lille "chase"/"solo"-gruppe
-    // (fx en counter-attack-split, se GroupKind i types.ts) kan matematisk
-    // naa referenceforholdet mod en endnu mindre forsvarer uden at vaere
-    // "feltet" — antals-argumentet (rotation hele vejen ind) gaelder kun den
-    // egentlige peloton (code-review-fund, CodeRabbit).
-    const catchThreshold = bunchCatch && group.kind === "peloton"
+    // ingen eksisterende gren kan blive strengere af dette led. Kun grupper
+    // der SELV er feltet faar bonussen (isBunchSizedChaseGroup): en lille
+    // "chase"/"solo"-split kan matematisk naa referenceforholdet mod en endnu
+    // mindre forsvarer uden at have antals-fordelen (code-review-fund,
+    // CodeRabbit). Gaten er stoerrelse, ikke `kind` — se funktionens egen
+    // kommentar for hvorfor navnet ikke duer.
+    const catchThreshold = bunchCatch
+      && isBunchSizedChaseGroup(
+        group.rider_ids.length,
+        fieldSize,
+        extra.bunchCatchMinFieldFraction,
+        extra.bunchCatchMinRiders,
+      )
       ? Math.max(
           mergeThreshold,
           bunchCatchWindowSeconds(
