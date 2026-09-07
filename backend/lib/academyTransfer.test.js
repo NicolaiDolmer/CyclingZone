@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { SALARY_RATE_PRODUCTION } from "./economyConstants.js";
 
-import { promote, demote, demoteSalary } from "./academyTransfer.js";
+import { promote, demote, demoteSalary, resolveDemoteSalary } from "./academyTransfer.js";
 import { computeFrozenSalary, computeContractEndSeason, CONTRACT } from "./contractSeed.js";
 import { ACADEMY } from "./academyFlag.js";
 
@@ -402,7 +402,7 @@ test("demote: #3784 — den GAMLE frontend-formel (manglende current_production_
 // #3620 regression: demote skrev UBETINGET en frisk akademi-kontrakt forankret i
 // den aktuelle sæson. En rytter forlænget til sæson 5, demoted i sæson 2, kom ud
 // med udløb sæson 4 (2 + 3 - 1) — rapporteret i prod 10/8. Kontrakt-termen skal
-// arves uændret; kun lønnen gen-beregnes.
+// arves uændret (#4589: lønnen ligeså — se testen nedenfor).
 test("demote: #3620 — eksisterende kontrakt-term arves uændret (sæson 5 forbliver sæson 5)", async () => {
   const { supabase, rec } = makeSupabase({
     rider: SENIOR_U23_WITH_EXTENDED_CONTRACT,
@@ -417,6 +417,60 @@ test("demote: #3620 — eksisterende kontrakt-term arves uændret (sæson 5 forb
     a.p_contract_end,
     computeContractEndSeason(2, ACADEMY.CONTRACT_LENGTH),
     "må IKKE forankres i den aktuelle sæson (det var netop bug'en)",
+  );
+});
+
+// ─── #4589 regression: demote må IKKE genberegne lønnen for en rytter der ────
+// allerede har en komplet kontrakt — samme invariant som #3620 låste for
+// kontrakt-TERMEN, nu for selve LØNNEN. Rapporteret af 3 spillere 1/9: en ung
+// rytter blev handlet og placeret i akademiet, lønnen steg 17k → 22k, fordi
+// demote() ubetinget kørte demoteSalary() (current_production_value × 0.35)
+// i stedet for at arve den frosne kontraktløn.
+test("demote: #4589 — eksisterende kontrakt-løn arves UÆNDRET (ingen genberegning ved akademi-flytning)", async () => {
+  const { supabase, rec } = makeSupabase({
+    rider: SENIOR_U23_WITH_EXTENDED_CONTRACT, // salary: 9_000, current_production_value: 50_000
+    rpcResult: { ok: true, new_salary: 9_000, rows_deleted: 0 },
+  });
+  await demote(supabase, { teamId: "t1", riderId: "r5", seasonNumber: 2, notify: spyNotify() });
+
+  const a = rec.rpcCalls[0].args;
+  assert.equal(a.p_new_salary, 9_000, "den EKSISTERENDE frosne løn skal bruges uændret");
+  assert.notEqual(
+    a.p_new_salary,
+    demoteSalary(SENIOR_U23_WITH_EXTENDED_CONTRACT),
+    "må IKKE genberegnes mod current_production_value × SALARY_RATE_PRODUCTION (det var netop #4589-bug'en)",
+  );
+});
+
+// Modstykket til ovenstående: en rytter UDEN komplet kontrakt (fx en fri
+// akademi-intake-kandidat) skal stadig få en frisk akademi-løn beregnet —
+// create-if-missing, præcis som contractOnAcquirePatch og #3620.
+test("demote: #4589 — kontraktløs rytter får stadig en frisk akademi-løn beregnet", async () => {
+  const contractless = { ...SENIOR_U23, salary: null, contract_length: null, contract_end_season: null };
+  const { supabase, rec } = makeSupabase({
+    rider: contractless,
+    rpcResult: { ok: true, new_salary: demoteSalary(contractless), rows_deleted: 0 },
+  });
+  await demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() });
+
+  const a = rec.rpcCalls[0].args;
+  assert.equal(a.p_new_salary, demoteSalary(contractless));
+});
+
+// resolveDemoteSalary er delt af demote() OG GET /riders/:id/academy-demote-quote
+// (api.js) — samme #3784-lektie: preview og udførelse må aldrig kunne
+// bruge to forskellige regler.
+test("resolveDemoteSalary: #4589 — arver eksisterende løn uændret; kun kontraktløs rytter får ny beregning", () => {
+  assert.equal(
+    resolveDemoteSalary(SENIOR_U23_WITH_EXTENDED_CONTRACT),
+    SENIOR_U23_WITH_EXTENDED_CONTRACT.salary,
+    "komplet kontrakt → uændret",
+  );
+  const contractless = { current_production_value: 20_000, salary: null };
+  assert.equal(
+    resolveDemoteSalary(contractless),
+    demoteSalary(contractless),
+    "kontraktløs → frisk beregning",
   );
 });
 
