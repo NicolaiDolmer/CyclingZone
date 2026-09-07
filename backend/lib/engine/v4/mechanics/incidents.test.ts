@@ -16,6 +16,7 @@ import {
   incidentProbability,
   isFlatStageForThreeKmRule,
   isWithinThreeKmWindow,
+  makeIncidentSoloGroupId,
   maxIncidentsForField,
   resolveIncident,
   segmentLengthFactor,
@@ -23,6 +24,7 @@ import {
   type IncidentRolls,
 } from "./incidents.ts";
 import { climbSelectionHook } from "./climbSelection.ts";
+import { makeGroupId } from "../groups.ts";
 import { boundRngFor, segmentRngFor } from "../rng.ts";
 import { INCIDENTS_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
@@ -867,5 +869,51 @@ test("#4993: M10s foerste solo-split kolliderer IKKE med M2s foerste solo-split 
     new Set(ids).size,
     ids.length,
     `gruppe-id'er skal vaere unikke inden for samme state, fik ${JSON.stringify(ids)}`,
+  );
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// #4993 (PR #4998-review, revideret): boundary-test for det FOERSTE fix-
+// forsoeg (et `+500`-offset ind i den delte `0..999`-taeller-plads), som
+// CodeRabbit korrekt paapegede IKKE var uforbeholdent kollisionsfrit — kun
+// bundet af en uhaandhaevet antagelse om at ingen anden mekaniks lokale
+// `seq` naar 500 i ét segment. Testen laaser at den ENDELIGE fix (et
+// modul-taeg baget ind i id-strengen, `solo-m10-<n>`) er kollisionsfri
+// UBETINGET af den antagelse: den reproducerer PRAECIS det tal (seq=500,
+// samme segmentIndex) som ville have kollideret under offset-forsoeget, og
+// beviser at M10s id stadig ikke matcher det andre mekanikker (via den
+// faelles makeGroupId-hjaelper) ville have produceret paa netop det tal.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test("#4993: M10s id-navnerum kolliderer IKKE med en anden mekaniks id selv ved seq=500 (CodeRabbit-boundary)", () => {
+  const segmentIndex = 5;
+  // Det praecise tal der ville have kollideret under det forkastede
+  // `+500`-offset-forsoeg, HVIS en anden mekaniks lokale `seq` naaede 500.
+  const collidingSeqUnderOldOffset = 500;
+
+  const m10Id = makeIncidentSoloGroupId(segmentIndex, collidingSeqUnderOldOffset);
+  const otherMechanicId = makeGroupId("solo", segmentIndex * 1000 + collidingSeqUnderOldOffset);
+
+  assert.notEqual(
+    m10Id,
+    otherMechanicId,
+    `M10s id ("${m10Id}") maa aldrig kunne matche en anden mekaniks solo-id ("${otherMechanicId}"), uanset seq`,
+  );
+
+  // Property: for ALLE segmentIndex/seq-kombinationer en anden mekanik kunne
+  // producere (ikke kun det ene tal der ramte offset-forsoeget), er M10s
+  // navnerummede id disjunkt — fordi "-m10-" aldrig kan forekomme i den
+  // faelles `${kind}-${seq}`-formatering (seq er altid et rent tal).
+  fc.assert(
+    fc.property(
+      fc.nat({ max: 50 }),
+      fc.nat({ max: 5000 }),
+      fc.nat({ max: 5000 }),
+      (segIdx, m10Seq, otherSeq) => {
+        const m10 = makeIncidentSoloGroupId(segIdx, m10Seq);
+        const other = makeGroupId("solo", segIdx * 1000 + otherSeq);
+        return m10 !== other;
+      },
+    ),
   );
 });

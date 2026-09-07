@@ -80,7 +80,7 @@ import type {
   StageResult,
   TimelineEvent,
 } from "../types.ts";
-import { makeGroupId, splitGroup } from "../groups.ts";
+import { splitGroup } from "../groups.ts";
 import { incidentEvent } from "../timeline.ts";
 import { INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
 
@@ -386,16 +386,34 @@ export function resolveCrashIncident(
  * splitGroup() tjekker ALDRIG om et id allerede findes, så to grupper kan ende
  * med SAMME group_id i state.groups (se incidents.test.ts's #4993-test).
  *
- * Fix: flyt M10s id-rum til sin egen halvdel af segmentets 1000-blok, disjunkt
- * fra de andre mekanikkers (uændrede) `0..999`-rum. 500 er langt over hvad et
- * realistisk løb kan producere: M10s EGET loft er maxIncidentsForField (5 % af
- * feltet, ~9 for et 180-mands felt over HELE etapen — se maxIncidentsForField
- * ovenfor), og de andre mekanikkers lokale sekvens er bundet af antal GRUPPER
- * i ét segment, ikke antal ryttere. Ingen af de fire fixtures rammer M10s
- * hook i dag (0 incidents i alle), så ændringen flytter ingen golden fixture
- * og ingen §7b-anker (id-strengen indgår ikke i nogen tidsberegning).
+ * FOERSTE fix-forsoeg (revideret efter PR #4998-review, bade CodeRabbit og
+ * manuel): et fast `+500`-offset ind i den SAMME `0..999`-taeller-plads.
+ * Det er IKKE uforbeholdent kollisionsfrit — det forudsaetter stiltiende at
+ * ingen af de andre mekanikkers lokale `seq` nogensinde naar 500 i ét
+ * segment. Den antagelse staar ingen steder haandhaevet i kode (intet
+ * assert/clamp), kun i denne kommentar — og CodeRabbit fandt netop dette:
+ * en tilstraekkelig stor gyldig `StageInput.startlist` kan i princippet
+ * drive fx descent.ts's egen lokale `seq` forbi 500 i ét segment, hvorved
+ * dens `solo-<segmentIndex*1000+500+n>` genbruger M10s id igen.
+ *
+ * Endeligt fix: giv M10 sit EGET navnerum via et modul-taeg baget direkte
+ * ind i id-strengen (`solo-m10-<n>`) i stedet for et numerisk offset ind i
+ * den delte taeller-plads. Det goer id'et UBETINGET disjunkt fra enhver
+ * anden mekaniks `${kind}-${seq}`-format — uanset hvor stort `seq` nogen
+ * mekanik nogensinde vokser sig, ingen oevre-graense-antagelse noedvendig.
+ * Verificeret risikofrit: `grep -rn "solo-"` over backend + frontend viser
+ * INGEN parser/regex der antager `${kind}-${number}`-formatet — id'et
+ * bruges udelukkende til streng-lighed/`.localeCompare()` (groups.ts,
+ * finale.ts, breakaway.ts m.fl.), aldrig splittet/parset. `kind` forbliver
+ * "solo" (GroupKind er upaavirket) — kun den opake id-streng aendres.
+ * Ingen af de fire fixtures rammer M10s hook i dag (0 incidents i alle), saa
+ * aendringen flytter ingen golden fixture; §7b-ankerpaavirkningen er den
+ * samme klasse som ved offset-forsoeget (tie-break i groups.ts's
+ * `localeCompare()`), ikke en ny effekt.
  */
-const INCIDENT_GROUP_ID_OFFSET = 500;
+export function makeIncidentSoloGroupId(segmentIndex: number, seq: number): string {
+  return `solo-m10-${segmentIndex * 1000 + seq}`;
+}
 
 export function createIncidentHook(
   tuning: IncidentsTuning,
@@ -474,7 +492,7 @@ export function createIncidentHook(
         const gapDelta =
           resolved.outcome === "abandoned" ? tuning.abandonedGapSeconds : (resolved.timeLossSeconds ?? 0);
         groups = splitGroup(groups, group.id, [riderId], {
-          id: makeGroupId("solo", segmentIndex * 1000 + INCIDENT_GROUP_ID_OFFSET + seq),
+          id: makeIncidentSoloGroupId(segmentIndex, seq),
           kind: "solo",
           gapSecondsDelta: gapDelta,
         });
