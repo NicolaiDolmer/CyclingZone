@@ -30,8 +30,13 @@ test("#4295 panelet fodrer reglen med ryttere der er frie til NETOP dette løb",
   );
   assert.match(
     panel,
-    /partialSquadOutlook\(\{\s*selected: sel\.riderIds\.length, free: freeLeft, fieldMax: size\.max, raceLive,\s*\}\)/,
+    /partialSquadOutlook\(\{\s*selected: sel\.riderIds\.length, free: freeLeft, fieldMax: size\.max,\s*\}\)/,
   );
+  // #4917: panelets EGEN `raceLive` (stages_completed > 0) er fjernet — panelet
+  // mountes kun for løbssidens "before"-fase (racePhase), som kræver stages_completed
+  // === 0, så flaget var altid false her (uopnåelig dødgren). RaceColumn (nedenfor)
+  // kalder stadig partialSquadOutlook med et ÆGTE raceLive.
+  assert.ok(!/const raceLive = /.test(panel), "panelets egen altid-falske raceLive-variabel skal være væk");
   assert.ok(
     !/(?:data|\.\.\.\w+)\.availableCount|availableCount\s*[,}]\s*=|availableCount:/.test(panel),
     "availableCount må ikke bruges som værdi i panelet (kun nævnes i kommentaren der forklarer hvorfor)",

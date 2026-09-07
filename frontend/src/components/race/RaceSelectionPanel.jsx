@@ -187,11 +187,6 @@ export default function RaceSelectionPanel({
   // én gang her og sendt ned i RiderFitInsight pr. rytter, så den ikke genberegnes 30x.
   const breakawayStrength = hunterBreakawayStrength(selectedStageProfileType, selectedStageFinaleType);
   const atMax = sel.riderIds.length >= size.max;
-  // #2637: løbet er "live" (0 < stages_completed < stages, status forbliver 'scheduled'
-  // hele afviklingen, #1825) — trup-TILFØJELSER er frosset, men fjernelse er altid
-  // tilladt. Bruges til at gråne ikke-valgte ryttere, så manageren ikke oplever et
-  // forvirrende "gemt, men afvist" for et forsøg på at tilføje en ny rytter midt i løbet.
-  const raceLive = (data.race?.stages_completed ?? 0) > 0;
   const errParams = { min: size.min, max: size.max };
   // #4295: den IKKE-blokerende afløser for #1906's hårde krav om en fuld trup. Nudgen
   // skal bygge på ryttere der er frie til NETOP dette løb, ikke på `availableCount`,
@@ -203,17 +198,23 @@ export default function RaceSelectionPanel({
   const freeLeft = riders.filter((r) => !r.injured && !boundByRider.has(r.id) && !selectedIdSet.has(r.id)).length;
   // Vises først når manageren har udtaget mindst én rytter: på et urørt panel er
   // "7 pladser står åbne" bare en gentagelse af undertekstens "udtag op til {max}".
-  // `raceLive`: er løbet allerede i gang, top-fylder assistenten IKKE. raceEntryGenerator
-  // fryser ethvert løb med stages_completed > 0 (#1825) og springer det over for alle hold.
-  // Uden guarden ville hinten love et auto-fyld samtidig med at raceLiveNote lige ovenfor
-  // siger at ingen nye ryttere kan tilføjes. To modstridende sætninger, og hinten er den falske.
   //
   // #4295: gulvet (6) gør at der nu er TO ting at sige om en delvis trup, og hvilken der
   // er sand afhænger af holdets frie ryttere. Reglen ligger ét sted (partialSquadOutlook),
   // så panelet og dagsboardets kolonne aldrig kan sige to forskellige ting om samme løb.
   // Linjen er ren visning: den går ALDRIG i clientErrors, så Gem-knappen forbliver aktiv.
+  //
+  // #4917: `raceLive` (stages_completed > 0) er FJERNET herfra — panelet mountes af
+  // RaceTeamTab KUN når løbssidens fase er "before" (racePageTabs.racePhase), og den
+  // fase kræver strengt stages_completed === 0. `raceLive` var derfor altid false her
+  // (uopnåelig dødgren, fund i #4917's verifikation) — raceLiveNote-linjen, det ekstra
+  // disabled-kriterie på checkboxene og raceLive-argumentet til partialSquadOutlook
+  // (default false) er alle fjernet. partialSquadOutlook beholder parameteren — RaceColumn
+  // (dagsboardet) kalder den STADIG med et ægte raceLive (`locked`), det er kun panelets
+  // egen, altid-falske kopi der er væk. Serverens spejl-guard (#1825/selection_race_started
+  // i raceSelection.js) håndhæver frysningen uændret — den er backend, ikke denne fil.
   const outlook = partialSquadOutlook({
-    selected: sel.riderIds.length, free: freeLeft, fieldMax: size.max, raceLive,
+    selected: sel.riderIds.length, free: freeLeft, fieldMax: size.max,
   });
   // #4295 opfølgning: en 0-valgt trup er IKKE det samme udsagn som en delvis trup — se
   // partialSquadOutlook. `emptySelection` vælger de to dedikerede sætninger i stedet for
@@ -426,14 +427,6 @@ export default function RaceSelectionPanel({
         </p>
       )}
 
-      {/* #2637: løbet er live — forklar HVORFOR ikke-valgte ryttere er grånet, så
-          fjernelse (fx af en skadet rytter) ikke fremstår som en generel lås. */}
-      {raceLive && (
-        <p className="px-4 py-2 text-xs text-cz-2 bg-cz-subtle border-b border-cz-border">
-          {t("selection.raceLiveNote")}
-        </p>
-      )}
-
       {/* Rytterliste — responsivt. På mobil (<sm) en stablet liste: en 5-kolonne
           tabel kræver ~488px og tvinger en vandret scroll-container på 393px-
           viewporten. Under Playwrights Pixel 5 (isMobile) emulering skævvrider
@@ -455,7 +448,7 @@ export default function RaceSelectionPanel({
           // fjernelse er altid tilladt, kun tilføjelse valideres. Tidligere gjorde
           // `rider.injured` alene checkboxen disabled UANSET checked-state, så en
           // allerede-udtaget skadet rytter sad permanent fast i truppen (Discord-bug).
-          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || busy;
+          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && atMax) || busy;
           const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
           return (
             <li key={rider.id} className={rider.injured || (bound && !checked) ? "opacity-60" : ""}>
@@ -584,7 +577,7 @@ export default function RaceSelectionPanel({
               const bound = boundByRider.get(rider.id) ?? null;
               // #2637: se mobil-listen ovenfor — fjernelse af en allerede-udtaget skadet
               // rytter skal altid være muligt, kun tilføjelse af en NY skadet rytter blokeres.
-              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && (atMax || raceLive)) || busy;
+              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && atMax) || busy;
               return (
                 <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) ? "opacity-60" : ""}`}>
                   <td className="px-4 py-2.5">
