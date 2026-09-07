@@ -17,7 +17,7 @@ import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 // #5014: lazyWithRetry (ikke bart React.lazy), samme retry-vaern som App.jsx's
 // route-chunks — ellers klassificeres et stale-chunk-load som render_error i
 // stedet for chunk_load_error, og #4595's auto-reload trigges aldrig.
-const FeedbackModal = lazyWithRetry(() => import("./FeedbackModal"));
+const FeedbackModal = lazyWithRetry(() => import("./FeedbackModal.jsx"));
 import MobileQuickNav from "./MobileQuickNav";
 import RaceControlBanner from "./RaceControlBanner";
 import LanguageSwitcher from "./LanguageSwitcher";

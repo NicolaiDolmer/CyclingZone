@@ -44,6 +44,14 @@ test("det faktiske #5014-mønster (StoryOfTheStageSection før fix)", () => {
   assert.equal(findings[0].snippet, "lazy(");
 });
 
+test("flager et react-lazy-alias der indeholder $ (regex-metategn i alias-navnet)", () => {
+  const src = `
+    import { lazy as lazy$ } from "react";
+    const Foo = lazy$(() => import("./Foo"));
+  `;
+  assert.equal(findBareLazyCalls(src).length, 1);
+});
+
 test("flager flere bare lazy-kald i samme fil", () => {
   const src = `
     import { lazy } from "react";

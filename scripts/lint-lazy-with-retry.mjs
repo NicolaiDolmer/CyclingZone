@@ -124,7 +124,11 @@ export function findBareLazyCalls(rawSrc) {
   // og den blankede src kun til selve kalds-scanningen nedenfor.
   const rawNames = findRawLazyBindings(rawSrc);
   for (const name of rawNames) {
-    const callRe = new RegExp(`(?<![.\\w$])${name}\\s*\\(`, "g");
+    // Alias-navnet kan i teorien indeholde regex-metategn (fx `$`, lovligt i et
+    // JS-identifikatornavn) — escap dem før interpolation, ellers kan et alias
+    // som `lazy$` blive læst som slut-af-input-anker og aldrig matche et kald.
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const callRe = new RegExp(`(?<![.\\w$])${escapedName}\\s*\\(`, "g");
     callRe.lastIndex = 0;
     while ((m = callRe.exec(src)) !== null) {
       findings.push({ line: lineAt(rawSrc, m.index), snippet: `${name}(` });
