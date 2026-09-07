@@ -33,8 +33,14 @@ let started = false;
 // efter at de to direkte læsninger var fjernet. Målt: 3 forekomster af sha'en i
 // entry-chunken i et build med DSN sat (altså prod), 0 uden.
 function toSampleRate(raw, fallback = 0) {
-  const value = Number(raw ?? fallback);
-  return Number.isFinite(value) && value >= 0 ? value : fallback;
+  // CodeRabbit (#4970): tom streng, ikke-numeriske vaerdier og tal udenfor det
+  // inklusive interval [0, 1] skal falde tilbage til `fallback` — @sentry/react
+  // kraever et tal i [0, 1] og afviser (eller warner paa) alt andet. Tjek "" eksplicit
+  // FOER Number(), da Number("") === 0 ellers ville maskere en tom env-vaerdi som
+  // et gyldigt 0 i stedet for at bruge fallback.
+  if (raw === undefined || raw === null || raw === "") return fallback;
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : fallback;
 }
 
 export function initSentry() {
