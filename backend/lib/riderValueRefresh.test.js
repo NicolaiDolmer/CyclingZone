@@ -9,6 +9,13 @@ import { predictBaseValue } from "./riderValuation.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const baseline = JSON.parse(readFileSync(join(__dirname, "riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "riderValuationModel.json"), "utf8"));
+// #4872: den LIVE v4-model (ikke test-fixturen ovenfor, som har alpha=0.5 og
+// derfor blander speciale-output med det generelle evne-snit — v4 har alpha=1,
+// se riderValuationModelV4.json's fit-blok, PRÆCIS ren speciale-score, ingen
+// blend). #4872-testerne skal reproducere den faktiske prod-mekanik, ikke
+// v3-fixturens anderledes blend-adfærd.
+const modelV4 = JSON.parse(readFileSync(join(__dirname, "riderValuationModelV4.json"), "utf8"));
+const youthBaselineV4 = JSON.parse(readFileSync(join(__dirname, "riderTypesBaselineYouth.json"), "utf8"));
 
 const ABIL = { climbing: 60, time_trial: 55, prolog: 50, flat: 58, tempo: 57, sprint: 40, acceleration: 45, punch: 48, endurance: 62, recovery: 58, durability: 55, descending: 52, cobblestone: 41, positioning: 50, aggression: 50, tactics: 50 };
 
@@ -118,4 +125,54 @@ test("#3570: selectChangedValueUpdates retter en rytter TILBAGE til sit anlæg (
   const updates = selectChangedValueUpdates(riders, new Map([["r1", ABIL]]), baseline, model);
   assert.equal(updates.length, 1);
   assert.equal(updates[0].primary_type, "gc", "sweepen skriver anlægget tilbage");
+});
+
+// ── #4872: "rytter-værdi står stille for enkelte ryttere" — end-to-end-bevis ──
+// Prod-fund (Ryan Cooper, egomadsen's tråd 7/9): valuation_type "tt" (frosset,
+// #3345) mens rytterens FAKTISKE træning gik i sprint/acceleration. "tt" har
+// kun ét positivt vægtet ability (time_trial, se riderValuation.test.js'
+// tilsvarende #4872-test) — rører træningen den aldrig, står base_value
+// bogstaveligt talt stille. Denne test beviser det er INGEN sweep-fejl: ingen
+// gren i selectChangedValueUpdates springer rytteren over (han evalueres helt
+// normalt hver gang) — den beregnede værdi er blot reelt uændret, fordi
+// modellen (bevidst, ejer-godkendt) kun lytter til time_trial for "tt". En
+// rytter med SAMME off-type-udvikling men et valuation_type der rent faktisk
+// vægter den udviklede evne (climber → climbing) FÅR sin værdi opdateret —
+// kontrolgruppen viser at pipelinen virker, problemet er specifikt "tt"s
+// nul-redundans efter #3345-frysningen.
+// Ryan Coopers RIGTIGE rider_derived_ability_history-snapshots (27/8 → 7/9,
+// prod-målt for #4872, se PR-body). Bruges frem for syntetiske tal fordi
+// elite_premium (riderCareerNpv.js) reagerer på det RÅ evne-snit (riderOverall)
+// uafhængigt af typen — en for høj syntetisk baseline (fx alt-50) ville
+// utilsigtet trigge præmien og sløre at kerne-NPV'en (den typespecifikke O)
+// reelt står stille. Med de RIGTIGE, lave tal (snit ≈ 20) er testen tro mod
+// hvad der faktisk skete i prod.
+const RYAN_COOPER_BEFORE = { flat: 30, punch: 14, tempo: 15, sprint: 44, tactics: 18, climbing: 7, recovery: 22, endurance: 16, aggression: 28, descending: 17, durability: 26, time_trial: 25, cobblestone: 16, positioning: 22, acceleration: 44, prolog: 20 };
+const RYAN_COOPER_AFTER = { flat: 32, punch: 14, tempo: 16, sprint: 50, tactics: 18, climbing: 7, recovery: 22, endurance: 18, aggression: 28, descending: 17, durability: 28, time_trial: 25, cobblestone: 17, positioning: 24, acceleration: 50, prolog: 20 };
+
+test("#4872: en rytter frosset til 'tt' der kun udvikler sprint/acceleration får INGEN værdi-opdatering", () => {
+  // #3570 anlæg (primary+secondary EKSPLICIT sat, spejler Ryan Coopers rigtige
+  // archetype_draw {primary:sprinter, secondary:rouleur}) holder type-labelen
+  // stabil på tværs af før/efter, så testen isolerer PRÆCIST base_value/cpv —
+  // ikke en sideeffekt af rå-evne-reklassifikation. modelV4 (alpha=1, den LIVE
+  // model) er PÅKRÆVET her — se konstant-kommentaren ovenfor.
+  const draw = { primary: "sprinter", secondary: "rouleur" };
+  const riderRow = { id: "stuck-1", valuation_type: "tt", archetype_draw: draw, age: 19, potentiale: 5.5 };
+  const frozen = recomputeRiderValue(riderRow, RYAN_COOPER_BEFORE, baseline, modelV4, { youthBaseline: youthBaselineV4 });
+  const rider = { ...riderRow, primary_type: frozen.primary_type, secondary_type: frozen.secondary_type, base_value: frozen.base_value, current_production_value: frozen.current_production_value };
+  const updates = selectChangedValueUpdates([rider], new Map([["stuck-1", RYAN_COOPER_AFTER]]), baseline, modelV4, new Map(), youthBaselineV4);
+  assert.equal(updates.length, 0, "base_value er reelt uændret (time_trial rørte sig ikke) — ikke en tabt skrivning");
+});
+
+test("#4872 kontrol: en rytter frosset til 'climber' der udvikler climbing FÅR sin værdi opdateret", () => {
+  // Jasper Verhoevens rigtige snapshots (samme trup, samme periode, kontrol-
+  // rytteren fra Discord-tråden): climbing 21 → 27, valuation_type = primary_type.
+  const draw = { primary: "climber", secondary: null };
+  const before = { flat: 9, punch: 24, tempo: 24, sprint: 7, tactics: 10, climbing: 21, recovery: 7, endurance: 14, aggression: 18, descending: 9, durability: 9, time_trial: 7, cobblestone: 5, positioning: 9, acceleration: 9, prolog: 20 };
+  const after = { ...before, climbing: 27, punch: 27, tempo: 27, recovery: 8, endurance: 17, durability: 10, positioning: 10 };
+  const riderRow = { id: "moving-1", valuation_type: "climber", archetype_draw: draw, age: 19, potentiale: 5.0 };
+  const frozen = recomputeRiderValue(riderRow, before, baseline, modelV4, { youthBaseline: youthBaselineV4 });
+  const rider = { ...riderRow, primary_type: frozen.primary_type, secondary_type: frozen.secondary_type, base_value: frozen.base_value, current_production_value: frozen.current_production_value };
+  const updates = selectChangedValueUpdates([rider], new Map([["moving-1", after]]), baseline, modelV4, new Map(), youthBaselineV4);
+  assert.equal(updates.length, 1, "climbing er positivt vægtet for 'climber' — værdien følger med");
 });

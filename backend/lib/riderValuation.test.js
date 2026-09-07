@@ -11,6 +11,7 @@ import {
   riderOverall,
   riderSpecialty,
 } from "./riderValuation.js";
+import { VALUATION_WEIGHTS } from "./weights/valuationWeights.js";
 
 const abilities = (val = 50, extra = {}) => {
   const a = {};
@@ -145,6 +146,38 @@ test("predictBaseValue klamper IKKE nedad (ingen bund, ejer-direktiv)", () => {
   const lo = predictBaseValue({ primary_type: "gc" }, abilities(10), model);
   const mid = predictBaseValue({ primary_type: "gc" }, abilities(40), model);
   assert.ok(lo < mid, `lavt output skal fortsat give lav værdi (${lo} < ${mid})`);
+});
+
+// ── #4872: "tt" har KUN ÉT positivt vægtet ability (time_trial) ──────────────
+// Root-cause-fund (målt mod prod 7/9): en rytter hvis FROSNE valuation_type
+// (#3345) er "tt" får sin outputScore udelukkende fra time_trial — alle andre
+// vægte i tt-rækken er negative og springes derfor over (outputScore tæller
+// kun w > 0, se toppen af denne fil). Træner rytteren i stedet sit FAKTISKE
+// speciale (fx sprint/acceleration, som for "tt" begge har negativ eller
+// manglende vægt), rører intet ved hans værdi — uanset hvor meget han reelt
+// udvikler sig. Bekræftet i prod: Ryan Cooper (issue #4872, valuation_type
+// "tt", primary_type "sprinter") gik fra sprint 44 → 50 / acceleration
+// 44 → 50 mellem 27/8 og 7/9, mens time_trial stod dødt på 25 hele perioden —
+// base_value fulgte time_trial, altså intet. Dette er IKKE en fejl i sweepen
+// (ingen gren springer rytteren over — se riderValueRefresh.test.js'
+// tilsvarende #4872-test for end-to-end-beviset); det er en konsekvens af at
+// #3345 fryser valuation_type PERMANENT, og "tt" (til forskel fra alle andre
+// typer, som har 2-4 positive vægte) har nul redundans hvis rytterens træning
+// aldrig rammer time_trial. Vægtene selv er ejer-ejede (se toppen af
+// weights/valuationWeights.js: "Rør ikke denne tabel") — denne test PINNER
+// derfor kun den nuværende, tilsigtede adfærd, den ændrer den ikke.
+test("#4872: outputScore('tt') står helt stille når kun off-type abilities ændrer sig", () => {
+  const ttWeights = VALUATION_WEIGHTS.find((t) => t.key === "tt").weights;
+  assert.deepEqual(
+    Object.keys(ttWeights).filter((k) => ttWeights[k] > 0),
+    ["time_trial"],
+    "tt skal (fortsat) have ÉT eneste positivt vægtet ability — ændrer dette, er #4872-diagnosen forældet"
+  );
+
+  const before = abilities(30, { time_trial: 25, sprint: 44, acceleration: 44 });
+  const after = abilities(30, { time_trial: 25, sprint: 50, acceleration: 50 }); // reel udvikling, off-type
+  assert.equal(outputScore(before, "tt"), outputScore(after, "tt"), "tt-output må ikke flytte sig når time_trial ikke gør");
+  assert.notEqual(meanAbilityScore(before), meanAbilityScore(after), "rytteren udvikler sig faktisk (kontrol mod falsk positiv)");
 });
 
 test("predictBaseValue uden output_max er uklampet (bagudkompatibel)", () => {
