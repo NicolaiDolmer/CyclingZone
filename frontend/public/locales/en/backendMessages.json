@@ -84,6 +84,10 @@
       "devTransition": {
         "title": "The development view has changed",
         "message": "Your riders have not changed. Abilities, ratings and results are exactly as yesterday. The old range was floor to ceiling. The new range is your rider's projected level: where he realistically lands with your training. Ceilings were raised for most riders at the same time, so a lower-looking range does not mean a weaker rider. Potential now decides how fast a rider develops, not where he stops. Your dashboard shows your own riders before and after."
+      },
+      "survey": {
+        "title": "Help me decide what to build next",
+        "message": "I have put a short survey in the game. You rate each idea twice: whether it is a good idea at all, and how much it matters to you right now. It takes about 3 minutes, and you can change your answers until it closes. Open it from here."
       }
     },
     "loanCreatedShort": {

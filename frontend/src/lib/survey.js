@@ -238,6 +238,27 @@ export function groupQuestionsIntoSections(questions) {
   }));
 }
 
+// ── Dashboard-indgangen ─────────────────────────────────────────────────────
+// Luk-krydset på dashboard-kortet husker i 3 dage, ikke for evigt: skemaet er
+// åbent i en kort periode, og en spiller der lukkede kortet den første dag
+// skal have chancen igen inden det lukker. Nøglen bærer skemaets slug, så et
+// nyt skema ikke arver et gammelt luk.
+export const INVITE_DISMISS_DAYS = 3;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function inviteDismissKey(slug) {
+  return `cz-dashboard-survey-dismissed:${slug}`;
+}
+
+export function inviteDismissedUntil(now = Date.now()) {
+  return now + INVITE_DISMISS_DAYS * DAY_MS;
+}
+
+export function isInviteDismissed(raw, now = Date.now()) {
+  const until = Number.parseInt(raw ?? "", 10);
+  return Number.isFinite(until) && until > now;
+}
+
 /** survey_responses-rækker → { [question_key]: value }. */
 export function answersByQuestionKey(rows) {
   const answers = {};

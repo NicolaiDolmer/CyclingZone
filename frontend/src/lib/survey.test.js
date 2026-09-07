@@ -10,6 +10,10 @@ import {
   canSubmit,
   computeProgress,
   groupQuestionsIntoSections,
+  INVITE_DISMISS_DAYS,
+  inviteDismissKey,
+  inviteDismissedUntil,
+  isInviteDismissed,
   isAnswered,
   missingRequired,
   normalizeAnswer,
@@ -306,4 +310,26 @@ test("answersByQuestionKey samler rækker og tåler tomt input", () => {
   );
   assert.deepEqual(answersByQuestionKey(null), {});
   assert.deepEqual(answersByQuestionKey([null, { value: { score: 1 } }]), {});
+});
+
+// ── Dashboard-indgangen ─────────────────────────────────────────────────────
+
+test("luk-krydset på dashboard-kortet husker i 3 dage pr. skema", () => {
+  const now = 1_757_000_000_000;
+  assert.equal(INVITE_DISMISS_DAYS, 3);
+  assert.equal(inviteDismissKey("2026-09-features"), "cz-dashboard-survey-dismissed:2026-09-features");
+  assert.notEqual(inviteDismissKey("a"), inviteDismissKey("b"), "et nyt skema arver ikke et gammelt luk");
+
+  const until = inviteDismissedUntil(now);
+  assert.equal(until - now, 3 * 24 * 60 * 60 * 1000);
+  assert.equal(isInviteDismissed(String(until), now), true);
+  assert.equal(isInviteDismissed(String(until), until - 1), true);
+  assert.equal(isInviteDismissed(String(until), until + 1), false, "efter 3 dage vises kortet igen");
+});
+
+test("et tomt eller ulæseligt luk-flag betyder at kortet vises", () => {
+  assert.equal(isInviteDismissed(null), false);
+  assert.equal(isInviteDismissed(undefined), false);
+  assert.equal(isInviteDismissed(""), false);
+  assert.equal(isInviteDismissed("ja tak"), false);
 });
