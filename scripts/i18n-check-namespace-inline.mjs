@@ -54,6 +54,7 @@ const INLINE_EXEMPT = new Set([
   "seasonEnd", // SeasonEndPage + SeasonExperiencePreviewPage — ready-gate
   "scouting", // ScoutingCentralPage — ready-gate
   "roadmap", // RoadmapPage — ready-gate
+  "survey", // SurveyPage (#4943) — ready-gate
   "admin", // RacePointsAdminSection (AdminDataTab) — ready-gate
   "notifications", // NotificationsPage — ready-gate
   "activity", // ActivityPage (tab i NotificationsPage) — ready-gate

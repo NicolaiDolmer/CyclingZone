@@ -1,0 +1,74 @@
+{
+  "page": {
+    "subtitle": "Cirka 3 minutter",
+    "introLead": "Jeg spørger hellere dig end gætter, så jeg har samlet hele listen ét sted.",
+    "introAccount": "Dine svar gemmes på din konto, så du kan rette dem indtil skemaet lukker."
+  },
+  "progress": {
+    "label": "Besvaret",
+    "value": "{done} af {total}",
+    "aria": "Hvor meget af skemaet du har besvaret"
+  },
+  "sections": {
+    "today": "Sådan er det i dag",
+    "ideas": "Giv hver idé to karakterer",
+    "problems": "Hvad fungerer dårligst",
+    "choices": "Hvad du selv ville vælge",
+    "pro": "Pro",
+    "closing": "Før du sender",
+    "other": "Mere"
+  },
+  "axes": {
+    "idea": "Idé",
+    "importance": "Betyder for mig",
+    "dontKnow": "Ved ikke",
+    "dontKnowAria": "Ingen mening om {feature}"
+  },
+  "scale": {
+    "npsLow": "Slet ikke sandsynligt",
+    "npsHigh": "Yderst sandsynligt",
+    "satisfactionLow": "Ikke tilfreds",
+    "satisfactionHigh": "Meget tilfreds"
+  },
+  "field": {
+    "optional": "Valgfrit",
+    "required": "Skal besvares",
+    "textPlaceholder": "Skriv så meget eller så lidt du vil",
+    "maxThreeLeft": "{left, plural, =0 {Tre er grænsen. Fjern én for at vælge en anden.} one {# tilbage} other {# tilbage}}",
+    "yes": "Ja",
+    "no": "Nej"
+  },
+  "save": {
+    "saving": "Gemmer",
+    "saved": "Gemt",
+    "error": "Det svar blev ikke gemt. Ret det en gang til, så prøver jeg igen."
+  },
+  "submit": {
+    "cta": "Send mine svar",
+    "sending": "Sender",
+    "missing": "{count, plural, one {# spørgsmål} other {# spørgsmål}} mangler stadig et svar.",
+    "error": "Det gik ikke igennem. Prøv igen."
+  },
+  "thanks": {
+    "title": "Tak",
+    "body": "Jeg læser hvert eneste svar selv, og jeg fortæller i forummet hvad der kom ud af det.",
+    "editable": "Du kan rette dine svar indtil skemaet lukker.",
+    "edit": "Ret mine svar",
+    "roadmap": "Se roadmap"
+  },
+  "closed": {
+    "title": "Skemaet er lukket",
+    "body": "Tak til alle jer der svarede. Det der kom ud af det lander på roadmappet.",
+    "roadmap": "Se roadmap"
+  },
+  "notFound": {
+    "title": "Jeg kan ikke finde det skema",
+    "body": "Linket er nok gammelt. Roadmappet viser hvad jeg arbejder på nu.",
+    "roadmap": "Se roadmap"
+  },
+  "error": {
+    "title": "Skemaet blev ikke hentet",
+    "body": "Intet er gået tabt. De svar du allerede har givet, er i sikkerhed.",
+    "retry": "Prøv igen"
+  }
+}
