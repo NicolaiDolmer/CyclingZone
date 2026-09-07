@@ -26,6 +26,6 @@
 - **Træning:** nyt system (løbsdag som tick, #4850/#4846) live senest S4-start 28/9; kalenderpakker #4845 FØR S4-kalender. Dags-støj bruger `seededUnitMixed` (#4987).
 - **Mekanik:** merges én ad gangen (`scripts/merge-queue.ps1 -Pr "N"`; aldrig HH:57-HH:03); `database/*.sql` applies af auto-migrate.yml, Claude laver post-verify. Bølger: TIER WAVE, PR som draft til `gh pr ready`, CodeRabbit CLI før ready (`%LOCALAPPDATA%\Programs\coderabbit\coderabbit.exe review --base main --committed`, ikke i PATH), push <10 min + hvert 15. min, vagt `scripts/wave-lane-watch.ps1`, frossen worker = recovery i SAMME worktree. Subagenter har IKKE Discord-MCP; orkestratoren læser kanaler. Billeder sendes FØR et beslutningskort.
 
-> **🤖 Working agent:** Ingen aktiv session (7/9 aften; næste = spørgeskema-design + forum/vækst, prompt i docs/drafts).
+> **🤖 Working agent:** Fable-orkestrator AKTIV 7/9 fra 19:30 (spørgeskema-design + forum/Discord-bølge + vækst, 11 workers). Anden session: STOP + spørg ejeren før pick-up (#559).
 
 _Historik i git-log, issue-tråde + docs/audits/._
