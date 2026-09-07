@@ -115,7 +115,16 @@ test("en manager uden achievements får en ordentlig tomtilstand", async ({ page
 // ikke-Founders") er allerede dækket af FounderMark.jsx' egen guard
 // (`founderNumber == null → return null`), som er fælles for alle sider der
 // bruger komponenten og ikke ændret af denne fix.
-test("Founder-mærket vises for en Founder-manager", async ({ page }) => {
+test("Founder-mærket vises for en Founder-manager (egen profil)", async ({ page }) => {
   await openProfile(page, TEST_TEAM.id);
+  await expect(page.getByText(FOUNDER_LABEL, { exact: false }).first()).toBeVisible();
+});
+
+// #5007-accept: "maerket ses af ANDRE managere". login() logger ind som TEST_TEAM's
+// bruger, så RIVAL_TEAM her er netop en ANDEN konto set udefra — RIVAL_TEAM er også
+// Founder i mocken (se note ovenfor), så dette er det reelle regressionstjek for
+// accept-kriteriet, ikke bare "vises på egen profil".
+test("Founder-mærket vises på en ANDEN managers profil, ikke kun ens egen", async ({ page }) => {
+  await openProfile(page, RIVAL_TEAM.id);
   await expect(page.getByText(FOUNDER_LABEL, { exact: false }).first()).toBeVisible();
 });
