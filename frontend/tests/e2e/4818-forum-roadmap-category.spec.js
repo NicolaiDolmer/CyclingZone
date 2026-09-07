@@ -100,6 +100,9 @@ test("admin: knappen er synlig paa roadmap-fanen og kategorien kan vaelges", asy
   // Modalen aabner PAA roadmap, fordi fanen var roadmap.
   const roadmapChoice = picker.getByRole("button", { name: ROADMAP_TAB });
   await expect(roadmapChoice).toBeVisible();
+  // ... og som FOERSTE valg: raekkefoelgen er ejer-direktivets ("oeverst"),
+  // saa en regression der skubber en anden kategori foran skal faelde noget.
+  await expect(picker.getByRole("button").first()).toHaveText(ROADMAP_TAB);
   await expect(roadmapChoice).toHaveAttribute("aria-pressed", "true");
 });
 
