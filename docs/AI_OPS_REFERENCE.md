@@ -69,6 +69,12 @@ Omdøb aldrig `frontend-smoke`-jobbet: navnet er en kontrakt med branch protecti
 
 ---
 
+## CodeRabbit — review-allowance (målt 7/9)
+
+CodeRabbit (plan Essentials, `.coderabbit.yaml` `auto_review.enabled=true`) tæller hvert push til en **ikke-draft** PR som ét review-forsøg; allowance skrumper med antal forsøg over de seneste 7 dage (108 forsøg over 7 dage → 1 review/time). Derfor: PR'er oprettes som **draft** ved første push (`gh pr create --draft`), wip-commits pushes mod draften uden at trigge review, og PR'en markeres klar først som sidste handling (`gh pr ready <N>`) — se `scripts/make-wave-brief.mjs` og `docs/NIGHT_WAVE_RUNBOOK.md`. `@coderabbitai review` i en PR-kommentar er en manuel trigger og tæller separat fra draft/ready-flowet. Spending cap og plan-valg styres af ejeren i CodeRabbits eget billing-fane — ikke noget Claude ændrer.
+
+---
+
 ## Dependency-sync efter git pull
 
 _Flyttet hertil fra `CLAUDE.md` 2026-08-31 per [#2682](https://github.com/NicolaiDolmer/CyclingZone/issues/2682)._

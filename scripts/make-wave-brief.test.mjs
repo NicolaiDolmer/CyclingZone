@@ -61,6 +61,12 @@ test("indeholder PR-skabelon med Refs, ikke Closes", () => {
   assert.doesNotMatch(brief, /Closes #4918/);
 });
 
+test("instruerer draft-PR ved foerste push og gh pr ready som sidste handling (CodeRabbit-attempts, 7/9)", () => {
+  const brief = generateBrief(baseConfig);
+  assert.match(brief, /--draft/);
+  assert.match(brief, /gh pr ready/);
+});
+
 test("indeholder forbud mod watchers/dev-servere og under-agenter", () => {
   const brief = generateBrief(baseConfig);
   assert.match(brief, /watcher eller dev-server/);
