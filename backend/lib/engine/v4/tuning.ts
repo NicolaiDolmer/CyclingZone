@@ -170,6 +170,54 @@ const finaleExtra = {
   placementGapScoreScale: 3, // skalerer score-differencen mellem to naboplacerings-tiers til ekstra sekunder ud over margin+jitter
   placementGapJitterMaxSeconds: 0.3, // uniform jitter [0, max) paa tier-gap'et — paavirker KUN stoerrelsen, aldrig raekkefolgen (rank-guard-moenstret, designdoc §4)
   placementFullResolutionCount: 20, // kun de N bedst placerede kontendere faar individuelle tiers; resten bunches i én samlet haleklump-gruppe
+
+  // ── Massefinale: feltets antals-fordel i jagten (#4914) ────────────────────
+  // MAALT 7/9 mod den pinnede 7/9-population (§7b): 24 af 32 flade etaper
+  // sluttede med et 5-10-mands udbrud i front og hele peloton'en 25-110 s
+  // bagude, saa felt-sammenhaengs-ankeret laa paa 29 % mod baandet 80-95 %.
+  //
+  // Rod-aarsagen er at `collectiveAbility` er et GENNEMSNIT: et lille, staerkt
+  // udbrud har hoejere snit-evne end en 170-mands peloton, saa
+  // `chasePower - leadDefend` blev negativt og `netClosingPower` clampede til
+  // 0 — uanset hvor mange der jagtede, hvor stort hullet var, og hvor langt
+  // der var igen. Et udbrud kunne altsaa ALDRIG indhentes i finalen.
+  //
+  // Antal er en fart-faktor paa fladt/rullende terraen (samme lae-argument som
+  // GROUP_DRAFT_EXTRA_TUNING's stoerrelses-led paa segment-fart-siden): 170
+  // mand kan skifte foering hele vejen ind, 8 kan ikke. Derfor et
+  // antals-skaleret OPSAMLINGS-VINDUE i stedet for en aendring af selve
+  // jagt-/fart-formlen: en gruppe der ved finalens start ligger inden for
+  // vinduet regnes som hentet af feltet inden stregen. Kun paa
+  // massefinale-ruter paa flad/rullende profil — selektive finaler (bjerg,
+  // punch, nedkoersel, udbrud, ITT) beholder den rene evne-baserede jagt, saa
+  // bjerg-ankrene ikke roeres.
+  //
+  // Vinduet er BOUNDED og styrke-neutralt: det giver feltet dets antal, ikke
+  // en straf til udbruddet — et udbrud med et stort nok forspring koerer
+  // stadig hjem.
+  //
+  // KALIBRERING (5 seeds x 32 flade etaper, flad felt-sammenhaeng, baand
+  // 80-95 %): 120 s / ratio 2 -> 88,1 % (85,2-91,6 pr. seed). Naboer:
+  // 100 s -> 85,2 %, 140 s -> 89,9 %, ratio 2,5 -> 82,5 %, ratio 3 -> 76,6 %
+  // (FAIL). Foer aendringen: 29,3 %.
+  // HVEM faar vinduet: MAALT 7/9 efter et code-review-fund (CodeRabbit, PR
+  // #4975). Foerste udgave gav vinduet til ENHVER jagtgruppe, saa en 3-mands
+  // split mod en solo-leder fik det fulde 120 s — antals-argumentet gaelder
+  // ikke dér. Foerste rettelse gatede paa `group.kind === "peloton"`, men
+  // MAALINGEN viste at `kind` ikke er et brugbart proxy for "feltet":
+  // `splitKindFor` (climbSelection.ts:219, cobbles.ts:189) doeber ETHVERT
+  // fler-rytter-split fra en peloton "gruppetto" uanset stoerrelse, saa
+  // 88-113-mands FELT-klumper mistede vinduet (felt-sammenhaeng faldt 88,5 ->
+  // 69,3 %), mens en 6-mands gruppe der stadig hed "peloton" beholdt det.
+  // Gaten er derfor STOERRELSE, ikke navn — samme moenster som M15's
+  // grupetto-redning (`grupettoFieldFraction` + `grupettoMinRiders` nedenfor):
+  // andel af feltet, med et absolut gulv saa et lille felt ikke goer enhver
+  // klump til "feltet". Det daekker ogsaa CodeRabbits eget modeksempel
+  // strengere end kind-gaten gjorde.
+  bunchCatchMaxSeconds: 120, // maks. forspring feltet kan hente i finalen ved fuld antals-fordel (massefinale, flad/rullende)
+  bunchCatchNumbersReferenceRatio: 2, // jagt/front-stoerrelsesforhold hvor antals-fordelen er fuld (logaritmisk optrapning derunder, clampet til 1 derover)
+  bunchCatchMinFieldFraction: 0.2, // jagtgruppen skal udgoere mindst denne andel af feltet foer den regnes som "feltet" og faar antals-vinduet
+  bunchCatchMinRiders: 8, // absolut gulv (samme rolle som grupettoMinRiders): i et lille felt maa andelen ikke goere en 3-mands split til "feltet"
 };
 
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */
