@@ -724,8 +724,8 @@ const strengthSpeedExtra = {
   // feltets front koerer allerede paa terraenets og aerodynamikkens graense og
   // faar aftagende udbytte af mere kraft; en gruppe der er svagere end
   // loebstempoet mister proportionalt.
-  surplusWeight: 0.35, // vaegt paa OVERSKUDS-grenen (collectiveCp over referencen). STARTGAET, kalibreret mod bjerg-top-10-ankeret
-  deficitWeight: 1.8, // vaegt paa UNDERSKUDS-grenen. STARTGAET, kalibreret mod hale-baandet (bjerg 8-15 %, ejer-gaet)
+  surplusWeight: 0.55, // vaegt paa OVERSKUDS-grenen (collectiveCp over referencen). STARTGAET, kalibreret mod bjerg-top-10-ankeret
+  deficitWeight: 2.6, // vaegt paa UNDERSKUDS-grenen. STARTGAET, kalibreret mod hale-baandet (bjerg 8-15 %, ejer-gaet)
 };
 
 /** #4885 additiv styrke/fart-tuning (deep-frosset). Se strengthSpeedExtra-kommentaren ovenfor. */
