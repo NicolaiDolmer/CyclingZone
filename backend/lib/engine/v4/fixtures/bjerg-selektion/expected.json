@@ -69,6 +69,18 @@
       },
       {
         "km": 65,
+        "type": "group_merged",
+        "params": {
+          "group_id": "chase-1000",
+          "into_group_id": "peloton-0",
+          "rider_ids": [
+            "r04",
+            "r05"
+          ]
+        }
+      },
+      {
+        "km": 65,
         "type": "gap_update",
         "params": {
           "group_id": "peloton-0",

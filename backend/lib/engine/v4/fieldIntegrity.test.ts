@@ -19,6 +19,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { simulateStageV4 } from "./index.ts";
+import { validateGroupMembership } from "./timeline.ts";
 import { RACE_V4_TUNING } from "./tuning.ts";
 import { isMassFinishRoute } from "./finale.ts";
 import { TEAM_TACTICS_ORDER_KIND } from "./mechanics/breakaway.ts";
@@ -256,4 +257,35 @@ test("#4615 determinisme: samme ordrer giver byte-identisk output", () => {
   const a = simulateStageV4(stage(entrants, flatRoute(), "4615-determinism", orders));
   const b = simulateStageV4(stage(entrants, flatRoute(), "4615-determinism", orders));
   assert.deepEqual(a, b, "to identiske koersler med ordrer gav forskelligt output");
+});
+
+// ── Invariant 3 (#4971): tidslinje og gruppe-snapshots fortaeller SAMME historie
+// Fundet af CodeRabbit paa PR #4971: `peloton_splits` flyttede r04/r05 til
+// `chase-1000` ved km 65 i golden fixture bjerg-selektion, men km 65- og km
+// 82-snapshots holdt dem i `peloton-0`, fordi segmentLoop's merge-trin foldede
+// `chase-1000` tilbage i pelotonen UDEN at emittere noget. Snapshots er
+// sandheden om segment-state; et gruppeskift der ikke naar derind, er
+// selvmodsigende output — og det slaar igennem i BAADE etape-filmen og alt
+// nedstroems der foelger en rytter fra event til event.
+//
+// Guarden hoerer her, ved siden af feltstoerrelse og felt-sammenhaeng: alle tre
+// er skala-uafhaengige udsagn om at gruppe-laget bogfoerer korrekt, og alle tre
+// koeres over hele evne-spektret, hvor splits/merges opfoerer sig forskelligt.
+
+test("#4971 timeline/snapshot-enighed: hvert gruppeskift i et event staar i naeste snapshot", () => {
+  for (const level of ABILITY_LEVELS) {
+    for (const route of [flatRoute(), mountainRoute()]) {
+      const entrants = spreadField(60, level);
+      const orders = ordersForField(entrants);
+      const output = simulateStageV4(
+        stage(entrants, route, `4971-membership-${level}-${route.profile_type}`, orders),
+      );
+      const violations = validateGroupMembership(output.timeline.events, output.groupSnapshots);
+      assert.deepEqual(
+        violations,
+        [],
+        `evne-niveau ${level} (${route.profile_type}): ${violations.map((v) => v.message).join("; ")}`,
+      );
+    }
+  }
 });

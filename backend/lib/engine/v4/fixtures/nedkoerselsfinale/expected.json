@@ -80,6 +80,18 @@
       },
       {
         "km": 68,
+        "type": "group_merged",
+        "params": {
+          "group_id": "breakaway-2000",
+          "into_group_id": "breakaway-0",
+          "rider_ids": [
+            "r01",
+            "r02"
+          ]
+        }
+      },
+      {
+        "km": 68,
         "type": "gap_update",
         "params": {
           "group_id": "peloton-0",
@@ -127,6 +139,26 @@
           "winner_rider_id": "r01",
           "group_id": "finale-winner-0",
           "finale_type": "descent"
+        }
+      },
+      {
+        "km": 70,
+        "type": "group_merged",
+        "params": {
+          "group_id": "peloton-0",
+          "into_group_id": "finale-tier-2",
+          "rider_ids": [
+            "r04",
+            "r05",
+            "r08",
+            "r09",
+            "r10",
+            "r11",
+            "r12",
+            "r14",
+            "r15",
+            "r16"
+          ]
         }
       },
       {

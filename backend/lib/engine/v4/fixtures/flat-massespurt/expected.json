@@ -46,6 +46,28 @@
         }
       },
       {
+        "km": 165,
+        "type": "group_merged",
+        "params": {
+          "group_id": "peloton-0",
+          "into_group_id": "breakaway-0",
+          "rider_ids": [
+            "r02",
+            "r03",
+            "r04",
+            "r05",
+            "r06",
+            "r07",
+            "r08",
+            "r10",
+            "r11",
+            "r13",
+            "r14",
+            "r15"
+          ]
+        }
+      },
+      {
         "km": 178,
         "type": "sprint_decided",
         "params": {

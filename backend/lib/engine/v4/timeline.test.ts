@@ -16,6 +16,7 @@ import {
   finishEvent,
   gapUpdateEvent,
   gcChangeEvent,
+  groupMergedEvent,
   incidentEvent,
   intermediateSprintEvent,
   komPassageEvent,
@@ -25,6 +26,7 @@ import {
   sortTimeline,
   sprintDecidedEvent,
   stageStartEvent,
+  validateGroupMembership,
   validateTimelineEvents,
 } from "./timeline.ts";
 
@@ -237,4 +239,94 @@ test("fog-gate: raa fysiologi-/selektions-noegler i params flages (negativ-kontr
   const violations = validateTimelineEvents(leaking, { distanceKm: 100, knownRiderIds: new Set(["a", "b"]) });
   const fogGateKeys = violations.filter((v) => v.rule === "fog-gate").length;
   assert.equal(fogGateKeys, 3);
+});
+
+// ── group-membership: event vs. snapshot (#4971) ─────────────────────────────
+// Negativ-kontrollen er den EGENTLIGE regressionstest: den gengiver den
+// praecise form CodeRabbit fandt paa PR #4971 i golden fixture bjerg-selektion
+// — et `peloton_splits` der flytter r04/r05 til `chase-1000` ved km 65, mens
+// snapshottet ved km 65 stadig har dem i `peloton-0`. Foer fixet (segmentLoop
+// emitterede intet naar merge-trinnet foldede gruppen tilbage) var det
+// motorens faktiske output.
+
+test("#4971 group-membership: et split der ikke naar segment-state flages (negativ-kontrol)", () => {
+  const events: TimelineEvent[] = [
+    makeEvent(45, "breakaway_formed", { group_id: "breakaway-0", rider_ids: ["r02", "r04", "r05"] }),
+    makeEvent(65, "peloton_splits", {
+      group_id: "chase-1000",
+      source_group_id: "breakaway-0",
+      rider_ids: ["r04", "r05"],
+      cause: "mixed",
+      gap_seconds: 81.82,
+    }),
+  ];
+  const snapshots = [
+    { km: 45, groups: [
+      { group_id: "breakaway-0", rider_ids: ["r02", "r04", "r05"] },
+      { group_id: "peloton-0", rider_ids: ["r01", "r03"] },
+    ] },
+    { km: 65, groups: [
+      { group_id: "breakaway-0", rider_ids: ["r02"] },
+      { group_id: "peloton-0", rider_ids: ["r01", "r03", "r04", "r05"] },
+    ] },
+  ];
+  const violations = validateGroupMembership(events, snapshots);
+  assert.equal(violations.length, 2, `forventede 2 brud (r04+r05), fik ${JSON.stringify(violations)}`);
+  for (const v of violations) assert.equal(v.rule, "group-membership");
+  assert.ok(
+    violations.every((v) => v.message.includes("chase-1000") && v.message.includes("peloton-0")),
+    "bruddet skal navngive BAADE eventets gruppe og snapshottets gruppe",
+  );
+});
+
+test("#4971 group-membership: samme split PLUS group_merged er konsistent (positiv-kontrol)", () => {
+  const events: TimelineEvent[] = [
+    makeEvent(45, "breakaway_formed", { group_id: "breakaway-0", rider_ids: ["r02", "r04", "r05"] }),
+    makeEvent(65, "peloton_splits", {
+      group_id: "chase-1000",
+      source_group_id: "breakaway-0",
+      rider_ids: ["r04", "r05"],
+      cause: "mixed",
+      gap_seconds: 81.82,
+    }),
+    groupMergedEvent(65, { groupId: "chase-1000", intoGroupId: "peloton-0", riderIds: ["r04", "r05"] }),
+  ];
+  const snapshots = [
+    { km: 65, groups: [
+      { group_id: "breakaway-0", rider_ids: ["r02"] },
+      { group_id: "peloton-0", rider_ids: ["r01", "r03", "r04", "r05"] },
+    ] },
+  ];
+  assert.deepEqual(validateGroupMembership(events, snapshots), []);
+});
+
+test("#4971 group-membership: senere, legitim omgruppering uden rytter-navne er ikke et brud", () => {
+  // M4's placerings-tiers paa maalstregen navngiver ikke ryttere — kun naeste
+  // snapshot efter et event tjekkes, saa finalen giver ingen falske brud.
+  const events: TimelineEvent[] = [
+    makeEvent(40, "breakaway_formed", { group_id: "breakaway-0", rider_ids: ["r01"] }),
+    makeEvent(70, "finale_attack", { kind: "placement_gap", group_id: "finale-winner-0", gap_seconds: 3 }),
+  ];
+  const snapshots = [
+    { km: 40, groups: [{ group_id: "breakaway-0", rider_ids: ["r01"] }, { group_id: "peloton-0", rider_ids: ["r02"] }] },
+    { km: 70, groups: [{ group_id: "finale-winner-0", rider_ids: ["r01"] }, { group_id: "finale-tier-1", rider_ids: ["r02"] }] },
+  ];
+  assert.deepEqual(validateGroupMembership(events, snapshots), []);
+});
+
+test("#4971 group-membership: en rytter der forsvinder fra snapshottet (DNF/OTL) er ikke et brud", () => {
+  const events: TimelineEvent[] = [makeEvent(20, "peloton_splits", { group_id: "chase-1", rider_ids: ["r09"] })];
+  const snapshots = [{ km: 20, groups: [{ group_id: "peloton-0", rider_ids: ["r01"] }] }];
+  assert.deepEqual(validateGroupMembership(events, snapshots), []);
+});
+
+test("#4971 groupMergedEvent: param-form + fog-gate-renhed", () => {
+  const event = groupMergedEvent(65.004, { groupId: "chase-1000", intoGroupId: "peloton-0", riderIds: ["r04", "r05"] });
+  assert.deepEqual(event, {
+    km: 65,
+    type: "group_merged",
+    params: { group_id: "chase-1000", into_group_id: "peloton-0", rider_ids: ["r04", "r05"] },
+  });
+  const violations = validateTimelineEvents([event], { distanceKm: 100, knownRiderIds: new Set(["r04", "r05"]) });
+  assert.deepEqual(violations, [], `group_merged maa ikke bryde nogen konsistensregel: ${JSON.stringify(violations)}`);
 });

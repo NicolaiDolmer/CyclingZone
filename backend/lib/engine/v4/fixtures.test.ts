@@ -21,6 +21,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { simulateStageV4 } from "./index.ts";
+import { validateGroupMembership } from "./timeline.ts";
 import type { StageInput, StageOutput } from "./types.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -100,3 +101,18 @@ test("golden fixture: nedkoerselsfinale — bit-identitet + descent attack afgoe
   );
   assert.ok(descentAttacks.length >= 1, "der skal vaere mindst ét descent-angreb (direction: descent) i tidslinjen");
 });
+
+// ── Tvaergaaende: tidslinje og snapshots skal fortaelle samme historie (#4971) ─
+// CodeRabbit fandt uenigheden i bjerg-selektion (km 65: `peloton_splits` til
+// `chase-1000`, snapshot i `peloton-0`). Guarden koeres paa ALLE fire fixtures,
+// fordi flat/punch/nedkoersel har hver sit merge-moenster — og fordi et frosset
+// expected.json ellers kan cementere netop den slags selvmodsigelse igen.
+for (const name of ["flat-massespurt", "bjerg-selektion", "punch-finale-forspring", "nedkoerselsfinale"]) {
+  test(`golden fixture: ${name} — hvert gruppeskift i tidslinjen staar i naeste snapshot (#4971)`, () => {
+    const { input, expected } = loadFixture(name);
+    for (const [label, output] of [["frosset expected.json", expected], ["frisk koersel", simulateStageV4(input)]] as const) {
+      const violations = validateGroupMembership(output.timeline.events, output.groupSnapshots);
+      assert.deepEqual(violations, [], `${label}: ${violations.map((v) => v.message).join("; ")}`);
+    }
+  });
+}

@@ -109,6 +109,24 @@ export function pelotonSplitsEvent(
 }
 
 /**
+ * v4-native (#4971): kvittering for segmentLoop's merge-trin. `groupId` er den
+ * gruppe der FORSVANDT; `intoGroupId` er det id den fortsatte under (front-
+ * naboens, jf. groups.mergeGroups). Emitteres af segmentLoop.ts efter mergen,
+ * saa `assertGroupMembershipMatchesSnapshots` altid kan foelge en rytter fra
+ * event til snapshot uden huller.
+ */
+export function groupMergedEvent(
+  km: number,
+  args: { groupId: string; intoGroupId: string; riderIds: readonly string[] },
+): TimelineEvent {
+  return makeEvent(km, "group_merged", {
+    group_id: args.groupId,
+    into_group_id: args.intoGroupId,
+    rider_ids: [...args.riderIds],
+  });
+}
+
+/**
  * "incident"-eventet. `severity`/`injuryDays`/`helperAssist` er ADDITIVE og
  * VALGFRIE (#2944's trappe): udelades de, er param-formen bit-identisk med den
  * F2-etablerede — v3's og aeldre v4-events beholder altsaa deres form.
@@ -304,6 +322,116 @@ export function validateTimelineEvents(
   }
 
   return violations;
+}
+
+// ── Gruppe-medlemskab: event vs. snapshot (#4971) ────────────────────────────
+// Snapshots (groups.buildGroupSnapshot) er sandheden om segment-state; events
+// er fortaellingen om den. Er de uenige, er outputtet selvmodsigende — praecis
+// den fejl CodeRabbit fandt paa PR #4971 (golden fixture bjerg-selektion:
+// `peloton_splits` flyttede r04/r05 til `chase-1000` ved km 65, mens km 65- og
+// km 82-snapshots holdt dem i `peloton-0`, fordi segmentLoop's merge-trin
+// foldede `chase-1000` tilbage UDEN event).
+//
+// Reglen er bevidst afgraenset til NAESTE snapshot: den kontrollerer at det
+// billede en event tegner, staar i det FOERSTE snapshot ved eller efter
+// eventets km — derefter ejer segment-state historien igen. Det fanger praecis
+// den fejlklasse CodeRabbit fandt (et gruppeskift der aldrig naaede
+// segment-state) uden at gore senere, legitime omgrupperinger — fx M4's
+// placerings-tiers paa maalstregen (finale.ts), som IKKE navngiver ryttere —
+// til falske brud. Ryttere ingen event har udtalt sig om tjekkes aldrig.
+
+/** Events der udtaler sig om hvilken gruppe konkrete ryttere HOERER til. */
+const GROUP_MEMBERSHIP_EVENT_TYPES = new Set(["breakaway_formed", "peloton_splits", "group_merged"]);
+
+function groupIdAssertedBy(event: TimelineEvent): string | null {
+  if (!GROUP_MEMBERSHIP_EVENT_TYPES.has(event.type)) return null;
+  // group_merged flytter rytterne til den gruppe der OVERLEVEDE mergen.
+  const key = event.type === "group_merged" ? "into_group_id" : "group_id";
+  const value = event.params[key];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+export type GroupMembershipSnapshot = {
+  km: number;
+  groups: ReadonlyArray<{ group_id: string; rider_ids: readonly string[] }>;
+};
+
+/**
+ * Kontrollerer at hvert gruppeskift en event annoncerer ogsaa staar i det
+ * FOERSTE snapshot ved eller efter eventets km. Flere events paa samme km om
+ * samme rytter: det SIDSTE vinder (samme raekkefolge som segmentLoop kaerer
+ * mekanik -> merge -> snapshot). Ren funktion — returnerer brud, kaster aldrig.
+ */
+export function validateGroupMembership(
+  events: readonly TimelineEvent[],
+  snapshots: readonly GroupMembershipSnapshot[],
+): TimelineViolation[] {
+  const violations: TimelineViolation[] = [];
+  if (snapshots.length === 0) return violations;
+
+  const ordered = [...snapshots].sort((a, b) => a.km - b.km);
+  const sortedEvents = sortTimeline(events);
+  let eventIndex = 0;
+
+  for (const snapshot of ordered) {
+    // rider_id -> seneste event-udsagn siden forrige snapshot.
+    const claims = new Map<string, { groupId: string; eventType: string; km: number }>();
+    // Ryttere M10 har trukket ud i samme vindue (se noten om incident-undtagelsen).
+    const incidentRiders = new Set<string>();
+    while (eventIndex < sortedEvents.length && sortedEvents[eventIndex].km <= snapshot.km + 1e-9) {
+      const event = sortedEvents[eventIndex];
+      eventIndex += 1;
+      if (event.type === "incident" && typeof event.params.rider_id === "string") {
+        incidentRiders.add(event.params.rider_id);
+      }
+      const groupId = groupIdAssertedBy(event);
+      if (!groupId) continue;
+      const riderIds = event.params.rider_ids;
+      if (!Array.isArray(riderIds)) continue;
+      for (const riderId of riderIds) {
+        if (typeof riderId === "string") claims.set(riderId, { groupId, eventType: event.type, km: event.km });
+      }
+    }
+    if (claims.size === 0) continue;
+
+    const actualGroupOf = new Map<string, string>();
+    for (const group of snapshot.groups) {
+      for (const riderId of group.rider_ids) actualGroupOf.set(riderId, group.group_id);
+    }
+
+    for (const [riderId, claim] of claims) {
+      const actual = actualGroupOf.get(riderId);
+      // Rytteren er ude af loebet (DNF/OTL) — ikke et gruppeskift-brud.
+      if (actual === undefined) continue;
+      if (actual === claim.groupId) continue;
+      // Har rytteren haft et uheld i samme vindue, ER tidslinjen ikke tavs om
+      // ham: M10 (mechanics/incidents.ts) traekker en uheldsramt ud i sin egen
+      // solo-gruppe EFTER at M2 har splittet segmentet, og `incident`-eventet
+      // er den offentlige besked om netop det. Reglen jager tavse gruppeskift,
+      // ikke fortalte.
+      if (incidentRiders.has(riderId)) continue;
+      violations.push({
+        rule: "group-membership",
+        message:
+          `event ${claim.eventType} (km=${claim.km}) satte ${riderId} i gruppe "${claim.groupId}", ` +
+          `men snapshot km=${snapshot.km} har ham i "${actual}" — gruppeskiftet naaede aldrig segment-state`,
+      });
+    }
+  }
+
+  return violations;
+}
+
+/** Kaster hvis validateGroupMembership finder brud. */
+export function assertGroupMembershipMatchesSnapshots(
+  events: readonly TimelineEvent[],
+  snapshots: readonly GroupMembershipSnapshot[],
+): void {
+  const violations = validateGroupMembership(events, snapshots);
+  if (violations.length > 0) {
+    const msg = violations.map((v) => `[${v.rule}] ${v.message}`).join("; ");
+    throw new Error(`timeline/snapshot-uenighed (#4971): ${msg}`);
+  }
 }
 
 /** Kaster med samlet fejlbesked hvis validateTimelineEvents finder brud. */
