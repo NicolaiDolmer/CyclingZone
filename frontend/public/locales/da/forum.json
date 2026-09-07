@@ -75,6 +75,9 @@
   "identity": {
     "profileAria": "Åbn managerprofilen for {name}"
   },
+  "mentions": {
+    "listLabel": "Nævn en manager"
+  },
   "signature": {
     "division": "Division {division}"
   },

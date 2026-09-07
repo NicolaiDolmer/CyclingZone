@@ -75,6 +75,9 @@
   "identity": {
     "profileAria": "Open the manager profile for {name}"
   },
+  "mentions": {
+    "listLabel": "Mention a manager"
+  },
   "signature": {
     "division": "Division {division}"
   },

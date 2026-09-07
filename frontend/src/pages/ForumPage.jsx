@@ -12,6 +12,8 @@ import FounderMark from "../components/FounderMark.jsx";
 // #4751: datoformatteren bor nu i det delte forum-modul (en side skal ikke
 // vaere kilde for en komponent — ForumAuthorIdentity bruger den samme).
 import { formatForumDate, authorDisplayName } from "../components/forum/forumIdentity.js";
+// #5011: navneforslag mens man skriver "@..." i det nye opslags brødtekst.
+import MentionAutocomplete from "../components/forum/MentionAutocomplete.jsx";
 // #5000: samme relativ-tid-formatter som dashboardets ForumHighlightsCard —
 // "seneste svar" skal laese ens de to steder det staar.
 import { formatRelativeTime } from "../lib/intl.js";
@@ -217,6 +219,7 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
             placeholder={t("compose.bodyPlaceholder")}
           />
         </Field>
+        <MentionAutocomplete textareaId="forum-compose-body" value={body} onChange={setBody} t={t} />
         {isAdmin && (
           <Field label={t("compose.pollLabel")} htmlFor="forum-compose-poll" helper={t("compose.pollHelp")}>
             <Textarea

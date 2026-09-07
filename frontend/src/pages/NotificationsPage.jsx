@@ -103,6 +103,10 @@ const TYPE_CONFIG = {
   // related_id (altid sat, se notifyForumThreadReply) overstyrer med den
   // konkrete tråd via den dedikerede regel i notificationLink.js.
   forum_thread_reply:        { Icon: InboxIcon,        color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/forum" },
+  // #5011: du blev @-tagget i et forum-indlæg. Fallback-link er /forum —
+  // related_id (trådens id) + metadata.replyId overstyrer med det konkrete
+  // indlæg via den dedikerede regel i notificationLink.js.
+  forum_mention:             { Icon: InboxIcon,        color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/forum" },
 
   // #4501: de 19 typer nedenfor fandtes i backendens NOTIFICATION_TYPES, men
   // manglede en TYPE_CONFIG-entry og faldt derfor til DEFAULT_TYPE_CONFIG:
