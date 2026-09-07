@@ -8,6 +8,12 @@
 // CTA'en er SEKUNDÆR med vilje: dashboardets ene guld-primære element styres
 // af computeDashboardGoldCta, og en guld-knap her ville være den anden
 // (PAGE_TEMPLATES: ét guld-primært element pr. view).
+//
+// `.limit(1)` + `[0]` frem for `.maybeSingle()`: scope'et ER unikt ((survey_id, user_id) er survey_completions primærnøgle),
+// men check-maybesingle-unique-scope.mjs kan ikke opløse en tabel der ikke
+// findes i database/schema-snapshot.json endnu, og den fejler loudly frem for
+// at springe over (#4496). Tabellerne oprettes af denne PRs egen migration;
+// snapshottet får dem først ved næste refresh efter merge.
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -46,13 +52,13 @@ export default function SurveyInviteCard() {
       }
       if (dismissed) return;
 
-      const { data: completion } = await supabase
+      const { data: completions } = await supabase
         .from("survey_completions")
         .select("user_id")
         .eq("survey_id", open.id)
         .eq("user_id", uid)
-        .maybeSingle();
-      if (cancelled || completion) return;
+        .limit(1);
+      if (cancelled || completions?.[0]) return;
       setSurvey(open);
     })();
     return () => {

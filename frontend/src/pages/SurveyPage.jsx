@@ -17,6 +17,12 @@
 //
 // Ren logik (normalisering, progress, sektioner) ligger i lib/survey.js og er
 // unit-testet med node:test.
+//
+// `.limit(1)` + `[0]` frem for `.maybeSingle()`: scope'et ER unikt (surveys.slug er UNIQUE og (survey_id, user_id) er survey_completions primærnøgle),
+// men check-maybesingle-unique-scope.mjs kan ikke opløse en tabel der ikke
+// findes i database/schema-snapshot.json endnu, og den fejler loudly frem for
+// at springe over (#4496). Tabellerne oprettes af denne PRs egen migration;
+// snapshottet får dem først ved næste refresh efter merge.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
@@ -125,8 +131,8 @@ export default function SurveyPage() {
     let cancelled = false;
     setStatus("loading");
     (async () => {
-      const [{ data: surveyRow, error: surveyError }, { data: auth }] = await Promise.all([
-        supabase.from("surveys").select("id, slug, title_en, title_da, status, closes_at").eq("slug", slug).maybeSingle(),
+      const [{ data: surveyRows, error: surveyError }, { data: auth }] = await Promise.all([
+        supabase.from("surveys").select("id, slug, title_en, title_da, status, closes_at").eq("slug", slug).limit(1),
         supabase.auth.getUser(),
       ]);
       if (cancelled) return;
@@ -134,6 +140,7 @@ export default function SurveyPage() {
         setStatus("error");
         return;
       }
+      const surveyRow = surveyRows?.[0] ?? null;
       if (!surveyRow) {
         setStatus("notFound");
         return;
@@ -147,7 +154,7 @@ export default function SurveyPage() {
         return;
       }
 
-      const [{ data: questionRows }, { data: responseRows }, { data: completionRow }, { data: teamRow }] =
+      const [{ data: questionRows }, { data: responseRows }, { data: completionRows }, { data: teamRow }] =
         await Promise.all([
           supabase.from("survey_questions").select(QUESTION_COLUMNS).eq("survey_id", surveyRow.id).order("sort_order"),
           supabase.from("survey_responses").select("question_key, value").eq("survey_id", surveyRow.id).eq("user_id", uid),
@@ -156,13 +163,13 @@ export default function SurveyPage() {
             .select("completed_at")
             .eq("survey_id", surveyRow.id)
             .eq("user_id", uid)
-            .maybeSingle(),
+            .limit(1),
           supabase.from("teams").select("id").eq("user_id", uid).maybeSingle(),
         ]);
       if (cancelled) return;
       setQuestions(sortQuestions(questionRows ?? []));
       setAnswers(answersByQuestionKey(responseRows));
-      setCompleted(Boolean(completionRow));
+      setCompleted(Boolean(completionRows?.[0]));
       setTeamId(teamRow?.id ?? null);
       setStatus("ready");
     })();

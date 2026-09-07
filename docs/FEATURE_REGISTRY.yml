@@ -579,6 +579,16 @@ features:
     verified: 2026-09-07
     note: Rækker email_loop_welcome/day1/race_digest = "off" i prod (#4951); afventer ejer-go, jf. runbook.
 
+  - id: in-app-survey
+    area: comms
+    title_en: In-app player survey
+    title_da: In-app spørgeskema
+    state: building
+    ssot: docs/SURVEY_SYSTEM.md
+    epic: 4943
+    verified: 2026-09-07
+    note: Skemaet 2026-09-features er seedet som draft; ejeren flipper status til open og udsendelsen køres af sendSurveyInvite.mjs.
+
   # --- billing -------------------------------------------------------------
   - id: cz-pro
     area: billing

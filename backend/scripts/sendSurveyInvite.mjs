@@ -31,6 +31,12 @@
 //   node backend/scripts/sendSurveyInvite.mjs --survey 2026-09-features --apply
 //
 // --dry-run er default OG kan skrives eksplicit; kun --apply skriver.
+//
+// `.limit(1)` + `[0]` frem for `.maybeSingle()`: scope'et ER unikt (surveys.slug er UNIQUE),
+// men check-maybesingle-unique-scope.mjs kan ikke opløse en tabel der ikke
+// findes i database/schema-snapshot.json endnu, og den fejler loudly frem for
+// at springe over (#4496). Tabellerne oprettes af denne PRs egen migration;
+// snapshottet får dem først ved næste refresh efter merge.
 // ============================================================================
 
 import { realpathSync } from "node:fs";
@@ -107,11 +113,12 @@ async function main() {
   }
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-  const { data: survey, error: surveyError } = await sb
+  const { data: surveyRows, error: surveyError } = await sb
     .from("surveys")
     .select("id, slug, status")
     .eq("slug", slug)
-    .maybeSingle();
+    .limit(1);
+  const survey = surveyRows?.[0] ?? null;
   if (surveyError) {
     console.error("Kunne ikke laese skemaet:", surveyError.message);
     process.exit(1);
