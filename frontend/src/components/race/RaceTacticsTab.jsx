@@ -38,6 +38,16 @@
 //
 // #4979: etapeprofilen for den ÅBNE etape ligger i en tynd række over kortet
 // (RaceStageProfileRow) — man skal kunne se hvad man sætter taktik til.
+//
+// #4992 (spillerønske egomadsen 7/9): ROUTE MATCH-kolonnen mellem ROLE og
+// INTENTION viser hvor godt rytteren passer til DEN ÅBNE etape (0-100, samme
+// FitBar som Hold-fanen/holdudtagelsen bruger). Tallet kommer fra stage-roles-
+// svarets `stage_fit` — beregnet af serveren med samme terrainScore som fit,
+// bare pr. etape — og skifter derfor når man klikker en anden etape. Kolonnen
+// er den ENESTE sorterbare i fanen (Egos oprindelige ønske: "sortere i rute-
+// match på de enkelte etaper"); uden et klik står listen i holdets udtagelses-
+// rækkefølge som før, og sorteringen følger sidens konvention: første klik =
+// bedst øverst, næste klik vender retningen.
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -46,7 +56,10 @@ import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { profileLabelKey } from "../../lib/stageProfileConfig.js";
 import { formatLocalTime } from "../../lib/intl.js";
 import { LockIcon, CheckIcon, Button, Section, SectionHeader, SkeletonLines } from "../ui/index.js";
+import SortableTh from "../ui/SortableTh.jsx";
+import FitBar from "../racehub/FitBar.jsx";
 import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
+import { stageRouteMatch, routeMatchComparator } from "../../lib/lineupInsight.js";
 import {
   buildDraftMatrix,
   diffToOverrides,
@@ -244,6 +257,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const [openRoleRiderId, setOpenRoleRiderId] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorKey, setErrorKey] = useState(null);
+  // #4992: rute-match-sorteringen. null = ingen sortering valgt → holdets
+  // udtagelses-rækkefølge, præcis som før kolonnen fandtes (sortering er opt-in,
+  // samme regel som holdudtagelses-panelet). Sat: "desc" | "asc".
+  const [routeSortDir, setRouteSortDir] = useState(null);
 
   const load = useCallback(async () => {
     const headers = await authHeaders({ json: false });
@@ -320,6 +337,15 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const steps = useMemo(() => orderedEfforts(roles?.valid_efforts), [roles?.valid_efforts]);
   const riders = useMemo(() => roles?.riders ?? [], [roles?.riders]);
   const lockedOverrides = useMemo(() => overridesIndex(roles?.overrides), [roles?.overrides]);
+
+  // #4992: den rækkefølge BEGGE flader (tabel + mobil-liste) tegnes i. Uden en
+  // valgt sortering er det holdets egen rækkefølge — listen må aldrig flytte sig
+  // af sig selv, kun fordi manageren bad om det. Kopi, aldrig en mutation af
+  // `riders` (den kommer fra svaret og læses også af holdplanen ovenfor).
+  const visibleRiders = useMemo(
+    () => (routeSortDir ? [...riders].sort(routeMatchComparator(activeStage, routeSortDir)) : riders),
+    [riders, routeSortDir, activeStage],
+  );
 
   const counts = useMemo(
     () => stageIntentionCounts({ matrix: draftMatrix, riders, stageNumber: activeStage }),
@@ -401,6 +427,14 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     if (status !== "idle") setStatus("idle");
   }
 
+  // #4992: samme cyklus-konvention som resten af sidens sorterbare kolonner
+  // (klik på den aktive nøgle vender retningen). Første klik = bedst øverst,
+  // fordi et højt rute-match er "godt" — samme default som holdudtagelsens
+  // rute-match-kolonne (selectionDefaultSortDir: numerisk starter desc).
+  function toggleRouteSort() {
+    setRouteSortDir((dir) => (dir === "desc" ? "asc" : "desc"));
+  }
+
   function openStage(stageNumber) {
     setActiveStage(stageNumber);
     setOpenRiderId(null);
@@ -450,6 +484,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const ordersColumn = isOneDay
     ? t("racePage.tactics.colOrdersRaceDay")
     : t("racePage.tactics.colOrders", { number: activeStage });
+  const routeMatchColumn = isOneDay
+    ? t("racePage.tactics.colRouteMatchRaceDay")
+    : t("racePage.tactics.colRouteMatch", { number: activeStage });
   const roleScope = isOneDay ? t("intention.thisRace") : t("intention.allRace");
   // Samme terraen-ord som hero'ens TERRAIN-blok. Bucket-navnet ("Flat" for en
   // rolling etape) staar side om side med hero'ens finere label paa den samme
@@ -539,6 +576,23 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         )}
       </>
     );
+  }
+
+  // #4992: rute-match for den ÅBNE etape. Desktop bruger den delte FitBar
+  // (bar + tal), præcis den samme visuelle grammatik som Hold-fanen og
+  // holdudtagelsen — kolonnen skal læses som det samme signal, ikke som et nyt.
+  // Mobil viser KUN tallet: baren ville koste bredde på en flade der aldrig må
+  // scrolle vandret (#1834), og tallet er det man sorterer efter.
+  function renderRouteMatchCell(rider, { numberOnly = false } = {}) {
+    const score = stageRouteMatch(rider, activeStage);
+    if (numberOnly) {
+      return (
+        <span className="font-data text-xs tabular-nums text-cz-2">
+          {score == null ? "—" : score}
+        </span>
+      );
+    }
+    return <FitBar score={score} />;
   }
 
   function renderIntentionCell(rider) {
@@ -740,17 +794,30 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       {/* Desktop: tabel. Under sm: stablede kort (samme indhold, ingen vandret
           scroll — siden må aldrig overflowe på mobil, #1834). */}
       <div className="hidden sm:block overflow-x-auto">
-        <table data-sort-exempt="Taktik-listen foelger holdets udtagelses-raekkefoelge, ikke en sorterbar kolonne" className="w-full text-sm">
+        {/* #4992: tabellen er sorterbar paa PRAECIS een kolonne (rute-match for
+            den aabne etape). De oevrige headers er bevidst inaktive: rytter/
+            rolle/intention/ordrer har ingen iboende orden manageren beder om. */}
+        <table data-sortable className="w-full text-sm">
           <thead>
             <tr className="border-b border-cz-border">
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRider")}</th>
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRole")}</th>
+              <SortableTh
+                sortKey="routeMatch"
+                sort={routeSortDir ? "routeMatch" : null}
+                sortDir={routeSortDir}
+                onSort={toggleRouteSort}
+                title={t("racePage.tactics.sortRouteMatch")}
+                className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide whitespace-nowrap"
+              >
+                {routeMatchColumn}
+              </SortableTh>
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{intentionColumn}</th>
               {showOrders && <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{ordersColumn}</th>}
             </tr>
           </thead>
           <tbody>
-            {riders.map((rider) => {
+            {visibleRiders.map((rider) => {
               const editable = !rider.abandoned && !stageLocked;
               const openIntention = openRiderId === rider.rider_id && editable;
               const openRole = openRoleRiderId === rider.rider_id && editable;
@@ -759,12 +826,13 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                 <tr key={rider.rider_id} className={`border-b border-cz-border ${expanded ? "" : "last:border-0"}`}>
                   <td className="px-4 py-2.5 align-top text-cz-1 font-medium">{rider.name || "—"}</td>
                   <td className="px-4 py-2.5 align-top">{renderRoleCell(rider)}</td>
+                  <td className="px-4 py-2.5 align-top">{renderRouteMatchCell(rider)}</td>
                   <td className="px-4 py-2.5 align-top">{renderIntentionCell(rider)}</td>
                   {showOrders && <td className="px-4 py-2.5 align-top">{renderOrdersCell(rider)}</td>}
                 </tr>,
                 expanded ? (
                   <tr key={`${rider.rider_id}-picker`} className="border-b border-cz-border last:border-0 bg-cz-subtle">
-                    <td colSpan={showOrders ? 4 : 3} className="px-4 pb-3.5 pt-0">
+                    <td colSpan={showOrders ? 5 : 4} className="px-4 pb-3.5 pt-0">
                       {openRole ? (
                         <RolePicker
                           t={t}
@@ -795,13 +863,22 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       </div>
 
       <ul className="sm:hidden divide-y divide-cz-border">
-        {riders.map((rider) => {
+        {visibleRiders.map((rider) => {
           const editable = !rider.abandoned && !stageLocked;
           const openIntention = openRiderId === rider.rider_id && editable;
           const openRole = openRoleRiderId === rider.rider_id && editable;
           return (
             <li key={rider.rider_id} className="px-4 py-3">
-              <div className="text-cz-1 font-medium text-sm">{rider.name || "—"}</div>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-cz-1 font-medium text-sm min-w-0 truncate">{rider.name || "—"}</span>
+                {/* Kun tallet paa mobil — ingen bar, ingen vandret scroll. Det
+                    korte ord raekker: etapen staar allerede i vaelgeren og i
+                    profil-raekken lige ovenfor. */}
+                <span className="flex items-baseline gap-1.5 whitespace-nowrap shrink-0">
+                  <span className="text-3xs uppercase tracking-wider text-cz-3">{t("selection.routeMatch")}</span>
+                  {renderRouteMatchCell(rider, { numberOnly: true })}
+                </span>
+              </div>
               <div className="mt-0.5">{renderRoleCell(rider)}</div>
               <div className="mt-2">{renderIntentionCell(rider)}</div>
               {showOrders && <div className="mt-2">{renderOrdersCell(rider)}</div>}

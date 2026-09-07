@@ -14,7 +14,12 @@
 //   5. Et gem rammer BEGGE endpoints for den åbne etape (#4613's hele pointe:
 //      intention og ordrer hører til samme dag og samme knap).
 //   6. En låst etape kan åbnes, men aldrig gemmes.
-//   7. Fladen viser ingen tal ud over etapenumre (fog of war).
+//   7. Fladen viser ingen tal ud over etapenumre og rute-match (fog of war).
+//      Rute-match (#4992) er 0-100 og bevidst tilladt: det er PRÆCIS det tal
+//      Hold-fanen og holdudtagelsen allerede viser for spillerens egne ryttere,
+//      ikke et nyt kig ind i motoren.
+//   8. Rute-match-kolonnen (#4992) står mellem ROLE og INTENTION, følger den
+//      åbne etape, og er fanens ENESTE sorterbare kolonne.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -98,6 +103,50 @@ test("en låst etape kan åbnes, men aldrig gemmes", () => {
   // Vælgerens knapper er IKKE disabled på låste etaper — man skal kunne se
   // tilbage på hvad man sendte dem ud med.
   assert.doesNotMatch(source, /disabled=\{locked \|\| saving\}/);
+});
+
+// ── #4992: rute-match pr. etape ──────────────────────────────────────────────
+
+test("rute-match-kolonnen står mellem ROLE og INTENTION (ejerens skitse)", () => {
+  const roleAt = source.indexOf("{renderRoleCell(rider)}");
+  const fitAt = source.indexOf("{renderRouteMatchCell(rider)}");
+  const intentionAt = source.indexOf("{renderIntentionCell(rider)}");
+  assert.ok(roleAt > 0 && fitAt > roleAt && intentionAt > fitAt, "kolonne-rækkefølge: rolle → rute-match → intention");
+  // Header-rækkefølgen skal matche celle-rækkefølgen.
+  const roleThAt = source.indexOf('t("intention.colRole")');
+  const fitThAt = source.indexOf("{routeMatchColumn}");
+  const intentionThAt = source.indexOf("{intentionColumn}");
+  assert.ok(roleThAt < fitThAt && fitThAt < intentionThAt, "header-rækkefølgen skal matche cellerne");
+});
+
+test("rute-match følger den ÅBNE etape og kommer fra serverens stage_fit", () => {
+  assert.match(source, /stageRouteMatch\(rider, activeStage\)/);
+  // Ingen lokal genberegning af egnethed i fladen: tallet slås OP i den delte
+  // helper, som bare læser serverens stage_fit.
+  assert.doesNotMatch(source, /rider\.abilities|climbing|demand_vector\[/);
+});
+
+test("kolonnen er sorterbar, og listen står i holdets rækkefølge indtil man klikker", () => {
+  assert.match(source, /<table data-sortable/);
+  assert.match(source, /<SortableTh\s+sortKey="routeMatch"/);
+  assert.match(source, /routeMatchComparator\(activeStage, routeSortDir\)/);
+  // Opt-in: uden en valgt retning bruges `riders` uændret.
+  assert.match(source, /routeSortDir \? \[\.\.\.riders\]\.sort\(routeMatchComparator\(activeStage, routeSortDir\)\) : riders/);
+  // Sorteringen gælder BEGGE flader — ellers viser mobil en anden rækkefølge
+  // end desktop for de samme data.
+  assert.equal((source.match(/visibleRiders\.map\(/g) || []).length, 2, "både tabellen og mobil-listen tegner den sorterede liste");
+});
+
+test("colSpan for den udfoldede vælger følger antallet af kolonner", () => {
+  // En kolonne mere = en kolonne mere at spænde over; ellers efterlader
+  // vælger-rækken et hul i hairline-gitteret.
+  assert.match(source, /colSpan=\{showOrders \? 5 : 4\}/);
+});
+
+test("mobil viser kun tallet — ingen bar, ingen vandret scroll", () => {
+  assert.match(source, /renderRouteMatchCell\(rider, \{ numberOnly: true \}\)/);
+  assert.match(source, /if \(numberOnly\) \{/);
+  assert.match(source, /return <FitBar score=\{score\} \/>;/);
 });
 
 test("fog of war: ingen tal, procenter eller loft-signaler i fladens tekst", () => {

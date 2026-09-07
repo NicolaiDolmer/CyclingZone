@@ -6,6 +6,8 @@ import {
   selectionComparator,
   selectionDefaultSortDir,
   SELECTION_ABILITY_SORT_KEYS,
+  stageRouteMatch,
+  routeMatchComparator,
 } from "./lineupInsight.js";
 import { ABILITY_KEYS } from "./abilities.js";
 
@@ -119,4 +121,57 @@ test("selectionComparator: manglende evne-værdi sorteres altid sidst (samme reg
 test("selectionComparator: ukendt/ikke-registreret nøgle giver null for begge, ingen kastet fejl", () => {
   const riders = [abilityRider("r2"), abilityRider("r1")];
   assert.doesNotThrow(() => riders.sort(selectionComparator("not_a_real_key", "desc")));
+});
+
+// ── #4992: rute-match pr. etape i Taktik-fanen ────────────────────────────────
+
+const tacticsRider = (rider_id, stage_fit) => ({ rider_id, stage_fit });
+
+test("stageRouteMatch: slår op på ETAPENUMMER, ikke på et etape-indeks", () => {
+  const r = tacticsRider("r1", { 1: 40, 2: 90, 3: 61 });
+  assert.equal(stageRouteMatch(r, 1), 40);
+  assert.equal(stageRouteMatch(r, 2), 90);
+  assert.equal(stageRouteMatch(r, 3), 61);
+});
+
+test("stageRouteMatch: manglende etape/stage_fit → null, ALDRIG løbs-snittet", () => {
+  assert.equal(stageRouteMatch(tacticsRider("r1", { 1: 40 }), 2), null, "etape uden rutedata");
+  assert.equal(stageRouteMatch(tacticsRider("r1", null), 1), null, "rytter uden evner");
+  assert.equal(stageRouteMatch(tacticsRider("r1", { 1: 40 }), null), null, "ingen åben etape");
+  // Et løbs-snit på rækken må ikke smitte af på kolonnen: den lover ÉN etape.
+  assert.equal(stageRouteMatch({ rider_id: "r1", fit: 77, stage_fit: null }, 1), null);
+});
+
+test("routeMatchComparator: sorterer på den ÅBNE etape — samme ryttere, ny rækkefølge pr. etape", () => {
+  const riders = [
+    tacticsRider("r1", { 1: 80, 2: 30 }),
+    tacticsRider("r2", { 1: 40, 2: 95 }),
+    tacticsRider("r3", { 1: 60, 2: 60 }),
+  ];
+  assert.deepEqual([...riders].sort(routeMatchComparator(1, "desc")).map((r) => r.rider_id), ["r1", "r3", "r2"]);
+  assert.deepEqual([...riders].sort(routeMatchComparator(2, "desc")).map((r) => r.rider_id), ["r2", "r3", "r1"]);
+  assert.deepEqual([...riders].sort(routeMatchComparator(1, "asc")).map((r) => r.rider_id), ["r2", "r3", "r1"]);
+});
+
+test("routeMatchComparator: ryttere uden tal ligger sidst i BEGGE retninger", () => {
+  const riders = [
+    tacticsRider("r1", null),
+    tacticsRider("r2", { 1: 40 }),
+    tacticsRider("r3", { 1: 70 }),
+  ];
+  assert.deepEqual([...riders].sort(routeMatchComparator(1, "desc")).map((r) => r.rider_id), ["r3", "r2", "r1"]);
+  assert.deepEqual([...riders].sort(routeMatchComparator(1, "asc")).map((r) => r.rider_id), ["r2", "r3", "r1"]);
+});
+
+test("routeMatchComparator: lige tal får stabil tiebreak på rider_id (ingen hop mellem renders)", () => {
+  const riders = [tacticsRider("r3", { 1: 50 }), tacticsRider("r1", { 1: 50 }), tacticsRider("r2", { 1: 50 })];
+  assert.deepEqual([...riders].sort(routeMatchComparator(1, "desc")).map((r) => r.rider_id), ["r1", "r2", "r3"]);
+  assert.deepEqual([...riders].sort(routeMatchComparator(1, "asc")).map((r) => r.rider_id), ["r1", "r2", "r3"]);
+});
+
+test("routeMatchComparator: muterer ikke input-listen", () => {
+  const riders = [tacticsRider("r2", { 1: 10 }), tacticsRider("r1", { 1: 90 })];
+  const before = riders.map((r) => r.rider_id);
+  [...riders].sort(routeMatchComparator(1, "desc"));
+  assert.deepEqual(riders.map((r) => r.rider_id), before);
 });
