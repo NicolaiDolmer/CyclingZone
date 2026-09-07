@@ -11,7 +11,10 @@ import { InboxIcon } from "../components/ui/icons/index.jsx";
 import FounderMark from "../components/FounderMark.jsx";
 // #4751: datoformatteren bor nu i det delte forum-modul (en side skal ikke
 // vaere kilde for en komponent — ForumAuthorIdentity bruger den samme).
-import { formatForumDate } from "../components/forum/forumIdentity.js";
+import { formatForumDate, authorDisplayName } from "../components/forum/forumIdentity.js";
+// #5000: samme relativ-tid-formatter som dashboardets ForumHighlightsCard —
+// "seneste svar" skal laese ens de to steder det staar.
+import { formatRelativeTime } from "../lib/intl";
 
 // #3199 — Forum v1 (plan låst 6/8): to kategorier (General · Feedback & ideas),
 // opslag + svar-tråde, ejer-opslag kan pinnes og bære afstemninger. T1 standard
@@ -59,22 +62,40 @@ function PostRow({ post, t, language }) {
             {post.title}
           </span>
         </span>
-        <span className="shrink-0 font-data text-2xs tabular-nums text-cz-3">
+        {/* #5000: svar- og visningstal staar samme sted — begge er "hvor meget
+            liv er der i traaden", og tabular figures holder kolonnen i ro. */}
+        <span className="shrink-0 whitespace-nowrap font-data text-2xs tabular-nums text-cz-3">
           {t("list.replies", { count: post.reply_count })}
+          {" · "}
+          {t("stats.views", { count: post.view_count ?? 0 })}
         </span>
       </div>
       <div className="mt-0.5 flex items-center gap-2 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
         {post.is_pinned && <span className="text-cz-accent-t">{t("post.pinnedTag")}</span>}
         {post.has_poll && <span className="text-cz-accent-t">{t("list.poll")}</span>}
         <span className="truncate">
-          {t("list.by", { name: post.author?.username || post.author?.team_name || "?" })}
+          {t("list.by", { name: authorDisplayName(post.author) })}
         </span>
         {/* #4649: Founder-mærke ved forfatterlinjen. */}
         <FounderMark teamId={post.author?.team_id} />
         <span>·</span>
         <span>{t(`categories.${post.category}`)}</span>
         <span>·</span>
-        <span className="tabular-nums">{formatForumDate(post.created_at, language)}</span>
+        {/* #5000 (ejer-bestilling 7/9): har traaden svar, er trådens
+            oprettelses-dato ikke laengere den interessante tid — seneste svars
+            forfatter + relative tid er. De to udelukker hinanden med vilje:
+            begge paa samme linje ville braekke metalinjen paa 390px, og datoen
+            for et opslag med 40 svar er stoej (TASTE §3). */}
+        {post.last_reply_author ? (
+          <span className="truncate">
+            {t("stats.lastReply", {
+              name: authorDisplayName(post.last_reply_author),
+              time: formatRelativeTime(post.last_reply_at || post.created_at),
+            })}
+          </span>
+        ) : (
+          <span className="tabular-nums">{formatForumDate(post.created_at, language)}</span>
+        )}
       </div>
     </Link>
   );
