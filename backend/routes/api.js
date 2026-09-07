@@ -157,6 +157,8 @@ import {
   markAllForumThreadsRead,
   getForumUnreadStatus,
   toggleForumReaction,
+  recordForumThreadView,
+  getForumAuthorStats,
 } from "../lib/forum.js";
 import {
   contractOnAcquirePatch,
@@ -14356,7 +14358,17 @@ router.patch("/forum/threads/read-all", requireAuth, forumWriteLimiter, async (r
 // GET /api/forum/posts/:id — opslag + svar + evt. poll (aggregater + egen stemme).
 router.get("/forum/posts/:id", requireAuth, async (req, res) => {
   try {
-    const { status, body } = await getForumPost({ supabase, id: req.params.id, userId: req.user.id });
+    // #5000: visningen registreres PARALLELT med selve opslaget (ikke bagefter),
+    // fordi RPC'en returnerer traadens view_count EFTER inkrementet — laeseren
+    // skal se sin egen visning talt med uden en ekstra rundtur. Best-effort:
+    // fejler taellingen, vises traaden alligevel med det tal der stod i basen.
+    const [viewCount, result] = await Promise.all([
+      recordForumThreadView({ supabase, postId: req.params.id, userId: req.user.id })
+        .catch((err) => { captureException(err); return null; }),
+      getForumPost({ supabase, id: req.params.id, userId: req.user.id }),
+    ]);
+    const { status, body } = result;
+    if (status === 200 && typeof viewCount === "number") body.post.view_count = viewCount;
     if (status === 200) {
       // #3451: markér tråden læst — best-effort, må ALDRIG blokere visningen.
       markForumThreadRead({ supabase, userId: req.user.id, postId: req.params.id })
@@ -14743,6 +14755,12 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
         : false;
     }
 
+    // #5000 (ejer-bestilling 7/9): antal forumindlaeg — traade + svar — paa den
+    // offentlige managerprofil, som forummets forfatterlinjer allerede linker
+    // til. AI-hold har ingen brugerkonto (team.user_id er null for ~57% af
+    // holdene) og faar derfor nul-objektet uden et DB-opslag.
+    const forumStats = await getForumAuthorStats({ supabase, userId: team.user_id });
+
     res.json({
       team: { id: team.id, name: team.name, division: team.division, is_ai: !!team.is_ai },
       user: userData,
@@ -14750,6 +14768,7 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
       season_history: historyRes.data || [],
       achievements,
       transfer_activity: transfersRes.data || [],
+      forum_stats: forumStats,
     });
   } catch (err) {
     captureException(err, { route: "GET /managers/:teamId", team_id: teamId });

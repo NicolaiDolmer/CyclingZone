@@ -30,6 +30,10 @@
     "by": "Af {name}",
     "unread": "Ulæst"
   },
+  "stats": {
+    "views": "{count, plural, =0 {Ingen visninger} one {1 visning} other {# visninger}}",
+    "lastReply": "Seneste svar {name}, {time}"
+  },
   "compose": {
     "title": "Nyt opslag",
     "categoryLabel": "Kategori",

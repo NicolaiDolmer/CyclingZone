@@ -30,6 +30,10 @@
     "by": "By {name}",
     "unread": "Unread"
   },
+  "stats": {
+    "views": "{count, plural, =0 {No views} one {1 view} other {# views}}",
+    "lastReply": "Last reply {name}, {time}"
+  },
   "compose": {
     "title": "New post",
     "categoryLabel": "Category",

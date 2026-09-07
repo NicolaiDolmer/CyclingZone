@@ -1,5 +1,16 @@
 # Player survey v2: two axes, so a "no" counts (EN/DA), ejeren poster selv
 
+> **v3 8/9 (det der faktisk sendes):** skemaet bygges **in-app**, ikke i Google
+> Forms (ejer-beslutning 7/9), og indholdet er rettet spørgsmål for spørgsmål
+> 8/9. Sandheden er `database/2026-09-07-4943-in-app-survey.sql` +
+> `docs/SURVEY_SYSTEM.md`, ikke denne fil. Ift. listen herunder: skemaet er nu
+> **11 spørgsmål**, ikke 24/18. Q1-Q6 (segmentering) er droppet, vi kender dem
+> fra databasen. `nps` (Q7) er droppet, dashboard-NPS (#4997) dækker. `rider
+> effort` (funktion 2) er erstattet af "races train you". `invite a friend`
+> (Q13) er en afkrydsning med 7 valg, ikke fritekst. `pro_contents` (Q14) har
+> mistet "scouting" og fået "early access". Managernavn (Q17) er droppet, vi
+> kender kontoen. Se `docs/SURVEY_SYSTEM.md` for den fulde beslutningsliste.
+>
 > Skrevet 7/9 2026 til #4943 (spørgeskema til alle spillere) og #4820 (indholdsplan).
 > **v2 erstatter v1 som sandhed.** v1 (`2026-09-07-spoergeskema-spillere.md`) bevares
 > som historik, men det er v2 der skal bygges i Google Forms og sendes.

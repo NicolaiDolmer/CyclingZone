@@ -6,6 +6,7 @@ import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { ageBadgeKey } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import OnlineBadge from "../components/OnlineBadge";
+import FounderMark from "../components/FounderMark.jsx";
 import { formatNumber, formatDate } from "../lib/intl";
 import { ABILITY_STATS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { statStyle } from "../lib/statColor";
@@ -176,6 +177,7 @@ export default function ManagerProfilePage() {
     season_history: rawSeasonHistory,
     achievements: rawAchievements,
     transfer_activity: rawTransferActivity,
+    forum_stats: rawForumStats,
   } = data;
   // #1529: backend leverer rytteren med nested rider_derived_abilities — flad evnerne
   // op på rytter-objektet så r.climbing osv. virker i render-cellerne nedenfor.
@@ -188,6 +190,10 @@ export default function ManagerProfilePage() {
   const season_history = rawSeasonHistory || [];
   const achievements = rawAchievements || [];
   const transfer_activity = rawTransferActivity || [];
+  // #5000: traade + svar i forummet. Samme defensive guard som ovenfor — et
+  // svar fra en aeldre backend (eller et AI-hold uden brugerkonto) skal vise 0,
+  // ikke braekke heroet.
+  const forumPostCount = rawForumStats?.total ?? 0;
   const sortedRiders = sortRows(riders, riderSort.sort ? MANAGER_RIDER_ACCESSORS[riderSort.sort] : null, riderSort.sortDir);
   const unlockedCount = achievements.filter(a => a.unlocked).length;
   const isOwnProfile  = team.id === myTeamId;
@@ -216,6 +222,9 @@ export default function ManagerProfilePage() {
     { label: tCommon("nav.item.riders"), value: String(riders.length) },
     { label: t("manager.statSeasons"), value: String(season_history.length) },
     { label: t("manager.statTransfers"), value: String(transfer_activity.length) },
+    // #5000 (ejer-bestilling 7/9): forummet linker til denne profil — saa skal
+    // profilen kunne svare paa "hvor aktiv er manageren i forummet".
+    { label: t("manager.statForumPosts"), value: String(forumPostCount) },
     { label: t("manager.achievements"), value: `${unlockedCount}/${achievements.length}` },
   ];
 
@@ -254,6 +263,8 @@ export default function ManagerProfilePage() {
                   {isOwnProfile && (
                     <CategoryTag className="text-cz-accent-t border-cz-accent/30 bg-cz-accent/10">{t("manager.yourTeam")}</CategoryTag>
                   )}
+                  {/* #5007: Founder-mærke — synligt for ALLE besøgende, samme mønster som ForumAuthorIdentity.jsx. */}
+                  <FounderMark teamId={team.id} />
                   <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
                     {t("manager.managerPrefix")} {user?.username ?? t("manager.aiManaged")} · {t("manager.division", { n: team.division })}
                   </span>
