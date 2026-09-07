@@ -421,7 +421,15 @@ export default function ForumPage() {
         <p role="alert" className="mb-4 text-xs text-cz-danger">{markAllError}</p>
       )}
 
-      <nav className="mb-6 flex gap-1 border-b border-cz-border overflow-x-auto" aria-label={t("compose.categoryLabel")}>
+      {/* #4818: Roadmap er den 9. fane, og 8 var praecis hvad der kunne vaere
+          paa 896px (T1). Paa desktop bryder raekken derfor nu om i stedet for
+          at skjule Off-topic + Arkiv bag en usynlig vandret scroll — samme valg
+          som compose-modalens vaelger traf i #4492. Paa mobil beholder vi
+          scrollen: der ville ombrydning give fire raekker faner over indholdet. */}
+      <nav
+        className="mb-6 flex gap-1 border-b border-cz-border overflow-x-auto md:flex-wrap md:overflow-x-visible"
+        aria-label={t("compose.categoryLabel")}
+      >
         {tabs.map((tab) => (
           <button
             key={tab.key || "all"}
