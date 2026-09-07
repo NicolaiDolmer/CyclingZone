@@ -1,5 +1,68 @@
 export const PATCHES = [
   {
+    "version": "7.261",
+    "date": "2026-09-07",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Technical",
+        "en": {
+          "title": "Open tabs stay stable through background updates",
+          "body": "A backend or docs-only update no longer breaks a tab you already had open. Before, some deploys changed the app's files behind the scenes and could show you a reload error, even though nothing in the game changed for you."
+        },
+        "da": {
+          "title": "Åbne faner forbliver stabile ved opdateringer i baggrunden",
+          "body": "En opdatering af backend eller dokumentation ødelægger ikke længere en fane du allerede har åben. Før kunne nogle deploys ændre appens filer bag kulissen og vise dig en genindlæsningsfejl, selvom intet i spillet ændrede sig for dig."
+        },
+        "refs": [4595]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Daily training variance no longer gets stuck",
+          "body": "Sharp and flat training days are now truly random from day to day. The same fix applies to injury, retirement and form swings that use the same daily roll."
+        },
+        "da": {
+          "title": "Dagsformen sidder ikke længere fast",
+          "body": "Skarpe og flade træningsdage er nu reelt tilfældige fra dag til dag. Samme rettelse gælder skade-, pensions- og formudsving, der bruger samme daglige udregning."
+        },
+        "refs": [4987]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Salary stays put when a rider moves to the academy",
+          "body": "A rider with a contract keeps his agreed salary when he moves to the academy. It no longer gets recalculated on the way in."
+        },
+        "da": {
+          "title": "Løn ændres ikke ved akademi-flytning",
+          "body": "En rytter med kontrakt beholder sin aftalte løn, når han flyttes til akademiet. Den genberegnes ikke længere undervejs."
+        },
+        "refs": [4589]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Tactics and Team get more to work with on the race page",
+          "body": "The open stage's profile now sits right above the table in both Tactics and Team. Tactics has a sortable Route match column per stage, and you can switch a rider's role straight from the Role column while the race is on. The yellow jersey shortcut in Team is back and now shows correctly when the leader is not your captain for every remaining stage."
+        },
+        "da": {
+          "title": "Taktik og Hold får mere at arbejde med på løbssiden",
+          "body": "Den åbne etapes profil ligger nu lige over tabellen i både Taktik og Hold. Taktik har en sorterbar Route match-kolonne pr. etape, og du kan skifte en rytters rolle direkte i Rolle-kolonnen mens løbet kører. Førertrøje-genvejen i Hold er tilbage og viser nu korrekt, når lederen ikke er din kaptajn på alle resterende etaper."
+        },
+        "refs": [4917, 4979, 4980, 4992]
+      }
+    ]
+  },
+  {
     "version": "7.260",
     "date": "2026-09-06",
     "label": "Beta",
