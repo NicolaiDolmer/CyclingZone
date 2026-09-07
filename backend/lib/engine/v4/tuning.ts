@@ -815,38 +815,46 @@ export const TIME_LIMIT_EXTRA_TUNING = deepFreeze(timeLimitExtra);
 // Holdspil FLYTTER kraefter, det skaber dem ikke — v4's udgave af "aldrig
 // gratis alt-ud" (§9 punkt 3), property-testet, ikke kalibreret.
 //
-// ALLE TAL ER STARTGAET, KALIBRERES VIDERE. Ankret er v3's egne kalibrerede
+// Ankret er v3's egne kalibrerede
 // FORHOLD (raceRoles.RACE_V3_TUNING): hjaelperens pris paa GC-relevante
 // profiler er ~9/8 af leadout-prisen paa flad vej, save/grupetto betaler halv
 // pris, og all_out betaler INTET. Selve STOERRELSEN kan ikke arves — v3's tal
 // er score-deltaer paa en 0-1-skala, v4's er andele af egen CP.
 //
-// MAALT 6/9 ved wiringen (426 etaper x 3 seeds, 180-rytters felt,
-// --orders=ai, scripts/lib/headToHeadTeamPlay.js): niveauet nedenfor er
-// LOEFTET 3x fra det foerste gaet, fordi det foerste gav et beskyttelses-gab
-// paa 0,4 pladser mod v3's 19,4 — altsaa en mekanik der var koblet ind og
-// alligevel usynlig. Med niveauet nedenfor er gabet 3,0 pladser (hjaelperen
-// taber 4,0 pladser i forhold til sin egen evne-rang, kaptajnen vinder 5,4),
-// og INTET anker skifter dom: felt-sammenhaeng, nedkoersels-/summit-ratio,
-// punch, brosten, favorit-win-rate, sprinter-rate, ITT og bjerg-top-10 ligger
-// alle inden for deres eget seed-spaend fra foer wiringen.
+// NIVEAUET ER KALIBRERET TIL v3-PARITET (ejer-beslutning 7/9, #4914,
+// RACE_ENGINE_RULES §9 punkt 14). Foerste wiring 6/9 ramte et
+// beskyttelses-gab paa ~3 pladser mod v3's; det tal blev dengang sammenlignet
+// med 19,4 pladser, som var MAALT MOD JULI-POPULATIONEN og er forældet. Mod
+// den re-eksporterede population (population-snapshot-2026-09-07.json, #4936)
+// er v3's eget gab 7,1 pladser (3,67-9,99 over 5 seeds) — det er DET tal
+// pariteten er sat efter, ikke det gamle.
 //
-// AFSTANDEN TIL v3 ER STADIG STOR (3,0 mod 19,4 pladser) og er et bevidst
-// AABENT punkt, ikke et overset et: v3's gab er domineret af hjaelperens pris,
-// og at hente den fulde afstand kraever et CP-fradrag der efter alt at doemme
-// vil flytte felt-sammenhaeng og bjerg-spredning. Det er en kalibrering med
-// ejer-go (RACE_ENGINE_RULES §4 "Simulér før ship"), ikke en wiring-aendring.
-// Se §2e's advarselsblok.
+// MAALT 7/9 (backend/scripts/teamPlayAbMeasure.mjs, pinnet population +
+// pinnede proxy-etaper, 5 seeds, 180-rytters felt, --orders=ai):
+//
+//   beskyttelses-gab, middel (spaend over seeds)
+//     v3 (uaendret referencemotor)  7,10 (3,67-9,99)
+//     v4 foer denne kalibrering    -0,06 (-2,01-2,10)
+//     v4 med tallene nedenfor       7,35 (4,38-10,19)
+//
+// INTET anker skifter dom mellem foer og efter, og hale-gaten (§9 punkt 13)
+// er PASS paa alle tre laaste baand i begge koersler. Beslutningsgrundlaget
+// (A/B-rapporten ejeren valgte ud fra) ligger i
+// backend/scripts/out/teamplay-ab-2026-09-07.md.
+//
+// Forholdene mellem knapperne er UAENDREDE fra wiringen — hele saettet er
+// skaleret med samme faktor (x2,7), plus et saenket CP-gulv. Det er derfor
+// stadig v3's kalibrerede FORHOLD der er ankret; kun stoerrelsen er ny.
 const teamPlayExtra = {
   // Hjaelperens pris over HELE etapen, som andel af hans egen CP. Per segment
   // paadrages `costFraction x (segmentets km / etapens km)`, og summen over
   // etapen er derfor praecis costFraction — uafhaengigt af hvor fint
   // rutemodellen har skaaret etapen op (samme granularitets-uafhaengighed som
   // M10's pr.-km-skalering, RACE_ENGINE_RULES §2c).
-  helperCostFractionGc: 0.15, // GC-relevante profiler (rolling/hilly/mountain/high_mountain/classic): hjaelperen traekker hele dagen for sin kaptajn — v3's WORK_COST_HELPER_GC-rolle. KALIBRERET 6/9 (3x foerste gaet)
-  helperCostFractionFlat: 0.133, // flade etaper: leadout-arbejde, kortere og senere end en bjergdags tempotraek — v3's 8/9-forhold mellem FLAT og GC bevaret. KALIBRERET 6/9 (3x foerste gaet)
-  helperCostFractionOther: 0.075, // oevrige profiler (brosten/grus/itt/itt_hilly/ttt): v3 giver helper 0 her, men v4's felt koerer stadig samlet paa brosten — halv pris i stedet for nul, saa holdspillet ikke forsvinder paa en klassiker. KALIBRERET 6/9 (3x foerste gaet)
-  hunterCostFraction: 0.05, // `hunter` koerer sit eget loeb (udbruds-kandidat) men bruger stadig kraefter for holdet — lille, profil-uafhaengig pris, praecis som v3's WORK_COST_HUNTER. KALIBRERET 6/9 (3x foerste gaet)
+  helperCostFractionGc: 0.405, // GC-relevante profiler (rolling/hilly/mountain/high_mountain/classic): hjaelperen traekker hele dagen for sin kaptajn — v3's WORK_COST_HELPER_GC-rolle. KALIBRERET 7/9 til v3-paritet (ejer, #4914)
+  helperCostFractionFlat: 0.3591, // flade etaper: leadout-arbejde, kortere og senere end en bjergdags tempotraek — v3's 8/9-forhold mellem FLAT og GC bevaret. KALIBRERET 7/9 til v3-paritet (ejer, #4914)
+  helperCostFractionOther: 0.2025, // oevrige profiler (brosten/grus/itt/itt_hilly/ttt): v3 giver helper 0 her, men v4's felt koerer stadig samlet paa brosten — halv pris i stedet for nul, saa holdspillet ikke forsvinder paa en klassiker. KALIBRERET 7/9 til v3-paritet (ejer, #4914)
+  hunterCostFraction: 0.135, // `hunter` koerer sit eget loeb (udbruds-kandidat) men bruger stadig kraefter for holdet — lille, profil-uafhaengig pris, praecis som v3's WORK_COST_HUNTER. KALIBRERET 7/9 til v3-paritet (ejer, #4914)
 
   // Effort-multiplikator paa hjaelperens PRIS (RACE_ENGINE_RULES §9 punkt 3,
   // ejer 6/9: "holdarbejdets pris (all_out fjerner prisen, loftet til 0, aldrig
@@ -874,11 +882,11 @@ const teamPlayExtra = {
   // ubegraenset fordel — "bounded fordel-signal" er ejer-formuleringen, og det
   // er DETTE tal der goer den bounded. Bevidst mindre end hjaelperens pris: en
   // kaptajn kan aldrig vinde mere end et helt holds arbejde koster.
-  captainMaxBonusFraction: 0.08, // maks. bonus over hele etapen, andel af kaptajnens egen CP. KALIBRERET 6/9
+  captainMaxBonusFraction: 0.216, // maks. bonus over hele etapen, andel af kaptajnens egen CP. KALIBRERET 7/9 til v3-paritet (ejer, #4914)
   // Gulv under holdarbejdets samlede faktor: selv en hjaelper der har trukket
   // hele dagen for et helt hold er stadig en cykelrytter. Regressionsvagt mod
   // en fremtidig kalibrering der utilsigtet nulstiller nogens CP.
-  minCpFactor: 0.7,
+  minCpFactor: 0.58, // KALIBRERET 7/9: saenket fra 0,70 saa hjaelperens fulde pris kan bide igennem paa en hel bjergdag uden at ramme gulvet
 
   // Mindst én arbejdende holdkammerat i SAMME gruppe kraeves (ejer-brief).
   // Gruppen ER naerheds-modellen i v4 (mor-spec §3.2, samme definition som
