@@ -7,7 +7,7 @@
 ## Bane 1 · S4-cutover 27-28/9 (deadline; ca. 3 ugers arbejde, nul buffer)
 
 1. ✅ **Løbssiden som faner** #4913 (6/9) + opfølgere #4917/#4979/#4980/#4992 (7/9, ejer-testet): etapeprofil, rolleskift, rute-match pr. etape.
-2. 🟠 **v4 før flip** (`RACE_ENGINE_RULES.md` §9, spec 6/9): **7/9: #4971 merget (bjerg-top-10 209 s GRØN, højbjerg-hale grøn, `group_merged`-vagt efter ægte motor-bug).** Rest: #4975 felt-sammenhæng + #4988 holdspil B (ejer-valg 7/9) → rebase på main + fixtures + CodeRabbit + merge én ad gangen · #4993 · M12, grupetto · #4915 TTT (ejer-valg) · #4948 raceDay-hjælp flag.
+2. 🟠 **v4 før flip** (`RACE_ENGINE_RULES.md` §9, spec 6/9): **7/9 merget: #4971 #4975 #4988 #4998 → §7b alle grønne undtagen favorit-win-rate 62,6 % (egen kalibrering).** Rest: favorit-win-rate · M12, grupetto · #4915 TTT (ejer-valg) · #4948 raceDay-hjælp flag.
 3. 🔵 **v4-flip** (ejer-only) → #4916 følg løbet live (efter flip).
 4. 🔵 **S4-kalender:** #4270 apply (ejer inden 10/9) · #4845 kalenderpakker · #4203 monumenter ud af GT (done-gated).
 5. 🟠 **Træning pr. løbsdag #4850** (ejer-go 6/9, live senest 28/9): #4846 tick → #4847 fjern Træn i dag → #4851 score → #4852/#4853/#4854 D1-D3 → #4848 vagter → #4849 tests+help+patch note. #4801 +1-loft merges i pakken; #4874 brosten/aggression.
@@ -19,8 +19,8 @@
 ## Bane 2 · Forretning (viger aldrig; SSOT [`2026-09-02-30-dages-pengeplan.md`](superpowers/specs/2026-09-02-30-dages-pengeplan.md))
 
 Mål 2/10: ≥ 450 kr / ≥ 10 · checkout ≥ 60 % · D7 ≥ 45 % · aktive/7d ≥ 100. **Målt 7/9: 90 — under målet.**
-8. 🔴 **BRAND · Ejerens egne bestillinger** (Discord #feedback-from-dolmer 1-8/9: patch notes web+Discord, spørgeskema, roadmap, GitHub-audit, forum #4751/#4818/#4819, webhooks, founder-badge, NPS, dashboard-load). **Næste session:** status pr. bestilling + ét rangeret kort (prompt i `docs/drafts/`).
-9. ✅ #4960 = målebrud · ✅ #4595 shippet 7/9 (#4970) → **mål 8/9**. Lukket 7/9: #4589 (reparation af 19 = ejer-kort), #4987, #4828, #4872 (→ #3353).
+8. 🔴 **BRAND · Ejerens egne bestillinger** (Discord #feedback-from-dolmer 1-8/9: patch notes web+Discord, spørgeskema, roadmap, GitHub-audit, forum #4751/#4818/#4819, webhooks, founder-badge, NPS, dashboard-load). 7/9: NPS #5003, roadmap #5002, audit, #4589 lukket. Spørgeskema-infrastruktur i PR #5006; **indhold designes ét spørgsmål ad gangen næste session** + forum/Discord (#5000 #4999 #4818 #4819 #4751) + vækst-kort. Prompt i `docs/drafts/`. #4270 inden 10/9.
+9. ✅ #4960 = målebrud · ✅ #4595 shippet (#4970) → **genmål 8/9** (-21 % efter 1,5 t).
 10. 🔵 **Nøgleblok #4616** (ejer ~30 min) låser op: Pro i euro PR #4608 → #4645 pris-synk → #4646 frafald · #4074 · #4005.
 11. 🔵 **Mail-loop:** Mail v2 merget (#2853) → ejer-GO dry_run → on pr. type → #2760 win-back (77 m. samtykke).
 12. 🔴 **Spiller-kommunikation #428:** MAN uge-note · ONS spørgsmål · SØN ugens øjeblik · #4820 indholdsplan + spørgeskema · tråd-bank #4117. Ejeren poster selv.
