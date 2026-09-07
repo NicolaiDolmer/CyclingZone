@@ -170,6 +170,38 @@ const finaleExtra = {
   placementGapScoreScale: 3, // skalerer score-differencen mellem to naboplacerings-tiers til ekstra sekunder ud over margin+jitter
   placementGapJitterMaxSeconds: 0.3, // uniform jitter [0, max) paa tier-gap'et — paavirker KUN stoerrelsen, aldrig raekkefolgen (rank-guard-moenstret, designdoc §4)
   placementFullResolutionCount: 20, // kun de N bedst placerede kontendere faar individuelle tiers; resten bunches i én samlet haleklump-gruppe
+
+  // ── Massefinale: feltets antals-fordel i jagten (#4914) ────────────────────
+  // MAALT 7/9 mod den pinnede 7/9-population (§7b): 24 af 32 flade etaper
+  // sluttede med et 5-10-mands udbrud i front og hele peloton'en 25-110 s
+  // bagude, saa felt-sammenhaengs-ankeret laa paa 29 % mod baandet 80-95 %.
+  //
+  // Rod-aarsagen er at `collectiveAbility` er et GENNEMSNIT: et lille, staerkt
+  // udbrud har hoejere snit-evne end en 170-mands peloton, saa
+  // `chasePower - leadDefend` blev negativt og `netClosingPower` clampede til
+  // 0 — uanset hvor mange der jagtede, hvor stort hullet var, og hvor langt
+  // der var igen. Et udbrud kunne altsaa ALDRIG indhentes i finalen.
+  //
+  // Antal er en fart-faktor paa fladt/rullende terraen (samme lae-argument som
+  // GROUP_DRAFT_EXTRA_TUNING's stoerrelses-led paa segment-fart-siden): 170
+  // mand kan skifte foering hele vejen ind, 8 kan ikke. Derfor et
+  // antals-skaleret OPSAMLINGS-VINDUE i stedet for en aendring af selve
+  // jagt-/fart-formlen: en gruppe der ved finalens start ligger inden for
+  // vinduet regnes som hentet af feltet inden stregen. Kun paa
+  // massefinale-ruter paa flad/rullende profil — selektive finaler (bjerg,
+  // punch, nedkoersel, udbrud, ITT) beholder den rene evne-baserede jagt, saa
+  // bjerg-ankrene ikke roeres.
+  //
+  // Vinduet er BOUNDED og styrke-neutralt: det giver feltet dets antal, ikke
+  // en straf til udbruddet — et udbrud med et stort nok forspring koerer
+  // stadig hjem.
+  //
+  // KALIBRERING (5 seeds x 32 flade etaper, flad felt-sammenhaeng, baand
+  // 80-95 %): 120 s / ratio 2 -> 88,1 % (85,2-91,6 pr. seed). Naboer:
+  // 100 s -> 85,2 %, 140 s -> 89,9 %, ratio 2,5 -> 82,5 %, ratio 3 -> 76,6 %
+  // (FAIL). Foer aendringen: 29,3 %.
+  bunchCatchMaxSeconds: 120, // maks. forspring feltet kan hente i finalen ved fuld antals-fordel (massefinale, flad/rullende)
+  bunchCatchNumbersReferenceRatio: 2, // jagt/front-stoerrelsesforhold hvor antals-fordelen er fuld (logaritmisk optrapning derunder, clampet til 1 derover)
 };
 
 /** M4 additiv finale-tuning (deep-frosset). Se finaleExtra-kommentaren ovenfor. */

@@ -7,10 +7,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { computeFinaleAbilityScore, finaleHook } from "./finale.ts";
+import {
+  bunchCatchWindowSeconds,
+  computeFinaleAbilityScore,
+  finaleHook,
+  isBunchCatchRoute,
+} from "./finale.ts";
 import { makeHookCtx } from "./testUtils/makeHookCtx.ts";
+import { boundRngFor } from "./rng.ts";
 import { DEFAULT_MECHANIC_HOOKS, runSegmentLoop } from "./segmentLoop.ts";
-import { RACE_V4_TUNING } from "./tuning.ts";
+import { FINALE_EXTRA_TUNING, RACE_V4_TUNING } from "./tuning.ts";
 import type {
   AbilityKey,
   Entrant,
@@ -65,13 +71,14 @@ const FINALE_SEGMENT: Segment = { kind: "flat", from_km: 149, to_km: 150 };
 function makeCtx(args: {
   entrants: Record<string, Entrant>;
   finaleType?: FinaleType | null;
+  profileType?: RouteV2["profile_type"];
   segment?: Segment;
   seed?: string;
 }): SegmentHookContext {
   const segment = args.segment ?? FINALE_SEGMENT;
   const route: RouteV2 = {
     distance_km: 150,
-    profile_type: "hilly",
+    profile_type: args.profileType ?? "hilly",
     finale_type: args.finaleType ?? null,
     segments: [segment],
     weather: { kind: "sun", wind_exposure: 0.1 },
@@ -335,6 +342,118 @@ test("computeFinaleAbilityScore: monotont ikke-faldende i enhver enkelt evne i d
     ),
     { numRuns: 200 },
   );
+});
+
+// ── #4914: feltets antals-fordel i massefinalen ──────────────────────────────
+
+test("bunchCatchWindowSeconds: 0 uden antals-fordel, fuldt vindue ved referenceforholdet, monotont derimellem", () => {
+  assert.equal(bunchCatchWindowSeconds(10, 10, 120, 2), 0, "lige store grupper => ingen antals-fordel");
+  assert.equal(bunchCatchWindowSeconds(5, 10, 120, 2), 0, "faerre jagende end flygtende => ingen antals-fordel");
+  assert.equal(bunchCatchWindowSeconds(20, 10, 120, 2), 120, "referenceforholdet giver det fulde vindue");
+  assert.equal(bunchCatchWindowSeconds(200, 10, 120, 2), 120, "vinduet er clampet — vokser aldrig ud over loftet");
+  assert.equal(bunchCatchWindowSeconds(0, 10, 120, 2), 0);
+  assert.equal(bunchCatchWindowSeconds(10, 0, 120, 2), 0);
+
+  fc.assert(
+    fc.property(
+      fc.integer({ min: 1, max: 400 }),
+      fc.integer({ min: 1, max: 400 }),
+      fc.integer({ min: 1, max: 200 }),
+      (chaseLow, extra, defenders) => {
+        const lower = bunchCatchWindowSeconds(chaseLow, defenders, 120, 2);
+        const higher = bunchCatchWindowSeconds(chaseLow + extra, defenders, 120, 2);
+        // Flere jagende maa ALDRIG give et mindre vindue (styrke-neutralitet:
+        // leddet giver feltet dets antal, det traekker aldrig fra fronten).
+        assert.ok(higher >= lower - 1e-9);
+      },
+    ),
+    { numRuns: 200 },
+  );
+});
+
+test("isBunchCatchRoute: kun massefinale paa flad/rullende profil", () => {
+  assert.equal(isBunchCatchRoute({ finale_type: "bunch_sprint", profile_type: "flat" }), true);
+  assert.equal(isBunchCatchRoute({ finale_type: "reduced_sprint", profile_type: "rolling" }), true);
+  assert.equal(isBunchCatchRoute({ finale_type: null, profile_type: "flat" }), true, "uklassificeret flad rute falder tilbage paa profilen");
+  assert.equal(isBunchCatchRoute({ finale_type: "reduced_sprint", profile_type: "hilly" }), false, "kuperet massespurt er selektiv");
+  assert.equal(isBunchCatchRoute({ finale_type: "reduced_sprint", profile_type: "cobbles" }), false, "brosten er selektiv");
+  assert.equal(isBunchCatchRoute({ finale_type: "long_climb", profile_type: "high_mountain" }), false);
+  assert.equal(isBunchCatchRoute({ finale_type: "breakaway", profile_type: "flat" }), false, "flad udbrudsfinale er ikke et samlet feltopgoer");
+});
+
+/**
+ * Fixture til antals-testene: et lille, STAERKT udbrud i front og en stor,
+ * SVAG peloton bagude. Jagt-formlen alene lukker intet hul her (chasePower <
+ * leadDefend => netClosingPower clampet til 0) — kun antals-vinduet kan.
+ */
+function buildBreakVsPelotonState(gapSeconds: number) {
+  const breakIds = ["b1", "b2", "b3"];
+  const pelotonIds = Array.from({ length: 30 }, (_, i) => `p${i}`);
+  const entrants: Record<string, Entrant> = {};
+  for (const id of breakIds) entrants[id] = makeEntrant(id, abilities({ tempo: 99, endurance: 99, durability: 99, sprint: 99 }));
+  for (const id of pelotonIds) entrants[id] = makeEntrant(id, abilities({ tempo: 1, endurance: 1, aggression: 1, sprint: 1 }));
+
+  const riders: Record<string, RiderState> = {
+    ...Object.fromEntries(breakIds.map((id) => [id, makeRiderState(id, "breakaway-0", { wprime: 1, wprimeMax: 1 })])),
+    ...Object.fromEntries(pelotonIds.map((id) => [id, makeRiderState(id, "peloton-0", { wprime: 0.1, wprimeMax: 1 })])),
+  };
+
+  const groups: RaceGroup[] = [
+    { id: "breakaway-0", kind: "breakaway", rider_ids: breakIds, gap_seconds: 0, cohesion: 1 },
+    { id: "peloton-0", kind: "peloton", rider_ids: pelotonIds, gap_seconds: gapSeconds, cohesion: 1 },
+  ];
+  return { entrants, riders, groups, breakIds, pelotonIds };
+}
+
+test("finaleHook (#4914): feltet henter et lille udbrud inden for antals-vinduet paa en flad massefinale", () => {
+  const gap = FINALE_EXTRA_TUNING.bunchCatchMaxSeconds / 2;
+  const { entrants, riders, groups, breakIds, pelotonIds } = buildBreakVsPelotonState(gap);
+
+  const result = finaleHook(buildState(groups, riders), makeCtx({
+    entrants,
+    finaleType: "bunch_sprint",
+    profileType: "flat",
+    segment: { kind: "flat", from_km: 149, to_km: 150 },
+  }));
+
+  assert.equal(result.state.groups.length, 1, "hele feltet skal ankomme som ÉN klump");
+  const bunch = result.state.groups[0];
+  assert.equal(bunch.gap_seconds, 0);
+  assert.equal(bunch.rider_ids.length, breakIds.length + pelotonIds.length, "ingen rytter maa falde ud af opgoerelsen");
+});
+
+test("finaleHook (#4914): samme felt paa en SELEKTIV finale beholder udbruddets forspring", () => {
+  const gap = FINALE_EXTRA_TUNING.bunchCatchMaxSeconds / 2;
+  const { entrants, riders, groups, breakIds } = buildBreakVsPelotonState(gap);
+
+  const result = finaleHook(buildState(groups, riders), makeCtx({
+    entrants,
+    finaleType: "punch",
+    profileType: "hilly",
+    segment: { kind: "flat", from_km: 149, to_km: 150 },
+  }));
+
+  const winnerGroup = result.state.groups.find((g) => g.rider_ids.some((id) => breakIds.includes(id)))!;
+  assert.ok(winnerGroup.rider_ids.every((id) => breakIds.includes(id)), "peloton'en maa IKKE smelte ind paa en selektiv finale");
+  const chase = result.state.groups.find((g) => g.rider_ids.includes("p0"))!;
+  assert.ok(chase.gap_seconds > RACE_V4_TUNING.groups.mergeThresholdSeconds, "peloton'en taber reel tid");
+});
+
+test("finaleHook (#4914): et stort nok forspring koerer stadig hjem paa fladt (styrke straffes ikke)", () => {
+  const gap = FINALE_EXTRA_TUNING.bunchCatchMaxSeconds * 2;
+  const { entrants, riders, groups, breakIds } = buildBreakVsPelotonState(gap);
+
+  const result = finaleHook(buildState(groups, riders), makeCtx({
+    entrants,
+    finaleType: "bunch_sprint",
+    profileType: "flat",
+    segment: { kind: "flat", from_km: 149, to_km: 150 },
+  }));
+
+  const winnerGroup = result.state.groups.find((g) => g.rider_ids.some((id) => breakIds.includes(id)))!;
+  assert.ok(winnerGroup.rider_ids.every((id) => breakIds.includes(id)), "udbruddet skal vinde naar hullet er stoerre end vinduet");
+  const sprintDecided = result.events.find((e) => e.type === "sprint_decided")!;
+  assert.ok(breakIds.includes(String(sprintDecided.params.winner_rider_id)));
 });
 
 test("computeFinaleAbilityScore: monotont ikke-faldende i W'-reserve", () => {
