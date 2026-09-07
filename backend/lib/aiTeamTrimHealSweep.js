@@ -40,6 +40,25 @@
 //
 // Rører ALDRIG afviklede resultater eller ægte hold — kun AI-hold denne sweep selv
 // (via removeAiTeams) tidligere har forsøgt at fjerne.
+//
+// #4828 (CYCLINGZONE-58): backstoppen (b) målte MARKØRENS alder (pending_removal_at),
+// ikke alderen på den blokering der gælder LIGE NU. Et hold markeret af årsag A (fx
+// døde transfer_offers) står blokeret i dagevis, får A løst, og bliver derefter
+// LOVLIGT blokeret af et helt almindeligt igangværende etapeløb — uret nulstilles
+// aldrig, så alarmen fyrer "reelt fastlåst" på et hold der reelt kun har været
+// blokeret af det aktuelle løb i timer. Prod-evidens 5-6/9: 4 hold, markøren
+// 55-179t gammel, men den GÆLDENDE blokering (Settimana-finalen) var langt yngre —
+// og efter finalen 5/9 healede alle fire med det samme (jf. #4829-verifikationen i
+// PR'en, ikke gentaget her).
+//
+// Fix: `pending_removal_blocked_reason` + `pending_removal_blocked_since`
+// (migration 2026-09-07-4828-ai-trim-blocked-since.sql) huske HVILKEN blokerings-
+// klasse der gjaldt sidst, og HVORNÅR den klasse først blev set. Skifter klassen
+// (eller er den aldrig set før), nulstilles uret til nu — nøjagtig den "alternativ"-
+// løsning issuet selv foreslog. Backstoppen (b) måler nu `pending_removal_blocked_since`,
+// ikke `pending_removal_at`. Den løbs-bevidste primærdetektion (a) er uændret.
+// Alarmen bærer nu også blokerings-klassen + evt. race-id'er (issuets punkt 2) —
+// uden det kunne et Sentry-event ikke afgøres uden en DB-session.
 
 import { fetchAllRows } from "./supabasePagination.js";
 import {
@@ -102,12 +121,30 @@ async function defaultGetPoolTrimBudgets(supabase, poolIds) {
 // #2407: ryd en forældet markør (puljen er på/under target → holdet er IKKE længere
 // overskud). Dette er selv-helingen af over-markering: uden den ville markøren ligge
 // klar til at slette holdet den dag blokeringen løftes.
+// #4828: rydder samtidig blocked-reason-uret — et hold der senere bliver markeret
+// igen skal starte forfra, ikke arve et gammelt "siden".
 async function defaultClearPendingRemoval(supabase, teamId) {
   const { error } = await supabase
     .from("teams")
-    .update({ pending_removal_at: null })
+    .update({
+      pending_removal_at: null,
+      pending_removal_blocked_reason: null,
+      pending_removal_blocked_since: null,
+    })
     .eq("id", teamId);
   if (error) throw new Error(`AI-trim sweep (clear pending ${teamId}): ${error.message}`);
+}
+
+// #4828: skriv den GÆLDENDE blokerings-klasse + hvornår den først blev set. Kaldes
+// KUN når klassen er ny (ændret siden sidst, eller aldrig set) — et uændret hold
+// skriver ikke ved hver tick, det ville i praksis genindføre "målerens alder" via
+// bagvejen hvis en fremtidig ændring glemte reason-sammenligningen.
+async function defaultUpdateBlockState(supabase, teamId, { reason, since }) {
+  const { error } = await supabase
+    .from("teams")
+    .update({ pending_removal_blocked_reason: reason, pending_removal_blocked_since: since })
+    .eq("id", teamId);
+  if (error) throw new Error(`AI-trim sweep (blocked-state ${teamId}): ${error.message}`);
 }
 
 export async function runAiTeamTrimHealSweep({
@@ -138,6 +175,9 @@ export async function runAiTeamTrimHealSweep({
   // af forældede markører. Injicerbare for test.
   getPoolTrimBudgets = defaultGetPoolTrimBudgets,
   clearPendingRemoval = defaultClearPendingRemoval,
+  // #4828: skriv blocked-reason-uret når den gældende blokerings-klasse er ny.
+  // Injicerbar for test.
+  updateBlockState = defaultUpdateBlockState,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -148,7 +188,7 @@ export async function runAiTeamTrimHealSweep({
   const candidates = await fetchAllRows(() =>
     supabase
       .from("teams")
-      .select("id, name, league_division_id, pending_removal_at")
+      .select("id, name, league_division_id, pending_removal_at, pending_removal_blocked_reason, pending_removal_blocked_since")
       .eq("is_ai", true)
       .not("pending_removal_at", "is", null)
       .order("pending_removal_at"));
@@ -210,9 +250,18 @@ export async function runAiTeamTrimHealSweep({
         : retire
           ? await hasLiveOffers(supabase, team.id)
           : await hasBlockingOffers(supabase, team.id);
-      const blocked = blockingInflight.length > 0 || prizeBlocked || offersBlocked;
 
-      if (!blocked) {
+      // #4828: HVILKEN klasse blokerer lige nu (i prioritetsorden — matcher
+      // kortslutnings-rækkefølgen ovenfor)? null = ikke blokeret.
+      const blockKind = blockingInflight.length > 0
+        ? "blocking_race"
+        : prizeBlocked
+          ? "unpaid_prizes"
+          : offersBlocked
+            ? (retire ? "live_offers" : "transfer_offers_fk")
+            : null;
+
+      if (!blockKind) {
         await removeTeam(supabase, team.id);
         healed += 1;
         // #2407 Fejl 2: én sletning brugt af puljens budget. Blokerede hold bruger
@@ -221,10 +270,21 @@ export async function runAiTeamTrimHealSweep({
         continue;
       }
 
+      // #4828: blokeringens alder, IKKE markørens. Samme klasse som sidst set →
+      // uret består (blocked_since fra DB); ny/skiftet klasse → uret nulstilles
+      // til nu. Dette ER fixet — se filens toppdoc.
+      let blockedSince = now.toISOString();
+      if (team.pending_removal_blocked_reason === blockKind && team.pending_removal_blocked_since) {
+        blockedSince = team.pending_removal_blocked_since;
+      } else {
+        await updateBlockState(supabase, team.id, { reason: blockKind, since: blockedSince });
+      }
+
       // Løbs-bevidst stale-detektion (#2434): reelt fastlåst = blokerende løb selv
-      // stallet, ELLER blokeringen har overskredet backstoppen.
+      // stallet, ELLER den GÆLDENDE blokering har overskredet backstoppen (#4828:
+      // målt fra blockedSince, ikke fra pending_removal_at).
       const blockingStalled = blockingInflight.filter((id) => stalledRaceIds.has(id));
-      const ageMs = now.getTime() - new Date(team.pending_removal_at).getTime();
+      const ageMs = now.getTime() - new Date(blockedSince).getTime();
 
       let reason = null;
       if (blockingStalled.length > 0) reason = "blocking_race_stalled";
@@ -236,6 +296,12 @@ export async function runAiTeamTrimHealSweep({
           name: team.name,
           poolId: team.league_division_id,
           pendingSince: team.pending_removal_at,
+          blockKind,
+          blockedSince,
+          // #4828: race-id'erne følger med for blocking_race-klassen (begge
+          // deltagrene — stallet ELLER backstop) så et Sentry-event kan afgøres
+          // uden en DB-session (issuets punkt 2).
+          raceIds: blockKind === "blocking_race" ? blockingInflight : undefined,
           ageHours: Math.round(ageMs / (60 * 60 * 1000)),
           reason,
           stalledRaceIds: blockingStalled,

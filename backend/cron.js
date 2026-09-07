@@ -912,9 +912,13 @@ async function runAiTeamTrimHealSweepCron() {
       fingerprint: ["ai-trim-persistent-stall"],
       extra: {
         count: n,
-        teams: staleList.map((s) =>
-          `${s.teamId} (pool ${s.poolId}): ${s.reason}, ${s.ageHours}t${s.message ? ` — ${s.message}` : ""}`
-        ),
+        // #4828: blokerings-klasse (+ race-id'er for blocking_race) følger med, så
+        // et Sentry-event kan afgøres uden en DB-session — ageHours er nu
+        // blokeringens alder (blockedSince), ikke markørens (pendingSince).
+        teams: staleList.map((s) => {
+          const kind = s.blockKind ? ` [${s.blockKind}${s.raceIds?.length ? `: ${s.raceIds.join(",")}` : ""}]` : "";
+          return `${s.teamId} (pool ${s.poolId}): ${s.reason}${kind}, ${s.ageHours}t${s.message ? ` — ${s.message}` : ""}`;
+        }),
       },
     });
   }
