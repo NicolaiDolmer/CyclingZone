@@ -1,7 +1,7 @@
 // Form/Træthed-spine (#1306) — to tal 0-100, bruges af det daglige tick (#1305).
 // Fuld CTL/ATL/TSB (#931) bygges post-launch OVEN PÅ disse to tal — ændr ikke semantikken.
 // Alle konstanter kalibreres i sim-harnesset (Task A10/B4) før ship (spec afsnit 13).
-import { seededUnit } from "./riderProgression.js";
+import { seededUnitMixed } from "./riderProgression.js";
 import { DAILY_TRAINING_CONFIG } from "./dailyTraining.js";
 
 export const CONDITION_CONFIG = Object.freeze({
@@ -92,8 +92,10 @@ export function injuryRisk({ intensity, fatigue }) {
 
 export function rollInjury({ riderId, dateStr, risk }) {
   if (risk <= 0) return { injured: false, days: 0 };
-  const roll = seededUnit(`injury:${riderId}:${dateStr}`);
+  // #4987: seededUnitMixed — samme dato-hale-mønster/svaghed som dailyTraining.js's
+  // dtick/rtick-seeds, samme backwards-check, samme fix.
+  const roll = seededUnitMixed(`injury:${riderId}:${dateStr}`);
   if (roll >= risk) return { injured: false, days: 0 };
-  const days = 1 + Math.floor(seededUnit(`injurydays:${riderId}:${dateStr}`) * CONDITION_CONFIG.injuryMaxDays);
+  const days = 1 + Math.floor(seededUnitMixed(`injurydays:${riderId}:${dateStr}`) * CONDITION_CONFIG.injuryMaxDays);
   return { injured: true, days: Math.min(days, CONDITION_CONFIG.injuryMaxDays) };
 }
