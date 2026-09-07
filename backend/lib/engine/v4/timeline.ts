@@ -129,6 +129,7 @@ export function incidentEvent(
     severity?: string | null;
     injuryDays?: number | null;
     helperAssist?: boolean;
+    cause?: string;
   },
 ): TimelineEvent {
   const params: Record<string, unknown> = {
@@ -140,6 +141,11 @@ export function incidentEvent(
   if (args.severity !== undefined) params.severity = args.severity;
   if (args.injuryDays !== undefined) params.injury_days = args.injuryDays;
   if (args.helperAssist !== undefined) params.helper_assist = args.helperAssist;
+  // Optional (#4950): angiver hvilken mekanik der udloeste uheldet (fx
+  // "descent_attack"). M10s egne uheld (mechanics/incidents.ts) saetter den
+  // ikke — udelades den, er param-formen bit-identisk med foer (samme
+  // additiv-og-valgfri-moenster som severity/injuryDays/helperAssist ovenfor).
+  if (args.cause !== undefined) params.cause = args.cause;
   return makeEvent(km, "incident", params);
 }
 
@@ -280,6 +286,20 @@ export function validateTimelineEvents(
       if (FOG_GATE_FORBIDDEN_KEYS.has(key.toLowerCase())) {
         violations.push({ rule: "fog-gate", message: `event ${e.type} laekker fog-gated noegle "${key}" i params` });
       }
+    }
+  }
+
+  // #4950: "incident"-eventets valgfrie `cause` (incidentEvent) skal, naar den
+  // er sat, vaere en ikke-tom streng — samme lette form-tjek som de tre andre
+  // regler ovenfor, PURT checkbart paa selve tidslinjen (ingen DB-slag).
+  for (const e of events) {
+    if (e.type !== "incident" || !("cause" in e.params)) continue;
+    const cause = e.params.cause;
+    if (typeof cause !== "string" || cause.length === 0) {
+      violations.push({
+        rule: "incident-cause",
+        message: `event ${e.type} har ugyldig cause "${String(cause)}" (skal vaere en ikke-tom streng)`,
+      });
     }
   }
 

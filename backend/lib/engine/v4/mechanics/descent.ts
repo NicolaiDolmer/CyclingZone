@@ -78,6 +78,27 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
+/**
+ * Afgoer om descentHook's no-op-garanti (samme state-reference, se testen
+ * "no-op skal returnere praecis samme state-reference") gaelder. `groups`
+ * faar altid en NY array-reference af regroupOnDescent (ogsaa naar ingen
+ * vaerdi aendrer sig), saa dens no-op-status maales paa VAERDI (den
+ * separat vedligeholdte `groupsChanged`-boolean). `riders` derimod
+ * genbruger ALTID samme reference indtil noget rent faktisk mutation den
+ * (`riders = { ...riders, ... }`) — dens no-op-status maales derfor paa
+ * REFERENCE, uafhaengigt af `groupsChanged`. Fælden (#4950): et fremtidigt
+ * kald der muterer `riders` uden ogsaa at saette `groupsChanged = true`
+ * ville, med kun ÉT samlet flag, tabe mutationen tavst. De to uafhaengige
+ * tjek forhindrer det.
+ */
+export function descentResultIsNoop(
+  groupsChanged: boolean,
+  riders: Record<string, RiderState>,
+  stateRiders: Record<string, RiderState>,
+): boolean {
+  return !groupsChanged && riders === stateRiders;
+}
+
 // ── Pure helpers (eksporteret for direkte kontrakt-tests) ────────────────────
 
 /**
@@ -359,8 +380,8 @@ export const descentHook: DescentHook = (
   // 2. Descent attack: uaendret gate (kun T2-T3), men nu paa den regrupperede
   //    struktur — et angreb skabt her overlever til maal praecis som foer.
   if (segment.technicality < ctx.tuning.descent.minTechnicalityForAttack) {
-    if (!changed) return { state, events };
-    return { state: { ...state, groups }, events };
+    if (descentResultIsNoop(changed, riders, state.riders)) return { state, events };
+    return { state: { ...state, groups, riders }, events };
   }
 
   // Snapshot: splitGroup nedenfor omtildeler `groups`, saa loopet skal koere
@@ -516,17 +537,21 @@ export const descentHook: DescentHook = (
 
       // Samme event-form som M10's (incidentEvent) + `cause`-feltet M3 altid
       // har baaret, saa harness/tests kan skelne kanalen uden at der findes to
-      // event-taksonomier.
-      const base = incidentEvent(incidentKm, {
-        riderId: attacker.riderId,
-        kind: resolved.kind,
-        outcome: resolved.outcome,
-        timeLossSeconds: resolved.timeLossSeconds,
-        severity: resolved.severity,
-        injuryDays: resolved.injuryDays,
-        helperAssist: resolved.helperAssist,
-      });
-      events.push({ ...base, params: { ...base.params, cause: "descent_attack" } });
+      // event-taksonomier. Valgfrit `cause`-argument (#4950) i stedet for en
+      // spread ovenpaa returvaerdien — samme moenster som severity/injuryDays/
+      // helperAssist herover, og timeline-validatoren tjekker nu feltets form.
+      events.push(
+        incidentEvent(incidentKm, {
+          riderId: attacker.riderId,
+          kind: resolved.kind,
+          outcome: resolved.outcome,
+          timeLossSeconds: resolved.timeLossSeconds,
+          severity: resolved.severity,
+          injuryDays: resolved.injuryDays,
+          helperAssist: resolved.helperAssist,
+          cause: "descent_attack",
+        }),
+      );
     }
   }
 
@@ -536,6 +561,6 @@ export const descentHook: DescentHook = (
       events,
     };
   }
-  if (!changed) return { state, events };
+  if (descentResultIsNoop(changed, riders, state.riders)) return { state, events };
   return { state: { ...state, groups, riders }, events };
 };
