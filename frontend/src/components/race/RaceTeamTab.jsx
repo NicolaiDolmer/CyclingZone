@@ -43,6 +43,7 @@ import {
   diffToOverrides,
   jerseyLeaderId,
   applyJerseyCaptainShortcut,
+  isJerseyLeaderCaptainOnAllRemainingStages,
 } from "../../lib/stageRoleMatrixLogic.js";
 import { DEFAULT_EFFORT } from "../../lib/raceIntention.js";
 
@@ -218,8 +219,11 @@ export default function RaceTeamTab({
   const jerseyLeaderRider = jerseyLeaderRiderId
     ? riders.find((r) => r.rider_id === jerseyLeaderRiderId) ?? null
     : null;
+  // #4917: skal tjekke ALLE resterende etaper, ikke kun den næste — ellers
+  // skjules genvejen selvom en senere etape stadig har en anden kaptajn, og
+  // genvejen kan netop rette op på "alle resterende etaper" (CodeRabbit 7/9).
   const jerseyLeaderIsCaptain = jerseyLeaderRider
-    ? resolveCell({ rider: jerseyLeaderRider, stageNumber: nextEditableStage, overridesMap }).race_role === "captain"
+    ? isJerseyLeaderCaptainOnAllRemainingStages({ rider: jerseyLeaderRider, stageNumbers, stagesCompleted, overridesMap })
     : true;
   const showJerseyShortcut = Boolean(jerseyLeaderRider) && !jerseyLeaderIsCaptain && nextEditableStage <= stageNumbers.length;
 

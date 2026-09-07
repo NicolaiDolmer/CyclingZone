@@ -11,6 +11,7 @@ import {
   isDirty,
   jerseyLeaderId,
   applyJerseyCaptainShortcut,
+  isJerseyLeaderCaptainOnAllRemainingStages,
 } from "./stageRoleMatrixLogic.js";
 
 const RIDERS = [
@@ -132,6 +133,32 @@ test("applyJerseyCaptainShortcut: forfremmer føreren, demoterer den forrige kap
   assert.deepEqual(next[4].c, { race_role: "captain", effort: "normal" });
   assert.deepEqual(next[4].a, { race_role: "helper", effort: "normal" });
   assert.equal(next[2], undefined, "kørt etape indgår slet ikke i draft-matrixen og må ikke oprettes af genvejen");
+});
+
+test("#4917 CodeRabbit 7/9: isJerseyLeaderCaptainOnAllRemainingStages skal tjekke ALLE resterende etaper, ikke kun den næste — leder er kaptajn på næste etape men ikke på en senere → genvejen skal stadig vises", () => {
+  const overridesMap = overridesIndex([{ stage_number: 4, rider_id: "c", race_role: "helper", effort: "normal" }]);
+  // c (basis-rolle hunter) er allerede kaptajn på etape 3 (via override, ikke sat her men
+  // resolveCell falder tilbage til basis "hunter" ≠ captain — brug rider med basis captain
+  // og override på en SENERE etape der fjerner kaptajnbåndet igen).
+  const rider = { rider_id: "c", name: "Cleo", race_role: "captain" };
+  const stageNumbers = [3, 4, 5];
+  const stagesCompleted = 2;
+  // c er kaptajn (basis) på etape 3, men override'et på etape 4 gør ham til helper der.
+  assert.equal(
+    isJerseyLeaderCaptainOnAllRemainingStages({ rider, stageNumbers, stagesCompleted, overridesMap }),
+    false,
+    "kaptajn på næste etape (3) men IKKE på en senere (4) → funktionen skal svare false, så genvejen vises",
+  );
+});
+
+test("isJerseyLeaderCaptainOnAllRemainingStages: kaptajn på ALLE resterende etaper → true (genvejen skjules)", () => {
+  const rider = { rider_id: "c", name: "Cleo", race_role: "captain" };
+  const stageNumbers = [3, 4, 5];
+  const stagesCompleted = 2;
+  assert.equal(
+    isJerseyLeaderCaptainOnAllRemainingStages({ rider, stageNumbers, stagesCompleted, overridesMap: overridesIndex([]) }),
+    true,
+  );
 });
 
 test("applyJerseyCaptainShortcut: bevarer førerens EGEN effort, rører aldrig andre ryttere end kaptajnen", () => {

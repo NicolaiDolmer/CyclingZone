@@ -157,6 +157,18 @@ export function jerseyLeaderId({ riders, gcRankByRider }) {
   return leader?.rider_id ?? null;
 }
 
+// #4917: bruges af RaceTeamTab til at afgøre om førertrøje-genvejen skal
+// vises. Genvejen (se applyJerseyCaptainShortcut) sætter kaptajnbåndet på
+// ALLE resterende etaper i ét klik — den skal derfor kun skjules når lederen
+// ALLEREDE er kaptajn på dem alle, ikke kun på den næste redigerbare etape
+// (CodeRabbit-fund 7/9: en genvej der kun tjekkede næste etape kunne skjules
+// selvom en senere etape stadig havde en anden kaptajn).
+export function isJerseyLeaderCaptainOnAllRemainingStages({ rider, stageNumbers, stagesCompleted, overridesMap }) {
+  return (stageNumbers || [])
+    .filter((n) => n > stagesCompleted)
+    .every((n) => resolveCell({ rider, stageNumber: n, overridesMap }).race_role === "captain");
+}
+
 // Anvender genvejen på draft-matrixen: sætter captain-override for `leaderId`
 // på ALLE kommende etaper, og demoterer en evt. anden resolved captain til
 // helper på de samme etaper (kun rolle — effort røres ikke for de demoterede,
