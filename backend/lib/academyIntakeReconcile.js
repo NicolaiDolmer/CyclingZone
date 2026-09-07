@@ -5,8 +5,25 @@
 // allerede er ejet (riders.team_id sat) — stale rækker der aldrig blev flippet da
 // rytteren blev anskaffet. Fundet 2026-06-22 under #1748/#1743-arbejdet (se
 // migration 2026-06-22-hide-intake-riders-from-db.sql: "73 'offered'-rækker,
-// hvoraf 5 allerede var ejede"). PR #1754's RLS-fix skjuler dem korrekt fra UI'et,
-// så der er INGEN spiller-synlig fejl; dette er ren data-hygiejne.
+// hvoraf 5 allerede var ejede").
+//
+// ⚠ RETTELSE (#4213, 29/8). Headeren sagde tidligere at PR #1754's RLS-fix skjuler
+// rækkerne fra UI'et, "så der er INGEN spiller-synlig fejl; dette er ren
+// data-hygiejne". Det holdt ved 5 rækker og holder ikke som klassebeskrivelse:
+// #4213 målte 438 stale rækker 25/8, alle synlige som akademikort hos 162
+// menneskehold, og indtil ejerskabs-guarden i finalize_academy_acquisition blev
+// strammet (2026-08-28-4213) kunne et klik tage rytteren fra ejerholdet uden
+// handel, betaling eller ejerskabslog. Klassen er spiller-synlig og kan opstå i
+// bulk (rå UPDATE af riders.team_id uden ejerskabsevent).
+//
+// ⚠ AT FLIPPE ER IKKE ALTID DET RIGTIGE (ejer-beslutning 29/8). En ejet rytter kan
+// være på vej TILBAGE til fri agent-status. Ejeren valgte den stille
+// tilbagetrækning FRA: signAcademyCandidate bevarer bevidst tilbuddet og giver i
+// stedet spilleren en præcis besked ('rider_owned'). Denne sweep kører derfor
+// IKKE som cron — den er et manuelt værktøj (backend/scripts/reconcileAcademyIntake.js)
+// til rækker hvor ejerskabet er endeligt. Det løbende værn er
+// trg_guard_academy_offer_ownership (#4383) + RPC-guarden (#4213), som forhindrer
+// at klassen opstår i første omgang.
 //
 // KORREKT MÅL-STATUS pr. stale række, afgjort af HVEM der ejer rytteren nu:
 //   • riders.team_id === academy_intake.team_id  → holdet underskrev kandidaten

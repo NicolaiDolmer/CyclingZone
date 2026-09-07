@@ -1,11 +1,25 @@
-// Engangs-reconcile (#1756): ryd stale academy_intake 'offered'-rækker mod
+// Manuel reconcile (#1756): ryd stale academy_intake 'offered'-rækker mod
 // rytter-ejerskab.
 //
 // En stale række er en academy_intake-række der stadig er 'offered', men hvor
 // rytteren ALLEREDE er ejet (riders.team_id sat) — flippet blev aldrig fuldført da
 // rytteren blev anskaffet. Prod-audit 2026-06-22 fandt 5 sådanne (af 73 'offered').
-// PR #1754's RLS-fix skjuler dem fra UI'et, så der er ingen spiller-impact; dette
-// er ren data-hygiejne for konsistens i intake-sporet.
+//
+// ⚠ RETTELSE (#4213, 29/8). Headeren sagde tidligere at PR #1754's RLS-fix skjuler
+// rækkerne fra UI'et, "så der er ingen spiller-impact; dette er ren data-hygiejne".
+// Den sætning blev skrevet i juni ved 5 rækker og er FORKERT. #4213 målte 438 stale
+// rækker i prod 25/8, alle synlige som akademikort hos 162 menneskehold (68 % af
+// spillerbasen), og indtil guarden blev strammet kunne et klik tage rytteren fra
+// ejerholdet uden handel, betaling eller ejerskabslog. Klassen er altså
+// spiller-synlig og kan opstå i bulk. Læs den ikke som kosmetik.
+//
+// ⚠ KØR IKKE BLINDT (ejer-beslutning 29/8). En stale række betyder ikke altid at
+// tilbuddet er dødt: rytteren kan være på vej TILBAGE til fri agent-status (fx en
+// reparation der venter på at et etapeløb afvikles). Ejeren valgte den stille
+// tilbagetrækning FRA — signAcademyCandidate bevarer derfor bevidst tilbuddet og
+// giver spilleren en præcis besked i stedet. Dette script flipper rækken til
+// signed/rejected og FJERNER dermed kortet fra spillerens flade. Kør dry-run
+// først, og kun --live når rytterne faktisk er endeligt hos et andet hold.
 //
 // Mål-status afgøres af HVEM der ejer rytteren nu (se academyIntakeReconcile.js):
 //   • ejet af det tilbudte hold        → 'signed'   (underskrevet, flip fejlede)
