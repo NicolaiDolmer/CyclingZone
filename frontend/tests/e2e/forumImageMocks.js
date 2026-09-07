@@ -36,9 +36,15 @@ export async function installForumImageMocks(page) {
     });
   });
 
-  // supabase-js sender sletninger som POST .../object/forum-images med en
-  // prefixes-payload; den rammer routen ovenfor. Bucket-metadata-kaldet gaar
-  // til et andet path og maa ikke naa nettet.
+  // supabase-js sender sletninger som POST .../object/forum-images UDEN
+  // efterfoelgende skraastreg. Playwrights glob oversaettes til
+  // `.*/storage/v1/object/forum-images/.*`, saa routen ovenfor rammer den IKKE,
+  // og kaldet ville gaa paa nettet. Egen route uden `/**`:
+  await page.route("**/storage/v1/object/forum-images", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+  );
+
+  // Bucket-metadata-kaldet gaar til et andet path og maa heller ikke naa nettet.
   await page.route("**/storage/v1/bucket/forum-images**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "forum-images", public: true }) })
   );
