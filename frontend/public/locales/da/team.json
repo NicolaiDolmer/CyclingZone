@@ -291,6 +291,9 @@
     "thPoints": "Point",
     "thRank": "Placering",
     "seasonNumber": "Sæson {n}",
-    "divisionShort": "Div. {n}"
+    "divisionShort": "Div. {n}",
+    "discordOpenAria": "Åbn {handle}s Discord-profil",
+    "discordCopyAria": "Kopiér Discord-brugernavn {handle}",
+    "discordCopied": "Kopieret"
   }
 }
