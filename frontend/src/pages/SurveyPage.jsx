@@ -113,6 +113,7 @@ export default function SurveyPage() {
   const [submitError, setSubmitError] = useState(false);
 
   const timersRef = useRef(new Map());
+  const writeChainsRef = useRef(new Map());
   // Date.now() må ikke kaldes under render (react-hooks/purity), så starttiden
   // sættes i den effekt der alligevel kører én gang ved mount.
   const startedAtRef = useRef(0);
@@ -154,19 +155,29 @@ export default function SurveyPage() {
         return;
       }
 
-      const [{ data: questionRows }, { data: responseRows }, { data: completionRows }, { data: teamRow }] =
-        await Promise.all([
-          supabase.from("survey_questions").select(QUESTION_COLUMNS).eq("survey_id", surveyRow.id).order("sort_order"),
-          supabase.from("survey_responses").select("question_key, value").eq("survey_id", surveyRow.id).eq("user_id", uid),
-          supabase
-            .from("survey_completions")
-            .select("completed_at")
-            .eq("survey_id", surveyRow.id)
-            .eq("user_id", uid)
-            .limit(1),
-          supabase.from("teams").select("id").eq("user_id", uid).maybeSingle(),
-        ]);
+      const [questionRes, responseRes, completionRes, teamRes] = await Promise.all([
+        supabase.from("survey_questions").select(QUESTION_COLUMNS).eq("survey_id", surveyRow.id).order("sort_order"),
+        supabase.from("survey_responses").select("question_key, value").eq("survey_id", surveyRow.id).eq("user_id", uid),
+        supabase
+          .from("survey_completions")
+          .select("completed_at")
+          .eq("survey_id", surveyRow.id)
+          .eq("user_id", uid)
+          .limit(1),
+        supabase.from("teams").select("id").eq("user_id", uid).maybeSingle(),
+      ]);
       if (cancelled) return;
+      // En tabt spoergsmaals-query maa ALDRIG blive til "skemaet har nul
+      // spoergsmaal": saa er intet paakraevet, Send bliver klikbar, og
+      // spilleren afleverer en tom besvarelse han tror er komplet.
+      if (questionRes.error || responseRes.error || completionRes.error) {
+        setStatus("error");
+        return;
+      }
+      const { data: questionRows } = questionRes;
+      const { data: responseRows } = responseRes;
+      const { data: completionRows } = completionRes;
+      const { data: teamRow } = teamRes;
       setQuestions(sortQuestions(questionRows ?? []));
       setAnswers(answersByQuestionKey(responseRows));
       setCompleted(Boolean(completionRows?.[0]));
@@ -178,9 +189,9 @@ export default function SurveyPage() {
     };
   }, [slug]);
 
-  const persist = useCallback(
+  const writeOne = useCallback(
     async (question, value) => {
-      if (!survey || !userId) return;
+      if (!survey || !userId) return false;
       setSaveState((prev) => ({ ...prev, [question.key]: "saving" }));
       const { error } = value
         ? await supabase.from("survey_responses").upsert(
@@ -200,8 +211,24 @@ export default function SurveyPage() {
             .eq("user_id", userId)
             .eq("question_key", question.key);
       setSaveState((prev) => ({ ...prev, [question.key]: error ? "error" : "saved" }));
+      return !error;
     },
     [survey, userId, teamId]
+  );
+
+  // Skrivningerne serialiseres PR. SPOERGSMAAL. To hurtige klik paa samme
+  // skala giver to upserts, og uden en koe kan den foerste (1) lande efter den
+  // anden (2): sidens tilstand siger 2, databasen siger 1. Koeen er pr. noegle,
+  // saa to forskellige spoergsmaal stadig skrives parallelt.
+  const persist = useCallback(
+    (question, value) => {
+      const chains = writeChainsRef.current;
+      const run = () => writeOne(question, value);
+      const next = (chains.get(question.key) ?? Promise.resolve(true)).then(run, run);
+      chains.set(question.key, next);
+      return next;
+    },
+    [writeOne]
   );
 
   const handleChange = useCallback(
@@ -245,8 +272,16 @@ export default function SurveyPage() {
     const timers = timersRef.current;
     for (const timer of timers.values()) clearTimeout(timer);
     timers.clear();
-    const pending = questions.map((question) => persist(question, answers[question.key] ?? null));
-    await Promise.all(pending);
+    const written = await Promise.all(
+      questions.map((question) => persist(question, answers[question.key] ?? null))
+    );
+    // En fejlet svar-skrivning maa ikke blive til en gennemfoert besvarelse:
+    // tak-fladen ville sige at alt er landet, mens et svar mangler i databasen.
+    if (written.some((ok) => ok === false)) {
+      setSubmitting(false);
+      setSubmitError(true);
+      return;
+    }
 
     const startedAt = startedAtRef.current || Date.now();
     const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));

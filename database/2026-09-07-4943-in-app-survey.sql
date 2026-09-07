@@ -170,8 +170,19 @@ CREATE POLICY "Admins can write survey questions"
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
--- Svar: egne ind/op/laes. Admin laeser alt (analysen koeres af ejeren).
--- Ingen DELETE-policy: svar rettes via upsert, oprydning sker via service_role.
+-- Svar: egne ind/op/laes/slet. Admin laeser alt (analysen koeres af ejeren).
+--
+-- Ud over auth.uid() haandhaever policyerne to ting mere, fordi en klient kan
+-- kalde PostgREST direkte og ikke kun via siden (CodeRabbit-review paa PR):
+--   1. question_key SKAL findes blandt skemaets egne spoergsmaal. Uden det kan
+--      en bruger skrive vilkaarlige noegler ind i sine egne raekker, og
+--      analyse-forespoergslerne i docs/SURVEY_SYSTEM.md §5 taeller dem med.
+--   2. team_id skal vaere brugerens EGET hold (eller NULL). Uden det kan et
+--      svar plantes paa en anden managers hold og forvride krydsningen pr.
+--      division/Pro.
+-- Vaerdi-FORMEN (score-interval, hoejst tre valg) haandhaeves i frontend og i
+-- lib/survey.js, ikke i RLS: en fuld JSONB-validering pr. spoergsmaalstype
+-- hoerer i en skrive-funktion, og blast-radius er brugerens egne svar.
 DROP POLICY IF EXISTS "Users can read own survey responses" ON public.survey_responses;
 CREATE POLICY "Users can read own survey responses"
   ON public.survey_responses FOR SELECT
@@ -188,6 +199,17 @@ CREATE POLICY "Users can insert own survey responses"
       SELECT 1 FROM public.surveys s
       WHERE s.id = survey_id AND s.status = 'open'
     )
+    AND EXISTS (
+      SELECT 1 FROM public.survey_questions q
+      WHERE q.survey_id = survey_responses.survey_id AND q.key = survey_responses.question_key
+    )
+    AND (
+      team_id IS NULL
+      OR EXISTS (
+        SELECT 1 FROM public.teams t
+        WHERE t.id = team_id AND t.user_id = (SELECT auth.uid())
+      )
+    )
   );
 
 DROP POLICY IF EXISTS "Users can update own survey responses" ON public.survey_responses;
@@ -201,6 +223,32 @@ CREATE POLICY "Users can update own survey responses"
       SELECT 1 FROM public.surveys s
       WHERE s.id = survey_id AND s.status = 'open'
     )
+    AND EXISTS (
+      SELECT 1 FROM public.survey_questions q
+      WHERE q.survey_id = survey_responses.survey_id AND q.key = survey_responses.question_key
+    )
+    AND (
+      team_id IS NULL
+      OR EXISTS (
+        SELECT 1 FROM public.teams t
+        WHERE t.id = team_id AND t.user_id = (SELECT auth.uid())
+      )
+    )
+  );
+
+-- DELETE er noedvendig, ikke valgfri: rydder spilleren et felt, sletter siden
+-- raekken (et tomt svar skal ikke ligge som {"text": ""}). Uden policyen fejler
+-- sletningen tavst i RLS, og det gamle svar dukker op igen ved reload.
+DROP POLICY IF EXISTS "Users can delete own survey responses" ON public.survey_responses;
+CREATE POLICY "Users can delete own survey responses"
+  ON public.survey_responses FOR DELETE
+  TO authenticated
+  USING (
+    (SELECT auth.uid()) = user_id
+    AND EXISTS (
+      SELECT 1 FROM public.surveys s
+      WHERE s.id = survey_id AND s.status = 'open'
+    )
   );
 
 DROP POLICY IF EXISTS "Users can read own survey completions" ON public.survey_completions;
@@ -209,6 +257,11 @@ CREATE POLICY "Users can read own survey completions"
   TO authenticated
   USING ((SELECT auth.uid()) = user_id OR public.is_admin());
 
+-- En gennemfoerelse kraever mindst eet afgivet svar. Uden det kan en klient
+-- POSTe en tom completion direkte og puste svarprocenten op uden at have
+-- svaret paa noget (CodeRabbit-review paa PR). At haandhaeve "alle paakraevede
+-- spoergsmaal er besvaret" hoerer i en skrive-funktion; denne betingelse er
+-- den billige halvdel der faktisk lukker hullet der betyder noget.
 DROP POLICY IF EXISTS "Users can insert own survey completions" ON public.survey_completions;
 CREATE POLICY "Users can insert own survey completions"
   ON public.survey_completions FOR INSERT
@@ -219,21 +272,33 @@ CREATE POLICY "Users can insert own survey completions"
       SELECT 1 FROM public.surveys s
       WHERE s.id = survey_id AND s.status = 'open'
     )
+    AND EXISTS (
+      SELECT 1 FROM public.survey_responses r
+      WHERE r.survey_id = survey_completions.survey_id AND r.user_id = (SELECT auth.uid())
+    )
   );
 
+-- UPDATE kraever ogsaa at skemaet er aabent: uden det kan seconds_spent og
+-- completed_at aendres i det uendelige efter lukningen.
 DROP POLICY IF EXISTS "Users can update own survey completions" ON public.survey_completions;
 CREATE POLICY "Users can update own survey completions"
   ON public.survey_completions FOR UPDATE
   TO authenticated
   USING ((SELECT auth.uid()) = user_id)
-  WITH CHECK ((SELECT auth.uid()) = user_id);
+  WITH CHECK (
+    (SELECT auth.uid()) = user_id
+    AND EXISTS (
+      SELECT 1 FROM public.surveys s
+      WHERE s.id = survey_id AND s.status = 'open'
+    )
+  );
 
 COMMENT ON TABLE public.surveys IS
   '#4943 in-app spoergeskemaer. status draft -> open -> closed; kun open er synlig for spillere (RLS). Indhold seedes redaktionelt, EN+DA i samme raekke.';
 COMMENT ON TABLE public.survey_questions IS
   '#4943 spoergsmaal pr. skema. kind styrer frontendens kontrol; options = JSONB-array af {key,label_en,label_da}. EN+DA i samme raekke (redaktionelt indhold, ikke i18n-filer).';
 COMMENT ON TABLE public.survey_responses IS
-  '#4943 svar: een raekke pr. (skema, bruger, spoergsmaal), value som JSONB. Upsert paa survey_responses_survey_user_question_uniq, saa en spiller kan rette indtil skemaet lukker. Spillere laeser kun egne svar.';
+  '#4943 svar: een raekke pr. (skema, bruger, spoergsmaal), value som JSONB. Upsert paa survey_responses_survey_user_question_uniq, saa en spiller kan rette indtil skemaet lukker. Spillere laeser, skriver og sletter kun egne svar, og kun paa noegler der findes i skemaet.';
 COMMENT ON TABLE public.survey_completions IS
   '#4943 gennemfoerte besvarelser. Svarprocenten maales her, ikke paa survey_responses (eet kryds er ikke en besvarelse).';
 

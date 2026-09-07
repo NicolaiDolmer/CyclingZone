@@ -166,6 +166,10 @@ export async function installSurveyRoutes(page, { status = "open", completed = f
 
   await page.route(/\/rest\/v1\/survey_responses/, (route) => {
     const request = route.request();
+    // DELETE svarer 204 som PostgREST, ikke 200 med en tom liste: mocken maa
+    // ikke faa en sletning der i virkeligheden blev blokeret af RLS til at
+    // ligne en succes (CodeRabbit-review paa #4943).
+    if (request.method() === "DELETE") return route.fulfill({ status: 204, body: "" });
     if (request.method() !== "GET") return route.fulfill(body([]));
     return route.fulfill(body(responses));
   });

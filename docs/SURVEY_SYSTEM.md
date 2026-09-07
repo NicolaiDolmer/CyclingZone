@@ -48,11 +48,15 @@ node backend/scripts/sendSurveyInvite.mjs --survey 2026-09-features --apply
 ## 3. Segmentering: join-nøglerne
 
 Skemaet spørger **ikke** om division, sæsoner, hyppighed, Pro eller sprog
-(v2-udkastets Q1-Q6). Det står allerede i databasen og joines på `user_id`:
+(v2-udkastets Q1-Q6). Det står allerede i databasen. **Join på
+`survey_responses.team_id`, ikke på `user_id`,** når segmentet hænger på holdet:
+et join på bruger duplikerer hvert svar én gang pr. hold manageren ejer.
+`user_id` er den rigtige nøgle til de segmenter der hænger på kontoen (sprog,
+login-hyppighed, anciennitet).
 
 | Segment | Kilde | Nøgle |
 |---|---|---|
-| Division (1-4) | `teams.division` | `teams.user_id = survey_responses.user_id` (eller `teams.id = survey_responses.team_id`) |
+| Division (1-4) | `teams.division` | `teams.id = survey_responses.team_id` |
 | Liga-gruppe | `teams.league_division_id` | samme |
 | Sæsoner spillet | `count(DISTINCT season_standings.season_id)` | `season_standings.team_id = teams.id` |
 | Pro | `subscriptions.status = 'active'` | `subscriptions.team_id = teams.id` |
@@ -91,7 +95,9 @@ ud hvis der kommer et nyt skema.
 ```sql
 WITH s AS (SELECT id FROM public.surveys WHERE slug = '2026-09-features'),
 eligible AS (
-  SELECT count(*) AS n FROM public.teams
+  -- DISTINCT user_id, ikke count(*): invitationen sendes pr. BRUGER, og en
+  -- manager med to hold kan kun gennemfoere een gang.
+  SELECT count(DISTINCT user_id) AS n FROM public.teams
    WHERE is_ai = false AND is_test_account = false AND is_bank = false AND user_id IS NOT NULL
 )
 SELECT (SELECT n FROM eligible) AS eligible_managers,
@@ -173,7 +179,10 @@ SELECT area, count(*) AS picks,
 ```sql
 WITH s AS (SELECT id FROM public.surveys WHERE slug = '2026-09-features'),
 seg AS (
-  SELECT t.user_id,
+  -- Join paa team_id (svarets egen oejebliks-kopi), ikke paa user_id: et join
+  -- paa bruger duplikerer hvert svar én gang pr. hold manageren ejer og kan
+  -- placere det samme svar i to divisioner.
+  SELECT t.id AS team_id,
          t.division,
          EXISTS (SELECT 1 FROM public.subscriptions sub
                   WHERE sub.team_id = t.id AND sub.status = 'active') AS is_pro
@@ -186,7 +195,7 @@ rated AS (
          (rt.value->>'importance')::int AS importance
     FROM public.survey_responses resp
     JOIN s ON s.id = resp.survey_id
-    JOIN seg ON seg.user_id = resp.user_id
+    JOIN seg ON seg.team_id = resp.team_id
     CROSS JOIN LATERAL jsonb_each(resp.value->'ratings') AS rt(key, value)
    WHERE resp.question_key = 'feature_axes'
      AND COALESCE((rt.value->>'dont_know')::boolean, false) = false

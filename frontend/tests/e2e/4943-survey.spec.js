@@ -104,6 +104,31 @@ test("autosave skriver svaret uden at man trykker Send", async ({ page }) => {
   expect(writes.join(" ")).toContain('"score":9');
 });
 
+test("et ryddet svar slettes, i stedet for at blive gemt som en tom værdi", async ({ page }) => {
+  const methods = [];
+  await installNetworkMocks(page);
+  await installSurveyRoutes(page);
+  await page.route(/\/rest\/v1\/survey_responses/, (route) => {
+    const request = route.request();
+    methods.push(request.method());
+    if (request.method() === "DELETE") return route.fulfill({ status: 204, body: "" });
+    if (request.method() !== "GET") return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+  });
+  await stabilizePage(page);
+  await login(page);
+  await page.goto(`/survey/${SLUG}`);
+
+  const nps = page.getByRole("radiogroup").first().getByRole("radio").nth(9);
+  await nps.click();
+  await expect(page.getByText("Gemt").first()).toBeVisible();
+  // Klik på det valgte trin igen rydder svaret. Uden en DELETE-policy ville
+  // den gamle række blive stående og dukke op igen ved reload (#4943-review).
+  await nps.click();
+  await expect(nps).toHaveAttribute("aria-checked", "false");
+  await expect.poll(() => methods.includes("DELETE")).toBe(true);
+});
+
 test("et gennemført skema viser tak-fladen og vejen tilbage til svarene", async ({ page }) => {
   await openSurvey(page, { completed: true });
 

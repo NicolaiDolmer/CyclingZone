@@ -171,7 +171,12 @@ async function main() {
   let deduped = 0;
   let failed = 0;
   for (const userId of pending) {
-    const result = await notifyUser({ supabase: sb, userId, ...invite });
+    // dedupeWindowMs: 0 med vilje. notifyUser dedupliker paa (user, type,
+    // title, message, related_id) — og titel/tekst er de SAMME for ethvert
+    // skema, saa et skema udsendt inden for de sidste 24 timer ville faa
+    // invitation nr. 2 til at returnere "deduped" og aldrig lande. Scriptets
+    // egen idempotens er metadata.surveySlug-tjekket ovenfor, som er varigt.
+    const result = await notifyUser({ supabase: sb, userId, ...invite, dedupeWindowMs: 0 });
     if (result?.delivered) delivered += 1;
     else if (result?.deduped) deduped += 1;
     else failed += 1;
