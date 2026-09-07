@@ -14,8 +14,9 @@ import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
   SEED_TEAM_ORDERS,
   SEED_TEAM_ORDERS_BY_RACE,
-  SEED_DEV_TRANSITION, ACTIVE_SEASON,
+  SEED_DEV_TRANSITION, ACTIVE_SEASON, SEED_TEAM_RACE_POINTS_MV,
 } from "./seedData.js";
+import { NPS_MIN_RACE_DAYS } from "../lib/npsGating.js";
 
 // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — statefuld in-memory
 // toggle, samme princip som klubMock/plannerMock: POST flipper den, GET
@@ -80,6 +81,23 @@ export function installPreviewMock() {
       // de bliver inde i mocken — ellers falder fx sign-out igennem til ægte
       // fetch mod sentinel-URL'en og fejler i preview.
       if (/\/auth\/v1\//.test(url)) return jsonResponse({ message: "ok" });
+
+      // #4997 · NPS-bundbaren. Gaten er "holdet har mindst NPS_MIN_RACE_DAYS
+      // afsluttede løbsdage", læst som head+count på team_race_points_mv.
+      // Det delte seed giver testholdet 2 løbsdage, så baren ville aldrig
+      // kunne SES på preview. Bevidst KUN her og ikke i mockHandlers:
+      // Playwright-fixtures deler den fil, og en synlig bundbar ville flytte
+      // hvert eneste dashboard-snapshot (samme lagdeling som onboarding- og
+      // taktik-mocken nedenfor). Ejeren skal kunne klikke baren igennem på
+      // preview før den går live.
+      if (/\/rest\/v1\/team_race_points_mv/.test(url) && /team_id=eq\./.test(url)) {
+        const own = SEED_TEAM_RACE_POINTS_MV.filter((r) => r.team_id === TEST_TEAM.id);
+        const rows = own.slice();
+        while (rows.length < NPS_MIN_RACE_DAYS && own.length > 0) {
+          rows.push({ ...own[0], race_id: `preview-nps-race-${rows.length}` });
+        }
+        return jsonResponse(rows);
+      }
 
       // Supabase REST (PostgREST).
       if (/\/rest\/v1\//.test(url)) {

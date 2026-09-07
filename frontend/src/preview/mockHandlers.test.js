@@ -72,6 +72,32 @@ test("team_race_points_mv uden race_id-filter → hele seedet (StandingsPage-mø
   assert.ok(rows.length >= 4);
 });
 
+// #4997 — NPS-gaten laeser team_race_points_mv som head+count scopet paa ETT
+// hold. Uden team_id-filteret taeller mocken alle tre seed-hold (6 raekker), og
+// bundbaren ville dukke op i hvert eneste dashboard-snapshot.
+test("team_race_points_mv team_id=eq scoper til ét hold (NPS-gaten, #4997)", () => {
+  const rows = restRows(
+    "team_race_points_mv",
+    `https://x/rest/v1/team_race_points_mv?select=race_id&team_id=eq.${TEST_TEAM.id}`,
+  );
+  assert.ok(rows.length > 0, "testholdet skal have løbsdage i seedet");
+  assert.ok(rows.every(r => r.team_id === TEST_TEAM.id), "kun testholdets rækker");
+  assert.ok(
+    rows.length < restRows("team_race_points_mv", "https://x/rest/v1/team_race_points_mv?select=race_id").length,
+    "filteret skal faktisk skære rækker væk",
+  );
+});
+
+test("team_race_points_mv team_id + race_id kombineres (#4997)", () => {
+  const rows = restRows(
+    "team_race_points_mv",
+    `https://x/rest/v1/team_race_points_mv?team_id=eq.${TEST_TEAM.id}&race_id=in.(pool-race-done-2)`,
+  );
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].team_id, TEST_TEAM.id);
+  assert.equal(rows[0].race_id, "pool-race-done-2");
+});
+
 // #1997 S1 — Palmarès-fanens rytter-scopede query (RiderStatsPage.fetchAllRiderSeasonRows).
 test("race_results rider_id=eq.rider-1 → palmarès-seed med race:-embed + team_name", () => {
   const rows = restRows("race_results", "https://x/rest/v1/race_results?rider_id=eq.rider-1&select=rank,team_name");

@@ -137,6 +137,13 @@ export const KNOWN_EVENTS = Object.freeze([
   // ikke tørrer ud; 0 impressions ville betyde enten at ingen bliver stoppet
   // eller at instrumenteringen er faldet ud.
   "action_rejected",
+  // NPS (#4997) — nps_submitted fyrer ved et gemt svar, nps_dismissed når
+  // spilleren lukker prompten. Før #4997 blev et luk kun til setVisible(false),
+  // så vi kunne ikke skelne "lukkede den" fra "så den aldrig": 40 af 262 brugere
+  // havde fået prompten vist, 9 havde svaret, og de 31 imellem var et sort hul.
+  // Forholdet mellem de to events er selve målingen ejeren bad om 7/9.
+  "nps_submitted",
+  "nps_dismissed",
 ]);
 
 async function _logEvent(name, data) {
