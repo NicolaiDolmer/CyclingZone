@@ -834,8 +834,8 @@ export const TIME_LIMIT_EXTRA_TUNING = deepFreeze(timeLimitExtra);
 //
 //   beskyttelses-gab, middel (spaend over seeds)
 //     v3 (uaendret referencemotor)  7,10 (3,67-9,99)
-//     v4 foer denne kalibrering     0,46 (-1,62-2,72)
-//     v4 med tallene nedenfor       7,81 (4,84-10,25)
+//     v4 foer denne kalibrering    -0,06 (-2,01-2,10)
+//     v4 med tallene nedenfor       7,35 (4,38-10,19)
 //
 // INTET anker skifter dom mellem foer og efter, og hale-gaten (§9 punkt 13)
 // er PASS paa alle tre laaste baand i begge koersler. Beslutningsgrundlaget
