@@ -30,6 +30,10 @@ import { menuClass, menuItemClass } from "../ui/menuStyles.js";
 // ~6 rækker + overskriftslinjen. Panelet må aldrig dække hele skærmen på 390px.
 const PANEL_MAX_HEIGHT = 232;
 const PANEL_GAP = 4;
+// Panelet følger feltets venstrekant, men ikke dets bredde: et 1330px bredt
+// felt ville give én kort navnerække strakt over hele skærmen. Det er et
+// navneopslag, ikke en tabel.
+const PANEL_MAX_WIDTH = 320;
 
 function sameRect(a, b) {
   if (!a || !b) return a === b;
@@ -194,7 +198,7 @@ export default function MentionAutocomplete({ textareaId, value, onChange, t }) 
       className={`fixed z-dropdown overflow-y-auto ${menuClass()}`}
       style={{
         left: anchor.left,
-        width: anchor.width,
+        width: Math.min(anchor.width, PANEL_MAX_WIDTH),
         maxHeight: PANEL_MAX_HEIGHT,
         ...(anchor.top == null ? { bottom: anchor.bottom } : { top: anchor.top }),
       }}
