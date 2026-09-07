@@ -43,20 +43,21 @@
 // rytters felt, den committede juli-population). To ting er vaerd at vide for
 // den naeste der roerer M7, saa maalingen ikke skal koeres forfra:
 //
-//  1. Sliddet kan IKKE lukke #4885's hale-hul. Hale-spredningen (vinder ->
-//     sidsteplads som andel af vindertiden) er i praksis laast af
-//     segmentLoop's fart-model: gruppe-gap'et akkumuleres af
-//     `1 + terrain.strengthSpeedGain * (collectiveCp - baseDemand[kind])`, som
-//     laeser CP-forskelle ABSOLUT mod en konstant kalibreret for et midt-skala
-//     felt. Den aegte populations CP ligger naer 0,1, saa to gruppers fart kan
-//     hoejst skille sig et par procent — uanset hvor haardt en pr.-rytter-
-//     mekanik slider. Diagnostisk maalt (IKKE shippet, ejer-gated kalibrering,
-//     #4707/#4885): alene at haeve `strengthSpeedGain` flytter bjerg-halen fra
-//     ~3,4 % til ~14,9 %, dvs. ind i virkelighedens 8-15 %-baand — og braekker
-//     samtidig felt-sammenhaengen paa flade etaper, saa den skal kalibreres for
-//     sig. Det er samme fejlfamilie som #4604 rettede i `tickGroupRiders`
-//     (absolut konstant mod en evne-relativ skala), og den overlevede i
-//     `computeSegmentSpeedKmh`.
+//  1. Sliddet kan IKKE lukke #4885's hale-hul — halen bor i fart-modellen,
+//     ikke her. FORAELDET DEL AF DENNE NOTE, rettet 7/9 (#4914): den sagde at
+//     gruppe-gap'et akkumuleres af
+//     `1 + terrain.strengthSpeedGain * (collectiveCp - baseDemand[kind])` og at
+//     en hale i baandet kraevede en ejer-gated haevning af `strengthSpeedGain`.
+//     Den absolutte form findes ikke laengere: #4885 (PR #4935) gjorde
+//     styrke-leddet RELATIVT til feltets egen reference-CP med en terraen-vaegt
+//     og en konveks underskuds-gren (`segmentLoop.groupStrengthSpeedFactor` +
+//     `STRENGTH_SPEED_EXTRA_TUNING`), og #4914 kalibrerede de to grene mod den
+//     pinnede 7/9-population. `strengthSpeedGain` er dermed IKKE laengere
+//     haandtaget for halen — det er `deficitWeight`/`deficitExponent` (halen)
+//     og `surplusWeight` (bjerg-top-10-spredningen) i tuning.ts.
+//     Konklusionen — at M7's slid ikke kan levere halen — staar uaendret; kun
+//     vejen dertil er en anden. Fejlfamilien er stadig den samme som #4604
+//     rettede i `tickGroupRiders` (absolut konstant mod en evne-relativ skala).
 //  2. Krav-siden er MAETTET og duer ikke som angrebspunkt. En variant hvor
 //     sliddet i stedet ganges paa rytterens `demand` blev bygget og maalt:
 //     effekten var nul, fordi medianrytteren i forvejen ligger over CP stort
