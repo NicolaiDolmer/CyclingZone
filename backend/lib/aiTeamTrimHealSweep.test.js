@@ -129,12 +129,22 @@ test("#2434 sweep: hold blokeret af et STALLET løb flagges stale (reason=blocki
   assert.equal(res.stale[0].poolId, "pool-b");
   assert.equal(res.stale[0].reason, "blocking_race_stalled");
   assert.deepEqual(res.stale[0].stalledRaceIds, ["race-stalled"]);
+  assert.equal(res.stale[0].blockKind, "blocking_race");
+  assert.deepEqual(res.stale[0].raceIds, ["race-stalled"]);
 });
 
 test("#2434 sweep: blokering > backstop flagges stale (reason=pending_exceeds_backstop)", async () => {
   const now = new Date("2026-07-14T12:00:00Z");
   const rows = [
-    { id: "ai-old", name: "AI Old", is_ai: true, league_division_id: "pool-c", pending_removal_at: hoursAgo(now, STALE_BACKSTOP_HOURS + 1) },
+    // #4828: blocked_reason/blocked_since modellerer at DENNE klasse (blocking_race)
+    // har gjaeldt uafbrudt siden markoeringen — uden det ville sweep'en nulstille
+    // uret paa foerste tick (se de nye #4828-tests nedenfor for netop dét).
+    {
+      id: "ai-old", name: "AI Old", is_ai: true, league_division_id: "pool-c",
+      pending_removal_at: hoursAgo(now, STALE_BACKSTOP_HOURS + 1),
+      pending_removal_blocked_reason: "blocking_race",
+      pending_removal_blocked_since: hoursAgo(now, STALE_BACKSTOP_HOURS + 1),
+    },
   ];
   const res = await runAiTeamTrimHealSweep({
     supabase: teamsMock(rows),
@@ -147,7 +157,67 @@ test("#2434 sweep: blokering > backstop flagges stale (reason=pending_exceeds_ba
 
   assert.equal(res.stale.length, 1, "backstop fanger uforklarligt lang blokering");
   assert.equal(res.stale[0].reason, "pending_exceeds_backstop");
+  assert.equal(res.stale[0].blockKind, "blocking_race");
+  assert.deepEqual(res.stale[0].raceIds, ["race-running"]);
   assert.ok(res.stale[0].ageHours >= STALE_BACKSTOP_HOURS);
+});
+
+// #4828 (CYCLINGZONE-58): kernen i fixet — markøren kan være ældgammel fra en
+// TIDLIGERE blokerings-årsag, mens den GÆLDENDE årsag kun lige er opstået. Den
+// gamle logik alarmerede alligevel (den målte pending_removal_at). Fixet nulstiller
+// uret når klassen skifter, så et lovligt, netop-opstået løb ikke arver en
+// uges gammel markør fra en helt anden, for længst løst blokering.
+test("#4828 sweep: markør ældgammel fra LØST årsag, ny årsag netop opstået → ALARMERER IKKE (uret nulstillet)", async () => {
+  const now = new Date("2026-09-05T12:00:00Z");
+  const rows = [
+    {
+      id: "ai-1", name: "AI One", is_ai: true, league_division_id: "pool-a",
+      pending_removal_at: hoursAgo(now, STALE_BACKSTOP_HOURS + 50), // markøren er UGER gammel
+      pending_removal_blocked_reason: "transfer_offers_fk", // men den GAMLE årsag var noget andet
+      pending_removal_blocked_since: hoursAgo(now, STALE_BACKSTOP_HOURS + 50),
+    },
+  ];
+  const written = [];
+  const res = await runAiTeamTrimHealSweep({
+    supabase: teamsMock(rows),
+    now,
+    teamBlockingRaceIds: async () => ["race-fresh"], // NY årsag: et helt almindeligt, lige opstået løb
+    getStalledIds: async () => [],
+    removeTeam: async () => { throw new Error("må ikke kaldes"); },
+    getInflightIds: async () => ["race-fresh"],
+    updateBlockState: async (_sb, teamId, state) => { written.push({ teamId, ...state }); },
+  });
+
+  assert.deepEqual(res.stale, [], "klassen skiftede → uret nulstillet → 0t gammel, ingen alarm");
+  assert.equal(written.length, 1, "den nye klasse skrives til DB");
+  assert.equal(written[0].reason, "blocking_race");
+  assert.equal(written[0].since, now.toISOString());
+});
+
+test("#4828 sweep: SAMME årsag som forrige tick → uret komponerer IKKE (blocked_since bevares, ingen skrivning)", async () => {
+  const now = new Date("2026-09-05T12:00:00Z");
+  const since = hoursAgo(now, 3);
+  const rows = [
+    {
+      id: "ai-1", name: "AI One", is_ai: true, league_division_id: "pool-a",
+      pending_removal_at: hoursAgo(now, STALE_BACKSTOP_HOURS + 50),
+      pending_removal_blocked_reason: "blocking_race",
+      pending_removal_blocked_since: since,
+    },
+  ];
+  const written = [];
+  const res = await runAiTeamTrimHealSweep({
+    supabase: teamsMock(rows),
+    now,
+    teamBlockingRaceIds: async () => ["race-fresh"], // uændret klasse ift. rækken
+    getStalledIds: async () => [],
+    removeTeam: async () => { throw new Error("må ikke kaldes"); },
+    getInflightIds: async () => ["race-fresh"],
+    updateBlockState: async (_sb, teamId, state) => { written.push({ teamId, ...state }); },
+  });
+
+  assert.deepEqual(res.stale, [], "3t gammel, uændret klasse — under backstoppen");
+  assert.deepEqual(written, [], "uændret klasse skriver ikke ved hver tick");
 });
 
 test("#2389 sweep: hold med uudbetalte præmier (< backstop) udskydes, ikke stale", async () => {
@@ -174,7 +244,12 @@ test("#2389 sweep: hold med uudbetalte præmier (< backstop) udskydes, ikke stal
 test("#2389 sweep: præmie-blokeret hold > backstop rapporteres stale (auto-prize reelt død)", async () => {
   const now = new Date("2026-07-14T12:00:00Z");
   const rows = [
-    { id: "ai-unpaid-stale", name: "AI Unpaid Stale", is_ai: true, league_division_id: "pool-c", pending_removal_at: hoursAgo(now, STALE_BACKSTOP_HOURS + 2) },
+    {
+      id: "ai-unpaid-stale", name: "AI Unpaid Stale", is_ai: true, league_division_id: "pool-c",
+      pending_removal_at: hoursAgo(now, STALE_BACKSTOP_HOURS + 2),
+      pending_removal_blocked_reason: "unpaid_prizes",
+      pending_removal_blocked_since: hoursAgo(now, STALE_BACKSTOP_HOURS + 2),
+    },
   ];
   const res = await runAiTeamTrimHealSweep({
     supabase: teamsMock(rows),
@@ -189,6 +264,7 @@ test("#2389 sweep: præmie-blokeret hold > backstop rapporteres stale (auto-priz
   assert.equal(res.stale.length, 1, "vedvarende præmie-blokering eskaleres via backstop");
   assert.equal(res.stale[0].teamId, "ai-unpaid-stale");
   assert.equal(res.stale[0].reason, "pending_exceeds_backstop");
+  assert.equal(res.stale[0].blockKind, "unpaid_prizes");
 });
 
 test("#2187 sweep: per-hold fejl isoleres (én fejler, resten heales)", async () => {
@@ -304,7 +380,12 @@ test("#4233 sweep: hold med blokerende transfer_offers slettes IKKE — markoere
 test("#4233 sweep: tilbuds-blokering over backstoppen rapporteres stale, aldrig tvangsslettet", async () => {
   const now = new Date("2026-07-12T12:00:00Z");
   const rows = [
-    { id: "ai-1", name: "AI One", is_ai: true, league_division_id: "pool-a", pending_removal_at: hoursAgo(now, STALE_BACKSTOP_HOURS + 24) },
+    {
+      id: "ai-1", name: "AI One", is_ai: true, league_division_id: "pool-a",
+      pending_removal_at: hoursAgo(now, STALE_BACKSTOP_HOURS + 24),
+      pending_removal_blocked_reason: "transfer_offers_fk",
+      pending_removal_blocked_since: hoursAgo(now, STALE_BACKSTOP_HOURS + 24),
+    },
   ];
   const removed = [];
   const res = await runAiTeamTrimHealSweep({
@@ -325,6 +406,7 @@ test("#4233 sweep: tilbuds-blokering over backstoppen rapporteres stale, aldrig 
   assert.deepEqual(removed, [], "backstoppen sletter aldrig — den melder");
   assert.equal(res.stale.length, 1);
   assert.equal(res.stale[0].reason, "pending_exceeds_backstop");
+  assert.equal(res.stale[0].blockKind, "transfer_offers_fk");
 });
 
 test("#2187 sweep: ingen kandidater → no-op", async () => {

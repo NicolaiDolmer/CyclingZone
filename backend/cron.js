@@ -838,6 +838,20 @@ async function runRiderDeriveHealSweepCron() {
 const AI_TRIM_STALL_ALERT_KEY = "ai-trim-persistent-stall";
 const AI_TRIM_STALL_REALERT_MS = 24 * 60 * 60 * 1000;
 
+// #4974 (CodeRabbit-fund på #4828): et hold kan skifte fra ét stalled
+// blocking_race til et andet mens `reason` forbliver blocking_race_stalled —
+// hold+reason alene gør derfor skiftet usynligt for shouldAlertOnChange.
+// Signaturen tager også blockKind + en stabil, SORTERET raceIds-streng med
+// (rækkefølgen fra kilden må aldrig i sig selv se ud som en ændring).
+// Exporteret for testbarhed (se cron.staleAlertSignature.test.js).
+export function buildStaleAlertSignature(staleList) {
+  return buildAlertSignature(
+    staleList.map(
+      (s) => `${s.teamId}:${s.reason}:${s.blockKind ?? ""}:${[...(s.raceIds ?? [])].sort().join(",")}`
+    )
+  );
+}
+
 async function runAiTeamTrimHealSweepCron() {
   const result = await runAiTeamTrimHealSweep({ supabase, now: new Date() });
   if (result.healed) {
@@ -886,7 +900,7 @@ async function runAiTeamTrimHealSweepCron() {
   const staleList = result.stale ?? [];
   // Hold + årsag, ikke alder: ageHours ticker hvert femte minut og ville få hver
   // eneste tick til at ligne en ændring.
-  const staleSignature = buildAlertSignature(staleList.map((s) => `${s.teamId}:${s.reason}`));
+  const staleSignature = buildStaleAlertSignature(staleList);
   const { alert: staleAlert } = await shouldAlertOnChange({
     supabase,
     alertKey: AI_TRIM_STALL_ALERT_KEY,
@@ -912,9 +926,13 @@ async function runAiTeamTrimHealSweepCron() {
       fingerprint: ["ai-trim-persistent-stall"],
       extra: {
         count: n,
-        teams: staleList.map((s) =>
-          `${s.teamId} (pool ${s.poolId}): ${s.reason}, ${s.ageHours}t${s.message ? ` — ${s.message}` : ""}`
-        ),
+        // #4828: blokerings-klasse (+ race-id'er for blocking_race) følger med, så
+        // et Sentry-event kan afgøres uden en DB-session — ageHours er nu
+        // blokeringens alder (blockedSince), ikke markørens (pendingSince).
+        teams: staleList.map((s) => {
+          const kind = s.blockKind ? ` [${s.blockKind}${s.raceIds?.length ? `: ${s.raceIds.join(",")}` : ""}]` : "";
+          return `${s.teamId} (pool ${s.poolId}): ${s.reason}${kind}, ${s.ageHours}t${s.message ? ` — ${s.message}` : ""}`;
+        }),
       },
     });
   }
