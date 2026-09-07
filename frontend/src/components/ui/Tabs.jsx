@@ -51,11 +51,27 @@ export function Tab({ value: tabValue, className = "", children }) {
   // #3200: fanerækken scroller vandret på mobil. Da Indbakken fik sin femte
   // fane, lå den aktive fane uden for skærmen på 390px når man kom ind via et
   // deep link — ingen understregning nogen steder, og fanen kunne kun findes
-  // ved at gætte at rækken kunne skubbes. `block: "nearest"` gør intet når
-  // fanen allerede er synlig, så eksisterende sider er urørte.
+  // ved at gætte at rækken kunne skubbes.
+  //
+  // Kun VANDRET, og kun på selve tablisten. Den oplagte `scrollIntoView({
+  // block: "nearest" })` blev prøvet først og rullede HELE siden nogle få
+  // pixels, så den klistrede topbjælke forsvandt ud af billedet på mobil
+  // (fanget af core-smoke's finance-snapshot). Et fane-skift må aldrig flytte
+  // sidens lodrette position.
   useEffect(() => {
     if (!active) return;
-    ref.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const el = ref.current;
+    const list = el?.closest('[role="tablist"]');
+    if (!el || !list) return;
+    if (list.scrollWidth <= list.clientWidth) return; // rækken kan ikke scrolle
+    const pad = 16;
+    const left = el.offsetLeft - list.offsetLeft;
+    const right = left + el.offsetWidth;
+    if (left - pad < list.scrollLeft) {
+      list.scrollLeft = Math.max(0, left - pad);
+    } else if (right + pad > list.scrollLeft + list.clientWidth) {
+      list.scrollLeft = right + pad - list.clientWidth;
+    }
   }, [active]);
 
   return (
@@ -66,9 +82,7 @@ export function Tab({ value: tabValue, className = "", children }) {
       aria-selected={active}
       tabIndex={active ? 0 : -1}
       onClick={() => ctx?.onChange?.(tabValue)}
-      // scroll-mx-4: giver scrollIntoView lidt luft, saa en fane med badge
-      // ikke lander praecis i kanten med taelleren klippet af.
-      className={`scroll-mx-4 ${tabClass({ active })} ${className}`}
+      className={`${tabClass({ active })} ${className}`}
     >
       {children}
     </button>
