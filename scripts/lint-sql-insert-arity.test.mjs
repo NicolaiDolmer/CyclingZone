@@ -113,3 +113,18 @@ INSERT INTO t (a, b) /* two columns */ VALUES (1, 2); -- ok
 `;
   assert.deepEqual(scan(src, '/tmp/test-comments.sql'), []);
 });
+
+test('nested block comments (PostgreSQL semantics) do not leak SQL-looking text into the scan', () => {
+  // PostgreSQL block comments NEST, unlike C: `/* outer /* inner */ still
+  // comment */` is ONE comment start-to-end. A scanner that (incorrectly)
+  // closes on the FIRST `*/` would treat the text after "inner */" as live
+  // SQL — and here that text is a genuinely mismatched INSERT (2 columns,
+  // 1 value), which is still fully inside the (correctly nested) outer
+  // comment and must NOT be flagged. CodeRabbit review finding on the
+  // #4943 PR: the original implementation used a boolean flag instead of a
+  // nesting-depth counter and would report a false positive here.
+  const src =
+    '/* outer comment /* inner */ INSERT INTO t (a, b) VALUES (1) still comment */\n' +
+    'INSERT INTO t (a, b) VALUES (1, 2);\n';
+  assert.deepEqual(scan(src, '/tmp/test-nested-comment.sql'), []);
+});

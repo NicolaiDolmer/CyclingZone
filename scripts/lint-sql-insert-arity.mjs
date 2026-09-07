@@ -78,7 +78,11 @@ export function stripCommentsAndDollarQuotes(source) {
   let out = '';
   let i = 0;
   let inLineComment = false;
-  let inBlockComment = false;
+  let blockCommentDepth = 0; // PostgreSQL block comments NEST (unlike C) —
+  // /* outer /* inner */ still comment */ is one comment, not two. A
+  // boolean flag would close on the FIRST `*/`, exposing the SQL-looking
+  // tail of an outer comment to the scanner and risking a false arity
+  // finding (CodeRabbit review on #4943's PR).
   let inString = false; // single-quoted string — must still track to avoid
   // treating `--` or `/*` inside a string literal as a real comment opener.
   let dollarTag = null; // string tag when inside a dollar-quoted body, else null
@@ -94,11 +98,17 @@ export function stripCommentsAndDollarQuotes(source) {
       continue;
     }
 
-    if (inBlockComment) {
-      if (c2 === '*/') {
+    if (blockCommentDepth > 0) {
+      if (c2 === '/*') {
+        blockCommentDepth++;
         out += '  ';
         i += 2;
-        inBlockComment = false;
+        continue;
+      }
+      if (c2 === '*/') {
+        blockCommentDepth--;
+        out += '  ';
+        i += 2;
         continue;
       }
       out += c === '\n' ? '\n' : ' ';
@@ -147,7 +157,7 @@ export function stripCommentsAndDollarQuotes(source) {
       continue;
     }
     if (c2 === '/*') {
-      inBlockComment = true;
+      blockCommentDepth = 1;
       out += '  ';
       i += 2;
       continue;
