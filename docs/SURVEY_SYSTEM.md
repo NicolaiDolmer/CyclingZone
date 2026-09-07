@@ -74,7 +74,11 @@ login-hyppighed, anciennitet).
 | Anciennitet | `users.created_at`, `teams.created_at` | samme |
 
 `survey_responses.team_id` er et øjebliksbillede taget da svaret blev gemt, så
-et svar kan stadig placeres hvis holdet senere skifter ejer eller nedlægges.
+et svar kan stadig placeres hvis holdet senere skifter ejer. Bliver holdet
+derimod slettet, sætter `ON DELETE SET NULL` `team_id` til NULL på svaret, og
+den team-baserede segmentering (division, Pro, sæsoner) går tabt for netop det
+svar; svaret selv og de øvrige segmenter (sprog, login-hyppighed) på `user_id`
+består (CodeRabbit-review på #5006).
 
 **Findes ikke i databasen:** platform (telefon/computer). v2s Q5 er droppet
 uden erstatning. Skal den krydses, kommer tallet fra Clarity/GA, ikke herfra.
