@@ -1296,13 +1296,24 @@ export const SEED_STAGE_ROLES_BY_RACE = {
       { stage_number: 1, rider_id: RIDERS[0].id, race_role: "captain", effort: "all_out" },
     ],
   },
+  // #4917: var INTENTION_RIDERS.slice(0, 4) — hero'en (stage-roles' riders.length)
+  // sagde "Selected 4" mens Hold-fanens FØR-panel (RaceSelectionPanel, GET /selection
+  // → SEED_SELECTION → SEED_BOARD_ROSTER) sagde "1/8 valgt". Årsagen: RIDERS-arrayet
+  // (seedData.js top) har kun ÉT ægte TEST_TEAM-rytter (rider-1); de tre ekstra
+  // INTENTION_RIDERS er BEVIDST fiktive (rider-95/96/97, se kommentaren ovenfor
+  // INTENTION_RIDERS) og lever aldrig i SEED_RACE_ENTRIES eller SEED_BOARD_ROSTER.
+  // Prod læser BEGGE flader fra samme race_entries-tabel, så de kan aldrig være
+  // uenige der — fladerne skal derfor heller ikke være det i preview. Rettet ved at
+  // matche panelets ene ægte rytter i stedet for at opdigte flere race_entries-
+  // rækker for ryttere der ikke findes i RIDERS/roster (ville flytte hvem der ses
+  // som "bundet" til løbet andre steder i preview).
   "race-up-1": {
     enabled: true,
     intention_enabled: false,
     valid_efforts: INTENTION_EFFORTS_THREE,
     stages_completed: 0,
     stage_count: 4,
-    riders: INTENTION_RIDERS.slice(0, 4),
+    riders: INTENTION_RIDERS.slice(0, 1),
     overrides: [],
   },
   // #4613: det AFSLUTTEDE etapeloeb. Hold-fanen viser her rolle + GC-placering

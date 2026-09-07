@@ -1221,7 +1221,7 @@
       },
       "stageTactics": {
         "title": "Stage races: roles and effort per stage",
-        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort: Work goes all in for the team today but builds extra fatigue, Normal rides normally, and Save legs eases off to stay fresher for the days that matter. If a rider takes the leader's jersey, a shortcut makes him captain for the remaining stages. Stages where you set nothing simply use the rider's race role."
+        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort: Work goes all in for the team today but builds extra fatigue, Normal rides normally, and Save legs eases off to stay fresher for the days that matter. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role."
       },
       "strategy": {
         "title": "Team strategy (standing preferences)",

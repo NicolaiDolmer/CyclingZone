@@ -19,15 +19,35 @@
 //
 // FOG OF WAR: ingen procenter, ingen loft-signaler. Fit/form/træthed er de
 // SAMME tal holdudtagelsen allerede viser for spillerens EGNE ryttere.
+//
+// #4917/#2034: førertrøje-genvejen er tilbage her (den boede i den nedlagte
+// etape-taktik-matrix) — en KORT linje, ingen ny sektion, kun i UNDER-fasen
+// (kaptajnen gælder hele løbet nu, ejer 6/9; FØR findes ingen fører endnu, og
+// EFTER er der ingen etaper tilbage at give kaptajnbåndet på). Genbruger
+// stage-roles' PUT (samme endpoint som Taktik-fanens Gem) via den fulde
+// draft-matrix, så et klik ikke nulstiller andre ryttere/etapers allerede-satte
+// taktik — se kommentaren over applyJerseyCaptainShortcut.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import RaceSelectionPanel from "./RaceSelectionPanel.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import { Section, SectionHeader, Button, SkeletonLines, LockIcon } from "../ui/index.js";
 import { WRAP, SCROLLER } from "../ui/dataTableStyles.js";
-import { overridesIndex, resolveCell, baseRoleForRider } from "../../lib/stageRoleMatrixLogic.js";
+import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
+import {
+  overridesIndex,
+  resolveCell,
+  baseRoleForRider,
+  buildDraftMatrix,
+  diffToOverrides,
+  jerseyLeaderId,
+  applyJerseyCaptainShortcut,
+  isJerseyLeaderCaptainOnAllRemainingStages,
+} from "../../lib/stageRoleMatrixLogic.js";
 import { DEFAULT_EFFORT } from "../../lib/raceIntention.js";
+
+const API = import.meta.env.VITE_API_URL;
 
 const ROLE_KEY = {
   captain: "captain",
@@ -127,6 +147,10 @@ export default function RaceTeamTab({
   // FØR løbet bruges svaret ikke: fanen ER holdudtagelsen, og RaceSelectionPanel
   // henter sin egen kontekst fra /selection.
   const data = stageRoles;
+  // #4917: førertrøje-genvejens gem-status. Hook'et SKAL kaldes ubetinget FØR
+  // phase==="before"/data===null-returnsene nedenfor (rules of hooks) — samme
+  // mønster som RaceSelectionPanel's earlySaving.
+  const [jerseyStatus, setJerseyStatus] = useState("idle"); // idle | saving | error
 
   const riders = useMemo(() => data?.riders ?? [], [data?.riders]);
   const overridesMap = useMemo(() => overridesIndex(data?.overrides), [data?.overrides]);
@@ -181,6 +205,52 @@ export default function RaceTeamTab({
 
   const isOneDay = stageNumbers.length <= 1;
   const afterRace = phase === "after";
+  const stagesCompleted = data.stages_completed ?? 0;
+  const nextEditableStage = stagesCompleted + 1;
+
+  // #4917/#2034: førertrøje-genvej — kun mens løbet kører (kaptajnen gælder
+  // hele løbet nu, ejer 6/9: FØR findes ingen fører endnu, EFTER er der ingen
+  // etaper tilbage at give kaptajnbåndet på). `data.enabled` spejler Taktik-
+  // fanens egen gate (samme skrive-endpoint) — genvejen skriver aldrig når den
+  // officielle redigeringsflade selv er skjult.
+  const jerseyLeaderRiderId = phase === "during" && data.enabled
+    ? jerseyLeaderId({ riders, gcRankByRider })
+    : null;
+  const jerseyLeaderRider = jerseyLeaderRiderId
+    ? riders.find((r) => r.rider_id === jerseyLeaderRiderId) ?? null
+    : null;
+  // #4917: skal tjekke ALLE resterende etaper, ikke kun den næste — ellers
+  // skjules genvejen selvom en senere etape stadig har en anden kaptajn, og
+  // genvejen kan netop rette op på "alle resterende etaper" (CodeRabbit 7/9).
+  const jerseyLeaderIsCaptain = jerseyLeaderRider
+    ? isJerseyLeaderCaptainOnAllRemainingStages({ rider: jerseyLeaderRider, stageNumbers, stagesCompleted, overridesMap })
+    : true;
+  const showJerseyShortcut = Boolean(jerseyLeaderRider) && !jerseyLeaderIsCaptain && nextEditableStage <= stageNumbers.length;
+
+  async function applyJerseyShortcut() {
+    if (!jerseyLeaderRiderId) return;
+    setJerseyStatus("saving");
+    const headers = await authHeaders();
+    if (!headers) { setJerseyStatus("error"); return; }
+    try {
+      // Altid den FULDE draft-matrix, aldrig kun førerens celle — se kommentaren
+      // over applyJerseyCaptainShortcut for hvorfor (PUT'ens REPLACE-semantik).
+      const draft = buildDraftMatrix({ riders, overrides: data.overrides, stageNumbers, stagesCompleted });
+      const next = applyJerseyCaptainShortcut({
+        matrix: draft, leaderId: jerseyLeaderRiderId, stageNumbers, stagesCompleted,
+      });
+      const res = await fetch(`${API}/api/races/${raceId}/stage-roles`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ overrides: diffToOverrides({ matrix: next, riders }) }),
+      });
+      if (!res.ok) { setJerseyStatus("error"); return; }
+      setJerseyStatus("idle");
+      onReload?.();
+    } catch {
+      setJerseyStatus("error");
+    }
+  }
 
   return (
     <Section data-testid="race-team-tab">
@@ -192,6 +262,19 @@ export default function RaceTeamTab({
         <LockIcon size={12} aria-hidden="true" />
         {t(afterRace ? "racePage.team.afterNote" : "racePage.team.duringNote")}
       </p>
+      {showJerseyShortcut && (
+        <div data-testid="jersey-captain-shortcut" className="mb-3 pb-3 border-b border-cz-border flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-cz-2">
+            {t("racePage.team.jerseyShortcutNote", { name: jerseyLeaderRider.name || "—" })}
+          </p>
+          <Button variant="secondary" size="sm" disabled={jerseyStatus === "saving"} onClick={applyJerseyShortcut}>
+            {jerseyStatus === "saving" ? t("racePage.team.jerseyShortcutSaving") : t("racePage.team.jerseyShortcutAction")}
+          </Button>
+        </div>
+      )}
+      {jerseyStatus === "error" && (
+        <p className="text-xs text-cz-danger mb-3">{t("racePage.team.jerseyShortcutError")}</p>
+      )}
       <ReadOnlyRoster
         t={t}
         riders={riders}

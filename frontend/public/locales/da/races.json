@@ -505,7 +505,6 @@
     "boundIn": "Kører {race}",
     "boundConflict": "Overlapper {race}",
     "autoPicked": "Assistentens valg. Justér og gem for selv at tage styringen.",
-    "raceLiveNote": "Løbet er i gang. Du kan stadig fjerne ryttere (fx ved skade), men der kan ikke tilføjes nye før løbet er slut.",
     "autoFill": "Auto-udtag",
     "autoFillError": "Auto-udtag mislykkedes. Prøv igen.",
     "save": "Gem udtagelse",
@@ -761,7 +760,11 @@
       "noRiders": "Du har ingen ryttere i det her løb.",
       "gc": "Samlet",
       "stageShort": "Et {number}",
-      "dnf": "DNF"
+      "dnf": "DNF",
+      "jerseyShortcutNote": "{name} fører sammenlagt, men er ikke din kaptajn.",
+      "jerseyShortcutAction": "Gør til kaptajn",
+      "jerseyShortcutSaving": "Gemmer…",
+      "jerseyShortcutError": "Kunne ikke gemme. Prøv igen."
     },
     "overview": {
       "gap": "Tid",

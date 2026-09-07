@@ -3,10 +3,16 @@
 //
 // #4613: etape-taktik-matrixen (StageRoleMatrix.jsx) og dens rolle-dropdown er
 // væk. Rollen gælder HELE løbet (ejer 6/9) og sættes i holdudtagelsen, så
-// EXCLUSIVE_ROLES / demoteOtherHoldersOfRole / setCellWithRoleExclusivity /
-// jerseyLeaderId / applyJerseyCaptainShortcut havde ingen kaldere tilbage og er
-// slettet. Rolle-eksklusiviteten håndhæves fortsat af backendens
+// EXCLUSIVE_ROLES / demoteOtherHoldersOfRole / setCellWithRoleExclusivity er
+// slettet — de håndhævede rolle-eksklusivitet PR. CELLE i et dropdown-UI der
+// ikke findes mere. Rolle-eksklusiviteten håndhæves fortsat af backendens
 // validateStageRoleOverrides — den ene tilbageværende vagt, jf. dens kommentar.
+//
+// #4917: jerseyLeaderId/applyJerseyCaptainShortcut er GENINDFØRT (#2034) —
+// bragt tilbage som en kort genvej i Hold-fanen (RaceTeamTab) i stedet for den
+// nedlagte matrix. Semantikken er uændret: sæt GC-førerens captain-override for
+// resten af løbet, demotér en evt. anden effektiv kaptajn til helper. Se
+// funktionerne nedenfor for hvorfor de altid opererer på den FULDE draft-matrix.
 //
 // Matrix-repræsentation (kun REDIGERBARE etaper, dvs. stage_number >
 // stages_completed): { [stageNumber]: { [riderId]: { race_role, effort } } }.
@@ -138,4 +144,56 @@ export function isDirty(draftMatrix, initialMatrix) {
     }
   }
   return false;
+}
+
+// #4917/#2034 — førertrøje-genvej: rytteren fra EGET hold der fører det
+// samlede klassement, hvis nogen. `null` når ingen af mine ryttere fører
+// (ingen rang === 1) eller den førende er udgået — genvejen findes da ikke.
+// `gcRankByRider` er en Map(rider_id -> rank), samme form som RaceDetailPage
+// allerede bygger til Hold-fanens GC-kolonne (efter-fasen).
+export function jerseyLeaderId({ riders, gcRankByRider }) {
+  if (!gcRankByRider) return null;
+  const leader = (riders || []).find((r) => !r.abandoned && gcRankByRider.get(r.rider_id) === 1);
+  return leader?.rider_id ?? null;
+}
+
+// #4917: bruges af RaceTeamTab til at afgøre om førertrøje-genvejen skal
+// vises. Genvejen (se applyJerseyCaptainShortcut) sætter kaptajnbåndet på
+// ALLE resterende etaper i ét klik — den skal derfor kun skjules når lederen
+// ALLEREDE er kaptajn på dem alle, ikke kun på den næste redigerbare etape
+// (CodeRabbit-fund 7/9: en genvej der kun tjekkede næste etape kunne skjules
+// selvom en senere etape stadig havde en anden kaptajn).
+export function isJerseyLeaderCaptainOnAllRemainingStages({ rider, stageNumbers, stagesCompleted, overridesMap }) {
+  return (stageNumbers || [])
+    .filter((n) => n > stagesCompleted)
+    .every((n) => resolveCell({ rider, stageNumber: n, overridesMap }).race_role === "captain");
+}
+
+// Anvender genvejen på draft-matrixen: sætter captain-override for `leaderId`
+// på ALLE kommende etaper, og demoterer en evt. anden resolved captain til
+// helper på de samme etaper (kun rolle — effort røres ikke for de demoterede,
+// så en 'protect'/'save'-indstilling ikke nulstilles ved siden af). Ren — ny
+// matrix returneres, input muteres aldrig.
+//
+// KALDES ALTID på den FULDE draft-matrix (buildDraftMatrix af ALLE ryttere,
+// ikke kun leaderen) — PUT-endpointets REPLACE-semantik (raceStageRolesApi.
+// saveStageRoleOverrides) sletter ALLE eksisterende overrides for redigerbare
+// etaper før den indsætter bodyen. En diff bygget på kun leaderens celle ville
+// derfor stille og roligt nulstille alle ANDRE rytteres allerede-satte
+// taktik (fx en 'all_out' sat via Taktik-fanen) i samme gem.
+export function applyJerseyCaptainShortcut({ matrix, leaderId, stageNumbers, stagesCompleted }) {
+  const editableStages = (stageNumbers || []).filter((n) => n > stagesCompleted);
+  const leaderKey = String(leaderId);
+  let next = matrix;
+  for (const sn of editableStages) {
+    const stageCells = next[sn] || {};
+    for (const [riderId, cell] of Object.entries(stageCells)) {
+      if (riderId !== leaderKey && cell.race_role === "captain") {
+        next = setCell(next, sn, riderId, { race_role: "helper" });
+      }
+    }
+    const leaderCell = next[sn]?.[leaderKey];
+    next = setCell(next, sn, leaderKey, { race_role: "captain", effort: leaderCell?.effort || DEFAULT_EFFORT });
+  }
+  return next;
 }
