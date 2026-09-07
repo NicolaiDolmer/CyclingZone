@@ -6,6 +6,7 @@ import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { ageBadgeKey } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import OnlineBadge from "../components/OnlineBadge";
+import FounderMark from "../components/FounderMark.jsx";
 import { formatNumber, formatDate } from "../lib/intl";
 import { ABILITY_STATS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { statStyle } from "../lib/statColor";
@@ -254,6 +255,8 @@ export default function ManagerProfilePage() {
                   {isOwnProfile && (
                     <CategoryTag className="text-cz-accent-t border-cz-accent/30 bg-cz-accent/10">{t("manager.yourTeam")}</CategoryTag>
                   )}
+                  {/* #5007: Founder-mærke — synligt for ALLE besøgende, samme mønster som ForumAuthorIdentity.jsx. */}
+                  <FounderMark teamId={team.id} />
                   <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
                     {t("manager.managerPrefix")} {user?.username ?? t("manager.aiManaged")} · {t("manager.division", { n: team.division })}
                   </span>
