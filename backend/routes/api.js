@@ -14344,7 +14344,10 @@ router.get("/forum/unread-status", requireAuth, async (req, res) => {
 // GET /api/forum/category-mutes — spillerens abonnement pr. kategori (#5013):
 // {categories:[{category, muted}]}. Opt-out-model, så en tom tabel betyder
 // "følger alt" (se database/2026-09-08-5013-forum-category-mutes.sql).
-router.get("/forum/category-mutes", requireAuth, async (req, res) => {
+// presencePulseLimiter (120/60 s): den kaldes én gang pr. sideindlæsning af
+// baade forumsiden og indstillingerne, altsaa billigt og hyppigt — samme
+// profil som limiteren er bygget til (#530-daekning for nye auth-ruter).
+router.get("/forum/category-mutes", requireAuth, presencePulseLimiter, async (req, res) => {
   try {
     res.json(await listForumCategoryMutes({ supabase, userId: req.user.id }));
   } catch (e) {
