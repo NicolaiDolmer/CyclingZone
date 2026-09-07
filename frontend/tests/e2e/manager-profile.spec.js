@@ -20,6 +20,13 @@ const daTeam = JSON.parse(
 );
 const EMPTY_TEXT = daTeam.manager.noRecentAchievements;
 
+// #5007: Founder-mærket manglede på denne side (forum/stilling/holdside havde det,
+// profilen ikke). Samme kilde-bindings-mønster som EMPTY_TEXT ovenfor.
+const daPro = JSON.parse(
+  readFileSync(new URL("../../public/locales/da/pro.json", import.meta.url), "utf8")
+);
+const FOUNDER_LABEL = daPro.founderMark.label;
+
 async function openProfile(page, teamId) {
   await stabilizePage(page);
   await installNetworkMocks(page);
@@ -98,4 +105,17 @@ test("en manager uden achievements får en ordentlig tomtilstand", async ({ page
   if (testInfo.project.name === "desktop-chromium") {
     await page.screenshot({ path: `${SHOT_DIR}/manager-overview-empty.png`, fullPage: false });
   }
+});
+
+// #5007: Founder-mærket (#4649) manglede på den offentlige managerprofil — forum,
+// stilling og holdside havde det, men ikke denne side. mockHandlers.js'
+// founder_public_list seeder BÅDE TEST_TEAM og RIVAL_TEAM som Founders (bruges
+// også af Standings/holdside/forum-mockene), så der findes ingen ikke-Founder
+// managerprofil at navigere til her — negativ-tilfældet ("ikke vist for
+// ikke-Founders") er allerede dækket af FounderMark.jsx' egen guard
+// (`founderNumber == null → return null`), som er fælles for alle sider der
+// bruger komponenten og ikke ændret af denne fix.
+test("Founder-mærket vises for en Founder-manager", async ({ page }) => {
+  await openProfile(page, TEST_TEAM.id);
+  await expect(page.getByText(FOUNDER_LABEL, { exact: false }).first()).toBeVisible();
 });
