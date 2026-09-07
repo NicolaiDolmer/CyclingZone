@@ -12,6 +12,7 @@ import { statStyle } from "../lib/statColor";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { initialsFrom } from "../components/ui/avatarStyles.js";
+import { isValidDiscordSnowflake } from "../lib/discordHandle.js";
 import {
   Card,
   CategoryTag,
@@ -34,8 +35,14 @@ import {
   ChevronLeftIcon,
   InboxIcon,
   SettingsIcon,
+  DiscordIcon,
   PageLoader,
+  ToastViewport,
 } from "../components/ui";
+
+// Matches ToastViewport's default auto-dismiss duration (samme konstant som
+// WatchlistPage/#2467).
+const TOAST_DURATION_MS = 4000;
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -116,6 +123,34 @@ export default function ManagerProfilePage() {
   // Trup-tabellen (Riders-fanen) sorteres klient-side; state ligger her øverst
   // fordi rytterne først udledes efter early-returns nedenfor.
   const riderSort = useSortState();
+  // #5012: toast til "Copied"/"Kopieret"-feedbacken ved kopi af Discord-
+  // brugernavnet (samme mønster som WatchlistPage's pushToast/dismissToast).
+  const [toasts, setToasts] = useState([]);
+
+  function dismissToast(id) {
+    setToasts(prev => prev.filter(item => item.id !== id));
+  }
+
+  function pushToast(tone, title) {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setToasts(prev => [...prev, { id, tone, title }]);
+  }
+
+  // #5012: klik på Discord-linjen kopierer brugernavnet til udklipsholderen
+  // (bruges når vi IKKE har et gyldigt discord_id at linke direkte til, se
+  // render-grenen nedenfor). Samme fejl-tavse mønster som SeasonRecapHero's
+  // handleShare — nægtet clipboard-adgang (privat tilstand/rettigheder)
+  // fejler bare uden synlig fejl, der er intet destruktivt at rulle tilbage.
+  async function copyDiscordHandle(handle) {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(handle);
+        pushToast("success", t("manager.discordCopied"));
+      }
+    } catch {
+      // ingen synlig fejl — knappen forbliver bare uden bekræftelse
+    }
+  }
 
   const loadMyTeam = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -274,6 +309,40 @@ export default function ManagerProfilePage() {
               </Link>
             )}
           </div>
+
+          {/* #5012: Discord-kontaktlinje — separat fra identitets-rækken
+              ovenfor (som #5007 rører ved) for at undgå diff-kollision mellem
+              de to bølge-workers. Vises KUN når det valgfrie offentlige
+              discord_handle-felt er udfyldt (Accept #1: "vises kun naar
+              udfyldt") — det eksisterende discord_id (bot-DM-kobling, #2161)
+              bruges udelukkende til at gøre klikket smartere (direkte link
+              frem for kopi), aldrig til selv at afgøre synlighed. */}
+          {user?.discord_handle && (
+            <div className="mt-4 pt-4 border-t border-cz-border">
+              {isValidDiscordSnowflake(user.discord_id) ? (
+                <a
+                  href={`https://discord.com/users/${user.discord_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t("manager.discordOpenAria", { handle: user.discord_handle })}
+                  className="inline-flex items-center gap-2 font-mono text-sm text-cz-2 hover:text-cz-accent-t transition-colors"
+                >
+                  <DiscordIcon size={16} className="text-cz-discord shrink-0" aria-hidden="true" />
+                  {user.discord_handle}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => copyDiscordHandle(user.discord_handle)}
+                  aria-label={t("manager.discordCopyAria", { handle: user.discord_handle })}
+                  className="inline-flex items-center gap-2 font-mono text-sm text-cz-2 hover:text-cz-accent-t transition-colors"
+                >
+                  <DiscordIcon size={16} className="text-cz-discord shrink-0" aria-hidden="true" />
+                  {user.discord_handle}
+                </button>
+              )}
+            </div>
+          )}
 
           <HeroStats items={statBlocks} />
         </section>
@@ -466,6 +535,8 @@ export default function ManagerProfilePage() {
           </TabPanel>
         </Tabs>
       </div>
+
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} duration={TOAST_DURATION_MS} />
     </div>
   );
 }

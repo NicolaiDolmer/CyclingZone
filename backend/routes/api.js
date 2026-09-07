@@ -14656,7 +14656,13 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
 
     const [userRes, ridersRes, historyRes, allAchsRes, unlockedAchsRes, transfersRes] = await Promise.all([
       supabase.from("users")
-        .select("id, username, last_seen, login_streak")
+        // discord_handle/discord_id (#5012): offentligt Discord-kontaktfelt +
+        // det eksisterende bot-DM-ID (#2161), brugt til at afgøre link-vs-kopi
+        // på den offentlige managerprofil. Se database/2026-09-08-5012-discord-
+        // handle.sql for hvorfor dette IKKE eksponeres via en RLS SELECT-policy.
+        // schema-columns-ok: discord_handle tilføjes af database/2026-09-08-5012-
+        // discord-handle.sql i SAMME PR — snapshottet opdateres først post-merge.
+        .select("id, username, last_seen, login_streak, discord_handle, discord_id")
         .eq("id", team.user_id).single(),
       supabase.from("riders")
         .select("id, firstname, lastname, birthdate, market_value, is_u25, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)")

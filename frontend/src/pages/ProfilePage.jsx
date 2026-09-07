@@ -7,6 +7,7 @@ import { reportActionFailure } from "../lib/actionTelemetry";
 import { useSubscription } from "../lib/useSubscription";
 import { useTheme } from "../lib/theme.jsx";
 import { useConsent } from "../lib/consent.jsx";
+import { parseDiscordHandle } from "../lib/discordHandle.js";
 import {
   Card,
   Button,
@@ -32,6 +33,8 @@ export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [team, setTeam] = useState(null);
   const [discordId, setDiscordId] = useState("");
+  const [discordHandle, setDiscordHandle] = useState("");
+  const [savingDiscordHandle, setSavingDiscordHandle] = useState(false);
   const [dmStatus, setDmStatus] = useState(null);
   const [assistant, setAssistant] = useState(null);
   const [savingAssistant, setSavingAssistant] = useState(false);
@@ -65,11 +68,12 @@ export default function ProfilePage() {
     // #1792: udløbet/ugyldig session → authUser=null; stop før authUser.id (auth-flow redirecter til /login)
     if (!authUser) { setLoading(false); return; }
     const [{ data: userData }, { data: teamData }] = await Promise.all([
-      supabase.from("users").select("discord_id, username, email, role").eq("id", authUser.id).maybeSingle(),
+      supabase.from("users").select("discord_id, discord_handle, username, email, role").eq("id", authUser.id).maybeSingle(),
       supabase.from("teams").select("id, name, manager_name").eq("user_id", authUser.id).maybeSingle(),
     ]);
     setUser(userData);
     setDiscordId(userData?.discord_id || "");
+    setDiscordHandle(userData?.discord_handle || "");
     setUsernameInput(userData?.username || "");
     setEmailInput(userData?.email || "");
     setTeam(teamData);
@@ -155,6 +159,34 @@ export default function ProfilePage() {
     else showMsg(t("discord.idSaved"));
     await refreshDmStatus();
     setSavingDiscord(false);
+  }
+
+  // #5012: separat, offentligt Discord-BRUGERNAVN — vises på managerprofilen
+  // (/managers/:teamId), i modsætning til discord_id ovenfor der kun bruges
+  // internt til bot-DM-levering (#2161). Samme direkte-til-Supabase-mønster
+  // som saveDiscordId: kolonne-scopet UPDATE-grant + eksisterende RLS-policy
+  // "Users can update own profile" (se database/2026-09-08-5012-discord-handle.sql).
+  async function saveDiscordHandle() {
+    const { valid, value } = parseDiscordHandle(discordHandle);
+    if (!valid) {
+      showMsg(t("discord.handleError"), "error");
+      return;
+    }
+    setSavingDiscordHandle(true);
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    // #1792: udløbet/ugyldig session → authUser=null; stop før authUser.id (auth-flow redirecter til /login)
+    if (!authUser) { setSavingDiscordHandle(false); return; }
+    const { error } = await supabase
+      .from("users")
+      .update({ discord_handle: value })
+      .eq("id", authUser.id);
+    if (error) showMsg(error.message, "error");
+    else {
+      setDiscordHandle(value || "");
+      setUser(prev => ({ ...prev, discord_handle: value }));
+      showMsg(value ? t("discord.handleSaved") : t("discord.handleCleared"));
+    }
+    setSavingDiscordHandle(false);
   }
 
   // #1746: skift brugernavn via backend (case-insensitivt unikheds-tjek +
@@ -731,6 +763,42 @@ export default function ProfilePage() {
             {t("discord.intro")}
           </p>
         </div>
+
+        {/* #5012: offentligt Discord-brugernavn — vises på managerprofilen når
+            udfyldt. Adskilt fra Discord-ID'et nedenfor, der kun bruges internt
+            til bot-DM-levering (#2161) og aldrig er offentligt synligt. */}
+        <Field
+          label={t("discord.handleLabel")}
+          htmlFor="profile-discord-handle"
+          className="mb-4"
+        >
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              id="profile-discord-handle"
+              type="text"
+              value={discordHandle}
+              onChange={e => setDiscordHandle(e.target.value)}
+              placeholder={t("discord.handlePlaceholder")}
+              minLength={2}
+              maxLength={32}
+              autoComplete="off"
+              data-clarity-mask="True"
+              className="flex-1 font-mono focus:border-cz-discord"
+            />
+            <Button
+              onClick={saveDiscordHandle}
+              loading={savingDiscordHandle}
+              disabled={discordHandle.trim() === (user?.discord_handle || "")}
+              variant="secondary"
+              className="sm:w-auto"
+            >
+              {savingDiscordHandle ? t("discord.saving") : t("discord.handleSave")}
+            </Button>
+          </div>
+          <p className="text-cz-3 text-xs mt-2">{t("discord.handleHelp")}</p>
+        </Field>
+
+        <div className="border-t border-cz-border pt-4 mb-4" />
 
         <Field
           label={t("discord.idLabel")}
