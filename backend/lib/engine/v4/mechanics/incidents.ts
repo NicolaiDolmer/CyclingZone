@@ -80,7 +80,7 @@ import type {
   StageResult,
   TimelineEvent,
 } from "../types.ts";
-import { makeGroupId, splitGroup } from "../groups.ts";
+import { splitGroup } from "../groups.ts";
 import { incidentEvent } from "../timeline.ts";
 import { INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
 
@@ -375,6 +375,60 @@ export function resolveCrashIncident(
  * rng-stream-kontrakten — uden at aendre den rigtige eksports to-argument
  * (state, ctx)-signatur, som er strukturelt identisk med de oevrige hooks.
  */
+/**
+ * #4993 (bifund fra #4971-workeren): climbSelection.ts/descent.ts/cobbles.ts
+ * navngiver ALLE deres nye grupper med samme formel som M10 herunder —
+ * `segmentIndex * 1000 + lokal-seq`, hver med sin egen tæller der starter ved
+ * 0. M10 er den ENESTE mekanik der kører på ALLE segment-kinds (de andre er
+ * gensidigt udelukkende via segment.kind), så den er den ene mekanik der reelt
+ * kan dele et segment med en af de andre — og dermed den ene der kan
+ * kollidere med dem alle. Kollisionen er reel, ikke teoretisk: groups.ts's
+ * splitGroup() tjekker ALDRIG om et id allerede findes, så to grupper kan ende
+ * med SAMME group_id i state.groups (se incidents.test.ts's #4993-test).
+ *
+ * FOERSTE fix-forsoeg (revideret efter PR #4998-review, bade CodeRabbit og
+ * manuel): et fast `+500`-offset ind i den SAMME `0..999`-taeller-plads.
+ * Det er IKKE uforbeholdent kollisionsfrit — det forudsaetter stiltiende at
+ * ingen af de andre mekanikkers lokale `seq` nogensinde naar 500 i ét
+ * segment. Den antagelse staar ingen steder haandhaevet i kode (intet
+ * assert/clamp), kun i denne kommentar — og CodeRabbit fandt netop dette:
+ * en tilstraekkelig stor gyldig `StageInput.startlist` kan i princippet
+ * drive fx descent.ts's egen lokale `seq` forbi 500 i ét segment, hvorved
+ * dens `solo-<segmentIndex*1000+500+n>` genbruger M10s id igen.
+ *
+ * ANDET fix-forsoeg (revideret igen efter en 2. CodeRabbit-runde paa PR
+ * #4998): et modul-taeg baget ind i id-strengen — men stadig med den
+ * MULTIPLIKATIVE `segmentIndex * 1000 + seq`-kombinering fra det forkastede
+ * offset-forsoeg. Den kombinering har SIN EGEN aliasing-risiko, uafhaengigt
+ * af 500-graensen: `seq` er ikke haandhaevet < 1000 noget sted, saa
+ * (segmentIndex=5, seq=1000) og (segmentIndex=6, seq=0) regner begge til
+ * det samme produkt (6000) og giver dermed SAMME id — praecis den slags
+ * uhaandhaevet oevre-graense-antagelse denne fix i forvejen forsoeger at
+ * fjerne. CodeRabbit fandt det praecise modeksempel.
+ *
+ * Endeligt fix: brug en AFGRAENSET (delimited) encoding —
+ * `solo-m10-<segmentIndex>-<seq>` — i stedet for at kombinere de to tal til
+ * ét via multiplikation. Ingen kombination af segmentIndex/seq kan give
+ * samme streng som en anden kombination (bindestregerne er faste
+ * separatorer, og begge tal er ikke-negative heltal skrevet uden
+ * foranstillede tegn) — id'et er UBETINGET injektivt i (segmentIndex, seq),
+ * ingen oevre-graense-antagelse paa NOGEN af de to tal noedvendig laengere.
+ * Giver M10 sit EGET navnerum via modul-taegget "m10", ubetinget disjunkt
+ * fra enhver anden mekaniks `${kind}-${seq}`-format (ingen af dem indeholder
+ * "-m10-"). Verificeret risikofrit: `grep -rn "solo-"` over backend +
+ * frontend viser INGEN parser/regex der antager et bestemt id-format — id'et
+ * bruges udelukkende til streng-lighed/`.localeCompare()` (groups.ts,
+ * finale.ts, breakaway.ts m.fl.), aldrig splittet/parset paa bindestreg.
+ * `kind` forbliver "solo" (GroupKind er upaavirket) — kun den opake
+ * id-streng aendres. Ingen af de fire fixtures rammer M10s hook i dag (0
+ * incidents i alle), saa aendringen flytter ingen golden fixture;
+ * §7b-ankerpaavirkningen er den samme klasse som ved de forkastede forsoeg
+ * (tie-break i groups.ts's `localeCompare()`), ikke en ny effekt.
+ */
+export function makeIncidentSoloGroupId(segmentIndex: number, seq: number): string {
+  return `solo-m10-${segmentIndex}-${seq}`;
+}
+
 export function createIncidentHook(
   tuning: IncidentsTuning,
 ): (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult {
@@ -452,7 +506,7 @@ export function createIncidentHook(
         const gapDelta =
           resolved.outcome === "abandoned" ? tuning.abandonedGapSeconds : (resolved.timeLossSeconds ?? 0);
         groups = splitGroup(groups, group.id, [riderId], {
-          id: makeGroupId("solo", segmentIndex * 1000 + seq),
+          id: makeIncidentSoloGroupId(segmentIndex, seq),
           kind: "solo",
           gapSecondsDelta: gapDelta,
         });

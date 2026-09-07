@@ -330,3 +330,48 @@ test("#4971 groupMergedEvent: param-form + fog-gate-renhed", () => {
   const violations = validateTimelineEvents([event], { distanceKm: 100, knownRiderIds: new Set(["r04", "r05"]) });
   assert.deepEqual(violations, [], `group_merged maa ikke bryde nogen konsistensregel: ${JSON.stringify(violations)}`);
 });
+
+// ── #4993: incident-undtagelsen er for BRED — den undskylder ALT for en ────
+// rytter der havde ET ELLER ANDET uheld i vinduet, ogsaa naar det uheld ALDRIG
+// flyttede ham (outcome "protected_three_km_rule", jf. incidents.ts's egen
+// gren: KUN "time_loss"/"abandoned" kalder splitGroup). Det er for bredt: en
+// helt UBESLAEGTET gruppeskifte-konflikt for samme rytter bliver ogsaa tavst
+// undskyldt. Undtagelsen skal kun daekke uheld der FAKTISK kan have flyttet
+// rytteren (samme afgraensning som incidents.ts's `resolved.outcome !==
+// "protected_three_km_rule"`-gren).
+
+test("#4993 group-membership: et protected_three_km_rule-uheld (INGEN gruppeskift) undskylder IKKE en ubeslaegtet konflikt (negativ-kontrol)", () => {
+  const events: TimelineEvent[] = [
+    makeEvent(90, "peloton_splits", { group_id: "chase-2000", rider_ids: ["r07"] }),
+    incidentEvent(95, { riderId: "r07", kind: "crash", outcome: "protected_three_km_rule", timeLossSeconds: null }),
+  ];
+  const snapshots = [{ km: 100, groups: [{ group_id: "peloton-0", rider_ids: ["r07"] }] }];
+  const violations = validateGroupMembership(events, snapshots);
+  assert.equal(
+    violations.length,
+    1,
+    "protected_three_km_rule flytter INGEN gruppe (incidents.ts) — undtagelsen maa ikke daekke en anden konflikt",
+  );
+  assert.equal(violations[0].rule, "group-membership");
+});
+
+test("#4993 group-membership: M10 traekker en rytter ud EFTER M2s split (outcome time_loss) er stadig undtaget (positiv-kontrol)", () => {
+  const events: TimelineEvent[] = [
+    makeEvent(65, "peloton_splits", { group_id: "chase-1000", rider_ids: ["r04"] }),
+    // Incidentens km kan vaere LAVERE end splittets (M10 kaldes efter M2 i
+    // segmentLoop.ts, men incidentens km-maerke er et tilfaeldigt punkt inde i
+    // SAMME segment, ikke segmentets slut, hvor peloton_splits stemples).
+    incidentEvent(64, { riderId: "r04", kind: "crash", outcome: "time_loss", timeLossSeconds: 8 }),
+  ];
+  const snapshots = [{ km: 65, groups: [{ group_id: "solo-1005", rider_ids: ["r04"] }] }];
+  assert.deepEqual(validateGroupMembership(events, snapshots), []);
+});
+
+test("#4993 group-membership: M10s 'abandoned'-udfald er ogsaa undtaget (positiv-kontrol)", () => {
+  const events: TimelineEvent[] = [
+    makeEvent(65, "peloton_splits", { group_id: "chase-1000", rider_ids: ["r04"] }),
+    incidentEvent(63, { riderId: "r04", kind: "crash", outcome: "abandoned", timeLossSeconds: null, severity: "serious" }),
+  ];
+  const snapshots = [{ km: 65, groups: [{ group_id: "peloton-0", rider_ids: ["r99"] }] }];
+  assert.deepEqual(validateGroupMembership(events, snapshots), []);
+});
