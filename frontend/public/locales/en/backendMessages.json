@@ -482,6 +482,11 @@
       "message": "{count, plural, one {Someone replied to your thread} other {# new replies to your thread}}",
       "messageWithTitle": "{count, plural, one {A new reply on \"{postTitle}\"} other {# new replies on \"{postTitle}\"}}"
     },
+    "forumMention": {
+      "title": "You were mentioned",
+      "message": "{author} mentioned you on the forum",
+      "messageWithTitle": "{author} mentioned you in \"{postTitle}\""
+    },
     "careerMilestone": {
       "maidenWin": {
         "title": "Maiden victory",

@@ -25,7 +25,7 @@ import { SQUAD_BELOW_MINIMUM_TYPE } from "./squadBelowMinimumCheck.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIGRATION_PATH = join(
   __dirname,
-  "../../database/2026-08-25-3517-forum-reply-notification-type.sql",
+  "../../database/2026-09-08-5011-forum-mention-notification.sql",
 );
 const BACKEND_ROOT = join(__dirname, "..");
 

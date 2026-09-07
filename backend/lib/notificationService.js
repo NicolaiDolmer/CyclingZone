@@ -1,4 +1,5 @@
 import { isKnownNotificationType } from "./notificationTypes.js";
+import { findForumMentions, loadMentionableManagers, uniqueMentionTargets } from "./forumMentions.js";
 import { DEFAULT_LANGUAGE, translate as translateServer } from "./i18nServer.js";
 import { captureException } from "./sentry.js";
 import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
@@ -1119,5 +1120,151 @@ export async function notifyForumThreadReply({
     console.error("  ❌ forum-thread-reply-notifikation fejlede (post %s):", postId, err?.message || err);
     captureException(err, { tags: { flow: "notifications", stage: "forum-thread-reply" }, postId });
     return { delivered: false, deduped: false, reason: "error" };
+  }
+}
+
+// #5011 (ejer-direktiv 3/9, #4751) — @-tag af en manager ────────────────────
+
+export const FORUM_MENTION_TYPE = "forum_mention";
+
+/** Hvor mange eksisterende mention-rækker der scannes for dubletter pr. tråd. */
+const MENTION_DEDUPE_SCAN_LIMIT = 50;
+
+/**
+ * Kilde-id for dedupe: præcis det INDLÆG tagget stod i (opslaget selv, eller
+ * ét bestemt svar) — ikke tråden. Trådnøglen ville betyde at manager nr. to
+ * der tagger dig i samme tråd aldrig nåede frem.
+ */
+function mentionSourceKey({ postId, replyId }) {
+  return replyId ? `reply:${replyId}` : `post:${postId}`;
+}
+
+export function buildForumMentionNotification({ postId, postTitle, replyId = null, authorName = null }) {
+  const author = authorName || "Someone";
+  // #4734: fallback-teksten UDLEDES af nøglen — den må aldrig være en parallel
+  // håndskrevet streng (det var netop den drift #4734 lukkede).
+  const keyed = buildKeyedNotification({
+    titleCode: "notif.forumMention.title",
+    messageCode: postTitle ? "notif.forumMention.messageWithTitle" : "notif.forumMention.message",
+    messageParams: { author, postTitle: postTitle || "" },
+    metadata: {
+      postId,
+      postTitle: postTitle || null,
+      replyId: replyId || null,
+      sourceKey: mentionSourceKey({ postId, replyId }),
+      authorName: authorName || null,
+    },
+  });
+  return {
+    type: FORUM_MENTION_TYPE,
+    title: keyed.title,
+    message: keyed.message,
+    // related_id er trådens id — notificationLink.js bygger dybdelinket og
+    // hægter #reply-<id> på fra metadata, samme mønster som forum_thread_reply.
+    relatedId: postId,
+    metadata: keyed.metadata,
+  };
+}
+
+/**
+ * #5011 · Notificér ÉN tagget manager. Kaldes efter at indlægget er gemt — en
+ * fejlet notifikation må ALDRIG vælte opslaget/svaret (samme A2-isolerings-
+ * mønster som resten af filen).
+ *
+ * DEDUPE: højst ÉN notifikation pr. (bruger, indlæg). Findes der allerede en
+ * forum_mention med samme metadata.sourceKey — læst eller ulæst — sker der
+ * intet. Det er også svaret på "ingen ny notifikation ved redigering": en
+ * fremtidig redigerings-route kan kalde herind igen uden at spamme.
+ * Dubletjekket sker i JS over et bounded udtræk frem for et jsonb-filter,
+ * så det opfører sig ens mod PostgREST og mod test-fakes.
+ */
+export async function notifyForumMention({
+  supabase, mentionedUserId, authorUserId, postId, postTitle = null, replyId = null, authorName = null,
+  now = new Date(),
+}) {
+  if (!mentionedUserId || !postId) return { delivered: false, deduped: false, reason: "missing_target" };
+  // Selv-tag håndhæves HER og ikke kun ved kaldestedet, så en fremtidig
+  // kalder ikke kan glemme det (samme forsigtighed som notifyForumThreadReply).
+  if (mentionedUserId === authorUserId) return { delivered: false, deduped: false, reason: "own_mention" };
+
+  const sourceKey = mentionSourceKey({ postId, replyId });
+  try {
+    const { data: existingRows, error: findError } = await supabase
+      .from("notifications")
+      .select("id, metadata")
+      .eq("user_id", mentionedUserId)
+      .eq("type", FORUM_MENTION_TYPE)
+      .eq("related_id", postId)
+      .order("created_at", { ascending: false })
+      .limit(MENTION_DEDUPE_SCAN_LIMIT);
+    if (findError) throw findError;
+    if ((existingRows || []).some((row) => row?.metadata?.sourceKey === sourceKey)) {
+      return { delivered: false, deduped: true, reason: "already_notified" };
+    }
+
+    const payload = buildForumMentionNotification({ postId, postTitle, replyId, authorName });
+    const { data: inserted, error: insertError } = await supabase
+      .from("notifications")
+      .insert({
+        user_id: mentionedUserId,
+        type: payload.type,
+        title: payload.title,
+        message: payload.message,
+        related_id: payload.relatedId,
+        metadata: payload.metadata,
+        is_read: false,
+        created_at: now.toISOString(),
+      })
+      .select("id")
+      .single();
+    if (insertError) throw insertError;
+    return { delivered: true, deduped: false, id: inserted?.id };
+  } catch (err) {
+    // postId må ALDRIG stå i format-string-positionen (CodeQL #188).
+    console.error("  ❌ forum-mention-notifikation fejlede (post %s):", postId, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "forum-mention" }, postId });
+    return { delivered: false, deduped: false, reason: "error" };
+  }
+}
+
+/**
+ * #5011 · Find @-tags i et netop gemt forum-indlæg og notificér dem alle.
+ * Ét sted, kaldt fra både POST /forum/posts og POST /forum/posts/:id/replies,
+ * så de to veje aldrig kan komme til at matche forskelligt.
+ *
+ * `managers` kan injiceres i test; ellers hentes den taggbare liste her.
+ * Hele funktionen er best-effort: den kaster aldrig videre til routen.
+ */
+export async function notifyForumMentions({
+  supabase, text, authorUserId, postId, postTitle = null, replyId = null, authorName = null,
+  managers = null, now = new Date(),
+}) {
+  if (!postId || typeof text !== "string" || !text.includes("@")) {
+    return { delivered: 0, targets: [] };
+  }
+  try {
+    const directory = managers ?? await loadMentionableManagers({ supabase });
+    const targets = uniqueMentionTargets(findForumMentions(text, directory), { excludeUserId: authorUserId });
+    if (targets.length === 0) return { delivered: 0, targets: [] };
+
+    let delivered = 0;
+    for (const target of targets) {
+      const result = await notifyForumMention({
+        supabase,
+        mentionedUserId: target.userId,
+        authorUserId,
+        postId,
+        postTitle,
+        replyId,
+        authorName,
+        now,
+      });
+      if (result.delivered) delivered += 1;
+    }
+    return { delivered, targets };
+  } catch (err) {
+    console.error("  ❌ forum-mention-udtræk fejlede (post %s):", postId, err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "forum-mention-scan" }, postId });
+    return { delivered: 0, targets: [], reason: "error" };
   }
 }
