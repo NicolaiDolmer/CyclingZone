@@ -68,6 +68,11 @@ export const NOTIFICATION_TYPES = [
   // notifikation for samme tråd opdateres ("N nye svar") i stedet for at
   // stable nye rækker op. Se notifyForumThreadReply, notificationService.js.
   "forum_thread_reply",
+  // #3200 (DM v1): en anden manager har sendt dig en direkte besked. Dedupe
+  // pr. (bruger, samtale) som forum_thread_reply — en tråd med 20 beskeder
+  // giver ÉN ulæst notifikation. En blokeret afsender udløser aldrig en
+  // notifikation. Se notifyDirectMessage, notificationService.js.
+  "dm_message",
 ];
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);
