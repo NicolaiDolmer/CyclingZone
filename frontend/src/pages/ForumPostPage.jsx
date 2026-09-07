@@ -11,6 +11,10 @@ import {
 import { InboxIcon, ArrowUpIcon, UndoIcon, ChevronDownIcon } from "../components/ui/icons/index.jsx";
 import ForumAuthorIdentity, { ForumSignature } from "../components/forum/ForumAuthorIdentity.jsx";
 import { authorDisplayName } from "../components/forum/forumIdentity.js";
+// #4819: billeder i indlaeg. Egen kolonne, ikke markup i body — body rendres
+// fortsat som REN tekst, saa fladen aldrig faar en XSS-vej.
+import ForumImagePicker from "../components/forum/ForumImagePicker.jsx";
+import ForumImageAttachments from "../components/forum/ForumImageAttachments.jsx";
 
 // #3199 — tråd-detalje: opslag + evt. ejer-poll + svar. T1 (max-w-4xl).
 // Afstemning: single choice, genafstemning tilladt (backend upserter). Kun
@@ -238,10 +242,13 @@ export default function ForumPostPage() {
 
   const [state, setState] = useState({ status: "loading", post: null, replies: [], poll: null });
   const [replyBody, setReplyBody] = useState("");
+  const [replyImages, setReplyImages] = useState([]);
   const [replySubmitting, setReplySubmitting] = useState(false);
   const [replyError, setReplyError] = useState(null);
   const [voting, setVoting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  // #4819: billed-stien ER ejerskabet (`<user_id>/...`).
+  const [userId, setUserId] = useState(null);
   const [reportTarget, setReportTarget] = useState(null); // { type, id } | null
   const [reactingKey, setReactingKey] = useState(null); // "post:<id>" | "reply:<id>" | null
   const [quoteTarget, setQuoteTarget] = useState(null); // { id, excerpt, author } | null
@@ -264,6 +271,7 @@ export default function ForumPostPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
+      setUserId(user.id);
       const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
       if (!cancelled) setIsAdmin(userData?.role === "admin");
     })();
@@ -318,6 +326,9 @@ export default function ForumPostPage() {
 
   async function handleReply(e) {
     e.preventDefault();
+    // #4819: et svar maa gerne vaere "kun et billede" — teksten er ikke laengere
+    // det eneste indhold der taeller. Backend kraever dog stadig en body, saa
+    // knappen er fortsat gatet paa tekst.
     if (!replyBody.trim()) return;
     setReplySubmitting(true);
     setReplyError(null);
@@ -326,7 +337,11 @@ export default function ForumPostPage() {
       const res = await fetch(`${API}/api/forum/posts/${postId}/replies`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ body: replyBody.trim(), quoted_reply_id: quoteTarget?.id || null }),
+        body: JSON.stringify({
+          body: replyBody.trim(),
+          images: replyImages,
+          quoted_reply_id: quoteTarget?.id || null,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -334,6 +349,7 @@ export default function ForumPostPage() {
         return;
       }
       setReplyBody("");
+      setReplyImages([]);
       setQuoteTarget(null);
       await load();
     } catch {
@@ -412,6 +428,24 @@ export default function ForumPostPage() {
     }
   }
 
+  // #4819 (ejer-valg 8/9): admin kan fjerne ET billede uden at slette hele
+  // indlaegget. Backend fjerner stien fra raekken FOER filen slettes, saa et
+  // indlaeg aldrig kommer til at pege paa en fil der ikke findes.
+  async function handleAdminRemoveImage(type, id, path) {
+    try {
+      const headers = await authHeaders();
+      const res = await fetch(`${API}/api/admin/forum/images`, {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ target_type: type, target_id: id, path }),
+      });
+      if (res.ok) await load();
+    } catch {
+      // Visningen staar uaendret; naeste load() retter den op.
+      setReplyError(t("errors.submitFailed"));
+    }
+  }
+
   async function handleAdminPin(pinned) {
     const headers = await authHeaders();
     const res = await fetch(`${API}/api/admin/forum/posts/${postId}/pin`, {
@@ -455,6 +489,11 @@ export default function ForumPostPage() {
         <div className="mt-2 ps-[38px]">
           <QuotedReplyBlock quoted={reply.quoted} onJump={handleJumpToOriginal} t={t} />
           <p className="whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{reply.body}</p>
+          <ForumImageAttachments
+            images={reply.images}
+            t={t}
+            onAdminRemove={isAdmin ? (path) => handleAdminRemoveImage("reply", reply.id, path) : null}
+          />
           <ForumSignature author={reply.author} body={reply.body} t={t} />
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <SupportButton
@@ -522,6 +561,11 @@ export default function ForumPostPage() {
               t={t}
             />
             <p className="mt-3 whitespace-pre-wrap text-[13.5px] leading-relaxed text-cz-1">{post.body}</p>
+            <ForumImageAttachments
+              images={post.images}
+              t={t}
+              onAdminRemove={isAdmin ? (path) => handleAdminRemoveImage("post", post.id, path) : null}
+            />
             <ForumSignature author={post.author} body={post.body} t={t} />
             {poll && <PollBlock poll={poll} onVote={handleVote} voting={voting} t={t} />}
             <div className="mt-4 flex items-center gap-2 border-t border-cz-border pt-3">
@@ -609,6 +653,13 @@ export default function ForumPostPage() {
                   placeholder={t("post.replyPlaceholder")}
                 />
               </Field>
+              <ForumImagePicker
+                images={replyImages}
+                onChange={setReplyImages}
+                disabled={replySubmitting}
+                userId={userId}
+                t={t}
+              />
               {replyError && <p className="text-xs text-cz-danger">{replyError}</p>}
               <div className="flex justify-end">
                 <Button type="submit" variant="primary" size="sm" loading={replySubmitting} disabled={replySubmitting || !replyBody.trim()}>

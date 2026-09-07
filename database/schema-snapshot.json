@@ -1618,7 +1618,8 @@
         "reply_count",
         "last_reply_at",
         "deleted_at",
-        "deleted_by"
+        "deleted_by",
+        "images"
       ]
     },
     "forum_reactions": {
@@ -1642,7 +1643,8 @@
         "body",
         "deleted_at",
         "deleted_by",
-        "quoted_reply_id"
+        "quoted_reply_id",
+        "images"
       ]
     },
     "forum_reports": {

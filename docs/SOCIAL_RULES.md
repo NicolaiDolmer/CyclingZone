@@ -442,6 +442,28 @@ Om det er en synligheds- eller en værdi-årsag er ikke afgjort, og det hører u
 Til sammenligning: 378 rækker i `forum_thread_reads` fordelt på 52 brugere. Folk **læser**
 forummet, de trykker bare ikke opbakning.
 
+### 8.1b Billeder i forum-indlæg
+
+Ejer-direktiv 4/9 ordret: *"Det skal være muligt at indsætte billeder i forummet"*
+([#4819](https://github.com/NicolaiDolmer/CyclingZone/issues/4819)). Grænserne er ejer-valg 8/9.
+
+| Regel | Værdi | Hvor |
+|---|---|---|
+| Hvor billederne bor | `forum_posts.images` / `forum_replies.images` (jsonb-array af `{path, width, height}`) | migration `2026-09-08-4819` |
+| Hvorfor ikke markdown i `body` | body rendres som **ren tekst** (`whitespace-pre-wrap`); en billed-syntaks ville kræve en renderer og dermed åbne en XSS-flade forummet ikke har | `ForumPostPage.jsx` |
+| Bucket | `forum-images`, public, 2 MB pr. fil, mime jpeg/png/webp | `storage.buckets` |
+| Antal | **maks 3 pr. indlæg** (tråd eller svar), DB-CHECK + backend | `forum.js` |
+| Størrelse | 2 MB **efter** nedskalering i browseren (længste side 1600 px, kvalitet 0,85) — et 8 MB telefonbillede skal virke | `frontend/src/lib/forumImages.js` |
+| Ejerskab | stien er `<user_id>/<uuid>.<ext>`; første mappeniveau håndhæves af RLS ved INSERT **og** af `normalizeForumImages` ved post | begge lag |
+| Sletning | filens ejer eller admin (`public.is_admin()`). Admin kan fjerne **ét** billede uden at slette hele indlægget: `DELETE /api/admin/forum/images` | `forum.js` |
+| Anmeldelse | den eksisterende Report-knap dækker billeder — ingen separat vej | ejer-valg 8/9 |
+| Visning | max-bredde 100 % (mobil, [#4415](https://github.com/NicolaiDolmer/CyclingZone/issues/4415)), klik åbner filen i fuld størrelse i en ny fane | `ForumImageAttachments.jsx` |
+
+**Upload sker FØR indlægget sendes** — et fejlet upload må aldrig koste brugeren teksten. Prisen er
+forældreløse filer når nogen lukker editoren uden at sende: fjern-krydset sletter filen med det
+samme, og resten ryddes af `scripts/sweep-forum-image-orphans.mjs` (dry-run som default, rører kun
+filer ældre end 24 timer der ikke er refereret af noget indlæg).
+
 ### 8.2 Holdprofil og managerprofil
 
 To offentlige flader, to ruter, to komponenter:

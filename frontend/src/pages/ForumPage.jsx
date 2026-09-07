@@ -9,6 +9,8 @@ import {
 } from "../components/ui";
 import { InboxIcon } from "../components/ui/icons/index.jsx";
 import FounderMark from "../components/FounderMark.jsx";
+// #4819: billeder i indlaegget. Uploades FOER submit, se komponentens hoved.
+import ForumImagePicker from "../components/forum/ForumImagePicker.jsx";
 // #4751: datoformatteren bor nu i det delte forum-modul (en side skal ikke
 // vaere kilde for en komponent — ForumAuthorIdentity bruger den samme).
 import { formatForumDate } from "../components/forum/forumIdentity.js";
@@ -80,10 +82,11 @@ function PostRow({ post, t, language }) {
   );
 }
 
-function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, tError }) {
+function ComposeModal({ open, onClose, onCreated, isAdmin, userId, defaultCategory, t, tError }) {
   const [category, setCategory] = useState(defaultCategory || "general");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [images, setImages] = useState([]);
   const [pollText, setPollText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -98,6 +101,9 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
     setTimeout(() => {
       setTitle("");
       setBody("");
+      // Billederne er allerede uploadet; naar modalen lukkes uden at sende,
+      // bliver de foraeldreloese og ryddes af sweep-scriptet.
+      setImages([]);
       setPollText("");
       setError(null);
     }, 200);
@@ -124,6 +130,7 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
           category,
           title: title.trim(),
           body: body.trim(),
+          images,
           ...(isAdmin && pollOptions.length ? { poll_options: pollOptions } : {}),
         }),
       });
@@ -194,6 +201,15 @@ function ComposeModal({ open, onClose, onCreated, isAdmin, defaultCategory, t, t
             placeholder={t("compose.bodyPlaceholder")}
           />
         </Field>
+        <Field label={t("images.label")}>
+          <ForumImagePicker
+            images={images}
+            onChange={setImages}
+            disabled={submitting}
+            userId={userId}
+            t={t}
+          />
+        </Field>
         {isAdmin && (
           <Field label={t("compose.pollLabel")} htmlFor="forum-compose-poll" helper={t("compose.pollHelp")}>
             <Textarea
@@ -229,6 +245,9 @@ export default function ForumPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  // #4819: billed-stien ER ejerskabet (`<user_id>/...`), saa vaelgeren skal
+  // kende brugerens id for at kunne uploade i sin egen mappe.
+  const [userId, setUserId] = useState(null);
   // #3451: "Markér alle som læst" — sekundær knap (gold er reserveret til
   // "New post"), samme markingAll/loading-mønster som NotificationsPage.
   const [markingAll, setMarkingAll] = useState(false);
@@ -244,6 +263,7 @@ export default function ForumPage() {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
+      setUserId(user.id);
       const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle();
       if (!cancelled) setIsAdmin(userData?.role === "admin");
     })();
@@ -441,6 +461,7 @@ export default function ForumPage() {
         onClose={() => setComposeOpen(false)}
         onCreated={() => load(null)}
         isAdmin={isAdmin}
+        userId={userId}
         defaultCategory={category}
         t={t}
         tError={tError}
