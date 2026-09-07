@@ -361,12 +361,12 @@ function incidentKindLabel(kind) {
 }
 
 // #3897: divisionLabel er puljens spillervendte navn (fx "Division 3 — A"),
-// slået op af kalderen via getResultWebhooksAndLabel — én samlekanal
-// (#results-d3) og hver gruppekanal kan modtage poster fra flere puljer i
-// samme tier, og uden label i titlen læses to poster i samme kanal som
-// "samme løb, to vindere" (thelamba 17/8). Valgfri: udelades helt når
-// leagueDivisionId mangler/ikke findes (Division 1 har kun én pool i praksis,
-// men label vises alligevel når den findes — ingen skade, ingen tvetydighed).
+// slået op af kalderen via getResultWebhooksAndLabel. Oprindeligt nødvendigt
+// fordi division-samlekanalen kunne modtage poster fra flere puljer i samme
+// tier (thelamba 17/8) — den samlekanal er droppet igen (#4999), så hver
+// gruppekanal nu kun får sin egen puljes resultater. Vi beholder labellet i
+// embed'et alligevel (gratis kontekst, ingen skade). Valgfri: udelades helt
+// når leagueDivisionId mangler/ikke findes.
 export function buildRaceSimEmbed({ race, resultRows, incidents = [], divisionLabel = null }) {
   const rows = resultRows || [];
   const gcWinner = rows.find((r) => r.result_type === "gc" && r.rank === 1);
