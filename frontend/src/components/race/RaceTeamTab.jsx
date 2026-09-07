@@ -194,29 +194,38 @@ export default function RaceTeamTab({
 
   if (data === null) {
     return (
-      <>{profileRow}<Section>
-        <SectionHeader title={t("racePage.team.title")} />
-        <SkeletonLines lines={5} />
-      </Section></>
+      <>
+        {profileRow}
+        <Section>
+          <SectionHeader title={t("racePage.team.title")} />
+          <SkeletonLines lines={5} />
+        </Section>
+      </>
     );
   }
   if (data === false) {
     return (
-      <>{profileRow}<Section>
-        <SectionHeader title={t("racePage.team.title")} />
-        <p className="text-xs text-cz-3">{t("racePage.team.loadError")}</p>
-        <div className="mt-3">
-          <Button variant="secondary" size="sm" onClick={onReload}>{t("tacticsOrders.retry")}</Button>
-        </div>
-      </Section></>
+      <>
+        {profileRow}
+        <Section>
+          <SectionHeader title={t("racePage.team.title")} />
+          <p className="text-xs text-cz-3">{t("racePage.team.loadError")}</p>
+          <div className="mt-3">
+            <Button variant="secondary" size="sm" onClick={onReload}>{t("tacticsOrders.retry")}</Button>
+          </div>
+        </Section>
+      </>
     );
   }
   if (!riders.length) {
     return (
-      <>{profileRow}<Section>
-        <SectionHeader title={t("racePage.team.title")} />
-        <p className="text-xs text-cz-3">{t("racePage.team.noRiders")}</p>
-      </Section></>
+      <>
+        {profileRow}
+        <Section>
+          <SectionHeader title={t("racePage.team.title")} />
+          <p className="text-xs text-cz-3">{t("racePage.team.noRiders")}</p>
+        </Section>
+      </>
     );
   }
 

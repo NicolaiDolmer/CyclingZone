@@ -832,6 +832,11 @@ export default function RaceDetailPage() {
   const runningStage = Math.min(totalStages, ridden + 1);
   const focusStage = phase === "before" ? scheduledStage : runningStage;
   const focusProfile = profileByStage[focusStage] ?? null;
+  // #4979: Hold-fanens profil-raekke findes FOER og UNDER loebet, hvor der er en
+  // etape man udtager til eller koerer. EFTER loebet er fanen en historik over
+  // alle etaper ("etape for etape"), og een vilkaarlig etapeprofil oeverst ville
+  // vaere stoej der ikke svarer paa fanens spoergsmaal.
+  const teamTabProfile = phase === "after" ? null : focusProfile;
 
   // Holdets egne tal i hero'en. `stageRoles` kan være null (henter) eller false
   // (hentningen fejlede) — begge giver en blok der UDELADES frem for at lyve.
@@ -1038,7 +1043,7 @@ export default function RaceDetailPage() {
                  ("Stage N locks") — foer loebet den valgte, under loebet den
                  koerende. Etaper-fanen har sin egen fulde profil; de to faner
                  er aldrig synlige samtidig. */
-              stageProfile={focusProfile}
+              stageProfile={teamTabProfile}
               stageProfileLabel={totalStages > 1 ? t("detail.tabStage", { number: focusStage }) : null}
               hasClassifications={race.race_type === "stage_race"}
               selectedStageIndex={selectedStageIndexForPanel}

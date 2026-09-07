@@ -46,5 +46,7 @@ test("Hold-fanen tegner rækken øverst, og siden fodrer den med hero'ens etape"
   assert.ok(rowAt > 0 && rosterAt > rowAt, "rækken skal stå før holdlistens kort");
   // FØR løbet er fanen holdudtagelsen — rækken skal også stå der.
   assert.match(teamTab, /id="race-selection-anchor"[\s\S]{0,220}<RaceStageProfileRow/);
-  assert.match(page, /stageProfile=\{focusProfile\}/);
+  // Efter løbet er fanen historik over alle etaper: ingen profil-række der.
+  assert.match(page, /const teamTabProfile = phase === "after" \? null : focusProfile;/);
+  assert.match(page, /stageProfile=\{teamTabProfile\}/);
 });
