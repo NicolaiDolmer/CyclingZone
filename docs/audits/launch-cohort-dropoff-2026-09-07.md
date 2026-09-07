@@ -1,6 +1,6 @@
 # Audit — launch-kohortens frafald dag for dag (#4964)
 
-Read-only fra prod 8/9 (Supabase MCP, kun SELECT). Dagsgrænser Europe/Copenhagen. Univers: `role <> 'admin'`, ingen AI-/test-/bank-hold. Ingen kodeændringer.
+Read-only fra prod 7/9 (Supabase MCP, kun SELECT). Dagsgrænser Europe/Copenhagen. Univers: `role <> 'admin'`, ingen AI-/test-/bank-hold. Ingen kodeændringer.
 
 ## 0. To fejlkilder i #4960's tal
 
@@ -118,3 +118,40 @@ rammer nøjagtigt hullet hvor 39-56 % af launch-kohorten forsvandt.
 - Afsnit 4 er korrelationer; ingen af dem er testet som indgreb. Trin 4-diagnosen (afsnit 3)
   er udledt af tallene, ikke af en gennemlæsning af auto-accept-stien.
 - `users.last_seen` er en 60 s-heartbeat fra `Layout` — sidste tidspunkt, ikke en kurve.
+
+## 8. Anbefaling (ejer-kort)
+
+**Beslutning:** 28,6 % er ikke en launch-syg uge (afsnit 0) — nye spillere har altid tabt
+33-46 % fra uge 1 til uge 2. Men afsnit 5 finder et ægte, billigt hul: der findes **ingen**
+mekanisme der rører en spiller efter de lukker fanen. Day-1-mailen er allerede bygget og
+merged (#2853), bare slukket.
+
+**Anbefalet fix — tænd `email_loop_day1` (+ `welcome`) via `docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md`**
+- Hvad: ingen ny kode. Verificér secrets (Resend-nøgle + domæne "Verified"), sæt de to
+  `app_config`-flag til `dry_run` i 24 t, læs `email_log` (targeting/fejl), ejer godkender
+  EN-copy (`docs/drafts/mailtekster-2853-2026-08-03.md`), flip til `on`. Rollback er ét
+  `UPDATE` uden deploy.
+- Worker-timer: ~45 min aktivt Claude-arbejde (flag-flip + verifikations-SQL) + 24 t
+  obligatorisk dry-run-vindue mellem trin 3 og 6 + ~15 min ejer-tid (Resend-tjek +
+  copy-godkendelse). Ingen frontend/backend-PR.
+- Målt vindue: day-1-sweepets 20-30 t rammer nøjagtigt hullet hvor 39-56 % af
+  launch-kohorten sidst er set (afsnit 1).
+- **Før:** `email_log` har 0 rækker nogensinde — 0 % af de der lukker fanen inden for et
+  døgn, kan i dag nås af noget.
+- **Efter (næste kohorte på ≥15 nye, målt 14 dage efter):** day-1-mail leveret til ≥90 % af
+  de stille inden for 20-30 t; mål er IKKE flere klik i sig selv, men om dag-7/dag-14-andelen
+  løftes fra launch-kohortens 30 %/25 % (afsnit 1) op mod juli/1-23·8-niveauet (34-37 %/
+  24-30 %) — dvs. tilbage til det historiske bånd, ikke et nyt loft.
+
+**Alternativer:**
+1. **Gør intet nu.** Accepter 33-46 % som normalt beta-bånd (afsnit 0), lad #1140/#1569
+   blive hvor de ligger i MASTERPLAN, og revisiter efter S4 (28/9) med et større n. Billigst,
+   men lukker ikke det strukturelle hul i afsnit 5 — endnu en launch-uge uden retur-mekanisme.
+2. **Ryk #1140/#1569 op nu** (strømlin onboarding-flowet / eksekvér 20/6-handlingsplanen).
+   Adresserer afsnit 3's reelle fund (trin 2+3 — træning og selv-sat opstilling — er hvor
+   launch-kohorten taber, ikke trin 1/bud). Højere loft end en mail, men dage/uger arbejde,
+   næppe klar før S4's tilstrømning 28/9.
+
+Anbefalingen er (1) tænd day-1-mailen nu — den er gratis og målt direkte på hullet — og
+brug det som **datagrundlag**, ikke erstatning, for beslutningen om #1140/#1569's
+kø-placering i afsnit "Hvad der skal besluttes" i #4964.
