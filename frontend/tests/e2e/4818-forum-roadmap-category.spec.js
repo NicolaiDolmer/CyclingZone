@@ -42,7 +42,11 @@ test("roadmap ligger oeverst i fanerraekken", async ({ page }) => {
   await login(page);
   await page.goto("/forum");
 
-  const tabs = page.getByRole("navigation").getByRole("button");
+  // Scoped paa fanerraekkens eget aria-label: paa desktop findes ogsaa
+  // sidebarens <nav>, og en unavngiven getByRole("navigation") ramte den.
+  const tabs = page
+    .getByRole("navigation", { name: /^(Category|Kategori)$/ })
+    .getByRole("button");
   await expect(tabs.first()).toHaveText(/^(All|Alle)$/);
   // Foerste rigtige kategori efter "All" skal vaere Roadmap (#4818).
   await expect(tabs.nth(1)).toHaveText(ROADMAP_TAB);
