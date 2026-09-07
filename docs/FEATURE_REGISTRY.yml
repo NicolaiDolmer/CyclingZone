@@ -75,11 +75,11 @@ features:
     area: race-engine
     title_en: Race engine v4
     title_da: Løbsmotor v4
-    state: building
+    state: dormant
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 3855
-    verified: 2026-09-06
-    note: Dormant nøgle race_engine_v4 (række findes ikke = off); flip planlagt 28/9.
+    verified: 2026-09-07
+    note: Række race_engine_v4 = "off" i prod (#4951). Flip planlagt 28/9, ejer-only.
 
   - id: form-and-fatigue
     area: race-engine
@@ -291,10 +291,11 @@ features:
     area: training
     title_en: Training tick system
     title_da: Tick-baseret træning
-    state: building
+    state: dormant
     ssot: docs/TRAINING_RULES.md
     epic: 4850
-    verified: 2026-09-06
+    verified: 2026-09-07
+    note: Række race_day_development_enabled = "off" i prod (D1+D2, #4277/#4951). Genindføres til S4 pr. ejer-beslutning 26/8, jf. #4850.
 
   - id: season-fatigue-reset
     area: training
@@ -573,11 +574,11 @@ features:
     area: comms
     title_en: Email retention loop
     title_da: E-mail-loop
-    state: building
+    state: dormant
     ssot: docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md
     epic: 4616
-    verified: 2026-09-06
-    note: Dormante nøgler email_loop_* (rækker findes ikke = off); afventer ejer-go.
+    verified: 2026-09-07
+    note: Rækker email_loop_welcome/day1/race_digest = "off" i prod (#4951); afventer ejer-go, jf. runbook.
 
   # --- billing -------------------------------------------------------------
   - id: cz-pro
