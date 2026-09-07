@@ -107,7 +107,8 @@ function prSkabelonBlok(issue, wd, branch) {
     "- Skal indeholde `## Brugerverifikation` med mindst ét `- [x]`, ELLER label `docs-only`/`backend-only`.",
     `- Foerste push: opret PR'en som DRAFT: \`gh pr create --draft --base main --head ${branch} --title "..." --body-file "${wd}/.tmp-${issue}-pr.md" --label docs-only\` (skift label efter omfang).`,
     "- Push wip-commits mod draften som normalt (livstegn-reglen gaelder uaendret).",
-    "- Markér FOERST PR'en klar naar preflight er groen og PR-body er faerdig, som SIDSTE handling: `gh pr ready <N>` (CodeRabbit-attempts, 7/9 - undgaar at hvert wip-push taeller som et review-forsoeg).",
+    "- FOER `gh pr ready`: koer `coderabbit review --base main --committed` i arbejdsmappen (CLI, egen kvote - adskilt fra skyens auto-review paa den endelige inkrementelle omgang). Tager ca. 2,5 min. Ret aegte fund; afvis stoej med en kort begrundelse i slutrapporten. Fandt reviewet noget der skulle rettes: commit + push rettelsen, og koer CLI-reviewet igen paa den endelige committed diff. PR'en maa IKKE markeres klar foer et rent (eller kun-stoej) CLI-review paa den endelige diff foreligger.",
+    "- Markér FOERST PR'en klar naar preflight er groen, det endelige CLI-review er koert (uden uafklarede fund) og PR-body er faerdig, som SIDSTE handling: `gh pr ready <N>` (CodeRabbit-attempts, 7/9 - undgaar at hvert wip-push taeller som et review-forsoeg).",
     `- Refs #${issue} i PR-body, ikke "Closes" - projektets close-protokol er "Refs #N", brugeren lukker selv.`,
   ].join("\n");
 }
