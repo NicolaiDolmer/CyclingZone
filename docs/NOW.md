@@ -10,7 +10,7 @@
 
 > **🔴 Åbne fund (§7b refreshet 7/9 efter #4988 #4998 #4975):** felt-sammenhæng flad **88 % GRØN** · bjerg-top-10 206 s grøn · højbjerg-hale 8,1 % grøn · nedkørsel 0,44 grøn · sprinter 100 % · holdspil 7,35 (v3 7,10) · **favorit-win-rate 62,6 % RØD** (bånd 25-40, egen kalibrering, aldrig straf styrke). #4595: #4970 lukkede IKKE 56 (sha injiceres af Sentry-plugin, bevis i issuet) · NPS #4997 (første 40 min: 7 vist, 1 svar, 1 luk; genmål 9/9). #5001 renderV4AnchorTable skriver uden --write · #5004 preflight mangler anti-slop · CLAUDE.md 1737/1750 tok (#4364).
 
-> **✅ 7/9 aften (Fable, ejer ved maskinen, ejer-bestillinger):** 7 PR'er merget (#4988 #4996 #5002 #4998 #5003 #4975 #5005), roadmap_items refreshet i prod, 28 issues done. **PR #5006 (in-app spørgeskema) åben, IKKE merget: indhold designes først.** Detaljer: `docs/audits/day-wave-2026-09-07-ejer-bestillinger.md`. #4663-note ved S4-flag-flip.
+> **✅ 7/9 aften (Fable, ejer ved maskinen, ejer-bestillinger):** 7 PR'er merget (#4988 #4996 #5002 #4998 #5003 #4975 #5005), roadmap_items refreshet i prod, 28 issues done. Efterfølgende: patch note v7.263 (#5000 #5012 #5007). **PR #5006 (in-app spørgeskema) åben, IKKE merget: indhold designes først.** Detaljer: `docs/audits/day-wave-2026-09-07-ejer-bestillinger.md`. #4663-note ved S4-flag-flip.
 
 > **📊 Triage:** Sentry via `infisical run --env=dev -- node scripts/sentry-issues.mjs --period=7d`. Clarity er ikke kilde til "hvor mange" (#4963). #4952 Firefox-mobil · #4953 dead clicks /training · #4982 layout-regression.
 
