@@ -1034,6 +1034,13 @@ export default function RaceDetailPage() {
               stageRoles={stageRoles}
               onReload={reloadStageRoles}
               gcRankByRider={gcRankByRider}
+              /* #4979: profilen over Hold-fanens kort foelger hero'ens etape
+                 ("Stage N locks") — foer loebet den valgte, under loebet den
+                 koerende. Etaper-fanen har sin egen fulde profil; de to faner
+                 er aldrig synlige samtidig. */
+              stageProfile={focusProfile}
+              stageProfileLabel={totalStages > 1 ? t("detail.tabStage", { number: focusStage }) : null}
+              hasClassifications={race.race_type === "stage_race"}
               selectedStageIndex={selectedStageIndexForPanel}
               selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
               selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
