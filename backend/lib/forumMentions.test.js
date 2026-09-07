@@ -138,14 +138,21 @@ test("splitMentionSegments på tekst uden tags giver ét tekst-stykke", () => {
 
 // ── loadMentionableManagers ────────────────────────────────────────────────
 
+// Chainable builder der resolver på .range() — fetchAllRows (#3331) pagineres,
+// og fake'en skal opføre sig som PostgREST gør, ellers tester vi et kald der
+// ikke findes. Fake'en filtrerer BEVIDST ikke på .eq()/.not(): så bliver
+// JS-garantien i loadMentionableManagers stadig målt af testen nedenfor.
 function fakeSupabase({ teams, users }) {
   return {
     from(table) {
       const rows = table === "teams" ? teams : users;
       const builder = {
         select: () => builder,
+        eq: () => builder,
+        not: () => builder,
         in: () => builder,
-        limit: () => Promise.resolve({ data: rows, error: null }),
+        order: () => builder,
+        range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }),
       };
       return builder;
     },

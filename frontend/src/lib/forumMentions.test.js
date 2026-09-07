@@ -87,6 +87,17 @@ test("det valgte navn erstatter det halvskrevne tag og får ét mellemrum efter"
   assert.equal(next.caret, "hej @Nicolai ".length);
 });
 
+// CodeRabbit-fund 8/9: caret'en må stå MIDT i ordet (man klikker tilbage i et
+// halvskrevet navn). Uden at æde resten af ordet blev "@nic|olai" til
+// "@Nicolaiolai" — et tag der matcher ingen manager, altså hverken notifikation
+// eller link.
+test("et navn valgt midt i ordet æder resten af ordet", () => {
+  const text = "godt kørt @nicolai i går";
+  const selection = findMentionQuery(text, 14); // caret efter "@nic"
+  assert.deepEqual(selection, { start: 10, query: "nic" });
+  assert.equal(applyMentionSelection(text, selection, "Nicolai").text, "godt kørt @Nicolai i går");
+});
+
 test("indsættelse midt i teksten rører ikke resten af feltet", () => {
   const text = "@so\nnæste linje står urørt";
   const selection = findMentionQuery(text, 3);

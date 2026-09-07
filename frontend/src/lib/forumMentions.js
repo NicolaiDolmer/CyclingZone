@@ -235,7 +235,13 @@ export function filterMentionCandidates(managers, query, limit = MENTION_SUGGEST
 export function applyMentionSelection(text, selection, name) {
   const body = typeof text === "string" ? text : "";
   if (!selection || typeof name !== "string" || !name) return { text: body, caret: body.length };
-  const caretBefore = selection.start + 1 + selection.query.length;
+  // Resten af det ord caret'en står MIDT i hører til navnet der erstattes.
+  // Uden dette blev "@nic|olai" til "@Nicolaiolai": et tag der ikke matcher
+  // nogen manager, så hverken notifikationen eller linket ville komme.
+  let caretBefore = selection.start + 1 + selection.query.length;
+  while (caretBefore < body.length && body[caretBefore] !== " " && body[caretBefore] !== "\n") {
+    caretBefore += 1;
+  }
   const rest = body.slice(caretBefore);
   // Kun et rigtigt mellemrum tæller som "der er allerede plads": står der et
   // linjeskift, skal navnet stadig have sit eget mellemrum, ellers ville

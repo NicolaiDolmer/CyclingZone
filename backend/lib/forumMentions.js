@@ -17,11 +17,15 @@
 //     e-mails ("nicolai@dolmer") aldrig bliver til et tag
 //   · aldrig hen over et linjeskift
 //
-// Filen er BEVIDST uden dependencies (ingen Supabase, ingen Sentry) af to
-// grunde: den kan køres direkte under `node --test`, og frontendens
+// Selve PARSEREN er bevidst uden dependencies (ingen Supabase-klient, ingen
+// Sentry) af to grunde: den kan køres direkte under `node --test`, og frontendens
 // render-kopi (frontend/src/lib/forumMentions.js) skal opføre sig præcis
 // ens — paritet håndhæves af forumMentions.parity.test.js, så en regel der
 // kun rettes ét af stederne fejler i test i stedet for tavst i prod.
+//
+// Importen nedenfor bruges KUN af loadMentionableManagers (nederst), aldrig af
+// parser-blokken — derfor står den uden for den delte blok.
+import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
 
 // >>> SHARED MENTION PARSER (#5011) — hold i sync med frontend/src/lib/forumMentions.js
 export const MENTION_MAX_WORDS = 4;
@@ -171,37 +175,60 @@ export function uniqueMentionTargets(matches, { excludeUserId = null } = {}) {
   return targets;
 }
 
-// Bounded scan, samme filosofi som forum.js's REPLY_RECOUNT_LIMIT/
-// ACTIVITY_SCAN_LIMIT: spillet har ~250 menneskehold, og en fuld liste er
-// billigere end en fuzzy DB-søgning pr. '@'. Vokser feltet forbi denne skala
-// skal opslaget flyttes til en indekseret søgning på et normaliseret navn.
-export const MENTION_DIRECTORY_LIMIT = 2000;
-
 /**
  * Alle taggbare managere: menneskestyrede hold med et brugernavn.
  * Kun `username` + `team_id` forlader denne funktion — begge dele står
  * allerede på hvert eneste forum-indlæg (ForumAuthorIdentity, #4751), så
  * listen tilføjer ingen ny eksponering.
+ *
+ * PAGINERING ER IKKE VALGFRI HER (#3331, CodeRabbit 8/9). `teams` rummer også
+ * ALLE AI-holdene, altså langt over PostgRESTs 1000-rækkers cap. Et enkelt
+ * select uden `.range()` ville derfor tavst returnere de første 1000 rækker og
+ * tabe managere fra listen — og en tabt manager er ikke en kosmetisk fejl: hans
+ * navn ville stå ulinket i teksten OG han ville aldrig få sin notifikation.
+ * Derfor både server-side-filtrering (så kun menneskehold hentes) og
+ * fetchAllRows (så resten aldrig kan blive kappet).
  */
 export async function loadMentionableManagers({ supabase }) {
-  const { data: teamRows, error: teamError } = await supabase
-    .from("teams")
-    .select("id, user_id, is_ai, is_bank")
-    .limit(MENTION_DIRECTORY_LIMIT);
-  if (teamError) throw new Error(`forum: could not load mentionable teams: ${teamError.message}`);
+  let teamRows;
+  try {
+    teamRows = await fetchAllRows(() => supabase
+      .from("teams")
+      .select("id, user_id, is_ai, is_bank")
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .not("user_id", "is", null)
+      // Stabil sortering er et KRAV for sidedeling (se supabasePagination.js).
+      .order("id", { ascending: true }));
+  } catch (e) {
+    throw new Error(`forum: could not load mentionable teams: ${e?.message || e}`, { cause: e });
+  }
 
+  // Samme filter igen i JS: server-side-filteret er optimeringen, denne er
+  // garantien. De to må aldrig kunne komme til at sige noget forskelligt om
+  // hvem der er en rigtig manager.
   const teams = (teamRows || []).filter((t) => t?.user_id && !t.is_ai && !t.is_bank);
   if (teams.length === 0) return [];
 
   const userIds = [...new Set(teams.map((t) => t.user_id))];
-  const { data: userRows, error: userError } = await supabase
-    .from("users")
-    .select("id, username")
-    .in("id", userIds)
-    .limit(userIds.length);
-  if (userError) throw new Error(`forum: could not load mentionable managers: ${userError.message}`);
+  const userRows = [];
+  try {
+    // .in() med mange id'er sprænger både URL-længden og 1000-rækkers-cappen —
+    // derfor chunkes den på den kanoniske størrelse.
+    for (let i = 0; i < userIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+      const chunk = userIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+      const page = await fetchAllRows(() => supabase
+        .from("users")
+        .select("id, username")
+        .in("id", chunk)
+        .order("id", { ascending: true }));
+      userRows.push(...page);
+    }
+  } catch (e) {
+    throw new Error(`forum: could not load mentionable managers: ${e?.message || e}`, { cause: e });
+  }
 
-  const nameByUser = new Map((userRows || []).map((u) => [u.id, u.username]));
+  const nameByUser = new Map(userRows.map((u) => [u.id, u.username]));
   const managers = [];
   const seenUsers = new Set();
   for (const team of teams) {
