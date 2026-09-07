@@ -170,12 +170,13 @@ const FINALE_WEIGHTS_BY_PROFILE = Object.freeze({
   ttt:           Object.freeze([{ value: "solo_tt", weight: 100 }]),
   // fladt 30-50 % → 45 · udbrud 40-60 % → 55.
   cobbles:       Object.freeze([{ value: "reduced_sprint", weight: 45 }, { value: "breakaway", weight: 55 }]),
-  // gravel (#4105) staar — som `classic` — IKKE i ejerens baand-tabel fra #4272; den
-  // tabel blev godkendt tal for tal 26/8 og daekker de terraener der fandtes dengang.
-  // Vaegtene her er derfor en REALISME-blanding, ikke et gated baand: grusklassikeren
-  // afgoeres oftest af et lille udbrud eller en solo, med en stejl rampe-finale som
-  // naeststoerste udfald og en samlet gruppe som mindretal. Scorecardet RAPPORTERER
-  // fordelingen (som for classic) men gater den ikke, indtil ejeren har sat et baand.
+  // gravel HAR sit eget baand siden ejer-beslutning 3/9 (#4105/#4270, valg A) — kun
+  // `classic` mangler stadig et (RACE_ENGINE_RULES.md §"Grus", #4911/#4937). Baandet
+  // er `stageFinaleMetrics.js`'s TERRAIN_FINALE_BANDS.gravel (up:[15,35], flat:[10,30],
+  // break:[45,65]), afledt af vaegtene herunder, haandhaevet af stageFinaleMetrics.test.js.
+  // Vaegtene her afspejler at grusklassikeren afgoeres oftest af et lille udbrud eller en
+  // solo, med en stejl rampe-finale som naeststoerste udfald og en samlet gruppe som
+  // mindretal.
   gravel:        Object.freeze([{ value: "breakaway", weight: 55 }, { value: "punch", weight: 25 }, { value: "reduced_sprint", weight: 20 }]),
   // `classic` står IKKE i ejerens bånd-tabel (den dækker de otte genererede terræner,
   // classic er monument-arketypen). Den beholder derfor sin egen realistiske blanding

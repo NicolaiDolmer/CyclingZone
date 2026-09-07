@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { RACE_V4_TUNING } from "../../lib/engine/v4/tuning.ts";
 import {
   ANCHOR_BANDS,
+  AGGREGATION_BAND_BY_ANCHOR_ID,
   judge,
   scoreFieldCohesion,
   scoreDescentVsSummitRatio,
@@ -16,6 +17,7 @@ import {
   scoreBonusSecondsBounded,
   scoreGapRealism,
   buildScorecard,
+  aggregateScorecards,
   formatScorecard,
 } from "./headToHeadAnchors.js";
 
@@ -427,4 +429,56 @@ test("ANCHOR_BANDS: alle citerede baand har en source-streng (ingen ubegrundede 
   for (const [key, band] of Object.entries(ANCHOR_BANDS)) {
     assert.ok(typeof band.source === "string" && band.source.length > 0, `ANCHOR_BANDS.${key} mangler source`);
   }
+});
+
+// ── aggregateScorecards (#4947: bandById manglede 3 af 13 ankre) ───────────
+
+test("forward-guard: ETHVERT anker-id fra buildScorecard() findes i AGGREGATION_BAND_BY_ANCHOR_ID", () => {
+  const v4EntrantsById = {
+    a: { rider_id: "a", abilities: ability({ sprint: 90, punch: 40, time_trial: 40 }) },
+    b: { rider_id: "b", abilities: ability({ sprint: 40, punch: 90, time_trial: 40 }) },
+  };
+  const flatRow = makeRow({
+    profile_type: "flat", finale_type: "bunch_sprint",
+    v3Entries: [{ rider_id: "a", rank: 1, stageGap: 0, team_id: "t1" }, { rider_id: "b", rank: 2, stageGap: 1, team_id: "t2" }],
+    v4Entries: [{ rider_id: "a", rank: 1, time_seconds: 100 }, { rider_id: "b", rank: 2, time_seconds: 101 }],
+  });
+  const abilitiesByRider = new Map([["a", v4EntrantsById.a.abilities], ["b", v4EntrantsById.b.abilities]]);
+  const teamByRider = new Map([["a", "t1"], ["b", "t2"]]);
+  const scorecard = buildScorecard([flatRow], { teamByRider, abilitiesByRider, v4EntrantsById });
+
+  assert.equal(scorecard.length, 13, "buildScorecard skal producere 13 ankre — opdatér denne test hvis et anker tilfoejes/fjernes");
+  for (const anchor of scorecard) {
+    assert.ok(
+      Object.prototype.hasOwnProperty.call(AGGREGATION_BAND_BY_ANCHOR_ID, anchor.id),
+      `anker "${anchor.id}" mangler i AGGREGATION_BAND_BY_ANCHOR_ID — aggregateScorecards() vil falde tilbage til foerste-seed-dommen i stedet for seed-middel (#4947)`,
+    );
+  }
+});
+
+test("aggregateScorecards: doemmer 3-seed-MIDDEL, kopierer ikke foerste seeds dom (regression #4947)", () => {
+  // Foer fix: descent_attack_gain_bounds/breakaway_rate_per_terrain/bonus_seconds_bounded
+  // manglede i bandById, saa aggregateEngine() brugte `measured[0].verdict` — altid
+  // seed 1's egen dom, uanset hvad de andre seeds maalte.
+  function fakeCell(value, sampleCount, verdict) {
+    return { value, sampleCount, verdict, naReason: null, display: (v) => String(v) };
+  }
+  function fakeCard(descentGain) {
+    return [
+      // descent_attack_gain_bounds: baand [10,20]. Seed 1 alene ligger over
+      // baandet (FAIL); middelvaerdien af de tre seeds ligger indenfor (PASS).
+      { id: "descent_attack_gain_bounds", label: "x", bandLabel: "x", source: "x",
+        v3: fakeCell(null, 0, "N/A"),
+        v4: fakeCell(descentGain, 1, descentGain >= 10 && descentGain <= 20 ? "PASS" : "FAIL") },
+    ];
+  }
+  const seed1 = fakeCard(25); // over baandet alene -> FAIL hvis kopieret fra seed 1
+  const seed2 = fakeCard(5);
+  const seed3 = fakeCard(5);
+  // (25 + 5 + 5) / 3 = 11.67 -> indenfor [10,20] -> PASS
+
+  const [aggregated] = aggregateScorecards([seed1, seed2, seed3]);
+  assert.equal(aggregated.v4.verdict, "PASS", "middelvaerdien (11.67s) er indenfor 10-20s-baandet, men seed 1 alene (25s) var FAIL");
+  assert.ok(Math.abs(aggregated.v4.value - 11.666666666666666) < 1e-9);
+  assert.deepEqual(aggregated.v4.spread, { min: 5, max: 25, seeds: 3 });
 });
