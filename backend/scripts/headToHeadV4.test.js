@@ -87,19 +87,27 @@ test("CLI: node backend/scripts/headToHeadV4.js --population=... --stages=... ko
   const result = runCli([`--population=${POPULATION_PATH}`, `--stages=${STAGES_PATH}`, "--seed=cli-test"]);
   assert.equal(result.status, 0, `stderr: ${result.stderr}`);
   const lines = result.stdout.trim().split("\n");
-  assert.ok(lines[0].startsWith("Population: 8 ryttere. Etaper: 2."));
-  // Header-linje (tab-separeret) med de forventede kolonner (d)-kravet.
-  const headerLine = lines[1];
+  const populationLineIndex = lines.findIndex((l) => l.startsWith("Population: "));
+  assert.ok(populationLineIndex !== -1, `fandt ikke "Population: "-linjen: ${result.stdout}`);
+  assert.ok(lines[populationLineIndex].startsWith("Population: 8 ryttere. Etaper: 2."));
+  // Populationens evne-fordeling (p10/p50/p90) printes lige under Population-linjen (#4936).
+  const fullOutput = lines.join("\n");
+  assert.match(fullOutput, /Populationens evne-fordeling/);
+  // Header-linje (tab-separeret) med de forventede kolonner (d)-kravet — fundet
+  // ved INDHOLD, ikke fast linje-index, saa fordelings-blokken ovenfor ikke
+  // forskubber testen (bidt af #4936: lines[1] ramte fordelingens overskrift).
+  const headerLineIndex = lines.findIndex((l) => l.startsWith("stage\t"));
+  assert.ok(headerLineIndex !== -1, `fandt ikke header-linjen "stage\\t...": ${result.stdout}`);
+  const headerLine = lines[headerLineIndex];
   for (const col of ["stage", "profile_type", "v3_win_type", "v3_groups(proxy)", "v3_spread_s", "v4_win_type", "v4_groups", "v4_spread_s"]) {
     assert.ok(headerLine.includes(col), `header mangler kolonnen "${col}": ${headerLine}`);
   }
-  // To datarraekker (én pr. etape) — praecist DISSE to linjer, ikke hele outputtet
-  // (som nu ogsaa baerer scorecardet nedenunder, jf. (e)-udvidelsen).
-  assert.ok(lines[2].startsWith("1\t"));
-  assert.ok(lines[3].startsWith("2\t"));
+  // To datarraekker (én pr. etape) — praecist DISSE to linjer (relativt til headeren),
+  // ikke hele outputtet (som nu ogsaa baerer scorecardet nedenunder, jf. (e)-udvidelsen).
+  assert.ok(lines[headerLineIndex + 1].startsWith("1\t"));
+  assert.ok(lines[headerLineIndex + 2].startsWith("2\t"));
   // Scorecardet (e) er printet under sammenligningstabellen, laesbart, med
   // PASS/FAIL/N-A pr. anker for BAADE v3 og v4.
-  const fullOutput = lines.join("\n");
   assert.match(fullOutput, /Head-to-Head Scorecard/);
   assert.match(fullOutput, /Opsummering \(v3\+v4 samlet/);
   assert.match(fullOutput, /v3: .*(PASS|FAIL|n\/a)/);

@@ -26,7 +26,12 @@ const REPO_ROOT = join(SCRIPT_DIR, "..", "..");
 // Gaten er PINNET her (#4911, audit-modsigelse "Gaten er ikke pinnet nogen
 // steder"): population, etaper og seeds er faste — et fremtidigt
 // kalibrerings-PR kan derfor efterproeves mod netop denne baseline.
-const POPULATION_FILE = "backend/scripts/baselines/population-snapshot-2026-07-11.json";
+//
+// #4936 (7/9): re-eksporteret fra prod (5.955 ryttere mod juli-snapshottets
+// 5.650) — juli-filen var forældet, ikke kun et generator-artefakt (se
+// docs/RACE_ENGINE_RULES.md §7 punkt 6 og PR-beskrivelsen for p10/p50/p90
+// foer/efter mod den ægte prod-fordeling).
+const POPULATION_FILE = "backend/scripts/baselines/population-snapshot-2026-09-07.json";
 const STAGES_FILE = "backend/scripts/baselines/v4-proxy-stages-2026-09-06.json";
 const SEEDS = "s1,s2,s3";
 const FIELD_SIZE = "180";

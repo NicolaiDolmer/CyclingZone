@@ -44,6 +44,7 @@ import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter
 import { aggregateScorecards, buildScorecard, formatScorecard } from "./lib/headToHeadAnchors.js";
 import { buildStageTeamOrders, formatOrderEffect, sumOrderEffects } from "./lib/headToHeadOrders.js";
 import { sampleField } from "./lib/headToHeadStats.js";
+import { formatAbilityDistribution } from "./lib/populationAbilityDistribution.js";
 import { formatTeamPlay, measureTeamPlay } from "./lib/headToHeadTeamPlay.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 
@@ -781,6 +782,9 @@ function main() {
     `Population: ${population.riders?.length ?? 0} ryttere. Etaper: ${stages?.length ?? 0}. ` +
       `Seeds: ${seeds.join(", ")}. Feltstoerrelse pr. etape: ${fieldLabel}. Ordrer: ${orderMode}`,
   );
+  // #4936: fordelingen printes OEVERST, foer noget andet — et skaevt/forældet
+  // population-snapshot skal ses her, ikke kun opdages ved en separat SQL-maaling.
+  console.log(formatAbilityDistribution(population.riders));
 
   const teamByRider = buildTeamByRider(population.riders);
   const abilitiesByRider = buildAbilitiesByRider(population.riders);

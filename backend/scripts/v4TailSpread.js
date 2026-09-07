@@ -41,6 +41,7 @@ import { entrantsFromAbilitiesRows } from "../lib/engine/v4/adapters/entrantAdap
 import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter.ts";
 import { generateRaceStageProfiles, toStageProfileRow } from "../lib/raceStageProfileGenerator.js";
 import { sampleField } from "./lib/headToHeadStats.js";
+import { formatAbilityDistribution } from "./lib/populationAbilityDistribution.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { stableSeed } from "../lib/raceSimulator.js";
 
@@ -801,6 +802,12 @@ function main() {
   }
 
   const population = readJson(populationPath);
+
+  // #4936: fordelingen printes OEVERST, foer noget andet (inkl. de kontrollerede
+  // eksperimenter nedenfor) — et skaevt/forældet population-snapshot skal ses
+  // her, ikke kun opdages ved en separat SQL-maaling.
+  console.log(formatAbilityDistribution(population.riders));
+  console.log("");
 
   if (process.argv.includes("--distance-experiment")) {
     console.log(
