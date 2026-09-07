@@ -11,7 +11,10 @@ import { InboxIcon, FlagIcon } from "../components/ui/icons/index.jsx";
 import FounderMark from "../components/FounderMark.jsx";
 // #4751: datoformatteren bor nu i det delte forum-modul (en side skal ikke
 // vaere kilde for en komponent — ForumAuthorIdentity bruger den samme).
-import { formatForumDate } from "../components/forum/forumIdentity.js";
+import { formatForumDate, authorDisplayName } from "../components/forum/forumIdentity.js";
+// #5000: samme relativ-tid-formatter som dashboardets ForumHighlightsCard —
+// "seneste svar" skal laese ens de to steder det staar.
+import { formatRelativeTime } from "../lib/intl.js";
 // #4818: kategori-raekkefoelge + skrive-rettigheder. Reglerne bor i modulet,
 // ikke her, saa de kan koeres under `node --test` (forumCategories.test.js).
 import {
@@ -71,22 +74,42 @@ function PostRow({ post, t, language }) {
             {post.title}
           </span>
         </span>
-        <span className="shrink-0 font-data text-2xs tabular-nums text-cz-3">
+        {/* #5000: svar- og visningstal staar samme sted — begge er "hvor meget
+            liv er der i traaden", og tabular figures holder kolonnen i ro. */}
+        <span className="shrink-0 whitespace-nowrap font-data text-2xs tabular-nums text-cz-3">
           {t("list.replies", { count: post.reply_count })}
+          {" · "}
+          {t("stats.views", { count: post.view_count ?? 0 })}
         </span>
       </div>
       <div className="mt-0.5 flex items-center gap-2 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
         {post.is_pinned && <span className="text-cz-accent-t">{t("post.pinnedTag")}</span>}
         {post.has_poll && <span className="text-cz-accent-t">{t("list.poll")}</span>}
         <span className="truncate">
-          {t("list.by", { name: post.author?.username || post.author?.team_name || "?" })}
+          {t("list.by", { name: authorDisplayName(post.author) })}
         </span>
         {/* #4649: Founder-mærke ved forfatterlinjen. */}
         <FounderMark teamId={post.author?.team_id} />
         <span>·</span>
         <span>{t(`categories.${post.category}`)}</span>
-        <span>·</span>
-        <span className="tabular-nums">{formatForumDate(post.created_at, language)}</span>
+      </div>
+      {/* #5000 (ejer-bestilling 7/9): tiden staar paa sin EGEN linje, fordi
+          seneste svars forfatter + relativ tid ikke kan vaere paa metalinjen
+          uden at klemme forfatternavnet ned til "BY ..." paa 390px (TASTE P10
+          — maalt paa screenshot, ikke gaettet). Har traaden svar, er trådens
+          oprettelses-dato desuden ikke laengere den interessante tid: de to
+          udelukker hinanden med vilje, saa raekken aldrig baerer to datoer. */}
+      <div className="mt-0.5 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
+        {post.last_reply_author ? (
+          <span className="block truncate">
+            {t("stats.lastReply", {
+              name: authorDisplayName(post.last_reply_author),
+              time: formatRelativeTime(post.last_reply_at || post.created_at),
+            })}
+          </span>
+        ) : (
+          <span className="tabular-nums">{formatForumDate(post.created_at, language)}</span>
+        )}
       </div>
     </Link>
   );
@@ -418,12 +441,16 @@ export default function ForumPage() {
       </nav>
 
       {/* #4818: kort linje i ejerens egen stemme (docs/TONE_OF_VOICE.md — jeg,
-          aldrig vi). Kun for dem der ikke selv kan slå op; for ejeren står
+          aldrig vi). Beskrivelsen af kategorien står for alle; reglen ("kun jeg
+          slår op her") kun for dem der ikke selv kan slå op — for ejeren står
           knappen der i stedet, og linjen ville sige ham noget han ved. */}
-      {isAdminOnlyTab && !showsCompose && (
+      {isAdminOnlyTab && (
         <p className="mb-6 -mt-2 flex items-center gap-1.5 text-[13px] text-cz-2">
           <FlagIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
-          {t("adminOnly.notice")}
+          <span>
+            {t("adminOnly.description")}
+            {!showsCompose && <span className="text-cz-3"> {t("adminOnly.notice")}</span>}
+          </span>
         </p>
       )}
 

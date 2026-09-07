@@ -27,6 +27,14 @@
 --   når backend skriver med service-role. Rollen slås derfor op på
 --   NEW.user_id — den bruger opslaget faktisk tilskrives.
 --
+-- NAVN OG BESKRIVELSE bor IKKE her. Kategorierne har aldrig været en tabel —
+--   de er en kodet katalog (FORUM_CATEGORIES) plus oversatte strenge, fordi
+--   spillet er tosproget og en DB-kolonne kun kan bære ét sprog. Roadmap-
+--   kategoriens tekst står derfor i frontend/public/locales/{en,da}/forum.json:
+--   categories.roadmap ("Roadmap" / "Roadmap") og adminOnly.description
+--   ("Where the game is going, straight from me." / "Hvor spillet er på vej
+--   hen, direkte fra mig."). Slug'en `roadmap` er den fælles nøgle.
+--
 -- SORT ORDER: kategori-rækkefølgen bor i koden (FORUM_CATEGORIES i
 --   backend/lib/forum.js + FORUM_CATEGORY_ORDER i frontend), ikke i DB —
 --   der har aldrig været en sort_order-kolonne, og at indføre to sandheder

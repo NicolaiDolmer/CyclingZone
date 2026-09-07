@@ -1,0 +1,72 @@
+{
+  "page": {
+    "subtitle": "About 3 minutes",
+    "introLead": "I would rather ask you than guess, so I have put the whole list in one place.",
+    "introAccount": "Your answers are saved to your account, so you can change them until the survey closes."
+  },
+  "progress": {
+    "label": "Answered",
+    "value": "{done} of {total}",
+    "aria": "How much of the survey you have answered"
+  },
+  "sections": {
+    "today": "How it feels today",
+    "ideas": "The ideas",
+    "problems": "What works worst",
+    "choices": "What you would choose",
+    "pro": "Pro",
+    "closing": "Before you send",
+    "other": "More"
+  },
+  "axes": {
+    "idea": "Idea",
+    "importance": "Important",
+    "dontKnow": "Do not know",
+    "dontKnowAria": "No view on {feature}"
+  },
+  "scale": {
+    "satisfactionLow": "Not satisfied",
+    "satisfactionHigh": "Very satisfied"
+  },
+  "field": {
+    "optional": "Optional",
+    "required": "Required",
+    "textPlaceholder": "Write as much or as little as you like",
+    "maxThreeLeft": "{left, plural, =0 {Three is the limit. Clear one to pick another.} one {# left} other {# left}}",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "save": {
+    "saving": "Saving",
+    "saved": "Saved",
+    "error": "That answer did not save. Change it once more and I will retry."
+  },
+  "submit": {
+    "cta": "Send my answers",
+    "sending": "Sending",
+    "missing": "{count, plural, one {# question} other {# questions}} still needs an answer.",
+    "error": "That did not go through. Try again."
+  },
+  "thanks": {
+    "title": "Thank you",
+    "body": "I read every single answer myself, and I will tell you in the forum what came out of it.",
+    "editable": "You can change your answers until the survey closes.",
+    "edit": "Change my answers",
+    "roadmap": "See the roadmap"
+  },
+  "closed": {
+    "title": "This survey has closed",
+    "body": "Thank you to everyone who answered. What came out of it lands on the roadmap.",
+    "roadmap": "See the roadmap"
+  },
+  "notFound": {
+    "title": "I cannot find that survey",
+    "body": "The link is probably an old one. The roadmap shows what I am working on now.",
+    "roadmap": "See the roadmap"
+  },
+  "error": {
+    "title": "The survey did not load",
+    "body": "Nothing was lost. Any answers you have already given are safe.",
+    "retry": "Try again"
+  }
+}

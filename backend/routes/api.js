@@ -156,6 +156,8 @@ import {
   markAllForumThreadsRead,
   getForumUnreadStatus,
   toggleForumReaction,
+  recordForumThreadView,
+  getForumAuthorStats,
 } from "../lib/forum.js";
 import {
   contractOnAcquirePatch,
@@ -14355,7 +14357,17 @@ router.patch("/forum/threads/read-all", requireAuth, forumWriteLimiter, async (r
 // GET /api/forum/posts/:id — opslag + svar + evt. poll (aggregater + egen stemme).
 router.get("/forum/posts/:id", requireAuth, async (req, res) => {
   try {
-    const { status, body } = await getForumPost({ supabase, id: req.params.id, userId: req.user.id });
+    // #5000: visningen registreres PARALLELT med selve opslaget (ikke bagefter),
+    // fordi RPC'en returnerer traadens view_count EFTER inkrementet — laeseren
+    // skal se sin egen visning talt med uden en ekstra rundtur. Best-effort:
+    // fejler taellingen, vises traaden alligevel med det tal der stod i basen.
+    const [viewCount, result] = await Promise.all([
+      recordForumThreadView({ supabase, postId: req.params.id, userId: req.user.id })
+        .catch((err) => { captureException(err); return null; }),
+      getForumPost({ supabase, id: req.params.id, userId: req.user.id }),
+    ]);
+    const { status, body } = result;
+    if (status === 200 && typeof viewCount === "number") body.post.view_count = viewCount;
     if (status === 200) {
       // #3451: markér tråden læst — best-effort, må ALDRIG blokere visningen.
       markForumThreadRead({ supabase, userId: req.user.id, postId: req.params.id })
@@ -14656,7 +14668,13 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
 
     const [userRes, ridersRes, historyRes, allAchsRes, unlockedAchsRes, transfersRes] = await Promise.all([
       supabase.from("users")
-        .select("id, username, last_seen, login_streak")
+        // discord_handle/discord_id (#5012): offentligt Discord-kontaktfelt +
+        // det eksisterende bot-DM-ID (#2161), brugt til at afgøre link-vs-kopi
+        // på den offentlige managerprofil. Se database/2026-09-08-5012-discord-
+        // handle.sql for hvorfor dette IKKE eksponeres via en RLS SELECT-policy.
+        // schema-columns-ok: discord_handle tilføjes af database/2026-09-08-5012-
+        // discord-handle.sql i SAMME PR — snapshottet opdateres først post-merge.
+        .select("id, username, last_seen, login_streak, discord_handle, discord_id")
         .eq("id", team.user_id).single(),
       supabase.from("riders")
         .select("id, firstname, lastname, birthdate, market_value, is_u25, rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)")
@@ -14722,7 +14740,21 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
       userData.is_online = userData.last_seen
         ? (Date.now() - new Date(userData.last_seen).getTime()) < 5 * 60 * 1000
         : false;
+      // #5012 (CodeRabbit-fund): discord_id er det PRIVATE bot-DM-kobling-ID
+      // (#2161) — det har ALDRIG været eksponeret af dette endpoint før denne
+      // PR. Uden dette guard ville enhver authenticated bruger kunne se en
+      // managers rå Discord-snowflake i DevTools/Network, selv hvis vedkommende
+      // aldrig satte det offentlige discord_handle. Frontend renderer allerede
+      // kun discord_id NÅR discord_handle er sat (ManagerProfilePage.jsx) —
+      // dette håndhæver samme regel server-side, hvor det faktisk beskytter data.
+      if (!userData.discord_handle) delete userData.discord_id;
     }
+
+    // #5000 (ejer-bestilling 7/9): antal forumindlaeg — traade + svar — paa den
+    // offentlige managerprofil, som forummets forfatterlinjer allerede linker
+    // til. AI-hold har ingen brugerkonto (team.user_id er null for ~57% af
+    // holdene) og faar derfor nul-objektet uden et DB-opslag.
+    const forumStats = await getForumAuthorStats({ supabase, userId: team.user_id });
 
     res.json({
       team: { id: team.id, name: team.name, division: team.division, is_ai: !!team.is_ai },
@@ -14731,6 +14763,7 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
       season_history: historyRes.data || [],
       achievements,
       transfer_activity: transfersRes.data || [],
+      forum_stats: forumStats,
     });
   } catch (err) {
     captureException(err, { route: "GET /managers/:teamId", team_id: teamId });

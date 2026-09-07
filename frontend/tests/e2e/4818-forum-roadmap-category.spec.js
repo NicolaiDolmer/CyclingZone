@@ -60,6 +60,8 @@ test("ikke-admin: ingen 'New post' paa roadmap-fanen, men en forklaring", async 
   await expect(page).toHaveURL(/category=roadmap/);
   await expect(page.getByRole("button", { name: NEW_POST })).toHaveCount(0);
   await expect(page.getByText(/Only I post here|Kun jeg slår op her/)).toBeVisible();
+  // Kategori-beskrivelsen staar for alle, ogsaa naar reglen er skjult (admin).
+  await expect(page.getByText(/Where the game is going|Hvor spillet er på vej hen/)).toBeVisible();
 
   // Tilbage paa en aaben kategori er knappen tilbage.
   await page.getByRole("button", { name: /^(General|Generelt)$/ }).click();
@@ -85,6 +87,9 @@ test("admin: knappen er synlig paa roadmap-fanen og kategorien kan vaelges", asy
 
   await expect(page.getByRole("button", { name: NEW_POST })).toBeVisible();
   await expect(page.getByText(/Only I post here|Kun jeg slår op her/)).toHaveCount(0);
+  // Beskrivelsen bliver staaende for ejeren — det er kategoriens undertekst,
+  // ikke en begraensning rettet mod spilleren.
+  await expect(page.getByText(/Where the game is going|Hvor spillet er på vej hen/)).toBeVisible();
 
   await page.getByRole("button", { name: NEW_POST }).click();
   const picker = page.getByRole("group", { name: /^(Category|Kategori)$/ });

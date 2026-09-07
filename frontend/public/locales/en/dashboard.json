@@ -465,5 +465,11 @@
     "loweredNote": "Some riders sit above their new ceiling on a few abilities. They keep everything and simply hold there. No rider loses a single point.",
     "helpLink": "How development works",
     "dismiss": "Got it"
+  },
+  "surveyInvite": {
+    "title": "Help me decide what to build next",
+    "subtitle": "Rate each idea twice. It takes about 3 minutes.",
+    "cta": "Answer now",
+    "dismissAria": "Hide the survey card"
   }
 }

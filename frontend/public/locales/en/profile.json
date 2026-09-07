@@ -78,6 +78,13 @@
   "discord": {
     "title": "Discord Integration",
     "subtitle": "Receive notifications directly in Discord",
+    "handleLabel": "Public Discord username",
+    "handlePlaceholder": "e.g. nicolai.dolmer",
+    "handleHelp": "Shown on your public profile so other managers can add you on Discord. Lowercase letters, numbers, dots and underscores, 2-32 characters. Leave empty to hide it.",
+    "handleSave": "Save username",
+    "handleSaved": "Discord username saved!",
+    "handleCleared": "Discord username removed",
+    "handleError": "Must be 2-32 characters: lowercase letters, numbers, dots and underscores only (your current Discord username, not a nickname).",
     "intro": "If you link your Discord user ID, you'll be tagged in Discord when you're outbid at auctions, win auctions, receive transfer offers and more.",
     "idLabel": "Your Discord User ID",
     "idPlaceholder": "e.g. 123456789012345678",
@@ -118,12 +125,30 @@
         "transfers": "Transfers",
         "club": "Club"
       },
-      "auction_outbid": { "label": "Outbid", "desc": "Someone tops your bid, including auto-bids." },
-      "auction_won": { "label": "Auction won", "desc": "You win a rider you were bidding on." },
-      "watchlist_rider_auction": { "label": "Watchlisted rider up for auction", "desc": "A rider on your watchlist gets listed." },
-      "transfer_offer": { "label": "Transfer offer received", "desc": "Another manager bids on one of your riders." },
-      "transfer_response": { "label": "Reply to your offer", "desc": "Accepted, rejected, or countered." },
-      "board_update": { "label": "Board update", "desc": "Your board reacts to results or finances." }
+      "auction_outbid": {
+        "label": "Outbid",
+        "desc": "Someone tops your bid, including auto-bids."
+      },
+      "auction_won": {
+        "label": "Auction won",
+        "desc": "You win a rider you were bidding on."
+      },
+      "watchlist_rider_auction": {
+        "label": "Watchlisted rider up for auction",
+        "desc": "A rider on your watchlist gets listed."
+      },
+      "transfer_offer": {
+        "label": "Transfer offer received",
+        "desc": "Another manager bids on one of your riders."
+      },
+      "transfer_response": {
+        "label": "Reply to your offer",
+        "desc": "Accepted, rejected, or countered."
+      },
+      "board_update": {
+        "label": "Board update",
+        "desc": "Your board reacts to results or finances."
+      }
     }
   }
 }

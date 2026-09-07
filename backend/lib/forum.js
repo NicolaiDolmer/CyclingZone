@@ -93,6 +93,10 @@ const UNREAD_STATUS_SCAN_LIMIT = 2000;
 // filosofi som REPLY_RECOUNT_LIMIT/vote-limit 5000. Én tråd har typisk
 // ét opslag + <=500 svar (FORUM_REPLIES_LOAD_LIMIT), langt under grænsen.
 const REACTIONS_SCAN_LIMIT = 5000;
+// #5000: bounded scan for indlaegstal pr. manager paa profilen — samme
+// filosofi. Hele forummet havde ~90 indlaeg i alt efter tre uger, saa 2000 pr.
+// manager er rigeligt hovedrum uden at kunne traekke en stor side hjem.
+const FORUM_AUTHOR_STATS_LIMIT = 2000;
 
 export function parseForumLimit(raw) {
   const n = Number.parseInt(raw ?? "", 10);
@@ -231,7 +235,10 @@ function shapeAuthor(row, usersById, teamsById) {
 }
 
 const POST_LIST_COLUMNS =
-  "id, seq, created_at, user_id, team_id, category, title, body, is_pinned, reply_count, last_reply_at";
+  "id, seq, created_at, user_id, team_id, category, title, body, is_pinned, reply_count, last_reply_at, " +
+  // #5000: visningstal + seneste svars forfatter/hold — begge denormaliseret
+  // paa forum_posts, saa traadlisten kan vise dem uden et opslag pr. traad.
+  "view_count, last_reply_user_id, last_reply_team_id";
 
 // #3451: ulæst = ingen forum_thread_reads-række for (bruger, tråd), ELLER
 // trådens seneste aktivitet er nyere end brugerens last_read_at. `lastReadAt`
@@ -241,6 +248,22 @@ const POST_LIST_COLUMNS =
 function isThreadUnread(row, lastReadAt) {
   if (!lastReadAt) return true;
   return activityAt(row) > lastReadAt;
+}
+
+/**
+ * #5000 · Seneste svars forfatter til traadlisten. Bygget af de samme
+ * users/teams-maps som selve traadens forfatter (resolveAuthors faar
+ * last_reply-parrene med som ekstra rows), saa der ikke er ét ekstra opslag
+ * pr. traad. NULL i en traad uden svar — dér ER traadens egen forfatter den
+ * seneste, og listen viser den allerede.
+ */
+function shapeLastReplyAuthor(row, usersById, teamsById) {
+  if (!row.last_reply_user_id) return null;
+  return shapeAuthor(
+    { user_id: row.last_reply_user_id, team_id: row.last_reply_team_id ?? null },
+    usersById,
+    teamsById
+  );
 }
 
 function shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, userId) {
@@ -254,6 +277,10 @@ function shapeListPost(row, usersById, teamsById, pollPostIds, readsByPostId, us
     is_pinned: row.is_pinned,
     reply_count: row.reply_count ?? 0,
     last_reply_at: row.last_reply_at,
+    // #5000: seneste svars forfatter — null naar traaden ingen svar har.
+    last_reply_author: shapeLastReplyAuthor(row, usersById, teamsById),
+    // #5000: unikke (bruger, UTC-dag)-visninger, taelt af record_forum_thread_view.
+    view_count: row.view_count ?? 0,
     has_poll: pollPostIds.has(row.id),
     // Uden userId (ingen indlogget bruger — kun tests kalder listForumPosts
     // sådan) er der ingen "ulæst for hvem", så feltet falder til false i
@@ -330,6 +357,10 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
   const archiveFilter = category === FORUM_ARCHIVE_FILTER;
   const categoryFilter = !archiveFilter && isValidForumCategory(category) ? category : null;
 
+  // schema-columns-ok: view_count/last_reply_user_id/last_reply_team_id
+  // tilfoejes af database/2026-09-08-5000-forum-thread-stats.sql i SAMME PR —
+  // snapshottet opdateres post-merge (#2642-rammen), kolonnerne findes ikke i
+  // prod ENDNU.
   let query = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
     .is("deleted_at", null)
     .eq("is_pinned", false);
@@ -353,6 +384,8 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
 
   let pinnedRows = [];
   if (afterCursor == null && !archiveFilter) {
+    // schema-columns-ok: samme tre nye kolonner som ovenfor — tilfoejes af
+    // database/2026-09-08-5000-forum-thread-stats.sql i SAMME PR.
     let pinnedQuery = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
       .is("deleted_at", null)
       .eq("is_pinned", true);
@@ -365,7 +398,13 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
   }
 
   const allRows = [...pinnedRows, ...pageRows];
-  const { usersById, teamsById } = await resolveAuthors({ supabase, rows: allRows });
+  // #5000: seneste-svar-forfatteren slaas op i SAMME batch som traadenes egne
+  // forfattere (resolveAuthors de-dupliker id'erne) — ingen ekstra rundtur, og
+  // ingen N+1 pr. traad.
+  const lastReplyRows = allRows
+    .filter((r) => r.last_reply_user_id)
+    .map((r) => ({ user_id: r.last_reply_user_id, team_id: r.last_reply_team_id ?? null }));
+  const { usersById, teamsById } = await resolveAuthors({ supabase, rows: [...allRows, ...lastReplyRows] });
 
   const postIds = allRows.map((r) => r.id);
   let pollPostIds = new Set();
@@ -397,9 +436,11 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
 export async function getForumPost({ supabase, id, userId }) {
   if (!id) return { status: 400, body: { error: "Missing id", errorCode: "forum_missing_id" } };
 
+  // schema-columns-ok: view_count tilfoejes af
+  // database/2026-09-08-5000-forum-thread-stats.sql i SAMME PR.
   const { data: post, error: postError } = await supabase
     .from("forum_posts")
-    .select("id, seq, created_at, user_id, team_id, category, title, body, is_pinned, reply_count, last_reply_at, deleted_at")
+    .select("id, seq, created_at, user_id, team_id, category, title, body, is_pinned, reply_count, last_reply_at, view_count, deleted_at")
     .eq("id", id)
     .maybeSingle();
   if (postError) throw new Error(`forum: could not load post ${id}: ${postError.message}`);
@@ -519,6 +560,10 @@ export async function getForumPost({ supabase, id, userId }) {
         is_pinned: post.is_pinned,
         reply_count: post.reply_count ?? 0,
         last_reply_at: post.last_reply_at,
+        // #5000: visningstal i traadhovedet. Routen overskriver feltet med
+        // returvaerdien fra record_forum_thread_view, saa laeserens EGEN
+        // visning er talt med i det tal der vises — uden et ekstra opslag.
+        view_count: post.view_count ?? 0,
         author: shapeAuthor(post, usersById, teamsById),
         // auth-UUID'er eksponeres aldrig til spiller-fladen — kun "er det mig".
         is_mine: Boolean(userId && post.user_id === userId),
@@ -556,6 +601,54 @@ export async function markForumThreadRead({ supabase, userId, postId, now = new 
     { onConflict: "user_id,post_id" }
   );
   if (error) throw new Error(`forum: could not mark thread read for ${postId}: ${error.message}`);
+}
+
+/**
+ * #5000 · Registrér én traad-visning og faa traadens visningstal tilbage.
+ *
+ * Hele arbejdet ligger i SQL-funktionen record_forum_thread_view (database/
+ * 2026-09-08-5000-forum-thread-stats.sql): insert i visnings-loggen med daglig
+ * dedup + increment af forum_posts.view_count i SAMME transaktion. Det er
+ * grunden til at det er en RPC og ikke to supabase-js-kald — en
+ * read-modify-write i JS kunne tabe et taelle-skridt naar to spillere aabner
+ * traaden samtidig.
+ *
+ * Kaldes best-effort fra routen: en fejl her maa ALDRIG blokere trådvisningen.
+ * Returnerer null naar der ikke er noget at taelle (ingen bruger/traad).
+ */
+export async function recordForumThreadView({ supabase, postId, userId }) {
+  if (!userId || !postId) return null;
+  const { data, error } = await supabase.rpc("record_forum_thread_view", {
+    p_post_id: postId,
+    p_user_id: userId,
+  });
+  if (error) throw new Error(`forum: could not record thread view for ${postId}: ${error.message}`);
+  return typeof data === "number" ? data : null;
+}
+
+/**
+ * #5000 · Antal forumindlaeg for én manager (traade + svar, ekskl. soft-
+ * slettede) — vises paa den offentlige managerprofil, GET /api/managers/:teamId.
+ *
+ * Bounded id-selects frem for head-counts, af samme grund som
+ * getForumReportCounts: fakeSupabase understoetter ikke count/head, og en
+ * enkelt manager ligger langt under graensen (hele forummet havde ~90 indlaeg
+ * efter tre uger). Rammer vi loftet, er tallet stadig sandt "mindst dette".
+ */
+export async function getForumAuthorStats({ supabase, userId }) {
+  const empty = { posts: 0, replies: 0, total: 0 };
+  if (!userId) return empty;
+
+  const [postsResult, repliesResult] = await Promise.all([
+    supabase.from("forum_posts").select("id").eq("user_id", userId).is("deleted_at", null).limit(FORUM_AUTHOR_STATS_LIMIT),
+    supabase.from("forum_replies").select("id").eq("user_id", userId).is("deleted_at", null).limit(FORUM_AUTHOR_STATS_LIMIT),
+  ]);
+  if (postsResult.error) throw new Error(`forum: could not count posts for ${userId}: ${postsResult.error.message}`);
+  if (repliesResult.error) throw new Error(`forum: could not count replies for ${userId}: ${repliesResult.error.message}`);
+
+  const posts = (postsResult.data || []).length;
+  const replies = (repliesResult.data || []).length;
+  return { posts, replies, total: posts + replies };
 }
 
 /**
@@ -697,6 +790,11 @@ export async function createForumPost({
       is_pinned: false,
       reply_count: 0,
       last_reply_at: null,
+      // #5000: samme grund som ovenfor — en ny traad har ingen visninger og
+      // intet seneste svar, og test-fakes har ingen DB-defaults.
+      view_count: 0,
+      last_reply_user_id: null,
+      last_reply_team_id: null,
       deleted_at: null,
     })
     .select("id, seq")
@@ -722,17 +820,35 @@ export async function createForumPost({
   return { status: 200, body: { ok: true, id: inserted.id, seq: inserted.seq } };
 }
 
-/** Genberegn reply_count (ekskl. slettede) — selvhelende frem for +1/-1. */
+/**
+ * Genberegn reply_count (ekskl. slettede) — selvhelende frem for +1/-1.
+ *
+ * #5000: samme kald vedligeholder last_reply_user_id/last_reply_team_id.
+ * Selvhelende af samme grund som taelleren: sletter admin det seneste svar,
+ * falder felterne tilbage til det forrige svar — og til null i en traad uden
+ * svar. `seq` er den totale orden (created_at kan deles af to svar).
+ */
 async function recountReplies({ supabase, postId, now = null }) {
   const { data: idRows, error } = await supabase
     .from("forum_replies")
-    .select("id")
+    .select("id, seq, user_id, team_id, created_at")
     .eq("post_id", postId)
     .is("deleted_at", null)
     .limit(REPLY_RECOUNT_LIMIT);
   if (error) throw new Error(`forum: could not recount replies for ${postId}: ${error.message}`);
-  const patch = { reply_count: (idRows || []).length };
-  if (now) patch.last_reply_at = now.toISOString();
+  const rows = idRows || [];
+  const latest = rows.reduce((best, row) => (best == null || row.seq > best.seq ? row : best), null);
+  const patch = {
+    reply_count: rows.length,
+    last_reply_user_id: latest?.user_id ?? null,
+    last_reply_team_id: latest?.team_id ?? null,
+    // #5000: tidsstemplet heler MED forfatteren. Foer #5000 blev last_reply_at
+    // kun rykket ved nye svar (`now`), saa en sletning af det seneste svar lod
+    // det staa paa den slettede raekke. Med en forfatter ved siden af ville
+    // traadlisten vise den rigtige forrige forfatter ved siden af det forkerte
+    // tidspunkt — parret ville ikke laengere beskrive det samme svar.
+    last_reply_at: now ? now.toISOString() : (latest?.created_at ?? null),
+  };
   const { error: updateError } = await supabase.from("forum_posts").update(patch).eq("id", postId);
   if (updateError) throw new Error(`forum: could not update reply count for ${postId}: ${updateError.message}`);
   return patch.reply_count;

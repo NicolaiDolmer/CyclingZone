@@ -19,6 +19,7 @@
   },
   "adminOnly": {
     "tag": "Officielt",
+    "description": "Hvor spillet er på vej hen, direkte fra mig.",
     "notice": "Kun jeg slår op her. Svar så meget du vil.",
     "emptyDescription": "Der er ikke noget her endnu. Her lægger jeg op om, hvor spillet er på vej hen."
   },
@@ -35,6 +36,10 @@
     "archiveEmptyDescription": "Tråde flytter herover automatisk efter 60 dage uden ny aktivitet.",
     "by": "Af {name}",
     "unread": "Ulæst"
+  },
+  "stats": {
+    "views": "{count, plural, =0 {Ingen visninger} one {1 visning} other {# visninger}}",
+    "lastReply": "Seneste svar {name}, {time}"
   },
   "compose": {
     "title": "Nyt opslag",

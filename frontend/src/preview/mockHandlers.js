@@ -543,11 +543,21 @@ export function managerProfile(teamId) {
       last_seen: isRival ? "2026-07-24T19:00:00.000Z" : "2026-07-25T20:55:00.000Z",
       login_streak: isRival ? 1 : 9,
       is_online: !isRival,
+      // #5012: to grene af Discord-kontaktlinjen demonstreres i preview/e2e
+      // uden ekstra fixture-hold — TEST_TEAM har et gyldigt discord_id (samme
+      // snowflake som /api/me/discord-status bruger, gitleaks:allow) og viser
+      // derfor et direkte discord.com/users/-link; RIVAL_TEAM har KUN det
+      // offentlige brugernavn og viser dermed kopi-til-udklipsholder-grenen.
+      discord_handle: isRival ? "peloton_pete" : "nicolai.dolmer",
+      discord_id: isRival ? null : "123456789012345678", // gitleaks:allow
     },
     riders: RIDERS.filter((rider) => rider.team_id === team.id),
     season_history: SEED_TEAM_SEASON_STANDINGS.filter((row) => row.team_id === team.id),
     achievements: seedManagerAchievements({ unlocked: !isRival }),
     transfer_activity: isRival ? [] : SEED_MANAGER_TRANSFERS,
+    // #5000: antal forumindlaeg (traade + svar). Rival-holdet har et hoejere
+    // tal end e2e-kontoen, saa preview viser begge stoerrelser af tallet.
+    forum_stats: isRival ? { posts: 6, replies: 23, total: 29 } : { posts: 2, replies: 9, total: 11 },
   };
 }
 
@@ -591,7 +601,13 @@ const FORUM_POSTS = [
     body: "Vote below. I read everything in here, so add a reply if your favourite is missing.",
     is_pinned: true,
     reply_count: 2,
-    last_reply_at: "2026-08-06T07:20:00Z",
+    // #5000: seneste svars forfatter/tid skal beskrive det SAMME svar som
+    // forumPostDetail returnerer nederst i traaden (r3, E2E kl. 07:45) —
+    // ellers modellerer preview en liste/detalje-tilstand der ikke kan
+    // opstaa i prod. Gaelder alle tre traade med svar herunder.
+    last_reply_at: "2026-08-06T07:45:00Z",
+    view_count: 148,
+    last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: true,
     is_unread: false,
     author: FORUM_AUTHOR_OWNER,
@@ -606,7 +622,9 @@ const FORUM_POSTS = [
     body: "My squad is thin on climbers, but the auction prices this week are brutal. How are you all planning the last week of the transfer window?",
     is_pinned: false,
     reply_count: 3,
-    last_reply_at: "2026-08-06T06:10:00Z",
+    last_reply_at: "2026-08-06T07:45:00Z",
+    view_count: 62,
+    last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: false,
     is_unread: true,
     author: FORUM_AUTHOR_PETE,
@@ -621,7 +639,9 @@ const FORUM_POSTS = [
     body: "It would help new managers learn if we could see what tactics the podium teams used once a race is finished.",
     is_pinned: false,
     reply_count: 1,
-    last_reply_at: "2026-08-05T08:00:00Z",
+    last_reply_at: "2026-08-06T07:45:00Z",
+    view_count: 9,
+    last_reply_author: FORUM_AUTHOR_E2E,
     has_poll: false,
     is_unread: false,
     author: FORUM_AUTHOR_SOFIE,
@@ -637,6 +657,10 @@ const FORUM_POSTS = [
     is_pinned: false,
     reply_count: 0,
     last_reply_at: null,
+    // Traad uden svar: last_reply_author er null, og listen viser i stedet
+    // opslagets egen dato — den gren skal ogsaa kunne ses paa preview.
+    view_count: 4,
+    last_reply_author: null,
     has_poll: false,
     is_unread: true,
     author: FORUM_AUTHOR_E2E,

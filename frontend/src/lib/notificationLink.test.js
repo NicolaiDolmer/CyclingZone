@@ -132,3 +132,21 @@ test("#4557 board_update uden boardMandate-titleCode falder tilbage til fallback
   const link = resolveNotificationLink({ type: "board_update", metadata: {} }, "/board");
   assert.equal(link, "/board");
 });
+
+test("#4943 admin_notice med surveySlug deep-linker til skemaet", () => {
+  const link = resolveNotificationLink(
+    { type: "admin_notice", metadata: { surveySlug: "2026-09-features" } },
+    null,
+  );
+  assert.equal(link, "/survey/2026-09-features");
+});
+
+test("#4943 admin_notice uden surveySlug foelger fallbackLink som foer", () => {
+  assert.equal(resolveNotificationLink({ type: "admin_notice", metadata: {} }, null), null);
+  assert.equal(resolveNotificationLink({ type: "admin_notice", metadata: { surveySlug: "" } }, null), null);
+  assert.equal(
+    resolveNotificationLink({ type: "board_update", metadata: { surveySlug: "x" } }, "/board"),
+    "/board",
+    "kun admin_notice baerer survey-linket",
+  );
+});
