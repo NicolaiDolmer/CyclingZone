@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-61 poster: live 42 · beta 1 · dormant 4 · building 9 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+61 poster: live 42 · beta 1 · dormant 6 · building 7 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 
@@ -17,7 +17,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 | Race engine v3 (`race-engine-v3`) | live | `race_engine_v2_enabled` | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #1306 | 2026-09-06 | Autoritativ motor i prod; flagnavnet er historisk (v2-æraen). |
 | v3 scoring components (`race-engine-v3-scoring`) | live | `race_engine_v3_scoring` | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #2353 | 2026-09-06 | Dagsform, jour sans, arbejdsomkostning og rolle-opløsning i raceSimulator. |
 | Team selection, captain and breakaway (`team-selection-and-roles`) | live | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #1307 | 2026-09-06 | - |
-| Race engine v4 (`race-engine-v4`) | building | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #3855 | 2026-09-06 | Dormant nøgle race_engine_v4 (række findes ikke = off); flip planlagt 28/9. |
+| Race engine v4 (`race-engine-v4`) | dormant | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #3855 | 2026-09-07 | Række race_engine_v4 = "off" i prod (#4951). Flip planlagt 28/9, ejer-only. |
 | Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES.md](RACE_ENGINE_RULES.md) | #4632 | 2026-09-07 | UI er live i Taktik-fanen (RaceTacticsTab, #4913); motoreffekten venter på v4-flip (dormant nøgle race_day_intention_enabled). |
 
 ## race-day
@@ -134,7 +134,7 @@ Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_co
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Email retention loop (`email-loop`) | building | - | [EMAIL_LOOP_GO_LIVE_RUNBOOK.md](EMAIL_LOOP_GO_LIVE_RUNBOOK.md) | #4616 | 2026-09-06 | Dormante nøgler email_loop_* (rækker findes ikke = off); afventer ejer-go. |
+| Email retention loop (`email-loop`) | dormant | - | [EMAIL_LOOP_GO_LIVE_RUNBOOK.md](EMAIL_LOOP_GO_LIVE_RUNBOOK.md) | #4616 | 2026-09-07 | Rækker email_loop_welcome/day1/race_digest = "off" i prod (#4951); afventer ejer-go, jf. runbook. |
 
 ## billing
 
