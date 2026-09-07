@@ -739,6 +739,9 @@
       "helpRaceDay": "Rollen gælder hele løbet. Intentionen og ordrerne er, hvad du vil have på løbsdagen.",
       "colOrders": "Ordrer · etape {number}",
       "colOrdersRaceDay": "Ordrer · løbsdag",
+      "colRouteMatch": "Rute-match · etape {number}",
+      "colRouteMatchRaceDay": "Rute-match · løbsdag",
+      "sortRouteMatch": "Sortér efter rute-match for denne etape",
       "stageMeta": "Etape {number} · låser {time}",
       "sprintTrainRiders": "{count, plural, =0 {Ingen} one {# rytter} other {# ryttere}} for {name}",
       "sprintTrainNone": "Holdet har ingen spurtkaptajn.",
@@ -748,7 +751,19 @@
       "lockedRaceDay": "Løbsdagen er låst. Det her sendte du dem ud med.",
       "whatYouSet": "Det du satte. Etape {number}: {today}.",
       "whatYouSetRaceDay": "Det du satte. Løbsdag: {today}.",
-      "loadError": "Kunne ikke hente din taktik til det her løb."
+      "loadError": "Kunne ikke hente din taktik til det her løb.",
+      "changeRoleAria": "Skift {name}s rolle",
+      "rolePickerTitle": "{name}s rolle",
+      "roleScope": "Fra etape {number} og løbet ud",
+      "roleScopeRaceDay": "For dette løb",
+      "roleExclusiveNote": "Én kaptajn, én spurtkaptajn og én udbrudsjæger ad gangen. Rytteren der havde rollen bliver domestik.",
+      "roleWhy": {
+        "captain": "Holdet kører for ham, og han får beskyttelsen.",
+        "sprint_captain": "Han får sprint-toget og optrækket.",
+        "hunter": "Han jagter udbruddet.",
+        "helper": "Han arbejder for lederne.",
+        "free_role": "Han kører sit eget løb."
+      }
     },
     "team": {
       "title": "Hold",

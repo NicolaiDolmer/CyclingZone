@@ -25,6 +25,29 @@
 //
 // FOG OF WAR: ingen tal, ingen procenter, ingen loft-signaler. Trinnene kommer
 // fra serverens `valid_efforts`, aldrig fra en hardkodet liste her.
+//
+// #4980 (spillerønske thelamba 7/9): ROLE-kolonnen er ikke længere ren visning.
+// Efter #4613 kunne man ikke finde HVOR man skifter en rytters rolle — især
+// midt i et etapeløb, når kaptajnen er styrtet. Kolonnen har nu en kompakt
+// vælger med præcis de fem roller backenden kender. Rollen gælder stadig HELE
+// løbet (ejer 6/9): et valg skrives på alle ULÅSTE etaper, aldrig kun den åbne,
+// og en anden indehaver af en eksklusiv rolle (kaptajn / spurtkaptajn / jæger)
+// demoteres i samme gem — ellers afviser serveren hele PUT'en med
+// stage_roles_role_overlap. Ingen ny guld-knap: ændringen gemmes af fanens
+// eksisterende "Gem etape N".
+//
+// #4979: etapeprofilen for den ÅBNE etape ligger i en tynd række over kortet
+// (RaceStageProfileRow) — man skal kunne se hvad man sætter taktik til.
+//
+// #4992 (spillerønske egomadsen 7/9): ROUTE MATCH-kolonnen mellem ROLE og
+// INTENTION viser hvor godt rytteren passer til DEN ÅBNE etape (0-100, samme
+// FitBar som Hold-fanen/holdudtagelsen bruger). Tallet kommer fra stage-roles-
+// svarets `stage_fit` — beregnet af serveren med samme terrainScore som fit,
+// bare pr. etape — og skifter derfor når man klikker en anden etape. Kolonnen
+// er den ENESTE sorterbare i fanen (Egos oprindelige ønske: "sortere i rute-
+// match på de enkelte etaper"); uden et klik står listen i holdets udtagelses-
+// rækkefølge som før, og sorteringen følger sidens konvention: første klik =
+// bedst øverst, næste klik vender retningen.
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -33,12 +56,18 @@ import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { profileLabelKey } from "../../lib/stageProfileConfig.js";
 import { formatLocalTime } from "../../lib/intl.js";
 import { LockIcon, CheckIcon, Button, Section, SectionHeader, SkeletonLines } from "../ui/index.js";
+import SortableTh from "../ui/SortableTh.jsx";
+import FitBar from "../racehub/FitBar.jsx";
+import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
+import { stageRouteMatch, routeMatchComparator } from "../../lib/lineupInsight.js";
 import {
   buildDraftMatrix,
   diffToOverrides,
   isDirty,
   overridesIndex,
   resolveCell,
+  applyRoleForRest,
+  SELECTABLE_ROLES,
 } from "../../lib/stageRoleMatrixLogic.js";
 import {
   DEFAULT_EFFORT,
@@ -147,6 +176,51 @@ function IntentionPicker({ t, riderName, scopeLabel, steps, value, disabled, onP
   );
 }
 
+// #4980: rolle-vælgeren. Samme grammatik som IntentionPicker (ét valg pr. linje,
+// flueben til venstre, én sætning i ord) — to vælgere i samme kolonne-familie
+// skal ikke se ud som to forskellige idéer. Forskellen står i hovedet og
+// fodnoten: rollen gælder resten af løbet, intentionen kun den åbne etape.
+function RolePicker({ t, riderName, scopeNote, value, disabled, onPick }) {
+  return (
+    <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
+      <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 border-b border-cz-border">
+        <span className="text-xs font-semibold text-cz-1">
+          {t("racePage.tactics.rolePickerTitle", { name: riderName || "—" })}
+        </span>
+        <span className="text-3xs text-cz-3 whitespace-nowrap">{scopeNote}</span>
+      </div>
+      {SELECTABLE_ROLES.map((role) => {
+        const on = role === value;
+        return (
+          <button
+            key={role}
+            type="button"
+            disabled={disabled}
+            aria-pressed={on}
+            onClick={() => onPick(role)}
+            className={`w-full flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2 text-left border-b border-cz-border last:border-b-0 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              on ? "bg-cz-accent/10" : "hover:bg-cz-subtle"
+            }`}
+          >
+            <span className="w-3.5 shrink-0 text-cz-accent-t">
+              {on && <CheckIcon size={14} aria-hidden="true" />}
+            </span>
+            <span className={`text-xs sm:w-32 shrink-0 ${on ? "font-semibold text-cz-accent-t" : "font-medium text-cz-1"}`}>
+              {t(`tacticsOrders.roleLabel.${role}`)}
+            </span>
+            <span className="text-xs text-cz-2 basis-full sm:basis-auto ps-[26px] sm:ps-0">
+              {t(`racePage.tactics.roleWhy.${role}`)}
+            </span>
+          </button>
+        );
+      })}
+      <p className="px-3.5 py-2 border-t border-cz-border text-3xs text-cz-3">
+        {t("racePage.tactics.roleExclusiveNote")}
+      </p>
+    </div>
+  );
+}
+
 function TogglePill({ label, ariaLabel, active, disabled, onClick }) {
   return (
     <button
@@ -178,8 +252,15 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const [initialOrdersByStage, setInitialOrdersByStage] = useState({});
   const [activeStage, setActiveStage] = useState(null);
   const [openRiderId, setOpenRiderId] = useState(null);
+  // #4980: rolle-vælgeren har sin EGEN åbne-rytter — to vælgere i samme række
+  // må aldrig stå udfoldet samtidig, og et klik i den ene lukker den anden.
+  const [openRoleRiderId, setOpenRoleRiderId] = useState(null);
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorKey, setErrorKey] = useState(null);
+  // #4992: rute-match-sorteringen. null = ingen sortering valgt → holdets
+  // udtagelses-rækkefølge, præcis som før kolonnen fandtes (sortering er opt-in,
+  // samme regel som holdudtagelses-panelet). Sat: "desc" | "asc".
+  const [routeSortDir, setRouteSortDir] = useState(null);
 
   const load = useCallback(async () => {
     const headers = await authHeaders({ json: false });
@@ -257,6 +338,15 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const riders = useMemo(() => roles?.riders ?? [], [roles?.riders]);
   const lockedOverrides = useMemo(() => overridesIndex(roles?.overrides), [roles?.overrides]);
 
+  // #4992: den rækkefølge BEGGE flader (tabel + mobil-liste) tegnes i. Uden en
+  // valgt sortering er det holdets egen rækkefølge — listen må aldrig flytte sig
+  // af sig selv, kun fordi manageren bad om det. Kopi, aldrig en mutation af
+  // `riders` (den kommer fra svaret og læses også af holdplanen ovenfor).
+  const visibleRiders = useMemo(
+    () => (routeSortDir ? [...riders].sort(routeMatchComparator(activeStage, routeSortDir)) : riders),
+    [riders, routeSortDir, activeStage],
+  );
+
   const counts = useMemo(
     () => stageIntentionCounts({ matrix: draftMatrix, riders, stageNumber: activeStage }),
     [draftMatrix, riders, activeStage],
@@ -312,6 +402,16 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     if (status !== "idle") setStatus("idle");
   }
 
+  // #4980: rollen skrives på ALLE ulåste etaper (den gælder resten af løbet),
+  // ikke kun den åbne — og aldrig på en låst/kørende etape: `editableStages`
+  // er netop de etaper vælgeren må røre. Gemmes af fanens eksisterende
+  // "Gem etape N" sammen med intentionen (samme PUT, samme diff).
+  function pickRole(riderId, role) {
+    setDraftMatrix((m) => applyRoleForRest({ matrix: m, riderId, role, stages: editableStages }));
+    setOpenRoleRiderId(null);
+    if (status !== "idle") setStatus("idle");
+  }
+
   function updateOrder(transform) {
     setOrdersByStage((cur) => ({ ...cur, [activeStage]: transform(cur[activeStage] ?? order) }));
     if (status !== "idle") setStatus("idle");
@@ -327,9 +427,18 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     if (status !== "idle") setStatus("idle");
   }
 
+  // #4992: samme cyklus-konvention som resten af sidens sorterbare kolonner
+  // (klik på den aktive nøgle vender retningen). Første klik = bedst øverst,
+  // fordi et højt rute-match er "godt" — samme default som holdudtagelsens
+  // rute-match-kolonne (selectionDefaultSortDir: numerisk starter desc).
+  function toggleRouteSort() {
+    setRouteSortDir((dir) => (dir === "desc" ? "asc" : "desc"));
+  }
+
   function openStage(stageNumber) {
     setActiveStage(stageNumber);
     setOpenRiderId(null);
+    setOpenRoleRiderId(null);
   }
 
   async function save() {
@@ -358,6 +467,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order });
       setStatus("saved");
       setOpenRiderId(null);
+      setOpenRoleRiderId(null);
       await load();
     } catch (err) {
       setStatus("error");
@@ -374,6 +484,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const ordersColumn = isOneDay
     ? t("racePage.tactics.colOrdersRaceDay")
     : t("racePage.tactics.colOrders", { number: activeStage });
+  const routeMatchColumn = isOneDay
+    ? t("racePage.tactics.colRouteMatchRaceDay")
+    : t("racePage.tactics.colRouteMatch", { number: activeStage });
   const roleScope = isOneDay ? t("intention.thisRace") : t("intention.allRace");
   // Samme terraen-ord som hero'ens TERRAIN-blok. Bucket-navnet ("Flat" for en
   // rolling etape) staar side om side med hero'ens finere label paa den samme
@@ -400,10 +513,19 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     ? null
     : t(untouched.length === 1 ? "intention.footerUntouchedOne" : "intention.footerUntouchedMany", { stages: stageListText });
 
-  const captain = riders.find((r) => baseRoleForRider(r) === "captain") || null;
+  // #4980: rytterens EFFEKTIVE rolle på den åbne etape (override → basis-rolle),
+  // ikke race_entries-rollen alene. Uden dette ville kolonnen, holdplanen og
+  // sprint-tog-logikken vise den rolle han blev udtaget i, sekundet efter
+  // spilleren har givet kaptajnbåndet til en anden. Låst etape læses af de
+  // GEMTE overrides ("det du sendte dem ud med"), præcis som effortFor.
+  const roleFor = (rider) => (stageLocked
+    ? resolveCell({ rider, stageNumber: activeStage, overridesMap: lockedOverrides }).race_role
+    : draftMatrix[activeStage]?.[rider.rider_id]?.race_role ?? baseRoleForRider(rider));
+
+  const captain = riders.find((r) => roleFor(r) === "captain") || null;
   const plan = teamPlanKey(order.breakaway_stance, captain?.name ?? null);
-  const teamHasSprintCaptain = hasSprintCaptain(riders.map((r) => ({ role: baseRoleForRider(r) })));
-  const sprintCaptain = riders.find((r) => baseRoleForRider(r) === "sprint_captain") || null;
+  const teamHasSprintCaptain = hasSprintCaptain(riders.map((r) => ({ role: roleFor(r) })));
+  const sprintCaptain = riders.find((r) => roleFor(r) === "sprint_captain") || null;
   const orderByRider = new Map((order.riders ?? []).map((r) => [r.rider_id, r]));
   const leadoutCount = (order.riders ?? []).filter((r) => r.leadout).length;
 
@@ -414,9 +536,65 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     ? resolveCell({ rider, stageNumber: activeStage, overridesMap: lockedOverrides }).effort
     : intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId: rider.rider_id }));
 
+  // #4980: rollen skrives fra den FØRSTE ulåste etape og løbet ud — noten i
+  // vælgerens hoved siger det med det etapenummer det gælder fra, så et skift
+  // midt i et etapeløb ikke kan læses som "kun i dag".
+  // NB: hedder ikke firstOpenStage — det navn er importeret fra racePageTabs.js
+  // og bruges af load(); en lokal const med samme navn ville skygge for den i
+  // hele komponent-scopet (TDZ ved mount).
+  const firstEditableStage = editableStages.length ? editableStages[0] : activeStage;
+  const roleScopeNote = isOneDay
+    ? t("racePage.tactics.roleScopeRaceDay")
+    : t("racePage.tactics.roleScope", { number: firstEditableStage });
+
   // Rene render-funktioner, IKKE nestede komponenter: en komponent defineret
   // inde i render remountes ved hver tastetryk-render (React ser en ny type),
   // hvilket ville lukke den udfoldede vaelger under fingeren.
+  function renderRoleCell(rider) {
+    const role = roleFor(rider);
+    const open = openRoleRiderId === rider.rider_id;
+    // Låst etape og udgåede ryttere er ren visning: serveren afviser dem
+    // alligevel (stage_roles_stage_locked / stage_roles_rider_abandoned), og
+    // en knap der ikke kan bruges er værre end ingen knap. Uden en eneste
+    // ulåst etape (sidste dag kørt) er der intet tilbage at sætte rollen på.
+    const canEdit = !stageLocked && !rider.abandoned && editableStages.length > 0;
+    return (
+      <>
+        <div className="text-cz-1 text-xs">{t(`tacticsOrders.roleLabel.${roleKey(role)}`)}</div>
+        <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">{roleScope}</div>
+        {canEdit && (
+          <button
+            type="button"
+            disabled={saving}
+            aria-expanded={open}
+            aria-label={t("racePage.tactics.changeRoleAria", { name: rider.name || "—" })}
+            onClick={() => { setOpenRoleRiderId(open ? null : rider.rider_id); setOpenRiderId(null); }}
+            className="mt-1 text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {open ? t("intention.close") : t("intention.change")}
+          </button>
+        )}
+      </>
+    );
+  }
+
+  // #4992: rute-match for den ÅBNE etape. Desktop bruger den delte FitBar
+  // (bar + tal), præcis den samme visuelle grammatik som Hold-fanen og
+  // holdudtagelsen — kolonnen skal læses som det samme signal, ikke som et nyt.
+  // Mobil viser KUN tallet: baren ville koste bredde på en flade der aldrig må
+  // scrolle vandret (#1834), og tallet er det man sorterer efter.
+  function renderRouteMatchCell(rider, { numberOnly = false } = {}) {
+    const score = stageRouteMatch(rider, activeStage);
+    if (numberOnly) {
+      return (
+        <span className="font-data text-xs tabular-nums text-cz-2">
+          {score == null ? "—" : score}
+        </span>
+      );
+    }
+    return <FitBar score={score} />;
+  }
+
   function renderIntentionCell(rider) {
     if (rider.abandoned) {
       return (
@@ -451,7 +629,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             type="button"
             disabled={saving}
             aria-expanded={open}
-            onClick={() => setOpenRiderId(open ? null : rider.rider_id)}
+            onClick={() => { setOpenRiderId(open ? null : rider.rider_id); setOpenRoleRiderId(null); }}
             className="text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {open ? t("intention.close") : t(isDefault ? "intention.setIntention" : "intention.change")}
@@ -461,7 +639,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           {isDefault
             ? t("intention.nothingSet")
             : t("intention.line", {
-                role: t(`intention.roleWord.${baseRoleForRider(rider)}`),
+                role: t(`intention.roleWord.${roleFor(rider)}`),
                 today: t(`intention.today.${effort}`),
               })}
         </p>
@@ -480,7 +658,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         </span>
       );
     }
-    const isSprintCaptain = baseRoleForRider(rider) === "sprint_captain";
+    const isSprintCaptain = roleFor(rider) === "sprint_captain";
     return (
       <span className="flex flex-wrap items-center gap-2">
         <TogglePill
@@ -512,6 +690,14 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   }
 
   return (
+    <>
+      {/* #4979: profilen for den ABNE etape, over kortet. Rykker med etape-
+          vaelgeren nedenfor, saa man ser hvad man saetter taktik til. */}
+      <RaceStageProfileRow
+        profile={profileByStage[activeStage]}
+        stageLabel={isOneDay ? null : t("intention.stage", { number: activeStage })}
+        hasClassifications={!isOneDay}
+      />
     <section data-testid="race-tactics-tab" className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className="px-4 py-3 border-b border-cz-border flex flex-wrap items-baseline justify-between gap-2">
         <div className="min-w-0">
@@ -608,40 +794,65 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       {/* Desktop: tabel. Under sm: stablede kort (samme indhold, ingen vandret
           scroll — siden må aldrig overflowe på mobil, #1834). */}
       <div className="hidden sm:block overflow-x-auto">
-        <table data-sort-exempt="Taktik-listen foelger holdets udtagelses-raekkefoelge, ikke en sorterbar kolonne" className="w-full text-sm">
+        {/* #4992: tabellen er sorterbar paa PRAECIS een kolonne (rute-match for
+            den aabne etape). De oevrige headers er bevidst inaktive: rytter/
+            rolle/intention/ordrer har ingen iboende orden manageren beder om. */}
+        <table data-sortable className="w-full text-sm">
           <thead>
             <tr className="border-b border-cz-border">
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRider")}</th>
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRole")}</th>
+              <SortableTh
+                sortKey="routeMatch"
+                sort={routeSortDir ? "routeMatch" : null}
+                sortDir={routeSortDir}
+                onSort={toggleRouteSort}
+                title={t("racePage.tactics.sortRouteMatch")}
+                className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide whitespace-nowrap"
+              >
+                {routeMatchColumn}
+              </SortableTh>
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{intentionColumn}</th>
               {showOrders && <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{ordersColumn}</th>}
             </tr>
           </thead>
           <tbody>
-            {riders.map((rider) => {
-              const open = openRiderId === rider.rider_id && !rider.abandoned && !stageLocked;
+            {visibleRiders.map((rider) => {
+              const editable = !rider.abandoned && !stageLocked;
+              const openIntention = openRiderId === rider.rider_id && editable;
+              const openRole = openRoleRiderId === rider.rider_id && editable;
+              const expanded = openIntention || openRole;
               return [
-                <tr key={rider.rider_id} className={`border-b border-cz-border ${open ? "" : "last:border-0"}`}>
+                <tr key={rider.rider_id} className={`border-b border-cz-border ${expanded ? "" : "last:border-0"}`}>
                   <td className="px-4 py-2.5 align-top text-cz-1 font-medium">{rider.name || "—"}</td>
-                  <td className="px-4 py-2.5 align-top">
-                    <div className="text-cz-1 text-xs">{t(`tacticsOrders.roleLabel.${roleKey(baseRoleForRider(rider))}`)}</div>
-                    <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">{roleScope}</div>
-                  </td>
+                  <td className="px-4 py-2.5 align-top">{renderRoleCell(rider)}</td>
+                  <td className="px-4 py-2.5 align-top">{renderRouteMatchCell(rider)}</td>
                   <td className="px-4 py-2.5 align-top">{renderIntentionCell(rider)}</td>
                   {showOrders && <td className="px-4 py-2.5 align-top">{renderOrdersCell(rider)}</td>}
                 </tr>,
-                open ? (
+                expanded ? (
                   <tr key={`${rider.rider_id}-picker`} className="border-b border-cz-border last:border-0 bg-cz-subtle">
-                    <td colSpan={showOrders ? 4 : 3} className="px-4 pb-3.5 pt-0">
-                      <IntentionPicker
-                        t={t}
-                        riderName={rider.name}
-                        scopeLabel={scopeLabel}
-                        steps={steps}
-                        value={effortFor(rider)}
-                        disabled={saving}
-                        onPick={(step) => pickIntention(rider.rider_id, step)}
-                      />
+                    <td colSpan={showOrders ? 5 : 4} className="px-4 pb-3.5 pt-0">
+                      {openRole ? (
+                        <RolePicker
+                          t={t}
+                          riderName={rider.name}
+                          scopeNote={roleScopeNote}
+                          value={roleFor(rider)}
+                          disabled={saving}
+                          onPick={(role) => pickRole(rider.rider_id, role)}
+                        />
+                      ) : (
+                        <IntentionPicker
+                          t={t}
+                          riderName={rider.name}
+                          scopeLabel={scopeLabel}
+                          steps={steps}
+                          value={effortFor(rider)}
+                          disabled={saving}
+                          onPick={(step) => pickIntention(rider.rider_id, step)}
+                        />
+                      )}
                     </td>
                   </tr>
                 ) : null,
@@ -652,18 +863,38 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       </div>
 
       <ul className="sm:hidden divide-y divide-cz-border">
-        {riders.map((rider) => {
-          const open = openRiderId === rider.rider_id && !rider.abandoned && !stageLocked;
+        {visibleRiders.map((rider) => {
+          const editable = !rider.abandoned && !stageLocked;
+          const openIntention = openRiderId === rider.rider_id && editable;
+          const openRole = openRoleRiderId === rider.rider_id && editable;
           return (
             <li key={rider.rider_id} className="px-4 py-3">
-              <div className="text-cz-1 font-medium text-sm">{rider.name || "—"}</div>
-              <div className="mt-0.5 flex items-baseline gap-2 flex-wrap">
-                <span className="text-xs text-cz-1">{t(`tacticsOrders.roleLabel.${roleKey(baseRoleForRider(rider))}`)}</span>
-                <span className="text-3xs uppercase tracking-wider text-cz-3">{roleScope}</span>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-cz-1 font-medium text-sm min-w-0 truncate">{rider.name || "—"}</span>
+                {/* Kun tallet paa mobil — ingen bar, ingen vandret scroll. Det
+                    korte ord raekker: etapen staar allerede i vaelgeren og i
+                    profil-raekken lige ovenfor. */}
+                <span className="flex items-baseline gap-1.5 whitespace-nowrap shrink-0">
+                  <span className="text-3xs uppercase tracking-wider text-cz-3">{t("selection.routeMatch")}</span>
+                  {renderRouteMatchCell(rider, { numberOnly: true })}
+                </span>
               </div>
+              <div className="mt-0.5">{renderRoleCell(rider)}</div>
               <div className="mt-2">{renderIntentionCell(rider)}</div>
               {showOrders && <div className="mt-2">{renderOrdersCell(rider)}</div>}
-              {open && (
+              {openRole && (
+                <div className="mt-2.5">
+                  <RolePicker
+                    t={t}
+                    riderName={rider.name}
+                    scopeNote={roleScopeNote}
+                    value={roleFor(rider)}
+                    disabled={saving}
+                    onPick={(role) => pickRole(rider.rider_id, role)}
+                  />
+                </div>
+              )}
+              {openIntention && (
                 <div className="mt-2.5">
                   <IntentionPicker
                     t={t}
@@ -716,5 +947,6 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         </div>
       )}
     </section>
+    </>
   );
 }

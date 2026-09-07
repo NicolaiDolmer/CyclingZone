@@ -739,6 +739,9 @@
       "helpRaceDay": "The role runs all race. The intention and the orders are what you want on race day.",
       "colOrders": "Orders · stage {number}",
       "colOrdersRaceDay": "Orders · race day",
+      "colRouteMatch": "Route match · stage {number}",
+      "colRouteMatchRaceDay": "Route match · race day",
+      "sortRouteMatch": "Sort by route match for this stage",
       "stageMeta": "Stage {number} · locks {time}",
       "sprintTrainRiders": "{count, plural, =0 {No one} one {# rider} other {# riders}} for {name}",
       "sprintTrainNone": "No sprint captain in this team.",
@@ -748,7 +751,19 @@
       "lockedRaceDay": "Race day is locked. This is what you sent them out with.",
       "whatYouSet": "What you set. Stage {number}: {today}.",
       "whatYouSetRaceDay": "What you set. Race day: {today}.",
-      "loadError": "Could not load your tactics for this race."
+      "loadError": "Could not load your tactics for this race.",
+      "changeRoleAria": "Change {name}'s role",
+      "rolePickerTitle": "{name}'s role",
+      "roleScope": "From stage {number} to the end of the race",
+      "roleScopeRaceDay": "For this race",
+      "roleExclusiveNote": "One captain, one sprint captain and one breakaway hunter at a time. The rider who held the role becomes a domestique.",
+      "roleWhy": {
+        "captain": "The team rides for him and he gets the protection.",
+        "sprint_captain": "He gets the sprint train and the lead out.",
+        "hunter": "He goes hunting for the breakaway.",
+        "helper": "He works for the leaders.",
+        "free_role": "He rides his own race."
+      }
     },
     "team": {
       "title": "Team",

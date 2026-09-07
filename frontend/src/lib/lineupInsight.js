@@ -17,6 +17,43 @@ export function effectiveStageFit(rider, stageIndex) {
   return Number.isFinite(rider?.suitability) ? rider.suitability : null;
 }
 
+// #4992 (spillerønske egomadsen 7/9): rute-match for ÉN rytter på ÉN etape, som
+// Taktik-fanens kolonne viser den. Kilden er stage-roles-svarets `stage_fit`
+// ({ [stage_number]: 0-100 }, beregnet af backendens getStageRolesContext med
+// præcis samme terrainScore som holdudtagelsens fit) — ikke etape-INDEKSET som
+// effectiveStageFit ovenfor bruger. De to lever side om side med vilje:
+// holdudtagelsen kender etaperne som en liste (indeks), Taktik-fanen kender dem
+// som numre (etape-vælgeren), og en oversættelse mellem de to ville være netop
+// det tavse off-by-one denne nøgling undgår.
+//
+// FALDER IKKE tilbage til løbs-snittet: en pr.-etape-kolonne der viser løbets
+// gennemsnit ville se rigtig ud og være forkert. Mangler tallet → null → "—".
+export function stageRouteMatch(rider, stageNumber) {
+  if (stageNumber == null) return null;
+  const v = rider?.stage_fit?.[stageNumber];
+  return Number.isFinite(v) ? v : null;
+}
+
+// Comparator til rute-match-kolonnens sortering. Samme konventioner som
+// selectionComparator: manglende tal altid sidst (uanset retning), stabil
+// tiebreak på rider_id så lige tal ikke "hopper" mellem renders.
+export function routeMatchComparator(stageNumber, dir = "desc") {
+  const mul = dir === "asc" ? 1 : -1;
+  return (a, b) => {
+    const av = stageRouteMatch(a, stageNumber);
+    const bv = stageRouteMatch(b, stageNumber);
+    if (av != null && bv != null) {
+      const cmp = (av - bv) * mul;
+      if (cmp !== 0) return cmp;
+    } else if (av == null && bv != null) {
+      return 1;
+    } else if (av != null && bv == null) {
+      return -1;
+    }
+    return String(a?.rider_id).localeCompare(String(b?.rider_id), "en");
+  };
+}
+
 // id på den valgte rytter med højest effektivt fit (best-fit-nudge). Tiebreak id asc.
 export function bestFitRiderId(riders, selectedIds, stageIndex) {
   let best = null, bestScore = -Infinity;
