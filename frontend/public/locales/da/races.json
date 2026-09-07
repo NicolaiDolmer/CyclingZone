@@ -760,7 +760,11 @@
       "noRiders": "Du har ingen ryttere i det her løb.",
       "gc": "Samlet",
       "stageShort": "Et {number}",
-      "dnf": "DNF"
+      "dnf": "DNF",
+      "jerseyShortcutNote": "{name} fører sammenlagt, men er ikke din kaptajn.",
+      "jerseyShortcutAction": "Gør til kaptajn",
+      "jerseyShortcutSaving": "Gemmer…",
+      "jerseyShortcutError": "Kunne ikke gemme. Prøv igen."
     },
     "overview": {
       "gap": "Tid",

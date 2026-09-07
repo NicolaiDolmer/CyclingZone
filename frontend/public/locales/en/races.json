@@ -760,7 +760,11 @@
       "noRiders": "You have no riders in this race.",
       "gc": "GC",
       "stageShort": "St {number}",
-      "dnf": "DNF"
+      "dnf": "DNF",
+      "jerseyShortcutNote": "{name} leads the general classification but isn't your captain.",
+      "jerseyShortcutAction": "Make captain",
+      "jerseyShortcutSaving": "Saving…",
+      "jerseyShortcutError": "Could not save. Try again."
     },
     "overview": {
       "gap": "Gap",

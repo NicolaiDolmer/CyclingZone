@@ -9,6 +9,8 @@ import {
   setCell,
   diffToOverrides,
   isDirty,
+  jerseyLeaderId,
+  applyJerseyCaptainShortcut,
 } from "./stageRoleMatrixLogic.js";
 
 const RIDERS = [
@@ -104,4 +106,39 @@ test("isDirty: forskellig etape-dækning (fx efter reload med anden stagesComple
   const a = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3, 4], stagesCompleted: 2 });
   const b = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [4], stagesCompleted: 3 });
   assert.equal(isDirty(a, b), true);
+});
+
+// #4917/#2034 — førertrøje-genvej.
+test("jerseyLeaderId: finder MIN rytter med GC-rang 1, ellers null", () => {
+  const gcRankByRider = new Map([["a", 3], ["c", 1]]);
+  assert.equal(jerseyLeaderId({ riders: RIDERS, gcRankByRider }), "c");
+  assert.equal(jerseyLeaderId({ riders: RIDERS, gcRankByRider: new Map([["a", 2]]) }), null, "ingen af mine ryttere fører");
+  assert.equal(jerseyLeaderId({ riders: RIDERS, gcRankByRider: null }), null, "GC endnu ukendt (ingen resultater)");
+});
+
+test("jerseyLeaderId: en udgået fører tæller ikke — han kan alligevel ikke sættes til kaptajn", () => {
+  const abandonedLeader = [RIDERS[0], { ...RIDERS[2], abandoned: true }];
+  const gcRankByRider = new Map([["a", 4], ["c", 1]]);
+  assert.equal(jerseyLeaderId({ riders: abandonedLeader, gcRankByRider }), null);
+});
+
+test("applyJerseyCaptainShortcut: forfremmer føreren, demoterer den forrige kaptajn, kun på redigerbare etaper", () => {
+  // a er basis-kaptajn; c bliver GC-fører og skal overtage kaptajnbåndet på
+  // etape 3-4 (etape 2 er allerede kørt og indgår slet ikke i draft-matrixen).
+  const matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [2, 3, 4], stagesCompleted: 2 });
+  const next = applyJerseyCaptainShortcut({ matrix, leaderId: "c", stageNumbers: [2, 3, 4], stagesCompleted: 2 });
+  assert.deepEqual(next[3].c, { race_role: "captain", effort: "normal" });
+  assert.deepEqual(next[3].a, { race_role: "helper", effort: "normal" }, "den forrige kaptajn demoteres til helper");
+  assert.deepEqual(next[4].c, { race_role: "captain", effort: "normal" });
+  assert.deepEqual(next[4].a, { race_role: "helper", effort: "normal" });
+  assert.equal(next[2], undefined, "kørt etape indgår slet ikke i draft-matrixen og må ikke oprettes af genvejen");
+});
+
+test("applyJerseyCaptainShortcut: bevarer førerens EGEN effort, rører aldrig andre ryttere end kaptajnen", () => {
+  let matrix = buildDraftMatrix({ riders: RIDERS, overrides: [], stageNumbers: [3], stagesCompleted: 2 });
+  matrix = setCell(matrix, 3, "c", { effort: "protect" }); // føreren havde allerede en effort sat
+  matrix = setCell(matrix, 3, "b", { race_role: "hunter", effort: "save" }); // uvedkommende rytter
+  const next = applyJerseyCaptainShortcut({ matrix, leaderId: "c", stageNumbers: [3], stagesCompleted: 2 });
+  assert.deepEqual(next[3].c, { race_role: "captain", effort: "protect" }, "effort bevares, kun rollen sættes");
+  assert.deepEqual(next[3].b, { race_role: "hunter", effort: "save" }, "uvedkommende rytters række er urørt");
 });
