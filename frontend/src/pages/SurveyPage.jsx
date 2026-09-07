@@ -19,7 +19,7 @@
 // unit-testet med node:test.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { supabase } from "../lib/supabase";

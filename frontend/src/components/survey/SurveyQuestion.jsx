@@ -24,16 +24,23 @@ function stepClass(active) {
   return `${STEP_BASE} ${active ? STEP_ON : STEP_OFF}`;
 }
 
+// Trinene er flex-1 saa de krymper med skaermen, men de maa ikke straekkes ud
+// over en laesbar knapbredde paa desktop: et 1-5-trin der er 200 px bredt
+// laeses ikke som en skala laengere.
+const SCALE_MAX_WIDTH = { short: "max-w-[400px]", long: "max-w-[600px]" };
+const scaleCap = (scale) => (scale.length > 6 ? SCALE_MAX_WIDTH.long : SCALE_MAX_WIDTH.short);
+
 /** Én skala-række: valgfri etiket til venstre, derefter trinene. */
 function ScaleRow({ label, scale, value, ariaLabel, onSelect, disabled }) {
+  const cap = scaleCap(scale);
   return (
     <div className="flex items-center gap-2">
       {label && (
-        <span className="w-[92px] shrink-0 font-data text-3xs uppercase tracking-[.08em] text-cz-3">
+        <span className="w-[76px] shrink-0 font-data text-3xs uppercase tracking-[.08em] text-cz-3">
           {label}
         </span>
       )}
-      <div role="radiogroup" aria-label={ariaLabel} className="flex min-w-0 flex-1 gap-1">
+      <div role="radiogroup" aria-label={ariaLabel} className={`flex min-w-0 flex-1 gap-1 ${cap}`}>
         {scale.map((n) => (
           <button
             key={n}
@@ -53,9 +60,11 @@ function ScaleRow({ label, scale, value, ariaLabel, onSelect, disabled }) {
   );
 }
 
-function ScaleEnds({ low, high }) {
+// Endepunkts-etiketterne skal flugte med skalaens egen bredde, ikke med kortet:
+// "Meget tilfreds" 200 px til hoejre for femtallet peger paa ingenting.
+function ScaleEnds({ low, high, cap }) {
   return (
-    <div className="mt-1 flex justify-between text-3xs text-cz-3">
+    <div className={`mt-1 flex justify-between text-3xs text-cz-3 ${cap}`}>
       <span>{low}</span>
       <span>{high}</span>
     </div>
@@ -64,6 +73,7 @@ function ScaleEnds({ low, high }) {
 
 function ScaleQuestion({ question, value, onChange, disabled, ends }) {
   const scale = question.kind === "scale_0_10" ? SCALE_0_10 : SCALE_1_5;
+  const cap = scaleCap(scale);
   return (
     <>
       <ScaleRow
@@ -73,7 +83,7 @@ function ScaleQuestion({ question, value, onChange, disabled, ends }) {
         onSelect={(next) => onChange(next)}
         disabled={disabled}
       />
-      {ends && <ScaleEnds low={ends.low} high={ends.high} />}
+      {ends && <ScaleEnds low={ends.low} high={ends.high} cap={cap} />}
     </>
   );
 }
@@ -125,7 +135,7 @@ function IdeaImportanceQuestion({ question, value, language, onChange, disabled 
                 disabled={disabled || dontKnow}
               />
             </div>
-            <div className="mt-2 ms-[100px]">
+            <div className="mt-2 ms-[84px]">
               <Checkbox
                 checked={dontKnow}
                 disabled={disabled}

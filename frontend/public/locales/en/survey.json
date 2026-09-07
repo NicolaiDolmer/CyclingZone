@@ -11,7 +11,7 @@
   },
   "sections": {
     "today": "How it feels today",
-    "ideas": "Rate each idea twice",
+    "ideas": "The ideas",
     "problems": "What works worst",
     "choices": "What you would choose",
     "pro": "Pro",
@@ -20,7 +20,7 @@
   },
   "axes": {
     "idea": "Idea",
-    "importance": "Matters to me",
+    "importance": "Important",
     "dontKnow": "Do not know",
     "dontKnowAria": "No view on {feature}"
   },

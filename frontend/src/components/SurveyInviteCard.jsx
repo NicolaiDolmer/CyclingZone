@@ -10,7 +10,7 @@
 // (PAGE_TEMPLATES: ét guld-primært element pr. view).
 
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 
 import { supabase } from "../lib/supabase";

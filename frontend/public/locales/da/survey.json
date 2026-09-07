@@ -11,7 +11,7 @@
   },
   "sections": {
     "today": "Sådan er det i dag",
-    "ideas": "Giv hver idé to karakterer",
+    "ideas": "Idéerne",
     "problems": "Hvad fungerer dårligst",
     "choices": "Hvad du selv ville vælge",
     "pro": "Pro",
@@ -20,7 +20,7 @@
   },
   "axes": {
     "idea": "Idé",
-    "importance": "Betyder for mig",
+    "importance": "Vigtigt",
     "dontKnow": "Ved ikke",
     "dontKnowAria": "Ingen mening om {feature}"
   },
