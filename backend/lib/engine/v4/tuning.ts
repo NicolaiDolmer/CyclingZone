@@ -843,10 +843,10 @@ const teamPlayExtra = {
   // etapen er derfor praecis costFraction — uafhaengigt af hvor fint
   // rutemodellen har skaaret etapen op (samme granularitets-uafhaengighed som
   // M10's pr.-km-skalering, RACE_ENGINE_RULES §2c).
-  helperCostFractionGc: 0.15, // GC-relevante profiler (rolling/hilly/mountain/high_mountain/classic): hjaelperen traekker hele dagen for sin kaptajn — v3's WORK_COST_HELPER_GC-rolle. KALIBRERET 6/9 (3x foerste gaet)
-  helperCostFractionFlat: 0.133, // flade etaper: leadout-arbejde, kortere og senere end en bjergdags tempotraek — v3's 8/9-forhold mellem FLAT og GC bevaret. KALIBRERET 6/9 (3x foerste gaet)
-  helperCostFractionOther: 0.075, // oevrige profiler (brosten/grus/itt/itt_hilly/ttt): v3 giver helper 0 her, men v4's felt koerer stadig samlet paa brosten — halv pris i stedet for nul, saa holdspillet ikke forsvinder paa en klassiker. KALIBRERET 6/9 (3x foerste gaet)
-  hunterCostFraction: 0.05, // `hunter` koerer sit eget loeb (udbruds-kandidat) men bruger stadig kraefter for holdet — lille, profil-uafhaengig pris, praecis som v3's WORK_COST_HUNTER. KALIBRERET 6/9 (3x foerste gaet)
+  helperCostFractionGc: 0.405, // GC-relevante profiler (rolling/hilly/mountain/high_mountain/classic): hjaelperen traekker hele dagen for sin kaptajn — v3's WORK_COST_HELPER_GC-rolle. KALIBRERET 6/9 (3x foerste gaet)
+  helperCostFractionFlat: 0.3591, // flade etaper: leadout-arbejde, kortere og senere end en bjergdags tempotraek — v3's 8/9-forhold mellem FLAT og GC bevaret. KALIBRERET 6/9 (3x foerste gaet)
+  helperCostFractionOther: 0.2025, // oevrige profiler (brosten/grus/itt/itt_hilly/ttt): v3 giver helper 0 her, men v4's felt koerer stadig samlet paa brosten — halv pris i stedet for nul, saa holdspillet ikke forsvinder paa en klassiker. KALIBRERET 6/9 (3x foerste gaet)
+  hunterCostFraction: 0.135, // `hunter` koerer sit eget loeb (udbruds-kandidat) men bruger stadig kraefter for holdet — lille, profil-uafhaengig pris, praecis som v3's WORK_COST_HUNTER. KALIBRERET 6/9 (3x foerste gaet)
 
   // Effort-multiplikator paa hjaelperens PRIS (RACE_ENGINE_RULES §9 punkt 3,
   // ejer 6/9: "holdarbejdets pris (all_out fjerner prisen, loftet til 0, aldrig
@@ -874,11 +874,11 @@ const teamPlayExtra = {
   // ubegraenset fordel — "bounded fordel-signal" er ejer-formuleringen, og det
   // er DETTE tal der goer den bounded. Bevidst mindre end hjaelperens pris: en
   // kaptajn kan aldrig vinde mere end et helt holds arbejde koster.
-  captainMaxBonusFraction: 0.08, // maks. bonus over hele etapen, andel af kaptajnens egen CP. KALIBRERET 6/9
+  captainMaxBonusFraction: 0.216, // maks. bonus over hele etapen, andel af kaptajnens egen CP. KALIBRERET 6/9
   // Gulv under holdarbejdets samlede faktor: selv en hjaelper der har trukket
   // hele dagen for et helt hold er stadig en cykelrytter. Regressionsvagt mod
   // en fremtidig kalibrering der utilsigtet nulstiller nogens CP.
-  minCpFactor: 0.7,
+  minCpFactor: 0.58,
 
   // Mindst én arbejdende holdkammerat i SAMME gruppe kraeves (ejer-brief).
   // Gruppen ER naerheds-modellen i v4 (mor-spec §3.2, samme definition som
