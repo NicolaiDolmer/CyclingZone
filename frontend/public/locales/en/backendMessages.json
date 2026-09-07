@@ -547,6 +547,10 @@
       "soldToAiMessage": "{rider} was sold to the AI for {price} CZ$ (guaranteed price)",
       "expiredNoBidsTitle": "Auction expired without bids",
       "expiredNoBidsMessage": "Nobody bid on {rider}"
+    },
+    "directMessage": {
+      "title": "{count, plural, one {New message} other {# new messages}}",
+      "message": "{count, plural, one {{senderName} sent you a message} other {# new messages from {senderName}}}"
     }
   },
   "error": {

@@ -1,0 +1,80 @@
+{
+  "tab": {
+    "label": "Messages"
+  },
+  "list": {
+    "title": "Messages",
+    "subtitle_one": "{{count}} conversation waiting for you",
+    "subtitle_other": "{{count}} conversations waiting for you",
+    "subtitleNone": "Nothing new",
+    "emptyTitle": "No messages yet",
+    "emptyBody": "Open a manager profile and write to the person behind the team. A deal is easier to close when you can ask first.",
+    "emptyAction": "Find a manager",
+    "you": "You",
+    "loadError": "I could not load your messages. Try again."
+  },
+  "thread": {
+    "back": "All messages",
+    "placeholder": "Write a message",
+    "send": "Send",
+    "sending": "Sending",
+    "counter": "{{count}}/{{max}}",
+    "loadMore": "Show older messages",
+    "emptyTitle": "No messages yet",
+    "emptyBody": "Say what you want, and keep it civil. Every message is stored.",
+    "sendError": "I could not send that. Try again.",
+    "tooLong": "Keep it under {{max}} characters.",
+    "openProfile": "Open profile",
+    "blockedNote": "You have blocked this manager. You will not see new messages from them until you unblock."
+  },
+  "menu": {
+    "label": "More",
+    "block": "Block manager",
+    "unblock": "Unblock manager",
+    "report": "Report conversation",
+    "hide": "Hide conversation"
+  },
+  "block": {
+    "title": "Block this manager?",
+    "body": "They will not be able to reach you here. They are not told that you blocked them.",
+    "confirm": "Block",
+    "cancel": "Cancel",
+    "done": "Blocked",
+    "undone": "Unblocked",
+    "error": "I could not do that. Try again."
+  },
+  "report": {
+    "title": "Report this conversation",
+    "body": "I get a copy of the thread and read it myself. Tell me what is wrong.",
+    "reasonLabel": "What happened",
+    "reasonPlaceholder": "A sentence or two is enough",
+    "confirm": "Send report",
+    "cancel": "Cancel",
+    "done": "Report sent. I will look at it.",
+    "alreadyDone": "You already reported this conversation. I have it.",
+    "tooShort": "Write at least {{min}} characters, so I know what to look for.",
+    "error": "I could not send the report. Try again."
+  },
+  "hide": {
+    "done": "Conversation hidden. A new message brings it back.",
+    "error": "I could not hide it. Try again."
+  },
+  "start": {
+    "button": "Message",
+    "buttonAria": "Message {{name}}",
+    "forumLink": "Message",
+    "dealButton": "Message the other manager",
+    "title": "Message {{name}}",
+    "placeholder": "Write a message",
+    "send": "Send",
+    "cancel": "Cancel",
+    "sent": "Message sent"
+  },
+  "quote": {
+    "transfer_offer": "Transfer offer",
+    "auction": "Auction",
+    "rider": "{{rider}}",
+    "amount": "{{amount}} CZ$",
+    "open": "Open"
+  }
+}
