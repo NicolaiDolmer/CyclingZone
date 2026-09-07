@@ -78,7 +78,7 @@ export function isMassFinishRoute(route: { finale_type: FinaleType | null; profi
  * terraen-logik som GROUP_DRAFT_EXTRA_TUNING paa segment-fart-siden), og det er
  * dér felt-sammenhaengs-ankeret maales. En massespurt paa kuperet/brosten
  * (`hilly/reduced_sprint`, `cobbles/reduced_sprint`) er bevidst UDE: dér er
- * selektionen ægte, og bade brosten- og kuperet-ankrene er kalibreret paa den
+ * selektionen ægte, og både brosten- og kuperet-ankrene er kalibreret paa den
  * rene evne-baserede jagt.
  */
 const BUNCH_CATCH_PROFILE_TYPES: ReadonlySet<ProfileType> = new Set(["flat", "rolling"]);
