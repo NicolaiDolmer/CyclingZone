@@ -22,6 +22,9 @@ const daForum = JSON.parse(
 const daProfile = JSON.parse(
   readFileSync(new URL("../../public/locales/da/profile.json", import.meta.url), "utf8"),
 );
+const daCommon = JSON.parse(
+  readFileSync(new URL("../../public/locales/da/common.json", import.meta.url), "utf8"),
+);
 
 const TOGGLE = "[data-testid=forum-category-subscription-toggle]";
 
@@ -29,6 +32,12 @@ const TOGGLE = "[data-testid=forum-category-subscription-toggle]";
 // ("Ingen ulæst-markering ..."), og getByText matcher substring uden den.
 function unreadMarks(page) {
   return page.getByText(daForum.list.unread, { exact: true });
+}
+
+// Nav-prikken ved "Forum" (Layout.jsx, sr-only-teksten er dens navn). Den er
+// det bredeste kategori-signal der findes, saa den skal ogsaa daempes.
+function navForumDot(page) {
+  return page.getByText(daCommon.a11y.unreadForum, { exact: true });
 }
 
 async function openForumCategory(page, category) {
@@ -64,6 +73,25 @@ test.describe("Forum — abonnement pr. kategori", () => {
     await expect(unreadMarks(page).first()).toBeVisible();
   });
 
+  test("nav-prikken slukker når den sidste ulæste kategori slås fra", async ({ page }) => {
+    // Mock-seedets to ulæste tråde ligger begge i "general", så den kategori er
+    // den eneste kilde til prikken — slukker den ikke her, virker filteret i
+    // getForumUnreadStatus ikke.
+    // Prikken er betinget renderet (Layout.jsx: `showDot && ...`), saa dens
+    // TILSTEDEVAERELSE er signalet. toBeVisible duer ikke: teksten er sr-only,
+    // og sidebaren ligger i en lukket drawer under mobil-breakpointet.
+    await openForumCategory(page, "general");
+    await expect(navForumDot(page)).not.toHaveCount(0);
+
+    await page.locator(TOGGLE).click();
+    await expect(page.locator(TOGGLE)).toHaveAttribute("aria-pressed", "false");
+    await expect(navForumDot(page)).toHaveCount(0);
+
+    await page.locator(TOGGLE).click();
+    await expect(page.locator(TOGGLE)).toHaveAttribute("aria-pressed", "true");
+    await expect(navForumDot(page)).not.toHaveCount(0);
+  });
+
   test("kontrollen findes ikke på 'Alle' og ikke på arkivet (#4492)", async ({ page }) => {
     await stabilizePage(page);
     await installNetworkMocks(page);
@@ -73,7 +101,10 @@ test.describe("Forum — abonnement pr. kategori", () => {
     await expect(page.getByRole("heading", { name: daForum.list.latestHeading })).toBeVisible();
     await expect(page.locator(TOGGLE)).toHaveCount(0);
 
+    // Vent paa at arkiv-fanen faktisk er tegnet foer fravaeret pastaas —
+    // toHaveCount(0) er sandt med det samme paa en side der ikke er indlaest.
     await page.goto("/forum?category=archive");
+    await expect(page.getByRole("heading", { name: daForum.list.archiveHeading })).toBeVisible();
     await expect(page.locator(TOGGLE)).toHaveCount(0);
   });
 

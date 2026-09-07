@@ -735,6 +735,10 @@ export default function ProfilePage() {
                 <p className="text-cz-1 text-sm min-w-0">{t(`forum:categories.${key}`)}</p>
                 <Toggle
                   id={`forum-category-${key}`}
+                  // Kategori-navnet står som en søskende-<p>, ikke i labelen —
+                  // uden aria-label ville en skærmlæser høre seks unavngivne
+                  // switches (CodeRabbit, #5013).
+                  aria-label={t(`forum:categories.${key}`)}
                   checked={following}
                   disabled={savingForumCategory === key}
                   onChange={e => toggleForumCategory(key, e.target.checked)}
