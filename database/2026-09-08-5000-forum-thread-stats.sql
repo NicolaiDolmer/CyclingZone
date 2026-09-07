@@ -163,6 +163,18 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- Traaden skal findes og ikke vaere soft-slettet FOER vi skriver. Uden det
+  -- ville et kald mod en doed traad (gammelt bogmaerke, slettet opslag) kaste
+  -- en foreign_key_violation, som routen ville faa som en fejl at rapportere —
+  -- stoej i Sentry for noget der bare er en 404 for spilleren. En slettet traad
+  -- skal desuden ikke samle visninger.
+  SELECT view_count INTO v_count
+  FROM public.forum_posts
+  WHERE id = p_post_id AND deleted_at IS NULL;
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+
   INSERT INTO public.forum_thread_views (post_id, user_id)
   VALUES (p_post_id, p_user_id)
   ON CONFLICT ON CONSTRAINT forum_thread_views_daily_uniq DO NOTHING;
@@ -171,13 +183,13 @@ BEGIN
   -- allerede set af denne bruger i dag) og 1 ved en ny visning.
   GET DIAGNOSTICS v_inserted = ROW_COUNT;
 
+  -- Var visningen ny, taeller vi op og returnerer det nye tal. Ellers staar
+  -- v_count allerede med traadens nuvaerende tal fra pre-checket ovenfor.
   IF v_inserted > 0 THEN
     UPDATE public.forum_posts
     SET view_count = view_count + 1
     WHERE id = p_post_id
     RETURNING view_count INTO v_count;
-  ELSE
-    SELECT view_count INTO v_count FROM public.forum_posts WHERE id = p_post_id;
   END IF;
 
   RETURN v_count;
