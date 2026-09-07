@@ -323,6 +323,10 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
   const archiveFilter = category === FORUM_ARCHIVE_FILTER;
   const categoryFilter = !archiveFilter && isValidForumCategory(category) ? category : null;
 
+  // schema-columns-ok: view_count/last_reply_user_id/last_reply_team_id
+  // tilfoejes af database/2026-09-08-5000-forum-thread-stats.sql i SAMME PR —
+  // snapshottet opdateres post-merge (#2642-rammen), kolonnerne findes ikke i
+  // prod ENDNU.
   let query = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
     .is("deleted_at", null)
     .eq("is_pinned", false);
@@ -346,6 +350,8 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
 
   let pinnedRows = [];
   if (afterCursor == null && !archiveFilter) {
+    // schema-columns-ok: samme tre nye kolonner som ovenfor — tilfoejes af
+    // database/2026-09-08-5000-forum-thread-stats.sql i SAMME PR.
     let pinnedQuery = supabase.from("forum_posts").select(POST_LIST_COLUMNS)
       .is("deleted_at", null)
       .eq("is_pinned", true);
@@ -396,6 +402,8 @@ export async function listForumPosts({ supabase, category = null, limit, cursor,
 export async function getForumPost({ supabase, id, userId }) {
   if (!id) return { status: 400, body: { error: "Missing id", errorCode: "forum_missing_id" } };
 
+  // schema-columns-ok: view_count tilfoejes af
+  // database/2026-09-08-5000-forum-thread-stats.sql i SAMME PR.
   const { data: post, error: postError } = await supabase
     .from("forum_posts")
     .select("id, seq, created_at, user_id, team_id, category, title, body, is_pinned, reply_count, last_reply_at, view_count, deleted_at")
