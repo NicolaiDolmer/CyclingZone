@@ -99,5 +99,12 @@
     "submitFailed": "Kunne ikke sende. Prøv igen.",
     "retry": "Prøv igen",
     "markAllReadFailed": "Kunne ikke markere alle tråde som læst. Prøv igen."
+  },
+  "subscription": {
+    "following": "Følger",
+    "muted": "Slået fra",
+    "followingHint": "Du får ulæst-markering og forumprikken, når der er noget nyt her.",
+    "mutedHint": "Ingen ulæst-markering og ingen forumprik fra denne kategori. Svar på dine egne tråde når dig stadig.",
+    "saveFailed": "Dit valg kunne ikke gemmes. Prøv igen."
   }
 }

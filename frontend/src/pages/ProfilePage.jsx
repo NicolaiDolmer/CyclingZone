@@ -8,6 +8,11 @@ import { useSubscription } from "../lib/useSubscription";
 import { useTheme } from "../lib/theme.jsx";
 import { useConsent } from "../lib/consent.jsx";
 import { parseDiscordHandle } from "../lib/discordHandle.js";
+// #5013: abonnement pr. forum-kategori — delt med ForumPage, så de to flader
+// aldrig kan vise hver sin sandhed.
+import {
+  normalizeCategoryMutes, applyCategoryMute, followedCategoryCount, FORUM_CATEGORY_KEYS,
+} from "../lib/forumCategoryMutes.js";
 import {
   Card,
   Button,
@@ -29,7 +34,9 @@ const API = import.meta.env.VITE_API_URL;
 const THEME_OPTIONS = ["system", "light", "dark"];
 
 export default function ProfilePage() {
-  const { t, i18n } = useTranslation(["profile", "errors"]);
+  // #5013: forum-namespacet lånes til kategori-navnene — de skal hedde det
+  // SAMME her og på forumsiden, så de må ikke oversættes to steder.
+  const { t, i18n } = useTranslation(["profile", "errors", "forum"]);
   const [user, setUser] = useState(null);
   const [team, setTeam] = useState(null);
   const [discordId, setDiscordId] = useState("");
@@ -38,6 +45,9 @@ export default function ProfilePage() {
   const [dmStatus, setDmStatus] = useState(null);
   const [assistant, setAssistant] = useState(null);
   const [savingAssistant, setSavingAssistant] = useState(false);
+  // #5013: én række pr. forum-kategori med "følger jeg den?".
+  const [forumCategories, setForumCategories] = useState(() => normalizeCategoryMutes(null));
+  const [savingForumCategory, setSavingForumCategory] = useState(null);
   const [savingDmEnabled, setSavingDmEnabled] = useState(false);
   const [testingDm, setTestingDm] = useState(false);
   const [teamName, setTeamName] = useState("");
@@ -79,8 +89,48 @@ export default function ProfilePage() {
     setTeam(teamData);
     setTeamName(teamData?.name || "");
     setManagerName(teamData?.manager_name || "");
-    await Promise.all([refreshDmStatus(), refreshAssistantSettings()]);
+    await Promise.all([refreshDmStatus(), refreshAssistantSettings(), refreshForumCategories()]);
     setLoading(false);
+  }
+
+  // #5013: abonnement pr. forum-kategori. Samme normalisering som forumsiden
+  // (frontend/src/lib/forumCategoryMutes.js) — et fejlet kald falder til
+  // "følger alt", aldrig til dæmpet.
+  async function refreshForumCategories() {
+    const headers = await getAuthHeaders();
+    if (!headers) return;
+    try {
+      const res = await fetch(`${API}/api/forum/category-mutes`, { headers });
+      if (res.ok) setForumCategories(normalizeCategoryMutes(await res.json()));
+    } catch {
+      // best-effort — listen står som "følger alt" indtil næste indlæsning
+    }
+  }
+
+  // Optimistisk toggle, rulles tilbage ved fejl (samme mønster som forumsiden).
+  async function toggleForumCategory(category, follow) {
+    if (savingForumCategory) return;
+    const previous = forumCategories;
+    setSavingForumCategory(category);
+    setForumCategories(applyCategoryMute(previous, category, !follow));
+    try {
+      const headers = await getAuthHeaders();
+      if (!headers) throw new Error("no session");
+      const res = await fetch(`${API}/api/forum/category-mutes`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ category, muted: !follow }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Nav-prikken afledes af valget på backend — bed layoutet hente den igen.
+      window.dispatchEvent(new Event("cz:forum-thread-read"));
+    } catch (err) {
+      setForumCategories(previous);
+      reportActionFailure("profile_forum_category_mute", { reason: "network", cause: err });
+      showMsg(t("forumCategories.saveFailed"), "error");
+    } finally {
+      setSavingForumCategory(null);
+    }
   }
 
   // #4201: assistentens tilstand er runtime-styret (app_config). Kortet vises kun
@@ -669,6 +719,34 @@ export default function ProfilePage() {
           </div>
         </Card>
       )}
+
+      {/* Forum-kategorier (#5013) — samlet oversigt over hvilke kategorier der
+          må sige til når der er nyt. Samme valg som til/fra-kontrollen i
+          kategori-hovedet på forumsiden; de deler
+          frontend/src/lib/forumCategoryMutes.js. */}
+      <Card className="p-5 mb-4">
+        <h2 className="text-cz-1 font-semibold text-sm mb-1">{t("forumCategories.title")}</h2>
+        <p className="text-cz-3 text-xs mb-4 leading-relaxed">{t("forumCategories.hint")}</p>
+        <div className="space-y-2">
+          {FORUM_CATEGORY_KEYS.map(key => {
+            const following = !forumCategories.some(row => row.category === key && row.muted);
+            return (
+              <div key={key} className="flex items-center justify-between gap-3">
+                <p className="text-cz-1 text-sm min-w-0">{t(`forum:categories.${key}`)}</p>
+                <Toggle
+                  id={`forum-category-${key}`}
+                  checked={following}
+                  disabled={savingForumCategory === key}
+                  onChange={e => toggleForumCategory(key, e.target.checked)}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-cz-3 text-xs mt-4 pt-3 border-t border-cz-border">
+          {t("forumCategories.summary", { count: followedCategoryCount(forumCategories), total: FORUM_CATEGORY_KEYS.length })}
+        </p>
+      </Card>
 
       {/* Team info */}
       {canEditTeam && (
