@@ -917,3 +917,45 @@ test("#4993: M10s id-navnerum kolliderer IKKE med en anden mekaniks id selv ved 
     ),
   );
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// #4993 (PR #4998-review, 2. CodeRabbit-runde): boundary-test for det ANDET
+// fix-forsoeg (modul-taeg + `segmentIndex*1000+seq`-multiplikation), som
+// CodeRabbit korrekt paapegede havde SIN EGEN aliasing-risiko: (segmentIndex=
+// 5, seq=1000) og (segmentIndex=6, seq=0) regnede begge til produktet 6000
+// og gav dermed samme id, uanset modul-taegget. Testen laaser det praecise
+// modeksempel CodeRabbit fandt, plus en fast-check-injektivitetsproperty der
+// beviser den ENDELIGE (afgraensede/delimited) encoding aldrig aliaser to
+// FORSKELLIGE (segmentIndex, seq)-par til samme streng.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test("#4993: M10s id aliaser IKKE paa tvaers af segmenter naar seq >= 1000 (CodeRabbit-boundary, 2. runde)", () => {
+  // Det praecise modeksempel CodeRabbit fandt mod multiplikations-encodingen:
+  // 5*1000+1000 === 6*1000+0 === 6000.
+  const idFromLargeSeq = makeIncidentSoloGroupId(5, 1000);
+  const idFromNextSegment = makeIncidentSoloGroupId(6, 0);
+
+  assert.notEqual(
+    idFromLargeSeq,
+    idFromNextSegment,
+    `makeIncidentSoloGroupId(5, 1000) ("${idFromLargeSeq}") maa aldrig matche ` +
+      `makeIncidentSoloGroupId(6, 0) ("${idFromNextSegment}") — segment-graense-aliasing (#4993)`,
+  );
+});
+
+test("#4993: makeIncidentSoloGroupId er injektiv i (segmentIndex, seq) — fast-check, ingen oevre seq-graense", () => {
+  fc.assert(
+    fc.property(
+      fc.nat({ max: 200 }),
+      fc.nat({ max: 5000 }),
+      fc.nat({ max: 200 }),
+      fc.nat({ max: 5000 }),
+      (segA, seqA, segB, seqB) => {
+        // Kun relevant naar de to (segmentIndex, seq)-par rent faktisk er
+        // FORSKELLIGE — en injektiv funktion maa give forskellig streng.
+        fc.pre(segA !== segB || seqA !== seqB);
+        return makeIncidentSoloGroupId(segA, seqA) !== makeIncidentSoloGroupId(segB, seqB);
+      },
+    ),
+  );
+});

@@ -396,23 +396,37 @@ export function resolveCrashIncident(
  * drive fx descent.ts's egen lokale `seq` forbi 500 i ét segment, hvorved
  * dens `solo-<segmentIndex*1000+500+n>` genbruger M10s id igen.
  *
- * Endeligt fix: giv M10 sit EGET navnerum via et modul-taeg baget direkte
- * ind i id-strengen (`solo-m10-<n>`) i stedet for et numerisk offset ind i
- * den delte taeller-plads. Det goer id'et UBETINGET disjunkt fra enhver
- * anden mekaniks `${kind}-${seq}`-format — uanset hvor stort `seq` nogen
- * mekanik nogensinde vokser sig, ingen oevre-graense-antagelse noedvendig.
- * Verificeret risikofrit: `grep -rn "solo-"` over backend + frontend viser
- * INGEN parser/regex der antager `${kind}-${number}`-formatet — id'et
+ * ANDET fix-forsoeg (revideret igen efter en 2. CodeRabbit-runde paa PR
+ * #4998): et modul-taeg baget ind i id-strengen — men stadig med den
+ * MULTIPLIKATIVE `segmentIndex * 1000 + seq`-kombinering fra det forkastede
+ * offset-forsoeg. Den kombinering har SIN EGEN aliasing-risiko, uafhaengigt
+ * af 500-graensen: `seq` er ikke haandhaevet < 1000 noget sted, saa
+ * (segmentIndex=5, seq=1000) og (segmentIndex=6, seq=0) regner begge til
+ * det samme produkt (6000) og giver dermed SAMME id — praecis den slags
+ * uhaandhaevet oevre-graense-antagelse denne fix i forvejen forsoeger at
+ * fjerne. CodeRabbit fandt det praecise modeksempel.
+ *
+ * Endeligt fix: brug en AFGRAENSET (delimited) encoding —
+ * `solo-m10-<segmentIndex>-<seq>` — i stedet for at kombinere de to tal til
+ * ét via multiplikation. Ingen kombination af segmentIndex/seq kan give
+ * samme streng som en anden kombination (bindestregerne er faste
+ * separatorer, og begge tal er ikke-negative heltal skrevet uden
+ * foranstillede tegn) — id'et er UBETINGET injektivt i (segmentIndex, seq),
+ * ingen oevre-graense-antagelse paa NOGEN af de to tal noedvendig laengere.
+ * Giver M10 sit EGET navnerum via modul-taegget "m10", ubetinget disjunkt
+ * fra enhver anden mekaniks `${kind}-${seq}`-format (ingen af dem indeholder
+ * "-m10-"). Verificeret risikofrit: `grep -rn "solo-"` over backend +
+ * frontend viser INGEN parser/regex der antager et bestemt id-format — id'et
  * bruges udelukkende til streng-lighed/`.localeCompare()` (groups.ts,
- * finale.ts, breakaway.ts m.fl.), aldrig splittet/parset. `kind` forbliver
- * "solo" (GroupKind er upaavirket) — kun den opake id-streng aendres.
- * Ingen af de fire fixtures rammer M10s hook i dag (0 incidents i alle), saa
- * aendringen flytter ingen golden fixture; §7b-ankerpaavirkningen er den
- * samme klasse som ved offset-forsoeget (tie-break i groups.ts's
- * `localeCompare()`), ikke en ny effekt.
+ * finale.ts, breakaway.ts m.fl.), aldrig splittet/parset paa bindestreg.
+ * `kind` forbliver "solo" (GroupKind er upaavirket) — kun den opake
+ * id-streng aendres. Ingen af de fire fixtures rammer M10s hook i dag (0
+ * incidents i alle), saa aendringen flytter ingen golden fixture;
+ * §7b-ankerpaavirkningen er den samme klasse som ved de forkastede forsoeg
+ * (tie-break i groups.ts's `localeCompare()`), ikke en ny effekt.
  */
 export function makeIncidentSoloGroupId(segmentIndex: number, seq: number): string {
-  return `solo-m10-${segmentIndex * 1000 + seq}`;
+  return `solo-m10-${segmentIndex}-${seq}`;
 }
 
 export function createIncidentHook(
