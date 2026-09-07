@@ -411,7 +411,7 @@ export default function ForumPage() {
                 : "border-transparent text-cz-3 hover:text-cz-2"
             }`}
           >
-            {tab.official && <FlagIcon size={12} aria-hidden="true" className="mr-1.5 inline-block align-[-1px]" />}
+            {tab.official && <FlagIcon size={12} aria-hidden="true" className="me-1.5 inline-block align-[-1px]" />}
             {tab.label}
           </button>
         ))}
