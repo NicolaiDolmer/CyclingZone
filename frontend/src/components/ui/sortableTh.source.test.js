@@ -50,3 +50,28 @@ test("SortableTh (default-eksport) er uændret: onClick/aria-sort/klik-cyklus r�
   assert.match(src, /onClick=\{\(\)\s*=>\s*onSort\(sortKey\)\}/);
   assert.match(src, /aria-sort=\{active\s*\?\s*\(sortDir\s*===\s*["']desc["']\s*\?\s*["']descending["']\s*:\s*["']ascending["']\)\s*:\s*["']none["']\}/);
 });
+
+// #4989 (CodeRabbit, PR #4989): en <th onClick> uden fokuserbart element kan
+// ikke betjenes af tastatur-brugere. Header-cellen skal derfor indeholde en
+// native <button type="button"> som ejer klikket, mens aria-sort bliver på
+// <th> (den semantiske celle screenreadere annoncerer sort-status på).
+test("header-teksten sidder i en fokuserbar <button type=\"button\">, ikke direkte i en klikbar <th>", () => {
+  assert.match(
+    src,
+    /<button\s+type="button"[\s\S]*?onClick=\{\(\)\s*=>\s*onSort\(sortKey\)\}/,
+    "onSort skal aktiveres via en native <button>, ikke kun via et th-onClick uden tastatur-adgang",
+  );
+  // Regressions-guard for selve #4989-fundet: <th> må IKKE selv have onClick
+  // (det var den ikke-fokuserbare klik-flade tastatur-brugere ikke kunne nå).
+  assert.doesNotMatch(
+    src,
+    /<th\s[^>]*onClick=/,
+    "onClick må ikke ligge direkte på <th> — det er den ikke-tastatur-tilgængelige variant #4989 fjernede",
+  );
+});
+
+test("aria-sort bliver på <th> (den semantiske tabel-celle), selvom klikket sidder på en indre <button>", () => {
+  const thBlock = src.match(/<th\s+title=\{title\}[\s\S]*?>/);
+  assert.ok(thBlock, "kunne ikke finde <th>-åbningstagget (med title-prop) i SortableTh.jsx");
+  assert.match(thBlock[0], /aria-sort=/, "aria-sort skal stå på <th>, ikke kun på den indre knap");
+});
