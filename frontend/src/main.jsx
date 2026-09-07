@@ -14,6 +14,7 @@ import App from "./App.jsx";
 import { AppProviders } from "./AppProviders.jsx";
 import { initSentry } from "./lib/sentry.jsx";
 import { installChunkReloadHandlers } from "./lib/chunkErrors.js";
+import { getRelease } from "./lib/release.js";
 import { installTranslationResilience } from "./lib/translationResilience.js";
 import { captureFirstTouch } from "./lib/attribution.js";
 import { BrowserRouter } from "react-router";
@@ -52,7 +53,12 @@ if (SKEW_PROTECTION_ENABLED) {
 // #3602: reload'en er navigations-guarded — den fyrer kun hvis dokumentet stadig
 // kan hente noget, så en chunk-abort forårsaget af en igangværende navigation
 // ikke bliver fejllæst som en stale chunk og kaprer navigationen.
-const _release = import.meta.env.VITE_SENTRY_RELEASE || import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA;
+// #4595: release-id'et kommer fra <meta name="cz-release"> i den serverede HTML,
+// ikke fra import.meta.env. Det er stadig det samme deploy-unikke id (nøglen der
+// loop-guarder reloadet pr. release) — men nu står det i HTML'en i stedet for i
+// en hashet asset, så et deploy uden frontend-ændringer ikke længere roterer
+// asset-navnene. Se lib/release.js.
+const _release = getRelease();
 installChunkReloadHandlers({
   target: window,
   release: _release,

@@ -47,6 +47,35 @@ const worktreeIdPlugin = () => {
   };
 };
 
+// #4595: release-sha'en må IKKE ende i en hashet asset. Den injiceres i stedet som
+// <meta name="cz-release"> i index.html (og dermed også i den kopierede app.html,
+// se scripts/prerender.mjs) og læses runtime af src/lib/release.js.
+//
+// Baggrund: Vercel auto-eksponerer `VITE_VERCEL_GIT_COMMIT_SHA` til Vite-builds.
+// Da main.jsx og lib/sentry.jsx læste den, ændrede entry-chunkens indhold sig på
+// HVERT deploy — også et docs-only commit — så dens Rollup-hash roterede, og med
+// den hele grafen af route-chunks der importerer entry'en. Resultatet var at hver
+// åben fane pegede på asset-filer der ikke længere fandtes (CYCLINGZONE-56).
+// HTML'en er kort-cachet og følger deployet; assets er `immutable` og skal derfor
+// være byte-identiske når koden er uændret.
+//
+// Bevidst UDEN `VITE_`-prefix: variablen læses her i build-processen (Node), ikke
+// i klient-koden, netop for at Vite ikke kan inline den i en asset.
+const releaseSha = process.env.SENTRY_RELEASE || process.env.VERCEL_GIT_COMMIT_SHA || "";
+const releaseMetaPlugin = () => ({
+  name: "cz-release-meta",
+  // Kun HTML — rører ikke en eneste hashet asset.
+  transformIndexHtml() {
+    return [
+      {
+        tag: "meta",
+        attrs: { name: "cz-release", content: releaseSha },
+        injectTo: "head",
+      },
+    ];
+  },
+});
+
 // #2668: preview-værktøjets "autoPort" (.claude/launch.json) tildeler en fri port
 // pr. session via PORT-env i stedet for et hardcodet --port-flag, så parallelle
 // worktree-sessioner ikke kolliderer på samme dev-server-port. Vite læser ikke
@@ -80,6 +109,7 @@ export default defineConfig({
   plugins: [
     react(),
     worktreeIdPlugin(),
+    releaseMetaPlugin(),
     patchNotesJsonPlugin(),
     enableSentryUpload
       ? sentryVitePlugin({
