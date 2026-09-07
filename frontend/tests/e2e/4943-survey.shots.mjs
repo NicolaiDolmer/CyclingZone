@@ -68,6 +68,16 @@ for (const vp of VIEWPORTS) {
     await page.getByRole("heading", { name: "Idéerne" }).scrollIntoViewIfNeeded();
     await page.waitForTimeout(250);
     await page.screenshot({ path: resolve(OUT, `4943-two-axes-${vp.name}.png`) });
+
+    // 2b. Invitér-en-ven: multi i stedet for fritekst (ejer-beslutning 8/9).
+    await page.getByRole("heading", { name: "Hvad du selv ville vælge" }).scrollIntoViewIfNeeded();
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: resolve(OUT, `4943-invite-friend-${vp.name}.png`) });
+
+    // 2c. Pro-listen med early_access (scouting fjernet, ejer-beslutning 8/9).
+    await page.getByRole("heading", { name: "Pro", exact: true }).scrollIntoViewIfNeeded();
+    await page.waitForTimeout(200);
+    await page.screenshot({ path: resolve(OUT, `4943-pro-${vp.name}.png`) });
     await context.close();
   }
 

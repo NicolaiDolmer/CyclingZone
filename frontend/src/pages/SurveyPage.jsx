@@ -63,7 +63,6 @@ const QUESTION_COLUMNS =
 // Endepunkts-etiketterne hører til skalaen, ikke til spørgsmålsteksten, så de
 // bor i i18n frem for i databasens label-kolonner.
 const SCALE_ENDS = {
-  nps: { lowKey: "scale.npsLow", highKey: "scale.npsHigh" },
   satisfaction: { lowKey: "scale.satisfactionLow", highKey: "scale.satisfactionHigh" },
 };
 

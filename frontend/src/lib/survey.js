@@ -208,7 +208,6 @@ export function buildResponsePayload({ surveyId, userId, teamId = null, question
 export const SECTION_ORDER = ["today", "ideas", "problems", "choices", "pro", "closing", "other"];
 
 const SECTION_BY_KEY = {
-  nps: "today",
   satisfaction: "today",
   feature_axes: "ideas",
   works_worst: "problems",

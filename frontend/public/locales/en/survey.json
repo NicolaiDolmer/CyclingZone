@@ -25,8 +25,6 @@
     "dontKnowAria": "No view on {feature}"
   },
   "scale": {
-    "npsLow": "Not at all likely",
-    "npsHigh": "Extremely likely",
     "satisfactionLow": "Not satisfied",
     "satisfactionHigh": "Very satisfied"
   },

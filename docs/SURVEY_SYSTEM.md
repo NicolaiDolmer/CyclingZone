@@ -3,6 +3,14 @@
 > Bygget i #4943 efter ejer-beslutning 7/9: skemaet bygges **i spillet**, ikke i
 > Google Forms. Indholdet kommer fra `docs/discord/2026-09-07-spoergeskema-spillere-v2.md`.
 > Migration: `database/2026-09-07-4943-in-app-survey.sql`.
+>
+> **Beslutninger 8/9:** indholdet blev rettet spørgsmål for spørgsmål efter
+> ejer-beslutning i [#4943-kommentaren "Ejer-beslutninger 8/9"](https://github.com/NicolaiDolmer/CyclingZone/issues/4943#issuecomment-5574155750).
+> Skemaet gik fra 12 til 11 spørgsmål: `nps` droppet, `satisfaction` blev
+> første spørgsmål, `feature_axes` fik `races_train_you` i stedet for
+> `rider_effort`, `invite_friend` blev en afkrydsning med flere valg,
+> `pro_contents` mistede `scouting` og fik `early_access`, og `pro_would_pay`
+> fik ny ordlyd.
 
 ## 1. Delene
 
@@ -139,23 +147,29 @@ SELECT feature,
  ORDER BY combined DESC NULLS LAST;
 ```
 
-### 5.3 NPS-fordeling
+### 5.3 NPS måles ikke længere her
+
+`nps` blev droppet fra skemaet ved ejer-beslutninger 8/9: dashboard-NPS (#4997)
+måler det samme, løbende og uden at bruge et af skemaets 11 spørgsmål på det.
+Skal en promoter/kritiker-/ambassadørsegmentering krydses mod skemaets egne
+svar (fx feature_axes eller works_worst), joines `nps_responses` på `user_id`,
+fordi den tabel hænger på kontoen, ikke på et hold:
 
 ```sql
 WITH s AS (SELECT id FROM public.surveys WHERE slug = '2026-09-features'),
-n AS (
-  SELECT (r.value->>'score')::int AS score
-    FROM public.survey_responses r JOIN s ON s.id = r.survey_id
-   WHERE r.question_key = 'nps'
+seg AS (
+  SELECT user_id,
+         CASE WHEN score >= 9 THEN 'promoter'
+              WHEN score >= 7 THEN 'passive'
+              ELSE 'detractor' END AS nps_segment
+    FROM public.nps_responses
 )
-SELECT count(*)                                        AS answers,
-       count(*) FILTER (WHERE score >= 9)              AS promoters,
-       count(*) FILTER (WHERE score BETWEEN 7 AND 8)   AS passives,
-       count(*) FILTER (WHERE score <= 6)              AS detractors,
-       round(100.0 * (count(*) FILTER (WHERE score >= 9) - count(*) FILTER (WHERE score <= 6))
-             / NULLIF(count(*), 0), 1)                 AS nps,
-       round(avg(score), 2)                            AS avg_score
-  FROM n;
+SELECT seg.nps_segment, count(DISTINCT r.user_id) AS survey_responders
+  FROM public.survey_responses r
+  JOIN s ON s.id = r.survey_id
+  JOIN seg ON seg.user_id = r.user_id
+ GROUP BY seg.nps_segment
+ ORDER BY seg.nps_segment;
 ```
 
 ### 5.4 Hvad fungerer dårligst i dag
@@ -212,3 +226,23 @@ HAVING count(*) >= 3   -- under 3 svar er støj, ikke et segment
 
 Byt `seg.division` ud med et af de andre segmenter fra §3 (sæsoner, sprog,
 `login_streak`) for de øvrige krydsninger; strukturen er den samme.
+
+### 5.6 Invitér en ven
+
+Samme opskrift som §5.4 (`jsonb_array_elements_text` på `selected`): `invite_friend`
+blev en afkrydsning ved ejer-beslutninger 8/9, så det læses på præcis samme måde
+som `works_worst`.
+
+```sql
+WITH s AS (SELECT id FROM public.surveys WHERE slug = '2026-09-features')
+SELECT reason, count(*) AS picks,
+       round(100.0 * count(*) / NULLIF((SELECT count(DISTINCT r2.user_id)
+             FROM public.survey_responses r2 JOIN s ON s.id = r2.survey_id
+            WHERE r2.question_key = 'invite_friend'), 0), 1) AS pct_of_answerers
+  FROM public.survey_responses r
+  JOIN s ON s.id = r.survey_id
+  CROSS JOIN LATERAL jsonb_array_elements_text(r.value->'selected') AS reason
+ WHERE r.question_key = 'invite_friend'
+ GROUP BY reason
+ ORDER BY picks DESC;
+```

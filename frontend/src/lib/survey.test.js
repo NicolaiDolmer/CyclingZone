@@ -278,16 +278,20 @@ test("buildResponsePayload kræver nøglerne og nægter at skrive et tomt svar",
 // ── Sektioner ───────────────────────────────────────────────────────────────
 
 test("spørgsmål grupperes i sektioner, tomme sektioner udelades", () => {
+  // nps er ikke længere en spoergsmaalsnoegle i skemaet (droppet 8/9, #4943);
+  // brugt her udelukkende som generisk scale_0_10-fixture, og lander derfor i
+  // "other" som ethvert andet ukendt spoergsmaal.
   const sections = groupQuestionsIntoSections([wouldPay, nps, axes, oneThing, satisfaction, worst, followUp]);
   assert.deepEqual(
     sections.map((s) => [s.id, s.questions.map((q) => q.key)]),
     [
-      ["today", ["nps", "satisfaction"]],
+      ["today", ["satisfaction"]],
       ["ideas", ["feature_axes"]],
       ["problems", ["works_worst"]],
       ["choices", ["one_thing"]],
       ["pro", ["pro_would_pay"]],
       ["closing", ["follow_up"]],
+      ["other", ["nps"]],
     ]
   );
 });
@@ -295,7 +299,7 @@ test("spørgsmål grupperes i sektioner, tomme sektioner udelades", () => {
 test("et ukendt spørgsmål havner i other frem for at forsvinde fra siden", () => {
   const stray = { key: "brand_new", kind: "text", sort_order: 999, label_en: "New", label_da: "Ny" };
   assert.equal(sectionForQuestion(stray), "other");
-  const sections = groupQuestionsIntoSections([stray, nps]);
+  const sections = groupQuestionsIntoSections([stray, satisfaction]);
   assert.deepEqual(sections.map((s) => s.id), ["today", "other"]);
   assert.deepEqual(groupQuestionsIntoSections([]), []);
 });

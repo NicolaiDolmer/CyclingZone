@@ -1,8 +1,10 @@
 // #4943 · In-app spørgeskema (/survey/:slug).
 //
 // Ejer-beslutning 7/9: skemaet bygges i spillet i stedet for Google Forms.
+// Skemaet gik fra 12 til 11 spørgsmål ved ejer-beslutninger 8/9 (#4943): nps
+// droppet (dashboard-NPS #4997 dækker), invite_friend blev en afkrydsning.
 // Smoke-guarden holder på det der gør siden brugbar frem for et Forms-link:
-//   1) Siden loader med intro, progress-linje og de 12 spørgsmål i sektioner.
+//   1) Siden loader med intro, progress-linje og de 11 spørgsmål i sektioner.
 //   2) To-akse-rækken har BEGGE skalaer pr. funktion plus en "ved ikke"-udvej,
 //      og den overlever 375 px uden at tabe den anden akse (P10).
 //   3) Send er låst indtil alle påkrævede spørgsmål er besvaret, og teksten
@@ -29,7 +31,7 @@ async function openSurvey(page, options) {
   await page.goto(`/survey/${SLUG}`);
 }
 
-test("skemaet loader med intro, progress og de 12 spørgsmål i sektioner", async ({ page }) => {
+test("skemaet loader med intro, progress og de 11 spørgsmål i sektioner", async ({ page }) => {
   await openSurvey(page);
 
   await expect(page.getByRole("heading", { name: "Hvad skal jeg bygge næste gang?" })).toBeVisible();
@@ -40,7 +42,7 @@ test("skemaet loader med intro, progress og de 12 spørgsmål i sektioner", asyn
   await expect(progress).toBeVisible();
   await expect(progress).toHaveAttribute("aria-valuenow", "0");
 
-  // Sektionerne, i rækkefølge. Ingen løs stak af 12 kort.
+  // Sektionerne, i rækkefølge. Ingen løs stak af 11 kort.
   for (const heading of ["Sådan er det i dag", "Idéerne", "Hvad fungerer dårligst", "Hvad du selv ville vælge", "Pro", "Før du sender"]) {
     await expect(page.getByRole("heading", { name: heading })).toBeVisible();
   }
@@ -53,10 +55,9 @@ test("to-akse-rækken har begge akser og en ved ikke-udvej pr. funktion", async 
   await expect(page.getByRole("radiogroup", { name: `Vigtigt: ${FIRST_FEATURE}` })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: `Ingen mening om ${FIRST_FEATURE}` })).toBeVisible();
 
-  // 1-5, ikke 0-10: NPS er den eneste 0-10-skala på siden.
+  // Begge akser er 1-5: skemaet har ingen 0-10-skala længere (nps droppet 8/9).
   const ideaSteps = page.getByRole("radiogroup", { name: `Idé: ${FIRST_FEATURE}` }).getByRole("radio");
   await expect(ideaSteps).toHaveCount(5);
-  await expect(page.getByRole("radiogroup").first().getByRole("radio")).toHaveCount(11);
 });
 
 test("ved ikke slår begge akser fra for netop den funktion", async ({ page }) => {
@@ -78,9 +79,10 @@ test("Send er låst indtil de påkrævede spørgsmål er besvaret", async ({ pag
   await expect(send).toBeDisabled();
   await expect(page.getByText("mangler stadig et svar", { exact: false })).toBeVisible();
 
-  // NPS er det første påkrævede: tælleren skal falde når det besvares.
-  await page.getByRole("radiogroup").first().getByRole("radio").nth(9).click();
-  await expect(page.getByText("4 spørgsmål mangler stadig et svar.")).toBeVisible();
+  // satisfaction er det første påkrævede spørgsmål (nps droppet 8/9): tælleren
+  // skal falde fra 4 til 3 når det besvares.
+  await page.getByRole("radiogroup").first().getByRole("radio").nth(4).click();
+  await expect(page.getByText("3 spørgsmål mangler stadig et svar.")).toBeVisible();
   await expect(send).toBeDisabled();
 });
 
@@ -97,11 +99,11 @@ test("autosave skriver svaret uden at man trykker Send", async ({ page }) => {
   await login(page);
   await page.goto(`/survey/${SLUG}`);
 
-  await page.getByRole("radiogroup").first().getByRole("radio").nth(9).click();
+  await page.getByRole("radiogroup").first().getByRole("radio").nth(4).click();
   await expect(page.getByText("Gemt").first()).toBeVisible();
   expect(writes.length).toBeGreaterThan(0);
-  expect(writes.join(" ")).toContain('"question_key":"nps"');
-  expect(writes.join(" ")).toContain('"score":9');
+  expect(writes.join(" ")).toContain('"question_key":"satisfaction"');
+  expect(writes.join(" ")).toContain('"score":5');
 });
 
 test("et ryddet svar slettes, i stedet for at blive gemt som en tom værdi", async ({ page }) => {
@@ -119,14 +121,30 @@ test("et ryddet svar slettes, i stedet for at blive gemt som en tom værdi", asy
   await login(page);
   await page.goto(`/survey/${SLUG}`);
 
-  const nps = page.getByRole("radiogroup").first().getByRole("radio").nth(9);
-  await nps.click();
+  const satisfaction = page.getByRole("radiogroup").first().getByRole("radio").nth(4);
+  await satisfaction.click();
   await expect(page.getByText("Gemt").first()).toBeVisible();
   // Klik på det valgte trin igen rydder svaret. Uden en DELETE-policy ville
   // den gamle række blive stående og dukke op igen ved reload (#4943-review).
-  await nps.click();
-  await expect(nps).toHaveAttribute("aria-checked", "false");
+  await satisfaction.click();
+  await expect(satisfaction).toHaveAttribute("aria-checked", "false");
   await expect.poll(() => methods.includes("DELETE")).toBe(true);
+});
+
+test("invite_friend er en afkrydsning med flere valg, ikke fritekst (ejer-beslutning 8/9)", async ({ page }) => {
+  await openSurvey(page);
+
+  const rewardBoth = page.getByRole("checkbox", { name: "En belønning til os begge, for eksempel Pro i en periode" });
+  const nobody = page.getByRole("checkbox", { name: "Jeg kender ingen der ville spille" });
+  await expect(rewardBoth).toBeVisible();
+  await expect(nobody).toBeVisible();
+
+  await rewardBoth.check();
+  await nobody.check();
+  await expect(rewardBoth).toBeChecked();
+  await expect(nobody).toBeChecked();
+  // Ingen loft (modsat works_worst's multi_max3): begge kan vælges samtidig.
+  await expect(page.getByText("Tre er grænsen", { exact: false })).toHaveCount(0);
 });
 
 test("et gennemført skema viser tak-fladen og vejen tilbage til svarene", async ({ page }) => {

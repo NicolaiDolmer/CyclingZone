@@ -41,7 +41,7 @@
 --   SELECT slug, status, count(*) FILTER (WHERE TRUE) FROM public.surveys GROUP BY 1,2;
 --   SELECT count(*) FROM public.survey_questions
 --     WHERE survey_id = (SELECT id FROM public.surveys WHERE slug = '2026-09-features');
---     -- forventet 12
+--     -- forventet 11
 --   SELECT count(*) FROM public.survey_responses;   -- forventet 0
 --   SELECT count(*) FROM public.survey_completions; -- forventet 0
 
@@ -303,12 +303,33 @@ COMMENT ON TABLE public.survey_completions IS
   '#4943 gennemfoerte besvarelser. Svarprocenten maales her, ikke paa survey_responses (eet kryds er ikke en besvarelse).';
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Seed: 2026-09-features (12 spoergsmaal, EN+DA, status draft)
--- Kilde: docs/discord/2026-09-07-spoergeskema-spillere-v2.md afsnit 3-6.
+-- Seed: 2026-09-features (11 spoergsmaal, EN+DA, status draft)
+-- Kilde: docs/discord/2026-09-07-spoergeskema-spillere-v2.md afsnit 3-6, rettet
+-- af ejer-beslutninger 8/9 (issue #4943, kommentar "Ejer-beslutninger 8/9").
 -- v2s Q1-Q6 (segmentering) er droppet — se hovedet. v2s Q17 (managernavn) er
 -- droppet fordi vi kender kontoen; introen paa siden siger det aabent i stedet
 -- for at love en anonymitet skemaet ikke har.
+--
+-- Aendringer 8/9 ift. det oprindelige 12-spoergsmaals-seed:
+--   * nps FJERNET helt — dashboard-NPS (#4997) daekker samme maaling; segmentet
+--     kritiker/ambassadoer hentes i stedet ved at joine nps_responses paa
+--     user_id (docs/SURVEY_SYSTEM.md §5.3).
+--   * satisfaction rykket til foerste spoergsmaal (sort_order 10).
+--   * feature_axes: rider_effort ERSTATTET af races_train_you, samme position.
+--   * invite_friend AENDRET fra fritekst til multi (afkrydsning, 7 valg).
+--   * pro_contents: scouting FJERNET (sportslig fordel, jernregel), early_access
+--     TILFOEJET lige foer nothing.
+--   * pro_would_pay: ny ordlyd der peger tilbage paa spoergsmaal 9's valg.
 -- ══════════════════════════════════════════════════════════════════════════
+
+-- nps-raekken forsvinder ikke af sig selv ved en gen-koersel, fordi seedet
+-- laengere nede bruger ON CONFLICT (survey_id, key) DO UPDATE (opdaterer kun
+-- raekker der findes i VALUES-listen, sletter aldrig en der er faldet ud af
+-- den). Skemaet er stadig 'draft' med 0 svar (post-verify ovenfor), saa denne
+-- DELETE er ikke destruktiv, blot idempotent oprydning foer insertet.
+DELETE FROM public.survey_questions
+ WHERE survey_id = (SELECT id FROM public.surveys WHERE slug = '2026-09-features')
+   AND key IN ('nps');
 
 INSERT INTO public.surveys (slug, title_en, title_da, status)
 VALUES (
@@ -329,14 +350,7 @@ INSERT INTO public.survey_questions
 SELECT s.id, q.sort_order, q.key, q.kind, q.label_en, q.label_da, q.help_en, q.help_da, q.options, q.required
 FROM s, (VALUES
 
-  (10, 'nps', 'scale_0_10',
-   'How likely are you to recommend Cycling Zone to a friend who likes cycling?',
-   'Hvor sandsynligt er det at du vil anbefale Cycling Zone til en ven der kan lide cykling?',
-   '0 means not at all likely, 10 means extremely likely.',
-   '0 betyder slet ikke sandsynligt, 10 betyder yderst sandsynligt.',
-   NULL::JSONB, TRUE),
-
-  (20, 'satisfaction', 'scale_1_5',
+  (10, 'satisfaction', 'scale_1_5',
    'All in all, how satisfied are you with Cycling Zone right now?',
    'Alt i alt, hvor tilfreds er du med Cycling Zone lige nu?',
    '1 means not satisfied, 5 means very satisfied.',
@@ -345,14 +359,15 @@ FROM s, (VALUES
 
   -- To-akse-gitteret. Rækkefølgen er v2s tabel i afsnit 4, som er spredt over
   -- loebsmotoren, traeningen, ungdommen, identiteten og hverdagen som manager.
-  (30, 'feature_axes', 'idea_importance',
+  -- races_train_you erstatter rider_effort (ejer-beslutning 8/9), samme plads.
+  (20, 'feature_axes', 'idea_importance',
    'Rate each idea twice.',
    'Giv hver idé to karakterer.',
    'First: how good an idea is this for the game, no matter whether you would use it yourself. Second: how much it matters to you right now. Pick "Do not know" if you have no view.',
    'Først: hvor god en idé er det for spillet, uanset om du selv ville bruge det. Dernæst: hvor meget det betyder for dig lige nu. Vælg "Ved ikke" hvis du ikke har en mening.',
    '[
      {"key":"live_race","label_en":"Follow a race live while it happens, stage by stage","label_da":"Følg et løb live mens det kører, etape for etape"},
-     {"key":"rider_effort","label_en":"Choose how hard each rider works on a race day","label_da":"Vælg hvor hårdt hver rytter arbejder på en løbsdag"},
+     {"key":"races_train_you","label_en":"Races train you: riding cobbled races makes you better on cobbles","label_da":"Løbene træner dig: kører du brostensløb, bliver du bedre til brosten"},
      {"key":"jersey_targets","label_en":"Target the mountains or points jersey from the start","label_da":"Gå efter bjerg- eller pointtrøjen fra løbets start"},
      {"key":"training_programs","label_en":"Build a training week once as a reusable program","label_da":"Byg en træningsuge én gang som et genbrugeligt program"},
      {"key":"shared_programs","label_en":"Share training programs and use other managers programs","label_da":"Del træningsprogrammer og brug andre manageres programmer"},
@@ -365,7 +380,7 @@ FROM s, (VALUES
      {"key":"custom_front_page","label_en":"A front page you set up yourself, showing what needs action","label_da":"En forside du selv sætter op, med det der kræver handling"}
    ]'::JSONB, FALSE),
 
-  (40, 'works_worst', 'multi_max3',
+  (30, 'works_worst', 'multi_max3',
    'Which parts of the game work worst today? Pick up to three.',
    'Hvilke dele af spillet fungerer dårligst i dag? Vælg op til tre.',
    NULL, NULL,
@@ -382,27 +397,39 @@ FROM s, (VALUES
      {"key":"stability","label_en":"Speed, bugs and things that break","label_da":"Hastighed, fejl og ting der går i stykker"}
    ]'::JSONB, TRUE),
 
-  (50, 'works_worst_detail', 'text',
+  (40, 'works_worst_detail', 'text',
    'What exactly goes wrong there? The more concrete, the better.',
    'Hvad går præcist galt der? Jo mere konkret, jo bedre.',
    NULL, NULL, NULL::JSONB, FALSE),
 
-  (60, 'one_thing', 'text',
+  (50, 'one_thing', 'text',
    'If I could only build one thing in the next month, what should it be?',
    'Hvis jeg kun kunne bygge én ting den næste måned, hvad skulle det så være?',
    NULL, NULL, NULL::JSONB, TRUE),
 
-  (70, 'play_more', 'text',
+  (60, 'play_more', 'text',
    'What would make you play more than you do now?',
    'Hvad ville få dig til at spille mere end du gør nu?',
    NULL, NULL, NULL::JSONB, FALSE),
 
-  (80, 'invite_friend', 'text',
-   'What would make you invite a friend to join?',
-   'Hvad ville få dig til at invitere en ven med?',
-   NULL, NULL, NULL::JSONB, FALSE),
+  -- invite_friend: multi i stedet for fritekst (ejer-beslutning 8/9).
+  (70, 'invite_friend', 'multi',
+   'What would make you invite a friend to join? Pick as many as you like.',
+   'Hvad ville få dig til at invitere en ven med? Vælg lige så mange du vil.',
+   NULL, NULL,
+   '[
+     {"key":"reward_both","label_en":"A reward for both of us, for example Pro for a period","label_da":"En belønning til os begge, for eksempel Pro i en periode"},
+     {"key":"private_league","label_en":"A private league or group where I play against my friends","label_da":"En privat liga eller gruppe hvor jeg spiller mod mine venner"},
+     {"key":"duel","label_en":"A head to head duel against a friend","label_da":"En direkte duel mod en ven"},
+     {"key":"easier_start","label_en":"An easier start for beginners, so I do not have to explain everything","label_da":"En nemmere start for begyndere, så jeg ikke skal forklare alt"},
+     {"key":"share_link","label_en":"A link I can just send","label_da":"Et link jeg bare kan sende"},
+     {"key":"already_do","label_en":"Nothing, I already invite people","label_da":"Ingenting, jeg inviterer allerede"},
+     {"key":"nobody","label_en":"I do not know anyone who would play","label_da":"Jeg kender ingen der ville spille"}
+   ]'::JSONB, FALSE),
 
-  (90, 'pro_contents', 'multi',
+  -- pro_contents: scouting fjernet (sportslig fordel, jernregel), early_access
+  -- tilfoejet lige foer nothing (ejer-beslutning 8/9).
+  (80, 'pro_contents', 'multi',
    'What would belong in Pro, if you got to decide? Pick as many as you like.',
    'Hvad hører hjemme i Pro, hvis du bestemte? Vælg lige så mange du vil.',
    'Pro is optional and always will be. The game must be fair for everyone. You cannot pay for better riders, faster training, or better results. So this is about what else Pro could hold.',
@@ -414,18 +441,19 @@ FROM s, (VALUES
      {"key":"looks","label_en":"Team looks: kit, logo, rider portraits","label_da":"Holdets udseende: trøje, logo, rytterportrætter"},
      {"key":"renaming","label_en":"Renaming riders, from an approved name list","label_da":"Omdøbning af ryttere, fra en godkendt navneliste"},
      {"key":"badge","label_en":"A badge on your profile","label_da":"Et mærke på din profil"},
-     {"key":"scouting","label_en":"Faster or better scouting","label_da":"Hurtigere eller bedre scouting"},
+     {"key":"early_access","label_en":"See new features before everyone else","label_da":"Se nye funktioner før alle andre"},
      {"key":"nothing","label_en":"Nothing extra, I would just be backing the project","label_da":"Ikke noget ekstra, jeg ville bare bakke projektet op"}
    ]'::JSONB, FALSE),
 
-  (100, 'pro_exclusions', 'text',
+  (90, 'pro_exclusions', 'text',
    'Is there anything that should stay out of Pro? Tell me what, and why.',
    'Er der noget der ikke skal ind i Pro? Skriv hvad, og hvorfor.',
    NULL, NULL, NULL::JSONB, FALSE),
 
-  (110, 'pro_would_pay', 'single',
-   'Would you pay for Pro as you have described it?',
-   'Ville du betale for Pro, sådan som du har beskrevet det?',
+  -- pro_would_pay: ny ordlyd der peger tilbage paa spoergsmaal 9's valg (ejer-beslutning 8/9).
+  (100, 'pro_would_pay', 'single',
+   'Would you pay for Pro with the things you picked above?',
+   'Ville du betale for Pro med det du valgte ovenfor?',
    NULL, NULL,
    '[
      {"key":"yes","label_en":"Yes","label_da":"Ja"},
@@ -434,7 +462,7 @@ FROM s, (VALUES
      {"key":"already","label_en":"I already do","label_da":"Det gør jeg allerede"}
    ]'::JSONB, TRUE),
 
-  (120, 'follow_up', 'yes_no',
+  (110, 'follow_up', 'yes_no',
    'May I come back to you about your answers?',
    'Må jeg vende tilbage til dig om dine svar?',
    NULL, NULL, NULL::JSONB, FALSE)
