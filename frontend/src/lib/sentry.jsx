@@ -12,10 +12,13 @@ import ErrorState from "../components/ui/ErrorState.jsx";
 import Button from "../components/ui/Button.jsx";
 // denyUrls-moenstre i ren .js-fil (unit-testbar uden JSX-import), se #2018.
 import { DENY_URLS, isKnownExtensionNoise } from "./sentryDenyUrls.js";
+// #4595: release-sha'en læses fra <meta name="cz-release"> i HTML'en, IKKE fra
+// import.meta.env — en deploy-unik streng i bundlen roterer entry-chunkens hash
+// på hvert deploy og gør alle åbne faner stale. Se lib/release.js.
+import { getRelease, getSentryRelease } from "./release.js";
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
 const ENABLED = import.meta.env.PROD && Boolean(DSN);
-const RELEASE = import.meta.env.VITE_SENTRY_RELEASE || import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA;
 
 // Ét fingerprint for alle chunk-load-fejl, saa de lander i EN gruppe der kan
 // arkiveres i Sentry i stedet for at blive slettet i klienten (#4545).
@@ -23,9 +26,21 @@ const CHUNK_ERROR_FINGERPRINT = "frontend-chunk-load-error";
 
 let started = false;
 
-function sampleRateFromEnv(name, fallback = 0) {
-  const value = Number(import.meta.env[name] ?? fallback);
-  return Number.isFinite(value) && value >= 0 ? value : fallback;
+// #4595: env-variablen slås op med en STATISK `import.meta.env.VITE_*`-reference,
+// aldrig med `import.meta.env[name]`. Dynamisk indeksering tvinger Vite til at
+// inline HELE env-objektet — inklusive Vercels auto-eksponerede
+// `VITE_VERCEL_GIT_COMMIT_SHA` — så sha'en endte i bundlen igen ad bagdøren, selv
+// efter at de to direkte læsninger var fjernet. Målt: 3 forekomster af sha'en i
+// entry-chunken i et build med DSN sat (altså prod), 0 uden.
+function toSampleRate(raw, fallback = 0) {
+  // CodeRabbit (#4970): tom streng, ikke-numeriske vaerdier og tal udenfor det
+  // inklusive interval [0, 1] skal falde tilbage til `fallback` — @sentry/react
+  // kraever et tal i [0, 1] og afviser (eller warner paa) alt andet. Tjek "" eksplicit
+  // FOER Number(), da Number("") === 0 ellers ville maskere en tom env-vaerdi som
+  // et gyldigt 0 i stedet for at bruge fallback.
+  if (raw === undefined || raw === null || raw === "") return fallback;
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 && value <= 1 ? value : fallback;
 }
 
 export function initSentry() {
@@ -33,10 +48,10 @@ export function initSentry() {
   Sentry.init({
     dsn: DSN,
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.MODE,
-    release: RELEASE || undefined,
-    tracesSampleRate: sampleRateFromEnv("VITE_SENTRY_TRACES_SAMPLE_RATE"),
-    replaysSessionSampleRate: sampleRateFromEnv("VITE_SENTRY_REPLAY_SAMPLE_RATE"),
-    replaysOnErrorSampleRate: sampleRateFromEnv("VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE", 0.1),
+    release: getSentryRelease(),
+    tracesSampleRate: toSampleRate(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE),
+    replaysSessionSampleRate: toSampleRate(import.meta.env.VITE_SENTRY_REPLAY_SAMPLE_RATE),
+    replaysOnErrorSampleRate: toSampleRate(import.meta.env.VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE, 0.1),
     // #1792 (extensions) + #2018 (Vercel Live Feedback toolbar): dropper events
     // hvis "blame"-frame stammer fra tredjeparts-injiceret kode. Se DENY_URLS.
     denyUrls: DENY_URLS,
@@ -96,7 +111,8 @@ export function SentryBoundary({ children }) {
         // men de daempes ikke i Sentry — saa et aegte crash forbliver synligt,
         // og du kan maale hvor stor den tvetydige bunke faktisk er.
         scope.setTag("frontend_error_kind", classifyFrontendError(error));
-        if (RELEASE) scope.setTag("frontend_release", RELEASE);
+        const release = getSentryRelease();
+        if (release) scope.setTag("frontend_release", release);
       }}
       fallback={(props) => <AppErrorFallback {...props} />}
     >
@@ -125,7 +141,8 @@ export function AnalyticsBoundary({ children }) {
       beforeCapture={(scope, error) => {
         scope.setTag("frontend_error_kind", classifyFrontendError(error));
         scope.setTag("frontend_error_scope", "analytics");
-        if (RELEASE) scope.setTag("frontend_release", RELEASE);
+        const release = getSentryRelease();
+        if (release) scope.setTag("frontend_release", release);
       }}
       fallback={null}
     >
@@ -214,7 +231,7 @@ function AppErrorFallback({ error, eventId, resetError }) {
       if (cancelled || !alive) return;
       const shouldReload = shouldAttemptChunkReload({
         error,
-        release: RELEASE,
+        release: getRelease(),
         storage: window.sessionStorage,
       });
       if (shouldReload) {
