@@ -46,9 +46,10 @@
       "title": "Races",
       "today": "A full season calendar with scheduled races, results, standings, prize money and history.",
       "next": [
-        "A race engine built for stories: stage drama you can follow, discuss and brag about.",
-        "Livelier race reports, on the way to following races as they unfold.",
-        "Tactics and rider form that actually shape outcomes, without hiding why."
+        "A smarter season planner: overlapping races, fatigue and qualification rules you can plan a whole season around.",
+        "National championships and national teams: ride for your country, win the jersey.",
+        "Realistic race routes modeled on real racing.",
+        "The racing math explained in plain words, without revealing exact numbers."
       ]
     },
     "training": {
@@ -57,16 +58,18 @@
       "next": [
         "Real training depth: programs for individual riders, not just a single focus.",
         "Long-term development you can see and steer, season over season.",
-        "Meaningful choices with consequences, never spreadsheet homework."
+        "Meaningful choices with consequences, never spreadsheet homework.",
+        "Coaches as a real resource: balance training load and risk burnout if you push too hard.",
+        "Default training programs, and a workshop to share your own."
       ]
     },
     "youth": {
       "title": "Youth development",
       "today": "Scouting is live: uncover a rider's hidden potential with limited scout slots and estimates personal to your team.",
       "next": [
-        "Youth academies: your own next generation growing up through the club.",
         "Young riders you discovered, developed and made your stars.",
-        "Generational renewal, so your club has a future beyond its current squad."
+        "Generational renewal, so your club has a future beyond its current squad.",
+        "U19 and U23 squads with real promotion paths from academy to the top."
       ]
     },
     "market": {
@@ -74,7 +77,8 @@
       "today": "The strongest part of the game right now: live auctions, autobids, transfers, loans and negotiations between managers.",
       "next": [
         "Deeper negotiation between managers.",
-        "A market that tells stories: rumors, rivalries and big moves the whole world talks about."
+        "A market that tells stories: rumors, rivalries and big moves the whole world talks about.",
+        "Rider values that follow the market: prices shaped by real auctions and transfers."
       ]
     },
     "club": {
@@ -83,9 +87,12 @@
       "next": [
         "Earn renown: wins, records and history that build your club's reputation in the world.",
         "Road captains and mentors: riders who lift the team around them.",
-        "Build your staff: sports directors, coaches and doctors who shape how your club works.",
         "A club museum: champions, legendary riders and the races people still talk about.",
-        "Friends and following: follow managers and riders across the world."
+        "Friends and following: follow managers and riders across the world.",
+        "Negotiate your board's goals upward, for a bigger reward.",
+        "Direct messages and mentions between managers.",
+        "Invite a friend and build your rivalry together.",
+        "A living world feed of results, transfers and rivalries."
       ]
     }
   }

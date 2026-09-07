@@ -46,9 +46,10 @@
       "title": "Løb",
       "today": "En fuld sæsonkalender med planlagte løb, resultater, stillinger, præmiepenge og historik.",
       "next": [
-        "En løbsmotor bygget til historier: etapedrama du kan følge, diskutere og prale af.",
-        "Mere levende løbsrapporter, på vej mod at følge løb mens de udfolder sig.",
-        "Taktik og rytterform der reelt former udfaldet, uden at skjule hvorfor."
+        "En klogere sæsonplanlægger: overlappende løb, træthed og kvalifikationsregler du kan planlægge en hel sæson omkring.",
+        "Nationale mesterskaber og landshold: kør for dit land, vind trøjen.",
+        "Realistiske løbsruter modelleret efter rigtig cykling.",
+        "Løbs-matematikken forklaret i klare ord, uden at afsløre de præcise tal."
       ]
     },
     "training": {
@@ -57,16 +58,18 @@
       "next": [
         "Rigtig træningsdybde: programmer til den enkelte rytter, ikke kun ét fokus.",
         "Langsigtet udvikling du kan se og styre, sæson efter sæson.",
-        "Meningsfulde valg med konsekvenser, aldrig regnearks-lektier."
+        "Meningsfulde valg med konsekvenser, aldrig regnearks-lektier.",
+        "Trænere som en ægte ressource: balancér træningsbelastningen og risikér nedslidning hvis du presser for hårdt.",
+        "Standardtræningsprogrammer og en workshop til at dele dine egne."
       ]
     },
     "youth": {
       "title": "Ungdomsudvikling",
       "today": "Scouting er live: afdæk en rytters skjulte potentiale med begrænsede scout-slots og estimater der er personlige for dit hold.",
       "next": [
-        "Ungdomsakademier: din egen næste generation der vokser op gennem klubben.",
         "Unge ryttere du selv opdagede, udviklede og gjorde til dine stjerner.",
-        "Generationsskifte, så din klub har en fremtid ud over den nuværende trup."
+        "Generationsskifte, så din klub har en fremtid ud over den nuværende trup.",
+        "U19- og U23-hold med ægte oprykningsveje fra akademi til toppen."
       ]
     },
     "market": {
@@ -74,7 +77,8 @@
       "today": "Den stærkeste del af spillet lige nu: live-auktioner, autobud, transfers, lån og forhandlinger mellem managers.",
       "next": [
         "Dybere forhandling mellem managers.",
-        "Et marked der fortæller historier: rygter, rivaliseringer og store handler hele verden taler om."
+        "Et marked der fortæller historier: rygter, rivaliseringer og store handler hele verden taler om.",
+        "Rytterværdier der følger markedet: priser formet af rigtige auktioner og transfers."
       ]
     },
     "club": {
@@ -83,9 +87,12 @@
       "next": [
         "Optjen renommé: sejre, rekorder og historie der bygger din klubs omdømme i verden.",
         "Vejkaptajner og mentorer: ryttere der løfter holdet omkring sig.",
-        "Byg din stab: sportsdirektører, trænere og læger der former hvordan din klub arbejder.",
         "Et klubmuseum: mestre, legendariske ryttere og løbene folk stadig taler om.",
-        "Venner og følg-funktion: følg managers og ryttere på tværs af verden."
+        "Venner og følg-funktion: følg managers og ryttere på tværs af verden.",
+        "Forhandl bestyrelsens mål op, for en større belønning.",
+        "Direkte beskeder og @-omtaler mellem managers.",
+        "Inviter en ven og byg jeres rivalisering sammen.",
+        "Et levende verdensfeed med resultater, transfers og rivaliseringer."
       ]
     }
   }
