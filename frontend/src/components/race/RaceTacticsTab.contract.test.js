@@ -9,7 +9,8 @@
 //   2. Endagsløb har ingen etape-vælger, og kolonnen hedder "løbsdag".
 //   3. Præcis ÉN guld-knap i fanen (TASTE P3): "Gem etape N". "Kopiér til
 //      etape N" er sekundær.
-//   4. Rollen redigeres ikke pr. etape — kolonnen er ren visning.
+//   4. Rollen kan redigeres i kolonnen (#4980), men gælder resten af løbet —
+//      aldrig pr. etape, aldrig på en låst etape, og aldrig i et <select>.
 //   5. Et gem rammer BEGGE endpoints for den åbne etape (#4613's hele pointe:
 //      intention og ordrer hører til samme dag og samme knap).
 //   6. En låst etape kan åbnes, men aldrig gemmes.
@@ -45,10 +46,39 @@ test("præcis én guld-knap: Gem er primary, Kopiér er secondary", () => {
   assert.match(source, /variant="primary"[\s\S]{0,300}intention\.save/);
 });
 
-test("rollen er ren visning — ingen rolle-vælger pr. etape", () => {
+// #4980: rollen kan nu redigeres i kolonnen (ejer-godkendt spillerønske), men
+// stadig ALDRIG pr. etape: et valg skrives på alle ulåste etaper via
+// applyRoleForRest, og vælgeren er den samme knap-liste som intentionen bruger
+// (aldrig et <select>, som resten af fladen heller ikke har).
+test("rollen redigeres for resten af løbet, aldrig pr. etape og aldrig i et <select>", () => {
   assert.doesNotMatch(source, /race_role: e\.target\.value/);
   assert.doesNotMatch(source, /<select/);
-  assert.match(source, /tacticsOrders\.roleLabel\.\$\{roleKey\(baseRoleForRider\(rider\)\)\}/);
+  // Kolonnen viser den EFFEKTIVE rolle (override → basis-rolle), ikke
+  // race_entries-rollen alene.
+  assert.match(source, /tacticsOrders\.roleLabel\.\$\{roleKey\(role\)\}/);
+  assert.match(source, /const roleFor = \(rider\) =>/);
+  // Skrivningen rammer editableStages (de ULÅSTE etaper), aldrig kun activeStage.
+  assert.match(source, /applyRoleForRest\(\{ matrix: m, riderId, role, stages: editableStages \}\)/);
+  // Rollerne kommer fra den delte liste, ikke fra en lokal opremsning i fladen.
+  assert.match(source, /SELECTABLE_ROLES\.map/);
+});
+
+// #4980: en låst etape og en udgået rytter er ren visning — serveren afviser
+// dem alligevel (stage_roles_stage_locked / stage_roles_rider_abandoned).
+test("rolle-vælgeren vises ikke på låst etape eller for en udgået rytter", () => {
+  assert.match(source, /const canEdit = !stageLocked && !rider\.abandoned && editableStages\.length > 0;/);
+  assert.match(source, /\{canEdit && \(/);
+});
+
+// #4979: profilen for den åbne etape, over kortet — én ad gangen, og den følger
+// etape-vælgeren.
+test("etapeprofilen ligger over kortet og følger den åbne etape", () => {
+  assert.match(source, /<RaceStageProfileRow/);
+  assert.match(source, /profile=\{profileByStage\[activeStage\]\}/);
+  // Rækken står FØR fanens kort i træet.
+  const rowAt = source.indexOf("<RaceStageProfileRow");
+  const cardAt = source.indexOf('data-testid="race-tactics-tab"');
+  assert.ok(rowAt > 0 && cardAt > rowAt, "profil-rækken skal renderes over taktik-kortet");
 });
 
 test("ét gem rammer begge endpoints for den åbne etape", () => {

@@ -20,6 +20,12 @@
 // FOG OF WAR: ingen procenter, ingen loft-signaler. Fit/form/træthed er de
 // SAMME tal holdudtagelsen allerede viser for spillerens EGNE ryttere.
 //
+// #4979: etapeprofilen for den aktuelle/næste etape ligger i en tynd række
+// øverst i fanen (samme række som Taktik-fanen har, RaceStageProfileRow) —
+// spillerønske thelamba/egomadsen 7/9. Den følger hero'ens "Stage N locks",
+// dvs. den etape man udtager til eller kører nu; siden vælger etapen og
+// sender profilen med, fanen opfinder ingen egen etape-forståelse.
+//
 // #4917/#2034: førertrøje-genvejen er tilbage her (den boede i den nedlagte
 // etape-taktik-matrix) — en KORT linje, ingen ny sektion, kun i UNDER-fasen
 // (kaptajnen gælder hele løbet nu, ejer 6/9; FØR findes ingen fører endnu, og
@@ -31,6 +37,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import RaceSelectionPanel from "./RaceSelectionPanel.jsx";
+import RaceStageProfileRow from "./RaceStageProfileRow.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import { Section, SectionHeader, Button, SkeletonLines, LockIcon } from "../ui/index.js";
 import { WRAP, SCROLLER } from "../ui/dataTableStyles.js";
@@ -137,6 +144,11 @@ export default function RaceTeamTab({
   stageRoles = null,
   onReload,
   gcRankByRider = null,
+  // #4979: den aktuelle/næste etapes profil-række (race_stage_profiles) +
+  // dens etiket. null → rækken renderer intet (løb uden rutedata).
+  stageProfile = null,
+  stageProfileLabel = null,
+  hasClassifications = true,
   // Kun brugt i FØR-tilstanden (holdudtagelsen), videresendt uændret.
   selectedStageIndex = 0,
   selectedStageBucket = null,
@@ -164,6 +176,7 @@ export default function RaceTeamTab({
   if (phase === "before") {
     return (
       <div id="race-selection-anchor" className="flex flex-col gap-[14px]">
+        <RaceStageProfileRow profile={stageProfile} stageLabel={stageProfileLabel} hasClassifications={hasClassifications} />
         <RaceSelectionPanel
           raceId={raceId}
           selectedStageIndex={selectedStageIndex}
@@ -175,31 +188,35 @@ export default function RaceTeamTab({
     );
   }
 
+  const profileRow = (
+    <RaceStageProfileRow profile={stageProfile} stageLabel={stageProfileLabel} hasClassifications={hasClassifications} />
+  );
+
   if (data === null) {
     return (
-      <Section>
+      <>{profileRow}<Section>
         <SectionHeader title={t("racePage.team.title")} />
         <SkeletonLines lines={5} />
-      </Section>
+      </Section></>
     );
   }
   if (data === false) {
     return (
-      <Section>
+      <>{profileRow}<Section>
         <SectionHeader title={t("racePage.team.title")} />
         <p className="text-xs text-cz-3">{t("racePage.team.loadError")}</p>
         <div className="mt-3">
           <Button variant="secondary" size="sm" onClick={onReload}>{t("tacticsOrders.retry")}</Button>
         </div>
-      </Section>
+      </Section></>
     );
   }
   if (!riders.length) {
     return (
-      <Section>
+      <>{profileRow}<Section>
         <SectionHeader title={t("racePage.team.title")} />
         <p className="text-xs text-cz-3">{t("racePage.team.noRiders")}</p>
-      </Section>
+      </Section></>
     );
   }
 
@@ -253,6 +270,8 @@ export default function RaceTeamTab({
   }
 
   return (
+    <>
+    {profileRow}
     <Section data-testid="race-team-tab">
       <SectionHeader
         title={t("racePage.team.title")}
@@ -290,5 +309,6 @@ export default function RaceTeamTab({
         </p>
       )}
     </Section>
+    </>
   );
 }
