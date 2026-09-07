@@ -78,7 +78,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                           role="radio"
                           aria-checked={active}
                           onClick={() => setScore(n)}
-                          className={`flex-1 sm:flex-none sm:w-8 border-s border-cz-border first:border-s-0 py-1.5 font-mono text-[11px] font-semibold tabular-nums transition-colors duration-150 ${
+                          className={`flex-1 sm:flex-none sm:w-8 border-s border-cz-border first:border-s-0 py-1.5 font-mono text-2xs font-semibold tabular-nums transition-colors duration-150 ${
                             active
                               ? "bg-cz-accent/10 text-cz-accent-t"
                               : "bg-cz-card text-cz-2 hover:text-cz-1"
