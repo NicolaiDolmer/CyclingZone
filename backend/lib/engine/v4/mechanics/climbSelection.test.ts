@@ -7,7 +7,7 @@ import fc from "fast-check";
 
 import { climbSelectionHook, climbSeverity01 } from "./climbSelection.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
-import { boundRngFor } from "../rng.ts";
+import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import type {
   AbilityKey,
   ClimbSegment,
@@ -88,16 +88,15 @@ function makeState(
 function makeCtx(entrants: Entrant[], segment: Segment, seed = "climb-seed", segmentIndex = 0): SegmentHookContext {
   const entrantsById: Record<string, Entrant> = {};
   for (const e of entrants) entrantsById[e.rider_id] = e;
-  return {
+  // #4949: ctx spejler segmentLoop.ts's noegling (segment-noeglet rngFor).
+  return makeHookCtx({
     segment,
     segmentIndex,
     route: routeFor([segment]),
     entrants: entrantsById,
     tuning: RACE_V4_TUNING,
-    rngFor: boundRngFor(seed),
-    rngForStage: boundRngFor(seed),
-    orders: [],
-  };
+    seed,
+  });
 }
 
 function splitRiderIdsFrom(state: EngineState): Set<string> {

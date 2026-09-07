@@ -9,7 +9,7 @@ import fc from "fast-check";
 
 import { computeAttackGainSeconds, computeRegroupSeconds, descentHook, incidentProbability } from "./descent.ts";
 import { maxIncidentsForField, resolveCrashIncident } from "./incidents.ts";
-import { boundRngFor } from "../rng.ts";
+import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import { RACE_V4_TUNING, DESCENT_EXTRA_TUNING, INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
 import type {
   AbilityKey,
@@ -91,16 +91,15 @@ function buildSingleGroupScenario(
   const group: RaceGroup = { id: "peloton-0", kind: "peloton", rider_ids: riderIds, gap_seconds: 0, cohesion: 1 };
   const state: EngineState = { km: 40, groups: [group], riders, virtual_gc: {} };
   const segment = descentSegment(technicality);
-  const ctx: SegmentHookContext = {
+  // #4949: ctx spejler segmentLoop.ts's noegling (segment-noeglet rngFor).
+  const ctx: SegmentHookContext = makeHookCtx({
     segment,
     segmentIndex: 3,
     route: ROUTE_STUB,
     entrants: entrantsById,
     tuning: RACE_V4_TUNING,
-    rngFor: boundRngFor(seed),
-    rngForStage: boundRngFor(seed),
-    orders: [],
-  };
+    seed,
+  });
   return { state, ctx };
 }
 
@@ -433,7 +432,18 @@ test("#4934: 3 km-reglen beskytter TIDEN — ingen gruppe-/tidsaendring, men uhe
 
 test("determinisme: samme seed+input giver byte-identisk resultat", () => {
   const { state, ctx: ctxA } = buildSingleGroupScenario([["weak", 0], ["strong", 50]], 2, "det-seed");
-  const ctxB: SegmentHookContext = { ...ctxA, rngFor: boundRngFor("det-seed") };
+  // #4949: ctxB bygges UAFHAENGIGT af ctxA (samme seed, frisk rngFor/rngForStage)
+  // — beviser at ctx-konstruktionen er en ren funktion af seed, ikke at de to
+  // variable blot deler samme lukning.
+  const ctxB: SegmentHookContext = makeHookCtx({
+    segment: ctxA.segment,
+    segmentIndex: ctxA.segmentIndex,
+    route: ctxA.route,
+    entrants: ctxA.entrants,
+    tuning: ctxA.tuning,
+    orders: ctxA.orders,
+    seed: "det-seed",
+  });
   const a = descentHook(state, ctxA);
   const b = descentHook(state, ctxB);
   assert.deepEqual(a, b);
@@ -453,7 +463,16 @@ test("per-rytter-hash: en ekstra, uafhaengig gruppe paavirker ikke andre ryttere
   }
   const extraGroup: RaceGroup = { id: "chase-9", kind: "chase", rider_ids: ["extra1", "extra2"], gap_seconds: 30, cohesion: 1 };
   const stateB: EngineState = { ...scenarioA.state, groups: [...scenarioA.state.groups, extraGroup], riders: extraRiders };
-  const ctxB: SegmentHookContext = { ...scenarioA.ctx, entrants: extraEntrants, rngFor: boundRngFor(seed) };
+  // #4949: samme seed, friskbygget ctx (segment-noeglet) med det udvidede felt.
+  const ctxB: SegmentHookContext = makeHookCtx({
+    segment: scenarioA.ctx.segment,
+    segmentIndex: scenarioA.ctx.segmentIndex,
+    route: scenarioA.ctx.route,
+    entrants: extraEntrants,
+    tuning: scenarioA.ctx.tuning,
+    orders: scenarioA.ctx.orders,
+    seed,
+  });
   const resultB = descentHook(stateB, ctxB);
 
   const weakA = findGroupOf(resultA.state.groups, "weak")!;
@@ -568,10 +587,8 @@ function buildMultiGroupScenario(
   const route: RouteV2 = { ...ROUTE_STUB, segments: [segment] };
   return {
     state: { km: 40, groups, riders, virtual_gc: {} },
-    ctx: {
-      segment, segmentIndex: 0, route, entrants: entrantsById,
-      tuning: RACE_V4_TUNING, rngFor: boundRngFor("regroup-seed"), rngForStage: boundRngFor("regroup-seed"), orders: [],
-    },
+    // #4949: ctx spejler segmentLoop.ts's noegling (segment-noeglet rngFor).
+    ctx: makeHookCtx({ segment, segmentIndex: 0, route, entrants: entrantsById, tuning: RACE_V4_TUNING, seed: "regroup-seed" }),
   };
 }
 
