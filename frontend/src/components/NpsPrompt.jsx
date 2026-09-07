@@ -57,9 +57,12 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                 {t("nps.question")}
               </p>
 
-              <div className="flex items-center gap-2">
-                {/* 0-10 — ét segmenteret bånd (aldrig wrap), endepunkts-labels under. */}
-                <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-2 sm:shrink-0">
+                {/* 0-10 — ét segmenteret bånd (aldrig wrap), endepunkts-labels under.
+                    Segmenterne strækker sig over hele bredden på mobil og får en
+                    fast 32 px bredde fra sm, så båndet ikke klemmes sammen når
+                    spørgsmålet deler linjen med det. */}
+                <div className="flex-1 min-w-0 sm:flex-none">
                   <div
                     role="radiogroup"
                     aria-label={t("nps.question")}
@@ -74,7 +77,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                           role="radio"
                           aria-checked={active}
                           onClick={() => setScore(n)}
-                          className={`flex-1 border-s border-cz-border first:border-s-0 py-1.5 font-mono text-[11px] font-semibold tabular-nums transition-colors duration-150 ${
+                          className={`flex-1 sm:flex-none sm:w-8 border-s border-cz-border first:border-s-0 py-1.5 font-mono text-[11px] font-semibold tabular-nums transition-colors duration-150 ${
                             active
                               ? "bg-cz-accent/10 text-cz-accent-t"
                               : "bg-cz-card text-cz-2 hover:text-cz-1"
@@ -95,7 +98,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                   type="button"
                   onClick={() => onDismiss({ scoreSelected: score !== null })}
                   aria-label={t("nps.dismissAriaLabel")}
-                  className="shrink-0 self-start text-cz-3 hover:text-cz-1 transition-colors p-1"
+                  className="shrink-0 text-cz-3 hover:text-cz-1 transition-colors p-1"
                 >
                   <XIcon size={14} aria-hidden="true" />
                 </button>
