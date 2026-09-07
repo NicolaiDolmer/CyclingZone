@@ -103,6 +103,7 @@
     "remove": "Fjern billede",
     "adminRemove": "Slet billede",
     "openFull": "Åbn billedet i fuld størrelse",
+    "attachmentAlt": "Billede i indlægget",
     "hint": "Op til {max} billeder. JPG, PNG eller WebP. Store fotos skaleres ned inden de sendes.",
     "errors": {
       "type": "Den filtype virker ikke her. Brug JPG, PNG eller WebP.",

@@ -103,6 +103,7 @@
     "remove": "Remove image",
     "adminRemove": "Delete image",
     "openFull": "Open the image at full size",
+    "attachmentAlt": "Image in this post",
     "hint": "Up to {max} images. JPG, PNG or WebP. Large photos are scaled down before they are uploaded.",
     "errors": {
       "type": "That file type does not work here. Use JPG, PNG or WebP.",

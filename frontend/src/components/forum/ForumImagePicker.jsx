@@ -82,6 +82,10 @@ export default function ForumImagePicker({ images, onChange, disabled = false, u
           id={inputId}
           type="file"
           className="sr-only"
+          // Knappen ved siden af ER den tilgaengelige kontrol; det raa input
+          // ville ellers blive laest op som et navnloest felt.
+          tabIndex={-1}
+          aria-hidden="true"
           accept={FORUM_IMAGE_ALLOWED_TYPES.join(",")}
           multiple
           disabled={disabled || busy || full}
@@ -109,7 +113,7 @@ export default function ForumImagePicker({ images, onChange, disabled = false, u
             <li key={image.path} className="relative">
               <img
                 src={forumImagePublicUrl(supabase, image.path)}
-                alt=""
+                alt={t("images.attachmentAlt")}
                 width={image.width || undefined}
                 height={image.height || undefined}
                 className="h-20 w-20 rounded-cz border border-cz-border object-cover"

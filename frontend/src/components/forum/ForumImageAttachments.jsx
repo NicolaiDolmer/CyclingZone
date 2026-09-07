@@ -32,7 +32,10 @@ export default function ForumImageAttachments({ images, t, onAdminRemove = null 
             <a href={url} target="_blank" rel="noopener noreferrer" title={t("images.openFull")}>
               <img
                 src={url}
-                alt=""
+                // Spilleren skriver ingen alt-tekst, saa den generiske
+                // beskrivelse er det aerlige valg: et indholdsbillede maa
+                // ikke skjules for skaermlaesere med alt="".
+                alt={t("images.attachmentAlt")}
                 width={image.width || undefined}
                 height={image.height || undefined}
                 loading="lazy"
